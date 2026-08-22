@@ -28,10 +28,11 @@ const DAMAGE_STYLES: Dictionary = {
 	},
 	"heal": {
 		"font_size": 18,
-		"color": Color(0.2, 1.0, 0.4, 1.0),
+		# C8: 色相对齐 DT.COLOR_GREEN_BRIGHT（UI 治疗绿同一语义；原 (0.2,1,4) s=1 刺眼）
+		"color": Color(0.3, 0.92, 0.5, 1.0),
 		"outline_color": Color(0.0, 0.3, 0.1, 0.8),
 		"scale": 0.95,
-		"glow_color": Color(0.2, 1.0, 0.4, 0.8),  # v8.3 绿色发光
+		"glow_color": Color(0.3, 0.92, 0.5, 0.8),  # v8.3 绿色发光
 		"glow_size": 3
 	},
 	"shield": {
@@ -47,13 +48,14 @@ const DAMAGE_STYLES: Dictionary = {
 		"scale": 0.75
 	},
 	# v9.x: DOT 按伤害类型差异化（玩家一眼看出在被哪种伤害）
+	# C8: dot 类 glow_size 2→1——DOT 每 0.5s 高频刷新，满屏发光刺眼（暴击等低频高光保留）
 	"dot_burn": {
 		"font_size": 13,
 		"color": Color(1.0, 0.4, 0.1, 1.0),
 		"outline_color": Color(0.4, 0.1, 0.0, 0.85),
 		"scale": 0.78,
 		"glow_color": Color(1.0, 0.35, 0.1, 0.7),
-		"glow_size": 2
+		"glow_size": 1
 	},
 	"dot_chem": {
 		"font_size": 13,
@@ -61,7 +63,7 @@ const DAMAGE_STYLES: Dictionary = {
 		"outline_color": Color(0.0, 0.3, 0.05, 0.85),
 		"scale": 0.78,
 		"glow_color": Color(0.3, 1.0, 0.2, 0.7),
-		"glow_size": 2
+		"glow_size": 1
 	},
 	"dot_emp": {
 		"font_size": 13,
@@ -69,7 +71,7 @@ const DAMAGE_STYLES: Dictionary = {
 		"outline_color": Color(0.25, 0.05, 0.4, 0.85),
 		"scale": 0.78,
 		"glow_color": Color(0.7, 0.3, 1.0, 0.7),
-		"glow_size": 2
+		"glow_size": 1
 	},
 	"dot_nano": {
 		"font_size": 13,
@@ -77,7 +79,7 @@ const DAMAGE_STYLES: Dictionary = {
 		"outline_color": Color(0.0, 0.25, 0.35, 0.85),
 		"scale": 0.78,
 		"glow_color": Color(0.2, 0.9, 1.0, 0.7),
-		"glow_size": 2
+		"glow_size": 1
 	},
 	"miss": {
 		"font_size": 14,
@@ -92,15 +94,16 @@ const DAMAGE_STYLES: Dictionary = {
 		"outline_color": Color(0.0, 0.3, 0.28, 0.85),
 		"scale": 0.85,
 		"glow_color": Color(0.25, 0.9, 0.8, 0.7),
-		"glow_size": 2
+		"glow_size": 1  # C8: 高频特效 glow 降档
 	},
 	# v10 解题式玩法：克制破解（标签克制质变生效时的伤害数字，金色高亮）
 	"counter_break": {
 		"font_size": 20,
-		"color": Color(1.0, 0.85, 0.25, 1.0),
+		# C8: 金色对齐 DT.COLOR_GOLD（同文件 critical_out 同为 0.85/0.35，统一一个金）
+		"color": Color(1.0, 0.85, 0.35, 1.0),
 		"outline_color": Color(0.45, 0.3, 0.0, 0.9),
 		"scale": 1.05,
-		"glow_color": Color(1.0, 0.8, 0.2, 0.85),
+		"glow_color": Color(1.0, 0.8, 0.3, 0.85),
 		"glow_size": 4
 	},
 	# v13.1: 阵营双色 normal——敌人掉血=我方输出(青)，我方掉血=敌方输出(暖红)。

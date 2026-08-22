@@ -57,10 +57,7 @@ signal enemy_phase_driver_destroyed()
 signal backpack_changed()
 signal card_added_to_backpack(card: CardResource)
 
-# 蓝图（敌人掉落等）
-signal blueprint_unlocked(card_id: String)
-# v6.11: blueprint_star_upgraded 信号已移除（战力星级系统②已删）
-signal blueprint_obtained(card_id: String, count: int)
+# 卡牌掉落解锁（v7.x）：掉落/购买/奖励获得卡时的总线广播（蓝图解锁体系已移除）
 
 # 战斗掉落领取
 # v7.x 现状：掉落领取 UI 走 backpack_changed 刷新，post_battle 掉落经 battle_ended → GameManager 流程处理。

@@ -28,8 +28,8 @@ func _connect_signals() -> void:
 			SignalBus.battle_ended.connect(_on_battle_ended_daily)
 		if not SignalBus.battle_ended.is_connected(_on_battle_ended_achievement):
 			SignalBus.battle_ended.connect(_on_battle_ended_achievement)
-	if SignalBus.has_signal("blueprint_unlocked") and not SignalBus.blueprint_unlocked.is_connected(_on_blueprint_unlocked):
-		SignalBus.blueprint_unlocked.connect(_on_blueprint_unlocked)
+	if not SignalBus.card_added_to_backpack.is_connected(_on_card_added_to_backpack):
+		SignalBus.card_added_to_backpack.connect(_on_card_added_to_backpack)
 	# v7.x 修复 B5：连接强化完成信号（CardEnhancementManager 是 lazy-load，延迟连接）
 	_connect_enhancement_signal()
 
@@ -61,8 +61,8 @@ func _exit_tree() -> void:
 			SignalBus.battle_ended.disconnect(_on_battle_ended_daily)
 		if SignalBus.battle_ended.is_connected(_on_battle_ended_achievement):
 			SignalBus.battle_ended.disconnect(_on_battle_ended_achievement)
-	if SignalBus.has_signal("blueprint_unlocked") and SignalBus.blueprint_unlocked.is_connected(_on_blueprint_unlocked):
-		SignalBus.blueprint_unlocked.disconnect(_on_blueprint_unlocked)
+	if SignalBus.card_added_to_backpack.is_connected(_on_card_added_to_backpack):
+		SignalBus.card_added_to_backpack.disconnect(_on_card_added_to_backpack)
 	var cem = get_node_or_null("/root/CardEnhancementManager")
 	if cem != null and cem.has_signal("enhancement_completed") and cem.enhancement_completed.is_connected(_on_enhancement_completed):
 		cem.enhancement_completed.disconnect(_on_enhancement_completed)
@@ -154,21 +154,28 @@ func _collect_battle_data_for_achievement() -> Dictionary:
 				data["defeated_master"] = pm
 	return data
 
-## 蓝图解锁 → 更新收集 + 记录收集成就统计
-## v7.x 修复 B3：原只更新图鉴，未调用 record_collection → 收集类成就（unique_blueprints/legendary_blueprint 等）永远不解锁
-func _on_blueprint_unlocked(card_id: String) -> void:
-	# v7.x 性能：下游 manager 延迟加载，访问前确保已实例化（否则收集记录/成就/任务丢失）
+## 卡牌入包 → 更新收集 + 记录收集成就统计
+## 2026-08-22：蓝图解锁体系移除后改接 card_added_to_backpack（掉落/购买/奖励入包全触发）。
+## 收集口径 = 拥有过的卡种（base card_id 去重，见 AchievementManager.record_collection）。
+func _on_card_added_to_backpack(card: CardResource) -> void:
+	if card == null:
+		return
+	var card_id: String = String(card.card_id)
+	if card_id.is_empty():
+		return
 	_ensure_lazy("card_collection")
 	_ensure_lazy("achievement")
 	_ensure_lazy("daily_task")
 	var cm = get_node_or_null("/root/CardCollectionManager")
 	if cm and cm.has_method("update_card_status"):
 		cm.update_card_status(card_id)
-	# v7.x: 记录收集成就统计（需要 rarity 供 legendary/rare 计数）
+	# 记录收集成就统计（rarity 直接取实例卡，取不到回退查模板）
 	var am = get_node_or_null("/root/AchievementManager")
 	if am and am.has_method("record_collection"):
-		var card = _DefaultCards.get_card_by_id(card_id)
-		var rarity: String = card.rarity if card != null else "common"
+		var rarity: String = String(card.rarity)
+		if rarity.is_empty():
+			var tpl = _DefaultCards.get_card_by_id(card_id)
+			rarity = String(tpl.rarity) if tpl != null else "common"
 		am.record_collection(card_id, rarity)
 	# v7.x 修复 B5：收集卡牌推进 COLLECT_CARDS 日常任务
 	var tm = get_node_or_null("/root/DailyTaskManager")

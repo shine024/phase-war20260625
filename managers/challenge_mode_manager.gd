@@ -279,8 +279,12 @@ func _grant_challenge_rewards(challenge_type: ChallengeType, difficulty: Challen
 		if difficulty == ChallengeDifficulty.MASTER:
 			var legendary_cards = ["omega_platform", "omega_cannon"]
 			var random_card_id = legendary_cards.pick_random()
-			if BlueprintManager and BlueprintManager.has_method("add_blueprint_copy"):
-				BlueprintManager.add_blueprint_copy(random_card_id, 3)
+			# 2026-08-22：蓝图副本奖励移除，改为直接发放 3 张实体卡入包
+			var ir_c: Node = get_node_or_null("/root/InstanceRegistry")
+			for _i in range(3):
+				var inst: CardResource = ir_c.create_instance(random_card_id) if (ir_c != null and ir_c.has_method("create_instance")) else null
+				if inst != null:
+					SignalBus.card_added_to_backpack.emit(inst)
 
 ## v6.6: 挑战类型+难度 → challenge_definitions.gd 的 challenge_id
 func _challenge_type_to_def_key(challenge_type: ChallengeType, difficulty: ChallengeDifficulty) -> String:

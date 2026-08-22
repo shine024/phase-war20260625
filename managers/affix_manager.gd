@@ -567,11 +567,8 @@ func _add_affix(affix_key: String, affix_id: String, rarity: String, level: int)
 	emit_signal("affix_changed", affix_key)
 	return true
 
-func _get_card_level_from_card_id(card_id: String) -> int:
-	# 从 BlueprintManager 获取卡牌等级
-	var bm: Node = _get_root_node_or_null("BlueprintManager")
-	if bm and bm.has_method("get_blueprint_level"):
-		return int(bm.get_blueprint_level(card_id))
+func _get_card_level_from_card_id(_card_id: String) -> int:
+	# 2026-08-22：原 BlueprintManager.get_blueprint_level（星级废弃后恒 1）已移除；词条构建按等级 1 处理
 	return 1
 
 func _initial_affix_target_count_by_rarity(rarity: String) -> int:

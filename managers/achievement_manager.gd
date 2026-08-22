@@ -155,21 +155,16 @@ func _check_and_unlock_achievement(achievement_id: String) -> void:
 func _legacy_check_achievement(achievement_id: String, req_type: String, req_count: int) -> void:
 	match req_type:
 		"unique_blueprints":
-			var blueprint_mgr = get_node_or_null("/root/BlueprintManager")
-			if blueprint_mgr != null and blueprint_mgr.has_method("get_unlocked_blueprint_ids"):
-				var unlocked_ids = blueprint_mgr.get_unlocked_blueprint_ids()
-				if unlocked_ids.size() >= req_count:
-					unlock_achievement(achievement_id)
+			# 2026-08-22：改读拥有过的卡种记录（原蓝图解锁计数已移除）
+			if (collection_stats["unique_blueprints"] as Array).size() >= req_count:
+				unlock_achievement(achievement_id)
 
 		"legendary_blueprint":
-			var blueprint_mgr = get_node_or_null("/root/BlueprintManager")
-			if blueprint_mgr != null and blueprint_mgr.has_method("get_unlocked_blueprint_ids"):
-				var unlocked_ids = blueprint_mgr.get_unlocked_blueprint_ids()
-				for card_id in unlocked_ids:
-					var card = DefaultCards.get_card_by_id(card_id)
-					if card != null and card.rarity == "legendary":
-						unlock_achievement(achievement_id)
-						break
+			for card_id in collection_stats["unique_blueprints"]:
+				var card = DefaultCards.get_card_by_id(card_id)
+				if card != null and card.rarity == "legendary":
+					unlock_achievement(achievement_id)
+					break
 
 		"max_level":
 			var level_mgr = get_node_or_null("/root/LevelProgressManager")
@@ -305,11 +300,9 @@ func record_collection(card_id: String, rarity: String) -> void:
 		"rare":
 			collection_stats["rare_count"] += 1
 
-	var blueprint_mgr = get_node_or_null("/root/BlueprintManager")
-	if blueprint_mgr != null and blueprint_mgr.has_method("has_unlocked_blueprint"):
-		if blueprint_mgr.has_unlocked_blueprint(card_id):
-			if not card_id in collection_stats["unique_blueprints"]:
-				collection_stats["unique_blueprints"].append(card_id)
+	# 拥有过的卡种去重记录（原守卫方法名 has_unlocked_blueprint 错误从未生效；2026-08-22 修正改口径）
+	if not card_id in collection_stats["unique_blueprints"]:
+		collection_stats["unique_blueprints"].append(card_id)
 
 	_check_all_collection_achievements()
 

@@ -156,7 +156,7 @@ horizontal_alignment = 1
 visible = false
 layout_mode = 2
 theme_override_colors/font_color = Color(0.95, 0.75, 0.2, 1)
-theme_override_font_sizes/font_size = 11
+theme_override_font_sizes/font_size = 12
 horizontal_alignment = 1
 
 [node name="RankBadgeHost" type="HBoxContainer" parent="Margin/VBox"]
@@ -225,7 +225,7 @@ theme_override_constants/margin_bottom = 8
 [node name="HpTitle" type="Label" parent="Margin/VBox/TabBar/TabInfo/InfoVBox/StatsSection/StatsVBox/StatCardsRow/HpCard/HpVBox"]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.5, 0.85, 0.55, 0.8)
-theme_override_font_sizes/font_size = 11
+theme_override_font_sizes/font_size = 12
 text = "耐久"
 horizontal_alignment = 1
 
@@ -260,7 +260,7 @@ theme_override_constants/margin_bottom = 8
 [node name="AtkTitle" type="Label" parent="Margin/VBox/TabBar/TabInfo/InfoVBox/StatsSection/StatsVBox/StatCardsRow/AtkCard/AtkVBox"]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.5, 0.85, 0.9, 0.8)
-theme_override_font_sizes/font_size = 11
+theme_override_font_sizes/font_size = 12
 text = "攻击"
 horizontal_alignment = 1
 
@@ -296,7 +296,7 @@ theme_override_constants/margin_bottom = 8
 [node name="DefTitle" type="Label" parent="Margin/VBox/TabBar/TabInfo/InfoVBox/StatsSection/StatsVBox/StatCardsRow/DefCard/DefVBox"]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.6, 0.7, 0.95, 0.8)
-theme_override_font_sizes/font_size = 11
+theme_override_font_sizes/font_size = 12
 text = "防御"
 horizontal_alignment = 1
 
@@ -318,7 +318,7 @@ horizontal_alignment = 1
 [node name="ExtraStatLabel" type="Label" parent="Margin/VBox/TabBar/TabInfo/InfoVBox/StatsSection/StatsVBox"]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.65, 0.75, 0.8, 0.85)
-theme_override_font_sizes/font_size = 11
+theme_override_font_sizes/font_size = 12
 text = ""
 autowrap_mode = 2
 
@@ -509,7 +509,7 @@ autowrap_mode = 2
 [node name="FlavorLabel" type="Label" parent="Margin/VBox/TabBar/TabInfo/InfoVBox"]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.6, 0.55, 0.75, 0.85)
-theme_override_font_sizes/font_size = 11
+theme_override_font_sizes/font_size = 12
 horizontal_alignment = 2
 autowrap_mode = 2
 

@@ -291,7 +291,7 @@ theme_override_colors/font_color = Color(0.95, 0.96, 0.98, 1)
 [node name="TitleSub" type="Label" parent="RootVBox/TitleBar/TitleHBox"]
 layout_mode = 2
 text = "GROWTH COMMANDO"
-theme_override_font_sizes/font_size = 11
+theme_override_font_sizes/font_size = 12
 theme_override_colors/font_color = Color(0.533, 0.6, 0.678, 0.7)
 [node name="Spacer" type="Control" parent="RootVBox/TitleBar/TitleHBox"]
 layout_mode = 2
@@ -300,7 +300,7 @@ size_flags_horizontal = 3
 unique_name_in_owner = true
 layout_mode = 2
 text = ""
-theme_override_font_sizes/font_size = 11
+theme_override_font_sizes/font_size = 12
 theme_override_colors/font_color = Color(0.533, 0.6, 0.678, 1)
 [node name="CloseBtn" type="Button" parent="RootVBox/TitleBar/TitleHBox"]
 unique_name_in_owner = true
@@ -355,7 +355,7 @@ size_flags_horizontal = 3
 unique_name_in_owner = true
 layout_mode = 2
 text = "0"
-theme_override_font_sizes/font_size = 11
+theme_override_font_sizes/font_size = 12
 theme_override_colors/font_color = Color(0.5, 0.55, 0.65, 0.8)
 [node name="ColFilter" type="HBoxContainer" parent="RootVBox/BodyHBox/LeftPanel/LeftVBox"]
 layout_mode = 2
@@ -515,11 +515,11 @@ theme_override_constants/separation = 6
 [node name="ProgIcon" type="Label" parent="RootVBox/BodyHBox/DetailCol/DetailScroll/DetailBody/ProgressGrid/ProgCardAmber/ProgVBox/ProgHead"]
 layout_mode = 2
 text = "◆"
-theme_override_font_sizes/font_size = 15
+theme_override_font_sizes/font_size = 16
 [node name="ProgTitle" type="Label" parent="RootVBox/BodyHBox/DetailCol/DetailScroll/DetailBody/ProgressGrid/ProgCardAmber/ProgVBox/ProgHead"]
 layout_mode = 2
 text = "强化系统"
-theme_override_font_sizes/font_size = 15
+theme_override_font_sizes/font_size = 16
 theme_override_colors/font_color = Color(0.95, 0.96, 0.98, 1)
 [node name="ProgSpacer" type="Control" parent="RootVBox/BodyHBox/DetailCol/DetailScroll/DetailBody/ProgressGrid/ProgCardAmber/ProgVBox/ProgHead"]
 layout_mode = 2
@@ -528,7 +528,7 @@ size_flags_horizontal = 3
 layout_mode = 2
 text = ""
 horizontal_alignment = 2
-theme_override_font_sizes/font_size = 11
+theme_override_font_sizes/font_size = 12
 theme_override_colors/font_color = Color(0.7, 0.75, 0.85, 0.8)
 [node name="ProgBody" type="VBoxContainer" parent="RootVBox/BodyHBox/DetailCol/DetailScroll/DetailBody/ProgressGrid/ProgCardAmber/ProgVBox"]
 layout_mode = 2
@@ -558,11 +558,11 @@ theme_override_constants/separation = 6
 [node name="ProgIcon" type="Label" parent="RootVBox/BodyHBox/DetailCol/DetailScroll/DetailBody/ProgressGrid/ProgCardCyan/ProgVBox/ProgHead"]
 layout_mode = 2
 text = "◇"
-theme_override_font_sizes/font_size = 15
+theme_override_font_sizes/font_size = 16
 [node name="ProgTitle" type="Label" parent="RootVBox/BodyHBox/DetailCol/DetailScroll/DetailBody/ProgressGrid/ProgCardCyan/ProgVBox/ProgHead"]
 layout_mode = 2
 text = "改造系统"
-theme_override_font_sizes/font_size = 15
+theme_override_font_sizes/font_size = 16
 theme_override_colors/font_color = Color(0.95, 0.96, 0.98, 1)
 [node name="ProgSpacer" type="Control" parent="RootVBox/BodyHBox/DetailCol/DetailScroll/DetailBody/ProgressGrid/ProgCardCyan/ProgVBox/ProgHead"]
 layout_mode = 2
@@ -571,7 +571,7 @@ size_flags_horizontal = 3
 layout_mode = 2
 text = ""
 horizontal_alignment = 2
-theme_override_font_sizes/font_size = 11
+theme_override_font_sizes/font_size = 12
 theme_override_colors/font_color = Color(0.7, 0.75, 0.85, 0.8)
 [node name="ProgBody" type="VBoxContainer" parent="RootVBox/BodyHBox/DetailCol/DetailScroll/DetailBody/ProgressGrid/ProgCardCyan/ProgVBox"]
 layout_mode = 2
@@ -601,11 +601,11 @@ theme_override_constants/separation = 6
 [node name="ProgIcon" type="Label" parent="RootVBox/BodyHBox/DetailCol/DetailScroll/DetailBody/ProgressGrid/ProgCardViolet/ProgVBox/ProgHead"]
 layout_mode = 2
 text = "❖"
-theme_override_font_sizes/font_size = 15
+theme_override_font_sizes/font_size = 16
 [node name="ProgTitle" type="Label" parent="RootVBox/BodyHBox/DetailCol/DetailScroll/DetailBody/ProgressGrid/ProgCardViolet/ProgVBox/ProgHead"]
 layout_mode = 2
 text = "进化系统"
-theme_override_font_sizes/font_size = 15
+theme_override_font_sizes/font_size = 16
 theme_override_colors/font_color = Color(0.95, 0.96, 0.98, 1)
 [node name="ProgSpacer" type="Control" parent="RootVBox/BodyHBox/DetailCol/DetailScroll/DetailBody/ProgressGrid/ProgCardViolet/ProgVBox/ProgHead"]
 layout_mode = 2
@@ -614,7 +614,7 @@ size_flags_horizontal = 3
 layout_mode = 2
 text = ""
 horizontal_alignment = 2
-theme_override_font_sizes/font_size = 11
+theme_override_font_sizes/font_size = 12
 theme_override_colors/font_color = Color(0.7, 0.75, 0.85, 0.8)
 [node name="ProgBody" type="VBoxContainer" parent="RootVBox/BodyHBox/DetailCol/DetailScroll/DetailBody/ProgressGrid/ProgCardViolet/ProgVBox"]
 layout_mode = 2
@@ -644,11 +644,11 @@ theme_override_constants/separation = 6
 [node name="ProgIcon" type="Label" parent="RootVBox/BodyHBox/DetailCol/DetailScroll/DetailBody/ProgressGrid/ProgCardGold/ProgVBox/ProgHead"]
 layout_mode = 2
 text = "★"
-theme_override_font_sizes/font_size = 15
+theme_override_font_sizes/font_size = 16
 [node name="ProgTitle" type="Label" parent="RootVBox/BodyHBox/DetailCol/DetailScroll/DetailBody/ProgressGrid/ProgCardGold/ProgVBox/ProgHead"]
 layout_mode = 2
 text = "等级进度"
-theme_override_font_sizes/font_size = 15
+theme_override_font_sizes/font_size = 16
 theme_override_colors/font_color = Color(0.95, 0.96, 0.98, 1)
 [node name="ProgSpacer" type="Control" parent="RootVBox/BodyHBox/DetailCol/DetailScroll/DetailBody/ProgressGrid/ProgCardGold/ProgVBox/ProgHead"]
 layout_mode = 2
@@ -657,7 +657,7 @@ size_flags_horizontal = 3
 layout_mode = 2
 text = ""
 horizontal_alignment = 2
-theme_override_font_sizes/font_size = 11
+theme_override_font_sizes/font_size = 12
 theme_override_colors/font_color = Color(0.7, 0.75, 0.85, 0.8)
 [node name="ProgBody" type="VBoxContainer" parent="RootVBox/BodyHBox/DetailCol/DetailScroll/DetailBody/ProgressGrid/ProgCardGold/ProgVBox"]
 layout_mode = 2
@@ -680,7 +680,7 @@ unique_name_in_owner = true
 layout_mode = 2
 text = "◆ 强化"
 custom_minimum_size = Vector2(130, 36)
-theme_override_font_sizes/font_size = 15
+theme_override_font_sizes/font_size = 16
 theme_override_colors/font_color = Color(0.95, 0.96, 0.98, 1)
 theme_override_colors/font_hover_color = Color(1, 1, 1, 1)
 theme_override_styles/normal = SubResource("StyleBoxFlat_17")
@@ -690,7 +690,7 @@ unique_name_in_owner = true
 layout_mode = 2
 text = "◇ 改造"
 custom_minimum_size = Vector2(130, 36)
-theme_override_font_sizes/font_size = 15
+theme_override_font_sizes/font_size = 16
 theme_override_colors/font_color = Color(0.95, 0.96, 0.98, 1)
 theme_override_colors/font_hover_color = Color(1, 1, 1, 1)
 theme_override_styles/normal = SubResource("StyleBoxFlat_19")
@@ -700,7 +700,7 @@ unique_name_in_owner = true
 layout_mode = 2
 text = "❖ 进化"
 custom_minimum_size = Vector2(130, 36)
-theme_override_font_sizes/font_size = 15
+theme_override_font_sizes/font_size = 16
 theme_override_colors/font_color = Color(0.95, 0.96, 0.98, 1)
 theme_override_colors/font_hover_color = Color(1, 1, 1, 1)
 theme_override_styles/normal = SubResource("StyleBoxFlat_21")

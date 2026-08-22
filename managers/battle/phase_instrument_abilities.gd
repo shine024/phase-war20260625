@@ -424,6 +424,11 @@ static func _fire_nuclear_bombardment(owner: Owner, params: Dictionary) -> void:
 	var missile_tex: Texture2D = _load_projectile_texture("ult_nuke_player")
 	var missile_tint: Color = Color(0.7, 0.85, 1.0) if owner == Owner.PLAYER else Color(1.0, 0.4, 0.2)
 	var missile_trail: Color = Color(1.0, 0.7, 0.3, 0.95) if owner == Owner.PLAYER else Color(1.0, 0.35, 0.15, 0.95)
+	# v19-R38: 命中爆图（核火球）+ owner 染色——R33 光柱方案被用户反馈"没贴图"，
+	# 恢复贴图冲击力但仍不请回蘑菇云/巨型核爆闪（"误读为无差别攻击"的根因，
+	# 继续由战术核武独占）。240px 主体/360px 光晕，单点紧凑。
+	var burst_tex: Texture2D = load("res://assets/effects/nuclear/nuke_fireball.png")
+	var burst_tint: Color = Color(0.7, 0.55, 1.0) if owner == Owner.PLAYER else Color(1.0, 0.45, 0.3)
 	for e in targets:
 		if e == null or not is_instance_valid(e):
 			continue
@@ -437,6 +442,8 @@ static func _fire_nuclear_bombardment(owner: Owner, params: Dictionary) -> void:
 		var captured_dmg = base_dmg
 		var captured_beam_color = beam_color
 		var captured_shock_color = shock_color
+		var captured_burst_tex = burst_tex
+		var captured_burst_tint = burst_tint
 		var captured_fired = fired_impact  # 注意：bool 按值拷贝，回调内修改不影响外层
 		# 每发导弹错开 0.06s（多点核爆=多枚导弹依次发射，齐射感）
 		var launch_delay: float = float(targets.find(e)) * 0.06
@@ -457,10 +464,11 @@ static func _fire_nuclear_bombardment(owner: Owner, params: Dictionary) -> void:
 					var cur_pos: Vector2 = land_pos
 					if is_instance_valid(captured_enemy) and captured_enemy is Node2D:
 						cur_pos = (captured_enemy as Node2D).global_position
-					# v19-R33: 点状能量打击（光柱+紧凑爆闪+地面环，单点足迹 ~210px）——
-					# 蘑菇云/核爆白闪是战术核武专属符号，留给它用
+					# v19-R38: 光柱点名（阵营色）+ 核火球爆图（240px，染色）+ 地面环。
+					# 贴图回来了；蘑菇云/核爆白闪仍是战术核武专属（那两个符号读作
+					# "区域无差别毁灭"，是当初"看着像敌我都攻击"的根因）。
 					VfxImpactFactory.spawn_energy_pillar(_battlefield, cur_pos, captured_beam_color, 300.0, 0.5)
-					VfxImpactFactory.spawn_impact_sprite(_battlefield, cur_pos, VfxImpactFactory.PARTICLE_TEX_IMPACT_ENERGY, 0.9, 0.35)
+					VfxImpactFactory.spawn_spell_burst(_battlefield, cur_pos, captured_burst_tex, captured_burst_tint, 240.0, 0.7)
 					VfxImpactFactory.spawn_shockwave(_battlefield, cur_pos, 90.0, captured_shock_color)
 					if is_instance_valid(captured_enemy):
 						CombatFeedback.show_damage(cur_pos, captured_dmg, captured_enemy, true, "critical")
@@ -477,11 +485,66 @@ static func _fire_nuclear_bombardment(owner: Owner, params: Dictionary) -> void:
 			_emit_ability_triggered("nuclear_bombardment", "impact",
 				{"position": first_pos, "damage": base_dmg, "is_enemy": owner == Owner.ENEMY})
 	)
+	# v19-R39: 阵型核心补一发完整核爆（蘑菇云+巨型闪，size_scale 1.0 完整尺寸）。
+	# 用户要求恢复蘑菇云/巨型核爆闪；放在目标群（敌/我 3×3 阵型）质心一发，
+	# 而非每目标一发——每目标保持紧凑爆图（点名语义），核心一发大的（毁灭感），
+	# 同时避免 N 连全尺寸核爆互相叠加读作"无差别轰炸"的旧问题。
+	var core_center: Vector2 = first_pos
+	var csum: Vector2 = Vector2.ZERO
+	var ccnt: int = 0
+	for t in targets:
+		if t != null and is_instance_valid(t) and t is Node2D:
+			csum += (t as Node2D).global_position
+			ccnt += 1
+	if ccnt > 0:
+		core_center = csum / float(ccnt)
+	var nuke_pack: Dictionary = _load_nuke_texture_pack()
+	var nuke_cols: Dictionary = {
+		"shock": shock_color,
+		"aftershock": Color(0.9, 0.5, 0.2, 0.5) if owner == Owner.PLAYER else Color(1.0, 0.4, 0.2, 0.5),
+		"smoke": Color(0.35, 0.32, 0.30, 0.6),
+	}
+	var tw_core := _battlefield.create_tween()
+	tw_core.tween_interval(mark_delay + 0.25)
+	tw_core.tween_callback(func():
+		if _battlefield != null and is_instance_valid(_battlefield):
+			VfxImpactFactory.spawn_nuclear_explosion(_battlefield, core_center, nuke_pack, nuke_cols, 1.0)
+			_trigger_screen_shake(12.0, 0.6))
 	# 全屏震动（与标记同步出现，强化预警冲击）
 	_trigger_screen_shake(10.0, 0.6)
 	_show_toast(_owner_msg(owner,
 		"☢ 核子轰炸！敌方全体受到 %.0f 伤害" % base_dmg,
 		"☢ 敌方核子轰炸！我方全体受到 %.0f 伤害" % base_dmg))
+
+
+## 预加载核爆贴图包（供 spawn_nuclear_explosion 使用）。
+## 火球/冲击波/焦痕/蘑菇云单帧/蘑菇云9帧序列，缺失的自动跳过（部分核爆仍可见）。
+## v19-R39 恢复：R33 曾随"去核爆化"删除；核心位核爆（蘑菇云/巨型闪）回归后复用。
+static func _load_nuke_texture_pack() -> Dictionary:
+	var pack: Dictionary = {}
+	var dir := "res://assets/effects/nuclear/"
+	# 单帧贴图
+	for key in ["fireball", "shockwave", "burn", "mushroom"]:
+		var path := dir + "nuke_" + str(key) + ".png"
+		if ResourceLoader.exists(path):
+			pack[key] = load(path)
+	# 蘑菇云9帧序列（精灵表切割产物）
+	var frames: Array = []
+	for i in 9:
+		var fpath := dir + "nuke_mushroom_f" + str(i) + ".png"
+		if ResourceLoader.exists(fpath):
+			var tex = load(fpath)
+			if tex != null:
+				frames.append(tex)
+			else:
+				frames.clear()
+				break
+		else:
+			frames.clear()
+			break
+	if not frames.is_empty():
+		pack["mushroom_frames"] = frames
+	return pack
 
 
 static func _compute_nuclear_damage(owner: Owner) -> float:

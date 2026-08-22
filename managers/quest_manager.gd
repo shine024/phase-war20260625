@@ -482,12 +482,15 @@ func is_quest_done(quest_id: String) -> bool:
 
 # ──────────────── 实时查询辅助 ────────────────
 
+## 收集口径 = 拥有过的卡种数（2026-08-22：原蓝图解锁计数已随蓝图体系移除，改数实例基卡去重）
 func _count_player_cards() -> int:
-	var bm = get_node_or_null("/root/BlueprintManager")
-	if bm and bm.has_method("get_unlocked_blueprint_ids"):
-		return bm.get_unlocked_blueprint_ids().size()
-	if bm and bm.has_method("get_all_blueprint_ids"):
-		return bm.get_all_blueprint_ids().size()
+	var ir = get_node_or_null("/root/InstanceRegistry")
+	if ir and ir.has_method("get_all_instance_ids"):
+		var species: Dictionary = {}
+		for iid in ir.get_all_instance_ids():
+			var base_id: String = String(iid).split("#")[0]
+			species[base_id] = true
+		return species.size()
 	return 0
 
 func _get_max_reputation() -> int:
@@ -563,8 +566,7 @@ func _grant_rewards(rewards: Dictionary) -> void:
 	if bm != null:
 		if rewards.has("nano_materials") and bm.has_method("add_nano_materials"):
 			bm.add_nano_materials(int(rewards["nano_materials"]))
-		if rewards.has("unlock_blueprint") and bm.has_method("unlock_blueprint"):
-			bm.unlock_blueprint(str(rewards["unlock_blueprint"]))
+		# unlock_blueprint 奖励已随蓝图解锁体系移除（2026-08-22）
 	var fsm = get_node_or_null("/root/FactionSystemManager")
 	if rewards.has("company_rep") and rewards["company_rep"] is Dictionary:
 		for company_id in rewards["company_rep"]:

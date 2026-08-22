@@ -4,6 +4,7 @@ class_name BattleHUD
 ## 显示：HP条、能量条、我方刷新进度、波次信息、相位仪槽位、单位信息、伤害弹出数字
 
 const DefaultCardsData = preload("res://data/default_cards.gd")
+const DT = preload("res://resources/design_tokens.gd")
 
 var _tween: Tween
 var _wave_timer_tween: Tween
@@ -60,19 +61,19 @@ func _cache_slot_styles() -> void:
 	if slot1_panel:
 		_slot_style_empty = slot1_panel.get_theme_stylebox("panel") as StyleBoxFlat
 
-	# 手动构建 filled 样式
+	# 手动构建 filled 样式（C4: 纯青(0,1,1) s=1 刺眼 → DT.COLOR_ACCENT_CYAN）
 	_slot_style_filled = StyleBoxFlat.new()
-	_slot_style_filled.bg_color = Color(0.1, 1, 1, 0.15)
+	_slot_style_filled.bg_color = Color(DT.COLOR_ACCENT_CYAN.r, DT.COLOR_ACCENT_CYAN.g, DT.COLOR_ACCENT_CYAN.b, 0.15)
 	_slot_style_filled.border_width_left   = 2
 	_slot_style_filled.border_width_top    = 2
 	_slot_style_filled.border_width_right  = 2
 	_slot_style_filled.border_width_bottom = 2
-	_slot_style_filled.border_color = Color(0, 1, 1, 1)
+	_slot_style_filled.border_color = DT.COLOR_ACCENT_CYAN
 	_slot_style_filled.corner_radius_top_left     = 6
 	_slot_style_filled.corner_radius_top_right    = 6
 	_slot_style_filled.corner_radius_bottom_right = 6
 	_slot_style_filled.corner_radius_bottom_left  = 6
-	_slot_style_filled.shadow_color = Color(0, 1, 1, 0.5)
+	_slot_style_filled.shadow_color = Color(DT.COLOR_ACCENT_CYAN.r, DT.COLOR_ACCENT_CYAN.g, DT.COLOR_ACCENT_CYAN.b, 0.5)
 	_slot_style_filled.shadow_size = 6
 
 func _connect_signals() -> void:
@@ -239,7 +240,7 @@ func _update_phase_slot(slot_index: int, card_name: String, is_filled: bool) -> 
 		panel.add_theme_stylebox_override("panel", _slot_style_filled)
 		if lbl:
 			lbl.text = card_name
-			lbl.add_theme_color_override("font_color", Color(0, 1, 1, 1))
+			lbl.add_theme_color_override("font_color", DT.COLOR_ACCENT_CYAN)
 	else:
 		panel.remove_theme_stylebox_override("panel")
 		if lbl:
@@ -272,12 +273,13 @@ func _make_danger_panel_style() -> StyleBoxFlat:
 	s.border_width_top    = 3
 	s.border_width_right  = 3
 	s.border_width_bottom = 3
-	s.border_color = Color(1, 0.2, 0.2, 1)
+	# C4: DANGER 手抄副本 → DT token
+	s.border_color = DT.COLOR_DANGER
 	s.corner_radius_top_left     = 8
 	s.corner_radius_top_right    = 8
 	s.corner_radius_bottom_right = 8
 	s.corner_radius_bottom_left  = 8
-	s.shadow_color = Color(1, 0.2, 0.2, 0.5)
+	s.shadow_color = Color(DT.COLOR_DANGER.r, DT.COLOR_DANGER.g, DT.COLOR_DANGER.b, 0.5)
 	s.shadow_size = 10
 	return s
 
@@ -364,7 +366,7 @@ func _show_wave_warning() -> void:
 		warning_label = Label.new()
 		warning_label.name = "WaveWarning"
 		warning_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		warning_label.add_theme_color_override("font_color", Color(1.0, 0.3, 0.3))
+		warning_label.add_theme_color_override("font_color", DT.COLOR_DANGER)
 		warning_label.add_theme_font_size_override("font_size", 20)
 		info_panel.get_node("Margin/VBox").add_child(warning_label)
 

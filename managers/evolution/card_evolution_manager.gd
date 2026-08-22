@@ -110,8 +110,7 @@ static func can_evolve_blueprint(card_id_or_instance: String, target_card_id: St
 	var card_id: String = _resolve_card_id(card_id_or_instance)
 	var is_instance: bool = _is_instance_id(card_id_or_instance)
 
-	if not bpm_ref.is_blueprint_unlocked(card_id):
-		return _evolve_check_denied("card_locked")
+	# 2026-08-22：蓝图解锁守卫已随蓝图体系移除（进化本就要求持有实例，所有权即资格）
 	if DefaultCards.get_card_by_id(target_card_id) == null and PhaseLaws.get_by_id(target_card_id).is_empty():
 		return _evolve_check_denied("invalid_target")
 	var opts: Dictionary = get_evolution_options(card_id)
@@ -309,9 +308,6 @@ static func evolve_blueprint(card_id_or_instance: String, target_card_id: String
 	var inherit_ratio: float = float(can_info.get("inherit_ratio", 0.30))
 	var old_bonus: float = float(bpm_ref.blueprint_inherit_bonus.get(card_id, 0.0))
 	var merged_bonus: float = clampf(old_bonus + inherit_ratio, 0.0, 0.9)
-	if not bpm_ref.is_blueprint_unlocked(target_card_id):
-		bpm_ref.unlock_blueprint(target_card_id)
-	bpm_ref.blueprint_copies[target_card_id] = max(1, int(bpm_ref.blueprint_copies.get(target_card_id, 0)))
 	bpm_ref.blueprint_inherit_bonus[target_card_id] = merged_bonus
 	var old_hp: float = EvolutionHelpers.compute_platform_preview_hp(card_id, 0, bpm_ref)
 	if old_hp > 0.0:
@@ -322,7 +318,6 @@ static func evolve_blueprint(card_id_or_instance: String, target_card_id: String
 	var source_mods: Array = bpm_ref.blueprint_mods.get(card_id, [])
 	bpm_ref.blueprint_mods[target_card_id] = source_mods.duplicate()
 	bpm_ref.blueprint_mods[card_id] = []
-	bpm_ref.blueprint_copies[card_id] = 0
 	var cem: Node = _get_autoload_node("CardEnhancementManager")
 	if cem and cem.has_method("clear_card_enhancement"):
 		cem.clear_card_enhancement(card_id)
@@ -375,10 +370,7 @@ static func _evolve_instance(source_instance_id: String, target_card_id: String,
 	if not source_intel_bonus.is_empty():
 		ir.set_intel_branch_bonus(target_inst.instance_id, source_intel_bonus.duplicate(true))
 
-	# 4. 解锁目标卡蓝图（如果尚未解锁）
-	if not bpm_ref.is_blueprint_unlocked(target_card_id):
-		bpm_ref.unlock_blueprint(target_card_id)
-
+	# 4. 蓝图解锁记账已移除（2026-08-22）
 	# 5. dispose 源实例
 	ir.dispose_instance(source_instance_id)
 

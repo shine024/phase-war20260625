@@ -5,26 +5,28 @@ class_name EvolutionPanel
 
 signal closed
 
-# === 主题色（紫色进化主题） ===
-const THEME_VIOLET := Color(0.653, 0.546, 0.98, 1)
-const THEME_VIOLET_SOFT := Color(0.769, 0.71, 0.992, 1)
-const THEME_GOLD := Color(1.0, 0.85, 0.35, 1)  # 主线分支用（保留）
-const THEME_CYAN := Color(0.0, 0.9, 1.0, 1)
-const THEME_GREEN := Color(0.3, 0.92, 0.5, 1)
-const THEME_PURPLE := Color(0.75, 0.55, 1.0, 1)
-const THEME_RED := Color(0.95, 0.4, 0.4, 1)
-const THEME_TEXT := Color(0.88, 0.92, 0.98, 1)
-const THEME_TEXT_DIM := Color(0.6, 0.66, 0.78, 1)
-const THEME_BG_CARD := Color(0.08, 0.06, 0.12, 0.92)
-const THEME_BORDER_DIM := Color(0.32, 0.28, 0.38, 0.7)
-
+# === 主题色（紫色进化主题，C5: 照 reinforcement 模式收口 DesignTokens 单一真源；
+# 原块是 reinforcement 常量的"手抄走样版"——VIOLET/VIOLET_SOFT/GOLD/GREEN 与 DT 逐位相同，纯冗余） ===
 const DefaultCards = preload("res://data/default_cards.gd")
 const IntelManualItems = preload("res://data/intel_manual_items.gd")
 const BlueprintDefinitions = preload("res://data/blueprint_definitions.gd")
 
 # v7.x UI 重设计基建
 const DT = preload("res://resources/design_tokens.gd")
+const PanelStyles = preload("res://scripts/ui/panel_styles.gd")
 const EvolutionHelpers = preload("res://managers/evolution/evolution_helpers.gd")
+
+const THEME_VIOLET := DT.COLOR_VIOLET
+const THEME_VIOLET_SOFT := DT.COLOR_VIOLET_SOFT
+const THEME_GOLD := DT.COLOR_GOLD        # 主线分支用（保留）
+const THEME_CYAN := DT.COLOR_ACCENT_CYAN
+const THEME_GREEN := DT.COLOR_GREEN_BRIGHT
+const THEME_PURPLE := DT.COLOR_ACCENT_PURPLE  # 分支区分色，独立于 THEME_VIOLET
+const THEME_RED := DT.COLOR_RED_DOWN
+const THEME_TEXT := DT.COLOR_TEXT_BRIGHT
+const THEME_TEXT_DIM := DT.COLOR_TEXT_DIM
+const THEME_BG_CARD := Color(DT.COLOR_CARD.r, DT.COLOR_CARD.g, DT.COLOR_CARD.b, 0.92)
+const THEME_BORDER_DIM := DT.COLOR_BORDER
 
 const FILTER_ALL := "all"
 const FILTER_EVO := "evo"
@@ -79,6 +81,11 @@ var _filter_mode: String = FILTER_ALL
 var _open_refresh_inflight: bool = false
 
 func _ready() -> void:
+	# D1: 根框架统一 PanelStyles 签名框（覆盖 BgPanel 的 tscn 手写样式）
+	var bg_panel := get_node_or_null("BgPanel")
+	if bg_panel is Control:
+		(bg_panel as Control).add_theme_stylebox_override("panel",
+			PanelStyles.make_panel_frame(DT.COLOR_VIOLET))
 	# v7.x 重构：节点绑定改用 % unique_name（路径无关）
 	# 进化树 + 详情面板（业务方法直接访问这两个）
 	evolution_tree = get_node_or_null("%EvolutionTree")
@@ -428,7 +435,7 @@ func _create_card_item(card: CardResource) -> Control:
 		mod_count = card.mods.size()
 	var meta_label := Label.new()
 	meta_label.text = "Lv.%d  ·  M%d/9" % [card.enhance_level, mod_count]
-	meta_label.add_theme_font_size_override("font_size", 11)
+	meta_label.add_theme_font_size_override("font_size", 12)
 	meta_label.add_theme_color_override("font_color", Color(0.55, 0.6, 0.7, 0.85))
 	meta_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	info.add_child(meta_label)
@@ -608,13 +615,13 @@ func _create_evolution_node(target: Dictionary) -> Control:
 		pct = int((float(target_power) / float(current_power) - 1.0) * 100.0)
 	var pct_str := ("+%d%%" % pct) if pct >= 0 else ("%d%%" % pct)
 	power_lbl.text = "战力 %d ▶ %d" % [current_power, target_power]
-	power_lbl.add_theme_font_size_override("font_size", 11)
+	power_lbl.add_theme_font_size_override("font_size", 12)
 	power_lbl.add_theme_color_override("font_color", THEME_GREEN if pct >= 0 else THEME_RED)
 	power_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	power_row.add_child(power_lbl)
 	var pct_lbl := Label.new()
 	pct_lbl.text = pct_str
-	pct_lbl.add_theme_font_size_override("font_size", 11)
+	pct_lbl.add_theme_font_size_override("font_size", 12)
 	pct_lbl.add_theme_color_override("font_color", THEME_GREEN if pct >= 0 else THEME_RED)
 	pct_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	pct_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
@@ -734,7 +741,7 @@ func _update_evolution_tree() -> void:
 		var final_lbl := Label.new()
 		final_lbl.text = "✓ 该卡牌已达终阶形态"
 		final_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		final_lbl.add_theme_font_size_override("font_size", 15)
+		final_lbl.add_theme_font_size_override("font_size", 16)
 		final_lbl.add_theme_color_override("font_color", THEME_GOLD)
 		final_lbl.custom_minimum_size = Vector2(0, 40)
 		evolution_tree.add_child(final_lbl)
@@ -990,7 +997,7 @@ func _render_condition_rows(check_result: Dictionary) -> void:
 		if not met and not detail_t.is_empty():
 			var hint := Label.new()
 			hint.text = "　└ %s" % detail_t
-			hint.add_theme_font_size_override("font_size", 11)
+			hint.add_theme_font_size_override("font_size", 12)
 			hint.add_theme_color_override("font_color", Color(0.62, 0.62, 0.70))
 			hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 			req_list.add_child(hint)
@@ -1094,6 +1101,9 @@ func _on_evolve_pressed() -> void:
 func _on_card_selected(card: CardResource) -> void:
 	selected_card = card
 	selected_target_id = ""
+	# B2: 列表选中点击音（同类密集点击场景此前静音）
+	if SignalBus and SignalBus.has_signal("play_sound"):
+		SignalBus.play_sound.emit("button")
 	_update_current_card_info()
 	_update_evolution_tree()
 	_clear_detail_panel()

@@ -125,7 +125,7 @@ const LEADERBOARDS: Dictionary = {
 	},
 	"blueprint_unlocked": {
 		"id": "blueprint_unlocked",
-		"name": "蓝图解锁数",
+		"name": "收集卡种数",
 		"description": "已解锁的蓝图总数",
 		"type": LeaderboardType.COLLECTION_COMPLETE,
 		"category": "collection",

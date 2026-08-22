@@ -55,7 +55,7 @@ func _ready() -> void:
 
 func _make_row_label() -> Label:
 	var l := Label.new()
-	l.add_theme_font_size_override("font_size", 11)
+	l.add_theme_font_size_override("font_size", 12)
 	l.add_theme_color_override("font_color", Color(0.78, 0.83, 0.9, 0.95))
 	l.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.7))
 	l.add_theme_constant_override("outline_size", 1)

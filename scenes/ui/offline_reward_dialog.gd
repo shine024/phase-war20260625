@@ -70,7 +70,7 @@ func _build_ui() -> void:
 	var title := Label.new()
 	title.text = "欢迎回来"
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	title.add_theme_font_size_override("font_size", 22)
+	title.add_theme_font_size_override("font_size", 20)
 	title.add_theme_color_override("font_color", _ACCENT)
 	vbox.add_child(title)
 
@@ -92,7 +92,7 @@ func _build_ui() -> void:
 	var rew_title := Label.new()
 	rew_title.text = "获得奖励"
 	rew_title.add_theme_color_override("font_color", _TEXT)
-	rew_title.add_theme_font_size_override("font_size", 15)
+	rew_title.add_theme_font_size_override("font_size", 16)
 	vbox.add_child(rew_title)
 
 	# 货币 + 战利品统一进 3 列卡片网格（5 种货币 + 战利品最多 6 个 = 整 2 行）
@@ -149,6 +149,13 @@ func _on_claim() -> void:
 	claimed.emit(_result)
 	queue_free()
 
+## P0: ESC 等价"领取"——同类 afk_settlement_dialog 支持 ESC，此处此前只能点按钮。
+## consume 防止穿透到底下 overlay。
+func _input(event: InputEvent) -> void:
+	if event.is_action_pressed("ui_cancel"):
+		get_viewport().set_input_as_handled()
+		_on_claim()
+
 
 # ── UI 辅助 ──
 
@@ -183,10 +190,10 @@ func _make_reward_card(label_text: String, value, is_text: bool = false) -> Pane
 	var amt_lbl := Label.new()
 	if is_text or value is String:
 		amt_lbl.text = String(value)
-		amt_lbl.add_theme_font_size_override("font_size", 15)
+		amt_lbl.add_theme_font_size_override("font_size", 16)
 	else:
 		amt_lbl.text = "×%d" % int(value)
-		amt_lbl.add_theme_font_size_override("font_size", 17)
+		amt_lbl.add_theme_font_size_override("font_size", 16)
 	amt_lbl.add_theme_color_override("font_color", _ACCENT)
 	amt_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	cvb.add_child(name_lbl)

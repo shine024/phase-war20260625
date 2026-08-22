@@ -58,6 +58,18 @@ func _deferred_init() -> void:
 	# 当前无额外初始化逻辑，保留此方法供后续扩展
 
 ## 更新卡牌收集状态
+
+## 该卡全部实例中的最高战斗等级（InstanceRegistry.get_card_level；无实例返回 1）
+func _max_instance_level(card_id: String) -> int:
+	var ir := get_node_or_null("/root/InstanceRegistry")
+	if ir == null or not ir.has_method("get_instances_by_card_id"):
+		return 1
+	var best: int = 1
+	for iid in ir.get_instances_by_card_id(card_id):
+		var lv: int = int(ir.get_card_level(String(iid))) if ir.has_method("get_card_level") else 1
+		best = maxi(best, lv)
+	return best
+
 func update_card_status(card_id: String) -> void:
 	var card = DefaultCards.get_card_by_id(card_id) if DefaultCards else null
 	if card == null:
@@ -73,19 +85,14 @@ func update_card_status(card_id: String) -> void:
 
 	var was_new = _collection_data[card_id]["status"] == CardStatus.LOCKED
 
-	# 更新状态
+	# 更新状态（2026-08-22：get_card_xp_progress/get_card_breakthroughs 已随蓝图体系移除，
+	# 等级改读该卡任一实例的最高战斗等级，突破恒 0）
 	var card_data = _collection_data[card_id]
-	var prog = {}
+	card_data["level"] = _max_instance_level(card_id)
+	card_data["breakthrough"] = 0
 
-	if BlueprintManager and BlueprintManager.has_method("get_card_xp_progress"):
-		prog = BlueprintManager.get_card_xp_progress(card_id)
-		card_data["level"] = prog.get("level", 1)
-
-	if BlueprintManager and BlueprintManager.has_method("get_card_breakthroughs"):
-		card_data["breakthrough"] = BlueprintManager.get_card_breakthroughs(card_id)
-
-	# 更新状态
-	if card_data["level"] >= 9:
+	# 更新状态（等级上限口径与 v19 30 级制一致）
+	if card_data["level"] >= 30:
 		if card_data["status"] != CardStatus.MAX_LEVEL:
 			card_data["status"] = CardStatus.MAX_LEVEL
 			card_max_level.emit(card_id)

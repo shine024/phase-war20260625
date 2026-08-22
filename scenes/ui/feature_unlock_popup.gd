@@ -4,7 +4,8 @@ class_name FeatureUnlockPopup
 ##
 ## 新系统首次触发时弹一次带一句话说明的 Modal，之后不再打扰（user:// 持久化）。
 ## 用法：FeatureUnlockPopup.show_once("key", "标题", "说明文字")
-## 层级：独立 CanvasLayer(150)，低于 Toast(200)，高于 PopupLayer(100)。
+## 层级：独立 CanvasLayer(250)，全项目最高（高于 MVP/Toast 的 200）——
+## 低层级会导致弹窗被结算面板的 STOP 背板盖住、按钮点不到（已踩坑，勿改回）。
 
 const DT = preload("res://resources/design_tokens.gd")
 const PanelStyles = preload("res://scripts/ui/panel_styles.gd")
@@ -62,8 +63,10 @@ func _setup(feature_key: String, title: String, description: String) -> void:
 	_description = description
 
 func _ready() -> void:
+	# 暂停豁免：弹窗可能出现在结算/暂停帧，必须仍可交互
+	process_mode = Node.PROCESS_MODE_ALWAYS
 	var layer := CanvasLayer.new()
-	layer.layer = 150
+	layer.layer = 250
 	layer.name = "FeatureUnlockLayer"
 	add_child(layer)
 
@@ -71,6 +74,8 @@ func _ready() -> void:
 	backdrop.color = Color(0, 0, 0, 0.55)
 	backdrop.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	backdrop.mouse_filter = Control.MOUSE_FILTER_STOP
+	# 点击背板也可关闭（防再次出现"点不到按钮卡死"类问题）
+	backdrop.gui_input.connect(_on_backdrop_gui_input)
 	layer.add_child(backdrop)
 
 	var center := CenterContainer.new()
@@ -122,7 +127,7 @@ func _ready() -> void:
 	btn.text = "知道了"
 	btn.custom_minimum_size = Vector2(120, 34)
 	var styles: Dictionary = PanelStyles.make_button_styles(accent, "solid")
-	for state_key in styles:
+	for state_key in ["normal", "hover", "pressed", "disabled", "focus"]:
 		btn.add_theme_stylebox_override(state_key, styles[state_key])
 	btn.pressed.connect(_on_confirm)
 	var btn_box := HBoxContainer.new()
@@ -131,21 +136,34 @@ func _ready() -> void:
 	vbox.add_child(btn_box)
 
 	panel.modulate.a = 0.0
-	var tw := create_tween()
-	tw.tween_property(panel, "modulate:a", 1.0, 0.2)
+	# C7: 动效时长走 DT.MOTION_*（淡入 SINE），尊重减少动效开关
+	if DesignTokens.is_motion_reduce():
+		panel.modulate.a = 1.0
+	else:
+		var tw := create_tween()
+		tw.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+		tw.tween_property(panel, "modulate:a", 1.0, DesignTokens.MOTION_FADE_IN)
 
-	# 弹窗期间暂停按钮区域外点击不误关（只留确认按钮），ESC 也可关闭
-	var am := Engine.get_main_loop().root.get_node_or_null("AudioManager")
+	var am = get_node_or_null("/root/AudioManager")
 	if am and am.has_method("play_sfx"):
 		am.play_sfx("blueprint_unlock")
 
+func _on_backdrop_gui_input(ev: InputEvent) -> void:
+	if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT:
+		accept_event()
+		queue_free()
+
 func _on_confirm() -> void:
-	var am := Engine.get_main_loop().root.get_node_or_null("AudioManager")
+	var am = get_node_or_null("/root/AudioManager")
 	if am and am.has_method("play_sfx"):
 		am.play_sfx("button")
 	queue_free()
 
-func _unhandled_input(event: InputEvent) -> void:
+func _input(event: InputEvent) -> void:
+	# P0: 原实现用 _unhandled_input——main._close_top_overlay 在 _input 阶段先执行，
+	# 解锁弹窗和底下一个 overlay 会被同一次 ESC 连关两层。改 _input + consume 先吃掉事件。
+	if not visible:
+		return
 	if event.is_action_pressed("ui_cancel"):
-		accept_event()
+		get_viewport().set_input_as_handled()
 		queue_free()

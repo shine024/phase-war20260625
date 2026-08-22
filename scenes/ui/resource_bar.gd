@@ -44,21 +44,21 @@ func _build_ui() -> void:
 	hbox.add_theme_constant_override("separation", 16)
 	margin.add_child(hbox)
 
-	# 战斗能量
+	# 战斗能量（C2: 收敛 DT.COLOR_RES_*）
 	_energy_label = _create_resource_item(hbox, "⚡",
-		"战斗能量\n战斗中部署卡牌所需的能量，随时间自动恢复", Color(1.0, 0.85, 0.3, 1.0))
+		"战斗能量\n战斗中部署卡牌所需的能量，随时间自动恢复", DT.COLOR_RES_ENERGY)
 
 	# 纳米材料（basic_nano 是其废弃别名，同一数值不再重复显示）
 	_nano_material_label = _create_resource_item(hbox, "🔷",
-		_resource_tooltip(BasicResources.ID_NANO_MATERIALS), Color(0.3, 0.8, 1.0, 1.0))
+		_resource_tooltip(BasicResources.ID_NANO_MATERIALS), DT.COLOR_RES_NANO)
 
 	# 合金
 	_alloy_label = _create_resource_item(hbox, "🔶",
-		_resource_tooltip(BasicResources.ID_ALLOY), Color(1.0, 0.6, 0.2, 1.0))
+		_resource_tooltip(BasicResources.ID_ALLOY), DT.COLOR_RES_ALLOY)
 
 	# 晶体
 	_crystal_label = _create_resource_item(hbox, "💎",
-		_resource_tooltip(BasicResources.ID_CRYSTAL), Color(0.6, 0.3, 1.0, 1.0))
+		_resource_tooltip(BasicResources.ID_CRYSTAL), DT.COLOR_RES_CRYSTAL)
 
 	# P1-6: 图标容器映射（飘字定位用；战斗能量/蓝图/情报非 BasicResource，不参与飘字）
 	_icon_vboxes[BasicResources.ID_NANO_MATERIALS] = _nano_material_label.get_parent()

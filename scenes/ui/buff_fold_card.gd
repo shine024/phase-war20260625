@@ -8,6 +8,7 @@ extends VBoxContainer
 ## 折叠态：每段独立 toggle，默认 BUFF 展开、其余两段折叠
 
 const PhaseLaws = preload("res://data/phase_laws.gd")
+const DT = preload("res://resources/design_tokens.gd")
 
 var _refresh_accum: float = 0.0
 const _REFRESH_SEC: float = 1.0
@@ -163,15 +164,13 @@ func _refresh_panel() -> void:
 	var ir := get_node_or_null("/root/InstanceRegistry")
 	if ir and ir.has_method("get_all_instance_ids"):
 		total_cards = ir.get_all_instance_ids().size()
-	# 进化阶：取蓝图最高星（粗略反映养成深度）
+	# 进化阶：取拥有实例的最高战斗等级（粗略反映养成深度；原蓝图最高星已移除）
 	var max_star := 0
-	var bm := get_node_or_null("/root/BlueprintManager")
-	if bm and bm.has_method("get_unlocked_blueprint_ids"):
-		for cid in bm.get_unlocked_blueprint_ids():
-			if bm.has_method("get_blueprint_star"):
-				var s := int(bm.get_blueprint_star(String(cid)))
-				if s > max_star:
-					max_star = s
+	var ir_bfc := get_node_or_null("/root/InstanceRegistry")
+	if ir_bfc != null and ir_bfc.has_method("get_all_instance_ids"):
+		for iid in ir_bfc.get_all_instance_ids():
+			if ir_bfc.has_method("get_card_level"):
+				max_star = maxi(max_star, int(ir_bfc.get_card_level(String(iid))))
 	# 场上兵力：我方在场单位 / unit_limit
 	var on_field := 0
 	var unit_limit := 0
@@ -199,18 +198,19 @@ func _refresh_resource() -> void:
 		content.add_child(_make_row("（资源系统未加载）", Color(0.5, 0.55, 0.6)))
 		return
 	# BasicResourceManager 字段为强类型 var，Node.get() 不支持默认值参数，改用 _get_int 守卫取值
-	content.add_child(_make_kv_row("⚡ 能量块", _fmt_num(_get_int(brm, "total_energy_block")), Color(0.98, 0.75, 0.15, 1)))
-	content.add_child(_make_kv_row("📦 纳米材料", _fmt_num(_get_int(brm, "total_nano_materials")), Color(0.3, 0.8, 1.0, 1)))
-	content.add_child(_make_kv_row("🔬 研究点", _fmt_num(_get_int(brm, "total_research_points")), Color(0.75, 0.55, 1.0, 1)))
-	content.add_child(_make_kv_row("🔶 合金", _fmt_num(_get_int(brm, "total_alloy")), Color(1.0, 0.6, 0.2, 1)))
-	content.add_child(_make_kv_row("💎 晶体", _fmt_num(_get_int(brm, "total_crystal")), Color(0.6, 0.3, 1.0, 1)))
+	# C2: 资源五色收敛 DesignTokens.COLOR_RES_*（能量块原 0.98/0.75/0.15 与他处漂移）
+	content.add_child(_make_kv_row("⚡ 能量块", _fmt_num(_get_int(brm, "total_energy_block")), DT.COLOR_RES_ENERGY))
+	content.add_child(_make_kv_row("📦 纳米材料", _fmt_num(_get_int(brm, "total_nano_materials")), DT.COLOR_RES_NANO))
+	content.add_child(_make_kv_row("🔬 研究点", _fmt_num(_get_int(brm, "total_research_points")), DT.COLOR_RES_RESEARCH))
+	content.add_child(_make_kv_row("🔶 合金", _fmt_num(_get_int(brm, "total_alloy")), DT.COLOR_RES_ALLOY))
+	content.add_child(_make_kv_row("💎 晶体", _fmt_num(_get_int(brm, "total_crystal")), DT.COLOR_RES_CRYSTAL))
 
 
 # ========== 辅助：行构建 ==========
 func _make_row(text: String, color: Color) -> Label:
 	var l := Label.new()
 	l.text = text
-	l.add_theme_font_size_override("font_size", 11)
+	l.add_theme_font_size_override("font_size", 12)
 	l.add_theme_color_override("font_color", color)
 	l.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.7))
 	l.add_theme_constant_override("outline_size", 2)
@@ -224,7 +224,7 @@ func _make_kv_row(key: String, val: String, val_color: Color) -> HBoxContainer:
 	hbox.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var kl := Label.new()
 	kl.text = key
-	kl.add_theme_font_size_override("font_size", 11)
+	kl.add_theme_font_size_override("font_size", 12)
 	kl.add_theme_color_override("font_color", Color(0.6, 0.65, 0.72, 1))
 	kl.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.7))
 	kl.add_theme_constant_override("outline_size", 2)
@@ -233,7 +233,7 @@ func _make_kv_row(key: String, val: String, val_color: Color) -> HBoxContainer:
 	hbox.add_child(kl)
 	var vl := Label.new()
 	vl.text = val
-	vl.add_theme_font_size_override("font_size", 11)
+	vl.add_theme_font_size_override("font_size", 12)
 	vl.add_theme_color_override("font_color", val_color)
 	vl.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.7))
 	vl.add_theme_constant_override("outline_size", 2)

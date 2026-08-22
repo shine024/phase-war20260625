@@ -158,9 +158,12 @@ func _build() -> void:
 	_render_close_button_anchored(panel)
 
 	# 整体淡入（panel 是 Control，有 modulate；CanvasLayer 没有 modulate 属性）
+	# C7: 时长走 DT.MOTION_FADE_IN + SINE（原 0.3 裸 linear，与全项目弹窗节奏不一致）
 	panel.modulate.a = 0.0
-	var tw := create_tween()
-	tw.tween_property(panel, "modulate:a", 1.0, 0.3)
+	if not DT.is_motion_reduce():
+		var tw := create_tween()
+		tw.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+		tw.tween_property(panel, "modulate:a", 1.0, DT.MOTION_FADE_IN)
 
 	# 星级逐个亮起动画（胜利时）
 	if not _is_afk and player_won and _star_lbl != null:
@@ -376,7 +379,7 @@ func _render_drops(vbox: VBoxContainer) -> void:
 			return
 		var sh := Label.new()
 		sh.text = subhdr
-		sh.add_theme_font_size_override("font_size", 11)
+		sh.add_theme_font_size_override("font_size", 12)
 		sh.add_theme_color_override("font_color", Color(DT.COLOR_TEXT_MID.r, DT.COLOR_TEXT_MID.g, DT.COLOR_TEXT_MID.b, 0.95))
 		drop_list.add_child(sh)
 		for dr in rows:
@@ -433,13 +436,13 @@ func _render_phase_instrument_drop(vbox: VBoxContainer) -> void:
 				continue
 			var p_line := Label.new()
 			p_line.text = "    · %s" % p_display
-			p_line.add_theme_font_size_override("font_size", 11)
+			p_line.add_theme_font_size_override("font_size", 12)
 			p_line.add_theme_color_override("font_color", Color(DT.COLOR_TEXT_MID.r, DT.COLOR_TEXT_MID.g, DT.COLOR_TEXT_MID.b, 0.95))
 			vbox.add_child(p_line)
 		if pi_props.size() > show_n:
 			var more_line := Label.new()
 			more_line.text = "    · 还有 %d 条属性…" % (pi_props.size() - show_n)
-			more_line.add_theme_font_size_override("font_size", 11)
+			more_line.add_theme_font_size_override("font_size", 12)
 			more_line.add_theme_color_override("font_color", Color(DT.COLOR_TEXT_DIM.r, DT.COLOR_TEXT_DIM.g, DT.COLOR_TEXT_DIM.b, 0.95))
 			vbox.add_child(more_line)
 
@@ -494,7 +497,7 @@ func _render_collected_section(parent_vbox: VBoxContainer, cat: String, entries:
 	var section_title: String = _collected_section_title(cat)
 	var sh := Label.new()
 	sh.text = "  ▸ %s（共%d）" % [section_title, entries.size()]
-	sh.add_theme_font_size_override("font_size", 11)
+	sh.add_theme_font_size_override("font_size", 12)
 	sh.add_theme_color_override("font_color", Color(DT.COLOR_GOLD.r, DT.COLOR_GOLD.g, DT.COLOR_GOLD.b, 0.95))
 	parent_vbox.add_child(sh)
 	for entry in entries:
@@ -562,6 +565,7 @@ static func _collected_entry_color(cat: String, entry: Dictionary) -> Color:
 static func _collected_rarity_name(rarity: String) -> String:
 	match rarity:
 		"common": return "普通"
+		"uncommon": return "优秀"
 		"rare": return "稀有"
 		"epic": return "史诗"
 		"legendary": return "传说"
@@ -573,6 +577,7 @@ static func _collected_rarity_name(rarity: String) -> String:
 static func _collected_rarity_color(rarity: String) -> Color:
 	match rarity:
 		"common": return DT.COLOR_RARITY_COMMON
+		"uncommon": return DT.COLOR_RARITY_UNCOMMON
 		"rare": return DT.COLOR_RARITY_RARE
 		"epic": return DT.COLOR_RARITY_EPIC
 		"legendary": return DT.COLOR_RARITY_LEGENDARY
@@ -640,7 +645,12 @@ func _on_continue_pressed() -> void:
 	var panel: Control = get_node_or_null("MvpPanelOverlay/Panel")
 	var tw := create_tween()
 	if panel != null:
-		tw.tween_property(panel, "modulate:a", 0.0, 0.18)
+		if DT.is_motion_reduce():
+			panel.modulate.a = 0.0
+		else:
+			# C7: 淡出统一 DT.MOTION_FADE_OUT + SINE
+			tw.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+			tw.tween_property(panel, "modulate:a", 0.0, DT.MOTION_FADE_OUT)
 	tw.tween_callback(func():
 		var parent: Node = get_parent()
 		if parent != null and parent.has_method("_on_result_confirmed"):

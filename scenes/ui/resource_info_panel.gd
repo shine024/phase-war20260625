@@ -2,6 +2,7 @@ extends PanelContainer
 ## 左上角常驻资源面板：基础资源 + 情报数量。
 
 const FormatUtil = preload("res://scripts/ui/format_util.gd")
+const DT = preload("res://resources/design_tokens.gd")
 
 var _labels: Dictionary = {}
 var _row_nodes: Dictionary = {}
@@ -76,11 +77,12 @@ func _build_ui() -> void:
 	
 	header.add_child(_toggle_button)
 
-	_add_resource_row(vbox, "energy", "⚡", "能量块", Color(1.0, 0.85, 0.3))
-	_add_resource_row(vbox, "nano_materials", "📦", "纳米材料", Color(0.3, 0.8, 1.0))
-	_add_resource_row(vbox, "research_points", "🔬", "研究点", Color(0.75, 0.55, 1.0))
-	_add_resource_row(vbox, "alloy", "🔶", "合金", Color(1.0, 0.6, 0.2))
-	_add_resource_row(vbox, "crystal", "💎", "晶体", Color(0.6, 0.3, 1.0))
+	# C2: 资源五色收敛 DesignTokens.COLOR_RES_*（此前与 resource_bar/buff_fold_card 三处手抄）
+	_add_resource_row(vbox, "energy", "⚡", "能量块", DT.COLOR_RES_ENERGY)
+	_add_resource_row(vbox, "nano_materials", "📦", "纳米材料", DT.COLOR_RES_NANO)
+	_add_resource_row(vbox, "research_points", "🔬", "研究点", DT.COLOR_RES_RESEARCH)
+	_add_resource_row(vbox, "alloy", "🔶", "合金", DT.COLOR_RES_ALLOY)
+	_add_resource_row(vbox, "crystal", "💎", "晶体", DT.COLOR_RES_CRYSTAL)
 	_add_resource_row(vbox, "lore", "📖", "情报", Color(0.9, 0.7, 0.2))
 	_update_row_visibility()
 
@@ -98,7 +100,7 @@ func _add_resource_row(parent: Control, key: String, icon: String, name: String,
 
 	var name_label = Label.new()
 	name_label.text = name
-	name_label.add_theme_font_size_override("font_size", 11)
+	name_label.add_theme_font_size_override("font_size", 12)
 	name_label.modulate = Color(0.85, 0.85, 0.9)
 	name_label.custom_minimum_size = Vector2(60, 0)
 	hbox.add_child(name_label)
@@ -106,7 +108,7 @@ func _add_resource_row(parent: Control, key: String, icon: String, name: String,
 	var value_label = Label.new()
 	value_label.name = key + "_value"
 	value_label.text = "0"
-	value_label.add_theme_font_size_override("font_size", 11)
+	value_label.add_theme_font_size_override("font_size", 12)
 	value_label.modulate = color
 	value_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	hbox.add_child(value_label)

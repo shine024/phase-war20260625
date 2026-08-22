@@ -10,6 +10,7 @@ const EvoPathRegistry = preload("res://scripts/systems/evolution_path_registry.g
 const FormatUtil = preload("res://scripts/ui/format_util.gd")
 const UiAssetLoader = preload("res://scripts/ui_asset_loader.gd")
 const DT = preload("res://resources/design_tokens.gd")
+const PanelStyles = preload("res://scripts/ui/panel_styles.gd")
 const EvolutionHelpers = preload("res://managers/evolution/evolution_helpers.gd")
 
 signal closed
@@ -66,6 +67,8 @@ var evo_btn: Button
 func _ready() -> void:
 	visible = false
 	modulate.a = 0.0
+	# D1: 根框架统一 PanelStyles 签名框（v7.x 已迁移面板同款；覆盖 tscn 手写 StyleBoxFlat_1）
+	add_theme_stylebox_override("panel", PanelStyles.make_panel_frame(DT.get_system_color("growth")))
 	_init_cached_styleboxes()
 	_bind_nodes()
 	_connect_signals()
@@ -367,6 +370,9 @@ func refresh_card_list(unlocked_ids: Array[String]) -> void:
 
 func _on_card_selected(card: CardResource) -> void:
 	_selected_card = card
+	# B2: 列表选中点击音（同类密集点击场景此前静音）
+	if SignalBus and SignalBus.has_signal("play_sound"):
+		SignalBus.play_sound.emit("button")
 	refresh_card_list(_last_unlocked_ids)
 	select_card(card)
 
@@ -494,7 +500,7 @@ func _create_card_list_item(card: CardResource, instance_id_raw: Variant) -> Con
 		var mods_arr = card.mods
 		mod_count = mods_arr.size() if mods_arr is Array else 0
 	meta_label.text = "Lv.%d  ·  改%d/9" % [_card_level_of(card), mod_count]
-	meta_label.add_theme_font_size_override("font_size", 11)
+	meta_label.add_theme_font_size_override("font_size", 12)
 	meta_label.add_theme_color_override("font_color", Color(0.55, 0.6, 0.7, 0.85))
 	meta_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	info.add_child(meta_label)
@@ -957,6 +963,16 @@ func _close_phase_master_skill_panel() -> void:
 	if canvas != null:
 		canvas.visible = false
 
+## P0: 技能树面板打开时 ESC 先关技能面板——原实现 ESC 会关掉成长 overlay 本体，
+## 而技能面板 canvas(layer=110) 仍悬在更高层挡住全场点击。consume 防止穿透。
+func _input(ev: InputEvent) -> void:
+	if not (ev is InputEventKey and ev.pressed and ev.keycode == KEY_ESCAPE):
+		return
+	var canvas: CanvasLayer = get_tree().root.get_node_or_null("PhaseMasterSkillCanvas") if is_inside_tree() else null
+	if canvas != null and canvas.visible:
+		_close_phase_master_skill_panel()
+		get_viewport().set_input_as_handled()
+
 
 func _on_mod_pressed() -> void:
 	if not _selected_card:
@@ -967,6 +983,9 @@ func _on_mod_pressed() -> void:
 func _on_evo_pressed() -> void:
 	if not _selected_card:
 		return
+	# B4: 首次进入进化面板给一句话说明（学黑猴首解锁引导，仅弹一次）
+	FeatureUnlockPopup.show_once("evolution_panel", "卡牌进化",
+		"满足条件的卡可进化为更高阶单位：属性全面成长，还可解锁新外观与分支。")
 	_open_target_panel("evolution")
 
 
@@ -1048,13 +1067,13 @@ func _add_prog_stat(parent: VBoxContainer, label: String, value: String, value_c
 	row.add_theme_constant_override("separation", 8)
 	var lbl := Label.new()
 	lbl.text = label
-	lbl.add_theme_font_size_override("font_size", 11)
+	lbl.add_theme_font_size_override("font_size", 12)
 	lbl.add_theme_color_override("font_color", Color(0.5, 0.55, 0.65, 0.85))
 	lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	row.add_child(lbl)
 	var val := Label.new()
 	val.text = value
-	val.add_theme_font_size_override("font_size", 11)
+	val.add_theme_font_size_override("font_size", 12)
 	val.add_theme_color_override("font_color", value_color)
 	row.add_child(val)
 	parent.add_child(row)
@@ -1235,14 +1254,8 @@ func _get_kind_color(combat_kind: int) -> Color:
 
 
 func _get_rarity_color(rarity: String) -> Color:
-	match rarity.to_lower():
-		"common": return Color(0.42, 0.46, 0.57)
-		"uncommon": return Color(0.13, 0.77, 0.37)
-		"rare": return Color(0.22, 0.74, 0.97)
-		"epic": return Color(0.75, 0.52, 0.99)
-		"legendary": return DT.COLOR_AMBER
-		"mythic": return DT.COLOR_RED_DOWN
-		_: return Color(0.5, 0.5, 0.5)
+	# C1: 透传全项目唯一权威源 GC.get_rarity_color（禁止本地副本，fallback 枪铁灰非中灰）
+	return GC.get_rarity_color(rarity)
 
 
 func _get_era_color(era: int) -> Color:

@@ -6,6 +6,7 @@ signal instrument_selected(instrument_id: String)
 const PhaseInstruments = preload("res://data/phase_instruments.gd")
 const CompanyDefs = preload("res://data/company_definitions.gd")
 const DT = preload("res://resources/design_tokens.gd")
+const PanelStyles = preload("res://scripts/ui/panel_styles.gd")
 
 var _main_instance = null
 
@@ -25,7 +26,7 @@ func _ready() -> void:
 	if title_label:
 		var detail_btn = Button.new()
 		detail_btn.text = "⚔ 战力详情"
-		detail_btn.add_theme_font_size_override("font_size", 11)
+		detail_btn.add_theme_font_size_override("font_size", 12)
 		detail_btn.custom_minimum_size = Vector2(100, 28)
 		detail_btn.position = Vector2(10, 0)
 		header.add_child(detail_btn)
@@ -44,6 +45,13 @@ func _ready() -> void:
 
 func _on_backdrop_gui_input(ev: InputEvent) -> void:
 	if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT:
+		queue_free()
+
+## P0: ESC 关闭选择器——原实现只有背景点击和关闭按钮，ESC 会越过本面板
+## 关掉底下面板或误触暂停。consume 防止穿透。
+func _input(ev: InputEvent) -> void:
+	if ev.is_action_pressed("ui_cancel"):
+		get_viewport().set_input_as_handled()
 		queue_free()
 
 ## v8.x: 属性点分配变化时刷新列表（重建属性点区块，反映新分配状态）
@@ -172,7 +180,7 @@ func _create_phase_field_info_item() -> Control:
 		total_bonus = PhaseInstrumentManager.get_phase_field_total_bonus()
 
 	var line := Label.new()
-	line.add_theme_font_size_override("font_size", 11)
+	line.add_theme_font_size_override("font_size", 12)
 	line.add_theme_color_override("font_color", Color(0.80, 0.92, 1.0, 0.95))
 	var alloc_parts: Array[String] = []
 	for key in alloc.keys():
@@ -194,7 +202,7 @@ func _create_phase_field_info_item() -> Control:
 
 	var growth_title := Label.new()
 	growth_title.text = "等级提升属性增长明细"
-	growth_title.add_theme_font_size_override("font_size", 11)
+	growth_title.add_theme_font_size_override("font_size", 12)
 	growth_title.add_theme_color_override("font_color", Color(0.58, 0.88, 1.0, 0.95))
 	vbox.add_child(growth_title)
 
@@ -204,7 +212,7 @@ func _create_phase_field_info_item() -> Control:
 	for detail in detail_lines:
 		var detail_label := Label.new()
 		detail_label.text = "  - %s" % detail
-		detail_label.add_theme_font_size_override("font_size", 10)
+		detail_label.add_theme_font_size_override("font_size", 12)
 		detail_label.add_theme_color_override("font_color", Color(0.76, 0.9, 1.0, 0.92))
 		vbox.add_child(detail_label)
 
@@ -221,7 +229,7 @@ func _create_phase_field_info_item() -> Control:
 			bonus_parts.append("%s +%.0f%%" % [label, val * 100.0])
 		bonus_parts.sort()
 		total_bonus_line.text = "当前总加成: " + " / ".join(PackedStringArray(bonus_parts))
-		total_bonus_line.add_theme_font_size_override("font_size", 10)
+		total_bonus_line.add_theme_font_size_override("font_size", 12)
 		total_bonus_line.add_theme_color_override("font_color", Color(0.70, 0.95, 0.90, 0.95))
 		vbox.add_child(total_bonus_line)
 
@@ -249,7 +257,7 @@ func _create_phase_field_info_item() -> Control:
 
 		var name_lbl := Label.new()
 		name_lbl.text = "%s（%s）" % [lbl, per_text]
-		name_lbl.add_theme_font_size_override("font_size", 11)
+		name_lbl.add_theme_font_size_override("font_size", 12)
 		name_lbl.add_theme_color_override("font_color", Color(0.82, 0.90, 1.0, 0.95))
 		name_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		name_lbl.clip_text = true
@@ -257,36 +265,39 @@ func _create_phase_field_info_item() -> Control:
 
 		var pts_lbl := Label.new()
 		pts_lbl.text = "已 %d 点" % cur_pts
-		pts_lbl.add_theme_font_size_override("font_size", 11)
+		pts_lbl.add_theme_font_size_override("font_size", 12)
 		pts_lbl.add_theme_color_override("font_color", Color(0.70, 0.95, 0.90, 0.95))
 		pts_lbl.custom_minimum_size = Vector2(60, 0)
 		row.add_child(pts_lbl)
 
-		# [−] 回收按钮（已分配 0 时禁用）
+		# [−] 回收按钮（已分配 0 时禁用）—— P2: 走 PanelStyles 四态工厂
 		var minus_btn := Button.new()
 		minus_btn.text = "−"
 		minus_btn.add_theme_font_size_override("font_size", 13)
 		minus_btn.custom_minimum_size = Vector2(28, 24)
+		_apply_tiny_button_styles(minus_btn, DT.COLOR_DANGER)
 		minus_btn.disabled = cur_pts <= 0
 		minus_btn.pressed.connect(_on_refund_pressed.bind(key))
 		row.add_child(minus_btn)
 
-		# [+] 分配按钮（剩余点 0 时禁用）
+		# [+] 分配按钮（剩余点 0 时禁用）—— P2: 走 PanelStyles 四态工厂
 		var plus_btn := Button.new()
 		plus_btn.text = "+"
 		plus_btn.add_theme_font_size_override("font_size", 13)
 		plus_btn.custom_minimum_size = Vector2(28, 24)
+		_apply_tiny_button_styles(plus_btn, DT.COLOR_GREEN_UP)
 		plus_btn.disabled = unspent <= 0
 		plus_btn.pressed.connect(_on_allocate_pressed.bind(key))
 		row.add_child(plus_btn)
 
 		vbox.add_child(row)
 
-	# 重置按钮（无任何分配时禁用）
+	# 重置按钮（无任何分配时禁用）—— P2: 走 PanelStyles 四态工厂
 	var reset_btn := Button.new()
 	reset_btn.text = "↺ 重置全部属性点"
-	reset_btn.add_theme_font_size_override("font_size", 11)
+	reset_btn.add_theme_font_size_override("font_size", 12)
 	reset_btn.custom_minimum_size = Vector2(0, 26)
+	_apply_tiny_button_styles(reset_btn, DT.COLOR_TEXT_DIM)
 	reset_btn.disabled = alloc.is_empty()
 	reset_btn.pressed.connect(_on_reset_allocations_pressed)
 	vbox.add_child(reset_btn)
@@ -333,7 +344,7 @@ func _create_instrument_item(cfg: Dictionary, is_equipped: bool) -> Control:
 	else:
 		name_label.text = "%s ★%d" % [inst_name, star]
 		name_label.add_theme_color_override("font_color", DT.COLOR_TEXT_BRIGHT)
-	name_label.add_theme_font_size_override("font_size", 15)
+	name_label.add_theme_font_size_override("font_size", 16)
 	name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	header_row.add_child(name_label)
 
@@ -344,13 +355,13 @@ func _create_instrument_item(cfg: Dictionary, is_equipped: bool) -> Control:
 		if not faction_cfg.is_empty():
 			var faction_label = Label.new()
 			faction_label.text = String(faction_cfg.get("name", ""))
-			faction_label.add_theme_font_size_override("font_size", 11)
+			faction_label.add_theme_font_size_override("font_size", 12)
 			faction_label.add_theme_color_override("font_color", Color(0.7, 0.8, 0.95, 0.9))
 			header_row.add_child(faction_label)
 	else:
 		var generic_label = Label.new()
 		generic_label.text = "通用"
-		generic_label.add_theme_font_size_override("font_size", 11)
+		generic_label.add_theme_font_size_override("font_size", 12)
 		generic_label.add_theme_color_override("font_color", Color(0.7, 0.9, 0.7, 0.9))
 		header_row.add_child(generic_label)
 
@@ -368,34 +379,34 @@ func _create_instrument_item(cfg: Dictionary, is_equipped: bool) -> Control:
 
 	var config_label = Label.new()
 	config_label.text = "槽位配置: "
-	config_label.add_theme_font_size_override("font_size", 11)
+	config_label.add_theme_font_size_override("font_size", 12)
 	config_label.add_theme_color_override("font_color", Color(0.65, 0.75, 0.85, 0.9))
 	slot_row.add_child(config_label)
 
 	if green_count > 0:
 		var green_label = Label.new()
 		green_label.text = "绿%d " % green_count
-		green_label.add_theme_font_size_override("font_size", 11)
+		green_label.add_theme_font_size_override("font_size", 12)
 		green_label.add_theme_color_override("font_color", Color(0.3, 0.9, 0.5, 1.0))
 		slot_row.add_child(green_label)
 
 	if yellow_count > 0:
 		var yellow_label = Label.new()
 		yellow_label.text = "黄%d " % yellow_count
-		yellow_label.add_theme_font_size_override("font_size", 11)
+		yellow_label.add_theme_font_size_override("font_size", 12)
 		yellow_label.add_theme_color_override("font_color", Color(0.95, 0.85, 0.2, 1.0))
 		slot_row.add_child(yellow_label)
 
 	if rune_count > 0:
 		var rune_label = Label.new()
 		rune_label.text = "符%d " % rune_count
-		rune_label.add_theme_font_size_override("font_size", 11)
+		rune_label.add_theme_font_size_override("font_size", 12)
 		rune_label.add_theme_color_override("font_color", Color(0.75, 0.55, 0.95, 1.0))
 		slot_row.add_child(rune_label)
 
 	var total_label = Label.new()
 	total_label.text = "(总计: %d)" % total_slots
-	total_label.add_theme_font_size_override("font_size", 11)
+	total_label.add_theme_font_size_override("font_size", 12)
 	total_label.add_theme_color_override("font_color", Color(0.65, 0.75, 0.85, 0.9))
 	slot_row.add_child(total_label)
 
@@ -415,7 +426,7 @@ func _create_instrument_item(cfg: Dictionary, is_equipped: bool) -> Control:
 
 	var stats_label = Label.new()
 	stats_label.text = "  |  ".join(PackedStringArray(stats_parts))
-	stats_label.add_theme_font_size_override("font_size", 10)
+	stats_label.add_theme_font_size_override("font_size", 12)
 	stats_label.add_theme_color_override("font_color", Color(0.6, 0.7, 0.8, 0.85))
 	stats_row.add_child(stats_label)
 
@@ -442,7 +453,7 @@ func _create_instrument_item(cfg: Dictionary, is_equipped: bool) -> Control:
 		vbox.add_child(advanced_row)
 		var advanced_label = Label.new()
 		advanced_label.text = "  |  ".join(PackedStringArray(advanced_parts.slice(0, 5)))
-		advanced_label.add_theme_font_size_override("font_size", 10)
+		advanced_label.add_theme_font_size_override("font_size", 12)
 		advanced_label.add_theme_color_override("font_color", Color(0.95, 0.75, 0.35, 0.9))
 		advanced_row.add_child(advanced_label)
 
@@ -453,7 +464,7 @@ func _create_instrument_item(cfg: Dictionary, is_equipped: bool) -> Control:
 			vbox.add_child(trait_row)
 			var trait_label = Label.new()
 			trait_label.text = "✦ " + "  |  ".join(PackedStringArray(traits))
-			trait_label.add_theme_font_size_override("font_size", 10)
+			trait_label.add_theme_font_size_override("font_size", 12)
 			trait_label.add_theme_color_override("font_color", Color(0.8, 0.95, 1.0, 0.95))
 			trait_label.autowrap_mode = TextServer.AUTOWRAP_WORD
 			trait_label.custom_minimum_size = Vector2(400, 0)
@@ -474,7 +485,7 @@ func _create_instrument_item(cfg: Dictionary, is_equipped: bool) -> Control:
 				ability_label.text = "⚡ %s" % ability_desc
 			else:
 				ability_label.text = "⚡ %s" % ability_name
-			ability_label.add_theme_font_size_override("font_size", 10)
+			ability_label.add_theme_font_size_override("font_size", 12)
 			# 金色高亮，区别于普通特性（青色）
 			ability_label.add_theme_color_override("font_color", Color(1.0, 0.85, 0.2, 1.0))
 			ability_label.autowrap_mode = TextServer.AUTOWRAP_WORD
@@ -484,7 +495,7 @@ func _create_instrument_item(cfg: Dictionary, is_equipped: bool) -> Control:
 	if is_equipped:
 		var equipped_label = Label.new()
 		equipped_label.text = "当前装备中"
-		equipped_label.add_theme_font_size_override("font_size", 11)
+		equipped_label.add_theme_font_size_override("font_size", 12)
 		equipped_label.add_theme_color_override("font_color", Color(0.3, 0.85, 0.5, 1.0))
 		vbox.add_child(equipped_label)
 	else:
@@ -492,6 +503,13 @@ func _create_instrument_item(cfg: Dictionary, is_equipped: bool) -> Control:
 		equip_btn.text = "装备此相位仪"
 		equip_btn.add_theme_font_size_override("font_size", 12)
 		equip_btn.custom_minimum_size = Vector2(120, 32)
+		# P2: 裸 Button → PanelStyles 四态工厂（与全项目按钮视觉一致）
+		var equip_styles := PanelStyles.make_button_styles(DT.COLOR_GOLD, "solid")
+		equip_btn.add_theme_stylebox_override("normal", equip_styles["normal"])
+		equip_btn.add_theme_stylebox_override("hover", equip_styles["hover"])
+		equip_btn.add_theme_stylebox_override("pressed", equip_styles["pressed"])
+		equip_btn.add_theme_stylebox_override("disabled", equip_styles["disabled"])
+		equip_btn.add_theme_stylebox_override("focus", equip_styles["focus"])
 		vbox.add_child(equip_btn)
 
 		var iid_copy = String(cfg.get("id", ""))
@@ -512,6 +530,15 @@ func _show_empty_message(msg: String) -> void:
 	label.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	instrument_list.add_child(label)
 
+## P2: 小型工具按钮统一走 PanelStyles 四态工厂
+func _apply_tiny_button_styles(btn: Button, accent: Color) -> void:
+	var styles := PanelStyles.make_button_styles(accent)
+	btn.add_theme_stylebox_override("normal", styles["normal"])
+	btn.add_theme_stylebox_override("hover", styles["hover"])
+	btn.add_theme_stylebox_override("pressed", styles["pressed"])
+	btn.add_theme_stylebox_override("disabled", styles["disabled"])
+	btn.add_theme_stylebox_override("focus", styles["focus"])
+
 func _on_equip_pressed(instrument_id: String) -> void:
 	if PhaseInstrumentManager == null:
 		return
@@ -520,6 +547,14 @@ func _on_equip_pressed(instrument_id: String) -> void:
 		var success = PhaseInstrumentManager.equip_instrument(instrument_id)
 		if success:
 			instrument_selected.emit(instrument_id)
+			# B2: 装备成功音效（此前全程静音）
+			if SignalBus.has_signal("play_sound"):
+				SignalBus.play_sound.emit("card_place")
+		else:
+			# P0: 装备失败此前零反馈（"点了没反应"典型），补 toast + error 音
+			SignalBus.show_toast.emit("装备失败：该相位仪当前无法装备")
+			if SignalBus.has_signal("play_sound"):
+				SignalBus.play_sound.emit("error")
 
 func _on_close() -> void:
 	queue_free()

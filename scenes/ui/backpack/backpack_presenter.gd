@@ -12,7 +12,6 @@ extends RefCounted
 ##   - 不直接操作 UI 节点，通过 View 接口方法间接操作
 
 const BasicResources = preload("res://data/basic_resources.gd")
-const StarConfig = preload("res://data/blueprint_star_config.gd")
 const GC = preload("res://resources/game_constants.gd")
 
 ## Model
@@ -257,6 +256,9 @@ func on_card_clicked(card: CardResource, source_item: Control) -> void:
 	# v7.x: 能量卡系统移除，原能量卡点击处理（即时消耗/装备）已删除。
 	# ENERGY 类型的残留卡（理论上不会出现）走详情弹窗兜底。
 	# 其他卡：显示详情弹窗
+	# B2: 点击音（同类列表行点击此前全部静音）
+	if SignalBus.has_signal("play_sound"):
+		SignalBus.play_sound.emit("button")
 	if _view and _view.has_method("show_card_detail"):
 		_view.show_card_detail(card, source_item)
 
@@ -268,6 +270,9 @@ func on_equip_button_pressed(card: CardResource) -> void:
 		if _view and _view.has_method("hide_card_detail"):
 			_view.hide_card_detail()
 		_show_toast_success("已装备：%s" % String(card.display_name))
+		# B2: 装备成功音效（与拖拽装备路径对齐，此前成功全程静音）
+		if SignalBus.has_signal("play_sound"):
+			SignalBus.play_sound.emit("card_place")
 	else:
 		# P0-2: 失败此前弹窗不关、无任何提示（"点了没反应"），现给出具体原因
 		_show_toast_error("装备失败：%s" % _last_equip_fail_reason)
@@ -276,114 +281,7 @@ func on_equip_button_pressed(card: CardResource) -> void:
 ## 最近一次装备失败的原因（由 _try_equip_card 各失败分支写入）
 var _last_equip_fail_reason: String = "没有可用的对应槽位"
 
-## 拆解按钮回调：将背包额外卡拆解为研究点 + 纳米材料（研究公式与重复蓝图副本一致）
-func on_dismantle_button_pressed(card: CardResource) -> void:
-	if card == null:
-		return
-	if _data == null or not _data.has_method("remove_extra_card_strict"):
-		return
-	# v7.x 修复：背包额外卡以 instance_id（如 cold_t72#1）存储，必须用 instance_id 匹配。
-	# 裸 card_id（cold_t72）在 _extra_card_ids.find() 中永远找不到，导致拆解静默失败。
-	# 无 instance_id 的旧卡回退 card_id（兼容）。
-	var inst_id: String = card.instance_id if not card.instance_id.is_empty() else card.card_id
-	# 仅允许拆解背包中的“额外卡”；不存在则不执行，防止重复领取资源。
-	var removed: bool = bool(_data.remove_extra_card_strict(inst_id))
-	if not removed:
-		_show_toast_error("该卡不在背包中，无法拆解")
-		return
 
-	# v7.x 修复：同步清理 InstanceRegistry 实例 + SaveManager 队列，
-	# 否则实例残留/队列未清，重开背包会通过 load_pending_cards 把卡重新补回（“拆了又回来”）。
-	var ir: Node = _get_autoload_node("InstanceRegistry")
-	if ir != null and ir.has_method("dispose_instance") and not card.instance_id.is_empty():
-		ir.dispose_instance(card.instance_id)
-	if SaveManager and SaveManager.has_method("consume_pending_backpack_card_id"):
-		SaveManager.consume_pending_backpack_card_id(inst_id)
-
-	var gains: Dictionary = _calculate_dismantle_gains(card)
-	var research_gain: int = int(gains.get("research", 0))
-	var nano_gain: int = int(gains.get("nano", 0))
-	var bpm: Node = _get_autoload_node("BlueprintManager")
-	if bpm != null:
-		if research_gain > 0 and bpm.has_method("add_research_points"):
-			bpm.add_research_points(research_gain)
-		if nano_gain > 0 and bpm.has_method("add_nano_materials"):
-			bpm.add_nano_materials(nano_gain)
-	else:
-		var brm: Node = _get_autoload_node("BasicResourceManager")
-		if brm != null and brm.has_method("add_resource"):
-			if research_gain > 0:
-				brm.add_resource(BasicResources.ID_RESEARCH_POINTS, research_gain)
-			if nano_gain > 0:
-				brm.add_resource(BasicResources.ID_NANO_MATERIALS, nano_gain)
-
-	# 刷新网格（不需要再调用 hide_card_detail，因为按钮回调已经延迟隐藏了）
-	# v7.x 修复：View 层 _card_matches_id 也需要 instance_id 精确匹配实例卡。
-	if _view and _view.has_method("remove_last_card_by_id"):
-		var removed_from_view: bool = _view.remove_last_card_by_id(inst_id)
-		if not removed_from_view:
-			_refresh_card_grid()
-	else:
-		_refresh_card_grid()
-	if SignalBus and SignalBus.has_signal("backpack_changed"):
-		SignalBus.backpack_changed.emit()
-	_show_toast_success("拆解成功：+%d 研究点，+%d 纳米材料" % [research_gain, nano_gain])
-
-## v7.x: 批量拆解回调——循环调用单卡拆解核心逻辑，累计资源，最后一次刷新网格 + toast。
-## View 已在确认回调里清空选中态，这里只管数据/资源/刷新。
-func on_batch_dismantle_pressed(cards: Array) -> void:
-	if cards.is_empty():
-		return
-	if _data == null or not _data.has_method("remove_extra_card_strict"):
-		return
-	var ir: Node = _get_autoload_node("InstanceRegistry")
-	var bpm: Node = _get_autoload_node("BlueprintManager")
-	var brm: Node = _get_autoload_node("BasicResourceManager")
-	var total_research: int = 0
-	var total_nano: int = 0
-	var actually_removed: int = 0
-	var removed_inst_ids: Array[String] = []
-	for card in cards:
-		if card == null:
-			continue
-		var inst_id: String = card.instance_id if not card.instance_id.is_empty() else card.card_id
-		# 仅允许拆解背包中的"额外卡"；不在列表里的跳过（防重复领取资源）
-		var removed: bool = bool(_data.remove_extra_card_strict(inst_id, true))
-		if not removed:
-			continue
-		actually_removed += 1
-		# 同步清理 InstanceRegistry 实例 + SaveManager 队列
-		if ir != null and ir.has_method("dispose_instance") and not card.instance_id.is_empty():
-			ir.dispose_instance(card.instance_id)
-		if SaveManager and SaveManager.has_method("consume_pending_backpack_card_id"):
-			SaveManager.consume_pending_backpack_card_id(inst_id)
-		# 累计收益
-		var gains: Dictionary = _calculate_dismantle_gains(card)
-		total_research += int(gains.get("research", 0))
-		total_nano += int(gains.get("nano", 0))
-		removed_inst_ids.append(inst_id)
-	# 一次性发放资源
-	if total_research > 0 or total_nano > 0:
-		if bpm != null:
-			if total_research > 0 and bpm.has_method("add_research_points"):
-				bpm.add_research_points(total_research)
-			if total_nano > 0 and bpm.has_method("add_nano_materials"):
-				bpm.add_nano_materials(total_nano)
-		elif brm != null and brm.has_method("add_resource"):
-			if total_research > 0:
-				brm.add_resource(BasicResources.ID_RESEARCH_POINTS, total_research)
-			if total_nano > 0:
-				brm.add_resource(BasicResources.ID_NANO_MATERIALS, total_nano)
-	# 一次性刷新网格（避免逐张 remove_last_card_by_id 多次重排）
-	_refresh_card_grid()
-	if SignalBus and SignalBus.has_signal("backpack_changed"):
-		SignalBus.backpack_changed.emit()
-	if actually_removed == 0:
-		_show_toast_error("所选卡牌均不在背包中，未拆解")
-	elif actually_removed < cards.size():
-		_show_toast_success("批量拆解 %d/%d 张：+%d 研究点，+%d 纳米材料" % [actually_removed, cards.size(), total_research, total_nano])
-	else:
-		_show_toast_success("批量拆解 %d 张：+%d 研究点，+%d 纳米材料" % [actually_removed, total_research, total_nano])
 
 ## 关闭详情弹窗
 func on_detail_close() -> void:
@@ -535,27 +433,7 @@ func _consume_instant_energy_card(card: CardResource, source_item: Control) -> v
 		source_item.set_card(null)
 	_refresh_card_grid()
 
-## 背包卡拆解收益（见设定总览 §7.2）：
-## - 研究点 = 1★→2★ 研究消耗 × 0.35
-## - 纳米材料 = 同上 × 2（对齐 Lv1 强化 100 纳米 vs Common 1★→2★ 50 研究）
-func _calculate_dismantle_gains(card: CardResource) -> Dictionary:
-	var rarity: String = String(card.rarity).to_lower()
-	if rarity.is_empty():
-		rarity = "common"
-	var base_cost: int = StarConfig.get_research_cost_for_next_star(1, rarity)
-	var scaled: float = float(base_cost) * 0.35
-	return {
-		"research": maxi(1, int(scaled)),
-		"nano": maxi(1, int(scaled * 2.0)),
-	}
 
-## 获取拆解预览收益（不执行拆解，供 UI 确认弹窗使用）
-func get_dismantle_preview(card: CardResource) -> Dictionary:
-	if card == null:
-		return {"research": 0, "nano": 0, "name": ""}
-	var gains := _calculate_dismantle_gains(card)
-	gains["name"] = String(card.display_name) if not String(card.display_name).is_empty() else String(card.card_id)
-	return gains
 
 func _show_toast_success(message: String) -> void:
 	var toast_mgr: Node = _get_autoload_node("ToastManager")

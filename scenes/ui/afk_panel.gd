@@ -90,6 +90,12 @@ func _ready() -> void:
 	# 初始化 slot 样式
 	for pnl in slot_panels:
 		_apply_slot_style(pnl, false)
+		# B3: 可点击槽位补手型光标 + 悬停提亮（同底栏槽位 P1-5 模式，只动 rgb）
+		pnl.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+		pnl.mouse_entered.connect(func() -> void:
+			pnl.modulate = Color(1.18, 1.18, 1.18, pnl.modulate.a))
+		pnl.mouse_exited.connect(func() -> void:
+			pnl.modulate = Color(1.0, 1.0, 1.0, pnl.modulate.a))
 	
 	# 绑定 slot 点击
 	for i in range(4):
@@ -110,6 +116,8 @@ func _input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and event.keycode == KEY_ESCAPE:
 		if visible:
 			_on_close()
+			# P0: 不 consume 会让 main._close_top_overlay 再关一层（ESC 一次关两层）
+			get_viewport().set_input_as_handled()
 
 
 func set_afk_manager(manager: AFKModeManager) -> void:
@@ -250,6 +258,9 @@ func _open() -> void:
 	visible = true
 	backdrop.visible = true
 	panel.visible = true
+	# B4: 首次打开挂机模式给一句话说明（学黑猴首解锁引导，仅弹一次）
+	FeatureUnlockPopup.show_once("afk_mode", "挂机模式",
+		"选好关卡后自动循环战斗：离线也能推进进度，收益回来一键领取。")
 	# 自动填入槽位：循环模式下若所有槽位均未关联，且 GameManager 有当前关卡，
 	# 则自动将当前关卡填入第一个空槽位。这样用户在世界地图选关后打开挂机面板
 	# 可直接开始循环，无需手动点选槽位。

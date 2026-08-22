@@ -211,12 +211,10 @@ func calculate_power_rating() -> int:
 	if lp and lp.has_method("get_max_unlocked_level"):
 		max_level = lp.get_max_unlocked_level()
 	power += max_level * 3
-	# 2. 卡牌战力加成：按拥有的卡牌副本数贡献（v6.11: 原 battle_star 已移除）
-	if BlueprintManager and BlueprintManager.has_method("get_all_blueprint_ids_with_copies"):
-		var card_map: Dictionary = BlueprintManager.get_all_blueprint_ids_with_copies()
-		for card_id in card_map:
-			var copies: int = int(card_map[card_id])
-			power += copies
+	# 2. 卡牌战力加成：按拥有的卡牌实例数贡献（2026-08-22 蓝图副本记账移除后改绑实例数）
+	var ir_node: Node = get_node_or_null("/root/InstanceRegistry")
+	if ir_node != null and ir_node.has_method("get_all_instance_ids"):
+		power += ir_node.get_all_instance_ids().size()
 	# 3. 相位仪加成：每级相位场经验 +1
 	var pim: Node = get_node_or_null("/root/PhaseInstrumentManager")
 	if pim and pim.has_method("get_phase_field_level"):
@@ -514,12 +512,10 @@ func _on_battle_ended(player_won: bool) -> void:
 		lb.update_battle_stats(player_won, dmg, elapsed_sec)
 	if lb != null and lb.has_method("update_level_progress") and player_won:
 		lb.update_level_progress(current_level, victory_stars)
-	if lb != null and lb.has_method("update_blueprint_count") and BlueprintManager:
-		var bp_count: int = 0
-		if BlueprintManager.has_method("get_unlocked_blueprint_count"):
-			bp_count = BlueprintManager.get_unlocked_blueprint_count()
-		elif "blueprint_stars" in BlueprintManager:
-			bp_count = (BlueprintManager.blueprint_stars as Dictionary).size()
+	# 收集卡种数（2026-08-22：原蓝图解锁计数已随蓝图体系移除，改数拥有过的卡种）
+	if lb != null and lb.has_method("update_blueprint_count"):
+		var am_lb: Node = get_node_or_null("/root/AchievementManager")
+		var bp_count: int = am_lb.collection_stats["unique_blueprints"].size() 			if (am_lb != null and am_lb.get("collection_stats") is Dictionary and (am_lb.get("collection_stats") as Dictionary).has("unique_blueprints")) else 0
 		lb.update_blueprint_count(bp_count)
 
 	# 保存战斗奖励摘要
@@ -537,13 +533,12 @@ func _on_battle_ended(player_won: bool) -> void:
 		"collected_rewards": _battle_reward_collector.duplicate(true),
 	}
 	# v7.x 性能：蓝图片段/知识收益计算延后到本帧 idle 队列执行。
-	# 根因：_calculate_blueprint_fragment_gain 遍历全部蓝图 ID（可达 133 个）做 copies 差值，
-	# _calculate_knowledge_gain 遍历 KNOWLEDGE_KEYS 快照，_get_recon_fragment_bonus_multiplier
-	# 遍历相位仪 loadouts——三项叠在 battle_ended 信号栈（帧C，与 20+ 监听者同帧）。
+	# 根因：_calculate_knowledge_gain 遍历 KNOWLEDGE_KEYS 快照
+	# 叠在 battle_ended 信号栈（帧C，与 20+ 监听者同帧）。
 	# 延后后：本帧先组装 reward_summary 主体，渲染一帧（玩家看到胜利瞬间），idle 队列再补字段。
 	# 时序安全：call_deferred 是 FIFO，本行入队早于下方 main_scene.call_deferred("show_battle_result")
 	# （若进入该分支），故面板构造时 last_battle_reward_summary 已含这三组字段，无需面板内延迟刷新。
-	call_deferred("_deferred_calculate_fragment_and_knowledge_gain")
+	call_deferred("_deferred_calculate_knowledge_gain")
 
 	# HUD 重构：结算入口由主场景 `show_battle_result` 弹出 battle_result_dialog（OK 时 claim_drops）。
 	# 若主场景未实现该方法（历史场景/测试），胜利后须仍领取 DropManager 待领掉落，否则会永久卡在 pending。
@@ -1090,35 +1085,6 @@ func _grant_basic_resources_for_current_level() -> void:
 	return
 
 
-func _get_recon_fragment_bonus_multiplier() -> float:
-	if not PhaseInstrumentManager or not PhaseInstrumentManager.has_method("get_loadouts"):
-		return 0.0
-	var loadouts: Array = PhaseInstrumentManager.get_loadouts()
-	var slot_card_ids: Array = []
-	if PhaseInstrumentManager.has_method("get_slot_card_ids"):
-		slot_card_ids = PhaseInstrumentManager.get_slot_card_ids()
-	var recon_platforms: int = 0
-	var platform_types_seen: Array = []
-	for l_raw in loadouts:
-		if not (l_raw is Dictionary):
-			continue
-		var loadout: Dictionary = l_raw
-		var platform: CardResource = loadout.get("platform", null)
-		if platform == null:
-			continue
-		platform_types_seen.append(int(platform.platform_type))
-		# v6.6: 侦察单位识别——旧 platform_type 检查 + card_id 命名匹配
-		var is_recon := false
-		if platform.platform_type == 5 or platform.platform_type == 10:
-			is_recon = true
-		elif "scout" in platform.card_id.to_lower() or "recon" in platform.card_id.to_lower() \
-			or "stealth" in platform.card_id.to_lower() or "spectre" in platform.card_id.to_lower() \
-			or "drone" in platform.card_id.to_lower():
-			is_recon = true
-		if is_recon:
-			recon_platforms += 1
-	var bonus: float = minf(RECON_FRAGMENT_BONUS_CAP, float(recon_platforms) * RECON_FRAGMENT_BONUS_PER_PLATFORM)
-	return bonus
 
 func _grant_phase_field_xp_for_victory() -> void:
 	if not PhaseInstrumentManager:
@@ -1189,25 +1155,6 @@ func _snapshot_battle_reward_baselines() -> void:
 	_ensure_plm()
 	if _plm and _plm.has_method("get_knowledge_snapshot"):
 		_knowledge_before_battle = _plm.get_knowledge_snapshot()
-	# v7.x 性能：蓝图片段改用 BlueprintManager 脏集增量计算（见 _calculate_blueprint_fragment_gain），
-	# 不再开战时全量快照 ~133 蓝图。此处清空脏集，确保只统计本场战斗的增量。
-	if BlueprintManager and BlueprintManager.has_method("take_blueprint_copy_delta"):
-		BlueprintManager.take_blueprint_copy_delta()
-
-func _calculate_blueprint_fragment_gain() -> Dictionary:
-	# v7.x 性能：改读 BlueprintManager 脏集增量（仅变动过的卡，通常 0-5 张），
-	# 替代旧的全量 ~133 蓝图 before/after diff。
-	if not BlueprintManager or not BlueprintManager.has_method("take_blueprint_copy_delta"):
-		return {"total": 0, "items": []}
-	var deltas: Dictionary = BlueprintManager.take_blueprint_copy_delta()
-	var total_gain: int = 0
-	var items: Array = []
-	for card_id in deltas:
-		var gain: int = int(deltas[card_id])
-		if gain > 0:
-			total_gain += gain
-			items.append({"id": String(card_id), "gain": gain})
-	return {"total": total_gain, "items": items}
 
 func _calculate_knowledge_gain() -> Dictionary:
 	var total_gain: int = 0
@@ -1226,20 +1173,14 @@ func _calculate_knowledge_gain() -> Dictionary:
 	return {"total": total_gain, "items": items}
 
 
-## v7.x 性能：蓝图片段/知识收益/侦查加成的延迟计算（原在 _on_battle_ended 帧C同步执行）。
+## v7.x 性能：知识收益的延迟计算（原在 _on_battle_ended 帧C同步执行）。
 ## 由 _on_battle_ended 末尾 call_deferred 触发，在 idle 队列里补齐 last_battle_reward_summary
-## 的 fragment/knowledge/recon 字段。FIFO 保证此函数在 show_battle_result 之前执行，
-## 面板构造时字段已就绪。
-func _deferred_calculate_fragment_and_knowledge_gain() -> void:
-	var battle_fragment_gain: Dictionary = _calculate_blueprint_fragment_gain()
+## 的 knowledge 字段。FIFO 保证此函数在 show_battle_result 之前执行，面板构造时字段已就绪。
+## 蓝图片段/侦查片段加成字段已随蓝图体系移除（2026-08-22）。
+func _deferred_calculate_knowledge_gain() -> void:
 	var battle_knowledge_gain: Dictionary = _calculate_knowledge_gain()
-	last_battle_reward_summary["fragment_gain_total"] = int(battle_fragment_gain.get("total", 0))
-	last_battle_reward_summary["fragment_gain_items"] = battle_fragment_gain.get("items", [])
 	last_battle_reward_summary["knowledge_gain_total"] = int(battle_knowledge_gain.get("total", 0))
 	last_battle_reward_summary["knowledge_gain_items"] = battle_knowledge_gain.get("items", [])
-	var recon_bonus: float = _get_recon_fragment_bonus_multiplier()
-	last_battle_reward_summary["recon_fragment_bonus_percent"] = int(round(recon_bonus * 100.0))
-	last_battle_reward_summary["recon_fragment_multiplier"] = 1.0 + recon_bonus
 
 
 # ═══════════════════════════════════════════════════════════════════

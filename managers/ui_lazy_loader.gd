@@ -21,12 +21,6 @@ func _ready() -> void:
 			"node_name": "BackpackPanel",
 			"autoload": false
 		},
-		"manufacture": {
-			"scene": "res://scenes/ui/manufacture_panel.tscn",
-			"parent_path": "PopupLayer/ManufactureOverlay/CenterContainer",
-			"node_name": "ManufacturePanel",
-			"autoload": false
-		},
 		"quest": {
 			"scene": "res://scenes/ui/quest_panel.tscn",
 			"parent_path": "PopupLayer/QuestOverlay/CenterContainer",

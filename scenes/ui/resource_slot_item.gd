@@ -8,6 +8,7 @@ class_name ResourceSlotItem
 const BasicResources = preload("res://data/basic_resources.gd")
 const CardFrameUi = preload("res://scripts/card_frame_ui.gd")
 const DesignTokens = preload("res://resources/design_tokens.gd")
+const GC = preload("res://resources/game_constants.gd")
 
 ## v9.0: 槽位尺寸——改造用 96×108，符文用 86×116（对齐 HTML 设计稿）
 const SLOT_SIZE_MOD: Vector2 = Vector2(96, 108)
@@ -82,8 +83,12 @@ func _on_gui_input(event: InputEvent) -> void:
 		if mb.button_index == MOUSE_BUTTON_LEFT and mb.pressed:
 			rune_clicked.emit(resource_id)
 
-## v7.x hover 动效：上浮 + 发光增强；Legendary/Mythic 额外脉冲（仅稀有度瓷砖启用）
+## v7.x hover 动效：上浮 + 发光增强；Legendary/Mythic 额外脉冲
+## B3: 收敛到仅 RUNE（可点击）启用——LORE 情报瓷砖点击无响应，悬停却会上浮发光，
+## 属"不可点击处有反馈"的反模式（原文：玩家会以为卡了）。LORE 的解释走 tooltip。
 func _on_mouse_entered() -> void:
+	if slot_type != SlotType.RUNE:
+		return
 	if _rarity.is_empty():
 		return  # 资源/属性提升无稀有度，无 hover 效果
 	_is_hovering = true
@@ -175,6 +180,12 @@ func set_data(id: String, stack_amount: int, type: SlotType = SlotType.RESOURCE,
 		z_index = 0
 		scale = Vector2(1.0, 1.0)
 		position.y = _hover_base_pos_y
+	# B3: 光标语义——仅可点击的符文瓷砖给手型（原文：让玩家分辨哪里能点）；
+	# 全局 node_added 钩子只覆盖 BaseButton，本控件是 PanelContainer 需手动设。
+	mouse_default_cursor_shape = (
+		Control.CURSOR_POINTING_HAND if slot_type == SlotType.RUNE
+		else Control.CURSOR_ARROW
+	)
 
 	var name_label: Label = get_node_or_null("Margin/VBox/NameLabel")
 	var amount_label: Label = get_node_or_null("Margin/VBox/AmountLabel")
@@ -440,15 +451,9 @@ func _clear_rune_decorations() -> void:
 
 
 ## v9.0: 改造稀有度色值
+## C1: 透传全项目唯一权威源 GC.get_rarity_color（禁止本地副本，fallback 枪铁灰非中灰）
 func _mod_rarity_color(rarity: String) -> Color:
-	match rarity:
-		"common":    return Color(0.420, 0.463, 0.569, 1.0)
-		"uncommon":  return Color(0.133, 0.773, 0.369, 1.0)
-		"rare":      return Color(0.220, 0.741, 0.973, 1.0)
-		"epic":      return Color(0.753, 0.518, 0.988, 1.0)
-		"legendary": return Color(0.961, 0.620, 0.043, 1.0)
-		"mythic":    return Color(0.937, 0.267, 0.267, 1.0)
-		_: return Color(0.5, 0.5, 0.5, 1.0)
+	return GC.get_rarity_color(rarity)
 
 
 ## v9.2: 改造图标缺失时的兜底符号（用兵种 Unicode 字符填充）

@@ -130,3 +130,5 @@ func _input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and event.keycode == KEY_ESCAPE:
 		if visible:
 			_on_cancel()
+			# P0: 不 consume 会让 main._close_top_overlay 再关一层（ESC 一次关两层）
+			get_viewport().set_input_as_handled()

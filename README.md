@@ -42,5 +42,5 @@ Godot_v4.5.1-stable_win64.exe --path .
 # GdUnit4 全套件
 Godot_v4.5.1-stable_win64.exe --headless --rendering-driver opengl3 --path . --script tests/gdunit4_runner.gd
 # 快速冒烟（无 GdUnit 依赖）
-Godot_v4.5.1-stable_win64.exe --headless --rendering-driver opengl3 --path . --script tests/star_config_smoke.gd
+Godot_v4.5.1-stable_win64.exe --headless --rendering-driver opengl3 --path . --script tests/master_power_smoke.gd
 ```

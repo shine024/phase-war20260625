@@ -74,9 +74,6 @@ func _ready() -> void:
 			SignalBus.active_law_cast_at.connect(_on_cast)
 		if not SignalBus.battle_ended.is_connected(_on_battle_ended):
 			SignalBus.battle_ended.connect(_on_battle_ended)
-		if SignalBus.has_signal("blueprint_unlocked"):
-			if not SignalBus.blueprint_unlocked.is_connected(_on_blueprint_unlocked):
-				SignalBus.blueprint_unlocked.connect(_on_blueprint_unlocked)
 		if SignalBus.has_signal("achievement_unlocked"):
 			if not SignalBus.achievement_unlocked.is_connected(_on_achievement_unlocked):
 				SignalBus.achievement_unlocked.connect(_on_achievement_unlocked)
@@ -136,8 +133,6 @@ func _exit_tree() -> void:
 			SignalBus.active_law_cast_at.disconnect(_on_cast)
 		if SignalBus.battle_ended.is_connected(_on_battle_ended):
 			SignalBus.battle_ended.disconnect(_on_battle_ended)
-		if SignalBus.has_signal("blueprint_unlocked") and SignalBus.blueprint_unlocked.is_connected(_on_blueprint_unlocked):
-			SignalBus.blueprint_unlocked.disconnect(_on_blueprint_unlocked)
 		if SignalBus.has_signal("achievement_unlocked") and SignalBus.achievement_unlocked.is_connected(_on_achievement_unlocked):
 			SignalBus.achievement_unlocked.disconnect(_on_achievement_unlocked)
 		if SignalBus.has_signal("quest_completed") and SignalBus.quest_completed.is_connected(_on_quest_completed):
@@ -417,8 +412,6 @@ func _on_cast(_law_id: String, _world_pos: Vector2) -> void:
 func _on_battle_ended(player_won: bool) -> void:
 	play_sfx("win" if player_won else "lose")
 
-func _on_blueprint_unlocked(_card_id: String) -> void:
-	play_sfx("blueprint_unlock")
 
 # v7.x 修复: 签名对齐 CardEnhancementManager.enhancement_completed(success, card_id, action, message)。
 # 原声明第3参为 Dictionary（错配 String action），即使连接也会运行时报错；且从未 connect（死代码）。

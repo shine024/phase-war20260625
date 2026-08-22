@@ -41,7 +41,7 @@ description: UI 审查与调整工作流——按"便捷性>易用性>包容性>
 
 站在用户角度思考。**蠢办法：设计完成后拿给一个不玩游戏的人看，连他都看懂就是成功。**
 
-## 二、项目已落地接入点地图（2026-08-22 批次后现状）
+## 二、项目已落地接入点地图（2026-08-22 批次二后现状）
 
 | 需求 | 接入点 | 说明 |
 |------|--------|------|
@@ -53,13 +53,23 @@ description: UI 审查与调整工作流——按"便捷性>易用性>包容性>
 | 成就解锁提示 | ToastManager 已连 `SignalBus.achievement_unlocked` | 自动 toast，无需接线 |
 | 手型光标 | `main.gd _on_node_added`（全局 BaseButton 自动）+ 非 Button 控件手动设 | 新非 Button 可点击控件记得手动设 |
 | 按钮四态 | `PanelStyles.make_button_styles(accent, kind)` | 新按钮一律走工厂，别手写单态 |
-| ESC 面板栈 | `main.gd _close_top_overlay`（关最上层→战斗中切暂停） | 新 overlay 记得加进 `_all_overlays()` 注册表 |
+| ESC 面板栈 | `main.gd _close_top_overlay`（关最上层→战斗中切暂停） | 新 overlay 记得加进 `_all_overlays()` 注册表；**自处理 ESC 的面板必须 `set_input_as_handled()`**，否则一次关两层（批次二 P0 教训：afk/feature_unlock 等 4 处） |
+| 拖拽红绿反馈 | `InstrumentBarDrag.card_matches_slot_color(card, color)`（静态公共） | 背包拖拽悬停即校验：可放绿框/禁放红框（背包乱斗标准）；新拖拽目标复用此函数 |
+| 滚动条四态 | `resources/default_theme.tres`（VScrollBar/HScrollBar 全局） | 一次覆盖全部面板；新主题别绕开全局主题 |
+| 点击音效 | `SignalBus.play_sound.emit("button"/"card_pickup"/"card_place"/"error"/"enhance")` | 部署/施法/拖起=card_pickup；装备成功=card_place；失败=error；列表行=button |
 | 中文字体 | `DesignTokens.ensure_cjk_fallback()`（main/title_screen 已调用） | 新增打包字体要加进该函数的列表 |
-| 字号下限 | 10px（纯数字/英文），中文建议 ≥12 | token 走 `DT.FONT_SIZE_*` 七档 |
-| 首次解锁引导 | `FeatureUnlockPopup.show_once(key, title, desc)` | key 一次性持久化于 user://feature_unlock_seen.json |
+| 字号规范 | 10px 仅限纯数字/英文角标；**中文 ≥12；11px 禁用**；其余字号取双数（13/14 小字除外） | token 走 `DT.FONT_SIZE_*` 七档 |
+| 动效时长 | `DT.MOTION_FADE_IN(0.2)/FADE_OUT(0.15)/POP(0.25)` | 淡入 SINE+EASE_OUT、弹出 BACK+EASE_OUT、淡出 SINE+EASE_IN；必须尊重 `DT.is_motion_reduce()` |
+| 资源五色 | `DT.COLOR_RES_ENERGY/NANO/RESEARCH/ALLOY/CRYSTAL` | 资源相关 UI 一律取 token，别手抄 |
+| 稀有度配色 | `GC.get_rarity_color(rarity)`（game_constants.gd，全项目唯一） | **禁止本地副本**；含 uncommon 键，fallback 枪铁灰 |
+| 面板签名色 | `DT.get_panel_accent(key)` / `DT.get_system_color(key)` | PANEL_ACCENTS 已含 help/player_master/phase_master_skill/mvp/backpack |
+| 面板根框架 | `PanelStyles.make_panel_frame(accent)` | 四养成面板（batch2 D1）+ 16 个已迁移面板统一；新面板根 Panel 必走工厂 |
+| 圆角档位 | 面板 12 / 按钮 6 / chip 4 / 格子 3 | 禁新增 1/2/5/8/10 档 |
+| 首次解锁引导 | `FeatureUnlockPopup.show_once(key, title, desc)` | key 一次性持久化；已接：phase_field/law_cast/afk_mode/evolution_panel |
 | 战斗快捷键 | 1-9 部署（`bottom_instrument_bar.begin_deploy_from_slot_index`） | 与点击槽位同链路（instance_id 精确匹配） |
 | 宽高比 | project.godot `stretch/aspect="expand"` | 16:10/带鱼屏不黑边 |
 | 敌方情报浏览 | 情报中心第 4 页"敌方情报"（`intelligence_hub_panel._setup_intel_tab`） | IntelManual 条目唯一浏览入口 |
+| 排行榜详情构建 | `LeaderboardDetailBuilders`（scenes/ui/leaderboard/） | panel/presenter 共享，改一处生效两处 |
 
 ## 三、工作流步骤
 
@@ -72,10 +82,20 @@ description: UI 审查与调整工作流——按"便捷性>易用性>包容性>
 ## 四、新面板/新功能 UI 检查单
 
 - [ ] 每个图标/词条/数值 → 就地 tooltip（悬停即解释）
-- [ ] 每个可点击 → 手型光标 + hover 态（Button 自动；PanelContainer/Label 手动）
+- [ ] 每个可点击 → 手型光标 + hover 态（Button 自动；PanelContainer/Label 手动）；不可点击处零反馈
 - [ ] 每个操作 → 成功与失败各有反馈（toast + 音效；失败要给**具体原因**）
 - [ ] 每个新术语 → 不查手册就能在界面内看到解释
-- [ ] 新 overlay → 注册进 `main._all_overlays()`，ESC 能关
+- [ ] 新 overlay → 注册进 `main._all_overlays()`，ESC 能关；自处理 ESC 必须 consume
 - [ ] 首次出现 → `FeatureUnlockPopup.show_once` 一句话说明
 - [ ] 高频操作 → 有快捷键或批量途径
-- [ ] 字号 ≥10、颜色走 token、样式走工厂
+- [ ] 字号：中文 ≥12、11px 禁用、除 13/14 外取双数；颜色走 token、样式走工厂
+- [ ] 动效走 `DT.MOTION_*` 三档 + 尊重 `is_motion_reduce()`
+- [ ] 根 Panel 走 `make_panel_frame(accent)`，圆角按档位（12/6/4/3）
+- [ ] 拖拽目标悬停即校验红/绿（复用 `card_matches_slot_color`）
+
+> 批次二（2026-08-22 下午）：P0 修复 4 项（mvp uncommon 键 / 拖拽禁放红框 / ESC 修复包 6 处 / 装备失败反馈）、
+> P1 易用性 5 项（全局滚动条四态 / 音效补齐 / 手型 hover / afk+evolution 首解锁弹窗 / 背包选中高亮）、
+> P2 一致性 8 项（稀有度单一源 / COLOR_RES_*+MOTION_*+PANEL_ACCENTS / 字号清理 ~150 处 / 高饱和降色 /
+> evolution THEME_* 收口 / 按钮工厂迁移 / 弹窗动效统一 / 飘字降刺眼）、
+> P3 结构 5 项（四面板根框架统一 / 排行榜构建器去重 / DnD 死链删除 / 成就+帮助面板补入口 / SKILL.md 更新）。
+> 验证：tests/ui_batch2_validation.gd（37 文件编译 + 断言 ALL PASS）。

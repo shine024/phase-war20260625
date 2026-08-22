@@ -12,6 +12,7 @@ class_name IntelRevealPopup
 ## 展示的揭示事件已不含 dimension 区分（每敌人每档仅1条事件）。
 
 const IntelDimensions = preload("res://data/intel_dimensions.gd")
+const DT = preload("res://resources/design_tokens.gd")
 
 signal all_reveals_shown()
 
@@ -91,7 +92,7 @@ func _build_ui() -> void:
 	title_lbl.name = "TitleLabel"
 	title_lbl.text = ""
 	title_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	title_lbl.add_theme_font_size_override("font_size", 15)
+	title_lbl.add_theme_font_size_override("font_size", 20)
 	title_lbl.add_theme_color_override("font_color", Color(0.95, 0.8, 1.0, 1.0))
 	vbox.add_child(title_lbl)
 
@@ -101,7 +102,7 @@ func _build_ui() -> void:
 	desc_lbl.text = ""
 	desc_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	desc_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	desc_lbl.add_theme_font_size_override("font_size", 11)
+	desc_lbl.add_theme_font_size_override("font_size", 12)
 	desc_lbl.add_theme_color_override("font_color", Color(0.75, 0.7, 0.85, 1.0))
 	vbox.add_child(desc_lbl)
 
@@ -205,7 +206,7 @@ func _show_current_reveal() -> void:
 				var r_lbl := Label.new()
 				r_lbl.text = "→ " + r_text
 				r_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-				r_lbl.add_theme_font_size_override("font_size", 11)
+				r_lbl.add_theme_font_size_override("font_size", 12)
 				r_lbl.add_theme_color_override("font_color", Color(0.4, 0.95, 0.5, 1.0))
 				reward_box.add_child(r_lbl)
 
@@ -216,10 +217,12 @@ func _show_current_reveal() -> void:
 		else:
 			page_lbl.text = ""
 
-	## 入场动画
+	## 入场动画（C7: 统一 DT.MOTION_FADE_IN + SINE，原 0.4 裸 linear；尊重减少动效）
 	modulate = Color(1.0, 1.0, 1.0, 0.0)
-	var tween := create_tween()
-	tween.tween_property(self, "modulate", Color(1.0, 1.0, 1.0, 1.0), 0.4)
+	if not DT.is_motion_reduce():
+		var tween := create_tween()
+		tween.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+		tween.tween_property(self, "modulate", Color(1.0, 1.0, 1.0, 1.0), DT.MOTION_FADE_IN)
 
 	## 重启自动关闭计时器
 	_auto_close_timer.stop()
@@ -228,8 +231,13 @@ func _show_current_reveal() -> void:
 func _hide_popup() -> void:
 	_is_showing = false
 	_auto_close_timer.stop()
+	if DT.is_motion_reduce():
+		modulate = Color(1.0, 1.0, 1.0, 0.0)
+		visible = false
+		return
 	var tween := create_tween()
-	tween.tween_property(self, "modulate", Color(1.0, 1.0, 1.0, 0.0), 0.3)
+	tween.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+	tween.tween_property(self, "modulate", Color(1.0, 1.0, 1.0, 0.0), DT.MOTION_FADE_OUT)
 	tween.tween_callback(func(): visible = false)
 
 func _on_close_pressed() -> void:

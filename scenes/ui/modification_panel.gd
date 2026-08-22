@@ -9,12 +9,12 @@ signal closed
 
 const IntelManualItems = preload("res://data/intel_manual_items.gd")
 const BlueprintDefinitions = preload("res://data/blueprint_definitions.gd")
-const StarConfig = preload("res://data/blueprint_star_config.gd")
 const GC = preload("res://resources/game_constants.gd")
 const ModEffectLabels = preload("res://scripts/ui/mod_effect_labels.gd")
 
 # v7.x UI 重设计基建
 const DT = preload("res://resources/design_tokens.gd")
+const PanelStyles = preload("res://scripts/ui/panel_styles.gd")
 const GeoShapes = preload("res://scripts/ui/geo_shapes.gd")
 # PowerTiers / ModManager 有 class_name 全局注册，无需 preload
 
@@ -86,6 +86,11 @@ func _compute_card_power_once() -> float:
 	return EvolutionHelpers.estimate_power_score(key, BlueprintManager)
 
 func _ready() -> void:
+	# D1: 根框架统一 PanelStyles 签名框（覆盖 BgPanel 的 tscn 手写样式）
+	var bg_panel := get_node_or_null("BgPanel")
+	if bg_panel is Control:
+		(bg_panel as Control).add_theme_stylebox_override("panel",
+			PanelStyles.make_panel_frame(DT.get_system_color("modify")))
 	# 连接关闭按钮
 	if close_button:
 		close_button.pressed.connect(_on_close)
@@ -315,7 +320,7 @@ func _refresh_hover_card(pc: PanelContainer, card: CardResource) -> void:
 		power_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		var pl := Label.new()
 		pl.text = "战力"
-		pl.add_theme_font_size_override("font_size", 11)
+		pl.add_theme_font_size_override("font_size", 12)
 		pl.add_theme_color_override("font_color", Color(0.55, 0.6, 0.7, 0.8))
 		pl.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		power_row.add_child(pl)
@@ -335,7 +340,7 @@ func _refresh_hover_card(pc: PanelContainer, card: CardResource) -> void:
 	var mod_count: int = card.mods.size() if "mods" in card else 0
 	var mod_lbl := Label.new()
 	mod_lbl.text = "已装改造  %d / 9" % mod_count
-	mod_lbl.add_theme_font_size_override("font_size", 11)
+	mod_lbl.add_theme_font_size_override("font_size", 12)
 	mod_lbl.add_theme_color_override("font_color", DT.COLOR_CYAN_TECH_SOFT if mod_count > 0 else Color(0.5, 0.55, 0.65, 0.7))
 	vbox.add_child(mod_lbl)
 	pc.add_child(vbox)
@@ -593,7 +598,7 @@ func _create_card_item(card: CardResource, instance_card: CardResource = null) -
 	var name_label := Label.new()
 	name_label.text = display_name
 	name_label.add_theme_font_override("font", DT.get_title_font())
-	name_label.add_theme_font_size_override("font_size", 15)
+	name_label.add_theme_font_size_override("font_size", 16)
 	name_label.add_theme_color_override("font_color", Color(0.95, 0.96, 0.98, 1) if (selected_card and selected_card.instance_id == display_instance_id) else Color(0.85, 0.88, 0.94, 1))
 	name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	# 单行不换行、不截断：左栏加宽到 360 容下绝大多数卡名；超长名左对齐单行显示
@@ -618,7 +623,7 @@ func _create_card_item(card: CardResource, instance_card: CardResource = null) -
 	var meta_label := Label.new()
 	meta_label.text = "Lv.%d  ·  M%d/9" % [display_level, display_mods.size()]
 	meta_label.add_theme_font_override("font", DT.get_body_font())
-	meta_label.add_theme_font_size_override("font_size", 11)
+	meta_label.add_theme_font_size_override("font_size", 12)
 	meta_label.add_theme_color_override("font_color", Color(0.55, 0.6, 0.7, 0.85))
 	meta_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	info.add_child(meta_label)
@@ -838,7 +843,7 @@ func _create_mod_item(mod_id: String, mod_data: Dictionary) -> Control:
 		var effect_lbl := Label.new()
 		effect_lbl.text = effect_summary[0]
 		effect_lbl.add_theme_font_override("font", DT.get_body_font())
-		effect_lbl.add_theme_font_size_override("font_size", 11)
+		effect_lbl.add_theme_font_size_override("font_size", 12)
 		effect_lbl.add_theme_color_override("font_color", DT.COLOR_CYAN_TECH_SOFT if is_applicable else Color(0.5, 0.55, 0.65, 0.7))
 		effect_lbl.clip_text = false
 		effect_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -873,7 +878,7 @@ func _create_mod_item(mod_id: String, mod_data: Dictionary) -> Control:
 	var status_label := Label.new()
 	status_label.text = status_text
 	status_label.add_theme_font_override("font", DT.get_title_font())
-	status_label.add_theme_font_size_override("font_size", 11)
+	status_label.add_theme_font_size_override("font_size", 12)
 	status_label.add_theme_color_override("font_color", status_col)
 	status_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	status_label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
@@ -1344,7 +1349,7 @@ func _make_sim_section_label(text: String) -> Label:
 	var lbl := Label.new()
 	lbl.text = text
 	lbl.add_theme_font_override("font", DT.get_title_font_bold())
-	lbl.add_theme_font_size_override("font_size", 11)
+	lbl.add_theme_font_size_override("font_size", 12)
 	lbl.add_theme_color_override("font_color", Color(0.7, 0.75, 0.85, 0.9))
 	return lbl
 
@@ -1355,14 +1360,14 @@ func _make_sim_kv(key: String, val: String, val_color: Color) -> HBoxContainer:
 	row.add_theme_constant_override("separation", 6)
 	var kl := Label.new()
 	kl.text = key
-	kl.add_theme_font_size_override("font_size", 11)
+	kl.add_theme_font_size_override("font_size", 12)
 	kl.add_theme_color_override("font_color", Color(0.55, 0.6, 0.7, 0.85))
 	kl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	row.add_child(kl)
 	var vl := Label.new()
 	vl.text = val
 	vl.add_theme_font_override("font", DT.get_title_font_bold())
-	vl.add_theme_font_size_override("font_size", 11)
+	vl.add_theme_font_size_override("font_size", 12)
 	vl.add_theme_color_override("font_color", val_color)
 	vl.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	row.add_child(vl)
@@ -1498,7 +1503,7 @@ func _refresh_installed_list(installed_list: Control) -> void:
 		if is_weapon_mod:
 			var toggle_btn := Button.new()
 			toggle_btn.text = "启用" if not enabled else "禁用"
-			toggle_btn.add_theme_font_size_override("font_size", 11)
+			toggle_btn.add_theme_font_size_override("font_size", 12)
 			toggle_btn.custom_minimum_size = Vector2(54, 0)
 			# 绑定切换回调（用 lambda 捕获 mod_index）
 			var captured_index := mod_index
@@ -1531,7 +1536,7 @@ func _refresh_installed_list(installed_list: Control) -> void:
 		if not effect_lines.is_empty():
 			var effect_lbl := Label.new()
 			effect_lbl.text = " · ".join(effect_lines)
-			effect_lbl.add_theme_font_size_override("font_size", 11)
+			effect_lbl.add_theme_font_size_override("font_size", 12)
 			if enabled:
 				effect_lbl.add_theme_color_override("font_color", Color(0.65, 0.78, 0.62, 0.95))
 			else:

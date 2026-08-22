@@ -4,6 +4,7 @@ extends PanelContainer
 ##   HBox > RankLabel, NameLabel, LevelLabel, FactionLabel, WinsLabel
 
 const CompanyDefs = preload("res://data/company_definitions.gd")  # 统一阵营色来源
+const DT = preload("res://resources/design_tokens.gd")
 
 @onready var _rank_label: Label = %RankLabel
 @onready var _name_label: Label = %NameLabel
@@ -20,8 +21,9 @@ func setup(data: Dictionary) -> void:
 		2: _rank_label.text = "\u2461"  # ②
 		3: _rank_label.text = "\u2462"  # ③
 		_: _rank_label.text = str(rank)
+	# C4: 前三名纯金 → DT.COLOR_GOLD
 	_rank_label.add_theme_color_override("font_color",
-		Color(1.0, 0.843, 0.0, 1) if rank <= 3 else Color(0.65, 0.65, 0.65, 1))
+		DT.COLOR_GOLD if rank <= 3 else Color(0.65, 0.65, 0.65, 1))
 
 	# 相位师名称
 	var fid: String = data.get("preferred_faction", "")

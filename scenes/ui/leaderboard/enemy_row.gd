@@ -20,6 +20,7 @@ signal row_pressed(master_id: String)
 @onready var _winrate_label: Label = %WinrateLabel
 
 const EnemyPhaseLeaderboard = preload("res://data/enemy_phase_leaderboard.gd")
+const DT = preload("res://resources/design_tokens.gd")
 
 var _master_id: String = ""
 
@@ -31,8 +32,9 @@ func setup(entry: LeaderboardEntry) -> void:
 
 	# 排名
 	_rank_label.text = _rank_text(entry.rank)
+	# C4: 前三名纯金 → DT.COLOR_GOLD
 	_rank_label.add_theme_color_override("font_color",
-		Color(1.0, 0.843, 0.0, 1) if entry.rank <= 3 else Color(0.65, 0.65, 0.65, 1))
+		DT.COLOR_GOLD if entry.rank <= 3 else Color(0.65, 0.65, 0.65, 1))
 
 	# 名称
 	var faction_info = EnemyPhaseLeaderboard.get_faction_display_info(entry.faction)

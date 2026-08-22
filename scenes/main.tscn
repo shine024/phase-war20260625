@@ -414,33 +414,6 @@ grow_vertical = 2
 
 [node name="OccupationPanel" parent="PopupLayer/OccupationOverlay/CenterContainer" instance=ExtResource("22_occupation_panel")]
 
-[node name="ManufactureOverlay" type="Control" parent="PopupLayer"]
-visible = false
-layout_mode = 3
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-[node name="Backdrop" type="ColorRect" parent="PopupLayer/ManufactureOverlay"]
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-color = Color(0, 0, 0, 0.55)
-mouse_filter = 0
-
-
-[node name="CenterContainer" type="CenterContainer" parent="PopupLayer/ManufactureOverlay"]
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-
 [node name="MapOverlay" type="Control" parent="PopupLayer"]
 visible = false
 layout_mode = 3
@@ -585,60 +558,6 @@ grow_horizontal = 2
 grow_vertical = 2
 
 [node name="CenterContainer" type="CenterContainer" parent="PopupLayer/AchievementOverlay"]
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-
-[node name="EnhancementOverlay" type="Control" parent="PopupLayer"]
-visible = false
-layout_mode = 3
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-[node name="Backdrop" type="ColorRect" parent="PopupLayer/EnhancementOverlay"]
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-color = Color(0, 0, 0, 0.55)
-mouse_filter = 0
-
-
-[node name="CenterContainer" type="CenterContainer" parent="PopupLayer/EnhancementOverlay"]
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-
-[node name="DropsInventoryOverlay" type="Control" parent="PopupLayer"]
-visible = false
-layout_mode = 3
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-[node name="Backdrop" type="ColorRect" parent="PopupLayer/DropsInventoryOverlay"]
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-color = Color(0, 0, 0, 0.55)
-mouse_filter = 0
-
-
-[node name="CenterContainer" type="CenterContainer" parent="PopupLayer/DropsInventoryOverlay"]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0

@@ -150,7 +150,7 @@ theme_override_colors/font_color = Color(0.95, 0.96, 0.98, 1)
 [node name="TitleSub" type="Label" parent="VBoxContainer/TitleRow/TitleHBox"]
 layout_mode = 2
 text = "EVOLUTION FORGE"
-theme_override_font_sizes/font_size = 11
+theme_override_font_sizes/font_size = 12
 theme_override_colors/font_color = Color(0.533, 0.6, 0.678, 0.7)
 [node name="Spacer" type="Control" parent="VBoxContainer/TitleRow/TitleHBox"]
 layout_mode = 2
@@ -159,7 +159,7 @@ size_flags_horizontal = 3
 unique_name_in_owner = true
 layout_mode = 2
 text = ""
-theme_override_font_sizes/font_size = 11
+theme_override_font_sizes/font_size = 12
 theme_override_colors/font_color = Color(0.769, 0.71, 0.992, 1)
 [node name="BackToGrowthButton" type="Button" parent="VBoxContainer/TitleRow/TitleHBox"]
 unique_name_in_owner = true
@@ -274,7 +274,7 @@ size_flags_horizontal = 3
 unique_name_in_owner = true
 layout_mode = 2
 text = "0"
-theme_override_font_sizes/font_size = 11
+theme_override_font_sizes/font_size = 12
 theme_override_colors/font_color = Color(0.5, 0.55, 0.65, 0.8)
 [node name="ColFilter" type="HBoxContainer" parent="VBoxContainer/BodyHBox/LeftPanel/LeftVBox"]
 layout_mode = 2
@@ -359,7 +359,7 @@ size_flags_horizontal = 3
 unique_name_in_owner = true
 layout_mode = 2
 text = "0"
-theme_override_font_sizes/font_size = 11
+theme_override_font_sizes/font_size = 12
 theme_override_colors/font_color = Color(0.5, 0.55, 0.65, 0.8)
 [node name="PathScroll" type="ScrollContainer" parent="VBoxContainer/BodyHBox/MiddlePanel/MiddleVBox"]
 unique_name_in_owner = true
@@ -405,7 +405,7 @@ layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 text = "← 请从左侧选择一个进化目标"
-theme_override_font_sizes/font_size = 15
+theme_override_font_sizes/font_size = 16
 theme_override_colors/font_color = Color(0.4, 0.5, 0.65, 1)
 horizontal_alignment = 1
 vertical_alignment = 1
@@ -491,47 +491,47 @@ theme_override_colors/font_color = Color(0.55, 0.65, 0.8, 0.85)
 unique_name_in_owner = true
 layout_mode = 2
 text = "生命值：0"
-theme_override_font_sizes/font_size = 11
+theme_override_font_sizes/font_size = 12
 [node name="StatAttackLight" type="Label" parent="VBoxContainer/BodyHBox/DetailPanel/DetailInner/DetailScroll/DetailContent/StatsPanel/StatsContent"]
 unique_name_in_owner = true
 layout_mode = 2
 text = "轻装攻击：0"
-theme_override_font_sizes/font_size = 11
+theme_override_font_sizes/font_size = 12
 [node name="StatAttackArmor" type="Label" parent="VBoxContainer/BodyHBox/DetailPanel/DetailInner/DetailScroll/DetailContent/StatsPanel/StatsContent"]
 unique_name_in_owner = true
 layout_mode = 2
 text = "装甲攻击：0"
-theme_override_font_sizes/font_size = 11
+theme_override_font_sizes/font_size = 12
 [node name="StatAttackAir" type="Label" parent="VBoxContainer/BodyHBox/DetailPanel/DetailInner/DetailScroll/DetailContent/StatsPanel/StatsContent"]
 unique_name_in_owner = true
 layout_mode = 2
 text = "对空攻击：0"
-theme_override_font_sizes/font_size = 11
+theme_override_font_sizes/font_size = 12
 [node name="StatDefenseLight" type="Label" parent="VBoxContainer/BodyHBox/DetailPanel/DetailInner/DetailScroll/DetailContent/StatsPanel/StatsContent"]
 unique_name_in_owner = true
 layout_mode = 2
 text = "轻装防御：0"
-theme_override_font_sizes/font_size = 11
+theme_override_font_sizes/font_size = 12
 [node name="StatDefenseArmor" type="Label" parent="VBoxContainer/BodyHBox/DetailPanel/DetailInner/DetailScroll/DetailContent/StatsPanel/StatsContent"]
 unique_name_in_owner = true
 layout_mode = 2
 text = "装甲防御：0"
-theme_override_font_sizes/font_size = 11
+theme_override_font_sizes/font_size = 12
 [node name="StatDefenseAir" type="Label" parent="VBoxContainer/BodyHBox/DetailPanel/DetailInner/DetailScroll/DetailContent/StatsPanel/StatsContent"]
 unique_name_in_owner = true
 layout_mode = 2
 text = "对空防御：0"
-theme_override_font_sizes/font_size = 11
+theme_override_font_sizes/font_size = 12
 [node name="StatRange" type="Label" parent="VBoxContainer/BodyHBox/DetailPanel/DetailInner/DetailScroll/DetailContent/StatsPanel/StatsContent"]
 unique_name_in_owner = true
 layout_mode = 2
 text = "射程：0"
-theme_override_font_sizes/font_size = 11
+theme_override_font_sizes/font_size = 12
 [node name="StatSpeed" type="Label" parent="VBoxContainer/BodyHBox/DetailPanel/DetailInner/DetailScroll/DetailContent/StatsPanel/StatsContent"]
 unique_name_in_owner = true
 layout_mode = 2
 text = "移速：0"
-theme_override_font_sizes/font_size = 11
+theme_override_font_sizes/font_size = 12
 [node name="ResourcePanel" type="PanelContainer" parent="VBoxContainer/BodyHBox/DetailPanel/DetailInner/DetailScroll/DetailContent"]
 unique_name_in_owner = true
 visible = false
@@ -569,7 +569,7 @@ size_flags_horizontal = 3
 text = "执行进化"
 theme_override_colors/font_color = Color(0.95, 0.96, 0.98, 1)
 theme_override_colors/font_hover_color = Color(1, 1, 1, 1)
-theme_override_font_sizes/font_size = 15
+theme_override_font_sizes/font_size = 16
 theme_override_styles/normal = SubResource("StyleBoxFlat_9")
 theme_override_styles/hover = SubResource("StyleBoxFlat_10")
 disabled = true

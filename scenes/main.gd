@@ -12,13 +12,15 @@ func _play_sfx(name: String) -> void:
 ## P1-5: 运行期新增的 BaseButton 自动设手型光标（含懒加载面板/重建列表行的按钮）
 func _on_node_added(node: Node) -> void:
 	if node is BaseButton:
-		node.mouse_default_cursor_shape = Input.CURSOR_POINTING_HAND
+		node.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 
 const ActiveLawEffects = preload("res://managers/active_law_effects.gd")
 const PhaseLaws = preload("res://data/phase_laws.gd")
 const MainBattleSetup = preload("res://scripts/systems/main_battle_setup.gd")
 const MainReward = preload("res://scripts/systems/main_reward.gd")
 const ToastUtils = preload("res://scripts/toast_utils.gd")
+const DT = preload("res://resources/design_tokens.gd")
+const PanelStyles = preload("res://scripts/ui/panel_styles.gd")
 # v8.x: CardEnhancementPanelScene 已移除（强化②停用），养成改为自动经验升星 + 技能树
 const AFKModeManagerScript = preload("res://scripts/systems/afk_mode_manager.gd")
 const OfflineIdleManagerScript = preload("res://scripts/systems/offline_idle_manager.gd")
@@ -45,6 +47,9 @@ var _offline_idle_manager: OfflineIdleManager = null
 # Overlays（在 PopupLayer 下）
 @onready var quest_overlay: Control              = $PopupLayer/QuestOverlay
 @onready var store_overlay: Control              = $PopupLayer/StoreOverlay
+# D3 2026-08-22：成就/帮助面板接线（此前面板存在但无任何开启路径）
+@onready var achievement_overlay: Control        = $PopupLayer/AchievementOverlay
+@onready var help_overlay: Control               = $PopupLayer/HelpOverlay
 # v7.x: PhaseLawOverlay 已删除——符文管理合并到背包 RunesTab,底部栏"法则区"点击改为打开背包符文 Tab
 @onready var backpack_overlay: Control           = $PopupLayer/BackpackOverlay
 @onready var faction_overlay: Control            = $PopupLayer/FactionOverlay
@@ -53,11 +58,11 @@ var _offline_idle_manager: OfflineIdleManager = null
 # v7.x 面板统一：排行榜迁出 PopupPanel，改走常驻 Overlay（与其他面板同构）
 @onready var leaderboard_overlay: Control       = $PopupLayer/LeaderboardOverlay
 @onready var leaderboard_panel: Control         = $PopupLayer/LeaderboardOverlay/CenterContainer/LeaderboardPanel
-@onready var manufacture_overlay: Control      = $PopupLayer/ManufactureOverlay
 @onready var intelligence_overlay: Control     = $PopupLayer/IntelligenceOverlay
 @onready var growth_overlay: Control           = $PopupLayer/GrowthOverlay
 @onready var collection_overlay: Control       = $PopupLayer/CollectionOverlay
-@onready var enhancement_overlay: Control     = $PopupLayer/EnhancementOverlay
+# D3 2026-08-22：enhancement_overlay（强化②，v8.x 停用系统）已删除——
+# UILazyLoader 无配置、无开启方，注释型死节点。
 @onready var modification_overlay: Control    = $PopupLayer/ModificationOverlay
 @onready var evolution_overlay: Control       = $PopupLayer/EvolutionOverlay
 @onready var afk_overlay: Control             = $PopupLayer/AFKOverlay
@@ -96,7 +101,9 @@ func _ready() -> void:
 		bottom_function_bar.btn_leaderboard_pressed.connect(_on_leaderboard_pressed)
 		bottom_function_bar.btn_info_pressed.connect(_on_info_pressed)
 		bottom_function_bar.btn_map_pressed.connect(_on_map_pressed)
+		bottom_function_bar.btn_achievement_pressed.connect(_on_achievement_pressed)
 		bottom_function_bar.btn_settings_pressed.connect(_on_settings_pressed)
+		bottom_function_bar.btn_help_pressed.connect(_on_help_pressed)
 		bottom_function_bar.btn_collection_pressed.connect(_on_collection_pressed)
 		bottom_function_bar.btn_save_pressed.connect(_on_manual_save_pressed)
 		bottom_function_bar.btn_afk_pressed.connect(_on_afk_pressed)
@@ -125,7 +132,8 @@ func _ready() -> void:
 	_update_level_display()
 
 	if SignalBus:
-		SignalBus.blueprint_unlocked.connect(_on_blueprint_unlocked)
+		# 2026-08-22 修复：blueprint_unlocked 信号已随蓝图体系删除，此 connect 每次启动报
+		# SCRIPT ERROR（Invalid access on signal_bus）——删除接线与死处理器。
 		SignalBus.active_law_cast_at.connect(_on_active_law_cast_at)
 		SignalBus.battle_ended.connect(_on_battle_ended_clear_pending)
 		# v6.6 修复: toggle_* 信号原 emit 无 connect，教程引导的"打开面板"动作失效。
@@ -235,7 +243,6 @@ func _mark_main_interactive() -> void:
 func _prune_preloaded_panels() -> void:
 	var overlay_to_container_path := {
 		"backpack": "BackpackVBox/CenterRow/BackpackCenter",
-		"progression": "CenterContainer",
 		"growth": "CenterContainer",
 		"quest": "CenterContainer",
 		"store": "CenterContainer",
@@ -283,6 +290,12 @@ func _input(event: InputEvent) -> void:
 	# ESC键：P1-8 收敛为"关最上层面板"（原为一键全关，与各面板自己的逐级 ESC 行为不一致）；
 	# 无面板打开时战斗中切换暂停
 	if event.is_action("ui_cancel"):
+		# P0: 撤退确认框打开时 ESC 等价"取消"（原会穿透到底层：关面板/切暂停）
+		if _retreat_confirm != null and is_instance_valid(_retreat_confirm):
+			_retreat_confirm.queue_free()
+			_retreat_confirm = null
+			get_viewport().set_input_as_handled()
+			return
 		_close_top_overlay()
 		return
 
@@ -328,11 +341,6 @@ func _input(event: InputEvent) -> void:
 				_on_start_battle()
 
 func _connect_panel_closed_signals() -> void:
-	var manufacture_cc := get_node_or_null("PopupLayer/ManufactureOverlay/CenterContainer")
-	if manufacture_cc != null:
-		var child_names: Array[String] = []
-		for child in manufacture_cc.get_children():
-			child_names.append(str(child.name))
 	var panels := {
 		"quest":              $PopupLayer/QuestOverlay/CenterContainer/QuestPanel,
 		"store":              $PopupLayer/StoreOverlay/CenterContainer/StorePanel,
@@ -452,13 +460,6 @@ func _close_overlay(overlay: Control, panel_key: String = "") -> void:
 	if overlay == null:
 		print("[Main] _close_overlay: overlay is null for key=", panel_key)
 		return
-	# 成长面板关闭前尝试收拢可能存在的内嵌弹窗，避免输入焦点残留
-	if overlay != null and overlay == manufacture_overlay:
-		var mp: Node = manufacture_overlay.get_node_or_null("CenterContainer/CardEnhancementPanel")
-		if mp == null:
-			mp = manufacture_overlay.find_child("CardEnhancementPanel", true, false)
-		if mp and mp.has_method("close_embedded_popups"):
-			mp.close_embedded_popups()
 	# AFKPanel 与 overlay 的可见性分离（_ready 强制 visible=false）。
 	# 注意：此处不可调用 ap._close()——它发 closed 信号，而本函数常由 closed
 	# 信号经 _on_panel_closed 触达，会形成无限递归（stack overflow）。
@@ -497,10 +498,11 @@ func _on_panel_closed(key: String) -> void:
 		"collection":         _close_overlay(collection_overlay, "collection")
 		"info":               _close_overlay(intelligence_overlay, "info")
 		"occupation":         _close_overlay(get_node_or_null("PopupLayer/OccupationOverlay"), "occupation")
-		"enhancement":        _close_overlay(enhancement_overlay, "enhancement")
 		"modification":       _close_overlay(modification_overlay, "modification")
 		"evolution":          _close_overlay(evolution_overlay, "evolution")
 		"afk":                _close_overlay(afk_overlay, "afk")
+		"achievement":        _close_overlay(achievement_overlay, "achievement")
+		"help":               _close_overlay(help_overlay, "help")
 
 # ── 排行榜：v7.x 面板统一，改走常驻 Overlay（与其他面板同构） ──────
 func _toggle_leaderboard() -> void:
@@ -576,7 +578,6 @@ func _on_backpack_pressed() -> void:
 func _overlay_for_panel_key(panel_key: String) -> Control:
 	match panel_key:
 		"backpack": return backpack_overlay
-		"progression": return manufacture_overlay
 		"quest": return quest_overlay
 		"store": return store_overlay
 		"growth": return growth_overlay
@@ -584,7 +585,8 @@ func _overlay_for_panel_key(panel_key: String) -> Control:
 		"map": return map_overlay
 		"settings": return settings_overlay
 		"info": return intelligence_overlay
-		"enhancement": return enhancement_overlay
+		"achievement": return achievement_overlay
+		"help": return help_overlay
 		"modification": return modification_overlay
 		"evolution": return evolution_overlay
 		"afk": return afk_overlay
@@ -600,8 +602,6 @@ func _ensure_lazy_panel(panel_key: String) -> void:
 		"backpack":
 			lazy_id = "backpack"
 			container_path = "BackpackVBox/CenterRow/BackpackCenter"
-		"progression":
-			lazy_id = "manufacture"
 		"quest":
 			lazy_id = "quest"
 		"store":
@@ -614,8 +614,10 @@ func _ensure_lazy_panel(panel_key: String) -> void:
 			lazy_id = "settings"
 		"growth":
 			lazy_id = "growth"
-		"enhancement":
-			lazy_id = "enhancement"
+		"achievement":
+			lazy_id = "achievement"
+		"help":
+			lazy_id = "help"
 		"modification":
 			lazy_id = "modification"
 		"evolution":
@@ -729,6 +731,15 @@ func _on_toggle_modification_from_tutorial() -> void:
 
 func _on_quest_pressed() -> void:
 	_toggle_overlay(quest_overlay, "quest")
+
+## D3 2026-08-22：成就/帮助面板入口（此前无任何开启路径）
+func _on_achievement_pressed() -> void:
+	_play_sfx("button")
+	_toggle_overlay(achievement_overlay, "achievement")
+
+func _on_help_pressed() -> void:
+	_play_sfx("button")
+	_toggle_overlay(help_overlay, "help")
 
 func _on_store_pressed() -> void:
 	_play_sfx("button")
@@ -916,11 +927,8 @@ func _build_retreat_confirm_dialog() -> Control:
 	overlay.add_child(center)
 	var panel := PanelContainer.new()
 	panel.custom_minimum_size = Vector2(380, 0)
-	var sb := StyleBoxFlat.new()
-	sb.bg_color = Color(0.08, 0.05, 0.07, 0.97)
-	sb.border_color = Color(1.0, 0.35, 0.35, 0.85)
-	sb.set_border_width_all(2)
-	sb.set_corner_radius_all(8)
+	# C4/C6: 手写面板框+单态按钮（3 种红各写一遍）→ PanelStyles 工厂 + DT token
+	var sb := PanelStyles.make_panel_frame(DT.COLOR_RED_DOWN)
 	sb.content_margin_left = 20
 	sb.content_margin_right = 20
 	sb.content_margin_top = 18
@@ -934,7 +942,7 @@ func _build_retreat_confirm_dialog() -> Control:
 	title.text = "撤退"
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	title.add_theme_font_size_override("font_size", 20)
-	title.add_theme_color_override("font_color", Color(1.0, 0.45, 0.45, 1.0))
+	title.add_theme_color_override("font_color", DT.COLOR_RED_DOWN)
 	vbox.add_child(title)
 	var body := Label.new()
 	body.text = "本场战斗将判定为失败，确定撤退吗？"
@@ -949,17 +957,16 @@ func _build_retreat_confirm_dialog() -> Control:
 	var confirm_btn := Button.new()
 	confirm_btn.text = "确认撤退"
 	confirm_btn.custom_minimum_size = Vector2(120, 38)
-	confirm_btn.add_theme_color_override("font_color", Color(1.0, 0.85, 0.85, 1.0))
-	var c_style := StyleBoxFlat.new()
-	c_style.bg_color = Color(0.5, 0.12, 0.12, 0.95)
-	c_style.border_color = Color(1.0, 0.4, 0.4, 0.9)
-	c_style.set_border_width_all(1)
-	c_style.set_corner_radius_all(5)
-	confirm_btn.add_theme_stylebox_override("normal", c_style)
+	var c_styles := PanelStyles.make_button_styles(DT.COLOR_RED_DOWN, "danger")
+	for state in ["normal", "hover", "pressed", "disabled", "focus"]:
+		confirm_btn.add_theme_stylebox_override(state, c_styles[state])
 	btn_row.add_child(confirm_btn)
 	var cancel_btn := Button.new()
 	cancel_btn.text = "取消"
 	cancel_btn.custom_minimum_size = Vector2(120, 38)
+	var n_styles := PanelStyles.make_button_styles(DT.COLOR_TEXT_DIM)
+	for state in ["normal", "hover", "pressed", "disabled", "focus"]:
+		cancel_btn.add_theme_stylebox_override(state, n_styles[state])
 	btn_row.add_child(cancel_btn)
 	# 关闭确认框
 	var close := func() -> void:
@@ -985,7 +992,7 @@ func _on_world_map() -> void:
 
 # ── 关闭所有弹出面板 ─────────────────────────────────────────
 ## P1-8: 全量 overlay 注册表（原 _close_all_overlays 清单缺
-## manufacture/collection/occupation/enhancement/modification/evolution/player_master，
+## collection/occupation/enhancement/modification/evolution/player_master，
 ## 这些面板开着时按 ESC 关不掉）
 func _all_overlays() -> Array:
 	return [
@@ -999,10 +1006,10 @@ func _all_overlays() -> Array:
 		{"overlay": growth_overlay, "key": "growth"},
 		{"overlay": afk_overlay, "key": "afk"},
 		{"overlay": leaderboard_overlay, "key": "leaderboard"},
-		{"overlay": manufacture_overlay, "key": "progression"},
 		{"overlay": collection_overlay, "key": "collection"},
 		{"overlay": get_node_or_null("PopupLayer/OccupationOverlay"), "key": "occupation"},
-		{"overlay": enhancement_overlay, "key": "enhancement"},
+		{"overlay": achievement_overlay, "key": "achievement"},
+		{"overlay": help_overlay, "key": "help"},
 		{"overlay": modification_overlay, "key": "modification"},
 		{"overlay": evolution_overlay, "key": "evolution"},
 		{"overlay": player_master_overlay, "key": "player_master"},
@@ -1079,7 +1086,7 @@ func _get_battlefield() -> Node2D:
 func _is_any_overlay_open() -> bool:
 	for o in [backpack_overlay, quest_overlay,
 			store_overlay, faction_overlay,
-			map_overlay, settings_overlay, manufacture_overlay, afk_overlay]:
+			map_overlay, settings_overlay, afk_overlay]:
 		if o and o.visible:
 			return true
 	return false
@@ -1142,11 +1149,7 @@ func _on_active_law_cast_at(law_id: String, world_pos: Vector2) -> void:
 		var fam: String = PhaseLaws.get_family(law_id)
 		SignalBus.phase_law_cast.emit(law_id, world_pos, fam)
 
-func _on_blueprint_unlocked(card_id: String) -> void:
-	# P2-13: 首次解锁蓝图时弹一次说明（此前解锁完全静默，只有结算 UI 一行字）
-	FeatureUnlockPopup.show_once("blueprint", "蓝图解锁",
-		"获得新卡牌蓝图后，可在 制造面板（底部功能栏·成长）中消耗资源生产该卡的副本。\n蓝图永久保留，重复掉落的同名卡可直接拆解为研究点与纳米材料。")
-	_reward.on_blueprint_unlocked(card_id)
+# 2026-08-22：_on_blueprint_unlocked 已删除——信号已随蓝图体系移除，处理器为死代码。
 
 # ── 战斗结果 ─────────────────────────────────────────────────
 func show_battle_result(player_won: bool) -> void:

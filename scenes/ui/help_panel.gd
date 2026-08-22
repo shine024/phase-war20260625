@@ -12,7 +12,7 @@ const PanelChrome = preload("res://scenes/ui/components/panel_chrome.gd")
 @onready var tab_container: TabContainer = $Margin/VBox/TabContainer
 
 # 动画参数
-var _anim_duration: float = 0.25
+var _anim_duration: float = DT.MOTION_POP  # C7: 动效时长走 token（弹出 TRANS_BACK 组合）
 var _is_open: bool = false
 
 func _ready() -> void:

@@ -93,7 +93,7 @@ func _setup_auto_deploy() -> void:
 	_auto_deploy_btn.name = "AutoDeployBtn"
 	_auto_deploy_btn.text = "自动"
 	_auto_deploy_btn.custom_minimum_size = Vector2(48, BAR_FIXED_HEIGHT - 4)
-	_auto_deploy_btn.add_theme_font_size_override("font_size", 11)
+	_auto_deploy_btn.add_theme_font_size_override("font_size", 12)
 	_auto_deploy_btn.tooltip_text = "自动部署：从左到右铺满战斗卡\n单位死亡后自动补阵\n仅当前战斗生效"
 	_auto_deploy_btn.toggle_mode = true
 	_apply_auto_deploy_btn_style(false)
@@ -143,43 +143,46 @@ func _on_auto_deploy_state_changed(enabled: bool) -> void:
 
 
 ## 按钮样式：关闭态灰色、开启态绿色高亮（P1-5: 补全 hover/pressed 四态 + 颜色走 DesignTokens）
+## 注：mk_style 不用 lambda 局部变量——4.5.1 解析器不支持 `f(...)` 直接调用 lambda 变量（报
+## "Function not found in base self"），故提为私有方法。
 func _apply_auto_deploy_btn_style(active: bool) -> void:
 	if _auto_deploy_btn == null or not is_instance_valid(_auto_deploy_btn):
 		return
-	var mk_style := func(bg: Color, border: Color, bw: int) -> StyleBoxFlat:
-		var sb := StyleBoxFlat.new()
-		sb.set_corner_radius_all(4)
-		sb.set_border_width_all(bw)
-		sb.bg_color = bg
-		sb.border_color = border
-		sb.content_margin_left = 4
-		sb.content_margin_right = 4
-		return sb
 	if active:
 		var g := DT.COLOR_HEALTH
 		_auto_deploy_btn.add_theme_stylebox_override("normal",
-			mk_style(Color(g.r * 0.35, g.g * 0.55, g.b * 0.45, 0.95), g, 1))
+			_mk_style(Color(g.r * 0.35, g.g * 0.55, g.b * 0.45, 0.95), g, 1))
 		_auto_deploy_btn.add_theme_stylebox_override("hover",
-			mk_style(Color(g.r * 0.35, g.g * 0.62, g.b * 0.52, 1.0), Color(g.r, 1.0, g.b, 1.0), 2))
+			_mk_style(Color(g.r * 0.35, g.g * 0.62, g.b * 0.52, 1.0), Color(g.r, 1.0, g.b, 1.0), 2))
 		_auto_deploy_btn.add_theme_stylebox_override("pressed",
-			mk_style(Color(g.r * 0.2, g.g * 0.4, g.b * 0.33, 1.0), g, 2))
+			_mk_style(Color(g.r * 0.2, g.g * 0.4, g.b * 0.33, 1.0), g, 2))
 		_auto_deploy_btn.add_theme_stylebox_override("disabled",
-			mk_style(Color(0.08, 0.12, 0.18, 0.6), Color(0.25, 0.45, 0.65, 0.25), 1))
+			_mk_style(Color(0.08, 0.12, 0.18, 0.6), Color(0.25, 0.45, 0.65, 0.25), 1))
 		_auto_deploy_btn.add_theme_color_override("font_color", Color(1, 1, 1, 1))
 		_auto_deploy_btn.add_theme_color_override("font_hover_color", Color.WHITE)
 		_auto_deploy_btn.add_theme_color_override("font_pressed_color", Color.WHITE)
 	else:
 		_auto_deploy_btn.add_theme_stylebox_override("normal",
-			mk_style(Color(0.08, 0.12, 0.18, 0.85), Color(0.25, 0.45, 0.65, 0.4), 1))
+			_mk_style(Color(0.08, 0.12, 0.18, 0.85), Color(0.25, 0.45, 0.65, 0.4), 1))
 		_auto_deploy_btn.add_theme_stylebox_override("hover",
-			mk_style(Color(0.13, 0.2, 0.3, 0.95), Color(DT.COLOR_ACCENT_CYAN.r, DT.COLOR_ACCENT_CYAN.g, DT.COLOR_ACCENT_CYAN.b, 0.7), 2))
+			_mk_style(Color(0.13, 0.2, 0.3, 0.95), Color(DT.COLOR_ACCENT_CYAN.r, DT.COLOR_ACCENT_CYAN.g, DT.COLOR_ACCENT_CYAN.b, 0.7), 2))
 		_auto_deploy_btn.add_theme_stylebox_override("pressed",
-			mk_style(Color(0.05, 0.08, 0.13, 1.0), Color(DT.COLOR_ACCENT_CYAN.r, DT.COLOR_ACCENT_CYAN.g, DT.COLOR_ACCENT_CYAN.b, 0.9), 2))
+			_mk_style(Color(0.05, 0.08, 0.13, 1.0), Color(DT.COLOR_ACCENT_CYAN.r, DT.COLOR_ACCENT_CYAN.g, DT.COLOR_ACCENT_CYAN.b, 0.9), 2))
 		_auto_deploy_btn.add_theme_stylebox_override("disabled",
-			mk_style(Color(0.08, 0.12, 0.18, 0.6), Color(0.25, 0.45, 0.65, 0.25), 1))
+			_mk_style(Color(0.08, 0.12, 0.18, 0.6), Color(0.25, 0.45, 0.65, 0.25), 1))
 		_auto_deploy_btn.add_theme_color_override("font_color", Color(0.6, 0.7, 0.85, 0.9))
 		_auto_deploy_btn.add_theme_color_override("font_hover_color", DT.COLOR_TEXT_BRIGHT)
 		_auto_deploy_btn.add_theme_color_override("font_pressed_color", DT.COLOR_TEXT_BRIGHT)
+
+func _mk_style(bg: Color, border: Color, bw: int) -> StyleBoxFlat:
+	var sb := StyleBoxFlat.new()
+	sb.set_corner_radius_all(4)
+	sb.set_border_width_all(bw)
+	sb.bg_color = bg
+	sb.border_color = border
+	sb.content_margin_left = 4
+	sb.content_margin_right = 4
+	return sb
 
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_RESIZED:
@@ -417,7 +420,7 @@ func _update_slot_panel(panel: Control, entry: Dictionary) -> void:
 		indicator.polygon = PackedVector2Array([
 			Vector2(-6, 0), Vector2(6, 0), Vector2(0, -10)
 		])
-		indicator.color = Color(0.2, 1.0, 0.3, 0.9)
+		indicator.color = Color(DT.COLOR_GREEN_BRIGHT.r, DT.COLOR_GREEN_BRIGHT.g, DT.COLOR_GREEN_BRIGHT.b, 0.9)
 		indicator.position = Vector2(_slot_width * 0.5, -2)
 		indicator.visible = String(panel.get_meta("card_id", "")) in _deployed_card_ids
 		panel.add_child(indicator)
@@ -740,7 +743,7 @@ func _build_slot_panel(entry: Dictionary) -> PanelContainer:
 			indicator.polygon = PackedVector2Array([
 				Vector2(-6, 0), Vector2(6, 0), Vector2(0, -10)
 			])
-			indicator.color = Color(0.2, 1.0, 0.3, 0.9)
+			indicator.color = Color(DT.COLOR_GREEN_BRIGHT.r, DT.COLOR_GREEN_BRIGHT.g, DT.COLOR_GREEN_BRIGHT.b, 0.9)
 			indicator.position = Vector2(_slot_width * 0.5, -2)
 			indicator.visible = false
 			panel.add_child(indicator)
@@ -885,11 +888,17 @@ func _on_slot_gui_input(ev: InputEvent, panel: Control) -> void:
 				# 部署的是同一个实例 → 战场上强化/改造相同。无 instance_id 时回退 card_id（兼容旧卡）。
 				BattleInputState.pending_deploy_platform_card_id = m_instance_id if not m_instance_id.is_empty() else m_card_id
 				BattleInputState.pending_deploy_origin_global = panel.get_global_rect().get_center()
+				# B2: 鼠标进入部署补拿起音效（键盘路径 begin_deploy_from_slot_index 已有，鼠标路径静音）
+				if SignalBus and SignalBus.has_signal("play_sound"):
+					SignalBus.play_sound.emit("card_pickup")
 				return
 			if _show_instrument_slot_card_detail(m_card_id, m_instance_id, panel):
 				return
 		if (m_color == "red" or m_color == "blue") and not m_law_id.is_empty():
 			if m_law_kind == "active":
+				# B2: 进入施法选点同样给拿起反馈（与部署同款"进入待操作"音）
+				if SignalBus and SignalBus.has_signal("play_sound"):
+					SignalBus.play_sound.emit("card_pickup")
 				law_slot_clicked.emit(m_law_id, m_law_kind, panel.get_global_rect().get_center())
 			else:
 				var in_battle_passive: bool = BattleManager != null and "battle_active" in BattleManager and BattleManager.battle_active
@@ -999,19 +1008,8 @@ func _try_unequip_card_slot(color: String, color_index: int) -> bool:
 		return _drag_system.try_unequip_card_slot(color, color_index)
 	return false
 
-func _can_drop_data(at_position: Vector2, data: Variant) -> bool:
-	if _drag_system:
-		return _drag_system.can_drop_data(at_position, data)
-	return false
-
-func _drop_data(at_position: Vector2, data: Variant) -> void:
-	if _drag_system:
-		_drag_system.drop_data(at_position, data)
-
-func _get_slot_entry_by_local_pos(at_position: Vector2) -> Dictionary:
-	if _drag_system:
-		return _drag_system.get_slot_entry_by_local_pos(at_position)
-	return {}
+# D3 2026-08-22：删除 _can_drop_data/_drop_data/_get_slot_entry_by_local_pos 三个死转发——
+# 原生 DnD 需要拖拽源（_get_drag_data 实现），全项目无任何实现，回调永不触发。
 
 func _slot_to_flat_index(color: String, color_index: int) -> int:
 	if _drag_system:
@@ -1355,6 +1353,11 @@ func _make_phase_level_label_clickable() -> void:
 	_phase_level_label_container.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_phase_level_label_container.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	_phase_level_label_container.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	# B3: 手型已有但无 hover 视觉态——补 modulate 提亮（同槽位 P1-5 模式，只动 rgb 不动 alpha）
+	_phase_level_label_container.mouse_entered.connect(func() -> void:
+		_phase_level_label_container.modulate = Color(1.18, 1.18, 1.18, _phase_level_label_container.modulate.a))
+	_phase_level_label_container.mouse_exited.connect(func() -> void:
+		_phase_level_label_container.modulate = Color(1.0, 1.0, 1.0, _phase_level_label_container.modulate.a))
 	_phase_level_label_container.z_index = 10
 	# 保证有可点区域（避免布局首帧前 combined_minimum_size 为 0 导致点击无效）
 	_phase_level_label_container.custom_minimum_size = Vector2(120, int(SLOT_FIXED_SIZE.y))

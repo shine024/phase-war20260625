@@ -2,7 +2,7 @@ extends PanelContainer
 ## 统一情报面板：背包/相位仪/战场共用
 ## 4 Tab：情报 / 强化 / 改造 / 进化
 ## 模式：
-##   MODE_BACKPACK(0)         → 拆解+装备按钮（背包场景）
+##   MODE_BACKPACK(0)         → 装备按钮（背包场景；拆解已随蓝图体系移除）
 ##   MODE_PHASE_INSTRUMENT(1) → 卸下按钮（相位仪槽位）
 ##   MODE_BATTLEFIELD(2)      → 无操作按钮（战场点击，仅情报 Tab）
 
@@ -183,6 +183,24 @@ func _setup_action_buttons_container() -> void:
 		action_buttons_container.visible = false
 
 ## ── 公共接口 ──────────────────────────────────────────────────
+
+## P0: ESC 关闭详情面板——原实现无 ESC 处理，战场模式按 ESC 会切换暂停而非关弹窗。
+## 守卫：更高层 PopupLayer(100) 有 overlay 打开时让位（ESC 应先关最上层）；
+## 背包内嵌实例随背包 overlay 一起关闭，不抢事件。consume 防止穿透。
+func _input(event: InputEvent) -> void:
+	if not (visible and event.is_action_pressed("ui_cancel")):
+		return
+	var popup_layer := get_node_or_null("/root/Main/PopupLayer")
+	if popup_layer != null:
+		for child in popup_layer.get_children():
+			if child is CanvasLayer:
+				for cc in child.get_children():
+					if cc is Control and cc.visible:
+						return
+			elif child is Control and child.visible:
+				return
+	hide_panel()
+	get_viewport().set_input_as_handled()
 
 func hide_panel() -> void:
 	visible = false
@@ -370,10 +388,8 @@ func _refresh_action_buttons() -> void:
 	action_buttons_container.visible = true
 	match _current_mode:
 		PanelMode.MODE_BACKPACK:
-			if current_card:
-				_add_action_button("拆解（研究点 + 纳米材料）", Color(1.0, 0.82, 0.35, 1.0), "dismantle")
-				if current_card.card_type == GC.CardType.LAW or current_card.card_type == GC.CardType.ENERGY:
-					_add_action_button("装备到相位仪", Color(0, 0.94, 1, 1), "equip")
+			if current_card and current_card.card_type == GC.CardType.LAW:
+				_add_action_button("装备到相位仪", Color(0, 0.94, 1, 1), "equip")
 		PanelMode.MODE_PHASE_INSTRUMENT:
 			_add_action_button("卸下此卡", Color(0.9, 0.4, 0.4, 1), "unequip")
 
@@ -780,7 +796,7 @@ func _refresh_affix_tags(card: CardResource) -> void:
 		var empty := Label.new()
 		empty.text = "无特殊词条"
 		empty.add_theme_color_override("font_color", Color(0.5, 0.55, 0.65, 0.7))
-		empty.add_theme_font_size_override("font_size", 11)
+		empty.add_theme_font_size_override("font_size", 12)
 		_affix_flow.add_child(empty)
 		return
 		for tag in tags:
@@ -792,7 +808,7 @@ func _refresh_affix_tags(card: CardResource) -> void:
 			var dot := Label.new()
 			dot.text = "●"
 			dot.add_theme_color_override("font_color", tag.color)
-			dot.add_theme_font_size_override("font_size", 11)
+			dot.add_theme_font_size_override("font_size", 12)
 			var txt := Label.new()
 			txt.text = tag.text
 			txt.add_theme_color_override("font_color", Color(0.85, 0.85, 0.92, 1))

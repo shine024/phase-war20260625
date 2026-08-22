@@ -200,10 +200,22 @@ func _apply_normal_btn_style(btn: Button) -> void:
 	pressed.border_color = _BTN_BORDER_HOVER
 	pressed.bg_color = Color(0.04, 0.06, 0.09, 0.95)
 	btn.add_theme_stylebox_override("pressed", pressed)
+	# C6: 补 disabled / focus 态（原文标准：可交互处必须有完整多状态）
+	var disabled := normal.duplicate()
+	disabled.bg_color = Color(_BTN_BG.r, _BTN_BG.g, _BTN_BG.b, 0.5)
+	btn.add_theme_stylebox_override("disabled", disabled)
+	var focus := normal.duplicate()
+	focus.border_color = _BTN_BORDER_HOVER
+	focus.border_width_left = 2
+	focus.border_width_top = 2
+	focus.border_width_right = 2
+	focus.border_width_bottom = 2
+	btn.add_theme_stylebox_override("focus", focus)
 	# 字色
 	btn.add_theme_color_override("font_color", Color(0.62, 0.68, 0.75, 1))
 	btn.add_theme_color_override("font_hover_color", Color(0.91, 0.94, 0.96, 1))
 	btn.add_theme_color_override("font_pressed_color", Color(0.13, 0.83, 0.93, 1))
+	btn.add_theme_color_override("font_disabled_color", Color(0.45, 0.5, 0.56, 1))
 
 
 func _apply_retreat_btn_style(btn: Button) -> void:

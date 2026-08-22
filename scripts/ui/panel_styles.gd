@@ -154,13 +154,11 @@ static func make_title_accent_bar(accent: Color) -> StyleBoxFlat:
 static func make_button_styles(accent: Color, kind := "ghost") -> Dictionary:
 	var fill_a := 0.14
 	var border_a := 0.55
-	var text_accent := accent
 	if kind == "solid":
 		fill_a = 0.85
 		border_a = 1.0
 	elif kind == "danger":
 		accent = DT.COLOR_RED_DOWN
-		text_accent = DT.COLOR_RED_DOWN
 
 	var normal := StyleBoxFlat.new()
 	normal.bg_color = Color(accent.r, accent.g, accent.b, fill_a * 0.7)
@@ -202,7 +200,6 @@ static func make_button_styles(accent: Color, kind := "ghost") -> Dictionary:
 		"pressed": pressed,
 		"disabled": disabled,
 		"focus": focus,
-		"text_color": text_accent,
 	}
 
 
@@ -244,6 +241,6 @@ static func apply_pointing_hand(root: Node) -> void:
 	if root == null or not is_instance_valid(root):
 		return
 	if root is BaseButton:
-		(root as BaseButton).mouse_default_cursor_shape = Input.CURSOR_POINTING_HAND
+		(root as BaseButton).mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 	for c in root.get_children():
 		apply_pointing_hand(c)

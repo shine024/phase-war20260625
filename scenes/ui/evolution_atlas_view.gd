@@ -38,7 +38,7 @@ func _build_ui() -> void:
 	_hint_label = Label.new()
 	_hint_label.text = "按时代分列 · 点击单位查看进化来源与养成详情"
 	_hint_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_hint_label.add_theme_font_size_override("font_size", 11)
+	_hint_label.add_theme_font_size_override("font_size", 12)
 	_hint_label.add_theme_color_override("font_color", Color(0.55, 0.62, 0.72, 1.0))
 	outer.add_child(_hint_label)
 
@@ -260,11 +260,13 @@ func _make_unit_entry(entry: Dictionary) -> PanelContainer:
 	name_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	name_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	name_lbl.custom_minimum_size = Vector2(UNIT_ENTRY_MIN_SIZE.x - 12, 0)
-	name_lbl.add_theme_font_size_override("font_size", 11)
+	name_lbl.add_theme_font_size_override("font_size", 12)
 	name_lbl.add_theme_color_override("font_color", Color(0.88, 0.92, 0.96) if unlocked else Color(0.52, 0.56, 0.62))
 	col.add_child(name_lbl)
 
 	panel.gui_input.connect(_on_entry_gui_input.bind(card_id))
+	# B3: 条目可点击（有 hover 变色），补手型光标让"能点"更明确
+	panel.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 	panel.mouse_entered.connect(_on_entry_hover.bind(panel, true))
 	panel.mouse_exited.connect(_on_entry_hover.bind(panel, false))
 

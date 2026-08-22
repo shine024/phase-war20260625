@@ -48,7 +48,7 @@ tests/
 │   ├── resources/       # 资源管理测试
 │   └── save/            # 存档系统测试
 ├── gdunit4_runner.gd    # CI 测试运行入口
-└── star_config_smoke.gd # 快速烟雾测试
+└── master_power_smoke.gd # 快速烟雾测试
 ```
 
 ## 输出示例

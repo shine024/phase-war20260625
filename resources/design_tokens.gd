@@ -281,10 +281,10 @@ static func get_body_font() -> Font:
 # 实际依赖玩家机器上恰好有可用的系统中文字体，不同 Windows/导出平台字形粗细可能不一致。
 # 这里给全部打包字体（Rajdhani×3 + Barlow + title）挂 SystemFont fallback 链：
 # FontFile 缺字形（所有中文）→ 按序解析系统字体。调用方：main._ready / title_screen._ready。
-const CJK_FALLBACK_NAMES := PackedStringArray([
+const CJK_FALLBACK_NAMES := [
 	"Noto Sans CJK SC", "Source Han Sans SC", "Microsoft YaHei", "Microsoft YaHei UI",
 	"PingFang SC", "SimHei", "sans-serif",
-])
+]
 static var _cjk_fallback_applied := false
 
 static func ensure_cjk_fallback() -> void:
@@ -292,7 +292,7 @@ static func ensure_cjk_fallback() -> void:
 		return
 	_cjk_fallback_applied = true
 	var sys := SystemFont.new()
-	sys.font_names = CJK_FALLBACK_NAMES
+	sys.font_names = PackedStringArray(CJK_FALLBACK_NAMES)
 	for path in [FONT_PATH_TITLE, FONT_PATH_TITLE_BOLD, FONT_PATH_BODY,
 			"res://assets/fonts/data_font.ttf", "res://assets/fonts/title_font.ttf"]:
 		var f: Font = load(path) as Font
@@ -327,6 +327,20 @@ static func get_system_glow(system: String) -> Color:
 		_: return Color(0, 0.94, 1, 0.35)
 
 
+# ===== 资源语义色（2026-08-22 C2：收敛 resource_bar / resource_info_panel / buff_fold_card 三份手抄，防漂移；
+# 能量块两处已漂移（0.85/0.3 vs 0.75/0.15），以 resource_bar 值为准） =====
+const COLOR_RES_ENERGY := Color(1.0, 0.85, 0.3, 1)      # 能量块（橙金）
+const COLOR_RES_NANO := Color(0.3, 0.8, 1.0, 1)        # 纳米材料（蓝）
+const COLOR_RES_RESEARCH := Color(0.75, 0.55, 1.0, 1)  # 研究点（淡紫）
+const COLOR_RES_ALLOY := Color(1.0, 0.6, 0.2, 1)       # 合金（橙）
+const COLOR_RES_CRYSTAL := Color(0.6, 0.3, 1.0, 1)     # 晶体（紫）
+
+# ===== 动效时长档位（2026-08-22 C2：弹窗开合统一节奏；此前 17 种时长全凭手感。
+# 组合规范：淡入 TRANS_SINE+EASE_OUT、弹出 TRANS_BACK+EASE_OUT、淡出 TRANS_SINE+EASE_IN） =====
+const MOTION_FADE_IN := 0.2   # 常规淡入
+const MOTION_FADE_OUT := 0.15 # 常规淡出（比淡入快，关闭要干脆）
+const MOTION_POP := 0.25      # 弹性弹出（面板/弹窗登场）
+
 # ===== 面板签名色（v7.x 面板统一：每个功能面板一个 accent，标题栏/边框/强调态共用） =====
 # 视觉方向对齐 docs/界面一致性/design_06_visual_direction.html（军事科幻 + 霓虹光晕 + 冷色调）。
 # 养成四面板沿用签名色：强化=amber；本表覆盖未接入 DT 的功能面板。
@@ -343,6 +357,12 @@ const PANEL_ACCENTS := {
 	"collection": COLOR_CYAN_TECH,   # 图鉴 · 科技青
 	"reinforcement": COLOR_GREEN_BRIGHT,  # 强化面板 · 亮绿（提升语义，区别于 card_enhancement 的琥珀）
 	"leaderboard": COLOR_GOLD,       # 排行榜 · 金（竞技荣誉语义）
+	# 2026-08-22 C2：补齐调 get_panel_accent 但不在表内而静默回退青色的键
+	"help": Color(0.55, 0.65, 0.75, 1),  # 帮助 · 中性冷灰蓝（工具面板同设置）
+	"player_master": COLOR_ACCENT_PURPLE,  # 相位师面板 · 霓虹紫（相位师语义）
+	"phase_master_skill": COLOR_ACCENT_PURPLE,  # 相位师技能树 · 霓虹紫（与 player_master 同族）
+	"mvp": COLOR_GOLD,               # 战斗结算 · 金（荣誉语义同排行榜）
+	"backpack": COLOR_CYAN_TECH,     # 背包 · 科技青
 }
 
 ## 面板 accent 单一入口：未知 panel_id 回退霓虹青

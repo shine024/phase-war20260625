@@ -6,7 +6,6 @@ extends Control
 ## 命令行（默认展示 DefaultCards 全卡池）：见项目说明或关「单卡调试 → single_card_mode」
 
 const GC = preload("res://resources/game_constants.gd")
-const StarConfig = preload("res://data/blueprint_star_config.gd")
 const DefaultCards = preload("res://data/default_cards.gd")
 const CardItemScene = preload("res://scenes/ui/backpack_card_item.tscn")
 const SlotScene = preload("res://scenes/ui/phase_slot.tscn")

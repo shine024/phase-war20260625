@@ -75,7 +75,7 @@ func _build_ui() -> void:
 	var failed: bool = bool(_result.get("failed", false))
 	title.text = "挂机结算" if not failed else "挂机结束（失败）"
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	title.add_theme_font_size_override("font_size", 22)
+	title.add_theme_font_size_override("font_size", 20)
 	title.add_theme_color_override("font_color", _WARN if failed else _ACCENT)
 	vbox.add_child(title)
 
@@ -118,7 +118,7 @@ func _build_ui() -> void:
 		var rew_title := Label.new()
 		rew_title.text = "累计掉落"
 		rew_title.add_theme_color_override("font_color", _TEXT)
-		rew_title.add_theme_font_size_override("font_size", 15)
+		rew_title.add_theme_font_size_override("font_size", 16)
 		list.add_child(rew_title)
 
 		# 按数量降序排列，便于一眼看到主力掉落
@@ -166,8 +166,13 @@ func _on_ok() -> void:
 func _input(event: InputEvent) -> void:
 	# ESC / 回车同样关闭
 	if event is InputEventKey and event.pressed:
-		if event.keycode == KEY_ESCAPE or event.keycode == KEY_ENTER or event.keycode == KEY_KP_ENTER:
+		if event.keycode == KEY_ENTER or event.keycode == KEY_KP_ENTER:
 			_on_ok()
+			# P0: 消费输入，防 ESC/回车穿透到底下 overlay（此前任何键都不 consume）
+			get_viewport().set_input_as_handled()
+		elif event.keycode == KEY_ESCAPE:
+			_on_ok()
+			get_viewport().set_input_as_handled()
 
 
 # ── UI 辅助 ──

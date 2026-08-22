@@ -83,7 +83,7 @@ func _create_slot_panel(slot_num: int, info: Dictionary) -> Control:
 	# 存档信息文本
 	var info_label = Label.new()
 	info_label.text = _get_slot_info_text(slot_num, exists, level)
-	info_label.add_theme_font_size_override("font_size", 11)
+	info_label.add_theme_font_size_override("font_size", 12)
 	info_label.autowrap_mode = TextServer.AUTOWRAP_WORD
 	vbox.add_child(info_label)
 

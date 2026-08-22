@@ -53,6 +53,6 @@ theme_override_constants/separation = 10
 [node name="DetailLabel" type="Label" parent="Margin/VBox"]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.024, 0.714, 0.831, 0.9)
-theme_override_font_sizes/font_size = 11
+theme_override_font_sizes/font_size = 12
 text = "点击关卡查看占领详情"
 autowrap_mode = 2

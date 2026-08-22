@@ -51,7 +51,7 @@ Add `--rendering-driver opengl3` if Vulkan issues (applies to `--headless` / `--
 & "D:/Downloads/Godot/Godot_v4.5.1-stable_win64.exe" --headless --rendering-driver opengl3 --path "." --check-only
 
 # Smoke test (no GdUnit dependency)
-& "D:/Downloads/Godot/Godot_v4.5.1-stable_win64.exe" --headless --rendering-driver opengl3 --path "." --script "tests/star_config_smoke.gd"
+& "D:/Downloads/Godot/Godot_v4.5.1-stable_win64.exe" --headless --rendering-driver opengl3 --path "." --script "tests/master_power_smoke.gd"
 
 # Full GdUnit test suite
 & "D:/Downloads/Godot/Godot_v4.5.1-stable_win64.exe" --headless --rendering-driver opengl3 --path "." --script "tests/gdunit4_runner.gd"
@@ -310,7 +310,6 @@ All data files are pure GDScript static classes (`extends RefCounted`), no JSON/
 
 **Economy & Progression:**
 - `basic_resources.gd` — Resource ID definitions (nano/alloy/crystal/energy block/research points/permits)
-- `blueprint_star_config.gd` — Star upgrade costs, mod costs, permit rules
 - `battle_card_v3.gd` — Era HP/damage multipliers (v6.1: 近未来伤害倍率 1.90→1.80)
 - `level_eras.gd` / `level_information.gd` — Level-to-era mapping (100 levels, 5 eras)
 - `rank_rules.gd`, `card_progression_settings.gd` — Progression tuning
@@ -368,7 +367,7 @@ tests/
     progression/  — evolution HP floor, unit lineage
     resources/    — basic resource manager
     save/         — save integrity, save migration
-  star_config_smoke.gd   — Quick smoke test (no GdUnit)
+  master_power_smoke.gd  — Quick smoke test (no GdUnit)
   syntax_check.gd         — Syntax validation
   gdunit4_runner.gd       — CI test runner entry point
 ```
@@ -435,6 +434,7 @@ User-driven collaboration. Every task follows: **Question → Options → Decisi
 
 | 系统 | 状态 | 说明 |
 |------|------|------|
+| 卡牌蓝图体系（解锁/副本/制造/拆解/星级） | **已整体删除** | 2026-08-22：制造面板（早已无入口）、副本记账、重复副本→研究点、背包拆解、研究点升星全部移除。收集口径改"拥有过的卡种"（card_added_to_backpack 驱动，InstanceRegistry 计数）。法则掉落解锁（phase_instrument_loadout_sync 装卡即解锁）与开局 4 法则保留 |
 | 敌源MOD（EOM） | **已整体删除** | 面板/管理器/数据/掉落/存档字段全部移除（2026-08-21）。旧存档 eom 字段被静默忽略。情报揭示事件的 eom_unlock 奖励已改为 stat_visibility |
 | 我方相位法则被动（ALLY 目标） | 停用+退池 | v6.8 停用战斗注入；2026-08-21 起从装配池/随机掉落退池（蓝槽只接受 ENEMY/BOTH 目标被动——它们经 enemy_unit 消费，减益敌方，仍然有效）。开局改送 starter 符文（attack_01/defense_01） |
 | 相位场属性点 | **已接通** | phase_instrument_selector 有分配/回收/洗点按钮，battle_spawn_system/master_platform_power 消费加成，存档字段齐全 |
@@ -471,7 +471,7 @@ User-driven collaboration. Every task follows: **Question → Options → Decisi
 
 **铁律 2：卡牌列表（成长/强化/改造/进化面板）数据源必须是 InstanceRegistry 实例全集，不是 SaveManager 队列。**
 - `SaveManager._pending_backpack_ids` / `_last_known_extra_ids` 队列在 `backpack_presenter` 存活时会被 `consume_pending_backpack_card_id` 掏空（买卡信号双监听：SaveManager 入队 + presenter 立即 consume），读这个队列会看到"空"。
-- 正确数据源优先级：**① `InstanceRegistry.get_all_instance_ids()`（真·实例全集，永不被 consume）→ ② SaveManager 队列（presenter 未存活/旧档迁移兜底）→ ③ BlueprintManager 蓝图（已解锁但未拥有任何实例的卡，补一条无养成模板行）**。
+- 正确数据源优先级：**① `InstanceRegistry.get_all_instance_ids()`（真·实例全集，永不被 consume）→ ② SaveManager 队列（presenter 未存活/旧档迁移兜底）。蓝图解锁行已随蓝图体系移除（2026-08-22）**。
 - 去重：完整 instance_id 去重（`cold_t72#1` ≠ `cold_t72#2`，各自保留一行）；蓝图裸 card_id 仅在该 card_id **没有任何实例**时补一条。
 - `modification_panel` 是参考实现：按 base card_id 分组，每个实例渲染一行（带 `#N` 序号后缀）。
 

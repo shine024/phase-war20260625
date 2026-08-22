@@ -65,7 +65,7 @@ func _refresh_ui() -> void:
 	## 标题
 	var title := Label.new()
 	title.text = "📊 情报收获"
-	title.add_theme_font_size_override("font_size", 14)
+	title.add_theme_font_size_override("font_size", 20)
 	title.add_theme_color_override("font_color", Color(0.7, 0.85, 1.0, 1.0))
 	outer.add_child(title)
 
@@ -84,7 +84,7 @@ func _refresh_ui() -> void:
 	if hidden_count > 0:
 		var more_lbl := Label.new()
 		more_lbl.text = "  …另 +%d 种敌人（详见 情报中心·敌方情报）" % hidden_count
-		more_lbl.add_theme_font_size_override("font_size", 11)
+		more_lbl.add_theme_font_size_override("font_size", 12)
 		more_lbl.add_theme_color_override("font_color", Color(0.6, 0.7, 0.8, 0.8))
 		outer.add_child(more_lbl)
 
@@ -214,7 +214,7 @@ func _create_progress_row(card_id: String, enemy_type: String, delta: float) -> 
 	## 百分比文本
 	var pct_lbl := Label.new()
 	pct_lbl.text = "%.0f%%" % current_pct
-	pct_lbl.add_theme_font_size_override("font_size", 11)
+	pct_lbl.add_theme_font_size_override("font_size", 12)
 	pct_lbl.custom_minimum_size.x = 36
 	pct_lbl.add_theme_color_override("font_color", Color(0.8, 0.85, 0.9, 1.0))
 	row.add_child(pct_lbl)
@@ -222,7 +222,7 @@ func _create_progress_row(card_id: String, enemy_type: String, delta: float) -> 
 	## 增长量（绿色）
 	var delta_lbl := Label.new()
 	delta_lbl.text = "+%.0f%%" % (delta * 100.0)
-	delta_lbl.add_theme_font_size_override("font_size", 11)
+	delta_lbl.add_theme_font_size_override("font_size", 12)
 	delta_lbl.custom_minimum_size.x = 40
 	delta_lbl.add_theme_color_override("font_color", Color(0.4, 0.95, 0.5, 1.0))
 	row.add_child(delta_lbl)
@@ -237,7 +237,7 @@ func _create_progress_row(card_id: String, enemy_type: String, delta: float) -> 
 	if has_reveal:
 		var rev_icon := Label.new()
 		rev_icon.text = " ✦新揭示!"
-		rev_icon.add_theme_font_size_override("font_size", 11)
+		rev_icon.add_theme_font_size_override("font_size", 12)
 		rev_icon.add_theme_color_override("font_color", Color(0.95, 0.75, 0.3, 1.0))
 		row.add_child(rev_icon)
 

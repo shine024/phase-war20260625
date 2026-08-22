@@ -8,7 +8,6 @@ signal open_progression_requested(card_id: String)
 
 const DefaultCards = preload("res://data/default_cards.gd")
 const UnitLineageConfig = preload("res://data/unit_lineage_config.gd")
-const StarConfig = preload("res://data/blueprint_star_config.gd")
 const CardProgressionSettings = preload("res://data/card_progression_settings.gd")
 const CompanyDefinitions = preload("res://data/company_definitions.gd")
 const EvolutionGraphBuilder = preload("res://scripts/progression/evolution_graph_builder.gd")
@@ -143,8 +142,9 @@ func _add_progress_block() -> void:
 	if cem_node and cem_node.has_method("get_card_enhancement_level"):
 		enhance_lvl = maxi(int(cem_node.get_card_enhancement_level(_card_id)), 1)
 	var mod_count: int = BlueprintManager.get_modification_count(_card_id) if BlueprintManager.has_method("get_modification_count") else 0
-	var unlocked: bool = EvolutionGraphBuilder.is_blueprint_unlocked(_card_id)
-	_add_line("蓝图：%s" % ("已解锁" if unlocked else "未解锁"), Color(0.8, 0.85, 0.9))
+	var ir_node: Node = get_node_or_null("/root/InstanceRegistry")
+	var owned: int = ir_node.get_instances_by_card_id(_card_id).size() if (ir_node != null and ir_node.has_method("get_instances_by_card_id")) else 0
+	_add_line("拥有：%d 张" % owned, Color(0.8, 0.85, 0.9))
 	_add_line("强化：Lv.%d" % enhance_lvl, Color(0.9, 0.88, 0.55))
 	_add_line("改装：%d / %d" % [mod_count, CardProgressionSettings.MOD_MAX], Color(0.85, 0.75, 1.0))
 	# v6.7: 改造具体加成 — 原只显示数字，补充已装改造的中文名 + 效果
@@ -160,14 +160,7 @@ func _add_progress_block() -> void:
 		)
 	# v6.7: 强化词条加成 — 原只显示星级数字，补充已选词条的效果描述
 	_add_enhance_module_lines()
-	var rarity: String = "common"
-	if DefaultCards.get_card_by_id(_card_id) != null:
-		rarity = String(DefaultCards.get_card_by_id(_card_id).rarity).to_lower()
-	# v6.11: 星级系统已废弃（固定返回1），保留查询以显示"下一星研究点"信息
-	var star: int = BlueprintManager.get_blueprint_star(_card_id) if (BlueprintManager != null and BlueprintManager.has_method("get_blueprint_star")) else 1
-	var next_rp: int = StarConfig.get_research_cost_for_next_star(star, rarity) if star < CardProgressionSettings.STAR_MAX else 0
-	if next_rp > 0:
-		_add_line("下一星研究点：%d" % next_rp, Color(0.7, 0.65, 0.95))
+	# 2026-08-22：蓝图星级/"下一星研究点"已随蓝图体系移除
 
 
 ## v6.7: 列出已装改造的具体名称（从 blueprint_mods 读，用 ModificationRegistry 转中文名）

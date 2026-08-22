@@ -183,7 +183,7 @@ theme_override_colors/font_color = Color(0.95, 0.96, 0.98, 1)
 [node name="TitleSub" type="Label" parent="VBoxContainer/TitleRow/TitleHBox"]
 layout_mode = 2
 text = "战术改造舱"
-theme_override_font_sizes/font_size = 11
+theme_override_font_sizes/font_size = 12
 theme_override_colors/font_color = Color(0.533, 0.6, 0.678, 0.7)
 [node name="Spacer" type="Control" parent="VBoxContainer/TitleRow/TitleHBox"]
 layout_mode = 2
@@ -192,7 +192,7 @@ size_flags_horizontal = 3
 unique_name_in_owner = true
 layout_mode = 2
 text = ""
-theme_override_font_sizes/font_size = 11
+theme_override_font_sizes/font_size = 12
 theme_override_colors/font_color = Color(0.133, 0.827, 0.933, 1)
 [node name="BackToGrowthButton" type="Button" parent="VBoxContainer/TitleRow/TitleHBox"]
 unique_name_in_owner = true
@@ -301,7 +301,7 @@ size_flags_horizontal = 3
 unique_name_in_owner = true
 layout_mode = 2
 text = "0"
-theme_override_font_sizes/font_size = 11
+theme_override_font_sizes/font_size = 12
 theme_override_colors/font_color = Color(0.5, 0.55, 0.65, 0.8)
 [node name="ColFilter" type="HBoxContainer" parent="VBoxContainer/HBoxContainer/LeftPanel/LeftVBox"]
 layout_mode = 2
@@ -387,7 +387,7 @@ size_flags_horizontal = 3
 unique_name_in_owner = true
 layout_mode = 2
 text = "0"
-theme_override_font_sizes/font_size = 11
+theme_override_font_sizes/font_size = 12
 theme_override_colors/font_color = Color(0.5, 0.55, 0.65, 0.8)
 [node name="ModScrollContainer" type="ScrollContainer" parent="VBoxContainer/HBoxContainer/MiddlePanel/MiddleVBox"]
 unique_name_in_owner = true
@@ -464,7 +464,7 @@ layout_mode = 2
 size_flags_horizontal = 3
 text = ""
 clip_text = true
-theme_override_font_sizes/font_size = 11
+theme_override_font_sizes/font_size = 12
 theme_override_colors/font_color = Color(0.55, 0.6, 0.7, 0.85)
 [node name="DeckInstallButton" type="Button" parent="VBoxContainer/HBoxContainer/MiddlePanel/MiddleVBox/ActionDeck/DeckMargin/DeckHBox"]
 unique_name_in_owner = true
@@ -474,7 +474,7 @@ custom_minimum_size = Vector2(130, 44)
 text = "安装"
 theme_override_colors/font_color = Color(0.95, 0.96, 0.98, 1)
 theme_override_colors/font_hover_color = Color(1, 1, 1, 1)
-theme_override_font_sizes/font_size = 15
+theme_override_font_sizes/font_size = 16
 theme_override_styles/normal = SubResource("StyleBoxFlat_9")
 theme_override_styles/hover = SubResource("StyleBoxFlat_10")
 [node name="DeckSimButton" type="Button" parent="VBoxContainer/HBoxContainer/MiddlePanel/MiddleVBox/ActionDeck/DeckMargin/DeckHBox"]
@@ -490,7 +490,7 @@ unique_name_in_owner = true
 layout_mode = 2
 custom_minimum_size = Vector2(0, 36)
 text = "↑ 点击上方改造模块库的任一模块查看详情"
-theme_override_font_sizes/font_size = 11
+theme_override_font_sizes/font_size = 12
 theme_override_colors/font_color = Color(0.4, 0.45, 0.55, 0.6)
 horizontal_alignment = 1
 vertical_alignment = 1

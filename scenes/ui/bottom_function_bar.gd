@@ -3,6 +3,9 @@ extends PanelContainer
 ## 每个按钮点击后发出对应信号，外部统一监听并弹出面板
 ## 支持"当前激活按钮"高亮状态
 
+const DT = preload("res://resources/design_tokens.gd")
+const PanelStyles = preload("res://scripts/ui/panel_styles.gd")
+
 ## 播放音效（Autoload AudioManager；get_node_or_null 兜底）
 func _play_sfx(name: String) -> void:
 	var am = get_node_or_null("/root/AudioManager")
@@ -12,6 +15,8 @@ func _play_sfx(name: String) -> void:
 signal btn_backpack_pressed
 signal btn_faction_pressed
 signal btn_quest_pressed
+signal btn_achievement_pressed
+signal btn_help_pressed
 signal btn_store_pressed
 signal btn_progression_pressed
 signal btn_leaderboard_pressed
@@ -59,7 +64,10 @@ const BATTLE_BTN_ICON_BY_KEY: Dictionary = {
 }
 
 # 按钮配置：[key, 显示文字, 信号名]
-# v7.x: 12 个功能按钮全部直接显示（"更多"菜单方案因图标渲染问题暂缓，保持原 12 按钮平铺）
+# v7.x: 功能按钮全部直接显示（"更多"菜单方案因图标渲染问题暂缓，保持平铺）
+# 2026-08-22 D3：补"成就/帮助"入口——两个面板早已做完（PanelChrome 统一框架）却无任何
+# 开启路径（成就解锁只弹 toast 无法回看，帮助面板完全不可达），典型"功能做好了玩家看不见"。
+# 14×62+间距 ≈ 940px < 1280 视口，不溢出。
 const BTN_CONFIGS: Array = [
 	["backpack",     "背包",   "btn_backpack_pressed"],
 	["progression",  "成长",   "btn_progression_pressed"],
@@ -70,7 +78,9 @@ const BTN_CONFIGS: Array = [
 	["leaderboard",  "排行",   "btn_leaderboard_pressed"],
 	["info",         "情报",   "btn_info_pressed"],
 	["collection",   "图鉴",   "btn_collection_pressed"],
+	["achievement",  "成就",   "btn_achievement_pressed"],
 	["settings",     "设置",   "btn_settings_pressed"],
+	["help",         "帮助",   "btn_help_pressed"],
 	["save",         "存档",   "btn_save_pressed"],
 	["afk",          "挂机",   "btn_afk_pressed"],
 ]
@@ -136,13 +146,13 @@ func _build_right_buttons() -> void:
 		btn.tooltip_text = label_text
 		_apply_bar_icon(btn, BATTLE_BTN_ICON_BY_KEY.get(key, ""))
 		btn.add_theme_constant_override("icon_max_width", 30)
-		# 战斗控制按钮用不同配色
+		# 战斗控制按钮用不同配色（C4: 高饱和大面积用色收敛 DT token）
 		if key == "start_battle":
-			_style_battle_button(btn, Color(0.0, 0.94, 0.7, 1.0), Color(0.0, 0.15, 0.12, 0.9))
+			_style_battle_button(btn, DT.COLOR_GREEN_BRIGHT, Color(0.0, 0.15, 0.12, 0.9))
 		elif key == "pause":
-			_style_battle_button(btn, Color(1.0, 0.85, 0.3, 1.0), Color(0.2, 0.15, 0.05, 0.85))
+			_style_battle_button(btn, DT.COLOR_GOLD, Color(0.2, 0.15, 0.05, 0.85))
 		elif key == "retreat":
-			_style_battle_button(btn, Color(1.0, 0.4, 0.4, 1.0), Color(0.25, 0.06, 0.06, 0.88))
+			_style_battle_button(btn, DT.COLOR_RED_DOWN, Color(0.25, 0.06, 0.06, 0.88))
 		elif key == "back":
 			_style_battle_button(btn, Color(0.75, 0.75, 0.8, 0.85), Color(0.08, 0.08, 0.1, 0.85))
 		btn.pressed.connect(func():
@@ -174,24 +184,10 @@ func _make_func_button(label_text: String) -> Button:
 	btn.custom_minimum_size = Vector2(62, 56)
 	btn.add_theme_font_size_override("font_size", 13)
 	btn.add_theme_color_override("font_color", Color(0.75, 0.85, 1.0, 0.9))
-	var normal_style := StyleBoxFlat.new()
-	normal_style.bg_color = Color(0.06, 0.10, 0.18, 0.85)
-	normal_style.border_color = Color(0.2, 0.45, 0.75, 0.4)
-	normal_style.set_border_width_all(1)
-	normal_style.set_corner_radius_all(5)
-	btn.add_theme_stylebox_override("normal", normal_style)
-	var hover_style := StyleBoxFlat.new()
-	hover_style.bg_color = Color(0.08, 0.16, 0.28, 0.95)
-	hover_style.border_color = Color(0.0, 0.85, 1.0, 0.65)
-	hover_style.set_border_width_all(1)
-	hover_style.set_corner_radius_all(5)
-	btn.add_theme_stylebox_override("hover", hover_style)
-	var pressed_style := StyleBoxFlat.new()
-	pressed_style.bg_color = Color(0.0, 0.18, 0.32, 0.95)
-	pressed_style.border_color = Color(0.0, 0.94, 1.0, 0.85)
-	pressed_style.set_border_width_all(2)
-	pressed_style.set_corner_radius_all(5)
-	btn.add_theme_stylebox_override("pressed", pressed_style)
+	# C6: 手写三态按钮（缺 disabled/focus，两个青变体）→ PanelStyles 四态工厂
+	var styles := PanelStyles.make_button_styles(DT.COLOR_ACCENT_CYAN)
+	for state in ["normal", "hover", "pressed", "disabled", "focus"]:
+		btn.add_theme_stylebox_override(state, styles[state])
 	return btn
 
 ## 设置某按钮的红点角标（key=按钮key，count>0 显示数字，count<=0 隐藏）
@@ -270,25 +266,16 @@ func _on_func_btn_pressed(key: String, signal_name: String) -> void:
 ## 设置高亮按钮（传入 "" 清除所有高亮）
 func _set_active_btn(key: String) -> void:
 	_active_btn_key = key
+	# C6: 手写高亮/默认样式 → PanelStyles 工厂（active 复用 pressed 态视觉）
+	var styles := PanelStyles.make_button_styles(DT.COLOR_ACCENT_CYAN)
 	for k in _btn_map:
 		var btn: Button = _btn_map[k]
 		if k == key:
-			# 激活样式：亮青色边框
-			var active_style := StyleBoxFlat.new()
-			active_style.bg_color = Color(0.0, 0.18, 0.32, 0.95)
-			active_style.border_color = Color(0.0, 0.94, 1.0, 0.85)
-			active_style.set_border_width_all(2)
-			active_style.set_corner_radius_all(5)
-			btn.add_theme_stylebox_override("normal", active_style)
-			btn.add_theme_color_override("font_color", Color(0.0, 0.94, 1.0, 1.0))
+			btn.add_theme_stylebox_override("normal", styles["pressed"])
+			btn.add_theme_color_override("font_color", DT.COLOR_ACCENT_CYAN)
 		elif k not in ["start_battle", "back", "pause", "retreat", "save"]:
 			# 恢复默认样式
-			var normal_style := StyleBoxFlat.new()
-			normal_style.bg_color = Color(0.06, 0.10, 0.18, 0.85)
-			normal_style.border_color = Color(0.2, 0.45, 0.75, 0.4)
-			normal_style.set_border_width_all(1)
-			normal_style.set_corner_radius_all(5)
-			btn.add_theme_stylebox_override("normal", normal_style)
+			btn.add_theme_stylebox_override("normal", styles["normal"])
 			btn.add_theme_color_override("font_color", Color(0.75, 0.85, 1.0, 0.9))
 
 ## 外部通知：某个面板已关闭，清除对应高亮

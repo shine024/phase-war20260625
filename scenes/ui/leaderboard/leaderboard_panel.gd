@@ -26,9 +26,10 @@ const EnemyRowScene = preload("res://scenes/ui/leaderboard/enemy_row.tscn")
 
 ## 共享样式资源（延迟加载，避免 preload 在 import 系统未就绪时失败）
 static func _get_skill_panel_style() -> StyleBox:
-	if not ResourceLoader.exists("res://scenes/ui/leaderboard/skill_panel_style.tres"):
-		return StyleBoxFlat.new()
-	return load("res://scenes/ui/leaderboard/skill_panel_style.tres") as StyleBox
+	return LeaderboardDetailBuilders.get_skill_panel_style()
+
+
+# D2: 实现已收口 LeaderboardDetailBuilders（改一处不再两处漂移）
 
 var _tab_bar: TabBar
 var _list_container: VBoxContainer
@@ -400,11 +401,10 @@ func _make_separator() -> HSeparator:
 
 ## 创建单个小型 Label（用于详情弹窗内嵌数据）
 static func _make_stat_label(text: String, font_size: int, color: Color) -> Label:
-	var lbl = Label.new()
-	lbl.text = text
-	lbl.add_theme_font_size_override("font_size", font_size)
-	lbl.add_theme_color_override("font_color", color)
-	return lbl
+	return LeaderboardDetailBuilders.make_stat_label(text, font_size, color)
+
+
+# D2: 实现已收口 LeaderboardDetailBuilders（改一处不再两处漂移）
 
 # ══════════════════════════════════════════════════════════════
 # 敌方相位师详情弹窗（低频创建，保留部分 .new() 但使用 _get_skill_panel_style()）
@@ -524,23 +524,10 @@ func _create_master_header(basic_info: Dictionary) -> Control:
 
 ## 创建属性显示
 func _create_stats_display(stats: Dictionary) -> Control:
-	var container = VBoxContainer.new()
-	container.add_theme_constant_override("separation", 3)
-	container.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	return LeaderboardDetailBuilders.create_stats_display(stats)
 
-	container.add_child(_make_stat_label("战斗属性", 14, Color(0.6, 0.85, 1, 1)))
 
-	var stats_row = HBoxContainer.new()
-	stats_row.add_theme_constant_override("separation", 15)
-	stats_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	container.add_child(stats_row)
-
-	stats_row.add_child(_make_stat_label("HP: %d" % stats.get("max_hp", 0), 11, Color(0.8, 0.4, 0.4, 1)))
-	stats_row.add_child(_make_stat_label("攻击: %d" % stats.get("attack_power", 0), 11, Color(0.4, 0.8, 0.4, 1)))
-	stats_row.add_child(_make_stat_label("防御: %d" % stats.get("defense", 0), 11, Color(0.4, 0.4, 0.8, 1)))
-	stats_row.add_child(_make_stat_label("能量: %.1f/s" % stats.get("energy_regen", 0), 11, Color(0.4, 0.8, 0.8, 1)))
-
-	return container
+# D2: 实现已收口 LeaderboardDetailBuilders（改一处不再两处漂移）
 
 ## 创建装备情报区域（相位仪 + 战斗平台）
 func _create_equipment_section(equipment: Dictionary) -> Control:
@@ -640,7 +627,7 @@ func _create_equipment_section(equipment: Dictionary) -> Control:
 			if not ptype.is_empty():
 				var type_lbl = Label.new()
 				type_lbl.text = _platform_type_display(ptype)
-				type_lbl.add_theme_font_size_override("font_size", 10)
+				type_lbl.add_theme_font_size_override("font_size", 12)
 				type_lbl.add_theme_color_override("font_color", Color(0.7, 0.7, 0.8, 1))
 				type_lbl.size_flags_horizontal = Control.SIZE_SHRINK_END
 				plat_header.add_child(type_lbl)
@@ -655,14 +642,16 @@ func _create_equipment_section(equipment: Dictionary) -> Control:
 				if pstats.has("attack"):
 					plat_stats_row.add_child(_make_stat_label("攻击:%d" % int(pstats["attack"]), 10, Color(0.4, 0.8, 0.4, 0.9)))
 				if pstats.has("defense"):
-					plat_stats_row.add_child(_make_stat_label("防御:%d" % int(pstats["defense"]), 10, Color(0.4, 0.4, 0.8, 0.9)))
-				if pstats.has("defense"):
-					plat_stats_row.add_child(_make_stat_label("防御:%d" % int(pstats["defense"]), 10, Color(0.4, 0.4, 0.8, 0.9)))
+					plat_stats_row.add_child(_make_stat_label("防御:%d" % int(pstats["defense"]), 12, Color(0.4, 0.4, 0.8, 0.9)))
 
 			if not pspecial.is_empty():
 				var tags_lbl = Label.new()
-				tags_lbl.text = "  ".join(pspecial)
-				tags_lbl.add_theme_font_size_override("font_size", 10)
+				# D2: special 标签汉化（复用 presenter 同款翻译表；原直接 join 显示英文）
+				var translated_tags: Array = []
+				for tag in pspecial:
+					translated_tags.append(LeaderboardDetailBuilders.translate_special_tag(String(tag)))
+				tags_lbl.text = "  ".join(translated_tags)
+				tags_lbl.add_theme_font_size_override("font_size", 12)
 				tags_lbl.add_theme_color_override("font_color", Color(0.5, 0.6, 0.7, 0.8))
 				tags_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 				tags_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -687,55 +676,15 @@ static func _platform_type_display(type_str: String) -> String:
 
 ## 创建技能区域
 func _create_skills_section(section_title: String, skills: Array) -> Control:
-	var container = VBoxContainer.new()
-	container.add_theme_constant_override("separation", 5)
-	container.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	return LeaderboardDetailBuilders.create_skills_section(section_title, skills)
 
-	container.add_child(_make_stat_label(section_title, 14, Color(0.6, 0.85, 1, 1)))
 
-	for skill in skills:
-		container.add_child(_create_skill_box(skill))
-
-	return container
+# D2: 实现已收口 LeaderboardDetailBuilders（改一处不再两处漂移）
 
 ## 创建技能框
 func _create_skill_box(skill: Dictionary) -> Control:
-	var outer = VBoxContainer.new()
-	outer.add_theme_constant_override("separation", 2)
-	outer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	return LeaderboardDetailBuilders.create_skill_box(skill)
 
-	var panel = PanelContainer.new()
-	panel.add_theme_stylebox_override("panel", _get_skill_panel_style())
-	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	outer.add_child(panel)
 
-	var skill_container = VBoxContainer.new()
-	skill_container.add_theme_constant_override("separation", 3)
-	skill_container.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	panel.add_child(skill_container)
+# D2: 实现已收口 LeaderboardDetailBuilders（改一处不再两处漂移）
 
-	var header_row = HBoxContainer.new()
-	header_row.add_theme_constant_override("separation", 8)
-	skill_container.add_child(header_row)
-
-	var name_label = Label.new()
-	name_label.text = skill.get("name", "未知技能")
-	name_label.add_theme_font_size_override("font_size", 12)
-	name_label.add_theme_color_override("font_color", Color(1.0, 0.9, 0.6, 1))
-	name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	header_row.add_child(name_label)
-
-	var mana_cost = skill.get("mana_cost", 0)
-	var cooldown = skill.get("cooldown", 0.0)
-	header_row.add_child(_make_stat_label(
-		"%dMP  %.1fs" % [mana_cost, cooldown], 10, Color(0.6, 0.7, 0.8, 1)))
-
-	var desc_label = Label.new()
-	desc_label.text = skill.get("description", "")
-	desc_label.add_theme_font_size_override("font_size", 11)
-	desc_label.add_theme_color_override("font_color", Color(0.85, 0.85, 0.85, 1))
-	desc_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	desc_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	skill_container.add_child(desc_label)
-
-	return outer

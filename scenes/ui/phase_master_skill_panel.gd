@@ -411,6 +411,9 @@ func _on_unlock_pressed(node_id: String) -> void:
 		# 解锁失败提示（可接 toast）
 		var can: Dictionary = PhaseMasterSkillManager.can_unlock_node(node_id)
 		var reason: String = can.get("reason", "")
+		# B2: 失败音效（与商店/装备失败 error 标准对齐，此前静音）
+		if SignalBus and SignalBus.has_signal("play_sound"):
+			SignalBus.play_sound.emit("error")
 		if reason == "not_enough_points":
 			_show_temp_msg("技能点不足")
 		elif reason == "requires_not_met":
@@ -423,6 +426,9 @@ func _on_unlock_pressed(node_id: String) -> void:
 				_show_temp_msg("需先解锁：%s" % missing_str)
 	else:
 		# 解锁成功：弹 Toast 通知（含节点名称 + 解锁内容摘要）
+		# B2: 成功音效（此前视觉达标但全程静音）
+		if SignalBus and SignalBus.has_signal("play_sound"):
+			SignalBus.play_sound.emit("enhance")
 		_emit_unlock_toast(node_id)
 	# v9 perf: 刷新走去抖入口（node_unlocked/points_changed 信号也会请求，同帧合并为 1 次）
 	_request_refresh()

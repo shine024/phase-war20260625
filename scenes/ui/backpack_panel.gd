@@ -150,11 +150,7 @@ var _last_rune_info_signature: String = "__INIT__"  ## 符文信息栏（符文�
 var _last_phase_inst_signature: String = "__INIT__"  ## 相位仪标签签名去重
 var _loading_label: Label = null
 
-## v7.x: 批量拆解多选状态
 ## 选中卡的 instance_id 集合（含裸 card_id 回退）。用 instance_id 精确匹配各实例。
-var _batch_select_ids: Dictionary = {}  ## key=instance_id/card_id, value=true
-## 批量拆解按钮引用（运行时创建，挂工具栏右侧）
-var _batch_dismantle_btn: Button = null
 
 ## ============================================================
 ## 生命周期
@@ -164,6 +160,9 @@ func _ready() -> void:
 	_filter_sort = FilterSortSub.new()
 	_filter_sort.setup(self)
 	add_to_group("backpack_panel")
+	# D1: 根框架统一 PanelStyles 签名框（覆盖 tscn StyleBoxFlat_bg）
+	var ps_d1 = preload("res://scripts/ui/panel_styles.gd")
+	add_theme_stylebox_override("panel", ps_d1.make_panel_frame(DesignTokens.get_panel_accent("backpack")))
 
 	# 初始化各标签页Grid引用
 	_combat_cards_grid = get_node_or_null("VBoxOuter/TabContainer/CombatCardsTab/ScrollContainer/CardGrid") as GridContainer
@@ -261,7 +260,7 @@ func _setup_title_bar_fonts() -> void:
 		return
 	if _title_label:
 		_title_label.add_theme_font_override("font", title_font)
-		_title_label.add_theme_font_size_override("font_size", 18)
+		_title_label.add_theme_font_size_override("font_size", 20)
 	if _meta_info_label:
 		_meta_info_label.add_theme_font_override("font", title_font)
 	# 关闭按钮：v7.x 面板统一 ✕ 模式（44x44、hover 红色发光，与 PanelChrome 同款）
@@ -412,14 +411,18 @@ func _count_distinct_eras_in_backpack() -> int:
 
 ## v9.2: 战斗卡元信息辅助——统计背包内满级（card_level>=30）卡数
 func _count_max_stars_in_backpack() -> int:
-	if _data == null or BlueprintManager == null or not BlueprintManager.has_method("get_card_xp_progress"):
+	## v9.2 满级口径：实例战斗等级 ≥30（原 get_card_xp_progress 恒 1 已移除）
+	if _data == null:
+		return 0
+	var ir_node: Node = get_node_or_null("/root/InstanceRegistry")
+	if ir_node == null or not ir_node.has_method("get_card_level"):
 		return 0
 	var count: int = 0
 	for card in _data.get_filtered_sorted_cards():
 		if not (card is CardResource):
 			continue
-		var prog: Dictionary = BlueprintManager.get_card_xp_progress(card.card_id)
-		if int(prog.get("level", 0)) >= 5:
+		var key: String = card.instance_id if not card.instance_id.is_empty() else card.card_id
+		if int(ir_node.get_card_level(key)) >= 30:
 			count += 1
 	return count
 
@@ -467,53 +470,6 @@ func _setup_toolbar_signals() -> void:
 		_search_edit.text_changed.connect(_on_search_changed)
 	if _sort_option:
 		_sort_option.item_selected.connect(_on_sort_option_changed)
-	# v7.x: 创建批量拆解按钮（仅战斗卡 Tab 可见）
-	_ensure_batch_dismantle_button()
-
-## v7.x: 在工具栏右侧创建"批量拆解"按钮。仅在战斗卡 Tab 显示。
-## 按钮常态禁用（selected_count == 0），有选中时启用 + 显示数量。
-func _ensure_batch_dismantle_button() -> void:
-	if _batch_dismantle_btn != null and is_instance_valid(_batch_dismantle_btn):
-		return
-	var tb_right: HBoxContainer = get_node_or_null("VBoxOuter/Toolbar/ToolbarRight") as HBoxContainer
-	if tb_right == null:
-		return
-	var btn := Button.new()
-	btn.name = "BatchDismantleButton"
-	btn.text = "批量拆解"
-	btn.custom_minimum_size = Vector2(96, 28)
-	btn.add_theme_font_size_override("font_size", 11)
-	btn.add_theme_color_override("font_color", DesignTokens.COLOR_GOLD)
-	btn.add_theme_color_override("font_hover_color", Color(1.0, 0.92, 0.6, 1.0))
-	btn.add_theme_color_override("font_disabled_color", Color(0.5, 0.5, 0.5, 0.5))
-	btn.tooltip_text = "Shift+点击卡片选择多张，再点此按钮一次性拆解"
-	btn.disabled = true
-	btn.visible = false
-	# 主题：琥珀色边框（与选择态视觉呼应）
-	var style := StyleBoxFlat.new()
-	style.bg_color = Color(DesignTokens.COLOR_AMBER.r, DesignTokens.COLOR_AMBER.g, DesignTokens.COLOR_AMBER.b, 0.12)
-	style.border_color = Color(DesignTokens.COLOR_AMBER.r, DesignTokens.COLOR_AMBER.g, DesignTokens.COLOR_AMBER.b, 0.7)
-	style.set_border_width_all(1)
-	style.set_corner_radius_all(4)
-	btn.add_theme_stylebox_override("normal", style)
-	var style_hover := style.duplicate() as StyleBoxFlat
-	style_hover.bg_color = Color(DesignTokens.COLOR_AMBER.r, DesignTokens.COLOR_AMBER.g, DesignTokens.COLOR_AMBER.b, 0.22)
-	btn.add_theme_stylebox_override("hover", style_hover)
-	var style_disabled := StyleBoxFlat.new()
-	style_disabled.bg_color = Color(0.1, 0.12, 0.16, 0.3)
-	style_disabled.border_color = Color(0.3, 0.3, 0.3, 0.3)
-	style_disabled.set_border_width_all(1)
-	style_disabled.set_corner_radius_all(4)
-	btn.add_theme_stylebox_override("disabled", style_disabled)
-	btn.pressed.connect(_on_batch_dismantle_pressed)
-	# 插到 CapacityLabel 之前（视觉左起）
-	var cap_lbl: Node = tb_right.get_node_or_null("CapacityLabel")
-	if cap_lbl:
-		tb_right.add_child(btn)
-		tb_right.move_child(btn, cap_lbl.get_index())
-	else:
-		tb_right.add_child(btn)
-	_batch_dismantle_btn = btn
 
 
 ## 搜索框文本变化：写入 _search_query 并刷新当前 Tab
@@ -666,7 +622,7 @@ func _add_filter_chip(label: String, filter_kind: String, value, accent: Color, 
 	btn.toggle_mode = true
 	btn.button_pressed = active
 	btn.custom_minimum_size = Vector2(0, 26)
-	btn.add_theme_font_size_override("font_size", 11)
+	btn.add_theme_font_size_override("font_size", 12)
 	btn.add_theme_constant_override("h_separation", 0)
 	# 样式：未激活=暗灰边框；激活=tab 签名色边框 + 半透填充
 	var style_normal := StyleBoxFlat.new()
@@ -839,7 +795,6 @@ func _exit_tree() -> void:
 		if SignalBus.rune_acquired.is_connected(_on_rune_acquired):
 			SignalBus.rune_acquired.disconnect(_on_rune_acquired)
 	# v7.x: 清空批量选择（防游离 item 触发信号）
-	_batch_select_ids.clear()
 	if _presenter:
 		_presenter.cleanup()
 		_presenter = null
@@ -931,14 +886,9 @@ func _fallback_on_card_swapped(_slot_index: int, old_card: CardResource, new_car
 
 ## 标签页切换事件
 func _on_tab_changed(tab_index: int) -> void:
-	# v7.x: 离开战斗卡 Tab 时清空批量选择（避免选中态残留 + 按钮状态错位）
-	if tab_index != TabIndex.COMBAT_CARDS and not _batch_select_ids.is_empty():
-		_clear_batch_selection()
 	# v9.2: 先刷新顶部框架（顶线条色 + 标题 + 元信息）和工具栏 chips
 	_refresh_title_bar(tab_index)
 	_rebuild_toolbar_chips(tab_index)
-	# v7.x: 批量拆解按钮可见性跟随 Tab
-	_refresh_batch_dismantle_button()
 	# v7.x：切换时对内容区做一次透明度闪现（受 motion_reduce 守卫）
 	_play_tab_change_fade()
 	match tab_index:
@@ -1239,7 +1189,7 @@ func show_card_detail(card: CardResource, _source_item: Control) -> void:
 	# 清理旧版手动词条区（AffixSep / AffixBox），统一面板已在 desc_label 中包含词条
 	_cleanup_legacy_popup_affixes(popup)
 
-	# 设置背包模式（面板内部自动添加拆解/装备按钮）
+	# 设置背包模式（面板内部自动添加装备按钮）
 	if _detail_info_panel.has_method("set_panel_mode"):
 		_detail_info_panel.set_panel_mode(CardInfoPanel.PanelMode.MODE_BACKPACK)
 	# 连接 action_requested 信号（仅连接一次）
@@ -1277,183 +1227,19 @@ func hide_card_detail() -> void:
 ## 统一面板 action_requested 信号回调
 func _on_detail_action_requested(action: String, card: CardResource) -> void:
 	match action:
-		"dismantle":
-			_confirm_dismantle(card)
 		"equip":
 			if _presenter:
 				_presenter.on_equip_button_pressed(card)
 
-## 拆解确认弹窗（显示预览收益，确认后执行）
-func _confirm_dismantle(card: CardResource) -> void:
-	if card == null or _presenter == null:
-		return
-	if not _presenter.has_method("on_dismantle_button_pressed"):
-		return
-	# 获取拆解预览
-	var preview: Dictionary = {}
-	if _presenter.has_method("get_dismantle_preview"):
-		preview = _presenter.get_dismantle_preview(card)
-	var card_name: String = String(preview.get("name", card.card_id))
-	var research: int = int(preview.get("research", 0))
-	var nano: int = int(preview.get("nano", 0))
 
-	var dialog := ConfirmationDialog.new()
-	dialog.title = "拆解卡牌"
-	dialog.dialog_text = "确定要拆解「%s」吗？\n\n拆解后该卡牌将从背包永久移除，你将获得：\n- %d 研究点\n- %d 纳米材料\n\n此操作不可撤销。" % [card_name, research, nano]
-	dialog.ok_button_text = "确认拆解"
-	dialog.get_cancel_button().text = "取消"
-	# 用元数据绑定卡牌，确认回调取回
-	dialog.set_meta("dismantle_card", card)
-	dialog.confirmed.connect(_on_dismantle_confirmed.bind(dialog))
-	dialog.canceled.connect(_on_dismantle_canceled.bind(dialog))
-	add_child(dialog)
-	dialog.popup_centered(Vector2i(440, 220))
 
-## 拆解确认回调
-func _on_dismantle_confirmed(dialog: ConfirmationDialog) -> void:
-	var card: CardResource = dialog.get_meta("dismantle_card", null)
-	dialog.queue_free()
-	if card != null and _presenter and _presenter.has_method("on_dismantle_button_pressed"):
-		_presenter.on_dismantle_button_pressed(card)
-
-## 拆解取消回调
-func _on_dismantle_canceled(dialog: ConfirmationDialog) -> void:
-	dialog.queue_free()
 
 ## ============================================================
-## v7.x: 批量拆解多选
 ## ============================================================
 
-## 获取卡的稳定标识（instance_id 优先，回退 card_id）
-func _card_select_id(card: CardResource) -> String:
-	if card == null:
-		return ""
-	return card.instance_id if not card.instance_id.is_empty() else card.card_id
 
-## 单卡选中状态变化回调（item 绑定为最后一个参数）
-func _on_card_selection_changed(is_selected: bool, item: Control) -> void:
-	if item == null or not is_instance_valid(item):
-		return
-	var card: CardResource = item.card if "card" in item else null
-	if card == null:
-		return
-	var sel_id := _card_select_id(card)
-	if sel_id.is_empty():
-		return
-	if is_selected:
-		_batch_select_ids[sel_id] = true
-	else:
-		_batch_select_ids.erase(sel_id)
-	_refresh_batch_dismantle_button()
 
-## 刷新批量拆解按钮（可见性 + 文案 + 启用态）
-func _refresh_batch_dismantle_button() -> void:
-	if _batch_dismantle_btn == null or not is_instance_valid(_batch_dismantle_btn):
-		return
-	# 仅战斗卡 Tab 显示
-	var on_combat_tab: bool = _tab_container != null and _tab_container.current_tab == TabIndex.COMBAT_CARDS
-	_batch_dismantle_btn.visible = on_combat_tab
-	if not on_combat_tab:
-		_batch_dismantle_btn.disabled = true
-		_batch_dismantle_btn.text = "批量拆解"
-		return
-	var count: int = _batch_select_ids.size()
-	_batch_dismantle_btn.text = "批量拆解" if count == 0 else "批量拆解(%d)" % count
-	_batch_dismantle_btn.disabled = count == 0
 
-## 清空所有选中（用于切 Tab/关闭面板/拆解完成后）
-func _clear_batch_selection() -> void:
-	if _combat_cards_grid == null:
-		_batch_select_ids.clear()
-		_refresh_batch_dismantle_button()
-		return
-	for child in _combat_cards_grid.get_children():
-		if child.has_method("set_card") and "is_selected" in child:
-			if child.is_selected:
-				child.is_selected = false
-	_batch_select_ids.clear()
-	_refresh_batch_dismantle_button()
-
-## 批量拆解按钮点击
-func _on_batch_dismantle_pressed() -> void:
-	if _batch_select_ids.is_empty():
-		return
-	if _presenter == null or not _presenter.has_method("on_batch_dismantle_pressed"):
-		return
-	# 收集选中卡（从网格 item 取 card 对象，避免重新查 InstanceRegistry）
-	var selected_cards: Array[CardResource] = []
-	if _combat_cards_grid != null:
-		for child in _combat_cards_grid.get_children():
-			if not child.has_method("set_card"):
-				continue
-			var card: CardResource = child.card if "card" in child else null
-			if card == null:
-				continue
-			if _batch_select_ids.has(_card_select_id(card)):
-				selected_cards.append(card)
-	if selected_cards.is_empty():
-		_clear_batch_selection()
-		return
-	_confirm_batch_dismantle(selected_cards)
-
-## 批量拆解确认弹窗（列出清单 + 合计收益）
-func _confirm_batch_dismantle(cards: Array) -> void:
-	if cards.is_empty() or _presenter == null:
-		return
-	# 合计收益 + 构建清单文本
-	var total_research: int = 0
-	var total_nano: int = 0
-	var name_lines: Array[String] = []
-	var preview_count := 0
-	const MAX_PREVIEW := 10  # 清单最多显示 10 条，超出提示"等N张"
-	for card in cards:
-		if card == null:
-			continue
-		var preview: Dictionary = {}
-		if _presenter.has_method("get_dismantle_preview"):
-			preview = _presenter.get_dismantle_preview(card)
-		total_research += int(preview.get("research", 0))
-		total_nano += int(preview.get("nano", 0))
-		if preview_count < MAX_PREVIEW:
-			var card_name: String = String(preview.get("name", card.card_id))
-			name_lines.append("· %s" % card_name)
-			preview_count += 1
-	var overflow: int = cards.size() - preview_count
-	if overflow > 0:
-		name_lines.append("· …（等 %d 张）" % overflow)
-	var list_text: String = "\n".join(name_lines)
-	var dialog := ConfirmationDialog.new()
-	dialog.title = "批量拆解卡牌"
-	dialog.dialog_text = "确定要批量拆解 %d 张卡牌吗？\n\n%s\n\n合计获得：\n- %d 研究点\n- %d 纳米材料\n\n此操作不可撤销。" % [
-		cards.size(), list_text, total_research, total_nano,
-	]
-	dialog.ok_button_text = "确认拆解"
-	dialog.get_cancel_button().text = "取消"
-	dialog.set_meta("batch_dismantle_cards", cards)
-	dialog.confirmed.connect(_on_batch_dismantle_confirmed.bind(dialog))
-	dialog.canceled.connect(_on_batch_dismantle_canceled.bind(dialog))
-	add_child(dialog)
-	dialog.popup_centered(Vector2i(440, 360))
-
-## 批量拆解确认回调
-func _on_batch_dismantle_confirmed(dialog: ConfirmationDialog) -> void:
-	var cards: Array = dialog.get_meta("batch_dismantle_cards", [])
-	dialog.queue_free()
-	if cards.is_empty():
-		return
-	# 先清空选择态（避免拆解后 item 回收时重复触发信号）
-	_batch_select_ids.clear()
-	if _combat_cards_grid != null:
-		for child in _combat_cards_grid.get_children():
-			if child.has_method("set_card") and "is_selected" in child:
-				child.is_selected = false
-	if _presenter != null and _presenter.has_method("on_batch_dismantle_pressed"):
-		_presenter.on_batch_dismantle_pressed(cards)
-	_refresh_batch_dismantle_button()
-
-## 批量拆解取消回调
-func _on_batch_dismantle_canceled(dialog: ConfirmationDialog) -> void:
-	dialog.queue_free()
 
 ## 供相位仪等外部 UI 直接打开详情
 static func open_card_detail(card: CardResource, source_item: Control = null) -> void:
@@ -1702,7 +1488,7 @@ func _make_sidebar_section(title: String) -> VBoxContainer:
 	vbox.add_theme_constant_override("separation", 2)
 	var lbl := Label.new()
 	lbl.text = title
-	lbl.add_theme_font_size_override("font_size", 10)
+	lbl.add_theme_font_size_override("font_size", 12)
 	lbl.add_theme_font_override("font", DesignTokens.get_title_font())
 	lbl.add_theme_color_override("font_color", Color(0.55, 0.65, 0.78, 0.7))
 	vbox.add_child(lbl)
@@ -1716,7 +1502,7 @@ func _make_sidebar_item(text: String, count: int, active: bool, callable: Callab
 	var row := Button.new()
 	row.text = "%s  %d" % [text, count]
 	row.alignment = HORIZONTAL_ALIGNMENT_LEFT
-	row.add_theme_font_size_override("font_size", 11)
+	row.add_theme_font_size_override("font_size", 12)
 	row.custom_minimum_size = Vector2(0, 26)
 	# 样式
 	var style := StyleBoxFlat.new()
@@ -1923,7 +1709,7 @@ func refresh_rune_info_panel() -> void:
 				entry.add_child(name_label)
 				var effect_label := Label.new()
 				effect_label.text = RunewordDefinitions.get_effects_description(rw_id)
-				effect_label.add_theme_font_size_override("font_size", 11)
+				effect_label.add_theme_font_size_override("font_size", 12)
 				effect_label.add_theme_color_override("font_color", Color(0.75, 0.82, 0.9, 1))
 				effect_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 				entry.add_child(effect_label)
@@ -2151,7 +1937,7 @@ func _create_phase_inst_item(cfg: Dictionary, is_equipped: bool) -> Control:
 	else:
 		faction_label.text = "通用"
 		faction_label.add_theme_color_override("font_color", Color(0.7, 0.75, 0.85, 0.85))
-	faction_label.add_theme_font_size_override("font_size", 11)
+	faction_label.add_theme_font_size_override("font_size", 12)
 	left_col.add_child(faction_label)
 
 	# === 中列：槽位格子可视化 + 关键属性 ===
@@ -2167,7 +1953,7 @@ func _create_phase_inst_item(cfg: Dictionary, is_equipped: bool) -> Control:
 		var green_lbl := Label.new()
 		green_lbl.text = "战斗卡"
 		green_lbl.custom_minimum_size.x = 60.0
-		green_lbl.add_theme_font_size_override("font_size", 10)
+		green_lbl.add_theme_font_size_override("font_size", 12)
 		green_lbl.add_theme_color_override("font_color", Color(0.55, 0.65, 0.78, 0.9))
 		green_row.add_child(green_lbl)
 		for i in range(green_count):
@@ -2195,7 +1981,7 @@ func _create_phase_inst_item(cfg: Dictionary, is_equipped: bool) -> Control:
 		var rune_lbl := Label.new()
 		rune_lbl.text = "符文"
 		rune_lbl.custom_minimum_size.x = 60.0
-		rune_lbl.add_theme_font_size_override("font_size", 10)
+		rune_lbl.add_theme_font_size_override("font_size", 12)
 		rune_lbl.add_theme_color_override("font_color", Color(0.55, 0.65, 0.78, 0.9))
 		rune_row.add_child(rune_lbl)
 		for i in range(rune_count):
@@ -2236,7 +2022,7 @@ func _create_phase_inst_item(cfg: Dictionary, is_equipped: bool) -> Control:
 	if traits is Array and not traits.is_empty():
 		var trait_label := Label.new()
 		trait_label.text = "✦ " + "  |  ".join(PackedStringArray(traits))
-		trait_label.add_theme_font_size_override("font_size", 10)
+		trait_label.add_theme_font_size_override("font_size", 12)
 		trait_label.add_theme_color_override("font_color", Color(0.8, 0.95, 1.0, 0.85))
 		trait_label.autowrap_mode = TextServer.AUTOWRAP_WORD
 		mid_col.add_child(trait_label)
@@ -2267,12 +2053,12 @@ func _create_phase_inst_item(cfg: Dictionary, is_equipped: bool) -> Control:
 		ability_chip_panel.add_theme_stylebox_override("panel", chip_style)
 		var ability_dot := Label.new()
 		ability_dot.text = "◆"
-		ability_dot.add_theme_font_size_override("font_size", 10)
+		ability_dot.add_theme_font_size_override("font_size", 12)
 		ability_dot.add_theme_color_override("font_color", Color(0.98, 0.75, 0.14, 1.0))
 		ability_chip.add_child(ability_dot)
 		var ability_text := Label.new()
 		ability_text.text = ability_name
-		ability_text.add_theme_font_size_override("font_size", 10)
+		ability_text.add_theme_font_size_override("font_size", 12)
 		ability_text.add_theme_color_override("font_color", Color(0.98, 0.75, 0.14, 1.0))
 		ability_chip.add_child(ability_text)
 	else:
@@ -2281,7 +2067,7 @@ func _create_phase_inst_item(cfg: Dictionary, is_equipped: bool) -> Control:
 		ability_chip_panel.add_theme_stylebox_override("panel", chip_style)
 		var none_text := Label.new()
 		none_text.text = "无主动能力"
-		none_text.add_theme_font_size_override("font_size", 10)
+		none_text.add_theme_font_size_override("font_size", 12)
 		none_text.add_theme_color_override("font_color", Color(0.4, 0.45, 0.55, 0.7))
 		ability_chip.add_child(none_text)
 	ability_chip_panel.add_child(ability_chip)
@@ -2292,7 +2078,7 @@ func _create_phase_inst_item(cfg: Dictionary, is_equipped: bool) -> Control:
 		var equipped_btn := Button.new()
 		equipped_btn.text = "✓ 当前装备"
 		equipped_btn.disabled = true
-		equipped_btn.add_theme_font_size_override("font_size", 11)
+		equipped_btn.add_theme_font_size_override("font_size", 12)
 		equipped_btn.custom_minimum_size = Vector2(160, 30)
 		var eq_style := StyleBoxFlat.new()
 		eq_style.bg_color = Color(0.13, 0.40, 0.23, 0.18)
@@ -2305,7 +2091,7 @@ func _create_phase_inst_item(cfg: Dictionary, is_equipped: bool) -> Control:
 	else:
 		var equip_btn := Button.new()
 		equip_btn.text = "装备"
-		equip_btn.add_theme_font_size_override("font_size", 11)
+		equip_btn.add_theme_font_size_override("font_size", 12)
 		equip_btn.custom_minimum_size = Vector2(160, 30)
 		right_col.add_child(equip_btn)
 		var iid_copy: String = String(cfg.get("id", ""))
@@ -2320,7 +2106,7 @@ func _add_phase_stat_mini(parent: HBoxContainer, lbl_text: String, val_text: Str
 	cell.add_theme_constant_override("separation", 1)
 	var lbl := Label.new()
 	lbl.text = lbl_text
-	lbl.add_theme_font_size_override("font_size", 10)
+	lbl.add_theme_font_size_override("font_size", 12)
 	lbl.add_theme_color_override("font_color", Color(0.5, 0.58, 0.7, 0.9))
 	cell.add_child(lbl)
 	var val := Label.new()
@@ -2500,6 +2286,7 @@ func _on_backpack_rune_clicked(rune_id: String) -> void:
 	var pim: Node = get_node_or_null("/root/PhaseInstrumentManager")
 	if pim == null or not pim.has_method("equip_rune"):
 		_show_rune_action_hint("符文系统未就绪")
+		_play_rune_sound("error")
 		return
 	# 已装备 → 卸下（从槽位移除，保留所有权）
 	if pim.has_method("get_rune_slots") and pim.get_rune_slots().has(rune_id):
@@ -2510,12 +2297,14 @@ func _on_backpack_rune_clicked(rune_id: String) -> void:
 					pim.unequip_rune(i)
 				break
 		_show_rune_action_hint("已卸下：%s" % RuneClass.get_rune_name(rune_id))
+		_play_rune_sound("card_pickup")
 		refresh_runes_tab()
 		return
 	# 未装备 → 找第一个空槽装备
 	var slot_count: int = pim.get_rune_slot_count() if pim.has_method("get_rune_slot_count") else 0
 	if slot_count <= 0:
 		_show_rune_action_hint("当前相位仪没有符文槽位")
+		_play_rune_sound("error")
 		return
 	var slots: Array = pim.get_rune_slots() if pim.has_method("get_rune_slots") else []
 	var target_slot: int = -1
@@ -2526,13 +2315,21 @@ func _on_backpack_rune_clicked(rune_id: String) -> void:
 			break
 	if target_slot < 0:
 		_show_rune_action_hint("符文槽位已满，请先卸下其他符文")
+		_play_rune_sound("error")
 		return
 	var ok: bool = pim.equip_rune(target_slot, rune_id)
 	if ok:
 		_show_rune_action_hint("已装备：%s" % RuneClass.get_rune_name(rune_id))
+		_play_rune_sound("card_place")
 		refresh_runes_tab()
 	else:
 		_show_rune_action_hint("装备失败（槽位不可用）")
+		_play_rune_sound("error")
+
+## B2: 符文操作音效（此前全路径有 toast 但静音）
+func _play_rune_sound(name: String) -> void:
+	if SignalBus and SignalBus.has_signal("play_sound"):
+		SignalBus.play_sound.emit(name)
 
 ## v6.2: 简易操作反馈——复用 ToastManager（若可用），否则用 print 兜底
 func _show_rune_action_hint(msg: String) -> void:
@@ -2634,19 +2431,41 @@ func refresh_stat_boosts() -> void:
 func _on_card_clicked(card: CardResource, source_item: Control) -> void:
 	if _presenter:
 		_presenter.on_card_clicked(card, source_item)
+	# B5: 详情打开期间持续轻提亮"刚点的是哪张"——详情关闭后网格此前回到无选中状态，
+	# 玩家从详情返回找不到刚才看的是哪张卡
+	_set_last_detail_item(source_item)
+
+## B5: 记录详情来源卡牌格并施加持续轻提亮；换目标时复位旧格
+var _detail_source_item: Control = null
+
+func _set_last_detail_item(item: Control) -> void:
+	if _detail_source_item != null and is_instance_valid(_detail_source_item) and _detail_source_item != item:
+		_detail_source_item.modulate = Color(1, 1, 1, 1)
+	_detail_source_item = item
+	if item != null and is_instance_valid(item):
+		item.modulate = Color(1.12, 1.12, 1.12)
+
+## B5: 清除详情来源高亮（详情关闭/背包关闭时）
+func _clear_last_detail_item() -> void:
+	if _detail_source_item != null and is_instance_valid(_detail_source_item):
+		_detail_source_item.modulate = Color(1, 1, 1, 1)
+	_detail_source_item = null
 
 func _on_detail_close() -> void:
 	if _presenter:
 		_presenter.on_detail_close()
+	_clear_last_detail_item()
 
 ## PopupPanel.popup_hide 信号回调：点弹窗外区域/系统关闭时触发，确保内嵌情报面板状态清空
 func _on_detail_popup_hide() -> void:
 	if _detail_info_panel and is_instance_valid(_detail_info_panel) and _detail_info_panel.has_method("hide_panel"):
 		_detail_info_panel.hide_panel()
+	_clear_last_detail_item()
 
 func _on_close() -> void:
 	if _presenter:
 		_presenter.on_close()
+	_clear_last_detail_item()
 
 ## 外部打开背包面板时调用：仅在隐藏期间有脏数据时做一次刷新
 func on_overlay_opened() -> void:
@@ -2684,8 +2503,6 @@ func _add_card_item(grid: GridContainer, card: CardResource, at_top: bool = fals
 	if not item.card_clicked.is_connected(_on_card_clicked):
 		item.card_clicked.connect(_on_card_clicked)
 	# v7.x: 连接批量选择信号（仅 backpack_card_item 有此信号）
-	if item.has_signal("selection_changed") and not item.selection_changed.is_connected(_on_card_selection_changed):
-		item.selection_changed.connect(_on_card_selection_changed.bind(item))
 	var insert_idx := 0 if at_top else _find_first_empty_slot_index(grid)
 	if insert_idx >= 0:
 		grid.move_child(item, insert_idx)
@@ -2793,7 +2610,7 @@ func _ensure_empty_slot_plus(placeholder: Panel) -> void:
 		line1.name = "EmptyTitleLabel"
 		line1.text = "空槽位"
 		line1.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		line1.add_theme_font_size_override("font_size", 11)
+		line1.add_theme_font_size_override("font_size", 12)
 		line1.add_theme_color_override("font_color", Color(0.42, 0.47, 0.57, 0.6))
 		line1.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		vbox.add_child(line1)
@@ -2802,7 +2619,7 @@ func _ensure_empty_slot_plus(placeholder: Panel) -> void:
 		line2.name = "EmptySubtitleLabel"
 		line2.text = "— 未获得 —"
 		line2.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		line2.add_theme_font_size_override("font_size", 10)
+		line2.add_theme_font_size_override("font_size", 12)
 		line2.add_theme_color_override("font_color", Color(0.35, 0.40, 0.50, 0.5))
 		line2.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		vbox.add_child(line2)

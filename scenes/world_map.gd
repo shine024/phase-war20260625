@@ -746,7 +746,7 @@ func _make_env_tag(label_text: String, value_text: String) -> PanelContainer:
 	panel.add_child(margin)
 	var lbl := Label.new()
 	lbl.text = "%s: %s" % [label_text, value_text]
-	lbl.add_theme_font_size_override("font_size", 11)
+	lbl.add_theme_font_size_override("font_size", 12)
 	lbl.add_theme_color_override("font_color", Color(0.75, 0.85, 1, 0.95))
 	margin.add_child(lbl)
 	return panel
@@ -792,7 +792,7 @@ static func _translate_env(key: String, raw: String) -> String:
 func _make_detail_desc(text: String, color: Color = Color(0.7, 0.75, 0.85, 0.9)) -> Label:
 	var lbl := Label.new()
 	lbl.text = text
-	lbl.add_theme_font_size_override("font_size", 11)
+	lbl.add_theme_font_size_override("font_size", 12)
 	lbl.add_theme_color_override("font_color", color)
 	lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL

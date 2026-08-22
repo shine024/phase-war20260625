@@ -7,6 +7,8 @@ const GC = preload("res://resources/game_constants.gd")
 const DefaultCards = preload("res://data/default_cards.gd")
 const CardFrameUi = preload("res://scripts/card_frame_ui.gd")
 const UiAssetLoader = preload("res://scripts/ui_asset_loader.gd")
+const InstrumentBarDrag = preload("res://scenes/ui/instrument_bar_drag.gd")
+const DT = preload("res://resources/design_tokens.gd")
 
 ## 拖拽预览外框同槽位；内图标竖向略小于外框
 const DRAG_PREVIEW_ICON_DISPLAY_MIN := Vector2(36, 56)
@@ -148,6 +150,9 @@ static func start_drag(item: PanelContainer) -> void:
 	item.modulate = Color(1, 1, 1, 0.3)
 	hide_backpack_overlay(item)
 	cache_slot_controls_for_drag(item)
+	# B2: 拿起卡牌音效（键盘部署路径同款，鼠标拖拽此前静音）
+	if SignalBus.has_signal("play_sound"):
+		SignalBus.play_sound.emit("card_pickup")
 
 ## 获取拖拽预览的父节点
 static func get_drag_preview_parent(item: PanelContainer) -> Node:
@@ -168,6 +173,8 @@ static func update_drag_preview(item: PanelContainer) -> void:
 		item._drag_preview.global_position = mouse_pos - item._drag_preview.size / 2
 
 ## 检查鼠标下的槽位
+## 2026-08-22 P0：悬停即校验兼容性——可放绿框、禁放红框（背包乱斗辨识度标准），
+## 此前不匹配槽位也显示绿色"可放"高亮，松手才 toast 失败。
 static func check_slot_under_mouse(item: PanelContainer) -> void:
 	var mouse_pos = item.get_global_mouse_position()
 	if item._cached_slot_controls.is_empty():
@@ -179,9 +186,15 @@ static func check_slot_under_mouse(item: PanelContainer) -> void:
 		if not child is Control:
 			continue
 		if child.get_global_rect().has_point(mouse_pos) and child.has_meta("slot_color"):
-			apply_slot_hover_feedback(item, child)
+			var slot_color := String(child.get_meta("slot_color", ""))
+			var can_place: bool = InstrumentBarDrag.card_matches_slot_color(item.card, slot_color)
+			apply_slot_hover_feedback(item, child, can_place)
 			if item._drag_preview and is_instance_valid(item._drag_preview):
-				item._drag_preview.modulate = Color(0.4, 1.0, 0.4, 0.8)
+				if can_place:
+					item._drag_preview.modulate = Color(0.4, 1.0, 0.4, 0.8)
+				else:
+					item._drag_preview.modulate = Color(
+						DT.COLOR_DANGER.r, DT.COLOR_DANGER.g, DT.COLOR_DANGER.b, 0.6)
 			return
 	clear_slot_hover_feedback(item)
 	if item._drag_preview and is_instance_valid(item._drag_preview):
@@ -214,8 +227,8 @@ static func end_drag(item: PanelContainer) -> void:
 		try_equip_to_slot(item, slot)
 	clear_drag_slot_cache(item)
 
-## 槽位悬停高亮
-static func apply_slot_hover_feedback(item: PanelContainer, slot: Control) -> void:
+## 槽位悬停高亮（can_place=false 时红色禁放框）
+static func apply_slot_hover_feedback(item: PanelContainer, slot: Control, can_place: bool = true) -> void:
 	if slot == null or not is_instance_valid(slot):
 		return
 	if item._last_hover_slot != null and item._last_hover_slot != slot:
@@ -228,7 +241,10 @@ static func apply_slot_hover_feedback(item: PanelContainer, slot: Control) -> vo
 			slot.set_meta("_drag_prev_border", sb.border_color)
 		if not slot.has_meta("_drag_prev_width"):
 			slot.set_meta("_drag_prev_width", sb.border_width_left)
-		sb.border_color = Color(0.45, 1.0, 0.65, 1.0)
+		if can_place:
+			sb.border_color = Color(0.45, 1.0, 0.65, 1.0)
+		else:
+			sb.border_color = Color(DT.COLOR_DANGER.r, DT.COLOR_DANGER.g, DT.COLOR_DANGER.b, 1.0)
 		sb.set_border_width_all(3)
 		slot.queue_redraw()
 
@@ -329,13 +345,23 @@ static func try_equip_to_slot(item: PanelContainer, slot: Control) -> void:
 	var slot_index = slot.get_meta("slot_index") if slot.has_meta("slot_index") else -1
 	if slot_color.is_empty() or slot_index < 0:
 		return
+	# P0: 符文槽收卡牌此前在 calculate_flat_index 返回 -1 后静默吞掉——给明确反馈
+	if slot_color == "rune":
+		SignalBus.show_toast.emit("符文槽只能放置符文，卡牌请放入绿/红/蓝槽位")
+		if SignalBus.has_signal("play_sound"):
+			SignalBus.play_sound.emit("error")
+		return
 	var flat_index = calculate_flat_index(item, slot_color, slot_index)
 	if flat_index < 0:
 		return
 	if not PhaseInstrumentManager or not PhaseInstrumentManager.has_method("equip_card"):
 		return
 	var ok: bool = bool(PhaseInstrumentManager.equip_card(flat_index, item.card, null))
-	if not ok:
+	if ok:
+		# B2: 装备成功音效（与商店购买 card_place 对齐，此前成功全程静音）
+		if SignalBus.has_signal("play_sound"):
+			SignalBus.play_sound.emit("card_place")
+	else:
 		# P0-2: 装备失败此前完全静默（拖了没反应），玩家无法区分"失败"还是"卡了"
 		var card_name: String = String(item.card.display_name) if item.card != null else "卡牌"
 		SignalBus.show_toast.emit("装备失败：%s 与该槽位颜色不匹配" % card_name)

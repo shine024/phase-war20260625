@@ -231,7 +231,7 @@ func _create_achievement_item(data: Dictionary) -> Control:
 		claim_button.text = "领取奖励"
 		claim_button.custom_minimum_size = Vector2(80, 30)
 		var claim_styles := PanelStyles.make_button_styles(DT.COLOR_GOLD, "solid")
-		claim_button.add_theme_font_size_override("font_size", DT.FONT_SIZE_XSMALL)
+		claim_button.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
 		claim_button.add_theme_color_override("font_color", DT.COLOR_VOID)
 		claim_button.add_theme_color_override("font_hover_color", DT.COLOR_VOID)
 		claim_button.add_theme_color_override("font_pressed_color", DT.COLOR_VOID)

@@ -107,7 +107,7 @@ text = "战斗卡阵列 · COMBAT ROSTER"
 [node name="MetaInfoLabel" type="Label" parent="VBoxOuter/TitleRow"]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.66, 0.71, 0.81, 0.9)
-theme_override_font_sizes/font_size = 11
+theme_override_font_sizes/font_size = 12
 text = ""
 
 [node name="CloseButton" type="Button" parent="VBoxOuter/TitleRow"]
@@ -152,14 +152,14 @@ theme_override_constants/separation = 12
 [node name="CapacityLabel" type="Label" parent="VBoxOuter/Toolbar/ToolbarRight"]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.66, 0.71, 0.81, 0.9)
-theme_override_font_sizes/font_size = 11
+theme_override_font_sizes/font_size = 12
 text = ""
 
 [node name="SortOption" type="OptionButton" parent="VBoxOuter/Toolbar/ToolbarRight"]
 custom_minimum_size = Vector2(110, 0)
 layout_mode = 2
 theme_override_colors/font_color = Color(0.92, 0.94, 0.98, 1)
-theme_override_font_sizes/font_size = 11
+theme_override_font_sizes/font_size = 12
 item_count = 4
 popup/item_0/text = "默认"
 popup/item_1/text = "名称"

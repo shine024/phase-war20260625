@@ -38,8 +38,7 @@ func _ready() -> void:
 	# 刷新订阅：blueprint_unlocked 是主路径；CardCollectionManager 本地信号兜底；
 	# card_added_to_backpack 覆盖"已拥有但未触发解锁信号"的卡（ InstanceRegistry 兜底判断）。
 	if SignalBus:
-		if not SignalBus.blueprint_unlocked.is_connected(_on_collection_changed):
-			SignalBus.blueprint_unlocked.connect(_on_collection_changed)
+		# 2026-08-22：原 blueprint_unlocked 信号已移除，入包信号即收集刷新源
 		if not SignalBus.card_added_to_backpack.is_connected(_on_collection_changed):
 			SignalBus.card_added_to_backpack.connect(_on_collection_changed)
 	var ccm := get_node_or_null("/root/CardCollectionManager")
@@ -85,7 +84,7 @@ func _run_open_refresh_pipeline() -> void:
 
 # 判断卡牌是否实际被玩家拥有（双源：CollectionManager 状态 + InstanceRegistry 实例兜底）。
 # CollectionManager._collection_data 仅在 update_card_status 被调用时填充，
-# 而该调用由 blueprint_unlocked 信号触发——已拥有但未触发信号的卡会显示 LOCKED，
+# 而该调用由 card_added_to_backpack 信号触发——历史存量卡可能未触发信号，
 # 故用 InstanceRegistry.get_instances_by_card_id 兜底。
 func _is_owned(card_id: String) -> bool:
 	var ccm := get_node_or_null("/root/CardCollectionManager")

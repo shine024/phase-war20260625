@@ -1,14 +1,12 @@
 extends Node
-## BlueprintManager — 卡牌账号进度管理器
-## 当前职责：蓝图解锁、卡牌星级管理、研究点升级、纳米材料管理
+## BlueprintManager — 卡牌账号数据代管器
+## 当前职责：账号级养成数据代管（改造/继承/HP下限/军衔缓存/情报分支/武器槽）、
+## 纳米/研究点资源代管、法则蓝图 ID 助手。蓝图解锁/副本/制造/星级已移除（2026-08-22）。
 ## @todo 待重命名为 CardDataManager（ADR-001），因引用范围广暂保留原名
 
 ## 信号名保留 fragments_changed 以兼容外部（30+ 引用）
 ## 实际含义已变为「蓝图数据变更」（副本/星级/研究点/改装等）
 signal fragments_changed
-# v6.11: blueprint_star_upgraded 信号已移除（战力星级系统②已删）
-signal blueprint_obtained(card_id: String, count: int)
-signal card_manufactured(card_id: String, star: int)
 
 var DEBUG_BLUEPRINT_LOG := false
 
@@ -20,7 +18,6 @@ var DEBUG_BLUEPRINT_LOG := false
 
 const GC = preload("res://resources/game_constants.gd")
 const BasicResources = preload("res://data/basic_resources.gd")
-const StarConfig = preload("res://data/blueprint_star_config.gd")
 const DefaultCards = preload("res://data/default_cards.gd")
 const EnemyPhaseEquipment = preload("res://data/enemy_phase_equipment.gd")
 const PhaseLaws = preload("res://data/phase_laws.gd")
@@ -54,18 +51,13 @@ func _ensure_plm() -> Node:
 	return _plm
 
 ## v7.x: 能量卡系统移除，能量蓝图列表清空（保留常量名避免多处引用报错，遍历天然跳过）
-const DEFAULT_ENERGY_BLUEPRINT_IDS: Array[String] = []
 
 ## ─────────── 核心数据 ───────────
 
-var unlocked_blueprint_ids: Array = []
 
 ## card_id -> 副本数量（≥1 表示可制造）
-var blueprint_copies: Dictionary = {}
 
-## v7.x 性能：脏集——记录自上次 take_blueprint_copy_delta() 以来 blueprint_copies 变动过的卡
 ## {card_id: 变动前的副本数}。结算面板的"卡牌副本 +N"据此增量计算，免去全量遍历 ~133 蓝图。
-var _dirty_blueprint_deltas: Dictionary = {}
 
 ## blueprint_stars 已在 v5 迁移中彻底废弃，不再保留字段
 
@@ -95,10 +87,8 @@ var _auto_save_deferred_scheduled: bool = false
 var _auto_save_pending_reason: String = ""
 
 ## 旧存档是否已做过「默认能量蓝图首份副本」迁移
-var _legacy_default_energy_copies_migrated: bool = false
 
 ## 战斗中解锁仅写入数据；battle_ended 前由 BattleManager 调用 flush 再发信号（音效/结算列表）
-var _deferred_unlock_notify_ids: Array = []
 
 
 
@@ -157,245 +147,34 @@ func should_skip_drop_grant(card_id: String) -> bool:
 
 func _ready() -> void:
 	_sync_debug_log_flag()
-	_suppress_auto_save = true
-	_unlock_default_blueprints()
-	_suppress_auto_save = false
-	if SignalBus:
-		if SignalBus.has_signal("battle_started") and not SignalBus.battle_started.is_connected(_on_battle_started_clear_deferred_unlocks):
-			SignalBus.battle_started.connect(_on_battle_started_clear_deferred_unlocks)
+	_ensure_default_laws_unlocked()
 
 func _sync_debug_log_flag() -> void:
 	var debug_mgr: Node = get_node_or_null("/root/DebugLogManager")
 	if debug_mgr != null and debug_mgr.has_method("is_channel_enabled"):
 		DEBUG_BLUEPRINT_LOG = bool(debug_mgr.is_channel_enabled("blueprint_manager", DEBUG_BLUEPRINT_LOG))
 
-func _unlock_default_blueprints() -> void:
+## 新档默认法则解锁（原 _unlock_default_blueprints；蓝图解锁/副本记账已移除，只保留法则可用性链路）
+func _ensure_default_laws_unlocked() -> void:
 	var plm := _ensure_plm()
-	# v7.x 性能：用轻量版，避免启动期构建 133 张完整卡对象（只需 card_id 字符串）
-	var all_ids: Array = DefaultCards.get_all_blueprint_ids_lightweight()
-	var high_tier_blueprints = [
-		"omega_platform", "titan_mk2", "abrams_mk2",
-		"storm_rider"
-	]
-	for id in all_ids:
-		if id is String and not unlocked_blueprint_ids.has(id):
-			if id in high_tier_blueprints or id in DEFAULT_ENERGY_BLUEPRINT_IDS:
-				unlocked_blueprint_ids.append(id)
-				if DEBUG_BLUEPRINT_LOG:
-					pass  # LOG: Initial unlock
-
-	var default_law_blueprints = [
-		"steel_quick_repair",
-		"steel_bastion_wall",
-		"flame_heat_overload",
-		"thunder_ion_net",
-	]
-	for law_id in default_law_blueprints:
-		var bp_id: String = LAW_BLUEPRINT_PREFIX + law_id
-		if not unlocked_blueprint_ids.has(bp_id):
-			unlocked_blueprint_ids.append(bp_id)
-		if blueprint_copies.get(bp_id, 0) < 1:
-			blueprint_copies[bp_id] = 1
-			if DEBUG_BLUEPRINT_LOG:
-				pass  # LOG: Initial law unlock
-			if plm and plm.has_method("ensure_law_unlocked"):
-				plm.ensure_law_unlocked(law_id)
-
-	# v7.x: 能量卡系统移除，_ensure_starter_copies_for_default_energy_blueprints 调用已删除。
-	# 全装型初始1份副本逻辑保留（非能量卡）。
-	if is_blueprint_unlocked("omega_platform") and get_blueprint_copies("omega_platform") < 1:
-		add_blueprint_copy("omega_platform", 1)
-
-## ─────────── 蓝图解锁 ───────────
-
-func _is_battle_active() -> bool:
-	return BattleManager != null and BattleManager.battle_active
-
-
-func _on_battle_started_clear_deferred_unlocks() -> void:
-	# 异常退出战斗时可能未 flush；新局开始前补发通知，避免丢失结算/统计
-	if not _deferred_unlock_notify_ids.is_empty():
-		flush_deferred_unlock_notifications()
-
-
-func flush_deferred_unlock_notifications() -> void:
-	if _deferred_unlock_notify_ids.is_empty():
+	if plm == null or not plm.has_method("ensure_law_unlocked"):
 		return
-	var pending: Array = _deferred_unlock_notify_ids.duplicate()
-	_deferred_unlock_notify_ids.clear()
-	if SignalBus == null:
-		return
-	for id in pending:
-		SignalBus.blueprint_unlocked.emit(String(id))
-
-
-func is_blueprint_unlocked(card_id: String) -> bool:
-	return unlocked_blueprint_ids.has(card_id)
-
-func unlock_blueprint(card_id: String) -> void:
-	if card_id.is_empty():
-		return
-	if not unlocked_blueprint_ids.has(card_id):
-		unlocked_blueprint_ids.append(card_id)
-		if _is_battle_active():
-			if not _deferred_unlock_notify_ids.has(card_id):
-				_deferred_unlock_notify_ids.append(card_id)
-		elif SignalBus:
-			SignalBus.blueprint_unlocked.emit(card_id)
-		_auto_save("蓝图解锁: " + card_id)
-
-func get_unlocked_blueprint_ids() -> Array:
-	return unlocked_blueprint_ids.duplicate()
-
-## ─────────── 核心方法：蓝图副本 ───────────
-
-## 添加蓝图副本（保证≥1可制造，多余副本转化为研究点奖励）
-func add_blueprint_copy(card_id: String, count: int = 1) -> void:
-	if card_id.is_empty() or count <= 0:
-		return
-	if _is_excluded_war_platform_id(card_id):
-		return
-	if not is_blueprint_unlocked(card_id):
-		unlock_blueprint(card_id)
-	if not _dirty_blueprint_deltas.has(card_id):
-		_dirty_blueprint_deltas[card_id] = int(blueprint_copies.get(card_id, 0))
-	blueprint_copies[card_id] = max(1, int(blueprint_copies.get(card_id, 0)))
-	# 多余副本 → 研究点奖励
-	var rarity: String = get_card_rarity(card_id)
-	var grant_per_copy: int = int(StarConfig.get_research_cost_for_next_star(1, rarity) * 0.35)
-	add_research_points(max(1, grant_per_copy) * count)
-	emit_signal("fragments_changed")
-	emit_signal("blueprint_obtained", card_id, count)
-	# v6.6: 同步到 SignalBus（保持总线一致性，供跨系统监听）
-	if SignalBus.has_signal("blueprint_obtained"):
-		SignalBus.blueprint_obtained.emit(card_id, count)
-
-## 获取蓝图副本总数
-func get_blueprint_copies(card_id: String) -> int:
-	return int(blueprint_copies.get(card_id, 0))
-
-## v7.x 性能：取出并清空自上次调用以来的蓝图副本增量
-## 仅遍历变动过的卡（通常 0-5 张），替代结算面板旧的全量 ~133 蓝图 before/after diff。
-## 返回 {card_id: 净增量}，调用方负责消费；返回后脏集清空。
-func take_blueprint_copy_delta() -> Dictionary:
-	var result: Dictionary = {}
-	for card_id in _dirty_blueprint_deltas.keys():
-		var before: int = int(_dirty_blueprint_deltas[card_id])
-		var after: int = int(blueprint_copies.get(card_id, 0))
-		var gain: int = after - before
-		if gain > 0:
-			result[card_id] = gain
-	_dirty_blueprint_deltas.clear()
-	return result
-
-## 首次从「掉卡」获得某张卡：解锁蓝图并保证至少 1 副本
-func apply_card_drop_first_copy(card_id: String) -> void:
-	var plm := _ensure_plm()
-	var id: String = _normalize_blueprint_id(card_id)
-	if id.is_empty() or _is_excluded_war_platform_id(id):
-		return
-	if not is_blueprint_unlocked(id):
-		unlock_blueprint(id)
-	if not _dirty_blueprint_deltas.has(id):
-		_dirty_blueprint_deltas[id] = int(blueprint_copies.get(id, 0))
-	blueprint_copies[id] = maxi(1, int(blueprint_copies.get(id, 0)))
-	if is_law_blueprint_id(id) and plm and plm.has_method("ensure_law_unlocked"):
-		plm.ensure_law_unlocked(law_id_from_blueprint_id(id))
-	emit_signal("fragments_changed")
+	for law_id in ["steel_quick_repair", "steel_bastion_wall", "flame_heat_overload", "thunder_ion_net"]:
+		plm.ensure_law_unlocked(law_id)
 
 ## ─────────── 蓝图等级系统（研究点升星，影响进化门槛） ───────────
 ## 星级是蓝图的整体成长度，影响进化资格检查（E1≥4★，E2≥7★）
 ## 注意：与 enhance_level（强化等级，0-10）是不同概念
 
 ## 获取蓝图当前星级
-func get_blueprint_star(card_id: String) -> int:
-	# [DEPRECATED] 星级系统已废弃，固定返回1
-	return 1
-
 # ── v6.11: 战力星级系统②已移除（合并到强化等级①），get_battle_star/get_battle_star_power/
 #           add_battle_star_power/sync_battle_stars_to_cards 已删 ──
 
-## 获取法则蓝图星级（别名）
+## 法则蓝图等级：星级系统废弃后恒为 1（phase_law_manager 的每级 +2% 缩放因此恒为 1.0×）
 func get_law_blueprint_level(law_id: String) -> int:
-	return get_blueprint_star(law_blueprint_id(law_id))
-
-## 获取升星进度（基于当前研究点）
-func get_star_progress(card_id: String) -> Dictionary:
-	var star: int = get_blueprint_star(card_id)
-	var rarity: String = get_card_rarity(card_id)
-	var need: int = StarConfig.get_research_cost_for_next_star(star, rarity)
-	var cur: int = get_research_points()
-	var progress: float = 1.0 if need <= 0 else clampf(float(cur) / float(need), 0.0, 1.0)
-	return {
-		"current_star": star,
-		"current_research": cur,
-		"next_star_research": need,
-		"progress_0_to_1": progress,
-	}
-
-## 检查蓝图是否可以升星
-## [DEPRECATED] 升星功能已废弃，始终返回 false
-func can_upgrade_blueprint(card_id: String, _xp_type: int = 0) -> bool:
-	return false
-
-## 蓝图升星：消耗研究点
-## [DEPRECATED] 升星功能已废弃，始终返回 false
-func upgrade_blueprint_level(card_id: String, _xp_type: int = 0) -> bool:
-	return false
-
-## 蓝图升星通知已制造卡片
-func _on_blueprint_star_up(card_id: String, old_star: int, new_star: int) -> void:
-	ManagerLazyLoader.ensure_loaded("affix")
-	var am: Node = null
-	if ManagerLazyLoader and ManagerLazyLoader.has_method("get_manager"):
-		am = ManagerLazyLoader.get_manager("affix")
-	if am == null:
-		am = get_node_or_null("/root/AffixManager")
-	if am and am.has_method("on_blueprint_star_up"):
-		am.on_blueprint_star_up(card_id, old_star, new_star)
-	_auto_save("蓝图升星: %s %d★ → %d★" % [card_id, old_star, new_star])
+	return 1
 
 ## 获取所有有副本的蓝图ID列表
-func get_all_blueprint_ids() -> Array:
-	var result: Array = []
-	for card_id in blueprint_copies:
-		if blueprint_copies[card_id] > 0:
-			result.append(card_id)
-	return result
-
-## 获取所有有副本的蓝图ID及副本数
-func get_all_blueprint_ids_with_copies() -> Dictionary:
-	return blueprint_copies.duplicate()
-
-## ─────────── 卡片等级兼容 ───────────
-
-func get_card_level(card_id: String, _xp_type: int = -1) -> int:
-	return get_blueprint_star(card_id)
-
-func get_blueprint_level(card_id: String) -> int:
-	return get_blueprint_star(card_id)
-
-## 获取卡片XP进度（兼容旧升级系统）
-func get_card_xp_progress(card_id: String, _xp_type: int = XP_TYPE_DEFAULT) -> Dictionary:
-	var current_star: int = get_blueprint_star(card_id)
-	var rarity: String = get_card_rarity(card_id)
-	var need: int = StarConfig.get_research_cost_for_next_star(current_star, rarity)
-	var cur: int = get_research_points()
-	if current_star >= MAX_BLUEPRINT_LEVEL:
-		return {
-			"level": current_star,
-			"cur_xp": cur,
-			"next_xp": 0,
-		}
-	return {
-		"level": current_star,
-		"cur_xp": cur,
-		"next_xp": need,
-	}
-
-## 获取卡片突破次数（兼容旧系统，当前返回0）
-func get_card_breakthroughs(_card_id: String) -> int:
-	return 0
 
 ## ─────────── 默认强化列表 ───────────
 
@@ -434,61 +213,9 @@ func add_research_points(amount: int) -> void:
 		brm.add_basic_resource(BasicResources.ID_RESEARCH_POINTS, amount)
 	emit_signal("fragments_changed")
 
-## ─────────── 制造 ───────────
+## ─────────── 势力专属卡 ───────────
 
-## 制造卡牌（副本≥1即可制造，不消耗副本数）
-## 返回：成功返回制造的卡牌资源，失败返回null
-func manufacture_card(card_id: String) -> CardResource:
-	var lookup_id: String = _normalize_blueprint_id(card_id)
-	if not is_blueprint_unlocked(lookup_id):
-		push_error("[BlueprintManager] 无法制造未解锁的蓝图: " + lookup_id)
-		return null
-	var card: CardResource = DefaultCards.get_card_by_id(lookup_id)
-	if card == null:
-		var law_lookup_id: String = lookup_id
-		if law_lookup_id.begins_with(LAW_BLUEPRINT_PREFIX):
-			law_lookup_id = law_lookup_id.substr(LAW_BLUEPRINT_PREFIX.length())
-		if not PhaseLaws.get_by_id(law_lookup_id).is_empty():
-			card = DefaultCards.create_law_card_resource(law_lookup_id)
-
-	if card == null:
-		push_error("[BlueprintManager] 无法制造卡牌，找不到资源: " + lookup_id)
-		return null
-
-	var star: int = get_blueprint_star(lookup_id)
-
-	if card.card_type == GC.CardType.LAW or card.card_type == GC.CardType.ENERGY:
-		var out_card: CardResource = card.clone()
-		# out_card.star_level = star  # [DEPRECATED] star_level 赋值已废弃
-		# [DEPRECATED] out_card.star_level 赋值已废弃
-		if DEBUG_BLUEPRINT_LOG:
-			pass  # LOG: 制造成功（法则/能量卡）
-		emit_signal("card_manufactured", lookup_id, star)
-		_auto_save("制造卡牌: %s ★%d" % [lookup_id, star])
-		return out_card
-
-	if DEBUG_BLUEPRINT_LOG:
-		pass  # LOG: 制造成功
-	emit_signal("card_manufactured", lookup_id, star)
-	_auto_save("制造卡牌: %s ★%d" % [lookup_id, star])
-	return card
-
-func can_manufacture(card_id: String) -> bool:
-	var lookup_id: String = _normalize_blueprint_id(card_id)
-	if not is_blueprint_unlocked(lookup_id):
-		return false
-	# 非专属卡：蓝图已解锁即可制造
-	if not _is_exclusive_card(lookup_id):
-		return true
-	# 专属卡：需检查势力条件
-	return _is_exclusive_card_available(lookup_id)
-
-## 检查是否为势力专属卡
-func _is_exclusive_card(card_id: String) -> bool:
-	var EC = preload("res://data/faction_exclusive_cards.gd")
-	return EC.is_exclusive_card(card_id)
-
-## 获取蓝图的势力分支（供合成系统使用）
+## 获取蓝图的势力分支（供合成/卡背使用）
 ## 势力变体卡的 card_id 格式为 faction:{faction_id}:{base_card_id}
 func get_blueprint_faction_branch(card_id: String) -> String:
 	if card_id.begins_with("faction:"):
@@ -496,43 +223,6 @@ func get_blueprint_faction_branch(card_id: String) -> String:
 		if parts.size() >= 2:
 			return parts[1]
 	return ""
-
-## 检查势力专属卡是否可用
-func _is_exclusive_card_available(card_id: String) -> bool:
-	var EC = preload("res://data/faction_exclusive_cards.gd")
-	if not EC.is_exclusive_card(card_id):
-		return true  # 非专属卡始终可用
-	var faction_id: String = EC.get_exclusive_faction(card_id)
-	var min_rep: int = EC.get_min_reputation(card_id)
-	var fsm: Node = get_node_or_null("/root/FactionSystemManager")
-	if fsm == null:
-		return false
-	if fsm.get_active_faction() != faction_id:
-		return false
-	return fsm.get_faction_reputation(faction_id) >= min_rep
-
-func get_manufacture_info(card_id: String) -> Dictionary:
-	var lookup_id: String = _normalize_blueprint_id(card_id)
-	if not is_blueprint_unlocked(lookup_id):
-		return {"can_manufacture": false, "reason": "蓝图未解锁"}
-	var copies: int = get_blueprint_copies(lookup_id)
-	var star: int = get_blueprint_star(lookup_id)
-	var card: CardResource = DefaultCards.get_card_by_id(lookup_id)
-	if card == null:
-		var law_lookup_id: String = lookup_id
-		if law_lookup_id.begins_with(LAW_BLUEPRINT_PREFIX):
-			law_lookup_id = law_lookup_id.substr(LAW_BLUEPRINT_PREFIX.length())
-		if not PhaseLaws.get_by_id(law_lookup_id).is_empty():
-			card = DefaultCards.create_law_card_resource(law_lookup_id)
-	return {
-		"can_manufacture": true,
-		"card_id": lookup_id,
-		"card_name": card.display_name if card else lookup_id,
-		"card_type": card.card_type if card else -1,
-		"star": star,
-		"copies": copies,
-		"cost_copies": 1
-	}
 
 ## ─────────── 卡牌改装（Phase 3.3 重构：MOD_XX 列表 + 冲突替换） ───────────
 ## Facade 委托 → ModManager（managers/evolution/mod_manager.gd）
@@ -643,9 +333,6 @@ func _apply_evolution_hp_floor(stats: UnitStats, platform_card: CardResource, er
 ## ─────────── 存档 ───────────
 
 func save_state() -> Dictionary:
-	var copies_dict: Dictionary = {}
-	for k in blueprint_copies:
-		copies_dict[k] = blueprint_copies[k]
 	var mods_dict: Dictionary = {}
 	for k in blueprint_mods:
 		mods_dict[k] = (blueprint_mods[k] as Array).duplicate()
@@ -687,35 +374,18 @@ func save_state() -> Dictionary:
 	# v6.11: 战力星级数据 card_battle_stars 已移除（不再存档）
 
 	return {
-		"unlocked": unlocked_blueprint_ids.duplicate(),
-		"blueprint_copies": copies_dict,
 		"blueprint_mods": mods_dict,
 		"blueprint_inherit_bonus": inherit_dict,
 		"blueprint_evolution_hp_floor": hp_floor_dict,
 		"blueprint_rank_cache": rank_dict,
 		"blueprint_intel_branch_bonus": intel_bonus_dict,
 		"blueprint_weapon_slots": weapon_slots_dict,
-		"legacy_default_energy_copies_migrated": _legacy_default_energy_copies_migrated,
 	}
 
 func load_state(data: Dictionary) -> void:
 	emit_signal("fragments_changed")
-	_legacy_default_energy_copies_migrated = bool(data.get("legacy_default_energy_copies_migrated", false))
-	if data.has("unlocked") and data["unlocked"] is Array:
-		unlocked_blueprint_ids = (data["unlocked"] as Array).duplicate()
-		var filtered: Array = []
-		for id in unlocked_blueprint_ids:
-			if not _is_excluded_war_platform_id(String(id)):
-				filtered.append(id)
-		unlocked_blueprint_ids = filtered
-	if unlocked_blueprint_ids.is_empty():
-		_unlock_default_blueprints()
-	if data.has("blueprint_copies") and data["blueprint_copies"] is Dictionary:
-		blueprint_copies.clear()
-		for k in data["blueprint_copies"]:
-			var cid: String = String(k)
-			if not _is_excluded_war_platform_id(cid):
-				blueprint_copies[cid] = int(data["blueprint_copies"][k])
+	# 旧档的 unlocked/blueprint_copies/legacy_default_energy_copies_migrated 键随蓝图体系移除而忽略
+	_ensure_default_laws_unlocked()
 	if data.has("blueprint_mods") and data["blueprint_mods"] is Dictionary:
 		blueprint_mods.clear()
 		for k in data["blueprint_mods"]:
@@ -772,17 +442,7 @@ func load_state(data: Dictionary) -> void:
 
 	# v6.11: 战力星级数据加载已移除（card_battle_stars 不再存档，旧字段被忽略）
 
-	# 兼容旧存档的 fragments → blueprint_copies 迁移
-	if not data.has("blueprint_copies") and data.has("fragments") and data["fragments"] is Dictionary:
-		blueprint_copies.clear()
-		for k in data["fragments"]:
-			var cid: String = String(k)
-			if not _is_excluded_war_platform_id(cid):
-				blueprint_copies[cid] = int(data["fragments"][k])
-	# v7.x: 能量卡迁移函数已删除（DEFAULT_ENERGY_BLUEPRINT_IDS 清空，迁移天然空操作）
-	# 保留 _legacy_default_energy_copies_migrated 标志位防止重复执行残留逻辑
-	_legacy_default_energy_copies_migrated = true
-	_migrate_v3_law_copies_to_knowledge()
+	# 旧档 fragments（v2 蓝图碎片）与法则副本→知识迁移随蓝图体系移除而废弃
 	# 将 blueprint_mods 反向同步到 CardResource 模板，确保 UI 和冲突检测正常
 	_sync_blueprint_mods_to_templates()
 
@@ -802,36 +462,15 @@ func _sync_blueprint_mods_to_templates() -> void:
 		return
 	# [LOG-v5.1] print("[BlueprintManager] 已同步 %d 张卡的改造数据到模板" % blueprint_mods.size())
 
-func _migrate_v3_law_copies_to_knowledge() -> void:
-	var plm := _ensure_plm()
-	if plm == null or not plm.has_method("add_knowledge"):
-		return
-	var to_erase: Array[String] = []
-	for k in blueprint_copies.keys():
-		var key: String = String(k)
-		if not key.begins_with(LAW_BLUEPRINT_PREFIX):
-			continue
-		var law_id: String = key.substr(LAW_BLUEPRINT_PREFIX.length())
-		var copies: int = int(blueprint_copies[key])
-		if copies > 0:
-			var kind: String = plm.knowledge_key_for_law_id(law_id)
-			plm.add_knowledge(kind, copies * 5)
-		to_erase.append(key)
-	for key in to_erase:
-		blueprint_copies.erase(key)
 
 func reset_to_defaults() -> void:
-	unlocked_blueprint_ids.clear()
-	blueprint_copies.clear()
 	blueprint_mods.clear()
 	blueprint_inherit_bonus.clear()
 	blueprint_evolution_hp_floor.clear()
 	blueprint_rank_cache.clear()
 	blueprint_intel_branch_bonus.clear()
 	blueprint_weapon_slots.clear()
-	# v6.11: card_battle_stars.clear() 已移除（字段已删）
-	_legacy_default_energy_copies_migrated = false
-	_unlock_default_blueprints()
+	_ensure_default_laws_unlocked()
 
 ## ─────────── 自动存档 ───────────
 
@@ -1214,18 +853,12 @@ func _consume_research(amount: int) -> void:
 func _add_research(amount: int) -> void:
 	BasicResourceManager.add_resource(BasicResources.ID_RESEARCH_POINTS, amount)
 
-## 移除蓝图（进化时调用）
+## 移除蓝图养成数据（进化时调用；副本记账已随蓝图体系移除）
 func _remove_blueprint(card_id: String) -> void:
-	if blueprint_copies.has(card_id):
-		blueprint_copies[card_id] = 0
-	if blueprint_mods.has(card_id):
-		blueprint_mods.erase(card_id)
+	blueprint_mods.erase(card_id)
 
-## 添加蓝图（进化时调用）
-func _add_blueprint(card_id: String, enhance_level: int, mods: Array) -> void:
-	if not blueprint_copies.has(card_id):
-		blueprint_copies[card_id] = 0
-	blueprint_copies[card_id] = max(1, blueprint_copies[card_id])
+## 添加蓝图养成数据（进化时调用）
+func _add_blueprint(card_id: String, _enhance_level: int, mods: Array) -> void:
 	if not mods.is_empty():
 		blueprint_mods[card_id] = mods.duplicate(true)
 
