@@ -1,14 +1,8 @@
 extends Node
 ## 新系统集成脚本：自动连接所有新系统信号
 
-const _LawDefs = preload("res://data/phase_laws.gd")
 const _ScreenShake = preload("res://scenes/effects/screen_shake.gd")
-const _LawFx = preload("res://scenes/effects/phase_law_cast_effect.gd")
 const _DefaultCards = preload("res://data/default_cards.gd")
-
-const _FAMILY_MAP := {
-	"STEEL": "钢铁", "FLAME": "烈焰", "THUNDER": "雷霆", "VOID": "虚空"
-}
 
 func _ready() -> void:
 	await get_tree().process_frame
@@ -21,8 +15,6 @@ func _connect_signals() -> void:
 	# 但每次命中仍被派发一次纯空调用，密集交火时白白占用信号派发）
 	if SignalBus.has_signal("unit_died") and not SignalBus.unit_died.is_connected(_on_unit_died):
 		SignalBus.unit_died.connect(_on_unit_died)
-	if SignalBus.has_signal("phase_law_cast") and not SignalBus.phase_law_cast.is_connected(_on_phase_law_cast):
-		SignalBus.phase_law_cast.connect(_on_phase_law_cast)
 	if SignalBus.has_signal("battle_ended"):
 		if not SignalBus.battle_ended.is_connected(_on_battle_ended_daily):
 			SignalBus.battle_ended.connect(_on_battle_ended_daily)
@@ -54,8 +46,6 @@ func _exit_tree() -> void:
 		return
 	if SignalBus.has_signal("unit_died") and SignalBus.unit_died.is_connected(_on_unit_died):
 		SignalBus.unit_died.disconnect(_on_unit_died)
-	if SignalBus.has_signal("phase_law_cast") and SignalBus.phase_law_cast.is_connected(_on_phase_law_cast):
-		SignalBus.phase_law_cast.disconnect(_on_phase_law_cast)
 	if SignalBus.has_signal("battle_ended"):
 		if SignalBus.battle_ended.is_connected(_on_battle_ended_daily):
 			SignalBus.battle_ended.disconnect(_on_battle_ended_daily)
@@ -69,29 +59,7 @@ func _exit_tree() -> void:
 
 ## 单位受伤 → 暴击屏幕震动：v8.1 已迁移到 BattleManager._on_unit_damaged_combat_feedback
 ## （原实现因 meta 竞态失效属死逻辑）。T1 性能优化：连空监听一并移除，本处不再订阅 unit_damaged。
-
-## 相位法则施放 → 特效 + 日常任务计数
-## v7.x 修复 B5：施放相位法则时推进 USE_PHASE_LAWS 日常任务
-## v9.x 清理：BattleFeedbackManager 从未注册（恒 null），原兜底分支转正为唯一路径
-func _on_phase_law_cast(law_id: String, position: Vector2, _family: String) -> void:
-	# 日常任务：使用相位法则
-	_ensure_lazy("daily_task")  # v7.x 性能：DailyTaskManager 延迟加载守卫
-	var tm = get_node_or_null("/root/DailyTaskManager")
-	if tm and tm.has_method("update_task_progress"):
-		tm.update_task_progress(DailyTaskManager.TaskType.USE_PHASE_LAWS, 1)
-	var bf = _find_battlefield(get_tree().current_scene if get_tree() else null)
-	var law: Dictionary = _LawDefs.get_by_id(law_id)
-	if law.is_empty():
-		return
-	var fam_raw := String(law.get("family", "")).to_upper()
-	var fx_key: String = _FAMILY_MAP.get(fam_raw, fam_raw)
-	if bf:
-		match fx_key:
-			"钢铁": _LawFx.create_steel_effect(bf, position)
-			"烈焰": _LawFx.create_flame_effect(bf, position)
-			"雷霆": _LawFx.create_thunder_effect(bf, position)
-			"虚空": _LawFx.create_void_effect(bf, position)
-			_:     _LawFx.create_phase_law_effect(bf, position, Color.CYAN)
+# v9.x（P2-7范围B）：_on_phase_law_cast（法则施放特效+USE_PHASE_LAWS 日常计数）已随法则系统退役移除
 
 ## 战斗胜利 → 更新日常任务
 ## v7.x 修复 B5：原只推进 BATTLE_VICTORY 一类，其余6类无入口 → 接取的日常任务永远完不成。

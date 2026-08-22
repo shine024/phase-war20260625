@@ -1,21 +1,15 @@
 extends Control
-## 覆盖在战场上：暂停/继续时都可点单位显示信息；信息框打开时点击框外自动关闭；主动法则选点释放
+## 覆盖在战场上：暂停/继续时都可点单位显示信息；信息框打开时点击框外自动关闭；单位部署选点
+## v9.x（P2-7范围B）：主动法则选点施放链已随法则系统退役移除
 
 const VIEWPORT_SIZE := Vector2(1280.0, 580.0)
-const PhaseLaws = preload("res://data/phase_laws.gd")
-const BasicResources = preload("res://data/basic_resources.gd")
 const LawTargetIndicatorScript = preload("res://scenes/effects/law_target_indicator.gd")
-const ToastUtilsScript = preload("res://scripts/toast_utils.gd")
-const DefaultCardsData = preload("res://data/default_cards.gd")
 const NodeFinder = preload("res://scripts/node_finder.gd")
 const DEBUG_DEPLOY_CLICK_LOG := false
 
-var _law_target_indicator: Node2D = null
 var _deploy_target_indicator: Node2D = null
 var _had_pending_input: bool = false
 var _is_processing: bool = false  ## set_process(false) 空闲优化
-var _plm: Node = null  ## 安全引用：PhaseLawManager 本地缓存
-var _cast_toast = null
 
 # v7.x 战场视觉反馈：单位悬浮信息窗
 var _hover_info: PanelContainer = null
@@ -24,11 +18,6 @@ var _hover_current_unit: Node = null
 var _hover_check_acc: float = 0.0  # 悬停检测节流（每 0.1s 一次）
 const _HOVER_DELAY_SEC: float = 0.3
 const _HOVER_CHECK_INTERVAL_SEC: float = 0.1
-
-func _ensure_plm() -> void:
-	if _plm != null and is_instance_valid(_plm):
-		return
-	_plm = get_node_or_null("/root/PhaseLawManager")
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
@@ -50,24 +39,13 @@ func _safe_set_input_handled() -> void:
 		return
 	vp.set_input_as_handled()
 
-func _show_cast_fail_toast(message: String) -> void:
-	if message.is_empty():
-		return
-	if _cast_toast == null:
-		_cast_toast = ToastUtilsScript.new()
-	# 挂在 BattleContainer 上，避免被 SubViewport 裁剪
-	var parent_node: Node = get_parent() if get_parent() != null else self
-	_cast_toast.show_toast(parent_node, message, true)
-
-
 func _process(delta: float) -> void:
 	# === v7.x 悬停检测（常驻，每 0.1s 一次）===
 	_process_hover(delta)
-	# === 原 _process 逻辑（选点/部署指示器）===
-	var has_pending := not BattleInputState.pending_cast_law_id.is_empty() or not BattleInputState.pending_deploy_platform_card_id.is_empty()
+	# === 原 _process 逻辑（部署指示器）===
+	var has_pending := not BattleInputState.pending_deploy_platform_card_id.is_empty()
 	if not has_pending:
 		if _had_pending_input:
-			_clear_law_target_indicator()
 			_clear_deploy_target_indicator()
 			_had_pending_input = false
 			_is_processing = false
@@ -77,15 +55,10 @@ func _process(delta: float) -> void:
 		_is_processing = true
 	_had_pending_input = true
 
-	# 主动法则选点 / 单位部署选点：互斥指示器
-	if SignalBus and not BattleInputState.pending_cast_law_id.is_empty():
-		_clear_deploy_target_indicator()
-		_update_law_target_indicator()
-	elif SignalBus and not BattleInputState.pending_deploy_platform_card_id.is_empty():
-		_clear_law_target_indicator()
+	# 单位部署选点指示器
+	if SignalBus and not BattleInputState.pending_deploy_platform_card_id.is_empty():
 		_update_deploy_target_indicator()
 	else:
-		_clear_law_target_indicator()
 		_clear_deploy_target_indicator()
 
 
@@ -94,9 +67,7 @@ func _process_hover(delta: float) -> void:
 	if _hover_info == null:
 		return
 	# 选点/部署模式中不显示悬浮窗（避免干扰）
-	var in_pick_mode: bool = (SignalBus != null and (
-		not BattleInputState.pending_cast_law_id.is_empty() or
-		not BattleInputState.pending_deploy_platform_card_id.is_empty()))
+	var in_pick_mode: bool = (SignalBus != null and not BattleInputState.pending_deploy_platform_card_id.is_empty())
 	if in_pick_mode:
 		_hide_hover()
 		return
@@ -158,7 +129,7 @@ func _input(event: InputEvent) -> void:
 		return
 	# 空闲时 _process=false，收到任何鼠标事件且有 pending 状态时重新启用
 	if not _is_processing:
-		var has_pending := not BattleInputState.pending_cast_law_id.is_empty() or not BattleInputState.pending_deploy_platform_card_id.is_empty()
+		var has_pending := not BattleInputState.pending_deploy_platform_card_id.is_empty()
 		if has_pending:
 			_is_processing = true
 			_had_pending_input = true
@@ -178,17 +149,13 @@ func _input(event: InputEvent) -> void:
 	# 右键取消：从底部栏拖到战场时取消（无论是否暂停）
 	if mb.button_index == MOUSE_BUTTON_RIGHT and not mb.pressed:
 		if SignalBus:
-			if not BattleInputState.pending_cast_law_id.is_empty():
-				_cancel_pending_cast()
-				_safe_set_input_handled()
-				return
 			if not BattleInputState.pending_deploy_platform_card_id.is_empty():
 				_cancel_pending_deploy()
 				_safe_set_input_handled()
 				return
-	# 主动法则/部署：左键按下直接尝试选点（无论是否暂停；避免 _gui_input 丢事件时无法施放）
+	# 单位部署：左键按下直接尝试选点（无论是否暂停；避免 _gui_input 丢事件时无法部署）
 	if mb.button_index == MOUSE_BUTTON_LEFT and mb.pressed:
-		if SignalBus and (not BattleInputState.pending_cast_law_id.is_empty() or not BattleInputState.pending_deploy_platform_card_id.is_empty()):
+		if SignalBus and not BattleInputState.pending_deploy_platform_card_id.is_empty():
 			var vp_any: Variant = _global_to_battle_viewport_pos(mb.global_position)
 			if vp_any != null and _do_unit_pick(vp_any as Vector2):
 				_safe_set_input_handled()
@@ -214,21 +181,12 @@ func _gui_input(event: InputEvent) -> void:
 	if mb.button_index == MOUSE_BUTTON_RIGHT and SignalBus:
 		if not mb.pressed:
 			return
-		if not BattleInputState.pending_cast_law_id.is_empty():
-			_cancel_pending_cast()
-			_safe_set_input_handled()
-			return
 		if not BattleInputState.pending_deploy_platform_card_id.is_empty():
 			_cancel_pending_deploy()
 			_safe_set_input_handled()
 			return
 		return
 	# 选点模式中：左键直接释放（跳过信息框关闭逻辑）
-	if SignalBus and not BattleInputState.pending_cast_law_id.is_empty() and mb.button_index == MOUSE_BUTTON_LEFT and mb.pressed:
-		var vp: Variant = _global_to_battle_viewport_pos(mb.global_position)
-		if vp != null and _do_unit_pick(vp):
-			_safe_set_input_handled()
-		return
 	if SignalBus and not BattleInputState.pending_deploy_platform_card_id.is_empty() and mb.button_index == MOUSE_BUTTON_LEFT and mb.pressed:
 		var vp2: Variant = _global_to_battle_viewport_pos(mb.global_position)
 		if vp2 != null and _do_unit_pick(vp2):
@@ -263,10 +221,6 @@ func _handle_click_paused(global_pos: Vector2) -> void:
 		_safe_set_input_handled()
 
 func _do_unit_pick(viewport_pos: Vector2) -> bool:
-	# 施法与部署冲突时，优先施法（用户当前点击红槽/主动法则的期望）
-	if SignalBus and not BattleInputState.pending_cast_law_id.is_empty():
-		return _try_cast_active_law_at(viewport_pos)
-
 	# 单位部署：点战场放置虚影
 	if SignalBus and not BattleInputState.pending_deploy_platform_card_id.is_empty():
 		if BattleManager and BattleManager.battle_active and BattleManager.has_method("request_player_deploy_at"):
@@ -296,75 +250,6 @@ func _do_unit_pick(viewport_pos: Vector2) -> bool:
 			return true
 	return false
 
-func _try_cast_active_law_at(viewport_pos: Vector2) -> bool:
-	var law_id: String = BattleInputState.pending_cast_law_id
-	if law_id.is_empty():
-		return false
-	_ensure_plm()
-	if _plm and _plm.has_method("can_cast") and _plm.has_method("record_cast"):
-		var current_energy: float = 0.0
-		if EnergyManager and EnergyManager.has_method("get_current"):
-			current_energy = EnergyManager.get_current()
-		var bf = _get_battlefield()
-		var target_pos := viewport_pos
-		if bf != null and bf.has_method("get_unit_at_position"):
-			var pick: Dictionary = bf.get_unit_at_position(viewport_pos)
-			if not pick.is_empty() and pick.has("unit"):
-				var u: Node2D = pick.unit as Node2D
-				if u != null:
-					target_pos = u.global_position
-		var extra: Dictionary = {"friendly_units": 0}
-		if bf != null and bf.has_method("get_player_units_node"):
-			var pu: Node = bf.get_player_units_node()
-			if pu:
-				extra["friendly_units"] = pu.get_child_count()
-		var can_cast_now: bool = _plm.can_cast(law_id, current_energy, extra)
-		if can_cast_now:
-			var law: Dictionary = PhaseLaws.get_by_id(law_id) if PhaseLaws else {}
-			var cost: Dictionary = law.get("battle_cost", {}) if not law.is_empty() else {}
-			var need_energy: float = float(cost.get("energy", 0))
-			if need_energy > 0 and EnergyManager and EnergyManager.has_method("spend"):
-				if not EnergyManager.spend(need_energy):
-					if SignalBus and SignalBus.has_signal("play_sound"):
-						SignalBus.play_sound.emit("error")
-					return true
-			if SignalBus:
-				SignalBus.active_law_cast_at.emit(law_id, target_pos)
-				BattleInputState.pending_cast_law_id = ""
-				BattleInputState.pending_cast_law_origin_global = Vector2.ZERO
-		else:
-			var fail_reason: String = ""
-			var equipped_check = _plm._resolve_equipped_active_key(law_id) if _plm.has_method("_resolve_equipped_active_key") else ""
-			if equipped_check.is_empty():
-				fail_reason = "法则未正确装配"
-			else:
-				var law_cfg: Dictionary = PhaseLaws.get_by_id(law_id) if PhaseLaws else {}
-				var bc: Dictionary = law_cfg.get("battle_cost", {}) if not law_cfg.is_empty() else {}
-				var need_e: float = float(bc.get("energy", 0.0))
-				var need_nano: int = int(bc.get("nano", 0))
-				var casts_used: int = 0
-				var casts_limit: int = 999999
-				var active_states: Dictionary = _plm.active_law_states if "active_law_states" in _plm else {}
-				if active_states.has(law_id):
-					casts_used = int(active_states[law_id].get("casts_used", 0))
-					casts_limit = int(active_states[law_id].get("casts_limit", 999999))
-				var has_nano: int = 0
-				if BasicResourceManager and BasicResourceManager.has_method("get_total"):
-					has_nano = int(BasicResourceManager.get_total(BasicResources.ID_NANO_MATERIALS))
-				if current_energy < need_e:
-					fail_reason = "能量不足"
-				elif need_nano > 0 and has_nano < need_nano:
-					fail_reason = "纳米材料不足"
-				elif casts_used >= casts_limit:
-					fail_reason = "施放次数已用完"
-				else:
-					fail_reason = "施放失败"
-				_show_cast_fail_toast(fail_reason)
-		return true
-	BattleInputState.pending_cast_law_id = ""
-	BattleInputState.pending_cast_law_origin_global = Vector2.ZERO
-	return true
-
 func _try_deploy_from_global_pos(global_pos: Vector2) -> bool:
 	if SignalBus == null or BattleInputState.pending_deploy_platform_card_id.is_empty():
 		return false
@@ -380,28 +265,16 @@ func _try_deploy_from_global_pos(global_pos: Vector2) -> bool:
 			return true
 	return false
 
-func _clear_law_target_indicator() -> void:
-	if _law_target_indicator != null and is_instance_valid(_law_target_indicator):
-		_law_target_indicator.queue_free()
-	_law_target_indicator = null
-
-func _cancel_pending_cast() -> void:
-	# 取消选点释放：清空待施放法则 + 起点，并立即移除指示器
-	if SignalBus:
-		BattleInputState.pending_cast_law_id = ""
-		BattleInputState.pending_cast_law_origin_global = Vector2.ZERO
-	_clear_law_target_indicator()
+func _clear_deploy_target_indicator() -> void:
+	if _deploy_target_indicator != null and is_instance_valid(_deploy_target_indicator):
+		_deploy_target_indicator.queue_free()
+	_deploy_target_indicator = null
 
 func _cancel_pending_deploy() -> void:
 	if SignalBus:
 		BattleInputState.pending_deploy_platform_card_id = ""
 		BattleInputState.pending_deploy_origin_global = Vector2.ZERO
 	_clear_deploy_target_indicator()
-
-func _clear_deploy_target_indicator() -> void:
-	if _deploy_target_indicator != null and is_instance_valid(_deploy_target_indicator):
-		_deploy_target_indicator.queue_free()
-	_deploy_target_indicator = null
 
 func _ensure_deploy_target_indicator(bf: Node) -> void:
 	if _deploy_target_indicator != null and is_instance_valid(_deploy_target_indicator):
@@ -433,61 +306,6 @@ func _update_deploy_target_indicator() -> void:
 	_deploy_target_indicator.origin_local = origin_local
 	_deploy_target_indicator.target_local = target_local
 	_deploy_target_indicator.target_radius = 0.0
-
-func _ensure_law_target_indicator(bf: Node) -> void:
-	if _law_target_indicator != null and is_instance_valid(_law_target_indicator):
-		return
-	if bf == null:
-		return
-	var ind := Node2D.new()
-	ind.set_script(LawTargetIndicatorScript)
-	ind.position = Vector2.ZERO
-	ind.set_process(true)
-	bf.add_child(ind)
-	_law_target_indicator = ind
-
-func _update_law_target_indicator() -> void:
-	var bf := _get_battlefield()
-	if bf == null:
-		return
-
-	var law_id: String = BattleInputState.pending_cast_law_id
-	var cfg: Dictionary = PhaseLaws.get_by_id(law_id) if PhaseLaws else {}
-	var rt: Dictionary = cfg.get("runtime_tags", {})
-	var radius: float = float(rt.get("radius", 200.0))
-
-	# 目标：永远按鼠标当前落点（与点击释放一致）
-	var global_mouse: Vector2 = get_global_mouse_position()
-	var target_variant: Variant = _global_to_battle_viewport_pos(global_mouse)
-	if target_variant == null:
-		return
-	var target_local: Vector2 = target_variant as Vector2
-
-	# 原点：来自“选定法则格”的屏幕坐标（映射到战场子视口坐标）
-	var origin_local: Vector2 = target_local
-	if SignalBus and BattleInputState.pending_cast_law_origin_global != Vector2.ZERO:
-		var origin_variant: Variant = _global_to_battle_viewport_pos(BattleInputState.pending_cast_law_origin_global)
-		if origin_variant != null:
-			origin_local = origin_variant as Vector2
-	else:
-		# 兜底：战场中心
-		var container := get_parent()
-		if container != null:
-			var sub_container := container.get_node_or_null("SubViewportContainer") as Control
-			if sub_container != null:
-				var rect := sub_container.get_global_rect()
-				var center_global := rect.position + rect.size * 0.5
-				var center_variant: Variant = _global_to_battle_viewport_pos(center_global)
-				if center_variant != null:
-					origin_local = center_variant as Vector2
-
-	_ensure_law_target_indicator(bf)
-	if _law_target_indicator == null:
-		return
-
-	_law_target_indicator.origin_local = origin_local
-	_law_target_indicator.target_local = target_local
-	_law_target_indicator.target_radius = radius
 
 func _global_to_battle_viewport_pos(global_pos: Vector2) -> Variant:
 	var container := get_parent()

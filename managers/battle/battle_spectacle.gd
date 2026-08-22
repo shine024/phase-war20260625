@@ -23,7 +23,6 @@ const VfxImpactFactory = preload("res://scripts/battle/vfx_impact_factory.gd")
 
 # --- 节流时间戳（毫秒，同类特效冷却）---
 const _THROTTLE_KILL_MS: int = 1000        # 击杀定帧 1s 冷却
-const _THROTTLE_LAW_MS: int = 800          # 法则施放 0.8s 冷却
 const _THROTTLE_BOSS_MS: int = 2000        # BOSS 登场 2s 冷却
 
 # --- 连杀追踪 ---
@@ -34,7 +33,6 @@ var _last_combo_count: int = 0             # 上次播报的连杀数（避免�
 
 # --- 节流状态 ---
 var _last_kill_fx_ms: int = -999999
-var _last_law_fx_ms: int = -999999
 var _last_boss_fx_ms: int = -999999
 
 # --- 慢动作状态守卫 ---
@@ -60,7 +58,6 @@ var _title_label: Label = null             # 中央大字标签（VICTORY/BOSS�
 var _combo_label: Label = null             # 右上角连杀标签
 var _nano_rain_layer: CPUParticles2D = null  # v8.1: 纳米虫群全屏降雨粒子层
 
-
 func _ready() -> void:
 	# 监听核心战斗事件。process_mode 默认 ALWAYS，但慢动作期间 Engine.time_scale 不影响
 	# autoload 节点的 _process（autoload 走 PROCESS_MODE_ALWAYS 链路），await 用 ignore_time_scale。
@@ -68,7 +65,6 @@ func _ready() -> void:
 		SignalBus.unit_killed.connect(_on_unit_killed)
 		SignalBus.boss_wave_started.connect(_on_boss_wave_started)
 		SignalBus.phase_master_appeared.connect(_on_phase_master_appeared)
-		SignalBus.phase_law_cast.connect(_on_phase_law_cast)
 		SignalBus.battle_ended.connect(_on_battle_ended)
 		# v8.1: 相位仪主动能力全屏演出
 		if SignalBus.has_signal("phase_instrument_ability_triggered"):
@@ -90,7 +86,6 @@ func _ready() -> void:
 			SignalBus.mechanism_shield_projected.connect(_on_mechanism_shield_projected)
 		if SignalBus.has_signal("mechanism_drone_marked"):
 			SignalBus.mechanism_drone_marked.connect(_on_mechanism_drone_marked)
-
 
 # =========================================================================
 #  信号处理
@@ -114,7 +109,6 @@ func _on_unit_killed(victim: Node, killer: Node, is_player_victim: bool) -> void
 	# 连杀检测
 	_check_combo(now_ms)
 
-
 func _on_boss_wave_started(boss_archetype_ids: Array) -> void:
 	if boss_archetype_ids.is_empty():
 		return
@@ -124,7 +118,6 @@ func _on_boss_wave_started(boss_archetype_ids: Array) -> void:
 	_last_boss_fx_ms = now_ms
 	_play_boss_appear("精英波次来袭")
 
-
 func _on_phase_master_appeared(master_config: Dictionary) -> void:
 	var now_ms: int = Time.get_ticks_msec()
 	if now_ms - _last_boss_fx_ms < _THROTTLE_BOSS_MS:
@@ -133,14 +126,7 @@ func _on_phase_master_appeared(master_config: Dictionary) -> void:
 	var display_name: String = master_config.get("display_name", master_config.get("name", "相位师"))
 	_play_boss_appear("⚔ %s 降临" % display_name)
 
-
-func _on_phase_law_cast(law_id: String, _position: Vector2, family: String) -> void:
-	var now_ms: int = Time.get_ticks_msec()
-	if now_ms - _last_law_fx_ms < _THROTTLE_LAW_MS:
-		return
-	_last_law_fx_ms = now_ms
-	_play_law_cast(law_id, family)
-
+# v9.x（P2-7范围B）：_on_phase_law_cast 法则施放演出已随法则系统退役移除
 
 func _on_battle_ended(player_won: bool) -> void:
 	_cleanup_ability_fx()  # v8.1: 清理技能演出残留（如纳米降雨层）
@@ -148,7 +134,6 @@ func _on_battle_ended(player_won: bool) -> void:
 		_play_victory()
 	else:
 		_play_defeat()
-
 
 # =========================================================================
 #  v8.1 相位仪能力全屏演出
@@ -223,7 +208,6 @@ func _on_ability_triggered(ability_id: String, stage: String, params: Dictionary
 					_:
 						_play_enemy_warning_flash(Color(0.4, 0.4, 0.4, 0.4), "💫 " + db_title)
 
-
 ## 核子轰炸预警：全屏红色暗化 + 标题
 func _play_nuclear_warning(_params: Dictionary) -> void:
 	_ensure_overlay()
@@ -245,7 +229,6 @@ func _play_nuclear_warning(_params: Dictionary) -> void:
 	var tw2: Tween = create_tween()
 	tw2.tween_property(_title_label, "modulate:a", 1.0, 0.15)
 	tw2.tween_interval(0.4)
-
 
 ## 核子轰炸命中：白闪定帧 + extreme shake（v8.1a：白闪延长到0.2s，更震撼）
 func _play_nuclear_impact(params: Dictionary) -> void:
@@ -269,7 +252,6 @@ func _play_nuclear_impact(params: Dictionary) -> void:
 	tw3.tween_property(_overlay, "color:a", 0.0, 1.1)
 	tw3.tween_callback(func(): _overlay.visible = false)
 
-
 ## v9.3c: 大招命中定帧闪（敌我通用，对齐核子轰炸的白闪定帧效果）。
 ## 比 _play_nuclear_impact 轻量（单层闪 + 震屏），用于敌方 boss 大招 + 我方非核爆能力的命中瞬间。
 ## tint: 配色（lerp 到白闪，让闪屏带技能色调）。
@@ -287,7 +269,6 @@ func _play_spell_impact(tint: Color = Color.WHITE) -> void:
 	# extreme shake（略低于核子轰炸 16.0，大招级用 12.0）
 	_request_shake(12.0, 0.6)
 
-
 ## 纳米虫群开始：全屏紫色降雨粒子层（持续整个周期）
 func _play_nano_swarm_start(params: Dictionary) -> void:
 	var duration: float = float(params.get("duration", 30.0))
@@ -301,7 +282,6 @@ func _play_nano_swarm_start(params: Dictionary) -> void:
 	tw.tween_property(_overlay, "color:a", 0.0, 0.5)
 	tw.tween_callback(func(): _overlay.visible = false)
 	_request_shake(5.0, 0.4)
-
 
 ## 创建全屏紫色降雨粒子层
 func _create_nano_rain_layer(duration: float) -> void:
@@ -362,7 +342,6 @@ func _create_nano_rain_layer(duration: float) -> void:
 		_nano_rain_layer = null
 	)
 
-
 ## 巨型能量罩开始：全屏蓝色闪光脉冲
 func _play_mega_shield_start(_params: Dictionary) -> void:
 	_ensure_overlay()
@@ -374,7 +353,6 @@ func _play_mega_shield_start(_params: Dictionary) -> void:
 	tw.tween_property(_overlay, "color:a", 0.0, 0.6)
 	tw.tween_callback(func(): _overlay.visible = false)
 	_request_shake(6.0, 0.4)
-
 
 ## v7.x: 敌方相位仪能力警告闪光（全屏暗红/暗紫闪光 + 标题警告）
 ## [param flash_color] 闪光颜色（含 alpha 作为峰值透明度）
@@ -403,13 +381,11 @@ func _play_enemy_warning_flash(flash_color: Color, title_text: String) -> void:
 	tw2.tween_property(_title_label, "modulate:a", 0.0, 0.3)
 	_request_shake(8.0, 0.5)
 
-
 ## 清理技能演出残留节点（战斗结束时调用）
 func _cleanup_ability_fx() -> void:
 	if _nano_rain_layer != null and is_instance_valid(_nano_rain_layer):
 		_nano_rain_layer.queue_free()
 		_nano_rain_layer = null
-
 
 # =========================================================================
 #  特效实现（全部克制版）
@@ -437,7 +413,6 @@ func _play_kill_flash(killer: Node) -> void:
 	# 轻微屏幕震动（克制：light 档）
 	_request_shake(2.0, 0.10)
 
-
 ## v9.2: 大型常规爆炸的全屏微闪——下放核武闪白范式给 OMEGA/RAIL/MISSILE 等大爆炸。
 ## intensity 0.0~1.0 控制峰值透明度（0.25=微弱白闪，区别于核武的 0.95 强闪）。
 ## 让大爆炸有"砰"的视觉冲击，而非仅震动+粒子。受 motion_reduce 开关控制（无障碍）。
@@ -454,7 +429,6 @@ func play_explosion_flash(intensity: float = 0.25) -> void:
 	tw.tween_property(_overlay, "color:a", 0.0, 0.12)   # 快速消退
 	tw.tween_callback(func(): _overlay.visible = false)
 
-
 ## 连杀提示：右上角滑入"3 连击！"小标签
 func _check_combo(now_ms: int) -> void:
 	if _kill_timestamps.size() < _COMBO_THRESHOLD:
@@ -467,7 +441,6 @@ func _check_combo(now_ms: int) -> void:
 	_last_combo_count = tier
 	var label_text: String = "%d 连击！" % count
 	_show_combo_label(label_text)
-
 
 func _show_combo_label(text: String) -> void:
 	if _combo_label == null:
@@ -490,7 +463,6 @@ func _show_combo_label(text: String) -> void:
 	tw.tween_interval(1.0)
 	tw.tween_property(_combo_label, "modulate:a", 0.0, 0.35)
 	tw.tween_callback(func(): _combo_label.visible = false)
-
 
 ## BOSS 登场：0.2s 全屏暗化 + 顶部标题横幅 + medium_shake
 func _play_boss_appear(title_text: String) -> void:
@@ -520,24 +492,7 @@ func _play_boss_appear(title_text: String) -> void:
 	# 屏幕震动（medium 档）
 	_request_shake(5.0, 0.3)
 
-
-## 相位法则施放：顶部横幅 + family 配色 + light_shake
-func _play_law_cast(law_id: String, family: String) -> void:
-	_ensure_title_label()
-	var fam_color: Color = _family_color(family)
-	_title_label.text = "⚡ %s" % _law_display_name(law_id)
-	_title_label.label_settings = _make_label_settings(fam_color, DT.FONT_SIZE_LARGE)
-	_title_label.visible = true
-	_title_label.modulate.a = 0.0
-	_title_label.position.x = (get_viewport().get_visible_rect().size.x - _title_label.size.x) / 2.0
-	_title_label.position.y = 80
-	var tw: Tween = create_tween()
-	tw.tween_property(_title_label, "modulate:a", 1.0, 0.15)
-	tw.tween_interval(1.3)
-	tw.tween_property(_title_label, "modulate:a", 0.0, 0.35)
-	tw.tween_callback(func(): _title_label.visible = false)
-	_request_shake(2.0, 0.15)
-
+# v9.x（P2-7范围B）：_play_law_cast/_law_display_name/_family_color（法则施放演出）已随法则系统退役移除
 
 ## 胜利瞬间：Engine.time_scale=0.3 持续 0.6s + VICTORY 金字 + extreme_shake
 func _play_victory() -> void:
@@ -570,7 +525,6 @@ func _play_victory() -> void:
 	# 极限震动（克制：用 heavy 而非 extreme，避免眩晕）
 	_request_shake(10.0, 0.5)
 
-
 ## 失败瞬间：红色边缘脉动 + DEFEAT 灰字（不慢动作，避免挫败感拉长）
 func _play_defeat() -> void:
 	_ensure_overlay()
@@ -594,7 +548,6 @@ func _play_defeat() -> void:
 	tw2.tween_property(_title_label, "modulate:a", 0.0, 0.5)
 	tw2.tween_callback(func(): _title_label.visible = false)
 
-
 # =========================================================================
 #  辅助
 # =========================================================================
@@ -611,7 +564,6 @@ func _ensure_overlay() -> void:
 	_overlay.set_anchors_preset(Control.PRESET_FULL_RECT)
 	get_tree().root.add_child(_overlay)
 
-
 ## 确保中央大字标签存在
 func _ensure_title_label() -> void:
 	if _title_label != null and is_instance_valid(_title_label):
@@ -623,7 +575,6 @@ func _ensure_title_label() -> void:
 	_title_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	get_tree().root.add_child(_title_label)
 
-
 ## 构造 LabelSettings（缓存 outline 提升可读性）
 func _make_label_settings(color: Color, size: int) -> LabelSettings:
 	var ls: LabelSettings = LabelSettings.new()
@@ -634,33 +585,6 @@ func _make_label_settings(color: Color, size: int) -> LabelSettings:
 	return ls
 
 
-## 相位法则家族配色（STEEL青/FLAME橙/THUNDER紫/VOID粉）
-func _family_color(family: String) -> Color:
-	match family.to_upper():
-		"STEEL":
-			return DT.COLOR_ACCENT_CYAN
-		"FLAME":
-			return DT.COLOR_ENERGY
-		"THUNDER":
-			return DT.COLOR_ACCENT_PURPLE
-		"VOID":
-			return Color(1.0, 0.42, 0.62, 1.0)  # mythic 粉
-		_:
-			return DT.COLOR_ACCENT_CYAN
-
-
-## 法则显示名（简单美化，从 law_id 推断中文名；未知则原样返回）
-func _law_display_name(law_id: String) -> String:
-	# law_id 形如 "law_steel_xxx"，做最简美化：去掉前缀，按 _ 拆分取有意义部分
-	if law_id.is_empty():
-		return "相位法则"
-	# 若是中文键名直接返回；否则去前缀
-	if law_id.find("·") >= 0:
-		return law_id
-	var cleaned: String = law_id.replace("law_", "").replace("_", " ")
-	return cleaned.capitalize()
-
-
 ## 触发屏幕震动（通过 BattleManager 转发，与现有命中震动同通道）
 func _request_shake(intensity: float, duration: float) -> void:
 	if DT.is_motion_reduce():
@@ -668,7 +592,6 @@ func _request_shake(intensity: float, duration: float) -> void:
 	var bm: Node = get_node_or_null("/root/BattleManager")
 	if bm != null and bm.has_method("request_screen_shake"):
 		bm.request_screen_shake(intensity, duration)
-
 
 ## 清理连杀窗口外的旧时间戳
 func _trim_kill_window(now_ms: int) -> void:
@@ -680,14 +603,12 @@ func _trim_kill_window(now_ms: int) -> void:
 	if _kill_timestamps.is_empty():
 		_last_combo_count = 0
 
-
 func _exit_tree() -> void:
 	# 守卫：节点销毁时确保 time_scale 恢复（防 autoload 被卸载时慢动作卡死）
 	# 用 _user_time_scale 恢复，尊重玩家设定的倍速
 	if _slowmo_active:
 		Engine.time_scale = _user_time_scale
 		_slowmo_active = false
-
 
 # =========================================================================
 #  v8.5 兵种机制技能 VFX 回调
@@ -720,7 +641,6 @@ func _get_vfx_parent() -> Node2D:
 				return c
 	return null
 
-
 ## 定向爆破：从 from→to 播抛物线弹（简化为激光束+爆炸冲击波）
 func _on_mechanism_demolition_fired(from_pos: Vector2, to_pos: Vector2) -> void:
 	var parent: Node2D = _get_vfx_parent()
@@ -732,14 +652,12 @@ func _on_mechanism_demolition_fired(from_pos: Vector2, to_pos: Vector2) -> void:
 	VfxImpactFactory.spawn_shockwave(parent, to_pos, 80.0, Color(1.0, 0.6, 0.2, 0.9))
 	_request_shake(4.0, 0.3)
 
-
 ## 瞄准狙击锁定：在狙击单位位置播瞄准镜十字线（紫色短闪光）
 func _on_mechanism_sniper_aim_locked(pos: Vector2) -> void:
 	var parent: Node2D = _get_vfx_parent()
 	if parent == null:
 		return
 	VfxImpactFactory.spawn_shockwave(parent, pos, 40.0, Color(0.8, 0.5, 1.0, 0.7))
-
 
 ## 瞄准狙击开火：from→to 红色锁定框+射击线
 func _on_mechanism_sniper_fired(from_pos: Vector2, to_pos: Vector2) -> void:
@@ -749,7 +667,6 @@ func _on_mechanism_sniper_fired(from_pos: Vector2, to_pos: Vector2) -> void:
 	VfxImpactFactory.spawn_laser_beam(parent, from_pos, to_pos, Color(1.0, 0.3, 0.3, 1.0))
 	VfxImpactFactory.spawn_crit_aura(parent, to_pos)
 
-
 ## 闪电穿插开火：from→to 贯穿光线（青色，体现穿透）
 func _on_mechanism_blitz_fired(from_pos: Vector2, to_pos: Vector2) -> void:
 	var parent: Node2D = _get_vfx_parent()
@@ -758,14 +675,12 @@ func _on_mechanism_blitz_fired(from_pos: Vector2, to_pos: Vector2) -> void:
 	var dir: Vector2 = (to_pos - from_pos).normalized()
 	VfxImpactFactory.spawn_pierce_beam(parent, from_pos, dir)
 
-
 ## 电子屏蔽：center 位置播紫色扩散波纹（半径 radius）
 func _on_mechanism_jamming_field_activated(center: Vector2, radius: float) -> void:
 	var parent: Node2D = _get_vfx_parent()
 	if parent == null:
 		return
 	VfxImpactFactory.spawn_shockwave(parent, center, radius, Color(0.6, 0.3, 0.9, 0.6))
-
 
 ## 战术核武（导弹发射井）：弹道飞行 → 落点预警 → 多层核爆（闪光/火球/双冲击波/蘑菇云/焦痕）→ 延迟伤害结算
 ## v8.5+: 从原「瞬时闪白+冲击波」升级为完整演出。
@@ -880,7 +795,6 @@ func _on_mechanism_nuclear_launched(from_pos: Vector2, target_pos: Vector2, owne
 		ember_tw.tween_callback(func(): _overlay.visible = false)
 	)
 
-
 ## 核爆伤害结算（在爆炸 tween_callback 内调用，对 victims 逐个 take_damage）
 ## victims: [{"target": Node, "damage": float, "attacker": Node}, ...]
 ## 结算时复查目标有效性（延迟期间目标可能已死亡/移除），位置用爆心（伤害范围已在发射时锁定）
@@ -897,7 +811,6 @@ func _settle_nuclear_victims(victims: Array, center: Vector2) -> void:
 			cur_pos = (target as Node2D).global_position
 		if target.has_method("take_damage"):
 			target.take_damage(dmg, attacker if attacker is Node else null)
-
 
 ## 核爆弹道：导弹 Sprite2D 沿贝塞尔短弧飞行 0.5s + 橙白拖尾激光
 func _spawn_nuclear_missile(parent: Node2D, from_pos: Vector2, target_pos: Vector2) -> void:
@@ -941,7 +854,6 @@ func _spawn_nuclear_missile(parent: Node2D, from_pos: Vector2, target_pos: Vecto
 		if is_instance_valid(missile):
 			missile.queue_free())
 
-
 ## 加载核爆专用纹理（带资源守卫，缺失返回 null 由调用方回退）
 ## name_id: "nuke_fireball" / "nuke_missile" / "nuke_mushroom" 等
 func _load_nuclear_texture(name_id: String) -> Texture2D:
@@ -954,7 +866,6 @@ func _load_nuclear_texture(name_id: String) -> Texture2D:
 		if ResourceLoader.exists(fallback):
 			return load(fallback)
 	return null
-
 
 ## 加载核爆帧动画序列（蘑菇云精灵表切割的多帧）。
 ## prefix: 帧文件名前缀（如 "nuke_mushroom_f"），实际文件 = prefix + i + ".png"（i=0..count-1）
@@ -971,7 +882,6 @@ func _load_nuclear_frames(prefix: String, count: int) -> Array:
 		frames.append(tex)
 	return frames
 
-
 ## 护盾投射：from 施放者 + 多个友军位置播蓝色护盾展开
 func _on_mechanism_shield_projected(_from_pos: Vector2, target_positions: Array) -> void:
 	var parent: Node2D = _get_vfx_parent()
@@ -980,7 +890,6 @@ func _on_mechanism_shield_projected(_from_pos: Vector2, target_positions: Array)
 	for tp in target_positions:
 		if tp is Vector2:
 			VfxImpactFactory.spawn_shockwave(parent, tp, 50.0, Color(0.3, 0.7, 1.0, 0.8))
-
 
 ## 无人机定时标记：from 无人机 + 多个敌方位置播红色锁定框+扫描波纹
 func _on_mechanism_drone_marked(_from_pos: Vector2, target_positions: Array) -> void:

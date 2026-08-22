@@ -107,11 +107,7 @@ const RARITY_DISPLAY := {
 	"epic": "史诗", "legendary": "传说", "mythic": "神话",
 }
 
-var _plm: Node = null
-func _ensure_plm() -> Node:
-	if _plm == null:
-		_plm = get_node_or_null("/root/PhaseLawManager")
-	return _plm
+# v9.x（P2-7范围B）：_plm/_ensure_plm 已随 PhaseLawManager 退役移除
 
 func _ready() -> void:
 	visible = false
@@ -539,15 +535,8 @@ func _refresh_header(card: CardResource) -> void:
 					tier_label.visible = _t > 0
 			GC.CardType.ENERGY:
 				type_label.text = "能量卡 · 提供 %d 能量" % int(card.energy_cost)
-			GC.CardType.LAW:
-				var law_name: String = ""
-				if "linked_law_id" in card and not str(card.linked_law_id).is_empty():
-					var cfg: Dictionary = PhaseLaws.get_by_id(str(card.linked_law_id)) if PhaseLaws else {}
-					law_name = str(cfg.get("name", ""))
-				if law_name.is_empty():
-					law_name = card.display_name if not card.display_name.is_empty() else "法则"
-				type_label.text = "法则卡 · %s" % law_name
 			_:
+				# v9.x（P2-7范围B）：法则卡类型标签分支已随法则系统退役移除
 				type_label.text = card.type_line
 
 ## ── 情报 Tab 内容刷新 ──────────────────────────────────────────

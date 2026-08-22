@@ -360,9 +360,7 @@ func start_battle(battle_scene: Node) -> void:
 	# 此前我方基地 phase_field_driver 恒定 200，无成长通道；现复用技能树 hp 加成让基地可成长
 	_apply_player_base_hp_bonus()
 
-	# 同步法则卡到 PhaseInstrumentManager
-	if PhaseInstrumentManager.has_method("sync_law_cards_to_phase_law_manager"):
-		PhaseInstrumentManager.sync_law_cards_to_phase_law_manager()
+	# v9.x（P2-7范围B）：法则卡同步调用已随法则系统退役移除
 
 	# 初始化战斗能量
 	if energy_manager:

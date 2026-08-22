@@ -25,10 +25,6 @@ var _auto_deploy_btn: Button = null
 
 signal instrument_area_clicked
 signal phase_level_label_clicked
-## 战前点击任意法则格（无激活法则时）→ 打开法则管理面板
-signal law_area_clicked
-## 战斗中点击主动法则格 → 直接进入施放模式；参数：法则ID、"active"/"passive"
-signal law_slot_clicked(law_id: String, kind: String, origin_global: Vector2)
 ## 自动部署开关切换（战斗内：从左到右自动铺满 + 死亡补阵）
 signal auto_deploy_toggled(enabled: bool)
 
@@ -635,15 +631,14 @@ func _sync_slot_card_background(panel: Control, card: CardResource) -> void:
 	_sync_slot_card_frame(panel, card)
 
 
-func _sync_slot_icon(panel: Control, card: CardResource, law_id: String) -> void:
+func _sync_slot_icon(panel: Control, card: CardResource, _law_id: String) -> void:
 	var tr: TextureRect = _slot_icon_rect(panel)
 	if tr == null:
 		return
 	var tex: Texture2D = null
 	if card != null:
 		tex = UiAssetLoader.load_tex(UiAssetLoader.card_icon_path_for_list(card))
-	elif not law_id.is_empty():
-		tex = UiAssetLoader.load_tex(UiAssetLoader.law_slot_icon_path(law_id))
+	# v9.x（P2-7范围B）：法则格图标分支已随法则槽退役移除（参数保留兼容调用签名）
 	var slot_h: float = panel.size.y if panel.size.y > 4.0 else float(SLOT_FIXED_SIZE.y)
 	# v7.x：精简模式槽位无底部文字区，图标占满整个可用高度（留 4px 上下边距）
 	var art_h: float = maxf(18.0, slot_h - 4.0)
@@ -866,8 +861,6 @@ func _on_slot_gui_input(ev: InputEvent, panel: Control) -> void:
 	var m_card_id: String = String(panel.get_meta("card_id", ""))
 	# v7.x 修复：读取 instance_id（显示路径用它精确实例取回带养成的实例）
 	var m_instance_id: String = String(panel.get_meta("instance_id", ""))
-	var m_law_id: String = String(panel.get_meta("law_id", ""))
-	var m_law_kind: String = String(panel.get_meta("law_kind", ""))
 	var m_card_type: int = int(panel.get_meta("card_type", -1))
 	if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT:
 		if Input.is_key_pressed(KEY_SHIFT):
@@ -880,8 +873,6 @@ func _on_slot_gui_input(ev: InputEvent, panel: Control) -> void:
 				and m_card_type == GC.CardType.COMBAT_UNIT
 			)
 			if can_deploy and SignalBus:
-				BattleInputState.pending_cast_law_id = ""
-				BattleInputState.pending_cast_law_origin_global = Vector2.ZERO
 				# v7.x 修复（同名卡部署属性相同）：优先传 instance_id（cold_t72#1），让
 				# get_loadout_by_platform_card_id 精确匹配到点击的那张实例（含其独立强化/改造）。
 				# 原传裸 card_id（cold_t72），同名卡都命中"回退取首个匹配"，导致两张同名卡
@@ -894,17 +885,7 @@ func _on_slot_gui_input(ev: InputEvent, panel: Control) -> void:
 				return
 			if _show_instrument_slot_card_detail(m_card_id, m_instance_id, panel):
 				return
-		if (m_color == "red" or m_color == "blue") and not m_law_id.is_empty():
-			if m_law_kind == "active":
-				# B2: 进入施法选点同样给拿起反馈（与部署同款"进入待操作"音）
-				if SignalBus and SignalBus.has_signal("play_sound"):
-					SignalBus.play_sound.emit("card_pickup")
-				law_slot_clicked.emit(m_law_id, m_law_kind, panel.get_global_rect().get_center())
-			else:
-				var in_battle_passive: bool = BattleManager != null and "battle_active" in BattleManager and BattleManager.battle_active
-				if not in_battle_passive:
-					law_area_clicked.emit()
-			return
+		# v9.x（P2-7范围B）：红/蓝法则格点击分支已随法则槽退役移除（v6.2 起仪器无法则槽）
 		instrument_area_clicked.emit()
 	elif ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_RIGHT:
 		if _try_unequip_card_slot(m_color, m_index):
@@ -939,8 +920,6 @@ func begin_deploy_from_slot_index(n: int) -> bool:
 		if count == n:
 			var m_instance_id: String = String(panel.get_meta("instance_id", ""))
 			var m_card_id: String = String(panel.get_meta("card_id", ""))
-			BattleInputState.pending_cast_law_id = ""
-			BattleInputState.pending_cast_law_origin_global = Vector2.ZERO
 			BattleInputState.pending_deploy_platform_card_id = m_instance_id if not m_instance_id.is_empty() else m_card_id
 			BattleInputState.pending_deploy_origin_global = panel.get_global_rect().get_center()
 			if SignalBus and SignalBus.has_signal("play_sound"):

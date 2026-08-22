@@ -70,8 +70,6 @@ func _ready() -> void:
 	if SignalBus:
 		if not SignalBus.unit_damaged.is_connected(_on_unit_damaged):
 			SignalBus.unit_damaged.connect(_on_unit_damaged)
-		if not SignalBus.active_law_cast_at.is_connected(_on_cast):
-			SignalBus.active_law_cast_at.connect(_on_cast)
 		if not SignalBus.battle_ended.is_connected(_on_battle_ended):
 			SignalBus.battle_ended.connect(_on_battle_ended)
 		if SignalBus.has_signal("achievement_unlocked"):
@@ -129,8 +127,6 @@ func _exit_tree() -> void:
 	if SignalBus:
 		if SignalBus.unit_damaged.is_connected(_on_unit_damaged):
 			SignalBus.unit_damaged.disconnect(_on_unit_damaged)
-		if SignalBus.active_law_cast_at.is_connected(_on_cast):
-			SignalBus.active_law_cast_at.disconnect(_on_cast)
 		if SignalBus.battle_ended.is_connected(_on_battle_ended):
 			SignalBus.battle_ended.disconnect(_on_battle_ended)
 		if SignalBus.has_signal("achievement_unlocked") and SignalBus.achievement_unlocked.is_connected(_on_achievement_unlocked):
@@ -405,9 +401,6 @@ func _on_unit_damaged(_unit: Node, _is_player: bool, _amount: float, _at_positio
 		return
 	_last_hit_sfx_msec = now
 	play_sfx("hit")
-
-func _on_cast(_law_id: String, _world_pos: Vector2) -> void:
-	play_sfx("cast")
 
 func _on_battle_ended(player_won: bool) -> void:
 	play_sfx("win" if player_won else "lose")

@@ -1,13 +1,10 @@
 class_name PhaseInstrumentLoadoutSync
 extends RefCounted
 ## 相位仪装备/卸下/负载同步逻辑（从 phase_instrument_manager 拆分）
-## 负责：equip_card, unequip_card, unequip_all, loadouts, 法则同步
+## 负责：equip_card, unequip_card, unequip_all, loadouts
+## v9.x（P2-7范围B）：法则同步函数群已随法则系统退役移除
 
 const GC = preload("res://resources/game_constants.gd")
-const PhaseLaws = preload("res://data/phase_laws.gd")
-
-## 法则卡跨色路由装配时的最大递归深度（防止无限递归）
-const MAX_EQUIP_RECURSION: int = 2
 const DEBUG_EQUIP_LOG := false
 
 ## ── 宿主引用（由 phase_instrument_manager 在 _ready 设置） ──
@@ -19,12 +16,6 @@ func setup(host: Node) -> void:
 ## ── 内部引用：通过 host 读取状态 ──
 func _instrument_slots() -> Dictionary:
 	return _host.instrument_slots if _host else {}
-func _plm() -> Node:
-	return _host._plm if _host else null
-func _ensure_plm() -> Node:
-	if _host and _host.has_method("_ensure_plm"):
-		_host._ensure_plm()
-	return _plm()
 func _mark_loadouts_dirty() -> void:
 	if _host and _host.has_method("_mark_loadouts_dirty"):
 		_host._mark_loadouts_dirty()
@@ -36,101 +27,9 @@ func _card_type_name(card: CardResource) -> String:
 		return _host._card_type_name(card)
 	return ""
 
-func _law_id_from_card(card: Variant) -> String:
-	# v6.2: rune 槽存的是 String，防御非 CardResource 传入（与主文件 phase_instrument_manager 同步）
-	if card == null or not (card is CardResource):
-		return ""
-	var cr: CardResource = card
-	if cr.card_type != GC.CardType.LAW:
-		return ""
-	var lid: String = cr.linked_law_id if not String(cr.linked_law_id).is_empty() else cr.card_id
-	if lid.begins_with("law:"):
-		lid = lid.substr(4)
-	if PhaseLaws.get_by_id(lid).is_empty():
-		return ""
-	return lid
-
-func _has_any_law_card_in_slots() -> bool:
-	var slots: Dictionary = _instrument_slots()
-	for color in ["red", "blue"]:
-		for c_raw in slots.get(color, []):
-			# v6.2: 防御非 CardResource（rune 槽的 String），与主文件同步
-			if c_raw != null and c_raw is CardResource:
-				var c: CardResource = c_raw
-				if c.card_type == GC.CardType.LAW:
-					return true
-	return false
-
-func _compact_law_ids_from_slots_hypothetical(color: String, color_index: int, new_card: CardResource) -> Dictionary:
-	var reds: Array = (_instrument_slots().get("red", []) as Array).duplicate()
-	var blues: Array = (_instrument_slots().get("blue", []) as Array).duplicate()
-	if color == "red" and color_index >= 0 and color_index < reds.size():
-		reds[color_index] = new_card
-	elif color == "blue" and color_index >= 0 and color_index < blues.size():
-		blues[color_index] = new_card
-	return {
-		"actives": _compact_law_ids_for_kind(reds, "active"),
-		"passives": _compact_law_ids_for_kind(blues, "passive"),
-	}
-
-func _compact_law_ids_for_kind(slot_arr: Array, expected_kind: String) -> Array:
-	var out: Array = []
-	for c_raw in slot_arr:
-		# v6.2: 防御非 CardResource（rune 槽的 String），与主文件同步
-		if c_raw != null and not (c_raw is CardResource):
-			continue
-		var c: CardResource = c_raw
-		if c == null:
-			continue
-		var lid: String = _law_id_from_card(c)
-		if lid.is_empty():
-			continue
-		var law: Dictionary = PhaseLaws.get_by_id(lid)
-		if law.is_empty() or String(law.get("kind", "")) != expected_kind:
-			continue
-		if not out.has(lid):
-			out.append(lid)
-	return out
-
-func _compact_law_ids_from_current_slots() -> Dictionary:
-	return {
-		"actives": _compact_law_ids_for_kind(_instrument_slots().get("red", []), "active"),
-		"passives": _compact_law_ids_for_kind(_instrument_slots().get("blue", []), "passive"),
-	}
-
-func _apply_law_slots_to_plm() -> bool:
-	_ensure_plm()
-	var plm: Node = _plm()
-	if not plm or not plm.has_method("set_equipped_laws"):
-		return false
-	if not plm.is_inside_tree():
-		return false
-	var pack: Dictionary = _compact_law_ids_from_current_slots()
-	for pid in pack["passives"]:
-		if plm.has_method("ensure_law_unlocked"):
-			plm.ensure_law_unlocked(String(pid))
-	for aid in pack["actives"]:
-		if plm.has_method("ensure_law_unlocked"):
-			plm.ensure_law_unlocked(String(aid))
-	var budget: int = int(plm.battle_nano_budget) if "battle_nano_budget" in plm else 0
-	var ok: bool = plm.set_equipped_laws(pack["passives"], pack["actives"], budget)
-	if not ok and plm.has_method("force_sync_instrument_law_slots"):
-		plm.force_sync_instrument_law_slots(pack["passives"], pack["actives"])
-		return true
-	return ok
-
-## 开战前调用：以红/蓝槽内法则卡为准，刷新 PhaseLawManager 的装配
-func sync_law_cards_to_phase_law_manager() -> bool:
-	return _apply_law_slots_to_plm()
-
-# v9.x（P2-7范围A）：migrate_law_slots_from_phase_law_manager_if_empty 已移除——
-# 法则卡链路退役后不再从 PhaseLawManager 装配列表反向生成槽内法则卡
-
-## 读档后：若槽内已有法则卡，用槽位覆盖 PhaseLawManager 装配列表
-func sync_law_slots_to_plm_if_has_law_cards() -> void:
-	if _has_any_law_card_in_slots():
-		_apply_law_slots_to_plm()
-
+# v9.x（P2-7范围B）：_law_id_from_card / _has_any_law_card_in_slots /
+# _compact_law_ids_* / _apply_law_slots_to_plm / sync_* 法则函数群
+# 已随法则系统退役移除
 ## ── 装备卡牌到槽位 ──
 func equip_card(slot_index: int, card: CardResource, _energy_manager: Node = null, _recursion_depth: int = 0) -> bool:
 	var _equip_t0: int = Time.get_ticks_msec()
@@ -140,39 +39,8 @@ func equip_card(slot_index: int, card: CardResource, _energy_manager: Node = nul
 	if color.is_empty() or color_index < 0 or card == null:
 		return false
 	if not _can_equip_card_to_color(card, color):
-		# 法则卡自动路由
-		if card.card_type == GC.CardType.LAW and (color == "red" or color == "blue"):
-			var alt_color: String = "red" if color == "blue" else "blue"
-			if _can_equip_card_to_color(card, alt_color):
-				var alt_arr: Array = _instrument_slots().get(alt_color, [])
-				for ai in range(alt_arr.size()):
-					if alt_arr[ai] == null:
-						var alt_flat: int = _host._slot_to_flat_index(alt_color, ai) if _host and _host.has_method("_slot_to_flat_index") else -1
-						if alt_flat >= 0 and _recursion_depth < MAX_EQUIP_RECURSION:
-							return equip_card(alt_flat, card, _energy_manager, _recursion_depth + 1)
-						break
+		# v9.x（P2-7范围B）：法则卡自动路由与红/蓝槽 PLM 同步已随法则系统退役移除
 		return false
-
-	if color == "red" or color == "blue":
-		_ensure_plm()
-		var plm: Node = _plm()
-		if not plm or not plm.has_method("set_equipped_laws"):
-			return false
-		var hyp: Dictionary = _compact_law_ids_from_slots_hypothetical(color, color_index, card)
-		for pid in hyp["passives"]:
-			if plm.has_method("ensure_law_unlocked"):
-				plm.ensure_law_unlocked(String(pid))
-		for aid in hyp["actives"]:
-			if plm.has_method("ensure_law_unlocked"):
-				plm.ensure_law_unlocked(String(aid))
-		var budget: int = int(plm.battle_nano_budget) if "battle_nano_budget" in plm else 0
-		if not plm.set_equipped_laws(hyp["passives"], hyp["actives"], budget):
-			if plm.has_method("force_sync_instrument_law_slots"):
-				plm.force_sync_instrument_law_slots(hyp["passives"], hyp["actives"])
-			else:
-				# [LOG-v5.1] print("[PhaseInstrumentLoadoutSync] 法则槽装配未通过: ", card.display_name)
-				pass
-				return false
 
 	if DEBUG_EQUIP_LOG:
 		pass  # [LOG-v5.1] print("[PhaseInstrumentLoadoutSync] 装备卡牌 %s 到槽位 %s (颜色: %s)" % [card.display_name, slot_index, color])
@@ -207,8 +75,7 @@ func unequip_card(slot_index: int) -> void:
 	arr[color_index] = null
 	slots[color] = arr
 	_host.instrument_slots = slots
-	if color == "red" or color == "blue":
-		_apply_law_slots_to_plm()
+	# v9.x（P2-7范围B）：红/蓝槽法则同步已随法则系统退役移除
 	_emit_slots_changed()
 	SignalBus.card_unequipped.emit(slot_index)
 	if card != null:
@@ -228,7 +95,7 @@ func unequip_all_and_return_to_backpack() -> void:
 				arr[i] = null
 			slots[color] = arr
 	_host.instrument_slots = slots
-	_apply_law_slots_to_plm()
+	# v9.x（P2-7范围B）：法则槽同步已随法则系统退役移除
 	_emit_slots_changed()
 	if SignalBus and not cards_to_return.is_empty():
 		for c2 in cards_to_return:
@@ -268,17 +135,5 @@ func _can_equip_card_to_color(card: CardResource, color: String) -> bool:
 	# v7.x: yellow 能量槽已移除（能量卡系统移除），不再接受任何卡
 	if color == "yellow":
 		return false
-	if color == "red" or color == "blue":
-		if card.card_type != GC.CardType.LAW:
-			return false
-		var lid: String = _law_id_from_card(card)
-		if lid.is_empty():
-			return false
-		var law: Dictionary = PhaseLaws.get_by_id(lid)
-		if law.is_empty():
-			return false
-		var kind: String = String(law.get("kind", ""))
-		if color == "red":
-			return kind == "active"
-		return kind == "passive"
+	# v9.x（P2-7范围B）：红/蓝法则槽不再接受任何卡（法则系统退役；槽位自 v6.2 起数量恒 0）
 	return false

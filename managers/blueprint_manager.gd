@@ -43,12 +43,7 @@ const XP_TYPE_PLATFORM: int = 0
 
 const EXCLUDED_WAR_PLATFORM_TYPES: Array = ["striker", "sniper", "stealth", "mage"]
 
-## ── PhaseLawManager 安全引用缓存 ──
-var _plm: Node = null
-func _ensure_plm() -> Node:
-	if _plm == null:
-		_plm = get_node_or_null("/root/PhaseLawManager")
-	return _plm
+# v9.x（P2-7范围B）：PhaseLawManager 安全引用缓存已随法则系统退役移除
 
 ## v7.x: 能量卡系统移除，能量蓝图列表清空（保留常量名避免多处引用报错，遍历天然跳过）
 
@@ -147,20 +142,15 @@ func should_skip_drop_grant(card_id: String) -> bool:
 
 func _ready() -> void:
 	_sync_debug_log_flag()
-	_ensure_default_laws_unlocked()
+	# v9.x（P2-7范围B）：新档默认法则解锁已随法则系统退役移除
 
 func _sync_debug_log_flag() -> void:
 	var debug_mgr: Node = get_node_or_null("/root/DebugLogManager")
 	if debug_mgr != null and debug_mgr.has_method("is_channel_enabled"):
 		DEBUG_BLUEPRINT_LOG = bool(debug_mgr.is_channel_enabled("blueprint_manager", DEBUG_BLUEPRINT_LOG))
 
-## 新档默认法则解锁（原 _unlock_default_blueprints；蓝图解锁/副本记账已移除，只保留法则可用性链路）
-func _ensure_default_laws_unlocked() -> void:
-	var plm := _ensure_plm()
-	if plm == null or not plm.has_method("ensure_law_unlocked"):
-		return
-	for law_id in ["steel_quick_repair", "steel_bastion_wall", "flame_heat_overload", "thunder_ion_net"]:
-		plm.ensure_law_unlocked(law_id)
+# v9.x（P2-7范围B）：_ensure_default_laws_unlocked 已随法则系统退役移除（另两处 load_state/
+# reset_to_defaults 内的调用点同步删除）
 
 ## ─────────── 蓝图等级系统（研究点升星，影响进化门槛） ───────────
 ## 星级是蓝图的整体成长度，影响进化资格检查（E1≥4★，E2≥7★）
@@ -170,9 +160,7 @@ func _ensure_default_laws_unlocked() -> void:
 # ── v6.11: 战力星级系统②已移除（合并到强化等级①），get_battle_star/get_battle_star_power/
 #           add_battle_star_power/sync_battle_stars_to_cards 已删 ──
 
-## 法则蓝图等级：星级系统废弃后恒为 1（phase_law_manager 的每级 +2% 缩放因此恒为 1.0×）
-func get_law_blueprint_level(law_id: String) -> int:
-	return 1
+# v9.x（P2-7范围B）：get_law_blueprint_level（恒 1，唯一调用方 phase_law_manager 已删）随之移除
 
 ## 获取所有有副本的蓝图ID列表
 
@@ -385,7 +373,7 @@ func save_state() -> Dictionary:
 func load_state(data: Dictionary) -> void:
 	emit_signal("fragments_changed")
 	# 旧档的 unlocked/blueprint_copies/legacy_default_energy_copies_migrated 键随蓝图体系移除而忽略
-	_ensure_default_laws_unlocked()
+	# v9.x（P2-7范围B）：默认法则解锁调用已随法则系统退役移除
 	if data.has("blueprint_mods") and data["blueprint_mods"] is Dictionary:
 		blueprint_mods.clear()
 		for k in data["blueprint_mods"]:
@@ -470,7 +458,7 @@ func reset_to_defaults() -> void:
 	blueprint_rank_cache.clear()
 	blueprint_intel_branch_bonus.clear()
 	blueprint_weapon_slots.clear()
-	_ensure_default_laws_unlocked()
+	# v9.x（P2-7范围B）：默认法则解锁调用已随法则系统退役移除
 
 ## ─────────── 自动存档 ───────────
 

@@ -35,10 +35,7 @@ func run_start_battle_sequence() -> void:
 		if main.bottom_function_bar:
 			main.bottom_function_bar.set_start_battle_text("开始战斗")
 		return
-	var plm: Node = main.get_node_or_null("/root/PhaseLawManager")
-	var actives: Array = []
-	if plm and "equipped_active_laws" in plm:
-		actives = plm.equipped_active_laws
+	# v9.x（P2-7范围B）：PLM 装配法则读取已随法则系统退役移除
 	main._blueprints_unlocked_this_battle.clear()
 	var pim: Node = PhaseInstrumentManager
 	if pim and pim.has_method("get_phase_field_xp_progress"):

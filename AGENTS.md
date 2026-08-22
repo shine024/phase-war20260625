@@ -171,7 +171,7 @@ func _redirect_stdout_to_file() -> void:
 
 ## Architecture
 
-### Autoload Singletons（project.godot 实际 32 个，2026-08-21 核对）
+### Autoload Singletons（project.godot 实际 31 个，2026-08-23 核对——PhaseLawManager 已随 P2-7 法则退役删除）
 
 > 双层设计说明：部分 manager **同时**存在于 project.godot [autoload] 与 ManagerLazyLoader 配置——
 > 后者仅作 `ensure_loaded("<id>")` 的统一访问入口，命中 `/root/NodeName` 即复用，不会重复实例化。
@@ -188,28 +188,27 @@ func _redirect_stdout_to_file() -> void:
 | 8 | `DropManager` | `managers/drop_manager.gd` | 战后掉落表与领取 |
 | 9 | `SaveManager` | `managers/save_manager.gd` | `user://save.json`，schema v8，迁移链 v1→v8 |
 | 10 | `AudioManager` | `managers/audio_manager.gd` | 音频 |
-| 11 | `PhaseLawManager` | `managers/phase_law_manager.gd` | 法则研究/装备/战斗态；4 家族；纳米预算；新手符文发放 |
-| 12 | `BasicResourceManager` | `managers/basic_resource_manager.gd` | 全局货币（纳米/合金/水晶/能量块/科研点/许可） |
-| 13 | `ObjectPoolManager` | `managers/object_pool.gd` | 子弹/伤害数字对象池 |
-| 14 | `UILazyLoader` | `managers/ui_lazy_loader.gd` | UI 面板按需加载 |
-| 15 | `ManagerLazyLoader` | `managers/manager_lazy_loader.gd` | 非 core manager 按需加载 |
-| 16 | `PerformanceMetricsManager` | `managers/performance_metrics_manager.gd` | FPS/性能采样 |
-| 17 | `ModificationRegistry` | `scripts/systems/modification_registry.gd` | 9 兵种 140+ 改造模块（静态注册表） |
-| 18 | `EvolutionPathRegistry` | `scripts/systems/evolution_path_registry.gd` | 8 兵种进化路径 |
-| 19 | `DayClock` | `managers/day_clock.gd` | 游戏内日时钟 |
-| 20 | `AuraManager` | `managers/aura_manager.gd` | 平台光环 |
-| 21 | `IntelItemBag` | `managers/intel_item_bag.gd` | 情报道具背包 |
-| 22 | `IntelManual` | `scripts/systems/intel_manual.gd` | 4维情报手册 |
-| 23 | `QuestManager` | `managers/quest_manager.gd` | 任务（委托/剧情/引导/动态） |
-| 24 | `FactionSystemManager` | `managers/faction_system_manager.gd` | 7 势力（声望/商店/技能/事件/占领状态机） |
-| 25 | `AffixManager` | `managers/affix_manager.gd` | 模块化词条 |
-| 26 | `LevelProgressManager` | `managers/level_progress_manager.gd` | 关卡进度 |
-| 27 | `CardEnhancementManager` | `managers/card_enhancement_manager.gd` | 卡牌强化（词条节点按等级驱动） |
-| 28 | `InstanceRegistry` | `managers/instance_registry.gd` | **卡牌实例+养成数据唯一真身**（见下方铁律章节） |
-| 29 | `PhaseMasterSkillManager` | `managers/phase_master_skill_manager.gd` | 相位师技能树 |
-| 30 | `TutorialProgressionManager` | `managers/tutorial_progression_manager.gd` | 引导 |
-| 31 | `BattleSpectacle` | `managers/battle/battle_spectacle.gd` | 战斗演出/大招编排 |
-| 32 | `_MCPGameBridge` | `addons/agent_tools/runtime/game_bridge.gd` | agent_tools 编辑器插件运行时桥 |
+| 11 | `BasicResourceManager` | `managers/basic_resource_manager.gd` | 全局货币（纳米/合金/水晶/能量块/科研点/许可） |
+| 12 | `ObjectPoolManager` | `managers/object_pool.gd` | 子弹/伤害数字对象池 |
+| 13 | `UILazyLoader` | `managers/ui_lazy_loader.gd` | UI 面板按需加载 |
+| 14 | `ManagerLazyLoader` | `managers/manager_lazy_loader.gd` | 非 core manager 按需加载 |
+| 15 | `PerformanceMetricsManager` | `managers/performance_metrics_manager.gd` | FPS/性能采样 |
+| 16 | `ModificationRegistry` | `scripts/systems/modification_registry.gd` | 9 兵种 140+ 改造模块（静态注册表） |
+| 17 | `EvolutionPathRegistry` | `scripts/systems/evolution_path_registry.gd` | 8 兵种进化路径 |
+| 18 | `DayClock` | `managers/day_clock.gd` | 游戏内日时钟 |
+| 19 | `AuraManager` | `managers/aura_manager.gd` | 平台光环 |
+| 20 | `IntelItemBag` | `managers/intel_item_bag.gd` | 情报道具背包 |
+| 21 | `IntelManual` | `scripts/systems/intel_manual.gd` | 4维情报手册 |
+| 22 | `QuestManager` | `managers/quest_manager.gd` | 任务（委托/剧情/引导/动态） |
+| 23 | `FactionSystemManager` | `managers/faction_system_manager.gd` | 7 势力（声望/商店/技能/事件/占领状态机） |
+| 24 | `AffixManager` | `managers/affix_manager.gd` | 模块化词条 |
+| 25 | `LevelProgressManager` | `managers/level_progress_manager.gd` | 关卡进度 |
+| 26 | `CardEnhancementManager` | `managers/card_enhancement_manager.gd` | 卡牌强化（词条节点按等级驱动） |
+| 27 | `InstanceRegistry` | `managers/instance_registry.gd` | **卡牌实例+养成数据唯一真身**（见下方铁律章节） |
+| 28 | `PhaseMasterSkillManager` | `managers/phase_master_skill_manager.gd` | 相位师技能树 |
+| 29 | `TutorialProgressionManager` | `managers/tutorial_progression_manager.gd` | 引导 |
+| 30 | `BattleSpectacle` | `managers/battle/battle_spectacle.gd` | 战斗演出/大招编排 |
+| 31 | `_MCPGameBridge` | `addons/agent_tools/runtime/game_bridge.gd` | agent_tools 编辑器插件运行时桥 |
 
 **Lazy-loaded managers**（`ManagerLazyLoader.ensure_loaded()`，21 个配置项；v9.x 2026-08-22 清理：battle_feedback/character/challenge_mode/version 四项已删，见停用清单）：
 aura, level_progress, drop, quest, achievement, daily_task,
@@ -238,7 +237,7 @@ lore, tutorial, new_systems, toast, debug_log
 
 ```
 GameManager → BattleManager, BlueprintManager, PhaseInstrumentManager,
-               PhaseLawManager, BasicResourceManager, LevelProgressManager,
+               BasicResourceManager, LevelProgressManager,
                FactionSystemManager, DropManager, QuestManager
 
 BattleManager → BattleSpawnSystem, BattleDamageSystem, EnergyManager,
@@ -246,7 +245,7 @@ BattleManager → BattleSpawnSystem, BattleDamageSystem, EnergyManager,
                  IntelDiscoveryManager (v6.0 defeated enemy recording)
 
 SaveManager → ALL managers (loads/saves their state sections)
-              Critical: BlueprintManager, PhaseInstrumentManager, PhaseLawManager,
+              Critical: BlueprintManager, PhaseInstrumentManager,
               QuestManager, BasicResourceManager, FactionSystemManager, AffixManager,
               LevelProgressManager, DropManager, IntelItemBag
               Deferred: LoreManager, StatBoostManager, AchievementManager,
@@ -428,15 +427,16 @@ User-driven collaboration. Every task follows: **Question → Options → Decisi
 - Multi-file changes need explicit approval for the full changeset
 - No commits without user instruction
 
-## 已知停用/移除系统清单（2026-08-22 全面清理后现状）
+## 已知停用/移除系统清单（2026-08-23 更新）
 
 改代码/排查 bug 前先对照本表，避免给停用系统"修 bug"或误以为功能缺失：
 
 | 系统 | 状态 | 说明 |
 |------|------|------|
-| 卡牌蓝图体系（解锁/副本/制造/拆解/星级） | **已整体删除** | 2026-08-22：制造面板（早已无入口）、副本记账、重复副本→研究点、背包拆解、研究点升星全部移除。收集口径改"拥有过的卡种"（card_added_to_backpack 驱动，InstanceRegistry 计数）。法则掉落解锁（phase_instrument_loadout_sync 装卡即解锁）与开局 4 法则保留 |
+| 相位法则系统（PhaseLawManager + active_law_effects） | **已整体删除** | 2026-08-23 P2-7（批次2a+2b）：法则卡获取/展示链路、红蓝槽法则装配、主动法则施放链（battle_click_overlay 选点/ActiveLawEffects 效果/演出/播报）、敌方法则减益（enemy_unit/swarm_enemy_slot）、知识值掉落与战斗快照全部移除。starter 符文发放迁至 PhaseInstrumentManager.clear_slots_for_new_game。autoload 32→31；SignalBus 三条法则信号（active_law_cast_at/phase_law_runtime_changed/phase_law_cast）删除；旧档 phase_law 存档段 key 级静默跳过；buff 折叠卡 BUFF 段改显已装备符文 |
+| 卡牌蓝图体系（解锁/副本/制造/拆解/星级） | **已整体删除** | 2026-08-22：制造面板（早已无入口）、副本记账、重复副本→研究点、背包拆解、研究点升星全部移除。收集口径改"拥有过的卡种"（card_added_to_backpack 驱动，InstanceRegistry 计数）。法则掉落解锁与开局 4 法则后随 P2-7 法则退役一并移除（2026-08-23） |
 | 敌源MOD（EOM） | **已整体删除** | 面板/管理器/数据/掉落/存档字段全部移除（2026-08-21）。旧存档 eom 字段被静默忽略。情报揭示事件的 eom_unlock 奖励已改为 stat_visibility |
-| 我方相位法则被动（ALLY 目标） | 停用+退池 | v6.8 停用战斗注入；2026-08-21 起从装配池/随机掉落退池（蓝槽只接受 ENEMY/BOTH 目标被动——它们经 enemy_unit 消费，减益敌方，仍然有效）。开局改送 starter 符文（attack_01/defense_01） |
+| 我方相位法则被动（ALLY 目标） | **已整体删除** | 随 P2-7 法则系统退役（2026-08-23）：蓝槽 ENEMY/BOTH 被动的 enemy_unit 减益消费链同批移除。开局 starter 符文发放迁至 PhaseInstrumentManager |
 | 相位场属性点 | **已接通** | phase_instrument_selector 有分配/回收/洗点按钮，battle_spawn_system/master_platform_power 消费加成，存档字段齐全 |
 | 时代缩放（我方） | 停用 | v6.8 移除 build_stats_from_card 的 era_*_multiplier；关卡难度完全由敌方难度链承担 |
 | 能量卡系统 | 移除 | yellow 槽不接受任何卡 |

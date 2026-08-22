@@ -24,7 +24,6 @@ var _expanded: bool = false
 var _log_label: RichTextLabel = null
 var _toggle_btn: Button = null
 
-
 func _ready() -> void:
 	# 半透明黑条样式 + 左侧 4px 青色色条（通过 border_width_left）
 	var style := StyleBoxFlat.new()
@@ -75,13 +74,11 @@ func _ready() -> void:
 	# 监听战斗事件
 	if SignalBus:
 		SignalBus.unit_killed.connect(_on_unit_killed)
-		SignalBus.phase_law_cast.connect(_on_phase_law_cast)
 		SignalBus.boss_wave_started.connect(_on_boss_wave_started)
 		SignalBus.phase_master_appeared.connect(_on_phase_master_appeared)
 		SignalBus.battle_started.connect(_on_battle_started)
 		SignalBus.battle_ended.connect(_on_battle_ended)
 		SignalBus.unit_damaged.connect(_on_unit_damaged)
-
 
 # =========================================================================
 #  信号处理
@@ -94,7 +91,6 @@ func _on_battle_started() -> void:
 	visible = true
 	set_process(true)
 
-
 func _on_battle_ended(_player_won: bool) -> void:
 	# 战斗结束停止采集，但保留最后日志 2s 供查看，然后淡出
 	set_process(false)
@@ -106,7 +102,6 @@ func _on_battle_ended(_player_won: bool) -> void:
 		_entries.clear()
 	)
 
-
 func _on_unit_killed(victim: Node, killer: Node, is_player_victim: bool) -> void:
 	if is_player_victim:
 		# 我方损失
@@ -115,19 +110,12 @@ func _on_unit_killed(victim: Node, killer: Node, is_player_victim: bool) -> void
 		# 我方击杀敌方
 		_add_entry("我方 %s 击毁 %s" % [_unit_name(killer), _unit_name(victim)], DT.COLOR_GREEN_BRIGHT)
 
-
-func _on_phase_law_cast(law_id: String, _pos: Vector2, _family: String) -> void:
-	_add_entry("施放 %s" % _law_name(law_id), DT.COLOR_ACCENT_PURPLE)
-
-
 func _on_boss_wave_started(_ids: Array) -> void:
 	_add_entry("精英波次来袭！", DT.COLOR_ENERGY)
-
 
 func _on_phase_master_appeared(master_config: Dictionary) -> void:
 	var name: String = master_config.get("display_name", master_config.get("name", "相位师"))
 	_add_entry("相位师 · %s" % name, DT.COLOR_DANGER)
-
 
 func _on_unit_damaged(unit: Node, is_player: bool, amount: float, _pos: Vector2) -> void:
 	# 仅记录"我方基地驱动器"受击（普通单位受伤太频繁，不记）
@@ -145,7 +133,6 @@ func _on_unit_damaged(unit: Node, is_player: bool, amount: float, _pos: Vector2)
 			if amt > 0:
 				_add_entry("基地 -%d HP" % amt, DT.COLOR_DANGER)
 
-
 # =========================================================================
 #  日志条目管理
 # =========================================================================
@@ -157,7 +144,6 @@ func _add_entry(text: String, color: Color) -> void:
 		_entries.pop_front()
 	_dirty = true
 
-
 func _process(delta: float) -> void:
 	_refresh_acc += delta
 	if _refresh_acc < _REFRESH_SEC:
@@ -166,7 +152,6 @@ func _process(delta: float) -> void:
 	if _dirty:
 		_refresh_display()
 		_dirty = false
-
 
 func _refresh_display() -> void:
 	if _entries.is_empty():
@@ -183,12 +168,10 @@ func _refresh_display() -> void:
 		bb += "%s[color=%s]%s[/color]\n" % [prefix, color_hex, str(e["text"])]
 	_log_label.text = bb
 
-
 func _on_toggle_pressed() -> void:
 	_expanded = not _expanded
 	_toggle_btn.text = "▲" if _expanded else "▼"
 	_dirty = true
-
 
 # =========================================================================
 #  辅助
@@ -212,7 +195,6 @@ func _unit_name(unit: Node) -> String:
 			return _archetype_to_name(aid)
 	return unit.name
 
-
 func _card_id_to_name(card_id: String) -> String:
 	# 简单美化：去掉前缀，按 _ 拆分
 	if card_id.is_empty():
@@ -221,7 +203,6 @@ func _card_id_to_name(card_id: String) -> String:
 	cleaned = cleaned.replace("_", " ")
 	return cleaned.capitalize()
 
-
 func _archetype_to_name(archetype_id: String) -> String:
 	if archetype_id.is_empty():
 		return "敌方单位"
@@ -229,11 +210,3 @@ func _archetype_to_name(archetype_id: String) -> String:
 	cleaned = cleaned.replace("_", " ")
 	return cleaned.capitalize()
 
-
-func _law_name(law_id: String) -> String:
-	if law_id.is_empty():
-		return "相位法则"
-	if law_id.find("·") >= 0:
-		return law_id
-	var cleaned := law_id.replace("law_", "").replace("_", " ")
-	return cleaned.capitalize()

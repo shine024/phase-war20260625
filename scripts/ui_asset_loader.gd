@@ -479,12 +479,7 @@ static func card_icon_path_for(c: CardResource) -> String:
 		var arch_root: String = "res://assets/card_icons/%s.png" % drop_arch
 		if ResourceLoader.exists(arch_root):
 			return arch_root
-	# 4) 法则 / 能量卡
-	if c.card_type == GC.CardType.LAW:
-		var law_id: String = c.linked_law_id.strip_edges()
-		if law_id.is_empty():
-			law_id = c.card_id.strip_edges()
-		return law_slot_icon_path(law_id)
+	# 4) 能量卡（法则卡图标分支已随法则系统退役移除，v9.x P2-7范围B）
 	if c.card_type == GC.CardType.ENERGY:
 		var energy_by_id: String = "res://assets/card_icons/%s.png" % c.card_id
 		if ResourceLoader.exists(energy_by_id):
@@ -601,17 +596,6 @@ static func rune_icon_small(rune_id: String) -> Texture2D:
 			return t
 	return load_tex(full)
 
-
-
-static func law_slot_icon_path(law_id: String) -> String:
-	if not law_id.is_empty():
-		var by_law: String = "res://assets/card_icons/%s.png" % law_id
-		if ResourceLoader.exists(by_law):
-			return by_law
-	var law_shape: String = "res://assets/card_icons/law.png"
-	if ResourceLoader.exists(law_shape):
-		return law_shape
-	return "res://assets/ui/icons/icon_law.svg"
 
 
 static func apply_button_icon(btn: Button, icon_basename: String) -> void:

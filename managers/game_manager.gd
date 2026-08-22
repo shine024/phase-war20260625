@@ -30,8 +30,6 @@ var last_battle_reward_summary: Dictionary = {}
 # 供 mvp_panel 新增"本局缴获与战利品"分区逐项显示。每项形如
 # {category:"card|rune|mod_blueprint|instrument|resource", id, name, count, rarity, star, source}
 var _battle_reward_collector: Array = []
-var _knowledge_before_battle: Dictionary = {}
-var _plm: Node = null  ## 安全引用：PhaseLawManager 本地缓存
 var _cached_power_rating: int = 0  ## v6.6(剧情): 玩家战力评级缓存（补剧情.txt L41）
 signal current_level_changed(level: int)
 
@@ -190,11 +188,7 @@ func is_phase_master_battle() -> bool:
 
 ## 将排行榜的简单相位师配置与 EnemyPhaseMasters 的完整装备数据合并
 ## 排行榜提供 {name, faction, era}，EnemyPhaseMasters 提供 {equipment, stats, traits, active_spells, ...}
-
-func _ensure_plm() -> void:
-	if _plm != null and is_instance_valid(_plm):
-		return
-	_plm = get_node_or_null("/root/PhaseLawManager")
+# v9.x（P2-7范围B）：_ensure_plm/_plm 已随 PhaseLawManager 退役移除
 
 # ═══════════════════════════════════════════════════════════════════
 # v6.6(剧情): 玩家战力评级（补剧情.txt 第二/三/七/八幕的"战力N"数值锚点）
@@ -220,11 +214,7 @@ func calculate_power_rating() -> int:
 	if pim and pim.has_method("get_phase_field_level"):
 		var pf_level: int = int(pim.get_phase_field_level())
 		power += pf_level * 2
-	# 4. 法则加成：每解锁 1 条法则 +5
-	if _plm == null:
-		_ensure_plm()
-	if _plm != null and "unlocked_law_ids" in _plm:
-		power += int(_plm.unlocked_law_ids.size()) * 5
+	# 4. 法则加成：已随法则系统退役移除（v9.x P2-7范围B）
 	_cached_power_rating = power
 	return power
 
@@ -532,13 +522,8 @@ func _on_battle_ended(player_won: bool) -> void:
 		# 相位师战时此快照在 _deferred_pm_show_battle_result 中会刷新一次（相位师奖励已入收集器）。
 		"collected_rewards": _battle_reward_collector.duplicate(true),
 	}
-	# v7.x 性能：蓝图片段/知识收益计算延后到本帧 idle 队列执行。
-	# 根因：_calculate_knowledge_gain 遍历 KNOWLEDGE_KEYS 快照
-	# 叠在 battle_ended 信号栈（帧C，与 20+ 监听者同帧）。
-	# 延后后：本帧先组装 reward_summary 主体，渲染一帧（玩家看到胜利瞬间），idle 队列再补字段。
-	# 时序安全：call_deferred 是 FIFO，本行入队早于下方 main_scene.call_deferred("show_battle_result")
-	# （若进入该分支），故面板构造时 last_battle_reward_summary 已含这三组字段，无需面板内延迟刷新。
-	call_deferred("_deferred_calculate_knowledge_gain")
+	# v9.x（P2-7范围B）：知识收益延迟计算已随法则系统退役移除（原 call_deferred 补
+	# knowledge_gain_* 字段，无面板消费方）。
 
 	# HUD 重构：结算入口由主场景 `show_battle_result` 弹出 battle_result_dialog（OK 时 claim_drops）。
 	# 若主场景未实现该方法（历史场景/测试），胜利后须仍领取 DropManager 待领掉落，否则会永久卡在 pending。
@@ -697,9 +682,6 @@ func set_current_level(level: int) -> void:
 	current_level = new_level
 	if DEBUG_GAME_LOG:
 		pass  # LOG: 当前关卡设为
-	_ensure_plm()
-	if _plm and _plm.has_method("update_env_for_level"):
-		_plm.update_env_for_level(current_level)
 	current_level_changed.emit(current_level)
 	# v6.9: 进入势力领地关卡时，刷新该势力的动态委托
 	_maybe_refresh_faction_quests_for_level(current_level)
@@ -1001,21 +983,11 @@ static func _enemy_faction_to_player_faction(enemy_faction: String) -> String:
 		"void": return "void_research"
 		_: return ""  # all/未知 → 空，调用方走随机/默认
 
-## 根据法则家族获取所有法则ID
-static func _get_law_ids_for_families(families: Array) -> Array:
-	var result: Array = []
-	var all_ids: Array = PhaseLaws.get_all_ids()
-	for lid in all_ids:
-		var family: String = PhaseLaws.get_family(String(lid))
-		if family in families:
-			result.append(lid)
-	return result
+# v9.x（P2-7范围B）：_get_law_ids_for_families（零调用方死代码）已随法则系统退役移除
 
 func return_to_prep() -> void:
 	current_phase = GamePhase.PRE_BATTLE
-	# 保持相位仪槽位（平台/武器/法则/能量）不卸下；仅把槽位同步回 PhaseLawManager，避免战后装配列表为空导致法则无法施放
-	if PhaseInstrumentManager and PhaseInstrumentManager.has_method("sync_law_cards_to_phase_law_manager"):
-		PhaseInstrumentManager.sync_law_cards_to_phase_law_manager()
+	# v9.x（P2-7范围B）：法则槽同步回 PLM 已随法则系统退役移除
 	if SignalBus:
 		SignalBus.backpack_changed.emit()
 
@@ -1063,7 +1035,6 @@ func get_drop_rate_multiplier(level: int) -> float:
 
 const BasicResources = preload("res://data/basic_resources.gd")
 const EnemyPhaseEquipment = preload("res://data/enemy_phase_equipment.gd")
-const PhaseLaws = preload("res://data/phase_laws.gd")
 const CardDropGrants = preload("res://scripts/card_drop_grants.gd")
 # P3 性能优化：相位仪数据表改 preload（原胜利结算路径每次运行时 load）
 const PhaseInstrumentsData = preload("res://data/phase_instruments.gd")
@@ -1151,36 +1122,9 @@ func _grant_battle_experience(player_won: bool) -> void:
 		ir.add_experience(iid, per_card)
 
 func _snapshot_battle_reward_baselines() -> void:
-	_knowledge_before_battle.clear()
-	_ensure_plm()
-	if _plm and _plm.has_method("get_knowledge_snapshot"):
-		_knowledge_before_battle = _plm.get_knowledge_snapshot()
-
-func _calculate_knowledge_gain() -> Dictionary:
-	var total_gain: int = 0
-	var items: Array = []
-	_ensure_plm()
-	if not _plm or not _plm.has_method("get_knowledge_snapshot"):
-		return {"total": 0, "items": []}
-	var after: Dictionary = _plm.get_knowledge_snapshot()
-	for key in _plm.KNOWLEDGE_KEYS:
-		var before_val: int = int(_knowledge_before_battle.get(key, 0))
-		var after_val: int = int(after.get(key, 0))
-		var gain: int = after_val - before_val
-		if gain > 0:
-			total_gain += gain
-			items.append({"id": key, "gain": gain})
-	return {"total": total_gain, "items": items}
-
-
-## v7.x 性能：知识收益的延迟计算（原在 _on_battle_ended 帧C同步执行）。
-## 由 _on_battle_ended 末尾 call_deferred 触发，在 idle 队列里补齐 last_battle_reward_summary
-## 的 knowledge 字段。FIFO 保证此函数在 show_battle_result 之前执行，面板构造时字段已就绪。
-## 蓝图片段/侦查片段加成字段已随蓝图体系移除（2026-08-22）。
-func _deferred_calculate_knowledge_gain() -> void:
-	var battle_knowledge_gain: Dictionary = _calculate_knowledge_gain()
-	last_battle_reward_summary["knowledge_gain_total"] = int(battle_knowledge_gain.get("total", 0))
-	last_battle_reward_summary["knowledge_gain_items"] = battle_knowledge_gain.get("items", [])
+	# v9.x（P2-7范围B）：知识值基线快照已随法则系统退役移除（本函数保留为空操作，
+	# 战斗结束链路的调用点 :413 无需改动）
+	pass
 
 
 # ═══════════════════════════════════════════════════════════════════

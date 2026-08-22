@@ -29,7 +29,6 @@ var _queue: Array[Dictionary] = []   # 待播报队列 {text, color, size, durat
 var _showing: bool = false
 var _active_tween: Tween = null
 
-
 func _ready() -> void:
 	# 构建极简面板：半透明深色 + 青色边框
 	var style := StyleBoxFlat.new()
@@ -61,14 +60,12 @@ func _ready() -> void:
 		SignalBus.wave_spawned.connect(_on_wave_spawned)
 		SignalBus.boss_wave_started.connect(_on_boss_wave_started)
 		SignalBus.phase_master_appeared.connect(_on_phase_master_appeared)
-		SignalBus.phase_law_cast.connect(_on_phase_law_cast)
 		SignalBus.battle_started.connect(_on_battle_started)
 		# v9.5: 符文之语激活播报（phase_instrument_manager 增量 emit）
 		SignalBus.runeword_triggered.connect(_on_runeword_triggered)
 		# v10 解题式玩法：标签克制质变生效播报（"敌方空中优势瓦解"等）
 		if SignalBus.has_signal("counter_break_triggered"):
 			SignalBus.counter_break_triggered.connect(_on_counter_break_triggered)
-
 
 # =========================================================================
 #  信号处理
@@ -79,7 +76,6 @@ func _on_battle_started() -> void:
 	_queue.clear()
 	_kill_active()
 	_showing = false
-
 
 func _on_wave_spawned(wave_index: int) -> void:
 	# 波次总数从 BattleManager 读取（若可读）
@@ -92,12 +88,10 @@ func _on_wave_spawned(wave_index: int) -> void:
 		text += " / %d" % total
 	_enqueue(text, DT.COLOR_TEXT_BRIGHT, DT.FONT_SIZE_MEDIUM, _NORMAL_DURATION, Priority.NORMAL)
 
-
 func _on_boss_wave_started(boss_archetype_ids: Array) -> void:
 	if boss_archetype_ids.is_empty():
 		return
 	_enqueue("⚠ 精英波次来袭", DT.COLOR_DANGER, DT.FONT_SIZE_LARGE, _HIGH_DURATION, Priority.HIGH)
-
 
 ## v10 解题式玩法：克制质变生效播报（LOW 优先级——高频事件不抢 BOSS/法则横幅）。
 ## break_type 对应播报文案：打破的不是血量，是敌方的优势机制。
@@ -116,22 +110,14 @@ func _on_counter_break_triggered(break_type: String, target_name: String) -> voi
 			return
 	_enqueue("⚡ " + text, Color(1.0, 0.85, 0.25), DT.FONT_SIZE_SMALL, _LOW_DURATION, Priority.LOW)
 
-
 func _on_phase_master_appeared(master_config: Dictionary) -> void:
 	var display_name: String = master_config.get("display_name", master_config.get("name", "相位师"))
 	_enqueue("⚔ 相位师 · %s" % display_name, DT.COLOR_DANGER, DT.FONT_SIZE_LARGE, _HIGH_DURATION, Priority.HIGH)
-
-
-func _on_phase_law_cast(law_id: String, _position: Vector2, family: String) -> void:
-	var color: Color = _family_color(family)
-	_enqueue("⚡ %s" % _law_display_name(law_id), color, DT.FONT_SIZE_LARGE, _HIGH_DURATION, Priority.HIGH)
-
 
 func _on_runeword_triggered(rw_id: String, _unit: Node) -> void:
 	# v9.5: 符文之语激活——NORMAL 优先级（注释里明确"波次/符文"档），金色（稀有成就感）
 	var display_name: String = String(RunewordDefinitions.RUNEWORD_NAMES.get(rw_id, rw_id))
 	_enqueue("✦ 符文之语 · %s" % display_name, DT.COLOR_GOLD, DT.FONT_SIZE_MEDIUM, _NORMAL_DURATION, Priority.NORMAL)
-
 
 # =========================================================================
 #  队列与显示
@@ -153,14 +139,12 @@ func _enqueue(text: String, color: Color, font_size: int, duration: float, prio:
 	if not _showing:
 		_show_next()
 
-
 func _show_next() -> void:
 	if _queue.is_empty():
 		_showing = false
 		return
 	_showing = true
 	_show_entry(_queue.pop_front())
-
 
 func _show_entry(entry: Dictionary) -> void:
 	var ls := LabelSettings.new()
@@ -179,11 +163,9 @@ func _show_entry(entry: Dictionary) -> void:
 	_active_tween.tween_property(self, "modulate:a", 0.0, _FADE_OUT_TIME)
 	_active_tween.tween_callback(_on_entry_done)
 
-
 func _on_entry_done() -> void:
 	visible = false
 	_show_next()
-
 
 func _kill_active() -> void:
 	# 杀掉正在播放的 tween（若有），立即进入下一则
@@ -193,29 +175,7 @@ func _kill_active() -> void:
 	modulate.a = 0.0
 	visible = false
 
-
 # =========================================================================
 #  辅助
 # =========================================================================
 
-func _family_color(family: String) -> Color:
-	match family.to_upper():
-		"STEEL":
-			return DT.COLOR_ACCENT_CYAN
-		"FLAME":
-			return DT.COLOR_ENERGY
-		"THUNDER":
-			return DT.COLOR_ACCENT_PURPLE
-		"VOID":
-			return Color(1.0, 0.42, 0.62, 1.0)
-		_:
-			return DT.COLOR_ACCENT_CYAN
-
-
-func _law_display_name(law_id: String) -> String:
-	if law_id.is_empty():
-		return "相位法则"
-	if law_id.find("·") >= 0:
-		return law_id
-	var cleaned: String = law_id.replace("law_", "").replace("_", " ")
-	return cleaned.capitalize()

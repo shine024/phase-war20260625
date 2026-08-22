@@ -39,7 +39,7 @@ var _skipped: Array[String] = []
 const AUTOLOAD_NAMES: Array[String] = [
 	"SignalBus", "BattleInputState", "EnergyManager", "PhaseInstrumentManager",
 	"BattleManager", "GameManager", "BlueprintManager", "DropManager", "SaveManager",
-	"AudioManager", "PhaseLawManager", "BasicResourceManager", "ObjectPoolManager",
+	"AudioManager", "BasicResourceManager", "ObjectPoolManager",
 	"UILazyLoader", "ManagerLazyLoader", "PerformanceMetricsManager", "ModificationRegistry",
 	"EvolutionPathRegistry", "DayClock", "AuraManager", "IntelItemBag", "IntelManual",
 	"QuestManager", "FactionSystemManager", "AffixManager", "LevelProgressManager",

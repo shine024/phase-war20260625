@@ -10,7 +10,6 @@ const GC = preload("res://resources/game_constants.gd")
 const EnemyArchetypes = preload("res://data/enemy_archetypes.gd")
 const BasicResources = preload("res://data/basic_resources.gd")
 const CardDropGrants = preload("res://scripts/card_drop_grants.gd")
-const PhaseLaws = preload("res://data/phase_laws.gd")
 const BattleEnvs = preload("res://data/battle_environments.gd")
 
 # ---- 外部依赖引用（由 BattleManager 注入） ----
@@ -66,7 +65,7 @@ func roll_blueprint_drops(unit: Node) -> void:
 		var qm: Node = _get_autoload_node("QuestManager")
 		if qm and qm.has_method("notify_fragments_changed"):
 			qm.notify_fragments_changed()
-	# v6.2: 法则系统废弃，禁用法则知识掉落（_roll_law_knowledge_drops(unit)）
+	## v9.x（P2-7）：法则知识值掉落函数已随 PhaseLawManager 退役删除
 	_roll_rune_drops(unit)  # v6.2: 符文掉落
 
 # =========================================================================
@@ -150,52 +149,6 @@ func _pick_random_rune_by_rarity(rarity: String) -> String:
 	return candidates[randi() % candidates.size()]
 
 # =========================================================================
-#  法则知识值掉落（敌人死亡时调用，v3）
-# =========================================================================
-
-func _roll_law_knowledge_drops(unit: Node) -> void:
-	if unit.get("archetype_id") == null:
-		return
-	var plm: Node = _get_autoload_node("PhaseLawManager")
-	if plm == null:
-		return
-	# 知识值基础掉落概率
-	var base_chance: float = 0.15
-	# 精英/首领敌人掉落概率更高
-	var archetype_id: String = unit.archetype_id
-	var is_elite: bool = false
-	var is_boss: bool = false
-	var enemy_data: Dictionary = EnemyArchetypes.get_config(archetype_id)
-	if not enemy_data.is_empty():
-		var tags: Array = enemy_data.get("tags", [])
-		is_elite = tags.has("elite")
-		is_boss = tags.has("boss")
-	var chance: float = base_chance
-	if is_elite:
-		chance = 0.30
-	if is_boss:
-		chance = 0.50
-	# 侦查单位提升掉落概率
-	var recon_bonus: float = _get_recon_fragment_bonus_multiplier()
-	chance *= (1.0 + recon_bonus)
-	if randf() > chance:
-		return
-	var law_id: String = _get_random_law_for_current_env()
-	if law_id.is_empty():
-		return
-	var knowledge_amount: int = 3
-	if is_boss:
-		knowledge_amount = 8
-	elif is_elite:
-		knowledge_amount = 5
-	if recon_bonus > 0.0:
-		knowledge_amount += int(floor(recon_bonus * 2.0))
-	knowledge_amount = max(1, knowledge_amount)
-	var kind: String = plm.knowledge_key_for_law_id(law_id) if plm.has_method("knowledge_key_for_law_id") else ""
-	if not kind.is_empty() and plm.has_method("add_knowledge"):
-		plm.add_knowledge(kind, knowledge_amount)
-
-# =========================================================================
 #  侦查加成计算
 # =========================================================================
 
@@ -223,57 +176,6 @@ func _get_recon_fragment_bonus_multiplier() -> float:
 ## （减伤走 construct_unit.gd:757 读同一 meta）。
 static func _is_recon_unit(stats: UnitStats) -> bool:
 	return stats != null and stats.has_meta("is_recon_unit") and bool(stats.get_meta("is_recon_unit", false))
-
-# =========================================================================
-#  根据当前关卡环境获取随机法则ID
-# =========================================================================
-
-func _get_random_law_for_current_env() -> String:
-	var plm: Node = _get_autoload_node("PhaseLawManager")
-	var current_env: Dictionary = {}
-	if plm and plm.has_method("get_current_env"):
-		current_env = plm.get_current_env()
-	else:
-		var gm: Node = _get_autoload_node("GameManager")
-		if gm and gm.has_method("get"):
-			var gm_level_raw: Variant = gm.current_level if "current_level" in gm else 1
-			var level: int = int(gm_level_raw)
-			current_env = preload("res://data/battle_environments.gd").get_for_level(level)
-	if current_env.is_empty():
-		current_env = {"weather": "clear", "terrain": "plain", "energy_field": "normal", "time_of_day": "day"}
-	# 获取环境关联的法则流派
-	var families: Array = []
-	var weather: String = current_env.get("weather", "")
-	var terrain: String = current_env.get("terrain", "")
-	var energy_field: String = current_env.get("energy_field", "")
-	var time_of_day: String = current_env.get("time_of_day", "")
-	# 根据天气关联流派
-	if weather == "storm" or weather == "rain":
-		families.append("THUNDER")
-	# 根据地形关联流派
-	if terrain == "mountain" or terrain == "city":
-		families.append("STEEL")
-	# 根据能量场关联流派
-	if energy_field == "high_field" or energy_field == "nano_fog":
-		families.append("FLAME")
-	if energy_field == "void_rift":
-		families.append("VOID")
-	# 根据时间关联流派
-	if time_of_day == "dusk" or time_of_day == "night":
-		families.append("VOID")
-	# 如果没有环境关联，随机选择
-	if families.is_empty():
-		families = ["STEEL", "FLAME", "THUNDER", "VOID"]
-	# 从关联流派中随机选择一个
-	var chosen_family: String = families[randi() % families.size()]
-	# 获取该流派的所有法则ID
-	var law_ids: Array = []
-	for lid in PhaseLaws.get_all_ids():
-		if PhaseLaws.get_family(lid) == chosen_family:
-			law_ids.append(lid)
-	if law_ids.is_empty():
-		return ""
-	return law_ids[randi() % law_ids.size()]
 
 # =========================================================================
 #  击杀奖励处理（护盾等）

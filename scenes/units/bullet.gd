@@ -4,7 +4,6 @@ extends Node2D
 const GC = preload("res://resources/game_constants.gd")
 const DT = preload("res://resources/design_tokens.gd")
 const CombatFeedback = preload("res://scripts/combat_feedback.gd")
-const ActiveLawEffects = preload("res://managers/active_law_effects.gd")
 const CardAbilityManager = preload("res://managers/card_ability_manager.gd")
 const CardGridFx = preload("res://scripts/card_grid_fx.gd")
 const WeaponProjectileVfx = preload("res://scripts/weapon_projectile_vfx.gd")
@@ -141,18 +140,10 @@ static func _get_add_blend_mat() -> CanvasItemMaterial:
 	return _add_blend_mat
 
 
-func _apply_shield_wall_mitigation(raw_damage: float, target: Node) -> float:
-	if target == null or not is_instance_valid(target):
-		return raw_damage
-	# 护盾墙主要保护我方单位/基地，且只对敌方射弹生效
-	if shooter_is_player:
-		return raw_damage
-	if not (target is CharacterBody2D or target.is_in_group("phase_driver")):
-		return raw_damage
-	var mitigation: float = ActiveLawEffects.get_shield_wall_mitigation_for_point(target.global_position, "ALLY")
-	if mitigation <= 0.0:
-		return raw_damage
-	return raw_damage * (1.0 - mitigation)
+func _apply_shield_wall_mitigation(raw_damage: float, _target: Node) -> float:
+	# v9.x（P2-7范围B）：护盾墙法则已随法则系统退役——保留函数形态作直通，
+	# 多个伤害调用点（主伤害/溅射两套路径）无需逐一改动
+	return raw_damage
 
 func setup(p_target: Node2D, p_damage: float, p_is_player: bool, p_weapon_type: int = -1, p_shooter: Node2D = null, p_shooter_stats: UnitStats = null, p_forced_miss: bool = false, p_weapon_name: String = "", p_pre_calculated: bool = false, p_vfx_variant: String = "") -> void:
 	visible = true

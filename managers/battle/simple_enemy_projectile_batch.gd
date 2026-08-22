@@ -1,7 +1,6 @@
 extends Node2D
 ## 敌方轻武器弹道批处理：直线导引、无穿透/爆炸时用 MultiMesh 绘制，减轻 Bullet 节点数量。
 const GC = preload("res://resources/game_constants.gd")
-const ActiveLawEffects = preload("res://managers/active_law_effects.gd")
 const CombatFeedback = preload("res://scripts/combat_feedback.gd")
 const WeaponProjectileVfx = preload("res://scripts/weapon_projectile_vfx.gd")
 const VfxImpactFactory = preload("res://scripts/battle/vfx_impact_factory.gd")  # v9.2: 枪口火
@@ -274,15 +273,9 @@ func _apply_hit(r: Dictionary) -> void:
 		tgt.take_damage(mitigated, shooter)
 		ModuleEffectHandler.apply_on_hit_side_effects(shooter, tgt, mitigated)
 
-func _apply_shield_wall_mitigation(raw_damage: float, target: Node) -> float:
-	if target == null or not is_instance_valid(target):
-		return raw_damage
-	if not (target is CharacterBody2D or target.is_in_group("phase_driver")):
-		return raw_damage
-	var mitigation: float = ActiveLawEffects.get_shield_wall_mitigation_for_point(target.global_position, "ALLY")
-	if mitigation <= 0.0:
-		return raw_damage
-	return raw_damage * (1.0 - mitigation)
+func _apply_shield_wall_mitigation(raw_damage: float, _target: Node) -> float:
+	# v9.x（P2-7范围B）：护盾墙法则已随法则系统退役——保留函数形态作直通
+	return raw_damage
 
 func _speed_for(wt: int) -> float:
 	match wt:

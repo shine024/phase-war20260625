@@ -14,8 +14,6 @@ func _on_node_added(node: Node) -> void:
 	if node is BaseButton:
 		node.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 
-const ActiveLawEffects = preload("res://managers/active_law_effects.gd")
-const PhaseLaws = preload("res://data/phase_laws.gd")
 const MainBattleSetup = preload("res://scripts/systems/main_battle_setup.gd")
 const MainReward = preload("res://scripts/systems/main_reward.gd")
 const ToastUtils = preload("res://scripts/toast_utils.gd")
@@ -87,8 +85,6 @@ func _ready() -> void:
 	# 连接底部仪表栏信号
 	if bottom_instrument_bar:
 		bottom_instrument_bar.instrument_area_clicked.connect(_on_instrument_area_clicked)
-		bottom_instrument_bar.law_area_clicked.connect(_on_law_area_clicked)
-		bottom_instrument_bar.law_slot_clicked.connect(_on_law_slot_clicked)
 		bottom_instrument_bar.phase_level_label_clicked.connect(_on_phase_level_label_clicked)
 
 	# 连接底部功能键栏信号
@@ -132,9 +128,6 @@ func _ready() -> void:
 	_update_level_display()
 
 	if SignalBus:
-		# 2026-08-22 修复：blueprint_unlocked 信号已随蓝图体系删除，此 connect 每次启动报
-		# SCRIPT ERROR（Invalid access on signal_bus）——删除接线与死处理器。
-		SignalBus.active_law_cast_at.connect(_on_active_law_cast_at)
 		SignalBus.battle_ended.connect(_on_battle_ended_clear_pending)
 		# v6.6 修复: toggle_* 信号原 emit 无 connect，教程引导的"打开面板"动作失效。
 		if SignalBus.has_signal("toggle_backpack") and not SignalBus.toggle_backpack.is_connected(_on_backpack_pressed):
@@ -522,12 +515,7 @@ func _on_phase_level_label_clicked() -> void:
 	# 点击底部相位仪等级标签 → 打开相位仪选择面板（切换相位仪）
 	_open_phase_instrument_selector()
 
-func _on_law_area_clicked() -> void:
-	# v7.x: 独立 rune_panel 已删除，符文管理合并到背包 RunesTab
-	# 底部栏"法则区"点击改为打开背包并切到符文 Tab
-	_open_backpack_runes_tab()
-
-## v7.x: 打开背包并切到符文 Tab（底部栏法则区 / 教程引导共用入口）
+## v7.x: 打开背包并切到符文 Tab（教程引导共用入口）
 func _open_backpack_runes_tab() -> void:
 	_play_sfx("button")
 	_open_overlay(backpack_overlay, "backpack")
@@ -537,38 +525,7 @@ func _open_backpack_runes_tab() -> void:
 	if bp and bp.has_method("switch_to_runes_tab"):
 		bp.switch_to_runes_tab()
 
-func _on_law_slot_clicked(law_id: String, kind: String, origin_global: Vector2) -> void:
-	# 战斗中点击主动法则格子：进入选点释放模式
-	var in_battle: bool = (BattleManager != null and "battle_active" in BattleManager and BattleManager.battle_active)
-	if not in_battle:
-		return
-	if kind == "active":
-		# P2-13: 首次施放主动法则时弹一次说明（黑猴"广智变身"式解锁引导）
-		FeatureUnlockPopup.show_once("law_cast", "主动法则施放",
-			"点击底部栏红色法则格后，再点击战场目标位置即可施放主动法则。\n施放受环境条件与纳米预算限制，效果与剩余能量可在法则格悬停提示中查看。")
-		# 确保法则已在 PhaseLawManager 的 equipped_active_laws 中（防止 UI 显示但实际未同步的情况）
-		var pim: Node = PhaseInstrumentManager
-		if pim and pim.has_method("sync_law_cards_to_phase_law_manager"):
-			pim.sync_law_cards_to_phase_law_manager()
-		var plm: Node = get_node_or_null("/root/PhaseLawManager")
-		if plm and "equipped_active_laws" in plm:
-			var actives: Array = plm.equipped_active_laws
-			if not actives.has(law_id):
-				# 同步后仍无此法则：强制加入 equipped_active_laws 和 active_law_states
-				actives.append(String(law_id))
-				plm.equipped_active_laws = actives
-				if plm.has_method("ensure_law_unlocked"):
-					plm.ensure_law_unlocked(String(law_id))
-				# 同时补入 active_law_states（如果是战中且尚未初始化）
-				if "active_law_states" in plm:
-					if not plm.active_law_states.has(law_id):
-						plm.active_law_states[law_id] = {"casts_used": 0, "casts_limit": 999999}
-				# [LOG-v5.1] print("[Main] 强制同步主动法则到 PhaseLawManager: ", law_id)
-		if SignalBus:
-			BattleInputState.pending_deploy_platform_card_id = ""
-			BattleInputState.pending_deploy_origin_global = Vector2.ZERO
-			BattleInputState.pending_cast_law_id = String(law_id)
-			BattleInputState.pending_cast_law_origin_global = origin_global
+# v9.x（P2-7范围B）：_on_law_slot_clicked（主动法则选点）已随法则施放链退役移除
 
 # ── 功能键信号 ────────────────────────────────────────────────
 func _on_backpack_pressed() -> void:
@@ -1134,25 +1091,8 @@ func _show_save_result_toast(message: String, is_error: bool) -> void:
 		_save_toast = ToastUtils.new()
 	_save_toast.show_toast(self, message, is_error, -200.0, 200.0, -120.0, -72.0, 1.6)
 
-func _on_active_law_cast_at(law_id: String, world_pos: Vector2) -> void:
-	var bf := _get_battlefield()
-	if bf == null:
-		return
-	var CastEffect = preload("res://scenes/effects/cast_effect.gd")
-	var effect := Node2D.new()
-	effect.set_script(CastEffect)
-	effect.position = world_pos
-	bf.add_child(effect)
-	ActiveLawEffects.apply_active_law_effect(law_id, world_pos, bf)
-	# 记录施放：扣除纳米材料、递增施放次数、应用环境变化
-	var plm := get_node_or_null("/root/PhaseLawManager")
-	if plm and plm.has_method("record_cast"):
-		plm.record_cast(law_id)
-	if SignalBus and SignalBus.has_signal("phase_law_cast"):
-		var fam: String = PhaseLaws.get_family(law_id)
-		SignalBus.phase_law_cast.emit(law_id, world_pos, fam)
-
 # 2026-08-22：_on_blueprint_unlocked 已删除——信号已随蓝图体系移除，处理器为死代码。
+# v9.x（P2-7范围B）：_on_active_law_cast_at（法则施放演出+效果应用）已随法则系统退役移除。
 
 # ── 战斗结果 ─────────────────────────────────────────────────
 func show_battle_result(player_won: bool) -> void:

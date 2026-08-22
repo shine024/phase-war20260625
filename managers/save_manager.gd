@@ -44,7 +44,6 @@ const CRITICAL_MANAGER_LOADS: Array = [
 	["/root/InstanceRegistry", "instances"],
 	["/root/BlueprintManager", "blueprint"],
 	["/root/PhaseInstrumentManager", "phase_instrument"],
-	["/root/PhaseLawManager", "phase_law"],
 	["/root/QuestManager", "quest"],
 	["/root/BasicResourceManager", "basic_resources"],
 	["/root/FactionSystemManager", "faction_system"],
@@ -75,7 +74,6 @@ const DEFERRED_MANAGER_LOADS: Array = [
 const CRITICAL_RESETTABLE_MANAGERS: Array[String] = [
 	"BlueprintManager",
 	"PhaseInstrumentManager",
-	"PhaseLawManager",
 	"QuestManager",
 	"BasicResourceManager",
 	"FactionSystemManager",
@@ -92,7 +90,6 @@ const DEFERRED_RESET_BATCH_SIZE := 4
 const RESETTABLE_MANAGERS := [
 	"BlueprintManager",
 	"PhaseInstrumentManager",
-	"PhaseLawManager",
 	"QuestManager",
 	"BasicResourceManager",
 	"FactionSystemManager",
@@ -683,7 +680,7 @@ func save_game() -> bool:
 	if bm.has_method("save_state"):
 		data[SK_BLUEPRINT] = bm.save_state()
 	_collect_manager_state(data, "/root/BasicResourceManager", SK_BASIC_RESOURCES)
-	_collect_manager_state(data, "/root/PhaseLawManager", SK_PHASE_LAW)
+	# v9.x（P2-7范围B）：PhaseLawManager 存档收集已随法则系统退役移除
 	_collect_manager_state(data, "/root/QuestManager", SK_QUEST)
 	_collect_manager_state(data, "/root/FactionSystemManager", SK_FACTION_SYSTEM)
 	_collect_manager_state(data, "/root/AffixManager", SK_AFFIX_DATA)

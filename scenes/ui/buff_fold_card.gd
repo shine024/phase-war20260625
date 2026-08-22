@@ -2,12 +2,12 @@ extends VBoxContainer
 ## v7.x 左侧三段折叠卡（对齐设计稿 ui_redesign_battle_hud_v7.html ③ 左侧 BUFF 折叠卡）
 ## 结构：VBoxContainer > [FoldCard(BUFF), FoldCard(我的面板), FoldCard(资源)]
 ## 数据源：
-##   - BUFF 段：PhaseLawManager.equipped_passive_laws + PhaseLaws.get_by_id()
+##   - BUFF 段：PhaseInstrumentManager.get_rune_slots()（v9.x P2-7：法则→符文）
 ##   - 我的面板段：BlueprintManager（已解锁蓝图数）+ InstanceRegistry（实例数）+ BattleManager（场上兵力）
 ##   - 资源段：BasicResourceManager（能量块/纳米材料/研究点/合金/晶体）
 ## 折叠态：每段独立 toggle，默认 BUFF 展开、其余两段折叠
 
-const PhaseLaws = preload("res://data/phase_laws.gd")
+const RuneDefs = preload("res://data/runes.gd")
 const DT = preload("res://resources/design_tokens.gd")
 
 var _refresh_accum: float = 0.0
@@ -28,13 +28,8 @@ func _ready() -> void:
 	_panel_card = _build_fold_card("🎖 我的面板", false, Color(0.65, 0.55, 1.0, 0.07))
 	_res_card = _build_fold_card("◆ 资源", false, Color(0.98, 0.75, 0.15, 0.07))
 	_refresh()
-	# 法则/资源变更时刷新
-	var plm := get_node_or_null("/root/PhaseLawManager")
-	if plm:
-		if plm.has_signal("passive_laws_changed"):
-			plm.passive_laws_changed.connect(_refresh)
-		if plm.has_signal("law_env_changed"):
-			plm.law_env_changed.connect(_refresh)
+	# 资源变更时刷新（v9.x P2-7：法则管理器信号已随法则系统退役移除；符文装配变化
+	# 由 1s 定时器 _refresh 兜底刷新）
 	var brm := get_node_or_null("/root/BasicResourceManager")
 	if brm and brm.has_signal("resources_changed"):
 		# v9 perf：resources_changed 战斗中每次击杀都发——原直连 _refresh 触发全量重建
@@ -123,33 +118,30 @@ func _refresh() -> void:
 	_refresh_resource()
 
 
-# ========== 段1：BUFF（被动法则）==========
+# ========== 段1：BUFF（已装备符文；v9.x P2-7范围B 由被动法则改为符文展示）==========
 func _refresh_buff() -> void:
 	var content: VBoxContainer = _buff_card.content
 	if content == null:
 		return
 	for c in content.get_children():
 		c.queue_free()
-	var plm := get_node_or_null("/root/PhaseLawManager")
-	if plm == null:
-		content.add_child(_make_row("（法则系统未加载）", Color(0.5, 0.55, 0.6)))
+	var pim := get_node_or_null("/root/PhaseInstrumentManager")
+	if pim == null or not pim.has_method("get_rune_slots"):
+		content.add_child(_make_row("（相位仪未加载）", Color(0.5, 0.55, 0.6)))
 		return
-	var passives: Array = plm.get("equipped_passive_laws") if "equipped_passive_laws" in plm else []
-	if passives.is_empty():
-		content.add_child(_make_row("（未装备被动法则）", Color(0.5, 0.55, 0.6)))
-		return
-	for law_id in passives:
-		var law := PhaseLaws.get_by_id(String(law_id))
-		if law.is_empty():
+	var rune_ids: Array = pim.get_rune_slots()
+	var shown: int = 0
+	for rid_raw in rune_ids:
+		# 空槽存 null——String(null) 构造报错，先跳过
+		if rid_raw == null:
 			continue
-		var name: String = String(law.get("display_name", law_id))
-		var rt: Dictionary = law.get("runtime_tags", {})
-		var val_str := ""
-		if rt.has("value"):
-			val_str = " +" + _fmt_val(float(rt["value"]))
-		elif rt.has("desc"):
-			val_str = " " + String(rt["desc"])
-		content.add_child(_make_row(name + val_str, Color(0.52, 0.83, 0.6, 1)))
+		var rid := String(rid_raw)
+		if rid.is_empty():
+			continue
+		content.add_child(_make_row("符文·" + RuneDefs.get_rune_name(rid), Color(0.52, 0.83, 0.6, 1)))
+		shown += 1
+	if shown == 0:
+		content.add_child(_make_row("（未装备符文）", Color(0.5, 0.55, 0.6)))
 
 
 # ========== 段2：我的面板（养成/兵力概览）==========
@@ -240,13 +232,6 @@ func _make_kv_row(key: String, val: String, val_color: Color) -> HBoxContainer:
 	vl.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	hbox.add_child(vl)
 	return hbox
-
-
-func _fmt_val(v: float) -> String:
-	# 百分比类（<1）显示为 %，数值类直接显示
-	if v < 1.0 and v > 0:
-		return "%d%%" % int(v * 100)
-	return "%d" % int(v)
 
 
 ## 从 Node 安全取 int 属性：属性不存在或非数值返回 0（Node.get 不支持默认值参数）

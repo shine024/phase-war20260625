@@ -64,18 +64,14 @@ signal card_added_to_backpack(card: CardResource)
 # 2026-08-22 清理：drops_ready_to_claim 信号及其 emit 已移除——全项目零订阅者、零触发链路
 # （原 emit 点 battle_damage_system 同步删除；如需"掉落就绪推送"从 git 历史找回）。
 
-# 主动法则施放：点击法则后进入选点模式，再点战场即在此信号中传出
-# 曲线/箭头起点：来自“点击的法则格”的屏幕位置（用于映射到战场子视口坐标）
-signal active_law_cast_at(law_id: String, world_pos: Vector2)
-signal phase_law_runtime_changed()
+# v9.x（P2-7范围B）：active_law_cast_at / phase_law_runtime_changed / phase_law_cast
+# 三条法则信号已随法则系统退役移除
 
 # 单位部署：战斗中点击绿槽的平台/合成卡后，再点战场放置虚影 → 计时后实体化
 ## reason_code: out_of_bounds | insufficient_energy | max_units | unit_on_field | invalid_loadout | internal
 signal player_deploy_failed(reason_code: String, message: String)
 
 # 新系统信号
-# 相位法则施放效果
-signal phase_law_cast(law_id: String, position: Vector2, family: String)
 
 # 成就系统
 signal achievement_unlocked(achievement_id: String, achievement_name: String)

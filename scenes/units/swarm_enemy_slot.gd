@@ -49,8 +49,6 @@ var _base_visual_color: Color = Color(0.9, 0.35, 0.25)
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_DISABLED
-	if SignalBus and SignalBus.has_signal("phase_law_runtime_changed"):
-		SignalBus.phase_law_runtime_changed.connect(_on_phase_law_runtime_changed)
 
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_PREDELETE:
@@ -73,10 +71,6 @@ func setup(p_wave: int, p_archetype_id: String, local_pos: Vector2) -> void:
 	grid_update_timer = randf_range(0.0, 0.08)
 	_apply_archetype_stats()
 	max_hp = hp
-	if is_inside_tree():
-		_apply_phase_law_passives()
-	else:
-		call_deferred("_apply_phase_law_passives")
 	add_to_group("enemy_units")
 	_register_to_spatial_grid()
 	_update_visual_color()
@@ -152,44 +146,8 @@ func _apply_archetype_stats() -> void:
 		_sw_breakdown["final_def"] = float(defense)
 		set_meta("enemy_bonus_breakdown", _sw_breakdown)
 
-func _apply_phase_law_passives() -> void:
-	if not _base_stats_ready:
-		_base_max_hp = max_hp
-		_base_attack_damage = attack_damage
-		_base_move_speed = move_speed
-		_base_attack_interval = attack_interval
-		_base_stats_ready = true
-	var plm := get_node_or_null("/root/PhaseLawManager")
-	if not plm or not plm.has_method("get_passive_runtime_tags_for_side"):
-		return
-	var tags: Array = plm.get_passive_runtime_tags_for_side(false)
-	var hp_mult: float = 1.0
-	var dmg_mult: float = 1.0
-	var move_mult: float = 1.0
-	var atkspd_mult: float = 1.0
-	_incoming_damage_mul = 1.0
-	for t in tags:
-		if not (t is Dictionary):
-			continue
-		var effect: String = String(t.get("effect", ""))
-		var v: float = float(t.get("value", 0.0))
-		match effect:
-			"burn_on_hit":
-				_incoming_damage_mul *= 1.0 + clampf(v * 0.05, 0.0, 0.8)
-			"anchor_field", "ion_net", "gravity_well":
-				move_mult *= max(0.2, 1.0 - v)
-			"static_domain":
-				dmg_mult *= max(0.6, 1.0 - v * 0.01)
-				atkspd_mult *= max(0.6, 1.0 - v * 0.01)
-			_:
-				continue
-	var old_max: float = maxf(1.0, max_hp)
-	var hp_ratio: float = clampf(hp / old_max, 0.0, 1.0)
-	max_hp = _base_max_hp * hp_mult
-	hp = maxf(1.0, max_hp * hp_ratio)
-	attack_damage = _base_attack_damage * dmg_mult
-	move_speed = _base_move_speed * move_mult
-	attack_interval = max(0.1, _base_attack_interval / atkspd_mult)
+# v9.x（P2-7范围B）：_apply_phase_law_passives 已随法则系统退役删除
+# （我方蓝槽法则对敌减益不再存在）
 
 func _update_visual_color() -> void:
 	var era: int = int(EnemyArchetypes.get_config(archetype_id).get("era", 0))
@@ -201,9 +159,6 @@ func _update_visual_color() -> void:
 		4: Color(0.35, 0.72, 0.88),
 	}
 	visual_color = era_colors.get(era, Color(0.9, 0.35, 0.25))
-
-func _on_phase_law_runtime_changed() -> void:
-	_apply_phase_law_passives()
 
 # v10: 受击闪白计时(MultiMesh 不能 tween,由 controller _sync 时 lerp visual_color 向白)
 var _hit_flash_t: float = 0.0

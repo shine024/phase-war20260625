@@ -167,8 +167,6 @@ func _ready() -> void:
 	_cached_is_card_grid = true
 	if BattleManager != null and "battle_active" in BattleManager:
 		_cached_combat_started = bool(BattleManager.battle_active)
-	if SignalBus and SignalBus.has_signal("phase_law_runtime_changed"):
-		SignalBus.phase_law_runtime_changed.connect(_on_phase_law_runtime_changed)
 
 func setup(_is_player: bool, p_wave: int, p_archetype_id: String = "basic_infantry") -> void:
 	wave_index = p_wave
@@ -177,12 +175,6 @@ func setup(_is_player: bool, p_wave: int, p_archetype_id: String = "basic_infant
 	# v6.6(剧情): 二周目难度提升（补剧情.txt L186 敌人属性×1.2）
 	# 在 _apply_archetype_stats 设置基础值后、max_hp=hp 前统一应用倍率
 	_apply_ng_plus_scaling()
-	# setup 在 add_child() 之前被调用时，当前节点不在有效场景树内；
-	# 延后执行可避免 Godot 报绝对路径 get_node/active scene tree 相关警告。
-	if is_inside_tree():
-		_apply_phase_law_passives()
-	else:
-		call_deferred("_apply_phase_law_passives")
 	max_hp = hp
 	add_to_group("enemy_units")
 	var cs := get_node_or_null("CollisionShape2D")
@@ -306,60 +298,8 @@ func _play_card_hit_recoil() -> void:
 	_card_tween.tween_property(self, "rotation", rest_r, 0.12)
 
 
-func _apply_phase_law_passives() -> void:
-	if not _base_stats_ready:
-		_base_max_hp = max_hp
-		_base_attack_damage = attack_damage
-		_base_move_speed = move_speed
-		_base_attack_interval = attack_interval
-		_base_stats_ready = true
-	# PhaseLawManager 是 autoload 单例，直接引用（节点未入树时也安全）。
-	if PhaseLawManager == null or not PhaseLawManager.has_method("get_passive_runtime_tags_for_side"):
-		return
-	var tags: Array = PhaseLawManager.get_passive_runtime_tags_for_side(false)
-	var hp_mult: float = 1.0
-	var dmg_mult: float = 1.0
-	var move_mult: float = 1.0
-	var atkspd_mult: float = 1.0
-	_incoming_damage_mul = 1.0
-	for t in tags:
-		if not (t is Dictionary):
-			continue
-		var effect: String = String(t.get("effect", ""))
-		var v: float = float(t.get("value", 0.0))
-		match effect:
-			"burn_on_hit":
-				_incoming_damage_mul *= 1.0 + clampf(v * 0.05, 0.0, 0.8)
-			"anchor_field", "ion_net", "gravity_well":
-				move_mult *= max(0.2, 1.0 - v)
-			"static_domain":
-				dmg_mult *= max(0.6, 1.0 - v * 0.01)
-				atkspd_mult *= max(0.6, 1.0 - v * 0.01)
-			_:
-				continue
-	var old_max: float = maxf(1.0, max_hp)
-	var hp_ratio: float = clampf(hp / old_max, 0.0, 1.0)
-	max_hp = _base_max_hp * hp_mult
-	hp = maxf(1.0, max_hp * hp_ratio)
-	attack_damage = _base_attack_damage * dmg_mult
-	move_speed = _base_move_speed * move_mult
-	attack_interval = max(0.1, _base_attack_interval / atkspd_mult)
-	# v6.3: 同步更新 stats（_do_attack 走 stats 三维路径时需要反映律法减益）
-	if stats != null:
-		stats.max_hp = max_hp
-		stats.attack_damage = attack_damage
-		stats.attack_light = _base_attack_damage * dmg_mult
-		stats.attack_armor = float(_cached_enemy_base.get("attack_armor", 0.0)) * dmg_mult
-		stats.attack_air = float(_cached_enemy_base.get("attack_air", 0.0)) * dmg_mult
-		stats.move_speed = move_speed
-		stats.attack_interval = attack_interval
-		# 同步武器槽位伤害
-		if stats.weapon_slots.size() >= 3:
-			for i in range(mini(3, stats.weapon_slots.size())):
-				var w = stats.weapon_slots[i]
-				if w != null and w.enabled:
-					var base_key: String = ["attack_light", "attack_armor", "attack_air"][i]
-					w.damage = float(_cached_enemy_base.get(base_key, 0.0)) * dmg_mult
+# v9.x（P2-7范围B）：_apply_phase_law_passives 已随法则系统退役删除——
+# 我方蓝槽法则对敌减益（burn_on_hit/anchor_field/static_domain 等）不再存在。
 
 func _apply_archetype_stats() -> void:
 	var cfg: Dictionary = EnemyArchetypes.get_config(archetype_id)
@@ -1775,10 +1715,6 @@ func _cleanup_before_destroy() -> void:
 	set_process_input(false)
 	set_physics_process(false)
 	set_process(false)
-	# 断开信号连接
-	if SignalBus and SignalBus.has_signal("phase_law_runtime_changed"):
-		if SignalBus.phase_law_runtime_changed.is_connected(_on_phase_law_runtime_changed):
-			SignalBus.phase_law_runtime_changed.disconnect(_on_phase_law_runtime_changed)
 
 func _battlefield_y_clamp_range() -> Vector2:
 	if _cached_is_card_grid:
@@ -1813,10 +1749,6 @@ func _enforce_card_grid_lane_alignment() -> void:
 	var anchor: Vector2 = bf.get_card_grid_enemy_slot_global(esi)
 	if global_position.distance_squared_to(anchor) > 0.25:
 		global_position = anchor
-
-func _on_phase_law_runtime_changed() -> void:
-	_apply_phase_law_passives()
-	_update_hp_bar()
 
 
 
