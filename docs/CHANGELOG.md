@@ -2631,3 +2631,16 @@ v17j 分格 meteor 7→5（-2）/summon 4→5（+1）——单格 ±1-2 波动�
 - 本条目 + 补录节；AGENTS.md：修正"无 JSON 运行时数据"失实表述（data/json/ 8 文件为活懒加载数据层）、停用清单补本轮删除项、Lazy-loaded managers 25→21、数据层章节更新
 
 **验证基线**：gdunit 全量 145 例 19 失败——与 stash 基线逐项一致（全部为 08-16 前既有，memory 清单已过期待更新）；各阶段 --script 加载断言 + main.tscn headless 300帧零错误 + 冒烟 8 项 PASS + --check-only 全项目兜底。
+
+## v20.1 商店打不开事故修复 + 面板回归测试设立（2026-08-22 晚）
+
+**事故**：用户报告商店无法打开。复查发现 v20 阶段4 误删了 UILazyLoader 的 quest/store/faction/settings 四项配置——判断依据"面板静态实例化于 main.tscn，短路使懒加载永不触发"是错的：main.`_prune_preloaded_panels`（_ready 的 call_deferred）启动时会 queue_free 这四个面板的静态实例（内存优化："启动释放预置面板，转按需加载"），**懒加载配置正是释放后的唯一重建路径**。删除后四面板变永久空壳（商店/任务/势力/设置都打不开，只剩空遮罩）。
+
+**为何漏过**：本批所有验证（main boot/冒烟/gdunit/store_panel.tscn 单独启动）都不经过"启动→释放→点开→重建"链路——静态实例被释放是静默的，不产生任何错误。
+
+**修复**：
+- 恢复 UILazyLoader 四项配置 + main.gd `_ensure_lazy_panel` 四个分支（带 ⚠️ 注释说明 prune 依赖）
+- occupation/leaderboard/intelligence/phase_master_skill/reinforcement 五项维持删除（不在 prune 名单/确认死配置）
+- **新设 tests/panel_open_smoke.gd**：进主场景→连按四个面板按钮→断言面板重建+内容填充。此测试在此事故下必红，防同类回归
+
+**验证**: panel_open_smoke 四面板 OK + 冒烟 8 项 + ui_unified_check 通过 + main boot 零错误 + gdunit 145 例 19 失败（既有基线不变）

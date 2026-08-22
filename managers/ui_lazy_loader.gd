@@ -21,9 +21,36 @@ func _ready() -> void:
 			"node_name": "BackpackPanel",
 			"autoload": false
 		},
-		# v9.x 清理（2026-08-22）：以下注册已移除——面板均静态实例化于 main.tscn，
-		# 子节点复用短路使懒加载永不触发（同 v6.6 "map" 先例）：
-		# quest / store / faction / occupation / settings / leaderboard / intelligence
+		# ⚠️ v9.x 复查修复（2026-08-22 当晚）：quest/store/faction/settings 四项恢复——
+		# main._prune_preloaded_panels 启动时会 queue_free 这批静态面板实例"转按需加载"，
+		# 本表是释放后的唯一重建路径，删了它们=面板永远空壳（商店打不开事故）。
+		"quest": {
+			"scene": "res://scenes/ui/quest_panel.tscn",
+			"parent_path": "PopupLayer/QuestOverlay/CenterContainer",
+			"node_name": "QuestPanel",
+			"autoload": false
+		},
+		"store": {
+			"scene": "res://scenes/ui/store_panel.tscn",
+			"parent_path": "PopupLayer/StoreOverlay/CenterContainer",
+			"node_name": "StorePanel",
+			"autoload": false
+		},
+		"faction": {
+			"scene": "res://scenes/ui/faction_panel.tscn",
+			"parent_path": "PopupLayer/FactionOverlay/CenterContainer",
+			"node_name": "FactionPanel",
+			"autoload": false
+		},
+		"settings": {
+			"scene": "res://scenes/ui/settings_panel.tscn",
+			"parent_path": "PopupLayer/SettingsOverlay/CenterContainer",
+			"node_name": "SettingsPanel",
+			"autoload": false
+		},
+		# v9.x 清理（2026-08-22）：以下注册确认可安全移除——
+		# occupation / leaderboard / intelligence：面板静态实例化且不在
+		# _prune_preloaded_panels 释放名单内（常驻，懒加载永不触发）
 		# phase_master_skill（parent_path 节点不存在，真实开启方是 growth_panel 自建 CanvasLayer）
 		# reinforcement（无 overlay 开启方；面板活于 card_info_panel 嵌入式实例化）
 		"achievement": {

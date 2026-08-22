@@ -448,7 +448,7 @@ User-driven collaboration. Every task follows: **Question → Options → Decisi
 | BattleFeedbackManager | **已删除** | 2026-08-22：暴击震屏路径从未生效（get_node_or_null 恒 null），battle_manager/new_systems_integration 的 bfm 分支删除、兜底转正。将来恢复震屏直调 `scripts/screen_shake.gd`（8 个活文件先例） |
 | CharacterManager / ChallengeModeManager(+challenge_definitions) | **已删除** | 2026-08-22：零玩法/UI 消费的僵尸管理器，仅存档管道被动实例化。旧档 characters/challenge_records key 静默跳过；save_constants/save_migration 映射保留。将来做剧情/挑战模式从 git 历史找回 |
 | VersionManager | **已删除** | 2026-08-22：零调用方，永不实例化 |
-| UILazyLoader 死配置 9 项 | 已清理 | 2026-08-22：quest/store/faction/occupation/settings/leaderboard/intelligence（面板静态实例化短路）/phase_master_skill（parent 节点不存在）/reinforcement（活于 card_info_panel 嵌入实例化）。真懒加载仅剩：backpack/growth/achievement/help/modification/evolution/collection |
+| UILazyLoader 死配置 5 项 | 已清理 | 2026-08-22：occupation/leaderboard/intelligence（面板静态实例化且不在 prune 释放名单）/phase_master_skill（parent 节点不存在）/reinforcement（活于 card_info_panel 嵌入实例化）。**⚠️ 教训：quest/store/faction/settings 曾被同批误删当晚会回滚**——main.`_prune_preloaded_panels` 启动时会释放这四个面板的静态实例"转按需加载"，UILazyLoader 配置是其唯一重建路径，删=面板永远空壳（商店打不开事故）。真懒加载全集：backpack/growth/quest/store/faction/settings/achievement/help/modification/evolution/collection（10 项） |
 | LevelSelectOverlay 空壳 | 已删除 | 2026-08-22：main.tscn 空节点，level_select 配置 v9.x 已先删（选关由 world_map 承担） |
 | docs/tech-debt-register.md | 已删除 | 2026-04-09 停更全过时；活债务改记本清单 + CHANGELOG |
 

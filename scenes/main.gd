@@ -602,6 +602,16 @@ func _ensure_lazy_panel(panel_key: String) -> void:
 		"backpack":
 			lazy_id = "backpack"
 			container_path = "BackpackVBox/CenterRow/BackpackCenter"
+		# ⚠️ quest/store/faction/settings：_prune_preloaded_panels 启动释放静态实例，
+		# 这四项必须走懒加载重建（v9.x 复查修复——误删导致商店等面板打不开）
+		"quest":
+			lazy_id = "quest"
+		"store":
+			lazy_id = "store"
+		"faction":
+			lazy_id = "faction"
+		"settings":
+			lazy_id = "settings"
 		"growth":
 			lazy_id = "growth"
 		"achievement":
@@ -615,8 +625,8 @@ func _ensure_lazy_panel(panel_key: String) -> void:
 		"collection":
 			lazy_id = "collection"
 		_:
-			# v9.x 清理：quest/store/faction/map/settings/leaderboard 分支已删——
-			# 面板静态实例化于 main.tscn，closed 信号由 _connect_panel_closed_signals(_ready) 接线
+			# v9.x 清理：map/leaderboard 分支确认为死分支——map 无懒加载配置且
+			# WorldMapPanel 无 closed 信号；leaderboard 静态实例不在 prune 名单
 			return
 	var overlay: Control = _overlay_for_panel_key(lazy_id)
 	if overlay == null:

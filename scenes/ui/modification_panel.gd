@@ -2072,4 +2072,3 @@ func _rarity_sort_value(rarity: String) -> int:
 		"legendary": return 5
 		"mythic": return 6
 		_: return 0
-
