@@ -7,7 +7,6 @@ extends RefCounted
 ## 实际拖放走 backpack_card_item_drag 的手动拖拽系统。
 
 const GC = preload("res://resources/game_constants.gd")
-const PhaseLaws = preload("res://data/phase_laws.gd")
 
 ## 宿主引用（由 bottom_instrument_bar 在 _ready 设置）
 var _host: Node = null  # BottomInstrumentBar
@@ -28,16 +27,8 @@ static func card_matches_slot_color(card: CardResource, color: String) -> bool:
 	if color == "yellow":
 		return card.card_type == GC.CardType.ENERGY
 	if color == "red" or color == "blue":
-		if card.card_type != GC.CardType.LAW:
-			return false
-		var lid: String = card.linked_law_id if not String(card.linked_law_id).is_empty() else card.card_id
-		if lid.begins_with("law:"):
-			lid = lid.substr(4)
-		var law: Dictionary = PhaseLaws.get_by_id(lid)
-		if law.is_empty():
-			return false
-		var kind: String = String(law.get("kind", ""))
-		return (color == "red" and kind == "active") or (color == "blue" and kind == "passive")
+		# v9.x（P2-7范围A）：法则卡槽位链路退役——红/蓝槽不再接受卡牌拖放（2b 随蓝槽法则链整体清理）
+		return false
 	return false
 
 ## 颜色+颜色内索引 → 扁平索引

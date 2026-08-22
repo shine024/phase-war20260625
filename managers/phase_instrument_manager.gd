@@ -692,47 +692,8 @@ func _apply_law_slots_to_plm() -> bool:
 func sync_law_cards_to_phase_law_manager() -> bool:
 	return _apply_law_slots_to_plm()
 
-## 旧存档：槽位无法则卡但 PhaseLawManager 仍有装配时，生成槽内卡并同步
-func migrate_law_slots_from_phase_law_manager_if_empty() -> void:
-	if _has_any_law_card_in_slots():
-		return
-	var actives: Array = []
-	var passives: Array = []
-	_ensure_plm()
-	if _plm and "equipped_active_laws" in _plm:
-		actives = _plm.equipped_active_laws
-	if _plm and "equipped_passive_laws" in _plm:
-		passives = _plm.equipped_passive_laws
-	if actives.is_empty() and passives.is_empty():
-		return
-	var reds: Array = instrument_slots.get("red", [])
-	var blues: Array = instrument_slots.get("blue", [])
-	var changed: bool = false
-	for i in range(reds.size()):
-		if i >= actives.size():
-			break
-		var lid: String = String(actives[i])
-		if lid.is_empty():
-			continue
-		var tmpl: CardResource = _get_default_cards().create_law_card_resource(lid)
-		if tmpl != null:
-			reds[i] = tmpl.clone()
-			changed = true
-	for i in range(blues.size()):
-		if i >= passives.size():
-			break
-		var lid2: String = String(passives[i])
-		if lid2.is_empty():
-			continue
-		var tmpl2: CardResource = _get_default_cards().create_law_card_resource(lid2)
-		if tmpl2 != null:
-			blues[i] = tmpl2.clone()
-			changed = true
-	if changed:
-		instrument_slots["red"] = reds
-		instrument_slots["blue"] = blues
-		_emit_slots_changed()
-		_apply_law_slots_to_plm()
+# v9.x（P2-7范围A）：migrate_law_slots_from_phase_law_manager_if_empty 已移除——
+# 法则卡链路退役后不再从 PhaseLawManager 装配列表反向生成槽内法则卡
 
 ## 读档后：若槽内已有法则卡，用槽位覆盖 PhaseLawManager 装配列表
 func sync_law_slots_to_plm_if_has_law_cards() -> void:

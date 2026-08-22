@@ -369,49 +369,8 @@ func _try_equip_card(card: CardResource) -> bool:
 			return false
 		GC.CardType.ENERGY:
 			return _try_equip_energy_card(card)
-		GC.CardType.LAW:
-			var lid: String = card.linked_law_id if "linked_law_id" in card else ""
-			if lid.is_empty():
-				lid = card.card_id
-			# 制造/蓝图链路可能传入 law: 前缀，查法则定义前统一去前缀。
-			if lid.begins_with("law:"):
-				lid = lid.substr(4)
-			var PL = preload("res://data/phase_laws.gd")
-			var law: Dictionary = PL.get_by_id(lid)
-			if law.is_empty():
-				_last_equip_fail_reason = "法则数据缺失（%s）" % lid
-				push_error("[BackpackPresenter] 法则卡找不到法则数据: " + lid)
-				return false
-			var kind: String = String(law.get("kind", ""))
-			var target_color: String = "red" if kind == "active" else "blue"
-			var target_start: int = 0 if target_color == "red" else red_count
-			var target_count: int = int(counts.get(target_color, 0))
-			if target_count <= 0:
-				_last_equip_fail_reason = "当前相位仪没有%s槽位" % ("主动" if target_color == "red" else "被动")
-				push_warning("[BackpackPresenter] 当前相位仪没有%s槽位" % ("主动" if target_color == "red" else "被动"))
-				return false
-			var first_occupied_idx: int = -1
-			for ti in range(target_count):
-				var flat_idx: int = target_start + ti
-				if flat_idx >= slots.size():
-					break
-				if slots[flat_idx] == null:
-					var ok1: bool = bool(pim.equip_card(flat_idx, card, em))
-					if not ok1:
-						_last_equip_fail_reason = "槽位校验未通过"
-					return ok1
-				if first_occupied_idx < 0:
-					first_occupied_idx = flat_idx
-			# 所有槽位已满 → 替换第一个同色槽位（旧卡自动退回背包）
-			if first_occupied_idx >= 0:
-				var ok2: bool = bool(pim.equip_card(first_occupied_idx, card, em))
-				if not ok2:
-					_last_equip_fail_reason = "槽位校验未通过"
-				return ok2
-			_last_equip_fail_reason = "%s槽位不足" % ("主动" if target_color == "red" else "被动")
-			push_warning("[BackpackPresenter] %s槽位不足" % ("主动" if target_color == "red" else "被动"))
-			return false
-	# match 兜底：未知卡牌类型（三个分支均自带 return，此处兜不可达的未来类型）
+	# match 兜底：未知卡牌类型（其余分支均自带 return，此处兜不可达的未来类型）
+	# v9.x（P2-7范围A）：法则卡装备分支随法则卡链路退役移除——背包已无法则卡可装备
 	_last_equip_fail_reason = "未知卡牌类型，无法装备"
 	return false
 

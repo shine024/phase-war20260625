@@ -71,6 +71,12 @@ func get_all_cards() -> Array[CardResource]:
 		var sid: String = str(id_val) if id_val != null else ""
 		if sid.is_empty():
 			continue
+		# v9.x（P2-7范围A）：法则卡链路退役——旧档背包中的法则 id（裸法则 id / law: 前缀）
+		# 按 key 级忽略先例静默跳过。前置到实例重建之前，避免 InstanceRegistry
+		# 对法则 id 走 create_instance 报"找不到卡牌模板"错误。
+		var bare_law_check: String = sid.substr(4) if sid.begins_with("law:") else sid
+		if not PhaseLawsData.get_by_id(bare_law_check).is_empty():
+			continue
 		var card: CardResource = null
 		# 先按 instance_id 取实例
 		if ir != null and ir.has_method("get_instance"):
@@ -105,14 +111,13 @@ func get_all_cards() -> Array[CardResource]:
 				card = DefaultCardsData.get_card_by_id(migrated_id)
 				if card != null:
 					push_warning("[BackpackData] get_all_cards: 旧ID '%s' 已迁移为 '%s'" % [sid, migrated_id])
-		if card == null and sid.begins_with("law:"):
-			sid = sid.substr(4)
+		# v9.x（P2-7范围A）：Registry 中的法则卡实例（steel_xxx#N 形式）同样静默跳过
+		if card != null and card.card_type == GC.CardType.LAW:
+			continue
 		if card == null:
-			card = DefaultCardsData.create_law_card_resource(sid)
-		if card != null:
-			_all_cards_cache.append(card)
-		else:
 			push_warning("[BackpackData] get_all_cards: unresolved id=%s" % sid)
+			continue
+		_all_cards_cache.append(card)
 	_cards_cache_dirty = false
 	return _all_cards_cache
 
@@ -226,7 +231,6 @@ func get_statistics() -> Dictionary:
 		"platform_cards": 0,
 		"weapon_cards": 0,
 		"energy_cards": 0,
-		"law_cards": 0,
 		"empty_slots": MAX_CARD_SLOTS,
 	}
 	for card in get_all_cards():
@@ -241,8 +245,6 @@ func get_statistics() -> Dictionary:
 				stats["weapon_cards"] += 1  # 保留旧字段以兼容外部读取
 			GC.CardType.ENERGY:
 				stats["energy_cards"] += 1
-			GC.CardType.LAW:
-				stats["law_cards"] += 1
 	return stats
 
 ## ============================================================

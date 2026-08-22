@@ -54,7 +54,6 @@ var _bound_icon_rect: TextureRect = null
 const TYPE_BAR_COLORS := {
 	GC.CardType.COMBAT_UNIT: Color(0.1, 0.5, 0.9, 1.0),
 	GC.CardType.ENERGY:      Color(0.15, 0.75, 0.35, 1.0),
-	GC.CardType.LAW:         Color(0.85, 0.2, 0.5, 1.0),
 }
 
 # 空槽样式（懒加载缓存）

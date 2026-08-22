@@ -388,8 +388,7 @@ func _refresh_action_buttons() -> void:
 	action_buttons_container.visible = true
 	match _current_mode:
 		PanelMode.MODE_BACKPACK:
-			if current_card and current_card.card_type == GC.CardType.LAW:
-				_add_action_button("装备到相位仪", Color(0, 0.94, 1, 1), "equip")
+			pass  # v9.x（P2-7范围A）：法则卡"装备到相位仪"入口随法则卡链路退役移除
 		PanelMode.MODE_PHASE_INSTRUMENT:
 			_add_action_button("卸下此卡", Color(0.9, 0.4, 0.4, 1), "unequip")
 

@@ -598,7 +598,6 @@ func _build_store_item_row(
 			match info_card.card_type:
 				GC.CardType.COMBAT_UNIT: m_parts.append("战斗卡")
 				GC.CardType.ENERGY:      m_parts.append("能量卡")
-				GC.CardType.LAW:         m_parts.append("法则卡")
 		m_parts.append("超出当前进度的储备（梯度 +%d）" % maxi(tier_gap, 1))
 		info_label_m.text = "  |  ".join(m_parts)
 		info_label_m.visible = true
@@ -610,7 +609,6 @@ func _build_store_item_row(
 		match info_card.card_type:
 			GC.CardType.COMBAT_UNIT: info_parts.append("战斗卡")
 			GC.CardType.ENERGY:      info_parts.append("能量卡")
-			GC.CardType.LAW:         info_parts.append("法则卡")
 		var rarity_text := ""
 		match info_card.rarity:
 			"uncommon":  rarity_text = "优秀"
@@ -639,12 +637,9 @@ func _build_store_item_row(
 					base_attrs_parts.append("重量 %d" % info_card.weight)
 			GC.CardType.ENERGY:
 				if info_card.energy_cost > 0:
-					base_attrs_parts.append("能量消耗 %d" % info_card.energy_cost)
+					base_attrs_parts.append("能量消耗 %d⚡" % info_card.energy_cost)
 				if info_card.energy_grant > 0:
 					base_attrs_parts.append("能量提供 %d⚡" % int(info_card.energy_grant))
-			GC.CardType.LAW:
-				if info_card.energy_cost > 0:
-					base_attrs_parts.append("能量消耗 %d⚡" % info_card.energy_cost)
 		if base_attrs_parts.size() > 0:
 			base_attrs_label.text = "  |  ".join(base_attrs_parts)
 			base_attrs_label.visible = true

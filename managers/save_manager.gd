@@ -1348,9 +1348,8 @@ func _load_from_path(path: String) -> bool:
 			fsm.merge_legacy_company_rep(legacy)
 
 	# 特殊处理：phase instrument migration
+	# v9.x（P2-7范围A）：migrate_law_slots... 已移除（法则卡链路退役，不再反向生成槽内法则卡）
 	if pm != null:
-		if pm.has_method("migrate_law_slots_from_phase_law_manager_if_empty"):
-			pm.migrate_law_slots_from_phase_law_manager_if_empty()
 		if pm.has_method("sync_law_slots_to_plm_if_has_law_cards"):
 			pm.sync_law_slots_to_plm_if_has_law_cards()
 

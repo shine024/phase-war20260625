@@ -8,7 +8,6 @@ signal drop_completed(drop_id: String)
 
 ## 性能优化：预加载常用资源
 const DefaultCards = preload("res://data/default_cards.gd")
-const PhaseLaws = preload("res://data/phase_laws.gd")
 const GameConstants = preload("res://resources/game_constants.gd")
 const CardDropGrants = preload("res://scripts/card_drop_grants.gd")
 const DropTables = preload("res://resources/drop_tables.gd")
@@ -107,10 +106,8 @@ func _process_single_drop(drop: DropTables.DropResult) -> void:
 				BlueprintManager.add_research_points(15 * drop.count)
 		DropTables.DropType.STAT_BOOST:
 			_apply_stat_boost(drop.drop.item_id)
-		DropTables.DropType.LAW_DATA, DropTables.DropType.LAW_BLUEPRINT:
-			_add_law_blueprint(drop.drop.item_id, drop.count)
-		DropTables.DropType.LAW_CARD:
-			_add_law_card(drop.drop.item_id, drop.count)
+		# v9.x（P2-7范围A）：法则卡掉落路径退役——旧存档 pending_drops 中的
+		# LAW_CARD/LAW_DATA/LAW_BLUEPRINT 类型在 claim 时无匹配臂，静默跳过（key 级忽略先例）
 		# v7.x: 能量卡系统移除，ENERGY_DATA/ENERGY_BLUEPRINT 掉落降级为研究点补偿
 		DropTables.DropType.ENERGY_DATA, DropTables.DropType.ENERGY_BLUEPRINT:
 			if BlueprintManager != null and BlueprintManager.has_method("add_research_points"):
@@ -347,83 +344,6 @@ func load_state(state: Dictionary) -> void:
 			var source: String = str(drop_data.get("source", ""))
 			var result = DropTables.DropResult.new(entry, count, source)
 			pending_drops.append(result)
-
-## 添加法则蓝图碎片
-func _add_law_blueprint(law_id: String, count: int) -> void:
-	# 处理随机法则蓝图
-	if law_id == "random_law_blueprint" or law_id == "random_law_passive" or law_id == "random_law_active":
-		law_id = _pick_random_law_blueprint()
-		if law_id.is_empty():
-			return
-
-	# 新规则：法则作为普通卡牌掉落，不再走蓝图碎片
-	var ir: Node = get_node_or_null("/root/InstanceRegistry")
-	for i in range(maxi(1, count)):
-		# v7.0: 法则卡实例化（create_law_card_resource 返回模板，用 create_instance_from_template 包装）
-		var law_template: CardResource = DefaultCards.create_law_card_resource(law_id)
-		if law_template == null:
-			continue
-		var law_card: CardResource = null
-		if ir != null and ir.has_method("create_instance_from_template"):
-			law_card = ir.create_instance_from_template(law_template)
-		else:
-			law_card = law_template
-		if law_card and SignalBus:
-			SignalBus.card_added_to_backpack.emit(law_card)
-	# [LOG-v5.1] print("[DropManager] 获得法则卡: ", law_id, " x", count)
-
-## 随机选择一个法则蓝图ID
-## v6.8 起 ALLY 目标被动对我方无战斗效果（已从装配池退池），随机掉落跳过之。
-func _pick_random_law_blueprint() -> String:
-	var all_ids: Array = PhaseLaws.get_all_ids()
-	var pool: Array = []
-	for raw_id in all_ids:
-		var law: Dictionary = PhaseLaws.get_by_id(String(raw_id))
-		if law.is_empty():
-			continue
-		if String(law.get("kind", "")) == "passive" 				and String((law.get("runtime_tags", {}) as Dictionary).get("target_side", "ALLY")) == "ALLY":
-			continue
-		pool.append(raw_id)
-	if not pool.is_empty():
-		return String(pool[randi() % pool.size()])
-	return ""
-
-## 添加完整法则卡
-func _add_law_card(law_id: String, count: int) -> void:
-	# 处理随机法则卡
-	if law_id.begins_with("law_random"):
-		var all_laws: Array = []
-		var ids: Array = PhaseLaws.get_all_ids()
-		for id in ids:
-			var law: Dictionary = PhaseLaws.get_by_id(String(id))
-			if law_id == "law_random_passive" and str(law.get("kind", "")) == "passive":
-				all_laws.append(String(id))
-			elif law_id == "law_random_active" and str(law.get("kind", "")) == "active":
-				all_laws.append(String(id))
-			elif law_id == "law_random":
-				all_laws.append(String(id))
-		if not all_laws.is_empty():
-			law_id = all_laws[randi() % all_laws.size()]
-		else:
-			return
-
-	var law_template: CardResource = DefaultCards.create_law_card_resource(law_id)
-	if law_template:
-		# DEPRECATED: star_level is no longer assigned; star_rating system replaces it
-		# card.star_level = 1
-		var ir: Node = get_node_or_null("/root/InstanceRegistry")
-		for i in range(maxi(1, count)):
-			if SignalBus:
-				# v7.0: 法则卡实例化
-				var law_card: CardResource = null
-				if ir != null and ir.has_method("create_instance_from_template"):
-					law_card = ir.create_instance_from_template(law_template)
-				else:
-					law_card = law_template.clone() if law_template.has_method("clone") else law_template
-				SignalBus.card_added_to_backpack.emit(law_card)
-		# [LOG-v5.1] print("[DropManager] 获得法则卡: ", card.display_name, " x", count)
-	else:
-		push_error("[DropManager] 无法创建法则卡: " + law_id)
 
 ## v6.14: 改造蓝图掉落 → 写入 IntelItemBag（与 intel_discovery_manager 路径一致）
 ## item_id 为 blueprint_<mod_id> 形式，count 为数量（蓝图永久持有，多次获得无害）

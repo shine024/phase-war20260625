@@ -5,7 +5,6 @@ extends RefCounted
 
 const GC = preload("res://resources/game_constants.gd")
 const PhaseLaws = preload("res://data/phase_laws.gd")
-const DefaultCards = preload("res://data/default_cards.gd")
 
 ## 法则卡跨色路由装配时的最大递归深度（防止无限递归）
 const MAX_EQUIP_RECURSION: int = 2
@@ -124,50 +123,8 @@ func _apply_law_slots_to_plm() -> bool:
 func sync_law_cards_to_phase_law_manager() -> bool:
 	return _apply_law_slots_to_plm()
 
-## 旧存档：槽位无法则卡但 PhaseLawManager 仍有装配时，生成槽内卡并同步
-func migrate_law_slots_from_phase_law_manager_if_empty() -> void:
-	if _has_any_law_card_in_slots():
-		return
-	var actives: Array = []
-	var passives: Array = []
-	_ensure_plm()
-	var plm: Node = _plm()
-	if plm and "equipped_active_laws" in plm:
-		actives = plm.equipped_active_laws
-	if plm and "equipped_passive_laws" in plm:
-		passives = plm.equipped_passive_laws
-	if actives.is_empty() and passives.is_empty():
-		return
-	var slots: Dictionary = _instrument_slots()
-	var reds: Array = slots.get("red", [])
-	var blues: Array = slots.get("blue", [])
-	var changed: bool = false
-	for i in range(reds.size()):
-		if i >= actives.size():
-			break
-		var lid: String = String(actives[i])
-		if lid.is_empty():
-			continue
-		var tmpl: CardResource = DefaultCards.create_law_card_resource(lid)
-		if tmpl != null:
-			reds[i] = tmpl.clone()
-			changed = true
-	for i in range(blues.size()):
-		if i >= passives.size():
-			break
-		var lid2: String = String(passives[i])
-		if lid2.is_empty():
-			continue
-		var tmpl2: CardResource = DefaultCards.create_law_card_resource(lid2)
-		if tmpl2 != null:
-			blues[i] = tmpl2.clone()
-			changed = true
-	if changed:
-		slots["red"] = reds
-		slots["blue"] = blues
-		_host.instrument_slots = slots
-		_apply_law_slots_to_plm()
-		_emit_slots_changed()
+# v9.x（P2-7范围A）：migrate_law_slots_from_phase_law_manager_if_empty 已移除——
+# 法则卡链路退役后不再从 PhaseLawManager 装配列表反向生成槽内法则卡
 
 ## 读档后：若槽内已有法则卡，用槽位覆盖 PhaseLawManager 装配列表
 func sync_law_slots_to_plm_if_has_law_cards() -> void:

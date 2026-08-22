@@ -91,36 +91,9 @@ static func grant_from_legacy_fragment_reward_pool(fragment_id: String, amount: 
 	var ids: Array = (pool as Array) if pool != null else (LEGACY_FRAGMENT_REWARD_POOLS["common_fragment"] as Array)
 	if ids.is_empty():
 		return
-	var bm: Node = _get_blueprint_manager()
-	var n: int = maxi(1, int(amount))
-	for _i in range(n):
-		var pick: String = String(ids[randi() % ids.size()])
-		grant_enemy_style_card(bm, pick, 0, 1)
+		var bm: Node = _get_blueprint_manager()
+		var n: int = maxi(1, int(amount))
+		for _i in range(n):
+			var pick: String = String(ids[randi() % ids.size()])
+			grant_enemy_style_card(bm, pick, 0, 1)
 
-
-## 发放可装备的法则卡到背包（每张 clone 一次，与 DropManager._add_law_card 一致）
-static func grant_law_cards_to_backpack(law_id: String, amount: int) -> void:
-	var lid: String = String(law_id).strip_edges()
-	if lid.is_empty():
-		return
-	var template: CardResource = DefaultCards.create_law_card_resource(lid)
-	if template == null:
-		push_warning("CardDropGrants: create_law_card_resource failed: %s" % lid)
-		return
-	if typeof(SignalBus) == TYPE_NIL:
-		return
-	# v7.0: 法则卡实例化（独立养成身份）
-	var ir: Node = null
-	var tree = Engine.get_main_loop()
-	if tree and tree.root:
-		ir = tree.root.get_node_or_null("InstanceRegistry")
-	var n: int = maxi(1, int(amount))
-	for _i in range(n):
-		var c: CardResource
-		if ir != null and ir.has_method("create_instance_from_template"):
-			c = ir.create_instance_from_template(template)
-		elif template.has_method("clone"):
-			c = template.clone() as CardResource
-		else:
-			c = (template as Resource).duplicate(true) as CardResource
-		SignalBus.card_added_to_backpack.emit(c)

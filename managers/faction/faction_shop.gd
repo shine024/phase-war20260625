@@ -57,9 +57,6 @@ static func get_faction_store_items(faction_id: String, level: int) -> Array[Sto
 			items.append(create_store_item("weapon_ww2_mg", StoreItemType.CARD, "MG42机枪", 200, level))
 			items.append(create_store_item("weapon_cold_lmg", StoreItemType.CARD, "M60通用机枪", 250, level))
 			items.append(create_store_item("weapon_modern_minigun", StoreItemType.CARD, "M134加特林", 300, level))
-			items.append(create_store_item("steel_phase_armor", StoreItemType.CARD, "钢铁·相位装甲", 350, level))
-			items.append(create_store_item("steel_quick_repair", StoreItemType.CARD, "钢铁·快速维修", 400, level))
-			items.append(create_store_item("steel_bastion_wall", StoreItemType.CARD, "钢铁·堡垒之墙", 600, level))
 			items.append(create_store_item("alloy", StoreItemType.MATERIAL, "合金x50", 150, level))
 
 		"nova_arms":
@@ -71,11 +68,7 @@ static func get_faction_store_items(faction_id: String, level: int) -> Array[Sto
 			items.append(create_store_item("weapon_future_plasma", StoreItemType.CARD, "等离子枪", 450, level))
 			items.append(create_store_item("platform_ww2_medium", StoreItemType.CARD, "谢尔曼坦克", 300, level))
 			items.append(create_store_item("platform_future_medium", StoreItemType.CARD, "悬浮坦克", 400, level))
-			items.append(create_store_item("flame_heat_overload", StoreItemType.CARD, "烈焰·热能过载", 350, level))
-			items.append(create_store_item("flame_afterburn", StoreItemType.CARD, "烈焰·余烬加燃", 400, level))
-			items.append(create_store_item("flame_front_bombard", StoreItemType.CARD, "烈焰·前线火力压制", 650, level))
 			items.append(create_store_item("nano_materials", StoreItemType.MATERIAL, "纳米材料x50", 180, level))
-			items.append(create_store_item("bp_cold_014", StoreItemType.CARD, "稀有缴获卡", 400, level))
 
 		"aether_dynamics":
 			items.append(create_store_item("platform_ww1_medium", StoreItemType.CARD, "马克V型坦克", 250, level))
@@ -85,7 +78,6 @@ static func get_faction_store_items(faction_id: String, level: int) -> Array[Sto
 			items.append(create_store_item("weapon_cold_sniper", StoreItemType.CARD, "德拉贡诺夫狙击枪", 350, level))
 			items.append(create_store_item("weapon_modern_dmr", StoreItemType.CARD, "MK14射手步枪", 300, level))
 			items.append(create_store_item("weapon_future_pulse", StoreItemType.CARD, "脉冲步枪", 350, level))
-			items.append(create_store_item("thunder_arc_beacon", StoreItemType.CARD, "雷霆·弧光信标", 350, level))
 			items.append(create_store_item("bp_ww1_012", StoreItemType.CARD, "缴获卡", 250, level))
 
 		"quantum_logistics":
@@ -94,12 +86,10 @@ static func get_faction_store_items(faction_id: String, level: int) -> Array[Sto
 			items.append(create_store_item("weapon_ww1_rifle", StoreItemType.CARD, "李-恩菲尔德步枪", 150, level))
 			items.append(create_store_item("weapon_cold_assault", StoreItemType.CARD, "AK-47突击步枪", 200, level))
 			items.append(create_store_item("weapon_modern_carbine", StoreItemType.CARD, "M4卡宾枪", 250, level))
-			items.append(create_store_item("steel_quick_repair", StoreItemType.CARD, "钢铁·快速维修", 380, level))
 			items.append(create_store_item("nano_materials", StoreItemType.MATERIAL, "纳米材料x100", 200, level))
 			items.append(create_store_item("alloy", StoreItemType.MATERIAL, "合金x50", 150, level))
 			items.append(create_store_item("alloy", StoreItemType.MATERIAL, "合金x100", 280, level))
 			items.append(create_store_item("bp_ww2_016", StoreItemType.CARD, "缴获卡·精选", 300, level))
-			items.append(create_store_item("bp_modern_011", StoreItemType.CARD, "稀有缴获卡", 450, level))
 			items.append(create_store_item("stat_boost_hp", StoreItemType.MATERIAL, "生命强化", 400, level))
 
 		"helix_recon":
@@ -112,29 +102,18 @@ static func get_faction_store_items(faction_id: String, level: int) -> Array[Sto
 			items.append(create_store_item("weapon_ww2_smg", StoreItemType.CARD, "汤普森冲锋枪", 200, level))
 			items.append(create_store_item("weapon_modern_carbine", StoreItemType.CARD, "M4卡宾枪", 250, level))
 			items.append(create_store_item("weapon_future_pulse", StoreItemType.CARD, "脉冲步枪", 300, level))
-			items.append(create_store_item("void_entropy_lens", StoreItemType.CARD, "虚空·熵镜", 350, level))
-			items.append(create_store_item("void_phase_cloak", StoreItemType.CARD, "虚空·相位披幕", 400, level))
-			items.append(create_store_item("void_time_ripple", StoreItemType.CARD, "虚空·时空涟漪", 700, level))
 			items.append(create_store_item("lore_page", StoreItemType.MATERIAL, "情报资料包x1", 200, level))
 			items.append(create_store_item("lore_page", StoreItemType.MATERIAL, "情报资料包x3", 500, level))
 			items.append(create_store_item("bp_ww1_018", StoreItemType.CARD, "缴获卡", 220, level))
-			items.append(create_store_item("bp_cold_020", StoreItemType.CARD, "稀有缴获卡", 420, level))
 
 		"void_research":
 			items.append(create_store_item("platform_future_heavy", StoreItemType.CARD, "机甲步行者", 550, level))
 			items.append(create_store_item("weapon_future_rail", StoreItemType.CARD, "电磁炮", 500, level))
 			items.append(create_store_item("weapon_future_plasma", StoreItemType.CARD, "等离子枪", 450, level))
-			items.append(create_store_item("void_entropy_lens", StoreItemType.CARD, "虚空·熵镜", 350, level))
-			items.append(create_store_item("void_gravity_well", StoreItemType.CARD, "虚空·引力井", 400, level))
-			items.append(create_store_item("void_time_ripple", StoreItemType.CARD, "虚空·时空涟漪", 700, level))
-			items.append(create_store_item("thunder_arc_beacon", StoreItemType.CARD, "雷霆·弧光信标", 350, level))
-			items.append(create_store_item("thunder_chain_discharge", StoreItemType.CARD, "雷霆·链式放电", 400, level))
-			items.append(create_store_item("thunder_emp_storm", StoreItemType.CARD, "雷霆·电磁风暴", 650, level))
 			items.append(create_store_item("omega_platform", StoreItemType.CARD, "全装型机动舱", 800, level))
 			items.append(create_store_item("omega_cannon", StoreItemType.CARD, "米加粒子炮", 900, level))
 			items.append(create_store_item("stat_boost_hp", StoreItemType.MATERIAL, "生命强化", 450, level))
 			items.append(create_store_item("stat_boost_atk", StoreItemType.MATERIAL, "攻击强化", 450, level))
-			items.append(create_store_item("bp_near_012", StoreItemType.CARD, "高阶稀有缴获卡", 500, level))
 
 		"frontier_union":
 			items.append(create_store_item("platform_ww2_light", StoreItemType.CARD, "M8灰狗装甲车", 200, level))
@@ -146,9 +125,6 @@ static func get_faction_store_items(faction_id: String, level: int) -> Array[Sto
 			items.append(create_store_item("weapon_modern_carbine", StoreItemType.CARD, "M4卡宾枪", 280, level))
 			items.append(create_store_item("weapon_modern_dmr", StoreItemType.CARD, "MK14射手步枪", 320, level))
 			items.append(create_store_item("weapon_future_laser", StoreItemType.CARD, "光束步枪", 380, level))
-			items.append(create_store_item("steel_phase_armor", StoreItemType.CARD, "钢铁·相位装甲", 330, level))
-			items.append(create_store_item("flame_heat_overload", StoreItemType.CARD, "烈焰·热能过载", 330, level))
-			items.append(create_store_item("thunder_arc_beacon", StoreItemType.CARD, "雷霆·弧光信标", 330, level))
 			items.append(create_store_item("nano_materials", StoreItemType.MATERIAL, "纳米材料x50", 170, level))
 			items.append(create_store_item("alloy", StoreItemType.MATERIAL, "合金x50", 140, level))
 			items.append(create_store_item("bp_ww2_009", StoreItemType.CARD, "缴获卡", 210, level))
@@ -226,7 +202,6 @@ static func _append_faction_rune_items(items: Array[StoreItem], faction_id: Stri
 
 static func _filter_invalid_card_items(items: Array[StoreItem]) -> Array[StoreItem]:
 	const DefaultCardsData = preload("res://data/default_cards.gd")
-	const PhaseLawsRef = preload("res://data/phase_laws.gd")
 	const EnemyBlueprintsRef = preload("res://data/enemy_blueprints.gd")
 	const MigrationMap = preload("res://data/unit_id_migration_config.gd").UNIT_ID_MIGRATION_MAP
 	var filtered: Array[StoreItem] = []
@@ -250,13 +225,8 @@ static func _filter_invalid_card_items(items: Array[StoreItem]) -> Array[StoreIt
 			# weapon_* 旧武器卡已废弃（v6.2 武器并入战斗卡武器槽），直接过滤
 			if cid.begins_with("weapon_"):
 				continue
-			# 法则卡：查 PhaseLaws
-			if cid.begins_with("steel_") or cid.begins_with("flame_") \
-				or cid.begins_with("thunder_") or cid.begins_with("void_"):
-				if PhaseLawsRef.get_by_id(cid).is_empty():
-					continue
 			# 缴获卡：查 EnemyBlueprints
-			elif cid.begins_with("bp_"):
+			if cid.begins_with("bp_"):
 				if EnemyBlueprintsRef.get_card_by_id(cid) == null:
 					continue
 			# 战斗卡：查 DefaultCards
@@ -301,23 +271,10 @@ static func deliver_item(item: StoreItem) -> bool:
 	match item.item_type:
 		StoreItemType.CARD:
 			const DefaultCardsData = preload("res://data/default_cards.gd")
-			const PhaseLawsRef = preload("res://data/phase_laws.gd")
 			const EnemyBlueprintsRef = preload("res://data/enemy_blueprints.gd")
 			var cid: String = item.item_id
 			# v7.0: 购买的卡牌全部实例化（独立养成身份）
 			var ir := _get_autoload("/root/InstanceRegistry")
-			# v6.4: 法则卡通过 PhaseLaws 生成
-			if cid.begins_with("steel_") or cid.begins_with("flame_") \
-				or cid.begins_with("thunder_") or cid.begins_with("void_"):
-				if not PhaseLawsRef.get_by_id(cid).is_empty():
-					var law_card: CardResource = DefaultCardsData.create_law_card_resource(cid)
-					if law_card:
-						var law_inst: CardResource = law_card
-						if ir != null and ir.has_method("create_instance_from_template"):
-							law_inst = ir.create_instance_from_template(law_card)
-						SignalBus.card_added_to_backpack.emit(law_inst)
-						return true
-				return false
 			# v6.4: 缴获卡通过 EnemyBlueprints 发放
 			if cid.begins_with("bp_"):
 				var bp_card: CardResource = EnemyBlueprintsRef.get_card_by_id(cid)
@@ -390,18 +347,18 @@ static func deliver_item(item: StoreItem) -> bool:
 static func get_default_store_inventory(faction_id: String) -> Array:
 	match faction_id:
 		"iron_wall_corp":
-			return ["platform_ww1_fort", "platform_ww2_heavy", "platform_cold_ifv", "steel_phase_armor"]
+			return ["platform_ww1_fort", "platform_ww2_heavy", "platform_cold_ifv"]
 		"nova_arms":
-			return ["weapon_ww1_mg", "weapon_ww2_mg", "weapon_cold_missile", "flame_heat_overload"]
+			return ["weapon_ww1_mg", "weapon_ww2_mg", "weapon_cold_missile"]
 		"aether_dynamics":
-			return ["platform_cold_medium", "platform_modern_medium", "weapon_cold_sniper", "thunder_emp_storm"]
+			return ["platform_cold_medium", "platform_modern_medium", "weapon_cold_sniper"]
 		"quantum_logistics":
 			# v7.x: 能量卡移除，替换为支援/资源类卡
-			return ["platform_cold_ifv", "platform_modern_spg", "steel_quick_repair", "nano_materials"]
+			return ["platform_cold_ifv", "platform_modern_spg", "nano_materials"]
 		"helix_recon":
-			return ["platform_future_light", "weapon_future_laser", "void_phase_cloak", "void_barrier_shift"]
+			return ["platform_future_light", "weapon_future_laser"]
 		"void_research":
-			return ["weapon_future_rail", "weapon_future_plasma", "void_time_ripple", "void_entropy_lens"]
+			return ["weapon_future_rail", "weapon_future_plasma"]
 		"frontier_union":
-			return ["platform_future_medium", "weapon_modern_minigun", "weapon_modern_dmr", "flame_front_bombard"]
+			return ["platform_future_medium", "weapon_modern_minigun", "weapon_modern_dmr"]
 	return []
