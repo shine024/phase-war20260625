@@ -211,11 +211,11 @@ func _redirect_stdout_to_file() -> void:
 | 31 | `BattleSpectacle` | `managers/battle/battle_spectacle.gd` | 战斗演出/大招编排 |
 | 32 | `_MCPGameBridge` | `addons/agent_tools/runtime/game_bridge.gd` | agent_tools 编辑器插件运行时桥 |
 
-**Lazy-loaded managers**（`ManagerLazyLoader.ensure_loaded()`，25 个配置项）：
-aura, battle_feedback, level_progress, drop, quest, achievement, daily_task,
-challenge_mode, faction, affix, intel_item_bag, intel_manual, intel_discovery,
+**Lazy-loaded managers**（`ManagerLazyLoader.ensure_loaded()`，21 个配置项；v9.x 2026-08-22 清理：battle_feedback/character/challenge_mode/version 四项已删，见停用清单）：
+aura, level_progress, drop, quest, achievement, daily_task,
+faction, affix, intel_item_bag, intel_manual, intel_discovery,
 intel_evolution, card_collection, card_enhancement, stat_boost, leaderboard,
-lore, character, tutorial, new_systems, toast, version, debug_log
+lore, tutorial, new_systems, toast, debug_log
 
 > 注：与 autoload 重叠的条目（drop/quest/faction/affix/level_progress/card_enhancement/
 > tutorial/intel_item_bag/intel_manual/aura）是别名入口（复用 /root 节点），非双实例。
@@ -230,7 +230,7 @@ lore, character, tutorial, new_systems, toast, version, debug_log
 
 4. **Subsystem decomposition**: Large managers (`BattleManager`, `BlueprintManager`, `FactionSystemManager`) use `RefCounted` static sub-modules to separate concerns.
 
-5. **Data-as-code**: All game data tables are pure GDScript static classes (`extends RefCounted`) with `Dictionary` collections. No JSON/CSV data files.
+5. **Data-as-code（主体）**: 游戏数据表主体是纯 GDScript 静态类（`extends RefCounted` + `Dictionary`）。**例外（v9.x 核对修正）**：`data/json/`（8 文件）是活的 JSON 懒加载数据层——`company_store` / `enemy_phase_masters` / `enemy_archetypes` / `quest_definitions` / `enemy_phase_equipment`（platforms/weapons/energy 三表）等模块 getter 懒加载 JSON + LEGACY 兜底；`tools/audit_*` 与部分测试也读它。
 
 6. **Era scaling**: Units scale by era (WWI → Future). `UnitStatsTable.build_stats_from_card()` applies era multipliers.
 
@@ -294,7 +294,7 @@ IntelEvolutionManager → IntelManual, IntelEvolutionBranches
 
 ### Data Layer (`data/`)
 
-All data files are pure GDScript static classes (`extends RefCounted`), no JSON/CSV.
+数据主体为纯 GDScript 静态类（`extends RefCounted`）；`data/json/` 子目录是例外——8 个 JSON 文件作为懒加载真身（getter 懒读 + LEGACY 兜底），消费方见 Key Patterns #5。
 
 **Core Cards & Enemies:**
 - `default_cards.gd` — ~110 battle unit definitions (WWI to near-future, 5 eras × 20 levels)
@@ -428,7 +428,7 @@ User-driven collaboration. Every task follows: **Question → Options → Decisi
 - Multi-file changes need explicit approval for the full changeset
 - No commits without user instruction
 
-## 已知停用/移除系统清单（2026-08-21 全面清理后现状）
+## 已知停用/移除系统清单（2026-08-22 全面清理后现状）
 
 改代码/排查 bug 前先对照本表，避免给停用系统"修 bug"或误以为功能缺失：
 
@@ -445,10 +445,22 @@ User-driven collaboration. Every task follows: **Question → Options → Decisi
 | 强化②面板（card_enhancement_panel） | 移除 | 养成改为自动经验升星 + 技能树（v8.x）；no-op 函数与死场景已删 |
 | StatisticsManager | 移除 | 配置与文件均不存在 |
 | 相位师名册（phase_master_roster*） | 删除 | 4132 行死系统，零引用；活系统是 data/enemy_phase_masters*.gd（30 位） |
+| BattleFeedbackManager | **已删除** | 2026-08-22：暴击震屏路径从未生效（get_node_or_null 恒 null），battle_manager/new_systems_integration 的 bfm 分支删除、兜底转正。将来恢复震屏直调 `scripts/screen_shake.gd`（8 个活文件先例） |
+| CharacterManager / ChallengeModeManager(+challenge_definitions) | **已删除** | 2026-08-22：零玩法/UI 消费的僵尸管理器，仅存档管道被动实例化。旧档 characters/challenge_records key 静默跳过；save_constants/save_migration 映射保留。将来做剧情/挑战模式从 git 历史找回 |
+| VersionManager | **已删除** | 2026-08-22：零调用方，永不实例化 |
+| UILazyLoader 死配置 9 项 | 已清理 | 2026-08-22：quest/store/faction/occupation/settings/leaderboard/intelligence（面板静态实例化短路）/phase_master_skill（parent 节点不存在）/reinforcement（活于 card_info_panel 嵌入实例化）。真懒加载仅剩：backpack/growth/achievement/help/modification/evolution/collection |
+| LevelSelectOverlay 空壳 | 已删除 | 2026-08-22：main.tscn 空节点，level_select 配置 v9.x 已先删（选关由 world_map 承担） |
+| docs/tech-debt-register.md | 已删除 | 2026-04-09 停更全过时；活债务改记本清单 + CHANGELOG |
+
+### 已知断链资产（不修只记录，2026-08-22 核对）
+
+- `data/combo_tactics.gd`：combo_icons/ 下 chem/emp/incendiary/laser/nano/recon 6 张 PNG 缺失
+- `scripts/ui_asset_loader.gd`：`assets/card_icons/law.png` 缺失
+- `data/phase_instruments.gd`：pi_r_free_deploy、pi_umbra_01~03 图标缺失（pi_umbra_04 在）
 
 ## 版本历史
 
-68 个版本变更记录（v6.1 → v19，2026-06 至 2026-08）已迁移至 **`docs/CHANGELOG.md`**。
+版本变更记录（v6.1 → v20 + 2026-08-16~22 补录节，2026-06 至 2026-08）见 **`docs/CHANGELOG.md`**。
 本文件只保留活文档：架构、工作流、铁律、协作协议。
 
 ## ⚠️ 核心架构：卡牌实例化与养成隔离（永久约束，改任何卡牌/养成相关代码前必读）

@@ -33,7 +33,7 @@ Godot_v4.5.1-stable_win64.exe --path .
 ## 开发文档
 
 - **[AGENTS.md](AGENTS.md)** — 架构与工作流真身（改代码前必读）
-- **[docs/CHANGELOG.md](docs/CHANGELOG.md)** — 版本变更记录（v6.1→v19）
+- **[docs/CHANGELOG.md](docs/CHANGELOG.md)** — 版本变更记录（v6.1→v20，含 2026-08-16~22 补录节）
 - `docs/engine-reference/` — Godot 4.5 API 笔记
 
 ## 测试

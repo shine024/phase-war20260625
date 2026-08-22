@@ -2581,3 +2581,53 @@ v17j 分格 meteor 7→5（-2）/summon 4→5（+1）——单格 ±1-2 波动�
 **下一杠杆**: f01/f02 弹道"未展示飞行中弹体"（2/10）；f05 霰弹命中缺 6 发 18° 散射签名。
 | R19 | wt1/2 拖尾归组烟迹（双枚举碰撞修复，`bullet.gd` 三处） | 前置修复（配合 R20 生效） |
 | R20 | 拖尾粒子 `local_coords=false`（世界空间沉积弹道线） | **总分 3.93→4.16（+0.23）**，f01_traj 2→4 |
+
+## 补录：2026-08-16~08-22 未入册批次对账（git log 核对）
+
+> v19 之后多轮大批次未及时入册，本节按 git log 补记（详细过程见各 commit message）。
+
+| 批次 | Commit | 摘要 |
+|------|--------|------|
+| v10 UI 全面板统一改造 | cf6ddb1 (08-16) | 全面板统一样式 + 卡图/图标管线修复（v10 系列） |
+| boss 待机动画管线 | ed4664f (08-16) | boss 帧动画管线 + 敌方相位符文 + 战场审计工具（存量快照） |
+| v10.6 符文圆盘归一 | e1d30d8 (08-16) | 修复相位仪槽位符文大小不一 |
+| v10.7 相位仪栏裁剪 | dec29df (08-16) | 修复 13 槽满载时卡图/符文右侧被裁 |
+| v13.1 攻击方向感 | 9ff50bd (08-16) | 战斗攻击方向感与阵营辨识——谁在打谁一眼可辨 |
+| v10 单位AI 42 项 | 86995c7 (08-16) | 单位AI领域系统性审查修复 42 项 |
+| perf P0-P3 | ee3bc63 (08-16) | 信号清理/特效限流/反射与分配削减（详见 v7.x/v9.x 已记条目的延续批次） |
+| v9.x 关卡审查修正 | b33ae06 (08-16) | 关卡设计系统性审查修复 + 平衡/经济/克制链修正 |
+| 敌方开火位置 44 键 | 3cd83d0 (08-16) | 键名回退链 + 堡垒/omega 锚点补录，修复运行时缺口 |
+| 知乎UI四要素 第一遍 | 2b3b133 (08-22) | 四要素 16 项优化 + ui-review 工作流 |
+| 知乎UI四要素 第二遍 + 蓝图删除收尾 | 074827a (08-22) | P0-P3 四阶段全量落地；制造面板/副本记账/拆解/研究点升星全部移除，收集口径改"拥有过的卡种" |
+
+## v20 系统清理 + 性能 + 商店情报展示批次（2026-08-22）
+
+**全面系统体检（3 探索 agent + 2 轮人工复核）后分五阶段执行，每阶段独立 commit。**
+
+### 阶段1 接线修复（c2113d8）
+- **图鉴按钮修复**：main.tscn CollectionOverlay 容器为空 + `_ensure_lazy_panel` 无 collection 分支 → 点击只显示空遮罩。补 `_overlay_for_panel_key`/`_ensure_lazy_panel` collection 分支，首次真实懒加载 CollectionPanel
+- **领地地图按钮修复**：world_map.gd 调 `UILazyLoader.ensure_loaded`（该方法不存在）恒早退。删守卫（OccupationPanel 本就静态实例化）
+- 删断链测试 test_blueprint_star_config.gd（preload 已删文件必炸）；ui_unified_check 移除 manufacture_panel 期望
+
+### 阶段2 商店/物品/标签情报展示（25495b7）
+- **展示度矩阵**（情报可见性独立于购买能力）：未锁=全部信息；声望锁=**全部属性情报可见**（修复 :557 把声望锁商品渲染成全空白行）；等级打码=只露类型+梯度提示
+- 符文行效果改 desc_primary · desc_secondary 拼接（副效果此前未展示）
+- 情报道具（改造蓝图）desc 追加 ModificationRegistry 模块具体效果——买前知道解锁什么
+- 四区商品行全部加 tooltip_text；resource_slot_item 激活零调用的 `_get_slot_tooltip_text()`（背包改造/符文瓦片悬浮情报+已装配状态）；card_info_panel 技能区加来源标签 tooltip
+
+### 阶段3 性能（69eacfb/463d8f4/e48c6b5）
+- **3a 缩略图管线**：新工具 tools/gen_ui_thumbs.py 生成 _thumb256（卡面287张）/_thumb128（仪器32+符文98张）三棵树；ui_asset_loader 新增 battle_tex_for_path（boss/visual_scale≥1.6 回退全分辨率）/instrument_icon_small/rune_icon_small；底部相位仪栏+战场单位弃用全分辨率纹理，**VRAM 30-40MB→~2MB**。视觉安全前提：apply_uniform_card_sprite 按纹理实宽现算缩放与脚部锚定（换图自动适配）。⚠️ 缩略图树是本机生成（项目政策 PNG 不入 git），换机跑 `python tools/gen_ui_thumbs.py` 再生成，miss 自动回退全分辨率
+- **3b cost_badge**：文本尺寸 setter 缓存 + 宿主矩形脏检查——背包开几十张卡时每帧几十次字体测量+祖先遍历归零
+- **3c 微缓存**：battle_manager 每帧 has_method 反射→首帧缓存；PerformanceMetrics 每帧 Time.get_ticks_msec→delta 累加；HpBar/绝对路径查找→引用缓存
+- **3d 待机浮动 Tween 手写化**：常驻循环 Tween（满场 60-110 条）改 meta 参数 + sin 推进，公式与原两段 SINE/EASE_IN_OUT 逐帧等价（数值断言 Δ<1e-4px）。**待 F5 手感验收**
+
+### 阶段4 删除类清理（本 commit）
+- **僵尸管理器四件**：battle_feedback（暴击震屏从未生效——bfm 恒 null；恢复震屏应直调 screen_shake.gd 先例）/character（326行）/challenge_mode（355行+314行定义表）/version——文件+懒加载配置+存档管道条目全删。旧档 characters/challenge_records key 静默跳过（读码确认）；save_constants/save_migration 的 key 映射保留（不碰迁移链）
+- **UILazyLoader 死配置 9 项**：quest/store/faction/occupation/settings/leaderboard/intelligence（面板静态实例化短路）/phase_master_skill（parent 节点不存在）/reinforcement（活于 card_info_panel 嵌入）——各留注释（沿 v6.6 map 先例）
+- main.gd `_ensure_lazy_panel` 删 6 死分支 + CardEnhancementPanel 死特判 + `_setup_new_managers` no-op 函数；growth_panel enhancement 死映射；signal_bus 爬塔注释块；main.tscn LevelSelectOverlay 空壳；update_mod_icons.py enemy_origin 键
+- **docs 清理**：第一关战场候选图 v1-v7（~48MB，v8 最新保留；⚠️ 纯 PNG 从未入 git，删除为永久性）、vfx_realism_report BASELINE/v12/v12final 中间版、tech-debt-register.md（停更 2026-04 全过时，活债改记 AGENTS.md 停用清单）、蓝图/爬塔过时设计稿 3 份 + adr-0007
+
+### 阶段5 文档
+- 本条目 + 补录节；AGENTS.md：修正"无 JSON 运行时数据"失实表述（data/json/ 8 文件为活懒加载数据层）、停用清单补本轮删除项、Lazy-loaded managers 25→21、数据层章节更新
+
+**验证基线**：gdunit 全量 145 例 19 失败——与 stash 基线逐项一致（全部为 08-16 前既有，memory 清单已过期待更新）；各阶段 --script 加载断言 + main.tscn headless 300帧零错误 + 冒烟 8 项 PASS + --check-only 全项目兜底。
