@@ -187,19 +187,7 @@ func add_nano_materials(amount: int) -> void:
 		brm.add_basic_resource(BasicResources.ID_NANO_MATERIALS, amount)
 	emit_signal("fragments_changed")
 
-func get_research_points() -> int:
-	var brm: Node = _get_basic_resource_manager()
-	if brm != null and brm.has_method("get_total"):
-		return int(brm.get_total(BasicResources.ID_RESEARCH_POINTS))
-	return 0
-
-func add_research_points(amount: int) -> void:
-	if amount == 0:
-		return
-	var brm: Node = _get_basic_resource_manager()
-	if brm != null and brm.has_method("add_basic_resource"):
-		brm.add_basic_resource(BasicResources.ID_RESEARCH_POINTS, amount)
-	emit_signal("fragments_changed")
+# v9.x（P2-7范围C）：get_research_points/add_research_points 已随科研点退役移除
 
 ## ─────────── 势力专属卡 ───────────
 
@@ -832,14 +820,7 @@ func _can_afford_research(amount: int) -> bool:
 	# BasicResourceManager是autoload，直接访问
 	return BasicResourceManager.can_afford("research", amount)
 
-## 消耗研究点
-func _consume_research(amount: int) -> void:
-	# BasicResourceManager是autoload，直接访问
-	BasicResourceManager.consume("research", amount)
-
-## 添加研究点
-func _add_research(amount: int) -> void:
-	BasicResourceManager.add_resource(BasicResources.ID_RESEARCH_POINTS, amount)
+# v9.x（P2-7范围C）：_consume_research/_add_research（零调用方）已随科研点退役移除
 
 ## 移除蓝图养成数据（进化时调用；副本记账已随蓝图体系移除）
 func _remove_blueprint(card_id: String) -> void:

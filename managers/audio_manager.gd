@@ -104,10 +104,6 @@ func _ready() -> void:
 		if SignalBus.has_signal("energy_insufficient") and not SignalBus.energy_insufficient.is_connected(_on_energy_insufficient):
 			SignalBus.energy_insufficient.connect(_on_energy_insufficient)
 		# ── 养成事件音效（复用既有音色） ──
-		if SignalBus.has_signal("synthesis_completed") and not SignalBus.synthesis_completed.is_connected(_on_synthesis_completed):
-			SignalBus.synthesis_completed.connect(_on_synthesis_completed)
-		if SignalBus.has_signal("synthesis_failed") and not SignalBus.synthesis_failed.is_connected(_on_synthesis_failed):
-			SignalBus.synthesis_failed.connect(_on_synthesis_failed)
 		if SignalBus.has_signal("rune_acquired") and not SignalBus.rune_acquired.is_connected(_on_rune_acquired):
 			SignalBus.rune_acquired.connect(_on_rune_acquired)
 		if SignalBus.has_signal("faction_level_up") and not SignalBus.faction_level_up.is_connected(_on_faction_level_up):
@@ -149,10 +145,6 @@ func _exit_tree() -> void:
 			SignalBus.player_deploy_failed.disconnect(_on_player_deploy_failed)
 		if SignalBus.has_signal("energy_insufficient") and SignalBus.energy_insufficient.is_connected(_on_energy_insufficient):
 			SignalBus.energy_insufficient.disconnect(_on_energy_insufficient)
-		if SignalBus.has_signal("synthesis_completed") and SignalBus.synthesis_completed.is_connected(_on_synthesis_completed):
-			SignalBus.synthesis_completed.disconnect(_on_synthesis_completed)
-		if SignalBus.has_signal("synthesis_failed") and SignalBus.synthesis_failed.is_connected(_on_synthesis_failed):
-			SignalBus.synthesis_failed.disconnect(_on_synthesis_failed)
 		if SignalBus.has_signal("rune_acquired") and SignalBus.rune_acquired.is_connected(_on_rune_acquired):
 			SignalBus.rune_acquired.disconnect(_on_rune_acquired)
 		if SignalBus.has_signal("faction_level_up") and SignalBus.faction_level_up.is_connected(_on_faction_level_up):
@@ -405,7 +397,6 @@ func _on_unit_damaged(_unit: Node, _is_player: bool, _amount: float, _at_positio
 func _on_battle_ended(player_won: bool) -> void:
 	play_sfx("win" if player_won else "lose")
 
-
 # v7.x 修复: 签名对齐 CardEnhancementManager.enhancement_completed(success, card_id, action, message)。
 # 原声明第3参为 Dictionary（错配 String action），即使连接也会运行时报错；且从未 connect（死代码）。
 # 由 _connect_enhancement_signal() 延迟连接（cem 为 lazy-load）。
@@ -453,10 +444,6 @@ func _on_player_deploy_failed(_reason: String, _message: String) -> void:
 func _on_energy_insufficient(_amount: float) -> void:
 	play_sfx("error")
 # 养成事件（复用既有音色，无需新增音频文件即可生效）
-func _on_synthesis_completed(_card_id: String) -> void:
-	play_sfx("enhance")
-func _on_synthesis_failed(_reason: String) -> void:
-	play_sfx("error")
 func _on_rune_acquired(_rune_id: String, _source: String) -> void:
 	play_sfx("blueprint_unlock")
 func _on_faction_level_up(_faction_id: String, _new_level: int) -> void:

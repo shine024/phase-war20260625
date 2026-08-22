@@ -146,8 +146,7 @@ signal faction_event_generated(event: Dictionary)
 signal occupation_changed(level: int, old_faction: String, new_faction: String)
 
 # 合成系统
-signal synthesis_completed(hybrid_card_id: String)
-signal synthesis_failed(reason: String)
+# v9.x（P2-7范围C）：synthesis_completed/synthesis_failed 已随合成系统删除移除
 
 # 强化系统
 

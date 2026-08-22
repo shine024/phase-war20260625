@@ -36,8 +36,8 @@ const SK_CHALLENGE_RECORDS: String = "challenge_records"
 const SK_CARD_COLLECTION: String = "card_collection"
 const SK_LEADERBOARD: String = "leaderboard"
 const SK_LEGACY_COMPANY_REP: String = "_legacy_company_rep"
-# v7.x 数据一致性核对：SK_SYNTHESIS（"synthesis_state"）已删除——全项目零引用常量；
-# FactionSystemManager 用硬编码字面量 "synthesis_state"（faction_system_manager.gd:676/723），与 SynthesisManager 父子内嵌存档路径一致。
+# v9.x（P2-7范围C）：合成系统整体删除——旧档 "synthesis_state" key 由 FactionSystemManager
+# 读档路径 key 级静默跳过（不再有消费方）。
 # v6.6: 情报系统存档键
 const SK_INTEL_MANUAL: String = "intel_manual"
 const SK_INTEL_DISCOVERY: String = "intel_discovery"

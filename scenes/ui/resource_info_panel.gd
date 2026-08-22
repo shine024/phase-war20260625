@@ -80,7 +80,6 @@ func _build_ui() -> void:
 	# C2: 资源五色收敛 DesignTokens.COLOR_RES_*（此前与 resource_bar/buff_fold_card 三处手抄）
 	_add_resource_row(vbox, "energy", "⚡", "能量块", DT.COLOR_RES_ENERGY)
 	_add_resource_row(vbox, "nano_materials", "📦", "纳米材料", DT.COLOR_RES_NANO)
-	_add_resource_row(vbox, "research_points", "🔬", "研究点", DT.COLOR_RES_RESEARCH)
 	_add_resource_row(vbox, "alloy", "🔶", "合金", DT.COLOR_RES_ALLOY)
 	_add_resource_row(vbox, "crystal", "💎", "晶体", DT.COLOR_RES_CRYSTAL)
 	_add_resource_row(vbox, "lore", "📖", "情报", Color(0.9, 0.7, 0.2))
@@ -156,7 +155,6 @@ func _refresh_basic_resources() -> void:
 
 	_update_label("nano_materials", int(totals.get("nano_materials", 0)))
 	_update_label("energy", int(totals.get("energy_block", 0)))
-	_update_label("research_points", int(totals.get("research_points", 0)))
 	_update_label("alloy", int(totals.get("alloy", 0)))
 	_update_label("crystal", int(totals.get("crystal", 0)))
 

@@ -15,7 +15,6 @@ var total_nano_materials: int = 0
 var total_alloy: int = 0
 var total_crystal: int = 0
 var total_energy_block: int = 0
-var total_research_points: int = 0
 var custom_totals: Dictionary = {}
 
 # 兼容性变量（映射到新的资源系统）
@@ -37,8 +36,7 @@ func add_resource(id: String, amount: int) -> void:
 			total_crystal = max(0, total_crystal + amount)
 		BasicResources.ID_ENERGY_BLOCK:
 			total_energy_block = max(0, total_energy_block + amount)
-		BasicResources.ID_RESEARCH_POINTS:
-			total_research_points = max(0, total_research_points + amount)
+		# v9.x（P2-7范围C）：research_points 已退役——旧代码传入落入 custom_totals 静默忽略
 		_:
 			# 动态资源（如专属改造许可函 permit_card_xxx）
 			custom_totals[id] = max(0, int(custom_totals.get(id, 0)) + amount)
@@ -62,8 +60,6 @@ func _normalize_id(id: String) -> String:
 			return BasicResources.ID_CRYSTAL
 		"energy_block", "energy":
 			return BasicResources.ID_ENERGY_BLOCK
-		"research_points", "research":
-			return BasicResources.ID_RESEARCH_POINTS
 		_:
 			return id
 
@@ -77,8 +73,6 @@ func get_total(id: String) -> int:
 			return total_crystal
 		BasicResources.ID_ENERGY_BLOCK, "energy_block", "energy":
 			return total_energy_block
-		BasicResources.ID_RESEARCH_POINTS, "research_points", "research":
-			return total_research_points
 		_:
 			return int(custom_totals.get(id, 0))
 
@@ -88,7 +82,6 @@ func get_all_totals() -> Dictionary:
 		BasicResources.ID_ALLOY: total_alloy,
 		BasicResources.ID_CRYSTAL: total_crystal,
 		BasicResources.ID_ENERGY_BLOCK: total_energy_block,
-		BasicResources.ID_RESEARCH_POINTS: total_research_points,
 		# 兼容性映射
 		"basic_nano": total_nano_materials,
 	}
@@ -102,7 +95,6 @@ func save_state() -> Dictionary:
 		"total_alloy": total_alloy,
 		"total_crystal": total_crystal,
 		"total_energy_block": total_energy_block,
-		"total_research_points": total_research_points,
 		"custom_totals": custom_totals.duplicate(true),
 		# 兼容性字段
 		"total_basic_nano": total_nano_materials,
@@ -114,7 +106,7 @@ func load_state(data: Dictionary) -> void:
 	total_alloy = int(data.get("total_alloy", 0))
 	total_crystal = int(data.get("total_crystal", 0))
 	total_energy_block = int(data.get("total_energy_block", 0))
-	total_research_points = int(data.get("total_research_points", 0))
+	# v9.x（P2-7范围C）：旧档 total_research_points key 静默跳过（科研点退役）
 	custom_totals = data.get("custom_totals", {})
 	if not (custom_totals is Dictionary):
 		custom_totals = {}

@@ -100,18 +100,16 @@ func _process_single_drop(drop: DropTables.DropResult) -> void:
 			_unlock_lore(drop.drop.item_id)
 		DropTables.DropType.CARD_REWARD:
 			_add_card_to_backpack(drop.drop.item_id)
-		# v7.x: 能量卡系统移除，ENERGY_CARD 掉落降级为研究点补偿（避免空回报）
+		# v9.x（P2-7范围C）：能量卡掉落补偿（原降级研究点）随科研点退役——旧档 pending 静默跳过
 		DropTables.DropType.ENERGY_CARD:
-			if BlueprintManager != null and BlueprintManager.has_method("add_research_points"):
-				BlueprintManager.add_research_points(15 * drop.count)
+			pass
 		DropTables.DropType.STAT_BOOST:
 			_apply_stat_boost(drop.drop.item_id)
 		# v9.x（P2-7范围A）：法则卡掉落路径退役——旧存档 pending_drops 中的
 		# LAW_CARD/LAW_DATA/LAW_BLUEPRINT 类型在 claim 时无匹配臂，静默跳过（key 级忽略先例）
-		# v7.x: 能量卡系统移除，ENERGY_DATA/ENERGY_BLUEPRINT 掉落降级为研究点补偿
+		# v9.x（P2-7范围C）：能量掉落补偿（原降级研究点）随科研点退役——旧档 pending 静默跳过
 		DropTables.DropType.ENERGY_DATA, DropTables.DropType.ENERGY_BLUEPRINT:
-			if BlueprintManager != null and BlueprintManager.has_method("add_research_points"):
-				BlueprintManager.add_research_points(15 * drop.count)
+			pass
 		DropTables.DropType.MOD_BLUEPRINT:
 			_add_mod_blueprint(drop.drop.item_id, drop.count)
 

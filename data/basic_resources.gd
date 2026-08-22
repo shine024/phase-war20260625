@@ -12,7 +12,7 @@ const ID_NANO_MATERIALS := "nano_materials"
 const ID_ALLOY := "alloy"
 const ID_CRYSTAL := "crystal"
 const ID_ENERGY_BLOCK := "energy_block"
-const ID_RESEARCH_POINTS := "research_points"
+# v9.x（P2-7范围C）：科研点 ID_RESEARCH_POINTS 已随研究/合成系统退役移除（2026-08-23）
 # v7.3: 许可证系统已删除（5种资源全项目零消耗，是死系统）。
 # 原 ID_PERMIT_GENERAL / ID_PERMIT_TYPE_ASSAULT/HEAVY/SUPPORT/LAW 已移除。
 
@@ -44,12 +44,6 @@ const DEFINITIONS: Dictionary = {
 		"desc": "可在后勤节点中转换为战场能源或其它增益。",
 		"icon": "res://assets/resources/energy_block.png",
 	},
-	ID_RESEARCH_POINTS: {
-		"id": ID_RESEARCH_POINTS,
-		"name": "研究点",
-		"desc": "用于卡牌养成与改造的专用资源。",
-		"icon": "res://assets/resources/crystal.png",
-	},
 	# v7.3: 5 种许可证定义已删除（死系统）
 	# 兼容性定义（映射到新ID）
 	ID_BASIC_NANO: {
@@ -72,7 +66,7 @@ static func get_all_ids() -> Array[String]:
 	return result
 
 ## 根据关卡计算本关结算时的基础资源掉落
-## 返回：{ nano_materials: int, alloy: int, crystal: int, energy_block: int, research_points: int }
+## 返回：{ nano_materials: int, alloy: int, crystal: int, energy_block: int }
 static func get_drops_for_level(level: int) -> Dictionary:
 	var lv: int = max(1, level)
 	var mult: float = LevelEras.get_drop_rate_multiplier(lv)
@@ -84,14 +78,11 @@ static func get_drops_for_level(level: int) -> Dictionary:
 	var base_crystal: float = (5.0 + 2.0 * lv) * mult
 	# 能量块：略低一些
 	var base_energy: float = (20.0 + 5.0 * lv) * mult
-	# 研究点：战斗成长主资源
-	var base_research: float = (30.0 + 6.0 * lv) * mult
 	return {
 		ID_NANO_MATERIALS: int(round(base_nano)),
 		ID_ALLOY: int(round(base_alloy)),
 		ID_CRYSTAL: int(round(base_crystal)),
 		ID_ENERGY_BLOCK: int(round(base_energy)),
-		ID_RESEARCH_POINTS: int(round(base_research)),
 	}
 
 ## v7.x 平衡修订：get_specific_permit_id 已删除（v7.3 许可证系统移除后的孤儿函数，全项目零调用）

@@ -18,7 +18,6 @@ const BasicResources = preload("res://data/basic_resources.gd")
 const FactionCardGenerator = preload("res://managers/faction/faction_card_generator.gd")
 const FactionSkillManager = preload("res://managers/faction/faction_skill_manager.gd")
 const FactionEventManager = preload("res://managers/faction/faction_event_manager.gd")
-const SynthesisManager = preload("res://managers/synthesis/synthesis_manager.gd")
 
 ## 势力关系矩阵：faction_id -> {关系势力ID: 关系类型}
 ## 关系类型：allied(同盟), rival(竞争), enemy(敌对), neutral(中立)
@@ -162,8 +161,7 @@ var faction_skill_states: Dictionary = {}
 ## 势力事件管理器实例
 var _event_manager: Node = null
 
-## 合成管理器实例
-var _synthesis_manager: Node = null
+# v9.x（P2-7范围C）：合成管理器实例字段已随合成系统删除移除
 
 func _ready() -> void:
 	if Engine.is_editor_hint():
@@ -278,7 +276,7 @@ func _grant_exclusive_cards_on_level_up(faction_id: String, new_rep: int) -> voi
 				DefaultCards.register_dynamic_card(card)
 			# 发放到玩家背包
 			if sm and sm.has_method("enqueue_backpack_card_id"):
-				# v7.x 修复（Bug1）：势力专属卡必须实例化后用 instance_id 入队（对齐 synthesis_manager.gd:113）。
+				# v7.x 修复（Bug1）：势力专属卡必须实例化后用 instance_id 入队（原对齐 synthesis_manager，该系统已删）。
 				# 原版传裸 card_id，导致该卡在 InstanceRegistry 不存在，背包显示/强化/装配全部走重建兜底路径。
 				var ir: Node = get_node_or_null("/root/InstanceRegistry")
 				var enqueue_id: String = card_id
@@ -671,9 +669,6 @@ func save_state() -> Dictionary:
 	var event_state: Dictionary = {}
 	if _event_manager != null:
 		event_state = _event_manager.save_state()
-	var synthesis_state: Dictionary = {}
-	if _synthesis_manager != null:
-		synthesis_state = _synthesis_manager.save_state()
 	return {
 		"faction_reputation": faction_reputation.duplicate(true),
 		"faction_level": faction_level.duplicate(true),
@@ -683,7 +678,6 @@ func save_state() -> Dictionary:
 		"faction_variants_unlocked": faction_variants_unlocked.duplicate(),
 		"faction_skill_states": skill_states,
 		"faction_event_state": event_state,
-		"synthesis_state": synthesis_state,
 		"exclusive_cards_granted": exclusive_cards_granted.duplicate(),
 		# v6.10: 占领状态（运行时领地归属）
 		"level_occupation": level_occupation.duplicate(true),
@@ -694,7 +688,6 @@ func load_state(data: Dictionary) -> void:
 	# 原实现仅非空档路径初始化 → 新游戏（空字典）整局 _event_manager==null，
 	# 势力事件系统静默失效；且读档后再开新档会残留上一局事件/忠诚度状态。
 	_init_event_manager()
-	_init_synthesis_manager()
 	# 新游戏：SaveManager 传入空字典，必须整表重置（否则仍保留上一局的声望）
 	if data.is_empty():
 		_init_faction_data()
@@ -732,9 +725,7 @@ func load_state(data: Dictionary) -> void:
 	# 事件管理器状态（实例已在函数开头重建）
 	if data.has("faction_event_state") and data["faction_event_state"] is Dictionary:
 		_event_manager.load_state(data["faction_event_state"])
-	# 合成管理器状态
-	if data.has("synthesis_state") and data["synthesis_state"] is Dictionary:
-		_synthesis_manager.load_state(data["synthesis_state"])
+	# v9.x（P2-7范围C）：旧档 synthesis_state key 静默跳过（合成系统删除）
 	# v6.6: 已发放独占卡（向后兼容）
 	if data.has("exclusive_cards_granted") and data["exclusive_cards_granted"] is Array:
 		exclusive_cards_granted = (data["exclusive_cards_granted"] as Array).duplicate()
@@ -917,22 +908,9 @@ func get_faction_event_loyalty(faction_id: String) -> float:
 	return 50.0
 
 # ═══════════════════════════════════════════════════
-#  合成管理
+#  合成管理（v9.x P2-7范围C：合成系统整体删除——synthesis_manager/synthesis_recipes
+#  文件与 _init_synthesis_manager/get_synthesis_manager 已移除，零 UI 调用方）
 # ═══════════════════════════════════════════════════
-
-## 初始化合成管理器
-func _init_synthesis_manager() -> void:
-	# 幂等 + 挂树（同 _init_event_manager 先例）：SynthesisManager 内部用
-	# get_node_or_null("/root/...") 访问 FactionSystemManager/BlueprintManager，
-	# 离树节点的绝对路径查找恒 null → 势力变体的基础卡解析/势力等级检查全部失效
-	if _synthesis_manager != null and is_instance_valid(_synthesis_manager):
-		_synthesis_manager.queue_free()
-	_synthesis_manager = SynthesisManager.new()
-	add_child(_synthesis_manager)
-
-## 获取合成管理器
-func get_synthesis_manager() -> Node:
-	return _synthesis_manager
 
 ## 获取势力变体的基础卡ID（供合成系统使用）
 func get_faction_variant_base_id(card_id: String) -> String:

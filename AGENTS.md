@@ -188,7 +188,7 @@ func _redirect_stdout_to_file() -> void:
 | 8 | `DropManager` | `managers/drop_manager.gd` | 战后掉落表与领取 |
 | 9 | `SaveManager` | `managers/save_manager.gd` | `user://save.json`，schema v8，迁移链 v1→v8 |
 | 10 | `AudioManager` | `managers/audio_manager.gd` | 音频 |
-| 11 | `BasicResourceManager` | `managers/basic_resource_manager.gd` | 全局货币（纳米/合金/水晶/能量块/科研点/许可） |
+| 11 | `BasicResourceManager` | `managers/basic_resource_manager.gd` | 全局货币（纳米/合金/水晶/能量块/许可；科研点已随 P2-7 退役） |
 | 12 | `ObjectPoolManager` | `managers/object_pool.gd` | 子弹/伤害数字对象池 |
 | 13 | `UILazyLoader` | `managers/ui_lazy_loader.gd` | UI 面板按需加载 |
 | 14 | `ManagerLazyLoader` | `managers/manager_lazy_loader.gd` | 非 core manager 按需加载 |
@@ -261,7 +261,7 @@ ModificationRegistry → 9 unit-type mod modules (infantry/armor/artillery/anti_
 EvolutionPathRegistry → 8 unit-type evolution modules (infantry/armor/air/artillery/fort/recon/engineer/anti_air)
 
 FactionSystemManager → FactionReputation, FactionShop, FactionSkillManager,
-                        FactionEventManager, FactionCardGenerator, SynthesisManager
+                        FactionEventManager, FactionCardGenerator
 
 IntelDiscoveryManager → IntelManual, IntelDimensions, IntelRevealEvents
 IntelEvolutionManager → IntelManual, IntelEvolutionBranches
@@ -308,7 +308,7 @@ IntelEvolutionManager → IntelManual, IntelEvolutionBranches
 - `phase_instruments.gd` — Phase instrument definitions (4-color slot configs)
 
 **Economy & Progression:**
-- `basic_resources.gd` — Resource ID definitions (nano/alloy/crystal/energy block/research points/permits)
+- `basic_resources.gd` — Resource ID definitions (nano/alloy/crystal/energy block/permits；科研点已随 P2-7 退役)
 - `battle_card_v3.gd` — Era HP/damage multipliers (v6.1: 近未来伤害倍率 1.90→1.80)
 - `level_eras.gd` / `level_information.gd` — Level-to-era mapping (100 levels, 5 eras)
 - `rank_rules.gd`, `card_progression_settings.gd` — Progression tuning
@@ -335,7 +335,6 @@ IntelEvolutionManager → IntelManual, IntelEvolutionBranches
 **Faction:**
 - `company_definitions.gd` — 7 faction definitions
 - `faction_card_bonuses.gd`, `faction_exclusive_cards.gd`, `faction_skill_tree.gd`, `faction_war_events.gd`
-- `synthesis_recipes.gd` — Hybrid card synthesis recipes
 
 **Quest/Achievement/Challenge:**
 - `quest_definitions.gd`, `achievement_definitions*.gd` (4 files), `challenge_definitions.gd`, `task_definitions_extended.gd`, `daily_task_definitions.gd`
@@ -433,6 +432,8 @@ User-driven collaboration. Every task follows: **Question → Options → Decisi
 
 | 系统 | 状态 | 说明 |
 |------|------|------|
+| 合成系统（SynthesisManager + synthesis_recipes） | **已整体删除** | 2026-08-23 P2-7（批次2c）：无 UI 的僵尸系统，科研点唯一 sink。managers/synthesis/ 与 data/synthesis_recipes.gd 删除；fsm 的 preload/实例/初始化/getter/存档段移除；signal_bus 双信号与 audio 消费删除；旧档 synthesis_state key 静默跳过 |
+| 科研点（research_points） | **已退役** | 2026-08-23 P2-7（批次2c）：ID_RESEARCH_POINTS 常量/定义/关卡产出、BasicResourceManager 收支臂、BlueprintManager 四函数、能量掉落降级补偿、faction_war 事件奖励、四处 UI 展示全部移除；旧档 total_research_points key 静默跳过 |
 | 相位法则系统（PhaseLawManager + active_law_effects） | **已整体删除** | 2026-08-23 P2-7（批次2a+2b）：法则卡获取/展示链路、红蓝槽法则装配、主动法则施放链（battle_click_overlay 选点/ActiveLawEffects 效果/演出/播报）、敌方法则减益（enemy_unit/swarm_enemy_slot）、知识值掉落与战斗快照全部移除。starter 符文发放迁至 PhaseInstrumentManager.clear_slots_for_new_game。autoload 32→31；SignalBus 三条法则信号（active_law_cast_at/phase_law_runtime_changed/phase_law_cast）删除；旧档 phase_law 存档段 key 级静默跳过；buff 折叠卡 BUFF 段改显已装备符文 |
 | 卡牌蓝图体系（解锁/副本/制造/拆解/星级） | **已整体删除** | 2026-08-22：制造面板（早已无入口）、副本记账、重复副本→研究点、背包拆解、研究点升星全部移除。收集口径改"拥有过的卡种"（card_added_to_backpack 驱动，InstanceRegistry 计数）。法则掉落解锁与开局 4 法则后随 P2-7 法则退役一并移除（2026-08-23） |
 | 敌源MOD（EOM） | **已整体删除** | 面板/管理器/数据/掉落/存档字段全部移除（2026-08-21）。旧存档 eom 字段被静默忽略。情报揭示事件的 eom_unlock 奖励已改为 stat_visibility |

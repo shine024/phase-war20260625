@@ -212,8 +212,6 @@ func _currency_display_name(id: String) -> String:
 			return "晶体"
 		_BasicResources.ID_ENERGY_BLOCK:
 			return "能量块"
-		_BasicResources.ID_RESEARCH_POINTS:
-			return "研究点"
 		_:
 			return id
 

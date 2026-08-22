@@ -868,7 +868,6 @@ func _enqueue_starter_backpack_cards() -> void:
 		BasicResourceManager.add_resource("alloy", 100000)
 		BasicResourceManager.add_resource("crystal", 100000)
 		BasicResourceManager.add_resource("energy_block", 100000)
-		BasicResourceManager.add_resource("research_points", 100000)
 	# 测试模式：初始技能点 +100（相位师技能树 bonus_points，供测试解锁多分支）
 	# PhaseMasterSkillManager 未注册存档 → 每次开新档都是干净 0 基线，加 100 不累积。
 	var pmsm_starter: Node = get_node_or_null("/root/PhaseMasterSkillManager")

@@ -7,14 +7,14 @@ const BasicResources = preload("res://data/basic_resources.gd")
 
 
 func _init() -> void:
-	print("level,era,era_name,nano,alloy,crystal,energy_block,research_points,post_battle_pool")
+	print("level,era,era_name,nano,alloy,crystal,energy_block,post_battle_pool")
 	for lv in range(1, 101):
 		var era: int = LevelEras.get_era(lv)
 		var d: Dictionary = BasicResources.get_drops_for_level(lv)
 		var en: String = LevelEras.get_era_name(era)
 		var pool: String = _pool_label(era)
 		print(
-			"%d,%d,%s,%d,%d,%d,%d,%d,%s"
+			"%d,%d,%s,%d,%d,%d,%d,%s"
 			% [
 				lv,
 				era,
@@ -23,7 +23,6 @@ func _init() -> void:
 				int(d.get(BasicResources.ID_ALLOY, 0)),
 				int(d.get(BasicResources.ID_CRYSTAL, 0)),
 				int(d.get(BasicResources.ID_ENERGY_BLOCK, 0)),
-				int(d.get(BasicResources.ID_RESEARCH_POINTS, 0)),
 				pool,
 			]
 		)

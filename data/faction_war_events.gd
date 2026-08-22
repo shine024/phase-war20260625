@@ -26,9 +26,9 @@ const EVENT_TEMPLATES: Array[Dictionary] = [
 		"weight": 20,
 		"conditions": {"min_level": 10},
 		"rewards": {
-			"support_a": {"reputation": 25, "research_points": 200},
+			"support_a": {"reputation": 25},
 			"support_b": {"reputation": 15, "nanomaterial": 300},
-			"neutral": {"research_points": 50},
+			"neutral": {},
 		},
 	},
 	# ─── 间谍事件 ───

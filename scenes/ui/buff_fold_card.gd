@@ -193,7 +193,6 @@ func _refresh_resource() -> void:
 	# C2: 资源五色收敛 DesignTokens.COLOR_RES_*（能量块原 0.98/0.75/0.15 与他处漂移）
 	content.add_child(_make_kv_row("⚡ 能量块", _fmt_num(_get_int(brm, "total_energy_block")), DT.COLOR_RES_ENERGY))
 	content.add_child(_make_kv_row("📦 纳米材料", _fmt_num(_get_int(brm, "total_nano_materials")), DT.COLOR_RES_NANO))
-	content.add_child(_make_kv_row("🔬 研究点", _fmt_num(_get_int(brm, "total_research_points")), DT.COLOR_RES_RESEARCH))
 	content.add_child(_make_kv_row("🔶 合金", _fmt_num(_get_int(brm, "total_alloy")), DT.COLOR_RES_ALLOY))
 	content.add_child(_make_kv_row("💎 晶体", _fmt_num(_get_int(brm, "total_crystal")), DT.COLOR_RES_CRYSTAL))
 

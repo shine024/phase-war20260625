@@ -2657,3 +2657,30 @@ v17j 分格 meteor 7→5（-2）/summon 4→5（+1）——单格 ±1-2 波动�
 - panel_open_smoke 扩到五面板（+help），并给所有面板加 visible 断言（专防"实例化了但没显示"这类形态）
 
 **验证**: panel_open_smoke 五面板 OK（help visible=true + TabContainer 5 标签填充）+ 冒烟 8 项 + ui_unified_check + main boot 零错误 + gdunit 19 失败（既有基线）
+
+## v20.3 法则→符文替代 + 研究/科研点/合成退役（P2-7，发行批次2a/2b/2c）（2026-08-23）
+
+**背景**：发行路线图 P2-7——设计定稿"符文全面取代法则"，研究系统与科研点已从设计移除，合成系统是无 UI 的僵尸系统（科研点唯一 sink）。按执行计划拆三个 commit 完成。
+
+**批次2a 法则卡获取/展示链路退役（范围A，8ecefc4）**：
+- 势力商店 7 势力 20 条法则卡下架 + 法则购买/校验分支移除 + 默认库存清除；顺手下架 4 张断链武器蓝图（bp_cold_014/bp_cold_020/bp_modern_011/bp_near_012——不在 EnemyBlueprints 缓存，付款后静默跳过=卡不到账）
+- DropManager 法则卡掉落三函数与三条 claim 分发臂移除（掉落无活跃生成点，仅旧档 pending 一条入口，claim 时静默跳过）；CardDropGrants.grant_law_cards_to_backpack 删除（已零调用方）
+- 背包数据层旧档法则 id（裸 id/law: 前缀/Registry 实例）静默跳过（前置到实例重建前，避免 InstanceRegistry 报错刷屏）；backpack_presenter/backpack_card_item/card_info_panel/store_panel/instrument_bar_drag 的 LAW 分支收敛
+- 两处 migrate_law_slots_from_phase_law_manager_if_empty 与 save_manager 调用点删除；create_law_card_resource 按计划保留（2b/2c 尚有调用方）
+
+**批次2b 蓝槽法则链 + PhaseLawManager 整体退场（范围B，db3174f）**：
+- 删 phase_law_manager.gd（681 行）+ active_law_effects.gd（447 行）+ autoload（32→31）；24 个消费方清理
+- 装配链：PIM/loadout_sync 法则函数群、equip 法则路由、_can_equip 红蓝臂、get_slot_layout 法则字段（key 留空串防旧档未定义读取）
+- 施放链：battle_click_overlay 施法半边 + battle_input_state pending_cast 两字段 + main.gd 处理器 + 底栏法则格分支 + SignalBus 三信号（active_law_cast_at/phase_law_runtime_changed/phase_law_cast）+ audio/spectacle/announcer/log/new_systems 五处消费
+- 减益链（法则系统最后一条活效果）：enemy_unit/swarm_enemy_slot 的 _apply_phase_law_passives
+- 弹道护盾墙减伤查询改恒等直通（bullet/simple_enemy_projectile_batch，保留函数形态 5 处调用点不动）
+- 保留件迁移：starter 符文发放 → PIM.clear_slots_for_new_game；battle_nano_budget 无战斗消费方随 PLM 退役
+- buff 折叠卡 BUFF 段改显已装备符文；AGENTS autoload 表/依赖图/停用清单同步
+
+**批次2c 研究链 + 科研点 + 合成删除（范围C，本 commit）**：
+- 科研点货币退役：ID_RESEARCH_POINTS 常量/定义/关卡产出公式、BasicResourceManager 收支臂与别名、BlueprintManager 四函数（get/add_research_points、_consume/_add_research）、能量掉落降级补偿（ENERGY 三型 claim 臂改静默跳过）、faction_war_events 事件奖励、afk/offline/resource_info/buff_fold 四处 UI 展示、print_level_drop_sheet 列
+- 合成系统删除：managers/synthesis/ + data/synthesis_recipes.gd（零 UI 调用方，无玩家可见影响）；faction_system_manager 的 preload/实例/初始化/getter/存档段；SignalBus 双信号与 audio 消费
+- 存档兼容：phase_law 段、research_points/total_research_points、synthesis_state、已研究法则全部 key 级静默跳过（eom/characters 先例沿用）
+- PLM 侧研究链（知识值/研究函数族/默认法则解锁）已随 2b 文件删除先行完成
+
+**验证**（三批次各跑全套）：_tmp_batch2a/2b/2c 断言脚本全过 + panel_open_smoke 五面板 + main boot headless 300 帧零错误（2b 修复 buff 折叠卡 String(null) 空槽构造）+ gdunit 全量 145 例 19 失败与批次1 基线逐项一致（唯一差异 daily_task 两用例互换，1877079 已记录的既有顺序干扰）。

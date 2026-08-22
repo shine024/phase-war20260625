@@ -215,8 +215,7 @@ func _display_name(item_id: String) -> String:
 			return "晶体"
 		_BasicResources.ID_ENERGY_BLOCK, "energy_block":
 			return "能量块"
-		_BasicResources.ID_RESEARCH_POINTS, "research_points":
-			return "研究点"
+		# v9.x（P2-7范围C）：研究点显示名映射已随科研点退役移除
 	# afk_mode_manager 对无 item_id 的掉落用占位 key "other" 累计，这里映射显示名
 	match item_id:
 		"other":
