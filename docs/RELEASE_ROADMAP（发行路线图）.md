@@ -33,32 +33,18 @@
   - `config/name`：`phase-war` → 显示名（如 "Phase War 相位战争"）；补 `config/version`（现在没有版本号设置）。
   - Windows 图标（现仅 icon.svg，需 .ico/.png 多尺寸）。
   - 注：`_MCPGameBridge` autoload 有 `OS.is_debug_build()` 守卫（`addons/agent_tools/runtime/game_bridge.gd` L32-35），release 包零开销，不急删；但建议导出模板用 release 而非 debug。
-- [ ] **P0-4 release 门控性能采集**（S）
-  - `PerformanceMetricsManager` 无条件常开，每场战斗每 15s 把 P50/P95 写 `user://performance_baseline.json`。正式版不该向用户目录持续写遥测风格文件。
-  - 方案：`OS.is_debug_build()` 门控或 GameConfig 开关（注意该开关要有真实消费者）。
-- [ ] **P0-5 清理死调试配置 + 修 reset 漏项**（S）
-  - `resources/game_config.gd`：`enable_debug_logs` / `enable_performance_stats` 零消费者，删除。
-  - `reset_to_defaults()`（L114-131）漏重置 `debug_no_deploy_limits`（该开关被 `battle_spawn_system.gd` L560/L863 真实消费）。
+- [x] **P0-4 release 门控性能采集**（S）✅ 2026-08-23 批次1（4af80b6）
+- [x] **P0-5 清理死调试配置 + 修 reset 漏项**（S）✅ 2026-08-23 批次1（4af80b6）
 
 ---
 
 ## P1 质量关卡（1~2 周量级）
 
-- [ ] **P1-1 清零 19 个既有测试失败**（M）
-  - 清单见 memory（08-22 核对）：`modification_modules_test` ×4 断言过期 + 平衡/数据类断言漂移（economy_balance、unit_era_balance、enemy_stat_resolver、battle_card_v3、evolution_hp_floor、unit_lineage_config、daily_task 等）。
-  - 归因法：`git stash` 对比；断言过期→更新断言，真回归→修代码。
-  - 验收：gdunit 全量 145 例绿灯；此后 `.github/workflows/tests.yml` 设为合并门禁。
-- [ ] **P1-2 全流程实机通关测试**（M）
-  - 1→100 关真实通关（5 时代各 boss/相位师关），覆盖：新档→教程→首关→中期解锁潮→终局。
-  - 长局稳定性 soak：项目有段错误（0xc0000005）/OOM 崩溃史；用 PerformanceMonitor 的 orphan_nodes 指标盯泄漏。
-  - 顺带验收 v20.1/20.2 修的面板链路（商店/任务/势力/设置/帮助五面板开关）与 v20-3d 手写 Tween 待机浮动。
-- [ ] **P1-3 平衡终审**（M）
-  - 时代 DPS 比测试在失败清单内 → 跑 `/balance-check` 全量核对单位/MOD 数据一致性。
-  - 近未来伤害倍率等调参历史多轮反复（1.90→1.80→…），需要一次定稿并固化进测试。
-- [ ] **P1-4 存档损坏明示 UX**（S）
-  - 机制本身完善（每槽 4 文件：主档/15s 备份/.tmp/.prior 原子替换；解析失败先修 inf/nan 再 fallback backup）。
-  - 缺口：fallback 到备份是**静默的**（`load_game()` L1197-1205），玩家无感知。加 toast："检测到存档损坏，已从备份恢复"。
-- [ ] **P1-5 "看得到但不生效"机制处置**（M，逐条定实装 or 移除）
+- [x] **P1-1 清零 19 个既有测试失败**（M）✅ 2026-08-23 批次8（676b310）：145 例 0 失败；tests.yml 自此为有效门禁；附带修复 USE_PHASE_LAWS 死任务 + gitignore 盲区 7 套件收编
+- [x] **P1-2 全流程实机通关测试**（M）✅ 自动化部分 2026-08-24 批次9（1bebdd4）：soak L1-100 全覆盖 113 战/41 PM 战/零崩溃（清单 docs/RELEASE_ACCEPTANCE_BATCH9.md）。**人工 B 部分待实测**（教程/中期手感/PM 关/存档回环）
+- [x] **P1-3 平衡终审**（M）✅ 2026-08-23 批次7（9466f3d）：定稿表 docs/BALANCE_FINAL_2026-08-23.md
+- [x] **P1-4 存档损坏明示 UX**（S）✅ 2026-08-23 批次5（a4e2f1e）
+- [x] **P1-5 "看得到但不生效"机制处置**（M）✅ 2026-08-23 批次4（018e655）：召唤死链/敌方技能空转/声望解锁/收集统计全部结案，关键道具 reserved 保留
   - 召唤类技能占位：`managers/battle/card_periodic_skill_engine.gd:431` "P1 占位：实际召唤需 battle_spawn_system 支持"。
   - 敌方技能树空转（v17m 立案，CHANGELOG 有完整清单）：敌方相位师 special/光环/stacking/unit_ability/unit_mechanism 数据存在但敌方侧永不消费。
   - 原则：不能带"假技能"上架——每条要么实装，要么从敌方配置与 UI 展示面移除。
@@ -68,7 +54,7 @@
 
 ## P2 内容补完（按 D2 发行形态取舍；EA 可延后）
 
-- [ ] **P2-1 卡面图实况（2026-08-23 两轮运行时审计定稿，"192 张缺图"说法作废）**
+- [x] **P2-1 卡面图实况** ✅ 2026-08-23 批次3 收口（6150ace）：断链图标清零（combo_icons 6 张死字段删除、相位仪 5 张补齐）、美术全量备份 zip 已建、卡面审计 294 张零 MISSING。原"192 张缺图"说法作废（2026-08-23 两轮运行时审计定稿）
   - **审计方法**：`tests/_tmp_card_icon_dedicated_audit.gd`（headless 可复跑）走 `UiAssetLoader.card_icon_path_for` 真实七级解析链。
   - **结论：全量 319 卡（玩家/势力 131 + 缴获 109 + 法则 25 + 敌蓝图 54）零破图**。玩家卡 131 = 专属 by-id 17 + manifest 38 + override 精选 76；缴获卡 109/109 全走 manifest 映射到真实图（含 2026-08 补的 38 张 enemy/ by-id 专属图——已验证全部生效）。
   - 旧"192 无 PNG"来源：`work_全卡面加工/卡面文件名与显示名_最全表.txt`（05-22 清单）按逻辑 id 同名文件核对，运行时不按那些文件名取图。**该 txt 已过时，勿再引用**。
@@ -77,21 +63,19 @@
     2. **敌蓝图 id 残留**：bp_* 平台蓝图 54 张走同时代共享图展示，但蓝图体系已删、无正常获取途径；**faction_shop 仍在售 4 张武器蓝图 id（bp_cold_014/bp_cold_020/bp_modern_011/bp_near_012）且不在 EnemyBlueprints 缓存内**——购买发放走 `card_drop_grants.gd:57` 判 `DefaultCards.get_card_by_id(id)==null` → :63 静默跳过，**疑似"付款后卡不到账"**。处置：下架这 4 条或接通到缴获卡体系（可与 P2-7 同批顺手处理，同在 faction_shop）。
     3. AGENTS.md 已知断链小项（与本审计无关，仍待补）：combo_icons 6 张、`law.png`（若 P2-7 全退役则此图不再需要）、相位仪图标 4 张（pi_r_free_deploy、pi_umbra_01~03）。
   - ⚠️ PNG 不入 git（项目政策），已有 866 张图需发布前做一次全量备份归档（否则换机/发布机丢失）。
-- [ ] **P2-2 相位师（boss）形象**（M~L，或降级处理）
+- [ ] **P2-2 相位师（boss）形象**（M~L，或降级处理）——**轨道A 未启动，唯一待决策：阵容 A 补 30 张 / B 收缩 20 位 / C 接受复用（EA 可 C）**
   - 30 位 master（`data/enemy_phase_masters_*.gd` 5 文件×6 位）**零专属立绘/图标**——战场复用时代原型贴图+势力染色，世界地图仅 tooltip 名字。
   - 驻守映射 `data/phase_master_garrison.gd` 仅 20 关→20 位，**10 位从未上场**。
   - boss 待机帧动画仅 2/5 有帧组（cold_boss_mig、fut_boss_nexus），其余程序化摇摆兜底。
   - 选项：A 补 30 张立绘+用满；B 收缩阵容至上场的 20 位；C 接受复用（EA 可接受）。
-- [ ] **P2-3 补 `bgm_battle_cold.ogg`**（S）
-  - `managers/audio_manager.gd` `BGM_MAP` 8 首缺此 1 首：冷战 20 关（41-60）无专属战斗 BGM，沿用上一曲。SFX 36/36 齐无需动。
-- [ ] **P2-4 教程扩展与文案修正**（M）
+- [x] **P2-3 补 `bgm_battle_cold.ogg`**（S）✅ 2026-08-23 批次6（a48bf48）：WW2 曲变体过渡版，正式曲走 P3-5 采购线替换
+- [x] **P2-4 教程扩展与文案修正**（M）✅ 2026-08-23 批次6（a48bf48）：8 步→13 步重制
   - 现 8 步只覆盖"打完第一关"最小闭环；中后期 12+ 系统（进化/势力/商店/任务/情报/法则/加点/成就）零引导。
   - 陈旧文案 2 处：强化步骤仍写"Lv1-10 消耗纳米材料"（强化面板 v8.x 已删，main.gd 已重定向到成长中枢）；"相位仪"步骤实际打开背包符文 Tab。
-- [ ] **P2-5 VFX 真实度迭代收尾**（M~L，打磨项非阻断）
+- [ ] **P2-5 VFX 真实度迭代收尾**（M~L，打磨项非阻断）——**轨道B 未启动**
   - 自评 4.16/10 → 目标 6.0/10。"下一杠杆"已记录于 CHANGELOG v19/VFX 报告：f01/f02 弹道飞行弹体、f05 霰弹 6 发 18° 散射。铁律见 `.agents/skills/vfx-tuning/SKILL.md`。
-- [ ] **P2-6 势力专属卡进化路径纳入覆盖测试**（S）
-  - 14 张（`data/faction_exclusive_cards.gd`）不在 `tests/evolution_path_coverage.gd` 的 112 卡清单内。
-- [ ] **P2-7 法则→符文替代 + 研究/科研点退役清理批次**（2026-08-23 确认：符文全面取代法则；研究与科研点已从设计移除）（M~L）
+- [x] **P2-6 势力专属卡进化路径纳入覆盖测试**（S）✅ 2026-08-23 批次3（6150ace）：覆盖 112→126 卡
+- [x] **P2-7 法则→符文替代 + 研究/科研点退役清理批次**（M~L）✅ 2026-08-23 批次2a/2b/2c（8ecefc4/db3174f/63177af）：三范围整体收官，autoload 32→31
   - **范围 A · 法则卡获取/展示链路移除**：
     - `faction_shop.gd`：默认库存与在售条目中的法则卡下架（steel_phase_armor/steel_quick_repair/steel_bastion_wall/flame_heat_overload/thunder_emp_storm 等）；:313 法则卡购买分支移除；顺手处置在售的 4 张断链武器蓝图 id（见 P2-1 事项 2）
     - `drop_manager.gd:362` `_add_law_card`：战斗掉落的法则卡路径移除（含掉落表 law 类型条目）
@@ -117,6 +101,17 @@
   - **存档兼容**：旧档背包中的法则卡按项目惯例静默跳过（先例：eom/characters/challenge_records 的 key 级忽略）；**已装备在红/蓝槽的法则卡读档时静默移出槽位**（避免退役后残留在 slot 数组里被 UI 渲染成空引用）；是否对拥有法则卡的旧档折算补偿（如转符文）执行时定
   - **验证**：panel_open_smoke 五面板 + main boot headless + 掉落/商店购买冒烟（含买符文正路径）+ gdunit 全量与既有基线对比（19 失败清单外不得新增）
   - **文档**：AGENTS.md 停用清单补条目 + CHANGELOG 记批次；`work_全卡面加工/卡面文件名与显示名_最全表.txt` 过时清单顺带删除或标记废弃
+- [ ] **P2-8 相位师基地战出口机制**（S~M；2026-08-24 批次9 回灌）
+  - soak 实测：弱势方（打不动也打不死）可令 PM 基地战无限僵持（bot 视角 20+ 游戏分钟无结算）。真实玩家可重开规避，但缺体面出口。
+  - 方案候选：战斗内"撤退"按钮（判负保进度）；或 N 游戏分钟无有效伤害判平/判负。
+- [ ] **P2-9 击杀掉真卡通道复活**（M；2026-08-24 批次9 回灌，经济面需评估）
+  - bp_* 蓝图掉落已随体系退役清零（批次9 F1）。原"敌人作为装备来源"设计可复活为真卡直掉（先例：ww2_panther/ww2_kingtiger/ww1_saint），但掉率/经济影响需重审计（批次7 经济审计基于无此通道的现状）。
+- [ ] **P2-10 合金/晶体资源处置**（S~M；2026-08-23 批次7 决议：EA 保持现状 + 记录）
+  - 合成+蓝图制造删除后两资源零消耗方、纯展示。1.0 前接消耗（如改造升级/商店定价）或退役。
+- [ ] **P2-11 L43+ 难度曲线人工核验**（S；2026-08-24 批次9 观察）
+  - soak 中无强化账号在冷战后期（L43+）遭遇秒败级首波。真实玩家有商店/强化/满 4 卡位缓冲，但断崖体感需实测（挂 P1-2 人工 B 部分一起做）。
+- [ ] **P2-12 低频 Lambda capture 残留定位**（S；工程尾巴）
+  - ~1/25 场战斗一次 "Lambda capture at index 1 was freed"（良性有守卫）。attack_pose 已修一例（批次9 F4），余一处无堆栈未定位。
 
 ---
 
