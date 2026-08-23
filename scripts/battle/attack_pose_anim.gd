@@ -96,9 +96,14 @@ static func _play_lean(spr: Sprite2D, pose: Dictionary, is_player: bool) -> void
 	var rad := deg_to_rad(deg)
 	tw.tween_property(spr, "rotation", rad, 0.05)
 	tw.tween_property(spr, "rotation", 0.0, 0.11)
+	# 批次9（2026-08-23）：lambda 捕获节点本体时，单位在 Tween 期内被释放会在回调触发
+	# 瞬间报 "Lambda capture was freed"（即使体内有 is_instance_valid 守卫）。
+	# 改捕获 WeakRef（永不为 freed-object），get_ref() 判活。
+	var spr_ref: WeakRef = weakref(spr)
 	tw.tween_callback(func() -> void:
-		if is_instance_valid(spr):
-			spr.remove_meta("_lean_tween")
+		var s: Sprite2D = spr_ref.get_ref() as Sprite2D
+		if s != null:
+			s.remove_meta("_lean_tween")
 	)
 
 
@@ -116,20 +121,28 @@ static func _try_play_frames(u: Node2D, spr: Sprite2D) -> void:
 		driver.set_process(false)
 	var orig: Texture2D = spr.texture
 	spr.texture = frames[0]
+	# 批次9（2026-08-23）：同上——SceneTreeTimer 不随节点释放取消，捕获节点本体会在
+	# 单位于姿态帧保持期内阵亡时（战斗切换高发）报 "Lambda capture was freed"。
+	# 改捕获 WeakRef，get_ref() 判活。
+	var spr_ref2: WeakRef = weakref(spr)
+	var driver_ref: Variant = weakref(driver) if driver != null else null
 	if frames.size() >= 2:
 		var t1: SceneTreeTimer = u.get_tree().create_timer(FRAME_HOLD_SEC * 0.5)
 		t1.timeout.connect(func() -> void:
-			if is_instance_valid(spr):
-				spr.texture = frames[1]
+			var s: Sprite2D = spr_ref2.get_ref() as Sprite2D
+			if s != null:
+				s.texture = frames[1]
 		)
 	var t2: SceneTreeTimer = u.get_tree().create_timer(FRAME_HOLD_SEC)
 	t2.timeout.connect(func() -> void:
-		if not is_instance_valid(spr):
+		var s: Sprite2D = spr_ref2.get_ref() as Sprite2D
+		if s == null:
 			return
-		if driver != null and is_instance_valid(driver):
-			driver.set_process(true)  # 下一 tick 恢复待机帧
+		var drv: Node = driver_ref.get_ref() as Node if driver_ref != null else null
+		if drv != null:
+			drv.set_process(true)  # 下一 tick 恢复待机帧
 		else:
-			spr.texture = orig
+			s.texture = orig
 	)
 
 

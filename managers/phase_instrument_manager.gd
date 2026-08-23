@@ -949,7 +949,9 @@ func clear_slots_for_new_game() -> void:
 	phase_field_xp = 0
 	unspent_phase_field_points = 0
 	phase_field_allocations.clear()
-	# 新游戏自动装备初始卡牌，避免进入战斗后所有槽位为空无法部署
+	# v7.x 起 _equip_starter_cards_for_new_game 为 no-op（保留调用点防报错）：
+	# 初始卡由 SaveManager 入包（ww1_ft17），绿槽开局为空、玩家手动装备。
+	# 批次9（2026-08-23）：修正此注释口径（原文"自动装备避免无法部署"已失实）。
 	_equip_starter_cards_for_new_game()
 	# v9.x（P2-7范围B）：开局 starter 符文发放从 PhaseLawManager 迁移至此（法则退役后
 	# 唯一新游戏符文入口；add_owned_rune 自带去重，重复调用安全）

@@ -69,9 +69,7 @@ const DATA := {
 		"attack_interval": 0.25,
 		"weapon_type": 0,
 		"tags": ["elite", "infantry", "fast"],
-		"drops": [
-			{"card_id": "bp_ww1_001", "chance": 0.2},
-		],
+		"drops": [],
 	},
 	"ww1_arm_rolls_e": {
 		"era": 0,
@@ -170,9 +168,7 @@ const DATA := {
 		"attack_interval": 0.22,
 		"weapon_type": 0,
 		"tags": ["elite", "infantry", "fast"],
-		"drops": [
-			{"card_id": "bp_ww2_001", "chance": 0.25},
-		],
+		"drops": [],
 	},
 	"ww2_arm_panther_e": {
 		"era": 1,

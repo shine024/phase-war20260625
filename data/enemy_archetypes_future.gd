@@ -69,9 +69,7 @@ const DATA := {
 		"attack_interval": 0.4,
 		"weapon_type": 8,
 		"tags": ["elite", "infantry", "fast", "stealth"],
-		"drops": [
-			{"card_id": "bp_near_001", "chance": 0.4},
-		],
+		"drops": [],
 	},
 	"fut_arm_colossus_e": {
 		"era": 4,
@@ -83,9 +81,7 @@ const DATA := {
 		"attack_interval": 1.0,
 		"weapon_type": 8,
 		"tags": ["elite", "tank", "armored"],
-		"drops": [
-			{"card_id": "bp_near_002", "chance": 0.5},
-		],
+		"drops": [],
 	},
 
 	# 头目（1种）
@@ -99,9 +95,7 @@ const DATA := {
 		"attack_interval": 0.9,
 		"weapon_type": 10,
 		"tags": ["boss", "ultimate"],
-		"drops": [
-			{"card_id": "bp_near_003", "chance": 1.0},
-		],
+		"drops": [],
 	},
 }
 

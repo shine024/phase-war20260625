@@ -69,9 +69,7 @@ const DATA := {
 		"attack_interval": 1.25,
 		"weapon_type": 6,
 		"tags": ["elite", "infantry", "fast"],
-		"drops": [
-			{"card_id": "bp_cold_001", "chance": 0.3},
-		],
+		"drops": [],
 	},
 	"cold_arm_t72_e": {
 		"era": 2,
@@ -99,9 +97,7 @@ const DATA := {
 		"attack_interval": 0.8,
 		"weapon_type": 9,
 		"tags": ["boss", "aircraft", "fast"],
-		"drops": [
-			{"card_id": "bp_cold_002", "chance": 0.4},
-		],
+		"drops": [],
 	},
 
 	
@@ -169,9 +165,7 @@ const DATA := {
 		"attack_interval": 0.29,
 		"weapon_type": 1,
 		"tags": ["elite", "infantry", "fast"],
-		"drops": [
-			{"card_id": "bp_modern_001", "chance": 0.3},
-		],
+		"drops": [],
 	},
 	"mod_arm_abrams_e": {
 		"era": 3,
@@ -197,9 +191,7 @@ const DATA := {
 		"attack_interval": 0.6,
 		"weapon_type": 9,
 		"tags": ["elite", "aircraft", "fast"],
-		"drops": [
-			{"card_id": "bp_modern_002", "chance": 0.35},
-		],
+		"drops": [],
 	},
 
 	# 头目（1种）
@@ -213,8 +205,6 @@ const DATA := {
 		"attack_interval": 1.2,
 		"weapon_type": 2,
 		"tags": ["boss", "support"],
-		"drops": [
-			{"card_id": "bp_modern_003", "chance": 0.6},
-		],
+		"drops": [],
 	},
 }

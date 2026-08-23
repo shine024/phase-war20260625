@@ -135,12 +135,7 @@
         "vehicle",
         "armored"
       ],
-      "drops": [
-        {
-          "card_id": "fut_sup_bulwark",
-          "chance": 0.2
-        }
-      ],
+      "drops": [],
       "anim_idle": "idle",
       "anim_move": "run",
       "anim_attack": "attack",

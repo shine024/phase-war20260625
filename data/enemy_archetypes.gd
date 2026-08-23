@@ -72,9 +72,6 @@ const ERA_PREFIX: Array[String] = ["ww1", "ww2", "cold", "modern", "near"]
 const TARGET_ARCHETYPE_COUNT: int = 150
 ## 100 基本敌人清单启用后关闭程序批量生成（见 data/enemy_unit_manifest.gd）
 const GENERATED_PER_ERA: int = 0
-## 每个时代前若干 bp_* 视为“平台蓝图”区间（与 enemy_blueprints.gd 生成顺序一致）
-const ERA_BP_COUNT: Array[int] = [26, 26, 26, 26, 26]
-const PLATFORM_BP_COUNT_BY_ERA: Array[int] = [10, 10, 9, 9, 10]
 
 ## 各时代可用武器类型（GC.WeaponType：0 SMG 1 RIFLE 2 MG 3 ROCKET 4 PISTOL 5 SHOTGUN 6 SNIPER 7 FLAK 8 LASER 9 MISSILE 10 OMEGA）
 ## 避免“现代坦克装一战手枪”等错配：按单位类型再过滤
@@ -202,7 +199,6 @@ static func _weapon_pool_for_era_and_kind(era: int, kind: int) -> Array:
 	return out
 
 static var _generated_cache: Dictionary = {}
-static var _era_bp_count_cache: Dictionary = {}
 ## v9.x: get_ids_for_era 结果按 era 缓存，避免每波次 O(150) 全量遍历
 static var _era_ids_cache: Dictionary = {}
 static var _era_ids_cache_valid: bool = false
@@ -239,7 +235,7 @@ static func _get_generated_archetypes() -> Dictionary:
 				"attack_interval": 1.0 + (0.5 if kind == 2 else 0.0),
 				"weapon_type": weapon_type,
 				"tags": ["frontline"],
-				"drops": _generated_blueprint_drops_for_archetype(e, i),
+				"drops": [],  # 批次9：蓝图掉落生成已退役（GENERATED_PER_ERA=0 本就零迭代）
 			}
 			if weapon_types.size() > 1:
 				base["weapon_types"] = weapon_types
@@ -247,66 +243,8 @@ static func _get_generated_archetypes() -> Dictionary:
 	_generated_cache = out
 	return _generated_cache
 
-static func _generated_blueprint_id_for_archetype(era: int, index: int) -> String:
-	var safe_era: int = clampi(era, 0, ERA_PREFIX.size() - 1)
-	var prefix: String = ERA_PREFIX[safe_era]
-	var count: int = _get_era_blueprint_count(safe_era)
-	if count <= 0:
-		return "bp_%s_%03d" % [prefix, 1]
-	# 线性同余映射：通过互质步长打散索引，避免只命中低序号蓝图。
-	var step: int = _pick_coprime_step(count)
-	var offset: int = int((safe_era * 11 + 3) % count)
-	var bp_idx: int = int((offset + index * step) % count)
-	return "bp_%s_%03d" % [prefix, bp_idx + 1]
-
-static func _generated_blueprint_drops_for_archetype(era: int, index: int) -> Array:
-	var primary_id: String = _generated_blueprint_id_for_archetype(era, index)
-	var primary_chance: float = 0.08 + era * 0.02 + (index % 3) * 0.01
-	var drops: Array = [{"card_id": primary_id, "chance": primary_chance}]
-	var count: int = _get_era_blueprint_count(era)
-	if count > GENERATED_PER_ERA:
-		var secondary_id: String = _generated_blueprint_id_for_archetype(era, index + GENERATED_PER_ERA)
-		if secondary_id != primary_id:
-			# 次要掉落用于扩展时代覆盖面，同时保持主掉落为主要来源。
-			var secondary_chance: float = maxf(0.04, primary_chance * 0.5)
-			drops.append({"card_id": secondary_id, "chance": secondary_chance})
-	return drops
-
-static func _get_era_blueprint_count(era: int) -> int:
-	if _era_bp_count_cache.has(era):
-		return int(_era_bp_count_cache[era])
-	var safe_era: int = clampi(era, 0, ERA_PREFIX.size() - 1)
-	var prefix: String = ERA_PREFIX[safe_era]
-	var actual_count: int = 0
-	for id_val in get_all_ids():
-		var sid: String = String(id_val)
-		if sid.begins_with("bp_%s_" % prefix):
-			actual_count += 1
-	if actual_count <= 0:
-		actual_count = ERA_BP_COUNT[safe_era] if safe_era < ERA_BP_COUNT.size() else 56
-	_era_bp_count_cache[safe_era] = actual_count
-	return actual_count
-
-static func _pick_coprime_step(modulo: int) -> int:
-	if modulo <= 1:
-		return 1
-	var candidates: Array[int] = [23, 19, 17, 13, 11, 7, 5, 3, 2]
-	for c in candidates:
-		if c < modulo and _gcd(c, modulo) == 1:
-			return c
-	for c in range(modulo - 1, 1, -1):
-		if _gcd(c, modulo) == 1:
-			return c
-	return 1
-
-static func _gcd(a: int, b: int) -> int:
-	var x: int = absi(a)
-	var y: int = absi(b)
-	while y != 0:
-		var t: int = x % y
-		x = y
-		y = t
-	return max(1, x)
+# 批次9（2026-08-23）：蓝图掉落生成机器（id 生成/掉落构造/时代蓝图计数/互质步长/gcd）整块删除——
+# 蓝图体系已退役且 GENERATED_PER_ERA=0 零迭代，纯死代码。
 
 static func _ensure_manifest_merged() -> void:
 	if not _manifest_merged.is_empty():
@@ -509,16 +447,14 @@ static func get_ids_for_era(era: int) -> Array:
 	return result
 
 static func get_drop_definitions(id: String) -> Array:
+	# 批次9（2026-08-23）：蓝图体系已删（2026-08-22），原"自动追加平台/武器蓝图掉落"
+	# 生成 bp_* 死 id 每次击杀空转（card_drop_grants 无法解析→警告+跳过，掉落位被占）。
+	# 整块退役——现掉落 = 配置表显式条目（真卡直掉先例：ww2_panther/ww2_kingtiger/ww1_saint）。
+	# 复活"击杀掉真卡"通道属经济面改动，记路线图另行评估（批次7 经济审计基于本现状）。
 	var cfg: Dictionary = get_config(id)
 	if cfg.is_empty():
 		return []
-	var drops: Array = cfg.get("drops", []).duplicate(true)
-	# 设计目标：除极个别单位外，敌人应尽量提供可装备的平台/武器蓝图来源
-	if _should_auto_add_platform_drop(id, cfg, drops):
-		drops.append(_make_platform_drop_for_archetype(id, int(cfg.get("era", 0)), cfg))
-	if _should_auto_add_weapon_drop(id, cfg, drops):
-		drops.append(_make_weapon_drop_for_archetype(id, int(cfg.get("era", 0)), cfg))
-	return drops
+	return cfg.get("drops", []).duplicate(true)
 
 
 ## 击杀时纳米材料：由 BattleDamageSystem 在敌方死亡时调用，写入 BasicResourceManager。
@@ -568,75 +504,11 @@ static func _resolve_nano_kill_roll_definition(cfg: Dictionary) -> Dictionary:
 
 
 static func _should_auto_add_platform_drop(id: String, cfg: Dictionary, drops: Array) -> bool:
-	# 极个别例外：纯空中单位不强制给平台掉落
-	var tags: Array = cfg.get("tags", [])
-	var is_air_only: bool = tags.has("aircraft") and not tags.has("vehicle")
-	if is_air_only:
-		return false
-	# v7.x 修复：原循环体只 continue 不判断，最后无条件 return true，导致已配置卡牌掉落
-	# (card_id 以 bp_ 开头的平台/武器蓝图) 的敌人仍被追加一张自动平台掉落 → 重复发放。
-	# 修复：遍历 drops，若已有 bp_ 卡牌掉落，则不再追加自动平台。
-	for d in drops:
-		if not (d is Dictionary):
-			continue
-		var card_id: String = String((d as Dictionary).get("card_id", ""))
-		if not card_id.is_empty() and card_id.begins_with("bp_"):
-			return false
-	return true
-
-static func _should_auto_add_weapon_drop(id: String, cfg: Dictionary, drops: Array) -> bool:
-	# 新规则：玩家侧不再维护独立武器卡掉落通道
+	# 批次9（2026-08-23）：随蓝图掉落生成块退役（见 get_drop_definitions 注释），全项目零引用。
 	return false
 
-static func _make_platform_drop_for_archetype(archetype_id: String, era: int, cfg: Dictionary) -> Dictionary:
-	var safe_era: int = clampi(era, 0, ERA_PREFIX.size() - 1)
-	var prefix: String = ERA_PREFIX[safe_era]
-	var platform_count: int = PLATFORM_BP_COUNT_BY_ERA[safe_era] if safe_era < PLATFORM_BP_COUNT_BY_ERA.size() else 8
-	platform_count = maxi(platform_count, 1)
-	var h: int = absi(archetype_id.hash())
-	var platform_idx: int = (h % platform_count) + 1
-	var card_id: String = "bp_%s_%03d" % [prefix, platform_idx]
-	var tags: Array = cfg.get("tags", [])
-	var chance: float = 0.10
-	if tags.has("elite"):
-		chance = 0.22
-	if tags.has("boss"):
-		chance = 0.45
-	return {
-		"card_id": card_id,
-		"chance": chance,
-	}
-
-static func _make_weapon_drop_for_archetype(archetype_id: String, era: int, cfg: Dictionary) -> Dictionary:
-	var safe_era: int = clampi(era, 0, ERA_PREFIX.size() - 1)
-	var prefix: String = ERA_PREFIX[safe_era]
-	var platform_count: int = PLATFORM_BP_COUNT_BY_ERA[safe_era] if safe_era < PLATFORM_BP_COUNT_BY_ERA.size() else 8
-	var era_total: int = _get_era_blueprint_count(safe_era)
-	var weapon_count: int = maxi(1, era_total - platform_count)
-	var h: int = absi(archetype_id.hash())
-	var weapon_offset: int = h % weapon_count
-	var bp_idx: int = platform_count + weapon_offset + 1
-	var card_id: String = "bp_%s_%03d" % [prefix, bp_idx]
-	var tags: Array = cfg.get("tags", [])
-	var chance: float = 0.12
-	if tags.has("elite"):
-		chance = 0.24
-	if tags.has("boss"):
-		chance = 0.50
-	return {
-		"card_id": card_id,
-		"chance": chance,
-	}
-
-## 返回掉落该蓝图的敌人显示名（用于 UI 来源标注），若为默认蓝图则返回空字符串
-static func get_source_enemy_name_for_blueprint(card_id: String) -> String:
-	for arch_id in get_all_ids():
-		var cfg: Dictionary = get_config(arch_id)
-		var drops: Array = cfg.get("drops", [])
-		for d in drops:
-			if d is Dictionary and d.get("card_id", "") == card_id:
-				return cfg.get("display_name", arch_id)
-	return ""
+static func _should_auto_add_weapon_drop(id: String, cfg: Dictionary, drops: Array) -> bool:
+	return false
 
 ## ─────────────────────────────────────────────
 ## card_id → archetype_id 反向索引（用于玩家方战斗单位的视觉同形）

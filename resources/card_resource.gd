@@ -466,10 +466,14 @@ func get_current_power() -> int:
 ## 计算改造战力加成
 func _get_modifications_power_bonus() -> int:
 	var bonus = 0
+	# 批次9（2026-08-23）：经 _mod_registry() 运行时查找（裸 autoload 标识符在
+	# --script 冒烟模式编译期不可用，此文件在 UCT 等 preload 链上会级联炸编译）。
+	var reg: Node = _mod_registry()
+	if reg == null or not reg.has_method("get_data"):
+		return 0
 	for mod_entry in mods:
 		var mod_id = mod_entry.get("id", "") if mod_entry is Dictionary else ""
-		# 通过ModificationRegistry获取数据（autoload，直接访问）
-		var mod_data = ModificationRegistry.get_data(mod_id)
+		var mod_data = reg.get_data(mod_id)
 		var power_mult = mod_data.get("power_mult", 1.0)
 		bonus += int(power_mult * 10)
 	return bonus
@@ -480,6 +484,15 @@ func get_rank_progress() -> float:
 	if enhance_level >= 10:
 		return 1.0
 	return float(enhance_level) / 10.0
+
+## 批次9（2026-08-23）：ModificationRegistry 统一经此取（裸 autoload 标识符在
+## --script 冒烟模式编译期不可用，此文件在 UCT 等脚本的 preload 链上会级联炸编译）。
+static func _mod_registry() -> Node:
+	var tree = Engine.get_main_loop()
+	if tree and tree.root:
+		var reg: Node = tree.root.get_node_or_null("ModificationRegistry")
+		return reg
+	return null
 
 ## 检查改造冲突
 func can_install_modification(mod_id: String) -> Dictionary:
@@ -492,7 +505,12 @@ func can_install_modification(mod_id: String) -> Dictionary:
 		return result
 
 	# 获取改造数据
-	var mod_data = ModificationRegistry.get_data(mod_id)
+	var mod_reg: Node = _mod_registry()
+	if mod_reg == null or not mod_reg.has_method("get_data"):
+		result.can_install = false
+		result.reason = "改造系统未加载"
+		return result
+	var mod_data = mod_reg.get_data(mod_id)
 	if mod_data.is_empty():
 		result.can_install = false
 		result.reason = "找不到改造数据"
@@ -529,7 +547,7 @@ func can_install_modification(mod_id: String) -> Dictionary:
 	if not conflict_group.is_empty():
 		for installed_mod in mods:
 			var installed_id = installed_mod.get("id", "") if installed_mod is Dictionary else ""
-			var installed_data = ModificationRegistry.get_data(installed_id)
+			var installed_data = mod_reg.get_data(installed_id)
 			var installed_group = installed_data.get("conflict_group", "")
 
 			if installed_group == conflict_group:
@@ -558,7 +576,10 @@ func get_modified_stats() -> Dictionary:
 
 	# v6.10: 改用 apply_with_level（支持 level_effects，强化词条才会在面板预览生效）
 	# 旧路径 apply_effects 只读 effects 字段，强化词条全用 level_effects，导致面板预览属性全 +0
-	return ModificationRegistry.apply_with_level(base_stats, mods)
+	var reg_lv: Node = _mod_registry()
+	if reg_lv != null and reg_lv.has_method("apply_with_level"):
+		return reg_lv.apply_with_level(base_stats, mods)
+	return base_stats
 
 ## 获取可进化目标列表
 ## v7.x 数据断裂修复：原读 evolution_paths/*.gd（与 LINEAGES 分叉，导致显示的目标无法进化），
@@ -629,6 +650,14 @@ func _build_evo_target(target_id: String, path_type: String) -> Dictionary:
 		"path_type": path_type,
 	}
 
+## 进化注册表运行时查找（同 _mod_registry 理由：裸 autoload 标识符在 --script 模式编译期不可用）
+static func _evo_registry() -> Node:
+	var tree = Engine.get_main_loop()
+	if tree and tree.root:
+		var reg: Node = tree.root.get_node_or_null("EvolutionPathRegistry")
+		return reg
+	return null
+
 ## 检查进化条件
 func check_evolution_requirements(target_card_id: String) -> Dictionary:
 	var card_dict = {
@@ -638,8 +667,10 @@ func check_evolution_requirements(target_card_id: String) -> Dictionary:
 		power = power,
 		combat_kind = combat_kind,
 	}
-	# 通过EvolutionPathRegistry获取数据（autoload，直接访问）
-	return EvolutionPathRegistry.check_evolution_requirements(card_dict, target_card_id)
+	var reg: Node = _evo_registry()
+	if reg == null or not reg.has_method("check_evolution_requirements"):
+		return {"can_evolve": false, "reason": "进化系统未加载"}
+	return reg.check_evolution_requirements(card_dict, target_card_id)
 
 ## 计算进化后属性
 func calculate_evolved_stats(target_card_id: String) -> Dictionary:
@@ -649,8 +680,10 @@ func calculate_evolved_stats(target_card_id: String) -> Dictionary:
 		installed_modifications = mods,
 		power = power,
 	}
-	# 通过EvolutionPathRegistry获取数据（autoload，直接访问）
-	return EvolutionPathRegistry.calculate_evolved_stats(card_dict, target_card_id)
+	var reg: Node = _evo_registry()
+	if reg == null or not reg.has_method("calculate_evolved_stats"):
+		return {}
+	return reg.calculate_evolved_stats(card_dict, target_card_id)
 
 ## 记录进化历史
 func record_evolution(from_id: String, to_id: String, preserved_mods: Array) -> void:

@@ -2743,3 +2743,19 @@ v17j 分格 meteor 7→5（-2）/summon 4→5（+1）——单格 ±1-2 波动�
 **合并门禁**：`.github/workflows/tests.yml`（tests/unit + tests/integration）自本批次起为有效绿灯基线。
 
 验证：gdunit 全量 145 例 0 失败 + daily_task 套件追加两轮复跑全绿（抖动根除确认）+ main boot headless 300 帧零错误。
+
+## v20.7 全流程通关验收（P1-2，发行批次9）（2026-08-24）
+
+**自动化验收通过**：headless AFK 推图 soak 两段链合计 **L1-100 全部 100 关战斗发生、113 场战斗、41 场相位师关触发（五时代全覆盖）、零崩溃零脚本错误**（历史段错误/OOM 未复现；对象数峰值回落=场间清理正常）。工具 `tests/_tmp_batch9_campaign_soak.gd`（空槽保护/按时代补卡/僵持与连败墙跳关/事件间隔看门狗），清单与数据见 `docs/RELEASE_ACCEPTANCE_BATCH9.md`。
+
+**验收过程发现并修复 6 项**（F1-F6 详表见验收文档）：
+
+- **F6 快速重试战斗管线竞态（P0 级，本批次核心修复）**：end_battle 结算链跨 3+ 帧延迟，秒败后立即重试（挂机/世界地图自动部署入口）时旧链 clobber 新战——迟发驱动销毁信号吞掉新战 begin_card_grid_combat → **新战无波次永不结算**（L43 稳定复现，表象=引擎空转 CPU 120% 无输出）。修复双保险：驱动销毁信号改按场连接/断开 + 战斗世代号（_battle_gen）护栏（延迟链携带世代号，旧链撞新战整体作废）
+- **F1 bp_* 死掉落清理**：蓝图体系删除后战斗掉落表仍滚死 id（自动平台掉落机器 + 静态 10 条 + JSON 时代错乱 1 条 fut_sup_bulwark）——每次击杀掉落位被占。生成机器整块删除、数据清零；"复活击杀掉真卡"记路线图（经济面变动需评估，批次7 审计基于现状）
+- **F2 card_resource.gd 裸 autoload ×5**（ModificationRegistry ×3 + EvolutionPathRegistry ×2）：--script 冒烟模式编译期不可用且此文件在 UCT preload 链上级联炸编译（批次7 审计脚本复跑失败根因）。统一改运行时 root 查找 helper
+- **F4 attack_pose_anim lambda freed capture**：姿态帧定时器捕获节点本体，单位阵亡瞬间报"Lambda capture was freed"（~1/7 场）。改 WeakRef 捕获；另一处低频来源（~1/25 场）未定位、良性有守卫，记已知项
+- F3 PIM 失实注释修正；F5 挂机/脚本路径新档 0 卡秒败（玩家路径无此问题，驱动侧落定等待解决）
+
+**遗留观察项（人工验收重点）**：L43+ 无强化账号难度陡增（秒败级首波）；PM 基地战弱势方可长期僵持（建议加投降/超时判负出口，路线图候选）。
+
+验证：soak 修复后复跑 L43 复现点（波次恢复/首战 1121 帧真实结算）+ gdunit 145 例 0 失败 + main boot 300 帧零错误 + 真实存档槽全程未触碰（空槽保护 + 结束切回）。

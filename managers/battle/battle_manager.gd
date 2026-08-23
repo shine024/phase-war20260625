@@ -52,6 +52,11 @@ var enemy_indirect_batch: Node = null
 # ---- 战斗状态 ----
 var battle_active: bool = false
 var battlefield: Node = null
+## 批次9（2026-08-23）：战斗世代号——每场 start_battle 递增；end_battle 的 3 帧延迟
+## 结算链与战斗内 call_deferred 携带世代号，快速重试时旧链撞上新战即整体作废
+## （修复：秒败后立即重试 → 旧链 clobber 新战/迟发驱动销毁信号吞掉新战波次启动，
+## 战斗无波次永不结算，L43 起稳定复现；玩家经世界地图"自动部署"快速重开亦可触发）。
+var _battle_gen: int = 0
 var player_units_node: Node = null
 var enemy_units_node: Node = null
 var _battle_elapsed_time: float = 0.0
@@ -145,11 +150,9 @@ func _ready() -> void:
 		# v9.x: 订阅 unit_spawned 用于单位数变化广播（spawn 后计数器已递增）
 		if not SignalBus.unit_spawned.is_connected(_on_unit_spawned):
 			SignalBus.unit_spawned.connect(_on_unit_spawned)
-		if not SignalBus.phase_driver_destroyed.is_connected(_on_phase_driver_destroyed):
-			SignalBus.phase_driver_destroyed.connect(_on_phase_driver_destroyed)
-		if SignalBus.has_signal("enemy_phase_driver_destroyed"):
-			if not SignalBus.enemy_phase_driver_destroyed.is_connected(_on_enemy_phase_driver_destroyed):
-				SignalBus.enemy_phase_driver_destroyed.connect(_on_enemy_phase_driver_destroyed)
+		# 批次9（2026-08-23）：phase_driver_destroyed 两信号改"按场连接"（start_battle 连 /
+		# end_battle 断）——常驻连接下，上一场驱动 queue_free 的迟发信号会打进新战斗
+		# 触发幽灵 end_battle（秒败快速重试时曾致新战无波次永不结算，L43 稳定复现）。
 		if not SignalBus.unit_damaged.is_connected(_on_unit_damaged_combat_feedback):
 			SignalBus.unit_damaged.connect(_on_unit_damaged_combat_feedback)
 		# v10 解题式玩法：克制质变计数（战后统计"本关克制链生效 N 次"）
@@ -289,6 +292,11 @@ func start_battle(battle_scene: Node) -> void:
 		pass
 		# [LOG-v5.1] print("[BattleManager] start_battle 被调用")
 	battlefield = battle_scene
+	# 批次9（2026-08-23）：世代号护栏——end_battle 的结算链跨 3+ 帧延迟，快速重试时
+	# 旧链会 clobber 新战状态（_is_phase_master_battle 重置/重复 battle_ended/吞掉
+	# 新战 begin_card_grid_combat）。每场递增世代号，延迟调用携带并校验。
+	_battle_gen += 1
+	_connect_battle_scoped_signals()
 
 	# 性能优化：初始化空间分区系统
 	_setup_spatial_grid()
@@ -343,7 +351,7 @@ func start_battle(battle_scene: Node) -> void:
 	if battlefield != null and battlefield.has_method("ensure_battle_slot_grid_ready"):
 		battlefield.ensure_battle_slot_grid_ready()
 	_spawn_system.configure_card_grid_battle(BattleSlotGrid.SLOT_COUNT)
-	call_deferred("begin_card_grid_combat")
+	call_deferred("begin_card_grid_combat", _battle_gen)
 	player_units_node = _spawn_system.get_player_units_node()
 	enemy_units_node = _spawn_system.get_enemy_units_node()
 	_damage_system.set_player_units_node(player_units_node)
@@ -425,6 +433,8 @@ func end_battle(player_won: bool) -> void:
 	if DEBUG_BATTLE_LOG:
 		pass
 		# [LOG-v5.1] print("[BattleManager] end_battle called, player_won: ", player_won)
+	var gen := _battle_gen
+	_disconnect_battle_scoped_signals()
 	battle_active = false
 	_card_grid_placement_active = false
 	_card_grid_combat_started = false
@@ -503,7 +513,7 @@ func end_battle(player_won: bool) -> void:
 	# 的 5 个累计 getter（wave_total/interval/max_deployed/units_lost/wave_index）
 	# 都不被 clear_all_units 触碰；battle_active=false 后 _process 首行 return，
 	# _battle_elapsed_time 不再增长；各入口有 battle_active 守卫，延迟期间不重入。
-	call_deferred("_deferred_end_battle_finalize", player_won)
+	call_deferred("_deferred_end_battle_finalize", player_won, gen)
 
 
 ## v9.1: 暴露组合技引擎（供 module_effect_handler / bullet 查询激活机制）
@@ -524,7 +534,10 @@ func get_combo_field_state() -> RefCounted:
 # 帧链：A(end_battle清理) → B(①掉落表) → B'(①b情报收获) → C(②③④广播)
 # 数据时序安全：_battle_result 在①写入，①b追加字段，②③④在下一帧读；
 # _is_phase_master_battle 在 C 才清零，B/B' 都可安全读取。
-func _deferred_end_battle_finalize(player_won: bool) -> void:
+func _deferred_end_battle_finalize(player_won: bool, gen: int = -1) -> void:
+	# 批次9：世代号护栏——新战斗已开打则本链（旧场结算）整体作废
+	if gen >= 0 and gen != _battle_gen:
+		return
 	# ①掉落表生成（中等负载：DropManager 掉落表 + 相位仪掉落）
 	if player_won:
 		_battle_result = _damage_system.generate_battle_drops_only(
@@ -536,10 +549,12 @@ func _deferred_end_battle_finalize(player_won: bool) -> void:
 			_spawn_system.get_player_units_lost()
 		)
 	# 掉落表完成后，把①b情报收获延到下一帧
-	call_deferred("_deferred_end_battle_intel_harvest", player_won)
+	call_deferred("_deferred_end_battle_intel_harvest", player_won, gen)
 
 
-func _deferred_end_battle_intel_harvest(player_won: bool) -> void:
+func _deferred_end_battle_intel_harvest(player_won: bool, gen: int = -1) -> void:
+	if gen >= 0 and gen != _battle_gen:
+		return
 	# ①b 情报收获生成（重负载：遍历全部击败敌人做情报掷骰，胜利后单帧最重操作）
 	# has_recon 由 end_battle（Frame A）清场前计算，此处直接传入，避免遍历已清空的单位。
 	if player_won:
@@ -547,11 +562,13 @@ func _deferred_end_battle_intel_harvest(player_won: bool) -> void:
 	# v10 解题式玩法：克制链统计写入战报（"本关克制链生效 N 次"，战后结算可读）
 	_battle_result["counter_break_count"] = counter_break_count
 	# ②③④ 推迟到下一帧（让渲染线程先画情报收获后的胜利画面）
-	call_deferred("_deferred_end_battle_broadcast", player_won)
+	call_deferred("_deferred_end_battle_broadcast", player_won, gen)
 
 # v7.x 性能：掉落表+情报收获都完成后的收尾——任务通知/清状态/广播，帧C 执行。
 # 依赖 _battle_result（帧B 写入掉落/星级，帧B' 追加情报字段，本帧安全读取）。
-func _deferred_end_battle_broadcast(player_won: bool) -> void:
+func _deferred_end_battle_broadcast(player_won: bool, gen: int = -1) -> void:
+	if gen >= 0 and gen != _battle_gen:
+		return
 	# ①c 清理 battle_vfx 组所有节点（焦痕/烟柱/核爆动画/浓度场等延迟 spawn 或永久残留的 VFX）。
 	# 放在 battle_ended emit 前：覆盖 prune_transient_children 漏掉的延迟回调 spawn 节点
 	# （核爆余波环 0.08s 延迟、烟柱 2.5s 自毁链等在清场后才生成的漏网之鱼）。
@@ -590,7 +607,10 @@ func is_card_grid_combat_started() -> bool:
 	return battle_active and _card_grid_combat_started
 
 
-func begin_card_grid_combat() -> void:
+func begin_card_grid_combat(gen: int = -1) -> void:
+	# 批次9：世代号护栏——gen>=0 时校验（旧世代的延迟调用直接丢弃）
+	if gen >= 0 and gen != _battle_gen:
+		return
 	if not battle_active:
 		return
 	if _card_grid_combat_started:
@@ -739,6 +759,25 @@ func _on_enemy_phase_driver_destroyed() -> void:
 	if not battle_active:
 		return
 	end_battle(true)
+
+## 批次9：驱动销毁信号按场连接/断开（迟发信号只在本场有效，见 _battle_gen 注释）
+func _connect_battle_scoped_signals() -> void:
+	if not SignalBus:
+		return
+	if not SignalBus.phase_driver_destroyed.is_connected(_on_phase_driver_destroyed):
+		SignalBus.phase_driver_destroyed.connect(_on_phase_driver_destroyed)
+	if SignalBus.has_signal("enemy_phase_driver_destroyed"):
+		if not SignalBus.enemy_phase_driver_destroyed.is_connected(_on_enemy_phase_driver_destroyed):
+			SignalBus.enemy_phase_driver_destroyed.connect(_on_enemy_phase_driver_destroyed)
+
+
+func _disconnect_battle_scoped_signals() -> void:
+	if not SignalBus:
+		return
+	if SignalBus.phase_driver_destroyed.is_connected(_on_phase_driver_destroyed):
+		SignalBus.phase_driver_destroyed.disconnect(_on_phase_driver_destroyed)
+	if SignalBus.has_signal("enemy_phase_driver_destroyed") and SignalBus.enemy_phase_driver_destroyed.is_connected(_on_enemy_phase_driver_destroyed):
+		SignalBus.enemy_phase_driver_destroyed.disconnect(_on_enemy_phase_driver_destroyed)
 
 # =========================================================================
 #  v6.0: 记录击败的敌人信息（供情报系统使用）
