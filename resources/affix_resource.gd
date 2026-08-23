@@ -36,7 +36,7 @@ var affix_type: String = "base_property"
 
 ## 效果键（对应要修改的 UnitStats 字段或特殊标识）
 ## 例: "max_hp" / "attack_damage" / "move_speed" / "attack_range"
-##     "attack_interval" (负值=加快) / "crit_chance" / "lifesteal"
+##     "attack_interval" (负值=加快) / "crit_chance" / "kill_repair"
 var effect_key: String = ""
 
 ## 基础数值（Lv1 时的效果量，加成型为小数，如 0.15 = +15%）
@@ -90,8 +90,8 @@ func recalculate() -> void:
 	match effect_key:
 		"crit_chance":
 			current_value = minf(current_value, 0.35)  # 暴击率≤35%
-		"lifesteal":
-			current_value = minf(current_value, 0.25)  # 吸血≤25%
+		"kill_repair":
+			current_value = minf(current_value, 0.25)  # 击杀修复≤25%（自身最大HP比例）
 		"armor_penetration":
 			current_value = minf(current_value, 0.50)  # 穿甲≤50%
 		"splash_radius":

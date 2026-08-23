@@ -68,8 +68,8 @@ const MECHANIC_EFFECT_KEYS: Array = [
 	"weapon_type", "slot_weapon_type",
 	# 条件规则（环境/位置条件加成）
 	"urban_defense", "night_bonus", "smoke_ignore", "mine_immunity",
-	# 吸血/回收（资源转换规则——机制型，设定包装待后续迭代）
-	"lifesteal",
+	# 击杀修复/回收（资源转换规则——机制型，设定包装待后续迭代）
+	"kill_repair",
 	# v10 转换型（劣势转优势）
 	"salvage_repair", "phase_shift_counter", "hijack_aura_radius", "hijack_aura_duration", "hijack_aura_cd",
 ]
@@ -452,7 +452,7 @@ static func _apply_single_mod_effects(result: Dictionary, effects: Dictionary) -
 				if not result.has(effect_key):
 					result[effect_key] = 0.0
 				result[effect_key] += float(effect_value)
-			"lifesteal":
+			"kill_repair":
 				if not result.has(effect_key):
 					result[effect_key] = 0.0
 				result[effect_key] = min(0.6, float(result[effect_key]) + float(effect_value))

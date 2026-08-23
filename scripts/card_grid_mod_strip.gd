@@ -15,7 +15,7 @@ enum ModKind {
 	ATTACK,    # 攻击类（穿甲/暴击/对X加成）
 	DEFENSE,   # 防御类（减伤/护盾/闪避）
 	SPEED,     # 速度类（攻速/移速）
-	SPECIAL,   # 特殊类（溅射/吸血/燃烧）
+	SPECIAL,   # 特殊类（溅射/击杀修复/燃烧）
 	AURA,      # 光环类（指挥/侦查）
 }
 

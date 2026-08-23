@@ -116,15 +116,15 @@ const DATA: Dictionary = {
 		unlock_conditions = {required_level = 2}
 	},
 	"enh_lifesteal" = {
-		id = "enh_lifesteal", name = "战场汲取", name_en = "Lifesteal",
+		id = "enh_lifesteal", name = "战场回收", name_en = "Field Salvage",
 		icon = "res://assets/ui/icons/mod_icons/mod_enhancement.png",
-		prototype = "战场补给训练", description = "吸血",
+		prototype = "战场补给训练", description = "击杀敌方单位时回复自身最大生命值",
 		rarity = "rare",
 		power_mult = 1.35, cost_research = 200, cost_install = 100,
 		slot_type = "enhancement", conflict_group = "enh_lifesteal",
 		applicable_types = [0, 1, 2, 3, 4], max_level = 3, source = "enhancement",
 		level_effects = {
-			1: {lifesteal = 0.05}, 2: {lifesteal = 0.08}, 3: {lifesteal = 0.11},
+			1: {kill_repair = 0.06}, 2: {kill_repair = 0.10}, 3: {kill_repair = 0.14},
 		},
 		unlock_conditions = {required_level = 2}
 	},

@@ -52,8 +52,7 @@ static func on_bullet_hit(attacker: Node, target: Node, base_damage: float) -> f
 		if _check_dodge(target, target_stats):
 			return 0.0
 
-	# 5. 吸血
-	_apply_lifesteal(attacker, final_damage, stats)
+	# 5. 击杀修复：v6.15 起由 on_unit_killed（击杀触发）结算，命中路径不再回复
 
 	# v6.6: 主目标伤害惩罚（子母弹等范围武器的单目标平衡项，值为负小数）
 	# 默认 0 时 (1+0)=1 无影响；放在最终伤害确定后、溅射/连锁之前
@@ -69,10 +68,10 @@ static func on_bullet_hit(attacker: Node, target: Node, base_damage: float) -> f
 	return final_damage
 
 # ─────────────────────────────────────────────
-#  命中副作用（仅吸血/连锁/溅射，不含暴击/穿甲/减伤/闪避）
+#  命中副作用（仅连锁/溅射，不含暴击/穿甲/减伤/闪避；击杀修复走 on_unit_killed）
 # ─────────────────────────────────────────────
 
-## v6.6: 仅处理命中副作用（吸血/连锁/溅射），不重新计算伤害数值。
+## v6.6: 仅处理命中副作用（连锁/溅射），不重新计算伤害数值。
 ## 用于伤害已由 attack_calculator / 已有路径计算的批处理路径，
 ## 避免暴击/穿甲双重计算。deal_damage 为最终结算伤害。
 static func apply_on_hit_side_effects(attacker: Node, target: Node, deal_damage: float) -> void:
@@ -88,7 +87,6 @@ static func apply_on_hit_side_effects(attacker: Node, target: Node, deal_damage:
 		if penalty_abs > 0.0 and target != null and is_instance_valid(target):
 			var heal_amount: float = deal_damage * penalty_abs
 			_apply_main_target_compensation(target, heal_amount)
-	_apply_lifesteal(attacker, deal_damage, stats)
 	_apply_splash(attacker, target, deal_damage, stats)
 	_apply_chain(attacker, target, deal_damage, stats)
 	# v7.x: 新机制触发点（命中时）
@@ -380,10 +378,23 @@ static func _check_dodge(target: Node, target_stats: UnitStats) -> bool:
 		return false
 	return randf() < target_stats.dodge_chance
 
-static func _apply_lifesteal(attacker: Node, damage: float, stats: UnitStats) -> void:
-	if stats.lifesteal <= 0.0 or damage <= 0.0:
+## v6.15: 击杀修复（战场回收）——per-hit 吸血退役，改为击杀敌方单位时回复自身
+## 最大 HP 的 stats.kill_repair 比例。变异（has_kill_repair_mutation）在低血量时翻倍，
+## 此前吸血时代的"低于30%翻倍"仅展示未实装，本函数一并做实。
+static func on_unit_killed(_victim: Node, killer: Node, _is_player_victim: bool) -> void:
+	if killer == null or not is_instance_valid(killer) or killer == _victim:
 		return
-	var heal = damage * stats.lifesteal
+	var stats := _get_attacker_stats(killer)
+	if stats == null or stats.kill_repair <= 0.0:
+		return
+	_apply_kill_repair(killer, stats)
+
+static func _apply_kill_repair(attacker: Node, stats: UnitStats) -> void:
+	var heal: float = stats.kill_repair * _get_unit_max_hp(attacker)
+	if heal <= 0.0:
+		return
+	if stats.has_kill_repair_mutation and _get_unit_hp_ratio(attacker) < 0.30:
+		heal *= 2.0
 	_heal_unit(attacker, heal)
 
 static func _apply_splash(attacker: Node, target: Node, damage: float, stats: UnitStats) -> void:

@@ -1406,7 +1406,7 @@ func _on_hit(primary: Node2D) -> void:
 		# v6.2: 符文之语特殊效果 — 攻击命中时触发（闪电链/溅射）
 		if is_instance_valid(shooter):
 			RuneSpecialHandler.on_hit(shooter, primary, final_after_wall)
-			# v6.6: 应用改造命中副作用（吸血/连锁/溅射）——补全低速直射路径缺失的效果
+			# v6.6: 应用改造命中副作用（连锁/溅射；击杀修复走 unit_killed）——补全低速直射路径缺失的效果
 			ModuleEffectHandler.apply_on_hit_side_effects(shooter, primary, final_after_wall)
 			# v8.6: 势力技能 extra_attack_chance（概率触发额外一次伤害结算）
 			if FactionSkillEffectHandler.roll_extra_attack(shooter):

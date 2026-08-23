@@ -405,7 +405,7 @@ func _get_armor_reflect_ratio() -> float:
 ## spawn_type: "normal" / "elite" / "boss"——决定 roll 词缀数量与稀有度池。
 ## 词缀效果分两类：
 ##   A 数值型（attack/max_hp/speed/dodge/crit/regen）：apply 时改 stats 字段，战斗路径自动读取。
-##   B 机制型（lifesteal/chain/splash/shield/reflect）：apply 时改 stats 字段，
+##   B 机制型（kill_repair/chain/splash/shield/reflect）：apply 时改 stats 字段，
 ##     _do_attack / take_damage 读取字段触发 AffixCombatHandler。
 ## 注意：本方法应在 setup 完成（stats 就绪）后调用，且需同步裸 hp/max_hp（max_hp 词缀）。
 ## v7.x：把 stats 关键数值字段同步到裸字段（hp/max_hp/attack_damage/defense）。
@@ -1647,7 +1647,7 @@ func _update_hit_animations(delta: float) -> void:
 				modulate = Color(1.0 + fb, 1.0 + fb, 1.0 + fb, 1.0)
 
 
-## 治疗方法（用于词条吸血效果）
+## 治疗方法（用于击杀修复等回复效果）
 func heal(amount: float) -> void:
 	hp = min(hp + amount, max_hp)
 

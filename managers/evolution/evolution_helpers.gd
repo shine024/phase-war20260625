@@ -367,7 +367,7 @@ static func _mechanic_survival_mul(stats: UnitStats) -> float:
 	m += minf(maxf(float(stats.dodge_chance), 0.0), 0.5)            # 闪避=免伤概率
 	m += minf(maxf(float(stats.damage_reduction), 0.0), 0.75)        # 直接减伤
 	m += minf(maxf(float(stats.crit_resist), 0.0), 1.0) * 0.5        # 暴抗（受暴伤减免，折半）
-	m += minf(maxf(float(stats.lifesteal), 0.0), 0.6) * 0.5          # 吸血续航≈有效血量，折半
+	m += minf(maxf(float(stats.kill_repair), 0.0), 0.6) * 0.5          # 击杀修复续航≈有效血量，折半
 	if bool(stats.revive_on_death) and stats.revive_hp_ratio > 0.0:
 		m += minf(stats.revive_hp_ratio, 1.0) * 0.6                  # 复活=按比例二条命
 	# 拦截（完全免伤但受次数限制）：按 3 次封顶折算覆盖率

@@ -151,7 +151,7 @@ func _apply_unlocks(node_id: String) -> void:
 				_grant_affix_pool(u.get("pool", []))
 			# 以下类型仅记录解锁状态，由 is_content_unlocked(type, id) 查询，
 			# 各子系统（战斗/进化/卡片技能引擎/战法检测器）自行读取：
-			#   unit_ability    → 兵种特殊能力（暴击/吸血/穿甲等）
+			#   unit_ability    → 兵种特殊能力（暴击/击杀修复/穿甲等）
 			#   unit_mechanism  → v8.5 兵种机制技能（定向爆破/瞄准狙击/闪电穿插/电子屏蔽/战术核武/护盾投射/定时标记）
 			#   evolution       → 进化形态解锁
 			#   card_skill      → v8.x 卡片定时技能（CardPeriodicSkillEngine 查询）

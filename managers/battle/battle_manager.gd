@@ -11,6 +11,7 @@ const SimpleEnemyProjectileBatchScript = preload("res://managers/battle/simple_e
 const SimplePlayerProjectileBatchScript = preload("res://managers/battle/simple_player_projectile_batch.gd")
 const SimpleIndirectProjectileBatchScript = preload("res://managers/battle/simple_indirect_projectile_batch.gd")
 const CombatFeedback = preload("res://scripts/combat_feedback.gd")
+const ModuleEffectHandler = preload("res://scripts/battle/module_effect_handler.gd")
 # v6.7: 相位师排名差异化加成 —— 玩家装配器 + 战力评估器
 const MasterPlayerAssembler = preload("res://scripts/master_player_assembler.gd")
 const MasterPowerEvaluator = preload("res://scripts/master_power_evaluator.gd")
@@ -138,6 +139,9 @@ func _ready() -> void:
 	if SignalBus:
 		if not SignalBus.unit_died.is_connected(_on_unit_died):
 			SignalBus.unit_died.connect(_on_unit_died)
+		# v6.15: 击杀修复（战场回收）——per-hit 吸血退役，改由击杀信号触发
+		if not SignalBus.unit_killed.is_connected(_on_unit_killed_kill_repair):
+			SignalBus.unit_killed.connect(_on_unit_killed_kill_repair)
 		# v9.x: 订阅 unit_spawned 用于单位数变化广播（spawn 后计数器已递增）
 		if not SignalBus.unit_spawned.is_connected(_on_unit_spawned):
 			SignalBus.unit_spawned.connect(_on_unit_spawned)
@@ -162,11 +166,17 @@ func _on_counter_break_count(_break_type: String, _target_name: String) -> void:
 func get_counter_break_count() -> int:
 	return counter_break_count
 
+## v6.15: 击杀修复（战场回收）——击杀者按 stats.kill_repair 回复自身最大 HP
+func _on_unit_killed_kill_repair(victim: Node, killer: Node, is_player_victim: bool) -> void:
+	ModuleEffectHandler.on_unit_killed(victim, killer, is_player_victim)
+
 ## P0 性能优化：退出时断开 SignalBus 连接，防止场景切换后连接累积
 func _exit_tree() -> void:
 	if SignalBus:
 		if SignalBus.unit_died.is_connected(_on_unit_died):
 			SignalBus.unit_died.disconnect(_on_unit_died)
+		if SignalBus.unit_killed.is_connected(_on_unit_killed_kill_repair):
+			SignalBus.unit_killed.disconnect(_on_unit_killed_kill_repair)
 		if SignalBus.unit_spawned.is_connected(_on_unit_spawned):
 			SignalBus.unit_spawned.disconnect(_on_unit_spawned)
 		if SignalBus.phase_driver_destroyed.is_connected(_on_phase_driver_destroyed):

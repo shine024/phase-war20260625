@@ -112,17 +112,17 @@ func _initialize() -> void:
 	if absf(stats4.dodge_chance - 0.50) > 0.01:
 		fail.call("闪避应钳制 0.50，实际 %.2f" % stats4.dodge_chance)
 
-	# ══════════ apply_to_stats：机制型（lifesteal/chain/splash） ══════════
+	# ══════════ apply_to_stats：机制型（kill_repair/chain/splash） ══════════
 	print("=== apply_to_stats: 机制型 ===")
 	var stats5 := UnitStats.new()
 	EnemyAffixes.apply_to_stats(stats5, [
-		{"effect_key": "lifesteal", "base_value": 0.18},
+		{"effect_key": "kill_repair", "base_value": 0.12},
 		{"effect_key": "chain_chance", "base_value": 0.40},
 		{"effect_key": "splash_damage", "base_value": 0.35},
 	])
-	print("  吸血 %.2f / 连锁 %.2f / 溅射 %.2f" % [stats5.lifesteal, stats5.chain_chance, stats5.splash_damage])
-	if absf(stats5.lifesteal - 0.18) > 0.01:
-		fail.call("吸血应 0.18，实际 %.2f" % stats5.lifesteal)
+	print("  击杀修复 %.2f / 连锁 %.2f / 溅射 %.2f" % [stats5.kill_repair, stats5.chain_chance, stats5.splash_damage])
+	if absf(stats5.kill_repair - 0.12) > 0.01:
+		fail.call("击杀修复应 0.12，实际 %.2f" % stats5.kill_repair)
 	if absf(stats5.chain_chance - 0.40) > 0.01:
 		fail.call("连锁应 0.40，实际 %.2f" % stats5.chain_chance)
 	if absf(stats5.splash_damage - 0.35) > 0.01:

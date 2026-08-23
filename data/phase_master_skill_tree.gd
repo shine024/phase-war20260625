@@ -177,11 +177,13 @@ const SKILL_TREE: Dictionary = {
 			"branch": BRANCH_FIREPOWER, "tier": 2, "cost": 2, "requires": ["pms_fp_1a"],
 			"unlocks": [],
 			"effects": {"stat_bonus": {"attack_range": 0.08, "armor_penetration": 0.10}}},
-		# tier 3：射程 + 吸血（更多兵种能力）
-		{"id": "pms_fp_3", "name": "纵深打击", "desc": "所有单位射程 +10%，解锁吸血能力",
+		# tier 3：射程 + 击杀修复（更多兵种能力）
+		{"id": "pms_fp_3", "name": "纵深打击", "desc": "所有单位射程 +10%，解锁战场回收（击杀回复自身6%最大HP）",
 		 "branch": BRANCH_FIREPOWER, "tier": 3, "cost": 2, "requires": ["pms_fp_2"],
 		 "unlocks": [{"type": "unit_ability", "id": "lifesteal_unlock"}],
-		 "effects": {"stat_bonus": {"attack_range": 0.10, "lifesteal": 0.08}}},
+		 # v6.15: 击杀修复只走 lifesteal_unlock 解锁路径（unit_stats_table +0.06）；
+		 # 原此处 stat_bonus lifesteal 0.08 与解锁检查 +0.05 双发，实际 0.13 超出描述承诺
+		 "effects": {"stat_bonus": {"attack_range": 0.10}}},
 		# tier 4：火力终极——狂暴
 		{"id": "pms_fp_4", "name": "火力压制", "desc": "所有单位三维攻击 +15%，暴击伤害 +30%",
 			"branch": BRANCH_FIREPOWER, "tier": 4, "cost": 3, "requires": ["pms_fp_3"],

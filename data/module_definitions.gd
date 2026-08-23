@@ -139,14 +139,14 @@ const MODULE_TABLE: Dictionary = {
 		"cap_value": 0.60,
 	},
 	"module_lifesteal": {
-		"name": "战场汲取",
-		"description": "造成伤害回复HP",
-		"effect_key": "lifesteal",
+		"name": "战场回收",
+		"description": "击杀敌方单位回复自身最大生命值",
+		"effect_key": "kill_repair",
 		"effect_type": "percent_flat",
-		"base_value": 0.05,
+		"base_value": 0.06,
 		"pool_tier": POOL_ADVANCED,
 		"category": "survival",
-		"cap_key": "lifesteal",
+		"cap_key": "kill_repair",
 		"cap_value": 0.50,
 	},
 	"module_splash": {
@@ -384,7 +384,7 @@ static func apply_modules_to_stats(base_stats: Dictionary, module_slots: Array) 
 	result["damage_reduction"] = float(result.get("damage_reduction", 0.0))
 	result["crit_chance"] = float(result.get("crit_chance", 0.0))
 	result["crit_damage_bonus"] = float(result.get("crit_damage_bonus", 0.0))
-	result["lifesteal"] = float(result.get("lifesteal", 0.0))
+	result["kill_repair"] = float(result.get("kill_repair", 0.0))
 	result["splash_damage"] = float(result.get("splash_damage", 0.0))
 	result["armor_penetration"] = float(result.get("armor_penetration", 0.0))
 	result["chain_chance"] = float(result.get("chain_chance", 0.0))
@@ -460,7 +460,7 @@ static func get_module_summary(module_slots: Array, enhance_level: int) -> Dicti
 		"damage_reduction": 0.0,
 		"crit_chance": 0.0,
 		"crit_damage_bonus": 0.0,
-		"lifesteal": 0.0,
+		"kill_repair": 0.0,
 		"splash_damage": 0.0,
 		"armor_penetration": 0.0,
 		"chain_chance": 0.0,
@@ -527,8 +527,8 @@ static func build_effect_lines(summary: Dictionary) -> Array:
 		if summary.get("crit_damage_bonus", 0.0) > 0.001:
 			dmg_str = " (%.1fx)" % (1.5 + summary["crit_damage_bonus"])
 		lines.append("%s %.1f%%%s" % [ModEffectLabels.translate("crit_chance"), summary["crit_chance"] * 100.0, dmg_str])
-	if summary.get("lifesteal", 0.0) > 0.001:
-		lines.append("%s %.1f%%" % [ModEffectLabels.translate("lifesteal"), summary["lifesteal"] * 100.0])
+	if summary.get("kill_repair", 0.0) > 0.001:
+		lines.append("%s %.1f%%" % [ModEffectLabels.translate("kill_repair"), summary["kill_repair"] * 100.0])
 	if summary.get("splash_damage", 0.0) > 0.001:
 		lines.append("%s %.1f%%" % [ModEffectLabels.translate("splash_damage"), summary["splash_damage"] * 100.0])
 	if summary.get("armor_penetration", 0.0) > 0.001:
@@ -559,7 +559,7 @@ static func _get_cap_for_key(effect_key: String) -> float:
 	match effect_key:
 		"damage_reduction": return 0.60
 		"crit_chance": return 0.60
-		"lifesteal": return 0.50
+		"kill_repair": return 0.50
 		"splash_damage": return 0.60
 		"armor_penetration": return 0.60
 		"chain_chance": return 0.50

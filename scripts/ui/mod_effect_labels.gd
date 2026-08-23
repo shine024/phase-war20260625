@@ -39,7 +39,7 @@ static func translate(key: String) -> String:
 		"armor_pen_vs_air": return "穿甲(空)"
 		# ── 生存/吸血/护盾 ──
 		"damage_reduction": return "减伤"
-		"lifesteal": return "吸血"
+		"kill_repair": return "击杀修复"
 		"hp_regen": return "回血"
 		"shield_on_kill": return "护盾"
 		"splash_damage": return "溅射"

@@ -1397,15 +1397,15 @@ func _apply_skill_tree_stat_bonus(stats: UnitStats) -> void:
 		return
 	# 复用势力技能的注入函数（atk_light/atk_armor/atk_air/def_*/hp/attack_speed）
 	_apply_active_faction_stat_bonus(stats, sb)
-	# 技能树特有 key（势力技能不涉及）：暴击/闪避/穿甲/吸血/射程/暴击伤害
+	# 技能树特有 key（势力技能不涉及）：暴击/闪避/穿甲/击杀修复/射程/暴击伤害
 	if sb.has("crit_chance") and float(sb["crit_chance"]) != 0.0:
 		stats.crit_chance = minf(0.75, stats.crit_chance + float(sb["crit_chance"]))
 	if sb.has("dodge_chance") and float(sb["dodge_chance"]) != 0.0:
 		stats.dodge_chance = minf(0.75, stats.dodge_chance + float(sb["dodge_chance"]))
 	if sb.has("armor_penetration") and float(sb["armor_penetration"]) != 0.0:
 		stats.armor_penetration = minf(0.80, stats.armor_penetration + float(sb["armor_penetration"]))
-	if sb.has("lifesteal") and float(sb["lifesteal"]) != 0.0:
-		stats.lifesteal = minf(0.60, stats.lifesteal + float(sb["lifesteal"]))
+	if sb.has("kill_repair") and float(sb["kill_repair"]) != 0.0:
+		stats.kill_repair = minf(0.60, stats.kill_repair + float(sb["kill_repair"]))
 	if sb.has("attack_range") and float(sb["attack_range"]) != 0.0:
 		stats.attack_range *= (1.0 + float(sb["attack_range"]))
 	if sb.has("crit_damage_bonus") and float(sb["crit_damage_bonus"]) != 0.0:

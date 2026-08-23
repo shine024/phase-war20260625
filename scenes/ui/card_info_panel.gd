@@ -1212,8 +1212,8 @@ func _build_unit_description(stats: UnitStats, is_player: bool, base_text: Strin
 		roles.append("减速光环")
 	if stats.command_aura_bonus > 0.001:
 		roles.append("指挥光环")
-	if stats.lifesteal > 0.001:
-		roles.append("吸血续航")
+	if stats.kill_repair > 0.001:
+		roles.append("战场回收")
 	if stats.hp_regen > 0.001:
 		roles.append("自我回复")
 	# 动态描述：按阵营措辞，反映"这个单位能干什么"
@@ -1232,8 +1232,8 @@ func _build_affix_summary_lines(stats: UnitStats) -> String:
 	if stats.crit_chance > 0.001:
 		var cd_total: float = 1.5 + stats.crit_damage_bonus
 		parts.append("暴击 %d%%（%.1fx）" % [int(stats.crit_chance * 100.0), cd_total])
-	if stats.lifesteal > 0.001:
-		parts.append("吸血 %d%%" % int(stats.lifesteal * 100.0))
+	if stats.kill_repair > 0.001:
+		parts.append("击杀修复 %d%%" % int(stats.kill_repair * 100.0))
 	if stats.armor_penetration > 0.001:
 		parts.append("穿甲 %d%%" % int(stats.armor_penetration * 100.0))
 	if stats.splash_damage > 0.001:
@@ -1299,7 +1299,7 @@ func _build_affix_summary_lines(stats: UnitStats) -> String:
 	if stats.has_weapon_dmg_mutation: mutations.append("伤害变异")
 	if stats.has_weapon_atkspd_mutation: mutations.append("攻速变异")
 	if stats.has_crit_mutation: mutations.append("暴击变异")
-	if stats.has_lifesteal_mutation: mutations.append("吸血变异")
+	if stats.has_kill_repair_mutation: mutations.append("回收变异")
 	if stats.has_hp_regen_mutation: mutations.append("回血变异")
 	if stats.has_platform_hp_mutation: mutations.append("HP变异")
 	if not mutations.is_empty():
@@ -1317,7 +1317,7 @@ func _build_affix_tag_list(card: CardResource) -> Array:
 	var C_DEF := Color(0.3, 0.8, 0.45, 1)    # 减伤/防御类-绿
 	var C_DODGE := Color(0.4, 0.85, 0.95, 1)  # 闪避-青
 	var C_CRIT := Color(1.0, 0.7, 0.3, 1)     # 暴击-橙
-	var C_VAMP := Color(0.85, 0.3, 0.55, 1)   # 吸血-粉红
+	var C_VAMP := Color(0.85, 0.3, 0.55, 1)   # 击杀修复-粉红
 	var C_PEN := Color(0.7, 0.5, 1, 1)        # 穿甲-紫
 	var C_AOE := Color(0.9, 0.6, 0.9, 1)      # 溅射/连锁-粉
 	var C_SHIELD := Color(0.5, 0.7, 1, 1)     # 护盾/回血-蓝
@@ -1329,8 +1329,8 @@ func _build_affix_tag_list(card: CardResource) -> Array:
 	if stats.crit_chance > 0.001:
 		var cd_total: float = 1.5 + stats.crit_damage_bonus
 		tags.append({text = "暴击 %d%%（%.1fx）" % [int(stats.crit_chance * 100.0), cd_total], color = C_CRIT})
-	if stats.lifesteal > 0.001:
-		tags.append({text = "吸血 %d%%" % int(stats.lifesteal * 100.0), color = C_VAMP})
+	if stats.kill_repair > 0.001:
+		tags.append({text = "击杀修复 %d%%" % int(stats.kill_repair * 100.0), color = C_VAMP})
 	if stats.armor_penetration > 0.001:
 		tags.append({text = "穿甲 %d%%" % int(stats.armor_penetration * 100.0), color = C_PEN})
 	if stats.splash_damage > 0.001:
@@ -1345,7 +1345,7 @@ func _build_affix_tag_list(card: CardResource) -> Array:
 	if stats.has_weapon_dmg_mutation: mutations.append("伤害变异")
 	if stats.has_weapon_atkspd_mutation: mutations.append("攻速变异")
 	if stats.has_crit_mutation: mutations.append("暴击变异")
-	if stats.has_lifesteal_mutation: mutations.append("吸血变异")
+	if stats.has_kill_repair_mutation: mutations.append("回收变异")
 	if stats.has_hp_regen_mutation: mutations.append("回血变异")
 	if stats.has_platform_hp_mutation: mutations.append("HP变异")
 	if not mutations.is_empty():
@@ -2661,7 +2661,7 @@ func _mod_aura_stat_desc(stat_field: String, op: String, raw: float) -> String:
 		"dodge_chance": "闪避率",
 		"armor_penetration": "穿甲率",
 		"hp_regen": "生命恢复",
-		"lifesteal": "吸血",
+		"kill_repair": "击杀修复",
 		"move_speed": "移速",
 		"attack_range": "射程",
 		"vision": "视野",

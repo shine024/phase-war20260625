@@ -185,9 +185,9 @@ static func _apply_skill_tree_unit_abilities(stats: UnitStats) -> void:
 	# 装甲穿甲（armor_pen）
 	if pmsm.is_content_unlocked("unit_ability", "armor_pen") and stats.combat_kind == 1:
 		stats.armor_penetration = minf(0.80, stats.armor_penetration + 0.15)
-	# 吸血解锁（lifesteal_unlock，所有兵种）
+	# 击杀修复解锁（lifesteal_unlock，所有兵种；节点 id 为存档键不改名）
 	if pmsm.is_content_unlocked("unit_ability", "lifesteal_unlock"):
-		stats.lifesteal = minf(0.60, stats.lifesteal + 0.05)
+		stats.kill_repair = minf(0.60, stats.kill_repair + 0.06)
 
 ## v6.11: 强化固定数值加成（HP/攻击/兵种特殊）
 static func _apply_enhance_fixed(stats: UnitStats, lvl_f: float, hp_pct: float, atk_pct: float, extra_key: String, extra_per_lvl: float) -> void:
@@ -221,7 +221,7 @@ static func _apply_enhance_abilities(stats: UnitStats, combat_kind: int, lvl: in
 		0:  # 轻装
 			var defs: Array = [
 				{"ek": "crit_chance", "ev": 0.10},
-				{"ek": "lifesteal", "ev": 0.08},
+				{"ek": "kill_repair", "ev": 0.08},
 				{"ek": "armor_penetration", "ev": 0.20},
 			]
 			_apply_ability_list(stats, defs, unlocks, lvl)
@@ -263,8 +263,8 @@ static func _apply_ability_list(stats: UnitStats, defs: Array, unlocks: Array[in
 			match ek:
 				"crit_chance":
 					stats.crit_chance = minf(0.75, stats.crit_chance + ev)
-				"lifesteal":
-					stats.lifesteal = minf(0.60, stats.lifesteal + ev)
+				"kill_repair":
+					stats.kill_repair = minf(0.60, stats.kill_repair + ev)
 				"armor_penetration":
 					stats.armor_penetration = minf(0.80, stats.armor_penetration + ev)
 				"damage_reduction":
@@ -378,7 +378,7 @@ static func _apply_mod_stat_effects(stats: UnitStats, mods: Array) -> void:
 		"armor_pen_vs_light": stats.armor_pen_vs_light,
 		"armor_pen_vs_armor": stats.armor_pen_vs_armor,
 		"armor_pen_vs_air": stats.armor_pen_vs_air,
-		"lifesteal": stats.lifesteal,
+		"kill_repair": stats.kill_repair,
 		"splash_damage": stats.splash_damage,
 		"chain_chance": stats.chain_chance,
 		"shield_on_kill": stats.shield_on_kill,
@@ -471,7 +471,7 @@ static func _apply_mod_stat_effects(stats: UnitStats, mods: Array) -> void:
 	stats.armor_pen_vs_light = float(result.get("armor_pen_vs_light", stats.armor_pen_vs_light))
 	stats.armor_pen_vs_armor = float(result.get("armor_pen_vs_armor", stats.armor_pen_vs_armor))
 	stats.armor_pen_vs_air = float(result.get("armor_pen_vs_air", stats.armor_pen_vs_air))
-	stats.lifesteal = float(result.get("lifesteal", stats.lifesteal))
+	stats.kill_repair = float(result.get("kill_repair", stats.kill_repair))
 	stats.splash_damage = float(result.get("splash_damage", stats.splash_damage))
 	stats.chain_chance = float(result.get("chain_chance", stats.chain_chance))
 	stats.shield_on_kill = float(result.get("shield_on_kill", stats.shield_on_kill))

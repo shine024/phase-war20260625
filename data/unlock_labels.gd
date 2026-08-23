@@ -79,7 +79,7 @@ const UNIT_MECHANISM_LABELS: Dictionary = {
 const UNIT_ABILITY_LABELS: Dictionary = {
 	"armor_pen": {"name": "穿甲弹道", "short": "穿甲", "desc": "装甲单位对装甲目标穿透+20%", "icon": "⚔"},
 	"light_crit": {"name": "精确射击", "short": "暴击", "desc": "步兵单位暴击率+15%", "icon": "✦"},
-	"lifesteal_unlock": {"name": "纵深打击", "short": "吸血", "desc": "射程+10%，解锁吸血+8%", "icon": "🩸"},
+	"lifesteal_unlock": {"name": "纵深打击", "short": "回收", "desc": "射程+10%，击杀回复自身6%最大HP", "icon": "🔧"},
 }
 
 ## 卡片定时技能标签（card_skill）

@@ -152,11 +152,11 @@ const AFFIX_TABLE: Dictionary = {
 		"unlock_condition":   "none",
 	},
 	"lifesteal": {
-		"affix_name":         "汲能吸血",
-		"description":        "攻击时恢复造成伤害一定比例的生命",
+		"affix_name":         "战场回收",
+		"description":        "击杀敌方单位时，回复自身一定比例最大生命值",
 		"affix_type":         "combat_feature",
-		"effect_key":         "lifesteal",
-		"base_value":         0.05,    # 5% 吸血 (Lv1)
+		"effect_key":         "kill_repair",
+		"base_value":         0.06,    # 6% 自身最大HP/击杀 (Lv1)
 		"card_type_filter":   2,
 		"weapon_type_filter": -1,
 		"rarity_pool":        ["common", "rare", "epic", "legendary"],
@@ -461,7 +461,7 @@ const MUTATION_TABLE: Dictionary = {
 	"weapon_dmg_up":     "攻击时有15%概率造成双倍伤害",
 	"weapon_atkspd_up":  "连续攻击3次后，下次攻击伤害+50%",
 	"crit_chance":       "暴击时额外恢复5%最大生命值",
-	"lifesteal":         "生命值低于30%时，吸血效果翻倍",
+	"lifesteal":         "生命值低于30%时，回收修复效果翻倍",
 	"splash_dmg":        "溅射击杀时触发额外一次溅射",
 	"chain_lightning":   "连锁最多延伸至5个目标",
 	"shield_on_kill":    "护盾层数上限+2",

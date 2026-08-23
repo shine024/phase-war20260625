@@ -137,8 +137,8 @@ var weapon_card_ids: Array[String] = []
 ## 唯一含此效果的改造（infantry_mods inf 暴抗+0.10）完全空转。v7.x 补全数据链 + 战斗消费。
 @export var crit_resist: float = 0.0
 
-## 吸血率（0.0~1.0，来自 lifesteal 词条）
-@export var lifesteal: float = 0.0
+## 击杀修复率（0.0~1.0，来自 lifesteal 词条；v6.15 起 per-hit 吸血改为击杀触发战场回收）
+@export var kill_repair: float = 0.0
 
 ## 溅射伤害比例（0.0~1.0，来自 splash_dmg 词条）
 @export var splash_damage: float = 0.0
@@ -238,8 +238,8 @@ var has_weapon_atkspd_mutation: bool = false
 ## 是否有暴击变异（暴击恢复生命）
 var has_crit_mutation: bool = false
 
-## 是否有吸血变异（低血量时吸血翻倍）
-var has_lifesteal_mutation: bool = false
+## 是否有回收变异（低血量时击杀修复翻倍）
+var has_kill_repair_mutation: bool = false
 
 ## 是否有回血变异（低血量时回复翻倍）
 var has_hp_regen_mutation: bool = false

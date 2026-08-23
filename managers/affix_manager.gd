@@ -730,8 +730,8 @@ func _mark_mutation_on_stats(stats: UnitStats, affix_id: String) -> void:
 			stats.has_weapon_atkspd_mutation = true
 		"crit_chance":
 			stats.has_crit_mutation = true
-		"lifesteal":
-			stats.has_lifesteal_mutation = true
+		"lifesteal":  # 词条 id（存档键）不改；效果已改为击杀修复
+			stats.has_kill_repair_mutation = true
 		"nano_regen":
 			stats.has_hp_regen_mutation = true
 		"platform_hp_up":
@@ -807,8 +807,8 @@ func _apply_card_affixes(stats: UnitStats, affix_key: String) -> void:
 				stats.damage_reduction = minf(0.75, stats.damage_reduction + val)
 			"crit_chance":
 				stats.crit_chance = minf(0.75, stats.crit_chance + val)
-			"lifesteal":
-				stats.lifesteal = minf(0.60, stats.lifesteal + val)
+			"kill_repair":
+				stats.kill_repair = minf(0.60, stats.kill_repair + val)
 			"splash_damage":
 				stats.splash_damage = minf(0.80, stats.splash_damage + val)
 			"armor_penetration":

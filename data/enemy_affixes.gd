@@ -13,7 +13,7 @@ class_name EnemyAffixes
 ##   A 数值型（apply 时改 stats 字段，战斗路径自动读取）：
 ##     attack_damage / max_hp / attack_speed / dodge_chance / crit_chance / hp_regen
 ##   B 机制型（apply 改 stats 字段 + 战斗路径消费）：
-##     lifesteal / chain_chance / splash_damage / armor_reflect
+##     kill_repair / chain_chance / splash_damage / armor_reflect
 ##   C v19 兵种专属/独特扩展（战斗路径同样自动读取）：
 ##     move_speed / damage_reduction / attack_range / defense / crit_damage_bonus
 
@@ -79,10 +79,10 @@ const ENEMY_AFFIXES: Dictionary = {
 		"combat_kinds": [],
 	},
 	"enemy_vampire": {
-		"name": "吸血",
-		"description": "吸血 +18%",
-		"effect_key": "lifesteal",
-		"base_value": 0.18,
+		"name": "战场回收",
+		"description": "击杀时回复自身 12% 最大生命",
+		"effect_key": "kill_repair",
+		"base_value": 0.12,
 		"rarity": AffixRarity.RARE,
 		"combat_kinds": [],
 	},
@@ -381,8 +381,8 @@ static func apply_to_stats(stats: UnitStats, affixes: Array) -> void:
 				stats.crit_chance = minf(0.60, stats.crit_chance + val)
 			"hp_regen":
 				stats.hp_regen += val
-			"lifesteal":
-				stats.lifesteal = minf(0.50, stats.lifesteal + val)
+			"kill_repair":
+				stats.kill_repair = minf(0.50, stats.kill_repair + val)
 			"chain_chance":
 				stats.chain_chance = minf(0.60, stats.chain_chance + val)
 			"splash_damage":

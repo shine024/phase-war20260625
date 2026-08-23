@@ -2708,3 +2708,19 @@ v17j 分格 meteor 7→5（-2）/summon 4→5（+1）——单格 ±1-2 波动�
 - **19 个既有失败归因完成**（批次8 处置依据）：1 项阈值放宽、13 项断言过期（MOD 绝对值口径/platform 旧入口×2/改造数量×5/相位仪×6 含重叠统计/解析器区间×2/lineage 键）、1 项抖动族、进化下限实战路径健康（钳制生效，旧入口兜底 100 血所致假阴性）。
 
 **产出**：docs/BALANCE_FINAL_2026-08-23.md（定稿表 + 批次8 断言更新清单）。
+
+## v6.15 吸血→战场回收（击杀修复）机制替换（2026-08-23）
+
+**背景**：吸血（攻击回血）主题与军事拟真世界观不合适（用户决议方案 A）。整体替换为"战场回收"——击杀敌方单位时回复自身最大 HP 的一定比例（工程兵"回收无人机"已有同款设定先例，此次全游戏统一）。
+
+**机制变更**：
+- 结算点：per-hit（每次命中 heal = 伤害×比例）→ **per-kill**（击杀时 heal = 自身最大HP×比例），经 `SignalBus.unit_killed` 信号触发（battle_manager 战斗起止接线/断开，module_effect_handler.on_unit_killed 结算，敌我双方通用）
+- 变异"低于30%血量翻倍"由纯展示**做实**（原 _apply_lifesteal 从未检查 has_lifesteal_mutation）
+- 数值（按自身最大HP/击杀）：词条 5%→6%、技能解锁 5%→6%、enh改造 5/8/11%→6/10/14%、敌方词条 18%→12%；0.60 总上限/0.50 模块上限保留
+- 顺手修复：pms_fp_3 纵深打击的 stat_bonus lifesteal 0.08 与解锁检查 +0.05 **双发**（实际 0.13 超描述承诺 8%）——统一走解锁路径单发 6%
+
+**存档兼容**：持久 id 全部保留不改名（词条 id `lifesteal`、改造 id `enh_lifesteal`、词条模块 id `module_lifesteal`、技能节点 id `lifesteal_unlock`）；活键/字段全改（effect_key、UnitStats.kill_repair/has_kill_repair_mutation、registry/module_definitions 聚合键）。虚空系 boss"虚空吞噬"（能量虹吸）按决议保留。
+
+**涉及**：数据 7 文件 + 管线 6 文件 + 结算 5 文件 + UI 4 文件 + enemy_affix_smoke 适配；文案全部去"吸血"（战场回收/击杀修复/回收变异）。
+
+验证：_tmp_lifesteal_replacement_check 全过（数据源/管线/结算/接线/存档键/UI 四段 25 断言）+ main boot 300 帧零错误 + gdunit 失败集与基线逐项一致（仅 daily_task 抖动族换成员，无新增）。

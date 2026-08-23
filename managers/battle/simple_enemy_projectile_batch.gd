@@ -268,7 +268,7 @@ func _apply_hit(r: Dictionary) -> void:
 	var shooter_raw: Variant = r["shooter"]
 	var shooter: Node2D = shooter_raw if shooter_raw != null and is_instance_valid(shooter_raw) and shooter_raw is Node2D else null
 	var mitigated: float = _apply_shield_wall_mitigation(raw, tgt)
-	# v6.6: 应用改造/符文命中副作用（吸血/溅射/连锁）——敌方弹道同样生效
+	# v6.6: 应用改造/符文命中副作用（溅射/连锁；击杀修复走 unit_killed）——敌方弹道同样生效
 	if tgt.has_method("take_damage"):
 		tgt.take_damage(mitigated, shooter)
 		ModuleEffectHandler.apply_on_hit_side_effects(shooter, tgt, mitigated)
