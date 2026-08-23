@@ -110,6 +110,12 @@ signal toggle_phase_instrument()
 # v7.x 教程引导：强化/改造面板切换（main.gd _on_*_from_tutorial 监听）
 signal toggle_enhancement()
 signal toggle_modification()
+# v9.x（P2-4 批次6）：教程中后期引导步骤的面板入口
+signal toggle_evolution()
+signal toggle_faction()
+signal toggle_store()
+signal toggle_world_map()
+signal open_phase_field_points()
 
 # 教程
 signal tutorial_completed(tutorial_id: String)

@@ -139,6 +139,17 @@ func _ready() -> void:
 			SignalBus.toggle_enhancement.connect(_on_toggle_enhancement_from_tutorial)
 		if SignalBus.has_signal("toggle_modification") and not SignalBus.toggle_modification.is_connected(_on_toggle_modification_from_tutorial):
 			SignalBus.toggle_modification.connect(_on_toggle_modification_from_tutorial)
+		# v9.x（P2-4 批次6）：教程 8-12 步引导面板
+		if SignalBus.has_signal("toggle_evolution") and not SignalBus.toggle_evolution.is_connected(_on_toggle_evolution_from_tutorial):
+			SignalBus.toggle_evolution.connect(_on_toggle_evolution_from_tutorial)
+		if SignalBus.has_signal("toggle_faction") and not SignalBus.toggle_faction.is_connected(_on_toggle_faction_from_tutorial):
+			SignalBus.toggle_faction.connect(_on_toggle_faction_from_tutorial)
+		if SignalBus.has_signal("toggle_store") and not SignalBus.toggle_store.is_connected(_on_toggle_store_from_tutorial):
+			SignalBus.toggle_store.connect(_on_toggle_store_from_tutorial)
+		if SignalBus.has_signal("toggle_world_map") and not SignalBus.toggle_world_map.is_connected(_on_toggle_world_map_from_tutorial):
+			SignalBus.toggle_world_map.connect(_on_toggle_world_map_from_tutorial)
+		if SignalBus.has_signal("open_phase_field_points") and not SignalBus.open_phase_field_points.is_connected(_on_open_phase_field_from_tutorial):
+			SignalBus.open_phase_field_points.connect(_on_open_phase_field_from_tutorial)
 		SignalBus.player_deploy_failed.connect(_on_player_deploy_failed)
 
 	# 全局 UI 贴图：关闭按钮等（依赖 PopupLayer 子树已实例化）
@@ -688,6 +699,27 @@ func _on_toggle_enhancement_from_tutorial() -> void:
 func _on_toggle_modification_from_tutorial() -> void:
 	_play_sfx("button")
 	_toggle_overlay(modification_overlay, "modification")
+
+## v9.x（P2-4 批次6）：教程中后期步骤引导（进化/势力/商店/世界地图/相位场加点）
+func _on_toggle_evolution_from_tutorial() -> void:
+	_play_sfx("button")
+	_toggle_overlay(evolution_overlay, "evolution")
+
+func _on_toggle_faction_from_tutorial() -> void:
+	_play_sfx("button")
+	_on_faction_pressed()
+
+func _on_toggle_store_from_tutorial() -> void:
+	_play_sfx("button")
+	_on_store_pressed()
+
+func _on_toggle_world_map_from_tutorial() -> void:
+	_play_sfx("button")
+	_on_map_pressed()
+
+func _on_open_phase_field_from_tutorial() -> void:
+	_play_sfx("button")
+	_open_phase_instrument_selector()
 
 func _on_quest_pressed() -> void:
 	_toggle_overlay(quest_overlay, "quest")

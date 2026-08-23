@@ -1,15 +1,12 @@
 extends Node
 ## 新手教程进度管理器（A 系统）：主界面首次进入时的系统引导
 ##
-## v7.x 重构（8 步完整引导）：
-##   1. 欢迎            — 介绍游戏目标（纯展示，无动作）
-##   2. 背包            — 查看卡牌收藏
-##   3. 相位仪          — 装配战斗卡到相位仪绿/黄槽
-##   4. 强化            — 用纳米材料强化卡牌等级
-##   5. 改造            — 安装改造模块
-##   6. 符文            — 查看符文 / 符文之语
-##   7. 首战            — 进入第 1 关战斗
-##   8. 自由模式        — 教程结束，自由探索
+## v9.x（P2-4 批次6）重构（13 步完整引导）：
+##   1. 欢迎 / 2. 背包 / 3. 装配（拖卡到底部绿槽）/ 4. 养成（自动等级+词条+技能树）
+##   5. 改造 / 6. 符文 / 7. 首战
+##   8. 进化 / 9. 势力声望 / 10. 商店 / 11. 世界地图选关 / 12. 相位场加点
+##   13. 自由模式（教程结束）
+## 旧档兼容：save_state 带 version=2；version<2 的旧档 current_step>=8 一律视为已完成
 ##
 ## 设计要点：
 ##   - 每一步打开一个不同的面板，不再重复（原 step1/step2 都开背包）
@@ -26,7 +23,12 @@ enum TutorialStep {
 	MODIFICATION = 5,         # 改造：安装模块
 	RUNES = 6,                # 符文：符文/符文之语
 	FIRST_BATTLE = 7,         # 首战：进入第1关
-	FREEDOM_MODE = 8,         # 自由模式（教程结束）
+	EVOLUTION = 8,            # v9.x：进化（兵种进化线）
+	FACTION_REP = 9,          # v9.x：势力声望
+	SHOP = 10,                # v9.x：商店（声望购物）
+	WORLD_MAP = 11,           # v9.x：世界地图选关
+	PHASE_FIELD_POINTS = 12,  # v9.x：相位场加点
+	FREEDOM_MODE = 13,        # 自由模式（教程结束）——v1 枚举此值为 8，旧档兼容见 load_state
 }
 
 var current_step: TutorialStep = TutorialStep.NONE
@@ -53,25 +55,25 @@ func _initialize_tutorial_data() -> void:
 		},
 		TutorialStep.CARD_COLLECTION: {
 			"title": "卡牌收藏",
-			"description": "背包里是你拥有的所有卡牌。战斗单位卡用于部署作战，能量卡提供部署资源。",
-			"highlights": ["战斗卡：部署到战场作战", "能量卡：提供部署能量", "符文/资源在对应标签页"],
+			"description": "背包里是你拥有的所有卡牌。战斗单位卡用于部署作战，符文与资源在对应标签页管理。",
+			"highlights": ["战斗卡：部署到战场作战", "同名卡各自独立养成", "符文/资源在对应标签页"],
 			"action_text": "查看背包",
 			"action_target": "open_backpack",
 			"highlight_elements": ["backpack_button"]
 		},
 		TutorialStep.PHASE_INSTRUMENT: {
 			"title": "装配卡牌",
-			"description": "把战斗卡装进相位仪的绿色槽位，能量卡装进黄色槽位。战斗中只能部署已装配的卡。",
-			"highlights": ["绿色槽：战斗单位卡", "黄色槽：能量卡", "拖拽背包卡到对应槽位"],
-			"action_text": "打开符文/装配",
-			"action_target": "open_phase_instrument",
+			"description": "从背包把战斗单位卡拖到屏幕底部的绿色装配槽。战斗中只能部署已装配的卡。",
+			"highlights": ["绿色槽：战斗单位卡", "拖拽背包卡到底部槽位", "同名卡按实例独立装配"],
+			"action_text": "打开背包装配",
+			"action_target": "open_backpack",
 			"highlight_elements": ["phase_instrument_button"]
 		},
 		TutorialStep.ENHANCEMENT: {
 			"title": "卡牌养成",
-			"description": "卡牌有三个养成维度：①战斗等级（Lv1-30）通过战斗获取经验自动升级，Lv5/10/15/20/25/30 各获得一个词条；②强化（Lv1-10）消耗纳米材料提升，提供基础属性成长；③蓝图星级按副本次数累计，激活额外加成。",
-			"highlights": ["战斗经验→等级 Lv1-30", "Lv5/10/15/20/25/30 获得词条", "强化消耗纳米材料 1-10"],
-			"action_text": "打开养成面板",
+			"description": "卡牌靠战斗经验自动升级（Lv1-30），Lv5/10/15/20/25/30 各解锁一个词条；相位师技能树用技能点解锁全局强化。成长中枢汇总所有养成入口。",
+			"highlights": ["战斗经验→等级 Lv1-30（自动）", "关键等级解锁词条", "技能树：全局被动强化"],
+			"action_text": "打开成长中枢",
 			"action_target": "open_enhancement",
 			"highlight_elements": []
 		},
@@ -98,6 +100,46 @@ func _initialize_tutorial_data() -> void:
 			"action_text": "开始首战",
 			"action_target": "start_first_battle",
 			"highlight_elements": ["battlefield"]
+		},
+		TutorialStep.EVOLUTION: {
+			"title": "兵种进化",
+			"description": "满级卡可在成长中枢进入进化面板，沿进化线变为更强的高阶单位。不同兵种有独立进化树。",
+			"highlights": ["成长中枢→进化面板", "进化保留养成并变强", "各兵种独立进化线"],
+			"action_text": "打开进化面板",
+			"action_target": "open_evolution",
+			"highlight_elements": []
+		},
+		TutorialStep.FACTION_REP: {
+			"title": "势力声望",
+			"description": "战斗与委托提升 7 大势力的声望。声望等级解锁势力专属卡、相位仪与技能。",
+			"highlights": ["7 大势力各有声望等级", "声望解锁专属卡与相位仪", "势力技能树全局生效"],
+			"action_text": "打开势力面板",
+			"action_target": "open_faction",
+			"highlight_elements": []
+		},
+		TutorialStep.SHOP: {
+			"title": "势力商店",
+			"description": "用声望在势力商店购买卡牌、材料与符文。不同势力上架不同商品。",
+			"highlights": ["声望=商店货币", "各势力商品不同", "符文也可购买"],
+			"action_text": "打开商店",
+			"action_target": "open_store",
+			"highlight_elements": []
+		},
+		TutorialStep.WORLD_MAP: {
+			"title": "世界地图",
+			"description": "在世界地图上选择关卡推进战线。已占领的领地可反复挑战获取资源。",
+			"highlights": ["点地图节点选关出战", "100 关 5 个时代", "领地占领影响势力格局"],
+			"action_text": "打开世界地图",
+			"action_target": "open_world_map",
+			"highlight_elements": []
+		},
+		TutorialStep.PHASE_FIELD_POINTS: {
+			"title": "相位场加点",
+			"description": "相位仪升级获得属性点，在相位仪选择面板分配到攻击/防御/能量等方向，打造你的Build。",
+			"highlights": ["相位仪升级→属性点", "自由分配与洗点", "点数全局生效"],
+			"action_text": "打开相位仪面板",
+			"action_target": "open_phase_field",
+			"highlight_elements": []
 		},
 		TutorialStep.FREEDOM_MODE: {
 			"title": "自由探索",
@@ -173,6 +215,21 @@ func execute_tutorial_action(action_target: String) -> void:
 			# 符文管理在背包 RunesTab，复用相位仪入口（_open_backpack_runes_tab）
 			if SignalBus and SignalBus.has_signal("toggle_phase_instrument"):
 				SignalBus.toggle_phase_instrument.emit()
+		"open_evolution":
+			if SignalBus and SignalBus.has_signal("toggle_evolution"):
+				SignalBus.toggle_evolution.emit()
+		"open_faction":
+			if SignalBus and SignalBus.has_signal("toggle_faction"):
+				SignalBus.toggle_faction.emit()
+		"open_store":
+			if SignalBus and SignalBus.has_signal("toggle_store"):
+				SignalBus.toggle_store.emit()
+		"open_world_map":
+			if SignalBus and SignalBus.has_signal("toggle_world_map"):
+				SignalBus.toggle_world_map.emit()
+		"open_phase_field":
+			if SignalBus and SignalBus.has_signal("open_phase_field_points"):
+				SignalBus.open_phase_field_points.emit()
 		"start_first_battle":
 			if SignalBus and SignalBus.has_signal("start_level"):
 				SignalBus.start_level.emit(1)
@@ -181,18 +238,25 @@ func execute_tutorial_action(action_target: String) -> void:
 
 
 ## 保存状态（给SaveManager用）
+## v9.x（P2-4 批次6）：version=2——13 步制（v1 为 8 步制，FREEDOM=8）
 func save_state() -> Dictionary:
 	return {
+		"version": 2,
 		"current_step": current_step,
 		"completed_steps": completed_steps
 	}
 
 ## 加载状态（给SaveManager用）
-## 兼容：旧版枚举 FREEDOM_MODE=9，新版=8。旧档 step>=8 一律视为已完成（FREEDOM_MODE），
-## 避免映射错乱；越界值同样归到 FREEDOM_MODE。
+## v9.x（P2-4 批次6）版本门控：v1 旧档为 8 步制（FREEDOM=8）——step>=8 视为已完成，
+## 防止旧完档在新 13 步制下被拉回第 8 步重看教程；v2 新档按新枚举解析。
 func load_state(data: Dictionary) -> void:
 	if not data.is_empty():
+		var version: int = int(data.get("version", 1))
 		var saved_step: int = int(data.get("current_step", TutorialStep.NONE))
+		if version < 2 and saved_step >= 8:
+			current_step = TutorialStep.FREEDOM_MODE
+			completed_steps = data.get("completed_steps", [])
+			return
 		if saved_step >= int(TutorialStep.FREEDOM_MODE):
 			current_step = TutorialStep.FREEDOM_MODE
 		elif saved_step <= int(TutorialStep.NONE):
