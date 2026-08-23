@@ -14,7 +14,6 @@ extends SceneTree
 
 const UiAssetLoader := preload("res://scripts/ui_asset_loader.gd")
 const DefaultCards := preload("res://data/default_cards.gd")
-const PhaseLaws := preload("res://data/phase_laws.gd")
 const EnemyBlueprints := preload("res://data/enemy_blueprints.gd")
 const EnemyUnitManifest := preload("res://data/enemy_unit_manifest.gd")
 const EnemyArchetypes := preload("res://data/enemy_archetypes.gd")
@@ -70,13 +69,7 @@ func _initialize() -> void:
 	var player_cards: Array = DefaultCards.create_all()
 	_audit_group(player_cards, "PLAYER", tally, detail)
 
-	# 2) 法则卡（全部 law 定义逐一建卡）
-	var law_cards: Array = []
-	for law_id in PhaseLaws.get_all_ids():
-		var lc = DefaultCards.create_law_card_resource(String(law_id))
-		if lc != null:
-			law_cards.append(lc)
-	_audit_group(law_cards, "LAW", tally, detail)
+	# 2) 法则卡审计组已随法则系统退役移除（v9.x P2-7 批次2；法则卡不再存在于任何获取链路）
 
 	# 3) 敌人掉落高级蓝图 id（bp_* 系；用 DefaultCards 真卡对象——含真实 era/combat_kind，
 	#    避免最小 CardResource 的 era=0 默认值把时代撞图算错）
@@ -110,9 +103,9 @@ func _initialize() -> void:
 
 	# ── 汇总输出 ──
 	print("==== 卡图运行时解析审计（真实七级链）====")
-	print("玩家卡+势力卡: %d | 法则卡: %d | 敌蓝图: %d | 合计: %d" % [
-		player_cards.size(), law_cards.size(), bp_cards.size(),
-		player_cards.size() + law_cards.size() + bp_cards.size()])
+	print("玩家卡+势力卡: %d | 敌蓝图: %d | 合计: %d" % [
+		player_cards.size(), bp_cards.size(),
+		player_cards.size() + bp_cards.size()])
 	var keys: Array = tally.keys()
 	keys.sort()
 	for k in keys:

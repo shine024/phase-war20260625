@@ -129,3 +129,4 @@ tools/level_bg_workflow/api_keys.txt
 
 # ── GdUnit 测试报告产物（一次性输出，不入库）──
 reports/
+tests/*.gd.uid

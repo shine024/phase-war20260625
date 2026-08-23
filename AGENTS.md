@@ -379,6 +379,8 @@ tests/
 
 ## 美术资源工作流（卡图自动生成）
 
+**⚠️ 美术 PNG 全量备份铁律（发行机迁移/换机硬前提）**：`.gitignore` 全局忽略 `*.png`——美术资产**不入 git，删=永久丢失**。两大目录：`assets/card_icons/`（866 张卡面 + 缩略图树）与 `assets/ui/instruments/`（相位仪徽章）。基线备份：项目外 `phase-war-art-backup-YYYY-MM-DD.zip`（2026-08-23 首份 144.1MB/960 文件，sha256 前 16 位 `7c9da35781ffe08c`）。新增/修改图后按同日期惯例重打包，并建议同步一份到网盘/异机。打包：两树 walk（png/svg/txt）→ zipfile ZIP_STORED → 项目外。
+
 **新增卡牌缺卡面图时**，用 AI API 自动生成，完整流程见 `docs/ART_PIPELINE_AI_ICON_GENERATION.md`。
 
 **快速要点**：
@@ -387,6 +389,7 @@ tests/
 - 生成脚本模板：`tools/generate_missing_card_icons_11.py`（调 agnes-ai API，key 在 `tools/_api_key.txt`）
 - 部署脚本模板：`tools/deploy_card_icons_11.py`（白底转透明+缩放512+翻转player版）
 - **分配新编号前必须先查 `_FOE_ID_TO_PLATFORM` 和 `PLAYER_ICON_OVERRIDE`** 能否复用已有图
+- **相位仪/装备徽章图标**（`assets/ui/instruments/pi_*.png`，1024×1024 不透明深底徽章风）：阵营族图（aegis/helix/nova/iron/umbra/eon）各有专属系列，缺图走 agnes 生成（模板 `tools/generate_umbra_instruments_4.py`，2026-08-23 影幕系列先例）；传奇 r_ 系列为 128×128 小图。生成后需跑 `godot --headless --import` 生成 .import 元数据
 - 修改 `enemy/` 原图后，必须对 `player/` 重做 `FLIP_LEFT_RIGHT`
 - 审查清单：`tools/enemy_card_review.html`（浏览器查看全部卡面）
 

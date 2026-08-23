@@ -36,6 +36,14 @@ const CARDS := {
 	"cold_fort_missile":4, "cold_fort_radar":4, "fut_fort_ion":4, "fut_fort_shield":4,
 	"mod_fort_citadel":4, "mod_fort_phalanx":4, "ww1_fort_artillery":4, "ww1_fort_pillbox":4,
 	"ww2_fort_bunker":4, "ww2_fort_flak":4,
+	# v9.x（P2-6）：14 张势力专属卡（faction_exclusive_cards.gd；声望终极卡，设计不可进化）
+	"fe_iron_wall_bastion":4, "fe_iron_wall_juggernaut":0,
+	"fe_nova_devastator":2, "fe_nova_ghost_sniper":0,
+	"fe_aether_hover_cavalry":0, "fe_aether_swarm_queen":3,
+	"fe_quantum_mobile_base":4, "fe_quantum_repair_drone":3,
+	"fe_helix_phantom":0, "fe_helix_orbital_strike":2,
+	"fe_void_phase_cannon":4, "fe_void_dimensional_soldier":0,
+	"fe_frontier_veteran":0, "fe_frontier_mixed_company":1,
 }
 
 func _init() -> void:
@@ -43,8 +51,15 @@ func _init() -> void:
 	print("每张卡应能查到非空进化路径（get_evolution_path 返回非空字典）")
 	print("注：fut_shield（力场发生器）设计上不可进化（无进化线节点），预期无路径")
 	print()
-	# 设计上不可进化的卡（无进化线定义）
-	const NO_PATH_CARDS := ["fut_shield"]
+	# 设计上不可进化的卡（无进化线定义；fe_ 专属卡=声望终极奖励，不参与进化）
+	const NO_PATH_CARDS := ["fut_shield",
+		"fe_iron_wall_bastion", "fe_iron_wall_juggernaut",
+		"fe_nova_devastator", "fe_nova_ghost_sniper",
+		"fe_aether_hover_cavalry", "fe_aether_swarm_queen",
+		"fe_quantum_mobile_base", "fe_quantum_repair_drone",
+		"fe_helix_phantom", "fe_helix_orbital_strike",
+		"fe_void_phase_cannon", "fe_void_dimensional_soldier",
+		"fe_frontier_veteran", "fe_frontier_mixed_company"]
 	var missing: Array = []
 	for card_id in CARDS.keys():
 		var path: Dictionary = EvoInit.get_evolution_path(card_id)

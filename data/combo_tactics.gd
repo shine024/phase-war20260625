@@ -35,12 +35,12 @@ const _KIND_FORT   := 4
 ## - kind_combo: 兵种组合条件（字典 {kind: min_count}，全满足即解锁全队新机制）
 ## - fields: 该套路关联的战场浓度 tag（激活时引擎会主动累积/读取）
 ## - mechanisms: 新机制 flag 列表（供 bullet/module_effect_handler 读取后执行特殊逻辑）
+## v9.x（P2-1）：icon_tex 字段已删——全项目零读取方（strip UI 用文字 icon），且指向不存在的 combo_icons/ 目录
 const COMBOS: Dictionary = {
 	COMBO_INCENDIARY: {
 		"id": COMBO_INCENDIARY,
 		"name": "助燃燃烧链",
 		"icon": "🔥",
-		"icon_tex": "res://assets/ui/combo_icons/incendiary.png",
 		"desc": "助燃剂+燃烧弹协同，燃烧层数上限翻倍并触发化学爆发",
 		"mod_ids": ["art_incendiary_mix", "art_white_phosphorus", "air_thermolite_bomb", "gen_combustion_catalyst"],
 		"mod_combo_min": 2,
@@ -52,7 +52,6 @@ const COMBOS: Dictionary = {
 		"id": COMBO_EMP,
 		"name": "电磁脉冲链",
 		"icon": "⚡",
-		"icon_tex": "res://assets/ui/combo_icons/emp.png",
 		"desc": "石墨纤维累积电子损坏，电磁武器触发脉冲反射",
 		"mod_ids": ["art_graphite_fiber", "aa_emp_warhead", "air_antiradiation_missile", "gen_overload_capacitor"],
 		"mod_combo_min": 2,
@@ -64,7 +63,6 @@ const COMBOS: Dictionary = {
 		"id": COMBO_NANO,
 		"name": "纳米浓度场",
 		"icon": "🧬",
-		"icon_tex": "res://assets/ui/combo_icons/nano.png",
 		"desc": "纳米蜂群提升战场纳米浓度，纳米病毒感染扩散",
 		"mod_ids": ["art_nano_amp", "sup_nano_seeder", "gen_nano_catalyst"],
 		"mod_combo_min": 2,
@@ -76,7 +74,6 @@ const COMBOS: Dictionary = {
 		"id": COMBO_LASER,
 		"name": "光束谐振链",
 		"icon": "✨",
-		"icon_tex": "res://assets/ui/combo_icons/laser.png",
 		"desc": "激光标记积累谐振，光束武器多重攻击+反射",
 		"mod_ids": ["gen_beam_splitter", "gen_reflector_array", "air_targeting_laser", "eng_optical_fiber"],
 		"mod_combo_min": 2,
@@ -88,7 +85,6 @@ const COMBOS: Dictionary = {
 		"id": COMBO_RECON,
 		"name": "侦察链式",
 		"icon": "🎯",
-		"icon_tex": "res://assets/ui/combo_icons/recon.png",
 		"desc": "无人机+雷达双标记，狙击手集火链式触发弱点暴露",
 		"mod_ids": ["rec_phased_radar", "sup_targeting_drone", "gen_weakpoint_analyzer"],
 		"mod_combo_min": 2,
@@ -100,7 +96,6 @@ const COMBOS: Dictionary = {
 		"id": COMBO_CHEM,
 		"name": "化学污染场",
 		"icon": "☠",
-		"icon_tex": "res://assets/ui/combo_icons/chem.png",
 		"desc": "化学弹累积战场污染，腐蚀降防+污染扩散",
 		"mod_ids": ["art_chem_cluster", "aa_acid_warhead", "eng_chem_sprayer", "gen_pollution_accumulator"],
 		"mod_combo_min": 2,
