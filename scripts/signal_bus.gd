@@ -73,6 +73,10 @@ signal player_deploy_failed(reason_code: String, message: String)
 
 # 新系统信号
 
+# 存档系统
+# v9.x（P1-4 批次5）：主档损坏/缺失经备份恢复成功时发出（标题屏/存档位面板接此弹 toast）
+signal save_restored_from_backup(slot: int)
+
 # 成就系统
 signal achievement_unlocked(achievement_id: String, achievement_name: String)
 signal achievement_progress_updated(achievement_id: String, current_progress: int, max_progress: int)

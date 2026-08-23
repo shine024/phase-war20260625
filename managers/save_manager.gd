@@ -1185,7 +1185,11 @@ func load_game() -> bool:
 		if FileAccess.file_exists(backup):
 			if DEBUG_SAVE_LOG:
 				pass  # LOG: 主存档不存在，尝试从备份恢复
-			return _load_from_path(backup)
+			if _load_from_path(backup):
+				_notify_backup_restored()
+				return true
+			_finalize_load_game_perf_on_fail()
+			return false
 		_finalize_load_game_perf_on_fail()
 		return false
 
@@ -1196,10 +1200,19 @@ func load_game() -> bool:
 		if FileAccess.file_exists(backup):
 			if DEBUG_SAVE_LOG:
 				pass  # LOG: 主存档损坏，尝试从备份恢复
-			return _load_from_path(backup)
+			if _load_from_path(backup):
+				_notify_backup_restored()
+				return true
+			_finalize_load_game_perf_on_fail()
+			return false
 		_finalize_load_game_perf_on_fail()
 		return false
 	return true
+
+## v9.x（P1-4 批次5）：主档→备份恢复成功通知（标题屏/存档位面板接信号弹 toast）
+func _notify_backup_restored() -> void:
+	if SignalBus != null and SignalBus.has_signal("save_restored_from_backup"):
+		SignalBus.save_restored_from_backup.emit(current_slot)
 
 ## 从指定路径加载存档（辅助方法）
 func _load_from_path(path: String) -> bool:

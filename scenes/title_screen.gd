@@ -155,6 +155,10 @@ func _on_new_game() -> void:
 func _on_continue() -> void:
 	_play_sfx("button")
 	if SaveManager:
+		# v9.x（P1-4 批次5）：ONE_SHOT 接线——load_game 内若发生备份恢复，信号同步
+		# 发出并由 _on_save_restored_from_backup 弹 toast（ToastManager 为懒加载管理器）
+		if SignalBus and SignalBus.has_signal("save_restored_from_backup") 				and not SignalBus.save_restored_from_backup.is_connected(_on_save_restored_from_backup):
+			SignalBus.save_restored_from_backup.connect(_on_save_restored_from_backup, CONNECT_ONE_SHOT)
 		var load_success = SaveManager.load_game()
 		if load_success:
 			get_tree().change_scene_to_file("res://scenes/main.tscn")
@@ -162,6 +166,13 @@ func _on_continue() -> void:
 			var toast_mgr = get_node_or_null("/root/ToastManager")
 			if toast_mgr and toast_mgr.has_method("show_error"):
 				toast_mgr.show_error("存档加载失败，请尝试新建游戏")
+
+## v9.x（P1-4 批次5）：主档损坏经备份恢复——ToastManager 是懒加载管理器，先 ensure 再弹
+func _on_save_restored_from_backup(_slot: int) -> void:
+	ManagerLazyLoader.ensure_loaded("toast")
+	var toast_mgr = get_node_or_null("/root/ToastManager")
+	if toast_mgr and toast_mgr.has_method("show_warning"):
+		toast_mgr.show_warning("检测到存档损坏，已自动从备份恢复")
 
 func _on_settings() -> void:
 	_play_sfx("button")

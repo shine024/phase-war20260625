@@ -136,6 +136,9 @@ func _on_load_slot(slot_num: int) -> void:
 	if SaveManager == null:
 		return
 	SaveManager.set_slot(slot_num)
+	# v9.x（P1-4 批次5）：备份恢复 toast 接线（ONE_SHOT，load_game 内同步发出）
+	if SignalBus and SignalBus.has_signal("save_restored_from_backup") 			and not SignalBus.save_restored_from_backup.is_connected(_on_save_restored_from_backup):
+		SignalBus.save_restored_from_backup.connect(_on_save_restored_from_backup, CONNECT_ONE_SHOT)
 	var success: bool = SaveManager.load_game()
 	if success:
 		slot_selected.emit(slot_num)
@@ -143,6 +146,13 @@ func _on_load_slot(slot_num: int) -> void:
 	else:
 		push_error("[SaveSlotManager] 加载存档槽 %d 失败" % slot_num)
 		_show_error_toast("加载存档槽 %d 失败，文件可能已损坏" % slot_num)
+
+## v9.x（P1-4 批次5）：主档损坏经备份恢复提示
+func _on_save_restored_from_backup(_slot: int) -> void:
+	ManagerLazyLoader.ensure_loaded("toast")
+	var toast_mgr = get_node_or_null("/root/ToastManager")
+	if toast_mgr and toast_mgr.has_method("show_warning"):
+		toast_mgr.show_warning("检测到存档损坏，已自动从备份恢复")
 
 ## 保存到存档槽（真实 API：set_slot + save_game）
 func _on_save_slot(slot_num: int) -> void:
