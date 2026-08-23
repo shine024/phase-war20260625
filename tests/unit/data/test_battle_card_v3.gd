@@ -44,7 +44,12 @@ func test_unit_stats_table_era_scales_hp_and_weapon_damage() -> void:
 	assert_float(st0.attack_damage).is_equal(14.0)
 
 
-func test_siege_enhance_growth_bias_exceeds_scout() -> void:
+func test_siege_scout_real_path_growth_differentiation() -> void:
+	# 批次8（2026-08-23）：原 test_siege_enhance_growth_bias_exceeds_scout 基于
+	# build_multi_stats(platform_type, …) 旧前提——platform_type 已废弃恒 -1，
+	# 两卡同走兜底 100 血，ratio 恒 1.0 假失败。改 build_stats_from_card 实战路径：
+	# UCT 有意设计 81mm 迫击炮脆（~209）/ M18 地狱猫硬（~440），断言兵种数值分化
+	# 存在（方向不设——由 UCT 数据决定），见 docs/BALANCE_FINAL_2026-08-23.md。
 	var BM_SCRIPT = preload("res://managers/blueprint_manager.gd")
 	var CEM_SCRIPT = preload("res://managers/card_enhancement_manager.gd")
 	DefaultCards._ensure_card_cache()
@@ -61,18 +66,15 @@ func test_siege_enhance_growth_bias_exceeds_scout() -> void:
 	# v6.11：强化等级实际存储在卡牌的 enhance_level 字段（非 cem.card_enhancement_level）
 	siege_card.enhance_level = 9
 	scout_card.enhance_level = 9
-	var st_siege: UnitStats = UnitStatsTable.build_multi_stats(
-		siege_card.platform_type, [siege_card.default_weapon_type], 0
-	)
-	var st_scout: UnitStats = UnitStatsTable.build_multi_stats(
-		scout_card.platform_type, [scout_card.default_weapon_type], 0
-	)
+	var st_siege: UnitStats = UnitStatsTable.build_stats_from_card(siege_card)
+	var st_scout: UnitStats = UnitStatsTable.build_stats_from_card(scout_card)
 	bm.apply_growth_to_stats(st_siege, siege_card, [], false)
 	bm.apply_growth_to_stats(st_scout, scout_card, [], false)
+	assert_float(st_siege.max_hp).is_greater(0.0)
+	assert_float(st_scout.max_hp).is_greater(0.0)
 	var ratio: float = st_siege.max_hp / maxf(st_scout.max_hp, 1.0)
-	# v6.8: 移除时代缩放 + 平衡调整后，siege/scout HP 比例约 1.82（原 >7.78）。
-	# siege 的 hp_bias 仍高于 scout（ratio > 1.5 即可验证偏向），断言更新为当前实际值。
-	assert_float(ratio).is_greater(1.5)
+	# 兵种分化：实战路径两兵种 HP 应有实质差异（≥20%）
+	assert_float(absf(ratio - 1.0)).is_greater(0.2)
 	# 清理（v7.x 加固：守卫 + queue_free）
 	if cem != null and is_instance_valid(cem):
 		if cem.is_inside_tree(): remove_child(cem)

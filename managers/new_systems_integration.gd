@@ -22,6 +22,8 @@ func _connect_signals() -> void:
 			SignalBus.battle_ended.connect(_on_battle_ended_achievement)
 	if not SignalBus.card_added_to_backpack.is_connected(_on_card_added_to_backpack):
 		SignalBus.card_added_to_backpack.connect(_on_card_added_to_backpack)
+	if SignalBus.has_signal("rune_acquired") and not SignalBus.rune_acquired.is_connected(_on_rune_acquired_daily):
+		SignalBus.rune_acquired.connect(_on_rune_acquired_daily)
 	# v7.x 修复 B5：连接强化完成信号（CardEnhancementManager 是 lazy-load，延迟连接）
 	_connect_enhancement_signal()
 
@@ -53,6 +55,8 @@ func _exit_tree() -> void:
 			SignalBus.battle_ended.disconnect(_on_battle_ended_achievement)
 	if SignalBus.card_added_to_backpack.is_connected(_on_card_added_to_backpack):
 		SignalBus.card_added_to_backpack.disconnect(_on_card_added_to_backpack)
+	if SignalBus.has_signal("rune_acquired") and SignalBus.rune_acquired.is_connected(_on_rune_acquired_daily):
+		SignalBus.rune_acquired.disconnect(_on_rune_acquired_daily)
 	var cem = get_node_or_null("/root/CardEnhancementManager")
 	if cem != null and cem.has_signal("enhancement_completed") and cem.enhancement_completed.is_connected(_on_enhancement_completed):
 		cem.enhancement_completed.disconnect(_on_enhancement_completed)
@@ -155,6 +159,15 @@ func _on_enhancement_completed(success: bool, _card_id: String, _action: String,
 	var tm = get_node_or_null("/root/DailyTaskManager")
 	if tm and tm.has_method("update_task_progress"):
 		tm.update_task_progress(DailyTaskManager.TaskType.UPGRADE_CARDS, 1)
+
+## 获得符文 → 日常任务 ACQUIRE_RUNES 计数
+## 批次8（2026-08-23）：接替 USE_PHASE_LAWS 的池位（法则退役成死任务）。
+## SignalBus.rune_acquired 由 PhaseInstrumentManager 真实获得路径发射（掉落/购买/奖励）。
+func _on_rune_acquired_daily(_rune_id: String, _source: String) -> void:
+	_ensure_lazy("daily_task")
+	var tm = get_node_or_null("/root/DailyTaskManager")
+	if tm and tm.has_method("update_task_progress"):
+		tm.update_task_progress(DailyTaskManager.TaskType.ACQUIRE_RUNES, 1)
 
 ## 单位死亡 → 日常任务击杀计数
 ## v7.x 修复 B5：敌方单位死亡时推进 KILL_ENEMIES 日常任务（实时计数，不依赖结算摘要）

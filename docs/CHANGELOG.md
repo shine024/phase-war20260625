@@ -2724,3 +2724,22 @@ v17j 分格 meteor 7→5（-2）/summon 4→5（+1）——单格 ±1-2 波动�
 **涉及**：数据 7 文件 + 管线 6 文件 + 结算 5 文件 + UI 4 文件 + enemy_affix_smoke 适配；文案全部去"吸血"（战场回收/击杀修复/回收变异）。
 
 验证：_tmp_lifesteal_replacement_check 全过（数据源/管线/结算/接线/存档键/UI 四段 25 断言）+ main boot 300 帧零错误 + gdunit 失败集与基线逐项一致（仅 daily_task 抖动族换成员，无新增）。
+
+## v20.6 测试清零（P1-1，发行批次8）（2026-08-23）
+
+**19 个既有失败全数清零，gdunit 全量 145 例 0 失败**（对照 memory 基线清单，该记忆随之删除）。处置按 BALANCE_FINAL_2026-08-23.md §5 归因清单执行，逐项：
+
+- **阈值放宽 ×1**：`ADJACENT_ERA_DPS_RATIO_MAX` 1.60→1.65（批次7 用户拍板决议落断言，注释注明理由）
+- **断言过期 ×13**：
+  - E4 MOD 上限扫描器按**键语义分类**：attack_/defense_/max_hp 键 |v|>1 判为 v18.b 武器条/插板固定值（消费端 += 加算），改查 UCT 对应维度包络上限；|v|≤1 维持 0.60 比例上限（economy_balance）
+  - siege/scout 与进化 HP 下限两测弃 `build_multi_stats(platform_type)` 旧前提（platform_type 已废恒 -1 → 兜底 100 血假阴性），改 `build_stats_from_card` 实战路径；siege 断言改为"兵种数值分化"（方向不设，UCT 有意设计迫击炮脆/地狱猫硬）
+  - 改造数量：步兵 22→27、装甲 15→16、registry 总数 120-140 区间→**精确 184**（registry 注释"154"亦为旧值）
+  - 相位仪裸仪清单移除 6 款（v6.6 能力批次补技能的专家档 pi_flame_03/thunder_03/void_03 + 大师/神档 pi_flame_05/thunder_04/thunder_05）
+  - enemy_stat_resolver wave5 相对断言绝对容差 0.01→0.5% 相对容差（resolve 链取整漂移 ~0.4%）
+  - lineage 已知键断言改 unknown 直通（enemy_mod_not_enough 已随 EOM 删除）
+- **抖动族根除 ×1（连带真 bug）**：daily_task"抖动"真相 = GdUnit `assert_signal().is_emitted()` 的 process_frame 轮询 + 2s Timer 机制在 headless 下超时且失败归因到相邻用例——两处信号测试改同步 lambda 连接计数（确定性零等待，套件三连跑全绿）。测试侧另加 `_load_triggered=true` 隔离 `_ready` 的 2s 延迟刷新定时器
+- **生产侧修复（用户拍板）**：USE_PHASE_LAWS 死任务处置——法则退役后其唯一上报方（_on_phase_law_cast）已删，玩家会抽到永远无法完成的日常任务。移出生成池 + load_state 过滤旧档残留；补 **ACQUIRE_RUNES（获得符文）** 任务类型维持 7 类型对 7 任务的"同批不重复"设计（枚举尾部追加防旧档整数错位，接 SignalBus.rune_acquired 实时上报）
+
+**合并门禁**：`.github/workflows/tests.yml`（tests/unit + tests/integration）自本批次起为有效绿灯基线。
+
+验证：gdunit 全量 145 例 0 失败 + daily_task 套件追加两轮复跑全绿（抖动根除确认）+ main boot headless 300 帧零错误。

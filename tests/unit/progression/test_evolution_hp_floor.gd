@@ -36,12 +36,14 @@ func test_evolution_hp_floor_applied_after_growth() -> void:
 
 
 func test_ww1_to_ww2_evolve_floor_not_below_prior_effective_hp() -> void:
+	# 批次8（2026-08-23）：原用 build_multi_stats(platform_type, …) 旧入口（platform_type
+	# 已废弃恒 -1 → 兜底 100 血假阴性）。改 build_stats_from_card 实战路径——
+	# 成长后 ~1058 ≥ 下限 ~340，钳制真实生效（见 docs/BALANCE_FINAL_2026-08-23.md）。
 	var src_id: String = "platform_ww1_light"
 	var dst_id: String = "platform_ww2_light"
 	var old_hp: float = _bm._compute_platform_preview_hp(src_id, 0)
 	_bm.blueprint_evolution_hp_floor[dst_id] = old_hp * 1.10
 	var dst_card: CardResource = DefaultCards.get_card_by_id(dst_id)
-	var wt: int = dst_card.default_weapon_type
-	var stats: UnitStats = UnitStatsTable.build_multi_stats(dst_card.platform_type, [wt], 0)
+	var stats: UnitStats = UnitStatsTable.build_stats_from_card(dst_card)
 	_bm.apply_growth_to_stats(stats, dst_card, [], false)
 	assert_float(stats.max_hp).is_greater_equal(old_hp * 1.10 - 0.01)

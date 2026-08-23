@@ -4,14 +4,17 @@ class_name DailyTaskManager
 ## v7.x: class_name 确保 DailyTaskManager.TaskType 在延迟加载后仍可全局访问
 
 ## 任务类型
+## 批次8（2026-08-23）：USE_PHASE_LAWS（值 5）随法则系统退役不再生成——枚举值保留
+## 防旧档 type 整数错位（load_state 会过滤残留实例）；ACQUIRE_RUNES 尾部追加。
 enum TaskType {
 	BATTLE_VICTORY,      # 赢得战斗
 	KILL_ENEMIES,        # 击败敌人
 	COLLECT_CARDS,       # 收集卡牌
 	UPGRADE_CARDS,       # 升级卡牌
 	COMPLETE_LEVELS,     # 完成关卡
-	USE_PHASE_LAWS,      # 使用相位法则
-	EARN_XP              # 获得经验
+	USE_PHASE_LAWS,      # （已退役，值位保留）
+	EARN_XP,             # 获得经验
+	ACQUIRE_RUNES        # 获得符文
 }
 
 ## 任务难度
@@ -126,6 +129,10 @@ func _generate_task(difficulty: TaskDifficulty, exclude_types: Array = []) -> Di
 	return task
 
 ## 获取可用任务类型
+## 批次8（2026-08-23）：USE_PHASE_LAWS 移出生成池——其唯一进度上报方
+## （_on_phase_law_cast）已随法则系统退役（P2-7 范围B），留在池里会生成
+## 玩家永远无法完成的死任务。补 ACQUIRE_RUNES（SignalBus.rune_acquired 实时上报）
+## 维持 7 类型对 7 任务的"同批不重复"设计。枚举值保留防旧档 type 整数错位。
 func _get_available_task_types() -> Array:
 	return [
 		TaskType.BATTLE_VICTORY,
@@ -133,8 +140,8 @@ func _get_available_task_types() -> Array:
 		TaskType.COLLECT_CARDS,
 		TaskType.UPGRADE_CARDS,
 		TaskType.COMPLETE_LEVELS,
-		TaskType.USE_PHASE_LAWS,
-		TaskType.EARN_XP
+		TaskType.EARN_XP,
+		TaskType.ACQUIRE_RUNES
 	]
 
 ## 根据类型和难度获取目标值
@@ -176,6 +183,14 @@ func _get_task_target(task_type: TaskType, difficulty: TaskDifficulty) -> int:
 				TaskDifficulty.EXPERT: return 5
 				_: return 1
 		TaskType.USE_PHASE_LAWS:
+			# 已退役：不再生成（池中已移除），保留分支防旧档残留实例查询崩溃
+			match difficulty:
+				TaskDifficulty.EASY: return 1
+				TaskDifficulty.NORMAL: return 3
+				TaskDifficulty.HARD: return 5
+				TaskDifficulty.EXPERT: return 10
+				_: return 1
+		TaskType.ACQUIRE_RUNES:
 			match difficulty:
 				TaskDifficulty.EASY: return 1
 				TaskDifficulty.NORMAL: return 3
@@ -346,7 +361,8 @@ static func get_task_type_name(task_type: TaskType) -> String:
 		TaskType.COLLECT_CARDS: return "收集卡牌"
 		TaskType.UPGRADE_CARDS: return "升级卡牌"
 		TaskType.COMPLETE_LEVELS: return "完成关卡"
-		TaskType.USE_PHASE_LAWS: return "使用相位法则"
+		TaskType.USE_PHASE_LAWS: return "使用相位法则"  # 已退役（残留实例已被 load_state 过滤）
+		TaskType.ACQUIRE_RUNES: return "获得符文"
 		TaskType.EARN_XP: return "获得经验"
 		_: return "未知任务"
 
@@ -378,7 +394,13 @@ func save_state() -> Dictionary:
 ## 加载状态（给SaveManager用）
 func load_state(data: Dictionary) -> void:
 	_load_triggered = true  # v7.x W5: 标记已加载，阻止 _ready 的延迟检查重复刷新
-	_daily_tasks = data.get("tasks", [])
+	var loaded: Array = data.get("tasks", [])
+	# 批次8：过滤已退役系统对应的任务类型（法则退役后 USE_PHASE_LAWS 成死任务），
+	# 旧档残留实例静默丢弃，等 24h 周期刷新或玩家手动刷新自然补齐。
+	for i in range(loaded.size() - 1, -1, -1):
+		if int(loaded[i].get("type", -1)) == TaskType.USE_PHASE_LAWS:
+			loaded.remove_at(i)
+	_daily_tasks = loaded
 	_last_refresh_time = data.get("last_refresh", 0)
 	# 检查是否需要刷新
 	_check_refresh_needed()

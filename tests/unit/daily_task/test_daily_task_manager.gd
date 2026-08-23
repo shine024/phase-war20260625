@@ -13,6 +13,11 @@ func before_test() -> void:
 	var script = load(__source)
 	_manager.set_script(script)
 	add_child(_manager)
+	# 批次8（2026-08-23）抖动根因隔离：_ready 挂 2s SceneTree 定时器（create_timer
+	# 不随节点释放取消），测试期触发会强制刷新任务、协程在已释放实例上恢复时错误
+	# 还会被 GdUnit 归因到当时正跑的用例（跨套件泄漏的来源）。
+	# 置 _load_triggered=true 让定时器回调空转，测试状态不再被 2s 后台动作篡改。
+	_manager.set("_load_triggered", true)
 
 
 func after_test() -> void:
@@ -142,20 +147,24 @@ func test_update_task_progress_completes_task() -> void:
 
 
 ## task_completed 信号在任务完成时发射
+## 批次8（2026-08-23）：弃 monitor_signals/assert_signal——其 is_emitted 走
+## process_frame 轮询 + 2s Timer，headless 下带参信号会挂到超时且失败被归因到
+## 相邻用例（本套件历史"抖动族"的真相）。改同步 lambda 连接计数，确定性零等待。
 func test_task_completed_signal_emitted() -> void:
 	_manager.refresh_daily_tasks()
-	var tasks = _manager.get_daily_tasks()
-	var task = tasks[0]
-	var signal_watcher = monitor_signals(_manager)
+	var task = _manager.get_daily_tasks()[0]
+	var received: Array = []
+	_manager.task_completed.connect(func(_t: Dictionary) -> void: received.append(_t))
 	_manager.update_task_progress(task["type"], task["target"])
-	assert_signal(_manager).is_emitted('task_completed')
+	assert_int(received.size()).is_equal(1)
 
 
-## daily_tasks_refreshed 信号在刷新时发射
+## daily_tasks_refreshed 信号在刷新时发射（同上改同步连接）
 func test_daily_tasks_refreshed_signal() -> void:
-	var signal_watcher = monitor_signals(_manager)
+	var received: Array = []
+	_manager.daily_tasks_refreshed.connect(func() -> void: received.append(true))
 	_manager.refresh_daily_tasks()
-	assert_signal(_manager).is_emitted('daily_tasks_refreshed')
+	assert_int(received.size()).is_equal(1)
 
 
 ## claim_task_reward 对已完成的任务返回 true

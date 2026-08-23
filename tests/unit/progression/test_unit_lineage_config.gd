@@ -6,7 +6,9 @@ const UnitLineageConfig = preload("res://data/unit_lineage_config.gd")
 
 func test_localize_evolve_reason_known_keys() -> void:
 	assert_str(UnitLineageConfig.localize_evolve_reason("enhance_not_enough")).contains("强化等级")
-	assert_str(UnitLineageConfig.localize_evolve_reason("enemy_mod_not_enough")).contains("敌源改造")
+	# 批次8（2026-08-23）：enemy_mod_not_enough 键已随敌源改造（EOM）系统删除，
+	# 不再是已知键——走 unknown 直通分支（见下一测试）。
+	assert_str(UnitLineageConfig.localize_evolve_reason("enemy_mod_not_enough")).is_equal("enemy_mod_not_enough")
 	assert_str(UnitLineageConfig.localize_evolve_reason("ok")).is_equal("可进化")
 
 

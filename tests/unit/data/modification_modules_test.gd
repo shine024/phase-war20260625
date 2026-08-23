@@ -10,7 +10,8 @@ var ModificationRegistry = preload("res://scripts/systems/modification_registry.
 
 func test_infantry_modifications_count() -> void:
 	var all_mods = InfantryModifications.get_all_mod_ids()
-	assert_int(all_mods.size()).override_failure_message("步兵应有22个改造").is_equal(22)
+	# 批次8（2026-08-23）：inf_23~27（战斗兴奋剂/巷战/医疗牺牲/化学弹头/凝固汽油）加入后 22→27
+	assert_int(all_mods.size()).override_failure_message("步兵应有27个改造").is_equal(27)
 
 func test_infantry_modifications_data_completeness() -> void:
 	var all_mods = InfantryModifications.get_all_mod_ids()
@@ -30,7 +31,8 @@ func test_infantry_modifications_data_completeness() -> void:
 
 func test_armor_modifications_count() -> void:
 	var all_mods = ArmorModifications.get_all_mod_ids()
-	assert_int(all_mods.size()).override_failure_message("装甲应有15个改造").is_equal(15)
+	# 批次8（2026-08-23）：arm_16（战斗狂热）加入后 15→16
+	assert_int(all_mods.size()).override_failure_message("装甲应有16个改造").is_equal(16)
 
 func test_modification_id_uniqueness() -> void:
 	ModificationRegistry.register_all()
@@ -49,9 +51,9 @@ func test_conflict_groups() -> void:
 
 func test_modification_for_unit_type() -> void:
 	var infantry_mods = InfantryModifications.get_for_unit_type(0)  # LIGHT
-	assert_int(infantry_mods.size()).is_equal(22)
+	assert_int(infantry_mods.size()).is_equal(27)
 	var armor_mods = ArmorModifications.get_for_unit_type(1)  # ARMOR
-	assert_int(armor_mods.size()).is_equal(15)
+	assert_int(armor_mods.size()).is_equal(16)
 	# 步兵不应返回装甲改造
 	var armor_for_infantry = ArmorModifications.get_for_unit_type(0)
 	assert_int(armor_for_infantry.size()).is_equal(0)
@@ -66,6 +68,6 @@ func test_effects_structure() -> void:
 func test_total_modification_count() -> void:
 	ModificationRegistry.register_all()
 	var all_ids = ModificationRegistry.get_all_ids()
-	# 允许数量略有偏差（通用改造可能重复计算）
-	assert_bool(all_ids.size() >= 120).is_true()
-	assert_bool(all_ids.size() <= 140).is_true()
+	# 批次8（2026-08-23）：全模块注册总数实测 184（原 120-140 区间过期；
+	# registry 注释里"154 条"亦为旧值）。精确锁定防未来无感知增删。
+	assert_int(all_ids.size()).is_equal(184)

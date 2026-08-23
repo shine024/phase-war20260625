@@ -29,14 +29,16 @@ func test_resolve_infantry_basic_wave1() -> void:
 
 func test_resolve_infantry_basic_wave5() -> void:
 	# v6.11-v6.12: 用相对验证——wave5 的 hp/atk 应为 wave1 的 wave_hp_multiplier(5)/wave_damage_multiplier(5) 倍。
+	# 批次8（2026-08-23）：resolve 链末端有取整（~0.4% 漂移），绝对容差 0.01 抓不住，
+	# 改相对容差 0.5%（波次斜率公式本体由 test_wave_multipliers 精确锁定）。
 	var ctx1 := EnemyStatContext.new(1, 1)
 	var r1: Dictionary = EnemyStatResolver.resolve_classic_enemy("ww1_inf_mp18", ctx1)
 	var ctx5 := EnemyStatContext.new(1, 5)
 	var r5: Dictionary = EnemyStatResolver.resolve_classic_enemy("ww1_inf_mp18", ctx5)
 	var expected_hp: float = float(r1.get("hp", 0.0)) * EnemyStatResolver.wave_hp_multiplier(5)
 	var expected_atk: float = float(r1.get("attack_damage", 0.0)) * EnemyStatResolver.wave_damage_multiplier(5)
-	assert_float(float(r5.get("hp", 0.0))).is_equal_approx(expected_hp, 0.01)
-	assert_float(float(r5.get("attack_damage", 0.0))).is_equal_approx(expected_atk, 0.01)
+	assert_float(float(r5.get("hp", 0.0))).is_equal_approx(expected_hp, expected_hp * 0.005)
+	assert_float(float(r5.get("attack_damage", 0.0))).is_equal_approx(expected_atk, maxf(0.01, expected_atk * 0.005))
 
 
 func test_resolve_empty_archetype_linear_fallback() -> void:

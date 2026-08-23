@@ -76,8 +76,10 @@ node_modules/
 .deepvcode/
 
 # ── 测试/临时脚本（不应进入版本库）──
-test_*.gd
-test_*.gd.uid
+# 批次8（2026-08-23）：删除过宽的 test_*.gd 规则——它把 7 个正式 gdunit 套件
+# （balance 三件/economy 数据/相位仪/master 战力×2/UI 编译）挡在版本库外，
+# CI 门禁从未跑过它们。正式套件命名就是 tests/unit/**/test_*.gd；
+# 临时脚本走显式文件名（不进库的直接不 add，_tmp_* 批次审计脚本反而要进库）。
 tmp_*
 gen_*.py
 update_unit_manifest.py
