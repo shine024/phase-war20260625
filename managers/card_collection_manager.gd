@@ -3,30 +3,14 @@ extends Node
 
 const DefaultCards = preload("res://data/default_cards.gd")
 
-## 稀有度卡牌映射（v7.x: 移除能量卡条目）
-const RARITY_CARD_MAP = {
-	"普通": [
-		"platform_ww1_light", "platform_ww1_medium",
-		"platform_ww2_light", "platform_ww2_medium",
-		"platform_cold_light", "platform_cold_medium",
-		"platform_modern_light",
-	],
-	"稀有": [
-		"platform_ww1_fort", "platform_ww2_heavy",
-		"platform_cold_ifv",
-		"platform_future_light",
-	],
-	"史诗": [
-		"platform_modern_medium", "platform_modern_spg",
-		"platform_future_medium", "platform_future_heavy",
-		"law_passive_test"
-	],
-	"传说": [
-		"omega_platform", "law_active_test"
-	],
-	"神话": [
-		# 神话卡牌暂未实现
-	]
+# v9.x（P1-5 批次4）：RARITY_CARD_MAP 硬编码表已删——全部条目指向已退役的旧 id
+# （platform_*/omega_platform/law_*_test 实测零命中），统计恒 0/0。
+# 稀有度分组改为运行时从 DefaultCards 实际 CardResource.rarity 动态推导（见
+# get_rarity_collection_stats）。神话档实际存在 6 张 mythic 卡（fut 重型近未来系）。
+const _RARITY_GROUP_ORDER: Array[String] = ["普通", "稀有", "史诗", "传说", "神话"]
+const _RARITY_EN_TO_CN := {
+	"common": "普通", "uncommon": "普通", "rare": "稀有",
+	"epic": "史诗", "legendary": "传说", "mythic": "神话",
 }
 
 ## 卡牌获得状态
@@ -131,25 +115,30 @@ func get_collection_progress() -> Dictionary:
 
 ## 获取稀有度收集统计
 func get_rarity_collection_stats() -> Dictionary:
-	var stats = {}
-	var rarities = ["普通", "稀有", "史诗", "传说", "神话"]
-
-	for rarity in rarities:
-		var card_ids = RARITY_CARD_MAP.get(rarity, [])
-		var total = card_ids.size()
-
-		var owned = 0
+	# v9.x（P1-5 批次4）：动态推导——按 DefaultCards 实际稀有度分组，替换原硬编码空表
+	var stats := {}
+	var groups := {}
+	if DefaultCards:
+		for cid in DefaultCards.get_all_blueprint_ids():
+			var card = DefaultCards.get_card_by_id(String(cid))
+			# 与 collection_panel._refresh_card_list 同口径：解析不到的 id（bp_* 敌蓝图等）归普通组
+			var group: String = _RARITY_EN_TO_CN.get(String(card.rarity), "普通") if card != null else "普通"
+			if not groups.has(group):
+				groups[group] = []
+			groups[group].append(String(cid))
+	for rarity in _RARITY_GROUP_ORDER:
+		var card_ids: Array = groups.get(rarity, [])
+		var total: int = card_ids.size()
+		var owned: int = 0
 		for card_id in card_ids:
 			if _collection_data.has(card_id):
 				if _collection_data[card_id]["status"] >= CardStatus.OWNED:
 					owned += 1
-
 		stats[rarity] = {
 			"total": total,
 			"owned": owned,
 			"rate": float(owned) / total if total > 0 else 0.0
 		}
-
 	return stats
 
 ## 获取卡牌状态

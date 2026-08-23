@@ -436,13 +436,6 @@ static func get_shop_price(blueprint_id: String) -> int:
 		"legendary": return 3500
 		_: return 100
 
-## 动态获取所有可购买蓝图（包括游戏进程中解锁的）
-## current_reputation: 当前声望值
-static func get_available_blueprints(current_reputation: int = 0) -> Array[String]:
-	var available: Array[String] = []
-	## 基础蓝图始终可用
-	for bp_id in ALL_TYPES:
-		available.append(bp_id)
-	## 随着声望解锁更多蓝图（TODO: 实现解锁逻辑）
-	return available
+# v9.x（P1-5 批次4）：get_available_blueprints（声望解锁 TODO 死函数，零调用方）已删除
+# ——蓝图体系 2026-08-22 退役后该入口再无消费方，蓝图解锁逻辑随体系消亡
 

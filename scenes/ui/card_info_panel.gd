@@ -643,7 +643,6 @@ func _card_skill_effect_summary(effect: Dictionary) -> String:
 		"debuff_global": return "全图减益"
 		"debuff_spread": return "减益传染"
 		"buff_allies": return "友军增益"
-		"summon_temp_unit": return "召唤援军"
 		"execute": return "斩杀"
 		_: return "特效"
 

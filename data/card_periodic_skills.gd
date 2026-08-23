@@ -23,7 +23,6 @@ const AuraData = preload("res://data/aura_data.gd")
 ##    debuff_global            → 全图 debuff
 ##    buff_allies              → 全体友军 stat_bonus（护盾/治疗/净化/加速）
 ##    buff_single_ally         → 单个友军强化
-##    summon_temp_unit         → 召唤临时单位
 ##    execute                  → 斩杀低 HP 敌方
 ##
 ##  family 字段：steel/flame/thunder/void，供 TacticDetector 战法条件查询

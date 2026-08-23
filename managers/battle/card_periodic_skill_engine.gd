@@ -153,7 +153,6 @@ func _execute_effect(skill: Dictionary) -> void:
 		"debuff_global": _exec_debuff_global(effect)
 		"debuff_spread": _exec_debuff_spread(effect)
 		"buff_allies": _exec_buff_allies(effect)
-		"summon_temp_unit": _exec_summon_temp_unit(effect)
 		"execute": _exec_execute(effect)
 		_:
 			pass  # 未知类型忽略
@@ -426,17 +425,8 @@ func _exec_buff_allies(effect: Dictionary) -> void:
 		if not stat_bonus.is_empty():
 			_apply_temporary_stat_bonus(u, stat_bonus, stat_dur)
 
-## 召唤临时单位
-func _exec_summon_temp_unit(effect: Dictionary) -> void:
-	# P1 占位：实际召唤需 battle_spawn_system 支持
-	# 此处通过 battlefield 或 SignalBus 通知 spawn system
-	if _battlefield != null and _battlefield.has_method("summon_temp_unit"):
-		_battlefield.summon_temp_unit(effect)
-	else:
-		# 兜底：通过 SignalBus 发射事件（防御性访问，兼容 --script 测试模式）
-		var sb = Engine.get_main_loop().root.get_node_or_null("/root/SignalBus")
-		if sb != null and sb.has_signal("card_skill_summon_unit"):
-			sb.card_skill_summon_unit.emit(effect)
+# v9.x（P1-5 批次4）：_exec_summon_temp_unit 占位已删——技能池零定义（原钢铁风暴
+# 已改 buff_allies），battlefield 无 summon_temp_unit 方法，兜底信号也零监听，纯死链
 
 ## 斩杀
 func _exec_execute(effect: Dictionary) -> void:
