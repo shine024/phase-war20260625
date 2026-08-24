@@ -1686,6 +1686,12 @@ func _physics_process(delta: float) -> void:
 		_update_nuclear_strike_tick(delta)
 		_update_shield_projector_tick(delta)
 		_update_drone_mark_tick(delta)
+		# v20.14: 隐身飞机周期性隐身
+		CardAbilityManager.update_stealth_periodic(self, delta)
+		# v20.14: 攻击无人机自动标记集火
+		CardAbilityManager.update_drone_auto_mark(self, delta)
+		# v20.14: 无人机标记过期更新
+		CardAbilityManager.update_drone_mark_expiry(delta)
 		# v8.6: 势力技能周期效果（periodic_shield / periodic_heal / periodic_invuln）
 		FactionSkillEffectHandler.process_periodic_ticks(self, delta)
 		# v8.6: 势力技能 on_hit_debuff 过期恢复（检查并恢复被 debuff 修改的 stats）
@@ -1824,6 +1830,8 @@ func take_damage(amount: float, attacker: Variant = null) -> void:
 	# 预览模式不会受到伤害
 	if is_preview_mode:
 		return
+	# v20.14: 隐身飞机被命中时退出隐身
+	CardAbilityManager.on_stealth_hit(self)
 	# v8.6: 势力技能 periodic_invuln（周期无敌期间免疫伤害）
 	if is_player and FactionSkillEffectHandler.is_invulnerable(self):
 		return

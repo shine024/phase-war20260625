@@ -60,7 +60,7 @@ static func get_aura_params(category: int, star: int) -> Dictionary:
 			}
 		Category.RADAR_RANGE:
 			return {
-				"crit_bonus": 0.10 * m,      # ★1=+10%, ★9=+20%
+				"crit_bonus": 0.15 * m,      # ★1=+15%, ★10≈+21.75%（v20.14 核心单位增强）
 				"is_global": false,
 			}
 		Category.FORTRESS_DEF:
@@ -71,9 +71,9 @@ static func get_aura_params(category: int, star: int) -> Dictionary:
 			}
 		Category.COMMAND_GLOBAL:
 			return {
-				"attack_mul": 0.05 * m,      # ★1=+5%, ★9=+9%
-				"speed_mul": 0.05 * m,       # ★1=+5%, ★9=+9%
-				"crit_mul": 0.02 * m,        # ★1=+2%, ★9=+3.6%
+				"attack_mul": 0.08 * m,      # ★1=+8%, ★10≈+11.6%（v20.14 核心单位增强）
+				"speed_mul": 0.08 * m,       # ★1=+8%, ★10≈+11.6%
+				"crit_mul": 0.04 * m,        # ★1=+4%, ★10≈+5.8%
 				"is_global": true,
 			}
 	return {}
