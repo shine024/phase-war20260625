@@ -3178,3 +3178,20 @@ Parse Error：Identifier "DT" not declared，背包面板/资源槽一开即挂
 
 **验证**：capture 全程 0 Parse Error（修复前 27）、四文件单载断言 OK、
 deploy_uses_smoke ALL PASS、ui_p1_validation 51 编译 ALL PASS、GdUnit 145/145。
+
+## P2-8 PM 挂机僵持超时判负 + P2-9/10/11 三项拍板（2026-08-25）
+
+**P2-8（实施，选项①）**：battle_manager 新增 PM 战僵持超时——`_process` 累计秒数
+（paused 时 _process 不跑，暂停天然不计入），三类有效伤害活动清零计时
+（unit_damaged amount>0 / phase_driver_hp_changed / enemy_phase_driver_hp_changed，
+均事件驱动信号非轮询）。全场 **180 秒零有效伤害 → toast「战线僵持超过 3 分钟，
+判定战败」+ end_battle(false)**，与撤退同语义（正常结算链，不掉奖励）。
+start_battle 每场重置。修复场景：世界地图"自动部署"挂机打进 PM 关，双方基地互不破
+→ 原先永卡一场战斗。真环境全链验证（bu_visual_capture 第 5 步）：判负后
+battle_active=false、计时归零、零脚本错误；GdUnit 145/145 无回归。
+
+**P2-9 / P2-10 / P2-11（拍板，均维持现状不写码）**：
+- P2-9 击杀掉真卡：EA 不复活（批次7 审计基于无免费卡通道；1.0 经济总审重估）
+- P2-10 合金/晶体消耗：EA 维持纯展示（真实消耗方触碰经济平衡面；1.0 统一处理）
+- P2-11 L43+ 难度：维持人工核验（soak bot 不代表真实玩家；等 B 部分实测体感再定）
+决议详情见 REMAINING_WORK 二节（三项已打勾记录理由）。

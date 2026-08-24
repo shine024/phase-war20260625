@@ -76,6 +76,16 @@ func _ready() -> void:
 	await get_tree().create_timer(0.8).timeout
 	await _capture("bu_shot_4_drawer.png")
 
+	# 5) P2-8 僵持超时判负链路验证（真环境全链跑 end_battle(false)：清理+结算+toast）
+	var bm: Node = get_node_or_null("/root/BattleManager")
+	if bm != null:
+		bm.set("_is_phase_master_battle", true)
+		bm.set("_pm_stalemate_sec", 190.0)
+		bm.call("_check_pm_stalemate_timeout")
+		await get_tree().create_timer(0.5).timeout
+		print("[P2-8] 超时判负后 battle_active=", bm.get("battle_active"),
+			"（期望 false） 计时重置=", bm.get("_pm_stalemate_sec"), "（期望 0）")
+
 	print("[BuCapture] DONE 4 shots -> ", SHOT_DIR)
 	get_tree().quit(0)
 

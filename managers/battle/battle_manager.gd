@@ -70,6 +70,12 @@ var _cached_nodes_by_group: Dictionary = {}
 var _phase_master_config: Dictionary = {}
 var _is_phase_master_battle: bool = false
 var _enemy_phase_driver: Node2D = null
+# P2-8：PM 战僵持计时（秒）——_process 累计（暂停期间不跑天然不计时），
+# 任意有效伤害活动（unit_damaged amount>0 / 双方基地 hp_changed）清零。
+var _pm_stalemate_sec: float = 0.0
+## P2-8：PM 战全场零有效伤害的判负阈值。挂机（world_map 自动部署）打进 PM 僵持
+## 时胜负仅由基地销毁驱动，无此超时会永卡一场战斗。
+const PM_STALEMATE_TIMEOUT_SEC: float = 180.0
 # v7.x 性能：侦查加成标志——在 end_battle 清场前计算（单位还活着），传给 Frame B' 情报收获。
 # 原先 B' 才算，但那时单位已被 clear_all_units 清空 → 恒返回 false（侦查加成从未生效）。
 var _pending_has_recon: bool = false
@@ -155,6 +161,15 @@ func _ready() -> void:
 		# 触发幽灵 end_battle（秒败快速重试时曾致新战无波次永不结算，L43 稳定复现）。
 		if not SignalBus.unit_damaged.is_connected(_on_unit_damaged_combat_feedback):
 			SignalBus.unit_damaged.connect(_on_unit_damaged_combat_feedback)
+		# P2-8：僵持计时重置 hook（单位受击 + 双方基地掉血，均事件驱动）
+		if not SignalBus.unit_damaged.is_connected(_on_unit_damaged_stalemate_reset):
+			SignalBus.unit_damaged.connect(_on_unit_damaged_stalemate_reset)
+		if SignalBus.has_signal("phase_driver_hp_changed"):
+			if not SignalBus.phase_driver_hp_changed.is_connected(_on_driver_hp_changed_stalemate_reset):
+				SignalBus.phase_driver_hp_changed.connect(_on_driver_hp_changed_stalemate_reset)
+		if SignalBus.has_signal("enemy_phase_driver_hp_changed"):
+			if not SignalBus.enemy_phase_driver_hp_changed.is_connected(_on_driver_hp_changed_stalemate_reset):
+				SignalBus.enemy_phase_driver_hp_changed.connect(_on_driver_hp_changed_stalemate_reset)
 		# v10 解题式玩法：克制质变计数（战后统计"本关克制链生效 N 次"）
 		if SignalBus.has_signal("counter_break_triggered"):
 			if not SignalBus.counter_break_triggered.is_connected(_on_counter_break_count):
@@ -237,6 +252,10 @@ func _process(delta: float) -> void:
 		if do_consume:
 			_spawn_system.consume_wave_timer()
 
+	# P2-8：PM 战僵持计时（_process 在 paused 时 return，暂停不计入）
+	if _is_phase_master_battle:
+		_pm_stalemate_sec += delta
+
 	_check_win_lose()
 	# v9.x（3c 性能批次）：每帧 has_method 反射 → 首帧判定一次缓存
 	if not _pmm_checked:
@@ -297,6 +316,8 @@ func start_battle(battle_scene: Node) -> void:
 	# 新战 begin_card_grid_combat）。每场递增世代号，延迟调用携带并校验。
 	_battle_gen += 1
 	_connect_battle_scoped_signals()
+	# P2-8：每场战斗重置僵持计时
+	_pm_stalemate_sec = 0.0
 
 	# 性能优化：初始化空间分区系统
 	_setup_spatial_grid()
@@ -710,8 +731,9 @@ func _check_win_lose() -> void:
 	if not battle_active or battlefield == null:
 		return
 
-	# 相位师战斗：胜负由基地销毁信号驱动
+	# 相位师战斗：胜负由基地销毁信号驱动；P2-8 僵持超时兜底判负
 	if _is_phase_master_battle:
+		_check_pm_stalemate_timeout()
 		return
 
 	if not _card_grid_combat_started:
@@ -753,6 +775,25 @@ func _on_phase_driver_destroyed() -> void:
 	if not battle_active:
 		return
 	end_battle(false)
+
+## P2-8：PM 战僵持超时判负——全场 PM_STALEMATE_TIMEOUT_SEC 秒零有效伤害 → 判负结算。
+## 与撤退同语义（正常走结算链，不掉奖励），挂机卡进 PM 僵持不再永卡一场。
+func _check_pm_stalemate_timeout() -> void:
+	if _pm_stalemate_sec < PM_STALEMATE_TIMEOUT_SEC:
+		return
+	_pm_stalemate_sec = 0.0
+	if SignalBus != null and SignalBus.has_signal("show_toast"):
+		SignalBus.show_toast.emit("战线僵持超过 3 分钟，判定战败")
+	end_battle(false)
+
+## P2-8：有效伤害活动 hook——单位受击（amount>0）即重置僵持计时。
+func _on_unit_damaged_stalemate_reset(_unit: Node, _is_player: bool, amount: float, _at: Vector2) -> void:
+	if amount > 0.0:
+		_pm_stalemate_sec = 0.0
+
+## P2-8：基地掉血也是有效战斗活动（事件驱动信号，非轮询），重置僵持计时。
+func _on_driver_hp_changed_stalemate_reset(_cur: float, _mx: float) -> void:
+	_pm_stalemate_sec = 0.0
 
 
 func _on_enemy_phase_driver_destroyed() -> void:
