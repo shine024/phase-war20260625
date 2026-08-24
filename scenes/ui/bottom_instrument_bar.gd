@@ -54,6 +54,8 @@ var _menu_btn: Button = null
 var _last_pending_deploy_id: String = ""
 var _selected_deploy_panel: Control = null
 var _breath_phase: float = 0.0
+# v20.13b：每卡部署次数缓存（base_card_id → [remaining, total]），由 deploy_uses_changed 信号驱动
+var _deploy_uses_map: Dictionary = {}
 
 @onready var instrument_section: HBoxContainer = $Margin/HBox/InstrumentSection
 @onready var instrument_icon: TextureRect = $Margin/HBox/InstrumentSection/InstrumentIcon
@@ -222,6 +224,9 @@ func _connect_signals() -> void:
 		# BU-1: 能量变化 → 常驻能量条 + 槽位可负担状态刷新
 		if SignalBus.has_signal("energy_changed"):
 			SignalBus.energy_changed.connect(_on_energy_changed)
+		# v20.13b: 每卡部署次数变化 → 槽位 ×N 角标刷新
+		if SignalBus.has_signal("deploy_uses_changed"):
+			SignalBus.deploy_uses_changed.connect(_on_deploy_uses_changed)
 
 func _on_energy_insufficient(_cost: float) -> void:
 	# 能量不足时给红色警告 toast（部署失败无其他视觉反馈）
@@ -235,6 +240,48 @@ func _on_energy_changed(_cur: float, _mx: float) -> void:
 	_refresh_slot_affordability()
 	if _selected_deploy_panel != null and is_instance_valid(_selected_deploy_panel):
 		_apply_slot_selection_glow(_selected_deploy_panel)
+
+## v20.13b：每卡部署次数变化 → 更新缓存并刷新对应槽（×N 角标 + 耗尽压暗走 affordance 统一状态机）
+func _on_deploy_uses_changed(base_card_id: String, remaining: int, total: int) -> void:
+	_deploy_uses_map[base_card_id] = [remaining, total]
+	for panel in _slot_panels:
+		if panel == null or not is_instance_valid(panel):
+			continue
+		if String(panel.get_meta("card_id", "")) == base_card_id:
+			_apply_slot_affordance(panel)
+			_refresh_deploy_uses_badge(panel)
+
+## v20.13b：槽位左上部署次数角标 ×N（右上已被费用角标占用）。
+## 仅绿槽战斗卡且有信号数据时显示；耗尽转红（压暗由 _apply_slot_affordability 统一处理）。
+func _refresh_deploy_uses_badge(panel: Control) -> void:
+	if panel == null or not is_instance_valid(panel):
+		return
+	var card_id: String = String(panel.get_meta("card_id", ""))
+	var color: String = String(panel.get_meta("slot_color", ""))
+	var badge: Label = panel.get_node_or_null("DeployUsesBadge") as Label
+	var has_data: bool = color == "green" and not card_id.is_empty() and _deploy_uses_map.has(card_id)
+	if not has_data:
+		if badge != null:
+			badge.queue_free()
+		return
+	var remaining: int = int(_deploy_uses_map[card_id][0])
+	if remaining > 99:
+		return  # 次数充裕（≥100）不占角标注意力
+	if badge == null:
+		badge = Label.new()
+		badge.name = "DeployUsesBadge"
+		badge.set_anchors_and_offsets_preset(Control.PRESET_TOP_LEFT)
+		badge.offset_left = 4.0
+		badge.offset_top = 2.0
+		badge.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		badge.add_theme_font_size_override("font_size", DT.FONT_SIZE_XSMALL)
+		badge.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.85))
+		badge.add_theme_constant_override("outline_size", 3)
+		badge.z_index = 3
+		panel.add_child(badge)
+	badge.text = "×%d" % remaining
+	badge.add_theme_color_override("font_color",
+		Color(1.0, 0.35, 0.3, 0.95) if remaining <= 0 else Color(1, 1, 1, 0.92))
 
 ## BU-1：底栏悬浮卡片化——弃用 tscn 直角通栏样式，走 PanelStyles 面板语言
 ## （12 圆角 + accent 边框 + 外发光）；底色 alpha 0.92 让战场从卡片下微透。
@@ -389,7 +436,11 @@ func _apply_slot_affordance(panel: Control) -> void:
 		and EnergyManager.has_method("can_afford") and EnergyManager.can_afford(cost)
 	var dim := panel.get_node_or_null("EnergyDim") as ColorRect
 	if dim != null:
-		dim.visible = deployable and not affordable and not restricted
+		# v20.13b：能量不足 or 部署次数耗尽，任一触发压暗
+		var du_card_id: String = String(panel.get_meta("card_id", ""))
+		var du_exhausted: bool = deployable and _deploy_uses_map.has(du_card_id) \
+			and int(_deploy_uses_map[du_card_id][0]) <= 0
+		dim.visible = deployable and (not affordable or du_exhausted) and not restricted
 	# Godot 4.5：get_meta 缺键时即使带 default 也打 error（空槽无 cost_badge_node meta，
 	# 能量变化时刷屏）——必须 has_meta 守卫
 	var cb: Variant = null
@@ -522,6 +573,14 @@ func _on_player_phase_master_power_changed(_raw: float, _compressed: float, _sta
 
 func _on_battle_ended(_won: bool) -> void:
 	_deployed_card_ids.clear()
+	# v20.13b：部署次数缓存与角标随战斗结束清除（下场由 reset 信号重建）
+	_deploy_uses_map.clear()
+	for panel in _slot_panels:
+		if panel == null or not is_instance_valid(panel):
+			continue
+		var badge: Label = panel.get_node_or_null("DeployUsesBadge") as Label
+		if badge != null:
+			badge.queue_free()
 	_refresh_slot_layout()
 	_refresh_phase_level()
 	# 自动部署按钮复位（仅当前战斗生效，下场需重新开启）
@@ -586,6 +645,10 @@ func _format_card_slot_tooltip(color: String, card: CardResource) -> String:
 			var _ident: String = String(card.instance_id) if not String(card.instance_id).is_empty() else String(card.card_id)
 			_lv_val = clampi(maxi(int(_ir_lv.get_card_level(_ident)), 1), 1, 30)
 		detail_lines.append("等级：Lv.%d" % _lv_val)
+	# v20.13b：每卡部署次数（本场剩余/总量；战斗中由 deploy_uses_changed 信号维护）
+	if card.card_type == GC.CardType.COMBAT_UNIT and _deploy_uses_map.has(card.card_id):
+		var du: Array = _deploy_uses_map[card.card_id]
+		detail_lines.append("部署次数：%d / %d" % [int(du[0]), int(du[1])])
 	if not String(card.type_line).is_empty():
 		detail_lines.append("类型：%s" % String(card.type_line))
 	if not String(card.summary_line).is_empty():
@@ -922,6 +985,8 @@ func _apply_slot_card_labels(panel: Control, card: CardResource) -> void:
 	if cost_badge != null:
 		cost_badge.energy_value = int(card.energy_cost)
 		panel.set_meta("cost_badge_node", cost_badge)
+	# v20.13b：槽位重建后恢复部署次数角标（缓存由信号维护，重布局不丢）
+	_refresh_deploy_uses_badge(panel)
 
 
 func _sync_slot_card_frame(panel: Control, card: CardResource) -> void:

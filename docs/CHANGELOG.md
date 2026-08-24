@@ -3159,3 +3159,22 @@ ui_batch2_validation ALL PASS（41 文件）、ui_unified_check 全部通过。
   首选空槽逻辑）。涉及 backpack_panel（并行会话热点文件），待拍板后单独成批。
 
 至此 UI 批次三 14 批全部执行完毕（B12 颜色清剿为部分完成，残留 ~551 处记档）。
+
+## v20.13b 部署次数 UI 角标消费 + DT 改名断裂修复（2026-08-25）
+
+**部署次数角标**（v20.13 信号链收尾，bottom_instrument_bar / battle_spawn_system）：
+
+- BSS `_reset_deploy_uses` 战斗开始初始化后逐卡广播 deploy_uses_changed——角标初始显示全信号驱动
+- 底栏绿槽战斗卡左上角 `×N` 角标（10px DT.FONT_SIZE_XSMALL 纯数字合规，右上已被费用角标占用）：
+  剩余转红；耗尽叠加 EnergyDim 压暗（与能量不足统一状态机 `_apply_slot_affordance`）；
+  ≥100 次不显示（充裕不占注意力）；战斗结束清缓存清角标，槽位重布局后自动恢复
+- 槽位 tooltip 增「部署次数：剩余 / 总量」行
+
+**DT 改名断裂修复（P1，UI 批次三遗留 bug）**：backpack_card_item.gd（9 处）与
+resource_slot_item.gd（7 处）代码用 `DT.` 但文件声明名是 `DesignTokens`——
+Parse Error：Identifier "DT" not declared，背包面板/资源槽一开即挂
+（ui_p1_validation 白名单未含这两个文件故未拦住，bu_visual_capture 实跑暴露）。
+统一 sed 替换 `DT.` → `DesignTokens.`；全项目扫描其余 3 处命中均为注释/字符串/局部变量误报。
+
+**验证**：capture 全程 0 Parse Error（修复前 27）、四文件单载断言 OK、
+deploy_uses_smoke ALL PASS、ui_p1_validation 51 编译 ALL PASS、GdUnit 145/145。

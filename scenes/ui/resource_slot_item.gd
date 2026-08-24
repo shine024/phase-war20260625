@@ -281,7 +281,7 @@ func _refresh_lore(lore_id: String, count: int, name_label: Label, amount_label:
 		if not effect_text.is_empty():
 			amount_label.text = effect_text
 			amount_label.add_theme_color_override("font_color", Color(0.024, 0.714, 0.831, 0.95))  # 青蓝
-			amount_label.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
+			amount_label.add_theme_font_size_override("font_size", DesignTokens.FONT_SIZE_SMALL)
 		else:
 			amount_label.text = ""
 
@@ -396,7 +396,7 @@ func _apply_mod_install_count(install_count: int) -> void:
 		text_lbl.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 		text_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		text_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-		text_lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
+		text_lbl.add_theme_font_size_override("font_size", DesignTokens.FONT_SIZE_SMALL)
 		text_lbl.add_theme_color_override("font_color", Color(0.30, 0.92, 0.60, 1.0))
 		text_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		badge.add_child(text_lbl)
@@ -536,7 +536,7 @@ func _apply_mod_slot_type_label(slot_type: String) -> void:
 		label.name = "ModSlotTypeLabel"
 		label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 		label.vertical_alignment = VERTICAL_ALIGNMENT_TOP
-		label.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
+		label.add_theme_font_size_override("font_size", DesignTokens.FONT_SIZE_SMALL)
 		label.add_theme_color_override("font_color", Color(0.55, 0.65, 0.78, 0.9))
 		label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		layer.add_child(label)
@@ -597,7 +597,7 @@ func _apply_mod_rarity_text(rarity: String) -> void:
 		label.name = "ModRarityText"
 		label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 		label.vertical_alignment = VERTICAL_ALIGNMENT_BOTTOM
-		label.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
+		label.add_theme_font_size_override("font_size", DesignTokens.FONT_SIZE_SMALL)
 		label.add_theme_font_override("font", DesignTokens.get_title_font())
 		label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		layer.add_child(label)
@@ -623,7 +623,7 @@ func _apply_mod_prototype(prototype: String) -> void:
 		label.name = "ModPrototypeLabel"
 		label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 		label.vertical_alignment = VERTICAL_ALIGNMENT_BOTTOM
-		label.add_theme_font_size_override("font_size", DT.FONT_SIZE_XSMALL)
+		label.add_theme_font_size_override("font_size", DesignTokens.FONT_SIZE_XSMALL)
 		label.add_theme_color_override("font_color", Color(0.27, 0.31, 0.39, 0.7))  # 暗灰次要信息
 		label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		layer.add_child(label)
@@ -698,7 +698,7 @@ func _refresh_rune(rune_id: String, count: int, name_label: Label, amount_label:
 		if not effect_short.is_empty():
 			amount_label.text = effect_short
 			amount_label.add_theme_color_override("font_color", Color(0.653, 0.546, 0.980, 0.95))  # 紫色
-			amount_label.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
+			amount_label.add_theme_font_size_override("font_size", DesignTokens.FONT_SIZE_SMALL)
 		elif count > 1:
 			amount_label.text = "×%d" % count
 		else:
@@ -907,7 +907,7 @@ func _apply_rune_runeword_badge() -> void:
 		text_lbl.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 		text_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		text_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-		text_lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_XSMALL)
+		text_lbl.add_theme_font_size_override("font_size", DesignTokens.FONT_SIZE_XSMALL)
 		text_lbl.add_theme_color_override("font_color", Color(0.78, 0.70, 1.0, 1.0))
 		text_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		badge.add_child(text_lbl)

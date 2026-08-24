@@ -1545,6 +1545,9 @@ func _reset_deploy_uses() -> void:
 			continue
 		var uses: int = UnifiedCardTable.get_deploy_uses(entry, card)
 		_deploy_uses_remaining[base_id] = uses
+		# v20.13b：reset 也广播——底栏部署次数角标的初始显示由信号驱动（bar 在 _ready 已连接）
+		if _signal_bus:
+			_signal_bus.deploy_uses_changed.emit(base_id, uses, uses)
 
 ## 检查某卡是否还有剩余部署次数
 func _has_deploy_uses(base_card_id: String) -> bool:

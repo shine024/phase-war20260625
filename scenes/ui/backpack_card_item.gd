@@ -698,7 +698,7 @@ func _ensure_compact_slot_structure(icon_row: Control, name_label: Label) -> voi
 	lv_label.name = "Lv"
 	lv_label.clip_text = true
 	lv_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-	lv_label.add_theme_font_size_override("font_size", DT.FONT_SIZE_XSMALL)
+	lv_label.add_theme_font_size_override("font_size", DesignTokens.FONT_SIZE_XSMALL)
 	lv_label.add_theme_color_override("font_color", DesignTokens.COLOR_AMBER_SOFT)  # amber-soft
 	lv_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	stat_left.add_child(lv_label)
@@ -706,14 +706,14 @@ func _ensure_compact_slot_structure(icon_row: Control, name_label: Label) -> voi
 	mod_label.name = "Mod"
 	mod_label.clip_text = true
 	mod_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-	mod_label.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
+	mod_label.add_theme_font_size_override("font_size", DesignTokens.FONT_SIZE_SMALL)
 	mod_label.add_theme_color_override("font_color", Color(0.498, 0.851, 1.0, 1.0))  # cyan-soft
 	mod_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	stat_left.add_child(mod_label)
 	stat_line.add_child(stat_left)
 	var stat_right := Label.new()
 	stat_right.name = "StatRight"
-	stat_right.add_theme_font_size_override("font_size", DT.FONT_SIZE_XSMALL)
+	stat_right.add_theme_font_size_override("font_size", DesignTokens.FONT_SIZE_XSMALL)
 	stat_right.add_theme_color_override("font_color", Color(0.91, 0.93, 0.97, 1.0))
 	stat_right.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	stat_line.add_child(stat_right)
@@ -1075,7 +1075,7 @@ func _ensure_kind_tag_badge(combat_kind: int) -> void:
 		glyph_lbl.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 		glyph_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		glyph_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-		glyph_lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
+		glyph_lbl.add_theme_font_size_override("font_size", DesignTokens.FONT_SIZE_SMALL)
 		glyph_lbl.add_theme_color_override("font_color", Color(1, 1, 1, 0.98))
 		glyph_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		badge.add_child(glyph_lbl)
@@ -1126,7 +1126,7 @@ func _ensure_stars_overlay(c: CardResource) -> void:
 			var star := Label.new()
 			star.name = "Star%d" % i
 			star.text = "★"
-			star.add_theme_font_size_override("font_size", DT.FONT_SIZE_XSMALL)
+			star.add_theme_font_size_override("font_size", DesignTokens.FONT_SIZE_XSMALL)
 			star.mouse_filter = Control.MOUSE_FILTER_IGNORE
 			hbox.add_child(star)
 		wrapper.add_child(hbox)
@@ -1190,7 +1190,7 @@ func _ensure_equipped_mark(c: CardResource) -> void:
 		text_lbl.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 		text_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		text_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-		text_lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_XSMALL)
+		text_lbl.add_theme_font_size_override("font_size", DesignTokens.FONT_SIZE_XSMALL)
 		text_lbl.add_theme_color_override("font_color", Color(0.30, 0.92, 0.60, 1.0))
 		text_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		badge.add_child(text_lbl)
@@ -1252,7 +1252,7 @@ func _ensure_instance_no(c: CardResource) -> void:
 	chip.visible = true
 	if lbl:
 		lbl.text = seq
-		lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_XSMALL)
+		lbl.add_theme_font_size_override("font_size", DesignTokens.FONT_SIZE_XSMALL)
 		lbl.add_theme_color_override("font_color", Color(0.65, 0.70, 0.80, 0.95))
 
 
@@ -1376,7 +1376,7 @@ func _ensure_mtg_preview_structure(icon_row: Control, name_label: Label) -> void
 	name_hdr.autowrap_mode = TextServer.AUTOWRAP_OFF
 	name_hdr.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	name_hdr.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
-	name_hdr.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
+	name_hdr.add_theme_font_size_override("font_size", DesignTokens.FONT_SIZE_SMALL)
 	var rank_hdr := HBoxContainer.new()
 	rank_hdr.name = "MtgRankRow"
 	rank_hdr.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -1387,7 +1387,7 @@ func _ensure_mtg_preview_structure(icon_row: Control, name_label: Label) -> void
 	cost_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	cost_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	cost_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	cost_lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
+	cost_lbl.add_theme_font_size_override("font_size", DesignTokens.FONT_SIZE_SMALL)
 	cost_lbl.add_theme_color_override("font_color", Color(0.95, 0.82, 0.35, 1.0))
 	header.add_child(name_hdr)
 	header.add_child(rank_hdr)
