@@ -1,4 +1,6 @@
 extends PanelContainer
+
+const DesignTokens = preload("res://resources/design_tokens.gd")
 ## 统一情报面板：背包/相位仪/战场共用
 ## 4 Tab：情报 / 强化 / 改造 / 进化
 ## 模式：
@@ -399,7 +401,7 @@ func _add_action_button(text: String, color: Color, action: String, tooltip: Str
 	btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	btn.add_theme_font_size_override("font_size", 13)
 	btn.add_theme_color_override("font_color", color)
-	btn.add_theme_color_override("font_hover_color", Color(1, 1, 1, 1))
+	btn.add_theme_color_override("font_hover_color", DesignTokens.COLOR_HOVER_WHITE)
 	# 批次三 B2e：操作按钮就地解释后果
 	if not tooltip.is_empty():
 		btn.tooltip_text = tooltip
@@ -776,7 +778,7 @@ func _refresh_affix_tags(card: CardResource) -> void:
 	if tags.is_empty():
 		var empty := Label.new()
 		empty.text = "无特殊词条"
-		empty.add_theme_color_override("font_color", Color(0.5, 0.55, 0.65, 0.7))
+		empty.add_theme_color_override("font_color", DesignTokens.COLOR_SLATE_A70)
 		empty.add_theme_font_size_override("font_size", 12)
 		_affix_flow.add_child(empty)
 		return

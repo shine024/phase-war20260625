@@ -310,7 +310,7 @@ func _is_entry_highlighted(card_id: String) -> bool:
 	if panel == null:
 		return false
 	var st := panel.get_theme_stylebox("panel") as StyleBoxFlat
-	return st != null and st.border_color == Color(0.0, 0.92, 1.0, 1.0)
+	return st != null and st.border_color == DT.COLOR_ACCENT_CYAN
 
 
 func _highlight_card(card_id: String) -> void:
@@ -324,7 +324,7 @@ func _highlight_card(card_id: String) -> void:
 		var dup := base.duplicate() as StyleBoxFlat
 		if String(cid) == card_id:
 			dup.bg_color = Color(0.05, 0.22, 0.32, 0.98)
-			dup.border_color = Color(0.0, 0.92, 1.0, 1.0)
+			dup.border_color = DT.COLOR_ACCENT_CYAN
 			dup.set_border_width_all(2)
 		panel.add_theme_stylebox_override("panel", dup)
 

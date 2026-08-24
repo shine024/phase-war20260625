@@ -75,7 +75,7 @@ func _build_fold_card(title: String, expanded: bool, head_bg: Color) -> Dictiona
 	toggle.text = "%s %s" % [title, "▼" if expanded else "▶"]
 	toggle.add_theme_font_size_override("font_size", 12)
 	toggle.add_theme_color_override("font_color", Color(0.91, 0.94, 0.96, 1))
-	toggle.add_theme_color_override("font_hover_color", Color(0.13, 0.83, 0.93, 1))
+	toggle.add_theme_color_override("font_hover_color", DT.COLOR_CYAN_TECH_SOFT)
 	toggle.alignment = HORIZONTAL_ALIGNMENT_LEFT
 	toggle.flat = true
 	var title_st := StyleBoxFlat.new()
@@ -173,8 +173,8 @@ func _refresh_panel() -> void:
 			on_field = int(battle_mgr.get_player_unit_count())
 		if "max_player_units" in battle_mgr:
 			unit_limit = int(battle_mgr.max_player_units)
-	content.add_child(_make_kv_row("卡牌总数", "%d" % total_cards, Color(0.13, 0.83, 0.93, 1)))
-	content.add_child(_make_kv_row("最高进化", "★%d" % max_star if max_star > 0 else "—", Color(0.98, 0.75, 0.15, 1)))
+	content.add_child(_make_kv_row("卡牌总数", "%d" % total_cards, DT.COLOR_CYAN_TECH_SOFT))
+	content.add_child(_make_kv_row("最高进化", "★%d" % max_star if max_star > 0 else "—", DT.COLOR_AMBER_SOFT))
 	var field_str := "%d / %d" % [on_field, unit_limit] if unit_limit > 0 else "%d" % on_field
 	content.add_child(_make_kv_row("场上兵力", field_str, Color(0.2, 0.85, 0.4, 1)))
 
@@ -191,7 +191,7 @@ func _refresh_resource() -> void:
 		content.add_child(_make_row("（资源系统未加载）", Color(0.5, 0.55, 0.6)))
 		return
 	# BasicResourceManager 字段为强类型 var，Node.get() 不支持默认值参数，改用 _get_int 守卫取值
-	# C2: 资源五色收敛 DesignTokens.COLOR_RES_*（能量块原 0.98/0.75/0.15 与他处漂移）
+	# C2: 资源五色收敛 DT.COLOR_RES_*（能量块原 0.98/0.75/0.15 与他处漂移）
 	content.add_child(_make_kv_row("⚡ 能量块", _fmt_num(_get_int(brm, "total_energy_block")), DT.COLOR_RES_ENERGY))
 	content.add_child(_make_kv_row("📦 纳米材料", _fmt_num(_get_int(brm, "total_nano_materials")), DT.COLOR_RES_NANO))
 	content.add_child(_make_kv_row("🔶 合金", _fmt_num(_get_int(brm, "total_alloy")), DT.COLOR_RES_ALLOY))

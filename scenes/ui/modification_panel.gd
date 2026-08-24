@@ -202,7 +202,7 @@ func _update_chip_styles() -> void:
 		else:
 			sb.bg_color = DT.COLOR_CHIP_BG
 			sb.border_color = DT.COLOR_CHIP_BORDER
-			btn.add_theme_color_override("font_color", Color(0.5, 0.55, 0.65, 0.8))
+			btn.add_theme_color_override("font_color", DT.COLOR_SLATE_A80)
 		btn.add_theme_stylebox_override("normal", sb)
 		var sb_h := sb.duplicate() as StyleBoxFlat
 		sb_h.bg_color = Color(0.024, 0.714, 0.831, 0.06)
@@ -253,7 +253,7 @@ func _apply_fold_state() -> void:
 		else:
 			sb.bg_color = DT.COLOR_CHIP_BG
 			sb.border_color = DT.COLOR_CHIP_BORDER
-			fold_button.add_theme_color_override("font_color", Color(0.5, 0.55, 0.65, 0.8))
+			fold_button.add_theme_color_override("font_color", DT.COLOR_SLATE_A80)
 		fold_button.add_theme_stylebox_override("normal", sb)
 	# 收起态若当前 hover 浮卡残留，隐藏掉
 	if _fold_state != 2 and _hover_card != null:
@@ -325,7 +325,7 @@ func _refresh_hover_card(pc: PanelContainer, card: CardResource) -> void:
 	name_lbl.text = card.display_name if card.display_name else card.card_id
 	name_lbl.add_theme_font_override("font", DT.get_title_font_bold())
 	name_lbl.add_theme_font_size_override("font_size", 14)
-	name_lbl.add_theme_color_override("font_color", Color(0.95, 0.96, 0.98, 1))
+	name_lbl.add_theme_color_override("font_color", DT.COLOR_TEXT)
 	name_lbl.clip_text = true
 	vbox.add_child(name_lbl)
 	# 战力大字
@@ -359,7 +359,7 @@ func _refresh_hover_card(pc: PanelContainer, card: CardResource) -> void:
 	var mod_lbl := Label.new()
 	mod_lbl.text = "已装改造  %d / 9" % mod_count
 	mod_lbl.add_theme_font_size_override("font_size", 12)
-	mod_lbl.add_theme_color_override("font_color", DT.COLOR_CYAN_TECH_SOFT if mod_count > 0 else Color(0.5, 0.55, 0.65, 0.7))
+	mod_lbl.add_theme_color_override("font_color", DT.COLOR_CYAN_TECH_SOFT if mod_count > 0 else DT.COLOR_SLATE_A70)
 	vbox.add_child(mod_lbl)
 	pc.add_child(vbox)
 
@@ -518,7 +518,7 @@ func _create_card_item(card: CardResource, instance_card: CardResource = null) -
 	btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	btn.text = ""
 	btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
-	btn.add_theme_color_override("font_color", Color(0.91, 0.93, 0.96, 1))
+	btn.add_theme_color_override("font_color", DT.COLOR_TEXT_SOFT)
 
 	# v7.1: 使用实例数据（如有），否则用模板
 	var display_card: CardResource = instance_card if instance_card != null else card
@@ -573,7 +573,7 @@ func _create_card_item(card: CardResource, instance_card: CardResource = null) -
 	thumb.custom_minimum_size = Vector2(36, 40)
 	thumb.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	var thumb_sb := StyleBoxFlat.new()
-	thumb_sb.bg_color = Color(0.03, 0.06, 0.11, 1)
+	thumb_sb.bg_color = DT.COLOR_SLOT_LOCKED
 	thumb_sb.border_color = _get_kind_color(card.combat_kind)
 	thumb_sb.set_border_width_all(1)
 	thumb_sb.set_corner_radius_all(3)
@@ -615,7 +615,7 @@ func _create_card_item(card: CardResource, instance_card: CardResource = null) -
 	name_label.text = display_name
 	name_label.add_theme_font_override("font", DT.get_title_font())
 	name_label.add_theme_font_size_override("font_size", 16)
-	name_label.add_theme_color_override("font_color", Color(0.95, 0.96, 0.98, 1) if (selected_card and selected_card.instance_id == display_instance_id) else Color(0.85, 0.88, 0.94, 1))
+	name_label.add_theme_color_override("font_color", DT.COLOR_TEXT if (selected_card and selected_card.instance_id == display_instance_id) else Color(0.85, 0.88, 0.94, 1))
 	name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	# 单行不换行、不截断：左栏加宽到 360 容下绝大多数卡名；超长名左对齐单行显示
 	name_label.autowrap_mode = TextServer.AUTOWRAP_OFF
@@ -640,7 +640,7 @@ func _create_card_item(card: CardResource, instance_card: CardResource = null) -
 	meta_label.text = "Lv.%d  ·  M%d/9" % [display_level, display_mods.size()]
 	meta_label.add_theme_font_override("font", DT.get_body_font())
 	meta_label.add_theme_font_size_override("font_size", 12)
-	meta_label.add_theme_color_override("font_color", Color(0.55, 0.6, 0.7, 0.85))
+	meta_label.add_theme_color_override("font_color", DT.COLOR_SLATE_DIM_A85)
 	meta_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	info.add_child(meta_label)
 	hbox.add_child(info)
@@ -697,7 +697,7 @@ func _refresh_mod_list() -> void:
 		var empty_label = Label.new()
 		empty_label.text = "暂无可用改造\n（当前单位兵种不适用任何已解锁改造，或尚未获得图纸）"
 		empty_label.add_theme_font_size_override("font_size", 13)
-		empty_label.add_theme_color_override("font_color", Color(0.5, 0.55, 0.65, 0.8))
+		empty_label.add_theme_color_override("font_color", DT.COLOR_SLATE_A80)
 		mod_list_container.add_child(empty_label)
 		if mod_list_head_count:
 			mod_list_head_count.text = "可用 0 · 总持有 %d" % total_owned
@@ -731,7 +731,7 @@ func _create_mod_item(mod_id: String, mod_data: Dictionary) -> Control:
 	btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	btn.text = ""
 	btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
-	btn.add_theme_color_override("font_color", Color(0.91, 0.93, 0.96, 1))
+	btn.add_theme_color_override("font_color", DT.COLOR_TEXT_SOFT)
 	# v1.5：存 mod_id 元数据，供键盘导航（↑↓ 在改造库行间移动）读取
 	btn.set_meta("mod_id", mod_id)
 	btn.focus_mode = Control.FOCUS_NONE  # 焦点由面板根节点统一管理，避免子按钮抢焦
@@ -834,7 +834,7 @@ func _create_mod_item(mod_id: String, mod_data: Dictionary) -> Control:
 	name_label.text = mod_name
 	name_label.add_theme_font_override("font", DT.get_title_font())
 	name_label.add_theme_font_size_override("font_size", 14)
-	name_label.add_theme_color_override("font_color", Color(0.91, 0.93, 0.96, 1))
+	name_label.add_theme_color_override("font_color", DT.COLOR_TEXT_SOFT)
 	name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	# 不裁切：clip_text 在窄列会把名字裁到 0px 致不可见；单行不换行，超长向右溢出可见
 	name_label.clip_text = false
@@ -860,7 +860,7 @@ func _create_mod_item(mod_id: String, mod_data: Dictionary) -> Control:
 		effect_lbl.text = effect_summary[0]
 		effect_lbl.add_theme_font_override("font", DT.get_body_font())
 		effect_lbl.add_theme_font_size_override("font_size", 12)
-		effect_lbl.add_theme_color_override("font_color", DT.COLOR_CYAN_TECH_SOFT if is_applicable else Color(0.5, 0.55, 0.65, 0.7))
+		effect_lbl.add_theme_color_override("font_color", DT.COLOR_CYAN_TECH_SOFT if is_applicable else DT.COLOR_SLATE_A70)
 		effect_lbl.clip_text = false
 		effect_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		info.add_child(effect_lbl)
@@ -1063,7 +1063,7 @@ func _build_unit_hero() -> Control:
 	var art := PanelContainer.new()
 	art.custom_minimum_size = Vector2(44, 44)
 	var art_sb := StyleBoxFlat.new()
-	art_sb.bg_color = Color(0.03, 0.06, 0.11, 1)
+	art_sb.bg_color = DT.COLOR_SLOT_LOCKED
 	art_sb.border_color = _get_kind_color(selected_card.combat_kind)
 	art_sb.set_border_width_all(1)
 	art_sb.set_corner_radius_all(4)
@@ -1088,7 +1088,7 @@ func _build_unit_hero() -> Control:
 		if h_idx >= 0:
 			name_lbl.text += "  #" + iid.substr(h_idx + 1)
 	name_lbl.clip_text = true
-	_style_lbl(name_lbl, 16, Color(0.95, 0.96, 0.98, 1), -1, true, true)
+	_style_lbl(name_lbl, 16, DT.COLOR_TEXT, -1, true, true)
 	info.add_child(name_lbl)
 	# 标签行：兵种 · Lv · 改造数（v20.12 等级统一：Lv=战斗卡等级 card_level）
 	var tags := Label.new()
@@ -1098,7 +1098,7 @@ func _build_unit_hero() -> Control:
 		selected_card.mods.size()
 	]
 	tags.clip_text = true
-	_style_lbl(tags, 11, Color(0.55, 0.6, 0.7, 0.85), -1, true)
+	_style_lbl(tags, 11, DT.COLOR_SLATE_DIM_A85, -1, true)
 	info.add_child(tags)
 	hbox.add_child(info)
 	hero.add_child(hbox)
@@ -1264,7 +1264,7 @@ func _make_stat_cell(label_text: String, value: int, is_hp: bool) -> Control:
 	vbox.add_child(lbl)
 	var val_lbl := Label.new()
 	val_lbl.text = str(value)
-	_style_lbl(val_lbl, 18, DT.COLOR_GREEN_UP if is_hp else Color(0.95, 0.96, 0.98, 1), HORIZONTAL_ALIGNMENT_CENTER, true, true)
+	_style_lbl(val_lbl, 18, DT.COLOR_GREEN_UP if is_hp else DT.COLOR_TEXT, HORIZONTAL_ALIGNMENT_CENTER, true, true)
 	vbox.add_child(val_lbl)
 	cell.add_child(vbox)
 	return cell
@@ -1368,7 +1368,7 @@ func _close_sim_drawer() -> void:
 		sim_drawer.visible = false
 	if deck_sim_button:
 		deck_sim_button.text = "效果模拟 ↓"
-		deck_sim_button.add_theme_color_override("font_color", Color(0.5, 0.55, 0.65, 0.8))
+		deck_sim_button.add_theme_color_override("font_color", DT.COLOR_SLATE_A80)
 
 
 ## v1.5：抽屉小区块标题
@@ -1388,7 +1388,7 @@ func _make_sim_kv(key: String, val: String, val_color: Color) -> HBoxContainer:
 	var kl := Label.new()
 	kl.text = key
 	kl.add_theme_font_size_override("font_size", 12)
-	kl.add_theme_color_override("font_color", Color(0.55, 0.6, 0.7, 0.85))
+	kl.add_theme_color_override("font_color", DT.COLOR_SLATE_DIM_A85)
 	kl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	row.add_child(kl)
 	var vl := Label.new()
@@ -1546,7 +1546,7 @@ func _refresh_installed_list(installed_list: Control) -> void:
 		replace_btn.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
 		replace_btn.custom_minimum_size = Vector2(44, 0)
 		replace_btn.tooltip_text = "替换为同槽位新模块（从改造库另选一个）。注意：原改造的安装消耗不返还。"
-		replace_btn.add_theme_color_override("font_color", Color(0.5, 0.55, 0.65, 0.7))
+		replace_btn.add_theme_color_override("font_color", DT.COLOR_SLATE_A70)
 		replace_btn.add_theme_color_override("font_hover_color", DT.COLOR_AMBER)
 		replace_btn.pressed.connect(func():
 			# 引导玩家去改造库选新模块（选中后若同冲突组，install_modification 内部走 replace）

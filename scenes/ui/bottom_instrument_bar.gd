@@ -181,7 +181,7 @@ func _apply_auto_deploy_btn_style(active: bool) -> void:
 		_auto_deploy_btn.add_theme_stylebox_override("hover",
 			_mk_style(Color(0.13, 0.2, 0.3, 0.95), Color(DT.COLOR_ACCENT_CYAN.r, DT.COLOR_ACCENT_CYAN.g, DT.COLOR_ACCENT_CYAN.b, 0.7), 2))
 		_auto_deploy_btn.add_theme_stylebox_override("pressed",
-			_mk_style(Color(0.05, 0.08, 0.13, 1.0), Color(DT.COLOR_ACCENT_CYAN.r, DT.COLOR_ACCENT_CYAN.g, DT.COLOR_ACCENT_CYAN.b, 0.9), 2))
+			_mk_style(DT.COLOR_PANEL_DEEP, Color(DT.COLOR_ACCENT_CYAN.r, DT.COLOR_ACCENT_CYAN.g, DT.COLOR_ACCENT_CYAN.b, 0.9), 2))
 		_auto_deploy_btn.add_theme_stylebox_override("disabled",
 			_mk_style(Color(0.08, 0.12, 0.18, 0.6), Color(0.25, 0.45, 0.65, 0.25), 1))
 		_auto_deploy_btn.add_theme_color_override("font_color", Color(0.6, 0.7, 0.85, 0.9))

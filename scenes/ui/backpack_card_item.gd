@@ -1019,9 +1019,9 @@ func _ensure_rarity_top_strip(rarity: String) -> void:
 		sheen.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		sheen.stretch_mode = TextureRect.STRETCH_SCALE
 		var sheen_grad := Gradient.new()
-		sheen_grad.add_point(0.0, Color(1, 1, 1, 0.0))
+		sheen_grad.add_point(0.0, DesignTokens.COLOR_TRANSPARENT)
 		sheen_grad.add_point(0.5, Color(1, 1, 1, 0.22))
-		sheen_grad.add_point(1.0, Color(1, 1, 1, 0.0))
+		sheen_grad.add_point(1.0, DesignTokens.COLOR_TRANSPARENT)
 		var sheen_tex := GradientTexture1D.new()
 		sheen_tex.gradient = sheen_grad
 		sheen.texture = sheen_tex

@@ -810,7 +810,7 @@ func _apply_rune_top_diamond(rarity: String, category: String, rune_id: String =
 	if outer_bg:
 		outer_bg.color = Color(rar_col.r, rar_col.g, rar_col.b, 0.85)  # opacity 0.85
 	if inner_bg:
-		inner_bg.color = Color(0.05, 0.08, 0.13, 1.0)  # bg-card 暗底
+		inner_bg.color = DesignTokens.COLOR_PANEL_DEEP  # bg-card 暗底
 	if glyph_lbl:
 		var glyph_char: String = _RUNE_CAT_GLYPHS.get(category.to_lower(), "✦")
 		glyph_lbl.text = glyph_char
@@ -908,7 +908,7 @@ func _apply_rune_runeword_badge() -> void:
 		text_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		text_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 		text_lbl.add_theme_font_size_override("font_size", DesignTokens.FONT_SIZE_XSMALL)
-		text_lbl.add_theme_color_override("font_color", Color(0.78, 0.70, 1.0, 1.0))
+		text_lbl.add_theme_color_override("font_color", DesignTokens.COLOR_VIOLET_SOFT)
 		text_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		badge.add_child(text_lbl)
 	else:

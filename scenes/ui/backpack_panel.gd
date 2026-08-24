@@ -1701,7 +1701,7 @@ func refresh_rune_info_panel() -> void:
 				entry.add_theme_constant_override("separation", 2)
 				var rw_id: String = String(rw.get("id", ""))
 				var tier: int = int(rw.get("tier", 2))
-				var tier_color: Color = RunewordDefinitions.TIER_COLORS.get(tier, Color(0.545, 0.361, 0.965))
+				var tier_color: Color = RunewordDefinitions.TIER_COLORS.get(tier, DesignTokens.COLOR_ACCENT_PURPLE)
 				var name_label := Label.new()
 				name_label.text = "★ %s (T%d)" % [RunewordDefinitions.get_runeword_name(rw_id), tier]
 				name_label.add_theme_font_size_override("font_size", 13)
@@ -2054,12 +2054,12 @@ func _create_phase_inst_item(cfg: Dictionary, is_equipped: bool) -> Control:
 		var ability_dot := Label.new()
 		ability_dot.text = "◆"
 		ability_dot.add_theme_font_size_override("font_size", 12)
-		ability_dot.add_theme_color_override("font_color", Color(0.98, 0.75, 0.14, 1.0))
+		ability_dot.add_theme_color_override("font_color", DesignTokens.COLOR_AMBER_SOFT)
 		ability_chip.add_child(ability_dot)
 		var ability_text := Label.new()
 		ability_text.text = ability_name
 		ability_text.add_theme_font_size_override("font_size", 12)
-		ability_text.add_theme_color_override("font_color", Color(0.98, 0.75, 0.14, 1.0))
+		ability_text.add_theme_color_override("font_color", DesignTokens.COLOR_AMBER_SOFT)
 		ability_chip.add_child(ability_text)
 	else:
 		chip_style.bg_color = Color(0.04, 0.07, 0.12, 0.0)
@@ -2086,7 +2086,7 @@ func _create_phase_inst_item(cfg: Dictionary, is_equipped: bool) -> Control:
 		eq_style.set_border_width_all(1)
 		eq_style.set_corner_radius_all(3)
 		equipped_btn.add_theme_stylebox_override("normal", eq_style)
-		equipped_btn.add_theme_color_override("font_color", Color(0.2, 0.83, 0.6, 1.0))
+		equipped_btn.add_theme_color_override("font_color", DesignTokens.COLOR_GREEN_UP)
 		right_col.add_child(equipped_btn)
 	else:
 		var equip_btn := Button.new()
@@ -2113,7 +2113,7 @@ func _add_phase_stat_mini(parent: HBoxContainer, lbl_text: String, val_text: Str
 	val.text = val_text
 	val.add_theme_font_size_override("font_size", 12)
 	if is_up:
-		val.add_theme_color_override("font_color", Color(0.2, 0.83, 0.6, 1.0))  # 绿色提升
+		val.add_theme_color_override("font_color", DesignTokens.COLOR_GREEN_UP)  # 绿色提升
 	else:
 		val.add_theme_color_override("font_color", Color(0.92, 0.94, 0.98, 1.0))
 	cell.add_child(val)

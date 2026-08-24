@@ -546,7 +546,7 @@ func _create_equipment_section(equipment: Dictionary) -> Control:
 		var inst_level: int = int(equipment.get("level", 1))
 		var inst_faction: String = equipment.get("instrument_faction", inst_data.get("faction", ""))
 		var faction_info = EnemyPhaseLeaderboard.get_faction_display_info(inst_faction) if not inst_faction.is_empty() else null
-		var inst_color: Color = faction_info.color if faction_info else Color(0.6, 0.85, 1.0, 1)
+		var inst_color: Color = faction_info.color if faction_info else DT.COLOR_ICE_TEXT
 
 		var inst_box = PanelContainer.new()
 		inst_box.add_theme_stylebox_override("panel", _get_skill_panel_style())
@@ -560,7 +560,7 @@ func _create_equipment_section(equipment: Dictionary) -> Control:
 		inst_header.add_theme_constant_override("separation", 8)
 		inst_inner.add_child(inst_header)
 
-		inst_header.add_child(_make_stat_label("相位仪", 13, Color(0.6, 0.85, 1.0, 1)))
+		inst_header.add_child(_make_stat_label("相位仪", 13, DT.COLOR_ICE_TEXT))
 		var inst_level_lbl = _make_stat_label("Lv.%d" % inst_level, 11, inst_color)
 		inst_level_lbl.size_flags_horizontal = Control.SIZE_SHRINK_END
 		inst_header.add_child(inst_level_lbl)
@@ -568,7 +568,7 @@ func _create_equipment_section(equipment: Dictionary) -> Control:
 		var inst_name_lbl = Label.new()
 		inst_name_lbl.text = inst_name
 		inst_name_lbl.add_theme_font_size_override("font_size", 14)
-		inst_name_lbl.add_theme_color_override("font_color", Color(1.0, 0.9, 0.6, 1))
+		inst_name_lbl.add_theme_color_override("font_color", DT.COLOR_GOLD_SOFT)
 		inst_name_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		inst_inner.add_child(inst_name_lbl)
 
@@ -594,7 +594,7 @@ func _create_equipment_section(equipment: Dictionary) -> Control:
 	var platforms: Array = equipment.get("platforms", [])
 	if not platforms.is_empty():
 		var excluded_types: Array[String] = ["striker", "sniper", "stealth", "mage"]
-		container.add_child(_make_stat_label("战斗载具", 13, Color(0.6, 0.85, 1.0, 1)))
+		container.add_child(_make_stat_label("战斗载具", 13, DT.COLOR_ICE_TEXT))
 
 		for pid in platforms:
 			var pdata: Dictionary = EnemyPhaseEquipment.get_war_platform(pid)
@@ -620,7 +620,7 @@ func _create_equipment_section(equipment: Dictionary) -> Control:
 			var plat_name_lbl = Label.new()
 			plat_name_lbl.text = pname
 			plat_name_lbl.add_theme_font_size_override("font_size", 12)
-			plat_name_lbl.add_theme_color_override("font_color", Color(1.0, 0.9, 0.6, 1))
+			plat_name_lbl.add_theme_color_override("font_color", DT.COLOR_GOLD_SOFT)
 			plat_name_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 			plat_header.add_child(plat_name_lbl)
 

@@ -250,7 +250,7 @@ func _update_chip_styles() -> void:
 		else:
 			sb.bg_color = DT.COLOR_CHIP_BG
 			sb.border_color = DT.COLOR_CHIP_BORDER
-			btn.add_theme_color_override("font_color", Color(0.5, 0.55, 0.65, 0.8))
+			btn.add_theme_color_override("font_color", DT.COLOR_SLATE_A80)
 		btn.add_theme_stylebox_override("normal", sb)
 		var sb_h := sb.duplicate() as StyleBoxFlat
 		sb_h.bg_color = Color(0.653, 0.546, 0.98, 0.06)
@@ -364,7 +364,7 @@ func _create_card_item(card: CardResource) -> Control:
 	btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	btn.text = ""
 	btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
-	btn.add_theme_color_override("font_color", Color(0.91, 0.93, 0.96, 1))
+	btn.add_theme_color_override("font_color", DT.COLOR_TEXT_SOFT)
 	# 批次三 B2c：名册行悬停解释（多实例并排时消除"哪张是哪张"的困惑）
 	btn.tooltip_text = "点击查看这张卡的进化路线与条件（同名卡的每个实例各自独立判定）"
 
@@ -410,7 +410,7 @@ func _create_card_item(card: CardResource) -> Control:
 	thumb.custom_minimum_size = Vector2(36, 40)
 	thumb.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	var thumb_sb := StyleBoxFlat.new()
-	thumb_sb.bg_color = Color(0.03, 0.06, 0.11, 1)
+	thumb_sb.bg_color = DT.COLOR_SLOT_LOCKED
 	thumb_sb.border_color = _get_kind_color(card.combat_kind)
 	thumb_sb.set_border_width_all(1)
 	thumb_sb.set_corner_radius_all(3)
@@ -440,7 +440,7 @@ func _create_card_item(card: CardResource) -> Control:
 	var name_label := Label.new()
 	name_label.text = card.display_name if card.display_name else card.card_id
 	name_label.add_theme_font_size_override("font_size", 14)
-	name_label.add_theme_color_override("font_color", Color(0.95, 0.96, 0.98, 1) if is_selected else Color(0.85, 0.88, 0.94, 1))
+	name_label.add_theme_color_override("font_color", DT.COLOR_TEXT if is_selected else Color(0.85, 0.88, 0.94, 1))
 	name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	name_label.clip_text = false
 	name_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -465,7 +465,7 @@ func _create_card_item(card: CardResource) -> Control:
 	var meta_label := Label.new()
 	meta_label.text = "Lv.%d  ·  M%d/9" % [_card_level_of(card), mod_count]
 	meta_label.add_theme_font_size_override("font_size", 12)
-	meta_label.add_theme_color_override("font_color", Color(0.55, 0.6, 0.7, 0.85))
+	meta_label.add_theme_color_override("font_color", DT.COLOR_SLATE_DIM_A85)
 	meta_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	info.add_child(meta_label)
 	hbox.add_child(info)
@@ -572,7 +572,7 @@ func _create_evolution_node(target: Dictionary) -> Control:
 	btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
 	btn.custom_minimum_size = Vector2(0, 70)
 	btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	btn.add_theme_color_override("font_color", Color(0.91, 0.93, 0.96, 1))
+	btn.add_theme_color_override("font_color", DT.COLOR_TEXT_SOFT)
 	# 卡片样式：左侧 3px 路径色条 + 浅紫背景（可进化）/ 灰背景（锁定）
 	var sb_n := StyleBoxFlat.new()
 	sb_n.bg_color = Color(0.075, 0.102, 0.165, 0.7) if can_evo else Color(0.05, 0.07, 0.12, 0.5)
@@ -697,7 +697,7 @@ func _create_evolution_node(target: Dictionary) -> Control:
 	var era_name := GameConstants.get_era_name(target_card.era) if target_card and GameConstants else str(target_card.era)
 	era_lbl.text = "· " + era_name if not era_name.is_empty() else ""
 	era_lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
-	era_lbl.add_theme_color_override("font_color", Color(0.5, 0.55, 0.65, 0.8))
+	era_lbl.add_theme_color_override("font_color", DT.COLOR_SLATE_A80)
 	era_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	meta_row.add_child(era_lbl)
 	content.add_child(meta_row)
@@ -920,7 +920,7 @@ func _create_current_form_node() -> Control:
 	var name_lbl := Label.new()
 	name_lbl.text = selected_card.display_name if selected_card.display_name else selected_card.card_id
 	name_lbl.add_theme_font_size_override("font_size", 14)
-	name_lbl.add_theme_color_override("font_color", Color(0.95, 0.96, 0.98, 1))
+	name_lbl.add_theme_color_override("font_color", DT.COLOR_TEXT)
 	name_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	name_lbl.clip_text = false
 	name_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -937,7 +937,7 @@ func _create_current_form_node() -> Control:
 	var cur_power := _get_current_power_score()
 	meta.text = "战力 %d · 当前形态" % cur_power
 	meta.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
-	meta.add_theme_color_override("font_color", Color(0.5, 0.55, 0.65, 0.7))
+	meta.add_theme_color_override("font_color", DT.COLOR_SLATE_A70)
 	meta.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	vbox.add_child(meta)
 	btn.add_child(vbox)

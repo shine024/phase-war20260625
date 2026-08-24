@@ -1,4 +1,6 @@
 extends PanelContainer
+
+const DesignTokens = preload("res://resources/design_tokens.gd")
 ## v7.x 战斗状态卡（纵向，每项一行，风格同 BuffFoldCard）
 ## 显示：时间 / 单位(我X敌X) / 击杀(我X敌X) / 伤害(我X敌X)
 ## 数据源：时间/击杀/伤害 从 BattleInfoDisplay.get_battle_stats() 读；单位数走 SignalBus.unit_counts_changed 信号驱动
@@ -35,7 +37,7 @@ func _ready() -> void:
 	title.text = "📊 战况"
 	title.add_theme_font_size_override("font_size", 12)
 	title.add_theme_color_override("font_color", Color(0.91, 0.94, 0.96, 1))
-	title.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.7))
+	title.add_theme_color_override("font_outline_color", DesignTokens.COLOR_BACKDROP_DEEP)
 	title.add_theme_constant_override("outline_size", 2)
 	title.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	vbox.add_child(title)
@@ -58,7 +60,7 @@ func _make_row_label() -> Label:
 	var l := Label.new()
 	l.add_theme_font_size_override("font_size", 12)
 	l.add_theme_color_override("font_color", Color(0.78, 0.83, 0.9, 0.95))
-	l.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.7))
+	l.add_theme_color_override("font_outline_color", DesignTokens.COLOR_BACKDROP_DEEP)
 	l.add_theme_constant_override("outline_size", 1)
 	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	return l

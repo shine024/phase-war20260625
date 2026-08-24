@@ -207,6 +207,14 @@ const COLOR_CHIP_BG := Color(0.05, 0.09, 0.16, 0.4)           # 筛选 chip 非�
 const COLOR_CHIP_BORDER := Color(0.25, 0.35, 0.42, 0.3)       # 筛选 chip 非激活边框
 const COLOR_LIST_BG := Color(0.04, 0.07, 0.12, 0.4)           # 名册/列表行底色
 
+# B12 第二轮（2026-08-25）：scenes/ui 高频值 ≥5 处提升（值原样，零视觉变化）
+const COLOR_ICE_TEXT := Color(0.6, 0.85, 1.0, 1)               # 冰青文字（数值读数/冷却强调）
+const COLOR_SLATE_A80 := Color(0.5, 0.55, 0.65, 0.8)           # 石板灰蓝 80%（次要文字/提示边框）
+const COLOR_SLATE_A70 := Color(0.5, 0.55, 0.65, 0.7)           # 石板灰蓝 70%（更弱提示）
+const COLOR_TEXT_SOFT := Color(0.91, 0.93, 0.96, 1)            # 柔白（次级正文，亮于 DIM 暗于 BRIGHT）
+const COLOR_GOLD_SOFT := Color(1.0, 0.9, 0.6, 1)               # 淡金（金色弱化档，非强调场景）
+const COLOR_SLATE_DIM_A85 := Color(0.55, 0.6, 0.7, 0.85)       # 亮石板 85%（禁用态文字/灰按钮）
+
 # 签名色 → 发光色辅助（带 alpha，用于阴影/外发光）
 const COLOR_AMBER_GLOW := Color(0.961, 0.620, 0.043, 0.35)
 const COLOR_CYAN_TECH_GLOW := Color(0.024, 0.714, 0.831, 0.35)

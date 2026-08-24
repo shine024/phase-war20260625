@@ -221,7 +221,7 @@ func _apply_normal_btn_style(btn: Button) -> void:
 	# 字色
 	btn.add_theme_color_override("font_color", Color(0.62, 0.68, 0.75, 1))
 	btn.add_theme_color_override("font_hover_color", Color(0.91, 0.94, 0.96, 1))
-	btn.add_theme_color_override("font_pressed_color", Color(0.13, 0.83, 0.93, 1))
+	btn.add_theme_color_override("font_pressed_color", DT.COLOR_CYAN_TECH_SOFT)
 	btn.add_theme_color_override("font_disabled_color", Color(0.45, 0.5, 0.56, 1))
 
 
@@ -413,7 +413,7 @@ func _update_speed_btn_active_state() -> void:
 		active.content_margin_top = 2
 		active.content_margin_bottom = 2
 		_speed_btn.add_theme_stylebox_override("normal", active)
-		_speed_btn.add_theme_color_override("font_color", Color(0.13, 0.83, 0.93, 1))
+		_speed_btn.add_theme_color_override("font_color", DT.COLOR_CYAN_TECH_SOFT)
 	else:
 		# 恢复普通样式
 		_apply_normal_btn_style(_speed_btn)

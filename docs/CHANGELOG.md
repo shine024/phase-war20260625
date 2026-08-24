@@ -3195,3 +3195,24 @@ battle_active=false、计时归零、零脚本错误；GdUnit 145/145 无回归�
 - P2-10 合金/晶体消耗：EA 维持纯展示（真实消耗方触碰经济平衡面；1.0 统一处理）
 - P2-11 L43+ 难度：维持人工核验（soak bot 不代表真实玩家；等 B 部分实测体感再定）
 决议详情见 REMAINING_WORK 二节（三项已打勾记录理由）。
+
+## B12 第二轮：零风险三分层收敛 75 处 + 剩余 bespoke 精确记档（2026-08-25）
+
+**分层盘点**（scenes/ui 全量 562 处硬编码 Color，Python 脚本按"与最近 token 色差"分层）：
+- 值完全相等（首批后残留）：5 处直替既有 token
+- alpha=0 渲染等价（RGB 不参与渲染）：5 处 → COLOR_TRANSPARENT
+- **d≤0.02 微收敛**（每通道差 ≤0.02，8bit 下 ~5 阶、静态文本不可辨）：29 处 → 12 个
+  最近语义 token（如 0.95,0.96,0.98→COLOR_TEXT、0.0,0.92,1.0→COLOR_ACCENT_CYAN）
+- **高频值 ≥5 处提 6 个新 token**（值原样零变化）：COLOR_ICE_TEXT/COLOR_SLATE_A80/
+  COLOR_SLATE_A70/COLOR_TEXT_SOFT/COLOR_GOLD_SOFT/COLOR_SLATE_DIM_A85 → 36 处
+- **剩余 402 处（71%）真 bespoke 保留**：远离任何 token（色差 >0.05）的各面板手工
+  微调色（深浅底变体/状态色梯度），零视觉风险原则下不强行统一——按需在后续
+  面板级重构时逐处语义化
+
+**工程细节**：替换脚本 tools/b12_round2_replace.py（跳过注释行与 const 声明行、
+保留 CRLF 行尾）；无 token 引用的文件自动补 const DesignTokens preload
+（4 文件，class_name 文件插 class_name 后防 parse error）；前缀统一为文件既有惯例
+（有 const DT 的用 DT.，避免双前缀混用）。
+
+**验证**：19 文件单载断言全过 + ui_p1_validation ALL PASS（51 编译）+ capture
+零脚本错误 + GdUnit 145/145。B12 两轮累计 72+75=147 处收敛，余 402 处 bespoke 记档保留。

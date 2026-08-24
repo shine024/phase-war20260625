@@ -175,7 +175,7 @@ func _apply_visual_styles() -> void:
 	# HeroArt：菱形琥珀边框（与设计稿一致）
 	if hero_art:
 		var sb := StyleBoxFlat.new()
-		sb.bg_color = Color(0.04, 0.06, 0.11, 1)
+		sb.bg_color = DT.COLOR_SLOT_LOCKED
 		sb.border_color = DT.COLOR_AMBER
 		sb.set_border_width_all(3)
 		sb.set_corner_radius_all(10)
@@ -220,7 +220,7 @@ func _update_chip_styles() -> void:
 		else:
 			sb.bg_color = DT.COLOR_CHIP_BG
 			sb.border_color = DT.COLOR_CHIP_BORDER
-			btn.add_theme_color_override("font_color", Color(0.5, 0.55, 0.65, 0.8))
+			btn.add_theme_color_override("font_color", DT.COLOR_SLATE_A80)
 		btn.add_theme_stylebox_override("normal", sb)
 		# hover 态
 		var sb_h := sb.duplicate() as StyleBoxFlat
@@ -451,7 +451,7 @@ func _create_card_list_item(card: CardResource, instance_id_raw: Variant) -> Con
 	thumb.custom_minimum_size = Vector2(36, 40)
 	thumb.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	var thumb_sb := StyleBoxFlat.new()
-	thumb_sb.bg_color = Color(0.03, 0.06, 0.11, 1)
+	thumb_sb.bg_color = DT.COLOR_SLOT_LOCKED
 	thumb_sb.border_color = _get_kind_color(card.combat_kind)
 	thumb_sb.set_border_width_all(1)
 	thumb_sb.set_corner_radius_all(3)
@@ -499,7 +499,7 @@ func _create_card_list_item(card: CardResource, instance_id_raw: Variant) -> Con
 	var name_label := Label.new()
 	name_label.text = card.display_name if card.display_name else card.card_id
 	name_label.add_theme_font_size_override("font_size", 14)
-	name_label.add_theme_color_override("font_color", Color(0.95, 0.96, 0.98, 1) if is_selected else Color(0.85, 0.88, 0.94, 1))
+	name_label.add_theme_color_override("font_color", DT.COLOR_TEXT if is_selected else Color(0.85, 0.88, 0.94, 1))
 	name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	name_label.clip_text = false
 	name_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -524,7 +524,7 @@ func _create_card_list_item(card: CardResource, instance_id_raw: Variant) -> Con
 		mod_count = mods_arr.size() if mods_arr is Array else 0
 	meta_label.text = "Lv.%d  ·  改%d/9" % [_card_level_of(card), mod_count]
 	meta_label.add_theme_font_size_override("font_size", 12)
-	meta_label.add_theme_color_override("font_color", Color(0.55, 0.6, 0.7, 0.85))
+	meta_label.add_theme_color_override("font_color", DT.COLOR_SLATE_DIM_A85)
 	meta_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	info.add_child(meta_label)
 	hbox.add_child(info)
@@ -1276,7 +1276,7 @@ func _get_era_color(era: int) -> Color:
 	match era:
 		0: return Color(0.7, 0.72, 0.78)  # WW1
 		1: return Color(0.9, 0.4, 0.35)   # WW2
-		2: return Color(0.3, 0.5, 0.9)    # Cold
+		2: return DT.COLOR_KIND_ARMOR    # Cold
 		3: return DT.COLOR_CYAN_TECH_SOFT # Modern
 		4: return DT.COLOR_VIOLET_SOFT    # Future
 		_: return Color(0.6, 0.62, 0.68)

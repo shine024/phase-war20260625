@@ -26,7 +26,7 @@ static func create_stats_display(stats: Dictionary) -> Control:
 	container.add_theme_constant_override("separation", 3)
 	container.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 
-	container.add_child(make_stat_label("战斗属性", 14, Color(0.6, 0.85, 1, 1)))
+	container.add_child(make_stat_label("战斗属性", 14, DT.COLOR_ICE_TEXT))
 
 	var stats_row = HBoxContainer.new()
 	stats_row.add_theme_constant_override("separation", 15)
@@ -46,7 +46,7 @@ static func create_skills_section(section_title: String, skills: Array) -> Contr
 	container.add_theme_constant_override("separation", 5)
 	container.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 
-	container.add_child(make_stat_label(section_title, 14, Color(0.6, 0.85, 1, 1)))
+	container.add_child(make_stat_label(section_title, 14, DT.COLOR_ICE_TEXT))
 
 	for skill in skills:
 		container.add_child(create_skill_box(skill))
@@ -76,7 +76,7 @@ static func create_skill_box(skill: Dictionary) -> Control:
 	var name_label = Label.new()
 	name_label.text = skill.get("name", "未知技能")
 	name_label.add_theme_font_size_override("font_size", 12)
-	name_label.add_theme_color_override("font_color", Color(1.0, 0.9, 0.6, 1))
+	name_label.add_theme_color_override("font_color", DT.COLOR_GOLD_SOFT)
 	name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	header_row.add_child(name_label)
 

@@ -1,6 +1,8 @@
 class_name PhaseSlot
 extends PanelContainer
 
+const DesignTokens = preload("res://resources/design_tokens.gd")
+
 const GameConstants = preload("res://resources/game_constants.gd")
 const UiAssetLoader = preload("res://scripts/ui_asset_loader.gd")
 const CardFrameUi = preload("res://scripts/card_frame_ui.gd")
@@ -82,7 +84,7 @@ func _draw() -> void:
 	# 左上角，留 2px 边距，在文字下层画个半透明深色小方块增强可读性
 	var pos: Vector2 = Vector2(2.0, 2.0 + ts.y - 1.0)
 	var box_rect: Rect2 = Rect2(1.0, 2.0, ts.x + 3.0, ts.y + 1.0)
-	draw_rect(box_rect, Color(0.0, 0.0, 0.0, 0.55), true)
+	draw_rect(box_rect, DesignTokens.COLOR_BACKDROP, true)
 	# 金黄色费用文字 + 深色描边
 	font.draw_string_outline(get_canvas_item(), pos, _cost_draw_text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, 1, Color(0.0, 0.0, 0.0, 0.95))
 	font.draw_string(get_canvas_item(), pos, _cost_draw_text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Color(1.0, 0.85, 0.30, 1.0))

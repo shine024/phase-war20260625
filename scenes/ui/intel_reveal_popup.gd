@@ -213,11 +213,11 @@ func _show_current_reveal() -> void:
 			page_lbl.text = ""
 
 	## 入场动画（C7: 统一 DT.MOTION_FADE_IN + SINE，原 0.4 裸 linear；尊重减少动效）
-	modulate = Color(1.0, 1.0, 1.0, 0.0)
+	modulate = DT.COLOR_TRANSPARENT
 	if not DT.is_motion_reduce():
 		var tween := create_tween()
 		tween.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
-		tween.tween_property(self, "modulate", Color(1.0, 1.0, 1.0, 1.0), DT.MOTION_FADE_IN)
+		tween.tween_property(self, "modulate", DT.COLOR_HOVER_WHITE, DT.MOTION_FADE_IN)
 
 	## 重启自动关闭计时器
 	_auto_close_timer.stop()
@@ -227,12 +227,12 @@ func _hide_popup() -> void:
 	_is_showing = false
 	_auto_close_timer.stop()
 	if DT.is_motion_reduce():
-		modulate = Color(1.0, 1.0, 1.0, 0.0)
+		modulate = DT.COLOR_TRANSPARENT
 		visible = false
 		return
 	var tween := create_tween()
 	tween.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
-	tween.tween_property(self, "modulate", Color(1.0, 1.0, 1.0, 0.0), DT.MOTION_FADE_OUT)
+	tween.tween_property(self, "modulate", DT.COLOR_TRANSPARENT, DT.MOTION_FADE_OUT)
 	tween.tween_callback(func(): visible = false)
 
 func _on_close_pressed() -> void:

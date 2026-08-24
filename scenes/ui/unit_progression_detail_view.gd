@@ -1,6 +1,8 @@
 extends PanelContainer
 class_name UnitProgressionDetailView
 
+const DesignTokens = preload("res://resources/design_tokens.gd")
+
 ## 单位进化/养成详情（情报中心 V3 子页）
 
 signal back_pressed
@@ -106,7 +108,7 @@ func _rebuild_content() -> void:
 
 	var card: CardResource = DefaultCards.get_card_by_id(_card_id)
 	var title: String = card.display_name if card != null else _card_id
-	_add_line(title, Color(0.0, 0.92, 1.0), 18)
+	_add_line(title, DesignTokens.COLOR_ACCENT_CYAN, 18)
 
 	if card != null:
 		var icon_path: String = UiAssetLoader.card_icon_path_for(card)
