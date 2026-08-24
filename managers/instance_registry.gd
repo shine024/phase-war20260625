@@ -25,6 +25,7 @@ signal instance_disposed(instance_id: String)
 
 const DefaultCards = preload("res://data/default_cards.gd")
 const GC = preload("res://resources/game_constants.gd")
+const UnitIdMigration = preload("res://data/unit_id_migration_config.gd")
 # P3 性能优化：动态卡模板注册脚本（原两处独立运行时 load）
 const CapturedUnitCardsScript = preload("res://data/captured_unit_cards.gd")
 
@@ -97,14 +98,23 @@ func create_instance_from_template(template: CardResource) -> CardResource:
 
 
 ## 内部：注册一个 clone 到实例表并分配 instance_id
+## v7.x 修复（ID口径统一）：实例号与反向索引一律用 clone.card_id（经 DefaultCards 迁移的
+## 规范ID），不再用调用方传入的原始 card_id——此前 create_instance 传旧ID（如 ww1_ft17）会
+## 分配出 ww1_ft17#1，而 clone.card_id 已是 ww1_arm_ft17，判定/序列化按前缀解析回旧ID查表
+## 落空，表现为"进化树有目标但永远条件不足"（2026-08-24 开局坦克进化bug）。
 func _register_clone(clone: CardResource, card_id: String) -> CardResource:
-	var instance_id := _allocate_instance_id(card_id)
+	var canonical_id: String = clone.card_id if not clone.card_id.is_empty() else card_id
+	var instance_id := _allocate_instance_id(canonical_id)
 	clone.instance_id = instance_id
 	if clone.weapon_slots.is_empty() and clone.has_method("_ensure_weapon_slots_initialized"):
 		clone._ensure_weapon_slots_initialized()
 	_instances[instance_id] = clone
-	_index_add(card_id, instance_id)  # v8.x 性能：维护反向索引
-	instance_created.emit(instance_id, card_id)
+	_index_add(canonical_id, instance_id)  # v8.x 性能：维护反向索引
+	instance_created.emit(instance_id, canonical_id)
+	# 批次三 B4：首次拥有同名卡第二张时，解释实例独立养成语义（同名卡最易困惑点）
+	if get_instances_by_card_id(canonical_id).size() == 2:
+		FeatureUnlockPopup.show_once("multi_instance", "同名卡独立养成",
+			"你拥有了第二张「%s」——同名卡的每张实例各自独立培养（等级/改造/词条互不影响），部署到战场也按各自属性结算。" % clone.display_name)
 	return clone
 
 
@@ -130,13 +140,17 @@ func get_instance(instance_id: String) -> CardResource:
 
 ## 获取实例的 card_id（从 instance_id 解析）
 ## "cold_t72#1" → "cold_t72"
+## v7.x 旧ID兜底：规范化重命名前分配的实例（如开局坦克 ww1_ft17#1）前缀是旧ID，
+## 卡表/进化链只认新ID。这里统一迁移返回，让进化判定/战力估算/存档序列化/
+## 反向索引与模板同口径——旧档存量实例无需重写存档即自愈。
 func get_card_id_of(instance_id: String) -> String:
 	if instance_id.is_empty():
 		return ""
 	var hash_idx: int = instance_id.rfind("#")
-	if hash_idx < 0:
-		return instance_id  # 无序号后缀，本身就是 card_id
-	return instance_id.substr(0, hash_idx)
+	var base: String = instance_id if hash_idx < 0 else instance_id.substr(0, hash_idx)
+	if UnitIdMigration.needs_migration(base):
+		return UnitIdMigration.get_new_id(base)
+	return base
 
 
 ## 销毁实例（进化消耗/拆解时调用）
@@ -264,11 +278,20 @@ func add_experience(instance_id: String, amount: int) -> bool:
 		return true
 	return false
 
-## 升级回调：词条节点（AffixManager.on_card_level_up）+ UI 刷新信号
+## 升级回调：词条节点（AffixManager.on_card_level_up）+ 强化任务信号 + UI 刷新信号
 func _on_card_level_up(instance_id: String, old_lv: int, new_lv: int) -> void:
 	var am = get_node_or_null("/root/AffixManager")
 	if am != null and am.has_method("on_card_level_up_instance"):
 		am.on_card_level_up_instance(instance_id, old_lv, new_lv)
+	# v20.12 等级统一：强化①退役后，"强化尝试"类任务改由卡牌升级驱动
+	# （CardEnhancementManager.enhancement_completed 是 QuestManager 唯一监听的强化信号）。
+	var cem = get_node_or_null("/root/CardEnhancementManager")
+	if cem != null and cem.has_signal("enhancement_completed"):
+		var inst: CardResource = _instances.get(instance_id, null)
+		var cid: String = inst.card_id if inst != null else get_card_id_of(instance_id)
+		cem.enhancement_completed.emit(true, cid, "card_level_up",
+			"%s 升级 Lv.%d → Lv.%d" % [cid, old_lv, new_lv])
+
 
 
 # ─────────────────────────────────────────────

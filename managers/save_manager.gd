@@ -850,10 +850,12 @@ func clear_pending_backpack_ids() -> void:
 ## 新存档初始背包卡牌 + 初始资源
 func _enqueue_starter_backpack_cards() -> void:
 	# v7.0: 初始卡牌实例化（独立养成身份）
-	# v7.x: 能量卡系统移除，初始背包只发战斗卡（ww1_ft17，匹配第1关主题）。
+	# v7.x: 能量卡系统移除，初始背包只发战斗卡（ww1_arm_ft17，匹配第1关主题）。
 	# 能量上限改由相位仪星级决定，无需初始能量卡。
+	# ⚠️ 必须用规范新ID：旧ID（ww1_ft17）会分配出旧前缀实例号 ww1_ft17#1，
+	# 进化链/卡表只认 ww1_arm_ft17，导致"进化树有目标但永远条件不足"（2026-08-24 修复）。
 	var ir: Node = get_node_or_null("/root/InstanceRegistry")
-	for cid in ["ww1_ft17"]:
+	for cid in ["ww1_arm_ft17"]:
 		var starter_id: String = cid
 		if ir != null and ir.has_method("create_instance"):
 			var inst: CardResource = ir.create_instance(cid)
