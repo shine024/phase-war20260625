@@ -296,7 +296,7 @@
       "faction": "flame",
       "level": 19,
       "type": "siege",
-      "default_weapon": "plasma_cannon_expert",
+      "default_weapon": "incendiary_mortar_expert",
       "stats": {
         "hp": 2800,
         "attack": 380,

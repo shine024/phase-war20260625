@@ -39,7 +39,7 @@ const ERA_MASTERS: Array = [
 			"phase_instrument": "pi_steelthunder_01",
 			"level": 19,
 			"platforms": ["cold_arm_t72_e", "cold_arm_btr_e", "cold_air_m113_e", "cold_inf_spetsnaz_e", "cold_boss_mig"],
-			"weapons": ["steel_railcannon_advanced", "tesla_coil_expert"],
+			"weapons": ["steel_railcannon_expert", "tesla_coil_expert"],
 			"energy_cards": ["hybrid_energy_basic"]
 		},
 		"stats": {

@@ -12,7 +12,7 @@ const LEGACY_WAR_WEAPONS: Dictionary = {
 		"level": 5,
 		"type": "machinegun",
 		"damage": 25,
-		"attack_speed": 0.15,
+		"attack_speed": 0.3,
 		"range": 200,
 		"special": ["sustained_fire"]
 	},
@@ -34,7 +34,7 @@ const LEGACY_WAR_WEAPONS: Dictionary = {
 		"level": 12,
 		"type": "machinegun",
 		"damage": 35,
-		"attack_speed": 0.08,
+		"attack_speed": 0.22,
 		"range": 220,
 		"special": ["rapid_fire", "overheat"]
 	},
@@ -58,7 +58,7 @@ const LEGACY_WAR_WEAPONS: Dictionary = {
 		"level": 6,
 		"type": "flamethrower",
 		"damage": 40,
-		"attack_speed": 0.1,
+		"attack_speed": 0.25,
 		"range": 120,
 		"special": ["continuous_damage", "ignite"]
 	},
@@ -130,7 +130,7 @@ const LEGACY_WAR_WEAPONS: Dictionary = {
 		"level": 13,
 		"type": "flamethrower",
 		"damage": 65,
-		"attack_speed": 0.08,
+		"attack_speed": 0.2,
 		"range": 140,
 		"special": ["continuous_damage", "ignite", "flame_trail"]
 	},
@@ -152,7 +152,7 @@ const LEGACY_WAR_WEAPONS: Dictionary = {
 		"level": 19,
 		"type": "flamethrower",
 		"damage": 100,
-		"attack_speed": 0.06,
+		"attack_speed": 0.15,
 		"range": 160,
 		"special": ["continuous_damage", "ignite", "plasma_burn", "melting"]
 	},
@@ -268,7 +268,7 @@ const LEGACY_WAR_WEAPONS: Dictionary = {
 		"level": 18,
 		"type": "machinegun",
 		"damage": 50,
-		"attack_speed": 0.05,
+		"attack_speed": 0.15,
 		"range": 250,
 		"special": ["rapid_fire", "overheat", "armor_pierce_light", "sustained_suppression"]
 	},
@@ -282,6 +282,28 @@ const LEGACY_WAR_WEAPONS: Dictionary = {
 		"attack_speed": 1.8,
 		"range": 450,
 		"special": ["explosive_shell", "splash_damage", "fortress_breaker", "cluster_shell"]
+	},
+	"steel_railcannon_expert": {
+		"id": "steel_railcannon_expert",
+		"name": "钢铁电磁炮·专家",
+		"faction": "steel",
+		"level": 18,
+		"type": "railcannon",
+		"damage": 240,
+		"attack_speed": 1.6,
+		"range": 450,
+		"special": ["piercing", "high_velocity", "line_pierce", "overcharge_rails"]
+	},
+	"incendiary_mortar_expert": {
+		"id": "incendiary_mortar_expert",
+		"name": "等离子迫击炮·专家",
+		"faction": "flame",
+		"level": 19,
+		"type": "mortar",
+		"damage": 240,
+		"attack_speed": 1.8,
+		"range": 420,
+		"special": ["incendiary", "area_denial", "cluster_bomb", "plasma_burn"]
 	}
 }
 

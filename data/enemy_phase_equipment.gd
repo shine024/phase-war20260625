@@ -167,15 +167,20 @@ static func _card_resource_from_war_weapon(d: Dictionary, equipment_id: String) 
 	c.weapon_label = wtype
 	c.energy_cost = 4.0 + float(d.get("level", 5)) * 0.25
 	c.type_line = "武器 — %s／敌方相位师" % String(d.get("faction", ""))
-	c.summary_line = "伤害 %d｜攻速 %.2f｜射程 %d" % [
-		int(d.get("damage", 0)), float(d.get("attack_speed", 0.0)), int(d.get("range", 0))]
+	# v9.x 修复：武器表 attack_speed 字段实为攻击间隔（秒/次），非攻速。原样展示导致
+	# 语义颠倒（机枪 0.15 显得比火炮 1.5 慢 10 倍）。现换算为真正的攻速（次/秒）= 1/间隔，
+	# 与 CardResource.attack_speed 全项目口径一致（见 enemy_phase_field_driver 1.0/interval 同款）。
+	var _fire_interval: float = float(d.get("attack_speed", 1.0))
+	var _atk_rate: float = 1.0 / maxf(0.001, _fire_interval) if _fire_interval > 0.0 else 1.0
+	c.summary_line = "伤害 %d｜攻速 %.2f次/秒｜射程 %d" % [
+		int(d.get("damage", 0)), _atk_rate, int(d.get("range", 0))]
 	c.description = "由敌方相位师装备数据生成的武器蓝图（展示用）。"
 	#c.weight = 1
 	c.era = 0
 	c.combat_kind = 0
 	c.base_hp = 100.0
 	c.range_value = int(float(d.get("range", 120.0)))  # 射程（格）
-	c.attack_speed = float(d.get("attack_speed", 1.0)) if float(d.get("attack_speed", 0.0)) > 0.0 else 1.0  # 攻速（次/秒）
+	c.attack_speed = _atk_rate  # 攻速（次/秒），由间隔秒数换算
 	c.base_speed = 0.0
 	return c
 
