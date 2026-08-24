@@ -71,7 +71,7 @@ func _ready() -> void:
 	add_child(layer)
 
 	var backdrop := ColorRect.new()
-	backdrop.color = Color(0, 0, 0, 0.55)
+	backdrop.color = DT.COLOR_BACKDROP
 	backdrop.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	backdrop.mouse_filter = Control.MOUSE_FILTER_STOP
 	# 批次三 B7：背板点击可关闭，挂手型光标提示可点
@@ -87,18 +87,8 @@ func _ready() -> void:
 	var panel := PanelContainer.new()
 	panel.custom_minimum_size = Vector2(430, 0)
 	var accent: Color = DT.COLOR_ACCENT_CYAN
-	var sb := StyleBoxFlat.new()
-	sb.bg_color = Color(DT.COLOR_PANEL.r, DT.COLOR_PANEL.g, DT.COLOR_PANEL.b, 0.98)
-	sb.border_color = accent
-	sb.set_border_width_all(2)
-	sb.set_corner_radius_all(DT.CORNER_RADIUS)
-	sb.shadow_color = Color(accent.r, accent.g, accent.b, 0.35)
-	sb.shadow_size = 12
-	sb.content_margin_left = 22
-	sb.content_margin_right = 22
-	sb.content_margin_top = 16
-	sb.content_margin_bottom = 16
-	panel.add_theme_stylebox_override("panel", sb)
+	# 批次三 B13：根框架收口 PanelStyles 工厂（原手写 StyleBox + 边距）
+	panel.add_theme_stylebox_override("panel", PanelStyles.make_panel_frame(accent))
 	center.add_child(panel)
 
 	var vbox := VBoxContainer.new()

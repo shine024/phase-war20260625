@@ -198,6 +198,15 @@ const COLOR_TEXT_FAINT := Color(0.27, 0.31, 0.39, 1)        # 极暗文本（标
 const COLOR_TEXT_MID := Color(0.67, 0.72, 0.82, 1)          # 中等文本（次要信息）
 # 注：COLOR_AMBER_DEEP 已在上方签名色段定义（#b45309）
 
+# 批次三 B12（2026-08-25）：高频重复字面量提升为 token（原散落 scenes/ui 共 60+ 处手抄）
+const COLOR_HOVER_WHITE := Color(1, 1, 1, 1)                 # 控件 hover 文字白（区别于正文白）
+const COLOR_TRANSPARENT := Color(0, 0, 0, 0)                  # 全透明
+const COLOR_BACKDROP := Color(0, 0, 0, 0.55)                  # 弹窗背板遮罩（标准档）
+const COLOR_BACKDROP_DEEP := Color(0, 0, 0, 0.7)              # 弹窗背板遮罩（加深档）
+const COLOR_CHIP_BG := Color(0.05, 0.09, 0.16, 0.4)           # 筛选 chip 非激活底色
+const COLOR_CHIP_BORDER := Color(0.25, 0.35, 0.42, 0.3)       # 筛选 chip 非激活边框
+const COLOR_LIST_BG := Color(0.04, 0.07, 0.12, 0.4)           # 名册/列表行底色
+
 # 签名色 → 发光色辅助（带 alpha，用于阴影/外发光）
 const COLOR_AMBER_GLOW := Color(0.961, 0.620, 0.043, 0.35)
 const COLOR_CYAN_TECH_GLOW := Color(0.024, 0.714, 0.831, 0.35)

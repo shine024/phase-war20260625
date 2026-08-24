@@ -3,6 +3,8 @@ extends PanelContainer
 ## 颜色三态：灰(未激活) / 橙(单卡激活，装≥2配套改造) / 绿(全队激活，兵种组合满足)
 ## 每秒轮询 combo_engine + 场上单位 mods（节流，非每帧）
 
+const DT = preload("res://resources/design_tokens.gd")
+# 批次三 B10：字号 token 引入（10px 白名单/中文升 12）
 const ComboTactics = preload("res://data/combo_tactics.gd")
 const ComboEngine = preload("res://scripts/battle/combo_engine.gd")
 
@@ -56,9 +58,9 @@ func _ready() -> void:
 	# 标题
 	var title := Label.new()
 	title.text = "⚔组合技"
-	title.add_theme_font_size_override("font_size", 10)
+	title.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
 	title.add_theme_color_override("font_color", Color(0.75, 0.8, 0.88, 0.85))
-	title.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.7))
+	title.add_theme_color_override("font_outline_color", DT.COLOR_BACKDROP_DEEP)
 	title.add_theme_constant_override("outline_size", 1)
 	title.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	title.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -80,7 +82,7 @@ func _make_combo_icon_button(def: Dictionary, combo_id: String) -> Button:
 	btn.text = String(def.get("icon", "?"))
 	btn.add_theme_font_size_override("font_size", 14)
 	btn.add_theme_color_override("font_color", Color(0.6, 0.6, 0.6, 1))
-	btn.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.7))
+	btn.add_theme_color_override("font_outline_color", DT.COLOR_BACKDROP_DEEP)
 	btn.add_theme_constant_override("outline_size", 1)
 	_set_combo_style(btn, 0)
 	# tooltip 动态生成（每秒刷新）

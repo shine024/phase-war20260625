@@ -170,7 +170,7 @@ func _apply_auto_deploy_btn_style(active: bool) -> void:
 			_mk_style(Color(g.r * 0.2, g.g * 0.4, g.b * 0.33, 1.0), g, 2))
 		_auto_deploy_btn.add_theme_stylebox_override("disabled",
 			_mk_style(Color(0.08, 0.12, 0.18, 0.6), Color(0.25, 0.45, 0.65, 0.25), 1))
-		_auto_deploy_btn.add_theme_color_override("font_color", Color(1, 1, 1, 1))
+		_auto_deploy_btn.add_theme_color_override("font_color", DT.COLOR_HOVER_WHITE)
 		_auto_deploy_btn.add_theme_color_override("font_hover_color", Color.WHITE)
 		_auto_deploy_btn.add_theme_color_override("font_pressed_color", Color.WHITE)
 	else:
@@ -348,7 +348,7 @@ func set_menu_badge(total: int) -> void:
 		_menu_btn.add_child(bg)
 		bd = Label.new()
 		bd.name = "Badge"
-		bd.add_theme_font_size_override("font_size", 10)
+		bd.add_theme_font_size_override("font_size", DT.FONT_SIZE_XSMALL)
 		bd.add_theme_color_override("font_color", Color.WHITE)
 		bd.add_theme_color_override("font_outline_color", Color(0.8, 0.1, 0.1, 1.0))
 		bd.add_theme_constant_override("outline_size", 2)
@@ -465,7 +465,7 @@ func _clear_slot_selection_glow(panel: Control) -> void:
 	if sb == null:
 		return
 	sb.shadow_size = 0
-	sb.shadow_color = Color(0, 0, 0, 0)
+	sb.shadow_color = DT.COLOR_TRANSPARENT
 
 ## BU-1：可部署槽位呼吸微光——战斗中能量充足的战斗卡槽 modulate.a 0.85↔1.0（周期 1.2s）。
 ## 尊重 DT.is_motion_reduce()（静止 1.0）；受限灰显/能量不足槽不参与。

@@ -126,9 +126,9 @@ func _on_battle_ended(player_won: bool) -> void:
 	_update_display()
 	set_process(false)
 	if player_won:
-		_update_status("胜利！", Color(0.2, 0.9, 0.4, 1.0))
+		_update_status("胜利！", DT.COLOR_HEALTH)
 	else:
-		_update_status("失败...", Color(0.9, 0.2, 0.2, 1.0))
+		_update_status("失败...", DT.COLOR_DANGER)
 
 func _on_unit_damaged(_unit: Node, is_player: bool, amount: float, _at_position: Vector2) -> void:
 	if not _battle_active:

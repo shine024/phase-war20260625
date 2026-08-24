@@ -5,6 +5,8 @@ class_name EvolutionAtlasView
 
 signal card_selected(card_id: String)
 
+const DT = preload("res://resources/design_tokens.gd")
+# 批次三 B10：字号 token 引入（10px 白名单/中文升 12）
 const EvolutionGraphBuilder = preload("res://scripts/progression/evolution_graph_builder.gd")
 const UiAssetLoader = preload("res://scripts/ui_asset_loader.gd")
 const DefaultCards = preload("res://data/default_cards.gd")
@@ -175,7 +177,7 @@ func _make_era_column(era: int, era_labels: PackedStringArray, entries: Array) -
 	var count_lbl := Label.new()
 	count_lbl.text = "%d 种单位" % entries.size()
 	count_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	count_lbl.add_theme_font_size_override("font_size", 10)
+	count_lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
 	count_lbl.add_theme_color_override("font_color", Color(0.45, 0.52, 0.62, 1.0))
 	col_vbox.add_child(count_lbl)
 

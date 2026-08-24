@@ -693,7 +693,7 @@ func _show_level_info_popup(level_index: int) -> void:
 func _make_detail_section_title(text: String) -> Label:
 	var lbl := Label.new()
 	lbl.text = text
-	lbl.add_theme_font_size_override("font_size", 10)
+	lbl.add_theme_font_size_override("font_size", 12)  # 批次三 B10：分区标题为中文，10→12
 	lbl.add_theme_color_override("font_color", Color(0.4, 0.5, 0.7, 0.8))
 	lbl.add_theme_constant_override("line_spacing", 1)
 	# 模拟下划线：用一个小分隔条

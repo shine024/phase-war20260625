@@ -150,7 +150,7 @@ theme_override_styles/panel = SubResource("StyleBoxFlat_slot_empty")
 [node name="Label" type="Label" parent="TopRightPanel/Margin/VBox/Slots/Slot1"]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.4, 0.45, 0.55, 1)
-theme_override_font_sizes/font_size = 10
+theme_override_font_sizes/font_size = 12
 text = "1"
 horizontal_alignment = 1
 vertical_alignment = 1
@@ -166,7 +166,7 @@ theme_override_styles/panel = SubResource("StyleBoxFlat_slot_empty")
 [node name="Label" type="Label" parent="TopRightPanel/Margin/VBox/Slots/Slot2"]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.4, 0.45, 0.55, 1)
-theme_override_font_sizes/font_size = 10
+theme_override_font_sizes/font_size = 12
 text = "2"
 horizontal_alignment = 1
 vertical_alignment = 1
@@ -182,7 +182,7 @@ theme_override_styles/panel = SubResource("StyleBoxFlat_slot_empty")
 [node name="Label" type="Label" parent="TopRightPanel/Margin/VBox/Slots/Slot3"]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.4, 0.45, 0.55, 1)
-theme_override_font_sizes/font_size = 10
+theme_override_font_sizes/font_size = 12
 text = "3"
 horizontal_alignment = 1
 vertical_alignment = 1
@@ -198,7 +198,7 @@ theme_override_styles/panel = SubResource("StyleBoxFlat_slot_empty")
 [node name="Label" type="Label" parent="TopRightPanel/Margin/VBox/Slots/Slot4"]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.4, 0.45, 0.55, 1)
-theme_override_font_sizes/font_size = 10
+theme_override_font_sizes/font_size = 12
 text = "4"
 horizontal_alignment = 1
 vertical_alignment = 1

@@ -145,7 +145,7 @@ func _update_skill_tree_badge() -> void:
 	if avail > 0:
 		enhance_btn.text = "◆ 技能树 ●%d" % avail
 		# 红点配色（modulate 不影响文字，仅改文字颜色提示）
-		enhance_btn.add_theme_color_override("font_color", Color(1.0, 0.85, 0.30))
+		enhance_btn.add_theme_color_override("font_color", DT.COLOR_RES_ENERGY)
 	else:
 		enhance_btn.text = "◆ 技能树"
 		enhance_btn.remove_theme_color_override("font_color")
@@ -218,8 +218,8 @@ func _update_chip_styles() -> void:
 			sb.border_color = DT.COLOR_GOLD
 			btn.add_theme_color_override("font_color", DT.COLOR_GOLD)
 		else:
-			sb.bg_color = Color(0.05, 0.09, 0.16, 0.4)
-			sb.border_color = Color(0.25, 0.35, 0.42, 0.3)
+			sb.bg_color = DT.COLOR_CHIP_BG
+			sb.border_color = DT.COLOR_CHIP_BORDER
 			btn.add_theme_color_override("font_color", Color(0.5, 0.55, 0.65, 0.8))
 		btn.add_theme_stylebox_override("normal", sb)
 		# hover 态
@@ -416,7 +416,7 @@ func _create_card_list_item(card: CardResource, instance_id_raw: Variant) -> Con
 
 	# 按钮样式
 	var sb_n := StyleBoxFlat.new()
-	sb_n.bg_color = Color(0.04, 0.07, 0.12, 0.4)
+	sb_n.bg_color = DT.COLOR_LIST_BG
 	sb_n.set_border_width_all(0)
 	sb_n.set_corner_radius_all(3)
 	sb_n.content_margin_left = 6
@@ -510,7 +510,7 @@ func _create_card_list_item(card: CardResource, instance_id_raw: Variant) -> Con
 		if parts.size() >= 2:
 			var seq_label := Label.new()
 			seq_label.text = "#" + parts[1]
-			seq_label.add_theme_font_size_override("font_size", 10)
+			seq_label.add_theme_font_size_override("font_size", DT.FONT_SIZE_XSMALL)
 			seq_label.add_theme_color_override("font_color", Color(0.6, 0.65, 0.75, 0.7))
 			seq_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 			name_hbox.add_child(seq_label)
@@ -880,7 +880,7 @@ func _add_evo_target_row(parent: VBoxContainer, name: String, type_label: String
 	# 类型 tag
 	var type_lbl := Label.new()
 	type_lbl.text = type_label
-	type_lbl.add_theme_font_size_override("font_size", 10)
+	type_lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
 	type_lbl.add_theme_color_override("font_color", type_col)
 	type_lbl.custom_minimum_size = Vector2(28, 0)
 	type_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -900,8 +900,9 @@ func _add_evo_target_row(parent: VBoxContainer, name: String, type_label: String
 	# 战力变化
 	if not power_delta.is_empty():
 		var delta_lbl := Label.new()
-		delta_lbl.text = power_delta
-		delta_lbl.add_theme_font_size_override("font_size", 10)
+		# 批次三 B11：涨跌加 ▲/▼ 符号双编码（色弱不依赖红绿也能辨方向）
+		delta_lbl.text = ("▲" + power_delta) if power_delta.begins_with("+") else ("▼" + power_delta)
+		delta_lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_XSMALL)
 		var is_up := power_delta.begins_with("+")
 		delta_lbl.add_theme_color_override("font_color", DT.COLOR_GREEN_UP if is_up else DT.COLOR_RED_DOWN)
 		delta_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -910,7 +911,7 @@ func _add_evo_target_row(parent: VBoxContainer, name: String, type_label: String
 	# 条件满足数
 	var cond_lbl := Label.new()
 	cond_lbl.text = "%d/%d" % [met, total]
-	cond_lbl.add_theme_font_size_override("font_size", 10)
+	cond_lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_XSMALL)
 	cond_lbl.add_theme_color_override("font_color", DT.COLOR_GREEN_UP if met >= total else DT.COLOR_AMBER_SOFT)
 	cond_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	hbox.add_child(cond_lbl)
@@ -950,7 +951,7 @@ func _open_phase_master_skill_panel() -> void:
 		# 自带全屏 backdrop：拦截外部点击（点击空白处关闭），同时把面板和成长面板隔离开
 		var backdrop := ColorRect.new()
 		backdrop.name = "Backdrop"
-		backdrop.color = Color(0, 0, 0, 0.55)
+		backdrop.color = DT.COLOR_BACKDROP
 		backdrop.anchors_preset = Control.PRESET_FULL_RECT
 		backdrop.mouse_filter = Control.MOUSE_FILTER_STOP
 		# 批次三 B7：背板点击可关闭，挂手型光标提示可点
@@ -1109,7 +1110,7 @@ func _add_prog_cond(parent: VBoxContainer, label: String, value: String, is_met:
 func _add_prog_hint(parent: VBoxContainer, text: String) -> void:
 	var lbl := Label.new()
 	lbl.text = text
-	lbl.add_theme_font_size_override("font_size", 10)
+	lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
 	lbl.add_theme_color_override("font_color", Color(0.4, 0.45, 0.55, 0.8))
 	parent.add_child(lbl)
 
@@ -1152,13 +1153,13 @@ func _make_slot_tag(filled: bool) -> PanelContainer:
 		sb.border_color = DT.COLOR_CYAN_TECH_SOFT
 	else:
 		sb.bg_color = Color(0.05, 0.09, 0.16, 0.3)
-		sb.border_color = Color(0.25, 0.35, 0.42, 0.3)
+		sb.border_color = DT.COLOR_CHIP_BORDER
 	tag.add_theme_stylebox_override("panel", sb)
 	var lbl := Label.new()
 	lbl.text = "+" if not filled else "●"
 	lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	lbl.add_theme_font_size_override("font_size", 10)
+	lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_XSMALL)
 	lbl.add_theme_color_override("font_color", DT.COLOR_CYAN_TECH_SOFT if filled else Color(0.4, 0.45, 0.55, 0.5))
 	lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	tag.add_child(lbl)
@@ -1184,7 +1185,7 @@ func _add_hero_tag(text: String, color: Color) -> void:
 	tag.add_theme_stylebox_override("panel", sb)
 	var lbl := Label.new()
 	lbl.text = text
-	lbl.add_theme_font_size_override("font_size", 10)
+	lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
 	lbl.add_theme_color_override("font_color", color)
 	lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	tag.add_child(lbl)

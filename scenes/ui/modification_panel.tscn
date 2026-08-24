@@ -246,7 +246,7 @@ size_flags_horizontal = 3
 unique_name_in_owner = true
 layout_mode = 2
 text = ""
-theme_override_font_sizes/font_size = 10
+theme_override_font_sizes/font_size = 12
 theme_override_colors/font_color = Color(0.4, 0.45, 0.55, 0.7)
 [node name="ResultLabel" type="Label" parent="VBoxContainer"]
 unique_name_in_owner = true
@@ -317,7 +317,7 @@ layout_mode = 2
 text = "全部"
 custom_minimum_size = Vector2(0, 24)
 size_flags_horizontal = 3
-theme_override_font_sizes/font_size = 10
+theme_override_font_sizes/font_size = 12
 theme_override_colors/font_color = Color(0.5, 0.55, 0.65, 0.8)
 [node name="ChipMod" type="Button" parent="VBoxContainer/HBoxContainer/LeftPanel/LeftVBox/ColFilter"]
 unique_name_in_owner = true
@@ -325,7 +325,7 @@ layout_mode = 2
 text = "可改造"
 custom_minimum_size = Vector2(0, 24)
 size_flags_horizontal = 3
-theme_override_font_sizes/font_size = 10
+theme_override_font_sizes/font_size = 12
 theme_override_colors/font_color = Color(0.5, 0.55, 0.65, 0.8)
 [node name="ChipMax" type="Button" parent="VBoxContainer/HBoxContainer/LeftPanel/LeftVBox/ColFilter"]
 unique_name_in_owner = true
@@ -333,7 +333,7 @@ layout_mode = 2
 text = "满槽"
 custom_minimum_size = Vector2(0, 24)
 size_flags_horizontal = 3
-theme_override_font_sizes/font_size = 10
+theme_override_font_sizes/font_size = 12
 theme_override_colors/font_color = Color(0.5, 0.55, 0.65, 0.8)
 [node name="ScrollContainer" type="ScrollContainer" parent="VBoxContainer/HBoxContainer/LeftPanel/LeftVBox"]
 unique_name_in_owner = true
@@ -484,7 +484,7 @@ size_flags_vertical = 3
 custom_minimum_size = Vector2(0, 22)
 text = "效果模拟 ↓"
 theme_override_colors/font_color = Color(0.5, 0.55, 0.65, 0.8)
-theme_override_font_sizes/font_size = 10
+theme_override_font_sizes/font_size = 12
 [node name="DeckEmpty" type="Label" parent="VBoxContainer/HBoxContainer/MiddlePanel/MiddleVBox"]
 unique_name_in_owner = true
 layout_mode = 2

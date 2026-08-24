@@ -93,7 +93,7 @@ value = 0.7
 [node name="BgmHint" type="Label" parent="Margin/VBoxMain/Scroll/VBox"]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.6, 0.66, 0.78, 0.8)
-theme_override_font_sizes/font_size = 10
+theme_override_font_sizes/font_size = 12
 text = "（音乐待补音频包，当前静音）"
 
 [node name="SectionGame" type="Label" parent="Margin/VBoxMain/Scroll/VBox"]
@@ -127,7 +127,7 @@ popup/item_2/id = 2
 [node name="DifficultyHint" type="Label" parent="Margin/VBoxMain/Scroll/VBox"]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.6, 0.66, 0.78, 0.8)
-theme_override_font_sizes/font_size = 10
+theme_override_font_sizes/font_size = 12
 text = "（下一场战斗生效，仅缩放敌方血量与攻击）"
 
 [node name="SectionFullscreen" type="Label" parent="Margin/VBoxMain/Scroll/VBox"]

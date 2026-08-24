@@ -8,6 +8,8 @@ class_name IntelHarvestDisplay
 ##   ui.set_data(harvest_data)
 ##   parent.add_child(ui)
 
+const DT = preload("res://resources/design_tokens.gd")
+# 批次三 B10：字号 token 引入（10px 白名单/中文升 12）
 const IntelDimensions = preload("res://data/intel_dimensions.gd")
 
 ## v7.x 性能：情报条目渲染上限。超过此数量的敌人不再各自建节点（每条节点是
@@ -151,7 +153,7 @@ func _create_card_entry(entry: Dictionary) -> PanelContainer:
 		if defeat_count > 0:
 			var count_lbl := Label.new()
 			count_lbl.text = "第%d次击败" % defeat_count
-			count_lbl.add_theme_font_size_override("font_size", 10)
+			count_lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
 			count_lbl.add_theme_color_override("font_color", Color(0.6, 0.7, 0.8, 0.8))
 			name_row.add_child(count_lbl)
 

@@ -705,7 +705,7 @@ func _build_store_item_row(
 		buy_btn.add_theme_color_override("font_color", Color(DT.COLOR_DANGER.r, DT.COLOR_DANGER.g, DT.COLOR_DANGER.b, 0.8))
 	else:
 		buy_btn.add_theme_color_override("font_color", DT.COLOR_TEXT_BRIGHT)
-		buy_btn.add_theme_color_override("font_hover_color", Color(1, 1, 1, 1))
+		buy_btn.add_theme_color_override("font_hover_color", DT.COLOR_HOVER_WHITE)
 
 	var cid_copy: String = card_id
 	var frag_copy: int = frag_amount
@@ -939,7 +939,7 @@ func _flash_row(row_node: Control, flash_color: Color) -> void:
 		_feedback_tween.kill()
 	_feedback_tween = create_tween()
 	_feedback_tween.tween_property(row_node, "modulate", Color(flash_color.r, flash_color.g, flash_color.b, 1.0), 0.08)
-	_feedback_tween.tween_property(row_node, "modulate", Color(1, 1, 1, 1), 0.3)
+	_feedback_tween.tween_property(row_node, "modulate", DT.COLOR_HOVER_WHITE, 0.3)
 
 func _on_buy_instrument_pressed(instrument_id: String, row_node: Control) -> void:
 	var fsm: Node = get_node_or_null("/root/FactionSystemManager")

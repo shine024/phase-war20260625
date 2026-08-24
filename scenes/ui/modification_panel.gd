@@ -200,8 +200,8 @@ func _update_chip_styles() -> void:
 			sb.border_color = DT.COLOR_CYAN_TECH
 			btn.add_theme_color_override("font_color", DT.COLOR_CYAN_TECH_SOFT)
 		else:
-			sb.bg_color = Color(0.05, 0.09, 0.16, 0.4)
-			sb.border_color = Color(0.25, 0.35, 0.42, 0.3)
+			sb.bg_color = DT.COLOR_CHIP_BG
+			sb.border_color = DT.COLOR_CHIP_BORDER
 			btn.add_theme_color_override("font_color", Color(0.5, 0.55, 0.65, 0.8))
 		btn.add_theme_stylebox_override("normal", sb)
 		var sb_h := sb.duplicate() as StyleBoxFlat
@@ -251,8 +251,8 @@ func _apply_fold_state() -> void:
 			sb.border_color = DT.COLOR_CYAN_TECH
 			fold_button.add_theme_color_override("font_color", DT.COLOR_CYAN_TECH_SOFT)
 		else:
-			sb.bg_color = Color(0.05, 0.09, 0.16, 0.4)
-			sb.border_color = Color(0.25, 0.35, 0.42, 0.3)
+			sb.bg_color = DT.COLOR_CHIP_BG
+			sb.border_color = DT.COLOR_CHIP_BORDER
 			fold_button.add_theme_color_override("font_color", Color(0.5, 0.55, 0.65, 0.8))
 		fold_button.add_theme_stylebox_override("normal", sb)
 	# 收起态若当前 hover 浮卡残留，隐藏掉
@@ -536,7 +536,7 @@ func _create_card_item(card: CardResource, instance_card: CardResource = null) -
 
 	# v7.x 新风格：选中态左侧 3px cyan 边框 + 深蓝背景
 	var sb_n := StyleBoxFlat.new()
-	sb_n.bg_color = Color(0.04, 0.07, 0.12, 0.4)
+	sb_n.bg_color = DT.COLOR_LIST_BG
 	sb_n.set_border_width_all(0)
 	sb_n.set_corner_radius_all(3)
 	sb_n.content_margin_left = 6
@@ -629,7 +629,7 @@ func _create_card_item(card: CardResource, instance_card: CardResource = null) -
 		if h_idx >= 0:
 			var seq_label := Label.new()
 			seq_label.text = "#" + iid.substr(h_idx + 1)
-			seq_label.add_theme_font_size_override("font_size", 10)
+			seq_label.add_theme_font_size_override("font_size", DT.FONT_SIZE_XSMALL)
 			seq_label.add_theme_color_override("font_color", Color(0.6, 0.65, 0.75, 0.7))
 			seq_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 			name_row.add_child(seq_label)
@@ -845,7 +845,7 @@ func _create_mod_item(mod_id: String, mod_data: Dictionary) -> Control:
 	var class_disp: Dictionary = ModificationRegistry.get_mod_class_display(mod_id)
 	var class_tag := Label.new()
 	class_tag.text = "[%s]" % String(class_disp.get("tag", "数值"))
-	class_tag.add_theme_font_size_override("font_size", 10)
+	class_tag.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
 	class_tag.add_theme_color_override("font_color", Color.from_string(String(class_disp.get("color", "#8a94a6")), Color(0.54, 0.58, 0.65, 1)))
 	class_tag.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	class_tag.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -1543,7 +1543,7 @@ func _refresh_installed_list(installed_list: Control) -> void:
 		# 点击后收起右栏详情、引导玩家从改造库选新模块；新模块若同冲突组会触发替换。
 		var replace_btn := Button.new()
 		replace_btn.text = "替换"
-		replace_btn.add_theme_font_size_override("font_size", 10)
+		replace_btn.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
 		replace_btn.custom_minimum_size = Vector2(44, 0)
 		replace_btn.tooltip_text = "替换为同槽位新模块（从改造库另选一个）。注意：原改造的安装消耗不返还。"
 		replace_btn.add_theme_color_override("font_color", Color(0.5, 0.55, 0.65, 0.7))
@@ -2067,7 +2067,7 @@ func _show_result(message: String) -> void:
 		result_label.text = message
 		# 失败用红，成功用绿
 		var is_fail := message.findn("失败") >= 0 or message.findn("不足") >= 0 or message.findn("缺少") >= 0
-		result_label.add_theme_color_override("font_color", Color(0.95, 0.35, 0.35, 1) if is_fail else Color(0.2, 0.9, 0.4, 1))
+		result_label.add_theme_color_override("font_color", Color(0.95, 0.35, 0.35, 1) if is_fail else DT.COLOR_HEALTH)
 		_result_token += 1
 		var my_token := _result_token
 		await get_tree().create_timer(3.0).timeout

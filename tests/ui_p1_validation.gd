@@ -56,6 +56,14 @@ const CHANGED_SCRIPTS: Array[String] = [
 	"res://scenes/ui/battle_announcer.gd",
 	"res://managers/battle/battle_spectacle.gd",
 	"res://scenes/ui/buff_fold_card.gd",
+	# 批次三 P1 轨道（2026-08-24）：B6 按钮态补齐 + B7 手型光标 + B8 快捷键
+	"res://scenes/ui/phase_slot.gd",
+	"res://scenes/ui/phase_instrument_selector.gd",
+	# 批次三 P2/P3 轨道（2026-08-25）：B10 字号 + B12 颜色 token + B13 框架收口
+	"res://scenes/ui/resource_info_panel.gd",
+	"res://scenes/ui/intel_reveal_popup.gd",
+	"res://scenes/ui/backpack_panel.gd",
+	"res://scenes/world_map.gd",
 ]
 
 var _fails: Array[String] = []

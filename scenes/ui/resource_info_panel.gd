@@ -3,6 +3,7 @@ extends PanelContainer
 
 const FormatUtil = preload("res://scripts/ui/format_util.gd")
 const DT = preload("res://resources/design_tokens.gd")
+const PanelStyles = preload("res://scripts/ui/panel_styles.gd")
 
 var _labels: Dictionary = {}
 var _row_nodes: Dictionary = {}
@@ -19,12 +20,8 @@ func _ready() -> void:
 	_refresh_all()
 
 func _setup_style() -> void:
-	var style = StyleBoxFlat.new()
-	style.bg_color = Color(0.1, 0.1, 0.15, 0.75)
-	style.set_corner_radius_all(8)
-	style.set_border_width_all(1)
-	style.border_color = Color(0.3, 0.3, 0.4, 0.5)
-	add_theme_stylebox_override("panel", style)
+	# 批次三 B13：根框架收口 PanelStyles 工厂（中性青签名框，替代手写 StyleBox）
+	add_theme_stylebox_override("panel", PanelStyles.make_panel_frame(DT.COLOR_ACCENT_CYAN))
 
 func _build_ui() -> void:
 	var margin = MarginContainer.new()

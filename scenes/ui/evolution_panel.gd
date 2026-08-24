@@ -248,8 +248,8 @@ func _update_chip_styles() -> void:
 			sb.border_color = DT.COLOR_VIOLET
 			btn.add_theme_color_override("font_color", DT.COLOR_VIOLET_SOFT)
 		else:
-			sb.bg_color = Color(0.05, 0.09, 0.16, 0.4)
-			sb.border_color = Color(0.25, 0.35, 0.42, 0.3)
+			sb.bg_color = DT.COLOR_CHIP_BG
+			sb.border_color = DT.COLOR_CHIP_BORDER
 			btn.add_theme_color_override("font_color", Color(0.5, 0.55, 0.65, 0.8))
 		btn.add_theme_stylebox_override("normal", sb)
 		var sb_h := sb.duplicate() as StyleBoxFlat
@@ -379,7 +379,7 @@ func _create_card_item(card: CardResource) -> Control:
 
 	# 样式（选中态紫色左边框）
 	var sb_n := StyleBoxFlat.new()
-	sb_n.bg_color = Color(0.04, 0.07, 0.12, 0.4)
+	sb_n.bg_color = DT.COLOR_LIST_BG
 	sb_n.set_border_width_all(0)
 	sb_n.set_corner_radius_all(3)
 	sb_n.content_margin_left = 6
@@ -452,7 +452,7 @@ func _create_card_item(card: CardResource) -> Control:
 		if h_idx >= 0:
 			var seq_label := Label.new()
 			seq_label.text = "#" + iid.substr(h_idx + 1)
-			seq_label.add_theme_font_size_override("font_size", 10)
+			seq_label.add_theme_font_size_override("font_size", DT.FONT_SIZE_XSMALL)
 			seq_label.add_theme_color_override("font_color", Color(0.6, 0.65, 0.75, 0.7))
 			seq_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 			name_row.add_child(seq_label)
@@ -653,7 +653,7 @@ func _create_evolution_node(target: Dictionary) -> Control:
 		badge_lbl.add_theme_color_override("font_color", THEME_RED)
 		# v9.x：tooltip 概览全部未满足条件（badge 只放得下首项）
 		badge_lbl.tooltip_text = _unmet_summary_text(check_result)
-	badge_lbl.add_theme_font_size_override("font_size", 10)
+	badge_lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
 	badge_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	badge_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	top_row.add_child(badge_lbl)
@@ -696,7 +696,7 @@ func _create_evolution_node(target: Dictionary) -> Control:
 	var era_lbl := Label.new()
 	var era_name := GameConstants.get_era_name(target_card.era) if target_card and GameConstants else str(target_card.era)
 	era_lbl.text = "· " + era_name if not era_name.is_empty() else ""
-	era_lbl.add_theme_font_size_override("font_size", 10)
+	era_lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
 	era_lbl.add_theme_color_override("font_color", Color(0.5, 0.55, 0.65, 0.8))
 	era_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	meta_row.add_child(era_lbl)
@@ -726,7 +726,7 @@ func _make_small_chip(text: String, color: Color) -> Control:
 	p.add_theme_stylebox_override("panel", sb)
 	var l := Label.new()
 	l.text = text
-	l.add_theme_font_size_override("font_size", 10)
+	l.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
 	l.add_theme_color_override("font_color", color)
 	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	p.add_child(l)
@@ -763,7 +763,7 @@ func _update_evolution_tree() -> void:
 	else:
 		summary_lbl.text = "%s → %d 个可选目标 · %d 主线 / %d 分支" % [
 			selected_card.display_name, targets.size(), main_count, branch_count]
-	summary_lbl.add_theme_font_size_override("font_size", 10)
+	summary_lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
 	summary_lbl.add_theme_color_override("font_color", Color(0.5, 0.55, 0.65, 0.85))
 	summary_box.add_child(summary_lbl)
 	# 图例行（仅当有目标时显示）
@@ -789,7 +789,7 @@ func _update_evolution_tree() -> void:
 		# v9.x：操作引导——锁定目标也可点击查看达成条件（此前 disabled 无从得知）
 		var click_hint := Label.new()
 		click_hint.text = "点击任意目标卡片（含🔒锁定）可查看全部达成条件与指引"
-		click_hint.add_theme_font_size_override("font_size", 10)
+		click_hint.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
 		click_hint.add_theme_color_override("font_color", Color(0.5, 0.55, 0.65, 0.75))
 		summary_box.add_child(click_hint)
 	# 摘要底部分隔线（用 PanelContainer + StyleBox border_bottom）
@@ -927,7 +927,7 @@ func _create_current_form_node() -> Control:
 	top.add_child(name_lbl)
 	var badge := Label.new()
 	badge.text = "● 当前"
-	badge.add_theme_font_size_override("font_size", 10)
+	badge.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
 	badge.add_theme_color_override("font_color", THEME_GOLD)
 	badge.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	top.add_child(badge)
@@ -936,7 +936,7 @@ func _create_current_form_node() -> Control:
 	var meta := Label.new()
 	var cur_power := _get_current_power_score()
 	meta.text = "战力 %d · 当前形态" % cur_power
-	meta.add_theme_font_size_override("font_size", 10)
+	meta.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
 	meta.add_theme_color_override("font_color", Color(0.5, 0.55, 0.65, 0.7))
 	meta.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	vbox.add_child(meta)
@@ -1292,7 +1292,7 @@ func _show_result(message: String) -> void:
 		# v7.x：ResultLabel 始终占位（visible 不切换），只切 text，避免布局抖动
 		result_label.text = message
 		var is_fail := message.findn("失败") >= 0 or message.findn("不足") >= 0 or message.findn("缺少") >= 0
-		result_label.add_theme_color_override("font_color", Color(0.95, 0.35, 0.35, 1) if is_fail else Color(0.2, 0.9, 0.4, 1))
+		result_label.add_theme_color_override("font_color", Color(0.95, 0.35, 0.35, 1) if is_fail else DT.COLOR_HEALTH)
 		await get_tree().create_timer(3.0).timeout
 		if not is_inside_tree():
 			return
@@ -1322,9 +1322,10 @@ func _set_stat_compare(label: Label, stat_name: String, cur_val, new_val) -> voi
 	var n := int(new_val)
 	var diff := n - c
 	# 紧凑格式：名 + cur → tgt + diff
-	var diff_str := "+%d" % diff if diff > 0 else ("%d" % diff if diff < 0 else "=")
+	# 批次三 B11：diff 加 ▲/▼ 符号双编码（色弱不依赖红绿也能辨方向）
+	var diff_str := "▲+%d" % diff if diff > 0 else ("▼%d" % diff if diff < 0 else "=")
 	label.text = "%s  %d → %d  %s" % [stat_name, c, n, diff_str]
-	label.add_theme_font_size_override("font_size", 10)
+	label.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
 	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	# 颜色：上升绿 / 下降红 / 持平灰
 	if diff > 0:

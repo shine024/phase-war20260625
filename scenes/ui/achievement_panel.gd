@@ -47,9 +47,9 @@ func _ready() -> void:
 	if claim_all_button != null:
 		var claim_all_styles := PanelStyles.make_button_styles(accent)
 		claim_all_button.add_theme_color_override("font_color", DT.COLOR_TEXT_BRIGHT)
-		claim_all_button.add_theme_color_override("font_hover_color", Color(1, 1, 1, 1))
-		claim_all_button.add_theme_color_override("font_pressed_color", Color(1, 1, 1, 1))
-		claim_all_button.add_theme_color_override("font_focus_color", Color(1, 1, 1, 1))
+		claim_all_button.add_theme_color_override("font_hover_color", DT.COLOR_HOVER_WHITE)
+		claim_all_button.add_theme_color_override("font_pressed_color", DT.COLOR_HOVER_WHITE)
+		claim_all_button.add_theme_color_override("font_focus_color", DT.COLOR_HOVER_WHITE)
 		claim_all_button.add_theme_stylebox_override("normal", claim_all_styles["normal"])
 		claim_all_button.add_theme_stylebox_override("hover", claim_all_styles["hover"])
 		claim_all_button.add_theme_stylebox_override("pressed", claim_all_styles["pressed"])

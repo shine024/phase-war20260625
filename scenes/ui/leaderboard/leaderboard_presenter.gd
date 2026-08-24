@@ -6,6 +6,8 @@ class_name LeaderboardPresenter
 ## 负责敌对相位师排行榜数据的获取和详情弹窗的构建。
 ## UI 构建逻辑保留在 Presenter 中，Panel 仅负责挂载和容器管理。
 
+const DT = preload("res://resources/design_tokens.gd")
+# 批次三 B10：字号 token 引入（10px 白名单/中文升 12）
 const LeaderboardData = preload("res://scenes/ui/leaderboard/leaderboard_data.gd")
 const EnemyPhaseLeaderboard = preload("res://data/enemy_phase_leaderboard.gd")
 const LeaderboardEntry = preload("res://data/leaderboard_entry.gd")
@@ -378,7 +380,7 @@ func _create_equipment_section(equipment: Dictionary) -> Control:
 			if not ptype.is_empty():
 				var type_lbl = Label.new()
 				type_lbl.text = _platform_type_display(ptype)
-				type_lbl.add_theme_font_size_override("font_size", 10)
+				type_lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
 				type_lbl.add_theme_color_override("font_color", Color(0.7, 0.7, 0.8, 1))
 				type_lbl.size_flags_horizontal = Control.SIZE_SHRINK_END
 				plat_header.add_child(type_lbl)
@@ -404,7 +406,7 @@ func _create_equipment_section(equipment: Dictionary) -> Control:
 				for tag in pspecial:
 					translated.append(_translate_special_tag(String(tag)))
 				tags_lbl.text = "  ".join(translated)
-				tags_lbl.add_theme_font_size_override("font_size", 10)
+				tags_lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
 				tags_lbl.add_theme_color_override("font_color", Color(0.5, 0.6, 0.7, 0.8))
 				tags_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 				tags_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL

@@ -13,6 +13,7 @@ class_name IntelRevealPopup
 
 const IntelDimensions = preload("res://data/intel_dimensions.gd")
 const DT = preload("res://resources/design_tokens.gd")
+const PanelStyles = preload("res://scripts/ui/panel_styles.gd")
 
 signal all_reveals_shown()
 
@@ -55,14 +56,8 @@ func _build_ui() -> void:
 	panel.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	panel.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 
-	var panel_style := StyleBoxFlat.new()
-	panel_style.bg_color = Color(0.06, 0.04, 0.14, 0.97)
-	panel_style.border_color = Color(0.65, 0.3, 0.95, 0.8)
-	panel_style.set_border_width_all(2)
-	panel_style.set_corner_radius_all(12)
-	panel_style.shadow_color = Color(0.5, 0.2, 0.9, 0.3)
-	panel_style.shadow_size = 8
-	panel.add_theme_stylebox_override("panel", panel_style)
+	# 批次三 B13：根框架收口 PanelStyles 工厂（紫色情报签名框，替代手写 StyleBox）
+	panel.add_theme_stylebox_override("panel", PanelStyles.make_panel_frame(DT.COLOR_VIOLET))
 
 	var margin := MarginContainer.new()
 	margin.add_theme_constant_override("margin_left", 16)
@@ -144,7 +139,7 @@ func _build_ui() -> void:
 	var page_lbl := Label.new()
 	page_lbl.name = "PageLabel"
 	page_lbl.text = ""
-	page_lbl.add_theme_font_size_override("font_size", 10)
+	page_lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_XSMALL)
 	page_lbl.add_theme_color_override("font_color", Color(0.55, 0.5, 0.65, 1.0))
 	page_row.add_child(page_lbl)
 	add_child(page_row)

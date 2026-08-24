@@ -215,7 +215,7 @@ static func end_drag(item: PanelContainer) -> void:
 		item._drag_preview = null
 
 	# 恢复原始卡牌
-	item.modulate = Color(1, 1, 1, 1)
+	item.modulate = DT.COLOR_HOVER_WHITE
 
 	# 恢复 BackpackOverlay
 	show_backpack_overlay(item)

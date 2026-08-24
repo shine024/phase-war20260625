@@ -318,7 +318,7 @@ func _apply_title_mark_diamond(color: Color) -> void:
 		return
 	# 外框 StyleBoxFlat（菱形描边，按 Tab 染色）
 	var outer := StyleBoxFlat.new()
-	outer.bg_color = Color(0, 0, 0, 0)  # 透明，仅描边
+	outer.bg_color = DesignTokens.COLOR_TRANSPARENT  # 透明，仅描边
 	outer.border_color = color
 	outer.set_border_width_all(1)
 	outer.set_corner_radius_all(2)
@@ -1506,7 +1506,7 @@ func _make_sidebar_item(text: String, count: int, active: bool, callable: Callab
 	row.custom_minimum_size = Vector2(0, 26)
 	# 样式
 	var style := StyleBoxFlat.new()
-	style.bg_color = Color(0.06, 0.10, 0.15, 0.3) if active else Color(0, 0, 0, 0)
+	style.bg_color = Color(0.06, 0.10, 0.15, 0.3) if active else DesignTokens.COLOR_TRANSPARENT
 	style.border_color = DesignTokens.COLOR_CYAN_TECH if active else Color(0.25, 0.30, 0.40, 0.3)
 	style.set_border_width_all(0)
 	style.border_width_left = 2 if active else 0
@@ -1966,7 +1966,7 @@ func _create_phase_inst_item(cfg: Dictionary, is_equipped: bool) -> Control:
 				cell_style.border_color = Color(0.2, 0.83, 0.6, 0.6)
 			else:
 				# v9.2: 空槽位——虚线占位（设计稿 .slot-cell.empty）
-				cell_style.bg_color = Color(0, 0, 0, 0)
+				cell_style.bg_color = DesignTokens.COLOR_TRANSPARENT
 				cell_style.border_color = Color(0.25, 0.35, 0.45, 0.4)
 			cell_style.set_border_width_all(1)
 			cell_style.set_corner_radius_all(2)
@@ -1994,7 +1994,7 @@ func _create_phase_inst_item(cfg: Dictionary, is_equipped: bool) -> Control:
 				cell_style.border_color = Color(0.65, 0.45, 0.95, 0.6)
 			else:
 				# v9.2: 空槽位——虚线占位
-				cell_style.bg_color = Color(0, 0, 0, 0)
+				cell_style.bg_color = DesignTokens.COLOR_TRANSPARENT
 				cell_style.border_color = Color(0.25, 0.35, 0.45, 0.4)
 			cell_style.set_border_width_all(1)
 			cell_style.set_corner_radius_all(2)
@@ -2219,7 +2219,7 @@ func _add_rune_item(grid: GridContainer, rune_id: String, count: int, is_equippe
 		item.rune_clicked.connect(_on_backpack_rune_clicked)
 	# v9.1: 移除死代码（border_color 计算后未使用），modulate 直接置白；
 	# 已装备状态靠 extra_data.runeword_active 边框 + RuneEquippedDot 区分，不靠整体变暗
-	item.modulate = Color(1, 1, 1, 1)
+	item.modulate = DesignTokens.COLOR_HOVER_WHITE
 	# 设置 tooltip
 	if "tooltip_text" in item:
 		item.tooltip_text = "【%s】%s\n%s\n（点击装备/卸下）" % [rarity_name, rune_name, desc]
@@ -2405,7 +2405,7 @@ func _acquire_slot_from_pool(pool: Array, scene: PackedScene, meta_key: String) 
 	if item is CanvasItem:
 		(item as CanvasItem).visible = true
 	if item is Control:
-		(item as Control).modulate = Color(1, 1, 1, 1)
+		(item as Control).modulate = DesignTokens.COLOR_HOVER_WHITE
 	item.set_meta(meta_key, true)
 	return item
 
@@ -2440,7 +2440,7 @@ var _detail_source_item: Control = null
 
 func _set_last_detail_item(item: Control) -> void:
 	if _detail_source_item != null and is_instance_valid(_detail_source_item) and _detail_source_item != item:
-		_detail_source_item.modulate = Color(1, 1, 1, 1)
+		_detail_source_item.modulate = DesignTokens.COLOR_HOVER_WHITE
 	_detail_source_item = item
 	if item != null and is_instance_valid(item):
 		item.modulate = Color(1.12, 1.12, 1.12)
@@ -2448,7 +2448,7 @@ func _set_last_detail_item(item: Control) -> void:
 ## B5: 清除详情来源高亮（详情关闭/背包关闭时）
 func _clear_last_detail_item() -> void:
 	if _detail_source_item != null and is_instance_valid(_detail_source_item):
-		_detail_source_item.modulate = Color(1, 1, 1, 1)
+		_detail_source_item.modulate = DesignTokens.COLOR_HOVER_WHITE
 	_detail_source_item = null
 
 func _on_detail_close() -> void:
@@ -2497,7 +2497,7 @@ func _add_card_item(grid: GridContainer, card: CardResource, at_top: bool = fals
 	if item is CanvasItem:
 		(item as CanvasItem).visible = true
 	if item is Control:
-		(item as Control).modulate = Color(1, 1, 1, 1)
+		(item as Control).modulate = DesignTokens.COLOR_HOVER_WHITE
 	grid.add_child(item)
 	item.set_card(card)
 	if not item.card_clicked.is_connected(_on_card_clicked):
@@ -2521,8 +2521,9 @@ func _play_card_enter_animation(item: Control) -> void:
 	item.scale = Vector2(0.85, 0.85)
 	var t := create_tween()
 	t.set_parallel(true)
-	t.tween_property(item, "modulate:a", 1.0, 0.2).set_ease(Tween.EASE_OUT)
-	t.tween_property(item, "scale", Vector2(1.0, 1.0), 0.25).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	# 批次三 B14：同值字面量收口 MOTION token（淡入 SINE+EASE_OUT / 弹出 BACK+EASE_OUT 由调用侧定）
+	t.tween_property(item, "modulate:a", 1.0, DesignTokens.MOTION_FADE_IN).set_ease(Tween.EASE_OUT)
+	t.tween_property(item, "scale", Vector2(1.0, 1.0), DesignTokens.MOTION_POP).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 
 ## v7.x：改造/符文瓷砖入场动画——淡入 + 缩放，带 index 错峰（批量重建时逐个入场，避免同步闪现）。
 func _play_tile_enter_animation(item: Control, index: int) -> void:
@@ -2559,7 +2560,7 @@ func _highlight_card_item(item: Control) -> void:
 		return
 	var t := create_tween()
 	t.tween_property(item, "modulate", Color(0.4, 1.0, 0.9, 1.0), 0.0)
-	t.tween_property(item, "modulate", Color(1, 1, 1, 1), 0.5).set_ease(Tween.EASE_OUT)
+	t.tween_property(item, "modulate", DesignTokens.COLOR_HOVER_WHITE, 0.5).set_ease(Tween.EASE_OUT)
 
 func _ensure_min_card_slots(grid: GridContainer) -> void:
 	if grid == null:

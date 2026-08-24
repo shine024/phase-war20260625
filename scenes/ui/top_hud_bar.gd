@@ -371,7 +371,7 @@ func set_start_battle_text(text: String) -> void:
 	if _start_btn == null:
 		return
 	_start_btn.tooltip_text = text
-	_start_btn.modulate = Color(0.55, 0.58, 0.62, 1.0) if text == "战斗中" else Color(1, 1, 1, 1)
+	_start_btn.modulate = Color(0.55, 0.58, 0.62, 1.0) if text == "战斗中" else DT.COLOR_HOVER_WHITE
 
 
 # ========== 倍速 ==========

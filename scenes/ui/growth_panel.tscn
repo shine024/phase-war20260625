@@ -371,7 +371,7 @@ layout_mode = 2
 text = "全部"
 custom_minimum_size = Vector2(0, 24)
 size_flags_horizontal = 3
-theme_override_font_sizes/font_size = 10
+theme_override_font_sizes/font_size = 12
 theme_override_colors/font_color = Color(1.0, 0.85, 0.35, 1)
 theme_override_colors/font_hover_color = Color(0.95, 0.96, 0.98, 1)
 [node name="ChipEnh" type="Button" parent="RootVBox/BodyHBox/LeftPanel/LeftVBox/ColFilter"]
@@ -380,7 +380,7 @@ layout_mode = 2
 text = "可升级"
 custom_minimum_size = Vector2(0, 24)
 size_flags_horizontal = 3
-theme_override_font_sizes/font_size = 10
+theme_override_font_sizes/font_size = 12
 theme_override_colors/font_color = Color(0.5, 0.55, 0.65, 1)
 theme_override_colors/font_hover_color = Color(0.95, 0.96, 0.98, 1)
 [node name="ChipMax" type="Button" parent="RootVBox/BodyHBox/LeftPanel/LeftVBox/ColFilter"]
@@ -389,7 +389,7 @@ layout_mode = 2
 text = "满级"
 custom_minimum_size = Vector2(0, 24)
 size_flags_horizontal = 3
-theme_override_font_sizes/font_size = 10
+theme_override_font_sizes/font_size = 12
 theme_override_colors/font_color = Color(0.5, 0.55, 0.65, 1)
 theme_override_colors/font_hover_color = Color(0.95, 0.96, 0.98, 1)
 [node name="CardListScroll" type="ScrollContainer" parent="RootVBox/BodyHBox/LeftPanel/LeftVBox"]
@@ -481,7 +481,7 @@ alignment = 1
 layout_mode = 2
 text = "综合战力"
 horizontal_alignment = 2
-theme_override_font_sizes/font_size = 10
+theme_override_font_sizes/font_size = 12
 theme_override_colors/font_color = Color(0.5, 0.55, 0.65, 0.8)
 [node name="HeroPower" type="Label" parent="RootVBox/BodyHBox/DetailCol/DetailScroll/DetailBody/HeroCard/HeroHBox/HeroPowerBox"]
 unique_name_in_owner = true
@@ -538,7 +538,7 @@ theme_override_constants/separation = 4
 layout_mode = 2
 text = ""
 horizontal_alignment = 2
-theme_override_font_sizes/font_size = 10
+theme_override_font_sizes/font_size = 12
 theme_override_colors/font_color = Color(0.5, 0.55, 0.65, 0.7)
 [node name="ProgCardCyan" type="PanelContainer" parent="RootVBox/BodyHBox/DetailCol/DetailScroll/DetailBody/ProgressGrid"]
 unique_name_in_owner = true
@@ -581,7 +581,7 @@ theme_override_constants/separation = 4
 layout_mode = 2
 text = ""
 horizontal_alignment = 2
-theme_override_font_sizes/font_size = 10
+theme_override_font_sizes/font_size = 12
 theme_override_colors/font_color = Color(0.5, 0.55, 0.65, 0.7)
 [node name="ProgCardViolet" type="PanelContainer" parent="RootVBox/BodyHBox/DetailCol/DetailScroll/DetailBody/ProgressGrid"]
 unique_name_in_owner = true
@@ -624,7 +624,7 @@ theme_override_constants/separation = 4
 layout_mode = 2
 text = ""
 horizontal_alignment = 2
-theme_override_font_sizes/font_size = 10
+theme_override_font_sizes/font_size = 12
 theme_override_colors/font_color = Color(0.5, 0.55, 0.65, 0.7)
 [node name="ProgCardGold" type="PanelContainer" parent="RootVBox/BodyHBox/DetailCol/DetailScroll/DetailBody/ProgressGrid"]
 unique_name_in_owner = true
@@ -667,7 +667,7 @@ theme_override_constants/separation = 4
 layout_mode = 2
 text = ""
 horizontal_alignment = 2
-theme_override_font_sizes/font_size = 10
+theme_override_font_sizes/font_size = 12
 theme_override_colors/font_color = Color(0.5, 0.55, 0.65, 0.7)
 [node name="ActionBar" type="HBoxContainer" parent="RootVBox/BodyHBox/DetailCol/DetailScroll/DetailBody"]
 unique_name_in_owner = true

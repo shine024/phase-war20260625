@@ -204,7 +204,7 @@ func _make_row(text: String, color: Color) -> Label:
 	l.text = text
 	l.add_theme_font_size_override("font_size", 12)
 	l.add_theme_color_override("font_color", color)
-	l.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.7))
+	l.add_theme_color_override("font_outline_color", DT.COLOR_BACKDROP_DEEP)
 	l.add_theme_constant_override("outline_size", 2)
 	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	return l
@@ -218,7 +218,7 @@ func _make_kv_row(key: String, val: String, val_color: Color) -> HBoxContainer:
 	kl.text = key
 	kl.add_theme_font_size_override("font_size", 12)
 	kl.add_theme_color_override("font_color", Color(0.6, 0.65, 0.72, 1))
-	kl.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.7))
+	kl.add_theme_color_override("font_outline_color", DT.COLOR_BACKDROP_DEEP)
 	kl.add_theme_constant_override("outline_size", 2)
 	kl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	kl.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -227,7 +227,7 @@ func _make_kv_row(key: String, val: String, val_color: Color) -> HBoxContainer:
 	vl.text = val
 	vl.add_theme_font_size_override("font_size", 12)
 	vl.add_theme_color_override("font_color", val_color)
-	vl.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.7))
+	vl.add_theme_color_override("font_outline_color", DT.COLOR_BACKDROP_DEEP)
 	vl.add_theme_constant_override("outline_size", 2)
 	vl.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	hbox.add_child(vl)
