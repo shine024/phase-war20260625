@@ -153,8 +153,9 @@ func process(delta: float) -> void:
 # ── 核心逻辑 ──
 
 ## 收集装备的战斗卡，填充部署队列（保留绿槽索引用于固定映射）
-## v9.4: green 槽位只决定卡组多样化，不限制上场数。循环复用已装卡填满所有可用战场位。
-## 例如装3张卡(green=3)，战场有9格 → 卡0→位0, 卡1→位1, 卡2→位2, 卡0→位3, 卡1→位4...
+## v9.6（v20.11 规则）：相位仪中每张卡只能有一张在场上——每张装备卡最多映射一个空位，
+## 且跳过已有存活单位的卡；不再用 battlefield_slot % size 循环复用同名卡填格
+## （单卡限 1 后循环复用只会反复失败并刷部署失败 toast）。
 func _start_deploy_round() -> void:
 	# v8.1d: 快速门控——如果BattleSpawnSystem认为已无部署余量，直接清队
 	var bss: Node = _get_node("/root/BattleSpawnSystem")
@@ -182,7 +183,7 @@ func _start_deploy_round() -> void:
 			player_units = bf.get_player_units_node()
 		if player_units == null:
 			player_units = bf.get_node_or_null("PlayerUnits")
-	# v9.4: 收集已装卡列表（过滤非战斗卡），循环映射到战场位 0~N 填满可用格子
+	# v9.6: 收集已装卡列表（过滤非战斗卡）
 	var valid_loadouts: Array = []
 	for loadout in loadouts:
 		var platform = loadout.get("platform")
@@ -195,24 +196,31 @@ func _start_deploy_round() -> void:
 		valid_loadouts.append(loadout)
 	if valid_loadouts.is_empty():
 		return
+	# v20.11 规则：单卡限 1 个在场 → 跳过已有存活单位的卡（名额已用）
+	var alive_ids: Array = _collect_alive_card_ids()
 	var entries: Array = []
 	# v9.5: 自动部署顺序——中行(3,4,5) → 下行(6,7,8) → 上行(0,1,2)
 	# 槽位编号行主序：row0=[0,1,2] row1=[3,4,5] row2=[6,7,8]
 	const SLOT_COUNT: int = 9
 	const DEPLOY_ORDER: Array[int] = [3, 4, 5, 6, 7, 8, 0, 1, 2]
+	var card_ordinal: int = 0
+	card_ordinal = _advance_past_alive_cards(valid_loadouts, alive_ids, card_ordinal)
 	for battlefield_slot in DEPLOY_ORDER:
+		if card_ordinal >= valid_loadouts.size():
+			break
 		if grid != null and player_units != null and grid.has_method("is_player_slot_occupied"):
 			if grid.is_player_slot_occupied(battlefield_slot, player_units):
 				continue  # 该位已有单位，跳过
-		# 循环取卡：battlefield_slot % valid_loadouts.size()
-		var loadout: Dictionary = valid_loadouts[battlefield_slot % valid_loadouts.size()]
+		var loadout: Dictionary = valid_loadouts[card_ordinal]
 		var slot_index: int = int(loadout.get("slot_index", 0))
-		# 补阵冷却检查（v9.4: 按 battlefield_slot 独立冷却，循环复用时每个位各自计时）
+		# 补阵冷却检查（v9.4: 按 battlefield_slot 独立冷却，每个位各自计时）
 		if _slot_deploy_time.has(battlefield_slot):
 			var elapsed_sec: float = (Time.get_ticks_msec() - float(_slot_deploy_time[battlefield_slot])) / 1000.0
 			if elapsed_sec < REPLOY_COOLDOWN_SEC:
 				continue
 		entries.append({"platform": loadout.get("platform"), "slot_index": slot_index, "battlefield_slot": battlefield_slot})
+		card_ordinal += 1
+		card_ordinal = _advance_past_alive_cards(valid_loadouts, alive_ids, card_ordinal)
 	if entries.is_empty():
 		return
 	_deploy_queue = entries
@@ -246,6 +254,29 @@ func _collect_alive_card_ids() -> Array:
 			if not cid.is_empty():
 				ids.append(cid)
 	return ids
+
+
+## v20.11: 取 loadout 平台卡的部署键（instance_id 优先，回退 card_id，与 _collect_alive_card_ids 同口径）
+func _loadout_card_key(loadout: Dictionary) -> String:
+	var platform = loadout.get("platform")
+	if platform == null:
+		return ""
+	if "instance_id" in platform and not String(platform.instance_id).is_empty():
+		return String(platform.instance_id)
+	if "card_id" in platform:
+		return String(platform.card_id)
+	return ""
+
+
+## v20.11: 从 from 开始向后跳过已有存活单位的卡，返回下一张可部署卡的序号
+func _advance_past_alive_cards(valid_loadouts: Array, alive_ids: Array, from: int) -> int:
+	var idx: int = from
+	while idx < valid_loadouts.size():
+		var key: String = _loadout_card_key(valid_loadouts[idx])
+		if key.is_empty() or not alive_ids.has(key):
+			break
+		idx += 1
+	return idx
 
 
 ## v7.x 固定映射部署：遍历队列，每个条目部署到其绿槽对应的战场位

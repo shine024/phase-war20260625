@@ -68,8 +68,12 @@ signal card_added_to_backpack(card: CardResource)
 # 三条法则信号已随法则系统退役移除
 
 # 单位部署：战斗中点击绿槽的平台/合成卡后，再点战场放置虚影 → 计时后实体化
-## reason_code: out_of_bounds | insufficient_energy | max_units | unit_on_field | invalid_loadout | internal
+## reason_code: out_of_bounds | insufficient_energy | max_units | unit_on_field | deploy_uses_exhausted | invalid_loadout | internal
 signal player_deploy_failed(reason_code: String, message: String)
+
+## 每卡部署次数变化（v20.13 新增）
+## base_card_id: 裸 card_id（如 cold_t72），remaining: 剩余次数，total: 该卡总次数
+signal deploy_uses_changed(base_card_id: String, remaining: int, total: int)
 
 # 新系统信号
 

@@ -18,6 +18,7 @@ const _DamageNumberDisplayScript = preload("res://scenes/effects/damage_number_d
 const ConstructUnitScene = preload("res://scenes/units/construct_unit.tscn")
 const FactionSkillEffectHandler = preload("res://scripts/battle/faction_skill_effect_handler.gd")
 const CardGrowthConfig = preload("res://data/card_growth_config.gd")
+const UnifiedCardTable = preload("res://data/unified_card_table.gd")
 const DEPLOY_FAIL_LOG_THROTTLE_MS := 350
 # v7.x: 诊断开关——对比「上场端」vs「评估端」单卡 stats，定位战场 vs 面板战力差异源
 const DEBUG_DEPLOY_POWER_LOG := false
@@ -44,6 +45,10 @@ var player_unit_count: int = 0
 var _max_player_units_deployed: int = 0
 var _player_units_lost: int = 0
 var _player_deploy_manual: bool = true
+
+## v20.13 每卡部署次数追踪（base_card_id → 剩余次数）
+## 战斗开始时由 _reset_deploy_uses() 初始化，部署时扣减
+var _deploy_uses_remaining: Dictionary = {}  # String → int
 
 # ---- 敌方波次状态 ----
 var enemy_unit_count: int = 0
@@ -526,6 +531,7 @@ func reset(battle_scene: Node, enemy_wave_interval: float, enemy_wave_total: int
 	_stats_cache.clear()
 	_card_grid_active = false
 	_card_grid_enemy_quota = _CardGridSlotsPerSide
+	_reset_deploy_uses()
 
 # =========================================================================
 #  波次计时（由 BattleManager._process 调用）
@@ -587,6 +593,10 @@ func request_player_deploy(platform_card_id: String, world_pos: Vector2, battle_
 		base_card_id = platform_card_id.substr(0, _hi)
 	if not _no_limits and _reach_alive_limit_for_card(base_card_id, platform_card_id):
 		_emit_deploy_failed("unit_on_field", "该单位同配置已全部在场上，请待其离场后再部署。")
+		return false
+	# v20.13 每卡部署次数上限：部署即扣，耗尽后本场战斗无法再部署
+	if not _no_limits and not _has_deploy_uses(base_card_id):
+		_emit_deploy_failed("deploy_uses_exhausted", "该单位部署次数已耗尽，本场战斗无法再部署。")
 		return false
 	var loadout: Dictionary = {}
 	if _phase_instrument.has_method("get_loadout_by_platform_card_id"):
@@ -702,6 +712,8 @@ func request_player_deploy(platform_card_id: String, world_pos: Vector2, battle_
 	player_unit_count += 1
 	if player_unit_count > _max_player_units_deployed:
 		_max_player_units_deployed = player_unit_count
+	# v20.13 部署成功 → 扣减该卡剩余次数
+	_consume_deploy_use(base_card_id)
 	if _signal_bus:
 		_signal_bus.unit_spawned.emit(unit, true)
 	return true
@@ -791,9 +803,18 @@ func _do_prune_transient(bf: Node) -> void:
 #  玩家单位计数（由 BattleManager._on_unit_died 调用）
 # =========================================================================
 
-func on_player_unit_died() -> void:
+func on_player_unit_died(unit: Node = null) -> void:
 	player_unit_count = max(0, player_unit_count - 1)
 	_player_units_lost += 1
+	# v20.14: 维修车在场时，装甲单位死亡有 50% 概率返还部署次数
+	if unit != null and is_instance_valid(unit):
+		if CardAbilityManager.on_armor_unit_dying(unit):
+			# 获取该单位的 base_card_id 并返还 1 次部署
+			var base_id: String = ""
+			if "stats" in unit and unit.stats != null:
+				base_id = unit.stats.platform_card_id
+			if not base_id.is_empty():
+				_refund_deploy_use(base_id)
 
 func on_enemy_unit_died() -> void:
 	enemy_unit_count = max(0, enemy_unit_count - 1)
@@ -933,28 +954,22 @@ func _count_alive_player_units_from_instance_id(inst_id: String) -> int:
 	return count
 
 
-## v7.x: 按 base card_id 统一统计存活上限（v8.1b 修复同名卡部署）。
-## 上限 = 该卡在绿槽的装备槽位数 × 幻影倍率；
-## 存活统计按 base card_id（实例卡 ww1_ft17#1 和裸卡 ww1_ft17 统一用 ww1_ft17 计数）。
+## v20.11: 相位仪中的每张卡只能有一张在场上。
+## 上限 = 该卡在绿槽的装备槽位数 × 幻影倍率：同名卡两张实例装 2 槽 → 允许 2 个（每张各 1）；
+## phantom_clone 能力语义就是"同卡可放2个"，倍率保留。
+## 存活统计按 base card_id（实例卡 ww1_ft17#1 和裸卡 ww1_ft17 统一用 ww1_ft17 计数），
+## 与卡的实例化状态无关。
 ##
-## 背景：原实例路径按 instance_id 统计"每实例最多1个"，但用户可把同一实例装到多个槽
-## （或同名卡的两张实例 #1/#2 都装槽），此时每实例1个的上限会错误拦截第二张部署。
-## 正确口径：装了几个槽就允许部署几个（×幻影倍率），与卡的实例化状态无关。
+## 历史：v8.1b 曾改为"正常情况不限制单卡"（同名卡可重复部署填满总名额），
+## v20.11 按用户规则收回为每装备槽 1 个。
 func _reach_alive_limit_for_card(base_card_id: String, _platform_card_id: String) -> bool:
 	if base_card_id.is_empty():
 		return false
-	# 总单位上限 = 相位仪实际装备的战斗卡数（get_max_deployable_units 返回 get_loadouts().size()），
-	# 由战场格子数(9)截断；单卡场上数量不再单独限制（同名卡可重复部署填满该总名额）。
-	# 唯一例外：幻影克隆（phantom_clone）仍按 equipped_count × deploy_multiplier 做上限，
-	# 因为该能力的语义就是"同卡可放2个"。
-	if _get_phantom_deploy_multiplier() > 1:
-		var equipped_count: int = _count_equipped_loadouts_from_card(base_card_id)
-		if equipped_count > 0:
-			var alive_limit: int = equipped_count * _get_phantom_deploy_multiplier()
-			var alive_count: int = _count_alive_player_units_from_card(base_card_id)
-			return alive_count >= alive_limit
-	# 正常情况：不限制单卡场上数量（由总单位数上限和格子数管控）
-	return false
+	var equipped_count: int = _count_equipped_loadouts_from_card(base_card_id)
+	if equipped_count <= 0:
+		return false  # 未装备卡不应走到部署入口，防御性放行
+	var alive_limit: int = equipped_count * _get_phantom_deploy_multiplier()
+	return _count_alive_player_units_from_card(base_card_id) >= alive_limit
 
 ## v6.6: 获取免能量部署的成本倍率（0=全免，1=正常，0.5=半价）
 func _get_free_energy_multiplier() -> float:
@@ -1298,6 +1313,8 @@ func _build_stats_cached(platform_card: CardResource, weapon_cards: Array, weapo
 	# 纯加法叠在全部乘区之后（成长轴不进百分比堆叠，与敌方 resolver 链尾注入对称）。
 	# 经验只发给 platform 卡（game_manager._grant_battle_experience），故只按 platform 等级注入。
 	CardGrowthConfig.apply_to_stats(stats, CardGrowthConfig.total_growth(effective_card, card_lv))
+	# v20.12 等级统一：等级随 stats 下发（战场等级标签/光环星级换算读它）
+	stats.card_level = card_lv
 	# v6.8: 敌源MOD（D槽）战斗加成已停用（EOM 面板/掉落/存档保留）
 	_stats_cache[key] = _dup_stats_with_meta(stats)
 	# v7.x 诊断：对比上场端 vs 评估端 stats，定位战场/面板战力差异（默认关，调试时改 true）
@@ -1504,3 +1521,67 @@ func _count_alive_enemy_by_archetype(archetype_id: String) -> int:
 		if aid == archetype_id:
 			count += 1
 	return count
+
+
+# ════════════════════════════════════════════════════════════════════════
+#  v20.13 每卡部署次数上限
+# ════════════════════════════════════════════════════════════════════════
+
+## 战斗开始时初始化所有装备槽卡的部署次数
+func _reset_deploy_uses() -> void:
+	_deploy_uses_remaining.clear()
+	if _phase_instrument == null:
+		return
+	var loadouts: Array = []
+	if _phase_instrument.has_method("get_loadouts"):
+		loadouts = _phase_instrument.get_loadouts()
+	for lo in loadouts:
+		var card: CardResource = lo.get("platform", null)
+		if card == null:
+			continue
+		var base_id: String = card.card_id
+		var entry: Dictionary = UnifiedCardTable.get_entry(base_id)
+		if entry.is_empty():
+			continue
+		var uses: int = UnifiedCardTable.get_deploy_uses(entry, card)
+		_deploy_uses_remaining[base_id] = uses
+
+## 检查某卡是否还有剩余部署次数
+func _has_deploy_uses(base_card_id: String) -> bool:
+	return int(_deploy_uses_remaining.get(base_card_id, 0)) > 0
+
+## 部署时扣减次数
+func _consume_deploy_use(base_card_id: String) -> void:
+	var cur: int = int(_deploy_uses_remaining.get(base_card_id, 0))
+	if cur > 0:
+		_deploy_uses_remaining[base_card_id] = cur - 1
+		if _signal_bus:
+			_signal_bus.deploy_uses_changed.emit(base_card_id, cur - 1, _get_deploy_uses_total(base_card_id))
+
+## v20.14: 维修车装甲保护——返还 1 次部署次数
+func _refund_deploy_use(base_card_id: String) -> void:
+	var cur: int = int(_deploy_uses_remaining.get(base_card_id, 0))
+	var total: int = _get_deploy_uses_total(base_card_id)
+	if cur < total:
+		_deploy_uses_remaining[base_card_id] = cur + 1
+		if _signal_bus:
+			_signal_bus.deploy_uses_changed.emit(base_card_id, cur + 1, total)
+
+## 查询某卡总部署次数（用于 HUD 显示）
+func _get_deploy_uses_total(base_card_id: String) -> int:
+	if _phase_instrument == null:
+		return 0
+	var loadouts: Array = []
+	if _phase_instrument.has_method("get_loadouts"):
+		loadouts = _phase_instrument.get_loadouts()
+	for lo in loadouts:
+		var card: CardResource = lo.get("platform", null)
+		if card != null and card.card_id == base_card_id:
+			var entry: Dictionary = UnifiedCardTable.get_entry(base_card_id)
+			if not entry.is_empty():
+				return UnifiedCardTable.get_deploy_uses(entry, card)
+	return 0
+
+## 查询剩余次数（HUD 显示用）
+func get_deploy_uses_remaining(base_card_id: String) -> int:
+	return int(_deploy_uses_remaining.get(base_card_id, 0))

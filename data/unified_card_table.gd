@@ -997,7 +997,7 @@ const _TABLE: Array = [
 	 "w_light":"多管近防炮/88mm防空炮","w_armor":"反舰巡航导弹","w_air":"多管近防炮/88mm防空炮"},
 
 	{"card_id":"cold_fort_radar","display_name":"雷达站","era":2,"combat_kind":4,"tier":Tier.FORT,
-	 "base_hp":1023,"range_value":99,"deploy_speed":0,"base_speed":0,"power":300,"weapon_type":1,
+	 "base_hp":850,"range_value":99,"deploy_speed":0,"base_speed":0,"power":300,"weapon_type":1,
 	 "weapon_label":"雷达侦测/电子对抗系统",
 	 "atk_l":215,"atk_l_speed":1.0,"atk_l_windup":0.2,"atk_l_active":0.1,
 	 "atk_a":737,"atk_a_speed":0.5,"atk_a_windup":0.4,"atk_a_active":0.2,
@@ -1364,7 +1364,8 @@ const _TABLE: Array = [
 	 "atk_a":284,"atk_a_speed":0.8,"atk_a_windup":0.25,"atk_a_active":0.125,
 	 "atk_air":380,"atk_air_speed":1.2,"atk_air_windup":0.16,"atk_air_active":0.08,
 	 "def_l":36,"def_a":59,"def_air":60,
-	 "w_light":"激光炮/制导导弹","w_armor":"激光炮/制导导弹","w_air":"拦截激光/空空导弹"},
+	 "w_light":"激光炮/制导导弹","w_armor":"激光炮/制导导弹","w_air":"拦截激光/空空导弹",
+	 "tags": ["attack_drone"]},
 
 	{"card_id":"fut_cyborg","display_name":"机械步兵","era":4,"combat_kind":0,"tier":Tier.ELITE,
 	 "base_hp":1125,"range_value":3,"deploy_speed":4,"base_speed":95,"power":500,"weapon_type":0,
@@ -1454,7 +1455,8 @@ const _TABLE: Array = [
 	 "atk_a":298,"atk_a_speed":0.8,"atk_a_windup":0.25,"atk_a_active":0.125,
 	 "atk_air":399,"atk_air_speed":1.2,"atk_air_windup":0.16,"atk_air_active":0.08,
 	 "def_l":38,"def_a":62,"def_air":63,
-	 "w_light":"轨道炮/激光","w_armor":"轨道炮/激光","w_air":"激光拦截炮"},
+	 "w_light":"轨道炮/激光","w_armor":"轨道炮/激光","w_air":"激光拦截炮",
+	 "tags": ["stealth_aircraft"]},
 
 	{"card_id":"fut_space_fighter","display_name":"空天战斗机","era":4,"combat_kind":3,"tier":Tier.ELITE,
 	 "base_hp":1175,"range_value":99,"deploy_speed":7,"base_speed":185,"power":1325,"weapon_type":2,
@@ -1481,7 +1483,8 @@ const _TABLE: Array = [
 	 "atk_a":131,"atk_a_speed":0.8,"atk_a_windup":0.25,"atk_a_active":0.125,
 	 "atk_air":176,"atk_air_speed":1.2,"atk_air_windup":0.16,"atk_air_active":0.08,
 	 "def_l":16,"def_a":27,"def_air":26,
-	 "w_light":"纳米修复射线","w_armor":"","w_air":""},
+	 "w_light":"纳米修复射线","w_armor":"","w_air":"",
+	 "tags": ["repair_vehicle"]},
 
 	{"card_id":"fut_shield","display_name":"力场发生器","era":4,"combat_kind":2,"tier":Tier.FORT,
 	 "base_hp":600,"range_value":0,"deploy_speed":0,"base_speed":0,"power":750,"weapon_type":3,
@@ -2245,6 +2248,9 @@ static func _entry_to_card(entry: Dictionary) -> CardResource:
 	c.weapon_names = names
 	# 标记 enemy_only（缴获卡用）
 	c.is_dropped_card = bool(entry.get("enemy_only", false))
+	# v20.14: 传递 tags 到 CardResource（用于兵种特殊机制判定）
+	# tags 为 Array[String] 类型属性，无类型数组直接赋值会运行期失败——用 assign() 转换（同上方 weapon_names 的坑）。
+	c.tags.assign(_collect_tags_for_entry(entry))
 	# v7.x 修复：补上 rarity 推断（原 _entry_to_card 漏设，导致所有 UCT 构建的卡 rarity 恒为默认 "common"）。
 	# rarity 驱动 get_effective_power_multiplier（apply_growth_to_stats 的 hp/dmg 乘区）+ 强化消耗 + 军衔评估，
 	# 漏设会让 mythic/legendary 卡被当 common 处理，养成乘区被低估约 46%（mythic m: 2.388→1.630）。
@@ -2384,6 +2390,31 @@ static func build_enemy_archetype_config(card_id: String) -> Dictionary:
 	}
 
 
+## v20.14: 合并条目显式 tags + combat_kind 推断 tags（供 CardResource.tags 消费）
+static func _collect_tags_for_entry(entry: Dictionary) -> Array:
+	var tags: Array = []
+	# 1. 兵种推断 tags
+	var ck: int = int(entry.get("combat_kind", 0))
+	match ck:
+		0: tags.append("infantry")
+		1: tags.append_array(["vehicle", "armored"])
+		2: tags.append("support")
+		3: tags.append("aircraft")
+		4: tags.append_array(["fortress", "immobile"])
+	# 2. 条目显式 tags（如 stealth_aircraft / attack_drone / repair_vehicle）
+	var explicit: Array = entry.get("tags", [])
+	for t in explicit:
+		if not tags.has(t):
+			tags.append(t)
+	# 3. 核心标记词也作为 tags 写入（供 deploy_uses 和机制判定）
+	var display_name: String = String(entry.get("display_name", ""))
+	var lower_name: String = display_name.to_lower()
+	for kw in CORE_TAG_KEYWORDS:
+		if kw in lower_name and not tags.has(kw):
+			tags.append(kw)
+	return tags
+
+
 static func _tags_for_combat_kind(ck: int) -> Array:
 	match ck:
 		0: return ["infantry"]
@@ -2392,6 +2423,91 @@ static func _tags_for_combat_kind(ck: int) -> Array:
 		3: return ["aircraft"]
 		4: return ["fortress", "immobile"]
 		_: return []
+
+
+# ════════════════════════════════════════════════════════════════════════
+#  v20.13 每卡部署次数上限
+# ════════════════════════════════════════════════════════════════════════
+
+## 兵种基线部署次数（CombatKind → 次数）
+const DEPLOY_USES_BASELINE := {
+	GC.CombatKind.LIGHT:   6,
+	GC.CombatKind.SUPPORT: 5,
+	GC.CombatKind.ARMOR:   4,
+	GC.CombatKind.AIR:     4,
+	GC.CombatKind.FORT:    3,
+}
+
+## 核心标记档次数（雷达/指挥/侦测类——光环/侦测建筑比战斗堡垒更金贵）
+const DEPLOY_USES_CORE := 2
+
+## 终极修正触发条件：card_level 阈值
+const DEPLOY_USES_ULTIMATE_LEVEL_THRESHOLD := 8
+
+## 终极修正量（负值 = 扣减）
+const DEPLOY_USES_ULTIMATE_PENALTY := 1
+
+## 核心标记关键词（tags 命中任一即触发核心档）
+const CORE_TAG_KEYWORDS: Array[String] = ["radar", "command", "hq", "侦测", "雷达", "指挥"]
+
+
+## 计算单场战斗可部署次数
+## 优先级：显式配置 deploy_uses > 核心标记(2) > 兵种基线 × 终极修正
+## card 为 null 时仅按 entry 判定（敌方/预览用，不查 InstanceRegistry）
+static func get_deploy_uses(entry: Dictionary, card: CardResource = null) -> int:
+	# 1. 显式配置（最高优先）
+	if entry.has("deploy_uses") and int(entry["deploy_uses"]) >= 0:
+		return int(entry["deploy_uses"])
+
+	var ck: int = int(entry.get("combat_kind", 0))
+	var tags: Array = _collect_tags_for_entry(entry)
+
+	# 2. 核心标记判定
+	if _is_core_unit(tags, entry):
+		return DEPLOY_USES_CORE
+
+	# 3. 兵种基线
+	var uses: int = int(DEPLOY_USES_BASELINE.get(ck, 4))
+
+	# 4. 终极修正
+	if _is_ultimate_for_deploy_uses(card, entry):
+		uses -= DEPLOY_USES_ULTIMATE_PENALTY
+		if ck == GC.CombatKind.FORT:
+			uses = maxi(uses, 2)  # FORT 保底 2
+		else:
+			uses = maxi(uses, 1)  # 通用下限 1
+
+	return uses
+
+
+static func _is_core_unit(tags: Array, entry: Dictionary) -> bool:
+	# 显式 deploy_class
+	if String(entry.get("deploy_class", "")) == "core":
+		return true
+	# tags 命中
+	for tag in tags:
+		if tag in CORE_TAG_KEYWORDS:
+			return true
+	return false
+
+
+static func _is_ultimate_for_deploy_uses(card: CardResource, entry: Dictionary) -> bool:
+	if card != null:
+		# rarity 判定
+		if card.rarity in ["legendary", "mythic"]:
+			return true
+		# card_level 判定（需通过 InstanceRegistry 查询实例等级）
+		if not card.instance_id.is_empty():
+			var _ml := Engine.get_main_loop()
+			if _ml != null:
+				var _ir: Node = _ml.root.get_node_or_null("/root/InstanceRegistry")
+				if _ir != null and _ir.has_method("get_card_level"):
+					if _ir.get_card_level(card.instance_id) >= DEPLOY_USES_ULTIMATE_LEVEL_THRESHOLD:
+						return true
+	# 回退：entry 层显式标记
+	if String(entry.get("rarity", "")) in ["legendary", "mythic"]:
+		return true
+	return false
 
 
 ## 清空缓存（测试用）

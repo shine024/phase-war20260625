@@ -662,7 +662,7 @@ func _on_unit_died(unit: Node, is_player: bool) -> void:
 	if not is_instance_valid(unit):
 		return
 	if is_player:
-		_spawn_system.on_player_unit_died()
+		_spawn_system.on_player_unit_died(unit)
 		# v6.5 诊断：玩家单位死亡后立即 recount，验证左侧 HUD 数量是否同步减少。
 		# 仅在 debug 构建打印，避免污染发布版本日志。
 		if OS.is_debug_build() and DEBUG_BATTLE_LOG:
