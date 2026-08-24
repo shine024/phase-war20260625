@@ -86,21 +86,6 @@ static func _resolve_card_id(id_str: String) -> String:
 static func _is_instance_id(id_str: String) -> bool:
 	return id_str.contains("#")
 
-## v7.0: 获取源卡的增强等级——优先实例对象，回退 CardEnhancementManager
-static func _get_source_enhance_level(card_id_or_instance: String) -> int:
-	var ir: Node = _get_autoload_node("InstanceRegistry")
-	if ir != null and ir.has_method("get_instance"):
-		var inst: CardResource = ir.get_instance(card_id_or_instance)
-		if inst != null:
-			return maxi(inst.enhance_level, 0)
-	# 回退：按 card_id 查模板
-	var tree = Engine.get_main_loop()
-	if tree and tree.root:
-		var cem: Node = tree.root.get_node_or_null("CardEnhancementManager")
-		if cem != null and cem.has_method("get_card_enhancement_level"):
-			return maxi(cem.get_card_enhancement_level(card_id_or_instance), 0)
-	return 0
-
 ## 进化条件检查
 ## v7.0: card_id 参数支持 instance_id（实例化养成身份）
 static func can_evolve_blueprint(card_id_or_instance: String, target_card_id: String, bpm_ref: Node) -> Dictionary:
@@ -202,29 +187,30 @@ static func can_evolve_blueprint(card_id_or_instance: String, target_card_id: St
 		})
 	# 注：若 PhaseMasterSkillManager 不可用（旧环境），跳过该项（向后兼容）
 
-	## v6.0: 新门槛 — 强化等级 + MOD数量 + 敌源MOD
-	# v7.0: 优先从实例对象读 enhance_level 和 mods；实例不存在回退 blueprint_mods 字典
-	var enhance_lvl: int = 0
+	## v6.0 新门槛 — 战斗卡等级 + MOD数量
+	## v20.12 等级统一：等级条件读 InstanceRegistry card_level（1-30，战斗经验自动涨），
+	## 旧手动强化轴 enhance_level（0-10）已随强化①退役，不再是进化条件。
+	var card_lvl: int = 0
 	var mod_count: int = 0
 	if is_instance:
-		var ir: Node = _get_autoload_node("InstanceRegistry")
-		if ir != null and ir.has_method("get_instance"):
-			var inst: CardResource = ir.get_instance(card_id_or_instance)
+		var ir_lv: Node = _get_autoload_node("InstanceRegistry")
+		if ir_lv != null and ir_lv.has_method("get_card_level"):
+			card_lvl = maxi(int(ir_lv.get_card_level(card_id_or_instance)), 0)
+		if ir_lv != null and ir_lv.has_method("get_instance"):
+			var inst: CardResource = ir_lv.get_instance(card_id_or_instance)
 			if inst != null:
-				enhance_lvl = maxi(inst.enhance_level, 0)
 				mod_count = inst.mods.size()
 	else:
-		enhance_lvl = _get_card_enhance_level(card_id, bpm_ref)
 		mod_count = ModManager.get_modification_count(card_id, bpm_ref.blueprint_mods)
 
-	var enh_req: int = UnitLineageConfig.get_enhance_requirement(stage)
+	var lv_req: int = UnitLineageConfig.get_card_level_requirement(stage)
 	var mod_req: int = UnitLineageConfig.get_mod_requirement(stage)
 	conditions.append({
-		"key": "enhance",
-		"met": enhance_lvl >= enh_req,
-		"current_text": str(enhance_lvl),
-		"required_text": str(enh_req),
-		## v9.x：强化升级途径（v8.x 自动经验升星：战后经验平分给上场卡）
+		"key": "level",
+		"met": card_lvl >= lv_req,
+		"current_text": str(card_lvl),
+		"required_text": str(lv_req),
+		## v9.x 强化升级途径（v20.12：唯一等级轴即战斗等级，上阵攒经验自动升）
 		"detail": "将该卡装进绿色战斗槽上阵参战，战后结算自动积累经验升级",
 	})
 	conditions.append({
@@ -273,9 +259,9 @@ static func can_evolve_blueprint(card_id_or_instance: String, target_card_id: St
 		"reason": "ok" if first_fail_key.is_empty() else _condition_key_to_reason(first_fail_key),
 		"stage": stage,
 		"conditions": conditions,
-		"enhance_requirement": enh_req,
+		"level_requirement": lv_req,
 		"mod_requirement": mod_req,
-		"current_enhance": enhance_lvl,
+		"current_level": card_lvl,
 		"current_mod_count": mod_count,
 	}
 	out["inherit_ratio"] = UnitLineageConfig.get_inherit_ratio(card_id, target_card_id)
@@ -344,9 +330,6 @@ static func _evolve_instance(source_instance_id: String, target_card_id: String,
 	if source_inst == null:
 		return false
 
-	var source_mods: Array = source_inst.mods.duplicate(true)
-	var source_enhance_lvl: int = source_inst.enhance_level
-	var source_module_slots: Array = source_inst.module_slots.duplicate(true)
 	var source_intel_bonus: Dictionary = ir.get_intel_branch_bonus(source_instance_id)
 
 	var inherit_ratio: float = float(can_info.get("inherit_ratio", 0.30))
@@ -362,11 +345,9 @@ static func _evolve_instance(source_instance_id: String, target_card_id: String,
 	if target_inst == null:
 		return false
 
-	# 3. 迁移养成数据到目标实例
-	target_inst.enhance_level = source_enhance_lvl        # 强化等级继承
-	target_inst.mods = source_mods                         # 改造完全继承
-	target_inst.module_slots = source_module_slots          # 词条槽继承
-
+	# 3. 进化 = 变成新卡（v20.12b 用户定稿）：改造/词条槽/战斗经验/等级全部不继承——
+	# create_instance 返回的即为干净初始状态（mods/module_slots 清空、经验从零），
+	# 新卡需重新上阵练级攒改造。仅进化链奖励（inherit_bonus/hp_floor/情报分支奖励）保留。
 	ir.set_inherit_bonus(target_inst.instance_id, merged_bonus)
 	if floor_hp > 0.0:
 		var prev_floor: float = ir.get_evolution_hp_floor(target_inst.instance_id)
@@ -403,15 +384,6 @@ static func _apply_intel_branch_bonus(card_id: String, target_card_id: String, c
 			if not bpm_ref.blueprint_intel_branch_bonus.has(target_card_id):
 				bpm_ref.blueprint_intel_branch_bonus[target_card_id] = {}
 			bpm_ref.blueprint_intel_branch_bonus[target_card_id]["special_ability"] = ability
-
-## 获取卡片强化等级（通过 CardEnhancementManager Autoload）
-static func _get_card_enhance_level(card_id: String, bpm_ref: Node) -> int:
-	var tree = Engine.get_main_loop()
-	if tree and tree.root:
-		var cem: Node = tree.root.get_node_or_null("CardEnhancementManager")
-		if cem != null and cem.has_method("get_card_enhancement_level"):
-			return cem.get_card_enhancement_level(card_id)
-	return 1
 
 ## v8.x: 获取卡的 era（用于技能树进化解锁检查）
 static func _get_card_era(card_id: String, is_instance: bool, instance_or_id: String) -> int:

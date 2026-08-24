@@ -4,7 +4,8 @@ class_name BattleExperienceConfig
 ## ═══════════════════════════════════════════════════════════
 ##  战斗经验升级配置（v18.c 改版：星级 → 卡等级 Lv1-30）
 ##  战斗卡通过战斗获得经验，累积达阈值自动升 card_level（上限 30）。
-##  card_level 与 enhance_level 独立——enhance_level 保留手动强化①，
+##  v20.12 等级统一：card_level 是玩家卡唯一等级轴（强化①/ enhance_level 手动强化已退役，
+##  进化等级门槛/全部 UI 等级显示/光环星级均读 card_level）。
 ##  card_level 驱动：派生 flat 属性成长（CardGrowthConfig）+ 词条节点（每 5 级）。
 ##  旧 star_level（0-9）废弃：经验存档在，等级从存量经验重算，零迁移。
 ##

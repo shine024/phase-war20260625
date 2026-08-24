@@ -190,15 +190,16 @@ func _add_dropped_card(card_id: String, count: int) -> void:
 		if dropped_card == null:
 			continue
 		dropped_card.is_dropped_card = true
-		# v6.4: 掉落星级映射到 enhance_level，让高星掉落卡有属性优势
-		# star 1-3 → enhance_level 0（普通），4-6 → 1（强化），7-9 → 2（精锐）
+		# v20.12 等级统一：高星掉落卡的属性优势改发为起始战斗经验（原映射 enhance_level 0/1/2
+		# 已随强化①退役）。star 1-3 → 0（白板），4-6 → 60 经验（约Lv2），7-9 → 150 经验（约Lv3）。
 		var star: int = randi_range(1, 9)
-		var enh_lv: int = 0
+		var bonus_exp: int = 0
 		if star >= 7:
-			enh_lv = 2
+			bonus_exp = 150
 		elif star >= 4:
-			enh_lv = 1
-		dropped_card.enhance_level = enh_lv
+			bonus_exp = 60
+		if bonus_exp > 0 and ir != null and ir.has_method("add_experience") and not dropped_card.instance_id.is_empty():
+			ir.add_experience(dropped_card.instance_id, bonus_exp)
 		if SignalBus:
 			SignalBus.card_added_to_backpack.emit(dropped_card)
 

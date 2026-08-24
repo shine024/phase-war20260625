@@ -59,10 +59,10 @@ func refresh() -> void:
 	else:
 		for cb in card_breakdown:
 			var cname: String = String(cb.get("name", "?"))
-			var enhance: int = int(cb.get("enhance", 0))
+			var lvl: int = int(cb.get("level", 0))
 			var power: float = float(cb.get("power", 0.0))
-			var enhance_str: String = " +%d强化" % enhance if enhance > 0 else ""
-			lines.append("  %s%s → 战力 %d" % [cname, enhance_str, int(power)])
+			var lvl_str: String = " Lv.%d" % lvl if lvl > 1 else ""
+			lines.append("  %s%s → 战力 %d" % [cname, lvl_str, int(power)])
 	lines.append("")
 	lines.append("═══ 构成明细 ═══")
 	_append_instrument_lines(lines, pm)
@@ -84,9 +84,13 @@ func _append_platform_lines_fallback(lines: Array, pm: Node) -> void:
 			continue
 		var card: CardResource = plat
 		var display_name: String = String(card.display_name) if "display_name" in card else card.card_id
-		var enhance: int = int(card.enhance_level) if "enhance_level" in card else 0
-		var enhance_str: String = " +%d强化" % enhance if enhance > 0 else ""
-		lines.append("  %s%s" % [display_name, enhance_str])
+		# v20.12 等级统一：显示战斗卡等级（原"+N强化"已随强化①退役）
+		var lvl: int = 1
+		var ir_l: Node = get_node_or_null("/root/InstanceRegistry")
+		if ir_l != null and ir_l.has_method("get_card_level"):
+			var ident: String = String(card.instance_id) if not String(card.instance_id).is_empty() else String(card.card_id)
+			lvl = clampi(maxi(int(ir_l.get_card_level(ident)), 1), 1, 30)
+		lines.append("  %s Lv.%d" % [display_name, lvl])
 
 func _append_instrument_lines(lines: Array, pm: Node) -> void:
 	var cfg: Dictionary = pm.get_current_instrument() if pm.has_method("get_current_instrument") else {}

@@ -12,6 +12,7 @@ const UiAssetLoader = preload("res://scripts/ui_asset_loader.gd")
 const DT = preload("res://resources/design_tokens.gd")
 const PanelStyles = preload("res://scripts/ui/panel_styles.gd")
 const EvolutionHelpers = preload("res://managers/evolution/evolution_helpers.gd")
+const BattleExperienceConfig = preload("res://data/battle_experience_config.gd")
 
 signal closed
 
@@ -111,6 +112,28 @@ func _bind_nodes() -> void:
 	if enhance_btn:
 		enhance_btn.text = "◆ 技能树"
 		enhance_btn.tooltip_text = "打开相位师技能树（指挥/智能化/火力/概念武器）"
+
+	# 批次三 B2a（2026-08-24）：tooltip 攻坚——筛选/进度卡/操作按钮全部就地解释
+	if chip_all:
+		chip_all.tooltip_text = "显示全部拥有的卡牌"
+	if chip_enh:
+		chip_enh.tooltip_text = "只显示等级未满（Lv30 以下）的卡牌——仍有成长空间"
+	if chip_max:
+		chip_max.tooltip_text = "只显示已满级（Lv30）的卡牌"
+	if mod_btn:
+		mod_btn.tooltip_text = "打开改造面板：为选中的这张卡安装/调整改造模块（最多 9 格，只影响本实例）"
+	if evo_btn:
+		evo_btn.tooltip_text = "打开进化面板：满足条件后进化为全新卡牌（等级/改造重置，继承加成与耐久下限保留）"
+	if prog_card_amber:
+		prog_card_amber.tooltip_text = "战斗经验：上阵参战自动积累（胜利+击杀加成），驱动等级提升"
+	if prog_card_gold:
+		prog_card_gold.tooltip_text = "等级进度：Lv5/10/15/20/25/30 各解锁一个词条节点；每 3 级折合 1 星光环/能力星级"
+	if prog_card_cyan:
+		prog_card_cyan.tooltip_text = "改造系统：安装模块定向强化属性，最多 9 格，只影响当前这张卡"
+	if prog_card_violet:
+		prog_card_violet.tooltip_text = "进化系统：满足条件后进化为全新卡牌（等级/经验/改造/词条重置，继承加成与耐久下限保留）"
+	if hero_power_label:
+		hero_power_label.tooltip_text = "综合战力估值（含该实例的等级/改造/词条加成）"
 
 ## v8.x: 更新技能树按钮红点提示（有可用技能点时显示 "●"）
 func _update_skill_tree_badge() -> void:
@@ -375,6 +398,8 @@ func _create_card_list_item(card: CardResource, instance_id_raw: Variant) -> Con
 	btn.text = ""
 	btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
 	btn.add_theme_font_size_override("font_size", 13)
+	# 批次三 B2a：同名卡多实例并排时，解释实例独立养成语义
+	btn.tooltip_text = "点击查看这张卡的养成详情（同名卡的每个实例独立培养，互不影响）"
 
 	# 选中态判断
 	var is_selected := false
@@ -549,7 +574,7 @@ func _refresh_data() -> void:
 	_selected_card = _ensure_selected_is_instance(_selected_card)
 	_refresh_header()
 	_refresh_star_section()
-	_refresh_enhance_section()
+	_refresh_experience_section()
 	_refresh_mod_section()
 	_refresh_evolution_section()
 
@@ -661,8 +686,8 @@ func _refresh_star_section() -> void:
 	_set_prog_status(prog_card_gold, "Lv.%d" % lv)
 
 
-# --- 强化系统（ProgCardAmber） ---
-func _refresh_enhance_section() -> void:
+# --- 战斗经验（ProgCardAmber；v20.12 等级统一：原"强化系统"卡退役改版） ---
+func _refresh_experience_section() -> void:
 	if prog_card_amber == null or _selected_card == null:
 		return
 	var body: VBoxContainer = _get_prog_body(prog_card_amber)
@@ -672,28 +697,32 @@ func _refresh_enhance_section() -> void:
 		child.queue_free()
 
 	var c := _selected_card
-	var cur_lv: int = c.enhance_level
-	var max_lv: int = 10
-	var is_maxed := cur_lv >= max_lv
+	var identity: String = String(c.instance_id) if not String(c.instance_id).is_empty() else String(c.card_id)
+	var exp: int = 0
+	var ir = get_node_or_null("/root/InstanceRegistry")
+	if ir != null and ir.has_method("get_battle_experience"):
+		exp = int(ir.get_battle_experience(identity))
+	var lv: int = _card_level_of(c)
+	var max_lv: int = 30
+	var is_maxed := lv >= max_lv
 
-	# 进度条
-	var pct := float(cur_lv) / float(max_lv)
+	# 细粒度进度条（按经验百分比，比等级卡的粗进度更精确）
+	var pct := BattleExperienceConfig.get_level_progress(exp)
 	var bar := _create_progress_bar_pct(DT.COLOR_AMBER, pct)
 	body.add_child(bar)
 
-	# 统计（v19：明确标注"强化等级"——与战斗等级 card_level 是两套独立维度）
-	_add_prog_stat(body, "强化等级", "Lv.%d/%d" % [cur_lv, max_lv])
+	# 统计
+	_add_prog_stat(body, "当前经验", "%s" % _format_number(exp))
 	if is_maxed:
 		_add_prog_stat(body, "状态", "已满级", DT.COLOR_GOLD)
 	else:
-		# v19: 消耗用 CardEnhancementManager 真实公式（旧 50×(lv+1) 估算与实际不符已废）
-		var next_cost := _real_enhance_cost(c, cur_lv + 1)
-		if next_cost > 0:
-			_add_prog_stat(body, "下一级消耗", "%s 纳米" % _format_number(next_cost))
-		_add_prog_hint(body, "强化消耗纳米材料，独立于战斗等级")
+		var next_total: int = BattleExperienceConfig.get_exp_for_next_level(lv)
+		if next_total > exp:
+			_add_prog_stat(body, "下一级还需", "%s 经验" % _format_number(next_total - exp))
+	_add_prog_hint(body, "上阵参战自动积累经验（胜利+击杀加成，战后按上场卡平分）")
 
 	# 状态标签
-	_set_prog_status(prog_card_amber, "可强化" if not is_maxed else "已满级")
+	_set_prog_status(prog_card_amber, "Lv.%d" % lv)
 
 
 # --- 改造系统（ProgCardCyan） ---
@@ -899,6 +928,9 @@ func _on_enhance_pressed() -> void:
 ## 与成长面板 Backdrop 同层，Backdrop 全屏覆盖拦截所有点击，导致技能面板无法操作。
 ## 修复：技能面板 + 自带 backdrop 放在更高 layer，彻底脱离成长面板遮挡。
 func _open_phase_master_skill_panel() -> void:
+	# 批次三 B4：技能树首开一句话引导
+	FeatureUnlockPopup.show_once("skill_tree", "相位师技能树",
+		"消耗技能点学习全局被动强化（指挥/智能化/火力/概念武器）。技能点随相位场等级获得。")
 	var root = get_tree().root
 	# 复用已创建的独立 CanvasLayer（避免重复叠加）
 	var canvas: CanvasLayer = root.get_node_or_null("PhaseMasterSkillCanvas")
@@ -1163,15 +1195,6 @@ func _format_power(card: CardResource) -> String:
 	if power <= 0:
 		return "—"
 	return _format_number(int(round(power)))
-
-
-## v19: 强化消耗走 CardEnhancementManager 真实公式（基数×等级系数×时代系数）；查询失败返回 0（隐藏该行）
-func _real_enhance_cost(card: CardResource, target_level: int) -> int:
-	var cem = get_node_or_null("/root/CardEnhancementManager")
-	if cem == null or not cem.has_method("get_enhance_nano_cost"):
-		return 0
-	var identity: String = card.instance_id if not String(card.instance_id).is_empty() else String(card.card_id)
-	return int(cem.get_enhance_nano_cost(identity, target_level))
 
 
 func _count_available_mods(card: CardResource) -> int:

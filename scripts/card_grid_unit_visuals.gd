@@ -461,15 +461,21 @@ static func sync_rarity_badge(host: Node2D, unit_spr: Sprite2D, card: CardResour
 	badge.visible = true
 
 
-## 等级小标签：卡框左上角 "Lv.X"（我方读 enhance_level，敌方无则隐藏）
+## 等级小标签：卡框左上角 "Lv.X"（v20.12 等级统一：我方读 stats.card_level 战斗卡等级；
+## 旧 enhance_level 链路仅作过渡回退，敌方无等级则隐藏）
 ## 用 Node2D + _draw() 自绘（参考 CardGridRankStrip），避免 Label 在 Node2D 下
 ## 因 Control 布局系统不触发导致的 size=0 / 文字不渲染问题。
 static func sync_level_tag(host: Node2D, unit_spr: Sprite2D, card: CardResource, unit: Node = null) -> void:
 	if host == null:
 		return
 	var level: int = 0
-	# v7.x: 优先读 unit.stats.enhance_level（我方 construct_unit 有，敌方无则 level=0 不显示）
-	if unit != null and "stats" in unit and unit.stats != null and "enhance_level" in unit.stats:
+	# v20.12: 优先读 stats.card_level（我方部署时从 InstanceRegistry 打栈）
+	if unit != null and "stats" in unit and unit.stats != null and "card_level" in unit.stats:
+		level = int(unit.stats.card_level)
+	elif host.has_meta("card_level"):
+		level = int(host.get_meta("card_level"))
+	# 过渡回退：旧 enhance_level 链（旧档/未打栈路径）
+	elif unit != null and "stats" in unit and unit.stats != null and "enhance_level" in unit.stats:
 		level = int(unit.stats.enhance_level)
 	elif host.has_meta("enhance_level"):
 		level = int(host.get_meta("enhance_level"))

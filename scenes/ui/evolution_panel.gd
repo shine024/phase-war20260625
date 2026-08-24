@@ -145,6 +145,37 @@ func _ready() -> void:
 	if chip_final:
 		chip_final.pressed.connect(_on_filter_pressed.bind(FILTER_FINAL))
 
+	# 批次三 B2c（2026-08-24）：tooltip 攻坚——chip/资源栏/统计项/进化按钮就地解释
+	if chip_all:
+		chip_all.tooltip_text = "显示全部拥有的卡牌"
+	if chip_evo:
+		chip_evo.tooltip_text = "只显示还有进化路线的卡牌"
+	if chip_final:
+		chip_final.tooltip_text = "只显示已到终阶形态（无进化路线）的卡牌"
+	if power_label:
+		power_label.tooltip_text = "当前选中卡的综合战力估值（含等级/改造/词条加成）"
+	if enhance_label:
+		enhance_label.tooltip_text = "卡牌等级（Lv1-30）：上阵参战自动积累经验升级，也是进化门槛的判定依据"
+	if mods_label:
+		mods_label.tooltip_text = "已安装的改造模块数（最多 9 格）；进化后改造会重置，请知悉"
+	if evolve_button:
+		evolve_button.tooltip_text = "满足全部条件后可执行进化：变为全新卡牌，等级/经验/改造/词条槽重置，继承加成与耐久下限保留"
+	# 9 项统计：解释"轻装/装甲/空中"三维攻防语义（新玩家最常困惑的点）
+	var stat_tips := {
+		stat_hp: "耐久（HP）：归零即被摧毁",
+		stat_attack_light: "对轻装目标（步兵等）的攻击伤害",
+		stat_attack_armor: "对装甲目标（坦克等）的攻击伤害",
+		stat_attack_air: "对空中目标的攻击伤害",
+		stat_defense_light: "对轻装攻击的防御减免",
+		stat_defense_armor: "对装甲攻击的防御减免",
+		stat_defense_air: "对空中攻击的防御减免",
+		stat_range: "射程：单位开始攻击的距离",
+		stat_speed: "攻击速度：两次攻击之间的间隔",
+	}
+	for lbl in stat_tips:
+		if lbl:
+			lbl.tooltip_text = stat_tips[lbl]
+
 	_evolve_callable = _on_evolve_pressed
 
 	# v7.x UI 重设计：加载 Rajdhani 字体到主要 Label
@@ -330,6 +361,8 @@ func _create_card_item(card: CardResource) -> Control:
 	btn.text = ""
 	btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
 	btn.add_theme_color_override("font_color", Color(0.91, 0.93, 0.96, 1))
+	# 批次三 B2c：名册行悬停解释（多实例并排时消除"哪张是哪张"的困惑）
+	btn.tooltip_text = "点击查看这张卡的进化路线与条件（同名卡的每个实例各自独立判定）"
 
 	# 选中态判断
 	var is_selected := false
@@ -421,12 +454,12 @@ func _create_card_item(card: CardResource) -> Control:
 			name_row.add_child(seq_label)
 	info.add_child(name_row)
 
-	# 第二行：Lv.N · Mx/9
+	# 第二行：Lv.N · Mx/9（v20.12 等级统一：Lv=战斗卡等级 card_level）
 	var mod_count: int = 0
 	if "mods" in card and card.mods is Array:
 		mod_count = card.mods.size()
 	var meta_label := Label.new()
-	meta_label.text = "Lv.%d  ·  M%d/9" % [card.enhance_level, mod_count]
+	meta_label.text = "Lv.%d  ·  M%d/9" % [_card_level_of(card), mod_count]
 	meta_label.add_theme_font_size_override("font_size", 12)
 	meta_label.add_theme_color_override("font_color", Color(0.55, 0.6, 0.7, 0.85))
 	meta_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -473,6 +506,18 @@ func _format_int(n: int) -> String:
 		out = s[i] + out
 		cnt += 1
 	return out
+
+
+## v20.12 等级统一：战斗卡等级（card_level 1-30）查询——InstanceRegistry 按实例身份；
+## 未成长按 Lv1（与 growth_panel._card_level_of 同口径）
+func _card_level_of(card: CardResource) -> int:
+	if card == null:
+		return 1
+	var ir: Node = get_node_or_null("/root/InstanceRegistry")
+	if ir != null and ir.has_method("get_card_level"):
+		var identity: String = String(card.instance_id) if not String(card.instance_id).is_empty() else String(card.card_id)
+		return clampi(maxi(int(ir.get_card_level(identity)), 1), 1, 30)
+	return 1
 
 
 ## v7.x 辅助：兵种图标
@@ -581,7 +626,7 @@ func _create_evolution_node(target: Dictionary) -> Control:
 		var unmet_count: int = _count_unmet_conditions(check_result)
 		var badge_text := "🔒条件不足"
 		match String(first_unmet.get("key", "")):
-			"enhance":
+			"level", "enhance":
 				badge_text = "🔒需Lv.%s" % String(first_unmet.get("required_text", "?"))
 			"mods":
 				badge_text = "🔒改造 %s/%s" % [String(first_unmet.get("current_text", "?")), String(first_unmet.get("required_text", "?"))]
@@ -904,7 +949,7 @@ func _update_current_card_info() -> void:
 	if power_label:
 		power_label.text = "当前战力 %d" % power
 	if enhance_label:
-		enhance_label.text = "强化 Lv.%d" % selected_card.enhance_level
+		enhance_label.text = "等级 Lv.%d" % _card_level_of(selected_card)
 	if mods_label:
 		mods_label.text = "改造 %d/9" % mod_count
 	# meta_label（标题栏右侧）：显示卡名简略
@@ -996,9 +1041,9 @@ func _update_detail_panel() -> void:
 			var reason_zh := String(check_result.get("reason_zh", ""))
 			if not reason_zh.is_empty():
 				res_text += "⚠ %s\n" % reason_zh
-		# 进化零消耗 + 继承提示（对齐网页设计稿）
+		# 进化零消耗 + 新卡提示（v20.12b：进化变成全新卡，等级/改造从零养成）
 		res_text += "✓ 进化零消耗（图纸永久持有）\n"
-		res_text += "✓ 强化/改造/词条槽完全继承 · HP 下限 ×1.10"
+		res_text += "⚠ 进化为全新卡：等级与改造重置（需重新练级攒改造）· HP 下限 ×1.10"
 		resource_details.text = res_text
 		resource_details.add_theme_color_override("font_color", THEME_GREEN if can_ok_res else Color(0.95, 0.6, 0.4))
 
@@ -1069,12 +1114,14 @@ func _render_condition_rows(check_result: Dictionary) -> void:
 			req_list.add_child(hint)
 
 ## v9.x: conditions key → 中文短名（badge/按钮/条件行共用）
+## v20.12 等级统一：enhance 条件已改 key "level"（读战斗卡等级 card_level）
 func _condition_label_zh(key: String) -> String:
 	match key:
 		"power": return "战力"
 		"evo_blueprint": return "进化图纸"
 		"skill_tree_era": return "技能树·进化能力"
-		"enhance": return "强化等级"
+		"level": return "卡牌等级"
+		"enhance": return "卡牌等级"
 		"mods": return "改造模块"
 		"faction_level": return "势力等级"
 		_: return key

@@ -592,7 +592,12 @@ static func _get_unit_star(unit: Node2D) -> int:
 		return 1
 	if unit.has_meta("enhance_level"):
 		return int(unit.get_meta("enhance_level"))
-	# v6.11: 从废弃的 get_blueprint_star 迁移到真实 enhance_level
+	# v20.12 等级统一：优先读 stats.card_level（战斗卡等级 1-30），÷3 换算 1-10 星
+	if "stats" in unit and unit.stats != null and "card_level" in unit.stats and int(unit.stats.card_level) > 0:
+		var star_lv: int = clampi(int(round(float(int(unit.stats.card_level)) / 3.0)), 1, 10)
+		unit.set_meta("enhance_level", star_lv)
+		return star_lv
+	# 过渡回退：旧 CardEnhancementManager 查询链（强化①退役后恒 0/1）
 	if "stats" in unit and unit.stats != null and not unit.stats.platform_card_id.is_empty():
 		var loop = Engine.get_main_loop()
 		if loop is SceneTree:
@@ -603,3 +608,301 @@ static func _get_unit_star(unit: Node2D) -> int:
 				return lvl
 	unit.set_meta("enhance_level", 1)
 	return 1
+
+
+# ════════════════════════════════════════════════════════════════════════
+#  v20.14 兵种特殊机制
+# ════════════════════════════════════════════════════════════════════════
+
+## ── 隐身飞机（stealth_aircraft）：周期性隐身 ──────────────────────
+
+## 每 8 秒自动进入隐身状态（闪避+40%，移速+20%），持续 4 秒或被攻击命中后提前解除。
+## 由 construct_unit._physics_process 每帧调用。
+static func update_stealth_periodic(unit: Node2D, delta: float) -> void:
+	if unit == null or not is_instance_valid(unit):
+		return
+	if not _has_tag(unit, "stealth_aircraft"):
+		return
+	# 初始化 meta
+	if not unit.has_meta("_stealth_cd"):
+		unit.set_meta("_stealth_cd", 8.0)
+		unit.set_meta("_stealth_active", false)
+		unit.set_meta("_stealth_duration", 0.0)
+		unit.set_meta("_stealth_base_modulate", unit.modulate)
+
+	var stealth_active: bool = bool(unit.get_meta("_stealth_active"))
+	var stealth_dur: float = float(unit.get_meta("_stealth_duration"))
+	var stealth_cd: float = float(unit.get_meta("_stealth_cd"))
+
+	if stealth_active:
+		stealth_dur -= delta
+		unit.set_meta("_stealth_duration", stealth_dur)
+		if stealth_dur <= 0.0:
+			_exit_stealth(unit)
+		return
+
+	# 冷却中
+	stealth_cd -= delta
+	unit.set_meta("_stealth_cd", stealth_cd)
+	if stealth_cd <= 0.0:
+		_enter_stealth(unit)
+
+## 进入隐身状态
+static func _enter_stealth(unit: Node2D) -> void:
+	unit.set_meta("_stealth_active", true)
+	unit.set_meta("_stealth_duration", 4.0)
+	unit.set_meta("_stealth_cd", 0.0)
+	# 视觉：半透明
+	unit.set_meta("_stealth_base_modulate", unit.modulate)
+	unit.modulate = Color(unit.modulate.r, unit.modulate.g, unit.modulate.b, 0.4)
+	# 闪避 +40%
+	if "stats" in unit and unit.stats != null:
+		if not unit.has_meta("_stealth_orig_dodge"):
+			unit.set_meta("_stealth_orig_dodge", unit.stats.dodge_chance)
+		unit.stats.dodge_chance = min(1.0, unit.stats.dodge_chance + 0.40)
+	# 移速 +20%
+	if "stats" in unit and unit.stats != null:
+		if not unit.has_meta("_stealth_orig_speed"):
+			unit.set_meta("_stealth_orig_speed", unit.stats.move_speed)
+		unit.stats.move_speed *= 1.20
+
+## 退出隐身状态
+static func _exit_stealth(unit: Node2D) -> void:
+	unit.set_meta("_stealth_active", false)
+	unit.set_meta("_stealth_duration", 0.0)
+	unit.set_meta("_stealth_cd", 8.0)
+	# 恢复视觉
+	if unit.has_meta("_stealth_base_modulate"):
+		unit.modulate = unit.get_meta("_stealth_base_modulate")
+	# 恢复闪避
+	if unit.has_meta("_stealth_orig_dodge") and "stats" in unit and unit.stats != null:
+		unit.stats.dodge_chance = float(unit.get_meta("_stealth_orig_dodge"))
+		unit.remove_meta("_stealth_orig_dodge")
+	# 恢复移速
+	if unit.has_meta("_stealth_orig_speed") and "stats" in unit and unit.stats != null:
+		unit.stats.move_speed = float(unit.get_meta("_stealth_orig_speed"))
+		unit.remove_meta("_stealth_orig_speed")
+
+## 隐身飞机被命中时强制退出隐身
+static func on_stealth_hit(unit: Node2D) -> void:
+	if unit == null or not is_instance_valid(unit):
+		return
+	if not _has_tag(unit, "stealth_aircraft"):
+		return
+	if unit.has_meta("_stealth_active") and bool(unit.get_meta("_stealth_active")):
+		_exit_stealth(unit)
+
+## ── 隐身飞机（stealth_aircraft）：首击爆发 ──────────────────────
+
+## 隐身状态下攻击 → 必定暴击 + 伤害 ×1.5。返回伤害乘数。
+static func get_stealth_first_strike_multiplier(unit: Node2D) -> float:
+	if unit == null or not is_instance_valid(unit):
+		return 1.0
+	if not _has_tag(unit, "stealth_aircraft"):
+		return 1.0
+	if unit.has_meta("_stealth_active") and bool(unit.get_meta("_stealth_active")):
+		return 1.50
+	return 1.0
+
+## 隐身首击是否必定暴击
+static func is_stealth_first_strike_crit(unit: Node2D) -> bool:
+	if unit == null or not is_instance_valid(unit):
+		return false
+	if not _has_tag(unit, "stealth_aircraft"):
+		return false
+	return unit.has_meta("_stealth_active") and bool(unit.get_meta("_stealth_active"))
+
+## ── 攻击无人机（attack_drone）：自动标记集火 ──────────────────────
+
+## 每 12 秒自动标记半径 400 内最高威胁的 2 个敌方，+25% 易伤 8 秒。
+## 由 construct_unit._physics_process 每帧调用。
+static func update_drone_auto_mark(unit: Node2D, delta: float) -> void:
+	if unit == null or not is_instance_valid(unit):
+		return
+	if not _has_tag(unit, "attack_drone"):
+		return
+	if not unit.has_meta("_drone_mark_cd"):
+		unit.set_meta("_drone_mark_cd", 12.0)
+
+	var cd: float = float(unit.get_meta("_drone_mark_cd"))
+	cd -= delta
+	unit.set_meta("_drone_mark_cd", cd)
+	if cd > 0.0:
+		return
+	unit.set_meta("_drone_mark_cd", 12.0)
+
+	# 扫描敌方单位
+	var is_player: bool = unit.is_player if "is_player" in unit else true
+	var enemies: Array = _get_all_units_in_group(unit, "enemy_units" if is_player else "player_units")
+	if enemies.is_empty():
+		return
+
+	# 按威胁排序（HP 最高优先）
+	enemies.sort_custom(func(a, b):
+		var hp_a: float = float(a.hp) if "hp" in a else 0.0
+		var hp_b: float = float(b.hp) if "hp" in b else 0.0
+		return hp_a > hp_b
+	)
+
+	# 标记前 2 个（在半径 400 内）
+	var marked_count := 0
+	var target_positions: Array = []
+	var now_ms: int = Time.get_ticks_msec()
+	for enemy in enemies:
+		if marked_count >= 2:
+			break
+		if not is_instance_valid(enemy):
+			continue
+		if unit.global_position.distance_to(enemy.global_position) > 400.0:
+			continue
+		# 挂标记（兼容现有 _drone_marked_until 格式，bullet.gd:1258 已消费）
+		enemy.set_meta("_drone_marked_until", now_ms + 8000)  # 8 秒后过期
+		enemy.set_meta("_drone_mark_vuln", 0.25)  # +25% 易伤
+		target_positions.append(enemy.global_position)
+		marked_count += 1
+
+	# 演出信号
+	if target_positions.size() > 0:
+		var sb: Node = _get_signal_bus()
+		if sb != null and sb.has_signal("mechanism_drone_marked"):
+			sb.mechanism_drone_marked.emit(unit.global_position, target_positions)
+
+## 无人机标记过期清理（每帧由 construct_unit 调用，清过期 _drone_marked_until）
+static func update_drone_mark_expiry(_delta: float) -> void:
+	var tree: SceneTree = Engine.get_main_loop() as SceneTree
+	if tree == null:
+		return
+	var now_ms: int = Time.get_ticks_msec()
+	var enemies: Array = tree.get_nodes_in_group("enemy_units")
+	for enemy in enemies:
+		if not is_instance_valid(enemy):
+			continue
+		if enemy.has_meta("_drone_marked_until"):
+			var until: int = int(enemy.get_meta("_drone_marked_until", 0))
+			if now_ms >= until:
+				enemy.remove_meta("_drone_marked_until")
+				enemy.remove_meta("_drone_mark_vuln")
+
+## 无人机标记易伤：被标记目标受到额外伤害乘数（兼容 _drone_marked_until 格式）
+static func get_drone_mark_vuln_multiplier(target: Node2D) -> float:
+	if target == null or not is_instance_valid(target):
+		return 1.0
+	if target.has_meta("_drone_marked_until"):
+		var until: int = int(target.get_meta("_drone_marked_until", 0))
+		if Time.get_ticks_msec() < until:
+			var vuln: float = float(target.get_meta("_drone_mark_vuln", 0.25))
+			return 1.0 + vuln
+	return 1.0
+
+## ── 攻击无人机（attack_drone）：全图攻击距离衰减 ──────────────────
+
+## 返回距离衰减系数：近距离 100% → 中距离 75% → 远距离 50%
+const DRONE_RANGE_FULL_DMG: float = 300.0   # 300px 内满伤害
+const DRONE_RANGE_MID_DMG: float = 600.0    # 300-600px 75%
+const DRONE_RANGE_FAR_DMG: float = 1200.0   # 600-1200px 50%，之外 40%
+
+static func get_drone_range_damage_multiplier(unit: Node2D, target: Node2D) -> float:
+	if unit == null or target == null or not is_instance_valid(unit) or not is_instance_valid(target):
+		return 1.0
+	if not _has_tag(unit, "attack_drone"):
+		return 1.0
+	var dist: float = unit.global_position.distance_to(target.global_position)
+	if dist <= DRONE_RANGE_FULL_DMG:
+		return 1.0
+	elif dist <= DRONE_RANGE_MID_DMG:
+		return 0.75
+	elif dist <= DRONE_RANGE_FAR_DMG:
+		return 0.50
+	else:
+		return 0.40
+
+## ── 维修车（repair_vehicle）：装甲单位死亡保护 ──────────────────────
+
+## 维修车在场时，装甲类（combat_kind=1）单位死亡有 50% 概率不消耗部署次数。
+const REPAIR_ARMOR_SAVE_CHANCE: float = 0.50
+
+## 判断是否有维修车在场
+static func has_repair_vehicle_on_field(is_player: bool) -> bool:
+	var group_name: String = "player_units" if is_player else "enemy_units"
+	var tree: SceneTree = Engine.get_main_loop() as SceneTree
+	if tree == null:
+		return false
+	var nodes: Array = tree.get_nodes_in_group(group_name)
+	for node in nodes:
+		if not is_instance_valid(node):
+			continue
+		if _has_tag(node, "repair_vehicle"):
+			# 确保不是正在死亡
+			if "_is_dying" in node and node._is_dying:
+				continue
+			return true
+	return false
+
+## 装甲单位死亡时调用：返回 true 表示不消耗部署次数
+static func on_armor_unit_dying(unit: Node2D) -> bool:
+	if unit == null or not is_instance_valid(unit):
+		return false
+	# 检查是否为装甲类
+	var ck: int = 0
+	if "stats" in unit and unit.stats != null and "combat_kind" in unit.stats:
+		ck = int(unit.stats.combat_kind)
+	if ck != 1:  # 不是装甲类
+		return false
+	# 检查维修车是否在场
+	var is_player: bool = unit.is_player if "is_player" in unit else true
+	if not has_repair_vehicle_on_field(is_player):
+		return false
+	# 50% 概率
+	if randf() < REPAIR_ARMOR_SAVE_CHANCE:
+		return true
+	return false
+
+## ── 工具函数 ──────────────────────────────────────────────────────
+
+## 检查单位是否持有指定 tag（通过 stats.platform_card_id 查卡的 tags）
+static func _has_tag(unit: Node2D, tag: String) -> bool:
+	if unit == null or not is_instance_valid(unit):
+		return false
+	# 优先从 meta 缓存读取
+	if unit.has_meta("_ability_tags"):
+		var cached: Array = unit.get_meta("_ability_tags")
+		return tag in cached
+	# 从 CardResource 读取并缓存
+	var card_id: String = ""
+	if "stats" in unit and unit.stats != null:
+		card_id = unit.stats.platform_card_id
+	if card_id.is_empty():
+		return false
+	var card: CardResource = _get_card_resource(card_id)
+	if card == null:
+		return false
+	var tags: Array = card.get("tags") if "tags" in card else []
+	unit.set_meta("_ability_tags", tags)
+	return tag in tags
+
+static func _get_card_resource(card_id: String) -> CardResource:
+	if card_id.is_empty():
+		return null
+	# 尝试从 DefaultCards 获取
+	var DefaultCards = load("res://data/default_cards.gd") as GDScript
+	if DefaultCards != null:
+		var inst = DefaultCards.new()
+		if inst.has_method("get_card_by_id"):
+			return inst.get_card_by_id(card_id) as CardResource
+	# 尝试从 UnifiedCardTable 获取
+	var UCT = load("res://data/unified_card_table.gd") as GDScript
+	if UCT != null:
+		var inst = UCT.new()
+		if inst.has_method("get_entry"):
+			var entry: Dictionary = inst.get_entry(card_id)
+			if not entry.is_empty():
+				if inst.has_method("_entry_to_card"):
+					return inst._entry_to_card(entry)
+	return null
+
+## 安全获取 SignalBus（静态上下文无 autoload 直接访问）
+static func _get_signal_bus() -> Node:
+	var tree: SceneTree = Engine.get_main_loop() as SceneTree
+	if tree == null:
+		return null
+	return tree.root.get_node_or_null("/root/SignalBus")

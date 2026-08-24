@@ -187,14 +187,20 @@ func get_slot_targets(unit: Node2D, is_global: bool, is_player: bool) -> Array:
 		targets.append(node)
 	return targets
 
-## 获取单位强化等级（v6.11: 从废弃的 get_blueprint_star 迁移到真实 enhance_level）
+## 获取单位强化星级（v20.12 等级统一：从 stats.card_level 战斗卡等级换算 1-10 星，
+## 30 级制÷3 映射保住星级乘数表量纲；旧 enhance_level 链仅作过渡回退）
 ## 缓存到 meta 避免重复查询
 static func get_unit_star(unit: Node2D) -> int:
 	if unit == null:
 		return 1
 	if unit.has_meta("enhance_level"):
 		return int(unit.get_meta("enhance_level"))
-	# 首次访问时从 CardEnhancementManager 查询真实强化等级并缓存
+	# v20.12: 优先读 stats.card_level（我方部署时打栈），÷3 换算到 0-10 星制
+	if "stats" in unit and unit.stats != null and "card_level" in unit.stats and int(unit.stats.card_level) > 0:
+		var star_lv: int = clampi(int(round(float(int(unit.stats.card_level)) / 3.0)), 1, 10)
+		unit.set_meta("enhance_level", star_lv)
+		return star_lv
+	# 过渡回退：旧 CardEnhancementManager 查询链（强化①退役后恒 0/1）
 	if "stats" in unit and unit.stats != null and not unit.stats.platform_card_id.is_empty():
 		var cem: Node = null
 		var loop = Engine.get_main_loop()

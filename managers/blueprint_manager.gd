@@ -487,74 +487,9 @@ func _refresh_player_master_eval_safe() -> void:
 #  新扩展方法：强化改造与进化系统
 # ─────────────────────────────────────────────
 
-## 强化卡牌到指定等级（新接口）
-func apply_reinforcement(card: CardResource, target_level: int) -> Dictionary:
-	var result = {success = false, cost = 0, message = ""}
-
-	# v9.5: 养成隔离守卫——严禁直接改 DefaultCards 共享模板（会污染所有同名卡）
-	if card == null or card.instance_id.is_empty():
-		result.message = "卡牌未实例化，无法强化（拒绝操作共享模板）"
-		push_warning("[BlueprintManager] apply_reinforcement 拒绝模板: instance_id 为空")
-		return result
-
-	# 验证等级范围
-	if target_level < 1 or target_level > 10:
-		result.message = "强化等级超出范围（1-10）"
-		return result
-
-	var current_level = card.enhance_level
-	if target_level <= current_level:
-		result.message = "目标等级不高于当前等级"
-		return result
-
-	# 计算消耗
-	var base_power = card.power
-	var cost_multiplier_sum = 0.0
-
-	# 使用UnifiedRankSystem的cost_multiplier
-	for level in range(current_level + 1, target_level + 1):
-		var mult = _get_rank_cost_multiplier(level)
-		cost_multiplier_sum += mult
-
-	var nano_cost = int(base_power * cost_multiplier_sum)
-
-	# 检查资源（直接调用BasicResourceManager）
-	if not BasicResourceManager.can_afford("nano", nano_cost):
-		result.message = "纳米材料不足（需要%d）" % nano_cost
-		return result
-
-	# 应用强化
-	card.enhance_level = target_level
-	BasicResourceManager.consume("nano", nano_cost)
-
-	result.success = true
-	result.cost = nano_cost
-	result.message = "强化成功：%s → Lv%d" % [card.display_name, target_level]
-
-	# 自动保存
-	_auto_save("reinforcement")
-
-	# v7.x: 强化改变第 1/2 层加成，刷新玩家相位师战力缓存避免面板陈旧
-	_refresh_player_master_eval_safe()
-
-	return result
-
-## 备用：获取等级消耗倍率（reinforcement_panel 旧路径用）
-## v7.x 修复 W4：原 Lv1=0.0 导致首强化完全免费（白嫖），与 CardEnhancementManager.get_enhance_nano_cost
-## 的 Lv1=0.5 倍率不一致。统一为 0.5，与实例化强化路径口径对齐。
-func _get_rank_cost_multiplier(level: int) -> float:
-	match level:
-		1: return 0.5
-		2: return 1.0
-		3: return 1.5
-		4: return 2.0
-		5: return 2.5
-		6: return 3.0
-		7: return 3.5
-		8: return 4.0
-		9: return 5.0
-		10: return 6.0
-		_: return 1.0
+## v20.12 等级统一：apply_reinforcement（手动强化①）已退役删除——
+## 唯一等级轴为战斗卡等级 card_level（1-30，上阵攒经验自动升级，见 InstanceRegistry.add_experience）。
+## 旧强化轴 enhance_level（0-10）不再是玩家养成路径；存档中的历史值保留但不再有提升入口。
 
 ## 安装改造（新接口）
 ## 改造需要：纳米材料 + 改造指南（根据稀有度）

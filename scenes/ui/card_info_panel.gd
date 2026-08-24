@@ -30,7 +30,6 @@ const CardGrowthConfig = preload("res://data/card_growth_config.gd")
 const UnitStatsTable = preload("res://resources/unit_stats_table.gd")
 const BackpackCombatPreview = preload("res://scenes/ui/backpack_combat_preview.gd")
 const RankDisplayUi = preload("res://scripts/rank_display_ui.gd")
-const ReinforcePanelScene = preload("res://scenes/ui/reinforcement_panel.tscn")
 const ModifyPanelScene = preload("res://scenes/ui/modification_panel.tscn")
 const EvolvePanelScene = preload("res://scenes/ui/evolution_panel.tscn")
 const ModificationRegistry = preload("res://scripts/systems/modification_registry.gd")
@@ -91,8 +90,7 @@ var _stats_section: PanelContainer = null
 var _stat_cards_row: HBoxContainer = null
 var _affix_flow: VBoxContainer = null
 
-# 子面板实例（懒加载）
-var _reinforce_instance: Control = null
+# 子面板实例（懒加载；v20.12 强化①面板退役，_reinforce_instance 已移除）
 var _modify_instance: Control = null
 var _evolve_instance: Control = null
 # 子面板按需刷新：标记哪个子面板数据已变（用户切到对应 Tab 时才真正刷新，避免点卡时同步刷 3 个）
@@ -172,7 +170,24 @@ func _setup_tab_titles() -> void:
 	_tab_container.set_tab_title(TabIdx.REINFORCE, "强化")
 	_tab_container.set_tab_title(TabIdx.MODIFY, "改造")
 	_tab_container.set_tab_title(TabIdx.EVOLVE, "进化")
+	# 批次三 B2e：Tab 悬停就地解释（强化 Tab 恒隐藏，tooltip 仅作兜底无害）
+	_tab_container.set_tab_tooltip(TabIdx.INFO, "卡牌/单位的详细属性、词条与说明")
+	_tab_container.set_tab_tooltip(TabIdx.MODIFY, "为这张卡安装/调整改造模块（最多 9 格，只影响本实例）")
+	_tab_container.set_tab_tooltip(TabIdx.EVOLVE, "查看进化路线与条件，满足后变为全新卡牌")
 	_hide_all_sub_tabs()
+	# 批次三 B2e：头部与三维攻防卡 tooltip（新玩家最常困惑的数值语义）
+	if star_label:
+		star_label.tooltip_text = "光环/能力星级：由卡牌等级折算（每 3 级 = 1 星，Lv30 满星 10★）"
+	if rarity_label:
+		rarity_label.tooltip_text = "稀有度：普通/优秀/稀有/史诗/传说/神话，影响基础属性与掉落概率"
+	if cost_label:
+		cost_label.tooltip_text = "部署能耗：战斗中放置该单位消耗的能量（按战力定价 4~15 点）"
+	if _hp_value_label:
+		_hp_value_label.tooltip_text = "耐久（HP）：归零即被摧毁"
+	if _atk_value_label:
+		_atk_value_label.tooltip_text = "攻击：对轻装/装甲/空中三类目标分别有独立伤害值"
+	if _def_value_label:
+		_def_value_label.tooltip_text = "防御：对轻装/装甲/空中三类攻击分别有独立减免"
 
 func _setup_action_buttons_container() -> void:
 	if action_buttons_container:
@@ -297,7 +312,9 @@ func _apply_card_type_tab_visibility(card: CardResource) -> void:
 		return
 	_hide_all_sub_tabs()
 	if card.card_type == GC.CardType.COMBAT_UNIT:
-		_tab_container.set_tab_hidden(TabIdx.REINFORCE, false)
+		# v20.12 等级统一：强化① Tab 退役（强化等级轴 enhance_level 已废，
+		# 唯一等级轴为战斗卡等级 card_level，上阵攒经验自动升级）。Tab 恒隐藏，
+		# TabIdx.REINFORCE 枚举与 tscn 节点保留（占位保 TabContainer 索引不错位）。
 		_tab_container.set_tab_hidden(TabIdx.MODIFY, false)
 		_tab_container.set_tab_hidden(TabIdx.EVOLVE, false)
 
@@ -307,17 +324,6 @@ func _apply_unit_tab_visibility() -> void:
 	_hide_all_sub_tabs()
 
 ## ── 子面板懒加载 ──────────────────────────────────────────────
-
-func _ensure_reinforce_instance() -> void:
-	if _reinforce_instance != null and is_instance_valid(_reinforce_instance):
-		return
-	var host = get_node_or_null("Margin/VBox/TabBar/TabReinforce")
-	if host == null:
-		return
-	_reinforce_instance = ReinforcePanelScene.instantiate()
-	host.add_child(_reinforce_instance)
-	if _reinforce_instance.has_method("set_embedded_mode"):
-		_reinforce_instance.set_embedded_mode(true)
 
 func _ensure_modify_instance() -> void:
 	if _modify_instance != null and is_instance_valid(_modify_instance):
@@ -347,7 +353,6 @@ func _refresh_sub_panels(card: CardResource) -> void:
 	# 按需刷新：不再点卡时同步刷 3 个子面板，改为标记 dirty，
 	# 等用户切到对应 Tab 时（_on_info_tab_changed）才真正实例化+刷新。
 	# 点卡后默认停在情报 Tab（show_card_info 末尾 current_tab = INFO），用户看不到子面板无需刷。
-	_sub_panel_dirty[TabIdx.REINFORCE] = true
 	_sub_panel_dirty[TabIdx.MODIFY] = true
 	_sub_panel_dirty[TabIdx.EVOLVE] = true
 
@@ -356,11 +361,6 @@ func _on_info_tab_changed(tab_index: int) -> void:
 	if current_card == null:
 		return
 	match tab_index:
-		TabIdx.REINFORCE:
-			_ensure_reinforce_instance()
-			if _reinforce_instance and _reinforce_instance.has_method("set_selected_card"):
-				_reinforce_instance.set_selected_card(current_card)
-			_sub_panel_dirty[TabIdx.REINFORCE] = false
 		TabIdx.MODIFY:
 			_ensure_modify_instance()
 			if _modify_instance and _modify_instance.has_method("set_selected_card"):
@@ -386,14 +386,17 @@ func _refresh_action_buttons() -> void:
 		PanelMode.MODE_BACKPACK:
 			pass  # v9.x（P2-7范围A）：法则卡"装备到相位仪"入口随法则卡链路退役移除
 		PanelMode.MODE_PHASE_INSTRUMENT:
-			_add_action_button("卸下此卡", Color(0.9, 0.4, 0.4, 1), "unequip")
+			_add_action_button("卸下此卡", Color(0.9, 0.4, 0.4, 1), "unequip", "将这张卡从相位仪槽位移除，返还背包（不会丢失养成数据）")
 
-func _add_action_button(text: String, color: Color, action: String) -> void:
+func _add_action_button(text: String, color: Color, action: String, tooltip: String = "") -> void:
 	if action_buttons_container == null:
 		return
 	var btn := Button.new()
 	btn.name = action.capitalize().replace(" ", "") + "Button"
 	btn.text = text
+	# 批次三 B2e：操作按钮就地解释后果
+	if not tooltip.is_empty():
+		btn.tooltip_text = tooltip
 	btn.custom_minimum_size = Vector2(200, 38)
 	btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	btn.add_theme_font_size_override("font_size", 13)
@@ -2548,8 +2551,8 @@ func _build_aura_preview_text(card: CardResource, stats: UnitStats) -> String:
 	var lines: Array[String] = []
 	# 平台光环预览
 	if aura_type >= 0:
-		var star: int = int(card.enhance_level) if "enhance_level" in card else 0
-		star = maxi(1, star + 1)  # enhance_level 0 起，star 1 起
+		# v20.12 等级统一：光环星级从战斗卡等级换算（30级÷3 → 1-10 星，与战场 get_unit_star 同口径）
+		var star: int = clampi(int(round(float(_card_level_for_display(card)) / 3.0)), 1, 10)
 		var nm: String = _AURA_TYPE_NAMES.get(aura_type, "")
 		var desc: String = _format_aura_effect_desc(aura_type, star)
 		if not nm.is_empty():

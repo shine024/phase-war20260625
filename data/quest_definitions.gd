@@ -283,8 +283,8 @@ const LEGACY_QUESTS: Array[Dictionary] = [
 	},
 	{
 		"id": "q_tutorial_enhance",
-		"title": "强化尝试",
-		"description": "将任意一张卡片的强化等级提升至 Lv.3（消耗纳米材料）。",
+		"title": "升级尝试",
+		"description": "让战斗卡通过战斗累计升级 3 次（上阵参战积累经验即可）。",
 		"objective_type": "enhance",
 		"target": 3,
 		"company_id": "void_research",

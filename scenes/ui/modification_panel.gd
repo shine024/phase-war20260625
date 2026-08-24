@@ -113,6 +113,20 @@ func _ready() -> void:
 	if deck_sim_button:
 		deck_sim_button.pressed.connect(_on_sim_button_pressed)
 
+	# 批次三 B2d（2026-08-24）：tooltip 攻坚——chip/折叠/模拟/资源栏就地解释
+	if chip_all:
+		chip_all.tooltip_text = "显示全部拥有的卡牌"
+	if chip_mod:
+		chip_mod.tooltip_text = "只显示还有空改造槽（未满 9 格）的卡牌"
+	if chip_max:
+		chip_max.tooltip_text = "只显示改造槽已满（9/9）的卡牌"
+	if fold_button:
+		fold_button.tooltip_text = "折叠/展开右侧详情栏（三档：完整 → 紧凑 → 收起；收起时悬停名册行可看迷你浮卡）"
+	if deck_sim_button:
+		deck_sim_button.tooltip_text = "打开效果模拟抽屉：预览安装模块前后的属性变化"
+	if research_label:
+		research_label.tooltip_text = "改造消耗：纳米材料 + 改造指南（按模块稀有度），安装只影响当前选中的这张卡"
+
 	# v7.x UI 重设计：给主要 Label 加载 Rajdhani 字体（战术感）
 	_apply_title_fonts()
 	_update_chip_styles()
@@ -505,7 +519,7 @@ func _create_card_item(card: CardResource, instance_card: CardResource = null) -
 	# v7.1: 使用实例数据（如有），否则用模板
 	var display_card: CardResource = instance_card if instance_card != null else card
 	var display_name: String = card.display_name if card.display_name else card.card_id
-	var display_level: int = display_card.enhance_level if display_card else 0
+	var display_level: int = _card_level_of(display_card)  # v20.12 等级统一：战斗卡等级
 	var display_mods: Array = display_card.mods if display_card else []
 	var display_rarity: String = str(card.rarity) if card.has_method("get") else "common"
 	if display_card != null and display_card is Object and "rarity" in display_card:
@@ -901,6 +915,17 @@ func _is_mod_applicable_to_card(mod_id: String) -> bool:
 			return true
 	return false
 
+## v20.12 等级统一：战斗卡等级（card_level 1-30）查询——InstanceRegistry 按实例身份；
+## 未成长按 Lv1（与 growth_panel._card_level_of 同口径）
+func _card_level_of(card: CardResource) -> int:
+	if card == null:
+		return 1
+	var ir: Node = get_node_or_null("/root/InstanceRegistry")
+	if ir != null and ir.has_method("get_card_level"):
+		var identity: String = String(card.instance_id) if not String(card.instance_id).is_empty() else String(card.card_id)
+		return clampi(maxi(int(ir.get_card_level(identity)), 1), 1, 30)
+	return 1
+
 ## 获取改造安装的阻断原因（空串表示可安装）。
 ## v7.x：透传 can_install_modification 的 reason，让"✗冲突"细分为冲突/槽满/情报不足。
 func _get_install_block_reason(mod_id: String) -> String:
@@ -1057,11 +1082,11 @@ func _build_unit_hero() -> Control:
 	name_lbl.clip_text = true
 	_style_lbl(name_lbl, 16, Color(0.95, 0.96, 0.98, 1), -1, true, true)
 	info.add_child(name_lbl)
-	# 标签行：兵种 · Lv · 改造数
+	# 标签行：兵种 · Lv · 改造数（v20.12 等级统一：Lv=战斗卡等级 card_level）
 	var tags := Label.new()
 	tags.text = "%s · Lv.%d · 改造 %d/9" % [
 		CardResource.get_combat_kind_name(selected_card.combat_kind),
-		selected_card.enhance_level,
+		_card_level_of(selected_card),
 		selected_card.mods.size()
 	]
 	tags.clip_text = true
@@ -1735,15 +1760,20 @@ func _show_mod_details(mod_data: Dictionary) -> void:
 		if is_installed:
 			deck_install_button.text = "已安装"
 			deck_install_button.disabled = true
+			deck_install_button.tooltip_text = "该模块已安装在当前这张卡上"
 		elif not has_blueprint2:
 			deck_install_button.text = "缺图纸"
 			deck_install_button.disabled = true
+			# 批次三 B2d：禁用按钮就地说明缺什么、去哪拿
+			deck_install_button.tooltip_text = "缺少【%s】——改造图纸可通过战斗掉落与情报道具获得" % BlueprintDefinitions.get_mod_blueprint_name(selected_mod_id)
 		elif not has_nano:
 			deck_install_button.text = "纳米不足"
 			deck_install_button.disabled = true
+			deck_install_button.tooltip_text = "需要 %d 纳米材料（当前 %d）" % [nano_cost2, nano_amount]
 		else:
 			deck_install_button.text = "安装"
 			deck_install_button.disabled = false
+			deck_install_button.tooltip_text = "消耗 %d 纳米材料安装到当前选中的这张卡（只影响该实例）" % nano_cost2
 
 		# v5.0: 信号重连（先断开所有旧 callable，再绑定新的）
 		var connections: Array = deck_install_button.pressed.get_connections()

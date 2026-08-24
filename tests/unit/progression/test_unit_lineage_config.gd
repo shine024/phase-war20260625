@@ -5,7 +5,8 @@ const UnitLineageConfig = preload("res://data/unit_lineage_config.gd")
 
 
 func test_localize_evolve_reason_known_keys() -> void:
-	assert_str(UnitLineageConfig.localize_evolve_reason("enhance_not_enough")).contains("强化等级")
+	# v20.12 等级统一：enhance_not_enough 文案改"卡牌等级"（card_level 口径，E1=10/E2=20）
+	assert_str(UnitLineageConfig.localize_evolve_reason("enhance_not_enough")).contains("卡牌等级")
 	# 批次8（2026-08-23）：enemy_mod_not_enough 键已随敌源改造（EOM）系统删除，
 	# 不再是已知键——走 unknown 直通分支（见下一测试）。
 	assert_str(UnitLineageConfig.localize_evolve_reason("enemy_mod_not_enough")).is_equal("enemy_mod_not_enough")

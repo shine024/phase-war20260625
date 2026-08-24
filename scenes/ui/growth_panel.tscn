@@ -518,7 +518,7 @@ text = "◆"
 theme_override_font_sizes/font_size = 16
 [node name="ProgTitle" type="Label" parent="RootVBox/BodyHBox/DetailCol/DetailScroll/DetailBody/ProgressGrid/ProgCardAmber/ProgVBox/ProgHead"]
 layout_mode = 2
-text = "强化系统"
+text = "战斗经验"
 theme_override_font_sizes/font_size = 16
 theme_override_colors/font_color = Color(0.95, 0.96, 0.98, 1)
 [node name="ProgSpacer" type="Control" parent="RootVBox/BodyHBox/DetailCol/DetailScroll/DetailBody/ProgressGrid/ProgCardAmber/ProgVBox/ProgHead"]

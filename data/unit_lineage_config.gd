@@ -11,11 +11,13 @@ class_name UnitLineageConfig
 ## 1. 战力达标: 培养满后战力 >= 目标基础战力
 ## 2. 情报100%: 目标单位情报满（Phase 5实现，此处预留接口）
 ## 3. 不跨类型: combat_kind 相同
-## 4. 强化门槛: E1≥Lv5, E2≥Lv8
+## 4. 等级门槛: E1≥Lv5, E2≥Lv10（v20.12 等级统一：读战斗卡等级 card_level 1-30，唯一等级轴；
+##    v20.12b 用户定稿：门槛 5/10，每段进化后重新练级）
 ## 5. 改造门槛: E1≥2个MOD, E2≥5个MOD
 ## 6. 敌源门槛: E2需1个敌源改造模块
 ##
-## 进化执行规则: 改造完全继承(mods复制)、强化重置(enhance_level=0)、品质保留、情报保留
+## 进化执行规则（v20.12b 用户定稿"变成新卡"）: 改造不继承、战斗经验/等级重置（新卡从零养成）、
+## 进化继承加成（inherit_bonus/hp_floor/情报奖励）保留、品质保留、情报保留
 
 const DefaultCards = preload("res://data/default_cards.gd")
 const PhaseLaws = preload("res://data/phase_laws.gd")
@@ -24,10 +26,12 @@ const EvolutionPathsSupplement = preload("res://data/evolution_paths_supplement.
 const DEFAULT_INHERIT_RATIO: float = 0.30
 
 ## v6.0 进化门槛（替代旧的星级/研究点/许可证）
-const E1_MIN_ENHANCE_LEVEL: int = 5       ## 基础进化：强化至少Lv5
-const E1_MIN_MOD_COUNT: int = 2            ## 基础进化：至少装2个MOD
-const E2_MIN_ENHANCE_LEVEL: int = 8        ## 势力分支：强化至少Lv8
-const E2_MIN_MOD_COUNT: int = 5             ## 势力分支：至少装5个MOD
+## v20.12 等级统一：MIN_CARD_LEVEL 读 InstanceRegistry card_level（1-30，战斗经验自动涨）
+## v20.12b：门槛定稿 5/10（快节奏，每段进化需重新练级）
+const E1_MIN_CARD_LEVEL: int = 5             ## 基础进化：战斗卡等级至少Lv5
+const E1_MIN_MOD_COUNT: int = 2              ## 基础进化：至少装2个MOD
+const E2_MIN_CARD_LEVEL: int = 10            ## 势力分支：战斗卡等级至少Lv10
+const E2_MIN_MOD_COUNT: int = 5              ## 势力分支：至少装5个MOD
 const E2_FACTION_LEVEL_REQUIRED: int = 3        ## 势力分支：目标势力需达到Lv3（声望约1200+）
 
 const EVOLVE_REASON_ZH: Dictionary = {
@@ -36,7 +40,7 @@ const EVOLVE_REASON_ZH: Dictionary = {
 	"card_locked": "蓝图未解锁",
 	"invalid_target": "进化目标不存在",
 	"target_not_in_path": "目标不在该卡进化路线中",
-	"enhance_not_enough": "强化等级不足（基础进化需Lv5，势力分支需Lv8）",
+	"enhance_not_enough": "卡牌等级不足（基础进化需Lv5，势力分支需Lv10——上阵参战积累经验升级）",
 	"mod_not_enough": "改造模块不足（基础进化需2个，势力分支需5个）",
 	"power_not_enough": "培养战力未达标",
 	"cross_class": "不能跨类型进化",
@@ -678,8 +682,8 @@ static func get_stage(from_card_id: String, to_card_id: String) -> String:
 		return "e1"
 	return "e2"
 
-static func get_enhance_requirement(stage: String) -> int:
-	return E2_MIN_ENHANCE_LEVEL if stage == "e2" else E1_MIN_ENHANCE_LEVEL
+static func get_card_level_requirement(stage: String) -> int:
+	return E2_MIN_CARD_LEVEL if stage == "e2" else E1_MIN_CARD_LEVEL
 
 static func get_mod_requirement(stage: String) -> int:
 	return E2_MIN_MOD_COUNT if stage == "e2" else E1_MIN_MOD_COUNT

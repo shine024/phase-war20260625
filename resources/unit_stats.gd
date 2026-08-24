@@ -95,8 +95,12 @@ var unit_subtype: int = 0
 ## 战力（进化门槛用，v5.0新增）
 var power: int = 0
 
-## 强化等级 0-10（v5.0）
+## 强化等级 0-10（v5.0；v20.12 等级统一后玩家侧恒 0，敌方配装档位仍在用）
 var enhance_level: int = 0
+
+## 战斗卡等级 1-30（v20.12 等级统一：玩家卡唯一等级轴，部署时从 InstanceRegistry 打栈，
+## 供战场等级标签/光环星级换算读取；敌方不填）
+var card_level: int = 0
 
 ## 武器外观标签（纯显示）
 var weapon_label: String = ""

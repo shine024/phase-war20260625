@@ -136,16 +136,18 @@ func _add_progress_block() -> void:
 	if BlueprintManager == null:
 		_add_line("蓝图系统未就绪", Color(0.7, 0.5, 0.5))
 		return
-	# v6.11: 从废弃 get_blueprint_star 迁移到真实强化等级 enhance_level
-	var enhance_lvl: int = 1
-	var cem_node: Node = get_node_or_null("/root/CardEnhancementManager")
-	if cem_node and cem_node.has_method("get_card_enhancement_level"):
-		enhance_lvl = maxi(int(cem_node.get_card_enhancement_level(_card_id)), 1)
+	# v20.12 等级统一：显示战斗卡等级（该卡全部实例中的最高等级；强化①已退役）
+	var card_lvl: int = 1
+	var ir_lv0: Node = get_node_or_null("/root/InstanceRegistry")
+	if ir_lv0 != null and ir_lv0.has_method("get_instances_by_card_id") and ir_lv0.has_method("get_card_level"):
+		for iid0 in ir_lv0.get_instances_by_card_id(_card_id):
+			card_lvl = maxi(card_lvl, int(ir_lv0.get_card_level(String(iid0))))
+	card_lvl = clampi(card_lvl, 1, 30)
 	var mod_count: int = BlueprintManager.get_modification_count(_card_id) if BlueprintManager.has_method("get_modification_count") else 0
 	var ir_node: Node = get_node_or_null("/root/InstanceRegistry")
 	var owned: int = ir_node.get_instances_by_card_id(_card_id).size() if (ir_node != null and ir_node.has_method("get_instances_by_card_id")) else 0
 	_add_line("拥有：%d 张" % owned, Color(0.8, 0.85, 0.9))
-	_add_line("强化：Lv.%d" % enhance_lvl, Color(0.9, 0.88, 0.55))
+	_add_line("等级：Lv.%d/30" % card_lvl, Color(0.9, 0.88, 0.55))
 	_add_line("改装：%d / %d" % [mod_count, CardProgressionSettings.MOD_MAX], Color(0.85, 0.75, 1.0))
 	# v6.7: 改造具体加成 — 原只显示数字，补充已装改造的中文名 + 效果
 	_add_mod_detail_lines()
@@ -265,12 +267,12 @@ func _add_evolution_target(stage_label: String, target_id: String, faction_id: S
 	var can_info: Dictionary = BlueprintManager.can_evolve_blueprint(_card_id, target_id)
 	var ok: bool = bool(can_info.get("ok", false))
 	var reason: String = String(can_info.get("reason_zh", UnitLineageConfig.localize_evolve_reason(String(can_info.get("reason", "")))))
-	var enhance_req: int = int(can_info.get("enhance_requirement", 0))
+	var lv_req: int = int(can_info.get("level_requirement", can_info.get("enhance_requirement", 0)))
 	var mod_req: int = int(can_info.get("mod_requirement", 0))
 	var status_col := Color(0.55, 0.95, 0.65) if ok else Color(0.95, 0.55, 0.45)
 	var status_text: String = "可进化" if ok else "未满足：%s" % reason
 	_add_line("%s → %s" % [stage_label, target_name], Color(0.85, 0.9, 0.95), 13)
-	_add_line("  需 强化Lv%d · %d个MOD · %s" % [enhance_req, mod_req, status_text], status_col, 11)
+	_add_line("  需 Lv%d · %d个MOD · %s" % [lv_req, mod_req, status_text], status_col, 11)
 
 
 func _add_separator() -> void:

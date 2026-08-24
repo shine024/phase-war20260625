@@ -172,19 +172,19 @@ func _test_condition_snapshot() -> void:
 		for k in ["key", "met", "current_text", "required_text"]:
 			if not c.has(k):
 				_fail("conditions 条目缺字段 %s：%s" % [k, str(c)])
-		if String(c.get("key", "")) == "enhance":
+		if String(c.get("key", "")) == "level":
 			has_enh = true
 			if bool(c.get("met", true)):
-				_fail("enhance 条件在 0 强化下不应满足")
+				_fail("level 条件在 0 级下不应满足")
 			if String(c.get("current_text", "x")) != "0":
-				_fail("enhance current_text 应为 '0'（失败路径数字填充），实为 '%s'" % String(c.get("current_text", "")))
+				_fail("level current_text 应为 '0'（失败路径数字填充），实为 '%s'" % String(c.get("current_text", "")))
 		if String(c.get("key", "")) == "mods":
 			has_mods = true
 	if not has_enh or not has_mods:
-		_fail("conditions 缺 enhance/mods 条目")
-	# 失败路径同样填充旧字段（旧行为只有成功路径填）
-	if int(can.get("current_enhance", -1)) != 0:
-		_fail("失败路径 current_enhance 应填充 0，实为 %d" % int(can.get("current_enhance", -1)))
+		_fail("conditions 缺 level/mods 条目")
+	# 失败路径同样填充旧字段（旧行为只有成功路径填；v20.12 键名 current_level）
+	if int(can.get("current_level", -1)) != 0:
+		_fail("失败路径 current_level 应填充 0，实为 %d" % int(can.get("current_level", -1)))
 
 	# 结构性错误：conditions 为空数组（非 null），reason 保留
 	var bad: Dictionary = bpm.can_evolve_blueprint("ww1_mp18", "zzz_not_exist")

@@ -384,8 +384,8 @@
     {
       "id": "q_tutorial_enhance",
       "category": "commission",
-      "title": "强化尝试",
-      "description": "强化任意一张卡片到 +3。",
+      "title": "升级尝试",
+      "description": "让战斗卡通过战斗累计升级 3 次（上阵参战积累经验即可）。",
       "objective_type": "enhance",
       "target": 3,
       "company_id": "void_research",

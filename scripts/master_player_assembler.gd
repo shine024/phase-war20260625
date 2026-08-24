@@ -68,12 +68,19 @@ static func build_player_master_dict(pm: Node) -> Dictionary:
 				# v7.x 单分量公式：每张卡走完整 7 层加成链（强化/改造/进化/军衔/词条/相位仪/符文）
 				var pwr: float = _PlatformPower.compute_player_card_power(plat, pm, bpm)
 				platform_powers.append(pwr)
-				# 卡战力分解（UI 用）
+				# 卡战力分解（UI 用；v20.12 等级统一：enhance 字段改 level=战斗卡等级）
 				var display_name: String = String(plat.display_name) if "display_name" in plat else plat.card_id
-				var enhance: int = int(plat.enhance_level) if "enhance_level" in plat else 0
+				var card_lvl: int = 1
+				var ir_asm: Node = null
+				var loop_asm = Engine.get_main_loop()
+				if loop_asm is SceneTree:
+					ir_asm = (loop_asm as SceneTree).root.get_node_or_null("InstanceRegistry")
+				if ir_asm != null and ir_asm.has_method("get_card_level"):
+					var ident_asm: String = String(plat.instance_id) if "instance_id" in plat and not String(plat.instance_id).is_empty() else String(plat.card_id)
+					card_lvl = clampi(maxi(int(ir_asm.get_card_level(ident_asm)), 1), 1, 30)
 				card_breakdown.append({
 					"name": display_name,
-					"enhance": enhance,
+					"level": card_lvl,
 					"power": pwr,
 					"instance_id": plat.instance_id if "instance_id" in plat else "",
 				})

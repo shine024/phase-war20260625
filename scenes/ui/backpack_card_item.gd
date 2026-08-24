@@ -1298,9 +1298,8 @@ func _build_bottom_info_line(c: CardResource) -> String:
 	# 兵种标识（仅战斗卡）
 	if c.card_type == GC.CardType.COMBAT_UNIT:
 		parts.append(CardResource.get_combat_kind_short(c.combat_kind))
-	# 强化等级（v19：明确标注"强"——与战斗等级 Lv 是两套维度；强化系统活跃 1-10）
-	var enhance_lvl: int = int(c.enhance_level)
-	parts.append("强%d/10" % enhance_lvl)
+	# 战斗卡等级（v20.12 等级统一：唯一等级轴 card_level；"强x/10"已随强化①退役）
+	parts.append("Lv.%d" % maxi(_real_card_level(c), 1))
 	# 改造槽位 🔧N/M
 	if c.card_type == GC.CardType.COMBAT_UNIT:
 		var mod_count: int = _get_mod_count_for_card(c)
@@ -1454,9 +1453,9 @@ func _layout_mtg_art_clip(art_clip: Control) -> void:
 
 
 func _mtg_star_display_count(c: CardResource) -> int:
-	var st: int = int(c.enhance_level)
-	# 注：蓝图星级逻辑已废弃，enhance_level 直接作为显示值
-	return clampi(st, 0, 10)  # MAX_ENHANCE_LEVEL = 10
+	# v20.12 等级统一：星级视觉从战斗卡等级换算（30级÷3 → 0-10 星，量纲保持 0-10）
+	var st: int = int(round(float(maxi(_real_card_level(c), 0)) / 3.0))
+	return clampi(st, 0, 10)
 
 
 func _mtg_intel_body_text(c: CardResource) -> String:
