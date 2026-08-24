@@ -163,7 +163,14 @@ static func spawn_layered_impact(parent: Node2D, world_pos: Vector2, weapon_type
 				float(recipe.get("ring_dur", 0.2)) * 1.6, Color(ring_color.r, ring_color.g, ring_color.b, ring_color.a * 0.5))
 		_spawn_impact_decal(parent, world_pos, weapon_type)  # v11 弹痕锚点(在火花之下,火花从弹痕溅起)
 	# 第2层：主火花（始终生成）
-	_spawn_sparks(parent, world_pos, recipe, base_color, weapon_type)
+	# v20.9-R2: 霰弹(5)散射签名——单点火花+中央大闪光读成"单弹头命中"（AI 双侧一致
+	# 批"缺散射图案/规则饱满白色光斑"）。改 6 弹丸簇沿来向垂直轴扇开（6 发 18° 散射
+	# 的着面投影），火花总量不变；flash 层对霰弹跳过（"单点爆光"病根）。
+	var is_shotgun: bool = weapon_type == 5
+	if is_shotgun:
+		_spawn_shotgun_scatter(parent, world_pos, recipe, base_color, opts)
+	else:
+		_spawn_sparks(parent, world_pos, recipe, base_color, weapon_type)
 	# 第3层：碎片/烟尘（重型武器，motion_reduce 时跳过）
 	if not motion_reduce and recipe.has("debris"):
 		_spawn_debris(parent, world_pos, recipe["debris"], base_color, weapon_type)
@@ -173,7 +180,8 @@ static func spawn_layered_impact(parent: Node2D, world_pos: Vector2, weapon_type
 	#   （128px 贴图×0.25-0.5=32-64px 微烟，3 粒，0.45s 快散）。
 	if not motion_reduce:
 		if not is_light_kinetic:
-			_spawn_flash_layer(parent, world_pos, base_color, weapon_type, {})
+			if not is_shotgun:
+				_spawn_flash_layer(parent, world_pos, base_color, weapon_type, {})
 			if not recipe.has("debris"):
 				_spawn_smoke_puff_layer(parent, world_pos, base_color, weapon_type, {})
 			_spawn_shrapnel_layer(parent, world_pos, base_color, weapon_type, {})
@@ -216,6 +224,56 @@ static func _apply_tier_scale(recipe: Dictionary, opts: Dictionary) -> Dictionar
 		var d: Dictionary = r["debris"]
 		d["amount"] = int(round(float(d.get("amount", 16)) * SCALE))
 	return r
+
+
+## v20.9-R2: 霰弹(5)命中散射签名——族规格"散射状小贴图+宽散火花"。
+## 6 弹丸簇沿来向垂直轴 ±26px 扇开（对应 6 发 18° 散射的着面投影），每簇 1/6
+## 火花量、0.6 倍尺寸、0.20s 快闪——火花总量与单点方案持平（无性能差），图案从
+## "单弹头爆点"变"弹群散布"。方向取 opts.direction（bullet v12d 起恒传真实来向；
+## 审计格缺省 RIGHT → 垂直扇面，确定性可复拍）。历史教训：v19-R28 多簇实验伤及
+## f08 是共享路径未门控；本函数仅 wt==5 调用，其他族零影响。
+static func _spawn_shotgun_scatter(parent: Node2D, world_pos: Vector2, recipe: Dictionary, base_color: Color, opts: Dictionary) -> void:
+	var dir_v: Variant = opts.get("direction", Vector2.RIGHT)
+	var dir: Vector2 = dir_v if dir_v is Vector2 and (dir_v as Vector2).length_squared() > 0.001 else Vector2.RIGHT
+	var perp := Vector2(-dir.y, dir.x)
+	var sub: Dictionary = recipe.duplicate()
+	sub["spark_amount"] = maxi(4, int(recipe.get("spark_amount", 46)) / 6)
+	sub["spark_smin"] = float(recipe.get("spark_smin", 0.5)) * 0.75
+	sub["spark_smax"] = float(recipe.get("spark_smax", 1.0)) * 0.75
+	sub["spark_life"] = 0.20
+	# v20.9-R2b: 散射几何标定——簇跨度 ±36px（76px 全宽 ≈ 64px 参考框，"宽散火花"规格）；
+	# 簇内降速 350-650→200-420（快火花把几何 smear 成随机团，慢火花让扇面保持可读）。
+	sub["spark_vmin"] = 200.0
+	sub["spark_vmax"] = 420.0
+	for i in range(6):
+		var t: float = (float(i) / 5.0) * 2.0 - 1.0  # -1..1 均布 6 簇
+		var offset := perp * (t * 36.0) + dir * randf_range(-6.0, 6.0)
+		_spawn_sparks(parent, world_pos + offset, sub, base_color, 5)
+		# v20.9-R2c: 弹着小贴图（族规格"散射状小贴图"字面项）——隔簇投放控量
+		# （游戏内 6 弹丸各带一套散射，逐簇全投会 ×6 放大成 36 枚/齐射）
+		if i % 2 == 0 and not DT.is_motion_reduce():
+			_spawn_pellet_mark(parent, world_pos + offset)
+
+
+## v20.9-R2c: 霰弹弹着点小贴图——复用 scorch 贴图 0.35 缩放（约 22px 着点痕），
+## 与中央主弹痕（_spawn_impact_decal 0.6）拉开大小层次。寿命同主弹痕（0.35s 保持 + 0.30s 渐隐）。
+static func _spawn_pellet_mark(parent: Node2D, pos: Vector2) -> void:
+	if parent == null or not is_instance_valid(parent):
+		return
+	var decal := Sprite2D.new()
+	decal.texture = PARTICLE_TEX_IMPACT_SCORCH
+	decal.position = pos
+	decal.scale = Vector2(0.35, 0.35)
+	decal.rotation = randf() * TAU
+	decal.modulate = Color(1.0, 1.0, 1.0, 0.92)
+	decal.add_to_group("battle_vfx")
+	parent.add_child(decal)
+	var tree := decal.get_tree()
+	if tree != null:
+		var tw := tree.create_tween().bind_node(decal)
+		tw.tween_interval(0.35)
+		tw.tween_property(decal, "modulate:a", 0.0, 0.30)
+		tw.tween_callback(decal.queue_free)
 
 
 ## ======================================================================

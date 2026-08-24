@@ -97,7 +97,15 @@ func _spawn_trajectory_cell(f: int, side: bool) -> void:
 				stgt = Node2D.new()
 				stgt.position = IMPACT_POS + Vector2(-20 + (i % 3) * 20.0, -40 + (i / 3) * 80.0)
 				_fx_layer.add_child(stgt)
-			bl.setup(stgt, 10.0, side, f, shooter, null, false, "", true, "")  # v18-R8: side 透传（敌光束暖色/敌曳光分色）
+			# v20.9-R1: 弹道格补代表武器名——空名走域感知兜底时，敌方域把裸 1/2 按
+			# legacy 步枪/机枪解释归一为 0，f01 敌格会拍成轻动能小弹体而非族形态。
+			# f01 用"榴弹炮"关键词命中族 1（双侧行为与游戏内命名曲射武器一致）；
+			# f02（空射）无任何关键词/精确表可达（只能我方域 fallback 透传），敌格
+			# 工具侧强制族号拍族形态（游戏内敌空射单位都带名走导弹/火箭族，无此形态）。
+			var rep_name := "105mm 榴弹炮" if f == 1 else ""
+			bl.setup(stgt, 10.0, side, f, shooter, null, false, rep_name, true, "")  # v18-R8: side 透传（敌光束暖色/敌曳光分色）
+			if f == 2 and not side:
+				bl.set("_visual_wt", 2)
 			if int(c["n"]) > 3:
 				await get_tree().create_timer(0.05).timeout
 		await get_tree().create_timer(float(c["wait"]))

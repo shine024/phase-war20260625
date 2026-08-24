@@ -269,20 +269,25 @@ func _apply_visual() -> void:
 		_beam_line.material = blend_mat
 	if _tracer_line:
 		_tracer_line.material = blend_mat
-	# v9.4: 直射轻武器（SMG/RIFLE/MG/PISTOL，wt 0/1/2/4）改用程序化弹头多边形（与直射 batch 的
+	# v9.4: 直射轻武器（SMG/RIFLE/MG/PISTOL）改用程序化弹头多边形（与直射 batch 的
 	# ArrayMesh 弹头视觉一致），弃用横向长条贴图——长条贴图（weapon_rifle/smg/mg_projectile.png
 	# 比例 5:1~12:1）旋转到斜向弹道时视觉违和（长条横躺）。程序化弹头短粗（12×7）、指向 +X、
 	# 原点居中，rotation=_direction.angle() 后任意角度自然对齐飞行方向。
-	# 重型/能量/曲射武器（wt 3/5/6/7/8/9/10/11）保留贴图（形状语义明确：火箭/导弹/激光等）。
+	# 重型/能量/曲射武器保留贴图（形状语义明确：火箭/导弹/激光等）。
 	# v19-R36: 狙击(6)改程序化动能弹形——与激光光束分流（用户反馈"狙击不应该和
 	# 激光一样的弹道"，族规格也区分"狙击=轻型动能 / 激光=光束"）。进程序化列表
 	# 同时拦截旧投射贴图路径（v18-R8 批评的"离散断点"弹体不再回归）。
-	var _use_procedural_bullet := weapon_type in [0, 1, 2, 4, 6]
+	# v20.9-R1: 判定键 weapon_type→_visual_wt（族空间）。裸值域撞值：新枚举
+	# INDIRECT=1/AERIAL=2 与 legacy RIFLE=1/MG=2 同值，曲射/空射弹体误落轻武器
+	# 程序化小弹头（~10×6px 不可读，f01/f02 traj ~4 主诉）。改键后：轻动能(0)/
+	# 手枪(4)/狙击(6) 保持程序化；曲射(1)/空射(2) 走 artillery/missile 贴图弹体
+	# （内容实寸 1090×152/1110×219 × 0.070/0.060 ≈ 76×11/67×13px 显示）。
+	var _use_procedural_bullet := _visual_wt in [0, 4, 6]
 	# v18-R8: 激光(8)强制 Line2D 光束渲染——族规格"弹体=光束"（v19-R36 起狙击不再共用）。
 	# 旧路径因有投射贴图走 tex-sprite 提前 return，光束分支成死代码；贴图弹体+
 	# 电弧拖尾(spark_energy)被 AI 读成"离散闪电碎片/弹丸断点"（f08 traj 2-3、f06 traj 3 分）。
 	var _use_beam_render := weapon_type == 8
-	_use_tex_sprite = WeaponProjectileVfx.has_proj_texture(weapon_type) and not _use_procedural_bullet and not _use_beam_render
+	_use_tex_sprite = WeaponProjectileVfx.has_proj_texture(_visual_wt) and not _use_procedural_bullet and not _use_beam_render
 	if _use_tex_sprite:
 		_apply_tex_sprite_visual(is_player)
 		_rotates_with_direction = true   # 贴图弹道随飞行方向旋转
@@ -298,7 +303,7 @@ func _apply_visual() -> void:
 			size_scale = 1.0   # v6.1: 0.8→1.0，v18-R11d 我方1.3实验回退（影响敌muzzle）
 		1, 2:
 			bullet_color = Color(0.6, 0.95, 1.0) if is_player else Color(0.9, 0.5, 0.3)
-			size_scale = 1.15  # v6.1: 1.0→1.15，步枪/机枪弹体更粗壮
+			size_scale = 1.15  # v6.1: 1.0→1.15，legacy 步枪/机枪 + 新枚举曲射/空射 共用粒弹风格（弧线时造型略违和，仅单发兜底路径）
 		5:
 			bullet_color = Color(1.0, 0.95, 0.2) if is_player else Color(1, 0.5, 0.2)
 			size_scale = 1.2
@@ -383,8 +388,9 @@ func _apply_tex_sprite_visual(is_player: bool) -> void:
 		tex = WeaponProjectileVfx.proj_texture_by_name(_weapon_name)
 		sc = WeaponProjectileVfx.proj_scale_by_name(_weapon_name)
 	if tex == null:
-		tex = WeaponProjectileVfx.proj_texture(weapon_type)
-		sc = WeaponProjectileVfx.proj_scale(weapon_type)
+		# v20.9-R1: 族空间取贴图/缩放（与 _use_tex_sprite 判定同域；裸 weapon_type 在 1/2 撞值）
+		tex = WeaponProjectileVfx.proj_texture(_visual_wt)
+		sc = WeaponProjectileVfx.proj_scale(_visual_wt)
 	if _tex_sprite:
 		_tex_sprite.visible = true
 		_tex_sprite.texture = tex
@@ -1255,6 +1261,18 @@ func _on_hit(primary: Node2D) -> void:
 			if Time.get_ticks_msec() < _dm_until:
 				var _dm_vuln: float = float(primary.get_meta("_drone_mark_vuln", 0.25))
 				final_damage *= (1.0 + _dm_vuln)
+
+		# v20.14: 隐身飞机首击爆发——隐身状态下攻击必定暴击+伤害×1.5
+		if is_instance_valid(shooter) and CardAbilityManager.is_stealth_first_strike_crit(shooter):
+			if not is_crit:
+				is_crit = true
+				primary.set_meta("_pending_crit", true)
+				final_damage *= (1.5 + shooter_stats.crit_damage_bonus)
+			final_damage *= CardAbilityManager.get_stealth_first_strike_multiplier(shooter)
+
+		# v20.14: 攻击无人机全图距离衰减
+		if is_instance_valid(shooter) and primary != null:
+			final_damage *= CardAbilityManager.get_drone_range_damage_multiplier(shooter, primary)
 
 		# v10 组合规则③：集火协同——3 秒内被不同友军攻击过的目标，后续攻击伤害 +5%/层（max +15%）
 		if primary != null and is_instance_valid(primary):
