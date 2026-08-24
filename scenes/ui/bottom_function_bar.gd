@@ -91,6 +91,24 @@ const BTN_CONFIGS: Array = [
 	["afk",          "挂机",   "btn_afk_pressed"],
 ]
 
+# 批次三 B8：左排面板按钮 tooltip 文案（含快捷键宣传；键位以 main.gd _input 为准）
+const SHORTCUT_TOOLTIPS: Dictionary = {
+	"backpack":     "背包：查看拥有的卡牌与实例（快捷键 1 / B）",
+	"progression":  "成长中枢：等级 / 改造 / 进化 / 技能树（快捷键 7）",
+	"faction":      "势力：声望 / 势力商店 / 技能（快捷键 4 / F）",
+	"quest":        "任务：委托与日常（快捷键 5 / Q）",
+	"store":        "公司商店：购买卡牌 / 符文 / 相位仪（快捷键 6 / T）",
+	"map":          "世界地图：选择关卡推进（快捷键 M）",
+	"leaderboard":  "排行榜（快捷键 8 / L）",
+	"info":         "情报中心：进化图谱 / 符文图鉴 / 敌方情报（快捷键 I）",
+	"collection":   "卡牌图鉴（快捷键 C）",
+	"achievement":  "成就（快捷键 A）",
+	"settings":     "设置（快捷键 9）",
+	"help":         "帮助：各系统玩法说明（快捷键 H）",
+	"save":         "手动存档",
+	"afk":          "挂机模式：自动部署刷资源",
+}
+
 # 右侧战斗控制按钮（开始/暂停/撤退/返回）
 const BATTLE_BTN_CONFIGS: Array = [
 	["start_battle", "开始战斗", "btn_start_battle_pressed"],
@@ -199,6 +217,10 @@ func _build_left_buttons() -> void:
 		var label_text: String = cfg[1]
 		var signal_name: String = cfg[2]
 		var btn := _make_func_button(label_text)
+		# 批次三 B8：左排面板按钮 tooltip（原完全缺失）——用途一句话 + 快捷键宣传
+		# （学《朝露》：按两次就记住；键位与 main.gd _input 战前 match 一一对应）
+		var tip: String = String(SHORTCUT_TOOLTIPS.get(key, ""))
+		btn.tooltip_text = tip if not tip.is_empty() else label_text
 		if DEBUG_HIDE_BOTTOM_BAR_TEXT:
 			btn.text = ""
 		_apply_bar_icon(btn, BTN_ICON_BY_KEY.get(key, ""))
@@ -305,7 +327,7 @@ func set_btn_badge(key: String, count: int) -> void:
 		btn.add_child(bg)
 		bd = Label.new()
 		bd.name = "Badge"
-		bd.add_theme_font_size_override("font_size", 10)
+		bd.add_theme_font_size_override("font_size", DT.FONT_SIZE_XSMALL)
 		bd.add_theme_color_override("font_color", Color.WHITE)
 		bd.add_theme_color_override("font_outline_color", Color(0.8, 0.1, 0.1, 1.0))
 		bd.add_theme_constant_override("outline_size", 2)
@@ -391,7 +413,7 @@ func set_start_battle_text(text: String) -> void:
 		return
 	var btn: Button = _btn_map["start_battle"] as Button
 	btn.tooltip_text = text
-	btn.modulate = Color(0.55, 0.58, 0.62, 1.0) if text == "战斗中" else Color(1, 1, 1, 1)
+	btn.modulate = Color(0.55, 0.58, 0.62, 1.0) if text == "战斗中" else DT.COLOR_HOVER_WHITE
 
 ## 外部更新暂停状态（转发到 TopBattleControls）
 func set_pause_text(text: String) -> void:

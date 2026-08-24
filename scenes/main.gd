@@ -388,6 +388,18 @@ func _input(event: InputEvent) -> void:
 				_on_leaderboard_pressed()
 			KEY_9:
 				_on_settings_pressed()
+			# 批次三 B8：补齐底栏五面板快捷键（与按钮 tooltip 宣传一致；字母键不与
+			# 战斗中 1-9 部署键/SPACE 暂停冲突）
+			KEY_M:
+				_on_map_pressed()
+			KEY_I:
+				_on_info_pressed()
+			KEY_C:
+				_on_collection_pressed()
+			KEY_A:
+				_on_achievement_pressed()
+			KEY_H:
+				_on_help_pressed()
 			KEY_ESCAPE:
 				_close_all_overlays()
 			KEY_ENTER:
