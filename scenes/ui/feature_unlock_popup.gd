@@ -74,6 +74,8 @@ func _ready() -> void:
 	backdrop.color = Color(0, 0, 0, 0.55)
 	backdrop.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	backdrop.mouse_filter = Control.MOUSE_FILTER_STOP
+	# 批次三 B7：背板点击可关闭，挂手型光标提示可点
+	backdrop.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 	# 点击背板也可关闭（防再次出现"点不到按钮卡死"类问题）
 	backdrop.gui_input.connect(_on_backdrop_gui_input)
 	layer.add_child(backdrop)

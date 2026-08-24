@@ -33,6 +33,8 @@ func _ready() -> void:
 		detail_btn.pressed.connect(_on_detail_pressed)
 	
 	if _backdrop:
+		# 批次三 B7：背板点击可关闭，挂手型光标提示可点
+		_backdrop.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 		_backdrop.gui_input.connect(_on_backdrop_gui_input)
 	if close_button:
 		close_button.pressed.connect(_on_close)

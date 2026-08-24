@@ -28,6 +28,8 @@ func _ready() -> void:
 	size_flags_horizontal = 0
 	size_flags_vertical = 0
 	clip_contents = false
+	# 批次三 B7：槽位可点击（slot_clicked），非 Button 控件手动挂手型光标
+	mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 	CardBackgroundUi.ensure_overlay(self)
 	CardFrameUi.ensure_overlay(self)
 	refresh_display()
