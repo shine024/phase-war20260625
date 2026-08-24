@@ -12,6 +12,7 @@ enum PanelMode { MODE_BACKPACK = 0, MODE_PHASE_INSTRUMENT = 1, MODE_BATTLEFIELD 
 enum TabIdx { INFO = 0, REINFORCE = 1, MODIFY = 2, EVOLVE = 3 }
 
 const GC = preload("res://resources/game_constants.gd")
+const PanelStyles = preload("res://scripts/ui/panel_styles.gd")
 const DefaultCards = preload("res://data/default_cards.gd")
 const EnemyArchetypes = preload("res://data/enemy_archetypes.gd")
 const PhaseLaws = preload("res://data/phase_laws.gd")
@@ -394,38 +395,21 @@ func _add_action_button(text: String, color: Color, action: String, tooltip: Str
 	var btn := Button.new()
 	btn.name = action.capitalize().replace(" ", "") + "Button"
 	btn.text = text
-	# 批次三 B2e：操作按钮就地解释后果
-	if not tooltip.is_empty():
-		btn.tooltip_text = tooltip
 	btn.custom_minimum_size = Vector2(200, 38)
 	btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	btn.add_theme_font_size_override("font_size", 13)
 	btn.add_theme_color_override("font_color", color)
 	btn.add_theme_color_override("font_hover_color", Color(1, 1, 1, 1))
-	# v6.4: 圆角按钮 + 左侧色条样式
-	var sb_normal := StyleBoxFlat.new()
-	sb_normal.bg_color = Color(0.12, 0.15, 0.22, 0.95)
-	sb_normal.border_color = color
-	sb_normal.border_width_left = 3
-	sb_normal.border_width_top = 1
-	sb_normal.border_width_right = 1
-	sb_normal.border_width_bottom = 1
-	sb_normal.corner_radius_top_left = 6
-	sb_normal.corner_radius_top_right = 6
-	sb_normal.corner_radius_bottom_left = 6
-	sb_normal.corner_radius_bottom_right = 6
-	sb_normal.content_margin_left = 12.0
-	sb_normal.content_margin_top = 6.0
-	sb_normal.content_margin_right = 12.0
-	sb_normal.content_margin_bottom = 6.0
-	var sb_hover := sb_normal.duplicate()
-	sb_hover.bg_color = Color(color.r * 0.25 + 0.1, color.g * 0.25 + 0.12, color.b * 0.25 + 0.16, 0.97)
-	sb_hover.border_color = color.lightened(0.3)
-	var sb_pressed := sb_normal.duplicate()
-	sb_pressed.bg_color = Color(color.r * 0.15 + 0.08, color.g * 0.15 + 0.1, color.b * 0.15 + 0.13, 0.98)
-	btn.add_theme_stylebox_override("normal", sb_normal)
-	btn.add_theme_stylebox_override("hover", sb_hover)
-	btn.add_theme_stylebox_override("pressed", sb_pressed)
+	# 批次三 B2e：操作按钮就地解释后果
+	if not tooltip.is_empty():
+		btn.tooltip_text = tooltip
+	# 批次三 B6：手写三态样式收口 PanelStyles 工厂（原缺 disabled/focus 两态）
+	var styles: Dictionary = PanelStyles.make_button_styles(color)
+	btn.add_theme_stylebox_override("normal", styles["normal"])
+	btn.add_theme_stylebox_override("hover", styles["hover"])
+	btn.add_theme_stylebox_override("pressed", styles["pressed"])
+	btn.add_theme_stylebox_override("disabled", styles["disabled"])
+	btn.add_theme_stylebox_override("focus", styles["focus"])
 	var card_ref := current_card
 	btn.pressed.connect(func() -> void:
 		if card_ref != null:

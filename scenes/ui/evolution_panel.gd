@@ -255,6 +255,10 @@ func _update_chip_styles() -> void:
 		var sb_h := sb.duplicate() as StyleBoxFlat
 		sb_h.bg_color = Color(0.653, 0.546, 0.98, 0.06)
 		btn.add_theme_stylebox_override("hover", sb_h)
+		# 批次三 B6：chip 补 pressed 态
+		var sb_p := sb.duplicate() as StyleBoxFlat
+		sb_p.bg_color = Color(0.653, 0.546, 0.98, 0.2)
+		btn.add_theme_stylebox_override("pressed", sb_p)
 
 
 ## v7.x 新增：筛选回调
@@ -591,6 +595,10 @@ func _create_evolution_node(target: Dictionary) -> Control:
 	var sb_h := sb_n.duplicate() as StyleBoxFlat
 	sb_h.bg_color = Color(0.653, 0.546, 0.98, 0.08)
 	btn.add_theme_stylebox_override("hover", sb_h)
+	# 批次三 B6：补 pressed 态（第三态缺失会被误认为"点了没反应"）
+	var sb_p := sb_n.duplicate() as StyleBoxFlat
+	sb_p.bg_color = Color(0.653, 0.546, 0.98, 0.22)
+	btn.add_theme_stylebox_override("pressed", sb_p)
 	# v9.x：锁定目标不再 disabled——保持可点击，进右侧详情看完整条件列表+达成指引。
 	# 此前 disabled=true 且只在 can_evo 时连 pressed，锁定目标的条件/指引（_render_condition_rows
 	# 的 detail 行）玩家永远看不到，只剩 badge 一行字，无从得知"进化如何达成"。

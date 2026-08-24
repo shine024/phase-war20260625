@@ -226,6 +226,10 @@ func _update_chip_styles() -> void:
 		var sb_h := sb.duplicate() as StyleBoxFlat
 		sb_h.bg_color = Color(1.0, 0.85, 0.35, 0.06)
 		btn.add_theme_stylebox_override("hover", sb_h)
+		# 批次三 B6：chip 补 pressed 态
+		var sb_p := sb.duplicate() as StyleBoxFlat
+		sb_p.bg_color = Color(1.0, 0.85, 0.35, 0.2)
+		btn.add_theme_stylebox_override("pressed", sb_p)
 
 
 # ============================================================
@@ -431,6 +435,10 @@ func _create_card_list_item(card: CardResource, instance_id_raw: Variant) -> Con
 	else:
 		btn.add_theme_stylebox_override("normal", sb_n)
 		btn.add_theme_stylebox_override("hover", sb_h)
+	# 批次三 B6：补 pressed 态（第三态缺失会被误认为"点了没反应"）
+	var sb_p := sb_n.duplicate() as StyleBoxFlat
+	sb_p.bg_color = Color(0.16, 0.20, 0.28, 0.95)
+	btn.add_theme_stylebox_override("pressed", sb_p)
 
 	# 内容 HBox：缩略卡图 + 信息列 + 战力
 	var hbox := HBoxContainer.new()
@@ -945,6 +953,8 @@ func _open_phase_master_skill_panel() -> void:
 		backdrop.color = Color(0, 0, 0, 0.55)
 		backdrop.anchors_preset = Control.PRESET_FULL_RECT
 		backdrop.mouse_filter = Control.MOUSE_FILTER_STOP
+		# 批次三 B7：背板点击可关闭，挂手型光标提示可点
+		backdrop.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 		backdrop.gui_input.connect(_on_skill_panel_backdrop_gui_input)
 		canvas.add_child(backdrop)
 
