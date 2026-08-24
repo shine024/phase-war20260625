@@ -7,6 +7,7 @@ const BasicResources = preload("res://data/basic_resources.gd")
 const DefaultCards = preload("res://data/default_cards.gd")
 const GC = preload("res://resources/game_constants.gd")
 const IntelManualItems = preload("res://data/intel_manual_items.gd")
+const UnitStatsTable = preload("res://resources/unit_stats_table.gd")
 const ModRegistry = preload("res://scripts/systems/modification_registry.gd")
 const StoreItemRowScene = preload("res://scenes/ui/store_item_row.tscn")
 const StoreInstrumentRowScene = preload("res://scenes/ui/store_instrument_row.tscn")
@@ -53,6 +54,8 @@ func _ready() -> void:
 	_init_cached_styles()
 	_build_company_tabs()
 	_refresh_balance()
+	# 批次三 B2b：余额行就地解释"全域访问"的解锁条件
+	balance_label.tooltip_text = "任一势力声望达到 6200（8 级）后激活全域访问：可在所有公司购物，不再受当前公司限制"
 	# _ready 只做轻量初始化（余额 + 公司 tab），商品列表重建交给 on_overlay_opened 拆帧，
 	# 避免首次实例化时 40+ 节点全挤一帧（LazyLoader 实例化即 visible 时由 _run_open_refresh_pipeline 兜底）。
 	# 监听资源变动，实时刷新余额和购买按钮状态
@@ -128,6 +131,9 @@ func _build_company_tabs() -> void:
 		btn.toggle_mode = true
 		btn.custom_minimum_size = Vector2(0, 38)
 		btn.add_theme_font_size_override("font_size", DT.FONT_SIZE_BODY)
+		# 批次三 B2b：公司 Tab 悬停就地展示公司简介（desc 字段一直存在但从未显示）
+		var cdesc: String = String(cfg.get("desc", ""))
+		btn.tooltip_text = cdesc if not cdesc.is_empty() else "查看 %s 在售的商品" % name
 		var tab_styles := PanelStyles.make_button_styles(DT.get_panel_accent("store"))
 		btn.add_theme_color_override("font_color", DT.COLOR_TEXT_MID)
 		btn.add_theme_color_override("font_hover_color", DT.COLOR_TEXT_BRIGHT)
@@ -432,6 +438,8 @@ func _on_buy_rune(rune_id: String, rep_cost: int, row_node: Control) -> void:
 		current_rep = int(fsm.get_faction_reputation(_current_company_id))
 	if current_rep < rep_cost:
 		_flash_row(row_node, Color(DT.COLOR_DANGER.r, DT.COLOR_DANGER.g, DT.COLOR_DANGER.b, 0.3))
+		# 批次三 B3：失败给具体原因（原仅红闪，玩家不知道差多少）
+		_show_buy_error("声望不足：%s 需要声望 %d（当前 %d）" % [_get_company_name(_current_company_id), rep_cost, current_rep])
 		return
 	# v6.2 修复 M14：先发放符文并校验返回值，成功才扣声望（原顺序是先扣再发，
 	# 若 add_owned_rune 因重复持有返回 false，声望会被误扣不退还）
@@ -441,6 +449,8 @@ func _on_buy_rune(rune_id: String, rep_cost: int, row_node: Control) -> void:
 		acquired = bool(pim.add_owned_rune(rune_id))
 	if not acquired:
 		_flash_row(row_node, Color(DT.COLOR_GOLD.r, DT.COLOR_GOLD.g, DT.COLOR_GOLD.b, 0.3))
+		# 批次三 B3：add_owned_rune 仅在重复持有时返回 false（已核实）
+		_show_buy_warning("已拥有该符文，无需重复购买")
 		return
 	# 扣除声望（仅在符文发放成功后）
 	if fsm.has_method("add_faction_reputation"):
@@ -552,6 +562,8 @@ func _on_buy_intel_item(item_type: String, price: int, row_node: Control) -> voi
 	var current_nano: int = BasicResourceManager.get_total(BasicResources.ID_NANO_MATERIALS)
 	if current_nano < price:
 		_flash_row(row_node, Color(DT.COLOR_DANGER.r, DT.COLOR_DANGER.g, DT.COLOR_DANGER.b, 0.6))
+		# 批次三 B3：失败给具体原因（与卡牌购买"还需 %d"口径一致）
+		_show_buy_error("纳米材料不足（还需 %d）" % (price - current_nano))
 		return
 	# 屏蔽 add_resource 触发的 resources_changed 回弹（购买流程自身统一刷一次）
 	_suppress_resources_refresh = true
@@ -625,10 +637,18 @@ func _build_store_item_row(
 			info_label.visible = true
 
 		# 基础数值属性行
+		# 攻/防/血必须走 UnitStatsTable 口径：防御由兵种派生（derive_defense_by_unit_type），
+		# 模板 defense_* 是 v6.2 前旧语义字段，直读会显示错值；与 card_info_panel/背包预览同源
 		var base_attrs_label: Label = row_panel.get_node("RowMargin/RowHBox/InfoVBox/BaseAttrsLabel")
 		var base_attrs_parts: Array[String] = []
 		match info_card.card_type:
 			GC.CardType.COMBAT_UNIT:
+				var stats := UnitStatsTable.build_stats_from_card(info_card)
+				base_attrs_parts.append("生命 %d" % int(stats.max_hp))
+				base_attrs_parts.append("攻 轻%d·甲%d·空%d" % [
+					int(stats.attack_light), int(stats.attack_armor), int(stats.attack_air)])
+				base_attrs_parts.append("防 轻%d·甲%d·空%d" % [
+					int(stats.defense_light), int(stats.defense_armor), int(stats.defense_air)])
 				if info_card.weight_capacity > 0:
 					base_attrs_parts.append("承载 %d 重量" % info_card.weight_capacity)
 				if info_card.max_weapons > 0:
@@ -731,6 +751,8 @@ func _build_instrument_row(cfg: Dictionary, fsm: Node) -> PanelContainer:
 
 	var row_panel: PanelContainer = StoreInstrumentRowScene.instantiate()
 	row_panel.add_theme_stylebox_override("panel", _instrument_row_style)
+	# 批次三 B2b：相位仪行的属性词典——星级/能量恢复/部署范围就地解释
+	row_panel.tooltip_text = "相位仪：星级决定槽位数量与能量上限；能量恢复加快战斗中能量回复；部署范围决定单位可放置的前沿位置（越大越靠前）"
 
 	# 名称
 	var name2: Label = row_panel.get_node("M2/HB2/VB2/NameLabel")
@@ -809,16 +831,22 @@ func _build_instrument_row(cfg: Dictionary, fsm: Node) -> PanelContainer:
 	if owned:
 		btn2.disabled = true
 		btn2.text = "已拥有"
+		btn2.tooltip_text = "你已拥有这台相位仪"
 	elif bool(can.get("ok", false)):
 		btn2.text = "购买并装备"
+		btn2.tooltip_text = "消耗 %d 能量块购买，并立即装备这台相位仪" % price_eb
 	else:
 		btn2.disabled = true
+		# 批次三 B2b：禁用按钮挂具体原因 tooltip（点了没反应的困惑就地消解）
 		if reason == "rep":
 			btn2.text = "声望不足"
+			btn2.tooltip_text = "需要 %s 声望 %d（当前最高声望 %d）" % [_get_company_name(_current_company_id), req_rep, _get_max_faction_reputation()]
 		elif reason == "energy_block":
 			btn2.text = "能量块不足"
+			btn2.tooltip_text = "需要 %d 能量块——能量块可通过日常任务与战斗掉落获得" % price_eb
 		else:
 			btn2.text = "未解锁"
+			btn2.tooltip_text = "尚未满足购买条件"
 
 	var iid_copy: String = iid
 	btn2.pressed.connect(func() -> void:
@@ -886,6 +914,23 @@ func _on_buy_pressed(card_id: String, card_count: int, price_nano: int, row_node
 	_buy_in_progress = false
 	if is_instance_valid(row_node):
 		call_deferred("_refresh_items")
+
+## 批次三 B3：购买失败反馈（ToastManager 红/橙；lazy 未加载时退化为 SignalBus 绿条）
+func _show_buy_error(msg: String) -> void:
+	var tm: Node = get_node_or_null("/root/ToastManager")
+	if tm != null and tm.has_method("show_error"):
+		tm.show_error(msg)
+	elif SignalBus:
+		SignalBus.show_toast.emit(msg)
+
+
+func _show_buy_warning(msg: String) -> void:
+	var tm: Node = get_node_or_null("/root/ToastManager")
+	if tm != null and tm.has_method("show_warning"):
+		tm.show_warning(msg)
+	elif SignalBus:
+		SignalBus.show_toast.emit(msg)
+
 
 func _flash_row(row_node: Control, flash_color: Color) -> void:
 	if not is_instance_valid(row_node):

@@ -224,6 +224,9 @@ func add_faction_reputation(faction_id: String, delta: int) -> int:
 		# v6.6: 检查并发放达到等级门槛的势力独占卡
 		_grant_exclusive_cards_on_level_up(faction_id, result["new_rep"])
 		emit_signal("faction_level_up", faction_id, result["new_level"])
+		# 批次三 B4：首次声望升级一句话说明（之后升级靠面板自身反馈）
+		FeatureUnlockPopup.show_once("faction_level_up", "势力声望提升",
+			"%s 声望达到 %d 级——更高声望解锁更多商店商品与专属奖励；达到 6200（8级）可激活商店全域访问。" % [get_faction_display_name(faction_id), int(result["new_level"])])
 
 	emit_signal("faction_reputation_changed", faction_id, delta, result["new_rep"])
 	return result["new_rep"]

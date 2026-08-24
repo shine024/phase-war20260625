@@ -1519,6 +1519,9 @@ func _refresh_rune_bonus() -> void:
 			continue
 		_last_broadcast_rw_ids[rw_id] = true
 		SignalBus.runeword_triggered.emit(rw_id, null)
+		# 批次三 B4：首次激活符文之语一句话说明
+		FeatureUnlockPopup.show_once("runeword", "符文之语激活",
+			"特定符文组合激活了套装效果！在相位仪符文槽继续搭配，可激活更多符文之语。")
 	# v9.5: 失效清理——卸下符文导致某符文之语不再激活时，从播报记录移除，
 	# 使其下次重新激活时能再次播报（否则同组合重新装备不再提示）。
 	var current_ids: Dictionary = {}
