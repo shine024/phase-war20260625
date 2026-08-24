@@ -188,9 +188,9 @@ anchors_preset = 10
 anchor_left = 0.5
 anchor_right = 0.5
 offset_left = -200.0
-offset_top = 72.0
+offset_top = 96.0
 offset_right = 200.0
-offset_bottom = 122.0
+offset_bottom = 146.0
 grow_horizontal = 2
 
 [node name="BattleBottomBar" type="VBoxContainer" parent="HudLayer"]
@@ -199,15 +199,18 @@ anchors_preset = 12
 anchor_top = 1.0
 anchor_right = 1.0
 anchor_bottom = 1.0
-offset_top = -124.0
-offset_bottom = 0.0
+offset_left = 16.0
+offset_top = -132.0
+offset_right = -16.0
+offset_bottom = -8.0
 grow_vertical = 0
+alignment = 2
 theme_override_constants/separation = 0
 
-[node name="BottomInstrumentBar" parent="HudLayer/BattleBottomBar" instance=ExtResource("26_instrument_bar")]
+[node name="BottomFunctionBar" parent="HudLayer/BattleBottomBar" instance=ExtResource("27_function_bar")]
 layout_mode = 2
 
-[node name="BottomFunctionBar" parent="HudLayer/BattleBottomBar" instance=ExtResource("27_function_bar")]
+[node name="BottomInstrumentBar" parent="HudLayer/BattleBottomBar" instance=ExtResource("26_instrument_bar")]
 layout_mode = 2
 
 [node name="BattleLogBar" parent="HudLayer" instance=ExtResource("41_battle_log")]

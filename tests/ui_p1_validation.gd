@@ -29,6 +29,33 @@ const CHANGED_SCRIPTS: Array[String] = [
 	"res://scripts/signal_bus.gd",
 	"res://managers/battle/battle_damage_system.gd",
 	"res://managers/audio_manager.gd",
+	# 批次三（2026-08-24）：B1 帮助纠偏 + B2 tooltip 攻坚 + B3/B4 反馈与首解锁扩面
+	"res://scenes/ui/help_panel.gd",
+	"res://scenes/ui/growth_panel.gd",
+	"res://scenes/ui/evolution_panel.gd",
+	"res://scenes/ui/modification_panel.gd",
+	"res://managers/phase_instrument_manager.gd",
+	"res://managers/faction_system_manager.gd",
+	"res://managers/instance_registry.gd",
+	# 战斗界面美化 BU-1（2026-08-24）：悬浮卡 + 能量条 + 槽位状态机 + 按钮抽屉
+	"res://scenes/ui/bottom_function_bar.gd",
+	"res://scripts/cost_badge.gd",
+	"res://scenes/ui/top_hud_bar.gd",
+	# 战斗界面美化 BU-2（2026-08-24）：基地视觉强化
+	"res://scenes/units/base_aura.gd",
+	"res://scenes/units/phase_field_driver.gd",
+	"res://scenes/units/enemy_phase_field_driver.gd",
+	# 战斗界面美化 BU-4/BU-5（2026-08-24）：阵营地面着色 + 部署区可视化
+	"res://scripts/battle/battlefield_ambience.gd",
+	"res://scenes/battlefield/battle_slot_grid.gd",
+	# 战斗界面美化 BU-6/BU-7（2026-08-24）：血条整合 + 战场氛围层
+	"res://scenes/units/unit_hp_bar.gd",
+	# 战斗界面美化 BU-8~10（2026-08-24）：HUD 情景化 + 基地实体化 + 叙事带
+	"res://scenes/ui/battle_log.gd",
+	"res://scenes/ui/settings_panel.gd",
+	"res://scenes/ui/battle_announcer.gd",
+	"res://managers/battle/battle_spectacle.gd",
+	"res://scenes/ui/buff_fold_card.gd",
 ]
 
 var _fails: Array[String] = []

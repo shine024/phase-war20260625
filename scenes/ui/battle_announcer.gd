@@ -30,18 +30,19 @@ var _showing: bool = false
 var _active_tween: Tween = null
 
 func _ready() -> void:
-	# 构建极简面板：半透明深色 + 青色边框
+	# 构建极简面板：BU-10 对齐顶部胶囊语言（深底 0.78 + 1px 青边 0.22 + 14 圆角，
+	# 与 TopHudBar 波次胶囊同款），垂直槽位 y96（胶囊 y1~49 → 播报 y96~146 → BOSS 横幅 y110/152 避让）
 	var style := StyleBoxFlat.new()
-	style.bg_color = Color(DT.COLOR_BG.r, DT.COLOR_BG.g, DT.COLOR_BG.b, 0.85)
-	style.corner_radius_top_left = DT.CORNER_RADIUS
-	style.corner_radius_top_right = DT.CORNER_RADIUS
-	style.corner_radius_bottom_right = DT.CORNER_RADIUS
-	style.corner_radius_bottom_left = DT.CORNER_RADIUS
-	style.border_width_left = 2
-	style.border_width_top = 2
-	style.border_width_right = 2
-	style.border_width_bottom = 2
-	style.border_color = DT.COLOR_ACCENT_CYAN
+	style.bg_color = Color(0.04, 0.06, 0.10, 0.78)
+	style.corner_radius_top_left = 14
+	style.corner_radius_top_right = 14
+	style.corner_radius_bottom_right = 14
+	style.corner_radius_bottom_left = 14
+	style.border_width_left = 1
+	style.border_width_top = 1
+	style.border_width_right = 1
+	style.border_width_bottom = 1
+	style.border_color = Color(DT.COLOR_ACCENT_CYAN.r, DT.COLOR_ACCENT_CYAN.g, DT.COLOR_ACCENT_CYAN.b, 0.22)
 	style.content_margin_left = 16.0
 	style.content_margin_right = 16.0
 	style.content_margin_top = 8.0

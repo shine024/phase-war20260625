@@ -14,6 +14,7 @@ const RankDisplayUi = preload("res://scripts/rank_display_ui.gd")
 const CardFrameUi = preload("res://scripts/card_frame_ui.gd")
 const CardBackgroundUi = preload("res://scripts/card_background_ui.gd")
 const AutoDeployController = preload("res://scenes/ui/auto_deploy_controller.gd")
+const PanelStyles = preload("res://scripts/ui/panel_styles.gd")
 const DEBUG_BOTTOM_BAR_LOG := false
 ## ── 子系统：槽位拖放 ──
 const DragSub = preload("res://scenes/ui/instrument_bar_drag.gd")
@@ -46,6 +47,14 @@ var _slots_refresh_coalesce: bool = false
 # phase_slots_changed 每次都重建。相同 (instrument_id, lv) 跳过重建。
 var _tooltip_last_sig: String = ""
 
+## ── BU-1（战斗界面美化，2026-08-24）：悬浮卡 + 常驻能量条 + 菜单抽屉 + 槽位可负担状态机 ──
+var _energy_fill: ProgressBar = null
+var _energy_num_label: Label = null
+var _menu_btn: Button = null
+var _last_pending_deploy_id: String = ""
+var _selected_deploy_panel: Control = null
+var _breath_phase: float = 0.0
+
 @onready var instrument_section: HBoxContainer = $Margin/HBox/InstrumentSection
 @onready var instrument_icon: TextureRect = $Margin/HBox/InstrumentSection/InstrumentIcon
 @onready var name_section: VBoxContainer = $Margin/HBox/InstrumentSection/NameSection
@@ -64,15 +73,22 @@ func _ready() -> void:
 	_connect_signals()
 	_make_phase_level_label_clickable()
 	_setup_auto_deploy()
+	_apply_float_frame_style()
+	_build_energy_row()
+	_setup_menu_button()
+	_update_energy_display()
 	_refresh_all()
 	# 布局完成后，让格子高度精确填满条的可用空间
 	call_deferred("_fit_slots_to_bar")
 
 
 ## 每帧驱动自动部署控制器（RefCounted 无 _process，由本 Control 节点转发）
+## BU-1：另驱动槽位呼吸微光 + 部署待选（pending）金框轮询
 func _process(delta: float) -> void:
 	if _auto_deploy != null:
 		_auto_deploy.process(delta)
+	_process_slot_breathing(delta)
+	_poll_pending_deploy_selection()
 
 
 ## v7.x(自动部署)：在 InstrumentSection 最前面创建"自动"toggle 按钮 + 初始化控制器。
@@ -203,12 +219,293 @@ func _connect_signals() -> void:
 		# v7.x: 玩家相位师战力变化 → 刷新底部栏等级显示
 		if SignalBus.has_signal("player_phase_master_power_changed"):
 			SignalBus.player_phase_master_power_changed.connect(_on_player_phase_master_power_changed)
+		# BU-1: 能量变化 → 常驻能量条 + 槽位可负担状态刷新
+		if SignalBus.has_signal("energy_changed"):
+			SignalBus.energy_changed.connect(_on_energy_changed)
 
 func _on_energy_insufficient(_cost: float) -> void:
 	# 能量不足时给红色警告 toast（部署失败无其他视觉反馈）
 	var tm: Node = get_node_or_null("/root/ToastManager")
 	if tm and tm.has_method("show_error"):
 		tm.show_error("能量不足，无法部署")
+
+## BU-1：能量变化 → 更新常驻能量条 + 槽位可负担状态（部署选中金框最后重涂，不被覆盖）。
+func _on_energy_changed(_cur: float, _mx: float) -> void:
+	_update_energy_display()
+	_refresh_slot_affordability()
+	if _selected_deploy_panel != null and is_instance_valid(_selected_deploy_panel):
+		_apply_slot_selection_glow(_selected_deploy_panel)
+
+## BU-1：底栏悬浮卡片化——弃用 tscn 直角通栏样式，走 PanelStyles 面板语言
+## （12 圆角 + accent 边框 + 外发光）；底色 alpha 0.92 让战场从卡片下微透。
+func _apply_float_frame_style() -> void:
+	var sb: StyleBoxFlat = PanelStyles.make_panel_frame(DT.COLOR_ACCENT_CYAN)
+	sb.bg_color.a = 0.92
+	sb.content_margin_left = 4
+	sb.content_margin_right = 4
+	sb.content_margin_top = 2
+	sb.content_margin_bottom = 2
+	add_theme_stylebox_override("panel", sb)
+
+## BU-1：NameSection 中部常驻能量条（条 + 数值）。战斗中随 SignalBus.energy_changed
+## 实时刷新；详细回复速率仍在相位仪等级 tooltip（_update_instrument_tooltip）。
+func _build_energy_row() -> void:
+	if name_section == null or not is_instance_valid(name_section):
+		return
+	var row := HBoxContainer.new()
+	row.name = "EnergyRow"
+	row.add_theme_constant_override("separation", 4)
+	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var pb := ProgressBar.new()
+	pb.name = "EnergyFill"
+	pb.show_percentage = false
+	pb.custom_minimum_size = Vector2(24, 10)
+	pb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	pb.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	pb.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var bg := StyleBoxFlat.new()
+	bg.bg_color = DT.COLOR_PANEL_DEEP
+	bg.set_corner_radius_all(3)
+	var fill := StyleBoxFlat.new()
+	fill.bg_color = DT.COLOR_ENERGY
+	fill.set_corner_radius_all(3)
+	pb.add_theme_stylebox_override("background", bg)
+	pb.add_theme_stylebox_override("fill", fill)
+	_energy_fill = pb
+	row.add_child(pb)
+	var num := Label.new()
+	num.name = "EnergyNumLabel"
+	num.text = "--"
+	num.custom_minimum_size = Vector2(52, 14)
+	num.add_theme_font_size_override("font_size", 12)
+	num.add_theme_color_override("font_color",
+		Color(DT.COLOR_ENERGY.r, DT.COLOR_ENERGY.g, DT.COLOR_ENERGY.b, 0.95))
+	num.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_energy_num_label = num
+	row.add_child(num)
+	name_section.add_child(row)
+	name_section.move_child(row, 1)
+
+func _update_energy_display() -> void:
+	if EnergyManager == null or not EnergyManager.has_method("get_current"):
+		return
+	var cur: float = float(EnergyManager.get_current())
+	var mx: float = float(EnergyManager.get_max())
+	if _energy_fill != null and is_instance_valid(_energy_fill):
+		_energy_fill.max_value = maxf(mx, 1.0)
+		_energy_fill.value = clampf(cur, 0.0, mx)
+	if _energy_num_label != null and is_instance_valid(_energy_num_label):
+		_energy_num_label.text = "%d/%d" % [int(cur), int(mx)]
+
+## BU-1：底栏右端「菜单」按钮——展开/收起功能按钮抽屉（BottomFunctionBar），
+## 把 15 个功能入口从战场视觉里收起来；红点聚合角标由 set_menu_badge 驱动。
+func _setup_menu_button() -> void:
+	var hbox: HBoxContainer = get_node_or_null("Margin/HBox") as HBoxContainer
+	if hbox == null:
+		return
+	_menu_btn = Button.new()
+	_menu_btn.name = "MenuBtn"
+	_menu_btn.text = "菜单"
+	_menu_btn.custom_minimum_size = Vector2(48, BAR_FIXED_HEIGHT - 4)
+	_menu_btn.add_theme_font_size_override("font_size", 12)
+	_menu_btn.tooltip_text = "功能菜单：背包/商店/任务等全部入口\n再点一次或按 ESC 收起"
+	var styles := PanelStyles.make_button_styles(DT.COLOR_ACCENT_CYAN)
+	for state in ["normal", "hover", "pressed", "disabled", "focus"]:
+		_menu_btn.add_theme_stylebox_override(state, styles[state])
+	_menu_btn.pressed.connect(_on_menu_btn_pressed)
+	hbox.add_child(_menu_btn)
+
+func _on_menu_btn_pressed() -> void:
+	if SignalBus and SignalBus.has_signal("play_sound"):
+		SignalBus.play_sound.emit("button")
+	var fb: Node = get_node_or_null("../BottomFunctionBar")
+	if fb == null or not fb.has_method("toggle_drawer"):
+		return
+	fb.toggle_drawer()
+	FeatureUnlockPopup.show_once("drawer_menu", "功能菜单",
+		"背包/商店/任务等入口已收进底部「菜单」按钮。\n点击展开抽屉，再点一次或按 ESC 收起。")
+
+## 功能栏红点聚合（BottomFunctionBar.set_btn_badge 透传）：任一功能有角标即显示总数。
+func set_menu_badge(total: int) -> void:
+	if _menu_btn == null or not is_instance_valid(_menu_btn):
+		return
+	var bg := _menu_btn.get_node_or_null("BadgeBg") as ColorRect
+	var bd := _menu_btn.get_node_or_null("Badge") as Label
+	if total <= 0 and bg == null:
+		return
+	if bg == null:
+		bg = ColorRect.new()
+		bg.name = "BadgeBg"
+		bg.color = Color(0.95, 0.25, 0.25, 0.95)
+		bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		bg.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
+		bg.offset_left = -18.0
+		bg.offset_right = -2.0
+		bg.offset_top = -2.0
+		bg.offset_bottom = 14.0
+		bg.size = Vector2(16, 16)
+		_menu_btn.add_child(bg)
+		bd = Label.new()
+		bd.name = "Badge"
+		bd.add_theme_font_size_override("font_size", 10)
+		bd.add_theme_color_override("font_color", Color.WHITE)
+		bd.add_theme_color_override("font_outline_color", Color(0.8, 0.1, 0.1, 1.0))
+		bd.add_theme_constant_override("outline_size", 2)
+		bd.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		bd.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		bd.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		bd.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
+		bd.offset_left = -18.0
+		bd.offset_right = -2.0
+		bd.offset_top = -2.0
+		bd.offset_bottom = 14.0
+		bd.size = Vector2(16, 16)
+		_menu_btn.add_child(bd)
+	if total > 0:
+		bd.text = str(total)
+		bg.visible = true
+		bd.visible = true
+	else:
+		bd.text = ""
+		bg.visible = false
+		bd.visible = false
+
+## BU-1：槽位可负担状态机。能量不足的战斗卡槽：压暗罩（EnergyDim）+ 费用角标转红；
+## 能量充足：边框 alpha 提到 1.0。部署选中槽的金框优先，不被本函数覆盖。
+func _refresh_slot_affordability() -> void:
+	for panel in _slot_panels:
+		if panel == null or not is_instance_valid(panel):
+			continue
+		_apply_slot_affordance(panel)
+
+func _apply_slot_affordance(panel: Control) -> void:
+	var color: String = String(panel.get_meta("slot_color", ""))
+	var card_type: int = int(panel.get_meta("card_type", -1))
+	var cost: float = float(panel.get_meta("energy_cost", 0.0))
+	var restricted: bool = bool(panel.get_meta("restricted", false))
+	var deployable: bool = color == "green" and card_type == GC.CardType.COMBAT_UNIT and cost > 0.0
+	var affordable: bool = deployable and EnergyManager != null \
+		and EnergyManager.has_method("can_afford") and EnergyManager.can_afford(cost)
+	var dim := panel.get_node_or_null("EnergyDim") as ColorRect
+	if dim != null:
+		dim.visible = deployable and not affordable and not restricted
+	# Godot 4.5：get_meta 缺键时即使带 default 也打 error（空槽无 cost_badge_node meta，
+	# 能量变化时刷屏）——必须 has_meta 守卫
+	var cb: Variant = null
+	if panel.has_meta("cost_badge_node"):
+		cb = panel.get_meta("cost_badge_node")
+	if cb != null and is_instance_valid(cb) and "warn" in cb:
+		cb.set("warn", deployable and not affordable and not restricted)
+	if panel == _selected_deploy_panel:
+		return  # 部署选中金框优先
+	if panel.has_meta("own_stylebox"):
+		var sb: StyleBoxFlat = panel.get_meta("own_stylebox") as StyleBoxFlat
+		if sb != null:
+			var border: Color = _slot_border(color)
+			if affordable and not restricted:
+				border.a = 1.0
+			sb.border_color = border
+
+## BU-1：能量不足压暗罩——盖在卡图上、位于角标之下（树序控制绘制层级）。
+func _ensure_energy_dim(panel: Control) -> void:
+	if panel == null or not is_instance_valid(panel):
+		return
+	if panel.get_node_or_null("EnergyDim") != null:
+		return
+	var dim := ColorRect.new()
+	dim.name = "EnergyDim"
+	dim.color = Color(0.0, 0.0, 0.0, 0.45)
+	dim.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	dim.visible = false
+	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	panel.add_child(dim)
+	panel.move_child(dim, 1)
+
+## 部署待选（pending）槽位金框：BattleInputState.pending 变化轮询驱动（点击/1-9 键同链路）。
+func _poll_pending_deploy_selection() -> void:
+	var pend: String = String(BattleInputState.pending_deploy_platform_card_id)
+	if pend == _last_pending_deploy_id:
+		return
+	_last_pending_deploy_id = pend
+	_apply_pending_selection(pend)
+
+func _apply_pending_selection(pend: String) -> void:
+	_refresh_slot_affordability()  # 先复位上一轮选中槽的边框
+	if _selected_deploy_panel != null and is_instance_valid(_selected_deploy_panel):
+		_clear_slot_selection_glow(_selected_deploy_panel)
+	_selected_deploy_panel = null
+	if pend.is_empty():
+		return
+	for panel in _slot_panels:
+		if panel == null or not is_instance_valid(panel):
+			continue
+		var inst: String = String(panel.get_meta("instance_id", ""))
+		var cid: String = String(panel.get_meta("card_id", ""))
+		if (not inst.is_empty() and inst == pend) or (inst.is_empty() and cid == pend):
+			_selected_deploy_panel = panel
+			break
+	if _selected_deploy_panel != null:
+		_apply_slot_selection_glow(_selected_deploy_panel)
+
+func _apply_slot_selection_glow(panel: Control) -> void:
+	if panel == null or not is_instance_valid(panel) or not panel.has_meta("own_stylebox"):
+		return
+	var sb: StyleBoxFlat = panel.get_meta("own_stylebox") as StyleBoxFlat
+	if sb == null:
+		return
+	sb.border_color = Color(DT.COLOR_GOLD.r, DT.COLOR_GOLD.g, DT.COLOR_GOLD.b, 1.0)
+	sb.shadow_color = Color(DT.COLOR_GOLD.r, DT.COLOR_GOLD.g, DT.COLOR_GOLD.b, 0.55)
+	sb.shadow_size = 8
+
+func _clear_slot_selection_glow(panel: Control) -> void:
+	if panel == null or not is_instance_valid(panel) or not panel.has_meta("own_stylebox"):
+		return
+	var sb: StyleBoxFlat = panel.get_meta("own_stylebox") as StyleBoxFlat
+	if sb == null:
+		return
+	sb.shadow_size = 0
+	sb.shadow_color = Color(0, 0, 0, 0)
+
+## BU-1：可部署槽位呼吸微光——战斗中能量充足的战斗卡槽 modulate.a 0.85↔1.0（周期 1.2s）。
+## 尊重 DT.is_motion_reduce()（静止 1.0）；受限灰显/能量不足槽不参与。
+func _process_slot_breathing(delta: float) -> void:
+	var in_battle: bool = BattleManager != null and "battle_active" in BattleManager and BattleManager.battle_active
+	if not in_battle or DT.is_motion_reduce():
+		if _breath_phase != 0.0:
+			_breath_phase = 0.0
+			_reset_slot_breathing()
+		return
+	_breath_phase = fmod(_breath_phase + delta / 1.2, 1.0)
+	var a: float = 0.85 + 0.15 * (0.5 - 0.5 * cos(_breath_phase * TAU))
+	for panel in _slot_panels:
+		if panel == null or not is_instance_valid(panel):
+			continue
+		if not _slot_breath_eligible(panel):
+			if panel.modulate.a != 1.0 and not bool(panel.get_meta("restricted", false)):
+				panel.modulate.a = 1.0
+			continue
+		panel.modulate.a = a
+
+func _slot_breath_eligible(panel: Control) -> bool:
+	if String(panel.get_meta("slot_color", "")) != "green":
+		return false
+	if int(panel.get_meta("card_type", -1)) != GC.CardType.COMBAT_UNIT:
+		return false
+	if bool(panel.get_meta("restricted", false)):
+		return false
+	var cost: float = float(panel.get_meta("energy_cost", 0.0))
+	if cost <= 0.0:
+		return false
+	return EnergyManager != null and EnergyManager.has_method("can_afford") and EnergyManager.can_afford(cost)
+
+func _reset_slot_breathing() -> void:
+	for panel in _slot_panels:
+		if panel == null or not is_instance_valid(panel):
+			continue
+		if bool(panel.get_meta("restricted", false)):
+			continue
+		panel.modulate.a = 1.0
 
 func _on_phase_field_level_up(old_level: int, new_level: int, unspent_points: int) -> void:
 	# 相位场升级给正面提示（玩家可能未察觉等级提升）
@@ -288,7 +585,7 @@ func _format_card_slot_tooltip(color: String, card: CardResource) -> String:
 		if _ir_lv != null and _ir_lv.has_method("get_card_level"):
 			var _ident: String = String(card.instance_id) if not String(card.instance_id).is_empty() else String(card.card_id)
 			_lv_val = clampi(maxi(int(_ir_lv.get_card_level(_ident)), 1), 1, 30)
-		detail_lines.append("等级：Lv.%d%s" % [_lv_val, "（强化 Lv.%d/10）" % int(card.enhance_level) if int(card.enhance_level) > 0 else ""])
+		detail_lines.append("等级：Lv.%d" % _lv_val)
 	if not String(card.type_line).is_empty():
 		detail_lines.append("类型：%s" % String(card.type_line))
 	if not String(card.summary_line).is_empty():
@@ -336,6 +633,7 @@ func _refresh_slot_layout() -> void:
 	for i in range(layout.size()):
 		var entry: Dictionary = layout[i]
 		_update_slot_panel(_slot_panels[i], entry)
+	_refresh_slot_affordability()
 
 func _rebuild_all_slot_panels(layout: Array) -> void:
 	for old in _slot_panels:
@@ -347,6 +645,9 @@ func _rebuild_all_slot_panels(layout: Array) -> void:
 		var panel := _build_slot_panel(entry)
 		slot_section.add_child(panel)
 		_slot_panels.append(panel)
+		# BU-1：重建路径也走增量更新，补 energy_cost/restricted meta + 压暗罩
+		_update_slot_panel(panel, entry)
+	_refresh_slot_affordability()
 	call_deferred("_fit_slots_to_bar")
 
 ## 增量更新单个格子的内容和样式（避免每次重建所有格子）
@@ -376,6 +677,12 @@ func _update_slot_panel(panel: Control, entry: Dictionary) -> void:
 	panel.set_meta("card_type", int(card.card_type) if has_card else -1)
 	panel.set_meta("law_id", law_id)
 	panel.set_meta("law_kind", law_kind)
+	# BU-1：可负担状态机数据——energy_cost/restricted meta + 压暗罩
+	panel.set_meta("energy_cost",
+		float(card.energy_cost) if (has_card and card.card_type == GC.CardType.COMBAT_UNIT) else 0.0)
+	panel.set_meta("restricted",
+		has_card and card.card_type == GC.CardType.COMBAT_UNIT and _is_card_platform_restricted(card))
+	_ensure_energy_dim(panel)
 	# 更新样式
 	# v7.3 修复+性能：每个槽位 panel 用独立的 StyleBoxFlat override，而非改共享 theme stylebox。
 	# 原实现 get_theme_stylebox("panel") 返回 theme 共享实例，直接改 bg_color/border_color 会污染所有
@@ -519,11 +826,11 @@ func _fit_slots_to_bar() -> void:
 		available_h = BAR_FIXED_HEIGHT
 	# 按视口宽度计算槽位可用宽度，扣除固定元素（保守估计，确保不溢出）：
 	# margin(16) + 自动按钮(48) + 图标(48) + 名称区(100) + InstrumentSection间距(12) + 分隔线(2) + HBox间距(6)
-	# v9.3: 额外预留 40px 安全余量，防止 content_margin/边框等隐藏开销累积导致溢出
+	# + BU-1 菜单按钮(48+间距6) + 外层悬浮边距(32) + 40px 安全余量
 	var viewport_width: float = get_viewport_rect().size.x
 	if viewport_width <= 1.0:
 		viewport_width = 1280.0
-	var reserved_w: float = 16.0 + 48.0 + 48.0 + 100.0 + 12.0 + 2.0 + 6.0 + 40.0  # ≈ 272px
+	var reserved_w: float = 16.0 + 48.0 + 48.0 + 100.0 + 12.0 + 2.0 + 6.0 + 48.0 + 6.0 + 32.0 + 40.0  # ≈ 358px
 	var slot_available_w: float = maxf(200.0, viewport_width - reserved_w)
 	var slot_count: int = _slot_panels.size()
 	var separation: float = 6.0
@@ -614,6 +921,7 @@ func _apply_slot_card_labels(panel: Control, card: CardResource) -> void:
 	var cost_badge = CardFrameUi.ensure_cost_corner_badge(panel, true)
 	if cost_badge != null:
 		cost_badge.energy_value = int(card.energy_cost)
+		panel.set_meta("cost_badge_node", cost_badge)
 
 
 func _sync_slot_card_frame(panel: Control, card: CardResource) -> void:
@@ -1179,9 +1487,9 @@ func _append_player_master_tooltip_lines(lines: Array) -> void:
 		for i in range(show_n):
 			var c: Dictionary = card_bd[i] if card_bd[i] is Dictionary else {}
 			var nm: String = String(c.get("name", "?"))
-			var en: int = int(c.get("enhance", 0))
-			var en_str: String = ("+%d" % en) if en > 0 else ""
-			parts.append("%s%s:%d" % [nm, en_str, int(float(c.get("power", 0.0)))])
+			var lvl: int = int(c.get("level", 0))
+			var lvl_str: String = (".Lv%d" % lvl) if lvl > 1 else ""
+			parts.append("%s%s:%d" % [nm, lvl_str, int(float(c.get("power", 0.0)))])
 		if card_bd.size() > show_n:
 			parts.append("...")
 		lines.append("  " + " | ".join(parts))
@@ -1339,7 +1647,8 @@ func _make_phase_level_label_clickable() -> void:
 		_phase_level_label_container.modulate = Color(1.0, 1.0, 1.0, _phase_level_label_container.modulate.a))
 	_phase_level_label_container.z_index = 10
 	# 保证有可点区域（避免布局首帧前 combined_minimum_size 为 0 导致点击无效）
-	_phase_level_label_container.custom_minimum_size = Vector2(120, int(SLOT_FIXED_SIZE.y))
+	# BU-1：高度从 64 收窄到 28——给 NameSection 里新增的能量条行腾空间
+	_phase_level_label_container.custom_minimum_size = Vector2(120, 28)
 	_phase_level_label_container.mouse_filter = Control.MOUSE_FILTER_STOP
 
 	var pip_icon := TextureRect.new()

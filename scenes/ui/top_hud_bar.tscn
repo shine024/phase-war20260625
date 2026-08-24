@@ -1,4 +1,4 @@
-[gd_scene load_steps=3 format=3 uid="uid://top_hud_bar"]
+[gd_scene load_steps=4 format=3 uid="uid://top_hud_bar"]
 
 [ext_resource type="Script" path="res://scenes/ui/top_hud_bar.gd" id="1_script"]
 
@@ -7,6 +7,22 @@ font_size = 14
 font_color = Color(0.91, 0.93, 0.96, 1)
 outline_size = 2
 outline_color = Color(0, 0, 0, 0.8)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_capsule"]
+bg_color = Color(0.04, 0.06, 0.1, 0.78)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0, 0.85, 1, 0.22)
+corner_radius_top_left = 14
+corner_radius_top_right = 14
+corner_radius_bottom_right = 14
+corner_radius_bottom_left = 14
+content_margin_left = 12
+content_margin_right = 12
+content_margin_top = 3
+content_margin_bottom = 3
 
 [node name="TopHudBar" type="Control"]
 anchors_preset = 10
@@ -19,50 +35,61 @@ grow_horizontal = 2
 mouse_filter = 2
 script = ExtResource("1_script")
 
-[node name="CenterSection" type="VBoxContainer" parent="."]
+[node name="Capsule" type="PanelContainer" parent="."]
 layout_mode = 1
-anchors_preset = 8
+anchors_preset = 5
 anchor_left = 0.5
-anchor_top = 0.5
 anchor_right = 0.5
-anchor_bottom = 0.5
-offset_left = -140.0
-offset_top = -22.0
-offset_right = 140.0
-offset_bottom = 22.0
+offset_left = -160.0
+offset_top = 1.0
+offset_right = 160.0
+offset_bottom = 49.0
 grow_horizontal = 2
-grow_vertical = 2
-alignment = 1
+mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_capsule")
+
+[node name="CenterSection" type="VBoxContainer" parent="Capsule"]
+layout_mode = 2
 theme_override_constants/separation = 2
 mouse_filter = 2
 
-[node name="LevelRow" type="HBoxContainer" parent="CenterSection"]
+[node name="LevelRow" type="HBoxContainer" parent="Capsule/CenterSection"]
 layout_mode = 2
 alignment = 1
 theme_override_constants/separation = 8
+mouse_filter = 2
 
-[node name="LevelLabel" type="Label" parent="CenterSection/LevelRow"]
+[node name="LevelLabel" type="Label" parent="Capsule/CenterSection/LevelRow"]
 layout_mode = 2
 label_settings = SubResource("LabelSettings_hud")
 text = "第 1 关"
 mouse_filter = 2
 
-[node name="InfoRow" type="HBoxContainer" parent="CenterSection"]
+[node name="InfoRow" type="HBoxContainer" parent="Capsule/CenterSection"]
 layout_mode = 2
 alignment = 1
 theme_override_constants/separation = 14
+mouse_filter = 2
 
-[node name="WaveLabel" type="Label" parent="CenterSection/InfoRow"]
+[node name="WaveLabel" type="Label" parent="Capsule/CenterSection/InfoRow"]
 layout_mode = 2
 label_settings = SubResource("LabelSettings_hud")
 text = ""
 mouse_filter = 2
 
-[node name="TimeLabel" type="Label" parent="CenterSection/InfoRow"]
+[node name="TimeLabel" type="Label" parent="Capsule/CenterSection/InfoRow"]
 layout_mode = 2
 label_settings = SubResource("LabelSettings_hud")
 text = "⏱ 00:00"
 mouse_filter = 2
+
+[node name="WaveProgressBar" type="ProgressBar" parent="Capsule/CenterSection"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 6)
+mouse_filter = 2
+show_percentage = false
+max_value = 10.0
+value = 0.0
 
 [node name="RightSection" type="HBoxContainer" parent="."]
 layout_mode = 1

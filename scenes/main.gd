@@ -154,12 +154,64 @@ func _ready() -> void:
 
 	# 全局 UI 贴图：关闭按钮等（依赖 PopupLayer 子树已实例化）
 	call_deferred("_apply_global_ui_textures")
+	# BU-7（战斗界面美化）：暗角层（CanvasLayer 35，HUD 40 之下）+ 主菜单真网格
+	_setup_battle_vignette()
+	_setup_menu_grid_pattern()
 	# 非关键初始化延后，降低主界面首帧压力
 	call_deferred("_deferred_non_critical_init")
 	# 启动后释放预置面板实例，转按需加载，减少常驻开销
 	call_deferred("_prune_preloaded_panels")
 	# 记录主界面 TTI
 	call_deferred("_mark_main_interactive")
+
+## BU-7：全屏暗角——radial 渐变（中心透明→边缘黑 0.32），把视线压向战场中心。
+## 静态效果不涉及动效（motion_reduce 不受影响）；mouse_filter=IGNORE 不挡任何交互。
+func _setup_battle_vignette() -> void:
+	var layer := CanvasLayer.new()
+	layer.name = "VignetteLayer"
+	layer.layer = 35
+	add_child(layer)
+	var grad := Gradient.new()
+	grad.colors = PackedColorArray([Color(0, 0, 0, 0.0), Color(0, 0, 0, 0.32)])
+	grad.offsets = PackedFloat32Array([0.55, 1.0])
+	var tex := GradientTexture2D.new()
+	tex.gradient = grad
+	tex.fill = GradientTexture2D.FILL_RADIAL
+	tex.fill_from = Vector2(0.5, 0.5)
+	tex.fill_to = Vector2(1.0, 0.5)
+	tex.width = 512
+	tex.height = 512
+	var tr := TextureRect.new()
+	tr.name = "Vignette"
+	tr.texture = tex
+	tr.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	tr.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	tr.stretch_mode = TextureRect.STRETCH_SCALE
+	layer.add_child(tr)
+
+## BU-7：GridPattern 处置——原 2% 青色块（不是网格）换成程序生成的 32px 真网格纹理
+## （青线 alpha 0.05 平铺），只服务主菜单氛围层；战场内不需要（已有阵营地面着色）。
+func _setup_menu_grid_pattern() -> void:
+	var gp := get_node_or_null("GridPattern")
+	if gp == null:
+		return
+	var img := Image.create_empty(32, 32, false, Image.FORMAT_RGBA8)
+	img.fill(Color(0, 0, 0, 0))
+	var line := Color(0.0, 0.941, 1.0, 0.05)
+	for y in range(32):
+		img.set_pixel(0, y, line)
+	for x in range(32):
+		img.set_pixel(x, 0, line)
+	var tex := ImageTexture.create_from_image(img)
+	var tr := TextureRect.new()
+	tr.name = "GridPatternTex"
+	tr.texture = tex
+	tr.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	tr.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	tr.stretch_mode = TextureRect.STRETCH_TILE
+	gp.get_parent().add_child(tr)
+	gp.get_parent().move_child(tr, gp.get_index() + 1)
+	gp.visible = false
 
 func _apply_global_ui_textures() -> void:
 	if popup_layer:
@@ -461,6 +513,11 @@ func _notify_panel_opened(overlay: Control, panel_key: String) -> void:
 		panel.show_panel(null)
 	elif panel.has_method("_refresh_all"):
 		panel._refresh_all()
+	# 批次三 B4：情报中心首开一句话引导（面板静态实例化，_ready 在游戏启动时触发，
+	# 必须挂打开路径而非面板 _ready）
+	if panel_key == "info":
+		FeatureUnlockPopup.show_once("intel_hub", "情报中心",
+			"这里汇总进化图谱、符文图鉴与敌方情报手册——战斗中遇到看不懂的敌人，来这里查。")
 
 func _close_overlay(overlay: Control, panel_key: String = "") -> void:
 	if overlay == null:
@@ -1010,6 +1067,12 @@ func _all_overlays() -> Array:
 ## P1-8: ESC 语义——只关最上层可见 overlay（PopupLayer 子序最大者），
 ## 全关后战斗中再次按 ESC 切换暂停
 func _close_top_overlay() -> void:
+	# BU-1: 功能抽屉比 overlay 更浅——ESC 先收抽屉
+	if bottom_function_bar != null \
+			and bottom_function_bar.has_method("is_drawer_open") \
+			and bottom_function_bar.is_drawer_open():
+		bottom_function_bar.set_drawer_open(false)
+		return
 	var top: Control = null
 	var top_key: String = ""
 	var top_idx: int = -1
@@ -1045,6 +1108,9 @@ func _close_all_overlays() -> void:
 		if ov == afk_overlay:
 			_reset_afk_panel_visibility(false)
 		ov.visible = false
+	# BU-1：功能抽屉随全关一并收起（战斗开场序列调用本函数时抽屉不该残留在战场上）
+	if bottom_function_bar != null and bottom_function_bar.has_method("set_drawer_open"):
+		bottom_function_bar.set_drawer_open(false, false)
 	if bottom_function_bar:
 		bottom_function_bar.notify_panel_closed("")
 

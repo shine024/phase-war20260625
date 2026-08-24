@@ -3,12 +3,22 @@
 ## Container 无法强制布局它。位置通过 follow_host() 跟随宿主卡牌的右上角。
 extends Control
 
+const DT = preload("res://resources/design_tokens.gd")
+
 var energy_value: int = 0:
 	set(v):
 		energy_value = v
 		_text = "%d⚡" % v
 		_text_size_known = false
 		_rect_known = false
+		queue_redraw()
+
+## BU-1：能量不足警示色——true 时费用文字由金色转红（槽位可负担状态机驱动）
+var warn: bool = false:
+	set(v):
+		if warn == v:
+			return
+		warn = v
 		queue_redraw()
 
 var _text: String = ""
@@ -115,6 +125,7 @@ func _draw() -> void:
 		_bg_style.bg_color = Color(0.0, 0.0, 0.0, 0.55)
 		_bg_style.set_corner_radius_all(3)
 	draw_style_box(_bg_style, Rect2(1.0, 1.0, ts.x + 3.0, ts.y + 1.0))
-	# 深色描边 + 金黄色文字
+	# 深色描边 + 金黄色文字（能量不足时转 DT.COLOR_DANGER 红）
+	var text_color: Color = Color(1.0, 0.85, 0.30, 1.0) if not warn else DT.COLOR_DANGER
 	font.draw_string_outline(get_canvas_item(), pos, _text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, 1, Color(0.0, 0.0, 0.0, 0.95))
-	font.draw_string(get_canvas_item(), pos, _text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Color(1.0, 0.85, 0.30, 1.0))
+	font.draw_string(get_canvas_item(), pos, _text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, text_color)

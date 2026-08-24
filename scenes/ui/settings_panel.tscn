@@ -209,3 +209,27 @@ layout_mode = 2
 theme_override_colors/font_color = Color(0.88, 0.92, 0.98, 1)
 theme_override_font_sizes/font_size = 14
 text = "关闭屏幕震动"
+
+[node name="SectionBattleUi" type="Label" parent="Margin/VBoxMain/Scroll/VBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.024, 0.714, 0.831, 0.9)
+theme_override_font_sizes/font_size = 14
+text = "—— 战斗界面 ——"
+
+[node name="HudAutoHideRow" type="HBoxContainer" parent="Margin/VBoxMain/Scroll/VBox"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="HudAutoHideLabel" type="Label" parent="Margin/VBoxMain/Scroll/VBox/HudAutoHideRow"]
+custom_minimum_size = Vector2(110, 0)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.88, 0.92, 0.98, 1)
+theme_override_font_sizes/font_size = 14
+text = "日志自动隐藏"
+
+[node name="HudAutoHideCheck" type="CheckButton" parent="Margin/VBoxMain/Scroll/VBox/HudAutoHideRow"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.88, 0.92, 0.98, 1)
+theme_override_font_sizes/font_size = 14
+tooltip_text = "战斗中战斗日志默认隐藏，有新战报时滑入提示 3 秒。\n鼠标移到日志区域可保持查看。关闭后日志常驻显示。"
+text = "战斗中仅新战报时提示"

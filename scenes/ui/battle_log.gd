@@ -17,12 +17,37 @@ const _REFRESH_SEC: float = 0.3        # 合并刷新间隔
 const _COLLAPSED_LINES: int = 1        # 折叠时显示行数
 const _EXPANDED_LINES: int = 5         # 展开时显示行数
 
+# ── BU-8（战斗界面美化）：情景化 peek 模式 ──
+# 战斗中默认隐藏（战场让渡 96px）；新消息滑入 3s 收回；鼠标探入日志条原位
+# （矩形外扩 12px 热区）保持展开，移开 0.6s 收回。设置面板"战斗界面自动隐藏"可关。
+# 注：计划原稿的"屏幕下缘 24px 热区"与悬浮相位仪栏（部署槽）热区冲突，改为日志条原位热区。
+const SETTINGS_PATH: String = "user://settings.cfg"
+const SETTINGS_SECTION: String = "settings"
+const PEEK_HOLD_SEC: float = 3.0       # 新消息驻留时长
+const HOVER_LEAVE_DELAY: float = 0.6   # 离开热区后收回延迟
+const SLIDE_PX: float = 90.0           # 滑出位移（向上）
+
 var _entries: Array[Dictionary] = []   # {text, color}
 var _dirty: bool = false
 var _refresh_acc: float = 0.0
 var _expanded: bool = false
 var _log_label: RichTextLabel = null
 var _toggle_btn: Button = null
+var _in_battle: bool = false
+var _auto_hide: bool = true
+var _peek_hold: float = 0.0
+var _hover_grace: float = 0.0          # >0 = 离开热区宽限期计时中
+var _hovering: bool = false
+var _base_top: float = 0.0
+var _base_bottom: float = 0.0
+var _slide_tween: Tween = null
+
+## 读取持久化开关（settings.cfg 同键，缺省开）。
+static func is_auto_hide_enabled() -> bool:
+	var cfg := ConfigFile.new()
+	if cfg.load(SETTINGS_PATH) != OK:
+		return true
+	return bool(cfg.get_value(SETTINGS_SECTION, "hud_auto_hide", true))
 
 func _ready() -> void:
 	# 半透明黑条样式 + 左侧 4px 青色色条（通过 border_width_left）
@@ -71,6 +96,10 @@ func _ready() -> void:
 	modulate.a = 0.0
 	visible = false
 	set_process(false)
+	# BU-8：缓存锚定基准偏移（滑出动画在其上偏移，不改锚）
+	_base_top = offset_top
+	_base_bottom = offset_bottom
+	_auto_hide = is_auto_hide_enabled()
 	# 监听战斗事件
 	if SignalBus:
 		SignalBus.unit_killed.connect(_on_unit_killed)
@@ -87,13 +116,31 @@ func _ready() -> void:
 func _on_battle_started() -> void:
 	_entries.clear()
 	_dirty = true
-	modulate.a = 1.0
-	visible = true
 	set_process(true)
+	_in_battle = true
+	_auto_hide = is_auto_hide_enabled()
+	_expanded = false
+	if _toggle_btn != null:
+		_toggle_btn.text = "▼"
+	if _auto_hide:
+		# BU-8：peek 模式——战斗中默认隐藏，新消息滑入
+		_set_shown(false, false)
+	else:
+		modulate.a = 1.0
+		visible = true
 
 func _on_battle_ended(_player_won: bool) -> void:
 	# 战斗结束停止采集，但保留最后日志 2s 供查看，然后淡出
 	set_process(false)
+	_in_battle = false
+	if _slide_tween != null and _slide_tween.is_valid():
+		_slide_tween.kill()
+		_slide_tween = null
+		offset_top = _base_top
+		offset_bottom = _base_bottom
+	if not visible or modulate.a <= 0.01:
+		_entries.clear()
+		return
 	var tw := create_tween()
 	tw.tween_interval(2.0)
 	tw.tween_property(self, "modulate:a", 0.0, 0.5)
@@ -143,8 +190,18 @@ func _add_entry(text: String, color: Color) -> void:
 	while _entries.size() > _MAX_ENTRIES:
 		_entries.pop_front()
 	_dirty = true
+	_on_entry_added()
+
+## BU-8：新消息 peek——auto_hide 战斗中滑入驻留 3s；悬停/展开态保持显示。
+func _on_entry_added() -> void:
+	if not _auto_hide or not _in_battle:
+		return
+	_set_shown(true)
+	if not _hovering and not _expanded:
+		_peek_hold = PEEK_HOLD_SEC
 
 func _process(delta: float) -> void:
+	_process_peek(delta)
 	_refresh_acc += delta
 	if _refresh_acc < _REFRESH_SEC:
 		return
@@ -152,6 +209,76 @@ func _process(delta: float) -> void:
 	if _dirty:
 		_refresh_display()
 		_dirty = false
+
+## BU-8：peek 状态机——悬停热区（日志条矩形外扩 12px）保持展开，移开 0.6s 收回；
+## 新消息驻留倒计时到点收回。展开态（▼）由玩家显式控制不自动收。
+func _process_peek(delta: float) -> void:
+	if not _auto_hide or not _in_battle:
+		return
+	var hovering_now: bool = get_global_rect().grow(12.0).has_point(get_global_mouse_position())
+	if hovering_now:
+		_hovering = true
+		_hover_grace = 0.0
+		if modulate.a < 1.0:
+			_set_shown(true)
+		return
+	if _hovering:
+		# 离开热区：0.6s 宽限后收回
+		_hover_grace += delta
+		if _hover_grace >= HOVER_LEAVE_DELAY:
+			_hovering = false
+			_hover_grace = 0.0
+			if not _expanded:
+				_set_shown(false)
+		return
+	if _expanded:
+		return
+	if _peek_hold > 0.0:
+		_peek_hold -= delta
+		if _peek_hold <= 0.0:
+			_set_shown(false)
+
+## BU-8：滑入/滑出（modulate + 上移 90px，SINE；motion_reduce 直接切换）。
+func _set_shown(shown: bool, animated: bool = true) -> void:
+	if _slide_tween != null and _slide_tween.is_valid():
+		_slide_tween.kill()
+		_slide_tween = null
+	if shown:
+		visible = true
+		if not animated or DT.is_motion_reduce():
+			modulate.a = 1.0
+			offset_top = _base_top
+			offset_bottom = _base_bottom
+			return
+		modulate.a = 0.0
+		offset_top = _base_top - SLIDE_PX
+		offset_bottom = _base_bottom - SLIDE_PX
+		_slide_tween = create_tween().set_parallel(true)
+		_slide_tween.tween_property(self, "modulate:a", 1.0, DT.MOTION_FADE_IN)\
+			.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+		_slide_tween.tween_property(self, "offset_top", _base_top, DT.MOTION_FADE_IN)\
+			.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+		_slide_tween.tween_property(self, "offset_bottom", _base_bottom, DT.MOTION_FADE_IN)\
+			.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	else:
+		if not animated or DT.is_motion_reduce():
+			modulate.a = 0.0
+			visible = false
+			offset_top = _base_top
+			offset_bottom = _base_bottom
+			return
+		_slide_tween = create_tween().set_parallel(true)
+		_slide_tween.tween_property(self, "modulate:a", 0.0, DT.MOTION_FADE_OUT)\
+			.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+		_slide_tween.tween_property(self, "offset_top", _base_top - SLIDE_PX, DT.MOTION_FADE_OUT)\
+			.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+		_slide_tween.tween_property(self, "offset_bottom", _base_bottom - SLIDE_PX, DT.MOTION_FADE_OUT)\
+			.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+		_slide_tween.chain().tween_callback(func():
+			if modulate.a <= 0.01:
+				visible = false
+				offset_top = _base_top
+				offset_bottom = _base_bottom)
 
 func _refresh_display() -> void:
 	if _entries.is_empty():
@@ -172,6 +299,11 @@ func _on_toggle_pressed() -> void:
 	_expanded = not _expanded
 	_toggle_btn.text = "▲" if _expanded else "▼"
 	_dirty = true
+	# BU-8：手动展开取消 peek 倒计时；收起时若非悬停则随即收回
+	if _expanded:
+		_peek_hold = 0.0
+	elif _auto_hide and _in_battle and not _hovering:
+		_set_shown(false)
 
 # =========================================================================
 #  辅助

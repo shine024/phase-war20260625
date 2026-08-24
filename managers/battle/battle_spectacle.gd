@@ -225,7 +225,7 @@ func _play_nuclear_warning(_params: Dictionary) -> void:
 	_title_label.visible = true
 	_title_label.modulate.a = 0.0
 	_title_label.position.x = (get_viewport().get_visible_rect().size.x - _title_label.size.x) / 2.0
-	_title_label.position.y = 110
+	_title_label.position.y = _title_banner_y()
 	var tw2: Tween = create_tween()
 	tw2.tween_property(_title_label, "modulate:a", 1.0, 0.15)
 	tw2.tween_interval(0.4)
@@ -374,7 +374,7 @@ func _play_enemy_warning_flash(flash_color: Color, title_text: String) -> void:
 	_title_label.visible = true
 	_title_label.modulate.a = 0.0
 	_title_label.position.x = (get_viewport().get_visible_rect().size.x - _title_label.size.x) / 2.0
-	_title_label.position.y = 110
+	_title_label.position.y = _title_banner_y()
 	var tw2: Tween = create_tween()
 	tw2.tween_property(_title_label, "modulate:a", 1.0, 0.2)
 	tw2.tween_interval(0.5)
@@ -464,6 +464,17 @@ func _show_combo_label(text: String) -> void:
 	tw.tween_property(_combo_label, "modulate:a", 0.0, 0.35)
 	tw.tween_callback(func(): _combo_label.visible = false)
 
+## BU-10（战斗界面美化）：标题横幅垂直槽位——播报条（y96~146）显示中时
+## 下移至 y152 避让（垂直序：波次胶囊 y1~49 → 播报 y96~146 → 横幅 y110/152）。
+func _title_banner_y() -> float:
+	var tree: SceneTree = get_tree()
+	if tree == null or tree.root == null:
+		return 110.0
+	var announcer: Control = tree.root.get_node_or_null("Main/HudLayer/TopCenterAnnouncer") as Control
+	if announcer != null and announcer.visible:
+		return 152.0
+	return 110.0
+
 ## BOSS 登场：0.2s 全屏暗化 + 顶部标题横幅 + medium_shake
 func _play_boss_appear(title_text: String) -> void:
 	_ensure_overlay()
@@ -484,7 +495,7 @@ func _play_boss_appear(title_text: String) -> void:
 	_title_label.position.x = (get_viewport().get_visible_rect().size.x - _title_label.size.x) / 2.0
 	_title_label.position.y = -60
 	var tw2: Tween = create_tween()
-	tw2.tween_property(_title_label, "position:y", 110, 0.2).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tw2.tween_property(_title_label, "position:y", _title_banner_y(), 0.2).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	tw2.parallel().tween_property(_title_label, "modulate:a", 1.0, 0.15)
 	tw2.tween_interval(1.5)
 	tw2.tween_property(_title_label, "modulate:a", 0.0, 0.35)

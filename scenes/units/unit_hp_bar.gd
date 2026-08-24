@@ -10,13 +10,15 @@ const HEIGHT_EXPANDED: float = BAR_HEIGHT
 
 # ── 血条上方状态图标行（buff/debuff，v9.x 新增）──
 # 数据由 UnitStatusCollector 从 parent（单位）meta 收集，单位 _physics_process 每 0.3s 调 refresh_status_icons。
-const STATUS_ICON_SIZE: float = 11.0        # 基准图标边长（px）
-const STATUS_ICON_GAP: float = 2.0          # 图标间距
-const STATUS_ROW_Y: float = -22.0           # 图标行垂直中心（护盾条运行时顶约 y=-14，留 8px）
+# BU-6（战斗界面美化）：11→14px、间距 2→3、上限 10→8（超出折叠 "+N"）——远距离可辨识。
+const STATUS_ICON_SIZE: float = 14.0       # 基准图标边长（px）
+const STATUS_ICON_GAP: float = 3.0         # 图标间距
+const STATUS_ROW_Y: float = -24.0          # 图标行垂直中心（图标变大随之上移，避开护盾条）
 const STATUS_ROW_MAX_W: float = BAR_WIDTH - 4.0  # 行宽上限，超出自适应缩小
 const STATUS_DEBUFF_BUFF_GAP: float = 4.0   # debuff 组与 buff 组之间的额外间隔
-const STATUS_MAX_ICONS: int = 10            # 单位最多显示图标数（超出按 debuff 优先丢弃）
+const STATUS_MAX_ICONS: int = 8             # 单位最多显示图标数（超出按 debuff 优先丢弃 + "+N"）
 const STATUS_MIN_ICON_SIZE: float = 5.0     # 自适应缩放下限
+const STATUS_OVERFLOW_LABEL_W: float = 18.0 # "+N" 溢出标签预留宽
 
 var _ratio: float = 1.0
 var _target_ratio: float = 1.0
@@ -49,22 +51,30 @@ var _status_sig: String = ""      # signature 去重（状态不变则跳过重�
 var _status_font: Font = null     # 层数数字字体（_ready 从 HpLabel 缓存）
 
 ## 血条颜色配置
+## BU-6：底板 bg 从中性灰改阵营色暗化版——我方青蓝/敌方暗红，远看即分敌我
+## （不再只靠 Fill 填充色区分阵营）；Fill 保持 2px 内缩自然露出"描边"效果。
 var _player_colors: Dictionary = {
 	"high": Color(0.2, 0.85, 0.4, 1.0),    # 高血量 - 绿色
 	"medium": Color(0.9, 0.85, 0.2, 1.0),  # 中血量 - 黄色
 	"low": Color(0.95, 0.3, 0.25, 1.0),    # 低血量 - 红色
-	"bg": Color(0.12, 0.12, 0.15, 0.95)    # 背景
+	"bg": Color(0.05, 0.18, 0.22, 0.95)    # 底板 - 我方青蓝暗化
 }
 
 var _enemy_colors: Dictionary = {
 	"high": Color(0.95, 0.3, 0.25, 1.0),   # 高血量 - 红色
 	"medium": Color(0.95, 0.6, 0.2, 1.0),  # 中血量 - 橙色
 	"low": Color(0.8, 0.2, 0.15, 1.0),     # 低血量 - 深红
-	"bg": Color(0.12, 0.12, 0.15, 0.95)    # 背景
+	"bg": Color(0.22, 0.08, 0.08, 0.95)    # 底板 - 敌方暗红
 }
 
 var _selected: bool = false
 var _selection_border: Polygon2D = null
+
+# ── BU-6：精英/BOSS 框（金描边 + boss 左右小三角）──
+var _elite_frame_nodes: Array = []
+var _elite_tier: int = 0  # 0=普通 1=精英 2=boss
+var _status_overflow: int = 0      # 状态图标溢出数（"+N" 显示）
+var _status_overflow_x: float = 0.0
 
 func _ready() -> void:
 	position = Vector2(0, -40)
@@ -223,6 +233,7 @@ func get_bar_height() -> float:
 func set_side(is_player: bool) -> void:
 	_is_player = is_player
 	_update_view()
+	_refresh_elite_frame()
 	# HP 文字固定白色 + 黑描边（在 _ready 设定），不跟随阵营色，
 	# 否则白字变绿/红叠在同色血条上看不清。
 	_sync_process_state()
@@ -356,19 +367,20 @@ func set_shield(shield_value: float, max_hp_val: float) -> void:
 	var shield_h: float = 6.0
 
 	var sb_pts: PackedVector2Array = _shield_bg_pts
-	sb_pts.set(0, Vector2(-half_w + 2, -shield_h - 8.0))
-	sb_pts.set(1, Vector2(half_w - 2, -shield_h - 8.0))
-	sb_pts.set(2, Vector2(half_w - 2, -shield_h - 2.0))
-	sb_pts.set(3, Vector2(-half_w + 2, -shield_h - 2.0))
+	# BU-6：护盾条与血条顶边统一 1px 间距（原 0.5px 错位），视觉合成一块整体牌
+	sb_pts.set(0, Vector2(-half_w + 2, -shield_h - 8.5))
+	sb_pts.set(1, Vector2(half_w - 2, -shield_h - 8.5))
+	sb_pts.set(2, Vector2(half_w - 2, -shield_h - 2.5))
+	sb_pts.set(3, Vector2(-half_w + 2, -shield_h - 2.5))
 	_shield_bg.polygon = sb_pts
 
 	var shield_fill_w: float = BAR_WIDTH * shield_ratio - 4.0
 	if shield_fill_w < 0.0: shield_fill_w = 0.0
 	var sf_pts: PackedVector2Array = _shield_pts
-	sf_pts.set(0, Vector2(-half_w + 3, -shield_h - 7.0))
-	sf_pts.set(1, Vector2(-half_w + 3 + shield_fill_w, -shield_h - 7.0))
-	sf_pts.set(2, Vector2(-half_w + 3 + shield_fill_w, -shield_h - 3.0))
-	sf_pts.set(3, Vector2(-half_w + 3, -shield_h - 3.0))
+	sf_pts.set(0, Vector2(-half_w + 3, -shield_h - 7.5))
+	sf_pts.set(1, Vector2(-half_w + 3 + shield_fill_w, -shield_h - 7.5))
+	sf_pts.set(2, Vector2(-half_w + 3 + shield_fill_w, -shield_h - 3.5))
+	sf_pts.set(3, Vector2(-half_w + 3, -shield_h - 3.5))
 	_shield_fill.polygon = sf_pts
 
 	var shield_color: Color
@@ -394,7 +406,9 @@ func trigger_shield_gain(amount: float, max_hp_val: float) -> void:
 # ============================================================================
 
 ## 外部驱动：收集 parent（单位）当前状态，变化才重绘。parent 无效时清空。
+## BU-6：顺带刷新精英/BOSS 框（meta 在 spawn 后才写入，0.3s 轮询保证拾取）。
 func refresh_status_icons() -> void:
+	_refresh_elite_frame()
 	var unit: Node = get_parent()
 	if unit == null or not is_instance_valid(unit):
 		if not _status_layout.is_empty() or _status_sig != "":
@@ -413,8 +427,11 @@ func refresh_status_icons() -> void:
 	queue_redraw()
 
 ## 计算每个图标的 rect：debuff 在左、buff 在右，组间额外间隔；总宽超限自适应缩小。
+## BU-6：超出上限的图标折叠为行尾 "+N"（预留标签宽度参与缩放计算）。
 func _layout_status_row() -> void:
 	_status_layout.clear()
+	_status_overflow = 0
+	_status_overflow_x = 0.0
 	if _status_entries.is_empty():
 		return
 	var debuff: Array = []
@@ -426,6 +443,7 @@ func _layout_status_row() -> void:
 			debuff.append(e)
 	var ordered: Array = debuff + buff
 	var count: int = mini(ordered.size(), STATUS_MAX_ICONS)
+	_status_overflow = maxi(ordered.size() - count, 0)
 	var debuff_kept: int = mini(debuff.size(), count)
 	var buff_kept: int = count - debuff_kept
 	var both_groups: bool = debuff_kept > 0 and buff_kept > 0
@@ -434,6 +452,8 @@ func _layout_status_row() -> void:
 	var total_w: float = float(count) * icon_size + float(maxi(count - 1, 0)) * gap
 	if both_groups:
 		total_w += STATUS_DEBUFF_BUFF_GAP
+	if _status_overflow > 0:
+		total_w += STATUS_ICON_GAP + STATUS_OVERFLOW_LABEL_W
 	# 自适应缩小（复用 card_grid_buff_strip 的算法思路）
 	if total_w > STATUS_ROW_MAX_W:
 		var sc: float = STATUS_ROW_MAX_W / total_w
@@ -442,6 +462,8 @@ func _layout_status_row() -> void:
 	total_w = float(count) * icon_size + float(maxi(count - 1, 0)) * gap
 	if both_groups:
 		total_w += STATUS_DEBUFF_BUFF_GAP
+	if _status_overflow > 0:
+		total_w += STATUS_ICON_GAP + STATUS_OVERFLOW_LABEL_W
 	var x_cursor: float = -total_w * 0.5
 	for i in range(count):
 		var e: Dictionary = ordered[i]
@@ -453,11 +475,11 @@ func _layout_status_row() -> void:
 			# debuff→buff 组界处加额外间隔
 			if both_groups and i == debuff_kept - 1:
 				x_cursor += STATUS_DEBUFF_BUFF_GAP
+	if _status_overflow > 0:
+		_status_overflow_x = x_cursor + STATUS_ICON_GAP
 
 ## 血条根 Node2D 的 _draw：仅画状态图标行（HP/护盾由子 Polygon2D 节点自绘，互不干扰）。
 func _draw() -> void:
-	if _status_layout.is_empty():
-		return
 	for e in _status_layout:
 		var d: Dictionary = e
 		var r: Rect2 = d.get("rect", Rect2())
@@ -480,3 +502,60 @@ func _draw() -> void:
 			draw_string(_status_font, pos + Vector2(0, 1), txt, HORIZONTAL_ALIGNMENT_LEFT, -1.0, fs, outline)
 			draw_string(_status_font, pos + Vector2(0, -1), txt, HORIZONTAL_ALIGNMENT_LEFT, -1.0, fs, outline)
 			draw_string(_status_font, pos, txt, HORIZONTAL_ALIGNMENT_LEFT, -1.0, fs, Color.WHITE)
+	# BU-6：溢出状态折叠标签 "+N"（行尾，暗白 10px 黑描边）
+	if _status_overflow > 0 and _status_font != null:
+		var otxt: String = "+%d" % _status_overflow
+		var opos := Vector2(_status_overflow_x, STATUS_ROW_Y + 4.0)
+		var ooutline := Color(0.0, 0.0, 0.0, 0.95)
+		draw_string(_status_font, opos + Vector2(1, 0), otxt, HORIZONTAL_ALIGNMENT_LEFT, -1.0, 10, ooutline)
+		draw_string(_status_font, opos + Vector2(-1, 0), otxt, HORIZONTAL_ALIGNMENT_LEFT, -1.0, 10, ooutline)
+		draw_string(_status_font, opos + Vector2(0, 1), otxt, HORIZONTAL_ALIGNMENT_LEFT, -1.0, 10, ooutline)
+		draw_string(_status_font, opos, otxt, HORIZONTAL_ALIGNMENT_LEFT, -1.0, 10, Color(0.75, 0.8, 0.88, 0.95))
+
+
+## BU-6（战斗界面美化）：精英/BOSS 框——读 parent meta target_priority_tag
+## （enemy_unit.apply_elite_affixes / 相位师产兵均写此标记）。精英=金描边底板；
+## boss=描边+左右金色小三角。节点 z=-1 画在 Bg/Fill 之下，只露出边缘。
+func _refresh_elite_frame() -> void:
+	var unit: Node = get_parent()
+	var tier: int = 0
+	if unit != null and is_instance_valid(unit) and unit.has_meta("target_priority_tag"):
+		var tag: String = String(unit.get_meta("target_priority_tag", ""))
+		if tag == "boss":
+			tier = 2
+		elif tag == "elite":
+			tier = 1
+	if tier == _elite_tier:
+		return
+	_elite_tier = tier
+	for n in _elite_frame_nodes:
+		if n != null and is_instance_valid(n):
+			n.queue_free()
+	_elite_frame_nodes.clear()
+	if tier <= 0:
+		return
+	var gold := Color(0.98, 0.85, 0.35, 0.9 if tier == 1 else 1.0)
+	# 金描边底板：比血条大 4px、上方多盖 8px 把护盾行包进同一块牌
+	var border := Polygon2D.new()
+	border.name = "EliteBorder"
+	border.z_index = -1
+	var bw: float = BAR_WIDTH + 4.0
+	var top_y: float = -(BAR_HEIGHT * 0.5) - 8.0
+	var bot_y: float = BAR_HEIGHT * 0.5 + 2.0
+	border.polygon = PackedVector2Array([
+		Vector2(-bw * 0.5, top_y), Vector2(bw * 0.5, top_y),
+		Vector2(bw * 0.5, bot_y), Vector2(-bw * 0.5, bot_y),
+	])
+	border.color = gold
+	add_child(border)
+	_elite_frame_nodes.append(border)
+	if tier >= 2:
+		for dir in [-1.0, 1.0]:
+			var tri := Polygon2D.new()
+			tri.name = "BossTriangle"
+			var cx: float = dir * (BAR_WIDTH * 0.5 + 2.0)
+			tri.polygon = PackedVector2Array([
+				Vector2(cx, -5.0), Vector2(cx, 5.0), Vector2(cx + dir * 7.0, 0.0)])
+			tri.color = gold
+			add_child(tri)
+			_elite_frame_nodes.append(tri)

@@ -23,9 +23,19 @@ var _lane_y_center: float = 360.0
 var _accept_y_min: float = 200.0
 var _accept_y_max: float = 520.0
 var _slot_step_x: float = 42.0
+## BU-5（战斗界面美化）：部署区可视化高亮层（见文件尾 SlotHighlight 内部类）
+var _highlight: Node = null
 
 func _ready() -> void:
 	_rebuild_centers()
+	_ensure_highlight_layer()
+
+func _ensure_highlight_layer() -> void:
+	if _highlight != null and is_instance_valid(_highlight):
+		return
+	_highlight = SlotHighlight.new()
+	_highlight.name = "SlotHighlightLayer"
+	add_child(_highlight)
 
 
 ## 刷敌前可再调一次，避免早于本节点 `_ready` 时槽位数组仍为空
@@ -114,3 +124,102 @@ func is_player_slot_occupied(idx: int, player_root: Node2D) -> bool:
 ## 3×3 布局无禁放位，此函数恒返回 false（保留接口兼容）。
 static func is_edge_excluded_slot(_slot_idx: int, _side: String = "player") -> bool:
 	return false
+
+
+## BU-5（战斗界面美化，2026-08-24）：部署区可视化高亮层。
+## pending 部署时亮起我方 3×3 格：空格绿框 10% 绿底 / 占用格红框 8% 红底 / 悬停格金框 15% 底，
+## 0.15s 淡入淡出（modulate.a）。悬停检测复用 find_nearest_player_slot（与真实部署判定同一条链，
+## 亮哪格=点哪格）。红绿语义与背包拖拽批次二标准一致，零学习成本。尊重 DT.is_motion_reduce()。
+## z=-2：在地面着色(-9)/光环(-5)之上、单位(0)之下。
+class SlotHighlight extends Node2D:
+	const DT = preload("res://resources/design_tokens.gd")
+	const Layout = preload("res://scripts/card_grid_battle_layout.gd")
+
+	const FADE_SEC: float = 0.15
+	const OCC_REFRESH_SEC: float = 0.25
+	const RECT_H: float = 58.0
+
+	var _grid: Node = null
+	var _alpha: float = 0.0
+	var _hover_slot: int = -1
+	var _occupied_cache: Array = []
+	var _occ_refresh_acc: float = 1.0
+	var _player_units: Node = null
+	var _free_sb: StyleBoxFlat = null
+	var _occ_sb: StyleBoxFlat = null
+	var _hov_sb: StyleBoxFlat = null
+
+	func _ready() -> void:
+		z_index = -2
+		_grid = get_parent()
+		_free_sb = _make_sb(Color(0.32, 0.85, 0.45, 0.8), Color(0.1, 0.5, 0.3, 0.10))
+		_occ_sb = _make_sb(Color(0.9, 0.3, 0.3, 0.6), Color(0.5, 0.1, 0.1, 0.08))
+		_hov_sb = _make_sb(
+			Color(DT.COLOR_GOLD.r, DT.COLOR_GOLD.g, DT.COLOR_GOLD.b, 0.95),
+			Color(DT.COLOR_GOLD.r, DT.COLOR_GOLD.g, DT.COLOR_GOLD.b, 0.15))
+
+	func _process(delta: float) -> void:
+		# 本文件会被纯数据链 preload（master_platform_power 等）——禁用 autoload 全局名
+		# （--script 测试模式无 autoload，编译期 Identifier not found），改运行时按路径解析
+		var bis: Node = get_node_or_null("/root/BattleInputState")
+		var pending: bool = bis != null \
+			and not String(bis.get("pending_deploy_platform_card_id")).is_empty()
+		var target: float = 1.0 if pending else 0.0
+		if DT.is_motion_reduce():
+			_alpha = target
+		else:
+			_alpha = move_toward(_alpha, target, delta / FADE_SEC)
+		visible = _alpha > 0.01
+		modulate.a = _alpha
+		if not visible:
+			return
+		_refresh_occupancy(delta)
+		if pending:
+			_update_hover()
+		else:
+			_hover_slot = -1
+		queue_redraw()
+
+	## 占用态 0.25s 节流刷新（部署/死亡瞬间有延迟可接受，省每帧遍历）
+	func _refresh_occupancy(delta: float) -> void:
+		_occ_refresh_acc += delta
+		if _occ_refresh_acc < OCC_REFRESH_SEC:
+			return
+		_occ_refresh_acc = 0.0
+		if _player_units == null or not is_instance_valid(_player_units):
+			var bf: Node = _grid.get_parent() if _grid != null else null
+			_player_units = bf.get_node_or_null("PlayerUnits") if bf != null else null
+			if _player_units == null:
+				return
+		_occupied_cache.clear()
+		for i in range(_grid.SLOT_COUNT):
+			_occupied_cache.append(_grid.is_player_slot_occupied(i, _player_units))
+
+	func _update_hover() -> void:
+		if _grid == null:
+			return
+		_hover_slot = _grid.find_nearest_player_slot(to_local(get_global_mouse_position()))
+
+	func _draw() -> void:
+		if _grid == null or _occupied_cache.size() == 0:
+			return
+		var centers: Array = _grid.player_slot_centers
+		var n: int = mini(centers.size(), _occupied_cache.size())
+		var w: float = Layout.battle_card_width_px() * 1.05
+		for i in range(n):
+			var c: Vector2 = centers[i]
+			var rect := Rect2(c.x - w * 0.5, c.y - RECT_H * 0.5, w, RECT_H)
+			if i == _hover_slot and not _occupied_cache[i]:
+				draw_style_box(_hov_sb, rect)
+			elif _occupied_cache[i]:
+				draw_style_box(_occ_sb, rect)
+			else:
+				draw_style_box(_free_sb, rect)
+
+	func _make_sb(border: Color, fill: Color) -> StyleBoxFlat:
+		var sb := StyleBoxFlat.new()
+		sb.bg_color = fill
+		sb.border_color = border
+		sb.set_border_width_all(2)
+		sb.set_corner_radius_all(6)
+		return sb

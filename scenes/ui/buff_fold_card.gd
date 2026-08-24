@@ -51,8 +51,9 @@ func _build_fold_card(title: String, expanded: bool, head_bg: Color) -> Dictiona
 	card.custom_minimum_size = Vector2(172, 0)
 	card.mouse_filter = Control.MOUSE_FILTER_PASS
 	var st := StyleBoxFlat.new()
+	# BU-10：边框色对齐胶囊语言（青 0.22）；圆角保留 6 档位（172px 小卡用 14 过大）
 	st.bg_color = Color(0.05, 0.07, 0.11, 0.88)
-	st.border_color = Color(0.2, 0.3, 0.45, 0.25)
+	st.border_color = Color(0.0, 0.85, 1.0, 0.22)
 	st.border_width_bottom = 1
 	st.corner_radius_top_left = 6
 	st.corner_radius_top_right = 6

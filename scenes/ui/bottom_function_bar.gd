@@ -36,6 +36,12 @@ signal btn_law_pressed
 # 当前高亮的按钮 key
 var _active_btn_key: String = ""
 
+## BU-1（战斗界面美化，2026-08-24）：抽屉模式——15 个功能按钮平时收起，
+## 由相位仪栏右端「菜单」按钮展开；面板打开后自动收起，ESC 优先关抽屉。
+var _drawer_open: bool = false
+var _drawer_tween: Tween = null
+var _badge_counts: Dictionary = {}
+
 ## 设为 true 时左侧功能按钮不显示中文，便于只看图标。
 ## 上线/正常游玩必须为 false——新手无法仅凭图标分辨 11 个功能（背包/成长/商店等）。
 const DEBUG_HIDE_BOTTOM_BAR_TEXT := false
@@ -110,6 +116,81 @@ func _ready() -> void:
 	var divider := get_node_or_null("Margin/HBox/Divider")
 	if divider:
 		divider.visible = false
+	# BU-1：抽屉化——默认收起 + 悬浮卡片样式（与相位仪栏同一 PanelStyles 语言）
+	_apply_float_frame_style()
+	visible = false
+
+## BU-1：抽屉开合。展开 = 淡入 + 自底生长（0.2s SINE OUT），收起反向 0.15s。
+## scale 以底边为支点（容器只管布局不改 scale，安全）；尊重 DT.is_motion_reduce() 直接切换。
+func is_drawer_open() -> bool:
+	return _drawer_open
+
+func toggle_drawer() -> void:
+	set_drawer_open(not _drawer_open)
+
+func set_drawer_open(open: bool, animated: bool = true) -> void:
+	if open == _drawer_open:
+		return
+	_drawer_open = open
+	if _drawer_tween != null and _drawer_tween.is_valid():
+		_drawer_tween.kill()
+		_drawer_tween = null
+	if open:
+		visible = true
+		if not animated or DT.is_motion_reduce():
+			modulate.a = 1.0
+			scale = Vector2.ONE
+			return
+		pivot_offset = _bottom_pivot()
+		modulate.a = 0.0
+		scale = Vector2(1.0, 0.85)
+		_drawer_tween = create_tween().set_parallel(true)
+		_drawer_tween.tween_property(self, "modulate:a", 1.0, DT.MOTION_FADE_IN)\
+			.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+		_drawer_tween.tween_property(self, "scale", Vector2.ONE, DT.MOTION_FADE_IN)\
+			.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	else:
+		if not animated or DT.is_motion_reduce():
+			visible = false
+			modulate.a = 1.0
+			scale = Vector2.ONE
+			return
+		pivot_offset = _bottom_pivot()
+		_drawer_tween = create_tween().set_parallel(true)
+		_drawer_tween.tween_property(self, "modulate:a", 0.0, DT.MOTION_FADE_OUT)\
+			.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+		_drawer_tween.tween_property(self, "scale", Vector2(1.0, 0.85), DT.MOTION_FADE_OUT)\
+			.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+		_drawer_tween.chain().tween_callback(func() -> void:
+			if not _drawer_open and is_instance_valid(self):
+				visible = false
+				modulate.a = 1.0
+				scale = Vector2.ONE)
+
+## 底边支点：隐藏期间容器不给布局（size 可能为 0），回退 custom_minimum_size。
+func _bottom_pivot() -> Vector2:
+	var w: float = size.x if size.x > 1.0 else custom_minimum_size.x
+	var h: float = size.y if size.y > 1.0 else custom_minimum_size.y
+	return Vector2(w * 0.5, h)
+
+## BU-1：抽屉面板悬浮卡片化（12 圆角 + accent 发光，与相位仪栏同语言）。
+func _apply_float_frame_style() -> void:
+	var sb: StyleBoxFlat = PanelStyles.make_panel_frame(DT.COLOR_ACCENT_CYAN)
+	sb.bg_color.a = 0.90
+	sb.content_margin_left = 6
+	sb.content_margin_right = 6
+	sb.content_margin_top = 2
+	sb.content_margin_bottom = 2
+	add_theme_stylebox_override("panel", sb)
+
+## BU-1：把红点总数透传给相位仪栏「菜单」按钮（同 BattleBottomBar 下的兄弟节点）。
+func _notify_menu_badge() -> void:
+	var total: int = 0
+	for v in _badge_counts.values():
+		total += maxi(int(v), 0)
+	var ib: Node = get_node_or_null("../BottomInstrumentBar")
+	if ib != null and ib.has_method("set_menu_badge"):
+		ib.set_menu_badge(total)
 
 ## 创建左侧功能按钮（12 个全部直接显示）
 func _build_left_buttons() -> void:
@@ -126,6 +207,9 @@ func _build_left_buttons() -> void:
 			btn.pressed.connect(func():
 				_set_active_btn("")
 				emit_signal(signal_name)
+				# BU-1：从抽屉点开的入口——面板已动作，抽屉自动收起
+				if _drawer_open:
+					set_drawer_open(false)
 			)
 		else:
 			btn.pressed.connect(func():
@@ -195,6 +279,9 @@ func _make_func_button(label_text: String) -> Button:
 func set_btn_badge(key: String, count: int) -> void:
 	if not _btn_map.has(key):
 		return
+	# BU-1：红点计数聚合——透传给相位仪栏「菜单」按钮的总角标
+	_badge_counts[key] = count
+	_notify_menu_badge()
 	var btn: Button = _btn_map[key]
 	var bg := btn.get_node_or_null("BadgeBg") as ColorRect
 	var bd := btn.get_node_or_null("Badge") as Label
@@ -262,6 +349,9 @@ func _on_func_btn_pressed(key: String, signal_name: String) -> void:
 	else:
 		_set_active_btn(key)
 	emit_signal(signal_name)
+	# BU-1：从抽屉点开的入口——信号发出后自动收起（面板已弹出）
+	if _drawer_open:
+		set_drawer_open(false)
 
 ## 设置高亮按钮（传入 "" 清除所有高亮）
 func _set_active_btn(key: String) -> void:

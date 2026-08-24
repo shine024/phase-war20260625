@@ -24,6 +24,7 @@ const _DEFAULT_DIFFICULTY_IDX := 1
 @onready var _hc_check: CheckButton = get_node_or_null("Margin/VBoxMain/Scroll/VBox/HighContrastRow/HighContrastCheck")
 @onready var _lt_check: CheckButton = get_node_or_null("Margin/VBoxMain/Scroll/VBox/LargeTypeRow/LargeTypeCheck")
 @onready var _mr_check: CheckButton = get_node_or_null("Margin/VBoxMain/Scroll/VBox/MotionReduceRow/MotionReduceCheck")
+@onready var _hud_hide_check: CheckButton = get_node_or_null("Margin/VBoxMain/Scroll/VBox/HudAutoHideRow/HudAutoHideCheck")
 @onready var _content_vbox: VBoxContainer = get_node_or_null("Margin/VBoxMain")
 
 
@@ -55,6 +56,9 @@ func _ready() -> void:
 		_lt_check.toggled.connect(_on_accessibility_changed)
 	if _mr_check:
 		_mr_check.toggled.connect(_on_accessibility_changed)
+	# BU-8：战斗日志自动隐藏开关
+	if _hud_hide_check:
+		_hud_hide_check.toggled.connect(_on_hud_hide_toggled)
 
 
 func _load_and_apply() -> void:
@@ -69,6 +73,7 @@ func _load_and_apply() -> void:
 	var hc: bool = false
 	var lt: bool = false
 	var mr: bool = false
+	var hud_hide: bool = true
 	if err == OK:
 		master = cfg.get_value(SECTION, "master_volume", master)
 		sfx = cfg.get_value(SECTION, "sfx_volume", sfx)
@@ -78,6 +83,7 @@ func _load_and_apply() -> void:
 		hc = cfg.get_value(SECTION, "high_contrast", hc)
 		lt = cfg.get_value(SECTION, "large_type", lt)
 		mr = cfg.get_value(SECTION, "motion_reduce", mr)
+		hud_hide = cfg.get_value(SECTION, "hud_auto_hide", hud_hide)
 	diff_idx = clampi(diff_idx, 0, _DIFFICULTY_IDS.size() - 1)
 	# 回填控件
 	if _master_slider != null:
@@ -96,6 +102,8 @@ func _load_and_apply() -> void:
 		_lt_check.button_pressed = lt
 	if _mr_check != null:
 		_mr_check.button_pressed = mr
+	if _hud_hide_check != null:
+		_hud_hide_check.button_pressed = hud_hide
 	# 应用
 	_apply_master(master)
 	_apply_sfx(sfx)
@@ -187,6 +195,12 @@ func _on_accessibility_changed(_toggled: bool) -> void:
 	_save()
 
 
+# ===== 战斗界面（BU-8）=====
+## 战斗日志 peek 开关——下场战斗生效（battle_log 在 battle_started 时重读配置）。
+func _on_hud_hide_toggled(_enabled: bool) -> void:
+	_save()
+
+
 # ===== 持久化 =====
 func _save() -> void:
 	var cfg := ConfigFile.new()
@@ -198,6 +212,7 @@ func _save() -> void:
 	cfg.set_value(SECTION, "high_contrast", _hc_check.button_pressed if _hc_check else false)
 	cfg.set_value(SECTION, "large_type", _lt_check.button_pressed if _lt_check else false)
 	cfg.set_value(SECTION, "motion_reduce", _mr_check.button_pressed if _mr_check else false)
+	cfg.set_value(SECTION, "hud_auto_hide", _hud_hide_check.button_pressed if _hud_hide_check else true)
 	cfg.save(SETTINGS_PATH)
 
 

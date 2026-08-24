@@ -1,7 +1,9 @@
 extends Control
 ## v7.x 顶部 HUD 顶栏（44px 横贯全屏，无整条背景）
-## 结构：Control > Margin > HBox[CenterSection(关卡+绿点+波次+计时), RightSection(撤退+开始+倍速+暂停+返回)]
+## 结构：Control > Capsule(胶囊底板,BU-3) > CenterSection(关卡+波次+计时+波次进度条), RightSection(撤退+开始+倍速+暂停+返回)
 ## 数据源：关卡名(GameManager信号) / 波次(BattleManager轮询) / 计时(本地自增) / 绿点(SignalBus战斗信号)
+
+const DT = preload("res://resources/design_tokens.gd")
 
 signal btn_start_battle_pressed
 signal btn_pause_pressed
@@ -12,6 +14,8 @@ signal btn_back_pressed
 var _level_label: Label = null
 var _wave_label: Label = null
 var _time_label: Label = null
+var _wave_progress: ProgressBar = null
+var _wave_fill_style: StyleBoxFlat = null
 var _bm_cache: Node = null  ## v9.x（3c）：BattleManager 引用缓存
 var _retreat_btn: Button = null
 var _pause_btn: Button = null
@@ -45,6 +49,7 @@ func _ready() -> void:
 	_apply_chip_styles()
 	_apply_button_icons()
 	_apply_button_styles()
+	_ensure_wave_progress_style()
 	# 强制确保 SpeedBtn 有可见文字（防被其他逻辑覆盖）
 	if _speed_btn:
 		_speed_btn.text = "×1"
@@ -54,9 +59,10 @@ func _ready() -> void:
 
 
 func _cache_nodes() -> void:
-	_level_label = get_node_or_null("CenterSection/LevelRow/LevelLabel") as Label
-	_wave_label = get_node_or_null("CenterSection/InfoRow/WaveLabel") as Label
-	_time_label = get_node_or_null("CenterSection/InfoRow/TimeLabel") as Label
+	_level_label = get_node_or_null("Capsule/CenterSection/LevelRow/LevelLabel") as Label
+	_wave_label = get_node_or_null("Capsule/CenterSection/InfoRow/WaveLabel") as Label
+	_time_label = get_node_or_null("Capsule/CenterSection/InfoRow/TimeLabel") as Label
+	_wave_progress = get_node_or_null("Capsule/CenterSection/WaveProgressBar") as ProgressBar
 	# v7.x: 5 按钮组从顶栏根节点迁到 RightSection HBoxContainer（右锚，防 1280 以下分辨率按钮掉屏）
 	_retreat_btn = get_node_or_null("RightSection/RetreatBtn") as Button
 	_pause_btn = get_node_or_null("RightSection/PauseBtn") as Button
@@ -263,6 +269,8 @@ func _refresh_wave() -> void:
 	var bm := _bm_cache
 	if bm == null or not _in_battle:
 		_wave_label.text = ""
+		if _wave_progress != null:
+			_wave_progress.visible = false
 		return
 	var wave_idx := 0
 	var wave_total := 0
@@ -282,6 +290,31 @@ func _refresh_wave() -> void:
 		_wave_label.text = "%s 波次 %d/%d" % [dots, wave_idx, wave_total]
 	else:
 		_wave_label.text = "波次 %d" % wave_idx
+	# BU-3：波次进度条——当前波/总波；>80% 转金色（收尾提示），非战斗/无波次隐藏
+	if _wave_progress != null:
+		if _in_battle and wave_total > 0:
+			_wave_progress.visible = true
+			_wave_progress.max_value = maxf(float(wave_total), 1.0)
+			_wave_progress.value = clampf(float(wave_idx), 0.0, float(wave_total))
+			if _wave_fill_style != null:
+				var ratio: float = float(wave_idx) / maxf(float(wave_total), 1.0)
+				_wave_fill_style.bg_color = DT.COLOR_GOLD if ratio >= 0.8 else DT.COLOR_ACCENT_CYAN
+		else:
+			_wave_progress.visible = false
+
+
+## BU-3：波次进度条样式（底 PANEL_DEEP + 填充青/GOLD 可变）。复用同一 StyleBox 实例改色。
+func _ensure_wave_progress_style() -> void:
+	if _wave_progress == null or _wave_fill_style != null:
+		return
+	var bg := StyleBoxFlat.new()
+	bg.bg_color = DT.COLOR_PANEL_DEEP
+	bg.set_corner_radius_all(3)
+	_wave_fill_style = StyleBoxFlat.new()
+	_wave_fill_style.bg_color = DT.COLOR_ACCENT_CYAN
+	_wave_fill_style.set_corner_radius_all(3)
+	_wave_progress.add_theme_stylebox_override("background", bg)
+	_wave_progress.add_theme_stylebox_override("fill", _wave_fill_style)
 
 
 # ========== 关卡名 ==========
@@ -312,6 +345,8 @@ func _on_battle_started() -> void:
 
 func _on_battle_ended(_won) -> void:
 	_in_battle = false
+	if _wave_progress != null:
+		_wave_progress.visible = false
 
 ## v9.x: 波次推进时刷新 dots 显示（替代每 0.25s 轮询）
 func _on_wave_changed(_wave_index: int) -> void:

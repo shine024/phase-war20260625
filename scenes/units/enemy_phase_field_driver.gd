@@ -22,6 +22,8 @@ const EnemyMasterInstruments = preload("res://data/enemy_master_instruments.gd")
 const EnemyMasterSkillTree = preload("res://data/enemy_master_skill_tree.gd")
 # v18.c: 相位师等级 flat（等级属性加成换 flat 统一，全项目同表）
 const CardGrowthConfig = preload("res://data/card_growth_config.gd")
+# BU-9: 摧毁演出用命中特效工厂
+const VfxImpactFactory = preload("res://scripts/battle/vfx_impact_factory.gd")
 
 ## 兜底：EnemyArchetypes 生成（当没有装备数据时使用）
 const USE_FALLBACK_SPAWN: bool = true
@@ -94,6 +96,11 @@ var _tier2_cap: int = 20
 var _exhaustion_cap: int = 30
 ## 缓存 setup 时设置的 Body 原始 tint，供疲劳视觉反馈叠加暗化使用
 var _base_body_tint: Color = Color.WHITE
+
+## BU-2（战斗界面美化）：基地视觉——底座光环（敌方红）/核心 HP 条/护盾段/受击反馈 + 反向外环
+const BaseAura = preload("res://scenes/units/base_aura.gd")
+var _aura: Node2D = null
+var _body_halo: Sprite2D = null
 
 # ─── v9.1 相位师 traits 战斗化 + buff 闪光 ───
 ## traits 效果缓存（setup 时计算，产兵时复用）。
@@ -326,6 +333,8 @@ func setup(master_config: Dictionary) -> void:
 	var mode_str := "装备模式" if _has_equipment else "经典模式"
 	# [LOG-v5.1] print("[EnemyPhaseDriver] 相位师 %s 基地建立 (HP=%d, era=%d, limit=%d, exhaust=%d, interval=%.1f) [%s]" % [master_name, int(max_hp), era, _unit_limit, _exhaustion_cap, spawn_interval, mode_str])
 	_apply_body_visual_from_master(master_config)
+	# BU-2：底座光环（敌方红）+ 核心 HP 条 + 双层反向旋转外环
+	_ensure_base_visuals()
 	# v9.1: 应用相位师 traits 加成到现有敌方单位 + 缓存供产兵复用
 	_apply_trait_effects()
 
@@ -574,6 +583,31 @@ func _apply_body_visual_from_master(master_config: Dictionary) -> void:
 			s *= _PHASE_BODY_MAX_EXTENT_PX / maxf(1.0, rendered)
 		spr.scale = Vector2(s, s)
 
+## BU-2：底座光环（敌方红，半径按 _PHASE_BODY_MAX_EXTENT_PX 派生）+ 核心 HP 条 +
+## 双层反向旋转外环（复用 Body 贴图 ×1.15 半透明，零新美术）。
+func _ensure_base_visuals() -> void:
+	if _aura == null or not is_instance_valid(_aura):
+		_aura = BaseAura.new()
+		_aura.name = "BaseAura"
+		add_child(_aura)
+	var radius: float = maxf(56.0, _PHASE_BODY_MAX_EXTENT_PX * 0.45)
+	_aura.setup(Color(0.95, 0.25, 0.25, 1.0), radius, "%s 核心" % master_name,
+		clampf(radius * 1.8, 100.0, 200.0), Color(0.85, 0.25, 0.25, 1.0))
+	_aura.update_hp(hp, max_hp)
+	_aura.set_shield(_boss_shield / maxf(max_hp, 1.0))
+	var spr := get_node_or_null("Body") as Sprite2D
+	if spr == null or spr.texture == null:
+		return
+	if _body_halo == null or not is_instance_valid(_body_halo):
+		_body_halo = Sprite2D.new()
+		_body_halo.name = "BodyHalo"
+		_body_halo.z_index = -1
+		add_child(_body_halo)
+	_body_halo.texture = spr.texture
+	_body_halo.flip_h = spr.flip_h
+	_body_halo.scale = spr.scale * 1.15
+	_body_halo.modulate = Color(spr.modulate.r, spr.modulate.g, spr.modulate.b, 0.5)
+
 
 static func _player_company_faction_to_enemy_visual_faction(company_faction: String) -> String:
 	var m: Dictionary = {
@@ -619,6 +653,8 @@ func set_master_skill_engine(engine: RefCounted) -> void:
 func _process(delta: float) -> void:
 	if _body != null:
 		_body.rotation += deg_to_rad(rotate_speed_deg) * delta
+	if _body_halo != null and is_instance_valid(_body_halo):
+		_body_halo.rotation -= deg_to_rad(12.0) * delta
 	if not _battle_active or not is_inside_tree():
 		return
 	var tree := get_tree()
@@ -1416,6 +1452,10 @@ func take_damage(amount: float, attacker: Variant = null) -> void:
 		var reflect: float = actual * _boss_thorn_pct
 		if attacker.has_method("take_damage"):
 			attacker.take_damage(reflect, self)
+	# BU-2：核心 HP 条 + 受击白闪/punch
+	if _aura != null and is_instance_valid(_aura):
+		_aura.update_hp(maxf(hp, 0.0), max_hp)
+		_aura.flash_hit()
 	if SignalBus:
 		SignalBus.enemy_phase_driver_hp_changed.emit(maxf(hp, 0.0), max_hp)
 		SignalBus.unit_damaged.emit(self, false, amount, global_position)
@@ -1425,6 +1465,9 @@ func take_damage(amount: float, attacker: Variant = null) -> void:
 ## v8.5: boss 护盾/反伤由 EnemyMasterSkillEngine 设置（shield_base/thorn_armor 类被动）
 func add_boss_shield(amount: float) -> void:
 	_boss_shield += amount
+	# BU-2：护盾段同步到核心 HP 条（相对 max_hp 的占比）
+	if _aura != null and is_instance_valid(_aura):
+		_aura.set_shield(_boss_shield / maxf(max_hp, 1.0))
 func set_boss_thorn(pct: float) -> void:
 	_boss_thorn_pct = pct
 func get_boss_shield() -> float:
@@ -1436,6 +1479,12 @@ func _on_destroyed() -> void:
 	_respawn_queue.clear()
 	if SignalBus and SignalBus.unit_died.is_connected(_on_any_unit_died):
 		SignalBus.unit_died.disconnect(_on_any_unit_died)
+	# BU-9：摧毁演出——命中特效大档 + 强震屏（胜利演出仍由 BattleSpectacle 承接）
+	var host: Node2D = get_parent() as Node2D
+	if host != null:
+		VfxImpactFactory.spawn_layered_impact(host, global_position, 0, false)
+		if host.has_method("request_screen_shake"):
+			host.request_screen_shake(8.0, 0.5)
 	# v8.5: 死亡类被动（death_explosion 等）必须在 queue_free 前触发（此时 driver 仍有效）
 	if _master_skill_engine != null and _master_skill_engine.has_method("on_boss_destroyed"):
 		_master_skill_engine.on_boss_destroyed()
