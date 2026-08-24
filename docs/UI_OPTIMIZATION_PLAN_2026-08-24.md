@@ -92,10 +92,14 @@
 
 ### 轨道 P3 · 美观性（最后做一致性，美观永远最后）
 
-- [x] **B12 硬编码颜色清剿**（L，按 TOP 文件分批）⚠️ 部分完成 2026-08-25：首批 72 处收口
-      ——16 处精确值对齐既有 token + 56 处经 7 个新 token（HOVER_WHITE/TRANSPARENT/
-      BACKDROP/BACKDROP_DEEP/CHIP_BG/CHIP_BORDER/LIST_BG）提升；剩余 ~551 处 bespoke
-      语义色需逐处判断，记档为后续批次（零视觉风险优先原则下不盲替）。
+- [x] **B12 硬编码颜色清剿**（L，按 TOP 文件分批）✅ 2026-08-25 两轮收官（零风险可收区已穷尽）：
+      首批 72 处（16 精确对齐 + 7 新 token）+ 第二轮 75 处（5 精确 + 5 alpha=0 渲染等价 +
+      29 处 d≤0.02 微收敛→12 个最近 token + 36 处高频值≥5 次提 6 新 token：
+      ICE_TEXT/SLATE_A80/SLATE_A70/TEXT_SOFT/GOLD_SOFT/SLATE_DIM_A85，值原样零变化）。
+      **剩余 402 处（71%）真 bespoke 终裁保留**：Python 全量色差分层证实远离任何 token
+      （d>0.05）的面板手工微调色（深浅底变体/状态色梯度），零视觉风险原则下不强行统一——
+      待面板级重构时逐处语义化。工具 `tools/b12_round2_replace.py`（跳注释/保 CRLF/自动补
+      preload）。两轮累计 147 处收敛，GdUnit 145/145 + capture 零错误。
 - [x] **B13 面板框架收尾**（M）✅ 2026-08-25：3 处迁移 `make_panel_frame(accent)`
       （feature_unlock 弹窗 / intel_reveal 弹窗紫框 / resource_info 青框）；
       其余 7 个手写面板逐一判定豁免并记档理由（纯内容条带/无框浮层/战场 HUD）。
