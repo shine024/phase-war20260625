@@ -3069,3 +3069,93 @@ ui_unified_check 全部通过、headless main.tscn 18s 零 SCRIPT ERROR。
 - **验证**：`tests/weapon_pairing_audit_smoke.gd` 9 组断言全过
   （含本日修复：preload 链触达 unit_stats_table 的 ModificationRegistry autoload 引用，
   --script 模式须 _initialize 内运行时 load()，同 v20.11 踩坑方案）。
+
+## UI 批次三 P1 轨道（2026-08-25）：易用性——按钮态补齐 + 手型光标 + 快捷键体系
+
+> 承接 UI 批次三 P0 轨道（同日，见上）。计划：`docs/UI_OPTIMIZATION_PLAN_2026-08-24.md` B6/B7/B8。
+
+**B6 按钮态补齐**（"能点/不能点/是不是卡了"三态可辨）：
+- `card_info_panel._add_action_button` 手写三态样式收口 `PanelStyles.make_button_styles` 工厂，
+  补齐原缺失的 disabled/focus 两态（净删 ~15 行手写样式）；
+- growth/evolution/modification 三面板的名册行按钮与筛选 chip 补齐缺失的 **pressed 态**
+  （列表行有选中态语义，不硬套工厂，按各自面板色补第三态）。
+
+**B7 非 Button 可点击控件手型光标**：普查 scenes/ui 全部 gui_input 挂载点（13 文件），
+真可点击但缺光标的 4 处补 `CURSOR_POINTING_HAND`：phase_slot 槽位（slot_clicked）、
+feature_unlock_popup / growth_panel 技能面板 / phase_instrument_selector 三处点击可关的背板。
+**判定跳过**（记档防误补）：backpack_panel（仅注释提及）、battle_click_overlay（战场选点
+目标区域，非按钮语义）、modification_panel（_gui_input 为键盘导航）。
+
+**B8 快捷键体系**：战前快捷键从 7 组扩到 12 组——新增 **M=地图 / I=情报 / C=图鉴 / A=成就 /
+H=帮助**（字母键不与战斗中 1-9 部署、SPACE 暂停冲突）；底栏左排 14 个面板按钮**原来完全无
+tooltip**，新增 `SHORTCUT_TOOLTIPS` 常量逐键挂"用途一句话 + 快捷键宣传"（学《朝露》
+"按两次就记住"；键位与 main.gd _input 战前 match 一一对应，改键位须两处同步）。
+已知边界（与既有 B/F/Q/T/L 同源，未另修）：_input 先于 GUI 焦点触发，若未来设置面板
+加入文本输入框，打字会误开面板——届时需加"焦点控件是 TextEdit 时跳过"守卫。
+
+**验证**：ui_p1_validation ALL PASS（47 文件编译，CHANGED_SCRIPTS 补录 phase_slot /
+phase_instrument_selector）、ui_batch2_validation ALL PASS（41 文件）、ui_unified_check
+全部通过；9 个改动文件 gdparse 全过。肉眼验收（按钮三态观感/手型光标/快捷键手感）待跑游戏。
+
+## UI 批次三 P2/P3 轨道（2026-08-25）：包容性+美观性——分辨率/字号清零/色弱双编码/颜色 token/框架收口
+
+> 承接 UI 批次三 P0/P1 轨道（同日，见上）。计划：`docs/UI_OPTIMIZATION_PLAN_2026-08-24.md`
+> B9-B14。至此批次三 14 批全部执行完毕（B5 高频路径步数审计为独立调研项，未含）。
+
+**B9 分辨率实测矩阵**：新增截图工具 `tools/ui_b9_capture.gd`（SceneTree 脚本，环境变量
+UI_B9_W/H 控制分辨率，首帧 window_set_size、300 帧截屏到 `user://ui_b9/`）。
+**环境限制记档**：`--script` 模式下 `--resolution` 被忽略、`window_set_size` 不生效，窗口恒
+4:3——实取 1024×768 / 1280×960 两档（4:3 是比 16:10/21:9 更极端的横向挤压，通过即强信号）。
+人工验收通过：顶栏资源条、底栏 14 按钮+槽位、战场区域均无剪裁无出血（截图存
+`docs/ui_b9_screenshots/`）；16:10/21:9 专档留 F5 手动路径（工具已支持）。
+
+**B10 字号合规清零**（铁律：中文≥12、11px 禁用、10px 仅限纯数字/英文角标）：
+- .gd 45 处分类清零：17 处纯数字/`#N` 序号/★/EQUIP 角标保留 10px 改走
+  `DT.FONT_SIZE_XSMALL`，27 处中文标签升 `DT.FONT_SIZE_SMALL`（12）；
+- .tscn 32 处（9 文件）10px 全升 12；world_map 区块标题 1 处升 12；
+- combo_status_strip / evolution_atlas_view / intel_harvest_display / leaderboard_presenter
+  4 文件补 DT preload；vfx_audit_matrix 等工具/测绘面板豁免记档。11px 保持为零。
+
+**B11 色弱双编码**：数值涨跌统一 ▲/▼ 前缀双编码——growth_panel delta_lbl、
+evolution_panel diff_str（红涨绿跌色 + 符号，不再只靠颜色辨向）；拖拽红绿框已有边框语义不动。
+
+**B12 硬编码颜色清剿（首批 72 处，零视觉风险原则）**：
+- 16 处与既有 token 精确同值的字面量直接对齐；
+- 56 处高频重复字面量经 7 个新 DT token 收口：`COLOR_HOVER_WHITE / COLOR_TRANSPARENT /
+  COLOR_BACKDROP / COLOR_BACKDROP_DEEP / COLOR_CHIP_BG / COLOR_CHIP_BORDER / COLOR_LIST_BG`
+  （覆盖 hover 文字白/全透明/遮罩两档/筛选 chip 底与边/列表底六大语义），落点 16 文件；
+- **残留记档**：~551 处 bespoke 语义色（面板专属配色/渐变/发光）需逐处语义判断，不盲替，
+  列为后续独立批次。验收线"硬编码 <100"未达，按零风险优先主动降级为部分完成。
+
+**B13 面板框架收口**：3 处迁移 `PanelStyles.make_panel_frame(accent)`——feature_unlock_popup
+（首解锁弹窗）、intel_reveal_popup（紫框情报揭示）、resource_info_panel（青框资源条）；
+其余手写 StyleBox 面板逐一判定豁免记档（纯内容条带/无框浮层/战场 HUD 定制，共 7 处）。
+
+**B14 动效复核**：抽查弹窗/飘字/背板淡入淡出——`DT.MOTION_FADE_IN/FADE_OUT/POP` 三档在位、
+`is_motion_reduce()` 消费点在位；2 处与 token 同值的裸秒数对换 token，其余达标。
+
+**验证**：ui_p1_validation ALL PASS（51 文件编译，CHANGED_SCRIPTS 补录 P2/P3 轨道 4 文件：
+resource_info_panel / intel_reveal_popup / backpack_panel / world_map）、
+ui_batch2_validation ALL PASS（41 文件）、ui_unified_check 全部通过。
+肉眼验收（4:3 截图两档已过；字号/双编码/颜色 token 实机观感）待跑游戏。
+
+## UI 批次三 B5（2026-08-25）：高频路径步数审计——调研结论"链路健康"，唯一摩擦记档 B5b
+
+> 批次三最后一个未执行项（P0 轨道调研批）。纯代码走读审计，无代码改动。
+
+**三链路步数**（依据 main.gd 快捷键表 + store/backpack/deploy 交互代码实测走读）：
+- **买卡** 2-3 操作：开商店(T/底栏) → 势力tab(0-1) → 购买(1)。无确认弹窗、买完即入背包
+  +toast，"能一次完成绝不分两次" ✓；
+- **装备** 3 操作/卡：开背包(B) → 点卡 → 装备按钮（自动入首个空绿槽 + 自动关弹窗 ✓）；
+  或拖拽指定槽 1 手势/卡；Esc 键盘关面板零点击；
+- **部署** 2 操作：战中数字键 1-9 直选第 N 个有卡绿槽（P2-14 已做，免底栏鼠标寻路）→
+  点战场位置。RTS 标准下限，不可合并 ✓。Enter/Space 一键开战 ✓。
+
+**批量操作评估**：
+- 批量出售：**不适用**——出售/拆解已随蓝图体系移除（2026-08-22），重复卡=独立养成实例
+  （InstanceRegistry 铁律），非垃圾资产，无清理需求；
+- 批量装配：全链路唯一真实摩擦——9 空绿槽逐张填 = 9×3 操作。记 **B5b 建议案**（未实施）：
+  背包工具栏「一键填槽」，按战力降序取未装备实例填空绿槽（复用 `_try_equip_card`
+  首选空槽逻辑）。涉及 backpack_panel（并行会话热点文件），待拍板后单独成批。
+
+至此 UI 批次三 14 批全部执行完毕（B12 颜色清剿为部分完成，残留 ~551 处记档）。
