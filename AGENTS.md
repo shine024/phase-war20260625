@@ -383,6 +383,8 @@ tests/
 
 **新增卡牌缺卡面图时**，用 AI API 自动生成，完整流程见 `docs/ART_PIPELINE_AI_ICON_GENERATION.md`。
 
+**相位师（30 位 master）美术已定稿（2026-08-24）**：EA 走 C 方案——战场共享底座图+势力染色、产兵复用时代原型卡图、世界地图仅 tooltip 名字，**零美术工作量**；1.0 前升级专属立绘（届时方案 A/B 二选一）。现状核实与升级路径见 `docs/PHASE_MASTER_ART_PLAN.md`。勿在 EA 阶段给 master 加专属立绘挂载点。
+
 **快速要点**：
 - 卡面图 `vis_enemy/player_NNN.png`（512×512 RGBA 透明底；敌方原图朝左，我方=水平翻转版）
 - 编号体系：A段001-028 / B段030-035 / C段036-071 / D段专属命名 / E段072-081 / F段082-087 / G段110-114
@@ -435,6 +437,7 @@ User-driven collaboration. Every task follows: **Question → Options → Decisi
 
 | 系统 | 状态 | 说明 |
 |------|------|------|
+| 强化①（手动强化轴 enhance_level 0-10） | **已退役** | 2026-08-24 v20.12 等级统一：`card_level`（战斗卡等级 1-30，上阵攒经验自动升）成为唯一玩家卡等级轴。`reinforcement_panel.gd/.tscn` 删除、`BlueprintManager.apply_reinforcement` 删除、card_info_panel 强化 Tab 恒隐藏（TabIdx/节点保留防索引错位）。进化等级门槛改读 card_level（E1=5/E2=10）；进化执行=变成全新卡（等级/经验/改造/词条槽全部重置，仅 inherit_bonus/hp_floor/情报奖励保留）；光环/能力星级 = card_level÷3 映射 1-10；掉落卡星级改发起始经验；教学任务"强化尝试"改升级驱动（`_on_card_level_up` 转发 `enhancement_completed` 信号）。敌方配装档位（enemy_loadout_tiers 的 enhance_level 3/6/10）与攻击公式的 enhance 乘区**不受影响**（内部敌方轴）；旧档存量 enhance_level 保留为惰性数值，无提升入口 |
 | 合成系统（SynthesisManager + synthesis_recipes） | **已整体删除** | 2026-08-23 P2-7（批次2c）：无 UI 的僵尸系统，科研点唯一 sink。managers/synthesis/ 与 data/synthesis_recipes.gd 删除；fsm 的 preload/实例/初始化/getter/存档段移除；signal_bus 双信号与 audio 消费删除；旧档 synthesis_state key 静默跳过 |
 | 科研点（research_points） | **已退役** | 2026-08-23 P2-7（批次2c）：ID_RESEARCH_POINTS 常量/定义/关卡产出、BasicResourceManager 收支臂、BlueprintManager 四函数、能量掉落降级补偿、faction_war 事件奖励、四处 UI 展示全部移除；旧档 total_research_points key 静默跳过 |
 | 相位法则系统（PhaseLawManager + active_law_effects） | **已整体删除** | 2026-08-23 P2-7（批次2a+2b）：法则卡获取/展示链路、红蓝槽法则装配、主动法则施放链（battle_click_overlay 选点/ActiveLawEffects 效果/演出/播报）、敌方法则减益（enemy_unit/swarm_enemy_slot）、知识值掉落与战斗快照全部移除。starter 符文发放迁至 PhaseInstrumentManager.clear_slots_for_new_game。autoload 32→31；SignalBus 三条法则信号（active_law_cast_at/phase_law_runtime_changed/phase_law_cast）删除；旧档 phase_law 存档段 key 级静默跳过；buff 折叠卡 BUFF 段改显已装备符文 |
@@ -462,6 +465,12 @@ User-driven collaboration. Every task follows: **Question → Options → Decisi
 - `scripts/ui_asset_loader.gd`：`assets/card_icons/law.png` 缺失
 - `data/phase_instruments.gd`：pi_r_free_deploy、pi_umbra_01~03 图标缺失（pi_umbra_04 在）
 
+### 已知弹道路由问题（2026-08-25 核对，P1 已修复）
+
+- **P1 敌方曲射/空射单位弹道走直线（已修复 v9.5）**：`enemy_unit.gd:1328-1332` 路由顺序是直射 batch 先判（`wt in [0,4,1,2]`）、曲射 batch 后判。`stats.weapon_type` 经 UCT 层为新枚举值（INDIRECT=1/AERIAL=2），与 legacy 列表 `[0,4,1,2]` 撞值——1/2 被直射 batch 抢走，弧线分支永不触发。**修复**：① `_default_enemy_slot_weapon_type` 引入 `combat_kind` 消歧义（legacy 1/2/3 vs 新枚举 1/2/3）；② `_do_attack` 路由调序——曲射 batch 先于直射 batch（与玩家侧 `construct_unit_ai` 对齐）。改动文件：`enemy_unit.gd` 三处（函数签名+调用点+路由顺序）。
+- **P2 边界退化**：双 batch 均不可用时 wt=1/2 行为取决于退化路径，极罕见。
+- **P3 死代码**：`swarm_enemy_slot.weapon_types` 数组永远空（data 层无 `weapon_types` 字段），多武器轮换永不触发；`enemy_unit.gd:1340` 敌方霰弹分支死代码（无 wt=5 敌原型）。
+
 ## 版本历史
 
 版本变更记录（v6.1 → v20 + 2026-08-16~22 补录节，2026-06 至 2026-08）见 **`docs/CHANGELOG.md`**。
@@ -480,10 +489,10 @@ User-driven collaboration. Every task follows: **Question → Options → Decisi
 
 ### 三大铁律
 
-**铁律 1：养成操作（强化/改造/进化）必须落在实例卡上，严禁直接改模板。**
+**铁律 1：养成操作（改造/进化）必须落在实例卡上，严禁直接改模板。**
 - 实例判定：`card.instance_id` 非空（如 `cold_t72#1`）才是实例；为空则是共享模板。
-- 强化面板 `_on_reinforce_pressed`、改造面板 `_install_modification` 都有 `instance_id.is_empty()` 守卫，拒绝操作模板。**新增任何养成操作必须加同款守卫。**
-- 数据层 `BlueprintManager.apply_reinforcement(card, ...)` / `install_modification(card, ...)` 写入传入 card 对象的养成字段——调用方必须保证传入的是实例，不是 `DefaultCards.get_card_by_id` 模板。
+- 改造面板 `_install_modification` 有 `instance_id.is_empty()` 守卫，拒绝操作模板。**新增任何养成操作必须加同款守卫。**（强化①面板及 `apply_reinforcement` 已随 v20.12 等级统一退役，见停用清单）
+- 数据层 `BlueprintManager.install_modification(card, ...)` 写入传入 card 对象的养成字段——调用方必须保证传入的是实例，不是 `DefaultCards.get_card_by_id` 模板。
 
 **铁律 2：卡牌列表（成长/强化/改造/进化面板）数据源必须是 InstanceRegistry 实例全集，不是 SaveManager 队列。**
 - `SaveManager._pending_backpack_ids` / `_last_known_extra_ids` 队列在 `backpack_presenter` 存活时会被 `consume_pending_backpack_card_id` 掏空（买卡信号双监听：SaveManager 入队 + presenter 立即 consume），读这个队列会看到"空"。
@@ -531,12 +540,11 @@ User-driven collaboration. Every task follows: **Question → Options → Decisi
 - `managers/save_manager.gd` — `_pending_backpack_ids`/`_last_known_extra_ids`/`consume_pending_backpack_card_id`/`get_pending_backpack_ids`/`get_last_known_backpack_ids`/`_set_last_known_extra_ids_direct`
 - `data/default_cards.gd` — `get_card_by_id`（**共享模板，只读**）/`clone_for_instance`
 - `resources/card_resource.gd` — `clone()`（深拷贝，养成隔离的基础）/`instance_id`/`enhance_level`/`mods`/`module_slots`
-- `managers/blueprint_manager.gd` — `apply_reinforcement`/`install_modification`（写入传入实例的养成字段）/`get_all_blueprint_ids`
+- `managers/blueprint_manager.gd` — `install_modification`（写入传入实例的养成字段）/`get_all_blueprint_ids`（`apply_reinforcement` 已随强化①退役删除）
 - `managers/phase_instrument_manager.gd` — `equip_card`（存实例对象）/`get_loadout_by_platform_card_id`（instance_id 精确匹配 + card_id 回退）/`_restore_loadout`
 - `managers/battle/battle_spawn_system.gd` — `request_player_deploy`（上限用 base_card_id，loadout 用原 id）
 - `scenes/ui/bottom_instrument_bar.gd` — `_on_slot_gui_input`（部署传 instance_id）
 - `scenes/ui/growth_panel.gd` — `_load_unlocked_cards`（Registry 全集数据源 + 完整 instance_id 去重）
-- `scenes/ui/reinforcement_panel.gd` — `_refresh_card_list`（实例感知）/`_on_reinforce_pressed`（instance_id 守卫）
 - `scenes/ui/modification_panel.gd` — `_refresh_card_list`（参考实现：分组+每实例一行）/`_install_modification`（守卫）
 - `scenes/ui/card_info_panel.gd` — `_resolve_source_instance_card`（战场单位按 meta 取实例）
 

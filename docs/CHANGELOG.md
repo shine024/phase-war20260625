@@ -2759,3 +2759,313 @@ v17j 分格 meteor 7→5（-2）/summon 4→5（+1）——单格 ±1-2 波动�
 **遗留观察项（人工验收重点）**：L43+ 无强化账号难度陡增（秒败级首波）；PM 基地战弱势方可长期僵持（建议加投降/超时判负出口，路线图候选）。
 
 验证：soak 修复后复跑 L43 复现点（波次恢复/首战 1121 帧真实结算）+ gdunit 145 例 0 失败 + main boot 300 帧零错误 + 真实存档槽全程未触碰（空槽保护 + 结束切回）。
+
+## v20.8 相位师美术 EA 定稿 + 分支推送（轨道A / P2-2）（2026-08-24）
+
+**轨道A EA 收口（C 方案）**：现状代码级核实 + 定稿落 `docs/PHASE_MASTER_ART_PLAN.md`。核实结论：30 位 master 战场为共享相位场底座图 + 势力四色 modulate 染色（链路活，`enemy_phase_field_driver.gd:544-575`），产兵经 `visual_archetype_id` 复用时代原型卡图；世界地图仅 tooltip 名字（`world_map.gd:369-376/420-425`）；驻守上场 20 位/未上场 10 位（后者作随机遭遇匿名装备供体）；boss 待机帧 2/5（其余程序化摇摆）；**零缺图报错面**——C 方案即现状，零美术工作量。1.0 升级路径（方案 A 补 30 位专属立绘 / 方案 B 收缩至 20 位）与执行注意（foot anchors 重跑、PNG 备份铁律）已在定稿文档记全。AGENTS.md 美术工作流章节加入指引：EA 阶段勿给 master 加立绘挂载点。
+
+**分支推送**：本地累计 15 commit（批次8/9 全部成果 + 盘点文档）推 origin（5e24a99a..824b29ad）。
+
+**范围调整（用户指示）**：P0-1/2/3 与 P3 商店线**全部保留不动**（开发期继续用作弊发放/开发按钮/导出配置），REMAINING_WORK 已加禁执行标记；后续顺序改为 轨道B VFX → 人工验收 B 部分。
+
+## v20.9 轨道B VFX 收尾：f01/f02 弹体路由修复 + f05 散射签名（P2-5）（2026-08-24）
+
+**R1 f01/f02 弹道弹体（病根=双枚举撞值）**：`bullet.gd _apply_visual` 以裸 `weapon_type` 判定程序化弹头，新枚举 INDIRECT=1/AERIAL=2 与 legacy RIFLE=1/MG=2 同值——曲射/空射弹体（游戏本体与审计工具同路径）误落轻武器程序化小弹头（~14×9px 不可读，任务主诉）。判定键改 `_visual_wt`（族空间，`resolve_visual_wt` 解析值）：轻动能(0)/手枪(4)/狙击(6) 保持程序化，曲射(1)/空射(2) 走 `weapon_artillery_ballistic`/`weapon_missile_projectile` 贴图弹体（PIL 实测内容 1090×152/1110×219 × 0.070/0.060 ≈ 76×11/67×13px，与火箭/导弹同级可读，含 v18-R8b 曳光线 + 灰白硝烟拖尾）。审计工具校准：弹道格此前传空名，敌方域兜底把裸 1/2 归一为 0（legacy 步枪/机枪解释），f01 敌格拍不到族形态——补代表名"105mm 榴弹炮"（关键词命中族 1）+ f02 敌格工具侧强制族号（族 2 无关键词可达）。
+
+**R2/R2b/R2c f05 霰弹散射签名（wt5 严格门控）**：`vfx_impact_factory.gd` 命中路径新增 `_spawn_shotgun_scatter`——6 弹丸簇沿来向垂直轴 ±36px 扇开（6 发 18° 散射的着面投影，方向取 bullet v12d 起恒传的真实来向），簇内火花降速 350-650→200-420 保几何可读、隔簇弹着小贴图（`_spawn_pellet_mark` 22px scorch，族规格"散射状小贴图"字面项），wt5 跳过中央大 flash（"单弹头爆光"主诉）。历史教训规避：v19-R28 多簇实验伤 f08 是共享路径未门控，本轮 wt==5 之外零影响；v18-R11c/R23 失败参数不再重试。
+
+**验证**：weapon_visual_profiles_smoke 38/0 + weapon_trajectory_smoke 15/0 + 审计矩阵 48 格零脚本错误（每轮后均跑）；中性视觉复核 f01 弹体+抛物线 8/10、f05 散布图案 7/10；像素核验弹道格 100px 亮段（弹体+曳光）在场。
+
+**评分模型噪声墙（诚实记录，未达 6.0 线）**：官方评分器三族中位 f01 4.33 / f02 4.17 / f05 4.3~4.5。实证缺陷：把中性视觉确认的抛物线判"完全直线"；同码不同拍摄轮 ±1-2 摆动（一轮 f05 我方弹道格整格空拍=采样 flake）；逐图确定性（三轮同图完全同分，"三次取中位"失去意义）。距离 6.0 的差距主要在评分器口径而非特效本体——**最终裁决建议人工浏览器审查 `tools/vfx_audit_review.html`**。f05 muzzle 层（"读成单发步枪火花"）留待人工终审确认后另轮处理。
+
+## v20.10 开局坦克进化不可选修复——实例ID旧前缀断裂（2026-08-24）
+
+**病根（ID口径断裂）**：开局发卡 `save_manager._enqueue_starter_backpack_cards` 用旧ID `ww1_ft17`，`InstanceRegistry.create_instance` 按**传入原始ID**分配实例号 → `ww1_ft17#1`（旧前缀），而 clone 的 `card_id` 经 DefaultCards 迁移已是 `ww1_arm_ft17`。进化链表（unit_lineage_config）只认新ID：面板树展示走 `card_id` 属性（新ID，目标正常显示、左栏"可进化"筛选通过），判定/执行走 `get_card_id_of` 前缀解析（旧ID，无迁移兜底）→ `target_not_in_path` 结构性早退 → 徽章恒"🔒条件不足"、详情"⚠ 目标不在该卡进化路线中"、按钮永久禁用——强化/改造/战力再高也无法进化。旧档序列化时 card_id 取前缀解析值（旧ID），读档原样恢复，无法自愈。
+
+**修复（三处，一次治全）**：
+1. **A 数据侧** `save_manager.gd`：开局发卡改规范ID `ww1_arm_ft17`（新档不再产生旧前缀实例）。
+2. **B 注册侧** `instance_registry.gd _register_clone`：实例号与反向索引一律用 `clone.card_id`（迁移后规范ID），不再信调用方传入的原始ID——任何入口传旧ID都会被归一。
+3. **C 解析侧** `instance_registry.gd get_card_id_of`：解析出的前缀（或裸card_id）命中迁移表时返回新ID。该函数是中心解析器，进化判定/战力估算（evolution_helpers）/强化管理/装备恢复/存档序列化/反向索引重建全部经它——旧档存量 `ww1_ft17#1` 实例无需重写存档即自愈。
+
+**验证**：端到端 headless 脚本 5 断言全过（旧ID建实例→规范前缀 #1；5 组前缀解析含旧档自愈；旧前缀实例判定 ww2_pz3 不再 target_not_in_path、进入全量条件评估；乱目标仍被拒；新档口径正常）。回归：instance_counter_smoke 7/0（计数器/防撞号不受影响）、evolution_condition_smoke ALL PASS（含旧ID回归用例）、test_unit_lineage_config 7/7。**test_evolution_hp_floor 2 失败为改动前既有**（stash 对照复跑确认，120 vs 100 / 339.89 vs 335，HP 下限数值断言，与本修复无关，待另轮处理）。
+
+## v20.11 部署规则：相位仪每卡限 1 个在场（2026-08-24）
+
+**规则（用户指示）**：相位仪中的每张卡，只能有一张在战场上。收回 v8.1b 的"正常情况不限制单卡（同名卡可重复部署填满总名额）"口径。
+
+**改动1 部署上限** `battle_spawn_system.gd _reach_alive_limit_for_card`：上限 = 该卡在绿槽的装备槽位数 × 幻影倍率。同名卡两张实例装 2 槽 → 允许 2 个（每"张卡"各 1）；phantom_clone 能力语义就是"同卡可放 2 个"，倍率保留。存活统计仍按 base card_id（实例卡与裸卡统一计数），与 v8.1b 的实例化无关口径一致。命中上限走既有 `unit_on_field` 拦截与提示文案。
+
+**改动2 自动部署配套** `auto_deploy_controller.gd _start_deploy_round`：v9.4/9.5 的 `battlefield_slot % 卡数` 循环复用是按旧规则设计的——单卡限 1 后会反复尝试已占名额的卡 → 失败重试 → `player_deploy_failed` toast 刷屏（main.gd 无节流直达 toast）。改为每张装备卡最多映射一个空位，并用 `_collect_alive_card_ids()`（原零引用死代码，本轮复活）+ 新增 `_loadout_card_key`/`_advance_past_alive_cards` 跳过已有存活单位的卡（instance_id 优先口径）。
+
+**影响面**：UI `DeployIndicator`（卡在场上→槽位亮指示）继续适用；`deploy_limits_toggle_smoke` 源码模式断言不受影响（`if not _no_limits and _reach_alive_limit_for_card` 行保留，`debug_no_deploy_limits` 开关跳过所有限制的行为不变）；`level_mechanics_smoke` 只断言总上限算术（装 N 张 → N 个），兼容。已知小瑕疵（未改）：DeployIndicator 按裸 card_id 点亮，同名两实例时任一在场会两槽都亮，原有行为留待单独修。
+
+**验证**：新增 `tests/deploy_alive_limit_smoke.gd`（桩仪器 + 假单位直驱 `_reach_alive_limit_for_card`，8 用例全过：0/1/2 装备 × 在场数组合、dying 淡出不计存活、幻影×2 两档）。踩坑：BSS 引用 autoload 名，`--script` 模式下 const preload 会在 autoload 注册前编译报 Identifier not found，须在 `_initialize` 内运行时 `load()`。回归：deploy_limits_toggle_smoke ALL PASS、level_mechanics_smoke ALL PASS、auto_deploy_controller `--check-only` 干净。
+
+## v20.12 等级统一：战斗卡等级 card_level 成为唯一玩家卡等级轴（2026-08-24）
+
+**背景**：v18.c 引入 card_level（战斗经验自动升级 1-30）、v19 统一 UI 主显示口径后，旧手动强化轴 enhance_level（0-10）仍残留在进化门槛/多个面板显示/光环星级里——同一张卡成长面板 Lv.7、进化面板 Lv.0 的"双等级"混乱（玩家主诉"进化要求的等级到底是哪个"）。用户拍板：**全系统统一到战斗卡等级，一个等级轴**。
+
+**核心改动**：
+1. **进化等级门槛换轴**：`unit_lineage_config` 门槛改读战斗卡等级——E1（主线）=**Lv5**、E2（势力分支）=**Lv10**（v20.12b 用户定稿；Lv5≈520 经验、Lv10≈2960）；`can_evolve_blueprint` 等级条件改读 `InstanceRegistry.get_card_level`（conditions key "enhance"→"level"，汇总键 current_enhance/enhance_requirement→current_level/level_requirement），EVOLVE_REASON_ZH 文案同步。
+2. **进化执行 = 变成全新卡**（v20.12b 用户定稿）：`_evolve_instance` 不再继承改造/词条槽/战斗经验/等级——目标实例即 `create_instance` 的干净初始状态（mods/module_slots 清空、经验从零），新卡需重新上阵练级攒改造；仅进化链奖励（inherit_bonus/hp_floor/情报分支奖励）保留。进化面板提示文案同步（"全新卡：等级与改造重置"）。
+3. **强化①退役**：`reinforcement_panel.gd/.tscn` 删除、`BlueprintManager.apply_reinforcement`/`_get_rank_cost_multiplier` 删除、card_info_panel 强化 Tab 恒隐藏（TabIdx 枚举与 tscn 节点保留防 TabContainer 索引错位）。等级提升唯一途径=上阵攒经验。
+4. **UI 等级显示全统一**：进化面板（名册 Lv/资源栏"等级 Lv.N"/条件标签+badge key）、改造面板（2 处标签行）、成长面板（琥珀卡"强化系统"改版"战斗经验"卡：经验进度+下一级差值，`_real_enhance_cost` 删除）、背包底行（"强x/10"→"Lv.x"）、MTG 星级视图（card_level÷3）、养成详情（"强化：Lv.N"→"等级：Lv.N/30"按实例最高等级）、底部装备栏（去"强化 Lv.x/10"后缀）、相位师战力分解（breakdown "enhance"键→"level"）。
+5. **战场层**：`UnitStats` 新增 `card_level` 字段，部署时从 Registry 打栈（缓存 key 的 lv 段原有）；战场卡框等级标签优先读 stats.card_level；光环/能力星级 `get_unit_star` 改 card_level÷3 换算 1-10 星（量纲不变保星级乘数表）；card_info_panel 光环预览星级同口径。
+6. **掉落卡**：高星属性优势从 enhance_level 0/1/2 改发起始经验（star 4-6→60≈Lv2、7-9→150≈Lv3）。
+7. **教学任务接续**：`q_tutorial_enhance`"强化尝试"改"升级尝试"（战斗卡累计升级 3 次，gd+json 双源同步）——`InstanceRegistry._on_card_level_up` 转发 `CardEnhancementManager.enhancement_completed` 信号（QuestManager 唯一监听源），防强化①退役后教学任务死锁。
+
+**明确不动（内部敌方轴/兼容层）**：敌方配装档位（enemy_loadout_tiers enhance_level 3/6/10）、攻击公式 enhance 乘区（玩家侧恒 0、敌方照常）、旧档存量 enhance_level（惰性保留，无提升入口）、战力估算公式（card_level 成长仍只在部署注入，预览口径未变——动它会牵连 PowerTiers 阈值重标，另轮处理）。
+
+**验证**：自建 headless 断言全过（21 个改动文件编译、E1/E2=5/10、0 级实例条件未满足 0/5、520 经验 Lv5 条件满足、进化后目标卡等级/经验/改造全部归零+源实例销毁+inherit_bonus 保留、光环 30→★10/3→★1）。回归：evolution_condition_smoke ALL PASS（断言改 level/current_level 口径）、instance_counter_smoke 7/0、test_unit_lineage_config 7/7（enhance_not_enough 文案断言同步"卡牌等级"）、test_progression_curve_balance 6/6、test_battle_card_v3 6/6、evolution_panel_runtime_driver ALL PASS、ui_unified_check 全部通过。踩坑记录：--script 模式其实会加载 autoload——手动再挂同名节点会被改名成 @N 影子（CEM 内 `_get_autoload_node` 查到的是空 autoload 实例），测试必须直接用 root 下的 autoload 本体。
+
+
+
+
+
+## UI 批次三（2026-08-24）：便捷性补盲——帮助纠偏 + tooltip 攻坚 + 失败反馈 + 首解锁扩面
+
+> 计划文档：`docs/UI_OPTIMIZATION_PLAN_2026-08-24.md`（14 批次四轨道，本批完成 P0 轨道的 B1/B2/B3/B4）。
+> 理论依据与接入点地图：`.agents/skills/ui-review/SKILL.md`（便捷性>易用性>包容性>美观性）。
+
+**B1 帮助面板纠偏（"界面内手册说谎"级 bug）**：`help_panel.gd` 五 Tab 全部对照停用清单重写——
+①战斗基础：回合制描述→实时制（能量 1/s 回复 - 0.5/s 基座消耗、开局 100、部署能耗按战力 4~15）；
+驱动器"护盾+结构双值"→单一耐久（phase_field_driver 只有 hp）。②卡牌成长：删除已退役的
+强化①（Lv1-10 纳米手动强化）与蓝图星级（0-9★ 副本）两轴，改写为现役口径（card_level 1-30
+自动升级 / 关键等级解锁词条 / 改造 / 进化全新卡重置+继承保留 / 每 3 级折 1 星）。
+③"法则卡"Tab 整页删除（法则系统已随 P2-7 整体退役），替换为"相位仪"Tab（绿槽战斗卡≤9 /
+符文槽≤6+符文之语 / 相位场 Lv1-30 属性点 / 星级定能量上限与部署范围）。④势力：声望四档
+（中立/友好/尊敬/崇拜）→ 实测 10 级阈值 [0..9000]、起始 5000、6200 全域访问；商店移除
+"研究点数/法则卡"（均已退役）。⑤日常任务：凌晨 4 点刷新→距上次 24h；4-6 个→固定 7 个
+（3简单+2普通+1困难+1专家）；奖励删除研究点数/刷新券/活跃度宝箱（均不存在），改为实测的
+纳米材料+能量块+稀有度碎片。
+
+**B2 tooltip 攻坚**（点读机原则：悬停就地解释，五面板合计 18 → 63 处）：
+- growth_panel 1→12：筛选三 chip、四进度卡（经验/等级/改造/进化语义）、技能树/改造/进化按钮、
+  战力值、名册行（实例独立养成）
+- store_panel 3→11：公司 Tab 挂 desc 简介（字段存在但从未显示）、余额行"全域访问"解锁条件、
+  相位仪行属性词典（星级/能量恢复/部署范围）、购买按钮四态 tooltip（含禁用时具体原因+差额）
+- evolution_panel 4→13：chip 三枚、资源栏（战力/等级/改造）、进化按钮（重置后果预警）、
+  9 项统计（轻装/装甲/空中三维攻防语义——新玩家最易困惑点）
+- modification_panel 5→15：chip 三枚、折叠三档、效果模拟抽屉、资源栏消耗说明、
+  安装按钮四态 tooltip（缺图纸点名图纸名 / 纳米不足带差额）
+- card_info_panel 5→12：Tab 悬停（情报/改造/进化）、头部星级/稀有度/部署能耗、
+  三维攻防卡、操作按钮加可选 tooltip 参数（卸下此卡说明后果）
+
+**B3 失败反馈具体化**：普查五路径——部署（player_deploy_failed 逐原因 toast 已有）、
+购买（纳米差额已有）、进化（逐条件 ✓/✗ + 指引子行已有）、改造（_show_result 具体消息已有）、
+装备（批次二已有）。实际缺口在商店符文/情报道具购买：原仅红闪无文案。补三处——
+声望不足（带当前/需要差额）、重复持有符文、纳米不足（带差额）。
+**踩坑**：SignalBus 只有 show_toast 单信号，show_error/show_warning 是 ToastManager 方法
+（skill 地图表述易误读）；新增 `_show_buy_error/_show_buy_warning` 助手（ToastManager 红/橙，
+lazy 未加载退化 SignalBus 绿条）。
+
+**B4 首解锁弹窗扩面**（3 → 8 key）：runeword（符文之语首激活，phase_instrument_manager
+增量播报点）/ faction_level_up（首次声望升级，fsm 升级点，带 6200 全域访问指引）/
+intel_hub（情报中心首开，挂 main._notify_panel_opened——该面板静态实例化，_ready 在启动时
+触发，不能挂面板侧）/ skill_tree（技能树首开，growth_panel 入口）/ multi_instance
+（首次持有同名卡第二张，InstanceRegistry._register_clone，解释实例独立养成）。
+
+**验证**：ui_p1_validation ALL PASS（31 编译，CHANGED_SCRIPTS 补录本批 7 文件）、
+ui_batch2_validation ALL PASS（41 文件）、ui_unified_check 全部通过；10 个改动文件
+gdparse 全过。肉眼验收待跑游戏（tooltip 实际观感/弹窗层级）。
+
+## 战斗界面美化 BU-1/3/2「第一眼改观」三件套（2026-08-24）
+
+> 方案全文见 `docs/BATTLE_UI_REWORK_PLAN_2026-08-24.md`（10 批次，P0+P1+P2 全量）。
+> 本轮完成 P0 前三批：底栏悬浮卡+抽屉、顶部胶囊+波次进度条、基地视觉强化。
+
+**BU-1 底部操作区重构**（bottom_instrument_bar / bottom_function_bar / main.tscn / main.gd / cost_badge）：
+
+- 相位仪栏与功能栏换 `PanelStyles.make_panel_frame` 悬浮卡片语言（12 圆角 + accent 发光，
+  底色 alpha 0.92/0.90 战场微透）；main.tscn BattleBottomBar 改左右内收 16px、距底 8px 悬浮，
+  VBox `alignment=END` + 子序重排（抽屉在主栏上方）——**节点路径零改动**（battle_manager:626
+  等三处路径引用不受影响），BattleContainer 底边 -124 保持不变。
+- 常驻能量条：NameSection 中部 ProgressBar（PANEL_DEEP 底 + ENERGY 橙填充）+ 12pt 数值，
+  接 `SignalBus.energy_changed` 实时刷新；详细回复速率仍在相位仪等级 tooltip。
+- 槽位可负担状态机 `_refresh_slot_affordability`：能量不足的战斗卡槽 EnergyDim 压暗罩 +
+  费用角标转红（cost_badge 新增 `warn` 属性）；能量充足边框 alpha 提亮；战斗中可部署槽
+  modulate.a 0.85↔1.0 呼吸（1.2s，`is_motion_reduce` 静止）；部署待选槽金框+金光晕
+  （轮询 BattleInputState.pending，instance_id 精确匹配）。
+- 功能按钮抽屉：15 按钮默认收起，底栏右端新增「菜单」按钮（48px ghost 四态）展开/收起
+  （0.2s 淡入+自底生长 SINE OUT）；红点聚合角标透传（set_btn_badge → _badge_counts →
+  set_menu_badge）；ESC 优先关抽屉（_close_top_overlay 入口）；面板打开/战斗开场序列自动收起；
+  首解锁弹窗 `drawer_menu`。
+
+**BU-3 顶部 HUD 胶囊**（top_hud_bar.tscn/gd）：
+
+- CenterSection 包进 Capsule PanelContainer（深底 0.78 + 1px 青边 0.22 + 14 圆角，
+  mouse_filter=IGNORE 保持穿透）；InfoRow 下新增 4px WaveProgressBar（青→>80% 金），
+  数据复用 get_enemy_wave_index/total，非战斗/无波次隐藏。
+- 右上五钮**保留原自定义样式**（C6 已有完整四态 + 设计稿 .hud-btn 语义，未迁 PanelStyles——
+  与计划偏差，理由：原样式状态完备且贴合设计稿，迁移属纯替换无收益）。
+
+**BU-2 基地视觉强化**（新增 base_aura.gd；phase_field_driver / enemy_phase_field_driver）：
+
+- 可复用组件 `scenes/units/base_aura.gd`：落地阴影 + 底座光环椭圆（队伍色呼吸 2.4s，
+  低血 ≤30% 转红脉动对齐单位血条语言）+ 核心 HP 条（含 boss 护盾蓝色段）+ 标签数值 +
+  受击白闪 0.15s + scale punch（motion_reduce 只留白闪）。纯 _draw 程序绘制，零新美术。
+- 我方（青，r46，"核心"）：_ready 挂接，take_damage 更新+闪光；敌方（红，r≈99，
+  "<相位师名> 核心"）：setup 挂接，take_damage/add_boss_shield 同步。
+- 双层待机旋转：双方 Body 上叠加 ×1.15 半透明反向外环（复用同贴图，零新美术）。
+
+**验证**：ui_p1_validation ALL PASS（37 编译）、ui_unified_check 全部通过、
+headless 直跑 main.tscn 18s 零 SCRIPT ERROR（_ready 链：胶囊缓存/抽屉隐藏/菜单钮/基地光环全过）。
+肉眼验收待跑游戏（悬浮卡观感/呼吸频率/抽屉交互/基地光环配色）。
+
+**遗留**：BU-4~BU-10 未动（地面着色/部署区可视化/血条整合/氛围层/情景化/基地实体化/叙事带）。
+
+## 战斗界面美化 BU-4/BU-5：阵营地面着色 + 部署区可视化（2026-08-24）
+
+**BU-4 阵营地面着色**（新增 `scripts/battle/battlefield_ambience.gd`；battlefield.tscn 挂节点）：
+
+- 我方半场（x40~640）青色渐变 `(0,0.7,0.9,0.07)→透明`、敌方半场（640~1240）镜像红，
+  外缘强、向中线衰减——"两军对垒"地面叙事；alpha 上限 0.07 硬约束防干扰读单位。
+- 前线分界：空带正中 x=640 一条 2px 白 0.06 极淡竖线。
+- 全 GradientTexture2D 程序生成零新美术；z=-9（背景贴图 -10 之上、光环 -5/单位 0 之下）；
+  BU-7 的氛围粒子/暗角预留挂本节点。
+
+**BU-5 部署区可视化**（battle_slot_grid.gd 新增 SlotHighlight 内部类）：
+
+- pending 部署时 0.15s 淡入我方 3×3 高亮格：空格绿框+10% 底 / 占用格红框+8% 底 /
+  悬停格金框+15% 底；部署/取消自动淡出；红绿语义与批次二拖拽标准一致。
+- 悬停检测复用 `find_nearest_player_slot`（与真实部署判定同一条链，亮哪格=点哪格）；
+  占用态 0.25s 节流刷新；点击/1-9 快捷键同链路自动覆盖。z=-2 单位之下。
+- 尺寸按 `battle_card_width_px()×1.05 ≈ 150×58` 居中各槽，兼容 v9.5 斜阵 ±34px 错位。
+
+**验证**：ui_p1_validation ALL PASS（39 编译）、ui_unified_check 全部通过、
+headless main.tscn 18s 零 SCRIPT ERROR。肉眼验收待跑游戏（着色浓度/高亮配色观感）。
+
+**遗留**：BU-6~BU-10 未动（血条整合/氛围层/情景化/基地实体化/叙事带）。
+
+## 战斗界面美化 BU-6/BU-7：单位头顶 UI 整合 + 战场氛围层（2026-08-24）
+
+**BU-6 单位头顶 UI 整合**（unit_hp_bar.gd）：
+
+- 阵营底板：Bg 从中性灰 `(0.12,0.12,0.15)` 改阵营色暗化——我方 `(0.05,0.18,0.22)` /
+  敌方 `(0.22,0.08,0.08)`，远看即分敌我；Fill 保持 2px 内缩自然露"描边"。
+- 护盾条与血条顶边统一 1px 间距（原 0.5px 错位）。
+- 状态图标行 11px→14px、间距 2→3、上限 10→8，超出折叠行尾 "+N" 暗白标签（宽度参与自适应缩放）。
+- 精英/BOSS 框：读单位 meta `target_priority_tag`（enemy_unit.apply_elite_affixes 与相位师产兵
+  均写此标记）——精英=金描边底板（上方盖住护盾行合成一块牌），boss=描边+左右金色小三角。
+  挂 refresh_status_icons 0.3s 轮询拾取（标记 spawn 后写入也能生效）。
+- 受击白闪/治疗绿闪/低血脉动/选中金框/伤害数字全部不动（成熟资产）。
+
+**BU-7 战场氛围层**（battlefield_ambience.gd / main.gd）：
+
+- 时代氛围粒子：CPUParticles2D ≤20 粒（4×4 程序生成软圆贴图，零新美术），按关卡时代切
+  预设——一战/二战烟尘横漂 / 冷战细尘缓落 / 现代稀尘 / 近未来青色微粒上浮；preprocess 8s
+  开局即铺满；`is_motion_reduce` 停发。z 有效 -8（背景之上、单位之下）。
+- 全屏暗角：main.gd 建CanvasLayer 35（HUD 40 之下）+ radial 渐变 TextureRect
+  （中心透明→边缘黑 0.32），静态效果不涉及动效，mouse_filter=IGNORE。
+- GridPattern 处置：main.tscn 的 2% 青色块（并非网格）隐藏，换程序生成 32px 真网格纹理
+  （青线 alpha 0.05 平铺）只服务主菜单氛围层；战场内不参与（已有阵营地面着色）。
+
+**验证**：ui_p1_validation ALL PASS（40 编译）、ui_unified_check 全部通过、
+headless main.tscn 18s 零 SCRIPT ERROR。肉眼验收待跑游戏（粒子浓度/暗角强度/底板配色）。
+
+**遗留**：BU-8~BU-10 未动（HUD 情景化/基地实体化/叙事带整合——P2 布局级，建议肉眼验收后推进）。
+
+## 战斗界面美化 BU-8/9/10（P2 收官）：HUD 情景化 + 基地实体化 + 叙事带（2026-08-24）
+
+> 至此 `docs/BATTLE_UI_REWORK_PLAN_2026-08-24.md` 十个批次全部完成。
+
+**BU-8 战斗 HUD 情景化**（battle_log.gd / settings_panel.tscn+gd）：
+
+- 战斗日志 peek 模式：战斗中默认隐藏（战场让渡 96px），新战报滑入驻留 3s 收回；
+  鼠标探入日志条原位（矩形外扩 12px 热区）保持展开，移开 0.6s 收回；手动 ▼ 展开不受自动收影响。
+  滑入/出 = modulate + 上移 90px SINE，尊重 is_motion_reduce。
+- 设置面板新增"战斗界面——日志自动隐藏"开关（CheckButton，settings.cfg `hud_auto_hide` 键，
+  默认开；下场战斗生效——battle_started 时重读配置）。
+- 偏差：计划原稿"屏幕下缘 24px 热区"与悬浮相位仪栏（部署槽常驻区）热区冲突，改为日志条原位热区。
+
+**BU-9 基地实体化升级**（base_aura.gd / 两个相位场驱动器）：
+
+- 能量脉冲：每 3s 一圈扩散环（半径 0.35→1.4×、alpha 0.5→0、0.9s），双基地待机呼吸感升级。
+- 受创劣化：HP<60% 光环降饱和 35% + 1.6s 间歇明暗；HP<30% 追加 12 粒受损火花/烟（程序圆点贴图）。
+- 落地阴影：BU-2 已含（阴影随 base_aura 一起交付），本批不重复。
+- 摧毁演出：双方基地 _on_destroyed 调 VfxImpactFactory.spawn_layered_impact 大档 +
+  request_screen_shake(8.0, 0.5)，再接原 BattleSpectacle 胜/败演出。
+
+**BU-10 战斗叙事带整合**（battle_announcer.gd / main.tscn / battle_spectacle.gd / buff_fold_card.gd）：
+
+- 播报条对齐顶部胶囊语言（深底 0.78 + 1px 青边 0.22 + 14 圆角，与 BU-3 波次胶囊同款）。
+- 垂直槽位定序：波次胶囊 y1~49 → 播报条 y96~146（原 y72 上移让位）→ BOSS/大招标题横幅
+  y110，播报条显示中自动下避让至 y152（三处横幅调用点统一走 _title_banner_y()）。
+- BuffFoldCard 边框色入轨（青 0.22）；圆角保留 6 档位（172px 小卡用 14 过大，偏差注明）。
+- 连杀标签保留原位与金色大字样式（加底板反而抢戏，偏差注明）。
+
+**验证**：ui_p1_validation ALL PASS（45 编译，CHANGED_SCRIPTS 累计 14 文件）、
+ui_unified_check 全部通过、headless main.tscn 18s 零 SCRIPT ERROR。
+**十批全部待肉眼验收**（悬浮卡/抽屉/基地光环/地面着色/粒子/暗角/血条底板/日志 peek/横幅避让）。
+
+## 战斗界面美化 BU 全量验收轮：真机截图 + 结构探针 + GdUnit 回归（2026-08-24）
+
+> 十批实现完成后 的机器验收轮。工具：`tests/bu_visual_capture.gd/.tscn`（窗口渲染 + 四态截图
+> static/battle/deploy/drawer + 结构探针打印各视觉层节点存活），产出 `.godot/bu_shot_*.png`。
+
+**验收结论（8 项全过）**：
+
+- 顶部胶囊 + 波次条 / 底部悬浮卡 + 菜单按钮 + 能量条（青填充像素 3179）：AI 目检 + 像素 ✓
+- 地面着色方向：左带相对中带偏青 +14、右带偏红 ✓（7% alpha 极淡属设计约束）
+- 双基地光环：探针 BaseAura 存活；像素最大色偏搜索 左缘最青窗 B-R=+45 / 右缘最红窗 -51 ✓
+  （敌方基地仅相位师关卡生成——battle_manager._spawn_enemy_phase_master_base 需 _phase_master_config
+  非空；验收用 ensure_enemy_phase_driver({}) 强制渲染验证）
+- 暗角：四角均亮 44 vs 中心 82 ✓；部署高亮：pending 下绿像素 0→3766 ✓；抽屉：14 按钮居中无溢出 ✓
+- GdUnit 全量回归：24 套件 145 用例 0 失败 0 错误（12.8s）✓
+
+**验收中修复 1 个 P1 bug**：
+
+- bottom_instrument_bar._apply_slot_affordance 的 `get_meta("cost_badge_node", null)`：Godot 4.5
+  缺键时即使带 default 也打 ERROR（空槽无该 meta，能量变化时刷屏）→ 改 has_meta 守卫。
+
+**环境限制记录**：
+
+- 本机显示器为 1024×768，1280×720 窗口被系统钳制，截图为 canvas_items+expand 的 4:3 自适应布局
+  （等比缩放，战场纵向拉伸）——比例/间距观感需玩家在 16:9 环境 F5 终验；
+- begin_deploy_from_slot_index 在绿槽无卡时返回 false（该调试环境存档无配装），
+  部署高亮用强制 pending 验证；真实链路此前已由 deploy_uses_smoke / deploy_alive_limit_smoke 覆盖。
+
+## v20.13 每卡部署次数上限（2026-08-24 实施，2026-08-25 补记）
+
+**规则**：每张战斗卡单场战斗有部署次数上限（设计全文 `docs/design/deploy_uses_limit_design.md`）——
+低价值炮灰多扔、核心资产少扔，杜绝"死一个扔一个"的无脑循环。与 v20.11"每卡限 1 在场"叠加：
+在场限 1，阵亡后若次数未尽可再部署。
+
+- **次数判定**（`unified_card_table.get_deploy_uses`，三档优先级）：显式配置 deploy_uses >
+  核心标记（tags 命中 radar/command/hq/侦测 或 deploy_class="core" → 2 次）>
+  兵种基线 LIGHT 6 / SUPPORT 5 / ARMOR 4 / AIR 4 / FORT 3 × 终极修正
+  （card_level≥8 或 rarity=legendary 再 -1，下限 1，FORT 保底 2）。
+- **战斗内记账**（`battle_spawn_system`）：start_battle 按 9 绿槽装备卡初始化
+  `_deploy_uses_remaining`；request_player_deploy 前置拦截（耗尽 → 既有 player_deploy_failed
+  toast 链，reason_code 新增 `deploy_uses_exhausted`）；部署成功扣 1。
+- **信号**：SignalBus 新增 `deploy_uses_changed(base_card_id, remaining, total)`（UI 角标消费待接）。
+- **battle_manager**：`on_player_unit_died` 改传 unit 引用（供 v20.14 维修车判定用）。
+
+**验证**：`tests/deploy_uses_smoke.gd` ALL PASS（7 组：核心档/legendary 修正/FORT 保底/未知 kind 兜底）。
+
+## v20.14 兵种特殊机制：隐身飞机 / 攻击无人机 / 维修车（2026-08-25 补记）
+
+- **隐身飞机**（tags: stealth_aircraft）：每 8s 自动进入隐身 4s（或被命中提前解除）；
+  隐身中闪避 +40%、移速 +20%；**首击爆发**——隐身状态下攻击必暴击 + 伤害 ×1.5
+  （bullet.gd 新乘区 `is_stealth_first_strike_crit`）。
+- **攻击无人机**（tags: drone）：自动标记最近敌人为集火目标（标记过期刷新）；
+  全图距离衰减伤害乘区（bullet.gd `get_drone_range_damage_multiplier`）。
+- **维修车**：维修车在场时，装甲单位阵亡 50% 概率返还 1 次部署次数
+  （`on_player_unit_died` → `on_armor_unit_dying` → `_refund_deploy_use`）。
+- **数据链**：unified_card_table 新增 `_collect_tags_for_entry`（显式 tags + combat_kind 推断）
+  传递到 CardResource.tags 供机制判定；aura_data 核心单位光环数值增强
+  （★1 暴击 +15%/攻击 +8%，★10 ≈ +21.75%/+11.6%）。
+- construct_unit._physics_process 挂三个周期更新 + on_stealth_hit 解除钩子。
+
+## 武器配对 A/B/C 修复 + 敌方装备专家档补全（2026-08-25 补记）
+
+- **A 攻速语义**：武器蓝图卡攻速改 = 1/间隔（次/秒）——原机枪 0.15 间隔超游戏口径 3 倍
+  且语义颠倒（火炮快过机枪）；全表射速封顶 7 次/s 回归锁。
+- **B 专家档武器入表**：steel_railcannon_expert（steel/18/railcannon）、
+  incendiary_mortar_expert（flame/19/mortar）——JSON 与 LEGACY 兜底同步（26 条）；
+  master_014 武器配对改 [steel_railcannon_expert, tesla_coil_expert]。
+- **C 平台配线归位**：flame_siege 三档默认武器全归 mortar 线；24 平台 default_weapon
+  引用闭合 + 阵营/等级一致性校验。
+- **验证**：`tests/weapon_pairing_audit_smoke.gd` 9 组断言全过
+  （含本日修复：preload 链触达 unit_stats_table 的 ModificationRegistry autoload 引用，
+  --script 模式须 _initialize 内运行时 load()，同 v20.11 踩坑方案）。
