@@ -690,7 +690,7 @@ func _ensure_enemy_weapon_slots(s: UnitStats) -> void:
 		w.damage = float(cfg_w.dmg)
 		w.attack_speed = float(cfg_w.spd)
 		w.range_value = maxi(1, int(round(s.attack_range / 100.0)))
-		w.weapon_type = _default_enemy_slot_weapon_type(i, s.weapon_type, GC2)
+		w.weapon_type = _default_enemy_slot_weapon_type(i, s.weapon_type, s.combat_kind, GC2)
 		# v9.x: 武器名→弹道覆盖统一走 CardResource 共享解析器（与玩家侧同口径，关键词表不再两处维护）：
 		# ① v15 精确表命中签名武器专属弹道——修复敌方 UCT 特殊 weapon_type(6/10/11) 在槽位层被
 		#    降级的配置错误：攻城电磁炮→RAIL(11) 磁轨穿透 / 重型等离子加农炮→OMEGA(10) 径向放电 /
@@ -707,18 +707,29 @@ func _ensure_enemy_weapon_slots(s: UnitStats) -> void:
 		w.display_name = s.weapon_label
 		s.weapon_slots.append(w)
 
-## v8.1: 按槽位分配敌方武器弹道类型（与玩家卡 _default_weapon_type_for_slot 对齐）
-## 解决：单位枚举 SUPPORT(3) 直接复制到槽位会被 bullet.gd 当 legacy ROCKET(3) 处理。
-## 规则：
-##   - 单位是曲射(INDIRECT=1) → 三槽全 INDIRECT（火炮对任何目标都是抛物线落地）
-##   - 单位是空射(AERIAL=2) → 三槽全 AERIAL
-##   - 单位是 SUPPORT(3) → 三槽 DIRECT（支援单位有伤害就走直射，无伤害槽位 enabled=false 自然不发弹）
-##   - 否则按槽位：轻装槽 DIRECT(0)、装甲槽 SNIPER(6) 穿甲、对空槽 MISSILE(9) 导弹
-static func _default_enemy_slot_weapon_type(slot_idx: int, unit_weapon_type: int, GC2) -> int:
-	if unit_weapon_type == GC2.WeaponType.INDIRECT:
+## v9.5: 按槽位分配敌方武器弹道类型（与玩家卡 _default_weapon_type_for_slot 对齐）。
+## v9.5 修复：原函数直接比较 unit_weapon_type == GC2.WeaponType.INDIRECT(1)，
+## 但 waves 敌方的 stats.weapon_type 来自 resolver 透传——UCT 层是新枚举(0-3)、
+## 非 UCT 原型是 legacy(0-11)。legacy RIFLE(1) 会被误判为曲射、legacy ROCKET(3)
+## 匹配不上 INDIRECT(1) 被当直射。现引入 combat_kind 消歧义：
+##   - combat_kind==AIR → 三槽全 AERIAL(2)（空射弹道）
+##   - legacy 3/7/9/11 或 新枚举 INDIRECT(1)+ck=SUPPORT → 三槽全 INDIRECT(1)（曲射弹道）
+##   - 新枚举 AERIAL(2) 非航空单位 → 兜底仍走 AERIAL(2)
+##   - 其余 → 直射槽位：轻装 DIRECT(0)、装甲 DIRECT(0)、对空 MISSILE(9)
+static func _default_enemy_slot_weapon_type(slot_idx: int, unit_weapon_type: int, combat_kind: int, GC2) -> int:
+	# 航空单位 → 全槽空射弹道
+	if combat_kind == GC2.CombatKind.AIR:
+		return GC2.WeaponType.AERIAL
+	# 曲射：legacy 3(ROCKET)/7(FLAK)/9(MISSILE)/11(RAIL) → 全槽曲射
+	if unit_weapon_type == 3 or unit_weapon_type == 7 or unit_weapon_type == 9 or unit_weapon_type == 11:
 		return GC2.WeaponType.INDIRECT
+	# 曲射：UCT 新枚举 INDIRECT(1) + combat_kind=SUPPORT（炮兵）→ 全槽曲射
+	if unit_weapon_type == GC2.WeaponType.INDIRECT and combat_kind == GC2.CombatKind.SUPPORT:
+		return GC2.WeaponType.INDIRECT
+	# 空射：新枚举 AERIAL(2) 非航空单位兜底（数据一致性）
 	if unit_weapon_type == GC2.WeaponType.AERIAL:
 		return GC2.WeaponType.AERIAL
+	# 直射：legacy 0/1/2/4/5/6/8/10 和 新枚举 0(DIRECT)/3(SUPPORT)
 	match slot_idx:
 		0:
 			return GC2.WeaponType.DIRECT  # 对轻装：直射曳光
@@ -1325,10 +1336,9 @@ func _do_attack() -> void:
 	# v17: 传武器名+敌方域标记，火花类别键经 WeaponVisualProfiles 统一解析
 	# （武器名优先+legacy 域兜底，替代函数内部的朝向猜域启发式）。
 	ConstructUnitAI._play_muzzle_feedback(self, wt, weapon_name_str, false)
-	if _try_fire_enemy_projectile_batch(target, wt, dmg_out, miss, weapon_name_str, _vfx_variant):
-		AttackPoseAnim.play(self, wt)
-		return
-	# v6.2: 敌方曲射/空射走 indirect batch 批处理（v6.6: 统一曲射判定）
+	# v9.5: 曲射/空射必须在直射 batch 之前判定。
+	# 避免新枚举 INDIRECT(1)/AERIAL(2) 被 BATCH_FIRE_WEAPON_TYPES=[0,4,1,2]（legacy 语义）误拦——
+	# 导致敌方火炮/空射单位走直线曳光弹道（与玩家侧 construct_unit_ai 不对称）。
 	if GC.is_indirect_weapon_type(wt):
 		if BattleManager and is_instance_valid(BattleManager.enemy_indirect_batch):
 			if BattleManager.enemy_indirect_batch.has_method("fire"):
@@ -1336,6 +1346,9 @@ func _do_attack() -> void:
 				BattleManager.enemy_indirect_batch.fire(_get_direct_fire_spawn_pos(), target, dmg_out, wt, self, stats, miss, weapon_name_str, _vfx_variant)
 				AttackPoseAnim.play(self, wt)
 				return
+	if _try_fire_enemy_projectile_batch(target, wt, dmg_out, miss, weapon_name_str, _vfx_variant):
+		AttackPoseAnim.play(self, wt)
+		return
 	AttackPoseAnim.play(self, wt)
 	var pellet_n := 6 if wt == 5 else 1
 	var pellet_dmg := dmg_out / float(pellet_n)
