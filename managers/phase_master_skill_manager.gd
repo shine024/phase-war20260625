@@ -261,7 +261,15 @@ func save_state() -> Dictionary:
 func load_state(data: Dictionary) -> void:
 	var un = data.get("unlocked_nodes", [])
 	_unlocked_nodes = un.duplicate() if un is Array else []
-	_spent_points = int(data.get("spent_points", 0))
+	# v9.x: spent_points 不信任存档值，按【当前】技能表重算——
+	# 每个已解锁节点按现行 cost 计价求和。技能表降价（v9.x 212→147）后旧档
+	# 自动获得差价退款；节点 ID 若已从表中移除（历史退役），计 0 点不阻塞。
+	var recomputed: int = 0
+	for nid in _unlocked_nodes:
+		var node: Dictionary = SkillTree.get_skill(String(nid))
+		if not node.is_empty():
+			recomputed += int(node.get("cost", 0))
+	_spent_points = recomputed
 	_bonus_points = int(data.get("bonus_points", 0))
 	_phase_field_level = int(data.get("phase_field_level", 1))
 	# v7.x perf: 节点变化，失效效果缓存

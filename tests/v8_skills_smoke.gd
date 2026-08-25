@@ -66,11 +66,12 @@ func _init():
 	# 测试 5: 战法定义加载
 	print("=== Test 5: Tactics 定义 ===")
 	var all_tactics := Tactics.get_all_tactics()
-	if all_tactics.size() == 18:
-		print("  PASS: 18 战法定义加载 (", Tactics.BASIC_TACTICS.size(), " 基础 + ", Tactics.ADVANCED_TACTICS.size(), " 高级)")
+	# v9.x：17 = 15 个原有战法 + 诱敌深入/焦土防线补挂解锁（诸神黄昏删除后曾过期记 18）
+	if all_tactics.size() == 17:
+		print("  PASS: 17 战法定义加载 (", Tactics.BASIC_TACTICS.size(), " 基础 + ", Tactics.ADVANCED_TACTICS.size(), " 高级)")
 		passed += 1
 	else:
-		print("  FAIL: 战法总数 = ", all_tactics.size(), " (期望 18)")
+		print("  FAIL: 战法总数 = ", all_tactics.size(), " (期望 17)")
 		failed += 1
 
 	# 测试 6: 战法 tactic_pincer 条件完整性
@@ -135,33 +136,33 @@ func _init():
 		print("  FAIL: CardPeriodicSkillEngine API 缺失")
 		failed += 1
 
-	# 测试 12: V8Extension 扩展节点数（v9：概念武器段解散，16 个 cw 深层节点归位三系）
-	print("=== Test 12: V8Extension 节点数（v9 重分配后 51）===")
+	# 测试 12: V8Extension 扩展节点数（v9：概念武器段解散归位三系；v9.x 补挂 3 个死内容节点）
+	print("=== Test 12: V8Extension 节点数（v9.x 补挂后 54）===")
 	var all_ext := V8Extension.get_all_extension_nodes()
-	if all_ext.size() == 51:
+	if all_ext.size() == 54:
 		var cmd_count := V8Extension.get_extension_nodes("command").size()
 		var fp_count := V8Extension.get_extension_nodes("firepower").size()
 		var int_count := V8Extension.get_extension_nodes("intelligence").size()
 		var cw_gone := V8Extension.get_extension_nodes("concept_weapon").is_empty()
-		if cmd_count == 17 and fp_count == 19 and int_count == 15 and cw_gone:
-			print("  PASS: 51 扩展节点 (cmd=", cmd_count, " fp=", fp_count, " int=", int_count, " cw段已删)")
+		if cmd_count == 18 and fp_count == 20 and int_count == 16 and cw_gone:
+			print("  PASS: 54 扩展节点 (cmd=", cmd_count, " fp=", fp_count, " int=", int_count, " cw段已删)")
 			passed += 1
 		else:
 			print("  FAIL: 分布 cmd=", cmd_count, " fp=", fp_count, " int=", int_count, " cw段空=", cw_gone)
 			failed += 1
 	else:
-		print("  FAIL: 扩展节点数 = ", all_ext.size(), " (期望 51)")
+		print("  FAIL: 扩展节点数 = ", all_ext.size(), " (期望 54)")
 		failed += 1
 
 	# 测试 13: 主技能树合并扩展节点
 	print("=== Test 13: 主技能树合并扩展节点 ===")
 	var cmd_skills := PhaseMasterSkillTree.get_skills_for_branch("command")
-	# v9：主表 7 节点（含替换后的军团韧性）+ 扩展 17 节点（含归位的 4 个奇点）= 24
-	if cmd_skills.size() == 24:
+	# v9.x：主表 7 节点（含替换后的军团韧性）+ 扩展 18 节点（含归位 4 奇点 + 钢铁风暴）= 25
+	if cmd_skills.size() == 25:
 		print("  PASS: command 分支合并后 ", cmd_skills.size(), " 节点")
 		passed += 1
 	else:
-		print("  FAIL: command 分支节点数 = ", cmd_skills.size(), " (期望 24)")
+		print("  FAIL: command 分支节点数 = ", cmd_skills.size(), " (期望 25)")
 		failed += 1
 
 	# 测试 14: get_skill 支持扩展节点
@@ -260,7 +261,8 @@ func _init():
 	# 测试 22: UnlockLabels 翻译表存在 + 关键兵种机制有翻译
 	print("=== Test 22: UnlockLabels 翻译表 ===")
 	var UnlockLabelsRef = preload("res://data/unlock_labels.gd")
-	var stalker_label: Dictionary = UnlockLabelsRef.get_unlock_label("unit_mechanism", "stalker_stealth")
+	# v9.x：stalker_stealth 已随 v8.5 空转替换为 blitz_pierce（pms_cmd_5 装甲穿插），改查现行机制 ID
+	var stalker_label: Dictionary = UnlockLabelsRef.get_unlock_label("unit_mechanism", "blitz_pierce")
 	var emp_label: Dictionary = UnlockLabelsRef.get_unlock_label("card_skill", "cps_emp_strike")
 	var pincer_label: Dictionary = UnlockLabelsRef.get_unlock_label("tactic", "tactic_pincer")
 	if not stalker_label.is_empty() and not emp_label.is_empty() and not pincer_label.is_empty():

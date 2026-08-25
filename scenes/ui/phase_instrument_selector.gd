@@ -430,6 +430,8 @@ func _create_instrument_item(cfg: Dictionary, is_equipped: bool) -> Control:
 	stats_label.text = "  |  ".join(PackedStringArray(stats_parts))
 	stats_label.add_theme_font_size_override("font_size", 12)
 	stats_label.add_theme_color_override("font_color", Color(0.6, 0.7, 0.8, 0.85))
+	stats_label.autowrap_mode = TextServer.AUTOWRAP_WORD
+	stats_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	stats_row.add_child(stats_label)
 
 	var advanced_parts: Array = []
@@ -454,9 +456,13 @@ func _create_instrument_item(cfg: Dictionary, is_equipped: bool) -> Control:
 		var advanced_row = HBoxContainer.new()
 		vbox.add_child(advanced_row)
 		var advanced_label = Label.new()
-		advanced_label.text = "  |  ".join(PackedStringArray(advanced_parts.slice(0, 5)))
+		# 一条属性一行 + 自动换行：5 条属性单行拼接曾把列表撑到 ~2000px，远超 568px 视口
+		advanced_label.text = "\n".join(PackedStringArray(advanced_parts.slice(0, 5)))
 		advanced_label.add_theme_font_size_override("font_size", 12)
 		advanced_label.add_theme_color_override("font_color", Color(0.95, 0.75, 0.35, 0.9))
+		advanced_label.autowrap_mode = TextServer.AUTOWRAP_WORD
+		advanced_label.custom_minimum_size = Vector2(400, 0)
+		advanced_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		advanced_row.add_child(advanced_label)
 
 	if cfg.has("special_traits"):

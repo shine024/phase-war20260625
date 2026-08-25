@@ -647,6 +647,9 @@ func _play_area_damage_vfx(center_pos: Vector2, radius: float) -> void:
 	# 第一阶段：橙色警告标记
 	PhaseLawCastEffect.create_phase_law_effect(_battlefield, center_pos, Color(1.0, 0.5, 0.2, 1.0))
 	# 第二阶段：延迟爆炸（captured_pos 为值类型，延迟期间安全）
+	# v20.15: 快照战斗状态——延迟窗口内战斗结束则爆炸作废（结算背景贴图残留根因之一；
+	# 快照用引擎自身 _battle_active，effect_lab 等工具场为 false 永不被拦）
+	var was_live: bool = _battle_active
 	var captured_pos: Vector2 = center_pos
 	var captured_radius: float = radius
 	var tw = _battlefield.create_tween()
@@ -654,6 +657,8 @@ func _play_area_damage_vfx(center_pos: Vector2, radius: float) -> void:
 	tw.tween_callback(func():
 		if _battlefield == null or not is_instance_valid(_battlefield):
 			return
+		if was_live and not _battle_active:
+			return  # v20.15: 战斗已结束——延迟爆炸不再生成
 		VfxImpactFactory.spawn_shockwave(_battlefield, captured_pos, captured_radius, Color(1.0, 0.6, 0.2, 0.85))
 		VfxImpactFactory.spawn_layered_impact(_battlefield, captured_pos, 3, true, -1)
 	)
@@ -667,12 +672,16 @@ func _play_global_damage_vfx(first_pos: Vector2) -> void:
 	# warning 阶段 → BattleSpectacle._play_nuclear_warning（红屏+标题）
 	sb.phase_instrument_ability_triggered.emit("nuclear_bombardment", "warning", {"position": first_pos, "is_enemy": false})
 	# impact 阶段延迟 → _play_nuclear_impact（白闪+极限震）
+	# v20.15: 快照战斗状态——延迟窗口内战斗结束则 impact 不再 emit（防结算画面上白闪）
+	var was_live: bool = _battle_active
 	var captured_pos: Vector2 = first_pos
 	if _battlefield == null or not is_instance_valid(_battlefield):
 		return
 	var tw = _battlefield.create_tween()
 	tw.tween_interval(0.6)
 	tw.tween_callback(func():
+		if was_live and not _battle_active:
+			return  # v20.15: 战斗已结束——impact 全屏白闪不再触发
 		var sb2 = Engine.get_main_loop().root.get_node_or_null("/root/SignalBus")
 		if sb2 != null and sb2.has_signal("phase_instrument_ability_triggered"):
 			sb2.phase_instrument_ability_triggered.emit("nuclear_bombardment", "impact", {"position": captured_pos, "is_enemy": false})

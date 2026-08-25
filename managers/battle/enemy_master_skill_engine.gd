@@ -446,6 +446,10 @@ func _play_spell_cinematic(effect: String, name_text: String, _params: Dictionar
 	elif _is_debuff_effect(effect):
 		_play_debuff_cinematic(effect, name_text)
 		return 0.0
+	# 护盾类（energy_shield / dome_barrier / plate_shield / ward_bulwark）
+	elif _is_shield_effect(effect):
+		_play_shield_cinematic(effect, name_text)
+		return 0.0
 	return 0.0
 
 # ── 演出类别判定 ──
@@ -476,6 +480,8 @@ func _is_cinematic_chain(effect: String) -> bool:
 ## 覆盖 void_apocalypse(×6)/meteor_apocalypse(×3)/orbital_bombard/abyss/bombard 等 11 个 boss 大招。
 func _play_apocalypse_cinematic(effect: String, name_text: String) -> float:
 	# v17f: 返回主弹体飞行时长 0.55s（伤害侧以此延迟，落地→爆炸→掉血同帧）
+	# v20.15: 快照战斗状态——错峰发射/延迟 impact 在战斗结束后全部作废（贴图残留根因）
+	var was_live: bool = _battle_active_now()
 	var title: String = "陨石雨"
 	if effect.find("void") >= 0:
 		title = "虚空灾变"
@@ -499,6 +505,9 @@ func _play_apocalypse_cinematic(effect: String, name_text: String) -> float:
 		proj_id = "ult_orbital"
 		proj_tint = Color(0.5, 0.85, 1.0)
 		trail_color = Color(0.5, 0.85, 1.0, 0.9)
+		# v9.6 (P3-a): 落地爆炸贴图沿用 apocalypse_meteor，但色调改蓝青——
+		# 原橙红爆炸与蓝青弹体/拖尾/冲击波配色断裂（void 分支有专属 burst 覆盖，orbital 漏了）
+		burst_tint = Color(0.5, 0.85, 1.0)
 	# 全屏预警（委托 BattleSpectacle）
 	_emit_cinematic("enemy_spell_apocalypse", "warning", {"title": "%s·%s" % [name_text, title]})
 	_flash_driver_on_cast(0.7)  # boss 本体施法闪光（紫红调，大招峰值）
@@ -540,6 +549,9 @@ func _play_apocalypse_cinematic(effect: String, name_text: String) -> float:
 		var tw_d := _battlefield.create_tween()
 		tw_d.tween_interval(captured_delay)
 		tw_d.tween_callback(func():
+			# v20.15: 战斗在错峰窗口内结束 → 后续小弹体不再发射（残留在结算背景的漏网链）
+			if was_live and not _battle_active_now():
+				return
 			VfxImpactFactory.spawn_ultimate_projectile(_battlefield, Vector2(captured_tpos.x, captured_tpos.y - sky_height), captured_tpos, proj_tex, "vertical", 52.0, proj_tint, trail_color, 0.45,
 				func(lp: Vector2):
 					if _battlefield == null or not is_instance_valid(_battlefield):
@@ -552,6 +564,8 @@ func _play_apocalypse_cinematic(effect: String, name_text: String) -> float:
 	var tw_impact := _battlefield.create_tween()
 	tw_impact.tween_interval(0.55)
 	tw_impact.tween_callback(func():
+		if was_live and not _battle_active_now():
+			return  # v20.15: 战斗已结束——不再对结算画面打全屏定帧闪/震屏
 		_emit_cinematic("enemy_spell_apocalypse", "impact", {})
 		_trigger_screen_shake(9.0, 0.55)
 	)
@@ -562,6 +576,8 @@ func _play_apocalypse_cinematic(effect: String, name_text: String) -> float:
 ## 覆盖 hell_inferno(×2)/napalm/meteor_flame/hellfire_explosion 5 个 boss 大招。
 func _play_inferno_cinematic(_effect: String, name_text: String) -> float:
 	# v17f: 返回燃烧弹飞行时长 0.5s
+	# v20.15: 快照战斗状态——错峰发射/延迟 impact 在战斗结束后全部作废（贴图残留根因）
+	var was_live: bool = _battle_active_now()
 	_emit_cinematic("enemy_spell_inferno", "warning", {"title": "%s·地狱烈焰" % name_text})
 	_flash_driver_on_cast(0.65, Color(1.0, 0.4, 0.15))  # boss 本体施法闪光（橙红调）
 	_spawn_target_warning_marks()  # v17i: 燃烧弹落点预警（AI 批"缺直接威胁提示"）
@@ -603,6 +619,9 @@ func _play_inferno_cinematic(_effect: String, name_text: String) -> float:
 		var tw_d := _battlefield.create_tween()
 		tw_d.tween_interval(captured_delay)
 		tw_d.tween_callback(func():
+			# v20.15: 战斗在错峰窗口内结束 → 后续小燃烧弹不再发射
+			if was_live and not _battle_active_now():
+				return
 			VfxImpactFactory.spawn_ultimate_projectile(_battlefield, captured_from, captured_tpos, bomb_tex, "dive", 46.0, bomb_tint, trail_color, 0.4,
 				func(lp: Vector2):
 					if _battlefield == null or not is_instance_valid(_battlefield):
@@ -618,6 +637,8 @@ func _play_inferno_cinematic(_effect: String, name_text: String) -> float:
 	var tw_impact := _battlefield.create_tween()
 	tw_impact.tween_interval(0.5)
 	tw_impact.tween_callback(func():
+		if was_live and not _battle_active_now():
+			return  # v20.15: 战斗已结束——不再对结算画面打全屏定帧闪/震屏
 		_emit_cinematic("enemy_spell_inferno", "impact", {})
 		_trigger_screen_shake(8.0, 0.5)
 	)
@@ -628,6 +649,8 @@ func _play_inferno_cinematic(_effect: String, name_text: String) -> float:
 func _play_chain_cinematic(_effect: String, name_text: String) -> float:
 	# v17f: 无飞行弹体，返回 0.3 预警窗口（boss 爆发→电弧跳出→伤害，预警标题可读）
 	# v9.3b: 升级为带标题的全屏预警（原 quick_flash 太短促无标题，玩家不知道发生了什么）
+	# v20.15: 快照战斗状态——延迟环/预电弧在战斗结束后作废
+	var was_live: bool = _battle_active_now()
 	_emit_cinematic("enemy_spell_chain", "warning", {"title": "%s·连锁闪电" % name_text})
 	_flash_driver_on_cast(0.65)  # boss 本体施法闪光（蓝白调）
 	var boss_pos: Vector2 = _get_driver_pos()
@@ -642,6 +665,8 @@ func _play_chain_cinematic(_effect: String, name_text: String) -> float:
 		tw_r.tween_callback(func():
 			if _battlefield == null or not is_instance_valid(_battlefield):
 				return
+			if was_live and not _battle_active_now():
+				return  # v20.15: 战斗已结束——蓄力环不再生成
 			VfxImpactFactory.spawn_shockwave(_battlefield, boss_pos,
 				radii[captured_i], Color(0.6 - 0.15 * captured_i, 0.85 - 0.15 * captured_i, 1.0, alphas[captured_i])))
 	# v17i: boss→最近3目标预电弧（低 alpha 预告）——AI 批"闪电从天上落下方向叙事错位，
@@ -658,6 +683,8 @@ func _play_chain_cinematic(_effect: String, name_text: String) -> float:
 		tw_a.tween_callback(func():
 			if _battlefield == null or not is_instance_valid(_battlefield):
 				return
+			if was_live and not _battle_active_now():
+				return  # v20.15: 战斗已结束——预电弧不再生成
 			VfxImpactFactory.spawn_lightning_arc(_battlefield, boss_pos, tpos, Color(0.55, 0.75, 1.0, 0.55)))
 		arc_n += 1
 	# v9.3c: boss 位置专属闪电贴图爆炸（蓝白调）
@@ -723,6 +750,9 @@ func _play_single_target_cinematic(_effect: String, name_text: String) -> float:
 ## E. 召唤/传送：boss 基地紫色螺旋传送门 + 全屏紫雾微闪。
 ## 覆盖 mech_deploy(×2)/forge_summon(×2)/deploy_legion 5 个 boss 大招。
 func _play_summon_cinematic(_effect: String, name_text: String) -> void:
+	# v20.15: 快照战斗状态——传送门脉动/能量柱/威胁环等延迟链在战斗结束后作废
+	# （威胁环持续 3.5s，是结算背景里最显眼的残留贴图之一）
+	var was_live: bool = _battle_active_now()
 	_emit_cinematic("enemy_spell_summon", "warning", {"title": "%s·召唤援军" % name_text})
 	_flash_driver_on_cast(0.6, Color(0.7, 0.3, 1.0))  # boss 本体施法闪光（紫调）
 	var boss_pos: Vector2 = _get_driver_pos()
@@ -740,6 +770,8 @@ func _play_summon_cinematic(_effect: String, name_text: String) -> void:
 		tw_p.tween_callback(func():
 			if _battlefield == null or not is_instance_valid(_battlefield):
 				return
+			if was_live and not _battle_active_now():
+				return  # v20.15: 战斗已结束——门脉动环不再生成
 			VfxImpactFactory.spawn_shockwave(_battlefield, boss_pos,
 				60.0 + captured_pi * 30.0, Color(0.75, 0.4, 1.0, 0.7 - captured_pi * 0.15)))
 	# v17i: 叙事补全——AI 批"传送门后三阶段严重脱节，无内容无威胁"。
@@ -749,6 +781,8 @@ func _play_summon_cinematic(_effect: String, name_text: String) -> void:
 	tw_e.tween_callback(func():
 		if _battlefield == null or not is_instance_valid(_battlefield):
 			return
+		if was_live and not _battle_active_now():
+			return  # v20.15: 战斗已结束——能量柱/爆闪不再生成
 		VfxImpactFactory.spawn_laser_beam(_battlefield, boss_pos,
 			boss_pos + Vector2(0, -220.0), Color(0.75, 0.4, 1.0, 0.95))
 		# v17j: 门内能量团爆闪（AI 批"portal 静止零反馈"——脉动 + 能量上升的中间证据）
@@ -765,6 +799,8 @@ func _play_summon_cinematic(_effect: String, name_text: String) -> void:
 		tw_w.tween_callback(func():
 			if _battlefield == null or not is_instance_valid(_battlefield):
 				return
+			if was_live and not _battle_active_now():
+				return  # v20.15: 战斗已结束——持续威胁环（3.5s）不再生成
 			# v17j: 警报换持续威胁环（4s 红环脉动）——AI 批单次 shockwave"读作命中框"，
 			# 持续环 + 脉动 = "威胁标记挂身"语义（复用 v14 darkness 的 lingering 范式）
 			VfxImpactFactory.spawn_lingering_debuff_ring(_battlefield, tpos, Color(1.0, 0.3, 0.2), 3.5))
@@ -791,6 +827,25 @@ func _play_debuff_cinematic(effect: String, name_text: String) -> void:
 			VfxImpactFactory.spawn_spell_burst(_battlefield, _get_driver_pos(), dark_tex, Color(0.4, 0.15, 0.6), 380.0, 1.2)
 			# v14: 读图 6/10"读作一次性爆炸"——叠加 4s 持续暗蚀环,"削弱挂身"语义成立
 			VfxImpactFactory.spawn_lingering_debuff_ring(_battlefield, _get_driver_pos(), Color(0.45, 0.18, 0.65), 4.0)
+
+## G. 护盾：boss 本体蓝白施法闪光 + boss 位置蓝白大环 + 全屏蓝色预警标题。
+## v9.6(P3-b): 此前护盾类大招无全屏预警、无施法闪光（仅执行侧 _exec_shield_self
+## 一个 100px 小环），与其他 5 类大招表现力断层——补齐对齐（护盾无伤害延迟，纯视觉预警）。
+## 覆盖 energy_shield(001)/dome_barrier(011)/plate_shield(014)/ward_bulwark(016/026) 5 处大招。
+func _play_shield_cinematic(effect: String, name_text: String) -> void:
+	var title: String = "能量护盾"
+	if effect.find("dome") >= 0:
+		title = "穹顶屏障"
+	elif effect.find("plate") >= 0:
+		title = "钢板护盾"
+	elif effect.find("ward") >= 0 or effect.find("bulwark") >= 0:
+		title = "壁垒守护"
+	_emit_cinematic("enemy_spell_shield", "warning", {"title": "%s·%s" % [name_text, title]})
+	_flash_driver_on_cast(0.55, Color(0.45, 0.7, 1.0))  # boss 本体施法闪光（蓝白调）
+	var boss_pos: Vector2 = _get_driver_pos()
+	if _battlefield != null and is_instance_valid(_battlefield):
+		# 蓝白大环（150px，与执行侧 100px 护盾环层次互补）
+		VfxImpactFactory.spawn_shockwave(_battlefield, boss_pos, 150.0, Color(0.4, 0.65, 1.0, 0.55))
 
 # ── 演出辅助 ──
 
@@ -889,6 +944,8 @@ func _exec_aoe_damage(dmg_mult: float, name_text: String, delay: float = 0.4) ->
 	var boss_pos: Vector2 = _get_driver_pos()
 	# toast 预警
 	_show_toast("⚠ %s！我方全体即将受到 %.0f 伤害" % [name_text, base_dmg])
+	# v20.15: 快照战斗状态——延迟爆炸窗口内战斗结束则作废（防结算后贴图残留+补刀已结算单位）
+	var was_live: bool = _battle_active_now()
 	# 对每个目标：标记 + 延迟爆炸 + 伤害结算
 	for e in targets:
 		if e == null or not is_instance_valid(e) or not (e is Node2D):
@@ -904,6 +961,8 @@ func _exec_aoe_damage(dmg_mult: float, name_text: String, delay: float = 0.4) ->
 		tw.tween_callback(func():
 			if _battlefield == null or not is_instance_valid(_battlefield):
 				return
+			if was_live and not _battle_active_now():
+				return  # v20.15: 战斗已结束——落地爆炸与伤害全部作废
 			var cur_pos: Vector2 = captured_pos
 			if is_instance_valid(captured_enemy) and captured_enemy is Node2D:
 				cur_pos = (captured_enemy as Node2D).global_position
@@ -925,6 +984,8 @@ func _exec_chain_lightning(dmg_mult: float, name_text: String, delay: float = 0.
 	var base_dmg: float = _compute_boss_damage() * 0.6 * dmg_mult  # 连锁单发伤害较低
 	# 取距离 boss 最近的 5 个
 	var boss_pos: Vector2 = _get_driver_pos()
+	# v20.15: 快照战斗状态——延迟结算窗口内战斗结束则作废
+	var was_live: bool = _battle_active_now()
 	targets.sort_custom(func(a, b):
 		var da: float = boss_pos.distance_to((a as Node2D).global_position) if a is Node2D else 9999.0
 		var db: float = boss_pos.distance_to((b as Node2D).global_position) if b is Node2D else 9999.0
@@ -950,6 +1011,8 @@ func _exec_chain_lightning(dmg_mult: float, name_text: String, delay: float = 0.
 		var tw_h := _battlefield.create_tween()
 		tw_h.tween_interval(maxf(delay, 0.05))
 		tw_h.tween_callback(func():
+			if was_live and not _battle_active_now():
+				return  # v20.15: 战斗已结束——延迟电伤不再结算
 			if is_instance_valid(captured_t) and captured_t.has_method("take_damage"):
 				captured_t.take_damage(captured_dmg, _driver)
 		)
@@ -1035,11 +1098,15 @@ func _exec_single_target(dmg_mult: float, name_text: String, delay: float = 0.4)
 		VfxImpactFactory.spawn_shockwave(_battlefield, tpos, 60.0, Color(1.0, 0.3, 0.3, 0.9))
 		VfxImpactFactory.spawn_laser_beam(_battlefield, _get_driver_pos(), tpos, Color(1.0, 0.5, 0.3, 1.0))
 	# v17f: 延迟结算与光矛落地同帧（锁定环/激光预览立即，伤害随光效到达）
+	# v20.15: 快照战斗状态——延迟窗口内战斗结束则作废（防对已结算单位补刀）
+	var was_live: bool = _battle_active_now()
 	var captured_best = best
 	var captured_base_dmg = base_dmg
 	var tw_d := _battlefield.create_tween()
 	tw_d.tween_interval(maxf(delay, 0.05))
 	tw_d.tween_callback(func():
+		if was_live and not _battle_active_now():
+			return  # v20.15: 战斗已结束——延迟单体伤害不再结算
 		if is_instance_valid(captured_best) and captured_best.has_method("take_damage"):
 			captured_best.take_damage(captured_base_dmg, _driver)
 	)
@@ -1076,6 +1143,16 @@ func _get_player_units() -> Array:
 	if tree == null:
 		return []
 	return tree.get_nodes_in_group("player_units")
+
+## v20.15: 真实战斗存活查询（延迟链守卫用，快照式判定）。
+## effect_lab / boss_spell_audit 工具场无战斗（battle_active 恒 false）——
+## 守卫判定必须"触发时在战斗中 && 回调时已结束"才拦截，工具场永不被拦。
+func _battle_active_now() -> bool:
+	var tree := Engine.get_main_loop() as SceneTree
+	if tree == null or tree.root == null:
+		return false
+	var bm: Node = tree.root.get_node_or_null("BattleManager")
+	return bm != null and bool(bm.get("battle_active"))
 
 ## 获取 boss 全局位置
 func _get_driver_pos() -> Vector2:

@@ -8,7 +8,7 @@ extends Node2D
 const Layout = preload("res://scripts/card_grid_battle_layout.gd")
 const DT = preload("res://resources/design_tokens.gd")
 
-const VIEWPORT_H: float = 580.0
+const VIEWPORT_H: float = 648.0
 const TINT_ALPHA_MAX: float = 0.07
 const PLAYER_TINT := Color(0.0, 0.7, 0.9)
 const ENEMY_TINT := Color(0.85, 0.2, 0.2)

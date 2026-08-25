@@ -284,6 +284,39 @@ static func ability_rage_buff(star: int) -> Dictionary:
 		"description": "每%d秒激活狂暴：目标单位 %d 秒内攻击+%d%%、攻速+%d%%" % [int(interval), int(duration), int(round((atk_mult - 1.0) * 100)), int(round((spd_mult - 1.0) * 100))],
 	}
 
+## 10. 神盾壁垒（Aegis 势力）— 开局为我方全体提供高额护盾 + 战斗期间持续减伤
+## v21.x: Aegis 7星仅 10 格（绿4符6），用极限符文深度换取全服最强护盾能力补偿。
+static func ability_aegis_barrier(star: int) -> Dictionary:
+	var shield_amount: float = 3000.0
+	var dmg_reduction: float = 0.10
+	var duration: float = 60.0
+	match star:
+		4: shield_amount = 1500.0; dmg_reduction = 0.05; duration = 30.0
+		7: shield_amount = 6000.0; dmg_reduction = 0.15; duration = 90.0
+	return {
+		"id": "aegis_barrier",
+		"name": "神盾壁垒",
+		"type": "on_battle_start",
+		"params": {"shield_amount": shield_amount, "damage_reduction": dmg_reduction, "duration": duration, "target": "player_all"},
+		"description": "开局为我方全体提供%.0f护盾并持续减伤%d%%" % [shield_amount, int(dmg_reduction * 100)],
+	}
+
+## 11. 全能过载（Generic 势力）— 开局所有单位全属性强化 + 能量消耗降低
+## v21.x: Generic 7星 12 格（绿6符6），用全局属性加成补偿少 1 格。
+static func ability_generic_overdrive(star: int) -> Dictionary:
+	var attr_boost: float = 0.08
+	var cost_reduce: int = 2
+	match star:
+		5: attr_boost = 0.05; cost_reduce = 1
+		7: attr_boost = 0.10; cost_reduce = 3
+	return {
+		"id": "generic_overdrive",
+		"name": "全能过载",
+		"type": "passive",
+		"params": {"attr_boost": attr_boost, "cost_reduce": cost_reduce},
+		"description": "战斗开始所有单位全属性+%d%%、部署能量消耗-%d" % [int(attr_boost * 100), cost_reduce],
+	}
+
 
 ## 通用相位仪布局（平衡型）
 ## v6.2：移除 red/blue 法则槽，新增 rune 符文槽（替代法则系统）

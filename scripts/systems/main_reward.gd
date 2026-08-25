@@ -9,12 +9,26 @@ var main: Control = null
 # battle_result_dialog.gd/.tscn 存在自循环 preload 依赖（.gd preload .tscn，.tscn ext_resource .gd），
 # 在 Godot 4.5.1 触发 "Busy" 解析错误，且已无任何运行时引用，故彻底删除。
 
-## 战斗结束回调：清理待处理输入、停止持续渲染
+## 战斗结束回调：清理待处理输入、延迟冻结战场渲染
 func on_battle_ended_clear_pending(_player_won: bool) -> void:
-	# 性能优化：战斗结束后停止持续渲染 SubViewport
-	var viewport: Node = main.get_node_or_null("BattleContainer/SubViewportContainer/SubViewport")
-	if viewport:
-		viewport.render_target_update_mode = SubViewport.UPDATE_ONCE
+	# v20.15: 不再立即冻结 SubViewport——战斗结束瞬间半空中的大招弹体/命中贴图
+	# 会被定格成结算/准备界面背景上的"残留贴图"。延迟 1.6s（大招尾链最长 ~1.2s）
+	# 让最后的爆炸/淡出在结算面板后自然播完，再定格"战后余烬"帧。
+	# 性能代价：每场战斗多渲染 ~1.6s，可忽略。
+	var tree: SceneTree = main.get_tree() if main != null else null
+	if tree == null:
+		return
+	tree.create_timer(1.6).timeout.connect(func():
+		if main == null or not is_instance_valid(main) or not main.is_inside_tree():
+			return
+		if main._is_in_battle():
+			return  # 期间开了新战斗——战斗路径自管视口（UPDATE_ALWAYS）
+		if main._afk_manager != null and main._afk_manager.is_running:
+			return  # 挂机中保持持续渲染（AFK 缩略图需要）
+		var viewport: Node = main.get_node_or_null("BattleContainer/SubViewportContainer/SubViewport")
+		if viewport:
+			viewport.render_target_update_mode = SubViewport.UPDATE_ONCE
+	)
 	if SignalBus:
 		BattleInputState.clear_all_pending()
 
@@ -82,3 +96,11 @@ func clear_battlefield_units() -> void:
 	# 清理临时节点（须保留 BattleSlotGrid，否则下一场无法部署）
 	if bf.has_method("prune_transient_children"):
 		bf.prune_transient_children()
+	# v20.15: prune 后补渲染一帧——视口在战斗结束时已冻结（UPDATE_ONCE 定格帧），
+	# 若不重渲染，准备界面背景仍是结算前的旧定格帧（含半空弹体/阵亡单位/残留贴图）。
+	# 再设一次 UPDATE_ONCE = 以"已清空的战场"重渲一帧并定格。
+	if main != null and is_instance_valid(main) and not main._is_in_battle() \
+			and not (main._afk_manager != null and main._afk_manager.is_running):
+		var vp: Node = main.get_node_or_null("BattleContainer/SubViewportContainer/SubViewport")
+		if vp:
+			vp.render_target_update_mode = SubViewport.UPDATE_ONCE

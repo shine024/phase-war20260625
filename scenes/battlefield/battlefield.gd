@@ -53,7 +53,7 @@ var _bg_loading_path: String = ""
 var _bg_load_generation: int = 0
 var _bg_pending_level: int = 1
 var _bg_pending_era: int = 0
-var _bg_pending_battle_bottom_y: float = 580.0
+var _bg_pending_battle_bottom_y: float = 648.0
 
 # v9.1 组合技浓度场 VFX：订阅 combo_field_state.field_changed 信号，按浓度绘制半透明区域
 var _combo_field_state: RefCounted = null
@@ -179,7 +179,7 @@ func _process(_delta: float) -> void:
 func _update_background() -> void:
 	var battle_bottom_y: float = get_viewport_rect().size.y
 	if battle_bottom_y <= 0.0:
-		battle_bottom_y = 580.0
+		battle_bottom_y = 648.0
 
 	# v6.6(剧情): 第100关终战视觉模式（补剧情.txt L137 记忆场景）
 	# 用灰白冷色调覆盖背景，表现"主角记忆中的城市/办公楼/小区"

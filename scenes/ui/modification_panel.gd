@@ -383,6 +383,11 @@ func _apply_embedded_layout() -> void:
 	# v7.x：隐藏整个左栏（含 chip 筛选 + 卡牌列表），而非仅 ScrollContainer
 	if left_panel:
 		left_panel.visible = false
+	# 2026-08-25：嵌入宿主（卡片详情仅 540px）容不下三栏——右栏"单位面板"固定 min 宽 340
+	# 会顶出宿主右缘，并把中栏改造模块库挤到 ~226px。嵌入时整体隐藏右栏（单位信息在
+	# 宿主详情 Tab 就地可见），改造模块库独占全部宽度。
+	if card_info_panel:
+		card_info_panel.visible = false
 	# v6.4: 内嵌模式下隐藏资源栏（背包场景冗余）
 	var resource_bar = get_node_or_null("VBoxContainer/ResourceBar")
 	if resource_bar:
@@ -617,8 +622,8 @@ func _create_card_item(card: CardResource, instance_card: CardResource = null) -
 	name_label.add_theme_font_size_override("font_size", 16)
 	name_label.add_theme_color_override("font_color", DT.COLOR_TEXT if (selected_card and selected_card.instance_id == display_instance_id) else Color(0.85, 0.88, 0.94, 1))
 	name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	# 单行不换行、不截断：左栏加宽到 360 容下绝大多数卡名；超长名左对齐单行显示
-	name_label.autowrap_mode = TextServer.AUTOWRAP_OFF
+	# 超长卡名折行（行内容已随按钮内容区约束宽度；不裁切避免名字被裁空不可见）
+	name_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	name_label.clip_text = false
 	name_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	name_row.add_child(name_label)
@@ -646,6 +651,10 @@ func _create_card_item(card: CardResource, instance_card: CardResource = null) -
 	hbox.add_child(info)
 
 	btn.add_child(hbox)
+	# 同 _create_mod_item：Button 非容器，手动让 hbox 跟随按钮内容区（边距对齐样式盒 6/4）
+	btn.resized.connect(func() -> void:
+		hbox.position = Vector2(6.0, 4.0)
+		hbox.size = Vector2(maxf(0.0, btn.size.x - 12.0), maxf(0.0, btn.size.y - 8.0)))
 	btn.tooltip_text = "改造：%d/9" % display_mods.size()
 	# v7.3: 选中绑定用实例对象（含养成）。实例取不到时传 null，
 	# _on_card_selected 会拒绝选中（避免改造写到无养成的模板污染单例）。
@@ -816,6 +825,7 @@ func _create_mod_item(mod_id: String, mod_data: Dictionary) -> Control:
 	# 信息列（名 + 效果摘要）
 	var info := VBoxContainer.new()
 	info.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	info.size_flags_vertical = Control.SIZE_SHRINK_CENTER  # 折行多行时垂直居中，避免只向下溢出
 	info.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	info.add_theme_constant_override("separation", 1)
 	info.custom_minimum_size = Vector2(150, 0)  # 锁宽：中栏被挤窄时信息列不塌缩（防名字被裁空）
@@ -836,8 +846,8 @@ func _create_mod_item(mod_id: String, mod_data: Dictionary) -> Control:
 	name_label.add_theme_font_size_override("font_size", 14)
 	name_label.add_theme_color_override("font_color", DT.COLOR_TEXT_SOFT)
 	name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	# 不裁切：clip_text 在窄列会把名字裁到 0px 致不可见；单行不换行，超长向右溢出可见
-	name_label.clip_text = false
+	# 超长名自动折行（行内容已随按钮内容区约束宽度；不裁切避免窄列名字被裁到不可见）
+	name_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	name_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	name_row.add_child(name_label)
 
@@ -861,7 +871,7 @@ func _create_mod_item(mod_id: String, mod_data: Dictionary) -> Control:
 		effect_lbl.add_theme_font_override("font", DT.get_body_font())
 		effect_lbl.add_theme_font_size_override("font_size", 12)
 		effect_lbl.add_theme_color_override("font_color", DT.COLOR_CYAN_TECH_SOFT if is_applicable else DT.COLOR_SLATE_A70)
-		effect_lbl.clip_text = false
+		effect_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		effect_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		info.add_child(effect_lbl)
 	hbox.add_child(info)
@@ -902,6 +912,11 @@ func _create_mod_item(mod_id: String, mod_data: Dictionary) -> Control:
 	hbox.add_child(status_label)
 
 	btn.add_child(hbox)
+	# Button 非容器、不给子节点布局：不约束的话行内容按自然最小宽渲染，长效果文本
+	# 会冲出按钮/中栏/面板。手动让 hbox 跟随按钮内容区（边距对齐样式盒 content_margin 6/4）。
+	btn.resized.connect(func() -> void:
+		hbox.position = Vector2(6.0, 4.0)
+		hbox.size = Vector2(maxf(0.0, btn.size.x - 12.0), maxf(0.0, btn.size.y - 8.0)))
 	# 禁用规则：已安装、不适用、被 block（冲突/槽满/情报不足）、或战力档位不足时禁用点击
 	btn.disabled = is_installed or not is_applicable or not block_reason.is_empty() or tier_blocked
 	btn.tooltip_text = "%s\n稀有度：%s" % [String(mod_data.get("description", "")), rarity_cn]
@@ -948,6 +963,10 @@ func _get_install_block_reason(mod_id: String) -> String:
 ## 动态构建 6 个视觉区块：Hero头部 / PowerBlock战力块 / TierProgress5档条 / 基础属性6格 / 已装改造列表
 func _update_card_info() -> void:
 	if card_info_panel == null:
+		return
+	# 嵌入模式右栏整体隐藏（见 _apply_embedded_layout）——此处必须早退，
+	# 否则会把已隐藏的右栏 visible=true 顶回来，重新溢出 540px 宿主右缘。
+	if _embedded_mode:
 		return
 	if not selected_card:
 		# 未选单位时 DetailPanel 保持可见并显示占位提示（v7.x 界面一致性修复：
@@ -1893,11 +1912,15 @@ func _format_one_effect(key: String, val) -> String:
 	var key_display = _translate_effect_key(key)
 	if val is bool and val:
 		return "✓ %s" % key_display
+	# 攻速：attack_interval 是攻击间隔，负值=间隔缩短=攻速提升，统一转正表述
+	if key == "attack_interval":
+		return "攻速 +%d%%" % int(round(absf(float(val)) * 100.0))
 	return "%s %s" % [key_display, _format_effect_number(val)]
 
 
 ## v1.5：统一的改造效果数值格式化（列表行 / 效果模拟抽屉共用，消除 +150% vs ×1.50 分叉）
-## 规则：|v|<=1 的非零小数 → 百分比（+30% / -20%）；v>1 → 倍率（×1.50）；int → 整数加成（+5 / -3）
+## 规则：|v|<=1 的非零小数 → 百分比（+30% / -20%）；>1 的浮点在现网数据里是持续秒/
+## 半径/点数（非倍率）→ 加数（整值去小数）；int → 整数加成（+5 / -3）
 func _format_effect_number(val) -> String:
 	if val is bool:
 		return "✓" if val else ""
@@ -1906,7 +1929,9 @@ func _format_effect_number(val) -> String:
 			return "0"
 		if absf(val) <= 1.0 or val < -1.0:
 			return "%+.0f%%" % (val * 100.0)
-		return "×%.2f" % val
+		if is_equal_approx(val, roundf(val)):
+			return "+%d" % int(round(val))
+		return "+%.1f" % val
 	if val is int:
 		return "%+d" % val if val >= 0 else str(val)
 	return str(val)

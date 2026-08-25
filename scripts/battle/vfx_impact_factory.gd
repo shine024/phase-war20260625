@@ -1998,9 +1998,22 @@ static func _content_width_of(texture: Texture2D, table: Dictionary) -> float:
 			return float(table[fname])
 	return float(texture.get_width())
 
+## v20.15: 真实战斗存活查询（大招弹体落地守卫用）。
+## effect_lab / boss_spell_audit / vfx_showcase 等工具场无战斗（battle_active 恒 false），
+## 守卫必须"发射时在战斗中 && 到达时已结束"才拦截——工具场永不被拦（快照式判定）。
+static func _battle_active_now() -> bool:
+	var tree := Engine.get_main_loop() as SceneTree
+	if tree == null or tree.root == null:
+		return false
+	var bm: Node = tree.root.get_node_or_null("BattleManager")
+	return bm != null and bool(bm.get("battle_active"))
+
 static func spawn_ultimate_projectile(parent: Node2D, from: Vector2, target: Vector2, texture: Texture2D, trajectory: String = "vertical", target_width: float = 48.0, tint: Color = Color.WHITE, trail_color: Color = Color(1.0, 0.8, 0.3, 0.9), flight_time: float = 0.5, on_arrival: Callable = Callable()) -> float:
 	if parent == null or not is_instance_valid(parent):
 		return 0.0
+	# v20.15: 发射时快照战斗状态——飞行途中战斗结束（胜利/撤退/判负）时到达回调作废，
+	# 不再生成落地爆炸/焦痕（结算后贴图残留战场背景的直接根因之一），也不补刀已结算单位。
+	var battle_on_at_launch: bool = _battle_active_now()
 	if DT.is_motion_reduce():
 		# 减动效：跳过飞行，直接触发到达回调（保持伤害时序，只省视觉）
 		if on_arrival.is_valid():
@@ -2108,6 +2121,10 @@ static func spawn_ultimate_projectile(parent: Node2D, from: Vector2, target: Vec
 		if captured_trail_glow != null and is_instance_valid(captured_trail_glow):
 			captured_trail_glow.material = null
 			_release_beam(captured_trail_glow)
+		# v20.15: 飞行途中战斗已结束 → 到达回调（落地爆炸/伤害）整体作废。
+		# 飞行体/拖尾仍正常回收（上面的 queue_free/_release），只是不再生成新贴图。
+		if battle_on_at_launch and not _battle_active_now():
+			return
 		if captured_arrival.is_valid():
 			captured_arrival.call(captured_target))
 	return flight_time

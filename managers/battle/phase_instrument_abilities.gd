@@ -329,6 +329,8 @@ static func _fire_artillery_shot_enemy(target: Node, dmg: float) -> void:
 	# 第一阶段：红色标记（警告玩家）
 	PhaseLawCastEffect.create_phase_law_effect(_battlefield, tpos, Color(1.0, 0.2, 0.2, 1.0))
 	# 第二阶段：延迟爆炸 + 伤害（tween）
+	# v20.15: 快照战斗状态——延迟窗口内战斗结束则爆炸/伤害作废（贴图残留根因之一）
+	var was_live: bool = _battle_active_now()
 	var captured_target = target
 	var captured_pos = tpos
 	var captured_dmg = dmg
@@ -337,6 +339,8 @@ static func _fire_artillery_shot_enemy(target: Node, dmg: float) -> void:
 	tw.tween_callback(func():
 		if _battlefield == null or not is_instance_valid(_battlefield):
 			return
+		if was_live and not _battle_active_now():
+			return  # v20.15: 战斗已结束——落地爆炸/伤害不再生成
 		var cur_pos: Vector2 = captured_pos
 		if is_instance_valid(captured_target) and captured_target is Node2D:
 			cur_pos = (captured_target as Node2D).global_position
@@ -405,6 +409,9 @@ static func _fire_nuclear_bombardment(owner: Owner, params: Dictionary) -> void:
 	var beam_color: Color = Color(0.5, 0.6, 1.0, 0.7) if owner == Owner.PLAYER else Color(1.0, 0.5, 0.3, 0.7)
 	var mark_delay: float = 0.35
 	var fired_impact: bool = false
+	# v20.15: 快照战斗状态——导弹错峰发射（最长 ~0.54s）+ 飞行 0.35s 期间战斗结束，
+	# 后续发射与落地演出全部作废（核导弹贴图残留在结算/准备背景的直接根因）
+	var was_live: bool = _battle_active_now()
 	# v9.5: 计算发射方阵地位置（导弹从这里飞出）——取 owner 方单位的平均位置
 	# 玩家版=从我方阵地发射导弹飞向敌方；敌方版=从 boss/敌方区发射飞向我方
 	var launch_pos: Vector2 = first_pos  # 默认用首个目标位置兜底
@@ -455,6 +462,9 @@ static func _fire_nuclear_bombardment(owner: Owner, params: Dictionary) -> void:
 		tw_launch.tween_interval(launch_delay)
 		tw_launch.tween_callback(func():
 			if _battlefield == null or not is_instance_valid(_battlefield):
+				return
+			# v20.15: 战斗在错峰窗口内结束 → 该枚导弹不再发射（落地演出由弹体到达守卫兜底）
+			if was_live and not _battle_active_now():
 				return
 			VfxImpactFactory.spawn_ultimate_projectile(_battlefield, captured_launch, captured_pos, captured_missile_tex, "arc", 52.0, captured_missile_tint, captured_missile_trail, mark_delay,
 				func(land_pos: Vector2):
@@ -807,6 +817,16 @@ static func _load_projectile_texture(name_id: String) -> Texture2D:
 		tex = load(path)
 	_projectile_texture_cache[name_id] = tex
 	return tex
+
+## v20.15: 真实战斗存活查询（延迟链守卫用，快照式判定）。
+## 展示/工具场无战斗（battle_active 恒 false）——守卫判定必须
+## "触发时在战斗中 && 回调时已结束"才拦截，工具场永不被拦。
+static func _battle_active_now() -> bool:
+	var tree := Engine.get_main_loop() as SceneTree
+	if tree == null or tree.root == null:
+		return false
+	var bm: Node = tree.root.get_node_or_null("BattleManager")
+	return bm != null and bool(bm.get("battle_active"))
 
 static func _emit_ability_triggered(ability_id: String, stage: String, params: Dictionary = {}) -> void:
 	# v9.2: 同 _show_toast，改用 autoload 全局名 SignalBus。

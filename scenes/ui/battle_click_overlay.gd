@@ -2,7 +2,6 @@ extends Control
 ## 覆盖在战场上：暂停/继续时都可点单位显示信息；信息框打开时点击框外自动关闭；单位部署选点
 ## v9.x（P2-7范围B）：主动法则选点施放链已随法则系统退役移除
 
-const VIEWPORT_SIZE := Vector2(1280.0, 580.0)
 const LawTargetIndicatorScript = preload("res://scenes/effects/law_target_indicator.gd")
 const NodeFinder = preload("res://scripts/node_finder.gd")
 const DEBUG_DEPLOY_CLICK_LOG := false

@@ -1,0 +1,278 @@
+Title: Daisenryaku
+
+URL Source: https://en.wikipedia.org/wiki/Daisenryaku
+
+Published Time: 2007-03-24T18:47:29Z
+
+Markdown Content:
+[![Image 1](https://upload.wikimedia.org/wikipedia/commons/thumb/8/87/%E5%A4%A7%E6%88%A6%E7%95%A5_logo.png/330px-%E5%A4%A7%E6%88%A6%E7%95%A5_logo.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail)](https://en.wikipedia.org/wiki/File:%E5%A4%A7%E6%88%A6%E7%95%A5_logo.png)
+
+_**Daisenryaku**_ (大戦略, _**Great Strategy**_) is a series of war [strategy video games](https://en.wikipedia.org/wiki/Strategy_video_game "Strategy video game") by SystemSoft and [SystemSoft Alpha](https://en.wikipedia.org/wiki/SystemSoft_Alpha "SystemSoft Alpha") in Japan. The series debuted in Japan in 1985 with _Gendai Daisenryaku_ (現代大戦略, Modern Great Strategy) exclusively for the [NEC PC-98](https://en.wikipedia.org/wiki/PC-9800_series "PC-9800 series").[[1]](https://en.wikipedia.org/wiki/Daisenryaku#cite_note-ascii_20050127-1)[[2]](https://en.wikipedia.org/wiki/Daisenryaku#cite_note-:0-2)
+
+Games in the franchise have been released for many platforms including the [PC-88](https://en.wikipedia.org/wiki/PC-8800_series "PC-8800 series"), [X1](https://en.wikipedia.org/wiki/X1_(computer) "X1 (computer)"), [FM-7](https://en.wikipedia.org/wiki/FM-7 "FM-7"), [MSX](https://en.wikipedia.org/wiki/MSX "MSX"), [Famicom](https://en.wikipedia.org/wiki/Famicom "Famicom"), [Mega Drive](https://en.wikipedia.org/wiki/Mega_Drive "Mega Drive"), [Turbo CD](https://en.wikipedia.org/wiki/Turbo_CD "Turbo CD"), [Game Boy](https://en.wikipedia.org/wiki/Game_Boy "Game Boy"), [Game Gear](https://en.wikipedia.org/wiki/Game_Gear "Game Gear"), [Super Famicom](https://en.wikipedia.org/wiki/Super_Famicom "Super Famicom"), [Sega Saturn](https://en.wikipedia.org/wiki/Sega_Saturn "Sega Saturn"), [Dreamcast](https://en.wikipedia.org/wiki/Dreamcast "Dreamcast"), [Game Boy Advance](https://en.wikipedia.org/wiki/Game_Boy_Advance "Game Boy Advance"), [Nintendo DS](https://en.wikipedia.org/wiki/Nintendo_DS "Nintendo DS"), [PlayStation](https://en.wikipedia.org/wiki/PlayStation "PlayStation"), [PlayStation 2](https://en.wikipedia.org/wiki/PlayStation_2 "PlayStation 2"), [PlayStation Portable](https://en.wikipedia.org/wiki/PlayStation_Portable "PlayStation Portable"), [PlayStation 3](https://en.wikipedia.org/wiki/PlayStation_3 "PlayStation 3"), [PlayStation Vita](https://en.wikipedia.org/wiki/PlayStation_Vita "PlayStation Vita"), [PlayStation 4](https://en.wikipedia.org/wiki/PlayStation_4 "PlayStation 4"), [Windows](https://en.wikipedia.org/wiki/Microsoft_Windows "Microsoft Windows"), [Macintosh](https://en.wikipedia.org/wiki/Macintosh "Macintosh") and other mobile devices.
+
+In April 1993, _[Famicom Tsūshin](https://en.wikipedia.org/wiki/Famicom\_Ts%C5%ABshin "Famicom Tsūshin")_ (_Famitsu_) magazine awarded the _Daisenryaku_ series a world record for being ported to the most [game consoles](https://en.wikipedia.org/wiki/Game_consoles "Game consoles"). It was ported to seven consoles up until then, including the Game Boy and Mega Drive.[[3]](https://en.wikipedia.org/wiki/Daisenryaku#cite_note-3)
+
+| Name | Released | Platform |
+| --- | --- | --- |
+| _Gendai Daisenryaku_ | November 1985[[1]](https://en.wikipedia.org/wiki/Daisenryaku#cite_note-ascii_20050127-1)[[2]](https://en.wikipedia.org/wiki/Daisenryaku#cite_note-:0-2) | [PC-98](https://en.wikipedia.org/wiki/PC-9800_series "PC-9800 series") |
+| _Daisenryaku 88_ | August 1986[[2]](https://en.wikipedia.org/wiki/Daisenryaku#cite_note-:0-2)[[4]](https://en.wikipedia.org/wiki/Daisenryaku#cite_note-pjegg_daisenryaku88-4) | [PC-88](https://en.wikipedia.org/wiki/PC-8800_series "PC-8800 series") |
+| _Daisenryaku X1_ | December 1986[[2]](https://en.wikipedia.org/wiki/Daisenryaku#cite_note-:0-2)[[5]](https://en.wikipedia.org/wiki/Daisenryaku#cite_note-5) | [X1](https://en.wikipedia.org/wiki/X1_(computer) "X1 (computer)") |
+| _Daisenryaku II_ | March 20, 1987[[1]](https://en.wikipedia.org/wiki/Daisenryaku#cite_note-ascii_20050127-1)[[2]](https://en.wikipedia.org/wiki/Daisenryaku#cite_note-:0-2) | [PC-98](https://en.wikipedia.org/wiki/PC-9800_series "PC-9800 series") |
+| _Daisenryaku FM_ | August 1987[[2]](https://en.wikipedia.org/wiki/Daisenryaku#cite_note-:0-2)[[6]](https://en.wikipedia.org/wiki/Daisenryaku#cite_note-6) | [FM-7](https://en.wikipedia.org/wiki/FM-7 "FM-7") |
+| _Daisenryaku_ | November 1987[[2]](https://en.wikipedia.org/wiki/Daisenryaku#cite_note-:0-2) | [MSX2](https://en.wikipedia.org/wiki/MSX "MSX") |
+| _Super Daisenryaku_ | 1988[[4]](https://en.wikipedia.org/wiki/Daisenryaku#cite_note-pjegg_daisenryaku88-4) | [PC-88](https://en.wikipedia.org/wiki/PC-8800_series "PC-8800 series") |
+| _Campaign-ban Daisenryaku II_ | November 1988[[2]](https://en.wikipedia.org/wiki/Daisenryaku#cite_note-:0-2) | [PC-88](https://en.wikipedia.org/wiki/PC-8800_series "PC-8800 series") |
+| _Super Daisenryaku_ | May 1989[[2]](https://en.wikipedia.org/wiki/Daisenryaku#cite_note-:0-2) | [MSX2](https://en.wikipedia.org/wiki/MSX "MSX") |
+| _Daisenryaku III: Great Commander_ | June 24, 1989[[7]](https://en.wikipedia.org/wiki/Daisenryaku#cite_note-7) | [PC-98](https://en.wikipedia.org/wiki/PC-9800_series "PC-9800 series") |
+| _Campaign-ban Daisenryaku II_ | December 1989[[2]](https://en.wikipedia.org/wiki/Daisenryaku#cite_note-:0-2) | [PC-98](https://en.wikipedia.org/wiki/PC-9800_series "PC-9800 series") |
+| _Daisenryaku III '90_ | October 1990[[2]](https://en.wikipedia.org/wiki/Daisenryaku#cite_note-:0-2) | [PC-98](https://en.wikipedia.org/wiki/PC-9800_series "PC-9800 series") |
+| _Daisenryaku III '90_ | December 1991[[2]](https://en.wikipedia.org/wiki/Daisenryaku#cite_note-:0-2) | [X68000](https://en.wikipedia.org/wiki/X68000 "X68000") |
+| _Campaign-ban Daisenryaku II_ | June 1992 | [MSX2](https://en.wikipedia.org/wiki/MSX2 "MSX2") |
+| _Daisenryaku IV_ | June 1992[[2]](https://en.wikipedia.org/wiki/Daisenryaku#cite_note-:0-2) | [PC-98](https://en.wikipedia.org/wiki/PC-9800_series "PC-9800 series") |
+| _Advanced Daisenryaku 98_ | April 2, 1998 | [PC](https://en.wikipedia.org/wiki/Personal_computer "Personal computer") |
+| _Advanced Daisenryaku 98 II_ | August 5, 1999 | [PC](https://en.wikipedia.org/wiki/Personal_computer "Personal computer") |
+| _[Advanced Daisenryaku 2001](https://en.wikipedia.org/wiki/Daisenryaku#Advanced\_Daisenryaku\_2001)_ | April 26, 2001 | [PC](https://en.wikipedia.org/wiki/Personal_computer "Personal computer") |
+| _[Daisenryaku VII](https://en.wikipedia.org/wiki/Daisenryaku\_VII "Daisenryaku VII")_ | December 20, 2001[[8]](https://en.wikipedia.org/wiki/Daisenryaku#cite_note-DS7-OfficialSite-8) | [PC](https://en.wikipedia.org/wiki/Personal_computer "Personal computer") |
+| _Daisenryaku Perfect_ | March 20, 2003 | [PC](https://en.wikipedia.org/wiki/Personal_computer "Personal computer") |
+| _Advanced Daisenryaku IV_ | August 21, 2003 | [PC](https://en.wikipedia.org/wiki/Personal_computer "Personal computer") |
+| _Daisenryaku Centurion_ | June 15, 2006 | [PC](https://en.wikipedia.org/wiki/Personal_computer "Personal computer") |
+| _Advanced Daisenryaku 5_ | June 29, 2006 | [PC](https://en.wikipedia.org/wiki/Personal_computer "Personal computer") |
+| _Shin Daisenryaku: Battle of Soldier_ | March 13, 2009 | [PC](https://en.wikipedia.org/wiki/Personal_computer "Personal computer") |
+| _Daisenryaku Perfect 2.0_ | November 20, 2009 | [PC](https://en.wikipedia.org/wiki/Personal_computer "Personal computer") |
+| _Daisenryaku: Dai Tōa Kōbōshi: Nii Takayama no Bore - Ichini Maru Hachi_ | November 20, 2009 | [PC](https://en.wikipedia.org/wiki/Personal_computer "Personal computer") |
+| _Daisenryaku: Dai Tōa Kōbōshi - Dainijisekaitaisen Boppatsu - Sūjiku Sentai Rengougun Zensekaisen_ | November 22, 2009 | [PC](https://en.wikipedia.org/wiki/Personal_computer "Personal computer") |
+| _Daisenryaku Supreme Strategic Battles_ | February 3, 2022 | [PC](https://en.wikipedia.org/wiki/Personal_computer "Personal computer") |
+|  |
+
+| Name | Release dates | Platforms |
+| --- | --- | --- |
+| _Daisenryaku_ | * [JP](https://en.wikipedia.org/wiki/Japan "Japan"): October 11, 1988 | [Famicom](https://en.wikipedia.org/wiki/Famicom "Famicom") |
+| _Super Daisenryaku_ | * [JP](https://en.wikipedia.org/wiki/Japan "Japan"): April 29, 1989 | [Mega Drive](https://en.wikipedia.org/wiki/Mega_Drive "Mega Drive") |
+| _[Advanced Daisenryaku: Deutsch Dengeki Sakusen](https://en.wikipedia.org/wiki/Daisenryaku#Advanced\_Daisenryaku:\_Deutsch\_Dengeki\_Sakusen)_ | * [JP](https://en.wikipedia.org/wiki/Japan "Japan"): June 21, 1991 | Mega Drive |
+| _Lord of Wars_ | * [JP](https://en.wikipedia.org/wiki/Japan "Japan"): November 21, 1991 | [Turbo CD](https://en.wikipedia.org/wiki/Turbo_CD "Turbo CD") |
+| _Campaign-ban Daisenryaku II_ | * [JP](https://en.wikipedia.org/wiki/Japan "Japan"): May 29, 1992 | Turbo CD |
+| _Daisenryaku Expert_ | * [JP](https://en.wikipedia.org/wiki/Japan "Japan"): September 25, 1992 | [Super Famicom](https://en.wikipedia.org/wiki/Super_Famicom "Super Famicom") |
+| _Barbarossa_ | * [JP](https://en.wikipedia.org/wiki/Japan "Japan"): November 27, 1992 | Super Famicom |
+| _World Advanced Daisenryaku Kōtetsu no Senpū_ | * [JP](https://en.wikipedia.org/wiki/Japan "Japan"): September 22, 1995 | [Sega Saturn](https://en.wikipedia.org/wiki/Sega_Saturn "Sega Saturn") |
+| _World Advanced Daisenryaku: Sakusen File_ | * [JP](https://en.wikipedia.org/wiki/Japan "Japan"): March 15, 1996 | Sega Saturn |
+| _Daisenryaku: Players Spirit_ | * [JP](https://en.wikipedia.org/wiki/Japan "Japan"): March 29, 1996 | [PlayStation](https://en.wikipedia.org/wiki/PlayStation_(console) "PlayStation (console)") |
+| _[Iron Storm](https://en.wikipedia.org/wiki/Iron\_Storm\_(1995\_video\_game) "Iron Storm (1995 video game)")_ | * [NA](https://en.wikipedia.org/wiki/North_America "North America"): May 8, 1996 | Sega Saturn |
+| _[Daisenryaku Expert WWII: War in Europe](https://en.wikipedia.org/wiki/Daisenryaku#Daisenryaku\_Expert\_WWII:\_War\_in\_Europe)_ | * [JP](https://en.wikipedia.org/wiki/Japan "Japan"): August 30, 1996 | Super Famicom |
+| _Advanced World War Sennen Teikoku no Kōbō: Last of the Millennium_ | * [JP](https://en.wikipedia.org/wiki/Japan "Japan"): March 20, 1997 | Sega Saturn |
+| _Daisenryaku Strong Style_ | * [JP](https://en.wikipedia.org/wiki/Japan "Japan"): June 27, 1997 | Sega Saturn |
+| _Daisenryaku: Master Combat_ | * [JP](https://en.wikipedia.org/wiki/Japan "Japan"): December 12, 1998 | PlayStation |
+| _Cyber Daisenryaku: Shutsugeki! Harukatai_ | * [JP](https://en.wikipedia.org/wiki/Japan "Japan"): February 4, 1999 | PlayStation |
+| _Advanced Daisenryaku: Europe no Arashi - Doitsu Dengeki Sakusen_ | * [JP](https://en.wikipedia.org/wiki/Japan "Japan"): June 22, 2000 | [Dreamcast](https://en.wikipedia.org/wiki/Dreamcast "Dreamcast") |
+| _[Advanced Daisenryaku 2001](https://en.wikipedia.org/wiki/Daisenryaku#Advanced\_Daisenryaku\_2001)_ | * [JP](https://en.wikipedia.org/wiki/Japan "Japan"): April 26, 2001 | Dreamcast |
+| _Daisenryaku VII_ / _[Dai Senryaku VII: Modern Military Tactics](https://en.wikipedia.org/wiki/Daisenryaku#Dai\_Senryaku\_VII:\_Modern\_Military\_Tactics)_ | **Xbox** * [JP](https://en.wikipedia.org/wiki/Japan "Japan"): May 29, 2003 * [NA](https://en.wikipedia.org/wiki/North_America "North America"): February 16, 2005 **PlayStation 2** * [JP](https://en.wikipedia.org/wiki/Japan "Japan"): December 14, 2006 * [NA](https://en.wikipedia.org/wiki/North_America "North America"): December 19, 2007 | [Xbox](https://en.wikipedia.org/wiki/Xbox_Console "Xbox Console"), [PlayStation 2](https://en.wikipedia.org/wiki/PlayStation_2 "PlayStation 2") |
+| _Daisenryaku 1941: Gyakuten no Taiheiyō_ | * [JP](https://en.wikipedia.org/wiki/Japan "Japan"): November 3, 2003 | PlayStation 2 |
+| _Standard Daisenryaku: Dengekisen_ | * [JP](https://en.wikipedia.org/wiki/Japan "Japan"): November 11, 2004 | PlayStation 2 |
+| _Standard Daisenryaku: Ushinawareta Shōri_ | * [JP](https://en.wikipedia.org/wiki/Japan "Japan"): June 2, 2005 | PlayStation 2 |
+| _[Sega Ages Vol. 22 Advanced Daisenryaku Doitsu Dengeki Sakusen](https://en.wikipedia.org/wiki/Sega\_Ages#Sega\_Ages\_2500\_(PlayStation\_2) "Sega Ages")_ | * [JP](https://en.wikipedia.org/wiki/Japan "Japan"): February 26, 2006 | PlayStation 2 |
+| _Daisenryaku VII Exceed_ | * [JP](https://en.wikipedia.org/wiki/Japan "Japan"): December 14, 2006 * [NA](https://en.wikipedia.org/wiki/North_America "North America"): December 19, 2007 | PlayStation 2 |
+| _Daisenryaku: Dai Tōa Kōbōshi - Tora Tora Tora Ware Kishuu Ni Seikou Seri_ | * [JP](https://en.wikipedia.org/wiki/Japan "Japan"): September 25, 2008 | PlayStation 2 |
+| _Gendai Daisenryaku: Isshoku Sokuhatsu - Gunji Balance Hōkai_ | * [JP](https://en.wikipedia.org/wiki/Japan "Japan"): August 27, 2009 | PlayStation 2 |
+| _Daisenryaku: Dai Tōa Kōbōshi - Tora Tora Tora Ware Kishuu Ni Seikou Seri_ | * [JP](https://en.wikipedia.org/wiki/Japan "Japan"): June 20, 2013 | [PlayStation 3](https://en.wikipedia.org/wiki/PlayStation_3 "PlayStation 3") |
+| _Daisenryaku Perfect: Senjō no Hasha_ | * [JP](https://en.wikipedia.org/wiki/Japan "Japan"): February 6, 2014 | PlayStation 3 |
+| _Daisenryaku: Dai Tōa Kōbōshi - Dainijisekaitaisen Boppatsu - Sūjiku Sentai Rengougun Zensekaisen_ | * [JP](https://en.wikipedia.org/wiki/Japan "Japan"): March 26, 2015 | PlayStation 3 |
+| _Daisenryaku Exceed II_ | * [JP](https://en.wikipedia.org/wiki/Japan "Japan"): July 30, 2015 | PlayStation 3 |
+| _Daisenryaku: Daitoua Kōbōshi 3 - Dai-ni-ji Sekai Taisen Boppatsu!_ | * [JP](https://en.wikipedia.org/wiki/Japan "Japan"): December 17, 2015 | [PlayStation 4](https://en.wikipedia.org/wiki/PlayStation_4 "PlayStation 4") |
+| _Daisenryaku Perfect 4.0_ | **PlayStation 4** * [JP](https://en.wikipedia.org/wiki/Japan "Japan"): April 26, 2018 **Nintendo Switch** * [JP](https://en.wikipedia.org/wiki/Japan "Japan"): September 20, 2018 | PlayStation 4, [Nintendo Switch](https://en.wikipedia.org/wiki/Nintendo_Switch "Nintendo Switch") |
+| _Gendai Daisenryaku 2020: Shaking World Order! Ambition of the Great Powers and World War_ | **PlayStation 4** * [JP](https://en.wikipedia.org/wiki/Japan "Japan"): February 27, 2020 **Nintendo Switch** * [JP](https://en.wikipedia.org/wiki/Japan "Japan"): June 24, 2021 | PlayStation 4, Nintendo Switch |
+
+| Name | Release dates | Platform |
+| --- | --- | --- |
+| _Daisenryaku_ | * [JP](https://en.wikipedia.org/wiki/Japan "Japan"): June 12, 1991 | [Game Boy](https://en.wikipedia.org/wiki/Game_Boy "Game Boy") |
+| _Taisen-gata Daisenryaku G_ | * [JP](https://en.wikipedia.org/wiki/Japan "Japan"): September 28, 1991 | [Game Gear](https://en.wikipedia.org/wiki/Game_Gear "Game Gear") |
+| _Daisenryaku_ for Game Boy Advance | * [JP](https://en.wikipedia.org/wiki/Japan "Japan"): December 7, 2001 | [Game Boy Advance](https://en.wikipedia.org/wiki/Game_Boy_Advance "Game Boy Advance") |
+| _[Daisenryaku Portable](https://en.wikipedia.org/wiki/Daisenryaku#Daisenryaku\_Portable)_ | * [JP](https://en.wikipedia.org/wiki/Japan "Japan"): December 22, 2005 | [PlayStation Portable](https://en.wikipedia.org/wiki/PlayStation_Portable "PlayStation Portable") |
+| _Daisenryaku DS_ | * [JP](https://en.wikipedia.org/wiki/Japan "Japan"): May 25, 2006 [[9]](https://en.wikipedia.org/wiki/Daisenryaku#cite_note-9) | [Nintendo DS](https://en.wikipedia.org/wiki/Nintendo_DS "Nintendo DS") |
+| _Daisenryaku Portable 2_ | * [JP](https://en.wikipedia.org/wiki/Japan "Japan"): December 14, 2006 | PlayStation Portable |
+| _Daisenryaku VII Exceed_ | * [JP](https://en.wikipedia.org/wiki/Japan "Japan"): May 22, 2008 | PlayStation Portable |
+| _Daisenryaku: Dai Tōa Kōbōshi - Tora Tora Tora Ware Kishuu Ni Seikou Seri_ | * [JP](https://en.wikipedia.org/wiki/Japan "Japan"): September 25, 2008 | PlayStation Portable |
+| _Gendai Daisenryaku: Isshoku Sokuhatsu - Gunji Balance Hōkai_ | **PlayStation Portable** * [JP](https://en.wikipedia.org/wiki/Japan "Japan"): August 27, 2009 **Nintendo DS** * [JP](https://en.wikipedia.org/wiki/Japan "Japan"): February 25, 2010 | PlayStation Portable, Nintendo DS |
+| _Daisenryaku Perfect: Senjō no Hasha_ | * [JP](https://en.wikipedia.org/wiki/Japan "Japan"): June 24, 2010 | PlayStation Portable |
+| _Daisenryaku: Dai Tōa Kōbōshi - Dainijisekaitaisen Boppatsu - Sūjiku Sentai Rengougun Zensekaisen_ | **PlayStation Portable** * [JP](https://en.wikipedia.org/wiki/Japan "Japan"): July 31, 2014 **Vita** * [JP](https://en.wikipedia.org/wiki/Japan "Japan"): March 26, 2015 | PlayStation Portable, [Vita](https://en.wikipedia.org/wiki/PlayStation_Vita "PlayStation Vita") |
+| _Daisenryaku Exceed II_ | * [JP](https://en.wikipedia.org/wiki/Japan "Japan"): July 30, 2015 | Vita |
+| _Daisenryaku Perfect: Senjō no Hasha_ | * [JP](https://en.wikipedia.org/wiki/Japan "Japan"): March 3, 2016 | Vita |
+| _Daisenryaku: Daitoua Kōbōshi DX -DainiJi Sekai Taisen_ | * [JP](https://en.wikipedia.org/wiki/Japan "Japan"): May 23, 2019 | [3DS](https://en.wikipedia.org/wiki/Nintendo_3DS "Nintendo 3DS") |
+|  |
+
+| Name | Released | Platform |
+| --- | --- | --- |
+| _Daisenryaku ONLINE_ | **i-mode** * [JP](https://en.wikipedia.org/wiki/Japan "Japan"): March 20, 2006 [[10]](https://en.wikipedia.org/wiki/Daisenryaku#cite_note-10) **EZweb** * [JP](https://en.wikipedia.org/wiki/Japan "Japan"): May 22, 2008 [[11]](https://en.wikipedia.org/wiki/Daisenryaku#cite_note-11) | [i-mode](https://en.wikipedia.org/wiki/I-mode "I-mode"), [EZweb](https://en.wikipedia.org/wiki/EZweb "EZweb") |
+
+_**Gendai Daisenryaku**_ (現代大戦略, Modern Great Strategy) is the first title in the series, released in November 1985 exclusively for the [NEC PC-98](https://en.wikipedia.org/wiki/PC-9800_series "PC-9800 series").[[1]](https://en.wikipedia.org/wiki/Daisenryaku#cite_note-ascii_20050127-1) It sold 20,000 copies.[[12]](https://en.wikipedia.org/wiki/Daisenryaku#cite_note-:1-12)
+
+Its successor, _**Daisenryaku II**_, modified game systems including the order of unit's move, the defence statistic of cities, indirect fire, warships, and increased a variety of weapons.[[2]](https://en.wikipedia.org/wiki/Daisenryaku#cite_note-:0-2) It sold 50,000 copies.[[12]](https://en.wikipedia.org/wiki/Daisenryaku#cite_note-:1-12)_Daisenryaku II_ was too rich and complex for 8-bit computers, so it was ported to them and gaming consoles as a simplified version titled _**Super Daisenryaku**_.[[2]](https://en.wikipedia.org/wiki/Daisenryaku#cite_note-:0-2)
+
+_**Daisenryaku III**_ changed the game system from turn-based strategy to real-time strategy. _Daisenryaku_ titles for the PC-98 had been developed for its built-in BASIC interpreter (N88-BASIC (86), a variant of [Microsoft BASIC](https://en.wikipedia.org/wiki/Microsoft_BASIC "Microsoft BASIC")). _Daisenryaku III_ was very slow, so it was superseded by the pre-compiled distribution of _Daisenryaku III '90_.[[13]](https://en.wikipedia.org/wiki/Daisenryaku#cite_note-13)
+
+### Advanced Daisenryaku: Deutsch Dengeki Sakusen
+
+[[edit](https://en.wikipedia.org/w/index.php?title=Daisenryaku&action=edit&section=8 "Edit section: Advanced Daisenryaku: Deutsch Dengeki Sakusen")]
+
+| Advanced Daisenryaku: Deutsch Dengeki Sakusen |
+| --- |
+| [Developer](https://en.wikipedia.org/wiki/Video_game_developer "Video game developer") | [Sega](https://en.wikipedia.org/wiki/Sega "Sega") |
+| [Publisher](https://en.wikipedia.org/wiki/Video_game_publisher "Video game publisher") | Sega |
+| Series | _Daisenryaku_ |
+| [Platforms](https://en.wikipedia.org/wiki/Computing_platform "Computing platform") | [Mega Drive](https://en.wikipedia.org/wiki/Mega_Drive "Mega Drive"), [PlayStation 2](https://en.wikipedia.org/wiki/PlayStation_2 "PlayStation 2") |
+| Release | **Mega Drive** * [JP](https://en.wikipedia.org/wiki/Japan "Japan"): June 17, 1991 **PlayStation 2** * [JP](https://en.wikipedia.org/wiki/Japan "Japan"): February 23, 2006 |
+| [Genre](https://en.wikipedia.org/wiki/Video_game_genre "Video game genre") | [Strategy](https://en.wikipedia.org/wiki/Strategy_game "Strategy game") |
+| Modes | [Single-player](https://en.wikipedia.org/wiki/Single-player "Single-player"), [multiplayer](https://en.wikipedia.org/wiki/Multiplayer "Multiplayer") |
+
+_**Advanced Daisenryaku: Deutsch Dengeki Sakusen**_ is a [Mega Drive](https://en.wikipedia.org/wiki/Mega_Drive "Mega Drive")[war game](https://en.wikipedia.org/wiki/Military_simulation "Military simulation"). The game takes place during [World War II](https://en.wikipedia.org/wiki/World_War_II "World War II"), and the player can either play as Germany, its allies or its opponents. Multiplayer games are possible, using the modem that was sold for the Sega Mega Drive.
+
+### Daisenryaku Expert WWII: War in Europe
+
+[[edit](https://en.wikipedia.org/w/index.php?title=Daisenryaku&action=edit&section=9 "Edit section: Daisenryaku Expert WWII: War in Europe")]
+
+| Daisenryaku Expert WWII: War in Europe |
+| --- |
+| [Developer](https://en.wikipedia.org/wiki/Video_game_developer "Video game developer") | [SystemSoft](https://en.wikipedia.org/wiki/SystemSoft "SystemSoft") |
+| [Publisher](https://en.wikipedia.org/wiki/Video_game_publisher "Video game publisher") | [ASCII Entertainment](https://en.wikipedia.org/wiki/ASCII_(company) "ASCII (company)") |
+| Series | _Daisenryaku_ |
+| [Platform](https://en.wikipedia.org/wiki/Computing_platform "Computing platform") | [Super Famicom](https://en.wikipedia.org/wiki/Super_Nintendo_Entertainment_System "Super Nintendo Entertainment System") |
+| Release | * [JP](https://en.wikipedia.org/wiki/Japan "Japan"): August 30, 1996 [](https://en.wikipedia.org/wiki/Daisenryaku#endnote_date) |
+| [Genre](https://en.wikipedia.org/wiki/Video_game_genre "Video game genre") | [Strategy](https://en.wikipedia.org/wiki/Strategy_game "Strategy game") |
+| Modes | [Single-player](https://en.wikipedia.org/wiki/Single-player "Single-player"), [multiplayer](https://en.wikipedia.org/wiki/Multiplayer "Multiplayer") |
+
+_**Daisenryaku Expert WWII: War in Europe**_ (大戦略エキスパートWWII; "Great Strategy Expert WWII") is a [Super Famicom](https://en.wikipedia.org/wiki/Super_Nintendo_Entertainment_System "Super Nintendo Entertainment System") game that takes place during [World War II](https://en.wikipedia.org/wiki/World_War_II "World War II") at either the [Eastern Front](https://en.wikipedia.org/wiki/Eastern_Front_(World_War_II) "Eastern Front (World War II)") or the [Western Front](https://en.wikipedia.org/wiki/Western_Front_(World_War_II) "Western Front (World War II)"). There is a [scenario](https://en.wikipedia.org/wiki/Scenario "Scenario") mode and a [campaign](https://en.wikipedia.org/wiki/Military_campaign "Military campaign") mode. By default, the player controls the Third Reich but it can be changed prior to starting the game.
+
+An remake of the game was released in 2006 for the PlayStation 2 as a part of the [Sega Ages 2500](https://en.wikipedia.org/wiki/Sega_Ages_2500 "Sega Ages 2500") series.
+
+_**Iron Storm**_ is the 1996 [North American](https://en.wikipedia.org/wiki/North_America "North America") release of _**World Advanced Daisenryaku: Kōtetsu no Senpū**_ (ワールドアドバンスド大戦略 〜鋼鉄の戦風〜) for the [Sega Saturn](https://en.wikipedia.org/wiki/Sega_Saturn "Sega Saturn"). The game takes place within the context of [World War II](https://en.wikipedia.org/wiki/World_War_II "World War II"). The game is played as either [United States](https://en.wikipedia.org/wiki/United_States "United States"), [Nazi Germany](https://en.wikipedia.org/wiki/Nazi_Germany "Nazi Germany"), or [Japan](https://en.wikipedia.org/wiki/Japan "Japan"). The outcomes of certain battles result in a change in the path of the war.
+
+_[Electronic Gaming Monthly](https://en.wikipedia.org/wiki/Electronic\_Gaming\_Monthly "Electronic Gaming Monthly")_ gave the game an 8 out of 10, praising the ability to view the outcome of each battle in cinematic view and the use of experience points.[[14]](https://en.wikipedia.org/wiki/Daisenryaku#cite_note-14)
+
+### Advanced Daisenryaku 2001
+
+[[edit](https://en.wikipedia.org/w/index.php?title=Daisenryaku&action=edit&section=11 "Edit section: Advanced Daisenryaku 2001")]
+
+| Advanced Daisenryaku 2001 |
+| --- |
+| [Developer](https://en.wikipedia.org/wiki/Video_game_developer "Video game developer") | [SystemSoft](https://en.wikipedia.org/wiki/SystemSoft_Alpha "SystemSoft Alpha") |
+| [Publisher](https://en.wikipedia.org/wiki/Video_game_publisher "Video game publisher") | [Sega](https://en.wikipedia.org/wiki/Sega "Sega") |
+| Series | _Daisenryaku_ |
+| [Platforms](https://en.wikipedia.org/wiki/Computing_platform "Computing platform") | [Dreamcast](https://en.wikipedia.org/wiki/Dreamcast "Dreamcast"), [PC](https://en.wikipedia.org/wiki/Personal_computer "Personal computer") |
+| Release | **Dreamcast** * [JP](https://en.wikipedia.org/wiki/Japan "Japan"): April 26, 2001 **Windows PC** * [JP](https://en.wikipedia.org/wiki/Japan "Japan"): November 26, 2001 |
+| [Genre](https://en.wikipedia.org/wiki/Video_game_genre "Video game genre") | [Turn-based strategy](https://en.wikipedia.org/wiki/Turn-based_strategy "Turn-based strategy") |
+| Mode | [Single-player](https://en.wikipedia.org/wiki/Single-player "Single-player") |
+
+_**Advanced Daisenryaku 2001**_ is a sequel to the World War II strategy game _Advanced Daisenryaku: Europe no Arashi - Doitsu Dengeki Sakusen_. This title included some bug fixes and improved graphics.
+
+### Dai Senryaku VII: Modern Military Tactics
+
+[[edit](https://en.wikipedia.org/w/index.php?title=Daisenryaku&action=edit&section=12 "Edit section: Dai Senryaku VII: Modern Military Tactics")]
+
+_**Dai Senryaku VII: Modern Military Tactics**_ (known simply as _Daisenryaku VII_ in Japan) is a [turn-based tactics](https://en.wikipedia.org/wiki/Turn-based_tactics "Turn-based tactics")[videogame](https://en.wikipedia.org/wiki/Video_game "Video game") for the [Microsoft](https://en.wikipedia.org/wiki/Microsoft "Microsoft")[Xbox](https://en.wikipedia.org/wiki/Xbox_(console) "Xbox (console)"), which was produced by [Kemco](https://en.wikipedia.org/wiki/Kemco "Kemco") and released in 2004 (in the United States). In December 2007 the game was ported to the PlayStation 2 by Valcon Games.
+
+### Daisenryaku Portable
+
+[[edit](https://en.wikipedia.org/w/index.php?title=Daisenryaku&action=edit&section=13 "Edit section: Daisenryaku Portable")]
+
+| Daisenryaku Portable |
+| --- |
+| [Developer](https://en.wikipedia.org/wiki/Video_game_developer "Video game developer") | [Genki](https://en.wikipedia.org/wiki/Genki_(company) "Genki (company)") |
+| [Publisher](https://en.wikipedia.org/wiki/Video_game_publisher "Video game publisher") | Genki |
+| Series | _Daisenryaku_ |
+| [Platform](https://en.wikipedia.org/wiki/Computing_platform "Computing platform") | [PlayStation Portable](https://en.wikipedia.org/wiki/PlayStation_Portable "PlayStation Portable") |
+| Release | * [JP](https://en.wikipedia.org/wiki/Japan "Japan"): December 22, 2005[[15]](https://en.wikipedia.org/wiki/Daisenryaku#cite_note-15) |
+| [Genre](https://en.wikipedia.org/wiki/Video_game_genre "Video game genre") | [Turn-based strategy](https://en.wikipedia.org/wiki/Turn-based_strategy "Turn-based strategy") |
+| Modes | [Single-player](https://en.wikipedia.org/wiki/Single-player "Single-player"), [multiplayer](https://en.wikipedia.org/wiki/Multiplayer "Multiplayer") |
+
+_**Daisenryaku Portable**_ is a military [turn-based strategy](https://en.wikipedia.org/wiki/Turn-based_strategy "Turn-based strategy") game for the [PlayStation Portable](https://en.wikipedia.org/wiki/PlayStation_Portable "PlayStation Portable") published by [Genki](https://en.wikipedia.org/wiki/Genki_(company) "Genki (company)").
+
+The game takes place on a battlefield of hexagons, upon which the player assembles an army. The aim is to capture cities and factories, in order to increase available resources. The hexagons are rendered in an isometric view with no rotation supported, but the individual attacks are rendered in 3D. The game supports use of the ad hoc wireless mode of the PlayStation Portable for two player multiplayer.[[16]](https://en.wikipedia.org/wiki/Daisenryaku#cite_note-16) The main campaign takes place in the [Far East](https://en.wikipedia.org/wiki/Far_East "Far East") in the twenty-first century. The factions in the game are fictional versions of Japan, USA, Russia, China, South Korea, and North Korea.
+
+#### Daisenryaku Portable 2
+
+[[edit](https://en.wikipedia.org/w/index.php?title=Daisenryaku&action=edit&section=14 "Edit section: Daisenryaku Portable 2")]
+
+| Daisenryaku Portable 2 |
+| --- |
+| [Developer](https://en.wikipedia.org/wiki/Video_game_developer "Video game developer") | Genki |
+| [Publisher](https://en.wikipedia.org/wiki/Video_game_publisher "Video game publisher") | Genki |
+| Series | _Daisenryaku_ |
+| [Platform](https://en.wikipedia.org/wiki/Computing_platform "Computing platform") | [PlayStation Portable](https://en.wikipedia.org/wiki/PlayStation_Portable "PlayStation Portable") |
+| Release | * [JP](https://en.wikipedia.org/wiki/Japan "Japan"): December 14, 2006[[17]](https://en.wikipedia.org/wiki/Daisenryaku#cite_note-17) |
+| [Genre](https://en.wikipedia.org/wiki/Video_game_genre "Video game genre") | [Turn-based strategy](https://en.wikipedia.org/wiki/Turn-based_strategy "Turn-based strategy") |
+| Modes | [Single-player](https://en.wikipedia.org/wiki/Single-player "Single-player"), [multiplayer](https://en.wikipedia.org/wiki/Multiplayer "Multiplayer") |
+
+_**Daisenryaku Portable 2**_ is a military [turn-based strategy](https://en.wikipedia.org/wiki/Turn-based_strategy "Turn-based strategy") game for the [PlayStation Portable](https://en.wikipedia.org/wiki/PlayStation_Portable "PlayStation Portable") published by [Genki](https://en.wikipedia.org/wiki/Genki_(company) "Genki (company)"). It is a sequel to _Daisenryaku Portable_, and is set in the [Middle East](https://en.wikipedia.org/wiki/Middle_East "Middle East"). The player does not control any country, instead controlling the supranational army named "Wild Geese".[[18]](https://en.wikipedia.org/wiki/Daisenryaku#cite_note-18)
+
+### Moe moe 2-ji Daisen (ryaku)
+
+[[edit](https://en.wikipedia.org/w/index.php?title=Daisenryaku&action=edit&section=15 "Edit section: Moe moe 2-ji Daisen (ryaku)")]
+
+| Moe moe 2-ji Daisen (ryaku) [![Image 2: Taiwan](https://upload.wikimedia.org/wikipedia/commons/thumb/7/72/Flag_of_the_Republic_of_China.svg/40px-Flag_of_the_Republic_of_China.svg.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail)](https://en.wikipedia.org/wiki/Taiwan "Taiwan")萌萌2次大戰(略) |
+| --- |
+| [Developer](https://en.wikipedia.org/wiki/Video_game_developer "Video game developer") | SystemSoft Alpha |
+| [Publishers](https://en.wikipedia.org/wiki/Video_game_publisher "Video game publisher") | * [JP](https://en.wikipedia.org/wiki/Japan "Japan"): SystemSoft Alpha * [TWN](https://en.wikipedia.org/wiki/Taiwan "Taiwan"): TWTTIME Technology Co., Ltd |
+| Series | _Daisenryaku_ |
+| [Platforms](https://en.wikipedia.org/wiki/Computing_platform "Computing platform") | [Windows 98](https://en.wikipedia.org/wiki/Windows_98 "Windows 98"), [PlayStation 2](https://en.wikipedia.org/wiki/PlayStation_2 "PlayStation 2"), [PlayStation Portable](https://en.wikipedia.org/wiki/PlayStation_Portable "PlayStation Portable"), [Nintendo DS](https://en.wikipedia.org/wiki/Nintendo_DS "Nintendo DS"), [Xbox 360](https://en.wikipedia.org/wiki/Xbox_360 "Xbox 360"), [i-mode](https://en.wikipedia.org/wiki/I-mode "I-mode") |
+| Release | * [JP](https://en.wikipedia.org/wiki/Japan "Japan"): 21 December 2007 (Win) * [JP](https://en.wikipedia.org/wiki/Japan "Japan"): 27 November 2008 (PS2/PSP)[[19]](https://en.wikipedia.org/wiki/Daisenryaku#cite_note-19) * [TWN](https://en.wikipedia.org/wiki/Taiwan "Taiwan"): 12 July 2008 (Win) * [JP](https://en.wikipedia.org/wiki/Japan "Japan"): 18 March 2009 (Nintendo DS)[[20]](https://en.wikipedia.org/wiki/Daisenryaku#cite_note-20) * [JP](https://en.wikipedia.org/wiki/Japan "Japan"): 18 March 2010 (Xbox 360)[[21]](https://en.wikipedia.org/wiki/Daisenryaku#cite_note-21) |
+| [Genre](https://en.wikipedia.org/wiki/Video_game_genre "Video game genre") | [Turn-based strategy](https://en.wikipedia.org/wiki/Turn-based_strategy "Turn-based strategy") |
+| Mode | [Multiplayer](https://en.wikipedia.org/wiki/Multiplayer "Multiplayer") |
+
+This version of the franchise features World War II, but using [mecha musume](https://en.wikipedia.org/wiki/Mecha_Musume "Mecha Musume"). It includes units from Japan, Germany, America, Britain, and Soviet. The game grid is hexagonal, but characters are in isometric view. The game separated into strategy and adventure mode. Player can play the Pacific Ocean (as Japanese), or the Europe (as German) campaigns. The strategy mode is played in turn-based mode.
+
+The Deluxe version for PlayStation 2 and PSP added a new campaign for allied forces, new characters, and made a few gameplay and visual adjustments.[[22]](https://en.wikipedia.org/wiki/Daisenryaku#cite_note-22)
+
+### Daisenryaku Perfect: Senjō no Hasha
+
+[[edit](https://en.wikipedia.org/w/index.php?title=Daisenryaku&action=edit&section=16 "Edit section: Daisenryaku Perfect: Senjō no Hasha")]
+
+| Daisenryaku Perfect: Senjō no Hasha |
+| --- |
+| [Developer](https://en.wikipedia.org/wiki/Video_game_developer "Video game developer") | SystemSoft Alpha |
+| [Publisher](https://en.wikipedia.org/wiki/Video_game_publisher "Video game publisher") | SystemSoft Alpha |
+| Series | _Daisenryaku_ |
+| [Platforms](https://en.wikipedia.org/wiki/Computing_platform "Computing platform") | [PlayStation 3](https://en.wikipedia.org/wiki/PlayStation_3 "PlayStation 3") [PlayStation Portable](https://en.wikipedia.org/wiki/PlayStation_Portable "PlayStation Portable") |
+| Release | * [JP](https://en.wikipedia.org/wiki/Japan "Japan"): June 2011 |
+| [Genre](https://en.wikipedia.org/wiki/Video_game_genre "Video game genre") | [Turn-based strategy](https://en.wikipedia.org/wiki/Turn-based_strategy "Turn-based strategy") |
+| Modes | [Single-player](https://en.wikipedia.org/wiki/Single-player "Single-player"), [multiplayer](https://en.wikipedia.org/wiki/Multiplayer "Multiplayer") |
+
+_**Daisenryaku Perfect: Senjō no Hasha**_ is a turn-based military simulation set in the modern era. The player can selects from 22 countries and then becomes either an ally or attacking country.
+
+While the vast majority of titles in the _Daisenryaku_ series were never released outside of Japan, a few titles were officially localized and others were partially translated by fans.
+
+The series saw its first release in English when [Working Designs](https://en.wikipedia.org/wiki/Working_Designs "Working Designs") partnered with SystemSoft Alpha to translate and release _[Iron Storm](https://en.wikipedia.org/wiki/Iron\_Storm\_(1995\_video\_game) "Iron Storm (1995 video game)")_ for the Sega Saturn in North America in 1996.
+
+A second entry in English was realized when [Kemco](https://en.wikipedia.org/wiki/Kemco "Kemco") released _[Dai Senryaku VII: Modern Military Tactics](https://en.wikipedia.org/wiki/Dai\_Senryaku\_VII:\_Modern\_Military\_Tactics "Dai Senryaku VII: Modern Military Tactics")_ in North America for the Microsoft Xbox in 2005. The PlayStation 2 port also saw a North American release in 2007.
+
+The [mecha musume](https://en.wikipedia.org/wiki/Mecha_musume "Mecha musume") spin-off of Daisenryaku, _Moe moe 2-ji Daisen (ryaku)_, was translated into Chinese and released by Taiwanese publisher TWTTIME Technology Co., Ltd for the PC in 2008.
+
+_Daisenryaku Perfect 4.0_ saw a worldwide release on Steam in 2018 with a partial English translation done by SystemSoft themselves. Users have criticized the translation calling it "[machine translation](https://en.wikipedia.org/wiki/Machine_translation "Machine translation")" and many units' names remain in Japanese.[[23]](https://en.wikipedia.org/wiki/Daisenryaku#cite_note-23)
+
+Fans have partially translated various entries in the series. _Advanced Daisenryaku_ for the Sega Mega Drive,[[24]](https://en.wikipedia.org/wiki/Daisenryaku#cite_note-24)_Advanced Daisenryaku 2001_ for the Sega Dreamcast,[[25]](https://en.wikipedia.org/wiki/Daisenryaku#cite_note-25) and _Daisenryaku VII_ for the PC [[26]](https://en.wikipedia.org/wiki/Daisenryaku#cite_note-26) all saw translations of various levels released unofficially.
+
+1.   [Jump up to: 1](https://en.wikipedia.org/wiki/Daisenryaku#cite_ref-ascii_20050127_1-0)[2](https://en.wikipedia.org/wiki/Daisenryaku#cite_ref-ascii_20050127_1-1)[3](https://en.wikipedia.org/wiki/Daisenryaku#cite_ref-ascii_20050127_1-2)[4](https://en.wikipedia.org/wiki/Daisenryaku#cite_ref-ascii_20050127_1-3)小西, 利明 (2005-01-27). ["システムソフト・アルファー、"大戦略"シリーズ20周年記念の製品発表会を開催——『大戦略VIII』など未公開の新作も発表！"](https://ascii.jp/elem/000/000/346/346265/). _ASCII.jp_. Retrieved 2019-03-27.
+2.   [Jump up to: 1](https://en.wikipedia.org/wiki/Daisenryaku#cite_ref-:0_2-0)[2](https://en.wikipedia.org/wiki/Daisenryaku#cite_ref-:0_2-1)[3](https://en.wikipedia.org/wiki/Daisenryaku#cite_ref-:0_2-2)[4](https://en.wikipedia.org/wiki/Daisenryaku#cite_ref-:0_2-3)[5](https://en.wikipedia.org/wiki/Daisenryaku#cite_ref-:0_2-4)[6](https://en.wikipedia.org/wiki/Daisenryaku#cite_ref-:0_2-5)[7](https://en.wikipedia.org/wiki/Daisenryaku#cite_ref-:0_2-6)[8](https://en.wikipedia.org/wiki/Daisenryaku#cite_ref-:0_2-7)[9](https://en.wikipedia.org/wiki/Daisenryaku#cite_ref-:0_2-8)[10](https://en.wikipedia.org/wiki/Daisenryaku#cite_ref-:0_2-9)[11](https://en.wikipedia.org/wiki/Daisenryaku#cite_ref-:0_2-10)[12](https://en.wikipedia.org/wiki/Daisenryaku#cite_ref-:0_2-11)[13](https://en.wikipedia.org/wiki/Daisenryaku#cite_ref-:0_2-12)[14](https://en.wikipedia.org/wiki/Daisenryaku#cite_ref-:0_2-13)[15](https://en.wikipedia.org/wiki/Daisenryaku#cite_ref-:0_2-14)["緊急特集！現代大戦略EX"](https://news.denfaminicogamer.jp/projectbook/daisennryaku/3). _[Comptiq](https://en.wikipedia.org/wiki/Comptiq "Comptiq")_. [Kadokawa Shoten](https://en.wikipedia.org/wiki/Kadokawa_Shoten "Kadokawa Shoten"): 48–55. June 1993. Retrieved 2019-03-28.
+3.   [↑](https://en.wikipedia.org/wiki/Daisenryaku#cite_ref-3 "Jump up")["Bravo World Record!"](https://archive.org/details/famitsu-issue-226-apr-1993/page/81). _[Famicom Tsūshin](https://en.wikipedia.org/wiki/Famicom\_Ts%C5%ABshin "Famicom Tsūshin")_ (in Japanese). No.226. 16 April 1993. p.81.
+4.   [Jump up to: 1](https://en.wikipedia.org/wiki/Daisenryaku#cite_ref-pjegg_daisenryaku88_4-0)[2](https://en.wikipedia.org/wiki/Daisenryaku#cite_ref-pjegg_daisenryaku88_4-1)["大戦略88"](https://www.amusement-center.com/project/egg/cgi/ecatalog-detail.cgi?product_id=362). _Project EGG_. [D4 Enterprise](https://en.wikipedia.org/wiki/D4_Enterprise "D4 Enterprise"). Retrieved 2019-03-27.
+5.   [↑](https://en.wikipedia.org/wiki/Daisenryaku#cite_ref-5 "Jump up")["大戦略X1"](http://www.amusement-center.com/project/egg/cgi/ecatalog-detail.cgi?product_id=436). _Project EGG_. [D4 Enterprise](https://en.wikipedia.org/wiki/D4_Enterprise "D4 Enterprise"). Retrieved 2019-03-27.
+6.   [↑](https://en.wikipedia.org/wiki/Daisenryaku#cite_ref-6 "Jump up")["大戦略FM"](https://www.amusement-center.com/project/egg/cgi/ecatalog-detail.cgi?contcode=7&product_id=38). _Project EGG_. [D4 Enterprise](https://en.wikipedia.org/wiki/D4_Enterprise "D4 Enterprise"). Retrieved 2019-03-28.
+7.   [↑](https://en.wikipedia.org/wiki/Daisenryaku#cite_ref-7 "Jump up")["日本シミュレーション紀行(5) 大戦略III グレートコマンダー"](https://web.archive.org/web/20160305042007/http://www.ss-alpha.co.jp/special/DS/enthusiast/simulation5.html). _Daisenryaku Online Special_. [SystemSoft Alpha](https://en.wikipedia.org/wiki/SystemSoft_Alpha "SystemSoft Alpha"). Archived from [the original](https://www.ss-alpha.co.jp/special/DS/enthusiast/simulation5.html) on 2016-03-05. Retrieved 2019-03-28.
+8.   [↑](https://en.wikipedia.org/wiki/Daisenryaku#cite_ref-DS7-OfficialSite_8-0 "Jump up")["SystemSoft Products - 大戦略VII"](https://web.archive.org/web/20011216215020/http://www.ss-alpha.co.jp/products/ds7.html). _SystemSoft Alpha Corporation_ (in Japanese). Archived from [the original](http://www.ss-alpha.co.jp/products/ds7.html) on 16 December 2001. Retrieved 12 November 2025.
+9.   [↑](https://en.wikipedia.org/wiki/Daisenryaku#cite_ref-9 "Jump up")["Daisenryaku DS official website"](https://web.archive.org/web/20060701161952/http://www.genki.co.jp/games/strategy_ds/index.html). 1 July 2006. Archived from [the original](http://www.genki.co.jp/games/strategy_ds/index.html) on 2006-07-01. Retrieved 3 January 2021.
+10.   [↑](https://en.wikipedia.org/wiki/Daisenryaku#cite_ref-10 "Jump up")["システムソフト・アルファー、iモードサイト「システムソフトSLG総合」開設 「大戦略ONLINE」など3タイトルを配信"](https://game.watch.impress.co.jp/docs/20060320/ss.htm). _Impress Watch_. 2006-03-20. Retrieved 2019-03-27.
+11.   [↑](https://en.wikipedia.org/wiki/Daisenryaku#cite_ref-11 "Jump up")ONO (2008-05-15). ["システムソフト・アルファー，「大戦略オンライン」をEZアプリで提供"](https://www.4gamer.net/games/045/G004585/20080515007/). _[4Gamer.net](https://en.wikipedia.org/wiki/4Gamer.net "4Gamer.net")_. Retrieved 2019-03-27.
+12.   [Jump up to: 1](https://en.wikipedia.org/wiki/Daisenryaku#cite_ref-:1_12-0)[2](https://en.wikipedia.org/wiki/Daisenryaku#cite_ref-:1_12-1)["ニュース: 大戦略20周年記念発表会。「VIII」や「パーフェクト2.0DX」も"](http://www.4gamer.net/news/history/2005.01/20050127235743detail.html). _[4Gamer](https://en.wikipedia.org/wiki/4Gamer "4Gamer")_. 2005-01-27. Retrieved 2019-03-28.
+13.   [↑](https://en.wikipedia.org/wiki/Daisenryaku#cite_ref-13 "Jump up")["日本シミュレーション紀行(6) 大戦略III'90"](https://web.archive.org/web/20160304072221/http://www.ss-alpha.co.jp/special/DS/enthusiast/simulation6.html). _Daisenryaku Online Special_. [SystemSoft Alpha](https://en.wikipedia.org/wiki/SystemSoft_Alpha "SystemSoft Alpha"). Archived from [the original](https://www.ss-alpha.co.jp/special/DS/enthusiast/simulation6.html) on 2016-03-04. Retrieved 2019-03-28.
+14.   [↑](https://en.wikipedia.org/wiki/Daisenryaku#cite_ref-14 "Jump up")"Iron Storm Review". _[Electronic Gaming Monthly](https://en.wikipedia.org/wiki/Electronic\_Gaming\_Monthly "Electronic Gaming Monthly")_. No.82. EGM Media, LLC. May 1996. p.31.
+15.   [↑](https://en.wikipedia.org/wiki/Daisenryaku#cite_ref-15 "Jump up")["Daisenryaku Portable publisher Genki's official game page"](https://web.archive.org/web/20060630194952/http://www.genki.co.jp/games/strategy/). 30 June 2006. Archived from [the original](http://www.genki.co.jp/games/strategy/) on 2006-06-30. Retrieved 3 January 2021.
+16.   [↑](https://en.wikipedia.org/wiki/Daisenryaku#cite_ref-16 "Jump up")[""Grand strategy" pursuing energy and simplicity The latest PSP "Grand strategy portable""](https://web.archive.org/web/20050924090313/http://watch.impress.co.jp/game/docs/20050912/daisen.htm). 24 September 2005. Archived from [the original](http://watch.impress.co.jp/game/docs/20050912/daisen.htm) on 2005-09-24. Retrieved 3 January 2021.
+17.   [↑](https://en.wikipedia.org/wiki/Daisenryaku#cite_ref-17 "Jump up")["Publisher Genki's official game page for Daisenryaku Portable 2"](https://web.archive.org/web/20070422030000/http://www.genki.co.jp/games/strategy2/top.html). 22 April 2007. Archived from [the original](http://www.genki.co.jp/games/strategy2/top.html) on 2007-04-22. Retrieved 3 January 2021.
+18.   [↑](https://en.wikipedia.org/wiki/Daisenryaku#cite_ref-18 "Jump up")["Daisenryaku Portable 2 system page"](https://web.archive.org/web/20070509171213/http://www.genki.co.jp/games/strategy2/system.html). 9 May 2007. Archived from [the original](http://www.genki.co.jp/games/strategy2/system.html) on 2007-05-09. Retrieved 3 January 2021.
+19.   [↑](https://en.wikipedia.org/wiki/Daisenryaku#cite_ref-19 "Jump up")["[PS2]萌え萌え2次大戦（略）☆デラックス オフィシャルWEBページ"](https://web.archive.org/web/20080911231059/http://www.ss-alpha.co.jp/products/moesen_ps2/). 11 September 2008. Archived from [the original](http://www.ss-alpha.co.jp/products/moesen_ps2/) on 2008-09-11. Retrieved 1 January 2021.
+20.   [↑](https://en.wikipedia.org/wiki/Daisenryaku#cite_ref-20 "Jump up")["[DS]萌え萌え2次大戦（略）2[chu～♪]☆ヤマトナデシコ オフィシャルWEBページ"](https://web.archive.org/web/20110829130751/http://www.ss-alpha.co.jp/products/moesen2_ds/). 29 August 2011. Archived from [the original](http://www.ss-alpha.co.jp/products/moesen2_ds/) on 2011-08-29. Retrieved 1 January 2021.
+21.   [↑](https://en.wikipedia.org/wiki/Daisenryaku#cite_ref-21 "Jump up")["[Xbox360]萌え萌え2次大戦（略）2[chu～♪]☆ウルトラデラックス オフィシャルWEBページ"](https://web.archive.org/web/20110829125845/http://www.ss-alpha.co.jp/products/moesen_udx_360/). 29 August 2011. Archived from [the original](http://www.ss-alpha.co.jp/products/moesen_udx_360/) on 2011-08-29. Retrieved 1 January 2021.
+22.   [↑](https://en.wikipedia.org/wiki/Daisenryaku#cite_ref-22 "Jump up")["Nazi Bathing Suit Girls Storm PSP, PS2"](http://au.ign.com/articles/2008/04/04/nazi-bathing-suit-girls-storm-psp-ps2). _www.ign.com_. 4 April 2008. Retrieved 14 January 2018.
+23.   [↑](https://en.wikipedia.org/wiki/Daisenryaku#cite_ref-23 "Jump up")["DAISENRYAKU PERFECT 4.0/大戦略パーフェクト4.0 on Steam"](https://store.steampowered.com/app/868410/DAISENRYAKU_PERFECT_4040/). _store.steampowered.com_. Retrieved 2 January 2021.
+24.   [↑](https://en.wikipedia.org/wiki/Daisenryaku#cite_ref-24 "Jump up")["Genesis Advanced Military Commander Translation"](https://web.archive.org/web/20110317074259/http://www.knology.net/~mackdraper/AMC/Overview.htm). 17 March 2011. Archived from [the original](http://www.knology.net/~mackdraper/AMC/Overview.htm) on 2011-03-17. Retrieved 2 January 2021.
+25.   [↑](https://en.wikipedia.org/wiki/Daisenryaku#cite_ref-25 "Jump up")["Advanced Daisenryaku 2001"](https://www.romhacking.net/translations/1483/). _ROMhacking.net_. Retrieved 2 January 2021.
+26.   [↑](https://en.wikipedia.org/wiki/Daisenryaku#cite_ref-26 "Jump up")["Daisenryaku VII"](https://www.romhacking.net/translations/5338/). _ROMhacking.net_. Retrieved 2 January 2021.
+

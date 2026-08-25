@@ -68,7 +68,7 @@ layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
-offset_bottom = -124.0
+offset_bottom = -72.0
 grow_horizontal = 2
 grow_vertical = 2
 
@@ -95,7 +95,7 @@ stretch = true
 [node name="SubViewport" type="SubViewport" parent="BattleContainer/SubViewportContainer"]
 own_world_3d = false
 handle_input_locally = false
-size = Vector2i(1280, 580)
+size = Vector2i(1280, 648)
 render_target_update_mode = 1
 
 [node name="Battlefield" parent="BattleContainer/SubViewportContainer/SubViewport" instance=ExtResource("2_battlefield")]

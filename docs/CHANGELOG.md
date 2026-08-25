@@ -3216,3 +3216,103 @@ battle_active=false、计时归零、零脚本错误；GdUnit 145/145 无回归�
 
 **验证**：19 文件单载断言全过 + ui_p1_validation ALL PASS（51 编译）+ capture
 零脚本错误 + GdUnit 145/145。B12 两轮累计 72+75=147 处收敛，余 402 处 bespoke 记档保留。
+
+## 相位师技能树修复·补挂·深层降价（2026-08-25）
+
+**修复（空转/重名/过期注释）**：
+- `pms_int_4` 自适应进化：原 conditional survive_seconds（存活30秒全属性+15%）全项目零消费方（空转节点），
+  按 v8.5 同类惯例改静态数值：三维攻击/三维防御/生命上限各 +8%（atk/def/hp 键均被
+  battle_spawn_system._apply_skill_tree_stat_bonus 消费）。tier 4 是 pms_int_5 前置，此前等于强制买空节点
+- `pms_cmd_5`「闪电穿插」→「装甲穿插」：与 pms_cmd_11（高级战法「闪电穿插」）同分支重名，面板出现两个同名节点
+- 主表头部注释过期数据修正：总 cost 187→147、覆盖率 37%→48%（v8.6 补挂节点后注释未更新的遗留）
+
+**补挂（3 个零解锁途径的死内容）**：
+- `cps_steel_storm` 钢铁风暴（全局终极技）：新增 `pms_cmd_14`（指挥 t14，cost 3，前置钢铁壁垒 13a，steel 家族链）
+- `tactic_draw_deep` 诱敌深入：新增 `pms_int_7c`（智能 t7，cost 2，FAST+后排主题）
+- `tactic_scorched_line` 焦土防线：新增 `pms_fp_7d`（火力 t7，cost 2，火焰主题）
+- 补挂后树上 17 战法/21 卡片技能全部可达，实现侧零孤儿定义
+
+**深层降价（tier 5-15 全面下调，用户决策）**：
+- 规则：cost 5→3 / 4→2 / 3→2 / 2→1；基础层 tier 0-4 不动
+- 总 cost 212→147（74 节点），满 Lv30 的 70 点覆盖率 33%→48%；
+  分支整点成本 指挥 72→50 / 智能 63→45 / 火力 77→52——满级可点满任一分支 + 另两系基础+中层
+- 旧档兼容：manager.load_state 不再信任存档 spent_points，按当前表对 unlocked_nodes 逐节点重算计价
+  （降价自动退款；已移除的历史节点 ID 计 0 点不阻塞）
+
+**测试同步**：
+- v8_skills_smoke：扩展节点 51→54（cmd 18/fp 20/int 16）、指挥合并 24→25；
+  顺手修三个过期断言——战法总数 18→17（诸神黄昏删除时漏更）、unlock_labels 查询 stalker_stealth→blitz_pierce（v8.5 替换漏更）
+
+**验证**：数据审计脚本全绿（74 节点/无重名/无悬空前置/解锁内容全有实现/无孤儿/无空转效果）+
+phase_master_skill_smoke ALL PASS + v8_skills_smoke 21/22 + phase_field_level_cap_smoke ALL PASS +
+manager gdparse OK。唯一剩余失败 Test 17（SNIPER vs boss 克制 1.35≠1.50）为战斗调参历史遗留，与本批无关。
+
+## 战场视口下延：背景图与相位仪无缝贴栏（2026-08-25）
+
+**成因**：`main.tscn` BattleContainer `offset_bottom=-124` 为"功能栏抽屉(60px)+相位仪(64px)"
+两栏展开态预留，但 BU-1 抽屉化后功能栏默认收起 → 战场视口只到 y=596，背景图（1280×720、
+无缩放、底对齐视口底）被 SubViewport 硬裁在 596，与相位仪顶边（y=648）之间常年露 52px
+深色底+网格空隙。另 SubViewport 声明尺寸 `1280×580` 为过时值，存在量取竞态时图只铺到 580
+（额外多露 16px）。
+
+**改动（8 处小改，零美术改动）**：
+- `main.tscn`：BattleContainer `offset_bottom` -124→-72（视口延至 y=648，只给相位仪 64+8 留位）；
+  SubViewport 声明尺寸 1280×580→1280×648（消除量取竞态）
+- `Battlefield.gd`：背景底边回退值两处 580→648（L56 初值 + L182 量取兜底）
+- `battlefield_ambience.gd` `VIEWPORT_H` 580→648（氛围着色带高度跟随）
+- `battle_spectacle.gd` L313 视口回退值 580→648（主路径本就动态取值）
+- `game_constants.gd` `CARD_GRID_BATTLE_VIEWPORT_HEIGHT_PX` 580→648（零消费方的文档常量，对齐真值）
+- `battle_click_overlay.gd`：删除死常量 `VIEWPORT_SIZE`（全项目零引用）
+
+**自适应链路（零改动，已核实动态取值）**：背景定位 bg_top_y=-72（图下移 52px，顶部裁切
+124→72px）、车道/出生点/基地对齐/部署区 `_deploy_y_min/max`、槽位网格 lane 同步、震屏相机
+对齐、空间网格 Y 200~720（新布局单位最高 ~597 仍全覆盖）。
+
+**效果与副作用**：
+- 背景图底边=相位仪顶边无缝相接；车道中心 452→504（图内 80% 比例不变，道路跟随踩线），
+  三行 384/449/514，部署区 [411, 597]
+- 屏幕顶部多露出 52px 原被裁画面；功能栏抽屉展开时覆盖战场底部 60px（瞬时弹出 UI，可接受）
+
+**验证**：ui_b9_capture 1280×720 实跑（窗口 1920×1080 等比 1.5×）——相机对齐日志 (640,324)=
+648/2 证实视口生效；PIL 像素检测原 52px 空隙带（canvas y 597-647）已为背景地面内容
+（RGB(43,57,46)、行方差 8-13，旧深色底为 RGB(10,14,23) 均匀色）；视觉模型整图复核
+无缝相接、顶栏/资源栏无破版；启动零脚本错误。
+
+## v20.15 大招贴图残留战场背景修复（2026-08-26）
+
+**背景**：用户反馈"大招攻击效果（战斗卡攻击/核弹齐射/陨石等地毯弹幕）的贴图有时会留在
+背景中"。排查确认是一条**时序竞态链**，三个根因叠加，全部只在"大招飞行/错峰窗口与战斗
+结束重叠"时触发（故"有时"）：
+
+| # | 根因 | 机理 |
+|---|------|------|
+| 1 | **帧C清扫后延迟链仍 spawn** | 结算链 A→B→B'→C 三帧内清完 battle_vfx 组，但大招错峰发射（核弹 0.06s×N、陨石 0.08s×9）+飞行（0.35-0.55s）的 tween 绑在持久化 Battlefield 上继续跑，尾链最长 ~1.2s，落地爆炸/焦痕/威胁环在清扫**之后**才生成→无人再清（下一场 prune 前一直躺在结算/准备界面背景里） |
+| 2 | **结束瞬间冻结视口定格半空贴图** | `on_battle_ended_clear_pending` 立即 UPDATE_ONCE 冻结 SubViewport，结束帧上半空中的弹体/命中贴图被**永久定格**为结算+准备界面的战场背景 |
+| 3 | **结算确认 prune 后不重渲染** | `on_result_confirmed` prune 掉全部瞬态节点，但视口已冻结不刷新，准备界面背景仍是结算前的旧定格帧 |
+
+**修复（六文件，快照式守卫——"触发时在真实战斗中 && 回调时已结束"才拦截，
+effect_lab/boss_spell_audit/vfx_showcase 等无战斗工具场永不被拦）**：
+
+- `scripts/battle/vfx_impact_factory.gd`：`spawn_ultimate_projectile` 发射时快照
+  `battle_on_at_launch`，到达回调在"战斗已结束"时整体作废（弹体/拖尾仍正常回收，
+  只是不再生成落地爆炸/焦痕/补刀伤害）——一处守卫覆盖全部六种大招弹体
+- `managers/battle/enemy_master_skill_engine.gd`：敌方 6 类大招演出的错峰发射
+  （apocalypse/inferno 小弹体）、蓄力环/预电弧（chain）、门脉动/能量柱/3.5s 威胁环
+  （summon）、延迟 impact 全屏闪，以及 `_exec_aoe/chain/single` 三处延迟伤害结算，
+  全部加快照守卫
+- `managers/battle/phase_instrument_abilities.gd`：核子轰炸导弹错峰发射 + 敌方炮击
+  0.45s 延迟爆炸链加快照守卫
+- `managers/battle/card_periodic_skill_engine.gd`：卡片大招（炮击弹幕延迟爆炸/
+  焚城 impact 白闪）用引擎自身 `_battle_active` 快照守卫
+- `managers/battle/battle_manager.gd`：帧C清扫后追加 **1.6s 延迟二次兜底清扫**
+  （世代号 `_battle_gen` 护栏，期间开新战斗则作废）——漏网 battle_vfx 的最后一道保险
+- `scripts/systems/main_reward.gd`：①战斗结束改为 **延迟 1.6s 冻结**视口（让大招尾链
+  在结算面板后自然播完，定格"战后余烬"帧而非半空贴图；战斗中/挂机中不冻结）；
+  ②`on_result_confirmed` prune 后补一次 UPDATE_ONCE 重渲染（准备界面背景=已清空的战场）
+
+**验证**：改动文件单载编译断言（vfx_impact_factory/card_periodic_skill_engine OK；
+battle_manager/main_reward/enemy_master_skill_engine/phase_instrument_abilities 的
+FAIL 均为既有 autoload 标识符 SignalBus/ObjectPoolManager 在 --script 模式不可见，
+零 Parse Error=语法全过）；weapon_visual_profiles_smoke 38/38 PASS；master_power_smoke
+8/8 PASS。实机表现待用户复测：大招击杀最后敌人/战斗在大招飞行中结束的场合，结算与
+准备界面背景不再有贴图残留。

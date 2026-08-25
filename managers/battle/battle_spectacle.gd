@@ -207,6 +207,11 @@ func _on_ability_triggered(ability_id: String, stage: String, params: Dictionary
 						_play_enemy_warning_flash(Color(0.15, 0.5, 0.55, 0.45), "📵 " + db_title)
 					_:
 						_play_enemy_warning_flash(Color(0.4, 0.4, 0.4, 0.4), "💫 " + db_title)
+		# v9.6 (P3-b): 护盾类大招预警（原仅执行侧 100px 小环无全屏反馈，补齐与其他 5 类对齐）
+		"enemy_spell_shield":
+			if stage == "warning":
+				_play_enemy_warning_flash(Color(0.15, 0.35, 0.75, 0.4),
+					"🛡 " + String(params.get("title", "敌方护盾")))
 
 ## 核子轰炸预警：全屏红色暗化 + 标题
 func _play_nuclear_warning(_params: Dictionary) -> void:
@@ -305,7 +310,7 @@ func _create_nano_rain_layer(duration: float) -> void:
 	else:
 		# Battlefield 在 SubViewport 里，用其所在 SubViewport 的尺寸（战场实际宽高）
 		var sv: Viewport = parent.get_viewport()
-		vp_size = sv.get_visible_rect().size if sv != null else Vector2(1280.0, 580.0)
+		vp_size = sv.get_visible_rect().size if sv != null else Vector2(1280.0, 648.0)
 	var rain := CPUParticles2D.new()
 	rain.name = "NanoSwarmRainLayer"
 	rain.amount = 120  # v8.1a：80→120，更密集的虫群雨

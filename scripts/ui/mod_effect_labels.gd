@@ -140,6 +140,12 @@ static func translate(key: String) -> String:
 		"phase_shield": return "相位护盾"
 		"phase_shield_regen": return "护盾回复"
 		"laser_marker": return "激光标记"
+		# ── v9.x 补遗（2026-08-25 全量扫描后补齐，此前未命中会裸显英文键名）──
+		"phase_shift_counter": return "相位反击"
+		"hijack_aura_radius": return "劫持范围"
+		"hijack_aura_duration": return "劫持持续"
+		"hijack_aura_cd": return "劫持冷却"
+		"salvage_repair": return "残骸回收"
 		# 卡牌强化面板历史兼容（attack_damage/defense/faction_accuracy_bonus 非改造 effect key，但强化面板 name_map 曾覆盖）
 		"attack_damage": return "攻击"
 		"defense": return "防御"
@@ -155,6 +161,7 @@ static func translate(key: String) -> String:
 		"burn_duration": return "燃烧持续"
 		"chem_chance": return "化毒概率"
 		"chem_dps": return "化毒DPS"
+		"chem_dps_mult": return "化毒倍率"
 		"chem_duration": return "化毒持续"
 		"chem_corrosion": return "腐蚀"
 		"chem_pollute": return "污染"

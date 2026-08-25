@@ -597,6 +597,17 @@ func _deferred_end_battle_broadcast(player_won: bool, gen: int = -1) -> void:
 	for node in get_tree().get_nodes_in_group("battle_vfx"):
 		if is_instance_valid(node):
 			node.queue_free()
+	# v20.15: 延迟二次兜底清扫——大招错峰发射链（核弹齐射 0.06s×N + 飞行 0.35s，
+	# 地毯弹幕 0.08s×9 + 飞行 0.45s，尾链最长 ~1.2s）在本帧清扫之后才 spawn 的
+	# battle_vfx 漏网之鱼，1.6s 后再扫一轮（"贴图残留在结算/准备背景"的最后一道保险）。
+	# 世代号护栏：期间开了新战斗则整体作废（start_battle 自带 prune，不能误杀新场特效）。
+	var sweep_gen: int = gen if gen >= 0 else _battle_gen
+	get_tree().create_timer(1.6).timeout.connect(func():
+		if sweep_gen != _battle_gen or battle_active:
+			return
+		for late_node in get_tree().get_nodes_in_group("battle_vfx"):
+			if is_instance_valid(late_node):
+				late_node.queue_free())
 	# ②通知任务系统（读 _battle_result.victory_stars，必须在掉落生成之后）
 	ManagerLazyLoader.ensure_loaded("quest")
 	var qm = get_node_or_null("/root/QuestManager")

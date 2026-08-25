@@ -68,6 +68,7 @@ size_flags_vertical = 3
 layout_mode = 2
 size_flags_vertical = 3
 custom_minimum_size = Vector2(0, 380)
+horizontal_scroll_mode = 0
 
 [node name="InstrumentList" type="VBoxContainer" parent="Center/DialogPanel/Margin/VBox/Body/ScrollContainer"]
 layout_mode = 2

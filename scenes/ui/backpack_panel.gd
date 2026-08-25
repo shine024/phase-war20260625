@@ -38,6 +38,7 @@ const NodeFinder = preload("res://scripts/node_finder.gd")
 const CardInfoPanel = preload("res://scenes/ui/card_info_panel.gd")
 const IntelManualItemsRef = preload("res://data/intel_manual_items.gd")
 const BlueprintDefinitionsRef = preload("res://data/blueprint_definitions.gd")
+const ModEffectLabels = preload("res://scripts/ui/mod_effect_labels.gd")
 const ModificationRegistryRef = preload("res://scripts/systems/modification_registry.gd")
 const RankDisplayUi = preload("res://scripts/rank_display_ui.gd")
 ## v8.0: 相位仪标签页所需的数据依赖
@@ -753,41 +754,33 @@ func _mod_bucket_of(mod_id: String) -> String:
 
 
 ## v9.0: 改造效果键 → 简短显示（用于瓷砖主效果行）
-## 只覆盖最常见的 effect key（attack_interval/dodge_chance 等），未覆盖的回退到 "key: val"
+## 2026-08-25：键名翻译改走唯一权威表 ModEffectLabels（原内联小表仅 ~14 键，
+## 未覆盖键裸显 "accuracy_bonus: 0.5" 英文键名，146 改造档大面积出现）。
 func _format_mod_effect_short(key: String, val) -> String:
-	var v: String = str(val)
-	# 攻速百分比（attack_interval 多为负，转成正数+" 攻速"）
+	# 攻速：attack_interval 是攻击间隔，负值=间隔缩短=攻速提升，统一转正表述
 	if key == "attack_interval":
-		var f := float(val)
-		var pct := int(round(f * 100))
-		if pct >= 0:
-			return "攻速 +%d%%" % pct
-		else:
-			return "攻速 %d%%" % pct
-	# 倍率型（≥1为加成，<1为减成）
-	var mul_keys := {
-		"attack_light": "对轻攻", "attack_armor": "对甲攻", "attack_air": "对空攻",
-		"attack_fort": "对堡攻", "attack_all": "全攻击",
-		"defense_light": "轻防", "defense_armor": "甲防", "defense_air": "空防",
-		"crit_chance": "暴击", "dodge_chance": "闪避", "move_speed": "移速",
-		"hp_regen": "回血", "deploy_delay_bonus": "部署",
-	}
-	if mul_keys.has(key):
-		var base := float(val)
-		if absf(base) < 0.2:
-			# 0~0.2 区间多半是绝对值（如暴击 0.15）
-			return "%s +%d%%" % [mul_keys[key], int(round(base * 100))]
-		elif base >= 1.0:
-			return "%s ×%.2f" % [mul_keys[key], base]
-		else:
-			return "%s %d%%" % [mul_keys[key], int(round((base - 1.0) * 100))]
-	# 数值型加成
-	if key == "range_value":
-		return "射程 +%s" % v
-	if key == "max_hp_bonus" or key == "hp_bonus":
-		return "HP +%s" % v
-	# 回退：key: val
-	return "%s: %s" % [key, v]
+		return "攻速 +%d%%" % int(round(absf(float(val)) * 100.0))
+	var label: String = ModEffectLabels.translate(key)
+	if val is bool:
+		return "✓ %s" % label
+	return "%s %s" % [label, _format_tile_effect_number(val)]
+
+
+## 瓷砖效果数值口径（与 modification_panel._format_effect_number 一致）：
+## |v|<=1 或 v<-1 的小数 → 百分比；>1 的浮点在现网数据里是持续秒/半径/点数
+## （非倍率），按加数显示、整值去小数；整数 → 整数加成。
+func _format_tile_effect_number(val) -> String:
+	if val is float:
+		if val == 0.0:
+			return "0"
+		if absf(val) <= 1.0 or val < -1.0:
+			return "%+.0f%%" % (val * 100.0)
+		if is_equal_approx(val, roundf(val)):
+			return "+%d" % int(round(val))
+		return "+%.1f" % val
+	if val is int:
+		return "%+d" % val if val >= 0 else str(val)
+	return str(val)
 
 func _exit_tree() -> void:
 	# v6.2: 断开符文信号，防止面板销毁后回调访问已释放节点
@@ -1554,8 +1547,20 @@ func _add_intel_placeholder(grid: GridContainer, message: String) -> void:
 	lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	lbl.add_theme_color_override("font_color", Color(0.55, 0.6, 0.7, 0.9))
 	lbl.add_theme_font_size_override("font_size", 14)
-	lbl.custom_minimum_size = Vector2(950.0, 80.0)
+	# 固定 950 宽曾把网格最小宽撑到 4列×950=3818px，远超 1176px 面板（占位符被
+	# _effective_slot_width 当瓷砖宽采样）。改为随父滚动容器可用宽收缩 + 打占位标记。
+	lbl.custom_minimum_size = Vector2(_grid_placeholder_width(grid), 80.0)
+	lbl.set_meta("_grid_placeholder", true)
 	grid.add_child(lbl)
+
+
+## 占位符横幅宽度：随父滚动容器可用宽收缩（预留滚动条+边距 28），父尺寸未定时保守取 640。
+func _grid_placeholder_width(grid: GridContainer) -> float:
+	if grid != null and is_instance_valid(grid):
+		var sc: Node = grid.get_parent()
+		if sc is Control and (sc as Control).size.x > 1.0:
+			return clampf((sc as Control).size.x - 28.0, 320.0, 950.0)
+	return 640.0
 
 
 # v9.0: refresh_stat_boosts_tab + _add_stat_boosts_placeholder 已移除（STAT_BOOSTS Tab 砍掉）
@@ -2368,7 +2373,9 @@ func _add_runes_placeholder(grid: GridContainer, message: String) -> void:
 	lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	lbl.add_theme_color_override("font_color", Color(0.55, 0.6, 0.7, 0.9))
 	lbl.add_theme_font_size_override("font_size", 14)
-	lbl.custom_minimum_size = Vector2(950.0, 80.0)
+	# 同 _add_intel_placeholder：固定 950 宽会撑爆网格，改为随父容器收缩 + 占位标记
+	lbl.custom_minimum_size = Vector2(_grid_placeholder_width(grid), 80.0)
+	lbl.set_meta("_grid_placeholder", true)
 	grid.add_child(lbl)
 ## 向后兼容方法（已废弃，保留以避免破坏现有调用）
 ## ============================================================
@@ -2697,13 +2704,17 @@ func _apply_backpack_grid_layout(grid: GridContainer) -> void:
 	)
 
 
-## v9.3: 取网格第一个可见子节点的实际宽度（瓷砖实际可能 > slot_min）；无子时回退 fallback。
+## v9.3: 取网格子节点的实际宽度做列宽基准；无子时回退 fallback。
+## 2026-08-25 改为取"最宽子节点"而非首块：效果文字长度不一会造出宽窄不一的瓷砖，
+## 按首块窄瓷砖算列数、排开后整行溢出（168 改造档实测：5 列 + 横向滚动条）。
+## 占位符横幅（_grid_placeholder 标记）不参与采样——其宽度是横幅展示宽，非瓷砖宽。
 func _effective_slot_width(grid: GridContainer, fallback: float) -> float:
+	var w: float = 0.0
 	if grid != null and is_instance_valid(grid):
 		for ch in grid.get_children():
-			if ch is Control and (ch as Control).size.x > 1.0:
-				return float((ch as Control).size.x)
-	return fallback
+			if ch is Control and not (ch as Control).has_meta("_grid_placeholder"):
+				w = maxf(w, (ch as Control).size.x)
+	return w if w > 1.0 else fallback
 
 
 ## v9.3: 按父容器（ScrollContainer）可用宽度计算一行能容纳的列数——填满且不溢出。

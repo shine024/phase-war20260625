@@ -46,10 +46,12 @@ const BRANCH_FIREPOWER := "firepower"
 
 ## 技能点随相位场等级（Lv1-30）增长的【累计上限】表。
 ## v8.x: 等级上限 16→30。Lv1-2 不给点（起步），Lv3 起 2/3 点交替发放（累计）。
-## 满 Lv30 = 70 点 ≈ 占节点总 cost 187 的 37%，可点满 ~1.2 个分支
+## 满 Lv30 = 70 点 ≈ 占节点总 cost 147 的 48%（v9.x 深层降价后），
+## 可点满智能系（45）或指挥/火力系过半（50/52）+ 另两系基础
 ## （v9：奇点节点沉入深层 + 交叉前置，满级也难凑齐全树，奇点是 endgame 追求）。
 ## 旧档兼容：Lv16 由原 30 点 → 新 35 点（玩家多 5 点可花，不丢失不降级）。
-## 历史：v8.5 满级 15→28（Lv16）；v8.x 满级 28→70（Lv30，2-3 交替累计）
+## 历史：v8.5 满级 15→28（Lv16）；v8.x 满级 28→70（Lv30，2-3 交替累计）；
+##       v9.x 深层节点降价（5→3/4→2/3→2/2→1），总 cost 212→147，旧档读档按新表重算已花点数
 ## ⚠️ 索引 = 等级（max_skill_points_at_phase_field_level 用 level 直接做下标），
 ##    故索引 0 是 Lv0 占位（不存在），Lv1=索引1，Lv30=索引30，共 31 个元素。
 ## ⚠️ 表中数值是【累计】（与原表格式一致），不是每级增量。
@@ -150,11 +152,14 @@ const SKILL_TREE: Dictionary = {
 				"unlocks": [],
 				"effects": {"stat_bonus": {"atk_light": 0.05, "atk_armor": 0.05, "atk_air": 0.05, "crit_chance": 0.05}},
 				"capstone": true},
-		# tier 4：智能化终极——自动升级
-		{"id": "pms_int_4", "name": "自适应进化", "desc": "战斗中存活超过 30 秒的单位全属性 +15%",
+		# tier 4：智能化终极——自适应进化
+		# v9.x：原 conditional survive_seconds（存活30秒全属性+15%）全项目无消费方（空转），
+		# 按 v8.5 同类处理惯例改静态数值（atk/def/hp 键均被 battle_spawn_system 消费）
+		{"id": "pms_int_4", "name": "自适应进化", "desc": "所有单位三维攻击 +8%，三维防御 +8%，生命上限 +8%",
 		 "branch": BRANCH_INTELLIGENCE, "tier": 4, "cost": 3, "requires": ["pms_int_3"],
 		 "unlocks": [],
-		 "effects": {"conditional": {"survive_seconds": 30.0, "stat_bonus": {"atk_light": 0.15, "atk_armor": 0.15, "atk_air": 0.15, "max_hp": 0.15}}}},
+		 "effects": {"stat_bonus": {"atk_light": 0.08, "atk_armor": 0.08, "atk_air": 0.08,
+		                            "def_light": 0.08, "def_armor": 0.08, "def_air": 0.08, "hp": 0.08}}},
 	],
 
 	# ═══════════ 火力分支：三维攻击 / 暴击 / 穿甲 / 射程 / 兵种特殊能力 ═══════════
