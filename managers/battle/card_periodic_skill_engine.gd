@@ -135,6 +135,11 @@ func _execute_effect(skill: Dictionary) -> void:
 	var effect: Dictionary = skill.get("effect", {})
 	if effect.is_empty():
 		return
+	# v20.16: 需敌方目标的效果（buff_allies 除外）在敌方无单位时不触发——
+	# 不发 toast 不震屏（战斗刚开始敌方未部署时"焚城"等技能空放提示的根因）
+	var effect_type: String = effect.get("type", "")
+	if effect_type != "buff_allies" and _collect_enemy_units().is_empty():
+		return
 	# v8.x 视觉反馈：所有技能触发都弹 Toast（普通技金色轻量提示，终极技红色+震屏）。
 	# 终极技仍额外触发震屏；普通技 cooldown 短（10-18s）故 Toast 用短持续时间避免刷屏。
 	var skill_id: String = String(skill.get("id", ""))
@@ -142,7 +147,6 @@ func _execute_effect(skill: Dictionary) -> void:
 	_emit_skill_toast(skill, is_ult)
 	if is_ult:
 		_play_ultimate_shake()
-	var effect_type: String = effect.get("type", "")
 	match effect_type:
 		"area_damage": _exec_area_damage(effect)
 		"single_target_damage": _exec_single_target_damage(effect)

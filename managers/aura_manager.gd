@@ -240,7 +240,7 @@ func _apply_carrier_repair_tick(unit: Node2D) -> void:
 			continue
 		if not "stats" in ally or ally.stats == null:
 			continue
-		if not _get_aura_data().is_mechanical_platform(ally.stats.platform_type):
+		if not _get_aura_data().is_mechanical_ally(ally):
 			continue
 		var star: int = get_unit_star(unit)
 		var params: Dictionary = _get_aura_data().get_aura_params(_get_aura_data().Category.CARRIER_REPAIR, star)
@@ -303,6 +303,34 @@ func get_unit_aura_types(unit: Node2D) -> Array[int]:
 	for aura_type in aura_map.keys():
 		result.append(int(aura_type))
 	return result
+
+## v20.15: 后入场单位补偿接收场上既有光环源的一次性增益（雷达暴击/侦察命中/堡垒减伤/指挥全局）。
+## 仿 ModAuraHandler.receive_mod_auras_from_field（H9 修复）——光环源注册时只覆盖当时在场友军，
+## 后部署的单位原先永久吃不到 buff。replay=true 绕过源单位 meta 防重入，
+## 由各 apply_* 内部的 per-ally meta 保证只给未受 buff 的单位补（即新入场者与漏补者）。
+func receive_auras_from_field(unit: Node2D) -> void:
+	if unit == null or not is_instance_valid(unit):
+		return
+	if not ("is_player" in unit):
+		return
+	var is_player: bool = bool(unit.is_player)
+	for unit_id in _unit_map.keys():
+		var src = _unit_map.get(unit_id, null)
+		if src == null or not is_instance_valid(src):
+			continue
+		if not (src is Node2D) or src == unit:
+			continue
+		if not ("is_player" in src) or bool(src.is_player) != is_player:
+			continue
+		var aura_map: Dictionary = _unit_auras.get(unit_id, {})
+		if aura_map.has(AuraType.RADAR_RANGE):
+			CardAbilityManager.apply_radar_range_aura(src, 0.0, true)
+		if aura_map.has(AuraType.SCOUT_CRIT):
+			CardAbilityManager.apply_scout_crit_aura(src, 0.0, true)
+		if aura_map.has(AuraType.FORTRESS_DEF):
+			CardAbilityManager.apply_fortress_defense_aura(src, 0.0, true)
+		if aura_map.has(AuraType.COMMAND_GLOBAL):
+			CardAbilityManager.apply_command_global_aura(src, true)
 
 ## 清理所有光环
 ## v9.x: 修复回归——3fdb0a6 提交在新增 get_unit_aura_types 时误删了本函数头，

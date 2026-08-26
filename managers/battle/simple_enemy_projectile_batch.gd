@@ -6,6 +6,7 @@ const WeaponProjectileVfx = preload("res://scripts/weapon_projectile_vfx.gd")
 const VfxImpactFactory = preload("res://scripts/battle/vfx_impact_factory.gd")  # v9.2: 枪口火
 const CardGridUnitVisuals = preload("res://scripts/card_grid_unit_visuals.gd")  # v14: 蜂群开火冲撞
 const WeaponVisuals = preload("res://data/weapon_visual_profiles.gd")  # v17: 武器视觉档案（名字优先解析）
+const DirectWeaponFlavor = preload("res://data/direct_weapon_flavor.gd")  # v20.16: 直射亚类（弹头形状分流）
 
 const _HIT_R2: float = 100.0
 const _MAX_PROJ: int = 720
@@ -15,10 +16,19 @@ const _BATCH_WEAPON_TYPES: Array[int] = [
 	1,
 	2,
 ]
+# v20.16: 直射亚类形状层（WeaponProjectileVfx.FLAVOR_LAYER_*）——步枪细长/机枪短钝/坦克炮大号，
+# 各自独立 MultiMesh 网格（同 player batch；武器名优先于敌方 legacy 槽位 wt）。
+const _FLAVOR_LAYER_KEYS: Array[int] = [
+	WeaponProjectileVfx.FLAVOR_LAYER_RIFLE,
+	WeaponProjectileVfx.FLAVOR_LAYER_MG,
+	WeaponProjectileVfx.FLAVOR_LAYER_TANK_GUN,
+]
 const _ENEMY_TINT := Color(1.0, 0.55, 0.25)  # v9.2: 亮橙红（原暗粉 1.0/0.38/0.52），在战场上更醒目
 
 var _proj: Array = []
-var _layers: Dictionary = {}  # weapon_type -> MultiMeshInstance2D
+var _layers: Dictionary = {}  # layer_key（wt 或亚类形状键 100+）-> MultiMeshInstance2D
+# v20.16: 渲染层键全集（基础 wt + 亚类层）——_ready 填充；sync/clear 遍历用（保持零分配）
+var _layer_keys: Array[int] = []
 # T1 性能优化：轻武器命中特效限流时间戳（见 _apply_hit，同 player batch）
 var _last_impact_msec: int = -10000
 # v7.4 性能优化：buckets 提升为成员变量 + clear() 复用，消除每帧 Dictionary + Array 分配
@@ -53,10 +63,13 @@ func _update_tracers() -> void:
 		t2.visible = true
 		var r: Dictionary = _proj[i]
 		var dir: Vector2 = r.get("dir", Vector2.RIGHT) as Vector2
+		var sk_r: int = int(r.get("sk", r["wt"]))  # v20.16b: 亚类曳光参数（宽/长/色）
 		t2.position = to_local(r["pos"])
+		t2.width = WeaponProjectileVfx.tracer_width_for(sk_r)
+		t2.default_color = WeaponProjectileVfx.tracer_color_for(sk_r, TRACER_COLOR)
 		t2.clear_points()
 		t2.add_point(Vector2.ZERO)
-		t2.add_point(-dir * 26.0)  # v17k-R2: 16→26px 曳光加长
+		t2.add_point(-dir * WeaponProjectileVfx.tracer_len_for(sk_r))
 
 func _acquire_proj_dict() -> Dictionary:
 	if not _dict_pool.is_empty():
@@ -74,6 +87,13 @@ func _ready() -> void:
 		_layers[wt] = _make_layer(wt)
 		add_child(_layers[wt])
 		_buckets[wt] = []
+		_layer_keys.append(wt)
+	# v20.16: 直射亚类形状层——武器名分流后各用独立网格（步枪细长/机枪短钝/坦克炮大号）
+	for fk: int in _FLAVOR_LAYER_KEYS:
+		_layers[fk] = _make_layer(fk)
+		add_child(_layers[fk])
+		_buckets[fk] = []
+		_layer_keys.append(fk)
 
 func _make_layer(wt: int) -> MultiMeshInstance2D:
 	var mmi := MultiMeshInstance2D.new()
@@ -107,9 +127,15 @@ func fire(from: Vector2, tgt: Node2D, dmg: float, wt: int, shooter: Node2D, _sho
 	d["shooter"] = shooter
 	d["forced_miss"] = forced_miss
 	d["traveled"] = 0.0
-	d["speed"] = _speed_for(wt)
+	# v20.16: 直射亚类（武器名优先）——渲染层键分流形状；v20.16b: 弹速同步分化
+	# （步枪 1.3× 干脆 / 机枪 0.95× 弹幕 / 坦克炮 0.75× 重弹，系数单射源在 WPV）。
+	var flavor: int = DirectWeaponFlavor.classify(weapon_name, wt)
+	d["speed"] = WeaponProjectileVfx.flavor_speed(flavor, _speed_for(wt))
 	d["max_dist"] = _max_dist_for(wt)
 	d["dir"] = Vector2.RIGHT
+	# 命中/出界结算仍按原 wt；渲染层键（sk）分流形状/染色/曳光。
+	var sk: int = WeaponProjectileVfx.flavor_layer_key(flavor)
+	d["sk"] = sk if sk >= 0 else wt
 	# v16: 透传武器名（命中配方亚类：机枪/坦克炮/步枪）与改造专属视觉标识
 	d["weapon_name"] = weapon_name
 	d["vfx_variant"] = p_vfx_variant
@@ -134,8 +160,8 @@ func clear_all() -> void:
 	for d: Dictionary in _proj:
 		_release_proj_dict(d)
 	_proj.clear()
-	for wt: int in _BATCH_WEAPON_TYPES:
-		var mmi: MultiMeshInstance2D = _layers.get(wt)
+	for k: int in _layer_keys:
+		var mmi: MultiMeshInstance2D = _layers.get(k)
 		if mmi and mmi.multimesh:
 			mmi.multimesh.instance_count = 0
 
@@ -188,32 +214,34 @@ func _physics_process(delta: float) -> void:
 
 func _sync_multimesh_layers() -> void:
 	if _proj.is_empty():
-		for wt: int in _BATCH_WEAPON_TYPES:
-			_layers[wt].multimesh.instance_count = 0
+		for k: int in _layer_keys:
+			_layers[k].multimesh.instance_count = 0
 		return
 	# v7.3 性能优化：单遍分桶（原两遍遍历 _proj：count + write）
 	# v7.4 性能优化：buckets 改为成员变量 + clear() 复用，消除每帧 Dictionary + Array 分配。
-	for wt: int in _BATCH_WEAPON_TYPES:
-		(_buckets[wt] as Array).clear()
+	# v20.16: 分桶键 wt→sk（渲染层键）——直射亚类各入各形状层。
+	for k: int in _layer_keys:
+		(_buckets[k] as Array).clear()
 	for r: Dictionary in _proj:
-		var wt_r: int = int(r["wt"])
-		if _buckets.has(wt_r):
-			(_buckets[wt_r] as Array).append(r)
-	for wt: int in _BATCH_WEAPON_TYPES:
-		var mmi: MultiMeshInstance2D = _layers[wt]
+		var sk_r: int = int(r.get("sk", r["wt"]))
+		if _buckets.has(sk_r):
+			(_buckets[sk_r] as Array).append(r)
+	for k: int in _layer_keys:
+		var mmi: MultiMeshInstance2D = _layers[k]
 		var mm: MultiMesh = mmi.multimesh
-		mm.instance_count = (_buckets[wt] as Array).size()
-	for wt: int in _BATCH_WEAPON_TYPES:
-		var arr: Array = _buckets[wt]
+		mm.instance_count = (_buckets[k] as Array).size()
+	for k: int in _layer_keys:
+		var arr: Array = _buckets[k]
 		if arr.is_empty():
 			continue
-		var mm2: MultiMesh = (_layers[wt] as MultiMeshInstance2D).multimesh
+		var mm2: MultiMesh = (_layers[k] as MultiMeshInstance2D).multimesh
+		var tint: Color = WeaponProjectileVfx.layer_tint(k, _ENEMY_TINT)  # v20.16b: 亚类层按武器配色
 		var idx: int = 0
 		for r: Dictionary in arr:
 			var dir: Vector2 = r.get("dir", Vector2.RIGHT) as Vector2
 			var local_pos: Vector2 = to_local(r["pos"])
 			mm2.set_instance_transform_2d(idx, Transform2D(dir.angle(), local_pos))
-			mm2.set_instance_color(idx, _ENEMY_TINT)
+			mm2.set_instance_color(idx, tint)
 			idx += 1
 
 func _apply_hit(r: Dictionary) -> void:

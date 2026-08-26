@@ -366,6 +366,9 @@ func clone() -> CardResource:
 	# 战斗卡字段
 	new_card.era = era
 	new_card.combat_kind = combat_kind
+	# v20.x 修复：补拷 platform_type（与 combat_kind 同口径）。原 clone 漏拷该字段，v7.0 卡牌
+	# 实例化以来所有实例卡 platform_type 恒 -1（restrict 白名单判定、视觉缩放/镜像贴图兜底全链失效）。
+	new_card.platform_type = platform_type
 	new_card.tier = tier
 	new_card.unit_subtype = unit_subtype
 	new_card.tags = tags.duplicate()

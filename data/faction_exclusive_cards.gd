@@ -286,6 +286,9 @@ static func create_card(cfg: Dictionary) -> CardResource:
 	c.card_type = GC.CardType.COMBAT_UNIT
 	c.era = cfg.get("era", 0)
 	c.combat_kind = cfg.get("combat_kind", 0)
+	# v20.x 修复：补设 platform_type（与 combat_kind 同口径，对齐 default_cards._unit/UCT）。
+	# 原漏设恒 -1：restrict_platforms 白名单关（15/30/55/85）会把势力专属卡全部误拦。
+	c.platform_type = c.combat_kind
 	c.power = cfg.get("power", 0)
 	c.deploy_speed = cfg.get("deploy_speed", 3)
 	c.range_value = cfg.get("range", 3)

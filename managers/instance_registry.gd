@@ -179,6 +179,14 @@ func has_instance(instance_id: String) -> bool:
 	return _instances.has(instance_id)
 
 
+## v21.x: 诊断辅助——打印所有实例的 instance_id 和等级
+func debug_print_all_instances() -> void:
+	for iid in _instances.keys():
+		var lv: int = int(_card_level.get(iid, 0))
+		var exp: int = int(_battle_experience.get(iid, 0))
+		print("[InstanceRegistry] 实例: %s, card_id=%s, lv=%d, exp=%d" % [iid, _instances[iid].card_id, lv, exp])
+
+
 ## 获取所有实例ID
 func get_all_instance_ids() -> Array:
 	return _instances.keys()

@@ -391,6 +391,9 @@ static func _fire_nuclear_bombardment(owner: Owner, params: Dictionary) -> void:
 	var dmg_mult: float = float(params.get("dmg_mult", 1.0))
 	var base_dmg: float = _compute_nuclear_damage(owner) * dmg_mult
 	var targets: Array = _get_targets(owner)
+	# v20.16: 无目标时直接返回，避免在 (0,0) 左上角播核爆 VFX + 误触发全屏预警
+	if targets.is_empty():
+		return
 	# v6.6 正式动画：分两阶段——先标记（警告），延迟后核爆 + 伤害结算
 	# v8.1: emit warning 信号供 BattleSpectacle 播放全屏红屏预警
 	var first_pos: Vector2 = Vector2.ZERO

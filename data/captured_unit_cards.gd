@@ -119,6 +119,9 @@ static func _build_captured_card(
 	var era: int = int(cfg.get("era", 0))
 	c.era = era
 	c.combat_kind = int(cfg.get("combat_kind", 1))
+	# v20.x 修复：补设 platform_type（与 combat_kind 同口径，原漏设恒 -1，
+	# 缴获卡在限定兵种关（15/30/55/85）会被白名单误拦）
+	c.platform_type = c.combat_kind
 	c.base_hp = float(cfg.get("hp", 100.0))
 	c.range_value = max(1, int(round(float(cfg.get("attack_range", 120.0)) / 100.0)))
 	c.attack_speed = 1.0 / maxf(0.001, float(cfg.get("attack_interval", 1.0)))
@@ -205,6 +208,8 @@ static func _build_from_static(drop_id: String, stats: Dictionary) -> CardResour
 	c.display_name = String(stats.get("display_name", drop_id))
 	c.era = int(stats.get("era", 0))
 	c.combat_kind = int(stats.get("combat_kind", 1))
+	# v20.x 修复：补设 platform_type（同上，动态/静态两条 fallback 路径统一口径）
+	c.platform_type = c.combat_kind
 	c.base_hp = float(stats.get("base_hp", 100.0))
 	c.range_value = int(stats.get("range_value", 1))
 	c.attack_speed = float(stats.get("attack_speed", 1.0))

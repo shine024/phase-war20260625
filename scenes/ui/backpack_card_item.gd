@@ -32,6 +32,7 @@ const RankDisplayUi = preload("res://scripts/rank_display_ui.gd")
 const CardFrameUi = preload("res://scripts/card_frame_ui.gd")
 const CardBackgroundUi = preload("res://scripts/card_background_ui.gd")
 const DesignTokens = preload("res://resources/design_tokens.gd")
+const UnifiedCardTable = preload("res://data/unified_card_table.gd")  # v20.13c: tooltip 预览每卡部署次数
 ## v9.3: 背包卡牌大卡面尺寸（108×154），立绘区约 102×116，承载更多视觉信息（5星+兵种色块+Lv+战力+EQUIP徽章）。
 ## 拖拽到相位仪槽位时视觉对齐由 backpack_card_item_drag 处理（预览缩放，引用本变量自动适配）。
 var SLOT_SIZE: Vector2 = Vector2(108, 154)
@@ -893,7 +894,18 @@ func _set_compact_slot_view(c: CardResource, name_label, lv_label, icon_rect) ->
 	var _cost_badge_c = CardFrameUi.ensure_cost_corner_badge(self, false)
 	if _cost_badge_c != null:
 		_cost_badge_c.energy_value = int(c.energy_cost)
-	tooltip_text = ""
+	# v20.13c: 背包格悬停提示——每卡部署次数（卡面空间有限，决策关键信息放 tooltip；
+	# 置于 _apply_card_chrome 之前，势力未激活的锁定提示仍可覆盖本行）
+	var du_tip: Array[String] = [_compact_display_name(c)]
+	var du_entry: Dictionary = UnifiedCardTable.get_entry(c.card_id)
+	if not du_entry.is_empty():
+		var du_uses: int = UnifiedCardTable.get_deploy_uses(du_entry, c)
+		if du_uses < 99:
+			du_tip.append("部署×%d/场" % du_uses)
+	# v20.15: 固定机制文案（高价值单位机制提示）
+	for mech_line in CardMechanismDesc.get_mechanism_lines(c.tags):
+		du_tip.append(mech_line)
+	tooltip_text = "\n".join(du_tip)
 	_apply_card_chrome(c)
 	if art_clip:
 		call_deferred("_layout_compact_art_clip", art_clip)
@@ -1624,6 +1636,12 @@ func _set_mtg_minimal_card_view(c: CardResource, name_label, lv_label, icon_rect
 	# v19: 悬停提示补等级（card_level）——装配/比较决策的核心维度
 	if c.card_type == GC.CardType.COMBAT_UNIT:
 		tip_parts.append("等级 Lv.%d" % _card_level_of(c))
+		# v20.13c: 每卡部署次数（实例卡含等级修正，与战场底栏 ×N 角标同源口径）
+		var du_entry: Dictionary = UnifiedCardTable.get_entry(c.card_id)
+		if not du_entry.is_empty():
+			var du_uses: int = UnifiedCardTable.get_deploy_uses(du_entry, c)
+			if du_uses < 99:
+				tip_parts.append("部署×%d/场" % du_uses)
 	if not c.type_line.is_empty():
 		tip_parts.append(c.type_line)
 	var combat_tip: String = BackpackCombatPreview.build_line(c)

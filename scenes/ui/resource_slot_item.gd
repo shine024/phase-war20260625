@@ -39,6 +39,8 @@ var _pulse_tween: Tween = null
 var _hover_base_style: StyleBoxFlat = null
 var _is_hovering := false
 var _hover_base_pos_y: float = 0.0
+# 2026-08-25 修⑥：改造瓷砖的 extra_data 快照（tooltip 组装用——完整效果行/原型/稀有度/装配数）
+var _lore_extra: Dictionary = {}
 
 func _ready() -> void:
 	clip_contents = true
@@ -195,6 +197,7 @@ func set_data(id: String, stack_amount: int, type: SlotType = SlotType.RESOURCE,
 	description = extra_data.get("description", "")
 	var custom_icon: String = extra_data.get("icon", "")
 	var custom_name: String = extra_data.get("name", "")
+	_lore_extra = extra_data if slot_type == SlotType.LORE else {}  # 修⑥：LORE 快照，其他类型清空防串味
 
 	match slot_type:
 		SlotType.RESOURCE:
@@ -224,8 +227,9 @@ func set_data(id: String, stack_amount: int, type: SlotType = SlotType.RESOURCE,
 
 	# 悬浮情报：瓦片名截断 7 字，详细说明走 tooltip（此前 _get_slot_tooltip_text 零调用）
 	tooltip_text = _get_slot_tooltip_text()
-	if _tile_glow_mode == 1:
-		tooltip_text += "\n（已装备）" if slot_type == SlotType.RUNE else "\n（已装配）"
+	# LORE（改造）的装配状态已并入 _build_mod_tooltip（含"N 张卡"计数），不再追加后缀
+	if _tile_glow_mode == 1 and slot_type == SlotType.RUNE:
+		tooltip_text += "\n（已装备）"
 
 ## 刷新资源显示
 func _refresh_resource(id: String, name_label: Label, amount_label: Label, icon_rect: TextureRect) -> void:
@@ -311,7 +315,7 @@ func _refresh_lore(lore_id: String, count: int, name_label: Label, amount_label:
 			icon_rect.visible = true
 			_ensure_mod_fallback_icon(icon_rect, extra_data)
 
-		# v9.0: 注入装饰层（左侧稀有度色条 + 装配计数徽章 + 槽位类型标签 + 状态点 + 稀有度文字 + 原型名）
+		# v9.0: 注入装饰层（左侧稀有度色条 + 装配计数徽章 + 槽位类型标签 + 状态点 + 原型名）
 		if not mod_rarity.is_empty():
 			_apply_mod_left_strip(mod_rarity)
 			if install_count > 0:
@@ -324,8 +328,9 @@ func _refresh_lore(lore_id: String, count: int, name_label: Label, amount_label:
 			# v9.2: 装配状态点（顶部行右侧，绿=已装配 灰=未装配）
 			var is_installed: bool = bool(extra_data.get("installed", false))
 			_apply_mod_status_dot(is_installed)
-			# v9.2: 稀有度文字标签（底部右侧，大写）
-			_apply_mod_rarity_text(mod_rarity)
+			# 2026-08-25 修⑤：稀有度文字从瓷砖移除（品质已由边框/色条区分），
+			# "传奇/史诗"等文字移入 tooltip（见 _get_slot_tooltip_text）。
+			_apply_mod_rarity_text("")
 			# v9.2: 原型名（底部左侧，斜体灰色，如"M829A4"/"Chobham"）
 			_apply_mod_prototype(prototype)
 	else:
@@ -508,6 +513,9 @@ const _SLOT_TYPE_CN = {
 	"weapon": "武器", "weapons": "武器", "gun": "武器", "barrel": "武器",
 	"ammunition": "弹药", "missile": "导弹", "fire_control": "火控",
 	"guidance": "制导", "radar": "雷达", "optics": "光学",
+	# 2026-08-25 补遗：数据层存在但此前未覆盖，tooltip 显示英文裸键
+	"sensor": "传感器", "optical": "光学", "electronic": "电子",
+	"command": "指挥", "helmet": "头盔", "active": "主动",
 	"stealth": "隐蔽", "comms": "通信", "ecm": "电子对抗",
 	"armor": "装甲", "shield": "护盾", "protection": "防护",
 	"survival": "生存", "engineering": "工程", "recovery": "回收",
@@ -586,6 +594,11 @@ const _RARITY_CN := {
 }
 func _apply_mod_rarity_text(rarity: String) -> void:
 	if rarity.is_empty():
+		# 2026-08-25 修⑤：空串=隐藏（稀有度文字已移入 tooltip）。池化复用时
+		# 旧瓷砖的稀有度 label 需显式隐藏，否则残留上一次的文字。
+		var old_lbl := _ensure_decoration_layer().get_node_or_null("ModRarityText") as CanvasItem
+		if old_lbl:
+			old_lbl.visible = false
 		return
 	var cn: String = _RARITY_CN.get(rarity, "")
 	if cn.is_empty():
@@ -996,10 +1009,48 @@ func _get_slot_tooltip_text() -> String:
 		SlotType.RESOURCE:
 			return "%s\n基础资源" % display_name
 		SlotType.LORE:
-			return "%s\n%s" % [display_name, description]
+			return _build_mod_tooltip()
 		SlotType.STAT_BOOST:
 			return "%s\n%s\n当前层数: %d" % [display_name, description, amount]
 		SlotType.RUNE:
 			return "%s\n%s" % [display_name, description]
 		_:
 			return display_name
+
+
+## 2026-08-25 修⑥：改造瓷砖完整悬浮信息。瓷砖本体空间有限只放第一条效果 + 名字，
+## 完整效果列表/原型/稀有度（修⑤移入）/槽位/装配数沉到 tooltip——符合 ui-review
+## 的 Tips 分层（悬停就地解释）。
+func _build_mod_tooltip() -> String:
+	if _lore_extra.is_empty():
+		return "%s\n%s" % [display_name, description]
+	var tt := display_name
+	var proto: String = String(_lore_extra.get("prototype", ""))
+	if not proto.is_empty():
+		tt += "\n原型：" + proto
+	var meta_parts: Array = []
+	var rar: String = String(_lore_extra.get("rarity", ""))
+	if not rar.is_empty():
+		meta_parts.append("稀有度 " + _RARITY_CN.get(rar, rar))
+	var st: String = String(_lore_extra.get("slot_type", ""))
+	if not st.is_empty():
+		meta_parts.append(_SLOT_TYPE_CN.get(st.to_lower(), st))
+	if not meta_parts.is_empty():
+		tt += "\n" + " · ".join(meta_parts)
+	var lines = _lore_extra.get("effect_lines", [])
+	if lines is Array and not (lines as Array).is_empty():
+		tt += "\n── 效果 ──"
+		for ln in (lines as Array):
+			tt += "\n" + String(ln)
+	elif not String(_lore_extra.get("effect_text", "")).is_empty():
+		tt += "\n── 效果 ──\n" + String(_lore_extra.get("effect_text", ""))
+	var install_count: int = int(_lore_extra.get("install_count", 0))
+	if install_count > 0:
+		tt += "\n已装配 %d 张卡" % install_count
+	elif bool(_lore_extra.get("installed", false)):
+		tt += "\n已装配"
+	else:
+		tt += "\n未装配"
+	if not description.is_empty():
+		tt += "\n" + description
+	return tt

@@ -52,12 +52,15 @@ static func _resolve_autoload(autoload_name: StringName) -> Node:
 	return null
 const MAX_ENEMY_VISUAL_EXTENT_PX := 220.0
 ## 我方平台类型 -> 用于显示的敌方原型 id
+## v20.x 重映射：我方卡 stats.platform_type = combat_kind(0-4)（v8 口径），原 0-4 键是
+## legacy 平台枚举（1=法师/2=泰坦/3=碉堡/4=雷达车），按 CombatKind 查会拿错类别贴图
+## （装甲卡→步兵图）。0-4 改按兵种语义选代表，与 card_foot_anchors.PLAYER_PLATFORM_TO_SCALE_ARCHETYPE 同步。
 const PLAYER_MIRROR_ARCHETYPE_BY_PLATFORM := {
 	0: "ww1_inf_mp18",
-	1: "ww2_inf_thompson",
-	2: "ww1_arm_rolls_e",
-	3: "ww1_sup_mg_nest",
-	4: "mod_arm_stryker_e",
+	1: "cold_arm_btr_e",
+	2: "ww1_arty_mortar",
+	3: "fut_air_drone",
+	4: "ww1_fort_pillbox",
 	5: "cold_arm_btr_e",
 	6: "fut_arm_hovertank_e",
 	7: "ww1_arty_mortar",
@@ -325,8 +328,11 @@ func setup(p_is_player: bool, p_stats: UnitStats, forced_enemy_visual_archetype_
 		_medic_aura_cd = randf_range(0.0, 0.75)
 
 	# 性能优化：注册其他光环到 AuraManager（setup 可能发生在尚未入树前）
+	# v20.x 口径守卫：platform_type 平台光环注册仅适用敌方单位（legacy 平台值 3=FORTRESS/
+	# 4=RADAR/5,10=SCOUT/8=CARRIER/12=COMMAND）。我方卡 stats.platform_type 为
+	# CombatKind(0-4)，与 3/4 撞值——我方平台光环由 ModAuraHandler/相位师系统驱动，不走此注册。
 	var aura_mgr: Node = _resolve_autoload(&"AuraManager")
-	if aura_mgr:
+	if aura_mgr and not is_player:
 		match stats.platform_type:
 			4:
 				aura_mgr.register_aura(self, aura_mgr.AuraType.RADAR_RANGE)
@@ -338,6 +344,21 @@ func setup(p_is_player: bool, p_stats: UnitStats, forced_enemy_visual_archetype_
 				aura_mgr.register_aura(self, aura_mgr.AuraType.CARRIER_REPAIR)
 			12:
 					aura_mgr.register_aura(self, aura_mgr.AuraType.COMMAND_GLOBAL)
+	# v20.15: 我方固定机制光环——按卡 tags 注册（雷达/指挥/医疗/维修）。
+	# radar/雷达/侦测、command/指挥 等 tags 由 UCT 名字关键词自动注入；
+	# 缴获卡敌用走上方 legacy 路径、玩家使用走 tags 路径，两侧互不重叠。
+	if aura_mgr and is_player and stats != null:
+		var mech_tags: Array = _fixed_mechanism_tags()
+		if mech_tags.has("radar") or mech_tags.has("雷达") or mech_tags.has("侦测"):
+			aura_mgr.register_aura(self, aura_mgr.AuraType.RADAR_RANGE)
+		if mech_tags.has("command") or mech_tags.has("指挥") or mech_tags.has("hq"):
+			aura_mgr.register_aura(self, aura_mgr.AuraType.COMMAND_GLOBAL)
+		if mech_tags.has("medic"):
+			aura_mgr.register_aura(self, aura_mgr.AuraType.MEDIC_HEAL)
+		if mech_tags.has("repair"):
+			aura_mgr.register_aura(self, aura_mgr.AuraType.CARRIER_REPAIR)
+		# 后入场补偿：接收场上既有同阵营光环源的一次性增益（仿 ModAuraHandler H9 修复）
+		aura_mgr.receive_auras_from_field(self)
 
 	# v6.8: 改造光环（ally_* 类改造）— 复用全体广播，给所有同阵营友军加 buff
 	# 单位已加入 player_units/enemy_units 分组（上方 add_to_group），广播可正常查询
@@ -780,6 +801,14 @@ func _update_shape() -> void:
 # ═════════════════════════════════════════════════════════════════
 
 ## v8: 从 stats meta 读取兵种固定机制标记，初始化运行时状态
+## v20.15: 读取 stats card_tags（UCT 注入的机制 tags；雷达/指挥由名字关键词自动注入）
+func _fixed_mechanism_tags() -> Array:
+	if stats == null or not stats.has_meta("card_tags"):
+		return []
+	var t: Array = stats.get_meta("card_tags", [])
+	return t if t is Array else []
+
+
 func _init_unit_mechanisms() -> void:
 	_is_recon_unit = false
 	_recon_grace_timer = 0.0
@@ -809,9 +838,11 @@ func _init_unit_mechanisms() -> void:
 	if stats.has_meta("is_stalker") and bool(stats.get_meta("is_stalker", false)):
 		_is_stalker_unit = true
 		_stalker_grace_timer = STALKER_GRACE_DURATION
-		# v8.x 视觉反馈：部署时半透明（隐身效果），计时器结束恢复
+		# v20.15 真隐身：开局渗透期间不可被单体索敌选中（对侧有侦测源除外；AOE 豁免）
+		set_meta("hidden_grace_until", Time.get_ticks_msec() + int(STALKER_GRACE_DURATION * 1000.0))
+		# v8.x 视觉反馈：部署时半透明（隐身效果），计时器结束恢复；v20.15 略加深以区分真隐身
 		_stalker_base_modulate = modulate
-		modulate = Color(modulate.r, modulate.g, modulate.b, 0.5)
+		modulate = Color(modulate.r, modulate.g, modulate.b, 0.4)
 	# v8.x: SNIPER 标记（读 stats meta "is_sniper"）
 	if stats.has_meta("is_sniper") and bool(stats.get_meta("is_sniper", false)):
 		_is_sniper_unit = true
@@ -1692,6 +1723,12 @@ func _physics_process(delta: float) -> void:
 		CardAbilityManager.update_drone_auto_mark(self, delta)
 		# v20.14: 无人机标记过期更新
 		CardAbilityManager.update_drone_mark_expiry(delta)
+		# v20.15: 高价值单位固定机制（补给光环/能量中继/侦察标记/风暴核心/纳米修复脉冲）
+		CardAbilityManager.update_supply_aura_periodic(self, delta)
+		CardAbilityManager.update_relay_periodic(self, delta)
+		CardAbilityManager.update_scout_mark_periodic(self, delta)
+		CardAbilityManager.update_storm_periodic(self, delta)
+		CardAbilityManager.update_nano_repair_pulse(self, delta)
 		# v8.6: 势力技能周期效果（periodic_shield / periodic_heal / periodic_invuln）
 		FactionSkillEffectHandler.process_periodic_ticks(self, delta)
 		# v8.6: 势力技能 on_hit_debuff 过期恢复（检查并恢复被 debuff 修改的 stats）
@@ -2115,8 +2152,8 @@ func _die() -> void:
 	if has_meta("is_wingman") and bool(get_meta("is_wingman")):
 		CardAbilityManager.schedule_wingman_respawn(self)
 
-	# 清理平台光环（恢复友军属性）
-	if stats != null:
+	# 清理平台光环（恢复友军属性）——与 setup 注册同守卫：仅敌方 legacy 平台值（v20.x）
+	if stats != null and not is_player:
 		match stats.platform_type:
 			4:
 				CardAbilityManager.remove_radar_range_aura(self)
@@ -2126,6 +2163,15 @@ func _die() -> void:
 				CardAbilityManager.remove_fortress_defense_aura(self)
 			12:
 				CardAbilityManager.remove_command_global_aura(self)
+
+	# v20.15: 我方固定机制光环清理（与 setup tags 注册对称）。MEDIC/CARRIER 为周期治疗，
+	# 上方 unregister_all_auras 已足够；RADAR/COMMAND 修改过友军 stats，需显式还原。
+	if stats != null and is_player and stats.has_meta("card_tags"):
+		var mech_tags: Array = stats.get_meta("card_tags", [])
+		if mech_tags.has("radar") or mech_tags.has("雷达") or mech_tags.has("侦测"):
+			CardAbilityManager.remove_radar_range_aura(self)
+		if mech_tags.has("command") or mech_tags.has("指挥") or mech_tags.has("hq"):
+			CardAbilityManager.remove_command_global_aura(self)
 
 	# 安全清理：防止死亡后继续处理事件
 	_cleanup_before_destroy()

@@ -354,6 +354,9 @@ static func _p(id: String, name: String, cost: float, pt: int, rarity: String, t
 	c.card_type = GC.CardType.COMBAT_UNIT
 	c.energy_cost = cost
 	c.combat_kind = int(UnitStatsTable.PLATFORM_TO_COMBAT_KIND.get(pt, 1))
+	# v20.x 修复：补设 platform_type（与 combat_kind 同口径；蓝图体系虽已退役，
+	# 旧档残留 bp_* 实例仍经此模板 clone，保持全战斗卡模板字段完备）
+	c.platform_type = c.combat_kind
 	c.weapon_label = str(_PLATFORM_DEFAULT_WEAPON_LABEL.get(pt, "步枪"))
 	c.era = 1
 	c.base_hp = 100.0

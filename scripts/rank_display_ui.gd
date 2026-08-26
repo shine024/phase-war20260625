@@ -27,7 +27,14 @@ static func power_score_from_combat(max_hp: float, attack_damage: float, attack_
 
 
 static func resolve_from_combat(max_hp: float, attack_damage: float, attack_interval: float, platform_type: int = -1) -> Dictionary:
-	var base_rank: String = RankRules.get_base_rank(platform_type) if platform_type >= 0 else "corporal"
+	# v20.x 口径修正：0-4 是 CombatKind 值（v8 起我方卡 stats.platform_type=combat_kind），
+	# 走 v3 主 API get_base_rank_by_combat_kind（原 legacy 字典 3/4 两键与主 API 不一致）；
+	# >4 才是 legacy 平台值（敌方单位），继续走 legacy 字典。
+	var base_rank: String = "corporal"
+	if platform_type >= 0 and platform_type <= 4:
+		base_rank = RankRules.get_base_rank_by_combat_kind(platform_type)
+	elif platform_type > 4:
+		base_rank = RankRules.get_base_rank(platform_type)
 	var power: float = power_score_from_combat(max_hp, attack_damage, attack_interval)
 	var rank_id: String = RankRules.get_rank_by_power(base_rank, power)
 	return {

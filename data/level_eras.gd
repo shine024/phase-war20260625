@@ -33,6 +33,18 @@ const ERA_SPAWN_COUNT: Dictionary = {
 	Era.NEAR_FUTURE: [3, 4], # 近未来控制上限
 }
 
+## 普通关卡敌方「同时在场」单位数上限（2026-08-25 用户反馈对称性问题）
+## 相位师战不走此表（由 enemy_phase_field_driver._unit_limit =
+## min(master.unit_limit, 敌方相位仪绿槽数, 9) 独立控制）；普通关按时代梯度递增，
+## 避免低星相位仪玩家（绿槽 3-4）面对满 9 格敌军的数量碾压。
+const ERA_ENEMY_FIELD_CAP: Dictionary = {
+	Era.WW1: 6,
+	Era.WW2: 7,
+	Era.COLD_WAR: 8,
+	Era.MODERN: 9,
+	Era.NEAR_FUTURE: 9,
+}
+
 ## 波次间隔（秒）- v8.x：整体缩短 ~40%（原 14/13/12/12/11），
 # 配合波次内敌方部署虚影时间，避免玩家等待过久。星级评定的预估时间随此自动跟随。
 const ERA_WAVE_INTERVAL: Dictionary = {
@@ -104,6 +116,11 @@ static func get_wave_total_for_level(level: int) -> int:
 static func get_wave_interval_for_level(level: int) -> float:
 	var era: int = get_era(level)
 	return float(ERA_WAVE_INTERVAL.get(era, 12.0))
+
+## 普通关卡敌方同时在场单位数上限（按关卡时代取 ERA_ENEMY_FIELD_CAP）
+static func get_enemy_field_cap_for_level(level: int) -> int:
+	var era: int = get_era(level)
+	return int(ERA_ENEMY_FIELD_CAP.get(era, 6))
 
 static func get_spawn_count_for_wave(level: int, wave_index: int) -> int:
 	# 注（2026-08-16 关卡设计审查标注）：本函数用裸 randi_range（非种子 RNG）——

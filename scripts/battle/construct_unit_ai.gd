@@ -93,6 +93,9 @@ static func find_target(u: CharacterBody2D, _delta: float) -> void:
 				var same_row_target: Node2D = _query_nearest_same_row_spatial(u, spatial_grid, max_range, targeting_mode)
 				if same_row_target != null:
 					nearest_target = same_row_target
+			# v20.15: 真隐身过滤——最近目标隐身且我方无侦测源时放弃，落到后续路径重选
+			if nearest_target != null and not CardAbilityManager.is_unit_targetable(nearest_target, u):
+				nearest_target = null
 			if nearest_target != null:
 				u.target = nearest_target
 				return
@@ -116,6 +119,9 @@ static func find_target(u: CharacterBody2D, _delta: float) -> void:
 				targeting_mode
 			)
 			# v9.x: 曲射/空射全场索敌——本分支仅曲射/空射单位进入，不再做同行收敛
+			# v20.15: 真隐身过滤——隐身且我方无侦测源时放弃该目标
+			if nearest_target2 != null and not CardAbilityManager.is_unit_targetable(nearest_target2, u):
+				nearest_target2 = null
 			if nearest_target2 != null:
 				u.target = nearest_target2
 				return
@@ -139,7 +145,11 @@ static func find_target(u: CharacterBody2D, _delta: float) -> void:
 		# 限制候选数量到最多10个
 		var limit: int = mini(candidates.size(), 10)
 		for i in range(limit):
-			candidate_nodes.append(candidates[i].node)
+			var cn: Node2D = candidates[i].node as Node2D
+			# v20.15: 真隐身过滤（隐身且我方无侦测源 → 不可选中）
+			if not CardAbilityManager.is_unit_targetable(cn, u):
+				continue
+			candidate_nodes.append(cn)
 
 		if u.stats != null:
 			var selected: Node2D = TargetSelection.select_target(
@@ -199,6 +209,9 @@ static func _find_target_by_card_grid(u: CharacterBody2D, targeting_mode: int = 
 		if not CombatTargeting.is_attackable_combat_unit(n):
 			continue
 		var n2d: Node2D = n as Node2D
+		# v20.15: 真隐身过滤（隐身且我方无侦测源 → 不可选中）
+		if not CardAbilityManager.is_unit_targetable(n2d, u):
+			continue
 		if origin.distance_squared_to(n2d.global_position) <= acq_range_sq:
 			candidates.append(n)
 	if candidates.is_empty():
@@ -311,6 +324,9 @@ static func _scan_slot_targets(u: CharacterBody2D, gr: Array) -> Node2D:
 	var valid: Array = []
 	for n in gr:
 		if CombatTargeting.is_attackable_combat_unit(n):
+			# v20.15: 真隐身过滤（隐身且我方无侦测源 → 不可选中；AOE/风暴类不走索敌，不受影响）
+			if not CardAbilityManager.is_unit_targetable(n as Node2D, u):
+				continue
 			valid.append(n)
 	if valid.is_empty():
 		return null
@@ -341,14 +357,17 @@ static func _scan_slot_targets(u: CharacterBody2D, gr: Array) -> Node2D:
 			return _nearest_of(origin, marked)
 
 	# L1 指挥单位
+	# v20.x 口径守卫：候选中的我方单位 stats.platform_type 为 CombatKind(0-4)，与 legacy
+	# 指挥/光环平台值（12=COMMAND / 3=FORTRESS / 4=RADAR）撞值——我方候选不做 legacy
+	# 高价值分类，保持 v7 实例化以来"我方卡 platform_type 恒不命中"的现行为。
 	var commanders: Array = valid.filter(func(n):
-		return _is_command_unit(n.get("stats") as UnitStats))
+		return not bool(n.get("is_player")) and _is_command_unit(n.get("stats") as UnitStats))
 	if not commanders.is_empty():
 		return _nearest_of(origin, commanders)
 
-	# L2 光环单位
+	# L2 光环单位（同上守卫）
 	var aura_units: Array = valid.filter(func(n):
-		return _is_aura_unit(n.get("stats") as UnitStats))
+		return not bool(n.get("is_player")) and _is_aura_unit(n.get("stats") as UnitStats))
 	if not aura_units.is_empty():
 		return _nearest_of(origin, aura_units)
 
@@ -1015,6 +1034,9 @@ static func should_retain_current_target(u: CharacterBody2D) -> bool:
 		return false
 	if CombatTargeting.is_phase_field_node(u.target):
 		return targeting_opponent_phase_field_only(u)
+	# v20.15: 目标进入真隐身且我方无侦测源 → 放弃锁定（重选可见目标）
+	if CardAbilityManager.is_unit_hidden(u.target) and not CardAbilityManager.side_has_detection(bool(u.is_player)):
+		return false
 	var d: float = u.global_position.distance_to(u.target.global_position)
 	return d <= acquisition_range(u)
 

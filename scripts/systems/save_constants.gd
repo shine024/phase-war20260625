@@ -50,3 +50,5 @@ const SK_INTEL_ITEM_BAG: String = "intel_item_bag"
 const SK_PHASE_MASTER_SKILL: String = "phase_master_skill"
 # v6.6: 挂机系统存档键（slots/mode/push_level/accumulated_rewards）
 const SK_AFK: String = "afk"
+# v21: 余烬要塞基地存档键（day/sanity/rooms/hero_fragments/narrative_stage）
+const SK_BUNKER: String = "bunker_state"

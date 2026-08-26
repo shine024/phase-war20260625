@@ -5,6 +5,8 @@ class_name WeaponProjectileVfx
 
 const GC = preload("res://resources/game_constants.gd")
 const WeaponVfxMapping: GDScript = preload("res://data/weapon_vfx_mapping.gd")
+# v20.16: 直射亚类分类器——弹头形状亚类分化（机枪/步枪/直射炮三形分流）
+const DirectWeaponFlavor = preload("res://data/direct_weapon_flavor.gd")
 # v8.1: 命中特效委托给分层化工厂（冲击波环+主火花+碎片烟尘）
 const VfxFactory = preload("res://scripts/battle/vfx_impact_factory.gd")
 
@@ -210,17 +212,109 @@ const PROJ_DISPLAY_SCALE_MUL: float = 0.10
 # batch 调用 build_bullet_arraymesh 时传入；bullet.gd 的 Polygon2D 路径用各自 size_scale。
 const PROJ_BULLET_DISPLAY_SCALE: float = 1.3  # v17k-R2: 0.8→1.3（10px 弹体缩图后不可读，AI 9/12 格批'弹道隐形'）
 
+## ── v20.16: 直射亚类形状层键（batch MultiMesh 渲染层合成键）──
+## 病根：玩家侧直射武器 fire() 传入 wt 恒为新枚举 DIRECT=0 → 批处理层键恒 0，
+## 步枪/机枪/坦克炮全渲染同一 SMG 网格；legacy RIFLE(1)/MG(2) 在 build_bullet_points
+## 又共用同一分支——弹头形状同质化。修复：用 DirectWeaponFlavor（武器名优先分类，
+## 与命中端 resolve_visual_wt 同原则）把直射弹道分流到亚类专属渲染层，每层独立网格。
+## 键值取 100+，避开 0-11 的 wt 值域（新枚举 4 值 + legacy 12 值均不撞）。
+const FLAVOR_LAYER_RIFLE: int = 100     # 步枪——细长尖锥
+const FLAVOR_LAYER_MG: int = 101        # 机枪——短钝弹丸
+const FLAVOR_LAYER_TANK_GUN: int = 102  # 直射坦克炮——大号钝头炮弹
+## 坦克炮弹战场显示缩放（其余亚类沿用 PROJ_BULLET_DISPLAY_SCALE；炮弹要一眼炮弹级）
+const TANK_GUN_DISPLAY_SCALE: float = 2.0
+
+## 亚类 → 形状层键。SMALL_ARMS/GENERIC/NONE 返回 -1（用原 wt 层，形状零变化）。
+static func flavor_layer_key(flavor: int) -> int:
+	match flavor:
+		DirectWeaponFlavor.Flavor.RIFLE: return FLAVOR_LAYER_RIFLE
+		DirectWeaponFlavor.Flavor.MG: return FLAVOR_LAYER_MG
+		DirectWeaponFlavor.Flavor.TANK_GUN: return FLAVOR_LAYER_TANK_GUN
+		_: return -1
+
+## 形状层键 → 亚类（批处理 _make_layer 反解用）。非亚类键返回 -1。
+static func _flavor_for_layer_key(layer_key: int) -> int:
+	match layer_key:
+		FLAVOR_LAYER_RIFLE: return DirectWeaponFlavor.Flavor.RIFLE
+		FLAVOR_LAYER_MG: return DirectWeaponFlavor.Flavor.MG
+		FLAVOR_LAYER_TANK_GUN: return DirectWeaponFlavor.Flavor.TANK_GUN
+		_: return -1
+
+## ── v20.16b: 直射亚类弹道参数（弹速/弹体染色/曳光线，单射源）──
+## 消费方：batch 两文件的 speed/tint/tracer 与 bullet.gd 的弹速/弹头染色。
+## 配色与 bullet.gd _trail_color_for_weapon 同一语言（阵营无关——武器辨识优先，
+## 阵营信息由命中环承担，规格通用原则 5）。
+## NONE/SMALL_ARMS/GENERIC 全部返回入参原值（零行为变化）。
+
+## 亚类弹速系数（乘在 wt 档弹速上，保留敌方 legacy 槽位的基础差异）。
+## 步枪 1.30=单发干脆利落 / 机枪 0.95=弹幕流 / 坦克炮 0.75=重弹飞行有分量感。
+static func flavor_speed_mul(flavor: int) -> float:
+	match flavor:
+		DirectWeaponFlavor.Flavor.RIFLE: return 1.30
+		DirectWeaponFlavor.Flavor.MG: return 0.95
+		DirectWeaponFlavor.Flavor.TANK_GUN: return 0.75
+		_: return 1.0
+
+## 亚类弹速（base 为 wt 档弹速）。未分化亚类恒等返回。
+static func flavor_speed(flavor: int, base_speed: float) -> float:
+	return base_speed * flavor_speed_mul(flavor)
+
+## 亚类弹头染色（阵营无关）。仅对已分化亚类（flavor_layer_key >= 0）有意义。
+static func flavor_tint(flavor: int) -> Color:
+	match flavor:
+		DirectWeaponFlavor.Flavor.RIFLE: return Color(0.62, 0.95, 1.0)    # 步枪 冷青白
+		DirectWeaponFlavor.Flavor.MG: return Color(1.0, 0.95, 0.32)       # 机枪 亮黄
+		DirectWeaponFlavor.Flavor.TANK_GUN: return Color(1.0, 0.74, 0.30) # 坦克炮 橙白
+		_: return Color(1.0, 1.0, 1.0)
+
+## 渲染层弹头染色：亚类层用亚类色（阵营无关），基础层返回阵营基础 tint。
+static func layer_tint(layer_key: int, base_tint: Color) -> Color:
+	var f := _flavor_for_layer_key(layer_key)
+	if f >= 0:
+		return flavor_tint(f)
+	return base_tint
+
+## 亚类曳光线宽度。机枪基准 / 步枪细 / 坦克炮粗（重弹余辉，非细 streak）。
+static func tracer_width_for(layer_key: int) -> float:
+	match layer_key:
+		FLAVOR_LAYER_MG: return 2.5
+		FLAVOR_LAYER_RIFLE: return 2.0
+		FLAVOR_LAYER_TANK_GUN: return 3.5
+		_: return 2.5
+
+## 亚类曳光线长度。机枪加长（弹幕感）/ 步枪略长（精确轨迹）/ 坦克炮缩短
+## （重弹本体即视觉主体，曳光只留余辉）。
+static func tracer_len_for(layer_key: int) -> float:
+	match layer_key:
+		FLAVOR_LAYER_MG: return 34.0
+		FLAVOR_LAYER_RIFLE: return 30.0
+		FLAVOR_LAYER_TANK_GUN: return 14.0
+		_: return 26.0
+
+## 亚类曳光线颜色（同 flavor_tint 语言，曳光透明度 0.82）。基础层返回阵营基准色。
+static func tracer_color_for(layer_key: int, base_color: Color) -> Color:
+	var f := _flavor_for_layer_key(layer_key)
+	if f < 0:
+		return base_color
+	var c := flavor_tint(f)
+	c.a = 0.82
+	return c
+
 ## 返回弹头多边形顶点（7 点，顺时针，原点居中，指向 +X）。
 ## 可直接赋值给 Polygon2D.polygon（bullet.gd 路径），或传给 build_bullet_arraymesh 三角化。
 ## size_scale：尺寸系数（bullet.gd 传 _apply_bullet_shape 的 size_scale；batch 传 1.0，缩放交给 display_scale）。
+## flavor（v20.16）：直射亚类（DirectWeaponFlavor.classify 值）——命中 RIFLE/MG/TANK_GUN 时
+## 覆盖尺寸比例（机枪/步枪/直射炮三形分流，修复弹头同质化）；
+## SMALL_ARMS/GENERIC/NONE 保持 wt 档基准，非直射武器 classify 恒 NONE 零影响。
 ## 注意：原 bullet.gd 多边形原点在左端（x 从 0 起），此处改为居中（x 从 -tip_x/2 起），
 ## 以便 MultiMesh 的 Transform2D 旋转时绕弹头中心转（左端原点会导致旋转时弹头偏离位置）。
-static func build_bullet_points(weapon_type: int, size_scale: float = 1.0) -> PackedVector2Array:
+static func build_bullet_points(weapon_type: int, size_scale: float = 1.0, flavor: int = -1) -> PackedVector2Array:
 	var s := size_scale
 	# 基准尺寸（v8.3 ×2）：总长约 12*scale，高约 7*scale
 	var body_len: float = 8.0 * s   # 弹体长度
 	var nose_len: float = 4.0 * s   # 弹头锥形长度
 	var half_h: float = 3.5 * s     # 弹体半高
+	var neck: float = 0.4           # 锥颈系数：锥底半宽 = nose_len * neck（越小越尖，越大越钝）
 	# 按武器类型差异化比例（与 bullet.gd 原算法完全一致）
 	match weapon_type:
 		0, 4:  # SMG / PISTOL — 小口径手枪/冲锋枪：极短弹头（接近光点），高速密集时不连成长条
@@ -251,6 +345,30 @@ static func build_bullet_points(weapon_type: int, size_scale: float = 1.0) -> Pa
 			body_len = 5.0 * s
 			nose_len = 3.0 * s
 			half_h = 3.6 * s
+	# v20.16: 直射亚类覆盖（武器名优先于 wt 档）。玩家侧直射 wt 恒为 0（新枚举 DIRECT），
+	# wt 档永远到不了 RIFLE/MG 分支——亚类是直射形状分化的唯一有效轴。
+	if flavor != DirectWeaponFlavor.Flavor.NONE:
+		match flavor:
+			DirectWeaponFlavor.Flavor.RIFLE:
+				# 步枪——细长尖锥（单发精确感；与机枪短钝一眼分流）
+				body_len = 7.5 * s
+				nose_len = 4.5 * s
+				half_h = 1.8 * s
+				neck = 0.3
+			DirectWeaponFlavor.Flavor.MG:
+				# 机枪——短钝弹丸（弹幕流亮点；钝头+矮胖与步枪细长反差）
+				body_len = 5.0 * s
+				nose_len = 2.0 * s
+				half_h = 2.6 * s
+				neck = 0.5
+			DirectWeaponFlavor.Flavor.TANK_GUN:
+				# 直射坦克炮——大号钝头炮弹（此前落 SMG 微型档；炮弹级体量）
+				body_len = 10.0 * s
+				nose_len = 4.0 * s
+				half_h = 4.6 * s
+				neck = 0.55
+			_:
+				pass  # SMALL_ARMS / GENERIC——保持 wt 档基准
 	var tip_x: float = body_len + nose_len  # 弹头顶点 X
 	var cx: float = tip_x * 0.5  # 居中原点
 	# 7 点顺时针多边形（居中版，从弹体底部后端起）：
@@ -258,23 +376,31 @@ static func build_bullet_points(weapon_type: int, size_scale: float = 1.0) -> Pa
 	return PackedVector2Array([
 		Vector2(-cx,             -half_h),            # 弹体底部后端
 		Vector2(body_len - cx,   -half_h),            # 弹体底部前端
-		Vector2(body_len - cx,   -nose_len * 0.4),    # 弹头底部锥面（下）
+		Vector2(body_len - cx,   -nose_len * neck),   # 弹头底部锥面（下）
 		Vector2(tip_x - cx,       0.0),               # 弹头顶点
-		Vector2(body_len - cx,    nose_len * 0.4),    # 弹头底部锥面（上）
+		Vector2(body_len - cx,    nose_len * neck),   # 弹头底部锥面（上）
 		Vector2(body_len - cx,    half_h),            # 弹体顶部前端
 		Vector2(-cx,              half_h),            # 弹体顶部后端
 	])
 
 ## 构建弹头 ArrayMesh（供 MultiMesh batch 用）。
 ## 取 build_bullet_points 的点 → triangulate_polygon 三角化 → add_surface_from_arrays。
-## display_scale：战场显示缩放（默认 PROJ_BULLET_DISPLAY_SCALE）。
-static func build_bullet_arraymesh(weapon_type: int, display_scale: float = PROJ_BULLET_DISPLAY_SCALE) -> ArrayMesh:
-	var pts: PackedVector2Array = build_bullet_points(weapon_type, display_scale)
+## layer_key（v20.16）：wt 值（0-11，原语义）或亚类形状层键（FLAVOR_LAYER_*，100+）——
+## 亚类层用 flavor 形状；坦克炮层默认放大到 TANK_GUN_DISPLAY_SCALE（炮弹级体量）。
+## display_scale：战场显示缩放（缺省 -1 按层自动：坦克炮层 TANK_GUN_DISPLAY_SCALE，
+## 其余 PROJ_BULLET_DISPLAY_SCALE，与旧签名默认值等价）。
+static func build_bullet_arraymesh(layer_key: int, display_scale: float = -1.0) -> ArrayMesh:
+	var flavor: int = _flavor_for_layer_key(layer_key)
+	var wt: int = layer_key if flavor < 0 else 0  # 亚类层基准档取轻动能（尺寸全由 flavor 分支覆盖）
+	var ds: float = display_scale
+	if ds < 0.0:
+		ds = TANK_GUN_DISPLAY_SCALE if flavor == DirectWeaponFlavor.Flavor.TANK_GUN else PROJ_BULLET_DISPLAY_SCALE
+	var pts: PackedVector2Array = build_bullet_points(wt, ds, flavor)
 	var tris: PackedInt32Array = Geometry2D.triangulate_polygon(pts)
 	if tris.is_empty():
-		push_warning("[WeaponProjectileVfx] 弹头三角化失败 wt=%d，回退矩形" % weapon_type)
+		push_warning("[WeaponProjectileVfx] 弹头三角化失败 wt=%d，回退矩形" % layer_key)
 		# 兜底：用 body 段矩形（4 点）保证不崩
-		var s := display_scale
+		var s := ds
 		var bw := 8.0 * s
 		var hh := 3.5 * s
 		pts = PackedVector2Array([

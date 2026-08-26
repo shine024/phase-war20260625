@@ -760,6 +760,12 @@ func _format_mod_effect_short(key: String, val) -> String:
 	# 攻速：attack_interval 是攻击间隔，负值=间隔缩短=攻速提升，统一转正表述
 	if key == "attack_interval":
 		return "攻速 +%d%%" % int(round(absf(float(val)) * 100.0))
+	# 2026-08-25 修④：雷达锁定是周期扫描（每 N 秒锁定一次），值是周期秒数而非加成，
+	# 显示成"雷达锁定间隔 +12"无单位且像加数。带秒单位、不带正负号。
+	if key == "radar_lock_interval":
+		return "锁定扫描 %ds/次" % int(round(absf(float(val))))
+	if key == "radar_lock_duration":
+		return "锁定持续 %ds" % int(round(absf(float(val))))
 	var label: String = ModEffectLabels.translate(key)
 	if val is bool:
 		return "✓ %s" % label
@@ -769,12 +775,17 @@ func _format_mod_effect_short(key: String, val) -> String:
 ## 瓷砖效果数值口径（与 modification_panel._format_effect_number 一致）：
 ## |v|<=1 或 v<-1 的小数 → 百分比；>1 的浮点在现网数据里是持续秒/半径/点数
 ## （非倍率），按加数显示、整值去小数；整数 → 整数加成。
+## 2026-08-25 修②：百分比四舍五入为 0 但原值非 0 时保留 1 位小数
+## （hp_regen=0.003 原显示"回血 +0%"，信息完全丢失）。
 func _format_tile_effect_number(val) -> String:
 	if val is float:
 		if val == 0.0:
 			return "0"
 		if absf(val) <= 1.0 or val < -1.0:
-			return "%+.0f%%" % (val * 100.0)
+			var pct: float = float(val) * 100.0
+			if is_equal_approx(roundf(pct), 0.0):
+				return "%+.1f%%" % pct
+			return "%+.0f%%" % pct
 		if is_equal_approx(val, roundf(val)):
 			return "+%d" % int(round(val))
 		return "+%.1f" % val
@@ -1320,17 +1331,28 @@ func refresh_intel_tab() -> void:
 		var slot_type: String = String(mod_data.get("slot_type", "")) if not mod_data.is_empty() else ""
 		var prototype: String = String(mod_data.get("prototype", "")) if not mod_data.is_empty() else ""
 		var effect_text: String = ""
+		# 2026-08-25 修①：enh_* 强化模块只有 level_effects（多档）没有 effects（单档），
+		# 原只读 effects 导致 16 块强化瓷砖效果行空白。effects 为空时回退 level_effects
+		# 最高档（与 modification_panel._format_effects_for_display 同口径）。
+		var effect_lines: Array[String] = []
 		if not mod_data.is_empty():
-			var effects_raw = mod_data.get("effects", {})
-			if effects_raw is Dictionary:
-				var first_key: String = ""
-				var first_val = null
-				for ek in effects_raw.keys():
-					first_key = String(ek)
-					first_val = effects_raw[ek]
-					break
-				if not first_key.is_empty():
-					effect_text = _format_mod_effect_short(first_key, first_val)
+			var eff_dict: Dictionary = mod_data.get("effects", {}) as Dictionary
+			if eff_dict.is_empty():
+				var le: Dictionary = mod_data.get("level_effects", {}) as Dictionary
+				if not le.is_empty():
+					var sorted_lv: Array = le.keys()
+					sorted_lv.sort()
+					eff_dict = le[sorted_lv[sorted_lv.size() - 1]] as Dictionary
+			for ek in eff_dict.keys():
+				# weapon_type/slot_weapon_type 是弹道路由的内部机制值（非玩家效果），
+				# 值恒 0-4，显示成"武器型号 +0"是噪音，跳过。
+				if String(ek) in ["weapon_type", "legacy_weapon_type", "slot_weapon_type", "condition_slot"]:
+					continue
+				var line := _format_mod_effect_short(String(ek), eff_dict[ek])
+				if not line.is_empty():
+					effect_lines.append(line)
+			if not effect_lines.is_empty():
+				effect_text = effect_lines[0]
 		acquired_blueprints.append({
 			"item_type": item_type,
 			"mod_id": mod_id,
@@ -1342,6 +1364,7 @@ func refresh_intel_tab() -> void:
 			"slot_type": slot_type,
 			"prototype": prototype,
 			"effect_text": effect_text,
+			"effect_lines": effect_lines,
 		})
 	if acquired_blueprints.is_empty():
 		_add_intel_placeholder(_intel_grid, "暂无已获得的改造\n（获得改造图纸后，所有取得过的改造会显示于此）")
@@ -1383,12 +1406,13 @@ func refresh_intel_tab() -> void:
 			var extra_data: Dictionary = {
 				"name": bp.name,
 				"icon": String(bp.get("icon", "")),
-				"description": "改造图纸（永久解锁）\n稀有度：%s\n状态：%s" % [
-					IntelManualItemsRef.get_rarity_name(bp.rarity),
-					"已装配" if bp.installed else "未装配",
-				],
+				# 2026-08-25 修⑥：稀有度/装配状态已并入 _build_mod_tooltip 结构化头部，
+				# description 只保留来源说明，不再重复拼"稀有度：xxx\n状态：xxx"。
+				"description": "改造图纸（永久解锁，消耗纳米材料安装到具体卡牌）",
 				# v9.0: 让 _refresh_lore 显示效果/原型/装配数/槽位类型
 				"effect_text": String(bp.get("effect_text", "")),
+				# 2026-08-25 修⑥：完整效果行数组（tooltip 用，瓷砖只放第一条）
+				"effect_lines": bp.get("effect_lines", []),
 				"prototype": String(bp.get("prototype", "")),
 				"slot_type": String(bp.get("slot_type", "")),
 				"install_count": int(mod_install_count.get(bp.mod_id, 0)),
@@ -1882,7 +1906,7 @@ func _create_phase_inst_item(cfg: Dictionary, is_equipped: bool) -> Control:
 	if rune_count == 0:
 		rune_count = int(slot_counts.get("red", 0)) + int(slot_counts.get("blue", 0))
 	var recovery_rate: float = float(cfg.get("energy_recovery_rate", 0.3))
-	var spawn_ratio: float = float(cfg.get("spawn_range_ratio", 0.3))
+	# v21.x: 移除 spawn_range_ratio 读取（部署带功能下线）
 	var actual_recovery: float = recovery_rate * 3.0
 	# v9.2: 查询当前装备中的卡/符文，判断哪些槽位已填充（用于空槽虚线占位）
 	var green_filled: int = 0
@@ -2007,12 +2031,11 @@ func _create_phase_inst_item(cfg: Dictionary, is_equipped: bool) -> Control:
 			rune_row.add_child(cell)
 		mid_col.add_child(rune_row)
 
-	# 关键属性行（能量恢复 + 部署范围 + 卡伤/防御等）
+	# 关键属性行（能量恢复 + 卡伤/防御等；v21.x: 部署范围移除）
 	var stats_row := HBoxContainer.new()
 	stats_row.add_theme_constant_override("separation", 16)
 	mid_col.add_child(stats_row)
 	_add_phase_stat_mini(stats_row, "能量恢复", "%.1f/s" % actual_recovery, false)
-	_add_phase_stat_mini(stats_row, "部署范围", "%.0f%%" % (spawn_ratio * 100), false)
 	if cfg.has("card_damage_bonus") and float(cfg.card_damage_bonus) > 0:
 		_add_phase_stat_mini(stats_row, "卡伤", "+%.0f%%" % (float(cfg.card_damage_bonus) * 100), true)
 	if cfg.has("defense_bonus") and float(cfg.defense_bonus) > 0:

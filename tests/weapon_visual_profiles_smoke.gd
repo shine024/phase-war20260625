@@ -16,6 +16,8 @@ func _initialize() -> void:
 	_test_uct_full_resolution()
 	_test_profiles_integrity()
 	_test_dispatch_consistency()
+	_test_flavor_bullet_shapes()
+	_test_flavor_traj_params()
 	_summary()
 	quit(0 if _fail == 0 else 1)
 
@@ -154,6 +156,98 @@ func _test_dispatch_consistency() -> void:
 	_ok(consistent, "档案 muzzle=heavy/energy 的族全部在 HEAVY_MUZZLE_WT（SNIPER_BEAM 除外，动能狙击主导）")
 	# v17 修复回归锁定：LASER(8) 必须在重型域（原漏——激光命中灼烧签名但枪口是橙点轻型火）
 	_ok(8 in heavy_wt, "LASER(8) 在 HEAVY_MUZZLE_WT（v17 修复回归锁定）")
+
+## [7] v20.16 直射亚类弹头形状分化——机枪/步枪/直射炮三形分流回归锁。
+##     病根回放：玩家侧直射 wt 恒 0 → wt 形状档全部失效；legacy RIFLE(1)/MG(2) 又共用
+##     同一分支。flavor 轴是直射弹形分化的唯一有效键，此块锁住三形互异不被回退。
+func _test_flavor_bullet_shapes() -> void:
+	print("\n[7] v20.16 直射亚类弹头形状分化")
+	var WPV: GDScript = load("res://scripts/weapon_projectile_vfx.gd")
+	var DWF: GDScript = load("res://data/direct_weapon_flavor.gd")
+	if WPV == null or DWF == null:
+		_ok(false, "weapon_projectile_vfx / direct_weapon_flavor 编译加载成功")
+		return
+	_ok(true, "weapon_projectile_vfx / direct_weapon_flavor 编译加载成功")
+	# 亚类分类（玩家侧 wt=0 现实场景）
+	_ok(DWF.classify("AK-47突击步枪", 0) == DWF.Flavor.RIFLE, "AK-47突击步枪 → RIFLE")
+	_ok(DWF.classify("12.7mm重机枪", 0) == DWF.Flavor.MG, "12.7mm重机枪 → MG")
+	_ok(DWF.classify("120mm滑膛炮", 0) == DWF.Flavor.TANK_GUN, "120mm滑膛炮 → TANK_GUN")
+	_ok(DWF.classify("81mm高射炮", 0) != DWF.Flavor.TANK_GUN, "81mm高射炮 不落 TANK_GUN（防空排除）")
+	# 层键映射
+	_ok(WPV.flavor_layer_key(DWF.Flavor.RIFLE) == WPV.FLAVOR_LAYER_RIFLE, "RIFLE → 层键 100")
+	_ok(WPV.flavor_layer_key(DWF.Flavor.MG) == WPV.FLAVOR_LAYER_MG, "MG → 层键 101")
+	_ok(WPV.flavor_layer_key(DWF.Flavor.TANK_GUN) == WPV.FLAVOR_LAYER_TANK_GUN, "TANK_GUN → 层键 102")
+	_ok(WPV.flavor_layer_key(DWF.Flavor.GENERIC) == -1 and WPV.flavor_layer_key(DWF.Flavor.NONE) == -1,
+		"GENERIC/NONE → -1（保持原 wt 层，零行为变化）")
+	# 形状分化：三形互异 + 轮廓量级
+	var base: PackedVector2Array = WPV.build_bullet_points(0, 1.0)
+	var rifle: PackedVector2Array = WPV.build_bullet_points(0, 1.0, DWF.Flavor.RIFLE)
+	var mg: PackedVector2Array = WPV.build_bullet_points(0, 1.0, DWF.Flavor.MG)
+	var tank: PackedVector2Array = WPV.build_bullet_points(0, 1.0, DWF.Flavor.TANK_GUN)
+	_ok(rifle != mg and mg != tank and rifle != tank, "RIFLE/MG/TANK_GUN 三形互异")
+	_ok(WPV.build_bullet_points(0, 1.0, DWF.Flavor.GENERIC) == base, "GENERIC 形状与基准一致（亚类外零影响）")
+	var rb: Dictionary = _poly_bounds(rifle)
+	var mb: Dictionary = _poly_bounds(mg)
+	var tb: Dictionary = _poly_bounds(tank)
+	_ok(float(rb.w) > float(mb.w) and float(rb.h) < float(mb.h),
+		"步枪比机枪更长更扁（细长尖锥 vs 短钝弹丸）")
+	_ok(float(tb.w) > float(mb.w) and float(tb.h) > float(mb.h) and float(tb.w) > float(rb.w),
+		"坦克炮三围全面最大（炮弹级）")
+	# 网格装配：亚类层键可三角化；旧 wt 键向后兼容（仍 7 点、默认缩放不变）
+	var mesh_r: ArrayMesh = WPV.build_bullet_arraymesh(WPV.FLAVOR_LAYER_RIFLE)
+	var mesh_t: ArrayMesh = WPV.build_bullet_arraymesh(WPV.FLAVOR_LAYER_TANK_GUN)
+	var mesh_b: ArrayMesh = WPV.build_bullet_arraymesh(0)
+	_ok(mesh_r != null and mesh_r.get_surface_count() > 0, "RIFLE 层键可构建 ArrayMesh")
+	_ok(mesh_t != null and mesh_t.get_surface_count() > 0, "TANK_GUN 层键可构建 ArrayMesh")
+	_ok(mesh_b != null and (mesh_b.surface_get_arrays(0)[0] as PackedVector2Array).size() == 7,
+		"旧 wt 键仍产出 7 点多边形（向后兼容）")
+
+func _poly_bounds(pts: PackedVector2Array) -> Dictionary:
+	var mn := Vector2(INF, INF)
+	var mx := Vector2(-INF, -INF)
+	for p in pts:
+		mn = mn.min(p)
+		mx = mx.max(p)
+	return {"w": mx.x - mn.x, "h": mx.y - mn.y}
+
+## [8] v20.16b 直射亚类弹道参数分化——弹速/弹头染色/曳光线回归锁
+func _test_flavor_traj_params() -> void:
+	print("\n[8] v20.16b 直射亚类弹道参数分化")
+	var WPV: GDScript = load("res://scripts/weapon_projectile_vfx.gd")
+	var DWF: GDScript = load("res://data/direct_weapon_flavor.gd")
+	# 弹速：步枪 > 基准 > 机枪 > 坦克炮；未分化恒等
+	var base_s: float = 720.0
+	var s_rifle: float = WPV.flavor_speed(DWF.Flavor.RIFLE, base_s)
+	var s_mg: float = WPV.flavor_speed(DWF.Flavor.MG, base_s)
+	var s_tank: float = WPV.flavor_speed(DWF.Flavor.TANK_GUN, base_s)
+	_ok(s_rifle > base_s and base_s > s_mg and s_mg > s_tank,
+		"弹速梯度 步枪(%.0f) > 基准(%.0f) > 机枪(%.0f) > 坦克炮(%.0f)" % [s_rifle, base_s, s_mg, s_tank])
+	_ok(WPV.flavor_speed(DWF.Flavor.GENERIC, base_s) == base_s
+		and WPV.flavor_speed(DWF.Flavor.NONE, base_s) == base_s,
+		"未分化亚类弹速恒等（零行为变化）")
+	# 弹头染色：三亚类互异；与拖尾配色同语言（步枪冷青、机枪/坦克炮暖色）
+	var c_rifle: Color = WPV.flavor_tint(DWF.Flavor.RIFLE)
+	var c_mg: Color = WPV.flavor_tint(DWF.Flavor.MG)
+	var c_tank: Color = WPV.flavor_tint(DWF.Flavor.TANK_GUN)
+	_ok(c_rifle != c_mg and c_mg != c_tank, "三亚类染色互异")
+	_ok(c_rifle.b > c_rifle.r and c_mg.r > c_mg.b and c_tank.r > c_tank.b,
+		"步枪冷青 / 机枪·坦克炮暖色（与拖尾配色同语言）")
+	var base_tint := Color(1.0, 0.95, 0.4)
+	_ok(WPV.layer_tint(WPV.FLAVOR_LAYER_RIFLE, base_tint) == c_rifle
+		and WPV.layer_tint(0, base_tint) == base_tint,
+		"layer_tint：亚类层用亚类色，基础层回退阵营 tint")
+	# 曳光线：机枪最长 / 坦克炮最短且最粗 / 基础层基准不变
+	_ok(WPV.tracer_len_for(WPV.FLAVOR_LAYER_MG) > WPV.tracer_len_for(0)
+		and WPV.tracer_len_for(WPV.FLAVOR_LAYER_TANK_GUN) < WPV.tracer_len_for(0)
+		and WPV.tracer_len_for(WPV.FLAVOR_LAYER_RIFLE) > WPV.tracer_len_for(0),
+		"曳光长度：机枪/步枪加长、坦克炮缩短")
+	_ok(WPV.tracer_width_for(WPV.FLAVOR_LAYER_TANK_GUN) > WPV.tracer_width_for(0)
+		and WPV.tracer_width_for(WPV.FLAVOR_LAYER_RIFLE) < WPV.tracer_width_for(0),
+		"曳光宽度：坦克炮最粗、步枪最细")
+	var tc := Color(1.0, 0.95, 0.55, 0.78)
+	_ok(WPV.tracer_color_for(WPV.FLAVOR_LAYER_MG, tc) != tc
+		and WPV.tracer_color_for(0, tc) == tc,
+		"曳光颜色：亚类层覆盖，基础层保持阵营基准")
 
 func _summary() -> void:
 	print("\n=== 汇总: %d PASS / %d FAIL ===" % [_pass, _fail])

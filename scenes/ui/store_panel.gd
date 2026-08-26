@@ -12,6 +12,7 @@ const ModRegistry = preload("res://scripts/systems/modification_registry.gd")
 const StoreItemRowScene = preload("res://scenes/ui/store_item_row.tscn")
 const StoreInstrumentRowScene = preload("res://scenes/ui/store_instrument_row.tscn")
 const FormatUtil = preload("res://scripts/ui/format_util.gd")
+const UnifiedCardTable = preload("res://data/unified_card_table.gd")  # v20.13c: 商店预览每卡部署次数
 const DT = preload("res://resources/design_tokens.gd")
 const PanelStyles = preload("res://scripts/ui/panel_styles.gd")
 const PanelChrome = preload("res://scenes/ui/components/panel_chrome.gd")
@@ -655,6 +656,12 @@ func _build_store_item_row(
 					base_attrs_parts.append("武器槽 %d" % info_card.max_weapons)
 				if info_card.weight > 0:
 					base_attrs_parts.append("重量 %d" % info_card.weight)
+				# v20.13c: 每卡部署次数（与战场底栏 ×N 角标同源口径；商店为模板卡，按稀有度修正）
+				var du_entry: Dictionary = UnifiedCardTable.get_entry(info_card.card_id)
+				if not du_entry.is_empty():
+					var du_uses: int = UnifiedCardTable.get_deploy_uses(du_entry, info_card)
+					if du_uses < 99:
+						base_attrs_parts.append("部署×%d/场" % du_uses)
 			GC.CardType.ENERGY:
 				if info_card.energy_cost > 0:
 					base_attrs_parts.append("能量消耗 %d⚡" % info_card.energy_cost)
@@ -744,15 +751,15 @@ func _build_instrument_row(cfg: Dictionary, fsm: Node) -> PanelContainer:
 	var price_eb: int = int(cfg.get("price_energy_block", 0))
 	# v7.x: 移除 energy_output_rate，改显示能量恢复
 	var recovery_rate: float = float(cfg.get("energy_recovery_rate", 0.3))
-	var spawn_ratio: float = float(cfg.get("spawn_range_ratio", 0.3))
 	var can: Dictionary = fsm.can_buy_instrument(_current_company_id, cfg) if fsm.has_method("can_buy_instrument") else {"ok": false}
 	var reason: String = String(can.get("reason", ""))
 	var owned: bool = reason == "owned"
 
 	var row_panel: PanelContainer = StoreInstrumentRowScene.instantiate()
 	row_panel.add_theme_stylebox_override("panel", _instrument_row_style)
-	# 批次三 B2b：相位仪行的属性词典——星级/能量恢复/部署范围就地解释
-	row_panel.tooltip_text = "相位仪：星级决定槽位数量与能量上限；能量恢复加快战斗中能量回复；部署范围决定单位可放置的前沿位置（越大越靠前）"
+	# 批次三 B2b：相位仪行的属性词典——星级/能量恢复就地解释
+	# v21.x: 部署范围展示移除（功能下线）
+	row_panel.tooltip_text = "相位仪：星级决定槽位数量与能量上限；能量恢复加快战斗中能量回复"
 
 	# 名称
 	var name2: Label = row_panel.get_node("M2/HB2/VB2/NameLabel")
@@ -767,7 +774,6 @@ func _build_instrument_row(cfg: Dictionary, fsm: Node) -> PanelContainer:
 	var attr_parts: Array[String] = []
 	attr_parts.append("星级 %d" % star)
 	attr_parts.append("能量恢复 %.2f(实际%.1f/s)" % [recovery_rate, recovery_rate * 3.0])
-	attr_parts.append("部署范围 %.0f%%" % (spawn_ratio * 100))
 	attr_label.text = "  |  ".join(attr_parts)
 	attr_label.custom_minimum_size = Vector2(350, 0)
 	attr_label.visible = true

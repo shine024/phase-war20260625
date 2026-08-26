@@ -3316,3 +3316,198 @@ FAIL 均为既有 autoload 标识符 SignalBus/ObjectPoolManager 在 --script �
 零 Parse Error=语法全过）；weapon_visual_profiles_smoke 38/38 PASS；master_power_smoke
 8/8 PASS。实机表现待用户复测：大招击杀最后敌人/战斗在大招飞行中结束的场合，结算与
 准备界面背景不再有贴图残留。
+
+## v20.13c 部署次数全场景可见化：商店/背包/相位仪/情报面板（2026-08-26）
+
+**背景**：v20.13 每卡部署次数上限只在战场底栏有消费显示（×N 角标 + tooltip），玩家
+在战前（商店购卡/背包组卡/相位仪配装）完全看不到各卡次数差异，无法据此做装配决策。
+用户要求：不同战斗卡的不同可上场次数，要在商店、背包、相位仪、战场情报面板等可见。
+
+**改动（5 文件，口径统一 `UnifiedCardTable.get_deploy_uses(entry, card)`，与底栏同源；
+≥99 的显式无限配置不显示避免噪音）**：
+
+- `scenes/ui/store_panel.gd`：商品行 BaseAttrsLabel 追加 `部署×N/场`（模板卡口径，
+  按稀有度修正；等级打码(masked)商品不显示属性行故自然不泄露）
+- `scenes/ui/backpack_card_item.gd`：①背包格紧凑视图（`_set_comp_slot_view`）原先
+  悬停无任何提示，现设 tooltip「卡名 + 部署×N/场」（置于 `_apply_card_chrome` 前，
+  势力未激活锁定提示仍可覆盖）；②MTG 大卡面（`_set_mtg_minimal_card_view`，详情弹窗）
+  tooltip 在等级行后追加部署次数
+- `scenes/ui/card_info_panel.gd`（统一情报面板，背包/相位仪/战场三模式共用）：
+  ①`_build_nurture_text` 卡牌查看模式追加 `可上场×N/场`（实例卡口径，含 card_level≥8
+  终极修正；战场模式跳过防重复）；②`_show_player_unit` 战场模式追加实时行
+  `本场部署次数：剩余 / 总量`——remaining 查 `BattleManager._spawn_system
+  .get_deploy_uses_remaining`（战斗中实时追踪，与底栏 ×N 角标同源）
+- `scenes/ui/phase_instrument_selector.gd`：属性行 tooltip 解释每卡次数规则
+  （轻6/援5/甲·空4/堡3/核心2/传说·高等级-1，耗尽本场不可再部署）
+- `scenes/ui/intelligence_hub_panel.gd`：敌方情报 Tab 条目追加 `部署×N/场`
+  （该敌卡掉落获得后作为我方卡的每场上限预览，UCT 无条目/能量卡不显示）；
+  注意本文件无 GC 预载常量，用 `GameConstants.CardType` 全局类名判定
+
+**验证**：临时脚本单载 5 文件编译断言全过（ ModificationRegistry 级联报错为
+AGENTS.md 已记载的 --script 模式既有问题，非本次引入）；UCT 预览抽查
+ww1_mp18/mauser/enfield → ×6/场，与 DEPLOY_USES_BASELINE.LIGHT=6 一致。
+
+## v20.16 直射弹头形状亚类分化：机枪/步枪/直射炮三形分流（2026-08-25）
+
+用户反馈：直射弹体弹道同质化太严重——机枪跟步枪弹头一样、直射大炮也一样。
+
+**病根（三层叠加）**：
+1. 形状表同分支：`weapon_projectile_vfx.build_bullet_points` 的 `1,2:` 一个分支同时管
+   legacy RIFLE/MG，弹体/锥头/半高完全相同；
+2. 直射炮无形状档：直射大炮 weapon_type 恒为新枚举 DIRECT=0，落 SMG 微型分支 +
+   size_scale 1.0；`DirectWeaponFlavor.TANK_GUN` 此前只被拖尾禁用/拖尾色/命中配方消费，
+   弹头形状零消费；
+3. 玩家侧批处理 wt 分层全失效：玩家直射武器 `fire()` 传入 wt 恒 0（新枚举 DIRECT），
+   MultiMesh 层键恒 0——步枪/机枪/坦克炮全渲染同一个 SMG 网格（`_speed_for` 的 1/2
+   分支实际只有敌方 legacy 槽位能走到）。
+
+**改动（5 文件，分类轴复用现成 DirectWeaponFlavor，零新增分类逻辑）**：
+
+- `scripts/weapon_projectile_vfx.gd`：`build_bullet_points` 加 flavor 参数——RIFLE=细长
+  尖锥(7.5/4.5/1.8, 锥颈0.3) / MG=短钝弹丸(5/2/2.6, 锥颈0.5) / TANK_GUN=大号钝头炮弹
+  (10/4/4.6, 锥颈0.55)，锥颈系数参数化；SMALL_ARMS/GENERIC/NONE 零变化。新增亚类
+  形状层键 100-102（避开 0-11 wt 值域）+ 坦克炮显示缩放 2.0；`build_bullet_arraymesh`
+  接受层键，坦克层默认放大
+- `scenes/units/bullet.gd`：setup 解析 `_shape_flavor` 成员；`_apply_bullet_shape` 传入
+  形状函数；`_apply_visual` TANK_GUN size_scale ×1.7（坦克炮多走低速单发路径，此处是大头）
+- `managers/battle/simple_player_projectile_batch.gd` + `simple_enemy_projectile_batch.gd`：
+  `_ready` 预建 3 个亚类形状层；`fire()` 内按武器名解析亚类、弹道字典存 `sk` 渲染层键
+  （speed/max_dist/命中仍按原 wt，单轮单变量只动形状）；`_sync_multimesh_layers`/
+  `clear_all` 改遍历 `_layer_keys` 全集。`fire()` 签名不变、调用方零改动，敌我双侧统一
+- `tests/weapon_visual_profiles_smoke.gd`：新增 [7] 形状分化回归锁（16 项断言：分类/
+  层键映射/三形互异/轮廓量级/网格装配/旧 wt 键向后兼容）
+- `docs/VFX武器族视觉规格.md`：轻动能(0) 族"弹体"列拆亚类子规格 + 反例补
+  "机枪弹形与步枪同形"
+
+**验证**：回归锁 54/54 全过（原 38 + 新 16）；四个改动脚本 autoload 环境编译通过，
+const 层键数组正确折叠 [100,101,102]。单轮单变量：本轮只动形状，弹速/tint/曳光线长
+的同质化留待后续轮次。
+
+## v20.16b 直射亚类弹道参数分化：弹速/弹体染色/曳光线（2026-08-25）
+
+v20.16 收官后的下一轮：弹头形状已三形分流，但弹速（±10% 内）、弹体颜色（单一
+阵营 tint）、曳光线（单色等宽等长 26px）仍全直射武器共用。
+
+**改动（4 文件，参数单射源 `WeaponProjectileVfx`，v20.16 的 flavor 轴直接复用）**：
+
+- `scripts/weapon_projectile_vfx.gd`：新增亚类弹道参数族——`flavor_speed_mul`
+  （步枪 1.30 / 机枪 0.95 / 坦克炮 0.75，乘在 wt 档弹速上保留敌方 legacy 槽位差异）、
+  `flavor_tint`/`layer_tint`（阵营无关配色：步枪冷青白/机枪亮黄/坦克炮橙白——与
+  bullet.gd `_trail_color_for_weapon` 同一语言，阵营信息由命中环承担，规格原则 5）、
+  `tracer_width_for`/`tracer_len_for`/`tracer_color_for`（机枪 34px 弹幕感/步枪 30px
+  细/坦克炮 14px×3.5 宽短粗余辉）。NONE/SMALL_ARMS/GENERIC 全部恒等返回（零行为变化）
+- `managers/battle/simple_player_projectile_batch.gd` + `simple_enemy_projectile_batch.gd`：
+  `fire()` 弹速乘亚类系数；`_sync_multimesh_layers` 每层经 `layer_tint` 染色（亚类层
+  武器配色/基础层阵营 tint 不变）；`_update_tracers` 每条曳光线按 `sk` 层键设宽/长/色
+- `scenes/units/bullet.gd`：`_configure_behavior` 弹速乘亚类系数（**仅真直射弹道**，
+  `not _is_indirect` 守卫——曲射/空射弧线节奏不参与，防亚类关键词误改曲射弹道）；
+  `_apply_visual` 已分化亚类的弹头 Polygon2D 染亚类色（拖尾 v8.x 起就是这套配色）
+
+**验证**：回归锁 62/62（新增 [8] 块 8 项：弹速梯度/染色互异与冷暖语言/层染色回退/
+曳光宽长色覆盖）；四改动文件 autoload 环境编译通过。
+
+**影响面说明**：弹速分化轻微改变命中延迟（伤害命中时结算）——坦克炮弹 720→540px/s
+在 300px 交战距离约 +0.23s 飞行，重弹分量感换微小 DPS 滞后，属可接受；批处理坦克炮
+（射速>2 的直射炮）罕见，主路径 bullet.gd 已覆盖。
+
+## v21 余烬要塞 P1+P1.5：基地主枢纽落地（2026-08-25）
+
+**P1 骨架（侧视横剖面基地，This War of Mine × XCOM 2 融合，无 NPC / 抽象光点主角）**:
+1. 新增 `scenes/bunker/`：主场景（星空地表带 + 6 层 14 房间 + 电梯井 x=640 + 日夜氛围）、房间节点（废弃近黑/修复中橙呼吸+进度条/可用暖光三态）、光点主角（呼吸柔光/精神值联动/两段式路径移动）、HUD（天数/精神条/四资源/调试按钮）、房间面板（修复/睡觉/前往战场）
+2. 新增 `managers/bunker_manager.gd`（挂 ManagerLazyLoader id=bunker，非 autoload）：房间状态机（按战斗场次推进修复）、天数/精神值、状态序列化 API；数据初始化在 `_init()`（规避 loader 延迟挂载窗口期 `_ready` 未跑的坑）
+3. 新增 `data/bunker_room_defs.gd`：14 房间静态定义（布局/成本/文案/情感四阶段独白池/needs_power 电力标记）
+4. SignalBus +3 信号（bunker_room_state_changed/bunker_day_ended/hero_archive_unlocked）
+5. 入口流程：标题屏程序化加"进入基地"按钮 → bunker_main.tscn；兵棋室"前往战场"→ Engine meta launch_from_bunker → main.tscn；main 顶栏"返回"检测 meta 回基地。原 新游戏/继续 → main 链路零改动（双入口并存）
+6. **电力规则实测修正**：原设计"反应堆未上线冻结所有房间"会让第一间修复永久卡死 → 改为上层靠备用电池，仅深层设施（通讯室/荣誉室，needs_power 标记）需反应堆供电
+
+**P1.5 轻美术（18 张 agnes-image-2.0-flash 生成）**:
+1. 新增 `tools/generate_bunker_assets.py`：14 家具精灵（白底转透明+裁边+高160）+ 2 墙面纹理（512²）+ 地板条（裁带 512×32）+ 地表背景（裁天空带 1280×72），增量幂等 + --force
+2. 房间节点接入：墙面纹理层（深层冷色墙）/地板条/家具贴图，三态统一染色（废弃 0.18 剪影化 → 可用全彩）；全部带色块兜底（PNG 缺失游戏照跑）
+3. 备份：`phase-war-bunker-art-backup-2026-08-25.zip`（18 文件 1.78MB，sha256[:16]=25fbfaa3f74d2b78，项目外）
+
+**测试**:
+- 新增 `tests/bunker_smoke_driver.gd/.tscn`（场景模式跑，autoload 全量）：16/16 断言通过——房间定义/懒加载/修复经济（校验+扣除）/战斗推进/电力冻结解冻/终局门锁/睡觉/序列化往返/主场景结构/跨场景状态保留/点击→移动→面板/跨层路径
+- 新增 `tests/bunker_screenshot_driver.gd/.tscn`：预置混合状态抓帧验证（AI 视觉复核通过：布局/明暗/贴图/无重叠错位）
+- 标题屏 headless 回归通过；gdparse 全部新改文件通过
+
+**设计文档**: `docs/design_ember_bunker.md`（含反应堆规则修正记录）
+
+**后续**: P2 存档 bunker_state 段+面板迁入 / P3 英雄档案+纪念墙30灯+四阶段 / P4 观星台终局
+
+## v21.2 余烬要塞 P2：存档接入 + 面板迁移 + 日循环完善（2026-08-26）
+
+**存档 bunker_state 段（schema v8 兼容，未升版号——新段落缺失=默认态兜底）**:
+1. `save_constants.gd` +`SK_BUNKER`；`save_manager.gd` save_game 收集段（ensure_loaded("bunker") 后走通用 `_collect_manager_state`）+ DEFERRED_MANAGER_LOADS 条目（`_safe_load_manager` 懒实例化后应用）+ CRITICAL_RESETTABLE_MANAGERS 新游戏重置
+2. `BunkerManager` 包装方法对齐存档协议：`save_state()`/`load_state(data)`/`reset_to_defaults()`；**空字典=全重置**（对齐情报系统的新游戏语义）；`load_state_dict/get_state_dict` 保留为兼容别名
+3. 旧档无 bunker_state → BunkerManager 保持默认态（大厅+宿舍可用，第1天）
+
+**日循环完善**:
+1. `sleep()` 改返回日结算 dict（day/sanity 前后/当日完工房间/情感阶段），并追踪 `_completed_today`
+2. 新增 `bunker_day_summary.gd` 日结算面板（暖橙晨光边框、四阶段文案），替代 P1 纯 toast；睡觉自动存档保留
+3. 医疗室治疗：消耗纳米50 → 精神+40（`medical_treatment()`，满精神拒绝；面板按钮+结果反馈）
+4. 精神归零：基地场景就绪时光点瘫回宿舍+面板自动弹出+独白（软性强制睡觉）
+
+**面板迁移第一批（嵌入面板层）**:
+1. `bunker_main` 新增 `_embed_layer` + 懒实例化缓存包装（全屏遮罩+CenterContainer+closed 信号对接，与 main.tscn overlay 行为对齐）
+2. 七个现有面板场景直接挂载（已核 0 处 /root/Main 依赖）：宿舍=背包 / 工坊=改造·进化·成长 / 通讯室=商店·势力 / 食堂=AFK
+3. 房间面板新增 `panel_action_done`（治疗后刷新 HUD/光点）与 `open_embedded_panel_requested` 信号
+
+**测试**: 冒烟测试扩至 21/21 断言（新增：医疗扣费+满拒/存档三方法+空字典重置+SaveManager 收集管道探针（不写盘）/日结算面板开闭/嵌入面板×7/精神归零瘫回宿舍）；gdparse 全部通过
+
+## v21.3 余烬要塞 P3：英雄档案 + 纪念墙 + 碎片掉落 + 情感四阶段（2026-08-26）
+
+**英雄档案系统（叙事核心）**:
+1. 新增 `data/hero_archive_texts.gd`：30 位牺牲相位师文案——首批 bespoke 001-010（事迹+遗言），其余按系别 generic 兜底；时代映射（编号→一战/二战/冷战/现代/近未来回响）+ 系别显示名
+2. 碎片掉落接线：`BunkerManager._on_battle_ended` 胜利 + `GameManager.is_phase_master_battle()` → 读取 `_current_phase_master.id` → `record_hero_fragment()`（去重 + `hero_archive_unlocked` 信号）。时序安全：GameManager 延迟清除相位师状态，BunkerManager 后注册监听
+3. 荣誉陈列室 10 碎片修复门槛（`HONOR_HALL_FRAGMENT_GATE`）；观星台 `is_observatory_unlockable()` 条件接口（P4 消费，返回未满足原因列表）
+
+**新 UI 面板**:
+1. `hero_archive_panel.gd`（档案室嵌入）：30 格列表（系别签色/未解锁 ???）+ 详情区（姓名/称号/系别/时代/Lv/事迹/遗言金色大字）
+2. `memorial_wall.gd`（荣誉室嵌入）：10×3 灯阵自绘（点亮=暖金光晕呼吸 / 熄灭=暗圈），点击亮灯显示英雄名，计数 X/30
+3. 嵌入层支持 `.gd` 纯脚本面板（`_ensure_embed_wrapper` 双路径）
+
+**情感四阶段切换**:
+1. `consume_stage_transition()`（只播报一次的跃迁消费；`announced_stage` 入存档）
+2. `bunker_main` 全屏渐黑字幕演出（1s 入→2.4s 停→1s 出，四阶段专属文案）；触发点：进基地 + 日结算关闭后
+3. 通讯室预录来电：随碎片数/反应堆状态换 3 段文案（`comms_latest_call`）
+
+**面板迁移第二批**：档案室=英雄档案+情报中心 / 荣誉室=纪念墙+成就+收藏
+
+**测试**: 冒烟扩至 29/29（文案层/碎片去重+信号/mock 相位师战斗掉落/荣誉室门槛/阶段跃迁单次播报/观星台条件/档案+纪念墙嵌入 30 灯/阶段字幕演出）；纪念墙截图 AI 视觉复核通过（10×3 灯阵 11 亮金灯无布局异常）
+
+## v21.4 部署次数分池修复 + 数值明显上调（2026-08-26）
+
+**用户报告**："很多卡死一次就不让上场，实际可上场多次"（提示"部署次数已耗尽"，普通关/相位师战均现）。
+
+**根因（真实战斗驱动实证）**：v20.13 次数池按裸 card_id 键控——同名卡多实例（InstanceRegistry 体系鼓励）装多个绿槽时**共享同一份次数**。两张同名卡一起消耗一份池（堡垒 3 次/雷达 2 次），很快双双锁死；没怎么用过的那张也被锁，感知即"死一次就不让上场"。叠加终极修正（card_level≥8 即 -1，老玩家全队命中）后 FORT/核心卡只剩 2 次，感知加剧。核心机制本身（初始化/每次部署扣 1/死亡不扣/死亡清理计数/重部署放行）经驱动全链验证均正常。
+
+**修复 1 按实例分池**（`battle_spawn_system.gd`）：
+1. `_deploy_uses_remaining` 键改**部署身份**（实例卡 `instance_id` / 旧卡裸 `card_id`），同名实例各自一份，与 v20.11 存活上限"每装备槽各 1"语义对齐
+2. `request_player_deploy`：loadout 查找提前到次数门之前（先解析实例再查池）；扣减/查门全走实例键
+3. 维修车返还（v20.14）改用单位 `source_instance_id` meta 定位池
+4. `get_deploy_uses_remaining` 兼容旧调用：裸 id 唯一前缀匹配可命中，多实例歧义退回裸键
+
+**修复 2 UI 同口径**：底栏 ×N 角标/压暗/tooltip 与 card_info_panel"本场部署次数"全部按部署身份键匹配（`_panel_deploy_key`/`_card_deploy_key`），信号 `deploy_uses_changed` 携带实例键。
+
+**修复 3 数值明显上调（用户拍板）**（`unified_card_table.gd`）：
+- 基线 LIGHT 6→8 / SUPPORT 5→7 / ARMOR 4→6 / AIR 4→6 / FORT 3→5
+- 核心档（雷达/指挥/侦测）2→4
+- 终极修正**仅 rarity legendary/mythic 触发**（card_level≥8 触发路径删除——老玩家全队 8 级+ 整队 -1 是感知恶化主因之一）；`DEPLOY_USES_ULTIMATE_LEVEL_THRESHOLD` 常量移除
+
+**测试**：
+- 新增 `tests/deploy_uses_battle_driver.gd/.tscn`（真实 main.tscn 战斗驱动）：InstanceRegistry 真实例装备 4 槽（含 2× 同名 mp18）→ 真实 go_to_battle → 部署→确定性击杀→重部署循环。断言：每实例恰好满额度（8/6/8）、同名两实例独立池（#1 耗尽 0 而 #2 不受牵连）、死亡后重部署放行、第二场重置。ALL PASS
+- `deploy_uses_smoke` 更新至新数值（含"高等级实例不吃 -1"新用例）ALL PASS；`fixed_mechanics_smoke` 核心档 2→4 ALL PASS；`deploy_alive_limit_smoke`、`deploy_limits_toggle_smoke` 回归 ALL PASS（存活门口径未动）
+
+## v21.4 余烬要塞 P3 视觉审计：纪念墙 10×3 修复（2026-08-26）
+
+**根因与修复**：
+- 纪念墙显示不全（只显 2 行/20 盏）—— `GridContainer` 嵌套在 `VBoxContainer` 里时高度计算异常，
+  改用「宿主自绘 + 手动 10×3 网格定位」：`Control` 宿主绘制深色槽背景，30 盏灯位按
+  `(hw - 10×cell_w)/2` 居中、`gap_y + row_i × cell_h` 逐行排布，`call_deferred` 等一帧布局后再定位。
+- 测试驱动清单只保存第一帧：改为每帧单行追加写入 manifest。
+- 审计脚本批量抓图 8 张（全景/背包/改造/商店/AFK/档案/纪念墙/日结算）后按 `user://bunker_<N>.png`
+  落盘；PNG 不入 git，仅项目内 `assets/bunker/_raw/_audit_*.png` 作预览。
+
+**验证结果**：
+- 冒烟测试 29/29 仍全部通过（GridContainer → 手工定位替换不影响任何逻辑路径）
+- 纪念墙截图 AI 复核：10×3 灯阵全显 / 2 盏金灯 + 28 盏暗圈正确 / 无遮挡错位

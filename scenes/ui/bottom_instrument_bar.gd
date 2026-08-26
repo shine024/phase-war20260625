@@ -33,8 +33,11 @@ var _slot_panels: Array = []
 var _deployed_card_ids: Array = []
 const SLOT_FIXED_SIZE := Vector2(90, 64)
 const BAR_FIXED_HEIGHT := SLOT_FIXED_SIZE.y
-## v9.3: 动态槽位宽度——13槽（green9+rune4）满槽时自动缩窄适配屏幕宽。
-## _fit_slots_to_bar 按 SlotSection 可用宽 / 槽数 + 间距计算实际宽度，上限90px。
+## v21.x: 固定槽宽基准槽数——满配 13 格（green9+rune4，全布局最大总槽数）。
+## 用作槽宽计算分母：无论当前实际几格（3/5/8/10/13），格子宽度恒等于 13 格布局的宽度。
+const _FIXED_WIDTH_SLOT_REF := 13
+## v21.x: 固定槽位宽度——所有相位仪统一用 13 格布局的宽度，不再随实际槽数变化
+## （此前 3 格=90px、13 格≈71px 同屏不一致）。_fit_slots_to_bar 按视口可用宽 / 13 计算，上限90px。
 var _slot_width: float = SLOT_FIXED_SIZE.x
 ## 槽底双行文字区高度（名称 + 费用），卡图只占上方区域避免遮挡
 const _SLOT_BOTTOM_TEXT_H := 30
@@ -242,29 +245,45 @@ func _on_energy_changed(_cur: float, _mx: float) -> void:
 		_apply_slot_selection_glow(_selected_deploy_panel)
 
 ## v20.13b：每卡部署次数变化 → 更新缓存并刷新对应槽（×N 角标 + 耗尽压暗走 affordance 统一状态机）
-func _on_deploy_uses_changed(base_card_id: String, remaining: int, total: int) -> void:
-	_deploy_uses_map[base_card_id] = [remaining, total]
+## v20.16：键 = 部署身份（实例卡 instance_id / 旧卡裸 card_id），与 BSS 次数池同口径
+func _on_deploy_uses_changed(deploy_key: String, remaining: int, total: int) -> void:
+	_deploy_uses_map[deploy_key] = [remaining, total]
 	for panel in _slot_panels:
 		if panel == null or not is_instance_valid(panel):
 			continue
-		if String(panel.get_meta("card_id", "")) == base_card_id:
+		if _panel_deploy_key(panel) == deploy_key:
 			_apply_slot_affordance(panel)
 			_refresh_deploy_uses_badge(panel)
+
+
+## v20.16：槽位的部署身份键（实例卡 instance_id 优先，回退裸 card_id，与 BSS/信号口径一致）
+func _panel_deploy_key(panel: Control) -> String:
+	var inst: String = String(panel.get_meta("instance_id", ""))
+	if not inst.is_empty():
+		return inst
+	return String(panel.get_meta("card_id", ""))
+
+
+## v20.16：卡对象的部署身份键
+func _card_deploy_key(card: CardResource) -> String:
+	if card.instance_id != null and not String(card.instance_id).is_empty():
+		return String(card.instance_id)
+	return String(card.card_id)
 
 ## v20.13b：槽位左上部署次数角标 ×N（右上已被费用角标占用）。
 ## 仅绿槽战斗卡且有信号数据时显示；耗尽转红（压暗由 _apply_slot_affordability 统一处理）。
 func _refresh_deploy_uses_badge(panel: Control) -> void:
 	if panel == null or not is_instance_valid(panel):
 		return
-	var card_id: String = String(panel.get_meta("card_id", ""))
 	var color: String = String(panel.get_meta("slot_color", ""))
+	var du_key: String = _panel_deploy_key(panel)
 	var badge: Label = panel.get_node_or_null("DeployUsesBadge") as Label
-	var has_data: bool = color == "green" and not card_id.is_empty() and _deploy_uses_map.has(card_id)
+	var has_data: bool = color == "green" and not du_key.is_empty() and _deploy_uses_map.has(du_key)
 	if not has_data:
 		if badge != null:
 			badge.queue_free()
 		return
-	var remaining: int = int(_deploy_uses_map[card_id][0])
+	var remaining: int = int(_deploy_uses_map[du_key][0])
 	if remaining > 99:
 		return  # 次数充裕（≥100）不占角标注意力
 	if badge == null:
@@ -436,10 +455,10 @@ func _apply_slot_affordance(panel: Control) -> void:
 		and EnergyManager.has_method("can_afford") and EnergyManager.can_afford(cost)
 	var dim := panel.get_node_or_null("EnergyDim") as ColorRect
 	if dim != null:
-		# v20.13b：能量不足 or 部署次数耗尽，任一触发压暗
-		var du_card_id: String = String(panel.get_meta("card_id", ""))
-		var du_exhausted: bool = deployable and _deploy_uses_map.has(du_card_id) \
-			and int(_deploy_uses_map[du_card_id][0]) <= 0
+		# v20.13b：能量不足 or 部署次数耗尽，任一触发压暗（v20.16 按部署身份键查池）
+		var du_key: String = _panel_deploy_key(panel)
+		var du_exhausted: bool = deployable and _deploy_uses_map.has(du_key) \
+			and int(_deploy_uses_map[du_key][0]) <= 0
 		dim.visible = deployable and (not affordable or du_exhausted) and not restricted
 	# Godot 4.5：get_meta 缺键时即使带 default 也打 error（空槽无 cost_badge_node meta，
 	# 能量变化时刷屏）——必须 has_meta 守卫
@@ -645,10 +664,13 @@ func _format_card_slot_tooltip(color: String, card: CardResource) -> String:
 			var _ident: String = String(card.instance_id) if not String(card.instance_id).is_empty() else String(card.card_id)
 			_lv_val = clampi(maxi(int(_ir_lv.get_card_level(_ident)), 1), 1, 30)
 		detail_lines.append("等级：Lv.%d" % _lv_val)
-	# v20.13b：每卡部署次数（本场剩余/总量；战斗中由 deploy_uses_changed 信号维护）
-	if card.card_type == GC.CardType.COMBAT_UNIT and _deploy_uses_map.has(card.card_id):
-		var du: Array = _deploy_uses_map[card.card_id]
+	# v20.13b：每卡部署次数（本场剩余/总量；战斗中由 deploy_uses_changed 信号维护；v20.16 实例键）
+	if card.card_type == GC.CardType.COMBAT_UNIT and _deploy_uses_map.has(_card_deploy_key(card)):
+		var du: Array = _deploy_uses_map[_card_deploy_key(card)]
 		detail_lines.append("部署次数：%d / %d" % [int(du[0]), int(du[1])])
+	# v20.15: 固定机制文案（雷达/指挥/医疗等 tag 机制）
+	for mech_line in CardMechanismDesc.get_mechanism_lines(card.tags):
+		detail_lines.append(mech_line)
 	if not String(card.type_line).is_empty():
 		detail_lines.append("类型：%s" % String(card.type_line))
 	if not String(card.summary_line).is_empty():
@@ -866,6 +888,8 @@ func _update_slot_panel(panel: Control, entry: Dictionary) -> void:
 ## v8 修复：判断战斗卡是否被当前关 restrict_platforms 排除（UI 预过滤用）。
 ## 读 GameManager.current_level → LevelInformation.get_special_rules → restrict_platforms 白名单。
 ## 无规则 / 非战斗场景（GameManager 未就绪）返回 false（不灰显）。
+## v20.x 修复：白名单值是 CombatKind(0-4)，改读 combat_kind（platform_type 在 UCT 构建
+## 与实例 clone 两路径均漏设恒 -1，曾致第15/30/55/85关全部战斗卡被灰显）。
 func _is_card_platform_restricted(card: CardResource) -> bool:
 	if card == null:
 		return false
@@ -876,11 +900,11 @@ func _is_card_platform_restricted(card: CardResource) -> bool:
 	var restrict: Array = li.get_special_rules(level).get("restrict_platforms", [])
 	if restrict.is_empty():
 		return false
-	return not restrict.has(int(card.platform_type))
+	return not restrict.has(int(card.combat_kind))
 
 ## 让格子高度精确填满条的可用高度（抵消 PanelContainer content_margin 等开销）
-## v9.3: 同时按视口可用宽度动态缩放槽位宽度，避免 13 槽（green9+rune4）溢出屏幕。
-## 不依赖 slot_section.size.x（布局未稳定时为0不可靠），直接按视口宽扣除固定元素计算。
+## v21.x: 槽位宽度固定为 13 格（green9+rune4，最大槽数）布局的宽度——槽少也不放大，
+## 所有相位仪格子同宽。不依赖 slot_section.size.x（布局未稳定时为0不可靠），直接按视口宽扣除固定元素计算。
 func _fit_slots_to_bar() -> void:
 	if not is_instance_valid(slot_section):
 		return
@@ -895,15 +919,13 @@ func _fit_slots_to_bar() -> void:
 		viewport_width = 1280.0
 	var reserved_w: float = 16.0 + 48.0 + 48.0 + 100.0 + 12.0 + 2.0 + 6.0 + 48.0 + 6.0 + 32.0 + 40.0  # ≈ 358px
 	var slot_available_w: float = maxf(200.0, viewport_width - reserved_w)
-	var slot_count: int = _slot_panels.size()
 	var separation: float = 6.0
-	if slot_count > 0:
-		var total_sep: float = separation * float(slot_count - 1)
-		# 每槽宽度 = (可用宽 - 间距) / 槽数，上限90px（槽少时不放大），下限40px（再窄看不清）
-		var dynamic_w: float = maxf(40.0, (slot_available_w - total_sep) / float(slot_count))
-		_slot_width = minf(dynamic_w, SLOT_FIXED_SIZE.x)
-	else:
-		_slot_width = SLOT_FIXED_SIZE.x
+	# v21.x: 固定宽度——恒按最大槽数 _FIXED_WIDTH_SLOT_REF(13) 格计算（12 个间距），
+	# 无论当前实际几格（3/5/8/10/13），所有相位仪格子同宽，切相位仪时格子大小不变。
+	# 上限90px（宽屏不放大），下限40px（窄屏再窄看不清）。
+	var full_total_sep: float = separation * float(_FIXED_WIDTH_SLOT_REF - 1)
+	var full_dynamic_w: float = maxf(40.0, (slot_available_w - full_total_sep) / float(_FIXED_WIDTH_SLOT_REF))
+	_slot_width = minf(full_dynamic_w, SLOT_FIXED_SIZE.x)
 	for p in _slot_panels:
 		if p and is_instance_valid(p):
 			p.custom_minimum_size = Vector2(_slot_width, available_h)
@@ -1412,9 +1434,7 @@ func _update_instrument_tooltip(cfg: Dictionary) -> void:
 	var recovery_rate: float = float(cfg.get("energy_recovery_rate", 0.3))
 	var recovery_ps: float = recovery_rate * 3.0
 	lines.append("能量恢复: %.1f/秒" % recovery_ps)
-	# 部署范围
-	var spawn_ratio: float = float(cfg.get("spawn_range_ratio", 0.3))
-	lines.append("部署范围: %.0f%%" % (spawn_ratio * 100.0))
+	# v21.x: 移除部署范围显示（功能下线）
 	# 槽位配置
 	var sc: Dictionary = cfg.get("slot_counts", {})
 	var green_n: int = int(sc.get("green", 0))

@@ -622,8 +622,8 @@ func _create_card_item(card: CardResource, instance_card: CardResource = null) -
 	name_label.add_theme_font_size_override("font_size", 16)
 	name_label.add_theme_color_override("font_color", DT.COLOR_TEXT if (selected_card and selected_card.instance_id == display_instance_id) else Color(0.85, 0.88, 0.94, 1))
 	name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	# 超长卡名折行（行内容已随按钮内容区约束宽度；不裁切避免名字被裁空不可见）
-	name_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	# 单行不换行、不截断：左栏加宽到 360 容下绝大多数卡名；超长名左对齐单行显示
+	name_label.autowrap_mode = TextServer.AUTOWRAP_OFF
 	name_label.clip_text = false
 	name_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	name_row.add_child(name_label)
@@ -651,10 +651,6 @@ func _create_card_item(card: CardResource, instance_card: CardResource = null) -
 	hbox.add_child(info)
 
 	btn.add_child(hbox)
-	# 同 _create_mod_item：Button 非容器，手动让 hbox 跟随按钮内容区（边距对齐样式盒 6/4）
-	btn.resized.connect(func() -> void:
-		hbox.position = Vector2(6.0, 4.0)
-		hbox.size = Vector2(maxf(0.0, btn.size.x - 12.0), maxf(0.0, btn.size.y - 8.0)))
 	btn.tooltip_text = "改造：%d/9" % display_mods.size()
 	# v7.3: 选中绑定用实例对象（含养成）。实例取不到时传 null，
 	# _on_card_selected 会拒绝选中（避免改造写到无养成的模板污染单例）。
@@ -912,11 +908,6 @@ func _create_mod_item(mod_id: String, mod_data: Dictionary) -> Control:
 	hbox.add_child(status_label)
 
 	btn.add_child(hbox)
-	# Button 非容器、不给子节点布局：不约束的话行内容按自然最小宽渲染，长效果文本
-	# 会冲出按钮/中栏/面板。手动让 hbox 跟随按钮内容区（边距对齐样式盒 content_margin 6/4）。
-	btn.resized.connect(func() -> void:
-		hbox.position = Vector2(6.0, 4.0)
-		hbox.size = Vector2(maxf(0.0, btn.size.x - 12.0), maxf(0.0, btn.size.y - 8.0)))
 	# 禁用规则：已安装、不适用、被 block（冲突/槽满/情报不足）、或战力档位不足时禁用点击
 	btn.disabled = is_installed or not is_applicable or not block_reason.is_empty() or tier_blocked
 	btn.tooltip_text = "%s\n稀有度：%s" % [String(mod_data.get("description", "")), rarity_cn]
@@ -1863,6 +1854,8 @@ func _translate_slot_type(raw: String) -> String:
 		"power": "动力",
 		"protection": "防护",
 		"radar": "雷达",
+		# 2026-08-25 补遗：数据层存在但此前未覆盖，改造站名称行会显示英文裸键
+		"sensor": "传感器", "electronic": "电子",
 		"recon": "侦察",
 		"recovery": "抢修",
 		"repair": "维修",
@@ -1883,12 +1876,17 @@ func _translate_effect_key(key: String) -> String:
 
 ## v7.2: 格式化改造效果为展示文本（兼容 effects 单档 + level_effects 多档）
 ## 返回行数组（供 effects_label 展示）
+## 2026-08-25：weapon_type/slot_weapon_type 等弹道路由内部键过滤（值恒 0-4，
+## 显示成"武器型号 +0"是噪音，非玩家效果）。
 func _format_effects_for_display(mod_data: Dictionary) -> PackedStringArray:
 	var lines: PackedStringArray = []
+	const _INTERNAL_ROUTE_KEYS := ["weapon_type", "legacy_weapon_type", "slot_weapon_type", "condition_slot"]
 	# 优先 effects（单档），其次 level_effects（Lv1/2/3 多档，enhancement 词条用）
 	if mod_data.has("effects") and (mod_data["effects"] as Dictionary).size() > 0:
 		var eff: Dictionary = mod_data["effects"]
 		for key in eff.keys():
+			if String(key) in _INTERNAL_ROUTE_KEYS:
+				continue
 			lines.append(_format_one_effect(String(key), eff[key]))
 	elif mod_data.has("level_effects") and (mod_data["level_effects"] as Dictionary).size() > 0:
 		var le: Dictionary = mod_data["level_effects"]
@@ -1899,6 +1897,8 @@ func _format_effects_for_display(mod_data: Dictionary) -> PackedStringArray:
 		var top_eff: Dictionary = le[top_level]
 		lines.append("—— Lv.%d（满级）——" % int(top_level))
 		for key in top_eff.keys():
+			if String(key) in _INTERNAL_ROUTE_KEYS:
+				continue
 			lines.append(_format_one_effect(String(key), top_eff[key]))
 	# v6.13: grant_slot 赋予新攻击维度（如炮射导弹激活对空槽）
 	if mod_data.has("grant_slot") and (mod_data["grant_slot"] as Dictionary).size() > 0:
@@ -1915,12 +1915,20 @@ func _format_one_effect(key: String, val) -> String:
 	# 攻速：attack_interval 是攻击间隔，负值=间隔缩短=攻速提升，统一转正表述
 	if key == "attack_interval":
 		return "攻速 +%d%%" % int(round(absf(float(val)) * 100.0))
+	# 2026-08-25 修④（与背包瓷砖同口径）：雷达锁定是周期扫描（每 N 秒一次），
+	# 值为周期秒数而非加成，带秒单位、不带正负号。
+	if key == "radar_lock_interval":
+		return "锁定扫描 %ds/次" % int(round(absf(float(val))))
+	if key == "radar_lock_duration":
+		return "锁定持续 %ds" % int(round(absf(float(val))))
 	return "%s %s" % [key_display, _format_effect_number(val)]
 
 
 ## v1.5：统一的改造效果数值格式化（列表行 / 效果模拟抽屉共用，消除 +150% vs ×1.50 分叉）
 ## 规则：|v|<=1 的非零小数 → 百分比（+30% / -20%）；>1 的浮点在现网数据里是持续秒/
 ## 半径/点数（非倍率）→ 加数（整值去小数）；int → 整数加成（+5 / -3）
+## 2026-08-25 修②：百分比四舍五入为 0 但原值非 0 时保留 1 位小数
+## （hp_regen=0.003 原显示"回血 +0%"，信息完全丢失，与背包瓷砖 _format_tile_effect_number 同口径）。
 func _format_effect_number(val) -> String:
 	if val is bool:
 		return "✓" if val else ""
@@ -1928,7 +1936,10 @@ func _format_effect_number(val) -> String:
 		if val == 0.0:
 			return "0"
 		if absf(val) <= 1.0 or val < -1.0:
-			return "%+.0f%%" % (val * 100.0)
+			var pct: float = float(val) * 100.0
+			if is_equal_approx(roundf(pct), 0.0):
+				return "%+.1f%%" % pct
+			return "%+.0f%%" % pct
 		if is_equal_approx(val, roundf(val)):
 			return "+%d" % int(round(val))
 		return "+%.1f" % val

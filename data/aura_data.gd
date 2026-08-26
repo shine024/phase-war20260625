@@ -34,6 +34,22 @@ static func is_mechanical_platform(platform_type: int) -> bool:
 		_:
 				return false
 
+## v20.15: 双口径机械类判定——我方卡（CombatKind 口径）优先按 stats card_tags 判定：
+## infantry=非机械；vehicle/armored/aircraft/fortress/immobile/support=机械（支援班组视为
+## 随队可抢修单位）。敌方无 card_tags，回退 legacy platform_type 旧表。
+## 修复点：玩家装甲（CombatKind 1）不在旧表 {2,3,7,4,8,11,12}，旧表口径会漏修玩家坦克。
+static func is_mechanical_ally(ally: Node2D) -> bool:
+	if ally == null or not is_instance_valid(ally):
+		return false
+	var stats = ally.get("stats")
+	if stats == null:
+		return false
+	if stats.has_meta("card_tags"):
+		var tags: Array = stats.get_meta("card_tags", [])
+		if tags is Array and not tags.is_empty():
+			return not tags.has("infantry")
+	return is_mechanical_platform(int(stats.platform_type))
+
 ## 获取光环参数（返回 Dictionary，由 CardAbilityManager 消费）
 ## star: 星级（1~9），乘数已在内部应用
 static func get_aura_params(category: int, star: int) -> Dictionary:

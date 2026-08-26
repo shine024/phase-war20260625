@@ -55,6 +55,10 @@ var _tracer_line: Line2D = null
 ## 兜底）。weapon_type 本体保留原始值供弹道物理（_configure_behavior）使用，严禁混用。
 ## 所有枪口火/命中/贴图消费点统一读 _visual_wt，槽位漏配签名武器时消费侧仍能按名纠正。
 var _visual_wt: int = 0
+## v20.16: 直射亚类（DirectWeaponFlavor.classify 值，setup 时按武器名解析）。
+## 弹头形状分化轴——玩家侧直射 weapon_type 恒为 0（新枚举 DIRECT），wt 档永远
+## 到不了 RIFLE/MG 形状分支，亚类是直射弹形分流的唯一有效键。
+var _shape_flavor: int = -1
 var shooter: Node2D = null  # 射手引用（用于词条效果）
 var shooter_stats: UnitStats = null  # 射手数值（用于词条效果计算）
 ## 超射程「哑弹」：飞过但不造成伤害（仍可对卡牌模式播放擦弹表现）
@@ -160,6 +164,7 @@ func setup(p_target: Node2D, p_damage: float, p_is_player: bool, p_weapon_type: 
 	if p_weapon_type >= 0:
 		weapon_type = p_weapon_type
 	_visual_wt = WeaponVisuals.resolve_visual_wt(_weapon_name, weapon_type, shooter_is_player)
+	_shape_flavor = DirectWeaponFlavor.classify(_weapon_name, weapon_type)
 	_start_position = global_position
 	_direction = Vector2.RIGHT
 	_sprite = get_node_or_null("Sprite") as Polygon2D
@@ -247,6 +252,11 @@ func _configure_behavior() -> void:
 			explosion_radius = 70.0
 			pierce_count = 2
 
+	# v20.16b: 直射亚类弹速分化（与 batch 同系数单射源在 WPV）。仅真直射弹道——
+	# 曲射/空射（_is_indirect）弧线节奏不参与，防亚类关键词误改曲射弹道。
+	if not _is_indirect:
+		speed = WeaponProjectileVfx.flavor_speed(_shape_flavor, speed)
+
 	# 霰弹：在本弹上直接设置随机初始方向偏移
 	if pellet_count > 1:
 		var base_dir := Vector2.RIGHT
@@ -328,6 +338,14 @@ func _apply_visual() -> void:
 			size_scale = 1.85
 		_:
 			bullet_color = Color(1.0, 0.95, 0.4) if is_player else Color(0.9, 0.35, 0.25)
+	# v20.16b: 亚类弹头染色（阵营无关——与拖尾/批处理同一配色语言，阵营信息由
+	# 命中环承担，规格原则 5）。仅已分化亚类覆盖。
+	if WeaponProjectileVfx.flavor_layer_key(_shape_flavor) >= 0:
+		bullet_color = WeaponProjectileVfx.flavor_tint(_shape_flavor)
+	# v20.16: 直射坦克炮弹体加粗（flavor 轴）——直射炮 weapon_type 恒 0 落轻武器档
+	# size 1.0，此前坦克炮弹与冲锋枪弹同尺寸；亚类判定后放大到炮弹级。
+	if _shape_flavor == DirectWeaponFlavor.Flavor.TANK_GUN:
+		size_scale *= 1.7
 	if _sprite:
 		_sprite.visible = not use_beam
 		if not use_beam:
@@ -369,7 +387,7 @@ func _apply_visual() -> void:
 func _apply_bullet_shape(size_scale: float) -> void:
 	if _sprite == null:
 		return
-	_sprite.polygon = WeaponProjectileVfx.build_bullet_points(weapon_type, size_scale)
+	_sprite.polygon = WeaponProjectileVfx.build_bullet_points(weapon_type, size_scale, _shape_flavor)
 
 
 ## v18-R11a: 光束辉光底层——实验性修改，R11e 确认无效（像素多 6 倍但 AI 分数不变），已移除调用，保留函数供后续参考。

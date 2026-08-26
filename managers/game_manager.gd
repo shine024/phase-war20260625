@@ -416,6 +416,15 @@ func go_to_battle() -> void:
 
 func _on_battle_ended(player_won: bool) -> void:
 	current_phase = GamePhase.POST_BATTLE
+	# 调试：检查 InstanceRegistry 状态
+	var ir_dbg: Node = get_node_or_null("/root/InstanceRegistry")
+	if ir_dbg != null and ir_dbg.has_method("get_all_instance_ids"):
+		var all_ids: Array = ir_dbg.get_all_instance_ids()
+		push_warning("[GameManager] 战斗结束: InstanceRegistry 中实例数=%d" % all_ids.size())
+		for aid in all_ids:
+			var lvl: int = ir_dbg.get_card_level(aid) if ir_dbg.has_method("get_card_level") else 0
+			var exp: int = ir_dbg.get_battle_experience(aid) if ir_dbg.has_method("get_battle_experience") else 0
+			push_warning("[GameManager]   实例: %s, lv=%d, exp=%d" % [aid, lvl, exp])
 
 	# v6.6(剧情): 清理最终战标记（防跨战斗残留）
 	clear_final_battle_state()
@@ -1095,13 +1104,25 @@ func _grant_battle_experience(player_won: bool) -> void:
 		var platform: CardResource = lo.get("platform")
 		if platform == null:
 			continue
+		# v21.x 修复：检查 instance_id 是否有效（非空且在 Registry 中存在）
 		var iid: String = String(platform.instance_id) if "instance_id" in platform else ""
-		if not iid.is_empty() and not (iid in instance_ids):
+		if iid.is_empty():
+			# instance_id 为空说明是模板卡，无法获得经验
+			continue
+		if not ir.has_method("has_instance") or not ir.has_instance(iid):
+			# instance_id 不在 Registry 中，可能是数据不一致
+			continue
+		if not (iid in instance_ids):
 			instance_ids.append(iid)
 	if instance_ids.is_empty():
 		return
-	# 计算总经验
+	# 计算总经验（卡牌 XP 随关卡进度缩放，与相位场升级速度对齐）
 	var base_exp: int = BattleExperienceConfig.BATTLE_WIN_EXP_BASE if player_won else int(float(BattleExperienceConfig.BATTLE_WIN_EXP_BASE) * BattleExperienceConfig.BATTLE_LOSE_EXP_RATIO)
+	# v21.x 修复：卡牌 XP 乘以关卡系数，防止后期卡牌升级严重滞后于相位师
+	# coef=0.2 时：Lv1→1.0x, Lv9→1.8x(每卡~80XP), Lv30→3.9x(每卡~195XP)
+	# 相位师升到30时卡牌约Lv19-20，与相位师进度基本对齐
+	var level_factor: float = 1.0 + float(clampi(current_level, 1, 30) - 1) * 0.2
+	base_exp = int(float(base_exp) * level_factor)
 	# 击杀数：从 BattleManager 获取（如可用）
 	var kill_count: int = 0
 	if BattleManager and BattleManager.has_method("get_player_kill_count"):

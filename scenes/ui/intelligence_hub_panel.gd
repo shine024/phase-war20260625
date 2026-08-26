@@ -9,6 +9,7 @@ signal open_progression_requested(card_id: String)
 const RuneDefs = preload("res://data/runes.gd")
 const RunewordDefs = preload("res://data/runewords.gd")
 const DefaultCards = preload("res://data/default_cards.gd")
+const UnifiedCardTable = preload("res://data/unified_card_table.gd")  # v20.13c: 敌卡获得后的每卡部署次数预览
 const DT = preload("res://resources/design_tokens.gd")
 const PanelStyles = preload("res://scripts/ui/panel_styles.gd")
 const PanelChrome = preload("res://scenes/ui/components/panel_chrome.gd")
@@ -555,6 +556,23 @@ func _add_intel_row(card_id: String, entry: Dictionary, im: Node) -> void:
 	defeat_lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_XSMALL)
 	defeat_lbl.add_theme_color_override("font_color", DT.COLOR_TEXT_DIM)
 	hbox.add_child(defeat_lbl)
+
+	# v20.13c: 该敌卡掉落获得后作为我方卡的每场可部署次数（UCT 口径预览）
+	var du_text := ""
+	var du_card: CardResource = DefaultCards.get_card_by_id(card_id)
+	if du_card != null and du_card.card_type == GameConstants.CardType.COMBAT_UNIT:
+		var du_entry := UnifiedCardTable.get_entry(card_id)
+		if not du_entry.is_empty():
+			var du_uses := UnifiedCardTable.get_deploy_uses(du_entry, du_card)
+			if du_uses < 99:
+				du_text = "部署×%d/场" % du_uses
+	if not du_text.is_empty():
+		var du_lbl := Label.new()
+		du_lbl.text = du_text
+		du_lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_XSMALL)
+		du_lbl.add_theme_color_override("font_color", Color(0.55, 0.85, 0.75, 0.9))
+		du_lbl.tooltip_text = "获得该卡后，每场战斗最多可部署次数"
+		hbox.add_child(du_lbl)
 
 	_intel_content.add_child(panel)
 

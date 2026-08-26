@@ -174,6 +174,13 @@ func _ensure_configs_initialized() -> void:
 			"script_path": "res://managers/debug_log_manager.gd",
 			"priority": 99,
 			"description": "调试日志"
+		},
+		# ── v21 余烬要塞（基地）── 常驻 root 监听 battle_ended，跨场景推进修复进度
+		"bunker": {
+			"node_name": "BunkerManager",
+			"script_path": "res://managers/bunker_manager.gd",
+			"priority": 9,
+			"description": "余烬要塞基地状态"
 		}
 	}
 

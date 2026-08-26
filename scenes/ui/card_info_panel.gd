@@ -16,6 +16,7 @@ enum TabIdx { INFO = 0, REINFORCE = 1, MODIFY = 2, EVOLVE = 3 }
 const GC = preload("res://resources/game_constants.gd")
 const PanelStyles = preload("res://scripts/ui/panel_styles.gd")
 const DefaultCards = preload("res://data/default_cards.gd")
+const BattleExperienceConfig = preload("res://data/battle_experience_config.gd")
 const EnemyArchetypes = preload("res://data/enemy_archetypes.gd")
 const PhaseLaws = preload("res://data/phase_laws.gd")
 const EnemyPhaseMasters = preload("res://data/enemy_phase_masters.gd")
@@ -42,6 +43,7 @@ const EvolutionHelpers = preload("res://managers/evolution/evolution_helpers.gd"
 const ModEffects = preload("res://data/mod_effects.gd")  # v7.x: MAX_MOD_SLOTS 槽位上限权威源
 const CardPeriodicSkills = preload("res://data/card_periodic_skills.gd")  # 卡片定时技能（关联技能显示）
 const PowerTiers = preload("res://data/power_tiers.gd")
+const UnifiedCardTable = preload("res://data/unified_card_table.gd")  # v20.13c: 每卡部署次数口径
 
 var current_card: CardResource = null
 var _current_unit: Node = null
@@ -865,8 +867,30 @@ func _build_nurture_text(card: CardResource, _stats: UnitStats = null, include_p
 	if card == null or BlueprintManager == null:
 		return ""
 	var parts: Array[String] = []
+	var mech_list_text: String = ""
 	if card.card_type == GC.CardType.COMBAT_UNIT:
-		parts.append("等级 Lv%d" % _card_level_for_display(card))
+		var detail_lv: int = _card_level_for_display(card)
+		parts.append("等级 Lv%d" % detail_lv)
+		# v21.x: 显示战斗经验值和升级进度
+		var ir_node: Node = get_node_or_null("/root/InstanceRegistry")
+		if ir_node != null and ir_node.has_method("get_battle_experience"):
+			var identity: String = _card_identity_id(card)
+			var exp: int = ir_node.get_battle_experience(identity)
+			var next_exp: int = BattleExperienceConfig.get_exp_for_next_level(detail_lv)
+			if next_exp > 0:
+				var progress_pct: int = int(float(exp) / next_exp * 100.0)
+				parts.append("经验 %d/%d (%d%%)" % [exp, next_exp, progress_pct])
+		# v20.13c: 每卡部署次数（静态总量预览；战场单位模式由实时行展示剩余/总量，此处跳过防重复）
+		if _current_unit == null:
+			var du_entry := UnifiedCardTable.get_entry(card.card_id)
+			if not du_entry.is_empty():
+				var du_uses := UnifiedCardTable.get_deploy_uses(du_entry, card)
+				if du_uses < 99:
+					parts.append("可上场×%d/场" % du_uses)
+		# v20.15: 固定机制文案（雷达/指挥/医疗/维修/补给/中继等 tag 机制）
+		var mech_lines: Array[String] = CardMechanismDesc.get_mechanism_lines(card.tags)
+		if not mech_lines.is_empty():
+			mech_list_text = "\n固定机制：\n    · " + "\n    · ".join(mech_lines)
 		# v7.x：战场单位情报面板已把战力移到 summary 行（属性口径，敌我可对比），
 		# 故 include_power=false 时此处不再重复显示养成战力。卡牌查看模式默认 true（养成口径不变）。
 		if include_power:
@@ -920,7 +944,7 @@ func _build_nurture_text(card: CardResource, _stats: UnitStats = null, include_p
 			mod_list_text = "\n已装改造：\n    · " + "\n    · ".join(mod_lines)
 	# v6.11: 战力星级信息已移除（系统②合并到强化等级①，详见 _build_star_lines 的强化加成）
 	if not parts.is_empty():
-		return " · ".join(parts) + enhance_effect_text + mod_list_text
+		return " · ".join(parts) + enhance_effect_text + mod_list_text + mech_list_text
 	return ""
 
 ## v6.11: 格式化改造效果摘要（用于情报面板已装改造列表，紧凑单行）
@@ -2025,6 +2049,12 @@ func _show_player_unit(unit: Node) -> void:
 		nurture_text = "兵种机制：%s\n" % _player_mech + nurture_text
 	nurture_text += _build_aura_text(unit)
 	nurture_text += _build_rune_text()
+	# v20.13c: 战场模式追加本场剩余部署次数（实时值，与底栏 ×N 角标同源）
+	nurture_text += _build_battlefield_deploy_uses_line(card_res)
+	# v20.15: 固定机制文案（战场单位模式与卡牌查看模式同源）
+	var _mech_lines_bf: Array[String] = CardMechanismDesc.get_mechanism_lines(card_res.tags) if card_res != null else []
+	if not _mech_lines_bf.is_empty():
+		nurture_text += "固定机制：\n    · " + "\n    · ".join(_mech_lines_bf) + "\n"
 	if nurture_label:
 		nurture_label.text = nurture_text
 	_set_section_visible_by_content(_nurture_section, nurture_text)
@@ -2035,6 +2065,33 @@ func _show_player_unit(unit: Node) -> void:
 	# v8.x：战场单位也显示关联卡片技能（source_tag 命中本单位 + 已解锁），口径与卡牌查看模式一致。
 	# 直接传 unit.stats（已含 law_family/is_engineer 等 meta），无需构建显示缓存。
 	_refresh_card_skill_section(card_res, stats)
+
+## v20.13c: 战场情报面板——该卡本场剩余/总部署次数（实时值）。
+## remaining 查 BattleManager._spawn_system.get_deploy_uses_remaining（战斗中实时追踪，
+## 与底栏 ×N 角标同源）；total 走 UnifiedCardTable 口径（与商店/背包预览一致）。
+## 非战斗卡/无限次/无 UCT 条目返回空。
+func _build_battlefield_deploy_uses_line(card_res: CardResource) -> String:
+	if card_res == null or card_res.card_type != GC.CardType.COMBAT_UNIT:
+		return ""
+	var base_id := card_res.card_id
+	var hi := base_id.rfind("#")
+	if hi > 0:
+		base_id = base_id.substr(0, hi)
+	var du_entry := UnifiedCardTable.get_entry(base_id)
+	if du_entry.is_empty():
+		return ""
+	var total := UnifiedCardTable.get_deploy_uses(du_entry, card_res)
+	if total >= 99:
+		return ""  # 显式无限次配置，不显示
+	var remaining := total
+	if BattleManager != null and "battle_active" in BattleManager and BattleManager.battle_active \
+			and "_spawn_system" in BattleManager and BattleManager._spawn_system != null:
+		var ss = BattleManager._spawn_system
+		if ss.has_method("get_deploy_uses_remaining"):
+			# v20.16：次数池按实例分池——查询键用部署身份（实例卡 instance_id 优先）
+			var du_id: String = String(card_res.instance_id) if not String(card_res.instance_id).is_empty() else base_id
+			remaining = int(ss.get_deploy_uses_remaining(du_id))
+	return "本场部署次数：%d / %d\n" % [remaining, total]
 
 ## ── 敌方单位 ──
 
@@ -2533,7 +2590,12 @@ func _build_aura_preview_text(card: CardResource, stats: UnitStats) -> String:
 		return ""
 	if card.card_type != GC.CardType.COMBAT_UNIT:
 		return ""
-	var aura_type: int = _platform_to_aura_type(stats.platform_type)
+	# v20.x 口径守卫：我方卡 stats.platform_type = combat_kind(0-4)，与 legacy 光环平台值
+	# 3=FORTRESS/4=RADAR 撞值（空中卡会误预览"堡垒防御"、堡垒卡误预览"雷达侦测"）。
+	# 我方卡的平台光环本就不经 legacy 注册（construct_unit 已 is_player 守卫），
+	# 「pt==ck 且 ≤4」判定为卡牌口径 → 不做平台光环预览（改造光环预览不受影响）。
+	var _is_card_kind_scope: bool = int(stats.platform_type) == int(stats.combat_kind) and int(stats.platform_type) <= 4
+	var aura_type: int = -1 if _is_card_kind_scope else _platform_to_aura_type(stats.platform_type)
 	var lines: Array[String] = []
 	# 平台光环预览
 	if aura_type >= 0:

@@ -23,8 +23,10 @@ static func translate(key: String) -> String:
 		"defense_armor": return "重防"
 		"defense_air": return "空防"
 		"max_hp": return "生命"
-		"move_speed": return "部署"
-		"deploy_speed": return "部署"
+		# 2026-08-25 拆分：move_speed 是 +N px/s 移速加成（原译"部署"与 px/s 数值语义不符）；
+		# deploy_speed 才是部署档（0-7）。deploy_delay_bonus 现网数据零使用，保留旧译。
+		"move_speed": return "移速"
+		"deploy_speed": return "部署档"
 		"deploy_delay_bonus": return "部署"
 		"attack_range": return "射程"
 		"attack_interval": return "攻速"
@@ -62,11 +64,13 @@ static func translate(key: String) -> String:
 		# ── 夜视/烟雾/热防护/三防 ──
 		"night_bonus": return "夜战"
 		"smoke_ignore": return "烟雾无视"
-		"thermal_immunity": return "热成像"
+		# 2026-08-25 译名改中性词：数据值为负（-0.70/-0.40/-0.30），旧译"xx降低/减伤"
+		# 与负号叠加成"降低 -40%"双重否定；中性词 + 负号读作"被锁定率 -40%"即语义正确。
+		"thermal_immunity": return "热成像免疫"
 		"heat_resist": return "HEAT抗性"
 		"heat_immunity_once": return "HEAT首免"
 		"mine_immunity": return "避雷"
-		"mine_damage_reduction": return "地雷减伤"
+		"mine_damage_reduction": return "地雷受伤"
 		"nbq_immunity": return "三防"
 		# ── 反装甲/近战/拦截 ──
 		"enemy_armor_slow": return "敌甲减速"
@@ -81,9 +85,9 @@ static func translate(key: String) -> String:
 		"infinite_ammo": return "无限弹药"
 		"mobile_fire": return "行进射击"
 		# ── 隐蔽/反锁定 ──
-		"lock_reduction": return "锁定降低"
+		"lock_reduction": return "被锁定率"
 		"fire_exposure": return "开火暴露"
-		"aggro_reduce": return "仇恨降低"
+		"aggro_reduce": return "仇恨值"
 		"close_accuracy": return "近距精度"
 		"enemy_confusion": return "敌方混乱"
 		# ── 指挥/阵型/盟友协同 ──

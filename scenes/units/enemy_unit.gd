@@ -374,14 +374,24 @@ func _apply_behavior_tags(cfg: Dictionary) -> void:
 	if _behavior_tags_cached.has("stealth"):
 		_is_stealth_unit = true
 		_stealth_grace_timer = STEALTH_GRACE_DURATION
+		# v20.15 真隐身：开局渗透期间不可被单体索敌选中（对侧有侦测源除外；AOE 豁免）。
+		# hidden_grace_until 与 CardAbilityManager.is_unit_hidden 口径一致（毫秒）。
+		set_meta("hidden_grace_until", Time.get_ticks_msec() + int(STEALTH_GRACE_DURATION * 1000.0))
+		# 视觉：半透明（可见但打不到，玩家可感知渗透单位存在）
+		modulate = Color(1.0, 1.0, 1.0, 0.45)
 
 
 ## v8: stealth 开局减伤——前 STEALTH_GRACE_DURATION 秒受伤 ×STEALTH_GRACE_DAMAGE_MUL。
 ## 在 _process 中递减；实际减伤在 take_damage 中读取 _is_stealth_in_grace() 判定。
+## v20.15: 渗透隐身到期时清除 hidden 标记并恢复不透明度。
 func _update_stealth_grace(delta: float) -> void:
 	if not _is_stealth_unit or _stealth_grace_timer <= 0.0:
 		return
 	_stealth_grace_timer = maxf(0.0, _stealth_grace_timer - delta)
+	if _stealth_grace_timer <= 0.0:
+		if has_meta("hidden_grace_until"):
+			remove_meta("hidden_grace_until")
+		modulate = Color.WHITE
 
 
 func _is_stealth_in_grace() -> bool:
@@ -956,6 +966,9 @@ func _should_retain_current_target() -> bool:
 		return false
 	if CombatTargeting.is_phase_field_node(target):
 		return not CombatTargeting.has_alive_player_units(BattleManager)
+	# v20.15: 目标进入真隐身且敌方无侦测源 → 放弃锁定（重选可见目标）
+	if CardAbilityManager.is_unit_hidden(target) and not CardAbilityManager.side_has_detection(false):
+		return false
 	# v10(L3): 平方比较（避免每周期 sqrt）
 	var acq: float = _enemy_acquisition_range()
 	return global_position.distance_squared_to(target.global_position) <= acq * acq
@@ -995,6 +1008,9 @@ func _find_target(_delta: float) -> void:
 					var same_row_t: Node2D = _query_nearest_same_row_player(spatial_grid, acq)
 					if same_row_t != null:
 						nearest_target = same_row_t
+				# v20.15: 真隐身过滤——最近目标隐身且敌方无侦测源时放弃，落到下方传统扫描重选
+				if nearest_target != null and not CardAbilityManager.is_unit_targetable(nearest_target, self):
+					nearest_target = null
 				if nearest_target != null:
 					target = nearest_target
 					return
@@ -1022,6 +1038,10 @@ func _find_target(_delta: float) -> void:
 			if n2d == null:
 				continue
 			found_alive = true
+			# v20.15: 真隐身过滤（敌方无侦测源时不可选中；仍计入 found_alive——
+			# 隐身单位在场不算"场上无单位"，不触发转打相位场）
+			if not CardAbilityManager.is_unit_targetable(n2d, self):
+				continue
 			var dist_sq := global_position.distance_squared_to(n2d.global_position)
 			if dist_sq > attack_range_sq:
 				continue
@@ -1098,9 +1118,13 @@ func _collect_player_candidates(acq: float) -> Array:
 	for n in gr:
 		if not CombatTargeting.is_attackable_combat_unit(n):
 			continue
-		var dist_sq: float = global_position.distance_squared_to(n.global_position)
+		var n2d: Node2D = n as Node2D
+		# v20.15: 真隐身过滤（敌方无侦测源时不可选中）——覆盖曲射/空射/渗透优先整条链
+		if not CardAbilityManager.is_unit_targetable(n2d, self):
+			continue
+		var dist_sq: float = global_position.distance_squared_to(n2d.global_position)
 		if dist_sq <= attack_range_sq:
-			result.append(n as Node2D)
+			result.append(n2d)
 	return result
 
 
@@ -1142,6 +1166,11 @@ func _pick_stealth_priority_target(candidates: Array) -> Node2D:
 			continue
 		var s: UnitStats = n.get("stats") as UnitStats
 		if s == null:
+			continue
+		# v20.x 口径守卫：我方单位 stats.platform_type 为 CombatKind(0-4)，与 legacy
+		# 指挥/光环平台值撞值（12=COMMAND / 3=FORTRESS / 4=RADAR）——我方候选不做
+		# legacy 高价值分类（保持 v7 以来现行为；我方指挥/光环单位另有体系驱动）。
+		if bool(n.get("is_player")):
 			continue
 		var pt: int = int(s.platform_type)
 		if pt == 12:

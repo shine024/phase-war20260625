@@ -347,7 +347,13 @@ static func compute_source_tags_for_stats(stats) -> Array:
 		tags.append("ecm")
 	if bool(stats.get_meta("is_sniper", false)):
 		tags.append("sniper")
-	if AuraData.is_mechanical_platform(int(stats.platform_type)):
+	# v20.x 口径守卫：我方卡 stats.platform_type 现为 CombatKind(0-4)（与 combat_kind 恒等），
+	# 与 legacy 机械平台值 2(TITAN)/3(FORTRESS)/4(RADAR) 撞值。敌方 legacy 单位两字段由不同
+	# 路径推导（如 fortress: pt=3/ck=4，titan: pt=2/ck=1），故「pt==ck 且 ≤4」判定为我方卡口径，
+	# 不适用 legacy 机械判定（保持 v7 以来我方卡无 mechanical tag 的现行为，
+	# 消费方：card_periodic_skill_engine 的 mechanical_mult 伤害乘区与 mechanical_tag 目标筛选）。
+	var _is_card_kind_scope: bool = int(stats.platform_type) == int(stats.combat_kind) and int(stats.platform_type) <= 4
+	if not _is_card_kind_scope and AuraData.is_mechanical_platform(int(stats.platform_type)):
 		tags.append("mechanical")
 	# ── 行为 tag（补全 bullet.gd:839-849 兜底集，防其回退失效造成回归）──
 	if bool(stats.get_meta("is_stalker", false)):

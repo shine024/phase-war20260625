@@ -221,3 +221,11 @@ signal mechanism_nuclear_launched(from_pos: Vector2, target_pos: Vector2, owner_
 signal mechanism_shield_projected(from_pos: Vector2, target_positions: Array)
 # 无人机定时标记（无人机标记敌方，from 无人机 + target_positions 多个敌方位置，播红色锁定框+扫描波纹）
 signal mechanism_drone_marked(from_pos: Vector2, target_positions: Array)
+
+# ── v21 余烬要塞（基地）信号 ──
+# 房间状态变化（废弃0/修复中1/可用2）——bunker_main 刷新房间节点视觉
+signal bunker_room_state_changed(room_id: String, new_state: int)
+# 睡觉推进天数——HUD/氛围层刷新
+signal bunker_day_ended(day: int)
+# 英雄档案解锁（P3：击败相位师掉碎片集齐后发）——纪念墙点灯
+signal hero_archive_unlocked(master_id: String)

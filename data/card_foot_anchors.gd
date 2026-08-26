@@ -743,12 +743,17 @@ const VISUAL_SCALE: Dictionary = {
 ## 我方平台类型(platform_type) → 用于查缩放的 archetype_id。
 ## 我方卡 card_id 是短名(如 ww1_mp18)查不到 VISUAL_SCALE，经 platform_type→archetype 兜底。
 ## 与 scenes/units/construct_unit.gd PLAYER_MIRROR_ARCHETYPE_BY_PLATFORM 同步。
+## v20.x 重映射：v8 起我方卡 stats.platform_type = combat_kind(0-4)，原 0-4 键是 legacy
+## 平台枚举口径（1=法师/2=泰坦/3=碉堡/4=雷达车），按 CombatKind 查会拿错类别
+## （装甲→步兵缩放 0.7）。0-4 改按兵种语义选代表（数值取自用户手填 CSV）：
+##   0轻装→步兵0.7 / 1装甲→BTR1.47 / 2支援→迫击炮0.82 / 3空中→无人机1.25 / 4堡垒→碉堡1.51
+## 5-12 键保留（legacy 值域，供历史路径；我方卡口径下不再触达）。
 const PLAYER_PLATFORM_TO_SCALE_ARCHETYPE := {
 	0: "ww1_inf_mp18",
-	1: "ww2_inf_thompson",
-	2: "ww1_arm_rolls_e",
-	3: "ww1_sup_mg_nest",
-	4: "mod_arm_stryker_e",
+	1: "cold_arm_btr_e",
+	2: "ww1_arty_mortar",
+	3: "fut_air_drone",
+	4: "ww1_fort_pillbox",
 	5: "cold_arm_btr_e",
 	6: "fut_arm_hovertank_e",
 	7: "ww1_arty_mortar",

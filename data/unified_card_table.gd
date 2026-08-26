@@ -361,7 +361,8 @@ const _TABLE: Array = [
 	 "atk_a":0,"atk_a_speed":1,"atk_a_windup":0.4,"atk_a_active":0.2,
 	 "atk_air":0,"atk_air_speed":1,"atk_air_windup":0.08,"atk_air_active":0.04,
 	 "def_l":5,"def_a":3,"def_air":2,
-	 "w_light":"自卫手枪","w_armor":"","w_air":""},
+	 "w_light":"自卫手枪","w_armor":"","w_air":"",
+	 "tags": ["medic"]},
 
 	{"card_id":"ww1_inf_mp18_x","display_name":"MP18 突击队","era":0,"combat_kind":0,"tier":Tier.VETERAN,
 	 "base_hp":112,"range_value":2,"deploy_speed":5,"base_speed":85,"power":80,"weapon_type":0,
@@ -654,7 +655,8 @@ const _TABLE: Array = [
 	 "atk_a":0,"atk_a_speed":1,"atk_a_windup":0.4,"atk_a_active":0.2,
 	 "atk_air":0,"atk_air_speed":1,"atk_air_windup":0.08,"atk_air_active":0.04,
 	 "def_l":5,"def_a":6,"def_air":2,
-	 "w_light":"自卫手枪","w_armor":"","w_air":""},
+	 "w_light":"自卫手枪","w_armor":"","w_air":"",
+	 "tags": ["supply"]},
 
 	{"card_id":"ww2_inf_kar98k","display_name":"毛瑟 Kar98k 狙击组","era":1,"combat_kind":0,"tier":Tier.VETERAN,
 	 "base_hp":180,"range_value":3,"deploy_speed":3,"base_speed":65,"power":110,"weapon_type":0,
@@ -984,7 +986,8 @@ const _TABLE: Array = [
 	 "atk_a":0,"atk_a_speed":0.5,"atk_a_windup":0.4,"atk_a_active":0.2,
 	 "atk_air":0,"atk_air_speed":1,"atk_air_windup":0.4,"atk_air_active":0.2,
 	 "def_l":28,"def_a":42,"def_air":19,
-	 "w_light":"机枪","w_armor":"","w_air":""},
+	 "w_light":"机枪","w_armor":"","w_air":"",
+	 "tags": ["repair"]},
 
 	# --- 冷战堡垒 ---
 	{"card_id":"cold_fort_missile","display_name":"导弹发射井","era":2,"combat_kind":4,"tier":Tier.FORT,
@@ -1195,7 +1198,8 @@ const _TABLE: Array = [
 	 "atk_a":99,"atk_a_speed":0.73,"atk_a_windup":0.27,"atk_a_active":0.135,
 	 "atk_air":133,"atk_air_speed":1.1,"atk_air_windup":0.18,"atk_air_active":0.09,
 	 "def_l":12,"def_a":20,"def_air":20,
-	 "w_light":"机载机枪","w_armor":"机载机枪","w_air":"机载机枪"},
+	 "w_light":"机载机枪","w_armor":"机载机枪","w_air":"机载机枪",
+	 "tags": ["recon"]},
 
 	# --- 现代敌方独有单位（enemy_only）---
 	{"card_id":"mod_inf_marine","display_name":"海军陆战队·敌方","era":3,"combat_kind":0,"tier":Tier.VETERAN,
@@ -1392,7 +1396,8 @@ const _TABLE: Array = [
 	 "atk_a":120,"atk_a_speed":1.0,"atk_a_windup":0.2,"atk_a_active":0.1,
 	 "atk_air":133,"atk_air_speed":1.0,"atk_air_windup":0.2,"atk_air_active":0.1,
 	 "def_l":74,"def_a":91,"def_air":22,
-	 "w_light":"粒子束步枪","w_armor":"电磁炮","w_air":"点防御激光"},
+	 "w_light":"粒子束步枪","w_armor":"电磁炮","w_air":"点防御激光",
+	 "tags": ["recon"]},
 
 	{"card_id":"fut_assault_mech","display_name":"突击机甲","era":4,"combat_kind":1,"tier":Tier.CHAMPION,
 	 "base_hp":1829,"range_value":4,"deploy_speed":4,"base_speed":75,"power":1500,"weapon_type":0,
@@ -1511,7 +1516,8 @@ const _TABLE: Array = [
 	 "atk_a":774,"atk_a_speed":0.5,"atk_a_windup":0.4,"atk_a_active":0.2,
 	 "atk_air":46,"atk_air_speed":2.5,"atk_air_windup":0.08,"atk_air_active":0.04,
 	 "def_l":33,"def_a":114,"def_air":20,
-	 "w_light":"电磁轨道炮","w_armor":"电磁轨道炮","w_air":"25mm近防炮"},
+	 "w_light":"电磁轨道炮","w_armor":"电磁轨道炮","w_air":"25mm近防炮",
+	 "tags": ["storm_core"]},
 
 	{"card_id":"fut_arm_nexus","display_name":"虚空领主","era":4,"combat_kind":1,"tier":Tier.ULTIMATE,
 	 "base_hp":3158,"range_value":5,"deploy_speed":2,"base_speed":60,"power":1590,"weapon_type":0,  # v15: OMEGA 由 w_armor「重型等离子加农炮」精确表在槽位层生效（wt==10 径向放电特效）。射程 99→5 归位直射战车族（omega/titan_mk2 同为 5）
@@ -1676,7 +1682,8 @@ const _TABLE: Array = [
 	 "atk_a":0,"atk_a_speed":1,"atk_a_windup":0.4,"atk_a_active":0.2,
 	 "atk_air":0,"atk_air_speed":1,"atk_air_windup":0.08,"atk_air_active":0.04,
 	 "def_l":35,"def_a":52,"def_air":15,
-	 "w_light":"","w_armor":"","w_air":""},
+	 "w_light":"","w_armor":"","w_air":"",
+	 "tags": ["repair"]},
 
 	{"card_id":"fut_inf_x9","display_name":"X-9 猎杀者渗透组","era":4,"combat_kind":0,"tier":Tier.ELITE,
 	 "base_hp":720,"range_value":3,"deploy_speed":6,"base_speed":150,"power":380,"weapon_type":0,
@@ -1721,7 +1728,8 @@ const _TABLE: Array = [
 	 "atk_a":0,"atk_a_speed":1,"atk_a_windup":0.4,"atk_a_active":0.2,
 	 "atk_air":0,"atk_air_speed":2,"atk_air_windup":0.08,"atk_air_active":0.04,
 	 "def_l":32,"def_a":52,"def_air":14,
-	 "w_light":"","w_armor":"","w_air":""},
+	 "w_light":"","w_armor":"","w_air":"",
+	 "tags": ["relay"]},
 
 	# --- 近未来堡垒 ---
 	{"card_id":"fut_fort_ion","display_name":"离子炮台","era":4,"combat_kind":4,"tier":Tier.FORT,
@@ -1782,7 +1790,8 @@ const _TABLE: Array = [
 	 "atk_a":0,"atk_a_speed":1,"atk_a_windup":0.4,"atk_a_active":0.2,
 	 "atk_air":0,"atk_air_speed":1,"atk_air_windup":0.08,"atk_air_active":0.04,
 	 "def_l":5,"def_a":3,"def_air":2,
-	 "w_light":"步枪","w_armor":"","w_air":""},
+	 "w_light":"步枪","w_armor":"","w_air":"",
+	 "tags": ["medic"]},
 	{"card_id":"platform_ww2_light","display_name":"二战轻型平台","era":1,"combat_kind":0,"tier":Tier.GRUNT,
 	 "base_hp":160,"range_value":2,"deploy_speed":5,"base_speed":90,"power":222,"weapon_type":0,
 	 "weapon_label":"冲锋枪","enemy_only":true,
@@ -2002,7 +2011,8 @@ const _TABLE: Array = [
 	 "atk_a":700,"atk_a_speed":0.5,"atk_a_windup":0.4,"atk_a_active":0.2,
 	 "atk_air":900,"atk_air_speed":0.67,"atk_air_windup":0.3,"atk_air_active":0.15,
 	 "def_l":200,"def_a":692,"def_air":350,
-	 "w_light":"幽灵航炮","w_armor":"幽灵导弹","w_air":"幽灵空空导弹"},
+	 "w_light":"幽灵航炮","w_armor":"幽灵导弹","w_air":"幽灵空空导弹",
+	 "tags": ["stealth_aircraft"]},
 	{"card_id":"guardian_future_omega","display_name":"终焉守护者·近未来","era":4,"combat_kind":1,"tier":Tier.ULTIMATE,
 	 "base_hp":3500,"range_value":5,"deploy_speed":1,"base_speed":40,"power":2200,"weapon_type":0,
 	 "weapon_label":"终焉粒子主炮","achievement_exclusive":true,
@@ -2196,6 +2206,10 @@ static func _entry_to_card(entry: Dictionary) -> CardResource:
 	c.card_type = GC.CardType.COMBAT_UNIT
 	c.era = int(entry.get("era", 0))
 	c.combat_kind = int(entry.get("combat_kind", 0))
+	# v20.x 修复：补设 platform_type（与 default_cards._unit 对齐）。v8.0 切数据源时本函数
+	# 漏设该字段，全卡恒 -1——restrict_platforms 白名单关（15/30/55/85）因此全拦。
+	# 口径：platform_type = combat_kind（real_world_unit_labels.gd 统一的 CombatKind 5 值口径）。
+	c.platform_type = c.combat_kind
 	# v19: 档位透传（词条系统特殊兵种独特词条门槛读 CardResource.tier）
 	c.tier = int(entry.get("tier", 0))
 	# v8.7: 子类推断。v8.0 切数据源时本函数漏设 unit_subtype（恒 NONE），
@@ -2430,19 +2444,18 @@ static func _tags_for_combat_kind(ck: int) -> Array:
 # ════════════════════════════════════════════════════════════════════════
 
 ## 兵种基线部署次数（CombatKind → 次数）
+## v20.16 明显上调（用户拍板）：8/7/6/6/5——老玩家全队高练度后原 6/5/4/4/3 感知"死一次就锁"。
 const DEPLOY_USES_BASELINE := {
-	GC.CombatKind.LIGHT:   6,
-	GC.CombatKind.SUPPORT: 5,
-	GC.CombatKind.ARMOR:   4,
-	GC.CombatKind.AIR:     4,
-	GC.CombatKind.FORT:    3,
+	GC.CombatKind.LIGHT:   8,
+	GC.CombatKind.SUPPORT: 7,
+	GC.CombatKind.ARMOR:   6,
+	GC.CombatKind.AIR:     6,
+	GC.CombatKind.FORT:    5,
 }
 
 ## 核心标记档次数（雷达/指挥/侦测类——光环/侦测建筑比战斗堡垒更金贵）
-const DEPLOY_USES_CORE := 2
-
-## 终极修正触发条件：card_level 阈值
-const DEPLOY_USES_ULTIMATE_LEVEL_THRESHOLD := 8
+## v20.16：2 → 4（与 FORT 基线 5 拉开 1 次差距，保留"金贵"语义但不再极端）
+const DEPLOY_USES_CORE := 4
 
 ## 终极修正量（负值 = 扣减）
 const DEPLOY_USES_ULTIMATE_PENALTY := 1
@@ -2452,7 +2465,7 @@ const CORE_TAG_KEYWORDS: Array[String] = ["radar", "command", "hq", "侦测", "�
 
 
 ## 计算单场战斗可部署次数
-## 优先级：显式配置 deploy_uses > 核心标记(2) > 兵种基线 × 终极修正
+## 优先级：显式配置 deploy_uses > 核心标记(4) > 兵种基线 × 终极修正（仅 rarity）
 ## card 为 null 时仅按 entry 判定（敌方/预览用，不查 InstanceRegistry）
 static func get_deploy_uses(entry: Dictionary, card: CardResource = null) -> int:
 	# 1. 显式配置（最高优先）
@@ -2492,18 +2505,11 @@ static func _is_core_unit(tags: Array, entry: Dictionary) -> bool:
 
 
 static func _is_ultimate_for_deploy_uses(card: CardResource, entry: Dictionary) -> bool:
+	# v20.16：终极修正仅 rarity 触发（legendary/mythic）。原 card_level≥8 也触发——
+	# 老玩家全队 8 级+ 后整队 -1，叠加同名卡共享池 bug 后感知"死一次就锁"（用户报告）。
 	if card != null:
-		# rarity 判定
 		if card.rarity in ["legendary", "mythic"]:
 			return true
-		# card_level 判定（需通过 InstanceRegistry 查询实例等级）
-		if not card.instance_id.is_empty():
-			var _ml := Engine.get_main_loop()
-			if _ml != null:
-				var _ir: Node = _ml.root.get_node_or_null("/root/InstanceRegistry")
-				if _ir != null and _ir.has_method("get_card_level"):
-					if _ir.get_card_level(card.instance_id) >= DEPLOY_USES_ULTIMATE_LEVEL_THRESHOLD:
-						return true
 	# 回退：entry 层显式标记
 	if String(entry.get("rarity", "")) in ["legendary", "mythic"]:
 		return true

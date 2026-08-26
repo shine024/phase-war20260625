@@ -416,15 +416,14 @@ func _create_instrument_item(cfg: Dictionary, is_equipped: bool) -> Control:
 	vbox.add_child(stats_row)
 
 	# v7.x: 移除 energy_output_rate 显示，仅保留能量恢复
+	# v21.x: 移除部署范围显示（功能下线）
 	var recovery_rate = float(cfg.get("energy_recovery_rate", 0.3))
-	var spawn_ratio = float(cfg.get("spawn_range_ratio", 0.3))
 
 	var actual_recovery = recovery_rate * 3.0
 
 	var stats_parts: Array = []
 	stats_parts.append("可上场: %d单位" % green_count)
 	stats_parts.append("能量恢复: %.2f (实际: %.1f/秒)" % [recovery_rate, actual_recovery])
-	stats_parts.append("部署范围: %.0f%%" % (spawn_ratio * 100))
 
 	var stats_label = Label.new()
 	stats_label.text = "  |  ".join(PackedStringArray(stats_parts))
@@ -432,6 +431,8 @@ func _create_instrument_item(cfg: Dictionary, is_equipped: bool) -> Control:
 	stats_label.add_theme_color_override("font_color", Color(0.6, 0.7, 0.8, 0.85))
 	stats_label.autowrap_mode = TextServer.AUTOWRAP_WORD
 	stats_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	# v20.13c: 解释每卡部署次数规则——可上场数是同时在场总量，每卡另有独立次数上限
+	stats_label.tooltip_text = "可上场单位数 = 绿槽装备的战斗卡数（同时在场总量）。\n每张卡另有独立部署次数上限：轻装6 / 支援5 / 装甲·空中4 / 堡垒3 / 侦测·指挥类核心2；传说·神话或高等级卡 -1（最低1）。次数按场消耗，耗尽后本场无法再部署该卡。"
 	stats_row.add_child(stats_label)
 
 	var advanced_parts: Array = []

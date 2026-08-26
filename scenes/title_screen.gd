@@ -45,6 +45,8 @@ func _ready() -> void:
 	var arena_btn: Button = get_node_or_null("CenterContainer/MainVBox/ButtonsVBox/Arena3v3Button")
 	if arena_btn:
 		arena_btn.pressed.connect(_on_arena_3v3)
+	# v21 余烬要塞：基地主枢纽入口（程序化创建，样式复刻继续按钮，插在其下方）
+	_add_bunker_button()
 	var settings_panel = get_node_or_null("SettingsOverlay/CenterContainer/SettingsPanel")
 	if settings_panel and settings_panel.has_signal("closed"):
 		settings_panel.closed.connect(_on_settings_closed)
@@ -179,6 +181,39 @@ func _on_settings() -> void:
 	var overlay = get_node_or_null("SettingsOverlay")
 	if overlay:
 		overlay.visible = true
+
+## v21 余烬要塞：程序化添加"进入基地"按钮（复刻继续按钮样式，插在其下方第一位）
+func _add_bunker_button() -> void:
+	var vbox = get_node_or_null("CenterContainer/MainVBox/ButtonsVBox")
+	if vbox == null:
+		return
+	if vbox.has_node("EnterBunkerButton"):
+		return
+	var continue_btn: Button = get_node_or_null("CenterContainer/MainVBox/ButtonsVBox/ContinueButton")
+	var btn := Button.new()
+	btn.name = "EnterBunkerButton"
+	btn.text = "进入基地"
+	if continue_btn:
+		# 样式全盘复刻继续按钮（tscn 内嵌 StyleBoxFlat 三态）
+		for style_key in ["normal", "hover", "pressed", "disabled", "focus"]:
+			var sb: StyleBox = continue_btn.get_theme_stylebox(style_key)
+			if sb:
+				btn.add_theme_stylebox_override(style_key, sb)
+		btn.add_theme_font_size_override("font_size",
+			continue_btn.get_theme_font_size("font_size"))
+		btn.custom_minimum_size = continue_btn.custom_minimum_size
+	btn.pressed.connect(_on_enter_bunker)
+	vbox.add_child(btn)
+	var insert_idx := 0
+	if continue_btn:
+		insert_idx = continue_btn.get_index() + 1
+	vbox.move_child(btn, insert_idx)
+
+## v21 余烬要塞：进入基地主枢纽（BunkerManager 懒加载后常驻 root，状态跨场景保留）
+func _on_enter_bunker() -> void:
+	_play_sfx("button")
+	get_tree().change_scene_to_file("res://scenes/bunker/bunker_main.tscn")
+
 
 func _on_settings_closed() -> void:
 	var overlay = get_node_or_null("SettingsOverlay")

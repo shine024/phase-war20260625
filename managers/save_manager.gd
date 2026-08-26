@@ -70,6 +70,8 @@ const DEFERRED_MANAGER_LOADS: Array = [
 	# v6.6: 情报发现/进化/敌源MOD（deferred，非战斗实时）
 	["/root/IntelDiscoveryManager", "intel_discovery"],
 	["/root/IntelEvolutionManager", "intel_evolution"],
+	# v21: 余烬要塞基地（非战斗实时；懒加载，_safe_load_manager 会按需实例化）
+	["/root/BunkerManager", SK_BUNKER],
 ]
 const CRITICAL_RESETTABLE_MANAGERS: Array[String] = [
 	"BlueprintManager",
@@ -84,6 +86,8 @@ const CRITICAL_RESETTABLE_MANAGERS: Array[String] = [
 	"IntelManual",
 	# v8.x: 相位师技能树（修复新游戏未清空导致技能点跨档残留）
 	"PhaseMasterSkillManager",
+	# v21: 余烬要塞基地（load_state({}) 全重置；未实例化时新游戏天然为默认态）
+	"BunkerManager",
 ]
 const DEFERRED_RESET_BATCH_SIZE := 4
 
@@ -151,6 +155,8 @@ const SK_LEGACY_COMPANY_REP: String = SaveConstants.SK_LEGACY_COMPANY_REP
 const SK_PHASE_MASTER_SKILL: String = SaveConstants.SK_PHASE_MASTER_SKILL
 # v6.6(挂机): AFK 状态存档键别名
 const SK_AFK: String = SaveConstants.SK_AFK
+# v21: 余烬要塞基地状态存档键别名
+const SK_BUNKER: String = SaveConstants.SK_BUNKER
 
 var _deferred_load_data: Dictionary = {}
 var _deferred_manager_queue: Array = []
@@ -692,6 +698,9 @@ func save_game() -> bool:
 	_collect_manager_state(data, "/root/IntelManual", SK_INTEL_MANUAL)
 	# v8.x: 相位师技能树（critical，战斗实时查询 get_active_effects）
 	_collect_manager_state(data, "/root/PhaseMasterSkillManager", SK_PHASE_MASTER_SKILL)
+	# v21: 余烬要塞基地（懒加载；ensure 后收集，缺失档=默认态由 BunkerManager 兜底）
+	ManagerLazyLoader.ensure_loaded("bunker")
+	_collect_manager_state(data, "/root/BunkerManager", SK_BUNKER)
 	_collect_noncritical_save_data(data, now_ms)
 	var gmgr: Node = get_node_or_null("/root/GameManager")
 	# 保存前同步 current_level：确保与 LevelProgressManager.max_unlocked_level 一致

@@ -515,43 +515,12 @@ func get_enemy_spawn_position() -> Vector2:
 		return enemy_spawn.global_position
 	return Vector2(1100, 300)
 
-## 部署带：从我方出生点 X 向敌方方向延伸 (spawn_range_ratio × 至战场右缘距离)；Y 在战场常用高度内
-const _DEPLOY_BATTLE_MIN_X: float = 40.0
-const _DEPLOY_BATTLE_MAX_X: float = 1240.0
+## 部署带 Y 边界（车道高度范围；X 向部署带功能已随 spawn_range_ratio 下线，v21.x 删除）
 var _deploy_y_min: float = 40.0
 var _deploy_y_max: float = 540.0
-const _DEFAULT_DEPLOY_TOLERANCE_PX: float = 72.0
-
-func is_position_in_player_deploy_zone(world_pos: Vector2, spawn_range_ratio: float) -> bool:
-	var r: float = clampf(spawn_range_ratio, 0.05, 1.0)
-	var ax: float = get_player_spawn_position().x
-	var span: float = _DEPLOY_BATTLE_MAX_X - ax
-	var max_x: float = ax + span * r
-	var min_x: float = maxf(_DEPLOY_BATTLE_MIN_X, ax - 120.0)
-	return world_pos.x >= min_x and world_pos.x <= max_x and world_pos.y >= _deploy_y_min and world_pos.y <= _deploy_y_max
-
-## 返回玩家部署位置（含容错吸附）：若点击在允许范围附近，则吸附到合法区域并返回。
-func get_player_deploy_position(world_pos: Vector2, spawn_range_ratio: float, tolerance_px: float = _DEFAULT_DEPLOY_TOLERANCE_PX) -> Dictionary:
-	var r: float = clampf(spawn_range_ratio, 0.05, 1.0)
-	var ax: float = get_player_spawn_position().x
-	var span: float = _DEPLOY_BATTLE_MAX_X - ax
-	var max_x: float = ax + span * r
-	var min_x: float = maxf(_DEPLOY_BATTLE_MIN_X, ax - 120.0)
-	var tol: float = maxf(0.0, tolerance_px)
-	var near_enough: bool = (
-		world_pos.x >= (min_x - tol)
-		and world_pos.x <= (max_x + tol)
-		and world_pos.y >= (_deploy_y_min - tol)
-		and world_pos.y <= (_deploy_y_max + tol)
-	)
-	if not near_enough:
-		return {}
-	return {
-		"position": Vector2(
-			clampf(world_pos.x, min_x, max_x),
-			clampf(world_pos.y, _deploy_y_min, _deploy_y_max)
-		)
-	}
+# v21.x: 删除 is_position_in_player_deploy_zone / get_player_deploy_position 及
+# _DEPLOY_BATTLE_MIN_X/_DEPLOY_BATTLE_MAX_X/_DEFAULT_DEPLOY_TOLERANCE_PX——
+# spawn_range_ratio 部署带功能下线，全项目零调用方。
 
 ## 敌方刷新位置：X 可轻微抖动，Y 始终锁在小道内
 func get_enemy_spawn_position_in_lane(x_jitter: float = 20.0, y_jitter: float = 8.0) -> Vector2:

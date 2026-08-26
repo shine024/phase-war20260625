@@ -28,6 +28,9 @@ static func select_target_direct(attacker: Node2D, enemies: Array) -> Node2D:
 			continue
 		if "hp" in e and float(e.hp) <= 0.0:
 			continue
+		# v20.15: 真隐身过滤（隐身且攻击方阵营无侦测源 → 不可选中）
+		if not CardAbilityManager.is_unit_targetable(e, attacker):
+			continue
 		if not can_hit_air:
 			var es = e.get("stats") as UnitStats
 			if es != null and es.combat_kind == GameConstants.CombatKind.AIR:
@@ -55,7 +58,7 @@ static func select_target_indirect(attacker: Node2D, enemies: Array) -> Node2D:
 	if enemies.is_empty():
 		return null
 	var origin = attacker.global_position
-	var valid = _filter_attackable(enemies)
+	var valid = _filter_attackable(enemies, attacker)
 	if valid.is_empty():
 		return null
 	var stats = attacker.get("stats") as UnitStats
@@ -86,7 +89,7 @@ static func select_target_aerial(attacker: Node2D, enemies: Array) -> Node2D:
 	if enemies.is_empty():
 		return null
 	var origin = attacker.global_position
-	var valid = _filter_attackable(enemies)
+	var valid = _filter_attackable(enemies, attacker)
 	if valid.is_empty():
 		return null
 	# v8.x: SNIPER 标签优先锁定高价值目标（早于空中优先级，确保狙击手锁 Boss）
@@ -180,12 +183,16 @@ static func select_target(attacker: Node2D, enemies: Array, weapon_type: int) ->
 		2: return select_target_aerial(attacker, enemies)      # AERIAL
 		_: return select_target_direct(attacker, enemies)
 
-static func _filter_attackable(enemies: Array) -> Array:
+## v20.15: attacker 参数用于真隐身过滤（隐身且攻击方阵营无侦测源 → 不可选中）；
+## 传 null 时不过滤隐身（保持旧行为，供无攻击者上下文调用）。
+static func _filter_attackable(enemies: Array, attacker: Node2D = null) -> Array:
 	var result = []
 	for e in enemies:
 		if e == null or not is_instance_valid(e):
 			continue
 		if "hp" in e and float(e.hp) <= 0.0:
+			continue
+		if attacker != null and not CardAbilityManager.is_unit_targetable(e, attacker):
 			continue
 		result.append(e)
 	return result

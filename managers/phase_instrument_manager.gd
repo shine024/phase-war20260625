@@ -642,6 +642,7 @@ func equip_card(slot_index: int, card: CardResource, _energy_manager: Node = nul
 	else:
 		# 新装到空槽：原语义不变（仅移新卡出包，无旧卡归还）
 		SignalBus.card_equipped.emit(slot_index, equip_id, _card_type_name(card))
+	_mark_loadouts_dirty()
 	_emit_slots_changed()
 	var DebugLog = get_node_or_null("/root/DebugLogManager")
 	if DebugLog:
@@ -667,6 +668,7 @@ func unequip_card(slot_index: int) -> void:
 	arr[color_index] = null
 	instrument_slots[color] = arr
 	# v9.x（P2-7范围B）：红/蓝槽法则同步已随法则系统退役移除
+	_mark_loadouts_dirty()
 	_emit_slots_changed()
 	SignalBus.card_unequipped.emit(slot_index)
 	# 将卡归还到背包
@@ -695,6 +697,7 @@ func unequip_all_and_return_to_backpack() -> void:
 		instrument_slots[color] = arr
 
 	# v9.x（P2-7范围B）：法则槽同步已随法则系统退役移除
+	_mark_loadouts_dirty()
 	_emit_slots_changed()
 
 	# 通过信号将卡片逐一放回背包的第一个空位
@@ -1162,9 +1165,7 @@ func get_energy_recovery_rate() -> float:
 	var recovery_bonus: float = float(phase_field_bonus.get("energy_output_pct", 0.0))
 	return base_rate * (1.0 + recovery_bonus) * 3.0  # 能量获得速度乘上3
 
-func get_spawn_range_ratio() -> float:
-	var cfg: Dictionary = get_current_instrument()
-	return maxf(0.1, float(cfg.get("spawn_range_ratio", 0.3)) + _get_property_value(cfg, "pi_deploy_range", 0.0))
+# v21.x: 移除 get_spawn_range_ratio()（部署带功能下线，全项目无调用方）
 
 func get_instrument_property_entries() -> Array:
 	var cfg: Dictionary = get_current_instrument()

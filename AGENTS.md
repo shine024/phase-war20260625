@@ -519,6 +519,7 @@ User-driven collaboration. Every task follows: **Question → Options → Decisi
 部署  bottom_instrument_bar → 传 instance_id → request_player_deploy →
        _reach_alive_limit_for_card(base_card_id)  # 上限按卡种
        get_loadout_by_platform_card_id(instance_id)  # 精确取该实例
+       _has_deploy_uses(部署身份键)  # v21.4 次数池按实例分池（键=instance_id，旧卡裸id）
        → _build_stats_cached(platform_card实例)  # stats 已含该实例养成
 
 显示  card_info_panel._show_player_unit → _resolve_source_instance_card(unit) → 按 unit.source_instance_id meta 取实例卡

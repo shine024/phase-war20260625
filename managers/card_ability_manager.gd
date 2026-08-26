@@ -381,13 +381,15 @@ static func apply_medic_heal_aura_tick(unit: Node2D) -> void:
 			ally.hp = min(ally.hp + heal_amount, ally_max_hp)
 
 ## RADAR 雷达光环：射程加成（按槽位判定范围）
-static func apply_radar_range_aura(unit: Node2D, delta: float) -> void:
+static func apply_radar_range_aura(unit: Node2D, delta: float, replay := false) -> void:
 	if unit == null or not ("stats" in unit) or unit.stats == null:
 		return
-	# 用 meta 标记避免重复施加
+	# 用 meta 标记避免重复施加（replay=true 供后入场补偿：源已标记，只补未受 buff 的友军）
 	if unit.has_meta("radar_aura_applied"):
-		return
-	unit.set_meta("radar_aura_applied", true)
+		if not replay:
+			return
+	else:
+		unit.set_meta("radar_aura_applied", true)
 	var is_player: bool = unit.is_player if "is_player" in unit else true
 	var star: int = _get_unit_star(unit)
 	var params: Dictionary = _get_aura_data().get_aura_params(_get_aura_data().Category.RADAR_RANGE, star)
@@ -422,12 +424,14 @@ static func remove_radar_range_aura(unit: Node2D) -> void:
 			ally.remove_meta("radar_orig_crit")
 
 ## SCOUT/STEALTH 侦查光环：暴击+命中（按槽位判定范围）
-static func apply_scout_crit_aura(unit: Node2D, delta: float) -> void:
+static func apply_scout_crit_aura(unit: Node2D, delta: float, replay := false) -> void:
 	if unit == null or not ("stats" in unit) or unit.stats == null:
 		return
 	if unit.has_meta("scout_aura_applied"):
-		return
-	unit.set_meta("scout_aura_applied", true)
+		if not replay:
+			return
+	else:
+		unit.set_meta("scout_aura_applied", true)
 	var is_player: bool = unit.is_player if "is_player" in unit else true
 	var star: int = _get_unit_star(unit)
 	var params: Dictionary = _get_aura_data().get_aura_params(_get_aura_data().Category.SCOUT_CRIT, star)
@@ -462,12 +466,14 @@ static func remove_scout_crit_aura(unit: Node2D) -> void:
 			ally.remove_meta("scout_orig_crit")
 
 ## FORTRESS 堡垒光环：减伤+防御（按槽位判定范围）
-static func apply_fortress_defense_aura(unit: Node2D, delta: float) -> void:
+static func apply_fortress_defense_aura(unit: Node2D, delta: float, replay := false) -> void:
 	if unit == null or not ("stats" in unit) or unit.stats == null:
 		return
 	if unit.has_meta("fortress_aura_applied"):
-		return
-	unit.set_meta("fortress_aura_applied", true)
+		if not replay:
+			return
+	else:
+		unit.set_meta("fortress_aura_applied", true)
 	var is_player: bool = unit.is_player if "is_player" in unit else true
 	var star: int = _get_unit_star(unit)
 	var params: Dictionary = _get_aura_data().get_aura_params(_get_aura_data().Category.FORTRESS_DEF, star)
@@ -523,7 +529,7 @@ static func apply_carrier_repair_aura_tick(unit: Node2D) -> void:
 			continue
 		if not ("stats" in ally) or ally.stats == null:
 			continue
-		if not _get_aura_data().is_mechanical_platform(ally.stats.platform_type):
+		if not _get_aura_data().is_mechanical_ally(ally):
 			continue
 		var heal_amount: float = ally.stats.max_hp * heal_pct
 		if not ally.has_meta("carrier_repair_buffed"):
@@ -534,12 +540,14 @@ static func apply_carrier_repair_aura_tick(unit: Node2D) -> void:
 			ally.hp = min(ally.hp + heal_amount, ally.stats.max_hp)
 
 ## COMMAND_GLOBAL 指挥光环：全场友军攻/速/暴加成
-static func apply_command_global_aura(unit: Node2D) -> void:
+static func apply_command_global_aura(unit: Node2D, replay := false) -> void:
 	if unit == null or not ("stats" in unit) or unit.stats == null:
 		return
 	if unit.has_meta("command_aura_applied"):
-		return
-	unit.set_meta("command_aura_applied", true)
+		if not replay:
+			return
+	else:
+		unit.set_meta("command_aura_applied", true)
 	var is_player: bool = unit.is_player if "is_player" in unit else true
 	var star: int = _get_unit_star(unit)
 	var params: Dictionary = _get_aura_data().get_aura_params(_get_aura_data().Category.COMMAND_GLOBAL, star)
@@ -856,6 +864,253 @@ static func on_armor_unit_dying(unit: Node2D) -> bool:
 	if randf() < REPAIR_ARMOR_SAVE_CHANCE:
 		return true
 	return false
+
+# ════════════════════════════════════════════════════════════════════════
+#  v20.15 高价值单位固定机制（真隐身反隐 / 光环管线 / 个体机制）
+# ════════════════════════════════════════════════════════════════════════
+
+## ── 真隐身 + 反隐闭环 ────────────────────────────────────────────
+## 隐身状态来源：
+##   ① stealth_aircraft 周期隐身（_stealth_active meta，敌我通用）
+##   ② 开局渗透隐身（hidden_grace_until meta，毫秒口径；我方 stalker / 敌方 stealth tag）
+## 隐身期间不可被单体索敌选中；范围/AOE 伤害豁免（范围武器克隐身，v20.15 拍板）。
+
+static func is_unit_hidden(unit: Node2D) -> bool:
+	if unit == null or not is_instance_valid(unit):
+		return false
+	if unit.has_meta("_stealth_active") and bool(unit.get_meta("_stealth_active")):
+		return true
+	if unit.has_meta("hidden_grace_until"):
+		return Time.get_ticks_msec() < int(unit.get_meta("hidden_grace_until", 0))
+	return false
+
+## 目标对攻击者是否可选（隐身且攻击方阵营无侦测源 → 不可选中）
+static func is_unit_targetable(target: Node2D, attacker: Node2D) -> bool:
+	if target == null or not is_instance_valid(target):
+		return false
+	if not is_unit_hidden(target):
+		return true
+	var attacker_is_player: bool = true
+	if attacker != null and is_instance_valid(attacker) and "is_player" in attacker:
+		attacker_is_player = bool(attacker.is_player)
+	return side_has_detection(attacker_is_player)
+
+## 侦测源卡 tags（雷达/侦测家族由 UCT 名字关键词自动注入 + 侦察系显式 tag）
+const DETECTION_TAGS: Array[String] = ["radar", "雷达", "侦测", "recon"]
+
+## 侦测源存在性缓存（0.5s TTL——索敌热路径防每帧全组扫描）
+static var _detection_cache: Dictionary = {"player": false, "enemy": false, "until_ms": 0}
+
+static func side_has_detection(is_player: bool) -> bool:
+	var now_ms: int = Time.get_ticks_msec()
+	if now_ms >= int(_detection_cache.get("until_ms", 0)):
+		_detection_cache["player"] = _scan_side_detection(true)
+		_detection_cache["enemy"] = _scan_side_detection(false)
+		_detection_cache["until_ms"] = now_ms + 500
+	return bool(_detection_cache.get("player" if is_player else "enemy", false))
+
+## 阵营侦测源扫描：
+## 玩家口径 = 卡 tags 命中 DETECTION_TAGS，或 stats 带 is_recon_unit meta；
+## 敌方口径 = legacy platform_type == 4（雷达平台，各时代波次表已天然配好反制手段）。
+static func _scan_side_detection(is_player: bool) -> bool:
+	var tree: SceneTree = Engine.get_main_loop() as SceneTree
+	if tree == null:
+		return false
+	var nodes: Array = tree.get_nodes_in_group("player_units" if is_player else "enemy_units")
+	for node in nodes:
+		if not is_instance_valid(node) or not (node is Node2D):
+			continue
+		if "_is_dying" in node and node._is_dying:
+			continue
+		if is_player:
+			if _has_any_tag(node, DETECTION_TAGS):
+				return true
+			if "stats" in node and node.stats != null \
+					and node.stats.has_meta("is_recon_unit") \
+					and bool(node.stats.get_meta("is_recon_unit", false)):
+				return true
+		else:
+			if "stats" in node and node.stats != null and int(node.stats.platform_type) == 4:
+				return true
+	return false
+
+static func _has_any_tag(unit: Node2D, tag_list: Array) -> bool:
+	for t in tag_list:
+		if _has_tag(unit, String(t)):
+			return true
+	return false
+
+## 光环星级乘数（与 AuraData.star_multiplier 同式：★1=1.0，每星+5%）
+static func _star_scale(star: int) -> float:
+	return 1.0 + float(maxi(1, star) - 1) * 0.05
+
+## ── 补给卡车（supply tag）：弹药补给光环 ──────────────────────────
+## 每 3 秒给全体友军续 4 秒攻速 buff（+12%×星），走 _card_skill_stat_bonus 通道
+## （construct_unit._update_card_skill_bonus 每 0.5s 差异应用/到期还原）。
+## 注意 until 写裸毫秒——消费端用裸毫秒比较；periodic 引擎写秒级与其口径不一致
+## （存量问题，见 v20.15 记档），此处按消费端口径写。
+const SUPPLY_INTERVAL: float = 3.0
+const SUPPLY_BUFF_DURATION_MS: int = 4000
+const SUPPLY_ATTACK_SPEED_BONUS: float = 0.12
+
+static func update_supply_aura_periodic(unit: Node2D, delta: float) -> void:
+	if unit == null or not is_instance_valid(unit):
+		return
+	if not _has_tag(unit, "supply"):
+		return
+	if not unit.has_meta("_supply_cd"):
+		unit.set_meta("_supply_cd", SUPPLY_INTERVAL)
+	var cd: float = float(unit.get_meta("_supply_cd")) - delta
+	if cd > 0.0:
+		unit.set_meta("_supply_cd", cd)
+		return
+	unit.set_meta("_supply_cd", SUPPLY_INTERVAL)
+	var is_player: bool = unit.is_player if "is_player" in unit else true
+	var bonus: float = SUPPLY_ATTACK_SPEED_BONUS * _star_scale(_get_unit_star(unit))
+	var now_ms: int = Time.get_ticks_msec()
+	for ally in _get_nearby_allies(unit, 0.0, is_player):
+		if not is_instance_valid(ally) or ally == unit:
+			continue
+		if not ("stats" in ally) or ally.stats == null:
+			continue
+		# 合并写入（不覆盖并行的技能 stat_bonus 键）
+		var sb: Dictionary = ally.get_meta("_card_skill_stat_bonus") if ally.has_meta("_card_skill_stat_bonus") else {}
+		sb["attack_speed"] = bonus
+		ally.set_meta("_card_skill_stat_bonus", sb)
+		ally.set_meta("_card_skill_stat_bonus_until", now_ms + SUPPLY_BUFF_DURATION_MS)
+
+## ── 相位中继站（relay tag）：能量回充 ────────────────────────────
+## 玩家侧每 3 秒 +3×星能量；敌方 relay 单位 no-op（敌方无能量系统）。
+const RELAY_INTERVAL: float = 3.0
+const RELAY_ENERGY_PER_TICK: float = 3.0
+
+static func update_relay_periodic(unit: Node2D, delta: float) -> void:
+	if unit == null or not is_instance_valid(unit):
+		return
+	if not _has_tag(unit, "relay"):
+		return
+	var is_player: bool = unit.is_player if "is_player" in unit else true
+	if not is_player:
+		return
+	if not unit.has_meta("_relay_cd"):
+		unit.set_meta("_relay_cd", RELAY_INTERVAL)
+	var cd: float = float(unit.get_meta("_relay_cd")) - delta
+	if cd > 0.0:
+		unit.set_meta("_relay_cd", cd)
+		return
+	unit.set_meta("_relay_cd", RELAY_INTERVAL)
+	var tree: SceneTree = Engine.get_main_loop() as SceneTree
+	if tree == null:
+		return
+	var em: Node = tree.root.get_node_or_null("EnergyManager")
+	if em == null or not em.has_method("add_energy"):
+		return
+	em.add_energy(RELAY_ENERGY_PER_TICK * _star_scale(_get_unit_star(unit)))
+
+## ── 侦察系（recon tag）：周期暴击标记 ────────────────────────────
+## 每 10 秒给最高威胁（HP 最高）敌人挂 crit_mark 8 秒；
+## 消费端 target_selection._prioritize_crit_marked（远程集火优先）已就绪，秒级口径同源。
+const SCOUT_MARK_INTERVAL: float = 10.0
+const SCOUT_MARK_DURATION_SEC: float = 8.0
+
+static func update_scout_mark_periodic(unit: Node2D, delta: float) -> void:
+	if unit == null or not is_instance_valid(unit):
+		return
+	if not _has_tag(unit, "recon"):
+		return
+	if not unit.has_meta("_scout_mark_cd"):
+		unit.set_meta("_scout_mark_cd", SCOUT_MARK_INTERVAL)
+	var cd: float = float(unit.get_meta("_scout_mark_cd")) - delta
+	if cd > 0.0:
+		unit.set_meta("_scout_mark_cd", cd)
+		return
+	unit.set_meta("_scout_mark_cd", SCOUT_MARK_INTERVAL)
+	var is_player: bool = unit.is_player if "is_player" in unit else true
+	var enemies: Array = _get_all_units_in_group(unit, "enemy_units" if is_player else "player_units")
+	if enemies.is_empty():
+		return
+	var best: Node2D = null
+	var best_hp: float = -1.0
+	for enemy in enemies:
+		if not is_instance_valid(enemy):
+			continue
+		var ehp: float = float(enemy.hp) if "hp" in enemy else 0.0
+		if ehp > best_hp:
+			best_hp = ehp
+			best = enemy
+	if best != null:
+		best.set_meta("_crit_marked_until", Time.get_ticks_msec() / 1000.0 + SCOUT_MARK_DURATION_SEC)
+
+## ── 风暴核心（storm_core tag）：周期全场风暴 ──────────────────────
+## 每 6 秒对全体敌人造成 atk_a×30% 直伤（走 take_damage，命中隐身单位——AOE 豁免口径；
+## 数值 v20.15 待平衡）。
+const STORM_INTERVAL: float = 6.0
+const STORM_DAMAGE_RATIO: float = 0.30
+
+static func update_storm_periodic(unit: Node2D, delta: float) -> void:
+	if unit == null or not is_instance_valid(unit):
+		return
+	if not _has_tag(unit, "storm_core"):
+		return
+	if not unit.has_meta("_storm_cd"):
+		unit.set_meta("_storm_cd", STORM_INTERVAL)
+	var cd: float = float(unit.get_meta("_storm_cd")) - delta
+	if cd > 0.0:
+		unit.set_meta("_storm_cd", cd)
+		return
+	unit.set_meta("_storm_cd", STORM_INTERVAL)
+	if not ("stats" in unit) or unit.stats == null:
+		return
+	var dmg: float = float(unit.stats.attack_armor) * STORM_DAMAGE_RATIO
+	if dmg <= 0.0:
+		return
+	var is_player: bool = unit.is_player if "is_player" in unit else true
+	for enemy in _get_all_units_in_group(unit, "enemy_units" if is_player else "player_units"):
+		if not is_instance_valid(enemy):
+			continue
+		if enemy.has_method("take_damage"):
+			enemy.take_damage(dmg, unit)
+
+## ── 纳米修复机（repair_vehicle tag）：修复脉冲 ────────────────────
+## 每 3 秒治疗血量比例最低友军 5%×星 maxHP（与 v20.14 部署返还保护并存，
+## 让"纳米修复射线"名副其实）。
+const NANO_REPAIR_INTERVAL: float = 3.0
+const NANO_REPAIR_PCT: float = 0.05
+
+static func update_nano_repair_pulse(unit: Node2D, delta: float) -> void:
+	if unit == null or not is_instance_valid(unit):
+		return
+	if not _has_tag(unit, "repair_vehicle"):
+		return
+	if not unit.has_meta("_nano_repair_cd"):
+		unit.set_meta("_nano_repair_cd", NANO_REPAIR_INTERVAL)
+	var cd: float = float(unit.get_meta("_nano_repair_cd")) - delta
+	if cd > 0.0:
+		unit.set_meta("_nano_repair_cd", cd)
+		return
+	unit.set_meta("_nano_repair_cd", NANO_REPAIR_INTERVAL)
+	var is_player: bool = unit.is_player if "is_player" in unit else true
+	var heal_pct: float = NANO_REPAIR_PCT * _star_scale(_get_unit_star(unit))
+	var best: Node2D = null
+	var best_ratio: float = 1.1
+	for ally in _get_all_units_in_group(unit, "player_units" if is_player else "enemy_units"):
+		if not is_instance_valid(ally):
+			continue
+		if not ("stats" in ally) or ally.stats == null or not ("hp" in ally):
+			continue
+		var mhp: float = float(ally.stats.max_hp)
+		if mhp <= 0.0:
+			continue
+		var hp: float = float(ally.hp)
+		if hp <= 0.0:
+			continue
+		var ratio: float = hp / mhp
+		if ratio < best_ratio:
+			best_ratio = ratio
+			best = ally
+	if best != null and best.has_method("heal"):
+		best.heal(float(best.stats.max_hp) * heal_pct)
+
 
 ## ── 工具函数 ──────────────────────────────────────────────────────
 

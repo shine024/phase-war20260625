@@ -1046,6 +1046,11 @@ func _build_retreat_confirm_dialog() -> Control:
 func _on_back_to_title() -> void:
 	if SaveManager:
 		SaveManager.save_game()
+	# v21 余烬要塞：从基地经兵棋室进入战场时，返回按钮回基地而非标题
+	if Engine.has_meta("launch_from_bunker"):
+		Engine.remove_meta("launch_from_bunker")
+		get_tree().change_scene_to_file("res://scenes/bunker/bunker_main.tscn")
+		return
 	get_tree().change_scene_to_file("res://scenes/title_screen.tscn")
 
 func _on_world_map() -> void:

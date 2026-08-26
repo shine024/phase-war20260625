@@ -144,19 +144,22 @@ static func ability_artillery_barrage(star: int) -> Dictionary:
 		"description": "每%d秒从屏幕外发起%d发火炮曲射，每发间隔%.1f秒，随机打击敌方单位" % [int(interval), shots, shot_interval],
 	}
 
-## 2. 幻影克隆（螺旋势力）— 同一战斗卡可放2个单位，克隆体+攻/血
+## 2. 幻影克隆（螺旋势力）— 同一战斗卡可放多个单位，克隆体+攻/血
+## v21.x: 7星 deploy_count 2→3、克隆体攻+120%/血+100%（满13格战斗卡的质变补偿）；
+##        低星（3/5星）保持 deploy_count=2 + 原有降级数值。
 static func ability_phantom_clone(star: int) -> Dictionary:
-	var atk_bonus: float = 1.0   # +100%
-	var hp_bonus: float = 0.8    # +80%
+	var atk_bonus: float = 1.2   # v21.x: 7星 +120%（原+100%）
+	var hp_bonus: float = 1.0    # v21.x: 7星 +100%（原+80%）
+	var deploy_count: int = 3    # v21.x: 7星每张卡放3个单位
 	match star:
-		3: atk_bonus = 0.2; hp_bonus = 0.15
-		5: atk_bonus = 0.5; hp_bonus = 0.4
+		3: atk_bonus = 0.2; hp_bonus = 0.15; deploy_count = 2
+		5: atk_bonus = 0.5; hp_bonus = 0.4; deploy_count = 2
 	return {
 		"id": "phantom_clone",
 		"name": "幻影克隆",
 		"type": "passive",
-		"params": {"deploy_count": 2, "clone_atk_bonus": atk_bonus, "clone_hp_bonus": hp_bonus},
-		"description": "每张战斗卡可放置2个单位，克隆体攻击+%d%%、血量+%d%%" % [int(atk_bonus * 100), int(hp_bonus * 100)],
+		"params": {"deploy_count": deploy_count, "clone_atk_bonus": atk_bonus, "clone_hp_bonus": hp_bonus},
+		"description": "每张战斗卡可放置%d个单位，克隆体攻击+%d%%、血量+%d%%" % [deploy_count, int(atk_bonus * 100), int(hp_bonus * 100)],
 	}
 
 ## 3. 直射穿透（影幕势力）— 100%穿透，每穿一个目标衰减
@@ -166,10 +169,11 @@ static func ability_phantom_clone(star: int) -> Dictionary:
 ##   falloff_per_target 是每穿一个目标的伤害衰减（bullet.gd 消费）。
 ##   三参数各司其职：pen_ratio=穿甲, pierce_targets=穿几个, falloff=衰减多少。
 ## v9.3: 三行布局每行只有 3 个敌方单位（主目标+2穿透=打穿一整行），pierce_targets 按比例下调。
+## v21.x: 7星 pierce_targets 2→3（Umbra 7星仅11格，穿透数补偿；低星降级值不变）。
 static func ability_piercing_shot(star: int) -> Dictionary:
 	var pen_ratio: float = 1.0   # 100%
 	var falloff: float = 0.1     # 每穿一个衰减10%
-	var pierce_targets: int = 2  # 7星：穿透2个额外目标（三行布局每行3单位，打穿一整行）
+	var pierce_targets: int = 3  # v21.x: 7星穿透3个额外目标
 	match star:
 		3: pen_ratio = 0.4; falloff = 0.2; pierce_targets = 0
 		6: pen_ratio = 0.7; falloff = 0.15; pierce_targets = 1
@@ -322,80 +326,101 @@ static func ability_generic_overdrive(star: int) -> Dictionary:
 ## v6.2：移除 red/blue 法则槽，新增 rune 符文槽（替代法则系统）
 ## v7.x：移除 yellow 能量槽（能量卡系统移除，能量上限改由相位仪星级决定）
 ## 槽位类型：green=战斗卡(max9), rune=符文(max6)
-## 每个星级的分配不同，体现策略变化——不是每级都平均增长
-## v9.3: 7星 = 13格（green9 + rune4），对齐三行×三列9格战场布局
-## v9.4: 6星绿色槽从3提升到5，避免5星→6星战斗槽倒退（4→3不合理）
-## v9.5: 全相位仪绿槽下限 = MIN_GREEN_SLOTS（3），保证低星也能装备足够战斗卡上场
+## v21.x 布局重设计：
+##   - 总格随星增长，各势力靠绿/符比例差异化
+##   - 7星分布（19款）：13格×15款(79%) / 12格×3款(16%) / 11格×1款(5%)；绿8~9占17款（89%）
+##   - 符文6全表唯一：仅 Umbra 7星（极个别）；格子少的用专属强能力补偿（Umbra穿透3目标/Aegis神盾壁垒）
+##   - 全部布局 green 设计值 ≥ MIN_GREEN_SLOTS，clamp 不再改变总数
+##   - 删除 spawn_range_ratio（部署带功能已下线，游戏逻辑无消费方）
 const MIN_GREEN_SLOTS := 3   # 绿色（战斗卡）槽位全局下限；_make_def 派生 slot_counts 时强制取 maxi(raw, 此值)
 const _STAR_LAYOUT := {
-	1: {"green": 1, "rune": 2, "spawn_range_ratio": 0.30},   # 3格：起步（2符文槽，可激活T2符文之语）
-	2: {"green": 2, "rune": 2, "spawn_range_ratio": 0.40},   # 4格：+1战斗（2符文槽，保持单调）
-	3: {"green": 2, "rune": 3, "spawn_range_ratio": 0.55},   # 5格：侧重符文
-	4: {"green": 3, "rune": 2, "spawn_range_ratio": 0.70},   # 5格：侧重战斗
-	5: {"green": 4, "rune": 4, "spawn_range_ratio": 0.82},   # 8格：均衡扩展
-	6: {"green": 5, "rune": 3, "spawn_range_ratio": 0.92},   # v9.4: 8格（战斗+5/符文-2，比5星多1战斗卡）
-	7: {"green": 9, "rune": 4, "spawn_range_ratio": 1.00},   # v9.3: 13格（9战斗+4符文），侧重战斗（高星追求火力）
+	1: {"green": 3, "rune": 2},   # 5格
+	2: {"green": 3, "rune": 1},   # 4格
+	3: {"green": 3, "rune": 2},   # 5格
+	4: {"green": 4, "rune": 2},   # 6格
+	5: {"green": 5, "rune": 3},   # 8格
+	6: {"green": 6, "rune": 4},   # 10格
+	7: {"green": 9, "rune": 4},   # v21.x: 13格满配（通用表覆盖商店2款+敌方9款，7星主流）
 }
 
 ## 势力专属布局 - 每个势力有独特的格子分配特点
-## v6.2：red/blue 法则槽全部改为 rune 符文槽
-## v9.3：7星通用布局扩展到 13格（green 9 + rune 4）
-## 每个势力的槽位分配有独特侧重——不全是满配9+6，有取舍
+## v21.x：全势力补齐 1-7 星完整表；7星 13×4表 / 12×3表 / 11×1表
 
-# aether_dynamics (神盾): 防御特化 - 偏符文，战斗卡少
-## v9.4: 6星绿色从3提升到4，避免比5星还少
+# aether_dynamics (神盾): 防御特化 - 偏符文，7星12格用神盾壁垒补偿
 const _FACTION_LAYOUT_AEGIS := {
-	2: {"green": 1, "rune": 2, "spawn_range_ratio": 0.40},
-	4: {"green": 2, "rune": 3, "spawn_range_ratio": 0.70},
-	6: {"green": 4, "rune": 4, "spawn_range_ratio": 0.92},
-	7: {"green": 4, "rune": 6, "spawn_range_ratio": 1.00},   # 10格：极限符文
+	1: {"green": 3, "rune": 3},   # 6格
+	2: {"green": 3, "rune": 2},   # 5格
+	3: {"green": 3, "rune": 3},   # 6格
+	4: {"green": 3, "rune": 4},   # 7格
+	5: {"green": 3, "rune": 5},   # 8格
+	6: {"green": 4, "rune": 5},   # 9格
+	7: {"green": 7, "rune": 5},   # v21.x: 12格（偏符文，神盾壁垒+6000盾/-15%受伤补偿少1格）
 }
 
-# helix_recon (螺旋): 侦查特化 - 极限战斗卡，符文少
+# helix_recon (螺旋): 侦查特化 - 极限战斗卡，7星13格满配+幻影克隆×3
 const _FACTION_LAYOUT_HELIX := {
-	1: {"green": 2, "rune": 1, "spawn_range_ratio": 0.30},
-	3: {"green": 4, "rune": 1, "spawn_range_ratio": 0.55},
-	5: {"green": 6, "rune": 2, "spawn_range_ratio": 0.82},   # 8格：满战斗卡
-	7: {"green": 9, "rune": 4, "spawn_range_ratio": 1.00},   # v9.3: 13格（幻影核，满战斗卡）
+	1: {"green": 3, "rune": 0},   # 3格（纯战斗，无符文）
+	2: {"green": 4, "rune": 0},   # 4格（纯战斗，无符文）
+	3: {"green": 5, "rune": 1},   # 6格
+	4: {"green": 6, "rune": 1},   # 7格
+	5: {"green": 7, "rune": 2},   # 9格
+	6: {"green": 8, "rune": 2},   # 10格
+	7: {"green": 9, "rune": 4},   # v21.x: 13格（满战斗卡，幻影克隆×3质变）
 }
 
-# nova_arms (新星): 火力特化 - 战斗+符文均衡
+# nova_arms (新星): 火力特化 - 战斗+符文均衡，7星13格满配
 const _FACTION_LAYOUT_NOVA := {
-	2: {"green": 2, "rune": 2, "spawn_range_ratio": 0.40},
-	4: {"green": 3, "rune": 3, "spawn_range_ratio": 0.70},
-	6: {"green": 4, "rune": 4, "spawn_range_ratio": 0.92},
-	7: {"green": 9, "rune": 4, "spawn_range_ratio": 1.00},   # v9.3: 13格：战斗+符文双高
+	1: {"green": 3, "rune": 1},   # 4格
+	2: {"green": 3, "rune": 1},   # 4格
+	3: {"green": 3, "rune": 2},   # 5格
+	4: {"green": 4, "rune": 2},   # 6格
+	5: {"green": 5, "rune": 3},   # 8格
+	6: {"green": 6, "rune": 4},   # 10格
+	7: {"green": 9, "rune": 4},   # v21.x: 13格（超级火炮连击）
 }
 
-# iron_wall_corp (铁幕): 坦克特化 - 偏战斗，符文中等
+# iron_wall_corp (铁幕): 坦克特化 - 偏战斗，7星13格满配
 const _FACTION_LAYOUT_IRON := {
-	3: {"green": 3, "rune": 2, "spawn_range_ratio": 0.55},
-	5: {"green": 4, "rune": 3, "spawn_range_ratio": 0.82},
-	7: {"green": 9, "rune": 4, "spawn_range_ratio": 1.00},   # v9.3: 13格：堆战斗（满战斗卡）
+	1: {"green": 3, "rune": 2},   # 5格
+	2: {"green": 3, "rune": 2},   # 5格
+	3: {"green": 3, "rune": 3},   # 6格
+	4: {"green": 4, "rune": 3},   # 7格
+	5: {"green": 5, "rune": 4},   # 9格
+	6: {"green": 6, "rune": 4},   # 10格
+	7: {"green": 8, "rune": 4},   # v21.x: 12格（钢铁壁垒装甲/堡垒HP×2 补偿少1格）
 }
 
-# void_research (影幕): 爆发特化 - 极限符文，战斗卡少
-## v9.4: 6星绿色从2提升到3，避免比5星还少（影幕5星=1绿，6星应>1）
+# void_research (影幕): 爆发特化 - 极限符文，7星11格用穿透3目标补偿
 const _FACTION_LAYOUT_UMBRA := {
-	1: {"green": 1, "rune": 2, "spawn_range_ratio": 0.30},
-	3: {"green": 1, "rune": 4, "spawn_range_ratio": 0.55},
-	6: {"green": 3, "rune": 5, "spawn_range_ratio": 0.92},   # v9.4: 8格（战斗+1/符文-1）
-	7: {"green": 4, "rune": 6, "spawn_range_ratio": 1.00},   # v6.6: 10格（虚空穿，满符文）
+	1: {"green": 3, "rune": 3},   # 6格
+	2: {"green": 3, "rune": 2},   # 5格
+	3: {"green": 3, "rune": 4},   # 7格
+	4: {"green": 3, "rune": 4},   # 7格
+	5: {"green": 4, "rune": 5},   # 9格
+	6: {"green": 5, "rune": 5},   # 10格
+	7: {"green": 5, "rune": 6},   # v21.x: 11格（符文6满值，穿透3目标补偿）
 }
 
-# quantum_logistics (擎天): 资源特化 - 战斗均衡，符文少
+# quantum_logistics (擎天): 资源特化 - 战斗均衡，7星13格满配
 const _FACTION_LAYOUT_ATLAS := {
-	2: {"green": 2, "rune": 1, "spawn_range_ratio": 0.40},
-	4: {"green": 3, "rune": 2, "spawn_range_ratio": 0.70},
-	6: {"green": 4, "rune": 3, "spawn_range_ratio": 0.92},
-	7: {"green": 9, "rune": 4, "spawn_range_ratio": 1.00},   # v9.3: 13格（零点能）
+	1: {"green": 3, "rune": 1},   # 4格
+	2: {"green": 3, "rune": 1},   # 4格
+	3: {"green": 3, "rune": 2},   # 5格
+	4: {"green": 4, "rune": 2},   # 6格
+	5: {"green": 5, "rune": 3},   # 8格
+	6: {"green": 6, "rune": 4},   # 10格
+	7: {"green": 8, "rune": 5},   # v21.x: 13格（偏符文，零点能部署免能量）
 }
 
-# frontier_union (永纪): 时间特化 - 均衡
+# frontier_union (永纪): 时间特化 - 均衡，7星12格用核子轰炸补偿
 const _FACTION_LAYOUT_EON := {
-	2: {"green": 2, "rune": 2, "spawn_range_ratio": 0.40},
-	5: {"green": 3, "rune": 3, "spawn_range_ratio": 0.82},
-	7: {"green": 9, "rune": 4, "spawn_range_ratio": 1.00},   # v9.3: 13格：均衡（7星统一满战斗卡）
+	1: {"green": 3, "rune": 2},   # 5格
+	2: {"green": 3, "rune": 2},   # 5格
+	3: {"green": 3, "rune": 3},   # 6格
+	4: {"green": 4, "rune": 3},   # 7格
+	5: {"green": 5, "rune": 4},   # 9格
+	6: {"green": 6, "rune": 4},   # 10格
+	7: {"green": 8, "rune": 4},   # v21.x: 12格（核子轰炸补偿少1格）
 }
 
 static func _make_def(id: String, name: String, faction_id: String, is_generic: bool, star: int, acquire_rule: String, special_traits: Array = [], active_ability: Dictionary = {}) -> Dictionary:
@@ -452,7 +477,7 @@ static func _make_def(id: String, name: String, faction_id: String, is_generic: 
 		"rune_slot_count": int(layout.get("rune", 1)),
 		# v7.x: 移除 energy_output_rate（半失效死代码，battle_spawn 的 deploy_time 从未使用）
 		"energy_recovery_rate": recovery_rate,
-		"spawn_range_ratio": float(layout.get("spawn_range_ratio", 0.3)),
+		# v21.x: 移除 spawn_range_ratio（部署带功能下线，无游戏逻辑消费方）
 		"acquire_rule": acquire_rule,
 		"required_rep": rep_req,
 		"price_energy_block": energy_block_price,
@@ -483,14 +508,14 @@ static func _build_all() -> Array[Dictionary]:
 	out.append(_make_def("pi_generic_08", "脉冲V型", "generic", true, 5, "generic_store", ["能量激流：能量恢复+20%"]))
 	out.append(_make_def("pi_generic_09", "脉冲VI型", "generic", true, 6, "generic_store", ["过载模式：卡牌伤害+12%，能量消耗-2"], ability_mega_shield(6)))
 	out.append(_make_def("pi_generic_10", "星链VI型", "generic", true, 6, "generic_store", ["资源富集：经验获取+20%，掉落率+15%"]))
-	out.append(_make_def("pi_generic_11", "星链VII型", "generic", true, 7, "generic_store", ["全能战士：所有属性+10%，能量消耗-3"]))
+	out.append(_make_def("pi_generic_11", "星链VII型", "generic", true, 7, "generic_store", ["全能战士：所有属性+10%，能量消耗-3"], ability_generic_overdrive(7)))
 	out.append(_make_def("pi_generic_12", "天穹VII型", "generic", true, 7, "generic_store", ["天界祝福：卡牌伤害+15%，防御+10%，经验+25%，掉落+20%"], ability_mega_shield(7)))
 	# 势力专属 23 款（7 势力，每个 3~4 款），每个都有独特的势力特性
 	# 神盾系列 - 防御特化
 	out.append(_make_def("pi_aegis_01", "神盾-前哨", "aether_dynamics", false, 2, "faction_reputation", ["神盾力场：防御+6%，受到的伤害-3%"]))
 	out.append(_make_def("pi_aegis_02", "神盾-方阵", "aether_dynamics", false, 4, "faction_reputation", ["方阵防御：防御+10%，每15秒获得1点临时护盾"], ability_nano_swarm(4)))
 	out.append(_make_def("pi_aegis_03", "神盾-穹顶", "aether_dynamics", false, 6, "faction_reputation", ["穹顶庇护：防御+15%，受到的伤害-10%，能量消耗-2"], ability_nano_swarm(6)))
-	out.append(_make_def("pi_aegis_04", "神盾-壁垒核", "aether_dynamics", false, 7, "faction_reputation", ["绝对防御：防御+20%，受到的伤害-15%，每10秒恢复2点能量"], ability_nano_swarm(7)))
+	out.append(_make_def("pi_aegis_04", "神盾-壁垒核", "aether_dynamics", false, 7, "faction_reputation", ["绝对防御：防御+20%，受到的伤害-15%，每10秒恢复2点能量"], ability_aegis_barrier(7)))
 
 	# 螺旋系列 - 侦查与机动
 	out.append(_make_def("pi_helix_01", "螺旋-猎线", "helix_recon", false, 1, "faction_reputation", ["猎手直觉：经验获取+8%"]))
