@@ -1118,10 +1118,11 @@ func _grant_battle_experience(player_won: bool) -> void:
 		return
 	# 计算总经验（卡牌 XP 随关卡进度缩放，与相位场升级速度对齐）
 	var base_exp: int = BattleExperienceConfig.BATTLE_WIN_EXP_BASE if player_won else int(float(BattleExperienceConfig.BATTLE_WIN_EXP_BASE) * BattleExperienceConfig.BATTLE_LOSE_EXP_RATIO)
-	# v21.x 修复：卡牌 XP 乘以关卡系数，防止后期卡牌升级严重滞后于相位师
-	# coef=0.2 时：Lv1→1.0x, Lv9→1.8x(每卡~80XP), Lv30→3.9x(每卡~195XP)
-	# 相位师升到30时卡牌约Lv19-20，与相位师进度基本对齐
-	var level_factor: float = 1.0 + float(clampi(current_level, 1, 30) - 1) * 0.2
+	# v21.x 修复：卡牌 XP 乘以关卡系数 + 除以 sqrt(cards)
+	# coef=0.11: Lv1→1.0x, Lv9→1.82x, Lv30→3.89x
+	# 除以 sqrt(cards) 让总 XP 池随卡数增长（×sqrt(cards)），但每张效率递减
+	# 相位师Lv30时：1卡→Lv22, 2卡→Lv19, 9卡→Lv14（原9卡仅Lv10）
+	var level_factor: float = 1.0 + float(clampi(current_level, 1, 30) - 1) * 0.11
 	base_exp = int(float(base_exp) * level_factor)
 	# 击杀数：从 BattleManager 获取（如可用）
 	var kill_count: int = 0
@@ -1135,8 +1136,9 @@ func _grant_battle_experience(player_won: bool) -> void:
 		var exp_bonus: float = float(effects.get("experience_bonus", 0.0))
 		if exp_bonus > 0.0:
 			total_exp = int(float(total_exp) * (1.0 + exp_bonus))
-	# 平分给上场卡
-	var per_card: int = int(total_exp / instance_ids.size())
+	# 平分给上场卡：按 sqrt(cards) 缩放总池，防止多卡阵容升级过慢
+	var card_count: int = instance_ids.size()
+	var per_card: int = int(float(total_exp) * sqrt(float(card_count)) / float(card_count))
 	if per_card <= 0:
 		return
 	for iid in instance_ids:
