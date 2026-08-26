@@ -85,8 +85,10 @@
 > ⚠️ **2026-08-24 用户指示：P0~P3 全部先不处理（开发期还要用作弊发放/开发按钮等）。
 > 后续会话未经用户明确要求，禁止执行本节任何条目。**
 
-- [ ] **P0-1 移除新档作弊发放**（S，出门阻断）：`save_manager.gd` `_enqueue_starter_backpack_cards()`
-      5 资源各 100,000 + 全蓝图；正式量注释（nano 1500/alloy 800）就在旁边
+- [x] **P0-1 移除新档作弊发放**（S，出门阻断）✅ 2026-08-27 v21.5 部分放行（FTUE 审计 S4，
+      用户单独批准本条）：`save_manager.gd` 起步量恢复正式值（nano 1500/alloy 800/crystal 500/
+      energy 1000）+ 测试用 +100 技能点发放移除；"全蓝图"项已随蓝图体系删除（2026-08-22）moot。
+      详见 `docs/FTUE_AUDIT_2026-08-27.md`。**P0-2/P0-3 仍按 2026-08-24 指示锁定。**
 - [ ] **P0-2 摘除标题屏开发按钮**（S）：title_screen.tscn L185-207 两个工具入口按钮
 - [ ] **P0-3 从零建导出配置**（M，**无 export_presets.cfg**）：排除 docs/(280MB)/addons/tests/tools；
       config/name+version；Windows 图标 .ico

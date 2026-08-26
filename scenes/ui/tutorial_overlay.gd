@@ -69,6 +69,12 @@ func _on_next_pressed() -> void:
 	# 推进到下一步
 	if _tutorial_manager.has_method("complete_current_step"):
 		_tutorial_manager.complete_current_step()
+	# v21.x（FTUE 审计 S2，2026-08-27）：第7步（首战）触发战斗后教程收起——
+	# 战斗期间不再弹窗遮挡战场（面板类动作在战斗中本就被 _is_in_battle 拦截）；
+	# 战斗结束（胜/负/撤退/僵持超时）由 main.gd _on_battle_ended_resume_tutorial 续播 8-13 步。
+	if action_target == "start_first_battle":
+		queue_free()
+		return
 	# 显示下一步或退出
 	if _tutorial_manager.has_method("should_show_tutorial") and _tutorial_manager.should_show_tutorial():
 		_show_current_step()

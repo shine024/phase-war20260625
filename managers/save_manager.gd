@@ -871,19 +871,20 @@ func _enqueue_starter_backpack_cards() -> void:
 			if inst != null and not inst.instance_id.is_empty():
 				starter_id = inst.instance_id
 		enqueue_backpack_card_id(starter_id)
-	# ⚠️ 测试模式：初始资源各 10 万（开发/测试用，正式上线前需改回起步量）
-	# 正式起步量参考：nano 1500 / alloy 800 / crystal 500 / energy 1000 / research 500
-	# （单次强化约 ~100-500 纳米，起步量应让玩家初期体验几张卡强化、靠战斗积累）
+	# v21.x（FTUE 审计 S1，2026-08-27）：starter 卡预装备到相位仪首个空绿槽——
+	# 教程第3步只说不验证装配，跳过装配的玩家进首战空底栏无卡可部署（审计 S1）。
+	# 时序：本函数在 start_new_game 末段执行（实例已创建），槽位已在重置阶段清空。
+	var pim_starter: Node = get_node_or_null("/root/PhaseInstrumentManager")
+	if pim_starter != null and pim_starter.has_method("equip_starter_card_for_new_game"):
+		pim_starter.equip_starter_card_for_new_game("ww1_arm_ft17")
+	# v21.x（FTUE 审计 S4 / P0-1 放行，2026-08-27）：起步量恢复正式值（原测试模式各 10 万已移除），
+	# 测试用 +100 相位师技能点发放同步移除（新档回 0 基线）。
+	# 单次强化约 ~100-500 纳米，起步量让玩家初期体验几张卡强化、靠战斗积累。
 	if BasicResourceManager:
-		BasicResourceManager.add_resource("nano_materials", 100000)
-		BasicResourceManager.add_resource("alloy", 100000)
-		BasicResourceManager.add_resource("crystal", 100000)
-		BasicResourceManager.add_resource("energy_block", 100000)
-	# 测试模式：初始技能点 +100（相位师技能树 bonus_points，供测试解锁多分支）
-	# PhaseMasterSkillManager 未注册存档 → 每次开新档都是干净 0 基线，加 100 不累积。
-	var pmsm_starter: Node = get_node_or_null("/root/PhaseMasterSkillManager")
-	if pmsm_starter != null and pmsm_starter.has_method("add_bonus_points"):
-		pmsm_starter.add_bonus_points(100)
+		BasicResourceManager.add_resource("nano_materials", 1500)
+		BasicResourceManager.add_resource("alloy", 800)
+		BasicResourceManager.add_resource("crystal", 500)
+		BasicResourceManager.add_resource("energy_block", 1000)
 
 	# 初始情报：逐步发现（原"解锁所有情报"是测试残留，破坏探索乐趣）
 	# v7.x 结构修复（P1-3）：本段与下方"初始蓝图/初始进化分支"原先因缩进错误整体嵌套在

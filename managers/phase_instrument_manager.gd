@@ -969,6 +969,37 @@ func clear_slots_for_new_game() -> void:
 func _equip_starter_cards_for_new_game() -> void:
 	pass
 
+## v21.x（FTUE 审计 S1，2026-08-27）：新档预装备 starter 战斗卡到首个空绿槽。
+## 由 SaveManager._enqueue_starter_backpack_cards 在实例创建之后调用（时序：start_new_game
+## 的 manager 重置阶段 clear_slots_for_new_game 先清空槽位，实例在末段才创建，故不能在
+## _equip_starter_cards_for_new_game 里做）。幂等：任一绿槽已有卡即跳过（NG+/重复调用安全）。
+func equip_starter_card_for_new_game(card_id: String) -> bool:
+	var green_arr: Array = instrument_slots.get("green", [])
+	if green_arr.is_empty():
+		return false
+	for c in green_arr:
+		if c is CardResource:
+			return false
+	var ir: Node = get_node_or_null("/root/InstanceRegistry")
+	if ir == null or not ir.has_method("get_instances_by_card_id"):
+		return false
+	var inst_ids: Array = ir.get_instances_by_card_id(card_id)
+	if inst_ids.is_empty():
+		return false
+	var card: CardResource = null
+	for iid in inst_ids:
+		if ir.has_method("get_instance"):
+			var cand: CardResource = ir.get_instance(String(iid))
+			if cand != null:
+				card = cand
+				break
+	if card == null:
+		return false
+	var flat: int = _slot_to_flat_index("green", 0)
+	if flat < 0:
+		return false
+	return equip_card(flat, card)
+
 func save_state() -> Dictionary:
 	var runtime_defs: Dictionary = {}
 	for iid in _runtime_instrument_defs.keys():

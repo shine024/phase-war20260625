@@ -129,6 +129,8 @@ func _ready() -> void:
 
 	if SignalBus:
 		SignalBus.battle_ended.connect(_on_battle_ended_clear_pending)
+		# v21.x（FTUE 修复2，2026-08-27）：战斗结束后续播教程（第7步首战后教程收起，战后续播 8-13 步）
+		SignalBus.battle_ended.connect(_on_battle_ended_resume_tutorial)
 		# v6.6 修复: toggle_* 信号原 emit 无 connect，教程引导的"打开面板"动作失效。
 		if SignalBus.has_signal("toggle_backpack") and not SignalBus.toggle_backpack.is_connected(_on_backpack_pressed):
 			SignalBus.toggle_backpack.connect(_on_backpack_pressed)
@@ -1277,7 +1279,12 @@ func _start_tutorial_if_needed() -> void:
 	# 推进到首步，让 overlay 取得到内容。
 	if tutorial_manager.has_method("get_tutorial_content"):
 		tutorial_manager.get_tutorial_content()  # 副作用：NONE → INTRO_WELCOME
-	# 实例化 overlay 到 HudLayer（z_index 高，覆盖战场下方 UI）。
+	_show_tutorial_overlay()
+
+## v21.x（FTUE 审计 S2，2026-08-27）：实例化教程覆盖层（防重复：已有实例即跳过）
+func _show_tutorial_overlay() -> void:
+	if get_node_or_null("HudLayer/TutorialOverlay") != null:
+		return
 	var TutorialOverlayScene := load("res://scenes/ui/tutorial_overlay.tscn") as PackedScene
 	if TutorialOverlayScene == null:
 		return
@@ -1287,6 +1294,24 @@ func _start_tutorial_if_needed() -> void:
 		hud.add_child(overlay)
 	else:
 		add_child(overlay)
+
+## v21.x（FTUE 审计 S2，2026-08-27）：战斗结束续播教程。
+## 第7步（FIRST_BATTLE）点"开始首战"后 overlay 收起（见 tutorial_overlay.gd），
+## 战斗结算（胜利/战败/撤退/180s 僵持超时）后回主界面时恢复 8-13 步。
+func _on_battle_ended_resume_tutorial(_player_won: bool) -> void:
+	var tm: Node = get_node_or_null("/root/TutorialProgressionManager")
+	if tm == null or not tm.has_method("should_show_tutorial"):
+		return
+	if not tm.should_show_tutorial():
+		return
+	# 仅当教程停在首战之后的步骤（8-13）才续播；<=7 说明首战未打（教程覆盖层仍在场，无需干预）
+	if not ("current_step" in tm) or int(tm.current_step) < 8:
+		return
+	# 战斗结束瞬间结算面板/场景切换仍在进行，延迟到界面稳定后再弹出
+	await get_tree().create_timer(0.8).timeout
+	if _is_in_battle():
+		return
+	_show_tutorial_overlay()
 
 ## 初始化日常任务
 func _init_daily_tasks() -> void:
