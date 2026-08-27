@@ -221,15 +221,19 @@ const PROJ_BULLET_DISPLAY_SCALE: float = 1.3  # v17k-R2: 0.8→1.3（10px 弹体
 const FLAVOR_LAYER_RIFLE: int = 100     # 步枪——细长尖锥
 const FLAVOR_LAYER_MG: int = 101        # 机枪——短钝弹丸
 const FLAVOR_LAYER_TANK_GUN: int = 102  # 直射坦克炮——大号钝头炮弹
+## v20.16d: 手枪/卡宾——微型近光点弹体。此前 SMALL_ARMS 与 GENERIC 共用 wt 档默认层，
+## 形状/染色/曳光/弹速四轴全同（用户主诉"单体弹道差异太小"的病根之一）。
+const FLAVOR_LAYER_SMALL_ARMS: int = 103
 ## 坦克炮弹战场显示缩放（其余亚类沿用 PROJ_BULLET_DISPLAY_SCALE；炮弹要一眼炮弹级）
 const TANK_GUN_DISPLAY_SCALE: float = 2.0
 
-## 亚类 → 形状层键。SMALL_ARMS/GENERIC/NONE 返回 -1（用原 wt 层，形状零变化）。
+## 亚类 → 形状层键。GENERIC/NONE 返回 -1（用原 wt 层，形状零变化）。
 static func flavor_layer_key(flavor: int) -> int:
 	match flavor:
 		DirectWeaponFlavor.Flavor.RIFLE: return FLAVOR_LAYER_RIFLE
 		DirectWeaponFlavor.Flavor.MG: return FLAVOR_LAYER_MG
 		DirectWeaponFlavor.Flavor.TANK_GUN: return FLAVOR_LAYER_TANK_GUN
+		DirectWeaponFlavor.Flavor.SMALL_ARMS: return FLAVOR_LAYER_SMALL_ARMS
 		_: return -1
 
 ## 形状层键 → 亚类（批处理 _make_layer 反解用）。非亚类键返回 -1。
@@ -238,6 +242,7 @@ static func _flavor_for_layer_key(layer_key: int) -> int:
 		FLAVOR_LAYER_RIFLE: return DirectWeaponFlavor.Flavor.RIFLE
 		FLAVOR_LAYER_MG: return DirectWeaponFlavor.Flavor.MG
 		FLAVOR_LAYER_TANK_GUN: return DirectWeaponFlavor.Flavor.TANK_GUN
+		FLAVOR_LAYER_SMALL_ARMS: return DirectWeaponFlavor.Flavor.SMALL_ARMS
 		_: return -1
 
 ## ── v20.16b: 直射亚类弹道参数（弹速/弹体染色/曳光线，单射源）──
@@ -247,12 +252,15 @@ static func _flavor_for_layer_key(layer_key: int) -> int:
 ## NONE/SMALL_ARMS/GENERIC 全部返回入参原值（零行为变化）。
 
 ## 亚类弹速系数（乘在 wt 档弹速上，保留敌方 legacy 槽位的基础差异）。
-## 步枪 1.30=单发干脆利落 / 机枪 0.95=弹幕流 / 坦克炮 0.75=重弹飞行有分量感。
+## v20.16d: 系数拉开——v20.16b 的 0.75~1.3（540-936px/s）在 300-500px 交火距离下飞行时间
+## 差 <0.15s 肉眼读不出；拉开到 0.75~1.5 后弹速阶梯：坦克炮 540 < 手枪 576 < 机枪 612 <
+## 通用 720 < 步枪 1080（<狙击 1100 <激光 1400，保持"步枪不快过狙击"的层级）。
 static func flavor_speed_mul(flavor: int) -> float:
 	match flavor:
-		DirectWeaponFlavor.Flavor.RIFLE: return 1.30
-		DirectWeaponFlavor.Flavor.MG: return 0.95
+		DirectWeaponFlavor.Flavor.RIFLE: return 1.50
+		DirectWeaponFlavor.Flavor.MG: return 0.85
 		DirectWeaponFlavor.Flavor.TANK_GUN: return 0.75
+		DirectWeaponFlavor.Flavor.SMALL_ARMS: return 0.80
 		_: return 1.0
 
 ## 亚类弹速（base 为 wt 档弹速）。未分化亚类恒等返回。
@@ -265,6 +273,8 @@ static func flavor_tint(flavor: int) -> Color:
 		DirectWeaponFlavor.Flavor.RIFLE: return Color(0.62, 0.95, 1.0)    # 步枪 冷青白
 		DirectWeaponFlavor.Flavor.MG: return Color(1.0, 0.95, 0.32)       # 机枪 亮黄
 		DirectWeaponFlavor.Flavor.TANK_GUN: return Color(1.0, 0.74, 0.30) # 坦克炮 橙白
+		# v20.16d: 手枪暖白（近白微暖）——与机枪亮黄拉开（弹体小，色温是主要辨识轴）
+		DirectWeaponFlavor.Flavor.SMALL_ARMS: return Color(1.0, 0.96, 0.82)
 		_: return Color(1.0, 1.0, 1.0)
 
 ## 渲染层弹头染色：亚类层用亚类色（阵营无关），基础层返回阵营基础 tint。
@@ -274,21 +284,26 @@ static func layer_tint(layer_key: int, base_tint: Color) -> Color:
 		return flavor_tint(f)
 	return base_tint
 
-## 亚类曳光线宽度。机枪基准 / 步枪细 / 坦克炮粗（重弹余辉，非细 streak）。
+## 亚类曳光线宽度。机枪基准 / 步枪细 / 坦克炮粗（重弹余辉，非细 streak）/ 手枪窄。
+## v20.16d: 机枪 2.5→3.0（弹幕流加粗）、步枪 2.0→1.8（细亮快弹）。
 static func tracer_width_for(layer_key: int) -> float:
 	match layer_key:
-		FLAVOR_LAYER_MG: return 2.5
-		FLAVOR_LAYER_RIFLE: return 2.0
+		FLAVOR_LAYER_MG: return 3.0
+		FLAVOR_LAYER_RIFLE: return 1.8
 		FLAVOR_LAYER_TANK_GUN: return 3.5
+		FLAVOR_LAYER_SMALL_ARMS: return 2.0
 		_: return 2.5
 
 ## 亚类曳光线长度。机枪加长（弹幕感）/ 步枪略长（精确轨迹）/ 坦克炮缩短
 ## （重弹本体即视觉主体，曳光只留余辉）。
+## v20.16d: 长度拉开——机枪 34→42 / 步枪 30→46（速度 1080 配长曳光读"快"）/
+## 手枪 12（光点短闪）；v20.16b 的 26/30/34 三档肉眼不可分。
 static func tracer_len_for(layer_key: int) -> float:
 	match layer_key:
-		FLAVOR_LAYER_MG: return 34.0
-		FLAVOR_LAYER_RIFLE: return 30.0
+		FLAVOR_LAYER_MG: return 42.0
+		FLAVOR_LAYER_RIFLE: return 46.0
 		FLAVOR_LAYER_TANK_GUN: return 14.0
+		FLAVOR_LAYER_SMALL_ARMS: return 12.0
 		_: return 26.0
 
 ## 亚类曳光线颜色（同 flavor_tint 语言，曳光透明度 0.82）。基础层返回阵营基准色。
@@ -299,6 +314,146 @@ static func tracer_color_for(layer_key: int, base_color: Color) -> Color:
 	var c := flavor_tint(f)
 	c.a = 0.82
 	return c
+
+## ── v20.18: 单发路径点射节奏（视觉 burst）──
+## 病根：数据层射速集中在 0.67-1.5/s，走单发 Bullet 路径的武器每 0.7-1.5s 一发，
+## 机枪/步枪/手枪画面节奏完全相同（无"连发感"）。v20.18b 机枪数据层弹幕化后，
+## 射速>2 的机枪进 batch 弹幕路径；≤2 的武器（步枪/手枪/二战重机枪）在单发路径
+## 用视觉点射补节奏：一次攻击伤害只结算一次，后续发为纯视觉弹（delay 错开）。
+## 消费方：construct_unit_ai 单发路径（敌方轻武器无条件走 batch，无需分派）。
+const BURST_INTERVAL: float = 0.09  ## 点射间隔（秒）——60fps 下 5-6 帧，读"哒哒哒"
+
+## 亚类点射数。机枪 3 连珠 / 步枪·冲锋枪 2 连发 / 手枪·坦克炮单发（重武器语义单发）。
+static func burst_count_for(flavor: int) -> int:
+	match flavor:
+		DirectWeaponFlavor.Flavor.MG: return 3
+		DirectWeaponFlavor.Flavor.RIFLE: return 2
+		DirectWeaponFlavor.Flavor.GENERIC: return 2
+		_: return 1  # SMALL_ARMS/TANK_GUN/NONE——单发
+
+## ── v20.19: 机枪换弹周期（射击-停顿-再射击）──
+## 病根：机枪匀速连射（2.0/s×3 连珠）无停顿，读感是"永动机"——真实机枪打完弹链
+## 需换弹（用户提议"射击一会儿，等待，再射击"）。周期制：连续射击 SUSTAIN 秒 →
+## 停火换弹 RELOAD 秒 → 循环。DPS 恒定红线：停顿期损失以单发伤害补偿
+## DMG_COMP=(SUSTAIN+RELOAD)/SUSTAIN 预支（与 v20.18b 射速×2/atk÷2 同原则）。
+## 消费方：construct_unit_ai（玩家侧）与 enemy_unit（敌方侧）的 do_attack 入口 gate。
+const MG_SUSTAIN_SEC: float = 4.0   ## 连续射击窗口（秒）
+const MG_RELOAD_SEC: float = 1.6    ## 换弹停顿窗口（秒）
+## 伤害补偿系数——射击窗口内每发伤害预乘，补偿停顿期的 DPS 损失（5.6/4.0=1.4）
+const MG_DMG_COMP: float = (MG_SUSTAIN_SEC + MG_RELOAD_SEC) / MG_SUSTAIN_SEC
+
+## 是否启用换弹周期的武器（仅 MG 亚类直射；曲射/坦克炮/能量武器不适用）。
+static func mg_cycle_active(weapon_name: String, weapon_type: int = 0) -> bool:
+	return DirectWeaponFlavor.classify(weapon_name, weapon_type) == DirectWeaponFlavor.Flavor.MG
+
+## ── v20.16c: TANK_GUN 口径量级分化（炮弹尺寸/曳光粗细随口径分层）──
+## 病根：TANK_GUN 是单桶——FT-17"57mm/75mm坦克炮"与重装机甲"105mm主炮"（乃至
+## 巨神"105mm/120mm主炮"、虚空领主"125mm滑膛炮"）弹道全同，初级坦克炮与
+## 终级机甲主炮无视觉分层。口径数字就在武器名里，解析最大口径（"57mm/75mm"
+## 取 75）分四档：≤60mm 0.65 / 61-90mm 0.85 / 91-115mm 1.05 / ≥116mm 1.25。
+## 消费方 bullet.gd（坦克炮射速低，全走单发路径）：size_scale 与曳光宽同乘此系数。
+## 无口径信号/解析失败返回 1.0（=105mm 档，主炮默认中档）。带缓存（每发 setup 查表）。
+static var _caliber_scale_cache: Dictionary = {}
+
+static func tank_caliber_scale(weapon_name: String) -> float:
+	if weapon_name.is_empty():
+		return 1.0
+	if _caliber_scale_cache.has(weapon_name):
+		return float(_caliber_scale_cache[weapon_name])
+	var caliber: float = 0.0
+	var re := RegEx.new()
+	if re.compile("(\\d{2,3})\\s*mm") == OK:
+		for m: RegExMatch in re.search_all(weapon_name):
+			caliber = maxf(caliber, float(m.get_string(1).to_float()))
+	var scale: float = 1.0
+	if caliber > 0.0:
+		if caliber <= 60.0:
+			scale = 0.65   # 37/57mm 早期小口径
+		elif caliber <= 90.0:
+			scale = 0.85   # 75/76/85mm 中口径
+		elif caliber <= 115.0:
+			scale = 1.05   # 105mm 主炮档
+		else:
+			scale = 1.25   # 120/125mm 重主炮（终级单位）
+	_caliber_scale_cache[weapon_name] = scale
+	return scale
+
+## ── v20.17: 曲射/空射弹道亚类（名字→弧线/节奏/弹体/染色系数，单射源）──
+## 病根：indirect batch 弧线只按 wt 槽位（wt1 全员 1.6 高弧），武器名完全不参与弹道；
+## 飞行时长全族共用 0.6+dist/2000*0.8 一个公式（_WEAPON_CONFIG 的 speed 字段零消费）——
+## 迫击炮/榴弹炮/火箭炮同弧线同节奏（用户主诉"曲射空射也要有辨识力"）。
+## 设计：系数乘在槽位基准上（与 flavor_speed_mul 同模式），无名/未命中恒 1.0 零行为变化。
+## 消费方：simple_indirect_projectile_batch（主力路径）+ bullet.gd 曲射回退路径。
+enum IndirectFlavor {
+	NONE = -1,      # 未命中关键词——全系数 1.0，槽位基准原样
+	MORTAR = 0,     # 迫击炮——高弧慢飘小弹
+	HOWITZER = 1,   # 榴弹炮/野战炮/要塞炮——中弧标准节奏重弹
+	ROCKET = 2,     # 火箭炮/火箭弹——低平弧快弹橙红
+	MISSILE = 3,    # 导弹——低弧俯冲微加速
+}
+static var _indirect_flavor_cache: Dictionary = {}
+
+## 按武器名分类曲射亚类（优先级：迫击炮 > 火箭 > 榴弹族 > 导弹）。
+## 只对走曲射路由（wt 1/2/3/7/9）的弹道有意义；直射名（坦克炮/步枪等）不路由到曲射，无影响。
+static func classify_indirect(weapon_name: String) -> int:
+	if weapon_name.is_empty():
+		return IndirectFlavor.NONE
+	if _indirect_flavor_cache.has(weapon_name):
+		return int(_indirect_flavor_cache[weapon_name])
+	var f: int = IndirectFlavor.NONE
+	if weapon_name.find("迫击炮") >= 0:
+		f = IndirectFlavor.MORTAR
+	elif weapon_name.find("火箭炮") >= 0 or weapon_name.find("火箭弹") >= 0 \
+			or weapon_name.find("火箭筒") >= 0:
+		f = IndirectFlavor.ROCKET
+	# 榴弹族在火箭后匹配——"227mm火箭炮"不该落榴弹族；"舰炮"不收（近防炮混名误伤）
+	elif weapon_name.find("榴弹炮") >= 0 or weapon_name.find("野战炮") >= 0 \
+			or weapon_name.find("要塞炮") >= 0 or weapon_name.find("加农炮") >= 0 \
+			or weapon_name.find("火炮") >= 0 or weapon_name.find("步兵炮") >= 0:
+		f = IndirectFlavor.HOWITZER
+	elif weapon_name.find("导弹") >= 0:
+		f = IndirectFlavor.MISSILE
+	_indirect_flavor_cache[weapon_name] = f
+	return f
+
+## 亚类弧线高度系数（乘在槽位弧线倍率上）。迫击炮 1.0（槽位已是最高弧）/
+## 榴弹族 0.65（wt1 1.6→1.04 中弧——远程炮平射弧）/ 火箭 0.35（wt1→0.56 低平直瞄）/
+## 导弹 0.8（wt9 1.0→0.8 俯冲更直）。
+static func indirect_apex_mul(flavor: int) -> float:
+	match flavor:
+		IndirectFlavor.MORTAR: return 1.0
+		IndirectFlavor.HOWITZER: return 0.65
+		IndirectFlavor.ROCKET: return 0.35
+		IndirectFlavor.MISSILE: return 0.8
+		_: return 1.0
+
+## 亚类飞行时长系数（乘在槽位时长上；>1 更慢）。迫击炮 1.30（炮弹慢飘读"迫击炮"）/
+## 火箭 0.72（低平快弹）/ 导弹 0.88（微加速俯冲）/ 榴弹族 1.0。
+static func indirect_duration_mul(flavor: int) -> float:
+	match flavor:
+		IndirectFlavor.MORTAR: return 1.30
+		IndirectFlavor.HOWITZER: return 1.0
+		IndirectFlavor.ROCKET: return 0.72
+		IndirectFlavor.MISSILE: return 0.88
+		_: return 1.0
+
+## 亚类弹体尺寸系数（per-instance scale）。榴弹族 1.2（重炮弹更大）/ 迫击炮 0.78（小弹）/
+## 火箭 0.85（细长火箭弹）。
+static func indirect_body_scale(flavor: int) -> float:
+	match flavor:
+		IndirectFlavor.MORTAR: return 0.78
+		IndirectFlavor.HOWITZER: return 1.2
+		IndirectFlavor.ROCKET: return 0.85
+		IndirectFlavor.MISSILE: return 1.0
+		_: return 1.0
+
+## 亚类弹体染色（阵营无关覆盖，同 flavor_tint 语言）。火箭橙红（尾焰语义）/
+## 导弹微橙白。NONE 返回入参 base（阵营 tint 原样）。
+static func indirect_tint(flavor: int, base: Color) -> Color:
+	match flavor:
+		IndirectFlavor.ROCKET: return Color(1.0, 0.62, 0.30)
+		IndirectFlavor.MISSILE: return Color(1.0, 0.85, 0.65)
+		_: return base
 
 ## 返回弹头多边形顶点（7 点，顺时针，原点居中，指向 +X）。
 ## 可直接赋值给 Polygon2D.polygon（bullet.gd 路径），或传给 build_bullet_arraymesh 三角化。
@@ -367,8 +522,14 @@ static func build_bullet_points(weapon_type: int, size_scale: float = 1.0, flavo
 				nose_len = 4.0 * s
 				half_h = 4.6 * s
 				neck = 0.55
+			DirectWeaponFlavor.Flavor.SMALL_ARMS:
+				# v20.16d: 手枪/卡宾——微型近光点（比 SMG 档更小更圆；近距离点射读"小弹"）
+				body_len = 2.5 * s
+				nose_len = 1.5 * s
+				half_h = 2.2 * s
+				neck = 0.5
 			_:
-				pass  # SMALL_ARMS / GENERIC——保持 wt 档基准
+				pass  # GENERIC——保持 wt 档基准
 	var tip_x: float = body_len + nose_len  # 弹头顶点 X
 	var cx: float = tip_x * 0.5  # 居中原点
 	# 7 点顺时针多边形（居中版，从弹体底部后端起）：

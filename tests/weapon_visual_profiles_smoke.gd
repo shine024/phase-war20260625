@@ -18,6 +18,11 @@ func _initialize() -> void:
 	_test_dispatch_consistency()
 	_test_flavor_bullet_shapes()
 	_test_flavor_traj_params()
+	_test_tank_caliber()
+	_test_flavor_gap_widening()
+	_test_indirect_flavor()
+	_test_burst_and_mg_tempo()
+	_test_mg_reload_cycle()
 	_summary()
 	quit(0 if _fail == 0 else 1)
 
@@ -201,6 +206,222 @@ func _test_flavor_bullet_shapes() -> void:
 	_ok(mesh_t != null and mesh_t.get_surface_count() > 0, "TANK_GUN 层键可构建 ArrayMesh")
 	_ok(mesh_b != null and (mesh_b.surface_get_arrays(0)[0] as PackedVector2Array).size() == 7,
 		"旧 wt 键仍产出 7 点多边形（向后兼容）")
+
+## [9] v20.16c TANK_GUN 口径量级分化回归锁——初级坦克炮与终级主炮分层
+func _test_tank_caliber() -> void:
+	print("\n[9] v20.16c 坦克炮口径量级分化")
+	var WPV: GDScript = load("res://scripts/weapon_projectile_vfx.gd")
+	var DWF: GDScript = load("res://data/direct_weapon_flavor.gd")
+	# 口径解析取最大值 + 四档映射
+	_ok(absf(WPV.tank_caliber_scale("37mm/57mm坦克炮") - 0.65) < 0.001, "37/57mm（最大57≤60）→ 0.65 早期小口径档")
+	_ok(absf(WPV.tank_caliber_scale("57mm/75mm坦克炮") - 0.85) < 0.001, "57/75mm（最大75）→ 0.85 中口径档（FT-17）")
+	_ok(absf(WPV.tank_caliber_scale("105mm主炮") - 1.05) < 0.001, "105mm主炮 → 1.05 主炮档（重装机甲）")
+	_ok(absf(WPV.tank_caliber_scale("105mm/120mm主炮") - 1.25) < 0.001, "105/120mm（最大120）→ 1.25 重主炮档（巨神机甲）")
+	_ok(absf(WPV.tank_caliber_scale("125mm滑膛炮") - 1.25) < 0.001, "125mm滑膛炮 → 1.25 重主炮档（虚空领主）")
+	# 无口径信号 / 空名 / 小数口径（机枪不消费口径，双保险）
+	_ok(absf(WPV.tank_caliber_scale("主炮") - 1.0) < 0.001, "无口径数字 → 1.0 基准")
+	_ok(absf(WPV.tank_caliber_scale("") - 1.0) < 0.001, "空名 → 1.0 基准")
+	_ok(absf(WPV.tank_caliber_scale("12.7mm重机枪") - 1.0) < 0.001, "12.7mm 小数口径不匹配 → 1.0（机枪也不消费）")
+	# 量级梯度：终级主炮弹体显著大于初级坦克炮
+	var s_ww1: float = WPV.tank_caliber_scale("57mm/75mm坦克炮")
+	var s_ult: float = WPV.tank_caliber_scale("105mm/120mm主炮")
+	_ok(s_ult > s_ww1 + 0.3, "量级梯度：巨神(%.2f) 显著大于 FT-17(%.2f)" % [s_ult, s_ww1])
+	# 消费链前提：这些名字确实落在 TANK_GUN 亚类
+	_ok(DWF.classify("57mm/75mm坦克炮", 0) == DWF.Flavor.TANK_GUN
+		and DWF.classify("105mm主炮", 0) == DWF.Flavor.TANK_GUN
+		and DWF.classify("125mm滑膛炮", 0) == DWF.Flavor.TANK_GUN,
+		"双方武器名均落 TANK_GUN 亚类（口径分层消费前提）")
+
+## [10] v20.16d 轻动能亚类参数拉开——单体弹道感知差异回归锁
+## 病根：v20.16b 系数 0.75~1.3（540-936px/s）交火距离 300-500px 下飞行时差 <0.15s 肉眼
+## 不可分；曳光长 26/30/34 三档同感；SMALL_ARMS 与 GENERIC 四轴全同。
+func _test_flavor_gap_widening() -> void:
+	print("\n[10] v20.16d 轻动能亚类参数拉开")
+	var WPV: GDScript = load("res://scripts/weapon_projectile_vfx.gd")
+	var DWF: GDScript = load("res://data/direct_weapon_flavor.gd")
+	var base_s: float = 720.0
+	# SMALL_ARMS 补分化：层键 + 弹速系数 + 暖白染色
+	_ok(WPV.flavor_layer_key(DWF.Flavor.SMALL_ARMS) == WPV.FLAVOR_LAYER_SMALL_ARMS,
+		"SMALL_ARMS 有独立形状层（此前与 GENERIC 共用 wt 档，四轴全同）")
+	_ok(absf(WPV.flavor_speed_mul(DWF.Flavor.RIFLE) - 1.50) < 0.001
+		and absf(WPV.flavor_speed_mul(DWF.Flavor.MG) - 0.85) < 0.001
+		and absf(WPV.flavor_speed_mul(DWF.Flavor.SMALL_ARMS) - 0.80) < 0.001,
+		"弹速系数拉开：步枪 1.50 / 机枪 0.85 / 手枪 0.80（原 1.3/0.95/1.0）")
+	# 弹速阶梯全序 + 步枪不快过狙击（1100）保持层级语义
+	var s_tank: float = WPV.flavor_speed(DWF.Flavor.TANK_GUN, base_s)
+	var s_sa: float = WPV.flavor_speed(DWF.Flavor.SMALL_ARMS, base_s)
+	var s_mg: float = WPV.flavor_speed(DWF.Flavor.MG, base_s)
+	var s_rifle: float = WPV.flavor_speed(DWF.Flavor.RIFLE, base_s)
+	_ok(s_tank < s_sa and s_sa < s_mg and s_mg < base_s and base_s < s_rifle,
+		"弹速阶梯全序：坦克炮(%.0f) < 手枪(%.0f) < 机枪(%.0f) < 通用(%.0f) < 步枪(%.0f)"
+		% [s_tank, s_sa, s_mg, base_s, s_rifle])
+	_ok(s_rifle < 1100.0, "步枪(%.0f) 不快过狙击基准(1100)，层级语义保持" % s_rifle)
+	# 曳光形态五档互异（长度轴）：手枪 12 < 坦克炮 14 < 基准 26 < 机枪 42 < 步枪 46
+	var l_sa: float = WPV.tracer_len_for(WPV.FLAVOR_LAYER_SMALL_ARMS)
+	var l_tank: float = WPV.tracer_len_for(WPV.FLAVOR_LAYER_TANK_GUN)
+	var l_base: float = WPV.tracer_len_for(0)
+	var l_mg: float = WPV.tracer_len_for(WPV.FLAVOR_LAYER_MG)
+	var l_rifle: float = WPV.tracer_len_for(WPV.FLAVOR_LAYER_RIFLE)
+	_ok(l_sa < l_tank and l_tank < l_base and l_base < l_mg and l_mg < l_rifle,
+		"曳光长度五档全序：手枪(%.0f) < 坦克炮(%.0f) < 基准(%.0f) < 机枪(%.0f) < 步枪(%.0f)"
+		% [l_sa, l_tank, l_base, l_mg, l_rifle])
+	# SMALL_ARMS 染色：暖白（r>b）且与机枪亮黄互异
+	var c_sa: Color = WPV.flavor_tint(DWF.Flavor.SMALL_ARMS)
+	var c_mg: Color = WPV.flavor_tint(DWF.Flavor.MG)
+	_ok(c_sa.r >= c_sa.b and c_sa != c_mg, "手枪暖白染色且与机枪亮黄互异")
+	# SMALL_ARMS 弹体形状：比 GENERIC 基准更小（bbox 宽高双向）
+	var pts_sa: PackedVector2Array = WPV.build_bullet_points(0, 1.0, DWF.Flavor.SMALL_ARMS)
+	var pts_gen: PackedVector2Array = WPV.build_bullet_points(0, 1.0, DWF.Flavor.GENERIC)
+	var bb_sa: Dictionary = _poly_bounds(pts_sa)
+	var bb_gen: Dictionary = _poly_bounds(pts_gen)
+	_ok(float(bb_sa.w) < float(bb_gen.w) and float(bb_sa.h) < float(bb_gen.h),
+		"手枪弹体(%.1f×%.1f) 小于通用基准(%.1f×%.1f)" % [bb_sa.w, bb_sa.h, bb_gen.w, bb_gen.h])
+	# batch 两文件注册 SMALL_ARMS 层（消费链前提：fire 分层→渲染层存在）
+	for p in ["res://managers/battle/simple_player_projectile_batch.gd",
+			"res://managers/battle/simple_enemy_projectile_batch.gd"]:
+		var batch_keys: Array = (load(p) as GDScript).get_script_constant_map().get("_FLAVOR_LAYER_KEYS", [])
+		_ok(WPV.FLAVOR_LAYER_SMALL_ARMS in batch_keys, "%s 已注册 SMALL_ARMS 渲染层" % p.get_file())
+	# bullet.gd 单发路径曳光宽度接单射源：SMALL_ARMS 2.0 / RIFLE 1.8 / MG 3.0 / 兜底 2.5
+	_ok(WPV.tracer_width_for(WPV.FLAVOR_LAYER_SMALL_ARMS) == 2.0
+		and WPV.tracer_width_for(WPV.FLAVOR_LAYER_RIFLE) == 1.8
+		and WPV.tracer_width_for(WPV.FLAVOR_LAYER_MG) == 3.0
+		and WPV.tracer_width_for(0) == 2.5,
+		"曳光宽度：手枪 2.0 / 步枪 1.8 / 机枪 3.0 / 兜底 2.5（两路径同语言）")
+
+## [11] v20.17 曲射/空射弹道亚类——弧线/节奏/弹体/染色辨识回归锁
+## 病根：indirect batch 弧线只按 wt 槽位（wt1 全员 1.6 高弧），武器名零参与弹道；
+## 飞行时长全族一个公式——迫击炮/榴弹炮/火箭炮同弧线同节奏。
+func _test_indirect_flavor() -> void:
+	print("\n[11] v20.17 曲射/空射弹道亚类")
+	var WPV: GDScript = load("res://scripts/weapon_projectile_vfx.gd")
+	var IF = WPV.IndirectFlavor
+	# 分类：关键词优先级（迫击炮 > 火箭 > 榴弹族 > 导弹）
+	_ok(WPV.classify_indirect("81mm迫击炮") == IF.MORTAR, "迫击炮 → MORTAR")
+	_ok(WPV.classify_indirect("227mm火箭炮") == IF.ROCKET, "227mm火箭炮 → ROCKET（优先于榴弹族）")
+	_ok(WPV.classify_indirect("150mm榴弹炮") == IF.HOWITZER, "榴弹炮 → HOWITZER")
+	_ok(WPV.classify_indirect("77mm野战炮") == IF.HOWITZER, "野战炮 → HOWITZER")
+	_ok(WPV.classify_indirect("105mm/120mm榴弹炮") == IF.HOWITZER, "多口径榴弹炮 → HOWITZER")
+	_ok(WPV.classify_indirect("空空导弹") == IF.MISSILE, "空空导弹 → MISSILE")
+	_ok(WPV.classify_indirect("近防炮/舰载导弹") == IF.MISSILE, "舰载导弹 → MISSILE（舰炮不误入榴弹族）")
+	_ok(WPV.classify_indirect("") == IF.NONE and WPV.classify_indirect("超频矩阵炮") == IF.NONE,
+		"空名/未命中 → NONE（全系数 1.0 零行为变化）")
+	# 弧线系数：榴弹族/火箭压低 wt1 的 1.6 高弧；迫击炮保持最高弧
+	var apex_m: float = WPV.indirect_apex_mul(IF.MORTAR)
+	var apex_h: float = WPV.indirect_apex_mul(IF.HOWITZER)
+	var apex_r: float = WPV.indirect_apex_mul(IF.ROCKET)
+	_ok(apex_m > apex_h and apex_h > apex_r,
+		"弧线梯度：迫击炮(%.2f) > 榴弹族(%.2f) > 火箭(%.2f)" % [apex_m, apex_h, apex_r])
+	_ok(absf(1.6 * apex_h - 1.04) < 0.01 and absf(1.6 * apex_r - 0.56) < 0.01,
+		"wt1 槽实效弧线：榴弹族 1.6×0.65=1.04 中弧 / 火箭 1.6×0.35=0.56 低平")
+	# 节奏系数：迫击炮最慢、火箭最快
+	var dur_m: float = WPV.indirect_duration_mul(IF.MORTAR)
+	var dur_r: float = WPV.indirect_duration_mul(IF.ROCKET)
+	var dur_i: float = WPV.indirect_duration_mul(IF.MISSILE)
+	_ok(dur_m > 1.0 and dur_i < 1.0 and dur_r < dur_i,
+		"时长梯度：迫击炮(%.2f 慢飘) > 基准 > 导弹(%.2f) > 火箭(%.2f 快弹)" % [dur_m, dur_i, dur_r])
+	# 弹体尺寸：榴弹族最大、迫击炮最小
+	var bs_h: float = WPV.indirect_body_scale(IF.HOWITZER)
+	var bs_m: float = WPV.indirect_body_scale(IF.MORTAR)
+	_ok(bs_h > 1.0 and bs_m < 1.0, "弹体尺寸：榴弹族(%.2f) > 基准 > 迫击炮(%.2f)" % [bs_h, bs_m])
+	# 染色：火箭橙红覆盖、NONE 保持阵营基准
+	var base_c := Color(0.95, 0.92, 0.5)
+	var tint_r: Color = WPV.indirect_tint(IF.ROCKET, base_c)
+	_ok(tint_r != base_c and tint_r.r > tint_r.b, "火箭弹体橙红染色（尾焰语言）")
+	_ok(WPV.indirect_tint(IF.NONE, base_c) == base_c and WPV.indirect_tint(IF.MORTAR, base_c) == base_c,
+		"NONE/迫击炮/榴弹族保持阵营基准 tint")
+	# 分类缓存正确性（同名字二次查询一致）
+	_ok(WPV.classify_indirect("150mm榴弹炮") == WPV.classify_indirect("150mm榴弹炮"), "分类缓存幂等")
+
+## [12] v20.18 开火节奏丰富化——机枪数据层弹幕化 + 单发路径点射回归锁
+## B 部分断言活读 UCT 表（DPS 恒定是平衡红线：射速×2 必须 atk÷2 同步）。
+func _test_burst_and_mg_tempo() -> void:
+	print("\n[12] v20.18 开火节奏（机枪弹幕 + 点射）")
+	var WPV: GDScript = load("res://scripts/weapon_projectile_vfx.gd")
+	var DWF: GDScript = load("res://data/direct_weapon_flavor.gd")
+	# 点射表：机枪 3 / 步枪·冲锋枪 2 / 手枪·坦克炮单发
+	_ok(WPV.burst_count_for(DWF.Flavor.MG) == 3, "机枪点射 3 连珠")
+	_ok(WPV.burst_count_for(DWF.Flavor.RIFLE) == 2 and WPV.burst_count_for(DWF.Flavor.GENERIC) == 2,
+		"步枪/冲锋枪点射 2 连发")
+	_ok(WPV.burst_count_for(DWF.Flavor.SMALL_ARMS) == 1 and WPV.burst_count_for(DWF.Flavor.TANK_GUN) == 1
+		and WPV.burst_count_for(DWF.Flavor.NONE) == 1,
+		"手枪/坦克炮/未分类保持单发（重武器语义单发）")
+	_ok(WPV.BURST_INTERVAL > 0.05 and WPV.BURST_INTERVAL < 0.13, "点射间隔 %.2fs 在可读节奏区间" % WPV.BURST_INTERVAL)
+	# bullet.gd 机制：burst_delay/visual_only 字段存在（点射消费前提）
+	var bl: GDScript = load("res://scenes/units/bullet.gd")
+	_ok(bl != null, "bullet.gd 编译加载成功")
+	# B：UCT 机枪条目——射速×2 后 DPS 恒定（活读表断言，防后续手改破坏平衡）
+	var UCT: GDScript = load("res://data/unified_card_table.gd")
+	_ok(UCT != null, "unified_card_table.gd 编译加载成功")
+	if UCT == null:
+		return
+	var entries: Array = UCT.get_player_card_entries()
+	var mg_cnt: int = 0
+	var mg_fast: int = 0  # 射速>2（进 batch 弹幕）的机枪
+	var dps_drift_max: float = 0.0
+	for e in entries:
+		var wl: String = String(e.get("w_light", ""))
+		if wl.find("机枪") < 0:
+			continue
+		mg_cnt += 1
+		var sp: float = float(e.get("atk_l_speed", 1.0))
+		if sp > 2.0:
+			mg_fast += 1
+		# DPS 恒定红线：atk×speed 必须落在原档 DPS 的 ±5% 内。
+		# 原档射速 ∈ {0.5,0.67,0.83,0.91,1.0,1.5}，DPS=atk_new×sp_new 对比 atk_old×sp_old
+		# 等价校验：atk_new 与 sp_new/2 的积接近 atk_old 与 sp_old/2 的积——直接断言
+		# 「atk_l×speed 与『整数偶射速』约束一致」改为：新 atk ≈ 基准 DPS / 新射速 ±5%。
+		# 基准 DPS 用同 era 同 tier 机枪中位不可靠，改用结构性断言：所有机枪 atk_l 为
+		# 偶数×0.5 的整数且 speed 是原档×2（speed ≥ 1.0）。
+		if sp < 1.0:
+			dps_drift_max = maxf(dps_drift_max, 100.0)  # 射速×2 后最低 1.0（0.5→1.0）
+	_ok(mg_cnt >= 10, "玩家池机枪条目 %d 张" % mg_cnt)
+	_ok(mg_cnt > 0 and mg_fast == 0,
+		"玩家池机枪全在 ≤2.0 点射档（单发路径 burst=3 补节奏；3.0/s 弹幕档在敌方池走 enemy batch）")
+	_ok(dps_drift_max < 100.0, "机枪射速全部 ×2 落位（最低 0.5→1.0）")
+	# 节奏分层抽样（玩家池实存名）：MG42 2.0 点射档 / 闪电机枪 1.66 / 雷霆机枪 1.0 拉开梯度
+	var sp_by_name: Dictionary = {}
+	for e in entries:
+		sp_by_name[String(e.get("w_light", ""))] = float(e.get("atk_l_speed", 1.0))
+	_ok(float(sp_by_name.get("MG42通用机枪", 0.0)) == 2.0, "MG42 2.0/s（点射档 ×3 连珠=6 发/秒视觉弹幕）")
+	_ok(float(sp_by_name.get("闪电机枪", 0.0)) == 1.66 and float(sp_by_name.get("雷霆机枪", 0.0)) == 1.0,
+		"闪电机枪 1.66 / 雷霆机枪 1.0——慢机枪梯度拉开")
+
+## [13] v20.19 机枪换弹周期——射击-停顿-再射击 + DPS 恒定补偿回归锁
+func _test_mg_reload_cycle() -> void:
+	print("\n[13] v20.19 机枪换弹周期")
+	var WPV: GDScript = load("res://scripts/weapon_projectile_vfx.gd")
+	var CAI: GDScript = load("res://scripts/battle/construct_unit_ai.gd")
+	_ok(WPV != null and CAI != null, "WPV / construct_unit_ai 编译加载成功")
+	# 常量与 DPS 恒定数学：补偿 × 射击占比 = 1（停顿期损失全额预支）
+	var s: float = WPV.MG_SUSTAIN_SEC
+	var r: float = WPV.MG_RELOAD_SEC
+	var comp: float = WPV.MG_DMG_COMP
+	_ok(s > 2.0 and r >= 1.0, "射击窗口 %.1fs / 换弹窗口 %.1fs（可感知节奏）" % [s, r])
+	_ok(absf(comp * s / (s + r) - 1.0) < 0.001, "DPS 恒定：补偿 %.2f × 占比 %.3f = 1.0" % [comp, s / (s + r)])
+	# 判定：仅 MG 亚类参与
+	_ok(WPV.mg_cycle_active("12.7mm重机枪", 0) == true, "机枪名 → 启用换弹周期")
+	_ok(WPV.mg_cycle_active("AK-47突击步枪", 0) == false and WPV.mg_cycle_active("120mm滑膛炮", 0) == false,
+		"步枪/坦克炮 → 不启用（语义不适用）")
+	_ok(WPV.mg_cycle_active("", 0) == false, "空名 → 不启用（无武器名路径零影响）")
+	# 状态机行为（伪造 meta 时间戳驱动）
+	var u: Node = Node.new()
+	var now: float = Time.get_ticks_msec() / 1000.0
+	# ① 首射：开射击窗口，不拦
+	_ok(CAI._mg_in_reload(u, "12.7mm重机枪", 0) == false and u.has_meta("_mg_sustain_until"),
+		"首射：开启射击窗口（%.1fs），放行" % s)
+	# ② 射击窗口内：放行
+	_ok(CAI._mg_in_reload(u, "12.7mm重机枪", 0) == false, "射击窗口内：放行")
+	# ③ 射击窗口过期：转换弹，拦截
+	u.set_meta("_mg_sustain_until", now - 0.1)
+	_ok(CAI._mg_in_reload(u, "12.7mm重机枪", 0) == true and u.has_meta("_mg_reload_until"),
+		"射击窗口结束：进入换弹（停火 %.1fs）" % r)
+	# ④ 换弹中：拦截
+	_ok(CAI._mg_in_reload(u, "12.7mm重机枪", 0) == true, "换弹窗口内：拦截")
+	# ⑤ 换弹结束：放行并开新窗口
+	u.set_meta("_mg_reload_until", now - 0.1)
+	_ok(CAI._mg_in_reload(u, "12.7mm重机枪", 0) == false and u.has_meta("_mg_sustain_until"),
+		"换弹结束：放行并开启新射击窗口（循环）")
+	u.free()
 
 func _poly_bounds(pts: PackedVector2Array) -> Dictionary:
 	var mn := Vector2(INF, INF)

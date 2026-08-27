@@ -59,6 +59,12 @@ var _visual_wt: int = 0
 ## 弹头形状分化轴——玩家侧直射 weapon_type 恒为 0（新枚举 DIRECT），wt 档永远
 ## 到不了 RIFLE/MG 形状分支，亚类是直射弹形分流的唯一有效键。
 var _shape_flavor: int = -1
+## v20.16c: 坦克炮口径量级（tank_caliber_scale 解析值）——TANK_GUN 桶内再分层，
+## 初级 57mm 坦克炮与终级 120mm+ 机甲主炮的弹体/曳光粗细随口径拉开。仅 TANK_GUN 消费。
+var _caliber_scale: float = 1.0
+## v20.17: 曲射/空射亚类（classify_indirect 解析值）——弧线/时长在 _process_indirect
+## 消费（与 indirect batch 同语言单射源）。直射弹道不消费。
+var _indirect_flavor: int = -1
 var shooter: Node2D = null  # 射手引用（用于词条效果）
 var shooter_stats: UnitStats = null  # 射手数值（用于词条效果计算）
 ## 超射程「哑弹」：飞过但不造成伤害（仍可对卡牌模式播放擦弹表现）
@@ -72,6 +78,12 @@ var _vfx_variant: String = ""
 var _is_heavy: bool = false
 ## v6.6: 抑制曲射炮口火焰（相位仪「超级火炮连击」从屏幕外飞入，无需炮口火）
 var suppress_muzzle: bool = false
+## v20.18: 点射发射延迟（秒）——>0 时子弹挂起等待（invisible），倒计时归零再现身飞行。
+## 点射第 2/3 发用（间隔 BURST_INTERVAL），让单发路径武器有"哒哒哒"节奏。
+var burst_delay: float = 0.0
+## v20.18: 纯视觉弹——点射后续发。命中只播弹着特效（伤害已由首发结算），不触发
+## take_damage/MISS/震屏/命中音。避免伤害翻倍与音效叠加。
+var _visual_only: bool = false
 
 ## v7.x: 目标的 combat_kind（命中时从 target.stats 提取，驱动命中色调/缩放/震动差异化）
 ## -1 = 未提取（走原逻辑，向后兼容）
@@ -149,8 +161,8 @@ func _apply_shield_wall_mitigation(raw_damage: float, _target: Node) -> float:
 	# 多个伤害调用点（主伤害/溅射两套路径）无需逐一改动
 	return raw_damage
 
-func setup(p_target: Node2D, p_damage: float, p_is_player: bool, p_weapon_type: int = -1, p_shooter: Node2D = null, p_shooter_stats: UnitStats = null, p_forced_miss: bool = false, p_weapon_name: String = "", p_pre_calculated: bool = false, p_vfx_variant: String = "") -> void:
-	visible = true
+func setup(p_target: Node2D, p_damage: float, p_is_player: bool, p_weapon_type: int = -1, p_shooter: Node2D = null, p_shooter_stats: UnitStats = null, p_forced_miss: bool = false, p_weapon_name: String = "", p_pre_calculated: bool = false, p_vfx_variant: String = "", p_burst_delay: float = 0.0, p_visual_only: bool = false) -> void:
+	visible = p_burst_delay <= 0.0  # v20.18: 点射延迟弹先隐藏，倒计时归零再现身
 	_finished = false  # 复用：清除归还守卫
 	target = p_target
 	damage = p_damage
@@ -161,10 +173,14 @@ func setup(p_target: Node2D, p_damage: float, p_is_player: bool, p_weapon_type: 
 	_weapon_name = p_weapon_name
 	_vfx_variant = p_vfx_variant  # v8.4: 武器类改造专属视觉
 	_pre_calculated = p_pre_calculated
+	burst_delay = p_burst_delay      # v20.18: 点射节奏（_process 倒计时）
+	_visual_only = p_visual_only     # v20.18: 纯视觉弹——命中只播弹着特效，不结算伤害
 	if p_weapon_type >= 0:
 		weapon_type = p_weapon_type
 	_visual_wt = WeaponVisuals.resolve_visual_wt(_weapon_name, weapon_type, shooter_is_player)
 	_shape_flavor = DirectWeaponFlavor.classify(_weapon_name, weapon_type)
+	_caliber_scale = WeaponProjectileVfx.tank_caliber_scale(_weapon_name)
+	_indirect_flavor = WeaponProjectileVfx.classify_indirect(_weapon_name)
 	_start_position = global_position
 	_direction = Vector2.RIGHT
 	_sprite = get_node_or_null("Sprite") as Polygon2D
@@ -187,7 +203,9 @@ func setup(p_target: Node2D, p_damage: float, p_is_player: bool, p_weapon_type: 
 	_configure_behavior()
 	_beam_visual_phase = 0
 	# v8.3: 发射音效（所有武器类型，按 WeaponTypeLegacy 分流）
-	_play_attack_sfx()
+	# v20.18: 纯视觉弹（点射后续发）不播——N 发同帧 setup 会音效叠加成爆音
+	if not _visual_only:
+		_play_attack_sfx()
 
 func _configure_behavior() -> void:
 	# 基础：大多数子弹直线追踪目标
@@ -344,8 +362,10 @@ func _apply_visual() -> void:
 		bullet_color = WeaponProjectileVfx.flavor_tint(_shape_flavor)
 	# v20.16: 直射坦克炮弹体加粗（flavor 轴）——直射炮 weapon_type 恒 0 落轻武器档
 	# size 1.0，此前坦克炮弹与冲锋枪弹同尺寸；亚类判定后放大到炮弹级。
+	# v20.16c: 再乘口径量级（57mm 0.65 / 75mm 0.85 / 105mm 1.05 / 120mm+ 1.25）——
+	# 初级坦克炮与终级机甲主炮分层（FT-17 ≈15×10px，巨神/虚空领主 ≈30×20px）。
 	if _shape_flavor == DirectWeaponFlavor.Flavor.TANK_GUN:
-		size_scale *= 1.7
+		size_scale *= 1.7 * _caliber_scale
 	if _sprite:
 		_sprite.visible = not use_beam
 		if not use_beam:
@@ -373,8 +393,17 @@ func _apply_visual() -> void:
 			_tracer_line.visible = (speed >= 400.0)
 			if _tracer_line.visible:
 				_tracer_line.default_color = bullet_color
-				_tracer_line.width = 2.5
-				_tracer_line.set_point_position(1, Vector2(-speed * 0.10, 0.0))  # 拖长=当前速度×0.1s 视觉长度
+				# v20.16c: 尾焰-弹头匹配——坦克炮弹头粗大，2.5px 细针曳光不配套；
+				# 加粗（4.5×口径档）+ 缩短（0.055s 视觉长度）成"底排余辉"读感。
+				if _shape_flavor == DirectWeaponFlavor.Flavor.TANK_GUN:
+					_tracer_line.width = 4.5 * _caliber_scale
+					_tracer_line.set_point_position(1, Vector2(-speed * 0.055, 0.0))
+				else:
+					# v20.16d: 其余亚类宽度走 WPV 单射源（与 batch 曳光同语言）——
+					# 步枪 1.8 细亮 / 机枪 3.0 弹幕 / 手枪 2.0 光点；GENERIC 兜底 2.5 不变。
+					_tracer_line.width = WeaponProjectileVfx.tracer_width_for(
+						WeaponProjectileVfx.flavor_layer_key(_shape_flavor))
+					_tracer_line.set_point_position(1, Vector2(-speed * 0.10, 0.0))  # 拖长=当前速度×0.1s 视觉长度
 
 
 ## v7.x: 程序化生成子弹多边形（替代原 3 点三角形）
@@ -412,6 +441,9 @@ func _apply_tex_sprite_visual(is_player: bool) -> void:
 	if _tex_sprite:
 		_tex_sprite.visible = true
 		_tex_sprite.texture = tex
+		# v20.17: 曲射亚类弹体尺寸（与 indirect batch per-instance scale 同语言）
+		if _indirect_flavor >= 0 and weapon_type in [1, 2, 3, 7, 9]:
+			sc *= WeaponProjectileVfx.indirect_body_scale(_indirect_flavor)
 		_tex_sprite.scale = Vector2(sc, sc)
 		_tex_sprite.modulate = tint
 		# v6.4: 贴图弹道发光叠加
@@ -691,6 +723,12 @@ func _finish_tex_bullet() -> void:
 
 
 func _process(delta: float) -> void:
+	# v20.18: 点射发射延迟——挂起等待（invisible），归零再现身。覆盖直射/曲射两路径。
+	if burst_delay > 0.0:
+		burst_delay -= delta
+		if burst_delay > 0.0:
+			return
+		visible = true
 	# 曲射弹道：抛物线飞行
 	if _is_indirect:
 		_process_indirect(delta)
@@ -815,6 +853,10 @@ func _process_indirect(delta: float) -> void:
 		# v6.5: 不同曲射武器的弧线高低不同（按 weapon_type 差异化）
 		# 基础弧线 = 100 + dist × 0.25，再乘以武器弧线倍率
 		_indirect_apex = (100.0 + dist * 0.25) * _get_indirect_arc_multiplier(weapon_type)
+		# v20.17: 武器名亚类覆盖（与 indirect batch 同语言单射源）——迫击炮慢飘/
+		# 榴弹族中弧/火箭低平快弹/导弹俯冲。无名恒 1.0 零行为变化。
+		_indirect_apex *= WeaponProjectileVfx.indirect_apex_mul(_indirect_flavor)
+		_indirect_duration *= WeaponProjectileVfx.indirect_duration_mul(_indirect_flavor)
 
 	# 记录旧位置，用于计算朝向
 	_indirect_prev_pos = global_position
@@ -1085,6 +1127,14 @@ const TANK_GUN_DISAPPEAR_AFTER: float = 0.20  # 命中后保持可见 0.2s（约
 ## 单次命中只走命中段落；热路径已做缓存优化（out_result/复用字典），拆分收益低于回归风险，
 ## 按"性能注释豁免"保留；后续重构建议按上述段落拆私有函数。
 func _on_hit(primary: Node2D) -> void:
+	# v20.18: 纯视觉弹（点射后续发）——伤害已由首发结算，此处只播弹着特效即回收。
+	# 不触发 take_damage/MISS 提示/震屏/命中音（避免伤害翻倍、MISS 刷屏、音效叠加）。
+	if _visual_only:
+		if primary != null and is_instance_valid(primary) and primary is Node2D:
+			if _rotates_with_direction:
+				_spawn_tex_impact_at((primary as Node2D).global_position)
+		_finish_tex_bullet()
+		return
 	# v9.3: TANK_GUN 命中后立即开始淡出计时
 	if DirectWeaponFlavor.classify(_weapon_name, weapon_type) == DirectWeaponFlavor.Flavor.TANK_GUN:
 		_tank_gun_terminate = true
@@ -1550,6 +1600,9 @@ func reset_pool_object() -> void:
 	spread_angle_deg = 0.0
 	_is_heavy = false  # v6.4: 重型武器标记重置
 	suppress_muzzle = false  # v6.6: 炮口火抑制重置
+	_indirect_flavor = -1  # v20.17: 曲射亚类重置（防对象池复用残留）
+	burst_delay = 0.0     # v20.18: 点射延迟重置
+	_visual_only = false  # v20.18: 纯视觉弹标记重置
 
 	# v8.1: 命中特效 pending 标记重置（防对象池复用残留）
 	_pending_crit = false

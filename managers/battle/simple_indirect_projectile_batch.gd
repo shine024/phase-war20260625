@@ -121,6 +121,12 @@ func fire(from: Vector2, tgt: Node2D, dmg: float, wt: int, shooter: Node2D, shoo
 	var duration := 0.6 + dist / 2000.0 * 0.8
 	# v6.5: 不同曲射武器的弧线高低不同（按 weapon_type 差异化）
 	var apex := (100.0 + dist * 0.25) * _get_indirect_arc_multiplier(wt)
+	# v20.17: 武器名亚类覆盖（弧线/节奏/弹体/染色，单射源 WPV）——迫击炮慢飘高弧小弹、
+	# 榴弹炮族中弧重弹、火箭低平快弹橙红、导弹俯冲微加速。无名恒 1.0 零行为变化。
+	var flavor: int = WeaponProjectileVfx.classify_indirect(weapon_name)
+	apex *= WeaponProjectileVfx.indirect_apex_mul(flavor)
+	duration *= WeaponProjectileVfx.indirect_duration_mul(flavor)
+	var body_scale: float = WeaponProjectileVfx.indirect_body_scale(flavor)
 
 	# v9.2: 从字典池取复用字典（替代每次 new 字典字面量）
 	var d: Dictionary = _acquire_proj_dict()
@@ -138,6 +144,8 @@ func fire(from: Vector2, tgt: Node2D, dmg: float, wt: int, shooter: Node2D, shoo
 	d["progress"] = 0.0
 	d["duration"] = duration
 	d["apex"] = apex
+	d["flavor_scale"] = body_scale  # v20.17: per-instance 弹体尺寸（亚类）
+	d["flavor"] = flavor            # v20.17: 亚类染色键（sync 时查表）
 	d["dir"] = Vector2.RIGHT
 	d["prev_pos"] = from
 	d["muzzle_spawned"] = true  # Fix-5: 禁用炮口火焰，标记为已生成
@@ -241,8 +249,14 @@ func _sync_multimesh_layers() -> void:
 		for r: Dictionary in arr:
 			var dir: Vector2 = r.get("dir", Vector2.RIGHT) as Vector2
 			var local_pos: Vector2 = to_local(r["pos"])
-			mm.set_instance_transform_2d(idx, Transform2D(dir.angle(), local_pos))
-			mm.set_instance_color(idx, tint)
+			# v20.17: per-instance 弹体尺寸（亚类 scale 乘进 Transform2D）
+			var sc: float = float(r.get("flavor_scale", 1.0))
+			var xf: Transform2D = Transform2D(dir.angle(), Vector2(sc, sc), 0.0, local_pos) if sc != 1.0 \
+				else Transform2D(dir.angle(), local_pos)
+			mm.set_instance_transform_2d(idx, xf)
+			# v20.17: 亚类染色覆盖（火箭橙红/导弹微橙白；NONE 保持阵营 tint）
+			var tint_r: Color = WeaponProjectileVfx.indirect_tint(int(r.get("flavor", -1)), tint)
+			mm.set_instance_color(idx, tint_r)
 			idx += 1
 
 func _apply_hit(r: Dictionary) -> void:

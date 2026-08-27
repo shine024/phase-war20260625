@@ -23,6 +23,7 @@ const _FLAVOR_LAYER_KEYS: Array[int] = [
 	WeaponProjectileVfx.FLAVOR_LAYER_RIFLE,
 	WeaponProjectileVfx.FLAVOR_LAYER_MG,
 	WeaponProjectileVfx.FLAVOR_LAYER_TANK_GUN,
+	WeaponProjectileVfx.FLAVOR_LAYER_SMALL_ARMS,  # v20.16d: 手枪/卡宾微型光点层
 ]
 const _PLAYER_TINT := Color(1.0, 0.95, 0.4)  # v9.2: 亮金黄（原淡黄，提亮让弹道更醒目）
 

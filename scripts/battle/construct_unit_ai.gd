@@ -573,12 +573,22 @@ static func do_attack_with_damage(u: CharacterBody2D, damage: float, weapon_type
 	if u.has_meta("_jammed_until"):
 		if Time.get_ticks_msec() / 1000.0 < float(u.get_meta("_jammed_until", 0.0)):
 			return  # 攻击失效（屏蔽持续期内）
+	# v20.19: 机枪换弹周期——换弹窗口内跳过本次开火（停顿期 DPS 损失已由
+	# MG_DMG_COMP 预补偿到每发伤害，见下方补偿乘区）。敌我共用（enemy_unit._do_attack
+	# 也调本 gate），meta 状态机推进逻辑在 _mg_in_reload 内。
+	var _wt_cycle: int = weapon_type_override if weapon_type_override >= 0 else (u.stats.weapon_type if u.stats != null else 0)
+	if _mg_in_reload(u, weapon_name, _wt_cycle):
+		return
 	# v8.x: 首击加成检测（SNIPER 必爆 / STALKER ×1.5）
 	# 通过临时 meta 传递给 bullet.gd 的暴击判定路径
 	var _is_first_attack: bool = false
 	if not u._has_made_first_attack:
 		u._has_made_first_attack = true
 		_is_first_attack = true
+	# v20.19: 机枪换弹周期伤害补偿——停顿期（MG_RELOAD_SEC）的 DPS 损失预支到射击窗口
+	# 每发伤害（×MG_DMG_COMP=1.4）。乘法区独立，与暴击/词条叠乘不冲突，总 DPS 恒定。
+	if WeaponProjectileVfx.mg_cycle_active(weapon_name, _wt_cycle):
+		damage = damage * WeaponProjectileVfx.MG_DMG_COMP
 	# STALKER 首击伤害 ×1.5
 	if _is_first_attack and u._is_stalker_unit:
 		damage = damage * 1.5
@@ -715,8 +725,17 @@ static func do_attack_with_damage(u: CharacterBody2D, damage: float, weapon_type
 	var pellet_dmg := damage / float(pellet_n)
 	var root_2d = u.get_parent().get_parent() if u.get_parent() else u
 	var _fire_spawn_pos = _get_direct_fire_spawn_pos(u)
+	# v20.18: 点射节奏——单发直射路径（射速≤2 不进 batch 的玩家武器）按亚类打 2-3 连发。
+	# 伤害仅首波结算，后续波为纯视觉弹（burst_delay 错开 0.09s，见 bullet.gd）。
+	# 仅玩家侧：敌方轻武器无条件走 batch，单发路径只剩重型/签名武器（语义单发）。
+	var burst_n := 1
+	if wt == GC.WeaponType.DIRECT and pellet_n == 1 and u.is_player:
+		burst_n = WeaponProjectileVfx.burst_count_for(DirectWeaponFlavor.classify(w_name, wt))
+	var total_shots: int = pellet_n * burst_n
 
-	for _p in range(pellet_n):
+	for _p in range(total_shots):
+		var _is_visual_round := _p >= pellet_n  # 首 pellet_n 发真伤害（霰弹全真），后续为视觉弹
+		var _burst_wave := _p / maxi(pellet_n, 1)  # 第几点射波次（0=首发即射）
 		var bullet: Node2D = ObjectPoolManager.get_object("bullets")
 		if bullet == null:
 			bullet = BulletScene.instantiate()
@@ -729,7 +748,8 @@ static func do_attack_with_damage(u: CharacterBody2D, damage: float, weapon_type
 			_vfx_wt = _slot_wt
 		elif u.stats and u.stats.legacy_weapon_type > 0:
 			_vfx_wt = u.stats.legacy_weapon_type
-		bullet.setup(u.target, pellet_dmg, u.is_player, _vfx_wt, u, u.stats, miss, w_name, p_pre_calculated, _vfx_variant)
+		bullet.setup(u.target, 0.0 if _is_visual_round else pellet_dmg, u.is_player, _vfx_wt, u, u.stats, miss, w_name, p_pre_calculated, _vfx_variant,
+			float(_burst_wave) * WeaponProjectileVfx.BURST_INTERVAL, _is_visual_round)
 		var current_parent: Node = bullet.get_parent()
 		if current_parent != root_2d:
 			if current_parent != null:
@@ -757,6 +777,32 @@ static func apply_continuous_effects(u: CharacterBody2D, delta: float) -> void:
 ##   ④ 区域减速光环（_slow_aura_until/_mult——UI 一直显示"攻速降低"，本次按同语义接通）
 ## 敌我共用：enemy_unit._process_attack_timing 也调本函数。①③④过期时顺带清理 meta。
 const ECM_DEFAULT_ATK_SPEED_PENALTY: float = 0.25  ## ECM 攻速削弱缺省值（写入端 construct_unit 同源引用）
+
+## v20.19: 机枪换弹周期 gate（敌我共用——enemy_unit._do_attack 同样调用）。
+## 状态机（meta）：首射设 _mg_sustain_until（射击窗口截止）；超窗后转 _mg_reload_until
+## （停火 MG_RELOAD_SEC）并清 sustain。返回 true = 换弹中，调用方跳过本次开火。
+## 仅 MG 亚类直射武器参与（mg_cycle_active 判定）；断目标期间不推进（无攻击无停顿，
+## DPS 偏差方向为玩家有利、量级可忽略——断目标本身已损失输出）。
+static func _mg_in_reload(u: Node, weapon_name: String, weapon_type: int = 0) -> bool:
+	if not WeaponProjectileVfx.mg_cycle_active(weapon_name, weapon_type):
+		return false
+	var now: float = Time.get_ticks_msec() / 1000.0
+	if u.has_meta("_mg_reload_until"):
+		if now < float(u.get_meta("_mg_reload_until", 0.0)):
+			return true  # 换弹窗口内——停火
+		u.remove_meta("_mg_reload_until")  # 换弹结束——本发即新窗口首射
+		u.set_meta("_mg_sustain_until", now + WeaponProjectileVfx.MG_SUSTAIN_SEC)
+	elif u.has_meta("_mg_sustain_until"):
+		if now >= float(u.get_meta("_mg_sustain_until", 0.0)):
+			# 射击窗口结束 → 进入换弹
+			u.remove_meta("_mg_sustain_until")
+			u.set_meta("_mg_reload_until", now + WeaponProjectileVfx.MG_RELOAD_SEC)
+			return true
+		return false  # 射击窗口内——正常开火
+	else:
+		# 首射：开启射击窗口
+		u.set_meta("_mg_sustain_until", now + WeaponProjectileVfx.MG_SUSTAIN_SEC)
+	return false
 
 static func get_attack_delta_scale(u: Node) -> float:
 	if u == null:

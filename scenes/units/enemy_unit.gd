@@ -18,6 +18,7 @@ const CombatTargeting = preload("res://scripts/combat_targeting.gd")
 const RankRules = preload("res://data/rank_rules.gd")
 const DefaultCards = preload("res://data/default_cards.gd")
 const TargetSelection = preload("res://scripts/battle/target_selection.gd")
+const WeaponProjectileVfx = preload("res://scripts/weapon_projectile_vfx.gd")  # v20.19: 机枪换弹周期判定/补偿
 const DamageAttenuation = preload("res://scripts/battle/damage_attenuation.gd")
 const AttackCalculator = preload("res://scripts/battle/attack_calculator.gd")
 const FortShieldAuraScript = preload("res://scripts/battle/fort_shield_aura.gd")
@@ -1360,6 +1361,12 @@ func _do_attack() -> void:
 		wt = int(cfg.get("weapon_type", GC.WeaponType.DIRECT))
 	# v9.x: 直射武器跨行射击减伤（同行全额；曲射/空射全场全额，不受行约束）
 	dmg_out *= CardGridBattleLayout.cross_row_direct_multiplier(self, target, wt)
+	# v20.19: 机枪换弹周期（敌我同源 gate，与玩家侧 do_attack_with_damage 同一状态机）——
+	# 换弹窗口内停火；停顿期 DPS 损失由伤害补偿预支（×MG_DMG_COMP）。
+	if ConstructUnitAI._mg_in_reload(self, weapon_name_str, wt):
+		return
+	if WeaponProjectileVfx.mg_cycle_active(weapon_name_str, wt):
+		dmg_out *= WeaponProjectileVfx.MG_DMG_COMP
 	# 开火反馈：炮口闪光 + Sprite2D 缩放脉冲（所有武器/所有战斗模式统一生效）
 	# 复用玩家 AI 的静态方法——敌方攻击逻辑独立，但开火视觉反馈无耦合。
 	# v17: 传武器名+敌方域标记，火花类别键经 WeaponVisualProfiles 统一解析
