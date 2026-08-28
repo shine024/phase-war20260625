@@ -15,6 +15,10 @@ extends Node
 
 const IntelDimensions = preload("res://data/intel_dimensions.gd")
 const IntelRevealEvents = preload("res://data/intel_reveal_events.gd")
+# v21.0: 通知链用（卡名/阈值常量/mod名）
+const DefaultCards = preload("res://data/default_cards.gd")
+const IntelManualScript = preload("res://scripts/systems/intel_manual.gd")
+const ModRegistry = preload("res://scripts/systems/modification_registry.gd")
 
 # ── 信号 ──────────────────────────────────────────────────────────
 
@@ -53,6 +57,11 @@ func _ready() -> void:
 	if im:
 		if im.has_signal("intel_dimension_changed"):
 			im.intel_dimension_changed.connect(_on_intel_dimension_changed)
+		## v21.0: base 进度跨档（低进化可用）/ mod 解锁 通知链
+		if im.has_signal("base_progress_changed"):
+			im.base_progress_changed.connect(_on_base_progress_changed)
+		if im.has_signal("mod_unlocked"):
+			im.mod_unlocked.connect(_on_mod_unlocked)
 
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_WM_CLOSE_REQUEST:
@@ -142,6 +151,7 @@ func generate_battle_intel_harvest(
 	var harvests: Array = []         ## 情报维度增长列表
 	var reveal_events: Array = []    ## 触发的揭示事件
 	var intel_item_drops: Array = []  ## v6.0: 情报道具掉落
+	var mod_points_by_card: Dictionary = {}  ## v21.0: card_id -> 本次击败获得的 mod 点数（结算展示用）
 
 	var im: Node = get_node_or_null("/root/IntelManual")
 	if im == null:
@@ -195,6 +205,12 @@ func generate_battle_intel_harvest(
 			var deltas: Dictionary = im.register_defeat(archetype_id, rank, enemy_type, victory_stars)
 			_harvest_defeat(harvests, archetype_id, enemy_type, rank, deltas)
 
+		## 2a. v21.0: 击败 mod 点数（normal+1/elite+2/boss+3），汇入收获展示
+		if im.has_method("add_defeat_mod_points"):
+			var mp_gained: int = im.add_defeat_mod_points(archetype_id, rank)
+			if mp_gained > 0:
+				mod_points_by_card[archetype_id] = int(mod_points_by_card.get(archetype_id, 0)) + mp_gained
+
 		## 3. 侦察加成
 		if has_recon_unit and im.has_method("register_recon"):
 			var recon_deltas: Dictionary = im.register_recon(archetype_id, 0.1, enemy_type)
@@ -213,6 +229,14 @@ func generate_battle_intel_harvest(
 
 	## 按card_id合并harvests
 	var merged: Dictionary = _merge_harvests(harvests)
+	## v21.0: 击败 mod 点数写进合并条目（结算界面展示"改造情报 +N 点"）
+	if not mod_points_by_card.is_empty():
+		var merged_items: Array = merged.get("items", [])
+		for item in merged_items:
+			if item is Dictionary:
+				var mp: int = int(mod_points_by_card.get(String(item.get("card_id", "")), 0))
+				if mp > 0:
+					item["mod_points"] = mp
 
 	## v6.0: 情报道具掉落
 	## v7.x: p_disable_mod_blueprint=true 时（相位师战）跳过改造蓝图，避免与相位师专属掉落双爆
@@ -521,3 +545,23 @@ func _roll_intel_item_drops(
 			drops.append(item)
 
 	return drops
+
+# ── v21.0: base 进度 / mod 解锁通知 ──────────────────────────────
+
+## base 跨过 50% → 低进化可用一次性通知（FeatureUnlockPopup 按键去重，只弹一次）
+func _on_base_progress_changed(card_id: String, old_val: float, new_val: float) -> void:
+	if old_val < IntelManualScript.LOW_EVOLUTION_BASE \
+			and new_val >= IntelManualScript.LOW_EVOLUTION_BASE \
+			and EnemyCardModMap.can_low_evolve(card_id):
+		FeatureUnlockPopup.show_once(
+			"v21_low_evo_" + card_id,
+			"低进化可用",
+			"「%s」情报过半——该敌方形态的缴获卡可在「成长」面板进化为对应我方卡。" % DefaultCards.get_safe_display_name(card_id))
+
+## mod 解锁一次性通知（点数达标或 base 满 100% 全解锁）
+func _on_mod_unlocked(card_id: String, mod_id: String) -> void:
+	var mod_name: String = String(ModRegistry.get_data(mod_id).get("name", mod_id))
+	FeatureUnlockPopup.show_once(
+		"v21_mod_" + card_id + "_" + mod_id,
+		"改造情报解锁",
+		"「%s」的改造模块「%s」已通过情报解锁。" % [DefaultCards.get_safe_display_name(card_id), mod_name])

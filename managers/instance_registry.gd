@@ -111,6 +111,14 @@ func _register_clone(clone: CardResource, card_id: String) -> CardResource:
 	_instances[instance_id] = clone
 	_index_add(canonical_id, instance_id)  # v8.x 性能：维护反向索引
 	instance_created.emit(instance_id, canonical_id)
+	# v21.0: 获取敌方形态卡（captured_*，购买/掉落/势力奖励统一经此）→ 情报下限 50%。
+	# 双守卫：前缀（普通玩家卡不建情报条目）+ EnemyCardModMap 登记（未配置形态不触发）。
+	if canonical_id.begins_with("captured_"):
+		var v21_arch: String = canonical_id.trim_prefix("captured_")
+		if EnemyCardModMap.has_entry(v21_arch):
+			var v21_im: Node = get_node_or_null("/root/IntelManual")
+			if v21_im != null and v21_im.has_method("set_acquired_base_progress"):
+				v21_im.set_acquired_base_progress(v21_arch)
 	# 批次三 B4：首次拥有同名卡第二张时，解释实例独立养成语义（同名卡最易困惑点）
 	if get_instances_by_card_id(canonical_id).size() == 2:
 		FeatureUnlockPopup.show_once("multi_instance", "同名卡独立养成",

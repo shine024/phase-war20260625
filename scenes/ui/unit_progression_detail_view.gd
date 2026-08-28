@@ -239,6 +239,15 @@ func _add_predecessor_block() -> void:
 func _add_forward_evolution_block() -> void:
 	_add_line("可进化至", Color(0.55, 0.82, 1.0), 14)
 	if not UnitLineageConfig.has_lineage(_card_id):
+		# v21.0: 缴获敌形态卡（captured_*）无常规进化链，但可能有"低进化"出口
+		# （该形态情报 ≥50% → 进化为对应玩家卡）
+		if BlueprintManager != null and BlueprintManager.has_method("get_evolution_options"):
+			var low_opt: Dictionary = BlueprintManager.get_evolution_options(_card_id).get("low_evolution", {})
+			var low_tid: String = String(low_opt.get("target_card_id", ""))
+			if not low_tid.is_empty():
+				_add_evolution_target("低进化 · 情报过半", low_tid, "low")
+				_add_line("获取/击败/部署该敌方形态积累情报，过半即可转化为对应我方卡", Color(0.65, 0.7, 0.78), 11)
+				return
 		_add_line("该单位无后续进化出口（终局或法则单位）", Color(0.6, 0.65, 0.75))
 		return
 	if BlueprintManager == null or not BlueprintManager.has_method("get_evolution_options"):

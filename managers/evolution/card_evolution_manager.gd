@@ -9,6 +9,8 @@ const BlueprintDefinitions = preload("res://data/blueprint_definitions.gd")
 ## v9.x 条件指引：技能树节点名/势力中文名查询（detail 字段用）
 const SkillTreeData = preload("res://data/phase_master_skill_tree.gd")
 const CompanyDefinitions = preload("res://data/company_definitions.gd")
+# v21.0: 低进化情报门槛常量（IntelManual 脚本常量，避免魔法数）
+const IntelManualScript = preload("res://scripts/systems/intel_manual.gd")
 
 ## 通过 Autoload 名称获取节点
 static func _get_autoload_node(autoload_name: String) -> Node:
@@ -31,12 +33,26 @@ static func get_evolution_options(card_id: String) -> Dictionary:
 		var bpm: Node = _get_autoload_node("BlueprintManager")
 		intel_branches = iem.get_evolution_options_for_card(card_id, bpm)
 
-	return {
+	var out: Dictionary = {
 		"base_card_id": card_id,
 		"evolution_1": evo_1,
 		"faction_branches": branches,
 		"intel_branches": intel_branches,  ## v6.0: 情报进化分支
 	}
+	## v21.0: 低进化——缴获敌形态卡（captured_*）→ 对应玩家卡（EnemyCardModMap.player_card_id）。
+	## 目标必须是 DefaultCards 里真实存在的玩家卡模板（执行期 create_instance 依赖它）。
+	if card_id.begins_with("captured_"):
+		var v21_arch: String = card_id.trim_prefix("captured_")
+		var v21_pid: String = EnemyCardModMap.get_player_card_id(v21_arch)
+		if not v21_pid.is_empty() and DefaultCards.get_card_by_id(v21_pid) != null:
+			out["low_evolution"] = {"target_card_id": v21_pid, "archetype_id": v21_arch}
+	return out
+
+## v21.0: 低进化对判定——captured_X 源 + 目标恰为 MAPPING[X].player_card_id
+static func _is_low_evolution_pair(card_id: String, target_card_id: String) -> bool:
+	if not card_id.begins_with("captured_"):
+		return false
+	return EnemyCardModMap.get_player_card_id(card_id.trim_prefix("captured_")) == target_card_id
 
 ## 获取卡片情报进度
 static func get_card_intel_progress(card_id: String) -> float:
@@ -67,6 +83,7 @@ static func _condition_key_to_reason(key: String) -> String:
 		"mods": return "mod_not_enough"
 		"enemy_mod": return "enemy_mod_not_enough"
 		"faction_level": return "faction_level_not_enough"
+		"intel_base": return "intel_base_not_enough"  ## v21.0
 		_: return "invalid"
 
 ## v7.0: 从参数中解析出 card_id（支持 instance_id 和裸 card_id）
@@ -79,6 +96,11 @@ static func _resolve_card_id(id_str: String) -> String:
 		var base: String = ir.get_card_id_of(id_str)
 		if not base.is_empty():
 			return base
+	# v21.0 兜底：InstanceRegistry 不可用（--script 测试等）时手动剥 #序号，
+	# 避免解析结果带后缀导致低进化对判定（前缀匹配）落空
+	var hi: int = id_str.rfind("#")
+	if hi > 0:
+		return id_str.substr(0, hi)
 	return id_str
 
 ## v7.0: 获取实例的 ID（优先 instance_id，回退 card_id）
@@ -114,6 +136,10 @@ static func can_evolve_blueprint(card_id_or_instance: String, target_card_id: St
 			if ib is Dictionary and String(ib.get("target_card_id", "")) == target_card_id:
 				valid_target = true
 				break
+	## v21.0: 低进化目标（captured_X → EnemyCardModMap.player_card_id，不在常规进化链上）
+	var is_low_evo_pair: bool = _is_low_evolution_pair(card_id, target_card_id)
+	if not valid_target and is_low_evo_pair:
+		valid_target = true
 	if not valid_target:
 		return _evolve_check_denied("target_not_in_path")
 
@@ -132,7 +158,8 @@ static func can_evolve_blueprint(card_id_or_instance: String, target_card_id: St
 		if from_card.combat_kind >= 0 and to_card.combat_kind >= 0:
 			if from_card.combat_kind != to_card.combat_kind:
 				## v6.0: 跨类型检查——情报分支如果标记cross_class则允许
-				if not (_is_intel_branch and _intel_branch_data.get("unique_bonus", {}).get("cross_class", false)):
+				## v21.0: 低进化对允许（缴获原型→玩家等价卡 combat_kind 可能有出入）
+				if not (_is_intel_branch and _intel_branch_data.get("unique_bonus", {}).get("cross_class", false)) and not is_low_evo_pair:
 					return _evolve_check_denied("cross_class")
 
 	## v9.x: 玩法条件改为非早退式全量评估——收集进 conditions 数组供 UI 逐条渲染达成/未达成。
@@ -155,17 +182,20 @@ static func can_evolve_blueprint(card_id_or_instance: String, target_card_id: St
 		})
 
 	## 进化蓝图检查：持有目标卡进化蓝图即可解锁进化（蓝图不消耗）
-	var evo_blueprint_id: String = BlueprintDefinitions.get_evolution_blueprint_id(card_id, target_card_id)
-	var iib: Node = _get_autoload_node("IntelItemBag")
-	var has_evo_bp: bool = iib != null and not evo_blueprint_id.is_empty() and iib.has_item(evo_blueprint_id)
-	conditions.append({
-		"key": "evo_blueprint",
-		"met": has_evo_bp,
-		"current_text": "持有" if has_evo_bp else "缺失",
-		"required_text": "持有",
-		## v9.x：指明获取渠道（战后掉落规则见 intel_discovery_manager 掉落表）
-		"detail": "击败精英/Boss 敌人，战后结算几率掉落进化图纸",
-	})
+	## v21.0: 低进化对跳过——captured→player 对不在图纸掉落链上（get_evolution_blueprint_id
+	## 返回空 → 条件恒 false），低进化的资格轴是情报而非图纸。
+	if not is_low_evo_pair:
+		var evo_blueprint_id: String = BlueprintDefinitions.get_evolution_blueprint_id(card_id, target_card_id)
+		var iib: Node = _get_autoload_node("IntelItemBag")
+		var has_evo_bp: bool = iib != null and not evo_blueprint_id.is_empty() and iib.has_item(evo_blueprint_id)
+		conditions.append({
+			"key": "evo_blueprint",
+			"met": has_evo_bp,
+			"current_text": "持有" if has_evo_bp else "缺失",
+			"required_text": "持有",
+			## v9.x：指明获取渠道（战后掉落规则见 intel_discovery_manager 掉落表）
+			"detail": "击败精英/Boss 敌人，战后结算几率掉落进化图纸",
+		})
 
 	var stage: String = UnitLineageConfig.get_stage(card_id, target_card_id)
 
@@ -247,6 +277,23 @@ static func can_evolve_blueprint(card_id_or_instance: String, target_card_id: St
 				"required_text": str(required_faction_lv),
 				"detail": "提升「%s」声望等级（做该势力委托/击败其占领关卡敌人）" % faction_name,
 			})
+
+	## v21.0: 低进化/完整进化的情报门槛——low_evo 卡 50%，Boss/平台/特色卡（low_evo=false）需满情报 100%
+	if is_low_evo_pair:
+		var v21_arch: String = card_id.trim_prefix("captured_")
+		var v21_im: Node = _get_autoload_node("IntelManual")
+		var v21_base: float = 0.0
+		if v21_im != null and v21_im.has_method("get_base_progress"):
+			v21_base = float(v21_im.get_base_progress(v21_arch))
+		var v21_need: float = IntelManualScript.LOW_EVOLUTION_BASE \
+			if EnemyCardModMap.can_low_evolve(v21_arch) else IntelManualScript.FULL_EVOLUTION_BASE
+		conditions.append({
+			"key": "intel_base",
+			"met": v21_base >= v21_need - 0.001,  ## 容差：获取下限/增量累加的浮点尾差
+			"current_text": "%.0f%%" % (v21_base * 100.0),
+			"required_text": "%.0f%%" % (v21_need * 100.0),
+			"detail": "击败/部署该敌方形态积累情报（获取实物缴获卡直接过半）",
+		})
 
 	## 汇总：首个未满足项决定 reason（评估顺序与旧早退版一致）
 	var first_fail_key: String = ""

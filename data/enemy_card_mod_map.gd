@@ -204,18 +204,24 @@ static func get_player_card_id(archetype_id: String) -> String:
 		return ""
 	return String(pid)
 
-## 获取该卡专属可解锁改造列表（空 pool 时按 combat_kind 全量）
+## 获取该敌方卡专属可解锁改造列表（空 pool 时按 combat_kind 全量）
+## 注意：必须逐元素构建 Array[String]——直接 return pool.duplicate() 返回未类型化
+## Array，运行时触发 "Trying to return an array of type Array where expected return
+## type is Array[String]" 报错并按空处理（2026-08-28 v21 smoke 首跑踩坑，此前未被执行过）。
 static func get_unlockable_mods(archetype_id: String) -> Array[String]:
 	var cfg: Dictionary = get_config(archetype_id)
+	var out: Array[String] = []
 	var pool: Array = cfg.get("mod_pool", [])
 	if not pool.is_empty():
-		return pool.duplicate()
+		for m in pool:
+			if m is String and not out.has(m):
+				out.append(m)
+		return out
 	# 空 pool = 按 player_card_id 取全量
 	var player_id: String = get_player_card_id(archetype_id)
 	if player_id.is_empty():
-		return []
+		return out
 	var mods: Array = ModificationRegistry.get_mods_for_card(player_id)
-	var out: Array[String] = []
 	for m in mods:
 		if m is String and not out.has(m):
 			out.append(m)
@@ -228,7 +234,9 @@ static func can_low_evolve(archetype_id: String) -> bool:
 
 ## 获取所有已配置的 archetype_id 列表
 static func get_all_archetype_ids() -> Array[String]:
-	return MAPPING.keys()
+	var out: Array[String] = []
+	out.assign(MAPPING.keys())
+	return out
 
 ## 检查 archetype_id 是否已配置
 static func has_entry(archetype_id: String) -> bool:

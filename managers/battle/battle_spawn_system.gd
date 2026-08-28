@@ -569,6 +569,18 @@ func consume_wave_timer() -> void:
 #  玩家单位部署
 # =========================================================================
 
+## v21.0: 部署敌方形态卡的情报记账——captured_ 前缀剥出 archetype_id，
+## 经 IntelManual.register_deploy 记 base+4% 与 2~5 mod 点数。
+## 守卫：EnemyCardModMap 未登记的形态不记账（与 instance_registry 获取挂钩同口径）。
+func _register_enemy_form_deploy_intel(captured_card_id: String) -> void:
+	var arch: String = captured_card_id.trim_prefix("captured_")
+	if arch.is_empty() or not EnemyCardModMap.has_entry(arch):
+		return
+	# RefCounted 无 get_node_or_null，按本文件惯例走 _get_cached_autoload
+	var im: Node = _get_cached_autoload("IntelManual")
+	if im != null and im.has_method("register_deploy"):
+		im.register_deploy(arch)
+
 func request_player_deploy(platform_card_id: String, world_pos: Vector2, battle_era: int) -> bool:
 	var bm: Node = _get_cached_autoload("BattleManager")
 	if bm != null and "battle_active" in bm and not bool(bm.battle_active):
@@ -692,6 +704,10 @@ func request_player_deploy(platform_card_id: String, world_pos: Vector2, battle_
 	if unit == null:
 		_emit_deploy_failed("internal", "部署失败，请重试。")
 		return false
+	# v21.0: 部署敌方形态卡（captured_*）→ 该 archetype 情报成长（base+4% 固定 + 2~5 mod 点数）。
+	# 每次成功部署计一次（7星卡多克隆体按各次部署调用分别计）。
+	if base_card_id.begins_with("captured_"):
+		_register_enemy_form_deploy_intel(base_card_id)
 	unit.set_meta("source_card_id", platform_card.card_id)
 	# v7.x：额外存 source_instance_id——战场点单位显示情报时用它从 InstanceRegistry 精确取回实例卡
 	# （带 enhance_level/mods 养成），否则显示侧只能取共享模板（养成=0），看不到强化/改造。

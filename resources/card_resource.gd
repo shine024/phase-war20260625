@@ -629,6 +629,13 @@ func get_evolution_targets() -> Array:
 		result.append(_build_evo_target(ib_target, "intel"))
 		seen_targets[ib_target] = true
 
+	# v21.0: 低进化目标（缴获敌形态卡 captured_* → 对应玩家卡，情报≥50% 资格轴）
+	var low_evo: Dictionary = opts.get("low_evolution", {})
+	var low_target: String = String(low_evo.get("target_card_id", ""))
+	if not low_target.is_empty() and not seen_targets.has(low_target):
+		result.append(_build_evo_target(low_target, "low"))
+		seen_targets[low_target] = true
+
 	return result
 
 ## 构造单个进化目标条目（与原 EvolutionPathRegistry 返回结构一致）

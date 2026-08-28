@@ -10,6 +10,7 @@ const RuneDefs = preload("res://data/runes.gd")
 const RunewordDefs = preload("res://data/runewords.gd")
 const DefaultCards = preload("res://data/default_cards.gd")
 const UnifiedCardTable = preload("res://data/unified_card_table.gd")  # v20.13c: 敌卡获得后的每卡部署次数预览
+const ModRegistry = preload("res://scripts/systems/modification_registry.gd")  # v21.0: 改造情报子行的 mod 名/稀有度
 const DT = preload("res://resources/design_tokens.gd")
 const PanelStyles = preload("res://scripts/ui/panel_styles.gd")
 const PanelChrome = preload("res://scenes/ui/components/panel_chrome.gd")
@@ -443,7 +444,9 @@ func _setup_intel_tab() -> void:
 	tab.name = "IntelManualTab"
 	_tab_container.add_child(tab)
 	var hint := Label.new()
-	hint.text = "击败同一敌人会累积情报进度（首杀收益最高，逐次递减）：\n25% 基础属性 → 50% 详细属性 → 75% 弱点提示 → 100% 进化资格 + 掉落率+50%"
+	hint.text = ("击败/部署同一敌方形态会累积情报（获取实物缴获卡直接过半）：\n"
+		+ "25% 基础属性 → 50% 详细属性 + 低进化可用 → 75% 弱点提示 → 100% 完整进化资格 + 全改造解锁\n"
+		+ "v21: 部署+4% 固定不衰减；击败/部署附带改造情报点数，点数达标解锁该形态专属改造")
 	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	hint.add_theme_font_size_override("font_size", DT.FONT_SIZE_XSMALL)
 	hint.add_theme_color_override("font_color", DT.COLOR_TEXT_DIM)
@@ -488,18 +491,20 @@ func _refresh_intel_tab() -> void:
 	header.add_theme_font_size_override("font_size", DT.FONT_SIZE_MEDIUM)
 	header.add_theme_color_override("font_color", DT.COLOR_VIOLET)
 	_intel_content.add_child(header)
-	# 条目按进度降序
+	# 条目按进度降序（v21.0: 主轴改 base_progress，旧档回退 intel_progress）
 	var sorted_ids: Array = entries.keys()
 	sorted_ids.sort_custom(func(a, b) -> bool:
-		return float((entries[a] as Dictionary).get("intel_progress", 0.0)) \
-			> float((entries[b] as Dictionary).get("intel_progress", 0.0)))
+		return float((entries[a] as Dictionary).get("base_progress", (entries[a] as Dictionary).get("intel_progress", 0.0))) \
+			> float((entries[b] as Dictionary).get("base_progress", (entries[b] as Dictionary).get("intel_progress", 0.0))))
 	for card_id in sorted_ids:
 		var e: Dictionary = entries[card_id]
 		_add_intel_row(String(card_id), e, im)
 
 func _add_intel_row(card_id: String, entry: Dictionary, im: Node) -> void:
-	var progress: float = clampf(float(entry.get("intel_progress", 0.0)), 0.0, 1.0)
+	# v21.0: 主进度轴改 base_progress（= max(intel 峰值, 获取下限)，旧档无此键时回退 intel）
+	var progress: float = clampf(float(entry.get("base_progress", entry.get("intel_progress", 0.0))), 0.0, 1.0)
 	var defeat_count: int = int(entry.get("defeat_count", 0))
+	var deploy_count: int = int(entry.get("deploy_count", 0))
 	var is_complete: bool = bool(entry.get("is_unlocked", false))
 	var panel := PanelContainer.new()
 	var sb := StyleBoxFlat.new()
@@ -557,6 +562,23 @@ func _add_intel_row(card_id: String, entry: Dictionary, im: Node) -> void:
 	defeat_lbl.add_theme_color_override("font_color", DT.COLOR_TEXT_DIM)
 	hbox.add_child(defeat_lbl)
 
+	# v21.0: 部署次数（该形态作为缴获卡上阵的累计次数）
+	if deploy_count > 0:
+		var deploy_lbl := Label.new()
+		deploy_lbl.text = "上阵 ×%d" % deploy_count
+		deploy_lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_XSMALL)
+		deploy_lbl.add_theme_color_override("font_color", DT.COLOR_TEXT_DIM)
+		hbox.add_child(deploy_lbl)
+
+	# v21.0: 低进化可用徽标（base ≥ 50% 且该形态允许低进化）
+	if progress >= 0.5 and EnemyCardModMap.can_low_evolve(card_id):
+		var low_lbl := Label.new()
+		low_lbl.text = "低进化可用"
+		low_lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_XSMALL)
+		low_lbl.add_theme_color_override("font_color", DT.COLOR_GOLD)
+		low_lbl.tooltip_text = "该形态的缴获卡可在「成长」面板进化为对应我方卡"
+		hbox.add_child(low_lbl)
+
 	# v20.13c: 该敌卡掉落获得后作为我方卡的每场可部署次数（UCT 口径预览）
 	var du_text := ""
 	var du_card: CardResource = DefaultCards.get_card_by_id(card_id)
@@ -575,6 +597,43 @@ func _add_intel_row(card_id: String, entry: Dictionary, im: Node) -> void:
 		hbox.add_child(du_lbl)
 
 	_intel_content.add_child(panel)
+
+	# v21.0: 改造情报小节——该形态 mod_pool 各模块的点数/阈值（已解锁金色高亮）
+	if EnemyCardModMap.has_entry(card_id) and im.has_method("get_mod_intel_points"):
+		_add_mod_intel_rows(card_id, im)
+
+## v21.0: 某敌方形态的改造情报子行（mod 名 + 点数/阈值，已解锁高亮）
+func _add_mod_intel_rows(card_id: String, im: Node) -> void:
+	var pool: Array[String] = EnemyCardModMap.get_unlockable_mods(card_id)
+	if pool.is_empty():
+		return
+	var points_map: Dictionary = im.get_all_mod_intel_points(card_id) if im.has_method("get_all_mod_intel_points") else {}
+	for mid in pool:
+		var mod_data: Dictionary = ModRegistry.get_data(String(mid))
+		var mod_name: String = String(mod_data.get("name", String(mid)))
+		var rarity: String = String(mod_data.get("rarity", "common"))
+		var threshold: int = IntelModThresholds.get_threshold(rarity)
+		var pts: int = int(points_map.get(String(mid), 0))
+		var unlocked: bool = im.is_mod_unlocked(card_id, String(mid)) if im.has_method("is_mod_unlocked") else false
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 6)
+		row.modulate.a = 0.92
+		var lbl := Label.new()
+		lbl.text = "      ▸ %s" % mod_name
+		lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_XSMALL)
+		lbl.add_theme_color_override("font_color", DT.COLOR_GOLD if unlocked else DT.COLOR_TEXT_MID)
+		lbl.custom_minimum_size = Vector2(190, 0)
+		lbl.tooltip_text = "击败/部署该敌方形态随机获得点数，攒满 %d 点解锁（base 情报满 100%% 时全解锁）" % threshold
+		row.add_child(lbl)
+		var prog_lbl := Label.new()
+		if unlocked:
+			prog_lbl.text = "已解锁"
+		else:
+			prog_lbl.text = "%d/%d" % [pts, threshold]
+		prog_lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_XSMALL)
+		prog_lbl.add_theme_color_override("font_color", DT.COLOR_GOLD if unlocked else DT.COLOR_TEXT_DIM)
+		row.add_child(prog_lbl)
+		_intel_content.add_child(row)
 
 
 func _on_close() -> void:

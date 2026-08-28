@@ -10,6 +10,13 @@ extends Node
 ##   原 4 维字段（intel_dimensions/revealed_tiers）在 IntelEntry 中保留以兼容旧存档，
 ##   但运行时不再读写。
 ##
+## v21.0: 敌方战斗卡情报双轨化
+##   intel_progress 仍是唯一累加轴（击败[递减]/侦察/分解/部署[固定+4%] 全走 _add_intel）；
+##   base_progress = max(intel 历史峰值, 获取下限 0.5)，只增不减，作低进化(50%)/完整进化(100%)门槛。
+##   mod 点数按 archetype 池累积（部署+2~5 / 击败 normal+1/elite+2/boss+3），
+##   点数达稀有度阈值或 base≥100% 时解锁该改造（EnemyCardModMap + IntelModThresholds）。
+##   条目键 = archetype_id；玩家侧缴获卡 card_id 带 captured_ 前缀，跨系统调用需先剥前缀。
+##
 ## 依赖：
 ##   - SaveUtils（存档/读档）
 ##   - SignalBus（信号通知）
@@ -18,6 +25,9 @@ extends Node
 const SaveUtils = preload("res://scripts/save_utils.gd")
 const IntelDimensions = preload("res://data/intel_dimensions.gd")
 const GC = preload("res://resources/game_constants.gd")
+# v21.0: 改造注册表（无 class_name 且与 autoload 同名，用别名避免遮蔽）。
+# get_data/get_mods_for_card 均为 static，脚本常量直调即可。
+const ModRegistry = preload("res://scripts/systems/modification_registry.gd")
 
 # ── 常量 ──────────────────────────────────────────────────────────
 
@@ -52,6 +62,22 @@ const TIER_EVOLUTION: int = 4       # 100%
 const SAVE_FILE_NAME: String = "intel_manual"
 const SAVE_VERSION: int = 3  # v1=旧单一情报, v2=4维情报, v3=单维度化（合并4维回单标量）
 
+# ── v21.0 常量 ────────────────────────────────────────────────────
+
+## v21.0: 部署情报增量（固定，不衰减——递减只作用于击败曲线）
+const DEPLOY_BASE_INTEL: float = 0.04
+const DEPLOY_MIN_MOD_POINTS: int = 2
+const DEPLOY_MAX_MOD_POINTS: int = 5
+## v21.0: 击败 mod 点数（按 rank）
+const DEFEAT_MOD_POINTS_NORMAL: int = 1
+const DEFEAT_MOD_POINTS_ELITE: int = 2
+const DEFEAT_MOD_POINTS_BOSS: int = 3
+## v21.0: 获取敌方形态卡（captured_*，购买/掉落/势力奖励）的情报下限
+const ACQUIRED_BASE_FLOOR: float = 0.5
+## v21.0: 低进化 / 完整进化 base 门槛
+const LOW_EVOLUTION_BASE: float = 0.5
+const FULL_EVOLUTION_BASE: float = 1.0
+
 # ── 信号 ──────────────────────────────────────────────────────────
 
 ## 情报进度变化 signal(card_id, old_progress, new_progress, source)
@@ -62,6 +88,12 @@ signal intel_dimension_changed(card_id: String, dimension: String, old_val: floa
 signal intel_tier_up(card_id: String, old_tier: int, new_tier: int)
 ## 完全解锁（100%） signal(card_id)
 signal intel_completed(card_id: String)
+## v21.0: base 进度变化（获取下限/情报增长驱动）signal(card_id, old_val, new_val)
+signal base_progress_changed(card_id: String, old_val: float, new_val: float)
+## v21.0: mod 点数增加 signal(card_id, mod_id, new_points, threshold)
+signal mod_points_gained(card_id: String, mod_id: String, new_points: int, threshold: int)
+## v21.0: mod 解锁 signal(card_id, mod_id)
+signal mod_unlocked(card_id: String, mod_id: String)
 
 # ── 数据 ──────────────────────────────────────────────────────────
 
@@ -88,6 +120,11 @@ class IntelEntry:
 	var recon_bonus: float = 0.0
 	var decompose_bonus: float = 0.0
 	var migrated: bool = false               ## 是否已迁移到当前版本
+	## ── v21.0 敌方战斗卡情报 ──
+	var base_progress: float = 0.0           ## 总进度 = max(intel 历史峰值, 获取下限)，只增不减
+	var deploy_count: int = 0                ## 部署该敌方形态的次数
+	var card_mod_intels: Dictionary = {}     ## archetype_id -> {mod_id: int} 累积点数
+	var unlocked_mod_ids: Array[String] = [] ## 已解锁 mod_id（派生缓存）
 
 	func _init(id: String) -> void:
 		card_id = id
@@ -96,6 +133,10 @@ class IntelEntry:
 		return {
 			"card_id": card_id,
 			"intel_progress": intel_progress,
+			"base_progress": base_progress,                      # v21.0
+			"deploy_count": deploy_count,                        # v21.0
+			"card_mod_intels": card_mod_intels.duplicate(),      # v21.0
+			"unlocked_mod_ids": unlocked_mod_ids.duplicate(),    # v21.0
 			"intel_dimensions": intel_dimensions.duplicate(),
 			"revealed_tiers": revealed_tiers.duplicate(),
 			"is_unlocked": is_unlocked,
@@ -109,6 +150,14 @@ class IntelEntry:
 	static func from_dict(data: Dictionary) -> IntelEntry:
 		var entry := IntelEntry.new(data.get("card_id", ""))
 		entry.intel_progress = clampf(data.get("intel_progress", 0.0), 0.0, 1.0)
+		## v21.0: base_progress 键缺失时默认取 intel_progress——现行 v3 存档不会走
+		## _migrate_v2_to_v3（migrated=true 且空4维），老玩家进度靠此默认值无损继承
+		entry.base_progress = clampf(data.get("base_progress", data.get("intel_progress", 0.0)), 0.0, 1.0)
+		entry.deploy_count = int(data.get("deploy_count", 0))
+		if data.has("card_mod_intels") and data["card_mod_intels"] is Dictionary:
+			entry.card_mod_intels = (data["card_mod_intels"] as Dictionary).duplicate()
+		if data.has("unlocked_mod_ids") and data["unlocked_mod_ids"] is Array:
+			entry.unlocked_mod_ids.assign(data["unlocked_mod_ids"] as Array)
 		entry.is_unlocked = data.get("is_unlocked", false)
 		entry.first_encounter = data.get("first_encounter", false)
 		entry.defeat_count = int(data.get("defeat_count", 0))
@@ -207,6 +256,8 @@ func _migrate_v2_to_v3(entry: IntelEntry) -> void:
 	## 同步 is_unlocked 状态（合并后若满100%则标记解锁）
 	if entry.intel_progress >= 1.0:
 		entry.is_unlocked = true
+	## v21.0: 迁移抬高了 intel（4维合并 > 原标量）时 base 同步跟上（单调不变式）
+	entry.base_progress = maxf(entry.base_progress, entry.intel_progress)
 
 # ── 内部工具 ──────────────────────────────────────────────────────
 
@@ -257,7 +308,68 @@ func _add_intel(card_id: String, amount: float, source: String, dimension: Strin
 	## v7.x 修复 W7：移除每条情报的同步写盘 save_data()——v6.6 起情报已并入统一存档（SaveManager
 	## 调 save_state），此处重复写独立文件既冗余又造成战斗结算批量解锁时的 I/O 抖动。
 	## 持久化由 SaveManager 自动存档（战斗结束+15s备份）统一负责。
+	## v21.0: base 单调同步——base = max(base, intel)，只增不减；满 100% 全池解锁
+	if entry.base_progress < entry.intel_progress:
+		var old_base: float = entry.base_progress
+		entry.base_progress = entry.intel_progress
+		base_progress_changed.emit(card_id, old_base, entry.base_progress)
+	_check_mods_full_unlock(card_id)
 	return new_val - old_val
+
+# ── v21.0: mod 点数管理 ───────────────────────────────────────────
+
+## 向随机一个未解锁 mod 累积点数，达标自动解锁。
+## 返回实际入池点数（0 = 无可选池/池已全解锁）。
+func _add_mod_points(archetype_id: String, points: int) -> int:
+	if points <= 0:
+		return 0
+	var entry := _ensure_entry(archetype_id)
+	if not entry.card_mod_intels.has(archetype_id):
+		entry.card_mod_intels[archetype_id] = {}
+	var pool: Dictionary = entry.card_mod_intels[archetype_id]
+	var mod_list: Array[String] = EnemyCardModMap.get_unlockable_mods(archetype_id)
+	if mod_list.is_empty():
+		return 0
+	## 候选 = 未解锁且点数未达阈值的 mod（已达标者必已解锁，_check_mod_unlock 即时性保证）
+	var available: Array[String] = []
+	for mid in mod_list:
+		var rarity: String = String(ModRegistry.get_data(String(mid)).get("rarity", "common"))
+		if not entry.unlocked_mod_ids.has(mid) \
+				and int(pool.get(mid, 0)) < IntelModThresholds.get_threshold(rarity):
+			available.append(String(mid))
+	if available.is_empty():
+		return 0
+	var chosen: String = available[randi() % available.size()]
+	pool[chosen] = int(pool.get(chosen, 0)) + points
+	var rarity2: String = String(ModRegistry.get_data(chosen).get("rarity", "common"))
+	var threshold: int = IntelModThresholds.get_threshold(rarity2)
+	mod_points_gained.emit(archetype_id, chosen, int(pool[chosen]), threshold)
+	_check_mod_unlock(archetype_id, chosen)
+	return points
+
+## 点数达标检查 → 解锁 + 发信号
+func _check_mod_unlock(archetype_id: String, mod_id: String) -> void:
+	var entry := _ensure_entry(archetype_id)
+	var pool: Dictionary = entry.card_mod_intels.get(archetype_id, {})
+	var points: int = int(pool.get(mod_id, 0))
+	var rarity: String = String(ModRegistry.get_data(mod_id).get("rarity", "common"))
+	var threshold: int = IntelModThresholds.get_threshold(rarity)
+	if points >= threshold and not entry.unlocked_mod_ids.has(mod_id):
+		entry.unlocked_mod_ids.append(mod_id)
+		mod_unlocked.emit(archetype_id, mod_id)
+
+## base ≥ 100% 时该卡 mod_pool 全量无条件解锁（绕过点数检查）
+## 容差 0.001：增量累加的浮点尾差（0.9999999…）不应挡住满档判定
+func _check_mods_full_unlock(card_id: String) -> void:
+	if not _entries.has(card_id):
+		return
+	var entry: IntelEntry = _entries[card_id]
+	if entry.base_progress < FULL_EVOLUTION_BASE - 0.001 or not EnemyCardModMap.has_entry(card_id):
+		return
+	for mid in EnemyCardModMap.get_unlockable_mods(card_id):
+		if not entry.unlocked_mod_ids.has(mid):
+			entry.unlocked_mod_ids.append(String(mid))
+			mod_unlocked.emit(card_id, String(mid))
 
 # ── 公开接口：情报获取 ─────────────────────────────────────────────
 ## v6.7: 所有 register_* 返回 {"intel": delta}，保持与下游 _harvest_* 的 Dictionary 契约。
@@ -339,6 +451,38 @@ func register_decompose(card_id: String, enemy_type: String = "") -> Dictionary:
 	if actual > 0.001:
 		result["intel"] = actual
 	return result
+
+## v21.0: 部署敌方形态卡（captured_*）——base +4% 固定（不衰减）+ 随机 2~5 mod 点数。
+## 由 battle_spawn_system.request_player_deploy 成功路径调用（每次部署计一次）。
+## 返回 {"base_intel": delta, "mod_points": pts}
+func register_deploy(archetype_id: String, enemy_type: String = "") -> Dictionary:
+	var entry := _ensure_entry(archetype_id)
+	entry.deploy_count += 1
+	if not enemy_type.is_empty():
+		_card_to_enemy_type[archetype_id] = enemy_type
+	var base_delta: float = _add_intel(archetype_id, DEPLOY_BASE_INTEL, "deploy")
+	var mod_delta: int = _add_mod_points(archetype_id, randi_range(DEPLOY_MIN_MOD_POINTS, DEPLOY_MAX_MOD_POINTS))
+	return {"base_intel": base_delta, "mod_points": mod_delta}
+
+## v21.0: 击败获得的 mod 点数（normal+1/elite+2/boss+3）。
+## 由 intel_discovery_manager.generate_battle_intel_harvest 循环调用。
+## 返回实际入池点数（无可选池/池已全解锁时 0）。
+func add_defeat_mod_points(archetype_id: String, unit_rank: String = "normal") -> int:
+	var pts: int = DEFEAT_MOD_POINTS_NORMAL
+	match unit_rank:
+		"boss":
+			pts = DEFEAT_MOD_POINTS_BOSS
+		"elite":
+			pts = DEFEAT_MOD_POINTS_ELITE
+	return _add_mod_points(archetype_id, pts)
+
+## v21.0: 获取敌方形态卡（购买/掉落/势力奖励统一口径）——base 与 intel 同时抬到 50% 下限。
+## intel 走 _add_intel（正确触发阶梯/揭示信号并经内部同步抬 base）；
+## intel 已 ≥ 50% 时 base 必然也已 ≥ 50%（单调不变式），无需处理。
+func set_acquired_base_progress(archetype_id: String) -> void:
+	var entry := _ensure_entry(archetype_id)
+	if entry.intel_progress < ACQUIRED_BASE_FLOOR:
+		_add_intel(archetype_id, ACQUIRED_BASE_FLOOR - entry.intel_progress, "acquire")
 
 # ── 公开接口：查询 ────────────────────────────────────────────────
 
@@ -433,6 +577,56 @@ func get_total_entries() -> int:
 func get_total_completed() -> int:
 	return _completed_cache.size()
 
+# ── v21.0 查询接口 ────────────────────────────────────────────────
+
+## v21.0: 获取 base 进度（0.0~1.0，低进化 50%/完整进化 100% 门槛轴）
+func get_base_progress(card_id: String) -> float:
+	if _entries.has(card_id):
+		return _entries[card_id].base_progress
+	return 0.0
+
+## v21.0: 部署次数
+func get_deploy_count(archetype_id: String) -> int:
+	if _entries.has(archetype_id):
+		return _entries[archetype_id].deploy_count
+	return 0
+
+## v21.0: 某卡某 mod 的累积点数
+func get_mod_intel_points(archetype_id: String, mod_id: String) -> int:
+	if not _entries.has(archetype_id):
+		return 0
+	var entry: IntelEntry = _entries[archetype_id]
+	var pool: Dictionary = entry.card_mod_intels.get(archetype_id, {})
+	return int(pool.get(mod_id, 0))
+
+## v21.0: 某卡所有 mod 点数（{mod_id: int}）
+func get_all_mod_intel_points(archetype_id: String) -> Dictionary:
+	if not _entries.has(archetype_id):
+		return {}
+	var entry: IntelEntry = _entries[archetype_id]
+	return entry.card_mod_intels.get(archetype_id, {}).duplicate()
+
+## v21.0: 某卡已解锁的 mod 列表
+func get_unlocked_mod_ids(archetype_id: String) -> Array[String]:
+	if not _entries.has(archetype_id):
+		return []
+	return _entries[archetype_id].unlocked_mod_ids.duplicate()
+
+## v21.0: 某 mod 是否已解锁（点数达标 或 base≥100% 全解锁）
+func is_mod_unlocked(archetype_id: String, mod_id: String) -> bool:
+	if not _entries.has(archetype_id):
+		return false
+	return _entries[archetype_id].unlocked_mod_ids.has(mod_id)
+
+## v21.0: 某 mod 解锁进度（0.0~1.0）
+func get_mod_unlock_progress(archetype_id: String, mod_id: String) -> float:
+	if is_mod_unlocked(archetype_id, mod_id):
+		return 1.0
+	var points: int = get_mod_intel_points(archetype_id, mod_id)
+	var rarity: String = String(ModRegistry.get_data(mod_id).get("rarity", "common"))
+	var threshold: int = IntelModThresholds.get_threshold(rarity)
+	return clampf(float(points) / float(threshold), 0.0, 1.0)
+
 ## 解锁所有情报（用于新游戏初始资源）
 func unlock_all_intel() -> void:
 	var dc: GDScript = load("res://data/default_cards.gd")
@@ -443,6 +637,9 @@ func unlock_all_intel() -> void:
 			var entry = _entries[card.card_id]
 			entry.intel_progress = 1.0
 			entry.is_unlocked = true
+			# v21.0: 直接写 intel 的旁路同步 base + 全池解锁（保持单调不变式）
+			entry.base_progress = maxf(entry.base_progress, 1.0)
+			_check_mods_full_unlock(card.card_id)
 			if not _completed_cache.has(card.card_id):
 				_completed_cache.append(card.card_id)
 	_completed_cache = _completed_cache.duplicate()  # 触发更新

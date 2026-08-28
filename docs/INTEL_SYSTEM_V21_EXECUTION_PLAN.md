@@ -1,447 +1,365 @@
-# 敌方战斗卡情报系统 v21.0 — 详细执行计划
+# 敌方战斗卡情报系统 v21.0 — 详细执行计划（修订版 r2）
 
-> 状态：待执行
-> 日期：2026-08-27
+> 状态：执行中
+> 日期：2026-08-27 初稿 / 2026-08-28 r2 修订实施
 > 前置条件：`data/enemy_card_mod_map.gd` ✅ / `data/intel_mod_thresholds.gd` ✅ 已完成
+
+---
+
+## r2 修订要点（初稿评审结论落实）
+
+初稿经与代码库逐项核对，发现 6 处致命问题 + 若干功能缺口，本版全部修正：
+
+1. **base/intel 双轨同步规则定稿（单调 max 模型）**：`intel_progress` 仍是唯一累加轴
+   （击败/部署/侦察/分解全走 `_add_intel`），`base_progress = max(历史 intel, 获取下限 0.5)`，
+   只增不减。初稿调用的 `_sync_base_from_intel()` 从未定义（加载即报错），同步逻辑下沉到
+   `_add_intel` 内部，删除该函数。
+2. **部署触发链补齐**：初稿的 `register_deploy()` 没有任何调用方（Phase 2.1 只加了注释），
+   核心玩法不会发生。r2 在 `battle_spawn_system.request_player_deploy` 成功路径接线。
+3. **信号归属修正**：`base_progress_changed` / `mod_points_gained` / `mod_unlocked` 声明在
+   **IntelManual** 并在其内部 emit（初稿声明在 IntelDiscoveryManager 却从 IntelManual 连接，
+   `has_signal` 守卫下是永久死代码）。通知复用 `FeatureUnlockPopup.show_once`（项目既有模式，
+   instance_registry 有先例），**不新增 SignalBus 信号**（初稿的
+   `SignalBus.enemy_low_evolution_available` 不存在，直接 emit 会运行时报错）。
+4. **ID 命名空间统一**：IntelManual 条目键 = `archetype_id`（战斗收获链路现状如此）；
+   玩家侧缴获卡 card_id 带 `captured_` 前缀（`captured_ww1_inf_mp18`）。所有跨系统调用先
+   `trim_prefix("captured_")` 再查 `EnemyCardModMap`。instance_registry 挂钩加
+   `begins_with("captured_") + has_entry()` 双守卫——初稿会把所有普通玩家卡也建垃圾情报条目。
+5. **进化集成为"低进化"选项**：初稿 `_get_autoload_node("EnemyCardModMap")` 取出恒 null
+   （它是 RefCounted 静态类不是 autoload）→ 低进化永不可用。r2 改用 class_name 静态调用；
+   `get_evolution_options` 输出 `low_evolution` 键，`can_evolve_blueprint` 对 captured 源
+   放行目标校验并新增 `intel_base` 条件；低进化对**跳过 evo_blueprint（图纸）条件**
+   （captured→player 对不在图纸掉落链上，不跳过则恒 false）。
+6. **旧档迁移改在 `from_dict` 做默认值**：`base_progress` 缺失时取 `intel_progress`。
+   初稿挂在 `_migrate_v2_to_v3`，但现行存档已是 v3 + migrated=true + 空4维，
+   `_apply_loaded_raw` 的迁移条件永不触发 → 老玩家进度归零。
+7. **击败也给 mod 点数**（normal +1 / elite +2 / boss +3，`intel_mod_thresholds.gd` 头注释
+   承诺），在 `generate_battle_intel_harvest` 循环接线并汇入收获展示数据（初稿测试表承诺无实现）。
+8. **base ≥ 100% 全 mod 解锁**分支落地（初稿同样只有承诺）。
+9. **UI 改 `_refresh_intel_tab`/`_add_intel_row`**（初稿只改 `_setup_intel_tab`——该函数只建
+   容器，行内容每次切 Tab 由 `_refresh_intel_tab` 重建清空）。保留"遭遇后发现"渐进性
+   （继续遍历 `get_all_entries()`，不改为全量 109 条罗列）。
+10. **mod_pool 时代考据修正（附录 A.4）暂缓**：A.4 若干"修正"与 A.3 时代基准自相矛盾
+    （如一战 MP18 班把二战 SCR-536 换成现代 PRC-152 单兵电台），需单独一轮数据策展，
+    本轮不动 `enemy_card_mod_map.gd` 数值。
+
+## 核心设计（r2 定稿）
+
+```
+情报轴（不变）  intel_progress ← _add_intel()（击败[递减]/侦察/分解/部署[固定+4%]）
+总进度轴（新）  base_progress = max(intel_progress 历史峰值, 获取下限 0.5)   只增不减
+mod 点数轴（新）card_mod_intels[archetype][mod_id] ← 部署+2~5 / 击败+1~3（随机落池）
+解锁            点数 ≥ 阈值(稀有度) 或 base ≥ 100%（全池无条件解锁）
+低进化          缴获卡(captured_X) + base(X) ≥ 50% 且 MAPPING[X].low_evo → 进化为对应玩家卡
+完整进化        base ≥ 100%（low_evo=false 的 Boss/平台/特色卡需满情报才能转化）
+```
+
+关键链路：
+
+```
+击败敌人    intel_discovery_manager.generate_battle_intel_harvest
+              → IntelManual.register_defeat（intel 递减增长，base 随 max 同步）
+              → IntelManual.add_defeat_mod_points（rank 点数入池，达标解锁）
+部署敌形态  battle_spawn_system.request_player_deploy 成功
+              → IntelManual.register_deploy（base+4% 固定 + 2~5 点数）
+获取敌卡    InstanceRegistry._register_clone（购买/掉落/势力奖励统一口径）
+              → IntelManual.set_acquired_base_progress（base/intel 下限 0.5）
+低进化      CardEvolutionManager.get_evolution_options 输出 low_evolution
+              → can_evolve_blueprint 加 intel_base 条件 → evolve_blueprint 走既有实例化路径
+通知        IntelManual 信号 → IntelDiscoveryManager 回调 → FeatureUnlockPopup.show_once
+```
 
 ---
 
 ## Phase 1：修改 `scripts/systems/intel_manual.gd`
 
-### 1.1 添加常量（放在现有常量块后）
+### 1.1 新增常量（现有常量块后）
 
 ```gdscript
-## v21.0: 部署情报增量（固定，不衰减）
+## v21.0: 部署情报增量（固定，不衰减——递减只作用于击败曲线）
 const DEPLOY_BASE_INTEL: float = 0.04
 const DEPLOY_MIN_MOD_POINTS: int = 2
 const DEPLOY_MAX_MOD_POINTS: int = 5
-
-## v21.0: 商店购卡直接设定 base_progress
-const SHOP_PURCHASED_BASE_PROGRESS: float = 0.5
+## v21.0: 击败 mod 点数（按 rank）
+const DEFEAT_MOD_POINTS_NORMAL: int = 1
+const DEFEAT_MOD_POINTS_ELITE: int = 2
+const DEFEAT_MOD_POINTS_BOSS: int = 3
+## v21.0: 获取敌方形态卡（captured_*，购买/掉落/势力奖励）的情报下限
+const ACQUIRED_BASE_FLOOR: float = 0.5
+## v21.0: 低进化 / 完整进化 base 门槛
+const LOW_EVOLUTION_BASE: float = 0.5
+const FULL_EVOLUTION_BASE: float = 1.0
 ```
 
-### 1.2 修改 `IntelEntry` 内部类（约第 79-123 行）
+### 1.2 新增信号（现有信号块后）
 
-**旧字段（保留，迁移兼容）：**
 ```gdscript
-var intel_progress: float = 0.0          # v6.7 单维度 → v21.0 迁移为 base_progress
+## v21.0: base 进度变化（获取下限/情报增长驱动）
+signal base_progress_changed(card_id: String, old_val: float, new_val: float)
+## v21.0: mod 点数增加 signal(card_id, mod_id, new_points, threshold)
+signal mod_points_gained(card_id: String, mod_id: String, new_points: int, threshold: int)
+## v21.0: mod 解锁 signal(card_id, mod_id)
+signal mod_unlocked(card_id: String, mod_id: String)
 ```
 
-**新增字段（在 `migrated` 之后插入）：**
+### 1.3 `IntelEntry` 新增字段（`migrated` 之后）
+
 ```gdscript
-## v21.0: 双轨情报
-var base_progress: float = 0.0           # 总体情报进度（0~1.0），替代原 intel_progress
-var deploy_count: int = 0                # 部署该敌方卡的次数（主要情报来源）
-var card_mod_intels: Dictionary = {}     # archetype_id -> {mod_id: int} 累积点数
-var unlocked_mod_ids: Array[String] = [] # 已解锁的 mod_id 列表（派生缓存）
+## v21.0: 双轨情报（base = max(intel 历史峰值, 获取下限)，只增不减）
+var base_progress: float = 0.0
+var deploy_count: int = 0                ## 部署该敌方形态的次数
+var card_mod_intels: Dictionary = {}     ## archetype_id -> {mod_id: int} 累积点数
+var unlocked_mod_ids: Array[String] = [] ## 已解锁 mod_id（派生缓存）
 ```
 
-**修改 `to_dict()`（约第 95-107 行）：**
+`to_dict()` 增加四个键；`from_dict()` 读取（**迁移关键**）：
+
 ```gdscript
-func to_dict() -> Dictionary:
-    return {
-        "card_id": card_id,
-        "intel_progress": intel_progress,        # 保留用于 v2→v3 迁移
-        "base_progress": base_progress,          # v21.0 新增
-        "deploy_count": deploy_count,             # v21.0 新增
-        "card_mod_intels": card_mod_intels.duplicate(), # v21.0 新增
-        "unlocked_mod_ids": unlocked_mod_ids.duplicate(), # v21.0 新增
-        "intel_dimensions": intel_dimensions.duplicate(),
-        "revealed_tiers": revealed_tiers.duplicate(),
-        "is_unlocked": is_unlocked,
-        "first_encounter": first_encounter,
-        "defeat_count": defeat_count,
-        "recon_bonus": recon_bonus,
-        "decompose_bonus": decompose_bonus,
-        "migrated": migrated,
-    }
+entry.base_progress = clampf(data.get("base_progress", data.get("intel_progress", 0.0)), 0.0, 1.0)
 ```
 
-**修改 `from_dict()`（约第 109-123 行）：**
-```gdscript
-static func from_dict(data: Dictionary) -> IntelEntry:
-    var entry := IntelEntry.new(data.get("card_id", ""))
-    entry.intel_progress = clampf(data.get("intel_progress", 0.0), 0.0, 1.0)
-    # v21.0: 读取新字段（旧档缺失则为默认值）
-    entry.base_progress = clampf(data.get("base_progress", 0.0), 0.0, 1.0)
-    entry.deploy_count = int(data.get("deploy_count", 0))
-    if data.has("card_mod_intels") and data["card_mod_intels"] is Dictionary:
-        entry.card_mod_intels = (data["card_mod_intels"] as Dictionary).duplicate()
-    if data.has("unlocked_mod_ids") and data["unlocked_mod_ids"] is Array:
-        entry.unlocked_mod_ids.assign(data["unlocked_mod_ids"] as Array)
-    entry.is_unlocked = data.get("is_unlocked", false)
-    entry.first_encounter = data.get("first_encounter", false)
-    entry.defeat_count = int(data.get("defeat_count", 0))
-    entry.recon_bonus = clampf(data.get("recon_bonus", 0.0), 0.0, 1.0)
-    entry.decompose_bonus = clampf(data.get("decompose_bonus", 0.0), 0.0, 1.0)
-    entry.migrated = data.get("migrated", false)
-    if data.has("intel_dimensions") and data["intel_dimensions"] is Dictionary:
-        entry.intel_dimensions = (data["intel_dimensions"] as Dictionary).duplicate()
-    if data.has("revealed_tiers") and data["revealed_tiers"] is Dictionary:
-        entry.revealed_tiers = (data["revealed_tiers"] as Dictionary).duplicate()
-    return entry
-```
+> base_progress 键缺失时默认取 intel_progress——对现行 v3 存档（迁移函数不会跑）同样生效，
+> 老玩家进度无损继承。`_migrate_v2_to_v3` 无需改动。
 
-### 1.3 添加 `register_deploy()` 函数
-
-在 `register_decompose()` 函数之后（约第 341 行后）插入：
+### 1.4 `_add_intel()` 内部追加 base 同步（阶梯信号之后、return 之前）
 
 ```gdscript
-## v21.0: 部署敌方卡获得 base intel + mod 点数（稳定成长来源，不衰减）
-func register_deploy(archetype_id: String, enemy_type: String = "") -> Dictionary:
-    var entry := _ensure_entry(archetype_id)
-    entry.deploy_count += 1
-    if not enemy_type.is_empty():
-        _card_to_enemy_type[archetype_id] = enemy_type
-    # base intel: +4% 固定
-    var base_delta: float = _add_intel(archetype_id, DEPLOY_BASE_INTEL, "deploy")
-    # 如果 base 已满，直接用旧 intel_progress 同步 base_progress
-    _sync_base_from_intel(archetype_id)
-    # mod 点数: 随机 2~5
-    var mod_delta: int = randi_range(DEPLOY_MIN_MOD_POINTS, DEPLOY_MAX_MOD_POINTS)
-    _add_mod_points(archetype_id, mod_delta)
-    return {"base_intel": base_delta, "mod_points": mod_delta}
-
-## v21.0: 商店购卡直接设定 base_progress = 50%
-func set_shop_purchased_base_progress(archetype_id: String) -> void:
-    var entry := _ensure_entry(archetype_id)
-    if entry.base_progress < SHOP_PURCHASED_BASE_PROGRESS:
-        var old_val: float = entry.base_progress
-        entry.base_progress = SHOP_PURCHASED_BASE_PROGRESS
-        # 同步到 intel_progress（向后兼容）
-        if entry.intel_progress < old_val + SHOP_PURCHASED_BASE_PROGRESS:
-            entry.intel_progress = old_val + SHOP_PURCHASED_BASE_PROGRESS
-```
-
-### 1.4 添加 mod 点数管理函数
-
-在 `_add_intel()` 之后（约第 260 行后）插入：
-
-```gdscript
-## v21.0: 向某卡的某 mod 累积点数，达标自动解锁
-func _add_mod_points(archetype_id: String, points: int) -> void:
-    var entry := _ensure_entry(archetype_id)
-    if not entry.card_mod_intels.has(archetype_id):
-        entry.card_mod_intels[archetype_id] = {}
-    var pool: Dictionary = entry.card_mod_intels[archetype_id]
-    # 获取该卡可解锁的 mod 列表
-    var mod_list: Array[String] = EnemyCardModMap.get_unlockable_mods(archetype_id)
-    if mod_list.is_empty():
-        return
-    # 随机选一个未解锁的 mod 加点
-    var available: Array[String] = []
-    for mid in mod_list:
-        if not pool.has(mid) or pool[mid] < IntelModThresholds.get_threshold(
-            ModificationRegistry.get_data(mid).get("rarity", "common")):
-            available.append(mid)
-    if available.is_empty():
-        return
-    var chosen: String = available[randi() % available.size()]
-    pool[chosen] = int(pool.get(chosen, 0)) + points
-    # 检查是否达标解锁
-    _check_mod_unlock(archetype_id, chosen)
-
-## v21.0: 检查某 mod 是否达标解锁
-func _check_mod_unlock(archetype_id: String, mod_id: String) -> void:
-    var entry := _ensure_entry(archetype_id)
-    var pool: Dictionary = entry.card_mod_intels.get(archetype_id, {})
-    var points: int = int(pool.get(mod_id, 0))
-    var mod_data: Dictionary = ModificationRegistry.get_data(mod_id)
-    if mod_data.is_empty():
-        return
-    var rarity: String = String(mod_data.get("rarity", "common"))
-    var threshold: int = IntelModThresholds.get_threshold(rarity)
-    if points >= threshold and not entry.unlocked_mod_ids.has(mod_id):
-        entry.unlocked_mod_ids.append(mod_id)
-```
-
-### 1.5 添加查询函数
-
-在现有查询接口块末尾（约第 448 行后）插入：
-
-```gdscript
-## v21.0: 获取 base_progress（0~1.0）
-func get_base_progress(card_id: String) -> float:
-    if _entries.has(card_id):
-        return _entries[card_id].base_progress
-    return 0.0
-
-## v21.0: 获取某卡某 mod 的累积点数
-func get_mod_intel_points(archetype_id: String, mod_id: String) -> int:
-    if not _entries.has(archetype_id):
-        return 0
-    var entry: IntelEntry = _entries[archetype_id]
-    var pool: Dictionary = entry.card_mod_intels.get(archetype_id, {})
-    return int(pool.get(mod_id, 0))
-
-## v21.0: 获取某卡所有 mod 点数
-func get_all_mod_intel_points(archetype_id: String) -> Dictionary:
-    if not _entries.has(archetype_id):
-        return {}
-    var entry: IntelEntry = _entries[archetype_id]
-    return entry.card_mod_intels.get(archetype_id, {}).duplicate()
-
-## v21.0: 获取某卡已解锁的 mod 列表
-func get_unlocked_mod_ids(archetype_id: String) -> Array[String]:
-    if not _entries.has(archetype_id):
-        return []
-    return _entries[archetype_id].unlocked_mod_ids.duplicate()
-
-## v21.0: 检查某 mod 是否已解锁
-func is_mod_unlocked(archetype_id: String, mod_id: String) -> bool:
-    if not _entries.has(archetype_id):
-        return false
-    return _entries[archetype_id].unlocked_mod_ids.has(mod_id)
-
-## v21.0: 获取某 mod 解锁进度（0.0~1.0）
-func get_mod_unlock_progress(archetype_id: String, mod_id: String) -> float:
-    var points: int = get_mod_intel_points(archetype_id, mod_id)
-    var mod_data: Dictionary = ModificationRegistry.get_data(mod_id)
-    if mod_data.is_empty():
-        return 0.0
-    var rarity: String = String(mod_data.get("rarity", "common"))
-    var threshold: int = IntelModThresholds.get_threshold(rarity)
-    return clampf(float(points) / float(threshold), 0.0, 1.0)
-
-## v21.0: 部署次数
-func get_deploy_count(archetype_id: String) -> int:
-    if _entries.has(archetype_id):
-        return _entries[archetype_id].deploy_count
-    return 0
-```
-
-### 1.6 修改迁移函数 `_migrate_v2_to_v3()`（约第 198 行）
-
-在迁移结束后增加 base_progress 同步：
-
-```gdscript
-func _migrate_v2_to_v3(entry: IntelEntry) -> void:
-    # ... 现有迁移逻辑不变 ...
-    if not entry.intel_dimensions.is_empty():
-        var merged: float = IntelDimensions.merge_legacy_dimensions(entry.intel_dimensions)
-        entry.intel_progress = maxf(entry.intel_progress, merged)
-        entry.intel_dimensions = {}
-        entry.revealed_tiers = {}
-    entry.migrated = true
-    if entry.intel_progress >= 1.0:
-        entry.is_unlocked = true
-    ## v21.0: 同步 base_progress
+## v21.0: base 单调同步——base = max(base, intel)，满了全解锁
+if entry.base_progress < entry.intel_progress:
+    var old_base: float = entry.base_progress
     entry.base_progress = entry.intel_progress
+    base_progress_changed.emit(card_id, old_base, entry.base_progress)
+_check_mods_full_unlock(card_id)
 ```
 
-### 1.7 修改 `_calc_tier()`（约第 224 行）
+### 1.5 新增情报获取接口（`register_decompose()` 之后）
 
 ```gdscript
-func _calc_tier(progress: float) -> int:
-    if progress >= 1.0:  return TIER_EVOLUTION
-    if progress >= 0.75: return TIER_WEAKNESS
-    if progress >= 0.50: return TIER_DETAIL_STATS
-    if progress >= 0.25: return TIER_BASIC_STATS
-    return TIER_NONE
+## v21.0: 部署敌方形态卡（captured_*）——base +4% 固定 + 随机 2~5 mod 点数
+func register_deploy(archetype_id: String, enemy_type: String = "") -> Dictionary
+
+## v21.0: 击败获得的 mod 点数（normal+1/elite+2/boss+3），返回实际入池点数（无可选池时 0）
+func add_defeat_mod_points(archetype_id: String, unit_rank: String = "normal") -> int
+
+## v21.0: 获取敌方形态卡（购买/掉落/势力奖励）——base 与 intel 同时抬到 50% 下限。
+## intel 走 _add_intel（正确触发阶梯/揭示信号）；base 直接抬（可能高于 intel）。
+func set_acquired_base_progress(archetype_id: String) -> void
 ```
-> 保持不变，因为 `get_intel_progress()` 仍读 `intel_progress` 字段（向后兼容），
-> UI 读 base_progress 则用新函数 `get_base_progress()`。
 
-### 1.8 添加 preload 声明
+### 1.6 新增 mod 点数管理（`_add_intel()` 之后）
 
-在文件顶部常量块后添加：
 ```gdscript
-const EnemyCardModMap = preload("res://data/enemy_card_mod_map.gd")
-const IntelModThresholds = preload("res://data/intel_mod_thresholds.gd")
-const ModificationRegistry = preload("res://scripts/systems/modification_registry.gd")
+## v21.0: 向随机一个未解锁 mod 累积点数，达标自动解锁（emit mod_points_gained/mod_unlocked）
+func _add_mod_points(archetype_id: String, points: int) -> int  ## 返回入池点数（0=池满/无池）
+## v21.0: 点数达标检查
+func _check_mod_unlock(archetype_id: String, mod_id: String) -> void
+## v21.0: base ≥ 100% 时该卡 mod_pool 全量无条件解锁（绕过点数检查）
+func _check_mods_full_unlock(card_id: String) -> void
+```
+
+静态引用：`EnemyCardModMap` / `IntelModThresholds` 直接用 class_name（两者已声明，
+**不要**再 const preload——重名遮蔽全局类告警）；`ModificationRegistry` 无 class_name 且与
+autoload 重名，用别名 `const ModRegistry = preload("res://scripts/systems/modification_registry.gd")`。
+
+### 1.7 新增查询接口（现有查询块末尾）
+
+```gdscript
+func get_base_progress(card_id: String) -> float
+func get_deploy_count(archetype_id: String) -> int
+func get_mod_intel_points(archetype_id: String, mod_id: String) -> int
+func get_all_mod_intel_points(archetype_id: String) -> Dictionary
+func get_unlocked_mod_ids(archetype_id: String) -> Array[String]
+func is_mod_unlocked(archetype_id: String, mod_id: String) -> bool
+func get_mod_unlock_progress(archetype_id: String, mod_id: String) -> float  ## 0.0~1.0
 ```
 
 ---
 
 ## Phase 2：修改 `scripts/systems/intel_discovery_manager.gd`
 
-### 2.1 在 `generate_battle_intel_harvest()` 中增加部署统计
-
-在循环结束后（约第 207 行，信号恢复之前）插入：
+### 2.1 `_ready()` 连接 IntelManual v21 信号
 
 ```gdscript
-    ## v21.0: 统计部署（玩家上阵过的敌方卡形态）
-    # 注：部署统计由 battle_spawn_system 调用，此处仅记录首次遭遇+击败
-    # deploy_count 的精确计数在 construct_unit_deploy 中由 intel_manual.register_deploy() 触发
+if im.has_signal("base_progress_changed"):
+    im.base_progress_changed.connect(_on_base_progress_changed)
+if im.has_signal("mod_unlocked"):
+    im.mod_unlocked.connect(_on_mod_unlocked)
 ```
 
-### 2.2 添加新信号
+### 2.2 `generate_battle_intel_harvest()` 击败循环内接线
 
-在信号块后（约第 26 行）插入：
+`register_defeat` 调用之后：
+
 ```gdscript
-## v21.0: mod 点数增加 signal(archetype_id, mod_id, new_points, threshold)
-signal mod_points_gained(archetype_id: String, mod_id: String, new_points: int, threshold: int)
-## v21.0: base_progress 变化 signal(archetype_id, old_val, new_val)
-signal base_progress_changed(archetype_id: String, old_val: float, new_val: float)
+## v21.0: 击败 mod 点数（normal+1/elite+2/boss+3），汇入收获展示
+if im.has_method("add_defeat_mod_points"):
+    var mp_gained: int = im.add_defeat_mod_points(archetype_id, rank)
+    if mp_gained > 0:
+        mod_points_by_card[archetype_id] = mod_points_by_card.get(archetype_id, 0) + mp_gained
 ```
 
-### 2.3 连接 IntelManual 新信号
+`_merge_harvests` 之后把 `mod_points_by_card` 写进各合并条目（新键 `"mod_points": int`），
+供结算界面展示。
 
-在 `_ready()` 中（约第 52 行）增加连接：
+### 2.3 新增回调（文件末尾）
+
 ```gdscript
-    if im.has_signal("mod_points_gained"):
-        im.mod_points_gained.connect(_on_mod_points_gained)
-    if im.has_signal("base_progress_changed"):
-        im.base_progress_changed.connect(_on_base_progress_changed)
+## v21.0: base 跨过 50% → 低进化可用通知（一次性）
+func _on_base_progress_changed(card_id: String, old_val: float, new_val: float) -> void:
+    if old_val < IntelManual.LOW_EVOLUTION_BASE and new_val >= IntelManual.LOW_EVOLUTION_BASE \
+            and EnemyCardModMap.can_low_evolve(card_id):
+        FeatureUnlockPopup.show_once("v21_low_evo_" + card_id, "低进化可用", ...)
+
+## v21.0: mod 解锁通知（一次性）
+func _on_mod_unlocked(card_id: String, mod_id: String) -> void:
+    FeatureUnlockPopup.show_once("v21_mod_" + card_id + "_" + mod_id, "改造情报解锁", ...)
 ```
 
-### 2.4 添加信号回调
-
-在文件末尾（`_save_state` 之后）添加：
-```gdscript
-## v21.0: mod 点数增加回调
-func _on_mod_points_gained(archetype_id: String, mod_id: String, new_points: int, threshold: int) -> void:
-    if new_points >= threshold:
-        # 触发全解锁通知（base >= 100% 时绕过点数检查）
-        pass
-
-## v21.0: base_progress 变化回调
-func _on_base_progress_changed(archetype_id: String, old_val: float, new_val: float) -> void:
-    # 低进化触发（base >= 50%）
-    if new_val >= 0.5 and old_val < 0.5:
-        SignalBus.enemy_low_evolution_available.emit(archetype_id)
-```
+（卡名/mod 名经 `DefaultCards.get_safe_display_name` / `ModRegistry.get_data(mod_id).name` 取；
+实际实现直接以 preload/局部引用取，避免 autoload 标识符在 --script 模式编译期不可用。）
 
 ---
 
 ## Phase 3：修改 `managers/instance_registry.gd`
 
-### 3.1 在 `_register_clone()` 末尾（约第 118 行）增加商店购卡 hook
-
-在 `instance_created.emit(...)` 之后、`if get_instances_by_card_id...` 之前插入：
+### 3.1 `_register_clone()` 末尾（`instance_created.emit` 之后）加获取挂钩
 
 ```gdscript
-    # v21.0: 商店购卡 → 直接给 50% base_progress
-    var im: Node = get_node_or_null("/root/IntelManual")
-    if im and im.has_method("set_shop_purchased_base_progress"):
-        im.set_shop_purchased_base_progress(canonical_id)
+# v21.0: 获取敌方形态卡（captured_*，购买/掉落/势力奖励统一经此）→ 情报下限 50%
+if canonical_id.begins_with("captured_"):
+    var v21_arch: String = canonical_id.trim_prefix("captured_")
+    if EnemyCardModMap.has_entry(v21_arch):
+        var v21_im: Node = get_node_or_null("/root/IntelManual")
+        if v21_im and v21_im.has_method("set_acquired_base_progress"):
+            v21_im.set_acquired_base_progress(v21_arch)
 ```
+
+双守卫确保普通玩家卡（无前缀）与未配置 archetype 不产生垃圾条目。
 
 ---
 
-## Phase 4：修改 `managers/evolution/card_evolution_manager.gd`
+## Phase 4：修改 `managers/battle/battle_spawn_system.gd`
 
-### 4.1 新增低进化条件检查
+### 4.1 `request_player_deploy()` 成功路径接线
 
-在 `can_evolve_blueprint()` 函数的 conditions 数组构建处（约第 141 行），在 `power` 条件之后插入：
+`var unit = _create_player_unit(stats)` 判空守卫**之后**（此处起部署必然成功）：
 
 ```gdscript
-    ## v21.0: 低进化条件检查（base_progress >= 50%）
-    var im: Node = _get_autoload_node("IntelManual")
-    var base_prog: float = 0.0
-    if im and im.has_method("get_base_progress"):
-        base_prog = im.get_base_progress(card_id)
-    var evo_map: Node = _get_autoload_node("EnemyCardModMap")
-    var can_low_evo: bool = false
-    if evo_map and evo_map.has_method("can_low_evolve"):
-        can_low_evo = evo_map.can_low_evolve(target_card_id)
+# v21.0: 部署敌方形态卡 → 该 archetype 情报成长（base+4% 固定 + 2~5 mod 点数）
+if base_card_id.begins_with("captured_"):
+    _register_enemy_form_deploy_intel(base_card_id)
+```
+
+新增私有辅助（解析 IntelManual → `register_deploy(arch)`，arch = trim_prefix("captured_")，
+带 has_entry 守卫）。每次部署调用于单位实际生成之后，7星卡多单位部署按每次调用各计一次。
+
+---
+
+## Phase 5：进化集成（4 个文件）
+
+### 5.1 `managers/evolution/card_evolution_manager.gd`
+
+**`get_evolution_options()`** 返回字典新增 `"low_evolution"` 键（captured 源才输出）：
+
+```gdscript
+## v21.0: 低进化——缴获敌形态卡 → 对应玩家卡（EnemyCardModMap.player_card_id）
+if card_id.begins_with("captured_"):
+    var arch: String = card_id.trim_prefix("captured_")
+    var pid: String = EnemyCardModMap.get_player_card_id(arch)
+    if not pid.is_empty() and DefaultCards.get_card_by_id(pid) != null:
+        out["low_evolution"] = {"target_card_id": pid, "archetype_id": arch}
+```
+
+**`can_evolve_blueprint()`** 四处改动：
+1. 目标校验：`_is_low_evolution_pair(card_id, target_card_id)` 为真 → `valid_target = true`；
+2. cross_class 检查：低进化对跳过（缴获原型 → 玩家等价卡 combat_kind 可能有出入）；
+3. evo_blueprint 条件：低进化对**跳过**（该对不在图纸掉落链上，不跳过恒 false）；
+4. conditions 末尾追加 `intel_base` 条件：
+
+```gdscript
+## v21.0: 低进化/完整进化的情报门槛（low_evo 卡 50%，Boss/平台/特色卡 100%）
+if is_low_evo_pair:
+    var arch: String = card_id.trim_prefix("captured_")
+    var threshold: float = LOW_EVOLUTION_BASE if EnemyCardModMap.can_low_evolve(arch) else FULL_EVOLUTION_BASE
+    var base_prog: float = <IntelManual>.get_base_progress(arch)
     conditions.append({
-        "key": "base_progress",
-        "met": base_prog >= 0.5 and can_low_evo,
+        "key": "intel_base",
+        "met": base_prog >= threshold,
         "current_text": "%.0f%%" % (base_prog * 100),
-        "required_text": "50%%",
-        "detail": "部署/击败该敌方卡形态积累情报，达到 50%% 后可低进化为该形态",
+        "required_text": "%.0f%%" % (threshold * 100),
+        "detail": "击败/部署该敌方形态积累情报（获取实物卡直接过半）",
     })
 ```
 
-### 4.2 修改完整进化条件
+（`<IntelManual>` 经 `_get_autoload_node("IntelManual")` 取，判空回退 0.0。）
 
-在 `mods` 条件之后（约第 223 行），增加 base >= 100% 检查：
+**`_condition_key_to_reason()`** 加映射：`"intel_base": return "intel_base_not_enough"`。
+
+### 5.2 `data/unit_lineage_config.gd`
+
+`EVOLVE_REASON_ZH` 加：`"intel_base_not_enough": "敌方形态情报不足（击败/部署该敌卡积累，获取实物卡直接过半）"`。
+
+### 5.3 `resources/card_resource.gd` — `get_evolution_targets()`
+
+intel 分支之后追加 low 分支（opts["low_evolution"] → `_build_evo_target(pid, "low")`），
+进化面板自动出现"低进化"目标节点。
+
+### 5.4 `scenes/ui/unit_progression_detail_view.gd` — `_add_forward_evolution_block()`
+
+早退条件扩展：无 lineage 但有 `low_evolution` 时不清空，渲染
+`_add_evolution_target("低进化 · 情报过半", target_id, "low")` 一行（状态沿 can_evolve_blueprint）。
+
+### 5.5 执行路径
+
+`evolve_blueprint → _evolve_instance` **零改动**：目标为玩家卡（DefaultCards 有模板），
+create_instance + dispose + 传承奖励迁移全部走既有实例化路径。
+
+---
+
+## Phase 6：UI
+
+### 6.1 `scenes/ui/intelligence_hub_panel.gd` — 敌方情报 Tab
+
+- `_setup_intel_tab()`：仅更新顶部 hint 文案（新增部署/获取/低进化说明）。
+- `_refresh_intel_tab()` / `_add_intel_row()`：
+  - 主进度条改读 `base_progress`（intel 与 base 在无获取下限时相等，老条目无感知差异）；
+  - 行内加"部署 ×N"标签（`deploy_count > 0` 时）；
+  - base ≥ 50% 且 `can_low_evolve` → 加"低进化可用"徽标（金色）；
+  - 条目在 EnemyCardModMap 中 → 追加 mod 小节：每行 `mod名 + 点数/阈值` 进度小条，
+    已解锁金色高亮（`is_mod_unlocked`）。
+
+### 6.2 `scenes/ui/intel_harvest_display.gd` — 结算界面
+
+`_create_card_entry()` 进度条行之后：
 
 ```gdscript
-    ## v21.0: 完整进化条件（base_progress >= 100%）
-    conditions.append({
-        "key": "base_full",
-        "met": base_prog >= 1.0,
-        "current_text": "%.0f%%" % (base_prog * 100),
-        "required_text": "100%%",
-        "detail": "完全掌握该敌方卡情报（100%% base intel）解锁完整进化路径",
-    })
+## v21.0: mod 点数增益（Phase 2.2 写入的 "mod_points" 键）
+var mp: int = int(entry.get("mod_points", 0))
+if mp > 0:
+    var lbl := Label.new()
+    lbl.text = "  ▸ 改造情报 +%d 点" % mp
+    ...
 ```
 
 ---
 
-## Phase 5：修改 UI 文件
+## Phase 7：测试与验证
 
-### 5.1 `scenes/ui/intelligence_hub_panel.gd` — Tab 3 重写
+`tests/intel_v21_smoke.gd`（extends SceneTree，--script 模式，不依赖 autoload）：
 
-**步骤：**
-1. 找到 `_setup_intel_tab()` 函数（约第 400 行）
-2. 重写 Tab 3 内容构建逻辑，改为：
-   - 遍历 `EnemyCardModMap.get_all_archetype_ids()`
-   - 对每张卡：显示 `base_progress` 进度条 + 部署次数
-   - 展开显示 mod_pool 列表，每个 mod 显示进度条（当前点数 / 阈值点数）
-   - 已解锁的 mod 高亮显示
+| # | 断言 |
+|---|------|
+| 1 | `from_dict`：只有 intel_progress 的旧条目 → base_progress == intel_progress（v3 存档迁移） |
+| 2 | `register_defeat` → intel 增长且 base == intel（同步生效），mod 点数入池 |
+| 3 | `register_deploy` → deploy_count=1、base +0.04、mod 点数 ∈ [2,5] |
+| 4 | `set_acquired_base_progress` → base ≥ 0.5 且 intel ≥ 0.5（信号正常触发不炸） |
+| 5 | 连续 `register_defeat`/`register_deploy` 推满 → base=1.0 且 mod_pool 全部 unlocked |
+| 6 | 点数单独达标（直接 _add_mod_points）→ 对应 mod unlocked，其余不动 |
+| 7 | `get_evolution_options("captured_ww1_inf_mp18")` 输出 low_evolution.target == "ww1_mp18" |
+| 8 | `can_evolve_blueprint("captured_ww1_inf_mp18", "ww1_mp18", null)`：intel_base 条件在 base≥0.5 时 met；reason 不再是 target_not_in_path |
+| 9 | 存档往返：save_state → load_state 后 base/deploy_count/card_mod_intels/unlocked_mod_ids 无损 |
 
-**伪代码结构：**
-```gdscript
-func _setup_intel_tab() -> void:
-    # 创建 VBoxContainer
-    # 对每个 archetype_id in EnemyCardModMap.get_all_archetype_ids():
-    #   - 获取敌方卡名称（EnemyArchetypes）
-    #   - 创建行：名称 + base_progress ProgressBar + 部署次数标签
-    #   - 若 base >= 0.5，显示"低进化可用"标签
-    #   - 展开 mod 列表：
-    #     - 对每个 mod_id in mod_pool:
-    #       - 获取 mod 数据（ModificationRegistry）
-    #       - 获取当前点数和阈值
-    #       - 创建 sub-row：mod名 + 进度条 + 点数标签
-    #       - 若已解锁，高亮
-```
-
-### 5.2 `scenes/ui/intel_harvest_display.gd` — 结算界面
-
-**步骤：**
-1. 在 `_create_card_entry()` 函数中（约第 114 行），现有单维度进度条之后：
-2. 新增 base_progress 独立进度条
-3. 新增 mod 点数增益条目（若有 mod_points 增长）
-
-**修改点：**
-```gdscript
-func _create_card_entry(entry: Dictionary) -> PanelContainer:
-    # ... 现有代码（name_row, icon 等）...
-    
-    ## v21.0: 新增 base_progress 进度条
-    var base_prog: float = entry.get("base_progress", 0.0)
-    var base_bar := ProgressBar.new()
-    base_bar.value = base_prog * 100
-    base_bar.show_percentage = false
-    # 样式与普通 intel bar 相同
-    card_box.add_child(base_bar)
-    
-    ## v21.0: 新增 mod 点数条目
-    var mod_points_data: Dictionary = entry.get("mod_points", {})
-    for mid in mod_points_data.keys():
-        var lbl := Label.new()
-        lbl.text = "  ▸ +%d mod点数 (%s)" % [mod_points_data[mid], mid]
-        lbl.add_theme_font_size_override("font_size", 11)
-        lbl.add_theme_color_override("font_color", Color(0.6, 0.9, 0.6, 1.0))
-        card_box.add_child(lbl)
-```
-
----
-
-## Phase 6：旧档迁移验证
-
-### 6.1 迁移逻辑
-
-运行游戏后检查：
-- 旧存档 `intel_progress` → 自动填充到 `base_progress`
-- `card_mod_intels` = `{}`（全新开始，需重新积累）
-- `unlocked_mod_ids` = `[]`
-- `deploy_count` ≈ `defeat_count`（近似值）
-
-### 6.2 测试清单
-
-| 场景 | 预期结果 |
-|------|---------|
-| 新游戏 | 所有 base_progress = 0，card_mod_intels = {} |
-| 商店购买敌方卡 | base_progress = 0.5，可低进化 |
-| 击败敌方卡 1 次 | base += ~3%，mod 点数 +1~2 |
-| 部署敌方卡 1 次 | base += 4%，mod 点数 +2~5 |
-| base 达到 50% | 低进化可用，进度条显示 "50%" |
-| base 达到 100% | 所有 mod 自动解锁，完整进化可用 |
-| 某个 mod 达标 | unlocked_mod_ids 包含该 mod_id |
+运行：`godot --headless --rendering-driver opengl3 --path . --script tests/intel_v21_smoke.gd`
 
 ---
 
@@ -451,33 +369,35 @@ func _create_card_entry(entry: Dictionary) -> PanelContainer:
 Phase 1 (intel_manual.gd)
     ↓
 Phase 2 (intel_discovery_manager.gd) ──┐
-    ↓                                    ├──→ Phase 5 (UI)
-Phase 3 (instance_registry.gd) ─────────┘
+Phase 3 (instance_registry.gd) ────────┼──→ Phase 6 (UI)
+Phase 4 (battle_spawn_system.gd) ──────┘
     ↓
-Phase 4 (card_evolution_manager.gd)
+Phase 5 (进化集成 4 文件)
     ↓
-Phase 6 (迁移验证)
+Phase 7 (测试)
 ```
 
----
+## 文件改动清单（r2）
 
-## 文件改动清单
+| # | 文件 | 改动类型 |
+|---|------|---------|
+| 1 | `scripts/systems/intel_manual.gd` | 核心新增 ~150 行 |
+| 2 | `scripts/systems/intel_discovery_manager.gd` | 小改 ~50 行 |
+| 3 | `managers/instance_registry.gd` | 小改 ~10 行 |
+| 4 | `managers/battle/battle_spawn_system.gd` | 小改 ~15 行 |
+| 5 | `managers/evolution/card_evolution_manager.gd` | 中改 ~50 行 |
+| 6 | `data/unit_lineage_config.gd` | 1 行（reason 表） |
+| 7 | `resources/card_resource.gd` | 小改 ~10 行 |
+| 8 | `scenes/ui/unit_progression_detail_view.gd` | 小改 ~15 行 |
+| 9 | `scenes/ui/intelligence_hub_panel.gd` | 中改 ~60 行 |
+| 10 | `scenes/ui/intel_harvest_display.gd` | 小改 ~15 行 |
+| 11 | `tests/intel_v21_smoke.gd` | 新增 |
 
-| # | 文件 | 改动类型 | 预估行数 |
-|---|------|---------|---------|
-| 1 | `scripts/systems/intel_manual.gd` | 核心重写 | ~80 行新增 |
-| 2 | `scripts/systems/intel_discovery_manager.gd` | 小改 | ~20 行新增 |
-| 3 | `managers/instance_registry.gd` | 小改 | ~5 行新增 |
-| 4 | `managers/evolution/card_evolution_manager.gd` | 小改 | ~15 行新增 |
-| 5 | `scenes/ui/intelligence_hub_panel.gd` | Tab 3 重写 | ~60 行新增 |
-| 6 | `scenes/ui/intel_harvest_display.gd` | 小改 | ~20 行新增 |
-
-**已有文件（无需修改）：**
-- `data/enemy_card_mod_map.gd` ✅ 109 条全部配好 mod_pool
+**已有文件（无需修改）**：
+- `data/enemy_card_mod_map.gd` ✅ 109 条 mod_pool（时代考据修正见 r2 修订要点 #10，暂缓）
 - `data/intel_mod_thresholds.gd` ✅ 6 档阈值表
 
 ---
-
 ## 附录 A：敌方战斗卡 mod_pool 完整配置（含中文卡名）
 
 ### A.1 改造 ID → 中文对照（按前缀分组）

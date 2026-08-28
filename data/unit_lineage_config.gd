@@ -48,7 +48,8 @@ const EVOLVE_REASON_ZH: Dictionary = {
 		"evo_blueprint_missing": "缺少进化蓝图（需从战斗中获得目标卡的进化蓝图）",
 		"faction_level_not_enough": "势力贡献度不足（势力分支进化需目标势力达到Lv3）",
 		"evolution_not_unlocked_in_skill_tree": "进化能力未在相位师技能树解锁（需解锁概念武器分支的进化节点）",
-	}
+		"intel_base_not_enough": "敌方形态情报不足（击败/部署该敌卡积累，获取实物缴获卡直接过半）",  # v21.0
+		}
 
 ## ═══════════════════════════════════════════════════════════
 ## v6.0 进化路线（11条主线，共47个节点）

@@ -182,6 +182,16 @@ func _create_card_entry(entry: Dictionary) -> PanelContainer:
 		var progress_row := _create_progress_row(card_id, enemy_type, delta)
 		vbox.add_child(progress_row)
 
+	## v21.0: 本次击败获得的改造情报点数（intel_discovery_manager 写入的 "mod_points" 键）
+	var mod_points: int = int(entry.get("mod_points", 0))
+	if mod_points > 0:
+		var mp_lbl := Label.new()
+		mp_lbl.text = "  ▸ 改造情报 +%d 点" % mod_points
+		mp_lbl.add_theme_font_size_override("font_size", 11)
+		mp_lbl.add_theme_color_override("font_color", Color(0.6, 0.9, 0.6, 1.0))
+		mp_lbl.tooltip_text = "点数随机落入该敌方形态的专属改造池，攒满阈值即解锁（详见情报手册）"
+		vbox.add_child(mp_lbl)
+
 	return box
 
 ## 创建单维度进度条行
