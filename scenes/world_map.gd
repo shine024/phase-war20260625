@@ -5,9 +5,7 @@ extends Control
 var _map_built: bool = false  # 地图是否已构建（缓存）
 # v9 perf：隐藏期间的占领变化置脏，重新打开时补刷（见 _on_occupation_changed_refresh）
 var _occupation_dirty: bool = false
-var _build_ticket: int = 0  # 拆帧构建票据：并发重建时旧协程作废（见 _build_level_map 内 await 后校验）
 static var _cached_level_map_template: Control = null  # 跨场景复用模板，避免每次重建100按钮
-static var _cached_star_layers: Dictionary = {}  # 按视口尺寸缓存静态星空点位
 
 func _input(event: InputEvent) -> void:
 	# ESC键返回主场景
@@ -46,7 +44,6 @@ const EnemyLoadoutTiers = preload("res://data/enemy_loadout_tiers.gd")  # 2026-0
 # v6.10: 关卡按钮占领色标——势力色统一从 CompanyDefinitions.get_faction_color() 读取（Palette B）
 # 无主之地兜底（右边框半透明灰）
 const LEVEL_COUNT: int = LevelEras.LEVEL_COUNT
-const LEVELS_PER_ROW: int = 10
 const ERA_SIZE: int = 20  # 每时代 20 关
 const DEFAULT_BG_PATH: String = "res://assets/backgrounds/bg_default.png"
 # 时代配色方案
@@ -93,7 +90,55 @@ const ERA_COLORS: Array = [
 	},
 ]
 
-var _stars: Array = []
+# === v22 百灯群岛大地图（docs/地图重设计/）布局与资产常量 ===
+const MAP_DIR: String = "res://assets/map/"
+const MAP_VOID_PATH: String = MAP_DIR + "map_void_base.png"
+const LIGHTHOUSE_TEX_PATH: String = MAP_DIR + "lighthouse_fortress.png"
+const GATE_TEX_FAR: String = MAP_DIR + "gate_far.png"
+const GATE_TEX_MID: String = MAP_DIR + "gate_mid.png"
+const BUBCLEARED_TEX_PATH: String = MAP_DIR + "bubble_cleared.png"
+const BOSS_TEX_PATH: String = MAP_DIR + "bubble_boss.png"
+const BUBBLE_TEX_PATHS: Array = [
+	MAP_DIR + "bubble_era_ww1.png",
+	MAP_DIR + "bubble_era_ww2.png",
+	MAP_DIR + "bubble_era_cold.png",
+	MAP_DIR + "bubble_era_modern.png",
+	MAP_DIR + "bubble_era_future.png",
+]
+const MAP_CANVAS_SIZE: Vector2 = Vector2(2560, 1440)
+const MAP_LIGHTHOUSE_POS: Vector2 = Vector2(1280, 780)
+const MAP_GATE_POS: Vector2 = Vector2(2260, 250)
+## v22.3 相位两仪（方案 8）：MAP_SCHEME 切换布局。6=百灯群岛星座 / 8=沙漏双界
+const MAP_SCHEME: int = 8
+const SEAM_Y_S8: float = 720.0  # 相位缝：上界(现实界)1-50 / 下界(相位界)51-100 的腰部
+const GATE_POS_S8: Vector2 = Vector2(1280, 1335)  # 下界底极：横卧宽门
+const HOME_POS_S8: Vector2 = Vector2(330, 140)  # 上界左上漂浮岛掩体（暂用灯塔图占位）
+
+static func _gate_pos() -> Vector2:
+	return GATE_POS_S8 if MAP_SCHEME == 8 else MAP_GATE_POS
+
+static func _home_pos() -> Vector2:
+	return HOME_POS_S8 if MAP_SCHEME == 8 else MAP_LIGHTHOUSE_POS
+## 五星座锚点：一战（左上）逆时针绕灯塔一圈，近未来（era4）落在巨环前庭
+const ERA_CLUSTER_ANCHORS: Array = [
+	Vector2(640, 420), Vector2(430, 960), Vector2(1100, 1250),
+	Vector2(1800, 1100), Vector2(2110, 520),
+]
+const ERA_CLUSTER_RADII: Vector2 = Vector2(400, 240)
+const BUBBLE_DISPLAY: float = 74.0
+const BOSS_BUBBLE_DISPLAY: float = 100.0
+const LIGHTHOUSE_DISPLAY_H: float = 420.0
+
+# 静态布局/状态（模板跨实例复用时布局一致；动态状态在每次重建时刷新）
+static var _s_level_points: Dictionary = {}  # level(int) -> Vector2 画布坐标
+static var _s_bridges: Array = []  # [{a: Vector2, b: Vector2, era: int}]
+static var _s_occ_colors: Dictionary = {}  # level(int) -> 占领势力 Color
+static var _s_gate_state: String = "far"
+static var _s_tex_cache: Dictionary = {}
+
+var _overlay_layer: Control = null  # v22 overlay 绘制层（微光桥/占领环/当前关光圈）
+var _pan_dragging: bool = false  # v22 拖拽平移状态
+
 var _level_info_popup: Window = null
 var _runtime_active: bool = false
 
@@ -105,7 +150,31 @@ func _enter_tree() -> void:
 	pass
 
 func _ready() -> void:
-	_generate_stars()
+	# v22 百灯群岛：旧网格地图的星空/扫描线绘制退役，由 map_void_base 底图承担
+	var scroll_ready := get_node_or_null("Margin/VBox/ScrollContainer") as ScrollContainer
+	if scroll_ready != null and not scroll_ready.gui_input.is_connected(_on_map_gui_input):
+		scroll_ready.gui_input.connect(_on_map_gui_input)
+	# v22: 势力领地图入口改挂标题栏（旧实现位于滚动内容里，随网格布局退役）
+	var vbox_r := get_node_or_null("Margin/VBox")
+	if vbox_r != null and vbox_r.get_node_or_null("TerritoryMapButton") == null:
+		var territory_btn := Button.new()
+		territory_btn.name = "TerritoryMapButton"
+		territory_btn.text = "◆ 势力领地图"
+		territory_btn.tooltip_text = "查看100关当前占领状态（势力领地分布）"
+		territory_btn.custom_minimum_size = Vector2(0, 30)
+		var tbs := StyleBoxFlat.new()
+		tbs.bg_color = Color(0.06, 0.1, 0.17, 0.9)
+		tbs.border_width_left = 1; tbs.border_width_top = 1
+		tbs.border_width_right = 1; tbs.border_width_bottom = 1
+		tbs.border_color = Color(0.0, 0.75, 0.85, 0.6)
+		tbs.corner_radius_top_left = 5; tbs.corner_radius_top_right = 5
+		tbs.corner_radius_bottom_right = 5; tbs.corner_radius_bottom_left = 5
+		territory_btn.add_theme_stylebox_override("normal", tbs)
+		territory_btn.add_theme_color_override("font_color", Color(0, 0.94, 1, 1))
+		territory_btn.add_theme_font_size_override("font_size", 13)
+		territory_btn.pressed.connect(_on_territory_map_button)
+		vbox_r.add_child(territory_btn)
+		vbox_r.move_child(territory_btn, 1)  # 标题之后、地图画布之前
 	# 延迟一帧再生成地图，避免启动时卡顿
 	call_deferred("_build_level_map")
 	visibility_changed.connect(_on_visibility_changed)
@@ -139,33 +208,12 @@ func _on_visibility_changed() -> void:
 	if _runtime_active:
 		queue_redraw()
 
-func _generate_stars() -> void:
-	var vp_size = get_viewport_rect().size
-	var w = max(vp_size.x, 1280.0)
-	var h = max(vp_size.y, 720.0)
-	var cache_key: String = "%dx%d" % [int(w), int(h)]
-	if _cached_star_layers.has(cache_key):
-		_stars = (_cached_star_layers[cache_key] as Array).duplicate(true)
-		return
-	_stars.clear()
-	var rng = RandomNumberGenerator.new()
-	# 固定种子：保持背景静态一致，不再每次随机变化
-	rng.seed = int(w) * 73856093 + int(h) * 19349663
-	for i in range(80):
-		_stars.append({
-			"x": rng.randf_range(0, w),
-			"y": rng.randf_range(0, h),
-			"size": rng.randf_range(0.5, 2.0),
-			"alpha": rng.randf_range(0.25, 0.65),
-		})
-	_cached_star_layers[cache_key] = _stars.duplicate(true)
-
 func _style_title() -> void:
 	var title_l: Label = get_node_or_null("Margin/VBox/TitleLabel")
 	if title_l:
 		title_l.add_theme_font_size_override("font_size", 26)
 		title_l.add_theme_color_override("font_color", Color(0, 0.941, 1, 1))
-		title_l.text = "— 战区地图 · 100 关 —"
+		title_l.text = "— 百灯群岛 · 100 道防线 —"
 
 func _style_back_button(btn: Button) -> void:
 	var s := StyleBoxFlat.new()
@@ -183,150 +231,367 @@ func _build_level_map() -> void:
 	# 缓存检查：如果地图已构建，跳过
 	if _map_built:
 		return
-
-	var container: GridContainer = get_node_or_null("Margin/VBox/ScrollContainer/LevelGrid") as GridContainer
-	# 使用 ScrollContainer/LevelGrid 节点，但我们把 GridContainer 替换为 VBoxContainer 布局
-	var scroll: ScrollContainer = get_node_or_null("Margin/VBox/ScrollContainer")
+	var scroll: ScrollContainer = get_node_or_null("Margin/VBox/ScrollContainer") as ScrollContainer
 	if scroll == null:
 		return
 	# 清空旧内容
 	for c in scroll.get_children():
 		c.queue_free()
 
-	_build_ticket += 1
-	var ticket := _build_ticket
+	var current_level: int = GameManager.current_level if GameManager else 1
+	_refresh_static_state(current_level)
+	_ensure_layout()
 
-	# 跨实例缓存命中：直接复用模板副本，跳过按钮重建与样式计算
+	# 跨实例缓存命中：复用模板副本，重连信号 + 重绑 overlay + 更新巨环状态
 	if _cached_level_map_template != null and is_instance_valid(_cached_level_map_template):
 		var reused := _cached_level_map_template.duplicate(Node.DUPLICATE_USE_INSTANTIATION) as Control
 		if reused != null:
 			scroll.add_child(reused)
-			# v7.5: 修复"换场景后点关卡无反应"——静态模板跨 change_scene_to_file 复用时，
-			# duplicate() 复制了按钮的 pressed 信号连接，但连接的 lambda 隐式捕获旧 WorldMapPanel
-			# 实例（已随场景切换 free）。新实例点击按钮 → 调旧实例的 _on_level_selected → 静默失败。
-			# 这里按按钮名（LevelButton%d）重新连接到当前实例。
 			_reconnect_level_buttons(reused)
+			_rebind_overlay(reused)
+			_apply_gate_state(reused)
 			_map_built = true
+			_center_on_current_level()
 			return
 
-	# 创建新的内容 VBox
-	var content_vbox := VBoxContainer.new()
-	content_vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	content_vbox.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	content_vbox.add_theme_constant_override("separation", 12)
-	scroll.add_child(content_vbox)
+	# v22 百灯群岛：2560×1440 平移画布——黑海底图 + 残骸 + 灯塔 + 巨环 + 5 星座泡群
+	var canvas := Control.new()
+	canvas.name = "MapCanvas"
+	canvas.custom_minimum_size = MAP_CANVAS_SIZE
+	canvas.size = MAP_CANVAS_SIZE
+	canvas.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	scroll.add_child(canvas)
 
-	# v6.10: 顶部"势力领地图"按钮入口（打开占领可视化面板）
-	var territory_btn := Button.new()
-	territory_btn.name = "TerritoryMapButton"  # v7.5: 命名以便静态模板复用时重连信号
-	territory_btn.text = "◆ 势力领地图"
-	territory_btn.tooltip_text = "查看100关当前占领状态（势力领地分布）"
-	territory_btn.custom_minimum_size = Vector2(0, 32)
-	var tbs := StyleBoxFlat.new()
-	tbs.bg_color = Color(0.06, 0.1, 0.17, 0.9)
-	tbs.border_width_left = 1; tbs.border_width_top = 1
-	tbs.border_width_right = 1; tbs.border_width_bottom = 1
-	tbs.border_color = Color(0.0, 0.75, 0.85, 0.6)
-	tbs.corner_radius_top_left = 5; tbs.corner_radius_top_right = 5
-	tbs.corner_radius_bottom_right = 5; tbs.corner_radius_bottom_left = 5
-	territory_btn.add_theme_stylebox_override("normal", tbs)
-	territory_btn.add_theme_color_override("font_color", Color(0, 0.94, 1, 1))
-	territory_btn.add_theme_font_size_override("font_size", 13)
-	territory_btn.pressed.connect(_on_territory_map_button)
-	content_vbox.add_child(territory_btn)
+	# 1) 黑海底图
+	var bg := TextureRect.new()
+	bg.name = "VoidBase"
+	bg.texture = _tex(MAP_VOID_PATH)
+	bg.size = MAP_CANVAS_SIZE
+	bg.stretch_mode = TextureRect.STRETCH_SCALE
+	bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	canvas.add_child(bg)
 
-	var current_level: int = GameManager.current_level if GameManager else 1
-	var _btn_count: int = 0
+	# 2) 漂浮残骸装饰（静态散布，位于节点之下）
+	_scatter_debris(canvas)
 
+	# v22.3 方案 8：下界（相位界）整体加青紫滤镜 + 相位缝光带标签（占位，待专用底图）
+	if MAP_SCHEME == 8:
+		var lower_tint := ColorRect.new()
+		lower_tint.name = "LowerRealmTint"
+		lower_tint.position = Vector2(0, SEAM_Y_S8)
+		lower_tint.size = Vector2(MAP_CANVAS_SIZE.x, MAP_CANVAS_SIZE.y - SEAM_Y_S8)
+		lower_tint.color = Color(0.45, 0.30, 0.95, 0.07)
+		lower_tint.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		canvas.add_child(lower_tint)
+		var seam_lbl := Label.new()
+		seam_lbl.text = "── 相位缝 ──"
+		seam_lbl.add_theme_font_size_override("font_size", 15)
+		seam_lbl.add_theme_color_override("font_color", Color(0.0, 0.9, 1.0, 0.85))
+		seam_lbl.position = Vector2(60, SEAM_Y_S8 - 24)
+		seam_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		canvas.add_child(seam_lbl)
+
+	# 3) 终局巨环（三态渐进，_apply_gate_state 设纹理/尺寸/透明度）
+	var gate := TextureRect.new()
+	gate.name = "GateMarker"
+	gate.position = MAP_GATE_POS
+	gate.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	canvas.add_child(gate)
+	_apply_gate_state(canvas)
+
+	# 4) 灯塔要塞（家）
+	var lh := TextureRect.new()
+	lh.name = "Lighthouse"
+	var lh_tex: Texture2D = _tex(LIGHTHOUSE_TEX_PATH)
+	lh.texture = lh_tex
+	var lh_scale: float = LIGHTHOUSE_DISPLAY_H / lh_tex.get_height()
+	lh.size = Vector2(lh_tex.get_width() * lh_scale, LIGHTHOUSE_DISPLAY_H)
+	lh.position = _home_pos() - lh.size * 0.5
+	lh.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	canvas.add_child(lh)
+	var home_lbl := Label.new()
+	home_lbl.text = "余烬要塞"
+	home_lbl.add_theme_font_size_override("font_size", 14)
+	home_lbl.add_theme_color_override("font_color", Color(1.0, 0.71, 0.37, 0.9))
+	var home_lbl_off: Vector2 = Vector2(-28, lh.size.y * 0.42) if MAP_SCHEME == 6 		else Vector2(lh.size.x * 0.3, lh.size.y * 0.55)
+	home_lbl.position = _home_pos() + home_lbl_off
+	home_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	canvas.add_child(home_lbl)
+
+	# 5) overlay 层：微光桥 / 占领环 / 当前关光圈（draw 信号驱动）
+	_overlay_layer = Control.new()
+	_overlay_layer.name = "OverlayLayer"
+	_overlay_layer.size = MAP_CANVAS_SIZE
+	_overlay_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_overlay_layer.draw.connect(_draw_map_overlay)
+	canvas.add_child(_overlay_layer)
+
+	# 6) 100 个相位泡节点 + 区标签（方案6=星座标签 / 方案8=两界大标 + 时代行标）
+	if MAP_SCHEME == 8:
+		for realm in range(2):
+			var realm_lbl := Label.new()
+			realm_lbl.text = "现实界 · 第 1–50 关" if realm == 0 else "相位界 · 第 51–100 关"
+			realm_lbl.add_theme_font_size_override("font_size", 20)
+			realm_lbl.add_theme_color_override("font_color",
+				Color(0.9, 0.8, 0.6, 0.9) if realm == 0 else Color(0.55, 0.75, 1.0, 0.9))
+			realm_lbl.position = Vector2(80, 150) if realm == 0 else Vector2(80, 1210)
+			realm_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			canvas.add_child(realm_lbl)
 	for era_idx in range(5):
 		var era_info: Dictionary = ERA_COLORS[era_idx]
 		var era_start: int = era_idx * ERA_SIZE + 1
-		var era_end: int = era_start + ERA_SIZE - 1
+		var zone_lbl := Label.new()
+		zone_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		zone_lbl.add_theme_font_size_override("font_size", 17 if MAP_SCHEME == 6 else 15)
+		zone_lbl.add_theme_color_override("font_color", era_info["title"])
+		zone_lbl.modulate.a = 0.85
+		if MAP_SCHEME == 6:
+			zone_lbl.text = "%s %s · 第 %d–%d 关" % [era_info["icon"], era_info["name"],
+				era_start, era_start + ERA_SIZE - 1]
+			zone_lbl.position = ERA_CLUSTER_ANCHORS[era_idx] + Vector2(-100.0, -ERA_CLUSTER_RADII.y - 74.0)
+			canvas.add_child(zone_lbl)
+		else:
+			var first_pt: Vector2 = _s_level_points.get(era_start, Vector2.ZERO)
+			zone_lbl.text = "%s %s %d–%d%s" % [era_info["icon"], era_info["name"],
+				era_start, era_start + ERA_SIZE - 1, "（跨缝）" if era_idx == 2 else ""]
+			zone_lbl.position = first_pt + Vector2(-150.0, -34.0)
+			canvas.add_child(zone_lbl)
+			var lower_first: int = 51
+			if era_idx == 2:  # 冷战下半（51-60）补一枚下界行标
+				var seam_era_lbl := zone_lbl.duplicate() as Label
+				seam_era_lbl.text = "%s %s 51–60" % [era_info["icon"], era_info["name"]]
+				seam_era_lbl.position = _s_level_points.get(lower_first, Vector2.ZERO) + Vector2(-150.0, -34.0)
+				canvas.add_child(seam_era_lbl)
+		if MAP_SCHEME == 6:
+			var pts: Array = _cluster_level_positions(era_idx)
+			for j in range(ERA_SIZE):
+				var level_index_s6: int = era_start + j
+				canvas.add_child(_make_level_node(level_index_s6, era_idx, pts[j], current_level))
+	for lv_s8 in range(1, LEVEL_COUNT + 1):
+		if MAP_SCHEME == 8:
+			var era_idx_s8: int = floori((lv_s8 - 1) / 20.0)
+			canvas.add_child(_make_level_node(lv_s8, era_idx_s8,
+				_s_level_points.get(lv_s8, Vector2.ZERO), current_level))
+	_overlay_layer.queue_redraw()
 
-		# 时代区块容器
-		var era_panel := PanelContainer.new()
-		var era_style := StyleBoxFlat.new()
-		era_style.bg_color = era_info["bg"]
-		era_style.border_width_left = 2
-		era_style.border_width_top = 2
-		era_style.border_width_right = 2
-		era_style.border_width_bottom = 2
-		era_style.border_color = era_info["border"]
-		era_style.corner_radius_top_left = 8
-		era_style.corner_radius_top_right = 8
-		era_style.corner_radius_bottom_right = 8
-		era_style.corner_radius_bottom_left = 8
-		era_panel.add_theme_stylebox_override("panel", era_style)
-
-		var era_margin := MarginContainer.new()
-		era_margin.add_theme_constant_override("margin_left", 12)
-		era_margin.add_theme_constant_override("margin_right", 12)
-		era_margin.add_theme_constant_override("margin_top", 10)
-		era_margin.add_theme_constant_override("margin_bottom", 10)
-
-		var era_vbox := VBoxContainer.new()
-		era_vbox.add_theme_constant_override("separation", 8)
-
-		# 时代标题
-		var header_hbox := HBoxContainer.new()
-		header_hbox.add_theme_constant_override("separation", 8)
-
-		var icon_lbl := Label.new()
-		icon_lbl.text = era_info["icon"]
-		icon_lbl.add_theme_font_size_override("font_size", 18)
-		icon_lbl.add_theme_color_override("font_color", era_info["title"])
-		header_hbox.add_child(icon_lbl)
-
-		var title_lbl := Label.new()
-		title_lbl.text = "%s  第 %d–%d 关" % [era_info["name"], era_start, era_end]
-		title_lbl.add_theme_font_size_override("font_size", 16)
-		title_lbl.add_theme_color_override("font_color", era_info["title"])
-		title_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		header_hbox.add_child(title_lbl)
-
-		era_vbox.add_child(header_hbox)
-
-		# 分割线
-		var sep := HSeparator.new()
-		sep.add_theme_color_override("color", era_info["border"])
-		era_vbox.add_child(sep)
-
-		# 关卡按钮网格
-		var grid := GridContainer.new()
-		grid.columns = LEVELS_PER_ROW
-		grid.add_theme_constant_override("h_separation", 5)
-		grid.add_theme_constant_override("v_separation", 5)
-
-		for j in range(ERA_SIZE):
-			var level_index: int = era_start + j
-			var btn := _make_level_button(level_index, era_idx, era_info, current_level)
-			_btn_count += 1
-			grid.add_child(btn)
-
-		era_vbox.add_child(grid)
-		era_margin.add_child(era_vbox)
-		era_panel.add_child(era_margin)
-		content_vbox.add_child(era_panel)
-		# 拆帧构建：降低一次性创建100按钮造成的主线程尖峰
-		await get_tree().process_frame
-		# await 期间可能被并发重建打断（refresh_levels/refresh_for_open 再次进入本函数，
-		# 清空循环会 queue_free 掉本协程的 content_vbox）——旧协程凭票作废退出，
-		# 否则恢复后会向已释放实例 add_child（"previously freed instance" 报错）
-		if ticket != _build_ticket or not is_instance_valid(content_vbox):
-			return
-
-	# 标记地图已构建
-	_cached_level_map_template = content_vbox.duplicate(Node.DUPLICATE_USE_INSTANTIATION) as Control
+	# 标记地图已构建（静态模板供跨场景复用）
+	_cached_level_map_template = canvas.duplicate(Node.DUPLICATE_USE_INSTANTIATION) as Control
 	_map_built = true
+	_center_on_current_level()
+
+# === v22 百灯群岛：布局/资产/状态辅助 ===
+
+static func _tex(path: String) -> Texture2D:
+	if not _s_tex_cache.has(path):
+		_s_tex_cache[path] = load(path)
+	return _s_tex_cache.get(path)
+
+## 星座内 20 关点位：椭圆盘均匀采样 + 最小间距拒绝采样（固定种子，跨实例一致）
+static func _cluster_level_positions(era_idx: int) -> Array:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 20260827 + era_idx * 131
+	var center: Vector2 = ERA_CLUSTER_ANCHORS[era_idx]
+	var pts: Array = []
+	var tries: int = 0
+	while pts.size() < ERA_SIZE and tries < 4000:
+		tries += 1
+		var ang := rng.randf() * TAU
+		var rad := sqrt(rng.randf())
+		var p := center + Vector2(cos(ang) * rad * ERA_CLUSTER_RADII.x,
+			sin(ang) * rad * ERA_CLUSTER_RADII.y)
+		var ok := true
+		for q in pts:
+			if p.distance_to(q) < 132.0:
+				ok = false
+				break
+		if ok:
+			pts.append(p)
+	while pts.size() < ERA_SIZE:
+		pts.append(center + Vector2(rng.randf_range(-1, 1) * ERA_CLUSTER_RADII.x,
+			rng.randf_range(-1, 1) * ERA_CLUSTER_RADII.y))
+	return pts
+
+## 布局只算一次（静态缓存）：节点坐标 + 微光桥连线（灯塔→L1→…→L100→巨环）
+static func _ensure_layout() -> void:
+	if not _s_level_points.is_empty():
+		return
+	if MAP_SCHEME == 8:
+		_layout_scheme8()
+	else:
+		_layout_scheme6()
+
+## 方案 8 沙漏双界：上界 5 行自宽收窄向相位缝（1-50），下界自缝张开向底极（51-100）。
+## 时代映射：一战/二战全在上界；冷战跨缝（41-50 上 / 51-60 下）；现代/近未来全在下界。
+static func _layout_scheme8() -> void:
+	var cx := 1280.0
+	for k in range(5):
+		var y := 240.0 + k * 100.0
+		var half := 950.0 - k * 130.0
+		for j in range(10):
+			_s_level_points[k * 10 + j + 1] = Vector2(cx - half + (2.0 * half / 9.0) * j, y)
+	for k2 in range(5):
+		var y2 := 800.0 + k2 * 88.0
+		var half2 := 300.0 + k2 * 130.0
+		for j2 in range(10):
+			_s_level_points[50 + k2 * 10 + j2 + 1] = Vector2(cx - half2 + (2.0 * half2 / 9.0) * j2, y2)
+	_s_bridges.append({"a": _home_pos(), "b": _s_level_points[1], "era": 0})
+	for lv in range(1, LEVEL_COUNT):
+		_s_bridges.append({"a": _s_level_points[lv], "b": _s_level_points[lv + 1],
+			"era": floori((lv - 1) / 20.0)})
+	_s_bridges.append({"a": _s_level_points[LEVEL_COUNT], "b": _gate_pos(), "era": 4})
+
+static func _layout_scheme6() -> void:
+	for era_idx in range(5):
+		var pts := _cluster_level_positions(era_idx)
+		for j in range(ERA_SIZE):
+			_s_level_points[era_idx * ERA_SIZE + 1 + j] = pts[j]
+		if era_idx == 0:
+			_s_bridges.append({"a": _home_pos(), "b": pts[0], "era": 0})
+		else:
+			_s_bridges.append({"a": _s_level_points[era_idx * ERA_SIZE], "b": pts[0], "era": era_idx})
+		for j in range(ERA_SIZE - 1):
+			_s_bridges.append({"a": pts[j], "b": pts[j + 1], "era": era_idx})
+	_s_bridges.append({"a": _s_level_points[LEVEL_COUNT], "b": _gate_pos(), "era": 4})
+
+## 每次构建/刷新时重读动态状态：占领色环集合 + 巨环三态
+func _refresh_static_state(current_level: int) -> void:
+	_s_occ_colors.clear()
+	for lv in range(1, LEVEL_COUNT + 1):
+		var fid := _get_level_occupation_safe(lv)
+		if not fid.is_empty():
+			var c := CompanyDefs.get_faction_color(fid)
+			c.a = 0.85
+			_s_occ_colors[lv] = c
+	_s_gate_state = _gate_state_for_level(current_level)
+
+func _gate_state_for_level(cur: int) -> String:
+	if cur >= 90:
+		return "near"
+	if cur >= 50:
+		return "mid"
+	return "far"
+
+## 巨环三态：far 小而淡 / mid 可辨 / near 用 mid 放大 + 暖染近似
+## （gate_near.png 整幅图保留给终局近接演出，不直接摆画布）
+func _apply_gate_state(canvas: Control) -> void:
+	var gate := canvas.get_node_or_null("GateMarker") as TextureRect
+	if gate == null:
+		return
+	gate.texture = _tex(GATE_TEX_FAR if _s_gate_state == "far" else GATE_TEX_MID)
+	if MAP_SCHEME == 8:
+		# 下界底极：门横卧（竖向压扁），三档尺寸
+		var disp8: Vector2 = {"far": Vector2(260, 100), "mid": Vector2(380, 140),
+			"near": Vector2(520, 190)}.get(_s_gate_state, Vector2(260, 100))
+		gate.size = disp8
+		gate.position = GATE_POS_S8 - disp8 * 0.5
+	else:
+		var disp: float = 240.0 if _s_gate_state == "far" else (400.0 if _s_gate_state == "mid" else 560.0)
+		gate.size = Vector2(disp, disp)
+		gate.position = MAP_GATE_POS - gate.size * 0.5
+	match _s_gate_state:
+		"far":
+			gate.modulate = Color(1, 1, 1, 0.45)
+		"mid":
+			gate.modulate = Color(1, 1, 1, 0.85)
+		_:
+			gate.modulate = Color(1.0, 0.88, 0.78, 1.0)
+
+func _scatter_debris(canvas: Control) -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 20260827
+	for i in range(12):
+		var tex := _tex(MAP_DIR + "debris_%d.png" % ((i % 8) + 1))
+		if tex == null:
+			continue
+		var d := TextureRect.new()
+		d.texture = tex
+		var sc: float = rng.randf_range(0.45, 1.0)
+		d.size = Vector2(tex.get_width(), tex.get_height()) * sc
+		d.position = Vector2(rng.randf_range(60.0, MAP_CANVAS_SIZE.x - 160.0),
+			rng.randf_range(60.0, MAP_CANVAS_SIZE.y - 160.0))
+		d.rotation = rng.randf_range(-0.45, 0.45)
+		d.modulate = Color(1, 1, 1, rng.randf_range(0.35, 0.6))
+		d.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		canvas.add_child(d)
+
+func _is_level_cleared(level_index: int) -> bool:
+	var lpm := get_node_or_null("/root/LevelProgressManager")
+	if lpm != null and lpm.has_method("get_level_stars"):
+		return lpm.get_level_stars(level_index) > 0
+	return level_index < (GameManager.current_level if GameManager else 1)
+
+## overlay 绘制：微光桥（时代色虚线）+ 占领色环 + 当前关青色光圈
+func _draw_map_overlay() -> void:
+	var layer := _overlay_layer
+	if layer == null or not is_instance_valid(layer):
+		return
+	for br in _s_bridges:
+		var col: Color = ERA_COLORS[br["era"]]["border"]
+		col.a = 0.32
+		_draw_dashed(layer, br["a"], br["b"], col, 1.5, 10.0, 6.0)
+	if MAP_SCHEME == 8:
+		# 相位缝光带：三层辉光 + 中心亮线
+		var seam_a := Vector2(0, SEAM_Y_S8)
+		var seam_b := Vector2(MAP_CANVAS_SIZE.x, SEAM_Y_S8)
+		layer.draw_line(seam_a, seam_b, Color(0.0, 0.9, 1.0, 0.06), 14.0)
+		layer.draw_line(seam_a, seam_b, Color(0.0, 0.9, 1.0, 0.14), 6.0)
+		layer.draw_line(seam_a, seam_b, Color(0.55, 0.95, 1.0, 0.55), 2.0)
+	for lv in _s_occ_colors:
+		var p: Vector2 = _s_level_points.get(lv, Vector2.ZERO)
+		if p != Vector2.ZERO:
+			layer.draw_arc(p, 46.0, 0.0, TAU, 40, _s_occ_colors[lv], 2.5)
+	var cur: int = GameManager.current_level if GameManager else 1
+	var cp: Vector2 = _s_level_points.get(cur, Vector2.ZERO)
+	if cp != Vector2.ZERO:
+		layer.draw_arc(cp, 52.0, 0.0, TAU, 48, Color(0.0, 0.9, 1.0, 0.9), 2.5)
+		layer.draw_arc(cp, 58.0, 0.0, TAU, 48, Color(0.0, 0.9, 1.0, 0.35), 1.5)
+
+func _draw_dashed(layer: Control, a: Vector2, b: Vector2, color: Color,
+		width: float, dash: float, gap: float) -> void:
+	var total := a.distance_to(b)
+	if total <= 1.0:
+		return
+	var dir := (b - a) / total
+	var t := 0.0
+	while t < total:
+		var t2 := minf(t + dash, total)
+		layer.draw_line(a + dir * t, a + dir * t2, color, width)
+		t = t2 + gap
+
+## 模板复用时重绑 overlay 的 draw 信号到当前实例（旧连接指向已释放实例）
+func _rebind_overlay(root: Node) -> void:
+	var layer := root.get_node_or_null("OverlayLayer") as Control
+	if layer == null:
+		return
+	_overlay_layer = layer
+	for conn in layer.draw.get_connections():
+		layer.draw.disconnect(conn.callable)
+	layer.draw.connect(_draw_map_overlay)
+	layer.queue_redraw()
+
+## 构建完成后把视口居中到当前关（等一帧让 ScrollContainer 尺寸就绪）
+func _center_on_current_level() -> void:
+	await get_tree().process_frame
+	var scroll := get_node_or_null("Margin/VBox/ScrollContainer") as ScrollContainer
+	if scroll == null or not is_inside_tree():
+		return
+	var cur: int = clampi(GameManager.current_level if GameManager else 1, 1, LEVEL_COUNT)
+	# 截图/测试辅助：WM_VIEW_LEVEL=N 时视口居中到第 N 关（跳过定场镜头）
+	if OS.has_environment("WM_VIEW_LEVEL"):
+		cur = clampi(int(OS.get_environment("WM_VIEW_LEVEL")), 1, LEVEL_COUNT)
+	var p: Vector2 = _s_level_points.get(cur, MAP_LIGHTHOUSE_POS)
+	if cur <= 3 and not OS.has_environment("WM_VIEW_LEVEL"):
+		# 新档定场镜头：方案6 看灯塔与巨环；方案8 看上界战线+相位缝（含家）
+		p = Vector2(800, 420) if MAP_SCHEME == 8 else MAP_LIGHTHOUSE_POS.lerp(MAP_GATE_POS, 0.45)
+	scroll.set_h_scroll(int(p.x - scroll.size.x * 0.5))
+	scroll.set_v_scroll(int(p.y - scroll.size.y * 0.5))
 
 ## v7.5: 静态模板复用时重新连接关卡按钮的 pressed 信号到当前实例。
-## 原因：_make_level_button 用 lambda 捕获 self 隐式引用（_on_level_selected 是实例方法），
-## duplicate() 复制的信号连接仍指向旧实例。跨 change_scene_to_file 复用模板时旧实例已 free，
-## 点击按钮静默失败。此方法遍历复用模板里的所有按钮，按节点名识别类型并重连到当前 self。
+## v22: 节点改用 TextureButton（相位泡），按 BaseButton 检索；势力领地图按钮已改挂标题栏（非模板内）。
 func _reconnect_level_buttons(root: Node) -> void:
-	var buttons := root.find_children("*", "Button", true, false)
+	var buttons := root.find_children("*", "BaseButton", true, false)
 	for btn in buttons:
-		if not (btn is Button):
+		if not (btn is BaseButton):
 			continue
 		var nm: String = btn.name
 		# 清掉旧实例遗留的所有 pressed 连接（匿名 lambda 无法按 Callable 精确断开，全清）
@@ -338,9 +603,6 @@ func _reconnect_level_buttons(root: Node) -> void:
 			if level_str.is_valid_int():
 				var level_index: int = level_str.to_int()
 				btn.pressed.connect(func() -> void: _on_level_selected(level_index))
-		# 势力领地图入口按钮（同样捕获 self 的实例方法）
-		elif nm == "TerritoryMapButton":
-			btn.pressed.connect(_on_territory_map_button)
 
 ## 刷新地图（清除缓存，强制重新生成）
 func refresh_levels() -> void:
@@ -358,56 +620,58 @@ func _on_occupation_changed_refresh(_level: int, _old_f: String, _new_f: String)
 		return
 	refresh_levels()
 
-func _make_level_button(level_index: int, _era_idx: int, era_info: Dictionary, current_level: int) -> Button:
-	var btn := Button.new()
-	btn.text = "%d" % level_index
+## v22: 相位泡关卡节点（TextureButton）——贴图=时代泡/通关残壳/相位师泡，
+## 占领色标=占领环（overlay 绘制）+ boss 泡染势力色 + tooltip（沿用旧按钮逻辑）
+func _make_level_node(level_index: int, era_idx: int, point: Vector2, _current_level: int) -> TextureButton:
+	var btn := TextureButton.new()
 	btn.name = "LevelButton%d" % level_index
-	btn.custom_minimum_size = Vector2(52, 36)
-	btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	btn.add_theme_font_size_override("font_size", 12)
-	btn.alignment = HORIZONTAL_ALIGNMENT_CENTER
-	# v7.x: 驻守相位师 Boss 关检测（供金色字体描边 + tooltip）
-	var boss_master_name: String = ""
-	if PhaseMasterGarrison.is_garrison_level(level_index):
-		var _bmid: String = PhaseMasterGarrison.get_garrison_master_id(level_index)
-		if not _bmid.is_empty():
-			var _bm: Dictionary = EnemyPhaseMasters.get_master_by_id(_bmid)
-			if not _bm.is_empty():
-				boss_master_name = "%s Lv.%d" % [String(_bm.get("name", "")), int(_bm.get("level", 0))]
-
-	var is_current: bool = (level_index == current_level)
-	var btn_style := StyleBoxFlat.new()
-
-	if is_current:
-		# 当前关卡：亮青/时代色高亮
-		btn_style.bg_color = Color(era_info["btn_active"].r * 0.2,
-			era_info["btn_active"].g * 0.2,
-			era_info["btn_active"].b * 0.2, 0.9)
-		btn_style.border_width_left = 2; btn_style.border_width_top = 2
-		btn_style.border_width_right = 2; btn_style.border_width_bottom = 2
-		btn_style.border_color = era_info["btn_active"]
-		btn_style.shadow_color = Color(era_info["btn_active"].r, era_info["btn_active"].g,
-			era_info["btn_active"].b, 0.5)
-		btn_style.shadow_size = 4
-		btn.add_theme_color_override("font_color", era_info["btn_active"])
-		btn.add_theme_font_size_override("font_size", 13)
+	var is_boss: bool = PhaseMasterGarrison.is_garrison_level(level_index)
+	var tex: Texture2D
+	if _is_level_cleared(level_index):
+		tex = _tex(BUBCLEARED_TEX_PATH)
+	elif is_boss:
+		tex = _tex(BOSS_TEX_PATH)
 	else:
-		btn_style.bg_color = era_info["btn_bg"]
-		btn_style.border_width_left = 1; btn_style.border_width_top = 1
-		btn_style.border_width_right = 1; btn_style.border_width_bottom = 1
-		btn_style.border_color = Color(era_info["border"].r, era_info["border"].g,
-			era_info["border"].b, 0.35)
-		btn.add_theme_color_override("font_color", Color(
-			era_info["title"].r, era_info["title"].g, era_info["title"].b, 0.75))
+		tex = _tex(String(BUBBLE_TEX_PATHS[era_idx]))
+	btn.texture_normal = tex
+	btn.ignore_texture_size = true
+	btn.stretch_mode = TextureButton.STRETCH_SCALE
+	var disp: float = BOSS_BUBBLE_DISPLAY if is_boss else BUBBLE_DISPLAY
+	btn.custom_minimum_size = Vector2(disp, disp)
+	btn.size = Vector2(disp, disp)
+	btn.position = point - Vector2(disp, disp) * 0.5
 
-	# v6.10: 占领色标——右边框显示占领势力色
+	var num := Label.new()
+	num.name = "LevelNum"
+	num.text = "%d" % level_index
+	num.set_anchors_preset(Control.PRESET_FULL_RECT)
+	num.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	num.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	num.add_theme_font_size_override("font_size", 14)
+	num.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	btn.add_child(num)
+
+	# v7.x: 驻守相位师 Boss 关——数字金色 + 描边 + tooltip
+	var boss_master_name: String = ""
+	if is_boss:
+		var bmid: String = PhaseMasterGarrison.get_garrison_master_id(level_index)
+		if not bmid.is_empty():
+			var bm: Dictionary = EnemyPhaseMasters.get_master_by_id(bmid)
+			if not bm.is_empty():
+				boss_master_name = "%s Lv.%d" % [String(bm.get("name", "")), int(bm.get("level", 0))]
+		if not boss_master_name.is_empty():
+			num.add_theme_color_override("font_color", Color(1.0, 0.84, 0.3, 1.0))
+			num.add_theme_color_override("font_outline_color", Color(1.0, 0.65, 0.2, 0.9))
+			num.add_theme_constant_override("outline_size", 2)
+			btn.tooltip_text = "⚔ 相位师首领：%s" % boss_master_name
+
+	# v6.10: 占领色标——Boss 泡膜染势力色（混白避免过暗）+ tooltip 追加占领信息
 	var occupation_fid: String = _get_level_occupation_safe(level_index)
 	if not occupation_fid.is_empty():
 		var occ_color: Color = CompanyDefs.get_faction_color(occupation_fid)
-		occ_color.a = 0.9  # 右边框半透明，避免过抢
-		btn_style.border_width_right = 4
-		btn_style.border_color = occ_color  # 右边框用势力色（覆盖默认细边框）
-		# tooltip 追加占领信息
+		if is_boss:
+			btn.modulate = Color(occ_color.r * 0.5 + 0.5, occ_color.g * 0.5 + 0.5,
+				occ_color.b * 0.5 + 0.5, 1.0)
 		var occ_name: String = occupation_fid
 		var fsm = get_node_or_null("/root/FactionSystemManager")
 		if fsm and fsm.has_method("get_faction_info"):
@@ -415,41 +679,8 @@ func _make_level_button(level_index: int, _era_idx: int, era_info: Dictionary, c
 		if btn.tooltip_text.is_empty():
 			btn.tooltip_text = "占领：%s" % occ_name
 		else:
-			btn.tooltip_text += "\n占领：%s" % occ_name
-
-	# v7.x: Boss 关 tooltip 追加相位师首领信息（与剧情/占领 tooltip 共存）
-	if not boss_master_name.is_empty():
-		if btn.tooltip_text.is_empty():
-			btn.tooltip_text = "⚔ 相位师首领：%s" % boss_master_name
-		else:
-			btn.tooltip_text += "\n⚔ 相位师首领：%s" % boss_master_name
-
-	btn_style.corner_radius_top_left = 4
-	btn_style.corner_radius_top_right = 4
-	btn_style.corner_radius_bottom_right = 4
-	btn_style.corner_radius_bottom_left = 4
-	btn.add_theme_stylebox_override("normal", btn_style)
-
-	# hover 样式
-	var hover_style := btn_style.duplicate() as StyleBoxFlat
-	hover_style.bg_color = Color(
-		era_info["btn_active"].r * 0.15 + 0.04,
-		era_info["btn_active"].g * 0.15 + 0.04,
-		era_info["btn_active"].b * 0.15 + 0.04, 0.95)
-	hover_style.border_color = Color(
-		era_info["btn_active"].r, era_info["btn_active"].g,
-		era_info["btn_active"].b, 0.7)
-	btn.add_theme_stylebox_override("hover", hover_style)
-	btn.add_theme_color_override("font_hover_color", era_info["btn_active"])
-
-	# v7.x: Boss 相位师关——金色字体 + 描边（绕开 StyleBoxFlat 单一 border_color 限制，
-	# 与剧情★紫色左边框 / 占领势力右边框零冲突，所有重叠情况都能叠加）
-	if not boss_master_name.is_empty():
-		var gold: Color = Color(1.0, 0.84, 0.3, 1.0)
-		btn.add_theme_color_override("font_color", gold)
-		btn.add_theme_color_override("font_hover_color", gold)
-		btn.add_theme_color_override("font_outline_color", Color(1.0, 0.65, 0.2, 0.9))
-		btn.add_theme_constant_override("outline_size", 2)
+			btn.tooltip_text += "
+占领：%s" % occ_name
 
 	btn.pressed.connect(func() -> void: _on_level_selected(level_index))
 	return btn
@@ -467,25 +698,19 @@ func _process(_delta: float) -> void:
 	pass
 
 func _draw() -> void:
-	if not _runtime_active:
-		return
-	var vp_size = get_viewport_rect().size
+	# v22：地图内容全部由 MapCanvas 子树绘制，根节点不再画星空/扫描线
+	pass
 
-	# 星星
-	for s in _stars:
-		draw_circle(Vector2(s["x"], s["y"]), s["size"], Color(0.7, 0.9, 1.0, s["alpha"]))
-
-	# 静态扫描线（不再动态滚动）
-	var scan_color := Color(0, 0.941, 1, 0.025)
-	var scan_step := 36.0
-	var y := 0.0
-	while y < vp_size.y:
-		draw_line(Vector2(0, y), Vector2(vp_size.x, y), scan_color, 1.0)
-		y += scan_step
-
-	# 底部装饰线
-	draw_line(Vector2(0, vp_size.y - 2), Vector2(vp_size.x, vp_size.y - 2),
-		Color(0, 0.941, 1, 0.25), 2.0)
+## 拖拽平移：左键拖空白处滚动视口（气泡按钮会先消费自身点击，互不冲突）
+func _on_map_gui_input(ev: InputEvent) -> void:
+	if ev is InputEventMouseButton and (ev as InputEventMouseButton).button_index == MOUSE_BUTTON_LEFT:
+		_pan_dragging = (ev as InputEventMouseButton).pressed
+	elif ev is InputEventMouseMotion and _pan_dragging:
+		var scroll := get_node_or_null("Margin/VBox/ScrollContainer") as ScrollContainer
+		if scroll != null:
+			var rel: Vector2 = (ev as InputEventMouseMotion).relative
+			scroll.set_h_scroll(int(scroll.get_h_scroll() - rel.x))
+			scroll.set_v_scroll(int(scroll.get_v_scroll() - rel.y))
 
 func _on_back_to_title() -> void:
 	# 嵌入到 Main 的 MapOverlay 时，不切场景，改为通知父层关闭。

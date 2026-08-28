@@ -960,6 +960,11 @@ func clear_slots_for_new_game() -> void:
 	# 唯一新游戏符文入口；add_owned_rune 自带去重，重复调用安全）
 	for rune_id: String in GC.NEW_GAME_STARTER_RUNE_IDS:
 		add_owned_rune(rune_id)
+	# v21.6（用户 2026-08-27 指示）：starter 符文自动装入符文槽——attack_01+defense_01
+	# 恰为符文之语 rw_2_05"强袭"（攻击+18%/HP+18%）成套组合，开局即激活。
+	# equip_rune 自带越界/拥有校验，槽位不足时静默跳过。
+	for i in range(GC.NEW_GAME_STARTER_RUNE_IDS.size()):
+		equip_rune(i, GC.NEW_GAME_STARTER_RUNE_IDS[i])
 	_emit_slots_changed()
 
 ## 新游戏自动装备一套初始卡牌到空槽位（v7.x 已停用）
@@ -969,17 +974,20 @@ func clear_slots_for_new_game() -> void:
 func _equip_starter_cards_for_new_game() -> void:
 	pass
 
-## v21.x（FTUE 审计 S1，2026-08-27）：新档预装备 starter 战斗卡到首个空绿槽。
-## 由 SaveManager._enqueue_starter_backpack_cards 在实例创建之后调用（时序：start_new_game
+## v21.x/v21.6（FTUE 审计 S1 + 三角扩容，2026-08-27）：新档预装备 starter 战斗卡。
+## 由 SaveManager._enqueue_starter_backpack_cards 在实例创建之后逐张调用（时序：start_new_game
 ## 的 manager 重置阶段 clear_slots_for_new_game 先清空槽位，实例在末段才创建，故不能在
-## _equip_starter_cards_for_new_game 里做）。幂等：任一绿槽已有卡即跳过（NG+/重复调用安全）。
+## _equip_starter_cards_for_new_game 里做）。语义：装入首个空绿槽；全满/无实例返回 false
+## （幂等：重复调用只会把空槽依次填满，已满即停，NG+/重复调用安全）。
 func equip_starter_card_for_new_game(card_id: String) -> bool:
 	var green_arr: Array = instrument_slots.get("green", [])
-	if green_arr.is_empty():
+	var empty_idx: int = -1
+	for i in range(green_arr.size()):
+		if not (green_arr[i] is CardResource):
+			empty_idx = i
+			break
+	if empty_idx < 0:
 		return false
-	for c in green_arr:
-		if c is CardResource:
-			return false
 	var ir: Node = get_node_or_null("/root/InstanceRegistry")
 	if ir == null or not ir.has_method("get_instances_by_card_id"):
 		return false
@@ -995,7 +1003,7 @@ func equip_starter_card_for_new_game(card_id: String) -> bool:
 				break
 	if card == null:
 		return false
-	var flat: int = _slot_to_flat_index("green", 0)
+	var flat: int = _slot_to_flat_index("green", empty_idx)
 	if flat < 0:
 		return false
 	return equip_card(flat, card)

@@ -199,6 +199,14 @@ static func ensure_cost_corner_badge(host: Control, anchor_right: bool = false) 
 	if host == null:
 		return null
 	var badge: Control = host.get_node_or_null("CostCornerBadge") as Control
+	# v21.x 修复：池化复用竞态——_flush_rebuild_card_grid 在同一次 deferred 调用内
+	# "set_card(null) 清角标（queue_free）→ 复用同一 item set_card(card)"，
+	# get_node_or_null 会捞到垂死角标并复用，帧末随 queue_free 一起被释放，
+	# 表现为背包网格重建后卡面的费用角标（N⚡）整批消失。
+	# 处理：垂死节点立即从树上摘除（当帧不再绘制/查询不到），重建新角标接管原名。
+	if badge != null and badge.is_queued_for_deletion():
+		host.remove_child(badge)
+		badge = null
 	if badge == null:
 		badge = _CostBadgeScript.new()
 		badge.name = "CostCornerBadge"

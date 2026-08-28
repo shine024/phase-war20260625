@@ -25,6 +25,13 @@ func _deferred_init() -> void:
 	_deferred_initialized = true
 	_initialize_player_scores()
 
+## v21.2 复检修复：GameManager 战后统计在 ensure_loaded 同帧立即调 update_*，
+## 此时 _deferred_init 尚未跑（任何账号首场战斗必踩）——点访问空字典报错
+## 且首战统计丢失。所有 _player_scores 触点入口先经此守卫兜底。
+func _ensure_scores() -> void:
+	if not _deferred_initialized:
+		_deferred_init()
+
 ## 初始化玩家分数
 func _initialize_player_scores() -> void:
 	_player_scores = {
@@ -131,6 +138,7 @@ func get_leaderboard_scores(leaderboard_id: String) -> Array:
 
 ## 更新战斗统计
 func update_battle_stats(player_won: bool, damage_dealt: int, time_taken: float) -> void:
+	_ensure_scores()
 	_player_scores.total_battles += 1
 	if player_won:
 		_player_scores.total_wins += 1
@@ -146,6 +154,7 @@ func update_battle_stats(player_won: bool, damage_dealt: int, time_taken: float)
 
 ## 更新关卡进度
 func update_level_progress(level: int, stars: int = 1) -> void:
+	_ensure_scores()
 	if level > _player_scores.highest_level:
 		_player_scores.highest_level = level
 		submit_score("highest_level", level)
@@ -155,17 +164,20 @@ func update_level_progress(level: int, stars: int = 1) -> void:
 
 ## 更新收集进度
 func update_collection_progress(total_cards: int, unlocked_cards: int) -> void:
+	_ensure_scores()
 	var completion = float(unlocked_cards) / float(total_cards) * 100.0
 	_player_scores.collection_completion = completion
 	submit_score("collection_completion", completion)
 
 ## 更新蓝图数量
 func update_blueprint_count(count: int) -> void:
+	_ensure_scores()
 	_player_scores.blueprint_count = count
 	submit_score("blueprint_unlocked", count)
 
 ## 更新生存挑战最佳成绩
 func update_survival_best(waves: int) -> void:
+	_ensure_scores()
 	if waves > _player_scores.survival_best:
 		_player_scores.survival_best = waves
 		submit_score("survival_highscore", waves)

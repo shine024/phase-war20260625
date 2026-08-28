@@ -1,0 +1,2 @@
+=== bg_level_55.png ===
+VERDICT | FAIL | Left sandbags (x≈0..80, y≈480..550, ~70px tall); Right sandbags (x≈1120..1220, y≈480..550, ~70px tall) — both are foreground objects exceeding 60px height on the ground plane where sprites would stand

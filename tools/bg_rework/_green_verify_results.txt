@@ -1,0 +1,34 @@
+=== bg_level_24.png ===
+VERDICT | PASS
+
+=== bg_level_29.png ===
+VERDICT | PASS
+
+No visible bright green marker paint, no rectangular seams or fill artifacts, and the horizon line and ground structure remain intact and visually consistent throughout the landscape.
+
+=== bg_level_44.png ===
+VERDICT | PASS
+
+=== bg_level_45.png ===
+VERDICT | FAIL | visible bright green marker paint residue remains on the right side foreground (a neon green streak/blob near the rocks).
+
+=== bg_level_55.png ===
+FAIL | visible bright green marker paint (or marker-like grass) in the bottom right corner
+
+=== bg_level_61.png ===
+VERDICT | PASS
+
+=== bg_level_67.png ===
+VERDICT | FAIL | visible bright green marker paint still present on the left side and bottom right corner
+
+=== bg_level_69.png ===
+FAIL | Visible bright green glowing artifact/blob and partial white structure remnant remaining in the foreground.
+
+=== bg_level_70.png ===
+VERDICT | FAIL | Obvious hard-edged rectangular seams where green grass fill meets the rest of the scene, with mismatched lighting and saturation
+
+=== bg_level_83.png ===
+VERDICT | FAIL | visible bright green marker paint still present in the bottom left corner
+
+=== bg_level_97.png ===
+VERDICT | FAIL | visible bright green MARKER PAINT still present in the bottom left corner

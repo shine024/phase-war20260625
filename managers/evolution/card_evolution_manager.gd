@@ -345,6 +345,9 @@ static func _evolve_instance(source_instance_id: String, target_card_id: String,
 	if target_inst == null:
 		return false
 
+	# 2a. 记录进化历史（供UI展示进化路线）
+	target_inst.record_evolution(source_card_id, target_card_id, [])
+
 	# 3. 进化 = 变成新卡（v20.12b 用户定稿）：改造/词条槽/战斗经验/等级全部不继承——
 	# create_instance 返回的即为干净初始状态（mods/module_slots 清空、经验从零），
 	# 新卡需重新上阵练级攒改造。仅进化链奖励（inherit_bonus/hp_floor/情报分支奖励）保留。
@@ -356,6 +359,11 @@ static func _evolve_instance(source_instance_id: String, target_card_id: String,
 	# 情报分支奖励迁移
 	if not source_intel_bonus.is_empty():
 		ir.set_intel_branch_bonus(target_inst.instance_id, source_intel_bonus.duplicate(true))
+
+	# 3a. 广播"新卡入包"信号，让背包实时更新
+	var sb = _get_autoload_node("SignalBus")
+	if sb != null and sb.has_signal("card_added_to_backpack"):
+		sb.card_added_to_backpack.emit(target_inst)
 
 	# 4. 蓝图解锁记账已移除（2026-08-22）
 	# 5. dispose 源实例

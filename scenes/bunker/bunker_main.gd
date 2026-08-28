@@ -1,8 +1,6 @@
 extends Control
 ## 余烬要塞 · 主场景 v21 P2
-## 侧视横剖面基地枢纽：静态背景图 + 6 层 14 房间覆盖层 + 光点主角 + HUD + 房间面板。
-## 背景图由 tools/generate_bunker_bg.py 生成（assets/bunker/bunker_background.png），
-## 包含星空、地表、所有房间墙壁/家具/电梯井，运行时仅叠加状态遮罩。
+## 侧视横剖面基地枢纽：星空地表带 + 6 层 14 房间 + 电梯井 + 光点主角 + HUD + 房间面板。
 ##
 ## 流程：
 ##   标题屏"进入基地" → 本场景
@@ -13,6 +11,7 @@ const BunkerRoomDefs = preload("res://data/bunker_room_defs.gd")
 const DT = preload("res://resources/design_tokens.gd")
 const HeroArchiveTexts = preload("res://data/hero_archive_texts.gd")
 const RoomOverlayScript = preload("res://scenes/bunker/bunker_room_overlay.gd")
+const AmbientScript = preload("res://scenes/bunker/bunker_ambient.gd")
 const DotScript = preload("res://scenes/bunker/bunker_player_dot.gd")
 const HudScript = preload("res://scenes/bunker/ui/bunker_hud.gd")
 const RoomPanelScript = preload("res://scenes/bunker/ui/bunker_room_panel.gd")
@@ -32,14 +31,24 @@ const EMBEDDED_PANELS := {
 	"intelligence": "res://scenes/ui/intelligence_hub_panel.tscn",
 	"achievement": "res://scenes/ui/achievement_panel.tscn",
 	"collection": "res://scenes/ui/collection_panel.tscn",
+	"quest": "res://scenes/ui/quest_panel.tscn",
+	"leaderboard": "res://scenes/ui/leaderboard_panel.tscn",
+	"settings": "res://scenes/ui/settings_panel.tscn",
+	"help": "res://scenes/ui/help_panel.tscn",
 }
 
-const BG_PATH := "res://assets/bunker/bunker_background.png"
+## 整体大背景图（tools/generate_bunker_bg_v3.py 生成，胶囊+外壳版）：
+## 一体外壳（夜空+地表+岩层）+ 14 间潜艇式房间胶囊按 GRID 嵌入；
+## 初始暗版含"涂黑"锁定态，运行时叠状态遮罩与全亮切片。
+## 背景/房间覆盖层都按 1280×720 设计坐标绝对定位（项目 stretch=expand 画布会
+## 向下扩展，全屏锚点会竖向拉抻背景造成幻影——固定尺寸即可免疫）。
+const BG_PATH := "res://assets/bunker/v3/bunker_bg_v3.png"
 
 var _manager: Node
-var _room_overlays: Dictionary = {}   # room_id -> Control(bunker_room_overlay)
+var _room_nodes: Dictionary = {}      # room_id -> Control(bunker_room_overlay)
 var _room_rects: Dictionary = {}      # room_id -> Rect2
 var _dot: Node2D
+var _ambient: Node2D
 var _hud: Control
 var _panel: Control
 var _day_summary: Control
@@ -52,6 +61,7 @@ var _monologue_label: Label
 var _monologue_timer: Timer
 var _is_night := false
 var _pending_room_id := ""
+var _current_room_id := "entry_hall"   # 光点所在房（寻路 via 链起点）
 
 func _ready() -> void:
 	DesignTokens.ensure_cjk_fallback()
@@ -61,8 +71,16 @@ func _ready() -> void:
 		_manager = get_node_or_null("/root/BunkerManager")
 	if _manager == null:
 		push_error("[BunkerMain] BunkerManager 创建失败")
-	_build_background()
+	else:
+		# 首次进入基地发放一次性应急储备（P2：替代调试按钮的经济引导）
+		if _manager.has_method("maybe_grant_bootstrap"):
+			_manager.maybe_grant_bootstrap()
+	_build_big_background()
+	# 氛围动画层：先挂节点（画序在房间覆盖层之下），rooms 建好后再注入矩形
+	_ambient = AmbientScript.new()
+	add_child(_ambient)
 	_build_rooms()
+	_ambient.setup(_manager, _room_rects)
 	_build_dot()
 	_build_ui_layers()
 	_refresh_all_rooms()
@@ -76,17 +94,23 @@ func _exit_tree() -> void:
 
 # ───────────────────────── 背景 ─────────────────────────
 
-func _build_background() -> void:
+## 整体大背景图铺底：1280×720 固定尺寸（不随 expand 画布拉伸）
+func _build_big_background() -> void:
+	# expand 画布比 720 高时底部会露出默认灰底——先铺一层近黑（读作地下暗部）
+	var backdrop := ColorRect.new()
+	backdrop.color = Color(0.035, 0.028, 0.02)
+	backdrop.set_anchors_preset(Control.PRESET_FULL_RECT)
+	backdrop.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(backdrop)
 	var tex := load(BG_PATH) as Texture2D
 	if tex == null:
-		push_warning("[BunkerMain] 背景图未找到: %s，将使用空白底" % BG_PATH)
+		push_error("[BunkerMain] 背景图缺失: %s（先跑 tools/generate_bunker_bg_v3.py）" % BG_PATH)
 		return
 	var tr := TextureRect.new()
-	tr.set_anchors_preset(Control.PRESET_FULL_RECT)
+	tr.position = Vector2.ZERO
+	tr.size = Vector2(1280, 720)
 	tr.texture = tex
 	tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVER
-	# 不裁剪，直接拉伸铺满（背景图本就是 1280×720，不会有变形）
 	tr.stretch_mode = TextureRect.STRETCH_SCALE
 	tr.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(tr)
@@ -95,39 +119,32 @@ func _build_background() -> void:
 
 func _build_rooms() -> void:
 	for def in BunkerRoomDefs.get_all_rooms():
-		var overlay := RoomOverlayScript.new()
-		var rect := _room_rect(def)
-		overlay.setup(def["id"], rect.position.x, rect.position.y, rect.size.x, rect.size.y)
-		overlay.room_clicked.connect(_on_room_clicked)
-		add_child(overlay)
-		_room_overlays[def["id"]] = overlay
+		var node = RoomOverlayScript.new()
+		var rect = _room_rect(def)
+		node.setup(def["id"], rect.position.x, rect.position.y, rect.size.x, rect.size.y)
+		node.room_clicked.connect(_on_room_clicked)
+		node.relit.connect(_on_room_relit)
+		add_child(node)
+		_room_nodes[def["id"]] = node
 		_room_rects[def["id"]] = rect
 
 func _room_rect(def: Dictionary) -> Rect2:
-	var grid: Dictionary = BunkerRoomDefs.GRID
-	var row: int = int(def["row"])
-	var col: int = int(def["col"])
-	var room_size: Vector2 = grid["room_size"]
-	if col < 0:
-		return Rect2(Vector2((1280.0 - grid["wide_size"].x) * 0.5, grid["row_y"][row]), grid["wide_size"])
-	return Rect2(Vector2(grid["col_x"][col], grid["row_y"][row]), room_size)
+	return def["rect"]
 
 func _refresh_all_rooms() -> void:
 	if _manager == null:
 		return
-	for room_id in _room_overlays:
+	for room_id in _room_nodes:
 		_refresh_room(room_id)
 
 func _refresh_room(room_id: String) -> void:
-	if _manager == null or not _room_overlays.has(room_id):
+	if _manager == null or not _room_nodes.has(room_id):
 		return
-	var overlay := _room_overlays[room_id]
-	if overlay.has_method("refresh"):
-		overlay.refresh(
-			_manager.get_room_state(room_id),
-			_manager.get_room_level(room_id),
-			_manager.get_room_progress(room_id),
-			_manager.is_repair_frozen(room_id))
+	_room_nodes[room_id].call("refresh",
+		_manager.get_room_state(room_id),
+		_manager.get_room_level(room_id),
+		_manager.get_room_progress(room_id),
+		_manager.is_repair_frozen(room_id))
 
 # ───────────────────────── 光点主角 ─────────────────────────
 
@@ -143,23 +160,50 @@ func _on_room_clicked(room_id: String) -> void:
 		return
 	_pending_room_id = room_id
 	_monologue_timer.stop()
-	var target: Vector2 = (_room_rects[room_id] as Rect2).get_center()
-	_dot.move_to(_path_to(target))
+	_dot.move_to(_path_to_room(room_id))
 
-func _path_to(target: Vector2) -> Array:
-	var grid: Dictionary = BunkerRoomDefs.GRID
-	var from: Vector2 = _dot.position
-	if absf(from.y - target.y) < 2.0:
-		return [target] if absf(from.x - target.x) > 1.0 else []
-	var waypoints: Array = []
-	if absf(from.x - float(grid["elevator_x"])) > 1.0:
-		waypoints.append(Vector2(grid["elevator_x"], from.y))
-	waypoints.append(Vector2(grid["elevator_x"], target.y))
-	if absf(target.x - float(grid["elevator_x"])) > 1.0:
-		waypoints.append(target)
-	return waypoints
+## 房间 → 竖井的离房路点序列（via 门连锁递归 → 隧道房 → 竖井直通房）
+func _exit_points(room_id: String) -> Array:
+	var def := BunkerRoomDefs.get_room(room_id)
+	if def.is_empty():
+		return []
+	var side := str(def.get("side", "L"))
+	var rect: Rect2 = def["rect"]
+	if side == "C":
+		return [Vector2(_shaft_cx(), float(def["conn_y"]))]
+	if def.has("via"):
+		var via := BunkerRoomDefs.get_room(str(def["via"]))
+		if via.is_empty():
+			return []
+		var via_rect: Rect2 = via["rect"]
+		var door_x := rect.end.x if via_rect.position.x > rect.position.x else rect.position.x
+		var pts: Array = [Vector2(door_x, float(def["door_y"])), via_rect.get_center()]
+		pts.append_array(_exit_points(str(def["via"])))
+		return pts
+	var ty := float(def["tunnel_y"])
+	var door_x := rect.position.x if side == "R" else rect.end.x
+	return [Vector2(door_x, ty), Vector2(_shaft_cx(), ty)]
+
+func _shaft_cx() -> float:
+	var shaft: Dictionary = BunkerRoomDefs.GRID["shaft"]
+	return (float(shaft["x1"]) + float(shaft["x2"])) * 0.5
+
+## 当前房 → 目标房 的完整路点（离房链 + 入房链反转 + 目标中心）
+func _path_to_room(target_id: String) -> Array:
+	var pts: Array = []
+	if _current_room_id == target_id:
+		var center: Vector2 = (_room_rects[target_id] as Rect2).get_center()
+		return [center] if _dot.position.distance_to(center) > 1.0 else []
+	pts.append_array(_exit_points(_current_room_id))
+	var enter: Array = _exit_points(target_id)
+	enter.reverse()
+	pts.append_array(enter)
+	pts.append((_room_rects[target_id] as Rect2).get_center())
+	return pts
 
 func _on_dot_arrived() -> void:
+	if not _pending_room_id.is_empty():
+		_current_room_id = _pending_room_id
 	_refresh_all_rooms()
 	if not _pending_room_id.is_empty() and _panel != null:
 		var def := BunkerRoomDefs.get_room(_pending_room_id)
@@ -240,7 +284,6 @@ func _build_ui_layers() -> void:
 
 	_hud = HudScript.new()
 	_hud.back_to_title_requested.connect(_on_back_to_title)
-	_hud.debug_resources_requested.connect(_on_debug_resources)
 	add_child(_hud)
 	if _manager:
 		_hud.call("refresh_day", _manager.get_day())
@@ -253,6 +296,16 @@ func _connect_signals() -> void:
 
 func _on_room_state_changed(room_id: String, _new_state: int) -> void:
 	_refresh_room(room_id)
+
+## 点亮演出反馈：轻微震屏（动效减弱选项下静默）
+func _on_room_relit(_room_id: String) -> void:
+	if DT.is_motion_reduce():
+		return
+	var tw := create_tween().set_trans(Tween.TRANS_SINE)
+	tw.tween_property(self, "position", Vector2(3, -2), 0.05)
+	tw.tween_property(self, "position", Vector2(-3, 2), 0.06)
+	tw.tween_property(self, "position", Vector2(2, -1), 0.06)
+	tw.tween_property(self, "position", Vector2.ZERO, 0.08)
 
 # ───────────────────────── 日循环 ─────────────────────────
 
@@ -340,6 +393,7 @@ func _check_sanity_zero() -> void:
 	if _manager.get_sanity() > 0.5:
 		return
 	_dot.position = (_room_rects["dormitory"] as Rect2).get_center()
+	_current_room_id = "dormitory"   # 瞬移后同步房间归属，点击宿舍即达
 	_monologue_label.text = "精神耗尽。陈末几乎是爬着回到床边的。"
 	var tween := create_tween()
 	tween.tween_property(_monologue_label, "modulate:a", 1.0, 0.6)
@@ -398,11 +452,6 @@ func _on_go_to_battle() -> void:
 
 func _on_back_to_title() -> void:
 	get_tree().change_scene_to_file("res://scenes/title_screen.tscn")
-
-func _on_debug_resources() -> void:
-	if _manager and _manager.has_method("debug_grant_resources"):
-		_manager.debug_grant_resources()
-		_hud.call("refresh_all_day_state")
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey or event is InputEventMouseButton:

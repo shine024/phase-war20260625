@@ -108,7 +108,7 @@ func _ready() -> void:
 	CardFrameUi.ensure_overlay(self)
 	# v9.x 修复：创建装饰中间层（非 Container 的 Control）。
 	# BackpackCardItem 是 PanelContainer，会对所有直接子节点强制 fit_child_in_rect（填满整卡）。
-	# 装饰节点（RarityTopStrip/KindTagBadge/StarsOverlay/EquippedMark/InstanceNo）需要按
+	# 装饰节点（RarityTopStrip/EquippedMark/InstanceNo/EvolutionMark）需要按
 	# anchor/offset 定位到卡牌局部位置，不能被强制拉伸。把它们挂到 DecorationLayer 下：
 	# DecorationLayer 本身被父 PanelContainer 拉伸到整卡（符合预期，它就是全卡覆盖层），
 	# 但它是 Control（非 Container），不会强制布局自己的子节点，装饰的 anchor/offset 正常生效。
@@ -378,10 +378,11 @@ func _set_empty_style(name_label, lv_label, icon_rect) -> void:
 	CardBackgroundUi.clear_overlay(self)
 	# v9.1：空槽清理所有装饰层（防池化复用残留）
 	_hide_decoration("RarityTopStrip")
-	_hide_decoration("KindTagBadge")
+
 	_hide_decoration("StarsOverlay")
 	_hide_decoration("EquippedMark")
 	_hide_decoration("InstanceNo")
+	_hide_decoration("EvolutionMark")
 
 func _sync_card_background_overlay(c: CardResource) -> void:
 	if c == null:
@@ -788,10 +789,7 @@ func _show_icon_placeholder(icon_rect: TextureRect, c: CardResource, placeholder
 		if art_clip != null:
 			placeholder = art_clip.get_node_or_null("Placeholder") as Label
 	if placeholder:
-		if c.card_type == GC.CardType.COMBAT_UNIT:
-			placeholder.text = _v9_kind_glyph(int(c.combat_kind))
-		else:
-			placeholder.text = "？"
+		placeholder.text = "？"
 		placeholder.visible = true
 
 
@@ -867,12 +865,11 @@ func _compact_display_name(c: CardResource) -> String:
 	return display_name
 
 
-## v9.0: 96×138 大卡面紧凑视图——图标区 + 双行信息栏 + 4 装饰层
+## v9.0: 96×138 大卡面紧凑视图——图标区 + 双行信息栏 + 装饰层
 ## 装饰层（注入到 PanelContainer 本体，绝对定位）：
 ##   - RarityTopStrip：顶部 3-4px 稀有度色条
-##   - KindTagBadge：右上角 14×14 兵种色块（仅战斗卡）
-##   - StarsOverlay：底部 5 颗星点（仅战斗卡）
 ##   - EquippedMark：左上 EQUIP 绿色徽章（仅已装备到相位仪）
+##   - EvolutionMark：右下角 EV 紫色标记（进化产物）
 func _set_compact_slot_view(c: CardResource, name_label, lv_label, icon_rect) -> void:
 	var icon_row: Control = _find_icon_row()
 	if icon_row:
@@ -963,38 +960,19 @@ func _apply_v9_decorations(c: CardResource) -> void:
 		return
 	# 1. 顶部稀有度色条（3-4px，传奇/神话加粗到 4px）
 	_ensure_rarity_top_strip(c.rarity)
-	# 2. 右上兵种色块（仅战斗卡）
-	if c.card_type == GC.CardType.COMBAT_UNIT:
-		_ensure_kind_tag_badge(c.combat_kind)
-	else:
-		_hide_decoration("KindTagBadge")
-	# 3. 底部 5 星点（仅战斗卡；位置压在 footer 顶边稍上方）
-	if c.card_type == GC.CardType.COMBAT_UNIT:
-		_ensure_stars_overlay(c)
-	else:
-		_hide_decoration("StarsOverlay")
+
+	# 3. 星点装饰已移除（等级信息由 stat-line 的 Lv.N 承担）；
+	# 无条件隐藏防池化/热重载残留
+	_hide_decoration("StarsOverlay")
 	# 4. EQUIP 徽章（已装备到相位仪）
 	_ensure_equipped_mark(c)
+	# 5. 进化标记（inherit_bonus > 0 表示此卡为进化产物）
+	_ensure_evolution_mark(c)
 
 
-## v9.0: 兵种色映射（CombatKind 0-4：LIGHT/ARMOR/SUPPORT/AIR/FORT，HTML 设计稿配色）
-const _V9_KIND_COLORS := {
-	0: DesignTokens.COLOR_KIND_LIGHT,  # LIGHT 步兵/轻装 红 #e5484d
-	1: DesignTokens.COLOR_KIND_ARMOR,  # ARMOR 装甲 蓝 #4d7fe5
-	2: DesignTokens.COLOR_KIND_SUPPORT,  # SUPPORT 支援/炮兵 橙 #e59820
-	3: DesignTokens.COLOR_KIND_AIR,  # AIR 空军 青 #4dcce5
-	4: DesignTokens.COLOR_KIND_FORT,  # FORT 堡垒 灰 #9f9f9f
-}
-const _V9_KIND_GLYPHS := {
-	0: "轻", 1: "甲", 2: "援", 3: "空", 4: "堡",
-}
 
-## v9.0: 兵种 ID 颜色查询（带 fallback）
-func _v9_kind_color(combat_kind: int) -> Color:
-	return _V9_KIND_COLORS.get(combat_kind, Color(0.7, 0.7, 0.7, 1.0))
 
-func _v9_kind_glyph(combat_kind: int) -> String:
-	return _V9_KIND_GLYPHS.get(combat_kind, "?")
+
 
 
 ## v9.0: 顶部稀有度色条
@@ -1055,108 +1033,11 @@ func _v9_rarity_color(rarity: String) -> Color:
 	return GC.get_rarity_color(rarity)
 
 
-## v9.0: 右上兵种色块
-## v9.x 修复：PanelContainer → Control + ColorRect（避免父 PanelContainer 强制布局）
-func _ensure_kind_tag_badge(combat_kind: int) -> void:
-	var layer: Control = _ensure_decoration_layer()
-	var badge: Control = layer.get_node_or_null("KindTagBadge") as Control
-	var bg: PanelContainer = null
-	var glyph_lbl: Label = null
-	if badge == null:
-		badge = Control.new()
-		badge.name = "KindTagBadge"
-		badge.anchor_left = 1.0
-		badge.anchor_right = 1.0
-		badge.anchor_top = 0.0
-		badge.anchor_bottom = 0.0
-		# v9.3：向内 6px（-20→-26 / -4→-10），避开较宽的稀有度边框/发光
-		badge.offset_left = -26.0
-		badge.offset_right = -10.0
-		badge.offset_top = 5.0
-		badge.offset_bottom = 21.0
-		badge.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		layer.add_child(badge)
-		# v9.3：bg 改 PanelContainer（kind 色底 + 圆角 2），原方形 ColorRect 不好看
-		bg = PanelContainer.new()
-		bg.name = "Bg"
-		bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-		bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		badge.add_child(bg)
-		glyph_lbl = Label.new()
-		glyph_lbl.name = "Glyph"
-		glyph_lbl.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-		glyph_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		glyph_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-		glyph_lbl.add_theme_font_size_override("font_size", DesignTokens.FONT_SIZE_SMALL)
-		glyph_lbl.add_theme_color_override("font_color", Color(1, 1, 1, 0.98))
-		glyph_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		badge.add_child(glyph_lbl)
-	else:
-		bg = badge.get_node_or_null("Bg") as PanelContainer
-		glyph_lbl = badge.get_node_or_null("Glyph") as Label
-	# v9.3：kind 色 stylebox（圆角 2）
-	if bg:
-		var kbg := StyleBoxFlat.new()
-		kbg.bg_color = _v9_kind_color(combat_kind)
-		kbg.set_corner_radius_all(2)
-		bg.add_theme_stylebox_override("panel", kbg)
-	if glyph_lbl:
-		glyph_lbl.text = _v9_kind_glyph(combat_kind)
-	badge.visible = true
 
 
-## v9.0: 底部 5 颗星点（用 HBoxContainer 装 5 个 ColorRect）
-## v9.x 修复：外层用 Control（非 Container），避免父 PanelContainer 强制布局；
-## 内层 HBoxContainer 负责星星水平排列。
-func _ensure_stars_overlay(c: CardResource) -> void:
-	var layer: Control = _ensure_decoration_layer()
-	var wrapper: Control = layer.get_node_or_null("StarsOverlay") as Control
-	var hbox: HBoxContainer = null
-	if wrapper == null:
-		wrapper = Control.new()
-		wrapper.name = "StarsOverlay"
-		# v9.3 修复：星辰从底部移到顶部左侧（紧邻费用角标），消除与底栏卡名的重叠。
-		# 设计稿 .stars{top:8px;left:32px}；5 颗 7px 星 + 4×1 间距 ≈ 39px，止于 x71，
-		# 不与右上 KindTagBadge(x76~92) 冲突。底部 y100~110 原与 NameLabel(y95~109) 重叠。
-		wrapper.anchor_left = 0.0
-		wrapper.anchor_right = 0.0
-		wrapper.anchor_top = 0.0
-		wrapper.anchor_bottom = 0.0
-		wrapper.offset_left = 32.0
-		wrapper.offset_right = 72.0
-		wrapper.offset_top = 7.0
-		wrapper.offset_bottom = 17.0
-		wrapper.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		layer.add_child(wrapper)
-		hbox = HBoxContainer.new()
-		hbox.name = "HBox"
-		hbox.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-		hbox.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		hbox.alignment = BoxContainer.ALIGNMENT_CENTER
-		hbox.add_theme_constant_override("separation", 1)
-		for i in range(5):
-			var star := Label.new()
-			star.name = "Star%d" % i
-			star.text = "★"
-			star.add_theme_font_size_override("font_size", DesignTokens.FONT_SIZE_XSMALL)
-			star.mouse_filter = Control.MOUSE_FILTER_IGNORE
-			hbox.add_child(star)
-		wrapper.add_child(hbox)
-	else:
-		hbox = wrapper.get_node_or_null("HBox") as HBoxContainer
-	# 计算星级（0-5）：用实例真实等级（原 get_card_xp_progress 恒 1 已移除）
-	var stars: int = clampi(_real_card_level(c), 0, 5)
-	# 更新每颗星颜色
-	if hbox:
-		for i in range(5):
-			var star: Label = hbox.get_node_or_null("Star%d" % i) as Label
-			if star == null:
-				continue
-			if i < stars:
-				star.add_theme_color_override("font_color", DesignTokens.COLOR_AMBER_SOFT)  # 金色
-			else:
-				star.add_theme_color_override("font_color", Color(0.27, 0.31, 0.39, 0.6))  # 暗灰
-	wrapper.visible = stars > 0
+
+## v9.0: 星点装饰（StarsOverlay）已随卡面信息精简移除——
+## 等级信息由 stat-line 的 "Lv.N" 文字承担，不再叠加 5 星图形。
 
 
 ## v9.0: 左上 EQUIP 绿色徽章（已装备到相位仪）
@@ -1283,6 +1164,65 @@ func _is_card_equipped_to_phase_instrument(c: CardResource) -> bool:
 	return equipped_ids.has(id_to_match)
 
 
+## v21.x: 右下角进化标记（紫色"EV"徽章，表示此卡由进化产生）
+## 通过 InstanceRegistry.get_inherit_bonus 判断是否为进化卡
+## 位置与 InstanceNo 相邻，位于立绘区右下角
+func _ensure_evolution_mark(c: CardResource) -> void:
+	if c == null:
+		_hide_decoration("EvolutionMark")
+		return
+	# 检查是否为进化卡（inherit_bonus > 0 表示有进化继承加成）
+	var is_evolved: bool = false
+	if not c.instance_id.is_empty():
+		var ir: Node = get_node_or_null("/root/InstanceRegistry")
+		if ir != null and ir.has_method("get_inherit_bonus"):
+			is_evolved = ir.get_inherit_bonus(c.instance_id) > 0.0
+	if not is_evolved:
+		_hide_decoration("EvolutionMark")
+		return
+	# 创建/显示进化标记
+	var layer: Control = _ensure_decoration_layer()
+	var badge: Control = layer.get_node_or_null("EvolutionMark") as Control
+	if badge == null:
+		badge = Control.new()
+		badge.name = "EvolutionMark"
+		badge.anchor_left = 1.0
+		badge.anchor_right = 1.0
+		badge.anchor_top = 1.0
+		badge.anchor_bottom = 1.0
+		# 右下角定位：距右边10px，距底部46px（在InstanceNo上方）
+		badge.offset_left = -34.0
+		badge.offset_right = -10.0
+		badge.offset_top = -60.0
+		badge.offset_bottom = -46.0
+		badge.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		layer.add_child(badge)
+		# 背景
+		var bg: PanelContainer = PanelContainer.new()
+		bg.name = "Bg"
+		bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var bg_style := StyleBoxFlat.new()
+		bg_style.bg_color = Color(0.55, 0.30, 0.85, 0.55)  # 暗紫底
+		bg_style.border_color = Color(0.75, 0.55, 1.0, 0.85)  # 紫色边框
+		bg_style.set_border_width_all(1)
+		bg_style.set_corner_radius_all(3)
+		bg.add_theme_stylebox_override("panel", bg_style)
+		badge.add_child(bg)
+		# 文字
+		var text_lbl: Label = Label.new()
+		text_lbl.name = "Text"
+		text_lbl.text = "EV"
+		text_lbl.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		text_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		text_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		text_lbl.add_theme_font_size_override("font_size", DesignTokens.FONT_SIZE_XSMALL)
+		text_lbl.add_theme_color_override("font_color", Color(0.85, 0.70, 1.0, 1.0))  # 浅紫文字
+		text_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		badge.add_child(text_lbl)
+	badge.visible = true
+
+
 ## v9.0: 隐藏某个装饰层（按名字）。v9.x 装饰挂在 DecorationLayer 下。
 func _hide_decoration(deco_name: String) -> void:
 	var layer: Control = get_node_or_null("DecorationLayer") as Control
@@ -1293,15 +1233,6 @@ func _hide_decoration(deco_name: String) -> void:
 		n = get_node_or_null(deco_name)  # 兼容旧路径
 	if n is CanvasItem:
 		(n as CanvasItem).visible = false
-
-
-## v8.0: 构建星级前缀字符串（金色★，最多显示5星避免撑爆）
-func _build_star_prefix(c: CardResource) -> String:
-	var stars: int = clampi(_real_card_level(c), 0, 5)
-	if stars <= 0:
-		return ""
-	# v6.8 收敛后稀有度压缩，星级仍是养成进度主指标
-	return "★".repeat(stars) + " "
 
 
 ## v8.0: 构建底行信息——兵种|等级|改造|战力

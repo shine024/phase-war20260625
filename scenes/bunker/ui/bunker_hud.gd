@@ -1,10 +1,9 @@
 extends Control
-## 余烬要塞 · 顶部 HUD v21 P1
-## 天数 / 精神值条 / 四资源实时读数 / 调试资源按钮 / 返回标题
+## 余烬要塞 · 顶部 HUD v21 P2
+## 天数 / 精神值条 / 四资源实时读数 / 返回标题
 ## 数据源：BunkerManager（天数/精神值） + BasicResourceManager（资源，autoload）
 
 signal back_to_title_requested
-signal debug_resources_requested
 
 const BunkerRoomDefs = preload("res://data/bunker_room_defs.gd")
 const DT = preload("res://resources/design_tokens.gd")
@@ -13,7 +12,6 @@ var _day_label: Label
 var _sanity_label: Label
 var _sanity_fill: ColorRect
 var _res_labels: Dictionary = {}   # short_id -> Label
-var _debug_btn: Button
 var _back_btn: Button
 
 func _ready() -> void:
@@ -38,7 +36,7 @@ func _build() -> void:
 	add_child(bar)
 
 	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 18)
+	row.add_theme_constant_override("separation", 22)
 	bar.add_child(row)
 
 	# ── 左：天数/时段 ──
@@ -76,13 +74,7 @@ func _build() -> void:
 		row.add_child(lbl)
 		_res_labels[short_id] = lbl
 
-	# ── 右：调试 + 返回 ──
-	_debug_btn = Button.new()
-	_debug_btn.text = "调试+资源"
-	_debug_btn.tooltip_text = "P1 专用：加纳米500/合金300/水晶50/能量100（P2 移除）"
-	_debug_btn.pressed.connect(func(): debug_resources_requested.emit())
-	row.add_child(_debug_btn)
-
+	# ── 右：返回 ──
 	_back_btn = Button.new()
 	_back_btn.text = "返回标题"
 	_back_btn.pressed.connect(func(): back_to_title_requested.emit())

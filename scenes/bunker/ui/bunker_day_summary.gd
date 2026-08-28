@@ -95,6 +95,11 @@ func open(summary: Dictionary) -> void:
 	_body_label.text = "\n".join(lines)
 
 	visible = true
+	# 滑入演出：淡入 + 轻微上移（动效减弱选项下直接显示）
+	if not DT.is_motion_reduce():
+		modulate.a = 0.0
+		var tw := create_tween().set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+		tw.tween_property(self, "modulate:a", 1.0, 0.35)
 
 func close() -> void:
 	visible = false

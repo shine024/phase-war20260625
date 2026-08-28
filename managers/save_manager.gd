@@ -864,19 +864,25 @@ func _enqueue_starter_backpack_cards() -> void:
 	# ⚠️ 必须用规范新ID：旧ID（ww1_ft17）会分配出旧前缀实例号 ww1_ft17#1，
 	# 进化链/卡表只认 ww1_arm_ft17，导致"进化树有目标但永远条件不足"（2026-08-24 修复）。
 	var ir: Node = get_node_or_null("/root/InstanceRegistry")
-	for cid in ["ww1_arm_ft17"]:
+	# v21.6（用户 2026-08-27 指示）：起始卡 1→3 张——最基础兵种三角（毛瑟步枪班/81mm迫击炮组/
+	# FT-17坦克），恰好填满 1 星相位仪 3 个绿槽；实例创建后统一预装备。
+	# 注：仍须用规范新ID（旧ID ww1_ft17 会撞实例号且进化链不认，见 2026-08-24 修复）。
+	var starter_cards: Array = ["ww1_mauser", "ww1_arty_m81", "ww1_arm_ft17"]
+	var starter_instances: Dictionary = {}
+	for cid in starter_cards:
 		var starter_id: String = cid
 		if ir != null and ir.has_method("create_instance"):
 			var inst: CardResource = ir.create_instance(cid)
 			if inst != null and not inst.instance_id.is_empty():
 				starter_id = inst.instance_id
+				starter_instances[cid] = inst
 		enqueue_backpack_card_id(starter_id)
-	# v21.x（FTUE 审计 S1，2026-08-27）：starter 卡预装备到相位仪首个空绿槽——
-	# 教程第3步只说不验证装配，跳过装配的玩家进首战空底栏无卡可部署（审计 S1）。
+	# v21.x/v21.6（FTUE 审计 S1 + 三角扩容）：starter 卡逐张预装备到首个空绿槽。
 	# 时序：本函数在 start_new_game 末段执行（实例已创建），槽位已在重置阶段清空。
 	var pim_starter: Node = get_node_or_null("/root/PhaseInstrumentManager")
 	if pim_starter != null and pim_starter.has_method("equip_starter_card_for_new_game"):
-		pim_starter.equip_starter_card_for_new_game("ww1_arm_ft17")
+		for cid in starter_cards:
+			pim_starter.equip_starter_card_for_new_game(cid)
 	# v21.x（FTUE 审计 S4 / P0-1 放行，2026-08-27）：起步量恢复正式值（原测试模式各 10 万已移除），
 	# 测试用 +100 相位师技能点发放同步移除（新档回 0 基线）。
 	# 单次强化约 ~100-500 纳米，起步量让玩家初期体验几张卡强化、靠战斗积累。
@@ -885,6 +891,31 @@ func _enqueue_starter_backpack_cards() -> void:
 		BasicResourceManager.add_resource("alloy", 800)
 		BasicResourceManager.add_resource("crystal", 500)
 		BasicResourceManager.add_resource("energy_block", 1000)
+	# v21.6（用户 2026-08-27 指示）：起始改造 5 个基础档预装（步兵2/坦克1/炮兵2）。
+	# 图纸先入情报背包（install_modification 的蓝图门），安装走常规链路——
+	# 纳米实付（合计约 160/1500，经济账真实）、paid_cost 记账、槽位校验全走正门。
+	# 失败只 push_warning 不阻断开档（如图纸/槽位异常时宁可少装不可开档失败）。
+	var starter_mods: Array = [
+		["ww1_mauser", "inf_05_ap_ammo"],
+		["ww1_mauser", "inf_12_body_armor"],
+		["ww1_arm_ft17", "arm_01_sloped_armor"],
+		["ww1_arty_m81", "art_01_rifling"],
+		["ww1_arty_m81", "art_07_ammo_supply"],
+	]
+	var bpm_starter: Node = get_node_or_null("/root/BlueprintManager")
+	if bpm_starter != null and bpm_starter.has_method("install_modification"):
+		var BPDefs = preload("res://data/blueprint_definitions.gd")
+		var bag_starter: Node = get_node_or_null("/root/IntelItemBag")
+		for pair in starter_mods:
+			var card_inst: CardResource = starter_instances.get(String(pair[0]))
+			if card_inst == null:
+				continue
+			if bag_starter != null and bag_starter.has_method("add_item"):
+				bag_starter.add_item(BPDefs.get_mod_blueprint_id(String(pair[1])), 1)
+			var install_result: Dictionary = bpm_starter.install_modification(card_inst, String(pair[1]))
+			if not install_result.get("success", false):
+				push_warning("[SaveManager] 起始改造安装失败 %s→%s: %s" % [
+					String(pair[0]), String(pair[1]), String(install_result.get("message", ""))])
 
 	# 初始情报：逐步发现（原"解锁所有情报"是测试残留，破坏探索乐趣）
 	# v7.x 结构修复（P1-3）：本段与下方"初始蓝图/初始进化分支"原先因缩进错误整体嵌套在

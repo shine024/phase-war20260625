@@ -16,6 +16,7 @@ var _hero_fragments: Array = []    # 已解锁英雄 master id（P3：遗物碎�
 var _narrative_stage: int = 1
 var _announced_stage: int = 1      # 已播报过切换字幕的情感阶段
 var _completed_today: Array = []    # 今日（自上次睡觉起）完成修复的房间 id
+var _bootstrap_granted := false    # 首次进基地应急储备是否已发放（存档持久化）
 
 ## 荣誉陈列室解锁所需碎片数（P3 定 10：让中期玩家够得着；30 全收集是观星台条件）
 const HONOR_HALL_FRAGMENT_GATE := 10
@@ -82,6 +83,18 @@ func is_repair_frozen(room_id: String) -> bool:
 	return bool(def.get("needs_power", false))
 
 ## ───────────────────────── 修复经济 ─────────────────────────
+
+## 首次进入基地发放一次性应急储备（P2）：新档 0 资源无法修复兵棋室（200 纳米），
+## "进基地→无钱修→出不去"是死局。250 纳米够开工首间，80 合金留作小目标。
+## bootstrap_granted 随存档持久化，新游戏重置后重发。
+func maybe_grant_bootstrap() -> void:
+	if _bootstrap_granted:
+		return
+	_bootstrap_granted = true
+	if BasicResourceManager == null:
+		return
+	BasicResourceManager.add_resource(BunkerRoomDefs.res_full_id("nano"), 250)
+	BasicResourceManager.add_resource(BunkerRoomDefs.res_full_id("alloy"), 80)
 
 ## 启动修复。返回 {"ok": bool, "reason": String}；成功即扣资源并入修复中状态。
 func start_repair(room_id: String) -> Dictionary:
@@ -265,6 +278,7 @@ func save_state() -> Dictionary:
 		"hero_fragments": _hero_fragments.duplicate(),
 		"narrative_stage": _narrative_stage,
 		"announced_stage": _announced_stage,
+		"bootstrap_granted": _bootstrap_granted,
 	}
 
 ## SaveManager 应用入口（_safe_load_manager 按此方法名加载）；空字典=新游戏全重置
@@ -276,6 +290,7 @@ func load_state(data: Dictionary) -> void:
 	_sanity = float(data.get("sanity", 100.0))
 	_narrative_stage = int(data.get("narrative_stage", BunkerRoomDefs.narrative_stage_for_day(_day)))
 	_announced_stage = int(data.get("announced_stage", _narrative_stage))
+	_bootstrap_granted = bool(data.get("bootstrap_granted", false))
 	_hero_fragments = []
 	for f in data.get("hero_fragments", []):
 		_hero_fragments.append(str(f))
@@ -296,6 +311,7 @@ func reset_to_defaults() -> void:
 	_completed_today = []
 	_narrative_stage = 1
 	_announced_stage = 1
+	_bootstrap_granted = false
 	for room_id in _rooms:
 		var def := BunkerRoomDefs.get_room(room_id)
 		_rooms[room_id]["state"] = int(def.get("initial", BunkerRoomDefs.STATE_LOCKED))

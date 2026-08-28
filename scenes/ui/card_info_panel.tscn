@@ -83,6 +83,22 @@ bg_color = Color(0.08, 0.1, 0.15, 0.7)
 corner_radius_top_left = 5
 corner_radius_top_right = 5
 
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_evolution_mark"]
+bg_color = Color(0.55, 0.30, 0.85, 0.6)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.75, 0.55, 1.0, 0.9)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+content_margin_left = 8
+content_margin_right = 8
+content_margin_top = 2
+content_margin_bottom = 2
+
 [node name="CardInfoPanel" type="PanelContainer"]
 custom_minimum_size = Vector2(540, 680)
 mouse_filter = 2
@@ -150,6 +166,19 @@ text = ""
 layout_mode = 2
 theme_override_colors/font_color = Color(0.8, 0.74, 0.55, 1)
 theme_override_font_sizes/font_size = 12
+horizontal_alignment = 1
+
+[node name="EvolutionMark" type="PanelContainer" parent="Margin/VBox"]
+visible = false
+layout_mode = 2
+alignment = 1
+theme_override_styles/panel = SubResource("StyleBoxFlat_evolution_mark")
+
+[node name="EvolutionMarkLabel" type="Label" parent="Margin/VBox/EvolutionMark"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.85, 0.70, 1.0, 1)
+theme_override_font_sizes/font_size = 11
+text = "✦ 进化继承"
 horizontal_alignment = 1
 
 [node name="TierLabel" type="Label" parent="Margin/VBox"]

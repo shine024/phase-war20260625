@@ -53,19 +53,23 @@ func _phase1_manager_logic() -> void:
 		if id_set.has(rid):
 			_fail("房间 id 重复: " + rid)
 		id_set[rid] = true
-		if int(r["row"]) < 0 or int(r["row"]) > 5:
-			_fail("房间 %s 行号越界: %d" % [rid, r["row"]])
-		if int(r["col"]) < -1 or int(r["col"]) > 2:
-			_fail("房间 %s 列号越界: %d" % [rid, r["col"]])
+		var rect: Rect2 = r["rect"]
+		var world: Vector2 = BunkerRoomDefs.GRID["world_size"]
+		if rect.position.x < 0.0 or rect.position.y < 0.0 \
+				or rect.end.x > world.x or rect.end.y > world.y:
+			_fail("房间 %s 矩形越界: %s" % [rid, rect])
+		if r.has("via") and BunkerRoomDefs.get_room(str(r["via"])).is_empty():
+			_fail("房间 %s 的 via 门连锁指向不存在的房间" % rid)
 	if BunkerRoomDefs.get_room("war_room").is_empty():
 		_fail("get_room(war_room) 查询失败")
-	# 网格几何：中列中心 == 电梯井 x
-	var grid: Dictionary = BunkerRoomDefs.GRID
-	var mid_center: float = grid["col_x"][1] + (grid["room_size"] as Vector2).x * 0.5
-	if absf(mid_center - float(grid["elevator_x"])) > 0.01:
-		_fail("中列中心 %.1f 与电梯井 x %.1f 不重合" % [mid_center, grid["elevator_x"]])
-	else:
-		_ok("中列中心与电梯井对齐（x=%.0f）" % grid["elevator_x"])
+	# 网格几何：14 矩形互不重叠；竖井在两翼之间
+	var shaft: Dictionary = BunkerRoomDefs.GRID["shaft"]
+	for i in rooms.size():
+		for j in range(i + 1, rooms.size()):
+			if (rooms[i]["rect"] as Rect2).intersects(rooms[j]["rect"]):
+				_fail("房间矩形重叠: %s × %s" % [rooms[i]["id"], rooms[j]["id"]])
+	_ok("房间几何：14 矩形在 1280×720 内且互不重叠（竖井 x=%.0f）" % [
+		(float(shaft["x1"]) + float(shaft["x2"])) * 0.5])
 
 	# 2) 懒加载创建（root 未就绪时 loader 延迟挂载，get_manager 直接拿实例引用）
 	ManagerLazyLoader.ensure_loaded("bunker")
@@ -212,9 +216,9 @@ func _phase2_scene_instantiation() -> void:
 			_fail("BunkerManager 常驻状态跨场景失真（reactor 应 ACTIVE）")
 		_ok("BunkerManager 常驻 root：Phase1 状态在场景中保留")
 
-	# 3) 点击→光点移动→面板打开（宿舍：已可用，同层移动）
+	# 3) 点击→光点移动→面板打开（宿舍：已可用，穿门+电梯路径）
 	inst._on_room_clicked("dormitory")
-	await get_tree().create_timer(1.0).timeout
+	await get_tree().create_timer(2.2).timeout
 	var panel: Node = inst.get("_panel")
 	if panel == null or not panel.call("is_open"):
 		_fail("点击宿舍后房间面板未打开")
@@ -224,9 +228,9 @@ func _phase2_scene_instantiation() -> void:
 			_fail("面板标题应为 陈末的宿舍，实际 " + title)
 	_ok("交互链路：点击宿舍 → 光点移动 → 面板打开（标题正确）")
 
-	# 4) 跨层路径：从宿舍（Row2）点反应堆（Row4）→ 三段路径
+	# 4) 跨层路径：从宿舍（地下一排）点反应堆（地下三排）→ 穿门+电梯+隧道
 	inst._on_room_clicked("reactor")
-	await get_tree().create_timer(1.6).timeout
+	await get_tree().create_timer(2.2).timeout
 	if not panel.call("is_open"):
 		_fail("跨层点击后面板未打开")
 	else:
@@ -344,20 +348,24 @@ func _phase4_p3_features() -> void:
 		return
 	mgr.reset_to_defaults()
 
-	# 1) 文案层：bespoke / generic 兜底 / 时代与系别显示
+	# 1) 文案层：30 位全 bespoke / 时代与系别显示
 	var t1: Dictionary = HeroArchiveTexts.get_texts("enemy_master_001", "steel")
 	if not t1.get("bespoke", false) or str(t1.get("deed", "")).is_empty() \
 			or str(t1.get("last_words", "")).is_empty():
 		_fail("001 应有 bespoke 文案")
-	var t20: Dictionary = HeroArchiveTexts.get_texts("enemy_master_020", "steel_thunder")
-	if t20.get("bespoke", true):
-		_fail("020（未撰写）应走 generic 兜底")
+	# 2026-08-26 人物志补齐：011-030 已全部 bespoke，逐一断言
+	for i in range(1, 31):
+		var tx: Dictionary = HeroArchiveTexts.get_texts(
+			"enemy_master_%03d" % i, "steel")
+		if not tx.get("bespoke", false) or str(tx.get("deed", "")).is_empty() \
+				or str(tx.get("last_words", "")).is_empty():
+			_fail("%03d 应有 bespoke 文案（人物志补齐批次）" % i)
 	if HeroArchiveTexts.era_display("enemy_master_007") != "二战回响" \
 			or HeroArchiveTexts.era_display("enemy_master_025") != "近未来回响":
 		_fail("era_display 时代映射错误")
 	if HeroArchiveTexts.faction_display("void").is_empty():
 		_fail("faction_display 空")
-	_ok("文案层：bespoke×10 + generic 兜底 + 时代/系别映射")
+	_ok("文案层：bespoke×30 全量 + 时代/系别映射")
 
 	# 2) 碎片记录：去重 + 信号 + 计数
 	var frag_hits := [0]

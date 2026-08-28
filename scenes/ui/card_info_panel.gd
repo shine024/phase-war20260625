@@ -83,6 +83,7 @@ var rarity_label: Label = null
 var cost_label: Label = null
 var status_section: PanelContainer = null
 var _tab_container: TabContainer = null
+var evolution_mark: PanelContainer = null
 # v6.4 图形化三维攻防卡节点
 var _hp_value_label: Label = null
 var _hp_sub_label: Label = null
@@ -128,6 +129,7 @@ func _resolve_nodes() -> void:
 	rarity_label = get_node_or_null("Margin/VBox/HeaderPanel/HeaderVBox/RarityCostRow/RarityLabel") as Label
 	cost_label = get_node_or_null("Margin/VBox/HeaderPanel/HeaderVBox/RarityCostRow/CostLabel") as Label
 	type_label = get_node_or_null("Margin/VBox/TypeLabel") as Label
+	evolution_mark = get_node_or_null("Margin/VBox/EvolutionMark") as PanelContainer
 	tier_label = get_node_or_null("Margin/VBox/TierLabel") as Label
 	rank_badge_host = get_node_or_null("Margin/VBox/RankBadgeHost") as HBoxContainer
 	_tab_container = get_node_or_null("Margin/VBox/TabBar") as TabContainer
@@ -462,6 +464,8 @@ func _clear_header_rarity_extras() -> void:
 		rarity_label.text = ""
 	if cost_label:
 		cost_label.text = ""
+	if evolution_mark:
+		evolution_mark.visible = false
 	# 移除 HeaderPanel 的稀有度色带 override，恢复 tscn 默认样式
 	var header := get_node_or_null("Margin/VBox/HeaderPanel") as PanelContainer
 	if header:
@@ -529,6 +533,19 @@ func _refresh_header(card: CardResource) -> void:
 			_:
 				# v9.x（P2-7范围B）：法则卡类型标签分支已随法则系统退役移除
 				type_label.text = card.type_line
+	# 进化标记：继承加成 > 0 显示
+	_refresh_evolution_mark(card)
+
+## v21.x: 刷新进化标记可见性（基于实例的 inherit_bonus）
+func _refresh_evolution_mark(card: CardResource) -> void:
+	if evolution_mark == null:
+		return
+	var is_evolved: bool = false
+	if card != null and not card.instance_id.is_empty():
+		var ir: Node = get_node_or_null("/root/InstanceRegistry")
+		if ir != null and ir.has_method("get_inherit_bonus"):
+			is_evolved = ir.get_inherit_bonus(card.instance_id) > 0.0
+	evolution_mark.visible = is_evolved
 
 ## ── 情报 Tab 内容刷新 ──────────────────────────────────────────
 

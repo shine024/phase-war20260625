@@ -382,17 +382,28 @@ func _apply_visual() -> void:
 			_beam_line.width = 20.0
 			_beam_line.default_color.a = 1.0
 			# v19-R27: 白热内芯——复用 TracerLine 节点作为聚焦能量束亮核（AI 批
-			# "矩形色块/扁平条带缺聚焦感"）。2.5px 白线叠加在宽色光束上产生"热核"读感。
+			# "矩形色块/扁平条带缺聚焦感"）。白线叠加在宽色光束上产生"热核"读感。
+			# v20.24: 内芯 3.0→6.0（30% 束宽，核:晕≈1:3 经典读法）——3px 发丝芯
+			# 在 20px 束里只占 15%，AI 双轮批"缺乏白热核心"（像素核验白核 396-444px
+			# 在场但读不出）。总宽不动（R34 用户认可 20px），只调亮度分布。
 			if _tracer_line:
 				_tracer_line.visible = true
 				_tracer_line.default_color = Color(1.0, 1.0, 1.0, 0.95)
-				_tracer_line.width = 3.0
+				_tracer_line.width = 6.0
 	if _tracer_line:
 		# v19-R27: 光束类用 TracerLine 做亮核（而非尾部曳光），非光束类保持原有逻辑。
 		if not use_beam:
 			_tracer_line.visible = (speed >= 400.0)
 			if _tracer_line.visible:
-				_tracer_line.default_color = bullet_color
+				# v20.21 批次A: 动能穿透类(6/11) 曳光白热化——AI 批敌侧弹道"几乎不可见"
+				#（f06 敌 core 29×3 vs 我方 73×7，f11 敌 core 6×5）。病根：敌 tint
+				# (1,0.62,0.35)/(1,0.25,0.45) 通道和 1.97/1.70 远低于我方 2.79，ADD 叠加下
+				# 白热核缺失。按 v19-R27 白热内芯语言把曳光线统一为白热，敌我辨识交给
+				# 弹体染色/拖尾/命中环（规格原则5）。我方原色本近白热，视觉不变。
+				if weapon_type in [6, 11]:
+					_tracer_line.default_color = Color(1.0, 1.0, 1.0, 0.92)
+				else:
+					_tracer_line.default_color = bullet_color
 				# v20.16c: 尾焰-弹头匹配——坦克炮弹头粗大，2.5px 细针曳光不配套；
 				# 加粗（4.5×口径档）+ 缩短（0.055s 视觉长度）成"底排余辉"读感。
 				if _shape_flavor == DirectWeaponFlavor.Flavor.TANK_GUN:
@@ -923,9 +934,12 @@ func _spawn_muzzle_effect(pos: Vector2) -> void:
 		muzzle_tex = ENERGY_MUZZLE_TEX
 	# v18-R10: 动能狙击(wt=6)也必须有枪口闪光——原条件只覆盖"光束名字武器"，
 	# 普通狙击（如 M4A1-Sniper）完全漏配导致 f06_player_muzzle=1/10。
+	# v20.20: 参数对齐已验证的能量分支（8/10/11 的 0.14/0.14，v17c-R2 复测值）——
+	# 旧 0.10/0.12 喷流在采样帧只剩 3×1px 白热核（2026-08-27 像素实测），AI 批
+	# f06 muzzle 2/10 全场最低"枪口特效几乎不存在"。
 	elif _visual_wt == 6:
-		muzzle_scale = 0.10
-		muzzle_life = 0.12
+		muzzle_scale = 0.14
+		muzzle_life = 0.14
 		muzzle_tex = ENERGY_MUZZLE_TEX
 	elif _visual_wt in HEAVY_TRAIL_WEAPON_TYPES:
 		muzzle_scale = 0.42   # v18-R9: flame_jet_v2 内容 160×45 → ~67×19px 水平火舌

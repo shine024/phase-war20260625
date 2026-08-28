@@ -108,16 +108,20 @@ def analyze(tex):
     trans = alpha < 10
     hole = None
     if trans.any():
-        from scipy import ndimage  # 可选，失败则跳过
-        lab, n = ndimage.label(trans)
-        border_labels = set(lab[0, :]) | set(lab[-1, :]) | set(lab[:, 0]) | set(lab[:, -1])
-        border_labels.discard(0)
-        sizes = ndimage.sum(trans, lab, range(1, n + 1))
-        worst = 0.0
-        for i in range(1, n + 1):
-            if i not in border_labels:
-                worst = max(worst, float(sizes[i - 1]) / (w * h))
-        hole = round(worst, 4)
+        try:
+            from scipy import ndimage  # 可选，缺失则跳过（v20.20-fix: 旧版裸 import 必崩）
+        except ImportError:
+            ndimage = None
+        if ndimage is not None:
+            lab, n = ndimage.label(trans)
+            border_labels = set(lab[0, :]) | set(lab[-1, :]) | set(lab[:, 0]) | set(lab[:, -1])
+            border_labels.discard(0)
+            sizes = ndimage.sum(trans, lab, range(1, n + 1))
+            worst = 0.0
+            for i in range(1, n + 1):
+                if i not in border_labels:
+                    worst = max(worst, float(sizes[i - 1]) / (w * h))
+            hole = round(worst, 4)
     tex["hole_ratio"] = hole
 
     # A1 边缘残色嫌疑: 最外2px环上 10<alpha<245 的彩色像素占比

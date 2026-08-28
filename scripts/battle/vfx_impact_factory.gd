@@ -29,6 +29,11 @@ const PARTICLE_TEX_MUZZLE_HEAVY  := preload("res://assets/effects/particle_textu
 ## spark_streak（动能命中火花+拖尾，白热头+橙尾指向+X）。
 ## 注：shard_metal_v1/v2/v3 已弃用（用户反馈棱角多边形不如软圆块 SPARK_HEAVY，纹理文件保留但不再 preload）。
 const PARTICLE_TEX_MUZZLE_JET    := preload("res://assets/effects/particle_textures/muzzle_jet_sym.png")     # 轻武器枪口前向喷流（白核居中+两侧橙尾，朝向无关）
+## v20.22: 轻动能(0/4)命中白热火花——生图 API 重制（tools/generate_spark_texture_white_1.py，
+## agnes-image-2.0-flash 黑底白热放射火花 → 亮度转 alpha）。内容均色 (253,231,155)，
+## 蓝通道 155 vs 旧贴图 50/123——旧贴图蓝通道是硬上限，modulate/ramp 乘不回白热
+## （f00/f04 命中 white=0，违族规格"放射状黄白小火花"）。白色占比 25.5%、各向同性 0.91。
+const PARTICLE_TEX_SPARK_BURST_WHITE := preload("res://assets/effects/particle_textures/spark_burst_white.png")
 const PARTICLE_TEX_FLAME_STAR    := preload("res://assets/effects/particle_textures/flame_star.png")     # 重型枪口火焰（8放射火舌，已被 flame_jet_sym 替代，保留兼容）
 ## v18-R5: 重型枪口水平火舌（对称，±X）——flame_star 的 8 臂放射星被 AI 读成
 ## "径向爆散/无方向扩散的火花炸散"（火箭/导弹枪口 2-4 分主诉）。粒子不随速度旋转
@@ -154,13 +159,26 @@ static func spawn_layered_impact(parent: Node2D, world_pos: Vector2, weapon_type
 	# 火花/碎片层保持武器本色（武器辨识优先），阵营信息只承载在环上不喧宾夺主。
 	if not motion_reduce:
 		var ring_color: Color = base_color.lerp(side_color(is_player), 0.55)
-		_spawn_ring(parent, world_pos, recipe.get("ring_r", 24.0), recipe.get("ring_dur", 0.2), ring_color)
+		# v20.21 批次B: 爆炸族环径 ×1.6（上限 96px 半径）+ 时长 +0.1s——22-80px 半径的环
+		# 整个待在 96px 火球贴图 + 闪光爆内部，读不出层次（AI 高频批"缺冲击波环"的
+		# 结构性病根）。×1.6 后快环 70-96px 半径（aspect1.6 椭圆 224-307px 宽），扩散时
+		# 超出火球面成为可读冲击波层。轻动能(0/4)与能量签名族不受影响。
+		var ring_r: float = float(recipe.get("ring_r", 24.0))
+		var ring_dur: float = float(recipe.get("ring_dur", 0.2))
+		if weapon_type in [1, 2, 3, 7, 9]:
+			ring_r = minf(ring_r * 1.6, 96.0)
+			# v20.23: dur ×0.7 压缩（替换 v20.21 的 +0.1s）——审计亮度取帧偏向闪光时刻
+			#（0.05-0.12s），环须在该窗内展开过半才可读：0.36s→0.25s 时 0.12s 已展开
+			# 48%（46px 半径 ≈ 火球面宽），冲击波"快速掠过"的感知也更正确。慢环 ×1.6
+			# 仍保留余波层次。
+			ring_dur *= 0.7
+		_spawn_ring(parent, world_pos, ring_r, ring_dur, ring_color)
 		# v17k: 第二慢环（快环收束动量 + 慢环拉开扩散层次）——boss 轮 v17j 同款模式，
 		# AI 高频批"冲击波单层无落差"。慢环半径 ×1.4、alpha 减半、时长 +60%。
 		# v18: 轻武器跳过（36→50px 双环在小命中上占满视野，"规模超标"共犯）。
 		if not is_light_kinetic:
-			_spawn_ring(parent, world_pos, float(recipe.get("ring_r", 24.0)) * 1.4,
-				float(recipe.get("ring_dur", 0.2)) * 1.6, Color(ring_color.r, ring_color.g, ring_color.b, ring_color.a * 0.5))
+			_spawn_ring(parent, world_pos, ring_r * 1.4,
+				ring_dur * 1.6, Color(ring_color.r, ring_color.g, ring_color.b, ring_color.a * 0.5))
 		_spawn_impact_decal(parent, world_pos, weapon_type)  # v11 弹痕锚点(在火花之下,火花从弹痕溅起)
 	# 第2层：主火花（始终生成）
 	# v20.9-R2: 霰弹(5)散射签名——单点火花+中央大闪光读成"单弹头命中"（AI 双侧一致
@@ -183,7 +201,14 @@ static func spawn_layered_impact(parent: Node2D, world_pos: Vector2, weapon_type
 			if not is_shotgun:
 				_spawn_flash_layer(parent, world_pos, base_color, weapon_type, {})
 			if not recipe.has("debris"):
-				_spawn_smoke_puff_layer(parent, world_pos, base_color, weapon_type, {})
+				# v20.20: 狙击/光束(6) 烟团减量——默认 6 粒×160-288px×0.7s 把"精确药剂
+				# 小爆点"读成"烟雾弹"（2026-08-27 AI 批 f06 impact 5/10 主诉）。改
+				# 3 粒×102-166px×0.4s 快散微量档，保留一点药雾尾迹。
+				if weapon_type == 6:
+					_spawn_smoke_puff_layer(parent, world_pos, base_color, weapon_type,
+						{"amount": 3, "life": 0.4, "smin": 1.6, "smax": 2.6})
+				else:
+					_spawn_smoke_puff_layer(parent, world_pos, base_color, weapon_type, {})
 			_spawn_shrapnel_layer(parent, world_pos, base_color, weapon_type, {})
 		elif not recipe.has("debris"):
 			# v18-R9b: 微烟 3→5 粒（R9 后 AI 批"烟雾层完全缺失"——3 粒在簇滴命中里
@@ -562,9 +587,13 @@ static func spawn_muzzle_flash(parent: Node2D, local_pos: Vector2, facing_right:
 		p.scale_amount_max = 0.12
 	else:  # 重型化学（曲射/空射/火箭/高炮/导弹）
 		p.lifetime = 0.22            # 大闪光但短促（原 0.40）
-		p.amount = 42                # v17l: 30→42（AI 批"开火像枪不像炮"）
+		# v20.21 批次C: 定向爆喷收拢——42 粒 × 67-109px 火舌在 24° 锥内 ADD 叠加成
+		# "弥散爆炸球"（AI 批 f02/f03/f07/f09 muzzle"像爆炸不像定向喷射"）。22 粒 +
+		# 16° 窄锥保留炮级质量感，火舌间露出背景缝隙读"喷射"。v17l 曾 30→42 治
+		# "像枪不像炮"，若复现回调 30。
+		p.amount = 22
 		p.emission_sphere_radius = 3.0
-		p.spread = 24.0              # 更紧的定向爆喷（原 32°）
+		p.spread = 16.0
 		p.initial_velocity_min = 420.0
 		p.initial_velocity_max = 760.0
 		# v17b 实测 flame_jet_v2 画布 160×56；v19-R18 PIL 复测内容带仅 160×35（y[10,44]）。
@@ -1406,19 +1435,24 @@ static func spawn_impact_sprite(parent: Node2D, world_pos: Vector2, texture: Tex
 	var sc_jit: float = 0.90 + randf() * 0.22  # 0.90~1.12
 	var pk: float = scale_peak * sc_jit
 	# v9.2: 第1层——外层光晕（ADD 混合，大尺度低 alpha，模拟爆炸整体火光弥散）
+	# v20.21 批次D-真因修复: 光晕倍率 ×1.4→×1.15 / ×1.8→×1.35——v18 的 target_w 标定
+	# （96-112px=1.5-1.75× 单位）从未计入这层光晕，实际渲染 1.8× 标定宽（96→173px），
+	# 白热中心 ADD 叠加成 165px 实心白斑 = "命中亮核 220px（3.4× 单位）"的主源
+	# （2026-08-27 连通域取证：f01 impact 单一 27k px 白斑 ~165px，与 96×1.8 精确吻合）。
+	# 修正后光晕 1.35× 标定宽 = 130px 级，命中读"火球+柔光"而非"白屏爆"。
 	var glow := _acquire_impact_sprite()
 	if glow != null:
 		glow.texture = texture
 		glow.position = world_pos
 		glow.rotation = rot
-		glow.scale = Vector2(pk * 1.4, pk * 1.4)
+		glow.scale = Vector2(pk * 1.15, pk * 1.15)
 		glow.modulate = Color(1.0, 0.85, 0.6, 0.5)  # 暖白光晕
 		glow.visible = true
 		glow.material = _get_add_mat()  # ADD 混合让光晕发亮
 		parent.add_child(glow)
 		glow.add_to_group("battle_vfx")  # v9.4: 战斗结束兜底清理（tween 中断时不残留）
 		var tw_glow := glow.create_tween()
-		tw_glow.tween_property(glow, "scale", Vector2(pk * 1.8, pk * 1.8), life * 0.5).set_ease(Tween.EASE_OUT)
+		tw_glow.tween_property(glow, "scale", Vector2(pk * 1.35, pk * 1.35), life * 0.5).set_ease(Tween.EASE_OUT)
 		tw_glow.parallel().tween_property(glow, "modulate:a", 0.0, life * 0.8).set_ease(Tween.EASE_IN)
 		tw_glow.tween_callback(func(): _release_impact_sprite(glow))
 	# v9.2: 第2层——主体火球（ADD 混合，快速膨胀→淡出，模拟火球爆炸消散）
@@ -2412,7 +2446,16 @@ static func _spawn_sparks(parent: Node2D, pos: Vector2, recipe: Dictionary, base
 		p.texture = PARTICLE_TEX_IMPACT_METAL
 	elif weapon_type in [3, 7, 9]:  # ROCKET / FLAK / MISSILE — 爆炸火花
 		p.texture = PARTICLE_TEX_SPARK_DROP
-	else:  # 动能直射类（含 SHOTGUN/SNIPER）— 各向同性圆滴，任意飞散方向形状都正确
+	elif weapon_type in [0, 4]:
+		# v20.22: 轻动能(0/4) 火花贴图 SPARK_DROP→SPARK_BURST_WHITE（生图 API 重制，
+		# v20.20 批次4 的 impact_metal 仍是过渡态：蓝通道 123 仍封顶黄白读感）。
+		# 内容均色 (253,231,155)，白热热点真实存在——modulate/ramp 不再是天花板。
+		p.texture = PARTICLE_TEX_SPARK_BURST_WHITE
+		# modulate 白通：旧 base_color(0.95,0.92,0.5) 的蓝通道 0.5 会把白热贴图再砍半；
+		# 黄白→橙的衰减渐变已由 _get_spark_ramp 承担（白热出生→亮黄→橙→暗红淡出），
+		# p.color 只留极轻微暖偏。敌我辨识仍由 ramp 末端 base_color（含敌方粉染）承载。
+		p.color = Color(1.0, 0.98, 0.9)
+	else:  # 霰弹/狙击——各向同性圆滴，任意飞散方向形状都正确
 		p.texture = PARTICLE_TEX_SPARK_DROP
 	# 按配方差异化参数
 	p.amount = int(recipe.get("spark_amount", 18))
@@ -2433,6 +2476,12 @@ static func _spawn_sparks(parent: Node2D, pos: Vector2, recipe: Dictionary, base
 		p.initial_velocity_max *= 1.6
 		p.scale_amount_min *= 0.7
 		p.scale_amount_max *= 0.7
+	# v20.22: 白热火花贴图内容 120×115（94% 画布，4440px 密度≈spark_drop 的 8 倍），
+	# 按内容实寸重标 scale——目标可视火花 7-16px（v18"细碎火星≤16px"规格）。
+	# 旧 recipe 链算出 0.42-0.84 会把新贴图放成 50-100px 白团（"爆炸"复发）。
+	if weapon_type in [0, 4]:
+		p.scale_amount_min = 0.05
+		p.scale_amount_max = 0.10
 	p.lifetime_randomness = 0.3
 	# v11 关键修复:动能火花加随机旋转(0-360°)让 streak 四散
 	if weapon_type not in [8, 10, 11]:
@@ -2702,8 +2751,18 @@ static func _spawn_flash_layer(parent: Node2D, pos: Vector2, base_color: Color, 
 	p.spread = 0.0
 	p.gravity = Vector2.ZERO
 	const FSCALE: float = 0.4
-	p.scale_amount_min = float(cfg.get("smin", 6.0)) * FSCALE
-	p.scale_amount_max = float(cfg.get("smax", 11.0)) * FSCALE
+	# v20.21 批次D: 非能量系闪光 6.0-11.0 → 2.2-3.2（×0.4 → 113-164px）——旧档
+	# 307-563px 白爆盖过 96-160px 火球帧与冲击波环，是"命中亮核 220px（3.4× 单位）"
+	# 与"看不到冲击波环"两诉的共同元凶（像素取证：0.07s 寿命恰被 0.02-0.05s 采样帧
+	# 捕获；首档 3.0-4.6 缩得不够，实测核仍 216px）。能量系(8/10/11)保持原档
+	# （f08/f10 命中是健康格：蓝白灼烧/径向放电读感正确）。
+	var _flash_smin: float = 2.2
+	var _flash_smax: float = 3.2
+	if is_energy:
+		_flash_smin = 6.0
+		_flash_smax = 11.0
+	p.scale_amount_min = float(cfg.get("smin", _flash_smin)) * FSCALE
+	p.scale_amount_max = float(cfg.get("smax", _flash_smax)) * FSCALE
 	var flash_col: Color = Color(1.0, 1.0, 0.96, 1.0) if not is_energy else Color(0.85, 0.95, 1.0, 1.0)
 	p.color = flash_col
 	var g := Gradient.new()

@@ -1,9 +1,11 @@
 extends Control
-## 余烬要塞 · 房间详情面板 v21 P1
+## 余烬要塞 · 房间详情面板 v22 视觉升级
 ## 点击房间（光点到达后）弹出：房间描述 + 状态相关操作。
 ##   废弃   → 修复成本 + [开始修复]（校验资源）
 ##   修复中 → 进度条 + 推进说明 + 反应堆冻结警示
 ##   可用   → 功能按钮：宿舍[睡觉推进天数] / 兵棋室[前往战场] / 其余 P2/P3 占位说明
+## v22：右侧锚定"检查员卡片"布局（确定性定位，任何窗口尺寸都不出屏）；
+##       面板框架/按钮四态走 PanelStyles 工厂；引言块 + 状态芯片 + 圆角进度条。
 
 signal close_requested
 signal sleep_requested
@@ -15,6 +17,12 @@ signal open_embedded_panel_requested(panel_id: String)   # P2 面板迁移：宿
 const BunkerRoomDefs = preload("res://data/bunker_room_defs.gd")
 const HeroArchiveTexts = preload("res://data/hero_archive_texts.gd")
 const DT = preload("res://resources/design_tokens.gd")
+const PanelStyles = preload("res://scripts/ui/panel_styles.gd")
+
+## 面板语义色：暖琥珀（余烬要塞的灯色）为主 accent，警示沿用既有橙
+const ACCENT := Color(1.0, 0.72, 0.32)
+const WARN_COL := Color(0.95, 0.66, 0.18)
+const GOOD_COL := Color(0.3, 0.92, 0.5)
 
 var _def: Dictionary = {}
 var _manager: Node = null
@@ -22,7 +30,6 @@ var _title_label: Label
 var _state_chip: Label
 var _flavor_label: RichTextLabel
 var _action_box: VBoxContainer
-var _close_btn: Button
 var _dim: ColorRect
 var _panel: PanelContainer
 
@@ -53,49 +60,95 @@ func _build() -> void:
 	_dim.color = Color(0, 0, 0, 0.55)
 	add_child(_dim)
 
-	var center := CenterContainer.new()
-	center.set_anchors_preset(Control.PRESET_FULL_RECT)
-	add_child(center)
-
+	# 右侧锚定卡片：anchor 右缘 x=1 / 垂直居中，固定 400×580，右边距 24。
+	# 确定性定位——expand 画布/任意窗口尺寸下都不可能裁切出屏。
 	_panel = PanelContainer.new()
-	_panel.custom_minimum_size = Vector2(640, 420)
-	var sb := StyleBoxFlat.new()
-	sb.bg_color = Color(0.075, 0.09, 0.14, 0.98)
-	sb.border_color = Color(0, 0.941, 1, 0.55)
-	sb.set_border_width_all(2)
-	sb.set_corner_radius_all(DT.CORNER_RADIUS)
-	sb.set_content_margin_all(DT.PADDING_LARGE)
-	_panel.add_theme_stylebox_override("panel", sb)
-	center.add_child(_panel)
+	_panel.anchor_left = 1.0
+	_panel.anchor_right = 1.0
+	_panel.anchor_top = 0.5
+	_panel.anchor_bottom = 0.5
+	_panel.offset_left = -424.0
+	_panel.offset_right = -24.0
+	_panel.offset_top = -290.0
+	_panel.offset_bottom = 290.0
+	_panel.add_theme_stylebox_override("panel", PanelStyles.make_panel_frame(ACCENT))
+	add_child(_panel)
+
+	var inner := PanelContainer.new()
+	var inner_sb := StyleBoxFlat.new()
+	inner_sb.bg_color = Color(0.05, 0.06, 0.09, 0.92)
+	inner_sb.set_corner_radius_all(10)
+	inner_sb.set_content_margin_all(18.0)
+	inner.add_theme_stylebox_override("panel", inner_sb)
+	_panel.add_child(inner)
 
 	var vbox := VBoxContainer.new()
 	vbox.add_theme_constant_override("separation", 12)
-	_panel.add_child(vbox)
+	inner.add_child(vbox)
 
-	# 标题行
+	# 标题行：发光竖条 + 房名 + 状态芯片 + 关闭
 	var title_row := HBoxContainer.new()
+	title_row.add_theme_constant_override("separation", 10)
 	vbox.add_child(title_row)
+
+	var bar := Panel.new()
+	bar.custom_minimum_size = Vector2(4, 0)
+	bar.size_flags_vertical = Control.SIZE_FILL
+	bar.add_theme_stylebox_override("panel", PanelStyles.make_title_accent_bar(ACCENT))
+	title_row.add_child(bar)
+
 	_title_label = Label.new()
-	_title_label.add_theme_font_size_override("font_size", DT.FONT_SIZE_TITLE - 8)
+	_title_label.text = ""
+	_title_label.add_theme_font_size_override("font_size", DT.FONT_SIZE_LARGE)
 	_title_label.add_theme_color_override("font_color", DT.COLOR_TEXT_BRIGHT)
 	_title_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_title_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	title_row.add_child(_title_label)
+
 	_state_chip = Label.new()
 	_state_chip.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
+	_state_chip.add_theme_color_override("font_color", ACCENT)
+	var chip_sb := StyleBoxFlat.new()
+	chip_sb.bg_color = Color(ACCENT.r, ACCENT.g, ACCENT.b, 0.12)
+	chip_sb.border_color = Color(ACCENT.r, ACCENT.g, ACCENT.b, 0.45)
+	chip_sb.set_border_width_all(1)
+	chip_sb.set_corner_radius_all(4)
+	chip_sb.content_margin_left = 8.0
+	chip_sb.content_margin_right = 8.0
+	chip_sb.content_margin_top = 3.0
+	chip_sb.content_margin_bottom = 3.0
+	_state_chip.add_theme_stylebox_override("normal", chip_sb)
 	title_row.add_child(_state_chip)
-	_close_btn = Button.new()
-	_close_btn.text = "✕"
-	_close_btn.pressed.connect(func(): close_requested.emit())
+
+	_close_btn = _make_button("✕", "ghost", func(): close_requested.emit(), 32)
+	_close_btn.focus_mode = Control.FOCUS_NONE
 	title_row.add_child(_close_btn)
 
-	# 描述
+	# 分隔线
+	vbox.add_child(_make_divider())
+
+	# 描述（引言块：左 accent 竖线的暗底引文）
+	var quote := PanelContainer.new()
+	var quote_sb := StyleBoxFlat.new()
+	quote_sb.bg_color = Color(1, 1, 1, 0.04)
+	quote_sb.border_color = Color(ACCENT.r, ACCENT.g, ACCENT.b, 0.35)
+	quote_sb.border_width_left = 2
+	quote_sb.set_corner_radius_all(4)
+	quote_sb.content_margin_left = 12.0
+	quote_sb.content_margin_right = 10.0
+	quote_sb.content_margin_top = 8.0
+	quote_sb.content_margin_bottom = 8.0
+	quote.add_theme_stylebox_override("panel", quote_sb)
+	vbox.add_child(quote)
+
 	_flavor_label = RichTextLabel.new()
 	_flavor_label.bbcode_enabled = false
 	_flavor_label.fit_content = true
-	_flavor_label.custom_minimum_size = Vector2(0, 72)
+	_flavor_label.custom_minimum_size = Vector2(0, 56)
 	_flavor_label.add_theme_font_size_override("normal_font_size", DT.FONT_SIZE_BODY)
-	_flavor_label.add_theme_color_override("default_color", DT.COLOR_TEXT_DIM)
-	vbox.add_child(_flavor_label)
+	_flavor_label.add_theme_color_override("default_color", DT.COLOR_TEXT_MID)
+	_flavor_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	quote.add_child(_flavor_label)
 
 	# 动作区（随状态重建）
 	_action_box = VBoxContainer.new()
@@ -120,17 +173,21 @@ func _rebuild_content() -> void:
 
 	match state:
 		BunkerRoomDefs.STATE_LOCKED:
-			_state_chip.text = "[废弃]"
-			_state_chip.add_theme_color_override("font_color", Color(0.55, 0.5, 0.45))
+			_set_chip("废弃", Color(0.72, 0.66, 0.58))
 			_build_locked_actions(room_id)
 		BunkerRoomDefs.STATE_REPAIRING:
-			_state_chip.text = "[修复中 %d%%]" % int(round(progress * 100.0))
-			_state_chip.add_theme_color_override("font_color", Color(0.9, 0.6, 0.1))
+			_set_chip("修复中 %d%%" % int(round(progress * 100.0)), WARN_COL)
 			_build_repairing_actions(room_id, progress)
 		_:
-			_state_chip.text = "[已恢复供电]"
-			_state_chip.add_theme_color_override("font_color", Color(0.3, 0.92, 0.5))
+			_set_chip("运转中", GOOD_COL)
 			_build_active_actions(room_id)
+
+func _set_chip(text: String, col: Color) -> void:
+	_state_chip.text = text
+	_state_chip.add_theme_color_override("font_color", col)
+	var sb: StyleBoxFlat = _state_chip.get_theme_stylebox("normal")
+	sb.bg_color = Color(col.r, col.g, col.b, 0.12)
+	sb.border_color = Color(col.r, col.g, col.b, 0.45)
 
 func _build_locked_actions(room_id: String) -> void:
 	var cost: Dictionary = _def.get("cost", {})
@@ -162,13 +219,12 @@ func _build_locked_actions(room_id: String) -> void:
 	if bool(_def.get("needs_power", false)) and not _manager.is_reactor_online():
 		var warn := _make_info_label()
 		warn.text = "⚠ 深层设施：反应堆未上线时修复进度将被冻结，建议先点亮反应堆核心。"
-		warn.add_theme_color_override("font_color", Color(0.9, 0.6, 0.1))
+		warn.add_theme_color_override("font_color", WARN_COL)
 		_action_box.add_child(warn)
 
-	var btn := Button.new()
-	btn.text = "开始修复（%s）" % (BunkerRoomDefs.cost_text(cost) if not cost.is_empty() else "免费")
-	btn.custom_minimum_size = Vector2(0, 44)
-	btn.pressed.connect(func(): _on_repair_pressed(room_id))
+	var btn := _make_button(
+		"开始修复（%s）" % (BunkerRoomDefs.cost_text(cost) if not cost.is_empty() else "免费"),
+		"solid", func(): _on_repair_pressed(room_id), 44)
 	_action_box.add_child(btn)
 
 func _on_repair_pressed(room_id: String) -> void:
@@ -186,21 +242,38 @@ func _build_repairing_actions(room_id: String, progress: float) -> void:
 	var info := _make_info_label()
 	if _manager.is_repair_frozen(room_id):
 		info.text = "进度冻结中：反应堆未上线。每完成一场战斗本应推进一格，现在被冻结。"
-		info.add_theme_color_override("font_color", Color(0.9, 0.6, 0.1))
+		info.add_theme_color_override("font_color", WARN_COL)
 	else:
 		info.text = "每完成一场战斗推进一格（%d 场后恢复供电）。" % [
 			ceil((1.0 - progress) * max(1, int(_def.get("battles", 1))))]
 	_action_box.add_child(info)
 
-	var bar_bg := ColorRect.new()
-	bar_bg.color = Color(0, 0, 0, 0.5)
-	bar_bg.custom_minimum_size = Vector2(0, 14)
+	# 圆角进度条（橙填充 + 百分比角标）
+	var bar_bg := Panel.new()
+	var bg_sb := StyleBoxFlat.new()
+	bg_sb.bg_color = Color(0, 0, 0, 0.55)
+	bg_sb.border_color = Color(1, 1, 1, 0.08)
+	bg_sb.set_border_width_all(1)
+	bg_sb.set_corner_radius_all(4)
+	bg_sb.set_content_margin_all(3.0)
+	bar_bg.add_theme_stylebox_override("panel", bg_sb)
+	bar_bg.custom_minimum_size = Vector2(0, 18)
 	_action_box.add_child(bar_bg)
-	var fill := ColorRect.new()
-	fill.color = Color(0.9, 0.6, 0.1)
+
+	var fill := Panel.new()
+	var fill_sb := StyleBoxFlat.new()
+	fill_sb.bg_color = Color(0.95, 0.62, 0.15)
+	fill_sb.set_corner_radius_all(3)
+	fill.add_theme_stylebox_override("panel", fill_sb)
 	fill.set_anchors_preset(Control.PRESET_LEFT_WIDE)
-	fill.anchor_right = clampf(progress, 0.0, 1.0)
+	fill.anchor_right = clampf(progress, 0.02, 1.0)
+	fill.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	bar_bg.add_child(fill)
+
+	var pct := _make_info_label()
+	pct.text = "施工进度 %d%% · 由出击推进" % int(round(progress * 100.0))
+	pct.add_theme_color_override("font_color", WARN_COL)
+	_action_box.add_child(pct)
 
 func _build_active_actions(room_id: String) -> void:
 	var note := _make_info_label()
@@ -208,29 +281,30 @@ func _build_active_actions(room_id: String) -> void:
 	_action_box.add_child(note)
 
 	match room_id:
+		"entry_hall":
+			_add_embedded_buttons([
+				["设置", "settings"],
+				["帮助", "help"],
+			])
+		"monument":
+			_add_embedded_buttons([
+				["纪念碑", "memorial"],
+			])
 		"dormitory":
-			var sleep_btn := Button.new()
-			sleep_btn.text = "睡觉 —— 推进天数 · 精神 +20 · 存档"
-			sleep_btn.custom_minimum_size = Vector2(0, 44)
-			sleep_btn.pressed.connect(func(): sleep_requested.emit())
+			var sleep_btn := _make_button("睡觉 —— 推进天数 · 精神 +20 · 存档",
+				"solid", func(): sleep_requested.emit(), 44)
 			_action_box.add_child(sleep_btn)
-			var bp_btn := Button.new()
-			bp_btn.text = "打开背包"
-			bp_btn.custom_minimum_size = Vector2(0, 40)
-			bp_btn.pressed.connect(func(): open_embedded_panel_requested.emit("backpack"))
-			_action_box.add_child(bp_btn)
+			_action_box.add_child(_make_button("打开背包",
+				"ghost", func(): open_embedded_panel_requested.emit("backpack"), 40))
 		"war_room":
-			var go_btn := Button.new()
-			go_btn.text = "前往战场（战区地图 · 选关出击）"
-			go_btn.custom_minimum_size = Vector2(0, 44)
-			go_btn.pressed.connect(func(): go_to_battle_requested.emit())
-			_action_box.add_child(go_btn)
+			_action_box.add_child(_make_button("前往战场（战区地图 · 选关出击）",
+				"solid", func(): go_to_battle_requested.emit(), 44))
+			_action_box.add_child(_make_button("任务",
+				"ghost", func(): open_embedded_panel_requested.emit("quest"), 40))
 		"medical":
-			var treat_btn := Button.new()
-			treat_btn.text = "治疗 —— 消耗纳米 50 · 精神 +40（当前 %d）" % int(round(float(_manager.get_sanity())))
-			treat_btn.custom_minimum_size = Vector2(0, 44)
-			treat_btn.pressed.connect(_on_treat_pressed)
-			_action_box.add_child(treat_btn)
+			_action_box.add_child(_make_button(
+				"治疗 —— 消耗纳米 50 · 精神 +40（当前 %d）" % int(round(float(_manager.get_sanity()))),
+				"solid", _on_treat_pressed, 44))
 		"workshop":
 			_add_embedded_buttons([
 				["改造", "modification"],
@@ -241,6 +315,7 @@ func _build_active_actions(room_id: String) -> void:
 			_add_embedded_buttons([
 				["商店", "store"],
 				["势力", "faction"],
+				["排行榜", "leaderboard"],
 			])
 			# P3：预录来电（随碎片/反应堆进度变化）
 			var call_lbl := _make_info_label()
@@ -249,11 +324,8 @@ func _build_active_actions(room_id: String) -> void:
 			call_lbl.add_theme_color_override("font_color", Color(0.62, 0.75, 0.85))
 			_action_box.add_child(call_lbl)
 		"mess_hall":
-			var afk_btn := Button.new()
-			afk_btn.text = "查看挂机收益（AFK）"
-			afk_btn.custom_minimum_size = Vector2(0, 44)
-			afk_btn.pressed.connect(func(): open_embedded_panel_requested.emit("afk"))
-			_action_box.add_child(afk_btn)
+			_action_box.add_child(_make_button("查看挂机收益（AFK）",
+				"solid", func(): open_embedded_panel_requested.emit("afk"), 44))
 		"archive":
 			_add_embedded_buttons([
 				["英雄档案", "hero_archive"],
@@ -269,12 +341,9 @@ func _build_active_actions(room_id: String) -> void:
 ## P2 面板迁移：一行生成多个嵌入面板按钮
 func _add_embedded_buttons(entries: Array) -> void:
 	for entry in entries:
-		var btn := Button.new()
-		btn.text = "打开" + str(entry[0])
-		btn.custom_minimum_size = Vector2(0, 40)
 		var panel_id: String = str(entry[1])
-		btn.pressed.connect(func(): open_embedded_panel_requested.emit(panel_id))
-		_action_box.add_child(btn)
+		_action_box.add_child(_make_button("打开" + str(entry[0]),
+			"ghost", func(): open_embedded_panel_requested.emit(panel_id), 40))
 
 func _on_treat_pressed() -> void:
 	var result: Dictionary = _manager.medical_treatment()
@@ -288,13 +357,42 @@ func _on_treat_pressed() -> void:
 		lbl.add_theme_color_override("font_color", DT.COLOR_DANGER)
 	_action_box.add_child(lbl)
 
+## ───────────────────── 控件工厂 ─────────────────────
+
+## 统一按钮：PanelStyles 四态 + 手型光标 + 点击音效
+func _make_button(text: String, kind: String, cb: Callable, height := 40) -> Button:
+	var btn := Button.new()
+	btn.text = text
+	btn.custom_minimum_size = Vector2(0, height)
+	btn.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	var styles: Dictionary = PanelStyles.make_button_styles(ACCENT, kind)
+	btn.add_theme_stylebox_override("normal", styles["normal"])
+	btn.add_theme_stylebox_override("hover", styles["hover"])
+	btn.add_theme_stylebox_override("pressed", styles["pressed"])
+	btn.add_theme_stylebox_override("disabled", styles["disabled"])
+	btn.add_theme_stylebox_override("focus", styles["focus"])
+	btn.add_theme_color_override("font_color", DT.COLOR_TEXT_BRIGHT)
+	btn.add_theme_color_override("font_hover_color", DT.COLOR_TEXT)
+	btn.add_theme_font_size_override("font_size", DT.FONT_SIZE_BODY)
+	btn.pressed.connect(func():
+		SignalBus.play_sound.emit("button")
+		cb.call())
+	return btn
+
 func _make_info_label() -> Label:
 	var lbl := Label.new()
 	lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_BODY)
 	lbl.add_theme_color_override("font_color", DT.COLOR_TEXT_DIM)
 	lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL   # 跟随面板定宽 → autowrap 生效
 	lbl.custom_minimum_size = Vector2(0, 22)
 	return lbl
+
+func _make_divider() -> ColorRect:
+	var d := ColorRect.new()
+	d.color = Color(1, 1, 1, 0.07)
+	d.custom_minimum_size = Vector2(0, 1)
+	return d
 
 func _unhandled_input(event: InputEvent) -> void:
 	# ESC 关闭面板

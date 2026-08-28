@@ -23,7 +23,9 @@ const HTML_PATH := "res://tools/vfx_audit_review.html"
 # v17c 三帧择优捕获：0.05s（枪口火白热峰，寿命砍短后 0.12s 已是尾巴）/ 0.12s（光束/命中环峰）/
 # 0.30s（火球帧/冲击波/爆炸贴图峰），取特效区最亮帧。单帧采样有时运成分（粒子帧间闪烁），
 # 三帧覆盖快/中/慢峰值区，且改特效寿命后无需再逐次标定采样点。
-const CAPTURE_FRAMES: Array = [0.05, 0.12, 0.30]
+# v20.20: 新增 0.02s 超早帧——磁轨/欧米茄等超高初速弹 0.15s 内飞完全程（2026-08-27 像素实测
+# 弹道格 0 像素空场），旧三帧网格对快弹是采样盲区；早帧给"刚出膛"状态一次被拍到的机会。
+const CAPTURE_FRAMES: Array = [0.02, 0.05, 0.12, 0.30]
 const SETTLE_FOR: float = 0.85     # 截完后再等多少秒让特效消散归池
 
 ## 每族代表参数：命中演示用的武器名（3/7/9 走 impact_texture_by_name 专属贴图链）与 power_tier 档
@@ -72,26 +74,37 @@ func _spawn_trajectory_cell(f: int, side: bool) -> void:
 	# 现路由到 bullet 场景（_process_indirect 抛物线）+ 下方 cfg 按族拍法。
 	if not (f in [0, 4]):
 		var bullet_scene: PackedScene = load("res://scenes/units/bullet.tscn")
-		# 每族参数：连发数 / 等待时长（弧线类长等，速射类连发）
+		# v20.20: 每族参数重标定（n=连发数 / gap=连发间隔 / wait=截帧前等待）。
+		# 病根（2026-08-27 像素实测）：旧表无 gap 轴——n≤3 的族 3 发同帧出生，单帧只拍到
+		# 1 个孤立点（AI 批"弹道完全缺失"）；wait 过大又让首发弹在采样窗内落地爆炸污染
+		# 弹道格（AI 批 f02"拍到的是命中爆炸"）。新表保证：截帧窗口内所有弹都在飞、
+		# 且沿弧线散开（gap 拉开 0.08-0.12s ≈ 弧线上 80-150px 间距）。
 		var cfg: Dictionary = {
-			1: {"n": 3, "wait": 0.30},   # 曲射：抛物线弧线中段（0.10 只拍到开头直线段）
-			2: {"n": 3, "wait": 0.25},   # 空射：俯冲弧中段
-			3: {"n": 2, "wait": 0.14},   # 火箭：弹体清晰、尾焰未堆积（AI 批"误读为横向爆炸"）
-			5: {"n": 6, "wait": 0.12},   # 霰弹：6 发散射扇面（v17m-R4: 目标散点排布见下）
-			6: {"n": 1, "wait": 0.15},   # 狙击/光束：单发光束线清晰
-			7: {"n": 6, "wait": 0.12},   # 高炮：速射连发（AI 批"做成导弹，失速射辨识度"）
-			8: {"n": 4, "wait": 0.10},   # 激光：v18-R8 单发 1400px/s 0.39s 即达——单帧采样
-			                             # 常漏拍（player 格空场）；4 发错峰连拍保捕获
-			9: {"n": 2, "wait": 0.16},   # 导弹：弹体+尾迹中段
-			10: {"n": 1, "wait": 0.16},  # 欧米茄：能量弹道
-			11: {"n": 1, "wait": 0.15},  # 磁轨：穿透弹道线
+			1: {"n": 2, "gap": 0.12, "wait": 0.30},  # 曲射：2 发沿抛物线拉开（0.82s 飞行全程内）
+			2: {"n": 3, "gap": 0.10, "wait": 0.25},  # 空射：3 发俯冲弧上分布
+			3: {"n": 2, "gap": 0.08, "wait": 0.20},  # 火箭：2 发低平弧（0.59s 飞行，防落地穿窗）
+			5: {"n": 6, "wait": 0.20},               # 霰弹：6 发散射扇面（v17m 散点目标不变）；
+			                                         # v20.20 wait 0.12→0.20——0.12s 时弹丸只飞出
+			                                         # 65-145px，±9° 扇面未张开读成"光条束"（AI 主诉）
+			6: {"n": 1, "wait": 0.15},               # 狙击/光束：单发光束线清晰
+			7: {"n": 6, "wait": 0.12},               # 高炮：速射连发
+			8: {"n": 1, "wait": 0.15},               # 激光：v20.24 改单发（对齐狙击 6 拍法）。
+			                                         # v18-R8 4 发连拍的初衷是保捕获，但 4 个
+			                                         # 弹头亮斑沿路径每 14px 重复（gap0.01×
+			                                         # 1400px/s），ADD 叠出周期性亮带 = AI 读
+			                                         # "分段矩形块/断裂"的几何真身。单发飞行
+			                                         # 光弹 + 160px 定长尾段正是 v19-R35 用户
+			                                         # 定调的语义；4 采样帧覆盖 320px 飞行窗
+			9: {"n": 2, "gap": 0.12, "wait": 0.30},  # 导弹：2 发中弧分布（0.72s 飞行）
+			10: {"n": 1, "wait": 0.15},              # 欧米茄：单发快弹（0.02s 早帧捕获）
+			11: {"n": 1, "wait": 0.15},              # 磁轨：单发快弹（0.02s 早帧捕获）
 		}
 		var c: Dictionary = cfg.get(f, {"n": 3, "wait": 0.14})
+		var _gap: float = float(c.get("gap", 0.05))
 		for i in range(int(c["n"])):
 			var bl: Node2D = bullet_scene.instantiate()
 			_fx_layer.add_child(bl)
-			bl.global_position = MUZZLE_POS + Vector2(0, (i % 3 - 1) * 22.0)
-			# v17m-R4: 霰弹散布——6 发各自散点目标（18° 扇面，AI 批"弹道未体现散布特征"）
+			bl.global_position = MUZZLE_POS + Vector2(0, (i % 3 - 1) * 22.0)			# v17m-R4: 霰弹散布——6 发各自散点目标（18° 扇面，AI 批"弹道未体现散布特征"）
 			var stgt: Node2D = tgt
 			if f == 5:
 				stgt = Node2D.new()
@@ -106,8 +119,8 @@ func _spawn_trajectory_cell(f: int, side: bool) -> void:
 			bl.setup(stgt, 10.0, side, f, shooter, null, false, rep_name, true, "")  # v18-R8: side 透传（敌光束暖色/敌曳光分色）
 			if f == 2 and not side:
 				bl.set("_visual_wt", 2)
-			if int(c["n"]) > 3:
-				await get_tree().create_timer(0.05).timeout
+			if i < int(c["n"]) - 1:
+				await get_tree().create_timer(_gap).timeout
 		await get_tree().create_timer(float(c["wait"]))
 		return
 	# v17k-R2: 6 发间隔连射（弹幕感——3 发瞬时在截图里是孤立点，连射才有"弹道线"）
@@ -119,6 +132,13 @@ func _spawn_trajectory_cell(f: int, side: bool) -> void:
 	await get_tree().create_timer(0.10).timeout
 
 func _ready() -> void:
+	# v20.20: 强制 1280×720 无边框——桌面工作区装不下窗口时 OS 会压缩窗口尺寸，
+	# 截图整视口被等比缩水（2026-08-27 实测 1028×720 = 0.8025×），AI 看到的特效比
+	# 游戏内小 20% 且坐标映射漂移。无边框绕开"客户区+标题栏>工作区"的钳制。
+	var _audit_win: Window = get_window()
+	_audit_win.borderless = true
+	_audit_win.size = Vector2i(1280, 720)
+	_audit_win.position = Vector2i(0, 0)
 	_build_stage()
 	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(SHOT_DIR))
 	# v17c 预热：矩阵第一个格子的枪口火两轮实测确定性缺失（发光像素=3）——首个全新
@@ -231,7 +251,9 @@ func _make_caption(text: String, pos: Vector2, size: int) -> void:
 ## ── 矩阵主循环：12 族 × 敌我 × 开火/命中 ──
 func _run_matrix() -> void:
 	var families: Array = WVP.all_families()
-	_total_cells = families.size() * 4
+	# v20.20-fix: 每族实拍 6 格（muzzle/trajectory/impact × 敌我），旧值 ×4 是三段计数
+	# 之前的遗留，日志一直显示"72/48"。
+	_total_cells = families.size() * 6
 	for f in families:
 		var profile: Dictionary = WVP.profile_of(f)
 		var row_shots: Dictionary = {}
@@ -297,7 +319,8 @@ func _spawn_muzzle_cell(f: int, side: bool) -> void:
 	if f in [8, 10, 11]:
 		VfxFactory.spawn_impact_sprite(_fx_layer, MUZZLE_POS, VfxFactory.PARTICLE_TEX_MUZZLE_ENERGY, 0.14, 0.14)
 	elif f == 6:
-		VfxFactory.spawn_impact_sprite(_fx_layer, MUZZLE_POS, VfxFactory.PARTICLE_TEX_MUZZLE_ENERGY, 0.10, 0.12)
+		# v20.20: 与 bullet.gd wt6 同步（0.10/0.12 → 0.14/0.14，见 bullet._spawn_muzzle_effect）
+		VfxFactory.spawn_impact_sprite(_fx_layer, MUZZLE_POS, VfxFactory.PARTICLE_TEX_MUZZLE_ENERGY, 0.14, 0.14)
 	elif f in VfxFactory.HEAVY_MUZZLE_WT:
 		VfxFactory.spawn_impact_sprite(_fx_layer, MUZZLE_POS, VfxFactory.PARTICLE_TEX_MUZZLE_JET, 0.42, 0.16)  # v18-R10d: 枪口贴图层回退旧图（v2 摄影版暗色读为空）
 

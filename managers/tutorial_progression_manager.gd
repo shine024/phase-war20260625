@@ -63,8 +63,8 @@ func _initialize_tutorial_data() -> void:
 		},
 		TutorialStep.PHASE_INSTRUMENT: {
 			"title": "装配卡牌",
-			"description": "初始坦克 FT-17 已预装入底部绿色装配槽，首战即可部署。之后获得新卡时，从背包拖到底部绿槽装备（战斗中只能部署已装配的卡）。",
-			"highlights": ["绿色槽：战斗单位卡", "初始 FT-17 已预装备", "新卡从背包拖到底部槽位"],
+			"description": "初始三张卡（毛瑟步枪班/81mm迫击炮组/FT-17坦克）已预装入底部绿色装配槽，首战即可部署。之后获得新卡时，从背包拖到底部绿槽装备（战斗中只能部署已装配的卡）。",
+			"highlights": ["绿色槽：战斗单位卡", "初始三张基础卡已预装备", "新卡从背包拖到底部槽位"],
 			"action_text": "查看装配",
 			"action_target": "open_backpack",
 			"highlight_elements": ["phase_instrument_button"]

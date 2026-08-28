@@ -1,1442 +1,919 @@
-[
- {
-  "file": "f00_player_muzzle.png",
-  "family": 0,
-  "kind": "muzzle",
-  "is_player": true,
-  "fire_px": 644,
-  "glow_px": 974,
-  "smoke_px": 199,
-  "warm": 279,
-  "cool": 311,
-  "white": 54,
-  "maxv": 255,
-  "bbox_w": 67,
-  "bbox_h": 90,
-  "centroid_off": [
-   -64.2,
-   -99.3
-  ],
-  "right_frac": 0.0
- },
- {
-  "file": "f00_player_trajectory.png",
-  "family": 0,
-  "kind": "impact",
-  "is_player": true,
-  "fire_px": 993,
-  "glow_px": 419,
-  "smoke_px": 363,
-  "warm": 977,
-  "cool": 0,
-  "white": 16,
-  "maxv": 255,
-  "bbox_w": 86,
-  "bbox_h": 98,
-  "centroid_off": [
-   -139.9,
-   -102.5
-  ],
-  "right_frac": 0.0
- },
- {
-  "file": "f00_player_impact.png",
-  "family": 0,
-  "kind": "impact",
-  "is_player": true,
-  "fire_px": 113,
-  "glow_px": 106,
-  "smoke_px": 58,
-  "warm": 107,
-  "cool": 0,
-  "white": 6,
-  "maxv": 255,
-  "bbox_w": 32,
-  "bbox_h": 79,
-  "centroid_off": [
-   -138.9,
-   -108.1
-  ],
-  "right_frac": 0.0
- },
- {
-  "file": "f00_enemy_muzzle.png",
-  "family": 0,
-  "kind": "muzzle",
-  "is_player": false,
-  "fire_px": 882,
-  "glow_px": 1042,
-  "smoke_px": 203,
-  "warm": 517,
-  "cool": 298,
-  "white": 67,
-  "maxv": 255,
-  "bbox_w": 86,
-  "bbox_h": 84,
-  "centroid_off": [
-   -87.2,
-   -98.4
-  ],
-  "right_frac": 0.0
- },
- {
-  "file": "f00_enemy_trajectory.png",
-  "family": 0,
-  "kind": "impact",
-  "is_player": false,
-  "fire_px": 689,
-  "glow_px": 392,
-  "smoke_px": 180,
-  "warm": 683,
-  "cool": 0,
-  "white": 6,
-  "maxv": 255,
-  "bbox_w": 97,
-  "bbox_h": 153,
-  "centroid_off": [
-   -133.3,
-   -84.6
-  ],
-  "right_frac": 0.0
- },
- {
-  "file": "f00_enemy_impact.png",
-  "family": 0,
-  "kind": "impact",
-  "is_player": false,
-  "fire_px": 2065,
-  "glow_px": 1131,
-  "smoke_px": 63,
-  "warm": 2059,
-  "cool": 0,
-  "white": 6,
-  "maxv": 255,
-  "bbox_w": 61,
-  "bbox_h": 106,
-  "centroid_off": [
-   -128.0,
-   -89.7
-  ],
-  "right_frac": 0.0
- },
- {
-  "file": "f01_player_muzzle.png",
-  "family": 1,
-  "kind": "muzzle",
-  "is_player": true,
-  "fire_px": 5157,
-  "glow_px": 1210,
-  "smoke_px": 508,
-  "warm": 3880,
-  "cool": 358,
-  "white": 919,
-  "maxv": 255,
-  "bbox_w": 179,
-  "bbox_h": 117,
-  "centroid_off": [
-   -7.2,
-   -92.3
-  ],
-  "right_frac": 0.49
- },
- {
-  "file": "f01_player_trajectory.png",
-  "family": 1,
-  "kind": "impact",
-  "is_player": true,
-  "fire_px": 5761,
-  "glow_px": 2352,
-  "smoke_px": 1285,
-  "warm": 2789,
-  "cool": 0,
-  "white": 2972,
-  "maxv": 255,
-  "bbox_w": 70,
-  "bbox_h": 154,
-  "centroid_off": [
-   -125.2,
-   -90.8
-  ],
-  "right_frac": 0.0
- },
- {
-  "file": "f01_player_impact.png",
-  "family": 1,
-  "kind": "impact",
-  "is_player": true,
-  "fire_px": 8455,
-  "glow_px": 3708,
-  "smoke_px": 1677,
-  "warm": 1993,
-  "cool": 0,
-  "white": 6462,
-  "maxv": 255,
-  "bbox_w": 99,
-  "bbox_h": 168,
-  "centroid_off": [
-   -116.4,
-   -87.2
-  ],
-  "right_frac": 0.0
- },
- {
-  "file": "f01_enemy_muzzle.png",
-  "family": 1,
-  "kind": "muzzle",
-  "is_player": false,
-  "fire_px": 4950,
-  "glow_px": 987,
-  "smoke_px": 544,
-  "warm": 3676,
-  "cool": 421,
-  "white": 853,
-  "maxv": 255,
-  "bbox_w": 122,
-  "bbox_h": 115,
-  "centroid_off": [
-   -109.0,
-   -88.8
-  ],
-  "right_frac": 0.0
- },
- {
-  "file": "f01_enemy_trajectory.png",
-  "family": 1,
-  "kind": "impact",
-  "is_player": false,
-  "fire_px": 263,
-  "glow_px": 1176,
-  "smoke_px": 1144,
-  "warm": 242,
-  "cool": 0,
-  "white": 21,
-  "maxv": 255,
-  "bbox_w": 88,
-  "bbox_h": 106,
-  "centroid_off": [
-   -135.6,
-   -106.3
-  ],
-  "right_frac": 0.0
- },
- {
-  "file": "f01_enemy_impact.png",
-  "family": 1,
-  "kind": "impact",
-  "is_player": false,
-  "fire_px": 1016,
-  "glow_px": 3872,
-  "smoke_px": 3575,
-  "warm": 937,
-  "cool": 0,
-  "white": 79,
-  "maxv": 255,
-  "bbox_w": 64,
-  "bbox_h": 113,
-  "centroid_off": [
-   -139.0,
-   -101.0
-  ],
-  "right_frac": 0.0
- },
- {
-  "file": "f02_player_muzzle.png",
-  "family": 2,
-  "kind": "muzzle",
-  "is_player": true,
-  "fire_px": 5340,
-  "glow_px": 1062,
-  "smoke_px": 489,
-  "warm": 4231,
-  "cool": 343,
-  "white": 766,
-  "maxv": 255,
-  "bbox_w": 168,
-  "bbox_h": 127,
-  "centroid_off": [
-   -11.9,
-   -86.2
-  ],
-  "right_frac": 0.46
- },
- {
-  "file": "f02_player_trajectory.png",
-  "family": 2,
-  "kind": "impact",
-  "is_player": true,
-  "fire_px": 3911,
-  "glow_px": 893,
-  "smoke_px": 531,
-  "warm": 1541,
-  "cool": 0,
-  "white": 2370,
-  "maxv": 255,
-  "bbox_w": 134,
-  "bbox_h": 189,
-  "centroid_off": [
-   -131.6,
-   -85.7
-  ],
-  "right_frac": 0.0
- },
- {
-  "file": "f02_player_impact.png",
-  "family": 2,
-  "kind": "impact",
-  "is_player": true,
-  "fire_px": 24378,
-  "glow_px": 3187,
-  "smoke_px": 2075,
-  "warm": 5952,
-  "cool": 0,
-  "white": 18426,
-  "maxv": 255,
-  "bbox_w": 119,
-  "bbox_h": 297,
-  "centroid_off": [
-   -104.4,
-   -8.2
-  ],
-  "right_frac": 0.0
- },
- {
-  "file": "f02_enemy_muzzle.png",
-  "family": 2,
-  "kind": "muzzle",
-  "is_player": false,
-  "fire_px": 4693,
-  "glow_px": 996,
-  "smoke_px": 463,
-  "warm": 3596,
-  "cool": 389,
-  "white": 708,
-  "maxv": 255,
-  "bbox_w": 122,
-  "bbox_h": 118,
-  "centroid_off": [
-   -110.6,
-   -91.5
-  ],
-  "right_frac": 0.0
- },
- {
-  "file": "f02_enemy_trajectory.png",
-  "family": 2,
-  "kind": "impact",
-  "is_player": false,
-  "fire_px": 183,
-  "glow_px": 107,
-  "smoke_px": 66,
-  "warm": 160,
-  "cool": 0,
-  "white": 23,
-  "maxv": 255,
-  "bbox_w": 31,
-  "bbox_h": 82,
-  "centroid_off": [
-   -141.7,
-   -108.8
-  ],
-  "right_frac": 0.0
- },
- {
-  "file": "f02_enemy_impact.png",
-  "family": 2,
-  "kind": "impact",
-  "is_player": false,
-  "fire_px": 5568,
-  "glow_px": 820,
-  "smoke_px": 180,
-  "warm": 3882,
-  "cool": 0,
-  "white": 1686,
-  "maxv": 255,
-  "bbox_w": 55,
-  "bbox_h": 145,
-  "centroid_off": [
-   -128.4,
-   -77.6
-  ],
-  "right_frac": 0.0
- },
- {
-  "file": "f03_player_muzzle.png",
-  "family": 3,
-  "kind": "muzzle",
-  "is_player": true,
-  "fire_px": 5041,
-  "glow_px": 1140,
-  "smoke_px": 494,
-  "warm": 3869,
-  "cool": 438,
-  "white": 734,
-  "maxv": 255,
-  "bbox_w": 172,
-  "bbox_h": 117,
-  "centroid_off": [
-   -12.2,
-   -89.1
-  ],
-  "right_frac": 0.4
- },
- {
-  "file": "f03_player_trajectory.png",
-  "family": 3,
-  "kind": "impact",
-  "is_player": true,
-  "fire_px": 2,
-  "glow_px": 53,
-  "smoke_px": 53,
-  "warm": 0,
-  "cool": 0,
-  "white": 2,
-  "maxv": 154,
-  "bbox_w": 19,
-  "bbox_h": 8,
-  "centroid_off": [
-   -143.5,
-   -144.5
-  ],
-  "right_frac": 0.0
- },
- {
-  "file": "f03_player_impact.png",
-  "family": 3,
-  "kind": "impact",
-  "is_player": true,
-  "fire_px": 9244,
-  "glow_px": 244,
-  "smoke_px": 35,
-  "warm": 8848,
-  "cool": 0,
-  "white": 396,
-  "maxv": 255,
-  "bbox_w": 110,
-  "bbox_h": 123,
-  "centroid_off": [
-   -106.4,
-   -94.9
-  ],
-  "right_frac": 0.0
- },
- {
-  "file": "f03_enemy_muzzle.png",
-  "family": 3,
-  "kind": "muzzle",
-  "is_player": false,
-  "fire_px": 5117,
-  "glow_px": 842,
-  "smoke_px": 401,
-  "warm": 3363,
-  "cool": 446,
-  "white": 1308,
-  "maxv": 255,
-  "bbox_w": 122,
-  "bbox_h": 116,
-  "centroid_off": [
-   -108.8,
-   -88.5
-  ],
-  "right_frac": 0.0
- },
- {
-  "file": "f03_enemy_trajectory.png",
-  "family": 3,
-  "kind": "impact",
-  "is_player": false,
-  "fire_px": 2,
-  "glow_px": 53,
-  "smoke_px": 53,
-  "warm": 0,
-  "cool": 0,
-  "white": 2,
-  "maxv": 154,
-  "bbox_w": 19,
-  "bbox_h": 8,
-  "centroid_off": [
-   -143.5,
-   -144.5
-  ],
-  "right_frac": 0.0
- },
- {
-  "file": "f03_enemy_impact.png",
-  "family": 3,
-  "kind": "impact",
-  "is_player": false,
-  "fire_px": 9036,
-  "glow_px": 426,
-  "smoke_px": 98,
-  "warm": 5159,
-  "cool": 0,
-  "white": 3877,
-  "maxv": 255,
-  "bbox_w": 101,
-  "bbox_h": 135,
-  "centroid_off": [
-   -110.1,
-   -95.9
-  ],
-  "right_frac": 0.0
- },
- {
-  "file": "f04_player_muzzle.png",
-  "family": 4,
-  "kind": "muzzle",
-  "is_player": true,
-  "fire_px": 650,
-  "glow_px": 975,
-  "smoke_px": 222,
-  "warm": 285,
-  "cool": 316,
-  "white": 49,
-  "maxv": 255,
-  "bbox_w": 67,
-  "bbox_h": 88,
-  "centroid_off": [
-   -64.2,
-   -100.1
-  ],
-  "right_frac": 0.0
- },
- {
-  "file": "f04_player_trajectory.png",
-  "family": 4,
-  "kind": "impact",
-  "is_player": true,
-  "fire_px": 695,
-  "glow_px": 279,
-  "smoke_px": 229,
-  "warm": 684,
-  "cool": 0,
-  "white": 11,
-  "maxv": 255,
-  "bbox_w": 74,
-  "bbox_h": 98,
-  "centroid_off": [
-   -140.5,
-   -93.7
-  ],
-  "right_frac": 0.0
- },
- {
-  "file": "f04_player_impact.png",
-  "family": 4,
-  "kind": "impact",
-  "is_player": true,
-  "fire_px": 1216,
-  "glow_px": 567,
-  "smoke_px": 10,
-  "warm": 1214,
-  "cool": 0,
-  "white": 2,
-  "maxv": 255,
-  "bbox_w": 48,
-  "bbox_h": 60,
-  "centroid_off": [
-   -133.7,
-   -120.5
-  ],
-  "right_frac": 0.0
- },
- {
-  "file": "f04_enemy_muzzle.png",
-  "family": 4,
-  "kind": "muzzle",
-  "is_player": false,
-  "fire_px": 868,
-  "glow_px": 1033,
-  "smoke_px": 209,
-  "warm": 503,
-  "cool": 291,
-  "white": 74,
-  "maxv": 255,
-  "bbox_w": 80,
-  "bbox_h": 84,
-  "centroid_off": [
-   -84.6,
-   -96.7
-  ],
-  "right_frac": 0.0
- },
- {
-  "file": "f04_enemy_trajectory.png",
-  "family": 4,
-  "kind": "impact",
-  "is_player": false,
-  "fire_px": 1011,
-  "glow_px": 391,
-  "smoke_px": 304,
-  "warm": 999,
-  "cool": 0,
-  "white": 12,
-  "maxv": 255,
-  "bbox_w": 84,
-  "bbox_h": 94,
-  "centroid_off": [
-   -141.2,
-   -101.7
-  ],
-  "right_frac": 0.0
- },
- {
-  "file": "f04_enemy_impact.png",
-  "family": 4,
-  "kind": "impact",
-  "is_player": false,
-  "fire_px": 706,
-  "glow_px": 1455,
-  "smoke_px": 20,
-  "warm": 703,
-  "cool": 0,
-  "white": 3,
-  "maxv": 255,
-  "bbox_w": 75,
-  "bbox_h": 86,
-  "centroid_off": [
-   -109.3,
-   -93.9
-  ],
-  "right_frac": 0.0
- },
- {
-  "file": "f05_player_muzzle.png",
-  "family": 5,
-  "kind": "muzzle",
-  "is_player": true,
-  "fire_px": 701,
-  "glow_px": 924,
-  "smoke_px": 223,
-  "warm": 336,
-  "cool": 305,
-  "white": 60,
-  "maxv": 255,
-  "bbox_w": 67,
-  "bbox_h": 87,
-  "centroid_off": [
-   -63.5,
-   -100.3
-  ],
-  "right_frac": 0.0
- },
- {
-  "file": "f05_player_trajectory.png",
-  "family": 5,
-  "kind": "impact",
-  "is_player": true,
-  "fire_px": 2,
-  "glow_px": 53,
-  "smoke_px": 53,
-  "warm": 0,
-  "cool": 0,
-  "white": 2,
-  "maxv": 154,
-  "bbox_w": 19,
-  "bbox_h": 8,
-  "centroid_off": [
-   -143.5,
-   -144.5
-  ],
-  "right_frac": 0.0
- },
- {
-  "file": "f05_player_impact.png",
-  "family": 5,
-  "kind": "impact",
-  "is_player": true,
-  "fire_px": 6206,
-  "glow_px": 2512,
-  "smoke_px": 2188,
-  "warm": 3842,
-  "cool": 0,
-  "white": 2364,
-  "maxv": 255,
-  "bbox_w": 115,
-  "bbox_h": 139,
-  "centroid_off": [
-   -104.7,
-   -76.3
-  ],
-  "right_frac": 0.0
- },
- {
-  "file": "f05_enemy_muzzle.png",
-  "family": 5,
-  "kind": "muzzle",
-  "is_player": false,
-  "fire_px": 783,
-  "glow_px": 1042,
-  "smoke_px": 205,
-  "warm": 418,
-  "cool": 298,
-  "white": 67,
-  "maxv": 255,
-  "bbox_w": 85,
-  "bbox_h": 87,
-  "centroid_off": [
-   -86.0,
-   -97.5
-  ],
-  "right_frac": 0.0
- },
- {
-  "file": "f05_enemy_trajectory.png",
-  "family": 5,
-  "kind": "impact",
-  "is_player": false,
-  "fire_px": 2,
-  "glow_px": 53,
-  "smoke_px": 53,
-  "warm": 0,
-  "cool": 0,
-  "white": 2,
-  "maxv": 154,
-  "bbox_w": 19,
-  "bbox_h": 8,
-  "centroid_off": [
-   -143.5,
-   -144.5
-  ],
-  "right_frac": 0.0
- },
- {
-  "file": "f05_enemy_impact.png",
-  "family": 5,
-  "kind": "impact",
-  "is_player": false,
-  "fire_px": 7787,
-  "glow_px": 2010,
-  "smoke_px": 1663,
-  "warm": 4929,
-  "cool": 0,
-  "white": 2858,
-  "maxv": 255,
-  "bbox_w": 112,
-  "bbox_h": 150,
-  "centroid_off": [
-   -105.4,
-   -78.0
-  ],
-  "right_frac": 0.0
- },
- {
-  "file": "f06_player_muzzle.png",
-  "family": 6,
-  "kind": "muzzle",
-  "is_player": true,
-  "fire_px": 634,
-  "glow_px": 980,
-  "smoke_px": 214,
-  "warm": 269,
-  "cool": 315,
-  "white": 50,
-  "maxv": 255,
-  "bbox_w": 67,
-  "bbox_h": 96,
-  "centroid_off": [
-   -63.2,
-   -102.3
-  ],
-  "right_frac": 0.0
- },
- {
-  "file": "f06_player_trajectory.png",
-  "family": 6,
-  "kind": "impact",
-  "is_player": true,
-  "fire_px": 2,
-  "glow_px": 53,
-  "smoke_px": 53,
-  "warm": 0,
-  "cool": 0,
-  "white": 2,
-  "maxv": 154,
-  "bbox_w": 19,
-  "bbox_h": 8,
-  "centroid_off": [
-   -143.5,
-   -144.5
-  ],
-  "right_frac": 0.0
- },
- {
-  "file": "f06_player_impact.png",
-  "family": 6,
-  "kind": "impact",
-  "is_player": true,
-  "fire_px": 2402,
-  "glow_px": 937,
-  "smoke_px": 28,
-  "warm": 2402,
-  "cool": 0,
-  "white": 0,
-  "maxv": 255,
-  "bbox_w": 57,
-  "bbox_h": 96,
-  "centroid_off": [
-   -128.5,
-   -102.6
-  ],
-  "right_frac": 0.0
- },
- {
-  "file": "f06_enemy_muzzle.png",
-  "family": 6,
-  "kind": "muzzle",
-  "is_player": false,
-  "fire_px": 791,
-  "glow_px": 1042,
-  "smoke_px": 207,
-  "warm": 425,
-  "cool": 290,
-  "white": 76,
-  "maxv": 255,
-  "bbox_w": 83,
-  "bbox_h": 89,
-  "centroid_off": [
-   -84.7,
-   -98.8
-  ],
-  "right_frac": 0.0
- },
- {
-  "file": "f06_enemy_trajectory.png",
-  "family": 6,
-  "kind": "impact",
-  "is_player": false,
-  "fire_px": 2,
-  "glow_px": 53,
-  "smoke_px": 53,
-  "warm": 0,
-  "cool": 0,
-  "white": 2,
-  "maxv": 154,
-  "bbox_w": 19,
-  "bbox_h": 8,
-  "centroid_off": [
-   -143.5,
-   -144.5
-  ],
-  "right_frac": 0.0
- },
- {
-  "file": "f06_enemy_impact.png",
-  "family": 6,
-  "kind": "impact",
-  "is_player": false,
-  "fire_px": 589,
-  "glow_px": 268,
-  "smoke_px": 200,
-  "warm": 578,
-  "cool": 0,
-  "white": 11,
-  "maxv": 255,
-  "bbox_w": 273,
-  "bbox_h": 86,
-  "centroid_off": [
-   -125.7,
-   -100.7
-  ],
-  "right_frac": 0.07
- },
- {
-  "file": "f07_player_muzzle.png",
-  "family": 7,
-  "kind": "muzzle",
-  "is_player": true,
-  "fire_px": 5187,
-  "glow_px": 1173,
-  "smoke_px": 485,
-  "warm": 3980,
-  "cool": 341,
-  "white": 866,
-  "maxv": 255,
-  "bbox_w": 164,
-  "bbox_h": 118,
-  "centroid_off": [
-   -9.3,
-   -91.8
-  ],
-  "right_frac": 0.49
- },
- {
-  "file": "f07_player_trajectory.png",
-  "family": 7,
-  "kind": "impact",
-  "is_player": true,
-  "fire_px": 2,
-  "glow_px": 53,
-  "smoke_px": 53,
-  "warm": 0,
-  "cool": 0,
-  "white": 2,
-  "maxv": 154,
-  "bbox_w": 19,
-  "bbox_h": 8,
-  "centroid_off": [
-   -143.5,
-   -144.5
-  ],
-  "right_frac": 0.0
- },
- {
-  "file": "f07_player_impact.png",
-  "family": 7,
-  "kind": "impact",
-  "is_player": true,
-  "fire_px": 5735,
-  "glow_px": 305,
-  "smoke_px": 83,
-  "warm": 3023,
-  "cool": 0,
-  "white": 2712,
-  "maxv": 255,
-  "bbox_w": 66,
-  "bbox_h": 124,
-  "centroid_off": [
-   -123.4,
-   -94.9
-  ],
-  "right_frac": 0.0
- },
- {
-  "file": "f07_enemy_muzzle.png",
-  "family": 7,
-  "kind": "muzzle",
-  "is_player": false,
-  "fire_px": 4666,
-  "glow_px": 923,
-  "smoke_px": 526,
-  "warm": 2953,
-  "cool": 415,
-  "white": 1298,
-  "maxv": 255,
-  "bbox_w": 122,
-  "bbox_h": 114,
-  "centroid_off": [
-   -110.2,
-   -89.9
-  ],
-  "right_frac": 0.0
- },
- {
-  "file": "f07_enemy_trajectory.png",
-  "family": 7,
-  "kind": "impact",
-  "is_player": false,
-  "fire_px": 2,
-  "glow_px": 53,
-  "smoke_px": 53,
-  "warm": 0,
-  "cool": 0,
-  "white": 2,
-  "maxv": 154,
-  "bbox_w": 19,
-  "bbox_h": 8,
-  "centroid_off": [
-   -143.5,
-   -144.5
-  ],
-  "right_frac": 0.0
- },
- {
-  "file": "f07_enemy_impact.png",
-  "family": 7,
-  "kind": "impact",
-  "is_player": false,
-  "fire_px": 5356,
-  "glow_px": 666,
-  "smoke_px": 346,
-  "warm": 2793,
-  "cool": 0,
-  "white": 2563,
-  "maxv": 255,
-  "bbox_w": 77,
-  "bbox_h": 116,
-  "centroid_off": [
-   -122.4,
-   -103.1
-  ],
-  "right_frac": 0.0
- },
- {
-  "file": "f08_player_muzzle.png",
-  "family": 8,
-  "kind": "muzzle",
-  "is_player": true,
-  "fire_px": 1551,
-  "glow_px": 670,
-  "smoke_px": 221,
-  "warm": 48,
-  "cool": 1461,
-  "white": 37,
-  "maxv": 255,
-  "bbox_w": 197,
-  "bbox_h": 89,
-  "centroid_off": [
-   -62.3,
-   -92.9
-  ],
-  "right_frac": 0.04
- },
- {
-  "file": "f08_player_trajectory.png",
-  "family": 8,
-  "kind": "impact",
-  "is_player": true,
-  "fire_px": 2,
-  "glow_px": 53,
-  "smoke_px": 53,
-  "warm": 0,
-  "cool": 0,
-  "white": 2,
-  "maxv": 154,
-  "bbox_w": 19,
-  "bbox_h": 8,
-  "centroid_off": [
-   -143.5,
-   -144.5
-  ],
-  "right_frac": 0.0
- },
- {
-  "file": "f08_player_impact.png",
-  "family": 8,
-  "kind": "impact",
-  "is_player": true,
-  "fire_px": 2685,
-  "glow_px": 239,
-  "smoke_px": 53,
-  "warm": 0,
-  "cool": 2428,
-  "white": 257,
-  "maxv": 255,
-  "bbox_w": 54,
-  "bbox_h": 121,
-  "centroid_off": [
-   -135.6,
-   -87.0
-  ],
-  "right_frac": 0.0
- },
- {
-  "file": "f08_enemy_muzzle.png",
-  "family": 8,
-  "kind": "muzzle",
-  "is_player": false,
-  "fire_px": 1987,
-  "glow_px": 722,
-  "smoke_px": 246,
-  "warm": 284,
-  "cool": 1617,
-  "white": 72,
-  "maxv": 255,
-  "bbox_w": 122,
-  "bbox_h": 88,
-  "centroid_off": [
-   -86.3,
-   -92.9
-  ],
-  "right_frac": 0.0
- },
- {
-  "file": "f08_enemy_trajectory.png",
-  "family": 8,
-  "kind": "impact",
-  "is_player": false,
-  "fire_px": 2,
-  "glow_px": 53,
-  "smoke_px": 53,
-  "warm": 0,
-  "cool": 0,
-  "white": 2,
-  "maxv": 154,
-  "bbox_w": 19,
-  "bbox_h": 8,
-  "centroid_off": [
-   -143.5,
-   -144.5
-  ],
-  "right_frac": 0.0
- },
- {
-  "file": "f08_enemy_impact.png",
-  "family": 8,
-  "kind": "impact",
-  "is_player": false,
-  "fire_px": 2372,
-  "glow_px": 303,
-  "smoke_px": 53,
-  "warm": 0,
-  "cool": 2060,
-  "white": 307,
-  "maxv": 255,
-  "bbox_w": 51,
-  "bbox_h": 129,
-  "centroid_off": [
-   -137.3,
-   -84.7
-  ],
-  "right_frac": 0.0
- },
- {
-  "file": "f09_player_muzzle.png",
-  "family": 9,
-  "kind": "muzzle",
-  "is_player": true,
-  "fire_px": 5381,
-  "glow_px": 1174,
-  "smoke_px": 518,
-  "warm": 4062,
-  "cool": 381,
-  "white": 901,
-  "maxv": 255,
-  "bbox_w": 167,
-  "bbox_h": 141,
-  "centroid_off": [
-   -11.6,
-   -88.6
-  ],
-  "right_frac": 0.42
- },
- {
-  "file": "f09_player_trajectory.png",
-  "family": 9,
-  "kind": "impact",
-  "is_player": true,
-  "fire_px": 2,
-  "glow_px": 53,
-  "smoke_px": 53,
-  "warm": 0,
-  "cool": 0,
-  "white": 2,
-  "maxv": 154,
-  "bbox_w": 19,
-  "bbox_h": 8,
-  "centroid_off": [
-   -143.5,
-   -144.5
-  ],
-  "right_frac": 0.0
- },
- {
-  "file": "f09_player_impact.png",
-  "family": 9,
-  "kind": "impact",
-  "is_player": true,
-  "fire_px": 9934,
-  "glow_px": 575,
-  "smoke_px": 458,
-  "warm": 6091,
-  "cool": 0,
-  "white": 3843,
-  "maxv": 255,
-  "bbox_w": 96,
-  "bbox_h": 161,
-  "centroid_off": [
-   -113.4,
-   -85.3
-  ],
-  "right_frac": 0.0
- },
- {
-  "file": "f09_enemy_muzzle.png",
-  "family": 9,
-  "kind": "muzzle",
-  "is_player": false,
-  "fire_px": 4778,
-  "glow_px": 1007,
-  "smoke_px": 482,
-  "warm": 3108,
-  "cool": 419,
-  "white": 1251,
-  "maxv": 255,
-  "bbox_w": 122,
-  "bbox_h": 113,
-  "centroid_off": [
-   -109.2,
-   -88.3
-  ],
-  "right_frac": 0.0
- },
- {
-  "file": "f09_enemy_trajectory.png",
-  "family": 9,
-  "kind": "impact",
-  "is_player": false,
-  "fire_px": 2,
-  "glow_px": 53,
-  "smoke_px": 53,
-  "warm": 0,
-  "cool": 0,
-  "white": 2,
-  "maxv": 154,
-  "bbox_w": 19,
-  "bbox_h": 8,
-  "centroid_off": [
-   -143.5,
-   -144.5
-  ],
-  "right_frac": 0.0
- },
- {
-  "file": "f09_enemy_impact.png",
-  "family": 9,
-  "kind": "impact",
-  "is_player": false,
-  "fire_px": 10346,
-  "glow_px": 663,
-  "smoke_px": 570,
-  "warm": 6026,
-  "cool": 0,
-  "white": 4320,
-  "maxv": 255,
-  "bbox_w": 100,
-  "bbox_h": 153,
-  "centroid_off": [
-   -110.5,
-   -86.6
-  ],
-  "right_frac": 0.0
- },
- {
-  "file": "f10_player_muzzle.png",
-  "family": 10,
-  "kind": "muzzle",
-  "is_player": true,
-  "fire_px": 1657,
-  "glow_px": 643,
-  "smoke_px": 198,
-  "warm": 20,
-  "cool": 1596,
-  "white": 37,
-  "maxv": 255,
-  "bbox_w": 183,
-  "bbox_h": 91,
-  "centroid_off": [
-   -66.4,
-   -93.8
-  ],
-  "right_frac": 0.02
- },
- {
-  "file": "f10_player_trajectory.png",
-  "family": 10,
-  "kind": "impact",
-  "is_player": true,
-  "fire_px": 2,
-  "glow_px": 53,
-  "smoke_px": 53,
-  "warm": 0,
-  "cool": 0,
-  "white": 2,
-  "maxv": 154,
-  "bbox_w": 19,
-  "bbox_h": 8,
-  "centroid_off": [
-   -143.5,
-   -144.5
-  ],
-  "right_frac": 0.0
- },
- {
-  "file": "f10_player_impact.png",
-  "family": 10,
-  "kind": "impact",
-  "is_player": true,
-  "fire_px": 12130,
-  "glow_px": 621,
-  "smoke_px": 23,
-  "warm": 1,
-  "cool": 8178,
-  "white": 3951,
-  "maxv": 255,
-  "bbox_w": 131,
-  "bbox_h": 212,
-  "centroid_off": [
-   -111.6,
-   -74.6
-  ],
-  "right_frac": 0.0
- },
- {
-  "file": "f10_enemy_muzzle.png",
-  "family": 10,
-  "kind": "muzzle",
-  "is_player": false,
-  "fire_px": 1653,
-  "glow_px": 804,
-  "smoke_px": 215,
-  "warm": 297,
-  "cool": 1316,
-  "white": 37,
-  "maxv": 255,
-  "bbox_w": 122,
-  "bbox_h": 90,
-  "centroid_off": [
-   -86.2,
-   -93.0
-  ],
-  "right_frac": 0.0
- },
- {
-  "file": "f10_enemy_trajectory.png",
-  "family": 10,
-  "kind": "impact",
-  "is_player": false,
-  "fire_px": 2,
-  "glow_px": 53,
-  "smoke_px": 53,
-  "warm": 0,
-  "cool": 0,
-  "white": 2,
-  "maxv": 154,
-  "bbox_w": 19,
-  "bbox_h": 8,
-  "centroid_off": [
-   -143.5,
-   -144.5
-  ],
-  "right_frac": 0.0
- },
- {
-  "file": "f10_enemy_impact.png",
-  "family": 10,
-  "kind": "impact",
-  "is_player": false,
-  "fire_px": 12429,
-  "glow_px": 715,
-  "smoke_px": 28,
-  "warm": 1,
-  "cool": 8386,
-  "white": 4041,
-  "maxv": 255,
-  "bbox_w": 122,
-  "bbox_h": 187,
-  "centroid_off": [
-   -110.4,
-   -72.5
-  ],
-  "right_frac": 0.0
- },
- {
-  "file": "f11_player_muzzle.png",
-  "family": 11,
-  "kind": "muzzle",
-  "is_player": true,
-  "fire_px": 1589,
-  "glow_px": 736,
-  "smoke_px": 191,
-  "warm": 0,
-  "cool": 1491,
-  "white": 36,
-  "maxv": 255,
-  "bbox_w": 195,
-  "bbox_h": 90,
-  "centroid_off": [
-   -63.4,
-   -93.6
-  ],
-  "right_frac": 0.04
- },
- {
-  "file": "f11_player_trajectory.png",
-  "family": 11,
-  "kind": "impact",
-  "is_player": true,
-  "fire_px": 2,
-  "glow_px": 53,
-  "smoke_px": 53,
-  "warm": 0,
-  "cool": 0,
-  "white": 2,
-  "maxv": 154,
-  "bbox_w": 19,
-  "bbox_h": 8,
-  "centroid_off": [
-   -143.5,
-   -144.5
-  ],
-  "right_frac": 0.0
- },
- {
-  "file": "f11_player_impact.png",
-  "family": 11,
-  "kind": "impact",
-  "is_player": true,
-  "fire_px": 17108,
-  "glow_px": 6442,
-  "smoke_px": 6152,
-  "warm": 1878,
-  "cool": 3207,
-  "white": 12022,
-  "maxv": 255,
-  "bbox_w": 277,
-  "bbox_h": 281,
-  "centroid_off": [
-   -15.8,
-   -72.3
-  ],
-  "right_frac": 0.4
- },
- {
-  "file": "f11_enemy_muzzle.png",
-  "family": 11,
-  "kind": "muzzle",
-  "is_player": false,
-  "fire_px": 1855,
-  "glow_px": 486,
-  "smoke_px": 191,
-  "warm": 0,
-  "cool": 1819,
-  "white": 36,
-  "maxv": 255,
-  "bbox_w": 74,
-  "bbox_h": 88,
-  "centroid_off": [
-   -76.8,
-   -95.2
-  ],
-  "right_frac": 0.0
- },
- {
-  "file": "f11_enemy_trajectory.png",
-  "family": 11,
-  "kind": "impact",
-  "is_player": false,
-  "fire_px": 2,
-  "glow_px": 53,
-  "smoke_px": 53,
-  "warm": 0,
-  "cool": 0,
-  "white": 2,
-  "maxv": 154,
-  "bbox_w": 19,
-  "bbox_h": 8,
-  "centroid_off": [
-   -143.5,
-   -144.5
-  ],
-  "right_frac": 0.0
- },
- {
-  "file": "f11_enemy_impact.png",
-  "family": 11,
-  "kind": "impact",
-  "is_player": false,
-  "fire_px": 14435,
-  "glow_px": 4323,
-  "smoke_px": 3927,
-  "warm": 1947,
-  "cool": 3219,
-  "white": 9263,
-  "maxv": 255,
-  "bbox_w": 277,
-  "bbox_h": 202,
-  "centroid_off": [
-   -18.7,
-   -89.1
-  ],
-  "right_frac": 0.37
- }
-]
+{
+ "calibration": {
+  "scale": 1.0182291666666665,
+  "offset": [
+   -7.124999999999943,
+   -7.671874999999943
+  ]
+ },
+ "cells": [
+  {
+   "file": "f00_enemy_trajectory.png",
+   "kind": "trajectory",
+   "window": [
+    471,
+    797,
+    328,
+    479
+   ],
+   "fire_px": 96,
+   "glow_px": 398,
+   "smoke_px": 0,
+   "warm": 494,
+   "cool": 0,
+   "white": 0,
+   "maxv": 255,
+   "bbox_w": 210,
+   "bbox_h": 38,
+   "bbox_design_w": 206.2,
+   "bbox_design_h": 37.3,
+   "core_bbox_w": 184,
+   "core_bbox_h": 29,
+   "core_bbox_design_w": 180.7,
+   "core_bbox_design_h": 28.5,
+   "centroid_off": [
+    -15.7,
+    0.8
+   ],
+   "right_frac": 0.33,
+   "pellet_blobs": 5,
+   "blob_areas": [
+    10,
+    10,
+    10,
+    6,
+    6
+   ]
+  },
+  {
+   "file": "f00_player_trajectory.png",
+   "kind": "trajectory",
+   "window": [
+    471,
+    797,
+    328,
+    479
+   ],
+   "fire_px": 0,
+   "glow_px": 445,
+   "smoke_px": 0,
+   "warm": 445,
+   "cool": 0,
+   "white": 51,
+   "maxv": 255,
+   "bbox_w": 257,
+   "bbox_h": 38,
+   "bbox_design_w": 252.4,
+   "bbox_design_h": 37.3,
+   "core_bbox_w": 255,
+   "core_bbox_h": 35,
+   "core_bbox_design_w": 250.4,
+   "core_bbox_design_h": 34.4,
+   "centroid_off": [
+    -4.8,
+    1.2
+   ],
+   "right_frac": 0.33,
+   "pellet_blobs": 6,
+   "blob_areas": [
+    71,
+    70,
+    70,
+    54,
+    54,
+    8
+   ]
+  },
+  {
+   "file": "f01_enemy_trajectory.png",
+   "kind": "trajectory",
+   "window": [
+    471,
+    797,
+    328,
+    479
+   ],
+   "fire_px": 1149,
+   "glow_px": 934,
+   "smoke_px": 2,
+   "warm": 4832,
+   "cool": 0,
+   "white": 0,
+   "maxv": 255,
+   "bbox_w": 237,
+   "bbox_h": 44,
+   "bbox_design_w": 232.8,
+   "bbox_design_h": 43.2,
+   "core_bbox_w": 82,
+   "core_bbox_h": 15,
+   "core_bbox_design_w": 80.5,
+   "core_bbox_design_h": 14.7,
+   "centroid_off": [
+    -65.4,
+    -44.0
+   ],
+   "right_frac": 0.09,
+   "pellet_blobs": 2,
+   "blob_areas": [
+    5,
+    4,
+    1,
+    1
+   ]
+  },
+  {
+   "file": "f01_player_trajectory.png",
+   "kind": "trajectory",
+   "window": [
+    471,
+    797,
+    328,
+    479
+   ],
+   "fire_px": 0,
+   "glow_px": 1916,
+   "smoke_px": 917,
+   "warm": 9,
+   "cool": 3,
+   "white": 798,
+   "maxv": 255,
+   "bbox_w": 242,
+   "bbox_h": 47,
+   "bbox_design_w": 237.7,
+   "bbox_design_h": 46.2,
+   "core_bbox_w": 239,
+   "core_bbox_h": 35,
+   "core_bbox_design_w": 234.7,
+   "core_bbox_design_h": 34.4,
+   "centroid_off": [
+    -54.8,
+    -45.4
+   ],
+   "right_frac": 0.17,
+   "pellet_blobs": 18,
+   "blob_areas": [
+    428,
+    168,
+    52,
+    25,
+    20,
+    13,
+    11,
+    10
+   ]
+  },
+  {
+   "file": "f02_enemy_trajectory.png",
+   "kind": "trajectory",
+   "window": [
+    471,
+    797,
+    328,
+    479
+   ],
+   "fire_px": 2462,
+   "glow_px": 1703,
+   "smoke_px": 0,
+   "warm": 7650,
+   "cool": 0,
+   "white": 1,
+   "maxv": 255,
+   "bbox_w": 280,
+   "bbox_h": 65,
+   "bbox_design_w": 275.0,
+   "bbox_design_h": 63.8,
+   "core_bbox_w": 160,
+   "core_bbox_h": 16,
+   "core_bbox_design_w": 157.1,
+   "core_bbox_design_h": 15.7,
+   "centroid_off": [
+    -54.6,
+    -57.2
+   ],
+   "right_frac": 0.22,
+   "pellet_blobs": 3,
+   "blob_areas": [
+    15,
+    13,
+    12
+   ]
+  },
+  {
+   "file": "f02_player_trajectory.png",
+   "kind": "trajectory",
+   "window": [
+    471,
+    797,
+    328,
+    479
+   ],
+   "fire_px": 0,
+   "glow_px": 2620,
+   "smoke_px": 991,
+   "warm": 1,
+   "cool": 21,
+   "white": 1037,
+   "maxv": 255,
+   "bbox_w": 273,
+   "bbox_h": 68,
+   "bbox_design_w": 268.1,
+   "bbox_design_h": 66.8,
+   "core_bbox_w": 261,
+   "core_bbox_h": 58,
+   "core_bbox_design_w": 256.3,
+   "core_bbox_design_h": 57.0,
+   "centroid_off": [
+    -60.1,
+    -56.9
+   ],
+   "right_frac": 0.13,
+   "pellet_blobs": 22,
+   "blob_areas": [
+    156,
+    147,
+    117,
+    114,
+    77,
+    56,
+    48,
+    44
+   ]
+  },
+  {
+   "file": "f03_enemy_trajectory.png",
+   "kind": "trajectory",
+   "window": [
+    471,
+    797,
+    328,
+    479
+   ],
+   "fire_px": 2313,
+   "glow_px": 1766,
+   "smoke_px": 12,
+   "warm": 6521,
+   "cool": 0,
+   "white": 16,
+   "maxv": 255,
+   "bbox_w": 226,
+   "bbox_h": 65,
+   "bbox_design_w": 222.0,
+   "bbox_design_h": 63.8,
+   "core_bbox_w": 70,
+   "core_bbox_h": 17,
+   "core_bbox_design_w": 68.7,
+   "core_bbox_design_h": 16.7,
+   "centroid_off": [
+    -85.6,
+    -41.0
+   ],
+   "right_frac": 0.02,
+   "pellet_blobs": 2,
+   "blob_areas": [
+    33,
+    18,
+    1
+   ]
+  },
+  {
+   "file": "f03_player_trajectory.png",
+   "kind": "trajectory",
+   "window": [
+    471,
+    797,
+    328,
+    479
+   ],
+   "fire_px": 3041,
+   "glow_px": 2188,
+   "smoke_px": 262,
+   "warm": 7467,
+   "cool": 73,
+   "white": 124,
+   "maxv": 255,
+   "bbox_w": 233,
+   "bbox_h": 73,
+   "bbox_design_w": 228.8,
+   "bbox_design_h": 71.7,
+   "core_bbox_w": 152,
+   "core_bbox_h": 29,
+   "core_bbox_design_w": 149.3,
+   "core_bbox_design_h": 28.5,
+   "centroid_off": [
+    -72.6,
+    -43.4
+   ],
+   "right_frac": 0.04,
+   "pellet_blobs": 13,
+   "blob_areas": [
+    83,
+    72,
+    27,
+    24,
+    21,
+    17,
+    9,
+    8
+   ]
+  },
+  {
+   "file": "f04_enemy_trajectory.png",
+   "kind": "trajectory",
+   "window": [
+    471,
+    797,
+    328,
+    479
+   ],
+   "fire_px": 96,
+   "glow_px": 398,
+   "smoke_px": 0,
+   "warm": 494,
+   "cool": 0,
+   "white": 0,
+   "maxv": 255,
+   "bbox_w": 210,
+   "bbox_h": 38,
+   "bbox_design_w": 206.2,
+   "bbox_design_h": 37.3,
+   "core_bbox_w": 184,
+   "core_bbox_h": 29,
+   "core_bbox_design_w": 180.7,
+   "core_bbox_design_h": 28.5,
+   "centroid_off": [
+    -15.7,
+    0.8
+   ],
+   "right_frac": 0.33,
+   "pellet_blobs": 5,
+   "blob_areas": [
+    10,
+    10,
+    10,
+    6,
+    6
+   ]
+  },
+  {
+   "file": "f04_player_trajectory.png",
+   "kind": "trajectory",
+   "window": [
+    471,
+    797,
+    328,
+    479
+   ],
+   "fire_px": 0,
+   "glow_px": 444,
+   "smoke_px": 0,
+   "warm": 444,
+   "cool": 0,
+   "white": 50,
+   "maxv": 255,
+   "bbox_w": 210,
+   "bbox_h": 38,
+   "bbox_design_w": 206.2,
+   "bbox_design_h": 37.3,
+   "core_bbox_w": 207,
+   "core_bbox_h": 35,
+   "core_bbox_design_w": 203.3,
+   "core_bbox_design_h": 34.4,
+   "centroid_off": [
+    -15.7,
+    0.8
+   ],
+   "right_frac": 0.33,
+   "pellet_blobs": 6,
+   "blob_areas": [
+    71,
+    70,
+    54,
+    54,
+    53,
+    8
+   ]
+  },
+  {
+   "file": "f05_enemy_trajectory.png",
+   "kind": "trajectory",
+   "window": [
+    471,
+    797,
+    328,
+    479
+   ],
+   "fire_px": 4803,
+   "glow_px": 3369,
+   "smoke_px": 64,
+   "warm": 9563,
+   "cool": 0,
+   "white": 50,
+   "maxv": 255,
+   "bbox_w": 326,
+   "bbox_h": 95,
+   "bbox_design_w": 320.2,
+   "bbox_design_h": 93.3,
+   "core_bbox_w": 286,
+   "core_bbox_h": 84,
+   "core_bbox_design_w": 280.9,
+   "core_bbox_design_h": 82.5,
+   "centroid_off": [
+    -30.2,
+    -5.9
+   ],
+   "right_frac": 0.3,
+   "pellet_blobs": 6,
+   "blob_areas": [
+    77,
+    26,
+    24,
+    14,
+    6,
+    5,
+    3,
+    2
+   ]
+  },
+  {
+   "file": "f05_player_trajectory.png",
+   "kind": "trajectory",
+   "window": [
+    471,
+    797,
+    328,
+    479
+   ],
+   "fire_px": 1153,
+   "glow_px": 4545,
+   "smoke_px": 383,
+   "warm": 6473,
+   "cool": 29,
+   "white": 2076,
+   "maxv": 255,
+   "bbox_w": 326,
+   "bbox_h": 87,
+   "bbox_design_w": 320.2,
+   "bbox_design_h": 85.4,
+   "core_bbox_w": 326,
+   "core_bbox_h": 82,
+   "core_bbox_design_w": 320.2,
+   "core_bbox_design_h": 80.5,
+   "centroid_off": [
+    -23.6,
+    -9.0
+   ],
+   "right_frac": 0.34,
+   "pellet_blobs": 20,
+   "blob_areas": [
+    1454,
+    352,
+    198,
+    180,
+    175,
+    151,
+    73,
+    53
+   ]
+  },
+  {
+   "file": "f06_enemy_trajectory.png",
+   "kind": "trajectory",
+   "window": [
+    471,
+    797,
+    328,
+    479
+   ],
+   "fire_px": 78,
+   "glow_px": 115,
+   "smoke_px": 1,
+   "warm": 246,
+   "cool": 0,
+   "white": 155,
+   "maxv": 255,
+   "bbox_w": 168,
+   "bbox_h": 13,
+   "bbox_design_w": 165.0,
+   "bbox_design_h": 12.8,
+   "core_bbox_w": 61,
+   "core_bbox_h": 5,
+   "core_bbox_design_w": 59.9,
+   "core_bbox_design_h": 4.9,
+   "centroid_off": [
+    64.5,
+    -9.0
+   ],
+   "right_frac": 0.81,
+   "pellet_blobs": 1,
+   "blob_areas": [
+    158
+   ]
+  },
+  {
+   "file": "f06_player_trajectory.png",
+   "kind": "trajectory",
+   "window": [
+    471,
+    797,
+    328,
+    479
+   ],
+   "fire_px": 20,
+   "glow_px": 83,
+   "smoke_px": 13,
+   "warm": 122,
+   "cool": 0,
+   "white": 240,
+   "maxv": 255,
+   "bbox_w": 176,
+   "bbox_h": 12,
+   "bbox_design_w": 172.8,
+   "bbox_design_h": 11.8,
+   "core_bbox_w": 73,
+   "core_bbox_h": 7,
+   "core_bbox_design_w": 71.7,
+   "core_bbox_design_h": 6.9,
+   "centroid_off": [
+    68.9,
+    -8.3
+   ],
+   "right_frac": 0.79,
+   "pellet_blobs": 1,
+   "blob_areas": [
+    240
+   ]
+  },
+  {
+   "file": "f07_enemy_trajectory.png",
+   "kind": "trajectory",
+   "window": [
+    471,
+    797,
+    328,
+    479
+   ],
+   "fire_px": 430,
+   "glow_px": 467,
+   "smoke_px": 0,
+   "warm": 1500,
+   "cool": 0,
+   "white": 0,
+   "maxv": 255,
+   "bbox_w": 326,
+   "bbox_h": 27,
+   "bbox_design_w": 320.2,
+   "bbox_design_h": 26.5,
+   "core_bbox_w": 3,
+   "core_bbox_h": 3,
+   "core_bbox_design_w": 2.9,
+   "core_bbox_design_h": 2.9,
+   "centroid_off": [
+    -105.3,
+    -95.7
+   ],
+   "right_frac": 0.11,
+   "pellet_blobs": 0,
+   "blob_areas": [
+    3,
+    1
+   ]
+  },
+  {
+   "file": "f07_player_trajectory.png",
+   "kind": "trajectory",
+   "window": [
+    471,
+    797,
+    328,
+    479
+   ],
+   "fire_px": 757,
+   "glow_px": 454,
+   "smoke_px": 21,
+   "warm": 1775,
+   "cool": 0,
+   "white": 23,
+   "maxv": 255,
+   "bbox_w": 326,
+   "bbox_h": 47,
+   "bbox_design_w": 320.2,
+   "bbox_design_h": 46.2,
+   "core_bbox_w": 18,
+   "core_bbox_h": 11,
+   "core_bbox_design_w": 17.7,
+   "core_bbox_design_h": 10.8,
+   "centroid_off": [
+    -26.4,
+    -91.9
+   ],
+   "right_frac": 0.41,
+   "pellet_blobs": 3,
+   "blob_areas": [
+    26,
+    10,
+    5,
+    2,
+    2,
+    1,
+    1,
+    1
+   ]
+  },
+  {
+   "file": "f08_enemy_trajectory.png",
+   "kind": "trajectory",
+   "window": [
+    471,
+    797,
+    328,
+    479
+   ],
+   "fire_px": 0,
+   "glow_px": 1639,
+   "smoke_px": 0,
+   "warm": 1639,
+   "cool": 0,
+   "white": 703,
+   "maxv": 255,
+   "bbox_w": 117,
+   "bbox_h": 24,
+   "bbox_design_w": 114.9,
+   "bbox_design_h": 23.6,
+   "core_bbox_w": 117,
+   "core_bbox_h": 10,
+   "core_bbox_design_w": 114.9,
+   "core_bbox_design_h": 9.8,
+   "centroid_off": [
+    -105.3,
+    -15.7
+   ],
+   "right_frac": 0.0,
+   "pellet_blobs": 1,
+   "blob_areas": [
+    703
+   ]
+  },
+  {
+   "file": "f08_player_trajectory.png",
+   "kind": "trajectory",
+   "window": [
+    471,
+    797,
+    328,
+    479
+   ],
+   "fire_px": 0,
+   "glow_px": 1745,
+   "smoke_px": 0,
+   "warm": 0,
+   "cool": 1745,
+   "white": 751,
+   "maxv": 255,
+   "bbox_w": 125,
+   "bbox_h": 25,
+   "bbox_design_w": 122.8,
+   "bbox_design_h": 24.6,
+   "core_bbox_w": 125,
+   "core_bbox_h": 11,
+   "core_bbox_design_w": 122.8,
+   "core_bbox_design_h": 10.8,
+   "centroid_off": [
+    -101.5,
+    -15.6
+   ],
+   "right_frac": 0.0,
+   "pellet_blobs": 1,
+   "blob_areas": [
+    751
+   ]
+  },
+  {
+   "file": "f09_enemy_trajectory.png",
+   "kind": "trajectory",
+   "window": [
+    471,
+    797,
+    328,
+    479
+   ],
+   "fire_px": 2862,
+   "glow_px": 1670,
+   "smoke_px": 0,
+   "warm": 7537,
+   "cool": 0,
+   "white": 0,
+   "maxv": 255,
+   "bbox_w": 225,
+   "bbox_h": 57,
+   "bbox_design_w": 221.0,
+   "bbox_design_h": 56.0,
+   "core_bbox_w": 105,
+   "core_bbox_h": 19,
+   "core_bbox_design_w": 103.1,
+   "core_bbox_design_h": 18.7,
+   "centroid_off": [
+    -73.0,
+    -63.7
+   ],
+   "right_frac": 0.11,
+   "pellet_blobs": 2,
+   "blob_areas": [
+    31,
+    20,
+    1,
+    1,
+    1
+   ]
+  },
+  {
+   "file": "f09_player_trajectory.png",
+   "kind": "trajectory",
+   "window": [
+    471,
+    797,
+    328,
+    479
+   ],
+   "fire_px": 3784,
+   "glow_px": 2069,
+   "smoke_px": 124,
+   "warm": 8599,
+   "cool": 3,
+   "white": 74,
+   "maxv": 255,
+   "bbox_w": 234,
+   "bbox_h": 68,
+   "bbox_design_w": 229.8,
+   "bbox_design_h": 66.8,
+   "core_bbox_w": 159,
+   "core_bbox_h": 19,
+   "core_bbox_design_w": 156.2,
+   "core_bbox_design_h": 18.7,
+   "centroid_off": [
+    -69.3,
+    -64.1
+   ],
+   "right_frac": 0.11,
+   "pellet_blobs": 7,
+   "blob_areas": [
+    46,
+    41,
+    9,
+    5,
+    5,
+    4,
+    4,
+    3
+   ]
+  },
+  {
+   "file": "f10_enemy_trajectory.png",
+   "kind": "trajectory",
+   "window": [
+    471,
+    797,
+    328,
+    479
+   ],
+   "fire_px": 338,
+   "glow_px": 551,
+   "smoke_px": 235,
+   "warm": 1241,
+   "cool": 131,
+   "white": 22,
+   "maxv": 255,
+   "bbox_w": 118,
+   "bbox_h": 57,
+   "bbox_design_w": 115.9,
+   "bbox_design_h": 56.0,
+   "core_bbox_w": 10,
+   "core_bbox_h": 4,
+   "core_bbox_design_w": 9.8,
+   "core_bbox_design_h": 3.9,
+   "centroid_off": [
+    -118.9,
+    -17.3
+   ],
+   "right_frac": 0.0,
+   "pellet_blobs": 1,
+   "blob_areas": [
+    27
+   ]
+  },
+  {
+   "file": "f10_player_trajectory.png",
+   "kind": "trajectory",
+   "window": [
+    471,
+    797,
+    328,
+    479
+   ],
+   "fire_px": 16,
+   "glow_px": 1985,
+   "smoke_px": 115,
+   "warm": 93,
+   "cool": 2084,
+   "white": 150,
+   "maxv": 255,
+   "bbox_w": 117,
+   "bbox_h": 71,
+   "bbox_design_w": 114.9,
+   "bbox_design_h": 69.7,
+   "core_bbox_w": 65,
+   "core_bbox_h": 18,
+   "core_bbox_design_w": 63.8,
+   "core_bbox_design_h": 17.7,
+   "centroid_off": [
+    -127.7,
+    -17.8
+   ],
+   "right_frac": 0.0,
+   "pellet_blobs": 3,
+   "blob_areas": [
+    204,
+    7,
+    5,
+    2,
+    1,
+    1,
+    1,
+    1
+   ]
+  },
+  {
+   "file": "f11_enemy_trajectory.png",
+   "kind": "trajectory",
+   "window": [
+    471,
+    797,
+    328,
+    479
+   ],
+   "fire_px": 320,
+   "glow_px": 158,
+   "smoke_px": 1,
+   "warm": 568,
+   "cool": 0,
+   "white": 2,
+   "maxv": 255,
+   "bbox_w": 121,
+   "bbox_h": 12,
+   "bbox_design_w": 118.8,
+   "bbox_design_h": 11.8,
+   "core_bbox_w": 11,
+   "core_bbox_h": 4,
+   "core_bbox_design_w": 10.8,
+   "core_bbox_design_h": 3.9,
+   "centroid_off": [
+    -115.3,
+    -16.4
+   ],
+   "right_frac": 0.0,
+   "pellet_blobs": 1,
+   "blob_areas": [
+    16,
+    1
+   ]
+  },
+  {
+   "file": "f11_player_trajectory.png",
+   "kind": "trajectory",
+   "window": [
+    471,
+    797,
+    328,
+    479
+   ],
+   "fire_px": 0,
+   "glow_px": 446,
+   "smoke_px": 41,
+   "warm": 0,
+   "cool": 376,
+   "white": 127,
+   "maxv": 255,
+   "bbox_w": 125,
+   "bbox_h": 16,
+   "bbox_design_w": 122.8,
+   "bbox_design_h": 15.7,
+   "core_bbox_w": 93,
+   "core_bbox_h": 8,
+   "core_bbox_design_w": 91.3,
+   "core_bbox_design_h": 7.9,
+   "centroid_off": [
+    -103.5,
+    -16.3
+   ],
+   "right_frac": 0.0,
+   "pellet_blobs": 2,
+   "blob_areas": [
+    168,
+    11,
+    3,
+    3,
+    2,
+    1
+   ]
+  }
+ ]
+}

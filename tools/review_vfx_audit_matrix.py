@@ -156,6 +156,11 @@ def main():
     # ── 分数徽章注入审查页（figcaption 前缀，按图片文件名定位）──
     if os.path.isfile(HTML_PATH):
         html = open(HTML_PATH, encoding="utf-8").read()
+        # v20.20-fix: 注入不幂等——旧徽章插在 figcaption 与定位锚之间，二次运行
+        # pattern 失配导致只注入部分格（2026-08-27 实测 72 格只注入 47）。先剥旧徽章。
+        html = re.sub(
+            r'<span style="color:#[0-9a-fA-F]{6};font-weight:bold">AI \d+/10</span> ｜ ',
+            '', html)
         injected = 0
         for r in results:
             score = r["result"].get("realism_score", -1)

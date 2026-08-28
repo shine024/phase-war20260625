@@ -1116,19 +1116,16 @@ func _grant_battle_experience(player_won: bool) -> void:
 			instance_ids.append(iid)
 	if instance_ids.is_empty():
 		return
-	# 计算总经验（卡牌 XP 随关卡进度缩放，与相位场升级速度对齐）
-	var base_exp: int = BattleExperienceConfig.BATTLE_WIN_EXP_BASE if player_won else int(float(BattleExperienceConfig.BATTLE_WIN_EXP_BASE) * BattleExperienceConfig.BATTLE_LOSE_EXP_RATIO)
-	# v21.x 修复：卡牌 XP 乘以关卡系数 + 除以 sqrt(cards)
-	# coef=0.11: Lv1→1.0x, Lv9→1.82x, Lv30→3.89x
-	# 除以 sqrt(cards) 让总 XP 池随卡数增长（×sqrt(cards)），但每张效率递减
-	# 相位师Lv30时：1卡→Lv22, 2卡→Lv19, 9卡→Lv14（原9卡仅Lv10）
-	var level_factor: float = 1.0 + float(clampi(current_level, 1, 30) - 1) * 0.11
-	base_exp = int(float(base_exp) * level_factor)
+	# v21.x 重写：经验按关卡数计算（关卡越高经验越多），除以上场卡数
+	# 设计基准（用户定稿 2026-08-26）：9 张卡上场，一个时代 40 场次升到 Lv20+
+	# 公式：胜利 = 关卡数×130，每击杀 = 关卡数；失败按 30% 给
+	var lvl: int = clampi(current_level, 1, 100)
+	var base_exp: int = lvl * 130 if player_won else int(float(lvl) * 130.0 * BattleExperienceConfig.BATTLE_LOSE_EXP_RATIO)
 	# 击杀数：从 BattleManager 获取（如可用）
 	var kill_count: int = 0
 	if BattleManager and BattleManager.has_method("get_player_kill_count"):
 		kill_count = int(BattleManager.get_player_kill_count())
-	var total_exp: int = base_exp + kill_count * BattleExperienceConfig.BATTLE_KILL_EXP
+	var total_exp: int = base_exp + kill_count * lvl
 	# 技能树经验加成
 	var pmsm: Node = get_node_or_null("/root/PhaseMasterSkillManager")
 	if pmsm != null and pmsm.has_method("get_active_effects"):
@@ -1136,9 +1133,8 @@ func _grant_battle_experience(player_won: bool) -> void:
 		var exp_bonus: float = float(effects.get("experience_bonus", 0.0))
 		if exp_bonus > 0.0:
 			total_exp = int(float(total_exp) * (1.0 + exp_bonus))
-	# 平分给上场卡：按 sqrt(cards) 缩放总池，防止多卡阵容升级过慢
-	var card_count: int = instance_ids.size()
-	var per_card: int = int(float(total_exp) * sqrt(float(card_count)) / float(card_count))
+	# 平分给上场卡（设计以 9 卡为基准；少卡时每张更多，升级更快）
+	var per_card: int = int(total_exp / instance_ids.size())
 	if per_card <= 0:
 		return
 	for iid in instance_ids:
