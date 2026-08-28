@@ -17,7 +17,8 @@ const STATE_REPAIRING := 1
 const STATE_ACTIVE := 2
 
 ## 网格几何（bunker_main / bunker_ambient / 生成脚本共用；与烘焙图逐像素对齐）
-## 房间矩形/门位直接写在每条房间定义里（rect/side/tunnel_y/via/door_y/conn_y）
+## 几何真身 = scenes/bunker/bunker_main.tscn 的同名占位块（编辑器拖拽调整）；
+## 本文件保留拓扑（side/via）+ rect 兜底。门位/隧道线由矩形实时推导，无需手填。
 const GRID := {
 	"world_size": Vector2(1280.0, 720.0),
 	"surface_y": 336.0,                                    # 地表土带中心线
@@ -37,9 +38,8 @@ const RES := {
 
 ## 房间定义。字段：
 ##   name: 显示名 / rect: 房间矩形 / side: L|R|C（C=竖井直通房）
-##   tunnel_y: 接竖井的水平隧道中心线（via 房与 C 房无此字段）
-##   via + door_y: 同层门连锁——穿向 via 房（door_y 为门中心线）
-##   conn_y: C 房与竖井的竖直接口中心线
+##   via: 同层门连锁——穿向相邻的 via 房（门位由两房共边自动推导）
+##   tunnel_y/door_y/conn_y 已废弃：全部由场景矩形实时推导
 ##   initial: 初始状态 / cost: 修复成本（资源ID短名→数量）/ battles: 修复耗时（场）
 ##   tag: 功能短标签（房间节点角标）/ flavor: 房间描述（面板正文）
 ##   function_note: 可用后功能说明（P1 占位说明也写这里）
@@ -49,7 +49,8 @@ static func get_all_rooms() -> Array[Dictionary]:
 		{
 			"id": "weather_station",
 			"name": "气象站",
-			"rect": Rect2(60, 232, 210, 110), "side": "L", "via": "monument", "door_y": 287.0,			"initial": STATE_LOCKED,
+			"rect": Rect2(40, 293, 227, 118), "side": "L", "via": "monument",
+			"initial": STATE_LOCKED,
 			"cost": {"nano": 120},
 			"battles": 1,
 			"tag": "地表·观测",
@@ -59,18 +60,18 @@ static func get_all_rooms() -> Array[Dictionary]:
 		{
 			"id": "depot",
 			"name": "仓库",
-			"rect": Rect2(1038, 364, 232, 130), "side": "R", "tunnel_y": 429.0,
+			"rect": Rect2(1039, 419, 232, 130), "side": "R",
 			"initial": STATE_LOCKED,
 			"cost": {"alloy": 150},
 			"battles": 1,
-			"tag": "地表·仓储",
-			"flavor": "上一位守望者留下的金属货架，大部分格子空着，落满灰。",
-			"function_note": "资源存储上限提升（P3 规划）。",
+			"tag": "卡仓·打印",
+			"flavor": "卡墙一格一格亮着，旁边那台纳米打印机还在轻声运转——每一张卡，都是被重新打印出来的。",
+			"function_note": "卡墙展示收藏卡牌（拥有即点亮青框）· 纳米打印台：以纳米与能量块为原料打印卡牌（公司补给渠道）· 存储上限（P3）。",
 		},
 		{
 			"id": "monument",
 			"name": "纪念碑墙",
-			"rect": Rect2(270, 255, 170, 90), "side": "L", "via": "entry_hall", "door_y": 300.0,
+			"rect": Rect2(282, 293, 225, 119), "side": "L", "via": "entry_hall",
 			"initial": STATE_ACTIVE,
 			"cost": {},
 			"battles": 0,
@@ -81,7 +82,7 @@ static func get_all_rooms() -> Array[Dictionary]:
 		{
 			"id": "entry_hall",
 			"name": "入口大厅",
-			"rect": Rect2(440, 192, 350, 150), "side": "C", "conn_y": 280.0,
+			"rect": Rect2(525, 292, 234, 119), "side": "C",
 			"initial": STATE_ACTIVE,
 			"cost": {},
 			"battles": 0,
@@ -92,7 +93,7 @@ static func get_all_rooms() -> Array[Dictionary]:
 		{
 			"id": "dormitory",
 			"name": "陈末的宿舍",
-			"rect": Rect2(30, 364, 232, 130), "side": "L", "tunnel_y": 429.0,
+			"rect": Rect2(34, 421, 232, 130), "side": "L",
 			"initial": STATE_ACTIVE,
 			"cost": {},
 			"battles": 0,
@@ -103,7 +104,7 @@ static func get_all_rooms() -> Array[Dictionary]:
 		{
 			"id": "mess_hall",
 			"name": "食堂",
-			"rect": Rect2(282, 364, 232, 130), "side": "L", "tunnel_y": 429.0,
+			"rect": Rect2(277, 420, 232, 130), "side": "L",
 			"initial": STATE_LOCKED,
 			"cost": {"nano": 200, "alloy": 100},
 			"battles": 1,
@@ -114,7 +115,7 @@ static func get_all_rooms() -> Array[Dictionary]:
 		{
 			"id": "medical",
 			"name": "医疗室",
-			"rect": Rect2(786, 364, 232, 130), "side": "R", "tunnel_y": 429.0,
+			"rect": Rect2(788, 419, 232, 130), "side": "R",
 			"initial": STATE_LOCKED,
 			"cost": {"nano": 150, "alloy": 80},
 			"battles": 1,
@@ -125,8 +126,11 @@ static func get_all_rooms() -> Array[Dictionary]:
 		{
 			"id": "war_room",
 			"name": "兵棋室",
-			"rect": Rect2(30, 508, 232, 130), "side": "L", "via": "dormitory", "door_y": 573.0,
-			"initial": STATE_LOCKED,
+			"rect": Rect2(32, 568, 232, 130), "side": "L", "via": "dormitory",
+			# v22.1（用户 2026-08-28 报告"无法直接进入战斗"）：初始锁定造成 FTUE 死锁——
+			# 兵棋室是基地唯一的出击入口，锁死时新玩家从基地无法进第一关（修复别的房间
+			# 也要打赢战斗才完工，同样被堵死）。改为初始点亮：新档从基地一步直达战区地图。
+			"initial": STATE_ACTIVE,
 			"cost": {"nano": 200},
 			"battles": 1,
 			"tag": "作战·出击",
@@ -136,7 +140,7 @@ static func get_all_rooms() -> Array[Dictionary]:
 		{
 			"id": "workshop",
 			"name": "维修工坊",
-			"rect": Rect2(282, 508, 232, 130), "side": "L", "via": "mess_hall", "door_y": 573.0,
+			"rect": Rect2(278, 569, 232, 130), "side": "L", "via": "mess_hall",
 			"initial": STATE_LOCKED,
 			"cost": {"nano": 300, "crystal": 50},
 			"battles": 2,
@@ -147,7 +151,7 @@ static func get_all_rooms() -> Array[Dictionary]:
 		{
 			"id": "archive",
 			"name": "档案室",
-			"rect": Rect2(534, 364, 232, 130), "side": "C", "conn_y": 429.0,
+			"rect": Rect2(526, 419, 232, 130), "side": "C",
 			"initial": STATE_LOCKED,
 			"cost": {"nano": 100, "energy": 60},
 			"battles": 1,
@@ -158,7 +162,7 @@ static func get_all_rooms() -> Array[Dictionary]:
 		{
 			"id": "comms",
 			"name": "通讯室",
-			"rect": Rect2(1038, 508, 232, 130), "side": "R", "via": "depot", "door_y": 573.0,
+			"rect": Rect2(1036, 570, 232, 130), "side": "R", "via": "depot",
 			"initial": STATE_LOCKED,
 			"cost": {"nano": 250, "crystal": 80},
 			"battles": 2,
@@ -170,7 +174,7 @@ static func get_all_rooms() -> Array[Dictionary]:
 		{
 			"id": "reactor",
 			"name": "反应堆核心",
-			"rect": Rect2(534, 508, 232, 130), "side": "C", "conn_y": 573.0,
+			"rect": Rect2(526, 570, 232, 130), "side": "C",
 			"initial": STATE_LOCKED,
 			"cost": {"alloy": 500, "energy": 200},
 			"battles": 3,
@@ -181,19 +185,32 @@ static func get_all_rooms() -> Array[Dictionary]:
 		{
 			"id": "honor_hall",
 			"name": "荣誉陈列室",
-			"rect": Rect2(786, 508, 232, 130), "side": "R", "via": "medical", "door_y": 573.0,
+			"rect": Rect2(786, 569, 232, 130), "side": "R", "via": "medical",
 			"initial": STATE_LOCKED,
 			"cost": {"nano": 400},
 			"battles": 2,
-			"tag": "深层·纪念",
-			"flavor": "一面三十格的灯阵墙。每一格下面都有一行空白的名牌。",
-			"function_note": "成就 / 收藏（P3 迁入）；纪念墙：为 30 位牺牲的英雄逐一点亮（P3）。",
+			"tag": "荣誉·符文圣所",
+			"flavor": "三十盏灯照着一面墙。先辈的精神没有散去——它们凝成了符文，在灯下轻轻发亮。",
+			"function_note": "纪念墙（30 位牺牲相位师）· 符文圣所：装备符文、搭配符文之语（先辈精神的凝结）· 成就 / 收藏。",
 			"needs_power": true,
+		},
+		{
+			"id": "phase_lab",
+			"name": "相位实验室",
+			"rect": Rect2(769, 293, 232, 118), "side": "L", "via": "entry_hall",
+			# v22.2（用户 2026-08-28 定调）：配卡/配相位仪属于前期必备功能，不设修复门槛——
+			# 符文（荣誉室）/改造（工坊）等养成功能后置，背包在宿舍、出击在兵棋室同样开局即用。
+			"initial": STATE_ACTIVE,
+			"cost": {"nano": 250, "energy": 50},
+			"battles": 1,
+			"tag": "科技·实验",
+			"flavor": "示波器的辉纹还停在昨夜那道波形上。有人在板子上焊完了最后一个芯片。",
+			"function_note": "相位师技能树（电路板主板）+ 相位仪调试（装备槽管理）。",
 		},
 		{
 			"id": "observatory",
 			"name": "观星台",
-			"rect": Rect2(950, 231, 290, 127), "side": "R", "tunnel_y": 352.0,
+			"rect": Rect2(1033, 290, 232, 116), "side": "R",
 			"initial": STATE_LOCKED,
 			"cost": {},
 			"battles": 0,

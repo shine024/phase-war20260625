@@ -212,6 +212,16 @@ func _add_bunker_button() -> void:
 ## v21 余烬要塞：进入基地主枢纽（BunkerManager 懒加载后常驻 root，状态跨场景保留）
 func _on_enter_bunker() -> void:
 	_play_sfx("button")
+	# v22.1 修复（用户 2026-08-28 报告"进基地相位仪空/卡空/无法进战斗"）：
+	# 此前直接切场景——不读档也不开新档，重启游戏后点此按钮内存里什么都没初始化，
+	# 基地呈全空状态（绿槽 0 卡/实例 0/符文 0/作战室锁死）。
+	# 现在与"继续"对齐：有档读档（基地状态随 SK_BUNKER 段恢复）；
+	# 无档自动开新档（starter 三角卡预装备/符文/起步资源全走 start_new_game 正规链）。
+	if SaveManager:
+		if SaveManager.has_save_slot(SaveManager.get_slot()):
+			SaveManager.load_game()
+		else:
+			SaveManager.start_new_game()
 	get_tree().change_scene_to_file("res://scenes/bunker/bunker_main.tscn")
 
 

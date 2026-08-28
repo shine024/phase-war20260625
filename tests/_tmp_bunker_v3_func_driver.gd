@@ -65,8 +65,8 @@ func _phase_a_path_matrix() -> void:
 			hits += 1
 		else:
 			_fail("路径矩阵：%s 未到达或面板标题错误" % rid)
-	if hits == 14:
-		_ok("路径矩阵：入口出发 14/14 全到达（含 via 双跳链 气象→纪念碑→闸塔）")
+	if hits == 15:
+		_ok("路径矩阵：入口出发 15/15 全到达（含 via 双跳链 气象→纪念碑→闸塔）")
 	# 回到宿舍后再次跨层（宿舍→观星台，验证从 via 链中段房间出发）
 	if await _click_and_expect(inst, "observatory", names["observatory"]):
 		_ok("二次路径：宿舍→观星台（隧道房出发）正常")
@@ -96,8 +96,8 @@ func _phase_b_full_repair_cycle() -> void:
 			started += 1
 		else:
 			_fail("%s 修复放行失败: %s" % [r["id"], str(res.get("reason", ""))])
-	if started != 10:
-		_fail("应放行 10 间修复（14-3初始亮-终局），实际 %d" % started)
+	if started != 9:
+		_fail("应放行 9 间修复（15-5初始亮[含v22.1兵棋室/v22.2相位实验室]-终局），实际 %d" % started)
 	for i in 12:
 		mgr.advance_after_battle(true)
 	var active := 0
@@ -111,8 +111,8 @@ func _phase_b_full_repair_cycle() -> void:
 			active += 1
 		else:
 			_fail("%s 全修复周期后未点亮" % rid)
-	if active == 13:
-		_ok("全修复周期：13/13 全点亮，反应堆上线，观星台恒锁")
+	if active == 14:
+		_ok("全修复周期：14/14 全点亮，反应堆上线，观星台恒锁")
 	if not mgr.is_reactor_online():
 		_fail("全修复后反应堆应在线")
 	var cond: Dictionary = mgr.is_observatory_unlockable()
@@ -133,7 +133,7 @@ func _phase_c_slice_align() -> void:
 	var rects: Dictionary = inst.get("_room_rects")
 	var nodes: Dictionary = inst.get("_room_nodes")
 	var ambient: Node2D = inst.get("_ambient")
-	if ambient == null or (ambient.get("_room_rects") as Dictionary).size() != 14:
+	if ambient == null or (ambient.get("_room_rects") as Dictionary).size() != 15:
 		_fail("氛围层未注入 14 房矩形")
 	var aligned := 0
 	for rid in rects:

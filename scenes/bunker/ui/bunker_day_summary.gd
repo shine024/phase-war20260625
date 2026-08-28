@@ -20,7 +20,8 @@ var _body_label: RichTextLabel
 var _continue_btn: Button
 
 func _ready() -> void:
-	set_anchors_preset(Control.PRESET_FULL_RECT)
+	# 同 room_panel：入树后设锚点必须连偏移一起归零，否则全屏锚点被抵消
+	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	visible = false
 	_build()

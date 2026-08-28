@@ -414,7 +414,64 @@ def scheme10():
     return im
 
 
-SCHEMES = [scheme1, scheme2, scheme3, scheme4, scheme5, scheme6, scheme7, scheme8, scheme9, scheme10]
+
+# ---------- 方案 11 晨昏大陆（7+10 杂交） ----------
+def _lerp3(a, b, t):
+    return tuple(int(a[i] + (b[i] - a[i]) * t) for i in range(3))
+
+
+def scheme11():
+    im, d = new_canvas("方案 11 · 晨昏大陆「黑日战线」（7 光照 + 10 骨架）",
+                       "大陆横跨晨昏线 · 天色即进度（每 20 关暗一档）· 黑日三幕：暗星→黑日→巨门")
+    # 光照渐变长卷（穿过大陆剪影）
+    warm, midc, dark = (150, 105, 60), (70, 78, 100), (10, 12, 20)
+    grad = Image.new("RGB", (W, H), BG)
+    gd = ImageDraw.Draw(grad)
+    for x in range(90, W - 60):
+        t = (x - 90) / (W - 150)
+        c = _lerp3(warm, midc, t / 0.55) if t < 0.55 else _lerp3(midc, dark, (t - 0.55) / 0.45)
+        gd.line([(x, 150), (x, 660)], fill=c)
+    land = [(110, 240), (360, 190), (620, 210), (860, 180), (1120, 230),
+            (1150, 480), (1000, 620), (700, 660), (400, 630), (140, 520)]
+    mask = Image.new("L", (W, H), 0)
+    ImageDraw.Draw(mask).polygon(land, fill=255)
+    im.paste(grad, (0, 0), mask)
+    d.polygon(land, outline=(120, 130, 150), width=2)
+    # 天光标签
+    d.text((150, 122), "西 · 永昼（金黄）", font=font(14, True), fill=(255, 210, 140))
+    d.text((560, 122), "中 · 晨昏（蓝灰）", font=font(14, True), fill=(170, 185, 215))
+    d.text((980, 122), "东 · 极夜", font=font(14, True), fill=(150, 170, 210))
+    # 山脉 + 基地
+    for mx, my in ((210, 330), (260, 300), (310, 335)):
+        d.polygon([(mx, my), (mx + 26, my - 34), (mx + 52, my)], fill=(46, 40, 34))
+    base_mark(d, (240, 360), "山脉地下掩体（余烬要塞）")
+    # 五区蛇形战线（同 10）
+    x0, x1, y0, dy = 260, 1010, 270, 84
+    n = 0
+    for k in range(5):
+        y = y0 + k * dy
+        for j in range(20):
+            t = j / 19.0
+            wave = math.sin(t * math.pi) * (26 if k % 2 else -26)
+            dot(d, (x0 + t * (x1 - x0), y + wave + 16), ERAS[k][1], r=5.5)
+            n += 1
+        d.text((x0 - 10, y - 22), f"{ERAS[k][0]} {k * 20 + 1}-{k * 20 + 20}",
+               font=font(13), fill=ERAS[k][1])
+    assert n == 100
+    # 黑日三幕：随战线升高变大（同一颗，三个进度档位）
+    suns = [(1085, 500, 7, "1-49 暗星"), (1115, 400, 20, "50-89 黑日"), (1148, 290, 42, "90-100 巨门")]
+    arc = [(1085, 500), (1100, 450), (1115, 400), (1130, 345), (1148, 290)]
+    for i in range(len(arc) - 1):
+        d.line([arc[i], arc[i + 1]], fill=(0, 120, 140), width=1)
+    for sx, sy, sr, lab in suns:
+        d.ellipse([sx - sr, sy - sr, sx + sr, sy + sr], fill=(2, 2, 4), outline=CYAN, width=2)
+        d.text((sx - 18, sy + sr + 6), lab, font=font(12), fill=CYAN)
+    arrow(d, (1040, 300), (1100, 300))
+    d.text((430, 690), "战线自西向东推进 · 天色随进度变暗 · 门在吞光", font=font(16), fill=CYAN)
+    legend(d)
+    return im
+
+SCHEMES = [scheme1, scheme2, scheme3, scheme4, scheme5, scheme6, scheme7, scheme8, scheme9, scheme10, scheme11]
 
 
 def main():
@@ -426,11 +483,12 @@ def main():
         im.save(path)
         thumbs.append((i, im))
         print(f"[ok] {path}")
-    # 对照表 2×5
+    # 对照表 2 列动态行
     tw, th = 610, 390
-    sheet = Image.new("RGB", (tw * 2 + 60, th * 5 // 2 + 130), BG)
+    rows = (len(thumbs) + 1) // 2
+    sheet = Image.new("RGB", (tw * 2 + 60, th * (rows + 1) // 2 + 130 + (rows - 2) * (th // 2 + 7)), BG)
     ds = ImageDraw.Draw(sheet)
-    ds.text((60, 28), "百灯群岛 · 十方案布局对照", font=font(30, True), fill=INK)
+    ds.text((60, 28), "百灯群岛 · 方案布局对照", font=font(30, True), fill=INK)
     for idx, (i, im) in enumerate(thumbs):
         row, col = divmod(idx, 2)
         x, y = 40 + col * (tw + 20), 90 + row * (th + 14)

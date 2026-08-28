@@ -1,34 +1,34 @@
 extends Control
-## 余烬要塞 P3 · 纪念墙（荣誉陈列室嵌入面板）
-## 10×3 灯阵：纯手工定位（不依赖容器布局），确保全显。
-## 点击亮灯显示英雄名；closed 信号对接嵌入包装层。
+## 余烬要塞 v22 · 纪念墙（纪念碑墙/荣誉陈列室嵌入面板）
+## 30 盏灯 = 30 位牺牲相位师。击败驻守相位师带回遗物 → 灯亮，点击读名。
+## v22：锚点修正（anchors+offsets，修入树后锚点被抵消导致出屏）；
+##       面板框架/按钮走 PanelStyles 工厂 + 灯阵 GridContainer 化 + 逐灯 tooltip。
 
 signal closed
 
 const DT = preload("res://resources/design_tokens.gd")
+const PanelStyles = preload("res://scripts/ui/panel_styles.gd")
 const EnemyPhaseMasters = preload("res://data/enemy_phase_masters.gd")
 
-const COL_LIT := Color(1.0, 0.82, 0.45)
-const COL_LIT_GLOW := Color(1.0, 0.72, 0.3, 0.30)
+const ACCENT := Color(1.0, 0.82, 0.45)          # 烛光琥珀
+const COL_LIT := Color(1.0, 0.84, 0.5)
+const COL_LIT_GLOW := Color(1.0, 0.72, 0.3, 0.28)
 const COL_DARK := Color(0.16, 0.17, 0.20)
-const COL_DARK_RING := Color(0.28, 0.28, 0.33)
+const COL_DARK_RING := Color(0.30, 0.30, 0.36)
 
 const GRID_COLS := 10
 const GRID_ROWS := 3
-const LAMP_SIZE := Vector2(60, 60)
-const LAMP_H_SEP := 12
-const LAMP_V_SEP := 16
-const PAD_LEFT := 24.0
+const LAMP_CELL := Vector2(58, 58)
 
 var _lamp_controls: Array[Control] = []
 var _lamp_masters: Array = []
 var _name_label: Label
 var _count_label: Label
 var _pulse_tween: Tween
-var _host: Control   # 灯阵宿主（自绘），尺寸在 _layout_lamps() 时读取
 
 func _ready() -> void:
-	set_anchors_preset(Control.PRESET_FULL_RECT)
+	# ⚠️ 入树后设锚点必须连偏移一起归零（v22 全弹层统一修正，防出屏）
+	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	_load_masters()
 	_build()
@@ -46,109 +46,130 @@ func _load_masters() -> void:
 
 func _build() -> void:
 	var center := CenterContainer.new()
-	center.set_anchors_preset(Control.PRESET_FULL_RECT)
+	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(center)
 
 	var panel := PanelContainer.new()
-	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	panel.custom_minimum_size = Vector2(0, 600)
-	var sb := StyleBoxFlat.new()
-	sb.bg_color = Color(0.05, 0.055, 0.09, 0.99)
-	sb.border_color = Color(1.0, 0.82, 0.45, 0.55)
-	sb.set_border_width_all(2)
-	sb.set_corner_radius_all(DT.CORNER_RADIUS)
-	sb.set_content_margin_all(DT.PADDING_LARGE)
-	panel.add_theme_stylebox_override("panel", sb)
+	panel.custom_minimum_size = Vector2(780, 0)
+	panel.add_theme_stylebox_override("panel", PanelStyles.make_panel_frame(ACCENT))
 	center.add_child(panel)
 
-	var outer := VBoxContainer.new()
-	outer.add_theme_constant_override("separation", 10)
-	outer.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	outer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	panel.add_child(outer)
+	var inner := PanelContainer.new()
+	var inner_sb := StyleBoxFlat.new()
+	inner_sb.bg_color = Color(0.05, 0.055, 0.09, 0.94)
+	inner_sb.set_corner_radius_all(10)
+	inner_sb.set_content_margin_all(20.0)
+	inner.add_theme_stylebox_override("panel", inner_sb)
+	panel.add_child(inner)
 
-	# 标题行
+	var vbox := VBoxContainer.new()
+	vbox.add_theme_constant_override("separation", 12)
+	inner.add_child(vbox)
+
+	# 标题行：发光竖条 + 标题 + 计数芯片 + 关闭
 	var title_row := HBoxContainer.new()
-	outer.add_child(title_row)
+	title_row.add_theme_constant_override("separation", 10)
+	vbox.add_child(title_row)
+
+	var bar := Panel.new()
+	bar.custom_minimum_size = Vector2(4, 0)
+	bar.size_flags_vertical = Control.SIZE_FILL
+	bar.add_theme_stylebox_override("panel", PanelStyles.make_title_accent_bar(ACCENT))
+	title_row.add_child(bar)
+
 	var title := Label.new()
 	title.text = "纪念墙"
-	title.add_theme_font_size_override("font_size", DT.FONT_SIZE_TITLE - 6)
+	title.add_theme_font_size_override("font_size", DT.FONT_SIZE_LARGE)
 	title.add_theme_color_override("font_color", DT.COLOR_TEXT_BRIGHT)
 	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	title_row.add_child(title)
+
 	_count_label = Label.new()
-	_count_label.add_theme_font_size_override("font_size", DT.FONT_SIZE_BODY)
-	_count_label.add_theme_color_override("font_color", Color(1.0, 0.82, 0.45))
+	_count_label.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
+	_count_label.add_theme_color_override("font_color", ACCENT)
+	var chip_sb := StyleBoxFlat.new()
+	chip_sb.bg_color = Color(ACCENT.r, ACCENT.g, ACCENT.b, 0.12)
+	chip_sb.border_color = Color(ACCENT.r, ACCENT.g, ACCENT.b, 0.45)
+	chip_sb.set_border_width_all(1)
+	chip_sb.set_corner_radius_all(4)
+	chip_sb.content_margin_left = 8.0
+	chip_sb.content_margin_right = 8.0
+	chip_sb.content_margin_top = 3.0
+	chip_sb.content_margin_bottom = 3.0
+	_count_label.add_theme_stylebox_override("normal", chip_sb)
 	title_row.add_child(_count_label)
+
 	var close_btn := Button.new()
 	close_btn.text = "✕"
-	close_btn.pressed.connect(func(): closed.emit())
+	close_btn.focus_mode = Control.FOCUS_NONE
+	close_btn.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	var styles: Dictionary = PanelStyles.make_button_styles(ACCENT, "ghost")
+	for key in ["normal", "hover", "pressed", "disabled", "focus"]:
+		close_btn.add_theme_stylebox_override(key, styles[key])
+	close_btn.pressed.connect(func(): SignalBus.play_sound.emit("button"); closed.emit())
 	title_row.add_child(close_btn)
 
+	# 引文提示
 	var hint := Label.new()
 	hint.text = "每一盏灯，都是一个名字。——击败驻守的相位师，把他们的遗物带回来。"
 	hint.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
 	hint.add_theme_color_override("font_color", DT.COLOR_TEXT_DIM)
-	outer.add_child(hint)
+	vbox.add_child(hint)
 
-	# ── 灯阵宿主（自绘控制）：手动计算 10×3 网格位置 ──
-	_host = Control.new()
-	_host.custom_minimum_size = Vector2(800, 240)
-	_host.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_host.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	_host.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_host.draw.connect(_on_host_draw)   # 重绘所有灯
-	outer.add_child(_host)
+	# 灯阵槽（深槽底 + 网格）
+	var slot := PanelContainer.new()
+	var slot_sb := StyleBoxFlat.new()
+	slot_sb.bg_color = Color(0.035, 0.04, 0.065, 0.9)
+	slot_sb.border_color = Color(1, 1, 1, 0.06)
+	slot_sb.set_border_width_all(1)
+	slot_sb.set_corner_radius_all(8)
+	slot_sb.set_content_margin_all(14.0)
+	slot.add_theme_stylebox_override("panel", slot_sb)
+	vbox.add_child(slot)
+
+	var grid := GridContainer.new()
+	grid.columns = GRID_COLS
+	grid.add_theme_constant_override("h_separation", 10)
+	grid.add_theme_constant_override("v_separation", 12)
+	slot.add_child(grid)
 
 	for i in range(_lamp_masters.size()):
 		var lamp := Control.new()
-		lamp.custom_minimum_size = LAMP_SIZE
-		lamp.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-		lamp.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-		lamp.mouse_filter = Control.MOUSE_FILTER_STOP
+		lamp.custom_minimum_size = LAMP_CELL
+		lamp.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 		var idx := i
+		var m: Dictionary = _lamp_masters[i]
+		lamp.tooltip_text = "第 %02d 位 · %s" % [i + 1, m["name"]] if _is_lit(i) \
+			else "第 %02d 位 · ？？？（带回遗物点亮）" % [i + 1]
 		lamp.draw.connect(func(): _draw_lamp(lamp, idx))
 		lamp.gui_input.connect(_on_lamp_input.bind(idx))
-		_host.add_child(lamp)
+		grid.add_child(lamp)
 		_lamp_controls.append(lamp)
-	# 延迟一帧：等 _host.size 稳定后居中布局
-	call_deferred("_layout_lamps")
+
+	# 名字展示区（引文风）
+	var quote := PanelContainer.new()
+	var quote_sb := StyleBoxFlat.new()
+	quote_sb.bg_color = Color(1, 1, 1, 0.04)
+	quote_sb.border_color = Color(ACCENT.r, ACCENT.g, ACCENT.b, 0.35)
+	quote_sb.border_width_left = 2
+	quote_sb.set_corner_radius_all(4)
+	quote_sb.content_margin_left = 12.0
+	quote_sb.content_margin_right = 10.0
+	quote_sb.content_margin_top = 8.0
+	quote_sb.content_margin_bottom = 8.0
+	quote.add_theme_stylebox_override("panel", quote_sb)
+	vbox.add_child(quote)
 
 	_name_label = Label.new()
 	_name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_name_label.add_theme_font_size_override("font_size", DT.FONT_SIZE_LARGE)
+	_name_label.add_theme_font_size_override("font_size", DT.FONT_SIZE_MEDIUM)
 	_name_label.add_theme_color_override("font_color", Color(1.0, 0.9, 0.7))
-	_name_label.text = " "
-	outer.add_child(_name_label)
+	_name_label.text = "（点击亮起的灯，读一个名字）"
+	_name_label.custom_minimum_size = Vector2(0, 26)
+	quote.add_child(_name_label)
 
 	_start_pulse()
 	refresh()
-
-## 定位 10×3 灯阵（在 _host 尺寸稳定后调用）
-func _layout_lamps() -> void:
-	if _lamp_controls.is_empty() or _host == null:
-		return
-	var hw := _host.size.x
-	if hw <= 0:
-		return
-	var cols := GRID_COLS
-	var cell_w := LAMP_SIZE.x + LAMP_H_SEP
-	var cell_h := LAMP_SIZE.y + LAMP_V_SEP
-	var total_w := cols * cell_w - LAMP_H_SEP
-	var gap_x := (hw - total_w) * 0.5
-	var pad_y := 8.0
-	for i in range(_lamp_controls.size()):
-		var col_i := i % cols
-		var row_i := i / cols
-		var lamp := _lamp_controls[i]
-		lamp.position = Vector2(PAD_LEFT + gap_x + col_i * cell_w, pad_y + row_i * cell_h)
-		lamp.size = LAMP_SIZE
-
-## 宿主自绘：背景深槽
-func _on_host_draw() -> void:
-	if _host == null:
-		return
-	_host.draw_rect(Rect2(Vector2.ZERO, _host.size), Color(0.04, 0.045, 0.07), true)
 
 func _is_lit(idx: int) -> bool:
 	var mgr: Node = get_node_or_null("/root/BunkerManager")
@@ -159,13 +180,22 @@ func _is_lit(idx: int) -> bool:
 func _draw_lamp(lamp: Control, idx: int) -> void:
 	var c := lamp.size * 0.5
 	if _is_lit(idx):
-		lamp.draw_circle(c, 22.0, COL_LIT_GLOW)
-		lamp.draw_circle(c, 7.0, COL_LIT)
+		# 烛心：三层光晕 + 亮核 + 底座刻线
+		lamp.draw_circle(c, 24.0, COL_LIT_GLOW)
+		lamp.draw_circle(c, 12.0, Color(1.0, 0.78, 0.42, 0.32))
+		lamp.draw_circle(c, 5.5, COL_LIT)
+		lamp.draw_rect(Rect2(c.x - 9.0, c.y + 20.0, 18.0, 2.0),
+			Color(1.0, 0.82, 0.45, 0.35))
 	else:
-		lamp.draw_arc(c, 7.0, 0, TAU, 16, COL_DARK_RING, 1.5)
-		lamp.draw_circle(c, 5.0, COL_DARK)
+		# 熄灯：暗环 + 空心 + 微弱基座
+		lamp.draw_arc(c, 8.0, 0, TAU, 20, COL_DARK_RING, 1.5)
+		lamp.draw_circle(c, 5.5, COL_DARK)
+		lamp.draw_rect(Rect2(c.x - 9.0, c.y + 20.0, 18.0, 2.0),
+			Color(1, 1, 1, 0.08))
 
 func _start_pulse() -> void:
+	if DT.is_motion_reduce():
+		return
 	if _pulse_tween and _pulse_tween.is_valid():
 		_pulse_tween.kill()
 	_pulse_tween = create_tween().set_loops()
@@ -192,5 +222,8 @@ func refresh() -> void:
 		if _is_lit(i):
 			lit += 1
 	_count_label.text = "%d / 30" % lit
-	for lamp in _lamp_controls:
-		lamp.queue_redraw()
+	for i in range(_lamp_controls.size()):
+		var m: Dictionary = _lamp_masters[i]
+		_lamp_controls[i].tooltip_text = ("第 %02d 位 · %s" % [i + 1, m["name"]]) if _is_lit(i) \
+			else "第 %02d 位 · ？？？（带回遗物点亮）" % [i + 1]
+		_lamp_controls[i].queue_redraw()

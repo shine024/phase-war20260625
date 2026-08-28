@@ -180,7 +180,8 @@ func _get_phase_instrument_content() -> String:
 [b][color=#88ccff]◆ 符文槽[/color][/b]
 - 符文槽存放[color=#cc88ff]符文[/color]，提供被动增益（最多 6 格）
 - 特定符文组合可激活[color=#eeee44]符文之语[/color]，获得额外套装效果
-- 符文通过战斗掉落与日常任务获得
+- 符文是牺牲的相位师们精神的凝结——击败驻守相位师后掉落，也可在势力商店获取
+- 荣誉陈列室的符文圣所是符文的安放处：装备符文、搭配符文之语
 
 [b][color=#88ccff]◆ 相位场等级与属性点[/color][/b]
 - 战斗积累相位场经验，相位场等级 [color=#88ee88]Lv1-30[/color]

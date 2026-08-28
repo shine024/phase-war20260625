@@ -1,20 +1,6 @@
-; Phase War 全局默认主题（v7.x 界面一致性修复）
-; 统一默认字体为 Rajdhani-Regular + 基础字号 16。
-; 未设 theme_override 的 Label/Button 自动继承此默认值。
-; 按类型的字号阶（标题/数据等）仍由各面板用 theme_override_font_sizes 单独设。
-; 2026-08-22 P1（B1）：全局滚动条四态——原为引擎默认细滚动条无状态，
-; 覆盖全部 30+ 面板的 ScrollContainer（原文标准："连滚动条都有选中和长按状态"）。
-; 色值取自 DesignTokens 语义族的降饱和变体（track=BORDER 系、grabber=青系）。
-[gd_resource type="Theme" load_steps=10 format=3]
+[gd_resource type="Theme" load_steps=6 format=3 uid="uid://bx0vwi8tvdwaf"]
 
-[ext_resource type="FontFile" path="res://assets/fonts/Rajdhani-Regular.ttf" id="1_body"]
-
-[sub_resource type="StyleBoxFlat" id="sb_scroll_track"]
-content_margin_left = 5.0
-content_margin_top = 3.0
-content_margin_right = 5.0
-content_margin_bottom = 3.0
-bg_color = Color(0.08, 0.1, 0.15, 0.55)
+[ext_resource type="FontFile" uid="uid://4faxfgclrl00" path="res://assets/fonts/Rajdhani-Regular.ttf" id="1_body"]
 
 [sub_resource type="StyleBoxFlat" id="sb_grabber"]
 bg_color = Color(0.25, 0.35, 0.42, 0.75)
@@ -37,14 +23,21 @@ corner_radius_top_right = 3
 corner_radius_bottom_right = 3
 corner_radius_bottom_left = 3
 
+[sub_resource type="StyleBoxFlat" id="sb_scroll_track"]
+content_margin_left = 5.0
+content_margin_top = 3.0
+content_margin_right = 5.0
+content_margin_bottom = 3.0
+bg_color = Color(0.08, 0.1, 0.15, 0.55)
+
 [resource]
 default_font = ExtResource("1_body")
 default_font_size = 16
-VScrollBar/styles/scroll = SubResource("sb_scroll_track")
-VScrollBar/styles/grabber = SubResource("sb_grabber")
-VScrollBar/styles/grabber_highlight = SubResource("sb_grabber_hl")
-VScrollBar/styles/grabber_pressed = SubResource("sb_grabber_pressed")
-HScrollBar/styles/scroll = SubResource("sb_scroll_track")
 HScrollBar/styles/grabber = SubResource("sb_grabber")
 HScrollBar/styles/grabber_highlight = SubResource("sb_grabber_hl")
 HScrollBar/styles/grabber_pressed = SubResource("sb_grabber_pressed")
+HScrollBar/styles/scroll = SubResource("sb_scroll_track")
+VScrollBar/styles/grabber = SubResource("sb_grabber")
+VScrollBar/styles/grabber_highlight = SubResource("sb_grabber_hl")
+VScrollBar/styles/grabber_pressed = SubResource("sb_grabber_pressed")
+VScrollBar/styles/scroll = SubResource("sb_scroll_track")

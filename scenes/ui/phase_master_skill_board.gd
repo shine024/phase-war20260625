@@ -60,10 +60,10 @@ const PIN_OFFSETS: Array = [-14, 0, 14]   # 每侧 3 引脚的偏移
 const CHAMFER := 8.0                       # 45° 倒角边长
 
 # ── 电路结构件配色（结构中性色；语义色一律走 DesignTokens / 分支色 / 奇点紫）──
-const PIN_METAL := Color(0.24, 0.30, 0.40, 1)     # 引脚金属（暗铁灰）
-const DIE_DARK := Color(0.09, 0.13, 0.21, 1)      # 断路管芯
-const TRACE_DEAD := Color(0.13, 0.16, 0.24, 1)    # 断路走线
-const GRID_LINE := Color(1.0, 1.0, 1.0, 0.035)    # 层分隔线
+const PIN_METAL := Color(0.32, 0.40, 0.52, 1)     # 引脚金属（亮铁灰）
+const DIE_DARK := Color(0.14, 0.19, 0.29, 1)      # 断路管芯
+const TRACE_DEAD := Color(0.19, 0.24, 0.36, 1)    # 断路走线
+const GRID_LINE := Color(1.0, 1.0, 1.0, 0.05)     # 层分隔线
 
 # id -> {lane, slot, tier, x, y, chip, node}
 var _node_geo: Dictionary = {}
@@ -390,7 +390,7 @@ class SubstrateLayer:
 		_vignette_tex.fill_to = Vector2(1.05, 0.5)
 		var gv := Gradient.new()
 		gv.offsets = PackedFloat32Array([0.0, 0.7, 1.0])
-		gv.colors = PackedColorArray([Color(0, 0, 0, 0), Color(0, 0, 0, 0), Color(0, 0, 0, 0.38)])
+		gv.colors = PackedColorArray([Color(0, 0, 0, 0), Color(0, 0, 0, 0), Color(0, 0, 0, 0.20)])
 		_vignette_tex.gradient = gv
 		# 轨道洗色（纵向渐淡，乘分支色后为轨道晕染）
 		_wash_tex = GradientTexture2D.new()
@@ -402,7 +402,7 @@ class SubstrateLayer:
 		_wash_tex.gradient = gw
 
 	func _draw() -> void:
-		draw_rect(Rect2(Vector2.ZERO, size), DT.COLOR_VOID)
+		draw_rect(Rect2(Vector2.ZERO, size), DT.COLOR_PANEL_DEEP)
 		if _via_tex != null:
 			draw_texture_rect(_via_tex, Rect2(Vector2.ZERO, size), true)
 		# 轨道基质洗色（分支色纵向渐淡，三轨基板有可感知的色差）
@@ -413,10 +413,10 @@ class SubstrateLayer:
 			var lx := MARGIN_L + RULER_W + i * (LANE_W + LANE_GAP)
 			if _wash_tex != null:
 				draw_texture_rect(_wash_tex, Rect2(Vector2(lx, zone_top), Vector2(LANE_W, zone_h)),
-						false, Color(SkillTree.get_branch_color(String(LANE_ORDER[i])), 0.07))
+						false, Color(SkillTree.get_branch_color(String(LANE_ORDER[i])), 0.09))
 			else:
 				draw_rect(Rect2(Vector2(lx, zone_top), Vector2(LANE_W, zone_h)),
-						Color(SkillTree.get_branch_color(String(LANE_ORDER[i])), 0.03))
+						Color(SkillTree.get_branch_color(String(LANE_ORDER[i])), 0.04))
 		# 对位十字（轨道边界的装配基准标记，PCB 丝印意象）
 		var plus_col := Color(1, 1, 1, 0.05)
 		for i in LANE_ORDER.size():
@@ -438,14 +438,14 @@ class SubstrateLayer:
 		draw_line(Vector2(MARGIN_L + RULER_W, deep_y), Vector2(size.x - MARGIN_R, deep_y), Color(1.0, 1.0, 1.0, 0.10))
 		var font := get_theme_default_font()
 		draw_string(font, Vector2(size.x * 0.5 - 70, deep_y - 4), "深层电路 DEEP CIRCUIT",
-				HORIZONTAL_ALIGNMENT_LEFT, -1, DT.FONT_SIZE_SMALL, Color(DT.COLOR_TEXT_MID, 0.45))
+				HORIZONTAL_ALIGNMENT_LEFT, -1, DT.FONT_SIZE_SMALL, Color(DT.COLOR_TEXT_MID, 0.6))
 		# 四角安装孔
 		for p in [Vector2(13, 20), Vector2(size.x - 13, 20), Vector2(13, size.y - 13), Vector2(size.x - 13, size.y - 13)]:
 			draw_circle(p, 4.2, Color(0, 0, 0, 0.6))
 			draw_arc(p, 6.0, 0, TAU, 32, Color(0.55, 0.62, 0.75, 0.35), 1.5, true)
 		# 底部丝印
 		draw_string(font, Vector2(size.x * 0.5 - 90, size.y - 4), "PHW-SKILL-MB REV 22.1 · 74 NODES",
-				HORIZONTAL_ALIGNMENT_LEFT, -1, DT.FONT_SIZE_XSMALL, Color(1, 1, 1, 0.20))
+				HORIZONTAL_ALIGNMENT_LEFT, -1, DT.FONT_SIZE_XSMALL, Color(1, 1, 1, 0.30))
 		# tier 标尺：刻度 + 标签（每 5 层加长刻度；纯英文/数字 10px 合规）
 		for t in TIERS:
 			var ty := HEADER_H + t * ROW_H + CHIP * 0.5
@@ -502,7 +502,7 @@ class TraceLayer:
 				# 奇点走线略宽于分支走线（主线/支线的层级感）
 				var lw := 4.0 if bool(ed["cap"]) else 3.5
 				var gw := 10.0 if bool(ed["cap"]) else 9.0
-				draw_polyline(pts, Color(col, 0.16), gw, true)
+				draw_polyline(pts, Color(col, 0.20), gw, true)
 				draw_polyline(pts, col, lw, true)
 				# 端点焊盘：圆环锡盘（环 + 孔）
 				for ep in [pts[0], pts[pts.size() - 1]]:
@@ -758,15 +758,15 @@ class ChipWidget:
 				ChipState.STANDBY:
 					_name_label.add_theme_color_override("font_color", DT.COLOR_GOLD)
 				_:
-					_name_label.add_theme_color_override("font_color", Color(DT.COLOR_TEXT_DIM, 0.8))
+					_name_label.add_theme_color_override("font_color", DT.COLOR_TEXT_MID)
 		if _die_label != null:
 			match s:
 				ChipState.POWERED:
 					_die_label.add_theme_color_override("font_color", Color(1, 1, 1, 0.95))
 				ChipState.STANDBY:
-					_die_label.add_theme_color_override("font_color", Color(DT.COLOR_GOLD, 0.75))
+					_die_label.add_theme_color_override("font_color", Color(DT.COLOR_GOLD, 0.85))
 				_:
-					_die_label.add_theme_color_override("font_color", Color(DT.COLOR_TEXT_DIM, 0.30))
+					_die_label.add_theme_color_override("font_color", Color(DT.COLOR_TEXT_MID, 0.45))
 		if _cost_label != null:
 			if s == ChipState.POWERED:
 				_cost_label.add_theme_color_override("font_color", Color(DT.COLOR_TEXT_DIM, 0.8))
@@ -798,13 +798,13 @@ class ChipWidget:
 		var bw := 1.0
 		match state:
 			ChipState.POWERED:
-				pkg_fill = Color(ring, 0.18)
+				pkg_fill = Color(ring, 0.26)
 				border_col = ring
 				bw = 3.0 if is_capstone else 2.0
 			ChipState.STANDBY:
-				pkg_fill = Color(DT.COLOR_GOLD, 0.10)
+				pkg_fill = Color(DT.COLOR_GOLD, 0.16)
 			_:
-				pkg_fill = DT.COLOR_SLOT_LOCKED
+				pkg_fill = DT.COLOR_CARD
 		var half := CHIP * 0.5
 		# 悬停柔光（在封装下层，一圈极淡的外晕）
 		if hover and interactive:

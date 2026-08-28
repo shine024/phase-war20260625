@@ -23,6 +23,7 @@ const EMBEDDED_PANELS := {
 	"modification": "res://scenes/ui/modification_panel.tscn",
 	"evolution": "res://scenes/ui/evolution_panel.tscn",
 	"growth": "res://scenes/ui/growth_panel.tscn",
+	"phase_master_skill": "res://scenes/ui/phase_master_skill_panel.tscn",
 	"store": "res://scenes/ui/store_panel.tscn",
 	"faction": "res://scenes/ui/faction_panel.tscn",
 	"afk": "res://scenes/ui/afk_panel.tscn",
@@ -59,6 +60,7 @@ var _stage_overlay: ColorRect
 var _stage_label: Label
 var _monologue_label: Label
 var _monologue_timer: Timer
+var _ui_stage: Control = null      # v22：固定 1280×720 UI 舞台（expand 画布下面板居中不漂移）
 var _is_night := false
 var _pending_room_id := ""
 var _current_room_id := "entry_hall"   # 光点所在房（寻路 via 链起点）
@@ -94,7 +96,7 @@ func _exit_tree() -> void:
 
 # ───────────────────────── 背景 ─────────────────────────
 
-## 整体大背景图铺底：1280×720 固定尺寸（不随 expand 画布拉伸）
+## 整体大背景图铺底：场景内已有 BG 节点（编辑器可视化用）则只补 expand 底色
 func _build_big_background() -> void:
 	# expand 画布比 720 高时底部会露出默认灰底——先铺一层近黑（读作地下暗部）
 	var backdrop := ColorRect.new()
@@ -102,6 +104,12 @@ func _build_big_background() -> void:
 	backdrop.set_anchors_preset(Control.PRESET_FULL_RECT)
 	backdrop.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(backdrop)
+	if has_node("BG"):
+		# 场景自带 BG TextureRect（1280×720 固定，编辑器可见）。
+		# ⚠️ draw 顺序=子节点索引：add_child 把底色块追加到末尾，会盖住 BG 图，
+		# 运行时整张烘焙背景（星空/岩层）变黑——必须把底色块挪到最底层（index 0）。
+		move_child(backdrop, 0)
+		return
 	var tex := load(BG_PATH) as Texture2D
 	if tex == null:
 		push_error("[BunkerMain] 背景图缺失: %s（先跑 tools/generate_bunker_bg_v3.py）" % BG_PATH)
@@ -119,17 +127,19 @@ func _build_big_background() -> void:
 
 func _build_rooms() -> void:
 	for def in BunkerRoomDefs.get_all_rooms():
+		# 布局唯一真身 = 场景同名占位块（编辑器可视化拖拽调整）；
+		# 节点缺失时回退 defs 的 rect 兜底。
+		var ph := get_node_or_null(NodePath(str(def["id"]))) as ColorRect
+		var rect: Rect2 = Rect2(ph.position, ph.size) if ph != null else def["rect"]
+		if ph != null:
+			ph.visible = false   # 占位块仅供编辑器摆位，运行时隐藏
 		var node = RoomOverlayScript.new()
-		var rect = _room_rect(def)
 		node.setup(def["id"], rect.position.x, rect.position.y, rect.size.x, rect.size.y)
 		node.room_clicked.connect(_on_room_clicked)
 		node.relit.connect(_on_room_relit)
 		add_child(node)
 		_room_nodes[def["id"]] = node
 		_room_rects[def["id"]] = rect
-
-func _room_rect(def: Dictionary) -> Rect2:
-	return def["rect"]
 
 func _refresh_all_rooms() -> void:
 	if _manager == null:
@@ -162,25 +172,30 @@ func _on_room_clicked(room_id: String) -> void:
 	_monologue_timer.stop()
 	_dot.move_to(_path_to_room(room_id))
 
-## 房间 → 竖井的离房路点序列（via 门连锁递归 → 隧道房 → 竖井直通房）
+## 房间 → 竖井的离房路点序列（via 门连锁递归 → 隧道房 → 竖井直通房）。
+## v22：门位/隧道线全部由矩形实时推导（占位块拖到哪，线跟到哪）——
+## C 房接口 = 房中心；via 门 = 共边垂直重叠中点；隧道 = 房中心高。
 func _exit_points(room_id: String) -> Array:
 	var def := BunkerRoomDefs.get_room(room_id)
 	if def.is_empty():
 		return []
 	var side := str(def.get("side", "L"))
-	var rect: Rect2 = def["rect"]
+	var rect: Rect2 = _room_rects[room_id]
 	if side == "C":
-		return [Vector2(_shaft_cx(), float(def["conn_y"]))]
+		return [Vector2(_shaft_cx(), rect.get_center().y)]
 	if def.has("via"):
-		var via := BunkerRoomDefs.get_room(str(def["via"]))
+		var via_id := str(def["via"])
+		var via := BunkerRoomDefs.get_room(via_id)
 		if via.is_empty():
 			return []
-		var via_rect: Rect2 = via["rect"]
+		var via_rect: Rect2 = _room_rects[via_id]
 		var door_x := rect.end.x if via_rect.position.x > rect.position.x else rect.position.x
-		var pts: Array = [Vector2(door_x, float(def["door_y"])), via_rect.get_center()]
-		pts.append_array(_exit_points(str(def["via"])))
+		var door_y := (maxf(rect.position.y, via_rect.position.y)
+			+ minf(rect.end.y, via_rect.end.y)) * 0.5
+		var pts: Array = [Vector2(door_x, door_y), via_rect.get_center()]
+		pts.append_array(_exit_points(via_id))
 		return pts
-	var ty := float(def["tunnel_y"])
+	var ty := rect.get_center().y
 	var door_x := rect.position.x if side == "R" else rect.end.x
 	return [Vector2(door_x, ty), Vector2(_shaft_cx(), ty)]
 
@@ -214,11 +229,22 @@ func _on_dot_arrived() -> void:
 # ───────────────────────── UI 层 ─────────────────────────
 
 func _build_ui_layers() -> void:
+	# v22：UI 舞台——固定 1280×720 顶层容器。项目 stretch=expand 时画布会高于 720
+	# （如 1028×720 窗口 → 1280×896），全屏锚点的居中容器会按 896 居中导致面板
+	# 漂移/出屏；所有弹层挂进本舞台后一律按 720 设计高度居中，永不越界。
+	_ui_stage = Control.new()
+	_ui_stage.name = "UiStage"
+	_ui_stage.position = Vector2.ZERO
+	_ui_stage.size = Vector2(1280, 720)
+	_ui_stage.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(_ui_stage)
+	var stage := _ui_stage
+
 	_night_tint = ColorRect.new()
 	_night_tint.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_night_tint.color = Color(0.01, 0.02, 0.06, 0.0)
 	_night_tint.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(_night_tint)
+	stage.add_child(_night_tint)
 
 	_monologue_label = Label.new()
 	_monologue_label.anchor_left = 0.1
@@ -230,7 +256,7 @@ func _build_ui_layers() -> void:
 	_monologue_label.add_theme_color_override("font_color", Color(0.72, 0.82, 0.95, 0.85))
 	_monologue_label.modulate.a = 0.0
 	_monologue_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(_monologue_label)
+	stage.add_child(_monologue_label)
 
 	_monologue_timer = Timer.new()
 	_monologue_timer.wait_time = 5.0
@@ -251,24 +277,24 @@ func _build_ui_layers() -> void:
 		_hud.call("refresh_all_day_state")
 		_sync_dot_sanity())
 	_panel.open_embedded_panel_requested.connect(_open_embedded_panel)
-	add_child(_panel)
+	stage.add_child(_panel)
 
 	_embed_layer = Control.new()
 	_embed_layer.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_embed_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(_embed_layer)
+	stage.add_child(_embed_layer)
 
 	_day_summary = DaySummaryScript.new()
 	_day_summary.closed.connect(func():
 		_day_summary.call("close")
 		_check_stage_transition())
-	add_child(_day_summary)
+	stage.add_child(_day_summary)
 
 	_stage_overlay = ColorRect.new()
 	_stage_overlay.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_stage_overlay.color = Color(0.0, 0.0, 0.0, 0.0)
 	_stage_overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(_stage_overlay)
+	stage.add_child(_stage_overlay)
 	_stage_label = Label.new()
 	_stage_label.anchor_left = 0.15
 	_stage_label.anchor_right = 0.85
@@ -280,11 +306,11 @@ func _build_ui_layers() -> void:
 	_stage_label.add_theme_color_override("font_color", Color(0.9, 0.85, 0.72))
 	_stage_label.modulate.a = 0.0
 	_stage_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(_stage_label)
+	stage.add_child(_stage_label)
 
 	_hud = HudScript.new()
 	_hud.back_to_title_requested.connect(_on_back_to_title)
-	add_child(_hud)
+	stage.add_child(_hud)
 	if _manager:
 		_hud.call("refresh_day", _manager.get_day())
 		_hud.call("refresh_sanity", _manager.get_sanity())
@@ -331,14 +357,27 @@ func _on_sleep() -> void:
 # ───────────────────── P2: 嵌入面板 ─────────────────────
 
 func _open_embedded_panel(panel_id: String) -> void:
-	if not EMBEDDED_PANELS.has(panel_id):
+	# 伪面板路由：runes/instruments = 复用背包实例并直达对应页签（不双开面板）
+	var target_id := panel_id
+	if panel_id == "runes" or panel_id == "instruments":
+		target_id = "backpack"
+	if not EMBEDDED_PANELS.has(target_id):
 		return
 	_panel.call("close")
-	var wrapper: Control = _ensure_embed_wrapper(panel_id)
+	var wrapper: Control = _ensure_embed_wrapper(target_id)
 	if wrapper == null:
 		return
+	if target_id == "backpack":
+		var bp: Control = _embed_wrappers["backpack"]["panel"]
+		match panel_id:
+			"runes":
+				if bp.has_method("switch_to_runes_tab"):
+					bp.call("switch_to_runes_tab")
+			"instruments":
+				if bp.has_method("switch_to_phase_instruments_tab"):
+					bp.call("switch_to_phase_instruments_tab")
 	wrapper.visible = true
-	var p: Control = _embed_wrappers[panel_id]["panel"]
+	var p: Control = _embed_wrappers[target_id]["panel"]
 	if p.has_method("refresh"):
 		p.call("refresh")
 
@@ -369,14 +408,18 @@ func _ensure_embed_wrapper(panel_id: String) -> Control:
 	wrapper.visible = false
 
 	var dim := ColorRect.new()
-	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
-	dim.color = Color(0, 0, 0, 0.6)
+	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	dim.color = Color(0, 0, 0, 0.45)
 	dim.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	wrapper.add_child(dim)
 
 	var center := CenterContainer.new()
-	center.set_anchors_preset(Control.PRESET_FULL_RECT)
+	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	wrapper.add_child(center)
+	# 脚本型面板（.gd）根是裸 Control（min=0），会被 CenterContainer 折成 0×0
+	# 挤到屏幕中心点、内容往右下溢出半屏——给满舞台最小尺寸，内部全屏锚点才能展开
+	if not path.ends_with(".tscn"):
+		panel.custom_minimum_size = Vector2(1280, 720)
 	center.add_child(panel)
 
 	if panel.has_signal("closed"):

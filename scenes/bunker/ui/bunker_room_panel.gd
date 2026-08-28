@@ -30,11 +30,15 @@ var _title_label: Label
 var _state_chip: Label
 var _flavor_label: RichTextLabel
 var _action_box: VBoxContainer
+var _close_btn: Button
 var _dim: ColorRect
 var _panel: PanelContainer
 
 func _ready() -> void:
-	set_anchors_preset(Control.PRESET_FULL_RECT)
+	# ⚠️ 必须用 anchors_AND_offsets 版本：set_anchors_preset 在节点已入树时会
+	# "保持当前可见矩形"（size=0 → 偏移被烘焙成 -宽/-高），全屏锚点被抵消，
+	# 面板会缩在左上角（v22 之前"面板出屏"bug 的根因）。
+	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	visible = false
 	_build()
@@ -60,19 +64,24 @@ func _build() -> void:
 	_dim.color = Color(0, 0, 0, 0.55)
 	add_child(_dim)
 
-	# 右侧锚定卡片：anchor 右缘 x=1 / 垂直居中，固定 400×580，右边距 24。
+	# 右侧锚定卡片：右对齐 + 垂直居中 + 高度自适应内容（固定宽 400）。
 	# 确定性定位——expand 画布/任意窗口尺寸下都不可能裁切出屏。
+	var hbox := HBoxContainer.new()
+	hbox.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	hbox.alignment = BoxContainer.ALIGNMENT_END
+	hbox.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(hbox)
+
+	var margin := MarginContainer.new()
+	margin.add_theme_constant_override("margin_right", 24)
+	margin.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	margin.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	hbox.add_child(margin)
+
 	_panel = PanelContainer.new()
-	_panel.anchor_left = 1.0
-	_panel.anchor_right = 1.0
-	_panel.anchor_top = 0.5
-	_panel.anchor_bottom = 0.5
-	_panel.offset_left = -424.0
-	_panel.offset_right = -24.0
-	_panel.offset_top = -290.0
-	_panel.offset_bottom = 290.0
+	_panel.custom_minimum_size = Vector2(400, 0)
 	_panel.add_theme_stylebox_override("panel", PanelStyles.make_panel_frame(ACCENT))
-	add_child(_panel)
+	margin.add_child(_panel)
 
 	var inner := PanelContainer.new()
 	var inner_sb := StyleBoxFlat.new()
@@ -275,6 +284,12 @@ func _build_repairing_actions(room_id: String, progress: float) -> void:
 	pct.add_theme_color_override("font_color", WARN_COL)
 	_action_box.add_child(pct)
 
+	# v22.1：修复中的房间直接给出击入口——修复进度靠"完成战斗"推进，
+	# 玩家正站在这间房里时不该再绕去别处找打仗入口。
+	var battle_btn := _make_button("前往战场 —— 完成战斗推进修复", "solid",
+		func(): go_to_battle_requested.emit(), 44)
+	_action_box.add_child(battle_btn)
+
 func _build_active_actions(room_id: String) -> void:
 	var note := _make_info_label()
 	note.text = str(_def.get("function_note", ""))
@@ -289,6 +304,11 @@ func _build_active_actions(room_id: String) -> void:
 		"monument":
 			_add_embedded_buttons([
 				["纪念碑", "memorial"],
+			])
+		"phase_lab":
+			_add_embedded_buttons([
+				["相位师技能 · 电路板主板", "phase_master_skill"],
+				["相位仪调试 · 装备槽", "instruments"],
 			])
 		"dormitory":
 			var sleep_btn := _make_button("睡觉 —— 推进天数 · 精神 +20 · 存档",
@@ -331,7 +351,12 @@ func _build_active_actions(room_id: String) -> void:
 				["英雄档案", "hero_archive"],
 				["情报中心", "intelligence"],
 			])
+		"depot":
+			_action_box.add_child(_make_button("打印卡牌 —— 纳米打印机 · 公司补给",
+				"solid", func(): open_embedded_panel_requested.emit("store"), 44))
 		"honor_hall":
+			_action_box.add_child(_make_button("符文圣所 —— 装备符文 · 搭配符文之语",
+				"solid", func(): open_embedded_panel_requested.emit("runes"), 44))
 			_add_embedded_buttons([
 				["纪念墙", "memorial"],
 				["成就", "achievement"],

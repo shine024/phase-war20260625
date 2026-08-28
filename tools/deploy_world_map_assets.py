@@ -1,27 +1,34 @@
 # -*- coding: utf-8 -*-
 """
-deploy_world_map_assets.py —— 百灯群岛世界地图生图后处理与部署
-输入：docs/地图重设计/generated/*.jpeg（13 张：白底精灵 + 2 张整幅底图）
+deploy_world_map_assets.py —— 世界地图生图后处理与部署
+输入：docs/地图重设计/generated/*.jpeg
 输出：assets/map/*.png
-  - map_void_base  ：整幅不透明，宽 < 2560 时 LANCZOS 放大到 2560（平移画布余量）
-  - gate_near      ：整幅不透明，原样转存
-  - debris_sheet   ：白底→透明后按 4×2 网格切片 → debris_1..8.png（各片独立裁边）
-  - 其余精灵       ：边缘泛洪白底→透明（保留内部高光）→ alpha 裁边
-白底转透明流程与 deploy_bunker_v2.py 同源。
+流程分四类：
+  1. 整幅底图（BASES）：map_void_base / gate_near 原样转存；dawn_dusk_continent 放大 2560×1440
+  2. 网格切片表（SLICES）：debris_sheet 4×2 → debris_1..8
+  3. 连通域切片（COMPONENT_SHEETS）：wreck_sheet_land 白转透明后按连通域拆 8 件 → wreck_1..8
+     （该图 8 件错落排布，非规整网格，固定网格切会切坏件）
+  4. 圆形蒙版（CIRCLE_MASKS）：black_sun 深底不能用白转透明，按圆心+羽化半径出 alpha
+  其余精灵：边缘泛洪白底→透明（保留内部高光）→ alpha 裁边
 用法：python tools/deploy_world_map_assets.py
 """
 import os
 from collections import deque
 
-from PIL import Image
+from PIL import Image, ImageDraw, ImageFilter
 
 SRC = r"docs/地图重设计/generated"
 DST = r"assets/map"
 
-# 不做透明处理的整幅底图
-BASES = {"map_void_base", "gate_near"}
-# 网格切片表
+# 不做透明处理的整幅底图（dawn_dusk_continent 额外放大到画布尺寸）
+BASES = {"map_void_base", "gate_near", "dawn_dusk_continent"}
+BASE_UPSCALE = {"dawn_dusk_continent": (2560, 1440)}
+# 规整网格切片表
 SLICES = {"debris_sheet": (4, 2)}  # (cols, rows)
+# 连通域切片表（件数上限，取最大连通域）
+COMPONENT_SHEETS = {"wreck_sheet_land": 8}
+# 圆形蒙版表：{名: (圆心相对cx,cy, 半径占边长比, 羽化px)}
+CIRCLE_MASKS = {"black_sun": (0.5, 0.5, 0.44, 14)}
 VOID_TARGET_W = 2560
 
 
@@ -88,6 +95,64 @@ def slice_sheet(im, cols, rows, prefix):
     return n
 
 
+def component_split(im, max_items, prefix, min_area=900):
+    """连通域拆件：白转透明图上按 alpha>8 做 4 邻接 BFS 标记，取面积最大的前 max_items 件。"""
+    w, h = im.size
+    a = im.getchannel("A")
+    apx = a.load()
+    label = bytearray(w * h)  # 0=未访问 1=已访问
+    comps = []  # (area, x0,y0,x1,y1, 像素索引列表首)——大图存索引太费，改为二次收集
+    heads = []
+    for sy in range(h):
+        for sx in range(w):
+            if apx[sx, sy] > 8 and not label[sy * w + sx]:
+                area = 0
+                x0, y0, x1, y1 = sx, sy, sx, sy
+                dq = deque([(sx, sy)])
+                label[sy * w + sx] = 1
+                while dq:
+                    x, y = dq.popleft()
+                    area += 1
+                    if x < x0: x0 = x
+                    if x > x1: x1 = x
+                    if y < y0: y0 = y
+                    if y > y1: y1 = y
+                    for nx, ny in ((x+1, y), (x-1, y), (x, y+1), (x, y-1)):
+                        if 0 <= nx < w and 0 <= ny < h:
+                            j = ny * w + nx
+                            if not label[j] and apx[nx, ny] > 8:
+                                label[j] = 1
+                                dq.append((nx, ny))
+                if area >= min_area:
+                    heads.append((area, x0, y0, x1, y1))
+    heads.sort(reverse=True)
+    n = 0
+    for area, x0, y0, x1, y1 in heads[:max_items]:
+        pad = 6
+        box = (max(0, x0 - pad), max(0, y0 - pad),
+               min(w, x1 + 1 + pad), min(h, y1 + 1 + pad))
+        cell = im.crop(box)
+        n += 1
+        out_name = f"{prefix}_{n}.png"
+        cell.save(os.path.join(DST, out_name))
+        print(f"[comp ] {out_name:24s} {cell.size[0]}x{cell.size[1]}  area={area}")
+    return n
+
+
+def circle_mask(im, cx_r, cy_r, r_ratio, feather):
+    """圆形 alpha 蒙版：圆内不透明、边缘羽化、圆外全透明（用于深底圆形主体）。"""
+    im = im.convert("RGBA")
+    w, h = im.size
+    mask = Image.new("L", (w, h), 0)
+    d = ImageDraw.Draw(mask)
+    r = r_ratio * max(w, h)
+    cx, cy = w * cx_r, h * cy_r
+    d.ellipse([cx - r, cy - r, cx + r, cy + r], fill=255)
+    mask = mask.filter(ImageFilter.GaussianBlur(feather))
+    im.putalpha(mask)
+    return autocrop(im)
+
+
 def main():
     os.makedirs(DST, exist_ok=True)
     files = sorted(f for f in os.listdir(SRC) if f.lower().endswith((".jpeg", ".jpg", ".png")))
@@ -97,21 +162,33 @@ def main():
         im = Image.open(os.path.join(SRC, f))
         if name in BASES:
             out = im.convert("RGB")
-            if name == "map_void_base" and out.width < VOID_TARGET_W:
+            if name in BASE_UPSCALE:
+                tw, th = BASE_UPSCALE[name]
+                out = out.resize((tw, th), Image.LANCZOS)
+            elif name == "map_void_base" and out.width < VOID_TARGET_W:
                 ratio = VOID_TARGET_W / out.width
                 out = out.resize((VOID_TARGET_W, round(out.height * ratio)), Image.LANCZOS)
             out.save(os.path.join(DST, name + ".png"))
             print(f"[base ] {name:24s} {im.size[0]}x{im.size[1]} → {out.size[0]}x{out.size[1]}")
+        elif name in CIRCLE_MASKS:
+            cx_r, cy_r, r_ratio, feather = CIRCLE_MASKS[name]
+            out = circle_mask(im, cx_r, cy_r, r_ratio, feather)
+            out.save(os.path.join(DST, name + ".png"))
+            print(f"[circle] {name:23s} {im.size[0]}x{im.size[1]} → {out.size[0]}x{out.size[1]} RGBA")
         elif name in SLICES:
             cols, rows = SLICES[name]
             transparent = flood_white_to_alpha(im)
-            sliced = slice_sheet(transparent, cols, rows, "debris")
+            sliced += slice_sheet(transparent, cols, rows, "debris")
             print(f"[sheet] {name:24s} {im.size[0]}x{im.size[1]} → {sliced} 张切片")
+        elif name in COMPONENT_SHEETS:
+            transparent = flood_white_to_alpha(im)
+            n = component_split(transparent, COMPONENT_SHEETS[name], "wreck")
+            print(f"[sheet] {name:24s} {im.size[0]}x{im.size[1]} → {n} 件连通域")
         else:
             out = autocrop(flood_white_to_alpha(im))
             out.save(os.path.join(DST, name + ".png"))
             print(f"[sprite] {name:23s} {im.size[0]}x{im.size[1]} → {out.size[0]}x{out.size[1]} RGBA")
-    print(f"\n部署完成 → {DST}（{len(files) - 1} 张输入：{len(BASES)} 底图 + {sliced} 切片 + 其余精灵直出）")
+    print(f"\n部署完成 → {DST}")
 
 
 if __name__ == "__main__":

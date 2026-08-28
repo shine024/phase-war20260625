@@ -43,10 +43,10 @@ func _finish() -> void:
 func _phase1_manager_logic() -> void:
 	# 1) 房间定义完整性
 	var rooms := BunkerRoomDefs.get_all_rooms()
-	if rooms.size() != 14:
-		_fail("房间定义应为 14，实际 %d" % rooms.size())
+	if rooms.size() != 15:
+		_fail("房间定义应为 15，实际 %d" % rooms.size())
 	else:
-		_ok("房间定义 14 间齐备")
+		_ok("房间定义 15 间齐备")
 	var id_set := {}
 	for r in rooms:
 		var rid: String = r["id"]
@@ -85,42 +85,47 @@ func _phase1_manager_logic() -> void:
 	if mgr.get_room_state("entry_hall") != BunkerRoomDefs.STATE_ACTIVE \
 			or mgr.get_room_state("dormitory") != BunkerRoomDefs.STATE_ACTIVE:
 		_fail("入口大厅/宿舍应为初始可用")
-	if mgr.get_room_state("war_room") != BunkerRoomDefs.STATE_LOCKED:
-		_fail("兵棋室初始应为废弃")
+	# v22.1：兵棋室改初始可用（基地唯一出击入口，锁死=FTUE 无法进第一关）
+	if mgr.get_room_state("war_room") != BunkerRoomDefs.STATE_ACTIVE:
+		_fail("兵棋室初始应为可用（v22.1 FTUE 直达出击）")
+	# v22.2：相位实验室改初始可用（用户定调：配卡/配相位仪属前期必备，不设修复门槛）
+	if mgr.get_room_state("phase_lab") != BunkerRoomDefs.STATE_ACTIVE:
+		_fail("相位实验室初始应为可用（v22.2 前期必备）")
 	if mgr.get_day() != 1 or absf(mgr.get_sanity() - 100.0) > 0.01:
 		_fail("初始天数/精神值应为 1/100")
-	_ok("初始状态正确（大厅+宿舍可用，天数1，精神100）")
+	_ok("初始状态正确（大厅+宿舍+兵棋室+相位实验室可用，天数1，精神100）")
 
-	# 4) 资源不足拒绝修复
-	var poor: Dictionary = mgr.start_repair("war_room")
+	# 4) 资源不足拒绝修复（v22.1 起验证对象换仓库——兵棋室已初始点亮）
+	var poor: Dictionary = mgr.start_repair("depot")
 	if poor.get("ok", true):
 		_fail("资源不足时不应放行修复")
-	# 5) 调试资源 → 修复放行 + 扣除
+	# 5) 调试资源 → 修复放行 + 扣除（三次发放：仓库150+反应堆500合金/200能量 都够）
 	mgr.debug_grant_resources()
 	mgr.debug_grant_resources()
-	var nano_before: int = BasicResourceManager.get_total(BunkerRoomDefs.res_full_id("nano"))
-	var res: Dictionary = mgr.start_repair("war_room")
+	mgr.debug_grant_resources()
+	var alloy_before: int = BasicResourceManager.get_total(BunkerRoomDefs.res_full_id("alloy"))
+	var res: Dictionary = mgr.start_repair("depot")
 	if not res.get("ok", false):
 		_fail("资源充足时修复应放行: " + str(res.get("reason", "")))
-	if mgr.get_room_state("war_room") != BunkerRoomDefs.STATE_REPAIRING:
+	if mgr.get_room_state("depot") != BunkerRoomDefs.STATE_REPAIRING:
 		_fail("修复启动后状态应为修复中")
-	var nano_after: int = BasicResourceManager.get_total(BunkerRoomDefs.res_full_id("nano"))
-	if nano_after != nano_before - 200:
-		_fail("修复应扣除纳米200（前 %d 后 %d）" % [nano_before, nano_after])
-	_ok("修复经济：资源校验/放行/扣除200纳米 全链路正确")
+	var alloy_after: int = BasicResourceManager.get_total(BunkerRoomDefs.res_full_id("alloy"))
+	if alloy_after != alloy_before - 150:
+		_fail("修复应扣除合金150（前 %d 后 %d）" % [alloy_before, alloy_after])
+	_ok("修复经济：资源校验/放行/扣除150合金 全链路正确")
 
 	# 6) 信号发射计数
 	var signal_hits := [0]
 	var watcher := func(_rid: String, _st: int) -> void: signal_hits[0] += 1
 	SignalBus.bunker_room_state_changed.connect(watcher)
 
-	# 7) 战斗推进：war_room battles=1 → 一场完成
+	# 7) 战斗推进：depot battles=1 → 一场完成
 	var completed: Array = mgr.advance_after_battle(true)
-	if not completed.has("war_room") or mgr.get_room_state("war_room") != BunkerRoomDefs.STATE_ACTIVE:
-		_fail("一场战斗后兵棋室应修复完成: " + str(completed))
+	if not completed.has("depot") or mgr.get_room_state("depot") != BunkerRoomDefs.STATE_ACTIVE:
+		_fail("一场战斗后仓库应修复完成: " + str(completed))
 	if absf(mgr.get_sanity() - 90.0) > 0.01:
 		_fail("胜利应扣精神10（实际 %.0f）" % mgr.get_sanity())
-	_ok("战斗推进：兵棋室 1 场修复完成，精神 100→90")
+	_ok("战斗推进：仓库 1 场修复完成，精神 100→90")
 
 	# 8) 电力规则：上层（食堂）靠备用电池不冻结，1 场修复完成
 	var res2: Dictionary = mgr.start_repair("mess_hall")
@@ -199,13 +204,13 @@ func _phase2_scene_instantiation() -> void:
 
 	# 1) 核心子结构
 	var room_nodes: Dictionary = inst.get("_room_rects")
-	if room_nodes.size() != 14:
-		_fail("主场景房间矩形应为 14，实际 %d" % room_nodes.size())
+	if room_nodes.size() != 15:
+		_fail("主场景房间矩形应为 15，实际 %d" % room_nodes.size())
 	if inst.get("_dot") == null:
 		_fail("光点主角未创建")
 	if inst.get("_hud") == null or inst.get("_panel") == null:
 		_fail("HUD/房间面板未创建")
-	_ok("主场景结构：14 房间 + 光点 + HUD + 面板 齐备")
+	_ok("主场景结构：15 房间 + 光点 + HUD + 面板 齐备")
 
 	# 2) 跨场景状态保留（Phase1 修好的反应堆在场景里仍为可用）
 	if inst.get("_manager") == null:

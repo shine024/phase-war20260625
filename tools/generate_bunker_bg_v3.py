@@ -2,42 +2,96 @@
 """
 generate_bunker_bg_v3.py —— 基地 v3 大底图烘焙（胶囊 + 一体外壳，720 单屏）
 输入：docs/基地重设计/generated3/{shell_full, cap_*}.jpeg
-输出：assets/bunker/v3/bunker_bg_v3.png（初始 3 亮 11 涂黑）
+      data/bunker_room_defs.gd（布局唯一真身——rect/side/tunnel_y/via/door_y/conn_y/shaft）
+输出：assets/bunker/v3/bunker_bg_v3.png（初始亮暗按 gd 的 initial 字段）
       assets/bunker/v3/bunker_bg_v3_lit.png（全亮）
       assets/bunker/v3/cap_*.png（透明底胶囊，留档复用）
-流程：shell_full 缩放到 1280x720 做底 → 按 GRID 画嵌套暗腔 → 胶囊 aspect-fit 嵌入
-      （锁定=舱内涂黑）→ 隧道/竖井 → 反应堆辉光。
+流程：shell_full 缩放到 1280x720 做底 → 岩层覆盖 → 按 gd GRID 画嵌套暗腔 →
+      胶囊 aspect-fill 贴底嵌入（锁定=舱内涂黑）→ 隧道/竖井 → 反应堆辉光。
 用法：python tools/generate_bunker_bg_v3.py
+      （改布局只需编辑 data/bunker_room_defs.gd 的 rect 等字段，再跑本脚本）
 """
-import os, random
+import os, re, random
 from collections import deque
 from PIL import Image, ImageDraw, ImageFilter, ImageEnhance
 
 SRC = r"docs/基地重设计/generated3"
+SRC4 = r"docs/基地重设计/generated4"
 DST = r"assets/bunker/v3"
-W, H = 1280, 720
-SHAFT_X1, SHAFT_X2 = 615, 665
-SHAFT_TOP, SHAFT_BOT = 262, 638
+DEFS = r"data/bunker_room_defs.gd"
 
-ROOMS = [
-    # id, x, y, w, h, side(L/R/C), tunnel_y, via, initial_lit
-    # 上5下5 原生比例布局（232×130 == 胶囊 1.79，零裁剪）；中央房为竖井直通中枢
-    ("weather_station",  60, 232, 210, 110, "L", None, "monument",  False),
-    ("monument",        270, 255, 170,  90, "L", None, "entry_hall", True),
-    ("entry_hall",      440, 192, 350, 150, "C", 280, None,         True),
-    ("observatory",     950, 231, 290, 127, "R", 352, None,         False),
-    ("dormitory",        30, 364, 232, 130, "L", 429, None,         True),
-    ("mess_hall",       282, 364, 232, 130, "L", 429, None,         False),
-    ("archive",         534, 364, 232, 130, "C", 429, None,         False),
-    ("medical",         786, 364, 232, 130, "R", 429, None,         False),
-    ("depot",          1038, 364, 232, 130, "R", 429, None,         False),
-    ("war_room",         30, 508, 232, 130, "L", None, "dormitory",  False),
-    ("workshop",        282, 508, 232, 130, "L", None, "mess_hall",  False),
-    ("reactor",         534, 508, 232, 130, "C", 573, None,         False),
-    ("honor_hall",      786, 508, 232, 130, "R", None, "medical",   False),
-    ("comms",          1038, 508, 232, 130, "R", None, "depot",     False),
-]
-INIT_LIT = {"monument", "entry_hall", "dormitory"}
+## ───────── 单源解析：几何读场景占位块（优先）/ gd rect（兜底），拓扑读 gd ─────────
+SCENE = r"scenes/bunker/bunker_main.tscn"
+
+def parse_scene_rects(path):
+    """读场景里 14 个同名 ColorRect 占位块的矩形（编辑器可视化调整的真身）"""
+    try:
+        src = open(path, encoding="utf-8").read()
+    except OSError:
+        return {}
+    rects = {}
+    for m in re.finditer(r'\[node name="(\w+)" type="ColorRect" parent="\."\]([^\[]*)', src):
+        o = {k: float(v) for k, v in re.findall(r'(offset_\w+) = ([\-\d.]+)', m.group(2))}
+        need = ("offset_left", "offset_top", "offset_right", "offset_bottom")
+        if all(k in o for k in need):
+            rects[m.group(1)] = (o["offset_left"], o["offset_top"],
+                                 o["offset_right"] - o["offset_left"],
+                                 o["offset_bottom"] - o["offset_top"])
+    return rects
+
+def parse_defs(path):
+    src = open(path, encoding="utf-8").read()
+    ws = re.search(r'"world_size":\s*Vector2\(([\d.]+),\s*([\d.]+)\)', src)
+    W, H = int(float(ws.group(1))), int(float(ws.group(2)))
+    sh = re.search(r'"shaft":\s*\{([^}]*)\}', src)
+    shaft = dict(re.findall(r'"(\w+)":\s*([\d.]+)', sh.group(1)))
+    scene = parse_scene_rects(SCENE)
+    rooms = []
+    for rm in re.finditer(r'\{\s*"id":\s*"(\w+)".*?\}', src, re.S):
+        b = rm.group(0)
+        r = re.search(r'"rect":\s*Rect2\(([-\d.]+),\s*([-\d.]+),\s*([-\d.]+),\s*([-\d.]+)\)', b)
+        if not r:
+            continue
+        # 场景占位块优先（编辑器拖拽结果），gd rect 兜底
+        x, y, w, h = (int(v) for v in scene.get(rm.group(1), tuple(float(v) for v in r.groups())))
+        side = re.search(r'"side":\s*"(\w)"', b)
+        via = re.search(r'"via":\s*"(\w+)"', b)
+        lit = "STATE_ACTIVE" in b
+        # 隧道/井环线 = 房中心高（矩形推导，跟随拖拽）
+        rooms.append((rm.group(1), x, y, w, h,
+                      side.group(1) if side else "L",
+                      y + h / 2.0,
+                      via.group(1) if via else None, lit))
+    return W, H, shaft, rooms
+
+W, H, SHAFT, ROOMS = parse_defs(DEFS)
+SHAFT_X1 = int(float(SHAFT["x1"])); SHAFT_X2 = int(float(SHAFT["x2"]))
+SHAFT_TOP = int(float(SHAFT["top_y"])); SHAFT_BOT = int(float(SHAFT["bottom_y"]))
+
+def _validate():
+    ## 手工调布局的第一道反馈：越界/重叠/比例警告直打控制台
+    problems = []
+    for (rid, x, y, w, h, side, ty, via, lit) in ROOMS:
+        if x < 0 or y < 0 or x + w > W or y + h > H:
+            problems.append("越界: %s Rect2(%d,%d,%d,%d) 超出 %dx%d" % (rid, x, y, w, h, W, H))
+        if abs(w / h - 1.79) > 0.35:
+            print("[提示] %s 宽高比 %.2f（胶囊原生 1.79，偏差大将竖向裁切顶/底）" % (rid, w / h))
+        if ty is not None and not (y <= ty <= y + h):
+            problems.append("tunnel_y 越房: %s tunnel_y=%s 不在 y%d-%d 内" % (rid, ty, y, y + h))
+        if via and not any(r[0] == via for r in ROOMS):
+            problems.append("via 失联: %s → %s 不存在" % (rid, via))
+    ids = [r[0] for r in ROOMS]
+    for i in range(len(ROOMS)):
+        for j in range(i + 1, len(ROOMS)):
+            a, b = ROOMS[i], ROOMS[j]
+            if not (a[1] + a[3] <= b[1] or b[1] + b[3] <= a[1] \
+                    or a[2] + a[4] <= b[2] or b[2] + b[4] <= a[2]):
+                problems.append("重叠: %s × %s" % (a[0], b[0]))
+    if len(ROOMS) != 15:
+        problems.append("房间数 %d ≠ 15（解析失败或漏房）" % len(ROOMS))
+    for p in problems:
+        print("[布局警告]", p)
+    return not problems
 
 def flood_white_to_alpha(im, thresh=238):
     im = im.convert("RGBA")
@@ -73,6 +127,8 @@ def autocrop(im, pad=4):
 
 def load_cap(rid):
     p = os.path.join(DST, "cap_%s.png" % rid)
+    if not os.path.exists(p):
+        return None   # 胶囊未生成（如新增房）→ 留空腔待补图
     return Image.open(p).convert("RGBA")
 
 def aspect_fit(img, w, h):
@@ -131,6 +187,9 @@ def bake(all_lit):
     # 胶囊四边贴合房间矩形 → 房名/门位/隧道与胶囊逐边对齐，无黑边错位）
     for (rid, x, y, w, h, side, ty, via, init) in ROOMS:
         cap = load_cap(rid)
+        if cap is None:
+            print("[空腔] %s 胶囊未生成，留暗腔待补（generated4/cap_%s）" % (rid, rid))
+            continue
         s = max(w / cap.width, h / cap.height)
         nw, nh = int(cap.width * s + 0.5), int(cap.height * s + 0.5)
         cap = cap.resize((nw, nh), Image.LANCZOS)
@@ -153,7 +212,10 @@ def bake(all_lit):
     # 反应堆辉光 + 岩缝
     glow = Image.new("RGBA", (W, H), (0, 0, 0, 0))
     gd = ImageDraw.Draw(glow)
-    cx, cy = 650, 610
+    # 反应堆辉光跟随房间矩形中心（布局可随意调，辉光自动跟随）
+    rk = [r for r in ROOMS if r[0] == "reactor"]
+    cx = rk[0][1] + rk[0][3] // 2 if rk else 650
+    cy = rk[0][2] + rk[0][4] // 2 if rk else 610
     for r, a in [(240, 15), (170, 22), (95, 34), (42, 50)]:
         gd.ellipse([cx - r, cy - int(r * .6), cx + r, cy + int(r * .6)], fill=(255, 120, 46, a))
     canvas.alpha_composite(glow.filter(ImageFilter.GaussianBlur(24)))
@@ -168,15 +230,24 @@ def bake(all_lit):
 
 if __name__ == "__main__":
     os.chdir(os.path.join(os.path.dirname(__file__), ".."))
+    print("[布局源] %s → %d 房间，竖井 x%d-%d y%d-%d" % (
+        DEFS, len(ROOMS), SHAFT_X1, SHAFT_X2, SHAFT_TOP, SHAFT_BOT))
+    ok = _validate()
+    if not ok:
+        print("[中止] 布局有硬伤（越界/重叠/via 失联），修好 data/bunker_room_defs.gd 再烘焙")
+        raise SystemExit(1)
     os.makedirs(DST, exist_ok=True)
-    # 胶囊抠图落盘
-    for f in sorted(os.listdir(SRC)):
-        if f.startswith("cap_") and f.lower().endswith((".jpeg", ".jpg", ".png")):
-            name = os.path.splitext(f)[0]
-            out = os.path.join(DST, name + ".png")
-            if not os.path.exists(out):
-                autocrop(flood_white_to_alpha(Image.open(os.path.join(SRC, f)))).save(out)
-                print("[cap ]", name)
+    # 胶囊抠图落盘（generated3 在前、generated4 在后——同 id 后批覆盖前批；
+    # 文件名 _v2 等版本后缀自动剥掉，如 cap_depot_v2 → cap_depot）
+    for src_dir in [SRC, SRC4]:
+        if not os.path.isdir(src_dir):
+            continue
+        for f in sorted(os.listdir(src_dir)):
+            if f.startswith("cap_") and f.lower().endswith((".jpeg", ".jpg", ".png")):
+                name = re.sub(r"_v\d+$", "", os.path.splitext(f)[0])
+                out = os.path.join(DST, name + ".png")
+                autocrop(flood_white_to_alpha(Image.open(os.path.join(src_dir, f)))).save(out)
+                print("[cap ]", name, "<-", src_dir)
     dark = bake(False); dark.save(os.path.join(DST, "bunker_bg_v3.png"))
     print("saved bunker_bg_v3.png", dark.size)
     lit = bake(True); lit.save(os.path.join(DST, "bunker_bg_v3_lit.png"))

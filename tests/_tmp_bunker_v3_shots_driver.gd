@@ -34,6 +34,26 @@ func _ready() -> void:
 	await get_tree().process_frame
 	await get_tree().create_timer(0.8).timeout
 	_capture("user://bunker_v3_alllit.png")
+	# 帧 3：新版房间面板视觉（直接打开宿舍面板，先于嵌入面板排除布局干扰）
+	var pd: Dictionary = BunkerRoomDefs.get_room("dormitory")
+	(inst2.get("_panel") as Control).call("open_room", pd, inst2.get("_manager"))
+	await get_tree().create_timer(0.5).timeout
+	_capture("user://bunker_v3_panel.png")
+	(inst2.get("_panel") as Control).call("close")
+	# 帧 4：嵌入面板（背包）打开状态——验证舞台层内居中不出屏
+	inst2._open_embedded_panel("backpack")
+	await get_tree().create_timer(0.8).timeout
+	_capture("user://bunker_v3_embed.png")
+	(inst2.get("_embed_wrappers") as Dictionary)["backpack"]["wrapper"].visible = false
+	# 帧 5：纪念墙（预置 11 碎片 → 11 盏亮灯）
+	for mid in ["enemy_master_001", "enemy_master_002", "enemy_master_003",
+			"enemy_master_004", "enemy_master_005", "enemy_master_006",
+			"enemy_master_008", "enemy_master_009", "enemy_master_010",
+			"enemy_master_012", "enemy_master_014"]:
+		mgr.record_hero_fragment(mid)
+	inst2._open_embedded_panel("memorial")
+	await get_tree().create_timer(0.8).timeout
+	_capture("user://bunker_v3_memorial.png")
 	inst2.queue_free()
 	get_tree().quit(0)
 

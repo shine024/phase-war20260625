@@ -41,16 +41,37 @@ var _refresh_queued: bool = false
 var _rendered_sig: String = ""
 
 ## 管理器统一入口（--script 模式 autoload 不初始化，取 null 走断路态渲染）
+## 面板尺寸按视口 clamp（保留 24px 呼吸边）并显式居中。
+## 弃用锚点方案：Godot 布局/窗口尺寸变化时序下，anchors+offsets 的居中
+## 偏移可能按过渡期视口计算导致面板漂移（实测两环境复现）；显式几何最稳。
+## 正常 720p 视口下仍是标准 MEDIUM 档 960×600，不改变既有观感。
+func _apply_viewport_fit() -> void:
+	set_anchors_preset(Control.PRESET_TOP_LEFT)
+	var vp: Vector2 = get_viewport_rect().size if get_viewport() != null else DT.PANEL_SIZE_MEDIUM
+	var fit := Vector2(
+			minf(DT.PANEL_SIZE_MEDIUM.x, vp.x - 24.0),
+			minf(DT.PANEL_SIZE_MEDIUM.y, vp.y - 24.0))
+	fit = fit.max(Vector2(560, 360))   # 内容最小需求（chrome+状态行+探针栏+至少一行板面）
+	if custom_minimum_size != fit:
+		custom_minimum_size = fit
+	size = fit
+	position = ((vp - fit) * 0.5).floor()
+
+
 func _mgr() -> Node:
 	return get_node_or_null("/root/PhaseMasterSkillManager")
 
 
 func _ready() -> void:
 	custom_minimum_size = DT.PANEL_SIZE_MEDIUM
-	anchors_preset = Control.PRESET_CENTER
 	size = DT.PANEL_SIZE_MEDIUM
 	add_theme_stylebox_override("panel", PanelStyles.make_panel_frame(DT.get_panel_accent("phase_master_skill")))
 	_build_ui()
+	# 视口自适应：延到帧末执行——_ready 时窗口视口/布局初值未必就绪
+	# （实测 anchors 偏移按临时视口计算导致面板偏移），帧末值为准
+	_apply_viewport_fit.call_deferred()
+	if get_viewport() != null and not get_viewport().size_changed.is_connected(_apply_viewport_fit):
+		get_viewport().size_changed.connect(_apply_viewport_fit)
 	var mgr := _mgr()
 	if mgr != null:
 		if not mgr.node_unlocked.is_connected(_on_node_unlocked):
@@ -694,6 +715,8 @@ func _show_temp_msg(msg: String) -> void:
 
 func _on_visibility_changed() -> void:
 	if visible:
+		# 每次打开自校正几何（中和外部对 anchors 的改动，如 growth_panel 的 preset 调用）
+		_apply_viewport_fit()
 		if _dirty:
 			_refresh()
 		if not DT.is_motion_reduce():

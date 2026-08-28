@@ -302,6 +302,17 @@ func load_state(data: Dictionary) -> void:
 			_rooms[room_id]["state"] = int(sr.get("state", _rooms[room_id]["state"]))
 			_rooms[room_id]["level"] = int(sr.get("level", 1))
 			_rooms[room_id]["progress"] = float(sr.get("progress", 0.0))
+	# v22.1：定义初始点亮的房间不被旧档的 LOCKED 覆盖——旧档在兵棋室改为
+	# initial ACTIVE 之前存盘的，会把 LOCKED 一并存进 rooms 段，读回后玩家
+	# 依然无法从基地出击。这里按 defs 抬底：仅 LOCKED→ACTIVE（修复中/已点亮
+	# 等更高状态原样保留）。
+	for room_id in _rooms:
+		var def: Dictionary = BunkerRoomDefs.get_room(room_id)
+		if def.is_empty():
+			continue
+		if int(def.get("initial", BunkerRoomDefs.STATE_LOCKED)) == BunkerRoomDefs.STATE_ACTIVE \
+				and int(_rooms[room_id]["state"]) == BunkerRoomDefs.STATE_LOCKED:
+			_rooms[room_id]["state"] = BunkerRoomDefs.STATE_ACTIVE
 
 ## 新游戏重置（_reset_manager_by_name 链第二优先命中）
 func reset_to_defaults() -> void:

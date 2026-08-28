@@ -109,7 +109,7 @@ func _roll_rune_drops(unit: Node) -> void:
 			var RuneDefsForDrop = preload("res://data/runes.gd")
 			var rune_name: String = RuneDefsForDrop.RUNE_NAMES.get(rune_id, rune_id)
 			var rarity_name: String = RuneDefsForDrop.RARITY_NAMES.get(rarity, "")
-			SignalBus.show_toast.emit("✦ 获得符文：%s（%s）" % [rune_name, rarity_name])
+			SignalBus.show_toast.emit("✦ 精神凝结为符文：%s（%s）" % [rune_name, rarity_name])
 			# v7.x 胜利面板漏显修复：战中击杀符文记入本局收集器，供胜利面板显示
 			# 复用函数顶部已声明的 gm（_get_autoload_node("GameManager")），不重复声明
 			if gm != null and gm.has_method("collect_battle_rune"):

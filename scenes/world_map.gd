@@ -108,17 +108,30 @@ const BUBBLE_TEX_PATHS: Array = [
 const MAP_CANVAS_SIZE: Vector2 = Vector2(2560, 1440)
 const MAP_LIGHTHOUSE_POS: Vector2 = Vector2(1280, 780)
 const MAP_GATE_POS: Vector2 = Vector2(2260, 250)
-## v22.3 相位两仪（方案 8）：MAP_SCHEME 切换布局。6=百灯群岛星座 / 8=沙漏双界
-const MAP_SCHEME: int = 8
+## v22.4 布局方案切换：6=百灯群岛星座 / 8=沙漏双界 / 11=晨昏大陆·黑日战线（定稿）
+const MAP_SCHEME: int = 11
 const SEAM_Y_S8: float = 720.0  # 相位缝：上界(现实界)1-50 / 下界(相位界)51-100 的腰部
-const GATE_POS_S8: Vector2 = Vector2(1280, 1335)  # 下界底极：横卧宽门
-const HOME_POS_S8: Vector2 = Vector2(330, 140)  # 上界左上漂浮岛掩体（暂用灯塔图占位）
+const GATE_POS_S8: Vector2 = Vector2(1280, 1335)  # 方案8：下界底极横卧宽门
+const HOME_POS_S8: Vector2 = Vector2(330, 140)  # 方案8：上界左上漂浮岛掩体
+const GATE_POS_S11: Vector2 = Vector2(2287, 139)  # 方案11：对齐底图暗星实测中心（1-49 底图自带即第一幕）
+const HOME_POS_S11: Vector2 = Vector2(230, 390)  # 方案11：西端山地掩体（余烬要塞）
+const BUNKER_TEX_PATH: String = MAP_DIR + "mountain_bunker_marker.png"  # 方案11 家（待生成）
+const BLACK_SUN_PATH: String = MAP_DIR + "black_sun.png"  # 方案11 黑日/暗星（待生成，缺图时代码画兜底）
+const SKY_BAND_NAMES: Array = ["永昼", "黄昏", "薄暮", "夜", "极夜"]
 
 static func _gate_pos() -> Vector2:
-	return GATE_POS_S8 if MAP_SCHEME == 8 else MAP_GATE_POS
+	if MAP_SCHEME == 8:
+		return GATE_POS_S8
+	if MAP_SCHEME == 11:
+		return GATE_POS_S11
+	return MAP_GATE_POS
 
 static func _home_pos() -> Vector2:
-	return HOME_POS_S8 if MAP_SCHEME == 8 else MAP_LIGHTHOUSE_POS
+	if MAP_SCHEME == 8:
+		return HOME_POS_S8
+	if MAP_SCHEME == 11:
+		return HOME_POS_S11
+	return MAP_LIGHTHOUSE_POS
 ## 五星座锚点：一战（左上）逆时针绕灯塔一圈，近未来（era4）落在巨环前庭
 const ERA_CLUSTER_ANCHORS: Array = [
 	Vector2(640, 420), Vector2(430, 960), Vector2(1100, 1250),
@@ -265,7 +278,7 @@ func _build_level_map() -> void:
 	# 1) 黑海底图
 	var bg := TextureRect.new()
 	bg.name = "VoidBase"
-	bg.texture = _tex(MAP_VOID_PATH)
+	bg.texture = _tex(MAP_VOID_PATH if MAP_SCHEME != 11 else MAP_DIR + "dawn_dusk_continent.png")
 	bg.size = MAP_CANVAS_SIZE
 	bg.stretch_mode = TextureRect.STRETCH_SCALE
 	bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -273,6 +286,18 @@ func _build_level_map() -> void:
 
 	# 2) 漂浮残骸装饰（静态散布，位于节点之下）
 	_scatter_debris(canvas)
+
+	# v22.4 方案 11：五档天光色带占位（西暖东黑，待晨昏大陆底图替换）+ 天光带标签
+	if MAP_SCHEME == 11:
+		# 天光带小标签（底图已自带光照渐变，色带占位已删）
+		for i in range(5):
+			var sky_lbl := Label.new()
+			sky_lbl.text = String(SKY_BAND_NAMES[i])
+			sky_lbl.add_theme_font_size_override("font_size", 14)
+			sky_lbl.add_theme_color_override("font_color", Color(0.8, 0.85, 0.95, 0.4))
+			sky_lbl.position = Vector2(i * 512.0 + 200.0, 128)
+			sky_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			canvas.add_child(sky_lbl)
 
 	# v22.3 方案 8：下界（相位界）整体加青紫滤镜 + 相位缝光带标签（占位，待专用底图）
 	if MAP_SCHEME == 8:
@@ -302,7 +327,11 @@ func _build_level_map() -> void:
 	# 4) 灯塔要塞（家）
 	var lh := TextureRect.new()
 	lh.name = "Lighthouse"
-	var lh_tex: Texture2D = _tex(LIGHTHOUSE_TEX_PATH)
+	var lh_tex: Texture2D = null
+	if MAP_SCHEME == 11:
+		lh_tex = _tex(BUNKER_TEX_PATH)  # 山脉掩体图（待生成，缺图回退灯塔占位）
+	if lh_tex == null:
+		lh_tex = _tex(LIGHTHOUSE_TEX_PATH)
 	lh.texture = lh_tex
 	var lh_scale: float = LIGHTHOUSE_DISPLAY_H / lh_tex.get_height()
 	lh.size = Vector2(lh_tex.get_width() * lh_scale, LIGHTHOUSE_DISPLAY_H)
@@ -313,7 +342,7 @@ func _build_level_map() -> void:
 	home_lbl.text = "余烬要塞"
 	home_lbl.add_theme_font_size_override("font_size", 14)
 	home_lbl.add_theme_color_override("font_color", Color(1.0, 0.71, 0.37, 0.9))
-	var home_lbl_off: Vector2 = Vector2(-28, lh.size.y * 0.42) if MAP_SCHEME == 6 		else Vector2(lh.size.x * 0.3, lh.size.y * 0.55)
+	var home_lbl_off: Vector2 = Vector2(-28, lh.size.y * 0.42) if MAP_SCHEME == 6 		else (Vector2(lh.size.x * 0.3, lh.size.y * 0.55) if MAP_SCHEME == 8 		else Vector2(-10, lh.size.y * 0.55))
 	home_lbl.position = _home_pos() + home_lbl_off
 	home_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	canvas.add_child(home_lbl)
@@ -350,7 +379,7 @@ func _build_level_map() -> void:
 				era_start, era_start + ERA_SIZE - 1]
 			zone_lbl.position = ERA_CLUSTER_ANCHORS[era_idx] + Vector2(-100.0, -ERA_CLUSTER_RADII.y - 74.0)
 			canvas.add_child(zone_lbl)
-		else:
+		elif MAP_SCHEME == 8:
 			var first_pt: Vector2 = _s_level_points.get(era_start, Vector2.ZERO)
 			zone_lbl.text = "%s %s %d–%d%s" % [era_info["icon"], era_info["name"],
 				era_start, era_start + ERA_SIZE - 1, "（跨缝）" if era_idx == 2 else ""]
@@ -367,8 +396,14 @@ func _build_level_map() -> void:
 			for j in range(ERA_SIZE):
 				var level_index_s6: int = era_start + j
 				canvas.add_child(_make_level_node(level_index_s6, era_idx, pts[j], current_level))
+		elif MAP_SCHEME == 11:  # 时代战线行标（含天光档）
+			var first_pt11: Vector2 = _s_level_points.get(era_start, Vector2.ZERO)
+			zone_lbl.text = "%s %s %d–%d · %s" % [era_info["icon"], era_info["name"],
+				era_start, era_start + ERA_SIZE - 1, SKY_BAND_NAMES[era_idx]]
+			zone_lbl.position = first_pt11 + Vector2(-170.0, -44.0)
+			canvas.add_child(zone_lbl)
 	for lv_s8 in range(1, LEVEL_COUNT + 1):
-		if MAP_SCHEME == 8:
+		if MAP_SCHEME == 8 or MAP_SCHEME == 11:
 			var era_idx_s8: int = floori((lv_s8 - 1) / 20.0)
 			canvas.add_child(_make_level_node(lv_s8, era_idx_s8,
 				_s_level_points.get(lv_s8, Vector2.ZERO), current_level))
@@ -383,6 +418,8 @@ func _build_level_map() -> void:
 
 static func _tex(path: String) -> Texture2D:
 	if not _s_tex_cache.has(path):
+		if not ResourceLoader.exists(path):
+			return null
 		_s_tex_cache[path] = load(path)
 	return _s_tex_cache.get(path)
 
@@ -415,10 +452,13 @@ static func _cluster_level_positions(era_idx: int) -> Array:
 static func _ensure_layout() -> void:
 	if not _s_level_points.is_empty():
 		return
-	if MAP_SCHEME == 8:
-		_layout_scheme8()
-	else:
-		_layout_scheme6()
+	match MAP_SCHEME:
+		8:
+			_layout_scheme8()
+		11:
+			_layout_scheme11()
+		_:
+			_layout_scheme6()
 
 ## 方案 8 沙漏双界：上界 5 行自宽收窄向相位缝（1-50），下界自缝张开向底极（51-100）。
 ## 时代映射：一战/二战全在上界；冷战跨缝（41-50 上 / 51-60 下）；现代/近未来全在下界。
@@ -434,6 +474,21 @@ static func _layout_scheme8() -> void:
 		var half2 := 300.0 + k2 * 130.0
 		for j2 in range(10):
 			_s_level_points[50 + k2 * 10 + j2 + 1] = Vector2(cx - half2 + (2.0 * half2 / 9.0) * j2, y2)
+	_s_bridges.append({"a": _home_pos(), "b": _s_level_points[1], "era": 0})
+	for lv in range(1, LEVEL_COUNT):
+		_s_bridges.append({"a": _s_level_points[lv], "b": _s_level_points[lv + 1],
+			"era": floori((lv - 1) / 20.0)})
+	_s_bridges.append({"a": _s_level_points[LEVEL_COUNT], "b": _gate_pos(), "era": 4})
+
+## 方案 11 晨昏大陆：5 条时代战线蛇形横贯大陆（奇偶行反向），家在西端、黑日在东端天空
+static func _layout_scheme11() -> void:
+	for era_idx in range(5):
+		var y := 300.0 + era_idx * 230.0
+		for j in range(ERA_SIZE):
+			var jj: int = j if era_idx % 2 == 0 else (ERA_SIZE - 1 - j)
+			var t := jj / 19.0
+			var wave := sin(t * PI) * 46.0
+			_s_level_points[era_idx * ERA_SIZE + j + 1] = Vector2(340.0 + t * 1880.0, y + wave)
 	_s_bridges.append({"a": _home_pos(), "b": _s_level_points[1], "era": 0})
 	for lv in range(1, LEVEL_COUNT):
 		_s_bridges.append({"a": _s_level_points[lv], "b": _s_level_points[lv + 1],
@@ -463,6 +518,11 @@ func _refresh_static_state(current_level: int) -> void:
 			c.a = 0.85
 			_s_occ_colors[lv] = c
 	_s_gate_state = _gate_state_for_level(current_level)
+	# 截图/测试辅助：WM_GATE_STATE=far|mid|near 强制档位（验三幕视觉）
+	if OS.has_environment("WM_GATE_STATE"):
+		var wmgs := String(OS.get_environment("WM_GATE_STATE"))
+		if wmgs in ["far", "mid", "near"]:
+			_s_gate_state = wmgs
 
 func _gate_state_for_level(cur: int) -> String:
 	if cur >= 90:
@@ -476,6 +536,23 @@ func _gate_state_for_level(cur: int) -> String:
 func _apply_gate_state(canvas: Control) -> void:
 	var gate := canvas.get_node_or_null("GateMarker") as TextureRect
 	if gate == null:
+		return
+	if MAP_SCHEME == 11:
+		# 黑日三档：far=暗星(一粒黑点) / mid=黑日 / near=巨日压东天
+		# （gate_near.png 整幅保留给终局近接演出，不直接摆画布）
+		var sun_tex: Texture2D = _tex(BLACK_SUN_PATH)
+		if sun_tex == null:
+			gate.visible = false  # 缺图：overlay 代码画兜底黑日
+			return
+		if _s_gate_state == "far":
+			gate.visible = false  # 第一幕：底图自带的暗星即暗星，不叠加贴图
+			return
+		gate.visible = true
+		gate.texture = sun_tex
+		var d11: float = 240.0 if _s_gate_state == "mid" else 420.0
+		gate.size = Vector2(d11, d11)
+		gate.position = GATE_POS_S11 - gate.size * 0.5
+		gate.modulate = Color(1, 1, 1, 1.0)
 		return
 	gate.texture = _tex(GATE_TEX_FAR if _s_gate_state == "far" else GATE_TEX_MID)
 	if MAP_SCHEME == 8:
@@ -500,7 +577,7 @@ func _scatter_debris(canvas: Control) -> void:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 20260827
 	for i in range(12):
-		var tex := _tex(MAP_DIR + "debris_%d.png" % ((i % 8) + 1))
+		var tex := _tex(MAP_DIR + ("wreck_%d.png" if MAP_SCHEME == 11 else "debris_%d.png") % ((i % 8) + 1))
 		if tex == null:
 			continue
 		var d := TextureRect.new()
@@ -529,6 +606,20 @@ func _draw_map_overlay() -> void:
 		var col: Color = ERA_COLORS[br["era"]]["border"]
 		col.a = 0.32
 		_draw_dashed(layer, br["a"], br["b"], col, 1.5, 10.0, 6.0)
+	if MAP_SCHEME == 11 and _tex(BLACK_SUN_PATH) == null:
+		# 兜底黑日：黑体 + 青环 + 裂纹（black_sun.png 生成后由贴图替代）
+		var sun_p := _gate_pos()
+		var sun_r := 10.0 if _s_gate_state == "far" else (120.0 if _s_gate_state == "mid" else 210.0)
+		layer.draw_circle(sun_p, sun_r + 26.0, Color(0.0, 0.5, 0.6, 0.08))
+		layer.draw_circle(sun_p, sun_r + 10.0, Color(0.0, 0.7, 0.85, 0.16))
+		layer.draw_circle(sun_p, sun_r, Color(0.01, 0.01, 0.02, 1.0))
+		layer.draw_arc(sun_p, sun_r, 0.0, TAU, 48, Color(0.0, 0.9, 1.0, 0.8), 2.0)
+		if _s_gate_state != "far":
+			for a in range(0, 360, 45):
+				var rad := deg_to_rad(a)
+				layer.draw_line(sun_p + Vector2(cos(rad), sin(rad)) * sun_r * 0.2,
+					sun_p + Vector2(cos(rad + 0.5), sin(rad + 0.5)) * sun_r * 0.9,
+					Color(0.0, 0.9, 1.0, 0.5), 2.0)
 	if MAP_SCHEME == 8:
 		# 相位缝光带：三层辉光 + 中心亮线
 		var seam_a := Vector2(0, SEAM_Y_S8)
@@ -576,13 +667,24 @@ func _center_on_current_level() -> void:
 	if scroll == null or not is_inside_tree():
 		return
 	var cur: int = clampi(GameManager.current_level if GameManager else 1, 1, LEVEL_COUNT)
-	# 截图/测试辅助：WM_VIEW_LEVEL=N 时视口居中到第 N 关（跳过定场镜头）
+	# 截图/测试辅助：WM_VIEW_LEVEL=N 时视口居中到第 N 关（跳过定场镜头）；N=0 居中到黑日/门
 	if OS.has_environment("WM_VIEW_LEVEL"):
-		cur = clampi(int(OS.get_environment("WM_VIEW_LEVEL")), 1, LEVEL_COUNT)
+		var wmv := int(OS.get_environment("WM_VIEW_LEVEL"))
+		if wmv == 0:
+			var gate_p := _gate_pos()
+			scroll.set_h_scroll(int(gate_p.x - scroll.size.x * 0.5))
+			scroll.set_v_scroll(int(gate_p.y - scroll.size.y * 0.5))
+			return
+		cur = clampi(wmv, 1, LEVEL_COUNT)
 	var p: Vector2 = _s_level_points.get(cur, MAP_LIGHTHOUSE_POS)
 	if cur <= 3 and not OS.has_environment("WM_VIEW_LEVEL"):
 		# 新档定场镜头：方案6 看灯塔与巨环；方案8 看上界战线+相位缝（含家）
-		p = Vector2(800, 420) if MAP_SCHEME == 8 else MAP_LIGHTHOUSE_POS.lerp(MAP_GATE_POS, 0.45)
+		if MAP_SCHEME == 8:
+			p = Vector2(800, 420)
+		elif MAP_SCHEME == 11:
+			p = Vector2(880, 460)
+		else:
+			p = MAP_LIGHTHOUSE_POS.lerp(MAP_GATE_POS, 0.45)
 	scroll.set_h_scroll(int(p.x - scroll.size.x * 0.5))
 	scroll.set_v_scroll(int(p.y - scroll.size.y * 0.5))
 
