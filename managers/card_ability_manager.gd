@@ -3,6 +3,9 @@ class_name CardAbilityManager
 ## 卡牌特殊能力集中处理器。
 ## 所有函数为 static，由 bullet._on_hit 和 construct_unit 调用。
 
+# v21 P2: 搭档协同引擎（preload 常量，不依赖全局类缓存刷新）
+const PairSynergyEngineRef = preload("res://scripts/battle/pair_synergy_engine.gd")
+
 static var _aura_data: RefCounted = null
 static var _construct_unit_scene: PackedScene = null
 
@@ -97,8 +100,32 @@ static func _get_nearby_enemies(origin: Node2D, radius: float, is_player_unit: b
 static func _get_nearby_allies(origin: Node2D, radius: float, is_player_unit: bool) -> Array:
 	# v6.2: 所有光环均影响全体我方单位，忽略距离限制（radius 参数保留以兼容现有调用）
 	# 光环不再受像素距离/槽位距离限制，只要是在场的同阵营单位都受影响
+	# v21 P0: 本函数保留为"全场友军"语义（指挥/载具维修等战略光环 + 撤销扫描专用）。
+	# 战术光环（医疗/侦查/雷达/堡垒）改走 _get_allies_in_aura_range。
 	var group_name: String = "player_units" if is_player_unit else "enemy_units"
 	return _get_all_units_in_group(origin, group_name)
+
+## v21 P0: 战术光环的范围友军——按 AuraData 类别+星级算范围，同阵营 3×3 带内切比雪夫槽距过滤。
+## - 范围 <0（全场类别）或总开关关闭 → 等价全场；
+## - 源/目标槽位 meta 缺失（部署竞态、相位场等无槽实体）→ is_in_aura_range 内部回退全场。
+## 撤销路径（remove_*）不走本函数：撤销按 per-ally meta 守卫全量扫描，与施加范围无关。
+static func _get_allies_in_aura_range(origin: Node2D, category: int, star: int, is_player_unit: bool) -> Array:
+	var group_name: String = "player_units" if is_player_unit else "enemy_units"
+	var all_allies: Array = _get_all_units_in_group(origin, group_name)
+	var ad: RefCounted = _get_aura_data()
+	var range_cells: int = ad.aura_range_for(category, star)
+	# v21 P2: 堡垒×支援搭档——堡垒防护光环（FORTRESS_DEF）范围 +1 列
+	# （搭档未激活时查询短路返回 false，零成本；全场类别 range<0 不受影响）
+	if range_cells >= 0 and category == 4 and PairSynergyEngineRef.query_pair_active("pair_fort_support"):
+		range_cells += 1
+	if range_cells < 0 or not ad.is_aura_ranging_enabled():
+		return all_allies
+	var src_slot: int = ad.unit_slot_index(origin)
+	var filtered: Array = []
+	for ally in all_allies:
+		if ad.is_in_aura_range(src_slot, ad.unit_slot_index(ally), range_cells):
+			filtered.append(ally)
+	return filtered
 
 ## 获取某阵营在场全部单位（不含 origin 自身）
 static func _get_all_units_in_group(origin: Node2D, target_group: String) -> Array:
@@ -360,7 +387,7 @@ static func apply_medic_heal_aura_tick(unit: Node2D) -> void:
 	var star: int = _get_unit_star(unit)
 	var params: Dictionary = _get_aura_data().get_aura_params(_get_aura_data().Category.MEDIC_HEAL, star)
 	var heal_pct: float = float(params.get("heal_pct", 0.08))
-	var allies: Array = _get_nearby_allies(unit, 180.0, is_player)
+	var allies: Array = _get_allies_in_aura_range(unit, _get_aura_data().Category.MEDIC_HEAL, star, is_player)  # v21 P0 范围化
 	allies.append(unit)  # 也治疗自身
 	for ally in allies:
 		if not is_instance_valid(ally):
@@ -394,7 +421,7 @@ static func apply_radar_range_aura(unit: Node2D, delta: float, replay := false) 
 	var star: int = _get_unit_star(unit)
 	var params: Dictionary = _get_aura_data().get_aura_params(_get_aura_data().Category.RADAR_RANGE, star)
 	var crit_bonus: float = float(params.get("crit_bonus", 0.05))
-	var allies: Array = _get_nearby_allies(unit, 180.0, is_player)
+	var allies: Array = _get_allies_in_aura_range(unit, _get_aura_data().Category.RADAR_RANGE, star, is_player)  # v21 P0 范围化
 	for ally in allies:
 		if not is_instance_valid(ally) or ally == unit:
 			continue
@@ -436,7 +463,7 @@ static func apply_scout_crit_aura(unit: Node2D, delta: float, replay := false) -
 	var star: int = _get_unit_star(unit)
 	var params: Dictionary = _get_aura_data().get_aura_params(_get_aura_data().Category.SCOUT_CRIT, star)
 	var crit_bonus: float = float(params.get("crit_bonus", 0.08))
-	var allies: Array = _get_nearby_allies(unit, 150.0, is_player)
+	var allies: Array = _get_allies_in_aura_range(unit, _get_aura_data().Category.SCOUT_CRIT, star, is_player)  # v21 P0 范围化
 	for ally in allies:
 		if not is_instance_valid(ally) or ally == unit:
 			continue
@@ -479,7 +506,7 @@ static func apply_fortress_defense_aura(unit: Node2D, delta: float, replay := fa
 	var params: Dictionary = _get_aura_data().get_aura_params(_get_aura_data().Category.FORTRESS_DEF, star)
 	var dr_bonus: float = float(params.get("damage_reduction_bonus", 0.06))
 	var def_bonus: float = float(params.get("defense_bonus", 2.0))
-	var allies: Array = _get_nearby_allies(unit, 200.0, is_player)
+	var allies: Array = _get_allies_in_aura_range(unit, _get_aura_data().Category.FORTRESS_DEF, star, is_player)  # v21 P0 范围化
 	for ally in allies:
 		if not is_instance_valid(ally) or ally == unit:
 			continue

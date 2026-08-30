@@ -154,6 +154,6 @@ python tools/generate_unit_animations.py check
 
 素材侧已就绪（单帧 PNG + 雪碧图 + meta.json）。接入时：
 - `SpriteFrames` 资源按 unit/anim 组织，fps 用 meta 建议值
-- attack 播完回 idle；idle 循环（无缝版直接 loop，接缝版 ping-pong）
-- 我方阵营单位 = 整组镜像（或引擎 flip_h）
+- attack 播完回 idle；idle=ping-pong 往返播放（2026-08-30 已实现于 unit_frame_anim.gd，高接缝 idle 不再循环跳变）
+- 我方阵营单位 = 引擎 flip_h 镜像（2026-08-30 已实现：attach(face_right=true) 驱动内翻转，不复制镜像资产）
 - 战场脚底对齐沿用 `data/card_foot_anchors.gd` 体系（动画帧已统一画幅，锚点恒定）

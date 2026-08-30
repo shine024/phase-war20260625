@@ -460,6 +460,9 @@ func _open_overlay(overlay: Control, panel_key: String = "") -> void:
 	var cc_reset: Node = overlay.get_node_or_null("CenterContainer")
 	if cc_reset is Control:
 		(cc_reset as Control).visible = true
+	# 养成/功能面板全出血：与背包同原则，铺满视口不留四周边距
+	if panel_key in _FULLBLEED_PANEL_KEYS:
+		_enter_fullbleed_layout(panel_key)
 	# v7.x 面板统一：打开通知收敛为 match + _notify_panel_opened 通用分发，
 	# 仅保留行为特殊的面板特判（map 刷新 / backpack 性能打点 / growth 日志 / afk 显式 _open）。
 	match panel_key:
@@ -468,6 +471,7 @@ func _open_overlay(overlay: Control, panel_key: String = "") -> void:
 			if world_map_panel and world_map_panel.has_method("refresh"):
 				world_map_panel.refresh()
 		"backpack":
+			_enter_backpack_layout()
 			var backpack_panel: Node = overlay.get_node_or_null("BackpackVBox/CenterRow/BackpackCenter/BackpackPanel")
 			if backpack_panel == null:
 				backpack_panel = overlay.find_child("BackpackPanel", true, false)
@@ -505,6 +509,9 @@ func _open_overlay(overlay: Control, panel_key: String = "") -> void:
 const _PANEL_NODE_NAMES := {
 	"store": "StorePanel",
 	"quest": "QuestPanel",
+	# v9.x 复查补登：growth 有专用打开分支（show_panel），_notify 不会用到这里——
+	# 供 _sync_fullbleed_panel_size 查节点用（全出血布局）
+	"growth": "GrowthPanel",
 	"faction": "FactionPanel",
 	"settings": "SettingsPanel",
 	"info": "IntelligenceHubPanel",
@@ -555,6 +562,12 @@ func _close_overlay(overlay: Control, panel_key: String = "") -> void:
 	# 统一走 _reset_afk_panel_visibility 复位三节点可见性，与 _open() 对称。
 	if panel_key == "afk":
 		_reset_afk_panel_visibility(false)
+	# 背包打开态收尾：恢复打开前各 HUD 可见性（closed 信号 / toggle / ESC 逐层关都汇到这里）
+	if panel_key == "backpack":
+		_exit_backpack_layout()
+	# 养成/功能面板全出血收尾
+	if panel_key in _FULLBLEED_PANEL_KEYS:
+		_exit_fullbleed_layout()
 	if overlay:
 		overlay.visible = false
 	if panel_key != "" and bottom_function_bar:
@@ -572,6 +585,142 @@ func _toggle_overlay(overlay: Control, panel_key: String = "") -> void:
 		_close_overlay(overlay, panel_key)
 	else:
 		_open_overlay(overlay, panel_key)
+
+# ── 背包打开态（2026-08 设计稿落地）：面板左右占满 + 只留背包与相位仪栏 ──
+## 设计稿：docs/背包设计/背包打开状态示意图.html
+## 打开背包时：① 面板横向贴满视口（stretch=expand，带鱼屏/16:10 自动跟随）、
+## 纵向底沿贴相位仪栏上沿（面板与底栏之间不留横条缝）；
+## ② 隐藏其余 HUD（顶部资源栏 / 战斗顶栏 / 战斗日志 / 功能按钮抽屉）——
+## 屏幕上只保留 背包面板 + BottomInstrumentBar（背包拖卡进绿槽的装配链路必须可见）。
+## 关闭背包（面板 closed 信号 / toggle / ESC 全关 / 战斗开场 _close_all_overlays）
+## 均恢复各 HUD 打开前的可见性（城市与战斗各自可见状态不同，须精确还原）。
+
+const _BACKPACK_CHROME_PATHS: Array[String] = [
+	"HudLayer/TopHudBar",
+	"HudLayer/BattleTopStatusBar",
+	"HudLayer/BattleLogBar",
+	"HudLayer/BattleBottomBar/BottomFunctionBar",
+]
+
+var _backpack_chrome_saved: Dictionary = {}   ## path -> 打开前 visible
+var _backpack_chrome_active := false
+
+func _enter_backpack_layout() -> void:
+	if _backpack_chrome_active:
+		return
+	_backpack_chrome_active = true
+	_sync_backpack_panel_size()
+	if not get_viewport().size_changed.is_connected(_sync_backpack_panel_size):
+		get_viewport().size_changed.connect(_sync_backpack_panel_size)
+	_backpack_chrome_saved.clear()
+	for path in _BACKPACK_CHROME_PATHS:
+		var node: Control = get_node_or_null(path) as Control
+		if node == null:
+			continue
+		_backpack_chrome_saved[path] = node.visible
+		node.visible = false
+
+func _exit_backpack_layout() -> void:
+	if not _backpack_chrome_active:
+		return
+	_backpack_chrome_active = false
+	if get_viewport().size_changed.is_connected(_sync_backpack_panel_size):
+		get_viewport().size_changed.disconnect(_sync_backpack_panel_size)
+	for path in _BACKPACK_CHROME_PATHS:
+		if not _backpack_chrome_saved.has(path):
+			continue
+		var node: Control = get_node_or_null(path) as Control
+		if node != null:
+			node.visible = bool(_backpack_chrome_saved[path])
+	_backpack_chrome_saved.clear()
+
+## 面板占满打开态：
+## ① 横向——min 宽贴视口宽（BackpackCenter 是 CenterContainer，居中即恰好铺满，
+##    无需动 tscn——bunker 等其它宿主仍走 tscn 的 1180 兜底宽）。
+## ② 纵向——面板底沿贴相位仪栏上沿，消除两者之间的横条缝。BackpackVBox 的
+##    Top/BottomSpacer 按 0.3/1.4 分配剩余空间 → 面板顶 y=(vh−H)·k，k=0.3/1.7；
+##    令 panel_top+H=bar_top 解出 H，面板恰好从顶部留白一直铺到栏上沿。
+## 列数/行数自适应由 BackpackPanel 的 ScrollContainer.resized 重排负责，无需在此干预。
+func _sync_backpack_panel_size() -> void:
+	var panel: Control = backpack_overlay.get_node_or_null("BackpackVBox/CenterRow/BackpackCenter/BackpackPanel") as Control
+	if panel == null:
+		panel = backpack_overlay.find_child("BackpackPanel", true, false) as Control
+	if panel == null:
+		return
+	var vp := get_viewport_rect().size
+	panel.custom_minimum_size.x = vp.x
+	var bar_top: float = vp.y - 86.0  # 底栏悬浮卡占位兜底（64 高 + 底部边距）
+	if bottom_instrument_bar != null and bottom_instrument_bar is Control:
+		var br: Rect2 = (bottom_instrument_bar as Control).get_global_rect()
+		if br.size.y > 0.0:
+			bar_top = br.position.y
+	const SPACER_TOP_RATIO := 0.3 / 1.7  # TopSpacer 在剩余空间中的占比
+	var h: float = (bar_top - SPACER_TOP_RATIO * vp.y) / (1.0 - SPACER_TOP_RATIO)
+	panel.custom_minimum_size.y = maxf(h, 560.0)
+
+# ── 养成/功能面板全出血（2026-08：与背包同一原则——不留四周边距） ──
+## 成长/改造/进化/商店/任务面板：打开时铺满视口——横向贴边、纵向从顶部到相位仪栏
+## 上沿（与背包打开态同一构图：面板 + 底栏）。关闭即恢复；窗口 resize 实时重算。
+## 相位师技能树在 growth_panel._open_phase_master_skill_panel 内做同样的全出血处理。
+const _FULLBLEED_PANEL_KEYS: Array[String] = [
+	"growth", "modification", "evolution", "store", "quest",
+]
+
+var _fullbleed_key := ""  ## 当前全出血面板 key（"" = 无）
+
+func _enter_fullbleed_layout(key: String) -> void:
+	if _fullbleed_key == key:
+		return
+	_fullbleed_key = key
+	_sync_fullbleed_panel_size(key)
+	if not get_viewport().size_changed.is_connected(_on_fullbleed_viewport_resized):
+		get_viewport().size_changed.connect(_on_fullbleed_viewport_resized)
+
+func _exit_fullbleed_layout() -> void:
+	if _fullbleed_key.is_empty():
+		return
+	_fullbleed_key = ""
+	if get_viewport().size_changed.is_connected(_on_fullbleed_viewport_resized):
+		get_viewport().size_changed.disconnect(_on_fullbleed_viewport_resized)
+
+func _on_fullbleed_viewport_resized() -> void:
+	if not _fullbleed_key.is_empty():
+		_sync_fullbleed_panel_size(_fullbleed_key)
+
+func _sync_fullbleed_panel_size(key: String) -> void:
+	var overlay: Control = _overlay_for_panel_key(key)
+	if overlay == null:
+		return
+	var panel: Control = null
+	var panel_name: String = String(_PANEL_NODE_NAMES.get(key, ""))
+	if not panel_name.is_empty():
+		panel = overlay.get_node_or_null("CenterContainer/" + panel_name) as Control
+		if panel == null:
+			panel = overlay.find_child(panel_name, true, false) as Control
+	if panel == null:
+		return
+	var vp := get_viewport_rect().size
+	var bar_top: float = vp.y - 86.0  # 底栏悬浮卡占位兜底（64 高 + 底部边距）
+	if bottom_instrument_bar != null and bottom_instrument_bar is Control:
+		var br: Rect2 = (bottom_instrument_bar as Control).get_global_rect()
+		if br.size.y > 0.0:
+			bar_top = br.position.y
+	# 居中容器改为「顶部→栏上沿」带：CenterContainer 原本全屏高、对子节点垂直居中，
+	# 铺满后下沿会多出一段居中余量盖住栏。锚定成带之后，子节点 min 贴满即恰好铺满；
+	# 内容自身 min 略大时上下各溢 ~3px，视觉可接受。
+	var cc: Control = overlay.get_node_or_null("CenterContainer") as Control
+	if cc != null:
+		cc.anchor_left = 0.0
+		cc.anchor_right = 1.0
+		cc.anchor_top = 0.0
+		cc.anchor_bottom = 0.0
+		cc.offset_left = 0.0
+		cc.offset_right = 0.0
+		cc.offset_top = 0.0
+		cc.offset_bottom = bar_top
+	# CenterContainer 按子节点 min 尺寸居中——min 贴满视口即恰好铺满，无需改 tscn。
+	# 底沿以栏上沿为准：内容自身最小高度若略超，会被内容撑出少许（视觉上压住栏沿，可接受）。
+	panel.custom_minimum_size = Vector2(vp.x, maxf(bar_top, 400.0))
 
 # ── 面板关闭回调（统一入口） ──────────────────────────────────
 func _on_panel_closed(key: String) -> void:
@@ -1152,6 +1301,10 @@ func _close_all_overlays() -> void:
 		bottom_function_bar.set_drawer_open(false, false)
 	if bottom_function_bar:
 		bottom_function_bar.notify_panel_closed("")
+	# 背包打开态：全关路径不走 _close_overlay（上面直接 ov.visible=false），须在此还原 HUD
+	_exit_backpack_layout()
+	# 全出血面板同上：全关时收尾
+	_exit_fullbleed_layout()
 
 
 ## v6.6(挂机): 统一复位 AFKPanel/backdrop/panel 三个节点的可见性。

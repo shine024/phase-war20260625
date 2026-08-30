@@ -40,7 +40,7 @@ func _build_ui() -> void:
 	_hint_label = Label.new()
 	_hint_label.text = "按时代分列 · 点击单位查看进化来源与养成详情"
 	_hint_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_hint_label.add_theme_font_size_override("font_size", 12)
+	_hint_label.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
 	_hint_label.add_theme_color_override("font_color", Color(0.55, 0.62, 0.72, 1.0))
 	outer.add_child(_hint_label)
 
@@ -170,7 +170,7 @@ func _make_era_column(era: int, era_labels: PackedStringArray, entries: Array) -
 	var title := Label.new()
 	title.text = era_labels[era] if era < era_labels.size() else "时代 %d" % era
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	title.add_theme_font_size_override("font_size", 14)
+	title.add_theme_font_size_override("font_size", DT.FONT_SIZE_BODY)
 	title.add_theme_color_override("font_color", Color(0.5, 0.72, 0.95, 1.0))
 	col_vbox.add_child(title)
 
@@ -262,7 +262,7 @@ func _make_unit_entry(entry: Dictionary) -> PanelContainer:
 	name_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	name_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	name_lbl.custom_minimum_size = Vector2(UNIT_ENTRY_MIN_SIZE.x - 12, 0)
-	name_lbl.add_theme_font_size_override("font_size", 12)
+	name_lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
 	name_lbl.add_theme_color_override("font_color", Color(0.88, 0.92, 0.96) if unlocked else Color(0.52, 0.56, 0.62))
 	col.add_child(name_lbl)
 

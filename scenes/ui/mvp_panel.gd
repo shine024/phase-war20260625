@@ -22,6 +22,8 @@ extends Control
 ## 数据来源：BattleInfoDisplay.get_battle_stats() + BattleManager._defeated_enemies + GameManager.last_battle_reward_summary
 
 const DT = preload("res://resources/design_tokens.gd")
+const GC = preload("res://resources/game_constants.gd")   # v23.6.1 稀有度色单一源
+const PanelStyles = preload("res://scripts/ui/panel_styles.gd")   # v23.6.1 按钮工厂
 const DefaultCards = preload("res://data/default_cards.gd")
 const FormatUtil = preload("res://scripts/ui/format_util.gd")
 const BunkerRoomDefs = preload("res://data/bunker_room_defs.gd")   # v22.4 要塞反馈行
@@ -385,7 +387,7 @@ func _render_drops(vbox: VBoxContainer) -> void:
 			return
 		var sh := Label.new()
 		sh.text = subhdr
-		sh.add_theme_font_size_override("font_size", 12)
+		sh.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
 		sh.add_theme_color_override("font_color", Color(DT.COLOR_TEXT_MID.r, DT.COLOR_TEXT_MID.g, DT.COLOR_TEXT_MID.b, 0.95))
 		drop_list.add_child(sh)
 		for dr in rows:
@@ -442,13 +444,13 @@ func _render_phase_instrument_drop(vbox: VBoxContainer) -> void:
 				continue
 			var p_line := Label.new()
 			p_line.text = "    · %s" % p_display
-			p_line.add_theme_font_size_override("font_size", 12)
+			p_line.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
 			p_line.add_theme_color_override("font_color", Color(DT.COLOR_TEXT_MID.r, DT.COLOR_TEXT_MID.g, DT.COLOR_TEXT_MID.b, 0.95))
 			vbox.add_child(p_line)
 		if pi_props.size() > show_n:
 			var more_line := Label.new()
 			more_line.text = "    · 还有 %d 条属性…" % (pi_props.size() - show_n)
-			more_line.add_theme_font_size_override("font_size", 12)
+			more_line.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
 			more_line.add_theme_color_override("font_color", Color(DT.COLOR_TEXT_DIM.r, DT.COLOR_TEXT_DIM.g, DT.COLOR_TEXT_DIM.b, 0.95))
 			vbox.add_child(more_line)
 
@@ -503,7 +505,7 @@ func _render_collected_section(parent_vbox: VBoxContainer, cat: String, entries:
 	var section_title: String = _collected_section_title(cat)
 	var sh := Label.new()
 	sh.text = "  ▸ %s（共%d）" % [section_title, entries.size()]
-	sh.add_theme_font_size_override("font_size", 12)
+	sh.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
 	sh.add_theme_color_override("font_color", Color(DT.COLOR_GOLD.r, DT.COLOR_GOLD.g, DT.COLOR_GOLD.b, 0.95))
 	parent_vbox.add_child(sh)
 	for entry in entries:
@@ -579,16 +581,9 @@ static func _collected_rarity_name(rarity: String) -> String:
 		_: return rarity
 
 
-## 稀有度配色
+## 稀有度配色（v23.6.1：收口到 GC.get_rarity_color 单一源，删除本地平行表）
 static func _collected_rarity_color(rarity: String) -> Color:
-	match rarity:
-		"common": return DT.COLOR_RARITY_COMMON
-		"uncommon": return DT.COLOR_RARITY_UNCOMMON
-		"rare": return DT.COLOR_RARITY_RARE
-		"epic": return DT.COLOR_RARITY_EPIC
-		"legendary": return DT.COLOR_RARITY_LEGENDARY
-		"mythic": return DT.COLOR_RARITY_MYTHIC
-		_: return DT.COLOR_TEXT_BRIGHT
+	return GC.get_rarity_color(rarity)
 
 
 ## 资源 id → 中文名
@@ -633,10 +628,10 @@ func _render_close_button_anchored(panel: Control) -> void:
 		home_btn.offset_top = -60.0
 		home_btn.offset_bottom = -16.0
 		home_btn.custom_minimum_size = Vector2(0, 44)
-		var home_style := StyleBoxFlat.new()
-		home_style.bg_color = Color(1.0, 0.72, 0.32, 0.92)
-		home_style.set_corner_radius_all(4)
-		home_btn.add_theme_stylebox_override("normal", home_style)
+		# v23.6.1：走 PanelStyles 工厂四态（替换手写单态，圆角归按钮档 6）
+		var home_styles: Dictionary = PanelStyles.make_button_styles(Color(1.0, 0.72, 0.32), "solid")
+		for key in ["normal", "hover", "pressed", "disabled", "focus"]:
+			home_btn.add_theme_stylebox_override(key, home_styles[key])
 		home_btn.add_theme_color_override("font_color", Color(0.09, 0.07, 0.04))
 		home_btn.add_theme_font_size_override("font_size", DT.FONT_SIZE_MEDIUM)
 		home_btn.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
@@ -644,13 +639,11 @@ func _render_close_button_anchored(panel: Control) -> void:
 		panel.add_child(home_btn)
 	btn.grow_horizontal = Control.GROW_DIRECTION_BOTH
 	btn.custom_minimum_size = Vector2(0, 44)
-	var btn_style := StyleBoxFlat.new()
-	btn_style.bg_color = DT.COLOR_GOLD if player_won else DT.COLOR_BORDER
-	btn_style.corner_radius_top_left = 4
-	btn_style.corner_radius_top_right = 4
-	btn_style.corner_radius_bottom_right = 4
-	btn_style.corner_radius_bottom_left = 4
-	btn.add_theme_stylebox_override("normal", btn_style)
+	# v23.6.1：走 PanelStyles 工厂四态（原仅 normal 有样式，无 hover/按下反馈）
+	var btn_accent: Color = DT.COLOR_GOLD if player_won else DT.COLOR_BORDER
+	var btn_styles: Dictionary = PanelStyles.make_button_styles(btn_accent, "solid")
+	for key in ["normal", "hover", "pressed", "disabled", "focus"]:
+		btn.add_theme_stylebox_override(key, btn_styles[key])
 	btn.add_theme_color_override("font_color", DT.COLOR_VOID)
 	btn.add_theme_font_size_override("font_size", DT.FONT_SIZE_MEDIUM)
 	btn.pressed.connect(_on_continue_pressed)

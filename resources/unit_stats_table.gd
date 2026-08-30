@@ -562,6 +562,11 @@ static func _apply_mod_stat_effects(stats: UnitStats, mods: Array) -> void:
 	var _card_combos: Array = ComboTactics.detect_card_combos(_combo_mods_on_card)
 	if not _card_combos.is_empty():
 		stats.set_meta("combo_active", _card_combos.duplicate())
+	# v21 P1: 套装档位检测——{combo_id: "basic"|"full"}，combo_engine 每秒扫描场上单位
+	# 该 meta，任一友军卡满档即把 full_mechanisms 并入全队机制表（机制升级 flag）。
+	var _card_tiers: Dictionary = ComboTactics.detect_card_combo_tiers(_combo_mods_on_card)
+	if not _card_tiers.is_empty():
+		stats.set_meta("combo_tiers", _card_tiers.duplicate())
 	# 把 _special 里的触发 flag（incendiary_chance/graphite_chance/chem_pollute 等）也存 meta，
 	# 供 construct_unit 复制到节点，module_effect_handler 运行时读取后触发套路机制。
 	if result.has("_special") and not result["_special"].is_empty():
@@ -620,13 +625,31 @@ static func _extract_aura_summary_to_meta(stats: UnitStats, mods: Array) -> void
 				summary[stat_field] = {"op": op, "raw": 0.0}
 			summary[stat_field]["raw"] += raw
 			summary[stat_field]["op"] = op
+	# v21 P1: 中继天线（gen_relay_antenna）——检测到该改造且确有改造光环效果时，
+	# 给 summary 写 range_override = -1（全场）。AuraData.get_mod_aura_range 已消费该键
+	#（P0 范围化链路，只读不改动）；无 ally_* 效果时不写，避免空 summary 误触发广播记账。
+	for mod_entry2 in mods:
+		var relay_id: String = ""
+		if mod_entry2 is Dictionary:
+			if mod_entry2.has("enabled") and not bool(mod_entry2.get("enabled", true)):
+				continue
+			relay_id = String(mod_entry2.get("id", ""))
+		else:
+			relay_id = String(mod_entry2)
+		if relay_id == "gen_relay_antenna":
+			if not summary.is_empty():
+				summary["range_override"] = -1
+			break
 	if not summary.is_empty():
 		stats.set_meta("mod_aura_summary", summary)
 
 
 ## v8: 侦察卡 card_id 前缀（与 recon_mods.gd._CARD_PREFIXES 同源，复用权威列表）
 ## 命中前缀的 LIGHT 卡是"侦察兵种"（拿潜入开局），否则是"步兵兵种"（拿巷战掩蔽）
-const _RECON_PREFIXES: Array = ["ww1_inf_cavalry", "cold_spetsnaz", "mod_ranger", "fut_spectre", "fut_inf_scout_mech", "mod_inf_scout_drone"]
+## v21 P2: 单一真身迁至 data/unit_roles.gd（UnitRoles.RECON_PREFIXES），此处经 preload 常量
+## 引用（不依赖全局类缓存刷新，--script 模式同样可解析）
+const _UnitRolesRef = preload("res://data/unit_roles.gd")
+const _RECON_PREFIXES: Array = _UnitRolesRef.RECON_PREFIXES
 
 ## 判定 card_id 是否为侦察兵种（复用 _RECON_PREFIXES 前缀匹配）
 static func _is_recon_card(card_id: String) -> bool:

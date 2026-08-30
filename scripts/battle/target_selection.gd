@@ -227,3 +227,42 @@ static func _prioritize_crit_marked(attacker: Node2D, enemies: Array) -> Array:
 		if e.has_meta("_crit_marked_until") and now < float(e.get_meta("_crit_marked_until", 0.0)):
 			marked.append(e)
 	return marked if not marked.is_empty() else enemies
+
+## v21 P1: gen_expansion_chamber 扩容弹舱——为本次攻击挑选"次级目标"（同时攻击目标数 +1）。
+## 规则：除主目标外、在攻击者射程内、可选中（真隐身过滤）、存活，取最近者；
+## 无候选返回 null（本次开火不追加）。与 select_target_direct 同套过滤口径。
+static func select_expansion_target(attacker: Node2D, primary: Node2D, enemies: Array) -> Node2D:
+	if enemies.is_empty() or attacker == null:
+		return null
+	var stats = attacker.get("stats") as UnitStats
+	if stats == null:
+		return null
+	var origin: Vector2 = attacker.global_position
+	var range_sq: float = 0.0
+	if stats.attack_range > 0.0:
+		range_sq = stats.attack_range * stats.attack_range
+	var best: Node2D = null
+	var best_d2: float = INF
+	for e in enemies:
+		if e == null or not is_instance_valid(e):
+			continue
+		if e == primary:
+			continue
+		if not CombatTargeting.is_attackable_combat_unit(e):
+			continue
+		if "hp" in e and float(e.hp) <= 0.0:
+			continue
+		# 真隐身过滤（与直射索敌同口径）
+		if not CardAbilityManager.is_unit_targetable(e, attacker):
+			continue
+		var es = e.get("stats") as UnitStats
+		# 无对空能力的单位不为次级目标锁飞机（与直射索敌同口径）
+		if stats.attack_air <= 0.0 and es != null and es.combat_kind == GameConstants.CombatKind.AIR:
+			continue
+		var d2: float = origin.distance_squared_to((e as Node2D).global_position)
+		if range_sq > 0.0 and d2 > range_sq:
+			continue
+		if d2 < best_d2:
+			best_d2 = d2
+			best = e as Node2D
+	return best

@@ -34,6 +34,15 @@ static var _player_active: Dictionary = {}
 static var _enemy_active: Dictionary = {}
 ## 周期能力计时器  key: "<owner_key>:<ability_id>" -> elapsed
 static var _periodic_timers: Dictionary = {}
+## v24.1 大招双轨：核子轰炸充能  key: "<owner_key>:nuclear_bombardment" -> 0..NUKE_CHARGE_CAP
+## 手动模式攒满不放、由玩家点击消耗；自动模式（敌方恒此）攒到即放，吞吐与旧即时触发一致。
+static var _ability_charges: Dictionary = {}
+## 充能上限：手动攒双发打 boss 是本设计唯一收益点，上限 2 封住与自动玩家的差距
+const NUKE_CHARGE_CAP: int = 2
+## v24.1 大招双轨：玩家侧手动保持旗标——由 UltimateCastController.set_manual_mode 推入。
+## 本文件刻意不反向 preload 控制器：4.5.1 实测给本脚本新增跨脚本 preload 后，
+## 个别静态函数的编译期绑定调用会静默失效（reset_state 整体不执行），保持依赖集原样最稳。
+static var player_manual_hold: bool = false
 ## 纳米虫群剩余持续时间  "<owner_key>" -> float
 static var _nano_remaining: Dictionary = {}
 ## v7.x 性能优化：纳米虫群 tick 累加器  "<owner_key>" -> accumulated_delta
@@ -82,14 +91,19 @@ static func update(delta: float) -> void:
 	_update_owner(Owner.PLAYER, _player_active, delta)
 	_update_owner(Owner.ENEMY, _enemy_active, delta)
 
-## 战斗结束时重置全部状态（两个 owner 一并清理）
-static func reset_state() -> void:
+## 战斗结束时重置全部状态（两个 owner 一并清理）。
+## ⚠️ 函数名不可叫 reset_state：4.5.1 实测静态函数与该名同名时，编译期绑定调用会
+## 静默无操作（函数体整体不执行，动态 .call() 反而正常）——Godot 上游疑似 bug，
+## 最小复现见 v24.1 轮记录。新增静态函数避开该名。
+static func reset_battle_state() -> void:
 	# 若狂暴仍激活，先恢复 stats（防止残留）
 	_expire_rage_if_active(Owner.PLAYER)
 	_expire_rage_if_active(Owner.ENEMY)
 	_player_active.clear()
 	_enemy_active.clear()
 	_periodic_timers.clear()
+	_ability_charges.clear()
+	player_manual_hold = false
 	_nano_remaining.clear()
 	_nano_tick_acc.clear()
 	_barrage_queue.clear()
@@ -99,7 +113,7 @@ static func reset_state() -> void:
 	_battlefield = null
 
 ## 清除指定 owner 的全部能力状态（仅该侧，不影响另一侧）。
-## 供战斗效果检查面板 toggle 关闭用；正常战斗结束走 reset_state 清双方。
+## 供战斗效果检查面板 toggle 关闭用；正常战斗结束走 reset_battle_state 清双方。
 static func clear_owner_state(owner: Owner) -> void:
 	# 先恢复狂暴 stats 乘数（防残留），再清该 owner 的 active 能力
 	_expire_rage_if_active(owner)
@@ -112,6 +126,10 @@ static func clear_owner_state(owner: Owner) -> void:
 	for tk in _periodic_timers.keys():
 		if String(tk).begins_with(key + ":"):
 			_periodic_timers.erase(tk)
+	# v24.1: 充能表同 key 结构，一并清理
+	for ck in _ability_charges.keys():
+		if String(ck).begins_with(key + ":"):
+			_ability_charges.erase(ck)
 	# 清该 owner 的连发队列 / 纳米虫群 / 狂暴 / 开局标记（均按 owner_key 分键）
 	_barrage_queue.erase(key)
 	_nano_remaining.erase(key)
@@ -378,12 +396,23 @@ static func _compute_artillery_damage(owner: Owner) -> float:
 static func _tick_nuclear_bombardment(owner: Owner, params: Dictionary, delta: float) -> void:
 	var pkey: String = _owner_key(owner) + ":nuclear_bombardment"
 	var interval: float = float(params.get("interval", 30.0))
+	# v24.1 大招双轨：玩家手动模式改充能制（攒满 1 interval 得 1 充能，上限 2 满后停涨不浪费）；
+	# 自动模式/敌方侧攒到 1 立即放，总吞吐与旧"interval 即触发"一致，手动唯一收益是攒爆发时机。
+	var hold_for_manual: bool = owner == Owner.PLAYER and player_manual_hold
 	var elapsed: float = float(_periodic_timers.get(pkey, interval))
 	elapsed += delta
-	if elapsed >= interval:
-		elapsed = 0.0
-		_fire_nuclear_bombardment(owner, params)
+	var charges: int = int(_ability_charges.get(pkey, 0))
+	while elapsed >= interval:
+		if charges >= NUKE_CHARGE_CAP:
+			elapsed = interval  # 满仓停涨：计时钉在 interval，溢出不亏不白转
+			break
+		charges += 1
+		elapsed -= interval
+	_ability_charges[pkey] = charges
 	_periodic_timers[pkey] = elapsed
+	if charges > 0 and not hold_for_manual:
+		_ability_charges[pkey] = charges - 1
+		_fire_nuclear_bombardment(owner, params)
 
 static func _fire_nuclear_bombardment(owner: Owner, params: Dictionary) -> void:
 	if _battlefield == null:
@@ -526,6 +555,39 @@ static func _fire_nuclear_bombardment(owner: Owner, params: Dictionary) -> void:
 	_show_toast(_owner_msg(owner,
 		"☢ 核子轰炸！敌方全体受到 %.0f 伤害" % base_dmg,
 		"☢ 敌方核子轰炸！我方全体受到 %.0f 伤害" % base_dmg))
+
+
+# ── v24.1 大招双轨：核子轰炸手动释放入口（ultimate_cast_bar 消费）──
+
+## 玩家侧当前充能数（0..NUKE_CHARGE_CAP）
+static func get_nuclear_bombardment_charge() -> int:
+	return int(_ability_charges.get("player:nuclear_bombardment", 0))
+
+
+## 当前充能进度 0.0~1.0（供按钮冷却读条；满仓时恒 1.0）
+static func get_nuclear_bombardment_progress() -> float:
+	var interval: float = 30.0
+	var ab := get_active_ability(Owner.PLAYER)
+	if not ab.is_empty():
+		interval = maxf(0.1, float(ab.get("params", {}).get("interval", 30.0)))
+	var elapsed: float = float(_periodic_timers.get("player:nuclear_bombardment", interval))
+	if get_nuclear_bombardment_charge() >= NUKE_CHARGE_CAP:
+		return 1.0
+	return clampf(elapsed / interval, 0.0, 1.0)
+
+
+## 手动释放核子轰炸（仅玩家侧）。返回 "fired" / "no_charge" / "no_target"——
+## 无目标不消耗充能（"暂无目标，充能保留"），与自动模式无目标白放一条不同（自动侧保持旧行为）。
+static func manual_release_nuclear_bombardment() -> String:
+	var pkey: String = "player:nuclear_bombardment"
+	var charges: int = int(_ability_charges.get(pkey, 0))
+	if charges <= 0:
+		return "no_charge"
+	if _get_targets(Owner.PLAYER).is_empty():
+		return "no_target"
+	_ability_charges[pkey] = charges - 1
+	_fire_nuclear_bombardment(Owner.PLAYER, get_active_params(Owner.PLAYER))
+	return "fired"
 
 
 ## 预加载核爆贴图包（供 spawn_nuclear_explosion 使用）。
@@ -780,7 +842,7 @@ static func _check_rage_expire(owner: Owner) -> void:
 	if now >= float(rs.get("expire_at", 0.0)):
 		_expire_rage_buff(owner)
 
-## reset_state 用：若狂暴激活则先恢复
+## reset_battle_state 用：若狂暴激活则先恢复
 static func _expire_rage_if_active(owner: Owner) -> void:
 	var key: String = _owner_key(owner)
 	if bool(_rage_state.get(key, {}).get("active", false)):

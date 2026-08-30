@@ -10,6 +10,7 @@ const CombatFeedback = preload("res://scripts/combat_feedback.gd")
 const WeaponProjectileVfx = preload("res://scripts/weapon_projectile_vfx.gd")
 const WeaponVisuals = preload("res://data/weapon_visual_profiles.gd")  # v17: 武器视觉档案（名字优先解析）
 const AttackCalculator = preload("res://scripts/battle/attack_calculator.gd")
+const _PairEngineRef = preload("res://scripts/battle/pair_synergy_engine.gd")  # v21 P2: 搭档协同（溅射乘数）
 const CardGridUnitVisuals = preload("res://scripts/card_grid_unit_visuals.gd")  # v23.5: 空中目标瞄准点
 
 const _HIT_R2: float = 100.0
@@ -415,7 +416,15 @@ func _apply_hit(r: Dictionary) -> void:
 				break
 			if target.has_method("take_damage"):
 				# 溅射目标也需要防御计算（格子战模式下跳过，由CardGridDamage处理）
-				var splash_raw: float = raw_dmg * 0.5
+				# v21 P1: 统一装药（gen_unified_splash）B4 最小对齐——溅射比例改读
+				# shooter stats.splash_damage（>0 时），无则回退 0.5（原行为不变）。
+				# MAX_AOE_TARGETS_PER_HIT 与 bullet 兜底路径均不动（计划 §7 风险 5 允许）。
+				var splash_ratio: float = 0.5
+				if shooter_stats != null and shooter_stats is UnitStats and float(shooter_stats.splash_damage) > 0.0:
+					splash_ratio = clampf(float(shooter_stats.splash_damage), 0.0, 0.80)
+				# v21 P2: 侦察×火炮搭档——主目标带侦察标记且射手是火炮角色时溅射 ×1.5
+				splash_ratio *= _PairEngineRef.get_artillery_mark_splash_mult(shooter, tgt)
+				var splash_raw: float = raw_dmg * splash_ratio
 				var splash_final: float = splash_raw
 
 				var target_stats_splash: UnitStats = target.get("stats") as UnitStats if target != null and "stats" in target else null
@@ -430,7 +439,8 @@ func _apply_hit(r: Dictionary) -> void:
 
 					# 仅在非格子战模式下应用防御减免
 					if not is_card_grid:
-						var def_val_splash: float = AttackCalculator.get_defense_vs(target_stats_splash, shooter_stats.combat_kind)
+						# v21 P1: 传 shooter_stats——弹道重赋（gen_converted_munitions）对轻轴转对甲轴
+						var def_val_splash: float = AttackCalculator.get_defense_vs(target_stats_splash, shooter_stats.combat_kind, shooter_stats)
 						if splash_raw > def_val_splash:
 							splash_final = splash_raw * (100.0 / (100.0 + def_val_splash))
 						else:

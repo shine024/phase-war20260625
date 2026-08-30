@@ -681,7 +681,7 @@ func _ensure_compact_slot_structure(icon_row: Control, name_label: Label) -> voi
 	name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	name_label.custom_minimum_size = Vector2(0, 14)
 	name_label.remove_theme_font_size_override("font_size")
-	name_label.add_theme_font_size_override("font_size", 12)
+	name_label.add_theme_font_size_override("font_size", DesignTokens.FONT_SIZE_SMALL)
 	name_label.add_theme_color_override("font_color", Color(0.91, 0.93, 0.97, 1.0))
 	text_v.add_child(name_label)
 	# stat-line：左侧 [Lv·改] + 右侧 战力（HTML .stat-line，mono 9px）
@@ -1501,14 +1501,16 @@ func _set_mtg_minimal_card_view(c: CardResource, name_label, lv_label, icon_rect
 		hdr_root.custom_minimum_size.y = hdr_h
 	if name_hdr:
 		name_hdr.text = DefaultCards.safe_name(c)
-		name_hdr.add_theme_font_size_override("font_size", clampi(int(ceil(SLOT_SIZE.y * 0.028)), 10, 18))
+		# v23.6.1：卡名是中文，字号下限 10→12（禁用档清理）
+		name_hdr.add_theme_font_size_override("font_size", clampi(int(ceil(SLOT_SIZE.y * 0.028)), 12, 18))
 	if rank_row:
 		var ri: Dictionary = _mtg_rank_info(c)
 		var icon_px: int = clampi(int(ceil(SLOT_SIZE.y * 0.032)), 10, 20)
 		RankDisplayUi.apply_to_host(rank_row, ri, icon_px)
 		rank_hdr = rank_row.get_node_or_null("RankName") as Label
 		if rank_hdr:
-			rank_hdr.add_theme_font_size_override("font_size", clampi(int(ceil(SLOT_SIZE.y * 0.026)), 11, 17))
+			# v23.6.1：军衔名中文，下限 11→12
+			rank_hdr.add_theme_font_size_override("font_size", clampi(int(ceil(SLOT_SIZE.y * 0.026)), 12, 17))
 	if cost_hdr:
 		# v7.x：费用从 MtgHeader/MtgCostLabel 移到左上角角标气泡（CostCornerBadge）
 		cost_hdr.text = ""
@@ -1523,7 +1525,7 @@ func _set_mtg_minimal_card_view(c: CardResource, name_label, lv_label, icon_rect
 			name_label.max_lines_visible = clampi(int(get_meta("_pv_name_ml")), 1, 16)
 		else:
 			name_label.max_lines_visible = 8
-		name_label.add_theme_font_size_override("font_size", clampi(int(ceil(SLOT_SIZE.y * 0.022)), 11, 20))
+		name_label.add_theme_font_size_override("font_size", clampi(int(ceil(SLOT_SIZE.y * 0.022)), 12, 20))
 		if has_meta("_pv_name_mh"):
 			name_label.custom_minimum_size = Vector2(0, clampi(int(get_meta("_pv_name_mh")), 20, 420))
 		else:

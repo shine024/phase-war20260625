@@ -2,6 +2,8 @@ extends PanelContainer
 ## v9.1 组合技状态条：底部 HUD，显示 6 套套路激活状态
 ## 颜色三态：灰(未激活) / 橙(单卡激活，装≥2配套改造) / 绿(全队激活，兵种组合满足)
 ## 每秒轮询 combo_engine + 场上单位 mods（节流，非每帧）
+## v21 P2: 追加"搭档协同"指示区——单按钮 🤝n/5，tooltip 列出 5 对搭档激活态
+## （宽度敏感：本面板顶部预算 472px，6 套路图标已占 348px，搭档区只加 56px 保持 404px 内）
 
 const DT = preload("res://resources/design_tokens.gd")
 # 批次三 B10：字号 token 引入（10px 白名单/中文升 12）
@@ -17,7 +19,14 @@ const _COMBO_ORDER: Array[String] = [
 	ComboTactics.COMBO_CHEM,
 ]
 
+## v21 P2: 搭档协同显示顺序
+const _PAIR_ORDER: Array[String] = [
+	"pair_recon_artillery", "pair_engineer_infantry", "pair_aa_air",
+	"pair_armor_infantry", "pair_fort_support",
+]
+
 var _icon_buttons: Array = []  # [{btn:Button, combo_id:String}]
+var _pair_btn: Button = null   # v21 P2: 搭档协同指示按钮
 var _refresh_acc: float = 0.0
 const REFRESH_SEC: float = 0.6
 var _dt_accum: float = 0.0  # 用于 tooltip 更新
@@ -73,6 +82,39 @@ func _ready() -> void:
 		var btn := _make_combo_icon_button(def, combo_id)
 		hbox.add_child(btn)
 		_icon_buttons.append({"btn": btn, "combo_id": combo_id})
+	# v21 P2: 搭档协同指示按钮（🤝 n/5，tooltip 列出全部搭档）
+	_pair_btn = _make_pair_button()
+	hbox.add_child(_pair_btn)
+	# 宽度预算：原 348 + 8(分隔) + 52(搭档钮) = 408 ≤ 472 顶部预算
+	custom_minimum_size = Vector2(408, 40)
+
+
+## v21 P2: 创建搭档协同指示按钮
+func _make_pair_button() -> Button:
+	var btn := Button.new()
+	btn.custom_minimum_size = Vector2(52, 30)
+	btn.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	btn.text = "🤝0/5"
+	btn.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
+	btn.add_theme_color_override("font_color", Color(0.6, 0.6, 0.6, 1))
+	btn.add_theme_color_override("font_outline_color", DT.COLOR_BACKDROP_DEEP)
+	btn.add_theme_constant_override("outline_size", 1)
+	_set_combo_style(btn, 0)
+	btn.tooltip_text = _build_pair_tooltip(0)
+	return btn
+
+
+## v21 P2: 搭档协同 tooltip（列出 5 对搭档与激活态）
+func _build_pair_tooltip(active_count: int) -> String:
+	var lines: Array[String] = ["🤝搭档协同（%d/5 激活）" % active_count]
+	var eng: RefCounted = _get_combo_engine()
+	for pid in _PAIR_ORDER:
+		var def: Dictionary = ComboTactics.PAIR_SYNERGIES.get(pid, {})
+		if def.is_empty():
+			continue
+		var active: bool = eng != null and eng.has_method("is_pair_active") and bool(eng.is_pair_active(pid))
+		lines.append("%s %s — %s" % ["✓" if active else "○", String(def.get("name", pid)), String(def.get("desc", ""))])
+	return "\n".join(lines)
 
 
 func _make_combo_icon_button(def: Dictionary, combo_id: String) -> Button:
@@ -80,7 +122,7 @@ func _make_combo_icon_button(def: Dictionary, combo_id: String) -> Button:
 	btn.custom_minimum_size = Vector2(42, 30)
 	btn.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	btn.text = String(def.get("icon", "?"))
-	btn.add_theme_font_size_override("font_size", 14)
+	btn.add_theme_font_size_override("font_size", DT.FONT_SIZE_BODY)
 	btn.add_theme_color_override("font_color", Color(0.6, 0.6, 0.6, 1))
 	btn.add_theme_color_override("font_outline_color", DT.COLOR_BACKDROP_DEEP)
 	btn.add_theme_constant_override("outline_size", 1)
@@ -154,6 +196,10 @@ func _refresh() -> void:
 			var btn: Button = entry["btn"]
 			_set_combo_style(btn, 0)
 			btn.tooltip_text = _build_tooltip(entry["combo_id"], 0)
+		if _pair_btn != null:
+			_set_combo_style(_pair_btn, 0)
+			_pair_btn.text = "🤝0/5"
+			_pair_btn.tooltip_text = _build_pair_tooltip(0)
 		return
 	# 全队激活 combo_id（通过 mechanisms 反推）
 	var team_mechs: Array = eng.get_active_mechanisms()
@@ -173,6 +219,16 @@ func _refresh() -> void:
 			level = 1
 		_set_combo_style(btn, level)
 		btn.tooltip_text = _build_tooltip(combo_id, level)
+	# v21 P2: 搭档协同指示刷新
+	if _pair_btn != null:
+		var pair_active: int = 0
+		if eng.has_method("is_pair_active"):
+			for pid in _PAIR_ORDER:
+				if bool(eng.is_pair_active(pid)):
+					pair_active += 1
+		_set_combo_style(_pair_btn, 2 if pair_active > 0 else 0)
+		_pair_btn.text = "🤝%d/5" % pair_active
+		_pair_btn.tooltip_text = _build_pair_tooltip(pair_active)
 
 
 ## 从 active mechanisms 反推 combo_id（机制名→套路映射）

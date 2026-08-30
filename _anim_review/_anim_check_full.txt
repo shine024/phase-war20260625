@@ -1,0 +1,220 @@
+ww2_tiger /idle   朝向=向左(8/8帧左) 接缝=11.4 残留%=0.44
+ww2_tiger /attack 朝向=向左(12/12帧左) 接缝=15.6 残留%=0.40
+ww1_storm /idle   朝向=向左(8/8帧左) 接缝=7.4 残留%=0.16
+ww1_storm /attack 朝向=向左(12/12帧左) 接缝=33.0 残留%=0.17
+mod_apache/idle   朝向=向左(8/8帧左) 接缝=14.1 残留%=3.99
+mod_apache/attack 朝向=向左(12/12帧左) 接缝=16.1 残留%=3.11
+ww1_mp18  /idle   朝向=向左(8/8帧左) 接缝=24.7 残留%=0.44
+ww1_mp18  /attack 朝向=向左(12/12帧左) 接缝=34.6 残留%=0.44
+ww1_rifle /idle   朝向=向左(8/8帧左) 接缝=32.3 残留%=0.23
+ww1_rifle /attack 朝向=向左(12/12帧左) 接缝=34.6 残留%=4.56
+ww1_mgnest/idle   朝向=向左(8/8帧左) 接缝=11.0 残留%=0.00
+ww1_mgnest/attack 朝向=向左(12/12帧左) 接缝=12.1 残留%=0.00
+ww1_mortar/idle   朝向=向左(8/8帧左) 接缝=7.5 残留%=0.74
+ww1_mortar/attack 朝向=向左(12/12帧左) 接缝=14.3 残留%=0.97
+ww1_rolls /idle   朝向=向左(8/8帧左) 接缝=21.3 残留%=0.36
+ww1_rolls /attack 朝向=向左(12/12帧左) 接缝=12.3 残留%=0.47
+ww1_av7   /idle   朝向=向左(8/8帧左) 接缝=19.9 残留%=0.51
+ww1_av7   /attack 朝向=向左(12/12帧左) 接缝=13.1 残留%=0.59
+ww2_thompson/idle   朝向=向左(8/8帧左) 接缝=37.6 残留%=0.35
+ww2_thompson/attack 朝向=向左(12/12帧左) 接缝=36.7 残留%=0.22
+ww2_garand/idle   朝向=向左(8/8帧左) 接缝=6.0 残留%=0.01
+ww2_garand/attack 朝向=向左(12/12帧左) 接缝=20.2 残留%=0.04
+ww2_mg42  /idle   朝向=向左(8/8帧左) 接缝=10.2 残留%=1.55
+ww2_mg42  /attack 朝向=向左(12/12帧左) 接缝=22.8 残留%=3.04
+ww2_pschreck/idle   朝向=向左(8/8帧左) 接缝=21.1 残留%=0.70
+ww2_pschreck/attack 朝向=向左(12/12帧左) 接缝=6.6 残留%=1.11
+ww2_para  /idle   朝向=向左(8/8帧左) 接缝=9.2 残留%=0.06
+ww2_para  /attack 朝向=向左(12/12帧左) 接缝=44.8 残留%=0.50
+ww2_panther/idle   朝向=向左(8/8帧左) 接缝=9.7 残留%=0.28
+ww2_panther/attack 朝向=向左(12/12帧左) 接缝=10.7 残留%=0.18
+ww2_kingtiger/idle   朝向=向左(8/8帧左) 接缝=12.7 残留%=0.31
+ww2_kingtiger/attack 朝向=向左(12/12帧左) 接缝=8.1 残留%=0.38
+cold_ak   /idle   朝向=向左(8/8帧左) 接缝=5.2 残留%=0.07
+cold_ak   /attack 朝向=向左(12/12帧左) 接缝=9.0 残留%=0.00
+cold_m60  /idle   朝向=向左(8/8帧左) 接缝=9.9 残留%=0.34
+cold_m60  /attack 朝向=向左(12/12帧左) 接缝=18.7 残留%=0.20
+cold_btr  /idle   朝向=向左(8/8帧左) 接缝=10.0 残留%=0.00
+cold_btr  /attack 朝向=向左(12/12帧左) 接缝=5.4 残留%=0.00
+cold_m113 /idle   朝向=向左(8/8帧左) 接缝=18.7 残留%=2.38
+cold_m113 /attack 朝向=向左(12/12帧左) 接缝=20.9 残留%=2.26
+cold_spetsnaz/idle   朝向=向左(8/8帧左) 接缝=11.5 残留%=0.32
+cold_spetsnaz/attack 朝向=向左(12/12帧左) 接缝=25.8 残留%=0.55
+cold_t72  /idle   朝向=向左(8/8帧左) 接缝=13.4 残留%=0.15
+cold_t72  /attack 朝向=向左(12/12帧左) 接缝=10.4 残留%=0.18
+cold_mig  /idle   朝向=向左(8/8帧左) 接缝=8.0 残留%=1.62
+cold_mig  /attack 朝向=向左(12/12帧左) 接缝=48.1 残留%=1.15
+mod_marine/idle   朝向=向左(8/8帧左) 接缝=14.0 残留%=4.10
+mod_marine/attack 朝向=向左(12/12帧左) 接缝=36.5 残留%=3.98
+mod_technical/idle   朝向=向左(8/8帧左) 接缝=30.4 残留%=2.39
+mod_technical/attack 朝向=向左(12/12帧左) 接缝=27.3 残留%=1.98
+mod_stryker/idle   朝向=向左(8/8帧左) 接缝=14.6 残留%=0.24
+mod_stryker/attack 朝向=向左(12/12帧左) 接缝=21.9 残留%=0.51
+mod_mlrs  /idle   朝向=向左(8/8帧左) 接缝=11.8 残留%=1.66
+mod_mlrs  /attack 朝向=向左(12/12帧左) 接缝=19.7 残留%=2.29
+mod_delta /idle   朝向=向左(8/8帧左) 接缝=10.1 残留%=0.83
+mod_delta /attack 朝向=向左(12/12帧左) 接缝=26.3 残留%=0.68
+mod_abrams/idle   朝向=向左(8/8帧左) 接缝=9.8 残留%=3.26
+mod_abrams/attack 朝向=向左(7/12帧左) 接缝=12.2 残留%=4.78
+mod_apache_e/idle   朝向=向左(8/8帧左) 接缝=21.2 残留%=4.18
+mod_apache_e/attack 朝向=向左(12/12帧左) 接缝=19.4 残留%=2.39
+mod_command/idle   朝向=向左(8/8帧左) 接缝=11.0 残留%=0.40
+mod_command/attack 朝向=向左(12/12帧左) 接缝=7.4 残留%=1.02
+fut_drone /idle   朝向=向左(8/8帧左) 接缝=11.2 残留%=0.24
+fut_drone /attack 朝向=向左(12/12帧左) 接缝=19.6 残留%=0.24
+fut_cyborg/idle   朝向=向左(8/8帧左) 接缝=10.2 残留%=1.50
+fut_cyborg/attack 朝向=向左(12/12帧左) 接缝=33.2 残留%=1.25
+fut_mech  /idle   朝向=向左(8/8帧左) 接缝=5.9 残留%=1.97
+fut_mech  /attack 朝向=向左(12/12帧左) 接缝=5.0 残留%=0.22
+fut_hovertank/idle   朝向=向左(8/8帧左) 接缝=31.9 残留%=0.02
+fut_hovertank/attack 朝向=向左(12/12帧左) 接缝=10.1 残留%=0.17
+fut_spectre/idle   朝向=向左(8/8帧左) 接缝=14.9 残留%=0.41
+fut_spectre/attack 朝向=向左(12/12帧左) 接缝=30.9 残留%=0.45
+fut_colossus/idle   朝向=向左(8/8帧左) 接缝=7.8 残留%=0.34
+fut_colossus/attack 朝向=向左(12/12帧左) 接缝=8.7 残留%=0.35
+fut_nexus /idle   朝向=向左(8/8帧左) 接缝=15.6 残留%=0.55
+fut_nexus /attack 朝向=向左(12/12帧左) 接缝=12.1 残留%=0.56
+ww1_arm_rolls/idle   朝向=向左(8/8帧左) 接缝=35.9 残留%=0.41
+ww1_arm_rolls/attack 朝向=向左(12/12帧左) 接缝=26.4 残留%=0.45
+ww1_arm_ft17/idle   朝向=向左(8/8帧左) 接缝=13.0 残留%=0.42
+ww1_arm_ft17/attack 朝向=向左(12/12帧左) 接缝=12.1 残留%=0.54
+ww1_arty_77mm/idle   朝向=向左(8/8帧左) 接缝=5.4 残留%=3.24
+ww1_arty_77mm/attack 朝向=向左(11/12帧左) 接缝=19.0 残留%=3.51
+ww1_inf_cavalry/idle   朝向=向左(8/8帧左) 接缝=14.0 残留%=4.23
+ww1_inf_cavalry/attack 朝向=向左(12/12帧左) 接缝=24.5 残留%=0.45
+ww1_sup_engineer/idle   朝向=向左(8/8帧左) 接缝=24.2 残留%=0.34
+ww1_sup_engineer/attack 朝向=向左(12/12帧左) 接缝=31.8 残留%=0.33
+ww2_inf_hellcat/idle   朝向=向左(8/8帧左) 接缝=13.0 残留%=0.49
+ww2_inf_hellcat/attack 朝向=向左(12/12帧左) 接缝=6.6 残留%=0.50
+ww2_arm_sherman/idle   朝向=向左(8/8帧左) 接缝=18.8 残留%=2.58
+ww2_arm_sherman/attack 朝向=向左(12/12帧左) 接缝=6.1 残留%=2.92
+ww2_inf_bazooka/idle   朝向=向左(8/8帧左) 接缝=28.4 残留%=0.57
+ww2_inf_bazooka/attack 朝向=向左(12/12帧左) 接缝=10.5 残留%=0.27
+ww2_inf_panzerschrek/idle   朝向=向左(8/8帧左) 接缝=37.0 残留%=0.64
+ww2_inf_panzerschrek/attack 朝向=向左(12/12帧左) 接缝=15.2 残留%=0.22
+ww2_arty_m81/idle   朝向=向左(8/8帧左) 接缝=5.8 残留%=10.68
+ww2_arty_m81/attack 朝向=向左(12/12帧左) 接缝=23.4 残留%=10.46
+ww1_arty_m81/idle   朝向=向左(8/8帧左) 接缝=28.4 残留%=0.52
+ww1_arty_m81/attack 朝向=向左(12/12帧左) 接缝=5.9 残留%=0.56
+cold_inf_btr60/idle   朝向=向左(8/8帧左) 接缝=14.7 残留%=0.01
+cold_inf_btr60/attack 朝向=向左(12/12帧左) 接缝=16.7 残留%=0.01
+cold_arm_t55/idle   朝向=向左(8/8帧左) 接缝=15.6 残留%=1.56
+cold_arm_t55/attack 朝向=向左(12/12帧左) 接缝=10.4 残留%=1.64
+cold_inf_bmp1/idle   朝向=向左(8/8帧左) 接缝=18.3 残留%=1.80
+cold_inf_bmp1/attack 朝向=向左(12/12帧左) 接缝=17.6 残留%=1.60
+cold_sup_m113/idle   朝向=向左(8/8帧左) 接缝=13.5 残留%=0.03
+cold_sup_m113/attack 朝向=向左(12/12帧左) 接缝=7.2 残留%=0.03
+cold_sup_zsu23/idle   朝向=向左(8/8帧左) 接缝=32.3 残留%=0.77
+cold_sup_zsu23/attack 朝向=向左(12/12帧左) 接缝=41.2 残留%=0.87
+mod_inf_technical/idle   朝向=向左(8/8帧左) 接缝=37.8 残留%=1.68
+mod_inf_technical/attack 朝向=向左(12/12帧左) 接缝=29.9 残留%=0.97
+mod_arm_m1a1/idle   朝向=向左(8/8帧左) 接缝=15.3 残留%=2.50
+mod_arm_m1a1/attack 朝向=向左(12/12帧左) 接缝=11.8 残留%=3.10
+mod_sup_m6/idle   朝向=向左(8/8帧左) 接缝=25.6 残留%=1.16
+mod_sup_m6/attack 朝向=向左(12/12帧左) 接缝=35.3 残留%=2.82
+mod_arty_m270/idle   朝向=向左(8/8帧左) 接缝=8.0 残留%=0.42
+mod_arty_m270/attack 朝向=向左(12/12帧左) 接缝=31.2 残留%=1.03
+mod_inf_scout_drone/idle   朝向=混合(4/8帧左) 接缝=31.5 残留%=1.37
+mod_inf_scout_drone/attack 朝向=向左(12/12帧左) 接缝=51.1 残留%=6.54
+mod_arm_m1a2sep/idle   朝向=向左(8/8帧左) 接缝=13.9 残留%=2.65
+mod_arm_m1a2sep/attack 朝向=向左(12/12帧左) 接缝=17.5 残留%=2.79
+fut_inf_scout_mech/idle   朝向=向左(8/8帧左) 接缝=36.7 残留%=0.38
+fut_inf_scout_mech/attack 朝向=向左(12/12帧左) 接缝=7.7 残留%=0.40
+fut_arm_hovertank/idle   朝向=向左(8/8帧左) 接缝=22.0 残留%=0.02
+fut_arm_hovertank/attack 朝向=向左(12/12帧左) 接缝=5.8 残留%=0.01
+fut_arm_prism/idle   朝向=向左(8/8帧左) 接缝=14.4 残留%=1.99
+fut_arm_prism/attack 朝向=向左(12/12帧左) 接缝=8.1 残留%=1.98
+fut_arm_heavy_mech/idle   朝向=向左(8/8帧左) 接缝=20.4 残留%=0.52
+fut_arm_heavy_mech/attack 朝向=向左(12/12帧左) 接缝=8.5 残留%=0.69
+fut_arm_nexus/idle   朝向=向左(8/8帧左) 接缝=13.5 残留%=0.29
+fut_arm_nexus/attack 朝向=向左(12/12帧左) 接缝=12.4 残留%=0.43
+fut_sup_bulwark/idle   朝向=向左(8/8帧左) 接缝=9.9 残留%=0.13
+fut_sup_bulwark/attack 朝向=向左(12/12帧左) 接缝=19.2 残留%=0.13
+fut_arm_titan_mk2/idle   朝向=向左(8/8帧左) 接缝=9.6 残留%=2.45
+fut_arm_titan_mk2/attack 朝向=向左(12/12帧左) 接缝=11.9 残留%=2.07
+fut_inf_storm_rider/idle   朝向=向左(8/8帧左) 接缝=7.0 残留%=3.18
+fut_inf_storm_rider/attack 朝向=向左(12/12帧左) 接缝=5.5 残留%=2.36
+fut_air_heavy_carrier/idle   朝向=向左(8/8帧左) 接缝=22.1 残留%=1.10
+fut_air_heavy_carrier/attack 朝向=向左(9/12帧左) 接缝=55.6 残留%=0.41
+fut_air_regen_frame/idle   朝向=向左(8/8帧左) 接缝=25.6 残留%=8.22
+fut_air_regen_frame/attack 朝向=向左(12/12帧左) 接缝=50.8 残留%=7.35
+mod_arm_abrams_mk2/idle   朝向=向左(8/8帧左) 接缝=15.2 残留%=0.73
+mod_arm_abrams_mk2/attack 朝向=向左(12/12帧左) 接缝=10.3 残留%=0.81
+ww1_fort_pillbox/idle   朝向=向左(8/8帧左) 接缝=7.1 残留%=0.16
+ww1_fort_pillbox/attack 朝向=向左(12/12帧左) 接缝=6.1 残留%=0.06
+ww1_fort_artillery/idle   朝向=向左(8/8帧左) 接缝=8.5 残留%=0.30
+ww1_fort_artillery/attack 朝向=向左(12/12帧左) 接缝=26.0 残留%=0.09
+ww2_fort_bunker/idle   朝向=向左(8/8帧左) 接缝=13.7 残留%=0.67
+ww2_fort_bunker/attack 朝向=向左(12/12帧左) 接缝=11.8 残留%=0.16
+ww2_fort_flak/idle   朝向=向左(8/8帧左) 接缝=21.5 残留%=0.69
+ww2_fort_flak/attack 朝向=向左(12/12帧左) 接缝=20.5 残留%=0.45
+cold_fort_missile/idle   朝向=向左(8/8帧左) 接缝=8.1 残留%=0.63
+cold_fort_missile/attack 朝向=向左(11/12帧左) 接缝=23.9 残留%=1.14
+cold_fort_radar/idle   朝向=向左(8/8帧左) 接缝=15.9 残留%=2.69
+cold_fort_radar/attack 朝向=向左(8/8帧左) 接缝=15.9 残留%=2.69
+mod_fort_citadel/idle   朝向=向左(8/8帧左) 接缝=13.3 残留%=0.56
+mod_fort_citadel/attack 朝向=向左(11/12帧左) 接缝=4.3 残留%=0.42
+mod_fort_phalanx/idle   朝向=向左(8/8帧左) 接缝=22.0 残留%=1.53
+mod_fort_phalanx/attack 朝向=向左(12/12帧左) 接缝=12.8 残留%=0.48
+fut_fort_ion/idle   朝向=向左(8/8帧左) 接缝=10.5 残留%=0.38
+fut_fort_ion/attack 朝向=向左(12/12帧左) 接缝=12.3 残留%=0.29
+fut_fort_shield/idle   朝向=向左(8/8帧左) 接缝=43.9 残留%=1.56
+fut_fort_shield/attack 朝向=向右!(0/12帧左) 接缝=61.3 残留%=0.89
+ww1_inf_enfield/idle   朝向=向左(8/8帧左) 接缝=26.2 残留%=0.07
+ww1_inf_enfield/attack 朝向=向左(12/12帧左) 接缝=32.6 残留%=0.06
+ww1_arm_rolls_mk2/idle   朝向=向左(8/8帧左) 接缝=22.1 残留%=0.77
+ww1_arm_rolls_mk2/attack 朝向=向左(12/12帧左) 接缝=26.7 残留%=0.94
+ww1_sup_vickers/idle   朝向=向左(8/8帧左) 接缝=12.7 残留%=0.59
+ww1_sup_vickers/attack 朝向=向左(12/12帧左) 接缝=35.1 残留%=1.14
+ww1_sup_ford_ambulance/idle   朝向=向左(8/8帧左) 接缝=7.4 残留%=0.65
+ww1_sup_ford_ambulance/attack 朝向=向左(12/12帧左) 接缝=9.8 残留%=0.66
+ww1_inf_mp18_x/idle   朝向=向左(8/8帧左) 接缝=18.7 残留%=0.50
+ww1_inf_mp18_x/attack 朝向=向左(12/12帧左) 接缝=22.2 残留%=0.50
+ww2_arm_garand_para/idle   朝向=向左(8/8帧左) 接缝=21.5 残留%=0.96
+ww2_arm_garand_para/attack 朝向=向左(12/12帧左) 接缝=35.5 残留%=0.63
+ww2_arty_hummel/idle   朝向=向左(8/8帧左) 接缝=10.8 残留%=1.15
+ww2_arty_hummel/attack 朝向=向左(12/12帧左) 接缝=15.2 残留%=1.39
+ww2_arty_pak40/idle   朝向=向左(8/8帧左) 接缝=6.2 残留%=1.94
+ww2_arty_pak40/attack 朝向=向左(12/12帧左) 接缝=17.3 残留%=1.88
+ww2_sup_gmc_truck/idle   朝向=向左(8/8帧左) 接缝=15.8 残留%=0.05
+ww2_sup_gmc_truck/attack 朝向=向左(8/8帧左) 接缝=15.8 残留%=0.05
+ww2_inf_kar98k/idle   朝向=向左(8/8帧左) 接缝=8.0 残留%=0.32
+ww2_inf_kar98k/attack 朝向=向左(12/12帧左) 接缝=18.9 残留%=0.31
+cold_arty_bmd1/idle   朝向=向左(8/8帧左) 接缝=21.2 残留%=2.61
+cold_arty_bmd1/attack 朝向=向左(12/12帧左) 接缝=24.7 残留%=1.16
+cold_sup_bmp1_x/idle   朝向=向左(8/8帧左) 接缝=26.5 残留%=2.17
+cold_sup_bmp1_x/attack 朝向=向左(12/12帧左) 接缝=26.3 残留%=2.17
+cold_inf_metis/idle   朝向=向右!(1/8帧左) 接缝=23.8 残留%=1.75
+cold_inf_metis/attack 朝向=向右!(3/12帧左) 接缝=9.7 残留%=1.77
+cold_arm_p18/idle   朝向=向左(8/8帧左) 接缝=8.9 残留%=1.72
+cold_arm_p18/attack 朝向=向左(8/8帧左) 接缝=8.9 残留%=1.72
+cold_arty_brem1/idle   朝向=向左(8/8帧左) 接缝=15.1 残留%=1.69
+cold_arty_brem1/attack 朝向=向左(8/8帧左) 接缝=15.1 残留%=1.69
+mod_sup_m4_carbine/idle   朝向=向左(8/8帧左) 接缝=13.2 残留%=1.25
+mod_sup_m4_carbine/attack 朝向=向左(12/12帧左) 接缝=36.2 残留%=1.05
+mod_inf_patriot/idle   朝向=向左(8/8帧左) 接缝=31.6 残留%=0.21
+mod_inf_patriot/attack 朝向=向左(12/12帧左) 接缝=27.4 残留%=0.21
+mod_arm_himars/idle   朝向=向左(8/8帧左) 接缝=8.9 残留%=0.42
+mod_arm_himars/attack 朝向=向左(12/12帧左) 接缝=21.5 残留%=0.50
+mod_arty_rq7/idle   朝向=向左(8/8帧左) 接缝=27.6 残留%=0.30
+mod_arty_rq7/attack 朝向=向左(12/12帧左) 接缝=29.3 残留%=1.11
+mod_sup_growler/idle   朝向=向左(8/8帧左) 接缝=19.9 残留%=9.62
+mod_sup_growler/attack 朝向=向左(12/12帧左) 接缝=44.8 残留%=8.77
+fut_inf_neural/idle   朝向=向左(8/8帧左) 接缝=28.6 残留%=4.60
+fut_inf_neural/attack 朝向=向左(12/12帧左) 接缝=24.6 残留%=3.93
+fut_arm_hk07/idle   朝向=向左(8/8帧左) 接缝=16.4 残留%=0.45
+fut_arm_hk07/attack 朝向=向左(12/12帧左) 接缝=13.2 残留%=0.67
+fut_arty_hel30/idle   朝向=向左(8/8帧左) 接缝=14.7 残留%=1.00
+fut_arty_hel30/attack 朝向=向左(12/12帧左) 接缝=22.9 残留%=0.98
+fut_sup_nrepair/idle   朝向=向左(8/8帧左) 接缝=12.7 残留%=1.01
+fut_sup_nrepair/attack 朝向=向左(12/12帧左) 接缝=28.9 残留%=1.18
+fut_inf_x9/idle   朝向=向左(8/8帧左) 接缝=57.8 残留%=2.14
+fut_inf_x9/attack 朝向=向左(12/12帧左) 接缝=57.1 残留%=4.58
+fut_inf_c96/idle   朝向=向左(8/8帧左) 接缝=13.6 残留%=0.14
+fut_inf_c96/attack 朝向=向左(12/12帧左) 接缝=36.1 残留%=0.54
+fut_arm_sdkfz/idle   朝向=向左(8/8帧左) 接缝=8.3 残留%=0.43
+fut_arm_sdkfz/attack 朝向=向左(12/12帧左) 接缝=13.9 残留%=0.39
+fut_arty_ssc1/idle   朝向=向左(8/8帧左) 接缝=27.0 残留%=1.44
+fut_arty_ssc1/attack 朝向=向左(10/12帧左) 接缝=22.7 残留%=1.79
+fut_sup_ps9/idle   朝向=向左(8/8帧左) 接缝=27.6 残留%=0.90
+fut_sup_ps9/attack 朝向=向左(8/8帧左) 接缝=27.6 残留%=0.90

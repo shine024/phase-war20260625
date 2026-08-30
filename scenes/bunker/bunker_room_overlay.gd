@@ -36,6 +36,8 @@ func setup(room_id: String, x: float, y: float, w: float, h: float) -> void:
 	position = Vector2(x, y)
 	size = Vector2(w, h)
 	mouse_filter = Control.MOUSE_FILTER_STOP
+	# v23.6.1：房间可点击（非 Button 不吃全局手型钩子），手动设光标
+	mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 	_build()
 
 func _build() -> void:
@@ -88,7 +90,8 @@ func _build() -> void:
 	_tag_label.anchor_bottom = 0.32
 	_tag_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	_tag_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	_tag_label.add_theme_font_size_override("font_size", DT.FONT_SIZE_XSMALL + 1)
+	# v23.6.1：角标有中文（废弃/修复中），11px 禁用档 → 12px
+	_tag_label.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
 	_tag_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_tag_label)
 
@@ -114,6 +117,24 @@ func _build() -> void:
 	mouse_entered.connect(_set_hover.bind(true))
 	mouse_exited.connect(_set_hover.bind(false))
 
+## 悬停就地解释：按状态给修复条件/进度/功能说明
+func _refresh_tooltip(def: Dictionary, state: int, progress: float, frozen: bool) -> void:
+	match state:
+		BunkerRoomDefs.STATE_LOCKED:
+			if bool(def.get("is_terminal", false)):
+				tooltip_text = "终局房间：需满足特定条件后开启"
+			else:
+				var cost_text: String = BunkerRoomDefs.cost_text(def.get("cost", {}))
+				tooltip_text = "废弃房间：修复需 %s，修复进度靠完成战斗推进" % cost_text
+		BunkerRoomDefs.STATE_REPAIRING:
+			if frozen:
+				tooltip_text = "修复进度冻结：反应堆修复并上线后继续"
+			else:
+				tooltip_text = "修复中 %d%%：每完成一场战斗推进一格" % int(round(progress * 100.0))
+		_:
+			var note := str(def.get("function_note", ""))
+			tooltip_text = note if not note.is_empty() else str(def.get("tag", ""))
+
 func _set_hover(on: bool) -> void:
 	_is_hover = on
 	_hover.visible = on
@@ -121,6 +142,8 @@ func _set_hover(on: bool) -> void:
 func refresh(state: int, _level: int, progress: float, frozen: bool) -> void:
 	var def := BunkerRoomDefs.get_room(_room_id)
 	_name_label.text = str(def.get("name", ""))
+	# v23.6.1：悬停就地解释——修复条件/进度/功能说明按状态给（ui-review 检查单）
+	_refresh_tooltip(def, state, progress, frozen)
 	var is_transition := _prev_state != -1 and state != _prev_state
 	_prev_state = state
 	match state:

@@ -508,6 +508,8 @@ static func do_attack(u: CharacterBody2D) -> void:
 				CombatFeedback.show_miss(u.target.global_position, u.target)
 				return
 		do_attack_with_damage(u, damage, weapon.weapon_type, weapon.display_name, weapon, true)
+		# v21 P1: 扩容弹舱——主目标开火后追加次级目标射击（独立结算）
+		_try_expansion_shot(u, u.target)
 		return
 
 	# 回退：无武器资源时用裸 attack_damage。v10(C7)：预计算标记 true——格子战（唯一模式）
@@ -518,6 +520,9 @@ static func do_attack(u: CharacterBody2D) -> void:
 		return
 	var damage: float = u.stats.attack_damage if u.stats else 0.0
 	do_attack_with_damage(u, damage, u.stats.weapon_type if u.stats else 0, "", null, true)
+	# v21 P1: 扩容弹舱（gen_expansion_chamber）——同时攻击目标数 +1：主目标开火后
+	# 追加一次对次级目标的独立射击（全额伤害独立结算，复用 do_attack 完整重算）。
+	_try_expansion_shot(u, u.target)
 
 ## 获取武器发射起点（v16 起直射与曲射共用）：优先用 MuzzleAnchors 标注的枪口位置
 ## （fireX/fireY 独立二维；锚点表标注的语义本就是"弹道起始点"），
@@ -1033,6 +1038,8 @@ static func _process_multi_weapons(u: CharacterBody2D, delta: float) -> void:
 					# v10(C6/C7): dmg 已含 calculate_damage_with_weapon 的强化曲线 → 必须标记预计算，
 					# 否则 bullet/indirect batch 再乘一遍 0.05 旧曲线（强化双乘）+ bullet 再乘防御（双曲线）
 					do_attack_with_damage(u, dmg, w_wt, w_name, w_weapon, true)
+					# v21 P1: 扩容弹舱——主目标开火后追加次级目标射击（独立结算）
+					_try_expansion_shot(u, u.target)
 				if phase_timer >= timing["active"]:
 					phase = u.AttackPhase.COOLDOWN
 					phase_timer = 0.0
@@ -1070,6 +1077,40 @@ static func effective_fire_range(u: CharacterBody2D) -> float:
 		if targeting_opponent_phase_field_only(u):
 			return maxf(rng, acquisition_range(u) * 1.5)
 	return rng
+
+## v21 P1: 扩容弹舱（gen_expansion_chamber）——主目标开火后向射程内另一敌人追加一次射击。
+## 实现：临时把 u.target 换成次级目标，递归 do_attack（完整重算伤害/武器/弹道，独立结算），
+## 用 _expansion_extra_firing meta 防递归链（追加射击不再继续扩容）；完毕恢复原目标。
+## 仅玩家侧（敌方单位不装改造）。
+static func _try_expansion_shot(u: CharacterBody2D, primary: Node2D) -> void:
+	if u == null or u.stats == null:
+		return
+	if primary == null or not is_instance_valid(primary):
+		return
+	# 防递归：追加射击内部不再触发扩容
+	if u.has_meta("_expansion_extra_firing"):
+		return
+	# flag 判定：注册表未知键 → mod_special_flags meta
+	if not u.stats.has_meta("mod_special_flags"):
+		return
+	if not bool((u.stats.get_meta("mod_special_flags", {}) as Dictionary).get("expansion_chamber", false)):
+		return
+	# 次级目标筛选（射程内、非主目标、可选中、存活）
+	var tree = u.get_tree()
+	if tree == null:
+		return
+	var target_group: String = "enemy_units" if u.is_player else "player_units"
+	var gr: Array = BattleManager.get_cached_nodes_in_group(target_group) if BattleManager else tree.get_nodes_in_group(target_group)
+	var secondary: Node2D = TargetSelection.select_expansion_target(u, primary, gr)
+	if secondary == null:
+		return
+	# 换目标 → 递归一次 → 恢复
+	u.set_meta("_expansion_extra_firing", true)
+	var prev_target: Node2D = u.target
+	u.target = secondary
+	do_attack(u)
+	u.target = prev_target
+	u.remove_meta("_expansion_extra_firing")
 
 static func targeting_opponent_phase_field_only(u: CharacterBody2D) -> bool:
 	if u.is_player:

@@ -150,7 +150,7 @@ func _initialize() -> void:
 	var guards: Dictionary = {
 		"res://scenes/units/construct_unit.gd": [
 			["_fixed_mechanism_tags()", "玩家侧 tags 光环注册辅助缺失"],
-			["receive_auras_from_field(self)", "后入场光环补偿未接入 setup"],
+			["receive_auras_from_field_deferred(self)", "后入场光环补偿未接入 setup（v21 P0 改帧末）"],
 			["update_supply_aura_periodic", "补给光环 tick 未挂钩"],
 			["update_relay_periodic", "能量中继 tick 未挂钩"],
 			["update_scout_mark_periodic", "侦察标记 tick 未挂钩"],

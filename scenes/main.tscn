@@ -1,4 +1,4 @@
-[gd_scene load_steps=36 format=3 uid="uid://main"]
+[gd_scene load_steps=37 format=3 uid="uid://main"]
 
 [ext_resource type="Script" uid="uid://c6ojqq5kxkm03" path="res://scenes/main.gd" id="1_script"]
 [ext_resource type="PackedScene" uid="uid://battlefield" path="res://scenes/battlefield/battlefield.tscn" id="2_battlefield"]
@@ -31,6 +31,7 @@
 [ext_resource type="PackedScene" path="res://scenes/ui/battle_status_strip.tscn" id="47_status_strip"]
 [ext_resource type="PackedScene" path="res://scenes/ui/buff_fold_card.tscn" id="48_buff_card"]
 [ext_resource type="PackedScene" uid="uid://combo_status_strip" path="res://scenes/ui/combo_status_strip.tscn" id="49_combo_strip"]
+[ext_resource type="Script" path="res://scenes/ui/ultimate_cast_bar.gd" id="50_ult_cast_bar"]
 
 [sub_resource type="LabelSettings" id="LabelSettings_level_display"]
 font_size = 24
@@ -209,6 +210,14 @@ theme_override_constants/separation = 0
 
 [node name="BottomFunctionBar" parent="HudLayer/BattleBottomBar" instance=ExtResource("27_function_bar")]
 layout_mode = 2
+
+[node name="UltimateCastBar" type="HBoxContainer" parent="HudLayer/BattleBottomBar"]
+custom_minimum_size = Vector2(0, 58)
+layout_mode = 2
+visible = false
+alignment = 1
+theme_override_constants/separation = 12
+script = ExtResource("50_ult_cast_bar")
 
 [node name="BottomInstrumentBar" parent="HudLayer/BattleBottomBar" instance=ExtResource("26_instrument_bar")]
 layout_mode = 2
@@ -642,23 +651,6 @@ mouse_filter = 0
 
 
 [node name="CenterContainer" type="CenterContainer" parent="PopupLayer/ModificationOverlay"]
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-
-[node name="ReinforcementOverlay" type="Control" parent="PopupLayer"]
-visible = false
-layout_mode = 3
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-
-[node name="CenterContainer" type="CenterContainer" parent="PopupLayer/ReinforcementOverlay"]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0

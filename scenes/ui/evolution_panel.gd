@@ -420,7 +420,7 @@ func _create_card_item(card: CardResource) -> Control:
 	thumb_icon.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	thumb_icon.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	thumb_icon.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	thumb_icon.add_theme_font_size_override("font_size", 16)
+	thumb_icon.add_theme_font_size_override("font_size", DT.FONT_SIZE_MEDIUM)
 	thumb_icon.add_theme_color_override("font_color", Color(1, 1, 1, 0.55))
 	thumb_icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	thumb.add_child(thumb_icon)
@@ -439,7 +439,7 @@ func _create_card_item(card: CardResource) -> Control:
 	name_row.add_theme_constant_override("separation", 4)
 	var name_label := Label.new()
 	name_label.text = card.display_name if card.display_name else card.card_id
-	name_label.add_theme_font_size_override("font_size", 14)
+	name_label.add_theme_font_size_override("font_size", DT.FONT_SIZE_BODY)
 	name_label.add_theme_color_override("font_color", DT.COLOR_TEXT if is_selected else Color(0.85, 0.88, 0.94, 1))
 	name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	name_label.clip_text = false
@@ -464,7 +464,7 @@ func _create_card_item(card: CardResource) -> Control:
 		mod_count = card.mods.size()
 	var meta_label := Label.new()
 	meta_label.text = "Lv.%d  ·  M%d/9" % [_card_level_of(card), mod_count]
-	meta_label.add_theme_font_size_override("font_size", 12)
+	meta_label.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
 	meta_label.add_theme_color_override("font_color", DT.COLOR_SLATE_DIM_A85)
 	meta_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	info.add_child(meta_label)
@@ -475,7 +475,7 @@ func _create_card_item(card: CardResource) -> Control:
 	var power_str := _format_power_value(card)
 	power_label.text = power_str
 	power_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	power_label.add_theme_font_size_override("font_size", 12)
+	power_label.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
 	power_label.add_theme_color_override("font_color", DT.COLOR_VIOLET_SOFT if power_str != "—" else Color(0.5, 0.5, 0.55, 0.5))
 	power_label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	power_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -555,7 +555,7 @@ func _create_evolution_node(target: Dictionary) -> Control:
 	if target_card == null:
 		var ph := Label.new()
 		ph.text = "⚠ 无效进化目标：%s（数据缺失）" % String(target.get("target_id", "???"))
-		ph.add_theme_font_size_override("font_size", 12)
+		ph.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
 		ph.add_theme_color_override("font_color", Color(0.9, 0.4, 0.3))
 		ph.modulate.a = 0.6
 		return ph
@@ -617,7 +617,7 @@ func _create_evolution_node(target: Dictionary) -> Control:
 	top_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var name_lbl := Label.new()
 	name_lbl.text = target.name
-	name_lbl.add_theme_font_size_override("font_size", 14)
+	name_lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_BODY)
 	name_lbl.add_theme_color_override("font_color", THEME_VIOLET_SOFT if can_evo else THEME_TEXT_DIM)
 	name_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	name_lbl.clip_text = false
@@ -669,13 +669,13 @@ func _create_evolution_node(target: Dictionary) -> Control:
 		pct = int((float(target_power) / float(current_power) - 1.0) * 100.0)
 	var pct_str := ("+%d%%" % pct) if pct >= 0 else ("%d%%" % pct)
 	power_lbl.text = "战力 %d ▶ %d" % [current_power, target_power]
-	power_lbl.add_theme_font_size_override("font_size", 12)
+	power_lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
 	power_lbl.add_theme_color_override("font_color", THEME_GREEN if pct >= 0 else THEME_RED)
 	power_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	power_row.add_child(power_lbl)
 	var pct_lbl := Label.new()
 	pct_lbl.text = pct_str
-	pct_lbl.add_theme_font_size_override("font_size", 12)
+	pct_lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
 	pct_lbl.add_theme_color_override("font_color", THEME_GREEN if pct >= 0 else THEME_RED)
 	pct_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	pct_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
@@ -803,7 +803,7 @@ func _update_evolution_tree() -> void:
 		var final_lbl := Label.new()
 		final_lbl.text = "✓ 该卡牌已达终阶形态"
 		final_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		final_lbl.add_theme_font_size_override("font_size", 16)
+		final_lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_MEDIUM)
 		final_lbl.add_theme_color_override("font_color", THEME_GOLD)
 		final_lbl.custom_minimum_size = Vector2(0, 40)
 		evolution_tree.add_child(final_lbl)
@@ -857,7 +857,7 @@ func _append_hidden_intel_hints() -> void:
 		box.add_child(sep)
 		var head := Label.new()
 		head.text = "🔍 未揭示的隐藏路线：%s" % String(b.get("name", "???"))
-		head.add_theme_font_size_override("font_size", 12)
+		head.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
 		head.add_theme_color_override("font_color", THEME_CYAN)
 		box.add_child(head)
 		var body := Label.new()
@@ -874,7 +874,7 @@ func _append_hidden_intel_hints() -> void:
 			body.text = "　└ 达成对应敌人情报进度后揭示（战斗中击败该类敌人、侦察、分解重复卡均可积累情报）"
 		else:
 			body.text = "　└ %s 即揭示｜积累途径：击败该类敌人 / 侦察 / 分解重复卡（情报中心可查进度）" % "、".join(parts)
-		body.add_theme_font_size_override("font_size", 12)
+		body.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
 		body.add_theme_color_override("font_color", Color(0.62, 0.62, 0.70))
 		body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		box.add_child(body)
@@ -919,7 +919,7 @@ func _create_current_form_node() -> Control:
 	top.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var name_lbl := Label.new()
 	name_lbl.text = selected_card.display_name if selected_card.display_name else selected_card.card_id
-	name_lbl.add_theme_font_size_override("font_size", 14)
+	name_lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_BODY)
 	name_lbl.add_theme_color_override("font_color", DT.COLOR_TEXT)
 	name_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	name_lbl.clip_text = false
@@ -1090,7 +1090,7 @@ func _render_condition_rows(check_result: Dictionary) -> void:
 		# 结构性错误（目标无效/不在进化链等）：显示拒绝原因单行
 		var err := Label.new()
 		err.text = "⚠ %s" % String(check_result.get("reason_zh", "无法评估进化条件"))
-		err.add_theme_font_size_override("font_size", 12)
+		err.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
 		err.add_theme_color_override("font_color", THEME_RED)
 		err.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		req_list.add_child(err)
@@ -1107,7 +1107,7 @@ func _render_condition_rows(check_result: Dictionary) -> void:
 		else:
 			row.text = "%s %s　%s / %s" % [
 				("✓" if met else "✗"), _condition_label_zh(String(c.get("key", ""))), cur_t, req_t]
-		row.add_theme_font_size_override("font_size", 12)
+		row.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
 		row.add_theme_color_override("font_color", THEME_GREEN if met else Color(0.95, 0.6, 0.4))
 		req_list.add_child(row)
 		## v9.x：未达成条件附具体指引子行（哪里掉落/去哪个面板/点技能树哪个节点）。
@@ -1116,7 +1116,7 @@ func _render_condition_rows(check_result: Dictionary) -> void:
 		if not met and not detail_t.is_empty():
 			var hint := Label.new()
 			hint.text = "　└ %s" % detail_t
-			hint.add_theme_font_size_override("font_size", 12)
+			hint.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
 			hint.add_theme_color_override("font_color", Color(0.62, 0.62, 0.70))
 			hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 			req_list.add_child(hint)

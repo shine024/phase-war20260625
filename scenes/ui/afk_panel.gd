@@ -510,9 +510,13 @@ func _update_slot_display(update_one: int = -1) -> void:
 				lbl.text = name
 			else:
 				lbl.text = "第 %d 关" % level
+			# v23.6.1：悬停就地解释（槽位用途 + 点击语义）
+			pnl.tooltip_text = "挂机槽位 %d：%s\n点击更换此槽位循环刷的关卡" % [i + 1, lbl.text]
 			_apply_slot_style(pnl, true)
 		else:
 			lbl.text = "未关联"
+			# v23.6.1：悬停就地解释
+			pnl.tooltip_text = "挂机槽位 %d：未关联关卡\n点击选择此槽位循环刷的关卡" % [i + 1]
 			_apply_slot_style(pnl, false)
 
 

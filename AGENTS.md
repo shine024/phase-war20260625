@@ -247,7 +247,7 @@ BattleManager → BattleSpawnSystem, BattleDamageSystem, EnergyManager,
 SaveManager → ALL managers (loads/saves their state sections)
               Critical: BlueprintManager, PhaseInstrumentManager,
               QuestManager, BasicResourceManager, FactionSystemManager, AffixManager,
-              LevelProgressManager, DropManager, IntelItemBag
+              LevelProgressManager, DropManager, IntelItemBag, ModificationRegistry (v21 P3-B v9)
               Deferred: LoreManager, StatBoostManager, AchievementManager,
               DailyTaskManager, StatisticsManager, CardEnhancementManager, etc.
 
@@ -281,6 +281,26 @@ IntelEvolutionManager → IntelManual, IntelEvolutionBranches
 1. `GameManager.go_to_battle()` → `BattleManager.start_battle(scene)`
 2. Per-frame: wave spawning + win/lose check
 3. `SignalBus.battle_ended.emit(player_won)` → `GameManager._on_battle_ended()` handles rewards, progression, save
+
+### v21 光环范围化 / 组合满档 / 搭档协同 / 产能打造（2026-08-31，详见 CHANGELOG）
+
+- **光环范围化**：战术光环（医疗/侦查/雷达/堡垒）按带内槽距过滤（`data/aura_data.gd`
+  `is_in_aura_range`，★5→+1/★9→+2 格）；指挥/载具维修恒全场。施加按范围、
+  **撤销永远全量扫描**（范围过滤撤销会漏 buff）。部署槽位 meta 在 setup 之后才写——
+  setup 期光环广播一律走帧末延迟（`broadcast_and_receive_deferred` /
+  `receive_auras_from_field_deferred`）。回滚开关 `GameConfig.aura_range_enabled`。
+- **组合满档**：`ComboTactics.detect_card_combo_tiers()`（basic/full），满档机制
+  flag 由 combo_engine 每秒并入全队机制表；6 个行为改写传奇改造（gen_* v21 P1）
+  effect key 走未知键→`_special` 通道；改造总数锁定断言 190（加改造要 bump
+  `modification_modules_test.gd` 与 combo_tier_smoke 双处）。
+- **搭档协同**：`data/unit_roles.gd` 九角色归一化 + `pair_synergy_engine.gd`
+  事件驱动激活（部署/死亡 + 1s 兜底，禁止每帧扫描），数值对称记账（meta 存原值）。
+- **产能打造（存档 v9）**：DayClock 产能 → `ModificationRegistry.craft_mod` 解锁 +
+  相位师首杀解锁；存档根键 `mod_unlock_state`（ModificationRegistry 持有，已入
+  SaveManager critical + resettable 清单）、`basic_resources.production_points`。
+  注意：解锁集 dict 内 `first_kill_*` 前缀为标记键，新 mod_id 禁用该前缀。
+- **敌方精英同源词条**：`enemy_loadout_tiers.gd` seeded roll（同关同波同槽可复现），
+  挂载点在 `enemy_unit.setup` 末尾（battle_spawn_system 只读约束的等价点）。
 
 ### Scene Structure
 
@@ -584,6 +604,28 @@ User-driven collaboration. Every task follows: **Question → Options → Decisi
 **配套对齐五个消费点**（改任何其一前先读 CHANGELOG v23.5 全表）：`aim_pos_for`（bullet 6 处 + 直射双 batch 方向/命中圈 + 曲射弧线终点——空中目标打空中爆炸不穿帮）、枪口出膛叠 `unit_spr.position.y`、`entity_top_y_for_sprite` 叠 sprite 位移（头顶 UI 随机身）。**顺手修**：枪口无标注回退点符号反转 bug（Vector2.UP×负值=落地面下方，两处）。
 
 验证：gdparse 10/10、视觉锁 119/119、smoke 8/8、GdUnit 145/145；实机目视待游玩确认。遗留：伤害数字仍在槽位地面（HUD 信号传位，独立轮）；坠落无烟迹（可另开 VFX 轮）。
+
+### 战利品归仓：基地房间收取气泡（2026-08-30，v23.6）
+
+**借鉴辐射避难所的收集循环**（房间产出→头顶气泡→点击收取），把挂机收益从"逐场静默入账钱包"改成可见的收集时刻；同期补上 `pending_drops` 有存档却无事后领取 UI 的历史空缺。**改挂机/掉落/基地相关代码前先读 CHANGELOG v23.6 全条**。要点：
+
+1. **归仓池在 DropManager**（`_escrow`，按 type+item_id 聚合有界）：挂机每场战后 `deposit_pending_to_escrow()`（game_manager AFK 分支，原 claim_drops）；残留 pending（玩家没点结算"继续"）也送归仓（原静默自动入账）。收取 = `collect_escrow(categories)`，走 claim 同管线（符文/剧情乘区、掉落卡实例化口径不变，仅时点后移）。存档 key `escrow_drops`（旧档无 key=空池，免迁移）。**手动战斗 MvpPanel 与离线奖励链路不动**。池容量靠精神值天然封顶（胜 -10/场，归零停机）。
+2. **气泡类别→房间映射在 bunker_main**（`ESCROW_ROOM_MAP`：物资→仓库/战利品→荣誉室/情报→档案室/强化→相位实验室/图纸→工坊；未修复回退仓库→入口大厅）。气泡组件 `scenes/bunker/bunker_reward_bubble.gd` 骑房间底边、点击收取该房全部类别；HUD"收取全部"；挂机结算弹窗"全部入账"逃生阀。
+3. **验证件**：`tests/unit/economy/test_drop_escrow.gd`（10 用例）+ 端到端 `tests/_tmp_escrow_bubble_check.gd`（归仓→新档 2 泡回退正确→按类收取→全收清空）。全量 GdUnit 155/155。
+4. **下一阶段候选**（设计已定未实施）：卡牌指派驻房（闲置卡提升挂机产出）、气象站地表事件（P3 坑位）、DayClock 时段基地氛围、离线奖励并入气泡。
+
+### 大招自动/手动双轨释放（2026-08-31，v24.1）
+
+相位仪栏上方新增大招按钮带（`scenes/ui/ultimate_cast_bar.gd`，挂在 main.tscn BattleBottomBar 内）：
+默认自动（挂机零损失，按钮把隐形自动大招系统变成可见的）；手动模式大招攥住不放、亮起点击即发，纯时机收益零数值改动。
+手动白名单（常量表在 `scripts/battle/ultimate_cast_controller.gd`）：相位仪仅核子轰炸(30s 充能上限2)；
+兵种机制仅战术核武(45s)/护盾投射(20s)/电子屏蔽(18s)，armed 单位 FIFO 释放（meta `mech_armed_<id>` + `try_manual_fire_<id>` 协议）。
+仅当次战斗生效（battle_manager 开始/结束调 `UltimateCastController.reset()`），挂机强制自动，敌方侧不动。
+改大招/兵种机制代码前先读 CHANGELOG v24.1 全条。
+
+**⚠️ Godot 4.5.1 静态函数命名坑（存量生产 bug 已修，勿踩）**：静态函数与 **`reset_state`** 同名时，编译期绑定的静态调用会**整体静默失效**（函数体一行不执行、无报错；动态 `.call("reset_state")` 正常；任意 RefCounted 子类即可最小复现）。
+`PhaseInstrumentAbilities.reset_state` 因此被 battle_manager 静默空调了整个 4.5 时期（战间清理由此失效）——已改名 **`reset_battle_state`**（battle_manager 两处调用点 + 敌方能力 smoke 同步）。
+**新增静态函数避开该名**；排查"静态调用没生效"类怪病时先想到这条。
 
 ## 版本历史
 

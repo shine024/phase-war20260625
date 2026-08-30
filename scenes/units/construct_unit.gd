@@ -8,6 +8,8 @@ const AttackPoseAnim = preload("res://scripts/battle/attack_pose_anim.gd")  # v9
 const BulletScene = preload("res://scenes/units/bullet.tscn")
 const ModuleEffectHandler = preload("res://scripts/battle/module_effect_handler.gd")
 const ModAuraHandler = preload("res://scripts/battle/mod_aura_handler.gd")
+## v24.1 大招双轨：手动模式查询（armed/手动开火守卫）
+const UltimateCastControllerScript = preload("res://scripts/battle/ultimate_cast_controller.gd")
 const EnemyArchetypes = preload("res://data/enemy_archetypes.gd")
 const EnemyUnitManifest = preload("res://data/enemy_unit_manifest.gd")
 const RankRules = preload("res://data/rank_rules.gd")
@@ -358,15 +360,16 @@ func setup(p_is_player: bool, p_stats: UnitStats, forced_enemy_visual_archetype_
 		if mech_tags.has("repair"):
 			aura_mgr.register_aura(self, aura_mgr.AuraType.CARRIER_REPAIR)
 		# 后入场补偿：接收场上既有同阵营光环源的一次性增益（仿 ModAuraHandler H9 修复）
-		aura_mgr.receive_auras_from_field(self)
+		# v21 P0: 延迟到帧末——本单位槽位 meta 由 spawn 系统在 setup 之后写入，
+		# 立即接收时自身槽位未知会触发全场兜底，绕过范围化
+		aura_mgr.receive_auras_from_field_deferred(self)
 
-	# v6.8: 改造光环（ally_* 类改造）— 复用全体广播，给所有同阵营友军加 buff
+	# v6.8: 改造光环（ally_* 类改造）— 复用广播机制，给范围内同阵营友军加 buff
 	# 单位已加入 player_units/enemy_units 分组（上方 add_to_group），广播可正常查询
-	ModAuraHandler.apply_mod_auras(self)
-	# v10(H9): 补偿接收场上既有光环源（光环源 setup 广播只覆盖当时在场友军，
-	# 后部署的单位原先永久吃不到光环）
-	ModAuraHandler.receive_mod_auras_from_field(self)
+	# v21 P0: 广播+接收改为帧末延迟（槽位 meta 时序，详见 broadcast_and_receive_deferred）
+	ModAuraHandler.broadcast_and_receive_deferred(self)
 	# v7.x: 改造光环施加后刷新 buff_strip，让受影响友军立即显示光环图标
+	# （v21: 帧末广播完成后会再刷一次，此处保留立即刷新兜底非光环路径）
 	_update_card_grid_buff_strip(true)
 	# v8.6: 势力技能 stacking_bonus / variety_bonus 运行时叠加（不进 stats 缓存，按实时单位数算）
 	# 必须在 add_to_group 之后调用，此时 get_nodes_in_group 能拿到含自己在内的全部同阵营单位
@@ -1013,7 +1016,16 @@ func _update_jamming_field_tick(delta: float) -> void:
 	_jamming_field_cd -= delta
 	if _jamming_field_cd > 0.0:
 		return
+	# v24.1 大招双轨：手动模式下就绪不自动放——armed 等玩家点击（时间戳只在首次 armed 写入，保 FIFO）
+	if is_player and UltimateCastControllerScript.is_manual():
+		if not has_meta("mech_armed_jamming_field"):
+			set_meta("mech_armed_jamming_field", Time.get_ticks_msec())
+		return
 	_jamming_field_cd = JAMMING_FIELD_INTERVAL
+	_fire_jamming_field()
+
+## v24.1: 开火体（原 tick 后半段抽出，自动/手动两路共用）
+func _fire_jamming_field() -> void:
 	# 给范围内敌方挂"攻击失效"meta（敌方 attack 路径读取，失效则跳过攻击）
 	# v10(C4) 统一：时间戳秒制
 	var expire_sec: float = Time.get_ticks_msec() / 1000.0 + JAMMING_FIELD_DURATION
@@ -1029,6 +1041,18 @@ func _update_jamming_field_tick(delta: float) -> void:
 	if SignalBus.has_signal("mechanism_jamming_field_activated"):
 		SignalBus.mechanism_jamming_field_activated.emit(global_position, JAMMING_FIELD_RADIUS)
 
+
+## v24.1: 手动释放电子屏蔽（UltimateCastController FIFO 选中本单位时调用）。
+## 屏蔽波是即时范围技、无目标前提，恒可放。
+func try_manual_fire_jamming_field() -> bool:
+	if not _is_jamming_field_unit or is_deploy_ghost or is_preview_mode:
+		return false
+	if has_meta("mech_armed_jamming_field"):
+		remove_meta("mech_armed_jamming_field")
+	_jamming_field_cd = JAMMING_FIELD_INTERVAL
+	_fire_jamming_field()
+	return true
+
 ## 机制5·战术核武（堡垒·导弹井）：CD 到期 → 找敌方密集区 → 弹道飞行 → 落地核爆范围伤
 ## v8.5+: 拆两阶段——①发射时锁定 victims（目标+预计算伤害），伤害暂不结算，emit 信号；
 ##        ②battle_spectacle 在弹道飞行 0.35s 结束的爆炸回调里对 victims 逐个 take_damage。
@@ -1039,7 +1063,16 @@ func _update_nuclear_strike_tick(delta: float) -> void:
 	_nuclear_strike_cd -= delta
 	if _nuclear_strike_cd > 0.0:
 		return
+	# v24.1 大招双轨：手动模式下就绪不自动放——armed 等玩家点击（时间戳只在首次 armed 写入，保 FIFO）
+	if is_player and UltimateCastControllerScript.is_manual():
+		if not has_meta("mech_armed_nuclear_strike"):
+			set_meta("mech_armed_nuclear_strike", Time.get_ticks_msec())
+		return
 	_nuclear_strike_cd = NUCLEAR_STRIKE_INTERVAL
+	_fire_nuclear_strike()
+
+## v24.1: 开火体（原 tick 后半段抽出，自动/手动两路共用）：找敌方密集区→锁定 victims→弹道+核爆演出
+func _fire_nuclear_strike() -> void:
 	# 找敌方最密集区域（简化：取敌方单位平均位置作为爆心）
 	var enemies: Array = _collect_enemy_units_for_mechanism()
 	if enemies.is_empty():
@@ -1072,6 +1105,20 @@ func _update_nuclear_strike_tick(delta: float) -> void:
 	if SignalBus.has_signal("mechanism_nuclear_launched"):
 		SignalBus.mechanism_nuclear_launched.emit(global_position, center, "player", victims)
 
+
+## v24.1: 手动释放战术核武（UltimateCastController FIFO 选中本单位时调用）。
+## 场上无敌时不消耗（保持 armed、充能保留），返回 false。
+func try_manual_fire_nuclear_strike() -> bool:
+	if not _is_nuclear_strike_unit or is_deploy_ghost or is_preview_mode:
+		return false
+	if _collect_enemy_units_for_mechanism().is_empty():
+		return false
+	if has_meta("mech_armed_nuclear_strike"):
+		remove_meta("mech_armed_nuclear_strike")
+	_nuclear_strike_cd = NUCLEAR_STRIKE_INTERVAL
+	_fire_nuclear_strike()
+	return true
+
 ## 机制6·护盾投射（堡垒·护盾器）：CD 到期 → 为半径内3个最低血友军投射护盾
 func _update_shield_projector_tick(delta: float) -> void:
 	if not _is_shield_projector_unit or is_deploy_ghost or is_preview_mode:
@@ -1079,7 +1126,16 @@ func _update_shield_projector_tick(delta: float) -> void:
 	_shield_projector_cd -= delta
 	if _shield_projector_cd > 0.0:
 		return
+	# v24.1 大招双轨：手动模式下就绪不自动放——armed 等玩家点击（时间戳只在首次 armed 写入，保 FIFO）
+	if is_player and UltimateCastControllerScript.is_manual():
+		if not has_meta("mech_armed_shield_projector"):
+			set_meta("mech_armed_shield_projector", Time.get_ticks_msec())
+		return
 	_shield_projector_cd = SHIELD_PROJECTOR_INTERVAL
+	_fire_shield_projector()
+
+## v24.1: 开火体（原 tick 后半段抽出，自动/手动两路共用）
+func _fire_shield_projector() -> void:
 	if stats == null:
 		return
 	var allies: Array = _collect_ally_units_for_mechanism()
@@ -1113,6 +1169,26 @@ func _update_shield_projector_tick(delta: float) -> void:
 	# VFX：护盾投射信号（battle_spectacle 播蓝色护盾展开）
 	if not target_positions.is_empty() and SignalBus.has_signal("mechanism_shield_projected"):
 		SignalBus.mechanism_shield_projected.emit(global_position, target_positions)
+
+
+## v24.1: 手动释放护盾投射（UltimateCastController FIFO 选中本单位时调用）。
+## 半径内无友军时不消耗（保持 armed、充能保留），返回 false。
+func try_manual_fire_shield_projector() -> bool:
+	if not _is_shield_projector_unit or is_deploy_ghost or is_preview_mode:
+		return false
+	var has_target := false
+	for a in _collect_ally_units_for_mechanism():
+		if a != null and is_instance_valid(a) and ("global_position" in a) \
+				and global_position.distance_to(a.global_position) <= SHIELD_PROJECTOR_RADIUS:
+			has_target = true
+			break
+	if not has_target:
+		return false
+	if has_meta("mech_armed_shield_projector"):
+		remove_meta("mech_armed_shield_projector")
+	_shield_projector_cd = SHIELD_PROJECTOR_INTERVAL
+	_fire_shield_projector()
+	return true
 
 ## 机制7·定时标记（无人机）：CD 到期 → 标记半径内2个最高威胁敌方+25%易伤8s
 func _update_drone_mark_tick(delta: float) -> void:
@@ -2054,10 +2130,19 @@ func take_damage(amount: float, attacker: Variant = null) -> void:
 		_fort_aura_hit_boost = 1.0
 
 ## 治疗方法（用于词条吸血效果）
+## v21 P1: gen_overflow_shield 溢流护盾——所有治疗入口（吸血/维修光环/击杀维修/亡语治疗）
+## 共用本方法，溢出 max_hp 的部分按改造比例（overflow_to_shield，默认 0.60）转为护盾。
 func heal(amount: float) -> void:
 	if stats == null:
 		return
+	# v21 P1: 溢流转化——先算溢出量再夹取（原逻辑行为不变，仅新增护盾转化分支）
+	var before_hp: float = hp
 	hp = min(hp + amount, stats.max_hp)
+	var overflow: float = (before_hp + amount) - stats.max_hp
+	if overflow > 0.0 and stats.has_meta("mod_special_flags"):
+		var ratio: float = float((stats.get_meta("mod_special_flags", {}) as Dictionary).get("overflow_to_shield", 0.0))
+		if ratio > 0.0:
+			add_shield(overflow * clampf(ratio, 0.0, 1.0))
 	_update_hp_bar()
 
 ## 添加护盾（用于词条效果）

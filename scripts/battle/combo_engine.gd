@@ -22,6 +22,8 @@ const ComboTactics = preload("res://data/combo_tactics.gd")
 const ComboFieldState = preload("res://scripts/battle/combo_field_state.gd")
 const ModuleEffectHandler = preload("res://scripts/battle/module_effect_handler.gd")
 const VfxImpactFactory = preload("res://scripts/battle/vfx_impact_factory.gd")
+const AuraDataRef = preload("res://data/aura_data.gd")  # v21 P1: 化学跨列蔓延读槽位列（只读）
+const PairSynergyEngineScript = preload("res://scripts/battle/pair_synergy_engine.gd")  # v21 P2
 
 const TEAM_REFRESH_INTERVAL: float = 1.0   # 全队机制刷新节流
 
@@ -34,6 +36,10 @@ var _team_refresh_acc: float = 0.0
 var _active: bool = false
 ## v9.1 上一次横幅展示的 combo_id 集合（防止同一组合反复弹横幅）
 var _last_banner_combos: Array = []
+## v21 P1: 满档套路 id 集合（任一友军卡集齐 mod_combo_full 即计入；每 1s 随全队刷新）
+var _full_tier_combos: Array = []
+## v21 P2: 搭档协同引擎（事件驱动刷新 + 数值对称记账 + 激活态查询）
+var _pair_engine: RefCounted = null
 
 func setup(battlefield: Node, field_state: ComboFieldState) -> void:
 	_battlefield = battlefield
@@ -41,6 +47,9 @@ func setup(battlefield: Node, field_state: ComboFieldState) -> void:
 	_active_mechanisms.clear()
 	_team_refresh_acc = 0.0
 	_active = true
+	# v21 P2: 搭档引擎随战斗创建
+	_pair_engine = PairSynergyEngineScript.new()
+	_pair_engine.setup(battlefield)
 
 func stop() -> void:
 	_active = false
@@ -50,6 +59,10 @@ func reset() -> void:
 	_team_refresh_acc = 0.0
 	_active = false
 	_last_banner_combos.clear()
+	_full_tier_combos.clear()
+	if _pair_engine != null:
+		_pair_engine.reset()
+		_pair_engine = null
 	if _field_state != null:
 		_field_state.reset()
 
@@ -58,13 +71,32 @@ func update(delta: float) -> void:
 	if not _active:
 		return
 	# 1. 战场浓度自然衰减
+	# v21 P1: 纳米浓度场满档（nano_decay_half）→ 衰减减半（机制升级：浓度保持更久）
 	if _field_state != null:
-		_field_state.update(delta)
+		var decay_scale: float = 0.5 if _active_mechanisms.has("nano_decay_half") else 1.0
+		_field_state.update(delta, decay_scale)
 	# 2. 全队机制 flag 节流刷新
 	_team_refresh_acc += delta
 	if _team_refresh_acc >= TEAM_REFRESH_INTERVAL:
 		_team_refresh_acc = 0.0
 		_refresh_team_mechanisms()
+	# 3. v21 P2: 搭档引擎逐帧转发（当前无逐帧机制，预留接口）
+	if _pair_engine != null:
+		_pair_engine.update(delta)
+
+## v21 P1/P2: 单位生成/死亡事件驱动立即刷新（battle_manager 的 SignalBus 回调调用，
+## 不加每帧扫描——事件触发 + 1s 节流兜底，避免新部署的满档卡/搭档最长 1s 才生效）。
+func on_units_changed() -> void:
+	if not _active:
+		return
+	_refresh_team_mechanisms()
+	# v21 P2: 搭档激活态事件刷新
+	if _pair_engine != null:
+		_pair_engine.refresh(_battlefield)
+
+## v21 P2: 查询搭档激活态（消费点经 PairSynergyEngine.query_pair_active 间接调用）
+func is_pair_active(pair_id: String) -> bool:
+	return _pair_engine != null and bool(_pair_engine.is_pair_active(pair_id))
 
 ## 周期刷新全队激活的新机制 flag（基于场上我方兵种组合）
 func _refresh_team_mechanisms() -> void:
@@ -74,9 +106,18 @@ func _refresh_team_mechanisms() -> void:
 	if allies.is_empty():
 		_active_mechanisms.clear()
 		_last_banner_combos.clear()
+		_full_tier_combos.clear()
 		return
 	var team_combos: Array = ComboTactics.detect_team_combos(allies)
 	_active_mechanisms = ComboTactics.get_active_mechanisms(team_combos)
+	# v21 P1: 满档扫描——读取场上单位 stats meta "combo_tiers"（建卡时
+	# unit_stats_table._apply_mod_stat_effects 写入），任一卡满档即全队共享该满档机制。
+	# 复用本次全组遍历，无额外扫描；执行端与既有 mechanisms flag 同管道（_active_mechanisms）。
+	_full_tier_combos = _scan_full_tiers(allies)
+	for fm in ComboTactics.get_full_mechanisms(_full_tier_combos):
+		var fms: String = String(fm)
+		if not _active_mechanisms.has(fms):
+			_active_mechanisms.append(fms)
 	# v9.1 横幅触发：新激活的 combo（对比上次）→ 弹全队激活横幅
 	if not team_combos.is_empty():
 		var new_ones: Array = []
@@ -88,6 +129,27 @@ func _refresh_team_mechanisms() -> void:
 		_last_banner_combos = team_combos.duplicate()
 	else:
 		_last_banner_combos.clear()
+
+## v21 P1: 扫描场上单位的满档套路 id（stats meta combo_tiers 值 == "full"）
+static func _scan_full_tiers(allies: Array) -> Array:
+	var full: Array = []
+	for u in allies:
+		if u == null or not is_instance_valid(u):
+			continue
+		var st: Variant = u.get("stats") if "stats" in u else null
+		if st == null or not (st is Resource) or not (st as Resource).has_meta("combo_tiers"):
+			continue
+		var tiers: Variant = (st as Resource).get_meta("combo_tiers", {})
+		if not (tiers is Dictionary):
+			continue
+		for cid in (tiers as Dictionary).keys():
+			if String((tiers as Dictionary).get(cid, "")) == ComboTactics.TIER_FULL and not full.has(String(cid)):
+				full.append(String(cid))
+	return full
+
+## v21 P1: 查询某套路是否满档（供外部消费点查询）
+func is_combo_full(combo_id: String) -> bool:
+	return _full_tier_combos.has(combo_id)
 
 
 ## v9.1 弹全队激活横幅
@@ -168,6 +230,29 @@ static func try_chem_spread(mechanisms: Array, field_state: ComboFieldState, tar
 		# 复用 chem dot meta（写 _chem_dps + _chem_until）
 		_infect_chem(n, 8.0, 3.0)   # 8 dps，3 秒
 		break   # 单次只扩散 1 个
+	# v21 P1: 化学满档（chem_cross_column）——污染跨列蔓延：额外感染 1 个"带内列不同"
+	# 的敌方单位（原扩散限邻接半径 90）。列判定读槽位 meta（card_grid_slot /
+	# card_grid_enemy_slot，AuraData 单一真身换算），无槽位 meta 的实体（相位场）跳过。
+	if mechanisms.has("chem_cross_column"):
+		var t_col: int = _unit_column(target)
+		if t_col >= 0:
+			var cross_targets: Array = _get_nearby_enemies(target, 100000.0, source)   # 全场敌方
+			for cn in cross_targets:
+				if cn == target:
+					continue
+				var c_col: int = _unit_column(cn)
+				if c_col >= 0 and c_col != t_col:
+					_infect_chem(cn, 8.0, 3.0)
+					break   # 单次只跨列蔓延 1 个（与邻接扩散同节奏）
+
+## v21 P1: 读单位带内列（-1 = 无槽位 meta，跳过判定）
+static func _unit_column(unit: Node) -> int:
+	if unit == null or not is_instance_valid(unit):
+		return -1
+	var slot: int = AuraDataRef.unit_slot_index(unit)
+	if slot < 0:
+		return -1
+	return AuraDataRef.slot_grid_coords(slot).x
 
 ## 套路2 电磁脉冲反射：目标石墨累积 ≥5 时，受 emp 攻击触发连锁反射（向 3 个相邻敌方释放弱化 emp）。
 ## 由 module_effect_handler._apply_emp_on_hit 在 emp 命中后调用。
@@ -179,9 +264,15 @@ static func try_emp_reflect(mechanisms: Array, field_state: ComboFieldState, tar
 	var charge: int = ComboFieldState.get_target_stacks(target, ComboFieldState.META_GRAPHITE_CHARGE, ComboFieldState.META_GRAPHITE_UNTIL)
 	if charge < 5:
 		return
-	# 找 3 个相邻敌方单位（敌方视角：相邻的是玩家单位）
-	var neighbors: Array = _get_nearby_player_units(target, 150.0)
+	# v21 P1 评审修正：v9.1 头注释承诺"向 3 个相邻敌方释放弱化 emp"，实现却取了
+	# 玩家单位（参照系写反，交火时玩家贴脸单位被自伤）。改回设计语义——
+	# 链式放电到与被命中目标同阵营的邻近敌人（enemy_units 组）。
+	var neighbors: Array = _get_nearby_enemy_units(target, 150.0)
 	var reflected: int = 0
+	# v21 P1: EMP 满档（emp_reflect_stun）——脉冲反射附带 0.5s 瘫痪。
+	# 瘫痪复用战场既有 _hit_stun_left（construct_unit/enemy_unit 的硬直状态机，
+	# >0 时本回合停止攻击），与重击瘫痪同管道，不新增弹道路由。
+	var is_full: bool = mechanisms.has("emp_reflect_stun")
 	for n in neighbors:
 		if reflected >= 3:
 			break
@@ -192,6 +283,9 @@ static func try_emp_reflect(mechanisms: Array, field_state: ComboFieldState, tar
 		n.set_meta("_ecm_attack_speed_penalty", 0.15)
 		n.set_meta("_ecm_crit_penalty", 0.10)
 		n.set_meta("_ecm_dodge_penalty", 0.05)
+		# v21 P1: 满档附带瘫痪（0.5s，与重击硬直同源，取 max 不叠加）
+		if is_full and "_hit_stun_left" in n:
+			n._hit_stun_left = maxf(float(n._hit_stun_left), 0.5)
 		reflected += 1
 	# v9.1 EMP 反射 VFX：从被攻击敌方画电弧到各被反射单位
 	if reflected > 0 and target is Node2D:
@@ -274,6 +368,37 @@ static func try_weakpoint_expose(mechanisms: Array, field_state: ComboFieldState
 	ComboFieldState.set_target_meta(target, ComboFieldState.META_WEAKPOINT_BONUS, ComboFieldState.META_WEAKPOINT_UNTIL, 0.5, 3.0)
 	return true
 
+## v21 P1 套路1 满档（incendiary_death_seed）：燃烧目标死亡时留火种——
+## 继承目标 50% 燃烧层数，作为范围 DOT 感染死者周围的敌方单位（上限 3 个，4 秒）。
+## 由 module_effect_handler.on_unit_killed 在击杀结算时调用（victim 死亡时 meta 尚可读）。
+## static 与其他机制执行函数同风格：mechanisms 未含满档 flag 直接 return（零成本）。
+static func try_incendiary_death_seed(mechanisms: Array, target: Node, source: Node) -> void:
+	if not mechanisms.has("incendiary_death_seed"):
+		return
+	if target == null or not is_instance_valid(target):
+		return
+	# 读死者燃烧层数（module_effect_handler/_infect_burn 维护的 _burn_stacks meta）
+	var stacks: int = int(target.get_meta("_burn_stacks", 0))
+	if stacks <= 0:
+		return
+	# 继承 50% 层数（至少 1 层），上限对齐满档燃烧 10 层
+	var inherit: int = clampi(int(ceil(float(stacks) * 0.5)), 1, 10)
+	# 找死者周围的敌方单位（source 的友军 = 死者的敌人），感染继承层数
+	var neighbors: Array = _get_nearby_enemies(target, 100.0, source)
+	var seeded: int = 0
+	for n in neighbors:
+		if seeded >= 3:
+			break
+		if n == target:
+			continue
+		_infect_burn(n, inherit, 4.0)
+		seeded += 1
+	# 火种 VFX：死者位置播放化学爆炸扩散波纹（复用既有 VFX，不新增资源）
+	if seeded > 0 and target is Node2D:
+		var parent: Node2D = (target as Node2D).get_parent() as Node2D
+		if parent != null:
+			VfxImpactFactory.spawn_chem_burst_wave(parent, (target as Node2D).global_position)
+
 # ─────────────────────────────────────────────
 #  辅助：单位收集 + 感染函数（复用现有 meta 范式）
 # ─────────────────────────────────────────────
@@ -307,8 +432,9 @@ static func _get_nearby_enemies(target: Node, radius: float, source: Node) -> Ar
 			result.append(n)
 	return result
 
-## 取目标周围的玩家单位（emp_reflect 专用：target 是敌方，反射目标是玩家单位）
-static func _get_nearby_player_units(target: Node, radius: float) -> Array:
+## 取目标周围的敌方单位（emp_reflect 专用：链式放电，target 是被命中敌人，
+## 反射目标为其邻近同阵营敌人——v21 P1 评审修正，原 v9.1 误取玩家单位）
+static func _get_nearby_enemy_units(target: Node, radius: float) -> Array:
 	if target == null or not is_instance_valid(target):
 		return []
 	var tpos: Vector2 = (target as Node2D).global_position if target is Node2D else Vector2.ZERO
@@ -320,9 +446,9 @@ static func _get_nearby_player_units(target: Node, radius: float) -> Array:
 	var cached: Array = []
 	var _bm = tree.root.get_node_or_null("BattleManager")
 	if _bm != null and _bm.has_method("get_cached_nodes_in_group"):
-		cached = _bm.get_cached_nodes_in_group("player_units")
+		cached = _bm.get_cached_nodes_in_group("enemy_units")
 	else:
-		cached = tree.get_nodes_in_group("player_units")
+		cached = tree.get_nodes_in_group("enemy_units")
 	for n in cached:
 		if n == null or not is_instance_valid(n) or not (n is Node2D):
 			continue

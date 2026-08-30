@@ -1,7 +1,12 @@
 extends Node
 ## 光环管理器
 ## 集中管理所有光环效果，使用 Timer 驱动而非每帧检查
+## v21 P0: 战术光环范围化——医疗/侦查/雷达/堡垒按带内槽距过滤（详见 data/aura_data.gd）；
+## 指挥/载具维修恒全场；一次性光环施加延迟到帧末（等部署槽位 meta 就绪）。
 var DEBUG_AURA_LOG := false
+
+const AuraDataScript = preload("res://data/aura_data.gd")
+const AuraRangeIndicator = preload("res://scenes/effects/aura_range_indicator.gd")
 
 ## 光环类型定义（与 aura_data.Category 保持一一对应）
 enum AuraType {
@@ -68,7 +73,35 @@ func register_aura(unit: Node2D, aura_type: AuraType) -> void:
 		return
 	_unit_auras[unit_id][aura_type] = true
 	_aura_timers[unit_id][aura_type] = true
-	# 一次性类型立即应用，不放入周期逻辑
+	# 一次性类型应用，不放入周期逻辑
+	# v21 P0: 改为帧末应用——部署槽位 meta 由 spawn 系统在 setup 之后写入
+	# （时序详见 ModAuraHandler.broadcast_and_receive_deferred），立即应用时源槽位未知
+	# 会全场兜底绕过范围化。周期类型（MEDIC/CARRIER）由 _on_global_tick 驱动，
+	# 天然在槽位就绪后结算，无需延迟。
+	_apply_one_shot_aura_deferred(unit, aura_type)
+	if DEBUG_AURA_LOG:
+		pass
+		# [LOG-v5.1] print("[AuraManager] 注册光环: 单位=%d, 类型=%d" % [unit_id, aura_type])
+
+## v21 P0: 一次性光环帧末应用（守卫：单位有效/入树/未注销/未排队删除）
+func _apply_one_shot_aura_deferred(unit: Node2D, aura_type: AuraType) -> void:
+	_spawn_range_indicator_if_tactical(unit, aura_type)
+	var ml: Variant = Engine.get_main_loop()
+	if ml == null or not (ml is SceneTree):
+		_apply_one_shot_aura(unit, aura_type)
+		return
+	var cb := func() -> void:
+		if not is_instance_valid(unit) or not unit.is_inside_tree() or unit.is_queued_for_deletion():
+			return
+		# 战斗清理（clear_all）或死亡注销后不补施加
+		var aura_map: Dictionary = _unit_auras.get(unit.get_instance_id(), {})
+		if not aura_map.has(aura_type):
+			return
+		_apply_one_shot_aura(unit, aura_type)
+	(ml as SceneTree).process_frame.connect(cb, CONNECT_ONE_SHOT)
+
+## v21 P0: 一次性光环分派（自 register_aura 抽出）
+func _apply_one_shot_aura(unit: Node2D, aura_type: AuraType) -> void:
 	match aura_type:
 		AuraType.RADAR_RANGE:
 			_apply_radar_aura(unit)
@@ -82,9 +115,15 @@ func register_aura(unit: Node2D, aura_type: AuraType) -> void:
 			_apply_command_global_aura(unit)
 		_:
 			pass
-	if DEBUG_AURA_LOG:
-		pass
-		# [LOG-v5.1] print("[AuraManager] 注册光环: 单位=%d, 类型=%d" % [unit_id, aura_type])
+
+## v21 P0: 战术光环部署瞬间范围指示（全场类别/开关关闭时不生成；内部再延迟到入树）
+func _spawn_range_indicator_if_tactical(unit: Node2D, aura_type: AuraType) -> void:
+	if not AuraDataScript.is_aura_ranging_enabled():
+		return
+	var range_cells: int = AuraDataScript.aura_range_for(aura_type, get_unit_star(unit))
+	if range_cells < 0:
+		return
+	AuraRangeIndicator.spawn_for_unit(unit, range_cells)
 
 ## 注销单位光环
 func unregister_aura(unit: Node2D, aura_type: AuraType) -> void:
@@ -161,7 +200,9 @@ func _on_global_tick() -> void:
 ## ── 槽位判定辅助 ──
 
 ## 通过槽位索引找受影响的友军（替代像素距离判定）
-func get_slot_targets(unit: Node2D, is_global: bool, is_player: bool) -> Array:
+## v21 P0: range_cells >= 0 时按带内切比雪夫槽距过滤（战术光环）；
+## 缺省 -1 = 全场（战略光环/撤销路径）。槽位未知/开关关闭时 is_in_aura_range 内部回退全场。
+func get_slot_targets(unit: Node2D, is_global: bool, is_player: bool, range_cells: int = -1) -> Array:
 	# v6.2: 所有光环均影响全体同阵营单位，不再受槽位/距离限制
 	var targets: Array = []
 	if unit == null or not is_instance_valid(unit):
@@ -185,6 +226,14 @@ func get_slot_targets(unit: Node2D, is_global: bool, is_player: bool) -> Array:
 		if not node is Node2D:
 			continue
 		targets.append(node)
+	# v21 P0: 范围过滤
+	if range_cells >= 0 and AuraDataScript.is_aura_ranging_enabled():
+		var src_slot: int = AuraDataScript.unit_slot_index(unit)
+		var filtered: Array = []
+		for node in targets:
+			if AuraDataScript.is_in_aura_range(src_slot, AuraDataScript.unit_slot_index(node), range_cells):
+				filtered.append(node)
+		return filtered
 	return targets
 
 ## 获取单位强化星级（v20.12 等级统一：从 stats.card_level 战斗卡等级换算 1-10 星，
@@ -218,14 +267,16 @@ func _apply_medic_aura(unit: Node2D) -> void:
 	if not "stats" in unit or unit.stats == null:
 		return
 	var is_player: bool = unit.is_player if "is_player" in unit else true
-	var allies: Array = get_slot_targets(unit, false, is_player)
+	var star: int = get_unit_star(unit)
+	var ad: RefCounted = AuraDataScript
+	var params: Dictionary = ad.get_aura_params(ad.Category.MEDIC_HEAL, star)
+	var range_cells: int = ad.aura_range_for(ad.Category.MEDIC_HEAL, star)
+	var allies: Array = get_slot_targets(unit, false, is_player, range_cells)
 	for ally in allies:
 		if not is_instance_valid(ally):
 			continue
 		if not "stats" in ally or ally.stats == null:
 			continue
-		var star: int = get_unit_star(unit)
-		var params: Dictionary = _get_aura_data().get_aura_params(_get_aura_data().Category.MEDIC_HEAL, star)
 		var heal_amount: float = ally.stats.max_hp * float(params.get("heal_pct", 0.08))
 		if ally.has_method("heal"):
 			ally.heal(heal_amount)
@@ -331,6 +382,24 @@ func receive_auras_from_field(unit: Node2D) -> void:
 			CardAbilityManager.apply_fortress_defense_aura(src, 0.0, true)
 		if aura_map.has(AuraType.COMMAND_GLOBAL):
 			CardAbilityManager.apply_command_global_aura(src, true)
+
+## v21 P0: setup 期后入场补偿改帧末——本单位槽位 meta 由 spawn 系统在 setup 之后写入
+## （时序详见 ModAuraHandler.broadcast_and_receive_deferred），立即接收会全场兜底绕过范围化。
+## 各 apply_* 内部自带范围判定，补偿时机不影响范围正确性，只影响槽位读取。
+func receive_auras_from_field_deferred(unit: Node2D) -> void:
+	if unit == null or not is_instance_valid(unit):
+		return
+	if not ("is_player" in unit):
+		return
+	var ml: Variant = Engine.get_main_loop()
+	if ml == null or not (ml is SceneTree):
+		receive_auras_from_field(unit)
+		return
+	var cb := func() -> void:
+		if not is_instance_valid(unit) or not unit.is_inside_tree() or unit.is_queued_for_deletion():
+			return
+		receive_auras_from_field(unit)
+	(ml as SceneTree).process_frame.connect(cb, CONNECT_ONE_SHOT)
 
 ## 清理所有光环
 ## v9.x: 修复回归——3fdb0a6 提交在新增 get_unit_aura_types 时误删了本函数头，

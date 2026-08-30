@@ -560,10 +560,12 @@ UNITS = {
             "attack": {
                 "seconds": "5",
                 "prompt": (
-                    "严格保持首帧图像中这支机枪班的外观、人数、机枪、服装装备与细节完全一致，不改变设计。"
-                    "所有射手的身体和头部始终保持首帧的正侧朝向，面向画面左侧，绝不掉头，绝不转向，头部完全固定不转头。"
-                    "严格2D游戏精灵风格，平面正交正侧视。机枪班原地操作，机枪向画面左侧方向连续扫射："
-                    "枪口火光在左侧枪口处连续闪烁，弹链持续跳动，弹壳向右后方大量抛出，枪身高频轻微震颤。"
+                    "严格保持首帧图像中这名机枪射手的单人外观、丛林迷彩作战服、凯夫拉头盔、装具与细节完全一致，不改变设计。"
+                    "画面中只有这一名射手，绝不增加人数，绝不出现第二个人。"
+                    "射手的身体和头部始终保持首帧的正侧朝向，面向画面左侧，绝不掉头，绝不转向，头部完全固定不转头。"
+                    "士兵保持首帧的立姿，双手持握这支M60通用机枪抵肩向画面左侧方向连续射击："
+                    "武器与首帧完全相同，枪身自带的两脚架保持收拢，绝不出现三脚架，绝不出现枪架或支座，绝不更换武器。"
+                    "枪口火光在左侧枪口处连续闪烁，枪身与肩膀随之后坐抖动，弹壳向右后方抛出。"
                     "镜头完全锁定，无运镜，无变焦，单位始终完整在画面内。纯白色无缝背景，无地面，无阴影，无文字，无水印。"
                 ),
             },
@@ -746,6 +748,7 @@ UNITS = {
     "mod_technical": {
         "name": "武装皮卡",
         "ref": "mod_technical_white.jpg",
+        "nw_trim": False,
         "matte_edge": True,
         "anims": {
             "idle": {
@@ -803,6 +806,8 @@ UNITS = {
     "mod_mlrs": {
         "name": "MLRS火箭炮",
         "ref": "mod_mlrs_white.jpg",
+        "smoke_trim": True,
+        "nw_trim": False,
         "matte_edge": True,
         "anims": {
             "idle": {
@@ -862,6 +867,7 @@ UNITS = {
     "mod_abrams": {
         "name": "艾布拉姆斯坦克",
         "ref": "mod_abrams_white.jpg",
+        "nw_trim": False,
         "matte_edge": True,
         "anims": {
             "idle": {
@@ -1007,6 +1013,7 @@ UNITS = {
         "name": "机甲精英",
         "matte_edge": True,
         "ref": "fut_mech_white.jpg",
+        "nw_trim": False,
         "anims": {
             "idle": {
                 "seconds": "4",
@@ -1035,6 +1042,9 @@ UNITS = {
     "fut_hovertank": {
         "name": "悬浮坦克",
         "ref": "fut_hovertank_white.jpg",
+        # fix7: 浅灰薄板车体被过抠(缺口逐帧闪烁), 走白车身同款参数 2026-08-30
+        "matte_edge": True,
+        "nw_trim": False,
         "anims": {
             "idle": {
                 "seconds": "4",
@@ -1279,8 +1289,17 @@ def find_video_url(obj):
 
 
 # ---------------------------------------------------------------- 单位/动画目录
+def _unit_index(unit):
+    ## 单位序号(1-based, UNITS 合并序=preview 编号); 未知单位排最后
+    try:
+        return list(UNITS.keys()).index(unit) + 1
+    except ValueError:
+        return 999
+
+
 def anim_dir(unit, anim, sub=None):
-    d = os.path.join(OUT_DIR, "%s_%s" % (unit, UNITS[unit]["name"]), anim)
+    # fix5: 目录带序号前缀 NNN_ (与 preview.html 编号一致)
+    d = os.path.join(OUT_DIR, "%03d_%s_%s" % (_unit_index(unit), unit, UNITS[unit]["name"]), anim)
     if sub:
         d = os.path.join(d, sub)
     os.makedirs(d, exist_ok=True)
@@ -1345,7 +1364,7 @@ def step_build(unit, anim, raw_fps=8.0):
     from PIL import Image, ImageDraw, ImageFilter
     import numpy as np
 
-    def alpha_of(path, luma_ref=None, sat_max=75, mn_floor=135, edge_mode=False):
+    def alpha_of(path, luma_ref=None, sat_max=75, mn_floor=135, edge_mode=False, nw_trim=True):
         """白底→透明 v6c 主体连通域法(2026-08-29 定稿, cv2 加速版, 语义=v6):
         ① ok = 浅色低饱和(mn>=mn_floor 且 sat<=sat_max) —— 涵盖白底/暖灰框线/枪口烟云/脚下灰影
            (视频模型会给画面画一圈内嵌暖灰矩形框线 sat 55~70, 单一"纯白"思路全被它挡住)
@@ -1428,14 +1447,16 @@ def step_build(unit, anim, raw_fps=8.0):
         # v6d-2 边界可达近白修剪: 与画面边框经"近白路径(mn>=230,sat<=60)"连通的主体像素剔除
         #   —— 杀掉贴在主体上的白烟/残雾/亮斑; 被深色轮廓包住的白色部件不受影响;
         #      彩色火光(sat>60)受保护不会被误杀
-        nw = ((mn >= 230) & (sat <= 60)).astype(np.uint8)
-        nn2, labn2 = cv2.connectedComponents(nw)
-        reach = set()
-        for edge in (labn2[0, :], labn2[-1, :], labn2[:, 0], labn2[:, -1]):
-            reach |= set(np.unique(edge).tolist())
-        reach.discard(0)
-        if reach:
-            keep &= ~np.isin(labn2, list(reach))
+        #   fix3: 白/银机身单位此步会把贴边白件剃掉(edge_mode 救回来又被它吃), 走 nw_trim=False 关闭
+        if nw_trim:
+            nw = ((mn >= 230) & (sat <= 60)).astype(np.uint8)
+            nn2, labn2 = cv2.connectedComponents(nw)
+            reach = set()
+            for edge in (labn2[0, :], labn2[-1, :], labn2[:, 0], labn2[:, -1]):
+                reach |= set(np.unique(edge).tolist())
+            reach.discard(0)
+            if reach:
+                keep &= ~np.isin(labn2, list(reach))
         # 脚线清扫: 最深实体行(行内>=3实体像素)+4px 以下全透明
         row_solid = (keep.sum(axis=1) >= 3)
         if row_solid.any():
@@ -1458,8 +1479,11 @@ def step_build(unit, anim, raw_fps=8.0):
     luma_ref = None
     unit_mn_floor = int(UNITS.get(unit, {}).get("mn_floor", 135))
     unit_edge = bool(UNITS.get(unit, {}).get("matte_edge", False))
+    unit_nw = bool(UNITS.get(unit, {}).get("nw_trim", True))
+    clear_border = not bool(UNITS.get(unit, {}).get("keep_border_ring", False))
+    unit_smoke_trim = bool(UNITS.get(unit, {}).get("smoke_trim", False))
     for p in frames:
-        im, a = alpha_of(p, luma_ref, mn_floor=unit_mn_floor, edge_mode=unit_edge)
+        im, a = alpha_of(p, luma_ref, mn_floor=unit_mn_floor, edge_mode=unit_edge, nw_trim=unit_nw)
         if luma_ref is None:
             arr0 = np.asarray(im, dtype=np.float32)
             a0 = np.asarray(a) > 128
@@ -1468,6 +1492,19 @@ def step_build(unit, anim, raw_fps=8.0):
         alphas[p] = (im, a)
 
     # 全帧并集 bbox → 统一画幅防抖动
+    def defringe_rgba(rgba):
+        """fix4 白边卸除: 视频像素 = 主体色·a + 白·(1-a); 边缘半透明带反解出主体原色,
+        消掉贴在深色背景上的白发丝边。全不透明像素不动。"""
+        arr = np.asarray(rgba).astype(np.float32)
+        a = arr[..., 3]
+        band = (a >= 16) & (a < 250)
+        ai = a / 255.0
+        for c in range(3):
+            ch = arr[..., c]
+            ch[band] = np.clip((ch[band] - (1.0 - ai[band]) * 255.0) / np.maximum(ai[band], 0.08), 0, 255)
+        a[a < 16] = 0.0
+        return Image.fromarray(arr.astype(np.uint8))
+
     u = None
     for _, a in alphas.values():
         b = bbox_of(a)
@@ -1510,6 +1547,23 @@ def step_build(unit, anim, raw_fps=8.0):
         canvas = Image.new("RGBA", (CANVAS, CANVAS), (0, 0, 0, 0))
         canvas.paste(rgba, ((CANVAS - nw) // 2, int(CANVAS * foot_frac) - nh), rgba)
         fp = os.path.join(adir, "f%02d.png" % i)
+        canvas = defringe_rgba(canvas)
+        # fix4 清画布边框6px: 视频自画边框线环会连着主体存活(士兵/器械永不贴画布边, 合成保证>=8px留白)
+        if clear_border:
+            ca = np.asarray(canvas).copy()
+            ca[:6, :, :] = 0
+            ca[-6:, :, :] = 0
+            ca[:, :6, :] = 0
+            ca[:, -6:, :] = 0
+            canvas = Image.fromarray(ca)
+        if unit_smoke_trim:
+            ca = np.asarray(canvas).copy()
+            rgbv = ca[..., :3].astype(np.int16)
+            mn = rgbv.min(axis=2)
+            sat = rgbv.max(axis=2) - rgbv.min(axis=2)
+            haze = (ca[..., 3] > 0) & (ca[..., 3] < 230) & (mn >= 185) & (sat <= 45)
+            ca[haze, 3] = 0
+            canvas = Image.fromarray(ca)
         canvas.save(fp)
         out_files.append(os.path.basename(fp))
     print("  wrote %d frames" % len(out_files))
@@ -1583,7 +1637,9 @@ def step_check():
 def step_preview():
     import re
     rows = []
+    uidx = 0
     for unit, ucfg in UNITS.items():
+        uidx += 1
         for anim in ucfg["anims"]:
             adir = anim_dir(unit, anim)
             meta_p = os.path.join(adir, "meta.json")
@@ -1592,20 +1648,23 @@ def step_preview():
             with open(meta_p, encoding="utf-8") as f:
                 m = json.load(f)
             rel = os.path.relpath(adir, OUT_DIR).replace("\\", "/")
-            frames_js = json.dumps([rel + "/" + fn for fn in m["frame_files"]])
-            rows.append(dict(m, rel=rel, frames_js=frames_js,
+            # v3: URL 带 mtime 版本参数, 防浏览器缓存旧帧图(文件名不变内容变)
+            fpaths = ["%s/%s?v=%d" % (rel, fn, int(os.path.getmtime(os.path.join(adir, fn))))
+                      for fn in m["frame_files"]]
+            frames_js = json.dumps(fpaths)
+            rows.append(dict(m, rel=rel, frames_js=frames_js, uidx=uidx,
                              unit_dir="%s_%s" % (unit, ucfg["name"])))
     cards = []
     for r in rows:
         cards.append("""
   <div class="card">
-    <h2>{name} · {anim} <small>({frames}帧 / {suggested_fps}s建议)</small></h2>
+    <h2><span style="color:#e8a44a">#{uidx:03d}</span> {name} · {anim} <small>({frames}帧 / {suggested_fps}s建议)</small></h2>
     <div class="stage" data-frames='{frames_js}' data-fps="{suggested_fps}"></div>
     <div class="strip">{strip}</div>
   </div>""".format(
             name=r["unit_name"], anim=r["anim"], frames=r["frames"], suggested_fps=r["suggested_fps"],
-            frames_js=r["frames_js"],
-            strip="".join("<img src='%s/%s'>" % (r["rel"], fn) for fn in r["frame_files"])))
+            frames_js=r["frames_js"], uidx=r["uidx"],
+            strip="".join("<img src='%s'>" % u for u in json.loads(r["frames_js"]))))
     html = """<!DOCTYPE html><html lang="zh"><head><meta charset="utf-8">
 <title>单位分帧动画预览</title><style>
 body{background:#14171c;color:#dfe5ec;font-family:system-ui,sans-serif;margin:24px}

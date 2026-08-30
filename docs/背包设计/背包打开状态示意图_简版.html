@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<!-- 简版线框示意图：打开背包 = 屏幕上只剩 ①背包面板 + ②相位仪栏，其余隐藏 -->
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>打开背包 · 简版示意图</title>
+<style>
+  body { margin:0; padding:28px 0 36px; background:#0a0d14; display:flex; flex-direction:column; align-items:center; gap:14px;
+         font-family:"Microsoft YaHei", "PingFang SC", sans-serif; color:#dfe6f2; }
+  h1 { font-size:17px; font-weight:600; letter-spacing:2px; margin:0; }
+  h1 em { font-style:normal; color:#f5a623; }
+  .frame { position:relative; width:1280px; height:720px; background:#0d1119; border:1px solid #2a3242; border-radius:10px; }
+  .hidden-zone { position:absolute; border:1.5px dashed rgba(239,68,68,.5); border-radius:6px;
+                 display:flex; align-items:center; justify-content:center; gap:8px; color:#ff9089; font-size:13px; }
+  .hidden-zone::before { content:"✕ 隐藏："; font-size:12px; color:rgba(255,144,137,.7); }
+  .bp  { position:absolute; left:50px; top:28px; width:1180px; height:560px; background:#101624; border:1px solid #37415a;
+         border-radius:10px; padding:18px 22px; box-sizing:border-box; }
+  .bar { position:absolute; left:40px; top:634px; width:1200px; height:70px; background:#0e1520; border:1px solid #00c8dd;
+         border-radius:12px; box-sizing:border-box; display:flex; align-items:center; gap:6px; padding:0 10px; }
+  .tag { position:absolute; font-size:15px; font-weight:700; letter-spacing:1px; }
+  .tag .n { display:inline-flex; width:24px; height:24px; border-radius:50%; align-items:center; justify-content:center;
+            margin-right:8px; font-size:13px; }
+  .bp-title { font-size:16px; font-weight:700; letter-spacing:3px; color:#f5a623; }
+  .grid-hint { display:grid; grid-template-columns:repeat(10,1fr); gap:8px; margin-top:16px; }
+  .grid-hint i { height:66px; background:rgba(255,255,255,.035); border:1px solid rgba(255,255,255,.07); border-radius:4px; }
+  .slot { width:56px; height:56px; border-radius:5px; background:rgba(82,217,115,.12); border:1px solid rgba(82,217,115,.7); flex:none;
+          display:flex; align-items:center; justify-content:center; color:#7fe39a; font-size:16px; }
+  .slot.rune { background:rgba(191,115,242,.1); border-color:rgba(191,115,242,.6); }
+  .slot.empty { background:transparent; border-style:dashed; }
+  .name-hint { flex:none; color:#8b97ad; font-size:12px; line-height:1.7; padding-right:10px; }
+  .cap { font-size:12px; color:#5d6880; }
+</style>
+</head>
+<body>
+  <h1>打开背包 = 屏幕上只剩 <em>① 背包面板</em> + <em>② 相位仪栏</em></h1>
+
+  <div class="frame">
+    <!-- 隐藏区域 -->
+    <div class="hidden-zone" style="left:14px; top:8px; width:560px; height:32px;">顶部资源栏 / 战斗顶栏 / 战斗日志</div>
+    <div class="hidden-zone" style="left:586px; top:8px; width:680px; height:32px;">顶部资源栏</div>
+    <div class="hidden-zone" style="left:50px; top:596px; width:420px; height:30px; justify-content:flex-start; padding-left:14px; box-sizing:border-box;">功能按钮抽屉</div>
+
+    <!-- ① 背包面板 -->
+    <div class="bp">
+      <span class="bp-title">◆ 背包</span>
+      <div class="grid-hint"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+    </div>
+    <div class="tag" style="left:890px; top:40px; color:#f5a623;"><span class="n" style="border:2px solid #f5a623; color:#f5a623;">1</span>背包面板</div>
+
+    <!-- ② 相位仪栏 -->
+    <div class="bar">
+      <div class="name-hint">钢铁壁垒 ★3<br>能量 96/132 · 军团战力 8,942</div>
+      <div class="slot"></div><div class="slot"></div><div class="slot"></div><div class="slot"></div>
+      <div class="slot"></div><div class="slot"></div><div class="slot"></div>
+      <div class="slot empty">＋</div>
+      <div class="slot rune"></div><div class="slot rune"></div><div class="slot rune"></div><div class="slot rune empty">＋</div>
+    </div>
+    <div class="tag" style="left:500px; top:600px; color:#22d3ee;"><span class="n" style="border:2px solid #22d3ee; color:#22d3ee;">2</span>相位仪栏 · 唯一保留（拖卡进绿槽装配）</div>
+  </div>
+
+  <div class="cap">比例 1280×720 · 拖拽装配：绿框=可放 / 红框=禁止 · 其余 HUD（红框）打开背包期间全部隐藏，关闭恢复 · 详细版见《背包打开状态示意图.html》</div>
+</body>
+</html>

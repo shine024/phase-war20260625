@@ -806,7 +806,7 @@ func _apply_rune_top_diamond(rarity: String, category: String, rune_id: String =
 		glyph_lbl.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 		glyph_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		glyph_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-		glyph_lbl.add_theme_font_size_override("font_size", 14)
+		glyph_lbl.add_theme_font_size_override("font_size", DesignTokens.FONT_SIZE_BODY)
 		glyph_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		# glyph 不跟随 outer 旋转，保持正立可读
 		glyph_lbl.rotation = -PI / 4.0

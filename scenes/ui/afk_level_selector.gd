@@ -6,6 +6,8 @@ class_name AFKLevelSelector
 signal level_selected(level: int)
 signal cancelled
 
+const DT = preload("res://resources/design_tokens.gd")   # v23.6.1 字号归档
+
 @onready var backdrop: ColorRect = $Backdrop
 @onready var panel: Panel = $Panel
 @onready var title: Label = $Panel/MarginContainer/VBox/Title
@@ -45,7 +47,7 @@ func _build_level_buttons() -> void:
 		btn.custom_minimum_size = Vector2(36, 32)
 		btn.size_flags_horizontal = Control.SIZE_FILL
 		btn.size_flags_vertical = Control.SIZE_FILL
-		btn.add_theme_font_size_override("font_size", 12)
+		btn.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
 		btn.add_theme_color_override("font_color", _normal_color)
 		var style := StyleBoxFlat.new()
 		style.bg_color = _normal_bg

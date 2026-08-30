@@ -493,7 +493,7 @@ func _create_master_header(basic_info: Dictionary) -> Control:
 
 	var title_label = Label.new()
 	title_label.text = basic_info.get("title", "")
-	title_label.add_theme_font_size_override("font_size", 14)
+	title_label.add_theme_font_size_override("font_size", DT.FONT_SIZE_BODY)
 	title_label.add_theme_color_override("font_color", Color(0.7, 0.7, 0.7, 1))
 	title_label.size_flags_horizontal = Control.SIZE_SHRINK_END
 	title_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -567,7 +567,7 @@ func _create_equipment_section(equipment: Dictionary) -> Control:
 
 		var inst_name_lbl = Label.new()
 		inst_name_lbl.text = inst_name
-		inst_name_lbl.add_theme_font_size_override("font_size", 14)
+		inst_name_lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_BODY)
 		inst_name_lbl.add_theme_color_override("font_color", DT.COLOR_GOLD_SOFT)
 		inst_name_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		inst_inner.add_child(inst_name_lbl)
@@ -619,7 +619,7 @@ func _create_equipment_section(equipment: Dictionary) -> Control:
 
 			var plat_name_lbl = Label.new()
 			plat_name_lbl.text = pname
-			plat_name_lbl.add_theme_font_size_override("font_size", 12)
+			plat_name_lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
 			plat_name_lbl.add_theme_color_override("font_color", DT.COLOR_GOLD_SOFT)
 			plat_name_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 			plat_header.add_child(plat_name_lbl)
@@ -627,7 +627,7 @@ func _create_equipment_section(equipment: Dictionary) -> Control:
 			if not ptype.is_empty():
 				var type_lbl = Label.new()
 				type_lbl.text = _platform_type_display(ptype)
-				type_lbl.add_theme_font_size_override("font_size", 12)
+				type_lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
 				type_lbl.add_theme_color_override("font_color", Color(0.7, 0.7, 0.8, 1))
 				type_lbl.size_flags_horizontal = Control.SIZE_SHRINK_END
 				plat_header.add_child(type_lbl)
@@ -651,7 +651,7 @@ func _create_equipment_section(equipment: Dictionary) -> Control:
 				for tag in pspecial:
 					translated_tags.append(LeaderboardDetailBuilders.translate_special_tag(String(tag)))
 				tags_lbl.text = "  ".join(translated_tags)
-				tags_lbl.add_theme_font_size_override("font_size", 12)
+				tags_lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
 				tags_lbl.add_theme_color_override("font_color", Color(0.5, 0.6, 0.7, 0.8))
 				tags_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 				tags_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL

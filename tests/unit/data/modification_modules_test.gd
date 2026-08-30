@@ -70,4 +70,5 @@ func test_total_modification_count() -> void:
 	var all_ids = ModificationRegistry.get_all_ids()
 	# 批次8（2026-08-23）：全模块注册总数实测 184（原 120-140 区间过期；
 	# registry 注释里"154 条"亦为旧值）。精确锁定防未来无感知增删。
-	assert_int(all_ids.size()).is_equal(184)
+	# v21 P1：新增 6 个行为改写型传奇改造（gen_converted_munitions 等）→ 184+6=190
+	assert_int(all_ids.size()).is_equal(190)

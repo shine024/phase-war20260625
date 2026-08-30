@@ -15,14 +15,30 @@ const DEFAULT_ATTACK_SPEED: float = 1.0
 ## v8: LIGHT/AIR 目标叠加兵种固定机制加成（装甲碾压/防空空域封锁）
 ## v8.x: 三维攻防系统保持封闭（LIGHT/ARMOR/AIR），新兵种差异化加成走 TAG_COUNTER_RULES 标签层
 ##       （由 bullet.gd 调用 compute_tag_counter_multiplier），不在此处扩展。
+## v21 P1: gen_converted_munitions（弹道重赋）——对轻轴 → 对甲轴维度转换（见 _has_converted_munitions）
 static func get_attack_vs(attacker_stats: UnitStats, target_combat_kind: int) -> float:
 	match target_combat_kind:
-		GC.CombatKind.LIGHT: return attacker_stats.attack_light * (1.0 + attacker_stats.attack_light_bonus)  # 轻装 + 装甲碾压
+		GC.CombatKind.LIGHT, GC.CombatKind.SUPPORT:
+			# v21 P1: 弹道重赋——对轻轴转对甲轴：攻值取 attack_armor
+			if _has_converted_munitions(attacker_stats):
+				return attacker_stats.attack_armor
+			return attacker_stats.attack_light * (1.0 + attacker_stats.attack_light_bonus)  # 轻装 + 装甲碾压
 		GC.CombatKind.ARMOR: return attacker_stats.attack_armor
 		GC.CombatKind.AIR: return attacker_stats.attack_air * (1.0 + attacker_stats.attack_air_bonus)  # 空中 + 防空封锁
-		GC.CombatKind.SUPPORT: return attacker_stats.attack_light * (1.0 + attacker_stats.attack_light_bonus)  # 支援按轻装算 + 装甲碾压
 		GC.CombatKind.FORT: return attacker_stats.attack_armor * (1.0 + attacker_stats.attack_fort_bonus)  # 堡垒按装甲 + 对堡垒特攻
 		_: return attacker_stats.attack_light
+
+## v21 P1: gen_converted_munitions（弹道重赋）维度转换判定。
+## 语义（计划 §P1-2"攻击维度转换 对轻→对甲"）：装了该改造的单位，其"对轻轴"攻击
+## （即打 LIGHT/SUPPORT 目标时的攻击轴）整体转按"对甲轴"结算：
+##   武器槽取对甲槽（get_weapon_for_target）、攻值取 attack_armor（get_attack_vs）、
+##   目标防御按 defense_armor 结算（get_defense_vs / take_damage 内联 match）。
+## 仅转换对轻轴；对甲/对空轴不受影响（打装甲/空中目标行为不变）。
+## flag 由注册表未知键默认分支写入 mod_special_flags meta（建卡时 unit_stats_table 落盘）。
+static func _has_converted_munitions(attacker_stats: UnitStats) -> bool:
+	if attacker_stats == null or not attacker_stats.has_meta("mod_special_flags"):
+		return false
+	return bool((attacker_stats.get_meta("mod_special_flags", {}) as Dictionary).get("converted_munitions", false))
 
 ## 根据攻击者单位类型获取目标对应防御值（v6.2: 攻防维度对齐）
 ## 防御维度与攻击维度对齐——按"攻击者的单位类型"选目标防御值：
@@ -30,12 +46,32 @@ static func get_attack_vs(attacker_stats: UnitStats, target_combat_kind: int) ->
 ## defense_armor = 防装甲单位(ARMOR/FORT)攻击
 ## defense_air   = 防空中单位(AIR)攻击
 ## v8.x: 三维攻防系统保持封闭，不新增 ENGINEER/SNIPER 分支
-static func get_defense_vs(target_stats: UnitStats, attacker_combat_kind: int) -> float:
+## v21 P1: 新增可选 attacker_stats——装了弹道重赋（gen_converted_munitions）且目标为
+## LIGHT/SUPPORT（对轻轴交战）时，目标按 defense_armor 结算（对轻→对甲）。缺省 null 行为不变。
+static func get_defense_vs(target_stats: UnitStats, attacker_combat_kind: int, attacker_stats: UnitStats = null) -> float:
+	# v21 P1: 弹道重赋——对轻轴交战（目标是轻装/支援）时整体转对甲轴
+	if target_stats != null and _has_converted_munitions(attacker_stats):
+		var tk: int = int(target_stats.combat_kind)
+		if tk == GC.CombatKind.LIGHT or tk == GC.CombatKind.SUPPORT:
+			return target_stats.defense_armor
 	match attacker_combat_kind:
 		GC.CombatKind.LIGHT, GC.CombatKind.SUPPORT: return target_stats.defense_light
 		GC.CombatKind.ARMOR, GC.CombatKind.FORT: return target_stats.defense_armor
 		GC.CombatKind.AIR: return target_stats.defense_air
 		_: return target_stats.defense_light  # 默认防轻装
+
+## v21 P1: 受击侧 take_damage 内联防御维度选择的弹道重赋修正。
+## 攻击者装了 gen_converted_munitions 且本次交战是对轻轴（攻击者 LIGHT/SUPPORT 主类
+## 且目标是 LIGHT/SUPPORT）时返回 ARMOR（目标按 defense_armor 结算），否则原样返回。
+## 用于 construct_unit/enemy_unit/swarm_enemy_slot 的 take_damage 维度 match 前置修正。
+static func convert_defense_dimension(target_combat_kind: int, attacker_stats: UnitStats, attacker_kind: int) -> int:
+	if attacker_kind != GC.CombatKind.LIGHT and attacker_kind != GC.CombatKind.SUPPORT:
+		return attacker_kind
+	if target_combat_kind != GC.CombatKind.LIGHT and target_combat_kind != GC.CombatKind.SUPPORT:
+		return attacker_kind
+	if _has_converted_munitions(attacker_stats):
+		return GC.CombatKind.ARMOR
+	return attacker_kind
 
 ## 完整伤害计算
 ## @deprecated v6.2: 简化版伤害计算，仅用于测试/验证器。
@@ -54,7 +90,7 @@ static func calculate_damage(
 	var base_damage = get_attack_vs(attacker_stats, target_stats.combat_kind)
 
 	# 2. 防御值 = 根据攻击者单位类型选（v6.2: 攻防维度对齐）
-	var def = get_defense_vs(target_stats, attacker_stats.combat_kind)
+	var def = get_defense_vs(target_stats, attacker_stats.combat_kind, attacker_stats)
 
 	# 3. 射程衰减(仅直射) — v6.2: 直射已删除衰减设定，本块停用
 #	if weapon_type == GC.WeaponType.DIRECT:
@@ -189,6 +225,12 @@ static func get_weapon_for_target(attacker_stats: UnitStats, target_combat_kind:
 	if attacker_stats == null or attacker_stats.weapon_slots.is_empty():
 		return null
 
+	# v21 P1: 弹道重赋——对轻轴（LIGHT/SUPPORT 目标）改取对甲槽（武器一并走对甲轴）
+	if target_combat_kind == GC.CombatKind.LIGHT or target_combat_kind == GC.CombatKind.SUPPORT:
+		if _has_converted_munitions(attacker_stats):
+			if attacker_stats.weapon_slots.size() > 1:
+				return attacker_stats.weapon_slots[1]
+
 	# 优先使用新槽位系统
 	if attacker_stats.has_method("get_weapon_for_target"):
 		return attacker_stats.get_weapon_for_target(target_combat_kind)
@@ -247,7 +289,8 @@ static func calculate_damage_with_weapon(
 	# v10(C11): target_stats 可空（相位场/boss 等无 stats 目标）——不再依赖 skip 恒真掩盖
 	if not skip_defense_reduction and target_stats != null:
 		# 用攻击者单位类型决定穿透哪个防御值（v6.2: 攻防维度对齐）
-		var def = get_defense_vs(target_stats, attacker_stats.combat_kind)
+		# v21 P1: 传 attacker_stats——弹道重赋（gen_converted_munitions）对轻轴转对甲轴
+		var def = get_defense_vs(target_stats, attacker_stats.combat_kind, attacker_stats)
 		# v7.x: 符文+相位仪穿透整合（使用统一上限 MAX_PENETRATION_RATIO）
 		var pen_ratio: float = _get_rune_penetration_ratio(attacker_stats)
 		# v6.6: 相位仪直射穿透能力（piercing_shot）— 追加穿透比例

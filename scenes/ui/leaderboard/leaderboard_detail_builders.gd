@@ -75,7 +75,7 @@ static func create_skill_box(skill: Dictionary) -> Control:
 
 	var name_label = Label.new()
 	name_label.text = skill.get("name", "未知技能")
-	name_label.add_theme_font_size_override("font_size", 12)
+	name_label.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
 	name_label.add_theme_color_override("font_color", DT.COLOR_GOLD_SOFT)
 	name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	header_row.add_child(name_label)
@@ -87,7 +87,7 @@ static func create_skill_box(skill: Dictionary) -> Control:
 
 	var desc_label = Label.new()
 	desc_label.text = skill.get("description", "")
-	desc_label.add_theme_font_size_override("font_size", 12)
+	desc_label.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
 	desc_label.add_theme_color_override("font_color", Color(0.85, 0.85, 0.85, 1))
 	desc_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	desc_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL

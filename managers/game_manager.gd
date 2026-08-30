@@ -588,9 +588,12 @@ func _on_battle_ended(player_won: bool) -> void:
 	# HUD 重构：结算入口由主场景 `show_battle_result` 弹出 battle_result_dialog（OK 时 claim_drops）。
 	# 若主场景未实现该方法（历史场景/测试），胜利后须仍领取 DropManager 待领掉落，否则会永久卡在 pending。
 	#
-	# v6.6(挂机): 挂机模式下跳过结算弹窗，自动领取掉落 + 重置到 PRE_BATTLE，
+	# v6.6(挂机): 挂机模式下跳过结算弹窗，自动处理掉落 + 重置到 PRE_BATTLE，
 	# 让 AFKModeManager 的 call_deferred 下一关启动时战场已清理、phase 已重置。
-	# 必须在 claim_drops() 之前调用 accumulate_pending_drops()，把掉落计入累计奖励总账。
+	# 必须在处理掉落之前调用 accumulate_pending_drops()，把掉落计入累计奖励总账。
+	# v23.6(归仓): 挂机掉落改为送入 DropManager 归仓暂存池（不再即时入账钱包）——
+	# 玩家回基地在房间头顶气泡收取 / HUD 一键全收 / 挂机结算弹窗"全部入账"，
+	# 把"回来收菜"做成可见的收集时刻。钱包入账延后，数额口径不变（同乘区同管线）。
 	if _is_afk_running():
 		# AFKModeManager 是 RefCounted（非 Node），故 afk_mgr 用 Variant 不标 Node 类型。
 		var afk_mgr = main_scene._afk_manager if (main_scene != null and "_afk_manager" in main_scene) else null
@@ -598,8 +601,8 @@ func _on_battle_ended(player_won: bool) -> void:
 			afk_mgr.accumulate_pending_drops()
 		ManagerLazyLoader.ensure_loaded("drop")  # DropManager 为 autoload+别名双层（ensure_loaded 幂等）
 		var dm_afk: Node = get_node_or_null("/root/DropManager")
-		if dm_afk != null and dm_afk.has_method("claim_drops"):
-			dm_afk.claim_drops()
+		if dm_afk != null and dm_afk.has_method("deposit_pending_to_escrow"):
+			dm_afk.deposit_pending_to_escrow()
 		# AFK 也需要延迟相位师奖励
 		if _pending_pm_battle:
 			call_deferred("_deferred_phase_master_reward", _pending_pm_name)
@@ -957,6 +960,25 @@ func _grant_phase_master_victory_reward(master_name: String) -> void:
 	last_battle_reward_summary["phase_master_victory"] = master_name
 	last_battle_reward_summary["extra_nano"] = extra_nano_total if extra_nano_total > 0 else 50
 	last_battle_reward_summary["extra_energy"] = extra_energy_total if extra_energy_total > 0 else 10
+
+	# v21 P3-B（计划 A4）：相位师首杀 → 解锁（非赠送）1 个稀有/传奇改造模块
+	_unlock_mod_on_phase_master_first_kill(master_name)
+
+
+## v21 P3-B（计划 A4）：相位师首杀解锁改造模块。
+## 挂点选在战后奖励链 _grant_phase_master_victory_reward（brief 认可的第二选项）——
+## DropManager 掉落链无相位师身份上下文（master_id/era 在 _current_phase_master 里）。
+## 规则实现在 ModificationRegistry.unlock_boss_first_kill（每位 master 仅首杀发一次，
+## 按 boss era 对应兵种加权随机选稀有/传奇模块，与打造共用同一账号解锁集）。
+func _unlock_mod_on_phase_master_first_kill(master_name: String) -> void:
+	var mr: Node = get_node_or_null("/root/ModificationRegistry")
+	if mr == null or not mr.has_method("unlock_boss_first_kill"):
+		return
+	var master_id: String = String(_current_phase_master.get("id", master_name))
+	var era_pm: int = GC.get_era_for_level(current_level)
+	var result: Dictionary = mr.unlock_boss_first_kill(master_id, era_pm)
+	if bool(result.get("ok", false)):
+		last_battle_reward_summary["boss_first_kill_unlock"] = String(result.get("mod_id", ""))
 
 ## v6.14: 从相位师自带符文池抽取，池空或不含目标稀有度时回退 generic 池。
 ## [param master_runes_pool] 相位师自带符文 id 列表（可能含各稀有度）

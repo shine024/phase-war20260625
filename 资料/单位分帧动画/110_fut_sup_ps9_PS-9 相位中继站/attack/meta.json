@@ -1,0 +1,30 @@
+{
+ "unit": "fut_sup_ps9",
+ "unit_name": "PS-9 相位中继站",
+ "anim": "attack",
+ "frames": 8,
+ "frame_files": [
+  "f00.png",
+  "f01.png",
+  "f02.png",
+  "f03.png",
+  "f04.png",
+  "f05.png",
+  "f06.png",
+  "f07.png"
+ ],
+ "canvas": 512,
+ "suggested_fps": 10,
+ "foot_frac": 0.92,
+ "union_bbox": [
+  0,
+  162,
+  675,
+  555
+ ],
+ "model": "agnes-video-2.5-flash",
+ "mode": "keyframe",
+ "source_video": "source.mp4",
+ "generated_at": "2026-08-30 03:40:42",
+ "fix3_note": "attack = idle copy (user: no fire action); original attack frames in bak_fix3/"
+}

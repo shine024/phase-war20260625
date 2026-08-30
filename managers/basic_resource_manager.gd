@@ -17,6 +17,28 @@ var total_crystal: int = 0
 var total_energy_block: int = 0
 var custom_totals: Dictionary = {}
 
+## v21 P3-B（计划 C1）：产能点——DayClock 按天结算汇入，改造打造（ModificationRegistry.craft_mod）
+## 与合金共同消耗。非五大货币（不进 add_resource 的 custom_totals 通道），独立字段 + 独立存取。
+## 上限对齐 DayClock.PRODUCTION_POINTS_CAP（999），防挂机无限屯点。
+var production_points: int = 0
+
+## v21 P3-B: 增加产能点（钳制到 [0, 999]；amount 可为 0，仍发资源变更信号刷新 UI）
+func add_production_points(amount: int) -> void:
+	production_points = clampi(production_points + amount, 0, 999)
+	resources_changed.emit()
+
+## v21 P3-B: 消耗产能点（不足返回 false，不部分扣减）
+func consume_production_points(amount: int) -> bool:
+	if amount < 0 or production_points < amount:
+		return false
+	production_points -= amount
+	resources_changed.emit()
+	return true
+
+## v21 P3-B: 查询当前产能点
+func get_production_points() -> int:
+	return production_points
+
 # 兼容性变量（映射到新的资源系统）
 var total_basic_nano: int = 0  # 映射到 total_nano_materials
 
@@ -98,6 +120,8 @@ func save_state() -> Dictionary:
 		"custom_totals": custom_totals.duplicate(true),
 		# 兼容性字段
 		"total_basic_nano": total_nano_materials,
+		# v21 P3-B: 产能点（旧档缺 key 时 load_state 静默补 0）
+		"production_points": production_points,
 	}
 
 func load_state(data: Dictionary) -> void:
@@ -110,6 +134,8 @@ func load_state(data: Dictionary) -> void:
 	custom_totals = data.get("custom_totals", {})
 	if not (custom_totals is Dictionary):
 		custom_totals = {}
+	# v21 P3-B: 产能点（v8 及更旧档无此 key → 静默补默认 0，旧档字段级静默跳过惯例）
+	production_points = maxi(0, int(data.get("production_points", 0)))
 	# 同步兼容变量
 	total_basic_nano = total_nano_materials
 	resources_changed.emit()

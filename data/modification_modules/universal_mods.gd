@@ -17,6 +17,13 @@ const GEN_10_AMMO_RACK = "gen_10_ammo_rack"
 const GEN_11_PHASE_RESONANCE = "gen_11_phase_resonance"
 const GEN_12_PHASE_SHIELDING = "gen_12_phase_shielding"
 const GEN_13_PHASE_OVERDRIVE = "gen_13_phase_overdrive"
+# v21 P1: 行为改写型传奇改造（6 个，龙崖映射，计划 §P1-2）
+const GEN_CONVERTED_MUNITIONS = "gen_converted_munitions"
+const GEN_EXPANSION_CHAMBER = "gen_expansion_chamber"
+const GEN_OVERFLOW_SHIELD = "gen_overflow_shield"
+const GEN_TRUESTRIKE_PINPOINT = "gen_truestrike_pinpoint"
+const GEN_RELAY_ANTENNA = "gen_relay_antenna"
+const GEN_UNIFIED_SPLASH = "gen_unified_splash"
 
 const DATA: Dictionary = {
 	"gen_01_comms" = {
@@ -379,6 +386,124 @@ const DATA: Dictionary = {
 			applicable_types = [0, 1, 2, 3, 4],
 			effects = {chem_dps_mult = 0.20, chem_pollute = 2.0},
 			unlock_conditions = {required_level = 5}
+		},
+
+		# ==================== v21 P1 行为改写型传奇改造（6 个，计划 §P1-2）====================
+		# 标定口径：对齐尾槽传奇档（gen_14: power_mult 2.0 / 500·250；gen_17: 1.8 / 400·200）。
+		# 行为改写词条"改规则不加数值"，power_mult 取 1.6~2.0，按改变战法幅度分档；
+		# effect key 均为注册表未知键 → 自动落入 _special（mod_special_flags meta），
+		# 由各消费点读取（attack_calculator / target_selection / construct_unit_ai /
+		# construct_unit.heal / unit_stats_table._extract_aura_summary_to_meta / 曲射 batch）。
+		# 弹道重赋：攻击维度转换 对轻→对甲（龙崖·转属性卷轴）
+		"gen_converted_munitions" = {
+			id = GEN_CONVERTED_MUNITIONS,
+			name = "弹道重赋",
+			name_en = "Converted Munitions",
+			icon = "res://assets/ui/icons/mod_icons/mod_ammunition.png",
+			prototype = "模块化弹药重赋系统",
+			description = "攻击维度转换：对轻轴攻击整体转按对甲轴结算（武器/攻值/目标防御三维都走对甲），对甲/对空轴不变。适合对甲轴火力远强于对轻轴的载具/火炮",
+			rarity = "legendary",
+			power_mult = 1.8,
+			cost_research = 400,
+			cost_install = 200,
+			slot_type = "ammunition",
+			conflict_group = "ammunition",
+			applicable_types = [0, 1, 2],  # LIGHT/ARMOR/SUPPORT（对空轴不受影响，空中装无意义）
+			effects = {converted_munitions = true},
+			unlock_conditions = {required_level = 7}
+		},
+		# 扩容弹舱：同时攻击目标数 +1（龙崖·温玉戒指 单奶→群奶）
+		"gen_expansion_chamber" = {
+			id = GEN_EXPANSION_CHAMBER,
+			name = "扩容弹舱",
+			name_en = "Expansion Chamber",
+			icon = "res://assets/ui/icons/mod_icons/mod_ammunition.png",
+			prototype = "多联装供弹机构",
+			description = "同时攻击目标数 +1：每次开火额外向射程内另一敌人射击（全额伤害独立结算）",
+			rarity = "legendary",
+			power_mult = 1.9,
+			cost_research = 450,
+			cost_install = 220,
+			slot_type = "ammunition",
+			conflict_group = "expansion",
+			applicable_types = [0, 1, 2, 4],  # 地面单位（空中单位多目标压制过强，不开放）
+			effects = {expansion_chamber = true},
+			unlock_conditions = {required_level = 7}
+		},
+		# 溢流护盾：溢出维修按比例转护盾（龙崖·治疗吸收属性）
+		"gen_overflow_shield" = {
+			id = GEN_OVERFLOW_SHIELD,
+			name = "溢流护盾",
+			name_en = "Overflow Shield",
+			icon = "res://assets/ui/icons/mod_icons/mod_shield.png",
+			prototype = "再生式能量缓冲层",
+			description = "溢流转化：受到的所有治疗超出生命上限的部分，按 60% 转化为护盾（护盾上限不变，仍为双倍 HP）",
+			rarity = "legendary",
+			power_mult = 1.7,
+			cost_research = 420,
+			cost_install = 210,
+			slot_type = "protection",
+			conflict_group = "protection",
+			applicable_types = [0, 1, 2, 4],  # 有医疗/维修光环收益的地面位
+			effects = {overflow_to_shield = 0.60},
+			unlock_conditions = {required_level = 7}
+		},
+		# 精确制导针：无视 50% 闪避（补"命中 vs 闪避"缺失的半轴）
+		"gen_truestrike_pinpoint" = {
+			id = GEN_TRUESTRIKE_PINPOINT,
+			name = "精确制导针",
+			name_en = "Truestrike Pinpoint",
+			icon = "res://assets/ui/icons/mod_icons/mod_guidance.png",
+			prototype = "末端成像制导组件",
+			description = "无视目标 50% 闪避率（按比例削减，非对半豁免）：高闪避侦察/飞行单位的天敌",
+			rarity = "legendary",
+			power_mult = 1.6,
+			cost_research = 380,
+			cost_install = 190,
+			slot_type = "guidance",
+			conflict_group = "guidance",
+			applicable_types = [0, 1, 2, 3, 4],
+			effects = {dodge_ignore = 0.50},
+			unlock_conditions = {required_level = 6}
+		},
+		# 中继天线：该卡改造光环 R1→全场（联动 P0 范围化，unit_stats_table 写 range_override=-1）
+		"gen_relay_antenna" = {
+			id = GEN_RELAY_ANTENNA,
+			name = "中继天线",
+			name_en = "Relay Antenna",
+			icon = "res://assets/ui/icons/mod_icons/mod_comms.png",
+			prototype = "战场数据链中继塔",
+			description = "该卡改造光环（ally_* 类）影响范围扩至全场（需同时装备带光环的改造才有收益）",
+			rarity = "legendary",
+			power_mult = 1.6,
+			cost_research = 360,
+			cost_install = 180,
+			slot_type = "comms",
+			conflict_group = "comms",
+			applicable_types = [0, 1, 2, 3, 4],
+			effects = {relay_antenna = true},
+			unlock_conditions = {required_level = 6}
+		},
+		# 统一装药：溅射公式统一词条——曲射 batch 固定 50% 溅射改读 shooter splash_damage
+		#（无则回退 0.5；MAX_AOE_TARGETS_PER_HIT=4 不变；bullet 兜底路径不动——B4 最小对齐，计划 §7 风险 5 允许）
+		"gen_unified_splash" = {
+			id = GEN_UNIFIED_SPLASH,
+			name = "统一装药",
+			name_en = "Unified Charge",
+			icon = "res://assets/ui/icons/mod_icons/mod_explosion.png",
+			prototype = "标准化高爆装药",
+			description = "统一溅射公式：自身溅射比例 60%（曲射/命中路径共用一轴），并使所有命中附带 60% 溅射伤害",
+			rarity = "legendary",
+			power_mult = 2.0,
+			cost_research = 500,
+			cost_install = 250,
+			slot_type = "ammunition",
+			conflict_group = "expansion",
+			applicable_types = [0, 1, 2, 3, 4],
+			# splash_damage 走注册表既有键（cap 0.8），命中路径 _apply_splash 自动消费；
+			# 曲射 batch 的 50%→splash_damage 读取端见 simple_indirect_projectile_batch。
+			effects = {splash_damage = 0.60, splash_radius = 0.15},
+			unlock_conditions = {required_level = 8}
 		},
 	}
 

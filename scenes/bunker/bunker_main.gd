@@ -17,6 +17,17 @@ const DotScript = preload("res://scenes/bunker/bunker_player_dot.gd")
 const HudScript = preload("res://scenes/bunker/ui/bunker_hud.gd")
 const RoomPanelScript = preload("res://scenes/bunker/ui/bunker_room_panel.gd")
 const DaySummaryScript = preload("res://scenes/bunker/ui/bunker_day_summary.gd")
+const RewardBubbleScript = preload("res://scenes/bunker/bunker_reward_bubble.gd")
+
+## v23.6(归仓)：战利品类别 → 收取气泡挂靠的房间。目标房未修复时逐级回退
+## （仓库 → 入口大厅），基地修得越多收集点越分散（学避难所的"产出分房"）。
+const ESCROW_ROOM_MAP := {
+	"material": "depot",        # 物资 → 仓库
+	"card": "honor_hall",       # 战利品卡 → 荣誉陈列室（未修复时回退仓库）
+	"lore": "archive",          # 情报 → 档案室
+	"stat_boost": "phase_lab",  # 强化 → 相位实验室
+	"mod_blueprint": "workshop", # 改造图纸 → 维修工坊
+}
 
 ## P2/P3 面板迁移：房间功能 → UI 面板
 ## v22.3：删 "afk"（AFKModeManager 由 main.gd 注入，基地内面板是死键）；
@@ -41,6 +52,9 @@ const EMBEDDED_PANELS := {
 	"observatory_ending": "res://scenes/bunker/ui/observatory_ending_panel.gd",
 }
 
+## 背包内嵌时随行的相位仪栏（基地没有 HudLayer 底栏，拖卡装备只能靠它）
+const INSTRUMENT_BAR_SCENE := "res://scenes/ui/bottom_instrument_bar.tscn"
+
 ## 整体大背景图（tools/generate_bunker_bg_v3.py 生成，胶囊+外壳版）：
 ## 一体外壳（夜空+地表+岩层）+ 14 间潜艇式房间胶囊按 GRID 嵌入；
 ## 初始暗版含"涂黑"锁定态，运行时叠状态遮罩与全亮切片。
@@ -64,6 +78,7 @@ var _stage_label: Label
 var _monologue_label: Label
 var _monologue_timer: Timer
 var _ui_stage: Control = null      # v22：固定 1280×720 UI 舞台（expand 画布下面板居中不漂移）
+var _bubble_layer: Control = null  # v23.6(归仓)：战利品收取气泡层（房间层之上、UI 舞台之下）
 var _is_night := false
 var _pending_room_id := ""
 var _current_room_id := "entry_hall"   # 光点所在房（寻路 via 链起点）
@@ -87,8 +102,10 @@ func _ready() -> void:
 	_build_rooms()
 	_ambient.setup(_manager, _room_rects)
 	_build_dot()
+	_build_bubble_layer()
 	_build_ui_layers()
 	_refresh_all_rooms()
+	_refresh_reward_bubbles()
 	_connect_signals()
 	# v22.4（P2）：基地专属 BGM——不显式切歌会沿用上一场景曲目（战后进基地仍是战斗曲）
 	if AudioManager != null and AudioManager.has_method("play_music"):
@@ -331,9 +348,122 @@ func _connect_signals() -> void:
 			SignalBus.bunker_day_ended.connect(_on_bunker_day_ended)
 		if not SignalBus.hero_archive_unlocked.is_connected(_on_hero_archive_unlocked):
 			SignalBus.hero_archive_unlocked.connect(_on_hero_archive_unlocked)
+	# v23.6(归仓)：暂存池存取即时刷新气泡（collect 内部也会 emit，deferred 防重入）
+	var dm := _drop_manager()
+	if dm != null and dm.has_signal("escrow_changed"):
+		if not dm.escrow_changed.is_connected(_on_escrow_changed):
+			dm.escrow_changed.connect(_on_escrow_changed)
+
+func _on_escrow_changed() -> void:
+	call_deferred("_refresh_reward_bubbles")
+
+## 首次见到归仓气泡的一句话引导（deferred 到 _ready 链外执行，见 _refresh_reward_bubbles 注释）
+func _maybe_show_escrow_intro() -> void:
+	FeatureUnlockPopup.show_once("escrow_bubble", "战利品归仓",
+		"挂机的战利品已暂存基地各房间——看到发光气泡点击收取，也可点右上「收取全部」。")
 
 func _on_room_state_changed(room_id: String, _new_state: int) -> void:
 	_refresh_room(room_id)
+	# v23.6(归仓)：房间修复完工（ACTIVE）后，回退到别房的归仓类别会迁回本房气泡
+	_refresh_reward_bubbles()
+
+
+# ───────────────────── v23.6(归仓)：战利品收取气泡 ─────────────────────
+
+func _build_bubble_layer() -> void:
+	_bubble_layer = Control.new()
+	_bubble_layer.name = "RewardBubbleLayer"
+	_bubble_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_bubble_layer.size = Vector2(1280, 720)
+	add_child(_bubble_layer)
+
+func _drop_manager() -> Node:
+	ManagerLazyLoader.ensure_loaded("drop")
+	return get_node_or_null("/root/DropManager")
+
+func _is_room_active(room_id: String) -> bool:
+	return _manager != null \
+		and _manager.get_room_state(room_id) == BunkerRoomDefs.STATE_ACTIVE
+
+## 类别 → 房间（目标房未修复回退仓库，仓库也没修回退入口大厅）
+func _resolve_escrow_room(cat: String) -> String:
+	var target := str(ESCROW_ROOM_MAP.get(cat, "depot"))
+	if _is_room_active(target):
+		return target
+	if _is_room_active("depot"):
+		return "depot"
+	return "entry_hall"
+
+func _refresh_reward_bubbles() -> void:
+	if _bubble_layer == null or not is_inside_tree():
+		return
+	for child in _bubble_layer.get_children():
+		child.queue_free()
+	var dm := _drop_manager()
+	if dm == null or not dm.has_method("get_escrow_categories"):
+		return
+	var cats: Array[String] = dm.get_escrow_categories()
+	if cats.is_empty():
+		return
+	# 类别按解析后的房间分组：同房多类别合一泡
+	var by_room: Dictionary = {}
+	for cat in cats:
+		var room_id := _resolve_escrow_room(cat)
+		if not by_room.has(room_id):
+			by_room[room_id] = {"categories": [], "count": 0}
+		by_room[room_id]["categories"].append(cat)
+		by_room[room_id]["count"] += int(dm.get_escrow_category_count(cat))
+	for room_id in by_room:
+		if not _room_rects.has(room_id):
+			continue
+		var cats_arr: Array = by_room[room_id]["categories"]
+		var bubble: Control = RewardBubbleScript.new()
+		_bubble_layer.add_child(bubble)
+		bubble.setup(cats_arr, int(by_room[room_id]["count"]), _room_rects[room_id],
+			_escrow_tooltip(dm, cats_arr))
+		bubble.collected.connect(_on_reward_bubble_collected)
+	# v23.6.1：归仓收取是新交互，首次见到气泡给一句话说明（show_once 持久化）。
+	# ⚠️ 必须 deferred：本函数可能在 bunker_main._ready 期间被调，show_once 内
+	# tree.root.add_child 会因"Parent node is busy setting up children"失败，
+	# 且 key 已被提前标记 seen → 引导永远弹不出来（首跑实测踩坑）。
+	_maybe_show_escrow_intro.call_deferred()
+
+func _escrow_tooltip(dm: Node, cats: Array) -> String:
+	const NAMES := {
+		"material": "物资", "card": "战利品", "lore": "情报",
+		"stat_boost": "强化", "mod_blueprint": "图纸",
+	}
+	var lines: Array[String] = ["点击收取："]
+	for cat in cats:
+		lines.append("  %s ×%d" % [str(NAMES.get(String(cat), cat)), int(dm.get_escrow_category_count(String(cat)))])
+	return "\n".join(lines)
+
+func _on_reward_bubble_collected(categories: Array) -> void:
+	var dm := _drop_manager()
+	if dm == null or not dm.has_method("collect_escrow"):
+		return
+	_toast_collected(dm.collect_escrow(categories))
+
+## 收取反馈：toast 拼前 4 项明细（多则"等 N 项"）+ 任务完成音（v7.3 日常任务先例复用）
+func _toast_collected(collected: Array) -> void:
+	if collected.is_empty():
+		return
+	var parts: Array[String] = []
+	var rest: int = 0
+	for i in range(collected.size()):
+		var entry: Dictionary = collected[i]
+		if i < 4:
+			parts.append("%s×%d" % [String(entry.get("name", "??")), int(entry.get("count", 0))])
+		else:
+			rest += 1
+	var text := "已收取：" + " · ".join(parts)
+	if rest > 0:
+		text += " 等 %d 项" % rest
+	if SignalBus != null:
+		if SignalBus.has_signal("show_toast"):
+			SignalBus.show_toast.emit(text)
+		if SignalBus.has_signal("play_sound"):
+			SignalBus.play_sound.emit("quest_complete")
 
 ## 睡觉结算（sleep() 内同步发射）→ HUD 日/精神/资源与光点状态刷新
 func _on_bunker_day_ended(_day: int) -> void:
@@ -455,6 +585,7 @@ func _ensure_embed_wrapper(panel_id: String) -> Control:
 	wrapper.add_child(dim)
 
 	var center := CenterContainer.new()
+	center.name = "EmbedCenter"
 	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	wrapper.add_child(center)
 	# 脚本型面板（.gd）根是裸 Control（min=0），会被 CenterContainer 折成 0×0
@@ -467,7 +598,56 @@ func _ensure_embed_wrapper(panel_id: String) -> Control:
 		panel.closed.connect(func(): wrapper.visible = false)
 	_embed_layer.add_child(wrapper)
 	_embed_wrappers[panel_id] = {"wrapper": wrapper, "panel": panel}
+	# 基地装备链路（2026-08）：背包内嵌时带上相位仪栏——基地场景没有 HudLayer 底栏，
+	# 此前打开背包看不到下面那行相位仪栏、无法拖卡装备（用户反馈）。
+	# 与主场景全出血同构图：面板在上、栏贴底（占位带 86 = 64 高 + 22 底边距）。
+	if panel_id == "backpack":
+		_attach_embed_instrument_bar(wrapper, center, panel)
 	return wrapper
+
+## 把相位仪栏挂进背包内嵌 wrapper：底部居中，隐藏死按钮（菜单只认主场景的
+## BottomFunctionBar 兄弟节点），相位仪等级标签点击改为直达背包相位仪页签。
+func _attach_embed_instrument_bar(wrapper: Control, center: Control, bp: Control) -> void:
+	if wrapper.has_node("EmbedInstrumentBar"):
+		return
+	var packed: PackedScene = load(INSTRUMENT_BAR_SCENE)
+	if packed == null:
+		push_error("[BunkerMain] 相位仪栏场景加载失败: " + INSTRUMENT_BAR_SCENE)
+		return
+	var bar: Control = packed.instantiate()
+	bar.name = "EmbedInstrumentBar"
+	wrapper.add_child(bar)
+	var menu_btn: Node = bar.get_node_or_null("Margin/HBox/MenuBtn")
+	if menu_btn != null:
+		menu_btn.visible = false
+	# 内容带上移：CenterContainer 从全屏高改为「顶部 → 栏上沿」带，面板居中于带内
+	# （带高在 _layout_embed_instrument_bar 按栏实测高修正）
+	center.offset_bottom = -86.0
+	# 相位仪等级标签点击 → 直达相位仪页签（主场景此点击开选择器，基地无底栏宿主）
+	if bar.has_signal("phase_level_label_clicked"):
+		bar.phase_level_label_clicked.connect(func():
+			if bp != null and is_instance_valid(bp) and bp.has_method("switch_to_phase_instruments_tab"):
+				bp.switch_to_phase_instruments_tab())
+	_layout_embed_instrument_bar.call_deferred(bar, wrapper)
+
+## 栏贴 wrapper 底部居中（等 _ready 出内容最小宽后再落位）；内容带高同步按栏实际高修正
+func _layout_embed_instrument_bar(bar: Control, wrapper: Control) -> void:
+	if not is_instance_valid(bar) or not bar.is_inside_tree():
+		return
+	var ms: Vector2 = bar.get_minimum_size()
+	var w: float = maxf(ms.x, 520.0)
+	var band: float = ms.y + 22.0  # 底边距 22 与主场景一致
+	bar.anchor_left = 0.5
+	bar.anchor_right = 0.5
+	bar.anchor_top = 1.0
+	bar.anchor_bottom = 1.0
+	bar.offset_left = -w * 0.5
+	bar.offset_right = w * 0.5
+	bar.offset_top = -band
+	bar.offset_bottom = -22.0
+	var center: Control = wrapper.get_node_or_null("EmbedCenter")
+	if center != null:
+		center.offset_bottom = -band
 
 # ───────────────────── P2: 精神归零 ─────────────────────
 

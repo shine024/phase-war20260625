@@ -80,3 +80,117 @@ static func get_modifications_for_tier(tier: int) -> Array:
 ## 取档位的符文槽 ID 列表
 static func get_runes_for_tier(tier: int) -> Array:
 	return (TIER_RUNES.get(tier, []) as Array).duplicate()
+
+# ══════════════════════════════════════════════════════════════════
+#  v21 P3-A（计划 A2）：敌方精英同源词条
+#  档位 2/3（中配 ×1.75 / 高配 ×2.00）的敌人在现有数值乘区（档位×波数×势力×难度
+#  + card_level flat）之外，从玩家侧词条池（AffixDefinitions.AFFIX_TABLE，即
+#  AffixManager 用的词条定义文件）抽 1 条挂到该敌人身上。
+#  - 同一关卡同批敌人词条可重复，但同单位仅 1 条（roll 恒返回 0 或 1 条）。
+#  - 词条选择用 seeded 随机：seed = 关卡id×1000003 + 波次×10007 + 槽位序号×977 + 固定盐，
+#    同关卡同槽位恒出同词条（可复现，情报/复打体验一致）。
+#  - 效果消费走敌人 stats 既有路径：EnemyAffixes.apply_to_stats 把 effect_key 写进
+#    UnitStats 字段，enemy_unit/_do_attack/take_damage/battle_damage_system 既有分支读取。
+# ══════════════════════════════════════════════════════════════════
+
+## 挂词条的最低档位（TIER_MID=2 中配起）
+const LOADOUT_AFFIX_MIN_TIER: int = TIER_MID
+
+## 档位 → 词条等级（档位越高词条越强；AffixResource.get_level_factor 折算数值）
+const LOADOUT_AFFIX_LEVEL_BY_TIER: Dictionary = {
+	TIER_MID: 2,   # 中配 → Lv2（×1.25）
+	TIER_HIGH: 3,  # 高配 → Lv3（×1.55）
+}
+
+## 档位 → 词条稀有度（在定义 rarity_pool 内取；不在池内回退池末位）
+const LOADOUT_AFFIX_RARITY_BY_TIER: Dictionary = {
+	TIER_MID: "rare",
+	TIER_HIGH: "epic",
+}
+
+## 敌方消费路径支持的 effect_key 白名单 = EnemyAffixes.apply_to_stats 既有分支的键。
+## 排除玩家池中无敌方应用分支的三键（宁可少接不可乱接，避免"显示有词条但无效果"）：
+##   attack_interval（敌方表用 attack_speed 语义，口径不同）
+##   armor_penetration / shield_on_kill（字段消费点存在，但 apply_to_stats 无分支）
+const LOADOUT_AFFIX_SUPPORTED_KEYS: Array = [
+	"max_hp", "move_speed", "damage_reduction", "attack_damage", "attack_range",
+	"crit_chance", "kill_repair", "splash_damage", "chain_chance", "defense",
+	"hp_regen", "dodge_chance", "crit_damage_bonus",
+]
+
+## 波内槽位序号计数器（static，跨同波单位递增；波次号变化即重置）
+## 说明：敌人生成按波次循环顺序创建（battle_spawn_system 波次循环逐个 setup），
+## 此序号=同波内第 N 个符合条件的敌人，天然确定 ⇒ seed 可复现。
+## 新战斗波次号从 1 重新开始，计数器随波次切换自动归零。
+static var _loadout_seq_wave: int = -1
+static var _loadout_seq_counter: int = 0
+
+## 取本波下一个槽位序号（仅对符合条件的敌人调用，保证序号连续确定）
+static func next_loadout_slot_ordinal(wave_index: int) -> int:
+	if wave_index != _loadout_seq_wave:
+		_loadout_seq_wave = wave_index
+		_loadout_seq_counter = 0
+	var ordinal: int = _loadout_seq_counter
+	_loadout_seq_counter += 1
+	return ordinal
+
+## v21 P3-A：按 seed 抽 1 条玩家池词条，返回 EnemyAffixes 兼容的应用/显示字典。
+## 返回 {} 表示无可挂词条（档位不足或池过滤后为空——调用方跳过）。
+## 字段口径与 EnemyAffixes.ENEMY_AFFIXES roll 结果一致：
+##   id/name/description（显示）+ effect_key/base_value（apply_to_stats 消费）+ rarity（int 显示档位色）。
+## base_value 已折算最终量级 = 定义 base_value × 稀有度倍率 × 等级系数
+## （apply_to_stats 直读 base_value，与玩家侧 AffixResource.recalculate 口径对齐）。
+static func roll_loadout_affix_def(level_id: int, wave_index: int, slot_ordinal: int, combat_kind: int, uct_tier: int, tier: int) -> Dictionary:
+	var pool: Array = []
+	for def_id in AffixDefinitions.AFFIX_TABLE.keys():
+		var def: Dictionary = AffixDefinitions.AFFIX_TABLE[def_id] as Dictionary
+		# 效果键白名单（无敌方消费分支的键不进池）
+		if not LOADOUT_AFFIX_SUPPORTED_KEYS.has(String(def.get("effect_key", ""))):
+			continue
+		# v21 P3-B: wired=false（执行挂点待接）的词条不进池（与玩家侧 roll 池同口径）
+		if not bool(def.get("wired", true)):
+			continue
+		# 兵种/独特档门槛过滤（与敌方词缀 roll_affixes 同口径；敌人不受玩家 boss 解锁门控）
+		var kinds: Array = def.get("combat_kinds", []) as Array
+		if not kinds.is_empty() and not kinds.has(combat_kind):
+			continue
+		if int(def.get("min_tier", 0)) > uct_tier:
+			continue
+		pool.append(String(def_id))
+	if pool.is_empty():
+		return {}
+	# seeded 随机：同关卡+同波+同槽位 ⇒ 同词条
+	var rng := RandomNumberGenerator.new()
+	rng.seed = int(level_id) * 1000003 + int(wave_index) * 10007 + int(slot_ordinal) * 977 + 20260901
+	var def_id: String = String(pool[rng.randi() % pool.size()])
+	return build_loadout_affix_entry(def_id, tier)
+
+## 把玩家词条定义折算成敌方应用/显示字典（roll 结果 → apply_to_stats + _elite_affixes 显示）。
+## 稀有度 int 映射 EnemyAffixes.AffixRarity 显示档：common=0(白◇)/rare=1(紫◆)/epic·legendary=2(橙★)。
+static func build_loadout_affix_entry(def_id: String, tier: int) -> Dictionary:
+	var def: Dictionary = AffixDefinitions.get_definition(def_id)
+	if def.is_empty():
+		return {}
+	var lv: int = int(LOADOUT_AFFIX_LEVEL_BY_TIER.get(tier, 2))
+	var rarity: String = String(LOADOUT_AFFIX_RARITY_BY_TIER.get(tier, "rare"))
+	# 稀有度须在定义 rarity_pool 内，否则回退池末位（防御异常配置）
+	var rarity_pool: Array = def.get("rarity_pool", ["common"]) as Array
+	if not rarity_pool.is_empty() and not rarity_pool.has(rarity):
+		rarity = String(rarity_pool[rarity_pool.size() - 1])
+	# 最终量级 = base × 稀有度倍率 × 等级系数（与 AffixResource.recalculate 同公式）
+	var final_val: float = float(def.get("base_value", 0.0)) \
+		* AffixResource.get_rarity_multiplier(rarity) * AffixResource.get_level_factor(lv)
+	var rarity_int: int = 0
+	match rarity:
+		"rare": rarity_int = 1
+		"epic", "legendary": rarity_int = 2
+	return {
+		"id": "loadout_%s" % def_id,          # 前缀区分同源词条与原生敌方词缀
+		"name": String(def.get("affix_name", def_id)),
+		"description": String(def.get("description", "")),
+		"effect_key": String(def.get("effect_key", "")),
+		"base_value": final_val,
+		"rarity": rarity_int,
+		"source_affix_id": def_id,            # 玩家池源词条 id（追溯用）
+		"level": lv,
+	}

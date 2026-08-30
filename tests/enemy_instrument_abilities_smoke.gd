@@ -30,7 +30,7 @@ func _test_class_structure() -> bool:
 	print("\n[测试 1] 单引擎结构完整性（ENEMY owner）")
 	var pass_count: int = 0
 	var total: int = 4
-	PhaseInstrumentAbilities.reset_state()
+	PhaseInstrumentAbilities.reset_battle_state()
 	pass_count += 1
 	print("  ✅ reset_state() 可调用")
 	PhaseInstrumentAbilities.update(0.016)

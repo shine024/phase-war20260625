@@ -87,7 +87,7 @@ func _create_resource_item(parent: Container, icon: String, tooltip: String, col
 
 	var icon_lbl = Label.new()
 	icon_lbl.text = icon
-	icon_lbl.add_theme_font_size_override("font_size", 14)
+	icon_lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_BODY)
 	icon_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	icon_lbl.modulate = color
 	vbox.add_child(icon_lbl)

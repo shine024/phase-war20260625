@@ -12,10 +12,17 @@ func _ready() -> void:
 	# 懒实例化：首次可见或首次 refresh 时再建；world_map 自身 _build_level_map 有幂等守卫，
 	# refresh_for_open 也会兜底未构建状态，时序安全。
 	visibility_changed.connect(_on_visibility_changed_lazy)
-	# 调试钩子：WM_AUTO_OPEN=1 时启动自动展开地图层（复现嵌入式布局，仅调试用）
+	# 调试钩子：WM_AUTO_OPEN=1 启动自动展开地图层；=2 再模拟"打完一关回基地"场景重载
 	if OS.has_environment("WM_AUTO_OPEN"):
 		_ensure_content.call_deferred()
 		_auto_open.call_deferred()
+	if OS.get_environment("WM_AUTO_OPEN") == "2":
+		_cycle_reload.call_deferred()
+
+func _cycle_reload() -> void:
+	await get_tree().create_timer(2.5).timeout
+	print("[WM_DEBUG] cycle: 重载 main.tscn（模拟战后回基地）")
+	get_tree().change_scene_to_file("res://scenes/main.tscn")
 
 func _auto_open() -> void:
 	await get_tree().create_timer(0.5).timeout
@@ -23,6 +30,14 @@ func _auto_open() -> void:
 	if overlay is Control:
 		(overlay as Control).visible = true
 	refresh()
+	# 调试：WM_DEBUG_SHOT=路径 时延时存视口截图（验证重载/回基地后的实际渲染）
+	if OS.has_environment("WM_DEBUG_SHOT"):
+		var shot_path := OS.get_environment("WM_DEBUG_SHOT")
+		await get_tree().create_timer(1.2).timeout
+		var img := get_viewport().get_texture().get_image()
+		img.save_png(shot_path)
+		print("[WM_DEBUG] shot → ", shot_path)
+		get_tree().quit()
 
 func _on_visibility_changed_lazy() -> void:
 	if visible:

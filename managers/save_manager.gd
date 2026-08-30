@@ -32,7 +32,8 @@ var current_slot: int = 1
 const MAX_SLOTS := 3
 
 const SAVE_FILE_USER := "user://save.json"
-const SAVE_SCHEMA_VERSION := 8  # v7.0: v7→v8 卡牌实例化养成（清空旧card_id-keyed养成数据）
+# v21 P3-B: v8→v9 迁移（mod_unlock_state 解锁集 + basic_resources.production_points 产能点）
+const SAVE_SCHEMA_VERSION := 9
 const SAVE_MIN_INTERVAL_MS := 1200
 const SAVE_BACKUP_INTERVAL_MS := 15000
 const NONCRITICAL_SAVE_INTERVAL_MS := 10000
@@ -55,6 +56,8 @@ const CRITICAL_MANAGER_LOADS: Array = [
 	["/root/IntelManual", "intel_manual"],
 	# v8.x: 相位师技能树（get_active_effects 被战斗实时查询，需 critical）
 	["/root/PhaseMasterSkillManager", "phase_master_skill"],
+	# v21 P3-B: 账号级改造解锁集（打造/首杀解锁共用的 mod_unlock_state）
+	["/root/ModificationRegistry", "mod_unlock_state"],
 ]
 const DEFERRED_MANAGER_LOADS: Array = [
 	["/root/LoreManager", "lore"],
@@ -88,6 +91,8 @@ const CRITICAL_RESETTABLE_MANAGERS: Array[String] = [
 	"PhaseMasterSkillManager",
 	# v21: 余烬要塞基地（load_state({}) 全重置；未实例化时新游戏天然为默认态）
 	"BunkerManager",
+	# v21 P3-B: 改造解锁集（load_state({}) 清空账号解锁/首杀标记，防跨档残留）
+	"ModificationRegistry",
 ]
 const DEFERRED_RESET_BATCH_SIZE := 4
 
@@ -111,6 +116,8 @@ const RESETTABLE_MANAGERS := [
 	"IntelEvolutionManager",
 	# v6.6 修复: 新游戏清空未领取掉落（原 load_state({}) 无法清 pending_drops）
 	"DropManager",
+	# v21 P3-B: 账号级改造解锁集（与 CRITICAL_RESETTABLE_MANAGERS 同步登记，走同步重置）
+	"ModificationRegistry",
 ]
 
 ## ─── 存档数据键名常量（别名，定义见 scripts/systems/save_constants.gd）───

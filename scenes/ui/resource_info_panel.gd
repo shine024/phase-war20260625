@@ -41,7 +41,7 @@ func _build_ui() -> void:
 
 	var title = Label.new()
 	title.text = "资源"
-	title.add_theme_font_size_override("font_size", 12)
+	title.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
 	title.modulate = Color(0.9, 0.95, 1.0)
 	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	header.add_child(title)
@@ -89,14 +89,14 @@ func _add_resource_row(parent: Control, key: String, icon: String, name: String,
 
 	var icon_label = Label.new()
 	icon_label.text = icon
-	icon_label.add_theme_font_size_override("font_size", 12)
+	icon_label.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
 	icon_label.modulate = color
 	icon_label.custom_minimum_size = Vector2(20, 0)
 	hbox.add_child(icon_label)
 
 	var name_label = Label.new()
 	name_label.text = name
-	name_label.add_theme_font_size_override("font_size", 12)
+	name_label.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
 	name_label.modulate = Color(0.85, 0.85, 0.9)
 	name_label.custom_minimum_size = Vector2(60, 0)
 	hbox.add_child(name_label)
@@ -104,7 +104,7 @@ func _add_resource_row(parent: Control, key: String, icon: String, name: String,
 	var value_label = Label.new()
 	value_label.name = key + "_value"
 	value_label.text = "0"
-	value_label.add_theme_font_size_override("font_size", 12)
+	value_label.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
 	value_label.modulate = color
 	value_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	hbox.add_child(value_label)

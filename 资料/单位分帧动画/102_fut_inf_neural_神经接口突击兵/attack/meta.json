@@ -1,0 +1,32 @@
+{
+ "unit": "fut_inf_neural",
+ "unit_name": "神经接口突击兵",
+ "anim": "attack",
+ "frames": 10,
+ "frame_files": [
+  "f00.png",
+  "f01.png",
+  "f02.png",
+  "f03.png",
+  "f04.png",
+  "f05.png",
+  "f06.png",
+  "f07.png",
+  "f08.png",
+  "f09.png"
+ ],
+ "canvas": 512,
+ "suggested_fps": 10,
+ "foot_frac": 0.92,
+ "union_bbox": [
+  0,
+  33,
+  571,
+  671
+ ],
+ "model": "agnes-video-2.5-flash",
+ "mode": "keyframe",
+ "source_video": "source.mp4",
+ "generated_at": "2026-08-30 03:21:55",
+ "fix_note": "删f07/f08橙色+闪电跳变帧; 背囊白改橄榄灰; 2026-08-30"
+}

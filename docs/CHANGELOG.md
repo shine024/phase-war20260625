@@ -4331,3 +4331,185 @@ unit 脚本报 autoload Identifier 错误为环境限制（42 autoload 不存在
 
 **留待后续**：伤害数字仍生成在槽位地面（HUD 层经信号传位，改动属独立轮）；
 空中单位死亡坠落暂无烟迹拖尾（可按 vfx-tuning 轮次加池化粒子层）。
+
+## v23.6 战利品归仓：基地房间收取气泡（避难所式收集循环）（2026-08-30）
+
+**背景**：项目定位"战术放置+挂机"，但挂机收益是逐场静默入账钱包——玩家没有任何
+"回来看一眼"的钩子。借鉴辐射避难所的核心循环（房间产出 → 头顶冒气泡 → 点击收集），
+把挂机战利品改造成可见、可收集的时刻。同期修复 pending_drops "有存档无领取 UI"
+的历史空缺（原下场战斗前被静默自动领取）。
+
+**改动**（7 文件 + 1 新组件 + 1 测试）：
+
+1. **DropManager 归仓暂存池**（managers/drop_manager.gd）：新增 `_escrow` 聚合池
+   （按 type+item_id 聚合，量级有界）+ `deposit_pending_to_escrow()` /
+   `get_escrow_categories()` / `get_escrow_category_count()` / `get_escrow_total_count()` /
+   `collect_escrow(categories)`（空数组=全收，走与 claim_drops 相同的
+   `_process_single_drop` 管线——符文产出加成/剧情倍率/掉落卡实例化口径全一致，仅
+   时点后移）+ `escrow_changed` 信号 + 存档段 `escrow_drops`（旧档无 key=空池，免迁移）。
+   退役掉落类型（能量卡/法则系）不入仓。`_auto_claim_pending_if_any` 从"静默自动入账"
+   改为送归仓（残留掉落可见可收）。
+2. **挂机逐场改归仓**（managers/game_manager.gd AFK 分支）：`claim_drops()` →
+   `deposit_pending_to_escrow()`。手动战斗（MvpPanel"继续"领取）与离线奖励链路不动。
+   池容量天然受精神值约束（挂机每场胜 -10，归零停机），不设硬上限。
+3. **基地收取气泡**（新组件 scenes/bunker/bunker_reward_bubble.gd + bunker_main.gd 接线）：
+   类别→房间映射（物资→仓库 / 战利品→荣誉室 / 情报→档案室 / 强化→相位实验室 /
+   图纸→工坊），目标房未修复逐级回退（仓库→入口大厅）——基地修得越多收集点越分散。
+   气泡骑房间底边（"战利品从房间里冒出来"），正弦悬浮（motion_reduce 静止），
+   点击收取该房全部类别，toast 拼 4 项明细 + quest_complete 音效。房间修复完工时
+   回退类别自动迁回本房。
+4. **HUD 一键全收**（bunker_hud.gd）：顶部栏"收取全部"按钮，暂存非空时显示。
+5. **挂机结算逃生阀**（afk_settlement_dialog.gd）：暂存非空时显示"全部入账"（就地
+   领完，老玩家即时路径）+"确认"（保留气泡回基地收）双按钮 + 暂存量提示行。
+   精神归零停机 toast 同步加"顺手收气泡"引导。
+6. **文案**（bunker_room_defs.gd 食堂）：过时的"挂机收益请前往战区主界面"改为
+   气泡收取说明。
+
+**验证**：gdparse 9/9；新单测 tests/unit/economy/test_drop_escrow.gd 10/10
+（聚合/分类/按类收取/全收/存档往返/残留路由/退役过滤/重置）；master_power_smoke 8/8；
+全量 GdUnit 155/155（原 145 + 新 10）；基地场景冒烟 ALL PASS；端到端驱动
+tests/_tmp_escrow_bubble_check.gd（真场景：归仓 33 件→新档 2 泡（回退正确）→
+按类收取剩 1 泡→全收清空）。**实机目视（气泡观感/悬浮节奏）待游玩确认**。
+
+**留待后续（下一阶段候选）**：卡牌指派驻房（闲置卡拖入房间提升挂机产出，连接收集
+深度与产出速率）；气象站地表事件（P3 坑位现成，挂机回访钩子）；DayClock 时段驱动
+基地氛围；离线奖励并入气泡入口。
+
+## v23.6.1 美术/动画/UI 审查修复包（2026-08-30）
+
+**背景**：全项目美术资产与 UI 实现审查（951 个 .gd 资源引用断链扫描 / 656 张纹理
+.import 元数据 / 卡图锚点覆盖 / 130 个单位动画 / 音效字体 / UI 规范逐条核对）。
+资产侧零真断链、零 .import 缺失、锚点/动画/音效/字体全覆盖（详见 tools/_tmp_asset_audit.py
+可复跑审计件）；问题集中在 UI 代码层，本轮修复 P1 全部 + 小 P2 三件：
+
+1. **【v23.6 回归】收取气泡底排房间越界 15px**：荣誉陈列室/维修工坊房底 y=699，
+   气泡骑边定位底到 735 超出 720 画布——base_pos 钳回屏内（y ≤ 720-62-2，x 同钳）。
+2. **【v23.6 回归】气泡类别中文名 10px** → FONT_SIZE_SMALL(12)（字号铁律：10px 仅限
+   纯数字/英文）。
+3. **基地房间手型光标 + 状态 tooltip**（bunker_room_overlay）：房间可点击但非 Button
+   不吃全局钩子，手动设光标；tooltip 按状态给——锁定=修复成本+进度规则 / 修复中=百分比
+   （冻结=待电力说明）/ 可用=function_note。
+4. **结算弹窗按钮走 PanelStyles 工厂**：afk_settlement_dialog 三个按钮 +
+   offline_reward_dialog 领取按钮，替换手写单态 StyleBox（无 hover/按下反馈、圆角 8
+   越档）→ make_button_styles 五态（圆角 6）；afk_settlement"全部入账"补
+   quest_complete 音效（与基地侧反馈链一致）。
+5. **归仓首解锁引导**：FeatureUnlockPopup.show_once("escrow_bubble")。
+   **踩坑记录**：show_once 内 tree.root.add_child 在 bunker_main._ready 期间调用会因
+   "Parent node is busy setting up children" 失败，且 key 已提前标记 seen → 引导永远
+   弹不出；修法 = call_deferred 到 _ready 链外（_maybe_show_escrow_intro）。
+6. **main.tscn ReinforcementOverlay 死节点删除**：强化①退役残留（空 Control+
+   CenterContainer），未注册 ESC 栈、全项目零引用——消除未来"启用即 ESC 关不掉"的坑。
+7. **字号禁用档清理 5 处**：intel_harvest_display 11px 中文→12；bunker_room_overlay
+   角标 11px→FONT_SIZE_SMALL；achievement_panel 描述/风味 10px→FONT_SIZE_SMALL；
+   backpack_card_item 三处 clampi 字号下限 10/11→12（icon_px 是图标尺寸不动）。
+8. **小 P2 三件**：intel_reveal_popup 补 ESC 关闭（is_action_pressed("ui_cancel") +
+   set_input_as_handled，等价"知道了"）；mvp_panel 稀有度色收口 GC.get_rarity_color
+   单一源（删本地平行表，fallback 语义归一）；afk_panel 槽位补悬停说明（槽位用途+
+   点击语义）。
+
+**验证**：gdparse 12/12；main.tscn headless 完整启动 60 帧无报错（tscn 删除验证）；
+基地冒烟 ALL PASS；归仓端到端（含清缓存首跑引导弹窗路径）ALL PASS；
+master_power_smoke 8/8；全量 GdUnit 155/155。**目视项待游玩确认**：气泡 12px 类别名
+在 62px 圆泡内的观感、房间 tooltip 悬停手感、工厂按钮四态。
+
+**遗留（未修，记录在案）**：颜色 token 收口（bunker_hud/两弹窗手写色板）、scenes/ui
++bunker 共 ~190 处硬编码字号 token 收口、mvp_panel"继续/返回"按钮走工厂——均属
+存量一致性批次，建议攒独立轮做。
+
+## v23.6.2 存量一致性收口：字号 token 归档 + 弹窗色板单一源 + mvp 按钮工厂（2026-08-30）
+
+**背景**：v23.6.1 审查修复后的遗留批次（UI 规范"颜色走 token / 样式走工厂"两铁律的
+存量欠账）。全部为机械归档，值原样零视觉变化（mvp 两按钮除外——补齐了 hover/按下态）。
+
+1. **字号 token 归档 157 处**：scenes/ui + scenes/bunker 全部
+   `add_theme_font_size_override` 纯整数字面量 (10/12/14/16/20/32/48) →
+   `DT.FONT_SIZE_*` 等值 token，共 27 文件；4 文件补 `const DT = preload(...)`。
+   无 token 对应的值（13/15/17/18/22/24 等）与 clampi/表达式实参不动。
+   归档后复扫余量 0。工具：tools/_tmp_font_token_sweep.py（一次性，含顺序 bug——
+   无 DT const 文件会在补 const 前被跳过，漏网 3 处已手工补齐）。
+2. **弹窗色板单一源**：DesignTokens 新增 v23.6.1 批次常量（COLOR_DIALOG_BG /
+   COLOR_DIALOG_BORDER / COLOR_ACCENT_MINT / COLOR_WARN_SALMON / COLOR_TEXT_INFO /
+   COLOR_TEXT_INFO_DIM，值取自原 afk_settlement 色板）——afk_settlement_dialog 与
+   offline_reward_dialog 两处互为复制的 7 色板收口指向 DT（原值零漂移）；
+   offline 独有的 _CARD_* 保留本地；按钮工厂迁移后死常量 _BTN_BG 删除。
+3. **bunker 视觉收口**：bunker_reward_bubble 类别色中与 DT 精确同值的青/紫改指
+   token（物资橙/强化绿/图纸蓝无对应 token，保留本地语义常量）；bunker_hud 顶栏
+   青边框与精神条常态青改 `Color(DT.COLOR_ACCENT_CYAN, a)`。
+4. **mvp_panel 两按钮走 PanelStyles 工厂**："继续/返回整备"与"← 返回基地"原仅
+   normal 单态（无 hover/按下反馈、圆角 4 越档）→ make_button_styles 五态（accent
+   沿用胜利金/败北 BORDER、返回基地橙），深色文字保留。
+
+**验证**：gdparse 36/36（全部本轮改动文件）；复扫可归档字面量余量 0；
+main.tscn headless 启动 60 帧无报错；基地冒烟 ALL PASS；全量 GdUnit 155/155。
+**目视项待游玩确认**：mvp 两按钮的新 hover/按下观感（色相未变、底透明度按工厂
+规范 0.85、圆角 4→6）。
+
+## v21 龙崖借鉴批：战术光环范围化 + 组合满档 + 兵种搭档 + 敌方精英 + 产能打造（2026-08-31）
+
+**背景**：借鉴《龙崖》(Dragon Cliff) 的改造/兵种配合深度，按
+`docs/AURA_COMBO_SYNERGY_PLAN.md` 五批次实施（用户裁定：自动/手动双轨收益不做）。
+注：版本标签 v21 与并行流 v23.x 各自成系列，代码注释按批次前缀（v21 P0~P3）可追溯。
+
+**P0 战术光环范围化（混合方案）**：医疗/侦查/雷达/堡垒四类战术光环按带内槽距过滤
+（切比雪夫距离，基础 ±1 格，★5→+1、★9→+2=满带）；指挥/载具维修恒全场。
+`data/aura_data.gd` 真实现 `is_in_aura_range` + `aura_range_for`；两条光环链
+（平台链 AuraManager / 改造链 ModAuraHandler）施加按范围、撤销仍全量扫描（防泄漏）；
+`construct_unit.setup` 的一次性施加/补偿接收/改造广播改帧末延迟（部署槽位 meta
+在 setup 后才写入的时序坑，见 `broadcast_and_receive_deferred` 注释）；
+部署瞬间椭圆范围指示（motion_reduce 静默）；面板影响范围标注；
+回滚开关 `GameConfig.aura_range_enabled`（关=回 v6.2 全场行为）。
+
+**P1 多模组合满档 + 6 行为改写传奇改造**：6 套路新增"满档"（单卡集齐全套配套改造）
+——助燃=死亡留火种(50%层数范围DOT)、EMP=反射附带0.5s瘫痪、纳米=浓度衰减-50%、
+光束=反射次数+1、侦察=弱点暴露全队共享、化学=污染跨列蔓延；执行全挂既有消费点
+（bullet/batch 路由零改动）。传奇改造：弹道重赋(对轻轴→对甲三维转换)、扩容弹舱
+(目标数+1，防递归守卫)、溢流护盾(溢出治疗60%转盾)、精确制导针(无视50%闪避)、
+中继天线(该卡改造光环全场，写 range_override=-1)、统一装药(曲射 batch 溅射改读
+shooter splash_damage，最小化 B4 对齐)。**评审修正**：v9.1 EMP 反射目标参照系写反
+（设计"向相邻敌方"却 debuff 玩家己方），已改回 enemy_units 链式放电。
+
+**P2 兵种搭档协同**：`data/unit_roles.gd` 九角色归一化（combat_kind/unit_subtype/
+侦察前缀/工程证据三源，UNIVERSAL 兜底，meta 缓存）；5 对搭档——侦察×火炮(标记→
+火炮必暴+溅射×1.5)、工程×步兵(defense_light+20%，一次性)、防空×己方空中(对空攻速
+×1.15)、装甲×轻装(部署延迟−15%，消费点查询)、堡垒×支援(堡垒光环+1格)；
+`pair_synergy_engine.gd` 事件驱动(部署/死亡+1s兜底，无每帧扫描)，数值对称记账
+(H11 范式)；combo_status_strip 增"🤝n/5"指示。
+
+**P3-A 敌方侧**：档位 2/3 敌人挂同源词条（seeded 可复现：关卡×波次×波内序号，
+效果键白名单过滤无消费分支的词条）；精材料掉落（复用 alloy 货币+refined 标记，
+不新增货币 ID）；战场单位详情第一行主攻维度（三攻最强维，纯渲染文本）。
+
+**P3-B 产能打造 sink**：日时钟产能 30/天×(1+0.25×档位系数)≈30~45/天（cap 999）；
+`craft_mod` 产能+合金→解锁未拥有改造（事务原子：合金不足回滚产能）；相位师首杀
+解锁稀有/传奇改造（era→兵种池加权随机，每位仅一次）；存档 **v8→v9**（新增根键
+`mod_unlock_state` + `basic_resources.production_points`，缺 key 静默补默认，
+ModificationRegistry 入 resettable 清单防跨档残留）；5 个 special_mechanic 词条
+（2 条已接线：战场急救/相位格挡——格挡语义修正为完全格挡×10%；3 条数据就绪
+wired=false 不进 roll 池）。
+
+**验证**：aura_range_smoke 39 项、combo_tier_smoke ~50 项、pair_synergy_smoke ~44 项、
+p3_economy_smoke 7 节、fixed_mechanics/enemy_affix/master_power 回归全过；
+全量 GdUnit **157/157**（含新增 v8→v9 迁移用例）；合并平衡审计 10 PASS/1 WARN
+（敌方精英词条强度待实测 20/40/60/80/100 关）。`--check-only` 本环境挂起（AGENTS
+已知 5 分钟超时风险），以 GdUnit 全量+冒烟矩阵替代兜底。
+**留待后续**：打造/解锁集 UI 面板入口未接（`is_mod_unlocked` 接蓝图门时需"蓝图 OR
+解锁集"双通道判定）；传奇数值与敌方词条强度待游玩体感调参。
+
+## v24.1 大招自动/手动双轨释放：相位仪大招 + 兵种机制大招（2026-08-31）
+
+**功能**（借鉴龙崖"自动/手动"控制权思路，否决其"不放怒气→全队 buff"补偿半边，纯时机收益零数值改动）：
+相位仪栏上方新增按钮带 `scenes/ui/ultimate_cast_bar.gd`（main.tscn BattleBottomBar 内、
+功能抽屉与相位仪栏之间，占 y588-648 常态空带）——`[手动/自动 toggle] [核爆(充能)] [核武(armed)] [护盾(armed)] [屏蔽(armed)]`。
+默认自动（按钮只读展示就绪状态，把隐形自动大招系统变成可见的，挂机零损失）；切手动后大招攥住不放，按钮琥珀亮边 + 角标计数，点击即发。
+
+**手动白名单**（控点击负担，常量表可调）：相位仪仅 `nuclear_bombardment`(30s，且按 get_active_ability 有该能力才显示按钮)；兵种机制仅 `nuclear_strike`(45s)/`shield_projector`(20s)/`jamming_field`(18s)。CD 短的高频技（炮击10s/狂暴15s/爆破12s/标记14s）与"下次攻击"骑乘型（瞄准狙击/闪电穿插）保持永远自动。
+
+**充能模型**：核子轰炸改充能制——攒满 1 interval 得 1 充能，上限 2 满后停涨不浪费；自动模式攒到即放（吞吐与旧即时触发一致）；手动释放无目标不消耗（"充能保留"）。兵种机制按单位独立 CD：就绪单位置 meta `mech_armed_<id>`（首次 armed 时间戳保 FIFO），按钮计数=armed 单位数，点击触发最早 armed 的单位（`try_manual_fire_<id>`，无有效目标不消耗）。`construct_unit.gd` 三机制拆"计时/开火"两段（`_fire_*` 自动/手动共用）。
+
+**生命周期**：仅当次战斗生效，battle 开始/结束由 battle_manager 调 `UltimateCastController.reset()` 复位为自动；挂机（AFK）战斗拒绝切手动；不与能量挂钩；敌方侧完全不动。首次见到按钮带走 `FeatureUnlockPopup.show_once` 说明，无需教程跟进。
+
+**⚠️ 引擎坑修复（存量生产 bug）**：Godot 4.5.1 实测，静态函数与 **`reset_state`** 同名时，**编译期绑定的静态调用会整体静默失效**（函数体一行都不执行，无任何报错；动态 `.call("reset_state")` 反而正常；最小复现=任意 RefCounted 子类+同名静态函数）。`PhaseInstrumentAbilities.reset_state` 自 4.5 起一直在被 battle_manager 静默空调（战间清理由此失效：敌方能力/纳米虫群/狂暴/计时器跨场残留）。修复：改名 **`reset_battle_state`**（battle_manager 两处 + 敌方能力 smoke + 本轮测试同步）；abilities 头部与改名处均留警示注释，**后续新增静态函数避开该名**。另：abilities 刻意不反向 preload `ultimate_cast_controller`（依赖集保持原样，controller 单向 preload 引擎推 `player_manual_hold` 旗标）。
+
+**改动文件**：`scripts/battle/ultimate_cast_controller.gd`(新) / `managers/battle/phase_instrument_abilities.gd`(充能制+旗标) / `scenes/units/construct_unit.gd`(三机制拆段+armed+手动开火) / `managers/battle/battle_manager.gd`(复位钩子+改名调用) / `scenes/ui/ultimate_cast_bar.gd`(新) / `scenes/main.tscn`(挂载) / `tests/enemy_instrument_abilities_smoke.gd`(改名跟随)。
+
+**验证**：新增 GdUnit `tests/unit/battle/test_ultimate_cast.gd` 10 用例（充能攒/满2停涨/自动即放吞吐一致/手动攥住/释放消耗/无目标不消耗/敌方恒自动/armed FIFO/单位死亡计数回落/reset 清干净）；全量 GdUnit **167/167**；master_power_smoke 8/8；typed 静态调用场景探针复验 reset_battle_state 全字段清理生效；预览截图目视（按钮带位置/手动绿亮/琥珀就绪态/角标计数/暗显档/按需显隐/首次说明弹窗全对）。改动文件 gdparse 全过（abilities 的 line719 单行 lambda 为 gdtoolkit 存量误报，HEAD 同报）。

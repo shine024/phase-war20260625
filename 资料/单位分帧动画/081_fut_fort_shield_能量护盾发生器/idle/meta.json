@@ -1,0 +1,29 @@
+{
+ "unit": "fut_fort_shield",
+ "unit_name": "能量护盾发生器",
+ "anim": "idle",
+ "frames": 7,
+ "frame_files": [
+  "f00.png",
+  "f01.png",
+  "f02.png",
+  "f03.png",
+  "f04.png",
+  "f05.png",
+  "f06.png"
+ ],
+ "canvas": 512,
+ "suggested_fps": 8,
+ "foot_frac": 0.92,
+ "union_bbox": [
+  97,
+  34,
+  605,
+  671
+ ],
+ "model": "agnes-video-2.5-flash",
+ "mode": "keyframe",
+ "source_video": "source.mp4",
+ "generated_at": "2026-08-30 03:19:47",
+ "fix_note": "f00 闪电异常帧删除(快照 bak_del_f00_lightning), 2026-08-30 审查"
+}

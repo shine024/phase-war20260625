@@ -59,10 +59,12 @@ const CARD_SLOT_MIN: Vector2 = Vector2(108, 154)
 const MAX_CARD_SLOTS := 50
 ## 与 `backpack_panel.tscn` 中 CardGrid 的 `h_separation` 一致（勿与主题脱节）
 const BACKPACK_GRID_H_SEP := 6
-## v9.3: 面板设计宽（文档性常量；实际面板宽由 backpack_panel.tscn 根节点 custom_minimum_size 1180 决定）
+## v9.3→背包打开态改版: 面板宽——tscn 根节点 custom_minimum_size 1180 是兜底最小宽；
+## 主场景打开背包时由 main.gd._sync_backpack_panel_width 把 min 宽贴满视口（左右占满）。
+## BACKPACK_PANEL_DESIGN_WIDTH 仅为文档性常量。
 const BACKPACK_PANEL_DESIGN_WIDTH := 760
 ## v9.3: 战斗卡列数下限与回退基准。实际列数由 _compute_combat_grid_columns 按面板可用宽度
-## 动态计算（填满 1180 宽面板，约 9~10 列），避免固定列数导致右侧大片空白。
+## 动态计算（列数随面板实际宽自适应，占满视口时 10~11 列），避免固定列数导致右侧大片空白。
 const BACKPACK_GRID_COLUMNS: int = 6
 ## v9.0: 改造/符文瓷砖（resource_slot_item 64×96）独立列数（与战斗卡分流）
 const _TILE_GRID_COLUMNS: int = 6
@@ -222,7 +224,7 @@ func _ready() -> void:
 	_loading_label.text = "刷新中..."
 	_loading_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_loading_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	_loading_label.add_theme_font_size_override("font_size", 16)
+	_loading_label.add_theme_font_size_override("font_size", DesignTokens.FONT_SIZE_MEDIUM)
 	_loading_label.add_theme_color_override("font_color", Color(0.6, 0.75, 0.9, 0.7))
 	_loading_label.visible = false
 	_loading_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -261,7 +263,7 @@ func _setup_title_bar_fonts() -> void:
 		return
 	if _title_label:
 		_title_label.add_theme_font_override("font", title_font)
-		_title_label.add_theme_font_size_override("font_size", 20)
+		_title_label.add_theme_font_size_override("font_size", DesignTokens.FONT_SIZE_LARGE)
 	if _meta_info_label:
 		_meta_info_label.add_theme_font_override("font", title_font)
 	# 关闭按钮：v7.x 面板统一 ✕ 模式（44x44、hover 红色发光，与 PanelChrome 同款）
@@ -270,7 +272,7 @@ func _setup_title_bar_fonts() -> void:
 		var _ps = preload("res://scripts/ui/panel_styles.gd")
 		var close_styles: Dictionary = _ps.make_close_button_styles()
 		close_btn.add_theme_font_override("font", title_font)
-		close_btn.add_theme_font_size_override("font_size", 20)
+		close_btn.add_theme_font_size_override("font_size", DesignTokens.FONT_SIZE_LARGE)
 		close_btn.add_theme_color_override("font_color", DesignTokens.COLOR_TEXT_MID)
 		close_btn.add_theme_color_override("font_hover_color", DesignTokens.COLOR_TEXT_BRIGHT)
 		close_btn.add_theme_color_override("font_pressed_color", DesignTokens.COLOR_TEXT_BRIGHT)
@@ -623,7 +625,7 @@ func _add_filter_chip(label: String, filter_kind: String, value, accent: Color, 
 	btn.toggle_mode = true
 	btn.button_pressed = active
 	btn.custom_minimum_size = Vector2(0, 26)
-	btn.add_theme_font_size_override("font_size", 12)
+	btn.add_theme_font_size_override("font_size", DesignTokens.FONT_SIZE_SMALL)
 	btn.add_theme_constant_override("h_separation", 0)
 	# 样式：未激活=暗灰边框；激活=tab 签名色边框 + 半透填充
 	var style_normal := StyleBoxFlat.new()
@@ -1071,7 +1073,7 @@ func _show_backpack_empty_hint(grid: GridContainer) -> void:
 	hint.text = "背包暂无卡牌\n通过商店购买或战斗掉落获取卡牌"
 	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	hint.add_theme_color_override("font_color", Color(0.6, 0.65, 0.75, 0.7))
-	hint.add_theme_font_size_override("font_size", 14)
+	hint.add_theme_font_size_override("font_size", DesignTokens.FONT_SIZE_BODY)
 	hint.custom_minimum_size = Vector2(600, 120)
 	hint.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	hint.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -1505,7 +1507,7 @@ func _make_sidebar_section(title: String) -> VBoxContainer:
 	vbox.add_theme_constant_override("separation", 2)
 	var lbl := Label.new()
 	lbl.text = title
-	lbl.add_theme_font_size_override("font_size", 12)
+	lbl.add_theme_font_size_override("font_size", DesignTokens.FONT_SIZE_SMALL)
 	lbl.add_theme_font_override("font", DesignTokens.get_title_font())
 	lbl.add_theme_color_override("font_color", Color(0.55, 0.65, 0.78, 0.7))
 	vbox.add_child(lbl)
@@ -1519,7 +1521,7 @@ func _make_sidebar_item(text: String, count: int, active: bool, callable: Callab
 	var row := Button.new()
 	row.text = "%s  %d" % [text, count]
 	row.alignment = HORIZONTAL_ALIGNMENT_LEFT
-	row.add_theme_font_size_override("font_size", 12)
+	row.add_theme_font_size_override("font_size", DesignTokens.FONT_SIZE_SMALL)
 	row.custom_minimum_size = Vector2(0, 26)
 	# 样式
 	var style := StyleBoxFlat.new()
@@ -1570,7 +1572,7 @@ func _add_intel_placeholder(grid: GridContainer, message: String) -> void:
 	lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	lbl.add_theme_color_override("font_color", Color(0.55, 0.6, 0.7, 0.9))
-	lbl.add_theme_font_size_override("font_size", 14)
+	lbl.add_theme_font_size_override("font_size", DesignTokens.FONT_SIZE_BODY)
 	# 固定 950 宽曾把网格最小宽撑到 4列×950=3818px，远超 1176px 面板（占位符被
 	# _effective_slot_width 当瓷砖宽采样）。改为随父滚动容器可用宽收缩 + 打占位标记。
 	lbl.custom_minimum_size = Vector2(_grid_placeholder_width(grid), 80.0)
@@ -1721,7 +1723,7 @@ func refresh_rune_info_panel() -> void:
 		if active.is_empty():
 			var empty_label := Label.new()
 			empty_label.text = "（暂无激活的符文之语）"
-			empty_label.add_theme_font_size_override("font_size", 12)
+			empty_label.add_theme_font_size_override("font_size", DesignTokens.FONT_SIZE_SMALL)
 			empty_label.add_theme_color_override("font_color", Color(0.7, 0.75, 0.85, 1))
 			_runeword_list_inner.add_child(empty_label)
 		else:
@@ -1738,7 +1740,7 @@ func refresh_rune_info_panel() -> void:
 				entry.add_child(name_label)
 				var effect_label := Label.new()
 				effect_label.text = RunewordDefinitions.get_effects_description(rw_id)
-				effect_label.add_theme_font_size_override("font_size", 12)
+				effect_label.add_theme_font_size_override("font_size", DesignTokens.FONT_SIZE_SMALL)
 				effect_label.add_theme_color_override("font_color", Color(0.75, 0.82, 0.9, 1))
 				effect_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 				entry.add_child(effect_label)
@@ -1937,7 +1939,7 @@ func _create_phase_inst_item(cfg: Dictionary, is_equipped: bool) -> Control:
 	for i in range(7):
 		var star_dot := Label.new()
 		star_dot.text = "★" if i < star else "☆"
-		star_dot.add_theme_font_size_override("font_size", 14)
+		star_dot.add_theme_font_size_override("font_size", DesignTokens.FONT_SIZE_BODY)
 		if i < star:
 			star_dot.add_theme_color_override("font_color", DesignTokens.COLOR_AMBER_SOFT)
 		else:
@@ -1947,7 +1949,7 @@ func _create_phase_inst_item(cfg: Dictionary, is_equipped: bool) -> Control:
 
 	var name_label := Label.new()
 	name_label.text = inst_name
-	name_label.add_theme_font_size_override("font_size", 16)
+	name_label.add_theme_font_size_override("font_size", DesignTokens.FONT_SIZE_MEDIUM)
 	if is_equipped:
 		name_label.add_theme_color_override("font_color", Color(0.4, 0.95, 0.6, 1.0))
 	else:
@@ -1966,7 +1968,7 @@ func _create_phase_inst_item(cfg: Dictionary, is_equipped: bool) -> Control:
 	else:
 		faction_label.text = "通用"
 		faction_label.add_theme_color_override("font_color", Color(0.7, 0.75, 0.85, 0.85))
-	faction_label.add_theme_font_size_override("font_size", 12)
+	faction_label.add_theme_font_size_override("font_size", DesignTokens.FONT_SIZE_SMALL)
 	left_col.add_child(faction_label)
 
 	# === 中列：槽位格子可视化 + 关键属性 ===
@@ -1982,7 +1984,7 @@ func _create_phase_inst_item(cfg: Dictionary, is_equipped: bool) -> Control:
 		var green_lbl := Label.new()
 		green_lbl.text = "战斗卡"
 		green_lbl.custom_minimum_size.x = 60.0
-		green_lbl.add_theme_font_size_override("font_size", 12)
+		green_lbl.add_theme_font_size_override("font_size", DesignTokens.FONT_SIZE_SMALL)
 		green_lbl.add_theme_color_override("font_color", Color(0.55, 0.65, 0.78, 0.9))
 		green_row.add_child(green_lbl)
 		for i in range(green_count):
@@ -2010,7 +2012,7 @@ func _create_phase_inst_item(cfg: Dictionary, is_equipped: bool) -> Control:
 		var rune_lbl := Label.new()
 		rune_lbl.text = "符文"
 		rune_lbl.custom_minimum_size.x = 60.0
-		rune_lbl.add_theme_font_size_override("font_size", 12)
+		rune_lbl.add_theme_font_size_override("font_size", DesignTokens.FONT_SIZE_SMALL)
 		rune_lbl.add_theme_color_override("font_color", Color(0.55, 0.65, 0.78, 0.9))
 		rune_row.add_child(rune_lbl)
 		for i in range(rune_count):
@@ -2050,7 +2052,7 @@ func _create_phase_inst_item(cfg: Dictionary, is_equipped: bool) -> Control:
 	if traits is Array and not traits.is_empty():
 		var trait_label := Label.new()
 		trait_label.text = "✦ " + "  |  ".join(PackedStringArray(traits))
-		trait_label.add_theme_font_size_override("font_size", 12)
+		trait_label.add_theme_font_size_override("font_size", DesignTokens.FONT_SIZE_SMALL)
 		trait_label.add_theme_color_override("font_color", Color(0.8, 0.95, 1.0, 0.85))
 		trait_label.autowrap_mode = TextServer.AUTOWRAP_WORD
 		mid_col.add_child(trait_label)
@@ -2081,12 +2083,12 @@ func _create_phase_inst_item(cfg: Dictionary, is_equipped: bool) -> Control:
 		ability_chip_panel.add_theme_stylebox_override("panel", chip_style)
 		var ability_dot := Label.new()
 		ability_dot.text = "◆"
-		ability_dot.add_theme_font_size_override("font_size", 12)
+		ability_dot.add_theme_font_size_override("font_size", DesignTokens.FONT_SIZE_SMALL)
 		ability_dot.add_theme_color_override("font_color", DesignTokens.COLOR_AMBER_SOFT)
 		ability_chip.add_child(ability_dot)
 		var ability_text := Label.new()
 		ability_text.text = ability_name
-		ability_text.add_theme_font_size_override("font_size", 12)
+		ability_text.add_theme_font_size_override("font_size", DesignTokens.FONT_SIZE_SMALL)
 		ability_text.add_theme_color_override("font_color", DesignTokens.COLOR_AMBER_SOFT)
 		ability_chip.add_child(ability_text)
 	else:
@@ -2095,7 +2097,7 @@ func _create_phase_inst_item(cfg: Dictionary, is_equipped: bool) -> Control:
 		ability_chip_panel.add_theme_stylebox_override("panel", chip_style)
 		var none_text := Label.new()
 		none_text.text = "无主动能力"
-		none_text.add_theme_font_size_override("font_size", 12)
+		none_text.add_theme_font_size_override("font_size", DesignTokens.FONT_SIZE_SMALL)
 		none_text.add_theme_color_override("font_color", Color(0.4, 0.45, 0.55, 0.7))
 		ability_chip.add_child(none_text)
 	ability_chip_panel.add_child(ability_chip)
@@ -2106,7 +2108,7 @@ func _create_phase_inst_item(cfg: Dictionary, is_equipped: bool) -> Control:
 		var equipped_btn := Button.new()
 		equipped_btn.text = "✓ 当前装备"
 		equipped_btn.disabled = true
-		equipped_btn.add_theme_font_size_override("font_size", 12)
+		equipped_btn.add_theme_font_size_override("font_size", DesignTokens.FONT_SIZE_SMALL)
 		equipped_btn.custom_minimum_size = Vector2(160, 30)
 		var eq_style := StyleBoxFlat.new()
 		eq_style.bg_color = Color(0.13, 0.40, 0.23, 0.18)
@@ -2119,7 +2121,7 @@ func _create_phase_inst_item(cfg: Dictionary, is_equipped: bool) -> Control:
 	else:
 		var equip_btn := Button.new()
 		equip_btn.text = "装备"
-		equip_btn.add_theme_font_size_override("font_size", 12)
+		equip_btn.add_theme_font_size_override("font_size", DesignTokens.FONT_SIZE_SMALL)
 		equip_btn.custom_minimum_size = Vector2(160, 30)
 		right_col.add_child(equip_btn)
 		var iid_copy: String = String(cfg.get("id", ""))
@@ -2134,12 +2136,12 @@ func _add_phase_stat_mini(parent: HBoxContainer, lbl_text: String, val_text: Str
 	cell.add_theme_constant_override("separation", 1)
 	var lbl := Label.new()
 	lbl.text = lbl_text
-	lbl.add_theme_font_size_override("font_size", 12)
+	lbl.add_theme_font_size_override("font_size", DesignTokens.FONT_SIZE_SMALL)
 	lbl.add_theme_color_override("font_color", Color(0.5, 0.58, 0.7, 0.9))
 	cell.add_child(lbl)
 	var val := Label.new()
 	val.text = val_text
-	val.add_theme_font_size_override("font_size", 12)
+	val.add_theme_font_size_override("font_size", DesignTokens.FONT_SIZE_SMALL)
 	if is_up:
 		val.add_theme_color_override("font_color", DesignTokens.COLOR_GREEN_UP)  # 绿色提升
 	else:
@@ -2395,7 +2397,7 @@ func _add_runes_placeholder(grid: GridContainer, message: String) -> void:
 	lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	lbl.add_theme_color_override("font_color", Color(0.55, 0.6, 0.7, 0.9))
-	lbl.add_theme_font_size_override("font_size", 14)
+	lbl.add_theme_font_size_override("font_size", DesignTokens.FONT_SIZE_BODY)
 	# 同 _add_intel_placeholder：固定 950 宽会撑爆网格，改为随父容器收缩 + 占位标记
 	lbl.custom_minimum_size = Vector2(_grid_placeholder_width(grid), 80.0)
 	lbl.set_meta("_grid_placeholder", true)
@@ -2641,7 +2643,7 @@ func _ensure_empty_slot_plus(placeholder: Panel) -> void:
 		line1.name = "EmptyTitleLabel"
 		line1.text = "空槽位"
 		line1.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		line1.add_theme_font_size_override("font_size", 12)
+		line1.add_theme_font_size_override("font_size", DesignTokens.FONT_SIZE_SMALL)
 		line1.add_theme_color_override("font_color", Color(0.42, 0.47, 0.57, 0.6))
 		line1.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		vbox.add_child(line1)
@@ -2650,7 +2652,7 @@ func _ensure_empty_slot_plus(placeholder: Panel) -> void:
 		line2.name = "EmptySubtitleLabel"
 		line2.text = "— 未获得 —"
 		line2.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		line2.add_theme_font_size_override("font_size", 12)
+		line2.add_theme_font_size_override("font_size", DesignTokens.FONT_SIZE_SMALL)
 		line2.add_theme_color_override("font_color", Color(0.35, 0.40, 0.50, 0.5))
 		line2.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		vbox.add_child(line2)

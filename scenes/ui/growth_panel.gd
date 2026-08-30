@@ -479,7 +479,7 @@ func _create_card_list_item(card: CardResource, instance_id_raw: Variant) -> Con
 		thumb_fallback.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		thumb_fallback.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 		thumb_fallback.size_flags_vertical = Control.SIZE_EXPAND_FILL
-		thumb_fallback.add_theme_font_size_override("font_size", 16)
+		thumb_fallback.add_theme_font_size_override("font_size", DT.FONT_SIZE_MEDIUM)
 		thumb_fallback.add_theme_color_override("font_color", Color(1, 1, 1, 0.55))
 		thumb_fallback.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		thumb.add_child(thumb_fallback)
@@ -498,7 +498,7 @@ func _create_card_list_item(card: CardResource, instance_id_raw: Variant) -> Con
 	name_hbox.add_theme_constant_override("separation", 4)
 	var name_label := Label.new()
 	name_label.text = card.display_name if card.display_name else card.card_id
-	name_label.add_theme_font_size_override("font_size", 14)
+	name_label.add_theme_font_size_override("font_size", DT.FONT_SIZE_BODY)
 	name_label.add_theme_color_override("font_color", DT.COLOR_TEXT if is_selected else Color(0.85, 0.88, 0.94, 1))
 	name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	name_label.clip_text = false
@@ -523,7 +523,7 @@ func _create_card_list_item(card: CardResource, instance_id_raw: Variant) -> Con
 		var mods_arr = card.mods
 		mod_count = mods_arr.size() if mods_arr is Array else 0
 	meta_label.text = "Lv.%d  ·  改%d/9" % [_card_level_of(card), mod_count]
-	meta_label.add_theme_font_size_override("font_size", 12)
+	meta_label.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
 	meta_label.add_theme_color_override("font_color", DT.COLOR_SLATE_DIM_A85)
 	meta_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	info.add_child(meta_label)
@@ -534,7 +534,7 @@ func _create_card_list_item(card: CardResource, instance_id_raw: Variant) -> Con
 	var power_str := _format_power(card)
 	power_label.text = power_str
 	power_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	power_label.add_theme_font_size_override("font_size", 12)
+	power_label.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
 	power_label.add_theme_color_override("font_color", DT.COLOR_GOLD if power_str != "—" else Color(0.5, 0.5, 0.55, 0.5))
 	power_label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	power_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -890,7 +890,7 @@ func _add_evo_target_row(parent: VBoxContainer, name: String, type_label: String
 	# 目标名
 	var name_lbl := Label.new()
 	name_lbl.text = name
-	name_lbl.add_theme_font_size_override("font_size", 12)
+	name_lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
 	name_lbl.add_theme_color_override("font_color", Color(0.9, 0.92, 0.96, 1))
 	name_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	name_lbl.clip_text = false
@@ -972,9 +972,12 @@ func _open_phase_master_skill_panel() -> void:
 		canvas.add_child(panel)
 		if panel.has_signal("closed") and not panel.closed.is_connected(_on_phase_master_skill_closed):
 			panel.closed.connect(_on_phase_master_skill_closed)
-	# 居中显示（面板挂在 backdrop 之后，同 layer 内后添加者在上层，点击优先命中面板）
-	if panel is Control:
-		(panel as Control).anchors_preset = Control.PRESET_CENTER
+	# 全出血打开（与主场景养成面板同原则）：横向贴满视口、纵向底沿留出相位仪栏占位带。
+	# 面板自管几何（_apply_viewport_fit 显式几何方案），这里只切 full_bleed 模式并立即生效。
+	if panel is Control and "full_bleed" in panel:
+		panel.set("full_bleed", true)
+		if panel.has_method("_apply_viewport_fit"):
+			panel._apply_viewport_fit()
 	panel.visible = true
 	canvas.visible = true
 	if panel.has_method("_refresh"):
@@ -995,6 +998,10 @@ func _close_phase_master_skill_panel() -> void:
 	var canvas: CanvasLayer = get_tree().root.get_node_or_null("PhaseMasterSkillCanvas")
 	if canvas != null:
 		canvas.visible = false
+		# 退出全出血模式（下次打开由 _open_phase_master_skill_panel 重新置位）
+		var p: Node = canvas.get_node_or_null("PhaseMasterSkillPanel")
+		if p != null and "full_bleed" in p:
+			p.set("full_bleed", false)
 
 ## P0: 技能树面板打开时 ESC 先关技能面板——原实现 ESC 会关掉成长 overlay 本体，
 ## 而技能面板 canvas(layer=110) 仍悬在更高层挡住全场点击。consume 防止穿透。
@@ -1090,13 +1097,13 @@ func _add_prog_stat(parent: VBoxContainer, label: String, value: String, value_c
 	row.add_theme_constant_override("separation", 8)
 	var lbl := Label.new()
 	lbl.text = label
-	lbl.add_theme_font_size_override("font_size", 12)
+	lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
 	lbl.add_theme_color_override("font_color", Color(0.5, 0.55, 0.65, 0.85))
 	lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	row.add_child(lbl)
 	var val := Label.new()
 	val.text = value
-	val.add_theme_font_size_override("font_size", 12)
+	val.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
 	val.add_theme_color_override("font_color", value_color)
 	row.add_child(val)
 	parent.add_child(row)

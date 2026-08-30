@@ -453,6 +453,77 @@ const AFFIX_TABLE: Dictionary = {
 		"combat_kinds":       [4],
 		"min_tier":           3,
 	},
+
+	# ─── v21 P3-B（计划 C3）：build-around 传奇词条（5 个 special_mechanic，改玩法不加数值） ─────
+	## wired 字段：执行挂点是否已接。
+	##   true  = 数值经 AffixManager._apply_card_affixes 写入 UnitStats 字段，
+	##           由既有战斗路径消费（kill_repair → module_effect_handler.on_unit_killed；
+	##           intercept_chance → module_effect_handler 拦截判定）。
+	##   false = 数据就绪、执行挂点待接——roll 池过滤掉（roll_random_affix_id / roll_unlocked_affix_id），
+	##           避免玩家抽到"有词条无效果"的死词条；接好挂点后把 wired 改 true 即入池。
+	"sm_kill_triage": {
+		"affix_name":         "战场急救",
+		"description":        "击杀敌方单位后，回复自身 3% 最大生命值",
+		"affix_type":         "special_mechanic",
+		"effect_key":         "kill_repair",     # 复用战场回收同款字段，消费点：module_effect_handler.on_unit_killed
+		"base_value":         0.03,
+		"card_type_filter":   2,
+		"weapon_type_filter": -1,
+		"rarity_pool":        ["rare", "epic", "legendary"],
+		"unlock_condition":   "none",
+		"wired":              true,
+	},
+	"sm_intercept_guard": {
+		"affix_name":         "相位格挡",
+		"description":        "受到攻击时，有 10% 概率完全格挡该次伤害",
+		"affix_type":         "special_mechanic",
+		"effect_key":         "intercept_chance", # 消费点：module_effect_handler.try_intercept（既有分支）
+		"base_value":         0.10,
+		"card_type_filter":   0,
+		"weapon_type_filter": -1,
+		"rarity_pool":        ["rare", "epic", "legendary"],
+		"unlock_condition":   "none",
+		"wired":              true,
+		# v21 P3-B deviation 备注：brief 示例文案为"格挡一半伤害"，但既有消费点 try_intercept
+		# 的语义是完全免伤（拦截成功跳过 hp 扣减；construct_unit.take_damage 只读不可加半伤分支）。
+		# 描述已对齐真实效果；intercept_charges 默认 -1（无限）⇒ 只设 chance 即生效，不耗次数。
+	},
+	"sm_crit_ensure_hit": {
+		"affix_name":         "暴击势能",
+		"description":        "打出暴击后，下一次攻击必定命中（无视闪避）",
+		"affix_type":         "special_mechanic",
+		"effect_key":         "crit_ensure_hit",  # 数据就绪、执行挂点待接（attack_calculator 命中判定）
+		"base_value":         1.0,                # 机制开关型：1.0=启用
+		"card_type_filter":   1,
+		"weapon_type_filter": -1,
+		"rarity_pool":        ["epic", "legendary"],
+		"unlock_condition":   "none",
+		"wired":              false,
+	},
+	"sm_fullhp_onslaught": {
+		"affix_name":         "满员突击",
+		"description":        "生命值全满时，造成的伤害提升 15%",
+		"affix_type":         "special_mechanic",
+		"effect_key":         "full_hp_damage_bonus",  # 数据就绪、执行挂点待接（attack_calculator 伤害段）
+		"base_value":         0.15,
+		"card_type_filter":   2,
+		"weapon_type_filter": -1,
+		"rarity_pool":        ["epic", "legendary"],
+		"unlock_condition":   "none",
+		"wired":              false,
+	},
+	"sm_double_tap": {
+		"affix_name":         "双重齐射",
+		"description":        "攻击有 8% 概率造成双倍伤害",
+		"affix_type":         "special_mechanic",
+		"effect_key":         "double_strike_chance",  # 数据就绪、执行挂点待接（attack_calculator 结算段）
+		"base_value":         0.08,
+		"card_type_filter":   1,
+		"weapon_type_filter": -1,
+		"rarity_pool":        ["epic", "legendary"],
+		"unlock_condition":   "none",
+		"wired":              false,
+	},
 }
 
 ## 变异配置（词条 Lv5 时有概率触发，为词条额外添加特殊效果描述）
@@ -485,6 +556,12 @@ const MUTATION_TABLE: Dictionary = {
 	"air_reaper":        "击杀后5秒内伤害提升20%",
 	"support_orbital":   "溅射范围扩大50%",
 	"fort_protocol":     "护盾被击破时，对周围敌人造成一次范围伤害",
+	# ─── v21 P3-B（计划 C3）build-around 词条变异（纯描述层，与 v19 词条口径一致） ──
+	"sm_kill_triage":      "击杀回复量低于 5% 最大生命时，回复量提升至 5%",
+	"sm_intercept_guard":  "成功格挡后，下一次攻击伤害提升 25%",
+	"sm_crit_ensure_hit":  "必定命中的那一击暴击率提升 20%",
+	"sm_fullhp_onslaught": "满血状态额外获得 5% 伤害减免",
+	"sm_double_tap":       "双倍伤害触发后，回复 2% 最大生命值",
 }
 
 # ─────────────────────────────────────────────
@@ -535,6 +612,15 @@ static func is_affix_available_for(affix_id: String, combat_kind: int, tier: int
 		return false
 	return true
 
+## v21 P3-B（计划 C3）：词条执行挂点是否已接。
+## wired 缺省视为 true（全部历史词条默认已接入）；wired=false = 数据就绪、挂点待接，
+## 不进任何 roll 池（防止玩家抽到无效词条），可复现性/展示查询不受影响。
+static func is_affix_wired(affix_id: String) -> bool:
+	var def: Dictionary = get_definition(affix_id)
+	if def.is_empty():
+		return false
+	return bool(def.get("wired", true))
+
 ## v19: 该兵种可用的全部词条 ID（通用 + 本兵种专属，tier 达标的独特词条也计入）
 static func get_ids_for_combat_kind(combat_kind: int, tier: int = 0) -> Array:
 	var result: Array = []
@@ -567,6 +653,9 @@ static func roll_random_affix_id(card_type: int, rarity_override: String = "", c
 	var weighted: Array = []
 	for id in pool:
 		var def: Dictionary = AFFIX_TABLE[id] as Dictionary
+		# v21 P3-B: wired=false（执行挂点待接）的词条不进 roll 池
+		if not bool(def.get("wired", true)):
+			continue
 		var rarity_pool: Array = def.get("rarity_pool", ["common"]) as Array
 		if not rarity_override.is_empty():
 			if rarity_pool.has(rarity_override):
@@ -721,12 +810,19 @@ static func roll_unlocked_affix_id(card_type: int, rarity: String, unlocked_boss
 	var weighted: Array = []
 	for id in pool:
 		var def: Dictionary = AFFIX_TABLE[id] as Dictionary
+		# v21 P3-B: wired=false（执行挂点待接）的词条不进 roll 池
+		if not bool(def.get("wired", true)):
+			continue
 		var rarity_pool: Array = def.get("rarity_pool", ["common"]) as Array
 		if rarity_pool.has(rarity):
 			weighted.append(id)
 	# 如果指定稀有度没有合适的，降低要求
 	if weighted.is_empty():
 		for id in pool:
+			# v21 P3-B: 降级兜底同样跳过 wired=false 词条
+			var def_fb: Dictionary = AFFIX_TABLE[id] as Dictionary
+			if not bool(def_fb.get("wired", true)):
+				continue
 			weighted.append(id)
 	if weighted.is_empty():
 		return ""

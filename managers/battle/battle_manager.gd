@@ -12,6 +12,8 @@ const SimplePlayerProjectileBatchScript = preload("res://managers/battle/simple_
 const SimpleIndirectProjectileBatchScript = preload("res://managers/battle/simple_indirect_projectile_batch.gd")
 const CombatFeedback = preload("res://scripts/combat_feedback.gd")
 const ModuleEffectHandler = preload("res://scripts/battle/module_effect_handler.gd")
+## v24.1 大招双轨：战斗开始/结束复位手动模式
+const UltimateCastControllerScript = preload("res://scripts/battle/ultimate_cast_controller.gd")
 # v6.7: 相位师排名差异化加成 —— 玩家装配器 + 战力评估器
 const MasterPlayerAssembler = preload("res://scripts/master_player_assembler.gd")
 const MasterPowerEvaluator = preload("res://scripts/master_power_evaluator.gd")
@@ -433,8 +435,10 @@ func start_battle(battle_scene: Node) -> void:
 	# v8.x 修复：on_battle_start(PLAYER) 只覆盖玩家侧能力字典，不清敌方 static var。
 	# 若上一场相位师战未正常走完 end_battle()（如战斗中回标题页 change_scene 直接跳走），
 	# _enemy_active 会残留到本场普通关，导致"无敌方相位师却持续被红橙色炮击"。
-	# 在注入玩家能力前先 reset_state() 兜底清理上一场残留，确保新战斗从干净状态开始。
-	PhaseInstrumentAbilities.reset_state()
+	# 在注入玩家能力前先 reset_battle_state() 兜底清理上一场残留，确保新战斗从干净状态开始。
+	PhaseInstrumentAbilities.reset_battle_state()
+	# v24.1: 大招手动释放控制器——战斗开始复位为自动模式（仅当次战斗生效）
+	UltimateCastControllerScript.reset()
 	PhaseInstrumentAbilities.on_battle_start(PhaseInstrumentManager, battle_scene, PhaseInstrumentAbilities.Owner.PLAYER)
 	# v8.x: 启动卡片定时技能引擎（从 PhaseMasterSkillManager 读取已解锁 card_skill）
 	if _card_skill_engine != null:
@@ -463,7 +467,9 @@ func end_battle(player_won: bool) -> void:
 	# v6.6: 清空伤害数字节流表，flush 残留合并伤害并避免跨战斗残留
 	CombatFeedback.reset_throttle()
 	# v7.x: 重置相位仪主动能力状态（owner-aware 单引擎，内部清双 owner）
-	PhaseInstrumentAbilities.reset_state()
+	PhaseInstrumentAbilities.reset_battle_state()
+	# v24.1: 重置大招手动释放控制器（battle_ended 复位为自动模式）
+	UltimateCastControllerScript.reset()
 	# v8.x: 重置卡片定时技能引擎 + 战法检测器
 	if _card_skill_engine != null:
 		_card_skill_engine.reset()
@@ -680,6 +686,9 @@ func _deferred_refresh_card_grid_hud() -> void:
 func _on_unit_spawned(_unit: Node, _is_player: bool) -> void:
 	if not battle_active:
 		return
+	# v21 P2: 搭档协同/满档机制事件刷新（新部署立即参与激活判定）
+	if _combo_engine != null:
+		_combo_engine.on_units_changed()
 	_emit_unit_counts()
 
 ## v9.x: 统一广播单位数（供 UI 信号驱动刷新，替代各自 _process 轮询）
@@ -693,6 +702,9 @@ func _on_unit_died(unit: Node, is_player: bool) -> void:
 		return
 	if not is_instance_valid(unit):
 		return
+	# v21 P2: 搭档协同事件刷新（单位死亡可能拆散搭档 → 数值对称撤销）
+	if _combo_engine != null:
+		_combo_engine.on_units_changed()
 	if is_player:
 		_spawn_system.on_player_unit_died(unit)
 		# v6.5 诊断：玩家单位死亡后立即 recount，验证左侧 HUD 数量是否同步减少。

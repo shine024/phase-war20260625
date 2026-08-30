@@ -8,16 +8,18 @@ class_name AFKSettlementDialog
 
 signal closed()
 
-const _BG_PANEL := Color(0.03, 0.05, 0.10, 0.98)
-const _BORDER := Color(0, 0.65, 1, 0.4)
-const _ACCENT := Color(0, 0.94, 0.7, 1.0)
-const _WARN := Color(1.0, 0.45, 0.35, 1.0)
-const _TEXT := Color(0.8, 0.88, 1.0, 0.95)
-const _TEXT_DIM := Color(0.6, 0.7, 0.85, 0.8)
-const _BTN_BG := Color(0, 0.5, 0.38, 1.0)
+# v23.6.1：色板收口到 DesignTokens（值原样）；_BTN_BG 经按钮工厂迁移后仅剩兜底用途
+const _BG_PANEL := DT.COLOR_DIALOG_BG
+const _BORDER := DT.COLOR_DIALOG_BORDER
+const _ACCENT := DT.COLOR_ACCENT_MINT
+const _WARN := DT.COLOR_WARN_SALMON
+const _TEXT := DT.COLOR_TEXT_INFO
+const _TEXT_DIM := DT.COLOR_TEXT_INFO_DIM
 
 const _DefaultCards = preload("res://data/default_cards.gd")
 const _BasicResources = preload("res://data/basic_resources.gd")
+const _PanelStyles = preload("res://scripts/ui/panel_styles.gd")
+const DT = preload("res://resources/design_tokens.gd")
 
 var _result: Dictionary = {}
 
@@ -75,7 +77,7 @@ func _build_ui() -> void:
 	var failed: bool = bool(_result.get("failed", false))
 	title.text = "挂机结算" if not failed else "挂机结束（失败）"
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	title.add_theme_font_size_override("font_size", 20)
+	title.add_theme_font_size_override("font_size", DT.FONT_SIZE_LARGE)
 	title.add_theme_color_override("font_color", _WARN if failed else _ACCENT)
 	vbox.add_child(title)
 
@@ -118,7 +120,7 @@ func _build_ui() -> void:
 		var rew_title := Label.new()
 		rew_title.text = "累计掉落"
 		rew_title.add_theme_color_override("font_color", _TEXT)
-		rew_title.add_theme_font_size_override("font_size", 16)
+		rew_title.add_theme_font_size_override("font_size", DT.FONT_SIZE_MEDIUM)
 		list.add_child(rew_title)
 
 		# 按数量降序排列，便于一眼看到主力掉落
@@ -136,26 +138,93 @@ func _build_ui() -> void:
 		total.text = "合计 %d 种 / %d 件" % [rewards.size(), total_count]
 		total.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 		total.add_theme_color_override("font_color", _ACCENT)
-		total.add_theme_font_size_override("font_size", 14)
+		total.add_theme_font_size_override("font_size", DT.FONT_SIZE_BODY)
 		vbox.add_child(total)
 
-	# 确认按钮（底部固定）
+	# v23.6(归仓)：战利品已暂存基地仓库——弹窗给两条路：
+	#   「全部入账」就地领完（老玩家习惯的即时路径）
+	#   「确认」保留气泡，回基地在房间头顶收取（收集时刻发生在基地场景）
 	vbox.add_child(_make_separator())
-	var ok_btn := Button.new()
-	ok_btn.text = "确认"
-	ok_btn.custom_minimum_size = Vector2(0, 42)
-	var btn_style := StyleBoxFlat.new()
-	btn_style.bg_color = _BTN_BG
-	btn_style.border_color = _ACCENT
-	btn_style.set_border_width_all(1)
-	btn_style.set_corner_radius_all(8)
-	ok_btn.add_theme_stylebox_override("normal", btn_style)
-	ok_btn.add_theme_stylebox_override("hover", btn_style)
-	ok_btn.add_theme_stylebox_override("pressed", btn_style)
-	ok_btn.add_theme_color_override("font_color", Color.WHITE)
-	ok_btn.add_theme_font_size_override("font_size", 16)
-	ok_btn.pressed.connect(_on_ok)
-	vbox.add_child(ok_btn)
+	var dm := get_node_or_null("/root/DropManager")
+	var escrow_count: int = 0
+	if dm != null and dm.has_method("get_escrow_total_count"):
+		escrow_count = int(dm.get_escrow_total_count())
+	if escrow_count > 0:
+		var escrow_hint := Label.new()
+		escrow_hint.text = "本次战利品已暂存基地仓库（%d 件）——回基地可在房间气泡处收取" % escrow_count
+		escrow_hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		escrow_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		escrow_hint.add_theme_color_override("font_color", _TEXT_DIM)
+		escrow_hint.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
+		vbox.add_child(escrow_hint)
+
+		var btn_row := HBoxContainer.new()
+		btn_row.add_theme_constant_override("separation", 10)
+		vbox.add_child(btn_row)
+
+		# v23.6.1：按钮样式走 PanelStyles 工厂（四态+圆角 6 档），替换手写单态
+		var collect_btn := Button.new()
+		collect_btn.text = "全部入账"
+		collect_btn.custom_minimum_size = Vector2(0, 42)
+		collect_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		_apply_factory_styles(collect_btn, _ACCENT, "solid")
+		collect_btn.pressed.connect(_on_collect_all)
+		btn_row.add_child(collect_btn)
+
+		var close_btn := Button.new()
+		close_btn.text = "确认"
+		close_btn.custom_minimum_size = Vector2(0, 42)
+		close_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		_apply_factory_styles(close_btn, _BORDER, "ghost")
+		close_btn.pressed.connect(_on_ok)
+		btn_row.add_child(close_btn)
+	else:
+		var ok_btn := Button.new()
+		ok_btn.text = "确认"
+		ok_btn.custom_minimum_size = Vector2(0, 42)
+		_apply_factory_styles(ok_btn, _ACCENT, "solid")
+		ok_btn.pressed.connect(_on_ok)
+		vbox.add_child(ok_btn)
+
+
+## v23.6.1：工厂样式统一挂载（normal/hover/pressed/disabled/focus 五态）
+func _apply_factory_styles(btn: Button, accent: Color, kind: String) -> void:
+	var styles: Dictionary = _PanelStyles.make_button_styles(accent, kind)
+	for key in ["normal", "hover", "pressed", "disabled", "focus"]:
+		btn.add_theme_stylebox_override(key, styles[key])
+	btn.add_theme_color_override("font_color", Color.WHITE)
+	btn.add_theme_font_size_override("font_size", DT.FONT_SIZE_MEDIUM)
+
+
+## 逃生阀：就地领完全部归仓暂存（与基地气泡/一键全收同一管线）
+func _on_collect_all() -> void:
+	var dm := get_node_or_null("/root/DropManager")
+	if dm == null or not dm.has_method("collect_escrow"):
+		_on_ok()
+		return
+	var collected: Array = dm.collect_escrow()
+	if collected.is_empty():
+		_on_ok()
+		return
+	var parts: Array[String] = []
+	var rest: int = 0
+	for i in range(collected.size()):
+		var entry: Dictionary = collected[i]
+		if i < 4:
+			parts.append("%s×%d" % [String(entry.get("name", "??")), int(entry.get("count", 0))])
+		else:
+			rest += 1
+	var text := "已全部入账：" + " · ".join(parts)
+	if rest > 0:
+		text += " 等 %d 项" % rest
+	var sb: Node = get_node_or_null("/root/SignalBus")
+	if sb != null:
+		# v23.6.1：补收取音效（与基地气泡/一键全收同管线同反馈）
+		if sb.has_signal("show_toast"):
+			sb.show_toast.emit(text)
+		if sb.has_signal("play_sound"):
+			sb.play_sound.emit("quest_complete")
+	_on_ok()
 
 
 func _on_ok() -> void:

@@ -4,6 +4,8 @@ class_name DropTables extends Resource
 const DefaultCards = preload("res://data/default_cards.gd")
 const PhaseLaws = preload("res://data/phase_laws.gd")
 const GC = preload("res://resources/game_constants.gd")
+# v21 P3-A: 高档位精材料（计划 C2）——复用 EnemyLoadoutTiers 档位判定
+const EnemyLoadoutTiers = preload("res://data/enemy_loadout_tiers.gd")
 
 ## 掉落物类型枚举
 enum DropType {
@@ -240,6 +242,15 @@ const _NAMED_ELITE_ENEMY_BLUEPRINT_IDS: Array[String] = [
 ]
 
 
+## v21 P3-A（计划 C2）：各时代"精炼合金"基准量（普通关，档位 2/3 关卡结算时追加）。
+## 量级锚定各时代合金保底（era2 15-20 / era3 20-25 / era4 25-30）的中位，
+## era0/1 无合金保底，给小额基准让高档位早期关卡也有精材料产出。
+## 最终数量 = 基准 × lvl_mult(1.0~1.5) × 档位系数(0.75/1.00)，见 generate_drops。
+const _REFINED_ALLOY_BASE: Dictionary = {
+	0: 8, 1: 12, 2: 16, 3: 22, 4: 28,
+}
+
+
 ## 根据时代从卡牌池随机一张卡牌ID
 func get_random_blueprint_for_era(era: int) -> String:
 	var ids = ERA_BLUEPRINT_IDS.get(era, [])
@@ -347,6 +358,21 @@ func generate_drops(era: int, level: int, player_won: bool, victory_stars: int =
 		var count = randi_range(g.min_count, g.max_count)
 		results.append(DropResult.new(g, count, "保底奖励"))
 
+	# ══ v21 P3-A（计划 C2）：高档位精材料 ══
+	# 档位 2/3（中配 ×1.75 / 高配 ×2.00）关卡在常规掉落之外追加"精材料"奖励，
+	# 供 P3-B 打造 sink 消耗。实现口径：复用现有货币 ID（不新增货币），
+	# "精炼合金"= 本时代合金基准量 × 关卡缩放 × 档位加成系数（TIER_BONUS.atk_pct：中配 0.75/高配 1.00）。
+	# 领取路径与普通合金完全一致（_add_material → BasicResourceManager），仅结算面板
+	# 通过 source 标签（"精材料·中配/高配"）区分来源。
+	var _tier: int = EnemyLoadoutTiers.get_tier_for_level_progress(in_era_progress, false)
+	if _tier >= EnemyLoadoutTiers.TIER_MID:
+		var _tier_pct: float = float(EnemyLoadoutTiers.get_bonus_for_tier(_tier).get("atk_pct", 0.75))
+		var _tier_name: String = String(EnemyLoadoutTiers.get_bonus_for_tier(_tier).get("name", "中配"))
+		var refined: int = maxi(1, int(round(float(_REFINED_ALLOY_BASE.get(era, 10)) * lvl_mult * _tier_pct)))
+		var refined_entry := DropEntry.new("alloy", DropType.MATERIAL, 1.0, refined, refined)
+		refined_entry.metadata = {"refined": true, "tier": _tier}
+		results.append(DropResult.new(refined_entry, refined, "精材料·%s" % _tier_name))
+
 	if victory_stars >= 3:
 		results.append(DropResult.new(
 			DropEntry.new("era_%d" % era, DropType.CARD_DATA, 1.0, 1, 1),
@@ -388,6 +414,16 @@ func generate_boss_drops(era: int, boss_id: String) -> Array[DropResult]:
 		1,
 		"卡牌数据"
 	))
+
+	# ══ v21 P3-A（计划 C2）：Boss 战精材料 ══
+	# 相位师战恒为高配档（EnemyLoadoutTiers.get_phase_master_tier → ×2.00），
+	# Boss 保底合金 300-500 之外追加精炼合金 = Boss 基准 60 × 档位系数 1.00。
+	# generate_boss_drops 无 level 入参，Boss 恒高配故直接取 TIER_HIGH 系数。
+	var boss_tier_pct: float = float(EnemyLoadoutTiers.get_bonus_for_tier(EnemyLoadoutTiers.TIER_HIGH).get("atk_pct", 1.0))
+	var boss_refined: int = maxi(1, int(round(60.0 * boss_tier_pct)))
+	var boss_refined_entry := DropEntry.new("alloy", DropType.MATERIAL, 1.0, boss_refined, boss_refined)
+	boss_refined_entry.metadata = {"refined": true, "tier": EnemyLoadoutTiers.TIER_HIGH}
+	results.append(DropResult.new(boss_refined_entry, boss_refined, "精材料·高配"))
 
 	# v6.4: 修复空字典 BUG——原代码 {}.get(era,[]) 永远返回 []，Boss 专属许可从不掉落
 	var specific_candidates: Array = []

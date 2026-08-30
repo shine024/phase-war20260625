@@ -10,6 +10,7 @@ const CardGridFloatingLabel = preload("res://scripts/card_grid_floating_label.gd
 const RankRules = preload("res://data/rank_rules.gd")
 const DT = preload("res://resources/design_tokens.gd")  # v13: 待机微动效 motion_reduce 守卫
 const BossIdleAnim = preload("res://scripts/battle/boss_idle_anim.gd")  # v14/P2: boss 帧动画
+const UnitFrameAnim = preload("res://scripts/battle/unit_frame_anim.gd")  # v24: 敌方普通单位帧动画
 const CardFrameUi = preload("res://scripts/card_frame_ui.gd")
 const CardBackgroundUi = preload("res://scripts/card_background_ui.gd")
 const UiAssetLoader = preload("res://scripts/ui_asset_loader.gd")
@@ -111,10 +112,29 @@ static func apply_battle_unit_presentation(
 	if card != null and card.combat_kind == GC.CombatKind.AIR:
 		var ent_h: float = absf(CardFootAnchors.entity_top_y_for_sprite(unit_spr))
 		air_lift = clampf(ent_h * 0.34, 22.0, 46.0)
-		unit_spr.position = Vector2(unit_spr.position.x, -air_lift)
 		host.set_meta("air_lift_y", air_lift)
+		unit_spr.set_meta("_air_lift", air_lift)
+		if DT.is_motion_reduce():
+			unit_spr.position = Vector2(unit_spr.position.x, -air_lift)
+		elif unit_spr.has_meta("_air_dy"):
+			# 换形态重应用：已在空中——满高度归位，不重放起飞
+			_kill_meta_tween(unit_spr, "_air_vert_tw")
+			unit_spr.set_meta("_air_dy", 0.0)
+			unit_spr.position = Vector2(unit_spr.position.x, -air_lift)
+		else:
+			# v25: 起飞爬升——从地面线爬到巡航高度。高度补偿走 _air_dy
+			# （advance_idle_motion 合成 position.y），不与浮动 tween 抢同属性
+			unit_spr.set_meta("_air_dy", air_lift)
+			unit_spr.position = Vector2(unit_spr.position.x, 0.0)
+			var climb := unit_spr.create_tween()
+			climb.tween_method(func(v: float) -> void: unit_spr.set_meta("_air_dy", v),
+					air_lift, 0.0, 0.75).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+			unit_spr.set_meta("_air_vert_tw", climb)
 	elif host.has_meta("air_lift_y"):
 		host.remove_meta("air_lift_y")  # 换形态重应用时清残留
+		for m in ["_air_lift", "_air_dy", "_air_vert_tw"]:
+			if unit_spr.has_meta(m):
+				unit_spr.remove_meta(m)
 	_sync_air_shadow(host, unit_spr, air_lift)
 	if card != null:
 		apply_battle_card_chrome(host, unit_spr, card)
@@ -146,6 +166,10 @@ static func apply_battle_unit_presentation(
 	if is_boss_tier and not anim_id.is_empty():
 		BossIdleAnim.attach(unit_spr, anim_id)
 		_boss_sway_idle(unit_spr)
+	elif not anim_id.is_empty():
+		# v24.2: 敌我双方普通单位帧动画（敌=朝左原图; 我方=同套 sheet 驱动内 flip_h 镜像;
+		# idle ping-pong 循环; 开火时经 fire_lunge_sprite→notify_fire 播 attack 一遍）
+		UnitFrameAnim.attach(unit_spr, anim_id, face_right)
 	return true
 
 
@@ -215,12 +239,16 @@ static func _apply_idle_motion(unit_spr: Sprite2D, card: CardResource) -> void:
 		if unit_spr.has_meta("_idle_params"):
 			unit_spr.remove_meta("_idle_params")  # 堡垒不动：清残留
 		return  # v14: 堡垒不动——要塞/工事的厚重稳重感
+	# v25: 空中单位基准=巡航高度（当前 y 可能是起飞/俯冲中的视觉位，不能当基准）
+	var base: float = unit_spr.position.y
+	if unit_spr.has_meta("_air_lift"):
+		base = -float(unit_spr.get_meta("_air_lift"))
 	# v23.5: 空中单位浮动加大加快（悬空呼吸感）；基线 y 已含悬空抬升
 	var amp: float = 4.0 if kind == GC.CombatKind.AIR else 1.2
 	var half: float = 0.85 if kind == GC.CombatKind.AIR else (1.8 if kind == GC.CombatKind.ARMOR else 1.3)
 	half += randf() * 0.4  # 相位错开
 	unit_spr.set_meta("_idle_params", {
-		"base_y": unit_spr.position.y,
+		"base_y": base,
 		"amp": amp,
 		"half": half,
 		"t": 0.0,
@@ -238,23 +266,39 @@ static func advance_idle_motion(spr: Sprite2D, delta: float) -> void:
 	if t >= half * 2.0:
 		t = fmod(t, half * 2.0)  # 有界化，避免长战浮点累积
 	p["t"] = t
-	spr.position.y = float(p["base_y"]) - float(p["amp"]) * 0.5 * (1.0 - cos(PI * t / half))
+	# v25: 空中垂直动态合成——_air_dy 为高度补偿（起飞=巡航高度→0；俯冲=0→深度→0），
+	# 由 _air_vert_tw tween_method 驱动；浮动在此基础上叠加，二者不抢 position.y
+	var dy: float = 0.0
+	if spr.has_meta("_air_dy"):
+		dy = float(spr.get_meta("_air_dy"))
+	spr.position.y = float(p["base_y"]) + dy - float(p["amp"]) * 0.5 * (1.0 - cos(PI * t / half))
 	# v23.5: 空中单位投影随浮动呼吸（升起→缩小变淡，贴地→复原）
 	if spr.has_meta("_air_shadow"):
 		var sh: Node2D = spr.get_meta("_air_shadow")
 		if sh != null and is_instance_valid(sh) and sh.has_method("set_bob"):
-			var amp_v: float = maxf(float(p["amp"]), 0.001)
-			var cur: float = float(p["base_y"]) - spr.position.y
-			sh.call("set_bob", clampf(cur / amp_v, 0.0, 1.0))
+			if spr.has_meta("_air_dy") and spr.has_meta("_air_lift"):
+				# v25: 有垂直动态时投影跟随真实高度（爬升→淡影，俯冲→满影）
+				var lift_v: float = maxf(float(spr.get_meta("_air_lift")), 1.0)
+				sh.call("set_bob", clampf(1.0 - dy / lift_v, 0.0, 1.0))
+			else:
+				var amp_v: float = maxf(float(p["amp"]), 0.001)
+				var cur: float = float(p["base_y"]) - spr.position.y
+				sh.call("set_bob", clampf(cur / amp_v, 0.0, 1.0))
 
 
 ## v23.5: 弹道/命中判定的目标瞄准点——空中单位返回悬空视觉位（sprite 已抬升，
 ## host 仍钉在槽位地面）。非空中/无 meta 原样返回 global_position。
+## v25: 跟随目标实时高度（起飞爬升/俯冲投弹/坠落中的空中单位，弹道瞄其当前视觉位）。
 ## 调用方：bullet.gd（直射/光束/曲射落点）、三个 projectile batch（方向/命中圈/弧线终点）。
 static func aim_pos_for(target: Node2D) -> Vector2:
 	if target == null or not is_instance_valid(target):
 		return Vector2.ZERO
 	if target.has_meta("air_lift_y"):
+		var tspr := target.get_node_or_null("Sprite2D") as Sprite2D
+		if tspr == null:
+			tspr = target.get_node_or_null("Sprite") as Sprite2D
+		if tspr != null:
+			return target.global_position + Vector2(0.0, tspr.position.y)
 		return target.global_position + Vector2(0.0, -float(target.get_meta("air_lift_y")))
 	return target.global_position
 
@@ -275,6 +319,9 @@ static func play_air_death_fall(unit: Node2D, on_landed: Callable) -> bool:
 		return false
 	if spr.has_meta("_idle_params"):
 		spr.remove_meta("_idle_params")  # 停浮动，防与坠落 tween 抢 position.y
+	_kill_meta_tween(spr, "_air_vert_tw")  # v25: 停起飞/俯冲高度补偿（同抢 position.y）
+	if spr.has_meta("_air_dy"):
+		spr.remove_meta("_air_dy")
 	_kill_meta_tween(spr, "_boss_sway_tw")  # 空 boss 坠落前杀威压摇摆（rotation 冲突）
 	if spr.has_meta("_air_shadow"):
 		var sh: Node2D = spr.get_meta("_air_shadow")
@@ -303,6 +350,25 @@ static func play_air_death_fall(unit: Node2D, on_landed: Callable) -> bool:
 static func fire_lunge_sprite(spr: Sprite2D, face_right: bool, heavy: bool) -> void:
 	if spr == null or DT.is_motion_reduce():
 		return
+	UnitFrameAnim.notify_fire(spr)  # v24: 单位开火播 attack 帧一遍（无驱动时静默）
+	# v25: 空中单位俯冲投弹——压向地面再拉起（重武器俯冲更深），影子随高度变满影。
+	# 高度补偿走 _air_dy（advance_idle_motion 合成），不与待机浮动/本函数 x 冲撞抢属性；
+	# 俯冲进行中再次开火不重启（连续射击=保持低空扫射观感）。
+	if spr.has_meta("_air_lift") and spr.has_meta("_idle_params"):
+		if spr.has_meta("_air_vert_tw"):
+			var run_tw: Tween = spr.get_meta("_air_vert_tw")
+			if run_tw == null or not run_tw.is_valid():
+				spr.remove_meta("_air_vert_tw")
+		if not spr.has_meta("_air_vert_tw"):
+			var lift: float = float(spr.get_meta("_air_lift"))
+			var depth: float = lift * (0.78 if heavy else 0.55)
+			var dtw := spr.create_tween()
+			dtw.tween_method(func(v: float) -> void: spr.set_meta("_air_dy", v),
+					0.0, depth, 0.14).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+			dtw.tween_interval(0.06)  # 投弹/释放窗口
+			dtw.tween_method(func(v: float) -> void: spr.set_meta("_air_dy", v),
+					depth, 0.0, 0.30).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+			spr.set_meta("_air_vert_tw", dtw)
 	_kill_meta_tween(spr, "_lunge_tw")
 	var base_x: float = spr.position.x
 	if spr.has_meta("_lunge_base_x"):
@@ -310,6 +376,8 @@ static func fire_lunge_sprite(spr: Sprite2D, face_right: bool, heavy: bool) -> v
 		spr.position.x = base_x  # 杀旧冲撞后先归位再重放
 	var dir: float = 1.0 if face_right else -1.0
 	var amp: float = 8.0 if heavy else 4.0
+	if spr.has_meta("_air_lift"):
+		amp *= 0.5  # v25: 空中单位主表演是俯冲, x 冲撞减半防对角线过冲
 	spr.set_meta("_lunge_base_x", base_x)
 	var tw := spr.create_tween()
 	tw.tween_property(spr, "position:x", base_x + amp * dir, 0.05).set_ease(Tween.EASE_OUT)

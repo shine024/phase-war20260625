@@ -357,7 +357,7 @@ func _on_battle_ended_from_bus(player_won: bool) -> void:
 	if _bunker_sanity_exhausted():
 		stop_afk()
 		if SignalBus != null and SignalBus.has_signal("show_toast"):
-			SignalBus.show_toast.emit("陈末的精神已经耗尽——挂机收工，回基地睡一觉吧（睡觉会自动存档）")
+			SignalBus.show_toast.emit("陈末的精神已经耗尽——挂机收工，回基地睡一觉（睡觉自动存档），顺手收一下房间里的战利品气泡")
 		return
 
 	if player_won:

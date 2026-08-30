@@ -10,6 +10,7 @@ const WeaponVisuals = preload("res://data/weapon_visual_profiles.gd")  # v17: �
 const AttackCalculator = preload("res://scripts/battle/attack_calculator.gd")
 const RuneSpecialHandler = preload("res://managers/rune_special_handler.gd")
 const FactionSkillEffectHandler = preload("res://scripts/battle/faction_skill_effect_handler.gd")
+const _PairEngineRef = preload("res://scripts/battle/pair_synergy_engine.gd")  # v21 P2: 搭档协同（火炮必暴消费）
 # v9.1: 组合技套路机制（光束反射/多重攻击/弱点暴露/化学腐蚀等乘区）
 const ComboEngine = preload("res://scripts/battle/combo_engine.gd")
 const DirectWeaponFlavor = preload("res://data/direct_weapon_flavor.gd")
@@ -1255,6 +1256,10 @@ func _on_hit(primary: Node2D) -> void:
 	if is_instance_valid(shooter) and shooter.has_meta("_first_attack_force_crit"):
 		effective_crit = 1.0  # 强制 100% 暴击
 		shooter.remove_meta("_first_attack_force_crit")  # 一次性消费
+	# v21 P2: 侦察×火炮搭档——侦察命中标记目标（_pair_art_mark_until 未过期）后，
+	# 火炮角色对同一目标的攻击必暴（搭档激活查询为 false 时零成本跳过）
+	if primary != null and is_instance_valid(shooter) and _PairEngineRef.is_artillery_mark_crit(shooter, primary):
+		effective_crit = 1.0
 	if effective_crit > 0.0 and randf() < effective_crit:
 		is_crit = true
 		final_damage *= (1.5 + shooter_stats.crit_damage_bonus)
@@ -1393,10 +1398,13 @@ func _on_hit(primary: Node2D) -> void:
 					if _vfx_parent != null:
 						VfxImpactFactory.spawn_beam_split_arcs(_vfx_parent, _split_pos, _split_targets, Color(0.9, 0.8, 1.0))
 				if _beam_res.get("reflect", false):
-					# 反射：找 1 个相邻敌方单位，衰减 60% 伤害（衰减后 40%）
+					# 反射：找相邻敌方单位，衰减 60% 伤害（衰减后 40%）
+					# v21 P1: 满档（beam_reflect_plus1）反射次数 +1（最多 2 个相邻目标）
+					var _reflect_max: int = 2 if _mechs.has("beam_reflect_plus1") else 1
 					var _tpos: Vector2 = (primary.global_position if primary is Node2D else global_position)
 					var _grp: String = "enemy_units" if shooter_is_player else "player_units"
 					var _reflect_pos: Vector2 = _tpos
+					var _reflected: int = 0
 					for _n in (get_tree().get_nodes_in_group(_grp) if get_tree() != null else []):
 						if _n == null or not is_instance_valid(_n) or not (_n is Node2D) or _n == primary:
 							continue
@@ -1408,14 +1416,18 @@ func _on_hit(primary: Node2D) -> void:
 							var _rp := get_parent() as Node2D
 							if _rp != null:
 								VfxImpactFactory.spawn_beam_reflect_arc(_rp, _tpos, _reflect_pos)
-							break
+							_reflected += 1
+							if _reflected >= _reflect_max:
+								break
 			# 套路5 集火链式弱点暴露：读 shooter _special weakpoint_trigger + 目标有双标记
+			# v21 P1: 满档（weakpoint_team_share）——弱点暴露全队共享：任意友军命中
+			# 双标记目标都可触发暴露（不再要求 shooter 自带 weakpoint_trigger 改造）
 			if is_instance_valid(shooter) and primary != null:
 				var _shooter_stats_v = shooter.get("stats") if "stats" in shooter else null
 				var _has_weakpoint_trigger: bool = false
 				if _shooter_stats_v != null and _shooter_stats_v.has_meta("mod_special_flags"):
 					_has_weakpoint_trigger = (_shooter_stats_v.get_meta("mod_special_flags", {}) as Dictionary).has("weakpoint_trigger")
-				if _has_weakpoint_trigger and _mechs.has("weakpoint_expose"):
+				if (_has_weakpoint_trigger or _mechs.has("weakpoint_team_share")) and _mechs.has("weakpoint_expose"):
 					var _exposed: bool = ComboEngine.try_weakpoint_expose(_mechs, _combo_eng.get_field_state(), shooter, primary)
 					# v9.1 弱点暴露成功 → 在目标身上生成红色 X 指示器
 					if _exposed and primary is Node2D:

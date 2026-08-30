@@ -367,7 +367,7 @@ func _show_wave_warning() -> void:
 		warning_label.name = "WaveWarning"
 		warning_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		warning_label.add_theme_color_override("font_color", DT.COLOR_DANGER)
-		warning_label.add_theme_font_size_override("font_size", 20)
+		warning_label.add_theme_font_size_override("font_size", DT.FONT_SIZE_LARGE)
 		info_panel.get_node("Margin/VBox").add_child(warning_label)
 
 	warning_label.text = "⚠️ 下一波敌人即将来袭！"

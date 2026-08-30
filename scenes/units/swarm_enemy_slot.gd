@@ -179,6 +179,8 @@ func take_damage(amount: float, attacker: Variant = null) -> void:
 				else:
 					pen = float((atk_stats as UnitStats).armor_penetration)
 				attacker_kind = int((atk_stats as UnitStats).combat_kind)
+				# v21 P1: 弹道重赋（gen_converted_munitions）——攻击者对轻轴转对甲轴
+				attacker_kind = AttackCalculator.convert_defense_dimension(self_kind, atk_stats, attacker_kind)
 		# v6.4: 优先用三维防御（按攻击者类型选），回退到旧 defense 单字段
 		var eff_defense: float = defense
 		if stats != null and attacker_kind >= 0:
@@ -193,6 +195,9 @@ func take_damage(amount: float, attacker: Variant = null) -> void:
 		# v7.5: 接入 dodge 和 damage_reduction（此前 swarm 全程无闪避/无减伤结算）
 		# v10(H3): ECM 闪避削弱（带激活中的 _ecm_dodge_penalty 时扣减，此前四处写零读）
 		var swarm_dodge: float = maxf(0.0, (float(stats.dodge_chance) if stats != null else 0.0) - ModuleEffectHandler.get_ecm_dodge_penalty(self))
+		# v21 P1: 精确制导针（gen_truestrike_pinpoint）——攻击者无视目标 50% 闪避（按比例削减）
+		if swarm_dodge > 0.0:
+			swarm_dodge = swarm_dodge * (1.0 - clampf(ModuleEffectHandler.get_attacker_dodge_ignore(attacker), 0.0, 1.0))
 		var swarm_red: float = float(stats.damage_reduction) if stats != null else 0.0
 		swarm_red = minf(0.60, swarm_red + float(damage_reduction))
 		var _swarm_hit: Dictionary = CardGridDamage.resolve_hit(amount, eff_def, swarm_dodge, swarm_red)

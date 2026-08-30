@@ -215,6 +215,15 @@ const COLOR_TEXT_SOFT := Color(0.91, 0.93, 0.96, 1)            # 柔白（次级
 const COLOR_GOLD_SOFT := Color(1.0, 0.9, 0.6, 1)               # 淡金（金色弱化档，非强调场景）
 const COLOR_SLATE_DIM_A85 := Color(0.55, 0.6, 0.7, 0.85)       # 亮石板 85%（禁用态文字/灰按钮）
 
+# v23.6.1（2026-08-30）：挂机/离线结算弹窗共享色板提升（原 afk_settlement_dialog 与
+# offline_reward_dialog 两处互为复制；值原样，零视觉变化）
+const COLOR_DIALOG_BG := Color(0.03, 0.05, 0.10, 0.98)         # 结算弹窗深底
+const COLOR_DIALOG_BORDER := Color(0, 0.65, 1, 0.4)            # 结算弹窗青边框
+const COLOR_ACCENT_MINT := Color(0, 0.94, 0.7, 1)              # 薄荷绿强调（奖励/收取语义）
+const COLOR_WARN_SALMON := Color(1.0, 0.45, 0.35, 1)           # 警示橙红（失败标题）
+const COLOR_TEXT_INFO := Color(0.8, 0.88, 1.0, 0.95)           # 弹窗正文蓝白
+const COLOR_TEXT_INFO_DIM := Color(0.6, 0.7, 0.85, 0.8)        # 弹窗次要蓝白
+
 # 签名色 → 发光色辅助（带 alpha，用于阴影/外发光）
 const COLOR_AMBER_GLOW := Color(0.961, 0.620, 0.043, 0.35)
 const COLOR_CYAN_TECH_GLOW := Color(0.024, 0.714, 0.831, 0.35)

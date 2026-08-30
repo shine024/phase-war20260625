@@ -5,6 +5,8 @@ extends Node
 signal drops_generated(drops: Array)
 signal drops_claimed(drop_results: Array)
 signal drop_completed(drop_id: String)
+## v23.6(归仓)：战利品归仓暂存变化（存入/收取均会 emit；UI 据此刷基地气泡）
+signal escrow_changed()
 
 ## 性能优化：预加载常用资源
 const DefaultCards = preload("res://data/default_cards.gd")
@@ -14,6 +16,11 @@ const DropTables = preload("res://resources/drop_tables.gd")
 
 var drop_tables: DropTables
 var pending_drops: Array = []  # 待处理的掉落物
+## v23.6(归仓)：战利品归仓暂存池。挂机期间的掉落不再即时入账钱包，而是聚合
+## 存到这里，由基地（余烬要塞）房间头顶的收取气泡/一键全收/挂机结算"全部入账"
+## 三条路径消费。条目按 (drop_type, item_id) 聚合，量级只随物品种类增长（有界）。
+## 池容量天然受精神值约束（挂机每场胜 -10，归零即停机收工），不设硬上限。
+var _escrow: Dictionary = {}  # key "type:item_id" -> {"item_id": String, "type": int, "count": int, "source": String}
 # v6.6(剧情): 剧情奖励倍率（补剧情.txt L123 海伦宣告倒计时×3）
 # 默认 1.0，由 city_map 在 city_emergency 信号触发时调用 set_multiplier 设置
 # 仅作用于基础素材产出（_add_material），不影响卡牌掉落和能量蓝图
@@ -41,12 +48,120 @@ func reset_multiplier() -> void:
 ## 注意：刻意不清 _story_reward_multiplier —— 倒计时×3 剧情倍率设计为跨周目持续生效。
 func reset_to_defaults() -> void:
 	pending_drops.clear()
+	_escrow.clear()
 
-## v7.3 修复 B3: 生成新掉落前，若仍有未领取的 pending_drops，先自动领取（发放），避免覆盖丢失。
+## v7.3 修复 B3: 生成新掉落前，若仍有未领取的 pending_drops，先处理掉，避免覆盖丢失。
 ## 原 bug：generate_battle_drops 直接 pending_drops = drops 覆盖，上一场未领取的掉落永久丢失。
+## v23.6(归仓)：残留掉落改送归仓暂存（原为直接自动入账）——玩家没点结算面板"继续"
+## 就离场的战利品不再被静默吞进钱包，而是变成基地房间头顶的收取气泡，可见可追溯。
 func _auto_claim_pending_if_any() -> void:
 	if not pending_drops.is_empty():
-		claim_drops()
+		deposit_pending_to_escrow()
+
+
+# ───────────────────── v23.6(归仓)：战利品暂存池 ─────────────────────
+
+## 掉落类型 → 归仓类别（决定基地内挂哪个房间的气泡）。
+## 退役类型（ENERGY_*/LAW_* 等 claim 时静默跳过的）返回空串：不入仓，deposit 时直接丢弃。
+static func escrow_category_for_type(drop_type: int) -> String:
+	match drop_type:
+		DropTables.DropType.MATERIAL:
+			return "material"
+		DropTables.DropType.CARD_DATA, DropTables.DropType.BLUEPRINT_FRAGMENT, \
+		DropTables.DropType.DROPPED_CARD, DropTables.DropType.CARD_REWARD:
+			return "card"
+		DropTables.DropType.LORE_PAGE:
+			return "lore"
+		DropTables.DropType.STAT_BOOST:
+			return "stat_boost"
+		DropTables.DropType.MOD_BLUEPRINT:
+			return "mod_blueprint"
+		_:
+			return ""
+
+## 把当前 pending_drops 聚合移入归仓池（挂机每场战后 / 残留掉落处理调用）。
+## 返回移入的总件数。Yield 乘区（符文产出加成/剧情倍率）在收取时计算，与
+## 即时 claim 口径一致，只是时点后移。
+func deposit_pending_to_escrow() -> int:
+	if pending_drops.is_empty():
+		return 0
+	var moved: int = 0
+	for drop in pending_drops:
+		if drop.drop == null:
+			continue
+		# 退役类型（能量卡/法则系等 claim 时静默跳过的）不入仓——占了气泡位也无事可做
+		if escrow_category_for_type(int(drop.drop.type)).is_empty():
+			continue
+		var key := "%d:%s" % [int(drop.drop.type), String(drop.drop.item_id)]
+		if not _escrow.has(key):
+			_escrow[key] = {
+				"item_id": String(drop.drop.item_id),
+				"type": int(drop.drop.type),
+				"count": 0,
+				"source": String(drop.source),
+			}
+		_escrow[key]["count"] = int(_escrow[key]["count"]) + int(drop.count)
+		moved += int(drop.count)
+	pending_drops.clear()
+	if moved > 0:
+		escrow_changed.emit()
+	return moved
+
+## 当前归仓池里存货的类别列表（用于房间气泡布局）
+func get_escrow_categories() -> Array[String]:
+	var cats: Array[String] = []
+	for key in _escrow:
+		var cat := escrow_category_for_type(int(_escrow[key]["type"]))
+		if not cat.is_empty() and not cats.has(cat):
+			cats.append(cat)
+	return cats
+
+## 某类别暂存总件数
+func get_escrow_category_count(cat: String) -> int:
+	var total: int = 0
+	for key in _escrow:
+		if escrow_category_for_type(int(_escrow[key]["type"])) == cat:
+			total += int(_escrow[key]["count"])
+	return total
+
+## 归仓池总件数（HUD"收取全部"按钮可见性 / 气泡计数用）
+func get_escrow_total_count() -> int:
+	var total: int = 0
+	for key in _escrow:
+		total += int(_escrow[key]["count"])
+	return total
+
+## 收取归仓：categories 为空数组 = 全部收取；否则只收指定类别（房间气泡按房收取）。
+## 走与 claim_drops 相同的 _process_single_drop 管线（符文/剧情乘区、实例化掉落卡全一致）。
+## 返回 [{name: String, count: int}] 领取明细（已解析显示名，供 toast/弹窗直接拼文案）。
+func collect_escrow(categories: Array = []) -> Array:
+	if _escrow.is_empty():
+		return []
+	var collect_all := categories.is_empty()
+	var collected: Array = []
+	var names: Dictionary = {}  # display_name -> count（同名合并）
+	for key in _escrow.keys():
+		var entry: Dictionary = _escrow[key]
+		var cat := escrow_category_for_type(int(entry["type"]))
+		if cat.is_empty():
+			_escrow.erase(key)  # 退役类型残留：收取时顺手清掉
+			continue
+		if not collect_all and not categories.has(cat):
+			continue
+		var drop_entry = DropTables.DropEntry.new(
+			String(entry["item_id"]), int(entry["type"]), 1.0,
+			int(entry["count"]), int(entry["count"]))
+		var result = DropTables.DropResult.new(drop_entry, int(entry["count"]), String(entry["source"]))
+		_process_single_drop(result)
+		var display: String = drop_tables.get_drop_display_name(drop_entry)
+		names[display] = int(names.get(display, 0)) + int(entry["count"])
+		_escrow.erase(key)
+	if not names.is_empty():
+		escrow_changed.emit()
+	for display in names:
+		collected.append({"name": String(display), "count": int(names[display])})
+	collected.sort_custom(func(a, b): return int(a["count"]) > int(b["count"]))
+	return collected
 
 ## 生成战斗掉落
 func generate_battle_drops(era: int, level: int, player_won: bool, victory_stars: int = 0) -> Array:
@@ -304,6 +419,17 @@ func save_state() -> Dictionary:
 			"source": drop.source
 		})
 	state["pending_drops"] = drops_data
+	# v23.6(归仓)：暂存池持久化（聚合条目，量级有界）
+	var escrow_data: Array = []
+	for key in _escrow:
+		var entry: Dictionary = _escrow[key]
+		escrow_data.append({
+			"item_id": String(entry["item_id"]),
+			"type": int(entry["type"]),
+			"count": int(entry["count"]),
+			"source": String(entry["source"]),
+		})
+	state["escrow_drops"] = escrow_data
 	# v6.6(剧情): 持久化剧情奖励倍率（倒计时×3 在新周目前持续生效）
 	state["story_reward_multiplier"] = _story_reward_multiplier
 	return state
@@ -314,6 +440,29 @@ func load_state(state: Dictionary) -> void:
 	_story_reward_multiplier = float(state.get("story_reward_multiplier", 1.0))
 	if _story_reward_multiplier <= 0.0:
 		_story_reward_multiplier = 1.0
+	# v23.6(归仓)：恢复暂存池（旧档无此 key → 空池，行为同旧版）
+	_escrow.clear()
+	for entry_data in state.get("escrow_drops", []):
+		if not (entry_data is Dictionary):
+			continue
+		var item_id: String = str(entry_data.get("item_id", ""))
+		if item_id.is_empty():
+			continue
+		var count: int = int(entry_data.get("count", 0))
+		if count <= 0:
+			continue
+		var raw_type = entry_data.get("type", DropTables.DropType.MATERIAL)
+		var drop_type: int = DropTables.DropType.MATERIAL
+		if raw_type is int:
+			drop_type = raw_type
+		elif raw_type is String:
+			drop_type = int(DropTables.DropType.get(raw_type, DropTables.DropType.MATERIAL))
+		_escrow["%d:%s" % [drop_type, item_id]] = {
+			"item_id": item_id,
+			"type": drop_type,
+			"count": count,
+			"source": str(entry_data.get("source", "")),
+		}
 	if state.has("pending_drops"):
 		pending_drops.clear()
 		for drop_data in state["pending_drops"]:

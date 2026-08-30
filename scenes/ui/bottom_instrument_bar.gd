@@ -110,7 +110,7 @@ func _setup_auto_deploy() -> void:
 	_auto_deploy_btn.name = "AutoDeployBtn"
 	_auto_deploy_btn.text = "自动"
 	_auto_deploy_btn.custom_minimum_size = Vector2(48, BAR_FIXED_HEIGHT - 4)
-	_auto_deploy_btn.add_theme_font_size_override("font_size", 12)
+	_auto_deploy_btn.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
 	_auto_deploy_btn.tooltip_text = "自动部署：从左到右铺满战斗卡\n单位死亡后自动补阵\n仅当前战斗生效"
 	_auto_deploy_btn.toggle_mode = true
 	_apply_auto_deploy_btn_style(false)
@@ -344,7 +344,7 @@ func _build_energy_row() -> void:
 	num.name = "EnergyNumLabel"
 	num.text = "--"
 	num.custom_minimum_size = Vector2(52, 14)
-	num.add_theme_font_size_override("font_size", 12)
+	num.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
 	num.add_theme_color_override("font_color",
 		Color(DT.COLOR_ENERGY.r, DT.COLOR_ENERGY.g, DT.COLOR_ENERGY.b, 0.95))
 	num.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -374,7 +374,7 @@ func _setup_menu_button() -> void:
 	_menu_btn.name = "MenuBtn"
 	_menu_btn.text = "菜单"
 	_menu_btn.custom_minimum_size = Vector2(48, BAR_FIXED_HEIGHT - 4)
-	_menu_btn.add_theme_font_size_override("font_size", 12)
+	_menu_btn.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
 	_menu_btn.tooltip_text = "功能菜单：背包/商店/任务等全部入口\n再点一次或按 ESC 收起"
 	var styles := PanelStyles.make_button_styles(DT.COLOR_ACCENT_CYAN)
 	for state in ["normal", "hover", "pressed", "disabled", "focus"]:

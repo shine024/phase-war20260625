@@ -716,7 +716,7 @@ class ChipWidget:
 		_die_label.size = Vector2(CHIP, 32)
 		_die_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		_die_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-		_die_label.add_theme_font_size_override("font_size", 20)
+		_die_label.add_theme_font_size_override("font_size", DT.FONT_SIZE_LARGE)
 		_die_label.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.55))
 		_die_label.add_theme_constant_override("outline_size", 2)
 		add_child(_die_label)

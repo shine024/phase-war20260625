@@ -17,6 +17,7 @@ const ComboEngine = preload("res://scripts/battle/combo_engine.gd")
 const ComboFieldState = preload("res://scripts/battle/combo_field_state.gd")
 const CombatFeedback = preload("res://scripts/combat_feedback.gd")
 const DotVfxManager = preload("res://scripts/battle/dot_vfx_manager.gd")
+const PairSynergyEngineRef = preload("res://scripts/battle/pair_synergy_engine.gd")  # v21 P2: 搭档协同（侦察标记/溅射乘数）
 
 # ─────────────────────────────────────────────
 #  弹道命中处理
@@ -106,6 +107,9 @@ static func apply_on_hit_side_effects(attacker: Node, target: Node, deal_damage:
 	_apply_laser_resonance_on_hit(target, stats, attacker)
 	# v9.1 套路5 雷达锁定：读 radar_lock_interval/radius，周期性挂 META_RADAR_LOCKED（在 on_tick 处理）
 	_apply_radar_lock_on_hit(target, stats, attacker)
+	# v21 P2: 侦察×火炮搭档——侦察单位命中 → 目标挂 _pair_art_mark_until（火炮侧必暴+溅射+50%）
+	# unit_status_collector 范式（meta + 秒制到期戳）；搭档未激活/非侦察命中时零成本跳过。
+	PairSynergyEngineRef.try_apply_recon_artillery_mark(attacker, target)
 
 ## v7.x: 主目标减伤补偿（single_target_penalty 的落地）。对目标恢复 heal_amount 血量。
 ## 直接操作 hp 字段并 clamp 到 max_hp，避免触发 take_damage 的反击/信号链路。
@@ -385,9 +389,15 @@ static func on_unit_killed(_victim: Node, killer: Node, _is_player_victim: bool)
 	if killer == null or not is_instance_valid(killer) or killer == _victim:
 		return
 	var stats := _get_attacker_stats(killer)
-	if stats == null or stats.kill_repair <= 0.0:
-		return
-	_apply_kill_repair(killer, stats)
+	if stats != null and stats.kill_repair > 0.0:
+		_apply_kill_repair(killer, stats)
+	# v21 P1: 助燃燃烧链满档（incendiary_death_seed）——燃烧目标死亡留火种。
+	# victim 死亡时 _burn_stacks meta 尚可读（unit_killed 信号在 meta 清理前发出）。
+	# 零成本短路：全队机制表无满档 flag 时不做任何扫描。
+	var _eng: RefCounted = _get_combo_engine()
+	if _eng != null and _eng.has_method("get_active_mechanisms"):
+		if (_eng.get_active_mechanisms() as Array).has("incendiary_death_seed"):
+			ComboEngine.try_incendiary_death_seed(_eng.get_active_mechanisms(), _victim, killer)
 
 static func _apply_kill_repair(attacker: Node, stats: UnitStats) -> void:
 	var heal: float = stats.kill_repair * _get_unit_max_hp(attacker)
@@ -402,6 +412,8 @@ static func _apply_splash(attacker: Node, target: Node, damage: float, stats: Un
 		return
 	# 溅射逻辑：对目标周围其他敌人造成溅射伤害
 	var splash_dmg = damage * clampf(stats.splash_damage, 0.10, 0.80)  # v7.x: 上限 60%→80%，下限 10%
+	# v21 P2: 侦察×火炮搭档——主目标带侦察标记且射手是火炮角色时溅射 ×1.5
+	splash_dmg *= PairSynergyEngineRef.get_artillery_mark_splash_mult(attacker, target)
 	# v7.x: 半径支持改造加成（子母弹/近炸引信），改造加成 x2 使其更显著
 	# v9.3: 基础半径 80→100，覆盖三行布局对角线（row0↔row2 = 90px）
 	var radius: float = 100.0 * (1.0 + maxf(0.0, stats.splash_radius_bonus) * 2.0)
@@ -733,6 +745,22 @@ static func get_ecm_dodge_penalty(u: Node) -> float:
 	if Time.get_ticks_msec() / 1000.0 >= float(u.get_meta("_ecm_debuffed_until", 0.0)):
 		return 0.0
 	return float(u.get_meta("_ecm_dodge_penalty", 0.0))
+
+
+## v21 P1: 攻击者的"无视目标闪避"比例（gen_truestrike_pinpoint 精确制导针，dodge_ignore=0.5）。
+## 与 _get_attacker_special_flags 同范式：读攻击者 stats meta mod_special_flags，回退节点 meta。
+## 受击侧（enemy_unit/swarm_enemy_slot take_damage）按 dodge × (1 - ignore) 削减后结算。
+static func get_attacker_dodge_ignore(attacker: Variant) -> float:
+	var st: UnitStats = _get_attacker_stats(attacker)
+	if st != null and st.has_meta("mod_special_flags"):
+		var flags: Dictionary = st.get_meta("mod_special_flags", {}) as Dictionary
+		if flags.has("dodge_ignore"):
+			return clampf(float(flags.get("dodge_ignore", 0.0)), 0.0, 1.0)
+	if attacker is Node and (attacker as Node).has_meta("mod_special_flags"):
+		var nflags: Dictionary = (attacker as Node).get_meta("mod_special_flags", {}) as Dictionary
+		if nflags.has("dodge_ignore"):
+			return clampf(float(nflags.get("dodge_ignore", 0.0)), 0.0, 1.0)
+	return 0.0
 
 
 # ── debuff 型：标记系统（命中概率标记，被标记目标受额外伤害）──

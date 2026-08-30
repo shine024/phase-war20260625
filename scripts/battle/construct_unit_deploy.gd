@@ -4,6 +4,7 @@ class_name ConstructUnitDeploy
 extends RefCounted
 
 const _Anchors = preload("res://data/card_foot_anchors.gd")
+const _PairEngineRef = preload("res://scripts/battle/pair_synergy_engine.gd")  # v21 P2: 搭档协同（deploy 延迟查询）
 
 ## 根据单位 deploy_speed 计算实际部署延迟
 ## 公式：delay = (8.0 - deploy_speed) × 1.5
@@ -25,7 +26,10 @@ static func calculate_deploy_delay(stats: UnitStats) -> float:
 	# 瞬部署（base=0）的堡垒/要塞跳过加成（无延迟可减）；其他档位乘 (1 + bonus)，下限 0.3 秒
 	if base_delay <= 0.0:
 		return 0.0
-	return maxf(0.3, base_delay * (1.0 + stats.deploy_delay_bonus))
+	# v21 P2: 装甲×轻装搭档——激活时双方角色部署延迟 -15%（静态查询激活态，
+	# 激活生效/失活消失天然对称；瞬部署已提前 return 不受影响）
+	var pair_bonus: float = _PairEngineRef.get_pair_deploy_delay_bonus(stats)
+	return maxf(0.3, base_delay * (1.0 + stats.deploy_delay_bonus + pair_bonus))
 
 ## 启动部署虚影模式
 static func start_as_deploy_ghost(u: CharacterBody2D, materialize_after_sec: float = -1.0) -> void:

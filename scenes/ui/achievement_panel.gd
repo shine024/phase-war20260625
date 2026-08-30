@@ -244,10 +244,10 @@ func _create_achievement_item(data: Dictionary) -> Control:
 
 	container.add_child(header_row)
 
-	# 描述
+	# 描述（v23.6.1：中文描述 10px→12px，10px 档仅限纯数字/英文）
 	var desc_label = Label.new()
 	desc_label.text = data.get("description", "")
-	desc_label.add_theme_font_size_override("font_size", DT.FONT_SIZE_XSMALL)
+	desc_label.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
 	desc_label.add_theme_color_override("font_color", DT.COLOR_TEXT_MID)
 	desc_label.autowrap_mode = TextServer.AUTOWRAP_WORD
 	container.add_child(desc_label)
@@ -257,7 +257,7 @@ func _create_achievement_item(data: Dictionary) -> Control:
 	if not flavor_text.is_empty():
 		var flavor_label = Label.new()
 		flavor_label.text = "\"%s\"" % flavor_text
-		flavor_label.add_theme_font_size_override("font_size", DT.FONT_SIZE_XSMALL)
+		flavor_label.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
 		flavor_label.add_theme_color_override("font_color", DT.COLOR_TEXT_FAINT)
 		flavor_label.add_theme_stylebox_override("normal", StyleBoxFlat.new())
 		flavor_label.autowrap_mode = TextServer.AUTOWRAP_WORD

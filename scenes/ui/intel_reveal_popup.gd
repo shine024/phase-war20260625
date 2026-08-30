@@ -87,7 +87,7 @@ func _build_ui() -> void:
 	title_lbl.name = "TitleLabel"
 	title_lbl.text = ""
 	title_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	title_lbl.add_theme_font_size_override("font_size", 20)
+	title_lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_LARGE)
 	title_lbl.add_theme_color_override("font_color", Color(0.95, 0.8, 1.0, 1.0))
 	vbox.add_child(title_lbl)
 
@@ -97,7 +97,7 @@ func _build_ui() -> void:
 	desc_lbl.text = ""
 	desc_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	desc_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	desc_lbl.add_theme_font_size_override("font_size", 12)
+	desc_lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
 	desc_lbl.add_theme_color_override("font_color", Color(0.75, 0.7, 0.85, 1.0))
 	vbox.add_child(desc_lbl)
 
@@ -121,7 +121,7 @@ func _build_ui() -> void:
 	btn_style.set_border_color(Color(0.6, 0.3, 0.9, 0.6))
 	btn_style.set_corner_radius_all(6)
 	close_btn.add_theme_stylebox_override("normal", btn_style)
-	close_btn.add_theme_font_size_override("font_size", 12)
+	close_btn.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
 	close_btn.add_theme_color_override("font_color", Color(0.85, 0.75, 1.0, 1.0))
 	close_btn.pressed.connect(_on_close_pressed)
 	close_row.add_child(close_btn)
@@ -151,6 +151,12 @@ func _build_ui() -> void:
 	_auto_close_timer.one_shot = true
 	_auto_close_timer.timeout.connect(_on_auto_close)
 	add_child(_auto_close_timer)
+
+## v23.6.1：ESC 等价"知道了"——与其它运行时弹窗的 ESC 消费协议一致（防穿透关两层）
+func _input(event: InputEvent) -> void:
+	if visible and event.is_action_pressed("ui_cancel"):
+		get_viewport().set_input_as_handled()
+		_on_close_pressed()
 
 ## 显示揭示事件队列
 func show_reveals(events: Array) -> void:
@@ -201,7 +207,7 @@ func _show_current_reveal() -> void:
 				var r_lbl := Label.new()
 				r_lbl.text = "→ " + r_text
 				r_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-				r_lbl.add_theme_font_size_override("font_size", 12)
+				r_lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
 				r_lbl.add_theme_color_override("font_color", Color(0.4, 0.95, 0.5, 1.0))
 				reward_box.add_child(r_lbl)
 

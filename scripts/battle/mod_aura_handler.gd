@@ -8,7 +8,7 @@ extends RefCounted
 ## 数据链路：
 ##   build_stats_from_card → _apply_mod_stat_effects 提取 ally_* 存 stats meta("mod_aura_summary")
 ##   construct_unit.setup → 复制 stats 的 meta 到节点（仿 rune_specials 模式）
-##   construct_unit.setup 末尾 → ModAuraHandler.apply_mod_auras(unit)
+##   construct_unit.setup 末尾 → ModAuraHandler.broadcast_and_receive_deferred(unit)（v21 P0 帧末广播+补偿接收）
 ##   construct_unit._die → ModAuraHandler.remove_mod_auras(unit)
 ##
 ## 与现有平台光环（CardAbilityManager.apply_scout_crit_aura 等）隔离：
@@ -19,8 +19,19 @@ extends RefCounted
 ##   - 接收光环 buff 的友军会在自身 meta 中记录 "mod_aura_applied"
 ##   - CardGridBuffStrip 读取该 meta 显示光环图标
 ##   - card_info_panel._build_aura_text() 读取该 meta 显示详细效果
+##
+## v21 P0 范围化：
+##   - apply 广播按 AuraData.get_mod_aura_range(summary)（默认 1 格，可被 range_override 覆盖）
+##     做同阵营带内切比雪夫槽距过滤；remove 撤销仍全量扫描（meta 守卫精确回退，与范围无关）。
+##   - 广播/接收改为帧末延迟（broadcast_and_receive_deferred）：部署槽位 meta 由 spawn 系统
+##     在 setup 之后写入（battle_spawn_system），立即执行时源/自身槽位未知会触发全场兜底，
+##     绕过范围化。延迟回调带 is_inside_tree/is_queued_for_deletion 守卫防同帧死亡泄漏。
 
-## 在单位 setup 时调用：读取节点的 mod_aura_summary meta，给全体友军加 buff
+const AuraDataScript = preload("res://data/aura_data.gd")
+const AuraRangeIndicator = preload("res://scenes/effects/aura_range_indicator.gd")
+
+## 在单位 setup 时调用：读取节点的 mod_aura_summary meta，给范围内友军加 buff
+## v21 P0: 范围 = get_mod_aura_range(summary)（默认 1 格，range_override 可覆盖/全场）；
 ## 受影响的友军会在自身 meta 中记录 mod_aura_applied，供 buff_strip 和情报面板显示
 static func apply_mod_auras(unit: Node) -> void:
 	if unit == null or not is_instance_valid(unit):
@@ -28,12 +39,38 @@ static func apply_mod_auras(unit: Node) -> void:
 	var summary: Dictionary = _get_aura_summary(unit)
 	if summary.is_empty():
 		return
-	# 广播给全体同阵营友军
-	var allies := _get_all_allies(unit)
+	# 广播给范围内同阵营友军（v21 P0 范围化）
+	var range_cells: int = AuraDataScript.get_mod_aura_range(summary)
+	var allies := _get_all_allies(unit, range_cells)
 	for ally in allies:
 		_apply_buffs_to_unit(ally, summary, true)
 		# 记录该友军接收了来自 unit 的光环 buff（供 buff_strip 和情报面板显示）
 		_record_aura_receiver(ally, unit)
+	# 部署瞬间范围指示（内部自延迟到入树后；motion_reduce 静默）
+	if range_cells >= 0 and unit is Node2D:
+		AuraRangeIndicator.spawn_for_unit(unit as Node2D, range_cells)
+
+## v21 P0: setup 期入口改为帧末延迟——部署槽位 meta（card_grid_slot/card_grid_enemy_slot）
+## 由 spawn 系统在 setup 之后写入，立即广播时源槽位未知 → is_in_aura_range 全场兜底，
+## 范围化被静默绕过。延迟一帧后槽位已就绪；回调守卫防同帧死亡/离树泄漏。
+static func broadcast_and_receive_deferred(unit: Node) -> void:
+	if unit == null or not is_instance_valid(unit):
+		return
+	var ml: Variant = Engine.get_main_loop()
+	if ml == null or not (ml is SceneTree):
+		# 无主循环兜底（理论上不会发生）：退回立即执行
+		apply_mod_auras(unit)
+		receive_mod_auras_from_field(unit)
+		return
+	var cb := func() -> void:
+		if not is_instance_valid(unit) or not unit.is_inside_tree() or unit.is_queued_for_deletion():
+			return
+		apply_mod_auras(unit)
+		receive_mod_auras_from_field(unit)
+		# 广播完成后刷新自身 buff_strip（延迟前 setup 里的立即刷新看不到新 meta）
+		if unit.has_method("_update_card_grid_buff_strip"):
+			unit.call("_update_card_grid_buff_strip", true)
+	(ml as SceneTree).process_frame.connect(cb, CONNECT_ONE_SHOT)
 
 ## 在单位 _die 时调用：撤销之前给友军施加的 buff，清除光环接收记录
 static func remove_mod_auras(unit: Node) -> void:
@@ -69,11 +106,17 @@ static func receive_mod_auras_from_field(unit: Node) -> void:
 		allies = bm.get_cached_nodes_in_group(group_name)
 	if allies.is_empty():
 		allies = tree.get_nodes_in_group(group_name)
+	# v21 P0: 接收方自身槽位（源槽位在下方逐源按各自 summary 范围判定）
+	var self_slot: int = AuraDataScript.unit_slot_index(unit)
 	for src in allies:
 		if src == null or not is_instance_valid(src) or src == unit:
 			continue
 		var summary: Dictionary = _get_aura_summary(src)
 		if summary.is_empty():
+			continue
+		# v21 P0: 按源的光环范围判定（源无槽位/开关关闭时 is_in_aura_range 内部回退全场）
+		var src_range: int = AuraDataScript.get_mod_aura_range(summary)
+		if not AuraDataScript.is_in_aura_range(AuraDataScript.unit_slot_index(src), self_slot, src_range):
 			continue
 		# 已接收过该源的光环（含死亡撤销后重挂场景）则跳过，防止重复施加
 		if _has_receiver_record(unit, src):
@@ -115,12 +158,14 @@ static func _get_aura_summary(unit: Node) -> Dictionary:
 
 ## 获取单位同阵营的所有友军（不含自身）
 ## 复用 AuraManager.get_slot_targets 的全体广播逻辑
+## v21 P0: range_cells >= 0 时按同阵营带内切比雪夫槽距过滤（改造光环范围）；
+## -1 = 全场（撤销路径专用，保持全量扫描 + meta 守卫）。
 ## 注意：apply_mod_auras 在 construct_unit.setup() 中被调用，此时单位可能尚未 add_child
 ## 入树（_create_player_unit 先 setup 后 add_child）。unit.get_tree() 在节点未入树时会
 ## 在 C++ 层打印 "Parameter is null" 错误（即使本函数有 null 守卫也来不及，因为错误
 ## 在 get_tree() 内部已触发）。改用 Engine.get_main_loop() 取全局 SceneTree，与
 ## FactionSkillEffectHandler._apply_stacking_to_unit 同款模式，避免触发出树 get_tree 错误。
-static func _get_all_allies(unit: Node) -> Array:
+static func _get_all_allies(unit: Node, range_cells: int = -1) -> Array:
 	if unit == null or not is_instance_valid(unit):
 		return []
 	var tree: SceneTree = Engine.get_main_loop() as SceneTree
@@ -138,8 +183,16 @@ static func _get_all_allies(unit: Node) -> Array:
 	if group_nodes.is_empty():
 		group_nodes = tree.get_nodes_in_group(group_name)
 	var result: Array = []
+	if range_cells < 0 or not AuraDataScript.is_aura_ranging_enabled():
+		for node in group_nodes:
+			if is_instance_valid(node) and node != unit:
+				result.append(node)
+		return result
+	var src_slot: int = AuraDataScript.unit_slot_index(unit)
 	for node in group_nodes:
-		if is_instance_valid(node) and node != unit:
+		if not is_instance_valid(node) or node == unit:
+			continue
+		if AuraDataScript.is_in_aura_range(src_slot, AuraDataScript.unit_slot_index(node), range_cells):
 			result.append(node)
 	return result
 

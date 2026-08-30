@@ -52,3 +52,5 @@ const SK_PHASE_MASTER_SKILL: String = "phase_master_skill"
 const SK_AFK: String = "afk"
 # v21: 余烬要塞基地存档键（day/sanity/rooms/hero_fragments/narrative_stage）
 const SK_BUNKER: String = "bunker_state"
+# v21 P3-B: 账号级改造解锁集（mod_id→true + first_kill_<master_id> 标记；ModificationRegistry 持有）
+const SK_MOD_UNLOCK_STATE: String = "mod_unlock_state"

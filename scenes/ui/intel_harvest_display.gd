@@ -67,7 +67,7 @@ func _refresh_ui() -> void:
 	## 标题
 	var title := Label.new()
 	title.text = "📊 情报收获"
-	title.add_theme_font_size_override("font_size", 20)
+	title.add_theme_font_size_override("font_size", DT.FONT_SIZE_LARGE)
 	title.add_theme_color_override("font_color", Color(0.7, 0.85, 1.0, 1.0))
 	outer.add_child(title)
 
@@ -86,7 +86,7 @@ func _refresh_ui() -> void:
 	if hidden_count > 0:
 		var more_lbl := Label.new()
 		more_lbl.text = "  …另 +%d 种敌人（详见 情报中心·敌方情报）" % hidden_count
-		more_lbl.add_theme_font_size_override("font_size", 12)
+		more_lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
 		more_lbl.add_theme_color_override("font_color", Color(0.6, 0.7, 0.8, 0.8))
 		outer.add_child(more_lbl)
 
@@ -104,7 +104,7 @@ func _refresh_ui() -> void:
 			var item_name: String = item.get("name", "未知道具")
 			var item_desc: String = item.get("desc", "")
 			item_lbl.text = "  ▸ %s — %s" % [item_name, item_desc]
-			item_lbl.add_theme_font_size_override("font_size", 12)
+			item_lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
 			item_lbl.add_theme_color_override("font_color", Color(0.8, 0.65, 1.0, 1))
 			outer.add_child(item_lbl)
 
@@ -135,14 +135,14 @@ func _create_card_entry(entry: Dictionary) -> PanelContainer:
 
 	var icon_lbl := Label.new()
 	icon_lbl.text = "🔵" if is_first else "⚔️"
-	icon_lbl.add_theme_font_size_override("font_size", 12)
+	icon_lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
 	name_row.add_child(icon_lbl)
 
 	var name_lbl := Label.new()
 	name_lbl.text = _get_enemy_display_name(card_id, enemy_type)
 	if is_first:
 		name_lbl.text += "  [首次遭遇]"
-	name_lbl.add_theme_font_size_override("font_size", 12)
+	name_lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
 	name_lbl.add_theme_color_override("font_color", Color(0.85, 0.9, 0.95, 1.0))
 	name_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	name_row.add_child(name_lbl)
@@ -187,7 +187,8 @@ func _create_card_entry(entry: Dictionary) -> PanelContainer:
 	if mod_points > 0:
 		var mp_lbl := Label.new()
 		mp_lbl.text = "  ▸ 改造情报 +%d 点" % mod_points
-		mp_lbl.add_theme_font_size_override("font_size", 11)
+		# v23.6.1：11px 为禁用档（中文 ≥12）
+		mp_lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
 		mp_lbl.add_theme_color_override("font_color", Color(0.6, 0.9, 0.6, 1.0))
 		mp_lbl.tooltip_text = "点数随机落入该敌方形态的专属改造池，攒满阈值即解锁（详见情报手册）"
 		vbox.add_child(mp_lbl)
@@ -226,7 +227,7 @@ func _create_progress_row(card_id: String, enemy_type: String, delta: float) -> 
 	## 百分比文本
 	var pct_lbl := Label.new()
 	pct_lbl.text = "%.0f%%" % current_pct
-	pct_lbl.add_theme_font_size_override("font_size", 12)
+	pct_lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
 	pct_lbl.custom_minimum_size.x = 36
 	pct_lbl.add_theme_color_override("font_color", Color(0.8, 0.85, 0.9, 1.0))
 	row.add_child(pct_lbl)
@@ -234,7 +235,7 @@ func _create_progress_row(card_id: String, enemy_type: String, delta: float) -> 
 	## 增长量（绿色）
 	var delta_lbl := Label.new()
 	delta_lbl.text = "+%.0f%%" % (delta * 100.0)
-	delta_lbl.add_theme_font_size_override("font_size", 12)
+	delta_lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
 	delta_lbl.custom_minimum_size.x = 40
 	delta_lbl.add_theme_color_override("font_color", Color(0.4, 0.95, 0.5, 1.0))
 	row.add_child(delta_lbl)
@@ -249,7 +250,7 @@ func _create_progress_row(card_id: String, enemy_type: String, delta: float) -> 
 	if has_reveal:
 		var rev_icon := Label.new()
 		rev_icon.text = " ✦新揭示!"
-		rev_icon.add_theme_font_size_override("font_size", 12)
+		rev_icon.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
 		rev_icon.add_theme_color_override("font_color", Color(0.95, 0.75, 0.3, 1.0))
 		row.add_child(rev_icon)
 

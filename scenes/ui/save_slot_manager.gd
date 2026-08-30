@@ -11,6 +11,8 @@ signal slot_selected(slot_num: int)
 signal slot_deleted(slot_num: int)
 signal manager_closed()
 
+const DT = preload("res://resources/design_tokens.gd")   # v23.6.1 字号归档
+
 ## UI组件引用（路径与 save_slot_manager.tscn 一致）
 @onready var slot_container: GridContainer = $VBox/SlotContainer
 @onready var import_button: Button = $VBox/Toolbar/ImportButton
@@ -76,14 +78,14 @@ func _create_slot_panel(slot_num: int, info: Dictionary) -> Control:
 	# 槽位标题
 	var name_label = Label.new()
 	name_label.text = "存档槽 %d%s" % [slot_num, " (当前)" if is_current else ""]
-	name_label.add_theme_font_size_override("font_size", 16)
+	name_label.add_theme_font_size_override("font_size", DT.FONT_SIZE_MEDIUM)
 	name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	vbox.add_child(name_label)
 
 	# 存档信息文本
 	var info_label = Label.new()
 	info_label.text = _get_slot_info_text(slot_num, exists, level)
-	info_label.add_theme_font_size_override("font_size", 12)
+	info_label.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
 	info_label.autowrap_mode = TextServer.AUTOWRAP_WORD
 	vbox.add_child(info_label)
 

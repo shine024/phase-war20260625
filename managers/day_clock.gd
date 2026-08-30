@@ -23,6 +23,18 @@ const PHASE_DAWN: int = 4        ## 早晨
 
 const PHASE_NAMES: Array[String] = ["上午", "下午", "晚上", "午夜", "早晨"]
 
+# ══ v21 P3-B（计划 C1）：离线产能积累 ══
+## 每跨 1 天结算一次产能点，汇入 BasicResourceManager（改造打造的消耗货币之一）。
+## 数值公式（v21 P3-B 定版）：
+##   每日产能 = PRODUCTION_PER_DAY_BASE × (1 + 0.25 × (档位 - 1))
+##   档位 = EnemyLoadoutTiers.get_tier_for_level_progress(时代内进度)（与 P3-A 敌方配装同源）
+##   → 低配档(×1.30) 30 点/天；中配档(×1.75) 38 点/天；高配档(×2.00) 45 点/天。
+##   设计意图：玩家推进越深（时代内后期），产能越高，打造高档改造的等待天数越短；
+##   与敌方难度台阶共用同一档位轴，难度与收益同源不脱节。
+## 累积上限 PRODUCTION_POINTS_CAP：防挂机无限屯点（约 22~33 天的自然上限）。
+const PRODUCTION_PER_DAY_BASE: int = 30
+const PRODUCTION_POINTS_CAP: int = 999
+
 ## 时段蒙板颜色（用于城市地图氛围表现）
 const PHASE_OVERLAY_COLORS: Array[Color] = [
 	Color(1.0, 0.98, 0.9, 0.0),    # 上午：明亮无蒙板
@@ -64,6 +76,7 @@ func advance_phase() -> void:
 			year_completed = true
 			year_end_reached.emit()
 			return
+		_accrue_production_for_days(1)  # v21 P3-B: 每跨 1 天结算产能
 		_emit_day_started(current_day)
 	day_phase_changed.emit(current_day, current_phase)
 	phase_advanced.emit(current_day, current_phase)
@@ -73,8 +86,10 @@ func advance_to_day(target_day: int) -> void:
 	target_day = clampi(target_day, current_day, MAX_DAYS)
 	if target_day <= current_day:
 		return
+	var crossed_days: int = target_day - current_day
 	current_day = target_day
 	current_phase = PHASE_MORNING
+	_accrue_production_for_days(crossed_days)  # v21 P3-B: 快进 N 天补 N 天产能
 	_emit_day_started(current_day)
 	day_phase_changed.emit(current_day, current_phase)
 
@@ -89,6 +104,7 @@ func rest_until_dawn() -> void:
 		year_completed = true
 		year_end_reached.emit()
 		return
+	_accrue_production_for_days(1)  # v21 P3-B: 每跨 1 天结算产能
 	_emit_day_started(current_day)
 	day_phase_changed.emit(current_day, current_phase)
 
@@ -110,6 +126,57 @@ func full_reset() -> void:
 	current_phase = PHASE_MORNING
 	year_completed = false
 	total_loops = 0
+
+# ── v21 P3-B（计划 C1）：产能结算 ──────────────────────────────────
+
+## v21 P3-B: 资源管理器注入点（可选）——smoke/测试等 --script 模式下 autoload 未注册，
+## 由调用方传入持有 add_production_points 的节点；游戏内保持 null 走 get_node_or_null 常规路径。
+var production_resource_override: Node = null
+
+## 按"每日产能"公式为跨过的天数结算产能点，汇入 BasicResourceManager。
+## 关卡 id 取 GameManager.current_level（拿不到时按 1 = 低配档 30 点/天，headless/标题屏安全）。
+## 走 get_node_or_null 而非裸 autoload 标识：--script 模式（smoke 测试）下 autoload 未注册也不崩。
+func _accrue_production_for_days(days: int) -> void:
+	if days <= 0:
+		return
+	var brm: Node = production_resource_override
+	if brm == null and is_inside_tree():
+		# is_inside_tree 守卫：--script 模式 _initialize 阶段节点在活跃场景树外，
+		# 绝对路径 get_node 会刷 ERROR（返回 null 等价，但污染 headless 日志）
+		brm = get_node_or_null("/root/BasicResourceManager")
+	if brm == null or not brm.has_method("add_production_points"):
+		return
+	var level: int = 1
+	if is_inside_tree():
+		# 同上：活跃场景树外跳过路径解析，按低配档默认结算
+		var gm: Node = get_node_or_null("/root/GameManager")
+		if gm != null and "current_level" in gm:
+			level = maxi(1, int(gm.get("current_level")))
+	var era_local_level: int = ((level - 1) % 20) + 1
+	var era_progress: float = float(era_local_level - 1) / 19.0
+	# 档位与 P3-A 敌方配装同源（低配/中配/高配）
+	var _ELT = load("res://data/enemy_loadout_tiers.gd")
+	var tier: int = 1
+	if _ELT != null:
+		tier = int(_ELT.get_tier_for_level_progress(era_progress, false))
+	var per_day: float = float(PRODUCTION_PER_DAY_BASE) * (1.0 + 0.25 * float(tier - 1))
+	brm.add_production_points(int(round(per_day * float(days))))
+
+## v21 P3-B: 查询当前每日产能（UI 展示用；同公式）
+func get_daily_production_rate() -> int:
+	var level: int = 1
+	if is_inside_tree():
+		# 同上：活跃场景树外的 --script 模式跳过路径解析（拿不到 GameManager 按低配档 30）
+		var gm: Node = get_node_or_null("/root/GameManager")
+		if gm != null and "current_level" in gm:
+			level = maxi(1, int(gm.get("current_level")))
+	var era_local_level: int = ((level - 1) % 20) + 1
+	var era_progress: float = float(era_local_level - 1) / 19.0
+	var _ELT = load("res://data/enemy_loadout_tiers.gd")
+	var tier: int = 1
+	if _ELT != null:
+		tier = int(_ELT.get_tier_for_level_progress(era_progress, false))
+	return int(round(float(PRODUCTION_PER_DAY_BASE) * (1.0 + 0.25 * float(tier - 1))))
 
 # ── 查询方法 ───────────────────────────────────────────────────────
 

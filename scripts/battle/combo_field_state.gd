@@ -92,15 +92,18 @@ func field_at_least(tag: String, threshold: float) -> bool:
 	return get_field(tag) >= threshold
 
 ## 每帧更新：浓度自然衰减 + 过期清理。由 combo_engine.update(delta) 调用。
-func update(delta: float) -> void:
+## v21 P1: 新增 decay_scale（默认 1.0 行为不变）——纳米浓度场满档（nano_decay_half）
+## 时引擎传 0.5，浓度自然衰减减半（机制升级"浓度保持"，非数值翻倍）。
+func update(delta: float, decay_scale: float = 1.0) -> void:
 	var now: float = _now()
 	var to_erase: Array = []
+	var ds: float = clampf(decay_scale, 0.0, 1.0)
 	for tag in _fields.keys():
 		var f: Dictionary = _fields[tag]
 		if now >= float(f.get("expire_at", 0.0)):
 			to_erase.append(tag)
 			continue
-		var decay: float = float(f.get("decay", 0.0)) * delta
+		var decay: float = float(f.get("decay", 0.0)) * delta * ds
 		f["amount"] = maxf(0.0, float(f.get("amount", 0.0)) - decay)
 		if float(f["amount"]) <= 0.0:
 			to_erase.append(tag)

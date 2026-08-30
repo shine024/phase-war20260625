@@ -832,6 +832,11 @@ func _apply_card_affixes(stats: UnitStats, affix_key: String) -> void:
 			"crit_damage_bonus":
 				# v19 修复：暴伤词条空转（stat_boost_manager 同字段已在写，暴击结算读此值）
 				stats.crit_damage_bonus += val
+			"intercept_chance":
+				# v21 P3-B（计划 C3）：相位格挡词条——拦截/格挡字段此前无词条分支。
+				# 消费点已有：module_effect_handler 拦截判定（stats.intercept_chance 概率格挡），
+				# 与 APS 拦截改造同字段；上限 0.75 对齐 ModificationRegistry 同字段钳制。
+				stats.intercept_chance = minf(0.75, stats.intercept_chance + val)
 
 		# 标记变异词条
 		if affix.is_mutated:

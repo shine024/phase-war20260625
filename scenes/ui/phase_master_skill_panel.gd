@@ -45,9 +45,26 @@ var _rendered_sig: String = ""
 ## 弃用锚点方案：Godot 布局/窗口尺寸变化时序下，anchors+offsets 的居中
 ## 偏移可能按过渡期视口计算导致面板漂移（实测两环境复现）；显式几何最稳。
 ## 正常 720p 视口下仍是标准 MEDIUM 档 960×600，不改变既有观感。
+## 全出血模式（2026-08）：full_bleed=true 时铺满视口、底沿留出相位仪栏占位带，
+## 由 growth_panel 打开时置位——与主场景养成面板的全出血布局同原则。
+var full_bleed := false
+
 func _apply_viewport_fit() -> void:
 	set_anchors_preset(Control.PRESET_TOP_LEFT)
 	var vp: Vector2 = get_viewport_rect().size if get_viewport() != null else DT.PANEL_SIZE_MEDIUM
+	if full_bleed:
+		var band := 86.0  # 底栏悬浮卡占位兜底（64 高 + 底部边距）
+		var bar := get_tree().root.find_child("BottomInstrumentBar", true, false) if get_tree() != null else null
+		if bar is Control:
+			var bar_y: float = (bar as Control).global_position.y
+			if bar_y > 0.0:
+				band = vp.y - bar_y
+		var fb := Vector2(vp.x, vp.y - band)
+		if custom_minimum_size != fb:
+			custom_minimum_size = fb
+		size = fb
+		position = Vector2.ZERO
+		return
 	var fit := Vector2(
 			minf(DT.PANEL_SIZE_MEDIUM.x, vp.x - 24.0),
 			minf(DT.PANEL_SIZE_MEDIUM.y, vp.y - 24.0))

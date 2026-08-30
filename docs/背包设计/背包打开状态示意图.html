@@ -1,0 +1,858 @@
+<!DOCTYPE html>
+<!-- ============================================================
+     Phase War · 打开背包 · 目标状态示意图
+     ------------------------------------------------------------
+     设计意图：打开背包时，屏幕上只保留两块——
+       ① 背包面板（BackpackOverlay · PopupLayer）
+       ② 底部相位仪栏（BottomInstrumentBar · HudLayer，唯一常驻 HUD）
+     其余 HUD（顶部资源栏 / 战斗顶栏 / 功能按钮抽屉 / 战斗日志）
+     在背包打开期间全部隐藏，关闭背包后恢复。
+
+     尺寸取真实值（project.godot / backpack_panel.tscn / bottom_instrument_bar.tscn）：
+       · 视口 1280×720
+       · 背包面板 1180×560（min），居中，BottomSpacer 给底栏让位
+       · 底栏高 64，悬浮卡片样式（12 圆角 + 青色 accent 边框 + 外发光）
+       · 槽位按 13 格基准宽固定（钢铁壁垒 = 8 绿 + 4 符）
+     卡面引用 assets/card_icons/player/ 真实游戏图；
+     兵种色 / 稀有度色 / 签名色取自 resources/design_tokens.gd。
+     页面内数值（费用/Lv/战力/数量）均为示意数据。
+     ============================================================ -->
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>Phase War · 打开背包 · 目标状态示意图</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=Noto+Sans+SC:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  /* —— 中性色板（design_tokens.gd） —— */
+  --bg-void:        #060912;
+  --bg-panel:       #0d1320;
+  --bg-card:        #131a2a;
+  --bg-card-hi:     #1a2438;
+  --bg-slot-locked: #0a0f1c;
+  --border-dim:     rgba(120,140,180,0.14);
+  --border:         rgba(160,180,220,0.22);
+  --border-hi:      rgba(120,180,255,0.45);
+  /* —— 签名色 —— */
+  --amber:          #f59e0b;
+  --amber-soft:     #fbbf24;
+  --amber-glow:     rgba(245,158,11,0.35);
+  --cyan:           #06b6d4;
+  --cyan-soft:      #22d3ee;
+  --cyan-glow:      rgba(6,182,212,0.35);
+  --violet:         #a78bfa;
+  --violet-soft:    #c4b5fd;
+  --violet-glow:    rgba(167,139,250,0.4);
+  --gold:           #fbbf24;
+  --gold-soft:      #fde68a;
+  --gold-glow:      rgba(251,191,36,0.45);
+  --neon-cyan:      #00f0ff;   /* COLOR_ACCENT_CYAN 底栏边框 */
+  --energy:         #e6991a;   /* COLOR_ENERGY 能量 */
+  --green-up:       #34d399;
+  --slot-green:     #52d973;   /* 底栏绿槽边框 */
+  --red-down:       #ef4444;
+  --text:           #e8edf7;
+  --text-mid:       #a8b3c7;
+  --text-dim:       #6b7691;
+  --text-faint:     #454f63;
+  /* —— 兵种色 —— */
+  --kind-light:     #e5484d;
+  --kind-armor:     #4d7fe5;
+  --kind-support:   #e59820;
+  --kind-air:       #4dcce5;
+  --kind-fort:      #9f9f9f;
+  /* —— 稀有度色 —— */
+  --rar-common:     #6b7691;
+  --rar-rare:       #38bdf8;
+  --rar-epic:       #c084fc;
+  --rar-legendary:  #f59e0b;
+  /* —— 字体 —— */
+  --font-display:   'Rajdhani', 'Noto Sans SC', sans-serif;
+  --font-body:      'Noto Sans SC', sans-serif;
+  --font-mono:      'JetBrains Mono', 'Noto Sans SC', monospace;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: var(--font-body);
+  background:
+    radial-gradient(ellipse at 18% 0%, rgba(6,182,212,0.045) 0%, transparent 45%),
+    radial-gradient(ellipse at 85% 100%, rgba(167,139,250,0.04) 0%, transparent 42%),
+    var(--bg-void);
+  color: var(--text);
+  min-height: 100vh;
+  padding: 26px 0 40px;
+}
+body::before {
+  content: '';
+  position: fixed; inset: 0;
+  background-image:
+    linear-gradient(rgba(120,140,180,0.022) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(120,140,180,0.022) 1px, transparent 1px);
+  background-size: 40px 40px;
+  pointer-events: none;
+}
+
+.sheet { width: 1660px; margin: 0 auto; position: relative; z-index: 1; }
+
+/* ============ 页头 ============ */
+.sheet-head { display: flex; align-items: flex-end; justify-content: space-between; margin-bottom: 16px; padding: 0 6px; }
+.brand { display: flex; align-items: center; gap: 14px; }
+.brand-mark {
+  width: 30px; height: 30px;
+  background: linear-gradient(135deg, var(--amber), var(--violet));
+  clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
+}
+.brand-title { font-family: var(--font-display); font-weight: 700; font-size: 24px; letter-spacing: 0.14em; }
+.brand-title .sub { font-size: 12px; color: var(--text-dim); margin-left: 12px; letter-spacing: 0.22em; font-weight: 500; }
+.head-chips { display: flex; gap: 8px; }
+.hchip {
+  font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.08em;
+  color: var(--text-mid); border: 1px solid var(--border-dim);
+  padding: 5px 12px; border-radius: 4px; background: rgba(255,255,255,0.02);
+}
+.hchip.hot { color: var(--amber-soft); border-color: rgba(245,158,11,0.4); }
+
+/* ============ 游戏画面舞台 ============ */
+.stage-wrap { position: relative; width: 1600px; height: 900px; margin: 0 auto; }
+.stage {
+  position: absolute; inset: 0;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: #000;
+  overflow: hidden;
+  box-shadow: 0 30px 90px rgba(0,0,0,0.65);
+}
+.corner { position: absolute; width: 18px; height: 18px; z-index: 60; pointer-events: none; }
+.corner::before, .corner::after { content: ''; position: absolute; background: var(--cyan-soft); opacity: 0.75; }
+.corner::before { width: 100%; height: 2px; }
+.corner::after  { width: 2px; height: 100%; }
+.corner.tl { top: -1px; left: -1px; }
+.corner.tr { top: -1px; right: -1px; transform: scaleX(-1); }
+.corner.bl { bottom: -1px; left: -1px; transform: scaleY(-1); }
+.corner.br { bottom: -1px; right: -1px; transform: scale(-1); }
+
+/* 内部按 1280×720 真实坐标绘制，整体放大 1.25 */
+.game { position: absolute; top: 0; left: 0; width: 1280px; height: 720px; transform: scale(1.25); transform-origin: 0 0; }
+
+/* —— 战场背景（压暗） —— */
+.battlefield {
+  position: absolute; inset: 0;
+  background:
+    radial-gradient(ellipse at 50% 18%, rgba(38,58,92,0.5) 0%, transparent 55%),
+    linear-gradient(180deg, #0a1120 0%, #0a0f1c 55%, #070b15 100%);
+}
+.battlefield .terrain {
+  position: absolute; inset: 0;
+  background-image:
+    linear-gradient(rgba(120,150,200,0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(120,150,200,0.05) 1px, transparent 1px);
+  background-size: 64px 64px;
+}
+.battlefield .ridge {
+  position: absolute; left: 0; right: 0; bottom: 120px; height: 180px;
+  background:
+    radial-gradient(ellipse 420px 90px at 15% 100%, rgba(70,95,140,0.16), transparent 70%),
+    radial-gradient(ellipse 520px 110px at 55% 105%, rgba(60,85,130,0.13), transparent 70%),
+    radial-gradient(ellipse 460px 95px at 92% 100%, rgba(70,95,140,0.15), transparent 70%);
+}
+.battlefield .dim { position: absolute; inset: 0; background: rgba(0,0,0,0.68); }
+
+/* —— 被隐藏的 HUD · 幽灵区（虚线框 + 标注） —— */
+.ghost {
+  position: absolute;
+  border: 1.5px dashed rgba(239,68,68,0.55);
+  background: rgba(239,68,68,0.05);
+  border-radius: 6px;
+  display: flex; align-items: center; justify-content: center; gap: 14px;
+  z-index: 5;
+}
+.ghost .g-tag {
+  font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.06em;
+  color: rgba(255,150,145,0.85);
+  background: rgba(20,8,10,0.8);
+  border: 1px solid rgba(239,68,68,0.35);
+  padding: 2px 8px; border-radius: 3px;
+  white-space: nowrap;
+}
+.ghost .g-tag b { color: #ff8d86; font-weight: 600; }
+.ghost .g-x {
+  width: 14px; height: 14px; position: relative; flex: none; opacity: 0.8;
+}
+.ghost .g-x::before, .ghost .g-x::after {
+  content: ''; position: absolute; top: 50%; left: 0; width: 100%; height: 2px;
+  background: #ef4444; border-radius: 1px;
+}
+.ghost .g-x::before { transform: rotate(45deg); }
+.ghost .g-x::after  { transform: rotate(-45deg); }
+/* 顶部：战斗 HUD（战斗中才有） + 顶部资源栏 */
+.ghost.top-hud { left: 14px; top: 8px; width: 560px; height: 34px; }
+.ghost.top-res { left: 586px; top: 8px; width: 680px; height: 34px; }
+/* 面板与底栏之间：功能按钮抽屉 */
+.ghost.func-bar { left: 50px; top: 594px; width: 1180px; height: 32px; }
+
+/* ============ ① 背包面板（真实 1180×560） ============ */
+.bp-panel {
+  position: absolute; left: 50px; top: 28px;
+  width: 1180px; height: 560px;
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: 0 24px 70px rgba(0,0,0,0.6);
+  overflow: hidden;
+  display: flex; flex-direction: column;
+  z-index: 10;
+}
+.bp-panel::before {
+  content: '';
+  position: absolute; top: 0; left: 0; right: 0; height: 2px; z-index: 5;
+  background: linear-gradient(90deg, transparent, var(--amber) 20%, var(--amber-soft) 50%, var(--amber) 80%, transparent);
+  opacity: 0.75;
+}
+/* 标题行 38px（tscn TitleRow） */
+.bp-title {
+  height: 38px; flex: none;
+  display: flex; align-items: center; gap: 12px;
+  padding: 0 18px;
+  border-bottom: 1px solid var(--border-dim);
+  background: linear-gradient(180deg, rgba(255,255,255,0.02), transparent);
+}
+.title-mark { width: 20px; height: 20px; position: relative; flex: none; }
+.title-mark::before { content: ''; position: absolute; inset: 0; border: 1px solid var(--amber); transform: rotate(45deg); }
+.title-mark::after  { content: ''; position: absolute; inset: 6px; background: var(--amber); transform: rotate(45deg); box-shadow: 0 0 10px var(--amber-glow); }
+.bp-title .t-name { font-family: var(--font-display); font-weight: 700; font-size: 17px; letter-spacing: 0.14em; }
+.bp-title .t-sub  { font-size: 10px; letter-spacing: 0.3em; color: var(--amber); opacity: 0.8; font-family: var(--font-display); }
+.bp-title .t-meta { margin-left: auto; font-family: var(--font-mono); font-size: 10px; color: var(--text-dim); letter-spacing: 0.06em; }
+.bp-title .t-meta b { color: var(--amber-soft); font-weight: 500; }
+.bp-title .t-close {
+  width: 24px; height: 24px; flex: none;
+  display: flex; align-items: center; justify-content: center;
+  border: 1px solid var(--border); border-radius: 4px;
+  color: var(--text-mid); font-size: 13px; font-family: var(--font-body);
+}
+/* Tab 行 36px */
+.bp-tabs {
+  height: 36px; flex: none;
+  display: flex; align-items: stretch; gap: 2px;
+  padding: 4px 12px;
+  background: var(--bg-card);
+  border-bottom: 1px solid var(--border-dim);
+}
+.bp-tab {
+  display: flex; align-items: center; gap: 7px;
+  padding: 0 14px;
+  font-family: var(--font-display); font-size: 11.5px; font-weight: 600;
+  letter-spacing: 0.14em; color: var(--text-dim);
+  border-radius: 4px;
+}
+.bp-tab .dot { width: 6px; height: 6px; border-radius: 50%; flex: none; }
+.bp-tab .cnt { font-family: var(--font-mono); font-size: 9px; padding: 1px 5px; border-radius: 3px; background: rgba(255,255,255,0.04); color: var(--text-dim); letter-spacing: 0.04em; }
+.bp-tab.on { color: var(--text); background: var(--bg-card-hi); }
+.bp-tab.on .dot { box-shadow: 0 0 7px currentColor; }
+.bp-tab.on .cnt { background: rgba(255,255,255,0.08); color: var(--text-mid); }
+/* 工具栏 40px */
+.bp-tools {
+  height: 40px; flex: none;
+  display: flex; align-items: center; gap: 12px;
+  padding: 0 16px;
+  background: var(--bg-card);
+  border-bottom: 1px solid var(--border-dim);
+}
+.search {
+  display: flex; align-items: center; gap: 7px;
+  padding: 4px 10px; min-width: 190px;
+  background: var(--bg-slot-locked);
+  border: 1px solid var(--border-dim); border-radius: 4px;
+  font-family: var(--font-mono); font-size: 10px; color: var(--text-faint);
+}
+.chips { display: flex; gap: 4px; }
+.chip {
+  padding: 3px 9px; font-family: var(--font-display); font-size: 10px; font-weight: 600;
+  letter-spacing: 0.1em; color: var(--text-dim);
+  border: 1px solid var(--border-dim); border-radius: 3px;
+}
+.chip.on { color: var(--text); background: rgba(255,255,255,0.04); border-color: rgba(160,180,220,0.4); }
+.tools-right { margin-left: auto; display: flex; align-items: center; gap: 12px; }
+.capacity { display: flex; align-items: center; gap: 7px; font-family: var(--font-mono); font-size: 10px; color: var(--text-dim); }
+.capacity .bar { width: 72px; height: 4px; background: var(--bg-slot-locked); border-radius: 2px; overflow: hidden; }
+.capacity .bar i { display: block; height: 100%; width: 62%; background: linear-gradient(90deg, var(--amber), var(--amber-soft)); border-radius: 2px; }
+.sorter { font-family: var(--font-mono); font-size: 10px; color: var(--text-dim); border: 1px solid var(--border-dim); border-radius: 3px; padding: 3px 8px; background: var(--bg-slot-locked); }
+
+/* 卡牌网格：10 列 × 108px，行高 154，第三行被面板裁切（可滚动暗示） */
+.bp-content { flex: 1; min-height: 0; overflow: hidden; padding: 12px 16px 0; }
+.bp-grid { display: grid; grid-template-columns: repeat(10, 108px); grid-auto-rows: 154px; gap: 6px; }
+
+/* —— 卡面（v9.0 设计语法） —— */
+.card {
+  position: relative; width: 108px; height: 154px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-dim);
+  border-radius: 4px; overflow: hidden;
+  display: flex; flex-direction: column;
+}
+.card .strip { height: 3px; flex: none; position: relative; }
+.card .strip::after { content: ''; position: absolute; inset: 0; background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent); }
+.card.r-common    .strip { background: var(--rar-common); }
+.card.r-rare      .strip { background: var(--rar-rare); }
+.card.r-epic      .strip { background: var(--rar-epic); }
+.card.r-legendary .strip { background: var(--rar-legendary); height: 4px; }
+.card .art { flex: 1; position: relative; background: var(--bg-slot-locked); overflow: hidden; }
+.card .art img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.card .kind-tag {
+  position: absolute; top: 4px; right: 4px; z-index: 3;
+  width: 15px; height: 15px; border-radius: 2px;
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-body); font-size: 9px; font-weight: 700; color: rgba(255,255,255,0.95);
+}
+.k-light   { background: var(--kind-light); }
+.k-armor   { background: var(--kind-armor); }
+.k-support { background: var(--kind-support); }
+.k-air     { background: var(--kind-air); }
+.k-fort    { background: var(--kind-fort); }
+.card .cost {
+  position: absolute; top: 5px; left: 4px; z-index: 3;
+  width: 20px; height: 20px;
+  background: linear-gradient(135deg, var(--cyan), var(--cyan-soft));
+  clip-path: polygon(0 0, 100% 0, 100% 75%, 75% 100%, 0 100%);
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-mono); font-size: 11px; font-weight: 700; color: #06121b;
+}
+.card .inst-no {
+  position: absolute; bottom: 40px; right: 4px; z-index: 3;
+  font-family: var(--font-mono); font-size: 8px; color: var(--text-dim);
+  background: rgba(0,0,0,0.55); padding: 1px 4px; border-radius: 2px;
+}
+.card .footer {
+  height: 38px; flex: none; padding: 4px 6px;
+  background: linear-gradient(180deg, transparent, rgba(0,0,0,0.42));
+  border-top: 1px solid var(--border-dim);
+  display: flex; flex-direction: column; gap: 1px;
+}
+.card .name { font-size: 10.5px; font-weight: 500; color: var(--text); line-height: 1.15; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.card .stats { display: flex; align-items: center; justify-content: space-between; font-family: var(--font-mono); font-size: 8.5px; color: var(--text-dim); }
+.card .stats .lv { color: var(--amber-soft); font-weight: 600; }
+.card .stats .pwr { color: var(--text); font-weight: 600; }
+/* 拖走后的空位 */
+.card-origin {
+  width: 108px; height: 154px; border-radius: 4px;
+  border: 1.5px dashed rgba(160,180,220,0.35);
+  background: rgba(255,255,255,0.015);
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-mono); font-size: 9px; color: var(--text-faint); letter-spacing: 0.1em;
+}
+
+/* —— 拖拽中的卡 + 路径 —— */
+.drag-card {
+  position: absolute; left: 988px; top: 448px; z-index: 30;
+  width: 108px; height: 154px;
+  transform: scale(1.08) rotate(-2.5deg);
+  border-radius: 4px; overflow: hidden;
+  border: 1px solid var(--border-hi);
+  box-shadow: 0 18px 44px rgba(0,0,0,0.7), 0 0 0 1px rgba(82,217,115,0.5);
+  background: var(--bg-card);
+  display: flex; flex-direction: column;
+  opacity: 0.97;
+}
+.drag-path { position: absolute; inset: 0; z-index: 29; pointer-events: none; }
+.drag-note {
+  position: absolute; left: 1006px; top: 614px; z-index: 31;
+  font-family: var(--font-mono); font-size: 9.5px; letter-spacing: 0.05em;
+  color: rgba(82,217,115,0.95);
+  background: rgba(6,20,12,0.85);
+  border: 1px solid rgba(82,217,115,0.4);
+  padding: 2px 8px; border-radius: 3px;
+  white-space: nowrap;
+}
+
+/* ============ ② 底部相位仪栏（悬浮卡片 · 高64 + 边距） ============ */
+.inst-bar {
+  position: absolute; left: 40px; top: 634px;
+  width: 1200px; height: 70px;
+  background: rgba(10, 15, 24, 0.92);
+  border: 1px solid rgba(0, 240, 255, 0.55);
+  border-radius: 12px;
+  box-shadow: 0 0 22px rgba(0, 240, 255, 0.14), 0 14px 34px rgba(0,0,0,0.55);
+  display: flex; align-items: center; gap: 8px;
+  padding: 3px 8px;
+  z-index: 20;
+}
+.inst-name { display: flex; flex-direction: column; gap: 3px; padding: 0 6px; width: 268px; flex: none; }
+.inst-name .row1 { display: flex; align-items: center; gap: 8px; }
+.inst-name .mark { width: 13px; height: 13px; position: relative; flex: none; }
+.inst-name .mark::before { content: ''; position: absolute; inset: 0; border: 1px solid var(--gold-soft); transform: rotate(45deg); }
+.inst-name .mark::after  { content: ''; position: absolute; inset: 4px; background: var(--gold-soft); transform: rotate(45deg); box-shadow: 0 0 8px var(--gold-glow); }
+.inst-name .iname { font-family: var(--font-display); font-size: 13px; font-weight: 700; letter-spacing: 0.1em; color: var(--text); }
+.inst-name .istar { font-family: var(--font-mono); font-size: 9.5px; color: var(--gold-soft); }
+.inst-name .row2 { display: flex; align-items: center; gap: 7px; }
+.energy-bar { flex: 1; height: 9px; background: var(--bg-slot-locked); border-radius: 3px; overflow: hidden; }
+.energy-bar i { display: block; height: 100%; width: 73%; background: var(--energy); border-radius: 3px; }
+.energy-num { font-family: var(--font-mono); font-size: 9.5px; color: var(--energy); font-weight: 600; }
+.inst-name .row3 { font-family: var(--font-mono); font-size: 8.5px; color: var(--text-dim); letter-spacing: 0.03em; white-space: nowrap; overflow: hidden; }
+.inst-name .row3 b { color: var(--text-mid); font-weight: 500; }
+.inst-name .row3 .rw { color: var(--violet-soft); }
+
+.auto-btn {
+  flex: none; width: 42px; height: 52px;
+  border-radius: 6px;
+  background: rgba(8, 12, 18, 0.6);
+  border: 1px solid rgba(37, 69, 99, 0.25);
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
+  color: rgba(96, 110, 132, 0.75);
+  font-family: var(--font-display); font-size: 10px; font-weight: 600; letter-spacing: 0.1em;
+}
+.auto-btn .bulb { width: 14px; height: 14px; border-radius: 50%; border: 1.5px solid rgba(96,110,132,0.6); }
+
+.slot-strip { display: flex; align-items: center; gap: 4px; flex: 1; justify-content: center; }
+.islot {
+  position: relative; flex: none;
+  width: 56px; height: 60px;
+  border-radius: 5px; overflow: hidden;
+  display: flex; flex-direction: column;
+}
+.islot .art { flex: 1; position: relative; overflow: hidden; }
+.islot .art img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.islot .txt { height: 20px; flex: none; display: flex; align-items: center; justify-content: space-between; padding: 0 4px; font-family: var(--font-mono); font-size: 7.5px; }
+.islot .txt .n { color: var(--text-mid); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 34px; }
+.islot .txt .c { color: var(--energy); font-weight: 600; }
+.islot .xbadge {
+  position: absolute; top: 1px; left: 2px; z-index: 3;
+  font-family: var(--font-mono); font-size: 8px; color: rgba(255,255,255,0.92);
+  background: rgba(0,0,0,0.55); padding: 0 3px; border-radius: 2px;
+}
+.islot .cbadge {
+  position: absolute; top: 1px; right: 2px; z-index: 3;
+  font-family: var(--font-mono); font-size: 8.5px; font-weight: 700; color: #06121b;
+  background: linear-gradient(135deg, var(--cyan), var(--cyan-soft));
+  padding: 0 3px; border-radius: 2px;
+}
+/* 绿槽（战斗卡） */
+.islot.green { background: rgba(10, 41, 20, 0.92); border: 1px solid rgba(82, 217, 115, 0.85); }
+.islot.green .txt { background: rgba(6, 22, 12, 0.9); border-top: 1px solid rgba(82,217,115,0.25); }
+/* 符文槽 */
+.islot.rune { background: rgba(36, 15, 56, 0.92); border: 1px solid rgba(191, 115, 242, 0.85); }
+.islot.rune .txt { background: rgba(20, 8, 32, 0.9); border-top: 1px solid rgba(191,115,242,0.25); }
+.islot.rune .txt .n { color: var(--violet-soft); }
+.islot.rune.empty {
+  background: rgba(20, 8, 32, 0.6);
+  border: 1.5px dashed rgba(191, 115, 242, 0.45);
+  display: flex; align-items: center; justify-content: center;
+}
+.islot.rune.empty .ph { font-family: var(--font-body); font-size: 9px; color: rgba(196, 181, 253, 0.5); letter-spacing: 0.1em; }
+/* 拖拽落点：空绿槽 · 呼吸绿框 */
+.islot.drop-target {
+  background: rgba(10, 41, 20, 0.5);
+  border: 2px solid var(--slot-green);
+  box-shadow: 0 0 14px rgba(82, 217, 115, 0.55), inset 0 0 10px rgba(82, 217, 115, 0.2);
+  display: flex; align-items: center; justify-content: center;
+  animation: dropPulse 1.2s ease-in-out infinite;
+}
+.islot.drop-target .ph { font-family: var(--font-mono); font-size: 13px; color: rgba(82,217,115,0.9); }
+@keyframes dropPulse {
+  0%, 100% { box-shadow: 0 0 10px rgba(82,217,115,0.4), inset 0 0 8px rgba(82,217,115,0.15); }
+  50%      { box-shadow: 0 0 20px rgba(82,217,115,0.75), inset 0 0 14px rgba(82,217,115,0.3); }
+}
+
+.menu-btn {
+  position: relative; flex: none;
+  width: 40px; height: 52px;
+  border-radius: 6px;
+  background: rgba(8, 12, 18, 0.85);
+  border: 1px solid rgba(0, 240, 255, 0.7);
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
+  color: var(--text-mid);
+  font-family: var(--font-display); font-size: 9.5px; font-weight: 600; letter-spacing: 0.12em;
+}
+.menu-btn .bars { display: flex; flex-direction: column; gap: 3px; }
+.menu-btn .bars i { display: block; width: 15px; height: 2px; background: var(--text-mid); border-radius: 1px; }
+.menu-btn .badge {
+  position: absolute; top: -5px; right: -5px;
+  min-width: 15px; height: 15px; border-radius: 8px;
+  background: var(--red-down); color: #fff;
+  font-family: var(--font-mono); font-size: 8.5px; font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 0 8px rgba(239,68,68,0.6);
+}
+
+/* ============ 编号标注 ① ② ============ */
+.callout {
+  position: absolute; z-index: 40;
+  display: flex; align-items: center; gap: 8px;
+  font-family: var(--font-body);
+}
+.callout .no {
+  width: 22px; height: 22px; flex: none; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-display); font-size: 13px; font-weight: 700;
+}
+.callout .tag {
+  font-size: 10.5px; letter-spacing: 0.05em; white-space: nowrap;
+  padding: 3px 9px; border-radius: 4px;
+  background: rgba(8, 12, 20, 0.92);
+  border: 1px solid var(--border);
+}
+.callout .tag b { font-family: var(--font-display); letter-spacing: 0.08em; }
+.callout .tag small { display: block; font-family: var(--font-mono); font-size: 8px; color: var(--text-dim); letter-spacing: 0.04em; margin-top: 1px; }
+.callout.amber .no { background: rgba(245,158,11,0.15); border: 1.5px solid var(--amber); color: var(--amber-soft); box-shadow: 0 0 12px var(--amber-glow); }
+.callout.amber .tag { border-color: rgba(245,158,11,0.45); }
+.callout.amber .tag b { color: var(--amber-soft); }
+.callout.cyan .no { background: rgba(6,182,212,0.15); border: 1.5px solid var(--cyan-soft); color: var(--cyan-soft); box-shadow: 0 0 12px var(--cyan-glow); }
+.callout.cyan .tag { border-color: rgba(34,211,238,0.45); }
+.callout.cyan .tag b { color: var(--cyan-soft); }
+.co-1 { left: 425px; top: 33px; }
+.co-2 { left: 40px; top: 594px; }
+
+/* ============ 页脚图例 ============ */
+.legend { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; margin-top: 18px; }
+.rule {
+  border: 1px solid var(--border-dim);
+  border-radius: 8px;
+  background: rgba(255,255,255,0.015);
+  padding: 14px 16px;
+}
+.rule .r-head { display: flex; align-items: center; gap: 9px; margin-bottom: 9px; }
+.rule .r-no {
+  width: 20px; height: 20px; border-radius: 50%; flex: none;
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-display); font-size: 12px; font-weight: 700;
+}
+.rule .r-title { font-family: var(--font-display); font-size: 14px; font-weight: 700; letter-spacing: 0.1em; }
+.rule.keep  .r-no { background: rgba(52,211,153,0.12); border: 1.5px solid var(--green-up); color: var(--green-up); }
+.rule.keep  .r-title { color: var(--green-up); }
+.rule.hide  .r-no { background: rgba(239,68,68,0.1); border: 1.5px solid var(--red-down); color: #ff8d86; }
+.rule.hide  .r-title { color: #ff8d86; }
+.rule.why   .r-no { background: rgba(6,182,212,0.12); border: 1.5px solid var(--cyan-soft); color: var(--cyan-soft); }
+.rule.why   .r-title { color: var(--cyan-soft); }
+.rule ul { list-style: none; display: flex; flex-direction: column; gap: 5px; }
+.rule li { font-size: 12px; color: var(--text-mid); line-height: 1.5; padding-left: 14px; position: relative; }
+.rule li::before { content: '·'; position: absolute; left: 2px; color: var(--text-faint); font-weight: 700; }
+.rule li code { font-family: var(--font-mono); font-size: 10.5px; color: var(--ice, #99ddff); background: rgba(255,255,255,0.04); padding: 0 4px; border-radius: 3px; }
+.rule li b { color: var(--text); font-weight: 500; }
+
+.foot-note {
+  margin-top: 14px; padding: 10px 16px;
+  border-left: 2px solid rgba(245,158,11,0.5);
+  background: rgba(245,158,11,0.04);
+  border-radius: 0 6px 6px 0;
+  font-size: 11.5px; color: var(--text-dim); line-height: 1.7;
+}
+.foot-note b { color: var(--text-mid); font-weight: 500; }
+.foot-note code { font-family: var(--font-mono); font-size: 10.5px; color: #99ddff; }
+</style>
+</head>
+<body>
+<div class="sheet">
+
+  <!-- 页头 -->
+  <div class="sheet-head">
+    <div class="brand">
+      <div class="brand-mark"></div>
+      <div class="brand-title">打开背包 · 目标状态<span class="sub">PHASE WAR · UI SPEC</span></div>
+    </div>
+    <div class="head-chips">
+      <div class="hchip">视口 1280×720 · 真实比例</div>
+      <div class="hchip">面板 1180×560</div>
+      <div class="hchip hot">屏幕上只保留 ① 背包 + ② 相位仪栏</div>
+    </div>
+  </div>
+
+  <!-- 游戏画面 -->
+  <div class="stage-wrap">
+  <div class="stage">
+    <div class="corner tl"></div><div class="corner tr"></div>
+    <div class="corner bl"></div><div class="corner br"></div>
+
+    <div class="game">
+      <!-- 战场背景（压暗） -->
+      <div class="battlefield">
+        <div class="terrain"></div>
+        <div class="ridge"></div>
+        <div class="dim"></div>
+      </div>
+
+      <!-- 被隐藏的 HUD（幽灵区） -->
+      <div class="ghost top-hud">
+        <div class="g-x"></div>
+        <div class="g-tag"><b>BattleTopStatusBar / BattleLogBar</b> 战斗顶栏·战斗日志 — 隐藏（战斗中）</div>
+      </div>
+      <div class="ghost top-res">
+        <div class="g-x"></div>
+        <div class="g-tag"><b>TopHudBar</b> 顶部资源栏 — 隐藏</div>
+      </div>
+      <div class="ghost func-bar">
+        <div class="g-x"></div>
+        <div class="g-tag"><b>BottomFunctionBar</b> 功能按钮抽屉 — 隐藏</div>
+      </div>
+
+      <!-- ① 背包面板 -->
+      <div class="bp-panel">
+        <div class="bp-title">
+          <div class="title-mark"></div>
+          <div class="t-name">背包</div>
+          <div class="t-sub">BACKPACK</div>
+          <div class="t-meta">战斗卡 <b>31</b> · 改造 8 · 符文 12 · 相位仪 3/68</div>
+          <div class="t-close">✕</div>
+        </div>
+        <div class="bp-tabs">
+          <div class="bp-tab on" style="color:var(--amber-soft)"><span class="dot" style="background:var(--amber)"></span>战斗卡<span class="cnt">31</span></div>
+          <div class="bp-tab"><span class="dot" style="background:var(--cyan-soft)"></span>改造<span class="cnt">8</span></div>
+          <div class="bp-tab"><span class="dot" style="background:var(--violet-soft)"></span>符文<span class="cnt">12</span></div>
+          <div class="bp-tab"><span class="dot" style="background:var(--gold-soft)"></span>相位仪<span class="cnt">3/68</span></div>
+          <div class="bp-tab"><span class="dot" style="background:#8090a8"></span>情报<span class="cnt">5</span></div>
+        </div>
+        <div class="bp-tools">
+          <div class="search"><span>⌕</span>搜索卡牌…</div>
+          <div class="chips">
+            <div class="chip on">全部</div>
+            <div class="chip" style="color:var(--kind-light)">步兵</div>
+            <div class="chip" style="color:var(--kind-armor)">装甲</div>
+            <div class="chip" style="color:var(--kind-support)">炮兵</div>
+            <div class="chip" style="color:var(--kind-air)">空军</div>
+            <div class="chip" style="color:var(--kind-fort)">堡垒</div>
+          </div>
+          <div class="tools-right">
+            <div class="capacity"><span class="bar"><i></i></span>31 / 50</div>
+            <div class="sorter">战力 ↓</div>
+          </div>
+        </div>
+
+        <div class="bp-content">
+          <div class="bp-grid">
+            <!-- 第一行：第 1 格被拖走 -->
+            <div class="card-origin">拖拽中…</div>
+
+            <div class="card r-rare"><div class="strip"></div>
+              <div class="art"><img src="../../assets/card_icons/player/ww1_inf_mp18_x.png" alt=""><span class="kind-tag k-light">步</span><span class="cost">2</span><span class="inst-no">#3</span></div>
+              <div class="footer"><div class="name">MP18 突击队</div><div class="stats"><span class="lv">Lv4</span><span>HP195</span><span class="pwr">24</span></div></div>
+            </div>
+            <div class="card r-common"><div class="strip"></div>
+              <div class="art"><img src="../../assets/card_icons/player/ww1_sup_ford_ambulance.png" alt=""><span class="kind-tag k-support">援</span><span class="cost">1</span><span class="inst-no">#1</span></div>
+              <div class="footer"><div class="name">福特 T 型战地救护车</div><div class="stats"><span class="lv">Lv2</span><span>HP140</span><span class="pwr">18</span></div></div>
+            </div>
+            <div class="card r-common"><div class="strip"></div>
+              <div class="art"><img src="../../assets/card_icons/player/vis_player_001.png" alt=""><span class="kind-tag k-light">步</span><span class="cost">1</span><span class="inst-no">#2</span></div>
+              <div class="footer"><div class="name">毛瑟步枪班</div><div class="stats"><span class="lv">Lv3</span><span>HP150</span><span class="pwr">16</span></div></div>
+            </div>
+            <div class="card r-rare"><div class="strip"></div>
+              <div class="art"><img src="../../assets/card_icons/player/vis_player_005.png" alt=""><span class="kind-tag k-support">援</span><span class="cost">2</span><span class="inst-no">#1</span></div>
+              <div class="footer"><div class="name">81mm迫击炮组</div><div class="stats"><span class="lv">Lv3</span><span>HP139</span><span class="pwr">28</span></div></div>
+            </div>
+            <div class="card r-rare"><div class="strip"></div>
+              <div class="art"><img src="../../assets/card_icons/player/ww2_inf_kar98k.png" alt=""><span class="kind-tag k-light">步</span><span class="cost">2</span><span class="inst-no">#1</span></div>
+              <div class="footer"><div class="name">毛瑟 Kar98k 狙击组</div><div class="stats"><span class="lv">Lv5</span><span>HP168</span><span class="pwr">31</span></div></div>
+            </div>
+            <div class="card r-rare"><div class="strip"></div>
+              <div class="art"><img src="../../assets/card_icons/player/ww2_arm_garand_para.png" alt=""><span class="kind-tag k-light">步</span><span class="cost">3</span><span class="inst-no">#2</span></div>
+              <div class="footer"><div class="name">M1 加兰德伞兵班</div><div class="stats"><span class="lv">Lv4</span><span>HP205</span><span class="pwr">33</span></div></div>
+            </div>
+            <div class="card r-rare"><div class="strip"></div>
+              <div class="art"><img src="../../assets/card_icons/player/ww2_arty_hummel.png" alt=""><span class="kind-tag k-support">援</span><span class="cost">4</span><span class="inst-no">#1</span></div>
+              <div class="footer"><div class="name">黄蜂 Hummel 自行火炮</div><div class="stats"><span class="lv">Lv2</span><span>HP240</span><span class="pwr">52</span></div></div>
+            </div>
+            <div class="card r-epic"><div class="strip"></div>
+              <div class="art"><img src="../../assets/card_icons/player/vis_player_002.png" alt=""><span class="kind-tag k-armor">甲</span><span class="cost">5</span><span class="inst-no">#1</span></div>
+              <div class="footer"><div class="name">虎式坦克</div><div class="stats"><span class="lv">Lv1</span><span>HP420</span><span class="pwr">88</span></div></div>
+            </div>
+            <div class="card r-rare"><div class="strip"></div>
+              <div class="art"><img src="../../assets/card_icons/player/ww2_arty_pak40.png" alt=""><span class="kind-tag k-support">援</span><span class="cost">3</span><span class="inst-no">#1</span></div>
+              <div class="footer"><div class="name">PaK 40 反坦克炮组</div><div class="stats"><span class="lv">Lv3</span><span>HP160</span><span class="pwr">36</span></div></div>
+            </div>
+
+            <!-- 第二行 -->
+            <div class="card r-common"><div class="strip"></div>
+              <div class="art"><img src="../../assets/card_icons/player/cold_arm_p18.png" alt=""><span class="kind-tag k-support">援</span><span class="cost">2</span><span class="inst-no">#1</span></div>
+              <div class="footer"><div class="name">P-18 雷达警戒车</div><div class="stats"><span class="lv">Lv2</span><span>HP210</span><span class="pwr">20</span></div></div>
+            </div>
+            <div class="card r-rare"><div class="strip"></div>
+              <div class="art"><img src="../../assets/card_icons/player/cold_arty_brem1.png" alt=""><span class="kind-tag k-armor">甲</span><span class="cost">3</span><span class="inst-no">#1</span></div>
+              <div class="footer"><div class="name">BREM-1 装甲抢修车</div><div class="stats"><span class="lv">Lv3</span><span>HP330</span><span class="pwr">30</span></div></div>
+            </div>
+            <div class="card r-rare"><div class="strip"></div>
+              <div class="art"><img src="../../assets/card_icons/player/cold_sup_bmp1_x.png" alt=""><span class="kind-tag k-armor">甲</span><span class="cost">3</span><span class="inst-no">#2</span></div>
+              <div class="footer"><div class="name">BMP-1 步兵战车·改</div><div class="stats"><span class="lv">Lv4</span><span>HP345</span><span class="pwr">44</span></div></div>
+            </div>
+            <div class="card r-epic"><div class="strip"></div>
+              <div class="art"><img src="../../assets/card_icons/player/mod_arm_himars.png" alt=""><span class="kind-tag k-support">援</span><span class="cost">5</span><span class="inst-no">#1</span></div>
+              <div class="footer"><div class="name">HIMARS 火箭炮组</div><div class="stats"><span class="lv">Lv2</span><span>HP280</span><span class="pwr">76</span></div></div>
+            </div>
+            <div class="card r-epic"><div class="strip"></div>
+              <div class="art"><img src="../../assets/card_icons/player/mod_inf_patriot.png" alt=""><span class="kind-tag k-support">援</span><span class="cost">4</span><span class="inst-no">#1</span></div>
+              <div class="footer"><div class="name">爱国者 PAC-3 发射车</div><div class="stats"><span class="lv">Lv1</span><span>HP300</span><span class="pwr">70</span></div></div>
+            </div>
+            <div class="card r-rare"><div class="strip"></div>
+              <div class="art"><img src="../../assets/card_icons/player/mod_sup_growler.png" alt=""><span class="kind-tag k-air">空</span><span class="cost">4</span><span class="inst-no">#1</span></div>
+              <div class="footer"><div class="name">EA-18G 电子战小组</div><div class="stats"><span class="lv">Lv3</span><span>HP260</span><span class="pwr">48</span></div></div>
+            </div>
+            <div class="card r-rare"><div class="strip"></div>
+              <div class="art"><img src="../../assets/card_icons/player/fut_arm_hk07.png" alt=""><span class="kind-tag k-armor">甲</span><span class="cost">3</span><span class="inst-no">#3</span></div>
+              <div class="footer"><div class="name">HK-07 量产机兵</div><div class="stats"><span class="lv">Lv5</span><span>HP380</span><span class="pwr">58</span></div></div>
+            </div>
+            <div class="card r-epic"><div class="strip"></div>
+              <div class="art"><img src="../../assets/card_icons/player/fut_arty_hel30.png" alt=""><span class="kind-tag k-support">援</span><span class="cost">4</span><span class="inst-no">#1</span></div>
+              <div class="footer"><div class="name">HEL-30 激光炮阵列</div><div class="stats"><span class="lv">Lv2</span><span>HP290</span><span class="pwr">72</span></div></div>
+            </div>
+            <div class="card r-epic"><div class="strip"></div>
+              <div class="art"><img src="../../assets/card_icons/player/fut_inf_neural.png" alt=""><span class="kind-tag k-light">步</span><span class="cost">3</span><span class="inst-no">#2</span></div>
+              <div class="footer"><div class="name">神经接口突击兵</div><div class="stats"><span class="lv">Lv3</span><span>HP310</span><span class="pwr">62</span></div></div>
+            </div>
+            <div class="card r-epic"><div class="strip"></div>
+              <div class="art"><img src="../../assets/card_icons/player/fut_inf_x9.png" alt=""><span class="kind-tag k-light">步</span><span class="cost">3</span><span class="inst-no">#1</span></div>
+              <div class="footer"><div class="name">X-9 猎杀者渗透组</div><div class="stats"><span class="lv">Lv4</span><span>HP295</span><span class="pwr">66</span></div></div>
+            </div>
+
+            <!-- 第三行（被面板裁切 · 可滚动暗示） -->
+            <div class="card r-rare"><div class="strip"></div>
+              <div class="art"><img src="../../assets/card_icons/player/fut_arm_sdkfz.png" alt=""><span class="kind-tag k-armor">甲</span><span class="cost">3</span><span class="inst-no">#1</span></div>
+              <div class="footer"><div class="name">Sd.Kfz.251/1 半履带车</div><div class="stats"><span class="lv">Lv2</span><span>HP320</span><span class="pwr">38</span></div></div>
+            </div>
+            <div class="card r-epic"><div class="strip"></div>
+              <div class="art"><img src="../../assets/card_icons/player/fut_arty_ssc1.png" alt=""><span class="kind-tag k-support">援</span><span class="cost">4</span><span class="inst-no">#1</span></div>
+              <div class="footer"><div class="name">SS-C-1 岸防导弹组</div><div class="stats"><span class="lv">Lv1</span><span>HP270</span><span class="pwr">68</span></div></div>
+            </div>
+            <div class="card r-rare"><div class="strip"></div>
+              <div class="art"><img src="../../assets/card_icons/player/fut_sup_nrepair.png" alt=""><span class="kind-tag k-support">援</span><span class="cost">2</span><span class="inst-no">#1</span></div>
+              <div class="footer"><div class="name">N-Repair 纳米工程车</div><div class="stats"><span class="lv">Lv3</span><span>HP250</span><span class="pwr">26</span></div></div>
+            </div>
+            <div class="card r-epic"><div class="strip"></div>
+              <div class="art"><img src="../../assets/card_icons/player/fut_attack_drone.png" alt=""><span class="kind-tag k-air">空</span><span class="cost">3</span><span class="inst-no">#2</span></div>
+              <div class="footer"><div class="name">攻击无人机</div><div class="stats"><span class="lv">Lv4</span><span>HP230</span><span class="pwr">60</span></div></div>
+            </div>
+            <div class="card r-rare"><div class="strip"></div>
+              <div class="art"><img src="../../assets/card_icons/player/fut_swarm.png" alt=""><span class="kind-tag k-air">空</span><span class="cost">2</span><span class="inst-no">#1</span></div>
+              <div class="footer"><div class="name">蜂群无人机</div><div class="stats"><span class="lv">Lv2</span><span>HP180</span><span class="pwr">34</span></div></div>
+            </div>
+            <div class="card r-common"><div class="strip"></div>
+              <div class="art"><img src="../../assets/card_icons/player/ww2_sup_gmc_truck.png" alt=""><span class="kind-tag k-support">援</span><span class="cost">1</span><span class="inst-no">#1</span></div>
+              <div class="footer"><div class="name">GMC 2.5t 补给卡车</div><div class="stats"><span class="lv">Lv2</span><span>HP190</span><span class="pwr">14</span></div></div>
+            </div>
+            <div class="card r-rare"><div class="strip"></div>
+              <div class="art"><img src="../../assets/card_icons/player/fut_sup_ps9.png" alt=""><span class="kind-tag k-support">援</span><span class="cost">2</span><span class="inst-no">#1</span></div>
+              <div class="footer"><div class="name">PS-9 相位中继站</div><div class="stats"><span class="lv">Lv1</span><span>HP220</span><span class="pwr">22</span></div></div>
+            </div>
+            <div class="card r-rare"><div class="strip"></div>
+              <div class="art"><img src="../../assets/card_icons/player/fut_nano_drone.png" alt=""><span class="kind-tag k-air">空</span><span class="cost">2</span><span class="inst-no">#1</span></div>
+              <div class="footer"><div class="name">纳米修复机</div><div class="stats"><span class="lv">Lv3</span><span>HP200</span><span class="pwr">24</span></div></div>
+            </div>
+            <div class="card r-rare"><div class="strip"></div>
+              <div class="art"><img src="../../assets/card_icons/player/vis_player_002.png" alt=""><span class="kind-tag k-armor">甲</span><span class="cost">4</span><span class="inst-no">#1</span></div>
+              <div class="footer"><div class="name">T-72坦克</div><div class="stats"><span class="lv">Lv2</span><span>HP400</span><span class="pwr">74</span></div></div>
+            </div>
+            <div class="card r-epic"><div class="strip"></div>
+              <div class="art"><img src="../../assets/card_icons/player/vis_player_015.png" alt=""><span class="kind-tag k-air">空</span><span class="cost">4</span><span class="inst-no">#1</span></div>
+              <div class="footer"><div class="name">米格-21战机</div><div class="stats"><span class="lv">Lv1</span><span>HP240</span><span class="pwr">65</span></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 拖拽中的卡：劳斯莱斯 Mk.II 装甲车 → 底栏空绿槽 -->
+      <svg class="drag-path" width="1280" height="720" viewBox="0 0 1280 720">
+        <defs>
+          <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M 0 1 L 9 5 L 0 9 z" fill="rgba(82,217,115,0.9)"></path>
+          </marker>
+        </defs>
+        <path d="M 1042 612 C 1012 648, 982 660, 944 660" fill="none" stroke="rgba(82,217,115,0.8)" stroke-width="2" stroke-dasharray="6 5" marker-end="url(#arrow)"></path>
+      </svg>
+      <div class="drag-card">
+        <div class="strip" style="height:3px;background:var(--rar-rare)"></div>
+        <div class="art" style="flex:1;position:relative;background:var(--bg-slot-locked)">
+          <img src="../../assets/card_icons/player/ww1_arm_rolls_mk2.png" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover">
+          <span class="kind-tag k-armor" style="position:absolute;top:4px;right:4px;width:15px;height:15px;border-radius:2px;background:var(--kind-armor);display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:rgba(255,255,255,0.95)">甲</span>
+          <span class="cost" style="position:absolute;top:5px;left:4px;width:20px;height:20px;background:linear-gradient(135deg,var(--cyan),var(--cyan-soft));clip-path:polygon(0 0,100% 0,100% 75%,75% 100%,0 100%);display:flex;align-items:center;justify-content:center;font-family:var(--font-mono);font-size:11px;font-weight:700;color:#06121b">3</span>
+        </div>
+        <div class="footer" style="height:38px;padding:4px 6px;border-top:1px solid var(--border-dim)">
+          <div class="name" style="font-size:10.5px;color:var(--text)">劳斯莱斯 Mk.II 装甲车</div>
+          <div class="stats" style="display:flex;justify-content:space-between;font-family:var(--font-mono);font-size:8.5px;color:var(--text-dim)"><span style="color:var(--amber-soft)">Lv3</span><span>HP309</span><span style="color:var(--text)">54</span></div>
+        </div>
+      </div>
+      <div class="drag-note">拖拽装配 · 绿框 = 可放置</div>
+
+      <!-- 编号标注 -->
+      <div class="callout amber co-1">
+        <div class="no">1</div>
+        <div class="tag"><b>背包面板</b><small>BackpackOverlay · PopupLayer — 唯一弹层</small></div>
+      </div>
+      <div class="callout cyan co-2">
+        <div class="no">2</div>
+        <div class="tag"><b>相位仪栏 · 保持可见</b><small>BottomInstrumentBar · HudLayer — 唯一常驻 HUD</small></div>
+      </div>
+
+      <!-- ② 底部相位仪栏（钢铁壁垒 8绿+4符） -->
+      <div class="inst-bar">
+        <div class="inst-name">
+          <div class="row1">
+            <div class="mark"></div>
+            <div class="iname">钢铁壁垒</div>
+            <div class="istar">★★★ 3星</div>
+          </div>
+          <div class="row2">
+            <div class="energy-bar"><i></i></div>
+            <div class="energy-num">96/132</div>
+          </div>
+          <div class="row3">相位师 军团战力 <b>8,942</b> · 5★大师 <span class="rw">| 符文:攻+15% 生+20% ×2语</span></div>
+        </div>
+
+        <div class="auto-btn"><div class="bulb"></div>自动</div>
+
+        <div class="slot-strip">
+          <div class="islot green"><div class="art"><img src="../../assets/card_icons/player/fut_inf_c96.png" alt=""></div><span class="xbadge">×2</span><span class="cbadge">1</span><div class="txt"><span class="n">毛瑟C96</span><span class="c">⬡1</span></div></div>
+          <div class="islot green"><div class="art"><img src="../../assets/card_icons/player/ww1_inf_enfield.png" alt=""></div><span class="cbadge">1</span><div class="txt"><span class="n">李-恩菲尔德</span><span class="c">⬡1</span></div></div>
+          <div class="islot green"><div class="art"><img src="../../assets/card_icons/player/cold_inf_metis.png" alt=""></div><span class="cbadge">2</span><div class="txt"><span class="n">9K111</span><span class="c">⬡2</span></div></div>
+          <div class="islot green"><div class="art"><img src="../../assets/card_icons/player/mod_sup_m4_carbine.png" alt=""></div><span class="xbadge">×3</span><span class="cbadge">2</span><div class="txt"><span class="n">M4卡宾</span><span class="c">⬡2</span></div></div>
+          <div class="islot green"><div class="art"><img src="../../assets/card_icons/player/fut_air_drone.png" alt=""></div><span class="cbadge">1</span><div class="txt"><span class="n">无人机群</span><span class="c">⬡1</span></div></div>
+          <div class="islot green"><div class="art"><img src="../../assets/card_icons/player/cold_arty_bmd1.png" alt=""></div><span class="cbadge">3</span><div class="txt"><span class="n">BMD-1</span><span class="c">⬡3</span></div></div>
+          <div class="islot green"><div class="art"><img src="../../assets/card_icons/player/ww1_sup_vickers.png" alt=""></div><span class="cbadge">2</span><div class="txt"><span class="n">维克斯.303</span><span class="c">⬡2</span></div></div>
+          <div class="islot drop-target"><span class="ph">＋</span></div>
+          <div class="islot rune"><div class="art"><img src="../../assets/runes/legendary/rune_attack_01.png" alt=""></div><div class="txt"><span class="n">攻击符文</span><span class="c">—</span></div></div>
+          <div class="islot rune"><div class="art"><img src="../../assets/runes/legendary/rune_defense_02.png" alt=""></div><div class="txt"><span class="n">防御符文</span><span class="c">—</span></div></div>
+          <div class="islot rune"><div class="art"><img src="../../assets/runes/legendary/rune_energy_03.png" alt=""></div><div class="txt"><span class="n">能量符文</span><span class="c">—</span></div></div>
+          <div class="islot rune empty"><span class="ph">符文槽</span></div>
+        </div>
+
+        <div class="menu-btn">
+          <div class="bars"><i></i><i></i><i></i></div>菜单
+          <span class="badge">3</span>
+        </div>
+      </div>
+
+    </div><!-- /game -->
+  </div><!-- /stage -->
+  </div><!-- /stage-wrap -->
+
+  <!-- 图例 -->
+  <div class="legend">
+    <div class="rule keep">
+      <div class="r-head"><div class="r-no">1</div><div class="r-title">打开背包 · 只保留两块</div></div>
+      <ul>
+        <li><b>① 背包面板</b> <code>BackpackOverlay</code>（<code>PopupLayer</code>）— 1180×560 居中，上不留顶栏</li>
+        <li><b>② 相位仪栏</b> <code>BottomInstrumentBar</code>（<code>HudLayer</code>）— 底部悬浮卡片，唯一可见 HUD</li>
+        <li>两块之间的空隙即「呼吸区」，不放任何其它元素</li>
+      </ul>
+    </div>
+    <div class="rule hide">
+      <div class="r-head"><div class="r-no">✕</div><div class="r-title">打开期间全部隐藏（关闭恢复）</div></div>
+      <ul>
+        <li><code>TopHudBar</code> 顶部资源栏</li>
+        <li><code>BattleTopStatusBar</code> / <code>BattleLogBar</code> 战斗顶栏·战斗日志（战斗中打开时）</li>
+        <li><code>BottomFunctionBar</code> 功能按钮抽屉（含菜单入口）</li>
+      </ul>
+    </div>
+    <div class="rule why">
+      <div class="r-head"><div class="r-no">2</div><div class="r-title">为什么保留相位仪栏</div></div>
+      <ul>
+        <li>装配主链路：<b>背包卡 → 拖到底部绿槽</b>，栏藏了链路就断了</li>
+        <li>松手前判定沿用红绿语义：<b>绿框可放置 / 红框禁止</b>（与批次二一致）</li>
+        <li>符文同理：符文页拖入紫色符文槽，无需再开其它面板</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="foot-note">
+    <b>示意说明</b>：布局与配色取真实值——视口 <code>1280×720</code>（project.godot）、面板 <code>1180×560</code>（backpack_panel.tscn）、底栏高 <code>64</code> 悬浮卡片样式（BU-1）、钢铁壁垒 <code>8绿+4符</code> 槽位、色板取自 <code>design_tokens.gd</code>。卡面引用 <code>assets/card_icons/player/</code> 真实游戏图（无专属图的卡按游戏同款规则回落到兵种代表图）。费用 / Lv / 战力 / 各页数量为示意数据，仅用于排版演示。
+  </div>
+
+</div>
+</body>
+</html>

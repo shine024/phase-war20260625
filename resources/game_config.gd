@@ -8,6 +8,9 @@ class_name GameConfig
 @export var default_enemy_wave_interval: float = 12.0  ## 默认敌人生成间隔
 @export var player_deploy_cooldown: float = 1.0  ## 玩家部署冷却时间
 @export var cross_row_direct_damage_mult: float = 0.70  ## v9.x: 直射武器跨行射击伤害乘区（同行全额；曲射/空射全场全额不受行约束）
+## v21 P0: 光环范围化总开关——true=战术光环（医疗/侦查/雷达/堡垒/改造光环）按槽距范围生效，
+## 指挥/载具维修恒全场；false=完整回退 v6.2 全场广播行为（判定函数短路 true）。
+@export var aura_range_enabled: bool = true
 
 ## 数值平衡
 @export_group("数值平衡")
@@ -51,6 +54,7 @@ static func get_default() -> GameConfig:
 		_default_config.default_enemy_wave_interval = 12.0
 		_default_config.player_deploy_cooldown = 1.0
 		_default_config.cross_row_direct_damage_mult = 0.70
+		_default_config.aura_range_enabled = true
 		_default_config.nano_bonus_base = 5
 		_default_config.nano_bonus_per_level = 2
 		_default_config.blueprint_drop_chance_base = 0.15

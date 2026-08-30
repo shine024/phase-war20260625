@@ -38,6 +38,7 @@ const ModifyPanelScene = preload("res://scenes/ui/modification_panel.tscn")
 const EvolvePanelScene = preload("res://scenes/ui/evolution_panel.tscn")
 const ModificationRegistry = preload("res://scripts/systems/modification_registry.gd")
 const ModEffectLabels = preload("res://scripts/ui/mod_effect_labels.gd")
+const _AuraData = preload("res://data/aura_data.gd")  # v21 P0: 光环范围标注
 const AuraData = preload("res://data/aura_data.gd")
 const EvolutionHelpers = preload("res://managers/evolution/evolution_helpers.gd")
 const ModEffects = preload("res://data/mod_effects.gd")  # v7.x: MAX_MOD_SLOTS 槽位上限权威源
@@ -798,7 +799,7 @@ func _refresh_affix_tags(card: CardResource) -> void:
 		var empty := Label.new()
 		empty.text = "无特殊词条"
 		empty.add_theme_color_override("font_color", DesignTokens.COLOR_SLATE_A70)
-		empty.add_theme_font_size_override("font_size", 12)
+		empty.add_theme_font_size_override("font_size", DesignTokens.FONT_SIZE_SMALL)
 		_affix_flow.add_child(empty)
 		return
 		for tag in tags:
@@ -810,11 +811,11 @@ func _refresh_affix_tags(card: CardResource) -> void:
 			var dot := Label.new()
 			dot.text = "●"
 			dot.add_theme_color_override("font_color", tag.color)
-			dot.add_theme_font_size_override("font_size", 12)
+			dot.add_theme_font_size_override("font_size", DesignTokens.FONT_SIZE_SMALL)
 			var txt := Label.new()
 			txt.text = tag.text
 			txt.add_theme_color_override("font_color", Color(0.85, 0.85, 0.92, 1))
-			txt.add_theme_font_size_override("font_size", 12)
+			txt.add_theme_font_size_override("font_size", DesignTokens.FONT_SIZE_SMALL)
 			row.add_child(dot)
 			row.add_child(txt)
 			_affix_flow.add_child(row)
@@ -1170,6 +1171,26 @@ func _format_unit_stats_summary(stats: UnitStats, cur_hp: float = -1.0, extra_su
 		int(stats.move_speed),
 		extra_suffix,
 	]
+
+## v21 P3-A（B1）：三攻最强维标签——战场单位详情第一行（对齐"面板第一行=元素"设计语言）。
+## 纯渲染文本，不触碰数据层。空攻值(0，阈值 0.001 与既有摘要口径一致)不参评；
+## 全 0（或无 stats）显示"无主攻"。并列时按 轻装→装甲→空中 取先者（显示语义，无战斗影响）。
+func _main_attack_dimension_line(stats: UnitStats) -> String:
+	if stats == null:
+		return "主攻维度：无主攻"
+	var best_name: String = "无主攻"
+	var best_val: float = 0.0
+	var dims: Array = [
+		["对轻装", stats.attack_light],
+		["对装甲", stats.attack_armor],
+		["对空", stats.attack_air],
+	]
+	for d in dims:
+		var v: float = float(d[1])
+		if v > 0.001 and v > best_val:
+			best_val = v
+			best_name = String(d[0])
+	return "主攻维度：%s" % best_name
 
 ## v7.x：战场单位战力后缀——敌我统一用「属性战力」口径（combat_power_from_unit_stats），
 ## 让情报面板的战力敌我可直接对比（卡牌查看模式仍用养成战力 get_current_power）。
@@ -1946,7 +1967,8 @@ func _show_enemy_construct_unit(unit: Node) -> void:
 		if legacy_wt >= 0:
 			weapon_label_text = RealWorldUnitLabels.weapon_kind_short(legacy_wt)
 	if type_label:
-		type_label.text = "相位师部署 · %s / %s" % [platform_name, weapon_label_text]
+		# v21 P3-A（B1）：详情第一行=三攻最强维标签
+		type_label.text = "%s\n相位师部署 · %s / %s" % [_main_attack_dimension_line(stats), platform_name, weapon_label_text]
 	var cur_hp: float = float(unit.get("hp")) if "hp" in unit else stats.max_hp
 	if summary_label:
 		summary_label.text = _format_unit_stats_summary(stats, cur_hp, _combat_power_suffix(stats))
@@ -2040,7 +2062,8 @@ func _show_player_unit(unit: Node) -> void:
 	# v6.5: 优先用 card.weapon_names[] 显示具体武器型号
 	var weapon_label_text: String = _build_weapon_label_text(card_res, stats)
 	if type_label:
-		type_label.text = "%s / %s" % [platform_name, weapon_label_text]
+		# v21 P3-A（B1）：详情第一行=三攻最强维标签（对齐"面板第一行=元素"设计语言）
+		type_label.text = "%s\n%s / %s" % [_main_attack_dimension_line(stats), platform_name, weapon_label_text]
 	if summary_label:
 		summary_label.text = _format_unit_stats_summary(stats, -1.0, _combat_power_suffix(stats))
 	if affix_label:
@@ -2397,7 +2420,13 @@ func _show_generic_enemy_unit(unit: Node) -> void:
 		type_text += "\n武装：%s" % weapon_text
 	else:
 		type_text += "\n武装：无"
-	if type_label: type_label.text = type_text
+	if type_label:
+		# v21 P3-A（B1）：详情第一行=三攻最强维标签（有 stats 才评；无 stats 维持原文案）
+		var _gen_stats: UnitStats = unit.stats if ("stats" in unit and unit.stats != null) else null
+		if _gen_stats != null:
+			type_label.text = "%s\n%s" % [_main_attack_dimension_line(_gen_stats), type_text]
+		else:
+			type_label.text = type_text
 	if name_label: name_label.text = display_name
 	var s2: Array = _enemy_surface_combat_stats(unit)
 	var speed_display: float = float(unit.get("speed")) if "speed" in unit else speed_val
@@ -2517,10 +2546,11 @@ func _build_aura_text(unit: Node) -> String:
 		if nm.is_empty():
 			continue
 		var desc: String = _format_aura_effect_desc(idx, star)
+		var range_txt: String = _aura_range_text(idx, star)  # v21 P0
 		if not desc.is_empty():
-			provide_lines.append("  · %s：%s" % [nm, desc])
+			provide_lines.append("  · %s（范围：%s）：%s" % [nm, range_txt, desc])
 		else:
-			provide_lines.append("  · %s" % nm)
+			provide_lines.append("  · %s（范围：%s）" % [nm, range_txt])
 
 	# ── 提供段：改造光环（本单位装了 ally_* 改造 → 给友军的 buff） ──
 	if unit.has_meta("mod_aura_summary"):
@@ -2533,7 +2563,9 @@ func _build_aura_text(unit: Node) -> String:
 				var raw: float = float(rule.get("raw", 0.0))
 				effects.append(_mod_aura_stat_desc(sf, op, raw))
 			if not effects.is_empty():
-				provide_lines.append("  · 改造光环（给予友军）：%s" % ", ".join(effects))
+				var m_range: int = _AuraData.get_mod_aura_range(summary)  # v21 P0
+				var m_txt: String = "全场" if m_range < 0 else "±%d格" % m_range
+				provide_lines.append("  · 改造光环（给予友军，范围：%s）：%s" % [m_txt, ", ".join(effects)])
 
 	# ── 受到段：改造光环（来自友军的 ally_* 改造广播） ──
 	if unit.has_meta("mod_aura_applied"):
@@ -2664,13 +2696,21 @@ func _build_enemy_aura_text(unit: Node) -> String:
 		if nm.is_empty():
 			continue
 		var desc: String = _format_aura_effect_desc(idx, star)
+		var range_txt: String = _aura_range_text(idx, star)  # v21 P0（敌方光环同样范围化）
 		if not desc.is_empty():
-			provide_lines.append("  · %s：%s" % [nm, desc])
+			provide_lines.append("  · %s（范围：%s）：%s" % [nm, range_txt, desc])
 		else:
-			provide_lines.append("  · %s" % nm)
+			provide_lines.append("  · %s（范围：%s）" % [nm, range_txt])
 	if provide_lines.is_empty():
 		return ""
 	return "\n【敌方光环】\n" + "\n".join(provide_lines)
+
+## v21 P0: 光环范围标注文本（±N 格 / 全场）——与 AuraData.aura_range_for 单一真身
+func _aura_range_text(category: int, star: int) -> String:
+	var rc: int = _AuraData.aura_range_for(category, star)
+	if rc < 0:
+		return "全场"
+	return "±%d格" % rc
 
 ## 获取同阵营友军列表（不含自身），用于查"受到的平台光环"。
 func _get_same_side_allies(unit: Node) -> Array:

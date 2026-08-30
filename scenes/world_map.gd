@@ -236,7 +236,8 @@ func _apply_floating_chrome() -> void:
 
 func _on_visibility_changed() -> void:
 	_runtime_active = is_visible_in_tree()
-	set_process(false)
+	# v23.2：方案 11 单屏需要逐帧自校验缩放（防"打开后尺寸变化没人重算→放大"）
+	set_process(_runtime_active and MAP_SCHEME == 11)
 	if _runtime_active:
 		queue_redraw()
 
@@ -484,6 +485,9 @@ func _fit_canvas_to_viewport(canvas: Control, scroll: ScrollContainer) -> void:
 	canvas.scale = Vector2(s, s)
 	canvas.position = Vector2(max(0.0, (avail.x - MAP_CANVAS_SIZE.x * s) * 0.5),
 		max(0.0, (avail.y - MAP_CANVAS_SIZE.y * s) * 0.5))
+	if OS.has_environment("WM_DEBUG_FIT"):
+		print("[WM_DEBUG] fit: scroll.size=%s → scale=%.3f pos=%s reused=%s" %
+			[avail, s, canvas.position, str(canvas != _cached_level_map_template)])
 
 ## 尺寸变化重适配（防"放大后不恢复"：面板/窗口尺寸变了自动重算）
 func _on_fit_scroll_resized() -> void:
@@ -907,7 +911,20 @@ func _get_level_occupation_safe(level: int) -> String:
 	return li.get_level_faction(level)
 
 func _process(_delta: float) -> void:
-	pass
+	# v23.2 单屏自校验：每帧比对 ScrollContainer 实际尺寸与当前缩放，
+	# 偏差超阈值立即重适配——构建期一次性的 fit 若量错/尺寸后来变化，一帧内自愈
+	if MAP_SCHEME != 11 or not _map_built:
+		return
+	var scroll := get_node_or_null("Margin/VBox/ScrollContainer") as ScrollContainer
+	var canvas := scroll.get_node_or_null("MapCanvas") as Control if scroll else null
+	if scroll == null or canvas == null or scroll.size.x <= 1.0:
+		return
+	var s: float = clampf(min(scroll.size.x / MAP_CANVAS_SIZE.x, scroll.size.y / MAP_CANVAS_SIZE.y),
+		0.30, 0.55)
+	if absf(canvas.scale.x - s) > 0.004:
+		canvas.scale = Vector2(s, s)
+		canvas.position = Vector2(max(0.0, (scroll.size.x - MAP_CANVAS_SIZE.x * s) * 0.5),
+			max(0.0, (scroll.size.y - MAP_CANVAS_SIZE.y * s) * 0.5))
 
 func _draw() -> void:
 	# v22：地图内容全部由 MapCanvas 子树绘制，根节点不再画星空/扫描线

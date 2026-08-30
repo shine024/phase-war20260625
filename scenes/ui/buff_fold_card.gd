@@ -73,7 +73,7 @@ func _build_fold_card(title: String, expanded: bool, head_bg: Color) -> Dictiona
 	# 标题按钮（点击折叠/展开）
 	var toggle := Button.new()
 	toggle.text = "%s %s" % [title, "▼" if expanded else "▶"]
-	toggle.add_theme_font_size_override("font_size", 12)
+	toggle.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
 	toggle.add_theme_color_override("font_color", Color(0.91, 0.94, 0.96, 1))
 	toggle.add_theme_color_override("font_hover_color", DT.COLOR_CYAN_TECH_SOFT)
 	toggle.alignment = HORIZONTAL_ALIGNMENT_LEFT
@@ -202,7 +202,7 @@ func _refresh_resource() -> void:
 func _make_row(text: String, color: Color) -> Label:
 	var l := Label.new()
 	l.text = text
-	l.add_theme_font_size_override("font_size", 12)
+	l.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
 	l.add_theme_color_override("font_color", color)
 	l.add_theme_color_override("font_outline_color", DT.COLOR_BACKDROP_DEEP)
 	l.add_theme_constant_override("outline_size", 2)
@@ -216,7 +216,7 @@ func _make_kv_row(key: String, val: String, val_color: Color) -> HBoxContainer:
 	hbox.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var kl := Label.new()
 	kl.text = key
-	kl.add_theme_font_size_override("font_size", 12)
+	kl.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
 	kl.add_theme_color_override("font_color", Color(0.6, 0.65, 0.72, 1))
 	kl.add_theme_color_override("font_outline_color", DT.COLOR_BACKDROP_DEEP)
 	kl.add_theme_constant_override("outline_size", 2)
@@ -225,7 +225,7 @@ func _make_kv_row(key: String, val: String, val_color: Color) -> HBoxContainer:
 	hbox.add_child(kl)
 	var vl := Label.new()
 	vl.text = val
-	vl.add_theme_font_size_override("font_size", 12)
+	vl.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
 	vl.add_theme_color_override("font_color", val_color)
 	vl.add_theme_color_override("font_outline_color", DT.COLOR_BACKDROP_DEEP)
 	vl.add_theme_constant_override("outline_size", 2)

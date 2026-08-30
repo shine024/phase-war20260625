@@ -1041,3 +1041,155 @@ static func apply_to_weapon_slots(weapon_slots: Array, modifications: Array, sou
 			result.append(WeaponResource.create_empty_slot(i))
 
 	return result
+
+# ══════════════════════════════════════════════════════════════════
+#  v21 P3-B（计划 C1 打造 + A4 首杀解锁）：账号级改造解锁集
+# ══════════════════════════════════════════════════════════════════
+## 状态归属：账号级字典 mod_unlock_state（存档根键，SaveManager v9 迁移引入）。
+## 键约定：
+##   "<mod_id>" → true            已解锁的改造模块
+##   "first_kill_<master_id>" → true  相位师 master 的"首杀已发奖"标记（防重复解锁）
+## 注意：解锁集是新增采集通道（打造/首杀），不改既有蓝图（IntelItemBag 蓝图门）安装路径。
+
+## 打造产能价（按模块稀有度；P3-B 数值定版：稀有以上约需中配档 3~15 天产能）
+const CRAFT_PRODUCTION_COST: Dictionary = {
+	"common": 60, "uncommon": 100, "rare": 180, "epic": 320, "legendary": 560,
+}
+## 打造合金价（与 P3-A 精材料产出量级对齐：中配关单场精炼合金 ~12-20）
+const CRAFT_ALLOY_COST: Dictionary = {
+	"common": 100, "uncommon": 200, "rare": 400, "epic": 800, "legendary": 1500,
+}
+
+## 账号解锁集（实例状态；SaveManager 经 save_state/load_state 持久化）
+var _mod_unlock_state: Dictionary = {}
+
+## 查询模块是否已解锁（账号级）
+func is_mod_unlocked(mod_id: String) -> bool:
+	return _mod_unlock_state.has(mod_id) and bool(_mod_unlock_state[mod_id])
+
+## 解锁一个模块（幂等；source 仅用于日志追溯）
+func unlock_mod(mod_id: String, source: String = "manual") -> bool:
+	if mod_id.is_empty():
+		return false
+	if is_mod_unlocked(mod_id):
+		return false
+	_mod_unlock_state[mod_id] = true
+	return true
+
+## 取解锁集快照（深拷贝；供存档/UI）
+func get_unlock_state() -> Dictionary:
+	return _mod_unlock_state.duplicate(true)
+
+## 覆盖式恢复解锁集（存档加载；非法输入静默回退空集）
+func load_state(data: Dictionary) -> void:
+	_mod_unlock_state.clear()
+	if data.is_empty() or not (data is Dictionary):
+		return
+	for k in data.keys():
+		if bool(data[k]):
+			_mod_unlock_state[String(k)] = true
+
+## 存档快照（SaveManager _collect_manager_state 消费）
+func save_state() -> Dictionary:
+	return _mod_unlock_state.duplicate(true)
+
+## 获取某模块的打造价 {production: int, alloy: int}（未注册模块返回空字典）
+static func get_craft_cost(mod_id: String) -> Dictionary:
+	var data: Dictionary = get_data(mod_id)
+	if data.is_empty():
+		return {}
+	var rarity: String = String(data.get("rarity", "common"))
+	return {
+		"production": int(CRAFT_PRODUCTION_COST.get(rarity, 999)),
+		"alloy": int(CRAFT_ALLOY_COST.get(rarity, 999)),
+	}
+
+## 打造（P3-B 计划 C1 的 sink 入口）：消耗 产能点 + 合金，把【未解锁】的指定模块加入账号解锁集。
+## 约束：模块必须已注册、非强化词条（source=="enhancement" 走词条强化链不进解锁集）、未解锁过。
+## resource_provider（可选注入）：持有 consume_production_points/add_production_points/consume 的
+## 资源管理器节点——smoke/测试等 --script 模式下传入 stub；缺省 null 时走
+## get_node_or_null("/root/BasicResourceManager") 常规 autoload 路径（游戏内零影响）。
+## 返回 {ok: bool, message: String, mod_id: String}
+func craft_mod(mod_id: String, resource_provider: Node = null) -> Dictionary:
+	var fail := func(msg: String) -> Dictionary:
+		return {"ok": false, "message": msg, "mod_id": mod_id}
+	var data: Dictionary = get_data(mod_id)
+	if data.is_empty():
+		return fail.call("未注册的改造模块：%s" % mod_id)
+	if String(data.get("source", "")) == "enhancement":
+		return fail.call("强化词条不参与打造：%s" % mod_id)
+	if is_mod_unlocked(mod_id):
+		return fail.call("该模块已解锁：%s" % mod_id)
+	var cost: Dictionary = get_craft_cost(mod_id)
+	var brm: Node = resource_provider
+	if brm == null:
+		brm = get_node_or_null("/root/BasicResourceManager")
+	if brm == null or not brm.has_method("consume_production_points"):
+		return fail.call("资源管理器不可用")
+	if not brm.consume_production_points(int(cost.get("production", 0))):
+		return fail.call("产能点不足（需 %d）" % int(cost.get("production", 0)))
+	if brm.has_method("can_afford") and not brm.can_afford("alloy", int(cost.get("alloy", 0))):
+		# 合金不足：回滚已扣产能（事务原子性——两资源要么都扣要么都不扣）
+		brm.add_production_points(int(cost.get("production", 0)))
+		return fail.call("合金不足（需 %d）" % int(cost.get("alloy", 0)))
+	brm.consume("alloy", int(cost.get("alloy", 0)))
+	unlock_mod(mod_id, "craft")
+	return {"ok": true, "message": "打造完成：%s" % String(data.get("name", mod_id)), "mod_id": mod_id}
+
+## 相位师首杀解锁（P3-B 计划 A4，GameManager._grant_phase_master_victory_reward 调用）。
+## 规则：每位相位师（master_id）只有首次击杀发奖；解锁 1 个"稀有及以上"改造模块，
+## 候选按 boss era 对应兵种过滤（_pick_boss_first_kill_mod），加权随机（rare 3 / epic 2 / legendary 1）。
+## 返回 {ok, message, mod_id}
+func unlock_boss_first_kill(master_id: String, era: int) -> Dictionary:
+	var fail := func(msg: String) -> Dictionary:
+		return {"ok": false, "message": msg, "mod_id": ""}
+	if master_id.is_empty():
+		return fail.call("相位师 id 为空")
+	var marker := "first_kill_" + master_id
+	if _mod_unlock_state.has(marker):
+		return fail.call("该相位师首杀奖励已发放")
+	_mod_unlock_state[marker] = true  # 先记首杀标记（即使候选池空也不重复触发）
+	var picked := _pick_boss_first_kill_mod(era)
+	if picked.is_empty():
+		return fail.call("该时代无可用候选模块（稀有以上已全部解锁）")
+	unlock_mod(picked, "boss_first_kill")
+	return {"ok": true, "message": "首杀解锁：%s" % picked, "mod_id": picked}
+
+## 首杀候选选择（规则见 unlock_boss_first_kill）：
+## 池 = 未解锁 & rarity ∈ [rare, epic, legendary] & 非强化词条 & applicable_types 与
+## boss 时代对应兵种相交。era→兵种映射：era0 一战以轻装/装甲为主 [0,1]；
+## era1 加支援 [0,1,2]；era2 加堡垒 [0,1,2,4]；era3/4 全兵种（含空中 [3]）。
+static func _pick_boss_first_kill_mod(era: int) -> String:
+	_ensure_initialized()
+	var era_kinds: Array = [0, 1]
+	match era:
+		1: era_kinds = [0, 1, 2]
+		2: era_kinds = [0, 1, 2, 4]
+		3, 4: era_kinds = [0, 1, 2, 3, 4]
+		_: era_kinds = [0, 1]
+	var weighted: Array = []
+	for mod_id in _flat_index.keys():
+		var data: Dictionary = _flat_index[mod_id]
+		if String(data.get("source", "")) == "enhancement":
+			continue
+		var rarity: String = String(data.get("rarity", "common"))
+		var w: int = 0
+		match rarity:
+			"rare": w = 3
+			"epic": w = 2
+			"legendary": w = 1
+		if w == 0:
+			continue
+		var applicable: Array = data.get("applicable_types", []) as Array
+		var kind_match: bool = false
+		for k in applicable:
+			if era_kinds.has(int(k)):
+				kind_match = true
+				break
+		if not kind_match:
+			continue
+		for _i in range(w):
+			weighted.append(String(mod_id))
+	if weighted.is_empty():
+		return ""
+	return weighted[randi() % weighted.size()]

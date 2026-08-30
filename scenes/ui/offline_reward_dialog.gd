@@ -6,16 +6,19 @@ class_name OfflineRewardDialog
 
 signal claimed(rewards: Dictionary)
 
-const _BG_PANEL := Color(0.03, 0.05, 0.10, 0.98)
-const _BORDER := Color(0, 0.65, 1, 0.4)
-const _ACCENT := Color(0, 0.94, 0.7, 1.0)
-const _TEXT := Color(0.8, 0.88, 1.0, 0.95)
-const _TEXT_DIM := Color(0.6, 0.7, 0.85, 0.8)
-const _BTN_BG := Color(0, 0.5, 0.38, 1.0)
+# v23.6.1：色板收口到 DesignTokens（值原样，与 afk_settlement_dialog 共源）；
+# _CARD_* 为本面板独有，保留本地
+const _BORDER := DT.COLOR_DIALOG_BORDER
+const _ACCENT := DT.COLOR_ACCENT_MINT
+const _TEXT := DT.COLOR_TEXT_INFO
+const _TEXT_DIM := DT.COLOR_TEXT_INFO_DIM
 const _CARD_BG := Color(0.06, 0.12, 0.20, 0.55)
 const _CARD_BORDER := Color(0, 0.65, 1, 0.18)
+const _BG_PANEL := DT.COLOR_DIALOG_BG
 
 const _BasicResources = preload("res://data/basic_resources.gd")
+const _PanelStyles = preload("res://scripts/ui/panel_styles.gd")   # v23.6.1 按钮工厂
+const DT = preload("res://resources/design_tokens.gd")
 
 var _result: Dictionary = {}
 
@@ -70,7 +73,7 @@ func _build_ui() -> void:
 	var title := Label.new()
 	title.text = "欢迎回来"
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	title.add_theme_font_size_override("font_size", 20)
+	title.add_theme_font_size_override("font_size", DT.FONT_SIZE_LARGE)
 	title.add_theme_color_override("font_color", _ACCENT)
 	vbox.add_child(title)
 
@@ -92,7 +95,7 @@ func _build_ui() -> void:
 	var rew_title := Label.new()
 	rew_title.text = "获得奖励"
 	rew_title.add_theme_color_override("font_color", _TEXT)
-	rew_title.add_theme_font_size_override("font_size", 16)
+	rew_title.add_theme_font_size_override("font_size", DT.FONT_SIZE_MEDIUM)
 	vbox.add_child(rew_title)
 
 	# 货币 + 战利品统一进 3 列卡片网格（5 种货币 + 战利品最多 6 个 = 整 2 行）
@@ -126,21 +129,16 @@ func _build_ui() -> void:
 		var lvl_text: String = "第 %d 关" % first_l if first_l == last_l else "第 %d-%d 关" % [first_l, last_l]
 		grid.add_child(_make_reward_card("解锁关卡", lvl_text, true))
 
-	# 领取按钮
+	# 领取按钮（v23.6.1：走 PanelStyles 工厂四态，替换手写单态）
 	vbox.add_child(_make_separator())
 	var claim_btn := Button.new()
 	claim_btn.text = "领取"
 	claim_btn.custom_minimum_size = Vector2(0, 42)
-	var btn_style := StyleBoxFlat.new()
-	btn_style.bg_color = _BTN_BG
-	btn_style.border_color = _ACCENT
-	btn_style.set_border_width_all(1)
-	btn_style.set_corner_radius_all(8)
-	claim_btn.add_theme_stylebox_override("normal", btn_style)
-	claim_btn.add_theme_stylebox_override("hover", btn_style)
-	claim_btn.add_theme_stylebox_override("pressed", btn_style)
+	var claim_styles: Dictionary = _PanelStyles.make_button_styles(_ACCENT, "solid")
+	for key in ["normal", "hover", "pressed", "disabled", "focus"]:
+		claim_btn.add_theme_stylebox_override(key, claim_styles[key])
 	claim_btn.add_theme_color_override("font_color", Color.WHITE)
-	claim_btn.add_theme_font_size_override("font_size", 16)
+	claim_btn.add_theme_font_size_override("font_size", DT.FONT_SIZE_MEDIUM)
 	claim_btn.pressed.connect(_on_claim)
 	vbox.add_child(claim_btn)
 
@@ -186,14 +184,14 @@ func _make_reward_card(label_text: String, value, is_text: bool = false) -> Pane
 	var name_lbl := Label.new()
 	name_lbl.text = label_text
 	name_lbl.add_theme_color_override("font_color", _TEXT_DIM)
-	name_lbl.add_theme_font_size_override("font_size", 12)
+	name_lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
 	var amt_lbl := Label.new()
 	if is_text or value is String:
 		amt_lbl.text = String(value)
-		amt_lbl.add_theme_font_size_override("font_size", 16)
+		amt_lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_MEDIUM)
 	else:
 		amt_lbl.text = "×%d" % int(value)
-		amt_lbl.add_theme_font_size_override("font_size", 16)
+		amt_lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_MEDIUM)
 	amt_lbl.add_theme_color_override("font_color", _ACCENT)
 	amt_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	cvb.add_child(name_lbl)

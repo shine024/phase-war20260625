@@ -109,9 +109,15 @@ const STEALTH_GRACE_DAMAGE_MUL: float = 0.6
 const FAST_INTERVAL_MULT: float = 0.80
 # v8 批次2: 精英词缀系统
 const EnemyAffixes = preload("res://data/enemy_affixes.gd")
+# v21 P3-A: 敌方精英同源词条（档位 2/3 挂玩家池词条）
+const EnemyLoadoutTiers = preload("res://data/enemy_loadout_tiers.gd")
 # 已应用的词缀列表（供 _do_attack 触发机制型效果 + UI 显示）
 var _elite_affixes: Array = []
 var _elite_spawn_type: String = "normal"
+# v21 P3-A: 同源词条上下文（_apply_archetype_stats 时从 ctx 抓取，setup 末尾消费）
+var _loadout_tier: int = 1        # 本关配装档位（EnemyLoadoutTiers 1/2/3）
+var _loadout_level_id: int = 1    # 关卡 id（seed 组成部分）
+var _loadout_affix: Dictionary = {}  # 已挂的同源词条（空=未挂；只作显示/追溯，效果已入 stats）
 
 ## 缓存 load()：同一资源路径只加载一次，后续从内存字典取
 func _cached_load(path: String, type_hint: int = -1) -> Resource:
@@ -177,6 +183,9 @@ func setup(_is_player: bool, p_wave: int, p_archetype_id: String = "basic_infant
 	# 在 _apply_archetype_stats 设置基础值后、max_hp=hp 前统一应用倍率
 	_apply_ng_plus_scaling()
 	max_hp = hp
+	# v21 P3-A: 敌方精英同源词条——在全部既有乘区（档位/波次/势力/难度/二周目）之后挂载，
+	# 走 EnemyAffixes.apply_to_stats 既有消费路径，挂后同步裸字段。
+	_apply_loadout_affix_if_eligible()
 	add_to_group("enemy_units")
 	var cs := get_node_or_null("CollisionShape2D")
 	if cs:
@@ -307,6 +316,9 @@ func _apply_archetype_stats() -> void:
 	_cached_archetype_cfg = cfg  # 性能优化：缓存配置
 	_visual_scale_archetype_id = archetype_id
 	var ctx = EnemyStatResolver.make_default_context(wave_index)
+	# v21 P3-A: 抓取档位/关卡 id 供同源词条判定（ctx 与 resolve 同源，不重复推算）
+	_loadout_tier = int(ctx.tier)
+	_loadout_level_id = int(ctx.level)
 	var r: Dictionary = EnemyStatResolver.resolve_classic_enemy(archetype_id, ctx)
 	hp = float(r.get("hp", 80.0))
 	attack_damage = float(r.get("attack_damage", 10.0))
@@ -456,7 +468,8 @@ func apply_elite_affixes(spawn_type: String) -> void:
 	var affixes: Array = EnemyAffixes.roll_affixes(spawn_type, null, kind_ctx, tier_ctx)
 	if affixes.is_empty():
 		return
-	_elite_affixes = affixes
+	# v21 P3-A: 追加而非覆盖——setup 阶段可能已挂同源词条（档位 2/3），保留在前
+	_elite_affixes = _elite_affixes + affixes
 	EnemyAffixes.apply_to_stats(stats, affixes)
 	# v7.x：无论 roll 到哪个词缀都同步裸字段（之前只在 max_hp 词缀命中时才同步，
 	# 导致 tier/phase_master 加成对非 max_hp 词缀的怪完全失效——spawn 后加成只改 stats
@@ -471,6 +484,41 @@ func _lookup_archetype_tier(aid: String) -> int:
 		return 0
 	var entry: Dictionary = UnifiedCardTable.get_entry(aid)
 	return int(entry.get("tier", 0))
+
+
+## v21 P3-A（计划 A2）：敌方精英同源词条——档位 2/3（中配/高配）敌人在 setup 末尾
+## 从玩家侧词条池（AffixDefinitions，AffixManager 同源定义）挂 1 条。
+## 挂载点说明（deviation 备注）：计划原挂 battle_spawn_system._apply_enemy_loadout_tier_if_normal_battle，
+## 该文件本轮只读（并行协作约束），改用等价消费点 enemy_unit.setup——它同时是
+## resolver 数值链与 EnemyAffixes.apply_to_stats 消费路径的交汇处，且 battle_spawn_system
+## 对本函数零依赖（elite/boss 的 apply_elite_affixes 在 setup 之后调用，追加不覆盖）。
+## 时序：全部既有乘区（档位/波次/势力/难度/card_level flat/二周目）之后应用 ⇒
+## 词条是"乘区之外"的独立附加层；挂后同步裸字段（血条/伤害结算与 stats 一致）。
+func _apply_loadout_affix_if_eligible() -> void:
+	if stats == null:
+		return
+	if _loadout_tier < EnemyLoadoutTiers.LOADOUT_AFFIX_MIN_TIER:
+		return  # 低配档（×1.30）不挂词条
+	# 槽位序号：同波内第 N 个符合档位条件的敌人（生成顺序确定 ⇒ seed 可复现）
+	var slot_ordinal: int = EnemyLoadoutTiers.next_loadout_slot_ordinal(wave_index)
+	var uct_tier: int = _lookup_archetype_tier(archetype_id)
+	var affix: Dictionary = EnemyLoadoutTiers.roll_loadout_affix_def(
+		_loadout_level_id, wave_index, slot_ordinal, int(stats.combat_kind), uct_tier, _loadout_tier)
+	if affix.is_empty():
+		return
+	_loadout_affix = affix
+	set_meta("loadout_affix", affix.duplicate())  # 情报/面板追溯通道
+	# 显示走既有词缀通道：card_info_panel 读 get_elite_affixes() 渲染词缀行（名称+档位色）
+	_elite_affixes.append(affix)
+	# 效果走既有消费路径：apply_to_stats 把 effect_key 写进 UnitStats 字段，
+	# enemy_unit/_do_attack、take_damage、battle_damage_system 既有分支读取。
+	EnemyAffixes.apply_to_stats(stats, [affix])
+	_sync_bare_fields_from_stats()
+
+
+## v21 P3-A: 获取已挂的同源词条（空字典=未挂；供情报/调试查询）
+func get_loadout_affix() -> Dictionary:
+	return _loadout_affix
 
 
 ## v8 批次2: 获取本单位的词缀显示信息（供 card_info_panel 显示）。
@@ -1506,6 +1554,8 @@ func take_damage(amount: float, attacker: Variant = null) -> void:
 				else:
 					pen = float((atk_stats as UnitStats).armor_penetration)
 				attacker_kind = int((atk_stats as UnitStats).combat_kind)
+				# v21 P1: 弹道重赋（gen_converted_munitions）——攻击者对轻轴转对甲轴
+				attacker_kind = AttackCalculator.convert_defense_dimension(self_kind, atk_stats, attacker_kind)
 		# v6.6 修复：防御按攻击者类型选三维维度，而非用单一 defense 字段。
 		# 修复前用 defense 单字段（多为配置旧值/5.0默认），三维 defense_light/armor/air 形同虚设，
 		# 导致高防敌人被打像没防御。与 swarm_enemy_slot.take_damage 口径对齐。
@@ -1532,6 +1582,9 @@ func take_damage(amount: float, attacker: Variant = null) -> void:
 		# v10 组合规则①：照明标记+曲射=必中（被标记目标受曲射攻击时闪避失效）
 		if dodge > 0.0 and attacker != null and ModuleEffectHandler.is_marked_for_indirect(self, attacker):
 			dodge = 0.0
+		# v21 P1: 精确制导针（gen_truestrike_pinpoint）——攻击者无视目标 50% 闪避（按比例削减）
+		if dodge > 0.0:
+			dodge = dodge * (1.0 - clampf(ModuleEffectHandler.get_attacker_dodge_ignore(attacker), 0.0, 1.0))
 		# v7.5: 传入 damage_reduction（此前全链路空转，现 resolve_hit 接入）
 		# 优先 stats.damage_reduction（改造/词条加成），叠加节点 damage_reduction（卡牌能力 debuff）
 		var dmg_red: float = 0.0
