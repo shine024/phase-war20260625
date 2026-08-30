@@ -93,6 +93,51 @@ const WEAPONS_SUPPORT: Array = [0, 4]
 
 enum UnitKind { INFANTRY, VEHICLE, TURRET, SUPPORT }
 const UNIT_KIND_LABEL: Array[String] = ["步兵", "载具", "阵地", "支援"]
+
+## v23.2 战术主题 tag 补丁表：archetype_id → 追加 tags（在 _ensure_manifest_merged 统一表覆盖段应用）。
+## 选卡依据（统一表 weapon_type 新枚举 1=曲射 / base_speed / 语义）：
+## - artillery：真实曲射/炮兵单位（炮兵阵地主题在 era1/2/4 原本零匹配）
+## - fast：高速单位（斩首渗透主题在 era0/1/2 基础池原本零匹配）
+## - stealth：潜行/侦察语义单位（渗透槽位原本仅 era4 有匹配）
+## - boss（v23.4）：末波 boss 池扩充——每时代提拔 1-2 只次级 boss，含意为之（会改变
+##   tier 分池归属：从 basic 池移入 boss 池，吃 boss 词缀/登场特效/纳米 boss 档）。
+## 注意：A 段 foe_ 前缀 id 是合并池的真实键；改动前先跑 tools/audit_level_enemy_fun.gd 验证。
+const TAG_PATCH: Dictionary = {
+	# ── artillery（炮兵阵地）──
+	"foe_ww1_arty_77mm": ["artillery"],      # 77mm野战炮（曲射）
+	"foe_ww1_arty_m81": ["artillery"],        # 81mm迫击炮组（曲射）
+	"ww2_arty_hummel": ["artillery"],         # 黄蜂自行火炮（曲射）
+	"ww2_arty_pak40": ["artillery"],          # PaK40 反坦克炮组（阵地炮）
+	"cold_arty_bmd1": ["artillery"],          # BMD-1 空降战车炮（曲射）
+	"cold_sup_bmp1_x": ["artillery"],         # BMP-1 改型炮（曲射）
+	"foe_mod_arty_m270": ["artillery"],       # M270 火箭炮（曲射）
+	"mod_arm_himars": ["artillery"],          # HIMARS 火箭炮组（曲射）
+	"mod_arty_rq7": ["artillery"],            # RQ-7 无人机导弹（曲射）
+	"fut_arty_hel30": ["artillery"],          # HEL-30 激光炮阵列
+	"fut_arty_ssc1": ["artillery"],           # SS-C-1 岸防导弹组
+	# ── fast（斩首渗透）──
+	"foe_ww1_inf_cavalry": ["fast"],          # 骑兵斥候（spd 120）
+	"foe_ww2_inf_hellcat": ["fast"],          # M18地狱猫（高速歼击车）
+	"ww2_arm_garand_para": ["fast"],          # 加兰德伞兵班（spd 95）
+	"foe_cold_inf_btr60": ["fast"],           # BTR-60 装甲车（spd 100）
+	"foe_mod_inf_technical": ["fast"],        # 皮卡武装（spd 110）
+	"mod_sup_m4_carbine": ["fast"],           # M4 卡宾特遣班（spd 105）
+	"foe_fut_inf_scout_mech": ["fast"],       # 侦察机甲
+	"fut_inf_neural": ["fast"],               # 神经接口突击兵（spd 120）
+	# ── stealth（渗透槽位）──
+	"foe_mod_inf_scout_drone": ["stealth"],   # 侦察无人机
+	"ww2_inf_kar98k": ["stealth"],            # 毛瑟狙击组
+	"fut_inf_x9": ["fast", "stealth"],        # X-9 猎杀者渗透组（spd 150）
+	# ── boss（v23.4 末波 boss 池扩充：每时代第二只"次级 boss"，从基础池提拔）──
+	# 血量对标现役 boss 的 48%~89%，roll 到坚韧(+60%hp)词缀后落位同 league；
+	# 掉落维持 frontline 8%（id 级 tier 判定），不新开 55% 卡泉——mini-boss 经济有意保守。
+	"foe_ww1_arm_ft17": ["boss"],             # FT-17（era0，340hp vs 圣沙蒙650）
+	"foe_ww2_arm_tiger": ["boss"],            # 虎式坦克（era1，576hp vs 虎王1000）
+	"foe_cold_arm_t55": ["boss"],             # T-55（era2，668hp vs 米格1400）
+	"foe_mod_arm_m1a2sep": ["boss"],          # M1A2 SEP（era3，1234hp vs 指挥中枢1800）
+	"foe_fut_arm_heavy_mech": ["boss"],       # 重装机甲（era4，2220hp vs 风暴核心2500）
+	"foe_fut_arm_nexus": ["boss"],            # 虚空领主（3158hp 终极单位——修正其混入基础波当杂兵的异常）
+}
 ## 战场视觉缩放表已迁移到 data/card_foot_anchors.gd（VISUAL_SCALE，单一真理源）。
 ## 本文件的 get_visual_scale_for_archetype 转发到 CardFootAnchors。
 ## 若你希望所有敌人都显示完整精灵动画而非蜂群几何体，保持 false。
@@ -309,6 +354,37 @@ static func _ensure_manifest_merged() -> void:
 			if unified_arch_cfg.has(num_key):
 				cfg[num_key] = unified_arch_cfg[num_key]
 		_manifest_merged[aid] = cfg
+
+	# ─────────────────────────────────────────────
+	# v23.2 主题失配修复：TAG_PATCH + infantry 规则补齐（2026-08-30 审计，
+	# tools/audit_level_enemy_fun.gd）。独立于上方覆盖循环——A 段 foe_ 前缀 id
+	# 在统一表查不到（表键是裸 card_id），必须剥前缀后再查。
+	# 根因：A/B/D/E 段 manifest 行 tag 只按兵种派生（frontline/vehicle+armored/...），
+	# 真实曲射/快速/潜行单位没拿到战术主题（LevelTacticalThemes）bias 匹配所需的 tag，
+	# 导致"炮兵阵地/斩首渗透"等主题在多数时代退化为随机出兵（题面失实）。
+	# 补丁只加 artillery/fast/stealth/infantry（不影响 tier 分池/掉率/词缀）+
+	# v23.4 的显式 boss 提拔（有意改变分池，见 TAG_PATCH 表注）。
+	# ─────────────────────────────────────────────
+	for aid in _manifest_merged.keys():
+		var patch_tags: Array = TAG_PATCH.get(aid, [])
+		var lookup_id: String = aid.substr(4) if aid.begins_with("foe_") else aid
+		var uni_entry: Dictionary = UnifiedCardTable.get_entry(lookup_id)
+		if patch_tags.is_empty() and uni_entry.is_empty():
+			continue
+		var pcfg: Dictionary = _manifest_merged[aid]
+		if not patch_tags.is_empty():
+			var tags_arr: Array = pcfg.get("tags", [])
+			for pt in patch_tags:
+				if not tags_arr.has(pt):
+					tags_arr.append(pt)
+			pcfg["tags"] = tags_arr
+		# 规则补齐：统一表轻装（combat_kind 0）单位补 infantry tag（蜂群冲锋/护卫波真题面）
+		if int(uni_entry.get("combat_kind", -1)) == 0:
+			var inf_tags: Array = pcfg.get("tags", [])
+			if not inf_tags.has("infantry"):
+				inf_tags.append("infantry")
+				pcfg["tags"] = inf_tags
+		_manifest_merged[aid] = pcfg
 
 
 static func get_all_ids() -> Array:

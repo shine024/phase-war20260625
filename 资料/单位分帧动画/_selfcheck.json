@@ -1,0 +1,18 @@
+{
+ "fut_arm_sdkfz_Sd.Kfz.251-1 半履带车/idle": {
+  "anim": "idle",
+  "verdict": "PASS",
+  "keep": 22.6,
+  "bg": 77.4,
+  "left": "4/4",
+  "reason": ""
+ },
+ "fut_arm_sdkfz_Sd.Kfz.251-1 半履带车/attack": {
+  "anim": "attack",
+  "verdict": "PASS",
+  "keep": 22.6,
+  "bg": 77.4,
+  "left": "4/4",
+  "reason": ""
+ }
+}

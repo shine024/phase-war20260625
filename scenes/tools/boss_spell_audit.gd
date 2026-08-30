@@ -25,7 +25,9 @@ const CASES: Array = [
 	{"id": "inferno", "effect": "hell_inferno", "label": "地狱烈焰·燃烧弹",
 	 "warn": 0.12, "flight": 0.25, "land": 0.58},
 	{"id": "chain", "effect": "tesla_chain", "label": "连锁闪电",
-	 "warn": 0.32, "flight": 0.55, "land": 0.85},  # v17j: warn 拍三环蓄力齐；flight 拍预电弧
+	 "warn": 0.32, "flight": 0.55, "land": 0.68},  # v17j: warn 拍三环蓄力齐；flight 拍预电弧。
+	                                               # v20.30: land 0.85→0.68——环/预电弧/爆图在 ~0.85s
+	                                               # 全部淡出，旧 land 帧只剩空场（AI 2/10 的主因）。
 	{"id": "single", "effect": "god_weapon_single", "label": "精准打击·神罚光矛",
 	 "warn": 0.12, "flight": 0.18, "land": 0.42},  # v17g: 0.48→0.42 激光峰值
 	{"id": "summon", "effect": "forge_summon", "label": "召唤援军·传送门",
@@ -33,6 +35,7 @@ const CASES: Array = [
 ]
 
 var _engine: RefCounted
+var _boss_mock: Node2D
 var _manifest: Array = []
 var _frame_idx: int = 0
 var _total_frames: int = 0
@@ -44,7 +47,15 @@ func _ready() -> void:
 	_build_stage()
 	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(SHOT_DIR))
 	_engine = SkillEngine.new()
-	_engine.setup(self, self)  # driver=self（mock），battlefield=self
+	# v20.29: mock boss 用独立 Node2D 摆到 BOSS_POS——原 driver=self 且根节点在原点，
+	# _get_driver_pos() 恒回 (0,0)：主弹落点/传送门/闪电爆发等 boss 位效果全部炸在左上角，
+	# 历史 boss 位截图与 AI 评分都是错位样本（目标侧效果不受影响，故此前未察觉）。
+	# 不能直接挪根节点（会带着参考框/假目标一起移）。plain Node2D 无 _flash_body_on_buff，
+	# 施法闪光经 has_method 守卫安全跳过。
+	_boss_mock = Node2D.new()
+	_boss_mock.position = BOSS_POS
+	add_child(_boss_mock)
+	_engine.setup(_boss_mock, self)  # driver=mock boss（BOSS_POS），battlefield=self
 	_total_frames = CASES.size() * 2
 	for case in CASES:
 		_run_case(case)
@@ -150,7 +161,9 @@ func _capture_at(delay: float, file_name: String, case: Dictionary, stage_name: 
 	})
 
 func _settle() -> void:
-	await get_tree().create_timer(1.2).timeout  # 等演出全部消散（爆炸 0.9s + 烟柱 2.5s→截走主要的即可）
+	# v20.30: 1.2→2.6s——spawn_smoke_column 发射 2.4s + 粒子寿命，旧 settle 让上一案
+	# （如 inferno）的烟柱串进下一案截图（chain_after 2/10 的"红色烟雾团"即此）。
+	await get_tree().create_timer(2.6).timeout
 
 func _spec_for(case_id: String, stage: String) -> String:
 	match case_id:

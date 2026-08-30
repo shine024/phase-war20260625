@@ -27,8 +27,13 @@ BASE_UPSCALE = {"dawn_dusk_continent": (2560, 1440)}
 SLICES = {"debris_sheet": (4, 2)}  # (cols, rows)
 # 连通域切片表（件数上限，取最大连通域）
 COMPONENT_SHEETS = {"wreck_sheet_land": 8}
-# 圆形蒙版表：{名: (圆心相对cx,cy, 半径占边长比, 羽化px)}
-CIRCLE_MASKS = {"black_sun": (0.5, 0.5, 0.44, 14)}
+# 圆形蒙版表：{名: (圆心相对cx,cy, 半径占边长比, 羽化px[, auto_dark])}
+# auto_dark=True：自动检测图内黑盘实测圆心/半径（黑盘主体常不满幅，固定比例会切进
+# 盘外白底），×1.15 收进外晕；检测失败回退固定比例。
+CIRCLE_MASKS = {"black_sun": (0.5, 0.5, 0.44, 14, True)}
+# 工作文件忽略清单：generated/ 下的非部署素材（中间稿/候选图），不进 assets
+# （前缀匹配：大地图* 为用户工作稿；candidates/工作子目录由扩展名过滤天然跳过）
+IGNORE_PREFIXES = ("大地图",)
 VOID_TARGET_W = 2560
 
 
@@ -139,14 +144,33 @@ def component_split(im, max_items, prefix, min_area=900):
     return n
 
 
-def circle_mask(im, cx_r, cy_r, r_ratio, feather):
-    """圆形 alpha 蒙版：圆内不透明、边缘羽化、圆外全透明（用于深底圆形主体）。"""
+def detect_dark_disc(im, dark_thresh=90):
+    """检测白底图内的黑盘主体：暗像素(<thresh)包围盒 → (cx, cy, r)。无暗像素返回 None。"""
+    gray = im.convert("L")
+    mask = gray.point(lambda v: 255 if v < dark_thresh else 0)
+    bbox = mask.getbbox()
+    if bbox is None:
+        return None
+    cx = (bbox[0] + bbox[2]) / 2.0
+    cy = (bbox[1] + bbox[3]) / 2.0
+    r = max(bbox[2] - bbox[0], bbox[3] - bbox[1]) / 2.0
+    return cx, cy, r
+
+
+def circle_mask(im, cx_r, cy_r, r_ratio, feather, auto_dark=False):
+    """圆形 alpha 蒙版：圆内不透明、边缘羽化、圆外全透明（用于深底圆形主体）。
+    auto_dark：黑盘实测范围优先于固定比例（避免把盘外白底圈进贴图）。"""
     im = im.convert("RGBA")
     w, h = im.size
     mask = Image.new("L", (w, h), 0)
     d = ImageDraw.Draw(mask)
     r = r_ratio * max(w, h)
     cx, cy = w * cx_r, h * cy_r
+    if auto_dark:
+        det = detect_dark_disc(im)
+        if det is not None:
+            cx, cy, r = det[0], det[1], det[2] * 1.15
+            print(f"        黑盘实测: 圆心({cx:.0f},{cy:.0f}) 半径{det[2]:.0f} → 蒙版半径{r:.0f}")
     d.ellipse([cx - r, cy - r, cx + r, cy + r], fill=255)
     mask = mask.filter(ImageFilter.GaussianBlur(feather))
     im.putalpha(mask)
@@ -159,6 +183,8 @@ def main():
     sliced = 0
     for f in files:
         name, _ = os.path.splitext(f)
+        if any(name.startswith(p) for p in IGNORE_PREFIXES):
+            continue
         im = Image.open(os.path.join(SRC, f))
         if name in BASES:
             out = im.convert("RGB")
@@ -171,8 +197,9 @@ def main():
             out.save(os.path.join(DST, name + ".png"))
             print(f"[base ] {name:24s} {im.size[0]}x{im.size[1]} → {out.size[0]}x{out.size[1]}")
         elif name in CIRCLE_MASKS:
-            cx_r, cy_r, r_ratio, feather = CIRCLE_MASKS[name]
-            out = circle_mask(im, cx_r, cy_r, r_ratio, feather)
+            spec = CIRCLE_MASKS[name]
+            out = circle_mask(im, spec[0], spec[1], spec[2], spec[3],
+                              auto_dark=(len(spec) > 4 and bool(spec[4])))
             out.save(os.path.join(DST, name + ".png"))
             print(f"[circle] {name:23s} {im.size[0]}x{im.size[1]} → {out.size[0]}x{out.size[1]} RGBA")
         elif name in SLICES:

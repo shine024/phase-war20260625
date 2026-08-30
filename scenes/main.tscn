@@ -436,7 +436,7 @@ grow_vertical = 2
 
 [node name="WorldMapPanel" type="Control" parent="PopupLayer/MapOverlay/CenterContainer"]
 layout_mode = 2
-custom_minimum_size = Vector2(1200, 600)
+custom_minimum_size = Vector2(1264, 688)
 script = ExtResource("30_world_map_panel")
 
 [node name="SettingsOverlay" type="Control" parent="PopupLayer"]

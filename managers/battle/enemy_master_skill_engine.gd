@@ -725,11 +725,13 @@ func _play_single_target_cinematic(_effect: String, name_text: String) -> float:
 	# AI 批"光矛在屏幕顶部与锁定环空间脱节，无法建立冲向目标的因果"
 	VfxImpactFactory.spawn_shockwave(_battlefield, Vector2(tpos.x, tpos.y - 450.0), 50.0, Color(1.0, 0.9, 0.6, 0.9))
 	# v9.5: 神罚光矛从目标正上方垂直劈下（0.4s 飞行），到达时触发激光+穿甲+震屏
+	# v20.30: 弹体 80→115px——AI 基线（v20.29）批"光矛体积极小/规模感不足"（旧 80px
+	# 比 96px boss 参考框还小，读不出"神罚"体量）。内容宽 317px，115px = 0.36 缩放。
 	var spear_tex: Texture2D = _load_projectile_texture("ult_divine_spear")
 	var spear_from: Vector2 = Vector2(tpos.x, tpos.y - 450.0)  # 正上方高空
 	var captured_boss_pos: Vector2 = boss_pos
 	var captured_tpos: Vector2 = tpos
-	VfxImpactFactory.spawn_ultimate_projectile(_battlefield, spear_from, tpos, spear_tex, "vertical", 80.0, Color(1.0, 0.85, 0.5), Color(1.0, 0.85, 0.4, 0.95), 0.4,
+	VfxImpactFactory.spawn_ultimate_projectile(_battlefield, spear_from, tpos, spear_tex, "vertical", 115.0, Color(1.0, 0.85, 0.5), Color(1.0, 0.85, 0.4, 0.95), 0.4,
 		func(land_pos: Vector2):
 			if _battlefield == null or not is_instance_valid(_battlefield):
 				return

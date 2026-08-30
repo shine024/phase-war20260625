@@ -4055,3 +4055,279 @@ VFX 改动提交。
 
 **待办**：`black_sun` v1 验收失败（盘心灰绿 (23,28,29)、青裂纹 0.16% 缩放后消失），
 已写 v2 重生成提示词（纯黑盘 + ≥4px 粗青裂纹 + 白底），生成后重跑部署脚本即自动切换。
+
+## v22.3 基地模式接入收口：食堂每日配给 / 信号接线 / 战区直达 / 观星台终局 P4（2026-08-28）
+
+**背景**：全项目核查基地模式（余烬要塞）接入状态，发现 1 处死键、2 个零监听信号、
+1 处半兑现入口，以及 6 项"文案承诺了但没实现"的空转功能。本轮全部收口或止血。
+
+**修复 1 食堂 AFK 死键 → 每日配给**（玩家可感知的"花了资源没回报"）：
+- 病根：`afk_panel` 所有按钮空守卫静默 return（`_afk_manager == null`），而
+  `AFKModeManager` 只在 `main.gd:852-858` 创建注入——基地嵌入实例永远拿不到
+- `bunker_manager.gd`：新增 `claim_daily_ration()`/`is_ration_claimed_today()`
+  （每天一次：纳米 120 + 合金 40，量锚定日均收入，食堂造价约两天回本；
+  `ration_day` 随存档持久化，睡觉推进天数自动重置）
+- `bunker_room_panel.gd`：食堂按钮换"领取每日配给"（已领取态显示绿字提示）；
+  `EMBEDDED_PANELS` 删除死配置 "afk"（AFK 收益入口留在战区主界面）
+
+**修复 2 两个零监听信号接线**（`bunker_main._connect_signals`）：
+- `bunker_day_ended` → HUD 日/精神/资源 + 光点精神档刷新（原先 `_on_sleep` 直调，
+  信号纯摆设；现改由信号处理器统一承担，消除双刷）
+- `hero_archive_unlocked` → 已打开的英雄档案/纪念墙面板实时 refresh + 全局 toast
+  「英雄档案解锁：XXX（N/30）」（原先靠打开时轮询，面板开着时新解锁不点亮）
+
+**修复 3 "前往战场"直达战区地图**：
+- `main.gd._deferred_non_critical_init`：检测 `launch_from_bunker` meta 自动
+  `call_deferred("_on_world_map")`——按钮文案承诺"战区地图·选关出击"，落地即开图；
+  教程未完成的玩家不抢焦点（should_show_tutorial 守卫），meta 保留供"返回"回基地
+
+**新增 4 观星台终局 P4**（文案数据 2026-08-26 定稿，本轮首次接 UI）：
+- 新增 `scenes/bunker/ui/observatory_ending_panel.gd`：三段式终局演出——
+  导语（OBSERVATORY_PROLOGUE）→ 三选一卡（重写/守望/远行）→ 确认（不可反悔警示）
+  → 结局徽记 + 文本结算；已抉择存档重访直达结算页；ESC 随时可退（未确认不落盘）
+- `bunker_manager.gd`：`choose_ending()`/`get_chosen_ending()`（ending_id/ending_day
+  随存档持久化，重置清空）；`bunker_room_panel` 观星台锁定面板升级——条件齐备显示
+  导语 + "登上观星台"入口，已抉择显示徽记 + "重访"入口（芯片从"废弃"改"终局"）
+- 背景：agnes 生成 `assets/bunker/observatory_sky.png`（1280×720 深空穹顶仰视，
+  工具 `tools/generate_observatory_ending_bg.py`，AI 视觉审查通过：偏暗宜作 UI 底
+  /无瑕疵/风格对齐）；缺图时程序化星空兜底（ResourceLoader.exists 预判不刷错误）
+- 美术备份铁律：`phase-war-art-backup-2026-08-28.zip`（项目外上级目录，
+  1051 文件/211.4MB，sha256[:16]=d1caf2154b663adc，card_icons+instruments+bunker 三树）
+
+**止血 5 空转房间文案**（`bunker_room_defs.gd` function_note 对齐现实）：
+- 气象站："P3 规划：地表探索事件难度调节（暂未开放功能，修复后仅作景观）"
+  （原文案无"暂未开放"字样，修复后零按钮易被当 bug）
+- 仓库：明确"卡墙展示与存储上限为 P3 规划（暂未开放）"，保留可用的纳米打印台
+- 食堂：改为"每日配给：每天可领取一次（纳米 120 · 合金 40）。挂机收益请前往战区主界面"
+
+**测试**：`bunker_smoke_driver` 扩至 33 项全过（新增 Phase5：配给未修复拒绝/发放
+120+40/同日去重/睡觉重置/序列化；终局未知 id 拒绝/抉择/不可反悔/序列化/重置；终局
+面板导语→三卡→确认→徽记全流；信号接线断言 + 碎片解锁实时点亮纪念墙 1/30）；
+gdparse 全改文件通过；`--import` 注册新图后复跑零脚本错误。
+
+**遗留（P3/P4 后续，非本轮范围）**：房间升级态（level 恒 1 无接口）、反应堆心跳音、
+基地教程引导（FTUE 审计未覆盖"进入基地"路线）、每日任务与基地耦合、
+真实 battle_ended 信号链回归保护。
+
+## v22.4 循环闭合四件套：碎片可达性 / 结算要塞反馈 / 每日任务收尾 / 精神值真约束（2026-08-29）
+
+**背景**：以"好游戏"为标准的基地模式玩法整合度审查发现——功能面板层已齐，但
+战斗↔基地循环断裂、精神值是装饰数值、终局大概率不可达、每日任务是断头系统。
+本轮按 P0→P1→P2 顺序收口（用户拍板"按顺序开工，细节自己决定"）。
+
+**P0-1 碎片可达性（终局解锁前提）**：
+- 病根：30 位相位师仅 20 位有驻守关（必掉碎片），其余 10 位只能靠 15% 随机遭遇；
+  而 `_enrich_master_config` 选人只按"距目标等级最近"取唯一候选——等级居中的驻守师
+  系统性遮蔽边缘等级者（029/027 等在高时代档几乎永远选不上），30/30 碎片大概率凑不齐
+- 修复（`game_manager.gd`）：抽出静态纯函数 `_pick_master_candidate(candidates,
+  target_level, collected_ids)`——两级择优：①碎片未收集者优先，②同级比等级距离；
+  BunkerManager 不存在（从未进基地）时行为与旧版完全一致。全部收集后退化为原逻辑
+
+**P0-2 结算面板要塞反馈行（战斗→基地循环闭合）**：
+- `mvp_panel.gd` 新增 `_render_bunker_status`：结算面板显示"◆ 余烬要塞 · 第 N 天 ·
+  精神 S · 英雄档案 N/30"+ 施工中房间进度（含本场推进量/冻结标注）+ 今日完工名单
+  + 低精神折损明细；从基地出击且非挂机时底部加"← 返回基地"直达按钮（领取掉落+
+  存档+清 meta+切场景，与"继续"等价清理）；从未进基地的玩家整区不显示零干扰
+
+**P0-3 每日任务收尾（断头系统接通）**：
+- 病根：DailyTaskManager 会生成/计进度/亮红点，但全项目无任务列表 UI，
+  `claim_task_reward` 零调用——奖励永远发不出去，两边"任务"按钮都是假承诺
+- `quest_panel.gd` 日常 Tab 置顶新增"每日挑战"区：倒计时标题 + 7 任务行
+  （难度色标/进度/奖励明细），完成即出"领取"按钮（发奖+quest_complete 音+toast+存档），
+  已领取灰显；task_completed/daily_tasks_refreshed 信号接线实时刷新
+
+**P1-4 精神值真约束（装饰数值→资源）**：
+- 掉落惩罚：`BunkerManager.get_drop_reward_multiplier()`（<50 → ×0.9 / <30 → ×0.75），
+  `game_manager._on_battle_ended` 胜利后按快照收益折算扣回，惩罚额记入
+  `last_battle_reward_summary["sanity_penalty"]` 供结算面板展示（口径：只折算同步
+  入账收益，DropManager 待领掉落不追溯——惩罚在信号不在精度）
+- AFK 收工闸门：`afk_mode_manager` 每场战后检查精神，归零即 `stop_afk()` +
+  toast"回基地睡一觉"（此前挂机连打会无声抽干精神且 main 侧零感知）
+- 可见性：结算面板要塞行常显精神档位（见 P0-2）
+
+**P1-5 首次进基地引导卡**：`bunker_main._maybe_show_intro`——一次性卡片讲清核心
+循环四件事（修房靠战斗推进/兵棋室出击/睡觉存档+配给/低精神折损），`intro_shown`
+随存档持久化，"明白了"落盘。基地路线此前零教程。
+
+**P1-6 世界地图"家"可点**：`world_map.gd` 余烬要塞标记从纯装饰（mouse_filter=IGNORE）
+变为可点击——存档后直切 bunker_main（嵌入/独立两模式统一），循环闭合动作不再靠记忆。
+
+**P2 速赢**：基地入口显式 `play_music("hub")`（此前沿用上一场景曲目，战后进基地
+仍是战斗曲）；点亮/日结算/终局确认/引导卡四处补反馈音（achievement/quest_complete/
+panel_open，全部复用现有 SFX 库）；基地→标题先存档（与 main 行为对齐）。
+
+**测试**：冒烟扩至 39 项全过（Phase6：选人未收集优先压过等级距离/空候选兜底、
+惩罚三档 1.0/0.9/0.75、今日完工列表、引导旗标持久化、每日任务 7 生成/完成/领取
+发奖/重复拒绝、quest_panel 每日挑战区渲染）；gdparse 全改文件通过（world_map.gd
+的 gdparse 报错为改动前既有的多行字符串误报，Godot 实际接受，基线验证过）。
+
+**遗留（P2 后续）**：日夜/天数玩法差异（DayClock 平行系统未并轨）、post-game
+新游戏+、房间升级态、基地内战略面板替身（地图/占领/挂机）、FTUE 审计补基地路线实跑。
+
+## v23 黑日战线主地图定稿（2026-08-29）
+
+**底图**：用户定稿手绘图《大地图2_2560.png》（2560×1440，格陵兰轮廓横放、内容手绘、
+东端画门）原生部署为 `assets/map/dawn_dusk_continent.png`；deploy 脚本新增
+`IGNORE_PREFIXES`（大地图* 工作稿不入 assets）。
+
+**布局**：废弃五行蛇形，改**内容锚定簇布局**——`tools/prototype_level_layout.py`
+以 14 个人工判读内容锚点（北部废墟城邦/双塔黑城/环形大城/晶体巨构/中央冰穹等）分配
+100 关，全对重叠消除（≥45px）+ 空档搬迁补位；坐标导出为
+`data/world_map_layout_s11.gd`（HOME(577,891)/GATE(2272,774)/POINTS[100]）。
+原型网页（http 本地 8777）为布局调参工具。
+
+**渲染（world_map.gd 方案11）**：
+- 单屏模式：整图等比缩放进可视区（无滚动/拖拽）；画布 custom_minimum_size=0
+  （DISABLED 滚动会把子节点最小尺寸算进容器，撑爆窗口——踩坑记录）
+- 圈中加点节点：纯 StyleBoxFlat 圆环+数字，**气泡贴图全部退役**
+  （bubble_era_*/cleared/boss 不再引用）；已通关=时代色实心/当前=白底彩环+跳动点/
+  未解锁=灰圈/首领=金环加大
+- 家：小号程序标记（橙块+悬停），点击回基地保留；黑门：画门即门，黑日贴图三态
+  与代码兜底绘制全部移除；天光标签/时代行标/残骸散布移除
+- 标题改"— 黑日战线 · 100 关 —"
+
+**验证**：headless 无脚本错误；单屏整图入屏（scale 0.378）；截图
+`docs/地图重设计/v27final_preview.png`。布点/底图需求沉淀见
+`docs/地图重设计/方案11_晨昏大陆_黑日战线.md`（已改写为 v23）与
+`主地图图片需求_格陵兰.md`。
+
+**v23.1 追加（同日）**：主地图改**单屏浮层**——上下横条撤除，标题/势力领地图/返回键
+浮在地图角标（顶中/右上/右下），main.tscn WorldMapPanel 放大 1264×688，地图铺满全屏；
+节点圈缩至 34px（当前 46/首领 42）、家标记 150→程序小标记已移除贴图。
+
+## v23.2 关卡敌兵全面审计：战术主题失配修复三件套（2026-08-30）
+
+**背景**：全量审计各关卡敌兵设置与敌方相位师设置（工具 `tools/audit_level_enemy_fun.gd`，
+报告落 `user://audit_level_enemy_fun.txt`）。相位师侧结论健康（20 驻守关套路全覆盖、
+平台时代一致、15% 随机遇敌链 v22.4 刚迭代）；**核心问题在关卡敌兵侧**——v10"解题式
+战术主题"中 3 个主题在多数时代是空壳：敌情简报预告"炮兵阵地/空中压制/斩首渗透"，
+实战退化为随机出兵，全 100 关约 80 个波次 bias 落空。
+
+**根因**：A/B/D/E 段 manifest 行 tag 只按兵种派生（frontline/vehicle+armored 等 5 种），
+真实曲射/快速/潜行单位没拿到主题 bias 匹配所需 tag（`artillery` tag 全游戏仅 2 单位持有；
+era0/1 的 `fast` 单位各 1 个且都在精英池；era1 零飞行单位、era2 唯一飞行单位在 boss 池）。
+
+**修复**（3 文件，不动 boss/elite 分池、掉率、词缀）：
+
+1. `data/enemy_archetypes.gd`：新增 `TAG_PATCH` 补丁表（22 条：artillery×11 / fast×9 /
+   stealth×3）+ 规则补齐（统一表 combat_kind=0 轻装单位自动 +infantry），在
+   `_ensure_manifest_merged` 统一表覆盖段之后独立循环应用——**必须剥 foe_ 前缀查统一表**
+   （首版放覆盖循环内导致 A 段补丁全部静默失效，已重构）。
+   修后 tag 覆盖：artillery 1/0/0/1/0 → 3/2/2/4/2；fast 1/1/2/3/3 → 2/3/3/5/6；
+   infantry 3/4/3/2/2 → 6/8/4/5/7。
+2. `data/level_tactical_themes.gd`：`ERA_AVAILABLE_THEMES` 二战/冷战移除 AIR_SUPREMACY
+   （基础池无飞行单位，题面必真原则）；空中主题只剩 era3（阿帕奇精英波）/era4（无人机）。
+   Lv39/49/53/55 等旧空中关自动重派主题。
+3. `managers/battle/battle_spawn_system.gd`：`get_next_wave_preview` 波次预警诚实化——
+   bias tag 在本时代池零匹配时降级显示"混合"（新增 `_bias_tags_match_era_pool`），
+   不再预告实战不会发生的构成。
+
+**验证**：死 bias 波 80 → 21（残留=mixed_grind 的 aircraft 槽 era0/1 回退随机（语义即
+"混合"）+ infiltration 的 stealth 槽 era0/2（25% 波次，预警已诚实降级））；
+master_power_smoke 8/8；GdUnit 全量 145/145 PASS。
+
+**记录级发现（未修）**：
+- `_manifest_kind_to_combat_kind` 把统一表空中兵种(3)误映射为支援(2)：A 段
+  foe_mod_inf_scout_drone / foe_mod_sup_growler（真实飞行单位）被当地面单位渲染结算，
+  era3 空中内容被压制——改兵种涉战斗行为，留独立验证轮。
+- 末波 boss 每时代恒 1 只（AV7/虎王/米格/指挥中枢/Nexus），同代 20 关收尾无变化；
+  扩充属内容轮（需配数值/掉落/卡图）。
+- 驻守 master HP 跨时代 ×1.8 跳变与普通敌档位回撤方向相反（有意威慑设计），
+  跨时代首战（L40→45）体感建议实测；Lv85 限支援/工兵卡上场，玩家届时支援卡
+  数量是否够铺阵待实战验证。
+
+## v23.3 空中兵种误映射修复：飞行单位回归天空（2026-08-30）
+
+**修复 v23.2 审计记录的真 bug**：`enemy_unit_manifest.gd` 的
+`_manifest_kind_to_combat_kind` 是旧 manifest kind 语义（3=支援）→ CombatKind 的转换层，
+v8.1 统一表成为唯一数据源后流入的 kind 已恒为 CombatKind 口径（3=空中），该函数唯一
+效果变成把空中误折叠为支援——`foe_mod_inf_scout_drone`（侦察无人机）、
+`foe_fut_air_heavy_carrier`（重装母舰）、`foe_fut_air_regen_frame`（再生骨架）三个
+wt=2 空射的真实飞行单位被地面化渲染结算（wt 空射弹道 + 贴地行走 + 被对地火力打击），
+era3 空中内容被压制。
+
+**改动**（`data/enemy_unit_manifest.gd` 单文件）：
+1. `_make_foe_row` 的 combat_kind 改直通 `s.kind`（统一表口径 = CombatKind 语义）；
+2. 删除 `_manifest_kind_to_combat_kind`（唯一调用点即上处，git 历史可查）；
+3. `_tags_for_kind` 分支 3 由 `["support"]` 改 `["aircraft"]`（旧值是"kind3=支援"
+   时代遗留；D 段兜底路径的旧语义 caveat 已注释）；
+4. 顺手删除文件头部零引用的 `const GC` 预加载。
+
+**安全性核验**（改前完成）：目标选择层对 `attack_air=0` 的单位跳过空中目标、防空
+能力单位优先集火空中（2026-08-16 克别链审查既有逻辑）；引擎对敌方 AIR 单位的支持
+已被米格/阿帕奇/无人机三个 C 段单位长期验证。修后 D 段 growler 兵种本就直通（3），
+实际新增回归天空的是上述 3 个 A/B 段单位。
+
+**修后指标**：aircraft tag 覆盖 era3 1→3（+侦察无人机/电子战机，均基础池）、
+era4 1→3（+重装母舰/再生骨架）——era3/4 空中压制主题自此在基础池有真题面；
+tier 分池结构零漂移（basic/elite/boss 计数不变）；死 bias 波维持 21 无回归；
+master_power_smoke 8/8；GdUnit 145/145 PASS。审计工具新增第 7 段
+"各时代空中单位清单"供复验。
+
+**难度注意**：era3 普通关随机池自此可能刷出飞行单位（此前仅精英波阿帕奇），
+era4 基础池新增 1400 血飞行重装母舰——玩家需保持防空卡配置，与空中压制主题的
+"建议防空"题面一致；建议实测 era3/4 数关体感。
+
+## v23.4 末波 boss 池扩充 + 波型时代感知过滤（2026-08-30）
+
+**修复 v23.2 审计遗留的两项**（其余遗留为实测项，见 AGENTS.md 记录段）。
+
+**1. 末波 boss 池扩充**（`enemy_archetypes.gd` TAG_PATCH 追加 6 条 boss 提拔）：
+每时代末波 boss 此前恒 1 只（AV7/虎王/米格/指挥中枢/风暴核心），同代 20 关收尾零变化。
+从基础池提拔"次级 boss"（血量为现役 boss 的 48%~89%，roll 到坚韧 +60%hp 词缀后同
+league；吃 boss 词缀/登场特效/纳米 boss 档，掉落维持 frontline 8% 不新开 55% 卡泉）：
+
+| 时代 | 现役 boss | 次级 boss（提拔） |
+|------|----------|------------------|
+| 一战 | 圣沙蒙 650 | FT-17 340 |
+| 二战 | 虎王 1000 | 虎式 576 |
+| 冷战 | 米格 1400 | T-55 668 |
+| 现代 | 指挥中枢 1800 | M1A2 SEP 1234 |
+| 近未来 | 风暴核心 2500 | 重装机甲 2220 + 虚空领主 3158 |
+
+虚空领主（3158hp ULTIMATE）此前混在基础波当杂兵刷，提拔同时修正该异常。
+修后 boss 池 2/2/2/2/3；基础池各 -1（era4 -2），bias 覆盖损失可忽略。
+
+**2. 波型时代感知过滤**（`level_tactical_themes.gd` + `level_spawn_sequences.gd`）：
+`roll_wave_bias` 新增 era 参数，tag 在该时代敌池零匹配的波型槽直接剔除（权重重分配
+到活槽）——消灭 v23.2 残留的 21 个死 bias 波（mixed_grind 的 aircraft 槽 era0/1、
+infiltration 的 stealth 槽 era0/2，此前占波次 20-25%）。全槽死时返回"混合"。
+敌池查询走延迟 load（避免数据模块顶层互相 preload 的时序问题）。
+
+**验证**：死 bias 波 80(v23.2前)→21(v23.2)→**0**；主题分布不变（过滤只影响槽位选择）；
+master_power_smoke 8/8；GdUnit 145/145 PASS。
+
+## v23.5 飞行单位战场表现升级：悬空/投影/坠落三件套（2026-08-30）
+
+**背景**：飞行单位此前唯一的"空中感"是 ±3px 待机浮动——立绘和地面单位一样脚踩
+地面线，没有高度、没有投影、死亡原地淡出，读不出"在飞"。用户要求不受过去设定
+限制做更好。
+
+**核心决策——只抬 sprite，不抬 host**：射程判定是 2D 距离（construct_unit_ai
+`global_position.distance_to`），抬 host 会给所有涉及空中单位的射程注入 ~35px
+系统漂移；只抬立绘（unit_spr.position.y = -lift）则零玩法影响，配套对齐五个消费点：
+
+| 消费点 | 改动 |
+|--------|------|
+| 弹道瞄准/命中 | `CardGridUnitVisuals.aim_pos_for(target)`（读 `air_lift_y` meta）——bullet.gd 6 处（霰弹基向/直射向/光束跟踪/扫掠命中圈/曲射落点）+ 直射双 batch（方向/命中圈）+ 曲射 batch 弧线终点（空中爆炸而非落地穿帮） |
+| 枪口出膛 | enemy/construct_ai 出膛点叠 `unit_spr.position.y`（含浮动，机身走枪口走） |
+| 头顶 UI | `entity_top_y_for_sprite` 叠加 sprite 位移（血条/角标/等级/buff 条随机身悬空；早退分支同修） |
+| 死亡演出 | `play_air_death_fall`：停浮动/杀 boss 摇摆/藏投影→翻转加速坠到地面线→原地爆散淡出（敌我同构；motion_reduce 直接落地；复活路径不受影响） |
+| 待机浮动 | AIR ±3px/2.0s → ±4px/1.7s（悬空呼吸感） |
+
+**新增地面投影**：`scripts/battle/air_unit_shadow.gd`——三层同心椭圆软阴影
+（纯 _draw 矢量，零贴图），钉在槽位地面线，随浮动呼吸（升起→缩小变淡），
+死亡坠落时隐藏。影子是侧视高度感的另一半：单位悬空 + 影子钉地 = "悬在战场上方"
+而非"浮在界面里"。抬升量 = 实体高 ×0.34（clamp 22-46px，大机体更高）。
+
+**顺手修正**：枪口无标注回退点符号反转（`Vector2.UP * offsetY` 中 offsetY 为负 →
+出膛点/枪口火落到地面下方；enemy_unit 与 construct_unit_ai 两处）——大多数单位有
+117 条锚点标注掩盖了该 bug，无标注单位（部分 D 段）自此出膛点回到机身。
+
+**验证**：gdparse 10 文件全 PASS；weapon_visual_profiles_smoke 119/119（bullet/batch
+真实引擎回归）；master_power_smoke 8/8；GdUnit 145/145。注：--script 模式下
+unit 脚本报 autoload Identifier 错误为环境限制（42 autoload 不存在），非编译问题。
+**实机目视验收待玩家下次游玩确认**（编辑器未运行无法抓截图）。
+
+**留待后续**：伤害数字仍生成在槽位地面（HUD 层经信号传位，改动属独立轮）；
+空中单位死亡坠落暂无烟迹拖尾（可按 vfx-tuning 轮次加池化粒子层）。

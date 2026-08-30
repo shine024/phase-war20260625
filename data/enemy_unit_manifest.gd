@@ -8,7 +8,6 @@ class_name EnemyUnitManifest
 ## v8.0: 数据源统一——A/B/D/E 段敌人的基础数值改从 UnifiedCardTable（统一卡牌表）读取，
 ## 与玩家卡/缴获卡共享同一套数值。原 _get_foe_stats 的硬编码 match 分支保留作 fallback。
 
-const GC = preload("res://resources/game_constants.gd")
 const BattleCardV3 = preload("res://data/battle_card_v3.gd")
 const UnifiedCardTable = preload("res://data/unified_card_table.gd")
 
@@ -366,7 +365,13 @@ static func _make_foe_row(card_id: String) -> Dictionary:
 			"attack_air": s.attack_air,
 			"attack_range": s.rng,
 			"attack_interval": s.ivl,
-			"combat_kind": _manifest_kind_to_combat_kind(s.kind),
+			# v23.3: 统一表 combat_kind 直通——v8.1 起 s.kind 恒为统一表口径
+			# （0轻装/1装甲/2支援/3空中/4堡垒 = CombatKind 语义），无需旧 manifest 映射。
+			# 原经 _manifest_kind_to_combat_kind 把 3(空中) 误折叠成 SUPPORT，导致
+			# foe_mod_inf_scout_drone / foe_mod_sup_growler / foe_fut_air_heavy_carrier /
+			# foe_fut_air_regen_frame 四个真实飞行单位被地面化（wt=2 空射却贴地结算），
+			# era3 空中内容被压制。旧映射函数已删（唯一调用点即此处）。
+			"combat_kind": s.kind,
 			"weapon_label": s.weapon,
 			"weapon_type": int(s.weapon_type),
 			# v6.3: 三维防御（完整透传，不再坍缩成单一 defense）
@@ -496,27 +501,25 @@ static func _make_fort_row(fort_id: String) -> Dictionary:
 #  辅助函数
 # ─────────────────────────────────────────────
 
+## manifest kind 的 tag 派生。
+## v23.3 起传入的 kind 恒为统一表 combat_kind 口径（0轻装/1装甲/2支援/3空中/4堡垒）：
+## - 2(支援) 沿用 turret/sustained（统一表把火炮/高炮类归 SUPPORT，持续火力语义吻合）
+## - 3(空中) 返回 aircraft（旧值 support 是旧 manifest "kind3=支援" 时代的遗留）
+## 注：_pool_stats_for_kind 兜底路径（统一表 miss 时）的 kind 仍是旧语义 3=支援——
+## 该路径有 push_warning 哨兵且全池已在统一表，理论不触发。
 static func _tags_for_kind(kind: int) -> Array:
 	match kind:
 		2: return ["turret", "sustained"]
-		3: return ["support"]
+		3: return ["aircraft"]
 		4: return ["fortress", "immobile"]  # v5.0 堡垒
 		1: return ["vehicle", "armored"]
 		_: return ["frontline"]
 
 
-## manifest 的 kind（0=frontline步兵/1=vehicle装甲/2=turret火炮/3=support支援/4=fortress堡垒）
-## → CombatKind（0=LIGHT/1=ARMOR/2=SUPPORT/3=AIR/4=FORT）
-## 关键：manifest kind:3 的语义是"支援"，不是 CombatKind.AIR(3)；数值相同但含义不同。
-## 不做映射的话，地面支援单位（BMP-1/维修框架/运载）会被错判成空中单位（缩放+悬浮）。
-static func _manifest_kind_to_combat_kind(kind: int) -> int:
-	match kind:
-		0: return GC.CombatKind.LIGHT
-		1: return GC.CombatKind.ARMOR
-		2: return GC.CombatKind.SUPPORT
-		3: return GC.CombatKind.SUPPORT   # manifest 的"支援"归 CombatKind.SUPPORT，绝不能是 AIR
-		4: return GC.CombatKind.FORT
-		_: return GC.CombatKind.LIGHT
+## [已删除 v23.3] _manifest_kind_to_combat_kind：旧 manifest kind 语义（3=支援）→ CombatKind
+## 的转换层。v8.1 统一表成为唯一数据源后，流入的 kind 已恒为 CombatKind 口径，本函数
+## 唯一作用是把 3(空中) 误折叠成 SUPPORT（侦察无人机/电子战机/重装母舰/再生骨架被
+## 地面化）。调用点已改直通 s.kind，函数随之退役——git 历史可查。
 
 
 static func _get_foe_display_name(card_id: String) -> String:

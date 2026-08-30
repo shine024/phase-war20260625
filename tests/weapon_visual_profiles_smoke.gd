@@ -305,14 +305,14 @@ func _test_indirect_flavor() -> void:
 	_ok(WPV.classify_indirect("近防炮/舰载导弹") == IF.MISSILE, "舰载导弹 → MISSILE（舰炮不误入榴弹族）")
 	_ok(WPV.classify_indirect("") == IF.NONE and WPV.classify_indirect("超频矩阵炮") == IF.NONE,
 		"空名/未命中 → NONE（全系数 1.0 零行为变化）")
-	# 弧线系数：榴弹族/火箭压低 wt1 的 1.6 高弧；迫击炮保持最高弧
+	# 弧线系数：v20.25 起槽位基准对齐 v19-R33 可读值（wt1/wt9=0.5），亚类锚进可读包络
 	var apex_m: float = WPV.indirect_apex_mul(IF.MORTAR)
 	var apex_h: float = WPV.indirect_apex_mul(IF.HOWITZER)
 	var apex_r: float = WPV.indirect_apex_mul(IF.ROCKET)
 	_ok(apex_m > apex_h and apex_h > apex_r,
 		"弧线梯度：迫击炮(%.2f) > 榴弹族(%.2f) > 火箭(%.2f)" % [apex_m, apex_h, apex_r])
-	_ok(absf(1.6 * apex_h - 1.04) < 0.01 and absf(1.6 * apex_r - 0.56) < 0.01,
-		"wt1 槽实效弧线：榴弹族 1.6×0.65=1.04 中弧 / 火箭 1.6×0.35=0.56 低平")
+	_ok(absf(0.5 * apex_m - 0.8) < 0.01 and absf(0.5 * apex_h - 0.5) < 0.01 and absf(0.5 * apex_r - 0.35) < 0.01,
+		"wt1 槽实效弧线：迫击炮 0.5×1.6=0.8 / 榴弹族 0.5×1.0=0.5 标准弧 / 火箭 0.5×0.7=0.35 低平")
 	# 节奏系数：迫击炮最慢、火箭最快
 	var dur_m: float = WPV.indirect_duration_mul(IF.MORTAR)
 	var dur_r: float = WPV.indirect_duration_mul(IF.ROCKET)

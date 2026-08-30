@@ -10,6 +10,7 @@ const CombatFeedback = preload("res://scripts/combat_feedback.gd")
 const WeaponProjectileVfx = preload("res://scripts/weapon_projectile_vfx.gd")
 const WeaponVisuals = preload("res://data/weapon_visual_profiles.gd")  # v17: 武器视觉档案（名字优先解析）
 const AttackCalculator = preload("res://scripts/battle/attack_calculator.gd")
+const CardGridUnitVisuals = preload("res://scripts/card_grid_unit_visuals.gd")  # v23.5: 空中目标瞄准点
 
 const _HIT_R2: float = 100.0
 const _MAX_PROJ: int = 180
@@ -22,7 +23,10 @@ const _BATCH_WEAPON_TYPES: Array[int] = [
 	2,  # AERIAL (新枚举 GC.WeaponType.AERIAL)
 ]
 const _PLAYER_TINT := Color(0.95, 0.92, 0.5)
-const _ENEMY_TINT := Color(1.0, 0.38, 0.52)
+# v20.25: 敌方曲射弹体粉红→亮橙红，与直射 batch（simple_*_projectile_batch 的
+# _ENEMY_TINT）统一——v18-R9b 已否掉粉红（"棉花糖状失真"，阵营代码色非物理色），
+# 此前曲射漏改，敌方弹体阵营色呈"直射橙红/曲射粉"两套语言。
+const _ENEMY_TINT := Color(1.0, 0.55, 0.25)
 
 ## 阵营标识（由 BattleManager 在创建时设置）
 var is_player_side: bool = true
@@ -42,6 +46,8 @@ var _layers: Dictionary = {}  # weapon_type -> MultiMeshInstance2D
 var _buckets: Dictionary = {}  # weapon_type -> Array（成员级复用，clear 保留 buffer 容量）
 # v9.2: 弹道字典池——fire 时从池取，落地/清场时归还，消除每发字典分配（同 player/enemy batch）
 var _dict_pool: Array[Dictionary] = []
+# v20.25: 爆炸音节流时间戳——多门火炮同帧落地时压成一声（70ms 窗口，同直射 batch 命中特效限流思路）
+var _last_boom_msec: int = -10000
 
 func _acquire_proj_dict() -> Dictionary:
 	if not _dict_pool.is_empty():
@@ -90,14 +96,19 @@ func _make_layer(wt: int) -> MultiMeshInstance2D:
 	return mmi
 
 ## v6.5: 不同曲射武器的弧线高度倍率（与 bullet.gd 保持一致）
+## v20.25 修复：本表此前停留在 v19 调优前的旧值（wt1=1.6/wt9=1.0），而 bullet.gd
+## 已在 v19-R25/R33 按可读性下调（1.6→1.0→0.5）——曲射实战 100% 走本 batch，
+## 导致弧线修复从未在主路径生效（无名炮弹弧顶 ~376px 飞出画面上缘，AI 批
+## "弹道完全缺失只看到枪口火"）。现逐项对齐 bullet.gd 的 v19 验证值。
+## v20.17 亚类系数（WeaponProjectileVfx.indirect_apex_mul）同步按新基准重标。
 func _get_indirect_arc_multiplier(wt: int) -> float:
 	match wt:
-		1:   # INDIRECT 迫击炮/野战炮 — 高弧线
-			return 1.6
+		1:   # INDIRECT 迫击炮/野战炮 — 中弧线（v19-R33: 1.6→0.5，弧顶≈画面中部）
+			return 0.5
 		7:   # FLAK 高射炮 — 较高弧线
 			return 1.3
-		9:   # MISSILE 导弹 — 中等弧线（默认基准）
-			return 1.0
+		9:   # MISSILE 导弹 — 低弧线（v19-R33: 1.0→0.5，同 AERIAL）
+			return 0.5
 		2:   # AERIAL 空射 — 低弧线（俯冲）
 			return 0.5
 		3:   # ROCKET 火箭筒 — 最低弧线（直瞄反坦克）
@@ -116,7 +127,8 @@ func fire(from: Vector2, tgt: Node2D, dmg: float, wt: int, shooter: Node2D, shoo
 		set_physics_process(true)
 
 	var start := from
-	var end := tgt.global_position
+	# v23.5: 弧线终点对齐空中目标悬空机身（空中爆炸/空爆观感，而非落地穿帮）
+	var end := CardGridUnitVisuals.aim_pos_for(tgt)
 	var dist := start.distance_to(end)
 	var duration := 0.6 + dist / 2000.0 * 0.8
 	# v6.5: 不同曲射武器的弧线高低不同（按 weapon_type 差异化）
@@ -152,6 +164,38 @@ func fire(from: Vector2, tgt: Node2D, dmg: float, wt: int, shooter: Node2D, shoo
 	d["impact_spawned"] = false
 	d["is_player"] = is_player_side
 	_proj.append(d)
+	_play_fire_sfx(wt)
+
+## v20.25: 曲射开火音——此前武器开火音效全链路只挂在 bullet.gd 兜底路径（_play_attack_sfx），
+## 曲射实战 100% 走本 batch → 火炮/火箭/导弹开火全程无声（sound_generator 生成的
+## rocket_launch/flak_fire/missile_hum 主路径零消费）。音量/降调规则与 bullet 同源。
+func _play_fire_sfx(wt: int) -> void:
+	if not (AudioManager and AudioManager.has_method("play_sfx")):
+		return
+	var pitch := randf_range(0.9, 1.1)
+	var vol: float = 1.0
+	if not is_player_side:
+		pitch *= 0.92  # 敌方轻微降调（与 bullet.gd 同规则）
+		vol = 0.8
+	match wt:
+		7:
+			AudioManager.play_sfx("flak_fire", vol * 0.9, pitch * 0.9)
+		9, 2:
+			AudioManager.play_sfx("missile_hum", vol * 0.8, pitch)
+		_:
+			# 1(INDIRECT)/3(ROCKET) 火炮/火箭发射——重发射低鸣
+			AudioManager.play_sfx("rocket_launch", vol * 1.0, pitch * 0.8)
+
+## v20.25: 落地爆炸音——take_damage→unit_damaged 只驱动通用 "hit" 短音（AudioManager
+## 节流层），曲射爆炸缺低频轰鸣层。70ms 窗口节流防多炮同帧齐轰爆音。
+func _play_explosion_sfx() -> void:
+	if not (AudioManager and AudioManager.has_method("play_sfx")):
+		return
+	var now := Time.get_ticks_msec()
+	if now - _last_boom_msec < 70:
+		return
+	_last_boom_msec = now
+	AudioManager.play_sfx("explosion", 1.0, randf_range(0.9, 1.1))
 
 func clear_all() -> void:
 	# v9.2: 归还所有活跃弹道字典到池
@@ -286,6 +330,7 @@ func _apply_hit(r: Dictionary) -> void:
 		var _ind_radius: float = float(_WEAPON_CONFIG.get(wt, {}).get("explosion_radius", 0.0))
 		_opts["power_tier"] = WeaponProjectileVfx.compute_power_tier(wt, _ind_radius, float(r.get("dmg", 0.0)))
 		_spawn_impact_explosion(hit_pos, proj_is_player, wt, _tgt_kind, _wname, _opts)
+		_play_explosion_sfx()
 		# v6.4: 曲射爆炸触发中等屏幕震动
 		# v7.x: 优先用 combat_kind 的震动参数（对空重震/对装甲中震/对轻装轻震）
 		var tree := get_tree()
@@ -437,8 +482,8 @@ func _get_aoe_targets(center: Vector2, radius: float, primary: Node2D) -> Array:
 ## 爆炸特效（v8.0：粒子化；v8.4：贴图层 + 改造变体）
 ## 曲射/空射爆炸 = 重型命中特效（更多粒子量 + 命中贴图）
 func _spawn_impact_explosion(pos: Vector2, is_player_proj: bool = true, weapon_type: int = 1, target_combat_kind: int = -1, weapon_name: String = "", opts: Dictionary = {}) -> void:
-	if WeaponProjectileVfx._active_impacts >= WeaponProjectileVfx.MAX_ACTIVE_IMPACTS:
-		return
+	# v20.26: 删除 _active_impacts 死守卫——WPV 计数器 v8.1 迁厂后只减不增，守卫恒不触发；
+	# 特效上限由 VfxImpactFactory 活跃封顶（sprite 160/spark 320/debris 140/ring 80）承担。
 	# 复用 spawn_impact_with_kind 的粒子系统 + 贴图层（v8.4 透传 weapon_name）
 	# v17: wt 经 WeaponVisualProfiles 统一解析（武器名优先——"227mm火箭炮"按名取火箭
 	# 弹视觉而非槽位默认炮弹；域兜底保持原值）。

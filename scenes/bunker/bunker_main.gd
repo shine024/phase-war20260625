@@ -10,6 +10,7 @@ extends Control
 const BunkerRoomDefs = preload("res://data/bunker_room_defs.gd")
 const DT = preload("res://resources/design_tokens.gd")
 const HeroArchiveTexts = preload("res://data/hero_archive_texts.gd")
+const EnemyPhaseMasters = preload("res://data/enemy_phase_masters.gd")
 const RoomOverlayScript = preload("res://scenes/bunker/bunker_room_overlay.gd")
 const AmbientScript = preload("res://scenes/bunker/bunker_ambient.gd")
 const DotScript = preload("res://scenes/bunker/bunker_player_dot.gd")
@@ -18,6 +19,8 @@ const RoomPanelScript = preload("res://scenes/bunker/ui/bunker_room_panel.gd")
 const DaySummaryScript = preload("res://scenes/bunker/ui/bunker_day_summary.gd")
 
 ## P2/P3 面板迁移：房间功能 → UI 面板
+## v22.3：删 "afk"（AFKModeManager 由 main.gd 注入，基地内面板是死键）；
+##        + "observatory_ending"（P4 观星台终局）。
 const EMBEDDED_PANELS := {
 	"backpack": "res://scenes/ui/backpack_panel.tscn",
 	"modification": "res://scenes/ui/modification_panel.tscn",
@@ -26,7 +29,6 @@ const EMBEDDED_PANELS := {
 	"phase_master_skill": "res://scenes/ui/phase_master_skill_panel.tscn",
 	"store": "res://scenes/ui/store_panel.tscn",
 	"faction": "res://scenes/ui/faction_panel.tscn",
-	"afk": "res://scenes/ui/afk_panel.tscn",
 	"hero_archive": "res://scenes/bunker/ui/hero_archive_panel.gd",
 	"memorial": "res://scenes/bunker/ui/memorial_wall.gd",
 	"intelligence": "res://scenes/ui/intelligence_hub_panel.tscn",
@@ -36,6 +38,7 @@ const EMBEDDED_PANELS := {
 	"leaderboard": "res://scenes/ui/leaderboard_panel.tscn",
 	"settings": "res://scenes/ui/settings_panel.tscn",
 	"help": "res://scenes/ui/help_panel.tscn",
+	"observatory_ending": "res://scenes/bunker/ui/observatory_ending_panel.gd",
 }
 
 ## 整体大背景图（tools/generate_bunker_bg_v3.py 生成，胶囊+外壳版）：
@@ -87,8 +90,12 @@ func _ready() -> void:
 	_build_ui_layers()
 	_refresh_all_rooms()
 	_connect_signals()
+	# v22.4（P2）：基地专属 BGM——不显式切歌会沿用上一场景曲目（战后进基地仍是战斗曲）
+	if AudioManager != null and AudioManager.has_method("play_music"):
+		AudioManager.play_music("hub")
 	call_deferred("_check_sanity_zero")
 	call_deferred("_check_stage_transition")
+	call_deferred("_maybe_show_intro")
 
 func _exit_tree() -> void:
 	if _manager and _manager.has_method("stash_runtime_state"):
@@ -319,12 +326,46 @@ func _connect_signals() -> void:
 	if SignalBus:
 		if not SignalBus.bunker_room_state_changed.is_connected(_on_room_state_changed):
 			SignalBus.bunker_room_state_changed.connect(_on_room_state_changed)
+		# v22.3 信号接线：此前两信号全项目零监听（HUD 靠直调、面板靠打开时轮询）
+		if not SignalBus.bunker_day_ended.is_connected(_on_bunker_day_ended):
+			SignalBus.bunker_day_ended.connect(_on_bunker_day_ended)
+		if not SignalBus.hero_archive_unlocked.is_connected(_on_hero_archive_unlocked):
+			SignalBus.hero_archive_unlocked.connect(_on_hero_archive_unlocked)
 
 func _on_room_state_changed(room_id: String, _new_state: int) -> void:
 	_refresh_room(room_id)
 
-## 点亮演出反馈：轻微震屏（动效减弱选项下静默）
+## 睡觉结算（sleep() 内同步发射）→ HUD 日/精神/资源与光点状态刷新
+func _on_bunker_day_ended(_day: int) -> void:
+	if _manager == null or _hud == null:
+		return
+	_hud.call("refresh_day", _manager.get_day())
+	_hud.call("refresh_sanity", _manager.get_sanity())
+	_hud.call("refresh_all_day_state")
+	_sync_dot_sanity()
+
+## 战斗掉落英雄碎片 → 已打开的档案/纪念墙实时刷新 + 全局 toast
+func _on_hero_archive_unlocked(master_id: String) -> void:
+	for pid in ["hero_archive", "memorial"]:
+		if _embed_wrappers.has(pid):
+			var p: Control = _embed_wrappers[pid]["panel"]
+			if p != null and is_instance_valid(p) and p.has_method("refresh"):
+				p.call("refresh")
+	if SignalBus.has_signal("show_toast") and _manager != null:
+		var name_text := master_id
+		var masters: Array = []
+		for era in range(5):
+			masters.append_array(EnemyPhaseMasters.get_era_masters(era))
+		for m in masters:
+			if str(m.get("id", "")) == master_id:
+				name_text = str(m.get("name", master_id))
+				break
+		SignalBus.show_toast.emit("英雄档案解锁：%s（%d/30）" % [name_text, _manager.get_hero_fragment_count()])
+
+## 点亮演出反馈：轻微震屏（动效减弱选项下静默）+ 完工音
 func _on_room_relit(_room_id: String) -> void:
+	if SignalBus != null and SignalBus.has_signal("play_sound"):
+		SignalBus.play_sound.emit("achievement")
 	if DT.is_motion_reduce():
 		return
 	var tw := create_tween().set_trans(Tween.TRANS_SINE)
@@ -343,10 +384,10 @@ func _on_sleep() -> void:
 	var tween := create_tween()
 	tween.tween_property(_night_tint, "color:a", 0.42, 0.7)
 	tween.tween_callback(func():
+		# sleep() 内同步发 bunker_day_ended → _on_bunker_day_ended 刷新 HUD/光点
 		var summary: Dictionary = _manager.sleep()
-		_hud.call("refresh_day", int(summary.get("day", 1)))
-		_hud.call("refresh_sanity", float(summary.get("sanity_after", 100.0)))
-		_sync_dot_sanity()
+		if SignalBus != null and SignalBus.has_signal("play_sound"):
+			SignalBus.play_sound.emit("quest_complete")
 		if SaveManager and SaveManager.has_method("save_game"):
 			SaveManager.save_game()
 		_day_summary.call("open", summary))
@@ -494,9 +535,93 @@ func _on_go_to_battle() -> void:
 	get_tree().change_scene_to_file("res://scenes/main.tscn")
 
 func _on_back_to_title() -> void:
+	# v22.4（P2）：与 main→标题行为对齐——先存档再离开（"睡觉=存档"之外唯一的明示存档点）
+	if SaveManager and SaveManager.has_method("save_game"):
+		SaveManager.save_game()
 	get_tree().change_scene_to_file("res://scenes/title_screen.tscn")
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey or event is InputEventMouseButton:
 		if _monologue_timer and not _monologue_timer.is_stopped():
 			_monologue_timer.start()
+
+# ───────────────────── v22.4：首次进基地引导卡（P1-5） ─────────────────────
+
+## 基地路线是官方主推入口却零教程——首次进入用一张卡讲清核心循环四件事。
+## 只展示一次（intro_shown 随存档持久化）；点击"明白了"落存档。
+func _maybe_show_intro() -> void:
+	if _manager == null or not _manager.has_method("is_intro_shown"):
+		return
+	if _manager.is_intro_shown():
+		return
+	if SignalBus != null and SignalBus.has_signal("play_sound"):
+		SignalBus.play_sound.emit("panel_open")
+
+	var dim := ColorRect.new()
+	dim.name = "IntroDim"
+	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	dim.color = Color(0, 0, 0, 0.72)
+	dim.mouse_filter = Control.MOUSE_FILTER_STOP
+	_ui_stage.add_child(dim)
+
+	var center := CenterContainer.new()
+	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	dim.add_child(center)
+
+	var card := PanelContainer.new()
+	card.custom_minimum_size = Vector2(560, 0)
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(0.05, 0.055, 0.09, 0.97)
+	sb.border_color = Color(1.0, 0.72, 0.32, 0.55)
+	sb.set_border_width_all(2)
+	sb.set_corner_radius_all(10)
+	sb.set_content_margin_all(24.0)
+	card.add_theme_stylebox_override("panel", sb)
+	center.add_child(card)
+
+	var vbox := VBoxContainer.new()
+	vbox.add_theme_constant_override("separation", 12)
+	card.add_child(vbox)
+
+	var title := Label.new()
+	title.text = "余烬要塞 · 指南"
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title.add_theme_font_size_override("font_size", DT.FONT_SIZE_TITLE - 6)
+	title.add_theme_color_override("font_color", DT.COLOR_TEXT_BRIGHT)
+	vbox.add_child(title)
+
+	var lines := [
+		"①  修房间要花资源；修复进度靠【完成战斗】推进——出击↔回家就是节奏。",
+		"②  兵棋室（全息沙盘）出击：战区地图选关，落地自动开图。",
+		"③  宿舍【睡觉】推进天数并自动存档；食堂每天可领一次配给。",
+		"④  精神值随战斗消耗，过低会折损战利品——医疗室或睡觉可恢复。",
+	]
+	for line in lines:
+		var lbl := Label.new()
+		lbl.text = line
+		lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_BODY)
+		lbl.add_theme_color_override("font_color", DT.COLOR_TEXT_MID)
+		vbox.add_child(lbl)
+
+	var ok_btn := Button.new()
+	ok_btn.text = "明白了"
+	ok_btn.custom_minimum_size = Vector2(0, 44)
+	ok_btn.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	var styles: Dictionary = preload("res://scripts/ui/panel_styles.gd").make_button_styles(ACCENT_INTRO, "solid")
+	for key in ["normal", "hover", "pressed", "disabled", "focus"]:
+		ok_btn.add_theme_stylebox_override(key, styles[key])
+	ok_btn.add_theme_color_override("font_color", DT.COLOR_TEXT_BRIGHT)
+	ok_btn.add_theme_font_size_override("font_size", DT.FONT_SIZE_BODY)
+	ok_btn.pressed.connect(func():
+		if SignalBus != null and SignalBus.has_signal("play_sound"):
+			SignalBus.play_sound.emit("button")
+		if _manager != null and _manager.has_method("mark_intro_shown"):
+			_manager.mark_intro_shown()
+		if SaveManager and SaveManager.has_method("save_game"):
+			SaveManager.save_game()
+		dim.queue_free())
+	vbox.add_child(ok_btn)
+
+const ACCENT_INTRO := Color(1.0, 0.72, 0.32)

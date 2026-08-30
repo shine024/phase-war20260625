@@ -141,12 +141,16 @@ const THEMES: Dictionary = {
 	},
 }
 
-## 时代可用主题约束：一战（Era.WW1=0）池内无 aircraft archetype，AIR_SUPREMACY 不参与分配。
+## 时代可用主题约束（v23.2 修正）：
+## - 一战/二战/冷战：池内无基础档飞行单位（一战二战 0 个 aircraft tag；冷战唯一飞行单位
+##   cold_boss_mig 在 boss 池，普通波抽不到）→ AIR_SUPREMACY 不参与分配，否则题面失实
+##   （如旧 Lv39 空中压制关全波随机）。
+## - 现代：保留（mod_air_apache_e 精英池，精英波真题面）；近未来：保留（fut_air_drone 基础池）。
 ## 教学关固定 SWARM_RUSH 不在约束表内单独处理。
 const ERA_AVAILABLE_THEMES: Dictionary = {
 	0: [ARMOR_PUSH, ARTILLERY_POSITION, SWARM_RUSH, FORTRESS_HOLD, INFILTRATION, MIXED_GRIND, ELITE_PUSH],
-	1: [ARMOR_PUSH, AIR_SUPREMACY, ARTILLERY_POSITION, SWARM_RUSH, FORTRESS_HOLD, INFILTRATION, MIXED_GRIND, ELITE_PUSH],
-	2: [ARMOR_PUSH, AIR_SUPREMACY, ARTILLERY_POSITION, SWARM_RUSH, FORTRESS_HOLD, INFILTRATION, MIXED_GRIND, ELITE_PUSH],
+	1: [ARMOR_PUSH, ARTILLERY_POSITION, SWARM_RUSH, FORTRESS_HOLD, INFILTRATION, MIXED_GRIND, ELITE_PUSH],
+	2: [ARMOR_PUSH, ARTILLERY_POSITION, SWARM_RUSH, FORTRESS_HOLD, INFILTRATION, MIXED_GRIND, ELITE_PUSH],
 	3: [ARMOR_PUSH, AIR_SUPREMACY, ARTILLERY_POSITION, SWARM_RUSH, FORTRESS_HOLD, INFILTRATION, MIXED_GRIND, ELITE_PUSH],
 	4: [ARMOR_PUSH, AIR_SUPREMACY, ARTILLERY_POSITION, SWARM_RUSH, FORTRESS_HOLD, INFILTRATION, MIXED_GRIND, ELITE_PUSH],
 }
@@ -196,11 +200,25 @@ static func get_theme_display(level: int) -> Dictionary:
 
 ## 按主题生成单波 bias_tags（供 LevelSpawnSequences._make_wave_spec 调用）。
 ## rng 由调用方传入（保证整关序列可复现）；tags 空数组 = 本波不限。
-static func roll_wave_bias(theme_id: String, rng: RandomNumberGenerator) -> Array:
+## v23.4 时代感知过滤：era >= 0 时，tag 在该时代敌池零匹配的波型槽直接剔除
+## （权重重分配到活槽）——消灭"预告了但实战不会发生"的死槽（如 era0/1 混合绞杀的
+## aircraft 槽、era0/2 渗透的 stealth 槽，此前占波次 20-25% 且预警失实）。
+## 全部非空槽都死时返回 []（本波不限，即"混合"）。
+static func roll_wave_bias(theme_id: String, rng: RandomNumberGenerator, era: int = -1) -> Array:
 	var t: Dictionary = get_theme(theme_id)
 	var patterns: Array = t.get("wave_patterns", [])
 	if patterns.is_empty():
 		return []
+	if era >= 0:
+		var live: Array = []
+		for p in patterns:
+			var ptags: Array = p.get("tags", [])
+			if ptags.is_empty() or _tags_match_era_pool(ptags, era):
+				live.append(p)
+		if not live.is_empty():
+			patterns = live
+		else:
+			return []
 	var total_w: float = 0.0
 	for p in patterns:
 		total_w += float(p.get("w", 0.0))
@@ -217,6 +235,25 @@ static func roll_wave_bias(theme_id: String, rng: RandomNumberGenerator) -> Arra
 	var last: Dictionary = patterns[patterns.size() - 1]
 	var fallback_tags: Array = last.get("tags", [])
 	return fallback_tags if fallback_tags is Array else []
+
+
+## v23.4: 检查 tags 是否在该时代敌池中有任一 archetype 匹配（任一 tag 命中即真）。
+## 与 battle_spawn_system._pick_archetype_with_bias 的匹配语义一致。
+## 延迟 preload（避免数据模块顶层互相 preload 的加载时序问题）。
+static var _enemy_archetypes_ref: RefCounted = null
+
+static func _tags_match_era_pool(tags: Array, era: int) -> bool:
+	if _enemy_archetypes_ref == null:
+		_enemy_archetypes_ref = load("res://data/enemy_archetypes.gd")
+	if _enemy_archetypes_ref == null:
+		return true  # 数据模块加载失败时不过滤（保守：保持旧行为）
+	for aid in _enemy_archetypes_ref.get_ids_for_era(era):
+		var cfg: Dictionary = _enemy_archetypes_ref.get_config(String(aid))
+		var atags: Array = cfg.get("tags", [])
+		for bt in tags:
+			if atags.has(bt):
+				return true
+	return false
 
 
 ## archetype tag → 中文显示名（波次预警 HUD 用）

@@ -1,0 +1,29 @@
+{
+ "unit": "fut_sup_ps9",
+ "unit_name": "PS-9 相位中继站",
+ "anim": "idle",
+ "frames": 8,
+ "frame_files": [
+  "f00.png",
+  "f01.png",
+  "f02.png",
+  "f03.png",
+  "f04.png",
+  "f05.png",
+  "f06.png",
+  "f07.png"
+ ],
+ "canvas": 512,
+ "suggested_fps": 8,
+ "foot_frac": 0.92,
+ "union_bbox": [
+  31,
+  154,
+  674,
+  549
+ ],
+ "model": "agnes-video-2.5-flash",
+ "mode": "keyframe",
+ "source_video": "source.mp4",
+ "generated_at": "2026-08-30 03:40:36"
+}

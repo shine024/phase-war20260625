@@ -32,6 +32,8 @@ var _layers: Dictionary = {}  # layer_key（wt 或亚类形状键 100+）-> Mult
 var _layer_keys: Array[int] = []
 # T1 性能优化：轻武器命中特效限流时间戳（见 _apply_hit，同 player batch）
 var _last_impact_msec: int = -10000
+# v20.25: 开火音节流时间戳（见 _play_fire_sfx）
+var _last_fire_sfx_msec: int = -10000
 # v7.4 性能优化：buckets 提升为成员变量 + clear() 复用，消除每帧 Dictionary + Array 分配
 var _buckets: Dictionary = {}  # weapon_type -> Array（成员级复用，clear 保留 buffer 容量）
 # v9.2: 弹道字典池——fire 时从池取，命中/出界/清场时归还，消除每发字典分配（同 player batch）
@@ -141,6 +143,7 @@ func fire(from: Vector2, tgt: Node2D, dmg: float, wt: int, shooter: Node2D, _sho
 	d["weapon_name"] = weapon_name
 	d["vfx_variant"] = p_vfx_variant
 	_proj.append(d)
+	_play_fire_sfx(wt)
 	# v9.2/v9.4: 枪口火——batch 路径无 Bullet 节点，敌方小兵射击"看不到攻击"。
 	# v16 去重：完整单位（CharacterBody2D：enemy_unit）在 _do_attack 里已播单位级
 	# 炮口火（_play_muzzle_feedback），batch 再播会双重叠加——仅对无单位级反馈的
@@ -155,6 +158,27 @@ func fire(from: Vector2, tgt: Node2D, dmg: float, wt: int, shooter: Node2D, _sho
 			# v14: 蜂群开火冲撞——与枪口火同抽样率(25%,密集齐射节流),本体参与开火演出
 			if shooter is Node:
 				CardGridUnitVisuals.fire_lunge_unit(shooter, false, _flash_wt in [1, 2, 3, 7, 9, 10, 11])
+
+## v20.25: 直射开火音（节流，同 player batch）——敌方轻武器无条件走本路径，此前
+## 开火音效只挂在 bullet.gd 兜底路径。110ms 窗口 + 低音量（敌方再降调减音，
+## 与 bullet.gd 敌我分流规则同源）。命中音由 take_damage→unit_damaged 覆盖。
+func _play_fire_sfx(wt: int) -> void:
+	if not (AudioManager and AudioManager.has_method("play_sfx")):
+		return
+	var now := Time.get_ticks_msec()
+	if now - _last_fire_sfx_msec < 110:
+		return
+	_last_fire_sfx_msec = now
+	var pitch := randf_range(0.9, 1.1) * 0.92  # 敌方轻微降调（与 bullet.gd 同规则）
+	match wt:
+		4:
+			AudioManager.play_sfx("gun_pistol", 0.18, pitch * 1.1)
+		1:
+			AudioManager.play_sfx("gun_rifle", 0.20, pitch)
+		2:
+			AudioManager.play_sfx("gun_mg", 0.24, pitch * 0.9)
+		_:
+			AudioManager.play_sfx("gun_smg", 0.20, pitch)
 
 func clear_all() -> void:
 	# v9.2: 归还所有活跃弹道字典到池
@@ -188,12 +212,14 @@ func _physics_process(delta: float) -> void:
 			continue
 		var pos: Vector2 = r["pos"]
 		var spd: float = r["speed"]
-		var dir: Vector2 = (tgt.global_position - pos).normalized()
+		# v23.5: 空中目标瞄准/命中圈对齐悬空机身（aim_pos_for 含 air_lift_y）
+		var aim: Vector2 = CardGridUnitVisuals.aim_pos_for(tgt)
+		var dir: Vector2 = (aim - pos).normalized()
 		pos += dir * spd * delta
 		r["pos"] = pos
 		r["dir"] = dir
 		r["traveled"] = float(r["traveled"]) + spd * delta
-		if pos.distance_squared_to(tgt.global_position) <= _HIT_R2:
+		if pos.distance_squared_to(aim) <= _HIT_R2:
 			_apply_hit(r)
 			_release_proj_dict(r)  # v9.2: 归还池（命中结算完）
 			continue

@@ -30,9 +30,22 @@ func _ready() -> void:
 	if QuestManager:
 		QuestManager.quest_progress_changed.connect(_on_quest_changed)
 		QuestManager.quest_completed.connect(_on_quest_completed)
+	# v22.4（P0-3）：每日挑战（DailyTaskManager）——此前会生成/计进度/亮红点，
+	# 但全项目无列表 UI、claim_task_reward 零调用，奖励永远发不出去。接到日常 Tab。
+	var dtm := _get_daily_task_manager()
+	if dtm != null:
+		if dtm.has_signal("task_completed") and not dtm.task_completed.is_connected(_on_daily_task_changed):
+			dtm.task_completed.connect(_on_daily_task_changed)
+		if dtm.has_signal("daily_tasks_refreshed") and not dtm.daily_tasks_refreshed.is_connected(_on_daily_task_changed):
+			dtm.daily_tasks_refreshed.connect(_on_daily_task_changed)
 	# v8.x 性能：_ready 只连信号，列表刷新交给 on_overlay_opened 拆帧。
 	# QuestManager 信号 handler (_on_quest_changed/_on_quest_completed) 自身就是完整刷新流程，
 	# 不依赖 _ready 设置任何状态，故窗口期安全。
+
+## v22.4：DailyTaskManager 访问器（懒加载 + root 查询双保险）
+func _get_daily_task_manager() -> Node:
+	ManagerLazyLoader.ensure_loaded("daily_task")
+	return get_node_or_null("/root/DailyTaskManager")
 
 ## v8.x 性能：外部打开面板时调用（main.gd._open_overlay 分发）。
 ## 将任务/公司列表重建拆到下一帧，避开打开同帧的实例化尖峰。
@@ -64,6 +77,18 @@ func _exit_tree() -> void:
 		QuestManager.quest_progress_changed.disconnect(_on_quest_changed)
 	if QuestManager.has_signal("quest_completed") and QuestManager.quest_completed.is_connected(_on_quest_completed):
 		QuestManager.quest_completed.disconnect(_on_quest_completed)
+	var dtm_exit := get_node_or_null("/root/DailyTaskManager")
+	if dtm_exit != null:
+		if dtm_exit.has_signal("task_completed") and dtm_exit.task_completed.is_connected(_on_daily_task_changed):
+			dtm_exit.task_completed.disconnect(_on_daily_task_changed)
+		if dtm_exit.has_signal("daily_tasks_refreshed") and dtm_exit.daily_tasks_refreshed.is_connected(_on_daily_task_changed):
+			dtm_exit.daily_tasks_refreshed.disconnect(_on_daily_task_changed)
+
+## v22.4：每日挑战进度/刷新变化 → 面板可见时刷新（与任务信号同节流策略）
+func _on_daily_task_changed(_task = null) -> void:
+	if not is_visible_in_tree():
+		return
+	_refresh_list()
 
 func _on_close() -> void:
 	closed.emit()
@@ -143,6 +168,8 @@ func _refresh_list() -> void:
 		c.queue_free()
 	for c in daily_list.get_children():
 		c.queue_free()
+	# v22.4（P0-3）：每日挑战块置顶（DailyTaskManager 的 7 个 24h 任务）
+	_refresh_daily_tasks()
 	if not quest_mgr:
 		return
 	var accepted: Array = quest_mgr.get_accepted_quest_ids()
@@ -387,3 +414,112 @@ func _on_abandon(quest_id: String) -> void:
 	if quest_mgr:
 		quest_mgr.abandon_quest(quest_id)
 		_refresh_list()
+
+# ══════════════════ v22.4：每日挑战（DailyTaskManager） ══════════════════
+
+## 每日挑战块：标题（含刷新倒计时）+ 7 任务行（进度/领取）。构建进 daily_list 顶部。
+func _refresh_daily_tasks() -> void:
+	var dtm := _get_daily_task_manager()
+	if dtm == null or not dtm.has_method("get_daily_tasks"):
+		return
+	var header := Label.new()
+	var countdown: int = dtm.get_refresh_countdown() if dtm.has_method("get_refresh_countdown") else 0
+	header.text = "── 每日挑战 · %02d:%02d 后刷新 ──" % [countdown / 3600, (countdown % 3600) / 60]
+	header.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
+	header.add_theme_color_override("font_color", DT.COLOR_GOLD)
+	header.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	daily_list.add_child(header)
+	for task in dtm.get_daily_tasks():
+		daily_list.add_child(_make_daily_task_row(task, dtm))
+
+func _make_daily_task_row(task: Dictionary, dtm: Node) -> Control:
+	var panel := PanelContainer.new()
+	var ps := StyleBoxFlat.new()
+	ps.bg_color = Color(0.10, 0.11, 0.16, 0.9)
+	ps.border_color = Color(DT.COLOR_GOLD.r, DT.COLOR_GOLD.g, DT.COLOR_GOLD.b, 0.35)
+	ps.border_width_left = 2
+	ps.border_width_top = 1
+	ps.border_width_right = 1
+	ps.border_width_bottom = 1
+	ps.set_corner_radius_all(4)
+	panel.add_theme_stylebox_override("panel", ps)
+	var mg := MarginContainer.new()
+	mg.add_theme_constant_override("margin_left", 10)
+	mg.add_theme_constant_override("margin_right", 8)
+	mg.add_theme_constant_override("margin_top", 6)
+	mg.add_theme_constant_override("margin_bottom", 6)
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 10)
+
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 2)
+	v.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var title_l := Label.new()
+	var diff: int = int(task.get("difficulty", 0))
+	title_l.text = "【%s】%s" % [DailyTaskManager.get_difficulty_name(diff),
+		DailyTaskManager.get_task_type_name(int(task.get("type", 0)))]
+	title_l.add_theme_font_size_override("font_size", DT.FONT_SIZE_BODY)
+	title_l.add_theme_color_override("font_color", DailyTaskManager.get_difficulty_color(diff))
+	v.add_child(title_l)
+	var reward_l := Label.new()
+	reward_l.text = "奖励：" + _daily_reward_text(task.get("reward", {}))
+	reward_l.add_theme_font_size_override("font_size", DT.FONT_SIZE_XSMALL)
+	reward_l.add_theme_color_override("font_color", Color(DT.COLOR_TEXT_MID.r, DT.COLOR_TEXT_MID.g, DT.COLOR_TEXT_MID.b, 0.85))
+	v.add_child(reward_l)
+	row.add_child(v)
+
+	var completed: bool = bool(task.get("completed", false))
+	var claimed: bool = bool(task.get("claimed", false))
+	if claimed:
+		var done_l := Label.new()
+		done_l.text = "✓ 已领取"
+		done_l.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
+		done_l.add_theme_color_override("font_color",
+			Color(DT.COLOR_GREEN_UP.r, DT.COLOR_GREEN_UP.g, DT.COLOR_GREEN_UP.b, 0.7))
+		row.add_child(done_l)
+	elif completed:
+		var claim_btn := Button.new()
+		claim_btn.text = "领取"
+		claim_btn.custom_minimum_size = Vector2(70, 30)
+		var styles := PanelStyles.make_button_styles(DT.COLOR_GREEN_UP)
+		claim_btn.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
+		claim_btn.add_theme_color_override("font_color", DT.COLOR_TEXT_BRIGHT)
+		claim_btn.add_theme_color_override("font_hover_color", DT.COLOR_HOVER_WHITE)
+		claim_btn.add_theme_stylebox_override("normal", styles["normal"])
+		claim_btn.add_theme_stylebox_override("hover", styles["hover"])
+		claim_btn.add_theme_stylebox_override("pressed", styles["pressed"])
+		claim_btn.add_theme_stylebox_override("disabled", styles["disabled"])
+		claim_btn.pressed.connect(_on_claim_daily_task.bind(str(task.get("id", "")), dtm))
+		row.add_child(claim_btn)
+	else:
+		var prog_l := Label.new()
+		prog_l.text = "%d / %d" % [int(task.get("current", 0)), int(task.get("target", 1))]
+		prog_l.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
+		prog_l.add_theme_color_override("font_color", DT.COLOR_TEXT_MID)
+		row.add_child(prog_l)
+
+	mg.add_child(row)
+	panel.add_child(mg)
+	return panel
+
+func _daily_reward_text(reward: Dictionary) -> String:
+	const NAMES := {
+		"nano_materials": "纳米材料", "energy_blocks": "能量块",
+		"common_fragment": "普通碎片", "rare_fragment": "稀有碎片",
+		"epic_fragment": "史诗碎片", "legendary_fragment": "传说碎片",
+	}
+	var parts: Array[String] = []
+	for key in reward:
+		parts.append("%s×%d" % [NAMES.get(key, key), int(reward[key])])
+	return " · ".join(parts) if not parts.is_empty() else "无"
+
+func _on_claim_daily_task(task_id: String, dtm: Node) -> void:
+	if dtm == null or not dtm.has_method("claim_task_reward"):
+		return
+	if dtm.claim_task_reward(task_id):
+		SignalBus.play_sound.emit("quest_complete")
+		if SignalBus.has_signal("show_toast"):
+			SignalBus.show_toast.emit("每日挑战奖励已领取")
+		if SaveManager and SaveManager.has_method("save_game"):
+			SaveManager.save_game()
+	_refresh_list()

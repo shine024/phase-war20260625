@@ -128,7 +128,8 @@ static func _make_wave_spec(wave_index: int, wave_total: int, is_tutorial: bool,
 		bias_tags = ["infantry"]
 	elif not theme_id.is_empty():
 		# v10: 主题加权抽取（主战波/护卫波/混合波），rng 保证同关序列可复现
-		bias_tags = TacticalThemes.roll_wave_bias(theme_id, rng)
+		# v23.4: 传 era 做时代感知过滤——零匹配 tag 的波型槽剔除（题面必真）
+		bias_tags = TacticalThemes.roll_wave_bias(theme_id, rng, era)
 	else:
 		# 回退：主题缺失时保留原随机 roll（防御性，正常不触达）
 		var roll: int = rng.randi_range(0, 3)

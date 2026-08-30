@@ -18,6 +18,7 @@ const CapturedUnitCards = preload("res://data/captured_unit_cards.gd")
 const EnemyUnitManifest = preload("res://data/enemy_unit_manifest.gd")
 const EnemyArchetypes = preload("res://data/enemy_archetypes.gd")
 const CardFootAnchors = preload("res://data/card_foot_anchors.gd")
+const AirUnitShadow = preload("res://scripts/battle/air_unit_shadow.gd")
 const GC = preload("res://resources/game_constants.gd")
 
 ## v8.x 性能优化：sync_buff_labels 的签名缓存（按 host instance_id），状态不变则跳过重建。
@@ -102,6 +103,19 @@ static func apply_battle_unit_presentation(
 			unit_spr.scale *= vs
 	# 立绘居中（position 默认原点），不悬浮、不按脚线对齐。
 	unit_spr.position = Vector2(unit_spr.position.x, 0.0)
+	# v23.5 空中单位悬空化：立绘抬升到飞行高度——只动 sprite，host 仍钉在槽位地面，
+	# 射程（2D 距离）/命中/槽位判定零影响。抬升量写入 host meta "air_lift_y"，
+	# 消费方：子弹/batch 瞄准点（aim_pos_for）、死亡坠落（play_air_death_fall）、
+	# 枪口出膛（叠 unit_spr.position.y）。地面单位 position.y 保持 0。
+	var air_lift: float = 0.0
+	if card != null and card.combat_kind == GC.CombatKind.AIR:
+		var ent_h: float = absf(CardFootAnchors.entity_top_y_for_sprite(unit_spr))
+		air_lift = clampf(ent_h * 0.34, 22.0, 46.0)
+		unit_spr.position = Vector2(unit_spr.position.x, -air_lift)
+		host.set_meta("air_lift_y", air_lift)
+	elif host.has_meta("air_lift_y"):
+		host.remove_meta("air_lift_y")  # 换形态重应用时清残留
+	_sync_air_shadow(host, unit_spr, air_lift)
 	if card != null:
 		apply_battle_card_chrome(host, unit_spr, card)
 	sync_rank_strip(host, rank_level, unit_spr)
@@ -160,6 +174,30 @@ static func _boss_sway_idle(unit_spr: Sprite2D) -> void:
 
 
 ## v13/v14: 待机微动效——Phase2 审计实锤"单位完全静止站桩,画面死"。
+## v23.5: 空中单位地面投影——锚定槽位地面线，随浮动呼吸（advance_idle_motion 联动）。
+## air_lift<=0（非空中）时隐藏/清理。
+static func _sync_air_shadow(host: Node2D, unit_spr: Sprite2D, air_lift: float) -> void:
+	if host == null or unit_spr == null:
+		return
+	var shadow := host.get_node_or_null("AirShadow") as Node2D
+	if air_lift <= 0.0:
+		if shadow != null:
+			shadow.visible = false
+		if unit_spr.has_meta("_air_shadow"):
+			unit_spr.remove_meta("_air_shadow")
+		return
+	if shadow == null:
+		shadow = AirUnitShadow.new()
+		shadow.name = "AirShadow"
+		shadow.z_index = 3  # 单位 sprite(z10)/名字条(z15) 之下，战场地面之上
+		host.add_child(shadow)
+	if shadow.has_method("setup"):
+		shadow.call("setup", air_lift / 0.34)  # 反解实体高度（= lift / 系数），供椭圆尺寸标定
+	shadow.position = Vector2(unit_spr.position.x, 4.0)
+	shadow.visible = true
+	unit_spr.set_meta("_air_shadow", shadow)
+
+
 ## v14 按兵种差异化:空中(AIR)大幅浮动±3px / 装甲缓浮(2.2s 周期,厚重) /
 ## 步兵轻快浮动±1.2px / 堡垒(FORT)完全不动(稳重感)。
 ## 全部走 position:y——scale 留给开火脉冲,避免两个 tween 同属性打架。
@@ -177,8 +215,9 @@ static func _apply_idle_motion(unit_spr: Sprite2D, card: CardResource) -> void:
 		if unit_spr.has_meta("_idle_params"):
 			unit_spr.remove_meta("_idle_params")  # 堡垒不动：清残留
 		return  # v14: 堡垒不动——要塞/工事的厚重稳重感
-	var amp: float = 3.0 if kind == GC.CombatKind.AIR else 1.2
-	var half: float = 1.0 if kind == GC.CombatKind.AIR else (1.8 if kind == GC.CombatKind.ARMOR else 1.3)
+	# v23.5: 空中单位浮动加大加快（悬空呼吸感）；基线 y 已含悬空抬升
+	var amp: float = 4.0 if kind == GC.CombatKind.AIR else 1.2
+	var half: float = 0.85 if kind == GC.CombatKind.AIR else (1.8 if kind == GC.CombatKind.ARMOR else 1.3)
 	half += randf() * 0.4  # 相位错开
 	unit_spr.set_meta("_idle_params", {
 		"base_y": unit_spr.position.y,
@@ -200,6 +239,61 @@ static func advance_idle_motion(spr: Sprite2D, delta: float) -> void:
 		t = fmod(t, half * 2.0)  # 有界化，避免长战浮点累积
 	p["t"] = t
 	spr.position.y = float(p["base_y"]) - float(p["amp"]) * 0.5 * (1.0 - cos(PI * t / half))
+	# v23.5: 空中单位投影随浮动呼吸（升起→缩小变淡，贴地→复原）
+	if spr.has_meta("_air_shadow"):
+		var sh: Node2D = spr.get_meta("_air_shadow")
+		if sh != null and is_instance_valid(sh) and sh.has_method("set_bob"):
+			var amp_v: float = maxf(float(p["amp"]), 0.001)
+			var cur: float = float(p["base_y"]) - spr.position.y
+			sh.call("set_bob", clampf(cur / amp_v, 0.0, 1.0))
+
+
+## v23.5: 弹道/命中判定的目标瞄准点——空中单位返回悬空视觉位（sprite 已抬升，
+## host 仍钉在槽位地面）。非空中/无 meta 原样返回 global_position。
+## 调用方：bullet.gd（直射/光束/曲射落点）、三个 projectile batch（方向/命中圈/弧线终点）。
+static func aim_pos_for(target: Node2D) -> Vector2:
+	if target == null or not is_instance_valid(target):
+		return Vector2.ZERO
+	if target.has_meta("air_lift_y"):
+		return target.global_position + Vector2(0.0, -float(target.get_meta("air_lift_y")))
+	return target.global_position
+
+
+## v23.5: 空中单位死亡坠落演出——关闭浮动/隐藏投影，机身翻转加速坠到地面线后回调。
+## 返回 true 表示已启动坠落（调用方应把爆散/淡出延后到 on_landed）；
+## 非空中单位返回 false（调用方走原淡出路径）。motion_reduce 直接落地（无障碍）。
+static func play_air_death_fall(unit: Node2D, on_landed: Callable) -> bool:
+	if unit == null or not is_instance_valid(unit) or not unit.has_meta("air_lift_y"):
+		return false
+	var lift: float = float(unit.get_meta("air_lift_y"))
+	if lift <= 0.0:
+		return false
+	var spr := unit.get_node_or_null("Sprite2D") as Sprite2D
+	if spr == null:
+		spr = unit.get_node_or_null("Sprite") as Sprite2D
+	if spr == null:
+		return false
+	if spr.has_meta("_idle_params"):
+		spr.remove_meta("_idle_params")  # 停浮动，防与坠落 tween 抢 position.y
+	_kill_meta_tween(spr, "_boss_sway_tw")  # 空 boss 坠落前杀威压摇摆（rotation 冲突）
+	if spr.has_meta("_air_shadow"):
+		var sh: Node2D = spr.get_meta("_air_shadow")
+		if sh != null and is_instance_valid(sh):
+			sh.visible = false
+	if DT.is_motion_reduce():
+		spr.position.y = 0.0
+		if on_landed.is_valid():
+			on_landed.call()
+		return true
+	var tw := unit.create_tween()
+	tw.set_pause_mode(Tween.TWEEN_PAUSE_PROCESS)
+	tw.tween_property(spr, "position:y", 0.0, 0.30).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	tw.parallel().tween_property(spr, "rotation", -0.45 if randf() > 0.5 else 0.45, 0.30).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	tw.tween_callback(func() -> void:
+		spr.rotation = 0.0
+		if on_landed.is_valid():
+			on_landed.call())
+	return true
 
 
 ## v14: 开火冲撞——前倾冲撞(0.05s)→后坐回弹(0.08s)→归位(0.10s)。

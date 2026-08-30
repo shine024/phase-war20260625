@@ -1424,14 +1424,18 @@ func _try_fire_enemy_projectile_batch(p_target: Node2D, wt: int, p_damage: float
 ## 无标注时回退到 entity_top_y * 0.5（实体垂直中点）。
 func _get_direct_fire_spawn_pos() -> Vector2:
 	var spr = get_node_or_null("Sprite2D") as Sprite2D
+	# v23.5: 叠加 sprite 节点位移——空中单位悬空后出膛点跟随机身（含待机浮动）
+	var spr_dy: float = spr.position.y if spr != null else 0.0
 	var muzzle_offset: Vector2 = MuzzleAnchors.get_fire_offset(archetype_id, spr)
 	if muzzle_offset != Vector2.ZERO:
-		return global_position + muzzle_offset
-	# 回退：无标注，用实体垂直中点
+		return global_position + muzzle_offset + Vector2(0.0, spr_dy)
+	# 回退：无标注，用实体垂直中点（entity_top_y 已含悬空位移）
 	var offsetY: float = 0.0
 	if spr != null:
 		offsetY = CardGridUnitVisuals.entity_top_y(spr) * 0.5
-	return global_position + Vector2.UP * offsetY
+	# v23.5 顺手修正：原 Vector2.UP * offsetY 符号相反（offsetY 为负，UP*neg=向下，
+	# 出膛点落到地面下方）——改为直接加 offsetY（负=向上）
+	return global_position + Vector2(0.0, offsetY)
 
 func _update_hp_bar() -> void:
 	if _presentation_card_grid:
@@ -1744,7 +1748,14 @@ func _die() -> void:
 
 
 ## v6.4: 死亡视觉淡出——快速缩放并淡出后销毁节点（逻辑结算已完成，不依赖 _process）
+## v23.5: 空中单位先坠落（翻转加速到地面线）再爆散淡出——死在空中原地消失不成立
 func _play_death_fadeout() -> void:
+	if CardGridUnitVisuals.play_air_death_fall(self, _death_burst_and_fade):
+		return
+	_death_burst_and_fade()
+
+
+func _death_burst_and_fade() -> void:
 	# v8.x: 死亡爆散反馈（阵营色冲击波 + 碎片），让死亡与受击产生明确视觉差
 	VfxImpactFactory.spawn_death_burst(get_parent(), global_position, false)
 	if _death_fade_tween != null and _death_fade_tween.is_valid():

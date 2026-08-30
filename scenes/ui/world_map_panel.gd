@@ -12,6 +12,17 @@ func _ready() -> void:
 	# 懒实例化：首次可见或首次 refresh 时再建；world_map 自身 _build_level_map 有幂等守卫，
 	# refresh_for_open 也会兜底未构建状态，时序安全。
 	visibility_changed.connect(_on_visibility_changed_lazy)
+	# 调试钩子：WM_AUTO_OPEN=1 时启动自动展开地图层（复现嵌入式布局，仅调试用）
+	if OS.has_environment("WM_AUTO_OPEN"):
+		_ensure_content.call_deferred()
+		_auto_open.call_deferred()
+
+func _auto_open() -> void:
+	await get_tree().create_timer(0.5).timeout
+	var overlay := get_parent()
+	if overlay is Control:
+		(overlay as Control).visible = true
+	refresh()
 
 func _on_visibility_changed_lazy() -> void:
 	if visible:

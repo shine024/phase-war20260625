@@ -528,6 +528,8 @@ static func _get_direct_fire_spawn_pos(u: CharacterBody2D) -> Vector2:
 		unit_spr = u.get_node_or_null("Sprite") as Sprite2D
 	else:
 		unit_spr = u.get_node_or_null("Sprite2D") as Sprite2D
+	# v23.5: 叠加 sprite 节点位移——空中单位悬空后出膛点跟随机身（含待机浮动）
+	var spr_dy: float = unit_spr.position.y if unit_spr != null else 0.0
 	# v9.x: 我方单位优先用 PlayerMuzzleAnchors（按 card_id 直查，fireX 已按我方朝左图转换）
 	# 敌方仍走 MuzzleAnchors（按 archetype_id，敌原图朝右）
 	if u.is_player and u.stats != null:
@@ -537,7 +539,7 @@ static func _get_direct_fire_spawn_pos(u: CharacterBody2D) -> Vector2:
 		if not pcid.is_empty() and PlayerMuzzleAnchors.has_anchor(pcid):
 			var pm_offset: Vector2 = PlayerMuzzleAnchors.get_fire_offset(pcid, unit_spr)
 			if pm_offset != Vector2.ZERO:
-				return u.global_position + pm_offset
+				return u.global_position + pm_offset + Vector2(0.0, spr_dy)
 	# 回退链：MuzzleAnchors（敌方 / 我方无专属标注时经 _visual_archetype_id 或 PLAYER_MIRROR 反查）
 	var aid: String = ""
 	if "_visual_archetype_id" in u:
@@ -549,16 +551,17 @@ static func _get_direct_fire_spawn_pos(u: CharacterBody2D) -> Vector2:
 			aid = String(u.get("PLAYER_MIRROR_ARCHETYPE_BY_PLATFORM").get(pt, ""))
 		# platform_card_id 直接作 archetype_id（部分单位同名）
 		if aid.is_empty() and not u.stats.platform_card_id.is_empty():
-			aid = u.stats.platform_card_id
+			aid = String(u.stats.platform_card_id)
 	if not aid.is_empty():
 		var muzzle_offset: Vector2 = MuzzleAnchors.get_fire_offset(aid, unit_spr)
 		if muzzle_offset != Vector2.ZERO:
-			return u.global_position + muzzle_offset
-	# 回退：无标注，用实体垂直中点
+			return u.global_position + muzzle_offset + Vector2(0.0, spr_dy)
+	# 回退：无标注，用实体垂直中点（entity_top_y 已含悬空位移）
 	var offsetY: float = 0.0
 	if unit_spr != null:
 		offsetY = CardGridUnitVisuals.entity_top_y(unit_spr) * 0.5
-	return u.global_position + Vector2.UP * offsetY
+	# v23.5 顺手修正：原 Vector2.UP * offsetY 符号相反（offsetY 为负 → 出膛点落到地面下方）
+	return u.global_position + Vector2(0.0, offsetY)
 
 ## 执行攻击（指定伤害值）
 static func do_attack_with_damage(u: CharacterBody2D, damage: float, weapon_type_override: int = -1, weapon_name: String = "", weapon_resource: Variant = null, p_pre_calculated: bool = false) -> void:
@@ -1132,11 +1135,17 @@ static func _play_muzzle_feedback(u: Node2D, firing_wt: int = -1, weapon_name: S
 		if not aid.is_empty():
 			muzzle_offset = MuzzleAnchors.get_fire_offset(aid, unit_spr)
 	if muzzle_offset == Vector2.ZERO:
-		# 回退：实体垂直中点
+		# 回退：实体垂直中点（entity_top_y 已含悬空位移）
 		var fallback_y: float = 0.0
 		if unit_spr != null:
 			fallback_y = CardGridUnitVisuals.entity_top_y(unit_spr) * 0.5
-		muzzle_offset = Vector2(0.0, -fallback_y)
+		# v23.5 顺手修正：原 Vector2(0.0, -fallback_y) 符号相反（fallback_y 为负 →
+		# 枪口火落到地面下方）
+		muzzle_offset = Vector2(0.0, fallback_y)
+	# v23.5: 叠加 sprite 抬升/浮动位移——枪口火跟随机身（空中单位悬空后，
+	# 地面高度的原地枪口火会穿帮）
+	if unit_spr != null:
+		muzzle_offset += Vector2(0.0, unit_spr.position.y)
 	# v17: 火花类别键——WeaponVisualProfiles 统一解析（武器名优先，域感知兜底）。
 	# 替代 v16 的"朝向猜域"（not facing_right 才归一）——朝向不是枚举域的数据事实。
 	var flash_wt: int = firing_wt

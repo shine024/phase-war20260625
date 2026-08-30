@@ -1,0 +1,21 @@
+{
+ "unit": "ww1_mgnest",
+ "unit_name": "机枪巢",
+ "anim": "idle",
+ "frames": 8,
+ "frame_files": [
+  "f00.png",
+  "f01.png",
+  "f02.png",
+  "f03.png",
+  "f04.png",
+  "f05.png",
+  "f06.png",
+  "f07.png"
+ ],
+ "canvas": 512,
+ "suggested_fps": 8,
+ "foot_frac": 0.95,
+ "source": "fallback_from_card",
+ "notes": "保底方案: 视频多次生成都带场景/地面, 改由卡图直出合成微动效; 枪口火光为启发式定位, 必须人工审查"
+}

@@ -135,10 +135,13 @@ def _regex_verdict(text: str) -> str:
     m = re.search(r'"verdict"\s*:\s*"((?:[^"\\]|\\.)*)"', text)
     if not m:
         return ""
+    raw = m.group(1)
+    # v20.29: 优先按 JSON 字符串语义解码（\uXXXX 转义）；原文已是可读 UTF-8 时
+    # 原样返回。旧版无条件 encode('utf-8')+decode('unicode_escape') 会把中文打成乱码。
     try:
-        return m.group(1).encode("utf-8").decode("unicode_escape")
+        return json.loads(f'"{raw}"')
     except Exception:
-        return m.group(1)
+        return raw
 
 
 def parse_critique(text: str):

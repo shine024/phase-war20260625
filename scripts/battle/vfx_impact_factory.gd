@@ -98,6 +98,10 @@ static var _active_indicators: int = 0
 const MAX_INDICATORS: int = 40  # weakpoint 3s / radar 6s / resonance 5s，并发量可控
 const _INDICATOR_KINDS: Array = ["weakpoint", "radar_lock", "resonance"]
 
+# v20.26: 帧动画 SpriteFrames 缓存（spawn_animated_nuclear 用）——key=首帧贴图资源路径，
+# 帧序列调用方只有 WPV 的两组 const（常规爆炸/能量爆炸），各构建一次永久复用。
+static var _anim_frames_cache: Dictionary = {}
+
 # ── ADD 混合材质缓存 ──
 static var _add_mat: CanvasItemMaterial = null
 
@@ -146,7 +150,8 @@ static func spawn_layered_impact(parent: Node2D, world_pos: Vector2, weapon_type
 		base_color = base_color.lerp(ELEMENT_COLORS[elem_aff], 0.45)
 	# 配方（v8.x：传 weapon_name 做直射系亚类细分）
 	var recipe: Dictionary = _impact_recipe(weapon_type, p_weapon_name)
-	# v9.4: power_tier 威力分级缩放——HEAVY 档放大粒子层（环半径/火花数/尺寸 ×1.4），
+	# v9.4: power_tier 威力分级缩放——HEAVY 档粒子层 ×0.85 微缩（v20.26 勘误：原注释
+	# "×1.4 放大"已失实，见 _apply_tier_scale），贴图层 ×1.3 放大在 WPV 侧。
 	# LIGHT/MEDIUM ×1.0 不变。配方表本身不动（保持 weapon_type+flavor 分级），tier 只做倍率叠加。
 	recipe = _apply_tier_scale(recipe, opts)
 	# v18: 轻武器（wt 0/4）命中减层标记——v17 审计 3 分格"规模严重超标/火球帧"的病根是
@@ -188,7 +193,7 @@ static func spawn_layered_impact(parent: Node2D, world_pos: Vector2, weapon_type
 	if is_shotgun:
 		_spawn_shotgun_scatter(parent, world_pos, recipe, base_color, opts)
 	else:
-		_spawn_sparks(parent, world_pos, recipe, base_color, weapon_type)
+		_spawn_sparks(parent, world_pos, recipe, base_color, weapon_type, opts)
 	# 第3层：碎片/烟尘（重型武器，motion_reduce 时跳过）
 	if not motion_reduce and recipe.has("debris"):
 		_spawn_debris(parent, world_pos, recipe["debris"], base_color, weapon_type)
@@ -230,15 +235,20 @@ static func spawn_layered_impact(parent: Node2D, world_pos: Vector2, weapon_type
 		spawn_pierce_beam(parent, world_pos, dir if dir is Vector2 else Vector2.RIGHT, Color(0.85, 0.55, 1.0, 1.0), enhanced)
 
 
-## v9.4: 按 power_tier 缩放命中配方参数（让重型武器命中粒子更猛烈）。
-## HEAVY(2) 档：ring_r/spark_amount/spark 尺寸 ×1.4；LIGHT(0)/MEDIUM(1) ×1.0 不变。
+## v9.4: 按 power_tier 缩放命中配方参数。
+## HEAVY(2) 档：粒子层（环径/火花数/火花尺寸）×0.85 微缩；LIGHT(0)/MEDIUM(1) ×1.0 不变。
+## 注：v20.26 注释勘误——本函数 docstring 曾写"×1.4 放大"、行注释写"1.4→1.2"，均与
+## 实际值脱节（0.85 何时落定已不可考，项目无 git）。0.85 已经历 v18-v20 多轮审计
+## （含 2026-08-27）稳定在场，属实测基线，维持不动。贴图层反向放大由
+## WeaponProjectileVfx.spawn_impact_with_kind 的 HEAVY peak_scale ×1.3 承担
+## （粒子收/贴图放是当前验证过的分工，勿"修复"成同向）。
 ## 用字面量 tier 值（0/1/2/3）避免对 WeaponProjectileVfx 的循环依赖。
 ## 返回缩放后的 recipe 副本（原配方表不被污染）。
 static func _apply_tier_scale(recipe: Dictionary, opts: Dictionary) -> Dictionary:
 	var tier: int = int(opts.get("power_tier", -1))
 	if tier != 2:  # 仅 HEAVY(2) 缩放；其他档（含缺省 -1/0/1）不缩放，向后兼容
 		return recipe
-	const SCALE := 0.85  # v17e-R2: 1.4→1.2，火箭爆炸 HEAVY 档过大（f03 ~110px > 参考框 64px），降低到 1.2 更克制
+	const SCALE := 0.85  # v18 缩爆炸轮定值（历史 1.4→1.2→0.85）；改动前先读上方注释
 	var r: Dictionary = recipe.duplicate(true)
 	r["ring_r"] = float(r.get("ring_r", 24.0)) * SCALE
 	r["spark_amount"] = int(round(float(r.get("spark_amount", 16)) * SCALE))
@@ -273,7 +283,7 @@ static func _spawn_shotgun_scatter(parent: Node2D, world_pos: Vector2, recipe: D
 	for i in range(6):
 		var t: float = (float(i) / 5.0) * 2.0 - 1.0  # -1..1 均布 6 簇
 		var offset := perp * (t * 36.0) + dir * randf_range(-6.0, 6.0)
-		_spawn_sparks(parent, world_pos + offset, sub, base_color, 5)
+		_spawn_sparks(parent, world_pos + offset, sub, base_color, 5, opts)
 		# v20.9-R2c: 弹着小贴图（族规格"散射状小贴图"字面项）——隔簇投放控量
 		# （游戏内 6 弹丸各带一套散射，逐簇全投会 ×6 放大成 36 枚/齐射）
 		if i % 2 == 0 and not DT.is_motion_reduce():
@@ -1033,7 +1043,9 @@ static func spawn_railgun_penetration(parent: Node2D, pos: Vector2, dir: Vector2
 			dust.initial_velocity_max = 160.0
 			dust.direction = d
 			dust.spread = 70.0
-			dust.gravity = Vector2(0, -20.0)
+			# v20.28: (0,-20) 持续上飘→(0,40) 回落——尘土被激起后应下落（侧视角常识），
+			# 与曲射低矮扬尘 (+40) 同语言；原值 0.7s 仅漂 5px 属可忽略级，顺手对齐。
+			dust.gravity = Vector2(0, 40.0)
 			dust.scale_amount_min = 1.2
 			dust.scale_amount_max = 2.4
 			dust.color = Color(0.6, 0.58, 0.55, 0.5)
@@ -1653,8 +1665,13 @@ static func spawn_smoke_column(parent: Node2D, pos: Vector2, tint: Color = Color
 	p.initial_velocity_min = 50.0
 	p.initial_velocity_max = 110.0
 	p.gravity = Vector2(0, -20.0)  # 持续上飘
-	p.scale_amount_min = 5.0
-	p.scale_amount_max = 11.0
+	# v20.30: 补贴图 + 按内容实寸重标 scale——原函数从未设 texture，粒子用引擎默认白色
+	# 方块 × scale 5-11 = 5-11px 纯色方块流（"蘑菇云烟柱"实为方块点阵，boss_audit
+	# chain_land 帧的"零星红色方块"即地狱烈焰的烟柱串味）。现挂 SMOKE_GENERIC
+	# （128px 画布/内容 106px），scale 0.30-0.62 → 32-66px 软烟团，读"翻滚烟柱"。
+	p.texture = PARTICLE_TEX_SMOKE_GENERIC
+	p.scale_amount_min = 0.30
+	p.scale_amount_max = 0.62
 	p.color = tint
 	# 烟柱渐变：底部浓→顶部淡（v9.2: 按 tint 颜色缓存 Gradient，避免每次烟柱 new）
 	p.color_ramp = _get_smoke_grad(tint)
@@ -1890,15 +1907,24 @@ static func spawn_animated_nuclear(parent: Node2D, pos: Vector2, frame_textures:
 	var first_tex: Texture2D = frame_textures[0]
 	var tex_w: float = float(first_tex.get_width())
 	var peak_scale: float = target_width / tex_w if tex_w > 0.0 else 1.0
-	# 代码建 SpriteFrames（VFX 是临时节点，代码建比 .tres 灵活，不占资源树）
-	var frames := SpriteFrames.new()
-	frames.add_animation("grow")
-	frames.set_animation_loop("grow", false)  # 播完自动停（非循环）
-	frames.set_animation_speed("grow", fps)
-	for i in frame_textures.size():
-		var tex: Texture2D = frame_textures[i]
-		if tex != null:
-			frames.add_frame("grow", tex)
+	# v20.26: SpriteFrames 静态缓存——本函数原注释假设"核爆 CD 45s 频率低"，实际现在
+	# 每次火箭/高炮/导弹/曲射命中都调（WPV.spawn_impact_with_kind 帧动画层），密集炮战
+	# 下每发 new SpriteFrames+6 贴图引用是稳定堆分配源。帧序列调用方只有两组 const
+	# （WPV.EXPLOSION_CONV/ENERGY_FRAMES），按首帧资源路径键缓存，构建一次永久复用。
+	# AnimatedSprite2D 节点本体仍每命中新建（播放状态独立，节点廉价）。
+	var cache_key: String = String(first_tex.resource_path)
+	var frames: SpriteFrames = _anim_frames_cache.get(cache_key)
+	if frames == null:
+		# 代码建 SpriteFrames（VFX 是临时节点，代码建比 .tres 灵活，不占资源树）
+		frames = SpriteFrames.new()
+		frames.add_animation("grow")
+		frames.set_animation_loop("grow", false)  # 播完自动停（非循环）
+		frames.set_animation_speed("grow", fps)
+		for i in frame_textures.size():
+			var tex: Texture2D = frame_textures[i]
+			if tex != null:
+				frames.add_frame("grow", tex)
+		_anim_frames_cache[cache_key] = frames
 	# 创建 AnimatedSprite2D
 	var anim := AnimatedSprite2D.new()
 	anim.sprite_frames = frames
@@ -2031,6 +2057,11 @@ static func _content_width_of(texture: Texture2D, table: Dictionary) -> float:
 		if table.has(fname):
 			return float(table[fname])
 	return float(texture.get_width())
+
+## v20.29: 大招贴图内容实宽公开查询（SPELL_BURST_CONTENT_W 表）——供外部按内容宽
+## 标定显示尺寸（如巨盾呼吸罩），避免误用画布宽导致 ~10% 偏小（player_shield 916/1024）。
+static func spell_content_width(texture: Texture2D) -> float:
+	return _content_width_of(texture, SPELL_BURST_CONTENT_W)
 
 ## v20.15: 真实战斗存活查询（大招弹体落地守卫用）。
 ## effect_lab / boss_spell_audit / vfx_showcase 等工具场无战斗（battle_active 恒 false），
@@ -2426,7 +2457,7 @@ static func _spawn_ring(parent: Node2D, pos: Vector2, target_r: float, duration:
 
 ## 主火花（工厂自管池化粒子，按配方差异化）
 ## v9.4: 命中粒子火花层
-static func _spawn_sparks(parent: Node2D, pos: Vector2, recipe: Dictionary, base_color: Color, weapon_type: int) -> void:
+static func _spawn_sparks(parent: Node2D, pos: Vector2, recipe: Dictionary, base_color: Color, weapon_type: int, opts: Dictionary = {}) -> void:
 	if _active_sparks >= MAX_SPARKS:
 		return
 	_active_sparks += 1
@@ -2462,7 +2493,10 @@ static func _spawn_sparks(parent: Node2D, pos: Vector2, recipe: Dictionary, base
 	p.initial_velocity_min = float(recipe.get("spark_vmin", 40.0))
 	p.initial_velocity_max = float(recipe.get("spark_vmax", 120.0))
 	var base_life: float = float(recipe.get("spark_life", 0.28))
-	if weapon_type in [0, 1, 2, 4]:
+	# v20.26: 1/2(INDIRECT/AERIAL) 移出轻动能寿命帽——双枚举漏网（旧表按 legacy
+	# RIFLE/MG 语义写），曲射命中主火花 0.6s 扬尘被砍成 0.34s，与 3/7/9 爆炸族
+	# （0.62-0.75s 不设帽）不一致。轻动能帽只留 0/4。
+	if weapon_type in [0, 4]:
 		base_life = minf(base_life, 0.34)
 	p.lifetime = base_life
 	const SPARK_SCALE_FIX_KINETIC: float = 0.40
@@ -2471,7 +2505,9 @@ static func _spawn_sparks(parent: Node2D, pos: Vector2, recipe: Dictionary, base
 	p.scale_amount_min = float(recipe.get("spark_smin", 1.5)) * _fix
 	p.scale_amount_max = float(recipe.get("spark_smax", 3.0)) * _fix
 	# v11c: 动能火花提速+缩尺
-	if weapon_type not in [8, 10, 11, 3, 7, 9]:
+	# v20.26: 1/2(INDIRECT/AERIAL) 加入爆炸族排除表——旧表漏 1/2（legacy RIFLE/MG 语义
+	# 残留），曲射配方"慢速(90-260)大粒扬尘"被 ×1.6 提速+×0.7 缩尺覆盖成轻动能观感。
+	if weapon_type not in [8, 10, 11, 3, 7, 9, 1, 2]:
 		p.initial_velocity_min *= 1.6
 		p.initial_velocity_max *= 1.6
 		p.scale_amount_min *= 0.7
@@ -2488,12 +2524,24 @@ static func _spawn_sparks(parent: Node2D, pos: Vector2, recipe: Dictionary, base
 		p.angle_min = 0.0
 		p.angle_max = 360.0
 	# v10: 火花沿撞击法线锥形喷射
+	# v20.27: 窄锥配方（spark_dir：步枪/狙击/激光）轴向读 opts.direction——沿入射线
+	# 反弹回溅（朝射手），替代恒朝上。360° 广播配方 direction 无数学意义、batch 路径
+	# 无方向来源，均保持原向上轴（现状观感，避免全量命中观感漂移）。
 	p.direction = Vector2(0, -1)
 	if recipe.get("spark_dir", false):
+		var spark_dir_v: Variant = opts.get("direction", Vector2.ZERO)
+		if spark_dir_v is Vector2 and (spark_dir_v as Vector2).length_squared() > 0.001:
+			p.direction = -(spark_dir_v as Vector2).normalized()
 		p.spread = float(recipe.get("spark_spread", 55.0))
 	else:
 		p.spread = minf(float(recipe.get("spark_spread", 360.0)), 110.0)
 	p.color_ramp = _get_spark_ramp(base_color, weapon_type)
+	# v20.28: 命中火花重力下坠——池默认 (0,0) 让慢速长命火花（曲射/爆炸族 0.6-0.75s
+	# @90-350px/s）在侧视角里直线悬漂 0.7 秒，读成"悬空萤火虫"。g=380 的分档效果：
+	# 慢粒（0.6-0.75s）下坠 65-105px 出明显下坠弧；快粒（0.2-0.34s，轻动能/狙击）
+	# 仅 9-22px 轻微下垂、观感不变。只影响本函数（枪口火/闪光/血溅/暴击火花是
+	# 独立函数，各自显式设置重力或寿命过短无感知）。
+	p.gravity = Vector2(0, 380)
 	parent.add_child(p)
 	var tree := p.get_tree()
 	if tree != null:
@@ -2698,6 +2746,9 @@ static func _spawn_debris(parent: Node2D, pos: Vector2, debris_cfg: Dictionary, 
 	p.scale_amount_max = float(debris_cfg.get("smax", 4.0)) * DEBRIS_SCALE_FIX
 	# 烟尘向上、碎片有重力
 	if bool(debris_cfg.get("is_smoke", false)):
+		# v20.27: 烟层 ADD→MIX——池默认 ADD 把灰烟暗部洗成白雾（"烟反客为主"的命中版，
+		# f01 白团 ~300px 主源之一），爆炸族烟改 MIX 回归暗灰配角（v18-R9 碎片同款理由）。
+		p.material = _get_normal_mat()
 		if bool(debris_cfg.get("low_dust", false)):
 			# v8.x: 曲射落地扬尘——横向低矮扩散（贴地），区别于爆炸烟柱的垂直上升
 			p.direction = Vector2(1, 0)  # 横向（左甩+右甩由 spread=180 实现）
@@ -2800,6 +2851,9 @@ static func _spawn_smoke_puff_layer(parent: Node2D, pos: Vector2, base_color: Co
 	p.direction = Vector2(0, -1)   # 向上飘
 	p.spread = 55.0
 	p.gravity = Vector2(0, -15.0)  # 轻微上飘
+	# v20.27: 烟层 ADD→MIX（同 _spawn_debris 烟分支）——ADD 洗掉灰烟暗部读成白雾，
+	# 烟回归"微量配角"档。release 时 _release_debris_particle 已归位池默认 ADD。
+	p.material = _get_normal_mat()
 	var smoke_col: Color = cfg.get("color", (Color(0.32, 0.3, 0.28, 0.55) if not is_energy else Color(0.3, 0.38, 0.6, 0.45)))
 	p.color = smoke_col
 	p.color_ramp = _get_smoke_grad(smoke_col)
@@ -2936,7 +2990,9 @@ static func _impact_color(weapon_type: int, combat_kind: int, is_player: bool) -
 	if combat_kind >= 0 and TINT_BY_KIND.has(combat_kind):
 		base = base.lerp(TINT_BY_KIND[combat_kind], 0.3)
 	if not is_player:
-		base = base.lerp(Color(1.0, 0.45, 0.55), 0.25)  # 敌方轻微偏粉（25%），保留武器色
+		# v20.27: 敌方命中 25% 染色粉红→橙红——与弹体/环阵营橙统一（v18-R9b 已否掉
+		# 粉红"棉花糖"语言，此处是命中侧最后一个粉残留）。
+		base = base.lerp(Color(1.0, 0.55, 0.25), 0.25)  # 敌方轻微偏橙（25%），保留武器色
 	# v13: 能量系(激光/粒子炮/磁轨)按时代调色——一战/二战蓝紫转暖橙白,冷战降饱和
 	if weapon_type in [8, 10, 11]:
 		return _era_tint_energy(base)

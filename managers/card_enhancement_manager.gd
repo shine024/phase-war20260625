@@ -1,18 +1,19 @@
 extends Node
-## 单张卡片强化系统 v6.0：强化 = 选择词条
+## 单张卡片强化系统 v6.0（⚠️ v20.12 已退役僵尸文件——头注校正）
 ##
-## 核心机制：
-## - 强化等级 1-10
-## - 奇数级(Lv2/4/6/8/10) = 获得新词条槽，从池中选一个词条
-## - 偶数级(Lv3/5/7/9) = 升级已有词条(Lv1→Lv2→Lv3)
-## - Lv10 额外获得 +10% 全属性加成
-## - 最终满配：5个词条(最高Lv3) + +10% 全属性
-## - 能量卡和法则卡不可强化
-## - 100% 成功率，消耗纳米材料
+## 现状（v20.12 等级统一后）：
+## - 手动强化轴（强化等级 1-10 / 奇偶级词条槽 / apply 入口）已退役，本文件的
+##   强化执行函数不再有活跃入口；card_info_panel 强化 Tab 恒隐藏。
+## - 玩家卡唯一等级轴 = card_level（1-30，上阵攒经验自动升，InstanceRegistry 持有）；
+##   词条由 AffixManager.on_card_level_up_instance 按里程碑（每 5 级）自动赋予。
+## - 本文件保留仅为兼容仍被引用的只读查询（module_slots 显示/词条摘要等）与
+##   enhancement_completed 信号（教学任务"升级尝试"经 _on_card_level_up 转发）。
+## - 详见 AGENTS.md 停用清单"强化①"条目；勿在本文件新增养成功能。
 ##
-## 词条数据由 ModuleDefinitions 定义（16个词条，3层池）
+## 历史设计（v6.0，已退役）：强化等级 1-10 / 奇数级词条槽 / 偶数级词条升级 /
+## Lv10 +10% 全属性 / 消耗纳米材料。
 ## 词条槽位数据存储在 card.module_slots (Array[ModuleSlot])
-## enhance_level 存储在 card.enhance_level
+## enhance_level 存储在 card.enhance_level（惰性数值，无提升入口）
 
 signal enhancement_started(card_id: String, target_level: int)
 signal enhancement_completed(success: bool, card_id: String, action: String, message: String)

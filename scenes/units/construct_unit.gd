@@ -2228,7 +2228,14 @@ func _trigger_allied_kill_rewards() -> void:
 
 
 ## v6.4: 死亡视觉淡出——快速缩放并淡出后销毁节点（逻辑结算已完成，不依赖 _process）
+## v23.5: 空中单位先坠落（翻转加速到地面线）再爆散淡出（与 enemy_unit 同构）
 func _play_death_fadeout() -> void:
+	if CardGridUnitVisuals.play_air_death_fall(self, _death_burst_and_fade):
+		return
+	_death_burst_and_fade()
+
+
+func _death_burst_and_fade() -> void:
 	# v8.x: 死亡爆散反馈（阵营色冲击波 + 碎片），让死亡与受击产生明确视觉差
 	VfxImpactFactory.spawn_death_burst(get_parent(), global_position, is_player)
 	if _death_fade_tween != null and _death_fade_tween.is_valid():

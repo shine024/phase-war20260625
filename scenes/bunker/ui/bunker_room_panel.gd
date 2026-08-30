@@ -203,14 +203,28 @@ func _build_locked_actions(room_id: String) -> void:
 	var battles: int = int(_def.get("battles", 0))
 	var info := _make_info_label()
 	if _def.get("is_terminal", false):
-		# P3：观星台显示实时解锁条件
+		# 终局房间不占三态：芯片标"终局"，内容随解锁条件/抉择进度变化
+		_set_chip("终局", ACCENT)
 		var cond: Dictionary = _manager.is_observatory_unlockable()
-		if cond.get("ok", false):
-			info.text = "终局之门即将开启……（P4 开放）"
-		else:
+		if not cond.get("ok", false):
 			var reasons: Array = cond.get("reasons", [])
-			info.text = "终局之门。尚缺条件：\n· " + "\n· ".join(reasons) + "\n（P4 开放）"
-		_action_box.add_child(info)
+			info.text = "终局之门。尚缺条件：\n· " + "\n· ".join(reasons)
+			_action_box.add_child(info)
+			return
+		# v22.3 P4：条件齐备 → 终局抉择入口（已抉择则显示徽记 + 重访）
+		var chosen: Dictionary = _manager.get_chosen_ending()
+		if not chosen.is_empty():
+			info.text = "✔ %s（第 %d 天抵达）" % [chosen.get("emblem", ""), int(chosen.get("day", 0))]
+			info.add_theme_color_override("font_color", GOOD_COL)
+			_action_box.add_child(info)
+			_action_box.add_child(_make_button("重访观星台 —— 回看结局",
+				"ghost", func(): open_embedded_panel_requested.emit("observatory_ending"), 44))
+		else:
+			info.text = HeroArchiveTexts.OBSERVATORY_PROLOGUE
+			info.add_theme_color_override("font_color", Color(0.78, 0.86, 0.98))
+			_action_box.add_child(info)
+			_action_box.add_child(_make_button("登上观星台 —— 终局抉择",
+				"solid", func(): open_embedded_panel_requested.emit("observatory_ending"), 44))
 		return
 	info.text = "修复需求：%s · 完成战斗 %d 场" % [
 		(BunkerRoomDefs.cost_text(cost) if not cost.is_empty() else "免费"), battles]
@@ -344,8 +358,17 @@ func _build_active_actions(room_id: String) -> void:
 			call_lbl.add_theme_color_override("font_color", Color(0.62, 0.75, 0.85))
 			_action_box.add_child(call_lbl)
 		"mess_hall":
-			_action_box.add_child(_make_button("查看挂机收益（AFK）",
-				"solid", func(): open_embedded_panel_requested.emit("afk"), 44))
+			# v22.3：AFK 面板依赖 main.gd 注入的 AFKModeManager，在基地内永远是死键——
+			# 换成每日配给（挂机收益入口留在战区主界面）。
+			if _manager.is_ration_claimed_today():
+				var claimed := _make_info_label()
+				claimed.text = "✔ 今日配给已领取——明天再来。"
+				claimed.add_theme_color_override("font_color", GOOD_COL)
+				_action_box.add_child(claimed)
+			else:
+				_action_box.add_child(_make_button(
+					"领取每日配给 —— 纳米 120 · 合金 40（每天一次）",
+					"solid", _on_ration_pressed, 44))
 		"archive":
 			_add_embedded_buttons([
 				["英雄档案", "hero_archive"],
@@ -381,6 +404,18 @@ func _on_treat_pressed() -> void:
 		lbl.text = "✖ " + str(result.get("reason", ""))
 		lbl.add_theme_color_override("font_color", DT.COLOR_DANGER)
 	_action_box.add_child(lbl)
+
+## v22.3：食堂每日配给（成功后刷新 HUD 资源）
+func _on_ration_pressed() -> void:
+	var result: Dictionary = _manager.claim_daily_ration()
+	if result.get("ok", false):
+		panel_action_done.emit()
+		_rebuild_content()
+	else:
+		var lbl := _make_info_label()
+		lbl.text = "✖ " + str(result.get("reason", ""))
+		lbl.add_theme_color_override("font_color", DT.COLOR_DANGER)
+		_action_box.add_child(lbl)
 
 ## ───────────────────── 控件工厂 ─────────────────────
 

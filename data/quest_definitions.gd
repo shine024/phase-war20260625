@@ -110,7 +110,7 @@ const LEGACY_QUESTS: Array[Dictionary] = [
 	{
 		"id": "q_frag_smg",
 		"title": "扩充军械库",
-		"description": "解锁至少 3 种卡牌蓝图（v3：无碎片，以解锁卡种计）。",
+		"description": "收集至少 3 种不同的战斗卡。",
 		"objective_type": "collect_cards",
 		"target": 3,
 		"company_id": "void_research",
@@ -317,18 +317,9 @@ const LEGACY_QUESTS: Array[Dictionary] = [
 			"company_rep": {"quantum_logistics": 8},
 		},
 	},
-	{
-		"id": "q_tutorial_law",
-		"title": "法则初探",
-		"description": "研究你的第一个战争法则。",
-		"objective_type": "research_law",
-		"target": 1,
-		"company_id": "void_research",
-		"rewards": {
-			"nano_materials": 12,
-			"company_rep": {"void_research": 10},
-		},
-	},
+	# v20.31: q_tutorial_law（法则初探，objective_type=research_law）已删除——法则系统
+	# 随 P2-7 整体退役，notify_law_researched 零调用方，该任务接取后永不可完成。
+	# 旧存档 accepted 列表里的残留 id 由 QuestManager 的 def.is_empty() 守卫安全跳过。
 	{
 		"id": "q_tutorial_faction",
 		"title": "势力接触",
@@ -517,8 +508,8 @@ const LEGACY_QUESTS: Array[Dictionary] = [
 	},
 	{
 		"id": "q_collect_fragments_50",
-		"title": "碎片大师",
-		"description": "拥有总计50个蓝图碎片（可包含不同类型）。",
+		"title": "收藏大家",
+		"description": "拥有至少 50 张不同的卡片（v20.31 文案校正：原“蓝图碎片”已随蓝图体系删除，本任务实际计拥有卡种数）。",
 		"objective_type": "collect_fragments",
 		"target": {"total": 50},
 		"company_id": "void_research",

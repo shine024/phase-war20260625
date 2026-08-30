@@ -7,6 +7,7 @@ extends Node
 ## 职责：房间状态机 / 天数 / 精神值 / 修复经济；P2 接存档段，P3 接英雄碎片。
 
 const BunkerRoomDefs = preload("res://data/bunker_room_defs.gd")
+const HeroArchiveTexts = preload("res://data/hero_archive_texts.gd")
 
 ## 运行期状态
 var _day: int = 1
@@ -17,9 +18,18 @@ var _narrative_stage: int = 1
 var _announced_stage: int = 1      # 已播报过切换字幕的情感阶段
 var _completed_today: Array = []    # 今日（自上次睡觉起）完成修复的房间 id
 var _bootstrap_granted := false    # 首次进基地应急储备是否已发放（存档持久化）
+var _ration_day: int = 0           # 每日配给最后领取的天数（0=从未领过；同一天只发一次）
+var _ending_id := ""               # P4 观星台终局抉择（rewrite/keep/depart；空=未抉择）
+var _ending_day: int = 0           # 抉择发生的天数（结局徽记展示用）
+var _intro_shown := false          # 首次进基地引导卡是否已展示（v22.4 P1-5）
 
 ## 荣誉陈列室解锁所需碎片数（P3 定 10：让中期玩家够得着；30 全收集是观星台条件）
 const HONOR_HALL_FRAGMENT_GATE := 10
+
+## 食堂每日配给（v22.3：替代基地内无法工作的 AFK 死键——AFKModeManager 由
+## main.gd 创建注入，基地嵌入实例永远拿不到，面板所有按钮空守卫静默无效）。
+## 量锚定日均纳米收入（~200-400）：食堂造价 200 纳米+100 合金，约两天回本。
+const DAILY_RATION := {"nano": 120, "alloy": 40}
 
 ## ───────────────────────── 生命周期 ─────────────────────────
 
@@ -199,6 +209,25 @@ func medical_treatment() -> Dictionary:
 func adjust_sanity(delta: float) -> void:
 	_sanity = clampf(_sanity + delta, 0.0, 100.0)
 
+## ───────────────────── 食堂：每日配给（v22.3） ─────────────────────
+
+func is_ration_claimed_today() -> bool:
+	return _ration_day == _day and _day > 0
+
+## 每天一次的免费补给（睡觉推进天数后重置）。返回 {"ok", "reason"}。
+func claim_daily_ration() -> Dictionary:
+	if get_room_state("mess_hall") != BunkerRoomDefs.STATE_ACTIVE:
+		return {"ok": false, "reason": "食堂尚未修复"}
+	if is_ration_claimed_today():
+		return {"ok": false, "reason": "今日配给已领取，明天再来"}
+	if BasicResourceManager == null:
+		return {"ok": false, "reason": "资源系统未就绪"}
+	for short_id in DAILY_RATION:
+		BasicResourceManager.add_resource(
+			BunkerRoomDefs.res_full_id(short_id), int(DAILY_RATION[short_id]))
+	_ration_day = _day
+	return {"ok": true, "reason": "每日配给已发放：%s" % BunkerRoomDefs.cost_text(DAILY_RATION)}
+
 ## 精神值档位（UI 光点表现/掉落惩罚用）：0 正常 / 1 偏低(<50) / 2 低(<30)
 func sanity_tier() -> int:
 	if _sanity < 30.0:
@@ -206,6 +235,25 @@ func sanity_tier() -> int:
 	elif _sanity < 50.0:
 		return 1
 	return 0
+
+## v22.4（P1-4）：低精神掉落惩罚——精神值从装饰数值变真资源。
+## tier 0→1.0 / 1(<50)→0.9 / 2(<30)→0.75。战后货币奖励乘此系数（结算面板同步展示）。
+func get_drop_reward_multiplier() -> float:
+	match sanity_tier():
+		1: return 0.9
+		2: return 0.75
+		_: return 1.0
+
+## v22.4（P0-2）：今日完工房间（结算面板"要塞"反馈行数据源）
+func get_completed_today() -> Array:
+	return _completed_today.duplicate()
+
+## v22.4（P1-5）：首次进基地引导卡（只展示一次，随存档持久化）
+func is_intro_shown() -> bool:
+	return _intro_shown
+
+func mark_intro_shown() -> void:
+	_intro_shown = true
 
 # ───────────────────── P3：英雄遗物碎片 ─────────────────────
 
@@ -257,6 +305,30 @@ func is_observatory_unlockable() -> Dictionary:
 		return {"ok": true, "reasons": []}
 	return {"ok": false, "reasons": reasons}
 
+## ───────────────────── P4：观星台终局抉择（v22.3 接 UI） ─────────────────────
+
+## 已抵达的结局：{"id", "day", ...结局文案}；未抉择返回空字典。
+func get_chosen_ending() -> Dictionary:
+	if _ending_id.is_empty():
+		return {}
+	var ending: Dictionary = HeroArchiveTexts.observatory_ending(_ending_id)
+	if ending.is_empty():
+		return {}
+	ending["id"] = _ending_id
+	ending["day"] = _ending_day
+	return ending
+
+## 锁定终局抉择（不可反悔）。返回 {"ok", "reason", "ending"}。
+func choose_ending(id: String) -> Dictionary:
+	if not _ending_id.is_empty():
+		return {"ok": false, "reason": "结局已定", "ending": get_chosen_ending()}
+	var ending: Dictionary = HeroArchiveTexts.observatory_ending(id)
+	if ending.is_empty():
+		return {"ok": false, "reason": "未知结局：%s" % id}
+	_ending_id = id
+	_ending_day = _day
+	return {"ok": true, "reason": "终局已记录", "ending": get_chosen_ending()}
+
 ## ───────────────────────── 调试（P1 专用，P2 移除） ─────────────────────────
 
 func debug_grant_resources() -> void:
@@ -279,6 +351,10 @@ func save_state() -> Dictionary:
 		"narrative_stage": _narrative_stage,
 		"announced_stage": _announced_stage,
 		"bootstrap_granted": _bootstrap_granted,
+		"ration_day": _ration_day,
+		"ending_id": _ending_id,
+		"ending_day": _ending_day,
+		"intro_shown": _intro_shown,
 	}
 
 ## SaveManager 应用入口（_safe_load_manager 按此方法名加载）；空字典=新游戏全重置
@@ -291,6 +367,10 @@ func load_state(data: Dictionary) -> void:
 	_narrative_stage = int(data.get("narrative_stage", BunkerRoomDefs.narrative_stage_for_day(_day)))
 	_announced_stage = int(data.get("announced_stage", _narrative_stage))
 	_bootstrap_granted = bool(data.get("bootstrap_granted", false))
+	_ration_day = int(data.get("ration_day", 0))
+	_ending_id = str(data.get("ending_id", ""))
+	_ending_day = int(data.get("ending_day", 0))
+	_intro_shown = bool(data.get("intro_shown", false))
 	_hero_fragments = []
 	for f in data.get("hero_fragments", []):
 		_hero_fragments.append(str(f))
@@ -323,6 +403,10 @@ func reset_to_defaults() -> void:
 	_narrative_stage = 1
 	_announced_stage = 1
 	_bootstrap_granted = false
+	_ration_day = 0
+	_ending_id = ""
+	_ending_day = 0
+	_intro_shown = false
 	for room_id in _rooms:
 		var def := BunkerRoomDefs.get_room(room_id)
 		_rooms[room_id]["state"] = int(def.get("initial", BunkerRoomDefs.STATE_LOCKED))

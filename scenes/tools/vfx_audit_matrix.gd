@@ -71,34 +71,57 @@ func _spawn_trajectory_cell(f: int, side: bool) -> void:
 	# 火箭/导弹中段拍弹体、光束类单发清晰线。
 	# v18-R8: [0,4,1,2]→[0,4]——f=1/2(曲射/空射)误入直射 batch（直线 MultiMesh），
 	# 抛物线弧线从未进审计（AI 批"弹道几乎呈直线"实为工具渲染错，游戏本体走 indirect batch 无此问题）。
-	# 现路由到 bullet 场景（_process_indirect 抛物线）+ 下方 cfg 按族拍法。
+	# v20.20: 每族参数重标定（n=连发数 / gap=连发间隔 / wait=截帧前等待）。
+	# 病根（2026-08-27 像素实测）：旧表无 gap 轴——n≤3 的族 3 发同帧出生，单帧只拍到
+	# 1 个孤立点（AI 批"弹道完全缺失"）；wait 过大又让首发弹在采样窗内落地爆炸污染
+	# 弹道格（AI 批 f02"拍到的是命中爆炸"）。新表保证：截帧窗口内所有弹都在飞、
+	# 且沿弧线散开（gap 拉开 0.08-0.12s ≈ 弧线上 80-150px 间距）。
+	# v20.25: cfg 提前——曲射族（batch 采样）与 5/6/8/10/11（bullet 采样）共用本表。
+	var cfg: Dictionary = {
+		1: {"n": 2, "gap": 0.12, "wait": 0.30},  # 曲射：2 发沿抛物线拉开（0.82s 飞行全程内）
+		2: {"n": 3, "gap": 0.10, "wait": 0.25},  # 空射：3 发俯冲弧上分布
+		3: {"n": 2, "gap": 0.08, "wait": 0.20},  # 火箭：2 发低平弧（0.59s 飞行，防落地穿窗）
+		5: {"n": 6, "wait": 0.20},               # 霰弹：6 发散射扇面（v17m 散点目标不变）；
+		                                         # v20.20 wait 0.12→0.20——0.12s 时弹丸只飞出
+		                                         # 65-145px，±9° 扇面未张开读成"光条束"（AI 主诉）
+		6: {"n": 1, "wait": 0.15},               # 狙击/光束：单发光束线清晰
+		7: {"n": 6, "wait": 0.12},               # 高炮：速射连发
+		8: {"n": 1, "wait": 0.15},               # 激光：v20.24 改单发（对齐狙击 6 拍法）。
+		                                         # v18-R8 4 发连拍的初衷是保捕获，但 4 个
+		                                         # 弹头亮斑沿路径每 14px 重复（gap0.01×
+		                                         # 1400px/s），ADD 叠出周期性亮带 = AI 读
+		                                         # "分段矩形块/断裂"的几何真身。单发飞行
+		                                         # 光弹 + 160px 定长尾段正是 v19-R35 用户
+		                                         # 定调的语义；4 采样帧覆盖 320px 飞行窗
+		9: {"n": 2, "gap": 0.12, "wait": 0.30},  # 导弹：2 发中弧分布（0.72s 飞行）
+		10: {"n": 1, "wait": 0.15},              # 欧米茄：单发快弹（0.02s 早帧捕获）
+		11: {"n": 1, "wait": 0.15},              # 磁轨：单发快弹（0.02s 早帧捕获）
+	}
+	# v20.25: 曲射族（f 1/2/3/7/9）从 bullet 场景改回 simple_indirect_projectile_batch——
+	# v18-R8 把它们路由到 bullet（兜底路径）后，v19/v20 全部弧线调优闭环都在调实战
+	# 不走的路径：主路径（construct_unit_ai/enemy_unit 曲射 100% 走 indirect batch）
+	# 从未吃到 v19-R33 弧线修复，两侧弧线倍率表因此分叉。采样必须对准主路径，
+	# 否则继续产生"调了没生效"的假反馈（vfx-tuning 第 3 步：先校准测量）。
+	if f in [1, 2, 3, 7, 9]:
+		var ind_batch_script: GDScript = load("res://managers/battle/simple_indirect_projectile_batch.gd")
+		var ind_batch: Node2D = ind_batch_script.new()
+		ind_batch.is_player_side = side
+		_fx_layer.add_child(ind_batch)
+		var c_ind: Dictionary = cfg.get(f, {"n": 3, "wait": 0.14})
+		var gap_ind: float = float(c_ind.get("gap", 0.05))
+		# f01 用"榴弹炮"命中 HOWITZER 亚类（与游戏内命名曲射武器一致）；f02（空射）
+		# 游戏内敌单位都带名走导弹/火箭族，这里无名拍槽位基准形态。
+		var rep_ind := "105mm 榴弹炮" if f == 1 else ""
+		for i in range(int(c_ind["n"])):
+			ind_batch.fire(MUZZLE_POS + Vector2(0, (i % 3 - 1) * 22.0), tgt, 10.0, f, shooter, null, false, rep_ind, "")
+			if i < int(c_ind["n"]) - 1:
+				await get_tree().create_timer(gap_ind).timeout
+		await get_tree().create_timer(float(c_ind["wait"]))
+		return
 	if not (f in [0, 4]):
+		# v20.25: 本分支只服务 5/6/8/10/11（霰弹/狙击/激光/欧米茄/磁轨——实战走单发
+		# bullet 路径，签名武器弹道语义与 bullet 实现绑定）；曲射族见上方 batch 分支。
 		var bullet_scene: PackedScene = load("res://scenes/units/bullet.tscn")
-		# v20.20: 每族参数重标定（n=连发数 / gap=连发间隔 / wait=截帧前等待）。
-		# 病根（2026-08-27 像素实测）：旧表无 gap 轴——n≤3 的族 3 发同帧出生，单帧只拍到
-		# 1 个孤立点（AI 批"弹道完全缺失"）；wait 过大又让首发弹在采样窗内落地爆炸污染
-		# 弹道格（AI 批 f02"拍到的是命中爆炸"）。新表保证：截帧窗口内所有弹都在飞、
-		# 且沿弧线散开（gap 拉开 0.08-0.12s ≈ 弧线上 80-150px 间距）。
-		var cfg: Dictionary = {
-			1: {"n": 2, "gap": 0.12, "wait": 0.30},  # 曲射：2 发沿抛物线拉开（0.82s 飞行全程内）
-			2: {"n": 3, "gap": 0.10, "wait": 0.25},  # 空射：3 发俯冲弧上分布
-			3: {"n": 2, "gap": 0.08, "wait": 0.20},  # 火箭：2 发低平弧（0.59s 飞行，防落地穿窗）
-			5: {"n": 6, "wait": 0.20},               # 霰弹：6 发散射扇面（v17m 散点目标不变）；
-			                                         # v20.20 wait 0.12→0.20——0.12s 时弹丸只飞出
-			                                         # 65-145px，±9° 扇面未张开读成"光条束"（AI 主诉）
-			6: {"n": 1, "wait": 0.15},               # 狙击/光束：单发光束线清晰
-			7: {"n": 6, "wait": 0.12},               # 高炮：速射连发
-			8: {"n": 1, "wait": 0.15},               # 激光：v20.24 改单发（对齐狙击 6 拍法）。
-			                                         # v18-R8 4 发连拍的初衷是保捕获，但 4 个
-			                                         # 弹头亮斑沿路径每 14px 重复（gap0.01×
-			                                         # 1400px/s），ADD 叠出周期性亮带 = AI 读
-			                                         # "分段矩形块/断裂"的几何真身。单发飞行
-			                                         # 光弹 + 160px 定长尾段正是 v19-R35 用户
-			                                         # 定调的语义；4 采样帧覆盖 320px 飞行窗
-			9: {"n": 2, "gap": 0.12, "wait": 0.30},  # 导弹：2 发中弧分布（0.72s 飞行）
-			10: {"n": 1, "wait": 0.15},              # 欧米茄：单发快弹（0.02s 早帧捕获）
-			11: {"n": 1, "wait": 0.15},              # 磁轨：单发快弹（0.02s 早帧捕获）
-		}
 		var c: Dictionary = cfg.get(f, {"n": 3, "wait": 0.14})
 		var _gap: float = float(c.get("gap", 0.05))
 		for i in range(int(c["n"])):
@@ -110,15 +133,7 @@ func _spawn_trajectory_cell(f: int, side: bool) -> void:
 				stgt = Node2D.new()
 				stgt.position = IMPACT_POS + Vector2(-20 + (i % 3) * 20.0, -40 + (i / 3) * 80.0)
 				_fx_layer.add_child(stgt)
-			# v20.9-R1: 弹道格补代表武器名——空名走域感知兜底时，敌方域把裸 1/2 按
-			# legacy 步枪/机枪解释归一为 0，f01 敌格会拍成轻动能小弹体而非族形态。
-			# f01 用"榴弹炮"关键词命中族 1（双侧行为与游戏内命名曲射武器一致）；
-			# f02（空射）无任何关键词/精确表可达（只能我方域 fallback 透传），敌格
-			# 工具侧强制族号拍族形态（游戏内敌空射单位都带名走导弹/火箭族，无此形态）。
-			var rep_name := "105mm 榴弹炮" if f == 1 else ""
-			bl.setup(stgt, 10.0, side, f, shooter, null, false, rep_name, true, "")  # v18-R8: side 透传（敌光束暖色/敌曳光分色）
-			if f == 2 and not side:
-				bl.set("_visual_wt", 2)
+			bl.setup(stgt, 10.0, side, f, shooter, null, false, "", true, "")  # v18-R8: side 透传（敌光束暖色/敌曳光分色）
 			if i < int(c["n"]) - 1:
 				await get_tree().create_timer(_gap).timeout
 		await get_tree().create_timer(float(c["wait"]))

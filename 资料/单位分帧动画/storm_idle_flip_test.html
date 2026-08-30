@@ -1,0 +1,47 @@
+<!DOCTYPE html><html lang="zh"><head><meta charset="utf-8">
+<title>暴风突击队 idle · 翻转帧对比实验</title><style>
+body{background:#14171c;color:#dfe5ec;font-family:system-ui,sans-serif;margin:24px}
+h2{font-size:16px;margin:20px 0 8px} small{color:#8b98a9}
+.stage{width:512px;height:512px;background:repeating-conic-gradient(#232a34 0% 25%, #1a2029 0% 50%) 0 0/32px 32px;
+  border-radius:8px;position:relative;overflow:hidden;display:inline-block;vertical-align:top;margin-right:16px}
+.stage img{position:absolute;inset:0;width:100%;height:100%;display:none}
+.stage img.on{display:block}
+.pair{display:inline-block;margin:6px 12px 6px 0;text-align:center}
+.pair img{width:200px;height:200px;background:#11151b;border-radius:6px;display:block}
+.lbl{font-size:12px;color:#8b98a9}
+</style></head><body>
+<h1>暴风突击队 idle · 翻转帧对比实验 <small>基于 idle_v1_headturn 备份</small></h1>
+
+<h2>① 原版 8 帧循环 <small id="o-info"></small></h2>
+<div class="stage" id="orig"></div>
+<p class="lbl">观察中间帧（约 f03/f04）头部的朝向问题</p>
+
+<h2>② 替换版循环：f03/f04 用水平翻转帧 <small>看跳变是否可接受</small></h2>
+<div class="stage" id="patch34"></div>
+<h2>③ 替换版循环：f04/f05 用水平翻转帧 <small>另一组候选</small></h2>
+<div class="stage" id="patch45"></div>
+
+<h2>④ 原帧 vs 翻转帧 并排 <small>注意翻转会让整个人/枪换边，不只头</small></h2>
+<div id="pairs"></div>
+
+<script>
+function play(stage, files, fps){
+  files.forEach((f,i)=>{const im=document.createElement('img');im.src=f;if(i===0)im.className='on';stage.appendChild(im)});
+  const imgs=stage.querySelectorAll('img');let k=0;
+  setInterval(()=>{imgs[k].className='';k=(k+1)%imgs.length;imgs[k].className='on'},1000/fps);
+}
+const D='ww1_storm_暴风突击队/idle_v1_headturn/';
+const orig=['f00','f01','f02','f03','f04','f05','f06','f07'].map(f=>D+f+'.png');
+play(document.getElementById('orig'), orig, 8);
+play(document.getElementById('patch34'), ['f00','f01','f02',D+'f03_flip.png',D+'f04_flip.png','f05','f06','f07'].map(f=>f.startsWith('f0')&&!f.includes('/')?D+f:f), 8);
+play(document.getElementById('patch45'), ['f00','f01','f02','f03',D+'f04_flip.png',D+'f05_flip.png','f06','f07'].map(f=>f.startsWith('f0')&&!f.includes('/')?D+f:f), 8);
+const pairsDiv=document.getElementById('pairs');
+[['f03'],['f04'],['f05']].forEach(([f])=>{
+  const a=document.createElement('div');a.className='pair';
+  a.innerHTML='<img src="'+D+f+'.png"><span class="lbl">'+f+' 原帧</span>';
+  const b=document.createElement('div');b.className='pair';
+  b.innerHTML='<img src="'+D+f+'_flip.png"><span class="lbl">'+f+' 水平翻转</span>';
+  pairsDiv.appendChild(a);pairsDiv.appendChild(b);
+});
+document.getElementById('o-info').textContent='(帧序号标在替换版文件名里)';
+</script></body></html>

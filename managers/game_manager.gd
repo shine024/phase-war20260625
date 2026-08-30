@@ -315,14 +315,17 @@ func _enrich_master_config(simple_config: Dictionary) -> Dictionary:
 	)  # era 0->5, era 4->25
 
 	## 找最接近目标等级的候选
-	var best: Dictionary = {}
-	var best_diff: int = 999
-	for c in candidates:
-		var c_level: int = int(c.get("level", 1))
-		var diff: int = absi(c_level - target_level)
-		if diff < best_diff:
-			best_diff = diff
-			best = c
+	## v22.4（P0-1 碎片可达性）：加"未收集优先"两级排序——原逻辑只按等级距离取
+	## 唯一候选，等级居中的驻守师会系统性遮蔽边缘等级的非驻守相位师（30 位中
+	## 10 位无驻守关，只能靠随机遭遇掉碎片），30/30 碎片在旧规则下大概率凑不齐，
+	## 观星台终局被事实上锁死。现改为：未收集的候选优先，同级再比等级距离；
+	## 全部已收集时退化为原行为。
+	var collected_ids: Array = []
+	var bunker_mgr: Node = Engine.get_main_loop().root.get_node_or_null("BunkerManager") \
+		if Engine.get_main_loop() != null else null
+	if bunker_mgr != null and bunker_mgr.has_method("get_hero_fragments"):
+		collected_ids = bunker_mgr.get_hero_fragments()
+	var best: Dictionary = _pick_master_candidate(candidates, target_level, collected_ids)
 
 	if best.is_empty():
 		return simple_config
@@ -354,6 +357,25 @@ static func _era_string_to_int(era_str: String) -> int:
 		"modern": return 3
 		"future", "near_future": return 4
 		_: return 4
+
+## v22.4（P0-1）：遭遇相位师候选两级择优——①碎片未收集者优先（0<已收集 1），
+## ②同级比 |level - target_level|。collected_ids 为空/候选未命中时退化为例原行为。
+## 静态纯函数便于冒烟测试直接断言。
+static func _pick_master_candidate(candidates: Array, target_level: int, collected_ids: Array = []) -> Dictionary:
+	var best: Dictionary = {}
+	var best_collected: int = 2   # 哨兵：任何候选的 collected(0/1) 都优于 2
+	var best_diff: int = 999
+	for c in candidates:
+		if not (c is Dictionary):
+			continue
+		var c_level: int = int(c.get("level", 1))
+		var diff: int = absi(c_level - target_level)
+		var collected: int = 1 if collected_ids.has(String(c.get("id", ""))) else 0
+		if collected < best_collected or (collected == best_collected and diff < best_diff):
+			best_collected = collected
+			best_diff = diff
+			best = c
+	return best
 
 ## v7.x 时代筛选：从相位师池筛出 era ≤ era_ceiling 的子集。
 ## 用于 check_phase_master_encounter——防止低级关抽到高时代相位师导致产兵跨时代
@@ -527,10 +549,39 @@ func _on_battle_ended(player_won: bool) -> void:
 		"era": era,
 		"phase_instrument_drop": phase_instrument_drop.duplicate(true),
 		"intel_harvest": intel_harvest.duplicate(true) if not intel_harvest.is_empty() else {},
-		# v7.x 胜利面板漏显修复：本局收集器快照（战中击杀卡/符文/相位师全部奖励）。
-		# 相位师战时此快照在 _deferred_pm_show_battle_result 中会刷新一次（相位师奖励已入收集器）。
-		"collected_rewards": _battle_reward_collector.duplicate(true),
-	}
+			# v7.x 胜利面板漏显修复：本局收集器快照（战中击杀卡/符文/相位师全部奖励）。
+			# 相位师战时此快照在 _deferred_pm_show_battle_result 中会刷新一次（相位师奖励已入收集器）。
+			"collected_rewards": _battle_reward_collector.duplicate(true),
+		}
+	# v22.4（P1-4）：低精神掉落惩罚——精神值从装饰数值变真资源。
+	# 按基地精神档位（<50 → ×0.9 / <30 → ×0.75）对本次战后货币收益折算扣回，
+	# 惩罚额记入 summary 供结算面板"要塞"行展示。口径说明：只折算本函数内同步
+	# 入账的收益快照差值，结算面板"继续"时才领取的 DropManager 待领掉落不追溯
+	# （惩罚的意义在信号传递，不在精确到个位）。
+	var bunker_pen: Node = get_node_or_null("/root/BunkerManager")
+	var sanity_mult: float = 1.0
+	if bunker_pen != null and bunker_pen.has_method("get_drop_reward_multiplier"):
+		sanity_mult = bunker_pen.get_drop_reward_multiplier()
+	if player_won and sanity_mult < 1.0 and BasicResourceManager != null:
+		var pen_ratio: float = 1.0 - sanity_mult
+		var nano_pen: int = int(round(int(last_battle_reward_summary.get("basic_nano_gain", 0)) * pen_ratio))
+		var energy_pen: int = int(round(int(last_battle_reward_summary.get("energy_block_gain", 0)) * pen_ratio))
+		if nano_pen > 0 and BasicResourceManager.has_method("consume") \
+				and BasicResourceManager.has_method("get_total"):
+			var nano_have: int = BasicResourceManager.get_total(BasicResources.ID_NANO_MATERIALS)
+			nano_pen = mini(nano_pen, nano_have)
+			if nano_pen > 0:
+				BasicResourceManager.consume(BasicResources.ID_NANO_MATERIALS, nano_pen)
+		if energy_pen > 0 and BasicResourceManager.has_method("consume") \
+				and BasicResourceManager.has_method("get_total"):
+			var energy_have: int = BasicResourceManager.get_total(BasicResources.ID_ENERGY_BLOCK)
+			energy_pen = mini(energy_pen, energy_have)
+			if energy_pen > 0:
+				BasicResourceManager.consume(BasicResources.ID_ENERGY_BLOCK, energy_pen)
+		if nano_pen > 0 or energy_pen > 0:
+			last_battle_reward_summary["sanity_penalty"] = {
+				"nano": nano_pen, "energy": energy_pen, "multiplier": sanity_mult,
+			}
 	# v9.x（P2-7范围B）：知识收益延迟计算已随法则系统退役移除（原 call_deferred 补
 	# knowledge_gain_* 字段，无面板消费方）。
 

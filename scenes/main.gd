@@ -152,6 +152,10 @@ func _ready() -> void:
 			SignalBus.toggle_world_map.connect(_on_toggle_world_map_from_tutorial)
 		if SignalBus.has_signal("open_phase_field_points") and not SignalBus.open_phase_field_points.is_connected(_on_open_phase_field_from_tutorial):
 			SignalBus.open_phase_field_points.connect(_on_open_phase_field_from_tutorial)
+		# v20.31: start_level（教程第 7 步"开始首战"）此前零消费方——按钮点击后无任何
+		# 反应，教程跳到第 8 步而首战从未开始（P1：新手关键路径断裂）。
+		if SignalBus.has_signal("start_level") and not SignalBus.start_level.is_connected(_on_start_level_from_tutorial):
+			SignalBus.start_level.connect(_on_start_level_from_tutorial)
 		SignalBus.player_deploy_failed.connect(_on_player_deploy_failed)
 
 	# 全局 UI 贴图：关闭按钮等（依赖 PopupLayer 子树已实例化）
@@ -249,6 +253,14 @@ func _deferred_non_critical_init() -> void:
 		var _auto_lvl: int = int(Engine.get_meta("world_map_auto_deploy_level"))
 		Engine.remove_meta("world_map_auto_deploy_level")
 		call_deferred("_auto_start_afk_from_world_map", _auto_lvl)
+	# v22.3 余烬要塞：从基地兵棋室"前往战场"进入时自动打开战区地图——按钮文案
+	# 承诺"战区地图·选关出击"，不该让玩家落地后再自己找地图按钮。
+	# 教程未完成的玩家不抢焦点（教程有自己的引导节奏；meta 保留供"返回"回基地）。
+	if Engine.has_meta("launch_from_bunker") \
+			and not (TutorialProgressionManager != null
+				and TutorialProgressionManager.has_method("should_show_tutorial")
+				and TutorialProgressionManager.should_show_tutorial()):
+		call_deferred("_on_world_map")
 	# v9.x 性能：SubViewportContainer(stretch) 入树时会把子视口强制 UPDATE_ALWAYS，
 	# tscn/战斗结束还原的 UPDATE_ONCE 全被覆盖，非战斗期战场每帧空渲染。
 	# 入树后补设一次即生效（容器不会再次改写）。挂机运行中除外（缩略图需要持续渲染）。
@@ -791,6 +803,14 @@ func _on_toggle_world_map_from_tutorial() -> void:
 func _on_open_phase_field_from_tutorial() -> void:
 	_play_sfx("button")
 	_open_phase_instrument_selector()
+
+## v20.31: 教程第 7 步"开始首战"——start_level 此前零消费方（P1）。走与"开始战斗"
+## 按钮完全相同的 run_start_battle_sequence 链路（关 UI/显示战场/快照/进战斗）。
+func _on_start_level_from_tutorial(level: int) -> void:
+	if level > 0 and GameManager != null:
+		GameManager.set_current_level(level)
+	if _battle_setup != null:
+		_battle_setup.on_start_battle()
 
 func _on_quest_pressed() -> void:
 	_toggle_overlay(quest_overlay, "quest")

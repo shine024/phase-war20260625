@@ -7,6 +7,7 @@ const WeaponProjectileVfx = preload("res://scripts/weapon_projectile_vfx.gd")
 const VfxImpactFactory = preload("res://scripts/battle/vfx_impact_factory.gd")  # v9.2: 枪口火
 const WeaponVisuals = preload("res://data/weapon_visual_profiles.gd")  # v17: 武器视觉档案（名字优先解析）
 const DirectWeaponFlavor = preload("res://data/direct_weapon_flavor.gd")  # v20.16: 直射亚类（弹头形状分流）
+const CardGridUnitVisuals = preload("res://scripts/card_grid_unit_visuals.gd")  # v23.5: 空中目标瞄准点
 
 const _HIT_R2: float = 100.0
 const _MAX_PROJ: int = 720
@@ -33,6 +34,8 @@ var _layers: Dictionary = {}  # layer_key（wt 或亚类形状键 100+）-> Mult
 var _layer_keys: Array[int] = []
 # T1 性能优化：轻武器命中特效限流时间戳（见 _apply_hit）
 var _last_impact_msec: int = -10000
+# v20.25: 开火音节流时间戳（见 _play_fire_sfx）
+var _last_fire_sfx_msec: int = -10000
 # v7.4 性能优化：buckets 提升为成员变量 + clear() 复用，消除每帧 Dictionary + Array 分配
 var _buckets: Dictionary = {}  # weapon_type -> Array（成员级复用，clear 保留 buffer 容量）
 # v9.2: 弹道字典池——fire 时从池取，命中/出界/清场时归还，消除每发字典分配。
@@ -150,8 +153,31 @@ func fire(from: Vector2, tgt: Node2D, dmg: float, wt: int, shooter: Node2D, shoo
 	d["weapon_name"] = weapon_name
 	d["vfx_variant"] = p_vfx_variant
 	_proj.append(d)
+	_play_fire_sfx(wt)
 	# v16: 删除原 25% 抽样枪口火——唯一调用方 construct_unit_ai 在 do_attack_with_damage
 	# 顶部已播单位级炮口火（_play_muzzle_feedback，锚点对齐+类别键正确），batch 再播会双重叠加。
+
+## v20.25: 直射开火音（节流）——90%+ 轻武器走本路径，此前武器开火音效只挂在 bullet.gd
+## 兜底路径（_play_attack_sfx），主力弹道全程无声。110ms 窗口节流（≈9 音/s 上限），
+## 音量取保守低值（0.22-0.3）——多单位混战时是底层枪声床而非主音量，初值听感
+## 待用户验收后再调。命中音已由 take_damage→unit_damaged→AudioManager 覆盖，不重复。
+func _play_fire_sfx(wt: int) -> void:
+	if not (AudioManager and AudioManager.has_method("play_sfx")):
+		return
+	var now := Time.get_ticks_msec()
+	if now - _last_fire_sfx_msec < 110:
+		return
+	_last_fire_sfx_msec = now
+	var pitch := randf_range(0.9, 1.1)
+	match wt:
+		4:
+			AudioManager.play_sfx("gun_pistol", 0.22, pitch * 1.1)
+		1:
+			AudioManager.play_sfx("gun_rifle", 0.25, pitch)
+		2:
+			AudioManager.play_sfx("gun_mg", 0.30, pitch * 0.9)
+		_:
+			AudioManager.play_sfx("gun_smg", 0.25, pitch)
 
 func clear_all() -> void:
 	# v9.2: 归还所有活跃弹道字典到池（战斗结束/拆卸时批量回收，下场战斗复用）
@@ -187,12 +213,14 @@ func _physics_process(delta: float) -> void:
 			continue
 		var pos: Vector2 = r["pos"]
 		var spd: float = r["speed"]
-		var dir: Vector2 = (tgt.global_position - pos).normalized()
+		# v23.5: 空中目标瞄准/命中圈对齐悬空机身（aim_pos_for 含 air_lift_y）
+		var aim: Vector2 = CardGridUnitVisuals.aim_pos_for(tgt)
+		var dir: Vector2 = (aim - pos).normalized()
 		pos += dir * spd * delta
 		r["pos"] = pos
 		r["dir"] = dir
 		r["traveled"] = float(r["traveled"]) + spd * delta
-		if pos.distance_squared_to(tgt.global_position) <= _HIT_R2:
+		if pos.distance_squared_to(aim) <= _HIT_R2:
 			_apply_hit(r)
 			_release_proj_dict(r)  # v9.2: 归还池（命中结算完）
 			continue

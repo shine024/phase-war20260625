@@ -351,6 +351,15 @@ func _on_battle_ended_from_bus(player_won: bool) -> void:
 
 	_waiting_for_battle_end = false
 
+	# v22.4（P1-4）：精神归零收工——BunkerManager 每场扣精神（胜-10/败-20），
+	# 挂机连打会无声抽干精神且 main 侧无任何感知。此处归零即停机并提示回基地
+	# 睡觉（睡觉 +20 且推进天数）；从未进过基地的玩家不受影响（manager 不存在）。
+	if _bunker_sanity_exhausted():
+		stop_afk()
+		if SignalBus != null and SignalBus.has_signal("show_toast"):
+			SignalBus.show_toast.emit("陈末的精神已经耗尽——挂机收工，回基地睡一觉吧（睡觉会自动存档）")
+		return
+
 	if player_won:
 		total_wins += 1
 		# 胜利清零推图重试计数（过了这关，下关重新计重试）
@@ -368,6 +377,14 @@ func _on_battle_ended_from_bus(player_won: bool) -> void:
 			call_deferred("_delayed_enter_battle")
 		else:
 			_afk_failed()
+
+## 基地精神是否已归零（BunkerManager 不存在/未进过基地 → false，行为不变）
+func _bunker_sanity_exhausted() -> bool:
+	var root: Node = Engine.get_main_loop().root if Engine.get_main_loop() != null else null
+	var bunker: Node = root.get_node_or_null("BunkerManager") if root != null else null
+	if bunker == null or not bunker.has_method("get_sanity"):
+		return false
+	return bunker.get_sanity() <= 0.5
 
 
 ## 推进到下一关（仅在胜利时调用）。失败处理见 _on_battle_ended_from_bus。

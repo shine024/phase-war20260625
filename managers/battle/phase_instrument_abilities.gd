@@ -411,7 +411,6 @@ static func _fire_nuclear_bombardment(owner: Owner, params: Dictionary) -> void:
 	var shock_color: Color = Color(0.3, 0.7, 1.0, 0.85) if owner == Owner.PLAYER else Color(1.0, 0.4, 0.2, 0.85)
 	var beam_color: Color = Color(0.5, 0.6, 1.0, 0.7) if owner == Owner.PLAYER else Color(1.0, 0.5, 0.3, 0.7)
 	var mark_delay: float = 0.35
-	var fired_impact: bool = false
 	# v20.15: 快照战斗状态——导弹错峰发射（最长 ~0.54s）+ 飞行 0.35s 期间战斗结束，
 	# 后续发射与落地演出全部作废（核导弹贴图残留在结算/准备背景的直接根因）
 	var was_live: bool = _battle_active_now()
@@ -454,7 +453,6 @@ static func _fire_nuclear_bombardment(owner: Owner, params: Dictionary) -> void:
 		var captured_shock_color = shock_color
 		var captured_burst_tex = burst_tex
 		var captured_burst_tint = burst_tint
-		var captured_fired = fired_impact  # 注意：bool 按值拷贝，回调内修改不影响外层
 		# 每发导弹错开 0.06s（多点核爆=多枚导弹依次发射，齐射感）
 		var launch_delay: float = float(targets.find(e)) * 0.06
 		var captured_launch = launch_pos
@@ -490,13 +488,13 @@ static func _fire_nuclear_bombardment(owner: Owner, params: Dictionary) -> void:
 			)
 		)
 	# v8.1: impact 信号延迟到首枚导弹落地后（mark_delay + 0.06s 首发延迟）
+	# v20.29: 删除 fired_impact/captured_fired 守卫——GDScript lambda 按值捕获 bool，
+	# 守卫对外层无效且本回调仅创建一次、本就只发一次。
 	var tw_impact := _battlefield.create_tween()
 	tw_impact.tween_interval(mark_delay + 0.06)
 	tw_impact.tween_callback(func():
-		if not fired_impact:
-			fired_impact = true
-			_emit_ability_triggered("nuclear_bombardment", "impact",
-				{"position": first_pos, "damage": base_dmg, "is_enemy": owner == Owner.ENEMY})
+		_emit_ability_triggered("nuclear_bombardment", "impact",
+			{"position": first_pos, "damage": base_dmg, "is_enemy": owner == Owner.ENEMY})
 	)
 	# v19-R39: 阵型核心补一发完整核爆（蘑菇云+巨型闪，size_scale 1.0 完整尺寸）。
 	# 用户要求恢复蘑菇云/巨型核爆闪；放在目标群（敌/我 3×3 阵型）质心一发，
@@ -645,7 +643,9 @@ static func _apply_mega_shield(owner: Owner, params: Dictionary) -> void:
 		# v14: 读图 6/10"缺呼吸脉动"——爆发后留 2.5s 呼吸能量罩,补"护盾持续存在"语义
 		var dome := Sprite2D.new()
 		dome.texture = shield_tex
-		var dome_scale: float = 300.0 / float(shield_tex.get_width())
+		# v20.29: 缩放改按内容实宽（SPELL_BURST_CONTENT_W）——原用画布宽(1024)而内容 916，
+		# 罩子比标称 300px 小 ~10%，与 spawn_spell_burst 的内容宽标定口径对齐。
+		var dome_scale: float = 300.0 / maxf(VfxImpactFactory.spell_content_width(shield_tex), 1.0)
 		dome.position = center
 		dome.scale = Vector2(dome_scale, dome_scale)
 		dome.modulate = Color(shield_tint.r, shield_tint.g, shield_tint.b, 0.0)

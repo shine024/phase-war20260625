@@ -7,6 +7,7 @@ extends Node
 ##   Phase1 BunkerManager 逻辑：懒加载创建 / 调试资源 / 修复启动（资源校验+扣除）/
 ##     战斗推进（含反应堆电力冻结→解冻）/ 睡觉天数 / 精神值 / 信号发射
 ##   Phase2 主场景实例化：14 房间节点 / 光点 / HUD / 面板 / 点击→移动→开面板链路
+##   Phase5 v22.3 接入收口：食堂每日配给 / 观星台终局抉择 / 信号实时接线
 
 const BunkerRoomDefs = preload("res://data/bunker_room_defs.gd")
 
@@ -20,6 +21,8 @@ func _ready() -> void:
 	await _phase2_scene_instantiation()
 	await _phase3_p2_features()
 	await _phase4_p3_features()
+	await _phase5_v223_features()
+	await _phase6_v224_features()
 	_finish()
 
 func _fail(msg: String) -> void:
@@ -312,8 +315,8 @@ func _phase3_p2_features() -> void:
 			_fail("日结算面板 close 后应隐藏")
 	_ok("日结算面板：open/close 正常")
 
-	# 4) 嵌入面板（7 个现有面板场景懒挂载）
-	var panel_ids := ["backpack", "modification", "evolution", "growth", "store", "faction", "afk"]
+	# 4) 嵌入面板（7 个现有面板场景懒挂载；v22.3：afk 死键已移除，换 quest）
+	var panel_ids := ["backpack", "modification", "evolution", "growth", "store", "faction", "quest"]
 	for pid in panel_ids:
 		inst._open_embedded_panel(pid)
 		await get_tree().process_frame
@@ -324,7 +327,7 @@ func _phase3_p2_features() -> void:
 			if not w.visible:
 				_fail("嵌入面板 %s 打开后应可见" % pid)
 			w.visible = false
-	_ok("嵌入面板 ×7：宿舍=背包 / 工坊=改造·进化·成长 / 通讯=商店·势力 / 食堂=AFK")
+	_ok("嵌入面板 ×7：宿舍=背包 / 工坊=改造·进化·成长 / 通讯=商店·势力 / 兵棋=任务")
 
 	# 5) 精神归零强制回宿舍（延后帧触发 _check_sanity_zero）
 	mgr.reset_to_defaults()
@@ -469,3 +472,238 @@ func _phase4_p3_features() -> void:
 	_ok("阶段切换字幕：全屏渐黑 + 字幕浮现正常")
 
 	inst.queue_free()
+
+# ══════════════════ Phase 5：v22.3 接入收口 ══════════════════
+
+func _phase5_v223_features() -> void:
+	var mgr: Node = ManagerLazyLoader.get_manager("bunker")
+	if mgr == null:
+		_fail("Phase5：BunkerManager 不可用")
+		return
+	mgr.reset_to_defaults()
+
+	# 1) 每日配给：未修复拒绝 → 修复后发放 → 同日去重 → 睡觉重置 → 序列化
+	var locked_ration: Dictionary = mgr.claim_daily_ration()
+	if locked_ration.get("ok", true):
+		_fail("食堂未修复时配给应拒绝")
+	mgr.debug_grant_resources()
+	mgr.start_repair("mess_hall")
+	mgr.advance_after_battle(true)
+	if mgr.get_room_state("mess_hall") != BunkerRoomDefs.STATE_ACTIVE:
+		_fail("Phase5 前置失败：食堂应已修复")
+		return
+	var nano_pre: int = BasicResourceManager.get_total(BunkerRoomDefs.res_full_id("nano"))
+	var alloy_pre: int = BasicResourceManager.get_total(BunkerRoomDefs.res_full_id("alloy"))
+	var ration: Dictionary = mgr.claim_daily_ration()
+	if not ration.get("ok", false):
+		_fail("食堂修复后配给应成功: " + str(ration.get("reason", "")))
+	if BasicResourceManager.get_total(BunkerRoomDefs.res_full_id("nano")) != nano_pre + 120 \
+			or BasicResourceManager.get_total(BunkerRoomDefs.res_full_id("alloy")) != alloy_pre + 40:
+		_fail("配给应发纳米120+合金40")
+	if not mgr.is_ration_claimed_today():
+		_fail("领取后 is_ration_claimed_today 应为 true")
+	if mgr.claim_daily_ration().get("ok", true):
+		_fail("同一天二次领取应拒绝")
+	mgr.sleep()   # day+1 → 配给重置
+	if mgr.is_ration_claimed_today():
+		_fail("睡觉推进天数后配给应可再领")
+	if not mgr.claim_daily_ration().get("ok", false):
+		_fail("第二天配给应成功")
+	_ok("每日配给：未修复拒绝 / 发放120+40 / 同日去重 / 睡觉重置")
+
+	# 2) 观星台终局：未知 id 拒绝 / 抉择持久化 / 不可反悔 / 序列化 / 重置
+	if mgr.choose_ending("nonexistent").get("ok", true):
+		_fail("未知结局 id 应拒绝")
+	if not mgr.choose_ending("rewrite").get("ok", false):
+		_fail("首次抉择应成功")
+	var chosen: Dictionary = mgr.get_chosen_ending()
+	if str(chosen.get("id", "")) != "rewrite" or str(chosen.get("emblem", "")).is_empty():
+		_fail("get_chosen_ending 应含 id/emblem: " + str(chosen))
+	if mgr.choose_ending("keep").get("ok", true):
+		_fail("结局已定后二次抉择应拒绝")
+	var snap5: Dictionary = mgr.save_state()
+	if not snap5.has("ending_id") or not snap5.has("ration_day"):
+		_fail("save_state 应含 v22.3 新字段 ending_id/ration_day")
+	var fresh5: Node = (load("res://managers/bunker_manager.gd") as GDScript).new()
+	fresh5._init_rooms_from_defs()
+	fresh5.load_state_dict(snap5)
+	if str(fresh5.get_chosen_ending().get("id", "")) != "rewrite" or not fresh5.is_ration_claimed_today():
+		_fail("v22.3 新字段序列化往返失真")
+	fresh5.free()
+	mgr.reset_to_defaults()
+	if not mgr.get_chosen_ending().is_empty() or mgr.is_ration_claimed_today():
+		_fail("reset_to_defaults 应清空结局与配给记录")
+	_ok("观星台终局：抉择 / 不可反悔 / 序列化 / 重置 全链路")
+
+	# 3) 终局面板：intro → choice(三卡) → confirm → resolution(徽记) 演出流
+	var end_panel: Control = (load("res://scenes/bunker/ui/observatory_ending_panel.gd") as GDScript).new()
+	add_child(end_panel)
+	await get_tree().process_frame
+	var content: VBoxContainer = end_panel.get("_content")
+	if content == null or content.get_child_count() == 0:
+		_fail("终局面板内容未构建")
+		return
+	var intro_seen := false
+	for c in content.get_children():
+		if c is Label and str((c as Label).text).contains("门开了"):
+			intro_seen = true
+	if not intro_seen:
+		_fail("未抉择时应显示导语页")
+	end_panel.call("_show_choice")
+	await get_tree().process_frame
+	var card_count := -1
+	for c in (end_panel.get("_content") as VBoxContainer).get_children():
+		if c is HBoxContainer:
+			card_count = (c as HBoxContainer).get_child_count()
+	if card_count != 3:
+		_fail("三选一应有三张卡（实际 %d）" % card_count)
+	end_panel.call("_show_confirm", "keep")
+	end_panel.call("_on_confirm_pressed")
+	await get_tree().process_frame
+	if str(mgr.get_chosen_ending().get("id", "")) != "keep":
+		_fail("确认后应记录结局 keep")
+	var emblem_seen := false
+	for c in (end_panel.get("_content") as VBoxContainer).get_children():
+		if c is Label and str((c as Label).text).contains("徽记"):
+			emblem_seen = true
+	if not emblem_seen:
+		_fail("结算页应显示结局徽记")
+	_ok("终局面板：导语 → 三选一 → 确认 → 徽记结算 演出流正常")
+	end_panel.queue_free()
+
+	# 4) 信号接线（v22.3：两信号此前全项目零监听）+ 碎片解锁实时点亮纪念墙
+	var packed: PackedScene = load("res://scenes/bunker/bunker_main.tscn")
+	var inst: Control = packed.instantiate()
+	add_child(inst)
+	await get_tree().process_frame
+	if not SignalBus.bunker_day_ended.is_connected(inst._on_bunker_day_ended):
+		_fail("bunker_day_ended 应已接线到 bunker_main")
+	if not SignalBus.hero_archive_unlocked.is_connected(inst._on_hero_archive_unlocked):
+		_fail("hero_archive_unlocked 应已接线到 bunker_main")
+	inst._open_embedded_panel("memorial")
+	await get_tree().process_frame
+	var memorial: Control = (inst.get("_embed_wrappers") as Dictionary).get("memorial", {}).get("panel")
+	if memorial == null:
+		_fail("纪念墙嵌入失败（信号实时刷新前置）")
+	else:
+		mgr.record_hero_fragment("enemy_master_011")
+		await get_tree().process_frame
+		var count_text: String = str((memorial.get("_count_label") as Label).text)
+		if not count_text.contains("1 / 30"):
+			_fail("信号驱动刷新后纪念墙计数应实时为 1/30（实际 %s）" % count_text)
+	_ok("信号接线：day_ended/hero_archive_unlocked → bunker_main；碎片解锁实时点亮纪念墙")
+	inst.queue_free()
+
+# ══════════════════ Phase 6：v22.4 循环闭合 ══════════════════
+
+func _phase6_v224_features() -> void:
+	var mgr: Node = ManagerLazyLoader.get_manager("bunker")
+	if mgr == null:
+		_fail("Phase6：BunkerManager 不可用")
+		return
+
+	# 1) 遭遇选人"未收集优先"（P0-1 碎片可达性核心）
+	var cands: Array = [
+		{"id": "a", "level": 10},
+		{"id": "b", "level": 26},
+		{"id": "c", "level": 25},
+	]
+	var pick_none: Dictionary = GameManager._pick_master_candidate(cands, 24, [])
+	if str(pick_none.get("id", "")) != "c":
+		_fail("全部未收集时应取距目标最近者（期望 c，实际 %s）" % str(pick_none.get("id", "")))
+	var pick_bias: Dictionary = GameManager._pick_master_candidate(cands, 24, ["a", "c"])
+	if str(pick_bias.get("id", "")) != "b":
+		_fail("未收集优先应压过等级距离（期望 b，实际 %s）" % str(pick_bias.get("id", "")))
+	if not GameManager._pick_master_candidate([], 24, []).is_empty():
+		_fail("空候选应返回空字典")
+	_ok("遭遇选人：未收集优先压过等级距离 / 空候选兜底")
+
+	# 2) 精神档位掉落惩罚（P1-4）
+	mgr.reset_to_defaults()
+	if absf(mgr.get_drop_reward_multiplier() - 1.0) > 0.001:
+		_fail("精神 100 惩罚系数应为 1.0")
+	mgr.adjust_sanity(-60.0)   # 100→40（tier1）
+	if absf(mgr.get_drop_reward_multiplier() - 0.9) > 0.001:
+		_fail("精神 40 惩罚系数应为 0.9（实际 %.2f）" % mgr.get_drop_reward_multiplier())
+	mgr.adjust_sanity(-20.0)   # →20（tier2）
+	if absf(mgr.get_drop_reward_multiplier() - 0.75) > 0.001:
+		_fail("精神 20 惩罚系数应为 0.75（实际 %.2f）" % mgr.get_drop_reward_multiplier())
+	_ok("精神档位惩罚：1.0 / 0.9 / 0.75 三档正确")
+
+	# 3) 今日完工列表（P0-2 结算面板数据源）
+	mgr.reset_to_defaults()
+	mgr.debug_grant_resources()
+	mgr.start_repair("depot")
+	mgr.advance_after_battle(true)
+	if not (mgr.get_completed_today() as Array).has("depot"):
+		_fail("完工房间应出现在 get_completed_today")
+	_ok("今日完工列表：完工房间可查询")
+
+	# 4) 首次引导旗标持久化（P1-5）
+	if mgr.is_intro_shown():
+		_fail("重置后引导旗标应为 false")
+	mgr.mark_intro_shown()
+	if not mgr.is_intro_shown() or not bool(mgr.save_state().get("intro_shown", false)):
+		_fail("引导旗标应可标记并随存档持久化")
+	mgr.reset_to_defaults()
+	if mgr.is_intro_shown():
+		_fail("重置应清空引导旗标")
+	_ok("首次引导旗标：标记/存档/重置 全链路")
+
+	# 5) 每日任务领取链路（P0-3：此前 claim_task_reward 全项目零调用）
+	ManagerLazyLoader.ensure_loaded("daily_task")
+	var dtm: Node = get_node_or_null("/root/DailyTaskManager")
+	if dtm == null:
+		_fail("DailyTaskManager 懒加载失败")
+		return
+	dtm.force_refresh()
+	var tasks: Array = dtm.get_daily_tasks()
+	if tasks.size() != 7:
+		_fail("每日任务应生成 7 个（实际 %d）" % tasks.size())
+	dtm.update_task_progress(DailyTaskManager.TaskType.BATTLE_VICTORY, 99)
+	var claimable_id := ""
+	for t in dtm.get_daily_tasks():
+		if int(t.get("type", -1)) == DailyTaskManager.TaskType.BATTLE_VICTORY \
+				and t.get("completed", false) and not t.get("claimed", false):
+			claimable_id = str(t.get("id", ""))
+			break
+	if claimable_id.is_empty():
+		_fail("推进 99 场胜利后应存在可领取的每日任务")
+	else:
+		var nano_pre6: int = BasicResourceManager.get_total(BunkerRoomDefs.res_full_id("nano"))
+		if not dtm.claim_task_reward(claimable_id):
+			_fail("claim_task_reward 应成功")
+		if dtm.claim_task_reward(claimable_id):
+			_fail("重复领取应被拒绝")
+		var claimed_seen := false
+		for t in dtm.get_daily_tasks():
+			if str(t.get("id", "")) == claimable_id and t.get("claimed", false):
+				claimed_seen = true
+		if not claimed_seen:
+			_fail("领取后任务应标记 claimed")
+		if BasicResourceManager.get_total(BunkerRoomDefs.res_full_id("nano")) <= nano_pre6:
+			_fail("领取奖励应发放纳米材料（奖励池每档必含）")
+	_ok("每日任务：生成 7 个 / 进度完成 / 领取发奖 / 重复拒绝")
+
+	# 6) quest_panel 日常 Tab 每日挑战区渲染（P0-3 UI 接入）
+	var qp: PackedScene = load("res://scenes/ui/quest_panel.tscn")
+	var qinst: Control = qp.instantiate()
+	add_child(qinst)
+	await get_tree().process_frame
+	qinst.call("_refresh_list")
+	await get_tree().process_frame
+	var dl: VBoxContainer = qinst.get("daily_list")
+	var header_seen := false
+	if dl == null or dl.get_child_count() == 0:
+		_fail("quest_panel 日常列表未构建")
+	else:
+		for c in dl.get_children():
+			if c is Label and str((c as Label).text).contains("每日挑战"):
+				header_seen = true
+				break
+		if not header_seen:
+			_fail("日常 Tab 应包含'每日挑战'区块标题")
+		elif dl.get_child_count() < 8:
+			_fail("每日挑战区应含标题 + 7 任务行（实际 %d 行）" % dl.get_child_count())
+	_ok("quest_panel：每日挑战区（标题 + 7 任务行）渲染正常")
+	qinst.queue_free()

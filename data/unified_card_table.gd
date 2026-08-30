@@ -870,12 +870,12 @@ const _TABLE: Array = [
 	 "w_light":"20mm航炮","w_armor":"20mm航炮","w_air":"空空导弹"},
 
 	{"card_id":"cold_spetsnaz","display_name":"阿尔法特种部队","era":2,"combat_kind":0,"tier":Tier.ELITE,
-	 "base_hp":238,"range_value":2,"deploy_speed":5,"base_speed":90,"power":216,"weapon_type":0,
+	 "base_hp":300,"range_value":2,"deploy_speed":5,"base_speed":90,"power":216,"weapon_type":0,
 	 "weapon_label":"M16A4步枪",
-	 "atk_l":60,"atk_l_speed":1.5,"atk_l_windup":0.133,"atk_l_active":0.067,
-	 "atk_a":27,"atk_a_speed":1.0,"atk_a_windup":0.2,"atk_a_active":0.1,
-	 "atk_air":30,"atk_air_speed":1.0,"atk_air_windup":0.2,"atk_air_active":0.1,
-	 "def_l":17,"def_a":20,"def_air":5,
+	 "atk_l":96,"atk_l_speed":1.5,"atk_l_windup":0.133,"atk_l_active":0.067,
+	 "atk_a":45,"atk_a_speed":1.0,"atk_a_windup":0.2,"atk_a_active":0.1,
+	 "atk_air":36,"atk_air_speed":1.0,"atk_air_windup":0.2,"atk_air_active":0.1,
+	 "def_l":22,"def_a":28,"def_air":8,
 	 "w_light":"M16A4步枪","w_armor":"85mm/105mm主炮","w_air":"便携式防空导弹"},
 
 	# --- 冷战敌方独有单位（enemy_only）---

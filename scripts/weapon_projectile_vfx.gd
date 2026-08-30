@@ -416,15 +416,18 @@ static func classify_indirect(weapon_name: String) -> int:
 	_indirect_flavor_cache[weapon_name] = f
 	return f
 
-## 亚类弧线高度系数（乘在槽位弧线倍率上）。迫击炮 1.0（槽位已是最高弧）/
-## 榴弹族 0.65（wt1 1.6→1.04 中弧——远程炮平射弧）/ 火箭 0.35（wt1→0.56 低平直瞄）/
-## 导弹 0.8（wt9 1.0→0.8 俯冲更直）。
+## 亚类弧线高度系数（乘在槽位弧线倍率上）。v20.25 全表按新槽位基准（wt1/wt9=0.5，
+## v19-R33 可读性验证值）重标——旧系数按 batch 旧基准 1.6/1.0 设计，迫击炮终值 1.6
+## 弧顶 ~376px 飞出画面上缘（v19-R25 已实证不可读）。重标原则：保留 v20.17 的
+## 相对层级（迫击炮最高 > 导弹 > 榴弹标准 > 火箭低平），锚进 v19 验证过的可读包络
+## （弧顶 82-188px @dist540，画面中上部）。终值：迫击炮 0.8 / 导弹 0.6 /
+## 榴弹 0.5（=槽位标准弧）/ 火箭 0.35。两路径（batch 主路径 + bullet 兜底）共用。
 static func indirect_apex_mul(flavor: int) -> float:
 	match flavor:
-		IndirectFlavor.MORTAR: return 1.0
-		IndirectFlavor.HOWITZER: return 0.65
-		IndirectFlavor.ROCKET: return 0.35
-		IndirectFlavor.MISSILE: return 0.8
+		IndirectFlavor.MORTAR: return 1.6
+		IndirectFlavor.HOWITZER: return 1.0
+		IndirectFlavor.ROCKET: return 0.7
+		IndirectFlavor.MISSILE: return 1.2
 		_: return 1.0
 
 ## 亚类飞行时长系数（乘在槽位时长上；>1 更慢）。迫击炮 1.30（炮弹慢飘读"迫击炮"）/
@@ -583,86 +586,11 @@ static func build_bullet_arraymesh(layer_key: int, display_scale: float = -1.0) 
 ## v6.1 性能优化：武器名贴图静态缓存，避免每发子弹 ResourceLoader.exists() + load()
 static var _proj_name_cache: Dictionary = {}
 static var _impact_name_cache: Dictionary = {}
-## v8.0 性能优化：命中特效从 Sprite2D+贴图 改为 CPUParticles2D（零贴图绑定、零 Sprite2D new/free）
-## v8.1：命中特效委托 VfxImpactFactory 三层组合（冲击波环+主火花+碎片烟尘）
-static var _impact_particles: Array = []  # 可复用 CPUParticles2D 池
-static var _active_impacts: int = 0
-const MAX_ACTIVE_IMPACTS: int = 200  # v8.1：128→200（视觉优先，三层特效共用池）
-
-# ── 预建粒子色带缓存（CPUParticles2D 直接吃 Gradient，无需 Material） ──
-# 注：v8.0 命中特效从 Sprite2D 改为 CPUParticles2D，原实现误用 ParticleProcessMaterial
-# （那是 GPUParticles2D 的材质）赋给 process_material 属性（CPUParticles2D 不存在该属性），
-# 导致 "Nonexistent property 'process_material'" 运行时崩溃。CPUParticles2D 的所有粒子
-# 参数都是节点自身的直接属性，color_ramp 期望的是 Gradient 而非 GradientTexture1D。
-static var _cached_impact_ramps: Dictionary = {}  # key(weapon_type+color) -> Gradient
-
-static func _get_impact_ramp(weapon_type: int, base_color: Color) -> Gradient:
-	var key := "%d_%02x%02x%02x" % [weapon_type, int(base_color.r*255), int(base_color.g*255), int(base_color.b*255)]
-	if _cached_impact_ramps.has(key):
-		return _cached_impact_ramps[key]
-	var gradient := Gradient.new()
-	gradient.add_point(0, Color(1.0, 1.0, 1.0, 1.0))
-	gradient.add_point(0.3, base_color)
-	gradient.add_point(1.0, Color(base_color.r, base_color.g, base_color.b, 0.0))
-	_cached_impact_ramps[key] = gradient
-	return gradient
-
-## 从池中获取（或新建）CPUParticles2D
-## 注：取用时必须从池中移除，否则同一粒子会被多次取用（释放时又 append 回池，
-## 造成重复引用），且失效/已 free 的引用会残留在池中。原实现遍历返回但未 remove，
-## 是 spawn_impact_with_kind 中 p 为 Nil 的根因。
-static func _acquire_impact_particle() -> CPUParticles2D:
-	# 从池尾向前取，命中即移除并返回；失效引用就地丢弃
-	var i := _impact_particles.size() - 1
-	while i >= 0:
-		var candidate = _impact_particles[i]
-		_impact_particles.remove_at(i)
-		if candidate != null and is_instance_valid(candidate) and not candidate.is_queued_for_deletion():
-			candidate.visible = true
-			candidate.emitting = true
-			candidate.restart()  # one_shot 模式下必须 restart 才能重新发射
-			return candidate
-		i -= 1
-	# 池空或全是失效引用，新建
-	var p := CPUParticles2D.new()
-	p.one_shot = true
-	p.explosiveness = 1.0
-	p.lifetime = 0.28
-	p.amount = 18
-	# CPUParticles2D 的发射参数都是节点直接属性（非材质）。取用时再按武器类型覆盖。
-	p.gravity = Vector2(0, 0)
-	p.emission_shape = CPUParticles2D.EMISSION_SHAPE_SPHERE
-	p.emission_sphere_radius = 2.0
-	p.direction = Vector2(0, 0)
-	p.spread = 360.0
-	p.initial_velocity_min = 40.0
-	p.initial_velocity_max = 120.0
-	p.scale_amount_min = 1.5
-	p.scale_amount_max = 3.0
-	p.color = Color(1.0, 0.95, 0.6, 1.0)  # 粒子主色（color_ramp 会在此基础上渐变）
-	p.color_ramp = _get_impact_ramp(0, Color(0.95, 0.92, 0.5))
-	# 加性混合让火花更亮（命中特效是发光火花）
-	var mat := CanvasItemMaterial.new()
-	mat.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
-	p.material = mat
-	p.emitting = true
-	return p
-
-## 归还粒子到池
-static func _release_impact_particle(p: CPUParticles2D) -> void:
-	if p == null or not is_instance_valid(p):
-		_active_impacts -= 1
-		return
-	if p.is_inside_tree() and p.get_parent():
-		p.get_parent().remove_child(p)
-	p.emitting = false
-	p.visible = false
-	p.position = Vector2.ZERO
-	_active_impacts -= 1
-	if _impact_particles.size() < MAX_ACTIVE_IMPACTS:
-		_impact_particles.append(p)
-	else:
-		p.queue_free()
+## v20.26 清理：v8.0 旧命中粒子池（_impact_particles/_active_impacts/MAX_ACTIVE_IMPACTS/
+## _cached_impact_ramps/_get_impact_ramp/_acquire/_release_impact_particle）已随 v8.1
+## 命中特效迁入 VfxImpactFactory 而整体失去调用方——计数器只减不增，dependent 的
+## "_active_impacts >= 200" 防刷屏守卫（曲射 batch）恒不触发。特效上限由工厂自身
+## 活跃封顶承担（spark 320/debris 140/ring 80/sprite 160/beam 60），本文件不再保留死池。
 
 
 static func has_proj_texture_by_name(weapon_name: String) -> bool:

@@ -5,7 +5,6 @@ const GC = preload("res://resources/game_constants.gd")
 const DT = preload("res://resources/design_tokens.gd")
 const CombatFeedback = preload("res://scripts/combat_feedback.gd")
 const CardAbilityManager = preload("res://managers/card_ability_manager.gd")
-const CardGridFx = preload("res://scripts/card_grid_fx.gd")
 const WeaponProjectileVfx = preload("res://scripts/weapon_projectile_vfx.gd")
 const WeaponVisuals = preload("res://data/weapon_visual_profiles.gd")  # v17: 武器视觉档案（名字优先解析）
 const AttackCalculator = preload("res://scripts/battle/attack_calculator.gd")
@@ -14,6 +13,7 @@ const FactionSkillEffectHandler = preload("res://scripts/battle/faction_skill_ef
 # v9.1: 组合技套路机制（光束反射/多重攻击/弱点暴露/化学腐蚀等乘区）
 const ComboEngine = preload("res://scripts/battle/combo_engine.gd")
 const DirectWeaponFlavor = preload("res://data/direct_weapon_flavor.gd")
+const CardGridUnitVisuals = preload("res://scripts/card_grid_unit_visuals.gd")  # v23.5: 空中目标瞄准点
 ## 曲射弹道：炮口火焰特效纹理（预加载，避免运行时 ResourceLoader.load 卡顿）
 ## v9.x 修复：原 weapons_realistic/weapon_artillery_muzzle.png 从未进 git（机器间缺失导致整脚本 Parse Error），
 ## 改用已入库的 muzzle_heavy.png（火炮炮口焰语义一致）。
@@ -279,13 +279,13 @@ func _configure_behavior() -> void:
 	if pellet_count > 1:
 		var base_dir := Vector2.RIGHT
 		if target and is_instance_valid(target):
-			base_dir = (target.global_position - global_position).normalized()
+			base_dir = (CardGridUnitVisuals.aim_pos_for(target) - global_position).normalized()
 		var half_spread := spread_angle_deg * 0.5
 		var rand_angle := randf_range(-half_spread, half_spread)
 		_direction = base_dir.rotated(deg_to_rad(rand_angle))
 	else:
 		if target and is_instance_valid(target):
-			_direction = (target.global_position - global_position).normalized()
+			_direction = (CardGridUnitVisuals.aim_pos_for(target) - global_position).normalized()
 
 func _apply_visual() -> void:
 	var is_player: bool = shooter_is_player
@@ -438,7 +438,9 @@ func _apply_tex_sprite_visual(is_player: bool) -> void:
 		_sprite.visible = false
 	if _beam_line:
 		_beam_line.visible = false
-	var tint := Color.WHITE if is_player else Color(1.0, 0.38, 0.52)
+	# v20.25: 敌方贴图弹 tint 粉红→亮橙红——与直射/曲射 batch 的 _ENEMY_TINT 统一
+	#（v18-R9b 已否掉粉红"棉花糖失真"，此处是曲射弹体阵营色的最后一个粉红残留）。
+	var tint := Color.WHITE if is_player else Color(1.0, 0.55, 0.25)
 	# v6.0: 优先使用武器名查贴图
 	var sc: float
 	var tex: Texture2D
@@ -791,9 +793,9 @@ func _process(delta: float) -> void:
 			pass
 		elif weapon_type in [8, 6, 9]:
 			# 激光/狙击等保持精准指向目标，其他武器略带跟踪
-			_direction = (target.global_position - global_position).normalized()
+			_direction = (CardGridUnitVisuals.aim_pos_for(target) - global_position).normalized()
 		else:
-			var desired := (target.global_position - global_position).normalized()
+			var desired := (CardGridUnitVisuals.aim_pos_for(target) - global_position).normalized()
 			_direction = _direction.lerp(desired, 1.0 - exp(-4.5 * delta)).normalized()
 		global_position += _direction * speed * delta
 	if _rotates_with_direction:
@@ -811,7 +813,7 @@ func _process(delta: float) -> void:
 		# v10(H12): 扫掠命中——线段（帧前位置→当前位置）最近点距离 ≤10px 即命中。
 		# 高速弹（LASER 1400 / SNIPER 1100 px/s）帧位移 18~23px 超过判定圈直径 20px，
 		# 原逐帧点检查存在隧穿漏命中
-		if _seg_point_dist_sq(_prev_pos, global_position, target.global_position) < 100.0:
+		if _seg_point_dist_sq(_prev_pos, global_position, CardGridUnitVisuals.aim_pos_for(target)) < 100.0:
 			# v9.2: 穿透去重——同一颗子弹不反复撞已撞过的目标（穿透次数多时尤其重要）
 			if target not in _pierce_hit_targets:
 				_on_hit(target)
@@ -855,7 +857,7 @@ func _process_indirect(delta: float) -> void:
 	## 初始化（仅第一帧执行）
 	if _indirect_progress == 0.0:
 		_indirect_start = global_position
-		_indirect_end = target.global_position if target and is_instance_valid(target) else global_position + _direction * 500.0
+		_indirect_end = CardGridUnitVisuals.aim_pos_for(target) if target and is_instance_valid(target) else global_position + _direction * 500.0
 		_muzzle_spawned = false
 		_impact_spawned = false
 		# 根据距离计算飞行时间
@@ -1145,8 +1147,7 @@ func _on_hit(primary: Node2D) -> void:
 	# 不触发 take_damage/MISS 提示/震屏/命中音（避免伤害翻倍、MISS 刷屏、音效叠加）。
 	if _visual_only:
 		if primary != null and is_instance_valid(primary) and primary is Node2D:
-			if _rotates_with_direction:
-				_spawn_tex_impact_at((primary as Node2D).global_position)
+			_spawn_tex_impact_at((primary as Node2D).global_position)
 		_finish_tex_bullet()
 		return
 	# v9.3: TANK_GUN 命中后立即开始淡出计时
@@ -1172,18 +1173,12 @@ func _on_hit(primary: Node2D) -> void:
 	if forced_miss:
 		var miss_pos: Vector2 = primary.global_position if primary else global_position
 		CombatFeedback.show_miss(miss_pos, primary)
-		if _rotates_with_direction:
-			_spawn_tex_impact_at(miss_pos)
-		elif GameManager != null:
-			var root := get_parent() as Node2D
-			if root != null:
-				CardGridFx.spawn_impact(root, miss_pos, weapon_type)
+		_spawn_tex_impact_at(miss_pos)
 		_finish_tex_bullet()
 		return
-	if not _rotates_with_direction and GameManager != null:
-		var root2 := get_parent() as Node2D
-		if root2 != null:
-			CardGridFx.spawn_impact(root2, primary.global_position if primary else global_position, weapon_type)
+	# v20.27: 命中特效分派统一——原"非旋转弹（光束 wt8）走 CardGridFx 旧三角闪光"分叉
+	# 删除，全部改由函数末尾的 _spawn_tex_impact_at 播（签名特效/亚类配方/暴击穿透 opts
+	# 一套链路），激光命中自此吃到 spawn_laser_burn 烧灼签名。CardGridFx 随之零引用退役。
 	# 如果没有射手数值信息，使用基础伤害逻辑
 	if shooter_stats == null:
 		_on_hit_basic(primary)
@@ -1314,8 +1309,7 @@ func _on_hit(primary: Node2D) -> void:
 			if _acc_pen > 0.0 and randf() < _acc_pen:
 				var _urban_miss_pos: Vector2 = primary.global_position if primary else global_position
 				CombatFeedback.show_miss(_urban_miss_pos, primary)
-				if _rotates_with_direction:
-					_spawn_tex_impact_at(_urban_miss_pos)
+				_spawn_tex_impact_at(_urban_miss_pos)
 				_finish_tex_bullet()
 				return
 			# v10 打破型质变效果（strip_fort_aura / ground_aircraft / interrupt_cast / guaranteed_crit）
@@ -1549,8 +1543,8 @@ func _on_hit(primary: Node2D) -> void:
 
 	# 穿透：减少一次计数，>0 时继续飞行
 	# v9.2: 穿透到下一个目标时递减伤害乘数（每穿一个 ×(1-falloff)，falloff=0 时无衰减=旧行为）
-	if _rotates_with_direction:
-		_spawn_tex_impact_at(primary.global_position if primary else global_position)
+	# v20.27: 命中特效无条件播（原仅旋转弹——光束 wt8 漏签名特效，见函数上部统一说明）
+	_spawn_tex_impact_at(primary.global_position if primary else global_position)
 	if pierce_count > 0:
 		pierce_count -= 1
 		if _pierce_falloff > 0.0:
@@ -1585,8 +1579,7 @@ func _on_hit_basic(primary: Node2D) -> void:
 		var basic_primary: float = _apply_shield_wall_mitigation(damage, primary)
 		var atk_bp: Variant = shooter if is_instance_valid(shooter) else null
 		primary.take_damage(basic_primary, atk_bp)
-	if _rotates_with_direction:
-		_spawn_tex_impact_at(primary.global_position if primary else global_position)
+	_spawn_tex_impact_at(primary.global_position if primary else global_position)
 	if pierce_count > 0:
 		pierce_count -= 1
 		return
@@ -1622,6 +1615,11 @@ func reset_pool_object() -> void:
 	_pending_crit = false
 	_pending_pierce = false
 	_pierce_dir = Vector2.RIGHT
+	# v20.25: 池卫生补漏——_blitz_applied 残留 true 会吞掉复用后新射手的闪电穿插
+	# 穿透加成（_on_hit 检测块被跳过）；_pierce_from_ability 残留会让普通穿透
+	# 误播 enhanced 加宽穿甲光线。两者均一次性标记，必须随归还复位。
+	_blitz_applied = false
+	_pierce_from_ability = false
 	_target_combat_kind = -1
 	# v8.x: TANK_GUN 命中淡出状态重置（防对象池复用残留——上一发 TANK_GUN 的淡出
 	# 状态会延续到下一发任意武器类型，导致新子弹一出生就立刻淡出消失）

@@ -24,8 +24,12 @@ extends Control
 const DT = preload("res://resources/design_tokens.gd")
 const DefaultCards = preload("res://data/default_cards.gd")
 const FormatUtil = preload("res://scripts/ui/format_util.gd")
+const BunkerRoomDefs = preload("res://data/bunker_room_defs.gd")   # v22.4 要塞反馈行
 
 signal result_confirmed(player_won: bool)
+
+## v22.4（P0-2）：从基地出击时，结算面板提供"返回基地"直达按钮
+var _bunker_return_available := false
 
 
 static func create(parent: Node, player_won: bool, blueprints: Array, \
@@ -153,6 +157,8 @@ func _build() -> void:
 		_render_phase_instrument_drop(vbox)
 		# v7.x 胜利面板漏显修复：本局缴获与战利品（战中击杀卡/符文/相位师全部奖励）
 		_render_collected_rewards(vbox)
+	# v22.4（P0-2）：要塞反馈行——修复进度/精神/回基地入口（未进过基地的玩家不显示）
+	_render_bunker_status(vbox)
 
 	# ═══ 关闭按钮：anchors 钉在面板底部，永远可见 ═══
 	_render_close_button_anchored(panel)
@@ -614,6 +620,28 @@ func _render_close_button_anchored(panel: Control) -> void:
 	btn.offset_right = -100.0
 	btn.offset_top = -60.0   # 按钮 top 距面板底 60px（按钮高 44 + 16px 底边距）
 	btn.offset_bottom = -16.0
+	# v22.4（P0-2）：从基地出击时，左下角加"返回基地"直达按钮，主按钮让位右移
+	if _bunker_return_available:
+		btn.offset_left = 260.0
+		var home_btn := Button.new()
+		home_btn.text = "← 返回基地"
+		home_btn.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
+		home_btn.anchor_top = 1.0
+		home_btn.anchor_bottom = 1.0
+		home_btn.offset_left = 24.0
+		home_btn.offset_right = 224.0
+		home_btn.offset_top = -60.0
+		home_btn.offset_bottom = -16.0
+		home_btn.custom_minimum_size = Vector2(0, 44)
+		var home_style := StyleBoxFlat.new()
+		home_style.bg_color = Color(1.0, 0.72, 0.32, 0.92)
+		home_style.set_corner_radius_all(4)
+		home_btn.add_theme_stylebox_override("normal", home_style)
+		home_btn.add_theme_color_override("font_color", Color(0.09, 0.07, 0.04))
+		home_btn.add_theme_font_size_override("font_size", DT.FONT_SIZE_MEDIUM)
+		home_btn.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+		home_btn.pressed.connect(_on_return_bunker_pressed)
+		panel.add_child(home_btn)
 	btn.grow_horizontal = Control.GROW_DIRECTION_BOTH
 	btn.custom_minimum_size = Vector2(0, 44)
 	var btn_style := StyleBoxFlat.new()
@@ -628,6 +656,63 @@ func _render_close_button_anchored(panel: Control) -> void:
 	btn.pressed.connect(_on_continue_pressed)
 	panel.add_child(btn)
 
+
+# =========================================================================
+#  v22.4 要塞反馈区（P0-2：战斗→基地循环闭合）
+# =========================================================================
+
+## 打完仗的基地一览：修复进度推进/今日完工/精神状态（低精神折损提示）。
+## 从基地出击（launch_from_bunker）且非挂机时，底部追加"返回基地"直达按钮。
+## 从未进过基地的玩家（/root/BunkerManager 不存在）整区不显示，零干扰。
+func _render_bunker_status(vbox: VBoxContainer) -> void:
+	var bunker: Node = Engine.get_main_loop().root.get_node_or_null("BunkerManager") \
+		if Engine.get_main_loop() != null else null
+	if bunker == null or not bunker.has_method("get_day"):
+		return
+	_bunker_return_available = Engine.has_meta("launch_from_bunker") and not _is_afk
+
+	var title := Label.new()
+	var mult: float = bunker.get_drop_reward_multiplier() \
+		if bunker.has_method("get_drop_reward_multiplier") else 1.0
+	var sanity_txt: String = "精神 %d" % int(round(bunker.get_sanity()))
+	if mult < 1.0:
+		sanity_txt += "（低精神：奖励 ×%.2f）" % mult
+	title.text = "◆ 余烬要塞 · 第 %d 天 · %s · 英雄档案 %d/30" % [
+		bunker.get_day(), sanity_txt, bunker.get_hero_fragment_count()]
+	title.add_theme_font_size_override("font_size", DT.FONT_SIZE_BODY)
+	title.add_theme_color_override("font_color", Color(1.0, 0.72, 0.32))
+	vbox.add_child(title)
+
+	# 低精神本战折损（game_manager 已实际扣除，这里只展示）
+	var pen: Dictionary = _reward_summary.get("sanity_penalty", {})
+	if not pen.is_empty():
+		var pen_l := Label.new()
+		pen_l.text = "  ⚠ 低精神折损：纳米 -%d · 能量块 -%d（医疗室/睡觉可恢复）" % [
+			int(pen.get("nano", 0)), int(pen.get("energy", 0))]
+		pen_l.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
+		pen_l.add_theme_color_override("font_color", Color(0.95, 0.55, 0.35))
+		vbox.add_child(pen_l)
+
+	# 施工中的房间（进度已含本场推进）+ 今日完工
+	var detail := Label.new()
+	var parts: Array[String] = []
+	for def in BunkerRoomDefs.get_all_rooms():
+		var rid: String = def.get("id", "")
+		if bunker.get_room_state(rid) == BunkerRoomDefs.STATE_REPAIRING:
+			var pct: int = int(round(bunker.get_room_progress(rid) * 100.0))
+			var frozen_txt: String = "（冻结·需反应堆）" if bunker.is_repair_frozen(rid) else ""
+			parts.append("%s +%d%%%s" % [str(def.get("name", rid)), pct, frozen_txt])
+	var done_names: Array[String] = []
+	for rid in bunker.get_completed_today():
+		done_names.append(str(BunkerRoomDefs.get_room(rid).get("name", rid)))
+	if not done_names.is_empty():
+		parts.append("✔ 完工：" + "、".join(done_names))
+	detail.text = "  " + ("；".join(parts) if not parts.is_empty() else "暂无施工中的房间——回基地可开工新修复")
+	detail.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
+	detail.add_theme_color_override("font_color", Color(0.85, 0.78, 0.62))
+	detail.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	detail.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	vbox.add_child(detail)
 
 # =========================================================================
 #  按钮回调（统一领取 + 返回准备界面）
@@ -657,6 +742,28 @@ func _on_continue_pressed() -> void:
 			parent._on_result_confirmed()
 		queue_free()
 	)
+
+## v22.4（P0-2）：直接回基地——领取掉落 + 存档 + 清 meta + 切场景。
+## 不走 main 的 _on_result_confirmed（那是"返回整备"路径），场景切换自然拆除战斗态。
+func _on_return_bunker_pressed() -> void:
+	ManagerLazyLoader.ensure_loaded("drop")
+	var dm: Node = Engine.get_main_loop().root.get_node_or_null("DropManager")
+	if dm != null and dm.has_method("claim_drops"):
+		dm.claim_drops()
+	if SaveManager and SaveManager.has_method("save_game"):
+		SaveManager.save_game()
+	if Engine.has_meta("launch_from_bunker"):
+		Engine.remove_meta("launch_from_bunker")
+	var panel: Control = get_node_or_null("MvpPanelOverlay/Panel")
+	var tw := create_tween()
+	if panel != null:
+		if DT.is_motion_reduce():
+			panel.modulate.a = 0.0
+		else:
+			tw.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+			tw.tween_property(panel, "modulate:a", 0.0, DT.MOTION_FADE_OUT)
+	tw.tween_callback(func():
+		get_tree().change_scene_to_file("res://scenes/bunker/bunker_main.tscn"))
 
 
 # =========================================================================

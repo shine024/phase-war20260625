@@ -55,7 +55,7 @@ static func get_all_rooms() -> Array[Dictionary]:
 			"battles": 1,
 			"tag": "地表·观测",
 			"flavor": "半埋在陨石尘里的旧气象阵列，风速计还在无风处缓慢转动。",
-			"function_note": "地表探索事件难度调节（P3 开放）。",
+			"function_note": "P3 规划：地表探索事件难度调节（暂未开放功能，修复后仅作景观）。",
 		},
 		{
 			"id": "depot",
@@ -66,7 +66,7 @@ static func get_all_rooms() -> Array[Dictionary]:
 			"battles": 1,
 			"tag": "卡仓·打印",
 			"flavor": "卡墙一格一格亮着，旁边那台纳米打印机还在轻声运转——每一张卡，都是被重新打印出来的。",
-			"function_note": "卡墙展示收藏卡牌（拥有即点亮青框）· 纳米打印台：以纳米与能量块为原料打印卡牌（公司补给渠道）· 存储上限（P3）。",
+			"function_note": "纳米打印台：以纳米与能量块为原料打印卡牌（公司补给渠道）。卡墙展示与存储上限为 P3 规划（暂未开放）。",
 		},
 		{
 			"id": "monument",
@@ -110,7 +110,7 @@ static func get_all_rooms() -> Array[Dictionary]:
 			"battles": 1,
 			"tag": "起居·配给",
 			"flavor": "长桌纵贯整个房间。桌上只有一把椅子，朝向门口。",
-			"function_note": "每日配给与 AFK 离线收益（P2 开放）。修复后，空椅子会被灯照亮。",
+			"function_note": "每日配给：每天可领取一次（纳米 120 · 合金 40）。挂机收益请前往战区主界面。修复后，空椅子会被灯照亮。",
 		},
 		{
 			"id": "medical",
@@ -216,7 +216,7 @@ static func get_all_rooms() -> Array[Dictionary]:
 			"battles": 0,
 			"tag": "终局·？？？",
 			"flavor": "最深处的一扇门。门后有风声——但这里不该有风。",
-			"function_note": "终局内容（P4）：全房间修复 + 通关 + 集齐英雄档案后开启。",
+			"function_note": "终局：全房间修复 + 通关 + 集齐英雄档案后开启，三选一抉择（重写/守望/远行）。",
 			"is_terminal": true,
 		},
 	]

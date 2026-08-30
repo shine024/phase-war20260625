@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="zh"><head><meta charset="utf-8">
+<title>主地图 · 100 关布局原型 v5（簇布局+定向补位）</title>
+<style>
+  body { margin:0; background:#1a1c22; color:#dfe6ee; font:14px/1.6 "Microsoft YaHei",sans-serif; }
+  #bar { padding:10px 16px; background:#22252d; display:flex; gap:18px; align-items:center; position:sticky; top:0; z-index:9; flex-wrap:wrap;}
+  #bar b { color:#ffd97a; }
+  label { cursor:pointer; }
+  #wrap { position:relative; width:2752px; height:1536px; transform-origin:0 0; }
+  #map, #mask { position:absolute; inset:0; width:100%; height:100%; }
+  #mask { display:none; opacity:.55; pointer-events:none;}
+  svg.path { position:absolute; inset:0; width:100%; height:100%; pointer-events:none; }
+  .node { position:absolute; width:42px; height:42px; margin:-21px 0 0 -21px; border-radius:50%;
+          display:flex; align-items:center; justify-content:center; font-weight:bold; font-size:14px;
+          border:3px solid #888; background:#3a3f47; color:#cfd6de; box-shadow:0 2px 6px rgba(0,0,0,.5);
+          cursor:pointer; }
+  .node.done { background:var(--c); border-color:#fff8; color:#fff; }
+  .node.cur  { width:62px; height:62px; margin:-31px 0 0 -31px; font-size:18px; background:#fff;
+               border:5px solid var(--c); color:#222; box-shadow:0 0 0 6px #ffffff33, 0 0 18px var(--c); }
+  .node.cur::after { content:""; position:absolute; top:-26px; left:50%; margin-left:-7px; width:14px; height:14px;
+               border-radius:50%; background:var(--c); animation:pulse 1.2s infinite; }
+  @keyframes pulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.5)} }
+  .node.boss { width:54px; height:54px; margin:-27px 0 0 -27px; border-color:#e8b23a; border-width:4px; }
+  .feat { position:absolute; transform:translate(-50%,-50%); text-align:center; pointer-events:none; z-index:3;}
+  .feat .d { width:14px; height:14px; margin:0 auto; transform:rotate(45deg); border:2px solid #fff8; }
+  .feat .t { font-size:16px; color:#fff; text-shadow:0 1px 3px #000, 0 0 6px #0009; white-space:nowrap; margin-top:2px;}
+  .home { position:absolute; width:30px; height:30px; margin:-15px 0 0 -15px; border-radius:50% 50% 4px 4px;
+          background:#d8823c; border:3px solid #fff6; box-shadow:0 0 10px #d8823c88; }
+  .gate { position:absolute; width:40px; height:40px; margin:-20px 0 0 -20px; border-radius:50%;
+          background:#0a0a0c; border:4px solid #7fe3f2; box-shadow:0 0 16px #7fe3f2; }
+  .tip { position:fixed; padding:6px 10px; background:#000c; border:1px solid #7fe3f2; border-radius:6px;
+         pointer-events:none; display:none; z-index:99; }
+</style></head><body>
+<div id="bar">
+  <b>主地图 · 100 关布局原型 v5（簇布局 + 定向补位）</b>
+  <span>锚点簇保留；空档处从拥挤簇搬 1~2 点补位（<span style="color:#c8973f">◆废墟</span> <span style="color:#4fe3e0">◆晶体</span> <span style="color:#e8eef2">◆冰穹</span>）</span>
+  <label><input type="checkbox" id="showmask"> 陆地分析</label>
+  <span>缩放 <select id="zoom"><option value="0.5">50%</option><option value="0.75" selected>75%</option><option value="1">100%</option></select></span>
+</div>
+<div id="viewport" style="overflow:auto">
+<div id="wrap">
+  <img id="map" src="generated/大地图2_2560.png">
+  <img id="mask" src="generated/大地图_mask.png">
+  <svg class="path" viewBox="0 0 2752 1536" fill="none">
+    <path id="route" stroke-width="5" stroke-linejoin="round" stroke-linecap="round" stroke="#ffffff44"/>
+    <path id="route2" stroke-width="2.5" stroke-linejoin="round" stroke="#9feaf5aa" stroke-dasharray="14 9"/>
+  </svg>
+  <div id="feats"></div>
+  <div id="nodes"></div>
+</div></div>
+<div class="tip" id="tip"></div>
+<script>
+const P = [{"x": 443, "y": 717, "cx": 499, "cy": 678, "i": 1}, {"x": 494, "y": 635, "cx": 499, "cy": 678, "i": 2}, {"x": 515, "y": 705, "cx": 499, "cy": 678, "i": 3}, {"x": 515, "y": 773, "cx": 499, "cy": 678, "i": 4}, {"x": 553, "y": 649, "cx": 499, "cy": 678, "i": 5}, {"x": 565, "y": 741, "cx": 499, "cy": 678, "i": 6}, {"x": 637, "y": 534, "cx": 499, "cy": 678, "i": 7}, {"x": 780, "y": 370, "cx": 890, "cy": 256, "i": 8}, {"x": 858, "y": 242, "cx": 929, "cy": 142, "i": 9}, {"x": 864, "y": 300, "cx": 890, "cy": 256, "i": 10}, {"x": 888, "y": 358, "cx": 890, "cy": 256, "i": 11}, {"x": 979, "y": 300, "cx": 890, "cy": 256, "i": 12}, {"x": 913, "y": 220, "cx": 929, "cy": 142, "i": 13}, {"x": 904, "y": 159, "cx": 929, "cy": 142, "i": 14}, {"x": 924, "y": 281, "cx": 890, "cy": 256, "i": 15}, {"x": 944, "y": 346, "cx": 929, "cy": 142, "i": 16}, {"x": 976, "y": 184, "cx": 929, "cy": 142, "i": 17}, {"x": 926, "y": 456, "cx": 1651, "cy": 717, "i": 18}, {"x": 927, "y": 400, "cx": 890, "cy": 256, "i": 19}, {"x": 988, "y": 450, "cx": 890, "cy": 256, "i": 20}, {"x": 964, "y": 596, "cx": 499, "cy": 678, "i": 21}, {"x": 971, "y": 540, "cx": 890, "cy": 256, "i": 22}, {"x": 994, "y": 650, "cx": 1382, "cy": 333, "i": 23}, {"x": 980, "y": 1162, "cx": 1549, "cy": 883, "i": 24}, {"x": 920, "y": 1164, "cx": 2061, "cy": 678, "i": 25}, {"x": 1002, "y": 732, "cx": 890, "cy": 256, "i": 26}, {"x": 1002, "y": 794, "cx": 1882, "cy": 883, "i": 27}, {"x": 1024, "y": 879, "cx": 1088, "cy": 1050, "i": 28}, {"x": 1065, "y": 1103, "cx": 1088, "cy": 1050, "i": 29}, {"x": 1074, "y": 1352, "cx": 1088, "cy": 1050, "i": 30}, {"x": 1086, "y": 884, "cx": 1088, "cy": 1050, "i": 31}, {"x": 1089, "y": 940, "cx": 1088, "cy": 1050, "i": 32}, {"x": 1098, "y": 721, "cx": 1126, "cy": 576, "i": 33}, {"x": 1090, "y": 999, "cx": 1126, "cy": 576, "i": 34}, {"x": 1100, "y": 662, "cx": 1126, "cy": 576, "i": 35}, {"x": 1098, "y": 778, "cx": 1088, "cy": 1050, "i": 36}, {"x": 1189, "y": 741, "cx": 1126, "cy": 576, "i": 37}, {"x": 1119, "y": 836, "cx": 1126, "cy": 576, "i": 38}, {"x": 1116, "y": 1143, "cx": 1203, "cy": 896, "i": 39}, {"x": 1247, "y": 1125, "cx": 1882, "cy": 883, "i": 40}, {"x": 1150, "y": 693, "cx": 1126, "cy": 576, "i": 41}, {"x": 1150, "y": 1014, "cx": 2061, "cy": 678, "i": 42}, {"x": 1151, "y": 1072, "cx": 1485, "cy": 819, "i": 43}, {"x": 1176, "y": 1126, "cx": 1549, "cy": 883, "i": 44}, {"x": 1212, "y": 1061, "cx": 1651, "cy": 717, "i": 45}, {"x": 1174, "y": 850, "cx": 1203, "cy": 896, "i": 46}, {"x": 1181, "y": 939, "cx": 1203, "cy": 896, "i": 47}, {"x": 1140, "y": 893, "cx": 1203, "cy": 896, "i": 48}, {"x": 1208, "y": 991, "cx": 1203, "cy": 896, "i": 49}, {"x": 1234, "y": 867, "cx": 1651, "cy": 717, "i": 50}, {"x": 1261, "y": 722, "cx": 1203, "cy": 896, "i": 51}, {"x": 1325, "y": 515, "cx": 1382, "cy": 333, "i": 52}, {"x": 1328, "y": 927, "cx": 1549, "cy": 883, "i": 53}, {"x": 1353, "y": 984, "cx": 1549, "cy": 883, "i": 54}, {"x": 1359, "y": 378, "cx": 1382, "cy": 333, "i": 55}, {"x": 1402, "y": 340, "cx": 1382, "cy": 333, "i": 56}, {"x": 1411, "y": 482, "cx": 1382, "cy": 333, "i": 57}, {"x": 1445, "y": 672, "cx": 1485, "cy": 819, "i": 58}, {"x": 1465, "y": 803, "cx": 1485, "cy": 819, "i": 59}, {"x": 1477, "y": 925, "cx": 1485, "cy": 819, "i": 60}, {"x": 1476, "y": 858, "cx": 1485, "cy": 819, "i": 61}, {"x": 1489, "y": 985, "cx": 1549, "cy": 883, "i": 62}, {"x": 1417, "y": 922, "cx": 1549, "cy": 883, "i": 63}, {"x": 1514, "y": 748, "cx": 1485, "cy": 819, "i": 64}, {"x": 1520, "y": 1038, "cx": 1549, "cy": 883, "i": 65}, {"x": 1524, "y": 822, "cx": 1549, "cy": 883, "i": 66}, {"x": 1528, "y": 880, "cx": 1549, "cy": 883, "i": 67}, {"x": 1542, "y": 679, "cx": 1664, "cy": 602, "i": 68}, {"x": 1583, "y": 833, "cx": 1549, "cy": 883, "i": 69}, {"x": 1582, "y": 911, "cx": 1549, "cy": 883, "i": 70}, {"x": 1600, "y": 759, "cx": 1651, "cy": 717, "i": 71}, {"x": 1609, "y": 697, "cx": 1651, "cy": 717, "i": 72}, {"x": 1633, "y": 867, "cx": 2163, "cy": 717, "i": 73}, {"x": 1584, "y": 628, "cx": 1664, "cy": 602, "i": 74}, {"x": 1645, "y": 811, "cx": 1664, "cy": 602, "i": 75}, {"x": 1648, "y": 616, "cx": 1664, "cy": 602, "i": 76}, {"x": 1717, "y": 640, "cx": 1664, "cy": 602, "i": 77}, {"x": 1660, "y": 744, "cx": 1651, "cy": 717, "i": 78}, {"x": 1662, "y": 676, "cx": 1651, "cy": 717, "i": 79}, {"x": 1775, "y": 618, "cx": 1664, "cy": 602, "i": 80}, {"x": 1674, "y": 559, "cx": 1664, "cy": 602, "i": 81}, {"x": 1708, "y": 709, "cx": 1651, "cy": 717, "i": 82}, {"x": 1721, "y": 766, "cx": 1651, "cy": 717, "i": 83}, {"x": 1766, "y": 687, "cx": 1664, "cy": 602, "i": 84}, {"x": 1830, "y": 818, "cx": 1882, "cy": 883, "i": 85}, {"x": 1846, "y": 937, "cx": 1882, "cy": 883, "i": 86}, {"x": 1865, "y": 882, "cx": 1882, "cy": 883, "i": 87}, {"x": 1878, "y": 773, "cx": 1882, "cy": 883, "i": 88}, {"x": 1927, "y": 887, "cx": 1882, "cy": 883, "i": 89}, {"x": 1903, "y": 966, "cx": 1882, "cy": 883, "i": 90}, {"x": 1928, "y": 825, "cx": 1882, "cy": 883, "i": 91}, {"x": 2024, "y": 726, "cx": 2061, "cy": 678, "i": 92}, {"x": 2035, "y": 797, "cx": 2061, "cy": 678, "i": 93}, {"x": 2068, "y": 670, "cx": 2061, "cy": 678, "i": 94}, {"x": 2095, "y": 763, "cx": 2061, "cy": 678, "i": 95}, {"x": 2152, "y": 901, "cx": 2163, "cy": 717, "i": 96}, {"x": 2156, "y": 957, "cx": 2163, "cy": 717, "i": 97}, {"x": 2162, "y": 724, "cx": 2163, "cy": 717, "i": 98}, {"x": 2207, "y": 688, "cx": 2163, "cy": 717, "i": 99}, {"x": 2209, "y": 938, "cx": 2163, "cy": 717, "i": 100}];
+const HOME = {"x": 577, "y": 891};
+const GATE = {"x": 2272, "y": 774};
+const ERA = [["\u4e00\u6218", "#c8973f"], ["\u4e8c\u6218", "#7fae4e"], ["\u51b7\u6218", "#4e8ec2"], ["\u73b0\u4ee3", "#93a3b2"], ["\u8fd1\u672a\u6765", "#4fe3e0"]];
+const FEATS = [{"x": 890, "y": 256, "t": "ruin", "name": "\u5317\u90e8\u5e9f\u589f\u57ce\u90a6", "w": 3.0, "c": "#c8973f"}, {"x": 929, "y": 142, "t": "ruin", "name": "\u5317\u65b9\u54e8\u5854\u9057\u8ff9", "w": 1.5, "c": "#c8973f"}, {"x": 1382, "y": 333, "t": "ruin", "name": "\u4e1c\u5317\u5ca9\u5821", "w": 1.5, "c": "#c8973f"}, {"x": 1664, "y": 602, "t": "ruin", "name": "\u4e1c\u90e8\u8981\u585e\u7fa4", "w": 2.5, "c": "#c8973f"}, {"x": 1651, "y": 717, "t": "ruin", "name": "\u53cc\u5854\u9ed1\u57ce", "w": 3.0, "c": "#c8973f"}, {"x": 1549, "y": 883, "t": "ruin", "name": "\u4e2d\u5357\u73af\u5f62\u5927\u57ce", "w": 3.5, "c": "#c8973f"}, {"x": 1485, "y": 819, "t": "ruin", "name": "\u4e1c\u5357\u9677\u57ce", "w": 2.0, "c": "#c8973f"}, {"x": 1203, "y": 896, "t": "ruin", "name": "\u5357\u5cb8\u805a\u843d\u9057\u8ff9", "w": 2.0, "c": "#c8973f"}, {"x": 1088, "y": 1050, "t": "ruin", "name": "\u897f\u5357\u7eff\u533a\u805a\u843d", "w": 2.0, "c": "#c8973f"}, {"x": 499, "y": 678, "t": "ruin", "name": "\u897f\u90e8\u7eff\u5e26\u5e9f\u589f", "w": 2.5, "c": "#c8973f"}, {"x": 1882, "y": 883, "t": "crystal", "name": "\u6676\u4f53\u5de8\u6784\u7fa4", "w": 3.0, "c": "#4fe3e0"}, {"x": 2061, "y": 678, "t": "crystal", "name": "\u4e1c\u6676\u7c07", "w": 2.0, "c": "#4fe3e0"}, {"x": 2163, "y": 717, "t": "crystal", "name": "\u4e1c\u5c16\u6676\u5854", "w": 2.0, "c": "#4fe3e0"}, {"x": 1126, "y": 576, "t": "ice", "name": "\u4e2d\u592e\u51b0\u7a79", "w": 2.0, "c": "#e8eef2"}];
+const wrap = document.getElementById('wrap');
+const ndiv = document.getElementById('nodes');
+let d = `M ${HOME.x} ${HOME.y} L ${P[0].x} ${P[0].y} `;
+P.forEach(p => {
+  d += `L ${p.x} ${p.y} `;
+  const era = Math.floor((p.i - 1) / 20);
+  const el = document.createElement('div');
+  const st = p.i < 45 ? 'done' : (p.i === 45 ? 'cur' : 'locked');
+  const boss = p.i % 10 === 0 ? ' boss' : '';
+  el.className = `node ${st}${boss}`;
+  el.style.left = p.x + 'px'; el.style.top = p.y + 'px';
+  el.style.setProperty('--c', ERA[era][1]);
+  el.textContent = p.i;
+  el.onmouseenter = e => { const t = document.getElementById('tip');
+    t.style.display='block'; t.style.left=(e.clientX+14)+'px'; t.style.top=(e.clientY+14)+'px';
+    t.innerHTML = `第 ${p.i} 关 · ${ERA[era][0]}${boss?' · 首领':''}`; };
+  el.onmouseleave = () => document.getElementById('tip').style.display='none';
+  ndiv.appendChild(el);
+});
+d += `L ${GATE.x} ${GATE.y}`;
+document.getElementById('route').setAttribute('d', d);
+document.getElementById('route2').setAttribute('d', d);
+const fe = document.getElementById('feats');
+FEATS.forEach(f => {
+  const el = document.createElement('div');
+  el.className = 'feat';
+  el.style.left = f.x + 'px'; el.style.top = f.y + 'px';
+  el.innerHTML = `<div class="d" style="background:${f.c}"></div><div class="t" style="color:${f.c}">${f.name}</div>`;
+  fe.appendChild(el);
+});
+const h = document.createElement('div'); h.className='home';
+h.style.left=HOME.x+'px'; h.style.top=HOME.y+'px'; h.title='余烬要塞（家）';
+wrap.appendChild(h);
+const gt = document.createElement('div'); gt.className='gate';
+gt.style.left=GATE.x+'px'; gt.style.top=GATE.y+'px'; gt.title='黑色传送门';
+wrap.appendChild(gt);
+document.getElementById('showmask').onchange = e =>
+  document.getElementById('mask').style.display = e.target.checked ? 'block' : 'none';
+document.getElementById('zoom').onchange = e => {
+  wrap.style.transform = `scale(${e.target.value})`;
+  const vp = document.getElementById('viewport');
+  vp.style.width = (2752*e.target.value)+'px';
+  vp.style.height = (1536*e.target.value)+'px';
+};
+document.getElementById('zoom').onchange({target:document.getElementById('zoom')});
+</script></body></html>

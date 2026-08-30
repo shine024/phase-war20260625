@@ -245,16 +245,35 @@ func get_next_wave_preview() -> Dictionary:
 	var bias_tags: Array = spec.get("archetype_bias_tags", [])
 	var comp: Dictionary = spec.get("composition", {})
 	var is_boss_wave: bool = (_enemy_wave_total > 0 and next_wave == _enemy_wave_total)
+	# v23.2 预警诚实化：bias tag 在本时代池零匹配时降级显示"混合"，
+	# 不再预告实战不会发生的构成（题面必真原则）
+	var bias_display: String = TacticalThemes.tags_to_display(bias_tags)
+	if not bias_tags.is_empty() and not _bias_tags_match_era_pool(level, bias_tags):
+		bias_display = "混合"
 	return {
 		"valid": true,
 		"wave_index": next_wave,
 		"to_spawn": to_spawn,
 		"bias_tags": bias_tags,
-		"bias_display": TacticalThemes.tags_to_display(bias_tags),
+		"bias_display": bias_display,
 		"is_boss_wave": is_boss_wave,
 		"elite_ratio": float(comp.get("elite", 0.0)),
 		"theme_id": String(spec.get("theme_id", "")),
 	}
+
+
+## v23.2: 检查 bias tags 是否在本关卡时代的 archetype 池中有任一匹配（预警诚实化用）。
+## 与 _pick_archetype_with_bias 的匹配语义一致（任一 tag 命中即算）。
+func _bias_tags_match_era_pool(level: int, bias_tags: Array) -> bool:
+	if bias_tags.is_empty():
+		return true
+	var era: int = _current_battle_era(level)
+	for aid in EnemyArchetypes.get_ids_for_era(era):
+		var tags: Array = EnemyArchetypes.get_config(String(aid)).get("tags", [])
+		for bt in bias_tags:
+			if tags.has(bt):
+				return true
+	return false
 
 
 ## 按单位射程选敌方槽位：

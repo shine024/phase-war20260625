@@ -174,7 +174,7 @@ const FOOT_FRAC: Dictionary = {
 	"vis_player_015": 0.305,
 	"vis_player_016": 0.316,
 	"vis_player_017": 0.135,
-	"vis_player_018": 0.268,
+	"vis_player_018": 0.273,
 	"vis_player_019": 0.334,
 	"vis_player_020": 0.225,
 	"vis_player_021": 0.264,
@@ -426,7 +426,7 @@ const HEAD_FRAC: Dictionary = {
 	"vis_player_015": 0.303,
 	"vis_player_016": 0.316,
 	"vis_player_017": 0.133,
-	"vis_player_018": 0.266,
+	"vis_player_018": 0.271,
 	"vis_player_019": 0.334,
 	"vis_player_020": 0.225,
 	"vis_player_021": 0.262,
@@ -535,15 +535,22 @@ static func _file_name_of(tex: Texture2D) -> String:
 ## 返回实体顶部相对节点原点(地面线 y=0)的 Y 坐标（负值，在脚上方）。
 ## 供血条/头顶 UI 锚定实体顶部，保证距离不随缩放/卡框浮动。
 static func entity_top_y_for_sprite(unit_spr: Sprite2D) -> float:
-	if unit_spr == null or unit_spr.texture == null:
+	if unit_spr == null:
 		return -50.0
+	# v23.5: 无贴图兜底同样叠加 sprite 位移（悬空单位贴图缺失时 UI 仍随机身）
+	if unit_spr.texture == null:
+		return -50.0 + unit_spr.position.y
 	var tex_h: float = maxf(float(unit_spr.texture.get_height()), 1.0)
 	var fn := _file_name_of(unit_spr.texture)
 	var foot_frac: float = get_foot_frac(fn)
 	var head_frac: float = get_head_frac(fn)
 	var entity_h_frac: float = maxf(1.0 - head_frac - foot_frac, 0.1)
 	var disp_entity_h: float = entity_h_frac * tex_h * absf(unit_spr.scale.y)
-	return -disp_entity_h
+	# v23.5: 叠加 sprite 节点位移——空中单位悬空抬升后，头顶 UI（血条/角标/等级/
+	# buff 条）与枪口回退点应锚定"视觉机身"而非槽位地面。地面单位 position.y
+	# 仅 ±1.2px 待机浮动噪声，可忽略。注意：悬空抬升在 apply_battle_unit_presentation
+	# 里设置 position.y 后才调用各 sync_*，故 UI 首次定位即含抬升。
+	return -disp_entity_h + unit_spr.position.y
 
 
 # ─────────────────────────────────────────────────────────────────────────────
