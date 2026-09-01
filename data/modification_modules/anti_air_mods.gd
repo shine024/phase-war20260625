@@ -25,6 +25,7 @@ const DATA: Dictionary = {
 		slot_type = "radar", conflict_group = "radar",
 		# v7.x: per-slot 弹道——对空槽改 FLAK 雷达引导高炮
 		condition_slot = 2,
+		era_band = [1, 4],
 		effects = {accuracy_bonus = 0.30, attack_interval = -0.30, slot_weapon_type = 7},  # v6.0 -30% + v7.x 对空槽 FLAK,
 		unlock_conditions = {required_level = 3}
 	},
@@ -35,6 +36,7 @@ const DATA: Dictionary = {
 		rarity = "uncommon",
 	power_mult = 1.0, cost_research = 80, cost_install = 40,
 		slot_type = "electronics", conflict_group = "electronics",
+		era_band = [1, 4],
 		effects = {attack_light = 8},
 		level_effects = {1: {attack_light = 8}, 2: {attack_light = 14}, 3: {attack_light = 21}},
 		unlock_conditions = {required_level = 1}
@@ -48,6 +50,7 @@ const DATA: Dictionary = {
 		slot_type = "missile", conflict_group = "missile",
 		# v7.x: per-slot 弹道——对空槽改 MISSILE 导弹
 		condition_slot = 2,
+		era_band = [2, 4],
 		effects = {attack_air = 0.40, slot_weapon_type = 9},  # v7.x: 对空槽导弹弹道,
 		unlock_conditions = {required_level = 4}
 	},
@@ -70,6 +73,7 @@ const DATA: Dictionary = {
 		slot_type = "fuze", conflict_group = "fuze",
 		# v7.x: per-slot 弹道——对空槽改 FLAK 高炮（近炸空爆）
 		condition_slot = 2,
+		era_band = [1, 4],
 		effects = {accuracy_bonus = 0.40, splash_radius = 0.30, slot_weapon_type = 7, vfx_variant = "proximity"},  # v7.x: 对空槽 FLAK + v8.4 近炸空爆专属视觉,
 		unlock_conditions = {required_level = 5}
 	},
@@ -83,6 +87,7 @@ const DATA: Dictionary = {
 		rarity = "legendary",
 	power_mult = 2.0, cost_research = 500, cost_install = 250,
 		slot_type = "laser", conflict_group = "laser",
+		era_band = [3, 4],
 		effects = {intercept_system = 0.30, intercept_charges = -1, infinite_ammo = true},
 		unlock_conditions = {required_level = 8}
 	},
@@ -95,6 +100,7 @@ const DATA: Dictionary = {
 		slot_type = "radar", conflict_group = "radar",
 		# v7.x: per-slot 弹道——对空槽改 MISSILE 导弹（相控阵引导）
 		condition_slot = 2,
+		era_band = [3, 4],
 		effects = {splash_damage = 0.4, splash_radius = 0.4, attack_range = 60, slot_weapon_type = 9},  # v7.x: 对空槽导弹,
 		unlock_conditions = {required_level = 7}
 	},
@@ -125,6 +131,7 @@ const DATA: Dictionary = {
 		rarity = "uncommon",
 	power_mult = 1.0, cost_research = 90, cost_install = 45,
 		slot_type = "stealth", conflict_group = "stealth",
+		era_band = [2, 4],
 		effects = {aggro_reduce = -0.30},
 		unlock_conditions = {required_level = 2}
 	},
@@ -135,6 +142,7 @@ const DATA: Dictionary = {
 		rarity = "epic",
 	power_mult = 1.6, cost_research = 320, cost_install = 160,
 		slot_type = "fire_control", conflict_group = "fire_control",
+		era_band = [2, 4],
 		effects = {attack_interval = -0.40, accuracy_bonus = 0.15},
 		unlock_conditions = {required_level = 5}
 	},
@@ -145,6 +153,7 @@ const DATA: Dictionary = {
 		rarity = "epic",
 	power_mult = 1.6, cost_research = 300, cost_install = 150,
 		slot_type = "mobility", conflict_group = "mobility",
+		era_band = [2, 4],
 		effects = {mobile_fire = true, accuracy_penalty = -0.20},
 		unlock_conditions = {required_level = 5}
 	},
@@ -165,6 +174,7 @@ const DATA: Dictionary = {
 		cost_install = 190,
 		slot_type = "guidance",
 		conflict_group = "guidance",
+		era_band = [3, 4],
 		effects = {target_marking = 0.40, mark_vuln = 0.30, mark_duration = 5.0},
 		unlock_conditions = {required_level = 6}
 	},
@@ -184,6 +194,7 @@ const DATA: Dictionary = {
 		cost_install = 200,
 		slot_type = "ammunition",
 		conflict_group = "special_ammo",
+		era_band = [3, 4],
 		effects = {emp_chance = 0.40, emp_true_damage = 12.0, graphite_amp = true},
 		applicable_types = [0, 4],
 		unlock_conditions = {required_level = 6}

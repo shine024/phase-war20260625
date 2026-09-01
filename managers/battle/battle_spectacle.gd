@@ -35,6 +35,11 @@ var _last_combo_count: int = 0             # 上次播报的连杀数（避免�
 var _last_kill_fx_ms: int = -999999
 var _last_boss_fx_ms: int = -999999
 
+# --- v25.2 击杀微顿帧（hit-stop）---
+const _HITSTOP_SCALE: float = 0.1        # 顿帧期间时间流速
+const _HITSTOP_SEC: float = 0.05         # 顿帧时长（真实秒，ignore_time_scale）
+var _hitstop_active: bool = false
+
 # --- 慢动作状态守卫 ---
 var _slowmo_active: bool = false
 
@@ -104,10 +109,29 @@ func _on_unit_killed(victim: Node, killer: Node, is_player_victim: bool) -> void
 	_last_kill_fx_ms = now_ms
 	_kill_timestamps.append(float(now_ms) / 1000.0)
 	_trim_kill_window(now_ms)
+	# v25.2 击杀微顿帧：时间轴上第一次有"停顿"，给击杀一帧重量（只在非节流路径，密集交火不连顿）
+	_play_kill_hitstop()
 	# 击杀定帧特效（克制：仅边缘微闪 + 击杀者金框）
 	_play_kill_flash(killer)
 	# 连杀检测
 	_check_combo(now_ms)
+
+## v25.2 击杀微顿帧（hit-stop）：时间流速瞬降 50ms 再恢复——在粒子/震屏之外补上
+## 打击感的时序结构（时间轴上第一次出现"停顿"）。与 1s 击杀节流同门（只在非节流
+## 路径调用）；尊重 motion_reduce；慢动作/顿帧进行中不叠加；恢复回到玩家倍速
+## （同胜利慢动作约定）。顿帧期内战斗结束由胜利慢动作自己的恢复逻辑收尾。
+func _play_kill_hitstop() -> void:
+	if DT.is_motion_reduce() or _slowmo_active or _hitstop_active:
+		return
+	if Engine.time_scale <= 0.0:
+		return
+	_hitstop_active = true
+	Engine.time_scale = _HITSTOP_SCALE
+	# ignore_time_scale=true 保证 time_scale<1 时也能准时恢复
+	await get_tree().create_timer(_HITSTOP_SEC, true, false, true).timeout
+	_hitstop_active = false
+	if not _slowmo_active:
+		Engine.time_scale = _user_time_scale
 
 func _on_boss_wave_started(boss_archetype_ids: Array) -> void:
 	if boss_archetype_ids.is_empty():

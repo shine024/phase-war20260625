@@ -76,14 +76,14 @@ static func _evolve_check_denied(reason: String) -> Dictionary:
 ## v9.x: conditions 快照的 key → 旧拒绝码映射（保持 reason/EVOLVE_REASON_ZH 语义不变）
 static func _condition_key_to_reason(key: String) -> String:
 	match key:
-		"power": return "power_not_enough"
 		"evo_blueprint": return "evo_blueprint_missing"
 		"skill_tree_era": return "evolution_not_unlocked_in_skill_tree"
 		"enhance": return "enhance_not_enough"
 		"mods": return "mod_not_enough"
-		"enemy_mod": return "enemy_mod_not_enough"
 		"faction_level": return "faction_level_not_enough"
-		"intel_base": return "intel_base_not_enough"  ## v21.0
+		## v25.3 已拆门槛的拒绝码保留映射（旧存档/旧调用方传参防御）：
+		"power": return "power_not_enough"
+		"intel_base": return "intel_base_not_enough"
 		_: return "invalid"
 
 ## v7.0: 从参数中解析出 card_id（支持 instance_id 和裸 card_id）
@@ -167,19 +167,8 @@ static func can_evolve_blueprint(card_id_or_instance: String, target_card_id: St
 	## 失败路径同样填充 enhance/mod 数字字段（旧版只有成功路径填，未达标时 UI 反而看不到进度）。
 	var conditions: Array = []
 
-	## v5.0 Phase 4: 战力达标检查（v9.x 重设：门槛 = 目标白板战斗战力×0.70，与判定左侧同标尺）
-	var target_base_power: int = EvolutionHelpers.get_target_power_bar(target_card_id)
-	if target_base_power > 0:
-		# v7.0: 战力估算传 instance_id（让估算读到实例的养成数据）
-		var current_power: float = EvolutionHelpers.estimate_power_score(card_id_or_instance, bpm_ref)
-		conditions.append({
-			"key": "power",
-			"met": current_power >= float(target_base_power),
-			"current_text": str(int(current_power)),
-			"required_text": str(target_base_power),
-			## v9.x：战力是综合评分，指明三条提升途径（否则玩家不知道战力从哪来）
-			"detail": "战力=强化+改造+装备的综合评分：上阵攒经验升级、安装改造模块、装配相位仪器均可提升",
-		})
+	## v25.3 战力门槛已拆：它是"战力→军衔→战力"循环的根，且是三个系统叠加的派生值，
+	## 玩家最难自诊（进化资格的实质量轴 = 等级 + 改造数，保留在下方）。
 
 	## 进化蓝图检查：持有目标卡进化蓝图即可解锁进化（蓝图不消耗）
 	## v21.0: 低进化对跳过——captured→player 对不在图纸掉落链上（get_evolution_blueprint_id
@@ -278,22 +267,9 @@ static func can_evolve_blueprint(card_id_or_instance: String, target_card_id: St
 				"detail": "提升「%s」声望等级（做该势力委托/击败其占领关卡敌人）" % faction_name,
 			})
 
-	## v21.0: 低进化/完整进化的情报门槛——low_evo 卡 50%，Boss/平台/特色卡（low_evo=false）需满情报 100%
-	if is_low_evo_pair:
-		var v21_arch: String = card_id.trim_prefix("captured_")
-		var v21_im: Node = _get_autoload_node("IntelManual")
-		var v21_base: float = 0.0
-		if v21_im != null and v21_im.has_method("get_base_progress"):
-			v21_base = float(v21_im.get_base_progress(v21_arch))
-		var v21_need: float = IntelManualScript.LOW_EVOLUTION_BASE \
-			if EnemyCardModMap.can_low_evolve(v21_arch) else IntelManualScript.FULL_EVOLUTION_BASE
-		conditions.append({
-			"key": "intel_base",
-			"met": v21_base >= v21_need - 0.001,  ## 容差：获取下限/增量累加的浮点尾差
-			"current_text": "%.0f%%" % (v21_base * 100.0),
-			"required_text": "%.0f%%" % (v21_need * 100.0),
-			"detail": "击败/部署该敌方形态积累情报（获取实物缴获卡直接过半）",
-		})
+	## v25.3 情报门槛已拆（原：low_evo 卡 50% / 完整进化 100% base 情报）——
+	## 低进化对（captured→player）与常规进化统一走 等级+改造数+图纸/技能树 门槛，
+	## 情报系统回归纯收集/揭示玩法，不再横在进化路上。
 
 	## 汇总：首个未满足项决定 reason（评估顺序与旧早退版一致）
 	var first_fail_key: String = ""

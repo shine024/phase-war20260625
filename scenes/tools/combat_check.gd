@@ -980,7 +980,7 @@ func _build_extra_vfx_section() -> void:
 	lbl.text = "更多特效层（v18.d 补齐 · 展示位在敌兵左侧空地）"
 	lbl.position = Vector2(8, 228)
 	lbl.size = Vector2(480, 18)
-	lbl.add_theme_font_size_override("font_size", 11)
+	lbl.add_theme_font_size_override("font_size", 12)
 	lbl.modulate = Color(0.85, 0.75, 0.45)
 	_spark_panel.add_child(lbl)
 	var scroll := ScrollContainer.new()
@@ -996,7 +996,7 @@ func _build_extra_vfx_section() -> void:
 	for t in _EXTRA_VFX_TESTS:
 		var b := Button.new()
 		b.text = String(t.label)
-		b.add_theme_font_size_override("font_size", 11)
+		b.add_theme_font_size_override("font_size", 12)
 		b.custom_minimum_size = Vector2(154, 26)
 		b.pressed.connect(_on_extra_vfx_test.bind(String(t.kind)))
 		grid.add_child(b)

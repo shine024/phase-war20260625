@@ -21,6 +21,7 @@ const DATA: Dictionary = {
 		rarity = "rare",
 	power_mult = 1.3, cost_research = 140, cost_install = 70,
 		slot_type = "engineering", conflict_group = "engineering",
+		era_band = [2, 4],
 		effects = {defense_armor = 25, damage_reduction = 0.10},
 		level_effects = {1: {defense_armor = 25, damage_reduction = 0.10}, 2: {defense_armor = 44, damage_reduction = 0.10}, 3: {defense_armor = 62, damage_reduction = 0.10}},
 		unlock_conditions = {required_level = 2}
@@ -34,6 +35,7 @@ const DATA: Dictionary = {
 		slot_type = "demolition", conflict_group = "demolition",
 		# v7.x: per-slot 弹道——对装甲槽改 ROCKET 火箭爆破
 		condition_slot = 1,
+		era_band = [1, 4],
 		effects = {attack_fort = 0.40, slot_weapon_type = 3},  # v7.x: 对装甲槽火箭弹道（爆破）,
 		unlock_conditions = {required_level = 4}
 	},
@@ -75,6 +77,7 @@ const DATA: Dictionary = {
 		rarity = "rare",
 	power_mult = 1.3, cost_research = 180, cost_install = 90,
 		slot_type = "recovery", conflict_group = "recovery",
+		era_band = [1, 4],
 		effects = {defense_armor = 20, max_hp = 25},
 		level_effects = {1: {defense_armor = 20, max_hp = 25}, 2: {defense_armor = 35, max_hp = 40}, 3: {defense_armor = 50, max_hp = 60}},
 		unlock_conditions = {required_level = 3}
@@ -136,6 +139,7 @@ const DATA: Dictionary = {
 		cost_install = 210,
 		slot_type = "ammunition",
 		conflict_group = "ammunition",
+		era_band = [1, 4],
 		effects = {siege_bonus = 0.05},
 		unlock_conditions = {required_level = 6}
 	},
@@ -154,6 +158,7 @@ const DATA: Dictionary = {
 		cost_install = 190,
 		slot_type = "armor",
 		conflict_group = "armor",
+		era_band = [2, 4],
 		effects = {reactive_armor = 0.25, reflect_charges = 2},
 		unlock_conditions = {required_level = 5}
 	},
@@ -190,6 +195,7 @@ const DATA: Dictionary = {
 		cost_install = 170,
 		slot_type = "electronic",
 		conflict_group = "electronic",
+		era_band = [3, 4],
 		effects = {beam_damage_bonus = 0.20, attack_light = 0.05},
 		unlock_conditions = {required_level = 5}
 	},
@@ -226,6 +232,7 @@ const DATA: Dictionary = {
 		cost_install = 160,
 		slot_type = "special",
 		conflict_group = "special",
+		era_band = [3, 4],
 		effects = {salvage_repair = 0.08},
 		unlock_conditions = {required_level = 5}
 	},

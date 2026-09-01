@@ -303,10 +303,12 @@ static func get_body_font() -> Font:
 	return _body_font
 
 # —— P1-9: 中文字体显式 fallback 链 ——
-# 原注释承诺"中文走 Godot fallback（Noto Sans CJK）"，但全项目无任何显式 fallback 配置，
-# 实际依赖玩家机器上恰好有可用的系统中文字体，不同 Windows/导出平台字形粗细可能不一致。
-# 这里给全部打包字体（Rajdhani×3 + Barlow + title）挂 SystemFont fallback 链：
-# FontFile 缺字形（所有中文）→ 按序解析系统字体。调用方：main._ready / title_screen._ready。
+# v25 UI 品质批次升级：项目现在打包 Noto Sans SC 子集（OFL 许可，assets/fonts/），
+# 中文不再依赖玩家机器——标题字体挂 Medium、正文挂 Regular，系统字体链只作
+# 子集缺字形（玩家自输入生僻字）的最终兜底。子集再生成：python tools/make_cjk_font_subset.py
+# 调用方：main._ready / title_screen._ready。
+const CJK_BUNDLED_TITLE := "res://assets/fonts/NotoSansSC-Medium.ttf"
+const CJK_BUNDLED_BODY := "res://assets/fonts/NotoSansSC-Regular.ttf"
 const CJK_FALLBACK_NAMES := [
 	"Noto Sans CJK SC", "Source Han Sans SC", "Microsoft YaHei", "Microsoft YaHei UI",
 	"PingFang SC", "SimHei", "sans-serif",
@@ -319,15 +321,25 @@ static func ensure_cjk_fallback() -> void:
 	_cjk_fallback_applied = true
 	var sys := SystemFont.new()
 	sys.font_names = PackedStringArray(CJK_FALLBACK_NAMES)
+	# 标题链：中文兜底用 Medium（较重，对齐 Rajdhani SemiBold 的视觉分量）
+	var title_cjk: Font = load(CJK_BUNDLED_TITLE)
+	if title_cjk == null:
+		title_cjk = load(CJK_BUNDLED_BODY)
+	var body_cjk: Font = load(CJK_BUNDLED_BODY)
 	for path in [FONT_PATH_TITLE, FONT_PATH_TITLE_BOLD, FONT_PATH_BODY,
 			"res://assets/fonts/data_font.ttf", "res://assets/fonts/title_font.ttf"]:
 		var f: Font = load(path) as Font
 		if f == null:
 			continue
 		var fbs: Array[Font] = f.fallbacks
+		var is_title: bool = path == FONT_PATH_TITLE or path == FONT_PATH_TITLE_BOLD \
+				or path == "res://assets/fonts/title_font.ttf"
+		var primary: Font = title_cjk if is_title else body_cjk
+		if primary != null and not fbs.has(primary):
+			fbs.append(primary)
 		if not fbs.has(sys):
 			fbs.append(sys)
-			f.fallbacks = fbs
+		f.fallbacks = fbs
 
 # 系统签名色快捷取（system: "amber"|"cyan"|"violet"|"gold"|"green_up"|"red_down"）
 static func get_system_color(system: String) -> Color:

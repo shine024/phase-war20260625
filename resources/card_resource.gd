@@ -6,6 +6,8 @@ class_name CardResource
 ## 100种敌人卡是数据基础，每张卡自带完整属性。
 
 const GC = preload("res://resources/game_constants.gd")
+# v22: 改造时代带显示辅助（can_install_modification 拒绝文案用）
+const ModEraBands = preload("res://data/mod_era_bands.gd")
 
 # ─────────────────────────────────────────────
 #  通用字段（三种卡共有）
@@ -519,30 +521,12 @@ func can_install_modification(mod_id: String) -> Dictionary:
 		result.reason = "找不到改造数据"
 		return result
 
-	# 检查情报需求（通过ManagerLazyLoader获取）
-	var intel_requirements = mod_data.get("intel_requirements", {})
-	if not intel_requirements.is_empty():
-		var tree = Engine.get_main_loop()
-		if not tree or not tree.root:
-			result.can_install = false
-			result.reason = "情报系统未加载"
-			return result
-		var ml = tree.root.get_node_or_null("ManagerLazyLoader")
-		var im: Node = null
-		if ml and ml.has_method("ensure_loaded"):
-			ml.ensure_loaded("intel_manual")
-			im = tree.root.get_node_or_null("IntelManual")
-		if im and im.has_method("get_intel_progress"):
-			for intel_key in intel_requirements.keys():
-				var required_progress = intel_requirements[intel_key]
-				var target_card_id = intel_key.trim_prefix("intel_")
-				var current_progress = im.get_intel_progress(target_card_id)
-				if current_progress < required_progress:
-					result.can_install = false
-					result.reason = "情报不足：%s需要%.0f%%情报（当前%.0f%%）" % [
-						target_card_id, required_progress * 100, current_progress * 100
-					]
-					return result
+	# v22: 时代带守卫——改造 era_band 超出本卡时代则不可装（主题代差硬门，
+	# 如"光学瞄准镜"限一战~现代，未来激光卡自带先进火控装不了）
+	if mod_reg.has_method("is_mod_era_compatible") and not mod_reg.is_mod_era_compatible(mod_data, int(era)):
+		result.can_install = false
+		result.reason = "时代不符：该改造限 %s 时代使用" % ModEraBands.format_band(mod_data)
+		return result
 
 	# 检查冲突组
 	var conflict_group = mod_data.get("conflict_group", "")
@@ -579,9 +563,10 @@ func get_modified_stats() -> Dictionary:
 
 	# v6.10: 改用 apply_with_level（支持 level_effects，强化词条才会在面板预览生效）
 	# 旧路径 apply_effects 只读 effects 字段，强化词条全用 level_effects，导致面板预览属性全 +0
+	# v22: 传宿主 era 上下文——flat/set 攻击/HP 值按时代缩放，预览与战场同口径
 	var reg_lv: Node = _mod_registry()
 	if reg_lv != null and reg_lv.has_method("apply_with_level"):
-		return reg_lv.apply_with_level(base_stats, mods)
+		return reg_lv.apply_with_level(base_stats, mods, {"era": int(era)})
 	return base_stats
 
 ## 获取可进化目标列表

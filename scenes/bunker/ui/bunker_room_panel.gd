@@ -22,7 +22,7 @@ const PanelStyles = preload("res://scripts/ui/panel_styles.gd")
 ## 面板语义色：暖琥珀（余烬要塞的灯色）为主 accent，警示沿用既有橙
 const ACCENT := Color(1.0, 0.72, 0.32)
 const WARN_COL := Color(0.95, 0.66, 0.18)
-const GOOD_COL := Color(0.3, 0.92, 0.5)
+const GOOD_COL := DT.COLOR_GREEN_BRIGHT
 
 var _def: Dictionary = {}
 var _manager: Node = null
@@ -61,7 +61,7 @@ func is_open() -> bool:
 func _build() -> void:
 	_dim = ColorRect.new()
 	_dim.set_anchors_preset(Control.PRESET_FULL_RECT)
-	_dim.color = Color(0, 0, 0, 0.55)
+	_dim.color = DT.COLOR_BACKDROP
 	add_child(_dim)
 
 	# 右侧锚定卡片：右对齐 + 垂直居中 + 高度自适应内容（固定宽 400）。
@@ -80,7 +80,7 @@ func _build() -> void:
 
 	_panel = PanelContainer.new()
 	_panel.custom_minimum_size = Vector2(400, 0)
-	_panel.add_theme_stylebox_override("panel", PanelStyles.make_panel_frame(ACCENT))
+	_panel.add_theme_stylebox_override("panel", PanelStyles.make_panel_frame_textured(ACCENT))
 	margin.add_child(_panel)
 
 	var inner := PanelContainer.new()
@@ -274,7 +274,7 @@ func _build_repairing_actions(room_id: String, progress: float) -> void:
 	# 圆角进度条（橙填充 + 百分比角标）
 	var bar_bg := Panel.new()
 	var bg_sb := StyleBoxFlat.new()
-	bg_sb.bg_color = Color(0, 0, 0, 0.55)
+	bg_sb.bg_color = DT.COLOR_BACKDROP
 	bg_sb.border_color = Color(1, 1, 1, 0.08)
 	bg_sb.set_border_width_all(1)
 	bg_sb.set_corner_radius_all(4)

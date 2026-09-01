@@ -3532,12 +3532,17 @@ static func spawn_chem_field(parent: Node2D, world_pos: Vector2, amount: float) 
 
 
 ## 清理已存在的浓度场 VFX（防止重复创建）。
+## ⚠️ 禁止改回 get_node_or_null 单发 + queue_free：queue_free 延迟到帧末，同帧再 add
+## 同名子节点会被 Godot 4.5 静默改名为 @Polygon2D@N（实测），此后 get_node 永远找不到
+## 旧节点 → 0.4s 重绘只增不减，ADD 混合下十几层 0.15 青色叠成不透明白色大圆
+## （2026-08-31 用户截图"纳米虫群战场中心白圆不消散"根因）。必须遍历 + 立即 remove_child。
 static func _cleanup_field_vfx(parent: Node2D, node_name: String) -> void:
 	if parent == null or not is_instance_valid(parent):
 		return
-	var old := parent.get_node_or_null(node_name)
-	if old != null and is_instance_valid(old):
-		old.queue_free()
+	for ch in parent.get_children():
+		if ch is Polygon2D and ch.name == node_name:
+			parent.remove_child(ch)
+			ch.queue_free()
 
 
 ## 化学爆炸扩散波纹（套路1 chem_burst 触发时）。

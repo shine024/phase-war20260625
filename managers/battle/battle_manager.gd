@@ -658,6 +658,11 @@ func begin_card_grid_combat(gen: int = -1) -> void:
 	if battlefield != null and battlefield.has_method("_sync_battle_slot_grid_lane"):
 		battlefield._sync_battle_slot_grid_lane()
 	_spawn_system.finalize_card_grid_and_spawn_enemies(GameManager.current_level if GameManager else 1)
+	# v25.5 首波即布置（非 PM 战）：第一波敌军随开战立即进场进部署虚影——开场只比
+	# 双方 deploy_speed，不再空等一个波次间隔（PM 战开场节奏由下方 start_production
+	# 的首批立即出兵承担，不走格子波次）。
+	if not _is_phase_master_battle:
+		_spawn_system.spawn_first_wave_now(GameManager.current_level if GameManager else 1)
 	if _is_phase_master_battle and _enemy_phase_driver != null and is_instance_valid(_enemy_phase_driver) and _enemy_phase_driver.has_method("start_production"):
 		_enemy_phase_driver.start_production()
 	if GameManager and GameManager.main_scene:
@@ -1250,8 +1255,11 @@ func _on_unit_damaged_combat_feedback(unit: Node, _is_player: bool, amount: floa
 			unit.remove_meta("_vfx_counter_pending")
 			is_counter = true
 	# 暴击优先于穿透/克制样式（暴击视觉冲击更强）；克制优先于穿透（质变更稀有）
-	# v9.x 清理：暴击震屏块删除——BattleFeedbackManager 从未注册（get_node_or_null 恒 null），
-	# 该路径自 v8.1 迁移以来静默失效；恢复震屏应直调 screen_shake.gd（8 个活文件的既有先例）
+	# v25.2 暴击震屏修复：v8.1 迁移 BattleFeedbackManager 失败后此路径一直静默失效
+	# （原注释自述）。现直调本类 request_screen_shake → battlefield → screen_shake.gd。
+	# 仅我方打出暴击时震（is_player=受击方是我方）——与击杀高光同策略，不给挫败加噪。
+	if is_crit and not _is_player:
+		request_screen_shake(4.5, 0.12)
 	if is_crit:
 		CombatFeedback.show_damage(at_position, amount, unit, true, "critical")
 	elif is_counter:

@@ -82,7 +82,7 @@ func _mgr() -> Node:
 func _ready() -> void:
 	custom_minimum_size = DT.PANEL_SIZE_MEDIUM
 	size = DT.PANEL_SIZE_MEDIUM
-	add_theme_stylebox_override("panel", PanelStyles.make_panel_frame(DT.get_panel_accent("phase_master_skill")))
+	add_theme_stylebox_override("panel", PanelStyles.make_panel_frame_textured(DT.get_panel_accent("phase_master_skill")))
 	_build_ui()
 	# 视口自适应：延到帧末执行——_ready 时窗口视口/布局初值未必就绪
 	# （实测 anchors 偏移按临时视口计算导致面板偏移），帧末值为准
@@ -120,7 +120,7 @@ func _build_ui() -> void:
 	status_hb.add_child(_make_spacer(true))
 	# ⚡ 下一个：跳转到下一个可通电芯片（16 层滚动导航）
 	var next_btn := Button.new()
-	next_btn.text = "⚡ 下一个"
+	next_btn.text = "下一个"
 	next_btn.tooltip_text = "跳转到下一个可通电的芯片；若仅缺点数会跳到最接近的芯片并提示"
 	next_btn.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
 	next_btn.add_theme_color_override("font_color", DT.COLOR_GOLD)
@@ -136,7 +136,7 @@ func _build_ui() -> void:
 	next_btn.pressed.connect(_on_next_node_pressed)
 	status_hb.add_child(next_btn)
 	var overview_btn := Button.new()
-	overview_btn.text = "📋 总览"
+	overview_btn.text = "总览"
 	overview_btn.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
 	overview_btn.add_theme_color_override("font_color", DT.COLOR_TEXT_BRIGHT)
 	overview_btn.add_theme_color_override("font_hover_color", DT.COLOR_TEXT_BRIGHT)
@@ -150,6 +150,26 @@ func _build_ui() -> void:
 	overview_btn.add_theme_stylebox_override("focus", ob_styles["focus"])
 	overview_btn.pressed.connect(_toggle_summary)
 	status_hb.add_child(overview_btn)
+	# v25.4 相位师成长合并：反向跳转属性点分配（同源点数池的另一半）。仅主场景显示——
+	# selector 挂 main.tscn 的 PopupLayer，基地宿主（bunker 内嵌）无此面板，藏按钮。
+	if get_tree() != null and get_tree().root != null \
+			and get_tree().root.get_node_or_null("Main") != null:
+		var attr_btn := Button.new()
+		attr_btn.text = "属性点分配 →"
+		attr_btn.tooltip_text = "打开相位场属性点分配（攻/防/生命/能量恢复）——技能点与属性点同由相位场等级产出"
+		attr_btn.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
+		attr_btn.add_theme_color_override("font_color", DT.COLOR_GOLD)
+		attr_btn.add_theme_color_override("font_hover_color", DT.COLOR_GOLD)
+		attr_btn.add_theme_color_override("font_pressed_color", DT.COLOR_GOLD)
+		attr_btn.add_theme_color_override("font_focus_color", DT.COLOR_GOLD)
+		var ab_styles := PanelStyles.make_button_styles(DT.COLOR_GOLD, "ghost")
+		attr_btn.add_theme_stylebox_override("normal", ab_styles["normal"])
+		attr_btn.add_theme_stylebox_override("hover", ab_styles["hover"])
+		attr_btn.add_theme_stylebox_override("pressed", ab_styles["pressed"])
+		attr_btn.add_theme_stylebox_override("disabled", ab_styles["disabled"])
+		attr_btn.add_theme_stylebox_override("focus", ab_styles["focus"])
+		attr_btn.pressed.connect(_on_open_attribute_page_pressed)
+		status_hb.add_child(attr_btn)
 
 	# —— 轨道标题行（与主板轨道列对齐，固定吸顶不随滚动）——
 	var lane_bar := HBoxContainer.new()
@@ -193,7 +213,7 @@ func _build_probe_bar() -> Control:
 	var probe := PanelContainer.new()
 	probe.name = "ProbeBar"
 	probe.custom_minimum_size = Vector2(0, 112)
-	probe.add_theme_stylebox_override("panel", PanelStyles.make_panel_frame(DT.get_panel_accent("phase_master_skill")))
+	probe.add_theme_stylebox_override("panel", PanelStyles.make_panel_frame_textured(DT.get_panel_accent("phase_master_skill")))
 
 	var hb := HBoxContainer.new()
 	hb.add_theme_constant_override("separation", 12)
@@ -456,7 +476,7 @@ func _emit_unlock_toast(node_id: String) -> void:
 		return
 	var node_name: String = String(node.get("name", node_id))
 	var unlocks: Array = node.get("unlocks", [])
-	var toast_lines: Array = ["⚡ 已通电：%s" % node_name]
+	var toast_lines: Array = ["已通电：%s" % node_name]
 	if not unlocks.is_empty():
 		var unlock_descs: Array = []
 		for u in unlocks:
@@ -535,7 +555,7 @@ func _build_summary_overlay() -> void:
 	_summary_overlay = PanelContainer.new()
 	_summary_overlay.name = "SummaryOverlay"
 	_summary_overlay.visible = false
-	_summary_overlay.add_theme_stylebox_override("panel", PanelStyles.make_panel_frame(DT.COLOR_GOLD))
+	_summary_overlay.add_theme_stylebox_override("panel", PanelStyles.make_panel_frame_textured(DT.COLOR_GOLD))
 	add_child(_summary_overlay)
 
 	var margin := MarginContainer.new()
@@ -553,7 +573,7 @@ func _build_summary_overlay() -> void:
 	header.add_theme_constant_override("separation", 8)
 	vb.add_child(header)
 	var title := Label.new()
-	title.text = "📋 已解锁总览"
+	title.text = "已解锁总览"
 	title.add_theme_font_size_override("font_size", DT.FONT_SIZE_MEDIUM)
 	title.add_theme_color_override("font_color", DT.COLOR_GOLD)
 	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -743,6 +763,15 @@ func _on_visibility_changed() -> void:
 
 func _on_close_pressed() -> void:
 	hide_panel()
+
+
+## v25.4 相位师成长合并：反向跳转属性点分配（状态行按钮，仅主场景显示——
+## selector 挂 main.tscn PopupLayer，基地内嵌宿主无此面板时按钮不构建）。
+func _on_open_attribute_page_pressed() -> void:
+	var main: Node = get_tree().root.get_node_or_null("Main") if get_tree() != null else null
+	if main != null and main.has_method("_open_phase_instrument_selector"):
+		hide_panel()  # closed.emit() → PhaseMasterSkillHost 收起 canvas
+		main.call("_open_phase_instrument_selector")
 
 
 func hide_panel() -> void:

@@ -2,6 +2,8 @@ extends Node
 ## 基地宿舍打开背包 → 相位仪可见性/装备链路实测（渲染模式跑，存截图）
 ## 复现用户路径：宿舍房间面板 → 打开背包（通用 id，不切 Tab）
 
+const GC = preload("res://resources/game_constants.gd")
+
 var _fails: Array[String] = []
 
 func _fail(msg: String) -> void:
@@ -123,6 +125,10 @@ func _ready() -> void:
 			_fail("相位仪栏未贴底（end.y=%d 应≈698）" % int(br.end.y))
 		if br.position.y < 615.0:
 			_fail("相位仪栏位置过高（y=%d 应≈629）" % int(br.position.y))
+		# v2: 全出血水平断言（2026-08-31 修复：点锚定定宽 → min 宽超定宽后整条右移出屏）
+		if absf(br.position.x - 16.0) > 3.0 or absf(br.end.x - 1264.0) > 3.0:
+			_fail("相位仪栏未全出血水平铺满（x=%d..%d 应≈16..1264）" % [
+				int(br.position.x), int(br.end.x)])
 		var mb: Node = bar.get_node_or_null("Margin/HBox/MenuBtn")
 		if mb != null and mb.visible:
 			_fail("基地里菜单按钮应隐藏（死按钮）")
@@ -167,7 +173,96 @@ func _ready() -> void:
 	else:
 		_fail("背包无 switch_to_phase_instruments_tab 方法")
 
+	# ── 拖拽装备链路（基地）：卡项按 instrument_bar_host 分组发现内嵌相位仪栏 →
+	#    缓存槽位 → 绿槽扁平索引 → 实装一张卡（2026-08-31 修复：基地无 /root/Main
+	#    宿主，槽位缓存恒空 → 拖卡静默失败）──
+	var card_item: PanelContainer = _find_backpack_card_item(bp)
+	if card_item == null:
+		card_item = _find_backpack_card_item(bunker)
+	var synthetic := false
+	if card_item == null:
+		# 测试档散卡可能全部在装（背包战斗卡列表为空）——现造一个卡项走同一条链路
+		var item_scene: PackedScene = load("res://scenes/ui/backpack_card_item.tscn")
+		var src: CardResource = _pick_any_combat_card()
+		if item_scene != null and src != null:
+			card_item = item_scene.instantiate() as PanelContainer
+			card_item.card = src
+			wrapper.add_child(card_item)
+			synthetic = true
+			print("[BUNKER-BACKPACK-CHECK] 背包无散卡，已现造卡项走拖拽链路（card=%s）" % str(src.card_id))
+	if card_item == null:
+		var ir_probe: Node = get_node_or_null("/root/InstanceRegistry")
+		var ir_n: int = ir_probe.get_all_instance_ids().size() if (ir_probe != null and ir_probe.has_method("get_all_instance_ids")) else -1
+		var pim_slots: Array = PhaseInstrumentManager.get_slots()
+		var occupied := 0
+		for c in pim_slots:
+			if c != null:
+				occupied += 1
+		_fail("背包树里没找到卡项且现造失败（拖拽装备链路未验证）IR实例=%d PIM槽=%d/占用%d" % [
+			ir_n, pim_slots.size(), occupied])
+	else:
+		BackpackCardItemDrag.cache_slot_controls_for_drag(card_item)
+		var cached: Array = card_item._cached_slot_controls
+		print("[BUNKER-BACKPACK-CHECK] 拖拽槽位缓存数=%d" % cached.size())
+		if cached.is_empty():
+			_fail("拖拽槽位缓存为空（内嵌相位仪栏未被拖拽系统发现，拖卡必失败）")
+		else:
+			var first_green: Control = null
+			for s in cached:
+				if s is Control and String(s.get_meta("slot_color", "")) == "green":
+					first_green = s
+					break
+			if first_green == null:
+				_fail("缓存槽位里没有绿槽")
+			else:
+				var flat: int = BackpackCardItemDrag.calculate_flat_index(card_item,
+					"green", int(first_green.get_meta("slot_index", -1)))
+				var slots: Array = PhaseInstrumentManager.get_slots()
+				if flat < 0 or flat >= slots.size():
+					_fail("绿槽扁平索引非法 flat=%d（槽总数=%d）" % [flat, slots.size()])
+				elif slots[flat] != null:
+					print("[BUNKER-BACKPACK-CHECK] 首绿槽已占用，跳过实装断言（缓存+索引已验）")
+				elif card_item.card == null:
+					print("[BUNKER-BACKPACK-CHECK] 卡项无 card 数据，跳过实装断言（缓存+索引已验）")
+				else:
+					var ok_eq: bool = bool(PhaseInstrumentManager.equip_card(flat, card_item.card, null))
+					if not ok_eq:
+						_fail("按缓存槽位装备失败 flat=%d card=%s" % [flat, str(card_item.card.card_id)])
+					else:
+						print("[BUNKER-BACKPACK-CHECK] 拖拽路径装备成功 flat=%d card=%s" % [
+							flat, str(card_item.card.card_id)])
+		if synthetic and card_item != null and is_instance_valid(card_item):
+			card_item.queue_free()
+
 	_finish()
+
+func _find_backpack_card_item(root: Node) -> PanelContainer:
+	if root is PanelContainer:
+		var sc: Script = root.get_script()
+		if sc != null and sc.resource_path.ends_with("backpack_card_item.gd"):
+			return root
+	for ch in root.get_children():
+		var found := _find_backpack_card_item(ch)
+		if found != null:
+			return found
+	return null
+
+## 取一张战斗卡供拖拽链路实测：优先当前相位仪已装备的战斗卡，其次实例注册表
+## 任意战斗卡实例，空存档兜底现造一张初始卡实例（仅运行时注册，不落存档）
+func _pick_any_combat_card() -> CardResource:
+	var slots: Array = PhaseInstrumentManager.get_slots()
+	for c in slots:
+		if c is CardResource and c.card_type == GC.CardType.COMBAT_UNIT:
+			return c
+	var ir: Node = get_node_or_null("/root/InstanceRegistry")
+	if ir != null and ir.has_method("get_all_instance_ids"):
+		for iid in ir.get_all_instance_ids():
+			var inst: CardResource = ir.get_instance(String(iid))
+			if inst != null and inst.card_type == GC.CardType.COMBAT_UNIT:
+				return inst
+		if ir.has_method("create_instance"):
+			return ir.create_instance("ww1_mauser") as CardResource
+	return null
 
 func _collect_covers(node: Node, pt: Vector2, out: Array[String]) -> void:
 	if node is Control:

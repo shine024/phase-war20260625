@@ -273,6 +273,8 @@ func _cancel_pending_deploy() -> void:
 	if SignalBus:
 		BattleInputState.pending_deploy_platform_card_id = ""
 		BattleInputState.pending_deploy_origin_global = Vector2.ZERO
+		if SignalBus.has_signal("play_sound"):
+			SignalBus.play_sound.emit("cancel")
 	_clear_deploy_target_indicator()
 
 func _ensure_deploy_target_indicator(bf: Node) -> void:

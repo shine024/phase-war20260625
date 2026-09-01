@@ -961,24 +961,8 @@ func _grant_phase_master_victory_reward(master_name: String) -> void:
 	last_battle_reward_summary["extra_nano"] = extra_nano_total if extra_nano_total > 0 else 50
 	last_battle_reward_summary["extra_energy"] = extra_energy_total if extra_energy_total > 0 else 10
 
-	# v21 P3-B（计划 A4）：相位师首杀 → 解锁（非赠送）1 个稀有/传奇改造模块
-	_unlock_mod_on_phase_master_first_kill(master_name)
-
-
-## v21 P3-B（计划 A4）：相位师首杀解锁改造模块。
-## 挂点选在战后奖励链 _grant_phase_master_victory_reward（brief 认可的第二选项）——
-## DropManager 掉落链无相位师身份上下文（master_id/era 在 _current_phase_master 里）。
-## 规则实现在 ModificationRegistry.unlock_boss_first_kill（每位 master 仅首杀发一次，
-## 按 boss era 对应兵种加权随机选稀有/传奇模块，与打造共用同一账号解锁集）。
-func _unlock_mod_on_phase_master_first_kill(master_name: String) -> void:
-	var mr: Node = get_node_or_null("/root/ModificationRegistry")
-	if mr == null or not mr.has_method("unlock_boss_first_kill"):
-		return
-	var master_id: String = String(_current_phase_master.get("id", master_name))
-	var era_pm: int = GC.get_era_for_level(current_level)
-	var result: Dictionary = mr.unlock_boss_first_kill(master_id, era_pm)
-	if bool(result.get("ok", false)):
-		last_battle_reward_summary["boss_first_kill_unlock"] = String(result.get("mod_id", ""))
+	# v25.3 相位师首杀"解锁改造模块"已随账号解锁集退役（解锁集无 UI/门禁消费方，
+	# 奖励是幻影——玩家收到一条哪都看不到的解锁；改造获取回归蓝图掉落单通道）
 
 ## v6.14: 从相位师自带符文池抽取，池空或不含目标稀有度时回退 generic 池。
 ## [param master_runes_pool] 相位师自带符文 id 列表（可能含各稀有度）

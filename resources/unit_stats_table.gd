@@ -102,8 +102,15 @@ static func build_stats_from_card(card: CardResource, era_override: int = -1) ->
 	# 时序：先应用 stat 效果（attack_armor 等），再处理武器槽。
 	# 原因：grant_slot 以载体 attack_armor 为基准派生对空伤害，必须读到加成后的值。
 	if card.mods and not card.mods.is_empty():
+		# v22 预检实证修复：mods 的 attack_* flat/pct/set 此前只落 stats.attack_*，
+		# 主战斗路径（calculate_damage_with_weapon）读 weapon_slots[].damage（克隆自
+		# card 原值）→ 攻击类数值改造实战伤害完全空转（战力评估读 stats 所以面板虚高）。
+		# 修法：stat 应用后按"改造前后攻击三维比值"同步进武器槽；置于
+		# apply_to_weapon_slots 之前（grant_slot 派生值不被二次乘）。
+		var _pre_atk: Array = [stats.attack_light, stats.attack_armor, stats.attack_air]
 		# v6.2: 先应用改造的 stat 效果（穿甲/条件穿甲/attack_armor 百分比等）到 UnitStats
-		_apply_mod_stat_effects(stats, card.mods)
+		_apply_mod_stat_effects(stats, card.mods, e)
+		_sync_mod_attack_ratio_to_weapon_slots(stats, tmp_slots, _pre_atk)
 		# v6.0/v6.13: 再应用改造效果到武器槽位（传入 stats 作 source_stats，grant_slot 据此派生伤害）
 		if ModificationRegistry and ModificationRegistry.has_method("apply_to_weapon_slots"):
 			tmp_slots = ModificationRegistry.apply_to_weapon_slots(tmp_slots, card.mods, stats)
@@ -345,7 +352,8 @@ static func _map_legacy_module_id(old_id: String) -> String:
 ## 通过 ModificationRegistry.apply_with_level 处理所有 effects key，
 ## 然后把结果写回 UnitStats。
 ## 注：武器槽位效果（伤害/射程/攻速）由 apply_to_weapon_slots 单独处理。
-static func _apply_mod_stat_effects(stats: UnitStats, mods: Array) -> void:
+## v22: host_era 传入 ModificationRegistry 作宿主上下文（驱动 flat/set 时代缩放）。
+static func _apply_mod_stat_effects(stats: UnitStats, mods: Array, host_era: int = -1) -> void:
 	if stats == null or mods.is_empty():
 		return
 	# v6.8: 提取 ally_* 光环配置存到 stats meta（供 construct_unit setup 时
@@ -444,7 +452,7 @@ static func _apply_mod_stat_effects(stats: UnitStats, mods: Array) -> void:
 		"hijack_aura_cd": stats.hijack_aura_cd,
 	}
 	# 统一应用（支持 level_effects + effects 两种格式）
-	var result: Dictionary = ModificationRegistry.apply_with_level(base_dict, mods)
+	var result: Dictionary = ModificationRegistry.apply_with_level(base_dict, mods, {"era": host_era})
 	# 写回 UnitStats
 	stats.max_hp = float(result.get("max_hp", stats.max_hp))
 	stats.attack_light = float(result.get("attack_light", stats.attack_light))
@@ -572,6 +580,30 @@ static func _apply_mod_stat_effects(stats: UnitStats, mods: Array) -> void:
 	if result.has("_special") and not result["_special"].is_empty():
 		var _sp: Dictionary = result["_special"]
 		stats.set_meta("mod_special_flags", _sp.duplicate(true))
+
+## v22: 攻击类数值改造 → 武器槽伤害同步。
+## 主战斗路径（calculate_damage_with_weapon）base_damage 读 weapon_slots[].damage
+## （克隆自 card 原值），而 mods 的 flat/pct/set 只改 stats.attack_*——不同步则实战空转。
+## 修法：按"改造前后攻击三维比值"整体缩放对应槽位伤害（槽位映射 0→attack_light /
+## 1→attack_armor / 2→attack_air）。改造前基数为 0 的轴（如步兵无对空）比值记 1，
+## 新攻击维度仍走 grant_slot 通道（其派生值读的是改造后的 stats，天然含加成）。
+## 必须在 apply_to_weapon_slots 之前调用，避免 grant_slot 派生值被二次乘。
+static func _sync_mod_attack_ratio_to_weapon_slots(stats: UnitStats, slots: Array, pre_atk: Array) -> void:
+	if slots.is_empty():
+		return
+	var post_atk: Array = [stats.attack_light, stats.attack_armor, stats.attack_air]
+	for i in range(slots.size()):
+		var w = slots[i]
+		if w == null:
+			continue
+		var base_dmg: float = float(w.damage)
+		if base_dmg <= 0.0:
+			continue
+		var pre: float = float(pre_atk[i]) if i < pre_atk.size() else 0.0
+		var post: float = float(post_atk[i]) if i < post_atk.size() else 0.0
+		var factor: float = post / pre if pre > 0.0 else 1.0
+		if absf(factor - 1.0) > 0.001:
+			w.damage = maxf(0.1, base_dmg * factor)
 
 
 ## v6.8: 扫描 mods，提取 ally_* 光环配置存到 stats meta
@@ -781,10 +813,14 @@ static func _sync_kind_bonus_to_weapon_slots(stats: UnitStats) -> void:
 		return
 	for i in range(stats.weapon_slots.size()):
 		var w: Variant = stats.weapon_slots[i]
-		if not (w is Dictionary):
-			continue
-		var wd: Dictionary = w
-		var base_dmg: float = float(wd.get("damage", 0.0))
+		# v22 修复：原 `if not (w is Dictionary): continue` 把玩家侧 WeaponResource
+		# 槽位全部跳过（本函数自 v8.6 起对玩家单位是死代码，装甲碾压/防空封锁/
+		# 对堡垒特攻的武器槽同步从未生效）。改为 Dictionary/Resource 双兼容。
+		var base_dmg: float = 0.0
+		if w is Dictionary:
+			base_dmg = float(w.get("damage", 0.0))
+		elif w != null and "damage" in w:
+			base_dmg = float(w.damage)
 		if base_dmg <= 0.0:
 			continue
 		var mult: float = 1.0
@@ -798,8 +834,12 @@ static func _sync_kind_bonus_to_weapon_slots(stats: UnitStats) -> void:
 		if i == 2 and air_bonus > 0.0:
 			mult += air_bonus
 		if mult > 1.0:
-			wd["damage"] = maxf(0.1, base_dmg * mult)
-			stats.weapon_slots[i] = wd
+			var new_dmg: float = maxf(0.1, base_dmg * mult)
+			if w is Dictionary:
+				w["damage"] = new_dmg
+				stats.weapon_slots[i] = w
+			else:
+				w.damage = new_dmg
 
 
 ## v8.x: 根据卡牌 tags 或 card_id 前缀，为新兵种（STALKER/ENGINEER/ECM/SNIPER）打 meta 标记

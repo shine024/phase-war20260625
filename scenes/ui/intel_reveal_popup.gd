@@ -57,7 +57,7 @@ func _build_ui() -> void:
 	panel.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 
 	# 批次三 B13：根框架收口 PanelStyles 工厂（紫色情报签名框，替代手写 StyleBox）
-	panel.add_theme_stylebox_override("panel", PanelStyles.make_panel_frame(DT.COLOR_VIOLET))
+	panel.add_theme_stylebox_override("panel", PanelStyles.make_panel_frame_textured(DT.COLOR_VIOLET))
 
 	var margin := MarginContainer.new()
 	margin.add_theme_constant_override("margin_left", 16)
@@ -139,7 +139,7 @@ func _build_ui() -> void:
 	var page_lbl := Label.new()
 	page_lbl.name = "PageLabel"
 	page_lbl.text = ""
-	page_lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_XSMALL)
+	page_lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
 	page_lbl.add_theme_color_override("font_color", Color(0.55, 0.5, 0.65, 1.0))
 	page_row.add_child(page_lbl)
 	add_child(page_row)

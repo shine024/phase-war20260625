@@ -42,6 +42,82 @@ static func play(u: Node2D, wt: int = -1) -> void:
 	_try_play_frames(u, spr)
 
 
+## v25.2 攻击前摇预载（anticipation）：WINDUP 进入时朝开火姿态反方向小幅蓄势
+## （拉回 ~30% 姿态幅度 + 反向微倾 ~40%），windup 结束前自行归位——出弹瞬间 play()
+## 前冲，形成"蓄力→爆发"完整弧线。此前 0.1~0.3s 前摇是纯计时器零表现，所有攻击
+## 反馈压在出弹那 0.05s。自回归设计：目标中途死亡/状态机重置时 tween 自己回中，
+## 不卡在蓄势位。位移保留（前摇 telegraph 是 gameplay 信息），立绘倾斜尊重
+## motion_reduce（与 play() 同策略）。
+static func play_windup(u: Node2D, wt: int = -1, windup_sec: float = 0.15) -> void:
+	if u == null or not is_instance_valid(u):
+		return
+	if windup_sec < 0.08:
+		return  # 前摇过短，预载不可读，跳过
+	var pose: Dictionary = _pose_params(wt)
+	_windup_lunge(u, pose, windup_sec)
+	var dt := preload("res://resources/design_tokens.gd")
+	if dt.is_motion_reduce():
+		return
+	var spr := _find_sprite(u)
+	if spr == null:
+		return
+	_windup_lean(spr, pose, bool(u.get("is_player")), windup_sec)
+
+
+## 前摇位移蓄势：反向拉回 ~30%，windup 内自行归位（fire 时 _play_lunge 的 kill+snap 兜底）。
+static func _windup_lunge(u: Node2D, pose: Dictionary, windup_sec: float) -> void:
+	if not bool(u.get("_presentation_card_grid")):
+		return
+	var rest_x: float = float(u.get("_card_grid_rest_x"))
+	if is_nan(rest_x):
+		rest_x = (u as Node2D).position.x
+		u.set("_card_grid_rest_x", rest_x)
+	var old_tw: Tween = u.get("_card_nudge_tween")
+	if old_tw != null and old_tw is Tween and old_tw.is_valid():
+		old_tw.kill()
+		(u as Node2D).position.x = rest_x
+	var tw: Tween = (u as Node2D).create_tween()
+	u.set("_card_nudge_tween", tw)
+	var dir: float = 1.0 if bool(u.get("is_player")) else -1.0
+	var px: float = float(pose.get("lunge", 14.0)) * dir * -0.3  # 反向 30% 蓄势
+	var pull_sec: float = windup_sec * 0.55
+	tw.tween_property(u, "position:x", rest_x + px, pull_sec) \
+		.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	tw.tween_property(u, "position:x", rest_x, windup_sec - pull_sec) \
+		.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+
+
+## 前摇立绘预倾：fire 倾角的反向 ~40%，windup 内自行回正（复用 _lean_tween meta 与 fire 协调）。
+static func _windup_lean(spr: Sprite2D, pose: Dictionary, is_player: bool, windup_sec: float) -> void:
+	var fire_deg: float = 0.0
+	if pose.has("lean_up"):
+		fire_deg = -float(pose["lean_up"])
+	else:
+		fire_deg = float(pose.get("lean", 4.0)) * (1.0 if is_player else -1.0)
+	var deg: float = fire_deg * -0.4
+	if absf(deg) < 0.05:
+		return
+	if spr.has_meta("_lean_tween"):
+		var old: Tween = spr.get_meta("_lean_tween") as Tween
+		if old != null and old.is_valid():
+			old.kill()
+		spr.rotation = 0.0
+	var tw: Tween = spr.create_tween()
+	spr.set_meta("_lean_tween", tw)
+	var rad := deg_to_rad(deg)
+	var pull_sec: float = windup_sec * 0.55
+	tw.tween_property(spr, "rotation", rad, pull_sec) \
+		.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	tw.tween_property(spr, "rotation", 0.0, windup_sec - pull_sec) \
+		.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+	var spr_ref: WeakRef = weakref(spr)
+	tw.tween_callback(func() -> void:
+		var s: Sprite2D = spr_ref.get_ref() as Sprite2D
+		if s != null:
+			s.remove_meta("_lean_tween")
+	)
+
+
 ## 姿态参数表：位移像素（正=朝面向前冲，负=后坐）+ 立绘倾角（度，正=朝面向前倾）。
 static func _pose_params(wt: int) -> Dictionary:
 	match wt:

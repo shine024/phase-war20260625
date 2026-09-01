@@ -1,6 +1,7 @@
-[gd_scene load_steps=37 format=3 uid="uid://main"]
+[gd_scene load_steps=38 format=3 uid="uid://main"]
 
 [ext_resource type="Script" uid="uid://c6ojqq5kxkm03" path="res://scenes/main.gd" id="1_script"]
+[ext_resource type="Texture2D" path="res://assets/backgrounds/bg_default.png" id="30_backdrop"]
 [ext_resource type="PackedScene" uid="uid://battlefield" path="res://scenes/battlefield/battlefield.tscn" id="2_battlefield"]
 [ext_resource type="PackedScene" path="res://scenes/ui/unit_info_panel.tscn" id="6_unit_info"]
 [ext_resource type="PackedScene" path="res://scenes/ui/player_spawn_hud.tscn" id="8_player_hud"]
@@ -53,7 +54,19 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-color = Color(0.039, 0.055, 0.09, 1)
+color = Color(0.04, 0.07, 0.12, 1)
+
+[node name="Backdrop" type="TextureRect" parent="."]
+modulate = Color(0.4, 0.45, 0.58, 0.55)
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+texture = ExtResource("30_backdrop")
+expand_mode = 1
+stretch_mode = 6
 
 [node name="GridPattern" type="ColorRect" parent="."]
 layout_mode = 1

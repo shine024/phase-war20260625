@@ -43,6 +43,10 @@ func _ready() -> void:
 	if SignalBus and SignalBus.has_signal("phase_field_points_changed"):
 		if not SignalBus.phase_field_points_changed.is_connected(_on_phase_field_points_changed):
 			SignalBus.phase_field_points_changed.connect(_on_phase_field_points_changed)
+	# v25.4: 技能点变化（技能树通电消耗/等级提升获得）→ 刷新技能点行
+	if PhaseMasterSkillManager != null and PhaseMasterSkillManager.has_signal("points_changed"):
+		if not PhaseMasterSkillManager.points_changed.is_connected(_on_skill_points_changed):
+			PhaseMasterSkillManager.points_changed.connect(_on_skill_points_changed)
 	_refresh_instrument_list()
 
 func _on_backdrop_gui_input(ev: InputEvent) -> void:
@@ -59,6 +63,17 @@ func _input(ev: InputEvent) -> void:
 ## v8.x: 属性点分配变化时刷新列表（重建属性点区块，反映新分配状态）
 func _on_phase_field_points_changed(_unspent: int) -> void:
 	_refresh_instrument_list()
+
+## v25.4: 技能点变化 → 刷新列表（重建技能点行；面板在技能树下层，树关闭后回来看得到新值）
+func _on_skill_points_changed(_available: int) -> void:
+	_refresh_instrument_list()
+
+## v25.4: 跳转技能树——常驻 PhaseMasterSkillHost（layer 110 盖在本面板之上，
+## 关闭技能树后回来本面板仍在；非全出血档走标准 960×640 居中）
+func _on_open_skill_tree_pressed() -> void:
+	if SignalBus and SignalBus.has_signal("play_sound"):
+		SignalBus.play_sound.emit("button")
+	PhaseMasterSkillHost.open(get_tree(), false)
 
 ## v8.x: 给某属性分配 1 点
 func _on_allocate_pressed(key: String) -> void:
@@ -93,7 +108,7 @@ func _on_reset_allocations_pressed() -> void:
 	if PhaseInstrumentManager.has_method("reset_phase_field_allocations"):
 		refunded = PhaseInstrumentManager.reset_phase_field_allocations()
 	if refunded > 0:
-		_show_toast("✨ 已返还 %d 点属性点" % refunded)
+		_show_toast("已返还 %d 点属性点" % refunded)
 	# 信号驱动刷新
 
 func _show_toast(msg: String) -> void:
@@ -170,6 +185,32 @@ func _create_phase_field_info_item() -> Control:
 	title.add_theme_font_size_override("font_size", 13)
 	title.add_theme_color_override("font_color", Color(0.55, 0.95, 1.0, 1.0))
 	vbox.add_child(title)
+
+	# ══ v25.4 相位师成长合并显示：属性页同时展示技能点池（与属性点同源——都由相位场
+	# 等级产出），一键直达技能树。此前两个点数池分居两面板，玩家看不到"升级给了两份钱"。
+	var skill_pts_row := HBoxContainer.new()
+	skill_pts_row.add_theme_constant_override("separation", 8)
+	vbox.add_child(skill_pts_row)
+	var sp_avail: int = 0
+	if PhaseMasterSkillManager != null and PhaseMasterSkillManager.has_method("get_available_points"):
+		sp_avail = maxi(0, int(PhaseMasterSkillManager.get_available_points()))
+	var sp_label := Label.new()
+	sp_label.text = "技能点：%d 可用（随相位场等级获得）" % sp_avail
+	sp_label.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
+	sp_label.add_theme_color_override("font_color", DT.COLOR_GOLD if sp_avail > 0 else Color(0.6, 0.7, 0.8, 0.9))
+	sp_label.tooltip_text = "技能点与上方属性点同源：相位场等级每升若干级各发一份。\n技能点在技能树学全局被动；属性点在这里分配攻/防/生命/能量恢复。"
+	sp_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	skill_pts_row.add_child(sp_label)
+	var skill_btn := Button.new()
+	skill_btn.text = "◆ 技能树"
+	skill_btn.tooltip_text = "打开相位师技能树（电路板主板）——本面板保持底层，关闭技能树后回来"
+	skill_btn.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
+	skill_btn.custom_minimum_size = Vector2(88, 26)
+	var sp_styles := PanelStyles.make_button_styles(DT.COLOR_GOLD, "ghost")
+	for state in ["normal", "hover", "pressed", "disabled", "focus"]:
+		skill_btn.add_theme_stylebox_override(state, sp_styles[state])
+	skill_btn.pressed.connect(_on_open_skill_tree_pressed)
+	skill_pts_row.add_child(skill_btn)
 
 	var unspent: int = 0
 	if PhaseInstrumentManager.has_method("get_unspent_phase_field_points"):

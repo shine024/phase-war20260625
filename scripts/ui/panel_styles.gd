@@ -24,7 +24,7 @@ static func make_panel_style(
 		border: Color,
 		border_w: int,
 		corner_r: int,
-		shadow_color: Color = Color(0, 0, 0, 0),
+		shadow_color: Color = DT.COLOR_TRANSPARENT,
 		shadow_size: int = 0) -> StyleBoxFlat:
 	var sb := StyleBoxFlat.new()
 	sb.bg_color = bg
@@ -138,6 +138,68 @@ static func make_panel_frame(accent: Color) -> StyleBoxFlat:
 	return sb
 
 
+# ===== v25 UI 品质批次：九宫格渐变面板框 =====
+# 纯 StyleBoxFlat 无渐变能力，"纯色块+描边"是面板廉价感的主因之一。
+# 这里按 accent 程序生成一张 128×128 圆角渐变面板贴图（SDF 圆角 + 垂直微渐变 +
+# 边框烘焙进贴图），经 StyleBoxTexture 九宫格拉伸——四角圆角与 2px 边框 1:1 不变形，
+# 中心区垂直渐变自由拉伸。按 accent 色缓存，每色只生成一次。
+
+const _PANEL_TEX_SIZE := 128
+const _PANEL_TEX_RADIUS := 14
+
+static var _panel_tex_cache: Dictionary = {}
+
+## SDF 圆角矩形：返回点到圆角矩形的有符号距离（<0 在内部）
+static func _rounded_rect_sdf(px: float, py: float, half: float, radius: float) -> float:
+	var qx: float = maxf(absf(px - half) - (half - radius), 0.0)
+	var qy: float = maxf(absf(py - half) - (half - radius), 0.0)
+	return sqrt(qx * qx + qy * qy) - radius
+
+
+static func _make_panel_texture(accent: Color) -> ImageTexture:
+	var n := _PANEL_TEX_SIZE
+	var radius := float(_PANEL_TEX_RADIUS)
+	var img := Image.create(n, n, false, Image.FORMAT_RGBA8)
+	var base := DT.COLOR_VOID
+	var top := base.lightened(0.055)  # 顶部微亮：单一光源的"顶光"错觉
+	for y in n:
+		var row: Color = top.lerp(base, float(y) / float(n - 1))
+		for x in n:
+			var d := _rounded_rect_sdf(float(x), float(y), float(n - 1) * 0.5, radius)
+			if d > 0.75:
+				continue
+			var c: Color
+			if d > -2.0:
+				c = Color(accent.r, accent.g, accent.b, 0.55)  # 边框烘焙
+			else:
+				c = row
+			c.a *= clampf(0.5 - d, 0.0, 1.0)
+			img.set_pixel(x, y, c)
+	return ImageTexture.create_from_image(img)
+
+
+## 面板主框架（质感版）：渐变底 + 九宫格圆角 + 烘焙边框 + 外发光。
+## 与 make_panel_frame 同语义（弹窗/养成面板根框架），HUD 常驻条仍用 flat 版。
+static func make_panel_frame_textured(accent: Color) -> StyleBoxTexture:
+	var key := accent.to_html()
+	if not _panel_tex_cache.has(key):
+		_panel_tex_cache[key] = _make_panel_texture(accent)
+	var sb := StyleBoxTexture.new()
+	sb.texture = _panel_tex_cache[key]
+	var m := _PANEL_TEX_RADIUS + 2  # 四角不拉伸区 = 半径 + 边框
+	sb.texture_margin_left = m
+	sb.texture_margin_right = m
+	sb.texture_margin_top = m
+	sb.texture_margin_bottom = m
+	sb.content_margin_left = 2
+	sb.content_margin_right = 2
+	sb.content_margin_top = 3
+	sb.content_margin_bottom = 2
+	sb.modulate_color = Color(1, 1, 1, 0.98)
+	# 注：StyleBoxTexture 无 shadow 属性（glow 仅 flat 版有）；渐变底+烘焙边框承担质感
+	return sb
+
+
 ## 标题栏左侧发光竖条（PanelChrome 用，也可单独复用）。
 static func make_title_accent_bar(accent: Color) -> StyleBoxFlat:
 	var sb := StyleBoxFlat.new()
@@ -208,6 +270,20 @@ static func _set_button_margins(sb: StyleBoxFlat) -> void:
 	sb.content_margin_right = 14
 	sb.content_margin_top = 6
 	sb.content_margin_bottom = 6
+
+
+# ===== v25 UI 品质批次：战斗 HUD 紧凑家族 =====
+# 战斗层常驻条（资源栏/战斗日志/连携状态条/折叠卡）与弹窗面板不同：要更薄更透明，
+# 不抢战场视线。统一规格：PANEL_DEEP a0.72 底 + 1px 描边 + 6px 圆角 + 无外发光。
+
+## HUD 底板。border_alpha 调描边强度（默认弱 0.28；需强调传 0.4）。
+static func make_hud_panel(border_alpha := 0.28) -> StyleBoxFlat:
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(DT.COLOR_PANEL_DEEP.r, DT.COLOR_PANEL_DEEP.g, DT.COLOR_PANEL_DEEP.b, 0.72)
+	sb.border_color = Color(DT.COLOR_BORDER.r, DT.COLOR_BORDER.g, DT.COLOR_BORDER.b, border_alpha)
+	sb.set_border_width_all(1)
+	sb.set_corner_radius_all(6)
+	return sb
 
 
 ## 关闭按钮（✕）四态：常态低调中性，hover 转红发光警示（PanelChrome 用）。

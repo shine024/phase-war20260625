@@ -25,6 +25,7 @@ const DATA: Dictionary = {
 		rarity = "epic",
 	power_mult = 1.6, cost_research = 280, cost_install = 140,
 		slot_type = "engine", conflict_group = "engine",
+		era_band = [3, 4],
 		effects = {move_speed = 30},
 		unlock_conditions = {required_level = 4}
 	},
@@ -35,6 +36,7 @@ const DATA: Dictionary = {
 		rarity = "legendary",
 	power_mult = 2.0, cost_research = 450, cost_install = 225,
 		slot_type = "thrust", conflict_group = "thrust",
+		era_band = [3, 4],
 		effects = {dodge_chance = 0.15},
 		unlock_conditions = {required_level = 7}
 	},
@@ -45,6 +47,7 @@ const DATA: Dictionary = {
 		rarity = "legendary",
 	power_mult = 2.0, cost_research = 500, cost_install = 250,
 		slot_type = "stealth", conflict_group = "stealth",
+		era_band = [3, 4],
 		effects = {lock_reduction = -0.40},
 		unlock_conditions = {required_level = 8}
 	},
@@ -57,6 +60,7 @@ const DATA: Dictionary = {
 		slot_type = "radar", conflict_group = "radar",
 		# v7.x: per-slot 弹道——对装甲槽改 ROCKET 集束炸弹
 		condition_slot = 1,
+		era_band = [3, 4],
 		effects = {splash_damage = 0.5, splash_radius = 0.5, attack_range = 60, slot_weapon_type = 3},  # v7.x: 对装甲槽火箭（集束）,
 		unlock_conditions = {required_level = 7}
 	},
@@ -67,6 +71,7 @@ const DATA: Dictionary = {
 		rarity = "epic",
 	power_mult = 1.6, cost_research = 300, cost_install = 150,
 		slot_type = "optics", conflict_group = "optics",
+		era_band = [2, 4],
 		effects = {attack_interval = -0.40},
 		unlock_conditions = {required_level = 5}
 	},
@@ -79,6 +84,7 @@ const DATA: Dictionary = {
 		slot_type = "missile", conflict_group = "missile",
 		# v7.x: per-slot 弹道——对空槽改 MISSILE 空空导弹
 		condition_slot = 2,
+		era_band = [3, 4],
 		effects = {attack_range = 90, accuracy_bonus = 0.25, slot_weapon_type = 9},  # v7.x: 对空槽导弹（空战）,
 		unlock_conditions = {required_level = 6}
 	},
@@ -91,6 +97,7 @@ const DATA: Dictionary = {
 		slot_type = "missile", conflict_group = "missile",
 		# v7.x: per-slot 弹道——对空槽改 MISSILE 格斗导弹
 		condition_slot = 2,
+		era_band = [3, 4],
 		effects = {close_accuracy = 0.35, slot_weapon_type = 9},  # v7.x: 对空槽导弹（近距格斗）,
 		unlock_conditions = {required_level = 5}
 	},
@@ -101,6 +108,7 @@ const DATA: Dictionary = {
 		rarity = "epic",
 	power_mult = 1.6, cost_research = 380, cost_install = 190,
 		slot_type = "ecm", conflict_group = "ecm",
+		era_band = [2, 4],
 		effects = {missile_dodge = 0.30},
 		unlock_conditions = {required_level = 6}
 	},
@@ -111,6 +119,7 @@ const DATA: Dictionary = {
 		rarity = "rare",
 	power_mult = 1.3, cost_research = 220, cost_install = 110,
 		slot_type = "logistics", conflict_group = "logistics",
+		era_band = [1, 4],
 		effects = {sustained_combat = 0.50},
 		unlock_conditions = {required_level = 4}
 	},
@@ -141,6 +150,7 @@ const DATA: Dictionary = {
 		rarity = "epic",
 	power_mult = 1.6, cost_research = 340, cost_install = 170,
 		slot_type = "command", conflict_group = "command",
+		era_band = [3, 4],
 		effects = {formation_bonus = 0.15},
 		unlock_conditions = {required_level = 6}
 	},
@@ -151,6 +161,7 @@ const DATA: Dictionary = {
 		rarity = "uncommon",
 	power_mult = 1.0, cost_research = 120, cost_install = 60,
 		slot_type = "survival", conflict_group = "survival",
+		era_band = [3, 4],
 		effects = {defense_armor = 25, max_hp = 30},
 		level_effects = {1: {defense_armor = 25, max_hp = 30}, 2: {defense_armor = 44, max_hp = 50}, 3: {defense_armor = 62, max_hp = 70}},
 		unlock_conditions = {required_level = 2}
@@ -162,6 +173,7 @@ const DATA: Dictionary = {
 		rarity = "epic",
 	power_mult = 1.6, cost_research = 360, cost_install = 180,
 		slot_type = "aerodynamics", conflict_group = "aerodynamics",
+		era_band = [2, 4],
 		effects = {move_speed = 20, dodge_chance = 0.10},
 		unlock_conditions = {required_level = 5}
 	},
@@ -182,6 +194,7 @@ const DATA: Dictionary = {
 		cost_install = 190,
 		slot_type = "special",
 		conflict_group = "special",
+		era_band = [2, 4],
 		effects = {combo_system = 3, combo_bonus = 0.40},
 		unlock_conditions = {required_level = 6}
 	},
@@ -201,6 +214,7 @@ const DATA: Dictionary = {
 		cost_install = 200,
 		slot_type = "ammunition",
 		conflict_group = "special_ammo",
+		era_band = [3, 4],
 		effects = {burn_chance = 0.30, burn_dps = 10.0, chem_burst_trigger = true, attack_air = 0.08},
 		applicable_types = [3],
 		unlock_conditions = {required_level = 6}
@@ -219,6 +233,7 @@ const DATA: Dictionary = {
 		cost_install = 210,
 		slot_type = "ammunition",
 		conflict_group = "special_ammo",
+		era_band = [3, 4],
 		effects = {emp_chance = 0.45, emp_true_damage = 15.0, graphite_execute = true, attack_air = 0.10},
 		applicable_types = [3],
 		unlock_conditions = {required_level = 6}
@@ -237,6 +252,7 @@ const DATA: Dictionary = {
 		cost_install = 170,
 		slot_type = "sensor",
 		conflict_group = "sensor",
+		era_band = [3, 4],
 		effects = {laser_resonance_chance = 0.60, laser_resonance_stacks = 1, crit_chance = 0.05},
 		applicable_types = [3],
 		unlock_conditions = {required_level = 5}

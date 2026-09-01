@@ -44,8 +44,14 @@ static func start_as_deploy_ghost(u: CharacterBody2D, materialize_after_sec: flo
 		var hb_hide := u.get_node_or_null("HpBar") as CanvasItem
 		if hb_hide != null:
 			hb_hide.visible = false
-	# 显示并重置进度条（格子战术只显示卡图，不显示部署条）
-	if u._deploy_bar and not (GameManager and GameManager.has_method("is_card_grid_battle") and GameManager.is_card_grid_battle()):
+	# v25.2 格子战也显示部署进度条：此前格子战术跳过（"只显示卡图"），4.5~10.5s 虚影期
+	# 除 42% 透明度外零反馈，玩家无法判断单位何时可用。格子战锚定到血条槽位
+	# （实体顶上方——虚影期血条正隐藏，位子空着；实体化后血条回归、进度条让位）。
+	if u._deploy_bar:
+		if should_card_grid_defend_stance():
+			var spr := u.get_node_or_null("Sprite") as Sprite2D
+			var top_y: float = _Anchors.entity_top_y_for_sprite(spr) if spr != null else -50.0
+			u._deploy_bar.position = Vector2(0.0, top_y - 14.0)
 		u._deploy_bar.set_visible(true)
 		u._deploy_bar.set_progress(0.0)
 

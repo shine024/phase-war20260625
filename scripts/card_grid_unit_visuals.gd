@@ -28,6 +28,13 @@ const GC = preload("res://resources/game_constants.gd")
 static var _buff_label_sig_cache: Dictionary = {}
 
 
+## 头顶 UI 专属 z 带（血条根节点）：三行排布下前排（下行）大体型单位立绘会延伸到
+## 后排（上行/中行）单位的头顶区域，血条若与立绘同 z（10）就会被吞（绘制顺序=生成顺序）。
+## 统一抬到全场立绘（z=10）与头顶 chrome（名称条 15/角标 16）之上；仍低于
+## DoT 特效(25)/落点导弹(50)/伤害数字(150)。血条自带的状态图标/等级/选中框是子节点，随根生效。
+const OVERHEAD_UI_Z: int = 20
+
+
 ## `face_right`：v7.x 起图本身已携带朝向（vis_player=我方翻转图，vis_enemy=敌方原图），
 ## 不再靠 scale.x 翻转。此参数仅保留给 sync_name_strip 区分敌我颜色（我方青/敌方橙）。
 ## 敌我格子战共用：从 archetype / 缴获清单 / drops 解析 CardResource（框与底图用）
@@ -653,7 +660,7 @@ static func sync_level_tag(host: Node2D, unit_spr: Sprite2D, card: CardResource,
 		label.name = "LevelTag"
 		host.add_child(label)
 	label.set_text("Lv.%d" % level)
-	label.set_style(11, Color(1.0, 0.85, 0.35, 1.0), Color(0, 0, 0, 0.85), 3, HORIZONTAL_ALIGNMENT_CENTER)
+	label.set_style(11, DT.COLOR_GOLD, Color(0, 0, 0, 0.85), 3, HORIZONTAL_ALIGNMENT_CENTER)
 	# 定位：实体左上角，锚定实体顶部
 	var card_w_lt: float = CardGridBattleLayout.BASE_CARD_WIDTH_PX
 	label.position = Vector2(-card_w_lt * 0.5 - 18.0, entity_top_y(unit_spr) - 8.0)

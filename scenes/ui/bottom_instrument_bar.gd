@@ -69,6 +69,9 @@ var _deploy_uses_map: Dictionary = {}
 var _phase_level_label_container: Control = null
 
 func _ready() -> void:
+	# 拖拽槽位发现锚点：背包卡拖拽缓存槽位时，主场景走 /root/Main 固定路径，
+	# 基地（bunker）内嵌实例无该宿主——统一挂分组供 BackpackCardItemDrag 兜底查找
+	add_to_group("instrument_bar_host")
 	_drag_system = DragSub.new()
 	_drag_system.setup(self)
 	custom_minimum_size.y = BAR_FIXED_HEIGHT
@@ -135,6 +138,9 @@ func _find_main_scene() -> Node:
 
 
 func _on_auto_deploy_btn_pressed() -> void:
+	# v25.2 按压音（此前仅菜单按钮有，同屏按钮反馈不一致）
+	if SignalBus and SignalBus.has_signal("play_sound"):
+		SignalBus.play_sound.emit("button")
 	if _auto_deploy == null:
 		return
 	# 战斗中才允许开启；非战斗态点击强制弹回关闭
@@ -476,6 +482,44 @@ func _apply_slot_affordance(panel: Control) -> void:
 			if affordable and not restricted:
 				border.a = 1.0
 			sb.border_color = border
+
+## v25.2 pickup 拦截判定：与压暗罩（_apply_slot_affordance）完全同口径——
+## 能量不足 or 部署次数耗尽即拦；restricted/非战斗卡/零费卡不在此列（另有视觉口径）。
+func _slot_deploy_blocked(panel: Control) -> bool:
+	var color: String = String(panel.get_meta("slot_color", ""))
+	var card_type: int = int(panel.get_meta("card_type", -1))
+	var cost: float = float(panel.get_meta("energy_cost", 0.0))
+	if color != "green" or card_type != GC.CardType.COMBAT_UNIT or cost <= 0.0:
+		return false
+	if bool(panel.get_meta("restricted", false)):
+		return false
+	if EnergyManager != null and EnergyManager.has_method("can_afford") \
+			and not EnergyManager.can_afford(cost):
+		return true
+	var du_key: String = _panel_deploy_key(panel)
+	return _deploy_uses_map.has(du_key) and int(_deploy_uses_map[du_key][0]) <= 0
+
+## v25.2 pickup 拒绝反馈：error 音 + 槽位水平抖动（拒绝语义的水平摇头，区别于部署
+## 震屏的垂直震动）。抖动尊重 motion_reduce（音效保留——听觉反馈不受减动效约束）。
+func _reject_deploy_pickup(panel: Control) -> void:
+	if SignalBus and SignalBus.has_signal("play_sound"):
+		SignalBus.play_sound.emit("error")
+	if panel == null or not is_instance_valid(panel) or DT.is_motion_reduce():
+		return
+	if not panel.has_meta("_slot_rest_x"):
+		panel.set_meta("_slot_rest_x", panel.position.x)
+	var rest_x: float = float(panel.get_meta("_slot_rest_x"))
+	if panel.has_meta("reject_tween"):
+		var old: Variant = panel.get_meta("reject_tween")
+		if old is Tween and (old as Tween).is_valid():
+			(old as Tween).kill()
+			panel.position.x = rest_x
+	var tw: Tween = panel.create_tween()
+	panel.set_meta("reject_tween", tw)
+	tw.tween_property(panel, "position:x", rest_x - 5.0, 0.04)
+	tw.tween_property(panel, "position:x", rest_x + 5.0, 0.08)
+	tw.tween_property(panel, "position:x", rest_x - 3.0, 0.08)
+	tw.tween_property(panel, "position:x", rest_x, 0.05)
 
 ## BU-1：能量不足压暗罩——盖在卡图上、位于角标之下（树序控制绘制层级）。
 func _ensure_energy_dim(panel: Control) -> void:
@@ -1268,6 +1312,11 @@ func _on_slot_gui_input(ev: InputEvent, panel: Control) -> void:
 				and m_card_type == GC.CardType.COMBAT_UNIT
 			)
 			if can_deploy and SignalBus:
+				# v25.2 pickup 即拦截：能量不足/次数耗尽的槽位不再进入选点模式
+				# （与压暗罩同口径），就地抖动 + error 音——省掉一次注定失败的选点往返。
+				if _slot_deploy_blocked(panel):
+					_reject_deploy_pickup(panel)
+					return
 				# v7.x 修复（同名卡部署属性相同）：优先传 instance_id（cold_t72#1），让
 				# get_loadout_by_platform_card_id 精确匹配到点击的那张实例（含其独立强化/改造）。
 				# 原传裸 card_id（cold_t72），同名卡都命中"回退取首个匹配"，导致两张同名卡
@@ -1313,6 +1362,10 @@ func begin_deploy_from_slot_index(n: int) -> bool:
 			continue
 		count += 1
 		if count == n:
+			# v25.2 pickup 即拦截（键盘路径与点击同口径）
+			if _slot_deploy_blocked(panel):
+				_reject_deploy_pickup(panel)
+				return false
 			var m_instance_id: String = String(panel.get_meta("instance_id", ""))
 			var m_card_id: String = String(panel.get_meta("card_id", ""))
 			BattleInputState.pending_deploy_platform_card_id = m_instance_id if not m_instance_id.is_empty() else m_card_id

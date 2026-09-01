@@ -34,7 +34,7 @@ const DATA: Dictionary = {
 		name = "倾斜装甲",
 		name_en = "Sloped Armor",
 		prototype = "T-34革命设计",
-		description = "倾斜装甲增加等效厚度，提升防护",
+		description = "倾斜装甲增加等效厚度：固定防护+百分比防护双通道",
 		icon = "res://assets/ui/icons/mod_icons/mod_armor.png",
 		rarity = "rare",
 	power_mult = 1.3,
@@ -42,10 +42,14 @@ const DATA: Dictionary = {
 		cost_install = 90,
 		slot_type = "armor",
 		conflict_group = "armor",
+		# v22 四通道重标：加强类=固定值+百分比混合（倾斜角既增绝对等效厚度又按比例放大）。
+		# 防御族 flat 不做时代缩放（防御时代跨度仅 ×1.6，derive_defense 已含 era_mul）。
+		era_band = [0, 2],
 		effects = {
-			defense_armor = 20,
+			defense_armor = 15,
+			defense_armor_pct = 0.08,
 		},
-		level_effects = {1: {defense_armor = 20}, 2: {defense_armor = 35}, 3: {defense_armor = 50}},
+		level_effects = {1: {defense_armor = 15, defense_armor_pct = 0.08}, 2: {defense_armor = 25, defense_armor_pct = 0.12}, 3: {defense_armor = 35, defense_armor_pct = 0.18}},
 		unlock_conditions = {
 			required_level = 2,
 		}
@@ -64,8 +68,10 @@ const DATA: Dictionary = {
 		cost_install = 140,
 		slot_type = "armor",
 		conflict_group = "armor",
+		# v22: 复合材料是冷战后期科技——时代带 [2,4]（乔巴姆 1970s 起）
+		era_band = [2, 4],
 		effects = {
-			defense_armor = 0.30,   # +30%
+			defense_armor_pct = 0.30,   # +30%（v22 显式百分比键，改变防护性质=纯百分比通道）
 			heat_resist = 0.50,     # HEAT抗性+50%
 		},
 		unlock_conditions = {
@@ -86,6 +92,7 @@ const DATA: Dictionary = {
 		cost_install = 150,
 		slot_type = "armor",
 		conflict_group = "armor",
+		era_band = [2, 4],
 		effects = {
 			# v7.x 第二批：修复为真正的爆反（原 heat_immunity_once 只是减伤）
 			reactive_armor = 0.30,       # 反弹30%伤害
@@ -109,6 +116,7 @@ const DATA: Dictionary = {
 		cost_install = 225,
 		slot_type = "active",
 		conflict_group = "active",
+		era_band = [3, 4],
 		effects = {
 			# v7.x 第二批：修复为真正的拦截（原 missile_intercept 只是减伤）
 			intercept_system = 0.30,    # 30%概率拦截
@@ -125,7 +133,7 @@ const DATA: Dictionary = {
 		name = "滑膛炮",
 		name_en = "Smoothbore Gun",
 		prototype = "莱茵金属L44",
-		description = "滑膛炮设计，穿甲威力提升",
+		description = "换装滑膛炮：对装甲攻击替换为确定值（弱炮大升、等效火力不重复换装）",
 		icon = "res://assets/ui/icons/mod_icons/mod_gun.png",
 		rarity = "epic",
 	power_mult = 1.6,
@@ -135,12 +143,18 @@ const DATA: Dictionary = {
 	conflict_group = "gun",
 	# v7.x: per-slot 弹道——对装甲槽改 DIRECT 直射（滑膛炮直瞄）
 	condition_slot = 1,
+	# v22 替换通道试点②（换炮类）：attack_armor_set 以冷战基准声明。
+	# 定值参考玩家装甲 atk_a 分布（era2 中位 508 / era3 中位 979 / era4 中位 1865）：
+	# Lv1 560 在 era2 +10%（弱炮 M113 369→560 +52%）、era3 缩放 1100（中位 +12%）、
+	# era4 缩放 1244（顶级炮不生效——更优才生效守卫："已有等效火力不重复换装"）。
+	era_band = [2, 4],
 	effects = {
-		attack_armor = 0.25,   # +25%
+		attack_armor_set = 560,  # 替换为 560（冷战基准；宿主时代自动缩放）
 		attack_range = 30,     # +30px
 			weapon_type = 0,  # v6.5 DIRECT（单位级默认）
 			slot_weapon_type = 0,  # v7.x: 对装甲槽直射化
 	},
+	level_effects = {1: {attack_armor_set = 560, attack_range = 30, weapon_type = 0, slot_weapon_type = 0}, 2: {attack_armor_set = 620, attack_range = 30, weapon_type = 0, slot_weapon_type = 0}, 3: {attack_armor_set = 680, attack_range = 30, weapon_type = 0, slot_weapon_type = 0}},
 		unlock_conditions = {
 			required_level = 4,
 		}
@@ -161,6 +175,7 @@ const DATA: Dictionary = {
 	conflict_group = "ammunition",
 	# v7.x: per-slot 弹道——对装甲槽 SNIPER 穿甲（尾翼稳定脱壳）
 	condition_slot = 1,
+	era_band = [2, 4],
 	effects = {
 		attack_armor = 0.30,   # +30% (v6.0 平衡性调整: +35% → +30%)
 			weapon_type = 6,  # v6.5 SNIPER pierce（单位级默认）
@@ -187,6 +202,7 @@ const DATA: Dictionary = {
 	conflict_group = "gun",
 	# v7.x: per-slot 弹道——对空槽 MISSILE 导弹（grant_slot 已激活槽位，此处补 slot_weapon_type 双保险）
 	condition_slot = 2,
+	era_band = [2, 4],
 	effects = {
 		attack_armor = 0.20,   # +20% 对装甲
 		slot_weapon_type = 9,  # v7.x: 对空槽导弹弹道（MISSILE）
@@ -225,6 +241,7 @@ const DATA: Dictionary = {
 		cost_install = 140,
 		slot_type = "autoloader",
 		conflict_group = "autoloader",
+		era_band = [2, 4],
 		effects = {
 			attack_interval = -0.20,  # -20%
 		},
@@ -246,6 +263,7 @@ const DATA: Dictionary = {
 		cost_install = 190,
 		slot_type = "engine",
 		conflict_group = "engine",
+		era_band = [2, 4],
 		effects = {
 			move_speed = 20,       # +20px/s
 		},
@@ -267,6 +285,7 @@ const DATA: Dictionary = {
 		cost_install = 120,
 		slot_type = "engine",
 		conflict_group = "engine",
+		era_band = [2, 4],
 		effects = {
 			move_speed = 10,       # +10px/s
 			max_hp = 0.10,         # +10%
@@ -290,6 +309,7 @@ const DATA: Dictionary = {
 		cost_install = 150,
 		slot_type = "fire_control",
 		conflict_group = "fire_control",
+		era_band = [2, 4],
 		effects = {
 			crit_chance = 0.10,    # +10%
 		},
@@ -315,6 +335,7 @@ const DATA: Dictionary = {
 	cost_install = 120,
 	slot_type = "optics",
 	conflict_group = "optics",
+	era_band = [2, 4],
 	effects = {
 		crit_chance = 0.15,    # +15% 暴击率（热成像精准锁定）
 	},
@@ -337,6 +358,7 @@ const DATA: Dictionary = {
 		cost_install = 50,
 		slot_type = "environment",
 		conflict_group = "environment",
+		era_band = [1, 4],
 		effects = {
 			attack_interval = -0.15,  # 火控解算快→开火间隔缩短
 		},
@@ -383,6 +405,7 @@ const DATA: Dictionary = {
 		cost_install = 130,
 		slot_type = "command",
 		conflict_group = "command",
+		era_band = [3, 4],
 		effects = {
 			ally_hit_bonus = 0.10,  # 周围友军+10%命中
 		},

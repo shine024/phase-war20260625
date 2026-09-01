@@ -8,6 +8,7 @@ extends PanelContainer
 const DT = preload("res://resources/design_tokens.gd")
 # 批次三 B10：字号 token 引入（10px 白名单/中文升 12）
 const ComboTactics = preload("res://data/combo_tactics.gd")
+const PanelStyles = preload("res://scripts/ui/panel_styles.gd")
 const ComboEngine = preload("res://scripts/battle/combo_engine.gd")
 
 const _COMBO_ORDER: Array[String] = [
@@ -40,16 +41,9 @@ func _ready() -> void:
 	# v9.1 修复重叠：内容仅 348px（标题60 + 6×42按钮 + 间隔），原 520 会强制撑宽顶到 TopHudBar 居中区。
 	# 收到 360 让 PanelContainer 贴合实际内容，main.tscn 定位 (8,8,480,48) 给足 472px 余量。
 	custom_minimum_size = Vector2(360, 40)
-	# 半透明深色背景
-	var bg := StyleBoxFlat.new()
-	bg.bg_color = Color(0.04, 0.06, 0.10, 0.72)
+	# v25 HUD 家族底板（对齐资源栏/战斗日志同语言）
+	var bg := PanelStyles.make_hud_panel(0.4)
 	bg.set_content_margin_all(4)
-	bg.set_corner_radius_all(6)
-	bg.border_width_left = 1
-	bg.border_width_top = 1
-	bg.border_width_right = 1
-	bg.border_width_bottom = 1
-	bg.border_color = Color(0.3, 0.4, 0.5, 0.4)
 	add_theme_stylebox_override("panel", bg)
 	# 内边距
 	var margin := MarginContainer.new()
@@ -94,7 +88,7 @@ func _make_pair_button() -> Button:
 	var btn := Button.new()
 	btn.custom_minimum_size = Vector2(52, 30)
 	btn.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	btn.text = "🤝0/5"
+	btn.text = "0/5"
 	btn.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
 	btn.add_theme_color_override("font_color", Color(0.6, 0.6, 0.6, 1))
 	btn.add_theme_color_override("font_outline_color", DT.COLOR_BACKDROP_DEEP)
@@ -106,7 +100,7 @@ func _make_pair_button() -> Button:
 
 ## v21 P2: 搭档协同 tooltip（列出 5 对搭档与激活态）
 func _build_pair_tooltip(active_count: int) -> String:
-	var lines: Array[String] = ["🤝搭档协同（%d/5 激活）" % active_count]
+	var lines: Array[String] = ["搭档协同（%d/5 激活）" % active_count]
 	var eng: RefCounted = _get_combo_engine()
 	for pid in _PAIR_ORDER:
 		var def: Dictionary = ComboTactics.PAIR_SYNERGIES.get(pid, {})
@@ -198,7 +192,7 @@ func _refresh() -> void:
 			btn.tooltip_text = _build_tooltip(entry["combo_id"], 0)
 		if _pair_btn != null:
 			_set_combo_style(_pair_btn, 0)
-			_pair_btn.text = "🤝0/5"
+			_pair_btn.text = "0/5"
 			_pair_btn.tooltip_text = _build_pair_tooltip(0)
 		return
 	# 全队激活 combo_id（通过 mechanisms 反推）
@@ -227,7 +221,7 @@ func _refresh() -> void:
 				if bool(eng.is_pair_active(pid)):
 					pair_active += 1
 		_set_combo_style(_pair_btn, 2 if pair_active > 0 else 0)
-		_pair_btn.text = "🤝%d/5" % pair_active
+		_pair_btn.text = "%d/5" % pair_active
 		_pair_btn.tooltip_text = _build_pair_tooltip(pair_active)
 
 

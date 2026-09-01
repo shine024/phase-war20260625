@@ -314,6 +314,10 @@ static func cache_slot_controls_for_drag(item: PanelContainer) -> void:
 		var main_root: Node = item.get_node_or_null("/root/Main")
 		if main_root != null:
 			bottom_bar = main_root.find_child("BottomInstrumentBar", true, false)
+	# 基地（bunker）内嵌相位仪栏：无 /root/Main 宿主，底栏 _ready 时挂
+	# instrument_bar_host 分组，此处兜底按分组取（主场景路径已命中时不会走到）
+	if bottom_bar == null and item.get_tree() != null:
+		bottom_bar = item.get_tree().get_first_node_in_group("instrument_bar_host")
 	if bottom_bar and is_instance_valid(bottom_bar):
 		var section = bottom_bar.get("instrument_section")
 		if section == null:

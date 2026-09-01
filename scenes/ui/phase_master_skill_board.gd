@@ -390,7 +390,7 @@ class SubstrateLayer:
 		_vignette_tex.fill_to = Vector2(1.05, 0.5)
 		var gv := Gradient.new()
 		gv.offsets = PackedFloat32Array([0.0, 0.7, 1.0])
-		gv.colors = PackedColorArray([Color(0, 0, 0, 0), Color(0, 0, 0, 0), Color(0, 0, 0, 0.20)])
+		gv.colors = PackedColorArray([DT.COLOR_TRANSPARENT, DT.COLOR_TRANSPARENT, Color(0, 0, 0, 0.20)])
 		_vignette_tex.gradient = gv
 		# 轨道洗色（纵向渐淡，乘分支色后为轨道晕染）
 		_wash_tex = GradientTexture2D.new()
@@ -717,7 +717,7 @@ class ChipWidget:
 		_die_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		_die_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 		_die_label.add_theme_font_size_override("font_size", DT.FONT_SIZE_LARGE)
-		_die_label.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.55))
+		_die_label.add_theme_color_override("font_outline_color", DT.COLOR_BACKDROP)
 		_die_label.add_theme_constant_override("outline_size", 2)
 		add_child(_die_label)
 		# 成本徽标（右上角，描边）

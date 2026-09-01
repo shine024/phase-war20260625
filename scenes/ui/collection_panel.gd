@@ -28,7 +28,7 @@ func _ready() -> void:
 	# v7.x 面板统一：MEDIUM 档 + 科技青签名框架 + PanelChrome 标题栏（右上 ✕ 关闭）
 	custom_minimum_size = DT.PANEL_SIZE_MEDIUM
 	var accent := DT.get_panel_accent("collection")
-	add_theme_stylebox_override("panel", PanelStyles.make_panel_frame(accent))
+	add_theme_stylebox_override("panel", PanelStyles.make_panel_frame_textured(accent))
 	var chrome = PanelChrome.attach_to($Margin/VBox, "卡牌图鉴", accent, "COLLECTION")
 	chrome.closed.connect(_on_close)
 	# v7.x 性能：CardCollectionManager 延迟加载，面板初始化时确保已实例化（否则本地信号连不上）

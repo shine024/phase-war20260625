@@ -32,7 +32,7 @@ var current_slot: int = 1
 const MAX_SLOTS := 3
 
 const SAVE_FILE_USER := "user://save.json"
-# v21 P3-B: v8→v9 迁移（mod_unlock_state 解锁集 + basic_resources.production_points 产能点）
+# v9 引入 mod_unlock_state/production_points（v25.3 已退役，旧档 key 静默跳过；版本号保持 v9 不回退）
 const SAVE_SCHEMA_VERSION := 9
 const SAVE_MIN_INTERVAL_MS := 1200
 const SAVE_BACKUP_INTERVAL_MS := 15000
@@ -56,8 +56,7 @@ const CRITICAL_MANAGER_LOADS: Array = [
 	["/root/IntelManual", "intel_manual"],
 	# v8.x: 相位师技能树（get_active_effects 被战斗实时查询，需 critical）
 	["/root/PhaseMasterSkillManager", "phase_master_skill"],
-	# v21 P3-B: 账号级改造解锁集（打造/首杀解锁共用的 mod_unlock_state）
-	["/root/ModificationRegistry", "mod_unlock_state"],
+	# v25.3: ModificationRegistry 解锁集存档段已删（整链退役，旧档 mod_unlock_state key 静默跳过）
 ]
 const DEFERRED_MANAGER_LOADS: Array = [
 	["/root/LoreManager", "lore"],
@@ -91,8 +90,6 @@ const CRITICAL_RESETTABLE_MANAGERS: Array[String] = [
 	"PhaseMasterSkillManager",
 	# v21: 余烬要塞基地（load_state({}) 全重置；未实例化时新游戏天然为默认态）
 	"BunkerManager",
-	# v21 P3-B: 改造解锁集（load_state({}) 清空账号解锁/首杀标记，防跨档残留）
-	"ModificationRegistry",
 ]
 const DEFERRED_RESET_BATCH_SIZE := 4
 
@@ -116,8 +113,7 @@ const RESETTABLE_MANAGERS := [
 	"IntelEvolutionManager",
 	# v6.6 修复: 新游戏清空未领取掉落（原 load_state({}) 无法清 pending_drops）
 	"DropManager",
-	# v21 P3-B: 账号级改造解锁集（与 CRITICAL_RESETTABLE_MANAGERS 同步登记，走同步重置）
-	"ModificationRegistry",
+	# v25.3: ModificationRegistry 重置登记已随解锁集退役移除
 ]
 
 ## ─── 存档数据键名常量（别名，定义见 scripts/systems/save_constants.gd）───
@@ -1521,3 +1517,24 @@ func _process_deferred_manager_loads() -> void:
 		if _load_game_perf_pending:
 			_load_game_perf_pending = false
 			_perf_phase_end("load_game")
+
+## v24.5：同步排空延迟管理器加载队列（不分批、不等 call_deferred）。
+## 供读档后需"立即"读延迟段状态的调用方使用——典型：标题屏进基地前查
+## BunkerManager.comic_seen 门控。按钮回调栈内 call_deferred 的批次尚未执行，
+## 不 flush 会读到默认 false，开场漫画无限重播。
+## 队列为空时是 no-op；已在排队的 _process_deferred_manager_loads 之后触发会
+## 因空队列直接走收尾分支，双收尾有 flag 守卫，安全。
+func flush_deferred_manager_loads() -> void:
+	if _deferred_manager_queue.is_empty():
+		return
+	while not _deferred_manager_queue.is_empty():
+		var entry = _deferred_manager_queue.pop_front()
+		if entry is Array and entry.size() >= 2:
+			_safe_load_manager(String(entry[0]), _deferred_load_data, String(entry[1]))
+	_deferred_load_data.clear()
+	if _load_game_deferred_phase_open:
+		_load_game_deferred_phase_open = false
+		_perf_phase_end("load_game_deferred_managers")
+	if _load_game_perf_pending:
+		_load_game_perf_pending = false
+		_perf_phase_end("load_game")

@@ -88,7 +88,7 @@ func _ready() -> void:
 	panel.custom_minimum_size = Vector2(430, 0)
 	var accent: Color = DT.COLOR_ACCENT_CYAN
 	# 批次三 B13：根框架收口 PanelStyles 工厂（原手写 StyleBox + 边距）
-	panel.add_theme_stylebox_override("panel", PanelStyles.make_panel_frame(accent))
+	panel.add_theme_stylebox_override("panel", PanelStyles.make_panel_frame_textured(accent))
 	center.add_child(panel)
 
 	var vbox := VBoxContainer.new()
@@ -97,7 +97,7 @@ func _ready() -> void:
 
 	var badge := Label.new()
 	badge.text = "✦ 新功能解锁"
-	badge.add_theme_font_size_override("font_size", DT.FONT_SIZE_XSMALL)
+	badge.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
 	badge.add_theme_color_override("font_color", accent)
 	vbox.add_child(badge)
 

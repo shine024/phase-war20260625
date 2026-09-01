@@ -4407,6 +4407,43 @@ tests/_tmp_escrow_bubble_check.gd（真场景：归仓 33 件→新档 2 泡（�
    单一源（删本地平行表，fallback 语义归一）；afk_panel 槽位补悬停说明（槽位用途+
    点击语义）。
 
+## v24 基地新档序章开场：分格漫画 + 实机醒来衔接（2026-08-31）
+
+**背景**：基地模式新档零开场叙事，世界观（异空间入侵/暗能量星域/卡牌具现化/毁灭
+时间线）无处交代。按 `docs/开场剧情_10方案.md` 十案评审拍板稳健路线：**方案 1 分格
+漫画（B1–B7）＋ 方案 9 实机醒来（B8）**——漫画管史诗感、实机管落地感，低成本高产出，
+且全部复用既有机制（Engine meta 跨场景 / intro_shown 一次性引导 / BunkerManager 存档段）。
+
+**新档流线**：标题屏"进入基地"无档 → `start_new_game()` 挂 `bunker_intro_comic_pending`
+meta → `scenes/intro/comic_intro.tscn` 逐格点击推进（7 格分镜：第七夜失眠/天裂入侵/
+梦中的"我"邀约/空间重叠/暗能量星域/卡牌具现化/毁灭时间线；砸格进场 + ken-burns 缓推 +
+打字机旁白 + 进度点 + 跳过按钮/Esc）→ 转黑"——然后，你醒了。"→ 挂 `bunker_intro_wakeup_pending`
+切 bunker_main → 醒来演出（黑幕梦呓→眼睑睁眼含回眨→三拍梦境闪回→画外音落定，约 18s，
+点击/任意键可跳）→ v22.4 首次引导卡原样接管。有档"进入基地"/"继续"永不重播。
+
+**改动**（4 新文件 + 3 接线 + 1 测试）：
+1. `data/intro_comic_panels.gd`：7 格数据（id/motif/accent/title/text + 可选 texture 槽）；
+2. `scenes/intro/comic_art.gd`：程序化画格绘制器——7 motif 全 `_draw()` 矢量生成、
+   零贴图依赖的占位美术（心跳环/天裂虫群燃烧城市/双身影递手/双圈重叠消解/星云航点/
+   桌面扇形卡阵/断线玻璃碴）；正式美术就位后在数据文件加 texture 路径即整体替换；
+3. `scenes/intro/comic_intro.gd` + `.tscn`：开场场景（画框微倾描边/进度点/跳过；
+   `bunker_intro_dry_run` meta 干跑兜底——测试与编辑器 F6 预览不切场景不污染状态）；
+4. `title_screen._on_enter_bunker`：无档分支先播序章（有档直进）；
+5. `bunker_main`：`_maybe_play_wakeup`（meta 消费 + comic_seen 落档 + 引导卡时序接管）+
+   醒来演出（`WakeupCinematic` STOP 挡点击、gui_input 点击跳过、`_unhandled_input` 按键跳过）；
+6. `bunker_manager`：`comic_seen` 旗标随存档持久化（save_state/load_state/reset 三处）；
+7. `tests/intro_smoke_driver`（+tscn）：冒烟 12 项——分格数据完整性/comic 实例化逐格
+   推进/dry-run 收尾 meta 落位/演出创建/comic_seen 落档/跳过清理/无标记引导卡旧路径
+   回归/存档往返。
+
+**验证**：gdparse 7 文件全 PASS；intro_smoke 12/12 ALL PASS。
+**新踩坑（环境）**：编辑器开着时另起 headless 实例，引擎启动期因 `user://logs/` 日志
+轮转争用直接崩 signal 11（基线 bunker_smoke 同样复现，与代码无关）——加
+`--log-file %TEMP%\xxx.log` 重定向即绕开；后续 headless 冒烟建议都带此参数。
+**实机目视待确认**：画格观感/演出节奏/中文文案（编辑器 F6 直开 comic_intro.tscn 可预览）。
+**边界（范围外）**：战斗路线"新游戏"（main.tscn）与世界地图"家"直进不触发序章；
+暂无配音/BGM 切换；官方主入口（标题"进入基地"）之外的路由后续按需接入。
+
 **验证**：gdparse 12/12；main.tscn headless 完整启动 60 帧无报错（tscn 删除验证）；
 基地冒烟 ALL PASS；归仓端到端（含清缓存首跑引导弹窗路径）ALL PASS；
 master_power_smoke 8/8；全量 GdUnit 155/155。**目视项待游玩确认**：气泡 12px 类别名
@@ -4513,3 +4550,452 @@ p3_economy_smoke 7 节、fixed_mechanics/enemy_affix/master_power 回归全过�
 **改动文件**：`scripts/battle/ultimate_cast_controller.gd`(新) / `managers/battle/phase_instrument_abilities.gd`(充能制+旗标) / `scenes/units/construct_unit.gd`(三机制拆段+armed+手动开火) / `managers/battle/battle_manager.gd`(复位钩子+改名调用) / `scenes/ui/ultimate_cast_bar.gd`(新) / `scenes/main.tscn`(挂载) / `tests/enemy_instrument_abilities_smoke.gd`(改名跟随)。
 
 **验证**：新增 GdUnit `tests/unit/battle/test_ultimate_cast.gd` 10 用例（充能攒/满2停涨/自动即放吞吐一致/手动攥住/释放消耗/无目标不消耗/敌方恒自动/armed FIFO/单位死亡计数回落/reset 清干净）；全量 GdUnit **167/167**；master_power_smoke 8/8；typed 静态调用场景探针复验 reset_battle_state 全字段清理生效；预览截图目视（按钮带位置/手动绿亮/琥珀就绪态/角标计数/暗显档/按需显隐/首次说明弹窗全对）。改动文件 gdparse 全过（abilities 的 line719 单行 lambda 为 gdtoolkit 存量误报，HEAD 同报）。
+
+## v24.2 战场三行深度层级修复：血条头顶 UI 带 + 单位容器 Y-sort（2026-08-31）
+
+**背景**：三行排布（行原点 y=240/305/370）下没有任何深度排序——立绘全 z=10、血条我方 z=0/敌方 z=10，绘制顺序=生成顺序。下行（前排）大体型单位立绘延伸到上/中行单位头顶区域时，后排单位血条被吞（用户截图实症：重装机甲盖住 240/240、120/120 血条）。
+
+**修复①血条层级**：`card_grid_unit_visuals.gd` 新增 `OVERHEAD_UI_Z = 20` 常量（头顶 UI 专属 z 带：高于全场立绘 10 与头顶 chrome 13-16，低于 DoT 25/导弹 50/伤害数字 150）；`unit_hp_bar.gd` `_ready` 统一设根 z（覆盖一切生成路径），`construct_unit.gd`/`enemy_unit.gd` 两处旧手设 z=10 改为引用常量兜底。血条自此恒浮于所有立绘之上，与行/生成顺序无关。
+
+**修复②躯体跨行深度**：`battlefield.tscn` 的 `PlayerUnits`/`EnemyUnits` 容器开 `y_sort_enabled`——单位子树（立绘+光环+影子+chrome）按单位原点 Y（脚线=行深）原子排序，前排躯体正确盖住后排躯体，生成顺序不再影响层级；蜂群槽位等移动物体天然受益（每帧按当前 Y 排）。**安全性侧写**：Y-sort 只重排同 z 带内顺序——蜂群 MultiMesh 躯体 z=0/死亡粒子 z=5（挂容器）本就在立绘 z=10 之下，行为零变化；子弹 reparent 到 Battlefield 根不进容器；相位师驱动器挂 Battlefield 根（场地两端 x≈0/1200，与单位躯体无空间重叠），均不受影响。
+
+**验证**：临时审计场景（真实 presentation 链路+真实槽位坐标）前后对比截图留档 `docs/_tmp_hpbar_audit/`（血条三态 before_buggy/before_buggy_player_z0/after_fixed + 躯体 zoom_before/zoom_after：迫击炮炮身/机枪枪架从"压在机甲前"翻转为"被前排机甲正确遮挡"，血条两态恒可读）；smoke 8/8；全量 GdUnit **167/167**。临时审计脚本已删。
+
+## v24.3 序章可玩梦境战：B2 坠入真实战斗（方案10-lite）+ 梦境 BGM（2026-08-31）
+
+**背景**：v24 分格漫画落地后的第一期升级——把 B2"文明毁灭"从静态格扩成**可玩梦境战**：
+真实战斗单位/弹道/特效的脚本化四幕，未来自己"递卡"由机制亲自演示（方案 10 的情感节拍），
+复杂度收敛为"观摩战 + 一次点击抉择"。设计文档 `docs/开场剧情_10方案.md` 落地记录同步更新。
+
+**梦境战流线**（`scenes/intro/dream_battle.tscn`，零侵入复刻 combat_arena_3v3 搭建）：
+comic B2 格点击 → 切入战场：①起始三卡（ww1_mauser/ww1_arty_m81/ww1_arm_ft17）vs
+侦察机甲×3 → ②增援压境 + 字幕 → ③重装机甲×3 + 枢纽×2 绝境红幕（脚本化，梦必走向溃败）→
+④我方全灭抹除 → ⑤金卡"巨神机甲（fut_colossus）"悬停 +"「接住它。」"（**唯一交互：点击接住**）→
+⑥巨神登场清场 → 挂 resume meta 回 comic 从 B3 续播 → B7 收尾"——然后，你醒了。"→ 醒来演出。
+任意时刻"跳过序章"/Esc 直落基地（消费 wakeup）。BGM 切 `battle_future`（AudioManager 既有
+曲库键），comic 回归段自然延续，进基地照旧切 hub。
+
+**安全性**：BattleManager 只开 spatial_grid + 四 batch（battle_active 进出成对还原，_exit_tree
+兜底 time_scale/paused）；**全程不 emit battle_ended**——奖励/精神值/存档零污染；单位 spawn
+走模板 clone 构建 stats（卡牌实例化铁律安全先例，同 arena）；敌方 setup wave=1 免难度缩放；
+引擎 time_scale 全程不动。
+
+**改动**（2 新文件 + 2 接线 + 1 测试扩展）：
+1. `scenes/intro/dream_battle.gd` + `.tscn`（新）：四幕状态机 + META_DRY_RUN 压缩时间线
+   （干跑同样走真实单位 spawn 全链，收尾只发信号 + 落 meta 不切场景）；
+2. `data/intro_comic_panels.gd`：B2 增 `"battle": true` 标记（格变"深入梦境"入口，提示语切换）；
+3. `scenes/intro/comic_intro.gd`：`_enter_dream_battle`（干跑发 `dream_battle_requested` 信号 +
+   镜像 resume meta）、`_consume_battle_resume`（战毕回 comic 从 B3 续播）；
+4. `tests/intro_smoke_driver`：B2 请求断言 + Phase2b 梦境战 dry-run 全链（真实单位 spawn）。
+
+**验证**：gdparse 4 文件 PASS；intro_smoke **13/13 ALL PASS**（headless，--log-file 重定向，
+见 v24 踩坑条）。退出期 RID 泄漏告警为 dummy 渲染器常态噪音，非失败。
+**实机目视待确认**：战场观感/四幕节奏/递卡时机/巨神体型（fut_colossus 为 ULTIMATE 大体型，
+如压场可换 fut_arm_omega 或调出生坐标）。
+**留待后续**：递卡可改二选一（两张金卡不同兵种，赋予 build 差异）；梦境战败北演出接
+专属 SFX；战斗路线"新游戏"接入同款序章。
+
+## v24.4 序章美术升级：FLOW 真图分格 + 梦境战演出包（2026-08-31）
+
+**背景**：v24.3 目检反馈"效果太简陋"。用户拍板：生图走 **flow-mcp**（Google Flow 有头
+Chrome 产线，格陵兰地图贴图同款；本项目 Python314 环境），生视频暂不接。8 张图全部
+flow `nano-pro` 16:9 2K 生成、归一化 1280×720：B1–B7 分格
+（`assets/intro/comic/b1_insomnia…b7_timeline.png`，This War of Mine 阴郁手绘风、
+每格绑定设定点与 accent 主色）+ 梦境战背景 `assets/intro/battle_bg.png`（裂空火城）。
+
+**分格接线**：`intro_comic_panels.gd` 每格填 `"texture"` 槽（v24 留位），真图优先、
+程序化 motif 自动兜底；已 `--headless --import` 生成 .import 元数据；按美术备份铁律
+打包 `F:\godot fair duet\_art_backup\phase_war_intro_art_v24.4_20260831.zip`（16.6MB）。
+
+**梦境战演出包**（`scenes/intro/dream_battle.gd`，全部走既有组件/工厂）：
+1. 背景图入场（压暗 modulate 保单位/字幕可读，缺图回退平底色）；
+2. 震屏：接入 `scenes/effects/screen_shake.gd`（Camera2D 组件，含减动效无障碍开关）——
+   波次 light/medium、绝境 heavy、抹除/巨神登场 extreme；
+3. 镜头 26s 缓慢推近（zoom 1.0→1.07 张力）+ 世界层重构（背景/红染/单位同受相机影响）；
+4. 余烬粒子（CPUParticles2D 全场飘落）；
+5. 特效工厂点缀（冲击波 aspect_ratio=2.0 侧视实测值/vfx 技能规格）：波次入场环、
+   绝境段脚本化炮击随机砸我方阵地（shockwave+烟柱，不扣血）、抹除逐个落点爆、
+   巨神登场金色召唤门+光柱、清场金色冲击波；
+6. 递卡瞬间 **慢动作定帧**（time_scale 0.3 × 0.45s 真实时钟，_exit_tree 兜底还原）；
+7. 绝境红染层（world 内 ColorRect，DOOM 推起/CARD_OFFER 退场）。
+
+**验证**：gdparse PASS；intro_smoke 全项 ALL PASS（梦境战 dry-run 恢复在列）。
+**踩坑**：①`spawn_shockwave` 第 4 参是 color 第 5 参才是 aspect_ratio——漏传 color
+会按类型分析报 Parse Error 拒载整脚本；②gdparse 只查语法不查作用域，`dt` 重名和
+签名错都放行，必须以引擎 analyzer 为准；③**冒烟假阳性**：phase2b 场景加载失败时
+driver 的 await 链继续跑后续 phase，ALL PASS 照打——靠"[ OK ] 梦境战 dry-run"行
+存在性判断 phase 真跑过（本次修复即靠 stderr 抓 Parse Error 发现）。
+**目视待确认**：8 张图质量与风格统一性（用户过目，单张不满意改提示词重 roll，
+模型可换 nano2/narwhal/gem_pix_2）；实机 F6 `dream_battle.tscn` 看演出包节奏。
+
+## v24.5 序章叙事重锚：战斗摘钩改纯讲述，11 格定稿（2026-08-31）
+
+**背景**：用户目检后指出核心叙事问题——**游戏里的战斗，打的是不同时空中曾经的战友，
+不是敌人**；v24.3 把"外敌入侵的可玩战斗"塞进开场与这条设定冲突，显得突兀。
+拍板：开场改**纯讲述**（图片+字幕），战斗摘钩；FLOW 新增 4 图（B2a 无力 / B2b 生灵 /
+B2c 希望 / B7 战友），分镜 7 → **11 格**（7+4，此前选项文案"10 格"为笔误）。
+
+**新叙事链（力量三问全清）**：
+- 力量从哪来：B2a 别的时间线平民毫无反抗之力 → B2b 不甘执念烧成**生灵**（召唤性质）→
+  B2c 人与生灵并肩，有了战斗的希望；
+- 为何是卡牌：B6 文案微调——"人们在战斗中发现：卡牌可以寄存这种力量"；
+- 你在打谁：**B7 战友**——"所以在战场上与你交火的，从来不是敌人——是别的时空里，
+  曾经并肩作战的战友。"（游戏全战斗的意义重锚，开场讲透）。
+
+**改动**：
+1. `data/intro_comic_panels.gd`：重写为 11 格；B2 删 `"battle"` 钩；B6 文案微调；
+   原 B7 时间线格顺延为 **B8**（图改名 `b8_timeline.png`）；新格 motif 复用既有画师作缺图兜底；
+2. `tests/intro_smoke_driver.gd`：Phase1 11 格 + texture 槽校验；Phase2 断言翻转为
+   "B2 摘钩：两次推进**不**触发战斗请求、落在 B2a"；续播 11 格收尾；Phase2b 保留
+   （场景文件留着，标注"开场摘钩，场景保留回归"）；
+3. `scenes/intro/dream_battle.gd/.tscn`：**文件保留、开场摘钩**——留给后续新手教学关/
+   世界地图首战（"第一次召唤"名义复用，真实单位管线已验证）。
+
+**验证**：gdparse PASS；intro_smoke 全项 ALL PASS（含"B2 纯讲述不触发战斗"新断言）。
+导入需带 `--log-file`（编辑器占用日志的崩溃坑对 `--import` 同样生效）。
+**目视待确认**：4 张新图（b2a/b2b/b2c/b7_comrades）质量与风格；B1 重roll 版
+（职场人士坐床沿不露脸、房间加细节）。
+**留待后续**：梦境战接教学关时的"第一次召唤"包装；生灵概念与卡面/词条美术统一。
+
+## v24.6 修复：老存档看不到开始剧情 + 重看开场入口（2026-08-31）
+
+**问题**（用户报告）：有旧存档时点"进入基地"直接读档进基地，开场从未播出——
+开场原本只挂"无档新建"分支；"新游戏"走战斗路线也不经过开场。
+
+**修复**（`scenes/title_screen.gd`）：
+1. **门控换轴**：`_on_enter_bunker` 开场判定从"有无存档"改为 `BunkerManager.comic_seen`
+   落档标志（先 `ManagerLazyLoader.ensure_loaded("bunker")`）——v24 之前的老档没有该标志，
+   下次进基地**自动补播一次**开场（漫画 11 格 → 醒来演出，看完由 bunker 落档，不再重复）；
+2. **重看入口**：新增"重看开场（开发）"按钮（样式复刻基地按钮）——带 comic pending
+   直播开场，读当前档/无档开新档，供反复预览，不改存档进度。
+
+**验证**：gdparse PASS；intro_smoke 全项 ALL PASS（comic_seen 落档/跳过/往返断言均绿）。
+
+## v25.0 改造数值四通道 + 时代适配（2026-08-31）
+
+**背景**：改造数值体系三处硬伤——①同键双语义隐式（`attack_*/defense_*/max_hp` 7 键
+float=百分比/int=平加，靠数据类型区分，registry 注释都曾把倾斜装甲 int 20 误读成
+"+20%"）；②无"替换"通道（换装类改造没有确定攻击力语义）；③零时代概念（瞄准镜装
+一战卡和未来激光卡效果值一模一样，攻击/HP 跨时代膨胀 5-7 倍导致固定值相对价值漂移）。
+
+**★ 预检实证的存量 P1 bug（本轮顺手修复）**：mods 的 attack_* flat/pct/set 只落
+`stats.attack_*`，而主战斗路径（`calculate_damage_with_weapon`）base_damage 读
+`weapon_slots[].damage`（克隆自 card 原值）——**攻击类数值改造实战伤害完全空转**
+（战力评估读 stats 故面板数字虚高）。headless 实证：ft17 装 +15% 火力训练后
+weapon1.damage 纹丝不动（272→272）。
+连带发现 `_sync_kind_bonus_to_weapon_slots`（v8.6）的 `w is Dictionary` 类型检查把
+玩家侧 WeaponResource 槽位全部跳过——装甲碾压 +20%/防空封锁 +25%/对堡垒特攻的
+武器槽同步自创建起是死代码。
+
+**修复**（`resources/unit_stats_table.gd`）：
+1. **攻击比值同步**：`build_stats_from_card` 在 stat 应用后按"改造前后攻击三维比值"
+   整体缩放武器槽伤害（`_sync_mod_attack_ratio_to_weapon_slots`），置于
+   `apply_to_weapon_slots` 之前避免 grant_slot 派生值二次乘。set/flat/pct 全部经此
+   落地实战伤害；
+2. **kind_bonus 死代码修复**：Dictionary/WeaponResource 双兼容。
+   ⚠️ **平衡影响**：攻击类数值改造（enh_dmg_up/复合穿甲/滑膛炮等的攻击轴）自此
+   真实生效=我方带攻击改造的单位实战 DPS 上升；装甲/防空单位的兵种固定机制
+   （碾压/封锁）也首次进武器伤害。战力评估与实战自此对齐（原先战力虚高实战空转）。
+
+**四通道设计**（`scripts/systems/modification_registry.gd`）：
+
+| 通道 | 写法 | 语义 | 试点 |
+|---|---|---|---|
+| set 替换 | `<stat>_set = N` | 第 1 遍历覆盖基础值，**更优才生效**守卫（值≤当前不生效，沿用 grant_slot 派生 DPS 先例）；flat/pct 随后叠加在新值上 | inf_02 突击步枪化 |
+| flat 固定 | 7 键 int（既有） | 平加；攻击/HP 族按宿主时代缩放 | 既有全部 |
+| pct 百分比 | 7 键 float（既有）或显式 `<stat>_pct` | 乘区 ×(1+v) | arm_02 复合装甲改显式键 |
+| 混合 | 同条目 flat+pct 并存 | —— | arm_01 倾斜装甲 |
+
+- `apply_with_level(base, mods, host_ctx={era})` 加第三参；两遍历：先 set 后 flat/pct；
+- **时代缩放表**（卡池中位推导）：`ERA_FLAT_SCALE_ATK {1.0,1.8,2.7,5.3,6.0}` /
+  `_HP {1.0,2.3,3.3,5.1,6.3}`。flat/set 攻击/HP 值以改造声明基准时代（era_band 下限）
+  声明，应用时缩放到宿主时代——与 v6.8"时代膨胀烘进卡表原值"决策一致（不重开卡牌
+  时代乘区，只让通用件跟卡走）。防御族/射程(px)/百分比不缩放；
+- 旧调用方不传 host_ctx → 保持绝对值旧行为（evolution_path_registry 预览等零迁移）。
+
+**时代适配双轨**：
+1. **硬门**：条目 `era_band = [min, max]`（0一战/1二战/2冷战/3现代/4近未来）。
+   本轮 116 条谱系改造标带（武器/光学/装甲/电子按原型年代归属；训练类/机制类/通用
+   件不设带=全时代）。过滤点：`get_installable_mods_for_card`（新增，面板/安装用）
+   + `card.can_install_modification` 时代守卫（"时代不符：该改造限 X 时代使用"）。
+   `get_mods_for_card` 本身不过滤（enemy_card_mod_map/intel 跨时代消费方依赖全集）。
+   **已装超带改造不回收、继续生效**，仅限新装；
+2. **软缩放**：上述 flat/set 时代缩放。
+
+**重点家族重标**（试点）：
+- **arm_01 倾斜装甲**：纯 flat 20/35/50 → 混合 `{defense_armor=15, defense_armor_pct=0.08}`
+  Lv1 → `{25, 0.12}` Lv2 → `{35, 0.18}` Lv3；era_band [0,2]；
+- **arm_02 复合装甲**：float-on-base → 显式 `defense_armor_pct = 0.30`（值不变）；[2,4]；
+- **inf_07 光学瞄准镜** [0,3] / **inf_08 全息瞄准镜** [3,4]（未来激光卡自带集成火控，
+  光学镜谱系到现代为止——正是用户点名的案例）；true_damage 8 随宿主时代缩放；
+- **inf_02 突击步枪化**（set 通道试点）：flat +8/14/21 → `attack_light_set = 90/105/120`
+  （era1 基准声明；era2 宿主自动缩放 135）；era_band [1,2]——低基础卡换装后直接
+  替换为新值（"老卡换新枪"），高基础卡不生效（守卫）。
+
+**显示层**：modification_panel / card_info_panel / backpack_panel 三处格式化统一支持
+`_set`（"X 替换为 N"）/`_pct`（按基础键翻译+百分比）句式；改造 tooltip 附时代带
+（`data/mod_era_bands.gd` 新增：era 名 + 带文案）；安装阻断经 can_install reason 自动
+流入状态列。
+
+**审计**（`tools/balance_audit_mods_evo.py`）：新增 ①7 键类型语义合法性（float>1.0 =
+"想写 0.30 写成 30.0"式错误直接 ISSUE）②`_pct`/`_set` 值域 ③era_band 合法性与覆盖率
+（现 116 条）④mono 键补 `_set`/`_pct` 变体。本轮审计全绿（仅存 2 条 attack_interval
+逼近上限的既有 WARN）。
+
+**验证**：GdUnit **182/182 全绿**（新增 `tests/unit/data/mod_value_channels_test.gd`
+16 例：set 替换/守卫/两遍历顺序/时代缩放/era_band 过滤/**武器槽同步回归锁**）；
+预检脚本复跑 weapon damage 272→312 NO-GAP；改造总数锁 190 不变（无增删）。
+smoke：master_power_smoke 通过。
+
+**兼容性**：存档零迁移（mods 只存 {id,level}，数值语义全由数据层派生，旧档自动套用
+新口径）；敌方侧不动（整卡标量档位镜像 + 同源词条走 affix 池，均不逐条模拟改造）。
+
+**留观**：①攻击改造真实生效后的玩家 DPS 体感（带改造卡全面变强，属 bug 修复的
+应有结果，但幅度待实测）；②set 通道"equalize 弱卡"玩法面（换装把老卡拉到时代标准
+线）——若过强可调低 set 基准值；③其余 ~74 条未标带条目（机制/训练类）维持全时代，
+后续按需补带。
+
+
+## v25.1 UI 品质批次：全局主题收口 + 打包中文字体 + HUD 家族 + 程序化质感（2026-08-31）
+
+**背景**：卡图质量尚可但面板/战斗 HUD 观感"廉价凌乱"。技术归因三件套：①default_theme.tres 仅 43 行
+（字体+滚动条），TabContainer/CheckBox/LineEdit/PopupMenu/ProgressBar 全漏引擎默认灰；②战斗 HUD 层
+（资源栏/大招条/战斗日志/状态条）整体未迁移，资源栏裸奔+emoji 图标+10px 数字；③零贴图零渐变零过渡
+动效，中文靠玩家系统字体 fallback。
+
+**批次一 · 全局主题收口**：
+1. default_theme.tres 43→约 400 行：Button/CheckBox/CheckButton/TabBar/TabContainer/LineEdit/
+   PopupMenu/PopupPanel/ProgressBar/Panel/PanelContainer/Tooltip/HSeparator/VSeparator/ItemList/
+   RichTextLabel/Label 全套深色霓虹样式（主题只填空白，不覆盖显式 theme_override，风险低）。
+2. 打包 Noto Sans SC 子集字体（OFL，Regular+Medium 各 2.4MB；GB2312 全集+项目实拍 7701 字符）。
+   `ensure_cjk_fallback()` 升级：标题字体挂 Medium、正文挂 Regular，系统字体链只作生僻字兜底。
+   子集再生成：`python tools/make_cjk_font_subset.py`（源字体在 .font_src/，gitignore，缺失自动下载）。
+3. store 假 tab 选中态对齐 TabContainer"顶部 accent 条"语言；title_screen/main.tscn 私有底色
+   (0.039,0.055,0.09) 收敛到 DT.COLOR_BG。
+
+**批次二 · 战斗 HUD 家族**：PanelStyles 新增 `make_hud_panel(border_alpha)`（PANEL_DEEP a0.72 底+
+1px 描边+6 圆角+无发光）。迁移七文件：resource_bar（套底框+emoji→res_*.png 真图标+10px→12px+
+飘字 13→14）、battle_log（保留左侧青签名条）、battle_info_display（2px 橙框退役收编 accent 体系）、
+combo_status_strip、buff_fold_card、battle_status_strip（emoji 标题+字面量色收编 token）、
+ultimate_cast_bar（圆角 4→6+按钮内边距）。
+
+**批次三 · 程序化质感**：
+1. PanelStyles 新增 `make_panel_frame_textured(accent)`：按 accent 程序生成 128×128 SDF 圆角贴图
+  （垂直微渐变顶光 5.5%+2px 边框烘焙+九宫格拉伸），26 处面板根框架调用点迁移（两个 HUD 条与
+  ui_unified_check 保留 flat 版）。注意 StyleBoxTexture 无 shadow 属性（glow 仅 flat 版有）。
+2. 面板开合动效：main.gd `_animate_overlay_in/out`（淡入 0.2s+内容 0.25s TRANS_BACK 微弹出/
+   淡出 0.15s 后隐藏；`is_motion_reduce()` 短路；关闭 tween 挂 overlay meta 防"淡出途中重开"竞态）。
+3. 标题屏/主菜单接 assets/backgrounds/bg_default.png 实底背景（title modulate 0.58/0.64/0.78、
+   main 0.4/0.45/0.58 a0.55），纯色+假网格时代结束。
+
+**批次四 · 字号清扫**：中文 10/11px → 12 共 43 处（启发式+人工复核；纯数字/拉丁角标 10px 保留，
+13px 按 ui-review 规范属合法小字不动）。card_info_panel.tscn 11px→12。
+
+**断言同步**：ui_batch2_validation.gd D1 四面板断言→textured 工厂；A1 mvp 稀有度断言同步 v23.6.1
+GC.get_rarity_color 单一源（原断言过时，存量失败非本次引入）。
+
+**验证**：gdparse 全过；ui_batch2_validation ALL PASS（41 文件）；master_power_smoke 8/8；
+画廊前后对比截图（tests/ui_theme_gallery.gd，输出 .godot/ui_theme_gallery*.png）+ 标题屏/主菜单
+实拍确认（主题/Noto 中文/背景图/HUD 家族全部生效）。
+
+**复查补充（同日）**：①load_steps 计数修正（36→35）；②补扫 .tscn 字号残留 5 处
+（effect_lab_panel.tscn ×3 / combat_check.tscn / enemy_row.tscn 难度列，全项目 .tscn 10/11px 清零）；
+③补扫字符串字面量 emoji：修复 buff_fold_card 资源行 ×4、battle_hud/battle_announcer、装饰性段落
+emoji 17 处（phase_master_skill_panel 导航与标题 / intel_harvest_display / store_panel 余额行 /
+evolution 隐藏路线 / 我的面板折叠头 / 搭档协同按钮）。**保留的语义 emoji 体系**（有意设计，勿"顺手统一"）：
+⚡=能量单位（部署槽/卡面/商店全游戏一致）、⚠=警告、🔒=锁定原因徽章、七机制类型表
+（🥷💥🔱🔮📊🧬🌟，phase_master_skill_panel）、世界地图时代图标（🚀⚡）、🏆/⭐ 数据默认图标。
+剩余 emoji 均属上述语义类或开发工具面板（effect_lab/combat_check）。
+
+**第三轮盲区复查（同日）**：①战斗 HUD 首次实拍（`tests/bu_visual_capture.tscn` 4 帧：战前静态/
+战斗中/部署高亮/功能抽屉）——战况条/关名胶囊/底栏/抽屉/折叠卡/组合技条全部统一 HUD 家族，无回归；
+左上暗盒为 PlayerSpawnHUD/BattleInfoDisplay 的 tscn 冻结样式（a0.95 近不透明，改动前即如此）；②大尺寸
+九宫格拉伸验证（画廊新增 920×240 大面板用例）：边框恒 2px、圆角恒 14px、渐变无 banding；③GdUnit 全量
+184/184 PASS（27 套件）；④project.godot 主题指向确认完好；⑤rune_energy_03 WebP
+解码报错排查并处置：.import 当前指向的 cfa8a60e 缓存本体健康（GST2 头完整、直接加载 995×995 成功、
+连续三轮完整启动零报错），首见失败为与编辑器重导入的瞬态读取竞态；已清理该文件残留的 3 份孤儿历史
+hash 缓存（46dbb6b5/bef64042/fdcb99e0，参数变更遗留，~2.1MB），仅保留 .import 引用份。
+
+**第五轮全量复查（同日晚，v25.3 并发改动落盘后）**：①确认磁盘稳定（用户 v25.3 最后编辑 22:01），
+我方 17 个触及文件 mtime 全部在自身编辑窗口内、无并发覆盖；②**真实大面板首次实拍**——新增
+`tests/panel_capture.tscn` 驱动（调用 main 的 _on_info/_on_store/_on_backpack_pressed + 截帧；
+驱动内必须把 get_tree().current_scene 指回 main，否则懒加载面板路径解析失败——真实游戏流程不受影响）：
+情报中心（violet 渐变框+主题化页签+PanelChrome）/商店（gold 框+公司页签顶部 accent 条+新 tooltip）/
+背包（青框+全出血+主题化 TabContainer 页签+筛选 chip）三面板全部达标，textured 九宫格在 1280×720
+全出血尺寸无 banding；③部署高亮帧复核通过（绿槽+琥珀待选高亮）；④验证三件套新鲜重跑全绿
+（validation ALL PASS / smoke 8 项 / GdUnit 184/184）——当前树=我方 UI 批次+用户 v25.3 收敛的合并态。
+
+**遗留项收口（同日第四轮）**：①等值重构已执行——精确值匹配扫描证实真重复仅 **34 处**
+（此前"~200"的估算把合法 accent-alpha 组合合也计入了），34 处全部替换为 DT 常量/DesignTokens 全局名
+（17 文件，gdparse+真实引擎 load+validation 全过，构造上零视觉变化）；②星级贴图化查实**主卡格早已
+实现**（backpack_card_item MtgStarsRow 用 star_unit_gold_svg TextureRect，★文字仅为贴图加载失败的
+兜底分支），剩余 ★ 均在文本行/tooltip 内属合理用法；③Slider/SpinBox 主题化改判为不做——全项目
+Slider 仅存在于 4 个开发工具面板（combat_check/combat_arena_3v3/card_ui_preview/effect_lab），
+玩家不可见；④仍开放的仅剩"语义 emoji→成套图标资产"（需美术产出，低优先）。
+另：本轮检测到用户并发的 **v25.3 系统收敛**改动落盘（bottom_function_bar 功能栏 14→6，势力/任务/
+商店/排行/情报/图鉴/成就/帮助八面板移至基地 EMBEDDED_PANELS——已核实基地侧承接齐全），
+ui_batch2_validation 的 D3 断言随之容错化（功能栏或基地提供入口其一即通过，双缺才报断链）。
+②星级 ★☆ 文字→star_*.png 贴图（需动 backpack_card_item 布局，独立小轮）；③Slider/SpinBox 图标
+主题化；④字号 13px 与 token 档位并存（规范允许，收敛另议）。
+
+## v25.1 平衡核查批次：对称克制对冲接通 + 滑膛炮替换试点② + 暴露度裁决（2026-08-31）
+
+**背景**：v25.0 全面平衡核查（量化报告：试点新旧对比 / flat 缩放极端扫描 / 安装面收缩 /
+实战伤害幅度）结论——数值层面无削弱项；两个留观点本轮落地处理。
+
+**1. 巷战掩蔽死被动接通（装甲碾压/防空封锁对称激活的步兵侧对冲）**：
+核查发现 v8 设计的"步兵受 ARMOR/AIR 攻击减伤 15%"（`urban_defense_bonus` 0.15，
+`apply_combat_kind_modifiers` 写入）**自 v8 起全链路零消费**（只有 ≥0.5 的巷战改造
+tag 派生在用）。v25.0 对称激活装甲碾压 +20% 后，步兵对装甲的净承伤会凭空 +20%。
+修法：`CardGridDamage.resolve_hit` 新增 `urban_reduction` 独立乘区（帽 0.75，与
+damage_reduction 分开乘算互不挤占），`construct_unit/enemy_unit.take_damage` 在
+攻击者为 ARMOR/AIR kind 时传入（双侧同构——敌步兵同样受玩家装甲碾压对冲）。
+**净效果**：步兵 vs 装甲攻击者 1.20×0.85 ≈ +2%（原设计意图的"轻克制重"回归），
+不再是无对冲的裸 +20%。空军对防空特化（+25%）无对冲（掩蔽语义只覆盖步兵），
+留实测体感。
+
+**2. 敌池暴露度裁决（对称激活谁吃亏）**：统一表敌方条目 kind 构成——敌装甲占比
+26%~44%（era2 最高 44%），敌轻装 24%~34%，即玩家轻装的承伤面略大于玩家装甲的
+受益面；掩蔽接通后步兵侧对冲成立。玩家空军仅 era3/4 存在，对空暴露上限为
+AAD 条目（atk_air>0）25~29 个/时代，且 +25% 仅防空特化子类持有，暴露可控。
+
+**3. arm_05 滑膛炮替换通道试点②**（补完 v25.0 计划"换装类试点 1-2 条"）：
+`attack_armor = 0.25`（pct 全员恒定）→ `attack_armor_set = 560/620/680`（era2 基准
+声明，band [2,4]）。行为：era2 中位炮 508→560（+10%）、弱炮 M113 369→560（+52%，
+"老炮换新管"）、era3 缩放 1099~1333、era4 顶级炮 1865 守卫不生效（"已有等效火力
+不重复换装"——M1A1 本来就是滑膛炮，主题自洽）。旧 +25% 对顶级炮恒 +25% 的
+"百分比无差别普惠"自此改为确定值+守卫。
+
+**4. 审计规则修正**（`tools/balance_audit_mods_evo.py`）：①`_set` 值域按 stat 维度
+分档（attack_armor_set ≤800——坦克对甲基数是步兵对轻 3-7 倍，统一 400 帽误报）；
+②条目归属正则只认带引号的条目键（`effects = {` 等内层 dict 不再当条目名）。
+
+**5. 进化预览同口径**：`evolution_path_registry.calculate_evolved_stats` 的
+`apply_with_level` 传宿主 era（可得时）——继承改造的 flat 按时代缩放，预览与战场一致。
+
+**验证**：gdparse 全过；改造审计 0 issue（仅存 2 条既有 attack_interval WARN）；
+GdUnit 全量（新增 arm_05 三档时代行为 + 巷战乘区独立/封顶断言）。
+
+**留观**：①玩家空军对防空特化 +25% 无对冲（era3/4 实测）；②arm_05 set 值域与
+inf_02 同属"实测后可单变量回调"（set 基准下调即全体宿主等比回调）。
+
+## v25.2 手感修复轮：反馈接线五件套（2026-08-31）
+
+**背景**：双代理审计（玩家侧系统表面积 + 战斗操作/反馈链）结论——打击感基建（四档震屏/
+伤害数字曲线/受击抖动/开火姿态）健康，缺"时序结构"：玩家最高频操作（部署，每场 10-20 次）
+前后十几秒哑、击杀无顿帧、暴击震屏断链、拒绝反馈滞后一整个交互。本轮全部接线级改动，
+零数值/零系统结构改动。
+
+1. **部署链路音效 + 虚影进度**：`battle_spawn_system` 部署成功播 `card_place.ogg`（资产
+   一直闲置）；右键取消播 `cancel.ogg`；格子战启用被跳过的部署进度条
+   （`construct_unit_deploy.gd`——组件每单位自带，仅一行条件排除；锚定血条槽位，
+   实体化后血条回归让位）。4.5~10.5s 虚影期不再零反馈。
+2. **击杀 hit-stop**：`battle_spectacle._play_kill_hitstop`——时间流速瞬降 0.1 持 50ms
+   （真实时间）再恢复玩家倍速；与 1s 击杀节流同门、尊重 motion_reduce、不与胜利慢动作
+   叠加。时间轴上第一次出现"停顿"。
+3. **暴击震屏修复**：`battle_manager._on_unit_damaged_combat_feedback` 的 is_crit 分支
+   直调 `request_screen_shake(4.5, 0.12)`——原 BattleFeedbackManager 路径自 v8.1 起
+   静默失效（代码注释自述）。仅我方打出暴击时震（与击杀高光同策略）。
+4. **攻击前摇预载（anticipation）**：`attack_pose_anim.play_windup`——WINDUP 进入时
+   反向拉回 30% 姿态幅度 + 反向微倾 40%，windup 内自行归位，出弹时 play() 前冲形成
+   "蓄力→爆发"弧线。自回归设计（目标死亡不卡蓄势位）；我方单/多武器 + 敌方三处接入。
+5. **pickup 即拦截 + 面板/按钮音**：能量不足/次数耗尽槽位点击当场抖动 + error 音
+   （与压暗罩同口径，省一次注定失败的选点往返，键盘 1-9 同）；主场景 17 面板补
+   panel_open/close 音；大招三按钮 + 自动部署按钮补按压音。
+6. **次级**：敌方实体化补橙红落地涟漪（与玩家青蓝对称）；结算面板延迟弹出（胜 0.9s
+   让 VICTORY 演出先落地，败 0.25s；AFK 链路不受影响）。
+
+**误报澄清**：审计称"面板瞬开瞬关"不实——`main.gd _animate_overlay_in/out`（淡入+弹出）
+早已存在且尊重减动效，未改。
+
+**验证**：gdparse 11/11；master_power_smoke 8/8；GdUnit 全量 182/182。实机目测项：
+部署链成链感/顿帧频率（过频调小 `_HITSTOP_SEC`）/MG 高攻速前摇忙碌度（调小 0.3 系数）。
+
+## v25.3 系统收敛第一批：16 轴 → 4 动词（2026-08-31）
+
+**背景**：同日双代理审计的另一半——玩家理解成本来自系统数量×耦合（16 养成轴/~30 面板/
+19 量化账户），不是单系统复杂度。目标模型：出击/养卡（工坊）/相位师成长（相位实验室）/
+基地经营 4 个动词，其余降级为"玩的过程中自动发生的事"。核实修正了三个审计结论：改造
+"情报门"实为平行展示系统（真门=蓝图+纳米+战力档位）；抽屉已默认折叠；相位场 XP 完全
+同源（合并=纯 UI）。进化重置为 v20.12b 用户定稿设计身份，本轮不动。
+
+**1. 战斗抽屉 14→6**（`bottom_function_bar` BTN_CONFIGS + `main.gd` 战前热键）：
+保留背包/成长/地图/设置/存档/挂机（地图是传统链选关主链路必须留）；势力/任务/商店/
+排行/情报/图鉴/成就/帮助 8 个纯养成查册面板只留基地入口（EMBEDDED_PANELS 全有同款）。
+overlay 机制与 handler 全保留（教程 toggle_* 信号链、growth 转发 modification/evolution
+仍依赖）；quest 红点 set_btn_badge 对缺失按钮安全 no-op。
+
+**2. 进化门槛 7→4**（`card_evolution_manager.can_evolve_blueprint`）：拆战力门
+（"战力→军衔→战力"循环的根，玩家最难自诊的派生值）与情报基础门（low_evo 对 50%/100%）；
+保留等级/改造数（养卡节奏轴）、进化图纸（掉落钩子）、技能树时代（长线目标）、势力分支
+（势力玩法钩子）。UI 数据驱动自动少两行；拒绝码映射保留（防御）。同步删除
+`evolution_path_registry` 遗留四门死代码（无运行时调用方）与 `card_resource` 休眠情报门
+（intel_requirements 键全数据为零）。
+
+**3. 产能点/账号解锁集/相位师首杀整链退役**：核实确认 `craft_mod` 全项目零 UI 调用方
+（唯一调用在 smoke 测试）、解锁集无任何 UI/门禁读取、首杀奖励是幻影（发给玩家一个哪都
+看不到的解锁）。整链删除：ModificationRegistry 解锁集段（craft_mod/unlock_mod/
+unlock_boss_first_kill/_pick_boss_first_kill_mod/CRAFT 表）、BasicResourceManager
+production_points、DayClock 产能结算（_accrue/get_daily_production_rate/PRODUCTION 常量）、
+GameManager 首杀发放、SaveManager 三处清单登记、save_constants SK_MOD_UNLOCK_STATE、
+v9 迁移体改 no-op（版本号保留不回退）。旧档 mod_unlock_state/production_points key
+静默跳过，下次存档自然丢弃。改造获取回归蓝图单通道。
+
+**4. 情报中心口径澄清（A3-lite）**：改造情报行"已解锁"改"研究完成"并并列图纸持有
+chip（✓/✗，数据源 IntelItemBag blueprint_*）——消灭"情报中心说解锁了、工坊装不了"的
+两套解锁混淆。情报 mod 点数链本体保留（自洽的收集玩法，完整拆除留独立轮）。
+
+**测试同步**：`tests/unit/p3_economy_smoke.gd` 删 §1-§5（退役链），保留词条/精材料两节；
+`test_save_migration.gd` v8→v9 断言改为"不补退役键 + 既有数据不动"。
+
+**验证**：gdparse 17/17；GdUnit 全量；smoke。
+
+**遗留（下一批候选）**：A2 相位师成长页合并（selector 分配区+技能树一页两栏，数据层零
+改动纯 UI）；改造战力档位门（PowerTiers）拆除与否属平衡决策未动；情报 mod 点数链完整
+退役；新手首 30 分钟漏斗重排（依赖本轮入口收敛）。
+
+## v25.4 相位师成长页合并第一刀：属性点/技能点双向直达（2026-09-01）
+
+**背景**：A2 收敛项。技能点与属性点同源（相位场等级产出），但入口分居两面板
+（属性点=底栏等级标签点击的 phase_instrument_selector；技能树=growth_panel「技能树」
+按钮的 CanvasLayer(110) 宿主）。完整合并（技能树嵌入 selector）受技能面板自定位
+几何（_apply_viewport_fit/全出血）制约风险高，第一刀先做"共享宿主 + 双点数同显 +
+双向直达"。
+
+1. **常驻启动器 `scripts/ui/phase_master_skill_host.gd`**（class_name
+   PhaseMasterSkillHost）：技能面板宿主逻辑（root 级 CanvasLayer(110)+Backdrop+实例）
+   从 growth_panel 抽出，growth 与 selector 共用。节点命名不变（PhaseMasterSkillCanvas/
+   PhaseMasterSkillPanel），growth 按名查找的关闭/ESC/徽章链零改动。独立成常驻节点的
+   两个动机：growth 是可被懒加载修剪的面板（原由它持有 backdrop 连接，修剪后背板失灵
+   隐患）；selector 打开时（growth 不在场）ESC 关闭有归属。
+2. **selector（属性页）**：相位场属性行下新增技能点行——"技能点：N 可用（随相位场
+   等级获得）"+「◆ 技能树」按钮（host.open 非全出血档，960×640 居中盖在属性页上，
+   关闭后回属性页）；PMSM.points_changed 信号驱动刷新（树里花点回来看到新值）。
+   玩家第一次能在一处看到"升级给了两份钱"。
+3. **技能面板**：状态行新增「属性点分配 →」按钮（仅主场景显示——selector 挂
+   main.tscn PopupLayer，基地内嵌宿主无此面板时按钮不构建）。闭环：属性页⇄技能树
+   互达一键。
+
+**验证**：gdparse 7/7；smoke 8/8；GdUnit 184/184。
+
+## v25.5 开场节奏：首波/首批开战即进部署虚影（2026-09-01）
+
+**背景**（用户反馈）：旧开场时序不对称——布置阶段玩家完成部署，点「开始战斗」时
+我方虚影全部强制实体化（finalize_card_grid_and_spawn_enemies→_materialize_player_
+deploy_ghosts），而敌方第一波要先等满一个波次间隔（~7-12s）才开始部署虚影、再叠加
+部署实体化时间——开场敌方空场十几秒，玩家干等。PM 战同理：start_production 设
+`_spawn_timer = 3.0`，首批 3 秒后才进场。
+
+**新时序**（对称原则：进场即开始布置，实体化先后只由双方 deploy_speed 决定）：
+1. **普通战**：`battle_spawn_system.spawn_first_wave_now`（battle_manager 的
+   begin_card_grid_combat 在 finalize 后调用，仅非 PM 战）——第一波敌军随开战立即
+   进场进部署虚影；后续波次仍按间隔刷新。幂等（首波已放行/无波次跳过）。
+2. **PM 战**：`enemy_phase_field_driver.start_production` 改为开战立即 `_produce_unit()`
+   产首批（ceil(limit/2) 的 v9.3 分批逻辑不变，敌兵进虚影），计时清零后续按
+   spawn_interval 补兵。
+3. 玩家侧不动：布置阶段即玩家的部署时间，先布置先出场（用户确认的原则）。
+
+**难度影响**：敌方开场到位提前 ~7-12s（普通战）/ 3s（PM 战），早期压力略升——与
+我方开战即实体化的既有不对称对冲。建议实测首关与驻守关体感。
+
+**验证**：gdparse；smoke 8/8；GdUnit 184/184（无测试依赖旧时序，零引用确认）。

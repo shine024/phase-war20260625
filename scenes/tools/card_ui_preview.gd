@@ -300,7 +300,7 @@ func _add_parameter_output_section(preview_vbox: VBoxContainer) -> void:
 
 	var output_code := Label.new()
 	output_code.name = "OutputCode"
-	output_code.add_theme_font_size_override("font_size", 11)
+	output_code.add_theme_font_size_override("font_size", 12)
 	output_code.add_theme_color_override("font_color", Color(0.6, 0.85, 0.6))
 	output_box.add_child(output_code)
 
@@ -538,7 +538,7 @@ func _add_slider(parent: Control, label: String, prop: String, min_val: int, max
 	var lbl := Label.new()
 	lbl.text = label
 	lbl.custom_minimum_size.x = 100
-	lbl.add_theme_font_size_override("font_size", 11)
+	lbl.add_theme_font_size_override("font_size", 12)
 	lbl.add_theme_color_override("font_color", Color(0.75, 0.78, 0.85))
 	hbox.add_child(lbl)
 
@@ -576,7 +576,7 @@ func _add_toggle(parent: Control, label: String, prop: String) -> void:
 
 	var lbl := Label.new()
 	lbl.text = label
-	lbl.add_theme_font_size_override("font_size", 11)
+	lbl.add_theme_font_size_override("font_size", 12)
 	lbl.add_theme_color_override("font_color", Color(0.75, 0.78, 0.85))
 	hbox.add_child(lbl)
 

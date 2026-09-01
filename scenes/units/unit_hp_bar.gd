@@ -78,6 +78,9 @@ var _status_overflow_x: float = 0.0
 
 func _ready() -> void:
 	position = Vector2(0, -40)
+	# 血条根节点抬到头顶 UI 专属 z 带（见 CardGridUnitVisuals.OVERHEAD_UI_Z）：
+	# 三行战场里前排大体型立绘不再吞掉后排单位血条（z=10/0 时绘制顺序=生成顺序，血条会被盖）。
+	z_index = CardGridUnitVisuals.OVERHEAD_UI_Z
 	_bg = get_node_or_null("Bg") as Polygon2D
 	_fill = get_node_or_null("Fill") as Polygon2D
 	_glow = get_node_or_null("Glow") as Polygon2D
@@ -281,7 +284,7 @@ func _update_view() -> void:
 		_glow_pts.set(2, Vector2(half_w, half_h))
 		_glow_pts.set(3, Vector2(-half_w, half_h))
 		_glow.polygon = _glow_pts
-		_glow.color = Color(0, 0, 0, 0)
+		_glow.color = DesignTokens.COLOR_TRANSPARENT
 
 	# 同步更新 HpLabel 位置与字号（居中于血条且不溢出）
 	# Label 在 Node2D 父节点下：position 是左上角锚点，anchor 系统无效。
@@ -325,7 +328,7 @@ func _update_fill_only() -> void:
 	# v8.x: 低血量 glow 脉动统一交给 _update_low_hp_pulse（每帧由 _process 驱动），
 	# 此处仅在非低血量时清零 glow，避免满血时残留发光。
 	if _ratio > 0.3 and _glow:
-		_glow.color = Color(0, 0, 0, 0)
+		_glow.color = DesignTokens.COLOR_TRANSPARENT
 
 ## v8.x: 低血量（≤30%）glow 红色脉动——独立于 fill 几何，每帧只改 _glow.color。
 ## 修复原 bug：脉动公式原写在 _update_fill_only 里，但该函数仅在血条 lerp 变化时调用，

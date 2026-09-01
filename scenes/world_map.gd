@@ -79,7 +79,7 @@ const ERA_COLORS: Array = [
 		"border": Color(0.0, 0.85, 0.95, 0.5),
 		"title":  Color(0.2, 0.95, 1.0, 1.0),
 		"btn_bg": Color(0.04, 0.12, 0.14, 0.85),
-		"btn_active": Color(0.0, 0.94, 1.0, 1.0),
+		"btn_active": DesignTokens.COLOR_ACCENT_CYAN,
 	},
 	{
 		"name": "近未来", "icon": "⚡",
@@ -170,7 +170,7 @@ func _ready() -> void:
 		tbs.corner_radius_top_left = 5; tbs.corner_radius_top_right = 5
 		tbs.corner_radius_bottom_right = 5; tbs.corner_radius_bottom_left = 5
 		territory_btn.add_theme_stylebox_override("normal", tbs)
-		territory_btn.add_theme_color_override("font_color", Color(0, 0.94, 1, 1))
+		territory_btn.add_theme_color_override("font_color", DesignTokens.COLOR_ACCENT_CYAN)
 		territory_btn.add_theme_font_size_override("font_size", 13)
 		territory_btn.pressed.connect(_on_territory_map_button)
 		vbox_r.add_child(territory_btn)
@@ -264,7 +264,7 @@ func _style_back_button(btn: Button) -> void:
 	s.corner_radius_top_left = 5; s.corner_radius_top_right = 5
 	s.corner_radius_bottom_right = 5; s.corner_radius_bottom_left = 5
 	btn.add_theme_stylebox_override("normal", s)
-	btn.add_theme_color_override("font_color", Color(0, 0.94, 1, 1))
+	btn.add_theme_color_override("font_color", DesignTokens.COLOR_ACCENT_CYAN)
 	btn.add_theme_font_size_override("font_size", 14)
 
 func _build_level_map() -> void:
@@ -374,7 +374,7 @@ func _build_level_map() -> void:
 		home_lbl.text = "余烬要塞"
 		home_lbl.add_theme_font_size_override("font_size", 26)
 		home_lbl.add_theme_color_override("font_color", Color(1.0, 0.71, 0.37, 0.95))
-		home_lbl.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.7))
+		home_lbl.add_theme_color_override("font_outline_color", DesignTokens.COLOR_BACKDROP_DEEP)
 		home_lbl.add_theme_constant_override("outline_size", 3)
 		home_lbl.position = _home_pos() + Vector2(20, -16)
 		home_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -993,7 +993,7 @@ func _show_level_info_popup(level_index: int) -> void:
 
 	var info: Dictionary = _collect_level_info(level_index)
 	var era_id: int = LevelEras.get_era(level_index)
-	var era_color: Color = ERA_COLORS[clampi(era_id - 1, 0, ERA_COLORS.size() - 1)].get("title", Color(0, 0.94, 1, 1))
+	var era_color: Color = ERA_COLORS[clampi(era_id - 1, 0, ERA_COLORS.size() - 1)].get("title", DesignTokens.COLOR_ACCENT_CYAN)
 	var era_name: String = String(ERA_COLORS[clampi(era_id - 1, 0, ERA_COLORS.size() - 1)].get("name", ""))
 	var display_name: String = String(info.get("display_name", "第%d关" % level_index))
 

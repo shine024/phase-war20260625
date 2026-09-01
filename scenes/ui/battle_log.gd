@@ -11,6 +11,7 @@ extends PanelContainer
 ## 保留最近 30 条，FIFO。
 
 const DT = preload("res://resources/design_tokens.gd")
+const PanelStyles = preload("res://scripts/ui/panel_styles.gd")
 
 const _MAX_ENTRIES: int = 30           # 保留条目上限
 const _REFRESH_SEC: float = 0.3        # 合并刷新间隔
@@ -50,13 +51,14 @@ static func is_auto_hide_enabled() -> bool:
 	return bool(cfg.get_value(SETTINGS_SECTION, "hud_auto_hide", true))
 
 func _ready() -> void:
-	# 半透明黑条样式 + 左侧 4px 青色色条（通过 border_width_left）
-	var style := StyleBoxFlat.new()
-	style.bg_color = Color(0, 0, 0, 0.5)
-	style.corner_radius_top_left = 4
-	style.corner_radius_top_right = 4
-	style.border_width_left = 4
-	style.border_color = DT.COLOR_ACCENT_CYAN
+	# v25 HUD 家族：半透明深底 + 6 圆角；保留左侧 3px 青色签名条
+	var style := PanelStyles.make_hud_panel(0.25)
+	style.corner_radius_top_left = 6
+	style.corner_radius_top_right = 6
+	style.corner_radius_bottom_left = 0
+	style.corner_radius_bottom_right = 0
+	style.border_width_left = 3
+	style.border_color = Color(DT.COLOR_ACCENT_CYAN.r, DT.COLOR_ACCENT_CYAN.g, DT.COLOR_ACCENT_CYAN.b, 0.8)
 	style.content_margin_left = 10.0
 	style.content_margin_right = 8.0
 	style.content_margin_top = 4.0

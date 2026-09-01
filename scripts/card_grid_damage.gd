@@ -28,11 +28,16 @@ static func defense_damage_multiplier(defense: float) -> float:
 ## dodge_chance:  闪避率（0~1）
 ## damage_reduction: 额外百分比减伤（0~1，来自 damage_reduction 字段，上限 0.60）
 ##   v7.5 新增。与护甲减伤独立乘算（先吃护甲，再吃减伤词条），避免互相稀释语义混乱。
+## urban_reduction: 巷战掩蔽独立乘区（0~1，上限 0.75，v25.1 接通）。
+##   v8 设计"步兵受 ARMOR/AIR 攻击减伤 15%"自 v8 起写入 urban_defense_bonus 但全链路
+##   零消费；v25.0 对称激活装甲碾压 +20% 后接通作步兵侧对冲（1.20×0.85 ≈ 净 +2%）。
+##   与 damage_reduction 分开乘算封顶，互不挤占各自帽。
 static func resolve_hit(
 	raw_attack: float,
 	defense: float,
 	dodge_chance: float = 0.0,
-	damage_reduction: float = 0.0
+	damage_reduction: float = 0.0,
+	urban_reduction: float = 0.0
 ) -> Dictionary:
 	if dodge_chance > 0.0 and randf() < clampf(dodge_chance, 0.0, 0.95):
 		return {"hp_loss": 0.0, "apply_stun": false, "apply_recoil": false, "dodged": true}
@@ -43,6 +48,9 @@ static func resolve_hit(
 	# v7.5: 应用 damage_reduction 减伤（独立乘区，上限保护）
 	if damage_reduction > 0.0:
 		hp_loss *= (1.0 - clampf(damage_reduction, 0.0, DAMAGE_REDUCTION_CAP))
+	# v25.1: 巷战掩蔽独立乘区（受装甲/空中攻击者时由 take_damage 传入）
+	if urban_reduction > 0.0:
+		hp_loss *= (1.0 - clampf(urban_reduction, 0.0, 0.75))
 	var heavy_hit: bool = mult < 0.85 and attack_val > 12.0
 	return {
 		"hp_loss": hp_loss,

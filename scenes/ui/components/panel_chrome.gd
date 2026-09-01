@@ -67,7 +67,7 @@ func _build() -> void:
 	if not _subtitle_text.is_empty():
 		subtitle_label = Label.new()
 		subtitle_label.text = _subtitle_text
-		subtitle_label.add_theme_font_size_override("font_size", DT.FONT_SIZE_XSMALL)
+		subtitle_label.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
 		subtitle_label.add_theme_color_override("font_color", DT.COLOR_TEXT_MID)
 		title_vbox.add_child(subtitle_label)
 

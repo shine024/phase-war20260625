@@ -32,7 +32,7 @@ func _ready() -> void:
 	# v7.x 面板统一：MEDIUM 档 + 紫色签名框架 + PanelChrome 标题栏（右上 ✕ 关闭）
 	custom_minimum_size = DT.PANEL_SIZE_MEDIUM
 	var accent := DT.get_panel_accent("faction")
-	add_theme_stylebox_override("panel", PanelStyles.make_panel_frame(accent))
+	add_theme_stylebox_override("panel", PanelStyles.make_panel_frame_textured(accent))
 	var chrome = PanelChrome.attach_to($VBoxContainer, "势力系统", accent, "FACTION")
 	chrome.closed.connect(_on_close)
 	# v9 perf：重新显示时补刷隐藏期间积累的势力变化
@@ -364,7 +364,7 @@ func _make_faction_skill_node(skill: Dictionary, faction_id: String, faction_lev
 	# 描述
 	var desc_lbl = Label.new()
 	desc_lbl.text = String(skill.get("desc", ""))
-	desc_lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_XSMALL)
+	desc_lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
 	desc_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	desc_lbl.custom_minimum_size = Vector2(180, 0)
 	vb.add_child(desc_lbl)
@@ -380,7 +380,7 @@ func _make_faction_skill_node(skill: Dictionary, faction_id: String, faction_lev
 	elif is_conflict:
 		var conflict_lbl = Label.new()
 		conflict_lbl.text = "⚠ 已选另一分支"
-		conflict_lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_XSMALL)
+		conflict_lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
 		conflict_lbl.modulate = DT.COLOR_RED_DOWN
 		vb.add_child(conflict_lbl)
 	else:

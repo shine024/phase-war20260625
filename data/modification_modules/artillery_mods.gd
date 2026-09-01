@@ -29,6 +29,7 @@ const DATA: Dictionary = {
 		cost_install = 80,
 		slot_type = "barrel",
 		conflict_group = "barrel",
+		era_band = [1, 4],
 		effects = {attack_range = 60, attack_light = 6, true_damage = 10},
 		level_effects = {1: {attack_light = 6, attack_range = 60, true_damage = 10}, 2: {attack_light = 10, attack_range = 60, true_damage = 10}, 3: {attack_light = 14, attack_range = 60, true_damage = 10}},
 		unlock_conditions = {required_level = 2}
@@ -47,6 +48,7 @@ const DATA: Dictionary = {
 		cost_install = 90,
 		slot_type = "ammunition",
 		conflict_group = "ammunition",
+		era_band = [2, 4],
 		effects = {attack_range = 90, attack_light = -0.10, true_damage = 15},  # v8.6: 补真实伤害（增程弹=远距离精准打击）
 		unlock_conditions = {required_level = 3}
 	},
@@ -66,6 +68,7 @@ const DATA: Dictionary = {
 		conflict_group = "guidance",
 		# v7.x: per-slot 弹道——对装甲槽改 MISSILE 制导
 		condition_slot = 1,
+		era_band = [3, 4],
 		effects = {accuracy_bonus = 0.50, crit_chance = 0.15, weapon_type = 9, slot_weapon_type = 9, vfx_variant = "guided"},  # v6.5 MISSILE + v7.x 对装甲槽制导 + v8.4 制导专属视觉,
 		unlock_conditions = {required_level = 6}
 	},
@@ -85,6 +88,7 @@ const DATA: Dictionary = {
 		conflict_group = "ammunition",
 		# v7.x: per-slot 弹道——对装甲槽改 MISSILE 撒布
 		condition_slot = 1,
+		era_band = [2, 4],
 		effects = {splash_radius = 0.50, single_target_penalty = -0.20, weapon_type = 9, slot_weapon_type = 9, vfx_variant = "cluster"},  # v6.5 MISSILE + v7.x 对装甲槽撒布 + v8.4 子弹药撒布专属视觉,
 		unlock_conditions = {required_level = 5}
 	},
@@ -102,6 +106,7 @@ const DATA: Dictionary = {
 		cost_install = 150,
 		slot_type = "radar",
 		conflict_group = "radar",
+		era_band = [3, 4],
 		effects = {counter_bonus = 0.30},
 		unlock_conditions = {required_level = 5}
 	},
@@ -119,6 +124,7 @@ const DATA: Dictionary = {
 		cost_install = 160,
 		slot_type = "fire_control",
 		conflict_group = "fire_control",
+		era_band = [1, 4],
 		effects = {attack_interval = -0.30},  # v6.0 平衡性调整: -40% → -30%
 		unlock_conditions = {required_level = 5}
 	},
@@ -153,6 +159,7 @@ const DATA: Dictionary = {
 		cost_install = 175,
 		slot_type = "recon",
 		conflict_group = "recon",
+		era_band = [3, 4],
 		effects = {accuracy_bonus = 0.20, attack_interval = -0.15},
 		unlock_conditions = {required_level = 6}
 	},
@@ -187,6 +194,7 @@ const DATA: Dictionary = {
 		cost_install = 50,
 		slot_type = "mobility",
 		conflict_group = "mobility",
+		era_band = [3, 4],
 		effects = {deploy_speed = 2},
 		unlock_conditions = {required_level = 2}
 	},
@@ -206,6 +214,7 @@ const DATA: Dictionary = {
 		conflict_group = "ammunition",
 		# v7.x: per-slot 弹道——对装甲槽改 ROCKET 火箭（温压弹头重型爆破）
 		condition_slot = 1,
+		era_band = [3, 4],
 		effects = {attack_fort = 0.50, slot_weapon_type = 3, vfx_variant = "thermobaric"},  # v7.x: 对装甲槽火箭弹道（ROCKET）+ v8.4 温压二次爆炸视觉
 		unlock_conditions = {required_level = 7}
 	},
@@ -244,6 +253,7 @@ const DATA: Dictionary = {
 		cost_install = 210,
 		slot_type = "ammunition",
 		conflict_group = "ammunition",
+		era_band = [2, 4],
 		effects = {armor_break = 0.08, armor_break_stacks = 5},
 		unlock_conditions = {required_level = 6}
 	},
@@ -262,6 +272,7 @@ const DATA: Dictionary = {
 		cost_install = 225,
 		slot_type = "special",
 		conflict_group = "special",
+		era_band = [3, 4],
 		effects = {counter_battery = 1},
 		unlock_conditions = {required_level = 7}
 	},
@@ -280,6 +291,7 @@ const DATA: Dictionary = {
 		cost_install = 160,
 		slot_type = "special",
 		conflict_group = "special_ammo",
+		era_band = [3, 4],
 		effects = {emp_chance = 0.40, emp_true_damage = 12.0},
 		applicable_types = [2],
 		unlock_conditions = {required_level = 5}
@@ -298,6 +310,7 @@ const DATA: Dictionary = {
 		cost_install = 200,
 		slot_type = "special",
 		conflict_group = "special_ammo",
+		era_band = [4, 4],
 		effects = {nano_chance = 0.25, nano_pct = 0.02, nano_duration = 8.0},
 		applicable_types = [2],
 		unlock_conditions = {required_level = 6}
@@ -354,6 +367,7 @@ const DATA: Dictionary = {
 		cost_install = 170,
 		slot_type = "ammunition",
 		conflict_group = "special_ammo",
+		era_band = [3, 4],
 		effects = {graphite_chance = 0.50, graphite_stacks = 1},
 		applicable_types = [2],
 		unlock_conditions = {required_level = 5}
@@ -372,6 +386,7 @@ const DATA: Dictionary = {
 		cost_install = 210,
 		slot_type = "special",
 		conflict_group = "special_ammo",
+		era_band = [4, 4],
 		effects = {nano_chance = 0.30, nano_pct = 0.03, nano_duration = 8.0, nano_concentration_amp = true},
 		applicable_types = [2],
 		unlock_conditions = {required_level = 6}
@@ -408,6 +423,7 @@ const DATA: Dictionary = {
 		cost_install = 170,
 		slot_type = "special",
 		conflict_group = "special_ammo",
+		era_band = [4, 4],
 		effects = {nano_seeder_amount = 1.5, nano_chance = 0.15, nano_pct = 0.015, nano_duration = 6.0},
 		applicable_types = [2],
 		unlock_conditions = {required_level = 5}
@@ -426,6 +442,7 @@ const DATA: Dictionary = {
 		cost_install = 190,
 		slot_type = "sensor",
 		conflict_group = "sensor",
+		era_band = [3, 4],
 		effects = {drone_mark_vuln_bonus = 0.10, crit_chance = 0.04},
 		applicable_types = [2],
 		unlock_conditions = {required_level = 6}

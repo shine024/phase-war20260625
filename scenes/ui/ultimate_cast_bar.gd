@@ -102,7 +102,7 @@ func _make_entry(short: String, full_name: String, tooltip: String) -> Dictionar
 	box.add_child(btn)
 	var lb := Label.new()
 	lb.text = full_name
-	lb.add_theme_font_size_override("font_size", DT.FONT_SIZE_XSMALL)
+	lb.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
 	lb.add_theme_color_override("font_color", DT.COLOR_TEXT_DIM)
 	lb.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	box.add_child(lb)
@@ -154,7 +154,7 @@ func _set_ready_visual(btn: Button, ready: bool) -> void:
 
 func _set_badge(btn: Button, count: int) -> void:
 	var bg := btn.get_node_or_null("BadgeBg") as ColorRect
-	var bd := btn.get_node_or_null("Badge") as Label
+	var bd := btn.get_node_or_null("BadgeBg/Badge") as Label
 	if count <= 0:
 		if bg != null:
 			bg.visible = false
@@ -189,6 +189,9 @@ func _set_badge(btn: Button, count: int) -> void:
 # ─────────────────────────────────────────────
 
 func _on_mode_pressed() -> void:
+	# v25.2 按压音（模式切换此前只有 toast 无声）
+	if SignalBus != null and SignalBus.has_signal("play_sound"):
+		SignalBus.play_sound.emit("button")
 	var in_battle: bool = BattleManager != null and bool(BattleManager.get("battle_active"))
 	if not in_battle:
 		_mode_btn.set_pressed_no_signal(false)
@@ -213,6 +216,9 @@ func _on_mode_pressed() -> void:
 
 
 func _on_ability_btn_pressed() -> void:
+	# v25.2 按压音（发射/失败反馈此前只有 toast 无声；施法演出音由引擎另行播放）
+	if SignalBus != null and SignalBus.has_signal("play_sound"):
+		SignalBus.play_sound.emit("button")
 	if not UltimateCastControllerScript.is_manual():
 		_toast("当前为自动释放（左侧可切手动）")
 		return
@@ -227,6 +233,9 @@ func _on_ability_btn_pressed() -> void:
 
 
 func _on_mech_btn_pressed(mech_id: String) -> void:
+	# v25.2 按压音（同 _on_ability_btn_pressed）
+	if SignalBus != null and SignalBus.has_signal("play_sound"):
+		SignalBus.play_sound.emit("button")
 	if not UltimateCastControllerScript.is_manual():
 		_toast("当前为自动释放（左侧可切手动）")
 		return
@@ -299,10 +308,13 @@ func _apply_ready_style(btn: Button) -> void:
 
 func _mk_style(bg: Color, border: Color, bw: int) -> StyleBoxFlat:
 	var sb := StyleBoxFlat.new()
-	sb.set_corner_radius_all(4)
+	# v25 UI：圆角对齐体系档位 6（原 4 脱档）
+	sb.set_corner_radius_all(6)
 	sb.set_border_width_all(bw)
 	sb.bg_color = bg
 	sb.border_color = border
 	sb.content_margin_left = 4
 	sb.content_margin_right = 4
+	sb.content_margin_top = 2
+	sb.content_margin_bottom = 2
 	return sb

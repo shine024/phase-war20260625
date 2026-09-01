@@ -53,8 +53,10 @@ position = Vector2(80, 360)
 position = Vector2(1120, 360)
 
 [node name="PlayerUnits" type="Node2D" parent="."]
+y_sort_enabled = true
 
 [node name="EnemyUnits" type="Node2D" parent="."]
+y_sort_enabled = true
 
 [node name="PhaseFieldDriver" parent="." instance=ExtResource("2_phase_driver")]
 position = Vector2(40, 360)

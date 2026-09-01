@@ -10,7 +10,8 @@ func _play_sfx(name: String) -> void:
 # 颜色常量
 const COLOR_CYAN := Color(0, 0.941, 1)
 const COLOR_PURPLE := Color(0.545, 0.361, 0.965)
-const COLOR_BG := Color(0.039, 0.055, 0.09)
+# 与 DT.COLOR_BG 保持一致（v25 UI 统一底色；本常量当前无消费方，保留防外部引用）
+const COLOR_BG := DesignTokens.COLOR_BG
 
 var _tween: Tween
 var _scan_line_y: float = 0.0
@@ -208,6 +209,35 @@ func _add_bunker_button() -> void:
 	if continue_btn:
 		insert_idx = continue_btn.get_index() + 1
 	vbox.move_child(btn, insert_idx)
+	_add_replay_intro_button(btn)
+
+## v24.5：开发预览"重看开场"——带 comic pending 直播开场，不改存档进度
+func _add_replay_intro_button(style_source: Button) -> void:
+	var vbox = get_node_or_null("CenterContainer/MainVBox/ButtonsVBox")
+	if vbox == null or vbox.has_node("ReplayIntroButton"):
+		return
+	var btn := Button.new()
+	btn.name = "ReplayIntroButton"
+	btn.text = "重看开场（开发）"
+	for style_key in ["normal", "hover", "pressed", "disabled", "focus"]:
+		var sb: StyleBox = style_source.get_theme_stylebox(style_key)
+		if sb:
+			btn.add_theme_stylebox_override(style_key, sb)
+	btn.add_theme_font_size_override("font_size",
+		style_source.get_theme_font_size("font_size"))
+	btn.custom_minimum_size = style_source.custom_minimum_size
+	btn.pressed.connect(_on_replay_intro)
+	vbox.add_child(btn)
+
+func _on_replay_intro() -> void:
+	_play_sfx("button")
+	if SaveManager:
+		if SaveManager.has_save_slot(SaveManager.get_slot()):
+			SaveManager.load_game()
+		else:
+			SaveManager.start_new_game()
+	Engine.set_meta("bunker_intro_comic_pending", true)
+	get_tree().change_scene_to_file("res://scenes/intro/comic_intro.tscn")
 
 ## v21 余烬要塞：进入基地主枢纽（BunkerManager 懒加载后常驻 root，状态跨场景保留）
 func _on_enter_bunker() -> void:
@@ -220,8 +250,26 @@ func _on_enter_bunker() -> void:
 	if SaveManager:
 		if SaveManager.has_save_slot(SaveManager.get_slot()):
 			SaveManager.load_game()
+			# v24.5 修复（用户报告"有旧存档看不到开始剧情"）：开场门控从"有无存档"
+			# 改为 BunkerManager.comic_seen 落档标志——v24 之前的老档没有该标志，
+			# 下次进基地自动补播一次开场（看完由 bunker 醒来演出落档，不重复）。
+			# v24.5 修复二：BunkerManager 非 autoload（ManagerLazyLoader 懒加载常驻
+			# /root/BunkerManager），不能当全局标识符裸用；且其存档恢复在 SaveManager
+			# 延迟批次（call_deferred），按钮回调栈内尚未执行——必须先同步排空，
+			# 否则 comic_seen 恒为默认 false，开场漫画每次进基地都重播。
+			SaveManager.flush_deferred_manager_loads()
+			var bunker: Node = get_node_or_null("/root/BunkerManager")
+			if bunker == null or not bunker.is_comic_seen():
+				Engine.set_meta("bunker_intro_comic_pending", true)
+				get_tree().change_scene_to_file("res://scenes/intro/comic_intro.tscn")
+				return
 		else:
+			# v24（开场剧情）：新档先播漫画序章（B1–B7 分格，docs/开场剧情_10方案.md 方案1），
+			# 播完携 wakeup 标记切 bunker_main 播醒来演出（B8，方案9）；有档直进不重播。
 			SaveManager.start_new_game()
+			Engine.set_meta("bunker_intro_comic_pending", true)
+			get_tree().change_scene_to_file("res://scenes/intro/comic_intro.tscn")
+			return
 	get_tree().change_scene_to_file("res://scenes/bunker/bunker_main.tscn")
 
 

@@ -44,6 +44,7 @@ const DATA: Dictionary = {
 		slot_type = "automation", conflict_group = "automation",
 		# v7.x: per-slot 弹道——对装甲槽改 SNIPER 要塞炮穿甲
 		condition_slot = 1,
+		era_band = [3, 4],
 		effects = {attack_interval = -0.20, slot_weapon_type = 6},  # v7.x: 对装甲槽穿甲弹道（要塞炮）,
 		unlock_conditions = {required_level = 5}
 	},
@@ -54,6 +55,7 @@ const DATA: Dictionary = {
 		rarity = "epic",
 	power_mult = 1.6, cost_research = 320, cost_install = 160,
 		slot_type = "protection", conflict_group = "protection",
+		era_band = [2, 4],
 		effects = {nbq_immunity = true},
 		unlock_conditions = {required_level = 5}
 	},
@@ -77,6 +79,7 @@ const DATA: Dictionary = {
 		rarity = "legendary",
 	power_mult = 2.0, cost_research = 400, cost_install = 200,
 		slot_type = "radar", conflict_group = "radar",
+		era_band = [1, 4],
 		effects = {stealth_detect = 0.40},
 		unlock_conditions = {required_level = 7}
 	},
@@ -135,6 +138,7 @@ const DATA: Dictionary = {
 		cost_install = 200,
 		slot_type = "special",
 		conflict_group = "special",
+		era_band = [3, 4],
 		effects = {minefield = 150.0},
 		unlock_conditions = {required_level = 6}
 	},

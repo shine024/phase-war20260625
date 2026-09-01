@@ -86,7 +86,7 @@ func _ready() -> void:
 	var bg_panel := get_node_or_null("BgPanel")
 	if bg_panel is Control:
 		(bg_panel as Control).add_theme_stylebox_override("panel",
-			PanelStyles.make_panel_frame(DT.COLOR_VIOLET))
+			PanelStyles.make_panel_frame_textured(DT.COLOR_VIOLET))
 	# v7.x 重构：节点绑定改用 % unique_name（路径无关）
 	# 进化树 + 详情面板（业务方法直接访问这两个）
 	evolution_tree = get_node_or_null("%EvolutionTree")
@@ -856,7 +856,7 @@ func _append_hidden_intel_hints() -> void:
 		sep.add_theme_color_override("separator", Color(0.25, 0.28, 0.35, 0.4))
 		box.add_child(sep)
 		var head := Label.new()
-		head.text = "🔍 未揭示的隐藏路线：%s" % String(b.get("name", "???"))
+		head.text = "未揭示的隐藏路线：%s" % String(b.get("name", "???"))
 		head.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
 		head.add_theme_color_override("font_color", THEME_CYAN)
 		box.add_child(head)

@@ -74,6 +74,75 @@ const MECHANIC_EFFECT_KEYS: Array = [
 	"salvage_repair", "phase_shift_counter", "hijack_aura_radius", "hijack_aura_duration", "hijack_aura_cd",
 ]
 
+## ─────────────────────────────────────────────
+##  v22 数值四通道 + 时代适配
+## ─────────────────────────────────────────────
+## 数值语义分四通道（改造条目 effects 的键写法）：
+##   set  替换：`<stat>_set`（如 attack_armor_set = 272）——直接替换基础值。
+##        两遍历的第 1 遍先应用，后续 flat/pct 叠加在新值上；带"更优才生效"守卫
+##        （替换值 ≤ 当前值时不生效，沿用 grant_slot 的派生 DPS 更高才覆盖先例）。
+##   flat 固定：7 键 int 值（attack_light = 8）——平加。攻击/HP 族的 int 值按
+##        宿主卡时代缩放（值以改造声明基准时代为准，见 ERA_FLAT_SCALE_*）。
+##   pct  百分比：7 键 float 值（attack_light = 0.25，v22 前唯一写法），或显式
+##        `<stat>_pct` 键（attack_armor_pct = 0.25，v22 起推荐写法，倾斜装甲等
+##        混合条目 flat+pct 并存时必须用显式后缀——同一键无法同时装 int 和 float）。
+##   混合：同条目 flat + pct 并存（例：倾斜装甲 defense_armor = 15 且 defense_armor_pct = 0.08）。
+##
+## 时代适配双轨：
+##   硬门：条目可带 `era_band = [min, max]`（0一战/1二战/2冷战/3现代/4近未来）。
+##         装配过滤用（get_installable_mods_for_card / 安装守卫 / 面板），
+##         超带不可装——"一战瞄准镜装未来激光卡"这类主题违和由此拦截。
+##         已装的超带改造不回收、继续生效（不追溯）。
+##   软缩放：攻击/HP 族 int flat 值随宿主时代缩放。防御族不缩放（防御时代跨度仅
+##         ×1.6，derive_defense 已含 era_mul）；attack_range（px）与百分比不缩放。
+## 缩放表由卡池中位数推导（atk 39/71/105/205/232、hp 175/409/572/900/1100），
+## 与 v6.8"时代膨胀烘进卡表原值"决策一致——不重开卡牌时代乘区，只让通用件跟卡走。
+
+const SET_SUFFIX := "_set"
+const PCT_SUFFIX := "_pct"
+## 支持 set/pct 显式后缀的 7 个基础键
+const CHANNEL_STAT_KEYS: Array = [
+	"attack_light", "attack_armor", "attack_air",
+	"defense_light", "defense_armor", "defense_air",
+	"max_hp",
+]
+## int flat 值需要时代缩放的键（防御族不缩放）
+const ERA_SCALED_FLAT_KEYS: Array = [
+	"attack_light", "attack_armor", "attack_air", "max_hp", "true_damage",
+]
+## 攻击族 flat 缩放表（卡池中位 atk 归一：39/71/105/205/232）
+const ERA_FLAT_SCALE_ATK: Dictionary = {0: 1.0, 1: 1.8, 2: 2.7, 3: 5.3, 4: 6.0}
+## HP 族 flat 缩放表（卡池中位 hp 归一：175/409/572/900/1100）
+const ERA_FLAT_SCALE_HP: Dictionary = {0: 1.0, 1: 2.3, 2: 3.3, 3: 5.1, 4: 6.3}
+
+## 改造与宿主卡时代是否兼容（无 era_band 视为全带 [0,4] 兼容）
+static func is_mod_era_compatible(mod_data: Dictionary, card_era: int) -> bool:
+	var band = mod_data.get("era_band", null)
+	if not (band is Array) or band.size() < 2:
+		return true
+	return card_era >= int(band[0]) and card_era <= int(band[1])
+
+## 改造数值的声明基准时代（era_band 下限；无 band = 0 基准）
+## flat/set 攻击/HP 值以此时代为基准声明，应用时缩放到宿主时代
+static func get_mod_reference_era(mod_data: Dictionary) -> int:
+	var band = mod_data.get("era_band", null)
+	if band is Array and band.size() >= 2:
+		return int(band[0])
+	return 0
+
+## flat/set 值的时代缩放系数（防御族/未知时代 = 1.0 不缩放）
+static func _era_flat_factor(stat_key: String, ref_era: int, host_era: int) -> float:
+	if host_era < 0 or ref_era < 0 or host_era == ref_era:
+		return 1.0
+	if not ERA_SCALED_FLAT_KEYS.has(stat_key):
+		return 1.0
+	var table: Dictionary = ERA_FLAT_SCALE_HP if stat_key == "max_hp" else ERA_FLAT_SCALE_ATK
+	var ref_f: float = float(table.get(ref_era, 1.0))
+	var host_f: float = float(table.get(host_era, 1.0))
+	if ref_f <= 0.0:
+		return 1.0
+	return host_f / ref_f
+
 ## 改造分类查询：返回 "mechanic"（机制改造）或 "ratio"（交换比改造）。
 ## 依据 effects 字典是否含 MECHANIC_EFFECT_KEYS 中的 key。
 static func get_mod_class(mod_id: String) -> String:
@@ -238,6 +307,26 @@ static func get_mods_for_card(card_id: String) -> Array:
 	result.append_array(EnhancementModifications.get_for_card(card_id))
 	return result
 
+## v22: 装配口径的改造查询——在 get_mods_for_card 基础上过滤时代带（era_band）。
+## 供改造面板列表 / 安装守卫使用。get_mods_for_card 本身不过滤
+## （enemy_card_mod_map / intel 等跨时代消费方依赖全集）。
+## card_era 传 -1 时按 card_id 反查 DefaultCards 模板 era。
+static func get_installable_mods_for_card(card_id: String, card_era: int = -1) -> Array:
+	var all: Array = get_mods_for_card(card_id)
+	var era: int = card_era
+	if era < 0:
+		var dc = load("res://data/default_cards.gd")
+		var tpl = dc.get_card_by_id(card_id) if dc != null else null
+		if tpl == null:
+			return all  # 卡模板查不到（未注册 card_id）——不过滤，保持旧行为
+		era = int(tpl.era)
+	var result: Array = []
+	for mod_id in all:
+		var mod_data: Dictionary = get_data(String(mod_id))
+		if is_mod_era_compatible(mod_data, era):
+			result.append(mod_id)
+	return result
+
 ## 检查改造冲突
 static func check_conflict(card: Dictionary, mod_id: String) -> bool:
 	_ensure_initialized()
@@ -291,11 +380,43 @@ static func apply_effects(base_stats: Dictionary, modifications: Array) -> Dicti
 ## v6.4: 按等级应用改造效果（统一5套系统的等级概念）
 ## modifications: Array of {id, level} 或 {id}（默认level=1）或纯String（默认level=1）
 ## 支持改造条目里的 level_effects（每级不同效果）或 effects（无等级差异时用，所有等级相同）
-static func apply_with_level(base_stats: Dictionary, modifications: Array) -> Dictionary:
+## v22: host_ctx 可选宿主上下文 {era: int}——传入时启用四通道：
+##   第 1 遍历应用全部 `<stat>_set` 替换键（更优才生效守卫），
+##   第 2 遍历按原顺序应用 flat/pct（百分比叠加在替换后的新值上）。
+##   host_ctx.era 同时驱动攻击/HP 族 int flat 的时代缩放。
+static func apply_with_level(base_stats: Dictionary, modifications: Array, host_ctx: Dictionary = {}) -> Dictionary:
 	_ensure_initialized()
 
-	var result = base_stats.duplicate(true)
+	var result: Dictionary = base_stats.duplicate(true)
+	var host_era: int = int(host_ctx.get("era", -1))
 
+	# ── v22 第 1 遍历：替换通道（set）——先定基础值，flat/pct 随后叠加其上 ──
+	for mod_entry in modifications:
+		var mod_id: String = ""
+		var mod_level: int = 1
+		if mod_entry is Dictionary:
+			mod_id = String(mod_entry.get("id", ""))
+			mod_level = int(mod_entry.get("level", 1))
+			if mod_entry.has("enabled") and not bool(mod_entry.get("enabled", true)):
+				continue
+		else:
+			mod_id = String(mod_entry)
+		var mod_data: Dictionary = get_data(mod_id)
+		if mod_data.is_empty():
+			continue
+		var effects: Dictionary = _resolve_mod_effects(mod_data, clampi(mod_level, 1, 3))
+		for effect_key in effects.keys():
+			if not String(effect_key).ends_with(SET_SUFFIX):
+				continue
+			var base_key: String = String(effect_key).substr(0, String(effect_key).length() - SET_SUFFIX.length())
+			if not CHANNEL_STAT_KEYS.has(base_key):
+				continue
+			var set_val: float = float(effects[effect_key]) * _era_flat_factor(base_key, get_mod_reference_era(mod_data), host_era)
+			# 更优才生效守卫：替换值不高于当前值时不覆盖（防高代卡装低代换装白亏）
+			if set_val > float(result.get(base_key, 0)):
+				result[base_key] = int(round(set_val))
+
+	# ── 第 2 遍历：flat / pct（原有单遍历逻辑，复用 _resolve_mod_effects） ──
 	for mod_entry in modifications:
 		var mod_id: String = ""
 		var mod_level: int = 1
@@ -316,24 +437,36 @@ static func apply_with_level(base_stats: Dictionary, modifications: Array) -> Di
 		if mod_data.is_empty():
 			continue
 
-		# 优先使用 level_effects（每级不同），否则用 effects（所有等级相同）
-		var effects: Dictionary = {}
-		var level_effects: Dictionary = mod_data.get("level_effects", {})
-		if not level_effects.is_empty() and level_effects.has(mod_level):
-			effects = level_effects[mod_level]
-		else:
-			effects = mod_data.get("effects", {})
+		var effects: Dictionary = _resolve_mod_effects(mod_data, mod_level)
+		var mod_ctx: Dictionary = {
+			"ref_era": get_mod_reference_era(mod_data),
+			"host_era": host_era,
+		}
 
 		# 应用效果（复用 apply_effects 的单条逻辑）
-		result = _apply_single_mod_effects(result, effects)
+		result = _apply_single_mod_effects(result, effects, mod_ctx)
 
 	return result
 
 
+## v22: 解析改造在某等级下的生效 effects（优先 level_effects[level]，回退 effects）
+static func _resolve_mod_effects(mod_data: Dictionary, mod_level: int) -> Dictionary:
+	var level_effects: Dictionary = mod_data.get("level_effects", {})
+	if not level_effects.is_empty() and level_effects.has(mod_level):
+		return level_effects[mod_level]
+	return mod_data.get("effects", {})
+
+
 ## v6.4: 内部辅助——对单个 effects 字典应用到一个 stats 字典（apply_effects 的单条逻辑抽取）
-static func _apply_single_mod_effects(result: Dictionary, effects: Dictionary) -> Dictionary:
+## v22: mod_ctx 可选 {ref_era, host_era}——传入时攻击/HP 族 int flat 按时代缩放；
+##      `<stat>_pct` 显式百分比键在此应用；`<stat>_set` 键跳过（apply_with_level 第 1 遍历已处理）
+static func _apply_single_mod_effects(result: Dictionary, effects: Dictionary, mod_ctx: Dictionary = {}) -> Dictionary:
 	for effect_key in effects.keys():
 		var effect_value = effects[effect_key]
+		var key_str := String(effect_key)
+		# v22: set 通道键在第 1 遍历处理，此处跳过（避免落 _special 污染 meta）
+		if key_str.ends_with(SET_SUFFIX) and CHANNEL_STAT_KEYS.has(key_str.substr(0, key_str.length() - SET_SUFFIX.length())):
+			continue
 		match effect_key:
 			"attack_light", "attack_armor", "attack_air", \
 			"defense_light", "defense_armor", "defense_air", "max_hp":
@@ -342,7 +475,19 @@ static func _apply_single_mod_effects(result: Dictionary, effects: Dictionary) -
 				if effect_value is float:
 					result[effect_key] = int(float(result[effect_key]) * (1.0 + effect_value))
 				elif effect_value is int:
-					result[effect_key] += effect_value
+					# v22: 攻击/HP 族固定值按宿主时代缩放（mod_ctx 缺省 = 旧调用方，不缩放）
+					var _flat: int = effect_value
+					if not mod_ctx.is_empty():
+						_flat = int(round(float(effect_value) * _era_flat_factor(
+							key_str, int(mod_ctx.get("ref_era", 0)), int(mod_ctx.get("host_era", -1)))))
+					result[effect_key] += _flat
+			# v22: 显式百分比后缀键——与 float-on-base 键等价，供混合条目（flat+pct 并存）使用
+			"attack_light_pct", "attack_armor_pct", "attack_air_pct", \
+			"defense_light_pct", "defense_armor_pct", "defense_air_pct", "max_hp_pct":
+				var _pct_base: String = key_str.substr(0, key_str.length() - PCT_SUFFIX.length())
+				if not result.has(_pct_base):
+					result[_pct_base] = 0
+				result[_pct_base] = int(float(result[_pct_base]) * (1.0 + float(effect_value)))
 			# v6.9→v7.5: move_speed → 重定向为部署延迟百分比（玩家单位格子战术不移动，move_speed 为死属性）
 			# v7.x 平衡修订：系数 0.005→0.02（×4）。原 0.005 让 move_speed=20→-0.1 几乎无体感；
 			# 现 move_speed=20→-0.4（明显减部署延迟），机动类改造（涡扇/燃气轮机/外骨骼）体感恢复。
@@ -794,7 +939,12 @@ static func _apply_single_mod_effects(result: Dictionary, effects: Dictionary) -
 			# v8.6 现实/科幻伤害类型
 			"true_damage":
 				if not result.has("true_damage"): result["true_damage"] = 0.0
-				result["true_damage"] += float(effect_value)
+				# v22: 攻击族 flat——按宿主时代缩放（mod_ctx 缺省不缩放）
+				var _td_flat: float = float(effect_value)
+				if not mod_ctx.is_empty():
+					_td_flat = roundf(float(effect_value) * _era_flat_factor(
+						"true_damage", int(mod_ctx.get("ref_era", 0)), int(mod_ctx.get("host_era", -1))))
+				result["true_damage"] += _td_flat
 			"chem_chance":
 				if not result.has("chem_chance"): result["chem_chance"] = 0.0
 				result["chem_chance"] += float(effect_value)
@@ -1043,153 +1193,11 @@ static func apply_to_weapon_slots(weapon_slots: Array, modifications: Array, sou
 	return result
 
 # ══════════════════════════════════════════════════════════════════
-#  v21 P3-B（计划 C1 打造 + A4 首杀解锁）：账号级改造解锁集
+#  v25.3 已退役：账号级改造解锁集（打造 craft_mod / 相位师首杀解锁 / 产能点 sink）
 # ══════════════════════════════════════════════════════════════════
-## 状态归属：账号级字典 mod_unlock_state（存档根键，SaveManager v9 迁移引入）。
-## 键约定：
-##   "<mod_id>" → true            已解锁的改造模块
-##   "first_kill_<master_id>" → true  相位师 master 的"首杀已发奖"标记（防重复解锁）
-## 注意：解锁集是新增采集通道（打造/首杀），不改既有蓝图（IntelItemBag 蓝图门）安装路径。
-
-## 打造产能价（按模块稀有度；P3-B 数值定版：稀有以上约需中配档 3~15 天产能）
-const CRAFT_PRODUCTION_COST: Dictionary = {
-	"common": 60, "uncommon": 100, "rare": 180, "epic": 320, "legendary": 560,
-}
-## 打造合金价（与 P3-A 精材料产出量级对齐：中配关单场精炼合金 ~12-20）
-const CRAFT_ALLOY_COST: Dictionary = {
-	"common": 100, "uncommon": 200, "rare": 400, "epic": 800, "legendary": 1500,
-}
-
-## 账号解锁集（实例状态；SaveManager 经 save_state/load_state 持久化）
-var _mod_unlock_state: Dictionary = {}
-
-## 查询模块是否已解锁（账号级）
-func is_mod_unlocked(mod_id: String) -> bool:
-	return _mod_unlock_state.has(mod_id) and bool(_mod_unlock_state[mod_id])
-
-## 解锁一个模块（幂等；source 仅用于日志追溯）
-func unlock_mod(mod_id: String, source: String = "manual") -> bool:
-	if mod_id.is_empty():
-		return false
-	if is_mod_unlocked(mod_id):
-		return false
-	_mod_unlock_state[mod_id] = true
-	return true
-
-## 取解锁集快照（深拷贝；供存档/UI）
-func get_unlock_state() -> Dictionary:
-	return _mod_unlock_state.duplicate(true)
-
-## 覆盖式恢复解锁集（存档加载；非法输入静默回退空集）
-func load_state(data: Dictionary) -> void:
-	_mod_unlock_state.clear()
-	if data.is_empty() or not (data is Dictionary):
-		return
-	for k in data.keys():
-		if bool(data[k]):
-			_mod_unlock_state[String(k)] = true
-
-## 存档快照（SaveManager _collect_manager_state 消费）
-func save_state() -> Dictionary:
-	return _mod_unlock_state.duplicate(true)
-
-## 获取某模块的打造价 {production: int, alloy: int}（未注册模块返回空字典）
-static func get_craft_cost(mod_id: String) -> Dictionary:
-	var data: Dictionary = get_data(mod_id)
-	if data.is_empty():
-		return {}
-	var rarity: String = String(data.get("rarity", "common"))
-	return {
-		"production": int(CRAFT_PRODUCTION_COST.get(rarity, 999)),
-		"alloy": int(CRAFT_ALLOY_COST.get(rarity, 999)),
-	}
-
-## 打造（P3-B 计划 C1 的 sink 入口）：消耗 产能点 + 合金，把【未解锁】的指定模块加入账号解锁集。
-## 约束：模块必须已注册、非强化词条（source=="enhancement" 走词条强化链不进解锁集）、未解锁过。
-## resource_provider（可选注入）：持有 consume_production_points/add_production_points/consume 的
-## 资源管理器节点——smoke/测试等 --script 模式下传入 stub；缺省 null 时走
-## get_node_or_null("/root/BasicResourceManager") 常规 autoload 路径（游戏内零影响）。
-## 返回 {ok: bool, message: String, mod_id: String}
-func craft_mod(mod_id: String, resource_provider: Node = null) -> Dictionary:
-	var fail := func(msg: String) -> Dictionary:
-		return {"ok": false, "message": msg, "mod_id": mod_id}
-	var data: Dictionary = get_data(mod_id)
-	if data.is_empty():
-		return fail.call("未注册的改造模块：%s" % mod_id)
-	if String(data.get("source", "")) == "enhancement":
-		return fail.call("强化词条不参与打造：%s" % mod_id)
-	if is_mod_unlocked(mod_id):
-		return fail.call("该模块已解锁：%s" % mod_id)
-	var cost: Dictionary = get_craft_cost(mod_id)
-	var brm: Node = resource_provider
-	if brm == null:
-		brm = get_node_or_null("/root/BasicResourceManager")
-	if brm == null or not brm.has_method("consume_production_points"):
-		return fail.call("资源管理器不可用")
-	if not brm.consume_production_points(int(cost.get("production", 0))):
-		return fail.call("产能点不足（需 %d）" % int(cost.get("production", 0)))
-	if brm.has_method("can_afford") and not brm.can_afford("alloy", int(cost.get("alloy", 0))):
-		# 合金不足：回滚已扣产能（事务原子性——两资源要么都扣要么都不扣）
-		brm.add_production_points(int(cost.get("production", 0)))
-		return fail.call("合金不足（需 %d）" % int(cost.get("alloy", 0)))
-	brm.consume("alloy", int(cost.get("alloy", 0)))
-	unlock_mod(mod_id, "craft")
-	return {"ok": true, "message": "打造完成：%s" % String(data.get("name", mod_id)), "mod_id": mod_id}
-
-## 相位师首杀解锁（P3-B 计划 A4，GameManager._grant_phase_master_victory_reward 调用）。
-## 规则：每位相位师（master_id）只有首次击杀发奖；解锁 1 个"稀有及以上"改造模块，
-## 候选按 boss era 对应兵种过滤（_pick_boss_first_kill_mod），加权随机（rare 3 / epic 2 / legendary 1）。
-## 返回 {ok, message, mod_id}
-func unlock_boss_first_kill(master_id: String, era: int) -> Dictionary:
-	var fail := func(msg: String) -> Dictionary:
-		return {"ok": false, "message": msg, "mod_id": ""}
-	if master_id.is_empty():
-		return fail.call("相位师 id 为空")
-	var marker := "first_kill_" + master_id
-	if _mod_unlock_state.has(marker):
-		return fail.call("该相位师首杀奖励已发放")
-	_mod_unlock_state[marker] = true  # 先记首杀标记（即使候选池空也不重复触发）
-	var picked := _pick_boss_first_kill_mod(era)
-	if picked.is_empty():
-		return fail.call("该时代无可用候选模块（稀有以上已全部解锁）")
-	unlock_mod(picked, "boss_first_kill")
-	return {"ok": true, "message": "首杀解锁：%s" % picked, "mod_id": picked}
-
-## 首杀候选选择（规则见 unlock_boss_first_kill）：
-## 池 = 未解锁 & rarity ∈ [rare, epic, legendary] & 非强化词条 & applicable_types 与
-## boss 时代对应兵种相交。era→兵种映射：era0 一战以轻装/装甲为主 [0,1]；
-## era1 加支援 [0,1,2]；era2 加堡垒 [0,1,2,4]；era3/4 全兵种（含空中 [3]）。
-static func _pick_boss_first_kill_mod(era: int) -> String:
-	_ensure_initialized()
-	var era_kinds: Array = [0, 1]
-	match era:
-		1: era_kinds = [0, 1, 2]
-		2: era_kinds = [0, 1, 2, 4]
-		3, 4: era_kinds = [0, 1, 2, 3, 4]
-		_: era_kinds = [0, 1]
-	var weighted: Array = []
-	for mod_id in _flat_index.keys():
-		var data: Dictionary = _flat_index[mod_id]
-		if String(data.get("source", "")) == "enhancement":
-			continue
-		var rarity: String = String(data.get("rarity", "common"))
-		var w: int = 0
-		match rarity:
-			"rare": w = 3
-			"epic": w = 2
-			"legendary": w = 1
-		if w == 0:
-			continue
-		var applicable: Array = data.get("applicable_types", []) as Array
-		var kind_match: bool = false
-		for k in applicable:
-			if era_kinds.has(int(k)):
-				kind_match = true
-				break
-		if not kind_match:
-			continue
-		for _i in range(w):
-			weighted.append(String(mod_id))
-	if weighted.is_empty():
-		return ""
-	return weighted[randi() % weighted.size()]
+## v21 P3-B 引入的解锁集（mod_unlock_state）自上线起就没有任何 UI/门禁消费方：
+## 安装路径认的是蓝图（IntelItemBag），解锁集既不拦安装也不加内容；产能点
+## （production_points）作为其唯一 sink 无 UI 入口，纯囤积隐形货币。2026-08-31
+## v25.3 系统收敛整链退役（连带 SaveManager 存档段/DayClock 产出/GameManager 首杀
+## 发放/存档 v9 迁移键）。旧档 mod_unlock_state 键静默跳过；如将来重做"打造"，
+## 从 git 历史找回本块（craft_mod/unlock_mod/unlock_boss_first_kill）。

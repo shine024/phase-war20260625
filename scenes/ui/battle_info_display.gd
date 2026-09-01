@@ -2,6 +2,7 @@ extends Control
 ## 增强版战斗信息显示面板：显示战斗状态、统计信息等
 
 const DT = preload("res://resources/design_tokens.gd")
+const PanelStyles = preload("res://scripts/ui/panel_styles.gd")
 
 var _battle_active: bool = false
 var _battle_time: float = 0.0
@@ -84,18 +85,10 @@ func _process(delta: float) -> void:
 func _apply_design_tokens() -> void:
 	# v7.x(A3): 原硬编码 true（永远高对比）；改为读实时开关，让设置可切换。
 	var hc: bool = DT.is_high_contrast()
-	# 应用设计令牌样式
-	var panel_style = StyleBoxFlat.new()
-	panel_style.bg_color = DT.get_panel_color(hc)
-	panel_style.corner_radius_top_left = 8
-	panel_style.corner_radius_top_right = 8
-	panel_style.corner_radius_bottom_right = 8
-	panel_style.corner_radius_bottom_left = 8
-	panel_style.border_width_left = 2
-	panel_style.border_width_top = 2
-	panel_style.border_width_right = 2
-	panel_style.border_width_bottom = 2
-	panel_style.border_color = DT.COLOR_ENERGY
+	# v25 HUD 家族底板（原 2px 橙框脱离 accent 体系；高对比档保留纯黑底）
+	var panel_style := PanelStyles.make_hud_panel(0.4)
+	if hc:
+		panel_style.bg_color = Color(0, 0, 0, 0.9)
 
 	add_theme_stylebox_override("panel", panel_style)
 

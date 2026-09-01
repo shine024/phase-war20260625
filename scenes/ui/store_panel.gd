@@ -49,7 +49,7 @@ func _ready() -> void:
 	# v7.x 面板统一：MEDIUM 档 + 金色签名框架 + PanelChrome 标题栏（右上 ✕ 关闭）
 	custom_minimum_size = DT.PANEL_SIZE_MEDIUM
 	var accent := DT.get_panel_accent("store")
-	add_theme_stylebox_override("panel", PanelStyles.make_panel_frame(accent))
+	add_theme_stylebox_override("panel", PanelStyles.make_panel_frame_textured(accent))
 	var chrome = PanelChrome.attach_to($Margin/VBox, "公司商店", accent, "COMPANY STORE")
 	chrome.closed.connect(_on_close)
 	_init_cached_styles()
@@ -135,14 +135,21 @@ func _build_company_tabs() -> void:
 		# 批次三 B2b：公司 Tab 悬停就地展示公司简介（desc 字段一直存在但从未显示）
 		var cdesc: String = String(cfg.get("desc", ""))
 		btn.tooltip_text = cdesc if not cdesc.is_empty() else "查看 %s 在售的商品" % name
-		var tab_styles := PanelStyles.make_button_styles(DT.get_panel_accent("store"))
+		var tab_accent: Color = DT.get_panel_accent("store")
+		var tab_styles := PanelStyles.make_button_styles(tab_accent)
+		# v25 UI 统一：选中态对齐 TabContainer 的"顶部 accent 条"页签语言（原为整框高亮）
+		var tab_selected := tab_styles["pressed"].duplicate() as StyleBoxFlat
+		tab_selected.set_border_width_all(1)
+		tab_selected.border_width_top = 2
+		tab_selected.border_color = Color(tab_accent.r, tab_accent.g, tab_accent.b, 0.9)
+		tab_selected.bg_color = DT.COLOR_CARD_HI
 		btn.add_theme_color_override("font_color", DT.COLOR_TEXT_MID)
 		btn.add_theme_color_override("font_hover_color", DT.COLOR_TEXT_BRIGHT)
 		btn.add_theme_color_override("font_pressed_color", DT.COLOR_TEXT_BRIGHT)
 		btn.add_theme_color_override("font_focus_color", DT.COLOR_TEXT_BRIGHT)
 		btn.add_theme_stylebox_override("normal", tab_styles["normal"])
 		btn.add_theme_stylebox_override("hover", tab_styles["hover"])
-		btn.add_theme_stylebox_override("pressed", tab_styles["pressed"])
+		btn.add_theme_stylebox_override("pressed", tab_selected)
 		btn.add_theme_stylebox_override("disabled", tab_styles["disabled"])
 		btn.add_theme_stylebox_override("focus", tab_styles["focus"])
 		btn.pressed.connect(func() -> void:
@@ -201,12 +208,12 @@ func _refresh_balance() -> void:
 	var nano: int = int(totals.get(BasicResources.ID_NANO_MATERIALS, 0))
 	var energy: int = int(totals.get(BasicResources.ID_ENERGY_BLOCK, 0))
 
-	var base_text = "⬡ 纳米材料：%s　　⚡ 能量块：%s" % [FormatUtil.format_number(nano), FormatUtil.format_number(energy)]
+	var base_text = "纳米材料：%s　　能量块：%s" % [FormatUtil.format_number(nano), FormatUtil.format_number(energy)]
 
 	# 显示全局访问状态
 	if _has_global_access():
 		var max_rep = _get_max_faction_reputation()
-		balance_label.text = "%s　　✨ 全域访问已激活（最高声望：%d）" % [base_text, max_rep]
+		balance_label.text = "%s　　全域访问已激活（最高声望：%d）" % [base_text, max_rep]
 	else:
 		balance_label.text = base_text
 
@@ -379,14 +386,14 @@ func _build_rune_items_section(current_rep: int) -> void:
 		var eff_line: String = " · ".join(eff_parts)
 		var effect_lbl := Label.new()
 		effect_lbl.text = eff_line
-		effect_lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_XSMALL)
+		effect_lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
 		effect_lbl.add_theme_color_override("font_color", DT.COLOR_TEXT_MID)
 		effect_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		hbox.add_child(effect_lbl)
 		# 价格
 		var price_lbl := Label.new()
 		price_lbl.text = "%d声望" % rep_cost
-		price_lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_XSMALL)
+		price_lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
 		price_lbl.add_theme_color_override("font_color", DT.COLOR_GOLD)
 		price_lbl.custom_minimum_size = Vector2(80, 0)
 		hbox.add_child(price_lbl)
@@ -394,7 +401,7 @@ func _build_rune_items_section(current_rep: int) -> void:
 		var buy_btn := Button.new()
 		buy_btn.text = "购买" if not already_owned else "已拥有"
 		buy_btn.custom_minimum_size = Vector2(60, 30)
-		buy_btn.add_theme_font_size_override("font_size", DT.FONT_SIZE_XSMALL)
+		buy_btn.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
 		buy_btn.disabled = already_owned or current_rep < rep_cost
 		var rune_btn_styles := PanelStyles.make_button_styles(DT.COLOR_VIOLET)
 		buy_btn.add_theme_color_override("font_color", DT.COLOR_TEXT_BRIGHT)
@@ -466,7 +473,7 @@ func _build_intel_items_section() -> void:
 	sep.add_theme_color_override("color", Color(DT.COLOR_VIOLET.r, DT.COLOR_VIOLET.g, DT.COLOR_VIOLET.b, 0.3))
 	item_list.add_child(sep)
 	var title := Label.new()
-	title.text = "📋 情报道具"
+	title.text = "情报道具"
 	title.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
 	title.add_theme_color_override("font_color", DT.COLOR_VIOLET)
 	item_list.add_child(title)
@@ -513,7 +520,7 @@ func _build_intel_items_section() -> void:
 		info_vbox.add_child(name_lbl)
 		var desc_lbl := Label.new()
 		desc_lbl.text = "  %s" % intel_desc
-		desc_lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_XSMALL)
+		desc_lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
 		desc_lbl.add_theme_color_override("font_color", DT.COLOR_TEXT_MID)
 		info_vbox.add_child(desc_lbl)
 		hbox.add_child(info_vbox)
@@ -534,7 +541,7 @@ func _build_intel_items_section() -> void:
 		buy_btn.disabled = not afford
 		buy_btn.pressed.connect(_on_buy_intel_item.bind(item_type, price, row))
 		var btn_styles := PanelStyles.make_button_styles(rarity_color)
-		buy_btn.add_theme_font_size_override("font_size", DT.FONT_SIZE_XSMALL)
+		buy_btn.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
 		buy_btn.add_theme_color_override("font_color", DT.COLOR_TEXT_BRIGHT)
 		buy_btn.add_theme_color_override("font_hover_color", DT.COLOR_TEXT_BRIGHT)
 		buy_btn.add_theme_color_override("font_pressed_color", DT.COLOR_TEXT_BRIGHT)

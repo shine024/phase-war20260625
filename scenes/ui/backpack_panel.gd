@@ -165,7 +165,7 @@ func _ready() -> void:
 	add_to_group("backpack_panel")
 	# D1: 根框架统一 PanelStyles 签名框（覆盖 tscn StyleBoxFlat_bg）
 	var ps_d1 = preload("res://scripts/ui/panel_styles.gd")
-	add_theme_stylebox_override("panel", ps_d1.make_panel_frame(DesignTokens.get_panel_accent("backpack")))
+	add_theme_stylebox_override("panel", ps_d1.make_panel_frame_textured(DesignTokens.get_panel_accent("backpack")))
 
 	# 初始化各标签页Grid引用
 	_combat_cards_grid = get_node_or_null("VBoxOuter/TabContainer/CombatCardsTab/ScrollContainer/CardGrid") as GridContainer
@@ -759,16 +759,20 @@ func _mod_bucket_of(mod_id: String) -> String:
 ## 2026-08-25：键名翻译改走唯一权威表 ModEffectLabels（原内联小表仅 ~14 键，
 ## 未覆盖键裸显 "accuracy_bonus: 0.5" 英文键名，146 改造档大面积出现）。
 func _format_mod_effect_short(key: String, val) -> String:
+	# v22 四通道句式：`<stat>_set` → "X 替换为 N"；`<stat>_pct` → 按基础键翻译+百分比
+	if key.ends_with("_set"):
+		return "%s 替换为 %d" % [ModEffectLabels.translate(key.substr(0, key.length() - 4)), int(round(float(val)))]
+	var tkey := key.substr(0, key.length() - 4) if key.ends_with("_pct") else key
 	# 攻速：attack_interval 是攻击间隔，负值=间隔缩短=攻速提升，统一转正表述
-	if key == "attack_interval":
+	if tkey == "attack_interval":
 		return "攻速 +%d%%" % int(round(absf(float(val)) * 100.0))
 	# 2026-08-25 修④：雷达锁定是周期扫描（每 N 秒锁定一次），值是周期秒数而非加成，
 	# 显示成"雷达锁定间隔 +12"无单位且像加数。带秒单位、不带正负号。
-	if key == "radar_lock_interval":
+	if tkey == "radar_lock_interval":
 		return "锁定扫描 %ds/次" % int(round(absf(float(val))))
-	if key == "radar_lock_duration":
+	if tkey == "radar_lock_duration":
 		return "锁定持续 %ds" % int(round(absf(float(val))))
-	var label: String = ModEffectLabels.translate(key)
+	var label: String = ModEffectLabels.translate(tkey)
 	if val is bool:
 		return "✓ %s" % label
 	return "%s %s" % [label, _format_tile_effect_number(val)]

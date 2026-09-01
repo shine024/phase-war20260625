@@ -102,7 +102,7 @@ func _build_content_root() -> void:
 
 	var panel := PanelContainer.new()
 	panel.custom_minimum_size = Vector2(880, 0)
-	panel.add_theme_stylebox_override("panel", PanelStyles.make_panel_frame(ACCENT))
+	panel.add_theme_stylebox_override("panel", PanelStyles.make_panel_frame_textured(ACCENT))
 	center.add_child(panel)
 
 	var inner := PanelContainer.new()

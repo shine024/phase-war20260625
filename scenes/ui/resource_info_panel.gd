@@ -21,7 +21,7 @@ func _ready() -> void:
 
 func _setup_style() -> void:
 	# 批次三 B13：根框架收口 PanelStyles 工厂（中性青签名框，替代手写 StyleBox）
-	add_theme_stylebox_override("panel", PanelStyles.make_panel_frame(DT.COLOR_ACCENT_CYAN))
+	add_theme_stylebox_override("panel", PanelStyles.make_panel_frame_textured(DT.COLOR_ACCENT_CYAN))
 
 func _build_ui() -> void:
 	var margin = MarginContainer.new()

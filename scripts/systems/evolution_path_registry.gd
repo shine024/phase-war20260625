@@ -97,54 +97,9 @@ static func check_evolution_requirements(card: Dictionary, target_card_id: Strin
 		result.passed = false
 		result.missing.append("需要安装%d个改造" % required_mods)
 
-	# EOM数量
-	var required_eom = requirements.get("eom_count", 0)
-	if required_eom > 0:
-		var current_eom = _count_eom_modifications(card.get("installed_modifications", []))
-		if current_eom < required_eom:
-			result.passed = false
-			result.missing.append("需要%d个进化专属改造" % required_eom)
-
-	# 战力门槛
-	var power_ratio = requirements.get("power_ratio", 1.0)
-	var card_id = card.get("id", "")
-	var base_power = card.get("power", 0)
-	var enhance_level = card.get("level", 1)
-	var target_power = target_node.get("power", 0)
-	var min_power = int(target_power * power_ratio)
-
-	# v6.11：计算实际战力（包含强化和改造加成）
-	# 原 MilitaryTitleRegistry.calculate_current_power 已随称号系统移除，此处内联等价计算：
-	# 实际战力 = base_power × 强化倍率 + 改造战力加成
-	var level_mult := UnifiedRankSystem.get_power_multiplier(enhance_level)
-	var mod_bonus := _estimate_modifications_power_bonus(card.get("installed_modifications", []))
-	var actual_power := int(base_power * level_mult) + mod_bonus
-
-	if actual_power < min_power:
-		result.passed = false
-		result.missing.append("战力不足，需要%d（当前%d）" % [min_power, actual_power])
-
-	# 情报需求
-	var intel_requirements = {}
-	for key in requirements.keys():
-		if key.begins_with("intel_"):
-			intel_requirements[key] = requirements[key]
-
-	if not intel_requirements.is_empty():
-		# 检查情报系统
-		var _im = Engine.get_main_loop().get_root().get_node_or_null("IntelManual")
-		if _im and _im.has_method("get_intel_progress"):
-			for intel_key in intel_requirements.keys():
-				var required_progress = intel_requirements[intel_key]
-				# 从key中提取卡牌ID，如 "intel_ww1_mp18" -> "ww1_mp18"
-				var intel_card_id = intel_key.trim_prefix("intel_")
-				var current_progress = _im.get_intel_progress(intel_card_id)
-
-				if current_progress < required_progress:
-					result.passed = false
-					result.missing.append("%s情报不足（需要%.0f%%，当前%.0f%%）" % [
-						intel_card_id, required_progress * 100, current_progress * 100
-					])
+	# v25.3 战力/EOM/情报门槛已删：本函数是遗留数据层（无运行时调用方，权威判定在
+	# CardEvolutionManager.can_evolve_blueprint），战力门随"战力→军衔→战力"循环
+	# 拆除一并退役；情报门与 EOM（2026-08-21 已退役）同样不再保留。
 
 	return result
 
@@ -171,8 +126,9 @@ static func calculate_evolved_stats(old_card: Dictionary, target_card_id: String
 
 	# 继承旧改造加成（普通改造 + 强化词条都继承，与 card_evolution_manager.evolve_blueprint 的全量复制一致）
 	# v6.10: 改用 apply_with_level（支持 level_effects，强化词条加成才能在预览里正确反映）
+	# v22: 传宿主 era（可得时）——继承的攻击/HP flat 按时代缩放，预览与战场同口径
 	var old_mods = old_card.get("installed_modifications", [])
-	var mod_bonus = ModificationRegistry.apply_with_level({}, old_mods)
+	var mod_bonus = ModificationRegistry.apply_with_level({}, old_mods, {"era": int(old_card.get("era", -1))})
 
 	# 应用继承比例
 	for key in mod_bonus.keys():
@@ -215,27 +171,6 @@ static func _check_requirements(card: Dictionary, requirements: Dictionary) -> b
 	var mods_count = requirements.get("mods_count", 0)
 
 	return card.get("level", 1) >= level and card.get("installed_modifications", []).size() >= mods_count
-
-static func _count_eom_modifications(modifications: Array) -> int:
-	var count = 0
-	for mod_entry in modifications:
-		var mod_id = mod_entry.get("id", "") if mod_entry is Dictionary else String(mod_entry)
-		if mod_id.begins_with("EOM_"):
-			count += 1
-	return count
-
-## v6.11：估算改造对战力的加成（替代已移除的 MilitaryTitleRegistry.get_modifications_power_bonus）
-## 改造加成 = 各改造 power_mult 之和 × 10（与 CardResource._get_modifications_power_bonus 口径一致）
-static func _estimate_modifications_power_bonus(modifications: Array) -> int:
-	var bonus := 0
-	for mod_entry in modifications:
-		var mod_id = mod_entry.get("id", "") if mod_entry is Dictionary else String(mod_entry)
-		if mod_id.is_empty():
-			continue
-		var mod_data = ModificationRegistry.get_data(mod_id)
-		var power_mult = float(mod_data.get("power_mult", 1.0))
-		bonus += int(power_mult * 10)
-	return bonus
 
 ## ─── 武器槽位系统支持 ───
 

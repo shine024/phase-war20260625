@@ -9,7 +9,7 @@ const DT = preload("res://resources/design_tokens.gd")
 const PanelStyles = preload("res://scripts/ui/panel_styles.gd")
 const PanelChrome = preload("res://scenes/ui/components/panel_chrome.gd")
 
-const _HIGHLIGHT := Color(0, 0.94, 0.7, 1.0)
+const _HIGHLIGHT := DT.COLOR_ACCENT_MINT
 const _NORMAL_FONT := Color(0.5, 0.5, 0.6, 0.8)
 const _SELECTED_BG := Color(0, 0.18, 0.32, 0.95)
 const _NORMAL_BG := Color(0.06, 0.1, 0.18, 0.85)
@@ -75,13 +75,16 @@ func _ready() -> void:
 	# v7.x 面板统一：青色签名框架 + PanelChrome 标题栏（右上 ✕ 关闭）。
 	# 注意：本面板的 Backdrop/Panel/自身三层可见性协议特殊（main.gd 依赖），保持不变。
 	var accent := DT.COLOR_ACCENT_CYAN
-	panel.add_theme_stylebox_override("panel", PanelStyles.make_panel_frame(accent))
+	panel.add_theme_stylebox_override("panel", PanelStyles.make_panel_frame_textured(accent))
 	var chrome = PanelChrome.attach_to($Panel/MarginContainer/MainVBox, "挂机模式", accent, "AFK MODE")
 	chrome.closed.connect(_on_close)
 	start_btn.pressed.connect(_on_start)
 	stop_btn.pressed.connect(_on_stop)
 	cycle_btn.pressed.connect(func(): _set_mode(AFKModeManager.Mode.CYCLE))
 	push_btn.pressed.connect(func(): _set_mode(AFKModeManager.Mode.PUSH))
+	# v24.2: 模式语义就地解释（推图起点跟随战役进度是新行为，避免"从哪开始打"困惑）
+	cycle_btn.tooltip_text = "循环模式：在下方槽位关联的关卡间循环刷（适合刷材料）"
+	push_btn.tooltip_text = "推图模式：自动逐关推进直到失败（同关重试3次）\n起点跟随战役进度（最高解锁关 = 最高通关关 + 1），停止/失败后自动续推\n世界地图的\"自动部署\"可显式指定从某一关开始推"
 	
 	# 初始化模式按钮样式
 	_set_mode_button_style(cycle_btn, true)
@@ -361,6 +364,8 @@ func _set_mode(m: AFKModeManager.Mode) -> void:
 		AFKModeManager.Mode.PUSH:
 			_set_mode_button_style(cycle_btn, false)
 			_set_mode_button_style(push_btn, true)
+	# v24.2: 切模式立即刷新统计行（推图模式显示起点，循环模式显示关联数）
+	_update_stats_display()
 
 
 func _set_mode_button_style(btn: Button, active: bool) -> void:
@@ -544,11 +549,31 @@ func _update_stats_display() -> void:
 	wins_label.text = "胜: %d" % _afk_manager.total_wins
 	losses_label.text = "负: %d" % _afk_manager.total_losses
 	var count = _afk_manager.get_valid_slot_count()
-	# 挂机运行中显示累计奖励件数；待机时显示关联槽位数
+	# 挂机运行中显示累计奖励件数；待机时按模式显示：推图=下次起点，循环=关联槽位数
 	if _afk_manager.is_running and not _afk_manager.accumulated_rewards.is_empty():
 		var total_count: int = 0
 		for key in _afk_manager.accumulated_rewards:
 			total_count += int(_afk_manager.accumulated_rewards[key])
 		slots_used_label.text = "累计: %d 件" % total_count
+	elif _afk_manager.mode == AFKModeManager.Mode.PUSH:
+		slots_used_label.text = "推图起点: 第 %d 关" % _push_start_hint()
+		slots_used_label.tooltip_text = "推图从战役进度前沿开始（最高解锁关 = 最高通关关 + 1）\n停止/失败后自动从进度续推；世界地图\"自动部署\"可显式指定起点"
 	else:
 		slots_used_label.text = "已关联: %d/4关" % count
+
+
+## 推图起点预览：镜像 start_afk 的起点决策（override 优先 → 与战役前沿取 max →
+## 钳制到已解锁上限），供待机时显示"下次推图从第几关开始"。
+func _push_start_hint() -> int:
+	if _afk_manager == null:
+		return 1
+	var lvl: int = _afk_manager.push_level
+	var max_unlocked: int = 100
+	var lp := get_node_or_null("/root/LevelProgressManager")
+	if lp != null and lp.has_method("get_max_unlocked_level"):
+		max_unlocked = maxi(1, int(lp.get_max_unlocked_level()))
+	if _afk_manager.push_start_override > 0:
+		lvl = _afk_manager.push_start_override
+	else:
+		lvl = maxi(lvl, max_unlocked)
+	return clampi(lvl, 1, max_unlocked)

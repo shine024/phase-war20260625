@@ -109,7 +109,7 @@ func _on_counter_break_triggered(break_type: String, target_name: String) -> voi
 			text = "弱点锁定 → %s" % target_name
 		_:
 			return
-	_enqueue("⚡ " + text, Color(1.0, 0.85, 0.25), DT.FONT_SIZE_SMALL, _LOW_DURATION, Priority.LOW)
+	_enqueue(text, Color(1.0, 0.85, 0.25), DT.FONT_SIZE_SMALL, _LOW_DURATION, Priority.LOW)
 
 func _on_phase_master_appeared(master_config: Dictionary) -> void:
 	var display_name: String = master_config.get("display_name", master_config.get("name", "相位师"))

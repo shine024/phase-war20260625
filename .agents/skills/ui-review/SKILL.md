@@ -63,7 +63,11 @@ description: UI 审查与调整工作流——按"便捷性>易用性>包容性>
 | 资源五色 | `DT.COLOR_RES_ENERGY/NANO/RESEARCH/ALLOY/CRYSTAL` | 资源相关 UI 一律取 token，别手抄 |
 | 稀有度配色 | `GC.get_rarity_color(rarity)`（game_constants.gd，全项目唯一） | **禁止本地副本**；含 uncommon 键，fallback 枪铁灰 |
 | 面板签名色 | `DT.get_panel_accent(key)` / `DT.get_system_color(key)` | PANEL_ACCENTS 已含 help/player_master/phase_master_skill/mvp/backpack |
-| 面板根框架 | `PanelStyles.make_panel_frame(accent)` | 四养成面板（batch2 D1）+ 16 个已迁移面板统一；新面板根 Panel 必走工厂 |
+| 面板根框架 | `PanelStyles.make_panel_frame_textured(accent)`（v25.1 质感版：九宫格渐变底） | 弹窗/养成面板根必走；HUD 常驻条用 `make_hud_panel(border_alpha)`；flat 版 `make_panel_frame` 保留给 HUD 条 |
+| 全局主题 | `resources/default_theme.tres`（v25.1 补全） | Tab/Button/CheckBox/LineEdit/PopupMenu/ProgressBar/ItemList/Tooltip 等已有深色默认——新面板别再手写这些控件的基础样式，只写 accent 差异 |
+| 中文字体 | 打包 Noto Sans SC 子集（assets/fonts/，OFL） | `ensure_cjk_fallback()` 标题挂 Medium/正文挂 Regular；子集再生成 `python tools/make_cjk_font_subset.py`；新打包字体要进该函数 |
+| 面板开合动效 | `main.gd _animate_overlay_in/out` 自动接管 | 新 overlay 零接入（走 `_open_overlay/_close_overlay` 即有）；`is_motion_reduce()` 已短路 |
+| UI 视觉回归 | `tests/ui_theme_gallery.gd` 画廊截图 | 改主题/工厂后跑一次（非 headless），输出 .godot/ui_theme_gallery.png 与改前对比 |
 | 圆角档位 | 面板 12 / 按钮 6 / chip 4 / 格子 3 | 禁新增 1/2/5/8/10 档 |
 | 首次解锁引导 | `FeatureUnlockPopup.show_once(key, title, desc)` | key 一次性持久化；已接：phase_field/law_cast/afk_mode/evolution_panel |
 | 战斗快捷键 | 1-9 部署（`bottom_instrument_bar.begin_deploy_from_slot_index`） | 与点击槽位同链路（instance_id 精确匹配） |
@@ -88,7 +92,7 @@ description: UI 审查与调整工作流——按"便捷性>易用性>包容性>
 - [ ] 新 overlay → 注册进 `main._all_overlays()`，ESC 能关；自处理 ESC 必须 consume
 - [ ] 首次出现 → `FeatureUnlockPopup.show_once` 一句话说明
 - [ ] 高频操作 → 有快捷键或批量途径
-- [ ] 字号：中文 ≥12、11px 禁用、除 13/14 外取双数；颜色走 token、样式走工厂
+- [ ] 字号：中文 ≥12、11px 禁用、除 13/14 外取双数（v25.1 已清零 10/11px 中文）；颜色走 token、根框架走 textured 工厂、HUD 条走 make_hud_panel
 - [ ] 动效走 `DT.MOTION_*` 三档 + 尊重 `is_motion_reduce()`
 - [ ] 根 Panel 走 `make_panel_frame(accent)`，圆角按档位（12/6/4/3）
 - [ ] 拖拽目标悬停即校验红/绿（复用 `card_matches_slot_color`）

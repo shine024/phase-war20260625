@@ -33,6 +33,7 @@ const DATA: Dictionary = {
 		rarity = "epic",
 	power_mult = 1.6, cost_research = 280, cost_install = 140,
 		slot_type = "stealth", conflict_group = "stealth",
+		era_band = [3, 4],
 		effects = {thermal_immunity = 0.70},
 		unlock_conditions = {required_level = 4}
 	},
@@ -55,6 +56,7 @@ const DATA: Dictionary = {
 		slot_type = "optics", conflict_group = "optics",
 		# v7.x: per-slot 弹道——对轻装槽改 SNIPER 精确射击
 		condition_slot = 0,
+		era_band = [0, 3],
 		effects = {attack_range = 60, crit_chance = 0.10, slot_weapon_type = 6, true_damage = 12},  # v8.6: 狙击补真实伤害（高倍瞄准=无视护甲命中要害）
 		unlock_conditions = {required_level = 5}
 	},
@@ -65,6 +67,7 @@ const DATA: Dictionary = {
 		rarity = "epic",
 	power_mult = 1.6, cost_research = 320, cost_install = 160,
 		slot_type = "drone", conflict_group = "drone",
+		era_band = [3, 4],
 		effects = {vision_bonus = 0.50, stealth_detect = 0.20},
 		unlock_conditions = {required_level = 5}
 	},
@@ -75,6 +78,7 @@ const DATA: Dictionary = {
 		rarity = "uncommon",
 	power_mult = 1.0, cost_research = 80, cost_install = 40,
 		slot_type = "comms", conflict_group = "comms",
+		era_band = [1, 4],
 		effects = {intel_speed = 0.30},
 		unlock_conditions = {required_level = 1}
 	},
@@ -85,6 +89,7 @@ const DATA: Dictionary = {
 		rarity = "uncommon",
 	power_mult = 1.0, cost_research = 90, cost_install = 45,
 		slot_type = "navigation", conflict_group = "navigation",
+		era_band = [3, 4],
 		effects = {move_speed = 10},
 		unlock_conditions = {required_level = 2}
 	},
@@ -95,6 +100,7 @@ const DATA: Dictionary = {
 		rarity = "rare",
 	power_mult = 1.3, cost_research = 180, cost_install = 90,
 		slot_type = "optics", conflict_group = "optics",
+		era_band = [2, 4],
 		effects = {night_bonus = 0.15},
 		unlock_conditions = {required_level = 3}
 	},
@@ -157,6 +163,7 @@ const DATA: Dictionary = {
 		cost_install = 160,
 		slot_type = "guidance",
 		conflict_group = "guidance",
+		era_band = [3, 4],
 		effects = {target_marking = 0.30, mark_vuln = 0.25, mark_duration = 5.0},
 		unlock_conditions = {required_level = 5}
 	},
@@ -175,6 +182,7 @@ const DATA: Dictionary = {
 		cost_install = 160,
 		slot_type = "guidance",
 		conflict_group = "crit_designator",
+		era_band = [3, 4],
 		effects = {crit_mark_chance = 0.30, crit_mark_bonus = 0.50, crit_mark_duration = 5.0},
 		unlock_conditions = {required_level = 5}
 	},
@@ -194,6 +202,7 @@ const DATA: Dictionary = {
 		cost_install = 190,
 		slot_type = "sensor",
 		conflict_group = "sensor",
+		era_band = [3, 4],
 		effects = {radar_lock_interval = 12.0, radar_lock_radius = 400.0, radar_lock_vuln = 0.15, radar_lock_duration = 8.0, crit_chance = 0.05},
 		unlock_conditions = {required_level = 6}
 	},

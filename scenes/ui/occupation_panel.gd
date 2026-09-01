@@ -43,7 +43,7 @@ func _ready() -> void:
 	# 修复：原关闭只藏面板自身，Overlay/Backdrop 卡屏——改发 closed 信号交 main.gd 统一收 overlay
 	custom_minimum_size = DT.PANEL_SIZE_MEDIUM
 	var accent := DT.get_panel_accent("occupation")
-	add_theme_stylebox_override("panel", PanelStyles.make_panel_frame(accent))
+	add_theme_stylebox_override("panel", PanelStyles.make_panel_frame_textured(accent))
 	var chrome = PanelChrome.attach_to($Margin/VBox, "势力领地图", accent, "TERRITORY MAP")
 	chrome.closed.connect(_on_close)
 
@@ -147,7 +147,7 @@ func _refresh_legend() -> void:
 			status_color = fsm.get_faction_status_color(fid) if fsm.has_method("get_faction_status_color") else status_color
 		var status_l := Label.new()
 		status_l.text = "[%s]" % status_text
-		status_l.add_theme_font_size_override("font_size", DT.FONT_SIZE_XSMALL)
+		status_l.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
 		status_l.add_theme_color_override("font_color", status_color)
 		status_l.custom_minimum_size = Vector2(70, 0)
 		row.add_child(status_l)
@@ -157,7 +157,7 @@ func _refresh_legend() -> void:
 			territory_text = "%d关" % int(fsm.get_territory_count(fid))
 		var terr_l := Label.new()
 		terr_l.text = territory_text
-		terr_l.add_theme_font_size_override("font_size", DT.FONT_SIZE_XSMALL)
+		terr_l.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
 		terr_l.add_theme_color_override("font_color", Color(DT.COLOR_KIND_ARMOR.r, DT.COLOR_KIND_ARMOR.g, DT.COLOR_KIND_ARMOR.b, 0.85))
 		row.add_child(terr_l)
 		# 声望
@@ -166,7 +166,7 @@ func _refresh_legend() -> void:
 			rep_text = "声望%d" % int(fsm.get_faction_reputation(fid))
 		var rep_l := Label.new()
 		rep_l.text = rep_text
-		rep_l.add_theme_font_size_override("font_size", DT.FONT_SIZE_XSMALL)
+		rep_l.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
 		rep_l.add_theme_color_override("font_color", Color(DT.COLOR_TEXT_MID.r, DT.COLOR_TEXT_MID.g, DT.COLOR_TEXT_MID.b, 0.7))
 		row.add_child(rep_l)
 		_legend_container.add_child(row)

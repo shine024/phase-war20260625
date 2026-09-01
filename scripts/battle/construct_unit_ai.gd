@@ -907,6 +907,7 @@ static func _process_single_weapon_attack(u: CharacterBody2D, delta: float) -> v
 			if is_card_grid_active or dist <= fire_range:
 				u._attack_phase = u.AttackPhase.WINDUP
 				u._attack_phase_timer = 0.0
+				AttackPoseAnim.play_windup(u, wt, float(timing["windup"]))
 		u.AttackPhase.WINDUP:
 			u._attack_phase_timer += delta
 			if u._attack_phase_timer >= timing["windup"]:
@@ -1006,6 +1007,7 @@ static func _process_multi_weapons(u: CharacterBody2D, delta: float) -> void:
 				if is_card_grid_multi or dist <= eff_rng:
 					phase = u.AttackPhase.WINDUP
 					phase_timer = 0.0
+					AttackPoseAnim.play_windup(u, w_wt, float(timing["windup"]))
 			u.AttackPhase.WINDUP:
 				phase_timer += delta
 				if phase_timer >= timing["windup"]:

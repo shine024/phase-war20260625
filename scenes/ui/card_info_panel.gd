@@ -981,7 +981,17 @@ func _format_mod_effects_brief(mod_data: Dictionary) -> PackedStringArray:
 		eff = le[sorted_levels[sorted_levels.size() - 1]]
 	for key in eff.keys():
 		var val = eff[key]
-		var disp: String = _translate_mod_key(String(key))
+		var key_str := String(key)
+		# v22 四通道句式：`<stat>_set` → "X替换为N"；`<stat>_pct` → 按基础键翻译+百分比
+		if key_str.ends_with("_set"):
+			lines.append("%s替换为%d" % [
+				_translate_mod_key(key_str.substr(0, key_str.length() - 4)),
+				int(round(float(val)))])
+			if lines.size() >= 6:
+				break
+			continue
+		var tkey := key_str.substr(0, key_str.length() - 4) if key_str.ends_with("_pct") else key_str
+		var disp: String = _translate_mod_key(tkey)
 		if val is float and val >= 0.01 and val < 100.0:
 			lines.append("%s+%d%%" % [disp, int(val * 100)])
 		elif val is float and val <= -0.01:

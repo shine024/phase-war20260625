@@ -2,7 +2,7 @@
  "unit": "ww2_mg42",
  "unit_name": "MG42机枪组",
  "anim": "attack",
- "frames": 12,
+ "frames": 8,
  "frame_files": [
   "f00.png",
   "f01.png",
@@ -11,23 +11,20 @@
   "f04.png",
   "f05.png",
   "f06.png",
-  "f07.png",
-  "f08.png",
-  "f09.png",
-  "f10.png",
-  "f11.png"
+  "f07.png"
  ],
  "canvas": 512,
- "suggested_fps": 10,
+ "suggested_fps": 8,
  "foot_frac": 0.92,
  "union_bbox": [
-  0,
-  118,
-  704,
-  508
+  31,
+  136,
+  702,
+  560
  ],
  "model": "agnes-video-2.5-flash",
  "mode": "keyframe",
  "source_video": "source.mp4",
- "generated_at": "2026-08-29 23:05:31"
+ "generated_at": "2026-08-29 23:05:11",
+ "note": "原 attack 12帧已被 idle 8帧整体代替（2026-08-31 用户决定）；原件见 bak_orig_attack/"
 }

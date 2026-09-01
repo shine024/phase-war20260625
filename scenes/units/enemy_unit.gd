@@ -252,9 +252,9 @@ func apply_card_grid_enemy_presentation() -> void:
 	var hb := get_node_or_null("HpBar") as CanvasItem
 	if hb != null:
 		hb.visible = true
-		# 敌方 Sprite2D 有 z_index=1（见 enemy_unit.tscn），会盖住 z_index 默认 0 的 HpBar，
-		# 导致血条和 HP 数字被立绘遮挡。抬高 HpBar 根节点 z_index 到立绘之上。
-		(hb as Node2D).z_index = 10
+		# 血条 z 在 unit_hp_bar._ready 统一抬到 OVERHEAD_UI_Z（头顶 UI 带，立绘 z=10 之上），
+		# 此处兜底再钉一次；三行排布下前排立绘不再盖住后排单位血条。
+		(hb as Node2D).z_index = CardGridUnitVisuals.OVERHEAD_UI_Z
 		# 血条移到头顶：锚定实体顶部上方（与玩家单位对称）
 		var top_y: float = CardGridUnitVisuals.entity_top_y(spr) if spr != null else -50.0
 		hb.position = Vector2(0.0, top_y - 14.0)
@@ -1347,6 +1347,8 @@ func _process_attack_timing(delta: float) -> void:
 			if _is_card_grid_combat or dist <= fire_range:
 				_attack_phase = 1
 				_attack_phase_timer = 0.0
+				# v25.2 前摇预载：与玩家侧 construct_unit_ai 同构（蓄力→爆发弧线）
+				AttackPoseAnim.play_windup(self, wt, float(timing["windup"]))
 		1:  # WINDUP
 			_attack_phase_timer += delta
 			if _attack_phase_timer >= timing["windup"]:
@@ -1591,7 +1593,12 @@ func take_damage(amount: float, attacker: Variant = null) -> void:
 		if stats != null:
 			dmg_red = float(stats.damage_reduction)
 		dmg_red = minf(0.60, dmg_red + float(damage_reduction))
-		var hit: Dictionary = CardGridDamage.resolve_hit(amount, eff_def, dodge, dmg_red)
+		# v25.1: 巷战掩蔽接通（与 construct_unit 同构）——敌步兵同样吃受装甲/空攻击减伤，
+		# 与 v25.0 对称激活的装甲碾压构成双向克制（玩家装甲碾敌步兵同样被对冲）
+		var urban_red: float = 0.0
+		if stats != null and (attacker_kind == GC.CombatKind.ARMOR or attacker_kind == GC.CombatKind.AIR):
+			urban_red = maxf(0.0, float(stats.urban_defense_bonus))
+		var hit: Dictionary = CardGridDamage.resolve_hit(amount, eff_def, dodge, dmg_red, urban_red)
 		# v8.x: 闪避反馈——dodged 字段从不被读取，闪避时 hp_loss=0 静默走完流程且仍触发受击反馈。
 		# 现闪避即飘 MISS 并提前 return（与 construct_unit 口径一致）。
 		if bool(hit.get("dodged", false)):
@@ -1928,3 +1935,9 @@ func _materialize_enemy_deploy_ghost() -> void:
 	is_deploy_ghost = false
 	_ghost_materialize_time_left = 0.0
 	modulate = Color.WHITE
+	# v25.2 敌方实体化落地涟漪（橙红）——此前敌方实体化零特效，与玩家侧青蓝涟漪
+	# （construct_unit._play_materialize_fx）不对称，敌兵"啪"地出现无降临感。
+	# 只做涟漪不做火花：敌兵数量多，反馈预算收紧。走工厂对象池。
+	var vp: Node = get_parent()
+	if vp != null:
+		VfxImpactFactory.spawn_shockwave(vp, global_position, 36.0, Color(1.0, 0.55, 0.25, 0.75))

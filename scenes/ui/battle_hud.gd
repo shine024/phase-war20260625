@@ -141,7 +141,7 @@ func _process(delta: float) -> void:
 
 func _on_energy_changed(current: float, maximum: float) -> void:
 	if energy_label:
-		energy_label.text = "⚡ %d/%d" % [int(current), int(maximum)]
+		energy_label.text = "%d/%d" % [int(current), int(maximum)]
 
 func _on_phase_driver_hp_changed(current: float, maximum: float) -> void:
 	# 现在由 main.tscn 中的独立面板处理

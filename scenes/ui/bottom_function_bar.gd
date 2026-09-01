@@ -70,23 +70,16 @@ const BATTLE_BTN_ICON_BY_KEY: Dictionary = {
 }
 
 # 按钮配置：[key, 显示文字, 信号名]
-# v7.x: 功能按钮全部直接显示（"更多"菜单方案因图标渲染问题暂缓，保持平铺）
-# 2026-08-22 D3：补"成就/帮助"入口——两个面板早已做完（PanelChrome 统一框架）却无任何
-# 开启路径（成就解锁只弹 toast 无法回看，帮助面板完全不可达），典型"功能做好了玩家看不见"。
-# 14×62+间距 ≈ 940px < 1280 视口，不溢出。
+# v25.3 系统收敛（14→6）：战斗场景只保留战斗即时需要的功能——背包（换装）/成长（战前查养成）/
+# 地图（选关主链路）/设置/存档/挂机。其余 8 个纯养成查册面板（势力/任务/商店/排行/情报/
+# 图鉴/成就/帮助）只留基地入口（bunker EMBEDDED_PANELS 全有同款），战斗屏不再为 15 个系统
+# 打广告。main.gd 的面板 handler/overlay 机制保留不动（成长中枢转发 modification/evolution
+# 仍依赖），仅移除按钮与热键两个入口。
 const BTN_CONFIGS: Array = [
 	["backpack",     "背包",   "btn_backpack_pressed"],
 	["progression",  "成长",   "btn_progression_pressed"],
-	["faction",      "势力",   "btn_faction_pressed"],
-	["quest",        "任务",   "btn_quest_pressed"],
-	["store",        "商店",   "btn_store_pressed"],
 	["map",          "地图",   "btn_map_pressed"],
-	["leaderboard",  "排行",   "btn_leaderboard_pressed"],
-	["info",         "情报",   "btn_info_pressed"],
-	["collection",   "图鉴",   "btn_collection_pressed"],
-	["achievement",  "成就",   "btn_achievement_pressed"],
 	["settings",     "设置",   "btn_settings_pressed"],
-	["help",         "帮助",   "btn_help_pressed"],
 	["save",         "存档",   "btn_save_pressed"],
 	["afk",          "挂机",   "btn_afk_pressed"],
 ]
@@ -95,16 +88,8 @@ const BTN_CONFIGS: Array = [
 const SHORTCUT_TOOLTIPS: Dictionary = {
 	"backpack":     "背包：查看拥有的卡牌与实例（快捷键 1 / B）",
 	"progression":  "成长中枢：等级 / 改造 / 进化 / 技能树（快捷键 7）",
-	"faction":      "势力：声望 / 势力商店 / 技能（快捷键 4 / F）",
-	"quest":        "任务：委托与日常（快捷键 5 / Q）",
-	"store":        "公司商店：购买卡牌 / 符文 / 相位仪（快捷键 6 / T）",
 	"map":          "世界地图：选择关卡推进（快捷键 M）",
-	"leaderboard":  "排行榜（快捷键 8 / L）",
-	"info":         "情报中心：进化图谱 / 符文图鉴 / 敌方情报（快捷键 I）",
-	"collection":   "卡牌图鉴（快捷键 C）",
-	"achievement":  "成就（快捷键 A）",
 	"settings":     "设置（快捷键 9）",
-	"help":         "帮助：各系统玩法说明（快捷键 H）",
 	"save":         "手动存档",
 	"afk":          "挂机模式：自动部署刷资源",
 }

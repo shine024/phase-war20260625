@@ -241,7 +241,7 @@ func _add_toggle_row(title: String, desc: String, etype: String, eid: Variant) -
 	row.add_child(tl)
 	var dl := Label.new()
 	dl.text = desc
-	dl.add_theme_font_size_override("font_size", 11)
+	dl.add_theme_font_size_override("font_size", 12)
 	dl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	dl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	dl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
@@ -275,7 +275,7 @@ func _add_phase_toggle_row(title: String, desc: String, ab: Dictionary) -> void:
 	row.add_child(tl)
 	var dl := Label.new()
 	dl.text = desc
-	dl.add_theme_font_size_override("font_size", 11)
+	dl.add_theme_font_size_override("font_size", 12)
 	dl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	dl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	dl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
@@ -420,7 +420,7 @@ func _add_row_btn(title: String, desc: String, btn_text: String, callable: Calla
 	row.add_child(tl)
 	var dl := Label.new()
 	dl.text = desc
-	dl.add_theme_font_size_override("font_size", 11)
+	dl.add_theme_font_size_override("font_size", 12)
 	dl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	dl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	dl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
@@ -447,7 +447,7 @@ func _add_row_btns(title: String, desc: String, btns: Array) -> void:
 	row.add_child(tl)
 	var dl := Label.new()
 	dl.text = desc
-	dl.add_theme_font_size_override("font_size", 11)
+	dl.add_theme_font_size_override("font_size", 12)
 	dl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	dl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	dl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
@@ -471,7 +471,7 @@ func _add_row_disabled(title: String, desc: String, parent: Container = null) ->
 	row.add_child(tl)
 	var dl := Label.new()
 	dl.text = desc
-	dl.add_theme_font_size_override("font_size", 11)
+	dl.add_theme_font_size_override("font_size", 12)
 	dl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	dl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	dl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
@@ -837,7 +837,7 @@ func _add_mech_toggle_row(title: String, desc: String, mech_id: String) -> void:
 	row.add_child(tl)
 	var dl := Label.new()
 	dl.text = desc
-	dl.add_theme_font_size_override("font_size", 11)
+	dl.add_theme_font_size_override("font_size", 12)
 	dl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	dl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	dl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER

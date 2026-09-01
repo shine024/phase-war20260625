@@ -11,8 +11,8 @@ const BunkerRoomDefs = preload("res://data/bunker_room_defs.gd")
 const DT = preload("res://resources/design_tokens.gd")
 
 const STAR_COL := Color(0.80, 0.88, 1.0)
-const LAMP_COL := Color(0.0, 0.94, 1.0)
-const FLOW_COL := Color(0.0, 0.94, 1.0)
+const LAMP_COL := DT.COLOR_ACCENT_CYAN
+const FLOW_COL := DT.COLOR_ACCENT_CYAN
 const SPARK_COL := Color(1.0, 0.72, 0.25)
 
 var _manager: Node

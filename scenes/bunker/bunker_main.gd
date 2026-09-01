@@ -82,6 +82,9 @@ var _bubble_layer: Control = null  # v23.6(归仓)：战利品收取气泡层（
 var _is_night := false
 var _pending_room_id := ""
 var _current_room_id := "entry_hall"   # 光点所在房（寻路 via 链起点）
+var _wakeup_active := false            # v24：醒来演出播放中（屏蔽引导卡与点击）
+var _wakeup_root: Control = null
+var _wakeup_tween: Tween = null
 
 func _ready() -> void:
 	DesignTokens.ensure_cjk_fallback()
@@ -112,7 +115,7 @@ func _ready() -> void:
 		AudioManager.play_music("hub")
 	call_deferred("_check_sanity_zero")
 	call_deferred("_check_stage_transition")
-	call_deferred("_maybe_show_intro")
+	call_deferred("_maybe_play_wakeup")
 
 func _exit_tree() -> void:
 	if _manager and _manager.has_method("stash_runtime_state"):
@@ -316,7 +319,7 @@ func _build_ui_layers() -> void:
 
 	_stage_overlay = ColorRect.new()
 	_stage_overlay.set_anchors_preset(Control.PRESET_FULL_RECT)
-	_stage_overlay.color = Color(0.0, 0.0, 0.0, 0.0)
+	_stage_overlay.color = DT.COLOR_TRANSPARENT
 	_stage_overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	stage.add_child(_stage_overlay)
 	_stage_label = Label.new()
@@ -605,7 +608,7 @@ func _ensure_embed_wrapper(panel_id: String) -> Control:
 		_attach_embed_instrument_bar(wrapper, center, panel)
 	return wrapper
 
-## 把相位仪栏挂进背包内嵌 wrapper：底部居中，隐藏死按钮（菜单只认主场景的
+## 把相位仪栏挂进背包内嵌 wrapper：贴底全出血（同主场景），隐藏死按钮（菜单只认主场景的
 ## BottomFunctionBar 兄弟节点），相位仪等级标签点击改为直达背包相位仪页签。
 func _attach_embed_instrument_bar(wrapper: Control, center: Control, bp: Control) -> void:
 	if wrapper.has_node("EmbedInstrumentBar"):
@@ -629,20 +632,30 @@ func _attach_embed_instrument_bar(wrapper: Control, center: Control, bp: Control
 			if bp != null and is_instance_valid(bp) and bp.has_method("switch_to_phase_instruments_tab"):
 				bp.switch_to_phase_instruments_tab())
 	_layout_embed_instrument_bar.call_deferred(bar, wrapper)
+	# 槽位/名称区在挂载测量之后才完成布局（换相位仪重建、等级文本变化都会改 min 尺寸），
+	# min 变化时重排一次，保证贴底高度与内容带同步
+	if not bar.minimum_size_changed.is_connected(_on_embed_bar_min_size_changed):
+		bar.minimum_size_changed.connect(_on_embed_bar_min_size_changed.bind(bar, wrapper))
 
-## 栏贴 wrapper 底部居中（等 _ready 出内容最小宽后再落位）；内容带高同步按栏实际高修正
+## min 尺寸变化 → 重排内嵌相位仪栏（连接挂在 bar 自身信号上，bar 释放时自动断开）
+func _on_embed_bar_min_size_changed(bar: Control, wrapper: Control) -> void:
+	_layout_embed_instrument_bar(bar, wrapper)
+
+## 栏贴 wrapper 底部、左右 16px 全出血（与主场景 BattleBottomBar 同构图：anchor 0→1 + 边距）。
+## 旧实现按挂载时实测 min 宽做"点锚定+定宽居中"，底栏内容（槽位/名称区）布局完成晚于测量，
+## 实际 min 宽超出定宽后 PanelContainer 从 offset_left 向右撑开 → 整条右移出屏（用户截图：
+## 栏起于 x≈320、符文槽被右缘裁切）。全出血锚定下宽度恒等于 wrapper-32，内容再宽也不偏移。
 func _layout_embed_instrument_bar(bar: Control, wrapper: Control) -> void:
 	if not is_instance_valid(bar) or not bar.is_inside_tree():
 		return
-	var ms: Vector2 = bar.get_minimum_size()
-	var w: float = maxf(ms.x, 520.0)
-	var band: float = ms.y + 22.0  # 底边距 22 与主场景一致
-	bar.anchor_left = 0.5
-	bar.anchor_right = 0.5
+	var ms: Vector2 = bar.get_combined_minimum_size()
+	var band: float = maxf(ms.y, 64.0) + 22.0  # 底边距 22 与主场景一致；64 = 栏固定高
+	bar.anchor_left = 0.0
+	bar.anchor_right = 1.0
 	bar.anchor_top = 1.0
 	bar.anchor_bottom = 1.0
-	bar.offset_left = -w * 0.5
-	bar.offset_right = w * 0.5
+	bar.offset_left = 16.0
+	bar.offset_right = -16.0
 	bar.offset_top = -band
 	bar.offset_bottom = -22.0
 	var center: Control = wrapper.get_node_or_null("EmbedCenter")
@@ -721,6 +734,10 @@ func _on_back_to_title() -> void:
 	get_tree().change_scene_to_file("res://scenes/title_screen.tscn")
 
 func _unhandled_input(event: InputEvent) -> void:
+	# v24：醒来演出中按任意键跳过（鼠标点击走 WakeupCinematic.gui_input）
+	if _wakeup_active and event is InputEventKey and event.is_pressed():
+		_finish_wakeup()
+		return
 	if event is InputEventKey or event is InputEventMouseButton:
 		if _monologue_timer and not _monologue_timer.is_stopped():
 			_monologue_timer.start()
@@ -805,3 +822,247 @@ func _maybe_show_intro() -> void:
 	vbox.add_child(ok_btn)
 
 const ACCENT_INTRO := Color(1.0, 0.72, 0.32)
+
+# ───────────────────── v24：序章醒来演出（B8，方案9 实机衔接） ─────────────────────
+
+## 漫画开场（scenes/intro/comic_intro.tscn）收尾携 META_WAKEUP 切入本场景：
+## 黑幕梦呓 → 睁眼（含回眨）→ 三拍梦境闪回 → 画外音落定 → 放首次引导卡。
+## 无标记（续档/标题直进）= 直接走 _maybe_show_intro 旧路径，零感知。
+const META_WAKEUP := "bunker_intro_wakeup_pending"
+
+func _maybe_play_wakeup() -> void:
+	var pending := Engine.has_meta(META_WAKEUP)
+	if pending:
+		Engine.remove_meta(META_WAKEUP)
+	if pending and _manager != null and _manager.has_method("mark_comic_seen"):
+		_manager.mark_comic_seen()   # 开场已完整播放（或跳过），落档防重播
+	if not pending:
+		_maybe_show_intro()
+		return
+	_play_wakeup_cinematic()
+
+func _play_wakeup_cinematic() -> void:
+	_wakeup_active = true
+	var root := Control.new()
+	root.name = "WakeupCinematic"
+	root.size = Vector2(1280, 720)
+	root.mouse_filter = Control.MOUSE_FILTER_STOP   # 演出期间挡住房间点击
+	root.gui_input.connect(func(ev: InputEvent):
+		if ev is InputEventMouseButton and ev.is_pressed():
+			_finish_wakeup())
+	_ui_stage.add_child(root)
+	_wakeup_root = root
+
+	# 眼睑：上下两片黑（闭合态 = 全黑）
+	var lid_top := ColorRect.new()
+	lid_top.color = Color(0, 0, 0)
+	lid_top.position = Vector2.ZERO
+	lid_top.size = Vector2(1280, 360)
+	lid_top.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	root.add_child(lid_top)
+	var lid_bot := ColorRect.new()
+	lid_bot.color = Color(0, 0, 0)
+	lid_bot.position = Vector2(0, 360)
+	lid_bot.size = Vector2(1280, 360)
+	lid_bot.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	root.add_child(lid_bot)
+
+	var thought := Label.new()
+	thought.position = Vector2(140, 250)
+	thought.size = Vector2(1000, 60)
+	thought.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	thought.add_theme_font_size_override("font_size", DT.FONT_SIZE_LARGE)
+	thought.add_theme_color_override("font_color", Color(0.6, 0.68, 0.8, 0.85))
+	thought.text = "（太阳穴一跳一跳地疼……又是那个梦。）"
+	thought.modulate.a = 0.0
+	thought.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	root.add_child(thought)
+
+	var flash := ColorRect.new()
+	flash.color = Color(1, 0.25, 0.15, 0)
+	flash.size = Vector2(1280, 720)
+	flash.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	root.add_child(flash)
+	var flash_label := Label.new()
+	flash_label.position = Vector2(90, 300)
+	flash_label.size = Vector2(1100, 120)
+	flash_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	flash_label.add_theme_font_size_override("font_size", DT.FONT_SIZE_TITLE)
+	flash_label.add_theme_color_override("font_color", Color(0.95, 0.93, 0.88))
+	flash_label.modulate.a = 0.0
+	flash_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	root.add_child(flash_label)
+
+	var dim := ColorRect.new()
+	dim.color = DT.COLOR_TRANSPARENT
+	dim.size = Vector2(1280, 720)
+	dim.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	root.add_child(dim)
+	var sub := Label.new()
+	sub.position = Vector2(100, 596)
+	sub.size = Vector2(1080, 80)
+	sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	sub.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	sub.add_theme_font_size_override("font_size", DT.FONT_SIZE_LARGE)
+	sub.add_theme_color_override("font_color", Color(0.72, 0.82, 0.95, 0.9))
+	sub.modulate.a = 0.0
+	sub.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	root.add_child(sub)
+
+	var hint := Label.new()
+	hint.position = Vector2(1080, 690)
+	hint.size = Vector2(180, 22)
+	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	hint.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
+	hint.add_theme_color_override("font_color", Color(0.75, 0.75, 0.8))
+	hint.text = "点击跳过 ▸"
+	hint.modulate.a = 0.0
+	hint.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	root.add_child(hint)
+
+	var beats := [
+		{"text": "天，是裂的。", "col": Color(0.9, 0.2, 0.12, 0.72), "sfx": "enhance"},
+		{"text": "两个空间重合——最终只会剩下一个。", "col": Color(0.5, 0.35, 0.9, 0.65), "sfx": "enhance"},
+		{"text": "「去拿属于你的力量。」", "col": Color(0.2, 0.7, 0.85, 0.55), "sfx": "card_pickup"},
+	]
+
+	var tw := create_tween()
+	_wakeup_tween = tw
+	# A 梦呓
+	tw.tween_interval(0.7)
+	tw.tween_property(thought, "modulate:a", 1.0, 0.6)
+	tw.tween_interval(1.7)
+	tw.tween_property(thought, "modulate:a", 0.0, 0.45)
+	# B 睁眼（开→快速回眨→再开）
+	tw.tween_property(lid_top, "size:y", 0.0, 1.0).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	tw.parallel().tween_property(lid_bot, "position:y", 720.0, 1.0).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	tw.parallel().tween_property(lid_bot, "size:y", 0.0, 1.0).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	tw.tween_property(lid_top, "size:y", 360.0, 0.22)
+	tw.parallel().tween_property(lid_bot, "position:y", 360.0, 0.22)
+	tw.parallel().tween_property(lid_bot, "size:y", 360.0, 0.22)
+	tw.tween_property(lid_top, "size:y", 0.0, 0.5).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	tw.parallel().tween_property(lid_bot, "position:y", 720.0, 0.5).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	tw.parallel().tween_property(lid_bot, "size:y", 0.0, 0.5).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	tw.tween_property(hint, "modulate:a", 0.45, 0.4)
+	# C 三拍梦境闪回
+	for b in beats:
+		var beat: Dictionary = b
+		var col: Color = beat["col"]
+		tw.tween_callback(func():
+			flash.color = Color(col.r, col.g, col.b, 0.0)
+			flash_label.text = str(beat["text"])
+			if SignalBus != null and SignalBus.has_signal("play_sound"):
+				SignalBus.play_sound.emit(str(beat["sfx"])))
+		tw.tween_property(flash, "color:a", col.a, 0.12)
+		tw.parallel().tween_property(flash_label, "modulate:a", 1.0, 0.16)
+		tw.tween_interval(0.85)
+		tw.tween_property(flash, "color:a", 0.0, 0.45)
+		tw.parallel().tween_property(flash_label, "modulate:a", 0.0, 0.4)
+	# D 画外音落定
+	tw.tween_property(dim, "color:a", 0.42, 0.6)
+	tw.tween_callback(func(): sub.text = "从床沿坐起。头顶是岩层，四周是陌生仪器的微光。")
+	tw.tween_property(sub, "modulate:a", 1.0, 0.5)
+	tw.tween_interval(2.5)
+	tw.tween_property(sub, "modulate:a", 0.0, 0.5)
+	tw.tween_callback(func(): sub.text = "梦里的“我”说过——机会，就在这座要塞里。")
+	tw.tween_property(sub, "modulate:a", 1.0, 0.5)
+	tw.tween_interval(2.6)
+	# E 相位仪三拍教学（v24.7：手腕相位仪 → 纸条 → 床下背包；图缺失时仅字幕兜底）
+	tw.tween_callback(func(): _wakeup_teach_beat(root, sub, 0))
+	tw.tween_interval(3.2)
+	tw.tween_callback(func(): _wakeup_teach_beat(root, sub, 1))
+	tw.tween_interval(4.2)
+	tw.tween_callback(func(): _wakeup_teach_beat(root, sub, 2))
+	tw.tween_interval(3.2)
+	# F 收场 → 引导卡
+	tw.tween_property(root, "modulate:a", 0.0, 0.9)
+	tw.tween_callback(_finish_wakeup)
+
+## v24.7 醒来演出教学三拍：0=手腕相位仪图 1=纸条（相位仪装卡）2=床下背包图（起始卡）
+## 图走 FLOW 生成（assets/intro/wakeup_*.png，缺图自动退化为纯字幕），由主 tween 驱动时序
+func _wakeup_teach_beat(root: Control, sub: Label, beat: int) -> void:
+	if not _wakeup_active:
+		return
+	var vp := Vector2(1280, 720)
+	var img_path := ""
+	var caption := ""
+	if beat == 0:
+		img_path = "res://assets/intro/wakeup_wrist.png"
+		caption = "手腕上的相位仪微微发亮——三个卡槽，空着。"
+	elif beat == 1:
+		caption = ""
+	else:
+		img_path = "res://assets/intro/wakeup_backpack.png"
+		caption = "床下的背包里，静静躺着几张卡。"
+	# 图（有图才铺满）
+	var tex: TextureRect = null
+	if img_path != "" and ResourceLoader.exists(img_path):
+		tex = TextureRect.new()
+		tex.name = "TeachImg"
+		tex.texture = load(img_path)
+		tex.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		tex.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+		tex.size = vp
+		tex.modulate.a = 0.0
+		tex.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		root.add_child(tex)
+	# 纸条（beat 1：浅纸面板 + 手写字感的说明）
+	var note: PanelContainer = null
+	if beat == 1:
+		note = PanelContainer.new()
+		note.name = "TeachNote"
+		var sb := StyleBoxFlat.new()
+		sb.bg_color = Color(0.87, 0.82, 0.68, 0.96)
+		sb.border_color = Color(0.55, 0.45, 0.3, 0.9)
+		sb.set_border_width_all(2)
+		sb.set_corner_radius_all(4)
+		sb.set_content_margin_all(20.0)
+		note.add_theme_stylebox_override("panel", sb)
+		note.position = Vector2(390, 220)
+		note.custom_minimum_size = Vector2(500, 0)
+		note.rotation_degrees = -1.5
+		note.modulate.a = 0.0
+		note.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var nv := VBoxContainer.new()
+		note.add_child(nv)
+		var nt := Label.new()
+		nt.text = "（一张压在枕头下的纸条）"
+		nt.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
+		nt.add_theme_color_override("font_color", Color(0.4, 0.35, 0.28))
+		nv.add_child(nt)
+		var nb := Label.new()
+		nb.text = "相位仪装载卡片，卡片便能随你出战。\n起始的几张贴身放在床下背包里。\n　　　　　　　　　　　　——留给醒来的人"
+		nb.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		nb.add_theme_font_size_override("font_size", DT.FONT_SIZE_BODY)
+		nb.add_theme_color_override("font_color", Color(0.22, 0.19, 0.14))
+		nv.add_child(nb)
+		root.add_child(note)
+	# 淡出上一拍内容与旧字幕
+	var ft := create_tween()
+	for old_name in ["TeachImg", "TeachNote"]:
+		var old = root.get_node_or_null(NodePath(old_name))
+		if old != null and is_instance_valid(old):
+			ft.parallel().tween_property(old, "modulate:a", 0.0, 0.35)
+	ft.parallel().tween_property(sub, "modulate:a", 0.0, 0.3)
+	# 淡入本拍
+	ft.tween_interval(0.35)
+	ft.tween_callback(func(): sub.text = caption)
+	ft.set_parallel(true)
+	if tex != null:
+		ft.tween_property(tex, "modulate:a", 1.0, 0.5)
+	if note != null:
+		ft.tween_property(note, "modulate:a", 1.0, 0.45)
+	if caption != "":
+		ft.tween_property(sub, "modulate:a", 1.0, 0.45)
+
+## 跳过 / 收场共用：清演出 → 交回 _maybe_show_intro（引导卡时序不乱）
+func _finish_wakeup() -> void:
+	if not _wakeup_active:
+		return
+	_wakeup_active = false
+	if _wakeup_tween != null and _wakeup_tween.is_valid():
+		_wakeup_tween.kill()
+	if _wakeup_root != null and is_instance_valid(_wakeup_root):
+		_wakeup_root.queue_free()
+	_wakeup_root = null
+	_maybe_show_intro()

@@ -5,6 +5,8 @@ const GC = preload("res://resources/game_constants.gd")
 const DT = preload("res://resources/design_tokens.gd")
 const BasicResources = preload("res://data/basic_resources.gd")
 const FormatUtil = preload("res://scripts/ui/format_util.gd")
+const PanelStyles = preload("res://scripts/ui/panel_styles.gd")
+const UiAssetLoader = preload("res://scripts/ui_asset_loader.gd")
 
 var _energy_label: Label
 var _nano_material_label: Label
@@ -22,6 +24,8 @@ func _ready() -> void:
 	custom_minimum_size = Vector2(0, 40)
 	size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	# v25 UI：HUD 家族底板（原为无背景裸奔，10px 数字 + emoji 图标）
+	add_theme_stylebox_override("panel", PanelStyles.make_hud_panel(0.3))
 
 	_build_ui()
 	_connect_signals()
@@ -44,20 +48,24 @@ func _build_ui() -> void:
 	hbox.add_theme_constant_override("separation", 16)
 	margin.add_child(hbox)
 
-	# 战斗能量（C2: 收敛 DT.COLOR_RES_*）
-	_energy_label = _create_resource_item(hbox, "⚡",
+	# 战斗能量（C2: 收敛 DT.COLOR_RES_*；v25 接真图标 assets/ui/icons/res_*.png）
+	_energy_label = _create_resource_item(hbox,
+		UiAssetLoader.load_tex("res://assets/ui/icons/res_energy.png"),
 		"战斗能量\n战斗中部署卡牌所需的能量，随时间自动恢复", DT.COLOR_RES_ENERGY)
 
 	# 纳米材料（basic_nano 是其废弃别名，同一数值不再重复显示）
-	_nano_material_label = _create_resource_item(hbox, "🔷",
+	_nano_material_label = _create_resource_item(hbox,
+		UiAssetLoader.load_tex("res://assets/ui/icons/res_nano.png"),
 		_resource_tooltip(BasicResources.ID_NANO_MATERIALS), DT.COLOR_RES_NANO)
 
 	# 合金
-	_alloy_label = _create_resource_item(hbox, "🔶",
+	_alloy_label = _create_resource_item(hbox,
+		UiAssetLoader.load_tex("res://assets/ui/icons/res_alloy.png"),
 		_resource_tooltip(BasicResources.ID_ALLOY), DT.COLOR_RES_ALLOY)
 
 	# 晶体
-	_crystal_label = _create_resource_item(hbox, "💎",
+	_crystal_label = _create_resource_item(hbox,
+		UiAssetLoader.load_tex("res://assets/ui/icons/res_crystal.png"),
 		_resource_tooltip(BasicResources.ID_CRYSTAL), DT.COLOR_RES_CRYSTAL)
 
 	# P1-6: 图标容器映射（飘字定位用；战斗能量/蓝图/情报非 BasicResource，不参与飘字）
@@ -65,13 +73,15 @@ func _build_ui() -> void:
 	_icon_vboxes[BasicResources.ID_ALLOY] = _alloy_label.get_parent()
 	_icon_vboxes[BasicResources.ID_CRYSTAL] = _crystal_label.get_parent()
 
-	# 已解锁蓝图
-	_blueprint_count_label = _create_resource_item(hbox, "📜",
-		"已解锁蓝图\n已解锁图板的卡牌种类数，解锁后可在制造面板生产", Color(0.4, 0.7, 1.0, 1.0))
+	# 已解锁蓝图（蓝图体系退役后口径=图鉴收集数，用 Lucide 收藏图标）
+	_blueprint_count_label = _create_resource_item(hbox,
+		UiAssetLoader.ui_icon("icon_collection"),
+		"图鉴收集\n已拥有过的卡牌种类数，可在图鉴面板浏览", DT.COLOR_TEXT_MID)
 
 	# 情报
-	_lore_count_label = _create_resource_item(hbox, "📖",
-		"情报\n已解锁的世界观情报条目数，可在情报中心浏览", Color(0.9, 0.7, 0.2, 1.0))
+	_lore_count_label = _create_resource_item(hbox,
+		UiAssetLoader.load_tex("res://assets/ui/icons/res_lore.png"),
+		"情报\n已解锁的世界观情报条目数，可在情报中心浏览", DT.COLOR_TEXT_MID)
 
 func _resource_tooltip(res_id: String) -> String:
 	var def := BasicResources.get_def(res_id)
@@ -79,23 +89,27 @@ func _resource_tooltip(res_id: String) -> String:
 		return res_id
 	return "%s\n%s" % [def.get("name", res_id), def.get("desc", "")]
 
-func _create_resource_item(parent: Container, icon: String, tooltip: String, color: Color) -> Label:
+func _create_resource_item(parent: Container, icon: Texture2D, tooltip: String, color: Color) -> Label:
 	var vbox = VBoxContainer.new()
 	vbox.add_theme_constant_override("separation", 2)
 	vbox.tooltip_text = tooltip
 	parent.add_child(vbox)
 
-	var icon_lbl = Label.new()
-	icon_lbl.text = icon
-	icon_lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_BODY)
-	icon_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	icon_lbl.modulate = color
-	vbox.add_child(icon_lbl)
+	# v25 UI：真贴图图标替代 emoji（图标色彩由美术自带，不再 modulate 染色）
+	var icon_rect = TextureRect.new()
+	icon_rect.texture = icon
+	icon_rect.custom_minimum_size = Vector2(18, 18)
+	icon_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	icon_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	icon_rect.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	icon_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	vbox.add_child(icon_rect)
 
 	var value_lbl = Label.new()
 	value_lbl.name = "ValueLabel"
 	value_lbl.text = "0"
-	value_lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_XSMALL)
+	# v25 UI：10px 数字升 12（中文/数字可读性下限）
+	value_lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
 	value_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	value_lbl.modulate = color
 	vbox.add_child(value_lbl)
@@ -248,7 +262,7 @@ func _flush_delta_floats() -> void:
 			continue
 		var lbl := Label.new()
 		lbl.text = ("+%d" % delta) if delta > 0 else str(delta)
-		lbl.add_theme_font_size_override("font_size", 13)
+		lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_BODY)
 		lbl.add_theme_color_override("font_color",
 			DT.COLOR_HEALTH if delta > 0 else DT.COLOR_DANGER)
 		lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE

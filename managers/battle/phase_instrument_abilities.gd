@@ -1012,10 +1012,12 @@ static func _create_nano_swarm_cloud(center: Vector2, owner: Owner) -> void:
 	ring.scale = Vector2(0.1, 0.1)
 	cloud.add_child(ring)
 
+	# 环展开 2s → 停 1.5s → 整云释放。
+	# ⚠️ 勿改回 set_parallel(true) + tween_callback：callback 在并行组里 0s 即触发，
+	# 整个虫云（含 v14 调的粒子层）建立当帧就被 queue_free，从未展示过（2026-08-31 实测）。
 	var tw := cloud.create_tween()
-	tw.set_parallel(true)
 	tw.tween_property(ring, "scale", Vector2(2.0, 2.0), 2.0).set_ease(Tween.EASE_OUT)
-	tw.tween_property(ring, "color:a", 0.0, 2.0).set_ease(Tween.EASE_IN)
+	tw.parallel().tween_property(ring, "color:a", 0.0, 2.0).set_ease(Tween.EASE_IN)
 	tw.tween_interval(1.5)
 	tw.tween_callback(func(): cloud.queue_free())
 

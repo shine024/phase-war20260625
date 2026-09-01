@@ -29,7 +29,7 @@ const DAMAGE_STYLES: Dictionary = {
 	"heal": {
 		"font_size": 18,
 		# C8: 色相对齐 DT.COLOR_GREEN_BRIGHT（UI 治疗绿同一语义；原 (0.2,1,4) s=1 刺眼）
-		"color": Color(0.3, 0.92, 0.5, 1.0),
+		"color": DesignTokens.COLOR_GREEN_BRIGHT,
 		"outline_color": Color(0.0, 0.3, 0.1, 0.8),
 		"scale": 0.95,
 		"glow_color": Color(0.3, 0.92, 0.5, 0.8),  # v8.3 绿色发光
@@ -100,7 +100,7 @@ const DAMAGE_STYLES: Dictionary = {
 	"counter_break": {
 		"font_size": 20,
 		# C8: 金色对齐 DT.COLOR_GOLD（同文件 critical_out 同为 0.85/0.35，统一一个金）
-		"color": Color(1.0, 0.85, 0.35, 1.0),
+		"color": DesignTokens.COLOR_GOLD,
 		"outline_color": Color(0.45, 0.3, 0.0, 0.9),
 		"scale": 1.05,
 		"glow_color": Color(1.0, 0.8, 0.3, 0.85),
@@ -123,7 +123,7 @@ const DAMAGE_STYLES: Dictionary = {
 	# v13.1: 敌人身上跳的暴击改金色（红色留给"我方被打"语义），我方暴击保持红
 	"critical_out": {
 		"font_size": 24,
-		"color": Color(1.0, 0.85, 0.35, 1.0),
+		"color": DesignTokens.COLOR_GOLD,
 		"outline_color": Color(0.5, 0.3, 0.0, 0.9),
 		"scale": 1.12,
 		"glow_color": Color(1.0, 0.85, 0.35, 0.9),
@@ -132,7 +132,7 @@ const DAMAGE_STYLES: Dictionary = {
 	# v7.x：大额伤害（>500）专用——金色 outline + 更大 scale，强化"重击"感
 	"big_crit": {
 		"font_size": 28,
-		"color": Color(1.0, 0.85, 0.35, 1.0),
+		"color": DesignTokens.COLOR_GOLD,
 		"outline_color": Color(0.5, 0.3, 0.0, 0.95),
 		"scale": 1.5,
 		"glow_color": Color(1.0, 0.85, 0.35, 0.95),  # v8.3 金色发光

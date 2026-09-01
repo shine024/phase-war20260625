@@ -51,6 +51,7 @@ const DATA: Dictionary = {
 	conflict_group = "fire_rate",
 	# v7.x: per-slot 弹道——对轻装槽改 SHOTGUN 散射弹道
 	condition_slot = 0,
+	era_band = [0, 1],
 	effects = {
 		attack_interval = -0.15,  # -15%
 		weapon_type = 5,  # v6.5 SHOTGUN spread（单位级默认）
@@ -76,12 +77,17 @@ const DATA: Dictionary = {
 	conflict_group = "damage",
 	# v7.x: per-slot 弹道——对轻装槽改 DIRECT 直射
 	condition_slot = 0,
+	# v22 替换通道试点：换装=确定攻击力。attack_light_set 以二战基准声明（≈卡池
+	# 二战对轻中位 71 的 1.3 倍），装到低于该值的卡上直接替换为新值（"老卡换新枪"
+	# 语义）；高于该值的卡不生效（更优才生效守卫）。时代带 [1,2]：突击步枪是
+	# 二战~冷战科技，现代/未来步枪本就以突击步枪为基础，无可换装对象。
+	era_band = [1, 2],
 	effects = {
-		attack_light = 8,
+		attack_light_set = 90,  # 替换为 90（二战基准；era2 宿主自动缩放为 135）
 		weapon_type = 0,  # v6.5 DIRECT（单位级默认）
 		slot_weapon_type = 0,  # v7.x: 对轻装槽直射化
 	},
-	level_effects = {1: {attack_light = 8, weapon_type = 0, slot_weapon_type = 0}, 2: {attack_light = 14, weapon_type = 0, slot_weapon_type = 0}, 3: {attack_light = 21, weapon_type = 0, slot_weapon_type = 0}},
+	level_effects = {1: {attack_light_set = 90, weapon_type = 0, slot_weapon_type = 0}, 2: {attack_light_set = 105, weapon_type = 0, slot_weapon_type = 0}, 3: {attack_light_set = 120, weapon_type = 0, slot_weapon_type = 0}},
 	unlock_conditions = {
 		required_level = 2,
 	}
@@ -100,6 +106,7 @@ const DATA: Dictionary = {
 		cost_install = 75,
 		slot_type = "weapon",
 		conflict_group = "damage",
+		era_band = [2, 4],
 		effects = {
 			attack_light = 7,
 			attack_interval = -0.05,
@@ -123,6 +130,7 @@ const DATA: Dictionary = {
 		cost_install = 65,
 		slot_type = "weapon",
 		conflict_group = "ergonomics",
+		era_band = [3, 4],
 		effects = {
 			attack_range = 20,  # +20px
 			deploy_speed = 1,   # +1
@@ -207,13 +215,17 @@ const DATA: Dictionary = {
 	power_mult = 1.3,
 		cost_research = 140,
 		cost_install = 70,
-		slot_type = "optics",
-		conflict_group = "optics",
-		effects = {
-			attack_range = 30,     # +30px
-			crit_chance = 0.05,   # +5%
-			true_damage = 8,      # v8.6: 补真实伤害（瞄准镜=精准命中要害）
-		},
+	slot_type = "optics",
+	conflict_group = "optics",
+	# v22 时代带：机械/光电瞄准镜是一战~现代科技；近未来激光武器自带集成火控，
+	# 外挂光学镜无意义（全息/热成像归 inf_08/inf_21 谱系）。true_damage 为攻击族
+	# flat，按宿主时代自动缩放（ref_era=0 基准声明）。
+	era_band = [0, 3],
+	effects = {
+		attack_range = 30,     # +30px
+		crit_chance = 0.05,   # +5%
+		true_damage = 8,      # v8.6: 补真实伤害（瞄准镜=精准命中要害）
+	},
 		unlock_conditions = {
 			required_level = 2,
 		}
@@ -230,12 +242,14 @@ const DATA: Dictionary = {
 	power_mult = 1.3,
 		cost_research = 130,
 		cost_install = 65,
-		slot_type = "optics",
-		conflict_group = "optics",
-		effects = {
-			attack_interval = -0.08,  # -8%
-			dodge_chance = 0.03,      # +3%
-		},
+	slot_type = "optics",
+	conflict_group = "optics",
+	# v22 时代带：全息瞄具是现代科技（与光学镜 inf_07 [0,3] 分谱系）
+	era_band = [3, 4],
+	effects = {
+		attack_interval = -0.08,  # -8%
+		dodge_chance = 0.03,      # +3%
+	},
 		unlock_conditions = {
 			required_level = 2,
 		}
@@ -277,6 +291,7 @@ const DATA: Dictionary = {
 	conflict_group = "fire_rate",
 	# v7.x: per-slot 弹道——对轻装槽改 MG(2) 机枪压制弹道
 	condition_slot = 0,
+	era_band = [2, 4],
 	effects = {
 		attack_light = 0.20,      # +20%
 		move_speed = -10,         # -10px/s 副作用
@@ -301,6 +316,7 @@ const DATA: Dictionary = {
 		cost_install = 80,
 		slot_type = "armor",
 		conflict_group = "armor",
+		era_band = [2, 4],
 		effects = {
 			max_hp = 60,
 			defense_light = 15,
@@ -324,6 +340,7 @@ const DATA: Dictionary = {
 		cost_install = 90,
 		slot_type = "armor",
 		conflict_group = "armor",
+		era_band = [2, 4],
 		effects = {
 			defense_armor = 15,
 			defense_light = 10,
@@ -347,6 +364,7 @@ const DATA: Dictionary = {
 		cost_install = 50,
 		slot_type = "helmet",
 		conflict_group = "helmet",
+		era_band = [3, 4],
 		effects = {
 			crit_resist = 0.10,     # +10% 暴击抗性
 			dodge_chance = 0.03,    # +3%
@@ -414,6 +432,7 @@ const DATA: Dictionary = {
 		cost_install = 200,
 		slot_type = "exoskeleton",
 		conflict_group = "exoskeleton",
+		era_band = [3, 4],
 		effects = {
 			move_speed = 15,        # +15px/s
 			deploy_speed = 1,       # +1
@@ -479,6 +498,7 @@ const DATA: Dictionary = {
 		cost_install = 70,
 		slot_type = "comms",
 		conflict_group = "comms",
+		era_band = [1, 4],
 		effects = {
 			attack_interval = -0.05,  # -5% 呼叫支援
 			ally_bonus = 0.03,        # 周围友军+3%命中
@@ -501,6 +521,7 @@ const DATA: Dictionary = {
 		cost_install = 80,
 		slot_type = "optics",
 		conflict_group = "optics",
+		era_band = [2, 4],
 		effects = {
 			# 特殊：夜间/黑暗地形 attack_light +15%
 			night_bonus = 0.15,
@@ -523,6 +544,7 @@ const DATA: Dictionary = {
 		cost_install = 120,
 		slot_type = "optics",
 		conflict_group = "optics",
+		era_band = [3, 4],
 		effects = {
 			smoke_ignore = true,     # 无视烟雾
 			crit_chance = 0.08,       # +8%
@@ -643,6 +665,7 @@ const DATA: Dictionary = {
 		cost_install = 150,
 		slot_type = "weapon",
 		conflict_group = "special_ammo",
+		era_band = [1, 4],
 		effects = {burn_chance = 0.30, burn_dps = 6.0, burn_duration = 5.0},
 		applicable_types = [0],
 		unlock_conditions = {required_level = 4}

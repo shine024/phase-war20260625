@@ -40,7 +40,7 @@ func _ready() -> void:
 	# v7.x 面板统一：SMALL 档 + 金色签名框架 + PanelChrome 标题栏（右上 ✕ 关闭）
 	custom_minimum_size = DT.PANEL_SIZE_SMALL
 	var accent := DT.get_panel_accent("achievement")
-	add_theme_stylebox_override("panel", PanelStyles.make_panel_frame(accent))
+	add_theme_stylebox_override("panel", PanelStyles.make_panel_frame_textured(accent))
 	var chrome = PanelChrome.attach_to($Margin/VBox, "成就系统", accent, "ACHIEVEMENTS")
 	chrome.closed.connect(_on_close)
 
@@ -269,7 +269,7 @@ func _create_achievement_item(data: Dictionary) -> Control:
 		var reward_label = Label.new()
 		var reward_text = _format_rewards(rewards)
 		reward_label.text = "奖励：%s" % reward_text
-		reward_label.add_theme_font_size_override("font_size", DT.FONT_SIZE_XSMALL)
+		reward_label.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
 		reward_label.add_theme_color_override("font_color", DT.COLOR_RARITY_RARE)
 		container.add_child(reward_label)
 

@@ -2,14 +2,11 @@
  "unit": "fut_arm_heavy_mech",
  "unit_name": "重装机甲",
  "anim": "idle",
- "frames": 8,
+ "frames": 5,
  "frame_files": [
   "f00.png",
   "f01.png",
   "f02.png",
-  "f03.png",
-  "f04.png",
-  "f05.png",
   "f06.png",
   "f07.png"
  ],

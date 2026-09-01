@@ -9,6 +9,7 @@ extends VBoxContainer
 
 const RuneDefs = preload("res://data/runes.gd")
 const DT = preload("res://resources/design_tokens.gd")
+const PanelStyles = preload("res://scripts/ui/panel_styles.gd")
 
 var _refresh_accum: float = 0.0
 const _REFRESH_SEC: float = 1.0
@@ -25,7 +26,7 @@ func _ready() -> void:
 	add_theme_constant_override("separation", 6)
 	# 三段折叠卡（BUFF 默认展开；我的面板/资源 默认折叠）
 	_buff_card = _build_fold_card("☰ BUFF", true, Color(0.13, 0.83, 0.93, 0.08))
-	_panel_card = _build_fold_card("🎖 我的面板", false, Color(0.65, 0.55, 1.0, 0.07))
+	_panel_card = _build_fold_card("我的面板", false, Color(0.65, 0.55, 1.0, 0.07))
 	_res_card = _build_fold_card("◆ 资源", false, Color(0.98, 0.75, 0.15, 0.07))
 	_refresh()
 	# 资源变更时刷新（v9.x P2-7：法则管理器信号已随法则系统退役移除；符文装配变化
@@ -50,15 +51,8 @@ func _build_fold_card(title: String, expanded: bool, head_bg: Color) -> Dictiona
 	var card := PanelContainer.new()
 	card.custom_minimum_size = Vector2(172, 0)
 	card.mouse_filter = Control.MOUSE_FILTER_PASS
-	var st := StyleBoxFlat.new()
-	# BU-10：边框色对齐胶囊语言（青 0.22）；圆角保留 6 档位（172px 小卡用 14 过大）
-	st.bg_color = Color(0.05, 0.07, 0.11, 0.88)
-	st.border_color = Color(0.0, 0.85, 1.0, 0.22)
-	st.border_width_bottom = 1
-	st.corner_radius_top_left = 6
-	st.corner_radius_top_right = 6
-	st.corner_radius_bottom_right = 6
-	st.corner_radius_bottom_left = 6
+	# v25 HUD 家族底板（BU-10 原仅底边框；现四边 1px 弱描边，圆角保留 6 档位）
+	var st := PanelStyles.make_hud_panel(0.22)
 	card.add_theme_stylebox_override("panel", st)
 	add_child(card)
 	var margin := MarginContainer.new()
@@ -192,10 +186,10 @@ func _refresh_resource() -> void:
 		return
 	# BasicResourceManager 字段为强类型 var，Node.get() 不支持默认值参数，改用 _get_int 守卫取值
 	# C2: 资源五色收敛 DT.COLOR_RES_*（能量块原 0.98/0.75/0.15 与他处漂移）
-	content.add_child(_make_kv_row("⚡ 能量块", _fmt_num(_get_int(brm, "total_energy_block")), DT.COLOR_RES_ENERGY))
-	content.add_child(_make_kv_row("📦 纳米材料", _fmt_num(_get_int(brm, "total_nano_materials")), DT.COLOR_RES_NANO))
-	content.add_child(_make_kv_row("🔶 合金", _fmt_num(_get_int(brm, "total_alloy")), DT.COLOR_RES_ALLOY))
-	content.add_child(_make_kv_row("💎 晶体", _fmt_num(_get_int(brm, "total_crystal")), DT.COLOR_RES_CRYSTAL))
+	content.add_child(_make_kv_row("能量块", _fmt_num(_get_int(brm, "total_energy_block")), DT.COLOR_RES_ENERGY))
+	content.add_child(_make_kv_row("纳米材料", _fmt_num(_get_int(brm, "total_nano_materials")), DT.COLOR_RES_NANO))
+	content.add_child(_make_kv_row("合金", _fmt_num(_get_int(brm, "total_alloy")), DT.COLOR_RES_ALLOY))
+	content.add_child(_make_kv_row("晶体", _fmt_num(_get_int(brm, "total_crystal")), DT.COLOR_RES_CRYSTAL))
 
 
 # ========== 辅助：行构建 ==========

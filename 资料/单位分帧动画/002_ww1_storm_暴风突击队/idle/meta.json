@@ -2,10 +2,9 @@
  "unit": "ww1_storm",
  "unit_name": "暴风突击队",
  "anim": "idle",
- "frames": 8,
+ "frames": 7,
  "frame_files": [
   "f00.png",
-  "f01.png",
   "f02.png",
   "f03.png",
   "f04.png",

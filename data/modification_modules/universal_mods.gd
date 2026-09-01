@@ -35,6 +35,7 @@ const DATA: Dictionary = {
 		slot_type = "comms", conflict_group = "comms",
 		# v7.x: per-slot 弹道——对轻装槽改 DIRECT 直射协调
 		condition_slot = 0,
+		era_band = [1, 4],
 		effects = {attack_interval = -0.05, vision = 0.20, slot_weapon_type = 0},  # v7.x: 对轻装槽直射化,
 		applicable_types = [0],  # LIGHT（含侦察子类，_guess_combat_kind 把 recon 归为 LIGHT）
 		unlock_conditions = {required_level = 1}
@@ -46,6 +47,7 @@ const DATA: Dictionary = {
 		rarity = "rare",
 		power_mult = 1.3, cost_research = 140, cost_install = 70,
 		slot_type = "system", conflict_group = "system",
+		era_band = [3, 4],
 		effects = {command_efficiency = 0.15},
 		applicable_types = [0],  # LIGHT（含侦察子类）
 		unlock_conditions = {required_level = 3}
@@ -68,6 +70,7 @@ const DATA: Dictionary = {
 		rarity = "uncommon",
 	power_mult = 1.0, cost_research = 80, cost_install = 40,
 		slot_type = "armor", conflict_group = "armor",
+		era_band = [2, 4],
 		effects = {max_hp = 30, defense_light = 5},
 		level_effects = {1: {max_hp = 30, defense_light = 5}, 2: {max_hp = 50, defense_light = 9}, 3: {max_hp = 70, defense_light = 12}},
 		applicable_types = [0, 2],  # LIGHT, SUPPORT（侦察归 LIGHT 已含）
@@ -92,6 +95,7 @@ const DATA: Dictionary = {
 		rarity = "rare",
 	power_mult = 1.3, cost_research = 180, cost_install = 90,
 		slot_type = "designator", conflict_group = "designator",
+		era_band = [3, 4],
 		effects = {ally_arty_bonus = 0.20},
 		applicable_types = [0],  # LIGHT（含侦察子类）
 		unlock_conditions = {required_level = 3}
@@ -103,6 +107,7 @@ const DATA: Dictionary = {
 		rarity = "epic",
 	power_mult = 1.6, cost_research = 260, cost_install = 130,
 		slot_type = "survival", conflict_group = "survival",
+		era_band = [3, 4],
 		effects = {mine_damage_reduction = -0.80},
 		applicable_types = [1],  # ARMOR
 		unlock_conditions = {required_level = 4}
@@ -114,6 +119,7 @@ const DATA: Dictionary = {
 		rarity = "epic",
 	power_mult = 1.6, cost_research = 300, cost_install = 150,
 		slot_type = "protection", conflict_group = "protection",
+		era_band = [2, 4],
 		effects = {nbq_immunity = true},
 		applicable_types = [1, 2, 4],  # ARMOR, SUPPORT, FORT
 		unlock_conditions = {required_level = 5}
@@ -125,6 +131,7 @@ const DATA: Dictionary = {
 		rarity = "epic",
 	power_mult = 1.6, cost_research = 320, cost_install = 160,
 		slot_type = "countermeasure", conflict_group = "countermeasure",
+		era_band = [3, 4],
 		effects = {missile_dodge = 0.25},
 		applicable_types = [1, 3],  # ARMOR, AIR
 		unlock_conditions = {required_level = 5}
@@ -152,6 +159,7 @@ const DATA: Dictionary = {
 			slot_type = "phase_core", conflict_group = "phase_core",
 			condition_slot = -1,
 			# 用 attack_light/armor/air 三个 key（attack_damage 不在 _apply_single_mod_effects 分支）
+			era_band = [4, 4],
 			effects = {attack_light = 0.25, attack_armor = 0.25, attack_air = 0.25},
 			applicable_types = [0, 1, 2, 3, 4],
 			unlock_conditions = {required_level = 10},
@@ -165,6 +173,7 @@ const DATA: Dictionary = {
 		power_mult = 1.5, cost_research = 500, cost_install = 200,
 			slot_type = "phase_core", conflict_group = "phase_core",
 			condition_slot = -1,
+			era_band = [4, 4],
 			effects = {damage_reduction = 0.20, max_hp = 0.30},
 			applicable_types = [0, 1, 2, 3, 4],
 			unlock_conditions = {required_level = 10},
@@ -178,6 +187,7 @@ const DATA: Dictionary = {
 		power_mult = 1.5, cost_research = 600, cost_install = 250,
 			slot_type = "phase_core", conflict_group = "phase_core",
 			condition_slot = -1,
+			era_band = [4, 4],
 			effects = {attack_interval = -0.30, crit_chance = 0.15},
 			applicable_types = [0, 1, 2, 3, 4],
 			unlock_conditions = {required_level = 10},
@@ -199,6 +209,7 @@ const DATA: Dictionary = {
 			slot_type = "phase_core",
 			conflict_group = "phase_core",
 			applicable_types = [0, 1, 2, 3, 4],
+			era_band = [4, 4],
 			effects = {phase_shield = 2000.0, phase_shield_regen = 50.0},
 			unlock_conditions = {required_level = 8}
 		},
@@ -217,6 +228,7 @@ const DATA: Dictionary = {
 			slot_type = "guidance",
 			conflict_group = "guidance",
 			applicable_types = [0, 1, 2, 3, 4],
+			era_band = [3, 4],
 			effects = {laser_marker = true},
 			unlock_conditions = {required_level = 5}
 		},
@@ -236,6 +248,7 @@ const DATA: Dictionary = {
 			slot_type = "electronic",
 			conflict_group = "electronic",
 			applicable_types = [0, 1, 2, 3, 4],
+			era_band = [3, 4],
 			effects = {emp_chance = 0.35, emp_true_damage = 10.0},
 			unlock_conditions = {required_level = 4}
 		},
@@ -256,6 +269,7 @@ const DATA: Dictionary = {
 			slot_type = "electronic",
 			conflict_group = "electronic",
 			applicable_types = [0, 1, 2, 3, 4],
+			era_band = [4, 4],
 			effects = {hijack_aura_radius = 200.0, hijack_aura_duration = 4.0, hijack_aura_cd = 18.0},
 			unlock_conditions = {required_level = 6}
 		},
@@ -294,6 +308,7 @@ const DATA: Dictionary = {
 			slot_type = "electronic",
 			conflict_group = "electronic",
 			applicable_types = [0, 1, 2, 3, 4],
+			era_band = [3, 4],
 			effects = {emp_true_damage_bonus = 8.0, emp_reflect_trigger = true},
 			unlock_conditions = {required_level = 6}
 		},
@@ -312,6 +327,7 @@ const DATA: Dictionary = {
 			slot_type = "special",
 			conflict_group = "catalyst",
 			applicable_types = [0, 1, 2, 3, 4],
+			era_band = [4, 4],
 			effects = {nano_chance = 0.20, nano_pct = 0.015, nano_duration = 6.0, nano_spread_trigger = true},
 			unlock_conditions = {required_level = 6}
 		},
@@ -330,6 +346,7 @@ const DATA: Dictionary = {
 			slot_type = "optical",
 			conflict_group = "optical",
 			applicable_types = [0, 1, 2, 3, 4],
+			era_band = [4, 4],
 			effects = {beam_split_trigger = true, attack_light = 0.08},
 			unlock_conditions = {required_level = 6}
 		},
@@ -348,6 +365,7 @@ const DATA: Dictionary = {
 			slot_type = "optical",
 			conflict_group = "optical",
 			applicable_types = [0, 1, 2, 3, 4],
+			era_band = [4, 4],
 			effects = {beam_reflect_trigger = true, crit_chance = 0.04},
 			unlock_conditions = {required_level = 5}
 		},
@@ -366,6 +384,7 @@ const DATA: Dictionary = {
 			slot_type = "sensor",
 			conflict_group = "sensor",
 			applicable_types = [0, 1, 2, 3, 4],
+			era_band = [3, 4],
 			effects = {weakpoint_trigger = true, crit_damage_bonus = 0.10},
 			unlock_conditions = {required_level = 6}
 		},
@@ -409,6 +428,7 @@ const DATA: Dictionary = {
 			slot_type = "ammunition",
 			conflict_group = "ammunition",
 			applicable_types = [0, 1, 2],  # LIGHT/ARMOR/SUPPORT（对空轴不受影响，空中装无意义）
+			era_band = [3, 4],
 			effects = {converted_munitions = true},
 			unlock_conditions = {required_level = 7}
 		},
@@ -445,6 +465,7 @@ const DATA: Dictionary = {
 			slot_type = "protection",
 			conflict_group = "protection",
 			applicable_types = [0, 1, 2, 4],  # 有医疗/维修光环收益的地面位
+			era_band = [4, 4],
 			effects = {overflow_to_shield = 0.60},
 			unlock_conditions = {required_level = 7}
 		},
@@ -463,6 +484,7 @@ const DATA: Dictionary = {
 			slot_type = "guidance",
 			conflict_group = "guidance",
 			applicable_types = [0, 1, 2, 3, 4],
+			era_band = [3, 4],
 			effects = {dodge_ignore = 0.50},
 			unlock_conditions = {required_level = 6}
 		},
@@ -481,6 +503,7 @@ const DATA: Dictionary = {
 			slot_type = "comms",
 			conflict_group = "comms",
 			applicable_types = [0, 1, 2, 3, 4],
+			era_band = [3, 4],
 			effects = {relay_antenna = true},
 			unlock_conditions = {required_level = 6}
 		},

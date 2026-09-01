@@ -48,7 +48,7 @@ static func migrate_save_data(data: Dictionary, from_version: int, debug_log: bo
 				SaveMigrationV8.migrate_v7_to_v8(data, debug_log)
 				ver = 8
 				data[SaveConstants.SK_SCHEMA_VERSION] = 8
-			8:  # v8 → v9: 改造解锁集 + 产能点（v21 P3-B 打造 sink / 首杀解锁；缺 key 静默补默认）
+			8:  # v8 → v9: 原"改造解锁集 + 产能点"（v25.3 整链退役，迁移体 no-op，版本号保留）
 				SaveMigrationV9.migrate_v8_to_v9(data, debug_log)
 				ver = 9
 				data[SaveConstants.SK_SCHEMA_VERSION] = 9

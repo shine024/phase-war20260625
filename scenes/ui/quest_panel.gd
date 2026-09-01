@@ -22,7 +22,7 @@ func _ready() -> void:
 	# v7.x 面板统一：MEDIUM 档 + 青色签名框架 + PanelChrome 标题栏（右上 ✕ 关闭）
 	custom_minimum_size = DT.PANEL_SIZE_MEDIUM
 	var accent := DT.get_panel_accent("quest")
-	add_theme_stylebox_override("panel", PanelStyles.make_panel_frame(accent))
+	add_theme_stylebox_override("panel", PanelStyles.make_panel_frame_textured(accent))
 	var chrome = PanelChrome.attach_to($Margin/VBox, "任务面板", accent, "QUESTS")
 	chrome.closed.connect(_on_close)
 	ManagerLazyLoader.ensure_loaded("quest")
@@ -148,7 +148,7 @@ func _refresh_company_summary() -> void:
 		name_label.add_theme_color_override("font_color", DT.COLOR_TEXT_BRIGHT)
 		var rep_label := Label.new()
 		rep_label.text = "声望：%d" % rep_value
-		rep_label.add_theme_font_size_override("font_size", DT.FONT_SIZE_XSMALL)
+		rep_label.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
 		rep_label.add_theme_color_override("font_color",
 			DT.COLOR_GREEN_BRIGHT if rep_value > 0 else Color(DT.COLOR_TEXT_DIM.r, DT.COLOR_TEXT_DIM.g, DT.COLOR_TEXT_DIM.b, 0.7))
 		rep_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
@@ -278,7 +278,7 @@ func _make_quest_row(quest_id: String, def: Dictionary, is_accepted: bool) -> Co
 					rep_text = "（完成 +%d 贡献）" % rv
 		var company_l := Label.new()
 		company_l.text = "▸ %s%s" % [company_name, rep_text]
-		company_l.add_theme_font_size_override("font_size", DT.FONT_SIZE_XSMALL)
+		company_l.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
 		company_l.add_theme_color_override("font_color", Color(DT.COLOR_KIND_ARMOR.r, DT.COLOR_KIND_ARMOR.g, DT.COLOR_KIND_ARMOR.b, 0.85))
 		v.add_child(company_l)
 	# 描述
@@ -286,7 +286,7 @@ func _make_quest_row(quest_id: String, def: Dictionary, is_accepted: bool) -> Co
 	desc_l.text = def.get("description", "")
 	desc_l.add_theme_color_override("font_color",
 		Color(DT.COLOR_TEXT_DIM.r, DT.COLOR_TEXT_DIM.g, DT.COLOR_TEXT_DIM.b, 0.7) if is_completed else Color(DT.COLOR_TEXT_MID.r, DT.COLOR_TEXT_MID.g, DT.COLOR_TEXT_MID.b, 0.85))
-	desc_l.add_theme_font_size_override("font_size", DT.FONT_SIZE_XSMALL)
+	desc_l.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
 	desc_l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	v.add_child(desc_l)
 	row.add_child(v)
@@ -463,7 +463,7 @@ func _make_daily_task_row(task: Dictionary, dtm: Node) -> Control:
 	v.add_child(title_l)
 	var reward_l := Label.new()
 	reward_l.text = "奖励：" + _daily_reward_text(task.get("reward", {}))
-	reward_l.add_theme_font_size_override("font_size", DT.FONT_SIZE_XSMALL)
+	reward_l.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
 	reward_l.add_theme_color_override("font_color", Color(DT.COLOR_TEXT_MID.r, DT.COLOR_TEXT_MID.g, DT.COLOR_TEXT_MID.b, 0.85))
 	v.add_child(reward_l)
 	row.add_child(v)

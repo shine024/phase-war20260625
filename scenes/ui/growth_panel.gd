@@ -69,7 +69,7 @@ func _ready() -> void:
 	visible = false
 	modulate.a = 0.0
 	# D1: 根框架统一 PanelStyles 签名框（v7.x 已迁移面板同款；覆盖 tscn 手写 StyleBoxFlat_1）
-	add_theme_stylebox_override("panel", PanelStyles.make_panel_frame(DT.get_system_color("growth")))
+	add_theme_stylebox_override("panel", PanelStyles.make_panel_frame_textured(DT.get_system_color("growth")))
 	_init_cached_styleboxes()
 	_bind_nodes()
 	_connect_signals()
@@ -931,62 +931,20 @@ func _on_enhance_pressed() -> void:
 	# v8.x: 强化②已停用，此按钮改为打开相位师技能树面板
 	_open_phase_master_skill_panel()
 
-## v8.x: 打开相位师技能树面板
-## 用独立的高 layer CanvasLayer（layer=110）包裹，避免被成长面板 GrowthOverlay 的全屏
-## Backdrop（layer=100，mouse_filter=STOP）吞噬点击——此前技能面板挂 PopupLayer（layer=100），
-## 与成长面板 Backdrop 同层，Backdrop 全屏覆盖拦截所有点击，导致技能面板无法操作。
-## 修复：技能面板 + 自带 backdrop 放在更高 layer，彻底脱离成长面板遮挡。
+## v8.x 打开相位师技能树面板
+## v25.4：宿主逻辑（CanvasLayer(110)+Backdrop+面板实例）收敛到常驻 PhaseMasterSkillHost，
+## 与相位仪选择器（phase_instrument_selector 的技能点行）共用入口。节点命名不变
+## （PhaseMasterSkillCanvas/PhaseMasterSkillPanel），下方按名查找的关闭/ESC 链零改动；
+## growth 是可被懒加载修剪的面板，此前由它持有 backdrop 连接存在修剪后背板失灵的
+## 隐患，host 挂 /root 常驻后消除。
 func _open_phase_master_skill_panel() -> void:
-	# 批次三 B4：技能树首开一句话引导
-	FeatureUnlockPopup.show_once("skill_tree", "相位师技能树",
-		"消耗技能点学习全局被动强化（指挥/智能化/火力/概念武器）。技能点随相位场等级获得。")
-	var root = get_tree().root
-	# 复用已创建的独立 CanvasLayer（避免重复叠加）
-	var canvas: CanvasLayer = root.get_node_or_null("PhaseMasterSkillCanvas")
-	if canvas == null:
-		canvas = CanvasLayer.new()
-		canvas.name = "PhaseMasterSkillCanvas"
-		canvas.layer = 110  # 高于 PopupLayer(100) 和 GrowthOverlay 的 Backdrop
-		root.add_child(canvas)
-		# 自带全屏 backdrop：拦截外部点击（点击空白处关闭），同时把面板和成长面板隔离开
-		var backdrop := ColorRect.new()
-		backdrop.name = "Backdrop"
-		backdrop.color = DT.COLOR_BACKDROP
-		backdrop.anchors_preset = Control.PRESET_FULL_RECT
-		backdrop.mouse_filter = Control.MOUSE_FILTER_STOP
-		# 批次三 B7：背板点击可关闭，挂手型光标提示可点
-		backdrop.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-		backdrop.gui_input.connect(_on_skill_panel_backdrop_gui_input)
-		canvas.add_child(backdrop)
-
-	var panel: Node = canvas.get_node_or_null("PhaseMasterSkillPanel")
-	if panel == null:
-		var scene = load("res://scenes/ui/phase_master_skill_panel.tscn")
-		if scene == null:
-			push_error("[growth_panel] 无法加载相位师技能树面板场景")
-			return
-		panel = scene.instantiate()
-		if panel == null:
-			push_error("[growth_panel] 相位师技能树面板实例化失败")
-			return
-		canvas.add_child(panel)
-		if panel.has_signal("closed") and not panel.closed.is_connected(_on_phase_master_skill_closed):
-			panel.closed.connect(_on_phase_master_skill_closed)
-	# 全出血打开（与主场景养成面板同原则）：横向贴满视口、纵向底沿留出相位仪栏占位带。
-	# 面板自管几何（_apply_viewport_fit 显式几何方案），这里只切 full_bleed 模式并立即生效。
-	if panel is Control and "full_bleed" in panel:
-		panel.set("full_bleed", true)
-		if panel.has_method("_apply_viewport_fit"):
-			panel._apply_viewport_fit()
-	panel.visible = true
-	canvas.visible = true
-	if panel.has_method("_refresh"):
-		panel._refresh()
+	var host: Node = PhaseMasterSkillHost.open(get_tree(), true)
+	if host != null and not host.closed.is_connected(_on_phase_master_skill_closed):
+		host.closed.connect(_on_phase_master_skill_closed)
 
 ## v8.x: 点击技能面板 backdrop（空白区域）→ 关闭面板
-func _on_skill_panel_backdrop_gui_input(ev: InputEvent) -> void:
-	if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT:
-		_close_phase_master_skill_panel()
+## v25.4：backdrop 由 PhaseMasterSkillHost 创建并自持连接，本 handler 已死删除
+## （关闭链：panel.closed / backdrop / ESC → host.close → host.closed → 本面板徽章刷新）。
 
 ## v8.x: 技能树面板关闭回调（关闭按钮 / backdrop 点击 / 外部调用）
 func _on_phase_master_skill_closed() -> void:

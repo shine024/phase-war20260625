@@ -22,6 +22,7 @@ var _ration_day: int = 0           # 每日配给最后领取的天数（0=从�
 var _ending_id := ""               # P4 观星台终局抉择（rewrite/keep/depart；空=未抉择）
 var _ending_day: int = 0           # 抉择发生的天数（结局徽记展示用）
 var _intro_shown := false          # 首次进基地引导卡是否已展示（v22.4 P1-5）
+var _comic_seen := false           # 序章漫画开场是否已播过（v24，新档 comic_intro 收尾/醒来演出落档）
 
 ## 荣誉陈列室解锁所需碎片数（P3 定 10：让中期玩家够得着；30 全收集是观星台条件）
 const HONOR_HALL_FRAGMENT_GATE := 10
@@ -255,6 +256,13 @@ func is_intro_shown() -> bool:
 func mark_intro_shown() -> void:
 	_intro_shown = true
 
+## v24：序章漫画开场已播标记（bunker_main 醒来演出触发时落档）
+func is_comic_seen() -> bool:
+	return _comic_seen
+
+func mark_comic_seen() -> void:
+	_comic_seen = true
+
 # ───────────────────── P3：英雄遗物碎片 ─────────────────────
 
 ## 记录一位牺牲英雄的遗物碎片（去重）。返回是否为新解锁。
@@ -355,6 +363,7 @@ func save_state() -> Dictionary:
 		"ending_id": _ending_id,
 		"ending_day": _ending_day,
 		"intro_shown": _intro_shown,
+		"comic_seen": _comic_seen,
 	}
 
 ## SaveManager 应用入口（_safe_load_manager 按此方法名加载）；空字典=新游戏全重置
@@ -371,6 +380,7 @@ func load_state(data: Dictionary) -> void:
 	_ending_id = str(data.get("ending_id", ""))
 	_ending_day = int(data.get("ending_day", 0))
 	_intro_shown = bool(data.get("intro_shown", false))
+	_comic_seen = bool(data.get("comic_seen", false))
 	_hero_fragments = []
 	for f in data.get("hero_fragments", []):
 		_hero_fragments.append(str(f))
@@ -407,6 +417,7 @@ func reset_to_defaults() -> void:
 	_ending_id = ""
 	_ending_day = 0
 	_intro_shown = false
+	_comic_seen = false
 	for room_id in _rooms:
 		var def := BunkerRoomDefs.get_room(room_id)
 		_rooms[room_id]["state"] = int(def.get("initial", BunkerRoomDefs.STATE_LOCKED))

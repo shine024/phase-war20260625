@@ -11,6 +11,7 @@ const IntelManualItems = preload("res://data/intel_manual_items.gd")
 const BlueprintDefinitions = preload("res://data/blueprint_definitions.gd")
 const GC = preload("res://resources/game_constants.gd")
 const ModEffectLabels = preload("res://scripts/ui/mod_effect_labels.gd")
+const ModEraBands = preload("res://data/mod_era_bands.gd")
 
 # v7.x UI 重设计基建
 const DT = preload("res://resources/design_tokens.gd")
@@ -90,7 +91,7 @@ func _ready() -> void:
 	var bg_panel := get_node_or_null("BgPanel")
 	if bg_panel is Control:
 		(bg_panel as Control).add_theme_stylebox_override("panel",
-			PanelStyles.make_panel_frame(DT.get_system_color("modify")))
+			PanelStyles.make_panel_frame_textured(DT.get_system_color("modify")))
 	# 连接关闭按钮
 	if close_button:
 		close_button.pressed.connect(_on_close)
@@ -908,9 +909,11 @@ func _create_mod_item(mod_id: String, mod_data: Dictionary) -> Control:
 	hbox.add_child(status_label)
 
 	btn.add_child(hbox)
-	# 禁用规则：已安装、不适用、被 block（冲突/槽满/情报不足）、或战力档位不足时禁用点击
+	# 禁用规则：已安装、不适用、被 block（冲突/槽满/情报不足/时代不符）、或战力档位不足时禁用点击
 	btn.disabled = is_installed or not is_applicable or not block_reason.is_empty() or tier_blocked
-	btn.tooltip_text = "%s\n稀有度：%s" % [String(mod_data.get("description", "")), rarity_cn]
+	# v22: tooltip 附时代带（谱系改造如"光学瞄准镜 限一战~现代"，玩家可预判能否装）
+	btn.tooltip_text = "%s\n稀有度：%s\n时代带：%s" % [
+		String(mod_data.get("description", "")), rarity_cn, ModEraBands.format_band(mod_data)]
 	btn.pressed.connect(func(): _on_mod_selected(mod_id, mod_data))
 	return btn
 
@@ -1908,8 +1911,14 @@ func _format_effects_for_display(mod_data: Dictionary) -> PackedStringArray:
 
 ## v7.2: 格式化单条效果（key + value）为一行文本
 ## 数值格式统一走 _format_effect_number（与效果模拟抽屉同口径）
+## v22 四通道句式：`<stat>_set` → "X 替换为 N"；`<stat>_pct` → 按基础键翻译 + 百分比加成
 func _format_one_effect(key: String, val) -> String:
-	var key_display = _translate_effect_key(key)
+	if key.ends_with("_set"):
+		# 替换通道：确定值句式（换装类）。值为声明基准时代的确定攻击/防御值
+		return "%s 替换为 %d" % [_translate_effect_key(key.substr(0, key.length() - 4)), int(round(float(val)))]
+	# v22: 显式百分比后缀键按基础键翻译（数值走 _format_effect_number 的 float≤1 百分比分支）
+	var tkey := key.substr(0, key.length() - 4) if key.ends_with("_pct") else key
+	var key_display := _translate_effect_key(tkey)
 	if val is bool and val:
 		return "✓ %s" % key_display
 	# 攻速：attack_interval 是攻击间隔，负值=间隔缩短=攻速提升，统一转正表述

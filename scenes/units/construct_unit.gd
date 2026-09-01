@@ -570,9 +570,9 @@ func apply_card_grid_enemy_presentation() -> void:
 	var hb := get_node_or_null("HpBar") as CanvasItem
 	if hb != null:
 		hb.visible = true
-		# 敌方 Sprite2D 有 z_index=1（见 construct_unit.tscn），会盖住 z_index 默认 0 的 HpBar，
-		# 抬高 HpBar 根节点 z_index 到立绘之上（与 enemy_unit.gd 一致）。
-		(hb as Node2D).z_index = 10
+		# 血条 z 在 unit_hp_bar._ready 统一抬到 OVERHEAD_UI_Z（头顶 UI 带），
+		# 此处仅在节点被替换/重建后兜底再钉一次，防止回退到默认 0 被立绘盖住。
+		(hb as Node2D).z_index = CardGridUnitVisuals.OVERHEAD_UI_Z
 		# 血条移到头顶：锚定实体顶部上方（与玩家/普通敌方单位对称）
 		var top_y: float = CardGridUnitVisuals.entity_top_y(spr) if spr != null else -50.0
 		hb.position = Vector2(0.0, top_y - 14.0)
@@ -2011,7 +2011,12 @@ func take_damage(amount: float, attacker: Variant = null) -> void:
 			dodge = 0.0
 		# v7.5: 传入 damage_reduction（此前全链路空转，现 resolve_hit 接入）
 		var dmg_red: float = float(stats.damage_reduction)
-		var hit: Dictionary = CardGridDamage.resolve_hit(amount, eff_def, dodge, dmg_red)
+		# v25.1: 巷战掩蔽接通——受 ARMOR/AIR 攻击者时生效（v8 起写入 urban_defense_bonus
+		# 但从未被消费；与 v25.0 对称激活的装甲碾压 +20% 构成净 ~+2% 的小幅克制）
+		var urban_red: float = 0.0
+		if attacker_kind == GC.CombatKind.ARMOR or attacker_kind == GC.CombatKind.AIR:
+			urban_red = maxf(0.0, float(stats.urban_defense_bonus))
+		var hit: Dictionary = CardGridDamage.resolve_hit(amount, eff_def, dodge, dmg_red, urban_red)
 		# v8.x: 闪避反馈——此前 dodged 字段从不被读取，闪避时 hp_loss=0 静默走完流程，
 		# 且仍触发受击闪白/抖动/击退（既有 bug）。现闪避即飘 MISS 并提前 return，
 		# 既补上缺失反馈，又顺带修复"闪避仍受击"的副作用。

@@ -625,7 +625,12 @@ func start_production() -> void:
 	if _battle_active:
 		return
 	_battle_active = true
-	_spawn_timer = 3.0  # 首次出兵在3秒后
+	# v25.5 首批即布置：开战立即产首批（ceil(limit/2)，_produce_unit 首调分批逻辑）——
+	# 敌兵进场即进部署虚影，实体化先后只由双方 deploy_speed 决定，与玩家侧对称
+	# （玩家布置阶段完成部署、开战即实体化）。原"首次出兵在3秒后"的开场空窗移除，
+	# 后续仍按 spawn_interval 节奏逐个补兵。
+	_produce_unit()
+	_spawn_timer = 0.0
 
 func stop_production() -> void:
 	_battle_active = false

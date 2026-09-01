@@ -366,7 +366,7 @@ func _trig_laser() -> Callable:
 #   宽坦克按宽、高步兵按高,左右+上下都罩住。地面=底贴脚(球坐地上);空中=整球居中。
 func _trig_shield_bubble() -> Callable:
 	return func():
-		var col := Color(0.60, 0.85, 1.0, 1.0)  # 全 alpha,靠贴图自带薄度(×0.6)
+		var col := DesignTokens.COLOR_ICE_TEXT  # 全 alpha,靠贴图自带薄度(×0.6)
 		# 地面单位:坦克(宽)+ 步兵(高),都底贴脚
 		var tank: Sprite2D = _bf.get_node_or_null("Target") as Sprite2D
 		if tank != null:
@@ -499,7 +499,7 @@ func _trig_boss(kind: String) -> Callable:
 		"spear":
 			return func():
 				VfxFactory.spawn_ultimate_projectile(_bf, Vector2(0, -300), Vector2.ZERO, TEX_ULT_SPEAR, "vertical", 50.0, Color(1.0, 0.85, 0.5), Color(1.0, 0.85, 0.4, 0.95), 0.4,
-					func(_p: Vector2): VfxFactory.spawn_pierce_beam(_bf, Vector2.ZERO, Vector2(1, 0), Color(1.0, 0.9, 0.6, 1.0), true, 1.4))
+					func(_p: Vector2): VfxFactory.spawn_pierce_beam(_bf, Vector2.ZERO, Vector2(1, 0), DesignTokens.COLOR_GOLD_SOFT, true, 1.4))
 		"summon":
 			return func():
 				VfxFactory.spawn_spell_burst(_bf, Vector2.ZERO, TEX_PORTAL, Color(0.7, 0.35, 1.0), 280.0, 1.0)

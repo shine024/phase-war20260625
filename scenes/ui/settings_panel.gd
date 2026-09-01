@@ -31,7 +31,7 @@ const _DEFAULT_DIFFICULTY_IDX := 1
 func _ready() -> void:
 	# v7.x 面板统一：中性冷灰蓝签名框架 + PanelChrome 标题栏（右上 ✕ 关闭）
 	var accent := DT.get_panel_accent("settings")
-	add_theme_stylebox_override("panel", PanelStyles.make_panel_frame(accent))
+	add_theme_stylebox_override("panel", PanelStyles.make_panel_frame_textured(accent))
 	if _content_vbox:
 		var chrome = PanelChrome.attach_to(_content_vbox, "设置", accent, "SETTINGS")
 		chrome.closed.connect(_on_close)

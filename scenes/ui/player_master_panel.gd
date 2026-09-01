@@ -20,7 +20,7 @@ const PanelChrome = preload("res://scenes/ui/components/panel_chrome.gd")
 func _ready() -> void:
 	# v7.x 面板统一：紫色签名框架 + PanelChrome 标题栏（右上 ✕ 关闭）
 	var accent := DT.get_panel_accent("player_master")
-	add_theme_stylebox_override("panel", PanelStyles.make_panel_frame(accent))
+	add_theme_stylebox_override("panel", PanelStyles.make_panel_frame_textured(accent))
 	var chrome = PanelChrome.attach_to($Margin/VBox, "相位师档案", accent, "PHASE MASTER")
 	chrome.closed.connect(_on_close_pressed)
 	# v7.x: 装备/符文变化时实时刷新（非战斗场景也能反映养成变化）

@@ -105,8 +105,9 @@ func _check_compile_all() -> void:
 func _check_a_assertions() -> void:
 	# A1: mvp uncommon 键
 	var mvp := _src("res://scenes/ui/mvp_panel.gd")
-	if not mvp.contains('"uncommon": return DT.COLOR_RARITY_UNCOMMON'):
-		_fails.append("A1: mvp_panel uncommon 色键缺失")
+	# v23.6.1 起 mvp 稀有度配色收口 GC.get_rarity_color 单一源，本地平行表已删（断言同步）
+	if not mvp.contains("GC.get_rarity_color"):
+		_fails.append("A1: mvp_panel 稀有度配色未走 GC.get_rarity_color 单一源")
 	if not mvp.contains('"uncommon": return "优秀"'):
 		_fails.append("A1: mvp_panel uncommon 名字键缺失")
 	# A2: 公共校验函数 + 红绿反馈
@@ -245,11 +246,12 @@ func _check_c_assertions() -> void:
 ## Phase D 断言
 func _check_d_assertions() -> void:
 	# D1: 四面板根框架走工厂
+	# v25 UI：面板根框架升级为 textured 渐变底工厂（断言同步）
 	for pair in [
-		["res://scenes/ui/growth_panel.gd", "make_panel_frame(DT.get_system_color(\"growth\"))"],
-		["res://scenes/ui/evolution_panel.gd", "make_panel_frame(DT.COLOR_VIOLET)"],
-		["res://scenes/ui/modification_panel.gd", "make_panel_frame(DT.get_system_color(\"modify\"))"],
-		["res://scenes/ui/backpack_panel.gd", "make_panel_frame(DesignTokens.get_panel_accent(\"backpack\"))"],
+		["res://scenes/ui/growth_panel.gd", "make_panel_frame_textured(DT.get_system_color(\"growth\"))"],
+		["res://scenes/ui/evolution_panel.gd", "make_panel_frame_textured(DT.COLOR_VIOLET)"],
+		["res://scenes/ui/modification_panel.gd", "make_panel_frame_textured(DT.get_system_color(\"modify\"))"],
+		["res://scenes/ui/backpack_panel.gd", "make_panel_frame_textured(DesignTokens.get_panel_accent(\"backpack\"))"],
 	]:
 		if not _src(pair[0]).contains(pair[1]):
 			_fails.append("D1: %s 根框架未走工厂" % pair[0])
@@ -278,10 +280,12 @@ func _check_d_assertions() -> void:
 			or main_src.contains("enhancement_overlay,"):
 		_fails.append("D3: enhancement_overlay 残留")
 	var bar_src := _src("res://scenes/ui/bottom_function_bar.gd")
-	if not bar_src.contains('["achievement",  "成就"') and not bar_src.contains('["achievement", "成就"'):
-		_fails.append("D3: 功能栏无成就按钮")
-	if not bar_src.contains('"帮助"'):
-		_fails.append("D3: 功能栏无帮助按钮")
+	# v25.3 系统收敛（功能栏 14→6）后：成就/帮助入口移至基地 EMBEDDED_PANELS。
+	# 断言改容错式——功能栏或基地二者其一提供入口即可，双缺才算断链。
+	if not bar_src.contains('"成就"') and not bar_src.contains('"achievement",'):
+		var bunker_src := _src("res://scenes/bunker/bunker_main.gd")
+		if not (bunker_src.contains('"achievement"') and bunker_src.contains('"help"')):
+			_fails.append("D3: 成就/帮助入口断链（功能栏与基地 EMBEDDED_PANELS 均无）")
 	var tscn_src := _src("res://scenes/main.tscn")
 	if tscn_src.contains("EnhancementOverlay") or tscn_src.contains("DropsInventoryOverlay"):
 		_fails.append("D3: main.tscn 死 overlay 残留")

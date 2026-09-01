@@ -247,7 +247,8 @@ BattleManager → BattleSpawnSystem, BattleDamageSystem, EnergyManager,
 SaveManager → ALL managers (loads/saves their state sections)
               Critical: BlueprintManager, PhaseInstrumentManager,
               QuestManager, BasicResourceManager, FactionSystemManager, AffixManager,
-              LevelProgressManager, DropManager, IntelItemBag, ModificationRegistry (v21 P3-B v9)
+              LevelProgressManager, DropManager, IntelItemBag
+              （ModificationRegistry 解锁集段已随 v25.3 退役移除）
               Deferred: LoreManager, StatBoostManager, AchievementManager,
               DailyTaskManager, StatisticsManager, CardEnhancementManager, etc.
 
@@ -282,6 +283,38 @@ IntelEvolutionManager → IntelManual, IntelEvolutionBranches
 2. Per-frame: wave spawning + win/lose check
 3. `SignalBus.battle_ended.emit(player_won)` → `GameManager._on_battle_ended()` handles rewards, progression, save
 
+### v25.0/v25.1 改造数值四通道 + 时代适配 + 平衡核查（2026-08-31，详见 CHANGELOG）
+
+**改任何改造（modification）数值/键前必读本节。** 四通道口径（引擎在
+`modification_registry.gd` 的 `apply_with_level(base, mods, host_ctx={era})`）：
+
+| 通道 | 写法 | 语义 |
+|---|---|---|
+| set 替换 | `<stat>_set = N` | 换装类确定值；第 1 遍历覆盖基础值，**更优才生效**（≤当前值不生效）；flat/pct 叠加在新值上。试点：inf_02 突击步枪化（era1 基准 90/105/120）、arm_05 滑膛炮（era2 基准 560/620/680） |
+| flat 固定 | 7 键 int（`attack_light = 8`） | 平加；**攻击/HP 族按宿主时代缩放**（声明基准=era_band 下限） |
+| pct 百分比 | 7 键 float（`0.25`）或显式 `<stat>_pct` | 乘区 ×(1+v)；混合条目（flat+pct 并存）必须用显式 `_pct` 后缀 |
+| 混合 | 同条目 flat+pct | 例：倾斜装甲 `defense_armor=15` + `defense_armor_pct=0.08` |
+
+- **时代缩放表**在 registry：`ERA_FLAT_SCALE_ATK/_HP`（卡池中位推导）；防御族/射程(px)/
+  百分比不缩放。旧调用方不传 host_ctx → 绝对值旧行为（零迁移）；进化预览传 era 同口径。
+- **时代带硬门**：条目 `era_band = [min,max]`（116 条谱系改造已标带；训练/机制/通用件
+  无带=全时代）。装配过滤走 `get_installable_mods_for_card`（面板/安装）；
+  `get_mods_for_card` **不过滤**（enemy_card_mod_map/intel 跨时代依赖全集）。
+  已装超带改造不回收。带显示用 `data/mod_era_bands.gd`。
+- **★ v25.0 修复的存量 P1**：攻击类数值改造此前只落 `stats.attack_*`，实战伤害读
+  `weapon_slots[].damage`——攻击改造实战空转整个 v6-24 时期。现经
+  `unit_stats_table._sync_mod_attack_ratio_to_weapon_slots`（攻击三维比值同步）落地，
+  回归锁在 `tests/unit/data/mod_value_channels_test.gd`。改 build_stats_from_card 的
+  mods 时序前先看该函数注释。
+- **★ v25.0 连带激活 + v25.1 对冲**：`_sync_kind_bonus_to_weapon_slots` 死代码修复让
+  装甲碾压+20%对轻/防空封锁+25%对空**对敌我同时**生效（v8.5 设计回归）；v25.1 接通
+  同样死着的巷战掩蔽 0.15（`resolve_hit` 的 `urban_reduction` 独立乘区，受 ARMOR/AIR
+  攻击者时生效，双侧同构）——步兵 vs 装甲净克制 ≈ +2%。**玩家空军对防空特化 +25%
+  无对冲**（掩蔽只覆盖步兵），留实测。
+- 数值审计：`tools/balance_audit_mods_evo.py` 已含 float>1.0 误写检查 / era_band
+  合法性 / set 值域（attack_armor_set 帽 800、其余 400）——**改改造数据后必跑**。
+  改造总数锁 190 不变。
+
 ### v21 光环范围化 / 组合满档 / 搭档协同 / 产能打造（2026-08-31，详见 CHANGELOG）
 
 - **光环范围化**：战术光环（医疗/侦查/雷达/堡垒）按带内槽距过滤（`data/aura_data.gd`
@@ -295,10 +328,10 @@ IntelEvolutionManager → IntelManual, IntelEvolutionBranches
   `modification_modules_test.gd` 与 combo_tier_smoke 双处）。
 - **搭档协同**：`data/unit_roles.gd` 九角色归一化 + `pair_synergy_engine.gd`
   事件驱动激活（部署/死亡 + 1s 兜底，禁止每帧扫描），数值对称记账（meta 存原值）。
-- **产能打造（存档 v9）**：DayClock 产能 → `ModificationRegistry.craft_mod` 解锁 +
-  相位师首杀解锁；存档根键 `mod_unlock_state`（ModificationRegistry 持有，已入
-  SaveManager critical + resettable 清单）、`basic_resources.production_points`。
-  注意：解锁集 dict 内 `first_kill_*` 前缀为标记键，新 mod_id 禁用该前缀。
+- **产能打造（存档 v9）**：~~DayClock 产能 → craft_mod 解锁 + 相位师首杀解锁~~
+  **已随 v25.3 系统收敛整链退役（2026-08-31）**——解锁集无任何 UI/门禁消费方、
+  craft_mod 零 UI 调用方、首杀奖励是幻影。存档段/迁移键/DayClock 产出全部移除，
+  旧档 key 静默跳过。详见停用清单与 CHANGELOG v25.3。
 - **敌方精英同源词条**：`enemy_loadout_tiers.gd` seeded roll（同关同波同槽可复现），
   挂载点在 `enemy_unit.setup` 末尾（battle_spawn_system 只读约束的等价点）。
 
@@ -451,12 +484,15 @@ User-driven collaboration. Every task follows: **Question → Options → Decisi
 - Multi-file changes need explicit approval for the full changeset
 - No commits without user instruction
 
-## 已知停用/移除系统清单（2026-08-23 更新）
+## 已知停用/移除系统清单（2026-08-31 更新）
 
 改代码/排查 bug 前先对照本表，避免给停用系统"修 bug"或误以为功能缺失：
 
 | 系统 | 状态 | 说明 |
 |------|------|------|
+| 产能点 + 账号改造解锁集 + 相位师首杀解锁（v21 P3-B） | **已整体删除** | 2026-08-31 v25.3 系统收敛：解锁集（mod_unlock_state）自上线起无任何 UI/门禁消费方（安装认蓝图），craft_mod 零 UI 调用方，首杀"解锁"是玩家不可见的幻影奖励。删除：ModificationRegistry 解锁集段（craft_mod/unlock_mod/unlock_boss_first_kill/CRAFT 表）、BRM production_points、DayClock 产能结算、GameManager 首杀发放、SaveManager 三处清单、SK_MOD_UNLOCK_STATE；v9 迁移体改 no-op（版本号保留）。旧档 mod_unlock_state/production_points key 静默跳过。将来重做"打造"从 git 找回 |
+| 进化战力门 + 进化情报基础门 | **已拆除** | 2026-08-31 v25.3：card_evolution_manager 权威判定 7 条件 → 4（保留等级/改造数/进化图纸/技能树时代 + 势力分支门）。战力门是"战力→军衔→战力"循环的根；情报门（low_evo 50%/100%）与低进化对蓝图豁免构成双轴资格。拒绝码映射保留（防御）。连带删 evolution_path_registry 遗留四门死代码 + card_resource 休眠 intel_requirements 门 |
+| 战斗抽屉 8 面板入口（势力/任务/商店/排行/情报/图鉴/成就/帮助） | **已收敛** | 2026-08-31 v25.3：BottomFunctionBar 14→6（留背包/成长/地图/设置/存档/挂机），战前字母热键同步裁（留 B/1、7、9、M）。overlay 与 handler 全保留（教程 toggle_* 链/growth 转发仍用），面板本体移基地入口（EMBEDDED_PANELS 同款） |
 | 强化①（手动强化轴 enhance_level 0-10） | **已退役** | 2026-08-24 v20.12 等级统一：`card_level`（战斗卡等级 1-30，上阵攒经验自动升）成为唯一玩家卡等级轴。`reinforcement_panel.gd/.tscn` 删除、`BlueprintManager.apply_reinforcement` 删除、card_info_panel 强化 Tab 恒隐藏（TabIdx/节点保留防索引错位）。进化等级门槛改读 card_level（E1=5/E2=10）；进化执行=变成全新卡（等级/经验/改造/词条槽全部重置，仅 inherit_bonus/hp_floor/情报奖励保留）；光环/能力星级 = card_level÷3 映射 1-10；掉落卡星级改发起始经验；教学任务"强化尝试"改升级驱动（`_on_card_level_up` 转发 `enhancement_completed` 信号）。敌方配装档位（enemy_loadout_tiers 的 enhance_level 3/6/10）与攻击公式的 enhance 乘区**不受影响**（内部敌方轴）；旧档存量 enhance_level 保留为惰性数值，无提升入口 |
 | 合成系统（SynthesisManager + synthesis_recipes） | **已整体删除** | 2026-08-23 P2-7（批次2c）：无 UI 的僵尸系统，科研点唯一 sink。managers/synthesis/ 与 data/synthesis_recipes.gd 删除；fsm 的 preload/实例/初始化/getter/存档段移除；signal_bus 双信号与 audio 消费删除；旧档 synthesis_state key 静默跳过 |
 | 科研点（research_points） | **已退役** | 2026-08-23 P2-7（批次2c）：ID_RESEARCH_POINTS 常量/定义/关卡产出、BasicResourceManager 收支臂、BlueprintManager 四函数、能量掉落降级补偿、faction_war 事件奖励、四处 UI 展示全部移除；旧档 total_research_points key 静默跳过 |

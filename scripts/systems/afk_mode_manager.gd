@@ -27,6 +27,9 @@ var mode: Mode = Mode.CYCLE
 var slots: Array[int] = [0, 0, 0, 0]  # 4个slot关联的关卡号，0=未关联
 var current_slot_index: int = 0       # 循环模式下当前打到第几个slot
 var push_level: int = 1               # 推图模式下的当前关卡
+## 显式推图起点（一次性意图，不存档）。world_map"自动部署"入口设置：玩家可能故意
+## 选低级关刷，起点须精确尊重；>0 时 start_afk 优先采用并清零，不与战役前沿取 max。
+var push_start_override: int = 0
 
 ## 状态
 var state: State = State.IDLE
@@ -122,10 +125,20 @@ func start_afk() -> bool:
 	#   - 首次挂机：push_level=默认1 或读档恢复值
 	#   - 失败续推：_afk_failed 已设 push_level=失败关-1（最高通关关），从该关重推
 	#   - 停止续推：stop_afk 已设 push_level=当前推进关
-	# world_map"自动部署"入口在调用 start_afk 前显式赋值 push_level=玩家选定关。
+	# world_map"自动部署"入口在调用 start_afk 前显式设 push_start_override=玩家选定关
+	# （可能故意选低级关刷，精确尊重，不抬到前沿）。
 	# current_level 由后续 enter_next_battle→set_current_level(_pending_level) 同步。
 	if mode == Mode.PUSH:
 		var start_lvl: int = push_level
+		if push_start_override > 0:
+			start_lvl = push_start_override
+			push_start_override = 0
+		elif lp != null and lp.has_method("get_max_unlocked_level"):
+			# 推图起点跟随战役前沿：push_level 只被挂机自身回写，玩家手动推进的战役
+			# 进度不会抬它——否则手动推到 50 关的玩家首次挂机推图会从第 1 关打起。
+			# 取 max 对齐到最高解锁关（= 最高通关关 + 1，第一个未通关关）；挂机中途
+			# 关游戏导致的 push_level 落后也经此自愈（AFK 胜利会推进 max_unlocked）。
+			start_lvl = maxi(push_level, int(lp.get_max_unlocked_level()))
 		if start_lvl < 1:
 			start_lvl = 1
 		# 钳制到已解锁上限：推图不应从玩家尚未解锁的关开始
@@ -285,6 +298,7 @@ func reset_progress() -> void:
 	mode = Mode.CYCLE
 	slots = [0, 0, 0, 0]
 	push_level = 1
+	push_start_override = 0
 	push_retry_count = 0
 	accumulated_rewards.clear()
 	total_wins = 0

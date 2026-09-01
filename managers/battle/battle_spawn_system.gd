@@ -584,6 +584,16 @@ func can_spawn_more_waves() -> bool:
 func consume_wave_timer() -> void:
 	enemy_wave_timer = 0.0
 
+## v25.5 首波即布置：开战（begin_card_grid_combat）时立刻放行第一波——敌军单位
+## 进场即进部署虚影，实体化先后只由各自 deploy_speed 决定，与玩家侧对称（玩家在
+## 布置阶段完成部署、开战即实体化）。旧开场第一波要空等一个完整波次间隔才开始
+## 部署再叠加虚影时间（敌方空场 ~7-12s+）。幂等：首波已放行/无更多波次时静默跳过。
+func spawn_first_wave_now(current_level: int) -> void:
+	if enemy_wave_index >= 1 or not can_spawn_more_waves():
+		return
+	if spawn_card_grid_enemy_wave(current_level):
+		consume_wave_timer()
+
 # =========================================================================
 #  玩家单位部署
 # =========================================================================
@@ -773,6 +783,9 @@ func request_player_deploy(platform_card_id: String, world_pos: Vector2, battle_
 	_consume_deploy_use(du_key)
 	if _signal_bus:
 		_signal_bus.unit_spawned.emit(unit, true)
+		# v25.2 部署成功音：玩家最高频操作（每场 10-20 次）的"放下"瞬间此前无声
+		if _signal_bus.has_signal("play_sound"):
+			_signal_bus.play_sound.emit("card_place")
 	return true
 
 func clear_preview_units() -> void:

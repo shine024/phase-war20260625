@@ -66,7 +66,7 @@ func _refresh_ui() -> void:
 
 	## 标题
 	var title := Label.new()
-	title.text = "📊 情报收获"
+	title.text = "情报收获"
 	title.add_theme_font_size_override("font_size", DT.FONT_SIZE_LARGE)
 	title.add_theme_color_override("font_color", Color(0.7, 0.85, 1.0, 1.0))
 	outer.add_child(title)
@@ -93,7 +93,7 @@ func _refresh_ui() -> void:
 	## 情报道具掉落展示
 	if not _intel_item_drops.is_empty():
 		var item_title := Label.new()
-		item_title.text = "📋 情报道具"
+		item_title.text = "情报道具"
 		item_title.add_theme_font_size_override("font_size", 13)
 		item_title.add_theme_color_override("font_color", Color(0.75, 0.55, 0.95, 1.0))
 		outer.add_child(item_title)
@@ -134,7 +134,7 @@ func _create_card_entry(entry: Dictionary) -> PanelContainer:
 	name_row.add_theme_constant_override("separation", 6)
 
 	var icon_lbl := Label.new()
-	icon_lbl.text = "🔵" if is_first else "⚔️"
+	icon_lbl.text = "◆" if is_first else "⚔"
 	icon_lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
 	name_row.add_child(icon_lbl)
 

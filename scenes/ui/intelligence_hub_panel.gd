@@ -28,7 +28,7 @@ func _ready() -> void:
 	# v7.x 面板统一：MEDIUM 档 + 紫色签名框架 + PanelChrome 标题栏（右上 ✕ 关闭）
 	custom_minimum_size = DT.PANEL_SIZE_MEDIUM
 	var accent := DT.get_panel_accent("intelligence")
-	add_theme_stylebox_override("panel", PanelStyles.make_panel_frame(accent))
+	add_theme_stylebox_override("panel", PanelStyles.make_panel_frame_textured(accent))
 	var chrome = PanelChrome.attach_to($Margin/VBox, "情报中心", accent, "INTEL HUB")
 	chrome.closed.connect(_on_close)
 	# v9.x 性能：同步路径只保留样式/标题/骨架。atlas 条目与 lore 卡全部入队分帧
@@ -170,7 +170,7 @@ func _add_lore_card(lore_data: Dictionary) -> void:
 	desc.text = lore_data.get("description", "")
 	desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	desc.custom_minimum_size = Vector2(200, 0)
-	desc.add_theme_font_size_override("font_size", DT.FONT_SIZE_XSMALL)
+	desc.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
 	desc.add_theme_color_override("font_color", DT.COLOR_TEXT_MID)
 	vbox.add_child(desc)
 
@@ -349,7 +349,7 @@ func _add_rune_card(rune_def: Dictionary, is_owned: bool, is_equipped: bool) -> 
 	if not secondary.is_empty():
 		effect_text += " / " + secondary
 	effect_lbl.text = effect_text
-	effect_lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_XSMALL)
+	effect_lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
 	effect_lbl.add_theme_color_override("font_color", DT.COLOR_TEXT_MID if is_owned else Color(DT.COLOR_TEXT_FAINT.r, DT.COLOR_TEXT_FAINT.g, DT.COLOR_TEXT_FAINT.b, 0.85))
 	effect_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	effect_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -406,14 +406,14 @@ func _add_runeword_card(rw_def: Dictionary, owned_runes: Array) -> void:
 		runes_str += RuneDefs.RUNE_NAMES.get(str(rid), str(rid))
 	var req_lbl := Label.new()
 	req_lbl.text = "所需符文：%s" % runes_str
-	req_lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_XSMALL)
+	req_lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
 	req_lbl.add_theme_color_override("font_color", DT.COLOR_TEXT_DIM)
 	vbox.add_child(req_lbl)
 
 	# 效果行
 	var effect_lbl := Label.new()
 	effect_lbl.text = RunewordDefs.get_effects_description(rw_id)
-	effect_lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_XSMALL)
+	effect_lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
 	effect_lbl.add_theme_color_override("font_color", DT.COLOR_TEXT_MID if has_all else Color(DT.COLOR_TEXT_FAINT.r, DT.COLOR_TEXT_FAINT.g, DT.COLOR_TEXT_FAINT.b, 0.85))
 	effect_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	vbox.add_child(effect_lbl)
@@ -448,7 +448,7 @@ func _setup_intel_tab() -> void:
 		+ "25% 基础属性 → 50% 详细属性 + 低进化可用 → 75% 弱点提示 → 100% 完整进化资格 + 全改造解锁\n"
 		+ "v21: 部署+4% 固定不衰减；击败/部署附带改造情报点数，点数达标解锁该形态专属改造")
 	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	hint.add_theme_font_size_override("font_size", DT.FONT_SIZE_XSMALL)
+	hint.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
 	hint.add_theme_color_override("font_color", DT.COLOR_TEXT_DIM)
 	tab.add_child(hint)
 	var scroll := ScrollContainer.new()
@@ -550,7 +550,7 @@ func _add_intel_row(card_id: String, entry: Dictionary, im: Node) -> void:
 	var tier_lbl := Label.new()
 	var tier_text: String = String(im.get_tier_description(card_id)) if im.has_method("get_tier_description") else ""
 	tier_lbl.text = tier_text
-	tier_lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_XSMALL)
+	tier_lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
 	tier_lbl.add_theme_color_override("font_color", DT.COLOR_TEXT_MID)
 	tier_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	tier_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -558,7 +558,7 @@ func _add_intel_row(card_id: String, entry: Dictionary, im: Node) -> void:
 
 	var defeat_lbl := Label.new()
 	defeat_lbl.text = "击败 ×%d" % defeat_count
-	defeat_lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_XSMALL)
+	defeat_lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
 	defeat_lbl.add_theme_color_override("font_color", DT.COLOR_TEXT_DIM)
 	hbox.add_child(defeat_lbl)
 
@@ -566,7 +566,7 @@ func _add_intel_row(card_id: String, entry: Dictionary, im: Node) -> void:
 	if deploy_count > 0:
 		var deploy_lbl := Label.new()
 		deploy_lbl.text = "上阵 ×%d" % deploy_count
-		deploy_lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_XSMALL)
+		deploy_lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
 		deploy_lbl.add_theme_color_override("font_color", DT.COLOR_TEXT_DIM)
 		hbox.add_child(deploy_lbl)
 
@@ -574,7 +574,7 @@ func _add_intel_row(card_id: String, entry: Dictionary, im: Node) -> void:
 	if progress >= 0.5 and EnemyCardModMap.can_low_evolve(card_id):
 		var low_lbl := Label.new()
 		low_lbl.text = "低进化可用"
-		low_lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_XSMALL)
+		low_lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
 		low_lbl.add_theme_color_override("font_color", DT.COLOR_GOLD)
 		low_lbl.tooltip_text = "该形态的缴获卡可在「成长」面板进化为对应我方卡"
 		hbox.add_child(low_lbl)
@@ -591,7 +591,7 @@ func _add_intel_row(card_id: String, entry: Dictionary, im: Node) -> void:
 	if not du_text.is_empty():
 		var du_lbl := Label.new()
 		du_lbl.text = du_text
-		du_lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_XSMALL)
+		du_lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
 		du_lbl.add_theme_color_override("font_color", Color(0.55, 0.85, 0.75, 0.9))
 		du_lbl.tooltip_text = "获得该卡后，每场战斗最多可部署次数"
 		hbox.add_child(du_lbl)
@@ -602,7 +602,9 @@ func _add_intel_row(card_id: String, entry: Dictionary, im: Node) -> void:
 	if EnemyCardModMap.has_entry(card_id) and im.has_method("get_mod_intel_points"):
 		_add_mod_intel_rows(card_id, im)
 
-## v21.0: 某敌方形态的改造情报子行（mod 名 + 点数/阈值，已解锁高亮）
+## v21.0: 某敌方形态的改造情报子行（mod 名 + 点数/阈值 + 图纸持有状态）
+## v25.3 口径澄清："研究完成"只是情报侧进度，安装改造的真实门槛是图纸（蓝图掉落）——
+## 行内并列展示两者，消灭"情报中心说解锁了、工坊却装不了"的两套解锁混淆。
 func _add_mod_intel_rows(card_id: String, im: Node) -> void:
 	var pool: Array[String] = EnemyCardModMap.get_unlockable_mods(card_id)
 	if pool.is_empty():
@@ -615,23 +617,31 @@ func _add_mod_intel_rows(card_id: String, im: Node) -> void:
 		var threshold: int = IntelModThresholds.get_threshold(rarity)
 		var pts: int = int(points_map.get(String(mid), 0))
 		var unlocked: bool = im.is_mod_unlocked(card_id, String(mid)) if im.has_method("is_mod_unlocked") else false
+		var has_bp: bool = IntelItemBag != null and IntelItemBag.has_item("blueprint_" + String(mid))
 		var row := HBoxContainer.new()
 		row.add_theme_constant_override("separation", 6)
 		row.modulate.a = 0.92
 		var lbl := Label.new()
 		lbl.text = "      ▸ %s" % mod_name
-		lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_XSMALL)
-		lbl.add_theme_color_override("font_color", DT.COLOR_GOLD if unlocked else DT.COLOR_TEXT_MID)
+		lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
+		lbl.add_theme_color_override("font_color", DT.COLOR_GOLD if has_bp else DT.COLOR_TEXT_MID)
 		lbl.custom_minimum_size = Vector2(190, 0)
-		lbl.tooltip_text = "击败/部署该敌方形态随机获得点数，攒满 %d 点解锁（base 情报满 100%% 时全解锁）" % threshold
+		lbl.tooltip_text = "研究进度：击败/部署该敌方形态随机获得点数，攒满 %d 点研究完成（base 情报满 100%% 时全部完成）。注意：研究完成≠可安装——安装该改造需要在工坊获得对应图纸（战后掉落）。当前图纸：%s" % [
+			threshold, "已持有 ✓" if has_bp else "未获得 ✗"]
 		row.add_child(lbl)
+		var bp_lbl := Label.new()
+		bp_lbl.text = "图纸✓" if has_bp else "图纸✗"
+		bp_lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
+		bp_lbl.add_theme_color_override("font_color", DT.COLOR_GOLD if has_bp else DT.COLOR_TEXT_DIM)
+		bp_lbl.tooltip_text = "安装改造需要图纸（蓝图战后掉落，永久持有）；研究进度不替代图纸"
+		row.add_child(bp_lbl)
 		var prog_lbl := Label.new()
 		if unlocked:
-			prog_lbl.text = "已解锁"
+			prog_lbl.text = "研究完成"
 		else:
 			prog_lbl.text = "%d/%d" % [pts, threshold]
-		prog_lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_XSMALL)
-		prog_lbl.add_theme_color_override("font_color", DT.COLOR_GOLD if unlocked else DT.COLOR_TEXT_DIM)
+		prog_lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
+		prog_lbl.add_theme_color_override("font_color", DT.COLOR_TEXT_DIM)
 		row.add_child(prog_lbl)
 		_intel_content.add_child(row)
 

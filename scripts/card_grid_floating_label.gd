@@ -16,7 +16,7 @@ var _color: Color = Color.WHITE
 var _outline_color: Color = Color(0, 0, 0, 0.85)
 var _outline_size: int = 3
 var _h_align: int = HORIZONTAL_ALIGNMENT_CENTER
-var _bg_color: Color = Color(0, 0, 0, 0)  # 透明=不画背景
+var _bg_color: Color = DesignTokens.COLOR_TRANSPARENT  # 透明=不画背景
 var _bg_padding: float = 2.0
 var _cached_font: Font = null
 var _text_width: float = 0.0

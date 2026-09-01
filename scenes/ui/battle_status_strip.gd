@@ -34,9 +34,9 @@ func _ready() -> void:
 	margin.add_child(vbox)
 	# 标题
 	var title := Label.new()
-	title.text = "📊 战况"
+	title.text = "战况"
 	title.add_theme_font_size_override("font_size", DesignTokens.FONT_SIZE_SMALL)
-	title.add_theme_color_override("font_color", Color(0.91, 0.94, 0.96, 1))
+	title.add_theme_color_override("font_color", DesignTokens.COLOR_TEXT_BRIGHT)
 	title.add_theme_color_override("font_outline_color", DesignTokens.COLOR_BACKDROP_DEEP)
 	title.add_theme_constant_override("outline_size", 2)
 	title.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -59,7 +59,7 @@ func _ready() -> void:
 func _make_row_label() -> Label:
 	var l := Label.new()
 	l.add_theme_font_size_override("font_size", DesignTokens.FONT_SIZE_SMALL)
-	l.add_theme_color_override("font_color", Color(0.78, 0.83, 0.9, 0.95))
+	l.add_theme_color_override("font_color", DesignTokens.COLOR_TEXT_MID)
 	l.add_theme_color_override("font_outline_color", DesignTokens.COLOR_BACKDROP_DEEP)
 	l.add_theme_constant_override("outline_size", 1)
 	l.mouse_filter = Control.MOUSE_FILTER_IGNORE

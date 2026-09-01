@@ -122,7 +122,7 @@ func _draw() -> void:
 	# v9.3：半透明深色圆角背景（原方形 draw_rect 不好看）
 	if _bg_style == null:
 		_bg_style = StyleBoxFlat.new()
-		_bg_style.bg_color = Color(0.0, 0.0, 0.0, 0.55)
+		_bg_style.bg_color = DT.COLOR_BACKDROP
 		_bg_style.set_corner_radius_all(3)
 	draw_style_box(_bg_style, Rect2(1.0, 1.0, ts.x + 3.0, ts.y + 1.0))
 	# 深色描边 + 金黄色文字（能量不足时转 DT.COLOR_DANGER 红）

@@ -178,7 +178,7 @@ func _setup_battle_vignette() -> void:
 	layer.layer = 35
 	add_child(layer)
 	var grad := Gradient.new()
-	grad.colors = PackedColorArray([Color(0, 0, 0, 0.0), Color(0, 0, 0, 0.32)])
+	grad.colors = PackedColorArray([DT.COLOR_TRANSPARENT, Color(0, 0, 0, 0.32)])
 	grad.offsets = PackedFloat32Array([0.55, 1.0])
 	var tex := GradientTexture2D.new()
 	tex.gradient = grad
@@ -202,7 +202,7 @@ func _setup_menu_grid_pattern() -> void:
 	if gp == null:
 		return
 	var img := Image.create_empty(32, 32, false, Image.FORMAT_RGBA8)
-	img.fill(Color(0, 0, 0, 0))
+	img.fill(DT.COLOR_TRANSPARENT)
 	var line := Color(0.0, 0.941, 1.0, 0.05)
 	for y in range(32):
 		img.set_pixel(0, y, line)
@@ -387,33 +387,17 @@ func _input(event: InputEvent) -> void:
 			return
 	else:
 		# 战前准备状态的快捷键
+		# v25.3 系统收敛：随战斗抽屉 14→6 同步裁剪——势力/任务/商店/排行/情报/图鉴/成就/
+		# 帮助的面板入口移回基地（保留 handler，基地链路与 growth 转发仍用）
 		match event.keycode:
 			KEY_1, KEY_B:
 				_on_backpack_pressed()
-			KEY_4, KEY_F:
-				_on_faction_pressed()
-			KEY_5, KEY_Q:
-				_on_quest_pressed()
-			KEY_6, KEY_T:
-				_on_store_pressed()
 			KEY_7:
 				_on_progression_pressed()
-			KEY_8, KEY_L:
-				_on_leaderboard_pressed()
 			KEY_9:
 				_on_settings_pressed()
-			# 批次三 B8：补齐底栏五面板快捷键（与按钮 tooltip 宣传一致；字母键不与
-			# 战斗中 1-9 部署键/SPACE 暂停冲突）
 			KEY_M:
 				_on_map_pressed()
-			KEY_I:
-				_on_info_pressed()
-			KEY_C:
-				_on_collection_pressed()
-			KEY_A:
-				_on_achievement_pressed()
-			KEY_H:
-				_on_help_pressed()
 			KEY_ESCAPE:
 				_close_all_overlays()
 			KEY_ENTER:
@@ -454,8 +438,12 @@ func _open_overlay(overlay: Control, panel_key: String = "") -> void:
 	_ensure_lazy_panel(panel_key)
 	if DEBUG_MAIN_LOG:
 		print("[Main] _open_overlay: showing overlay for key=", panel_key)
-	# 先显示，再fade in
+	# 先显示，再fade in（v25 UI：开合过渡见 _animate_overlay_in/out，尊重减少动效）
 	overlay.visible = true
+	_animate_overlay_in(overlay)
+	# v25.2 面板开合音（此前仅基地 bunker_main 播，主场景 17 个 overlay 全哑）
+	if SignalBus and SignalBus.has_signal("play_sound"):
+		SignalBus.play_sound.emit("panel_open")
 	# 防止子级曾被误 hide（例如旧版设置关闭只藏了 CenterContainer）
 	var cc_reset: Node = overlay.get_node_or_null("CenterContainer")
 	if cc_reset is Control:
@@ -569,7 +557,10 @@ func _close_overlay(overlay: Control, panel_key: String = "") -> void:
 	if panel_key in _FULLBLEED_PANEL_KEYS:
 		_exit_fullbleed_layout()
 	if overlay:
-		overlay.visible = false
+		_animate_overlay_out(overlay)
+	# v25.2 面板开合音（与 _open_overlay 对称）
+	if SignalBus and SignalBus.has_signal("play_sound"):
+		SignalBus.play_sound.emit("panel_close")
 	if panel_key != "" and bottom_function_bar:
 		bottom_function_bar.notify_panel_closed(panel_key)
 	# v7.x 面板统一：全局广播（高亮联动/统计解耦）
@@ -577,6 +568,52 @@ func _close_overlay(overlay: Control, panel_key: String = "") -> void:
 		SignalBus.panel_closed.emit(panel_key)
 	# 性能优化：面板全部关闭后，若无其他面板打开，恢复 SubViewport 状态
 	_restore_subviewport_if_needed()
+
+## v25 UI：面板开合过渡。淡入 0.2s + 内容 0.25s 微弹出（TRANS_BACK），
+## 淡出 0.15s 后隐藏；is_motion_reduce() 时全部短路为瞬切。
+## 关闭 tween 挂 overlay meta 防"淡出途中重开"竞态（回调会把新开的面板藏掉）。
+func _animate_overlay_in(overlay: Control) -> void:
+	if overlay.has_meta("close_tween"):
+		var pending: Variant = overlay.get_meta("close_tween")
+		if pending is Tween and (pending as Tween).is_valid():
+			(pending as Tween).kill()
+	if DT.is_motion_reduce():
+		overlay.modulate.a = 1.0
+		return
+	var cc := overlay.get_node_or_null("CenterContainer") as Control
+	overlay.modulate.a = 0.0
+	var tw := create_tween()
+	tw.tween_property(overlay, "modulate:a", 1.0, DT.MOTION_FADE_IN) 		.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	if cc == null:
+		return
+	await get_tree().process_frame  # 等一帧布局，取真实 size 作缩放枢轴
+	if not is_instance_valid(overlay) or not overlay.visible:
+		return
+	cc.pivot_offset = cc.size * 0.5
+	cc.scale = Vector2(0.96, 0.96)
+	var tw2 := create_tween()
+	tw2.tween_property(cc, "scale", Vector2.ONE, DT.MOTION_POP) 		.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+
+
+func _animate_overlay_out(overlay: Control) -> void:
+	if DT.is_motion_reduce():
+		overlay.visible = false
+		return
+	if overlay.has_meta("close_tween"):
+		var pending: Variant = overlay.get_meta("close_tween")
+		if pending is Tween and (pending as Tween).is_valid():
+			(pending as Tween).kill()
+	var cc := overlay.get_node_or_null("CenterContainer") as Control
+	var tw := overlay.create_tween()
+	overlay.set_meta("close_tween", tw)
+	tw.tween_property(overlay, "modulate:a", 0.0, DT.MOTION_FADE_OUT) 		.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+	tw.tween_callback(func() -> void:
+		overlay.visible = false
+		overlay.modulate.a = 1.0
+		if is_instance_valid(cc):
+			cc.scale = Vector2.ONE
+	)
+
 
 func _toggle_overlay(overlay: Control, panel_key: String = "") -> void:
 	if overlay == null:
@@ -1045,9 +1082,10 @@ func _auto_start_afk_from_world_map(level: int) -> void:
 		GameManager.set_current_level(target_lvl)
 	# 切推图模式
 	_afk_manager.set_mode(AFKModeManagerScript.Mode.PUSH)
-	# 显式设推图起点：start_afk 现以 push_level 为推图起点（Bug#2 修复），
-	# 不再读 GameManager.current_level，故此处须显式赋值玩家选定关。
-	_afk_manager.push_level = target_lvl
+	# 显式指定推图起点为玩家选定关：start_afk 的推图起点会与战役前沿取 max
+	# （v24.2：防"每次推图都从第一关打"），玩家可能故意选低级关刷，
+	# 故走 push_start_override 一次性通道，不与前沿比较。
+	_afk_manager.push_start_override = target_lvl
 	# 启动 AFK + 首战。Bug#1 修复：原仅 start_afk 不调 enter_next_battle，
 	# 导致 world_map 入口挂机进入 RUNNING 后永远不开打。
 	_afk_manager.start_afk()
@@ -1149,7 +1187,7 @@ func _build_retreat_confirm_dialog() -> Control:
 	overlay.set_anchors_preset(Control.PRESET_FULL_RECT)
 	overlay.mouse_filter = Control.MOUSE_FILTER_STOP
 	var dim := ColorRect.new()
-	dim.color = Color(0, 0, 0, 0.55)
+	dim.color = DT.COLOR_BACKDROP
 	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
 	dim.mouse_filter = Control.MOUSE_FILTER_STOP
 	overlay.add_child(dim)
@@ -1160,7 +1198,7 @@ func _build_retreat_confirm_dialog() -> Control:
 	var panel := PanelContainer.new()
 	panel.custom_minimum_size = Vector2(380, 0)
 	# C4/C6: 手写面板框+单态按钮（3 种红各写一遍）→ PanelStyles 工厂 + DT token
-	var sb := PanelStyles.make_panel_frame(DT.COLOR_RED_DOWN)
+	var sb := PanelStyles.make_panel_frame_textured(DT.COLOR_RED_DOWN)
 	sb.content_margin_left = 20
 	sb.content_margin_right = 20
 	sb.content_margin_top = 18
@@ -1385,7 +1423,22 @@ func _show_save_result_toast(message: String, is_error: bool) -> void:
 # v9.x（P2-7范围B）：_on_active_law_cast_at（法则施放演出+效果应用）已随法则系统退役移除。
 
 # ── 战斗结果 ─────────────────────────────────────────────────
+# v25.2 结算延迟弹出守卫：胜利慢动作 0.6s + VICTORY 大字 0.8s 此前与结算面板同帧
+# 抢屏（面板几乎盖住演出）。延迟真实时间（ignore_time_scale，不受慢动作/倍速影响）
+# 让演出先落地；败仗无演出只给 0.25s 一拍余韵。等待期内开新战斗则放弃本次弹出。
+var _battle_result_pending: bool = false
+
 func show_battle_result(player_won: bool) -> void:
+	if _battle_result_pending:
+		return
+	_battle_result_pending = true
+	var delay: float = 0.9 if player_won else 0.25
+	await get_tree().create_timer(delay, true, false, true).timeout
+	_battle_result_pending = false
+	if not is_instance_valid(self) or not is_inside_tree():
+		return
+	if BattleManager != null and "battle_active" in BattleManager and BattleManager.battle_active:
+		return
 	_reward.show_battle_result(player_won)
 
 func _on_result_confirmed() -> void:
