@@ -44,6 +44,9 @@ var _stat_visibility: Dictionary = {}
 ## 已解锁的世界观页面ID集合: page_id -> true
 var _unlocked_lore_pages: Dictionary = {}
 
+## v21.0: 战斗中收集的改造解锁列表（结算时统一展示）
+var _pending_mod_unlocks: Array = []
+
 ## v6.6: 脏标记，避免结算帧内同步写磁盘
 var _state_dirty: bool = false
 var _save_pending: bool = false
@@ -259,7 +262,9 @@ func generate_battle_intel_harvest(
 		"harvests": merged.get("items", []),
 		"reveal_events": reveal_events,
 		"intel_item_drops": intel_item_drops,  ## v6.0
+		"mod_unlock_events": _pending_mod_unlocks.duplicate(),  ## v21.0: 结算时清空并交给面板展示
 	}
+	_pending_mod_unlocks.clear()
 	intel_harvest_generated.emit(result)
 	# v6.6 性能优化：不再同步写磁盘，改为标记脏位由 battle_ended 信号链延迟保存
 	_state_dirty = true
@@ -523,23 +528,18 @@ func _roll_intel_item_drops(
 		if randf() > effective_chance:
 			continue
 
-		## 随机选择掉落改造蓝图或进化蓝图
-		var is_evolution = randf() < 0.2  ## 20%概率进化蓝图
+		## v26 制造退役：进化图纸（blueprint_evol_）整体退役——原 20% 精英/Boss
+		## 进化图纸份额改道为「高稀有度改造图纸」（power_tier +1 档）。
+		## 设计文档：docs/design_manufacture_system.md §2.6（改造图纸 blueprint_ 前缀不动）
 		var item: Dictionary = {}
-
-		if is_evolution and rank != "normal":
-			## 进化蓝图（仅精英/Boss）
-			item = IntelManualItems.roll_random_evolution_blueprint(rank)
-		else:
-			## 改造蓝图（基于敌人类型）
-			## v7.x: 相位师战时（disable_mod_blueprint=true）跳过——
-			## 相位师专属掉落已必掉1-4个改造蓝图，这里再掉会双爆
-			if disable_mod_blueprint:
-				continue
-			# v7.x: power_tier 改用 rank+level 混合档位，让高关杂兵也能掉更高稀有度改造
-			# （原 get_tier_by_rank 只看 rank，导致第1关和第100关改造蓝图稀有度完全相同）
-			var power_tier: int = PowerTiers.get_tier_by_rank_and_level(rank, cur_level)
-			item = IntelManualItems.roll_random_mod_blueprint(enemy_type, rank, power_tier, occupation_mod_bias)
+		if disable_mod_blueprint:
+			continue
+		# v7.x: power_tier 改用 rank+level 混合档位，让高关杂兵也能掉更高稀有度改造
+		# （原 get_tier_by_rank 只看 rank，导致第1关和第100关改造蓝图稀有度完全相同）
+		var power_tier: int = PowerTiers.get_tier_by_rank_and_level(rank, cur_level)
+		if rank != "normal":
+			power_tier += 1   # 精英/Boss：原进化图纸份额并入此处（档位越界由 clamp 兜底）
+		item = IntelManualItems.roll_random_mod_blueprint(enemy_type, rank, power_tier, occupation_mod_bias)
 
 		if not item.is_empty():
 			drops.append(item)
@@ -558,10 +558,10 @@ func _on_base_progress_changed(card_id: String, old_val: float, new_val: float) 
 			"低进化可用",
 			"「%s」情报过半——该敌方形态的缴获卡可在「成长」面板进化为对应我方卡。" % DefaultCards.get_safe_display_name(card_id))
 
-## mod 解锁一次性通知（点数达标或 base 满 100% 全解锁）
+## mod 解锁：静默记录到 _pending_mod_unlocks，由结算面板统一展示（不在战斗中弹窗）
 func _on_mod_unlocked(card_id: String, mod_id: String) -> void:
 	var mod_name: String = String(ModRegistry.get_data(mod_id).get("name", mod_id))
-	FeatureUnlockPopup.show_once(
-		"v21_mod_" + card_id + "_" + mod_id,
-		"改造情报解锁",
-		"「%s」的改造模块「%s」已通过情报解锁。" % [DefaultCards.get_safe_display_name(card_id), mod_name])
+	_pending_mod_unlocks.append({
+		"card_name": DefaultCards.get_safe_display_name(card_id),
+		"mod_name": mod_name,
+	})

@@ -509,7 +509,7 @@ const LEGACY_QUESTS: Array[Dictionary] = [
 	{
 		"id": "q_collect_fragments_50",
 		"title": "收藏大家",
-		"description": "拥有至少 50 张不同的卡片（v20.31 文案校正：原“蓝图碎片”已随蓝图体系删除，本任务实际计拥有卡种数）。",
+		"description": "拥有至少 50 种不同的卡片。",
 		"objective_type": "collect_fragments",
 		"target": {"total": 50},
 		"company_id": "void_research",

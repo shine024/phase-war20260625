@@ -62,6 +62,9 @@ func _generate_all_sounds() -> void:
 	_audio_streams["omega_cannon"] = _gen_laser(180, 120, 0.35)     # 低频脉冲（下降扫频）
 	_audio_streams["rail_cannon"] = _gen_laser(2200, 3500, 0.22)    # 高频充能+击穿
 	_audio_streams["impact_generic"] = _gen_impact(0.10)
+	# v27: 战斗反馈补强（对应 SFX_NAMES 新增；真实音频文件后补，先落合成兜底）
+	_audio_streams["ultimate_ready"] = _gen_sweep(750, 1150, 0.16)  # 大招就绪：明亮短升调
+	_audio_streams["base_alarm"] = _gen_beep_tone(240, 0.22)        # 基地告警：低频急促
 
 
 # ============================================================

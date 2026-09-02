@@ -149,3 +149,95 @@ for f in sorted(glob.glob(os.path.join(ROOT, "data", "evolution_paths", "*_evolu
             evo_issues.append(f"{fname}: {a}->{b} 等级门槛不递进 {la:.0f}→{lb:.0f}")
 print("EVO_ISSUES", json.dumps(evo_issues, ensure_ascii=False))
 print("EVO_WARNS", json.dumps(evo_warns, ensure_ascii=False))
+
+# ═══════════ 制造品质池审查（v26 批次4）═══════════
+# 数据源 data/manufacture_pools.gd：GATE / POOLS / COSTS / CAPTURED_ROLL_WEIGHTS /
+# ANALYZER_YIELD / PITY_*。检查：权重和、档位间稀有度单调、成本递增、
+# 产量表对齐、暗保底参数。
+mf_issues, mf_warns = [], []
+mf_path = os.path.join(ROOT, "data", "manufacture_pools.gd")
+mf = strip_comments(open(mf_path, encoding="utf-8").read())
+
+RARITY_ORDER = ["common", "uncommon", "rare", "epic", "legendary", "mythic"]
+
+def _parse_weight_dict(block):
+    """解析 {\"rare\": 12, ...} 或 {"rare": 12, ...} 形态的权重字典 → dict"""
+    return {k: float(v) for k, v in re.findall(r'"(\w+)"\s*:\s*(-?\d+(?:\.\d+)?)', block)
+            if k in RARITY_ORDER}
+
+# ── POOLS：五档品质池 ──
+pools_m = re.search(r"POOLS\s*(?::=|=)\s*\{(.*?)\n\}", mf, re.S)
+if not pools_m:
+    mf_issues.append("manufacture_pools.gd: 找不到 POOLS 定义")
+else:
+    pools_src = pools_m.group(1)
+    tier_blocks = re.findall(r'(\d)\s*:\s*\[(.*?)\]', pools_src, re.S)
+    parsed = {}
+    for tier_str, arr_src in tier_blocks:
+        tier = int(tier_str)
+        entries = re.findall(r'\{\s*"r"\s*:\s*"(\w+)"\s*,\s*"w"\s*:\s*(\d+(?:\.\d+)?)\s*\}', arr_src)
+        d = {r: float(w) for r, w in entries}
+        parsed[tier] = d
+        if not d:
+            mf_issues.append(f"POOL 档位 {tier} 无有效条目")
+            continue
+        total = sum(d.values())
+        if abs(total - 100.0) > 0.01:
+            mf_issues.append(f"POOL 档位 {tier} 权重和 {total:.1f} ≠ 100")
+    # 档位间方向性：common 应随档位单调递减（情报档提升 = 池子变好）；
+    # epic+ 应单调不降；uncommon/rare 允许驼峰（中期上升、后期让位史诗，设计意图）。
+    for a, b in zip(sorted(parsed), sorted(parsed)[1:]):
+        for r in RARITY_ORDER:
+            wa, wb = parsed.get(a, {}).get(r), parsed.get(b, {}).get(r)
+            if wa is None or wb is None:
+                continue
+            if r == "common" and wb > wa:
+                mf_issues.append(f"POOL 档 {a}→{b} common 反常上升 {wa:.0f}→{wb:.0f}")
+            if r in ("epic", "legendary", "mythic") and wb < wa:
+                mf_issues.append(f"POOL 档 {a}→{b} 高稀有度 {r} 退化 {wa:.0f}→{wb:.0f}")
+
+# ── COSTS：各档制造成本应递增 ──
+costs_m = re.search(r"COSTS\s*(?::=|=)\s*\[(.*?)\n\]", mf, re.S)
+if costs_m:
+    cost_rows = re.findall(r'\{([^{}]*)\}', costs_m.group(1))
+    cost_dicts = []
+    for row in cost_rows:
+        d = {k: float(v) for k, v in re.findall(r'"(\w+)"\s*:\s*(-?\d+(?:\.\d+)?)', row)}
+        if d:
+            cost_dicts.append(d)
+    for a, b in zip(cost_dicts, cost_dicts[1:]):
+        for res in ("nano", "energy", "alloy", "crystal"):
+            va, vb = a.get(res), b.get(res)
+            if va is not None and vb is not None and vb < va:
+                mf_issues.append(f"COSTS {res} 档 {len(cost_dicts)} 档位间退化 {va:.0f}→{vb:.0f}")
+
+# ── CAPTURED_ROLL_WEIGHTS：缴获品质（无神话）──
+cap_m = re.search(r'CAPTURED_ROLL_WEIGHTS\s*(?::=|=)\s*\{([^{}]*)\}', mf)
+if cap_m:
+    cap = _parse_weight_dict(cap_m.group(1))
+    total = sum(cap.values())
+    if abs(total - 100.0) > 0.01:
+        mf_issues.append(f"CAPTURED_ROLL_WEIGHTS 权重和 {total:.1f} ≠ 100")
+    if "mythic" in cap and cap["mythic"] > 0:
+        mf_issues.append("缴获品质不应出神话（制造专属）")
+
+# ── ANALYZER_YIELD：按稀有度单调递增 ──
+ay_m = re.search(r"ANALYZER_YIELD\s*(?::=|=)\s*\[(.*?)\]", mf, re.S)
+if ay_m:
+    yields = [float(x) for x in re.findall(r'-?\d+(?:\.\d+)?', ay_m.group(1))]
+    if len(yields) != len(RARITY_ORDER):
+        mf_warns.append(f"ANALYZER_YIELD {len(yields)} 项 ≠ 稀有度轴 {len(RARITY_ORDER)} 档")
+    for a, b in zip(yields, yields[1:]):
+        if b < a:
+            mf_issues.append(f"ANALYZER_YIELD 非单调 {a}→{b}（高品质产出应 ≥ 低品质）")
+
+# ── 暗保底参数 ──
+pity_th = re.search(r'PITY_THRESHOLD\s*(?::=|=)\s*(\d+)', mf)
+pity_bo = re.search(r'PITY_BOOST\s*(?::=|=)\s*(\d+(?:\.\d+)?)', mf)
+if pity_th and int(pity_th.group(1)) < 1:
+    mf_issues.append("PITY_THRESHOLD 应 ≥ 1（连续未出稀有次数阈值）")
+if pity_bo and float(pity_bo.group(1)) < 1.0:
+    mf_issues.append("PITY_BOOST 应 ≥ 1.0（保底倍率必须放大权重）")
+
+print("MF_ISSUES", json.dumps(mf_issues, ensure_ascii=False))
+print("MF_WARNS", json.dumps(mf_warns, ensure_ascii=False))

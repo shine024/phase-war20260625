@@ -18,7 +18,6 @@
 [ext_resource type="PackedScene" path="res://scenes/ui/bottom_instrument_bar.tscn" id="26_instrument_bar"]
 [ext_resource type="PackedScene" path="res://scenes/ui/bottom_function_bar.tscn" id="27_function_bar"]
 [ext_resource type="PackedScene" path="res://scenes/ui/resource_bar.tscn" id="28_resource_bar"]
-[ext_resource type="PackedScene" path="res://scenes/ui/resource_info_panel.tscn" id="29_resource_info"]
 [ext_resource type="PackedScene" path="res://scenes/ui/battle_info_display.tscn" id="32_battle_info_display"]
 [ext_resource type="PackedScene" path="res://scenes/ui/card_grid_battle_hud.tscn" id="33_card_grid_hud"]
 [ext_resource type="PackedScene" path="res://scenes/ui/intelligence_hub_panel.tscn" id="34_intelligence_hub"]
@@ -129,6 +128,10 @@ script = ExtResource("10_overlay")
 [node name="HudLayer" type="CanvasLayer" parent="."]
 layer = 40
 
+; ⚠️ 墓碑节点（v26.x 标记）：BattleTopStatusBar 恒 visible=false，但内含 BattleInfoDisplay
+; 这个"隐形数据引擎"（SignalBus 信号驱动的战斗统计累积器）仍被
+; battle_status_strip.gd 与 mvp_panel.gd 消费——删除前必须先迁移统计累积逻辑，
+; 详见 docs/CHANGELOG.md v26.x UI 整编条目。
 [node name="BattleTopStatusBar" type="HBoxContainer" parent="HudLayer"]
 layout_mode = 1
 anchors_preset = 10
@@ -154,23 +157,8 @@ layout_mode = 2
 size_flags_horizontal = 1
 size_flags_vertical = 4
 
-[node name="TopLeftMeta" type="Control" parent="HudLayer"]
-layout_mode = 1
-anchors_preset = 0
-offset_left = 8.0
-offset_top = 176.0
-offset_right = 200.0
-offset_bottom = 396.0
-visible = false
-
-[node name="ResourceInfoPanel" parent="HudLayer/TopLeftMeta" instance=ExtResource("29_resource_info")]
-layout_mode = 1
-anchors_preset = 0
-offset_left = 0.0
-offset_top = 0.0
-offset_right = 192.0
-offset_bottom = 220.0
-
+; v26.x: TopLeftMeta/ResourceInfoPanel 死节点已删除（恒 hidden、零脚本消费方、
+; 不在 _BACKPACK_CHROME_PATHS）；resource_info_panel.tscn 场景文件保留未动。
 [node name="TopHudBar" parent="HudLayer" instance=ExtResource("45_top_hud_bar")]
 layout_mode = 1
 
@@ -225,7 +213,7 @@ theme_override_constants/separation = 0
 layout_mode = 2
 
 [node name="UltimateCastBar" type="HBoxContainer" parent="HudLayer/BattleBottomBar"]
-custom_minimum_size = Vector2(0, 58)
+custom_minimum_size = Vector2(0, 50)
 layout_mode = 2
 visible = false
 alignment = 1
@@ -237,14 +225,14 @@ layout_mode = 2
 
 [node name="BattleLogBar" parent="HudLayer" instance=ExtResource("41_battle_log")]
 layout_mode = 1
-anchors_preset = 12
+anchor_left = 0.0
 anchor_top = 1.0
-anchor_right = 1.0
+anchor_right = 0.5
 anchor_bottom = 1.0
 offset_left = 8.0
-offset_top = -224.0
+offset_top = -232.0
 offset_right = -8.0
-offset_bottom = -128.0
+offset_bottom = -136.0
 grow_horizontal = 2
 grow_vertical = 0
 

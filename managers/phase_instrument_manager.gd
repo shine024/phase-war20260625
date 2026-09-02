@@ -433,43 +433,6 @@ func apply_phase_field_bonus_to_unit_stats(stats: UnitStats) -> void:
 # v6.7: 相位师排名加成 —— 敌方 boss 镜像 + 星级缓存管理
 # ═══════════════════════════════════════════════════════════
 
-## v6.7: 敌方 boss 单位加成（与玩家方对称）
-## 仅在 _is_phase_master_battle 时由 battle_spawn_system 调用。
-## 用敌方 boss 星级算排名系数，乘到敌方单位 stats 上。
-## 注：敌方单位不走 apply_phase_field_bonus_to_unit_stats（那条路径读玩家相位仪），
-##     此处独立应用一个量级相当的乘算，保持"敌我双方对称"。
-func apply_enemy_phase_master_bonus_to_unit_stats(stats: UnitStats, enemy_stars: int) -> void:
-	if stats == null:
-		return
-	# v7.2: 等级维度加成 —— 读相位师 master_stats.attack_power/defense，镜像我方相位场属性点。
-	# 注意：符文/相位仪/改造维度由 enemy_phase_field_driver 的 v6.14 函数处理
-	# （_apply_master_rune_bonus / _apply_enemy_phase_instrument_bonus / _apply_sequence_entry_bonus），
-	# 此处只负责等级维度，避免双重叠加。无 master_config 时回退旧标量（向后兼容）。
-	var master_cfg: Dictionary = _get_current_enemy_master_config()
-	if master_cfg.is_empty():
-		_apply_enemy_bonus_legacy_scalar(stats, enemy_stars)
-		return
-	var rank_coeff: float = get_rank_coefficient(enemy_stars)
-	var master_stats: Dictionary = master_cfg.get("stats", {})
-	var atk_from_level: float = float(master_stats.get("attack_power", 0.0)) * MIRROR_LEVEL_ATK_COEFF * rank_coeff
-	var hp_from_level: float = float(master_stats.get("defense", 0.0)) * MIRROR_LEVEL_HP_COEFF * rank_coeff
-	# 应用等级加成（atk/hp，与我方相位场属性点对称）
-	if hp_from_level > 0.0:
-		stats.max_hp = maxf(1.0, stats.max_hp * (1.0 + hp_from_level))
-	if atk_from_level > 0.0:
-		stats.attack_damage = maxf(0.1, stats.attack_damage * (1.0 + atk_from_level))
-		stats.attack_light = maxf(0.1, stats.attack_light * (1.0 + atk_from_level))
-		stats.attack_armor = maxf(0.1, stats.attack_armor * (1.0 + atk_from_level))
-		stats.attack_air = maxf(0.1, stats.attack_air * (1.0 + atk_from_level))
-		if stats.has_method("_sync_weapon_slots_damage"):
-			stats._sync_weapon_slots_damage(1.0 + atk_from_level)
-		for i in range(stats.weapons.size()):
-			var w: Variant = stats.weapons[i]
-			if w is Dictionary:
-				var wd: Dictionary = w
-				wd["damage"] = maxf(0.1, float(wd.get("damage", 0.0)) * (1.0 + atk_from_level))
-				stats.weapons[i] = wd
-
 ## v7.2: 旧单一标量加成（master_config 不可用时的回退路径，保持向后兼容）
 func _apply_enemy_bonus_legacy_scalar(stats: UnitStats, enemy_stars: int) -> void:
 	var coeff: float = get_rank_coefficient(enemy_stars)

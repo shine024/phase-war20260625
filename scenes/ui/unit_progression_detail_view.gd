@@ -130,7 +130,7 @@ func _rebuild_content() -> void:
 	_add_separator()
 	_add_progress_block()
 	_add_separator()
-	_add_forward_evolution_block()
+	_add_manufacture_block()
 
 
 func _add_progress_block() -> void:
@@ -221,10 +221,10 @@ func _add_enhance_module_lines() -> void:
 
 
 func _add_predecessor_block() -> void:
-	_add_line("进化来源", Color(0.55, 0.82, 1.0), 14)
+	_add_line("谱系来源", Color(0.55, 0.82, 1.0), 14)
 	var preds: Array[Dictionary] = EvolutionGraphBuilder.get_predecessors(_card_id)
 	if preds.is_empty():
-		_add_line("初始单位：本时代列起点，无上一级进化来源", Color(0.65, 0.72, 0.82))
+		_add_line("初始单位：本时代列起点，无上一级谱系来源", Color(0.65, 0.72, 0.82))
 		return
 	for p in preds:
 		var from_id: String = String(p.get("from_id", ""))
@@ -236,54 +236,37 @@ func _add_predecessor_block() -> void:
 		_add_line("  %s · 前置时代：%s" % [stage_label, era_name], Color(0.6, 0.68, 0.78), 11)
 
 
-func _add_forward_evolution_block() -> void:
-	_add_line("可进化至", Color(0.55, 0.82, 1.0), 14)
-	if not UnitLineageConfig.has_lineage(_card_id):
-		# v21.0: 缴获敌形态卡（captured_*）无常规进化链，但可能有"低进化"出口
-		# （该形态情报 ≥50% → 进化为对应玩家卡）
-		if BlueprintManager != null and BlueprintManager.has_method("get_evolution_options"):
-			var low_opt: Dictionary = BlueprintManager.get_evolution_options(_card_id).get("low_evolution", {})
-			var low_tid: String = String(low_opt.get("target_card_id", ""))
-			if not low_tid.is_empty():
-				_add_evolution_target("低进化 · 情报过半", low_tid, "low")
-				_add_line("获取/击败/部署该敌方形态积累情报，过半即可转化为对应我方卡", Color(0.65, 0.7, 0.78), 11)
-				return
-		_add_line("该单位无后续进化出口（终局或法则单位）", Color(0.6, 0.65, 0.75))
+## v26 批次4：进化出口块退役——替换为制造出口（设计文档 §2.7"可进化至"→"可制造"）。
+## 数据源从 BlueprintManager.get_evolution_options 换成 ManufactureManager。
+func _add_manufacture_block() -> void:
+	_add_line("制造", Color(0.55, 0.82, 1.0), 14)
+	ManagerLazyLoader.ensure_loaded("manufacture")
+	var mgr: Node = ManagerLazyLoader.get_manager("manufacture")
+	if mgr == null:
+		_add_line("制造系统未就绪", Color(0.7, 0.5, 0.5))
 		return
-	if BlueprintManager == null or not BlueprintManager.has_method("get_evolution_options"):
-		_add_line("进化系统未启用", Color(0.7, 0.5, 0.5))
+	if not mgr.is_manufacturable(_card_id):
+		_add_line("该卡种无敌形原型，无法制造（仅掉落/势力/商店获取）", Color(0.6, 0.65, 0.75))
 		return
-
-	var opts: Dictionary = BlueprintManager.get_evolution_options(_card_id)
-	var e1: String = String(opts.get("evolution_1", ""))
-	if not e1.is_empty():
-		_add_evolution_target("E1 · 同体系", e1, "base")
-	var branches: Dictionary = opts.get("faction_branches", {})
-	if e1.is_empty() and branches.is_empty():
-		_add_line("暂无可进化路线", Color(0.6, 0.65, 0.75))
-		return
-	for faction_id in branches.keys():
-		var tid: String = String(branches[faction_id])
-		if tid.is_empty():
+	var check: Dictionary = mgr.can_manufacture(_card_id)
+	for cond in check.get("conditions", []):
+		if not cond is Dictionary:
 			continue
-		var fname: String = EvolutionGraphBuilder.faction_display_name(String(faction_id))
-		_add_evolution_target("E2 · %s" % fname, tid, String(faction_id))
-
-	_add_line("传承比例：%.0f%% · 进化后改装重置" % (UnitLineageConfig.DEFAULT_INHERIT_RATIO * 100.0), Color(0.65, 0.7, 0.78), 11)
-
-
-func _add_evolution_target(stage_label: String, target_id: String, faction_id: String) -> void:
-	var target_card: CardResource = DefaultCards.get_card_by_id(target_id)
-	var target_name: String = target_card.display_name if target_card != null else target_id
-	var can_info: Dictionary = BlueprintManager.can_evolve_blueprint(_card_id, target_id)
-	var ok: bool = bool(can_info.get("ok", false))
-	var reason: String = String(can_info.get("reason_zh", UnitLineageConfig.localize_evolve_reason(String(can_info.get("reason", "")))))
-	var lv_req: int = int(can_info.get("level_requirement", can_info.get("enhance_requirement", 0)))
-	var mod_req: int = int(can_info.get("mod_requirement", 0))
-	var status_col := Color(0.55, 0.95, 0.65) if ok else Color(0.95, 0.55, 0.45)
-	var status_text: String = "可进化" if ok else "未满足：%s" % reason
-	_add_line("%s → %s" % [stage_label, target_name], Color(0.85, 0.9, 0.95), 13)
-	_add_line("  需 Lv%d · %d个MOD · %s" % [lv_req, mod_req, status_text], status_col, 11)
+		var met := bool(cond.get("met", false))
+		var col := Color(0.55, 0.95, 0.65) if met else Color(0.95, 0.55, 0.45)
+		var text := ""
+		match String(cond.get("key", "")):
+			"intel":
+				text = "情报 %s（需 %s）" % [cond.get("current_text", "?"), cond.get("required_text", "?")]
+			"skill_tree_era":
+				text = "技能树制造授权：%s" % cond.get("current_text", "?")
+			"resources":
+				text = "资源（需 %s）：%s" % [cond.get("required_text", "?"), cond.get("current_text", "?")]
+		_add_line("  %s %s" % ["✔" if met else "✘", text], col, 11)
+	if bool(check.get("ok", false)):
+		_add_line("✔ 可在「制造中心」直接生产", Color(0.55, 0.95, 0.65), 12)
+	else:
+		_add_line("条件齐备后即可在「制造中心」生产", Color(0.65, 0.7, 0.78), 11)
 
 
 func _add_separator() -> void:

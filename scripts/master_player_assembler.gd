@@ -237,12 +237,6 @@ static func _raw_to_display_level(total: float) -> int:
 	return clampi(lvl, DISPLAY_LEVEL_LO, DISPLAY_LEVEL_HI)
 
 
-## v7.x: 便捷重载——直接传 pm 算展示等级（供 UI 调用）
-static func get_player_display_level(pm: Node) -> int:
-	var r: Dictionary = evaluate_player_stars(pm)
-	return int(r.get("display_level", 15))
-
-
 ## v7.x: 便捷查询——返回完整展示文本 "军团战力5124 · 4★ 大师"（供 UI 调用）
 ## 注：原派生Lv由战力换算与战力同义重复，已改用军团战力数字直接展示。
 static func get_player_display_text(pm: Node) -> String:

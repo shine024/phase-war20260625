@@ -1,40 +1,23 @@
 extends Resource
 class_name GameConfig
 ## 游戏配置：管理可调节的数值，避免硬编码
+## v26.4 收敛：15 个零消费字段（first_wave_delay/nano_bonus_*/exp_*/blueprint_drop_*/
+## phase_master_encounter_chance/save_notification_duration 等旧经济/UI/性能旋钮）与
+## 4 个零调用方法（load_from_file/save_to_file/get_value/set_value）已删，git 历史可查。
+## 存活字段必须至少有一个真实消费点（见各注释）；新增字段记得同步 reset_to_defaults()。
 
 ## 战斗配置
 @export_group("战斗配置")
-@export var first_wave_delay: float = 3.0  ## 第一波敌人出现延迟（秒）
-@export var default_enemy_wave_interval: float = 12.0  ## 默认敌人生成间隔
-@export var player_deploy_cooldown: float = 1.0  ## 玩家部署冷却时间
-@export var cross_row_direct_damage_mult: float = 0.70  ## v9.x: 直射武器跨行射击伤害乘区（同行全额；曲射/空射全场全额不受行约束）
+@export var cross_row_direct_damage_mult: float = 0.70  ## v9.x: 直射武器跨行射击伤害乘区（同行全额；曲射/空射全场全额不受行约束）。消费点 card_grid_battle_layout.gd
 ## v21 P0: 光环范围化总开关——true=战术光环（医疗/侦查/雷达/堡垒/改造光环）按槽距范围生效，
-## 指挥/载具维修恒全场；false=完整回退 v6.2 全场广播行为（判定函数短路 true）。
+## 指挥/载具维修恒全场；false=完整回退 v6.2 全场广播行为（判定函数短路 true）。消费点 aura_data.is_in_aura_range
 @export var aura_range_enabled: bool = true
-
-## 数值平衡
-@export_group("数值平衡")
-@export var nano_bonus_base: int = 5  ## 纳米基础奖励
-@export var nano_bonus_per_level: int = 2  ## 每级额外纳米奖励
-@export var blueprint_drop_chance_base: float = 0.15  ## 蓝图掉落基础概率
-@export var exp_base_amount: int = 10  ## 基础经验值
-@export var exp_per_level: int = 5  ## 每级额外经验值
-
-## 相位师配置
-@export_group("相位师配置")
-@export var phase_master_encounter_chance: float = 0.15  ## 相位师遭遇概率
-
-## UI配置
-@export_group("UI配置")
-@export var save_notification_duration: float = 2.0  ## 存档提示显示时长
-@export var error_notification_duration: float = 3.0  ## 错误提示显示时长
-@export var animation_default_duration: float = 0.3  ## 默认动画时长
-
-## 性能配置
-@export_group("性能配置")
-@export var object_pool_size: int = 9  ## 对象池大小
-@export var max_particle_effects: int = 50  ## 最大粒子效果数量
-@export var target_find_interval: float = 0.3  ## 目标查找间隔（秒）
+## v26.2: 战斗环境效果总开关——true=天气/地形/能量场/时段按 BattleEnvEffects 表生效
+## （敌我对称，乘在 stats 构建层）；false=四维回归纯展示标签（v26.1 前行为）。消费点 battle_env_effects.enabled()
+@export var env_effects_enabled: bool = true
+## v26.2: 每关布局表总开关——true=LevelBattleLayouts 显式配置的关卡用专属棋盘
+## （行数/敌我列数/废墟格），其余关默认 3×3；false=全部关卡 3×3（v26.1 前行为）。消费点 card_grid_battle_layout
+@export var battle_layouts_enabled: bool = true
 
 ## 调试配置
 @export_group("调试配置")
@@ -48,84 +31,15 @@ static var _default_config: GameConfig = null
 
 static func get_default() -> GameConfig:
 	if _default_config == null:
+		# 默认值以 @export 初始值为单一来源（v26.4 起不再在此重复抄写）
 		_default_config = GameConfig.new()
-		# 设置默认值
-		_default_config.first_wave_delay = 3.0
-		_default_config.default_enemy_wave_interval = 12.0
-		_default_config.player_deploy_cooldown = 1.0
-		_default_config.cross_row_direct_damage_mult = 0.70
-		_default_config.aura_range_enabled = true
-		_default_config.nano_bonus_base = 5
-		_default_config.nano_bonus_per_level = 2
-		_default_config.blueprint_drop_chance_base = 0.15
-		_default_config.exp_base_amount = 10
-		_default_config.exp_per_level = 5
-		_default_config.phase_master_encounter_chance = 0.15
-		_default_config.save_notification_duration = 2.0
-		_default_config.error_notification_duration = 3.0
-		_default_config.animation_default_duration = 0.3
-		_default_config.object_pool_size = 9
-		_default_config.max_particle_effects = 50
-		_default_config.target_find_interval = 0.3
-		_default_config.debug_no_deploy_limits = false
-
 	return _default_config
-
-## 从文件加载配置
-static func load_from_file(path: String) -> GameConfig:
-	if not FileAccess.file_exists(path):
-		push_warning("[GameConfig] 配置文件不存在: %s，使用默认配置" % path)
-		return get_default()
-
-	var config = load(path) as GameConfig
-	if config == null:
-		push_error("[GameConfig] 无法加载配置文件: %s" % path)
-		return get_default()
-
-	return config
-
-## 保存配置到文件
-func save_to_file(path: String) -> bool:
-	var result = ResourceSaver.save(self, path)
-	if result != OK:
-		push_error("[GameConfig] 无法保存配置到文件: %s，错误代码: %d" % [path, result])
-		return false
-	return true
-
-## 获取配置值（带默认值）
-func get_value(key: String, default_value: Variant = null) -> Variant:
-	if not has_method("get"):
-		return default_value
-
-	var value = get(key)
-	if value == null:
-		return default_value
-
-	return value
-
-## 设置配置值
-func set_value(key: String, value: Variant) -> void:
-	if has_method("set"):
-		set(key, value)
-	else:
-		push_warning("[GameConfig] 无法设置配置值: %s" % key)
 
 ## 重置为默认值
 func reset_to_defaults() -> void:
-	first_wave_delay = 3.0
-	default_enemy_wave_interval = 12.0
-	player_deploy_cooldown = 1.0
 	cross_row_direct_damage_mult = 0.70  # P0-5 修复：v9.x 字段此前漏重置
-	nano_bonus_base = 5
-	nano_bonus_per_level = 2
-	blueprint_drop_chance_base = 0.15
-	exp_base_amount = 10
-	exp_per_level = 5
-	phase_master_encounter_chance = 0.15
-	save_notification_duration = 2.0
-	error_notification_duration = 3.0
-	animation_default_duration = 0.3
-	object_pool_size = 9
-	max_particle_effects = 50
-	target_find_interval = 0.3
+	# v26.4 修复：v21/v26 三个总开关此前漏重置
+	aura_range_enabled = true
+	env_effects_enabled = true
+	battle_layouts_enabled = true
 	debug_no_deploy_limits = false  # P0-5 修复：测试开关此前漏重置

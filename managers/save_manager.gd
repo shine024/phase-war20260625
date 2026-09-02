@@ -33,7 +33,8 @@ const MAX_SLOTS := 3
 
 const SAVE_FILE_USER := "user://save.json"
 # v9 引入 mod_unlock_state/production_points（v25.3 已退役，旧档 key 静默跳过；版本号保持 v9 不回退）
-const SAVE_SCHEMA_VERSION := 9
+# 版本常量单一真理源在 SaveMigration（save_migration.gd:5），此处只转发（v26.4 去重）
+const SAVE_SCHEMA_VERSION := SaveMigration.SAVE_SCHEMA_VERSION
 const SAVE_MIN_INTERVAL_MS := 1200
 const SAVE_BACKUP_INTERVAL_MS := 15000
 const NONCRITICAL_SAVE_INTERVAL_MS := 10000
@@ -74,6 +75,8 @@ const DEFERRED_MANAGER_LOADS: Array = [
 	["/root/IntelEvolutionManager", "intel_evolution"],
 	# v21: 余烬要塞基地（非战斗实时；懒加载，_safe_load_manager 会按需实例化）
 	["/root/BunkerManager", SK_BUNKER],
+	# v26: 制造系统（pity 暗保底计数；配方解锁实时读情报不落档）
+	["/root/ManufactureManager", SK_MANUFACTURE],
 ]
 const CRITICAL_RESETTABLE_MANAGERS: Array[String] = [
 	"BlueprintManager",
@@ -90,6 +93,8 @@ const CRITICAL_RESETTABLE_MANAGERS: Array[String] = [
 	"PhaseMasterSkillManager",
 	# v21: 余烬要塞基地（load_state({}) 全重置；未实例化时新游戏天然为默认态）
 	"BunkerManager",
+	# v26: 制造系统（新游戏清空暗保底计数）
+	"ManufactureManager",
 ]
 const DEFERRED_RESET_BATCH_SIZE := 4
 
@@ -160,6 +165,8 @@ const SK_PHASE_MASTER_SKILL: String = SaveConstants.SK_PHASE_MASTER_SKILL
 const SK_AFK: String = SaveConstants.SK_AFK
 # v21: 余烬要塞基地状态存档键别名
 const SK_BUNKER: String = SaveConstants.SK_BUNKER
+# v26: 制造系统状态存档键别名
+const SK_MANUFACTURE: String = SaveConstants.SK_MANUFACTURE
 
 var _deferred_load_data: Dictionary = {}
 var _deferred_manager_queue: Array = []
@@ -323,7 +330,9 @@ func _on_battle_ended_flush_save(_player_won: bool) -> void:
 		return
 	var t := tree.create_timer(0.2)
 	t.timeout.connect(func() -> void:
-		if not _is_saving:
+		if _is_saving:
+			_schedule_deferred_save()  # v26.6：恰逢保存中不再静默丢档，重排队
+		else:
 			save_game()
 	)
 
@@ -343,16 +352,6 @@ func _on_about_to_quit() -> void:
 
 func _exit_tree() -> void:
 	_is_exiting = true
-
-func _user_save_byte_size() -> int:
-	if not FileAccess.file_exists(SAVE_FILE_USER):
-		return -1
-	var rf: FileAccess = FileAccess.open(SAVE_FILE_USER, FileAccess.READ)
-	if rf == null:
-		return -1
-	var n: int = int(rf.get_length())
-	rf.close()
-	return n
 
 func _remove_file_at_user(virtual_path: String) -> void:
 	if not FileAccess.file_exists(virtual_path):
@@ -391,6 +390,10 @@ func _current_temp_file() -> String:
 ## 设置当前存档位
 func set_slot(slot: int) -> void:
 	current_slot = clampi(slot, 1, MAX_SLOTS)
+	# v26.6 修复：切槽必须丢弃上一槽的非关键段缓存——否则缓存刷新窗口内的自动存档
+	# 会把旧槽的 lore/成就/日常/图鉴/情报/挂机段写进新槽文件（跨档污染）。
+	_noncritical_save_cache.clear()
+	_last_noncritical_save_ms = 0
 	if DEBUG_SAVE_LOG:
 		pass  # LOG: 切换到存档位
 
@@ -468,6 +471,13 @@ func _resolve_read_save_path() -> String:
 	var slot_path := _current_save_file()
 	if FileAccess.file_exists(slot_path):
 		return slot_path
+	# v26.6：主档丢失时回退备份档/.prior 原子写回滚副本（与 get_slot_info 口径对齐）
+	var backup := _current_backup_file()
+	if not backup.is_empty() and FileAccess.file_exists(backup):
+		return backup
+	var prior_path := slot_path + ".prior"
+	if FileAccess.file_exists(prior_path):
+		return prior_path
 	# slot 1 兼容旧单存档
 	if current_slot == 1 and FileAccess.file_exists(SAVE_FILE_USER):
 		return SAVE_FILE_USER
@@ -483,14 +493,16 @@ func _resolve_read_save_path() -> String:
 func get_last_active_at() -> int:
 	return _last_active_at
 
-func has_save() -> bool:
-	_migrate_old_save_if_needed()
-	return _resolve_read_save_path() != ""
-
 ## 检查指定存档位是否有存档
 func has_save_slot(slot: int) -> bool:
 	var path := _slot_file(slot)
 	if FileAccess.file_exists(path):
+		return true
+	# v26.6：主档丢失但备份/.prior 副本在 → 该槽仍可恢复（与 get_slot_info 口径一致）
+	var backup := _slot_backup_file(slot)
+	if FileAccess.file_exists(backup):
+		return true
+	if FileAccess.file_exists(path + ".prior"):
 		return true
 	if slot == 1 and FileAccess.file_exists(SAVE_FILE_USER):
 		return true
@@ -547,7 +559,9 @@ func _schedule_deferred_save() -> void:
 	var timer := tree.create_timer(delay_sec)
 	timer.timeout.connect(func() -> void:
 		_save_deferred_pending = false
-		if not _is_saving:
+		if _is_saving:
+			_schedule_deferred_save()  # v26.6：恰逢保存中不再静默丢档，重排队
+		else:
 			save_game()
 	)
 
@@ -652,6 +666,9 @@ func _process_deferred_manager_resets() -> void:
 		_start_new_game_perf_pending = false
 		_perf_phase_end("start_new_game")
 
+## 保存当前存档位。
+## 返回值语义（v26.6 明确）：true = 已写盘，或已合法排队稍后写（战斗中→战斗结束冲刷；
+## 延迟加载窗口/最小间隔窗口→定时器冲刷）；false = 真实失败。调用方勿把 true 当"已落盘"。
 func save_game() -> bool:
 	_ensure_battle_end_save_hook()
 	if not _is_exiting and _is_battle_active_now():
@@ -704,6 +721,9 @@ func save_game() -> bool:
 	# v21: 余烬要塞基地（懒加载；ensure 后收集，缺失档=默认态由 BunkerManager 兜底）
 	ManagerLazyLoader.ensure_loaded("bunker")
 	_collect_manager_state(data, "/root/BunkerManager", SK_BUNKER)
+	# v26: 制造系统（懒加载；ensure 后收集 pity 计数）
+	ManagerLazyLoader.ensure_loaded("manufacture")
+	_collect_manager_state(data, "/root/ManufactureManager", SK_MANUFACTURE)
 	_collect_noncritical_save_data(data, now_ms)
 	var gmgr: Node = get_node_or_null("/root/GameManager")
 	# 保存前同步 current_level：确保与 LevelProgressManager.max_unlocked_level 一致
@@ -1111,13 +1131,6 @@ func consume_pending_backpack_card_id(card_id: String) -> bool:
 		return true
 	return false
 
-## 直接添加待入包的卡牌ID（用于制造/掉落等场景）
-func add_pending_backpack_card_id(card_id: String) -> void:
-	if card_id.is_empty():
-		return
-	if not _pending_backpack_ids.has(card_id):
-		_pending_backpack_ids.append(card_id)
-
 ## v7.x：无条件从 pending + last_known 两个队列清除一个卡牌ID（实例销毁时清理幽灵 id 用）。
 ## 与 consume_pending_backpack_card_id 的区别：consume 只在 pending 里有该 id 时才清 last_known，
 ## 而实例销毁场景下该 id 可能早已不在 pending（买卡时已 consume），但仍残留在 last_known 里。
@@ -1251,6 +1264,11 @@ func load_game() -> bool:
 				return true
 			_finalize_load_game_perf_on_fail()
 			return false
+		# v26.6：备份缺失/也损坏时最后尝试 .prior 原子写回滚副本
+		var prior_path := _current_save_file() + ".prior"
+		if FileAccess.file_exists(prior_path) and _load_from_path(prior_path):
+			_notify_backup_restored()
+			return true
 		_finalize_load_game_perf_on_fail()
 		return false
 	return true
@@ -1289,6 +1307,8 @@ func _load_from_path(path: String) -> bool:
 			var retry_err: Error = json_retry.parse(repaired_json_str)
 			if retry_err == OK:
 				json = json_retry
+				# v26.6：重写唯一主档前先落备份（15s 节流）——修复写失败时不丢原始数据
+				_backup_current_save()
 				var wf: FileAccess = FileAccess.open(path, FileAccess.WRITE)
 				if wf != null:
 					wf.store_string(repaired_json_str)
@@ -1326,13 +1346,22 @@ func _load_from_path(path: String) -> bool:
 	var version: int = data.get(SK_SCHEMA_VERSION, 1)
 	if version < SAVE_SCHEMA_VERSION:
 		SaveMigration.migrate_save_data(data, version, DEBUG_SAVE_LOG)
-		_noncritical_save_cache.clear()
-		_last_noncritical_save_ms = 0
-		# v6.6(离线挂机): 读取上次活跃时间戳（旧档无此键 → 0 → 不弹离线窗）
-		_last_active_at = int(data.get("last_active_at", 0))
 		if _load_game_parse_phase_open:
 			_load_game_parse_phase_open = false
 			_perf_phase_end("load_game_parse_json")
+		# v26.6：迁移链中断（任一步脚本错误）会留下半迁移数据；校验最终戳，
+		# 未达目标版本直接拒绝加载（磁盘原档未动，下次启动可再迁移或走备份）。
+		if int(data.get(SK_SCHEMA_VERSION, 0)) != SAVE_SCHEMA_VERSION:
+			push_error("[SaveManager] 存档迁移未完成（版本停在 %s），拒绝加载: %s" % [str(data.get(SK_SCHEMA_VERSION, "?")), path])
+			_finalize_load_game_perf_on_fail()
+			return false
+	# v26.6 修复：非关键段缓存清理由迁移分支移到此处——现行 v9 档（不触发迁移）
+	# 此前从不清缓存，读档/切槽后缓存窗口内的自动存档会把旧槽非关键段写进新档。
+	_noncritical_save_cache.clear()
+	_last_noncritical_save_ms = 0
+	# v6.6(离线挂机): 读取上次活跃时间戳（旧档无此键 → 0 → 不弹离线窗）
+	# v26.4 修复：此前嵌在迁移分支内，v9 现行档（version==9 不触发迁移）恒读 0 → 离线奖励永不结算
+	_last_active_at = int(data.get("last_active_at", 0))
 
 	# 关键管理器同步加载，保证主流程稳定；其余管理器分批 deferred，降低 Continue 同帧尖峰。
 	_load_game_critical_phase_open = true
@@ -1436,7 +1465,11 @@ func _safe_load_manager(node_path: String, data: Dictionary, data_key: String) -
 		return
 
 	if not data.has(data_key):
-		return  # 数据中没有该字段，跳过
+		# v26.6 修复："先重置再覆盖"不变式——存档缺该段（截断档/新结构）时复位到默认，
+		# 而非保留内存中的上一局/上一槽残留（随后自动存档会把残留持久化）。
+		if manager.has_method("load_state"):
+			manager.load_state({})
+		return
 
 	var manager_data: Variant = data[data_key]
 

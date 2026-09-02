@@ -118,7 +118,8 @@ func _build() -> void:
 	mouse_exited.connect(_set_hover.bind(false))
 
 ## 悬停就地解释：按状态给修复条件/进度/功能说明
-func _refresh_tooltip(def: Dictionary, state: int, progress: float, frozen: bool) -> void:
+func _refresh_tooltip(def: Dictionary, state: int, progress: float, frozen: bool,
+		level: int, upgrade_tag: String) -> void:
 	match state:
 		BunkerRoomDefs.STATE_LOCKED:
 			if bool(def.get("is_terminal", false)):
@@ -132,18 +133,22 @@ func _refresh_tooltip(def: Dictionary, state: int, progress: float, frozen: bool
 			else:
 				tooltip_text = "修复中 %d%%：每完成一场战斗推进一格" % int(round(progress * 100.0))
 		_:
+			if not upgrade_tag.is_empty():
+				tooltip_text = "%s：点击打开房间面板查看升级详情" % upgrade_tag
+				return
 			var note := str(def.get("function_note", ""))
-			tooltip_text = note if not note.is_empty() else str(def.get("tag", ""))
+			var base := note if not note.is_empty() else str(def.get("tag", ""))
+			tooltip_text = ("%s · Lv%d" % [base, level]) if level >= 2 else base
 
 func _set_hover(on: bool) -> void:
 	_is_hover = on
 	_hover.visible = on
 
-func refresh(state: int, _level: int, progress: float, frozen: bool) -> void:
+func refresh(state: int, level: int, progress: float, frozen: bool, upgrade_tag := "") -> void:
 	var def := BunkerRoomDefs.get_room(_room_id)
 	_name_label.text = str(def.get("name", ""))
 	# v23.6.1：悬停就地解释——修复条件/进度/功能说明按状态给（ui-review 检查单）
-	_refresh_tooltip(def, state, progress, frozen)
+	_refresh_tooltip(def, state, progress, frozen, level, upgrade_tag)
 	var is_transition := _prev_state != -1 and state != _prev_state
 	_prev_state = state
 	match state:
@@ -170,8 +175,14 @@ func refresh(state: int, _level: int, progress: float, frozen: bool) -> void:
 		_:
 			_tint.visible = false
 			_name_label.add_theme_color_override("font_color", DT.COLOR_TEXT_BRIGHT)
-			_tag_label.text = str(def.get("tag", ""))
-			_tag_label.add_theme_color_override("font_color", Color(0.0, 0.94, 1.0, 0.9))
+			# v26：升级中的房间角标切橙色升级态；否则功能角标 + 等级（Lv2+ 才标）
+			if not upgrade_tag.is_empty():
+				_tag_label.text = upgrade_tag
+				_tag_label.add_theme_color_override("font_color", Color(0.95, 0.66, 0.18))
+			else:
+				var tag := str(def.get("tag", ""))
+				_tag_label.text = ("%s · Lv%d" % [tag, level]) if level >= 2 else tag
+				_tag_label.add_theme_color_override("font_color", Color(0.0, 0.94, 1.0, 0.9))
 			_progress_bg.visible = false
 			_progress_fill.visible = false
 			if _lit_rect == null:

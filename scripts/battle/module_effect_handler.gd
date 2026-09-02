@@ -331,18 +331,6 @@ static func on_death(dying_unit: Node, killer: Variant) -> bool:
 	_apply_death_heal_allies(dying_unit, stats)
 	return false
 
-## 获取 HP 回复倍率（兼容旧接口）
-static func get_hp_regen_multiplier(unit: Node, stats: Resource) -> float:
-	if stats == null:
-		return 0.0
-	if stats is UnitStats and stats.hp_regen > 0.0:
-		return stats.hp_regen
-	return 0.0
-
-## 应用 HP 回复（兼容旧接口）
-static func apply_hp_regen(unit: Node, stats: Resource, delta: float) -> void:
-	on_tick(unit, delta)
-
 # ─────────────────────────────────────────────
 #  平台 HP 变异额外防御（兼容旧接口）
 # ─────────────────────────────────────────────

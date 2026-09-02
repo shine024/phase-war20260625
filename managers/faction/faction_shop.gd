@@ -291,6 +291,8 @@ static func deliver_item(item: StoreItem) -> bool:
 				var card_inst: CardResource = card
 				if ir != null and ir.has_method("create_instance"):
 					card_inst = ir.create_instance(cid)
+				# v26 批次3：缴获卡兑换时滚动稀有度（非 captured_ 卡不动）
+				ManufacturePools.apply_captured_quality(card_inst)
 				SignalBus.card_added_to_backpack.emit(card_inst)
 				return true
 			else:
@@ -316,7 +318,7 @@ static func deliver_item(item: StoreItem) -> bool:
 					"stat_boost_hp", "stat_boost_atk", "stat_boost_damage":
 						var sbm := _get_autoload("/root/StatBoostManager")
 						if sbm and sbm.has_method("apply_boost"):
-							sbm.apply_boost(item.item_id, 1)
+							sbm.apply_boost(item.item_id)  # v26.6: 修复——签名单参(apply_boost(boost_id))，此前两参调用致商店强化购买报错
 							return true
 						return false
 					# v6.4: lore_page 走 LoreManager

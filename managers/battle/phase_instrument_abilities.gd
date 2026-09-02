@@ -564,18 +564,6 @@ static func get_nuclear_bombardment_charge() -> int:
 	return int(_ability_charges.get("player:nuclear_bombardment", 0))
 
 
-## 当前充能进度 0.0~1.0（供按钮冷却读条；满仓时恒 1.0）
-static func get_nuclear_bombardment_progress() -> float:
-	var interval: float = 30.0
-	var ab := get_active_ability(Owner.PLAYER)
-	if not ab.is_empty():
-		interval = maxf(0.1, float(ab.get("params", {}).get("interval", 30.0)))
-	var elapsed: float = float(_periodic_timers.get("player:nuclear_bombardment", interval))
-	if get_nuclear_bombardment_charge() >= NUKE_CHARGE_CAP:
-		return 1.0
-	return clampf(elapsed / interval, 0.0, 1.0)
-
-
 ## 手动释放核子轰炸（仅玩家侧）。返回 "fired" / "no_charge" / "no_target"——
 ## 无目标不消耗充能（"暂无目标，充能保留"），与自动模式无目标白放一条不同（自动侧保持旧行为）。
 static func manual_release_nuclear_bombardment() -> String:

@@ -18,6 +18,9 @@ const UltimateCastControllerScript = preload("res://scripts/battle/ultimate_cast
 const MasterPlayerAssembler = preload("res://scripts/master_player_assembler.gd")
 const MasterPowerEvaluator = preload("res://scripts/master_power_evaluator.gd")
 const LevelInformation = preload("res://data/level_information.gd")
+# v26.2: 每关战场布局 + 战斗环境效果
+const CardGridBattleLayout = preload("res://scripts/card_grid_battle_layout.gd")
+const BattleEnvEffects = preload("res://data/battle_env_effects.gd")
 # v7.x: 敌方相位仪能力合并入 PhaseInstrumentAbilities 单引擎（owner-aware），旧 EnemyPhaseInstrumentAbilities 已删
 const DEBUG_BATTLE_LOG := false
 
@@ -183,9 +186,6 @@ var counter_break_count: int = 0
 func _on_counter_break_count(_break_type: String, _target_name: String) -> void:
 	counter_break_count += 1
 
-func get_counter_break_count() -> int:
-	return counter_break_count
-
 ## v6.15: 击杀修复（战场回收）——击杀者按 stats.kill_repair 回复自身最大 HP
 func _on_unit_killed_kill_repair(victim: Node, killer: Node, is_player_victim: bool) -> void:
 	ModuleEffectHandler.on_unit_killed(victim, killer, is_player_victim)
@@ -210,7 +210,7 @@ func _exit_tree() -> void:
 
 
 func _process(delta: float) -> void:
-	if Engine.is_editor_hint() or not battle_active or battlefield == null:
+	if Engine.is_editor_hint() or not battle_active or battlefield == null or not is_instance_valid(battlefield):
 		return
 	var tree = get_tree()
 	var paused = tree.paused if tree else true
@@ -313,6 +313,11 @@ func start_battle(battle_scene: Node) -> void:
 		pass
 		# [LOG-v5.1] print("[BattleManager] start_battle 被调用")
 	battlefield = battle_scene
+	# v26.2: 激活本关战场布局（行数/敌我列数/废墟格）——必须先于任何槽位/出生点计算；
+	# 战场节点 _ready 时按默认 3×3 建过槽心，激活后重算一次（GameConfig.battle_layouts_enabled 总开关）。
+	CardGridBattleLayout.apply_for_level(_current_level_for_env())
+	if battlefield != null and battlefield.has_method("_sync_battle_slot_grid_lane"):
+		battlefield.call_deferred("_sync_battle_slot_grid_lane")
 	# 批次9（2026-08-23）：世代号护栏——end_battle 的结算链跨 3+ 帧延迟，快速重试时
 	# 旧链会 clobber 新战状态（_is_phase_master_battle 重置/重复 battle_ended/吞掉
 	# 新战 begin_card_grid_combat）。每场递增世代号，延迟调用携带并校验。
@@ -408,7 +413,9 @@ func start_battle(battle_scene: Node) -> void:
 		# v8 批次3: 把当前关卡的能量惩罚规则传给 energy_manager（set_meta 方式，不改 start_battle 签名）
 		var _rules: Dictionary = _get_current_special_rules()
 		var _energy_mult: float = float(_rules.get("energy_mult", 1.0))
-		var _regen_mult: float = float(_rules.get("energy_regen_mult", 1.0))
+		# v26.2: 环境能量场乘区（low_field ×0.8 / high_field ×1.15）并入关卡回能规则
+		var _regen_mult: float = float(_rules.get("energy_regen_mult", 1.0)) \
+				* float(BattleEnvEffects.get_level_env_mults(_current_level_for_env()).get("regen", 1.0))
 		if absf(_energy_mult - 1.0) > 0.001 or absf(_regen_mult - 1.0) > 0.001:
 			energy_manager.set_meta("level_energy_mult", _energy_mult)
 			energy_manager.set_meta("level_regen_mult", _regen_mult)
@@ -463,6 +470,8 @@ func end_battle(player_won: bool) -> void:
 	battle_active = false
 	_card_grid_placement_active = false
 	_card_grid_combat_started = false
+	# v26.2: 复位每关战场布局激活态（防非默认布局泄漏到下一场/headless 测试）
+	CardGridBattleLayout.reset_to_default()
 	_clear_group_target_cache()
 	# v6.6: 清空伤害数字节流表，flush 残留合并伤害并避免跨战斗残留
 	CombatFeedback.reset_throttle()
@@ -636,15 +645,6 @@ func request_player_deploy_at(platform_card_id: String, world_pos: Vector2) -> b
 	return _spawn_system.request_player_deploy(platform_card_id, world_pos, _current_battle_era())
 
 
-func is_card_grid_placement_phase() -> bool:
-	## 已取消「仅布阵阶段」：格子战进场即开战，全程可部署；保留 API 供旧代码查询，恒为 false
-	return false
-
-
-func is_card_grid_combat_started() -> bool:
-	return battle_active and _card_grid_combat_started
-
-
 func begin_card_grid_combat(gen: int = -1) -> void:
 	# 批次9：世代号护栏——gen>=0 时校验（旧世代的延迟调用直接丢弃）
 	if gen >= 0 and gen != _battle_gen:
@@ -740,6 +740,14 @@ func _on_unit_died(unit: Node, is_player: bool) -> void:
 ## 原实现每帧 Dictionary.get + 两次默认值空字典分配（小额常驻垃圾）
 var _cached_special_rules: Dictionary = {}
 var _cached_special_rules_level: int = -1
+
+## v26.2: 当前关卡号（战场布局/环境效果取值用）。GameManager 不可达（headless 测试）时
+## 返回 0——LevelBattleLayouts 无 0 号条目=默认 3×3，环境 get_for_level 会钳到 1
+##（L1=clear/plain/normal/day 全中性），两条链都安全退化。
+func _current_level_for_env() -> int:
+	if GameManager != null and "current_level" in GameManager:
+		return int(GameManager.current_level)
+	return 0
 
 func _get_current_special_rules() -> Dictionary:
 	if GameManager == null:
@@ -1062,19 +1070,10 @@ func get_next_wave_preview() -> Dictionary:
 	return _spawn_system.get_next_wave_preview()
 
 
-func try_place_enemy_unit_on_card_grid(unit: Node2D) -> bool:
-	if not battle_active:
-		return false
-	return _spawn_system.place_existing_enemy_on_card_grid(unit)
-
-
 func spawn_enemy_unit_on_card_grid(unit: Node2D) -> bool:
 	if not battle_active:
 		return false
 	return _spawn_system.spawn_enemy_unit_on_card_grid(unit)
-
-func set_player_unit_count(c: int) -> void:
-	_spawn_system.player_unit_count = c
 
 func set_enemy_unit_count(c: int) -> void:
 	_spawn_system.enemy_unit_count = c

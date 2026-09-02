@@ -119,8 +119,3 @@ func _draw() -> void:
 ## 文本宽度（外部定位用）
 func get_text_width() -> float:
 	return _text_width
-
-
-## 文本高度（外部定位用）
-func get_text_height() -> float:
-	return _text_height

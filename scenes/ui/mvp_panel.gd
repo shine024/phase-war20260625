@@ -148,6 +148,9 @@ func _build() -> void:
 	if not _is_afk:
 		_render_victory_banner(vbox)
 		_render_battle_stats(vbox)
+		# v27: 败因分析——失败要产出知识（残存敌军构成 + 克制建议 + 情报提示）
+		if not player_won:
+			_render_defeat_analysis(vbox)
 
 	# ═══ 奖励明细区域 ═══
 	_render_phase_field_xp(vbox)
@@ -161,6 +164,9 @@ func _build() -> void:
 		_render_collected_rewards(vbox)
 	# v22.4（P0-2）：要塞反馈行——修复进度/精神/回基地入口（未进过基地的玩家不显示）
 	_render_bunker_status(vbox)
+
+	# ═══ 二周目入口（v26.6 断链补链：start_ng_plus 此前零入口） ═══
+	_render_ng_plus_entry(vbox)
 
 	# ═══ 关闭按钮：anchors 钉在面板底部，永远可见 ═══
 	_render_close_button_anchored(panel)
@@ -336,6 +342,18 @@ func _render_intel_harvest(vbox: VBoxContainer) -> void:
 	var reveal_events: Array = intel_harvest.get("reveal_events", [])
 	if not reveal_events.is_empty():
 		call_deferred("_show_intel_reveal_popup", reveal_events)
+	# 改造解锁：结算时批量展示（避免战斗中多次弹窗）
+	var mod_unlocks: Array = intel_harvest.get("mod_unlock_events", [])
+	if not mod_unlocks.is_empty():
+		var lines: Array[String] = []
+		for entry in mod_unlocks:
+			if entry is Dictionary:
+				var card: String = String(entry.get("card_name", ""))
+				var mod: String = String(entry.get("mod_name", ""))
+				lines.append("「%s」→ %s" % [card, mod])
+		var title := "改造情报解锁"
+		var desc := "本关共解锁 %d 项改造模块：\n%s" % [lines.size(), "\n".join(lines)]
+		call_deferred("_show_mod_unlock_popup", title, desc)
 
 
 func _render_drops(vbox: VBoxContainer) -> void:
@@ -396,11 +414,11 @@ func _render_drops(vbox: VBoxContainer) -> void:
 			var n: String = String(info.get("name", "未知"))
 			var c: int = int(info.get("count", 1))
 			var s: String = String(info.get("source", "battle"))
-			# v7.x P3修复：ENERGY_CARD/ENERGY_DATA/ENERGY Blueprint 实际 claim 时降级为研究点（15点/个），
-			# 原显示"能量卡/能量蓝图"误导玩家。统一改为"研究点 ×N（15点/个）"反映真实获得物。
+			# v9.x（P2-7）：能量类掉落随科研点退役，claim 时静默跳过（drop_manager 无效果臂）；
+			# 旧档 pending 若仍出现，如实标注跳过（原"研究点 ×N"文案随科研点退役失实，v26.4 清理）。
 			var t_int: int = int(info.get("type", -1))
 			if t_int == DropTables.DropType.ENERGY_CARD or t_int == DropTables.DropType.ENERGY_DATA or t_int == DropTables.DropType.ENERGY_BLUEPRINT:
-				line_text = "  ▸ 研究点 ×%d（15点/个，%s）" % [c, s]
+				line_text = "  ▸ 旧版本掉落（已自动跳过）"
 			else:
 				line_text = "  ▸ %s ×%d（%s）" % [n, c, s]
 			var dl := Label.new()
@@ -597,6 +615,125 @@ static func _collected_resource_name(res_id: String) -> String:
 
 
 ## 关闭按钮：用 anchors 钉在面板底部，独立于 ScrollContainer，内容再多也永远可见
+## v26.6: 断链补链——二周目入口。战役最终关（LevelInformation.LEVEL_COUNT）胜利后
+## 显示"进入二周目"按钮，接通 SaveManager.start_ng_plus（符文/相位仪保留、进度重置、敌方 ×1.2）。
+## 此前该函数全链活（enemy_unit ×1.2、ng_plus 存档键、DayClock.reset_for_new_loop）但零调用方。
+func _render_ng_plus_entry(vbox: VBoxContainer) -> void:
+	if not player_won or _is_afk:
+		return
+	if GameManager.ng_plus_active:
+		return  # 已在二周目，不重复提供入口
+	if GameManager.current_level < LevelInformation.LEVEL_COUNT:
+		return  # 未通关最终关
+	vbox.add_child(_make_separator())
+	var wrap := VBoxContainer.new()
+	wrap.add_theme_constant_override("separation", 8)
+	vbox.add_child(wrap)
+	var head := Label.new()
+	head.text = "∞ 战役已通关——二周目已解锁"
+	head.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	head.add_theme_font_size_override("font_size", DT.FONT_SIZE_TITLE)
+	head.add_theme_color_override("font_color", DT.COLOR_GOLD)
+	wrap.add_child(head)
+	var hint := Label.new()
+	hint.text = "符文与相位仪将保留，战役进度与资源重置，敌方全员强化（×1.2）"
+	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	hint.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
+	hint.add_theme_color_override("font_color", DT.COLOR_TEXT_MID)
+	wrap.add_child(hint)
+	var btn := Button.new()
+	btn.text = "进入二周目"
+	btn.custom_minimum_size = Vector2(220, 42)
+	var styles := PanelStyles.make_button_styles(DT.COLOR_GOLD, "solid")
+	for state in ["normal", "hover", "pressed", "disabled", "focus"]:
+		btn.add_theme_stylebox_override(state, styles[state])
+	btn.pressed.connect(_show_ng_plus_confirm)
+	var center := CenterContainer.new()
+	center.add_child(btn)
+	wrap.add_child(center)
+
+
+## v26.6: 二周目确认框——自绘全屏遮罩（AcceptDialog 在 CanvasLayer 下不可显示，
+## 同 main.gd 撤退确认框模式），挂独立 CanvasLayer(layer=210) 压过结算面板(200)。
+var _ng_confirm_layer: CanvasLayer = null
+func _show_ng_plus_confirm() -> void:
+	if _ng_confirm_layer != null and is_instance_valid(_ng_confirm_layer):
+		return
+	var layer := CanvasLayer.new()
+	layer.layer = 210
+	add_child(layer)
+	_ng_confirm_layer = layer
+	var overlay := Control.new()
+	overlay.set_anchors_preset(Control.PRESET_FULL_RECT)
+	overlay.mouse_filter = Control.MOUSE_FILTER_STOP
+	layer.add_child(overlay)
+	var dim := ColorRect.new()
+	dim.color = DT.COLOR_BACKDROP
+	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
+	dim.mouse_filter = Control.MOUSE_FILTER_STOP
+	overlay.add_child(dim)
+	var center := CenterContainer.new()
+	center.set_anchors_preset(Control.PRESET_FULL_RECT)
+	center.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	overlay.add_child(center)
+	var panel := PanelContainer.new()
+	panel.custom_minimum_size = Vector2(420, 0)
+	var sb := PanelStyles.make_panel_frame_textured(DT.COLOR_GOLD)
+	sb.content_margin_left = 20
+	sb.content_margin_right = 20
+	sb.content_margin_top = 18
+	sb.content_margin_bottom = 18
+	panel.add_theme_stylebox_override("panel", sb)
+	center.add_child(panel)
+	var vbox := VBoxContainer.new()
+	vbox.add_theme_constant_override("separation", 14)
+	panel.add_child(vbox)
+	var title := Label.new()
+	title.text = "进入二周目"
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title.add_theme_font_size_override("font_size", 20)
+	title.add_theme_color_override("font_color", DT.COLOR_GOLD)
+	vbox.add_child(title)
+	var body := Label.new()
+	body.text = "战役进度与资源将重置，符文与相位仪保留，敌方全员强化（×1.2）。\n确定开启新周目吗？"
+	body.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	body.add_theme_font_size_override("font_size", 14)
+	body.add_theme_color_override("font_color", Color(0.88, 0.9, 0.94, 1.0))
+	vbox.add_child(body)
+	var btn_row := HBoxContainer.new()
+	btn_row.alignment = BoxContainer.ALIGNMENT_CENTER
+	btn_row.add_theme_constant_override("separation", 16)
+	vbox.add_child(btn_row)
+	var confirm_btn := Button.new()
+	confirm_btn.text = "确认开启"
+	confirm_btn.custom_minimum_size = Vector2(120, 38)
+	var c_styles := PanelStyles.make_button_styles(DT.COLOR_GOLD, "solid")
+	for state in ["normal", "hover", "pressed", "disabled", "focus"]:
+		confirm_btn.add_theme_stylebox_override(state, c_styles[state])
+	btn_row.add_child(confirm_btn)
+	var cancel_btn := Button.new()
+	cancel_btn.text = "取消"
+	cancel_btn.custom_minimum_size = Vector2(120, 38)
+	var n_styles := PanelStyles.make_button_styles(DT.COLOR_TEXT_MID)
+	for state in ["normal", "hover", "pressed", "disabled", "focus"]:
+		cancel_btn.add_theme_stylebox_override(state, n_styles[state])
+	btn_row.add_child(cancel_btn)
+	# 关闭确认框
+	var close := func() -> void:
+		if _ng_confirm_layer != null and is_instance_valid(_ng_confirm_layer):
+			_ng_confirm_layer.queue_free()
+		_ng_confirm_layer = null
+	confirm_btn.pressed.connect(func():
+		close.call()
+		# 重置进度并保存（符文/相位仪保留、ng_plus 激活），回标题屏以新周目重新开始
+		SaveManager.start_ng_plus()
+		get_tree().change_scene_to_file("res://scenes/title_screen.tscn")
+	)
+	cancel_btn.pressed.connect(close)
+
+
 func _render_close_button_anchored(panel: Control) -> void:
 	var btn := Button.new()
 	if _is_afk:
@@ -696,8 +833,8 @@ func _render_bunker_status(vbox: VBoxContainer) -> void:
 			var frozen_txt: String = "（冻结·需反应堆）" if bunker.is_repair_frozen(rid) else ""
 			parts.append("%s +%d%%%s" % [str(def.get("name", rid)), pct, frozen_txt])
 	var done_names: Array[String] = []
-	for rid in bunker.get_completed_today():
-		done_names.append(str(BunkerRoomDefs.get_room(rid).get("name", rid)))
+	for entry in bunker.get_completed_today():
+		done_names.append(BunkerRoomDefs.completed_entry_label(str(entry)))
 	if not done_names.is_empty():
 		parts.append("✔ 完工：" + "、".join(done_names))
 	detail.text = "  " + ("；".join(parts) if not parts.is_empty() else "暂无施工中的房间——回基地可开工新修复")
@@ -821,6 +958,91 @@ func _type_display_name(t: String) -> String:
 		"engineer": return "工兵"
 		"fort": return "堡垒"
 		_: return t
+
+
+# =========================================================================
+#  败因分析（v27：失败产出知识——productive failure）
+# =========================================================================
+
+## 残存敌军构成：结算面板存活期（战场在确认后才清理）扫描 EnemyUnits。
+## 敌方兵种判定复用 BattleManager._guess_enemy_type_from_archetype（同 _defeated_enemies 口径）。
+func _alive_enemy_breakdown() -> Dictionary:
+	var main := get_parent()
+	if main == null or not is_instance_valid(main) or not main.has_method("_get_battlefield"):
+		return {}
+	var bf: Node2D = main._get_battlefield()
+	if bf == null:
+		return {}
+	var eu: Node = bf.get_node_or_null("EnemyUnits")
+	if eu == null:
+		return {}
+	var bm: Node = get_node_or_null("/root/BattleManager")
+	var counts: Dictionary = {}
+	for c in eu.get_children():
+		if c == null or not is_instance_valid(c):
+			continue
+		var hp_val = c.get("hp")
+		if hp_val != null and float(hp_val) <= 0.0:
+			continue
+		var aid = c.get("archetype_id")
+		if aid == null or str(aid).is_empty():
+			continue
+		var et: String = "infantry"
+		if bm != null and bm.has_method("_guess_enemy_type_from_archetype"):
+			et = str(bm.call("_guess_enemy_type_from_archetype", str(aid), []))
+		counts[et] = int(counts.get(et, 0)) + 1
+	return counts
+
+## 克制建议（按残存敌军构成给最多 3 条；口径与战斗克制链一致：对空封锁/装甲碾压/曲射压制）
+const _COUNTER_ADVICE: Dictionary = {
+	"armor": "装甲单位多——上火炮/反坦克单位，或给主力安装穿甲类改造",
+	"air": "空中单位多——需要防空单位（对空特化 +25%），其余地面单位打不到飞机",
+	"infantry": "轻步兵海——机枪/范围伤害类单位清杂效率最高",
+	"fort": "堡垒/重装单位——用曲射单位（迫击炮/火炮）在对方射程外压制",
+	"artillery": "敌方火炮威胁大——高机动单位快速突进斩首，避免战线僵持对轰",
+	"anti_air": "敌方防空压制我方空军——先地面单位拔点，再放飞行卡",
+	"recon": "侦察渗透骚扰后排——补前排防线单位堵住缺口",
+	"engineer": "工兵近身爆破——提升前排硬度（堡垒/装甲）优先",
+}
+
+func _render_defeat_analysis(vbox: VBoxContainer) -> void:
+	var sec_title := Label.new()
+	sec_title.text = "▍败因分析"
+	sec_title.add_theme_font_size_override("font_size", DT.FONT_SIZE_MEDIUM)
+	sec_title.add_theme_color_override("font_color", Color(1.0, 0.55, 0.35, 1.0))
+	vbox.add_child(sec_title)
+
+	var body := Label.new()
+	body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	body.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
+	body.add_theme_color_override("font_color", DT.COLOR_TEXT_BRIGHT)
+
+	var lines: Array = []
+	var alive: Dictionary = _alive_enemy_breakdown()
+	if alive.is_empty():
+		lines.append("· 敌军构成：未能记录（战场已清场）")
+	else:
+		var keys: Array = alive.keys()
+		keys.sort_custom(func(a, b): return alive[a] > alive[b])
+		var parts: Array = []
+		for i in range(mini(4, keys.size())):
+			parts.append("%s×%d" % [_type_display_name(str(keys[i])), int(alive[keys[i]])])
+		lines.append("· 残存敌军：" + "　".join(parts))
+		# 克制建议：按残存数量取构成前 3 的兵种
+		var advised: int = 0
+		for k in keys:
+			var tip: String = str(_COUNTER_ADVICE.get(str(k), ""))
+			if not tip.is_empty():
+				lines.append("· 建议：" + tip)
+				advised += 1
+				if advised >= 3:
+					break
+	var killed: Array = _kill_type_breakdown()
+	lines.append("· 本场击杀：" + ("、".join(killed) if not killed.is_empty() else "无"))
+	lines.append("· 情报：在情报中心把对应敌种情报推到 75%+ 可解锁弱点/抗性提示")
+	lines.append("· 整备：提升卡牌等级/改造/制造高品质卡后再战，或稍后用大招手动模式攒爆发打 Boss 波")
+	body.text = "\n".join(lines)
+	vbox.add_child(body)
 
 
 ## 星级评定：基于击杀比/损失比/时长（1~3 星）
@@ -960,6 +1182,11 @@ func _show_intel_reveal_popup(reveal_events: Array) -> void:
 		return
 	var popup = IntelRevealPopupClass.create(popup_layer)
 	popup.show_reveals(reveal_events)
+
+
+## 改造解锁批量弹窗（结算时调用，与 _show_intel_reveal_popup 同模式）
+func _show_mod_unlock_popup(title: String, description: String) -> void:
+	FeatureUnlockPopup.show_now(title, description)
 
 
 # =========================================================================

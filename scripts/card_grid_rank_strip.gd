@@ -28,10 +28,6 @@ var _total_height: float = 0.0
 var _icons: Array[Dictionary] = []
 
 
-func get_total_height() -> float:
-	return _total_height
-
-
 func rebuild(rank_level: int, card_art_width: float = -1.0) -> void:
 	_rank_level = clampi(rank_level, 0, RankRules.RANK_LEVEL_MAX)
 	_card_art_width = card_art_width if card_art_width > 1.0 else CardGridBattleLayout.battle_card_width_px()

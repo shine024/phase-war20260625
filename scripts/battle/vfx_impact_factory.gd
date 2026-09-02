@@ -122,9 +122,6 @@ const ELEMENT_COLORS: Dictionary = {
 }
 
 
-static func element_color(affinity: int) -> Color:
-	return ELEMENT_COLORS.get(affinity, Color.WHITE)
-
 # ── v9.2: 烟柱 Gradient 按颜色缓存（spawn_smoke_column 频繁调用）──
 static var _smoke_grad_cache: Dictionary = {}
 

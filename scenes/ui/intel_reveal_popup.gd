@@ -37,10 +37,10 @@ static func create(parent: Node) -> IntelRevealPopup:
 	return popup
 
 func _build_ui() -> void:
-	## 暗色遮罩
+	## 暗色遮罩（标准遮罩档 token）
 	var dim := ColorRect.new()
 	dim.name = "DimRect"
-	dim.color = Color(0.0, 0.0, 0.0, 0.3)
+	dim.color = DT.COLOR_BACKDROP
 	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	dim.mouse_filter = Control.MOUSE_FILTER_STOP
 	add_child(dim)
@@ -77,8 +77,8 @@ func _build_ui() -> void:
 	var icon_lbl := Label.new()
 	icon_lbl.name = "IconLabel"
 	icon_lbl.text = "✦"
-	icon_lbl.add_theme_font_size_override("font_size", 24)
-	icon_lbl.add_theme_color_override("font_color", Color(0.9, 0.6, 1.0, 1.0))
+	icon_lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_LARGE)
+	icon_lbl.add_theme_color_override("font_color", DT.COLOR_VIOLET)
 	icon_row.add_child(icon_lbl)
 	vbox.add_child(icon_row)
 
@@ -88,7 +88,7 @@ func _build_ui() -> void:
 	title_lbl.text = ""
 	title_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	title_lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_LARGE)
-	title_lbl.add_theme_color_override("font_color", Color(0.95, 0.8, 1.0, 1.0))
+	title_lbl.add_theme_color_override("font_color", DT.COLOR_VIOLET_SOFT)
 	vbox.add_child(title_lbl)
 
 	## 描述
@@ -98,7 +98,7 @@ func _build_ui() -> void:
 	desc_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	desc_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	desc_lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
-	desc_lbl.add_theme_color_override("font_color", Color(0.75, 0.7, 0.85, 1.0))
+	desc_lbl.add_theme_color_override("font_color", DT.COLOR_TEXT_MID)
 	vbox.add_child(desc_lbl)
 
 	## 奖励区
@@ -108,21 +108,24 @@ func _build_ui() -> void:
 	reward_box.alignment = BoxContainer.ALIGNMENT_CENTER
 	vbox.add_child(reward_box)
 
-	## 关闭按钮
+	## 关闭按钮（v26 UI：四态工厂——旧单态样式 hover/pressed 零反馈，违反按钮四态铁律）
 	var close_row := HBoxContainer.new()
 	close_row.alignment = BoxContainer.ALIGNMENT_CENTER
 	var close_btn := Button.new()
 	close_btn.name = "CloseButton"
 	close_btn.text = "知道了"
-	close_btn.custom_minimum_size = Vector2(100, 28)
-	var btn_style := StyleBoxFlat.new()
-	btn_style.bg_color = Color(0.3, 0.15, 0.5, 0.9)
-	btn_style.set_border_width_all(1)
-	btn_style.set_border_color(Color(0.6, 0.3, 0.9, 0.6))
-	btn_style.set_corner_radius_all(6)
-	close_btn.add_theme_stylebox_override("normal", btn_style)
+	close_btn.custom_minimum_size = Vector2(120, 32)
 	close_btn.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
-	close_btn.add_theme_color_override("font_color", Color(0.85, 0.75, 1.0, 1.0))
+	var btn_styles := PanelStyles.make_button_styles(DT.COLOR_VIOLET, "solid")
+	close_btn.add_theme_stylebox_override("normal", btn_styles["normal"])
+	close_btn.add_theme_stylebox_override("hover", btn_styles["hover"])
+	close_btn.add_theme_stylebox_override("pressed", btn_styles["pressed"])
+	close_btn.add_theme_stylebox_override("disabled", btn_styles["disabled"])
+	close_btn.add_theme_stylebox_override("focus", btn_styles["focus"])
+	close_btn.add_theme_color_override("font_color", DT.COLOR_TEXT_BRIGHT)
+	close_btn.add_theme_color_override("font_hover_color", DT.COLOR_HOVER_WHITE)
+	close_btn.add_theme_color_override("font_pressed_color", DT.COLOR_HOVER_WHITE)
+	close_btn.add_theme_color_override("font_focus_color", DT.COLOR_HOVER_WHITE)
 	close_btn.pressed.connect(_on_close_pressed)
 	close_row.add_child(close_btn)
 	vbox.add_child(close_row)
@@ -140,7 +143,7 @@ func _build_ui() -> void:
 	page_lbl.name = "PageLabel"
 	page_lbl.text = ""
 	page_lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
-	page_lbl.add_theme_color_override("font_color", Color(0.55, 0.5, 0.65, 1.0))
+	page_lbl.add_theme_color_override("font_color", DT.COLOR_TEXT_FAINT)
 	page_row.add_child(page_lbl)
 	add_child(page_row)
 
@@ -208,7 +211,7 @@ func _show_current_reveal() -> void:
 				r_lbl.text = "→ " + r_text
 				r_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 				r_lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
-				r_lbl.add_theme_color_override("font_color", Color(0.4, 0.95, 0.5, 1.0))
+				r_lbl.add_theme_color_override("font_color", DT.COLOR_GREEN_UP)
 				reward_box.add_child(r_lbl)
 
 	## 页码
@@ -271,10 +274,10 @@ func _reward_to_text(reward: Dictionary) -> String:
 				"equipment_type": return "装备类型已确认"
 				_: return "属性信息已解锁"
 		"intel_branch_hint":
-			return "发现进化线索"
+			return "发现情报线索"
 		"intel_branch_unlock":
 			var bid: String = reward.get("branch_id", "")
-			return "解锁隐藏进化分支！"
+			return "解锁隐藏情报分支！"
 		"lore_page":
 			return "解锁世界观情报"
 		_:

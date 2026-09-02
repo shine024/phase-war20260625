@@ -26,15 +26,6 @@ const PHASE_NAMES: Array[String] = ["上午", "下午", "晚上", "午夜", "早
 # v25.3 产能结算已退役：产能点（production_points）唯一 sink 无 UI 调用方，整链随
 # v25.3 系统收敛移除（见 modification_registry.gd 尾部退役注）。DayClock 回归纯时间系统。
 
-## 时段蒙板颜色（用于城市地图氛围表现）
-const PHASE_OVERLAY_COLORS: Array[Color] = [
-	Color(1.0, 0.98, 0.9, 0.0),    # 上午：明亮无蒙板
-	Color(1.0, 0.85, 0.6, 0.08),   # 下午：暖色
-	Color(0.3, 0.2, 0.5, 0.25),    # 晚上：蓝紫
-	Color(0.05, 0.05, 0.1, 0.5),   # 午夜：深黑
-	Color(1.0, 0.9, 0.7, 0.05),    # 早晨：淡金
-]
-
 # ── 状态 ───────────────────────────────────────────────────────────
 
 var current_day: int = 1         ## 当前天数（1-365）
@@ -71,30 +62,6 @@ func advance_phase() -> void:
 	day_phase_changed.emit(current_day, current_phase)
 	phase_advanced.emit(current_day, current_phase)
 
-## 快进到指定天数（用于跳过空闲期，如"休息到第30天"）
-func advance_to_day(target_day: int) -> void:
-	target_day = clampi(target_day, current_day, MAX_DAYS)
-	if target_day <= current_day:
-		return
-	current_day = target_day
-	current_phase = PHASE_MORNING
-	_emit_day_started(current_day)
-	day_phase_changed.emit(current_day, current_phase)
-
-## 休息到第二天早晨（消耗剩余时段）
-func rest_until_dawn() -> void:
-	if year_completed:
-		return
-	current_day += 1
-	current_phase = PHASE_MORNING
-	if current_day > MAX_DAYS:
-		current_day = MAX_DAYS
-		year_completed = true
-		year_end_reached.emit()
-		return
-	_emit_day_started(current_day)
-	day_phase_changed.emit(current_day, current_phase)
-
 ## 重置为新周目（保留 total_loops）
 func reset_for_new_loop() -> void:
 	current_day = 1
@@ -119,45 +86,6 @@ func full_reset() -> void:
 
 # ── 查询方法 ───────────────────────────────────────────────────────
 
-## 获取当前时段名称
-func get_current_phase_name() -> String:
-	if current_phase >= 0 and current_phase < PHASE_NAMES.size():
-		return PHASE_NAMES[current_phase]
-	return "未知"
-
-## 获取当前时段蒙板颜色
-func get_current_phase_overlay() -> Color:
-	if current_phase >= 0 and current_phase < PHASE_OVERLAY_COLORS.size():
-		return PHASE_OVERLAY_COLORS[current_phase]
-	return Color(1, 1, 1, 0)
-
-## 获取时间显示字符串（如"第30天 · 下午"）
-func get_time_display() -> String:
-	return "第%d天 · %s" % [current_day, get_current_phase_name()]
-
-## 获取完整时间显示（含周目）
-func get_full_time_display() -> String:
-	var loop_str: String = ""
-	if total_loops > 0:
-		loop_str = "（第%d周目）" % (total_loops + 1)
-	return "第%d天 · %s%s" % [current_day, get_current_phase_name(), loop_str]
-
-## 本周目进度（0.0-1.0）
-func get_year_progress() -> float:
-	return float(current_day) / float(MAX_DAYS)
-
-## 是否为最终日
-func is_final_day() -> bool:
-	return current_day >= MAX_DAYS
-
-## 今天是否是指定天数（用于主线节点检查）
-func is_day(target_day: int) -> bool:
-	return current_day == target_day
-
-## 当前时段是否在指定列表中
-func is_phase_in(phases: Array) -> bool:
-	return phases.has(current_phase)
-
 # ── 存档 ───────────────────────────────────────────────────────────
 
 func save_state() -> Dictionary:
@@ -169,9 +97,18 @@ func save_state() -> Dictionary:
 	}
 
 func load_state(data: Dictionary) -> void:
+	# v26.6 修复：空字典 = 无存档数据（新游戏/存档缺段），必须复位到默认。
+	# 此前早退导致 _reset_manager_by_name 的 load_state({}) 候选对本管理器恒空转——
+	# 开新档后天数/周目数从上一档残留并写入新档。
 	if data.is_empty():
+		full_reset()
 		return
-	current_day = int(data.get("current_day", 1))
-	current_phase = int(data.get("current_phase", 0))
-	total_loops = int(data.get("total_loops", 0))
+	# 缺省键回退默认 + 基本值域钳制（手改档/截断档容错）
+	current_day = clampi(int(data.get("current_day", 1)), 1, MAX_DAYS)
+	current_phase = clampi(int(data.get("current_phase", 0)), 0, PHASES_PER_DAY - 1)
+	total_loops = maxi(int(data.get("total_loops", 0)), 0)
 	year_completed = bool(data.get("year_completed", false))
+	if year_completed:
+		# 已通关周目的天数必须停在最终日，避免 day<365 却 year_completed 的矛盾态
+		current_day = MAX_DAYS
+		current_phase = PHASES_PER_DAY - 1

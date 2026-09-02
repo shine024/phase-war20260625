@@ -26,6 +26,10 @@ const SFX_NAMES: Array[String] = [
 	"boss_warn",        # BOSS 波/相位师登场警告
 	"master_appear",    # 相位师登场
 	"base_destroy",     # 基地（相位场驱动器）被摧毁
+	# v27: 战斗反馈补强（音频=反馈系统；文件可后补，先落合成兜底）
+	"ultimate_ready",   # 大招就绪（手动模式按钮亮起时的轻提示音）
+	"base_alarm",       # 基地低血量告警
+	"unit_death",       # v26.6: 单位阵亡（合成爆炸短音，sound_generator 已生成；接 unit_died 信号）
 ]
 const BUS_NAME: String = "Master"
 const MUSIC_BUS: String = "Music"
@@ -70,6 +74,9 @@ func _ready() -> void:
 	if SignalBus:
 		if not SignalBus.unit_damaged.is_connected(_on_unit_damaged):
 			SignalBus.unit_damaged.connect(_on_unit_damaged)
+		# v26.6: 死亡音接线——unit_died 此前 5 个消费方无一播报，音效已生成但从未播放。
+		if SignalBus.has_signal("unit_died") and not SignalBus.unit_died.is_connected(_on_unit_died):
+			SignalBus.unit_died.connect(_on_unit_died)
 		if not SignalBus.battle_ended.is_connected(_on_battle_ended):
 			SignalBus.battle_ended.connect(_on_battle_ended)
 		if SignalBus.has_signal("achievement_unlocked"):
@@ -110,9 +117,22 @@ func _ready() -> void:
 			SignalBus.faction_level_up.connect(_on_faction_level_up)
 		if SignalBus.has_signal("phase_field_level_up") and not SignalBus.phase_field_level_up.is_connected(_on_phase_field_level_up):
 			SignalBus.phase_field_level_up.connect(_on_phase_field_level_up)
-		# v7.x 修复: CardEnhancementManager.enhancement_completed 此前零订阅 + handler 签名错配（Dictionary vs String）。
-		# 延迟到首次强化时连接（cem 是 lazy-load，启动时不一定就绪）。
-		_connect_enhancement_signal()
+	# v27: 基地低血量告警——相位场驱动器完整度 ≤30% 播警示音（10s 重提醒，战斗开始复位）
+	if SignalBus.has_signal("phase_driver_hp_changed") \
+			and not SignalBus.phase_driver_hp_changed.is_connected(_on_phase_driver_hp_changed_alarm):
+		SignalBus.phase_driver_hp_changed.connect(_on_phase_driver_hp_changed_alarm)
+	if SignalBus.has_signal("battle_started") \
+			and not SignalBus.battle_started.is_connected(_on_battle_started_reset_alarm):
+		SignalBus.battle_started.connect(_on_battle_started_reset_alarm)
+	# v7.x 修复: CardEnhancementManager.enhancement_completed 此前零订阅 + handler 签名错配（Dictionary vs String）。
+	# 延迟到首次强化时连接（cem 是 lazy-load，启动时不一定就绪）。
+	_connect_enhancement_signal()
+
+	# v27: 全局按钮悬停音——所有 BaseButton 挂 mouse_entered（60ms 节流 + 低音量）。
+	# 与 main.gd 手型光标钩子同构：那是视觉反馈，这是听觉反馈（ui-review 易用性：可交互处多状态）。
+	# 挂在 autoload 上而非 main.gd，覆盖标题屏等所有场景。
+	if not get_tree().node_added.is_connected(_on_node_added_hover_sfx):
+		get_tree().node_added.connect(_on_node_added_hover_sfx)
 
 	# 初始化 BGM 系统
 	_init_music_player()
@@ -123,6 +143,8 @@ func _exit_tree() -> void:
 	if SignalBus:
 		if SignalBus.unit_damaged.is_connected(_on_unit_damaged):
 			SignalBus.unit_damaged.disconnect(_on_unit_damaged)
+		if SignalBus.has_signal("unit_died") and SignalBus.unit_died.is_connected(_on_unit_died):
+			SignalBus.unit_died.disconnect(_on_unit_died)
 		if SignalBus.battle_ended.is_connected(_on_battle_ended):
 			SignalBus.battle_ended.disconnect(_on_battle_ended)
 		if SignalBus.has_signal("achievement_unlocked") and SignalBus.achievement_unlocked.is_connected(_on_achievement_unlocked):
@@ -151,6 +173,13 @@ func _exit_tree() -> void:
 			SignalBus.faction_level_up.disconnect(_on_faction_level_up)
 		if SignalBus.has_signal("phase_field_level_up") and SignalBus.phase_field_level_up.is_connected(_on_phase_field_level_up):
 			SignalBus.phase_field_level_up.disconnect(_on_phase_field_level_up)
+		# v27: 基地告警 + 悬停音钩子
+		if SignalBus.has_signal("phase_driver_hp_changed") and SignalBus.phase_driver_hp_changed.is_connected(_on_phase_driver_hp_changed_alarm):
+			SignalBus.phase_driver_hp_changed.disconnect(_on_phase_driver_hp_changed_alarm)
+		if SignalBus.has_signal("battle_started") and SignalBus.battle_started.is_connected(_on_battle_started_reset_alarm):
+			SignalBus.battle_started.disconnect(_on_battle_started_reset_alarm)
+		if get_tree().node_added.is_connected(_on_node_added_hover_sfx):
+			get_tree().node_added.disconnect(_on_node_added_hover_sfx)
 		# BGM 监听（_init_music_player 内连接的 3 条）
 		if SignalBus.has_signal("battle_ended") and SignalBus.battle_ended.is_connected(_on_battle_ended_bgm):
 			SignalBus.battle_ended.disconnect(_on_battle_ended_bgm)
@@ -314,6 +343,11 @@ func play_music(bgm_key: String, fade_out_duration: float = 1.5) -> void:
 	var stream = load(path) as AudioStream
 	if stream == null:
 		return
+	# v27: BGM 循环——8 首 bgm_*.ogg 的 .import 均 loop=false（导入期遗留），
+	# 每首放完一次即永久静音。此处运行时置 loop（load() 返回共享缓存资源，置位一次即持久）；
+	# .import 文件已同步改 loop=true 作源头对齐（下次重导入后两边一致）。
+	if stream is AudioStreamOggVorbis:
+		stream.loop = true
 	
 	# 如果已有活跃播放器，先淡出它
 	if _music_player_active and _music_player_active.playing:
@@ -338,19 +372,6 @@ func play_music(bgm_key: String, fade_out_duration: float = 1.5) -> void:
 	_music_player.volume_db = linear_to_db(music_volume)
 	_music_player_active = _music_player
 
-## 停止当前 BGM（淡出）
-func stop_music(fade_duration: float = 1.0) -> void:
-	if _music_player and _music_player.playing:
-		var fade_steps = 20
-		var fade_step_time = fade_duration / fade_steps
-		for i in range(fade_steps + 1):
-			var vol = clampf(1.0 - i / fade_steps, 0.0, 1.0)
-			_music_player.volume_db = linear_to_db(music_volume * vol)
-			await get_tree().create_timer(fade_step_time).timeout
-		_music_player.stop()
-		_music_player.stream = null
-		_current_bgm_name = ""
-
 ## 设置音乐音量
 func set_music_volume(volume: float) -> void:
 	music_volume = clamp(volume, 0.0, 1.0)
@@ -362,24 +383,6 @@ func _on_battle_ended_bgm(player_won: bool) -> void:
 	# 延迟一小段时间再切 BGM，让 win/lose SFX 先播放
 	await get_tree().create_timer(0.5).timeout
 	play_music("hub")
-
-## 播放UI音效
-func play_ui_sfx(action: String) -> void:
-	match action:
-		"button_hover":
-			play_sfx("button_hover")
-		"panel_open":
-			play_sfx("panel_open")
-		"panel_close":
-			play_sfx("panel_close")
-		"card_pickup":
-			play_sfx("card_pickup")
-		"card_place":
-			play_sfx("card_place")
-		"error":
-			play_sfx("error")
-		_:
-			play_sfx("button")
 
 ## T1 性能优化：命中音效最小间隔节流——原每次命中无条件重启同一 AudioStreamPlayer，
 ## 密集交火 + DOT tick 时每秒几十次音频重启（声音上也糊成一片）。
@@ -394,16 +397,28 @@ func _on_unit_damaged(_unit: Node, _is_player: bool, _amount: float, _at_positio
 	_last_hit_sfx_msec = now
 	play_sfx("hit")
 
+## v26.6: 死亡音——此前 unit_died 信号 5 个消费方（battle_manager/new_systems/quest 等）
+## 无一播报，"unit_death" 合成音效在 sound_generator 已生成却从未播放。120ms 节流
+## 防团灭/AOE 团杀瞬间同帧几十次触发糊成一片。
+var _last_death_sfx_msec: int = -10000
+const DEATH_SFX_MIN_INTERVAL_MSEC: int = 120
+
+func _on_unit_died(_unit: Node, _is_player: bool) -> void:
+	var now: int = Time.get_ticks_msec()
+	if now - _last_death_sfx_msec < DEATH_SFX_MIN_INTERVAL_MSEC:
+		return
+	_last_death_sfx_msec = now
+	play_sfx("unit_death")
+
 func _on_battle_ended(player_won: bool) -> void:
 	play_sfx("win" if player_won else "lose")
 
 # v7.x 修复: 签名对齐 CardEnhancementManager.enhancement_completed(success, card_id, action, message)。
 # 原声明第3参为 Dictionary（错配 String action），即使连接也会运行时报错；且从未 connect（死代码）。
 # 由 _connect_enhancement_signal() 延迟连接（cem 为 lazy-load）。
-# 2026-08-22 审计标注：此链路当前为死代码——v8.x 强化停用后 do_enhance 在
-# card_enhancement_manager.gd:222 提前 return "强化系统已改为自动升级"，
-# emit(:243) 不可达，本 handler 永不触发。保留是因 new_systems_integration
-# 也监听同信号；若彻底移除强化管理器，连同本 handler/连接一起删。
+# 2026-09-02 勘误：上方 2026-08-22"死代码"标注已过时——v20.12 等级统一后教学任务
+# 改升级驱动，card_enhancement_manager._on_card_level_up 会转发 emit 本信号（:244），
+# handler 现真实触发（升级成功播 enhance / 失败播 cancel）。保留 lazy 连接不变。
 func _on_enhancement_completed(success: bool, _card_id: String, _action: String, _message: String) -> void:
 	play_sfx("enhance" if success else "cancel")
 
@@ -451,17 +466,41 @@ func _on_faction_level_up(_faction_id: String, _new_level: int) -> void:
 func _on_phase_field_level_up(_old: int, _new: int, _unspent: int) -> void:
 	play_sfx("enhance")
 
-## 播放射击音效
-func play_shoot_sfx() -> void:
-	play_sfx("shoot")
+# ── v27: 全局按钮悬停音（ui-review 易用性：可交互处听觉反馈，与手型光标成对） ──
+var _last_hover_sfx_msec: int = -10000
+const HOVER_SFX_MIN_INTERVAL_MSEC: int = 60
+const HOVER_SFX_VOLUME: float = 0.35
 
-## 播放爆炸音效
-func play_explosion_sfx() -> void:
-	play_sfx("explosion")
+func _on_node_added_hover_sfx(node: Node) -> void:
+	if node is BaseButton and not node.mouse_entered.is_connected(_on_button_hovered):
+		node.mouse_entered.connect(_on_button_hovered.bind(node))
 
-## 播放受伤音效
-func play_hurt_sfx() -> void:
-	play_sfx("hurt")
+func _on_button_hovered(btn: BaseButton) -> void:
+	if btn == null or not is_instance_valid(btn) or btn.disabled:
+		return
+	# 节流：快速划过列表时 60ms 内只响一次，低音量不与点击音争
+	var now: int = Time.get_ticks_msec()
+	if now - _last_hover_sfx_msec < HOVER_SFX_MIN_INTERVAL_MSEC:
+		return
+	_last_hover_sfx_msec = now
+	play_sfx("button_hover", HOVER_SFX_VOLUME)
+
+# ── v27: 基地低血量告警（≤30% 触发，10s 重提醒，战斗开始复位） ──
+const BASE_ALARM_RATIO: float = 0.30
+const BASE_ALARM_REMIND_MSEC: int = 10000
+var _last_base_alarm_msec: int = -100000
+
+func _on_phase_driver_hp_changed_alarm(current: float, maximum: float) -> void:
+	if maximum <= 0.0 or current / maximum > BASE_ALARM_RATIO:
+		return
+	var now: int = Time.get_ticks_msec()
+	if now - _last_base_alarm_msec < BASE_ALARM_REMIND_MSEC:
+		return
+	_last_base_alarm_msec = now
+	play_sfx("base_alarm", 0.8)
+
+func _on_battle_started_reset_alarm() -> void:
+	_last_base_alarm_msec = -100000
 
 # ── 初始 BGM ──
 

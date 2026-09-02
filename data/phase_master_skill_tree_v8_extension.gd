@@ -50,7 +50,7 @@ const EXTENSION_NODES: Dictionary = {
 		 "unlocks": [{"type": "unit_mechanism", "id": "blitz_pierce"}],
 		 "effects": {}},
 		# tier 5 并列：形态进化（v9 归位自概念武器分支；军团养成归指挥系）
-		{"id": "pms_cw_2", "name": "形态进化", "desc": "解锁卡牌进化能力（一战时代）",
+		{"id": "pms_cw_2", "name": "制造授权", "desc": "解锁一战时代的制造配方（情报驱动）",
 		 "branch": BRANCH_COMMAND, "tier": 5, "cost": 1, "requires": ["pms_cmd_4"],
 		 "unlocks": [{"type": "evolution", "era": 0}],
 		 "effects": {}},
@@ -93,7 +93,7 @@ const EXTENSION_NODES: Dictionary = {
 		 "unlocks": [],
 		 "effects": {"stat_bonus": {"tactic_effect_mult": 0.20, "def_light": 0.10, "def_armor": 0.10, "def_air": 0.10}}},
 		# tier 10 并列：护盾投射（v9 奇点归位指挥系——守护系奇点链链首；需奇点解算门关）
-		{"id": "pms_cw_4", "name": "护盾投射", "desc": "◈奇点 解锁机制：护盾发射器堡垒每20秒为半径250内生命最低的3个友军投射护盾；解锁所有时代进化",
+		{"id": "pms_cw_4", "name": "护盾投射", "desc": "◈奇点 解锁机制：护盾发射器堡垒每20秒为半径250内生命最低的3个友军投射护盾；解锁所有时代的制造授权",
 		 "branch": BRANCH_COMMAND, "tier": 10, "cost": 2, "requires": ["pms_cmd_9a", "pms_cw_0"],
 		 "unlocks": [{"type": "unit_mechanism", "id": "shield_projector"},
 		              {"type": "evolution", "era": -1}],

@@ -187,6 +187,17 @@ static func _find_target_by_card_grid(u: CharacterBody2D, targeting_mode: int = 
 
 	var target_group: String = "enemy_units" if u.is_player else "player_units"
 	var gr: Array = BattleManager.get_cached_nodes_in_group(target_group) if BattleManager else tree.get_nodes_in_group(target_group)
+	var origin: Vector2 = u.global_position
+	var acq_range: float = acquisition_range(u)
+	var acq_range_sq: float = acq_range * acq_range
+
+	# v26 B2 空优对称：玩家飞行单位（多用途战机/战机类）优先锁定射程内 AIR 目标——
+	# 与敌方 select_target_aerial 的空优语义对齐（"空优后洗地"闭环：先抢制空权再对地）。
+	# 敌方侧无需同改（enemy_unit 曲射分支早已 AIR 优先）。
+	if u.is_player and u.stats != null and u.stats.combat_kind == GameConstants.CombatKind.AIR:
+		var air_sup_tgt: Node2D = _pick_air_priority_target(u, gr, acq_range_sq)
+		if air_sup_tgt != null:
+			return air_sup_tgt
 
 	# 曲射/空射：槽位编号扫描（全场，纯顺序，从远到近）
 	# 判断：主武器 OR 任一武器槽为 INDIRECT/AERIAL
@@ -195,9 +206,6 @@ static func _find_target_by_card_grid(u: CharacterBody2D, targeting_mode: int = 
 		return _scan_slot_targets(u, gr)
 
 	# 直射：射程内距离筛选 + select_target
-	var origin: Vector2 = u.global_position
-	var acq_range: float = acquisition_range(u)
-	var acq_range_sq: float = acq_range * acq_range
 	# v8: 兵种固定机制「防空空域封锁」——防空单位优先锁定射程内的 AIR 目标
 	# is_anti_air_unit meta 由 apply_combat_kind_modifiers 在 ANTI_AIR 子类上设置
 	if u.stats != null and u.stats.has_meta("is_anti_air_unit") and bool(u.stats.get_meta("is_anti_air_unit", false)):

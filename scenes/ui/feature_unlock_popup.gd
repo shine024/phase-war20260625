@@ -25,6 +25,15 @@ static func show_once(feature_key: String, title: String, description: String) -
 	popup._setup(feature_key, title, description)
 	tree.root.add_child(popup)
 
+## 无视持久化，每次都弹（用于战斗中每次改造解锁即时反馈）。
+static func show_now(title: String, description: String) -> void:
+	var tree := Engine.get_main_loop() as SceneTree
+	if tree == null or tree.root == null:
+		return
+	var popup := FeatureUnlockPopup.new()
+	popup._setup("", title, description)
+	tree.root.add_child(popup)
+
 static func _already_seen(feature_key: String) -> bool:
 	_load_cache()
 	return _seen_cache.has(feature_key)

@@ -159,7 +159,7 @@ func _refresh_resources() -> void:
 		return
 	for short_id in _res_labels:
 		var total: int = BasicResourceManager.get_total(BunkerRoomDefs.res_full_id(short_id))
-		var names := {"nano": "纳米", "alloy": "合金", "crystal": "水晶", "energy": "能量块"}
+		var names := {"nano": "纳米", "alloy": "合金", "crystal": "晶体", "energy": "能量块"}
 		(_res_labels[short_id] as Label).text = "%s %d" % [names[short_id], total]
 
 func refresh_all_day_state() -> void:

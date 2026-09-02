@@ -214,29 +214,6 @@ func _apply_tactic_buff(tactic_id: String) -> void:
 func _remove_tactic_buff(tactic_id: String) -> void:
 	_applied_bonus.erase(tactic_id)
 
-## 获取所有已激活战法的合并 stat_bonus（供 battle_spawn_system 应用到单位 stats）
-func get_merged_stat_bonus() -> Dictionary:
-	var merged: Dictionary = {}
-	for tid in _applied_bonus:
-		var bonus: Dictionary = _applied_bonus[tid]
-		for k in bonus:
-			var v: float = float(bonus[k])
-			if not merged.has(k):
-				merged[k] = 0.0
-			merged[k] += v
-	return merged
-
-## 获取所有已激活战法的 special 标记（供 construct_unit 写入 meta）
-func get_active_specials() -> Array:
-	var specials: Array = []
-	for tid in _active_tactics:
-		var def: Dictionary = TacticsDef.get_tactic(tid)
-		var sp: Array = def.get("effects", {}).get("special", [])
-		for s in sp:
-			if not specials.has(s):
-				specials.append(s)
-	return specials
-
 ## 清除所有战法（战斗结束）
 func _clear_all_tactics() -> void:
 	_active_tactics.clear()

@@ -176,6 +176,24 @@ const DATA: Dictionary = {
 		effects = {command_aura = 0.15},
 		unlock_conditions = {required_level = 7}
 	},
+	# ─── v26 轰炸防御批 ───
+	"for_14_bomb_shelter" = {
+		id = "for_14_bomb_shelter",
+		name = "防空洞加固",
+		name_en = "Bomb Shelter Hardening",
+		icon = "res://assets/ui/icons/mod_icons/for_14_bomb_shelter.png",
+		prototype = "马奇诺/齐格菲地下工事",
+		description = "顶层防爆隔层与地下掩体——减伤与耐久提升（轰炸反制件）",
+		rarity = "uncommon",
+		power_mult = 1.15,
+		cost_research = 110,
+		cost_install = 55,
+		slot_type = "shelter",
+		conflict_group = "shelter",
+		effects = {damage_reduction = 0.10, max_hp_pct = 0.10},
+		unlock_conditions = {required_level = 2}
+	},
+
 }
 
 static func get_mod_data(mod_id: String) -> Dictionary:

@@ -54,6 +54,8 @@ static func select_target_direct(attacker: Node2D, enemies: Array) -> Node2D:
 ## 曲射: 优先被克制类型 → 无克制则最近 → 同距最低HP
 ## 不移动
 ## v8.x: 支持 SNIPER 优先锁定高价值目标（boss/master/command）
+## P1 性能优化：单遍同时跟踪「高价值/克制类别/全体」三条候选线的最近者，
+## 替代 filter 中间数组 + 二次 _nearest 遍历（每次索敌 2-3 次 Array/lambda 分配 → 0 分配）。
 static func select_target_indirect(attacker: Node2D, enemies: Array) -> Node2D:
 	if enemies.is_empty():
 		return null
@@ -67,24 +69,42 @@ static func select_target_indirect(attacker: Node2D, enemies: Array) -> Node2D:
 	# v8: 支持行为 tag 覆盖（如 antitank 强制打装甲）
 	var tags: Array = attacker.get("_behavior_tags_cached") if attacker.get("_behavior_tags_cached") != null else []
 	var target_kind = _get_counter_priority(stats, tags)
-	# v8.x: SNIPER 优先锁定高价值目标
-	if target_kind == CombatKindPriority.SNIPER_BOSS_PRIORITY:
-		var high_value = valid.filter(func(e): return _is_high_value_target(e))
-		if not high_value.is_empty():
-			return _nearest(origin, high_value)
-		# 无高价值目标则回退最近
-		return _nearest(origin, valid)
-	if target_kind >= 0:
-		var countered = valid.filter(func(e):
+	# v8.x: SNIPER_BOSS_PRIORITY（-2）优先高价值，普通克制 kind（>=0）优先克制类别
+	var need_hv: bool = target_kind == CombatKindPriority.SNIPER_BOSS_PRIORITY
+	var need_counter: bool = target_kind >= 0
+	var best_all: Node2D = null
+	var best_all_d2: float = INF
+	var best_hv: Node2D = null
+	var best_hv_d2: float = INF
+	var best_counter: Node2D = null
+	var best_counter_d2: float = INF
+	for e in valid:
+		var n2d := e as Node2D
+		if n2d == null:
+			continue
+		var d2: float = origin.distance_squared_to(n2d.global_position)
+		if d2 < best_all_d2:
+			best_all_d2 = d2
+			best_all = n2d
+		if need_hv and _is_high_value_target(e) and d2 < best_hv_d2:
+			best_hv_d2 = d2
+			best_hv = n2d
+		if need_counter:
 			var s = e.get("stats") as UnitStats
-			return s != null and s.combat_kind == target_kind
-		)
-		if not countered.is_empty():
-			return _nearest(origin, countered)
-	return _nearest(origin, valid)
+			if s != null and s.combat_kind == target_kind and d2 < best_counter_d2:
+				best_counter_d2 = d2
+				best_counter = n2d
+	if need_hv:
+		return best_hv if best_hv != null else best_all
+	if need_counter and best_counter != null:
+		return best_counter
+	return best_all
 
 ## 空射: 优先空中 → 无空中则克制目标 → 最近
 ## v8.x: 支持 SNIPER 优先锁定高价值目标
+## P1 性能优化：单遍同时跟踪「SNIPER 高价值/空中/克制类别/全体」四条候选线的最近者，
+## 替代 3 次 filter 中间数组 + 多次 _nearest 遍历（0 分配）。
+## 行为等价：优先级 SNIPER 高价值 > 空中 > 克制类别 > 全体最近。
 static func select_target_aerial(attacker: Node2D, enemies: Array) -> Node2D:
 	if enemies.is_empty():
 		return null
@@ -93,36 +113,49 @@ static func select_target_aerial(attacker: Node2D, enemies: Array) -> Node2D:
 	if valid.is_empty():
 		return null
 	# v8.x: SNIPER 标签优先锁定高价值目标（早于空中优先级，确保狙击手锁 Boss）
-	var tags_pre: Array = attacker.get("_behavior_tags_cached") if attacker.get("_behavior_tags_cached") != null else []
-	if tags_pre.has("sniper"):
-		var high_value_pre = valid.filter(func(e): return _is_high_value_target(e))
-		if not high_value_pre.is_empty():
-			return _nearest(origin, high_value_pre)
-	# 优先空中
-	var air_targets = valid.filter(func(e):
-		var s = e.get("stats") as UnitStats
-		return s != null and s.combat_kind == GameConstants.CombatKind.AIR
-	)
-	if not air_targets.is_empty():
-		return _nearest(origin, air_targets)
-	# 无空中则用克制优先
+	var tags: Array = attacker.get("_behavior_tags_cached") if attacker.get("_behavior_tags_cached") != null else []
+	var need_hv: bool = tags.has("sniper")
 	var stats = attacker.get("stats") as UnitStats
+	var target_kind: int = -1
 	if stats != null:
-		var tags: Array = attacker.get("_behavior_tags_cached") if attacker.get("_behavior_tags_cached") != null else []
-		var target_kind = _get_counter_priority(stats, tags)
-		# v8.x: SNIPER 优先锁定高价值目标
-		if target_kind == CombatKindPriority.SNIPER_BOSS_PRIORITY:
-			var high_value = valid.filter(func(e): return _is_high_value_target(e))
-			if not high_value.is_empty():
-				return _nearest(origin, high_value)
-		if target_kind >= 0:
-			var countered = valid.filter(func(e):
-				var s = e.get("stats") as UnitStats
-				return s != null and s.combat_kind == target_kind
-			)
-			if not countered.is_empty():
-				return _nearest(origin, countered)
-	return _nearest(origin, valid)
+		target_kind = _get_counter_priority(stats, tags)
+	# sniper 的 SNIPER_BOSS_PRIORITY(-2) 不算克制类别（原版到此处 hv 恒空、countered 不执行）
+	var need_counter: bool = stats != null and target_kind >= 0
+	var best_all: Node2D = null
+	var best_all_d2: float = INF
+	var best_hv: Node2D = null
+	var best_hv_d2: float = INF
+	var best_air: Node2D = null
+	var best_air_d2: float = INF
+	var best_counter: Node2D = null
+	var best_counter_d2: float = INF
+	for e in valid:
+		var n2d := e as Node2D
+		if n2d == null:
+			continue
+		var d2: float = origin.distance_squared_to(n2d.global_position)
+		if d2 < best_all_d2:
+			best_all_d2 = d2
+			best_all = n2d
+		var s = e.get("stats") as UnitStats
+		if need_hv and _is_high_value_target(e) and d2 < best_hv_d2:
+			best_hv_d2 = d2
+			best_hv = n2d
+		if s != null:
+			var kind: int = s.combat_kind
+			if kind == GameConstants.CombatKind.AIR and d2 < best_air_d2:
+				best_air_d2 = d2
+				best_air = n2d
+			if need_counter and kind == target_kind and d2 < best_counter_d2:
+				best_counter_d2 = d2
+				best_counter = n2d
+	if need_hv and best_hv != null:
+		return best_hv
+	if best_air != null:
+		return best_air
+	if need_counter and best_counter != null:
+		return best_counter
+	return best_all
 
 ## 根据attacker的攻击维度确定克制优先目标类型
 ## v8: 支持 behavior tag 覆盖——antitank 强制锁定 ARMOR（让反坦克单位优先打装甲）

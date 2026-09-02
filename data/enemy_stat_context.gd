@@ -9,7 +9,7 @@ class_name EnemyStatContext
 
 var level: int = 1
 var wave_index: int = 0
-## v8.2: 档位（EnemyLoadoutTiers.TIER_LOW/MID/HIGH），决定档位系数（1.30/1.75/2.00）。
+## v8.2: 档位（EnemyLoadoutTiers 四档常量），决定档位系数（1.20/1.30/1.46/1.66）。
 ## 由 make_default_context 按 level 算时代内进度 → get_tier_for_level_progress 填充。
 var tier: int = 1
 ## [兼容保留，不再参与 resolve 链] 敌方相位师 stats 字典。产兵侧 apply_phase_master_to_unit_stats 仍可读。

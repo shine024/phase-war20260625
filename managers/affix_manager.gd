@@ -120,15 +120,6 @@ func on_card_level_up(card_id: String, new_level: int, affix_type: int) -> void:
 	# v7.x: 卡牌升级触发词条变化，刷新玩家相位师战力缓存避免面板陈旧
 	_refresh_player_master_eval_safe()
 
-## 蓝图升星时调用（新系统）
-## 每升1星获得1个新词条
-func on_blueprint_star_up(card_id: String, old_star: int, new_star: int) -> void:
-	# v8.x: affix 改技能树赋予——升星不再随机获得词条，而是由技能树节点（intelligence 分支
-	# 的 affix 解锁节点）统一赋予。本函数保留供旧调用方不崩，但不再主动随机 roll。
-	# 具体赋予逻辑见 grant_skill_tree_affix_pool / on_card_level_up_instance。
-	# 升星仍刷新玩家相位师战力缓存。
-	_refresh_player_master_eval_safe()
-
 ## v18.c: 实例卡等级提升回调（InstanceRegistry._on_card_level_up 调用）
 ## 每 5 级一个词条节点（Lv5/10/15/20/25/30，共 6 个）：
 ## 空槽→roll 新词条（机体槽优先，满则落武器槽）；两类槽都满→尝试升级已有词条。
@@ -268,18 +259,6 @@ func _get_enhance_count_for_level(level: int) -> int:
 		if level >= ENHANCE_TRIGGER_LEVELS[i]:
 			return i + 1
 	return 0
-
-## 蓝图升星用的强化（基于星级和品质）
-func _enhance_card_for_star(card_id: String, affix_type: int, star: int, rarity: String) -> void:
-	var rolled_rarity: String = AffixDefs.roll_rarity_by_level(star)
-	var ectx: Array = _combat_context_for_identity(card_id)
-	var affix_id: String = AffixDefs.roll_unlocked_affix_id(affix_type, rolled_rarity, _unlocked_bosses, int(ectx[0]), int(ectx[1]))
-	if affix_id.is_empty():
-		affix_id = AffixDefs.roll_random_affix_id(affix_type, "", int(ectx[0]), int(ectx[1]))
-	if affix_id.is_empty():
-		return
-	var affix_key: String = _get_affix_key(card_id, affix_type)
-	_add_affix(affix_key, affix_id, rolled_rarity, 1)
 
 ## 执行强化：获取新词条
 func _enhance_card(card_id: String, affix_type: int, card_level: int) -> void:
@@ -567,10 +546,6 @@ func _add_affix(affix_key: String, affix_id: String, rarity: String, level: int)
 	emit_signal("affix_changed", affix_key)
 	return true
 
-func _get_card_level_from_card_id(_card_id: String) -> int:
-	# 2026-08-22：原 BlueprintManager.get_blueprint_level（星级废弃后恒 1）已移除；词条构建按等级 1 处理
-	return 1
-
 func _initial_affix_target_count_by_rarity(rarity: String) -> int:
 	match rarity:
 		"uncommon":
@@ -612,17 +587,6 @@ func _seed_affixes_by_star(card_id: String, affix_type: int, star: int) -> void:
 		if affix_id.is_empty():
 			continue
 		_add_affix(affix_key, affix_id, rarity, 1)
-
-func grant_initial_affixes_for_card(card: CardResource) -> void:
-	if card == null or card.card_id.is_empty():
-		return
-	# v5.1: star_level deprecated, use fixed star=1
-	var star: int = 1
-	# v7.x: 词条按实例隔离——用 instance_id 作 identity（空回退 card_id）
-	var identity: String = _card_identity(card)
-	# 双轨统一：所有可强化卡都具有机体/武器两套词条槽，数量按总星级一致
-	_seed_affixes_by_star(identity, 0, star)
-	_seed_affixes_by_star(identity, 1, star)
 
 func _get_root_node_or_null(node_name: String) -> Node:
 	if node_name.is_empty():

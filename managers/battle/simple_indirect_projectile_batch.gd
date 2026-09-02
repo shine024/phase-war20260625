@@ -360,6 +360,18 @@ func _apply_hit(r: Dictionary) -> void:
 		var shooter: Node2D = shooter_raw if shooter_raw != null and is_instance_valid(shooter_raw) and shooter_raw is Node2D else null
 		var shooter_stats: Variant = r["shooter_stats"]
 		var explosion_r: float = _WEAPON_CONFIG.get(wt, {}).get("explosion_radius", 40.0)
+		# v26 B2: 空射（AERIAL）爆炸半径读射手 splash_radius_bonus（与直射 _apply_splash
+		# 的 radius=100×(1+bonus×2) 同口径）——轰炸机经集束布撒器等改造放大"洗地"范围；
+		# 其余武器族（火箭/导弹/曲射）保持固定半径不动（平衡面最小化）。
+		if wt == 2 and shooter_stats != null and shooter_stats is UnitStats:
+			explosion_r *= (1.0 + maxf(0.0, float(shooter_stats.splash_radius_bonus)) * 2.0)
+		# v26 B2: 溅射目标上限可被射手放宽（轰炸机卡 aoe_cap=8——一次投弹覆盖一片）。
+		# 读节点 meta 或 stats meta（经典敌兵写节点、相位师产兵写 stats），未设置走全局默认 4
+		var aoe_cap: int = MAX_AOE_TARGETS_PER_HIT
+		if shooter != null and is_instance_valid(shooter) and shooter.has_meta("aoe_cap"):
+			aoe_cap = clampi(int(shooter.get_meta("aoe_cap")), 1, 12)
+		elif shooter_stats != null and shooter_stats is UnitStats and shooter_stats.has_meta("aoe_cap"):
+			aoe_cap = clampi(int(shooter_stats.get_meta("aoe_cap")), 1, 12)
 
 		# Fix-9: 修复曲射批处理的防御计算（v6.2 核心修复）
 		# 应用防御减免、改造加成、强化加成
@@ -406,13 +418,13 @@ func _apply_hit(r: Dictionary) -> void:
 							final_primary_dmg += ability_result["damage_bonus"]
 							final_primary_dmg *= (1.0 + ability_result["damage_mult_bonus"])
 
-		# Fix-3: AOE 伤害，限制溅射目标数量
+		# Fix-3: AOE 伤害，限制溅射目标数量（v26 B2: 上限走 aoe_cap——轰炸机放宽）
 		var targets: Array = _get_aoe_targets(hit_pos, explosion_r, tgt)
 		var splash_count := 0
 		for target in targets:
 			if target == tgt:
 				continue
-			if splash_count >= MAX_AOE_TARGETS_PER_HIT:
+			if splash_count >= aoe_cap:
 				break
 			if target.has_method("take_damage"):
 				# 溅射目标也需要防御计算（格子战模式下跳过，由CardGridDamage处理）

@@ -93,10 +93,11 @@ func _initialize() -> void:
 		ok.call("seeded roll 可复现（同关同波同槽 → 同词条：%s）" % String(e1.get("name", "")))
 	else:
 		fail.call("同 seed 两次 roll 结果不一致或为空")
-	if EnemyLoadoutTiers.LOADOUT_AFFIX_MIN_TIER == 2:
-		ok.call("挂词条门槛 = 中配档（TIER_MID=2）")
+	# v26: 挂词条门槛升到精英档（TIER_ELITE=3）——新兵/老兵的强度表达由配装改造承担
+	if EnemyLoadoutTiers.LOADOUT_AFFIX_MIN_TIER == EnemyLoadoutTiers.TIER_ELITE:
+		ok.call("挂词条门槛 = 精英档（TIER_ELITE=%d）" % EnemyLoadoutTiers.TIER_ELITE)
 	else:
-		fail.call("LOADOUT_AFFIX_MIN_TIER 应为 2")
+		fail.call("LOADOUT_AFFIX_MIN_TIER 应为 TIER_ELITE(3)")
 	# 高档位关卡掉落含精材料（era2 第 12 关 → in_era 12 → 档位 3）
 	var dt = DropTablesScript.new()
 	var drops: Array = dt.generate_drops(2, 32, true, 2)

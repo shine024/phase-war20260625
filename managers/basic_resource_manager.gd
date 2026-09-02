@@ -105,10 +105,12 @@ func save_state() -> Dictionary:
 
 func load_state(data: Dictionary) -> void:
 	# 优先加载新字段，回退到兼容字段
-	total_nano_materials = int(data.get("total_nano_materials", data.get("total_basic_nano", 0)))
-	total_alloy = int(data.get("total_alloy", 0))
-	total_crystal = int(data.get("total_crystal", 0))
-	total_energy_block = int(data.get("total_energy_block", 0))
+	# v26.6：fast 校验路径（ENABLE_DETAILED_LOAD_VALIDATION=false）不做值域修正，
+	# 读侧自行钳非负——手改档负资源直接进内存会击穿商店/消耗逻辑
+	total_nano_materials = maxi(int(data.get("total_nano_materials", data.get("total_basic_nano", 0))), 0)
+	total_alloy = maxi(int(data.get("total_alloy", 0)), 0)
+	total_crystal = maxi(int(data.get("total_crystal", 0)), 0)
+	total_energy_block = maxi(int(data.get("total_energy_block", 0)), 0)
 	# v9.x（P2-7范围C）：旧档 total_research_points key 静默跳过（科研点退役）
 	# v25.3：旧档 production_points key 静默跳过（产能点退役）
 	custom_totals = data.get("custom_totals", {})

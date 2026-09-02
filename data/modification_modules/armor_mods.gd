@@ -1,6 +1,6 @@
 extends RefCounted
 class_name ArmorModifications
-## 装甲兵改造模块定义（15个）
+## 装甲兵改造模块定义（18个）
 ## 每个改造映射到真实装甲车辆技术
 
 ## ─────────────────────────────────────────────
@@ -351,7 +351,7 @@ const DATA: Dictionary = {
 		name_en = "Fire Control Computer",
 		prototype = "M1艾布拉姆斯火控系统",
 		description = "弹道计算机实时解算，开火节奏加快",
-		icon = "res://assets/ui/icons/mod_icons/mod_environment.png",
+		icon = "res://assets/ui/icons/mod_icons/mod_fire_control.png",
 		rarity = "uncommon",
 	power_mult = 1.0,
 		cost_research = 100,
@@ -433,6 +433,43 @@ const DATA: Dictionary = {
 		effects = {rage_system = 8, rage_bonus = 0.35},
 		unlock_conditions = {required_level = 6}
 	},
+	# ─── v26 装甲补充批（era0/1 池补强）───
+	"arm_17_spacer_armor" = {
+		id = "arm_17_spacer_armor",
+		name = "附加钢板",
+		name_en = "Spacer Armor Plates",
+		icon = "res://assets/ui/icons/mod_icons/arm_17_spacer_armor.png",
+		prototype = "谢尔曼/四号附加装甲板（Standeschützen）",
+		description = "焊接附加钢板+空气层间隙——固定防护+百分比防护双通道",
+		rarity = "uncommon",
+		power_mult = 1.15,
+		cost_research = 100,
+		cost_install = 50,
+		slot_type = "armor",
+		conflict_group = "armor",
+		era_band = [0, 1],
+		effects = {defense_armor = 12, defense_armor_pct = 0.06},
+		unlock_conditions = {required_level = 1}
+	},
+
+	"arm_18_gun_mantlet" = {
+		id = "arm_18_gun_mantlet",
+		name = "厚重炮盾",
+		name_en = "Gun Mantlet",
+		icon = "res://assets/ui/icons/mod_icons/arm_18_gun_mantlet.png",
+		prototype = "虎式 150mm 炮盾（Turmschild）",
+		description = "火炮根部整体式厚炮盾，正面防护显著提升",
+		rarity = "uncommon",
+		power_mult = 1.1,
+		cost_research = 90,
+		cost_install = 45,
+		slot_type = "mantlet",
+		conflict_group = "mantlet",
+		era_band = [0, 2],
+		effects = {defense_armor = 18},
+		unlock_conditions = {required_level = 1}
+	},
+
 }
 
 ## ─────────────────────────────────────────────

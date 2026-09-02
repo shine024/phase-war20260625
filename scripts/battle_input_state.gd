@@ -14,6 +14,3 @@ func clear_all_pending() -> void:
 	pending_deploy_platform_card_id = ""
 	pending_deploy_origin_global = Vector2.ZERO
 	current_selected_unit = null
-
-func has_pending_deploy() -> bool:
-	return not pending_deploy_platform_card_id.is_empty()

@@ -4,6 +4,9 @@ extends Control
 ## 数据源：关卡名(GameManager信号) / 波次(BattleManager轮询) / 计时(本地自增) / 绿点(SignalBus战斗信号)
 
 const DT = preload("res://resources/design_tokens.gd")
+# v26.2: 战场环境效果（chip 数据源）+ 每关布局题面
+const BattleEnvEffects = preload("res://data/battle_env_effects.gd")
+const LevelBattleLayouts = preload("res://data/level_battle_layouts.gd")
 
 signal btn_start_battle_pressed
 signal btn_pause_pressed
@@ -22,6 +25,15 @@ var _pause_btn: Button = null
 var _speed_btn: Button = null
 var _start_btn: Button = null
 var _back_btn: Button = null
+# ── v27: 基地完整度 chip（FTUE S3——phase_driver_hp_changed 此前零显示消费方，"基地被打了看不见"） ──
+var _base_chip: HBoxContainer = null
+var _base_label: Label = null
+var _base_progress: ProgressBar = null
+var _base_fill_style: StyleBoxFlat = null
+var _base_pulse_tween: Tween = null
+# ── v26.2: 环境效果 chip（战内常显本场生效条目，与 world_map 战前摘要同一数据源） ──
+var _env_chip: HBoxContainer = null
+var _env_label: Label = null
 
 # ── 计时（本地自增，搬自 battle_info_display.gd）──
 var _battle_time: float = 0.0
@@ -46,10 +58,11 @@ func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	_cache_nodes()
 	_connect_signals()
-	_apply_chip_styles()
 	_apply_button_icons()
 	_apply_button_styles()
 	_ensure_wave_progress_style()
+	_build_base_chip()
+	_build_env_chip()
 	# 强制确保 SpeedBtn 有可见文字（防被其他逻辑覆盖）
 	if _speed_btn:
 		_speed_btn.text = "×1"
@@ -96,6 +109,9 @@ func _connect_signals() -> void:
 		# v9.x: 波次推进信号驱动刷新（替代每 0.25s 轮询 BattleManager）
 		if sb.has_signal("wave_spawned"):
 			sb.wave_spawned.connect(_on_wave_changed)
+		# v27: 基地完整度（相位场驱动器 HP）
+		if sb.has_signal("phase_driver_hp_changed"):
+			sb.phase_driver_hp_changed.connect(_on_phase_driver_hp_changed)
 
 
 func _apply_button_icons() -> void:
@@ -104,7 +120,7 @@ func _apply_button_icons() -> void:
 	_apply_icon_to(_start_btn, _START_ICON, "战", Color(0.05, 0.25, 0.15, 0.85))
 	_apply_icon_to(_back_btn, _BACK_ICON, "返", Color(0.1, 0.1, 0.15, 0.85))
 
-func _apply_icon_to(btn: Button, icon_key: String, fallback_text: String = "", bg_color: Color = Color(0.06, 0.10, 0.18, 0.85)) -> void:
+func _apply_icon_to(btn: Button, icon_key: String, fallback_text: String = "", _bg_color: Color = Color(0.06, 0.10, 0.18, 0.85)) -> void:
 	if btn == null:
 		return
 	var t := UiAssetLoader.ui_icon(icon_key)
@@ -118,46 +134,14 @@ func _apply_icon_to(btn: Button, icon_key: String, fallback_text: String = "", b
 	if fallback_text != "":
 		btn.text = fallback_text
 		btn.add_theme_font_size_override("font_size", 13)
-	# 按钮背景色（每个按钮独特配色，确保可见）
-	var st := StyleBoxFlat.new()
-	st.bg_color = bg_color
-	st.border_color = Color(0.3, 0.5, 0.75, 0.5)
-	st.set_border_width_all(1)
-	st.set_corner_radius_all(5)
-	st.set_content_margin_all(4)
-	btn.add_theme_stylebox_override("normal", st)
-	btn.add_theme_stylebox_override("hover", st)
+	# v26.x: 此处原有一份手写 radius-5 样式，但 _ready 中 _apply_button_styles() 在
+	# _apply_button_icons() 之后执行、四态样式（radius 6 + hover 青）整体覆盖之——
+	# 原样式块是写完即被覆盖的死代码，已删除。按钮真实样式见 _apply_normal_btn_style。
 
 
-# ========== Chip 背景样式（三段独立半透明背景，替代原整条顶栏背景） ==========
-# 设计稿 .panel 玻璃拟态：rgba(13,18,27,.85) + 边框 rgba(148,163,184,.18) + 圆角 10
-const _CHIP_BG := Color(0.051, 0.071, 0.106, 0.85)      # rgba(13,18,27,.85)
-const _CHIP_BORDER := Color(0.58, 0.64, 0.72, 0.22)
-
-
-## v7.x: 无整条背景，仅给 RightSection（5按钮组）加小背景便于识别
-func _apply_chip_styles() -> void:
-	# RightSection 现在是 HBoxContainer（非 PanelContainer），跳过——按钮自带 StyleBox 背景
-	pass
-
-
-func _make_chip_style() -> StyleBoxFlat:
-	var st := StyleBoxFlat.new()
-	st.bg_color = _CHIP_BG
-	st.border_color = _CHIP_BORDER
-	st.border_width_left = 1
-	st.border_width_top = 1
-	st.border_width_right = 1
-	st.border_width_bottom = 1
-	st.corner_radius_top_left = 8
-	st.corner_radius_top_right = 8
-	st.corner_radius_bottom_right = 8
-	st.corner_radius_bottom_left = 8
-	st.content_margin_left = 10
-	st.content_margin_right = 10
-	st.content_margin_top = 4
-	st.content_margin_bottom = 4
-	return st
+# ========== Chip 背景样式 ==========
+# v26.x: _make_chip_style / _CHIP_BG / _CHIP_BORDER 已删除——零调用方死代码
+#（_apply_chip_styles 是 pass，_build_base_chip 自建样式）。
 
 
 # ========== 按钮样式（对齐设计稿 .hud-btn：半透明深色背景 + 边框） ==========
@@ -342,15 +326,129 @@ func _on_battle_started() -> void:
 	_battle_time = 0.0
 	# v9.x: 战斗开始时刷新一次波次初始显示（后续由 wave_spawned 信号驱动）
 	_refresh_wave()
+	# v27: 战斗中显示基地完整度
+	if _base_chip != null:
+		_base_chip.visible = true
+	# v26.2: 刷新环境效果 chip（按当前关卡环境）
+	_refresh_env_chip()
 
 func _on_battle_ended(_won) -> void:
 	_in_battle = false
 	if _wave_progress != null:
 		_wave_progress.visible = false
+	# v27: 战斗结束隐藏基地 chip + 停危急闪烁
+	if _base_chip != null:
+		_base_chip.visible = false
+	_stop_base_pulse()
 
 ## v9.x: 波次推进时刷新 dots 显示（替代每 0.25s 轮询）
 func _on_wave_changed(_wave_index: int) -> void:
 	_refresh_wave()
+
+
+# ========== 基地完整度 chip（v27 / FTUE S3）==========
+## 编程式挂进 InfoRow（与 ultimate_cast_bar 同风格：不动 tscn）。
+## 三段色：>60% 绿 / 30-60% 琥珀 / ≤30% 红 + "基地"字样呼吸闪烁（配 audio 侧告警音）。
+func _build_base_chip() -> void:
+	var info_row: Node = get_node_or_null("Capsule/CenterSection/InfoRow")
+	if info_row == null:
+		return
+	_base_chip = HBoxContainer.new()
+	_base_chip.add_theme_constant_override("separation", 4)
+	_base_chip.visible = false
+	_base_label = Label.new()
+	_base_label.text = "基地"
+	_base_label.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
+	_base_label.add_theme_color_override("font_color", DT.COLOR_TEXT_DIM)
+	_base_chip.add_child(_base_label)
+	_base_progress = ProgressBar.new()
+	_base_progress.custom_minimum_size = Vector2(90, 10)
+	_base_progress.show_percentage = false
+	_base_progress.mouse_filter = Control.MOUSE_FILTER_PASS
+	_base_progress.tooltip_text = "相位场驱动器（基地）完整度——归零即战败。\n危急（红色闪烁）时同时有告警音提示。"
+	_base_chip.add_child(_base_progress)
+	info_row.add_child(_base_chip)
+	var bg := StyleBoxFlat.new()
+	bg.bg_color = DT.COLOR_PANEL_DEEP
+	bg.set_corner_radius_all(3)
+	_base_fill_style = StyleBoxFlat.new()
+	_base_fill_style.bg_color = DT.COLOR_HEALTH
+	_base_fill_style.set_corner_radius_all(3)
+	_base_progress.add_theme_stylebox_override("background", bg)
+	_base_progress.add_theme_stylebox_override("fill", _base_fill_style)
+
+func _on_phase_driver_hp_changed(current: float, maximum: float) -> void:
+	if _base_progress == null or maximum <= 0.0:
+		return
+	var ratio: float = clampf(current / maximum, 0.0, 1.0)
+	_base_progress.max_value = maximum
+	_base_progress.value = maxf(current, 0.0)
+	if ratio > 0.6:
+		_base_fill_style.bg_color = DT.COLOR_HEALTH
+		_base_label.add_theme_color_override("font_color", DT.COLOR_TEXT_DIM)
+		_stop_base_pulse()
+	elif ratio > 0.3:
+		_base_fill_style.bg_color = DT.COLOR_AMBER
+		_base_label.add_theme_color_override("font_color", DT.COLOR_AMBER)
+		_stop_base_pulse()
+	else:
+		_base_fill_style.bg_color = DT.COLOR_DANGER
+		_base_label.add_theme_color_override("font_color", DT.COLOR_DANGER)
+		_start_base_pulse()
+
+func _start_base_pulse() -> void:
+	if DT.is_motion_reduce():
+		return
+	if _base_pulse_tween != null and _base_pulse_tween.is_valid():
+		return
+	_base_pulse_tween = create_tween().set_loops()
+	_base_pulse_tween.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	_base_pulse_tween.tween_property(_base_label, "modulate:a", 0.35, 0.45)
+	_base_pulse_tween.tween_property(_base_label, "modulate:a", 1.0, 0.45)
+
+func _stop_base_pulse() -> void:
+	if _base_pulse_tween != null and _base_pulse_tween.is_valid():
+		_base_pulse_tween.kill()
+	_base_pulse_tween = null
+	if _base_label != null:
+		_base_label.modulate.a = 1.0
+
+
+# ========== 环境效果 chip（v26.2）==========
+## 本场生效的环境条目常显（无效果关隐藏），tooltip 全文 + 布局题面；数据源与 world_map 战前摘要一致。
+func _build_env_chip() -> void:
+	var info_row: Node = get_node_or_null("Capsule/CenterSection/InfoRow")
+	if info_row == null:
+		return
+	_env_chip = HBoxContainer.new()
+	_env_chip.add_theme_constant_override("separation", 4)
+	_env_chip.visible = false
+	_env_label = Label.new()
+	_env_label.text = "环境"
+	_env_label.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
+	_env_label.add_theme_color_override("font_color", DT.COLOR_AMBER)
+	_env_chip.add_child(_env_label)
+	info_row.add_child(_env_chip)
+
+func _refresh_env_chip() -> void:
+	if _env_chip == null:
+		return
+	var level: int = 1
+	var gm := get_node_or_null("/root/GameManager")
+	if gm and "current_level" in gm:
+		level = int(gm.current_level)
+	var descs: Array = BattleEnvEffects.describe_level_env(level)
+	var note: String = LevelBattleLayouts.get_note(level)
+	if descs.is_empty() and note.is_empty():
+		_env_chip.visible = false
+		return
+	_env_chip.visible = true
+	var tip_lines: Array = descs.duplicate()
+	if not tip_lines.is_empty():
+		tip_lines.insert(0, "本场环境效果（敌我同样生效）：")
+	if not note.is_empty():
+		tip_lines.append("本场布阵：" + note)
+	_env_label.tooltip_text = "\n".join(tip_lines)
 
 
 # ========== 暂停态切换 ==========

@@ -1,5 +1,8 @@
 # 同一张卡三种情境战力对比 — 实跑真实公式
 #
+# v26 进化退役标注（批次4）："满进化"段的数值经保留的内部 API（谱系链）计算，
+# 仅为战力口径回归；v26 起玩家变强主轴 = 制造（品质）+ 改造 + 等级。
+#
 # 目标：回答"同一张卡在最后广场（第100关）三种情境下的战力数值"
 #   ① 我方满配战力（fut_colossus 满强化+满改造+满进化+元帅）
 #   ② 敌方非相位师满配（fut_arm_colossus_e，第100关普通敌兵，wave×level×faction_buff 满链）
@@ -21,6 +24,7 @@ const BattleCardV3 = preload("res://data/battle_card_v3.gd")
 const EnemyStatResolver = preload("res://data/enemy_stat_resolver.gd")
 const EnemyStatContext = preload("res://data/enemy_stat_context.gd")
 const EnemyArchetypes = preload("res://data/enemy_archetypes.gd")
+const EnemyLoadoutTiers = preload("res://data/enemy_loadout_tiers.gd")
 const _ArchFuture = preload("res://data/enemy_archetypes_future.gd")
 const FactionConquestBuffs = preload("res://data/faction_conquest_buffs.gd")
 const EnemyPhaseMasters = preload("res://data/enemy_phase_masters.gd")
@@ -224,12 +228,16 @@ func _section2_enemy_non_master() -> void:
 	var real_move := -absf(float(cfg.get("speed", -60.0))) * f_spd
 
 	# v7.x 修复后：spawn 后追加的 tier 加成（之前漏算导致用户看到"HP 比理论值高/低飘忽"）
-	# 第100关 era_local=20 → era_progress=1.0 → TIER_HIGH（hp_pct=0.30, atk_pct=0.35）
+	# v26 四档：第100关 era_local=20 → era_progress=1.0 → TIER_LEGENDARY（hp/atk_pct=0.66）
 	# 修复前：tier 只改 stats 不同步裸字段 → 血条显示未加成 HP（实际脆 30%）
 	#         只有 elite 词缀 roll 到 max_hp 时才"意外"同步（飘忽不定）
 	# 修复后：_sync_bare_fields_from_stats() 统一同步，tier 加成稳定生效
-	var tier_hp_mul := 1.30  # TIER_HIGH hp_pct=0.30
-	var tier_atk_mul := 1.35  # TIER_HIGH atk_pct=0.35
+	# 注：v26 起实际单位另有配装改造/词条附加层（见 enemy_unit._apply_loadout_modifications），
+	# 此处理论值只含标量乘区，与实际的差值即配装贡献。
+	# v26.4：档位标量改从 EnemyLoadoutTiers.TIER_BONUS 取真值（此前硬编码 1.58 是旧值，实际 0.66→×1.66）
+	var _tier_cfg: Dictionary = EnemyLoadoutTiers.TIER_BONUS.get(EnemyLoadoutTiers.TIER_LEGENDARY, {})
+	var tier_hp_mul := 1.0 + float(_tier_cfg.get("hp_pct", 0.0))
+	var tier_atk_mul := 1.0 + float(_tier_cfg.get("atk_pct", 0.0))
 	var visible_hp := real_hp * tier_hp_mul
 	var visible_atk_a := real_atk_a * tier_atk_mul
 

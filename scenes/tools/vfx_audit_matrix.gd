@@ -141,7 +141,7 @@ func _spawn_trajectory_cell(f: int, side: bool) -> void:
 	# v17k-R2: 6 发间隔连射（弹幕感——3 发瞬时在截图里是孤立点，连射才有"弹道线"）
 	for i in range(6):
 		var from: Vector2 = MUZZLE_POS + Vector2(0, (i % 3 - 1) * 26.0)
-		batch.fire(from, tgt, 10.0, f if f in [0, 4, 1, 2] else 0, shooter, null, false, "", "")
+		batch.fire(from, tgt, 10.0, f if f in [0, 4] else 0, shooter, null, false, "", "")
 		await get_tree().create_timer(0.045).timeout
 	# 等 0.10s 让末批弹道飞到中段（不同批次分布在全程=弹道轨迹带）
 	await get_tree().create_timer(0.10).timeout

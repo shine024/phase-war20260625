@@ -25,8 +25,3 @@ const _ICONS: Dictionary = {
 
 static func get_icon(rank_id: String) -> Texture2D:
 	return _ICONS.get(rank_id) as Texture2D
-
-
-static func get_icon_for_level(rank_level: int) -> Texture2D:
-	var idx: int = clampi(rank_level, 1, RankRules.RANK_ORDER.size()) - 1
-	return get_icon(RankRules.RANK_ORDER[idx])

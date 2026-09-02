@@ -87,7 +87,7 @@ const BTN_CONFIGS: Array = [
 # 批次三 B8：左排面板按钮 tooltip 文案（含快捷键宣传；键位以 main.gd _input 为准）
 const SHORTCUT_TOOLTIPS: Dictionary = {
 	"backpack":     "背包：查看拥有的卡牌与实例（快捷键 1 / B）",
-	"progression":  "成长中枢：等级 / 改造 / 进化 / 技能树（快捷键 7）",
+	"progression":  "成长中枢：等级 / 改造 / 制造 / 技能树（快捷键 7）",
 	"map":          "世界地图：选择关卡推进（快捷键 M）",
 	"settings":     "设置（快捷键 9）",
 	"save":         "手动存档",

@@ -8,6 +8,7 @@ extends HBoxContainer
 ## battle 开始/结束由 battle_manager 调 UltimateCastController.reset() 复位为自动。
 
 const DT = preload("res://resources/design_tokens.gd")
+const PanelStyles = preload("res://scripts/ui/panel_styles.gd")
 const UltimateCastControllerScript = preload("res://scripts/battle/ultimate_cast_controller.gd")
 const PhaseInstrumentAbilitiesScript = preload("res://managers/battle/phase_instrument_abilities.gd")
 
@@ -40,6 +41,36 @@ func _ready() -> void:
 		_build_mech_btn(def)
 
 
+## v26.x 悬空治理：按钮簇垫底板（贴可见按钮簇宽度，非全宽）。
+## 此前本条夹在卡槽条上方且无底板，按钮直接浮在战场上——截图反馈"核弹悬空突兀"即此。
+## 底板语言与下方相位仪栏/功能抽屉同款（make_panel_frame 青色 accent 悬浮卡片），
+## 三者叠成一体；alpha 0.92 与 instrument bar 对齐。
+func _draw() -> void:
+	var content := Rect2()
+	var has_content := false
+	for child in get_children():
+		var c := child as Control
+		if c == null or not c.visible:
+			continue
+		var r := Rect2(c.position, c.size)
+		content = r if not has_content else content.merge(r)
+		has_content = true
+	if not has_content:
+		return
+	var backdrop: StyleBoxFlat = PanelStyles.make_panel_frame(DT.COLOR_ACCENT_CYAN)
+	backdrop.bg_color.a = 0.92
+	backdrop.content_margin_left = 8
+	backdrop.content_margin_right = 8
+	backdrop.content_margin_top = 3
+	backdrop.content_margin_bottom = 3
+	backdrop.draw(get_canvas_item(), content.grow_individual(10.0, 3.0, 10.0, 3.0))
+
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_RESIZED or what == NOTIFICATION_SORT_CHILDREN:
+		queue_redraw()
+
+
 func _process(delta: float) -> void:
 	var in_battle: bool = BattleManager != null and bool(BattleManager.get("battle_active"))
 	visible = in_battle
@@ -62,9 +93,10 @@ func _process(delta: float) -> void:
 
 func _build_mode_btn() -> void:
 	_mode_btn = Button.new()
-	_mode_btn.text = "自动"
+	# v26.x: "自动"→"大招:自动"——与卡槽条左端"自动(部署)"按钮重名易混淆（截图反馈）
+	_mode_btn.text = "大招:自动"
 	_mode_btn.toggle_mode = true
-	_mode_btn.custom_minimum_size = Vector2(64, 42)
+	_mode_btn.custom_minimum_size = Vector2(78, 42)
 	_mode_btn.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
 	_mode_btn.tooltip_text = "大招自动/手动切换\n自动：CD 好了立即释放（默认，挂机友好）\n手动：大招攥住不放，按钮亮起时点击即发\n仅当前战斗生效"
 	_mode_btn.focus_mode = Control.FOCUS_NONE
@@ -139,6 +171,7 @@ func _refresh_buttons() -> void:
 		var count: int = int(armed.get(key, {}).get("count", 0))
 		_set_ready_visual(btn, count > 0)
 		_set_badge(btn, count)
+	queue_redraw()  # v26.x: 底板贴按钮簇，可见性变化即重绘
 
 
 ## 就绪态切换（带 memo，避免每轮 poll 重刷样式）
@@ -148,6 +181,10 @@ func _set_ready_visual(btn: Button, ready: bool) -> void:
 	btn.set_meta("is_ready", ready)
 	if ready:
 		_apply_ready_style(btn)
+		# v27: 手动模式就绪提示音——玩家眼睛在战场不在按钮条，亮起瞬间的轻升调
+		# 把"大招已攒好"从纯视觉变视听双通道；自动模式大招即亮即放，不响
+		if UltimateCastControllerScript.is_manual() and AudioManager != null:
+			AudioManager.play_sfx("ultimate_ready", 0.5)
 	else:
 		_apply_dim_style(btn)
 
@@ -271,12 +308,12 @@ func _toast(msg: String) -> void:
 
 func _apply_mode_style(active: bool) -> void:
 	if active:
-		_mode_btn.text = "手动"
+		_mode_btn.text = "大招:手动"
 		_mode_btn.add_theme_stylebox_override("normal",
 			_mk_style(Color(0.12, 0.32, 0.18, 0.95), DT.COLOR_HEALTH, 1))
 		_mode_btn.add_theme_color_override("font_color", DT.COLOR_TEXT_BRIGHT)
 	else:
-		_mode_btn.text = "自动"
+		_mode_btn.text = "大招:自动"
 		_mode_btn.add_theme_stylebox_override("normal",
 			_mk_style(Color(0.08, 0.12, 0.18, 0.85), DT.COLOR_BORDER, 1))
 		_mode_btn.add_theme_color_override("font_color", DT.COLOR_TEXT_DIM)

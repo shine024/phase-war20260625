@@ -155,7 +155,7 @@ const SKILL_TREE: Dictionary = {
 		# tier 4：智能化终极——自适应进化
 		# v9.x：原 conditional survive_seconds（存活30秒全属性+15%）全项目无消费方（空转），
 		# 按 v8.5 同类处理惯例改静态数值（atk/def/hp 键均被 battle_spawn_system 消费）
-		{"id": "pms_int_4", "name": "自适应进化", "desc": "所有单位三维攻击 +8%，三维防御 +8%，生命上限 +8%",
+		{"id": "pms_int_4", "name": "自适应矩阵", "desc": "所有单位三维攻击 +8%，三维防御 +8%，生命上限 +8%",
 		 "branch": BRANCH_INTELLIGENCE, "tier": 4, "cost": 3, "requires": ["pms_int_3"],
 		 "unlocks": [],
 		 "effects": {"stat_bonus": {"atk_light": 0.08, "atk_armor": 0.08, "atk_air": 0.08,

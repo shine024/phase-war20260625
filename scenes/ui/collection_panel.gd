@@ -245,9 +245,9 @@ func _refresh_detail() -> void:
 	if card != null:
 		var lines: Array = []
 		lines.append("稀有度：%s" % _rarity_display(str(card.rarity)))
-		lines.append("卡牌类型：%s" % str(card.card_type))
-		lines.append("兵种：%s" % str(card.combat_kind))
-		lines.append("时代：%s" % str(card.era))
+		lines.append("卡牌类型：%s" % GameConstants.get_card_type_name(card.card_type))
+		lines.append("兵种：%s" % CardResource.get_combat_kind_name(card.combat_kind))
+		lines.append("时代：%s" % GameConstants.get_era_name(card.era))
 		# 三维攻防（若存在）
 		if card.attack_light > 0.0:
 			lines.append("轻装攻击：%s" % str(card.attack_light))

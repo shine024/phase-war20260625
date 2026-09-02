@@ -22,7 +22,7 @@ enum Category {
 	COMMAND_GLOBAL    # 5  指挥：全场攻/速/暴（不攻击）
 }
 
-## 星级乘数：1.0 + (star - 1) * 0.1，即 ★1=1.0, ★5=1.4, ★9=1.8
+## 星级乘数：1.0 + (star - 1) * 0.05，即 ★1=1.0, ★5=1.20, ★10=1.45
 static func star_multiplier(star: int) -> float:
 	# v6.11: 系数 0.1→0.05（迁移到 enhance_level 0-10，避免高强化光环过强）
 	# 原 star 1-9 → 现 enhance_level 0-10：★10=1.45（原★9=1.8），★5=1.20
@@ -48,14 +48,26 @@ static func is_in_aura_range(source_slot: int, target_slot: int, range_cells: in
 static func is_aura_ranging_enabled() -> bool:
 	return bool(GameCfg.get_default().aura_range_enabled)
 
-## v21 P0: 槽位编号 → (带内列, 行)。几何单一真身 = card_grid_battle_layout
-## （3 行 × 每行 SLOTS_PER_SIDE 格，槽位按行主序编号：row = slot / SLOTS_PER_SIDE）。
-static func slot_grid_coords(slot_index: int) -> Vector2i:
+## v21 P0 + v26.2: 槽位编号 → (带内列, 行)。几何单一真身 = card_grid_battle_layout
+## （行主序编号：row = slot / 该侧列数）。敌我列数可不同（每关布局表），默认 3×3 行为不变。
+static func slot_grid_coords(slot_index: int, is_enemy: bool = false) -> Vector2i:
 	if slot_index < 0:
 		return Vector2i(-9999, -9999)
-	var col: int = slot_index % Layout.SLOTS_PER_SIDE
-	var row: int = Layout.get_row_for_slot(slot_index)
+	var cols: int = Layout.active_enemy_cols() if is_enemy else Layout.active_player_cols()
+	var col: int = slot_index % cols
+	var row: int = Layout.get_row_for_slot(slot_index, is_enemy)
 	return Vector2i(col, row)
+
+## v26.2: 按单位侧别取槽位坐标（玩家=card_grid_slot / 敌方=card_grid_enemy_slot）。
+## 光环只作用于同阵营，敌我列数不同时必须各用各的列数才能对齐坐标语义。
+static func slot_grid_coords_for_unit(unit: Node) -> Vector2i:
+	if unit == null or not is_instance_valid(unit):
+		return Vector2i(-9999, -9999)
+	if unit.has_meta("card_grid_slot"):
+		return slot_grid_coords(int(unit.get_meta("card_grid_slot", -1)), false)
+	if unit.has_meta("card_grid_enemy_slot"):
+		return slot_grid_coords(int(unit.get_meta("card_grid_enemy_slot", -1)), true)
+	return Vector2i(-9999, -9999)
 
 ## v21 P0: 统一读取单位槽位 meta（玩家=card_grid_slot，敌方=card_grid_enemy_slot）。
 ## 无槽 meta 返回 -1（判定回退全场）。与 card_grid_battle_layout.is_unit_in_upper_row 同款读法。

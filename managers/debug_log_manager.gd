@@ -147,25 +147,8 @@ func info(loc: String, msg: String, dt: Dictionary, hyp: String = "") -> void:
 func warning(loc: String, msg: String, dt: Dictionary, hyp: String = "") -> void:
 	_write_log(loc, msg, dt, LogLevel.WARNING, hyp, "")
 
-func error_log(loc: String, msg: String, dt: Dictionary, hyp: String = "") -> void:
-	_write_log(loc, msg, dt, LogLevel.ERROR, hyp, "")
-
 func agent_log(loc: String, msg: String, dt: Dictionary, hyp: String = "", rid: String = "") -> void:
 	_write_log(loc, msg, dt, LogLevel.DEBUG, hyp, rid)
-
-func set_log_level(level: int) -> void:
-	current_log_level = clampi(level, LogLevel.VERBOSE, LogLevel.ERROR)
-	info("DebugLogManager", "Log level set to: " + _get_level_name(current_log_level), {})
-
-func set_log_target(target: int) -> void:
-	log_target = target
-	flush_log_buffer()
-
-func set_run_id(new_run_id: String) -> void:
-	run_id = new_run_id
-
-func set_logging_enabled(enabled: bool) -> void:
-	logging_enabled = enabled
 
 func is_channel_enabled(channel: String, default_enabled: bool = false) -> bool:
 	if not logging_enabled:
@@ -173,17 +156,3 @@ func is_channel_enabled(channel: String, default_enabled: bool = false) -> bool:
 	if log_channels.has(channel):
 		return bool(log_channels[channel])
 	return default_enabled
-
-func set_channel_enabled(channel: String, enabled: bool) -> void:
-	log_channels[channel] = enabled
-
-func get_log_stats() -> Dictionary:
-	return {
-		"session_id": session_id,
-		"run_id": run_id,
-		"buffer_size": log_buffer.size(),
-		"log_level": _get_level_name(current_log_level),
-		"logging_enabled": logging_enabled,
-		"log_file_path": log_file_path,
-		"channels": log_channels.duplicate(true)
-	}

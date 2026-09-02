@@ -131,33 +131,6 @@ func show_error(message: String, parent: Control = null) -> void:
 func show_warning(message: String, parent: Control = null) -> void:
 	show_toast(message, 2.0, Color(0.9, 0.6, 0.2), parent)
 
-func show_deploy_failure(message: String, parent: Control):
-	if deploy_toast and is_instance_valid(deploy_toast):
-		deploy_toast.queue_free()
-	var target: Control = parent
-	if target == null and is_instance_valid(_toast_container):
-		target = _toast_container
-	if target == null:
-		return
-	var panel = _create_toast_panel(message, Color.RED, target)
-	target.add_child(panel)
-	deploy_toast = panel
-	_animate_toast(panel)
-
-func show_save_result(message: String, is_error: bool, parent: Control):
-	if save_toast and is_instance_valid(save_toast):
-		save_toast.queue_free()
-	var color = Color.RED if is_error else Color.GREEN
-	var target: Control = parent
-	if target == null and is_instance_valid(_toast_container):
-		target = _toast_container
-	if target == null:
-		return
-	var panel = _create_toast_panel(message, color, target)
-	target.add_child(panel)
-	save_toast = panel
-	_animate_toast(panel)
-
 
 func _create_toast_panel(message: String, color: Color, _parent: Control) -> PanelContainer:
 	var panel = PanelContainer.new()

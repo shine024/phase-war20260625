@@ -367,18 +367,6 @@ static func _on_wingman_respawn_timeout(captured_carrier: Node2D, captured_stats
 
 # ── 平台光环系统（基于 platform_type，每帧调用）────────────────────
 
-## MEDIC 维修光环：每 3 秒治疗 180 范围内所有友军 8% 最大 HP（CD 由调用方用成员变量驱动时可改用 tick 版本）
-static func apply_medic_heal_aura(unit: Node2D, delta: float) -> void:
-	if unit == null or not ("stats" in unit) or unit.stats == null:
-		return
-	var cd: float = unit._medic_aura_cd - delta
-	unit._medic_aura_cd = cd
-	if cd > 0.0:
-		return
-	unit._medic_aura_cd = 3.0
-	apply_medic_heal_aura_tick(unit)
-
-
 ## MEDIC 单次治疗脉冲（无 CD 逻辑；由 construct_unit._medic_aura_cd 等节流）
 static func apply_medic_heal_aura_tick(unit: Node2D) -> void:
 	if unit == null or not ("stats" in unit) or unit.stats == null:
@@ -782,7 +770,9 @@ static func update_drone_auto_mark(unit: Node2D, delta: float) -> void:
 	# 标记前 2 个（在半径 400 内）
 	var marked_count := 0
 	var target_positions: Array = []
-	var now_ms: int = Time.get_ticks_msec()
+	# v26.6: 口径统一秒制——本写侧毫秒残留（v10(C4) 只统一了 construct_unit 写侧）导致
+	# unit_status_collector（秒比较）把标记显示成永久标记
+	var now_sec: float = Time.get_ticks_msec() / 1000.0
 	for enemy in enemies:
 		if marked_count >= 2:
 			break
@@ -790,8 +780,8 @@ static func update_drone_auto_mark(unit: Node2D, delta: float) -> void:
 			continue
 		if unit.global_position.distance_to(enemy.global_position) > 400.0:
 			continue
-		# 挂标记（兼容现有 _drone_marked_until 格式，bullet.gd:1258 已消费）
-		enemy.set_meta("_drone_marked_until", now_ms + 8000)  # 8 秒后过期
+		# 挂标记（兼容现有 _drone_marked_until 格式，bullet.gd 已消费；秒制）
+		enemy.set_meta("_drone_marked_until", now_sec + 8.0)  # 8 秒后过期（秒制）
 		enemy.set_meta("_drone_mark_vuln", 0.25)  # +25% 易伤
 		target_positions.append(enemy.global_position)
 		marked_count += 1
@@ -802,29 +792,42 @@ static func update_drone_auto_mark(unit: Node2D, delta: float) -> void:
 		if sb != null and sb.has_signal("mechanism_drone_marked"):
 			sb.mechanism_drone_marked.emit(unit.global_position, target_positions)
 
-## 无人机标记过期清理（每帧由 construct_unit 调用，清过期 _drone_marked_until）
+## 无人机标记过期清理（由 construct_unit 每帧调用，清过期 _drone_marked_until）
+## v26.6: ①全局节流——原每实例每帧全组扫描（N 单位 × M 敌 = N×M 次/帧），现静态守卫
+## 全局每 250ms 扫一次（标记期 8s，晚 250ms 清理无感知）；②比较口径改秒制（写侧 v10 已
+## 秒制，此处毫秒比较把秒值标记恒判过期、写入当帧即清）；③补扫 player_units 组
+## （update_drone_auto_mark 在非玩家单位侧写的是 player_units 标记，原只扫 enemy 漏清理）。
+static var _last_mark_sweep_msec: int = -1000000
+const MARK_SWEEP_INTERVAL_MSEC: int = 250
+
 static func update_drone_mark_expiry(_delta: float) -> void:
+	var now_ms: int = Time.get_ticks_msec()
+	if now_ms - _last_mark_sweep_msec < MARK_SWEEP_INTERVAL_MSEC:
+		return
+	_last_mark_sweep_msec = now_ms
 	var tree: SceneTree = Engine.get_main_loop() as SceneTree
 	if tree == null:
 		return
-	var now_ms: int = Time.get_ticks_msec()
-	var enemies: Array = tree.get_nodes_in_group("enemy_units")
-	for enemy in enemies:
-		if not is_instance_valid(enemy):
-			continue
-		if enemy.has_meta("_drone_marked_until"):
-			var until: int = int(enemy.get_meta("_drone_marked_until", 0))
-			if now_ms >= until:
-				enemy.remove_meta("_drone_marked_until")
-				enemy.remove_meta("_drone_mark_vuln")
+	var now_sec: float = now_ms / 1000.0
+	for group in ["enemy_units", "player_units"]:
+		var units: Array = tree.get_nodes_in_group(group)
+		for enemy in units:
+			if not is_instance_valid(enemy):
+				continue
+			if enemy.has_meta("_drone_marked_until"):
+				var until: float = float(enemy.get_meta("_drone_marked_until", 0.0))
+				if now_sec >= until:
+					enemy.remove_meta("_drone_marked_until")
+					enemy.remove_meta("_drone_mark_vuln")
 
 ## 无人机标记易伤：被标记目标受到额外伤害乘数（兼容 _drone_marked_until 格式）
+## v26.6: 比较口径改秒制（原毫秒比较，秒值标记恒判过期→易伤乘数从未生效）
 static func get_drone_mark_vuln_multiplier(target: Node2D) -> float:
 	if target == null or not is_instance_valid(target):
 		return 1.0
 	if target.has_meta("_drone_marked_until"):
-		var until: int = int(target.get_meta("_drone_marked_until", 0))
-		if Time.get_ticks_msec() < until:
+		var until: float = float(target.get_meta("_drone_marked_until", 0.0))
+		if Time.get_ticks_msec() / 1000.0 < until:
 			var vuln: float = float(target.get_meta("_drone_mark_vuln", 0.25))
 			return 1.0 + vuln
 	return 1.0

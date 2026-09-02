@@ -18,28 +18,28 @@ static func infer_weapon_sub_type(combat_kind: int, range_value: int, attack_lig
 	if attack_light == 0.0 and attack_armor == 0.0 and attack_air == 0.0:
 		return "SUPPORT"
 	# LIGHT + short range → SMG
-	if combat_kind == 0 and range_value <= 2:
+	if combat_kind == GameConstants.CombatKind.LIGHT and range_value <= 2:
 		return "SMG"
 	# LIGHT + medium range → RIFLE
-	if combat_kind == 0 and range_value <= 4:
+	if combat_kind == GameConstants.CombatKind.LIGHT and range_value <= 4:
 		return "RIFLE"
 	# LIGHT + high anti-armor → AT (反坦克)
-	if combat_kind == 0 and attack_armor > attack_light * 2.0:
+	if combat_kind == GameConstants.CombatKind.LIGHT and attack_armor > attack_light * 2.0:
 		return "AT"
 	# ARMOR → TANK
-	if combat_kind == 1:
+	if combat_kind == GameConstants.CombatKind.ARMOR:
 		return "TANK"
 	# SUPPORT + anti-air focus → SNIPER
-	if combat_kind == 2 and attack_air > 0.0 and attack_air > attack_light:
+	if combat_kind == GameConstants.CombatKind.SUPPORT and attack_air > 0.0 and attack_air > attack_light:
 		return "SNIPER"
 	# SUPPORT + high rate of fire → MG
-	if combat_kind == 2:
+	if combat_kind == GameConstants.CombatKind.SUPPORT:
 		return "MG"
 	# AIR → default
-	if combat_kind == 3:
+	if combat_kind == GameConstants.CombatKind.AIR:
 		return "RIFLE"
 	# FORT → default
-	if combat_kind == 4:
+	if combat_kind == GameConstants.CombatKind.FORT:
 		return "TANK"
 	return "RIFLE"
 
@@ -58,7 +58,3 @@ static func calculate_attenuation(distance: float, max_range: float, weapon_sub_
 #	var over_ratio = (distance - max_range) / max_range
 #	var attenuation = 1.0 - over_ratio * factor
 #	return clampf(attenuation, 0.0, 1.0)
-
-## 是否需要衰减（仅直射需要）
-static func needs_attenuation(weapon_type: int) -> bool:
-	return weapon_type == 0  # DIRECT

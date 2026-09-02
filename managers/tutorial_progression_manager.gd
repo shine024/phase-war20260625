@@ -1,19 +1,20 @@
 extends Node
 ## 新手教程进度管理器（A 系统）：主界面首次进入时的系统引导
 ##
-## v9.x（P2-4 批次6）重构（13 步完整引导）：
-##   1. 欢迎 / 2. 背包 / 3. 装配（拖卡到底部绿槽）/ 4. 养成（自动等级+词条+技能树）
-##   5. 改造 / 6. 符文 / 7. 首战
-##   8. 进化 / 9. 势力声望 / 10. 商店 / 11. 世界地图选关 / 12. 相位场加点
+## v3（FTUE A2 首战提前，2026-09-01）：播放顺序重排——核心循环先于系统导览：
+##   1. 欢迎 / 2. 背包 / 3. 装配（预装初始三卡）/ 4. 首战
+##   5. 养成 / 6. 改造 / 7. 符文 / 8. 制造 / 9. 势力 / 10. 商店 / 11. 世界地图 / 12. 相位场加点
 ##   13. 自由模式（教程结束）
-## 旧档兼容：save_state 带 version=2；version<2 的旧档 current_step>=8 一律视为已完成
+## 枚举值保持 v2 不变（存档兼容），推进沿 STEP_ORDER 数组走；
+## 旧档兼容：save_state version=3；version<3 停在旧序 4-7 步的档迁到首战步。
 ##
 ## 设计要点：
 ##   - 每一步打开一个不同的面板，不再重复（原 step1/step2 都开背包）
 ##   - 推进靠 tutorial_overlay 的"下一步"按钮（complete_current_step）
-##   - TutorialProgressionManager 不监听玩家操作，只记录步骤进度
+##   - TutorialProgressionManager 不监听玩家操作，只记录步骤进度；
+##     首战部署验证提醒（A4）在 main.gd（_start_tutorial_deploy_nudge）
 
-## 教程步骤枚举（连续整数，complete_current_step 用 current_step + 1 推进）
+## 教程步骤枚举（值与 v2 存档一致；播放顺序见 STEP_ORDER）
 enum TutorialStep {
 	NONE = 0,
 	INTRO_WELCOME = 1,        # 欢迎：介绍游戏
@@ -23,13 +24,30 @@ enum TutorialStep {
 	MODIFICATION = 5,         # 改造：安装模块
 	RUNES = 6,                # 符文：符文/符文之语
 	FIRST_BATTLE = 7,         # 首战：进入第1关
-	EVOLUTION = 8,            # v9.x：进化（兵种进化线）
+	EVOLUTION = 8,            # v9.x：制造（兵种制造线）
 	FACTION_REP = 9,          # v9.x：势力声望
 	SHOP = 10,                # v9.x：商店（声望购物）
 	WORLD_MAP = 11,           # v9.x：世界地图选关
 	PHASE_FIELD_POINTS = 12,  # v9.x：相位场加点
 	FREEDOM_MODE = 13,        # 自由模式（教程结束）——v1 枚举此值为 8，旧档兼容见 load_state
 }
+
+## v3：实际播放顺序（首战提前到第 4 位；数组大小 = 总步数 13）
+const STEP_ORDER: Array = [
+	TutorialStep.INTRO_WELCOME,
+	TutorialStep.CARD_COLLECTION,
+	TutorialStep.PHASE_INSTRUMENT,
+	TutorialStep.FIRST_BATTLE,
+	TutorialStep.ENHANCEMENT,
+	TutorialStep.MODIFICATION,
+	TutorialStep.RUNES,
+	TutorialStep.EVOLUTION,
+	TutorialStep.FACTION_REP,
+	TutorialStep.SHOP,
+	TutorialStep.WORLD_MAP,
+	TutorialStep.PHASE_FIELD_POINTS,
+	TutorialStep.FREEDOM_MODE,
+]
 
 var current_step: TutorialStep = TutorialStep.NONE
 var completed_steps: Array = []
@@ -71,7 +89,7 @@ func _initialize_tutorial_data() -> void:
 		},
 		TutorialStep.ENHANCEMENT: {
 			"title": "卡牌养成",
-			"description": "卡牌靠战斗经验自动升级（Lv1-30），Lv5/10/15/20/25/30 各解锁一个词条；相位师技能树用技能点解锁全局强化。成长中枢汇总所有养成入口。",
+			"description": "刚才的战斗中，上阵卡牌已经获得了经验。卡牌靠战斗经验自动升级（Lv1-30），Lv5/10/15/20/25/30 各解锁一个词条；相位师技能树用技能点解锁全局强化。",
 			"highlights": ["战斗经验→等级 Lv1-30（自动）", "关键等级解锁词条", "技能树：全局被动强化"],
 			"action_text": "打开成长中枢",
 			"action_target": "open_enhancement",
@@ -102,10 +120,10 @@ func _initialize_tutorial_data() -> void:
 			"highlight_elements": ["battlefield"]
 		},
 		TutorialStep.EVOLUTION: {
-			"title": "兵种进化",
-			"description": "满级卡可在成长中枢进入进化面板，沿进化线变为更强的高阶单位。不同兵种有独立进化树。",
-			"highlights": ["成长中枢→进化面板", "进化保留养成并变强", "各兵种独立进化线"],
-			"action_text": "打开进化面板",
+			"title": "兵种制造",
+			"description": "在制造中心用情报与资源直接生产卡牌：击败敌形积累情报，25% 解锁配方，品质随档位提升。工坊可享制造折扣。",
+			"highlights": ["成长中枢→制造中心", "情报解锁配方与品质", "资源制造，暗保底兜底"],
+			"action_text": "打开制造中心",
 			"action_target": "open_evolution",
 			"highlight_elements": []
 		},
@@ -161,23 +179,32 @@ func get_tutorial_content() -> Dictionary:
 		current_step = TutorialStep.INTRO_WELCOME
 	return tutorial_data.get(current_step, {})
 
-## 完成当前教程步骤
+## 完成当前教程步骤（v3：沿 STEP_ORDER 推进——首战提前后枚举值不再连续递增）
 func complete_current_step() -> void:
 	if not completed_steps.has(current_step):
 		completed_steps.append(current_step)
 
-	var next_step = current_step + 1
-	if next_step <= TutorialStep.FREEDOM_MODE:
-		current_step = next_step as TutorialStep
+	var idx: int = STEP_ORDER.find(current_step)
+	if idx >= 0 and idx + 1 < STEP_ORDER.size():
+		current_step = STEP_ORDER[idx + 1] as TutorialStep
 		tutorial_step_changed.emit(current_step)
 
 		if current_step == TutorialStep.FREEDOM_MODE:
 			SignalBus.tutorial_completed.emit("")
+			# v26.6 批4b: 死信号审计 B 类补反馈链——教学完成 toast（原信号无人监听）
+			SignalBus.show_toast.emit("🎓 教学完成，自由模式已解锁")
+
+## v3：当前是否已过首战步（战后续播判定用；NONE/首战步本身返回 false）
+func is_past_first_battle() -> bool:
+	var idx: int = STEP_ORDER.find(current_step)
+	return idx > STEP_ORDER.find(TutorialStep.FIRST_BATTLE)
 
 ## 跳过教程
 func skip_tutorial() -> void:
 	current_step = TutorialStep.FREEDOM_MODE
 	SignalBus.tutorial_completed.emit("")
+	# v26.6 批4b: 补反馈链（与正常完成路径一致）
+	SignalBus.show_toast.emit("🎓 教学完成，自由模式已解锁")
 
 ## 重置教程（设置面板调用）
 func reset_tutorial() -> void:
@@ -238,17 +265,19 @@ func execute_tutorial_action(action_target: String) -> void:
 
 
 ## 保存状态（给SaveManager用）
-## v9.x（P2-4 批次6）：version=2——13 步制（v1 为 8 步制，FREEDOM=8）
+## v3（2026-09-01 FTUE A2）：13 步制 + STEP_ORDER 播放顺序（首战提前到第 4 位）。
+## v2 为旧序（首战第 7 位）；v1 为 8 步制（FREEDOM=8）。
 func save_state() -> Dictionary:
 	return {
-		"version": 2,
+		"version": 3,
 		"current_step": current_step,
 		"completed_steps": completed_steps
 	}
 
 ## 加载状态（给SaveManager用）
-## v9.x（P2-4 批次6）版本门控：v1 旧档为 8 步制（FREEDOM=8）——step>=8 视为已完成，
-## 防止旧完档在新 13 步制下被拉回第 8 步重看教程；v2 新档按新枚举解析。
+## v1 旧档为 8 步制（FREEDOM=8）——step>=8 视为已完成，防止旧完档被拉回重看；
+## v2→v3 迁移：旧序停在 4-7 步（养成导览中、首战未打）的档直接跳到新序首战步
+##（枚举值同为 FIRST_BATTLE=7，内容不变）；1-3/8-13 步两序一一对应，原位续看。
 func load_state(data: Dictionary) -> void:
 	if not data.is_empty():
 		var version: int = int(data.get("version", 1))
@@ -257,6 +286,9 @@ func load_state(data: Dictionary) -> void:
 			current_step = TutorialStep.FREEDOM_MODE
 			completed_steps = data.get("completed_steps", [])
 			return
+		if version < 3 and saved_step >= int(TutorialStep.ENHANCEMENT) \
+				and saved_step <= int(TutorialStep.FIRST_BATTLE):
+			saved_step = int(TutorialStep.FIRST_BATTLE)
 		if saved_step >= int(TutorialStep.FREEDOM_MODE):
 			current_step = TutorialStep.FREEDOM_MODE
 		elif saved_step <= int(TutorialStep.NONE):

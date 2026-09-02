@@ -14,6 +14,7 @@ const ModRegistry = preload("res://scripts/systems/modification_registry.gd")  #
 const DT = preload("res://resources/design_tokens.gd")
 const PanelStyles = preload("res://scripts/ui/panel_styles.gd")
 const PanelChrome = preload("res://scenes/ui/components/panel_chrome.gd")
+const IntelUIKit = preload("res://scenes/ui/components/intel_ui_kit.gd")
 
 @onready var _tab_container: TabContainer = $Margin/VBox/TabContainer
 @onready var _lore_grid: GridContainer = $Margin/VBox/TabContainer/LoreTab/LoreScroll/LoreGrid
@@ -42,7 +43,7 @@ func _ready() -> void:
 	_setup_intel_tab()
 	if _tab_container:
 		_tab_container.set_tab_title(0, "世界观情报")
-		_tab_container.set_tab_title(1, "单位进化图谱")
+		_tab_container.set_tab_title(1, "单位谱系图谱")
 		_tab_container.set_tab_title(2, "符文图鉴")
 		_tab_container.set_tab_title(3, "敌方情报")
 		_tab_container.tab_changed.connect(_on_tab_changed)
@@ -121,10 +122,12 @@ func _refresh_lore() -> void:
 
 	var lm: Node = get_node_or_null("/root/LoreManager")
 	if lm == null or not lm.has_method("get_unlocked_lore"):
+		_refresh_lore_header(0)
 		_add_lore_placeholder("情报系统未初始化")
 		return
 
 	var unlocked: Array = lm.get_unlocked_lore()
+	_refresh_lore_header(unlocked.size())
 	if unlocked.is_empty():
 		_add_lore_placeholder("暂无已解锁世界观情报\n（战斗掉落情报页后显示于此）")
 		return
@@ -134,6 +137,21 @@ func _refresh_lore() -> void:
 	_process_lore_batch(LORE_PER_FRAME_FIRST)
 	if not _lore_load_queue.is_empty():
 		_start_rune_load_timer()
+
+
+## v26 UI：页签区块标题（签名竖条 + 已解锁计数），挂在 LoreTab 顶部（按名字防重建重复）
+func _refresh_lore_header(unlocked_count: int) -> void:
+	var tab := _lore_grid.get_parent().get_parent() as VBoxContainer  # LoreScroll 的父级 LoreTab
+	if tab == null:
+		return
+	var old := tab.get_node_or_null("LoreHeader")
+	if old != null:
+		old.queue_free()
+	var header := IntelUIKit.section_header("世界观情报", DT.COLOR_VIOLET,
+		"已解锁 %d 份" % unlocked_count)
+	header.name = "LoreHeader"
+	tab.add_child(header)
+	tab.move_child(header, 0)
 
 
 func _process_lore_batch(batch_count: int) -> void:
@@ -152,27 +170,30 @@ func _add_lore_placeholder(message: String) -> void:
 	_lore_grid.add_child(lbl)
 
 
+## v26 UI：lore 卡统一走 IntelUIKit 行卡语言（紫签名条 + 亮名 + 中灰正文 + 就地 tooltip）
 func _add_lore_card(lore_data: Dictionary) -> void:
 	var panel := PanelContainer.new()
-	panel.custom_minimum_size = Vector2(220, 100)
-	panel.add_theme_stylebox_override("panel",
-		PanelStyles.make_card_style(Color(DT.COLOR_CARD.r, DT.COLOR_CARD.g, DT.COLOR_CARD.b, 0.9), DT.COLOR_BORDER_DIM, 1, 4, 8))
+	panel.custom_minimum_size = Vector2(220, 0)
+	panel.add_theme_stylebox_override("panel", IntelUIKit.list_row_style(DT.COLOR_VIOLET, false))
 	var vbox := VBoxContainer.new()
+	vbox.add_theme_constant_override("separation", 4)
 	panel.add_child(vbox)
 
-	var name_lbl := Label.new()
-	name_lbl.text = lore_data.get("name", "情报资料")
-	name_lbl.add_theme_color_override("font_color", DT.COLOR_GOLD)
-	name_lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
+	var name_text: String = lore_data.get("name", "情报资料")
+	var name_lbl := IntelUIKit.label(name_text, DT.FONT_SIZE_SMALL, DT.COLOR_VIOLET_SOFT)
 	vbox.add_child(name_lbl)
 
+	var desc_text: String = lore_data.get("description", "")
 	var desc := Label.new()
-	desc.text = lore_data.get("description", "")
+	desc.text = desc_text
 	desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	desc.custom_minimum_size = Vector2(200, 0)
 	desc.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
 	desc.add_theme_color_override("font_color", DT.COLOR_TEXT_MID)
 	vbox.add_child(desc)
+
+	# 就地解释：卡片内容被裁切时悬停可读全文
+	panel.tooltip_text = "%s\n%s" % [name_text, desc_text]
 
 	_lore_grid.add_child(panel)
 
@@ -216,7 +237,7 @@ func _refresh_runes_tab() -> void:
 	if pim and pim.has_method("get_rune_slots"):
 		equipped_runes = pim.get_rune_slots()
 	# ── 第一部分：符文列表 ──
-	_add_rune_section_header("◈ 符文列表（%d/%d 已获得）" % [owned_runes.size(), RuneDefs.ALL_RUNES.size()])
+	_add_rune_section_header("符文列表", "已获得 %d/%d" % [owned_runes.size(), RuneDefs.ALL_RUNES.size()])
 	# v9.4: 分帧加载符文卡——56 张符文图标（995×995 RGBA ~4MB/张）一次性加载会触发内存峰值，
 	# 改为每帧加载若干个，避免 _ready 阶段集中分配导致 OOM（首次崩溃即发生在此）。
 	# 符文之语列表（无图标）紧跟首帧后同步加载，开销小。
@@ -226,7 +247,7 @@ func _refresh_runes_tab() -> void:
 	# 首帧先加载一批，让用户立即看到内容
 	_process_rune_load_batch(RUNE_PER_FRAME_FIRST)
 	# 符文之语列表（无图标，纯文本，内存开销小，直接同步加载）
-	_add_rune_section_header("✦ 符文之语列表（共%d种）" % RunewordDefs.ALL_RUNEWORDS.size())
+	_add_rune_section_header("符文之语", "共 %d 种" % RunewordDefs.ALL_RUNEWORDS.size())
 	for rw in RunewordDefs.ALL_RUNEWORDS:
 		_add_runeword_card(rw, owned_runes)
 	# 若还有剩余符文未加载，启动分帧定时器
@@ -281,88 +302,78 @@ func _on_rune_load_timer_timeout() -> void:
 		return
 
 
-func _add_rune_section_header(title_text: String) -> void:
-	var header := Label.new()
-	header.text = title_text
-	header.add_theme_font_size_override("font_size", DT.FONT_SIZE_MEDIUM)
-	header.add_theme_color_override("font_color", DT.COLOR_VIOLET)
-	_rune_content.add_child(header)
+## v26 UI：区块标题统一走 IntelUIKit（签名竖条 + 计数右对齐，替代 ◈/✦ 纯文本标题）
+func _add_rune_section_header(title_text: String, count_text := "") -> void:
+	_rune_content.add_child(IntelUIKit.section_header(title_text, DT.COLOR_VIOLET, count_text))
 
 
+## v26 UI：符文行统一 IntelUIKit 行卡语言——
+## 状态三档描边（已装备=金高亮 / 已获得=稀有度色 / 未获得=中性灰），
+## 名称+类别·稀有度双行列对齐，状态 chip 替代「[已获得]」方括号文本。
 func _add_rune_card(rune_def: Dictionary, is_owned: bool, is_equipped: bool) -> void:
-	var panel := PanelContainer.new()
-	panel.custom_minimum_size = Vector2(0, 0)
-	var style := StyleBoxFlat.new()
-	var rarity: String = str(rune_def.get("rarity", "common"))
-	var border_color: Color = RuneDefs.RARITY_COLORS.get(rarity, Color(0.5, 0.5, 0.5))
-	style.bg_color = Color(DT.COLOR_CARD.r, DT.COLOR_CARD.g, DT.COLOR_CARD.b, 0.9)
-	style.border_width_left = 2
-	style.border_width_right = 2
-	style.border_width_top = 1
-	style.border_width_bottom = 1
-	style.border_color = border_color if is_owned else Color(DT.COLOR_BORDER_DIM.r, DT.COLOR_BORDER_DIM.g, DT.COLOR_BORDER_DIM.b, 0.5)
-	style.set_corner_radius_all(4)
-	style.content_margin_left = 8
-	style.content_margin_right = 8
-	style.content_margin_top = 4
-	style.content_margin_bottom = 4
-	panel.add_theme_stylebox_override("panel", style)
-
-	var hbox := HBoxContainer.new()
-	hbox.add_theme_constant_override("separation", 8)
-	panel.add_child(hbox)
-
-	# 符文名 + 状态标记
 	var rune_id: String = rune_def.get("id", "")
 	var rune_name: String = RuneDefs.RUNE_NAMES.get(rune_id, rune_id)
+	var rarity: String = str(rune_def.get("rarity", "common"))
+	var rarity_color: Color = RuneDefs.RARITY_COLORS.get(rarity, Color(0.5, 0.5, 0.5))
 	var rarity_name: String = RuneDefs.RARITY_NAMES.get(rarity, "未知") as String
 	var category_name: String = _rune_category_name(rune_def.get("category", ""))
-	var status: String = ""
-	if is_equipped:
-		status = " [已装备]"
-	elif is_owned:
-		status = " [已获得]"
-	else:
-		status = " [未获得]"
 
-	# v6.2: 符文专属图标缩略图（未获得的半透明，与文字状态色一致）
+	var panel := PanelContainer.new()
+	var stripe: Color = DT.COLOR_GOLD if is_equipped else (rarity_color if is_owned else DT.COLOR_TEXT_FAINT)
+	panel.add_theme_stylebox_override("panel", IntelUIKit.list_row_style(stripe, is_equipped))
+
+	var hbox := HBoxContainer.new()
+	hbox.add_theme_constant_override("separation", 10)
+	panel.add_child(hbox)
+
+	# 符文专属图标缩略图（未获得的半透明，与文字状态色一致）
 	var icon_rect := TextureRect.new()
 	icon_rect.custom_minimum_size = Vector2(32, 32)
 	icon_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	icon_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	icon_rect.texture = UiAssetLoader.rune_icon(rune_id)
-	icon_rect.modulate = border_color if is_owned else Color(DT.COLOR_TEXT_FAINT.r, DT.COLOR_TEXT_FAINT.g, DT.COLOR_TEXT_FAINT.b, 0.5)
+	icon_rect.modulate = rarity_color if is_owned else Color(DT.COLOR_TEXT_FAINT.r, DT.COLOR_TEXT_FAINT.g, DT.COLOR_TEXT_FAINT.b, 0.5)
+	icon_rect.tooltip_text = "%s · %s（%s）" % [rune_name, category_name, rarity_name]
 	hbox.add_child(icon_rect)
 
-	var name_lbl := Label.new()
-	name_lbl.text = "%s  (%s·%s)%s" % [rune_name, category_name, rarity_name, status]
-	name_lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
-	name_lbl.add_theme_color_override("font_color", border_color if is_owned else DT.COLOR_TEXT_FAINT)
-	name_lbl.custom_minimum_size = Vector2(300, 0)
-	hbox.add_child(name_lbl)
+	# 名称块：名字 + 类别·稀有度副行（定宽 230，与效果列成对齐网格）
+	var name_box := VBoxContainer.new()
+	name_box.add_theme_constant_override("separation", 1)
+	name_box.custom_minimum_size = Vector2(230, 0)
+	name_box.add_child(IntelUIKit.label(rune_name, DT.FONT_SIZE_BODY,
+		DT.COLOR_TEXT_BRIGHT if is_owned else DT.COLOR_TEXT_FAINT))
+	name_box.add_child(IntelUIKit.label("%s · %s" % [category_name, rarity_name],
+		DT.FONT_SIZE_SMALL, DT.COLOR_TEXT_DIM if is_owned else DT.COLOR_TEXT_FAINT))
+	hbox.add_child(name_box)
 
 	# 效果说明
-	var effect_lbl := Label.new()
 	var primary: String = str(rune_def.get("desc_primary", ""))
 	var secondary: String = str(rune_def.get("desc_secondary", ""))
 	var effect_text: String = primary
 	if not secondary.is_empty():
 		effect_text += " / " + secondary
-	effect_lbl.text = effect_text
-	effect_lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
-	effect_lbl.add_theme_color_override("font_color", DT.COLOR_TEXT_MID if is_owned else Color(DT.COLOR_TEXT_FAINT.r, DT.COLOR_TEXT_FAINT.g, DT.COLOR_TEXT_FAINT.b, 0.85))
+	var effect_lbl := IntelUIKit.label(effect_text, DT.FONT_SIZE_SMALL,
+		DT.COLOR_TEXT_MID if is_owned else Color(DT.COLOR_TEXT_FAINT.r, DT.COLOR_TEXT_FAINT.g, DT.COLOR_TEXT_FAINT.b, 0.85))
 	effect_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	effect_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	hbox.add_child(effect_lbl)
 
+	# 状态 chip（替代「[已装备]/[已获得]/[未获得]」方括号文本）
+	var chip_text := "已装备" if is_equipped else ("已获得" if is_owned else "未获得")
+	var chip_color := DT.COLOR_GOLD if is_equipped else DT.COLOR_GREEN_UP
+	hbox.add_child(IntelUIKit.status_chip(chip_text, chip_color, not is_owned))
+
 	_rune_content.add_child(panel)
 
 
+## v26 UI：符文之语行统一 IntelUIKit 行卡语言——
+## 描边按层级色（可激活=全亮高亮 / 符文不足=中性灰），层级/状态改 chip，名称列与符文行对齐。
 func _add_runeword_card(rw_def: Dictionary, owned_runes: Array) -> void:
-	var panel := PanelContainer.new()
-	var style := StyleBoxFlat.new()
+	var rw_id: String = rw_def.get("id", "")
+	var rw_name: String = RunewordDefs.RUNEWORD_NAMES.get(rw_id, rw_id) as String
 	var tier: int = int(rw_def.get("tier", 2))
 	var tier_color: Color = RunewordDefs.TIER_COLORS.get(tier, Color(0.6, 0.6, 0.6))
+	var tier_name: String = RunewordDefs.TIER_NAMES.get(tier, "未知") as String
 	# 检查玩家是否拥有全部所需符文
 	var required: Array = rw_def.get("required_runes", [])
 	var has_all: bool = true
@@ -370,53 +381,42 @@ func _add_runeword_card(rw_def: Dictionary, owned_runes: Array) -> void:
 		if not owned_runes.has(str(rid)):
 			has_all = false
 			break
-	style.bg_color = Color(DT.COLOR_VIOLET.r, DT.COLOR_VIOLET.g, DT.COLOR_VIOLET.b, 0.08)
-	style.border_width_left = 2
-	style.border_width_right = 2
-	style.border_width_top = 1
-	style.border_width_bottom = 1
-	style.border_color = tier_color if has_all else Color(DT.COLOR_BORDER_DIM.r, DT.COLOR_BORDER_DIM.g, DT.COLOR_BORDER_DIM.b, 0.5)
-	style.set_corner_radius_all(4)
-	style.content_margin_left = 8
-	style.content_margin_right = 8
-	style.content_margin_top = 4
-	style.content_margin_bottom = 4
-	panel.add_theme_stylebox_override("panel", style)
+
+	var panel := PanelContainer.new()
+	panel.add_theme_stylebox_override("panel",
+		IntelUIKit.list_row_style(tier_color if has_all else DT.COLOR_TEXT_FAINT, has_all))
 
 	var vbox := VBoxContainer.new()
-	vbox.add_theme_constant_override("separation", 2)
+	vbox.add_theme_constant_override("separation", 3)
 	panel.add_child(vbox)
 
-	# 名称行
-	var rw_id: String = rw_def.get("id", "")
-	var rw_name: String = RunewordDefs.RUNEWORD_NAMES.get(rw_id, rw_id) as String
-	var tier_name: String = RunewordDefs.TIER_NAMES.get(tier, "未知") as String
-	var status_str: String = " [可激活]" if has_all else " [符文不足]"
-	var name_lbl := Label.new()
-	name_lbl.text = "★ %s  (%s·%d符文)%s" % [rw_name, tier_name, required.size(), status_str]
-	name_lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
-	name_lbl.add_theme_color_override("font_color", tier_color if has_all else DT.COLOR_TEXT_FAINT)
-	vbox.add_child(name_lbl)
+	# 名称行：名字 + 层级 chip + 状态 chip（替代「★」前缀与「[可激活]」方括号文本）
+	var name_row := HBoxContainer.new()
+	name_row.add_theme_constant_override("separation", 8)
+	name_row.add_child(IntelUIKit.label(rw_name, DT.FONT_SIZE_BODY,
+		DT.COLOR_TEXT_BRIGHT if has_all else DT.COLOR_TEXT_FAINT))
+	name_row.add_child(IntelUIKit.status_chip("%s · %d符文" % [tier_name, required.size()], tier_color))
+	name_row.add_child(IntelUIKit.status_chip("可激活" if has_all else "符文不足",
+		DT.COLOR_GOLD, not has_all))
+	vbox.add_child(name_row)
 
-	# 所需符文行
+	# 细节行：所需符文（定宽 230 与符文名列对齐）+ 效果
+	var detail_row := HBoxContainer.new()
+	detail_row.add_theme_constant_override("separation", 12)
 	var runes_str: String = ""
 	for rid in required:
 		if not runes_str.is_empty():
 			runes_str += " + "
 		runes_str += RuneDefs.RUNE_NAMES.get(str(rid), str(rid))
-	var req_lbl := Label.new()
-	req_lbl.text = "所需符文：%s" % runes_str
-	req_lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
-	req_lbl.add_theme_color_override("font_color", DT.COLOR_TEXT_DIM)
-	vbox.add_child(req_lbl)
-
-	# 效果行
-	var effect_lbl := Label.new()
-	effect_lbl.text = RunewordDefs.get_effects_description(rw_id)
-	effect_lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
-	effect_lbl.add_theme_color_override("font_color", DT.COLOR_TEXT_MID if has_all else Color(DT.COLOR_TEXT_FAINT.r, DT.COLOR_TEXT_FAINT.g, DT.COLOR_TEXT_FAINT.b, 0.85))
+	detail_row.add_child(IntelUIKit.label("所需符文：%s" % runes_str,
+		DT.FONT_SIZE_SMALL, DT.COLOR_TEXT_DIM, 230.0))
+	var effect_lbl := IntelUIKit.label(RunewordDefs.get_effects_description(rw_id),
+		DT.FONT_SIZE_SMALL,
+		DT.COLOR_TEXT_MID if has_all else Color(DT.COLOR_TEXT_FAINT.r, DT.COLOR_TEXT_FAINT.g, DT.COLOR_TEXT_FAINT.b, 0.85))
+	effect_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	effect_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	vbox.add_child(effect_lbl)
+	detail_row.add_child(effect_lbl)
+	vbox.add_child(detail_row)
 
 	_rune_content.add_child(panel)
 
@@ -443,14 +443,17 @@ func _setup_intel_tab() -> void:
 	var tab := VBoxContainer.new()
 	tab.name = "IntelManualTab"
 	_tab_container.add_child(tab)
-	var hint := Label.new()
-	hint.text = ("击败/部署同一敌方形态会累积情报（获取实物缴获卡直接过半）：\n"
-		+ "25% 基础属性 → 50% 详细属性 + 低进化可用 → 75% 弱点提示 → 100% 完整进化资格 + 全改造解锁\n"
-		+ "v21: 部署+4% 固定不衰减；击败/部署附带改造情报点数，点数达标解锁该形态专属改造")
-	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	hint.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
-	hint.add_theme_color_override("font_color", DT.COLOR_TEXT_DIM)
-	tab.add_child(hint)
+	# v26 UI：顶部 4 行机制文字墙 → 「进度阶梯」可视化里程碑 + 一行脚注
+	#（包容性：机制读一次图形就懂，不必啃文字墙）
+	var ladder := VBoxContainer.new()
+	ladder.add_theme_constant_override("separation", 4)
+	ladder.add_child(IntelUIKit.section_header("情报进度阶梯", DT.COLOR_VIOLET,
+		"击败/部署同一形态累积 · 缴获实物卡直接过半"))
+	ladder.add_child(_build_intel_milestone_strip())
+	ladder.add_child(IntelUIKit.label(
+		"部署 +4% 固定不衰减；击败/部署附带改造情报点数，点数达标解锁该形态专属改造",
+		DT.FONT_SIZE_SMALL, DT.COLOR_TEXT_DIM))
+	tab.add_child(ladder)
 	var scroll := ScrollContainer.new()
 	scroll.name = "IntelScroll"
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -460,6 +463,32 @@ func _setup_intel_tab() -> void:
 	_intel_content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_intel_content.add_theme_constant_override("separation", 4)
 	scroll.add_child(_intel_content)
+
+
+## v26 UI：4 档里程碑横条（25/50/75/100），色阶 中灰→青→紫→金 与行档位色同源
+func _build_intel_milestone_strip() -> HBoxContainer:
+	var strip := HBoxContainer.new()
+	strip.add_theme_constant_override("separation", 6)
+	var milestones := [
+		["25%", "配方解锁", DT.COLOR_TEXT_MID],
+		["50%", "品质池扩充", DT.COLOR_ACCENT_CYAN],
+		["75%", "史诗/传说入池", DT.COLOR_VIOLET],
+		["100%", "满池 + 全改造", DT.COLOR_GOLD],
+	]
+	for i in milestones.size():
+		var m: Array = milestones[i]
+		if i > 0:
+			var arrow := IntelUIKit.label("→", DT.FONT_SIZE_SMALL, DT.COLOR_TEXT_FAINT)
+			arrow.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+			strip.add_child(arrow)
+		var cell := VBoxContainer.new()
+		cell.add_theme_constant_override("separation", 0)
+		var pct := IntelUIKit.label(m[0], DT.FONT_SIZE_BODY, m[2])
+		pct.add_theme_font_override("font", DT.get_title_font_bold())
+		cell.add_child(pct)
+		cell.add_child(IntelUIKit.label(m[1], DT.FONT_SIZE_SMALL, DT.COLOR_TEXT_DIM))
+		strip.add_child(cell)
+	return strip
 
 func _refresh_intel_tab() -> void:
 	if _intel_content == null:
@@ -481,15 +510,13 @@ func _refresh_intel_tab() -> void:
 		ph.add_theme_color_override("font_color", DT.COLOR_TEXT_DIM)
 		_intel_content.add_child(ph)
 		return
-	# 头部汇总行
+	# 头部区块标题（替代「◆ 已记录…」纯文本）
 	var total_completed: int = 0
 	for card_id in entries:
 		if bool((entries[card_id] as Dictionary).get("is_unlocked", false)):
 			total_completed += 1
-	var header := Label.new()
-	header.text = "◆ 已记录 %d 种敌人 · 完整解锁 %d 种（按进度排序）" % [entries.size(), total_completed]
-	header.add_theme_font_size_override("font_size", DT.FONT_SIZE_MEDIUM)
-	header.add_theme_color_override("font_color", DT.COLOR_VIOLET)
+	var header := IntelUIKit.section_header("敌方档案", DT.COLOR_VIOLET,
+		"已记录 %d 种 · 完整解锁 %d 种" % [entries.size(), total_completed])
 	_intel_content.add_child(header)
 	# 条目按进度降序（v21.0: 主轴改 base_progress，旧档回退 intel_progress）
 	var sorted_ids: Array = entries.keys()
@@ -506,95 +533,61 @@ func _add_intel_row(card_id: String, entry: Dictionary, im: Node) -> void:
 	var defeat_count: int = int(entry.get("defeat_count", 0))
 	var deploy_count: int = int(entry.get("deploy_count", 0))
 	var is_complete: bool = bool(entry.get("is_unlocked", false))
+	# v26 UI：档位色唯一语义（与进度条/行描边同源）——满档金 / 过半青 / 低档中性灰
+	var is_full: bool = is_complete or progress >= 1.0
+	var tier_color: Color = DT.COLOR_GOLD if is_full \
+		else (DT.COLOR_ACCENT_CYAN if progress >= 0.5 else DT.COLOR_BORDER)
 	var panel := PanelContainer.new()
-	var sb := StyleBoxFlat.new()
-	sb.bg_color = Color(DT.COLOR_CARD.r, DT.COLOR_CARD.g, DT.COLOR_CARD.b, 0.9)
-	sb.border_width_left = 3
-	sb.border_width_right = 1
-	sb.border_width_top = 1
-	sb.border_width_bottom = 1
-	# 边框色按揭示档位：0灰 / 1-3青 / 4(满)金
-	if is_complete or progress >= 1.0:
-		sb.border_color = DT.COLOR_GOLD
-	elif progress >= 0.5:
-		sb.border_color = DT.COLOR_ACCENT_CYAN
-	else:
-		sb.border_color = DT.COLOR_BORDER_DIM
-	sb.set_corner_radius_all(4)
-	sb.content_margin_left = 8
-	sb.content_margin_right = 8
-	sb.content_margin_top = 4
-	sb.content_margin_bottom = 4
-	panel.add_theme_stylebox_override("panel", sb)
+	panel.add_theme_stylebox_override("panel", IntelUIKit.list_row_style(tier_color, is_full))
 
 	var hbox := HBoxContainer.new()
 	hbox.add_theme_constant_override("separation", 10)
 	panel.add_child(hbox)
 
-	var name_lbl := Label.new()
+	# 名称列（定宽 170 全表对齐；完整解锁由行色/进度达意，去掉 ✓ 字符）
 	var display_name: String = DefaultCards.get_safe_display_name(card_id)
-	name_lbl.text = "%s%s" % [display_name if not display_name.is_empty() else card_id, " ✓" if is_complete else ""]
-	name_lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
-	name_lbl.add_theme_color_override("font_color", DT.COLOR_TEXT_BRIGHT if progress > 0.0 else DT.COLOR_TEXT_FAINT)
-	name_lbl.custom_minimum_size = Vector2(190, 0)
+	var name_lbl := IntelUIKit.label(
+		display_name if not display_name.is_empty() else card_id,
+		DT.FONT_SIZE_BODY,
+		DT.COLOR_TEXT_BRIGHT if progress > 0.0 else DT.COLOR_TEXT_FAINT, 170.0)
+	name_lbl.tooltip_text = display_name if not display_name.is_empty() else card_id
 	hbox.add_child(name_lbl)
 
-	var pct_lbl := Label.new()
-	pct_lbl.text = "情报 %d%%" % int(round(progress * 100.0))
-	pct_lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
-	pct_lbl.add_theme_color_override("font_color",
-		DT.COLOR_GOLD if is_complete else DT.COLOR_ACCENT_CYAN if progress >= 0.5 else DT.COLOR_TEXT_MID)
-	pct_lbl.custom_minimum_size = Vector2(70, 0)
-	hbox.add_child(pct_lbl)
-
-	var tier_lbl := Label.new()
+	# 进度列：细进度条 + 「N% · 档位描述」副行（替代纯文字「情报 N%」）
+	var prog_box := VBoxContainer.new()
+	prog_box.add_theme_constant_override("separation", 3)
+	prog_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	prog_box.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	prog_box.add_child(IntelUIKit.thin_progress(progress, tier_color))
 	var tier_text: String = String(im.get_tier_description(card_id)) if im.has_method("get_tier_description") else ""
-	tier_lbl.text = tier_text
-	tier_lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
-	tier_lbl.add_theme_color_override("font_color", DT.COLOR_TEXT_MID)
-	tier_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	tier_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	hbox.add_child(tier_lbl)
+	prog_box.add_child(IntelUIKit.label("情报 %d%% · %s" % [int(round(progress * 100.0)), tier_text],
+		DT.FONT_SIZE_SMALL, DT.COLOR_TEXT_DIM))
+	hbox.add_child(prog_box)
 
-	var defeat_lbl := Label.new()
-	defeat_lbl.text = "击败 ×%d" % defeat_count
-	defeat_lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
-	defeat_lbl.add_theme_color_override("font_color", DT.COLOR_TEXT_DIM)
-	hbox.add_child(defeat_lbl)
+	# 计数列（定宽右对齐，恒显示，保证全表同网格——旧行「上阵」列时有时无导致错位）
+	hbox.add_child(IntelUIKit.label("击败 ×%d" % defeat_count, DT.FONT_SIZE_SMALL,
+		DT.COLOR_TEXT_MID, 62.0, HORIZONTAL_ALIGNMENT_RIGHT))
+	hbox.add_child(IntelUIKit.label("上阵 ×%d" % deploy_count, DT.FONT_SIZE_SMALL,
+		DT.COLOR_TEXT_MID if deploy_count > 0 else DT.COLOR_TEXT_FAINT, 62.0, HORIZONTAL_ALIGNMENT_RIGHT))
 
-	# v21.0: 部署次数（该形态作为缴获卡上阵的累计次数）
-	if deploy_count > 0:
-		var deploy_lbl := Label.new()
-		deploy_lbl.text = "上阵 ×%d" % deploy_count
-		deploy_lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
-		deploy_lbl.add_theme_color_override("font_color", DT.COLOR_TEXT_DIM)
-		hbox.add_child(deploy_lbl)
-
-	# v21.0: 低进化可用徽标（base ≥ 50% 且该形态允许低进化）
-	if progress >= 0.5 and EnemyCardModMap.can_low_evolve(card_id):
-		var low_lbl := Label.new()
-		low_lbl.text = "低进化可用"
-		low_lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
-		low_lbl.add_theme_color_override("font_color", DT.COLOR_GOLD)
-		low_lbl.tooltip_text = "该形态的缴获卡可在「成长」面板进化为对应我方卡"
-		hbox.add_child(low_lbl)
+	# 尾部状态 chips（互斥档位 + 部署上限预览）
+	if is_full:
+		hbox.add_child(IntelUIKit.status_chip("完全掌握", DT.COLOR_GOLD))
+	elif progress >= 0.5 and EnemyCardModMap.can_low_evolve(card_id):
+		var low_chip := IntelUIKit.status_chip("配方已解锁", DT.COLOR_GOLD)
+		low_chip.tooltip_text = "该形态情报过半——可在「制造中心」直接制造对应我方卡"
+		hbox.add_child(low_chip)
 
 	# v20.13c: 该敌卡掉落获得后作为我方卡的每场可部署次数（UCT 口径预览）
-	var du_text := ""
 	var du_card: CardResource = DefaultCards.get_card_by_id(card_id)
 	if du_card != null and du_card.card_type == GameConstants.CardType.COMBAT_UNIT:
 		var du_entry := UnifiedCardTable.get_entry(card_id)
 		if not du_entry.is_empty():
 			var du_uses := UnifiedCardTable.get_deploy_uses(du_entry, du_card)
 			if du_uses < 99:
-				du_text = "部署×%d/场" % du_uses
-	if not du_text.is_empty():
-		var du_lbl := Label.new()
-		du_lbl.text = du_text
-		du_lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
-		du_lbl.add_theme_color_override("font_color", Color(0.55, 0.85, 0.75, 0.9))
-		du_lbl.tooltip_text = "获得该卡后，每场战斗最多可部署次数"
-		hbox.add_child(du_lbl)
+				var du_chip := IntelUIKit.status_chip("部署×%d/场" % du_uses, DT.COLOR_ICE_TEXT)
+				du_chip.tooltip_text = "获得该卡后，每场战斗最多可部署次数"
+				hbox.add_child(du_chip)
 
 	_intel_content.add_child(panel)
 
@@ -605,11 +598,19 @@ func _add_intel_row(card_id: String, entry: Dictionary, im: Node) -> void:
 ## v21.0: 某敌方形态的改造情报子行（mod 名 + 点数/阈值 + 图纸持有状态）
 ## v25.3 口径澄清："研究完成"只是情报侧进度，安装改造的真实门槛是图纸（蓝图掉落）——
 ## 行内并列展示两者，消灭"情报中心说解锁了、工坊却装不了"的两套解锁混淆。
+## v26 UI：整组缩进 MarginContainer（替代旧 6 空格前缀），研究进度改细进度条，图纸状态改 chip。
 func _add_mod_intel_rows(card_id: String, im: Node) -> void:
 	var pool: Array[String] = EnemyCardModMap.get_unlockable_mods(card_id)
 	if pool.is_empty():
 		return
 	var points_map: Dictionary = im.get_all_mod_intel_points(card_id) if im.has_method("get_all_mod_intel_points") else {}
+	var indent := MarginContainer.new()
+	indent.add_theme_constant_override("margin_left", 26)
+	indent.add_theme_constant_override("margin_right", 4)
+	_intel_content.add_child(indent)
+	var rows := VBoxContainer.new()
+	rows.add_theme_constant_override("separation", 3)
+	indent.add_child(rows)
 	for mid in pool:
 		var mod_data: Dictionary = ModRegistry.get_data(String(mid))
 		var mod_name: String = String(mod_data.get("name", String(mid)))
@@ -619,31 +620,24 @@ func _add_mod_intel_rows(card_id: String, im: Node) -> void:
 		var unlocked: bool = im.is_mod_unlocked(card_id, String(mid)) if im.has_method("is_mod_unlocked") else false
 		var has_bp: bool = IntelItemBag != null and IntelItemBag.has_item("blueprint_" + String(mid))
 		var row := HBoxContainer.new()
-		row.add_theme_constant_override("separation", 6)
-		row.modulate.a = 0.92
-		var lbl := Label.new()
-		lbl.text = "      ▸ %s" % mod_name
-		lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
-		lbl.add_theme_color_override("font_color", DT.COLOR_GOLD if has_bp else DT.COLOR_TEXT_MID)
-		lbl.custom_minimum_size = Vector2(190, 0)
+		row.add_theme_constant_override("separation", 8)
+		var lbl := IntelUIKit.label("▸ %s" % mod_name, DT.FONT_SIZE_SMALL,
+			DT.COLOR_GOLD if has_bp else DT.COLOR_TEXT_MID, 150.0)
 		lbl.tooltip_text = "研究进度：击败/部署该敌方形态随机获得点数，攒满 %d 点研究完成（base 情报满 100%% 时全部完成）。注意：研究完成≠可安装——安装该改造需要在工坊获得对应图纸（战后掉落）。当前图纸：%s" % [
 			threshold, "已持有 ✓" if has_bp else "未获得 ✗"]
 		row.add_child(lbl)
-		var bp_lbl := Label.new()
-		bp_lbl.text = "图纸✓" if has_bp else "图纸✗"
-		bp_lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
-		bp_lbl.add_theme_color_override("font_color", DT.COLOR_GOLD if has_bp else DT.COLOR_TEXT_DIM)
-		bp_lbl.tooltip_text = "安装改造需要图纸（蓝图战后掉落，永久持有）；研究进度不替代图纸"
-		row.add_child(bp_lbl)
-		var prog_lbl := Label.new()
-		if unlocked:
-			prog_lbl.text = "研究完成"
-		else:
-			prog_lbl.text = "%d/%d" % [pts, threshold]
-		prog_lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
-		prog_lbl.add_theme_color_override("font_color", DT.COLOR_TEXT_DIM)
+		var prog := IntelUIKit.thin_progress(float(pts) / float(maxi(threshold, 1)),
+			DT.COLOR_GOLD if unlocked else DT.COLOR_ACCENT_CYAN)
+		prog.custom_minimum_size = Vector2(90, 8)
+		row.add_child(prog)
+		var prog_lbl := IntelUIKit.label("研究完成" if unlocked else "%d/%d" % [pts, threshold],
+			DT.FONT_SIZE_SMALL, DT.COLOR_TEXT_DIM, 64.0, HORIZONTAL_ALIGNMENT_RIGHT)
 		row.add_child(prog_lbl)
-		_intel_content.add_child(row)
+		var bp_chip := IntelUIKit.status_chip("图纸 ✓" if has_bp else "图纸 ✗",
+			DT.COLOR_GOLD, not has_bp)
+		bp_chip.tooltip_text = "安装改造需要图纸（蓝图战后掉落，永久持有）；研究进度不替代图纸"
+		row.add_child(bp_chip)
+		rows.add_child(row)
 
 
 func _on_close() -> void:

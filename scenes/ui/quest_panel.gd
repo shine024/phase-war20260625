@@ -367,7 +367,7 @@ func _format_progress(quest_id: String, def: Dictionary) -> String:
 		"collect_fragments":
 			# v7.3 修复 BUG-8: target 可能是 int 或 {total:N}
 			var frag_tgt: int = int(target) if target is int else int(target.get("total", 1)) if target is Dictionary else 1
-			return "蓝图 %d / %d" % [cur, frag_tgt]
+			return "卡种 %d / %d" % [cur, frag_tgt]
 		"enhance":
 			return "强化 %d / %d" % [cur, int(target)]
 		"collect_cards":

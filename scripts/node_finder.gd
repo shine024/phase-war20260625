@@ -38,30 +38,6 @@ static func get_backpack_panel() -> Node:
 	return null
 
 
-## 获取排行榜面板
-static func get_leaderboard_panel() -> Node:
-	var paths := [
-		"/root/Main/PopupLayer/LeaderboardOverlay/CenterContainer/LeaderboardPanel",
-		"/root/Main/PopupLayer/LeaderboardPanel",
-		"/root/Main/PopupLayer/LeaderboardPanel/LeaderboardPanel",
-		"/root/Main/LeaderboardOverlay/CenterContainer/LeaderboardPanel",
-		"/root/Main/Margin/VBox/LeaderboardPanel",
-		"/root/LeaderboardPanel",
-	]
-	for p in paths:
-		var n: Node = _find(p)
-		if n != null:
-			return n
-	return null
-
-
-## 获取战场节点
-static func get_battlefield() -> Node2D:
-	return _find(
-		"/root/Main/BattleContainer/SubViewportContainer/SubViewport/Battlefield"
-	) as Node2D
-
-
 ## 获取全局情报面板（挂在 InfoPanelLayer layer=90，不被 HUD 遮挡）
 static func get_card_info_panel() -> Node:
 	var paths := [

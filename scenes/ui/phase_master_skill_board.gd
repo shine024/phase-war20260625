@@ -619,7 +619,7 @@ class ChipWidget:
 		"unit_ability": "兵种能力",
 		"tactic": "战法",
 		"card_skill": "卡片技能",
-		"evolution": "进化形态",
+		"evolution": "制造授权",
 		"affix": "词条系统",
 	}
 

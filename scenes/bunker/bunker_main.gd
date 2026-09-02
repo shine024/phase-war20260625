@@ -177,11 +177,16 @@ func _refresh_all_rooms() -> void:
 func _refresh_room(room_id: String) -> void:
 	if _manager == null or not _room_nodes.has(room_id):
 		return
+	# v26：升级中的 ACTIVE 房间，瓦片角标切"▲ 升级中"（详细进度在房间面板内）
+	var upgrade_tag := ""
+	if _manager.is_upgrading(room_id):
+		upgrade_tag = "▲ 升级中 %d%%" % int(round(_manager.get_upgrade_progress(room_id) * 100.0))
 	_room_nodes[room_id].call("refresh",
 		_manager.get_room_state(room_id),
 		_manager.get_room_level(room_id),
 		_manager.get_room_progress(room_id),
-		_manager.is_repair_frozen(room_id))
+		_manager.is_repair_frozen(room_id),
+		upgrade_tag)
 
 # ───────────────────────── 光点主角 ─────────────────────────
 

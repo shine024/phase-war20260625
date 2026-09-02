@@ -1,9 +1,10 @@
-# 进化条件系统 smoke：数据完整性（旧ID回归）+ registry 委托 + conditions 快照
+# v26 进化退役标注（批次4）：进化 UI 链已由制造中心接管（res://scenes/ui/evolution_panel.gd）。
+# 本测试守护的均为保留的内部 API（谱系/条件/战力计算），作为数据完整性回归继续运行。
+# 进化条件系统 smoke：数据完整性（旧ID回归）+ conditions 快照
 # Usage: godot --headless --rendering-driver opengl3 --path . --script tests/evolution_condition_smoke.gd
 extends SceneTree
 
 const UCT = preload("res://data/unified_card_table.gd")
-const EPR = preload("res://scripts/systems/evolution_path_registry.gd")
 const CEM = preload("res://managers/evolution/card_evolution_manager.gd")
 const EPIndex = preload("res://data/evolution_paths/__init__.gd")
 const IntelBranches = preload("res://data/intel_evolution_branches.gd")
@@ -29,7 +30,6 @@ func _fail(msg: String) -> void:
 
 func _initialize() -> void:
 	_test_data_integrity()
-	_test_registry_delegation()
 	_test_condition_snapshot()
 	_test_panel_scene()
 	_test_power_calibration()
@@ -101,51 +101,6 @@ func _get_table_ids() -> Dictionary:
 			if entry is Dictionary and entry.has("card_id"):
 				_table_ids_cache[String(entry["card_id"])] = true
 	return _table_ids_cache
-
-## ─── B. registry 委托：8 兵种路径非空 + 防空/火炮映射回归 + 属性预览（主线/副线） ───
-func _test_registry_delegation() -> void:
-	# 防空卡此前默认落 infantry 路径（前缀缺失）
-	var aa_path: Dictionary = EPR.get_evolution_path("cold_sup_zsu23")
-	if not _path_contains(aa_path, "ww1_37mm"):
-		_fail("cold_sup_zsu23 未命中防空路径（防空前缀映射回归）")
-	# 火炮卡此前被映射到 air（2/3 对调）
-	var arty_path: Dictionary = EPR.get_evolution_path("mod_arty_m270")
-	if not _path_contains(arty_path, "ww1_arty_m81"):
-		_fail("mod_arty_m270 未命中火炮路径（火炮映射回归）")
-	# 空中卡此前被映射到 artillery（样本用 mod_ah64——mod_f16 制空线 v7.x 已删）
-	var air_path: Dictionary = EPR.get_evolution_path("mod_ah64")
-	if not _path_contains(air_path, "cold_mig21"):
-		_fail("mod_ah64 未命中空中路径（空中映射回归）")
-
-	# 委托一致性：registry 与 __init__.gd 返回同一路径
-	var reg_p: Dictionary = EPR.get_evolution_path("ww1_arm_ft17")
-	var idx_p: Dictionary = EPIndex.get_evolution_path("ww1_arm_ft17")
-	if reg_p.is_empty() or idx_p.is_empty() or reg_p.keys().size() != idx_p.keys().size():
-		_fail("registry 委托结果与 __init__.gd 不一致")
-
-	# calculate_evolved_stats（进化面板属性对比的活路径）：主线 + 副线（secondary_line 为 v9.x 新覆盖）
-	var main_stats: Dictionary = EPR.calculate_evolved_stats(
-		{"id": "ww1_arm_ft17", "installed_modifications": []}, "cold_arm_t55")
-	if int(main_stats.get("max_hp", 0)) <= 0:
-		_fail("calculate_evolved_stats 主线（ww1_arm_ft17→cold_arm_t55）返回空/无效")
-	var sec_stats: Dictionary = EPR.calculate_evolved_stats(
-		{"id": "ww1_saint", "installed_modifications": []}, "fut_arm_heavy_mech")
-	if int(sec_stats.get("max_hp", 0)) <= 0:
-		_fail("calculate_evolved_stats 副线（ww1_saint→fut_arm_heavy_mech）返回空/无效")
-	print("B. registry_delegation: aa/arty/air OK, main+secondary stats OK")
-
-func _path_contains(path: Dictionary, card_id: String) -> bool:
-	if path.is_empty():
-		return false
-	for line_key in path.keys():
-		var line = path[line_key]
-		if not (line is Dictionary):
-			continue
-		for stage_key in line.keys():
-			var node = line[stage_key]
-			if node is Dictionary and String(node.get("card_id", "")) == card_id:
-				return true
-	return false
 
 ## ─── C. conditions 快照：非早退式全量条件 + 失败路径数字填充 ───
 func _test_condition_snapshot() -> void:

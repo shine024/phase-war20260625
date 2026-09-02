@@ -106,7 +106,7 @@ const DATA: Dictionary = {
 	},
 	"rec_09_breaching" = {
 		id = REC_09_BREACHING, name = "破门工具", name_en = "Breaching Tools",
-		icon = "res://assets/ui/icons/mod_icons/mod_environment.png",
+		icon = "res://assets/ui/icons/mod_icons/mod_engineering.png",
 		prototype = "霰弹枪/破门锤", description = "城市战部署更快",
 		rarity = "uncommon",
 	power_mult = 1.0, cost_research = 100, cost_install = 50,

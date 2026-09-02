@@ -181,6 +181,13 @@ func _ensure_configs_initialized() -> void:
 			"script_path": "res://managers/bunker_manager.gd",
 			"priority": 9,
 			"description": "余烬要塞基地状态"
+		},
+		# ── v26 制造系统 ── 进化退役后的新卡获取唯一通道（配方/品质掷/暗保底）
+		"manufacture": {
+			"node_name": "ManufactureManager",
+			"script_path": "res://managers/manufacture_manager.gd",
+			"priority": 9,
+			"description": "制造系统（配方目录+品质掷）"
 		}
 	}
 
@@ -228,11 +235,6 @@ func get_manager_by_name(node_name: String) -> Node:
 func is_loaded(manager_id: String) -> bool:
 	return _is_cached_and_valid(manager_id)
 
-## 通过节点名检查是否已加载
-func is_loaded_by_name(node_name: String) -> bool:
-	var id = _find_id_by_node_name(node_name)
-	return not id.is_empty() and is_loaded(id)
-
 ## 获取单个管理器状态
 func get_status(manager_id: String) -> Dictionary:
 	var id = manager_id
@@ -252,25 +254,6 @@ func get_status(manager_id: String) -> Dictionary:
 		"description": config.get("description", ""),
 		"script_path": config.get("script_path", "")
 	}
-
-## 获取所有管理器状态
-func get_all_status() -> Dictionary:
-	var result := {}
-	for id in _manager_configs:
-		result[id] = get_status(id)
-	return result
-
-## 获取所有可延迟加载的管理器 ID 列表
-func get_lazy_manager_ids() -> Array:
-	return _manager_configs.keys()
-
-## 获取已加载管理器数量
-func get_loaded_count() -> int:
-	var count := 0
-	for id in _loaded_managers:
-		if is_instance_valid(_loaded_managers[id]):
-			count += 1
-	return count
 
 
 # ─── 内部方法 ───────────────────────────────────────────

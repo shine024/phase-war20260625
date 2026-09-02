@@ -160,13 +160,13 @@ func _initialize() -> void:
 		ok.call("gen_unified_splash 携带 splash_damage（注册表既有键，cap 0.8）")
 	else:
 		fail.call("gen_unified_splash 缺 splash_damage")
-	# 全模块注册总数实测锁定（与 tests/unit/data/modification_modules_test.gd 同口径 190：
-	# 184 + 6 传奇）。此处同步断言，防止两处口径漂移。
+	# 全模块注册总数实测锁定（与 tests/unit/data/modification_modules_test.gd 同口径 202：
+	# 184 + 6 传奇 + v26 新增 12 条）。此处同步断言，防止两处口径漂移。
 	var total_ids: int = (ModRegistry.get_all_ids() as Array).size()
-	if total_ids == 190:
-		ok.call("注册表总数实测 = 190（184+6，与 GdUnit 断言同口径）")
+	if total_ids == 202:
+		ok.call("注册表总数实测 = 202（184+6+12，与 GdUnit 断言同口径）")
 	else:
-		fail.call("注册表总数应 190，实得 %d（若增删改造请同步两处断言）" % total_ids)
+		fail.call("注册表总数应 202，实得 %d（若增删改造请同步两处断言）" % total_ids)
 
 	# ══════════ 4. 消费点源码级接线断言 ══════════
 	print("\n=== 4. 消费点接线（源码级）===")

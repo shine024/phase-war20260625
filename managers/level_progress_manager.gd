@@ -201,21 +201,31 @@ func load_state(state: Dictionary) -> void:
 	elif state.has("unlocked_levels"):
 		push_warning("[LevelProgress] unlocked_levels 类型错误: %s，已跳过" % type_string(typeof(state["unlocked_levels"])))
 
+	# v26.6 修复：三个字典以 int 为 key，JSON 写盘往返后 key 全部变 String——此前直接
+	# duplicate 导致 get_level_stars/is_first_completion/is_era_unlocked 永远查空
+	# （读档星级归零、首通奖励重复发放、时代解锁状态回退）。此处统一重建 int key 并钳值域。
+	level_stars = {}
 	if state.has("level_stars") and state["level_stars"] is Dictionary:
-		level_stars = state["level_stars"].duplicate()
+		for k in state["level_stars"]:
+			var lv := int(k)
+			if lv >= 1 and lv <= 100:
+				level_stars[lv] = clampi(int(state["level_stars"][k]), 0, 3)
 	else:
 		push_warning("[LevelProgress] level_stars 缺失或类型错误，已清空")
-		level_stars = {}
 
+	first_completion = {}
 	if state.has("first_completion") and state["first_completion"] is Dictionary:
-		first_completion = state["first_completion"].duplicate()
-	else:
-		first_completion = {}
+		for k in state["first_completion"]:
+			var f_lv := int(k)
+			if f_lv >= 1 and f_lv <= 100:
+				first_completion[f_lv] = bool(state["first_completion"][k])
 
+	unlocked_eras = {1: true}
 	if state.has("unlocked_eras") and state["unlocked_eras"] is Dictionary:
-		unlocked_eras = state["unlocked_eras"].duplicate()
-	else:
-		unlocked_eras = {1: true}
+		for k in state["unlocked_eras"]:
+			var era := int(k)
+			if era >= 1 and era <= 5:
+				unlocked_eras[era] = bool(state["unlocked_eras"][k])
 
 	# 确保 max_unlocked_level 与 unlocked_levels 一致
 	if state.has("max_unlocked_level") and state["max_unlocked_level"] is int:

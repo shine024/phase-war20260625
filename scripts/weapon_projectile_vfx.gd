@@ -593,10 +593,6 @@ static var _impact_name_cache: Dictionary = {}
 ## 活跃封顶承担（spark 320/debris 140/ring 80/sprite 160/beam 60），本文件不再保留死池。
 
 
-static func has_proj_texture_by_name(weapon_name: String) -> bool:
-	return proj_texture_by_name(weapon_name) != null
-
-
 static func proj_texture_by_name(weapon_name: String) -> Texture2D:
 	if _proj_name_cache.has(weapon_name):
 		return _proj_name_cache[weapon_name]
@@ -639,17 +635,6 @@ static func proj_scale_by_name(weapon_name: String) -> float:
 		"machinegun": return 0.30 * PROJ_DISPLAY_SCALE_MUL
 		"rifle": return 0.30 * PROJ_DISPLAY_SCALE_MUL
 		_: return 0.30 * PROJ_DISPLAY_SCALE_MUL
-
-
-static func impact_scale_by_name(weapon_name: String) -> float:
-	var cat: String = WeaponVfxMapping.get_category(weapon_name)
-	match cat:
-		"energy", "railgun": return 0.51
-		"missile": return 0.48
-		"cannon", "mortar": return 0.45
-		"machinegun": return 0.30
-		"rifle": return 0.30
-		_: return 0.33
 
 
 ## v9.2: 按 weapon_type 返回爆炸帧序列（有帧动画的武器才有，无则返回空数组）。
@@ -724,15 +709,7 @@ static func proj_quad_size(weapon_type: int) -> Vector2:
 			return Vector2(s * 512, s * 128)
 
 
-static func impact_scale(weapon_type: int) -> float:
-	# v8.0: 命中特效已改为粒子系统，此函数仅保留兼容旧调用（如 CardGridFx）
-	return float(IMPACT_TEX_SCALE.get(weapon_type, 0.11))
-
-
 ## ========== 命中特效生成（v8.0：CPUParticles2D，零贴图绑定）==========
-
-static func spawn_impact(parent: Node2D, world_pos: Vector2, weapon_type: int, is_player_shot: bool) -> void:
-	spawn_impact_with_kind(parent, world_pos, weapon_type, is_player_shot, -1)
 
 ## v7.x/v8.0: 带 combat_kind 的命中特效（粒子化）
 ## v8.1: 委托 VfxImpactFactory 三层组合特效（签名不变，所有调用方零改动）

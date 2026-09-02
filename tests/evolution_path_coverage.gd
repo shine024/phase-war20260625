@@ -1,4 +1,6 @@
 extends SceneTree
+## v26 进化退役标注（批次4）：进化 UI 链已由制造中心接管。
+## 本测试守护保留的内部谱系数据（evolution_paths），作为数据完整性回归继续运行。
 ## v7.x 进化路径分发全量覆盖核对（112 战斗卡）
 ## 验证 evolution_paths/__init__.gd 的 _is_* 前缀匹配修复后，所有卡都能查到进化路径
 ## 运行: Godot --headless --script tests/evolution_path_coverage.gd

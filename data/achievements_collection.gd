@@ -8,7 +8,7 @@ const DATA: Dictionary = {
 	"collect_blueprints_10": {
 		"id": "collect_blueprints_10",
 		"name": "收藏家起步",
-		"description": "解锁10种不同的蓝图",
+		"description": "收集10种不同的卡牌",
 		"category": "collection",
 		"rarity": "COMMON",
 		"requirements": {"type": "unique_blueprints", "count": 10},
@@ -19,56 +19,56 @@ const DATA: Dictionary = {
 	},
 	"collect_blueprints_30": {
 		"id": "collect_blueprints_30",
-		"name": "蓝图收集者",
-		"description": "解锁30种不同的蓝图",
+		"name": "卡牌收集者",
+		"description": "收集30种不同的卡牌",
 		"category": "collection",
 		"rarity": "UNCOMMON",
 		"requirements": {"type": "unique_blueprints", "count": 30},
 		"reward": {"nano_materials": 200},
 		"icon": "📐",
 		"hidden": false,
-		"flavor_text": "蓝图在手，天下我有。"
+		"flavor_text": "卡牌在手，天下我有。"
 		},
 	"collect_blueprints_50": {
 		"id": "collect_blueprints_50",
-		"name": "蓝图大师",
-		"description": "解锁50种不同的蓝图",
+		"name": "卡牌大师",
+		"description": "收集50种不同的卡牌",
 		"category": "collection",
 		"rarity": "RARE",
 		"requirements": {"type": "unique_blueprints", "count": 50},
 		"reward": {"nano_materials": 400, "rare_card": 1},
 		"icon": "🗺️",
 		"hidden": false,
-		"flavor_text": "你已经掌握了大部分蓝图奥秘。"
+		"flavor_text": "你已经掌握了大部分卡牌的奥秘。"
 		},
 	"collect_blueprints_80": {
 		"id": "collect_blueprints_80",
-		"name": "蓝图百科全书",
-		"description": "解锁80种不同的蓝图",
+		"name": "卡牌百科全书",
+		"description": "收集80种不同的卡牌",
 		"category": "collection",
 		"rarity": "EPIC",
 		"requirements": {"type": "unique_blueprints", "count": 80},
 		"reward": {"nano_materials": 800, "mythic_card": 1},
 		"icon": "📖",
 		"hidden": false,
-		"flavor_text": "你就是行走的蓝图百科全书。"
+		"flavor_text": "你就是行走的卡牌百科全书。"
 		},
 	"collect_all_blueprints": {
 		"id": "collect_all_blueprints",
 		"name": "终极收藏家",
-		"description": "解锁所有蓝图",
+		"description": "收集所有卡牌",
 		"category": "collection",
 		"rarity": "LEGENDARY",
 		"requirements": {"type": "unique_blueprints", "count": 999},
 		"reward": {"nano_materials": 10000, "mythic_card": 5, "title": "终极收藏家"},
 		"icon": "🏆",
 		"hidden": false,
-		"flavor_text": "没有任何蓝图能逃过你的收藏。"
+		"flavor_text": "没有任何卡牌能逃过你的收藏。"
 		},
 	"collect_common_complete": {
 		"id": "collect_common_complete",
 		"name": "普通大师",
-		"description": "收集所有普通品质的蓝图",
+		"description": "收集所有普通品质的卡牌",
 		"category": "collection",
 		"rarity": "RARE",
 		"requirements": {"type": "all_common_blueprints"},
@@ -80,7 +80,7 @@ const DATA: Dictionary = {
 	"collect_rare_complete": {
 		"id": "collect_rare_complete",
 		"name": "稀有猎人",
-		"description": "收集所有稀有品质的蓝图",
+		"description": "收集所有稀有品质的卡牌",
 		"category": "collection",
 		"rarity": "EPIC",
 		"requirements": {"type": "all_rare_blueprints"},
@@ -92,7 +92,7 @@ const DATA: Dictionary = {
 	"collect_mythic_complete": {
 		"id": "collect_mythic_complete",
 		"name": "神话征服者",
-		"description": "收集所有神话品质的蓝图",
+		"description": "收集所有神话品质的卡牌",
 		"category": "collection",
 		"rarity": "LEGENDARY",
 		"requirements": {"type": "all_mythic_blueprints"},

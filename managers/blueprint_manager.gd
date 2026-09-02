@@ -101,12 +101,6 @@ func _is_excluded_war_platform_id(card_id: String) -> bool:
 func _get_basic_resource_manager() -> Node:
 	return BasicResourceManager
 
-func _get_card_type(card_id: String) -> int:
-	var card: CardResource = DefaultCards.get_card_by_id(card_id)
-	if card == null:
-		return GC.CardType.COMBAT_UNIT
-	return card.card_type
-
 ## ─────────── 蓝图ID规范化 ───────────
 
 func is_law_blueprint_id(card_id: String) -> bool:
@@ -257,15 +251,6 @@ func _estimate_power_score(card_id: String) -> float:
 func _estimate_power_score_meta_only(card_id: String) -> float:
 	return EvolutionHelpers.estimate_power_score_meta_only(card_id, self)
 
-func _preview_battle_era_internal() -> int:
-	return EvolutionHelpers._preview_battle_era()
-
-func _build_unit_stats_for_power_preview(card: CardResource) -> UnitStats:
-	return EvolutionHelpers.build_unit_stats_for_power_preview(card, self)
-
-func _combat_power_from_unit_stats(stats: UnitStats) -> float:
-	return EvolutionHelpers.combat_power_from_unit_stats(stats)
-
 
 ## ─────────── 稀有度 ──
 ## Facade 委托 → EvolutionHelpers（统一入口见 RarityHelpers）
@@ -362,29 +347,32 @@ func load_state(data: Dictionary) -> void:
 	emit_signal("fragments_changed")
 	# 旧档的 unlocked/blueprint_copies/legacy_default_energy_copies_migrated 键随蓝图体系移除而忽略
 	# v9.x（P2-7范围B）：默认法则解锁调用已随法则系统退役移除
+	# v26.6："先重置再覆盖"——六个字典无条件清空，存档缺段（截断档/新结构）时
+	# 复位到默认，不保留上一局/上一槽内存残留（随后自动存档会把残留持久化）
+	blueprint_mods.clear()
+	blueprint_inherit_bonus.clear()
+	blueprint_evolution_hp_floor.clear()
+	blueprint_rank_cache.clear()
+	blueprint_intel_branch_bonus.clear()
+	blueprint_weapon_slots.clear()
 	if data.has("blueprint_mods") and data["blueprint_mods"] is Dictionary:
-		blueprint_mods.clear()
 		for k in data["blueprint_mods"]:
 			var cid_m: String = String(k)
 			if data["blueprint_mods"][k] is Array:
 				blueprint_mods[cid_m] = (data["blueprint_mods"][k] as Array).duplicate()
 	if data.has("blueprint_inherit_bonus") and data["blueprint_inherit_bonus"] is Dictionary:
-		blueprint_inherit_bonus.clear()
 		for k in data["blueprint_inherit_bonus"]:
 			blueprint_inherit_bonus[String(k)] = float(data["blueprint_inherit_bonus"][k])
 	if data.has("blueprint_evolution_hp_floor") and data["blueprint_evolution_hp_floor"] is Dictionary:
-		blueprint_evolution_hp_floor.clear()
 		for k in data["blueprint_evolution_hp_floor"]:
 			blueprint_evolution_hp_floor[String(k)] = float(data["blueprint_evolution_hp_floor"][k])
 	if data.has("blueprint_rank_cache") and data["blueprint_rank_cache"] is Dictionary:
-		blueprint_rank_cache.clear()
 		for k in data["blueprint_rank_cache"]:
 			if data["blueprint_rank_cache"][k] is Dictionary:
 				blueprint_rank_cache[String(k)] = (data["blueprint_rank_cache"][k] as Dictionary).duplicate(true)
 
 	# v6.6: 情报进化分支奖励加载
 	if data.has("blueprint_intel_branch_bonus") and data["blueprint_intel_branch_bonus"] is Dictionary:
-		blueprint_intel_branch_bonus.clear()
 		for k in data["blueprint_intel_branch_bonus"]:
 			if data["blueprint_intel_branch_bonus"][k] is Dictionary:
 				blueprint_intel_branch_bonus[String(k)] = (data["blueprint_intel_branch_bonus"][k] as Dictionary).duplicate(true)
@@ -392,7 +380,6 @@ func load_state(data: Dictionary) -> void:
 	# v6.6 修复: 武器槽位配置加载（原错误嵌套在 intel_branch_bonus 条件内，
 	# 导致无该字段的存档加载时武器槽被静默丢弃。此处退回顶层 load_state 级别独立加载）
 	if data.has("blueprint_weapon_slots") and data["blueprint_weapon_slots"] is Dictionary:
-		blueprint_weapon_slots.clear()
 		for k in data["blueprint_weapon_slots"]:
 			var cid_w: String = String(k)
 			if data["blueprint_weapon_slots"][k] is Array:
@@ -713,26 +700,6 @@ func replace_modification(card: CardResource, old_mod_id: String, new_mod_id: St
 # 公式被 evolution_panel.gd 误抄，导致面板显示与实际零消耗的 evolve_blueprint 不符。
 # 进化统一走 evolve_blueprint（→ CardEvolutionManager.evolve_blueprint）。
 
-## 获取可用的改造列表（按卡牌ID精筛）
-func get_available_modifications(card: CardResource) -> Array:
-	# ModificationRegistry是autoload，直接访问
-	var card_id = card.card_id if card else ""
-	if not card_id.is_empty() and ModificationRegistry.has_method("get_mods_for_card"):
-		return ModificationRegistry.get_mods_for_card(card_id)
-	return ModificationRegistry.get_for_unit_type(card.combat_kind if card else 0)
-
-## 获取进化路径预览
-func get_evolution_preview(card: CardResource, target_card_id: String) -> Dictionary:
-	var check_result = card.check_evolution_requirements(target_card_id)
-	var stats = card.calculate_evolved_stats(target_card_id)
-
-	return {
-		can_evolve = check_result.passed,
-		missing = check_result.missing,
-		new_stats = stats,
-		preserved_mods = card.mods.size(),
-	}
-
 ## ─────────────────────────────────────────────
 ##  内部辅助方法
 ## ─────────────────────────────────────────────
@@ -742,43 +709,12 @@ func _get_mod_data_from_registry(mod_id: String) -> Dictionary:
 	# ModificationRegistry是autoload，直接访问
 	return ModificationRegistry.get_data(mod_id)
 
-## 检查纳米材料是否足够
-func _can_afford_nano(amount: int) -> bool:
-	return BasicResourceManager.can_afford("nano", amount)
-
-## 消耗纳米材料
-func _consume_nano(amount: int) -> void:
-	BasicResourceManager.consume("nano", amount)
-
-## 检查研究点是否足够
-func _can_afford_research(amount: int) -> bool:
-	# BasicResourceManager是autoload，直接访问
-	return BasicResourceManager.can_afford("research", amount)
-
 # v9.x（P2-7范围C）：_consume_research/_add_research（零调用方）已随科研点退役移除
-
-## 移除蓝图养成数据（进化时调用；副本记账已随蓝图体系移除）
-func _remove_blueprint(card_id: String) -> void:
-	blueprint_mods.erase(card_id)
-
-## 添加蓝图养成数据（进化时调用）
-func _add_blueprint(card_id: String, _enhance_level: int, mods: Array) -> void:
-	if not mods.is_empty():
-		blueprint_mods[card_id] = mods.duplicate(true)
 
 ## 从库中获取卡牌
 func _get_card_from_library(card_id: String) -> CardResource:
 	# DefaultCards是const preload，始终可用
 	return DefaultCards.get_card_by_id(card_id)
-
-## 更新blueprint_mods缓存（始终同步 card.mods → blueprint_mods）
-## v7.0: 兼容旧接口（按 card_id 查模板），新代码应优先用 _update_blueprint_mods_cache_for_card
-func _update_blueprint_mods_cache(card_id: String) -> void:
-	var card = _get_card_from_library(card_id)
-	if card and not card.mods.is_empty():
-		blueprint_mods[card_id] = card.mods.duplicate(true)
-	elif card and card.mods.is_empty():
-		blueprint_mods.erase(card_id)
 
 ## v7.0: 用实例对象更新 blueprint_mods 缓存
 ## key 优先用 instance_id（实例化养成），无 instance_id 回退 card_id

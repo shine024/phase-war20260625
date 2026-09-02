@@ -81,15 +81,6 @@ static func format_line(info: Dictionary) -> String:
 	return "军衔 %s" % rank_name
 
 
-static func append_tooltip_line(tooltip: String, card_id: String) -> String:
-	var line: String = format_line(resolve_from_card(card_id))
-	if line.is_empty():
-		return tooltip
-	if tooltip.is_empty():
-		return line
-	return tooltip + "\n" + line
-
-
 static func create_badge(rank_id: String, show_name: bool = true, icon_px: int = 18) -> HBoxContainer:
 	var row := HBoxContainer.new()
 	row.alignment = BoxContainer.ALIGNMENT_CENTER

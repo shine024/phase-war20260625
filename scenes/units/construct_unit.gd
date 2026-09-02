@@ -15,6 +15,7 @@ const EnemyUnitManifest = preload("res://data/enemy_unit_manifest.gd")
 const RankRules = preload("res://data/rank_rules.gd")
 const CardGridUnitVisuals = preload("res://scripts/card_grid_unit_visuals.gd")
 const CardGridBuffStrip = preload("res://scripts/card_grid_buff_strip.gd")
+const UnitSharedHelpers = preload("res://scripts/battle/unit_shared_helpers.gd")  # v26.6: 敌我共享逻辑单一真身
 const CombatFeedback = preload("res://scripts/combat_feedback.gd")
 const CardGridDamage = preload("res://scripts/card_grid_damage.gd")
 const CombatTargeting = preload("res://scripts/combat_targeting.gd")
@@ -218,7 +219,6 @@ var _fire_pulse_tween: Tween = null  ## 开火缩放脉冲（独立于 nudge/rec
 # v7.4 性能优化：受击闪白/抖动改手写计时动画（原每击 create_tween 2 个 Tween，密集命中时 GC 压力）
 # 模式参考 unit_hp_bar._damage_flash（倒计时 + lerp）与 damage_number_display._pop_age（正计时 + 分段）
 var _hit_shake_t: float = -1.0          # shake 已用时间（秒），-1=未激活，>=0=激活
-const _HIT_SHAKE_DURATION: float = 0.14 # v8.3: 0.12→0.14（4×0.035s）
 var _death_fade_tween: Tween = null  ## v6.4: 死亡淡出 Tween
 var _is_dying: bool = false  ## v6.4: 死亡中标志，防止 _die 重复触发
 ## v6.14: 部署阵营泛光——实体化瞬间单位泛出激活势力色（0.5s 渐隐回白）
@@ -247,9 +247,7 @@ var _idle_spr: Sprite2D = null  ## v9.x（3d）：待机浮动手写推进用的
 ## v9.x（3c 性能批次）：HpBar 引用缓存——命中免字符串路径查找；
 ## 未挂载时保持重查（与原行为一致），被释放后自动失效重查。
 func _get_hpbar_cached() -> Node:
-	if _hpbar_ref == null or not is_instance_valid(_hpbar_ref):
-		_hpbar_ref = get_node_or_null("HpBar")
-	return _hpbar_ref
+	return UnitSharedHelpers.hpbar_cached(self)
 ## 跨实例共享的资源缓存，避免运行时重复 load()
 var _res_cache: Dictionary = {}
 
@@ -400,19 +398,6 @@ func setup_with_enemy_visual(p_is_player: bool, p_stats: UnitStats, p_visual_arc
 	# 必须在 setup 内第一次 _update_visual 之前就带上缴获外观 id，否则会短暂套用 unit_sprites 我方机甲图
 	setup(p_is_player, p_stats, p_visual_archetype_id)
 
-## 设置为预览模式（用于显示装配的平台配置）
-func setup_as_preview(p_is_player: bool, p_stats: UnitStats, p_card_name: String = "未知平台") -> void:
-	is_preview_mode = true
-	setup(p_is_player, p_stats)
-	# 设置为半透明显示
-	modulate = Color(1, 1, 1, 0.3)  # 30%不透明度
-	# 禁用碰撞
-	if $CollisionShape2D:
-		$CollisionShape2D.disabled = true
-	# 禁用血条显示
-	if has_node("HpBar"):
-		get_node("HpBar").visible = false
-
 ## 根据单位 deploy_speed 计算实际部署延迟（委托给 ConstructUnitDeploy）
 func _calculate_deploy_delay() -> float:
 	return ConstructUnitDeploy.calculate_deploy_delay(stats)
@@ -490,16 +475,7 @@ func _maybe_apply_card_grid_presentation() -> void:
 
 
 func _update_card_grid_buff_strip(force: bool = false) -> void:
-	if not _presentation_card_grid or is_preview_mode:
-		return
-	var sig: String = CardGridBuffStrip.buff_signature(self)
-	if not force and sig == _buff_strip_signature:
-		return
-	_buff_strip_signature = sig
-	var spr: Sprite2D = get_node_or_null("Sprite") as Sprite2D
-	CardGridUnitVisuals.sync_buff_strip(self, self, spr)
-	# v7.x 战场视觉反馈：改造图标条（与 buff_strip 错位，放在更下方）
-	CardGridUnitVisuals.sync_mod_strip(self, self, spr)
+	UnitSharedHelpers.update_card_grid_buff_strip(self, force, is_preview_mode, "Sprite")
 
 
 func _configure_card_grid_player_hp_bar(spr: Sprite2D) -> void:
@@ -594,27 +570,11 @@ func _acquisition_range() -> float:
 	return ConstructUnitAI.acquisition_range(self)
 
 
-func _play_card_attack_nudge() -> void:
-	AttackPoseAnim.play(self)
-
-
 ## 开火缩放脉冲：Sprite 子节点 scale 短暂放大再回弹，模拟开火反冲。
 ## 只动 Sprite 子节点 scale，不碰根节点 scale.x（翻转符号）/rotation（受击占用）。
 ## 独立 _fire_pulse_tween 句柄，与 nudge/recoil 各不干扰。
 func _play_fire_scale_pulse() -> void:
-	var spr: Sprite2D = get_node_or_null("Sprite")
-	if spr == null:
-		return
-	if _fire_pulse_tween != null and _fire_pulse_tween.is_valid():
-		_fire_pulse_tween.kill()
-	# 记录当前 scale 作回归点（可能被 faction_glow 等改过，不硬编码）
-	var base_s: Vector2 = spr.scale
-	_fire_pulse_tween = create_tween()
-	_fire_pulse_tween.tween_property(spr, "scale", base_s * 1.10, 0.04)
-	_fire_pulse_tween.tween_property(spr, "scale", base_s, 0.07)
-	# v14: 方向冲撞——前倾→后坐→归位(预备-发力-跟随),本体参与开火演出
-	var wt: int = stats.weapon_type if stats != null else 0
-	CardGridUnitVisuals.fire_lunge_sprite(spr, true, wt in [1, 2, 3, 7, 9, 10, 11])
+	UnitSharedHelpers.fire_scale_pulse(self, "Sprite", true)
 
 
 func _play_card_hit_recoil() -> void:
@@ -633,10 +593,7 @@ func _play_card_hit_recoil() -> void:
 
 ## v7.4: 受击缩放抖动触发（手写分段计时，不再 create_tween）。
 func _trigger_hit_shake() -> void:
-	if is_preview_mode:
-		return
-	scale = Vector2.ONE  # 关键：每次重置基准（防 scale 累积漂移）
-	_hit_shake_t = 0.0   # 0.0=开始计时
+	UnitSharedHelpers.hit_shake(self, is_preview_mode)
 
 
 ## v10: 受击闪白——极短(0.08s)过亮 modulate 脉冲,补 v8.x 移除的整体变色(做成轻闪,不糊卡图)。
@@ -660,38 +617,13 @@ func _play_hit_flash() -> void:
 ## strength：直射 3 / 爆炸 6 / 暴击 10。motion_reduce 时短路（仅保留 shake；v8.x flash 已改命中点血溅）。
 var _knockback_tween: Tween = null
 func _trigger_hit_knockback(direction: Vector2, strength: float) -> void:
-	if is_preview_mode or DT.is_motion_reduce():
-		return
-	if direction == Vector2.ZERO or strength <= 0.0:
-		return
-	if _knockback_tween != null and _knockback_tween.is_valid():
-		_knockback_tween.kill()  # 连续受击时重置（取最新击退方向）
-	var base_pos: Vector2 = position
-	var off: Vector2 = direction.normalized() * strength
-	_knockback_tween = create_tween()
-	_knockback_tween.tween_property(self, "position", base_pos + off, 0.04)
-	_knockback_tween.tween_property(self, "position", base_pos, 0.08)
+	UnitSharedHelpers.hit_knockback(self, direction, strength, is_preview_mode)
 
 
 ## v7.4: 受击动画推进（每 physics 帧调用）。v8.x: flash 已移除（改命中点血溅），仅剩 shake 分段插值。
 ## v8.3: shake 振幅加大（0.78/1.12/0.92/1.0）段长 0.035s。
 func _update_hit_animations(delta: float) -> void:
-	# ── shake：4 段关键帧（v8.3 加大振幅）0.78→1.12→0.92→1.0，每段 0.035s ──
-	if _hit_shake_t >= 0.0:
-		_hit_shake_t += delta
-		if _hit_shake_t >= _HIT_SHAKE_DURATION:
-			scale = Vector2.ONE
-			_hit_shake_t = -1.0  # 停用
-		else:
-			var seg: int = int(_hit_shake_t / 0.035)
-			if seg > 3:
-				seg = 3
-			var local_t: float = (_hit_shake_t - seg * 0.035) / 0.035
-			var keys: Array = [0.78, 1.12, 0.92, 1.0]
-			var s_start: float = 1.0 if seg == 0 else keys[seg - 1]
-			var s_end: float = keys[seg]
-			var s: float = lerpf(s_start, s_end, local_t)
-			scale = Vector2(s, s)
+	UnitSharedHelpers.update_hit_animations(self, delta, false)  # 我方闪白走 _play_hit_flash tween，不在此开
 
 
 ## v6.6: 幻影克隆体入场脉冲——青色发光放大后回落，让玩家部署时立刻识别克隆体
@@ -754,37 +686,6 @@ func _play_materialize_fx() -> void:
 	VfxImpactFactory.spawn_shockwave(vp, global_position, 40.0, Color(0.4, 0.75, 1.0, 0.8))
 	# 向上迸射的能量火花（复用 spawn_crit_sparks 的金色径向，体现"实体化能量凝结"）
 	VfxImpactFactory.spawn_crit_sparks(vp, global_position, false)
-
-
-## 单武器：法则改写 `stats` 后，把唯一槽位 `_weapon_cfgs[0]` 与 `stats.weapons[0]` 与主行对齐
-func _sync_single_weapon_cfg_from_stats() -> void:
-	if stats == null or _weapon_cfgs.size() != 1:
-		return
-	var cfg: Dictionary = _weapon_cfgs[0] as Dictionary
-	cfg["damage"] = stats.attack_damage
-	cfg["interval"] = stats.attack_interval
-	cfg["range"] = stats.attack_range
-	_weapon_cfgs[0] = cfg
-	if stats.weapons.size() == 1:
-		var sw: Dictionary = stats.weapons[0] as Dictionary
-		sw["damage"] = stats.attack_damage
-		sw["interval"] = stats.attack_interval
-		sw["range"] = stats.attack_range
-		stats.weapons[0] = sw
-
-
-func _sync_weapon_cfgs_from_stats() -> void:
-	if stats == null:
-		return
-	if _weapon_cfgs.size() == 1 and stats.weapons.size() == 1:
-		_sync_single_weapon_cfg_from_stats()
-		return
-	for i in range(min(_weapon_cfgs.size(), stats.weapons.size())):
-		var cfg: Dictionary = _weapon_cfgs[i] as Dictionary
-		var sw: Dictionary = stats.weapons[i] as Dictionary
-		if sw.has("damage"):
-			cfg["damage"] = float(sw["damage"])
-		_weapon_cfgs[i] = cfg
 
 
 func _update_shape() -> void:
@@ -1446,24 +1347,7 @@ func _update_fort_shield_aura(delta: float) -> void:
 
 ## 缓存 load()：同一资源路径只加载一次，后续从内存字典取
 func _cached_load(path: String, type_hint: int = -1) -> Resource:
-	if path.is_empty():
-		return null
-	if _res_cache.has(path):
-		var cached = _res_cache[path]
-		if is_instance_valid(cached):
-			return cached
-		_res_cache.erase(path)
-	if not ResourceLoader.exists(path):
-		return null
-	var res: Resource
-	if type_hint >= 0:
-		# Godot 4.5: ResourceLoader.load 最多 3 个参数
-		res = ResourceLoader.load(path, "", ResourceLoader.CACHE_MODE_REUSE)
-	else:
-		res = load(path)
-	if res != null:
-		_res_cache[path] = res
-	return res
+	return UnitSharedHelpers.cached_load(_res_cache, path, type_hint)
 
 
 ## 全装型等静态整图：按敌方原型 visual_scale 与典型帧边长换算，并套用与敌方单位相同的最大边长上限
@@ -1830,23 +1714,12 @@ func _on_unit_move_command(unit: Node, target_pos: Vector2) -> void:
 	_move_target = target_pos
 
 func _battlefield_y_clamp_range() -> Vector2:
-	if _cached_is_card_grid:
-		if BattleManager and BattleManager.battlefield and BattleManager.battlefield.has_method("get_deploy_y_bounds"):
-			return BattleManager.battlefield.get_deploy_y_bounds()
-	return Vector2(BATTLE_MIN_Y, BATTLE_MAX_Y)
+	return UnitSharedHelpers.battlefield_y_clamp_range(self, BATTLE_MIN_Y, BATTLE_MAX_Y)
 
 
 func _clamp_inside_battlefield() -> void:
-	var gx := global_position
 	var max_x: float = PLAYER_MAX_ADVANCE_X if is_player else BATTLE_MAX_X
-	var clamped_x := clampf(gx.x, BATTLE_MIN_X, max_x)
-	var yb: Vector2 = _battlefield_y_clamp_range()
-	var clamped_y := clampf(gx.y, yb.x, yb.y)
-	if clamped_x != gx.x:
-		global_position.x = clamped_x
-	if clamped_y != gx.y:
-		global_position.y = clamped_y
-	_enforce_card_grid_lane_alignment()
+	UnitSharedHelpers.clamp_inside_battlefield(self, BATTLE_MIN_X, max_x, BATTLE_MIN_Y, BATTLE_MAX_Y)
 
 
 func _enforce_card_grid_lane_alignment() -> void:
@@ -2163,27 +2036,6 @@ func add_shield(amount: float) -> void:
 		if old_shield <= 0.0 or old_shield < shield * 0.5:  # 首次获得或大幅增加时触发闪光
 			hpbar.trigger_shield_gain(amount, stats.max_hp)
 
-## 扣除伤害时先扣护盾（护盾的防御优先级高）
-## 返回实际扣除的 HP
-func take_damage_with_shield(amount: float) -> float:
-	var remaining_damage: float = amount
-
-	# 平台HP变异：血量超过 80% 时额外减少 10% 伤害
-	if stats and stats.has_platform_hp_mutation:
-		if ModuleEffectHandler.check_platform_hp_mutation_extra_defense(self, stats):
-			remaining_damage *= 0.9  # 额外减少 10%
-
-	# 先从护盾中扣除
-	var shield_absorbed: float = min(shield, remaining_damage)
-	shield -= shield_absorbed
-	remaining_damage -= shield_absorbed
-
-	# 剩余伤害扣 HP
-	if remaining_damage > 0:
-		take_damage(remaining_damage)
-
-	return remaining_damage
-
 # v8.6: 节点退出场景树时撤销改造光环 buff（兜底 _die 未覆盖的路径）。
 # 修复：预览单位(clear_preview_units→queue_free)不走 _die，导致 apply_mod_auras 广播的友军 buff
 # 残留为幽灵属性。_exit_tree 覆盖所有释放路径（预览清理/战斗结算/queue_free）。
@@ -2320,23 +2172,7 @@ func _trigger_allied_kill_rewards() -> void:
 ## v6.4: 死亡视觉淡出——快速缩放并淡出后销毁节点（逻辑结算已完成，不依赖 _process）
 ## v23.5: 空中单位先坠落（翻转加速到地面线）再爆散淡出（与 enemy_unit 同构）
 func _play_death_fadeout() -> void:
-	if CardGridUnitVisuals.play_air_death_fall(self, _death_burst_and_fade):
-		return
-	_death_burst_and_fade()
-
-
-func _death_burst_and_fade() -> void:
-	# v8.x: 死亡爆散反馈（阵营色冲击波 + 碎片），让死亡与受击产生明确视觉差
-	VfxImpactFactory.spawn_death_burst(get_parent(), global_position, is_player)
-	if _death_fade_tween != null and _death_fade_tween.is_valid():
-		_death_fade_tween.kill()
-	var start_scale := scale
-	_death_fade_tween = create_tween()
-	_death_fade_tween.set_pause_mode(Tween.TWEEN_PAUSE_PROCESS)
-	_death_fade_tween.tween_property(self, "scale", start_scale * 1.15, 0.08)
-	_death_fade_tween.parallel().tween_property(self, "modulate:a", 0.0, 0.25)
-	_death_fade_tween.tween_property(self, "scale", Vector2.ZERO, 0.17)
-	_death_fade_tween.tween_callback(queue_free)
+	UnitSharedHelpers.death_fadeout(self, is_player)
 
 
 ## 销毁前的安全清理
@@ -2356,23 +2192,13 @@ func _cleanup_before_destroy() -> void:
 
 ## 注册到空间分区网格
 func _register_to_spatial_grid() -> void:
-	if not BattleManager or not BattleManager.spatial_grid:
-		return
-	# 部署虚影也需入格，否则敌方在我方重新部署后索敌不到
-	if is_preview_mode:
-		return
-	BattleManager.spatial_grid.insert(self)
+	# 部署虚影跳过注册（敌方虚影在 enemy_unit 侧不设守卫——语义差异由 preview_guard 参数承担）
+	UnitSharedHelpers.register_spatial_grid(self, is_preview_mode)
 
 ## 从空间分区网格注销
 func _unregister_from_spatial_grid() -> void:
-	if not BattleManager or not BattleManager.spatial_grid:
-		return
-	BattleManager.spatial_grid.remove(self)
+	UnitSharedHelpers.unregister_spatial_grid(self)
 
 ## 更新空间分区网格中的位置
 func _update_in_spatial_grid() -> void:
-	if not BattleManager or not BattleManager.spatial_grid:
-		return
-	if is_preview_mode:
-		return
-	BattleManager.spatial_grid.update(self)
+	UnitSharedHelpers.update_spatial_grid(self, is_preview_mode)

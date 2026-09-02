@@ -338,6 +338,10 @@ func _trigger_spell(spell: Dictionary) -> void:
 	var effect: String = String(spell.get("effect", "")).to_lower()
 	var params: Dictionary = spell.get("params", {}) if spell is Dictionary else {}
 	var name_text: String = String(spell.get("name", effect))
+	# v26.6: BOSS 技能施放音——此前 1183 行演出引擎零音频调用（全套 VFX 无声）。
+	# play_sound 信号已桥接 AudioManager.play_sfx；预警/命中音由 battle_spectacle
+	# 的 _play_enemy_warning_flash/_play_spell_impact 负责，此处是"正在施法"提示。
+	SignalBus.play_sound.emit("cast")
 	# 伤害倍率（默认 1.0，可被 params.damage_mult 覆盖）
 	var dmg_mult: float = float(params.get("damage_mult", 1.0))
 	# v9.3: 差异化演出（在伤害结算前触发，给玩家预警反应时间）
@@ -893,17 +897,6 @@ func _flash_driver_on_cast(intensity: float = 0.65, tint: Color = Color.WHITE) -
 func _emit_cinematic(ability_id: String, stage: String, params: Dictionary) -> void:
 	if Engine.get_main_loop() != null:
 		SignalBus.phase_instrument_ability_triggered.emit(ability_id, stage, params)
-
-## 懒加载核爆贴图（缓存，缺失返回 null）。
-func _load_nuke_texture(name_id: String) -> Texture2D:
-	if _nuke_texture_cache.has(name_id):
-		return _nuke_texture_cache[name_id]
-	var path := "res://assets/effects/nuclear/" + name_id + ".png"
-	var tex: Texture2D = null
-	if ResourceLoader.exists(path):
-		tex = load(path)
-	_nuke_texture_cache[name_id] = tex  # null 也缓存（缺失贴图不重复 load）
-	return tex
 
 ## v9.3c: 懒加载大招专属贴图（assets/effects/spell_burst/，AI 生成 + 抠图）。
 ## 缺失返回 null（调用方有 null 守卫，缺失时回退纯程序化 VFX，向后兼容）。

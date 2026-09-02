@@ -92,9 +92,16 @@ func _deferred_init() -> void:
 
 ## 加载成就定义
 func _load_achievement_definitions() -> void:
-	var achievement_defs = get_node_or_null("/root/AchievementDefinitionsExtended")
-	if achievement_defs != null:
-		ACHIEVEMENT_DATABASE = achievement_defs.ACHIEVEMENT_DEFINITIONS.duplicate()
+	# v26.6: 断链补链——扩展成就库是 class_name(RefCounted) 静态脚本而非注册节点，
+	# 原 get_node_or_null("/root/AchievementDefinitionsExtended") 恒 null → 库里只剩 2 条 stub。
+	# 改走其静态 API（get_all_achievements 返回数组），按 id 重建成 manager 的 id→def 表
+	var ext_defs: Array = AchievementDefinitionsExtended.get_all_achievements()
+	if not ext_defs.is_empty():
+		ACHIEVEMENT_DATABASE = {}
+		for ach in ext_defs:
+			var aid: String = String(ach.get("id", ""))
+			if not aid.is_empty():
+				ACHIEVEMENT_DATABASE[aid] = ach
 	else:
 		_setup_basic_achievements()
 
@@ -150,28 +157,6 @@ func _check_and_unlock_achievement(achievement_id: String) -> void:
 
 	if AchievementChecker.check_single(ach_data, _build_stats_map()):
 		unlock_achievement(achievement_id)
-
-## 旧版成就检查（向后兼容）
-func _legacy_check_achievement(achievement_id: String, req_type: String, req_count: int) -> void:
-	match req_type:
-		"unique_blueprints":
-			# 2026-08-22：改读拥有过的卡种记录（原蓝图解锁计数已移除）
-			if (collection_stats["unique_blueprints"] as Array).size() >= req_count:
-				unlock_achievement(achievement_id)
-
-		"legendary_blueprint":
-			for card_id in collection_stats["unique_blueprints"]:
-				var card = DefaultCards.get_card_by_id(card_id)
-				if card != null and card.rarity == "legendary":
-					unlock_achievement(achievement_id)
-					break
-
-		"max_level":
-			var level_mgr = get_node_or_null("/root/LevelProgressManager")
-			if level_mgr != null and level_mgr.has_method("get_max_level"):
-				var max_level = level_mgr.get_max_level()
-				if max_level >= req_count:
-					unlock_achievement(achievement_id)
 
 ## 检查所有指定分类的成就
 func _check_category_achievements(category: String) -> void:
@@ -250,6 +235,9 @@ func unlock_achievement(achievement_id: String) -> void:
 	achievement_unlocked.emit(achievement_id, ach_data.get("name", achievement_id))
 	# v6.6: 镜像到 SignalBus（audio_manager 订阅此版本以播音效）
 	SignalBus.achievement_unlocked.emit(achievement_id, ach_data.get("name", achievement_id))
+	# v26.6 补缺：解锁 toast——此前仅音效无文字，玩家不知道解锁了哪个成就
+	if SignalBus.has_signal("show_toast"):
+		SignalBus.show_toast.emit("🏆 成就解锁：%s" % String(ach_data.get("name", achievement_id)))
 	if DEBUG_LOG:
 		pass
 		# [LOG-v5.1] print("[AchievementManager] 解锁成就: ", ach_data.get("name", achievement_id))
@@ -320,24 +308,6 @@ func record_level_progress(level: int, stars: int = 0) -> void:
 func record_era_completion(era_id: String) -> void:
 	progress_stats["era_completion"][era_id] = true
 	_check_all_progress_achievements()
-
-## 记录挑战完成
-func record_challenge_completion(challenge_type: String, challenge_data: Dictionary = {}) -> void:
-	match challenge_type:
-		"survival":
-			challenge_stats["survival_modes_completed"] += 1
-		"boss_rush":
-			challenge_stats["boss_rushes_completed"] += 1
-		"time_attack":
-			challenge_stats["time_attacks_completed"] += 1
-		"no_loss":
-			challenge_stats["no_loss_challenges"] += 1
-
-	var damage = challenge_data.get("damage_dealt", 0)
-	if damage > challenge_stats["max_damage_dealt"]:
-		challenge_stats["max_damage_dealt"] = damage
-
-	_check_all_challenge_achievements()
 
 ## 记录系统操作
 func record_system_operation(operation_type: String) -> void:
@@ -534,39 +504,44 @@ func load_state(data: Dictionary) -> void:
 	achievement_progress.clear()
 	reward_claimed.clear()
 
+	# v26.6：逐字段类型守卫——手改档把 Dictionary 字段换成 Array/String 时，
+	# 此前会在 deferred 加载批次里触发脚本错误并中断整批管理器加载
 	var saved_unlocked = data.get("unlocked_achievements", [])
-	for ach_id in saved_unlocked:
-		if ACHIEVEMENT_DATABASE.has(ach_id):
-			unlocked_achievements.append(ach_id)
+	if saved_unlocked is Array:
+		for ach_id in saved_unlocked:
+			if ACHIEVEMENT_DATABASE.has(ach_id):
+				unlocked_achievements.append(ach_id)
 
 	var saved_progress = data.get("achievement_progress", {})
-	for ach_id in saved_progress:
-		if ACHIEVEMENT_DATABASE.has(ach_id):
-			achievement_progress[ach_id] = saved_progress[ach_id]
+	if saved_progress is Dictionary:
+		for ach_id in saved_progress:
+			if ACHIEVEMENT_DATABASE.has(ach_id):
+				achievement_progress[ach_id] = saved_progress[ach_id]
 
 	var saved_rewards = data.get("reward_claimed", {})
-	for ach_id in saved_rewards:
-		if ACHIEVEMENT_DATABASE.has(ach_id):
-			reward_claimed[ach_id] = saved_rewards[ach_id]
+	if saved_rewards is Dictionary:
+		for ach_id in saved_rewards:
+			if ACHIEVEMENT_DATABASE.has(ach_id):
+				reward_claimed[ach_id] = saved_rewards[ach_id]
 
 	var saved_battle = data.get("battle_stats", {})
-	if not saved_battle.is_empty():
+	if saved_battle is Dictionary and not saved_battle.is_empty():
 		battle_stats = saved_battle.duplicate()
 
 	var saved_collection = data.get("collection_stats", {})
-	if not saved_collection.is_empty():
+	if saved_collection is Dictionary and not saved_collection.is_empty():
 		collection_stats = saved_collection.duplicate()
 
 	var saved_progress_stats = data.get("progress_stats", {})
-	if not saved_progress_stats.is_empty():
+	if saved_progress_stats is Dictionary and not saved_progress_stats.is_empty():
 		progress_stats = saved_progress_stats.duplicate()
 
 	var saved_challenge = data.get("challenge_stats", {})
-	if not saved_challenge.is_empty():
+	if saved_challenge is Dictionary and not saved_challenge.is_empty():
 		challenge_stats = saved_challenge.duplicate()
 
 	var saved_system = data.get("system_stats", {})
-	if not saved_system.is_empty():
+	if saved_system is Dictionary and not saved_system.is_empty():
 		system_stats = saved_system.duplicate()
 
 	if DEBUG_LOG:

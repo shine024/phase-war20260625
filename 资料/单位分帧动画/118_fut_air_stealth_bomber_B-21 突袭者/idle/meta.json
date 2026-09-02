@@ -1,0 +1,29 @@
+{
+ "unit": "fut_air_stealth_bomber",
+ "unit_name": "B-21 突袭者",
+ "anim": "idle",
+ "frames": 8,
+ "frame_files": [
+  "f00.png",
+  "f01.png",
+  "f02.png",
+  "f03.png",
+  "f04.png",
+  "f05.png",
+  "f06.png",
+  "f07.png"
+ ],
+ "canvas": 512,
+ "suggested_fps": 8,
+ "foot_frac": 0.8,
+ "union_bbox": [
+  15,
+  190,
+  704,
+  540
+ ],
+ "model": "agnes-video-2.5-flash",
+ "mode": "keyframe",
+ "source_video": "source.mp4",
+ "generated_at": "2026-09-01 19:36:29"
+}

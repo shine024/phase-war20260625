@@ -217,7 +217,7 @@ const EXCLUSIVE_CARDS: Array[Dictionary] = [
 		"atk_light_windup": 0.3, "atk_armor_windup": 0.3, "atk_air_windup": 0.15,
 		"atk_light_active": 0.2, "atk_armor_active": 0.2, "atk_air_active": 0.1,
 		"def_light": 50, "def_armor": 50, "def_air": 100,
-		"description": "虚空研究所的相位武器平台。三向火力均衡，对空尤为犀利。\n仅限虚空相位势力使用。",
+		"description": "虚空相位研究所的相位武器平台。三向火力均衡，对空尤为犀利。\n仅限虚空相位势力使用。",
 		"flavor_text": "\"在相位层面，装甲毫无意义。\"",
 	},
 	{

@@ -185,7 +185,7 @@ const DATA: Dictionary = {
 		id = "air_15_afterburner",
 		name = "加力燃烧室",
 		name_en = "Afterburner",
-		icon = "res://assets/ui/icons/mod_icons/mod_special.png",
+		icon = "res://assets/ui/icons/mod_icons/mod_thrust.png",
 		prototype = "F-119 推力矢量引擎",
 		description = "连续攻击激活加力：每 3 次命中触发爆发，本次额外造成 40% 伤害",
 		rarity = "legendary",
@@ -224,7 +224,7 @@ const DATA: Dictionary = {
 		id = "air_antiradiation_missile",
 		name = "反辐射导弹",
 		name_en = "Anti-Radiation Missile",
-		icon = "res://assets/ui/icons/mod_icons/mod_antiradiation.png",
+		icon = "res://assets/ui/icons/mod_icons/mod_missile.png",
 		prototype = "AGM-88 HARM",
 		description = "电磁伤害+，目标石墨电子损坏层数越高伤害越高（每层+15%）；电磁脉冲链触发器",
 		rarity = "legendary",
@@ -277,6 +277,115 @@ const DATA: Dictionary = {
 		applicable_types = [3],
 		unlock_conditions = {required_level = 6}
 	},
+	# ─── v26 轰炸机/多用途主题批（era1-4，敌方配装 + 玩家通用）───
+	"air_17_bombsight" = {
+		id = "air_17_bombsight",
+		name = "轰炸瞄准具",
+		name_en = "Bombsight",
+		icon = "res://assets/ui/icons/mod_icons/air_17_bombsight.png",
+		prototype = "诺顿瞄准具（Norden M-9）",
+		description = "机械陀螺瞄准计算机，高空精确投弹——暴击与真实伤害提升",
+		rarity = "uncommon",
+		power_mult = 1.1,
+		cost_research = 90,
+		cost_install = 45,
+		slot_type = "optics",
+		conflict_group = "optics",
+		era_band = [1, 3],
+		effects = {crit_chance = 0.06, true_damage = 10},
+		unlock_conditions = {required_level = 2}
+	},
+
+	"air_18_heavy_rack" = {
+		id = "air_18_heavy_rack",
+		name = "重载挂架",
+		name_en = "Heavy Bomb Rack",
+		icon = "res://assets/ui/icons/mod_icons/air_18_heavy_rack.png",
+		prototype = "B-17 载弹挂架（单机 8 吨载弹量）",
+		description = "强化挂架结构与机体承重——耐久与对装甲投弹量提升",
+		rarity = "uncommon",
+		power_mult = 1.1,
+		cost_research = 100,
+		cost_install = 50,
+		slot_type = "hardpoint",
+		conflict_group = "hardpoint",
+		era_band = [1, 4],
+		effects = {max_hp = 25, attack_armor_pct = 0.10},
+		unlock_conditions = {required_level = 2}
+	},
+
+	"air_19_cluster_dispenser" = {
+		id = "air_19_cluster_dispenser",
+		name = "集束布撒器",
+		name_en = "Cluster Dispenser",
+		icon = "res://assets/ui/icons/mod_icons/air_19_cluster_dispenser.png",
+		prototype = "CBU-87 集束炸弹 / SUU-64 布撒器",
+		description = "一次投弹覆盖大片地面目标——溅射比例与溅射范围提升（轰炸机核心件）",
+		rarity = "rare",
+		power_mult = 1.3,
+		cost_research = 160,
+		cost_install = 80,
+		slot_type = "ammunition",
+		conflict_group = "ammunition",
+		era_band = [2, 4],
+		effects = {splash_damage = 0.25, splash_radius = 0.30},
+		unlock_conditions = {required_level = 3}
+	},
+
+	"air_20_standoff_missile" = {
+		id = "air_20_standoff_missile",
+		name = "防区外导弹",
+		name_en = "Standoff Missile",
+		icon = "res://assets/ui/icons/mod_icons/air_20_standoff_missile.png",
+		prototype = "AGM-158 JASSM",
+		description = "防区外发射的隐身巡航导弹——射程与对装甲伤害大幅提升",
+		rarity = "epic",
+		power_mult = 1.6,
+		cost_research = 260,
+		cost_install = 130,
+		slot_type = "weapon",
+		conflict_group = "weapon",
+		era_band = [3, 4],
+		effects = {attack_range = 40, attack_armor_pct = 0.20},
+		unlock_conditions = {required_level = 4}
+	},
+
+	"air_21_terrain_radar" = {
+		id = "air_21_terrain_radar",
+		name = "地形跟随雷达",
+		name_en = "Terrain-Following Radar",
+		icon = "res://assets/ui/icons/mod_icons/air_21_terrain_radar.png",
+		prototype = "F-111 TFR / 德州仪器 AN/APQ-116",
+		description = "自动贴地飞行规避雷达锁定——闪避提升",
+		rarity = "uncommon",
+		power_mult = 1.1,
+		cost_research = 100,
+		cost_install = 50,
+		slot_type = "system",
+		conflict_group = "system",
+		era_band = [2, 4],
+		effects = {dodge_chance = 0.08},
+		unlock_conditions = {required_level = 2}
+	},
+
+	"air_22_countermeasure" = {
+		id = "air_22_countermeasure",
+		name = "干扰弹布撒器",
+		name_en = "Countermeasure Dispenser",
+		icon = "res://assets/ui/icons/mod_icons/air_22_countermeasure.png",
+		prototype = "AN/ALE-47 箔条/曳光弹",
+		description = "来袭导弹与防空火力的软杀伤对抗——闪避与减伤提升",
+		rarity = "rare",
+		power_mult = 1.3,
+		cost_research = 140,
+		cost_install = 70,
+		slot_type = "countermeasure",
+		conflict_group = "cm",
+		era_band = [2, 4],
+		effects = {dodge_chance = 0.06, damage_reduction = 0.08},
+		unlock_conditions = {required_level = 3}
+	},
+
 }
 
 static func get_mod_data(mod_id: String) -> Dictionary:

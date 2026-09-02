@@ -15,11 +15,13 @@ const LevelInformation = preload("res://data/level_information.gd")
 const LevelEras = preload("res://data/level_eras.gd")  # 2026-08-25: 普通关敌方在场上限（ERA_ENEMY_FIELD_CAP）
 const SwarmEnemyControllerScript = preload("res://scenes/units/swarm_enemy_controller.gd")
 const _CardGridSlotsPerSide: int = BattleSlotGrid.SLOT_COUNT
+const _GridLayout = preload("res://scripts/card_grid_battle_layout.gd")  # v26.2: 每关布局激活态
 const _DamageNumberDisplayScript = preload("res://scenes/effects/damage_number_display.gd")
 const ConstructUnitScene = preload("res://scenes/units/construct_unit.tscn")
 const FactionSkillEffectHandler = preload("res://scripts/battle/faction_skill_effect_handler.gd")
 const CardGrowthConfig = preload("res://data/card_growth_config.gd")
 const UnifiedCardTable = preload("res://data/unified_card_table.gd")
+const BattleEnvEffects = preload("res://data/battle_env_effects.gd")  # v26.2: 战斗环境效果
 const DEPLOY_FAIL_LOG_THROTTLE_MS := 350
 # v7.x: 诊断开关——对比「上场端」vs「评估端」单卡 stats，定位战场 vs 面板战力差异源
 const DEBUG_DEPLOY_POWER_LOG := false
@@ -89,9 +91,9 @@ func setup(deps: Dictionary) -> void:
 
 func configure_card_grid_battle(enemy_quota: int) -> void:
 	_card_grid_active = true
-	_card_grid_enemy_quota = clampi(enemy_quota, 1, _CardGridSlotsPerSide)
-	# 3行×3列 = 9 格全部可用（无边缘禁放）
-	_usable_enemy_slots = _CardGridSlotsPerSide
+	# v26.2: 敌方格数按激活布局（默认 3×3=9，与旧行为一致）
+	_card_grid_enemy_quota = clampi(enemy_quota, 1, _GridLayout.enemy_slots_total())
+	_usable_enemy_slots = _GridLayout.enemy_slots_total()
 
 
 ## 敌方同时在场单位数上限（2026-08-25 按时代限制）：
@@ -104,12 +106,12 @@ func _enemy_field_unit_cap() -> int:
 	if BattleManager != null and "_is_phase_master_battle" in BattleManager:
 		if bool(BattleManager._is_phase_master_battle):
 			# 相位师战：driver._unit_limit 是唯一有效上限
-			return max(0, _CardGridSlotsPerSide)
+			return max(0, _GridLayout.enemy_slots_total())
 	if GameManager != null and "current_level" in GameManager:
 		var lv: int = int(GameManager.current_level)
 		if lv > 0:
-			return clampi(LevelEras.get_enemy_field_cap_for_level(lv), 1, _CardGridSlotsPerSide)
-	return max(0, _CardGridSlotsPerSide)
+			return clampi(LevelEras.get_enemy_field_cap_for_level(lv), 1, _GridLayout.enemy_slots_total())
+	return max(0, _GridLayout.enemy_slots_total())
 
 
 func finalize_card_grid_and_spawn_enemies(current_level: int) -> void:
@@ -140,8 +142,10 @@ func _apply_player_card_grid_post_placement() -> void:
 
 func _card_grid_count_free_enemy_slots() -> int:
 	var n: int = 0
-	# 3行×3列 = 9 格全部可用
-	for si in range(0, _CardGridSlotsPerSide):
+	# v26.2: 按激活布局格数统计，废墟格不计
+	for si in range(0, _GridLayout.enemy_slots_total()):
+		if _GridLayout.is_slot_excluded(si, "enemy"):
+			continue
 		if not _is_enemy_grid_slot_occupied(si):
 			n += 1
 	return n
@@ -172,14 +176,24 @@ func _find_enemy_subtree_with_slot(n: Node, slot_idx: int) -> Node:
 	return null
 
 
-## 敌方部署顺序：中行(3,4,5) → 下行(6,7,8) → 上行(0,1,2)
-## 与我方自动部署顺序一致，优先填中行（主战线），再下行（前线），最后上行（后卫）
-const _ENEMY_DEPLOY_ORDER: Array[int] = [3, 4, 5, 6, 7, 8, 0, 1, 2]
+## v26.2: 敌方部署顺序动态生成（行主序：中行→下行→上行，优先填主战线；
+## 与我方自动部署顺序同语义）。旧 3×3 硬编码 [3,4,5,6,7,8,0,1,2] 随每关布局表退役。
+func _enemy_deploy_order() -> Array:
+	var cols: int = _GridLayout.active_enemy_cols()
+	var rows: int = _GridLayout.active_rows()
+	var out: Array = []
+	for r in [1, 2, 0]:
+		if r < rows:
+			for c in range(cols):
+				out.append(r * cols + c)
+	return out
 
 
-## 敌方区域：按部署顺序（中行→下行→上行）找第一个空闲槽位
+## 敌方区域：按部署顺序（中行→下行→上行）找第一个空闲槽位（跳过废墟格）
 func _card_grid_next_free_enemy_slot_index() -> int:
-	for si in _ENEMY_DEPLOY_ORDER:
+	for si in _enemy_deploy_order():
+		if _GridLayout.is_slot_excluded(si, "enemy"):
+			continue
 		if not _is_enemy_grid_slot_occupied(si):
 			return si
 	return -1
@@ -277,25 +291,34 @@ func _bias_tags_match_era_pool(level: int, bias_tags: Array) -> bool:
 
 
 ## 按单位射程选敌方槽位：
-## v9.5: 短程(堡垒/装甲)优先放最前一列(col0=slot 0,3,6)，再中列(col1=1,4,7)，最后后列(col2=2,5,8)
-##       长程(曲射/支援)放后方(col2→col1→col0)，让短程坦克在前排抗伤
-## 每列内按行顺序：中行→下行→上行（与自动部署一致）
-## col0=[3,0,6]（中行3,下行6,上行0），col1=[4,1,7]，col2=[5,2,8]
+## v9.5 + v26.2: 前/后排序按激活列数动态生成（敌语义 col0=靠中线=前排；
+## 列内行序=中→下→上，与旧 3×3 FRONT_FIRST [3,0,6,4,1,7,5,2,8] 同语义）。
+## 短程(堡垒/装甲)顶最前，长程(曲射/支援)在后方；废墟格跳过。
 func _pick_enemy_slot_by_range(attack_range: float) -> int:
 	const LONG_RANGE_THRESHOLD: float = 300.0
-	# 短程：前排→中排→后排（堡垒/装甲顶在最前 col0）
-	if attack_range < LONG_RANGE_THRESHOLD:
-		const FRONT_FIRST: Array[int] = [3, 0, 6, 4, 1, 7, 5, 2, 8]
-		for si in FRONT_FIRST:
-			if not _is_enemy_grid_slot_occupied(si):
-				return si
-	else:
-		# 长程：后排→中排→前排（曲射/支援在后方）
-		const BACK_FIRST: Array[int] = [5, 2, 8, 4, 1, 7, 3, 0, 6]
-		for si in BACK_FIRST:
-			if not _is_enemy_grid_slot_occupied(si):
-				return si
+	var order: Array = _enemy_slots_by_col(attack_range < LONG_RANGE_THRESHOLD)
+	for si in order:
+		if not _is_enemy_grid_slot_occupied(si):
+			return si
 	return -1
+
+
+func _enemy_slots_by_col(front_first: bool) -> Array:
+	var cols: int = _GridLayout.active_enemy_cols()
+	var rows: int = _GridLayout.active_rows()
+	var col_order: Array = []
+	if front_first:
+		for c in range(cols):
+			col_order.append(c)
+	else:
+		for c in range(cols - 1, -1, -1):
+			col_order.append(c)
+	var out: Array = []
+	for c in col_order:
+		for r in [1, 0, 2]:
+			if r < rows and not _GridLayout.is_slot_excluded(r * cols + c, "enemy"):
+				out.append(r * cols + c)
+	return out
 
 
 ## 获取单位攻击射程（像素），用于按射程分配槽位
@@ -343,8 +366,8 @@ func spawn_card_grid_enemy_wave(current_level: int) -> bool:
 	elif gm and gm.has_method("get_enemy_spawn_count_for_wave"):
 		to_spawn = gm.get_enemy_spawn_count_for_wave(gm.current_level, next_wave)
 	to_spawn = mini(to_spawn, _card_grid_enemy_quota)
-	# 3行×3列 = 9 格全部可用
-	var usable_enemy_slots: int = _CardGridSlotsPerSide
+	# v26.2: 敌方可用格数按激活布局（默认 9）
+	var usable_enemy_slots: int = _GridLayout.enemy_slots_total()
 	_card_grid_enemy_quota = mini(_card_grid_enemy_quota, usable_enemy_slots)
 	to_spawn = mini(to_spawn, free_n)
 	if to_spawn <= 0:
@@ -904,9 +927,6 @@ func get_player_spawn_interval() -> float:
 		return 0.0
 	return 0.0
 
-func get_player_unit_count_active() -> int:
-	return player_unit_count
-
 func get_enemy_wave_time_remaining() -> float:
 	return maxf(0.0, _enemy_wave_interval - enemy_wave_timer)
 
@@ -915,9 +935,6 @@ func get_enemy_wave_interval() -> float:
 
 func get_enemy_wave_index() -> int:
 	return enemy_wave_index
-
-func get_enemy_unit_count_active() -> int:
-	return enemy_unit_count
 
 func get_enemy_wave_total() -> int:
 	return _enemy_wave_total
@@ -968,16 +985,6 @@ func get_remaining_deployable_count() -> int:
 	return max(0, max_units - live_count)
 
 
-func _has_alive_player_unit_from_card(card_id: String) -> bool:
-	if card_id.is_empty() or _player_units_node == null:
-		return false
-	for n in _player_units_node.get_children():
-		if n != null and is_instance_valid(n) and String(n.get_meta("source_card_id", "")) == card_id:
-			if "_is_dying" in n and n._is_dying:
-				continue
-			return true
-	return false
-
 func _count_alive_player_units_from_card(card_id: String) -> int:
 	if card_id.is_empty() or _player_units_node == null:
 		return 0
@@ -1001,16 +1008,6 @@ func _count_equipped_loadouts_from_card(card_id: String) -> int:
 		if plat != null and plat.card_id == card_id:
 			count += 1
 	return count
-
-func _has_alive_player_unit_from_instance_id(inst_id: String) -> bool:
-	if inst_id.is_empty() or _player_units_node == null:
-		return false
-	for n in _player_units_node.get_children():
-		if n != null and is_instance_valid(n) and String(n.get_meta("source_instance_id", "")) == inst_id:
-			if "_is_dying" in n and n._is_dying:
-				continue
-			return true
-	return false
 
 
 func _count_alive_player_units_from_instance_id(inst_id: String) -> int:
@@ -1340,9 +1337,18 @@ func _build_stats_cached(platform_card: CardResource, weapon_cards: Array, weapo
 	var _pmsm_node: Node = _get_cached_autoload("PhaseMasterSkillManager")
 	if _pmsm_node != null and _pmsm_node.has_method("get_unlocked_signature"):
 		pmsm_sig = _pmsm_node.get_unlocked_signature()
-	var key: String = "%s|%s|%s|%d|%s|%s|%s|lv%d" % [
+	# v26.2: 战斗环境效果签名进缓存 key——乘区随关卡环境变化（如 L10 雨天），跨关必须失效旧缓存
+	var _env_sig: String = "off"
+	if GameManager != null and "current_level" in GameManager:
+		var _env_m: Dictionary = BattleEnvEffects.get_level_env_mults(int(GameManager.current_level))
+		if BattleEnvEffects.has_any_effect(_env_m):
+			_env_sig = "%.2f,%.2f,%.2f,%.2f,%.2f,%.2f" % [
+				float(_env_m.get("indirect_dmg", 1.0)), float(_env_m.get("direct_dmg", 1.0)),
+				float(_env_m.get("all_dmg", 1.0)), float(_env_m.get("direct_range", 1.0)),
+				float(_env_m.get("atk_speed", 1.0)), float(_env_m.get("regen", 1.0))]
+	var key: String = "%s|%s|%s|%d|%s|%s|%s|lv%d|%s" % [
 		card_key, ",".join(weapon_ids), weapon_types_key, battle_era, pf_bonus_key,
-		active_faction_cache_key, pmsm_sig, card_lv
+		active_faction_cache_key, pmsm_sig, card_lv, _env_sig
 	]
 	if DEBUG_DEPLOY_POWER_LOG:
 		print("[DIAG deploy-in] card=%s inst=<%s> enhance=%d mods=%d mslots=%d | era=%d | key=%s" % [platform_card.card_id, platform_card.instance_id, int(platform_card.enhance_level), platform_card.mods.size(), platform_card.module_slots.size(), battle_era, key])
@@ -1350,7 +1356,10 @@ func _build_stats_cached(platform_card: CardResource, weapon_cards: Array, weapo
 		var cached_stats: UnitStats = _stats_cache[key]
 		if DEBUG_DEPLOY_POWER_LOG:
 			print("[DIAG deploy-out CACHED] hp=%.0f" % float(cached_stats.max_hp))
-		return _dup_stats_with_meta(cached_stats)
+		# v26.6: 缓存返回的是副本，副本同样要补 stat_boost 加成（基线不含 boost）
+		var hit_stats: UnitStats = _dup_stats_with_meta(cached_stats)
+		_apply_player_stat_boosts(hit_stats)
+		return hit_stats
 
 	var stats = UnitStatsTable.build_stats_from_card(effective_card, battle_era)
 
@@ -1375,6 +1384,20 @@ func _build_stats_cached(platform_card: CardResource, weapon_cards: Array, weapo
 		_am.apply_affixes_to_stats(stats, platform_card, weapon_cards)
 	if _phase_instrument and _phase_instrument.has_method("apply_phase_field_bonus_to_unit_stats"):
 		_phase_instrument.apply_phase_field_bonus_to_unit_stats(stats)
+	# v26 批次4：气象站 Lv2 天气预报——锁定的今日预报对我方全队生效（结算时消耗，只吃一次）
+	var _bunker_wx: Node = _get_cached_autoload("BunkerManager")
+	if _bunker_wx != null and _bunker_wx.has_method("get_active_weather_bonus"):
+		var _wx: Dictionary = _bunker_wx.get_active_weather_bonus()
+		var _wx_hp: float = float(_wx.get("hp_pct", 0.0))
+		var _wx_atk: float = float(_wx.get("atk_pct", 0.0))
+		var _wx_def: float = float(_wx.get("def_pct", 0.0))
+		if _wx_hp != 0.0:
+			stats.max_hp = maxf(1.0, stats.max_hp * (1.0 + _wx_hp))
+		if _wx_atk != 0.0:
+			stats.attack_damage = maxf(0.1, stats.attack_damage * (1.0 + _wx_atk))
+		if _wx_def != 0.0:
+			stats.defense_armor = maxf(0.0, stats.defense_armor * (1.0 + _wx_def))
+			stats.defense_light = maxf(0.0, stats.defense_light * (1.0 + _wx_def))
 	# v6.2: 符文之语全局加成注入（所有玩家单位共享）
 	if _phase_instrument and _phase_instrument.has_method("get_rune_bonus"):
 		_apply_rune_bonus_to_stats(stats, _phase_instrument.get_rune_bonus())
@@ -1386,8 +1409,16 @@ func _build_stats_cached(platform_card: CardResource, weapon_cards: Array, weapo
 	CardGrowthConfig.apply_to_stats(stats, CardGrowthConfig.total_growth(effective_card, card_lv))
 	# v20.12 等级统一：等级随 stats 下发（战场等级标签/光环星级换算读它）
 	stats.card_level = card_lv
+	# v26.2: 战斗环境效果（敌我对称）——乘在 stats 构建层尾部：直射/曲射武器伤害、
+	# 直射射程、攻速按 BattleEnvEffects 表取乘区（v25.0 教训：构建层一处乘，
+	# bullet/batch 两条伤害路径与面板显示自动一致；缓存 key 已带环境签名）
+	if GameManager != null and "current_level" in GameManager:
+		BattleEnvEffects.apply_to_unit_stats(stats, int(GameManager.current_level))
 	# v6.8: 敌源MOD（D槽）战斗加成已停用（EOM 面板/掉落/存档保留）
+	# v26.6: 缓存只存"未加 boost 的基线"副本，boost 加在返回实例上——
+	# boost_counts 战中增长（Boss 掉落）后新部署自动吃到新值，且同一 stats 不被重复乘算
 	_stats_cache[key] = _dup_stats_with_meta(stats)
+	_apply_player_stat_boosts(stats)
 	# v7.x 诊断：对比上场端 vs 评估端 stats，定位战场/面板战力差异（默认关，调试时改 true）
 	# 与 master_platform_power.gd:compute_player_card_power 的 [PowerDebug][评估端] 格式对称
 	if DEBUG_DEPLOY_POWER_LOG:
@@ -1397,6 +1428,17 @@ func _build_stats_cached(platform_card: CardResource, weapon_cards: Array, weapo
 			stats.max_hp, stats.attack_light, stats.attack_armor, stats.attack_air,
 			stats.defense_light, stats.defense_armor, stats.move_speed, _p_deploy])
 	return stats
+
+## v26.6: 断链补链——stat_boost（势力商店购买 / Boss 掉落的强化）此前 boost_counts 零消费，
+## 玩家花的声望/Boss 掉的强化对战斗完全无效。挂在 _build_stats_cached 尾部（唯一调用点
+## 是我方部署路径，敌方走独立 resolver，天然只影响我方），在全部乘区之后、返回前应用。
+func _apply_player_stat_boosts(stats: UnitStats) -> void:
+	if stats == null:
+		return
+	ManagerLazyLoader.ensure_loaded("stat_boost")
+	var sbm: Node = _get_autoload_node("StatBoostManager")
+	if sbm != null and sbm.has_method("apply_all_boosts_to_stats"):
+		sbm.apply_all_boosts_to_stats(stats)
 
 ## v6.2: 应用符文之语加成到单位属性
 ## bonus 结构：{"stats": {attack: 0.5, hp: 0.3, ...}, "specials": [...]}

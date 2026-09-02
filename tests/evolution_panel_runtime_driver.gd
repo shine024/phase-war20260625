@@ -1,19 +1,18 @@
 extends Node
-## 进化面板运行时驱动（autoload 齐全，作为主场景 headless 运行）：
+## 制造面板运行时驱动（v26 批次4 改造，原"进化面板运行时驱动"）：
 ##   godot --headless --path . res://tests/evolution_panel_runtime_driver.tscn
-## 验证 v9.x"进化情报可见性"修复的运行时链路：
-##   1) 未揭示的情报隐藏分支提示出现在进化树（源卡 ww1_mp18 → IB_INFANTRY_SPECIAL）
-##   2) 锁定目标节点不再 disabled（可点击查看条件）
-##   3) 点击锁定目标后，右侧详情渲染出条件列表（✗ 行 + └ 指引行）
-##   4) badge 显示"等N项"（多条件未满足计数）
+## 验证 v26 制造中心（evolution_panel.gd 重写）的运行时链路：
+##   1) 打开面板 → 左侧配方目录渲染（38 配方，全档）
+##   2) 点击配方行 → 右侧详情渲染条件行（情报/授权/资源）
+##   3) 中栏品质概率池渲染（GATE 档位条）
+##   4) 制造按钮存在且为"制造一张"
 
 const PANEL_SCENE := "res://scenes/ui/evolution_panel.tscn"
-const SRC_CARD_ID := "ww1_mp18"  # IB_INFANTRY_SPECIAL（特种作战路线）的源卡
+const SRC_CARD_ID := "ww1_mp18"
 
 var _fails: Array[String] = []
 
 func _ready() -> void:
-	# 等 autoload 的 deferred init 稳定
 	await get_tree().process_frame
 	await get_tree().process_frame
 	await _run()
@@ -26,16 +25,17 @@ func _fail(msg: String) -> void:
 func _collect_text(node: Node, out: Array[String]) -> void:
 	if node is Label:
 		out.append((node as Label).text)
+	if node is Button:
+		out.append((node as Button).text)
 	for c in node.get_children():
 		_collect_text(c, out)
 
 func _run() -> void:
-	print("=== EVOLUTION PANEL RUNTIME DRIVER START ===")
+	print("=== MANUFACTURE PANEL RUNTIME DRIVER START ===")
 	var ir: Node = get_node_or_null("/root/InstanceRegistry")
 	if ir == null:
 		_fail("InstanceRegistry autoload 缺失")
 		return
-	# 建源卡实例（特种作战路线源卡）
 	var inst: CardResource = ir.create_instance(SRC_CARD_ID)
 	if inst == null:
 		_fail("无法创建源卡实例 %s" % SRC_CARD_ID)
@@ -45,59 +45,68 @@ func _run() -> void:
 	get_tree().root.add_child(panel)
 	await get_tree().process_frame
 
-	# ── 1. 隐藏分支提示 ──
+	# ── 1. 配方目录渲染 ──
 	panel.set_selected_card(inst)
-	var texts: Array[String] = []
-	_collect_text(panel.get_node("%EvolutionTree"), texts)
-	var joined := "\n".join(PackedStringArray(texts))
-	if not joined.contains("未揭示的隐藏路线"):
-		_fail("进化树未出现「未揭示的隐藏路线」提示（IB_INFANTRY_SPECIAL 源卡应显示）")
-	elif not joined.contains("步兵系情报"):
-		_fail("隐藏分支提示缺少情报进度文本（应含「步兵系情报 x%/75%」）")
+	# 配方目录刷新挂在打开管线（on_overlay_opened → 可见时 _refresh_all）
+	panel.show_panel()
+	panel.on_overlay_opened()
+	await get_tree().process_frame
+	await get_tree().process_frame
+	await get_tree().process_frame
+	# 配方目录容器（左栏）= %CardListContainer；%EvolutionTree 是中栏品质池
+	var list_box: Node = panel.get_node_or_null("%CardListContainer")
+	var tree_box: Node = panel.get_node_or_null("%EvolutionTree")
+	if list_box == null:
+		_fail("配方目录容器 %CardListContainer 缺失")
 	else:
-		print("[OK] 隐藏分支提示渲染：含路线名 + 情报类型进度")
+		var recipe_rows := 0
+		for c in list_box.get_children():
+			if c is Button and c.has_meta("recipe_id"):
+				recipe_rows += 1
+		if recipe_rows < 30:
+			_fail("配方目录行数 %d < 30（应为 38 配方）" % recipe_rows)
+		else:
+			print("[OK] 配方目录渲染：%d 行" % recipe_rows)
 
-	# ── 2/3. 锁定目标可点击 + 详情条件列表 ──
-	# 新建实例无图纸/等级，全部目标必然锁定；选第一个目标
-	var targets: Array = inst.get_evolution_targets()
-	if targets.is_empty():
-		_fail("源卡 %s 无进化目标（数据异常）" % SRC_CARD_ID)
+		# ── 2. 点击配方 → 详情条件列表 ──
+		var first_row: Button = null
+		for c in list_box.get_children():
+			if c is Button and c.has_meta("recipe_id"):
+				first_row = c
+				break
+		if first_row == null:
+			_fail("目录无可点击配方行")
+		else:
+			var rid: String = String(first_row.get_meta("recipe_id"))
+			panel._on_recipe_selected(rid)
+			await get_tree().process_frame
+			var dtexts: Array[String] = []
+			_collect_text(panel.get_node("%ReqList"), dtexts)
+			var djoined := "\n".join(PackedStringArray(dtexts))
+			if djoined.strip_edges().is_empty():
+				_fail("配方 %s 详情未渲染条件行（ReqList 为空）" % rid)
+			elif not (djoined.contains("情报") or djoined.contains("资源") or djoined.contains("授权")):
+				_fail("条件行缺少制造语义关键词（情报/资源/授权）：%s" % djoined.substr(0, 80))
+			else:
+				print("[OK] 配方详情条件列表渲染正常（含制造条件关键词）")
+
+		# ── 3. 品质概率池（中栏应渲染出稀有度条） ──
+		if tree_box == null:
+			_fail("品质池容器 %EvolutionTree 缺失")
+		elif tree_box.get_child_count() == 0:
+			_fail("品质概率池为空（应渲染 GATE 档位条）")
+		else:
+			print("[OK] 品质概率池渲染正常（%d 个节点）" % tree_box.get_child_count())
+
+	# ── 4. 制造按钮 ──
+	var evolve_btn: Button = panel.get_node_or_null("%EvolveButton")
+	if evolve_btn == null:
+		_fail("制造按钮 %EvolveButton 缺失")
+	elif String(evolve_btn.text) != "制造一张":
+		_fail("制造按钮文本应为「制造一张」，实际「%s」" % evolve_btn.text)
 	else:
-		var tid: String = String(targets[0].get("target_id", ""))
-		panel._on_target_selected(tid, String(targets[0].get("name", "")))
-		await get_tree().process_frame
-		var dtexts: Array[String] = []
-		_collect_text(panel.get_node("%ReqList"), dtexts)
-		var djoined := "\n".join(PackedStringArray(dtexts))
-		if not djoined.contains("✗"):
-			_fail("锁定目标详情未渲染条件行（ReqList 无 ✗ 行）")
-		elif not djoined.contains("└"):
-			_fail("锁定目标详情缺少「└ 指引」子行（detail 指引未下发或未渲染）")
-		else:
-			print("[OK] 锁定目标可点击 → 详情条件列表 + 指引行渲染正常")
-
-		# 目标节点按钮不应再 disabled（当前形态节点除外）
-		var disabled_btns := _count_disabled_buttons(panel.get_node("%EvolutionTree"))
-		# 当前形态节点 disabled=true 是设计；目标节点全可点 → 最多 1 个
-		if disabled_btns > 1:
-			_fail("进化树存在 %d 个 disabled 按钮（应只剩当前形态节点 1 个）" % disabled_btns)
-		else:
-			print("[OK] 锁定目标按钮可点击（disabled 仅剩当前形态节点）")
-
-		# ── 4. badge "等N项" ──
-		if joined.contains("等") and joined.contains("项"):
-			print("[OK] badge 显示多条件计数（等N项）")
-		else:
-			print("[SKIP] badge 计数未出现（可能仅 1 项未满足，非必现）")
+		print("[OK] 制造按钮存在且文案正确")
 
 	panel.queue_free()
 	ir.dispose_instance(String(inst.instance_id))
-	print("=== EVOLUTION PANEL RUNTIME DRIVER %s ===" % ("ALL PASS" if _fails.is_empty() else "FAILED"))
-
-func _count_disabled_buttons(node: Node) -> int:
-	var n := 0
-	if node is Button and (node as Button).disabled:
-		n += 1
-	for c in node.get_children():
-		n += _count_disabled_buttons(c)
-	return n
+	print("=== MANUFACTURE PANEL RUNTIME DRIVER %s ===" % ("ALL PASS" if _fails.is_empty() else "FAILED"))

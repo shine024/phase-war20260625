@@ -126,56 +126,6 @@ static func calculate_damage(
 
 	return final_damage
 
-## @deprecated v6.2: 完整伤害计算（带max_range版），仅用于测试/验证器。
-## 战斗主路径使用 calculate_damage_with_weapon。本函数不应用直射穿透等加成。
-static func calculate_damage_with_range(
-	attacker_stats: UnitStats,
-	target_stats: UnitStats,
-	distance: float,
-	max_range: float,
-	weapon_type: int,
-	attacker_enhance_level: int = 0,
-	attacker_mods: Array = []
-) -> float:
-	# 1. 攻击值 = 根据目标类型选
-	var base_damage = get_attack_vs(attacker_stats, target_stats.combat_kind)
-
-	# 2. 击穿检查 — 防御值 = 根据攻击者单位类型选（v6.2: 攻防维度对齐）
-	var def = get_defense_vs(target_stats, attacker_stats.combat_kind)
-	if base_damage <= def:
-		return 0.0
-
-	# 3. 射程衰减(仅直射) — v6.2: 直射已删除衰减设定，本块停用
-#	if weapon_type == GC.WeaponType.DIRECT:
-#		var sub_type = DamageAttenuation.infer_weapon_sub_type(
-#			attacker_stats.combat_kind, int(max_range),
-#			attacker_stats.attack_light, attacker_stats.attack_armor, attacker_stats.attack_air
-#		)
-#		base_damage *= DamageAttenuation.calculate_attenuation(distance, max_range, sub_type)
-
-	# 4. 防御减免
-	var final_damage = base_damage * (100.0 / (100.0 + def))
-
-	# 5. 强化加成
-	if attacker_enhance_level > 0:
-		var enhance_mult: float
-		if attacker_enhance_level >= 10:
-			enhance_mult = 1.60
-		elif attacker_enhance_level >= 9:
-			enhance_mult = 1.50
-		else:
-			enhance_mult = 1.0 + float(attacker_enhance_level) * 0.05
-		final_damage *= enhance_mult
-
-	# v6.4: 改造伤害加成已由 ModificationRegistry.apply_with_level 在 UnitStats 构建阶段
-	# 直接叠加到 attack_light/armor/air，此处无需再乘倍率。
-
-	# v18 元素伤害维度：攻击方带元素亲和时乘元素乘区（防叠加超模，上限 2.0）
-	if attacker_stats != null and attacker_stats.element_affinity != 0:
-		final_damage *= minf(attacker_stats.element_damage_mult, 2.0)
-
-	return final_damage
-
 ## 获取攻击计时参数（根据目标类型）
 ## 返回 { cycle, windup, active, cooldown }
 static func get_attack_timing(attacker_stats: UnitStats, target_combat_kind: int) -> Dictionary:

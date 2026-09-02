@@ -528,9 +528,13 @@ func _try_complete(quest_id: String) -> void:
 	# v6.6: 同步镜像到 SignalBus（audio/全局监听者订阅的是 SignalBus 版本）
 	SignalBus.quest_completed.emit(quest_id, rewards)
 	# v6.9: 随机结果提示（让玩家知道抽到了什么结果）
-	if not outcome_label.is_empty() and SignalBus.has_signal("show_toast"):
+	# v26.6 补缺：outcome_table 为空时此前完全无提示（任务完成只有音效），现在
+	# 无随机结果的任务也弹「任务完成：title」；有随机结果则维持「title：结果」不变。
+	if SignalBus.has_signal("show_toast"):
 		var qtitle: String = String(def.get("title", quest_id))
-		SignalBus.show_toast.emit("%s：%s" % [qtitle, outcome_label])
+		SignalBus.show_toast.emit(
+			"%s：%s" % [qtitle, outcome_label] if not outcome_label.is_empty()
+			else "任务完成：%s" % qtitle)
 	# v6.9: 动态任务完成后从注册表移除（避免 get_available_ids 堆积已完成任务）
 	if bool(def.get("is_dynamic", false)):
 		QuestDefs.unregister_dynamic_quest(quest_id)
@@ -597,6 +601,10 @@ func save_state() -> Dictionary:
 	}
 
 func load_state(data: Dictionary) -> void:
+	# v26.6："先重置再覆盖"——存档缺段（截断档/新结构）时复位到默认，
+	# 不保留上一局/上一槽内存残留（随后自动存档会把残留持久化）
+	_accepted = {}
+	_completed_ids = []
 	if data.has("accepted") and data["accepted"] is Dictionary:
 		_accepted = (data["accepted"] as Dictionary).duplicate(true)
 	if data.has("completed_ids") and data["completed_ids"] is Array:

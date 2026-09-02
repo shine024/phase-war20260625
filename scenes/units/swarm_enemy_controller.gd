@@ -97,15 +97,6 @@ func on_slot_died(dead: Node) -> void:
 	_slots.erase(dead)
 	_sync_multimesh_count()
 
-func clear_all_slots() -> void:
-	for s in _slots:
-		if is_instance_valid(s):
-			if BattleManager and BattleManager.spatial_grid:
-				BattleManager.spatial_grid.remove(s as Node2D)
-			s.queue_free()
-	_slots.clear()
-	_sync_multimesh_count()
-
 func _spawn_death_fx(at: Vector2) -> void:
 	if _death_fx_pool.size() > 0:
 		var p: CPUParticles2D = _death_fx_pool.pop_back()

@@ -48,7 +48,7 @@ const REVEAL_EVENTS: Dictionary = {
 	},
 	"infantry_3": {
 		"title": "完全掌握·步兵机密",
-		"desc": "步兵相关情报全部破译！解锁隐藏进化分支【特种作战路线】。",
+		"desc": "步兵相关情报全部破译！解锁隐藏情报分支【特种作战路线】。",
 		"rewards": [
 			{"type": "intel_branch_unlock", "branch_id": "IB_INFANTRY_SPECIAL"},
 		],
@@ -87,7 +87,7 @@ const REVEAL_EVENTS: Dictionary = {
 	},
 	"flame_3": {
 		"title": "完全掌握·火焰机密",
-		"desc": "火焰相关机密全部破译！解锁隐藏进化分支【自适应装甲路线】。",
+		"desc": "火焰相关机密全部破译！解锁隐藏情报分支【自适应装甲路线】。",
 		"rewards": [
 			{"type": "intel_branch_unlock", "branch_id": "IB_ADAPTIVE_ARMOR"},
 		],
@@ -126,7 +126,7 @@ const REVEAL_EVENTS: Dictionary = {
 	},
 	"heavy_armor_3": {
 		"title": "完全掌握·重装甲机密",
-		"desc": "重装甲相关机密全部破译！解锁隐藏进化分支【破甲猎手路线】。",
+		"desc": "重装甲相关机密全部破译！解锁隐藏情报分支【破甲猎手路线】。",
 		"rewards": [
 			{"type": "intel_branch_unlock", "branch_id": "IB_ARMOR_BREAKER"},
 		],
@@ -165,7 +165,7 @@ const REVEAL_EVENTS: Dictionary = {
 	},
 	"artillery_3": {
 		"title": "完全掌握·火炮机密",
-		"desc": "火炮相关机密全部破译！解锁隐藏进化分支【空中炮艇路线】的部分条件。",
+		"desc": "火炮相关机密全部破译！解锁隐藏情报分支【空中炮艇路线】的部分条件。",
 		"rewards": [
 			{"type": "intel_branch_hint", "text": "空中炮艇路线还需要更多空中单位和隐匿单位的情报来完全解锁。"},
 		],

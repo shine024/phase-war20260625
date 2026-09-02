@@ -38,10 +38,6 @@ static func background_path_for(faction_id: String) -> String:
 	return "res://assets/cards/backgrounds/bg_%s.png" % fid
 
 
-static func has_background(faction_id: String = BG_NEUTRAL) -> bool:
-	return ResourceLoader.exists(background_path_for(faction_id))
-
-
 static func load_background(faction_id: String) -> Texture2D:
 	return UiAssetLoader.load_tex(background_path_for(faction_id))  # UiAssetLoader 无反向依赖本类
 

@@ -1,30 +1,37 @@
 extends Node2D
 class_name BattleSlotGrid
-## 格子战术：3 行 × 3 列，每侧 9 部署槽，中间 1 列为空置带。
-## 全局共 7 列（3+1+3），每侧 9 格（row0/1/2 × col0/1/2），无边缘禁放。
-## v9.5: 斜阵——每行 X 错位，我方呈 ///（上行靠中线）、敌方呈 \\\ 镜像。
+## 格子战术战场槽位网格。默认 3 行 × 3 列每侧 9 槽、中间 1 列空置带；
+## v9.5 斜阵——每行 X 错位，我方 ///、敌方 \\\ 镜像。
+## v26.2 每关布局：行数/敌我列数/废墟禁放格由 CardGridBattleLayout 激活态决定
+## （battle_manager.start_battle 按关卡 apply；本类全部动态读取，无硬编码 9）。
 
 const _Layout = preload("res://scripts/card_grid_battle_layout.gd")
 
+## 默认布局每侧槽位数（历史兼容；运行时用 player_slot_count()/enemy_slot_count()）
 const SLOT_COUNT: int = _Layout.TOTAL_SLOTS_PER_SIDE  # = 9
 const MIDDLE_EMPTY_COLUMNS: int = _Layout.MIDDLE_EMPTY_COLUMNS
 const TOTAL_GRID_COLUMNS: int = _Layout.TOTAL_COLUMNS
 const BATTLE_X0: float = _Layout.BATTLE_X0
 const BATTLE_X1: float = _Layout.BATTLE_X1
 
-## 无边缘禁放槽位（3×3 全可用）
-const PLAYER_EXCLUDED_SLOTS: Array[int] = []
-const ENEMY_EXCLUDED_SLOTS: Array[int] = []
-
 var player_slot_centers: Array[Vector2] = []
 var enemy_slot_centers: Array[Vector2] = []
 var _lane_y_center: float = 360.0
-## 点击判定：覆盖 3 行全范围
+## 点击判定：覆盖全部行范围（按激活行偏移动态计算）
 var _accept_y_min: float = 200.0
 var _accept_y_max: float = 520.0
 var _slot_step_x: float = 42.0
 ## BU-5（战斗界面美化）：部署区可视化高亮层（见文件尾 SlotHighlight 内部类）
 var _highlight: Node = null
+
+
+func player_slot_count() -> int:
+	return _Layout.player_slots_total()
+
+
+func enemy_slot_count() -> int:
+	return _Layout.enemy_slots_total()
+
 
 func _ready() -> void:
 	_rebuild_centers()
@@ -45,10 +52,11 @@ func rebuild_slot_centers_now() -> void:
 ## 与背景车道 / 出生点 Y 对齐（道路「红线」一带）
 func sync_lane(center_y: float, deploy_y_min: float, deploy_y_max: float) -> void:
 	_lane_y_center = clampf(center_y, deploy_y_min, deploy_y_max)
-	# 点击接受带：按 ROW_Y_OFFSETS 实际最小/最大行偏移覆盖全部行 + 56px 点击容差
+	# 点击接受带：按激活行偏移实际最小/最大覆盖全部行 + 56px 点击容差
 	# （行偏移加大后须动态计算，否则上行会落到接受带外导致不可点击）
-	var min_off: float = _Layout.ROW_Y_OFFSETS.min()
-	var max_off: float = _Layout.ROW_Y_OFFSETS.max()
+	var offsets: Array = _Layout.row_y_offsets()
+	var min_off: float = float(offsets.min())
+	var max_off: float = float(offsets.max())
 	_accept_y_min = _lane_y_center + min_off - 56.0
 	_accept_y_max = _lane_y_center + max_off + 56.0
 	_rebuild_centers()
@@ -56,20 +64,23 @@ func sync_lane(center_y: float, deploy_y_min: float, deploy_y_max: float) -> voi
 func _rebuild_centers() -> void:
 	player_slot_centers.clear()
 	enemy_slot_centers.clear()
-	_slot_step_x = _Layout.slot_pitch_px()
+	_slot_step_x = _Layout.slot_pitch_px(false)
 	var p0: float = _Layout.player_band_start_x()
-	for i in range(SLOT_COUNT):
+	var p_cols: int = _Layout.active_player_cols()
+	for i in range(_Layout.player_slots_total()):
 		# v9.5: 斜阵——我方 /// 每行 X 错位（上行靠中线）
-		var prow: int = i / _Layout.SLOTS_PER_SIDE
-		var sx: float = _Layout.slot_center_x_in_band(p0, i % _Layout.SLOTS_PER_SIDE) + _Layout.slot_row_x_stagger(prow, false)
-		var sy: float = _lane_y_center + _Layout.slot_y_offset_for_index(i)
+		var prow: int = i / p_cols
+		var sx: float = _Layout.slot_center_x_in_band(p0, i % p_cols, false) + _Layout.slot_row_x_stagger(prow, false)
+		var sy: float = _lane_y_center + _Layout.slot_y_offset_for_index(i, false)
 		player_slot_centers.append(Vector2(sx, sy))
+	_slot_step_x = _Layout.slot_pitch_px(true)
 	var e0: float = _Layout.enemy_band_start_x()
-	for j in range(SLOT_COUNT):
+	var e_cols: int = _Layout.active_enemy_cols()
+	for j in range(_Layout.enemy_slots_total()):
 		# v9.5: 斜阵——敌方 \\\ 镜像（上行靠中线）
-		var erow: int = j / _Layout.SLOTS_PER_SIDE
-		var ex: float = _Layout.slot_center_x_in_band(e0, j % _Layout.SLOTS_PER_SIDE) + _Layout.slot_row_x_stagger(erow, true)
-		var ey: float = _lane_y_center + _Layout.slot_y_offset_for_index(j)
+		var erow: int = j / e_cols
+		var ex: float = _Layout.slot_center_x_in_band(e0, j % e_cols, true) + _Layout.slot_row_x_stagger(erow, true)
+		var ey: float = _lane_y_center + _Layout.slot_y_offset_for_index(j, true)
 		enemy_slot_centers.append(Vector2(ex, ey))
 
 func get_player_slot_center(idx: int) -> Vector2:
@@ -84,14 +95,17 @@ func get_enemy_slot_center(idx: int) -> Vector2:
 
 func find_nearest_player_slot(battle_pos: Vector2) -> int:
 	# battle_pos：BattleSlotGrid 局部坐标（由 battlefield / spawn 系统换算）
-	# 3×3 网格：同列 3 个槽 X 相同、分属 3 行，必须用 2D 距离(X²+Y²)选最近槽；
+	# 网格：同列各行槽 X 相同，必须用 2D 距离(X²+Y²)选最近槽；
 	# 否则同列只会命中索引最小的那行（严格 < 不替换）→ 永远只能部署一行。
+	# v26.2: 废墟禁放格直接跳过（不可部署）。
 	if player_slot_centers.is_empty():
 		rebuild_slot_centers_now()
 	var local_pos: Vector2 = battle_pos
 	var best_i: int = -1
 	var best_d2: float = 1e12
 	for i in range(player_slot_centers.size()):
+		if is_edge_excluded_slot(i, "player"):
+			continue
 		var c: Vector2 = player_slot_centers[i]
 		var ddx: float = local_pos.x - c.x
 		var ddy: float = local_pos.y - c.y
@@ -121,9 +135,9 @@ func is_player_slot_occupied(idx: int, player_root: Node2D) -> bool:
 			return true
 	return false
 
-## 3×3 布局无禁放位，此函数恒返回 false（保留接口兼容）。
-static func is_edge_excluded_slot(_slot_idx: int, _side: String = "player") -> bool:
-	return false
+## v26.2: 废墟禁放格（读 CardGridBattleLayout 激活态；默认布局恒 false，行为不变）
+static func is_edge_excluded_slot(slot_idx: int, side: String = "player") -> bool:
+	return _Layout.is_slot_excluded(slot_idx, side)
 
 
 ## BU-5（战斗界面美化，2026-08-24）：部署区可视化高亮层。
@@ -148,6 +162,7 @@ class SlotHighlight extends Node2D:
 	var _free_sb: StyleBoxFlat = null
 	var _occ_sb: StyleBoxFlat = null
 	var _hov_sb: StyleBoxFlat = null
+	var _ex_sb: StyleBoxFlat = null  ## v26.2 废墟禁放格样式
 
 	func _ready() -> void:
 		z_index = -2
@@ -157,6 +172,8 @@ class SlotHighlight extends Node2D:
 		_hov_sb = _make_sb(
 			Color(DT.COLOR_GOLD.r, DT.COLOR_GOLD.g, DT.COLOR_GOLD.b, 0.95),
 			Color(DT.COLOR_GOLD.r, DT.COLOR_GOLD.g, DT.COLOR_GOLD.b, 0.15))
+		# v26.2: 废墟格——暗灰描边，_draw 里再叠对角线叉，与红/绿/金语义并列
+		_ex_sb = _make_sb(Color(0.35, 0.38, 0.42, 0.7), Color(0.05, 0.06, 0.08, 0.35))
 
 	func _process(delta: float) -> void:
 		# 本文件会被纯数据链 preload（master_platform_power 等）——禁用 autoload 全局名
@@ -192,7 +209,7 @@ class SlotHighlight extends Node2D:
 			if _player_units == null:
 				return
 		_occupied_cache.clear()
-		for i in range(_grid.SLOT_COUNT):
+		for i in range(_grid.player_slot_count()):
 			_occupied_cache.append(_grid.is_player_slot_occupied(i, _player_units))
 
 	func _update_hover() -> void:
@@ -205,11 +222,20 @@ class SlotHighlight extends Node2D:
 			return
 		var centers: Array = _grid.player_slot_centers
 		var n: int = mini(centers.size(), _occupied_cache.size())
-		var w: float = Layout.battle_card_width_px() * 1.05
+		var w: float = Layout.battle_card_width_px(false) * 1.05
 		for i in range(n):
 			var c: Vector2 = centers[i]
 			var rect := Rect2(c.x - w * 0.5, c.y - RECT_H * 0.5, w, RECT_H)
-			if i == _hover_slot and not _occupied_cache[i]:
+			if _grid.is_edge_excluded_slot(i, "player"):
+				# v26.2 废墟格：暗底 + 对角线叉，任何状态下不可部署/不悬停
+				draw_style_box(_ex_sb, rect)
+				draw_line(Vector2(rect.position.x + 4, rect.position.y + 4),
+					Vector2(rect.position.x + rect.size.x - 4, rect.position.y + rect.size.y - 4),
+					Color(0.45, 0.48, 0.52, 0.8), 2.0)
+				draw_line(Vector2(rect.position.x + rect.size.x - 4, rect.position.y + 4),
+					Vector2(rect.position.x + 4, rect.position.y + rect.size.y - 4),
+					Color(0.45, 0.48, 0.52, 0.8), 2.0)
+			elif i == _hover_slot and not _occupied_cache[i]:
 				draw_style_box(_hov_sb, rect)
 			elif _occupied_cache[i]:
 				draw_style_box(_occ_sb, rect)

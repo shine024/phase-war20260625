@@ -6,7 +6,7 @@ class_name EnemyStatResolver
 ##   hp  = base_hp  × 档位系数 × 波数 [× 势力] [× 难度]
 ##   atk = base_atk × 档位系数 × 波数 [× 势力] [× 难度]
 ##   def = base_def × 档位系数
-## 档位系数（EnemyLoadoutTiers）：低1.30 / 中1.75 / 高2.00（hp/atk/def 同系数）。
+## 档位系数（EnemyLoadoutTiers.TIER_BONUS）：新兵×1.20 / 老兵×1.30 / 精英×1.46 / 传奇×1.66（hp/atk/def 同系数）。
 ## 砍掉的旧乘区：level_stat_multiplier（关卡线性，函数已删）、master_stats、player_pressure（恒空死乘区）。
 
 const EnemyArchetypes = preload("res://data/enemy_archetypes.gd")
@@ -174,7 +174,7 @@ static func resolve_classic_enemy(archetype_id: String, ctx: EnemyStatContext) -
 	var w_hp: float = wave_hp_multiplier(ctx.wave_index)
 	var w_dmg: float = wave_damage_multiplier(ctx.wave_index)
 	var w_def: float = wave_def_multiplier(ctx.wave_index)  # v9.x：防御波次乘区
-	# v8.2: 档位系数（低1.30/中1.75/高2.00），hp/atk/def 同系数，平衡只调一处（TIER_BONUS）。
+	# v8.2: 档位系数，hp/atk/def 同系数，平衡只调一处（TIER_BONUS：新兵1.20/老兵1.30/精英1.46/传奇1.66）。
 	var tier_bonus: Dictionary = EnemyLoadoutTiers.get_bonus_for_tier(ctx.tier)
 	var tier_hp: float = 1.0 + float(tier_bonus.get("hp_pct", 0.0))
 	var tier_atk: float = 1.0 + float(tier_bonus.get("atk_pct", 0.0))
@@ -438,7 +438,7 @@ const _FACTION_DISPLAY_NAMES: Dictionary = {
 ## total_*_mul = 所有 source 之积（不含 ng_plus，因二周目在 resolver 外应用）。
 static func _build_classic_breakdown(ctx: EnemyStatContext, tier_hp: float, tier_atk: float, tier_def: float, w_hp: float, w_dmg: float, f_hp: float, f_atk: float, d_mul: float, base_hp: float, base_atk: float, base_def: float) -> Dictionary:
 	var sources: Array = []
-	# 档位：hp/atk/def 同系数（低1.30/中1.75/高2.00）
+	# 档位：hp/atk/def 同系数（新兵1.20/老兵1.30/精英1.46/传奇1.66）
 	var _tier_name: String = String(EnemyLoadoutTiers.TIER_BONUS.get(ctx.tier, {}).get("name", "档位%d" % ctx.tier))
 	sources.append({"label": "档位(%s)×%.2f" % [_tier_name, tier_hp], "hp_mul": tier_hp, "atk_mul": tier_atk, "def_mul": tier_def})
 	# 波次：HP 与攻击倍率不同（0.12 vs 0.08），分开记录

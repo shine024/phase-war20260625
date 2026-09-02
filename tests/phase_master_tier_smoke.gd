@@ -1,5 +1,6 @@
-## v7.x 相位师产兵 tier 递进 smoke test
-## 验证：get_phase_master_tier 按时代进度递进 + 驻守 19 关分布 + rune_count 限量
+## 相位师产兵 tier smoke test（v26 重写：get_phase_master_tier 恒 TIER_LEGENDARY——
+## v8.2 起已是常数，本 smoke 旧"递进"断言与实现脱节，按 v26 四档口径重写）
+## 验证：恒传奇档 + 驻守 19 关覆盖 + rune_count/enhance 派生 + 相位仪 green 完整性
 extends SceneTree
 
 const EnemyLoadoutTiers = preload("res://data/enemy_loadout_tiers.gd")
@@ -12,25 +13,12 @@ func _init() -> void:
 		push_error("[FAIL] " + msg)
 		print("  ❌ " + msg)
 
-	print("=== 1. get_phase_master_tier 按时代进度递进 ===")
-	# 时代早期 (era_progress < 0.70) → TIER_MID
-	var t_early: int = EnemyLoadoutTiers.get_phase_master_tier(0.0)
-	var t_mid: int = EnemyLoadoutTiers.get_phase_master_tier(0.5)
-	# 时代后期 (era_progress >= 0.70) → TIER_HIGH
-	var t_late: int = EnemyLoadoutTiers.get_phase_master_tier(0.75)
-	var t_boss: int = EnemyLoadoutTiers.get_phase_master_tier(1.0)
-	print("  early(0.0)=%d  mid(0.5)=%d  late(0.75)=%d  boss(1.0)=%d" % [t_early, t_mid, t_late, t_boss])
-	if t_early != EnemyLoadoutTiers.TIER_MID:
-		fail.call("early 应为 TIER_MID(2)，实际 %d" % t_early)
-	if t_mid != EnemyLoadoutTiers.TIER_MID:
-		fail.call("mid 应为 TIER_MID(2)，实际 %d" % t_mid)
-	if t_late != EnemyLoadoutTiers.TIER_HIGH:
-		fail.call("late 应为 TIER_HIGH(3)，实际 %d" % t_late)
-	if t_boss != EnemyLoadoutTiers.TIER_HIGH:
-		fail.call("boss 应为 TIER_HIGH(3)，实际 %d" % t_boss)
-	# 相位师最低保障不低于 TIER_MID（不跌到 LOW）
-	if t_early == EnemyLoadoutTiers.TIER_LOW:
-		fail.call("相位师早期不应跌到 TIER_LOW")
+	print("=== 1. get_phase_master_tier 恒传奇档（v26）===")
+	for prog in [0.0, 0.5, 0.75, 1.0]:
+		var t: int = EnemyLoadoutTiers.get_phase_master_tier(prog)
+		print("  progress=%.2f → tier=%d" % [prog, t])
+		if t != EnemyLoadoutTiers.TIER_LEGENDARY:
+			fail.call("progress %.2f 应恒为 TIER_LEGENDARY(4)，实际 %d" % [prog, t])
 
 	print("")
 	print("=== 2. 驻守 19 关 era_progress 分布 ===")
@@ -39,38 +27,28 @@ func _init() -> void:
 	print("  驻守关数：%d" % garrison_levels.size())
 	if garrison_levels.size() != 19:
 		fail.call("驻守关应为 19 个，实际 %d" % garrison_levels.size())
-	var tier_dist: Dictionary = {}
 	for lvl in garrison_levels:
 		var era_local: int = ((int(lvl) - 1) % 20) + 1
 		var prog: float = float(era_local - 1) / 19.0
 		var tier: int = EnemyLoadoutTiers.get_phase_master_tier(prog)
-		tier_dist[tier] = int(tier_dist.get(tier, 0)) + 1
-		print("  L%-3d era_local=%-2d progress=%.2f → tier=%d (%s)" % [
-			int(lvl), era_local, prog, tier,
-			"MID中配" if tier == EnemyLoadoutTiers.TIER_MID else "HIGH高配"
-		])
-	print("  分布：%s" % str(tier_dist))
-	# 应同时存在 MID 和 HIGH（不能全是 HIGH）
-	if not tier_dist.has(EnemyLoadoutTiers.TIER_MID):
-		fail.call("驻守关 tier 分布无 TIER_MID（递进失效，仍全是 HIGH）")
-	if not tier_dist.has(EnemyLoadoutTiers.TIER_HIGH):
-		fail.call("驻守关 tier 分布无 TIER_HIGH")
+		if tier != EnemyLoadoutTiers.TIER_LEGENDARY:
+			fail.call("L%d 相位师档位应恒传奇" % int(lvl))
+	print("  全部 %d 驻守关 → TIER_LEGENDARY(传奇满配) ✓" % garrison_levels.size())
 
 	print("")
 	print("=== 3. tier → enhance_level / rune_count 派生 ===")
-	var mid_bonus: Dictionary = EnemyLoadoutTiers.get_bonus_for_tier(EnemyLoadoutTiers.TIER_MID)
-	var high_bonus: Dictionary = EnemyLoadoutTiers.get_bonus_for_tier(EnemyLoadoutTiers.TIER_HIGH)
-	print("  MID:  enhance=%d rune_count=%d atk+%.0f%% hp+%.0f%%" % [
-		int(mid_bonus.get("enhance_level", 0)), int(mid_bonus.get("rune_count", 0)),
-		float(mid_bonus.get("atk_pct", 0))*100, float(mid_bonus.get("hp_pct", 0))*100])
-	print("  HIGH: enhance=%d rune_count=%d atk+%.0f%% hp+%.0f%%" % [
-		int(high_bonus.get("enhance_level", 0)), int(high_bonus.get("rune_count", 0)),
-		float(high_bonus.get("atk_pct", 0))*100, float(high_bonus.get("hp_pct", 0))*100])
-	# MID < HIGH（递进方向正确）
-	if int(mid_bonus.get("enhance_level", 0)) >= int(high_bonus.get("enhance_level", 0)):
-		fail.call("MID enhance_level 应 < HIGH")
-	if int(mid_bonus.get("rune_count", 0)) >= int(high_bonus.get("rune_count", 0)):
-		fail.call("MID rune_count 应 < HIGH")
+	var vet_bonus: Dictionary = EnemyLoadoutTiers.get_bonus_for_tier(EnemyLoadoutTiers.TIER_VETERAN)
+	var leg_bonus: Dictionary = EnemyLoadoutTiers.get_bonus_for_tier(EnemyLoadoutTiers.TIER_LEGENDARY)
+	print("  老兵:  enhance=%d rune_count=%d atk+%.0f%% hp+%.0f%%" % [
+		int(vet_bonus.get("enhance_level", 0)), int(vet_bonus.get("rune_count", 0)),
+		float(vet_bonus.get("atk_pct", 0))*100, float(vet_bonus.get("hp_pct", 0))*100])
+	print("  传奇:  enhance=%d rune_count=%d atk+%.0f%% hp+%.0f%%" % [
+		int(leg_bonus.get("enhance_level", 0)), int(leg_bonus.get("rune_count", 0)),
+		float(leg_bonus.get("atk_pct", 0))*100, float(leg_bonus.get("hp_pct", 0))*100])
+	if int(vet_bonus.get("enhance_level", 0)) >= int(leg_bonus.get("enhance_level", 0)):
+		fail.call("老兵 enhance_level 应 < 传奇")
+	if int(vet_bonus.get("rune_count", 0)) >= int(leg_bonus.get("rune_count", 0)):
+		fail.call("老兵 rune_count 应 < 传奇")
 
 	print("")
 	print("=== 4. 统一池敌方相位仪 slot_counts.green 完整性 ===")
@@ -112,23 +90,18 @@ func _init() -> void:
 	print("=== 5. era_progress 公式核对（与 battle_spawn_system 一致）===")
 	# 抽几个关卡核对 era_progress 计算
 	var test_cases: Array = [
-		# [level, expected_era_local, expected_progress_tier]
-		[10, 10, EnemyLoadoutTiers.TIER_MID],   # WW1 中期 era_local=10, prog=0.47 < 0.70 → MID
-		[20, 20, EnemyLoadoutTiers.TIER_HIGH],  # WW1 末/Boss era_local=20, prog=1.0 ≥ 0.70 → HIGH
-		[35, 15, EnemyLoadoutTiers.TIER_HIGH],  # WW2 后期 era_local=15, prog=0.74 ≥ 0.70 → HIGH
-		[45, 5,  EnemyLoadoutTiers.TIER_MID],   # COLD 早期 era_local=5, prog=0.21 < 0.70 → MID
-		[100, 20, EnemyLoadoutTiers.TIER_HIGH], # FUTURE 末/Boss prog=1.0 → HIGH
+		# [level, expected_era_local]（相位师恒传奇，era_local 仅核对进度公式）
+		[10, 10], [20, 20], [35, 15], [45, 5], [100, 20],
 	]
 	for tc in test_cases:
 		var lv: int = tc[0]
 		var exp_local: int = tc[1]
-		var exp_tier: int = tc[2]
 		var era_local: int = ((lv - 1) % 20) + 1
 		var prog: float = float(era_local - 1) / 19.0
 		var tier: int = EnemyLoadoutTiers.get_phase_master_tier(prog)
-		var ok: bool = (era_local == exp_local and tier == exp_tier)
+		var ok: bool = (era_local == exp_local and tier == EnemyLoadoutTiers.TIER_LEGENDARY)
 		print("  L%-3d era_local=%-2d prog=%.2f tier=%d %s" % [
-			lv, era_local, prog, tier, "✓" if ok else "✗ 期望 era_local=%d tier=%d" % [exp_local, exp_tier]])
+			lv, era_local, prog, tier, "✓" if ok else "✗"])
 		if not ok:
 			fail.call("L%d era_local/tier 不匹配" % lv)
 

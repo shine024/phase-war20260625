@@ -1,0 +1,1618 @@
+[
+ {
+  "id": "air_01_turbofan",
+  "name": "涡扇发动机",
+  "desc": "涡扇发动机，部署加速60%",
+  "proto": "F100-PW-220",
+  "icon": "mod_engine",
+  "file": "air_mods.gd"
+ },
+ {
+  "id": "air_02_vector_thrust",
+  "name": "矢量推力",
+  "desc": "推力矢量，机动性大幅提升",
+  "proto": "F-22/F-35",
+  "icon": "mod_thrust",
+  "file": "air_mods.gd"
+ },
+ {
+  "id": "air_03_stealth_coating",
+  "name": "隐身涂层",
+  "desc": "隐身涂层，闪避+40%",
+  "proto": "RAM吸波材料",
+  "icon": "mod_stealth",
+  "file": "air_mods.gd"
+ },
+ {
+  "id": "air_04_aesa",
+  "name": "有源相控阵雷达",
+  "desc": "多目标锁定，大范围溅射+射程提升",
+  "proto": "AN/APG-77",
+  "icon": "mod_radar",
+  "file": "air_mods.gd"
+ },
+ {
+  "id": "air_05_helmet_sight",
+  "name": "头盔瞄准具",
+  "desc": "头显瞄准，射速提升",
+  "proto": "苏-27/阿帕奇",
+  "icon": "mod_optics",
+  "file": "air_mods.gd"
+ },
+ {
+  "id": "air_06_bvr_missile",
+  "name": "超视距导弹",
+  "desc": "远程导弹，射程和暴击伤害提升",
+  "proto": "AIM-120C",
+  "icon": "mod_weapon_air",
+  "file": "air_mods.gd"
+ },
+ {
+  "id": "air_07_dogfight_missile",
+  "name": "格斗弹舱",
+  "desc": "近距格斗导弹，暴击伤害提升",
+  "proto": "AIM-9X",
+  "icon": "mod_missile",
+  "file": "air_mods.gd"
+ },
+ {
+  "id": "air_08_ecm",
+  "name": "电子对抗系统",
+  "desc": "电子干扰，导弹闪避提升",
+  "proto": "AN/ALQ-211",
+  "icon": "mod_ecm",
+  "file": "air_mods.gd"
+ },
+ {
+  "id": "air_09_air_refuel",
+  "name": "空中加油口",
+  "desc": "空中加油补给，攻速+50%",
+  "proto": "伙伴加油",
+  "icon": "mod_logistics",
+  "file": "air_mods.gd"
+ },
+ {
+  "id": "air_10_drop_tank",
+  "name": "副油箱",
+  "desc": "增加燃料，暴击率提升",
+  "proto": "增加燃料",
+  "icon": "mod_logistics",
+  "file": "air_mods.gd"
+ },
+ {
+  "id": "air_11_weapon_rack",
+  "name": "外挂武器架",
+  "desc": "外挂武器架，攻速+50%",
+  "proto": "复合挂架",
+  "icon": "mod_weapons",
+  "file": "air_mods.gd"
+ },
+ {
+  "id": "air_12_data_link",
+  "name": "数据链系统",
+  "desc": "数据链协同：自身三维攻击+7.5%，周围友军三维攻击+7.5%",
+  "proto": "Link 16",
+  "icon": "mod_command",
+  "file": "air_mods.gd"
+ },
+ {
+  "id": "air_13_ejection_seat",
+  "name": "钛合金浴缸座舱",
+  "desc": "钛合金装甲包裹座舱，抗弹能力大幅提升",
+  "proto": "A-10钛合金装甲浴缸",
+  "icon": "mod_survival",
+  "file": "air_mods.gd"
+ },
+ {
+  "id": "air_14_swing_wing",
+  "name": "可变后掠翼",
+  "desc": "可变后掠翼，部署加速40%，闪避+10%",
+  "proto": "F-14雄猫",
+  "icon": "mod_aerodynamics",
+  "file": "air_mods.gd"
+ },
+ {
+  "id": "air_15_afterburner",
+  "name": "加力燃烧室",
+  "desc": "连续攻击激活加力：每 3 次命中触发爆发，本次额外造成 40% 伤害",
+  "proto": "F-119 推力矢量引擎",
+  "icon": "mod_special",
+  "file": "air_mods.gd"
+ },
+ {
+  "id": "air_thermolite_bomb",
+  "name": "温压弹",
+  "desc": "命中30%概率挂燃烧，层数≥8时触发化学爆发（半径80感染3个相邻敌人）；助燃燃烧链触发器",
+  "proto": "云爆弹战斗部",
+  "icon": "mod_thermolite",
+  "file": "air_mods.gd"
+ },
+ {
+  "id": "air_antiradiation_missile",
+  "name": "反辐射导弹",
+  "desc": "电磁伤害+，目标石墨电子损坏层数越高伤害越高（每层+15%）；电磁脉冲链触发器",
+  "proto": "AGM-88 HARM",
+  "icon": "mod_antiradiation",
+  "file": "air_mods.gd"
+ },
+ {
+  "id": "air_targeting_laser",
+  "name": "瞄准激光",
+  "desc": "命中60%概率挂激光谐振层数（累积≥3触发多重攻击）；光束谐振链触发器",
+  "proto": "机载激光指示吊舱",
+  "icon": "mod_targeting_laser",
+  "file": "air_mods.gd"
+ },
+ {
+  "id": "air_16_phase_shift",
+  "name": "相位偏移",
+  "desc": "受到暴击时相位偏移引擎储能，下次攻击必定暴击（敌方暴击优势转化为我方反击）",
+  "proto": "相位偏移装甲板",
+  "icon": "mod_special",
+  "file": "air_mods.gd"
+ },
+ {
+  "id": "air_17_bombsight",
+  "name": "轰炸瞄准具",
+  "desc": "机械陀螺瞄准计算机，高空精确投弹——暴击与真实伤害提升",
+  "proto": "诺顿瞄准具（Norden M-9）",
+  "icon": "mod_optics",
+  "file": "air_mods.gd"
+ },
+ {
+  "id": "air_18_heavy_rack",
+  "name": "重载挂架",
+  "desc": "强化挂架结构与机体承重——耐久与对装甲投弹量提升",
+  "proto": "B-17 载弹挂架（单机 8 吨载弹量）",
+  "icon": "mod_weapon",
+  "file": "air_mods.gd"
+ },
+ {
+  "id": "air_19_cluster_dispenser",
+  "name": "集束布撒器",
+  "desc": "一次投弹覆盖大片地面目标——溅射比例与溅射范围提升（轰炸机核心件）",
+  "proto": "CBU-87 集束炸弹 / SUU-64 布撒器",
+  "icon": "mod_ammunition",
+  "file": "air_mods.gd"
+ },
+ {
+  "id": "air_20_standoff_missile",
+  "name": "防区外导弹",
+  "desc": "防区外发射的隐身巡航导弹——射程与对装甲伤害大幅提升",
+  "proto": "AGM-158 JASSM",
+  "icon": "mod_gun",
+  "file": "air_mods.gd"
+ },
+ {
+  "id": "air_21_terrain_radar",
+  "name": "地形跟随雷达",
+  "desc": "自动贴地飞行规避雷达锁定——闪避提升",
+  "proto": "F-111 TFR / 德州仪器 AN/APQ-116",
+  "icon": "mod_fire_control",
+  "file": "air_mods.gd"
+ },
+ {
+  "id": "air_22_countermeasure",
+  "name": "干扰弹布撒器",
+  "desc": "来袭导弹与防空火力的软杀伤对抗——闪避与减伤提升",
+  "proto": "AN/ALE-47 箔条/曳光弹",
+  "icon": "mod_shield_reactive",
+  "file": "air_mods.gd"
+ },
+ {
+  "id": "aa_01_radar",
+  "name": "炮瞄雷达",
+  "desc": "自动跟踪，暴击伤害和射速提升",
+  "proto": "SCR-584",
+  "icon": "mod_radar",
+  "file": "anti_air_mods.gd"
+ },
+ {
+  "id": "aa_02_iff",
+  "name": "敌我识别器",
+  "desc": "精准识别轻装目标，对轻装伤害提升",
+  "proto": "IFF Mark X",
+  "icon": "mod_electronics",
+  "file": "anti_air_mods.gd"
+ },
+ {
+  "id": "aa_03_missile_rail",
+  "name": "防空导弹挂架",
+  "desc": "对空火力大幅提升",
+  "proto": "毒刺/萨姆-7",
+  "icon": "mod_missile",
+  "file": "anti_air_mods.gd"
+ },
+ {
+  "id": "aa_04_quad_mount",
+  "name": "双联/四联装",
+  "desc": "多管并联，射速提升",
+  "proto": "M45四联.50",
+  "icon": "mod_mount",
+  "file": "anti_air_mods.gd"
+ },
+ {
+  "id": "aa_05_proximity_fuze",
+  "name": "近炸引信",
+  "desc": "暴击伤害和溅射提升",
+  "proto": "二战重大发明",
+  "icon": "mod_fuze",
+  "file": "anti_air_mods.gd"
+ },
+ {
+  "id": "aa_06_laser",
+  "name": "激光近防系统",
+  "desc": "30%概率激光拦截来袭弹药（无限弹药，无次数限制）",
+  "proto": "HELIOS",
+  "icon": "mod_laser",
+  "file": "anti_air_mods.gd"
+ },
+ {
+  "id": "aa_07_aesa",
+  "name": "相控阵雷达",
+  "desc": "多目标锁定，大范围溅射+射程提升",
+  "proto": "AN/MPQ-65",
+  "icon": "mod_radar",
+  "file": "anti_air_mods.gd"
+ },
+ {
+  "id": "aa_08_power_gen",
+  "name": "车载发电机组",
+  "desc": "持续供电，攻速+100%",
+  "proto": "自行高炮必备",
+  "icon": "mod_power",
+  "file": "anti_air_mods.gd"
+ },
+ {
+  "id": "aa_09_smoke_launcher",
+  "name": "烟幕弹发射器",
+  "desc": "闪避提升30%",
+  "proto": "76mm烟幕",
+  "icon": "mod_countermeasure",
+  "file": "anti_air_mods.gd"
+ },
+ {
+  "id": "aa_10_camouflage",
+  "name": "伪装网",
+  "desc": "伪装隐蔽，闪避+30%",
+  "proto": "红外伪装网",
+  "icon": "mod_stealth",
+  "file": "anti_air_mods.gd"
+ },
+ {
+  "id": "aa_11_auto_fc",
+  "name": "自动化火控",
+  "desc": "全自动火控，射速和暴击伤害提升",
+  "proto": "天空卫士",
+  "icon": "mod_fire_control",
+  "file": "anti_air_mods.gd"
+ },
+ {
+  "id": "aa_12_fire_on_move",
+  "name": "行进间射击",
+  "desc": "行进间速射，攻速+10%，暴击率-20%",
+  "proto": "ZSU-23-4",
+  "icon": "mod_mobility",
+  "file": "anti_air_mods.gd"
+ },
+ {
+  "id": "aa_13_radar_lock",
+  "name": "雷达锁定",
+  "desc": "锁定空中目标：40% 概率标记目标，被标记目标受到 +30% 额外伤害，持续 5 秒",
+  "proto": "AN/MPQ-64 哨兵雷达",
+  "icon": "mod_guidance",
+  "file": "anti_air_mods.gd"
+ },
+ {
+  "id": "aa_emp_warhead",
+  "name": "电磁战斗部",
+  "desc": "40%概率释放电磁脉冲（降攻速/暴击/闪避+真实伤害），目标石墨电子损坏层数越高伤害越高；电磁脉冲链触发器",
+  "proto": "微波战斗部",
+  "icon": "mod_emp_warhead",
+  "file": "anti_air_mods.gd"
+ },
+ {
+  "id": "aa_acid_warhead",
+  "name": "酸液战斗部",
+  "desc": "45%概率挂化学毒，目标化学层数≥5时额外护甲穿透+20%；化学污染场触发器",
+  "proto": "腐蚀性酸战斗部",
+  "icon": "mod_acid",
+  "file": "anti_air_mods.gd"
+ },
+ {
+  "id": "aa_14_searchlight",
+  "name": "探照灯组",
+  "desc": "夜间照明锁定轰炸机群——对空命中要害率提升",
+  "proto": "不列颠空战 150cm 探照灯带",
+  "icon": "mod_optics",
+  "file": "anti_air_mods.gd"
+ },
+ {
+  "id": "aa_15_flak_burst",
+  "name": "定时引信防空弹",
+  "desc": "空炸弹幕覆盖机群航线——对空伤害与溅射提升",
+  "proto": "Flak 88 / 博福斯定时引信弹",
+  "icon": "mod_ammunition",
+  "file": "anti_air_mods.gd"
+ },
+ {
+  "id": "arm_01_sloped_armor",
+  "name": "倾斜装甲",
+  "desc": "倾斜装甲增加等效厚度：固定防护+百分比防护双通道",
+  "proto": "T-34革命设计",
+  "icon": "mod_armor",
+  "file": "armor_mods.gd"
+ },
+ {
+  "id": "arm_02_composite_armor",
+  "name": "复合装甲",
+  "desc": "多层复合装甲，对装甲防御+30%，减伤+50%",
+  "proto": "乔巴姆",
+  "icon": "mod_armor_special",
+  "file": "armor_mods.gd"
+ },
+ {
+  "id": "arm_03_reactive_armor",
+  "name": "爆反装甲",
+  "desc": "爆炸反应装甲：受击时反弹30%伤害给攻击者，可触发3次",
+  "proto": "接触-1",
+  "icon": "mod_shield_reactive",
+  "file": "armor_mods.gd"
+ },
+ {
+  "id": "arm_04_aps",
+  "name": "主动防护",
+  "desc": "拦截来袭导弹：30%概率完全免伤，可触发3次",
+  "proto": "铁拳/竞技场",
+  "icon": "mod_active",
+  "file": "armor_mods.gd"
+ },
+ {
+  "id": "arm_05_smoothbore",
+  "name": "滑膛炮",
+  "desc": "换装滑膛炮：对装甲攻击替换为确定值（弱炮大升、等效火力不重复换装）",
+  "proto": "莱茵金属L44",
+  "icon": "mod_gun",
+  "file": "armor_mods.gd"
+ },
+ {
+  "id": "arm_06_apfsds",
+  "name": "尾翼稳定脱壳穿甲弹",
+  "desc": "高动能穿甲弹，对装甲伤害最大化",
+  "proto": "北约标准",
+  "icon": "mod_ammo_apfsds",
+  "file": "armor_mods.gd"
+ },
+ {
+  "id": "arm_07_gun_missile",
+  "name": "炮射导弹",
+  "desc": "可攻击空中目标，增加对空能力",
+  "proto": "红宝石/反射",
+  "icon": "mod_gun",
+  "file": "armor_mods.gd"
+ },
+ {
+  "id": "arm_08_autoloader",
+  "name": "自动装弹机",
+  "desc": "自动装填，射速大幅提升",
+  "proto": "T-64首创",
+  "icon": "mod_autoloader",
+  "file": "armor_mods.gd"
+ },
+ {
+  "id": "arm_09_turbine",
+  "name": "燃气轮机",
+  "desc": "燃气轮机，部署加速40%",
+  "proto": "M1艾布拉姆斯",
+  "icon": "mod_engine",
+  "file": "armor_mods.gd"
+ },
+ {
+  "id": "arm_10_diesel_turbo",
+  "name": "柴油增压引擎",
+  "desc": "增压柴油机，部署加速20%，生命+10%",
+  "proto": "MTU发动机",
+  "icon": "mod_engine",
+  "file": "armor_mods.gd"
+ },
+ {
+  "id": "arm_11_fire_control",
+  "name": "猎歼火控",
+  "desc": "猎歼火控系统，精准度大幅提升",
+  "proto": "豹2",
+  "icon": "mod_fire_control",
+  "file": "armor_mods.gd"
+ },
+ {
+  "id": "arm_12_thermal_sight",
+  "name": "热成像瞄准镜",
+  "desc": "热成像瞄准，暴击率+15%",
+  "proto": "M60A3 TTS",
+  "icon": "mod_optics",
+  "file": "armor_mods.gd"
+ },
+ {
+  "id": "arm_13_deep_wading",
+  "name": "火控计算机",
+  "desc": "弹道计算机实时解算，开火节奏加快",
+  "proto": "M1艾布拉姆斯火控系统",
+  "icon": "mod_environment",
+  "file": "armor_mods.gd"
+ },
+ {
+  "id": "arm_14_mine_plow",
+  "name": "扫雷滚/犁",
+  "desc": "附加装甲提升三维防御+30%，轻微减速",
+  "proto": "以色列地毯",
+  "icon": "mod_engineering",
+  "file": "armor_mods.gd"
+ },
+ {
+  "id": "arm_15_data_link",
+  "name": "战术数据链",
+  "desc": "数据链协同：自身暴击+5%，周围友军暴击+10%",
+  "proto": "Link 16",
+  "icon": "mod_command",
+  "file": "armor_mods.gd"
+ },
+ {
+  "id": "arm_16_battle_frenzy",
+  "name": "战斗狂热",
+  "desc": "承受攻击积累怒气，受击 8 次后激活战斗狂热：5 秒内攻击力 +35%",
+  "proto": "损伤响应式反应装甲",
+  "icon": "mod_special",
+  "file": "armor_mods.gd"
+ },
+ {
+  "id": "arm_17_spacer_armor",
+  "name": "附加钢板",
+  "desc": "焊接附加钢板+空气层间隙——固定防护+百分比防护双通道",
+  "proto": "谢尔曼/四号附加装甲板（Standeschützen）",
+  "icon": "mod_armor",
+  "file": "armor_mods.gd"
+ },
+ {
+  "id": "arm_18_gun_mantlet",
+  "name": "厚重炮盾",
+  "desc": "火炮根部整体式厚炮盾，正面防护显著提升",
+  "proto": "虎式 150mm 炮盾（Turmschild）",
+  "icon": "mod_armor",
+  "file": "armor_mods.gd"
+ },
+ {
+  "id": "art_01_rifling",
+  "name": "膛线强化",
+  "desc": "加长炮管+膛线优化，射程和精度提升",
+  "proto": "莱茵金属L55",
+  "icon": "mod_barrel",
+  "file": "artillery_mods.gd"
+ },
+ {
+  "id": "art_02_extended_range",
+  "name": "增程弹",
+  "desc": "火箭增程，射程大幅提升，威力略降",
+  "proto": "M549火箭增程弹",
+  "icon": "mod_ammo_extended",
+  "file": "artillery_mods.gd"
+ },
+ {
+  "id": "art_03_guided_shell",
+  "name": "精确制导炮弹",
+  "desc": "GPS制导，暴击率和暴击伤害大幅提升",
+  "proto": "M982神剑",
+  "icon": "mod_guidance",
+  "file": "artillery_mods.gd"
+ },
+ {
+  "id": "art_04_cluster_munition",
+  "name": "子母弹",
+  "desc": "范围伤害增加，单目标伤害略降",
+  "proto": "M26火箭弹",
+  "icon": "mod_ammo_cluster",
+  "file": "artillery_mods.gd"
+ },
+ {
+  "id": "art_05_counter_battery_radar",
+  "name": "反炮兵雷达",
+  "desc": "精确反击，暴击伤害提升",
+  "proto": "AN/TPQ-53",
+  "icon": "mod_radar",
+  "file": "artillery_mods.gd"
+ },
+ {
+  "id": "art_06_fire_computer",
+  "name": "射击计算机",
+  "desc": "自动计算弹道，射速大幅提升",
+  "proto": "M18弹道计算机",
+  "icon": "mod_fire_control",
+  "file": "artillery_mods.gd"
+ },
+ {
+  "id": "art_07_ammo_supply",
+  "name": "弹药运输车",
+  "desc": "持续射击时间大幅延长",
+  "proto": "补给车",
+  "icon": "mod_logistics",
+  "file": "artillery_mods.gd"
+ },
+ {
+  "id": "art_08_uav",
+  "name": "炮兵侦察无人机",
+  "desc": "无人机校射，暴击伤害+炮兵攻速提升",
+  "proto": "RQ-7影子",
+  "icon": "mod_recon",
+  "file": "artillery_mods.gd"
+ },
+ {
+  "id": "art_09_rapid_fire",
+  "name": "急速射系统",
+  "desc": "优化装填流程，射速提升",
+  "proto": "立楔式炮闩",
+  "icon": "mod_autoloader",
+  "file": "artillery_mods.gd"
+ },
+ {
+  "id": "art_10_auto_nav",
+  "name": "自动导航系统",
+  "desc": "自动行进定位，部署速度提升",
+  "proto": "车载GPS/惯导",
+  "icon": "mod_mobility",
+  "file": "artillery_mods.gd"
+ },
+ {
+  "id": "art_11_thermobaric",
+  "name": "温压弹",
+  "desc": "温压弹头，对堡垒伤害大幅提升",
+  "proto": "TOS-1喷火坦克",
+  "icon": "mod_ammo_thermobaric",
+  "file": "artillery_mods.gd"
+ },
+ {
+  "id": "art_12_fortification",
+  "name": "火炮掩体",
+  "desc": "防御阵地，防护提升，部署略慢",
+  "proto": "混凝土阵地",
+  "icon": "mod_fortification",
+  "file": "artillery_mods.gd"
+ },
+ {
+  "id": "art_13_apfsds_sabot",
+  "name": "尾翼稳定脱壳穿甲",
+  "desc": "每次命中撕裂目标装甲：降低 8% 防御，最多叠加 5 层（累计 -40% 防御）",
+  "proto": "M829A4 穿甲弹",
+  "icon": "mod_ammo_apfsds",
+  "file": "artillery_mods.gd"
+ },
+ {
+  "id": "art_14_counter_battery",
+  "name": "反击炮击",
+  "desc": "被攻击时自动标记攻击者（5秒），炮兵优先反击被标记目标，并额外获得 2 次优先反击机会",
+  "proto": "AN/TPQ-36 反炮兵雷达",
+  "icon": "mod_special",
+  "file": "artillery_mods.gd"
+ },
+ {
+  "id": "art_15_emp_round",
+  "name": "电磁脉冲弹",
+  "desc": "攻击40%概率触发电磁脉冲：目标攻速-30%、暴击-20%、闪避-15%（4秒），并造成12点真实伤害（蓝色电弧）",
+  "proto": "电磁脉冲炮弹",
+  "icon": "mod_special",
+  "file": "artillery_mods.gd"
+ },
+ {
+  "id": "art_16_nano_virus",
+  "name": "纳米病毒弹",
+  "desc": "攻击25%概率注入纳米病毒：目标每秒损失2%最大生命值，持续8秒（紫色粒子，打肉盾专用）",
+  "proto": "纳米机械病毒弹头",
+  "icon": "mod_special",
+  "file": "artillery_mods.gd"
+ },
+ {
+  "id": "art_incendiary_mix",
+  "name": "助燃剂弹",
+  "desc": "命中40%概率挂助燃剂标记（层数累积），与白磷弹/温压弹组成助燃燃烧链",
+  "proto": "镁粉混合弹药",
+  "icon": "mod_ammo_incendiary",
+  "file": "artillery_mods.gd"
+ },
+ {
+  "id": "art_white_phosphorus",
+  "name": "白磷弹",
+  "desc": "35%概率挂燃烧，助燃剂层数越高燃烧概率越大；套路激活时燃烧层数上限 5→10",
+  "proto": "M825白磷发烟弹",
+  "icon": "mod_ammo_phosphorus",
+  "file": "artillery_mods.gd"
+ },
+ {
+  "id": "art_graphite_fiber",
+  "name": "石墨纤维弹",
+  "desc": "命中50%概率累积石墨电子损坏层数，与电磁战斗部/反辐射导弹组成电磁脉冲链",
+  "proto": "石墨纤维战斗部",
+  "icon": "mod_ammo_graphite",
+  "file": "artillery_mods.gd"
+ },
+ {
+  "id": "art_nano_amp",
+  "name": "纳米放大器",
+  "desc": "纳米病毒概率+伤害+，与纳米播种机/纳米催化剂组成纳米浓度场套路",
+  "proto": "纳米谐振弹头",
+  "icon": "mod_nano_amp",
+  "file": "artillery_mods.gd"
+ },
+ {
+  "id": "art_chem_cluster",
+  "name": "化学集束弹",
+  "desc": "50%概率挂化学毒，每次命中累积战场化学污染度；与酸液战斗部/化学喷洒器组成化学污染场套路",
+  "proto": "M687化学子母弹",
+  "icon": "mod_ammo_chem",
+  "file": "artillery_mods.gd"
+ },
+ {
+  "id": "sup_nano_seeder",
+  "name": "纳米播种机",
+  "desc": "每次攻击累积战场纳米浓度，浓度越高纳米病毒伤害越高；纳米浓度场触发器",
+  "proto": "纳米粒子播撒装置",
+  "icon": "mod_nano_seeder",
+  "file": "artillery_mods.gd"
+ },
+ {
+  "id": "sup_targeting_drone",
+  "name": "目标指示无人机",
+  "desc": "增强无人机标记范围+易伤值，与相控阵雷达叠加触发集火链式弱点暴露；侦察链式触发器",
+  "proto": "标定攻击无人机",
+  "icon": "mod_targeting_drone",
+  "file": "artillery_mods.gd"
+ },
+ {
+  "id": "eng_01_mine_sweeper",
+  "name": "反应装甲",
+  "desc": "破甲弹命中时爆炸反制，大幅减免伤害",
+  "proto": "Kontakt-5爆炸反应装甲",
+  "icon": "mod_engineering",
+  "file": "engineer_mods.gd"
+ },
+ {
+  "id": "eng_02_explosives",
+  "name": "爆破装置",
+  "desc": "对堡垒伤害大幅提升",
+  "proto": "C4/塑胶炸药",
+  "icon": "mod_demolition",
+  "file": "engineer_mods.gd"
+ },
+ {
+  "id": "eng_03_welding",
+  "name": "焊接设备",
+  "desc": "持续回复生命值",
+  "proto": "战场抢修",
+  "icon": "mod_repair",
+  "file": "engineer_mods.gd"
+ },
+ {
+  "id": "eng_04_bridge",
+  "name": "架桥设备",
+  "desc": "部署加速5%",
+  "proto": "坦克架桥车",
+  "icon": "mod_bridge",
+  "file": "engineer_mods.gd"
+ },
+ {
+  "id": "eng_05_shovel",
+  "name": "工程铲",
+  "desc": "防御提升，轻微减速",
+  "proto": "推土铲",
+  "icon": "mod_digging",
+  "file": "engineer_mods.gd"
+ },
+ {
+  "id": "eng_06_crane",
+  "name": "间隙装甲",
+  "desc": "外挂间隙装甲板，提前引爆来袭弹丸",
+  "proto": "谢尔曼/四号附加装甲板",
+  "icon": "mod_recovery",
+  "file": "engineer_mods.gd"
+ },
+ {
+  "id": "eng_07_generator",
+  "name": "发电机",
+  "desc": "野战发电，三维防御+12.5%",
+  "proto": "野战发电站",
+  "icon": "mod_power",
+  "file": "engineer_mods.gd"
+ },
+ {
+  "id": "eng_08_medical",
+  "name": "战场急救站",
+  "desc": "战场医疗，每秒回复0.15%生命值",
+  "proto": "机动医疗单元",
+  "icon": "mod_medical",
+  "file": "engineer_mods.gd"
+ },
+ {
+  "id": "eng_09_supply",
+  "name": "弹药补给车",
+  "desc": "弹药补给：自身攻速+15%，周围友军攻速+30%",
+  "proto": "运输车",
+  "icon": "mod_logistics",
+  "file": "engineer_mods.gd"
+ },
+ {
+  "id": "eng_10_camouflage",
+  "name": "伪装网系统",
+  "desc": "伪装隐蔽，闪避+15%",
+  "proto": "大型伪装系统",
+  "icon": "mod_stealth",
+  "file": "engineer_mods.gd"
+ },
+ {
+  "id": "eng_11_breaching_charge",
+  "name": "爆破装药",
+  "desc": "对堡垒和装甲目标造成额外真实伤害：每次命中扣除目标当前生命值的 5%（无视防御）",
+  "proto": "M112 定向爆破装药",
+  "icon": "mod_ammunition",
+  "file": "engineer_mods.gd"
+ },
+ {
+  "id": "eng_12_reactive_engineering",
+  "name": "爆反工程装甲",
+  "desc": "工程车辆改装爆反装甲：受击时反弹25%伤害，可触发2次",
+  "proto": "扫雷艇反应装甲套件",
+  "icon": "mod_armor",
+  "file": "engineer_mods.gd"
+ },
+ {
+  "id": "eng_13_supply_cache",
+  "name": "补给遗物",
+  "desc": "阵亡时遗落补给：治疗周围180像素内友军，恢复量等于自身15%最大生命值",
+  "proto": "自毁式补给投放器",
+  "icon": "mod_special",
+  "file": "engineer_mods.gd"
+ },
+ {
+  "id": "eng_optical_fiber",
+  "name": "光纤链路",
+  "desc": "光束类武器伤害+20%，光束谐振链全局增益",
+  "proto": "战场光纤通信网",
+  "icon": "mod_optical_fiber",
+  "file": "engineer_mods.gd"
+ },
+ {
+  "id": "eng_chem_sprayer",
+  "name": "化学喷洒器",
+  "desc": "攻击50%概率范围挂化学毒（累积战场污染度），化学污染场触发器",
+  "proto": "车载化学喷洒系统",
+  "icon": "mod_chem_sprayer",
+  "file": "engineer_mods.gd"
+ },
+ {
+  "id": "eng_14_salvage_drone",
+  "name": "回收无人机",
+  "desc": "击毁敌方单位时自动回收其残余纳米材料修复自身（回复目标最大生命 8%）",
+  "proto": "战场回收无人机群",
+  "icon": "mod_special",
+  "file": "engineer_mods.gd"
+ },
+ {
+  "id": "enh_hp_up",
+  "name": "体质训练",
+  "desc": "HP提升",
+  "proto": "体能强化训练",
+  "icon": "mod_enhancement",
+  "file": "enhancement_mods.gd"
+ },
+ {
+  "id": "enh_dmg_up",
+  "name": "火力训练",
+  "desc": "三维攻击提升",
+  "proto": "火力压制训练",
+  "icon": "mod_enhancement",
+  "file": "enhancement_mods.gd"
+ },
+ {
+  "id": "enh_def_up",
+  "name": "防护训练",
+  "desc": "伤害减免",
+  "proto": "防护战术训练",
+  "icon": "mod_enhancement",
+  "file": "enhancement_mods.gd"
+ },
+ {
+  "id": "enh_def_flat",
+  "name": "坚壁训练",
+  "desc": "三维防御提升",
+  "proto": "阵地防御训练",
+  "icon": "mod_enhancement",
+  "file": "enhancement_mods.gd"
+ },
+ {
+  "id": "enh_speed_up",
+  "name": "机动训练",
+  "desc": "移动速度提升",
+  "proto": "机动突击训练",
+  "icon": "mod_enhancement",
+  "file": "enhancement_mods.gd"
+ },
+ {
+  "id": "enh_range_up",
+  "name": "索敌训练",
+  "desc": "射程提升",
+  "proto": "侦察索敌训练",
+  "icon": "mod_enhancement",
+  "file": "enhancement_mods.gd"
+ },
+ {
+  "id": "enh_atkspd_up",
+  "name": "反应训练",
+  "desc": "攻速提升（间隔降低）",
+  "proto": "快速反应训练",
+  "icon": "mod_enhancement",
+  "file": "enhancement_mods.gd"
+ },
+ {
+  "id": "enh_crit",
+  "name": "弱点洞察",
+  "desc": "暴击率提升",
+  "proto": "弱点识别训练",
+  "icon": "mod_enhancement",
+  "file": "enhancement_mods.gd"
+ },
+ {
+  "id": "enh_lifesteal",
+  "name": "战场回收",
+  "desc": "击杀敌方单位时回复自身最大生命值",
+  "proto": "战场补给训练",
+  "icon": "mod_enhancement",
+  "file": "enhancement_mods.gd"
+ },
+ {
+  "id": "enh_splash",
+  "name": "爆破战技",
+  "desc": "溅射伤害",
+  "proto": "区域压制战技",
+  "icon": "mod_enhancement",
+  "file": "enhancement_mods.gd"
+ },
+ {
+  "id": "enh_penetration",
+  "name": "破甲专精",
+  "desc": "穿甲提升",
+  "proto": "反装甲战技",
+  "icon": "mod_enhancement",
+  "file": "enhancement_mods.gd"
+ },
+ {
+  "id": "enh_regen",
+  "name": "野战急救",
+  "desc": "每秒回血",
+  "proto": "战场急救训练",
+  "icon": "mod_enhancement",
+  "file": "enhancement_mods.gd"
+ },
+ {
+  "id": "enh_chain",
+  "name": "连锁战术",
+  "desc": "连锁概率",
+  "proto": "多目标接战训练",
+  "icon": "mod_enhancement",
+  "file": "enhancement_mods.gd"
+ },
+ {
+  "id": "enh_shield_kill",
+  "name": "收割本能",
+  "desc": "击杀获得护盾",
+  "proto": "战意觉醒",
+  "icon": "mod_enhancement",
+  "file": "enhancement_mods.gd"
+ },
+ {
+  "id": "enh_dodge",
+  "name": "本能闪避",
+  "desc": "闪避率提升",
+  "proto": "危机感知训练",
+  "icon": "mod_enhancement",
+  "file": "enhancement_mods.gd"
+ },
+ {
+  "id": "enh_crit_dmg",
+  "name": "致命精通",
+  "desc": "暴击伤害加成",
+  "proto": "致命打击精通",
+  "icon": "mod_enhancement",
+  "file": "enhancement_mods.gd"
+ },
+ {
+  "id": "for_01_concrete",
+  "name": "钢筋混凝土装甲",
+  "desc": "标准碉堡装甲，防护大幅提升",
+  "proto": "碉堡标准",
+  "icon": "mod_armor",
+  "file": "fort_mods.gd"
+ },
+ {
+  "id": "for_02_tunnel",
+  "name": "地下坑道",
+  "desc": "地下工事全方位防御，对轻/空/炮伤害减免",
+  "proto": "马奇诺防线",
+  "icon": "mod_network",
+  "file": "fort_mods.gd"
+ },
+ {
+  "id": "for_03_auto_turret",
+  "name": "自动炮塔",
+  "desc": "自动化射击，射速提升",
+  "proto": "遥控武器站",
+  "icon": "mod_automation",
+  "file": "fort_mods.gd"
+ },
+ {
+  "id": "for_04_filtration",
+  "name": "通风过滤系统",
+  "desc": "减伤提升",
+  "proto": "核生化防护",
+  "icon": "mod_protection",
+  "file": "fort_mods.gd"
+ },
+ {
+  "id": "for_05_ammo_dump",
+  "name": "弹药库",
+  "desc": "攻击力提升",
+  "proto": "地下弹药库",
+  "icon": "mod_ammunition",
+  "file": "fort_mods.gd"
+ },
+ {
+  "id": "for_06_radar",
+  "name": "雷达天线",
+  "desc": "精准索敌，暴击率提升",
+  "proto": "远程预警雷达",
+  "icon": "mod_radar",
+  "file": "fort_mods.gd"
+ },
+ {
+  "id": "for_07_camouflage",
+  "name": "伪装系统",
+  "desc": "要塞伪装，闪避+50%",
+  "proto": "伪装网/植被",
+  "icon": "mod_stealth",
+  "file": "fort_mods.gd"
+ },
+ {
+  "id": "for_08_trench",
+  "name": "反坦克壕",
+  "desc": "反坦克壕，对装甲伤害+50%",
+  "proto": "堑壕系统",
+  "icon": "mod_obstacle",
+  "file": "fort_mods.gd"
+ },
+ {
+  "id": "for_09_minefield",
+  "name": "雷场",
+  "desc": "雷场封锁，对轻装伤害+10%",
+  "proto": "反坦克/人员地雷",
+  "icon": "mod_minefield",
+  "file": "fort_mods.gd"
+ },
+ {
+  "id": "for_10_command",
+  "name": "指挥塔",
+  "desc": "指挥协同：自身暴击+7.5%，周围友军暴击+15%",
+  "proto": "要塞核心",
+  "icon": "mod_command",
+  "file": "fort_mods.gd"
+ },
+ {
+  "id": "for_11_advanced_minefield",
+  "name": "强化雷场",
+  "desc": "堡垒外围部署智能雷场：对接近的敌人造成150点一次性爆炸伤害",
+  "proto": "智能反坦克雷场",
+  "icon": "mod_special",
+  "file": "fort_mods.gd"
+ },
+ {
+  "id": "for_12_anti_tank_trench",
+  "name": "反坦克壕",
+  "desc": "挖掘反坦克壕：200像素范围内敌方移速降低40%",
+  "proto": "壕堑系统",
+  "icon": "mod_special",
+  "file": "fort_mods.gd"
+ },
+ {
+  "id": "for_13_command_bunker",
+  "name": "指挥地堡",
+  "desc": "强化指挥塔：250像素范围内友军暴击+15%",
+  "proto": "地下指挥中心",
+  "icon": "mod_command",
+  "file": "fort_mods.gd"
+ },
+ {
+  "id": "for_14_bomb_shelter",
+  "name": "防空洞加固",
+  "desc": "顶层防爆隔层与地下掩体——减伤与耐久提升（轰炸反制件）",
+  "proto": "马奇诺/齐格菲地下工事",
+  "icon": "mod_engineering",
+  "file": "fort_mods.gd"
+ },
+ {
+  "id": "inf_01_submachine_gun",
+  "name": "冲锋枪改装",
+  "desc": "缩短枪管+大容量弹鼓，提升近战压制能力",
+  "proto": "MP18/汤普森",
+  "icon": "mod_weapon",
+  "file": "infantry_mods.gd"
+ },
+ {
+  "id": "inf_02_assault_rifle",
+  "name": "突击步枪化",
+  "desc": "中间威力弹革命，火力与机动性平衡",
+  "proto": "STG44",
+  "icon": "mod_weapon",
+  "file": "infantry_mods.gd"
+ },
+ {
+  "id": "inf_03_small_caliber",
+  "name": "小口径化",
+  "desc": "携弹量翻倍，持续作战能力提升",
+  "proto": "M16/5.56mm",
+  "icon": "mod_weapon",
+  "file": "infantry_mods.gd"
+ },
+ {
+  "id": "inf_04_bullpup",
+  "name": "无托结构",
+  "desc": "枪机后置，全长缩短，机动性提升",
+  "proto": "AUG/法玛斯",
+  "icon": "mod_weapon",
+  "file": "infantry_mods.gd"
+ },
+ {
+  "id": "inf_05_ap_ammo",
+  "name": "穿甲弹",
+  "desc": "钨芯穿透弹头，让步兵能对抗装甲目标",
+  "proto": "M993钨芯弹",
+  "icon": "mod_ammunition",
+  "file": "infantry_mods.gd"
+ },
+ {
+  "id": "inf_06_hp_ammo",
+  "name": "空尖弹",
+  "desc": "扩张弹头，对软组织目标停止作用极强",
+  "proto": ".45 ACP HP",
+  "icon": "mod_ammunition",
+  "file": "infantry_mods.gd"
+ },
+ {
+  "id": "inf_07_optical_scope",
+  "name": "光学瞄准镜",
+  "desc": "提高中距离命中率和有效射程",
+  "proto": "ACOG 4倍镜",
+  "icon": "mod_optics",
+  "file": "infantry_mods.gd"
+ },
+ {
+  "id": "inf_08_holographic",
+  "name": "全息瞄准镜",
+  "desc": "近战快速瞄准，反应速度提升",
+  "proto": "EOTech",
+  "icon": "mod_optics",
+  "file": "infantry_mods.gd"
+ },
+ {
+  "id": "inf_09_dual_mag",
+  "name": "双弹匣并联",
+  "desc": "换弹时间减半，持续火力压制",
+  "proto": "丛林弹匣扣",
+  "icon": "mod_ergonomics",
+  "file": "infantry_mods.gd"
+ },
+ {
+  "id": "inf_10_saw",
+  "name": "班用机枪化",
+  "desc": "弹链供弹，持续压制火力",
+  "proto": "M249 SAW",
+  "icon": "mod_weapon",
+  "file": "infantry_mods.gd"
+ },
+ {
+  "id": "inf_11_armor_insert",
+  "name": "防弹插板",
+  "desc": "抵御步枪弹直射，防护力显著提升",
+  "proto": "ESAPI碳化硼板",
+  "icon": "mod_armor",
+  "file": "infantry_mods.gd"
+ },
+ {
+  "id": "inf_12_body_armor",
+  "name": "防弹背心",
+  "desc": "前后插板+侧甲，全方位防护",
+  "proto": "IOTV模块化",
+  "icon": "mod_armor",
+  "file": "infantry_mods.gd"
+ },
+ {
+  "id": "inf_13_helmet_upgrade",
+  "name": "头盔升级",
+  "desc": "复合材料+附件接口，防护与兼容性提升",
+  "proto": "MICH 2000→FAST",
+  "icon": "mod_helmet",
+  "file": "infantry_mods.gd"
+ },
+ {
+  "id": "inf_14_knee_pads",
+  "name": "护膝护肘",
+  "desc": "护具减负，部署加速10%",
+  "proto": "战斗服内置护具",
+  "icon": "mod_mobility",
+  "file": "infantry_mods.gd"
+ },
+ {
+  "id": "inf_15_riot_shield",
+  "name": "防弹盾牌",
+  "desc": "移动掩体，防护力大幅提升",
+  "proto": "防弹盾（凯夫拉）",
+  "icon": "mod_shield",
+  "file": "infantry_mods.gd"
+ },
+ {
+  "id": "inf_16_exoskeleton",
+  "name": "外骨骼原型",
+  "desc": "负重翻倍，机动性和部署速度提升",
+  "proto": "HULC/XOS 2",
+  "icon": "mod_exoskeleton",
+  "file": "infantry_mods.gd"
+ },
+ {
+  "id": "inf_17_tourniquet",
+  "name": "止血带",
+  "desc": "四肢大出血控制，战斗内缓慢回复",
+  "proto": "CAT止血带",
+  "icon": "mod_medical",
+  "file": "infantry_mods.gd"
+ },
+ {
+  "id": "inf_18_ifak",
+  "name": "战场急救包",
+  "desc": "止血+气道管理，濒死时回复15%HP（每战1次）",
+  "proto": "IFAK单兵急救",
+  "icon": "mod_medical",
+  "file": "infantry_mods.gd"
+ },
+ {
+  "id": "inf_19_radio",
+  "name": "单兵电台",
+  "desc": "战术通讯：自身攻速+5%，周围友军攻击力+3%",
+  "proto": "PRC-152",
+  "icon": "mod_comms",
+  "file": "infantry_mods.gd"
+ },
+ {
+  "id": "inf_20_night_vision",
+  "name": "夜视仪",
+  "desc": "微光夜视瞄准，暴击率+15%",
+  "proto": "PVS-14",
+  "icon": "mod_optics",
+  "file": "infantry_mods.gd"
+ },
+ {
+  "id": "inf_21_thermal",
+  "name": "热成像",
+  "desc": "热成像瞄准，暴击率+23%",
+  "proto": "AN/PAS-13",
+  "icon": "mod_optics",
+  "file": "infantry_mods.gd"
+ },
+ {
+  "id": "inf_22_breaching",
+  "name": "破门工具",
+  "desc": "破门装备，部署加速20%，对轻装伤害-5%",
+  "proto": "霰弹枪/破门锤",
+  "icon": "mod_environment",
+  "file": "infantry_mods.gd"
+ },
+ {
+  "id": "inf_23_combat_stimulant",
+  "name": "战斗兴奋剂",
+  "desc": "连续攻击积累战斗节奏，每 5 次命中触发爆发，额外造成 25% 伤害",
+  "proto": "肾上腺素自动注射器",
+  "icon": "mod_special",
+  "file": "infantry_mods.gd"
+ },
+ {
+  "id": "inf_24_urban_warfare",
+  "name": "巷战教范",
+  "desc": "城市作战训练：受到装甲和空军单位攻击时伤害减免 50%（步兵克制坦克飞机）",
+  "proto": "城市作战手册+反应装甲套件",
+  "icon": "mod_special",
+  "file": "infantry_mods.gd"
+ },
+ {
+  "id": "inf_25_medic_sacrifice",
+  "name": "医疗兵牺牲",
+  "desc": "死亡时治疗周围200像素内友军，恢复量等于自身20%最大生命值",
+  "proto": "战场医疗兵遗言",
+  "icon": "mod_medical",
+  "file": "infantry_mods.gd"
+ },
+ {
+  "id": "inf_26_chemical_warhead",
+  "name": "化学弹头",
+  "desc": "攻击35%概率施加化学毒剂：每秒造成8点伤害，持续6秒（绿色毒雾）",
+  "proto": "芥子气/神经毒剂弹头",
+  "icon": "mod_weapon",
+  "file": "infantry_mods.gd"
+ },
+ {
+  "id": "inf_27_napalm",
+  "name": "凝固汽油弹",
+  "desc": "攻击30%概率引燃目标：每层每秒6点伤害，可叠加至5层，持续5秒（橙色火苗）",
+  "proto": "M202 FLASH 燃烧火箭",
+  "icon": "mod_weapon",
+  "file": "infantry_mods.gd"
+ },
+ {
+  "id": "rec_01_optical_camouflage",
+  "name": "光学伪装",
+  "desc": "隐蔽接敌，暴击+50%",
+  "proto": "吉利服",
+  "icon": "mod_stealth",
+  "file": "recon_mods.gd"
+ },
+ {
+  "id": "rec_02_ir_suppression",
+  "name": "红外抑制",
+  "desc": "减伤提升",
+  "proto": "热信号遮蔽",
+  "icon": "mod_stealth",
+  "file": "recon_mods.gd"
+ },
+ {
+  "id": "rec_03_suppressor",
+  "name": "消音器",
+  "desc": "闪避+50%",
+  "proto": "抑制器",
+  "icon": "mod_weapon",
+  "file": "recon_mods.gd"
+ },
+ {
+  "id": "rec_04_high_power_scope",
+  "name": "高倍瞄准镜",
+  "desc": "高倍瞄具，射程和暴击提升",
+  "proto": "施华洛世奇",
+  "icon": "mod_optics",
+  "file": "recon_mods.gd"
+ },
+ {
+  "id": "rec_05_uav",
+  "name": "无人侦察机",
+  "desc": "无人机侦察，暴击率提升",
+  "proto": "RQ-11大乌鸦",
+  "icon": "mod_drone",
+  "file": "recon_mods.gd"
+ },
+ {
+  "id": "rec_06_tactical_radio",
+  "name": "战术电台",
+  "desc": "战术通讯协调，暴击率+30%",
+  "proto": "单兵超短波",
+  "icon": "mod_comms",
+  "file": "recon_mods.gd"
+ },
+ {
+  "id": "rec_07_gps",
+  "name": "GPS定位仪",
+  "desc": "GPS定位，部署加速20%",
+  "proto": "军用GPS",
+  "icon": "mod_navigation",
+  "file": "recon_mods.gd"
+ },
+ {
+  "id": "rec_08_nvg",
+  "name": "夜视仪",
+  "desc": "夜视瞄准，暴击率+15%",
+  "proto": "PVS-14",
+  "icon": "mod_optics",
+  "file": "recon_mods.gd"
+ },
+ {
+  "id": "rec_09_breaching",
+  "name": "破门工具",
+  "desc": "城市战部署更快",
+  "proto": "霰弹枪/破门锤",
+  "icon": "mod_environment",
+  "file": "recon_mods.gd"
+ },
+ {
+  "id": "rec_10_medkit",
+  "name": "急救包",
+  "desc": "濒死回复15%HP",
+  "proto": "IFAK",
+  "icon": "mod_medical",
+  "file": "recon_mods.gd"
+ },
+ {
+  "id": "rec_11_decoy",
+  "name": "假目标",
+  "desc": "假目标诱饵，暴击率+20%",
+  "proto": "充气坦克/假人",
+  "icon": "mod_deception",
+  "file": "recon_mods.gd"
+ },
+ {
+  "id": "rec_12_atv",
+  "name": "越野摩托",
+  "desc": "越野摩托，部署加速60%",
+  "proto": "侦察摩托",
+  "icon": "mod_mobility",
+  "file": "recon_mods.gd"
+ },
+ {
+  "id": "rec_13_target_designator",
+  "name": "目标指示器",
+  "desc": "激光标记目标：30% 概率标记，被标记目标受到 +25% 额外伤害，持续 5 秒",
+  "proto": "SOFLAM 激光指示器",
+  "icon": "mod_guidance",
+  "file": "recon_mods.gd"
+ },
+ {
+  "id": "rec_14_crit_designator",
+  "name": "暴击指示器",
+  "desc": "攻击命中 30% 概率挂暴击标注，被标注目标受到攻击时暴击率 +50%，持续 5 秒（全队远程优先集火）",
+  "proto": "精确标定仪",
+  "icon": "mod_guidance",
+  "file": "recon_mods.gd"
+ },
+ {
+  "id": "rec_phased_radar",
+  "name": "相控阵雷达",
+  "desc": "周期性扫描锁定敌方高威胁单位（雷达锁定易伤+15%），与无人机标记叠加触发集火链式；侦察链式触发器",
+  "proto": "AN/APG-81 相控阵",
+  "icon": "mod_radar",
+  "file": "recon_mods.gd"
+ },
+ {
+  "id": "gen_01_comms",
+  "name": "战场通讯",
+  "desc": "基础通讯，射速和暴击微升",
+  "proto": "SCR-536对讲机",
+  "icon": "mod_comms",
+  "file": "universal_mods.gd"
+ },
+ {
+  "id": "gen_02_digital",
+  "name": "数字化单兵",
+  "desc": "三维防御提升7.5%",
+  "proto": "陆地勇士系统",
+  "icon": "mod_system",
+  "file": "universal_mods.gd"
+ },
+ {
+  "id": "gen_03_camouflage",
+  "name": "伪装迷彩",
+  "desc": "伪装迷彩，闪避+20%",
+  "proto": "多地形迷彩",
+  "icon": "mod_stealth",
+  "file": "universal_mods.gd"
+ },
+ {
+  "id": "gen_04_vest",
+  "name": "战术背心",
+  "desc": "基础防护提升",
+  "proto": "IOTV模块化",
+  "icon": "mod_armor",
+  "file": "universal_mods.gd"
+ },
+ {
+  "id": "gen_05_shield",
+  "name": "防弹盾牌",
+  "desc": "防护大幅提升，速度略降",
+  "proto": "防弹盾",
+  "icon": "mod_shield",
+  "file": "universal_mods.gd"
+ },
+ {
+  "id": "gen_06_laser_designator",
+  "name": "激光指示器",
+  "desc": "激光指示，对装甲伤害+10%",
+  "proto": "激光目标指示器",
+  "icon": "mod_designator",
+  "file": "universal_mods.gd"
+ },
+ {
+  "id": "gen_07_mine_resistant",
+  "name": "防雷座椅",
+  "desc": "强化底盘，三维防御大幅提升",
+  "proto": "悬挂防雷座椅",
+  "icon": "mod_survival",
+  "file": "universal_mods.gd"
+ },
+ {
+  "id": "gen_08_nbc_protection",
+  "name": "三防系统",
+  "desc": "三防系统，减伤+30%",
+  "proto": "核生化防护",
+  "icon": "mod_protection",
+  "file": "universal_mods.gd"
+ },
+ {
+  "id": "gen_09_ir_jammer",
+  "name": "红外干扰机",
+  "desc": "导弹闪避提升",
+  "proto": "窗帘光电干扰",
+  "icon": "mod_countermeasure",
+  "file": "universal_mods.gd"
+ },
+ {
+  "id": "gen_10_ammo_rack",
+  "name": "备用弹药架",
+  "desc": "持续作战能力提升",
+  "proto": "外挂弹药箱",
+  "icon": "mod_ammunition",
+  "file": "universal_mods.gd"
+ },
+ {
+  "id": "gen_11_phase_resonance",
+  "name": "相位共鸣",
+  "desc": "独占改造：三维攻击全面提升（相位能量强化火力）",
+  "proto": "相位共鸣放大器",
+  "icon": "mod_resonance",
+  "file": "universal_mods.gd"
+ },
+ {
+  "id": "gen_12_phase_shielding",
+  "name": "相位护盾",
+  "desc": "独占改造：减伤 +20%，生命 +30%（相位能量构造防护层）",
+  "proto": "相位偏转护盾",
+  "icon": "mod_shield",
+  "file": "universal_mods.gd"
+ },
+ {
+  "id": "gen_13_phase_overdrive",
+  "name": "相位过载",
+  "desc": "独占改造：攻速 +30% + 暴击 +15%（相位能量过载驱动）",
+  "proto": "相位过载核心",
+  "icon": "mod_overdrive",
+  "file": "universal_mods.gd"
+ },
+ {
+  "id": "gen_14_phase_shield_gen",
+  "name": "相位护盾发生器",
+  "desc": "生成独立相位护盾池(2000点)，伤害优先扣相位池，每秒回复50点",
+  "proto": "相位偏转护盾发生器",
+  "icon": "mod_shield",
+  "file": "universal_mods.gd"
+ },
+ {
+  "id": "gen_15_laser_marker",
+  "name": "激光指示器",
+  "desc": "攻击时100%概率标记目标，被标记目标受到+20%额外伤害，持续5秒（炮兵优先打击被标记目标）",
+  "proto": "SOFLAM 激光目标指示器",
+  "icon": "mod_guidance",
+  "file": "universal_mods.gd"
+ },
+ {
+  "id": "gen_16_emp_pulse",
+  "name": "电磁脉冲装置",
+  "desc": "攻击35%概率释放电磁脉冲：目标攻速-30%、暴击-20%、闪避-15%（4秒），并造成10点真实伤害（蓝色电弧）",
+  "proto": "车载电磁脉冲发生器",
+  "icon": "mod_electronics",
+  "file": "universal_mods.gd"
+ },
+ {
+  "id": "gen_17_electronic_hijack",
+  "name": "电子劫持",
+  "desc": "周期性劫持半径200内敌方增益光环（指挥/堡垒庇护）：被劫持光环失效，其增益转由本单位享有（持续4秒，冷却18秒）",
+  "proto": "电子战劫持阵列",
+  "icon": "mod_electronics",
+  "file": "universal_mods.gd"
+ },
+ {
+  "id": "gen_combustion_catalyst",
+  "name": "燃烧催化剂",
+  "desc": "所有燃烧持续伤害×1.3，助燃燃烧链全局增益",
+  "proto": "化学催化涂层",
+  "icon": "mod_combustion_catalyst",
+  "file": "universal_mods.gd"
+ },
+ {
+  "id": "gen_overload_capacitor",
+  "name": "过载电容",
+  "desc": "电磁脉冲真实伤害+，目标石墨电子损坏≥5时触发电磁脉冲反射（连锁3个相邻敌方）；电磁脉冲链触发器",
+  "proto": "储能电容阵列",
+  "icon": "mod_overload",
+  "file": "universal_mods.gd"
+ },
+ {
+  "id": "gen_nano_catalyst",
+  "name": "纳米催化剂",
+  "desc": "纳米病毒概率+，浓度≥50时 30%概率感染扩散相邻敌人；纳米浓度场触发器",
+  "proto": "自复制纳米颗粒",
+  "icon": "mod_nano_catalyst",
+  "file": "universal_mods.gd"
+ },
+ {
+  "id": "gen_beam_splitter",
+  "name": "光束分裂器",
+  "desc": "光束武器命中带激光谐振≥3的目标追加2道次级光束（每道40%伤害）；光束谐振链触发器",
+  "proto": "分光棱镜组件",
+  "icon": "mod_beam_splitter",
+  "file": "universal_mods.gd"
+ },
+ {
+  "id": "gen_reflector_array",
+  "name": "反射阵列",
+  "desc": "光束武器命中带激光谐振的目标30%概率反射到相邻敌方（衰减60%）；光束谐振链触发器",
+  "proto": "可调反射镜组",
+  "icon": "mod_reflector",
+  "file": "universal_mods.gd"
+ },
+ {
+  "id": "gen_weakpoint_analyzer",
+  "name": "弱点分析仪",
+  "desc": "命中同时有无人机标记+雷达锁定的目标触发弱点暴露（下次命中+50%暴击伤害）；侦察链式触发器",
+  "proto": "目标弱点推演模块",
+  "icon": "mod_weakpoint",
+  "file": "universal_mods.gd"
+ },
+ {
+  "id": "gen_pollution_accumulator",
+  "name": "污染蓄能器",
+  "desc": "化学持续伤害×1.2，每次化学命中额外累积战场污染度；化学污染场触发器",
+  "proto": "化学物质浓缩舱",
+  "icon": "mod_pollution",
+  "file": "universal_mods.gd"
+ },
+ {
+  "id": "gen_converted_munitions",
+  "name": "弹道重赋",
+  "desc": "攻击维度转换：对轻轴攻击整体转按对甲轴结算（武器/攻值/目标防御三维都走对甲），对甲/对空轴不变。适合对甲轴火力远强于对轻轴的载具/火炮",
+  "proto": "模块化弹药重赋系统",
+  "icon": "mod_ammunition",
+  "file": "universal_mods.gd"
+ },
+ {
+  "id": "gen_expansion_chamber",
+  "name": "扩容弹舱",
+  "desc": "同时攻击目标数 +1：每次开火额外向射程内另一敌人射击（全额伤害独立结算）",
+  "proto": "多联装供弹机构",
+  "icon": "mod_ammunition",
+  "file": "universal_mods.gd"
+ },
+ {
+  "id": "gen_overflow_shield",
+  "name": "溢流护盾",
+  "desc": "溢流转化：受到的所有治疗超出生命上限的部分，按 60% 转化为护盾（护盾上限不变，仍为双倍 HP）",
+  "proto": "再生式能量缓冲层",
+  "icon": "mod_shield",
+  "file": "universal_mods.gd"
+ },
+ {
+  "id": "gen_truestrike_pinpoint",
+  "name": "精确制导针",
+  "desc": "无视目标 50% 闪避率（按比例削减，非对半豁免）：高闪避侦察/飞行单位的天敌",
+  "proto": "末端成像制导组件",
+  "icon": "mod_guidance",
+  "file": "universal_mods.gd"
+ },
+ {
+  "id": "gen_relay_antenna",
+  "name": "中继天线",
+  "desc": "该卡改造光环（ally_* 类）影响范围扩至全场（需同时装备带光环的改造才有收益）",
+  "proto": "战场数据链中继塔",
+  "icon": "mod_comms",
+  "file": "universal_mods.gd"
+ },
+ {
+  "id": "gen_unified_splash",
+  "name": "统一装药",
+  "desc": "统一溅射公式：自身溅射比例 60%（曲射/命中路径共用一轴），并使所有命中附带 60% 溅射伤害",
+  "proto": "标准化高爆装药",
+  "icon": "mod_explosion",
+  "file": "universal_mods.gd"
+ },
+ {
+  "id": "gen_stealth_coating",
+  "name": "雷达吸波涂层",
+  "desc": "机体/车体表面吸波涂层降低雷达与火控锁定——闪避与防空御提升",
+  "proto": "铁氧体吸波材料（RAM 涂层）",
+  "icon": "mod_special",
+  "file": "universal_mods.gd"
+ }
+]

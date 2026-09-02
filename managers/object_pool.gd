@@ -154,17 +154,6 @@ class ObjectPool extends Node:
 		available.clear()
 		in_use.clear()
 
-	func get_stats() -> Dictionary:
-		return {
-			"available": available.size(),
-			"in_use": in_use.size(),
-			"total": available.size() + in_use.size(),
-			"total_created": total_created,
-			"pool_size": config.pool_size,
-			"max_size": config.max_size,
-			"utilization": float(in_use.size()) / float(max(1, total_created))
-		}
-
 ## 对象池管理器
 var _pools: Dictionary = {}
 
@@ -233,18 +222,3 @@ func clear_pool(pool_name: String) -> void:
 func clear_all() -> void:
 	for pool_name in _pools.keys():
 		clear_pool(pool_name)
-
-## 获取池统计信息
-func get_pool_stats(pool_name: String) -> Dictionary:
-	if not _pools.has(pool_name):
-		push_error("[ObjectPoolManager] 池 '%s' 不存在" % pool_name)
-		return {}
-	var pool = _pools[pool_name] as ObjectPool
-	return pool.get_stats()
-
-## 获取所有池统计信息
-func get_all_stats() -> Dictionary:
-	var stats: Dictionary = {}
-	for pool_name in _pools.keys():
-		stats[pool_name] = get_pool_stats(pool_name)
-	return stats

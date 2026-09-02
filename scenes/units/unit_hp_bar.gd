@@ -212,18 +212,8 @@ func set_ratio(r: float) -> void:
 	_target_ratio = clampf(r, 0.0, 1.0)
 	_sync_process_state()
 
-func set_ratio_immediate(r: float) -> void:
-	_target_ratio = clampf(r, 0.0, 1.0)
-	_ratio = _target_ratio
-	_update_view()
-	_sync_process_state()
-
 func trigger_damage_flash() -> void:
 	_damage_flash = 1.0
-	set_process(true)
-
-func trigger_heal_flash() -> void:
-	_heal_flash = 1.0
 	set_process(true)
 
 ## v8.x: 血条已固定单一形态，set_folded 保留为空操作以兼容外部调用方（不再影响渲染）。

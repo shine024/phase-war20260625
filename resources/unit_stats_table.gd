@@ -108,9 +108,13 @@ static func build_stats_from_card(card: CardResource, era_override: int = -1) ->
 		# 修法：stat 应用后按"改造前后攻击三维比值"同步进武器槽；置于
 		# apply_to_weapon_slots 之前（grant_slot 派生值不被二次乘）。
 		var _pre_atk: Array = [stats.attack_light, stats.attack_armor, stats.attack_air]
+		var _pre_spd: Array = [stats.attack_light_speed, stats.attack_armor_speed, stats.attack_air_speed]
 		# v6.2: 先应用改造的 stat 效果（穿甲/条件穿甲/attack_armor 百分比等）到 UnitStats
 		_apply_mod_stat_effects(stats, card.mods, e)
 		_sync_mod_attack_ratio_to_weapon_slots(stats, tmp_slots, _pre_atk)
+		# v26.2: 攻速改造同样比值同步进武器槽——timing 主路径读 weapon.attack_speed，
+		# 只写 stats per-target 轴会空转（敌我同构；v7.5 的 registry 转写只落 stats 侧）。
+		_sync_mod_speed_ratio_to_weapon_slots(stats, tmp_slots, _pre_spd)
 		# v6.0/v6.13: 再应用改造效果到武器槽位（传入 stats 作 source_stats，grant_slot 据此派生伤害）
 		if ModificationRegistry and ModificationRegistry.has_method("apply_to_weapon_slots"):
 			tmp_slots = ModificationRegistry.apply_to_weapon_slots(tmp_slots, card.mods, stats)
@@ -604,6 +608,30 @@ static func _sync_mod_attack_ratio_to_weapon_slots(stats: UnitStats, slots: Arra
 		var factor: float = post / pre if pre > 0.0 else 1.0
 		if absf(factor - 1.0) > 0.001:
 			w.damage = maxf(0.1, base_dmg * factor)
+
+
+## v26.2: 攻速改造比值同步到 weapon_slots[].attack_speed（口径同上，轴序 [轻,甲,空]）。
+## 背景：registry 把通用 attack_interval 转写为三条 per-target 攻速轴写回 stats（v7.5），
+## 但战斗 timing 主路径（get_weapon_for_target → get_weapon_attack_timing）读的是
+## weapon_slots[].attack_speed（播种自卡原始轴速）→ 通用攻速改造在武器路径实战空转
+## （敌我同构；slot_attack_speed_mult 专属键在数据里零使用）。
+## 帽 3.0 与 stats 路径 get_attack_timing 的 MAX_ATTACK_SPEED 对齐；地板 0.05 与
+## registry 攻速下限同量级。grant_slot 系速度直读（非派生），时序无约束。
+static func _sync_mod_speed_ratio_to_weapon_slots(stats: UnitStats, slots: Array, pre_speeds: Array) -> void:
+	if slots.is_empty():
+		return
+	var post_speeds: Array = [stats.attack_light_speed, stats.attack_armor_speed, stats.attack_air_speed]
+	for i in range(slots.size()):
+		var w = slots[i]
+		if w == null or not w.enabled:
+			continue
+		var pre: float = float(pre_speeds[i]) if i < pre_speeds.size() else 0.0
+		var post: float = float(post_speeds[i]) if i < post_speeds.size() else 0.0
+		if pre <= 0.0 or post <= 0.0:
+			continue
+		var factor: float = post / pre
+		if absf(factor - 1.0) > 0.001:
+			w.attack_speed = clampf(float(w.attack_speed) * factor, 0.05, 3.0)
 
 
 ## v6.8: 扫描 mods，提取 ally_* 光环配置存到 stats meta

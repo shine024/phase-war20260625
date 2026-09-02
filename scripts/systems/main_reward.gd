@@ -11,14 +11,17 @@ var main: Control = null
 
 ## 战斗结束回调：清理待处理输入、延迟冻结战场渲染
 func on_battle_ended_clear_pending(_player_won: bool) -> void:
+	# 输入清障与场景无关，无条件执行
+	if SignalBus:
+		BattleInputState.clear_all_pending()
+	# 主场景已离树（战斗中回标题的切场景竞态）：无从创建定时器，放弃视口冻结
+	if main == null or not is_instance_valid(main) or not main.is_inside_tree():
+		return
 	# v20.15: 不再立即冻结 SubViewport——战斗结束瞬间半空中的大招弹体/命中贴图
 	# 会被定格成结算/准备界面背景上的"残留贴图"。延迟 1.6s（大招尾链最长 ~1.2s）
 	# 让最后的爆炸/淡出在结算面板后自然播完，再定格"战后余烬"帧。
 	# 性能代价：每场战斗多渲染 ~1.6s，可忽略。
-	var tree: SceneTree = main.get_tree() if main != null else null
-	if tree == null:
-		return
-	tree.create_timer(1.6).timeout.connect(func():
+	main.get_tree().create_timer(1.6).timeout.connect(func():
 		if main == null or not is_instance_valid(main) or not main.is_inside_tree():
 			return
 		if main._is_in_battle():
@@ -31,11 +34,6 @@ func on_battle_ended_clear_pending(_player_won: bool) -> void:
 	)
 	if SignalBus:
 		BattleInputState.clear_all_pending()
-
-## 记录本局解锁的蓝图（战斗中由 SignalBus 触发）
-func on_blueprint_unlocked(card_id: String) -> void:
-	if not main._blueprints_unlocked_this_battle.has(card_id):
-		main._blueprints_unlocked_this_battle.append(card_id)
 
 ## 显示战斗结果弹窗（整合面板：战绩 + 奖励一次展示）
 func show_battle_result(player_won: bool) -> void:

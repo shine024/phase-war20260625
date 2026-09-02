@@ -24,6 +24,9 @@ const CHANGED_SCRIPTS: Array[String] = [
 	"res://scenes/title_screen.gd",
 	"res://scenes/ui/intelligence_hub_panel.gd",
 	"res://scenes/ui/intel_harvest_display.gd",
+	# v26 UI 品质批次：情报家族视觉统一（kit + 揭示弹窗四态按钮）
+	"res://scenes/ui/components/intel_ui_kit.gd",
+	"res://scenes/ui/intel_reveal_popup.gd",
 	"res://scenes/ui/feature_unlock_popup.gd",
 	"res://managers/ui_lazy_loader.gd",
 	"res://scripts/signal_bus.gd",
@@ -76,7 +79,7 @@ const AUTOLOAD_NAMES: Array[String] = [
 	"BattleManager", "GameManager", "BlueprintManager", "DropManager", "SaveManager",
 	"AudioManager", "BasicResourceManager", "ObjectPoolManager",
 	"UILazyLoader", "ManagerLazyLoader", "PerformanceMetricsManager", "ModificationRegistry",
-	"EvolutionPathRegistry", "DayClock", "AuraManager", "IntelItemBag", "IntelManual",
+	"DayClock", "AuraManager", "IntelItemBag", "IntelManual",
 	"QuestManager", "FactionSystemManager", "AffixManager", "LevelProgressManager",
 	"CardEnhancementManager", "InstanceRegistry", "PhaseMasterSkillManager",
 	"TutorialProgressionManager", "BattleSpectacle",

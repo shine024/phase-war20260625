@@ -87,9 +87,8 @@ func open(summary: Dictionary) -> void:
 		lines.append("昨天没有房间完工。黑暗还在等灯。")
 	else:
 		var names: Array[String] = []
-		for rid in completed:
-			var def := BunkerRoomDefs.get_room(str(rid))
-			names.append(str(def.get("name", rid)))
+		for entry in completed:
+			names.append(BunkerRoomDefs.completed_entry_label(str(entry)))
 		lines.append("昨天完工：%s。" % "、".join(names))
 	lines.append("")
 	lines.append(STAGE_LINES.get(stage, ""))

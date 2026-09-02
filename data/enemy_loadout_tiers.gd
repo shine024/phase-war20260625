@@ -1,85 +1,72 @@
 extends RefCounted
 class_name EnemyLoadoutTiers
-## v7.2: 敌方统一配置档位表（3/6/9 改造分档，镜像我方养成）
+## v26: 敌方四档配装体系（新兵/老兵/精英/传奇，时代内循环，每 20 关一轮）
 ##
-## 设计核心（用户思路）：
-## - 敌方产兵/敌兵 = 3 档配置，对称我方养成档位：
-##     低配 = 我方3级强化+3改造槽
-##     中配 = 我方6级强化+6改造槽
-##     高配 = 我方10级强化(满)+9改造槽(满)
-## - base 属性表已烤进时代递进（一战→近未来 hp 5-7×），公式不加时代系数/关卡线性乘数，
-##   跨时代递进全靠 base 数据本身（平衡时更直观）。
-## - 相位师产兵固定走高配档；普通关敌人按时代前/中/后选低/中/高配
-## - "同一时代前中后"：时代早期出低配、中期中配、后期/相位师战高配
-## - v18.b 镜像口径更新：我方改造已分层（uncommon/rare 属性条=固定值+level_effects，
-##   epic/legendary=百分比）——本表 ×1.30/1.75/2.00 的"镜像我方满改造"语义不变
-##   （档位是养成总强度的标量镜像，不逐条对应改造算子类型）。
+## 设计核心（v26 用户拍板）：
+## - 档位由"时代内进度"切四段（in_era 1-5 新兵 / 6-11 老兵 / 12-17 精英 / 18-20 传奇），
+##   每个时代都体验一轮档位爬升；相位师产兵恒传奇满配。
+## - v26 起档位强度 = TIER_BONUS 标量 × 真实固定改造（enemy_fixed_loadouts.gd 逐卡配装，
+##   挂载点 enemy_unit._apply_loadout_modifications）。改造贡献计入总量后标量相应下调，
+##   目标总强度曲线 ≈ 新兵 1.40 / 老兵 1.65 / 精英 1.95 / 传奇 2.25（顶格，用户拍板），
+##   终值以 tools/enemy_tier_strength_audit.gd 实测校准。
+## - base 属性表已烤进时代递进（一战→近未来 hp 5-7×），公式不加时代系数。
+## - v21 同源词条保留：精英起挂 1 条、传奇 2 条（稀有度随档）。
 ##
-## 档位统一系数（裸卡=1.0；hp/atk/def 共用同一倍率，平衡调一处即可）：
-##   低配档 = 3强化+3改造+1符文 → ×1.30
-##   中配档 = 6强化+6改造+3符文 → ×1.75
-##   高配档 = 10强化(满)+9改造(满)+6符文 → ×2.00
+## 档位统一系数（裸卡=1.0；hp/atk/def 共用同一倍率；标量仅承担总量的一部分，
+## 其余由真实改造贡献）：
+##   新兵 = 5 改造 → ×1.20（标量）+ 改造 ≈ ×1.40 总
+##   老兵 = 6-7 改造 → ×1.30 + 改造 ≈ ×1.65 总
+##   精英 = 8-9 改造 → ×1.46 + 改造 ≈ ×1.95 总
+##   传奇 = 9 改造满配 → ×1.66 + 改造 ≈ ×2.25 总（顶格）
 
-## 档位枚举
-const TIER_LOW: int = 1     # 低配（3强化+3改造档）
-const TIER_MID: int = 2     # 中配（6强化+6改造档）
-const TIER_HIGH: int = 3    # 高配（10强化满+9改造满配）
+## 档位枚举（v26 四档）
+const TIER_RECRUIT: int = 1    # 新兵（时代内 1-5 关，5 改造）
+const TIER_VETERAN: int = 2    # 老兵（6-11 关，6-7 改造）
+const TIER_ELITE: int = 3      # 精英（12-17 关，8-9 改造）
+const TIER_LEGENDARY: int = 4  # 传奇（18-20 关含末关 boss，9 改造满配）
 
-## 档位 → 加成配置（统一系数：atk_pct=hp_pct=def_pct，对应 1.30/1.75/2.00）
+## 旧三档常量别名（v25 前调用方兼容）：旧"高配"语义=满配 → 映射传奇；
+## 旧"中配"→老兵；旧"低配"→新兵。新代码一律用新常量。
+const TIER_LOW: int = TIER_RECRUIT
+const TIER_MID: int = TIER_VETERAN
+const TIER_HIGH: int = TIER_LEGENDARY
+
+## 档位 → 加成配置（标量乘区；mod_count 为默认配装条数上限，逐卡 cuts 可微调）
 const TIER_BONUS: Dictionary = {
-	TIER_LOW:  {"name": "低配", "atk_pct": 0.30, "hp_pct": 0.30, "def_pct": 0.30, "mod_count": 3, "rune_count": 1, "enhance_level": 3},
-	TIER_MID:  {"name": "中配", "atk_pct": 0.75, "hp_pct": 0.75, "def_pct": 0.75, "mod_count": 6, "rune_count": 3, "enhance_level": 6},
-	TIER_HIGH: {"name": "高配", "atk_pct": 1.00, "hp_pct": 1.00, "def_pct": 1.00, "mod_count": 9, "rune_count": 6, "enhance_level": 10},
+	TIER_RECRUIT:   {"name": "新兵", "atk_pct": 0.20, "hp_pct": 0.20, "def_pct": 0.20, "mod_count": 5, "rune_count": 1, "enhance_level": 3},
+	TIER_VETERAN:   {"name": "老兵", "atk_pct": 0.30, "hp_pct": 0.30, "def_pct": 0.30, "mod_count": 7, "rune_count": 3, "enhance_level": 6},
+	TIER_ELITE:     {"name": "精英", "atk_pct": 0.46, "hp_pct": 0.46, "def_pct": 0.46, "mod_count": 9, "rune_count": 4, "enhance_level": 8},
+	TIER_LEGENDARY: {"name": "传奇", "atk_pct": 0.66, "hp_pct": 0.66, "def_pct": 0.66, "mod_count": 9, "rune_count": 6, "enhance_level": 10},
 }
 
-## 改造槽组合（按档位，用于展示/UI，实际加成走 TIER_BONUS）
-const TIER_MODIFICATIONS: Dictionary = {
-	TIER_LOW:  ["e_mod_t1_reinforced", "e_mod_t1_heavy_gun", "e_mod_t1_reinforced"],
-	TIER_MID:  ["e_mod_t3_composite", "e_mod_t3_apfsds", "e_mod_t3_reactive", "e_mod_t3_fc", "e_mod_t3_composite", "e_mod_t3_reactive"],
-	TIER_HIGH: ["e_mod_t5_nanocomp", "e_mod_t5_targeting", "e_mod_t5_shield_gen", "e_mod_t5_nanocomp", "e_mod_t5_targeting", "e_mod_t5_shield_gen", "e_mod_t6_singularity", "e_mod_t6_phase_drive", "e_mod_t6_omega_core"],
-}
-
-## 符文槽组合（按档位）
-const TIER_RUNES: Dictionary = {
-	TIER_LOW:  ["e_rune_t1_iron"],
-	TIER_MID:  ["e_rune_t3_storm", "e_rune_t3_bulwark", "e_rune_t3_precision"],
-	TIER_HIGH: ["e_rune_t5_apex", "e_rune_t5_eternity", "e_rune_t5_apex", "e_rune_t5_eternity", "e_rune_t6_genesis", "e_rune_t6_void"],
-}
+## 档位显示名（world_map/UI 用）
+static func get_tier_name(tier: int) -> String:
+	return String(TIER_BONUS.get(tier, TIER_BONUS[TIER_RECRUIT]).get("name", "新兵"))
 
 ## 按档位取加成（产兵/敌兵核心调用）
 static func get_bonus_for_tier(tier: int) -> Dictionary:
-	return (TIER_BONUS.get(tier, TIER_BONUS[TIER_LOW]) as Dictionary).duplicate()
+	return (TIER_BONUS.get(tier, TIER_BONUS[TIER_RECRUIT]) as Dictionary).duplicate()
 
-## 按时代+关卡阶段选档位（普通关敌人用）
-## era_progress: 时代内进度 0.0(早期)~1.0(后期)
+## 按时代+关卡阶段选档位（普通关敌人用，v26 四段切分）
+## era_progress: 时代内进度 0.0(早期)~1.0(后期)（in_era 1-20 → (in_era-1)/19）
 static func get_tier_for_level_progress(era_progress: float, is_phase_master: bool = false) -> int:
 	if is_phase_master:
-		return TIER_HIGH  # 相位师战固定高配（旧路径保留，新代码用 get_phase_master_tier）
-	# v9.x 平衡：阈值从 0.33/0.75 收紧到 0.15/0.55——
-	# 时代边界（progress 1.0→0.0）从高档(×2.00)回低档(×1.30)的 -35% 断崖过大；
-	# 收紧后低档只持续 in_era 1-3（3 关，原 7 关），第 4 关即回中档，断崖范围缩小。
-	# 保留"新时代首关较低档"的教学友好，但不再持续 7 关。
-	if era_progress < 0.15:
-		return TIER_LOW   # 时代首 3 关：低配（in_era 1-3）
+		return TIER_LEGENDARY  # 相位师战固定传奇（旧路径保留，新代码用 get_phase_master_tier）
+	# v26 四档：in_era 1-5 新兵（progress ≤0.21）/ 6-11 老兵 / 12-17 精英 / 18-20 传奇
+	if era_progress < 0.24:
+		return TIER_RECRUIT
 	elif era_progress < 0.55:
-		return TIER_MID   # 时代中段：中配（in_era 4-11）
+		return TIER_VETERAN
+	elif era_progress < 0.87:
+		return TIER_ELITE
 	else:
-		return TIER_HIGH  # 时代后期：高配（in_era 12-20）
+		return TIER_LEGENDARY
 
-## v8.2: 相位师产兵固定高档（用户要求"敌方相位师都是高配置敌人"）。
-## 恒返回 TIER_HIGH（enh10 + 满改造 + 满符文 + ×2.00 系数）。
+## 相位师产兵固定传奇满配（v26：旧"恒高配"语义升级为四档体系的顶格档）。
 ## 相位师的强弱差异由 base archetype 时代 + 自身 stats + 符文/相位仪决定，不靠产兵档位递进。
 ## 参数 era_progress 保留兼容签名，不再使用。
 static func get_phase_master_tier(era_progress: float) -> int:
-	return TIER_HIGH
-
-## 取档位的改造槽 ID 列表（UI展示/缴获用）
-static func get_modifications_for_tier(tier: int) -> Array:
-	return (TIER_MODIFICATIONS.get(tier, []) as Array).duplicate()
-
-## 取档位的符文槽 ID 列表
-static func get_runes_for_tier(tier: int) -> Array:
-	return (TIER_RUNES.get(tier, []) as Array).duplicate()
+	return TIER_LEGENDARY
 
 # ══════════════════════════════════════════════════════════════════
 #  v21 P3-A（计划 A2）：敌方精英同源词条
@@ -93,19 +80,25 @@ static func get_runes_for_tier(tier: int) -> Array:
 #    UnitStats 字段，enemy_unit/_do_attack/take_damage/battle_damage_system 既有分支读取。
 # ══════════════════════════════════════════════════════════════════
 
-## 挂词条的最低档位（TIER_MID=2 中配起）
-const LOADOUT_AFFIX_MIN_TIER: int = TIER_MID
+## 挂词条的最低档位（v26：精英档起挂——配装改造已承担新兵/老兵段的强度表达）
+const LOADOUT_AFFIX_MIN_TIER: int = TIER_ELITE
+
+## 档位 → 词条条数（v26：精英 1 条 / 传奇 2 条）
+const LOADOUT_AFFIX_COUNT_BY_TIER: Dictionary = {
+	TIER_ELITE: 1,
+	TIER_LEGENDARY: 2,
+}
 
 ## 档位 → 词条等级（档位越高词条越强；AffixResource.get_level_factor 折算数值）
 const LOADOUT_AFFIX_LEVEL_BY_TIER: Dictionary = {
-	TIER_MID: 2,   # 中配 → Lv2（×1.25）
-	TIER_HIGH: 3,  # 高配 → Lv3（×1.55）
+	TIER_ELITE: 3,     # 精英 → Lv3（×1.55）
+	TIER_LEGENDARY: 3, # 传奇 → Lv3（×1.55，条数补偿 2 条）
 }
 
 ## 档位 → 词条稀有度（在定义 rarity_pool 内取；不在池内回退池末位）
 const LOADOUT_AFFIX_RARITY_BY_TIER: Dictionary = {
-	TIER_MID: "rare",
-	TIER_HIGH: "epic",
+	TIER_ELITE: "epic",
+	TIER_LEGENDARY: "epic",
 }
 
 ## 敌方消费路径支持的 effect_key 白名单 = EnemyAffixes.apply_to_stats 既有分支的键。

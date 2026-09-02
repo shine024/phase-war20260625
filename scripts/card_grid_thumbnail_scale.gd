@@ -19,23 +19,6 @@ const _TIER_MUL: Dictionary = {
 
 const POWER_THRESH_GENERAL := 920.0
 
-## 与 BlueprintManager 战力同量级（无 autoload 依赖）
-static func estimate_power_from_unit_stats(stats: UnitStats) -> float:
-	if stats == null:
-		return 0.0
-	var interval: float = maxf(float(stats.attack_interval), 0.05)
-	var dps: float = float(stats.attack_damage) / interval
-	var hp: float = maxf(float(stats.max_hp), 0.0)
-	var range_f: float = maxf(float(stats.attack_range), 0.0)
-	var spd: float = maxf(float(stats.move_speed), 0.0)
-	return maxf(
-		hp * 0.28 + dps * 2.2 + range_f * 0.22 + spd * 0.08
-		+ float(stats.damage_reduction) * 80.0
-		+ float(stats.crit_chance) * 120.0
-		+ float(stats.armor_penetration) * 60.0,
-		1.0
-	)
-
 static func compute_visual_scale(rank_id: String, power_score: float) -> float:
 	var rid := rank_id if rank_id in RankRules.RANK_ORDER else "corporal"
 	var mul: float = float(_TIER_MUL.get(rid, 1.0))
@@ -81,14 +64,6 @@ static func _texture_max_side_px(tex: Texture2D) -> float:
 	if m_raw <= 1.0:
 		m_raw = maxf(float(tex.get_width()), float(tex.get_height()))
 	return maxf(m_raw, 1.0)
-
-
-static func compute_battlefield_art_scale(rank_id: String, power_score: float, tex: Texture2D, screen_height_px: float = -1.0) -> float:
-	var base: float = compute_visual_scale(rank_id, power_score)
-	if tex == null:
-		return base
-	var m: float = _texture_max_side_px(tex)
-	return base * (_battlefield_art_ref_px(screen_height_px) / m)
 
 
 ## 格子战立绘：固定基础卡宽（BASE_CARD_WIDTH_PX=58.9，与旧双行布局一致），再乘以军衔/战力乘数。

@@ -144,7 +144,7 @@ theme_override_colors/font_color = Color(0.769, 0.71, 0.992, 1)
 [node name="TitleLabel" type="Label" parent="VBoxContainer/TitleRow/TitleHBox"]
 unique_name_in_owner = true
 layout_mode = 2
-text = "战术进化站"
+text = "战术制造站"
 theme_override_font_sizes/font_size = 20
 theme_override_colors/font_color = Color(0.95, 0.96, 0.98, 1)
 [node name="TitleSub" type="Label" parent="VBoxContainer/TitleRow/TitleHBox"]
@@ -295,7 +295,7 @@ theme_override_colors/font_color = Color(0.5, 0.55, 0.65, 0.8)
 [node name="ChipEvo" type="Button" parent="VBoxContainer/BodyHBox/LeftPanel/LeftVBox/ColFilter"]
 unique_name_in_owner = true
 layout_mode = 2
-text = "可进化"
+text = "可制造"
 custom_minimum_size = Vector2(0, 24)
 size_flags_horizontal = 3
 theme_override_font_sizes/font_size = 12
@@ -349,7 +349,7 @@ custom_minimum_size = Vector2(3, 11)
 color = Color(0.769, 0.71, 0.992, 1)
 [node name="PathHeadTitle" type="Label" parent="VBoxContainer/BodyHBox/MiddlePanel/MiddleVBox/PathHead/PathHeadHBox"]
 layout_mode = 2
-text = "进化路径"
+text = "品质概率池"
 theme_override_font_sizes/font_size = 12
 theme_override_colors/font_color = Color(0.7, 0.75, 0.85, 1)
 [node name="PathHeadSpacer" type="Control" parent="VBoxContainer/BodyHBox/MiddlePanel/MiddleVBox/PathHead/PathHeadHBox"]
@@ -404,7 +404,7 @@ unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
-text = "← 请从左侧选择一个进化目标"
+text = "← 请从左侧选择一个配方"
 theme_override_font_sizes/font_size = 16
 theme_override_colors/font_color = Color(0.4, 0.5, 0.65, 1)
 horizontal_alignment = 1
@@ -419,7 +419,7 @@ theme_override_styles/panel = SubResource("StyleBoxFlat_6")
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
-text = "进化目标"
+text = "配方目标"
 theme_override_font_sizes/font_size = 20
 theme_override_colors/font_color = Color(0.769, 0.71, 0.992, 1)
 horizontal_alignment = 1
@@ -462,7 +462,7 @@ theme_override_constants/margin_right = 12
 theme_override_constants/margin_bottom = 8
 [node name="ReqTitle" type="Label" parent="VBoxContainer/BodyHBox/DetailPanel/DetailInner/DetailScroll/DetailContent/RequirementsPanel/ReqContent"]
 layout_mode = 2
-text = "进化条件"
+text = "制造条件"
 theme_override_font_sizes/font_size = 12
 theme_override_colors/font_color = Color(0.55, 0.65, 0.8, 0.85)
 [node name="ReqList" type="VBoxContainer" parent="VBoxContainer/BodyHBox/DetailPanel/DetailInner/DetailScroll/DetailContent/RequirementsPanel/ReqContent"]
@@ -484,7 +484,7 @@ theme_override_constants/margin_right = 12
 theme_override_constants/margin_bottom = 8
 [node name="StatsTitle" type="Label" parent="VBoxContainer/BodyHBox/DetailPanel/DetailInner/DetailScroll/DetailContent/StatsPanel/StatsContent"]
 layout_mode = 2
-text = "进化属性对比"
+text = "制成卡牌属性"
 theme_override_font_sizes/font_size = 12
 theme_override_colors/font_color = Color(0.55, 0.65, 0.8, 0.85)
 [node name="StatHP" type="Label" parent="VBoxContainer/BodyHBox/DetailPanel/DetailInner/DetailScroll/DetailContent/StatsPanel/StatsContent"]
@@ -566,7 +566,7 @@ unique_name_in_owner = true
 layout_mode = 2
 custom_minimum_size = Vector2(0, 40)
 size_flags_horizontal = 3
-text = "执行进化"
+text = "制造一张"
 theme_override_colors/font_color = Color(0.95, 0.96, 0.98, 1)
 theme_override_colors/font_hover_color = Color(1, 1, 1, 1)
 theme_override_font_sizes/font_size = 16

@@ -23,6 +23,8 @@ class_name UnitFrameAnim
 
 const ANIM_ROOT := "res://assets/effects/unit_anims/"
 const DRIVER_NAME := "UnitFrameAnimDriver"
+## v24.3: 预加载 EnemyCardModMap（用于敌方 archetype_id → 玩家卡 ID 映射）
+const EnemyCardModMap := preload("res://data/enemy_card_mod_map.gd")
 
 
 static func _resolve_key(anim_id: String) -> String:
@@ -33,6 +35,13 @@ static func _resolve_key(anim_id: String) -> String:
 				and ResourceLoader.exists(ANIM_ROOT + c + "/sheet_idle.png") \
 				and ResourceLoader.exists(ANIM_ROOT + c + "/anim.json"):
 			return c
+	## v24.3: 敌方 archetype_id 映射到玩家卡 ID（帧动画资源共用）
+	## 通过 EnemyCardModMap 动态查找，覆盖所有敌方单位
+	var player_card_id: String = EnemyCardModMap.get_player_card_id(anim_id)
+	if not player_card_id.is_empty() \
+			and ResourceLoader.exists(ANIM_ROOT + player_card_id + "/sheet_idle.png") \
+			and ResourceLoader.exists(ANIM_ROOT + player_card_id + "/anim.json"):
+		return player_card_id
 	return ""
 
 

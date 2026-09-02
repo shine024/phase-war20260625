@@ -217,6 +217,43 @@ const DATA: Dictionary = {
 		applicable_types = [0, 4],
 		unlock_conditions = {required_level = 5}
 	},
+	# ─── v26 防空反制批（era0/1 对空池补强）───
+	"aa_14_searchlight" = {
+		id = "aa_14_searchlight",
+		name = "探照灯组",
+		name_en = "Searchlight Battery",
+		icon = "res://assets/ui/icons/mod_icons/aa_14_searchlight.png",
+		prototype = "不列颠空战 150cm 探照灯带",
+		description = "夜间照明锁定轰炸机群——对空命中要害率提升",
+		rarity = "uncommon",
+		power_mult = 1.1,
+		cost_research = 90,
+		cost_install = 45,
+		slot_type = "optics",
+		conflict_group = "optics",
+		era_band = [0, 1],
+		effects = {crit_chance = 0.06, vision = 0.15},
+		unlock_conditions = {required_level = 1}
+	},
+
+	"aa_15_flak_burst" = {
+		id = "aa_15_flak_burst",
+		name = "定时引信防空弹",
+		name_en = "Flak Timed-Fuze Shells",
+		icon = "res://assets/ui/icons/mod_icons/aa_15_flak_burst.png",
+		prototype = "Flak 88 / 博福斯定时引信弹",
+		description = "空炸弹幕覆盖机群航线——对空伤害与溅射提升",
+		rarity = "rare",
+		power_mult = 1.3,
+		cost_research = 150,
+		cost_install = 75,
+		slot_type = "ammunition",
+		conflict_group = "ammunition",
+		era_band = [0, 2],
+		effects = {attack_air_pct = 0.15, splash_damage = 0.20},
+		unlock_conditions = {required_level = 2}
+	},
+
 }
 
 static func get_mod_data(mod_id: String) -> Dictionary:

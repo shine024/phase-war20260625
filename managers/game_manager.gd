@@ -497,6 +497,26 @@ func _on_battle_ended(player_won: bool) -> void:
 	var after_energy_block: int = BasicResourceManager.get_total(BasicResources.ID_ENERGY_BLOCK) if BasicResourceManager.has_method("get_total") else before_energy_block
 	var after_blueprint_nano: int = BlueprintManager.get_nano_materials() if BlueprintManager.has_method("get_nano_materials") else before_blueprint_nano
 
+	# v26 批次4：荣誉室 Lv3 出征仪式——敬礼武装后本场掉落收益 +10%（结算即消耗）。
+	# 口径与低精神惩罚同链：对战后货币收益差值补成 10%（纳米+能量块）。
+	var salute_bonus_data := {}
+	var bunker_salute: Node = get_node_or_null("/root/BunkerManager")
+	if player_won and bunker_salute != null and bunker_salute.has_method("consume_salute"):
+		var salute_mult: float = bunker_salute.consume_salute()
+		if salute_mult > 1.0 and BasicResourceManager != null and BasicResourceManager.has_method("add_resource"):
+			var nano_gain: int = maxi(0, after_basic_nano - before_basic_nano)
+			var energy_gain: int = maxi(0, after_energy_block - before_energy_block)
+			var nano_bonus: int = int(round(float(nano_gain) * (salute_mult - 1.0)))
+			var energy_bonus: int = int(round(float(energy_gain) * (salute_mult - 1.0)))
+			if nano_bonus > 0:
+				BasicResourceManager.add_resource(BasicResources.ID_NANO_MATERIALS, nano_bonus)
+				after_basic_nano += nano_bonus
+			if energy_bonus > 0:
+				BasicResourceManager.add_resource(BasicResources.ID_ENERGY_BLOCK, energy_bonus)
+				after_energy_block += energy_bonus
+			if nano_bonus > 0 or energy_bonus > 0:
+				salute_bonus_data = {"nano": nano_bonus, "energy": energy_bonus}
+
 	# ========== 掉落系统由 BattleManager.end_battle 直接触发，此处不重复调用 ==========
 	# BattleManager._generate_battle_completion_drops 已在 end_battle 时执行
 	if DEBUG_GAME_LOG:
@@ -553,6 +573,9 @@ func _on_battle_ended(player_won: bool) -> void:
 			# 相位师战时此快照在 _deferred_pm_show_battle_result 中会刷新一次（相位师奖励已入收集器）。
 			"collected_rewards": _battle_reward_collector.duplicate(true),
 		}
+	# v26 批次4：出征仪式加成记入摘要（summary 字面量构建后追加，避免被覆盖）
+	if not salute_bonus_data.is_empty():
+		last_battle_reward_summary["salute_bonus"] = salute_bonus_data
 	# v22.4（P1-4）：低精神掉落惩罚——精神值从装饰数值变真资源。
 	# 按基地精神档位（<50 → ×0.9 / <30 → ×0.75）对本次战后货币收益折算扣回，
 	# 惩罚额记入 summary 供结算面板"要塞"行展示。口径说明：只折算本函数内同步
@@ -1020,21 +1043,6 @@ func _maybe_roll_special_instrument_drop(stars: int, faction: String) -> String:
 	var all_specials: Array = faction_to_special.values()
 	return String(all_specials[randi() % all_specials.size()])
 
-## 敌方势力 -> 法则家族映射
-static func _get_law_families_for_faction(enemy_faction: String) -> Array:
-	match enemy_faction:
-		"steel": return ["STEEL"]
-		"flame": return ["FLAME"]
-		"thunder": return ["THUNDER"]
-		"void": return ["VOID"]
-		"steel_flame": return ["STEEL", "FLAME"]
-		"thunder_steel": return ["THUNDER", "STEEL"]
-		"void_flame": return ["VOID", "FLAME"]
-		"steel_thunder": return ["STEEL", "THUNDER"]
-		"flame_void": return ["FLAME", "VOID"]
-		"all": return ["STEEL", "FLAME", "THUNDER", "VOID"]
-		_: return ["STEEL"]
-
 ## v8.2 B1: 敌方家族 faction（steel/flame/thunder/void/混合）→ 玩家势力 ID 映射。
 ## 修复 faction 命名空间不一致：FACTION_MOD_BIAS / 特殊仪表 的 key 是玩家势力 ID，
 ## 而相位师 faction 字段用敌方家族名，两者原先永不匹配导致改造偏好/特殊仪掉落失效。
@@ -1196,6 +1204,12 @@ func _grant_battle_experience(player_won: bool) -> void:
 		return
 	for iid in instance_ids:
 		ir.add_experience(iid, per_card)
+	# v26 批次4：兵棋室 Lv3 沙盘演武——1 张未上阵卡后台吃 50% 单卡经验
+	var bunker_gm: Node = get_node_or_null("/root/BunkerManager")
+	if bunker_gm != null and bunker_gm.has_method("grant_sandbox_exp"):
+		var sb_exp: int = bunker_gm.grant_sandbox_exp(per_card)
+		if sb_exp > 0 and DEBUG_GAME_LOG:
+			pass  # 沙盘经验静默入账（UI 在兵棋室面板展示在盘卡）
 
 func _snapshot_battle_reward_baselines() -> void:
 	# v9.x（P2-7范围B）：知识值基线快照已随法则系统退役移除（本函数保留为空操作，

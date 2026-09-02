@@ -53,10 +53,6 @@ func set_user_time_scale(scale: float) -> void:
 	if not _slowmo_active:
 		Engine.time_scale = scale
 
-## 获取当前玩家倍速
-func get_user_time_scale() -> float:
-	return _user_time_scale
-
 # --- 临时节点引用（按需创建，战斗结束清理）---
 var _overlay: ColorRect = null             # 全屏覆盖层（暗化/闪光）
 var _title_label: Label = null             # 中央大字标签（VICTORY/BOSS名）
@@ -258,9 +254,13 @@ func _play_nuclear_warning(_params: Dictionary) -> void:
 	var tw2: Tween = create_tween()
 	tw2.tween_property(_title_label, "modulate:a", 1.0, 0.15)
 	tw2.tween_interval(0.4)
+	# v26.6: 玩家方核爆预警音（与敌方大招预警同语言）
+	SignalBus.play_sound.emit("boss_warn")
 
 ## 核子轰炸命中：白闪定帧 + extreme shake（v8.1a：白闪延长到0.2s，更震撼）
 func _play_nuclear_impact(params: Dictionary) -> void:
+	# v26.6: 核爆命中音（合成爆炸声；武器级爆炸音在弹道 batch 层，此处是大招级）
+	SignalBus.play_sound.emit("explosion")
 	_ensure_overlay()
 	# 白闪定帧（v8.1a：0.04+0.16=0.2s，比原0.12s更持久震撼）
 	_overlay.color = Color(1.0, 1.0, 1.0, 0.0)
@@ -285,6 +285,8 @@ func _play_nuclear_impact(params: Dictionary) -> void:
 ## 比 _play_nuclear_impact 轻量（单层闪 + 震屏），用于敌方 boss 大招 + 我方非核爆能力的命中瞬间。
 ## tint: 配色（lerp 到白闪，让闪屏带技能色调）。
 func _play_spell_impact(tint: Color = Color.WHITE) -> void:
+	# v26.6: 大招命中音（敌我通用命中定帧闪配爆响；预警已有 boss_warn）
+	SignalBus.play_sound.emit("explosion")
 	_ensure_overlay()
 	# 染色白闪定帧（0.04+0.16=0.2s，与核子轰炸同款时长）
 	var flash_c: Color = Color(1.0, 1.0, 1.0, 0.0).lerp(tint, 0.4) if tint != Color.WHITE else Color(1.0, 1.0, 1.0, 0.0)
@@ -300,6 +302,8 @@ func _play_spell_impact(tint: Color = Color.WHITE) -> void:
 
 ## 纳米虫群开始：全屏紫色降雨粒子层（持续整个周期）
 func _play_nano_swarm_start(params: Dictionary) -> void:
+	# v26.6: 施放音（持续型能力无 warning/impact，start 即唯一提示点）
+	SignalBus.play_sound.emit("cast")
 	var duration: float = float(params.get("duration", 30.0))
 	_create_nano_rain_layer(duration)
 	# 初始紫光脉冲
@@ -373,6 +377,8 @@ func _create_nano_rain_layer(duration: float) -> void:
 
 ## 巨型能量罩开始：全屏蓝色闪光脉冲
 func _play_mega_shield_start(_params: Dictionary) -> void:
+	# v26.6: 施放音（持续型能力无 warning/impact，start 即唯一提示点）
+	SignalBus.play_sound.emit("cast")
 	_ensure_overlay()
 	# 蓝色闪光 0→0.35→0
 	_overlay.color = Color(0.3, 0.7, 1.0, 0.0)
@@ -389,6 +395,9 @@ func _play_mega_shield_start(_params: Dictionary) -> void:
 func _play_enemy_warning_flash(flash_color: Color, title_text: String) -> void:
 	_ensure_overlay()
 	_ensure_title_label()
+	# v26.6: 大招预警音——此前演出引擎（500+1183 行）零音频调用，敌方大招只有画面没有声音。
+	# boss_warn 与 wave/boss 波次预警同音色，玩家闭眼也能听出"大招要来了"。
+	SignalBus.play_sound.emit("boss_warn")
 	# 全屏威胁色闪光：0→峰值→0
 	_overlay.color = Color(flash_color.r, flash_color.g, flash_color.b, 0.0)
 	_overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE

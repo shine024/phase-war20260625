@@ -52,4 +52,6 @@ const SK_PHASE_MASTER_SKILL: String = "phase_master_skill"
 const SK_AFK: String = "afk"
 # v21: 余烬要塞基地存档键（day/sanity/rooms/hero_fragments/narrative_stage）
 const SK_BUNKER: String = "bunker_state"
+# v26: 制造系统存档键（pity 暗保底计数；配方解锁实时读情报不落档）
+const SK_MANUFACTURE: String = "manufacture_state"
 # v25.3: SK_MOD_UNLOCK_STATE 已随账号解锁集退役删除（旧档 mod_unlock_state key 静默跳过）

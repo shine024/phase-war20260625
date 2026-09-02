@@ -313,7 +313,7 @@ func _get_era_name(era: int) -> String:
 		1: return "二战"
 		2: return "冷战"
 		3: return "现代"
-		4: return "未来"
+		4: return "近未来"
 		_: return "未知"
 
 func _get_category_name(category: String) -> String:

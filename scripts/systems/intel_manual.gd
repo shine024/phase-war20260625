@@ -284,6 +284,11 @@ func _calc_tier(progress: float) -> int:
 ## dimension 参数保留以兼容调用签名（单维度化后固定为 "intel"）。
 ## 返回实际增长量。
 func _add_intel(card_id: String, amount: float, source: String, dimension: String = "intel") -> float:
+	# 档案室 Lv3"深度解析"：全局情报获取 +10%（与 GameManager 同款探测：
+	# BunkerManager 懒加载未实例化时恒 1.0，绝不在此强制实例化基地）。
+	var bunker: Node = Engine.get_main_loop().root.get_node_or_null("BunkerManager")
+	if bunker != null and bunker.has_method("get_intel_gain_multiplier"):
+		amount *= bunker.get_intel_gain_multiplier()
 	var entry := _ensure_entry(card_id)
 	if entry.intel_progress >= 1.0:
 		return 0.0  ## 已满
@@ -439,18 +444,12 @@ func register_recon(card_id: String, recon_bonus_pct: float = 0.0, enemy_type: S
 		result["intel"] = actual
 	return result
 
-## 分解重复卡获得情报
-## 返回 {"intel": delta}
-func register_decompose(card_id: String, enemy_type: String = "") -> Dictionary:
-	var entry := _ensure_entry(card_id)
-	entry.decompose_bonus += DECOMPOSE_INTEL
-	if not enemy_type.is_empty():
-		_card_to_enemy_type[card_id] = enemy_type
-	var actual: float = _add_intel(card_id, DECOMPOSE_INTEL, "decompose")
-	var result: Dictionary = {}
-	if actual > 0.001:
-		result["intel"] = actual
-	return result
+## v26 批次3: 分析仪出炉入账——档案室烧缴获卡所得情报（按品质增量，source="analyzer"）。
+## 由 BunkerManager.analyzer 出炉路径调用；量由 ManufacturePools.analyzer_yield(rarity) 决定。
+## 返回 {"intel": 实际增量}
+func register_analyzer_analysis(archetype_id: String, amount: float) -> Dictionary:
+	var actual: float = _add_intel(archetype_id, amount, "analyzer")
+	return {"intel": actual}
 
 ## v21.0: 部署敌方形态卡（captured_*）——base +4% 固定（不衰减）+ 随机 2~5 mod 点数。
 ## 由 battle_spawn_system.request_player_deploy 成功路径调用（每次部署计一次）。

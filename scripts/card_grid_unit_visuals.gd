@@ -6,6 +6,7 @@ const CardGridRankStrip = preload("res://scripts/card_grid_rank_strip.gd")
 const CardGridBuffStrip = preload("res://scripts/card_grid_buff_strip.gd")
 const CardGridModStrip = preload("res://scripts/card_grid_mod_strip.gd")
 const CardGridBattleLayout = preload("res://scripts/card_grid_battle_layout.gd")
+const CardGridNameStrip = preload("res://scripts/card_grid_name_strip.gd")
 const CardGridFloatingLabel = preload("res://scripts/card_grid_floating_label.gd")
 const RankRules = preload("res://data/rank_rules.gd")
 const DT = preload("res://resources/design_tokens.gd")  # v13: 待机微动效 motion_reduce 守卫
@@ -147,10 +148,11 @@ static func apply_battle_unit_presentation(
 		apply_battle_card_chrome(host, unit_spr, card)
 	sync_rank_strip(host, rank_level, unit_spr)
 	sync_name_strip(host, unit_spr, card, face_right, unit)
-	# v7.x 战场视觉反馈：单位头顶增强——稀有度角标 + 等级标签
+	# v7.x 战场视觉反馈：单位头顶增强——稀有度角标
 	if card != null:
 		sync_rarity_badge(host, unit_spr, card)
-	sync_level_tag(host, unit_spr, card, unit)
+	# v26.x: 实体左上角 LevelTag 已删除——等级唯一显示位在血条左侧 LvN（unit_hp_bar），
+	# 双套等级显示是头顶拥挤的来源之一。
 	# v7.x 战场视觉反馈：敌方精英金角标（elite/boss 单位，左上角，避开右上的稀有度角标）
 	sync_elite_badge(host, unit_spr, unit)
 	# v7.x HP 数值标签（卡框下方，我方青/敌方红）
@@ -463,20 +465,23 @@ static func sync_name_strip(host: Node2D, unit_spr: Sprite2D, card: CardResource
 		return
 	var strip = host.get_node_or_null("CardGridNameStrip")
 	if strip == null:
-		var NameStripClass = preload("res://scripts/card_grid_name_strip.gd")
-		strip = NameStripClass.new()
+		strip = CardGridNameStrip.new()
 		strip.name = "CardGridNameStrip"
 		host.add_child(strip)
 	strip.z_index = 15
-	var display_name: String = ""
-	if card != null:
-		display_name = card.display_name
+	# v26.x: 战场名牌短名解析（short_name 优先 / 剥 ·精锐·敌方·Boss·改 变体后缀），全名留给悬停与图鉴。
+	var display_name: String = CardGridNameStrip.battlefield_display_name(card)
 	# v9.x: 势力前缀平台产兵（一战 4 相位师）名称加势力前缀，显示「势力前缀·真实兵种名」。
 	# faction_prefix meta 由 enemy_phase_field_driver 在产兵时按 LEGACY_PLATFORM_TO_ARCHETYPE 记录。
+	# v26.x: 前缀版放得下才带前缀，放不下优先保兵种名（防"势力·X…"截断丢兵种）。
 	if unit != null and not display_name.is_empty():
 		var prefix: String = String(unit.get_meta("faction_prefix", ""))
 		if not prefix.is_empty():
-			display_name = "%s·%s" % [prefix, display_name]
+			var prefixed := "%s·%s" % [prefix, display_name]
+			var fs := clampi(int(CardGridBattleLayout.BASE_CARD_WIDTH_PX * CardGridNameStrip.FONT_SIZE_FRAC), 10, 14)
+			var avail := CardGridBattleLayout.BASE_CARD_WIDTH_PX * CardGridNameStrip.BAR_WIDEN - CardGridNameStrip.TEXT_PAD * 2.0
+			if CardGridNameStrip.text_fits(prefixed, avail, fs):
+				display_name = prefixed
 	# 卡的尺寸取标准卡宽（CardBattleBg 已在 apply_battle_card_chrome 强制隐藏且不加载纹理，
 	# 故 bg_spr.texture 恒为 null，原 bg_spr 读取分支永不命中，已清理）
 	var card_w: float = CardGridBattleLayout.BASE_CARD_WIDTH_PX
@@ -589,11 +594,9 @@ static func sync_buff_strip(host: Node2D, unit: Node, spr: Sprite2D) -> void:
 	var card_w: float = CardGridBattleLayout.BASE_CARD_WIDTH_PX
 	var card_h: float = card_w * 8.0 / 5.0
 	strip.rebuild(kinds, card_w)
-	# buff 条移到血条上方横排：血条在 entity_top_y-14，buff 条在血条上方（留 4px 间距）。
-	# buff_strip 内部以原点为中心绘制，故 position.y 对齐到目标行中心。
-	var top_y_bs: float = entity_top_y(spr)
-	var hp_bar_y_bs: float = top_y_bs - 14.0
-	strip.position = Vector2(0.0, hp_bar_y_bs - 4.0 - card_w * 0.11)
+	# buff 条在血条上方横排（留 4px 间距）。buff_strip 内部以原点为中心绘制，
+	# 故 position.y 对齐到目标行中心。v26.x 走 overhead_buff_strip_y 统一基准。
+	strip.position = Vector2(0.0, overhead_buff_strip_y(spr))
 
 
 # ============================================================================
@@ -630,41 +633,31 @@ static func sync_rarity_badge(host: Node2D, unit_spr: Sprite2D, card: CardResour
 	badge.visible = true
 
 
-## 等级小标签：卡框左上角 "Lv.X"（v20.12 等级统一：我方读 stats.card_level 战斗卡等级；
-## 旧 enhance_level 链路仅作过渡回退，敌方无等级则隐藏）
-## 用 Node2D + _draw() 自绘（参考 CardGridRankStrip），避免 Label 在 Node2D 下
-## 因 Control 布局系统不触发导致的 size=0 / 文字不渲染问题。
-static func sync_level_tag(host: Node2D, unit_spr: Sprite2D, card: CardResource, unit: Node = null) -> void:
-	if host == null:
-		return
-	var level: int = 0
-	# v20.12: 优先读 stats.card_level（我方部署时从 InstanceRegistry 打栈）
-	if unit != null and "stats" in unit and unit.stats != null and "card_level" in unit.stats:
-		level = int(unit.stats.card_level)
-	elif host.has_meta("card_level"):
-		level = int(host.get_meta("card_level"))
-	# 过渡回退：旧 enhance_level 链（旧档/未打栈路径）
-	elif unit != null and "stats" in unit and unit.stats != null and "enhance_level" in unit.stats:
-		level = int(unit.stats.enhance_level)
-	elif host.has_meta("enhance_level"):
-		level = int(host.get_meta("enhance_level"))
-	elif card != null and "enhance_level" in card:
-		level = int(card.enhance_level)
-	var label := host.get_node_or_null("LevelTag") as CardGridFloatingLabel
-	if level <= 0:
-		if label != null:
-			label.visible = false
-		return
-	if label == null:
-		label = CardGridFloatingLabel.new()
-		label.name = "LevelTag"
-		host.add_child(label)
-	label.set_text("Lv.%d" % level)
-	label.set_style(11, DT.COLOR_GOLD, Color(0, 0, 0, 0.85), 3, HORIZONTAL_ALIGNMENT_CENTER)
-	# 定位：实体左上角，锚定实体顶部
-	var card_w_lt: float = CardGridBattleLayout.BASE_CARD_WIDTH_PX
-	label.position = Vector2(-card_w_lt * 0.5 - 18.0, entity_top_y(unit_spr) - 8.0)
-	label.visible = true
+## 等级小标签（v26.x 已删除）：实体左上角 "Lv.X" 角标退役——血条左侧 LvN
+## （unit_hp_bar LevelLabel）是等级唯一显示位，双套等级显示是头顶拥挤来源之一。
+
+
+## v26.x 头顶栈基准函数：血条锚 entity_top−14（与宿主 construct_unit/enemy_unit
+## 挂血条公式同式），光环条/改造条/文字标签自血条向上推导——单一基准消除错位叠加。
+static func overhead_hp_bar_y(unit_spr: Sprite2D) -> float:
+	return entity_top_y(unit_spr) - 14.0
+
+
+static func overhead_buff_strip_y(unit_spr: Sprite2D) -> float:
+	var w: float = CardGridBattleLayout.BASE_CARD_WIDTH_PX
+	return overhead_hp_bar_y(unit_spr) - 4.0 - w * 0.11
+
+
+static func overhead_mod_strip_y(unit_spr: Sprite2D) -> float:
+	var w: float = CardGridBattleLayout.BASE_CARD_WIDTH_PX
+	return overhead_hp_bar_y(unit_spr) - 4.0 - w * 0.22 - 2.0 - w * 0.09
+
+
+## buff 文字标签行（破甲×N 等）：栈顶行，在改造条上方——旧值 entity_top−28
+## 夹在光环条（−24.5）与改造条（−38.3）之间，必然与两排图标重叠。
+static func overhead_buff_labels_y(unit_spr: Sprite2D) -> float:
+	var w: float = CardGridBattleLayout.BASE_CARD_WIDTH_PX
+	return overhead_mod_strip_y(unit_spr) - w * 0.09 - 4.0
 
 
 ## v7.x: HP数值标签已弃用，HP现在显示在血条内部（保留兼容性函数）
@@ -697,10 +690,9 @@ static func sync_mod_strip(host: Node2D, unit: Node, spr: Sprite2D) -> void:
 	var card_w: float = CardGridBattleLayout.BASE_CARD_WIDTH_PX
 	var card_h: float = card_w * 8.0 / 5.0
 	strip.rebuild(kinds, card_w)
-	# mod 条移到 buff 条上方横排（头顶最上层）：buff 条在 hp_bar_y-4-0.22w，mod 再往上。
-	var top_y_ms: float = entity_top_y(spr)
-	var hp_bar_y_ms: float = top_y_ms - 14.0
-	strip.position = Vector2(0.0, hp_bar_y_ms - 4.0 - card_w * 0.22 - 2.0 - card_w * 0.09)
+	# mod 条在 buff 条上方横排（头顶最上层，z 14>13 防小卡图两行重叠）。
+	# v26.x 走 overhead_mod_strip_y 统一基准。
+	strip.position = Vector2(0.0, overhead_mod_strip_y(spr))
 
 
 # ============================================================================
@@ -788,9 +780,9 @@ static func sync_buff_labels(host: Node2D, unit_spr: Sprite2D, unit: Node) -> vo
 	for i in range(tags.size(), existing.size()):
 		if is_instance_valid(existing[i]):
 			existing[i].queue_free()
-	# 从左到右定位（buff 标签在实体顶部上方 28px，与稀有度/精英角标同基准 entity_top_y 对齐）
+	# 从左到右定位（v26.x：标签行移到改造条上方——栈顶行，不再夹在两排图标条之间）
 	var x_cursor: float = -total_w * 0.5
-	var y_top: float = entity_top_y(unit_spr) - 28.0
+	var y_top: float = overhead_buff_labels_y(unit_spr)
 	for i in range(labels.size()):
 		var lbl: CardGridFloatingLabel = labels[i]
 		var w: float = lbl.get_text_width() + 4.0

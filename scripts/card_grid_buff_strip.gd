@@ -69,10 +69,6 @@ static func buff_signature(unit: Node) -> String:
 	return "|".join(parts)
 
 
-func get_total_height() -> float:
-	return _total_height
-
-
 func rebuild(active_kinds: Array[BuffKind], card_art_width: float = -1.0) -> void:
 	_card_art_width = card_art_width if card_art_width > 1.0 else CardGridBattleLayout.battle_card_width_px()
 	_active_kinds = active_kinds.duplicate()

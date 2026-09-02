@@ -158,25 +158,33 @@ func apply_all_boosts_to_stats(stats: UnitStats) -> void:
 	if hp_bonus != 0.0:
 		stats.max_hp *= (1.0 + hp_bonus)
 
-	# 伤害提升
+	# 伤害提升。v26.6: 战斗 AI 实际读三维攻击 + weapon_slots[i].damage（attack_damage 只是
+	# attack_light 别名），只乘 attack_damage 会让"攻击强化"在实战依旧空转，故三维+武器槽同乘
 	var damage_bonus = get_total_bonus_for_type(BoostType.DAMAGE)
 	if damage_bonus != 0.0:
-		stats.attack_damage *= (1.0 + damage_bonus)
+		var dmg_mult: float = 1.0 + damage_bonus
+		stats.attack_light *= dmg_mult
+		stats.attack_armor *= dmg_mult
+		stats.attack_air *= dmg_mult
+		for w in stats.weapon_slots:
+			if w != null and "damage" in w:
+				w.damage = maxf(0.1, float(w.damage) * dmg_mult)
 
 	# 速度提升
 	var speed_bonus = get_total_bonus_for_type(BoostType.SPEED)
 	if speed_bonus != 0.0:
 		stats.move_speed *= (1.0 + speed_bonus)
 
-	# 防御提升（负值表示减伤）
+	# 防御提升（bonus_per_stack 为负 = 受到的伤害降低 → damage_reduction 增加，v26.6 修正符号）
 	var defense_bonus = get_total_bonus_for_type(BoostType.DEFENSE)
 	if defense_bonus != 0.0:
-		stats.damage_reduction += defense_bonus
+		stats.damage_reduction = clampf(stats.damage_reduction - defense_bonus, 0.0, 1.0)
 
-	# 攻速提升
+	# 攻速提升。v26.6: 原直接乘 attack_interval 反而降速，统一走项目统一入口
+	# AttackCalculator.scale_attack_speeds（率 ×(1+bonus)、interval ÷(1+bonus)、武器槽同步）
 	var attack_speed_bonus = get_total_bonus_for_type(BoostType.ATTACK_SPEED)
 	if attack_speed_bonus != 0.0:
-		stats.attack_interval *= (1.0 + attack_speed_bonus)
+		AttackCalculator.scale_attack_speeds(stats, 1.0 + attack_speed_bonus)
 
 	# 暴击率提升
 	var crit_rate_bonus = get_total_bonus_for_type(BoostType.CRIT_RATE)

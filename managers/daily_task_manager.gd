@@ -273,6 +273,8 @@ func _grant_task_rewards(task: Dictionary) -> void:
 	# 发送奖励获得信号
 	if SignalBus and SignalBus.has_signal("daily_task_reward_granted"):
 		SignalBus.daily_task_reward_granted.emit(task)
+		# v26.6 批4b: 死信号审计 B 类补反馈链——领奖 toast（task 字典无 title，按类型描述）
+		SignalBus.show_toast.emit("📋 日常任务完成：%s（奖励已发放）" % get_task_type_name(task.get("type", -1)))
 
 ## 给予稀有度碎片
 func _grant_rarity_fragment(reward_type: String, amount: int) -> void:
@@ -394,7 +396,9 @@ func save_state() -> Dictionary:
 ## 加载状态（给SaveManager用）
 func load_state(data: Dictionary) -> void:
 	_load_triggered = true  # v7.x W5: 标记已加载，阻止 _ready 的延迟检查重复刷新
-	var loaded: Array = data.get("tasks", [])
+	# v26.6：手改档把 tasks 写成非 Array 时不再触发类型赋值错误中断整批 deferred 加载
+	var loaded_v: Variant = data.get("tasks", [])
+	var loaded: Array = loaded_v if loaded_v is Array else []
 	# 批次8：过滤已退役系统对应的任务类型（法则退役后 USE_PHASE_LAWS 成死任务），
 	# 旧档残留实例静默丢弃，等 24h 周期刷新或玩家手动刷新自然补齐。
 	for i in range(loaded.size() - 1, -1, -1):

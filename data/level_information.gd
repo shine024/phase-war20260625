@@ -70,11 +70,10 @@ func _init_level_information() -> void:
 	_apply_special_rules()
 
 func _add_ww1_levels() -> void:
-	"""一战（1-20关）：钢壁防务为主
-	法则家族限制：
-	- 钢壁防务(iron_wall_corp)主控 STEEL，前期关卡限制严格
-	- 早期（1-5）仅 STEEL，中期（6-14）加入 FLAME，后期（15-19）加入 THUNDER
-	- Boss关（20）全部开放"""
+	"""一战（1-20关）：无主之地教学时代
+	v6.9: 前 20 关 faction_id 为空——无势力占领/势力加成/势力相位师（21 关起启用）。
+	注：旧文档"钢壁防务为主/法则家族限制"已随 v6.9 无主之地改造与 P2-7 法则退役失效，
+	下方 families 数组仅为兼容保留的死数据。"""
 	var descriptions = [
 		"晨曦中的索姆河，第一阶段突破作战",
 		"泥泞的堡垒区，持续的炮火覆盖",

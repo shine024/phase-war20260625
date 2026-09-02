@@ -274,47 +274,9 @@ func get_stats() -> Dictionary:
 		"queries_since_last": _query_count - _last_query_count
 	}
 
-## 重置查询计数
-func reset_query_count() -> void:
-	_last_query_count = _query_count
-
 ## 计算网格坐标（整数格）
 func _get_cell_coords(position: Vector2) -> Vector2i:
 	var x := int(floor(position.x / _cell_size))
 	var y := int(floor(position.y / _cell_size))
 	return Vector2i(x, y)
 
-## 调试：绘制网格（用于可视化）
-func draw_debug(canvas: CanvasItem) -> void:
-	if not canvas:
-		return
-
-	# 计算网格范围
-	var min_cell_x = int(floor(_battle_min_x / _cell_size))
-	var max_cell_x = int(floor(_battle_max_x / _cell_size))
-	var min_cell_y = int(floor(_battle_min_y / _cell_size))
-	var max_cell_y = int(floor(_battle_max_y / _cell_size))
-
-	# 绘制网格线
-	for x in range(min_cell_x, max_cell_x + 1):
-		var world_x = x * _cell_size
-		canvas.draw_line(Vector2(world_x, _battle_min_y), Vector2(world_x, _battle_max_y), Color(0.3, 0.3, 0.3, 0.3))
-
-	for y in range(min_cell_y, max_cell_y + 1):
-		var world_y = y * _cell_size
-		canvas.draw_line(Vector2(_battle_min_x, world_y), Vector2(_battle_max_x, world_y), Color(0.3, 0.3, 0.3, 0.3))
-
-	# 绘制单元格内容
-	for cell_key in _grid.keys():
-		var cell_x: int = cell_key.x
-		var cell_y: int = cell_key.y
-		var cell_pos = Vector2(cell_x * _cell_size, cell_y * _cell_size)
-
-		# 绘制单元格矩形
-		var rect = Rect2(cell_pos, Vector2(_cell_size, _cell_size))
-		canvas.draw_rect(rect, Color(0.2, 0.5, 0.8, 0.1))
-
-		# 显示单位数量
-		var count = _grid[cell_key].size()
-		if count > 0:
-			canvas.draw_string(ThemeDB.fallback_font, cell_pos + Vector2(5, 15), str(count), HORIZONTAL_ALIGNMENT_LEFT, -1, 8, Color.YELLOW)

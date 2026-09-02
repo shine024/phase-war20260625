@@ -2,7 +2,7 @@ extends PanelContainer
 
 const DesignTokens = preload("res://resources/design_tokens.gd")
 ## 统一情报面板：背包/相位仪/战场共用
-## 4 Tab：情报 / 强化 / 改造 / 进化
+## 4 Tab：情报 / 强化 / 改造 / 制造（v26：原进化 Tab 由制造中心接管）
 ## 模式：
 ##   MODE_BACKPACK(0)         → 装备按钮（背包场景；拆解已随蓝图体系移除）
 ##   MODE_PHASE_INSTRUMENT(1) → 卸下按钮（相位仪槽位）
@@ -11,7 +11,7 @@ const DesignTokens = preload("res://resources/design_tokens.gd")
 signal action_requested(action: String, card: CardResource)
 
 enum PanelMode { MODE_BACKPACK = 0, MODE_PHASE_INSTRUMENT = 1, MODE_BATTLEFIELD = 2 }
-enum TabIdx { INFO = 0, REINFORCE = 1, MODIFY = 2, EVOLVE = 3 }
+enum TabIdx { INFO = 0, REINFORCE = 1, MODIFY = 2, EVOLVE = 3 }  # EVOLVE 索引保留（tscn 节点占位），语义=制造
 
 const GC = preload("res://resources/game_constants.gd")
 const PanelStyles = preload("res://scripts/ui/panel_styles.gd")
@@ -177,11 +177,11 @@ func _setup_tab_titles() -> void:
 	_tab_container.set_tab_title(TabIdx.INFO, "情报")
 	_tab_container.set_tab_title(TabIdx.REINFORCE, "强化")
 	_tab_container.set_tab_title(TabIdx.MODIFY, "改造")
-	_tab_container.set_tab_title(TabIdx.EVOLVE, "进化")
+	_tab_container.set_tab_title(TabIdx.EVOLVE, "制造")
 	# 批次三 B2e：Tab 悬停就地解释（强化 Tab 恒隐藏，tooltip 仅作兜底无害）
 	_tab_container.set_tab_tooltip(TabIdx.INFO, "卡牌/单位的详细属性、词条与说明")
 	_tab_container.set_tab_tooltip(TabIdx.MODIFY, "为这张卡安装/调整改造模块（最多 9 格，只影响本实例）")
-	_tab_container.set_tab_tooltip(TabIdx.EVOLVE, "查看进化路线与条件，满足后变为全新卡牌")
+	_tab_container.set_tab_tooltip(TabIdx.EVOLVE, "消耗情报与资源直接制造这张卡（品质随情报提升）")
 	_hide_all_sub_tabs()
 	# 批次三 B2e：头部与三维攻防卡 tooltip（新玩家最常困惑的数值语义）
 	if star_label:
@@ -926,7 +926,7 @@ func _build_nurture_text(card: CardResource, _stats: UnitStats = null, include_p
 	if "evolution_stage" in card and str(card.evolution_stage) != "":
 		var stage: String = str(card.evolution_stage)
 		if not stage.is_empty():
-			parts.append("进化 %s" % stage)
+			parts.append("继承 %s" % stage)
 	# v6.11: 情报标签下显示已获得改造的名称 + 效果摘要（让玩家看到装了什么、加什么）
 	var mod_list_text: String = ""
 	if card.card_type == GC.CardType.COMBAT_UNIT and "mods" in card:
@@ -2469,8 +2469,35 @@ func _show_generic_enemy_unit(unit: Node) -> void:
 	_set_section_visible_by_content(_nurture_section, enemy_aura_text)
 	# v7.x(敌方加成来源明细): 显示经典敌人/蜂群的加成来源明细
 	var _bonus_text := _build_bonus_breakdown_text(unit)
+	# v26: 四档固定配装段（档位徽标 + 定位 + 已配改造名）并入加成来源 section
+	var _loadout_text := _build_enemy_loadout_text(unit)
+	if not _loadout_text.is_empty():
+		_bonus_text = _loadout_text + "\n" + _bonus_text if not _bonus_text.is_empty() else _loadout_text
 	if _bonus_label: _bonus_label.text = _bonus_text
 	_set_section_visible_by_content(_bonus_section, _bonus_text)
+
+## v26: 敌方四档固定配装展示——档位徽标 + 一句话定位 + 已配改造名列表。
+## 读 unit meta loadout_mods（enemy_unit._apply_loadout_modifications / driver 乘区6 写入）。
+func _build_enemy_loadout_text(unit: Node) -> String:
+	if unit == null or not is_instance_valid(unit):
+		return ""
+	if not unit.has_meta("loadout_mods"):
+		return ""
+	var mods = unit.get_meta("loadout_mods")
+	if not (mods is Array) or mods.is_empty():
+		return ""
+	var tier: int = int(unit.get_meta("loadout_mods_tier", 1))
+	var arch_id: String = String(unit.get("archetype_id")) if "archetype_id" in unit else ""
+	var identity: String = EnemyFixedLoadouts.get_identity(arch_id)
+	var lines: Array[String] = []
+	lines.append("敌方配装【%s】×%d：" % [EnemyLoadoutTiers.get_tier_name(tier), mods.size()])
+	if not identity.is_empty():
+		lines.append("  %s" % identity)
+	for m in mods:
+		var mid: String = String(m.get("id", "")) if m is Dictionary else String(m)
+		var md: Dictionary = ModificationRegistry.get_data(mid)
+		lines.append("  · %s" % String(md.get("name", mid)))
+	return "\n".join(lines)
 
 ## ── 法则效果构建 ──
 

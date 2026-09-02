@@ -4,7 +4,7 @@
 
 - **Engine**: Godot 4.5 (config_version=5)
 - **Language**: GDScript
-- **Resolution**: 1280x720, 60fps cap, `gl_compatibility` renderer
+- **Resolution**: 1280x720, `gl_compatibility` renderer（无引擎级 fps 上限配置——project.godot 未设 max_fps/low_processor_mode，v26.4 核对勘误）
 - **Entry scene**: `res://scenes/title_screen.tscn`
 - **Main game scene**: `res://scenes/main.tscn`
 
@@ -41,7 +41,7 @@ Add `--rendering-driver opengl3` if Vulkan issues (applies to `--headless` / `--
 > **验证方式分层建议（避免撞 5 分钟超时）**：
 > - **纯逻辑文件**（无 `key = value` 字典写法）→ `gdparse <file>`（秒级，但 gdtoolkit 4.5.0 不支持 GDScript `key = value` 字典语法，对数据字典文件集体误报）
 > - **单文件改动**（数据字典等）→ `--script` 模式单独 `load()` 改动文件 + 断言（几秒出结果，不启动全部 autoload）
-> - **全项目兜底** → `--check-only`（启动 42 autoload + 构建 133 卡，常撞 5 分钟超时，仅大改动用）
+> - **全项目兜底** → `--check-only`（启动 31 autoload + 构建 133 卡，常撞 5 分钟超时，仅大改动用）
 
 ```powershell
 # Version check
@@ -186,14 +186,14 @@ func _redirect_stdout_to_file() -> void:
 | 6 | `GameManager` | `managers/game_manager.gd` | 游戏流程；15% 相位师遭遇 |
 | 7 | `BlueprintManager` | `managers/blueprint_manager.gd` | 卡牌账号级养成（副本/星级/改造/进化/继承/HP下限） |
 | 8 | `DropManager` | `managers/drop_manager.gd` | 战后掉落表与领取 |
-| 9 | `SaveManager` | `managers/save_manager.gd` | `user://save.json`，schema v8，迁移链 v1→v8 |
+| 9 | `SaveManager` | `managers/save_manager.gd` | `user://save_slot_%d.json`（3 槽；`save.json` 仅旧单档兼容读），schema v9，迁移链 v1→v9（v9 迁移体 no-op，版本号保留） |
 | 10 | `AudioManager` | `managers/audio_manager.gd` | 音频 |
-| 11 | `BasicResourceManager` | `managers/basic_resource_manager.gd` | 全局货币（纳米/合金/水晶/能量块/许可；科研点已随 P2-7 退役） |
+| 11 | `BasicResourceManager` | `managers/basic_resource_manager.gd` | 全局货币（纳米材料/合金/晶体/能量块 共 4 种；许可证 v7.3 删、科研点已随 P2-7 退役） |
 | 12 | `ObjectPoolManager` | `managers/object_pool.gd` | 子弹/伤害数字对象池 |
 | 13 | `UILazyLoader` | `managers/ui_lazy_loader.gd` | UI 面板按需加载 |
 | 14 | `ManagerLazyLoader` | `managers/manager_lazy_loader.gd` | 非 core manager 按需加载 |
 | 15 | `PerformanceMetricsManager` | `managers/performance_metrics_manager.gd` | FPS/性能采样 |
-| 16 | `ModificationRegistry` | `scripts/systems/modification_registry.gd` | 9 兵种 140+ 改造模块（静态注册表） |
+| 16 | `ModificationRegistry` | `scripts/systems/modification_registry.gd` | 9 兵种 202 改造模块（静态注册表，数量锁在 modification_modules_test） |
 | 17 | `EvolutionPathRegistry` | `scripts/systems/evolution_path_registry.gd` | 8 兵种进化路径 |
 | 18 | `DayClock` | `managers/day_clock.gd` | 游戏内日时钟 |
 | 19 | `AuraManager` | `managers/aura_manager.gd` | 平台光环 |
@@ -210,11 +210,11 @@ func _redirect_stdout_to_file() -> void:
 | 30 | `BattleSpectacle` | `managers/battle/battle_spectacle.gd` | 战斗演出/大招编排 |
 | 31 | `_MCPGameBridge` | `addons/agent_tools/runtime/game_bridge.gd` | agent_tools 编辑器插件运行时桥 |
 
-**Lazy-loaded managers**（`ManagerLazyLoader.ensure_loaded()`，21 个配置项；v9.x 2026-08-22 清理：battle_feedback/character/challenge_mode/version 四项已删，见停用清单）：
+**Lazy-loaded managers**（`ManagerLazyLoader.ensure_loaded()`，23 个配置项；v9.x 2026-08-22 清理：battle_feedback/character/challenge_mode/version 四项已删，见停用清单；v26.4 核对更新）：
 aura, level_progress, drop, quest, achievement, daily_task,
 faction, affix, intel_item_bag, intel_manual, intel_discovery,
 intel_evolution, card_collection, card_enhancement, stat_boost, leaderboard,
-lore, tutorial, new_systems, toast, debug_log
+lore, tutorial, new_systems, toast, debug_log, bunker, manufacture
 
 > 注：与 autoload 重叠的条目（drop/quest/faction/affix/level_progress/card_enhancement/
 > tutorial/intel_item_bag/intel_manual/aura）是别名入口（复用 /root 节点），非双实例。
@@ -245,12 +245,15 @@ BattleManager → BattleSpawnSystem, BattleDamageSystem, EnergyManager,
                  IntelDiscoveryManager (v6.0 defeated enemy recording)
 
 SaveManager → ALL managers (loads/saves their state sections)
-              Critical: BlueprintManager, PhaseInstrumentManager,
-              QuestManager, BasicResourceManager, FactionSystemManager, AffixManager,
-              LevelProgressManager, DropManager, IntelItemBag
+              Critical（12，立即加载）: InstanceRegistry, BlueprintManager,
+              PhaseInstrumentManager, QuestManager, BasicResourceManager,
+              FactionSystemManager, AffixManager, LevelProgressManager,
+              DropManager, IntelItemBag, IntelManual, PhaseMasterSkillManager
               （ModificationRegistry 解锁集段已随 v25.3 退役移除）
-              Deferred: LoreManager, StatBoostManager, AchievementManager,
-              DailyTaskManager, StatisticsManager, CardEnhancementManager, etc.
+              Deferred（13，分批延迟）: LoreManager, StatBoostManager, AchievementManager,
+              DailyTaskManager, CardEnhancementManager, TutorialProgressionManager,
+              DayClock, CardCollectionManager, LeaderboardManager, IntelDiscoveryManager,
+              IntelEvolutionManager, BunkerManager, ManufactureManager
 
 BlueprintManager → CardEvolutionManager, ModManager, EvolutionHelpers,
                     DefaultCards, PhaseLaws, UnitStatsTable, RankRules
@@ -283,6 +286,77 @@ IntelEvolutionManager → IntelManual, IntelEvolutionBranches
 2. Per-frame: wave spawning + win/lose check
 3. `SignalBus.battle_ended.emit(player_won)` → `GameManager._on_battle_ended()` handles rewards, progression, save
 
+### v26.2 战斗环境效果 + 每关战场布局（2026-09-01，详见 CHANGELOG）
+
+**改战场格子/环境数值/敌方槽位逻辑前必读本节。**
+
+- **环境效果**（`data/battle_env_effects.gd`）：`battle_environments.gd` 四维（天气/地形/
+  能量场/时段）的数值真身，分立乘区桶（indirect/direct/all_dmg、direct_range、atk_speed、
+  regen）**敌我对称**乘在 stats 构建层三处（玩家 `_build_stats_cached` 尾部——环境签名
+  已进缓存 key；经典敌兵 resolve 结果字典；driver 乘区 7）。回能走 `level_regen_mult`
+  通道。加新环境值=在四张 EFFECTS 表加一条（带 desc）；调量级改表即可。总开关
+  `GameConfig.env_effects_enabled`。UI：world_map 战前摘要 + TopHudBar"环境"chip
+  （`describe_level_env` 同源）。留观：MODERN/COLD 时代默认环境四维叠加 ≈ 直射 -15%。
+- **每关布局**（`data/level_battle_layouts.gd`，首版 15 关）：rows(2/3)/敌我 cols(2-4)/
+  废墟格 excluded。**布局真身是 `CardGridBattleLayout` 的 static 激活态**
+  （`apply_for_level`/`reset_to_default` 由 battle_manager start/end 调；缺省=3×3 逐像素
+  同旧）。几何函数全部带 `is_enemy` 可选参；`column_width = (X1-X0)/max(7, cols_p+cols_e+1)`
+  保 3×3 不变。加棋面=表加一行，零代码。**敌方槽序不得再写死 9 格**——用
+  `enemy_slots_total()`/`active_enemy_cols()`/`is_slot_excluded(si,"enemy")`（spawn 系统
+  与 driver 的三处旧硬编码序已全部动态化）。L1 教程关必须保持无条目。总开关
+  `GameConfig.battle_layouts_enabled`。数据锁 `tests/unit/data/battle_env_layouts_test.gd`。
+- aura 槽距坐标走 `aura_data.slot_grid_coords(idx, is_enemy)`（敌我列数可不同；
+  单位侧别判定用新 `slot_grid_coords_for_unit`）。
+
+### v26 敌方四档真实配装 + 新飞机（2026-09-01，详见 CHANGELOG）
+
+**改敌方配装/出兵/空中单位前必读本节。**
+
+- **四档体系**（`data/enemy_loadout_tiers.gd`）：新兵/老兵/精英/传奇（时代内 in_era
+  1-5/6-11/12-17/18-20 循环；相位师恒传奇）。旧常量 LOW/MID/HIGH 为别名（HIGH=传奇）。
+  标量 [×1.20/1.30/1.46/1.66]——**改造贡献计入总量后校准**，调难度改 TIER_BONUS 单变量，
+  以 `tools/enemy_tier_strength_audit.gd`（档位归因口径）实测为准（目标 1.40/1.65/1.95/2.25）。
+- **配装表**（`data/enemy_fixed_loadouts.gd`，117 敌方 id 全量）：每卡 {identity 定位,
+  mods 9 条增量序列, cuts 四档条数}。改条目跑 `tools/gen_enemy_loadout_draft.gd` 重生成
+  （生成区标记之间整块覆写，手改 mods 会被下次生成覆盖；identity 微调同样会被覆盖，
+  永久手写覆写应改生成器的模板/overrides）。数据锁在 `tests/unit/data/enemy_loadouts_test.gd`
+  （覆盖/cuts/冲突组/时代带/白名单）。
+- **挂载双侧**：经典敌兵 `enemy_unit._apply_loadout_modifications`（v21 词条同位）/
+  相位师产兵 driver 乘区6。管线=玩家同款（四通道+比值同步武器槽+武器槽通道），改造
+  等级随档位 Lv1/2/3。**敌方效果键白名单** `LOADOUT_MOD_SUPPORTED_KEYS` 在配装表文件——
+  新增改造键要给敌方用必须同步白名单（宁少接不乱接）。**频率轴已开（v26.3）**：
+  `attack_interval` 入白名单，落点=`_sync_mod_speed_ratio_to_weapon_slots`（敌我 timing
+  主路径都读 `weapon_slots[].attack_speed`，只写 stats per-target 轴会空转——该存量 P1
+  双边修复于 v26.3，玩家攻速改造自此实战生效）；SUPPRESS/AA 模板已接攻速件（37/117 条目）。
+- **新飞机 8 张**（era1-4 轰炸机/多用途，D 段池）：轰炸机 tags 含 bomber → aoe_cap=8
+  （batch 溅射上限放宽）+ AERIAL 半径读 splash_radius_bonus（`simple_indirect_projectile_batch`）。
+  **玩家飞行单位索敌已加 AIR 优先**（空优对称）。8 张卡图待 AI 生图（生成后必跑
+  `generate_card_foot_anchors.py` + 美术打包铁律）。
+- v21 同源词条门槛=精英档（1 条）/传奇（2 条）。
+- 数量锁：改造总数 **202**（`modification_modules_test` + `combo_tier_smoke` 两处 +
+  armor per-module 18）。
+
+### v26.2 战斗界面 UI 整编（2026-09-01，详见 CHANGELOG）
+
+**改战场名牌/头顶 UI/底部条前必读本节。**
+
+- **战场名牌短名机制**：`CardResource.short_name`（`unified_card_table.gd` 76 条，
+  两轮 Noto 真字体实测校准）——名牌条解析顺序 = short_name → display_name 剥
+  `VARIANT_SUFFIXES`（·精锐/·敌方/·Boss/·改/五个时代后缀，表在
+  `card_grid_name_strip.gd`）。**display_name 全名不动**（图鉴/情报/悬停仍显示全名）。
+  名牌条字体=打包 NotoSansSC（`DT.CJK_BUNDLED_BODY`，ThemeDB 回退字体把省略号画成
+  下划线的坑勿回踩）；条宽=卡宽 ×1.12。**加新卡必跑 `tests/_tmp_measure_names.gd`**
+  （Noto 11px 逐条实测，上限 62px；ASCII 宽度用 0.52em 估算会漏 `m` 类宽字母）。
+- **头顶栈单一锚定**：血条/光环条/改造条/buff 文字标签的 y 全部走
+  `card_grid_unit_visuals.gd` 的 `overhead_*_y` 四基准函数（血条锚 entity_top−14）；
+  等级唯一显示位=血条左侧 LvN（实体左上角 LevelTag 已删，勿复活）。
+- **HUD 底板两档规格**：顶部浮动面板=`make_hud_panel`（圆角 6/a0.72）；底部卡片族
+  （相位仪栏/功能抽屉/大招条）=`make_panel_frame(青)` 悬浮卡片（圆角 12/alpha 0.92）。
+  UltimateCastBar 底板在 `_draw()` 里贴按钮簇绘制，按钮显隐变化记得 `queue_redraw()`。
+- **遗留节点墓碑**：main.tscn 的 BattleTopStatusBar 恒 hidden 但内含 BattleInfoDisplay
+  （隐形统计引擎，battle_status_strip/mvp_panel 消费）——删除前先迁移统计累积；
+  TopLeftMeta 已删。大招按钮文案"大招:自动/手动"（勿改回"自动"，与自动部署按钮重名）。
+
 ### v25.0/v25.1 改造数值四通道 + 时代适配 + 平衡核查（2026-08-31，详见 CHANGELOG）
 
 **改任何改造（modification）数值/键前必读本节。** 四通道口径（引擎在
@@ -313,7 +387,7 @@ IntelEvolutionManager → IntelManual, IntelEvolutionBranches
   无对冲**（掩蔽只覆盖步兵），留实测。
 - 数值审计：`tools/balance_audit_mods_evo.py` 已含 float>1.0 误写检查 / era_band
   合法性 / set 值域（attack_armor_set 帽 800、其余 400）——**改改造数据后必跑**。
-  改造总数锁 190 不变。
+  改造总数锁 202（v26 起与 modification_modules_test/combo_tier_smoke 双锁一致；本节旧值 190 已过时，v26.4 勘误）。
 
 ### v21 光环范围化 / 组合满档 / 搭档协同 / 产能打造（2026-08-31，详见 CHANGELOG）
 
@@ -324,8 +398,8 @@ IntelEvolutionManager → IntelManual, IntelEvolutionBranches
   `receive_auras_from_field_deferred`）。回滚开关 `GameConfig.aura_range_enabled`。
 - **组合满档**：`ComboTactics.detect_card_combo_tiers()`（basic/full），满档机制
   flag 由 combo_engine 每秒并入全队机制表；6 个行为改写传奇改造（gen_* v21 P1）
-  effect key 走未知键→`_special` 通道；改造总数锁定断言 190（加改造要 bump
-  `modification_modules_test.gd` 与 combo_tier_smoke 双处）。
+  effect key 走未知键→`_special` 通道；改造总数锁定断言 202（加改造要 bump
+  `modification_modules_test.gd` 与 combo_tier_smoke 双处；旧值 190 已过时，v26.4 勘误）。
 - **搭档协同**：`data/unit_roles.gd` 九角色归一化 + `pair_synergy_engine.gd`
   事件驱动激活（部署/死亡 + 1s 兜底，禁止每帧扫描），数值对称记账（meta 存原值）。
 - **产能打造（存档 v9）**：~~DayClock 产能 → craft_mod 解锁 + 相位师首杀解锁~~
@@ -361,7 +435,7 @@ IntelEvolutionManager → IntelManual, IntelEvolutionBranches
 - `phase_instruments.gd` — Phase instrument definitions (4-color slot configs)
 
 **Economy & Progression:**
-- `basic_resources.gd` — Resource ID definitions (nano/alloy/crystal/energy block/permits；科研点已随 P2-7 退役)
+- `basic_resources.gd` — Resource ID definitions（纳米材料/合金/晶体/能量块 共 4 种；许可证 v7.3 删、科研点已随 P2-7 退役。中文名以本文件为唯一权威源——"晶体"勿写成"水晶"，v26.4 统一）
 - `battle_card_v3.gd` — Era HP/damage multipliers (v6.1: 近未来伤害倍率 1.90→1.80)
 - `level_eras.gd` / `level_information.gd` — Level-to-era mapping (100 levels, 5 eras)
 - `rank_rules.gd`, `card_progression_settings.gd` — Progression tuning
@@ -382,8 +456,8 @@ IntelEvolutionManager → IntelManual, IntelEvolutionBranches
 - `mod_effects.gd` — Mod effect definitions and slot cost formulas
 
 **Military Titles:**
-- `data/military_titles/unified_rank_system.gd` — Unified rank system (13 ranks, power multipliers)
-- `data/military_titles/title_display_names.gd` — Rank display names per combat_kind
+- `data/rank_rules.gd` — 13 级军衔唯一权威源（RANK_ORDER/RANK_DISPLAY_NAMES + get_rank_display_name；v6.11 起统一体系）
+- ~~`data/military_titles/title_display_names.gd`~~ — 已删除（v26.4 核对：`data/military_titles/` 下仅剩 unified_rank_system.gd，且已瘦身为强化等级倍率表，13 级军衔真身在 rank_rules.gd）
 
 **Faction:**
 - `company_definitions.gd` — 7 faction definitions
@@ -397,10 +471,10 @@ IntelEvolutionManager → IntelManual, IntelEvolutionBranches
 - `CardResource` — Unified card model (combat_unit/energy/law), evolution, affix slots, mods, per-target attack speeds (v5.0)
 - `AffixResource` — Modular affix with rarity, level scaling, stat caps
 - `UnitStats` / `UnitStatsTable` — Derived combat stats from CardResource with era scaling
-- `GameConstants` — All enums: CardType(3), WeaponType(4), CombatKind(5), Era(5), PlatformType(13, deprecated), WeaponTypeLegacy(12, deprecated)
+- `GameConstants` — All enums: CardType, WeaponType, CombatKind(5), Era(5)。PlatformType(13) 与 WeaponTypeLegacy(12) 枚举壳**已删除**（全项目零枚举引用；12 值 legacy 语义经数据表 + `legacy_weapon_to_new_weapon_type` 映射层存活，v26.4 核对）
 - `DropTables` — Weighted drop entries (13 drop types), tables, guarantee drops
 - `DesignTokens` — UI theming constants (neon palette, typography, spacing, glow, accessibility)
-- `GameConfig` — Tunable game config (battle/economy/UI/performance/debug)
+- `GameConfig` — Tunable game config（v26.4 收敛后仅存 5 个有真实消费点的项：cross_row_direct_damage_mult / aura_range_enabled / env_effects_enabled / battle_layouts_enabled / debug_no_deploy_limits；15 个零消费字段已删）
 
 ### Test Structure
 
@@ -425,10 +499,12 @@ tests/
 
 ### Save System
 
-- Single JSON file: `user://save.json`, 3 save slots
-- Schema version 6, migration chain v1→v2→v3→v4→v5→v6 via `scripts/systems/save_migration.gd` + `save_migration_v4.gd` + `save_migration_v5.gd` + `save_migration_v6.gd`
-- Critical managers (10) load immediately; deferred managers (12) load in batches after scene ready
-- Auto-save on battle end + window close; backup every 15s
+- 3 save slots: `user://save_slot_%d.json`（`user://save.json` 仅旧单档迁移源/slot 1 兜底兼容读，不再写入）
+- Schema version 9, migration chain v1→v9 via `scripts/systems/save_migration.gd`（主链调度）+ `save_migration_v4/v5/v6/v7/v8/v9.gd`（v4 文件为 v3→v4 ID 映射辅助表；v9 迁移体 no-op，版本号保留不回退）
+- Critical managers (12) load immediately; deferred managers (13) load in batches after scene ready
+- Auto-save on battle end（结算面板链 + 战斗守卫置脏 0.2s 冲刷）+ window close（WM_CLOSE_REQUEST + about_to_quit 双保险）；backup 为 save_game 调用内 15s 节流（非周期定时器）
+- v26.4 修复：`last_active_at` 此前只在迁移分支读取——v9 现行档（不触发迁移）恒读 0，离线挂机奖励失效；已移出分支
+- **读侧两条不变式（v26.6 起，改任何 manager 的 load_state 前必读）**：①"先重置再覆盖"——`load_state({})` 必须复位到默认（SaveManager 对存档缺段会调它），禁止空字典早退；②字典 key 若为 int，load_state 必须重建 int key（JSON 往返全变 String）。回归锁 `tests/unit/save/test_save_load_invariants.gd`。另：战斗中回标题走 `end_battle(false)` 正常结算（main.gd _on_back_to_title），勿删该守卫
 
 ## 美术资源工作流（卡图自动生成）
 
@@ -493,7 +569,7 @@ User-driven collaboration. Every task follows: **Question → Options → Decisi
 | 产能点 + 账号改造解锁集 + 相位师首杀解锁（v21 P3-B） | **已整体删除** | 2026-08-31 v25.3 系统收敛：解锁集（mod_unlock_state）自上线起无任何 UI/门禁消费方（安装认蓝图），craft_mod 零 UI 调用方，首杀"解锁"是玩家不可见的幻影奖励。删除：ModificationRegistry 解锁集段（craft_mod/unlock_mod/unlock_boss_first_kill/CRAFT 表）、BRM production_points、DayClock 产能结算、GameManager 首杀发放、SaveManager 三处清单、SK_MOD_UNLOCK_STATE；v9 迁移体改 no-op（版本号保留）。旧档 mod_unlock_state/production_points key 静默跳过。将来重做"打造"从 git 找回 |
 | 进化战力门 + 进化情报基础门 | **已拆除** | 2026-08-31 v25.3：card_evolution_manager 权威判定 7 条件 → 4（保留等级/改造数/进化图纸/技能树时代 + 势力分支门）。战力门是"战力→军衔→战力"循环的根；情报门（low_evo 50%/100%）与低进化对蓝图豁免构成双轴资格。拒绝码映射保留（防御）。连带删 evolution_path_registry 遗留四门死代码 + card_resource 休眠 intel_requirements 门 |
 | 战斗抽屉 8 面板入口（势力/任务/商店/排行/情报/图鉴/成就/帮助） | **已收敛** | 2026-08-31 v25.3：BottomFunctionBar 14→6（留背包/成长/地图/设置/存档/挂机），战前字母热键同步裁（留 B/1、7、9、M）。overlay 与 handler 全保留（教程 toggle_* 链/growth 转发仍用），面板本体移基地入口（EMBEDDED_PANELS 同款） |
-| 强化①（手动强化轴 enhance_level 0-10） | **已退役** | 2026-08-24 v20.12 等级统一：`card_level`（战斗卡等级 1-30，上阵攒经验自动升）成为唯一玩家卡等级轴。`reinforcement_panel.gd/.tscn` 删除、`BlueprintManager.apply_reinforcement` 删除、card_info_panel 强化 Tab 恒隐藏（TabIdx/节点保留防索引错位）。进化等级门槛改读 card_level（E1=5/E2=10）；进化执行=变成全新卡（等级/经验/改造/词条槽全部重置，仅 inherit_bonus/hp_floor/情报奖励保留）；光环/能力星级 = card_level÷3 映射 1-10；掉落卡星级改发起始经验；教学任务"强化尝试"改升级驱动（`_on_card_level_up` 转发 `enhancement_completed` 信号）。敌方配装档位（enemy_loadout_tiers 的 enhance_level 3/6/10）与攻击公式的 enhance 乘区**不受影响**（内部敌方轴）；旧档存量 enhance_level 保留为惰性数值，无提升入口 |
+| 强化①（手动强化轴 enhance_level 0-10） | **已退役** | 2026-08-24 v20.12 等级统一：`card_level`（战斗卡等级 1-30，上阵攒经验自动升）成为唯一玩家卡等级轴。`reinforcement_panel.gd/.tscn` 删除、`BlueprintManager.apply_reinforcement` 删除、card_info_panel 强化 Tab 恒隐藏（TabIdx/节点保留防索引错位）。进化等级门槛改读 card_level（E1=5/E2=10）；进化执行=变成全新卡（等级/经验/改造/词条槽全部重置，仅 inherit_bonus/hp_floor/情报奖励保留）；光环/能力星级 = card_level÷3 映射 1-10；掉落卡星级改发起始经验；教学任务"强化尝试"改升级驱动（`_on_card_level_up` 转发 `enhancement_completed` 信号）。敌方配装档位（enemy_loadout_tiers 的 enhance_level 四档 3/6/8/10；旧记载"3/6/10"漏精英档 8，v26.4 勘误）与攻击公式的 enhance 乘区**不受影响**（内部敌方轴）；旧档存量 enhance_level 保留为惰性数值，无提升入口 |
 | 合成系统（SynthesisManager + synthesis_recipes） | **已整体删除** | 2026-08-23 P2-7（批次2c）：无 UI 的僵尸系统，科研点唯一 sink。managers/synthesis/ 与 data/synthesis_recipes.gd 删除；fsm 的 preload/实例/初始化/getter/存档段移除；signal_bus 双信号与 audio 消费删除；旧档 synthesis_state key 静默跳过 |
 | 科研点（research_points） | **已退役** | 2026-08-23 P2-7（批次2c）：ID_RESEARCH_POINTS 常量/定义/关卡产出、BasicResourceManager 收支臂、BlueprintManager 四函数、能量掉落降级补偿、faction_war 事件奖励、四处 UI 展示全部移除；旧档 total_research_points key 静默跳过 |
 | 相位法则系统（PhaseLawManager + active_law_effects） | **已整体删除** | 2026-08-23 P2-7（批次2a+2b）：法则卡获取/展示链路、红蓝槽法则装配、主动法则施放链（battle_click_overlay 选点/ActiveLawEffects 效果/演出/播报）、敌方法则减益（enemy_unit/swarm_enemy_slot）、知识值掉落与战斗快照全部移除。starter 符文发放迁至 PhaseInstrumentManager.clear_slots_for_new_game。autoload 32→31；SignalBus 三条法则信号（active_law_cast_at/phase_law_runtime_changed/phase_law_cast）删除；旧档 phase_law 存档段 key 级静默跳过；buff 折叠卡 BUFF 段改显已装备符文 |
@@ -511,7 +587,7 @@ User-driven collaboration. Every task follows: **Question → Options → Decisi
 | BattleFeedbackManager | **已删除** | 2026-08-22：暴击震屏路径从未生效（get_node_or_null 恒 null），battle_manager/new_systems_integration 的 bfm 分支删除、兜底转正。将来恢复震屏直调 `scripts/screen_shake.gd`（8 个活文件先例） |
 | CharacterManager / ChallengeModeManager(+challenge_definitions) | **已删除** | 2026-08-22：零玩法/UI 消费的僵尸管理器，仅存档管道被动实例化。旧档 characters/challenge_records key 静默跳过；save_constants/save_migration 映射保留。将来做剧情/挑战模式从 git 历史找回 |
 | VersionManager | **已删除** | 2026-08-22：零调用方，永不实例化 |
-| UILazyLoader 死配置 5 项 | 已清理 | 2026-08-22：occupation/leaderboard/intelligence（面板静态实例化且不在 prune 释放名单）/phase_master_skill（parent 节点不存在）/reinforcement（活于 card_info_panel 嵌入实例化）。**⚠️ 教训：quest/store/faction/settings 曾被同批误删当晚会回滚**——main.`_prune_preloaded_panels` 启动时会释放这四个面板的静态实例"转按需加载"，UILazyLoader 配置是其唯一重建路径，删=面板永远空壳（商店打不开事故）。真懒加载全集：backpack/growth/quest/store/faction/settings/achievement/help/modification/evolution/collection（10 项） |
+| UILazyLoader 死配置 5 项 | 已清理 | 2026-08-22：occupation/leaderboard/intelligence（面板静态实例化且不在 prune 释放名单）/phase_master_skill（parent 节点不存在）/reinforcement（活于 card_info_panel 嵌入实例化）。**⚠️ 教训：quest/store/faction/settings 曾被同批误删当晚会回滚**——main.`_prune_preloaded_panels` 启动时会释放这四个面板的静态实例"转按需加载"，UILazyLoader 配置是其唯一重建路径，删=面板永远空壳（商店打不开事故）。真懒加载全集：backpack/growth/quest/store/faction/settings/achievement/help/modification/evolution/collection（11 项；旧记载"10 项"为误计，v26.4 勘误） |
 | LevelSelectOverlay 空壳 | 已删除 | 2026-08-22：main.tscn 空节点，level_select 配置 v9.x 已先删（选关由 world_map 承担） |
 | docs/tech-debt-register.md | 已删除 | 2026-04-09 停更全过时；活债务改记本清单 + CHANGELOG |
 
@@ -606,7 +682,7 @@ User-driven collaboration. Every task follows: **Question → Options → Decisi
 
 ### 平衡性审查 + spetsnaz 补强（2026-08-30，v20.32）
 
-全量数值审查（脚本 `tools/balance_audit_cards.py` / `balance_audit_mods_evo.py`，扫 223 卡条目 + 10 MOD 文件 + 8 进化文件；明细 `docs/_balance_dump_cards.json`）：时代/tier 递进、装甲-步兵 HP 关系、MOD 上限（attack_interval -0.40 恰在 v6.1 帽）、level_effects 单调、进化增长、敌我成长对称（双方共用 CardGrowthConfig 曲线，敌方配装 3/6/10 档乘区 1.14/1.28/1.63 为难度旋钮）——**全部 PASS，无硬伤**。已知非问题：fut_colossus/fut_arm_omega 同数值为弹道分流有意设计；DPS 离散警告均为对空/反坦克/守护者职能特化；battle_card_v3 的 era/star 倍率为死代码（唯一存活 enhance_stat_multiplier 供敌方配装轴）。
+全量数值审查（脚本 `tools/balance_audit_cards.py` / `balance_audit_mods_evo.py`，扫 223 卡条目 + 10 MOD 文件 + 8 进化文件；明细 `docs/_balance_dump_cards.json`）：时代/tier 递进、装甲-步兵 HP 关系、MOD 上限（attack_interval -0.40 恰在 v6.1 帽）、level_effects 单调、进化增长、敌我成长对称（双方共用 CardGrowthConfig 曲线，敌方配装档位为难度旋钮。⚠️ v26.4 勘误：本节旧记"3/6/10 档乘区 1.14/1.28/1.63"经不起复核——enhance 乘区按兵种各异（unit_stats_table.apply_enhance_level_bonus）且 battle_card_v3.enhance_stat_multiplier(6)=1.35，该组数值勿再引用；v26 起档位为四档 3/6/8/10）——**全部 PASS，无硬伤**。已知非问题：fut_colossus/fut_arm_omega 同数值为弹道分流有意设计；DPS 离散警告均为对空/反坦克/守护者职能特化；battle_card_v3 的 era/star 倍率为死代码（唯一存活 enhance_stat_multiplier 供敌方配装轴）。
 
 **修复**：cold_spetsnaz（阿尔法特种部队，ELITE）此前 hp238/atk60 全面劣于同 era VETERAN 步枪（324-346/86-92）且无机制补偿。补强至 hp300 / atk_l 96（对轻装全族最高）/ atk_a 45 / def 对齐 22/28/8——ELITE 身份=最快部署移速+最高对轻装 ATK+脆身板（hp 仍低于线列步兵为有意设计，**审查脚本对 era2 kind0 的 tier1>tier2 HP 倒挂告警属该设计预期，勿再当 bug 修**）。power 216 与实战强度自此一致。评分器降噪模式（--deterministic）为基线/对比必用。
 
@@ -662,6 +738,13 @@ User-driven collaboration. Every task follows: **Question → Options → Decisi
 **⚠️ Godot 4.5.1 静态函数命名坑（存量生产 bug 已修，勿踩）**：静态函数与 **`reset_state`** 同名时，编译期绑定的静态调用会**整体静默失效**（函数体一行不执行、无报错；动态 `.call("reset_state")` 正常；任意 RefCounted 子类即可最小复现）。
 `PhaseInstrumentAbilities.reset_state` 因此被 battle_manager 静默空调了整个 4.5 时期（战间清理由此失效）——已改名 **`reset_battle_state`**（battle_manager 两处调用点 + 敌方能力 smoke 同步）。
 **新增静态函数避开该名**；排查"静态调用没生效"类怪病时先想到这条。
+
+### 收敛评估结论（2026-09-02 v26.6 结构收敛轮）：敌我 projectile batch 不合并
+
+三套投射批（`simple_player/enemy_projectile_batch.gd` 各 355 行、`simple_indirect_projectile_batch.gd`）**评估后决定不收敛**：
+归一化后真实分化仅 ~138 行/侧（tint 阵营色、蜂群冲撞行为、空中瞄准点），且都在每帧热路径、
+GdUnit 对 batch 内部行为覆盖薄——合并的回归风险 > 重复代码维护成本。后续若动这两文件，
+顺手对齐差异行即可，不做结构重构。
 
 ## 版本历史
 

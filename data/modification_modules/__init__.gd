@@ -1,5 +1,5 @@
 ## 改造模块系统入口
-## 包含所有140+个改造模块定义
+## 包含全部 202 个改造模块定义（数量锁：tests/unit/data/modification_modules_test.gd）
 
 const InfantryModifications = preload("res://data/modification_modules/infantry_mods.gd")
 const ArmorModifications = preload("res://data/modification_modules/armor_mods.gd")

@@ -188,7 +188,10 @@ func _rebuild_content() -> void:
 			_set_chip("修复中 %d%%" % int(round(progress * 100.0)), WARN_COL)
 			_build_repairing_actions(room_id, progress)
 		_:
-			_set_chip("运转中", GOOD_COL)
+			# 有升级档的房间显示等级；无升级档（纪念碑/观星台）保持"运转中"
+			var lv: int = _manager.get_room_level(room_id)
+			_set_chip(("运转中 Lv%d" % lv) if _manager.get_max_room_level(room_id) > 1 else "运转中",
+				GOOD_COL)
 			_build_active_actions(room_id)
 
 func _set_chip(text: String, col: Color) -> void:
@@ -271,27 +274,8 @@ func _build_repairing_actions(room_id: String, progress: float) -> void:
 			ceil((1.0 - progress) * max(1, int(_def.get("battles", 1))))]
 	_action_box.add_child(info)
 
-	# 圆角进度条（橙填充 + 百分比角标）
-	var bar_bg := Panel.new()
-	var bg_sb := StyleBoxFlat.new()
-	bg_sb.bg_color = DT.COLOR_BACKDROP
-	bg_sb.border_color = Color(1, 1, 1, 0.08)
-	bg_sb.set_border_width_all(1)
-	bg_sb.set_corner_radius_all(4)
-	bg_sb.set_content_margin_all(3.0)
-	bar_bg.add_theme_stylebox_override("panel", bg_sb)
-	bar_bg.custom_minimum_size = Vector2(0, 18)
-	_action_box.add_child(bar_bg)
-
-	var fill := Panel.new()
-	var fill_sb := StyleBoxFlat.new()
-	fill_sb.bg_color = Color(0.95, 0.62, 0.15)
-	fill_sb.set_corner_radius_all(3)
-	fill.add_theme_stylebox_override("panel", fill_sb)
-	fill.set_anchors_preset(Control.PRESET_LEFT_WIDE)
-	fill.anchor_right = clampf(progress, 0.02, 1.0)
-	fill.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	bar_bg.add_child(fill)
+	# 圆角进度条（橙填充）+ 百分比角标
+	_action_box.add_child(_make_progress_bar(progress))
 
 	var pct := _make_info_label()
 	pct.text = "施工进度 %d%% · 由出击推进" % int(round(progress * 100.0))
@@ -303,6 +287,29 @@ func _build_repairing_actions(room_id: String, progress: float) -> void:
 	var battle_btn := _make_button("前往战场 —— 完成战斗推进修复", "solid",
 		func(): go_to_battle_requested.emit(), 44)
 	_action_box.add_child(battle_btn)
+
+## 圆角进度条（橙填充 + 暗底描边），修复/升级进度共用
+func _make_progress_bar(progress: float) -> Panel:
+	var bar_bg := Panel.new()
+	var bg_sb := StyleBoxFlat.new()
+	bg_sb.bg_color = DT.COLOR_BACKDROP
+	bg_sb.border_color = Color(1, 1, 1, 0.08)
+	bg_sb.set_border_width_all(1)
+	bg_sb.set_corner_radius_all(4)
+	bg_sb.set_content_margin_all(3.0)
+	bar_bg.add_theme_stylebox_override("panel", bg_sb)
+	bar_bg.custom_minimum_size = Vector2(0, 18)
+
+	var fill := Panel.new()
+	var fill_sb := StyleBoxFlat.new()
+	fill_sb.bg_color = Color(0.95, 0.62, 0.15)
+	fill_sb.set_corner_radius_all(3)
+	fill.add_theme_stylebox_override("panel", fill_sb)
+	fill.set_anchors_preset(Control.PRESET_LEFT_WIDE)
+	fill.anchor_right = clampf(progress, 0.02, 1.0)
+	fill.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	bar_bg.add_child(fill)
+	return bar_bg
 
 func _build_active_actions(room_id: String) -> void:
 	var note := _make_info_label()
@@ -325,7 +332,8 @@ func _build_active_actions(room_id: String) -> void:
 				["相位仪调试 · 装备槽", "instruments"],
 			])
 		"dormitory":
-			var sleep_btn := _make_button("睡觉 —— 推进天数 · 精神 +20 · 存档",
+			var sleep_btn := _make_button(
+				"睡觉 —— 推进天数 · 精神 +%d · 存档" % int(round(_manager.get_sleep_recovery())),
 				"solid", func(): sleep_requested.emit(), 44)
 			_action_box.add_child(sleep_btn)
 			_action_box.add_child(_make_button("打开背包",
@@ -335,15 +343,17 @@ func _build_active_actions(room_id: String) -> void:
 				"solid", func(): go_to_battle_requested.emit(), 44))
 			_action_box.add_child(_make_button("任务",
 				"ghost", func(): open_embedded_panel_requested.emit("quest"), 40))
+			_build_sandbox_section()
 		"medical":
 			_action_box.add_child(_make_button(
-				"治疗 —— 消耗纳米 50 · 精神 +40（当前 %d）" % int(round(float(_manager.get_sanity()))),
+				"治疗 —— 消耗纳米 %d · 精神 +%d（当前 %d）" % [
+					_manager.get_medical_cost(), int(round(_manager.get_medical_recovery())),
+					int(round(float(_manager.get_sanity())))],
 				"solid", _on_treat_pressed, 44))
 		"workshop":
 			_add_embedded_buttons([
 				["改造", "modification"],
-				["进化", "evolution"],
-				["成长中枢", "growth"],
+				["制造中心", "evolution"],  # v26：进化退役，id 保留（护栏），仅改显示文案
 			])
 		"comms":
 			_add_embedded_buttons([
@@ -367,16 +377,26 @@ func _build_active_actions(room_id: String) -> void:
 				_action_box.add_child(claimed)
 			else:
 				_action_box.add_child(_make_button(
-					"领取每日配给 —— 纳米 120 · 合金 40（每天一次）",
+					"领取每日配给 —— %s（每天一次）" % BunkerRoomDefs.cost_text(_manager.get_daily_ration()),
 					"solid", _on_ration_pressed, 44))
 		"archive":
 			_add_embedded_buttons([
 				["英雄档案", "hero_archive"],
 				["情报中心", "intelligence"],
 			])
+			_build_analyzer_section()
 		"depot":
 			_action_box.add_child(_make_button("打印卡牌 —— 纳米打印机 · 公司补给",
 				"solid", func(): open_embedded_panel_requested.emit("store"), 44))
+			# v26 批次3：仓库 Lv3 战利品打印机说明
+			if _manager.is_loot_printer_online():
+				var loot_note := _make_info_label()
+				loot_note.text = "✔ 战利品打印机已上线（Lv3）——每天醒来自动打印 1 张随机缴获卡入包。"
+				loot_note.add_theme_color_override("font_color", GOOD_COL)
+				_action_box.add_child(loot_note)
+		"weather_station":
+			_build_weather_section()
+			_build_expedition_section()
 		"honor_hall":
 			_action_box.add_child(_make_button("符文圣所 —— 装备符文 · 搭配符文之语",
 				"solid", func(): open_embedded_panel_requested.emit("runes"), 44))
@@ -385,6 +405,227 @@ func _build_active_actions(room_id: String) -> void:
 				["成就", "achievement"],
 				["收藏图鉴", "collection"],
 			])
+			_build_salute_section()
+
+	# 升级区（v26 批次1）：有升级档的房间在功能按钮之后追加
+	_build_upgrade_section(room_id)
+
+## ───────────────────── 档案室：分析仪（v26 批次3） ─────────────────────
+
+func _build_analyzer_section() -> void:
+	_action_box.add_child(_make_divider())
+	var st: Dictionary = _manager.analyzer_state()
+	if not bool(st.get("online", false)):
+		var lock_note := _make_info_label()
+		lock_note.text = "分析仪：需档案室 Lv2 上线（烧缴获卡换情报）。"
+		_action_box.add_child(lock_note)
+		return
+	var slot: Dictionary = st.get("slot", {})
+	var status_lbl := _make_info_label()
+	if slot.is_empty():
+		status_lbl.text = "分析仪：待机中（今日已出炉 %d/%d）。" % [
+			int(st.get("baked_today", 0)), int(st.get("daily_limit", 3))]
+	else:
+		status_lbl.text = "分析仪：分析中「%s」（%s）· 还需 %d 场战斗 · 今日 %d/%d" % [
+			str(slot.get("archetype_id", "?")), str(slot.get("rarity", "?")),
+			int(slot.get("battles_left", 0)),
+			int(st.get("baked_today", 0)), int(st.get("daily_limit", 3))]
+	_action_box.add_child(status_lbl)
+	var full := int(st.get("baked_today", 0)) >= int(st.get("daily_limit", 3))
+	if not slot.is_empty() or full:
+		var busy_note := _make_info_label()
+		busy_note.text = "今天不能再放卡了。" if full else "等它出炉后才能放下一张。"
+		_action_box.add_child(busy_note)
+		return
+	_action_box.add_child(_make_button("放入缴获卡 —— 烧毁换情报（品质越高产出越多）",
+		"solid", _on_analyzer_pick_pressed, 44))
+
+func _on_analyzer_pick_pressed() -> void:
+	var picker_script := preload("res://scenes/bunker/ui/bunker_analyzer_picker.gd")
+	var picker: Control = picker_script.new()
+	picker.setup(_manager)
+	add_child(picker)
+
+## ───────────────────── 气象站：地表探索（v26 批次3） ─────────────────────
+
+func _build_expedition_section() -> void:
+	if not _manager.is_expedition_online():
+		var lock_note := _make_info_label()
+		lock_note.text = "地表探索：需气象站 Lv3 解锁（日 1 次派遣，带回资源或缴获卡）。"
+		_action_box.add_child(lock_note)
+		return
+	if _manager.expedition_used_today():
+		var done_note := _make_info_label()
+		done_note.text = "✔ 侦察队今日已派出——明天再来。"
+		done_note.add_theme_color_override("font_color", GOOD_COL)
+		_action_box.add_child(done_note)
+		return
+	_action_box.add_child(_make_button(
+		"派遣侦察队 —— 日 1 次 · 带回资源包（40% 缴获卡）",
+		"solid", _on_expedition_pressed, 44))
+
+func _on_expedition_pressed() -> void:
+	var result: Dictionary = _manager.start_expedition()
+	if SignalBus and SignalBus.has_signal("show_toast"):
+		SignalBus.show_toast.emit(String(result.get("reason", "")))
+	_rebuild_content()
+
+## ───────────────────── 兵棋室：沙盘演武（v26 批次4，Lv3） ─────────────────────
+
+func _build_sandbox_section() -> void:
+	if not _manager.is_sandbox_online():
+		return
+	_action_box.add_child(_make_divider())
+	var head := _make_info_label()
+	head.text = "沙盘演武（Lv3）——未上阵卡后台吃 50% 经验"
+	head.add_theme_color_override("font_color", Color(0.62, 0.75, 0.85))
+	_action_box.add_child(head)
+	var sb_id := String(_manager.get_sandbox_instance_id())
+	if not sb_id.is_empty():
+		var ir: Node = get_node_or_null("/root/InstanceRegistry")
+		var inst: CardResource = ir.get_instance(sb_id) if ir != null and ir.has_method("get_instance") else null
+		var cur := _make_info_label()
+		if inst != null:
+			cur.text = "在盘：「%s」（Lv.%d）" % [inst.display_name, int(inst.card_level) if "card_level" in inst else 1]
+		else:
+			cur.text = "在盘卡已不存在（沙盘已清空）"
+			_manager.clear_sandbox_card()
+		cur.add_theme_color_override("font_color", GOOD_COL)
+		_action_box.add_child(cur)
+		_action_box.add_child(_make_button("撤下沙盘卡", "ghost",
+			func():
+				_manager.clear_sandbox_card()
+				_rebuild_content(), 36))
+	_action_box.add_child(_make_button("设置沙盘卡 —— 选择一张未上阵的卡",
+		"solid" if sb_id.is_empty() else "ghost", _on_sandbox_pick_pressed, 40))
+
+func _on_sandbox_pick_pressed() -> void:
+	var picker_script := preload("res://scenes/bunker/ui/bunker_sandbox_picker.gd")
+	var picker: Control = picker_script.new()
+	picker.setup(_manager)
+	add_child(picker)
+
+## ───────────────────── 荣誉室：出征仪式（v26 批次4，Lv3） ─────────────────────
+
+func _build_salute_section() -> void:
+	if not _manager.is_salute_online():
+		return
+	_action_box.add_child(_make_divider())
+	if _manager.is_salute_armed():
+		var armed_note := _make_info_label()
+		armed_note.text = "✔ 仪式加成在身——下一场战斗掉落收益 +10%。"
+		armed_note.add_theme_color_override("font_color", GOOD_COL)
+		_action_box.add_child(armed_note)
+		return
+	if _manager.salute_used_today():
+		var done_note := _make_info_label()
+		done_note.text = "✔ 今日已敬礼——明天再来。"
+		done_note.add_theme_color_override("font_color", DT.COLOR_TEXT_DIM)
+		_action_box.add_child(done_note)
+		return
+	_action_box.add_child(_make_button(
+		"出征仪式 —— 日 1 次敬礼 · 下一场掉落收益 +10%",
+		"solid", _on_salute_pressed, 44))
+
+func _on_salute_pressed() -> void:
+	var result: Dictionary = _manager.do_salute()
+	if SignalBus and SignalBus.has_signal("show_toast"):
+		SignalBus.show_toast.emit(String(result.get("reason", "")))
+	_rebuild_content()
+
+## ───────────────────── 气象站：天气预报（v26 批次4，Lv2） ─────────────────────
+
+func _build_weather_section() -> void:
+	if not _manager.is_forecast_online():
+		return
+	_action_box.add_child(_make_divider())
+	var w: Dictionary = _manager.get_today_weather()
+	if w.is_empty():
+		return
+	var head := _make_info_label()
+	head.text = "今日预报：「%s」—— %s" % [str(w.get("name", "?")), str(w.get("desc", ""))]
+	head.add_theme_color_override("font_color", Color(0.62, 0.75, 0.85))
+	_action_box.add_child(head)
+	var eff := _make_info_label()
+	var parts: Array = []
+	for key in ["hp_pct", "atk_pct", "def_pct"]:
+		var v: float = float(w.get(key, 0.0))
+		if absf(v) > 0.0001:
+			parts.append("%s %+d%%" % [ {"hp_pct": "生命", "atk_pct": "攻击", "def_pct": "防御"}[key], int(round(v * 100.0))])
+	eff.text = "效果（我方全队）：" + ("、".join(parts) if not parts.is_empty() else "无")
+	_action_box.add_child(eff)
+	if _manager.is_weather_armed():
+		var armed_note := _make_info_label()
+		armed_note.text = "✔ 预报已锁定——下一场战斗生效。"
+		armed_note.add_theme_color_override("font_color", GOOD_COL)
+		_action_box.add_child(armed_note)
+	else:
+		_action_box.add_child(_make_button("锁定预报 —— 下一场战斗生效（负面预报可不锁）",
+			"solid", _on_lock_weather_pressed, 40))
+
+func _on_lock_weather_pressed() -> void:
+	var result: Dictionary = _manager.lock_weather()
+	if SignalBus and SignalBus.has_signal("show_toast"):
+		SignalBus.show_toast.emit(String(result.get("reason", "")))
+	_rebuild_content()
+
+## ───────────────────── 升级区（v26 批次1） ─────────────────────
+
+## ACTIVE 房间的升级区：升级中→进度条+出击入口；满级→✔；否则→效果预览+升级按钮。
+## 无升级档的房间（纪念碑/观星台）不渲染任何内容。
+func _build_upgrade_section(room_id: String) -> void:
+	if _manager.get_max_room_level(room_id) <= 1:
+		return
+	var level: int = _manager.get_room_level(room_id)
+	_action_box.add_child(_make_divider())
+
+	if _manager.is_upgrading(room_id):
+		var info := _make_info_label()
+		if _manager.is_repair_frozen(room_id):
+			info.text = "升级进度冻结：反应堆未上线，上线后继续推进。"
+			info.add_theme_color_override("font_color", WARN_COL)
+		else:
+			info.text = "升级到 Lv%d 施工中——每完成一场战斗推进一格（房间功能不受影响）。" % (level + 1)
+		_action_box.add_child(info)
+		var prog: float = _manager.get_upgrade_progress(room_id)
+		_action_box.add_child(_make_progress_bar(prog))
+		var pct := _make_info_label()
+		pct.text = "升级进度 %d%% · 由出击推进" % int(round(prog * 100.0))
+		pct.add_theme_color_override("font_color", WARN_COL)
+		_action_box.add_child(pct)
+		_action_box.add_child(_make_button("前往战场 —— 完成战斗推进升级", "solid",
+			func(): go_to_battle_requested.emit(), 40))
+		return
+
+	if level >= _manager.get_max_room_level(room_id):
+		var done := _make_info_label()
+		done.text = "✔ 已满级 Lv%d" % level
+		done.add_theme_color_override("font_color", GOOD_COL)
+		_action_box.add_child(done)
+		return
+
+	var upg: Dictionary = _manager.get_next_upgrade(room_id)
+	var cost: Dictionary = upg.get("cost", {})
+	var preview := _make_info_label()
+	preview.text = "升级到 Lv%d：%s\n需求：%s · 完成战斗 %d 场" % [
+		level + 1, str(upg.get("note", "")),
+		(BunkerRoomDefs.cost_text(cost) if not cost.is_empty() else "免费"),
+		int(upg.get("battles", 1))]
+	_action_box.add_child(preview)
+	_action_box.add_child(_make_button(
+		"开始升级 Lv%d（%s）" % [level + 1, BunkerRoomDefs.cost_text(cost)],
+		"solid", func(): _on_upgrade_pressed(room_id), 40))
+
+func _on_upgrade_pressed(room_id: String) -> void:
+	var result: Dictionary = _manager.start_upgrade(room_id)
+	if result.get("ok", false):
+		panel_action_done.emit()   # 升级扣了资源 → HUD 资源栏刷新
+		_rebuild_content()
+	else:
+		var lbl := _make_info_label()
+		lbl.text = "✖ " + str(result.get("reason", "无法升级"))
+		lbl.add_theme_color_override("font_color", DT.COLOR_DANGER)
+		_action_box.add_child(lbl)
 
 ## P2 面板迁移：一行生成多个嵌入面板按钮
 func _add_embedded_buttons(entries: Array) -> void:

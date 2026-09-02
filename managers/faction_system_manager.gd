@@ -412,9 +412,6 @@ func get_faction_reputation(faction_id: String) -> int:
 func get_faction_level(faction_id: String) -> int:
 	return faction_level.get(faction_id, 1)
 
-func _get_level_from_reputation(rep: int) -> int:
-	return FactionReputation.get_level_from_reputation(rep)
-
 func get_faction_progress_to_next_level(faction_id: String) -> Dictionary:
 	var current_rep: int = get_faction_reputation(faction_id)
 	var current_level: int = get_faction_level(faction_id)
@@ -435,10 +432,6 @@ func has_global_access() -> bool:
 func get_faction_store_items(faction_id: String) -> Array[FactionShop.StoreItem]:
 	var level: int = get_faction_level(faction_id)
 	return FactionShop.get_faction_store_items(faction_id, level)
-
-## 创建商店物品（保留兼容，内部委托）
-func _create_store_item(id: String, type: FactionShop.StoreItemType, item_name: String, cost: int, level: int, stock: int = -1) -> FactionShop.StoreItem:
-	return FactionShop.create_store_item(id, type, item_name, cost, level, stock)
 
 ## 检查是否可以购买
 func can_purchase_item(faction_id: String, item: FactionShop.StoreItem) -> Dictionary:
@@ -465,10 +458,6 @@ func purchase_item(faction_id: String, item: FactionShop.StoreItem) -> Dictionar
 		item.stock -= 1
 
 	return {"ok": true, "item_id": item.item_id}
-
-## 给予商店物品（向后兼容）
-func _give_store_item(item: FactionShop.StoreItem) -> void:
-	FactionShop.deliver_item(item)
 
 ## 获取势力商店的当前库存
 func get_faction_store_inventory(faction_id: String) -> Array:
@@ -914,14 +903,6 @@ func get_faction_event_loyalty(faction_id: String) -> float:
 #  合成管理（v9.x P2-7范围C：合成系统整体删除——synthesis_manager/synthesis_recipes
 #  文件与 _init_synthesis_manager/get_synthesis_manager 已移除，零 UI 调用方）
 # ═══════════════════════════════════════════════════
-
-## 获取势力变体的基础卡ID（供合成系统使用）
-func get_faction_variant_base_id(card_id: String) -> String:
-	if card_id.begins_with("faction:"):
-		var parts: PackedStringArray = card_id.split(":")
-		if parts.size() >= 3:
-			return parts[2]
-	return ""
 
 ## 获取势力显示名称
 func get_faction_display_name(faction_id: String) -> String:

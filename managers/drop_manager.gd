@@ -36,10 +36,6 @@ func set_multiplier(multiplier: float) -> void:
 	if _story_reward_multiplier == 0.0:
 		_story_reward_multiplier = 1.0
 
-## v6.6(剧情): 获取当前剧情奖励倍率
-func get_multiplier() -> float:
-	return _story_reward_multiplier
-
 ## v6.6(剧情): 重置剧情奖励倍率为 1.0（新周目/正常时段）
 func reset_multiplier() -> void:
 	_story_reward_multiplier = 1.0
@@ -305,6 +301,8 @@ func _add_dropped_card(card_id: String, count: int) -> void:
 		if dropped_card == null:
 			continue
 		dropped_card.is_dropped_card = true
+		# v26 批次3：缴获卡获取时滚动稀有度（非 captured_ 卡不动）
+		ManufacturePools.apply_captured_quality(dropped_card)
 		# v20.12 等级统一：高星掉落卡的属性优势改发为起始战斗经验（原映射 enhance_level 0/1/2
 		# 已随强化①退役）。star 1-3 → 0（白板），4-6 → 60 经验（约Lv2），7-9 → 150 经验（约Lv3）。
 		var star: int = randi_range(1, 9)
@@ -357,6 +355,8 @@ func _add_card_to_backpack(card_id: String) -> void:
 	else:
 		card = DefaultCards.get_card_by_id(card_id)
 	if card:
+		# v26 批次3：缴获卡获取时滚动稀有度（非 captured_ 卡不动）
+		ManufacturePools.apply_captured_quality(card)
 		SignalBus.card_added_to_backpack.emit(card)
 	else:
 		push_error("无法找到卡牌: " + card_id)
@@ -391,10 +391,6 @@ func _get_boost_display_name(boost_id: String) -> String:
 ## 获取待处理掉落数量
 func get_pending_drops_count() -> int:
 	return pending_drops.size()
-
-## 清空待处理掉落
-func clear_pending_drops() -> void:
-	pending_drops.clear()
 
 ## 获取掉落物显示信息
 func get_drop_info(drop: DropTables.DropResult) -> Dictionary:

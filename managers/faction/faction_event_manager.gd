@@ -129,6 +129,20 @@ func _instantiate_event(template: Dictionary) -> void:
 		"resolved": false,
 	}
 	event_generated.emit(active_event.duplicate(true))
+	# v26.6: 断链补链——事件此前只发 SignalBus.faction_event_generated（全项目零监听），玩家永远看不到。
+	# 按 manufacture/daily_task 先例在生成处直接播 toast（事件名 + 支持方核心奖励）
+	var _rewards: Dictionary = template.get("rewards", {}).get("support_a", {})
+	var _parts: Array[String] = []
+	if _rewards.has("reputation"):
+		_parts.append("声望+%d" % int(_rewards["reputation"]))
+	if _rewards.has("skill_points"):
+		_parts.append("技能点+%d" % int(_rewards["skill_points"]))
+	if _rewards.has("nano") or _rewards.has("nanomaterial"):
+		_parts.append("纳米+%d" % int(_rewards.get("nano", _rewards.get("nanomaterial", 0))))
+	if _rewards.has("exclusive_card"):
+		_parts.append("专属卡")
+	var _summary: String = "，".join(_parts) if not _parts.is_empty() else "做出选择获取声望"
+	SignalBus.show_toast.emit("⚔ 势力事件：%s（%s）" % [name_str, _summary])
 
 ## 玩家做出选择
 func resolve_event(choice: String) -> Dictionary:

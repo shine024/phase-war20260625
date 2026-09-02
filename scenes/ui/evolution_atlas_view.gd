@@ -38,7 +38,7 @@ func _build_ui() -> void:
 	add_child(outer)
 
 	_hint_label = Label.new()
-	_hint_label.text = "按时代分列 · 点击单位查看进化来源与养成详情"
+	_hint_label.text = "按时代分列 · 点击单位查看谱系来源与养成详情"
 	_hint_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_hint_label.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
 	_hint_label.add_theme_color_override("font_color", Color(0.55, 0.62, 0.72, 1.0))

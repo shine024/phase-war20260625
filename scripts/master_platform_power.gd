@@ -38,6 +38,7 @@ const EnemyPhaseEquipment = preload("res://data/enemy_phase_equipment.gd")
 const EnemyPhaseMasters = preload("res://data/enemy_phase_masters.gd")
 const EnemyStatResolver = preload("res://data/enemy_stat_resolver.gd")
 const EnemyLoadoutTiers = preload("res://data/enemy_loadout_tiers.gd")
+const EnemyFixedLoadouts = preload("res://data/enemy_fixed_loadouts.gd")  # v26: 逐卡真实配装表
 const RuneDefinitions = preload("res://data/runes.gd")
 const UnitStatsTable = preload("res://resources/unit_stats_table.gd")
 const EvolutionHelpers = preload("res://managers/evolution/evolution_helpers.gd")
@@ -240,11 +241,14 @@ static func _build_stats_from_archetype_static(archetype_id: String, era: int, t
 	c.defense_light = 8.0
 	c.defense_armor = 8.0 * 1.2
 	c.defense_air = 8.0 * 0.6
-	# v7.x C: 加满配改造（按 tier，对称玩家改造槽；build_stats_from_card 内部 _apply_mod_stat_effects + ModificationRegistry.apply_to_weapon_slots 自动应用）
-	var tier_mods: Array = EnemyLoadoutTiers.get_modifications_for_tier(tier_int)
+	# v26: 配装改造改用逐卡真实配装表（旧 TIER_MODIFICATIONS 是未注册幽灵 id，
+	# 装进 c.mods 后 get_data 查空零效果；现在从 EnemyFixedLoadouts 取真实注册 id，
+	# build_stats_from_card 内部 _apply_mod_stat_effects + apply_to_weapon_slots 全链生效）
+	var tier_mods: Array = EnemyFixedLoadouts.get_mods_for_tier(archetype_id, tier_int)
 	c.mods = []
+	var mod_lv: int = clampi(tier_int, 1, 3)
 	for mod_id in tier_mods:
-		c.mods.append({"id": String(mod_id)})
+		c.mods.append({"id": String(mod_id), "level": mod_lv, "enabled": true})
 	var stats := UnitStatsTable.build_stats_from_card(c, era)
 	# 防御对齐真实敌兵量级（与 driver L966-998 同款）
 	var single_def: int = EnemyArchetypes.compute_defense_from_config(cfg)

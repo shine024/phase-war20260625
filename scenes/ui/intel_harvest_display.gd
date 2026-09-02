@@ -7,10 +7,14 @@ class_name IntelHarvestDisplay
 ##   var ui = IntelHarvestDisplay.new()
 ##   ui.set_data(harvest_data)
 ##   parent.add_child(ui)
+##
+## v26 UI：视觉层收口 IntelUIKit（签名竖条标题 + 统一行卡 + token 化配色），
+## 替代旧 12+ 处手写 Color 字面量与硬编码 13px 字号——数据/性能逻辑不变。
 
 const DT = preload("res://resources/design_tokens.gd")
 # 批次三 B10：字号 token 引入（10px 白名单/中文升 12）
 const IntelDimensions = preload("res://data/intel_dimensions.gd")
+const IntelUIKit = preload("res://scenes/ui/components/intel_ui_kit.gd")
 
 ## v7.x 性能：情报条目渲染上限。超过此数量的敌人不再各自建节点（每条节点是
 ## PanelContainer+StyleBox+VBox+HBox+多Label+ProgressBar，50敌人≈300+节点），
@@ -29,13 +33,9 @@ func _ready() -> void:
 	_build_initial_ui()
 
 func _build_initial_ui() -> void:
-	var style := StyleBoxFlat.new()
-	style.bg_color = Color(0.05, 0.08, 0.14, 0.95)
-	style.border_color = Color(0.25, 0.45, 0.75, 0.5)
-	style.set_border_width_all(1)
-	style.set_corner_radius_all(8)
-	style.set_content_margin_all(8)
-	add_theme_stylebox_override("panel", style)
+	# v26 UI：容器卡统一情报家族语言（深卡底 + 紫签名描边 + 圆角4）
+	add_theme_stylebox_override("panel",
+		IntelUIKit.list_row_style(DT.COLOR_VIOLET, false))
 
 ## 设置情报收获数据（由战斗结算调用）
 ## data格式: {"harvests": [...], "reveal_events": [...], "intel_item_drops": [...]}
@@ -64,12 +64,9 @@ func _refresh_ui() -> void:
 	outer.add_theme_constant_override("separation", 6)
 	outer.name = "HarvestContent"
 
-	## 标题
-	var title := Label.new()
-	title.text = "情报收获"
-	title.add_theme_font_size_override("font_size", DT.FONT_SIZE_LARGE)
-	title.add_theme_color_override("font_color", Color(0.7, 0.85, 1.0, 1.0))
-	outer.add_child(title)
+	## 标题（签名竖条 + 计数右对齐，与情报中心同语言）
+	var count_text := "%d 种敌人" % _card_entries.size() if not _card_entries.is_empty() else ""
+	outer.add_child(IntelUIKit.section_header("情报收获", DT.COLOR_VIOLET, count_text))
 
 	## 按敌人分组显示（限流：超过 MAX_VISIBLE_ENTRIES 后折叠，避免高波次关卡节点爆炸）
 	var shown_count: int = 0
@@ -84,42 +81,36 @@ func _refresh_ui() -> void:
 	## 折叠提示：超出上限的敌人种类
 	var hidden_count: int = _card_entries.size() - shown_count
 	if hidden_count > 0:
-		var more_lbl := Label.new()
-		more_lbl.text = "  …另 +%d 种敌人（详见 情报中心·敌方情报）" % hidden_count
-		more_lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
-		more_lbl.add_theme_color_override("font_color", Color(0.6, 0.7, 0.8, 0.8))
-		outer.add_child(more_lbl)
+		outer.add_child(IntelUIKit.label(
+			"…另 +%d 种敌人（详见 情报中心·敌方情报）" % hidden_count,
+			DT.FONT_SIZE_SMALL, DT.COLOR_TEXT_DIM))
 
 	## 情报道具掉落展示
 	if not _intel_item_drops.is_empty():
-		var item_title := Label.new()
-		item_title.text = "情报道具"
-		item_title.add_theme_font_size_override("font_size", 13)
-		item_title.add_theme_color_override("font_color", Color(0.75, 0.55, 0.95, 1.0))
-		outer.add_child(item_title)
+		outer.add_child(IntelUIKit.section_header("情报道具", DT.COLOR_RES_RESEARCH))
 		for item in _intel_item_drops:
 			if not item is Dictionary:
 				continue
-			var item_lbl := Label.new()
-			var item_name: String = item.get("name", "未知道具")
-			var item_desc: String = item.get("desc", "")
-			item_lbl.text = "  ▸ %s — %s" % [item_name, item_desc]
-			item_lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
-			item_lbl.add_theme_color_override("font_color", Color(0.8, 0.65, 1.0, 1))
-			outer.add_child(item_lbl)
+			var item_row := HBoxContainer.new()
+			item_row.add_theme_constant_override("separation", 8)
+			item_row.add_child(IntelUIKit.label(String(item.get("name", "未知道具")),
+				DT.FONT_SIZE_SMALL, DT.COLOR_RES_RESEARCH, 120.0))
+			var desc_lbl := IntelUIKit.label(String(item.get("desc", "")),
+				DT.FONT_SIZE_SMALL, DT.COLOR_TEXT_DIM)
+			desc_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			desc_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+			item_row.add_child(desc_lbl)
+			outer.add_child(item_row)
 
 	add_child(outer)
 
 ## 创建单个敌人的情报条目（单维度：1条进度条）
 func _create_card_entry(entry: Dictionary) -> PanelContainer:
 	var box := PanelContainer.new()
-	var style := StyleBoxFlat.new()
-	style.bg_color = Color(0.08, 0.12, 0.18, 0.9)
-	style.set_border_width_all(1)
-	style.border_color = Color(0.2, 0.35, 0.55, 0.3)
-	style.set_corner_radius_all(6)
-	style.set_content_margin_all(6)
-	box.add_theme_stylebox_override("panel", style)
+	# v26 UI：行卡统一——首次遭遇青色描边（新数据语义），重复遭遇中性灰
+	var is_first: bool = entry.get("first_encounter", false)
+	box.add_theme_stylebox_override("panel",
+		IntelUIKit.list_row_style(DT.COLOR_ACCENT_CYAN if is_first else DT.COLOR_BORDER, false))
 
 	var vbox := VBoxContainer.new()
 	vbox.add_theme_constant_override("separation", 4)
@@ -128,35 +119,25 @@ func _create_card_entry(entry: Dictionary) -> PanelContainer:
 	## 敌人名称行
 	var card_id: String = entry.get("card_id", "")
 	var enemy_type: String = entry.get("enemy_type", "")
-	var is_first: bool = entry.get("first_encounter", false)
 
 	var name_row := HBoxContainer.new()
-	name_row.add_theme_constant_override("separation", 6)
+	name_row.add_theme_constant_override("separation", 8)
 
-	var icon_lbl := Label.new()
-	icon_lbl.text = "◆" if is_first else "⚔"
-	icon_lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
-	name_row.add_child(icon_lbl)
-
-	var name_lbl := Label.new()
-	name_lbl.text = _get_enemy_display_name(card_id, enemy_type)
-	if is_first:
-		name_lbl.text += "  [首次遭遇]"
-	name_lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
-	name_lbl.add_theme_color_override("font_color", Color(0.85, 0.9, 0.95, 1.0))
+	var name_lbl := IntelUIKit.label(_get_enemy_display_name(card_id, enemy_type),
+		DT.FONT_SIZE_BODY, DT.COLOR_TEXT_BRIGHT)
 	name_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	name_row.add_child(name_lbl)
+
+	## 首次遭遇 chip（替代旧「◆」图标 + 「[首次遭遇]」行内文本）
+	if is_first:
+		name_row.add_child(IntelUIKit.status_chip("首次遭遇", DT.COLOR_ACCENT_CYAN))
 
 	## 击败次数（若有）
 	if _im and card_id != "":
 		var defeat_count: int = _im.get_defeat_count(card_id) if _im.has_method("get_defeat_count") else 0
 		if defeat_count > 0:
-			var count_lbl := Label.new()
-			count_lbl.text = "第%d次击败" % defeat_count
-			count_lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
-			count_lbl.add_theme_color_override("font_color", Color(0.6, 0.7, 0.8, 0.8))
-			name_row.add_child(count_lbl)
-
+			name_row.add_child(IntelUIKit.label("第%d次击败" % defeat_count,
+				DT.FONT_SIZE_SMALL, DT.COLOR_TEXT_DIM))
 	vbox.add_child(name_row)
 
 	## 单维度进度条
@@ -185,11 +166,8 @@ func _create_card_entry(entry: Dictionary) -> PanelContainer:
 	## v21.0: 本次击败获得的改造情报点数（intel_discovery_manager 写入的 "mod_points" 键）
 	var mod_points: int = int(entry.get("mod_points", 0))
 	if mod_points > 0:
-		var mp_lbl := Label.new()
-		mp_lbl.text = "  ▸ 改造情报 +%d 点" % mod_points
-		# v23.6.1：11px 为禁用档（中文 ≥12）
-		mp_lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
-		mp_lbl.add_theme_color_override("font_color", Color(0.6, 0.9, 0.6, 1.0))
+		var mp_lbl := IntelUIKit.label("改造情报 +%d 点" % mod_points,
+			DT.FONT_SIZE_SMALL, DT.COLOR_GREEN_UP)
 		mp_lbl.tooltip_text = "点数随机落入该敌方形态的专属改造池，攒满阈值即解锁（详见情报手册）"
 		vbox.add_child(mp_lbl)
 
@@ -198,49 +176,29 @@ func _create_card_entry(entry: Dictionary) -> PanelContainer:
 ## 创建单维度进度条行
 func _create_progress_row(card_id: String, enemy_type: String, delta: float) -> HBoxContainer:
 	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 6)
+	row.add_theme_constant_override("separation", 8)
 
-	## 进度条
-	var progress := ProgressBar.new()
-	progress.custom_minimum_size.x = 180
-	progress.max_value = 100.0
+	## 进度条（v26 UI：统一细进度条，宽度弹性填充）
+	var progress: ProgressBar = IntelUIKit.thin_progress(0.0, IntelDimensions.DIM_COLORS[IntelDimensions.DIM_INTEL])
+	progress.custom_minimum_size = Vector2(180, 8)
 	progress.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 
 	## 获取当前情报值
 	var current_pct: float = 0.0
 	if _im and _im.has_method("get_intel_progress"):
 		current_pct = _im.get_intel_progress(card_id) * 100.0
-	progress.value = current_pct
-
-	## 进度条颜色（单维度蓝色主题）
-	var bar_style := StyleBoxFlat.new()
-	bar_style.bg_color = IntelDimensions.DIM_COLORS[IntelDimensions.DIM_INTEL]
-	bar_style.set_corner_radius_all(3)
-	progress.add_theme_stylebox_override("fill", bar_style)
-
-	var bg_style := StyleBoxFlat.new()
-	bg_style.bg_color = IntelDimensions.DIM_BG_COLORS[IntelDimensions.DIM_INTEL]
-	bg_style.set_corner_radius_all(3)
-	progress.add_theme_stylebox_override("background", bg_style)
+	progress.value = current_pct / 100.0
 	row.add_child(progress)
 
-	## 百分比文本
-	var pct_lbl := Label.new()
-	pct_lbl.text = "%.0f%%" % current_pct
-	pct_lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
-	pct_lbl.custom_minimum_size.x = 36
-	pct_lbl.add_theme_color_override("font_color", Color(0.8, 0.85, 0.9, 1.0))
-	row.add_child(pct_lbl)
+	## 百分比文本（定宽对齐）
+	row.add_child(IntelUIKit.label("%.0f%%" % current_pct,
+		DT.FONT_SIZE_SMALL, DT.COLOR_TEXT_MID, 36.0, HORIZONTAL_ALIGNMENT_RIGHT))
 
-	## 增长量（绿色）
-	var delta_lbl := Label.new()
-	delta_lbl.text = "+%.0f%%" % (delta * 100.0)
-	delta_lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
-	delta_lbl.custom_minimum_size.x = 40
-	delta_lbl.add_theme_color_override("font_color", Color(0.4, 0.95, 0.5, 1.0))
-	row.add_child(delta_lbl)
+	## 增长量（提升绿 token）
+	row.add_child(IntelUIKit.label("+%.0f%%" % (delta * 100.0),
+		DT.FONT_SIZE_SMALL, DT.COLOR_GREEN_UP, 40.0))
 
-	## 揭示检查：该敌人本次是否有新揭示
+	## 揭示检查：该敌人本次是否有新揭示（chip 替代旧「✦新揭示!」文本）
 	var has_reveal: bool = false
 	for rev in _reveal_events:
 		var rev_card: String = rev.get("card_id", "")
@@ -248,11 +206,7 @@ func _create_progress_row(card_id: String, enemy_type: String, delta: float) -> 
 			has_reveal = true
 			break
 	if has_reveal:
-		var rev_icon := Label.new()
-		rev_icon.text = " ✦新揭示!"
-		rev_icon.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
-		rev_icon.add_theme_color_override("font_color", Color(0.95, 0.75, 0.3, 1.0))
-		row.add_child(rev_icon)
+		row.add_child(IntelUIKit.status_chip("新揭示", DT.COLOR_GOLD))
 
 	return row
 

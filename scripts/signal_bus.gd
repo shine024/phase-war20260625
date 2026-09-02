@@ -57,6 +57,9 @@ signal enemy_phase_driver_destroyed()
 signal backpack_changed()
 signal card_added_to_backpack(card: CardResource)
 
+# 制造系统（v26 批次2）：ManufactureManager.manufacture 成功后广播（面板结果/成就/统计消费）
+signal card_manufactured(card_id: String, rarity: String)
+
 # 卡牌掉落解锁（v7.x）：掉落/购买/奖励获得卡时的总线广播（蓝图解锁体系已移除）
 
 # 战斗掉落领取

@@ -905,6 +905,8 @@ func _on_buy_pressed(card_id: String, card_count: int, price_nano: int, row_node
 					out_card = ir.create_instance(card_id)
 				else:
 					out_card = template_card.clone() if template_card.has_method("clone") else template_card
+				# v26 批次3：缴获卡购买时滚动稀有度（非 captured_ 卡不动）
+				ManufacturePools.apply_captured_quality(out_card)
 				# [LOG-v5.1] print("[StorePanel] _on_buy_pressed: Emitting card_added_to_backpack for card_id=%s (i=%d)" % [out_card.card_id, i])
 				SignalBus.card_added_to_backpack.emit(out_card)
 				# [LOG-v5.1] print("[StorePanel] _on_buy_pressed: Signal emitted")

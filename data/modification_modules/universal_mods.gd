@@ -528,6 +528,26 @@ const DATA: Dictionary = {
 			effects = {splash_damage = 0.60, splash_radius = 0.15},
 			unlock_conditions = {required_level = 8}
 		},
+		# ─── v26 轰炸时代批 ───
+		"gen_stealth_coating" = {
+			id = "gen_stealth_coating",
+			name = "雷达吸波涂层",
+			name_en = "Radar-Absorbent Coating",
+			icon = "res://assets/ui/icons/mod_icons/gen_stealth_coating.png",
+			prototype = "铁氧体吸波材料（RAM 涂层）",
+			description = "机体/车体表面吸波涂层降低雷达与火控锁定——闪避与防空御提升",
+			rarity = "rare",
+			power_mult = 1.3,
+			cost_research = 150,
+			cost_install = 75,
+			slot_type = "camo",
+			conflict_group = "stealth",
+			applicable_types = [0, 1, 2, 3],
+			era_band = [2, 4],
+			effects = {dodge_chance = 0.08, defense_air = 8},
+			unlock_conditions = {required_level = 3}
+		},
+
 	}
 
 static func get_mod_data(mod_id: String) -> Dictionary:

@@ -180,7 +180,7 @@ static func format_achievement_progress(achievement_id: String, current: int, to
 			var damage_str = str(current) if current < 1000 else str(current / 1000) + "k"
 			return "%s: %s/%s 伤害" % [name, damage_str, str(total / 1000) + "k"]
 		"unique_blueprints":
-			return "%s: %d/%d 蓝图" % [name, current, total]
+			return "%s: %d/%d 卡种" % [name, current, total]
 		"max_level":
 			return "%s: 第%d/%d 关" % [name, current, total]
 		"survival_waves":

@@ -6,7 +6,6 @@ extends PanelContainer
 const GC = preload("res://resources/game_constants.gd")
 const DefaultCards = preload("res://data/default_cards.gd")
 const ModRegistry = preload("res://scripts/systems/modification_registry.gd")
-const EvoPathRegistry = preload("res://scripts/systems/evolution_path_registry.gd")
 const FormatUtil = preload("res://scripts/ui/format_util.gd")
 const UiAssetLoader = preload("res://scripts/ui_asset_loader.gd")
 const DT = preload("res://resources/design_tokens.gd")
@@ -54,7 +53,7 @@ var hero_power_label: Label
 # ---- 2×2 进度卡片 ----
 var prog_card_amber: PanelContainer   # 强化系统
 var prog_card_cyan: PanelContainer    # 改造系统
-var prog_card_violet: PanelContainer  # 进化系统
+var prog_card_violet: PanelContainer  # 制造系统（v26 进化退役后接管紫卡区）
 var prog_card_gold: PanelContainer    # 星级评估
 
 # ---- 操作按钮 ----
@@ -123,7 +122,7 @@ func _bind_nodes() -> void:
 	if mod_btn:
 		mod_btn.tooltip_text = "打开改造面板：为选中的这张卡安装/调整改造模块（最多 9 格，只影响本实例）"
 	if evo_btn:
-		evo_btn.tooltip_text = "打开进化面板：满足条件后进化为全新卡牌（等级/改造重置，继承加成与耐久下限保留）"
+		evo_btn.tooltip_text = "打开制造中心：消耗情报与资源直接生产全新卡牌（品质随情报档提升）"
 	if prog_card_amber:
 		prog_card_amber.tooltip_text = "战斗经验：上阵参战自动积累（胜利+击杀加成），驱动等级提升"
 	if prog_card_gold:
@@ -131,7 +130,7 @@ func _bind_nodes() -> void:
 	if prog_card_cyan:
 		prog_card_cyan.tooltip_text = "改造系统：安装模块定向强化属性，最多 9 格，只影响当前这张卡"
 	if prog_card_violet:
-		prog_card_violet.tooltip_text = "进化系统：满足条件后进化为全新卡牌（等级/经验/改造/词条重置，继承加成与耐久下限保留）"
+		prog_card_violet.tooltip_text = "制造系统：情报达标后可直接生产该卡（品质随情报提升；等级/经验/改造不重置）"
 	if hero_power_label:
 		hero_power_label.tooltip_text = "综合战力估值（含该实例的等级/改造/词条加成）"
 
@@ -584,7 +583,7 @@ func _refresh_data() -> void:
 	_refresh_star_section()
 	_refresh_experience_section()
 	_refresh_mod_section()
-	_refresh_evolution_section()
+	_refresh_manufacture_section()
 
 
 func _ensure_selected_is_instance(card: CardResource) -> CardResource:
@@ -647,7 +646,7 @@ func _refresh_header() -> void:
 		# 可进化标记
 		var evo_paths: Array = c.evolution_paths if "evolution_paths" in c else []
 		if not evo_paths.is_empty():
-			_add_hero_tag("可进化", DT.COLOR_VIOLET_SOFT)
+			_add_hero_tag("可制造", DT.COLOR_VIOLET_SOFT)
 
 	# 综合战力
 	if hero_power_label:
@@ -767,8 +766,8 @@ func _refresh_mod_section() -> void:
 	_set_prog_status(prog_card_cyan, "可改造" if mod_count < max_mods else "已满槽")
 
 
-# --- 进化系统（ProgCardViolet） ---
-func _refresh_evolution_section() -> void:
+# --- 制造系统（ProgCardViolet，v26 进化退役后接管）---
+func _refresh_manufacture_section() -> void:
 	if prog_card_violet == null or _selected_card == null:
 		return
 	var body: VBoxContainer = _get_prog_body(prog_card_violet)
@@ -778,71 +777,53 @@ func _refresh_evolution_section() -> void:
 		child.queue_free()
 
 	var c := _selected_card
-	# v7.x：用 get_evolution_targets() 获取完整目标列表（主线+势力+情报分支），
-	# 而非旧字段 evolution_paths（可能为空或单一目标）。
-	var evo_targets: Array = []
-	if c.has_method("get_evolution_targets"):
-		evo_targets = c.get_evolution_targets()
-
-	if evo_targets.is_empty():
-		_add_prog_hint(body, "无可用进化路线（终阶形态）")
-		_set_prog_status(prog_card_violet, "终阶")
+	ManagerLazyLoader.ensure_loaded("manufacture")
+	var mgr: Node = ManagerLazyLoader.get_manager("manufacture")
+	if mgr == null:
+		_add_prog_hint(body, "制造系统未就绪")
+		_set_prog_status(prog_card_violet, "离线")
 		return
 
-	# 显示前 N 个目标（卡片空间有限，最多 3 个）
-	var shown := mini(evo_targets.size(), 3)
-	for i in range(shown):
-		var t: Dictionary = evo_targets[i] if evo_targets[i] is Dictionary else {}
-		var target_id: String = String(t.get("target_id", ""))
-		var target_name: String = String(t.get("name", target_id))
-		var path_type: String = String(t.get("path_type", "main"))
-		if target_id.is_empty():
+	var card_id := c.card_id
+	if not mgr.is_manufacturable(card_id):
+		_add_prog_hint(body, "该卡种无敌形原型，无法制造")
+		_add_prog_hint(body, "仅可通过掉落 / 势力 / 商店渠道获取")
+		_set_prog_status(prog_card_violet, "仅获取")
+		return
+
+	# 条件快照（与制造中心逐条件同源：情报档 / 时代授权 / 资源）
+	var check: Dictionary = mgr.can_manufacture(card_id)
+	for cond in check.get("conditions", []):
+		if not cond is Dictionary:
 			continue
-		# 路径类型 tag（主线/势力分支/情报隐藏）
-		var type_label := "主线" if path_type == "main" else ("势力" if path_type == "faction" else "情报")
-		var type_col := DT.COLOR_GOLD if path_type == "main" else (DT.COLOR_VIOLET_SOFT if path_type == "faction" else DT.COLOR_CYAN_TECH_SOFT)
-		# 战力变化
-		var target_card = DefaultCards.get_card_by_id(target_id)
-		var power_delta := ""
-		if target_card:
-			var cur_power := _estimate_power_value(c)
-			var tgt_power := _estimate_power_value(target_card)
-			if cur_power > 0 and tgt_power > 0:
-				var pct := int((float(tgt_power) / float(maxi(1, cur_power)) - 1.0) * 100.0)
-				var sign := "+" if pct >= 0 else ""
-				power_delta = "%s%d%%" % [sign, pct]
-		# 进化条件（取首个目标的校验结果）
-		# v9.x: 用 conditions 快照统计 met/total（与进化面板逐条件行同源），
-		# 旧版 ok 时硬编码 3/3、失败时手工数 3 项，口径不齐已删
-		var met_count := 0
-		var total_count := 0
-		var bp = get_node_or_null("/root/BlueprintManager")
-		if bp and bp.has_method("can_evolve_blueprint"):
-			# v7.0 口径统一：传 instance_id（实例化养成），与 evolution_panel 相同
-			var src_id: String = c.instance_id if not c.instance_id.is_empty() else c.card_id
-			var can_info: Dictionary = bp.can_evolve_blueprint(src_id, target_id)
-			for cond in can_info.get("conditions", []):
-				if cond is Dictionary:
-					total_count += 1
-					if bool(cond.get("met", false)):
-						met_count += 1
-		_add_evo_target_row(body, target_name, type_label, type_col, power_delta, met_count, total_count)
+		var met := bool(cond.get("met", false))
+		var text := ""
+		match String(cond.get("key", "")):
+			"intel":
+				text = "情报 %s（需 %s）" % [cond.get("current_text", "?"), cond.get("required_text", "?")]
+			"skill_tree_era":
+				text = "技能树制造授权：%s" % cond.get("current_text", "?")
+			"resources":
+				text = "资源（需 %s）：%s" % [cond.get("required_text", "?"), cond.get("current_text", "?")]
+		_add_cond_row(body, "✔" if met else "✘",
+			DT.COLOR_GREEN_UP if met else DT.COLOR_RED_DOWN, text, met)
 
-	# 属性对比（取首个目标的 before→after）
-	var first_target_id: String = ""
-	if not evo_targets.is_empty():
-		var ft: Dictionary = evo_targets[0] if evo_targets[0] is Dictionary else {}
-		first_target_id = String(ft.get("target_id", ""))
-	if not first_target_id.is_empty() and c.has_method("calculate_evolved_stats"):
-		var evolved_stats: Dictionary = c.calculate_evolved_stats(first_target_id)
-		if not evolved_stats.is_empty():
-			_add_prog_hint(body, "HP %d→%d · 攻击 +%d" % [
-				int(c.base_hp),
-				int(float(evolved_stats.get("hp", c.base_hp))),
-				maxi(0, int(float(evolved_stats.get("attack_light", c.attack_light))) - c.attack_light),
-			])
+	# 品质池预览（有效权重含暗保底，归一化为百分比）
+	var pool: Array = mgr.get_effective_pool(card_id)
+	if not pool.is_empty():
+		var total := 0.0
+		for e in pool:
+			total += float(e["w"])
+		var parts: PackedStringArray = []
+		for e in pool:
+			parts.append("%s %d%%" % [GC.get_rarity_name(String(e["r"])), int(round(float(e["w"]) / total * 100.0))])
+		_add_prog_hint(body, "品质池：" + " · ".join(parts))
 
-	_set_prog_status(prog_card_violet, "%d 路线" % evo_targets.size())
+	if bool(check.get("ok", false)):
+		_add_prog_hint(body, "可制造——前往「改造 / 制造」面板生产")
+		_set_prog_status(prog_card_violet, "可制造")
+	else:
+		_set_prog_status(prog_card_violet, "条件未齐")
 
 
 ## v7.x 辅助：估算卡牌战力数值（用于进化前后对比）
@@ -858,13 +839,14 @@ func _estimate_power_value(card: CardResource) -> int:
 
 
 ## v7.x 辅助：添加进化目标行（网页 evo-node 卡片样式浓缩版）
-func _add_evo_target_row(parent: VBoxContainer, name: String, type_label: String, type_col: Color, power_delta: String, met: int, total: int) -> void:
+## 条件行（v26：原进化目标行改造为通用条件行——状态 tag + 文本 + 对勾配色）
+func _add_cond_row(parent: VBoxContainer, status_text: String, status_col: Color, text: String, met: bool) -> void:
 	var row := PanelContainer.new()
 	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	var sb := StyleBoxFlat.new()
 	sb.bg_color = Color(0.075, 0.102, 0.165, 0.5)
 	sb.border_width_left = 2
-	sb.border_color = type_col
+	sb.border_color = status_col
 	sb.set_corner_radius_all(3)
 	sb.content_margin_left = 8
 	sb.content_margin_top = 4
@@ -877,44 +859,25 @@ func _add_evo_target_row(parent: VBoxContainer, name: String, type_label: String
 	hbox.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	hbox.add_theme_constant_override("separation", 6)
 
-	# 类型 tag
-	var type_lbl := Label.new()
-	type_lbl.text = type_label
-	type_lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
-	type_lbl.add_theme_color_override("font_color", type_col)
-	type_lbl.custom_minimum_size = Vector2(28, 0)
-	type_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	type_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	hbox.add_child(type_lbl)
+	# 状态 tag（✔ / ✘，符号+颜色双编码）
+	var tag_lbl := Label.new()
+	tag_lbl.text = status_text
+	tag_lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
+	tag_lbl.add_theme_color_override("font_color", status_col)
+	tag_lbl.custom_minimum_size = Vector2(28, 0)
+	tag_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	tag_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	hbox.add_child(tag_lbl)
 
-	# 目标名
-	var name_lbl := Label.new()
-	name_lbl.text = name
-	name_lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
-	name_lbl.add_theme_color_override("font_color", Color(0.9, 0.92, 0.96, 1))
-	name_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	name_lbl.clip_text = false
-	name_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	hbox.add_child(name_lbl)
-
-	# 战力变化
-	if not power_delta.is_empty():
-		var delta_lbl := Label.new()
-		# 批次三 B11：涨跌加 ▲/▼ 符号双编码（色弱不依赖红绿也能辨方向）
-		delta_lbl.text = ("▲" + power_delta) if power_delta.begins_with("+") else ("▼" + power_delta)
-		delta_lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_XSMALL)
-		var is_up := power_delta.begins_with("+")
-		delta_lbl.add_theme_color_override("font_color", DT.COLOR_GREEN_UP if is_up else DT.COLOR_RED_DOWN)
-		delta_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		hbox.add_child(delta_lbl)
-
-	# 条件满足数
-	var cond_lbl := Label.new()
-	cond_lbl.text = "%d/%d" % [met, total]
-	cond_lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_XSMALL)
-	cond_lbl.add_theme_color_override("font_color", DT.COLOR_GREEN_UP if met >= total else DT.COLOR_AMBER_SOFT)
-	cond_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	hbox.add_child(cond_lbl)
+	# 条件文本
+	var text_lbl := Label.new()
+	text_lbl.text = text
+	text_lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
+	text_lbl.add_theme_color_override("font_color", Color(0.9, 0.92, 0.96, 1))
+	text_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	text_lbl.clip_text = false
+	text_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	hbox.add_child(text_lbl)
 
 	row.add_child(hbox)
 	parent.add_child(row)
@@ -982,8 +945,8 @@ func _on_evo_pressed() -> void:
 	if not _selected_card:
 		return
 	# B4: 首次进入进化面板给一句话说明（学黑猴首解锁引导，仅弹一次）
-	FeatureUnlockPopup.show_once("evolution_panel", "卡牌进化",
-		"满足条件的卡可进化为更高阶单位：属性全面成长，还可解锁新外观与分支。")
+	FeatureUnlockPopup.show_once("evolution_panel", "制造中心",
+		"情报达 25% 的卡种可直接制造：资源换新卡，品质随情报档提升，暗保底兜底。")
 	_open_target_panel("evolution")
 
 

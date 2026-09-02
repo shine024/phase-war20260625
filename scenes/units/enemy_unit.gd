@@ -12,6 +12,7 @@ const DT = preload("res://resources/design_tokens.gd")
 const CardGridUnitVisuals = preload("res://scripts/card_grid_unit_visuals.gd")
 const CardGridBattleLayout = preload("res://scripts/card_grid_battle_layout.gd")
 const CardGridBuffStrip = preload("res://scripts/card_grid_buff_strip.gd")
+const UnitSharedHelpers = preload("res://scripts/battle/unit_shared_helpers.gd")  # v26.6: 敌我共享逻辑单一真身
 const CombatFeedback = preload("res://scripts/combat_feedback.gd")
 const CardGridDamage = preload("res://scripts/card_grid_damage.gd")
 const CombatTargeting = preload("res://scripts/combat_targeting.gd")
@@ -25,6 +26,8 @@ const FortShieldAuraScript = preload("res://scripts/battle/fort_shield_aura.gd")
 const ConstructUnitDeploy = preload("res://scripts/battle/construct_unit_deploy.gd")
 const ConstructUnitAI = preload("res://scripts/battle/construct_unit_ai.gd")
 const UnitStatsTable = preload("res://resources/unit_stats_table.gd")
+const ModRegistry = preload("res://scripts/systems/modification_registry.gd")  # v26: 敌方固定配装（无 class_name，--script 编译安全）
+const BattleEnvEffects = preload("res://data/battle_env_effects.gd")  # v26.2: 战斗环境效果
 const BATTLE_MIN_X: float = 40.0
 const BATTLE_MAX_X: float = 1240.0
 # v9.3: 扩大 Y 硬夹范围（原 280~440 仅覆盖旧双行布局；三行布局下行 center+60
@@ -121,36 +124,16 @@ var _loadout_affix: Dictionary = {}  # 已挂的同源词条（空=未挂；只�
 
 ## 缓存 load()：同一资源路径只加载一次，后续从内存字典取
 func _cached_load(path: String, type_hint: int = -1) -> Resource:
-	if path.is_empty():
-		return null
-	if _res_cache.has(path):
-		var cached = _res_cache[path]
-		if is_instance_valid(cached):
-			return cached
-		_res_cache.erase(path)
-	if not ResourceLoader.exists(path):
-		return null
-	var res: Resource
-	if type_hint >= 0:
-		# Godot 4.5: ResourceLoader.load 最多 3 个参数
-		res = ResourceLoader.load(path, "", ResourceLoader.CACHE_MODE_REUSE)
-	else:
-		res = load(path)
-	if res != null:
-		_res_cache[path] = res
-	return res
+	return UnitSharedHelpers.cached_load(_res_cache, path, type_hint)
 
 var _presentation_card_grid: bool = false
 var _hp_status_refresh_accum: float = 0.0   ## v9.x 血条状态图标低频刷新累加器（不 gate 模式，两种战斗都刷新）
 var _hpbar_ref: Node = null  ## v9.x（3c）：HpBar 节点引用缓存（原每 0.3s 字符串路径查找）
 var _idle_spr: Sprite2D = null  ## v9.x（3d）：待机浮动手写推进用的立绘引用缓存
 
-## v9.x（3c 性能批次）：HpBar 引用缓存——命中免字符串路径查找；
-## 未挂载时保持重查（与原行为一致），被释放后自动失效重查。
+## v9.x（3c 性能批次）：HpBar 引用缓存（逻辑在 UnitSharedHelpers.hpbar_cached）
 func _get_hpbar_cached() -> Node:
-	if _hpbar_ref == null or not is_instance_valid(_hpbar_ref):
-		_hpbar_ref = get_node_or_null("HpBar")
-	return _hpbar_ref
+	return UnitSharedHelpers.hpbar_cached(self)
 var _buff_strip_timer: float = 0.0  ## v8.x buff/改造条周期刷新累加器（与 construct_unit 对齐）
 var _buff_strip_signature: String = ""  ## v8.x buff_strip signature 去重（避免无变化时重建）
 var _hit_stun_left: float = 0.0
@@ -162,7 +145,6 @@ var _card_grid_rest_x: float = NAN  ## 格子战术中卡片的归位 X
 ## v7.4: 受击视觉反馈（改手写计时动画，与 construct_unit 对齐；原每击 create_tween 2 个 Tween）
 ## v8.x: flash 已移除（改命中点血溅，单位保持卡图清晰），仅剩 shake 正计时分段插值（参考 damage_number_display._pop_age）
 var _hit_shake_t: float = -1.0  # -1=未激活，>=0=激活
-const _HIT_SHAKE_DURATION: float = 0.14  # v8.3: 0.12→0.14（4×0.035s）
 var _death_fade_tween: Tween = null  ## v6.4: 死亡淡出 Tween
 var _is_dying: bool = false  ## v6.4: 死亡中标志，防止 _die 重复触发
 
@@ -183,6 +165,9 @@ func setup(_is_player: bool, p_wave: int, p_archetype_id: String = "basic_infant
 	# 在 _apply_archetype_stats 设置基础值后、max_hp=hp 前统一应用倍率
 	_apply_ng_plus_scaling()
 	max_hp = hp
+	# v26: 敌方四档固定配装（新兵5/老兵6-7/精英8-9/传奇9）——真实改造落到
+	# stats/武器槽（词条挂载之前：配装是档位强度的主体表达，词条是附加层）
+	_apply_loadout_modifications()
 	# v21 P3-A: 敌方精英同源词条——在全部既有乘区（档位/波次/势力/难度/二周目）之后挂载，
 	# 走 EnemyAffixes.apply_to_stats 既有消费路径，挂后同步裸字段。
 	_apply_loadout_affix_if_eligible()
@@ -279,18 +264,7 @@ func apply_card_grid_enemy_presentation() -> void:
 ## 开火缩放脉冲：Sprite2D 子节点 scale 短暂放大再回弹，模拟开火反冲。
 ## 只动 Sprite2D 子节点 scale，不碰根节点 scale.x/rotation（与 construct_unit 对称）。
 func _play_fire_scale_pulse() -> void:
-	var spr: Sprite2D = get_node_or_null("Sprite2D")
-	if spr == null:
-		return
-	if _fire_pulse_tween != null and _fire_pulse_tween.is_valid():
-		_fire_pulse_tween.kill()
-	var base_s: Vector2 = spr.scale
-	_fire_pulse_tween = create_tween()
-	_fire_pulse_tween.tween_property(spr, "scale", base_s * 1.10, 0.04)
-	_fire_pulse_tween.tween_property(spr, "scale", base_s, 0.07)
-	# v14: 方向冲撞(敌方朝左)——前倾→后坐→归位,本体参与开火演出
-	var wt: int = stats.weapon_type if stats != null else 0
-	CardGridUnitVisuals.fire_lunge_sprite(spr, false, wt in [1, 2, 3, 7, 9, 10, 11])
+	UnitSharedHelpers.fire_scale_pulse(self, "Sprite2D", false)
 
 
 func _play_card_hit_recoil() -> void:
@@ -320,6 +294,10 @@ func _apply_archetype_stats() -> void:
 	_loadout_tier = int(ctx.tier)
 	_loadout_level_id = int(ctx.level)
 	var r: Dictionary = EnemyStatResolver.resolve_classic_enemy(archetype_id, ctx)
+	# v26.2: 战斗环境效果（敌我对称）——伤害/射程/攻速按本关环境表乘在 resolver 结果上
+	#（直/曲判定兼容 legacy 曲射值 3/7/9 与新枚举 1/2）。总开关 GameConfig.env_effects_enabled。
+	BattleEnvEffects.apply_to_resolved_enemy(
+		r, int(cfg.get("weapon_type", r.get("weapon_type", 0))), int(ctx.level))
 	hp = float(r.get("hp", 80.0))
 	attack_damage = float(r.get("attack_damage", 10.0))
 	attack_range = float(r.get("attack_range", 100.0))
@@ -494,25 +472,88 @@ func _lookup_archetype_tier(aid: String) -> int:
 ## 对本函数零依赖（elite/boss 的 apply_elite_affixes 在 setup 之后调用，追加不覆盖）。
 ## 时序：全部既有乘区（档位/波次/势力/难度/card_level flat/二周目）之后应用 ⇒
 ## 词条是"乘区之外"的独立附加层；挂后同步裸字段（血条/伤害结算与 stats 一致）。
+## v26: 敌方四档固定配装挂载——从 EnemyFixedLoadouts 逐卡配装表取该档前 N 条真实改造
+## （新兵5 / 老兵6-7 / 精英8-9 / 传奇9 满配，同卡只增不减），改造等级随档位提升
+## （新兵 Lv1 / 老兵 Lv2 / 精英+传奇 Lv3，走 level_effects 既有轴）。
+## 管线与玩家同款：UnitStatsTable._apply_mod_stat_effects（v22 四通道 + era 缩放）
+## + 攻击三维比值同步进武器槽（v25.0 缝隙修复的敌方同款——否则攻击改造只改 stats
+## 不改 weapon.damage 实战空转）+ apply_to_weapon_slots（武器槽通道）。
+## 白名单在表数据侧已校验，此处再过滤一遍防御手改数据（宁可少接不可乱接）。
+## 时序：与 v21 词条同层——全部既有乘区（档位标量/波次/势力/难度/card_level flat/
+## 二周目）之后，是"乘区之外"的配装层；挂后同步裸字段。
+func _apply_loadout_modifications() -> void:
+	if stats == null:
+		return
+	var mod_ids: Array = EnemyFixedLoadouts.get_mods_for_tier(archetype_id, _loadout_tier)
+	if mod_ids.is_empty():
+		return
+	var mod_lv: int = clampi(_loadout_tier, 1, 3)
+	var filtered: Array = []
+	for mid in mod_ids:
+		var md: Dictionary = ModRegistry.get_data(String(mid))
+		if md.is_empty():
+			continue
+		# effects 为空回落 level_effects 最高档（enhancement 词条全用 level_effects）
+		var eff: Dictionary = md.get("effects", {})
+		if eff.is_empty():
+			var le: Dictionary = md.get("level_effects", {})
+			if not le.is_empty():
+				var lks: Array = le.keys()
+				lks.sort()
+				eff = le[int(lks[lks.size() - 1])]
+		var hit := false
+		for k in eff.keys():
+			if EnemyFixedLoadouts.LOADOUT_MOD_SUPPORTED_KEYS.has(String(k)):
+				hit = true
+				break
+		if hit:
+			filtered.append({"id": String(mid), "level": mod_lv, "enabled": true})
+	if filtered.is_empty():
+		return
+	var era: int = int(_cached_archetype_cfg.get("era", 0))
+	# v26 B2: 轰炸机族（tags 含 bomber）放宽溅射目标上限——"一次投弹打一片"
+	var cfg_tags: Array = _cached_archetype_cfg.get("tags", []) as Array
+	if cfg_tags.has("bomber"):
+		set_meta("aoe_cap", 8)
+	# 攻击改造比值同步前置数据：改造前攻击三维（武器槽伤害按此比值缩放）
+	var pre_atk: Array = [stats.attack_light, stats.attack_armor, stats.attack_air]
+	var pre_spd: Array = [stats.attack_light_speed, stats.attack_armor_speed, stats.attack_air_speed]
+	UnitStatsTable._apply_mod_stat_effects(stats, filtered, era)
+	UnitStatsTable._sync_mod_attack_ratio_to_weapon_slots(stats, stats.weapon_slots, pre_atk)
+	# v26.2: 攻速键落地——敌方 timing 主路径读 weapon_slots[].attack_speed
+	UnitStatsTable._sync_mod_speed_ratio_to_weapon_slots(stats, stats.weapon_slots, pre_spd)
+	stats.weapon_slots = ModRegistry.apply_to_weapon_slots(stats.weapon_slots, filtered, stats)
+	set_meta("loadout_mods", filtered.duplicate(true))
+	set_meta("loadout_mods_tier", _loadout_tier)
+	_sync_bare_fields_from_stats()
+
+
 func _apply_loadout_affix_if_eligible() -> void:
 	if stats == null:
 		return
 	if _loadout_tier < EnemyLoadoutTiers.LOADOUT_AFFIX_MIN_TIER:
-		return  # 低配档（×1.30）不挂词条
-	# 槽位序号：同波内第 N 个符合档位条件的敌人（生成顺序确定 ⇒ seed 可复现）
-	var slot_ordinal: int = EnemyLoadoutTiers.next_loadout_slot_ordinal(wave_index)
+		return  # 新兵/老兵档不挂词条（配装改造已承担强度表达）
+	# v26 条数按档位：精英 1 条 / 传奇 2 条（各自独立槽位序号 → seed 可复现）
+	var count: int = int(EnemyLoadoutTiers.LOADOUT_AFFIX_COUNT_BY_TIER.get(_loadout_tier, 1))
 	var uct_tier: int = _lookup_archetype_tier(archetype_id)
-	var affix: Dictionary = EnemyLoadoutTiers.roll_loadout_affix_def(
-		_loadout_level_id, wave_index, slot_ordinal, int(stats.combat_kind), uct_tier, _loadout_tier)
-	if affix.is_empty():
+	var rolled: Array = []
+	for _i in range(count):
+		# 槽位序号：同波内第 N 个符合档位条件的敌人（生成顺序确定 ⇒ seed 可复现）
+		var slot_ordinal: int = EnemyLoadoutTiers.next_loadout_slot_ordinal(wave_index)
+		var affix: Dictionary = EnemyLoadoutTiers.roll_loadout_affix_def(
+			_loadout_level_id, wave_index, slot_ordinal, int(stats.combat_kind), uct_tier, _loadout_tier)
+		if affix.is_empty():
+			continue
+		_loadout_affix = affix
+		set_meta("loadout_affix", affix.duplicate())  # 情报/面板追溯通道
+		# 显示走既有词缀通道：card_info_panel 读 get_elite_affixes() 渲染词缀行（名称+档位色）
+		_elite_affixes.append(affix)
+		rolled.append(affix)
+	if rolled.is_empty():
 		return
-	_loadout_affix = affix
-	set_meta("loadout_affix", affix.duplicate())  # 情报/面板追溯通道
-	# 显示走既有词缀通道：card_info_panel 读 get_elite_affixes() 渲染词缀行（名称+档位色）
-	_elite_affixes.append(affix)
 	# 效果走既有消费路径：apply_to_stats 把 effect_key 写进 UnitStats 字段，
 	# enemy_unit/_do_attack、take_damage、battle_damage_system 既有分支读取。
-	EnemyAffixes.apply_to_stats(stats, [affix])
+	EnemyAffixes.apply_to_stats(stats, rolled)
 	_sync_bare_fields_from_stats()
 
 
@@ -1526,15 +1567,7 @@ func _update_hp_bar() -> void:
 
 ## v8.x: 刷新卡底 buff/改造图标条（与 construct_unit 对齐，signature 去重避免无变化时重建）
 func _update_card_grid_buff_strip(force: bool = false) -> void:
-	if not _presentation_card_grid:
-		return
-	var sig: String = CardGridBuffStrip.buff_signature(self)
-	if not force and sig == _buff_strip_signature:
-		return
-	_buff_strip_signature = sig
-	var spr: Sprite2D = get_node_or_null("Sprite2D") as Sprite2D
-	CardGridUnitVisuals.sync_buff_strip(self, self, spr)
-	CardGridUnitVisuals.sync_mod_strip(self, self, spr)
+	UnitSharedHelpers.update_card_grid_buff_strip(self, force, false, "Sprite2D")  # 敌方无 preview 虚影，守卫恒 false
 
 func take_damage(amount: float, attacker: Variant = null) -> void:
 	# v7.x 战场视觉反馈：记录最后攻击者，供 unit_killed 信号携带（击杀定帧/连杀提示依赖）
@@ -1712,52 +1745,20 @@ func take_damage(amount: float, attacker: Variant = null) -> void:
 ## v7.4: 受击缩放抖动触发（手写分段计时，不再 create_tween）。
 ## 基准必须固定为 (1,1) 并每次重置——连续高频受击时若不重置，scale 累积漂移导致敌人越打越小（历史 bug）。
 func _trigger_hit_shake() -> void:
-	scale = Vector2.ONE
-	_hit_shake_t = 0.0
+	UnitSharedHelpers.hit_shake(self, false)  # 敌方无 preview 虚影
 
 
 ## v8.3: 受击击退位移——沿弹道反方向微位移（与 construct_unit 对齐）
 var _knockback_tween: Tween = null
 func _trigger_hit_knockback(direction: Vector2, strength: float) -> void:
-	if DT.is_motion_reduce():
-		return
-	if direction == Vector2.ZERO or strength <= 0.0:
-		return
-	if _knockback_tween != null and _knockback_tween.is_valid():
-		_knockback_tween.kill()
-	var base_pos: Vector2 = position
-	var off: Vector2 = direction.normalized() * strength
-	_knockback_tween = create_tween()
-	_knockback_tween.tween_property(self, "position", base_pos + off, 0.04)
-	_knockback_tween.tween_property(self, "position", base_pos, 0.08)
+	UnitSharedHelpers.hit_knockback(self, direction, strength, false)
 
 
 ## v7.4: 受击动画推进（每 physics 帧调用）。与 construct_unit._update_hit_animations 对齐。
 ## v8.x: flash 已移除（改命中点血溅），仅剩 shake 分段插值。
 ## v8.3: shake 振幅加大 段长 0.035s。
 func _update_hit_animations(delta: float) -> void:
-	if _hit_shake_t >= 0.0:
-		_hit_shake_t += delta
-		if _hit_shake_t >= _HIT_SHAKE_DURATION:
-			scale = Vector2.ONE
-			_hit_shake_t = -1.0
-			modulate = Color.WHITE  # v10: 闪白结束复位(敌方正常态 modulate=WHITE)
-		else:
-			var seg: int = int(_hit_shake_t / 0.035)
-			if seg > 3:
-				seg = 3
-			var local_t: float = (_hit_shake_t - seg * 0.035) / 0.035
-			var keys: Array = [0.78, 1.12, 0.92, 1.0]
-			var s_start: float = 1.0 if seg == 0 else keys[seg - 1]
-			var s_end: float = keys[seg]
-			var s: float = lerpf(s_start, s_end, local_t)
-			scale = Vector2(s, s)
-			# v10: 受击闪白(复用 _hit_shake_t 计时,零新 tween 零 GC)——前 0.08s 把 modulate 推亮再回白
-			# 敌方受击频繁,沿用本类"手写计时避免每击 create_tween GC"的既有设计。motion_reduce 跳过。
-			if not DT.is_motion_reduce():
-				var ft: float = clampf(_hit_shake_t / 0.08, 0.0, 1.0)
-				var fb: float = 0.8 * (1.0 - ft)  # 0.8 → 0
-				modulate = Color(1.0 + fb, 1.0 + fb, 1.0 + fb, 1.0)
+	UnitSharedHelpers.update_hit_animations(self, delta, true)  # 敌方受击闪白复用本计时（零 tween 零 GC）
 
 
 ## 治疗方法（用于击杀修复等回复效果）
@@ -1810,23 +1811,7 @@ func _die() -> void:
 ## v6.4: 死亡视觉淡出——快速缩放并淡出后销毁节点（逻辑结算已完成，不依赖 _process）
 ## v23.5: 空中单位先坠落（翻转加速到地面线）再爆散淡出——死在空中原地消失不成立
 func _play_death_fadeout() -> void:
-	if CardGridUnitVisuals.play_air_death_fall(self, _death_burst_and_fade):
-		return
-	_death_burst_and_fade()
-
-
-func _death_burst_and_fade() -> void:
-	# v8.x: 死亡爆散反馈（阵营色冲击波 + 碎片），让死亡与受击产生明确视觉差
-	VfxImpactFactory.spawn_death_burst(get_parent(), global_position, false)
-	if _death_fade_tween != null and _death_fade_tween.is_valid():
-		_death_fade_tween.kill()
-	var start_scale := scale
-	_death_fade_tween = create_tween()
-	_death_fade_tween.set_pause_mode(Tween.TWEEN_PAUSE_PROCESS)
-	_death_fade_tween.tween_property(self, "scale", start_scale * 1.15, 0.08)
-	_death_fade_tween.parallel().tween_property(self, "modulate:a", 0.0, 0.25)
-	_death_fade_tween.tween_property(self, "scale", Vector2.ZERO, 0.17)
-	_death_fade_tween.tween_callback(queue_free)
+	UnitSharedHelpers.death_fadeout(self, false)
 
 
 ## 销毁前的安全清理
@@ -1837,22 +1822,11 @@ func _cleanup_before_destroy() -> void:
 	set_process(false)
 
 func _battlefield_y_clamp_range() -> Vector2:
-	if _cached_is_card_grid:
-		if BattleManager and BattleManager.battlefield and BattleManager.battlefield.has_method("get_deploy_y_bounds"):
-			return BattleManager.battlefield.get_deploy_y_bounds()
-	return Vector2(BATTLE_MIN_Y, BATTLE_MAX_Y)
+	return UnitSharedHelpers.battlefield_y_clamp_range(self, BATTLE_MIN_Y, BATTLE_MAX_Y)
 
 
 func _clamp_inside_battlefield() -> void:
-	var gx := global_position
-	var clamped_x := clampf(gx.x, BATTLE_MIN_X, BATTLE_MAX_X)
-	var yb: Vector2 = _battlefield_y_clamp_range()
-	var clamped_y := clampf(gx.y, yb.x, yb.y)
-	if clamped_x != gx.x:
-		global_position.x = clamped_x
-	if clamped_y != gx.y:
-		global_position.y = clamped_y
-	_enforce_card_grid_lane_alignment()
+	UnitSharedHelpers.clamp_inside_battlefield(self, BATTLE_MIN_X, BATTLE_MAX_X, BATTLE_MIN_Y, BATTLE_MAX_Y)
 
 
 func _enforce_card_grid_lane_alignment() -> void:
@@ -1887,21 +1861,15 @@ func _texture_exceeds_max_dim(tex: Texture2D, max_dim: int) -> bool:
 
 ## 注册到空间分区网格
 func _register_to_spatial_grid() -> void:
-	if not BattleManager or not BattleManager.spatial_grid:
-		return
-	BattleManager.spatial_grid.insert(self)
+	UnitSharedHelpers.register_spatial_grid(self, false)  # 敌方虚影也需入格，无 preview 守卫
 
 ## 从空间分区网格注销
 func _unregister_from_spatial_grid() -> void:
-	if not BattleManager or not BattleManager.spatial_grid:
-		return
-	BattleManager.spatial_grid.remove(self)
+	UnitSharedHelpers.unregister_spatial_grid(self)
 
 ## 更新空间分区网格中的位置
 func _update_in_spatial_grid() -> void:
-	if not BattleManager or not BattleManager.spatial_grid:
-		return
-	BattleManager.spatial_grid.update(self)
+	UnitSharedHelpers.update_spatial_grid(self, false)
 
 
 # ============================ v7.x: 敌方布置时间（部署虚影）============================

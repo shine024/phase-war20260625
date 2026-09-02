@@ -214,6 +214,18 @@ func stop_afk() -> void:
 	afk_settled.emit(accumulated_rewards.duplicate(true))
 	state_changed.emit(state)
 
+## v26.6：宿主场景销毁时调用——停机并断开 SignalBus 连接。
+## RefCounted 无 _exit_tree；此前 Main 场景每次重建（战斗↔标题往返）都会 new 一个新实例，
+## 旧实例被 SignalBus 连接引用永不释放（泄漏），且 is_running 残留时会继续响应
+## battle_ended 驱动已释放的 _main。必须在 Main._exit_tree（实例仍存活时）显式调用。
+func shutdown() -> void:
+	stop_afk()
+	if _signal_bus != null:
+		if _signal_bus.battle_ended.is_connected(_on_battle_ended_from_bus):
+			_signal_bus.battle_ended.disconnect(_on_battle_ended_from_bus)
+		if _signal_bus.battle_started.is_connected(_on_battle_started_from_bus):
+			_signal_bus.battle_started.disconnect(_on_battle_started_from_bus)
+
 
 ## 设置模式
 func set_mode(m: Mode) -> void:

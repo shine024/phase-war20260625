@@ -122,6 +122,6 @@ func test_resolve_classic_enemy_tier_multiplier() -> void:
 
 	var hp_ratio: float = float(r_high.get("hp", 0.0)) / maxf(1.0, float(r_low.get("hp", 0.0)))
 	var atk_ratio: float = float(r_high.get("attack_light", 0.0)) / maxf(0.1, float(r_low.get("attack_light", 0.0)))
-	# 高档(×2.0) / 低档(×1.3) = 1.538...
-	assert_float(hp_ratio).is_equal_approx(2.0 / 1.3, 0.01)
-	assert_float(atk_ratio).is_equal_approx(2.0 / 1.3, 0.01)
+	# v26 四档标量：传奇(×1.66) / 新兵(×1.20)（真实配装改造另行叠加，不在此乘区）
+	assert_float(hp_ratio).is_equal_approx(1.66 / 1.2, 0.01)
+	assert_float(atk_ratio).is_equal_approx(1.66 / 1.2, 0.01)

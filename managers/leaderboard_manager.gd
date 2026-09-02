@@ -97,27 +97,6 @@ func submit_score(leaderboard_id: String, score: float, additional_data: Diction
 
 	return entry
 
-## 获取排行榜前N名
-func get_top_entries(leaderboard_id: String, count: int = 10) -> Array:
-	if not _local_leaderboards.has(leaderboard_id):
-		return []
-
-	var leaderboard = _local_leaderboards[leaderboard_id]
-	var top_entries = []
-
-	for i in range(min(count, leaderboard.size())):
-		top_entries.append(leaderboard[i])
-
-	return top_entries
-
-## 获取玩家排名
-func get_player_rank(leaderboard_id: String) -> int:
-	if not _local_leaderboards.has(leaderboard_id):
-		return -1
-
-	var player_id = _get_player_id()
-	return _get_player_rank(leaderboard_id, player_id)
-
 func _get_player_rank(leaderboard_id: String, player_id: String) -> int:
 	if not _local_leaderboards.has(leaderboard_id):
 		return -1
@@ -128,13 +107,6 @@ func _get_player_rank(leaderboard_id: String, player_id: String) -> int:
 			return i + 1  # 排名从1开始
 
 	return -1
-
-## 获取排行榜分数
-func get_leaderboard_scores(leaderboard_id: String) -> Array:
-	if not _local_leaderboards.has(leaderboard_id):
-		return []
-
-	return _local_leaderboards[leaderboard_id]
 
 ## 更新战斗统计
 func update_battle_stats(player_won: bool, damage_dealt: int, time_taken: float) -> void:
@@ -162,25 +134,11 @@ func update_level_progress(level: int, stars: int = 1) -> void:
 	_player_scores.total_stars += stars
 	submit_score("all_stars", _player_scores.total_stars)
 
-## 更新收集进度
-func update_collection_progress(total_cards: int, unlocked_cards: int) -> void:
-	_ensure_scores()
-	var completion = float(unlocked_cards) / float(total_cards) * 100.0
-	_player_scores.collection_completion = completion
-	submit_score("collection_completion", completion)
-
 ## 更新蓝图数量
 func update_blueprint_count(count: int) -> void:
 	_ensure_scores()
 	_player_scores.blueprint_count = count
 	submit_score("blueprint_unlocked", count)
-
-## 更新生存挑战最佳成绩
-func update_survival_best(waves: int) -> void:
-	_ensure_scores()
-	if waves > _player_scores.survival_best:
-		_player_scores.survival_best = waves
-		submit_score("survival_highscore", waves)
 
 ## 排序排行榜
 func _sort_leaderboard(leaderboard_id: String) -> void:
@@ -247,38 +205,3 @@ func load_state(data: Dictionary) -> void:
 		_local_leaderboards = data.leaderboards
 	if data.has("player_scores"):
 		_player_scores = data.player_scores
-
-## 获取玩家统计
-func get_player_stats() -> Dictionary:
-	return _player_scores.duplicate()
-
-## 重置排行榜
-func reset_leaderboard(leaderboard_id: String) -> void:
-	if _local_leaderboards.has(leaderboard_id):
-		_local_leaderboards[leaderboard_id].clear()
-
-## 清空所有排行榜
-func clear_all_leaderboards() -> void:
-	_local_leaderboards.clear()
-
-## 导出排行榜数据
-func export_leaderboard(leaderboard_id: String) -> String:
-	if not _local_leaderboards.has(leaderboard_id):
-		return ""
-
-	var leaderboard = _local_leaderboards[leaderboard_id]
-	var json = JSON.new()
-	return json.stringify(leaderboard)
-
-## 导入排行榜数据
-func import_leaderboard(leaderboard_id: String, data: String) -> bool:
-	var json = JSON.new()
-	var error = json.parse(data)
-	if error != OK:
-		return false
-
-	if json.data is Array:
-		_local_leaderboards[leaderboard_id] = json.data
-		return true
-
-	return false

@@ -358,8 +358,10 @@ static func try_weakpoint_expose(mechanisms: Array, field_state: ComboFieldState
 		return false
 	# 检查目标是否同时有无人机标记 + 雷达锁定
 	# v9.1 修复：META_RADAR_LOCKED 是 until_key（秒时间戳），直接判存在性+过期。
-	# 无人机标记 _drone_marked_until 是毫秒时间戳，雷达锁定 META_RADAR_LOCKED 是秒时间戳（两者口径不同，历史遗留）。
-	var has_drone_mark: bool = target.has_meta("_drone_marked_until") and Time.get_ticks_msec() < int(target.get_meta("_drone_marked_until", 0))
+	# v26.6: 无人机标记 _drone_marked_until 口径统一为秒制（原毫秒，与雷达锁定的历史
+	# 分裂已清——秒值标记在旧毫秒比较下恒判过期，链式弱点暴露从未触发）。
+	var has_drone_mark: bool = target.has_meta("_drone_marked_until") and \
+		Time.get_ticks_msec() / 1000.0 < float(target.get_meta("_drone_marked_until", 0.0))
 	var has_radar_lock: bool = target.has_meta(ComboFieldState.META_RADAR_LOCKED) and \
 		Time.get_ticks_msec() / 1000.0 < float(target.get_meta(ComboFieldState.META_RADAR_LOCKED, 0.0))
 	if not (has_drone_mark and has_radar_lock):

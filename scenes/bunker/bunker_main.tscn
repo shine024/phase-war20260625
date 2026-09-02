@@ -22,135 +22,135 @@ texture = ExtResource("2_bg")
 
 [node name="weather_station" type="ColorRect" parent="."]
 layout_mode = 0
-offset_left = 40.0
+offset_left = 20.0
 offset_top = 293.0
-offset_right = 267.0
+offset_right = 252.0
 offset_bottom = 411.0
 mouse_filter = 2
 color = Color(1, 0.72, 0.32, 0.25)
 
 [node name="monument" type="ColorRect" parent="."]
 layout_mode = 0
-offset_left = 282.0
+offset_left = 272.0
 offset_top = 293.0
-offset_right = 507.0
-offset_bottom = 412.0
+offset_right = 504.0
+offset_bottom = 411.0
 mouse_filter = 2
 color = Color(1, 0.72, 0.32, 0.25)
 
 [node name="entry_hall" type="ColorRect" parent="."]
 layout_mode = 0
-offset_left = 525.0
-offset_top = 292.0
-offset_right = 759.0
+offset_left = 524.0
+offset_top = 293.0
+offset_right = 756.0
 offset_bottom = 411.0
 mouse_filter = 2
 color = Color(1, 0.72, 0.32, 0.25)
 
 [node name="phase_lab" type="ColorRect" parent="."]
 layout_mode = 0
-offset_left = 769.0
+offset_left = 776.0
 offset_top = 293.0
-offset_right = 1001.0
+offset_right = 1008.0
 offset_bottom = 411.0
 mouse_filter = 2
 color = Color(1, 0.72, 0.32, 0.25)
 
 [node name="observatory" type="ColorRect" parent="."]
 layout_mode = 0
-offset_left = 1033.0
-offset_top = 290.0
-offset_right = 1265.0
-offset_bottom = 406.0
+offset_left = 1028.0
+offset_top = 293.0
+offset_right = 1260.0
+offset_bottom = 411.0
 mouse_filter = 2
 color = Color(1, 0.72, 0.32, 0.25)
 
 [node name="dormitory" type="ColorRect" parent="."]
 layout_mode = 0
-offset_left = 34.0
+offset_left = 20.0
 offset_top = 421.0
-offset_right = 266.0
+offset_right = 252.0
 offset_bottom = 551.0
 mouse_filter = 2
 color = Color(0, 0.94, 1, 0.18)
 
 [node name="mess_hall" type="ColorRect" parent="."]
 layout_mode = 0
-offset_left = 277.0
-offset_top = 420.0
-offset_right = 509.0
-offset_bottom = 550.0
+offset_left = 272.0
+offset_top = 421.0
+offset_right = 504.0
+offset_bottom = 551.0
 mouse_filter = 2
 color = Color(0, 0.94, 1, 0.18)
 
 [node name="archive" type="ColorRect" parent="."]
 layout_mode = 0
-offset_left = 526.0
-offset_top = 419.0
-offset_right = 758.0
-offset_bottom = 549.0
+offset_left = 524.0
+offset_top = 421.0
+offset_right = 756.0
+offset_bottom = 551.0
 mouse_filter = 2
 color = Color(0, 0.94, 1, 0.18)
 
 [node name="medical" type="ColorRect" parent="."]
 layout_mode = 0
-offset_left = 788.0
-offset_top = 419.0
-offset_right = 1020.0
-offset_bottom = 549.0
+offset_left = 776.0
+offset_top = 421.0
+offset_right = 1008.0
+offset_bottom = 551.0
 mouse_filter = 2
 color = Color(0, 0.94, 1, 0.18)
 
 [node name="depot" type="ColorRect" parent="."]
 layout_mode = 0
-offset_left = 1039.0
-offset_top = 419.0
-offset_right = 1271.0
-offset_bottom = 549.0
+offset_left = 1028.0
+offset_top = 421.0
+offset_right = 1260.0
+offset_bottom = 551.0
 mouse_filter = 2
 color = Color(0, 0.94, 1, 0.18)
 
 [node name="war_room" type="ColorRect" parent="."]
 layout_mode = 0
-offset_left = 32.0
-offset_top = 568.0
-offset_right = 264.0
-offset_bottom = 698.0
+offset_left = 20.0
+offset_top = 551.0
+offset_right = 252.0
+offset_bottom = 681.0
 mouse_filter = 2
 color = Color(0, 0.94, 1, 0.18)
 
 [node name="workshop" type="ColorRect" parent="."]
 layout_mode = 0
-offset_left = 278.0
-offset_top = 569.0
-offset_right = 510.0
-offset_bottom = 699.0
+offset_left = 272.0
+offset_top = 551.0
+offset_right = 504.0
+offset_bottom = 681.0
 mouse_filter = 2
 color = Color(0, 0.94, 1, 0.18)
 
 [node name="reactor" type="ColorRect" parent="."]
 layout_mode = 0
-offset_left = 526.0
-offset_top = 570.0
-offset_right = 758.0
-offset_bottom = 700.0
+offset_left = 524.0
+offset_top = 551.0
+offset_right = 756.0
+offset_bottom = 681.0
 mouse_filter = 2
 color = Color(1, 0.48, 0.18, 0.25)
 
 [node name="honor_hall" type="ColorRect" parent="."]
 layout_mode = 0
-offset_left = 786.0
-offset_top = 569.0
-offset_right = 1018.0
-offset_bottom = 699.0
+offset_left = 776.0
+offset_top = 551.0
+offset_right = 1008.0
+offset_bottom = 681.0
 mouse_filter = 2
 color = Color(0, 0.94, 1, 0.18)
 
 [node name="comms" type="ColorRect" parent="."]
 layout_mode = 0
-offset_left = 1036.0
-offset_top = 570.0
-offset_right = 1268.0
-offset_bottom = 700.0
+offset_left = 1028.0
+offset_top = 551.0
+offset_right = 1260.0
+offset_bottom = 681.0
 mouse_filter = 2
 color = Color(0, 0.94, 1, 0.18)

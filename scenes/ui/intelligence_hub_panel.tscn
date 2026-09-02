@@ -43,7 +43,7 @@ columns = 3
 
 [node name="EvolutionTab" type="VBoxContainer" parent="Margin/VBox/TabContainer"]
 layout_mode = 2
-metadata/_tab_name = "单位进化图谱"
+metadata/_tab_name = "单位谱系图谱"
 
 [node name="EvolutionHost" type="Control" parent="Margin/VBox/TabContainer/EvolutionTab"]
 layout_mode = 2

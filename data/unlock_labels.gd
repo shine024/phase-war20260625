@@ -236,8 +236,8 @@ static func get_unlocked_summary(unlocked_nodes: Array) -> Array:
 				summary.append({
 					"type": u_type,
 					"id": u_id,
-					"name": "进化：" + era_label,
-					"desc": "解锁卡牌进化形态",
+					"name": "制造授权：" + era_label,
+					"desc": "解锁对应时代的制造配方",
 					"icon": "🧬",
 					"node_name": String(node.get("name", "")),
 				})

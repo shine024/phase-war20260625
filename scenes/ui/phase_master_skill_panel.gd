@@ -315,7 +315,7 @@ func _update_probe() -> void:
 		_probe_desc.text = "点击芯片查看详情 · 悬停有说明 · 滚轮纵览 16 层电路"
 		_probe_unlock.text = "通电态：分支色亮框=已通电 · 金色夹脚=可通电 · 暗芯断路=未解锁"
 		_probe_unlock.add_theme_color_override("font_color", DT.COLOR_TEXT_DIM)
-		_probe_req.text = "器件式：方片=数值 · 八角=机制/能力 · 双列=战法 · 圆罐=卡片技能 · 双框=进化 · 紫色◈=奇点"
+		_probe_req.text = "器件式：方片=数值 · 八角=机制/能力 · 双列=战法 · 圆罐=卡片技能 · 双框=制造授权 · 紫色◈=奇点"
 		_probe_req.add_theme_color_override("font_color", DT.COLOR_TEXT_DIM)
 		_preview_chip.visible = false
 		_probe_action_label.visible = false
@@ -519,7 +519,7 @@ func _format_unlocks(unlocks: Array) -> String:
 					var era: int = int(u.get("era", 0))
 					var era_names: Array = ["一战", "二战", "冷战", "现代", "近未来"]
 					var era_label: String = era_names[clampi(era, 0, 4)] if era >= 0 and era < 5 else "全时代"
-					parts.append("进化解锁[%s]" % era_label)
+					parts.append("制造解锁[%s]" % era_label)
 				"affix": parts.append("词条赋予")
 				_: parts.append("%s[%s]" % [u_type, u_id])
 	return "、".join(parts)
@@ -645,7 +645,7 @@ func _populate_summary() -> void:
 		"tactic": "🔱 战法",
 		"phase_instrument": "🔮 相位仪",
 		"affix": "📊 词条系统",
-		"evolution": "🧬 进化形态",
+		"evolution": "🧬 制造授权",
 		"concept_weapon": "☢ 概念武器",
 		"special_card": "🌟 特殊卡",
 	}

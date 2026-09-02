@@ -144,7 +144,7 @@ func _on_energy_changed(current: float, maximum: float) -> void:
 		energy_label.text = "%d/%d" % [int(current), int(maximum)]
 
 func _on_phase_driver_hp_changed(current: float, maximum: float) -> void:
-	# 现在由 main.tscn 中的独立面板处理
+	# 基地完整度显示由 TopHudBar 的基地 chip 承担（v27；此前该信号零显示消费方）
 	pass
 
 func _on_phase_slots_changed(slots: Array) -> void:

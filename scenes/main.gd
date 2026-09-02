@@ -129,6 +129,7 @@ func _ready() -> void:
 
 	if SignalBus:
 		SignalBus.battle_ended.connect(_on_battle_ended_clear_pending)
+		SignalBus.battle_started.connect(_on_battle_started_close_skill_canvas)
 		# v21.x（FTUE 修复2，2026-08-27）：战斗结束后续播教程（第7步首战后教程收起，战后续播 8-13 步）
 		SignalBus.battle_ended.connect(_on_battle_ended_resume_tutorial)
 		# v6.6 修复: toggle_* 信号原 emit 无 connect，教程引导的"打开面板"动作失效。
@@ -538,7 +539,7 @@ func _notify_panel_opened(overlay: Control, panel_key: String) -> void:
 	# 必须挂打开路径而非面板 _ready）
 	if panel_key == "info":
 		FeatureUnlockPopup.show_once("intel_hub", "情报中心",
-			"这里汇总进化图谱、符文图鉴与敌方情报手册——战斗中遇到看不懂的敌人，来这里查。")
+			"这里汇总制造中心、符文图鉴与敌方情报手册——战斗中遇到看不懂的敌人，来这里查。")
 
 func _close_overlay(overlay: Control, panel_key: String = "") -> void:
 	if overlay == null:
@@ -922,6 +923,8 @@ func _connect_quest_badge_signals() -> void:
 
 ## 刷新任务按钮红点：可领取(completed && !claimed)的任务数
 func _refresh_quest_badge(_dummy = null) -> void:
+	if not is_inside_tree():
+		return  # 主场景已离树（切场景竞态）：红点随场景消亡，无需刷新
 	if bottom_function_bar == null or not bottom_function_bar.has_method("set_btn_badge"):
 		return
 	var dtm := get_node_or_null("/root/DailyTaskManager")
@@ -997,6 +1000,40 @@ func _on_start_level_from_tutorial(level: int) -> void:
 		GameManager.set_current_level(level)
 	if _battle_setup != null:
 		_battle_setup.on_start_battle()
+	# v27（FTUE A4 首战行动验证）：15s 内未部署任何单位则循环提示操作方法，
+	# 防"全程看戏→180s 僵持判负还不知道自己做错了什么"（FTUE 审计 S3 关联场景）
+	_start_tutorial_deploy_nudge()
+
+## v27：教程首战部署提醒 Timer（重复 15s；部署成功/战斗结束自动停）
+var _tutorial_deploy_nudge_timer: Timer = null
+
+func _start_tutorial_deploy_nudge() -> void:
+	_stop_tutorial_deploy_nudge()
+	_tutorial_deploy_nudge_timer = Timer.new()
+	_tutorial_deploy_nudge_timer.wait_time = 15.0
+	add_child(_tutorial_deploy_nudge_timer)
+	_tutorial_deploy_nudge_timer.timeout.connect(_on_tutorial_deploy_nudge_tick)
+	_tutorial_deploy_nudge_timer.start()
+
+func _on_tutorial_deploy_nudge_tick() -> void:
+	if not _is_in_battle():
+		_stop_tutorial_deploy_nudge()
+		return
+	var bf: Node2D = _get_battlefield()
+	if bf == null:
+		return
+	var pu: Node = bf.get_node_or_null("PlayerUnits")
+	if pu != null and pu.get_child_count() > 0:
+		_stop_tutorial_deploy_nudge()  # 已部署：验证通过
+		return
+	if SignalBus != null and SignalBus.has_signal("show_toast"):
+		SignalBus.show_toast.emit("还没部署单位：点击底部绿槽选择单位，再点击我方战场格子部署")
+
+func _stop_tutorial_deploy_nudge() -> void:
+	if _tutorial_deploy_nudge_timer != null:
+		_tutorial_deploy_nudge_timer.stop()
+		_tutorial_deploy_nudge_timer.queue_free()
+		_tutorial_deploy_nudge_timer = null
 
 func _on_quest_pressed() -> void:
 	_toggle_overlay(quest_overlay, "quest")
@@ -1252,7 +1289,29 @@ func _build_retreat_confirm_dialog() -> Control:
 	cancel_btn.pressed.connect(close)
 	return overlay
 
+var _leaving_scene: bool = false
+
 func _on_back_to_title() -> void:
+	# v26.6 修复：战斗中返回标题此前直接存档+切场景——battle_active 恒卡死
+	# （战斗结束存档钩子永不触发）、battlefield 变 freed 悬垂实例（battle_manager
+	# 每帧踩空）。现对齐撤退确认按钮的语义：挂机先停机（避免拦截 battle_ended
+	# 再排下一场），战斗中走 end_battle(false) 正常结算，然后再存档切场景。
+	# v26.7 修复：end_battle 的收尾链（掉落→情报收获→battle_ended 广播）走三级
+	# call_deferred，帧末才落地；此前切场景不等待，主场景先离树，广播的主场景侧
+	# 监听者（任务红点/底栏刷新/视口冻结/教程续播/结算链）在树外踩空 get_tree()/
+	# get_node() 报六连错（2026-09-02）。现在等广播落地（4 帧兜底覆盖最坏逐帧排队）
+	# 再存档切场景；等待期间场景已被其他路径切走则放弃。
+	if _leaving_scene:
+		return
+	_leaving_scene = true
+	if _afk_manager != null and _afk_manager.is_running:
+		_afk_manager.stop_afk()
+	if BattleManager != null and BattleManager.battle_active:
+		BattleManager.end_battle(false)
+		for _i in 4:
+			await get_tree().process_frame
+			if not is_instance_valid(self) or not is_inside_tree():
+				return
 	if SaveManager:
 		SaveManager.save_game()
 	# v21 余烬要塞：从基地经兵棋室进入战场时，返回按钮回基地而非标题
@@ -1403,6 +1462,17 @@ func _restore_subviewport_if_needed() -> void:
 		vp.render_target_update_mode = SubViewport.UPDATE_ONCE
 
 # ── 战斗相关回调 ─────────────────────────────────────────────
+func _on_battle_started_close_skill_canvas() -> void:
+	# v25.x 修复：PhaseMasterSkillCanvas（layer=110）在战斗开始时未被关闭，
+	# 导致其 backdrop 持续拦截底栏所有点击，包括大招手动/自动切换按钮。
+	# 统一在此处处理，覆盖所有战斗启动路径（含教程）。
+	var skill_canvas := get_tree().root.get_node_or_null("PhaseMasterSkillCanvas") as CanvasLayer
+	if skill_canvas != null and skill_canvas.visible:
+		skill_canvas.visible = false
+		var p := skill_canvas.get_node_or_null("PhaseMasterSkillPanel") as Control
+		if p != null and p.has_method("_apply_viewport_fit"):
+			p.set("full_bleed", false)
+
 func _on_battle_ended_clear_pending(player_won: bool) -> void:
 	_reward.on_battle_ended_clear_pending(player_won)
 
@@ -1431,12 +1501,14 @@ var _battle_result_pending: bool = false
 func show_battle_result(player_won: bool) -> void:
 	if _battle_result_pending:
 		return
+	if not is_inside_tree():
+		return  # 主场景已离树（战斗中回标题）：结算面板无处挂载，静默放弃
 	_battle_result_pending = true
 	var delay: float = 0.9 if player_won else 0.25
 	await get_tree().create_timer(delay, true, false, true).timeout
-	_battle_result_pending = false
 	if not is_instance_valid(self) or not is_inside_tree():
-		return
+		return  # 等待期间主场景被释放/切走——放弃弹出（实例将被丢弃，标志无需复位）
+	_battle_result_pending = false
 	if BattleManager != null and "battle_active" in BattleManager and BattleManager.battle_active:
 		return
 	_reward.show_battle_result(player_won)
@@ -1525,13 +1597,19 @@ func _show_tutorial_overlay() -> void:
 ## 第7步（FIRST_BATTLE）点"开始首战"后 overlay 收起（见 tutorial_overlay.gd），
 ## 战斗结算（胜利/战败/撤退/180s 僵持超时）后回主界面时恢复 8-13 步。
 func _on_battle_ended_resume_tutorial(_player_won: bool) -> void:
+	if not is_inside_tree():
+		return  # 主场景已离树（切场景竞态）：教程覆盖层随场景重建，无需续播
 	var tm: Node = get_node_or_null("/root/TutorialProgressionManager")
 	if tm == null or not tm.has_method("should_show_tutorial"):
 		return
 	if not tm.should_show_tutorial():
 		return
-	# 仅当教程停在首战之后的步骤（8-13）才续播；<=7 说明首战未打（教程覆盖层仍在场，无需干预）
-	if not ("current_step" in tm) or int(tm.current_step) < 8:
+	# 仅当教程停在首战之后的步骤（新序第 5-13 步）才续播；未过首战步说明首战未打
+	# （教程覆盖层仍在场，无需干预）。v3 教程重排后改用顺序判定，不再裸比步骤号。
+	if tm.has_method("is_past_first_battle"):
+		if not tm.is_past_first_battle():
+			return
+	elif not ("current_step" in tm) or int(tm.current_step) < 8:
 		return
 	# 战斗结束瞬间结算面板/场景切换仍在进行，延迟到界面稳定后再弹出
 	await get_tree().create_timer(0.8).timeout
@@ -1580,5 +1658,10 @@ func _exit_tree() -> void:
 	if _save_toast:
 		_save_toast.cleanup()
 		_save_toast = null
+	# v26.6：挂机管理器是 RefCounted，必须显式停机+断开 SignalBus 连接——
+	# 否则实例被 SignalBus 滞留（Main 每次重建泄漏一个），is_running 残留还会驱动已释放的 _main
+	if _afk_manager != null:
+		_afk_manager.shutdown()
+		_afk_manager = null
 
 # ── 工具函数 ─────────────────────────────────────────────────

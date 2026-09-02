@@ -1,7 +1,9 @@
 # v21.0 敌方战斗卡情报系统 smoke test（不依赖 GdUnit）
 # 覆盖：双轨同步（base=max(intel,获取下限)）/ 部署记账 / 击败 mod 点数 /
-#       获取下限 50% / 满情报全池解锁（含浮点容差）/ 低进化选项与 intel_base 条件 /
+#       获取下限 50% / 满情报全池解锁（含浮点容差）/ 低进化选项与条件退役断言 /
 #       存档往返 / 旧档迁移
+# v26 批次4：T8 改造——v25.3 起情报不再横在进化路上（intel_base 条件退役），
+# 低进化/常规进化统一走 等级+改造+图纸/技能树；v26 制造接管情报消费（analyzer/制造门槛）。
 #
 # ⚠️ --script 模式实证（2026-08-28）：autoload 单例【会】被实例化为空状态节点
 # （SaveManager 不装档、BattleManager._ready 可能报脚本模式噪音——非本测试问题）。
@@ -134,22 +136,21 @@ func _initialize() -> void:
 	var opts7b: Dictionary = CardEvolutionManager.get_evolution_options("ww1_mp18")
 	ok(not opts7b.has("low_evolution"), "普通玩家卡不输出 low_evolution")
 
-	# ── T8 低进化条件（intel_base） ──
-	print("\n[T8] can_evolve_blueprint 低进化条件")
+	# ── T8 低进化条件（v26 批次4 改造）──
+	# v25.3 已把情报门槛从进化链拆掉（低进化/常规进化统一走 等级+改造+图纸/技能树），
+	# v26 进化退役后链路仅作内部 API 保留。本段断言 intel_base 条件【不再出现】，
+	# 低进化对仍跳过图纸条件（captured→player 无图纸链）。
+	print("\n[T8] 低进化条件（intel_base 已退役）")
 	var bpm := BPMStub.new()
 	root.add_child(bpm)
-	# 正例：T2/T3 已把 ww1_inf_mp18 推到 16%，再获取下限抬到 50%
 	im.set_acquired_base_progress(arch)
 	var info8: Dictionary = CardEvolutionManager.can_evolve_blueprint("captured_ww1_inf_mp18", "ww1_mp18", bpm)
 	ok(String(info8.get("reason", "")) != "target_not_in_path", "低进化目标被放行（不在常规链上也可）")
-	var cond8: Dictionary = _find_cond(info8, "intel_base")
-	ok(not cond8.is_empty() and bool(cond8.get("met", false)),
-		"intel_base 条件达成（base=%.4f ≥ 50%%）" % im.get_base_progress(arch))
+	ok(_find_cond(info8, "intel_base").is_empty(), "intel_base 条件已退役（v25.3 拆门槛）")
 	ok(not _has_cond(info8, "evo_blueprint"), "低进化对跳过图纸条件")
-	# 反例：从未接触的形态 → intel_base 未达成
+	# 反例：从未接触的形态同样不出现 intel_base（情报回归纯收集/揭示玩法）
 	var info8b: Dictionary = CardEvolutionManager.can_evolve_blueprint("captured_ww1_inf_storm_e", "ww1_storm", bpm)
-	var cond8b: Dictionary = _find_cond(info8b, "intel_base")
-	ok(not cond8b.is_empty() and not bool(cond8b.get("met", false)), "情报不足时 intel_base 未达成")
+	ok(_find_cond(info8b, "intel_base").is_empty(), "未接触形态也不产生 intel_base 条件")
 
 	# ── T9 存档往返 ──
 	print("\n[T9] 存档往返（save_state → load_state）")

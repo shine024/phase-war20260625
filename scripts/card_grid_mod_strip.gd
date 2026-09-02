@@ -132,17 +132,6 @@ static func _dedup(kinds: Array[ModKind]) -> Array[ModKind]:
 	return out
 
 
-static func mod_signature(unit: Node) -> String:
-	var parts: PackedStringArray = []
-	for kind: ModKind in collect_mod_kinds(unit):
-		parts.append(str(int(kind)))
-	return "|".join(parts)
-
-
-func get_total_height() -> float:
-	return _total_height
-
-
 func rebuild(active_kinds: Array[ModKind], card_art_width: float = -1.0) -> void:
 	_card_art_width = card_art_width if card_art_width > 1.0 else CardGridBattleLayout.battle_card_width_px()
 	_active_kinds = active_kinds.duplicate()

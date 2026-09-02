@@ -39,27 +39,6 @@
       "required_rep": 50
     },
     {
-      "company_id": "iron_wall_corp",
-      "card_id": "steel_phase_armor",
-      "fragment_amount": 1,
-      "price_nano_materials": 480,
-      "required_rep": 30
-    },
-    {
-      "company_id": "iron_wall_corp",
-      "card_id": "steel_quick_repair",
-      "fragment_amount": 1,
-      "price_nano_materials": 550,
-      "required_rep": 45
-    },
-    {
-      "company_id": "iron_wall_corp",
-      "card_id": "steel_bastion_wall",
-      "fragment_amount": 1,
-      "price_nano_materials": 700,
-      "required_rep": 60
-    },
-    {
       "company_id": "nova_arms",
       "card_id": "platform_ww2_medium",
       "fragment_amount": 1,
@@ -72,27 +51,6 @@
       "fragment_amount": 1,
       "price_nano_materials": 520,
       "required_rep": 25
-    },
-    {
-      "company_id": "nova_arms",
-      "card_id": "flame_heat_overload",
-      "fragment_amount": 1,
-      "price_nano_materials": 480,
-      "required_rep": 30
-    },
-    {
-      "company_id": "nova_arms",
-      "card_id": "flame_afterburn",
-      "fragment_amount": 1,
-      "price_nano_materials": 550,
-      "required_rep": 45
-    },
-    {
-      "company_id": "nova_arms",
-      "card_id": "flame_front_bombard",
-      "fragment_amount": 1,
-      "price_nano_materials": 700,
-      "required_rep": 60
     },
     {
       "company_id": "aether_dynamics",
@@ -130,13 +88,6 @@
       "required_rep": 20
     },
     {
-      "company_id": "aether_dynamics",
-      "card_id": "thunder_arc_beacon",
-      "fragment_amount": 1,
-      "price_nano_materials": 480,
-      "required_rep": 35
-    },
-    {
       "company_id": "quantum_logistics",
       "card_id": "platform_ww1_fort",
       "fragment_amount": 1,
@@ -149,13 +100,6 @@
       "fragment_amount": 1,
       "price_nano_materials": 480,
       "required_rep": 20
-    },
-    {
-      "company_id": "quantum_logistics",
-      "card_id": "steel_quick_repair",
-      "fragment_amount": 1,
-      "price_nano_materials": 520,
-      "required_rep": 30
     },
     {
       "company_id": "helix_recon",
@@ -193,74 +137,11 @@
       "required_rep": 25
     },
     {
-      "company_id": "helix_recon",
-      "card_id": "void_entropy_lens",
-      "fragment_amount": 1,
-      "price_nano_materials": 500,
-      "required_rep": 30
-    },
-    {
-      "company_id": "helix_recon",
-      "card_id": "void_phase_cloak",
-      "fragment_amount": 1,
-      "price_nano_materials": 580,
-      "required_rep": 45
-    },
-    {
-      "company_id": "helix_recon",
-      "card_id": "void_time_ripple",
-      "fragment_amount": 1,
-      "price_nano_materials": 750,
-      "required_rep": 65
-    },
-    {
       "company_id": "void_research",
       "card_id": "platform_future_heavy",
       "fragment_amount": 1,
       "price_nano_materials": 650,
       "required_rep": 40
-    },
-    {
-      "company_id": "void_research",
-      "card_id": "void_entropy_lens",
-      "fragment_amount": 1,
-      "price_nano_materials": 500,
-      "required_rep": 30
-    },
-    {
-      "company_id": "void_research",
-      "card_id": "void_phase_cloak",
-      "fragment_amount": 1,
-      "price_nano_materials": 580,
-      "required_rep": 45
-    },
-    {
-      "company_id": "void_research",
-      "card_id": "void_time_ripple",
-      "fragment_amount": 1,
-      "price_nano_materials": 750,
-      "required_rep": 65
-    },
-    {
-      "company_id": "void_research",
-      "card_id": "thunder_arc_beacon",
-      "fragment_amount": 1,
-      "price_nano_materials": 500,
-      "required_rep": 30
-    },
-    {
-      "company_id": "void_research",
-      "card_id": "thunder_chain_discharge",
-      "fragment_amount": 1,
-      "price_nano_materials": 580,
-      "required_rep": 45
-    },
-    {
-      "company_id": "void_research",
-      "card_id": "thunder_emp_storm",
-      "fragment_amount": 1,
-      "price_nano_materials": 720,
-      "required_rep": 60
     },
     {
       "company_id": "void_research",
@@ -296,62 +177,6 @@
       "fragment_amount": 1,
       "price_nano_materials": 520,
       "required_rep": 30
-    },
-    {
-      "company_id": "frontier_union",
-      "card_id": "steel_phase_armor",
-      "fragment_amount": 1,
-      "price_nano_materials": 450,
-      "required_rep": 25
-    },
-    {
-      "company_id": "frontier_union",
-      "card_id": "flame_heat_overload",
-      "fragment_amount": 1,
-      "price_nano_materials": 450,
-      "required_rep": 25
-    },
-    {
-      "company_id": "frontier_union",
-      "card_id": "thunder_arc_beacon",
-      "fragment_amount": 1,
-      "price_nano_materials": 450,
-      "required_rep": 25
-    },
-    {
-      "company_id": "void_research",
-      "card_id": "permit_card_omega_platform",
-      "fragment_amount": 1,
-      "price_nano_materials": 880,
-      "required_rep": 75
-    },
-    {
-      "company_id": "void_research",
-      "card_id": "permit_card_void_time_ripple",
-      "fragment_amount": 1,
-      "price_nano_materials": 760,
-      "required_rep": 65
-    },
-    {
-      "company_id": "iron_wall_corp",
-      "card_id": "permit_card_platform_ww2_heavy",
-      "fragment_amount": 1,
-      "price_nano_materials": 620,
-      "required_rep": 55
-    },
-    {
-      "company_id": "aether_dynamics",
-      "card_id": "permit_card_platform_modern_light",
-      "fragment_amount": 1,
-      "price_nano_materials": 580,
-      "required_rep": 50
-    },
-    {
-      "company_id": "frontier_union",
-      "card_id": "permit_card_platform_modern_medium",
-      "fragment_amount": 1,
-      "price_nano_materials": 640,
-      "required_rep": 58
     },
     {
       "_comment": "v8.x: 补齐 18 张之前无任何获取途径的玩家卡（掉落+商店双保险）",

@@ -134,8 +134,8 @@ const ACHIEVEMENTS: Dictionary = {
 
 	"collection_blueprints_10": {
 		"id": "collection_blueprints_10",
-		"name": "蓝图收集者",
-		"description": "解锁10个不同的蓝图",
+		"name": "卡牌收集者",
+		"description": "收集10种不同的卡牌",
 		"category": "collection",
 		"reward": {
 			"nano_materials": 150
@@ -238,7 +238,7 @@ const ACHIEVEMENTS: Dictionary = {
 	"progress_level_100": {
 		"id": "progress_level_100",
 		"name": "终极征服",
-		"description": "通关第100关（未来时代）",
+		"description": "通关第100关（近未来时代）",
 		"category": "progress",
 		"reward": {
 			"nano_materials": 1000,

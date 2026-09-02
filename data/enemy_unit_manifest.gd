@@ -78,6 +78,9 @@ const POOL_ENEMY_IDS: Array[String] = [
 	"mod_sup_m4_carbine", "mod_inf_patriot", "mod_arm_himars", "mod_arty_rq7", "mod_sup_growler",
 	"fut_inf_neural", "fut_arm_hk07", "fut_arty_hel30", "fut_sup_nrepair", "fut_inf_x9",
 	"fut_inf_c96", "fut_arm_sdkfz", "fut_arty_ssc1", "fut_sup_ps9",
+	# v26 新飞机（轰炸机/多用途，era1-4 各一组）
+	"ww2_air_bomber", "ww2_air_dive_bomber", "cold_air_strike_fighter", "cold_air_bomber",
+	"mod_air_multirole", "mod_air_bomber", "fut_air_stealth_multirole", "fut_air_stealth_bomber",
 ]
 
 ## D段显示名
@@ -88,6 +91,8 @@ const POOL_DISPLAY_NAMES: Array[String] = [
 	"M4 卡宾特遣班", "爱国者 PAC-3 发射车", "HIMARS 火箭炮组", "RQ-7 影子无人机班", "EA-18G 电子战小组",
 	"神经接口突击兵", "HK-07 量产机兵", "HEL-30 激光炮阵列", "N-Repair 纳米工程车", "X-9 猎杀者渗透组",
 	"毛瑟 C96 征召兵排", "Sd.Kfz.251/1 半履带车", "SS-C-1 岸防导弹组", "PS-9 相位中继站",
+	"B-17 空中堡垒", "Ju 87 斯图卡", "F-111 土豚", "图-95 熊式",
+	"F-15E 攻击鹰", "B-52 同温层堡垒", "六代机制空型", "B-21 突袭者",
 ]
 
 static var _entries_cache: Array = []

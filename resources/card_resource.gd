@@ -15,6 +15,9 @@ const ModEraBands = preload("res://data/mod_era_bands.gd")
 
 @export var card_id: String = ""
 @export var display_name: String = ""
+# 战场名牌短名（v26.x）：仅战场名牌条消费；空串=回退 display_name 剥变体后缀。
+# 图鉴/情报/悬停等仍显示 display_name 全名。
+@export var short_name: String = ""
 @export var description: String = ""  # 详细规则文本
 @export var card_type: int = 0  # GameConstants.CardType：COMBAT_UNIT=0, ENERGY=1, LAW=2
 @export var energy_cost: float = 5.0
@@ -358,6 +361,7 @@ func clone() -> CardResource:
 	var new_card = CardResource.new()
 	new_card.card_id = card_id
 	new_card.display_name = display_name
+	new_card.short_name = short_name
 	new_card.description = description
 	new_card.card_type = card_type
 	new_card.energy_cost = energy_cost

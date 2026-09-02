@@ -37,6 +37,8 @@ const FactionConquestBuffs = preload("res://data/faction_conquest_buffs.gd")  # 
 const CompanyDefs = preload("res://data/company_definitions.gd")  # v6.14: 统一阵营色来源
 const PhaseMasterGarrison = preload("res://data/phase_master_garrison.gd")  # v7.x: Boss相位师驻守关判定
 const TacticalThemes = preload("res://data/level_tactical_themes.gd")  # v10: 关卡战术主题（敌情简报）
+const BattleEnvEffectsRef = preload("res://data/battle_env_effects.gd")  # v26.2: 环境效果摘要（战前）
+const LevelBattleLayoutsRef = preload("res://data/level_battle_layouts.gd")  # v26.2: 本场布阵题面
 const EnemyPhaseMasters = preload("res://data/enemy_phase_masters.gd")  # v7.x: 相位师详情查询
 const BattleEnvironments = preload("res://data/battle_environments.gd")  # 2026-08-16: 环境单一真源（与 phase_law_manager/battle_damage_system 同源）
 const EnemyLoadoutTiers = preload("res://data/enemy_loadout_tiers.gd")  # 2026-08-16: 难度显示单一真源（战斗链真实档位乘区）
@@ -1105,6 +1107,15 @@ func _show_level_info_popup(level_index: int) -> void:
 	env_grid.add_child(_make_env_tag("能量场", _translate_env("energy_field", info.get("energy_field", "?"))))
 	env_grid.add_child(_make_env_tag("时段", _translate_env("time_of_day", info.get("time_of_day", "?"))))
 	body.add_child(env_grid)
+	# v26.2: 环境效果摘要 + 本场布阵题面（战前可知——与战内 TopHudBar 环境 chip 同一数据源）
+	var _env_effect_lines: Array = BattleEnvEffectsRef.describe_level_env(level_index)
+	if not _env_effect_lines.is_empty():
+		body.add_child(_make_detail_desc(
+			"环境效果（敌我同样生效）：" + "；".join(_env_effect_lines),
+			Color(1.0, 0.82, 0.4, 1.0)))
+	var _layout_note: String = LevelBattleLayoutsRef.get_note(level_index)
+	if not _layout_note.is_empty():
+		body.add_child(_make_detail_desc("本场布阵：" + _layout_note, Color(0.75, 0.9, 1.0, 0.95)))
 
 	# ▸ 敌情预览（敌方单位 + 可能掉落 + 资源掉落）
 	body.add_child(_make_detail_section_title("敌情预览"))
@@ -1112,19 +1123,12 @@ func _show_level_info_popup(level_index: int) -> void:
 	body.add_child(_make_detail_desc("敌方单位：%s" % (enemy_preview if not enemy_preview.is_empty() else "未知")))
 	var enemy_drop_preview: String = String(info.get("enemy_drop_preview", "无"))
 	body.add_child(_make_detail_desc("可能掉落：%s" % enemy_drop_preview, Color(0.9, 0.82, 1, 0.95)))
-	# 资源掉落 + 蓝图概率（紧凑格式）
-	var recon_bonus: float = 0.0
-	if GameManager and GameManager.has_method("_get_recon_fragment_bonus_multiplier"):
-		recon_bonus = float(GameManager._get_recon_fragment_bonus_multiplier())
-	var base_frag_pct: float = float(info.get("fragment_chance_percent", 0.0))
-	var preview_frag_pct: float = base_frag_pct * (1.0 + recon_bonus)
-	var resource_line := "资源：能量块 +%d · 纳米 +%d · 合金 +%d · 晶体 +%d" % [
+	# 资源掉落（紧凑格式；v26.4：蓝图碎片行随蓝图体系删除，合金/晶体无关卡掉落不再 +0 占位）
+	var resource_line := "资源：能量块 +%d · 纳米 +%d" % [
 		int(info.get("energy_block_drop", 0)),
 		int(info.get("nano_materials_drop", 0)),
-		0, 0
 	]
 	body.add_child(_make_detail_desc(resource_line, Color(0.9, 0.95, 0.8, 0.95)))
-	body.add_child(_make_detail_desc("蓝图碎片：%.1f%% → %.1f%%（侦查 %+d%%）" % [base_frag_pct, preview_frag_pct, int(round(recon_bonus * 100.0))], Color(0.9, 0.95, 0.8, 0.95)))
 
 	# ▸ 关卡描述
 	body.add_child(_make_detail_section_title("关卡描述"))
@@ -1258,16 +1262,18 @@ func _make_detail_desc(text: String, color: Color = Color(0.7, 0.75, 0.85, 0.9))
 	lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	return lbl
 
-## 难度档位标签（2026-08-16: 与敌方配置档位 EnemyLoadoutTiers 同源——
-## 时代内 in_era 1-3 低配 / 4-11 中配 / 12-20 高配，与战斗乘区一致）
+## 难度档位标签（v26: 与敌方四档配置 EnemyLoadoutTiers 同源——
+## 时代内 in_era 1-5 新兵 / 6-11 老兵 / 12-17 精英 / 18-20 传奇，与战斗乘区一致）
 func _difficulty_label(tier: int) -> String:
 	match tier:
-		EnemyLoadoutTiers.TIER_LOW:
+		EnemyLoadoutTiers.TIER_RECRUIT:
 			return "简单"
-		EnemyLoadoutTiers.TIER_MID:
+		EnemyLoadoutTiers.TIER_VETERAN:
 			return "普通"
-		EnemyLoadoutTiers.TIER_HIGH:
+		EnemyLoadoutTiers.TIER_ELITE:
 			return "困难"
+		EnemyLoadoutTiers.TIER_LEGENDARY:
+			return "精锐"
 	return "普通"
 
 ## 星级文本
@@ -1531,8 +1537,6 @@ func _collect_level_info(level_index: int) -> Dictionary:
 		"background_fallback_used": (not bg_exists and fallback_exists),
 		"nano_materials_drop": int(drops.get("basic_nano", 0)),
 		"energy_block_drop": int(drops.get("energy_block", 0)),
-		"nano_material_drop": 5 + level_index * 2,
-		"fragment_chance_percent": (0.25 + level_index * 0.002) * 100.0,
 		"enemy_preview": ", ".join(enemy_names),
 		"enemy_drop_preview": drop_preview_text,
 		# v6.9: 驻防势力信息

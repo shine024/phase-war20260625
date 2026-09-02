@@ -604,7 +604,7 @@ text = "❖"
 theme_override_font_sizes/font_size = 16
 [node name="ProgTitle" type="Label" parent="RootVBox/BodyHBox/DetailCol/DetailScroll/DetailBody/ProgressGrid/ProgCardViolet/ProgVBox/ProgHead"]
 layout_mode = 2
-text = "进化系统"
+text = "制造系统"
 theme_override_font_sizes/font_size = 16
 theme_override_colors/font_color = Color(0.95, 0.96, 0.98, 1)
 [node name="ProgSpacer" type="Control" parent="RootVBox/BodyHBox/DetailCol/DetailScroll/DetailBody/ProgressGrid/ProgCardViolet/ProgVBox/ProgHead"]
@@ -698,7 +698,7 @@ theme_override_styles/hover = SubResource("StyleBoxFlat_20")
 [node name="EvoBtn" type="Button" parent="RootVBox/BodyHBox/DetailCol/DetailScroll/DetailBody/ActionBar"]
 unique_name_in_owner = true
 layout_mode = 2
-text = "❖ 进化"
+text = "❖ 制造"
 custom_minimum_size = Vector2(130, 36)
 theme_override_font_sizes/font_size = 16
 theme_override_colors/font_color = Color(0.95, 0.96, 0.98, 1)

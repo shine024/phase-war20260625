@@ -635,6 +635,8 @@ func _on_player_phase_master_power_changed(_raw: float, _compressed: float, _sta
 	_refresh_instrument_stats()
 
 func _on_battle_ended(_won: bool) -> void:
+	if not is_instance_valid(self) or not is_inside_tree():
+		return  # 主场景已离树（切场景竞态）：槽位面板随场景消亡，无需刷新
 	_deployed_card_ids.clear()
 	# v20.13b：部署次数缓存与角标随战斗结束清除（下场由 reset 信号重建）
 	_deploy_uses_map.clear()
@@ -955,13 +957,14 @@ func _fit_slots_to_bar() -> void:
 	var available_h: float = slot_section.size.y
 	if available_h < 1.0:
 		available_h = BAR_FIXED_HEIGHT
-	# 按视口宽度计算槽位可用宽度，扣除固定元素（保守估计，确保不溢出）：
-	# margin(16) + 自动按钮(48) + 图标(48) + 名称区(100) + InstrumentSection间距(12) + 分隔线(2) + HBox间距(6)
-	# + BU-1 菜单按钮(48+间距6) + 外层悬浮边距(32) + 40px 安全余量
+	# 按视口宽度计算槽位可用宽度，扣除固定元素（v26.x 按真实最小宽估算，消除运行时溢出）：
+	# margin(16) + 自动按钮(48) + 图标(48) + 名称区(120，相位场容器 120×28 实际下限，
+	# 旧按 100 估导致 ~20px 缺口全部转嫁给槽位区) + InstrumentSection间距(12) + 分隔线(2)
+	# + HBox间距(6) + BU-1 菜单按钮(48+间距6) + 外层悬浮边距(32) + 20px 安全余量
 	var viewport_width: float = get_viewport_rect().size.x
 	if viewport_width <= 1.0:
 		viewport_width = 1280.0
-	var reserved_w: float = 16.0 + 48.0 + 48.0 + 100.0 + 12.0 + 2.0 + 6.0 + 48.0 + 6.0 + 32.0 + 40.0  # ≈ 358px
+	var reserved_w: float = 16.0 + 48.0 + 48.0 + 120.0 + 12.0 + 2.0 + 6.0 + 48.0 + 6.0 + 32.0 + 20.0  # ≈ 358px
 	var slot_available_w: float = maxf(200.0, viewport_width - reserved_w)
 	var separation: float = 6.0
 	# v21.x: 固定宽度——恒按最大槽数 _FIXED_WIDTH_SLOT_REF(13) 格计算（12 个间距），

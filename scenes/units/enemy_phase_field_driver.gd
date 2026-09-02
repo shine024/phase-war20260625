@@ -13,6 +13,7 @@ const EnemyStatResolver = preload("res://data/enemy_stat_resolver.gd")
 const RuneDefs = preload("res://data/runes.gd")
 const RunewordMatcher = preload("res://managers/runeword_matcher.gd")
 const BattleSlotGrid = preload("res://scenes/battlefield/battle_slot_grid.gd")
+const _LayoutRef = preload("res://scripts/card_grid_battle_layout.gd")  # v26.2: 每关布局激活态
 const EnemyAffixes = preload("res://data/enemy_affixes.gd")
 # v9.0: 敌方相位师固定套路系统（补兵规则按套路走）
 const MasterPatterns = preload("res://data/enemy_phase_master_patterns.gd")
@@ -24,6 +25,9 @@ const EnemyMasterSkillTree = preload("res://data/enemy_master_skill_tree.gd")
 const CardGrowthConfig = preload("res://data/card_growth_config.gd")
 # BU-9: 摧毁演出用命中特效工厂
 const VfxImpactFactory = preload("res://scripts/battle/vfx_impact_factory.gd")
+const EnemyFixedLoadouts = preload("res://data/enemy_fixed_loadouts.gd")  # v26: 逐卡真实配装表
+const ModRegistry = preload("res://scripts/systems/modification_registry.gd")  # v26: 配装改造管线（无 class_name）
+const BattleEnvEffects = preload("res://data/battle_env_effects.gd")  # v26.2: 战斗环境效果（乘区7）
 
 ## 兜底：EnemyArchetypes 生成（当没有装备数据时使用）
 const USE_FALLBACK_SPAWN: bool = true
@@ -291,10 +295,10 @@ func setup(master_config: Dictionary) -> void:
 		var _cap: int = int(_sc.get("green", _unit_limit))
 		if _cap > 0:
 			_unit_limit = mini(_unit_limit, _cap)
-	# 格子战场敌方有 9 个可用槽位（3行×3列，无边缘禁放）。数据表 unit_limit 可达 7~15，
-	# 超出会导致产兵越过 9 上限、多单位挤同格。统一钳制到格子可用槽位数。
+	# 格子战场敌方可用槽位按本关激活布局（默认 3×3=9；宽阵关最多 4×3=12）。数据表
+	# unit_limit 可达 7~15，超出会导致产兵越界、多单位挤同格。统一钳制到可用槽位数。
 	# 注：master_power_evaluator 直接读原始配置 dict 评分，不受此钳制影响。
-	_unit_limit = mini(_unit_limit, BattleSlotGrid.SLOT_COUNT)
+	_unit_limit = mini(_unit_limit, _LayoutRef.enemy_slots_total())
 	# v7.x: 出兵疲劳阶梯阈值按 _unit_limit 倍数派生（钳制后计算，保证与实际场上容量一致）
 	_tier1_cap = _unit_limit * FATIGUE_TIER1_MULT
 	_tier2_cap = _unit_limit * FATIGUE_TIER2_MULT
@@ -1001,6 +1005,22 @@ func _produce_unit_with_equipment(override_platform_id: String = "") -> void:
 	_sb_def_before = float(stats.defense)
 	_apply_master_level_flat(stats, era)
 	_sb_sources = _record_spawn_step(_sb_sources, "等级Lv%d" % _master_level_int(), _sb_hp_before, _sb_atk_before, _sb_def_before, stats)
+	# 乘区6（v26）：四档真实配装改造——相位师产兵恒传奇档，从逐卡配装表取满配 9 条真实
+	# 改造经白名单落到 stats/武器槽（旧 TIER_MODIFICATIONS 是幽灵 id 从未生效；本路径 stats
+	# 是手工构建不走 build_stats_from_card 的 mods 管线，故在此补挂）。产兵走 ConstructUnit
+	# 全链（含改造光环组播），A 路径消费能力与玩家一致。
+	if not direct_archetype_id.is_empty():
+		_sb_hp_before = float(stats.max_hp)
+		_sb_atk_before = float(stats.attack_damage)
+		_apply_driver_loadout_mods(stats, direct_archetype_id, era)
+		_sb_sources = _record_spawn_step(_sb_sources, "配装×%d" % _pm_tier, _sb_hp_before, _sb_atk_before, _sb_def_before, stats)
+	# 乘区7（v26.2）：战斗环境效果（敌我对称）——产兵与玩家/经典敌兵同口径
+	#（伤害/射程/攻速按本关天气/地形/时段表；直曲判定复用武器槽 weapon_type）。
+	if GameManager != null and "current_level" in GameManager:
+		_sb_hp_before = float(stats.max_hp)
+		_sb_atk_before = float(stats.attack_damage)
+		BattleEnvEffects.apply_to_unit_stats(stats, int(GameManager.current_level))
+		_sb_sources = _record_spawn_step(_sb_sources, "环境", _sb_hp_before, _sb_atk_before, _sb_def_before, stats)
 	stats.platform_card_id = platform_id
 
 	## v8.x boss 唯一性限制：同名 boss 单位战场上只能存在 1 个
@@ -1156,7 +1176,7 @@ func _add_unit_to_battle(unit: Node2D, current_count: int) -> bool:
 			return true
 	# 主路径返回 false 通常意味着场地已满（enemy_unit_count >= 6）。
 	# 不应继续产兵，否则会越过 6 上限、导致多单位挤同格。
-	var field_cap: int = BattleSlotGrid.SLOT_COUNT  # 3行×3列 = 9 格
+	var field_cap: int = _LayoutRef.enemy_slots_total()  # v26.2: 按激活布局（默认 9）
 	if current_count >= field_cap:
 		if is_instance_valid(unit):
 			unit.queue_free()
@@ -1430,12 +1450,19 @@ func _fallback_pick_free_enemy_slot() -> int:
 		if n == null or not is_instance_valid(n):
 			continue
 		var esi: int = int(n.get_meta("card_grid_enemy_slot", -1))
-		if esi >= 0 and esi < BattleSlotGrid.SLOT_COUNT:
+		if esi >= 0 and esi < _LayoutRef.enemy_slots_total():
 			occupied[esi] = true
-	# v9.5: 按 中行(3,4,5)→下行(6,7,8)→上行(0,1,2) 顺序找空闲槽
-	const FALLBACK_ORDER: Array[int] = [3, 4, 5, 6, 7, 8, 0, 1, 2]
-	for si in FALLBACK_ORDER:
-		if not occupied.has(si):
+	# v9.5 + v26.2: 按 中行→下行→上行 顺序找空闲槽（列数按激活布局动态生成；
+	# 旧 3×3 硬编码 [3,4,5,6,7,8,0,1,2] 随每关布局表退役）
+	var fallback_order: Array = []
+	var _cols: int = _LayoutRef.active_enemy_cols()
+	var _rows: int = _LayoutRef.active_rows()
+	for r in [1, 2, 0]:
+		if r < _rows:
+			for c in range(_cols):
+				fallback_order.append(r * _cols + c)
+	for si in fallback_order:
+		if not occupied.has(si) and not _LayoutRef.is_slot_excluded(si, "enemy"):
 			return si
 	# v10(H16): 全满返回 -1（调用方放弃本次产兵）——原兜底返回 3 会与新单位吸附到同格
 	# （两单位 meta 同槽叠一起）。占用口径说明：蜂群 slot 已加入 enemy_units 组（slot:77），
@@ -1575,6 +1602,53 @@ func _pick_visual_archetype_for_platform(era: int, platform_type: String) -> Str
 ## v7.x: direct_archetype_id 非空时直接用该 archetype（删除平台卡层后直引模式），
 ## 否则复用 _pick_visual_archetype_for_platform 的平台→archetype 映射取真实 cfg（旧平台卡回退）。
 ## archetype 查不到时回退通用表。
+## v26: 相位师产兵的四档配装改造挂载（乘区6 调用）。
+## 与 enemy_unit._apply_loadout_modifications 同构：白名单过滤 → stats 效果 +
+## 攻击三维比值同步武器槽 → 武器槽通道；等级随档位（传奇=Lv3）。
+func _apply_driver_loadout_mods(stats: UnitStats, arch_id: String, era: int) -> void:
+	if stats == null:
+		return
+	var mod_ids: Array = EnemyFixedLoadouts.get_mods_for_tier(arch_id, _pm_tier)
+	if mod_ids.is_empty():
+		return
+	var mod_lv: int = clampi(_pm_tier, 1, 3)
+	var filtered: Array = []
+	for mid in mod_ids:
+		var md: Dictionary = ModRegistry.get_data(String(mid))
+		if md.is_empty():
+			continue
+		var eff: Dictionary = md.get("effects", {})
+		if eff.is_empty():
+			var le: Dictionary = md.get("level_effects", {})
+			if not le.is_empty():
+				var lks: Array = le.keys()
+				lks.sort()
+				eff = le[int(lks[lks.size() - 1])]
+		var hit := false
+		for k in eff.keys():
+			if EnemyFixedLoadouts.LOADOUT_MOD_SUPPORTED_KEYS.has(String(k)):
+				hit = true
+				break
+		if hit:
+			filtered.append({"id": String(mid), "level": mod_lv, "enabled": true})
+	if filtered.is_empty():
+		return
+	# v26 B2: 轰炸机族放宽溅射上限（写 stats meta——本路径产兵是 ConstructUnit 节点，
+	# batch 同时读节点/stats 两处 meta）
+	var arch_cfg: Dictionary = EnemyArchetypes.get_config(arch_id)
+	if (arch_cfg.get("tags", []) as Array).has("bomber"):
+		stats.set_meta("aoe_cap", 8)
+	var pre_atk: Array = [stats.attack_light, stats.attack_armor, stats.attack_air]
+	var pre_spd: Array = [stats.attack_light_speed, stats.attack_armor_speed, stats.attack_air_speed]
+	UnitStatsTable._apply_mod_stat_effects(stats, filtered, era)
+	UnitStatsTable._sync_mod_attack_ratio_to_weapon_slots(stats, stats.weapon_slots, pre_atk)
+	# v26.2: 攻速键落地——ConstructUnit timing 主路径同样读 weapon_slots[].attack_speed
+	UnitStatsTable._sync_mod_speed_ratio_to_weapon_slots(stats, stats.weapon_slots, pre_spd)
+	stats.weapon_slots = ModRegistry.apply_to_weapon_slots(stats.weapon_slots, filtered, stats)
+	stats.set_meta("loadout_mods", filtered.duplicate(true))
+	stats.set_meta("loadout_mods_tier", _pm_tier)
+
+
 func _build_stats_from_archetype(era: int, platform_type_str: String, fallback_platform_int: int, fallback_weapon_types: Array, direct_archetype_id: String = "") -> UnitStats:
 	var archetype_id: String = direct_archetype_id
 	if archetype_id.is_empty():

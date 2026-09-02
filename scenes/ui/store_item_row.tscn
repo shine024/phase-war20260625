@@ -22,7 +22,7 @@ theme_override_constants/separation = 2
 [node name="NameLabel" type="Label" parent="RowMargin/RowHBox/InfoVBox"]
 layout_mode = 2
 theme_override_font_sizes/font_size = 16
-text = "蓝图名称  × 1 蓝图"
+text = "卡牌名称  × 1"
 
 [node name="InfoLabel" type="Label" parent="RowMargin/RowHBox/InfoVBox"]
 layout_mode = 2

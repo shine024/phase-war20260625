@@ -31,8 +31,8 @@ func test_infantry_modifications_data_completeness() -> void:
 
 func test_armor_modifications_count() -> void:
 	var all_mods = ArmorModifications.get_all_mod_ids()
-	# 批次8（2026-08-23）：arm_16（战斗狂热）加入后 15→16
-	assert_int(all_mods.size()).override_failure_message("装甲应有16个改造").is_equal(16)
+	# v26：arm_17 附加钢板 + arm_18 炮盾加入后 16→18
+	assert_int(all_mods.size()).override_failure_message("装甲应有18个改造").is_equal(18)
 
 func test_modification_id_uniqueness() -> void:
 	ModificationRegistry.register_all()
@@ -53,7 +53,7 @@ func test_modification_for_unit_type() -> void:
 	var infantry_mods = InfantryModifications.get_for_unit_type(0)  # LIGHT
 	assert_int(infantry_mods.size()).is_equal(27)
 	var armor_mods = ArmorModifications.get_for_unit_type(1)  # ARMOR
-	assert_int(armor_mods.size()).is_equal(16)
+	assert_int(armor_mods.size()).is_equal(18)
 	# 步兵不应返回装甲改造
 	var armor_for_infantry = ArmorModifications.get_for_unit_type(0)
 	assert_int(armor_for_infantry.size()).is_equal(0)
@@ -70,5 +70,5 @@ func test_total_modification_count() -> void:
 	var all_ids = ModificationRegistry.get_all_ids()
 	# 批次8（2026-08-23）：全模块注册总数实测 184（原 120-140 区间过期；
 	# registry 注释里"154 条"亦为旧值）。精确锁定防未来无感知增删。
-	# v21 P1：新增 6 个行为改写型传奇改造（gen_converted_munitions 等）→ 184+6=190
-	assert_int(all_ids.size()).is_equal(190)
+	# v26：新增 12 条（air+6 轰炸主题/armor+2 era0-1 补强/aa+2 对空反制/fort+1 防空洞/gen+1 吸波涂层）→ 190+12=202
+	assert_int(all_ids.size()).is_equal(202)

@@ -1337,9 +1337,10 @@ func _on_hit(primary: Node2D) -> void:
 							_cb_name = "敌方单位"
 						SignalBus.counter_break_triggered.emit(String(_break_fx.get("type", "")), _cb_name)
 		# v8.5: 无人机定时标记易伤——目标有 _drone_marked_until（未过期）则伤害 ×(1+vuln)
+		# v26.6: 比较口径改秒制（原毫秒比较，v10 后秒值标记恒判过期→易伤加成从未生效）
 		if primary != null and is_instance_valid(primary) and primary.has_meta("_drone_marked_until"):
-			var _dm_until: int = int(primary.get_meta("_drone_marked_until", 0))
-			if Time.get_ticks_msec() < _dm_until:
+			var _dm_until: float = float(primary.get_meta("_drone_marked_until", 0.0))
+			if Time.get_ticks_msec() / 1000.0 < _dm_until:
 				var _dm_vuln: float = float(primary.get_meta("_drone_mark_vuln", 0.25))
 				final_damage *= (1.0 + _dm_vuln)
 

@@ -185,9 +185,17 @@ static func _play_lean(spr: Sprite2D, pose: Dictionary, is_player: bool) -> void
 
 ## 攻击帧：unit_anims/<unit_id>/attack_f0(+f1)。有 BossIdleFrameDriver 时暂停待机循环，
 ## 攻击帧展示 FRAME_HOLD_SEC 后恢复（driver 下一 tick 自动切回待机帧；无 driver 恢复原贴图）。
+## v24.3: 若单位已有 UnitFrameAnimDriver（普通单位帧动画），跳过攻击帧——
+## 由 UnitFrameAnim 的 attack_frames 统一驱动，避免两个系统争抢 texture 导致"多人"。
 static func _try_play_frames(u: Node2D, spr: Sprite2D) -> void:
 	var uid := _resolve_unit_id(u)
 	if uid.is_empty() or not has_attack_frames(uid):
+		return
+	## v24.3: 检查是否已有 UnitFrameAnimDriver（普通单位帧动画系统）
+	## 若有，说明该单位已由 UnitFrameAnim 驱动（含 idle + attack 帧），
+	## 无需再临时替换为 attack_f0.png，避免两个系统争抢 texture。
+	var unit_driver := spr.get_node_or_null("UnitFrameAnimDriver")
+	if unit_driver != null:
 		return
 	var frames: Array = _load_frames(uid)
 	if frames.is_empty():
@@ -273,8 +281,3 @@ static func _find_sprite(u: Node2D) -> Sprite2D:
 			spr = u.get_node_or_null("Sprite2D") as Sprite2D
 	return spr
 
-
-## 测试用：清空帧缓存（热重载资产后）
-static func clear_cache() -> void:
-	_frame_cache.clear()
-	_frame_probe.clear()

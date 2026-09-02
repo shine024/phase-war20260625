@@ -100,15 +100,40 @@ func _on_refund_pressed(key: String) -> void:
 		PhaseInstrumentManager.refund_phase_field_point(key, 1)
 	# 信号驱动刷新
 
+## v26 批次4：洗点费用文案（相位实验室 Lv2 半价 / Lv3 每日首免，费用经 bunker 结算）
+func _respec_cost_text() -> String:
+	var bunker: Node = get_node_or_null("/root/BunkerManager")
+	if bunker == null or not bunker.has_method("get_respec_cost"):
+		return "免费"
+	var cost: int = bunker.get_respec_cost()
+	return "今日免费" if cost <= 0 else "纳米 %d" % cost
+
 ## v8.x: 重置全部属性点分配（洗点）
+## v26 批次4：接入洗点费——相位实验室 Lv2 半价 / Lv3 每日 1 次免费；费用以纳米结算。
 func _on_reset_allocations_pressed() -> void:
 	if PhaseInstrumentManager == null:
 		return
+	# 洗点费结算（bunker 未就绪时免费兼容旧环境）
+	var cost: int = 0
+	var bunker: Node = get_node_or_null("/root/BunkerManager")
+	if bunker != null and bunker.has_method("get_respec_cost"):
+		cost = bunker.get_respec_cost()
+	if cost > 0:
+		if BasicResourceManager == null or not BasicResourceManager.has_method("consume") \
+				or not BasicResourceManager.has_method("get_total"):
+			_show_toast("资源系统未就绪，无法洗点")
+			return
+		if BasicResourceManager.get_total(BasicResources.ID_NANO_MATERIALS) < cost:
+			_show_toast("纳米不足——洗点需要 %d 纳米（相位实验室 Lv2 半价 / Lv3 每日首次免费）" % cost)
+			return
+		BasicResourceManager.consume(BasicResources.ID_NANO_MATERIALS, cost)
 	var refunded: int = 0
 	if PhaseInstrumentManager.has_method("reset_phase_field_allocations"):
 		refunded = PhaseInstrumentManager.reset_phase_field_allocations()
+	if bunker != null and bunker.has_method("notify_respec_done"):
+		bunker.notify_respec_done(cost)
 	if refunded > 0:
-		_show_toast("已返还 %d 点属性点" % refunded)
+		_show_toast("已返还 %d 点属性点%s" % [refunded, "" if cost <= 0 else "（消耗纳米 %d）" % cost])
 	# 信号驱动刷新
 
 func _show_toast(msg: String) -> void:
@@ -337,7 +362,7 @@ func _create_phase_field_info_item() -> Control:
 
 	# 重置按钮（无任何分配时禁用）—— P2: 走 PanelStyles 四态工厂
 	var reset_btn := Button.new()
-	reset_btn.text = "↺ 重置全部属性点"
+	reset_btn.text = "%s（%s）" % ["↺ 重置全部属性点", _respec_cost_text()]
 	reset_btn.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
 	reset_btn.custom_minimum_size = Vector2(0, 26)
 	_apply_tiny_button_styles(reset_btn, DT.COLOR_TEXT_DIM)

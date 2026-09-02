@@ -91,14 +91,6 @@ static func on_death(unit: Node) -> bool:
 			return true
 	return false
 
-## 获取攻击穿透比例（0.0-1.0，用于伤害计算时无视防御）
-static func get_penetration_ratio(attacker: Node) -> float:
-	var total: float = 0.0
-	for sp in get_specials_by_type(attacker, "on_attack_penetration"):
-		# 穿透效果取最大值（不叠加百分比）
-		total = maxf(total, float(sp.get("value", 0)) / PERCENT_DIVISOR)
-	return total
-
 # ═══════════════════════════════════════════════════════════════════
 # 内部实现
 # ═══════════════════════════════════════════════════════════════════

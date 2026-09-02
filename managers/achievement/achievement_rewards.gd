@@ -117,9 +117,9 @@ static func _grant_legacy_format(reward: Dictionary, resource_managers: Dictiona
 	var rep: Dictionary = reward.get("company_rep", {})
 	if not rep.is_empty():
 		var fsm: Node = _get_autoload("/root/FactionSystemManager")
-		if fsm != null and fsm.has_method("add_reputation"):
+		if fsm != null and fsm.has_method("add_faction_reputation"):  # v26.6: 修复——正确方法名为 add_faction_reputation，此前恒 has_method 失败致声望奖励空转
 			for fid in rep:
-				fsm.add_reputation(String(fid), int(rep[fid]))
+				fsm.add_faction_reputation(String(fid), int(rep[fid]))
 			granted = true
 	# 稀有/神话卡（rare_card/mythic_card/legendary_card → 从对应池抽卡发放）
 	ManagerLazyLoader.ensure_loaded("drop")  # DropManager 为 autoload+别名双层（ensure_loaded 幂等）

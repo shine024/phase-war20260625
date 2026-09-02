@@ -41,10 +41,6 @@ func reset() -> void:
 		_revoke_numeric_pair(String(pid))
 
 
-func get_active_pairs() -> Array:
-	return _active_pairs.duplicate()
-
-
 func is_pair_active(pair_id: String) -> bool:
 	return _active_pairs.has(pair_id)
 

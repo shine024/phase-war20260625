@@ -183,13 +183,6 @@ func get_panel(panel_id: String) -> Control:
 	return panel
 
 
-## 预加载关键面板（可选）
-func preload_panels(panel_ids: Array) -> void:
-	for panel_id in panel_ids:
-		if _panel_configs.has(panel_id):
-			get_panel(panel_id)
-
-
 ## 卸载UI面板
 func unload_panel(panel_id: String) -> void:
 	if not _loaded_panels.has(panel_id):
@@ -233,14 +226,6 @@ func get_panel_status(panel_id: String) -> Dictionary:
 		"is_valid": is_valid,
 		"is_configured": _panel_configs.has(panel_id)
 	}
-
-
-## 获取所有面板状态
-func get_all_status() -> Dictionary:
-	var status: Dictionary = {}
-	for panel_id in _panel_configs.keys():
-		status[panel_id] = get_panel_status(panel_id)
-	return status
 
 
 ## 清理所有面板（场景切换时调用）
