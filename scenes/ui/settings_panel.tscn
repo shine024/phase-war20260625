@@ -90,12 +90,6 @@ max_value = 1.0
 step = 0.05
 value = 0.7
 
-[node name="BgmHint" type="Label" parent="Margin/VBoxMain/Scroll/VBox"]
-layout_mode = 2
-theme_override_colors/font_color = Color(0.6, 0.66, 0.78, 0.8)
-theme_override_font_sizes/font_size = 12
-text = "（音乐待补音频包，当前静音）"
-
 [node name="SectionGame" type="Label" parent="Margin/VBoxMain/Scroll/VBox"]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.024, 0.714, 0.831, 0.9)
@@ -129,6 +123,24 @@ layout_mode = 2
 theme_override_colors/font_color = Color(0.6, 0.66, 0.78, 0.8)
 theme_override_font_sizes/font_size = 12
 text = "（下一场战斗生效，仅缩放敌方血量与攻击）"
+
+[node name="TutorialRow" type="HBoxContainer" parent="Margin/VBoxMain/Scroll/VBox"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="TutorialLabel" type="Label" parent="Margin/VBoxMain/Scroll/VBox/TutorialRow"]
+custom_minimum_size = Vector2(110, 0)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.88, 0.92, 0.98, 1)
+theme_override_font_sizes/font_size = 14
+text = "新手引导"
+
+[node name="ResetTutorialButton" type="Button" parent="Margin/VBoxMain/Scroll/VBox/TutorialRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.88, 0.92, 0.98, 1)
+theme_override_font_sizes/font_size = 14
+text = "重置新手引导"
 
 [node name="SectionFullscreen" type="Label" parent="Margin/VBoxMain/Scroll/VBox"]
 layout_mode = 2
@@ -191,7 +203,7 @@ text = "大字号"
 layout_mode = 2
 theme_override_colors/font_color = Color(0.88, 0.92, 0.98, 1)
 theme_override_font_sizes/font_size = 14
-text = "字号放大 25%"
+text = "界面与字号放大 25%"
 
 [node name="MotionReduceRow" type="HBoxContainer" parent="Margin/VBoxMain/Scroll/VBox"]
 layout_mode = 2

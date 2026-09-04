@@ -78,6 +78,10 @@ var _enemy_phase_driver: Node2D = null
 # P2-8：PM 战僵持计时（秒）——_process 累计（暂停期间不跑天然不计时），
 # 任意有效伤害活动（unit_damaged amount>0 / 双方基地 hp_changed）清零。
 var _pm_stalemate_sec: float = 0.0
+# v26.13(B2): 限时歼灭剩余秒数（<=0 表示本关无时限）；30s/10s 播报哨兵
+var _time_limit_left: float = 0.0
+var _time_limit_warned_30: bool = false
+var _time_limit_warned_10: bool = false
 ## P2-8：PM 战全场零有效伤害的判负阈值。挂机（world_map 自动部署）打进 PM 僵持
 ## 时胜负仅由基地销毁驱动，无此超时会永卡一场战斗。
 const PM_STALEMATE_TIMEOUT_SEC: float = 180.0
@@ -189,6 +193,11 @@ func _on_counter_break_count(_break_type: String, _target_name: String) -> void:
 ## v6.15: 击杀修复（战场回收）——击杀者按 stats.kill_repair 回复自身最大 HP
 func _on_unit_killed_kill_repair(victim: Node, killer: Node, is_player_victim: bool) -> void:
 	ModuleEffectHandler.on_unit_killed(victim, killer, is_player_victim)
+	# v27 黑门裂隙环境：晶脉浮陆——敌方被击杀时额外能量（读 override 平键，非乘区）
+	if not is_player_victim and energy_manager:
+		var kill_bonus: float = BattleEnvEffects.rift_flat_bonus("kill_energy_bonus")
+		if kill_bonus > 0.0:
+			energy_manager.add_energy(kill_bonus)
 
 ## P0 性能优化：退出时断开 SignalBus 连接，防止场景切换后连接累积
 func _exit_tree() -> void:
@@ -238,6 +247,22 @@ func _process(delta: float) -> void:
 		return
 
 	_battle_elapsed_time += delta
+	# v26.13(B2): 限时歼灭——超时判负（复用僵持判负语义；剩 30s/10s 播报）
+	if _time_limit_left > 0.0:
+		_time_limit_left -= delta
+		if _time_limit_left <= 30.0 and not _time_limit_warned_30:
+			_time_limit_warned_30 = true
+			if SignalBus != null and SignalBus.has_signal("show_toast"):
+				SignalBus.show_toast.emit("⏳ 还剩 30 秒！")
+		elif _time_limit_left <= 10.0 and not _time_limit_warned_10:
+			_time_limit_warned_10 = true
+			if SignalBus != null and SignalBus.has_signal("show_toast"):
+				SignalBus.show_toast.emit("⏳ 还剩 10 秒！")
+		elif _time_limit_left <= 0.0:
+			_time_limit_left = 0.0
+			if SignalBus != null and SignalBus.has_signal("show_toast"):
+				SignalBus.show_toast.emit("⏳ 时间耗尽，判定战败")
+			end_battle(false)
 	_spawn_system.update_wave_timer(delta)
 
 	# 等 begin_card_grid_combat 后再按波次间隔整波刷敌
@@ -324,6 +349,10 @@ func start_battle(battle_scene: Node) -> void:
 	_battle_gen += 1
 	_connect_battle_scoped_signals()
 	# P2-8：每场战斗重置僵持计时
+	# v26.13(B2): 限时歼灭倒计时初始化（本关无时限=0）
+	_time_limit_left = float(_get_current_special_rules().get("time_limit_sec", 0.0))
+	_time_limit_warned_30 = false
+	_time_limit_warned_10 = false
 	_pm_stalemate_sec = 0.0
 
 	# 性能优化：初始化空间分区系统
@@ -376,6 +405,13 @@ func start_battle(battle_scene: Node) -> void:
 
 	# 初始化刷新子系统
 	_spawn_system.reset(battlefield, enemy_wave_interval, enemy_wave_total)
+	# v27 黑门无限模式：无尽出兵开关（波次构成/永不耗尽由 spawn 系统 endless 分支接管）
+	if GameManager != null and GameManager.has_method("is_endless_battle") and GameManager.is_endless_battle():
+		_spawn_system.set_endless_mode(true)
+		# 裂隙环境 override（须在下方能量初始化前置位——regen 乘区经 get_level_env_mults 读它）
+		var _ebm: Node = get_node_or_null("/root/EndlessBlackgateManager")
+		var _rift: String = String(_ebm.get("current_rift_env")) if _ebm != null else ""
+		BattleEnvEffects.set_rift_override(_rift)
 	if battlefield != null and battlefield.has_method("ensure_battle_slot_grid_ready"):
 		battlefield.ensure_battle_slot_grid_ready()
 	_spawn_system.configure_card_grid_battle(BattleSlotGrid.SLOT_COUNT)
@@ -416,6 +452,9 @@ func start_battle(battle_scene: Node) -> void:
 		# v26.2: 环境能量场乘区（low_field ×0.8 / high_field ×1.15）并入关卡回能规则
 		var _regen_mult: float = float(_rules.get("energy_regen_mult", 1.0)) \
 				* float(BattleEnvEffects.get_level_env_mults(_current_level_for_env()).get("regen", 1.0))
+		# v26.13(B2): 能量枯竭规则——回能再砍半（独立于 energy_regen_mult 的更狠档）
+		if bool(_rules.get("energy_starvation", false)):
+			_regen_mult *= 0.5
 		if absf(_energy_mult - 1.0) > 0.001 or absf(_regen_mult - 1.0) > 0.001:
 			energy_manager.set_meta("level_energy_mult", _energy_mult)
 			energy_manager.set_meta("level_regen_mult", _regen_mult)
@@ -477,6 +516,8 @@ func end_battle(player_won: bool) -> void:
 	CombatFeedback.reset_throttle()
 	# v7.x: 重置相位仪主动能力状态（owner-aware 单引擎，内部清双 owner）
 	PhaseInstrumentAbilities.reset_battle_state()
+	# v27: 清除黑门裂隙环境 override（防泄漏到常规关卡）
+	BattleEnvEffects.clear_rift_override()
 	# v24.1: 重置大招手动释放控制器（battle_ended 复位为自动模式）
 	UltimateCastControllerScript.reset()
 	# v8.x: 重置卡片定时技能引擎 + 战法检测器
@@ -574,6 +615,10 @@ func _deferred_end_battle_finalize(player_won: bool, gen: int = -1) -> void:
 	# 批次9：世代号护栏——新战斗已开打则本链（旧场结算）整体作废
 	if gen >= 0 and gen != _battle_gen:
 		return
+	# v26.11(A1.1): 击败相位师 → 渐进解锁 Boss 词条池（boss_1/2/3，第 1/2/3 胜各解锁一档）。
+	# _is_phase_master_battle 此处仍在（C 阶段才清零），可安全读取；unlock_boss 幂等。
+	if player_won and _is_phase_master_battle:
+		_unlock_next_boss_affix_pool()
 	# ①掉落表生成（中等负载：DropManager 掉落表 + 相位仪掉落）
 	if player_won:
 		_battle_result = _damage_system.generate_battle_drops_only(
@@ -588,6 +633,23 @@ func _deferred_end_battle_finalize(player_won: bool, gen: int = -1) -> void:
 	call_deferred("_deferred_end_battle_intel_harvest", player_won, gen)
 
 
+## v26.11(A1.1): 渐进解锁下一个 Boss 词条池（boss_1 → boss_2 → boss_3，各一次）。
+## 词缀池 8 条头目词条此前无任何解锁触发（unlock_boss 零调用方）——
+## 现以相位师击败数为进度轴，词条工坊面板（affix_forge_panel）只读展示。
+func _unlock_next_boss_affix_pool() -> void:
+	var am: Node = get_node_or_null("/root/AffixManager")
+	if am == null or not am.has_method("get_unlocked_bosses"):
+		return
+	var unlocked: Array = am.get_unlocked_bosses()
+	for tier in ["boss_1", "boss_2", "boss_3"]:
+		if not unlocked.has(tier):
+			if am.has_method("unlock_boss"):
+				am.unlock_boss(tier)
+				var labels := {"boss_1": "Ⅰ", "boss_2": "Ⅱ", "boss_3": "Ⅲ"}
+				SignalBus.show_toast.emit("★ 击败相位师——Boss 词条池%s解锁（词条工坊可查）" % String(labels.get(tier, tier)))
+			return
+
+
 func _deferred_end_battle_intel_harvest(player_won: bool, gen: int = -1) -> void:
 	if gen >= 0 and gen != _battle_gen:
 		return
@@ -597,6 +659,13 @@ func _deferred_end_battle_intel_harvest(player_won: bool, gen: int = -1) -> void
 		_battle_result = _damage_system.generate_intel_harvest(_battle_result, _pending_has_recon)
 	# v10 解题式玩法：克制链统计写入战报（"本关克制链生效 N 次"，战后结算可读）
 	_battle_result["counter_break_count"] = counter_break_count
+	# v27 黑门无限模式：run 战报字段（GameManager._settle_endless_battle 读取；
+	# waves=已推进波次，kills=击败数——_defeated_enemies 在本帧仍有效，见上方时序注释）
+	if GameManager != null and GameManager.has_method("is_endless_battle") and GameManager.is_endless_battle():
+		_battle_result["endless"] = {
+			"waves": _spawn_system.get_enemy_wave_index() if _spawn_system != null else 0,
+			"kills": _defeated_enemies.size(),
+		}
 	# ②③④ 推迟到下一帧（让渲染线程先画情报收获后的胜利画面）
 	call_deferred("_deferred_end_battle_broadcast", player_won, gen)
 
@@ -749,6 +818,18 @@ func _current_level_for_env() -> int:
 		return int(GameManager.current_level)
 	return 0
 
+## v26.13(B2): 关卡特殊规则查询（新规则键消费点统一入口；内部走 _cached_special_rules
+## 字典 get，每帧调用无重算）。key 取值见 data/level_information.gd special_rules 注释块
+## （time_limit_sec/no_heal/no_mods/elite_wave_bonus/first_strike/energy_starvation/
+## boss_enrage_half；数值型键如 energy_mult 由各消费点直读字典）。
+func has_special_rule(key: String) -> bool:
+	var v = _get_current_special_rules().get(key, null)
+	if v == null:
+		return false
+	if v is bool:
+		return bool(v)
+	return true
+
 func _get_current_special_rules() -> Dictionary:
 	if GameManager == null:
 		return {}
@@ -770,6 +851,12 @@ func _check_win_lose() -> void:
 	# 相位师战斗：胜负由基地销毁信号驱动；P2-8 僵持超时兜底判负
 	if _is_phase_master_battle:
 		_check_pm_stalemate_timeout()
+		return
+
+	# v27 黑门无限模式：永不判胜——唯一终局是相位场驱动器被毁
+	# （_on_phase_driver_destroyed → end_battle(false) → GameManager 专用结算链）。
+	# 僵持超时也不适用（无尽 run 本质是"撑到死"，无平局语义）。
+	if GameManager != null and GameManager.has_method("is_endless_battle") and GameManager.is_endless_battle():
 		return
 
 	if not _card_grid_combat_started:
@@ -1059,7 +1146,13 @@ func _is_active_combat_unit(node: Node, ally: bool) -> bool:
 	return true
 
 func get_enemy_wave_total() -> int:
-	return _spawn_system.get_enemy_wave_total() if battle_active else 0
+	if not battle_active:
+		return 0
+	# v27 黑门无尽 run：HUD 口径返回 0（无终波概念）——敌我 HUD 波次标签走
+	# "波次 N" 无进度点分支；内部 _enemy_wave_total(999999) 只作出兵护栏。
+	if _spawn_system.is_endless_mode():
+		return 0
+	return _spawn_system.get_enemy_wave_total()
 
 
 ## v10 解题式玩法：下一波敌方构成预览（波次预警 HUD 数据源）。

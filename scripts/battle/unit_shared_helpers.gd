@@ -14,6 +14,7 @@ class_name UnitSharedHelpers
 const DT = preload("res://resources/design_tokens.gd")
 const CardGridUnitVisuals = preload("res://scripts/card_grid_unit_visuals.gd")
 const VfxImpactFactory = preload("res://scripts/battle/vfx_impact_factory.gd")
+const UnitOutline = preload("res://scripts/battle/unit_outline.gd")  # v26.9: 描边 uniform 契约
 
 const HIT_SHAKE_DURATION: float = 0.14  # v8.3: 0.12→0.14（4×0.035s）
 
@@ -192,6 +193,9 @@ static func fire_scale_pulse(unit: Node2D, sprite_node_name: String, lunge_forwa
 	unit._fire_pulse_tween = unit.create_tween()
 	unit._fire_pulse_tween.tween_property(spr, "scale", base_s * 1.10, 0.04)
 	unit._fire_pulse_tween.tween_property(spr, "scale", base_s, 0.07)
+	# v26.x: 契约收口（全项目唯一漏接的 scale 直写点）——动画回归后刷描边 uniform
+	# （edge_texels=OUTLINE_PX/scale.x，见 unit_outline.gd 头注）
+	unit._fire_pulse_tween.tween_callback(func(): UnitOutline.refresh(spr))
 	# v14: 方向冲撞——前倾→后坐→归位(预备-发力-跟随)
 	var wt: int = unit.stats.weapon_type if unit.stats != null else 0
 	CardGridUnitVisuals.fire_lunge_sprite(spr, lunge_forward, wt in [1, 2, 3, 7, 9, 10, 11])

@@ -18,12 +18,15 @@ const BattleExperienceConfig = preload("res://data/battle_experience_config.gd")
 const EnemyStatResolver = preload("res://data/enemy_stat_resolver.gd")
 const EnemyStatContext = preload("res://data/enemy_stat_context.gd")
 const EnemyArchetypes = preload("res://data/enemy_archetypes.gd")
-const AffixManagerScript = preload("res://managers/affix_manager.gd")
+# v27.1: --script 模式下 const preload 在编译期解析 autoload 标识符（affix_manager
+# 引用的 SignalBus）会失败——改运行期 load()（实测可正常编译实例化）。
+var AffixManagerScript: GDScript = null
 const InstanceRegistryScript = preload("res://managers/instance_registry.gd")
 const BattleSpawnSystemScript = preload("res://managers/battle/battle_spawn_system.gd")
 
 
 func _initialize() -> void:
+	AffixManagerScript = load("res://managers/affix_manager.gd")
 	var code := [0]
 	var fail := func(msg: String) -> void:
 		push_error("[FAIL] " + msg)

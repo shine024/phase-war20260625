@@ -22,7 +22,7 @@ const CardPeriodicSkills = preload("res://data/card_periodic_skills.gd")
 ## 从 CardResource 的战斗卡字段直接构建 UnitStats
 ## card: CardResource（必须是 COMBAT_UNIT 类型）
 ## era_override: 覆盖时代（-1=使用 card.era）
-static func build_stats_from_card(card: CardResource, era_override: int = -1) -> UnitStats:
+static func build_stats_from_card(card: CardResource, era_override: int = -1, skip_mods: bool = false) -> UnitStats:
 	var stats = UnitStats.new()
 	var e: int = era_override if era_override >= 0 else card.era
 	stats.era = e
@@ -101,7 +101,9 @@ static func build_stats_from_card(card: CardResource, era_override: int = -1) ->
 	# v6.0/v6.13: 应用改造效果
 	# 时序：先应用 stat 效果（attack_armor 等），再处理武器槽。
 	# 原因：grant_slot 以载体 attack_armor 为基准派生对空伤害，必须读到加成后的值。
-	if card.mods and not card.mods.is_empty():
+	# v26.13(B2): skip_mods=禁改造规则（battle_spawn_system 玩家侧传入）——跳过改造
+	# 通道（stat 效果 + 武器槽比值同步 + registry 转写整段），改装数值本场不生效。
+	if not skip_mods and card.mods and not card.mods.is_empty():
 		# v22 预检实证修复：mods 的 attack_* flat/pct/set 此前只落 stats.attack_*，
 		# 主战斗路径（calculate_damage_with_weapon）读 weapon_slots[].damage（克隆自
 		# card 原值）→ 攻击类数值改造实战伤害完全空转（战力评估读 stats 所以面板虚高）。
@@ -139,6 +141,11 @@ static func build_stats_from_card(card: CardResource, era_override: int = -1) ->
 
 	# v6.11: 应用强化等级加成（原战力星级②系统合并至此——星级0-7映射到强化0-10）
 	apply_enhance_level_bonus(stats, card)
+	# v26.15c: 技能树兵种特殊能力移到 build 主路径直调——原先挂在
+	# apply_enhance_level_bonus 尾部，被其 "enhance_level<=0 早退" 连坐：
+	# enhance_level 是 v20.12 退役轴（新卡恒 0，唯一写入方是僵尸 CEM），
+	# 导致 light_crit/armor_pen/lifesteal_unlock 对全部新卡空转。
+	_apply_skill_tree_unit_abilities(stats)
 
 	return stats
 
@@ -175,8 +182,8 @@ static func apply_enhance_level_bonus(stats: UnitStats, card: CardResource) -> v
 			_apply_enhance_abilities(stats, 4, lvl)
 		_:
 			_apply_enhance_fixed(stats, lvl_f, 0.021, 0.021, "", 0.0)
-	# v8.x: 相位师技能树解锁的兵种特殊能力（叠加在强化等级解锁之上）
-	_apply_skill_tree_unit_abilities(stats)
+	# v26.15c: 技能树兵种特殊能力已上移 build_stats_from_card 主路径
+	#（原在此处被上方 enhance_level<=0 早退连坐，全部新卡空转）
 
 ## v8.x: 应用相位师技能树解锁的兵种特殊能力
 ## 技能树 firepower 分支的 unit_ability 节点（light_crit/armor_pen/lifesteal_unlock 等）
@@ -1187,7 +1194,9 @@ static func build_multi_stats(platform_type: int, weapon_types: Array, era: int 
 	c.combat_kind = int(PLATFORM_TO_COMBAT_KIND.get(platform_type, 1))
 	c.platform_type = platform_type
 	c.legacy_weapon_type = main_wt
-	c.weapon_type = main_wt
+	# v26.x: main_wt 是 legacy 域（_WEAPON_BASE 键），weapon_type 必须映射到新枚举——
+	# 否则 legacy 1/2（步枪/机枪）会被 is_indirect_weapon_type 撞值误判成曲射/空射
+	c.weapon_type = GC.legacy_weapon_to_new_weapon_type(main_wt)
 	c.base_hp = float(p.get("hp", 100.0))
 	c.base_speed = float(p.get("speed", 80.0))
 	c.range_value = max(1, int(round(float(w.get("range", 120.0)) / 100.0)))

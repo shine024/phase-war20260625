@@ -32,7 +32,7 @@ func _test_class_structure() -> bool:
 	var total: int = 4
 	PhaseInstrumentAbilities.reset_battle_state()
 	pass_count += 1
-	print("  ✅ reset_state() 可调用")
+	print("  ✅ reset_battle_state() 可调用")
 	PhaseInstrumentAbilities.update(0.016)
 	pass_count += 1
 	print("  ✅ update() 可调用")

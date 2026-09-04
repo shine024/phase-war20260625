@@ -26,6 +26,7 @@ const RankRules = preload("res://data/rank_rules.gd")
 const UnitStatsTable = preload("res://resources/unit_stats_table.gd")
 const IntelManualItems = preload("res://data/intel_manual_items.gd")
 const BlueprintDefinitions = preload("res://data/blueprint_definitions.gd")
+const GameCfg = preload("res://resources/game_config.gd")
 
 ## ── 进化/改装子模块（class_name 全局引用） ──
 ## @note Godot 4.5 --check-only 模式下部分 class_name 加载顺序不确定，preload 保证可用
@@ -478,6 +479,24 @@ func _refresh_player_master_eval_safe() -> void:
 ## 唯一等级轴为战斗卡等级 card_level（1-30，上阵攒经验自动升级，见 InstanceRegistry.add_experience）。
 ## 旧强化轴 enhance_level（0-10）不再是玩家养成路径；存档中的历史值保留但不再有提升入口。
 
+## 安装成本预览（v26.x 改造消耗品化：UI 显示与 install_modification 实际扣款同源，公式唯一真身）。
+## 平衡修复（2026-08-16 经济审查）：原公式 (80+28)×rarity×0.5 与卡牌本身无关——
+## 虚空领主与一战步枪班同价（~54 纳米），后期单关收入 ~2000 纳米下改造形同免费
+## （水槽压力跨时代通缩 ~25×）。改按卡牌战力定价，且每已装一个改造递增。
+## v27.6 数值复审：递增系数 0.20→0.12——实测满改一张 power 900 卡 = 7290 纳米
+## ≈ 45 关 era4 收入，与设计注释"数关收入"差一个量级（power 1590 卡 ≈ 79 关）。
+## 0.12 后分别为 5994/10589（≈24/35 关）。真实供给瓶颈是图纸掉落（v26.10 消耗品化，
+## 每装一条扣 1 张），纳米轴定位为长期 sink——"满改 = 数关"的旧预期不再成立，
+## 勿按旧注释回改。返回 {nano: int, blueprints: int}——blueprints 为本次安装消耗的图纸张数（开关关=0）。
+func preview_install_cost(card: CardResource) -> Dictionary:
+	var card_power: float = maxf(60.0, float(card.power)) if card != null else 60.0
+	var installed_count: int = card.mods.size() if card != null else 0
+	var nano_cost := int(card_power * 0.5 * (1.0 + 0.12 * installed_count))
+	var need_blueprint := 1
+	if not GameCfg.get_default().mod_consumable_enabled:
+		need_blueprint = 0
+	return {nano = nano_cost, blueprints = need_blueprint}
+
 ## 安装改造（新接口）
 ## 改造需要：纳米材料 + 改造指南（根据稀有度）
 func install_modification(card: CardResource, mod_id: String, slot: int = -1) -> Dictionary:
@@ -520,14 +539,9 @@ func install_modification(card: CardResource, mod_id: String, slot: int = -1) ->
 			result.message = "缺少图纸：%s" % blueprint_name
 			return result
 
-	# 计算纳米材料消耗
-	# 平衡修复（2026-08-16 经济审查）：原公式 (80+28)×rarity×0.5 与卡牌本身无关——
-	# 虚空领主与一战步枪班同价（~54 纳米），后期单关收入 ~2000 纳米下改造形同免费
-	# （水槽压力跨时代通缩 ~25×）。改按卡牌战力定价，且每已装一个改造 +20% 递增，
-	# 恢复"满改一张时代顶级卡 ≈ 数关收入"的 sink 压力。
-	var card_power: float = maxf(60.0, float(card.power))
-	var installed_count: int = card.mods.size()
-	var nano_cost = int(card_power * 0.5 * (1.0 + 0.2 * installed_count))
+	# 计算纳米材料消耗（v26.x 起与 UI 显示同源，公式唯一真身在 preview_install_cost）
+	var cost_preview: Dictionary = preview_install_cost(card)
+	var nano_cost: int = int(cost_preview.nano)
 
 	# 检查纳米材料
 	if not BasicResourceManager.can_afford("nano", nano_cost):
@@ -563,7 +577,10 @@ func install_modification(card: CardResource, mod_id: String, slot: int = -1) ->
 
 	# 消耗资源
 	BasicResourceManager.consume("nano", nano_cost)
-	# 图纸不消耗，获得一次后永久可用
+	# v26.x 改造消耗品化：安装同时消耗 1 张图纸（gate 链已验 has_item，此处必成功）。
+	# 总开关 GameConfig.mod_consumable_enabled=false 回退旧"永久解锁"行为（不消耗）。
+	if GameCfg.get_default().mod_consumable_enabled and not skip_blueprint_check:
+		bag.consume_item(blueprint_id)
 
 	result.success = true
 	result.cost = nano_cost
@@ -642,6 +659,9 @@ func _get_card_for_mods(id_str: String) -> CardResource:
 	return _get_card_from_library(id_str)
 
 ## 替换改造（新接口）
+## ⚠️ v26.x 改造消耗品化后本函数仍是零调用死代码；若将来启用注意语义：
+## 内部走 install_modification 会消耗 1 张新图纸，旧图纸（已随原安装沉没）不返还——
+## 下方 50% 返还仅指纳米（paid_cost 口径），与图纸无关。
 func replace_modification(card: CardResource, old_mod_id: String, new_mod_id: String) -> Dictionary:
 	var result = {success = false, refund = 0, cost = 0, message = ""}
 

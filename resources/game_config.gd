@@ -18,6 +18,10 @@ class_name GameConfig
 ## v26.2: 每关布局表总开关——true=LevelBattleLayouts 显式配置的关卡用专属棋盘
 ## （行数/敌我列数/废墟格），其余关默认 3×3；false=全部关卡 3×3（v26.1 前行为）。消费点 card_grid_battle_layout
 @export var battle_layouts_enabled: bool = true
+## v26.x: 改造模块消耗品化总开关——true=安装改造消耗 1 张对应图纸（blueprint_<mod_id>，
+## IntelItemBag 库存）+ 纳米费；false=图纸只验持有不消耗（旧"永久解锁"行为）。
+## 消费点 blueprint_manager.install_modification
+@export var mod_consumable_enabled: bool = true
 
 ## 调试配置
 @export_group("调试配置")
@@ -25,6 +29,10 @@ class_name GameConfig
 ## 同卡存活上限、总数/绿槽数上限），方便测试阶段自由放兵。默认 false（生产零影响）。
 ## 注意：物理格子上限（6 个可点击位置）不受此开关影响，仍由 BattleSlotGrid 决定。
 @export var debug_no_deploy_limits: bool = false
+## v26.11(A3): 测试模式蓝图全送开关——true = 新游戏开局发放全部改造+进化蓝图（原 save_manager
+## 裸代码块"上线前需改回"的门控化，开发/测试想全开时手动置 true）；false = 正式行为
+## （仅 7 张起步图纸，其余靠战斗掉落逐步解锁）。消费点 save_manager 新档初始蓝图发放段
+@export var debug_grant_all_blueprints: bool = false
 
 ## 默认配置实例
 static var _default_config: GameConfig = null
@@ -42,4 +50,6 @@ func reset_to_defaults() -> void:
 	aura_range_enabled = true
 	env_effects_enabled = true
 	battle_layouts_enabled = true
+	mod_consumable_enabled = true
 	debug_no_deploy_limits = false  # P0-5 修复：测试开关此前漏重置
+	debug_grant_all_blueprints = false

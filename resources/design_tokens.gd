@@ -78,8 +78,11 @@ const BUTTON_HEIGHT := 40
 const BUTTON_SPACING := 8
 
 # Get accent color by type
-static func get_accent_color(accent_type: String, high_contrast: bool = HIGH_CONTRAST_ENABLED) -> Color:
-	if high_contrast:
+# v26.11(A2.4): 默认参改为 null 哨兵实时读 static var（原 bool 默认参在定义期求值，
+# 运行时切换高对比度后无参调用不更新的陷阱已修）；显式传参的调用方行为不变。
+static func get_accent_color(accent_type: String, high_contrast: Variant = null) -> Color:
+	var hc: bool = HIGH_CONTRAST_ENABLED if high_contrast == null else bool(high_contrast)
+	if hc:
 		match accent_type:
 			"cyan": return COLOR_ACCENT_CYAN_HIGH_CONTRAST
 			"purple": return COLOR_ACCENT_PURPLE_HIGH_CONTRAST
@@ -100,26 +103,30 @@ static func get_accent_color(accent_type: String, high_contrast: bool = HIGH_CON
 			"green_bright": return COLOR_GREEN_BRIGHT
 			_: return COLOR_ACCENT_CYAN
 
-static func get_bg_color(high_contrast: bool = HIGH_CONTRAST_ENABLED) -> Color:
-	return COLOR_BG_HIGH_CONTRAST if high_contrast else COLOR_BG
+static func get_bg_color(high_contrast: Variant = null) -> Color:
+	var hc: bool = HIGH_CONTRAST_ENABLED if high_contrast == null else bool(high_contrast)
+	return COLOR_BG_HIGH_CONTRAST if hc else COLOR_BG
 
-static func get_panel_color(high_contrast: bool = HIGH_CONTRAST_ENABLED) -> Color:
-	return COLOR_PANEL_HIGH_CONTRAST if high_contrast else COLOR_PANEL
+static func get_panel_color(high_contrast: Variant = null) -> Color:
+	var hc: bool = HIGH_CONTRAST_ENABLED if high_contrast == null else bool(high_contrast)
+	return COLOR_PANEL_HIGH_CONTRAST if hc else COLOR_PANEL
 
-static func get_text_color(high_contrast: bool = HIGH_CONTRAST_ENABLED) -> Color:
-	return COLOR_TEXT_HIGH_CONTRAST if high_contrast else COLOR_TEXT
+static func get_text_color(high_contrast: Variant = null) -> Color:
+	var hc: bool = HIGH_CONTRAST_ENABLED if high_contrast == null else bool(high_contrast)
+	return COLOR_TEXT_HIGH_CONTRAST if hc else COLOR_TEXT
 
-static func get_font_size(base_size: int, large_type: bool = LARGE_TYPE_ENABLED) -> int:
-	if not large_type:
+static func get_font_size(base_size: int, large_type: Variant = null) -> int:
+	var lt: bool = LARGE_TYPE_ENABLED if large_type == null else bool(large_type)
+	if not lt:
 		return base_size
 	# 简单放大 25%，向上取整
 	return int(ceil(base_size * 1.25))
 
 
 # ===== v7.x(A3): 运行时可访问性 API =====
-# 说明：上面的 get_*(high_contrast = HIGH_CONTRAST_ENABLED) 默认参数在函数定义时
-# 求值，不会随 static var 运行时变化而更新。因此设置面板切换后，消费方应改用下列
-# 无参 getter（它们实时读取 static var），或监听 accessibility_changed 信号重绘。
+# v26.11(A2.4) 勘误：上方 get_* 系列的默认参已改为 null 哨兵，无参调用实时读
+# static var（原 bool 默认参定义期求值、不随运行时开关更新的陷阱已修）。
+# 无参 current_*() getter 与 accessibility_changed 信号监听仍推荐（语义更显式）。
 
 # 一次性设置三项可访问性开关，并广播通知。由 settings_panel 调用。
 # 通过 SignalBus.accessibility_changed 广播（GDScript 不支持 static signal）。
@@ -378,6 +385,12 @@ const COLOR_RES_CRYSTAL := Color(0.6, 0.3, 1.0, 1)     # 晶体（紫）
 const MOTION_FADE_IN := 0.2   # 常规淡入
 const MOTION_FADE_OUT := 0.15 # 常规淡出（比淡入快，关闭要干脆）
 const MOTION_POP := 0.25      # 弹性弹出（面板/弹窗登场）
+
+# ===== 悬停微动效档位（v26.16 视觉批次：背包卡 hover 等消费；收口前为各面板手写魔法数） =====
+const MOTION_HOVER := 0.10      # 悬停进入（上浮+放大并行）
+const MOTION_HOVER_OUT := 0.15  # 悬停退出复位（比进入稍慢，回弹感）
+const HOVER_LIFT_PX := 2.0      # 悬停上浮像素
+const HOVER_SCALE := 1.03       # 悬停放大倍率
 
 # ===== 面板签名色（v7.x 面板统一：每个功能面板一个 accent，标题栏/边框/强调态共用） =====
 # 视觉方向对齐 docs/界面一致性/design_06_visual_direction.html（军事科幻 + 霓虹光晕 + 冷色调）。

@@ -127,13 +127,26 @@ const MUZZLE: Dictionary = {
 	"fut_arm_omega": {"fireX": 0.1033, "fireY_pct": 44},
 	"fut_fort_ion": {"fireX": 0.051, "fireY_pct": 50.93},
 	"fut_fort_shield": {"fireX": 0.4888, "fireY_pct": 36.93},
+	# ── v26.12 派生近似（v27 补）：八飞机敌我标注表均未标，coverage 冒烟红。
+	# 航空器鼻端中线近似（对齐已标注敌机 fut_air_drone 0.066/43、heavy_carrier 0/49 的
+	# 空间分布），标记"待人工标注"——AI 生图/标注流程跑过后按实际炮位覆盖。
+	"ww2_air_bomber": {"fireX": 0.10, "fireY_pct": 47.0},
+	"ww2_air_dive_bomber": {"fireX": 0.08, "fireY_pct": 46.0},
+	"cold_air_strike_fighter": {"fireX": 0.07, "fireY_pct": 45.0},
+	"cold_air_bomber": {"fireX": 0.10, "fireY_pct": 47.0},
+	"mod_air_multirole": {"fireX": 0.08, "fireY_pct": 45.5},
+	"mod_air_bomber": {"fireX": 0.10, "fireY_pct": 47.0},
+	"fut_air_stealth_multirole": {"fireX": 0.09, "fireY_pct": 45.0},
+	"fut_air_stealth_bomber": {"fireX": 0.06, "fireY_pct": 48.0},
 }
 
 ## 查询单位的弹道锚点（无数据返回空字典，调用方走回退逻辑）。
-## 键名三级回退——运行时 archetype_id 与标注键名存在两类差异：
+## 键名四级回退——运行时 archetype_id 与标注键名存在差异：
 ## ① 直查 unit_id（C/D 段固定敌与池敌、堡垒）；
 ## ② A/B 段敌人运行时键带 foe_ 前缀而标注用本体 id：剥前缀再查（如 foe_fut_sup_bulwark → fut_sup_bulwark）；
-## ③ A 段平台敌人与 platform_* 共用卡图：经 EnemyUnitManifest 映射转查（如 ww2_arm_tiger → platform_ww2_heavy）。
+## ③ A 段平台敌人与 platform_* 共用卡图：经 EnemyUnitManifest 映射转查（如 ww2_arm_tiger → platform_ww2_heavy）；
+## ④ v27 图源回退：archetype 的 visual_id 本身是带标注卡图 id 时（星冥占位复用
+##    fut_* 等现有卡图），继承该图开火点。仅新增命中——经典单位命中/兜底行为不变。
 static func get_anchor(unit_id: String) -> Dictionary:
 	var key := String(unit_id).strip_edges()
 	var anchor: Dictionary = MUZZLE.get(key, {})
@@ -147,6 +160,11 @@ static func get_anchor(unit_id: String) -> Dictionary:
 	var mapped: String = EnemyUnitManifest.platform_visual_id_for(base_key)
 	if not mapped.is_empty() and mapped != base_key:
 		anchor = MUZZLE.get(mapped, {})
+		if not anchor.is_empty():
+			return anchor
+	var vis_id: String = EnemyUnitManifest.visual_id_for_archetype(base_key)
+	if not vis_id.is_empty() and vis_id != base_key and vis_id != mapped:
+		anchor = MUZZLE.get(vis_id, {})
 	return anchor
 
 ## 计算弹道点相对单位原点(脚部)的像素偏移。

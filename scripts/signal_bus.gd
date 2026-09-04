@@ -13,7 +13,7 @@ signal card_equipped(slot_index: int, card_id: String, card_type: String)
 ## card_equipped(new) 双信号中间态导致背包重复（"换装多出一张卡"bug 的根因）。
 ## 仅 equip_card 的"替换已有卡"分支 emit；装到空槽仍走 card_equipped，unequip 仍走 card_added_to_backpack。
 signal card_swapped(slot_index: int, old_card: CardResource, new_card_id: String)
-# v7.x 现状：card_unequipped 由 phase_instrument_manager/phase_instrument_loadout_sync 在卸下时 emit，
+# v7.x 现状：card_unequipped 由 phase_instrument_manager 在卸下时 emit，
 # 但无 SignalBus 订阅者——卸下时"卡归还背包"的状态同步实际由同一处的 card_added_to_backpack.emit 覆盖
 # （save_manager/backpack_presenter 均订阅 card_added_to_backpack）。此信号保留供需要"按槽位感知卸载"的
 # 订阅者使用，属合法预留，非 bug。

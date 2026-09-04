@@ -24,6 +24,7 @@ const _DEFAULT_DIFFICULTY_IDX := 1
 @onready var _hc_check: CheckButton = get_node_or_null("Margin/VBoxMain/Scroll/VBox/HighContrastRow/HighContrastCheck")
 @onready var _lt_check: CheckButton = get_node_or_null("Margin/VBoxMain/Scroll/VBox/LargeTypeRow/LargeTypeCheck")
 @onready var _mr_check: CheckButton = get_node_or_null("Margin/VBoxMain/Scroll/VBox/MotionReduceRow/MotionReduceCheck")
+@onready var _reset_tutorial_button: Button = get_node_or_null("Margin/VBoxMain/Scroll/VBox/TutorialRow/ResetTutorialButton")
 @onready var _content_vbox: VBoxContainer = get_node_or_null("Margin/VBoxMain")
 
 
@@ -55,6 +56,9 @@ func _ready() -> void:
 		_lt_check.toggled.connect(_on_accessibility_changed)
 	if _mr_check:
 		_mr_check.toggled.connect(_on_accessibility_changed)
+	# 游戏：教程重置（v26.9 A1.4，接活 TutorialProgressionManager.reset_tutorial）
+	if _reset_tutorial_button:
+		_reset_tutorial_button.pressed.connect(_on_reset_tutorial_pressed)
 
 
 func _load_and_apply() -> void:
@@ -122,9 +126,12 @@ func _apply_sfx(linear: float) -> void:
 		AudioManager.set_sfx_volume(linear)
 
 func _apply_bgm(linear: float) -> void:
-	# v7.x(A2): 当前无 BGM 播放器，预留接口。AudioManager 有 music_volume 字段，
-	# 待音频包补齐后接 set_music_volume。此处仅缓存值，不报错。
-	if AudioManager != null and "music_volume" in AudioManager:
+	# v26.11(A2.4): 接通 set_music_volume——实时作用于当前播放曲目（原实现只写
+	# music_volume 字段，拖滑杆要等下一次切歌才生效；旧注释"当前无 BGM 播放器"
+	# 已过时：8 首 BGM 资产在库，AudioManager 启动即播）。
+	if AudioManager != null and AudioManager.has_method("set_music_volume"):
+		AudioManager.set_music_volume(clamp(linear, 0.0, 1.0))
+	elif AudioManager != null and "music_volume" in AudioManager:
 		AudioManager.music_volume = clamp(linear, 0.0, 1.0)
 
 func _on_master_changed(value: float) -> void:
@@ -178,6 +185,26 @@ func _apply_accessibility(hc: bool, lt: bool, mr: bool) -> void:
 	# v7.x(A3): 经 DesignTokens 静态 API 切换，并由 SignalBus.accessibility_changed
 	# 广播给已打开的血条/能量条等即时重绘。
 	DT.set_accessibility(hc, lt, mr)
+	_apply_ui_scale(lt)
+
+# v26.11(A2.4): 大字号真实生效——content_scale_factor 全局放大界面（项目为
+# canvas_items 拉伸模式，1.25 = UI 整体放大 25%）。此前 is_large_type 全项目零
+# 消费方、勾选后游戏内纹丝不动，属"承诺未兑现"开关；本修复后即时生效。
+func _apply_ui_scale(large_type: bool) -> void:
+	var vp := get_tree().root
+	if vp != null:
+		vp.content_scale_factor = 1.25 if large_type else 1.0
+
+# v26.11(A2.4): 启动时应用大字号缩放（settings 面板未实例化也要生效）。
+# 由 title_screen._ready 调用（入口场景，任何路径都先经过）。
+static func apply_ui_scale_at_boot() -> void:
+	var lt := false
+	var cfg := ConfigFile.new()
+	if cfg.load(SETTINGS_PATH) == OK:
+		lt = cfg.get_value(SECTION, "large_type", false)
+	var tree := Engine.get_main_loop() as SceneTree
+	if tree != null and tree.root != null:
+		tree.root.content_scale_factor = 1.25 if lt else 1.0
 
 func _on_accessibility_changed(_toggled: bool) -> void:
 	var hc: bool = _hc_check.button_pressed if _hc_check else false
@@ -185,6 +212,36 @@ func _on_accessibility_changed(_toggled: bool) -> void:
 	var mr: bool = _mr_check.button_pressed if _mr_check else false
 	_apply_accessibility(hc, lt, mr)
 	_save()
+
+
+# ===== 教程重置（v26.9 A1.4）=====
+func _on_reset_tutorial_pressed() -> void:
+	var dialog := ConfirmationDialog.new()
+	dialog.title = "重置新手引导"
+	dialog.dialog_text = "将清空当前教学进度，重新播放 13 步新手引导。\n确认重置？"
+	dialog.ok_button_text = "重置"
+	dialog.cancel_button_text = "取消"
+	add_child(dialog)
+	dialog.confirmed.connect(_do_reset_tutorial)
+	# 关闭即自清理（confirmed / canceled 两条路径都覆盖）
+	dialog.confirmed.connect(dialog.queue_free)
+	dialog.canceled.connect(dialog.queue_free)
+	dialog.popup_centered()
+
+func _do_reset_tutorial() -> void:
+	var tm := get_node_or_null("/root/TutorialProgressionManager")
+	if tm == null or not tm.has_method("reset_tutorial"):
+		SignalBus.show_toast.emit("⚠ 教程管理器不可用，重置失败")
+		return
+	tm.reset_tutorial()
+	SignalBus.show_toast.emit("🎓 新手引导已重置")
+	# 主场景在场则立即拉起教程覆盖层（镜像 _start_tutorial_if_needed 的推进副作用）；
+	# 在标题屏重置则等下次进入主界面自然触发（current_step==NONE 守卫放行）。
+	var main_scene := get_node_or_null("/root/Main")
+	if main_scene and main_scene.has_method("_show_tutorial_overlay"):
+		if tm.has_method("get_tutorial_content"):
+			tm.get_tutorial_content()  # 副作用：NONE → INTRO_WELCOME
+		main_scene._show_tutorial_overlay()
 
 
 # ===== 持久化 =====

@@ -1,15 +1,20 @@
 extends RefCounted
 class_name EnemyUnitManifest
-## 100 基本敌人 + 缴获卡绑定（与 docs/card_icon_manifest_100_zh.md 对齐）
+## 100 基本敌人 + 星冥族 20 单位 + 缴获卡绑定
+## （与 docs/card_icon_manifest_100_zh.md、docs/无限模式_异族设定（草案）.md 对齐）
 ##
 ## v3 重构：100张敌人卡自带完整属性，不再从旧平台卡克隆。
 ## captured_* 由 CapturedUnitCards 注册，不经 DropManager 对 platform_* 的拦截。
 ##
 ## v8.0: 数据源统一——A/B/D/E 段敌人的基础数值改从 UnifiedCardTable（统一卡牌表）读取，
 ## 与玩家卡/缴获卡共享同一套数值。原 _get_foe_stats 的硬编码 match 分支保留作 fallback。
+##
+## v27 F 段：星冥族（黑门无限模式），数据真身 data/xeno_units.gd（XenoUnits），
+## 不经统一表（era=5 无 UCT 条目），era/缴获/图标走本 manifest 的 F 段构建。
 
 const BattleCardV3 = preload("res://data/battle_card_v3.gd")
 const UnifiedCardTable = preload("res://data/unified_card_table.gd")
+const XenoUnits = preload("res://data/xeno_units.gd")
 
 const MANIFEST_VERSION: int = 2
 const CAPTURED_PREFIX: String = "captured_"
@@ -158,6 +163,14 @@ const _FOE_ID_TO_PLATFORM: Dictionary = {
 static func platform_visual_id_for(card_id: String) -> String:
 	return String(_FOE_ID_TO_PLATFORM.get(String(card_id).strip_edges(), ""))
 
+
+## v27: archetype → 战场视觉 id（manifest 行 visual_id 直查）。
+## 供 MuzzleAnchors 图源回退——星冥占位复用现有卡图时，占位图 id 若带开火点
+## 标注（fut_* 等卡图 id），弹道起点可精确对位（vis_player_0XX 无标注，仍走兜底）。
+static func visual_id_for_archetype(archetype_id: String) -> String:
+	_ensure_unit_icon_map()
+	return String(_unit_icon_by_archetype.get(String(archetype_id).strip_edges(), ""))
+
 ## v8.0: 统一表条目（玩家口径）→ foe_stats 口径转换。
 ## 字段映射：base_hp→hp, range_value格→rng像素(×100), atk_l_speed次/秒→ivl秒(1/speed),
 ##           base_speed正值→spd正值(manifest 内部再转负), combat_kind→kind
@@ -286,7 +299,7 @@ static func _ensure_unit_icon_map() -> void:
 
 
 static func get_entry_count() -> int:
-	return 28 + 6 + 36 + 29 + 10  # A段 + B段 + C段 + D段 + E段堡垒
+	return get_entries().size()  # v27: 动态计数（含 F 段星冥 20；旧硬编码 109 已过时）
 
 
 static func captured_card_id_for(archetype_id: String) -> String:
@@ -301,7 +314,7 @@ static func archetype_id_for_platform_card(platform_card_id: String) -> String:
 	return "foe_%s" % String(platform_card_id).strip_edges()
 
 
-## 获取全部100张敌人条目
+## 获取全部敌人条目（100 基本敌人 + v27 F 段星冥 20）
 static func get_entries() -> Array:
 	if not _entries_cache.is_empty():
 		return _entries_cache
@@ -316,6 +329,9 @@ static func get_entries() -> Array:
 		rows.append(_make_pool_row(i))
 	for fid in FORT_ENEMY_IDS:
 		rows.append(_make_fort_row(fid))
+	# v27 F 段：星冥族（黑门无限模式）——数据真身 data/xeno_units.gd
+	for xid in XenoUnits.ID_ORDER:
+		rows.append(_make_xeno_row(xid))
 	_entries_cache = rows
 	return _entries_cache
 
@@ -502,6 +518,54 @@ static func _make_fort_row(fort_id: String) -> Dictionary:
 	}
 
 
+## F 段（v27）：星冥族 20 单位——数据真身 data/xeno_units.gd（XenoUnits.UNITS）。
+## archetype_id = xeno_*（无 foe_ 前缀）；缴获卡 captured_xeno_*；
+## 掉率按角色分档（基础 8% / 精英 22% / 王牌 35% / 首领 55%，设计 §6.1）。
+## xeno 机制扩展键（psi_shield_frac/communion/death_burst/…）随 archetype_config 透传，
+## enemy_unit 与 EndlessBlackgateManager 消费。
+static func _make_xeno_row(xeno_id: String) -> Dictionary:
+	var x: Dictionary = XenoUnits.get_config(xeno_id)
+	var display_name: String = String(x.get("display_name", xeno_id))
+	var chance: float = float(x.get("drop_chance", 0.08))
+	var cfg: Dictionary = {
+		"era": XenoUnits.XENO_ERA,
+		"display_name": display_name,
+		"hp": float(x.get("hp", 500.0)),
+		"speed": float(x.get("speed", -60.0)),
+		"attack_light": float(x.get("attack_light", 0.0)),
+		"attack_armor": float(x.get("attack_armor", 0.0)),
+		"attack_air": float(x.get("attack_air", 0.0)),
+		"attack_range": float(x.get("attack_range", 200.0)),
+		"attack_interval": float(x.get("attack_interval", 1.0)),
+		"combat_kind": int(x.get("combat_kind", 0)),
+		"weapon_label": String(x.get("weapon_label", "")),
+		"weapon_type": int(x.get("weapon_type", 0)),
+		"defense_light": float(x.get("defense_light", 0.0)),
+		"defense_armor": float(x.get("defense_armor", 0.0)),
+		"defense_air": float(x.get("defense_air", 0.0)),
+		"tags": x.get("tags", ["frontline"]),
+		"swarm_unit": false,
+		"visual_scale": float(x.get("visual_scale", 1.0)),
+		"drops": [{"card_id": captured_card_id_for(xeno_id), "chance": chance}],
+	}
+	# v27 星冥机制扩展键透传（缺省不带，enemy_unit 侧 get 兜底）
+	for key in ["psi_shield_frac", "communion", "communion_node",
+			"death_burst", "mimic_rewind", "psi_intercept_chance"]:
+		if x.has(key):
+			cfg[key] = x[key]
+	return {
+		"archetype_id": xeno_id,
+		"display_name": display_name,
+		"era": XenoUnits.XENO_ERA,
+		"visual_id": String(x.get("visual_fallback", xeno_id)),
+		"drop_card_id": captured_card_id_for(xeno_id),
+		"template_card_id": "",
+		"drop_trigger": "on_kill",
+		"drop_chance": chance,
+		"archetype_config": cfg,
+	}
+
+
 # ─────────────────────────────────────────────
 #  辅助函数
 # ─────────────────────────────────────────────
@@ -664,6 +728,9 @@ static func _era_from_platform_id(card_id: String) -> int:
 
 
 static func _era_from_enemy_id(enemy_id: String) -> int:
+	# v27: 星冥族前缀（xeno_*）→ era=5（星冥带）。首判，避免子串误匹配后段
+	if enemy_id.begins_with("xeno_"):
+		return XenoUnits.XENO_ERA
 	if enemy_id.contains("ww1"):
 		return 0
 	if enemy_id.contains("ww2"):

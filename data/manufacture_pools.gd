@@ -44,6 +44,18 @@ const CAPTURED_ROLL_WEIGHTS := {
 	"common": 55.0, "uncommon": 25.0, "rare": 12.0, "epic": 6.0, "legendary": 2.0,
 }
 
+## ── v27 黑门深度品质轴（星冥缴获专用）：渗度（每 10 波 +1，0-5）→ 权重线性左移。
+## 越深越高品——设计 §6.2"深处出好货"；深度 0 退化为标准缴获轴。
+## 基线 55·25·12·6·2 → 深度 5 = 25·22·19·18·16（史诗+ 34%）。仍无神话（神话制造专属不可破）。
+const CAPTURED_DEPTH_WEIGHTS := [
+	{"common": 55.0, "uncommon": 25.0, "rare": 12.0, "epic": 6.0, "legendary": 2.0},
+	{"common": 47.0, "uncommon": 25.0, "rare": 14.0, "epic": 9.0, "legendary": 5.0},
+	{"common": 40.0, "uncommon": 24.0, "rare": 16.0, "epic": 12.0, "legendary": 8.0},
+	{"common": 34.0, "uncommon": 23.0, "rare": 17.0, "epic": 14.0, "legendary": 12.0},
+	{"common": 29.0, "uncommon": 22.0, "rare": 18.0, "epic": 16.0, "legendary": 15.0},
+	{"common": 25.0, "uncommon": 22.0, "rare": 19.0, "epic": 18.0, "legendary": 16.0},
+]
+
 ## ── 分析仪产出（v26 批次3）：按缴获卡品质给情报增量（base 轴 0-1）──
 ## 设计文档 §2.4：普通+8% / 精良+12% / 稀有+16% / 史诗+22% / 传说+30%
 const ANALYZER_YIELD := {
@@ -70,6 +82,7 @@ const RESOURCE_NAMES := {
 	"alloy": "合金",
 	"crystal": "晶体",
 	"energy_block": "能量块",
+	"star_marrow": "星髓",  # v27 黑门无限模式
 }
 
 ## 情报进度 → 档位（0=配方未解锁）
@@ -149,14 +162,51 @@ static func roll_captured_rarity() -> String:
 			return String(r)
 	return "common"
 
+
+## v27 黑门深度轴掷品质：depth = 渗度（每 10 波 +1，0-5）。
+## 由星冥缴获授予点调用（battle_damage_system 击杀 xeno 时以当前波次折算），
+## 常规缴获不受影响（仍走 roll_captured_rarity）。
+static func roll_captured_rarity_depth(depth: int) -> String:
+	var weights: Dictionary = CAPTURED_DEPTH_WEIGHTS[clampi(depth, 0, CAPTURED_DEPTH_WEIGHTS.size() - 1)]
+	var total := 0.0
+	for r in weights:
+		total += float(weights[r])
+	var roll := randf() * total
+	for r in weights:
+		roll -= float(weights[r])
+		if roll <= 0.0:
+			return String(r)
+	return "common"
+
+
+## v27: 是否星冥缴获卡（drop-only 通道标识：制造配方/仓库打印/气象站排除用）
+static func is_xeno_captured_card(card_id: String) -> bool:
+	return String(card_id).begins_with("captured_xeno_")
+
 ## 缴获卡实例品质就地滚动（非 captured_ 前缀卡不动）。
 ## 调用点=获取通道：掉落/商店/势力商店（InstanceRegistry.create_instance 之后）。
+## v27: captured_xeno_* 走黑门深度轴（当场波次折算渗度——深处出好货，设计 §6.2）。
 static func apply_captured_quality(inst: CardResource) -> void:
 	if inst == null:
 		return
 	if not String(inst.card_id).begins_with("captured_"):
 		return
+	if String(inst.card_id).begins_with("captured_xeno_"):
+		inst.rarity = roll_captured_rarity_depth(current_xeno_capture_depth())
+		return
 	inst.rarity = roll_captured_rarity()
+
+
+## v27: 当前星冥缴获深度（渗度=波次/10）——读 BattleManager 实况波次；
+## 战斗外/无 BattleManager 时 0（常规缴获轴兜底）。
+static func current_xeno_capture_depth() -> int:
+	var tree: SceneTree = Engine.get_main_loop() as SceneTree
+	if tree == null or tree.root == null:
+		return 0
+	var bm: Node = tree.root.get_node_or_null("/root/BattleManager")
+	if bm == null or not bm.has_method("get_enemy_wave_index"):
+		return 0
+	return int(float(bm.get_enemy_wave_index()) / 10.0)
 
 ## 分析仪产出：按缴获卡稀有度给情报增量（0-1 轴）
 static func analyzer_yield(rarity: String) -> float:

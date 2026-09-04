@@ -297,7 +297,7 @@ func _enter_dream_battle() -> void:
 	if Engine.has_meta(META_DRY_RUN):
 		dream_battle_requested.emit()
 		return
-	get_tree().change_scene_to_file(BATTLE_SCENE)
+	SceneTransition.change(get_tree(), BATTLE_SCENE)
 
 # ───────────────────── 收尾 / 跳过 ─────────────────────
 
@@ -327,7 +327,7 @@ func _hand_off(_skipped: bool) -> void:
 	intro_finished.emit()
 	if Engine.has_meta(META_DRY_RUN):
 		return
-	get_tree().change_scene_to_file(BUNKER_SCENE)
+	SceneTransition.change(get_tree(), BUNKER_SCENE)
 
 func _unhandled_input(event: InputEvent) -> void:
 	if _finished:

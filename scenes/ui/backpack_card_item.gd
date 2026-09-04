@@ -181,11 +181,11 @@ func _on_mouse_entered() -> void:
 		_hover_base_style = null
 	var motion_reduce: bool = DesignTokens.is_motion_reduce()
 	if not motion_reduce:
-		# 上浮：position.y 上移 2px + scale 微放大（并行 Tween）
+		# 上浮：position.y 上移 HOVER_LIFT_PX + scale 微放大（并行 Tween；时长/幅度走 token）
 		_hover_tween = create_tween()
 		_hover_tween.set_parallel(true)
-		_hover_tween.tween_property(self, "position:y", position.y - 2.0, 0.10).set_ease(Tween.EASE_OUT)
-		_hover_tween.tween_property(self, "scale", Vector2(1.03, 1.03), 0.10).set_ease(Tween.EASE_OUT)
+		_hover_tween.tween_property(self, "position:y", position.y - DesignTokens.HOVER_LIFT_PX, DesignTokens.MOTION_HOVER).set_ease(Tween.EASE_OUT)
+		_hover_tween.tween_property(self, "scale", Vector2(DesignTokens.HOVER_SCALE, DesignTokens.HOVER_SCALE), DesignTokens.MOTION_HOVER).set_ease(Tween.EASE_OUT)
 	# 发光增强：复制基底 stylebox，shadow_size +2 / shadow_alpha +0.15
 	_apply_hover_glow_style(true)
 	# Legendary/Mythic 脉冲（仅 hover 时，零 idle 开销；motion_reduce 时跳过）
@@ -202,8 +202,8 @@ func _on_mouse_exited() -> void:
 	if not motion_reduce:
 		_hover_tween = create_tween()
 		_hover_tween.set_parallel(true)
-		_hover_tween.tween_property(self, "position:y", _hover_base_pos_y, 0.15).set_ease(Tween.EASE_OUT)
-		_hover_tween.tween_property(self, "scale", Vector2(1.0, 1.0), 0.15).set_ease(Tween.EASE_OUT)
+		_hover_tween.tween_property(self, "position:y", _hover_base_pos_y, DesignTokens.MOTION_HOVER_OUT).set_ease(Tween.EASE_OUT)
+		_hover_tween.tween_property(self, "scale", Vector2(1.0, 1.0), DesignTokens.MOTION_HOVER_OUT).set_ease(Tween.EASE_OUT)
 	# 恢复 hover 前 stylebox
 	if _hover_base_style != null:
 		add_theme_stylebox_override("panel", _hover_base_style)

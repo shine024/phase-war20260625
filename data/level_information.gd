@@ -392,6 +392,47 @@ func _apply_special_rules() -> void:
 	# 第100关 终局：能量减半（胜负=摧毁奥米伽基地）
 	_set_rules(100, {"energy_mult": 0.5})
 
+	# ═══ v26.13(B1): 关卡机制多样性扩充（B0 设计稿，docs/DESIGN_LEVEL_VARIETY_B0.md）═══
+	# 覆盖 11→41 关、规则类型 3→10 种。原则：L1 教程关恒无条目；驻守 boss 关只挂
+	# 数值类规则（boss_enrage_half/energy_mult），不挂 win_type（_set_rules 有守卫）。
+	# ─── 一战（1-20）：新机制教学带 ───
+	_set_rules(3, {"time_limit_sec": 240})
+	_set_rules(8, {"first_strike": true})
+	_set_rules(10, {"no_heal": true})
+	_set_rules(12, {"energy_starvation": true})
+	_set_rules(17, {"elite_wave_bonus": true})
+	_set_rules(19, {"time_limit_sec": 210, "first_strike": true})
+	_set_rules(20, {"boss_enrage_half": true})
+	# ─── 二战（21-40）：禁改造登场 + 复合首秀 ───
+	_set_rules(23, {"first_strike": true})
+	_set_rules(27, {"no_mods": true})
+	_set_rules(32, {"elite_wave_bonus": true})
+	_set_rules(35, {"time_limit_sec": 240, "no_heal": true})
+	_set_rules(38, {"energy_starvation": true})
+	_set_rules(40, {"boss_enrage_half": true})
+	# ─── 冷战（41-60）：双复合带 ───
+	_set_rules(42, {"no_heal": true})
+	_set_rules(45, {"elite_wave_bonus": true})
+	_set_rules(47, {"first_strike": true, "energy_starvation": true})
+	_set_rules(52, {"time_limit_sec": 270})
+	_set_rules(57, {"no_mods": true})
+	_set_rules(60, {"boss_enrage_half": true})
+	# ─── 现代（61-80）：精锐压力带 ───
+	_set_rules(62, {"first_strike": true})
+	_set_rules(67, {"elite_wave_bonus": true, "no_heal": true})
+	_set_rules(70, {"time_limit_sec": 240})
+	_set_rules(72, {"no_mods": true})
+	_set_rules(75, {"energy_starvation": true})
+	# 80 Boss：保留能量减半 + 叠加半血狂暴（boss 关双规则首例）
+	_set_rules(80, {"boss_enrage_half": true})
+	# ─── 近未来（81-100）：终局组合带 ───
+	_set_rules(82, {"no_heal": true})
+	_set_rules(87, {"elite_wave_bonus": true})
+	_set_rules(88, {"first_strike": true, "energy_starvation": true})
+	_set_rules(92, {"time_limit_sec": 300})
+	_set_rules(95, {"no_mods": true, "elite_wave_bonus": true})
+	_set_rules(100, {"boss_enrage_half": true})
+
 
 ## v8 批次3: 给指定关卡挂 special_rules（内部辅助，合并到已有字典）。
 ## 2026-08-16 守卫：win_type 类特殊胜利依赖 battle_manager._check_win_lose 的普通关路径；
@@ -404,7 +445,11 @@ func _set_rules(level: int, rules: Dictionary) -> void:
 		push_warning("[LevelInformation] 关卡 %d 是驻守相位师关（胜负=摧毁基地），不支持 win_type 特殊胜利，已拒绝挂载。" % level)
 		return
 	var entry: Dictionary = _level_db[level]
-	entry["special_rules"] = rules
+	# v26.13(B1): 合并语义——多次 _set_rules 同关叠加（80/100 能量减半+半血狂暴）。
+	# 新值优先（覆盖旧值），保持单次调用行为与旧版一致。
+	var merged: Dictionary = (entry.get("special_rules", {}) as Dictionary).duplicate(true)
+	merged.merge(rules, true)
+	entry["special_rules"] = merged
 	_level_db[level] = entry
 
 func get_level_display_name(level: int) -> String:

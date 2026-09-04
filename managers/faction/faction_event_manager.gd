@@ -151,11 +151,79 @@ func resolve_event(choice: String) -> Dictionary:
 	var rewards: Dictionary = _calculate_rewards(choice)
 	_apply_reputation_changes(choice)
 	_apply_loyalty_changes(choice)
+	# v26.11(A1.3): 结算补全——此前 rewards 里只有 reputation 真正入账，
+	# skill_points / nano / exclusive_card / faction_bonus_duration 全部静默丢弃
+	# （TODO_BACKLOG 高价值#3："事件结算不发 BONUS 奖励"）。声望走上方
+	# _apply_reputation_changes（含对方势力 -15），其余字段在此发放。
+	_grant_event_rewards(choice, rewards)
 	event_history.append(active_event.duplicate(true))
 	var result := {"event_id": active_event.get("id", ""), "choice": choice, "rewards": rewards}
 	event_resolved.emit(active_event.get("id", ""), choice, rewards)
 	active_event = {}
 	return result
+
+## v26.11(A1.3): 发放事件奖励（声望已在主链应用，此处发其余字段并 toast 汇总）
+func _grant_event_rewards(choice: String, rewards: Dictionary) -> void:
+	var granted: Array[String] = []
+	# 纳米材料（模板字段 nano / nanomaterial 两种拼写并存）
+	var nano: int = int(rewards.get("nano", rewards.get("nanomaterial", 0)))
+	if nano > 0:
+		var brm: Node = get_node_or_null("/root/BasicResourceManager")
+		if brm and brm.has_method("add_resource"):
+			brm.add_resource("nano_materials", nano)
+			granted.append("纳米+%d" % nano)
+	# 技能点 → 相位师技能树（全局技能点唯一在册货币，starter 发放同路径）
+	var sp: int = int(rewards.get("skill_points", 0))
+	if sp > 0:
+		var pmsm: Node = get_node_or_null("/root/PhaseMasterSkillManager")
+		if pmsm and pmsm.has_method("add_bonus_points"):
+			pmsm.add_bonus_points(sp)
+			granted.append("技能点+%d" % sp)
+	# 专属卡：所选阵营的专属卡池随机一张，实例化入背包
+	if rewards.has("exclusive_card"):
+		var chosen_fid: String = String(active_event.get("faction_a" if choice == "support_a" else "faction_b", ""))
+		var card_name: String = _grant_exclusive_card(chosen_fid)
+		if not card_name.is_empty():
+			granted.append("专属卡「%s」" % card_name)
+	# 势力临时加成：roll 一条限时加成挂到所选阵营（BONUS_EVENTS 池首次有了消费端）
+	var bonus_dur: int = int(rewards.get("faction_bonus_duration", 0))
+	if bonus_dur > 0:
+		var bonus_fid: String = String(active_event.get("faction_a" if choice == "support_a" else "faction_b", ""))
+		var bonus_name: String = _activate_random_timed_bonus(bonus_fid, bonus_dur)
+		if not bonus_name.is_empty():
+			granted.append("加成「%s」×%d场" % [bonus_name, bonus_dur])
+	if not granted.is_empty():
+		SignalBus.show_toast.emit("⚔ 事件结算：%s" % "，".join(granted))
+
+## 随机发放一张势力专属卡（返回卡名；池空/失败返回空串）
+func _grant_exclusive_card(faction_id: String) -> String:
+	const FactionExclusiveCards = preload("res://data/faction_exclusive_cards.gd")
+	var pool: Array = FactionExclusiveCards.get_exclusives_for_faction(faction_id)
+	if pool.is_empty():
+		return ""
+	var cfg: Dictionary = pool[randi() % pool.size()]
+	var card: CardResource = FactionExclusiveCards.create_card(cfg)
+	if card == null:
+		return ""
+	var ir: Node = get_node_or_null("/root/InstanceRegistry")
+	var inst: CardResource = card
+	if ir != null and ir.has_method("create_instance_from_template"):
+		inst = ir.create_instance_from_template(card)
+	SignalBus.card_added_to_backpack.emit(inst)
+	return String(cfg.get("name", cfg.get("id", "")))
+
+## roll 一条限时势力加成并激活（one_time 型跳过）；返回加成名
+func _activate_random_timed_bonus(faction_id: String, duration: int) -> String:
+	var timed: Array = []
+	for b in FactionWarEvents.get_bonus_events():
+		if b.has("duration_battles"):
+			timed.append(b)
+	if timed.is_empty() or faction_id.is_empty():
+		return ""
+	var bonus: Dictionary = timed[randi() % timed.size()].duplicate(true)
+	bonus["duration_battles"] = duration
+	apply_bonus_event(faction_id, bonus)
+	return String(bonus.get("name", ""))
 
 ## 计算奖励
 func _calculate_rewards(choice: String) -> Dictionary:
@@ -222,6 +290,10 @@ func save_state() -> Dictionary:
 		"loyalty": loyalty.duplicate(true),
 		"event_history": event_history.duplicate(true),
 		"active_bonus_events": active_bonus_events.duplicate(true),
+		# v26.11(A1.5a): 补存未决事件——此前 active_event 不入档，读档即丢
+		# （TODO_BACKLOG 观察项："读档丢未决事件"）。玩家在事件面板看到的
+		# 待抉择事件自此跨会话保留；旧档无该 key = 空事件，行为不变。
+		"active_event": active_event.duplicate(true),
 	}
 
 ## 加载状态
@@ -241,7 +313,12 @@ func load_state(data: Dictionary) -> void:
 		active_bonus_events = data["active_bonus_events"].duplicate(true)
 	else:
 		active_bonus_events = {}
+	# v26.11(A1.5a): 恢复未决事件（旧档无 key = 空事件；缺 template 的事件体视为损坏丢弃）
 	active_event = {}
+	if data.has("active_event") and data["active_event"] is Dictionary:
+		var restored: Dictionary = data["active_event"]
+		if not restored.is_empty() and restored.has("template") and restored.has("name"):
+			active_event = restored.duplicate(true)
 
 ## 激活加成事件
 func apply_bonus_event(faction_id: String, bonus: Dictionary) -> void:
@@ -256,4 +333,10 @@ func apply_bonus_event(faction_id: String, bonus: Dictionary) -> void:
 func get_active_bonus_for_faction(faction_id: String) -> Dictionary:
 	if active_bonus_events.has(faction_id):
 		return active_bonus_events[faction_id].get("bonus", {})
+	return {}
+
+## v26.11(A1.3): 势力生效加成的完整状态 {bonus, remaining}（供 UI 展示剩余场次）
+func get_bonus_state_for_faction(faction_id: String) -> Dictionary:
+	if active_bonus_events.has(faction_id):
+		return active_bonus_events[faction_id].duplicate(true)
 	return {}

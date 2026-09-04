@@ -77,6 +77,8 @@ const DEFERRED_MANAGER_LOADS: Array = [
 	["/root/BunkerManager", SK_BUNKER],
 	# v26: 制造系统（pity 暗保底计数；配方解锁实时读情报不落档）
 	["/root/ManufactureManager", SK_MANUFACTURE],
+	# v27: 黑门无限模式（最佳纪录/星髓周封顶计数）
+	["/root/EndlessBlackgateManager", "endless_blackgate"],
 ]
 const CRITICAL_RESETTABLE_MANAGERS: Array[String] = [
 	"BlueprintManager",
@@ -962,28 +964,31 @@ func _enqueue_starter_backpack_cards() -> void:
 				if not bag.has_item(blueprint_id):
 					bag.add_item(blueprint_id, 1)
 
-			# ⚠️ 测试模式：开局发放全部改造蓝图 + 全部进化蓝图（开发/测试用，上线前需改回）
+			# ⚠️ 测试模式：开局发放全部改造蓝图 + 全部进化蓝图。
+			# v26.11(A3)：由 GameConfig.debug_grant_all_blueprints 门控（默认 false = 正式行为，
+			# 仅起步图纸+掉落解锁；开发/测试想全开时置 true），替代原"上线前需改回"的裸代码块。
 			# 正式设计：改造/进化蓝图应靠战斗掉落（精英/Boss）逐步解锁，不开局全送。
 			# 改造蓝图口径：ModificationRegistry 全集，排除 enhancement（强化词条，非改造模块）。
 			#   → 与 modification_panel/_refresh_mod_list 同口径（blueprint_ 前缀，排除 blueprint_evol_）
 			# 进化蓝图口径：IntelManualItems._collect_all_evolution_steps()（lineage 权威口径，
 			#   与 UnitLineageConfig 判定对齐，避免 evolution_paths 的 15 个幽灵卡）。
-			const ModificationRegistry = preload("res://scripts/systems/modification_registry.gd")
-			const BlueprintDefinitions = preload("res://data/blueprint_definitions.gd")
-			# ① 全部改造蓝图
-			for mod_id in ModificationRegistry.get_all_ids():
-				# 排除强化词条（source=enhancement，非可安装改造模块，有独立系统）
-				if String(ModificationRegistry.get_data(mod_id).get("source", "")) == "enhancement":
-					continue
-				var mod_bp: String = BlueprintDefinitions.get_mod_blueprint_id(mod_id)
-				if not mod_bp.is_empty() and not bag.has_item(mod_bp):
-					bag.add_item(mod_bp, 1)
-			# ② 全部进化蓝图（复用 lineage 口径的进化跳收集器）
-			for step in IntelManualItems._collect_all_evolution_steps():
-				var evo_bp: String = BlueprintDefinitions.get_evolution_blueprint_id(
-					String(step.from), String(step.to))
-				if not evo_bp.is_empty() and not bag.has_item(evo_bp):
-					bag.add_item(evo_bp, 1)
+			if GameConfig.get_default().debug_grant_all_blueprints:
+				const ModificationRegistry = preload("res://scripts/systems/modification_registry.gd")
+				const BlueprintDefinitions = preload("res://data/blueprint_definitions.gd")
+				# ① 全部改造蓝图
+				for mod_id in ModificationRegistry.get_all_ids():
+					# 排除强化词条（source=enhancement，非可安装改造模块，有独立系统）
+					if String(ModificationRegistry.get_data(mod_id).get("source", "")) == "enhancement":
+						continue
+					var mod_bp: String = BlueprintDefinitions.get_mod_blueprint_id(mod_id)
+					if not mod_bp.is_empty() and not bag.has_item(mod_bp):
+						bag.add_item(mod_bp, 1)
+				# ② 全部进化蓝图（复用 lineage 口径的进化跳收集器）
+				for step in IntelManualItems._collect_all_evolution_steps():
+					var evo_bp: String = BlueprintDefinitions.get_evolution_blueprint_id(
+						String(step.from), String(step.to))
+					if not evo_bp.is_empty() and not bag.has_item(evo_bp):
+						bag.add_item(evo_bp, 1)
 
 	# v7.1: 移除 _grant_all_evolution_blueprints() 调用。
 	# 进化蓝图现应通过战斗掉落（精英/Boss，20%概率）逐步解锁，不再开局全送。
@@ -1370,6 +1375,11 @@ func _load_from_path(path: String) -> bool:
 	if _load_game_critical_phase_open:
 		_load_game_critical_phase_open = false
 		_perf_phase_end("load_game_critical_managers")
+	# v26.x 改造消耗品化：旧档回填「见过集合」——库存 ∪ 已安装改造
+	# （IntelItemBag/InstanceRegistry 均已在此批加载完，顺序安全）
+	var _seen_bag: Node = get_node_or_null("/root/IntelItemBag")
+	if _seen_bag != null and _seen_bag.has_method("backfill_seen_from_registry"):
+		_seen_bag.backfill_seen_from_registry()
 	_load_game_deferred_phase_open = true
 	_perf_phase_begin("load_game_deferred_managers")
 	_schedule_deferred_manager_loads(data)

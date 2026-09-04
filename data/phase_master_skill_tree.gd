@@ -139,7 +139,7 @@ const SKILL_TREE: Dictionary = {
 		# tier 2：解锁 affix 词条赋予（替代随机 roll）
 		{"id": "pms_int_2", "name": "模块化武装", "desc": "解锁 affix 词条系统：所有卡获得基础 affix 槽",
 		 "branch": BRANCH_INTELLIGENCE, "tier": 2, "cost": 2, "requires": ["pms_int_1a"],
-		 "unlocks": [{"type": "affix", "pool": ["affix_basic_atk", "affix_basic_def", "affix_basic_hp"]}],
+		 "unlocks": [{"type": "affix", "pool": ["weapon_dmg_up", "platform_def_up", "platform_hp_up"]}],
 		 "effects": {}},
 			# tier 3：智能火控（v8.5：原 smart_targeting 未实装，换暴击+闪避数值）
 			{"id": "pms_int_3", "name": "智能火控", "desc": "所有单位暴击率 +8%，闪避 +5%",

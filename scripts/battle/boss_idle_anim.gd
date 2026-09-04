@@ -20,6 +20,11 @@ class_name BossIdleAnim
 const ANIM_ROOT := "res://assets/effects/unit_anims/"
 const MAX_FRAMES: int = 8
 const DEFAULT_FPS := 6.0
+## v26.9: 描边 uniform 兜底刷新——boss 帧现为同分辨率整图（刷新实为 no-op），
+## 但换贴图点接 refresh 是契约（帧分辨率将来变化时自愈），见 unit_outline.gd 头注
+const UnitOutline := preload("res://scripts/battle/unit_outline.gd")
+## v27.2: 星冥占位回退——visual_id 目录的 boss 帧资产（xeno_templar → fut_boss_nexus）
+const EnemyUnitManifest := preload("res://data/enemy_unit_manifest.gd")
 
 
 ## 尝试给单位挂待机帧动画。成功返回 true。
@@ -34,15 +39,13 @@ static func attach(unit_spr: Sprite2D, unit_id: String, fps: float = DEFAULT_FPS
 	var existing: Node = unit_spr.get_node_or_null("BossIdleFrameDriver")
 	if existing != null:
 		return true
-	var frames: Array = []
-	for i in range(MAX_FRAMES):
-		var p := ANIM_ROOT + unit_id + "/idle_f%d.png" % i
-		if not ResourceLoader.exists(p):
-			break
-		var t: Texture2D = load(p)
-		if t == null:
-			break
-		frames.append(t)
+	var frames: Array = _load_frames(String(unit_id))
+	if frames.size() < 2:
+		## v27.2: 占位图源回退——visual_id（复用卡图 id）目录带 boss 帧资产时继承。
+		## 经典单位 visual_id 多为自身/雪碧条卡 → 无行为变化。
+		var vis_fb: String = EnemyUnitManifest.visual_id_for_archetype(String(unit_id).trim_prefix("captured_"))
+		if not vis_fb.is_empty() and vis_fb != String(unit_id):
+			frames = _load_frames(vis_fb)
 	if frames.size() < 2:
 		return false
 	var driver := FrameDriver.new()
@@ -51,6 +54,19 @@ static func attach(unit_spr: Sprite2D, unit_id: String, fps: float = DEFAULT_FPS
 	driver.fps = fps
 	unit_spr.add_child(driver)
 	return true
+
+
+static func _load_frames(dir_id: String) -> Array:
+	var frames: Array = []
+	for i in range(MAX_FRAMES):
+		var p := ANIM_ROOT + dir_id + "/idle_f%d.png" % i
+		if not ResourceLoader.exists(p):
+			break
+		var t: Texture2D = load(p)
+		if t == null:
+			break
+		frames.append(t)
+	return frames
 
 
 ## 帧驱动器:轻量 _process 计时换 texture(挂在 unit_spr 下,随单位销毁)。
@@ -72,3 +88,4 @@ class FrameDriver extends Node:
 		_t = 0.0
 		_idx = (_idx + 1) % frames.size()
 		_spr.texture = frames[_idx]
+		UnitOutline.refresh(_spr)  # v26.9: 换帧同步描边 uniform（兜底契约）

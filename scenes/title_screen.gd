@@ -7,6 +7,8 @@ func _play_sfx(name: String) -> void:
 	if am and am.has_method("play_sfx"):
 		am.play_sfx(name)
 
+const PanelStyles = preload("res://scripts/ui/panel_styles.gd")
+
 # 颜色常量
 const COLOR_CYAN := Color(0, 0.941, 1)
 const COLOR_PURPLE := Color(0.545, 0.361, 0.965)
@@ -22,6 +24,11 @@ var _stars: Array = []
 func _ready() -> void:
 	# P1-9: 中文字体显式 fallback 链（标题画面也有大量中文文本）
 	DesignTokens.ensure_cjk_fallback()
+	# v26.11(A2.4): 大字号 UI 缩放启动应用（标题场景面板实例的 _ready 也会应用，
+	# 此处兜底覆盖面板懒加载/移除的未来变化）
+	var _settings_script := load("res://scenes/ui/settings_panel.gd")
+	if _settings_script:
+		_settings_script.apply_ui_scale_at_boot()
 	# 获取按钮节点
 	var new_btn: Button = get_node_or_null("CenterContainer/MainVBox/ButtonsVBox/NewGameButton")
 	var continue_btn: Button = get_node_or_null("CenterContainer/MainVBox/ButtonsVBox/ContinueButton")
@@ -46,8 +53,18 @@ func _ready() -> void:
 	var arena_btn: Button = get_node_or_null("CenterContainer/MainVBox/ButtonsVBox/Arena3v3Button")
 	if arena_btn:
 		arena_btn.pressed.connect(_on_arena_3v3)
+	# v26.9: 开发调试按钮仅 debug 构建显示（上架版标题页不应出现开发入口）
+	# 覆盖四个：切换存档/战斗效果检查/3v3 群战演练/重看开场(开发,见 _add_replay_intro_button)
+	if not OS.is_debug_build():
+		for dbn in ["SwitchSlotButton", "CombatCheckButton", "Arena3v3Button", "ReplayIntroButton"]:
+			var dev_btn: Button = get_node_or_null("CenterContainer/MainVBox/ButtonsVBox/" + dbn)
+			if dev_btn != null:
+				dev_btn.visible = false
 	# v21 余烬要塞：基地主枢纽入口（程序化创建，样式复刻继续按钮，插在其下方）
 	_add_bunker_button()
+	# v26.9: 按钮层级（主操作实心/次操作描边/开发按钮弱化）——统一走 PanelStyles 工厂
+	_apply_button_tiers()
+	_update_version_label()
 	var settings_panel = get_node_or_null("SettingsOverlay/CenterContainer/SettingsPanel")
 	if settings_panel and settings_panel.has_signal("closed"):
 		settings_panel.closed.connect(_on_settings_closed)
@@ -61,6 +78,50 @@ func _ready() -> void:
 	_play_intro_animation()
 	# 保险起见：下一帧强制启用按钮，避免动画异常导致一直不可点击
 	call_deferred("_force_enable_buttons")
+
+## v26.9: 标题按钮三层视觉层级——主操作 solid 高亮 / 次操作 ghost / 开发按钮灰弱化
+## （颜色走 DT token，样式走 PanelStyles 工厂，圆角档位 6）
+func _apply_button_tiers() -> void:
+	var vbox := get_node_or_null("CenterContainer/MainVBox/ButtonsVBox")
+	if vbox == null:
+		return
+	var accent: Color = DesignTokens.COLOR_ACCENT_CYAN
+	var solid := PanelStyles.make_button_styles(accent, "solid")
+	var ghost := PanelStyles.make_button_styles(accent, "ghost")
+	var dev_ghost := PanelStyles.make_button_styles(Color(0.55, 0.58, 0.66), "ghost")
+	# 主操作：accent 实心 + 深色文字（对比可读）
+	for bn in ["NewGameButton", "ContinueButton", "EnterBunkerButton"]:
+		_style_tier_btn(vbox, bn, solid, 20, Color(0.03, 0.10, 0.14), Color(0.03, 0.10, 0.14))
+	# 次操作：描边 ghost + 白字/青悬停
+	for bn in ["SettingsButton", "QuitButton"]:
+		_style_tier_btn(vbox, bn, ghost, 18, Color(1, 1, 1, 0.92), accent)
+	# 开发按钮：灰 ghost 弱化（debug 构建才可见）
+	for bn in ["SwitchSlotButton", "CombatCheckButton", "Arena3v3Button", "ReplayIntroButton"]:
+		_style_tier_btn(vbox, bn, dev_ghost, 13, Color(0.62, 0.65, 0.72), Color(0.8, 0.84, 0.9))
+
+
+func _style_tier_btn(vbox: Node, btn_name: String, styles: Dictionary, font_size: int,
+		font_col: Color, hover_col: Color) -> void:
+	var b := vbox.get_node_or_null(btn_name) as Button
+	if b == null:
+		return
+	for key in ["normal", "hover", "pressed", "disabled", "focus"]:
+		if styles.has(key):
+			b.add_theme_stylebox_override(key, styles[key])
+	b.add_theme_font_size_override("font_size", font_size)
+	b.add_theme_color_override("font_color", font_col)
+	b.add_theme_color_override("font_hover_color", hover_col)
+	b.add_theme_color_override("font_pressed_color", font_col)
+	b.add_theme_color_override("font_focus_color", hover_col)
+
+
+## v26.9: 版本号统一从工程设置读（project.godot application/config/version）
+func _update_version_label() -> void:
+	var version_label: Label = get_node_or_null("CenterContainer/MainVBox/VersionLabel")
+	if version_label:
+		var ver: String = str(ProjectSettings.get_setting("application/config/version", "26.9"))
+		version_label.text = "v%s · Construct Era" % ver
+
 
 func _generate_stars() -> void:
 	_stars.clear()
@@ -130,11 +191,10 @@ func _set_buttons_enabled(enabled: bool) -> void:
 				child.disabled = not enabled
 
 func _process(delta: float) -> void:
-	# 标题呼吸效果
+	# 标题呼吸效果（v26.9: 亮度脉冲——原 scale 脉冲以左上为轴心会左右漂移）
 	if _title_label:
-		var pulse = sin(Time.get_ticks_msec() * 0.002) * 0.05 + 1.0
-		_title_label.scale.x = pulse
-		_title_label.scale.y = pulse
+		var pulse = 0.92 + 0.08 * (0.5 + 0.5 * sin(Time.get_ticks_msec() * 0.0018))
+		_title_label.self_modulate = Color(pulse, pulse, pulse, 1.0)
 
 	# 扫描线向下移动
 	var vp_h = get_viewport_rect().size.y
@@ -153,7 +213,7 @@ func _on_new_game() -> void:
 	_play_sfx("button")
 	if SaveManager:
 		SaveManager.start_new_game()
-	get_tree().change_scene_to_file("res://scenes/main.tscn")
+	SceneTransition.change(get_tree(), "res://scenes/main.tscn")
 
 func _on_continue() -> void:
 	_play_sfx("button")
@@ -164,7 +224,7 @@ func _on_continue() -> void:
 			SignalBus.save_restored_from_backup.connect(_on_save_restored_from_backup, CONNECT_ONE_SHOT)
 		var load_success = SaveManager.load_game()
 		if load_success:
-			get_tree().change_scene_to_file("res://scenes/main.tscn")
+			SceneTransition.change(get_tree(), "res://scenes/main.tscn")
 		else:
 			var toast_mgr = get_node_or_null("/root/ToastManager")
 			if toast_mgr and toast_mgr.has_method("show_error"):
@@ -212,7 +272,10 @@ func _add_bunker_button() -> void:
 	_add_replay_intro_button(btn)
 
 ## v24.5：开发预览"重看开场"——带 comic pending 直播开场，不改存档进度
+## v26.9: 仅 debug 构建创建（上架版不出现该按钮）
 func _add_replay_intro_button(style_source: Button) -> void:
+	if not OS.is_debug_build():
+		return
 	var vbox = get_node_or_null("CenterContainer/MainVBox/ButtonsVBox")
 	if vbox == null or vbox.has_node("ReplayIntroButton"):
 		return
@@ -237,7 +300,7 @@ func _on_replay_intro() -> void:
 		else:
 			SaveManager.start_new_game()
 	Engine.set_meta("bunker_intro_comic_pending", true)
-	get_tree().change_scene_to_file("res://scenes/intro/comic_intro.tscn")
+	SceneTransition.change(get_tree(), "res://scenes/intro/comic_intro.tscn")
 
 ## v21 余烬要塞：进入基地主枢纽（BunkerManager 懒加载后常驻 root，状态跨场景保留）
 func _on_enter_bunker() -> void:
@@ -261,16 +324,16 @@ func _on_enter_bunker() -> void:
 			var bunker: Node = get_node_or_null("/root/BunkerManager")
 			if bunker == null or not bunker.is_comic_seen():
 				Engine.set_meta("bunker_intro_comic_pending", true)
-				get_tree().change_scene_to_file("res://scenes/intro/comic_intro.tscn")
+				SceneTransition.change(get_tree(), "res://scenes/intro/comic_intro.tscn")
 				return
 		else:
 			# v24（开场剧情）：新档先播漫画序章（B1–B7 分格，docs/开场剧情_10方案.md 方案1），
 			# 播完携 wakeup 标记切 bunker_main 播醒来演出（B8，方案9）；有档直进不重播。
 			SaveManager.start_new_game()
 			Engine.set_meta("bunker_intro_comic_pending", true)
-			get_tree().change_scene_to_file("res://scenes/intro/comic_intro.tscn")
+			SceneTransition.change(get_tree(), "res://scenes/intro/comic_intro.tscn")
 			return
-	get_tree().change_scene_to_file("res://scenes/bunker/bunker_main.tscn")
+	SceneTransition.change(get_tree(), "res://scenes/bunker/bunker_main.tscn")
 
 
 func _on_settings_closed() -> void:
@@ -308,17 +371,28 @@ func _update_slot_display() -> void:
 
 ## 进入战斗效果检查场（独立测试场景，复用项目真实战斗效果）
 func _on_combat_check() -> void:
-	get_tree().change_scene_to_file("res://scenes/tools/combat_check.tscn")
+	SceneTransition.change(get_tree(), "res://scenes/tools/combat_check.tscn")
 
 
 ## 进入 3v3 群战演练场（我方3 vs 敌方3 自动对打，看群体弹道/命中/大招效果）
 func _on_arena_3v3() -> void:
-	get_tree().change_scene_to_file("res://scenes/tools/combat_arena_3v3.tscn")
+	SceneTransition.change(get_tree(), "res://scenes/tools/combat_arena_3v3.tscn")
 
 
 func _on_quit() -> void:
 	_play_sfx("button")
-	get_tree().quit()
+	# v26.11(A2.3): 退出确认（原直接 quit——存档虽有 about_to_quit 双保险自动保存，
+	# 加一道确认防误点，成本一行对话框）
+	var dialog := ConfirmationDialog.new()
+	dialog.title = "退出游戏"
+	dialog.dialog_text = "确认退出 相位战争？"
+	dialog.ok_button_text = "退出"
+	dialog.cancel_button_text = "取消"
+	add_child(dialog)
+	dialog.confirmed.connect(func() -> void: get_tree().quit())
+	dialog.confirmed.connect(dialog.queue_free)
+	dialog.canceled.connect(dialog.queue_free)
+	dialog.popup_centered()
 
 func _draw() -> void:
 	var t: float = Time.get_ticks_msec() * 0.001

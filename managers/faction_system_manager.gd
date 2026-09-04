@@ -212,6 +212,13 @@ func add_faction_reputation(faction_id: String, delta: int) -> int:
 	if not faction_reputation.has(faction_id):
 		return 0
 
+	# v26.15b: 声望获取加成消费（resource 桶 reputation_bonus 此前零消费）。
+	# 只对正增益生效（购买扣减不走加成）；按该势力自己的技能状态计。
+	if delta > 0 and faction_skill_states.has(faction_id):
+		var rep_bonus: float = FactionSkillManager.get_resource_value(faction_skill_states[faction_id], faction_id, "reputation_bonus")
+		if rep_bonus > 0.0:
+			delta = int(round(float(delta) * (1.0 + rep_bonus)))
+
 	var old_rep: int = faction_reputation[faction_id]
 	var result: Dictionary = FactionReputation.apply_delta(old_rep, delta)
 	faction_reputation[faction_id] = result["new_rep"]
@@ -443,8 +450,17 @@ func purchase_item(faction_id: String, item: FactionShop.StoreItem) -> Dictionar
 	if not can.get("ok", false):
 		return can
 
-	# 扣除声望
-	add_faction_reputation(faction_id, -item.reputation_cost)
+	# v26.15b: 商店折扣消费（resource 桶 shop_discount 此前零消费）——按折扣价扣声望
+	var shop_discount: float = 0.0
+	if faction_skill_states.has(faction_id):
+		shop_discount = clampf(FactionSkillManager.get_resource_value(faction_skill_states[faction_id], faction_id, "shop_discount"), 0.0, 0.5)
+	var eff_cost: int = int(ceil(float(item.reputation_cost) * (1.0 - shop_discount)))
+	# 折扣后余额复核（can_purchase_item 用原价预检，可能原价不足而折扣价足够）
+	if get_faction_reputation(faction_id) < eff_cost:
+		return {"ok": false, "reason": "reputation_insufficient", "required_rep": eff_cost, "current_rep": get_faction_reputation(faction_id)}
+
+	# 扣除声望（折扣价）
+	add_faction_reputation(faction_id, -eff_cost)
 
 	# 发放物品
 	var delivered: bool = FactionShop.deliver_item(item)
@@ -891,6 +907,12 @@ func get_active_event() -> Dictionary:
 func resolve_faction_event(choice: String) -> Dictionary:
 	if _event_manager != null:
 		return _event_manager.resolve_event(choice)
+	return {}
+
+## v26.11(A1.3): 势力当前生效的临时加成状态 {bonus, remaining}（事件奖励激活，按场递减）
+func get_active_faction_bonus_state(faction_id: String) -> Dictionary:
+	if _event_manager != null and _event_manager.has_method("get_bonus_state_for_faction"):
+		return _event_manager.get_bonus_state_for_faction(faction_id)
 	return {}
 
 ## 获取事件忠诚度

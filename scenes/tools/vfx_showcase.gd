@@ -449,7 +449,7 @@ func _trig_pillar() -> Callable:
 	return func(): VfxFactory.spawn_energy_pillar(_bf, Vector2.ZERO, Color(0.5, 0.6, 1.0, 0.8), 400.0, 0.7)
 
 func _trig_ult() -> Callable:
-	return func(): VfxFactory.spawn_ultimate_projectile(_bf, Vector2(-220, -180), Vector2.ZERO, TEX_ULT_NUKE, "arc", 56.0, Color.WHITE, Color(1.0, 0.8, 0.3, 0.9), 0.6)
+	return func(): VfxFactory.spawn_ultimate_projectile(_bf, Vector2(-220, -180), Vector2.ZERO, TEX_ULT_NUKE, "arc", 72.0, Color.WHITE, Color(1.0, 0.8, 0.3, 0.9), 0.6)
 
 func _trig_muzzle(wt: int) -> Callable:
 	return func(): VfxFactory.spawn_muzzle_flash(_bf, Vector2.ZERO, true, wt)
@@ -471,7 +471,7 @@ func _trig_pi_nuclear() -> Callable:
 	return func():
 		var pack: Dictionary = _load_nuke_texture_pack()
 		var colors := {"shock": Color(1.0, 0.85, 0.5, 0.9), "aftershock": Color(0.6, 0.7, 1.0, 0.5), "smoke": Color(0.35, 0.32, 0.30, 0.6)}
-		VfxFactory.spawn_ultimate_projectile(_bf, Vector2(-260, -200), Vector2.ZERO, TEX_ULT_NUKE, "arc", 52.0, Color.WHITE, Color(1.0, 0.8, 0.3, 0.9), 0.6,
+		VfxFactory.spawn_ultimate_projectile(_bf, Vector2(-260, -200), Vector2.ZERO, TEX_ULT_NUKE, "arc", 72.0, Color.WHITE, Color(1.0, 0.8, 0.3, 0.9), 0.6,
 			func(_p: Vector2): VfxFactory.spawn_nuclear_explosion(_bf, Vector2.ZERO, pack, colors, 0.6))
 
 ## 纳米虫群:对齐 on_battle_start nano_swarm(owner=PLAYER 配色虫群云)
@@ -483,11 +483,11 @@ func _trig_boss(kind: String) -> Callable:
 	match kind:
 		"apocalypse":
 			return func():
-				VfxFactory.spawn_ultimate_projectile(_bf, Vector2(60, -320), Vector2.ZERO, TEX_ULT_METEOR, "vertical", 64.0, Color(1.0, 0.55, 0.2), Color(1.0, 0.5, 0.2, 0.95), 0.55,
+				VfxFactory.spawn_ultimate_projectile(_bf, Vector2(60, -320), Vector2.ZERO, TEX_ULT_METEOR, "vertical", 84.0, Color(1.0, 0.55, 0.2), Color(1.0, 0.5, 0.2, 0.95), 0.55,
 					func(_p: Vector2): VfxFactory.spawn_spell_burst(_bf, Vector2.ZERO, TEX_APOC_METEOR, Color(1.0, 0.5, 0.2), 360.0, 0.9))
 		"inferno":
 			return func():
-				VfxFactory.spawn_ultimate_projectile(_bf, Vector2(240, -240), Vector2.ZERO, TEX_ULT_INFERNO, "dive", 56.0, Color(1.0, 0.3, 0.1), Color(1.0, 0.45, 0.1, 0.95), 0.5,
+				VfxFactory.spawn_ultimate_projectile(_bf, Vector2(240, -240), Vector2.ZERO, TEX_ULT_INFERNO, "dive", 72.0, Color(1.0, 0.3, 0.1), Color(1.0, 0.45, 0.1, 0.95), 0.5,
 					func(_p: Vector2):
 						VfxFactory.spawn_spell_burst(_bf, Vector2.ZERO, TEX_INFERNO, Color(1.0, 0.3, 0.1), 340.0, 0.9)
 						VfxFactory.spawn_spell_burst(_bf, Vector2(-90, 40), TEX_INFERNO, Color(1.0, 0.35, 0.12), 150.0, 0.6))
@@ -510,7 +510,7 @@ func _trig_boss(kind: String) -> Callable:
 				VfxFactory.spawn_lingering_debuff_ring(_bf, Vector2.ZERO, Color(0.45, 0.18, 0.65), 4.0)
 		"orbital":
 			return func():
-				VfxFactory.spawn_ultimate_projectile(_bf, Vector2(0, -300), Vector2.ZERO, TEX_ULT_ORBITAL, "vertical", 48.0, Color(0.7, 0.4, 1.0), Color(0.6, 0.4, 1.0, 0.9), 0.45,
+				VfxFactory.spawn_ultimate_projectile(_bf, Vector2(0, -300), Vector2.ZERO, TEX_ULT_ORBITAL, "vertical", 64.0, Color(0.7, 0.4, 1.0), Color(0.6, 0.4, 1.0, 0.9), 0.45,
 					func(_p: Vector2): VfxFactory.spawn_spell_burst(_bf, Vector2.ZERO, TEX_APOC_VOID, Color(0.5, 0.25, 0.8), 380.0, 1.2))
 	return func(): pass
 
@@ -545,8 +545,8 @@ func _trig_blood() -> Callable:
 func _trig_traj(mode: String) -> Callable:
 	if mode == "dive":
 		return func():
-			VfxFactory.spawn_ultimate_projectile(_bf, Vector2(230, -230), Vector2.ZERO, TEX_ULT_INFERNO, "dive", 56.0, Color(1.0, 0.3, 0.1), Color(1.0, 0.45, 0.1, 0.95), 0.5,
+			VfxFactory.spawn_ultimate_projectile(_bf, Vector2(230, -230), Vector2.ZERO, TEX_ULT_INFERNO, "dive", 72.0, Color(1.0, 0.3, 0.1), Color(1.0, 0.45, 0.1, 0.95), 0.5,
 				func(_p: Vector2): VfxFactory.spawn_spell_burst(_bf, Vector2.ZERO, TEX_INFERNO, Color(1.0, 0.3, 0.1), 300.0, 0.8))
 	return func():
-		VfxFactory.spawn_ultimate_projectile(_bf, Vector2(0, -300), Vector2.ZERO, TEX_ULT_ORBITAL, "vertical", 48.0, Color(0.7, 0.4, 1.0), Color(0.6, 0.4, 1.0, 0.9), 0.45,
+		VfxFactory.spawn_ultimate_projectile(_bf, Vector2(0, -300), Vector2.ZERO, TEX_ULT_ORBITAL, "vertical", 64.0, Color(0.7, 0.4, 1.0), Color(0.6, 0.4, 1.0, 0.9), 0.45,
 			func(_p: Vector2): VfxFactory.spawn_spell_burst(_bf, Vector2.ZERO, TEX_APOC_VOID, Color(0.5, 0.25, 0.8), 300.0, 0.8))

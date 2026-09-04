@@ -67,6 +67,8 @@ const CHANGED_SCRIPTS: Array[String] = [
 	"res://scenes/ui/intel_reveal_popup.gd",
 	"res://scenes/ui/backpack_panel.gd",
 	"res://scenes/world_map.gd",
+	# v26.16 UI 视觉批次（2026-09-03）：制造面板缩略列表 / 改造对比 / 详情收口 / hover token
+	"res://managers/evolution/evolution_helpers.gd",
 ]
 
 var _fails: Array[String] = []

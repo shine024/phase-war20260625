@@ -45,6 +45,7 @@ var _timers: Dictionary = {}
 var _active: bool = false
 ## v8.5: 被动技能 tick 累加器（光环类每 0.5s 结算一次，避免每帧扫描）
 var _passive_tick_acc: float = 0.0
+var _time_drain_acc: Dictionary = {}  # v26.14: 热寂类 interval 计时（effect → 累计秒）
 const PASSIVE_TICK_INTERVAL: float = 0.5
 ## v8.5: buff 类是否已应用（一次性，避免重复加 buff meta）
 var _passive_buff_applied: bool = false
@@ -54,6 +55,11 @@ func setup(driver: Node, battlefield: Node) -> void:
 	_driver = driver
 	_battlefield = battlefield
 	_timers.clear()
+	# v26.x: 跨战斗复位——引擎随 battle_manager autoload 存续，每场只重跑 setup。
+	# 只清 _timers 的话，第二场起 _passive_buff_applied 残留 true → boss 被动 buff
+	# （armor/damage/护盾/光环标记）及其 toast/闪光演出全部静默失效
+	_passive_buff_applied = false
+	_passive_tick_acc = 0.0
 	# 初始化每个 active_spell 的计时器（首次触发等一个完整 cooldown）
 	if _driver != null and _driver.has_method("get_boss_active_spells"):
 		for spell in _driver.get_boss_active_spells():
@@ -106,9 +112,10 @@ func update_passives(delta: float) -> void:
 	var passives: Array = _driver.get_boss_passive_spells()
 	if passives.is_empty():
 		return
-	# buff 类一次性应用（首次调用时）
+	# buff 类一次性应用（首次调用时）。v26.x: 置位时机移入 _apply_passive_buffs 成功路径——
+	# 旧版先置位，而 _apply_passive_buffs 在 allies 为空时直接 return（boss driver 不在
+	# enemy_units 组，首 tick 无杂兵必空），导致本场 buff 永久丢失
 	if not _passive_buff_applied:
-		_passive_buff_applied = true
 		_apply_passive_buffs(passives)
 	# 光环类节流 tick（每 0.5s 结算一次范围内伤害/抽血）
 	_passive_tick_acc += delta
@@ -143,6 +150,7 @@ func _apply_passive_buffs(passives: Array) -> void:
 	var allies: Array = _get_enemy_units()
 	if allies.is_empty():
 		return
+	_passive_buff_applied = true  # v26.x: 仅在真正应用后置位（首 tick 无杂兵时留给下一 tick 重试）
 	for spell in passives:
 		if not (spell is Dictionary):
 			continue
@@ -221,6 +229,16 @@ func _tick_aura_damage(params: Dictionary, effect: String, tick_dt: float) -> vo
 	var radius: float = float(params.get("radius", 150.0))
 	var boss_pos: Vector2 = _get_driver_pos()
 	var targets: Array = _get_player_units()
+	# v26.14: 热寂类（time_based_hp_drain）——interval 秒一次 burst，0.5s tick 只做计时。
+	# 修复前 "drain" 关键字命中百分比抽血档：8%/s 连续扣（本意每 30s 扣 8%，强 240 倍）。
+	var burst_interval: float = float(params.get("interval", 0.0))
+	if burst_interval > 0.0:
+		_time_drain_acc[effect] = float(_time_drain_acc.get(effect, 0.0)) + tick_dt
+		if float(_time_drain_acc[effect]) < burst_interval:
+			return
+		_time_drain_acc[effect] = 0.0
+	# v26.14: 自焚 self_damage（对 boss 自身）——循环外一次性结算，避免按目标数放大
+	var self_dps: float = float(params.get("self_damage", 0.0)) if effect == "self_damage_aura" else 0.0
 	for t in targets:
 		if t == null or not is_instance_valid(t) or not (t is Node2D):
 			continue
@@ -228,7 +246,24 @@ func _tick_aura_damage(params: Dictionary, effect: String, tick_dt: float) -> vo
 			continue
 		# damage_aura：固定点数伤害（按 tick_dt 缩放，参数是每秒值）
 		var dmg: float = 0.0
-		if effect.find("max_hp") >= 0 or effect.find("drain") >= 0 or effect.find("entropy") >= 0:
+		if burst_interval > 0.0:
+			# 热寂：interval 秒一次，目标 max_hp × drain_percent 整发结算
+			var t_stats_b = t.get("stats") if "stats" in t else null
+			var t_max_b: float = float(t_stats_b.max_hp) if t_stats_b != null and "max_hp" in t_stats_b else (float(t.get("max_hp")) if "max_hp" in t else 100.0)
+			dmg = t_max_b * float(params.get("drain_percent", 0.08))
+		elif effect == "self_damage_aura":
+			# v26.14: 自焚——aura_damage 对敌（每秒值）。修复前 params 落空读默认 30。
+			dmg = float(params.get("aura_damage", params.get("damage", 30.0))) * tick_dt
+		elif effect == "life_energy_drain":
+			# v26.14: 维度虹吸——hp_drain 每秒固定伤害 + energy_drain 抽玩家能量。
+			# 修复前两参数落空，退化成 1%/s 百分比抽血。
+			dmg = float(params.get("hp_drain", 20.0)) * tick_dt
+			var e_drain: float = float(params.get("energy_drain", 0.0))
+			if e_drain > 0.0:
+				var em: Node = Engine.get_main_loop().root.get_node_or_null("EnergyManager")
+				if em != null and em.has_method("spend"):
+					em.spend(e_drain * tick_dt)
+		elif effect.find("max_hp") >= 0 or effect.find("drain") >= 0 or effect.find("entropy") >= 0:
 			# 百分比抽血：按目标 max_hp 的百分比/秒
 			var pct: float = float(params.get("drain_percent", params.get("bonus", 0.01)))
 			# 修复：玩家单位 max_hp 在 t.stats.max_hp（顶层无 max_hp，旧 fallback 100 致抽血量级低 99%）
@@ -236,11 +271,14 @@ func _tick_aura_damage(params: Dictionary, effect: String, tick_dt: float) -> vo
 			var t_max_hp: float = float(t_stats.max_hp) if t_stats != null and "max_hp" in t_stats else (float(t.get("max_hp")) if "max_hp" in t else 100.0)
 			dmg = t_max_hp * pct * tick_dt
 		else:
-			# 固定伤害：params.damage 是每秒值
-			var dps: float = float(params.get("damage", 30.0))
+			# 固定伤害：params.damage 是每秒值；damage_mult 为倍率档（如 lightning_aura）
+			var dps: float = float(params.get("damage", 30.0)) * float(params.get("damage_mult", 1.0))
 			dmg = dps * tick_dt
 		if dmg > 0.0 and t.has_method("take_damage"):
 			t.take_damage(dmg, _driver)
+	# v26.14: 自焚对 boss 自身（每秒值 × tick_dt，循环外一次）
+	if self_dps > 0.0 and _driver != null and is_instance_valid(_driver) and _driver.has_method("take_damage"):
+		_driver.take_damage(self_dps * tick_dt)
 
 ## v9.1: 治疗光环 tick（massive_heal_aura/healing_aura 类，正向治疗范围内友军）。
 ## 治疗量 = 友军 max_hp × heal_percent × tick_dt（每秒值，按 tick_dt 缩放）。
@@ -522,7 +560,7 @@ func _play_apocalypse_cinematic(effect: String, name_text: String) -> float:
 	# boss 位置：一发大弹体从正上方高空垂直落下 → 落地大爆炸（on_arrival 回调触发）
 	var sky_height: float = 500.0  # 起点在目标上方 500px（屏幕外高空）
 	var boss_from: Vector2 = Vector2(boss_pos.x, boss_pos.y - sky_height)
-	VfxImpactFactory.spawn_ultimate_projectile(_battlefield, boss_from, boss_pos, proj_tex, "vertical", 80.0, proj_tint, trail_color, 0.55,
+	VfxImpactFactory.spawn_ultimate_projectile(_battlefield, boss_from, boss_pos, proj_tex, "vertical", 104.0, proj_tint, trail_color, 0.55,
 		func(land_pos: Vector2):
 			if _battlefield == null or not is_instance_valid(_battlefield):
 				return
@@ -556,7 +594,7 @@ func _play_apocalypse_cinematic(effect: String, name_text: String) -> float:
 			# v20.15: 战斗在错峰窗口内结束 → 后续小弹体不再发射（残留在结算背景的漏网链）
 			if was_live and not _battle_active_now():
 				return
-			VfxImpactFactory.spawn_ultimate_projectile(_battlefield, Vector2(captured_tpos.x, captured_tpos.y - sky_height), captured_tpos, proj_tex, "vertical", 52.0, proj_tint, trail_color, 0.45,
+			VfxImpactFactory.spawn_ultimate_projectile(_battlefield, Vector2(captured_tpos.x, captured_tpos.y - sky_height), captured_tpos, proj_tex, "vertical", 72.0, proj_tint, trail_color, 0.45,
 				func(lp: Vector2):
 					if _battlefield == null or not is_instance_valid(_battlefield):
 						return
@@ -593,7 +631,7 @@ func _play_inferno_cinematic(_effect: String, name_text: String) -> float:
 	# boss 位置：大燃烧弹从侧方高空俯冲 → 落地大火球 + 烟柱
 	# 起点在 boss 左上方屏幕外（dive 轨迹=低空俯冲，体现"空投"）
 	var bomb_from: Vector2 = Vector2(boss_pos.x - 350.0, boss_pos.y - 400.0)
-	VfxImpactFactory.spawn_ultimate_projectile(_battlefield, bomb_from, boss_pos, bomb_tex, "dive", 72.0, bomb_tint, trail_color, 0.5,
+	VfxImpactFactory.spawn_ultimate_projectile(_battlefield, bomb_from, boss_pos, bomb_tex, "dive", 96.0, bomb_tint, trail_color, 0.5,
 		func(land_pos: Vector2):
 			if _battlefield == null or not is_instance_valid(_battlefield):
 				return
@@ -626,7 +664,7 @@ func _play_inferno_cinematic(_effect: String, name_text: String) -> float:
 			# v20.15: 战斗在错峰窗口内结束 → 后续小燃烧弹不再发射
 			if was_live and not _battle_active_now():
 				return
-			VfxImpactFactory.spawn_ultimate_projectile(_battlefield, captured_from, captured_tpos, bomb_tex, "dive", 46.0, bomb_tint, trail_color, 0.4,
+			VfxImpactFactory.spawn_ultimate_projectile(_battlefield, captured_from, captured_tpos, bomb_tex, "dive", 64.0, bomb_tint, trail_color, 0.4,
 				func(lp: Vector2):
 					if _battlefield == null or not is_instance_valid(_battlefield):
 						return
@@ -949,7 +987,9 @@ func _exec_aoe_damage(dmg_mult: float, name_text: String, delay: float = 0.4) ->
 		# 标记（红圈预警）
 		VfxImpactFactory.spawn_shockwave(_battlefield, epos, 50.0, Color(1.0, 0.3, 0.3, 0.6))
 		# 延迟爆炸 + 伤害（tween，仿 nuclear_bombardment）
-		var captured_enemy = e
+		# v26.11(D2): weakref 捕获——延迟窗口内玩家单位可能死亡被 free（消除
+		# "Lambda capture was freed" 错误类别，逻辑守卫已有 is_instance_valid）
+		var weak_enemy: WeakRef = weakref(e)
 		var captured_pos = epos
 		var tw := _battlefield.create_tween()
 		tw.tween_interval(maxf(delay, 0.1))  # v17f: 对齐演出（下限 0.1 防零延迟直接结算）
@@ -958,6 +998,7 @@ func _exec_aoe_damage(dmg_mult: float, name_text: String, delay: float = 0.4) ->
 				return
 			if was_live and not _battle_active_now():
 				return  # v20.15: 战斗已结束——落地爆炸与伤害全部作废
+			var captured_enemy = weak_enemy.get_ref()
 			var cur_pos: Vector2 = captured_pos
 			if is_instance_valid(captured_enemy) and captured_enemy is Node2D:
 				cur_pos = (captured_enemy as Node2D).global_position

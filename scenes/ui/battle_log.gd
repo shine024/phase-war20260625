@@ -118,8 +118,10 @@ func _on_unit_killed(victim: Node, killer: Node, is_player_victim: bool) -> void
 		# 我方损失
 		_add_entry("损失 %s" % _unit_name(victim), DT.COLOR_DANGER)
 	else:
-		# 我方击杀敌方
-		_add_entry("我方 %s 击毁 %s" % [_unit_name(killer), _unit_name(victim)], DT.COLOR_GREEN_BRIGHT)
+		# 我方击杀敌方。v26.15d: 击杀者为 dot/灼烧类伤害时节点常已释放，
+		# 旧文案读作"未知单位"（玩家不可知语义），回退"我方单位"。
+		var killer_name: String = _unit_name(killer) if killer != null and is_instance_valid(killer) else "我方单位"
+		_add_entry("我方 %s 击毁 %s" % [killer_name, _unit_name(victim)], DT.COLOR_GREEN_BRIGHT)
 
 func _on_boss_wave_started(_ids: Array) -> void:
 	_add_entry("精英波次来袭！", DT.COLOR_ENERGY)
@@ -207,6 +209,13 @@ func _unit_name(unit: Node) -> String:
 	return unit.name
 
 func _card_id_to_name(card_id: String) -> String:
+	# v26.15d: 优先查 UCT 真实中文卡名（玩家/敌方条目同表带 display_name）——
+	# 旧实现只做 id 美化（"ww1_inf_mp18"→"Ww 1 Inf Mp 18"），战报可读性差。
+	var entry: Dictionary = load("res://data/unified_card_table.gd").get_entry(card_id)
+	if not entry.is_empty():
+		var dn: String = str(entry.get("display_name", ""))
+		if not dn.is_empty():
+			return dn
 	# 简单美化：去掉前缀，按 _ 拆分
 	if card_id.is_empty():
 		return "单位"
@@ -217,6 +226,12 @@ func _card_id_to_name(card_id: String) -> String:
 func _archetype_to_name(archetype_id: String) -> String:
 	if archetype_id.is_empty():
 		return "敌方单位"
+	# v26.15d: archetype_id 同样先查 UCT 中文名
+	var entry: Dictionary = load("res://data/unified_card_table.gd").get_entry(archetype_id)
+	if not entry.is_empty():
+		var dn: String = str(entry.get("display_name", ""))
+		if not dn.is_empty():
+			return dn
 	var cleaned := archetype_id.replace("elite_", "").replace("basic_", "").replace("boss_", "")
 	cleaned = cleaned.replace("_", " ")
 	return cleaned.capitalize()

@@ -7,6 +7,7 @@ extends Node
 ## - 全局加成：所有己方单位共享符文之语激活效果
 
 const GC = preload("res://resources/game_constants.gd")
+const GameCfg = preload("res://resources/game_config.gd")
 const PhaseInstruments = preload("res://data/phase_instruments.gd")
 const RunewordMatcher = preload("res://managers/runeword_matcher.gd")
 const RuneDefs = preload("res://data/runes.gd")
@@ -19,9 +20,8 @@ func _get_default_cards() -> Variant:
 	if _default_cards_instance == null:
 		_default_cards_instance = load("res://data/default_cards.gd")
 	return _default_cards_instance
-## ── 子系统：装备/卸下/同步 ──
-const LoadoutSync = preload("res://managers/phase_instrument_loadout_sync.gd")
-var _loadout_sync: PhaseInstrumentLoadoutSync = null
+## v26.11(A1.5c)：原拆分残留 LoadoutSync（实例化后零方法调用，equip/unequip 真身在
+## 本文件 571/624 行）已删除——文件与引用一并清理，git 历史可找回。
 
 ## 累计相位场经验阈值（Lv1..Lv30），与每关 victory 发放的 LevelEras.get_base_xp_for_level 对齐调参
 ## v8.x: 等级上限 16→30。Lv1-16 沿用原值（旧档向后兼容不降级）；
@@ -205,8 +205,6 @@ func _get_max_unlocked_star() -> int:
 	return max_star
 
 func _ready() -> void:
-	_loadout_sync = LoadoutSync.new()
-	_loadout_sync.setup(self)
 	_init_unlocked_instruments()
 	_set_default_instrument_if_needed()
 	_rebuild_slots()
@@ -928,6 +926,13 @@ func clear_slots_for_new_game() -> void:
 	# equip_rune 自带越界/拥有校验，槽位不足时静默跳过。
 	for i in range(GC.NEW_GAME_STARTER_RUNE_IDS.size()):
 		equip_rune(i, GC.NEW_GAME_STARTER_RUNE_IDS[i])
+	# v26.x 改造消耗品化：新档 starter 改造图纸——教程第 6 步"打开改造"需要列表非空、
+	# 且初始卡（GRUNT 档）要有可装件。全注册表唯一 common（GRUNT 门槛）模块是护膝护肘，
+	# 发 2 张：初始步兵可装一张、另一张给后续步兵卡（add_item 自动记入见过集合）。
+	if GameCfg.get_default().mod_consumable_enabled:
+		var _starter_bag: Node = get_node_or_null("/root/IntelItemBag")
+		if _starter_bag != null and _starter_bag.has_method("add_item"):
+			_starter_bag.add_item("blueprint_inf_14_knee_pads", 2)
 	_emit_slots_changed()
 
 ## 新游戏自动装备一套初始卡牌到空槽位（v7.x 已停用）

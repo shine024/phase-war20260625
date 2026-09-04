@@ -27,7 +27,9 @@ const FLAME_STAR_TEX       := preload("res://assets/effects/particle_textures/fl
 const FLAME_JET_TEX        := preload("res://assets/effects/particle_textures/flame_jet_sym.png")
 ## v18-R9: 摄影感火舌 v2（黑体色序+噪声边缘，内容 160×45px）。
 const FLAME_JET_V2_TEX     := preload("res://assets/effects/particle_textures/flame_jet_v2.png")
-const ENERGY_MUZZLE_TEX    := preload("res://assets/effects/projectiles/weapons_realistic/weapon_artillery_muzzle.png")  # 能量喷射流（白青，LASER/OMEGA/RAIL）
+## v26.11: 能量喷射流换 agnes 生成的青白电弧喷流（原 weapon_artillery_muzzle.png 是
+## 暖色炮口焰照片，蓝 ramp 下乘成橄榄泥点）。内容横跨 ~1000px，与旧 974px 同量级，scale 参数兼容。
+const ENERGY_MUZZLE_TEX    := preload("res://assets/effects/particle_textures/energy_muzzle_jet.png")  # 能量喷射流（白青，LASER/OMEGA/RAIL）
 const HEAVY_TRAIL_TEX := preload("res://assets/effects/projectiles/omega_platform/omega_platform_projectile_trail.png")
 ## 启用拖尾的重型武器类型：INDIRECT(1)/AERIAL(2)/ROCKET(3)/FLAK(7)/MISSILE(9)/OMEGA(10)/RAIL(11)
 const HEAVY_TRAIL_WEAPON_TYPES: Array = [1, 2, 3, 7, 9, 10, 11]
@@ -663,8 +665,34 @@ func _update_trail_transform() -> void:
 ## 轻武器配方在 vfx_impact_factory._impact_recipe 的 0,4 分支（v8.4 已重平衡：少粒子高亮度）。
 
 
+## v26.x: 命中/枪口特效父节点解析——v26.11(D1) 起子弹归池后常驻树上（挂 ObjectPool
+## 节点下、隐藏+DISABLED）。同帧二次碰撞或延迟回调若发生在归还之后，get_parent()
+## 会拿到 ObjectPool 节点：spawn_impact_with_kind(parent: Node2D) 类型报错且特效丢失。
+## 此处识别池容器并回退到缓存的开火父层（入树时记录）。
+var _battle_fx_parent: Node2D = null
+
+
+func _enter_tree() -> void:
+	var p := get_parent()
+	if p is Node2D and not _is_pool_container(p):
+		_battle_fx_parent = p
+
+
+func _is_pool_container(n: Node) -> bool:
+	return n == ObjectPoolManager or (ObjectPoolManager != null and ObjectPoolManager.is_ancestor_of(n))
+
+
+func _resolve_fx_parent() -> Node2D:
+	var p := get_parent()
+	if p is Node2D and not _is_pool_container(p):
+		return p
+	if _battle_fx_parent != null and is_instance_valid(_battle_fx_parent):
+		return _battle_fx_parent
+	return get_tree().current_scene as Node2D
+
+
 func _spawn_tex_impact_at(world_pos: Vector2) -> void:
-	var parent := get_parent()
+	var parent := _resolve_fx_parent()
 	if parent == null:
 		return
 
@@ -784,6 +812,8 @@ func _process(delta: float) -> void:
 				_finish_tex_bullet()
 				return
 		else:
+			# v26.x: 目标中途死亡不再静默消失——当前位置补命中特效（无伤害语义）
+			_spawn_tex_impact_at(global_position)
 			_finish_tex_bullet()
 			return
 	else:
@@ -883,6 +913,9 @@ func _process_indirect(delta: float) -> void:
 			# 命中特效在弹道落点（global_position），避免与移动目标视觉脱节
 			_spawn_tex_impact_at(global_position)
 			_on_hit(target)
+		else:
+			# v26.x: 目标中途死亡——照常落地爆炸（仅伤害作废），与曲射 batch 同语义
+			_spawn_tex_impact_at(global_position)
 		_finish_tex_bullet()
 		return
 
@@ -916,8 +949,8 @@ func _process_indirect(delta: float) -> void:
 
 func _spawn_muzzle_effect(pos: Vector2) -> void:
 	# v7.4: 炮口火焰改用 VfxImpactFactory 的 spark 池（原每次 new CPUParticles2D+Gradient）
-	# parent 用 get_parent()（子弹父节点，通常是 PlayerUnits/EnemyUnits 容器）
-	var host: Node = get_parent()
+	# v26.x: parent 解析走 _resolve_fx_parent（get_parent 在归还后会拿到 ObjectPool）
+	var host: Node = _resolve_fx_parent()
 	if host == null or not (host is Node2D):
 		return
 	# v17: 枪口火类别键用 _visual_wt（WeaponVisualProfiles 解析值，武器名优先）
@@ -978,7 +1011,12 @@ func _spawn_impact_explosion(pos: Vector2, opts: Dictionary = {}) -> void:
 	if not _vfx_variant.is_empty():
 		_final_opts = opts.duplicate()
 		_final_opts["vfx_variant"] = _vfx_variant
-	WeaponProjectileVfx.spawn_impact_with_kind(self, pos, _visual_wt, shooter_is_player, _target_combat_kind, _final_opts, _weapon_name)
+	# v26.x: parent 不能传 self——命中后同帧 _finish_tex_bullet 把子弹归还对象池（离树），
+	# 挂在子弹上的整栈命中特效（贴图+帧动画+粒子+冲击波+烟柱）会随之瞬间消失。
+	# 与非爆炸族 _spawn_tex_impact_at 的 get_parent() 同款。
+	var fx_parent := _resolve_fx_parent()
+	if fx_parent != null:
+		WeaponProjectileVfx.spawn_impact_with_kind(fx_parent, pos, _visual_wt, shooter_is_player, _target_combat_kind, _final_opts, _weapon_name)
 
 
 ## v6.4: 命中时触发屏幕震动——曲射/爆炸类中震动，直射轻震动
@@ -1395,7 +1433,7 @@ func _on_hit(primary: Node2D) -> void:
 							_split_targets.append((_n as Node2D).global_position)
 							if _split_targets.size() >= 2:
 								break
-					var _vfx_parent := get_parent() as Node2D
+					var _vfx_parent := _resolve_fx_parent()
 					if _vfx_parent != null:
 						VfxImpactFactory.spawn_beam_split_arcs(_vfx_parent, _split_pos, _split_targets, Color(0.9, 0.8, 1.0))
 				if _beam_res.get("reflect", false):
@@ -1518,6 +1556,14 @@ func _on_hit(primary: Node2D) -> void:
 			# v8.6: 势力技能 extra_attack_chance（概率触发额外一次伤害结算）
 			if FactionSkillEffectHandler.roll_extra_attack(shooter):
 				primary.take_damage(final_after_wall, atk_primary)
+	# v27.1: 暴击势能词条（crit_ensure_hit）——打出暴击后武装"下一次攻击必中（无视闪避）"。
+	# 必须在本次伤害落账之后设置：受击侧 take_damage→resolve_hit 的闪避判定发生在上方
+	# take_damage 调用内，提前设会被本发消费（语义=下一次攻击）。
+	# 消费点：construct_unit/enemy_unit/swarm_enemy_slot 的 take_damage dodge 计算处。
+	# 已知边界：AOE 同轮多目标仅首个受击消费（同帧先到先得，可接受）。
+	if is_crit and shooter_stats != null and shooter_stats.crit_ensure_hit > 0.0 \
+			and is_instance_valid(shooter):
+		shooter.set_meta("_affix_ensure_hit_pending", true)
 	# v9.2: 多目标穿透视觉——子弹穿透到后续目标（非首次命中）时，在命中点播紫色冲击波环+短穿甲光线，
 	# 让玩家清楚看到"这颗子弹穿过了几个单位"。首次命中（_pierce_hit_targets.size()==1）由既有
 	# _pending_pierce 机制在命中特效里处理紫色光线，此处只补"后续穿透命中"的视觉。
@@ -1572,6 +1618,11 @@ func _on_hit(primary: Node2D) -> void:
 			target = _next_target
 		return
 
+	# v26.x: TANK_GUN 已在函数头置淡出状态（1159-1162），这里不再即时回收——
+	# 否则 v9.3 的"命中后 0.2s 淡出"被饿死（重炮弹命中瞬间即消失），
+	# 淡出计时由 _process 驱动、到期回收在 _physics_process（_tank_gun_timer 分支）
+	if _tank_gun_terminate:
+		return
 	_finish_tex_bullet()
 
 ## 基础伤害处理（不带词条效果）
@@ -1649,8 +1700,7 @@ func reset_pool_object() -> void:
 	_start_position = Vector2.ZERO
 	_direction = Vector2.RIGHT
 	_beam_visual_phase = 0
-	_use_tex_sprite = false
-	_use_tex_sprite = false
+	_use_tex_sprite = false  # v26.x: 去除相邻双写（复制粘贴残留）
 	_rotates_with_direction = false  # v9.4: 对象池卫生（防复用残留）
 
 	# 曲射弹道重置

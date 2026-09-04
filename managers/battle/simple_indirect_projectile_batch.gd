@@ -49,6 +49,8 @@ var _buckets: Dictionary = {}  # weapon_type -> Array（成员级复用，clear 
 var _dict_pool: Array[Dictionary] = []
 # v20.25: 爆炸音节流时间戳——多门火炮同帧落地时压成一声（70ms 窗口，同直射 batch 命中特效限流思路）
 var _last_boom_msec: int = -10000
+# v26.x: 开火音节流时间戳（110ms，对齐直射 batch 开火音）——多门高射速 FLAK 齐射压制
+var _last_fire_sfx_msec: int = -10000
 
 func _acquire_proj_dict() -> Dictionary:
 	if not _dict_pool.is_empty():
@@ -155,6 +157,7 @@ func fire(from: Vector2, tgt: Node2D, dmg: float, wt: int, shooter: Node2D, shoo
 	d["weapon_name"] = weapon_name
 	d["vfx_variant"] = p_vfx_variant  # v8.4: 武器类改造专属视觉标识
 	d["progress"] = 0.0
+	d["trail_acc"] = 0.0  # v26.x: 烟迹拖尾累积器
 	d["duration"] = duration
 	d["apex"] = apex
 	d["flavor_scale"] = body_scale  # v20.17: per-instance 弹体尺寸（亚类）
@@ -173,6 +176,11 @@ func fire(from: Vector2, tgt: Node2D, dmg: float, wt: int, shooter: Node2D, shoo
 func _play_fire_sfx(wt: int) -> void:
 	if not (AudioManager and AudioManager.has_method("play_sfx")):
 		return
+	# v26.x: 110ms 节流（对齐直射 batch 开火音窗口）
+	var now := Time.get_ticks_msec()
+	if now - _last_fire_sfx_msec < 110:
+		return
+	_last_fire_sfx_msec = now
 	var pitch := randf_range(0.9, 1.1)
 	var vol: float = 1.0
 	if not is_player_side:
@@ -232,7 +240,10 @@ func _physics_process(delta: float) -> void:
 		r["progress"] = float(r["progress"]) + delta / float(r["duration"])
 		if r["progress"] >= 1.0:
 			_apply_hit(r)
-			_release_proj_dict(r)  # v9.2: 归还池（曲射落地爆炸结算完）
+			# v26.x: 伤害链可能同步触发战斗结束→clear_all（r 已随全表归还池），
+			# 再还会造成池内重复引用（两次 fire 取到同一字典）。直射双 batch 同款防御。
+			if _proj.has(r):
+				_release_proj_dict(r)
 			continue
 
 		var t := float(r["progress"])
@@ -247,18 +258,29 @@ func _physics_process(delta: float) -> void:
 		if new_pos != prev:
 			r["dir"] = (new_pos - prev).normalized()
 
+		# v26.x: 烟迹拖尾——按 0.09s 间隔在弹体当前位置沉积小烟团（debris 池，
+		# 池满自动节流）。主路径此前零拖尾，"有声无尾"观感补齐。
+		r["trail_acc"] = float(r.get("trail_acc", 0.0)) + delta
+		if float(r["trail_acc"]) >= 0.09:
+			r["trail_acc"] = 0.0
+			VfxImpactFactory.spawn_projectile_trail_puff(self, new_pos, int(r["wt"]), not bool(r["is_player"]))
+
 		# v8.1: 落点预警圈——progress > 0.55 时在落点 spawn 红色扩散圈（v8.1a：提前到0.55给玩家充分反应）
-		if t > 0.55 and not bool(r.get("warned", false)):
+		# v26.x: forced_miss（必Miss弹）不出预警圈——红圈放完只出 MISS 文字是假预警
+		if t > 0.55 and not bool(r.get("warned", false)) and not bool(r.get("forced_miss", false)):
 			r["warned"] = true
 			var wt_warn: int = int(r["wt"])
 			var warn_radius: float = float(_WEAPON_CONFIG.get(wt_warn, {}).get("explosion_radius", 40.0))
+			# v26.x: 预警圈与实际伤害半径同口径——AERIAL 读 splash_radius_bonus 放大
+			# （对齐 _apply_hit 的爆炸半径计算），否则轰炸机洗地范围远大于红圈
+			if wt_warn == 2:
+				var _warn_stats: Variant = r.get("shooter_stats")
+				if _warn_stats != null and _warn_stats is UnitStats:
+					warn_radius *= (1.0 + maxf(0.0, float(_warn_stats.splash_radius_bonus)) * 2.0)
 			VfxImpactFactory.spawn_shockwave(self, end, warn_radius, Color(1.0, 0.3, 0.2, 0.55))
 
 		# Fix-5: 炮口火焰已禁用（muzzle_spawned 初始化为 true）
-
-		var raw_tgt: Variant = r["tgt"]
-		if raw_tgt == null or not is_instance_valid(raw_tgt):
-			pass
+		# v26.x: 删除恒空的 raw_tgt 死守卫（target 失效的处理在 _apply_hit 落地分支）
 
 		if write != read_idx:
 			_proj[write] = r
@@ -307,6 +329,17 @@ func _sync_multimesh_layers() -> void:
 func _apply_hit(r: Dictionary) -> void:
 	var raw_tgt: Variant = r.get("tgt")
 	if raw_tgt == null or not is_instance_valid(raw_tgt):
+		# v26.x: 目标中途死亡——弹体已飞完应照常落地爆炸（仅伤害作废），
+		# 不再无声蒸发（预警圈放完空炮 + 弹体凭空消失的观感根因）
+		var _dt_wt: int = int(r["wt"])
+		var _dpos: Vector2 = r["end"]
+		var _dwname: String = String(r.get("weapon_name", ""))
+		var _dvariant: String = String(r.get("vfx_variant", ""))
+		var _dopts: Dictionary = {} if _dvariant.is_empty() else {"vfx_variant": _dvariant}
+		_dopts["power_tier"] = WeaponProjectileVfx.compute_power_tier(
+			_dt_wt, float(_WEAPON_CONFIG.get(_dt_wt, {}).get("explosion_radius", 0.0)), float(r.get("dmg", 0.0)))
+		_spawn_impact_explosion(_dpos, bool(r.get("is_player", true)), _dt_wt, -1, _dwname, _dopts)
+		_play_explosion_sfx()
 		return
 	var tgt: Node2D = raw_tgt
 

@@ -16,7 +16,9 @@
 extends SceneTree
 
 const AffixDefs = preload("res://data/affix_definitions.gd")
-const AffixManagerScript = preload("res://managers/affix_manager.gd")
+# v27.1: --script 模式下 const preload 在编译期解析 autoload 标识符（affix_manager
+# 引用的 SignalBus）会失败——改运行期 load()（实测可正常编译实例化）。
+var AffixManagerScript: GDScript = null
 const AffixResourceScript = preload("res://resources/affix_resource.gd")
 const UnitStatsScript = preload("res://resources/unit_stats.gd")
 const CardResourceScript = preload("res://resources/card_resource.gd")
@@ -44,10 +46,14 @@ const NEW_AFFIXES: Dictionary = {
 	"fort_protocol":     {"kinds": [4], "tier": 3, "filter": 0},
 }
 
-const GENERIC_COUNT: int = 16  # v19 前 AFFIX_TABLE 已有 16 个通用词条
+const GENERIC_COUNT: int = 21  # 16 通用（v19）+ 5 special_mechanic（v21 P3-B，无 combat_kinds=全兵种可用）
+const XENO_COUNT: int = 6  # v27.2 星冥专属词条（xeno_only，不进普通卡 kind 池——池计数不含）
+const KIND_V273_COUNT: int = 15  # v27.3 兵种专属扩充（每兵种 +2 常规 +1 冠军，进 kind 池）
+const KIND_V274_COUNT: int = 20  # v27.4 兵种专属再扩充（每兵种 +3 常规 +1 冠军，进 kind 池）
 
 
 func _initialize() -> void:
+	AffixManagerScript = load("res://managers/affix_manager.gd")
 	var code := [0]
 	var fail := func(msg: String) -> void:
 		push_error("[FAIL] " + msg)
@@ -74,8 +80,8 @@ func _initialize() -> void:
 
 	# ══════════ 2. 新词条结构 ══════════
 	print("\n[2] AFFIX_TABLE 新增 15 词条结构")
-	if AffixDefs.AFFIX_TABLE.size() != GENERIC_COUNT + NEW_AFFIXES.size():
-		fail.call("词条总数应为 %d，实得 %d" % [GENERIC_COUNT + NEW_AFFIXES.size(), AffixDefs.AFFIX_TABLE.size()])
+	if AffixDefs.AFFIX_TABLE.size() != GENERIC_COUNT + NEW_AFFIXES.size() + XENO_COUNT + KIND_V273_COUNT + KIND_V274_COUNT:
+		fail.call("词条总数应为 %d，实得 %d" % [GENERIC_COUNT + NEW_AFFIXES.size() + XENO_COUNT + KIND_V273_COUNT, AffixDefs.AFFIX_TABLE.size()])
 	for id in NEW_AFFIXES:
 		var expect: Dictionary = NEW_AFFIXES[id]
 		var def: Dictionary = AffixDefs.get_definition(String(id))
@@ -91,12 +97,26 @@ func _initialize() -> void:
 			fail.call("%s card_type_filter 应为 %d，实得 %d" % [id, expect.filter, int(def.get("card_type_filter", -1))])
 		if not (AffixDefs.MUTATION_TABLE as Dictionary).has(String(id)):
 			fail.call("%s 缺少变异描述" % id)
-	# 旧 15 词条不得带兵种限定（向后兼容）
+	# 通用词条不得带兵种限定（向后兼容）—— 允许带 combat_kinds 的只有 v19 15 条
+	# 兵种专属/独特 与 v27.3 15 条兵种扩充；其余（含 v27.2 星冥/未来新增通用）恒通用
+	var kind_gated_allow: Dictionary = {}
+	for id in NEW_AFFIXES:
+		kind_gated_allow[String(id)] = true
+	for id in ["light_blitz", "light_salvage", "light_deadeye", "armor_ap_shell", "armor_intercept",
+		"armor_spearhead", "support_ballistics", "support_fortify", "support_strategic_range",
+		"air_strafe", "air_ecm_detach", "air_double_rack", "fort_flaknet", "fort_selfrepair",
+		"fort_overwatch", "light_penetration", "light_dig_in", "light_tandem", "light_swarm",
+		"armor_autoloader", "armor_def_skirt", "armor_offroad", "armor_thunder",
+		"support_heavy_charge", "support_pioneers", "support_escort", "support_seismic",
+		"air_hardpoint", "air_rockets", "air_strato", "air_ace_pride",
+		"fort_thick_walls", "fort_servo_mount", "fort_blast_door", "fort_annihilator"]:
+		kind_gated_allow[String(id)] = true
 	for id in AffixDefs.AFFIX_TABLE.keys():
-		if not NEW_AFFIXES.has(String(id)):
-			var kinds_old: Array = (AffixDefs.AFFIX_TABLE[id] as Dictionary).get("combat_kinds", []) as Array
-			if not kinds_old.is_empty():
-				fail.call("旧词条 %s 不应带 combat_kinds 限定" % id)
+		if kind_gated_allow.has(String(id)):
+			continue
+		var kinds_old: Array = (AffixDefs.AFFIX_TABLE[id] as Dictionary).get("combat_kinds", []) as Array
+		if not kinds_old.is_empty():
+			fail.call("通用词条 %s 不应带 combat_kinds 限定" % id)
 	print("  结构 OK（15 新词条字段齐全，旧 15 词条保持通用）")
 
 	# ══════════ 3. 过滤查询 ══════════
@@ -115,11 +135,11 @@ func _initialize() -> void:
 	for kind in range(5):
 		if not AffixDefs.is_affix_available_for("platform_hp_up", kind, 0):
 			fail.call("platform_hp_up 对兵种 %d 应可用" % kind)
-	# 池计数：LIGHT tier0 = 15 通用 + 2 专属；tier3 = +1 独特
-	if AffixDefs.get_ids_for_combat_kind(0, 0).size() != GENERIC_COUNT + 2:
-		fail.call("轻装 tier0 池应为 %d，实得 %d" % [GENERIC_COUNT + 2, AffixDefs.get_ids_for_combat_kind(0, 0).size()])
-	if AffixDefs.get_ids_for_combat_kind(0, 3).size() != GENERIC_COUNT + 3:
-		fail.call("轻装 tier3 池应为 %d，实得 %d" % [GENERIC_COUNT + 3, AffixDefs.get_ids_for_combat_kind(0, 3).size()])
+	# 池计数：LIGHT tier0 = 通用 + 7 专属（v19 2 + v27.3 2 + v27.4 3）；tier3 = +3 冠军
+	if AffixDefs.get_ids_for_combat_kind(0, 0).size() != GENERIC_COUNT + 7:
+		fail.call("轻装 tier0 池应为 %d，实得 %d" % [GENERIC_COUNT + 7, AffixDefs.get_ids_for_combat_kind(0, 0).size()])
+	if AffixDefs.get_ids_for_combat_kind(0, 3).size() != GENERIC_COUNT + 10:
+		fail.call("轻装 tier3 池应为 %d，实得 %d" % [GENERIC_COUNT + 10, AffixDefs.get_ids_for_combat_kind(0, 3).size()])
 	print("  过滤 OK（兵种互斥 / tier 门槛 / 通用兜底 / 池计数）")
 
 	# ══════════ 4. roll 兵种/tier 过滤统计 ══════════
@@ -134,13 +154,22 @@ func _initialize() -> void:
 			break
 		if ["light_skirmish", "light_evasion", "armor_column", "armor_plating",
 			"support_outrange", "support_repair", "fort_bulwark", "fort_crossfire",
-			"light_executioner", "armor_titan", "air_reaper", "support_orbital", "fort_protocol"].has(rid):
+			"light_executioner", "armor_titan", "air_reaper", "support_orbital", "fort_protocol",
+			"light_blitz", "light_salvage", "light_deadeye", "armor_ap_shell", "armor_intercept",
+			"armor_spearhead", "support_ballistics", "support_fortify", "support_strategic_range",
+			"air_double_rack", "fort_flaknet", "fort_selfrepair",
+			"fort_overwatch", "light_penetration", "light_dig_in", "light_tandem", "light_swarm",
+			"armor_autoloader", "armor_def_skirt", "armor_offroad", "armor_thunder",
+			"support_heavy_charge", "support_pioneers", "support_escort", "support_seismic",
+			"air_ace_pride", "fort_thick_walls", "fort_servo_mount", "fort_blast_door",
+			"fort_annihilator"].has(rid):
 			leak_count += 1
-		if rid == "air_dive" or rid == "air_supremacy":
+		if ["air_dive", "air_supremacy", "air_strafe", "air_ecm_detach",
+			"air_hardpoint", "air_rockets", "air_strato"].has(rid):
 			air_kind_hit += 1
 	if leak_count != 0:
 		fail.call("AIR tier0 roll 出现 %d 次串池/越权词条" % leak_count)
-	# 两段式权重：专属命中率理论 ~55%（0.55 × kind池内稀有度过滤全过），阈值放宽到 35%
+	# 两段式权重：专属命中率理论 ~55%（0.55 × kind池 7 条均摊），阈值放宽到 35%
 	if air_kind_hit < 140:
 		fail.call("AIR 专属命中率过低：%d/400（预期 >140）" % air_kind_hit)
 	# AIR tier3 epic roll：独特词条 air_reaper 应可出现

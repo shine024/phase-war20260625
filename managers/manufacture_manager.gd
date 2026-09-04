@@ -15,14 +15,19 @@ extends Node
 
 const ManufacturePools = preload("res://data/manufacture_pools.gd")
 const DefaultCards = preload("res://data/default_cards.gd")
+const ModManufacture = preload("res://data/mod_manufacture.gd")
+const BlueprintDefinitions = preload("res://data/blueprint_definitions.gd")
+const IntelManualItems = preload("res://data/intel_manual_items.gd")
 
 ## 存档键（SaveManager 段 "manufacture_state"）
 const SAVE_KEY_PITY := "pity"
+const SAVE_KEY_MOD_PITY := "mod_box_pity"  # v26.x 改造图纸随机箱：连续未出 legendary+ 次数
 
 var _recipe_cache: Array = []
 var _recipe_built := false
 var _arch_index: Dictionary = {}   # player_card_id -> Array[String]（对应敌形原型 id 列表）
 var _pity: Dictionary = {}   # card_id -> int（连续未出 rare+ 的制造次数）
+var _mod_box_pity: int = 0  # v26.x 改造随机箱单计数器（箱全局一个，非按 mod 分池）
 
 ## ───────────────────────── 配方目录 ─────────────────────────
 
@@ -98,7 +103,13 @@ func get_base_cost(card_id: String) -> Dictionary:
 
 ## 实际消耗（×工坊等级折扣，逐项向上取整、至少 1）
 func get_cost(card_id: String) -> Dictionary:
-	var base := get_base_cost(card_id)
+	return _apply_workshop_discount(get_base_cost(card_id))
+
+## 工坊等级折扣（逐项向上取整、至少 1；BunkerManager 缺省=无折扣）。
+## v26.x 起卡牌制造与改造图纸制造共用。
+func _apply_workshop_discount(base: Dictionary) -> Dictionary:
+	if base.is_empty():
+		return base
 	var mult := 1.0
 	var bunker: Node = get_node_or_null("/root/BunkerManager")
 	if bunker != null and bunker.has_method("get_manufacture_discount"):
@@ -177,6 +188,9 @@ func _first_unmet_reason(conditions: Array) -> String:
 				"intel": return "情报不足（需 25% 以上）"
 				"skill_tree_era": return "该时代的制造授权未在技能树解锁"
 				"resources": return "资源不足（需 %s）" % str(c.get("required_text", ""))
+				"seen": return "尚未获得过该图纸（先经战斗掉落解锁制造资格）"
+				"zone": return "史诗及以上改造只能通过随机箱补给"
+				"pool": return "图鉴中尚无史诗+改造图纸（先经战斗掉落获得）"
 	return "条件未满足"
 
 ## ───────────────────────── 执行制造 ─────────────────────────
@@ -223,17 +237,211 @@ func _refund(cost: Dictionary) -> void:
 	for rid in cost:
 		BasicResourceManager.add_resource(String(rid), int(cost[rid]))
 
+## ───────────────────────── 改造图纸制造（v26.x 消耗品化·制造通道） ─────────────────────────
+## 门槛规则：得到过就可造（IntelItemBag「见过集合」）——掉落负责发现，制造负责补给。
+## 混合形态：common/uncommon/rare 定向兑换；epic+ 只能随机箱 roll（含暗保底）。
+
+## 见过集合中有效改造的 mod_id 列表（ModificationRegistry 存在）
+func get_seen_mod_ids() -> Array:
+	var out: Array = []
+	if IntelItemBag == null or not IntelItemBag.has_method("get_seen_item_ids"):
+		return out
+	for item_type in IntelItemBag.get_seen_item_ids():
+		var s := String(item_type)
+		if not IntelManualItems.is_mod_blueprint(s):
+			continue
+		var mod_id := BlueprintDefinitions.extract_mod_id(s)
+		if mod_id.is_empty() or out.has(mod_id):
+			continue
+		if ModificationRegistry.get_data(mod_id).is_empty():
+			continue
+		out.append(mod_id)
+	return out
+
+## 定向区配方目录（见过 ∩ common/uncommon/rare，稀有度升序）。
+## 返回 [{mod_id, name, rarity, stock}]
+func get_mod_direct_recipes() -> Array:
+	var out: Array = []
+	for mod_id in get_seen_mod_ids():
+		var mod_data: Dictionary = ModificationRegistry.get_data(String(mod_id))
+		var rarity := String(mod_data.get("rarity", "common"))
+		if not ModManufacture.is_direct_rarity(rarity):
+			continue
+		out.append({
+			mod_id = String(mod_id),
+			name = String(mod_data.get("name", mod_id)),
+			rarity = rarity,
+			stock = get_mod_blueprint_stock(String(mod_id)),
+		})
+	out.sort_custom(func(a, b):
+		return ModManufacture.rank_of(String(a.rarity)) < ModManufacture.rank_of(String(b.rarity)))
+	return out
+
+## 随机箱池（见过 ∩ epic+）：[{mod_id, rarity}]
+func get_mod_box_pool() -> Array:
+	var out: Array = []
+	for mod_id in get_seen_mod_ids():
+		var mod_data: Dictionary = ModificationRegistry.get_data(String(mod_id))
+		var rarity := String(mod_data.get("rarity", "common"))
+		if ModManufacture.is_random_rarity(rarity):
+			out.append({mod_id = String(mod_id), rarity = rarity})
+	return out
+
+func get_mod_blueprint_stock(mod_id: String) -> int:
+	if IntelItemBag == null or not IntelItemBag.has_method("get_count"):
+		return 0
+	return int(IntelItemBag.get_count("blueprint_" + mod_id))
+
+## 随机箱暗保底计数（与卡牌制造 get_pity 同暴露口径，供 UI 显示"连续未出"提示）
+func get_mod_box_pity() -> int:
+	return _mod_box_pity
+
+## 随机箱各稀有度出率（池内数量 × 稀有度权重归一；供 UI 预览池条）。
+## 返回 [{r: String, w: float, pct: float}]，空池返回 []。
+func get_mod_box_odds() -> Array:
+	var per: Dictionary = {}
+	for e in get_mod_box_pool():
+		var r := String(e.get("rarity", "epic"))
+		per[r] = int(per.get(r, 0)) + 1
+	var out: Array = []
+	var total := 0.0
+	for r in per:
+		var w := float(ModManufacture.RANDOM_BOX_WEIGHTS.get(String(r), 1.0)) * int(per[r])
+		out.append({r = String(r), w = w})
+		total += w
+	if total <= 0.0:
+		return []
+	for e in out:
+		e["pct"] = float(e["w"]) / total
+	return out
+
+## 定向兑换实际价（×工坊折扣）
+func get_mod_direct_cost(mod_id: String) -> Dictionary:
+	var mod_data: Dictionary = ModificationRegistry.get_data(mod_id)
+	return _apply_workshop_discount(
+		ModManufacture.get_direct_cost(String(mod_data.get("rarity", "common"))))
+
+## 随机箱实际价（×工坊折扣）
+func get_mod_box_cost() -> Dictionary:
+	return _apply_workshop_discount(ModManufacture.RANDOM_BOX_COST.duplicate())
+
+## 定向兑换资格。条件快照结构与 can_manufacture 同形，面板复用逐条件渲染器。
+func can_craft_mod_direct(mod_id: String) -> Dictionary:
+	var conditions: Array = []
+	var mod_data: Dictionary = ModificationRegistry.get_data(mod_id)
+	if mod_data.is_empty():
+		return {"ok": false, "reason_zh": "改造数据缺失：%s" % mod_id, "conditions": conditions}
+	var rarity := String(mod_data.get("rarity", "common"))
+
+	# 1. 见过（得到过——制造只补给已发现的图纸）
+	var seen_ok := IntelItemBag != null and IntelItemBag.has_method("has_seen") \
+		and IntelItemBag.has_seen("blueprint_" + mod_id)
+	conditions.append({
+		"key": "seen", "met": seen_ok,
+		"current_text": "已获得" if seen_ok else "未获得", "required_text": "已获得",
+		"detail": "得到过该图纸才可补给（战斗掉落/相位师战利品可得）",
+	})
+
+	# 2. 稀有度属定向区（epic+ 走随机箱）
+	var zone_ok := ModManufacture.is_direct_rarity(rarity)
+	conditions.append({
+		"key": "zone", "met": zone_ok,
+		"current_text": rarity, "required_text": "普通/优秀/稀有",
+		"detail": "史诗及以上改造只能通过随机箱补给",
+	})
+
+	# 3. 资源
+	var cost := get_mod_direct_cost(mod_id)
+	var res_ok := _can_afford(cost)
+	conditions.append({
+		"key": "resources", "met": res_ok,
+		"current_text": "充足" if res_ok else "不足",
+		"required_text": ManufacturePools.cost_text(cost),
+		"detail": "制造消耗资源；工坊 Lv2/Lv3 可享 10%/20% 折扣",
+	})
+
+	var ok := seen_ok and zone_ok and res_ok
+	return {"ok": ok, "reason_zh": "" if ok else _first_unmet_reason(conditions),
+		"conditions": conditions}
+
+## 随机箱资格
+func can_craft_mod_random() -> Dictionary:
+	var conditions: Array = []
+	var pool := get_mod_box_pool()
+	var pool_ok := not pool.is_empty()
+	conditions.append({
+		"key": "pool", "met": pool_ok,
+		"current_text": "%d 种" % pool.size(), "required_text": "≥1 种",
+		"detail": "图鉴中存在史诗+改造图纸才可开箱（战斗掉落可得）",
+	})
+	var cost := get_mod_box_cost()
+	var res_ok := _can_afford(cost)
+	conditions.append({
+		"key": "resources", "met": res_ok,
+		"current_text": "充足" if res_ok else "不足",
+		"required_text": ManufacturePools.cost_text(cost),
+		"detail": "开箱消耗资源；工坊 Lv2/Lv3 可享 10%/20% 折扣",
+	})
+	var ok := pool_ok and res_ok
+	return {"ok": ok, "reason_zh": "" if ok else _first_unmet_reason(conditions),
+		"conditions": conditions}
+
+## 定向兑换一张改造图纸。返回 {"ok", "reason_zh", "mod_id"}。
+func craft_mod_blueprint_direct(mod_id: String) -> Dictionary:
+	var check := can_craft_mod_direct(mod_id)
+	if not bool(check.get("ok", false)):
+		return {"ok": false, "reason_zh": String(check.get("reason_zh", "无法制造"))}
+	var cost := get_mod_direct_cost(mod_id)
+	for rid in cost:
+		BasicResourceManager.consume(String(rid), int(cost[rid]))
+	if not _grant_mod_blueprint(mod_id):
+		_refund(cost)
+		return {"ok": false, "reason_zh": "入包失败（背包异常）"}
+	return {"ok": true, "reason_zh": "制造成功", "mod_id": mod_id}
+
+## 开一次随机箱（从见过集合的 epic+ 池按稀有度加权 roll，含暗保底）。
+## 返回 {"ok", "reason_zh", "mod_id", "rarity"}。
+func craft_mod_blueprint_random() -> Dictionary:
+	var check := can_craft_mod_random()
+	if not bool(check.get("ok", false)):
+		return {"ok": false, "reason_zh": String(check.get("reason_zh", "无法制造"))}
+	var cost := get_mod_box_cost()
+	for rid in cost:
+		BasicResourceManager.consume(String(rid), int(cost[rid]))
+	var mod_id := ModManufacture.roll_box_mod(get_mod_box_pool(), _mod_box_pity)
+	if mod_id.is_empty() or not _grant_mod_blueprint(mod_id):
+		_refund(cost)
+		return {"ok": false, "reason_zh": "入包失败（背包/随机池异常）"}
+	# 暗保底记账：出 legendary+ 清零，否则 +1
+	var rolled_rarity := String(ModificationRegistry.get_data(mod_id).get("rarity", "epic"))
+	if ModManufacture.is_pity_reset_rarity(rolled_rarity):
+		_mod_box_pity = 0
+	else:
+		_mod_box_pity += 1
+	return {"ok": true, "reason_zh": "制造成功", "mod_id": mod_id, "rarity": rolled_rarity}
+
+## 图纸入包 + toast（失败路径由调用方退款）
+func _grant_mod_blueprint(mod_id: String) -> bool:
+	if IntelItemBag == null or not IntelItemBag.has_method("add_item"):
+		return false
+	IntelItemBag.add_item("blueprint_" + mod_id, 1)
+	var mod_data: Dictionary = ModificationRegistry.get_data(mod_id)
+	SignalBus.show_toast.emit("✦ 补给成功：%s 改造图纸" % String(mod_data.get("name", mod_id)))
+	return true
+
 ## ───────────────────────── 存档 ─────────────────────────
 
 func save_state() -> Dictionary:
-	return {SAVE_KEY_PITY: _pity.duplicate()}
+	return {SAVE_KEY_PITY: _pity.duplicate(), SAVE_KEY_MOD_PITY: _mod_box_pity}
 
 func load_state(data: Dictionary) -> void:
 	if data.is_empty():
 		_pity = {}
+		_mod_box_pity = 0
 		return
 	var pity: Variant = data.get(SAVE_KEY_PITY, {})
 	_pity = {}
 	if pity is Dictionary:
 		for k in pity:
 			_pity[str(k)] = maxi(0, int(pity[k]))
+	_mod_box_pity = maxi(0, int(data.get(SAVE_KEY_MOD_PITY, 0)))

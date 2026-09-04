@@ -2,7 +2,7 @@ extends RefCounted
 class_name VfxImpactFactory
 ## 命中特效分层化工厂（v8.1）
 ## 把原 spawn_impact_with_kind 的单一径向火花升级为三层组合特效：
-##   第1层 冲击波环（Polygon2D 扩散淡出）
+##   第1层 冲击波环（Line2D 闭环扩散淡出，v26.12c）
 ##   第2层 主火花（CPUParticles2D，按武器配方表差异化）
 ##   第3层 碎片/烟尘（重型武器专属，第二组粒子）
 ## 另提供特殊伤害专用特效：暴击光环 / 穿透光线 / 溅射冲击波 / 闪电链电弧
@@ -21,6 +21,11 @@ const PARTICLE_TEX_SPARK_METAL := preload("res://assets/effects/particle_texture
 const PARTICLE_TEX_SPARK_ENERGY := preload("res://assets/effects/particle_textures/spark_energy.png")   # 能量火花（蓝白电弧，OMEGA/RAIL/LASER）
 const PARTICLE_TEX_SPARK_HEAVY  := preload("res://assets/effects/particle_textures/spark_heavy.png")    # 重型碎片（不规则金属块，ROCKET/FLAK/MISSILE）
 const PARTICLE_TEX_SMOKE_GENERIC := preload("res://assets/effects/particle_textures/smoke_generic.png") # 常规烟尘（灰棕团，ROCKET/FLAK/MISSILE）
+## v26.11 视觉轮新贴图（tools/generate_vfx_round1_textures.py，agnes API + 亮度抠图）：
+## 浅灰白枪烟=弹道尾迹专用（smoke_generic 均值亮度 0.40 过暗，MIX 尾烟叠加读成黑泥团）；
+## 能量喷流=青白横向电弧喷流，替换误用的 weapon_artillery_muzzle.png（暖色炮口焰照片
+## 被蓝 ramp 乘成橄榄泥点，f08/f10 枪口" dirt 碎屑带"的根因）。
+const PARTICLE_TEX_SMOKE_PUFF_LIGHT := preload("res://assets/effects/particle_textures/smoke_puff_light.png")
 const PARTICLE_TEX_SMOKE_ENERGY  := preload("res://assets/effects/particle_textures/smoke_energy.png")   # 能量烟（蓝灰团，OMEGA/RAIL/LASER）
 const PARTICLE_TEX_MUZZLE_HEAVY  := preload("res://assets/effects/particle_textures/muzzle_heavy.png")  # 重型枪口火（橙红爆发，ROCKET/FLAK/MISSILE）
 ## v17e 锐利贴图组（tools/generate_sharp_vfx_textures.py 程序化生成，硬边）——
@@ -47,7 +52,9 @@ const PARTICLE_TEX_METAL_CHUNK  := preload("res://assets/effects/particle_textur
 const PARTICLE_TEX_FLAME_PUFF   := preload("res://assets/effects/particle_textures/flame_puff.png")    # 火焰团（内容150×96）
 const PARTICLE_TEX_FLAME_JET_V2 := preload("res://assets/effects/particle_textures/flame_jet_v2.png")  # 方向性火舌 v2（内容160×45）
 const PARTICLE_TEX_SPARK_STREAK  := preload("res://assets/effects/particle_textures/spark_streak.png")   # 火花拖痕（白热头+橙尾，指向+X）
-const PARTICLE_TEX_MUZZLE_ENERGY := preload("res://assets/effects/projectiles/weapons_realistic/weapon_artillery_muzzle.png")  # 能量枪口火（白青喷射流）
+## v26.11: 换 agnes 生成的青白横向能量喷流（原 weapon_artillery_muzzle.png 是暖色
+## 炮口焰照片，蓝 ramp 乘出橄榄泥点）。内容横跨全宽 ~1000px，纵向中带 ~180px 薄带。
+const PARTICLE_TEX_MUZZLE_ENERGY := preload("res://assets/effects/particle_textures/energy_muzzle_jet.png")  # 能量枪口火（白青喷射流）
 const PARTICLE_TEX_MUZZLE_LIGHT  := preload("res://assets/effects/particle_textures/muzzle_light.png")  # 轻型枪口火（橙点，DIRECT/PISTOL/RIFLE）
 const PARTICLE_TEX_EMBER         := preload("res://assets/effects/particle_textures/spark_ember.png")    # 火星点缀（橙色小点）
 ## v9.2: 放射状命中贴图——区别于拖尾的顺向条纹，命中用放射爆点（"飞行"vs"撞击"形状可分）
@@ -59,23 +66,20 @@ const PARTICLE_TEX_IMPACT_SCORCH := preload("res://assets/effects/particle_textu
 const MAX_RINGS: int = 80
 const MAX_DEBRIS: int = 140  # v10: smoke_puff/shrapnel 层复用 debris 池
 const MAX_SPARKS: int = 320  # v10: flash 层复用 spark 池
-# v7.4 性能优化：ring 顶点预分配。原 _configure_ring_polygon 每帧 new PackedVector2Array + 48 append，
-# 80 ring 激活时每帧 80×48 分配。改为每 ring 绑定预分配 buffer，每帧只原地改坐标（零堆分配）。
-const _RING_SEGS: int = 24       # 圆环段数（外圈+内圈交错 = 48 顶点）
-const _RING_VERTS: int = 48      # _RING_SEGS * 2
+# v26.12c: 环节点从 Polygon2D 换 Line2D 闭环——keyhole 空心环（外圈+内圈反向多边形）
+# 经 Polygon2D 耳切三角化会丢接缝扇形（boss_spell_audit 实拍渲染成 "C" 形缺口，半步
+# 错开接缝也救不回）；Line2D 描边无三角化，厚度=width×scale 随半径同比缩放，语义不变。
+# 顶点仍预分配：单位圆 36 点共享缓存，每帧只改 scale/color（零逐点分配）。
 
 # ── 对象池 ──
-static var _ring_pool: Array = []       # 可复用 Polygon2D（冲击波环）
+static var _ring_pool: Array = []       # 可复用 Line2D（冲击波环，v26.12c 起）
 static var _debris_pool: Array = []     # 可复用 CPUParticles2D（碎片/烟尘）
 static var _spark_pool: Array = []      # 可复用 CPUParticles2D（主火花）
 static var _active_rings: int = 0
 static var _active_debris: int = 0
 static var _active_sparks: int = 0
 
-# v7.4: ring 顶点 buffer 缓存——ring(Polygon2D) -> Dictionary{_unit, _scratch}
-# _unit: 预计算的单位圆坐标（半径=1，48 点），acquire 时算一次
-# _scratch: 工作数组，每帧 = _unit × radius 原地缩放（零分配）
-static var _ring_buffers: Dictionary = {}
+static var _ring_unit_pts: PackedVector2Array = PackedVector2Array()  # v26.12c: 单位圆共享顶点（36 点）
 
 # v7.4: Line2D 特效池（穿透光线/闪电链/激光余晖共用）。原每次 new Line2D + queue_free
 static var _beam_pool: Array = []
@@ -94,6 +98,39 @@ const MAX_IMPACT_SPRITES: int = 160  # v9.2: 80→160（双层贴图：光晕+�
 # 池按 kind 分组（weakpoint=Node2D+2Line2D子 / radar_lock=Polygon2D / resonance=Polygon2D）。
 # 每个指示器有 2 个 tween（脉动 loops + 延迟淡出），release 时通过 _vfx_tweens meta 全部 kill。
 static var _indicator_pool: Dictionary = {}  # kind -> Array[Node]
+
+# v26.11(D1): 池根节点——空闲池节点统一挂这个常驻树上（隐藏、禁处理）的 Node，
+# 进程退出随场景树拆除被释放。此前 release=remove_child+静态数组持有（树外孤儿），
+# 是退出时 "ObjectDB instances leaked" 告警的主要来源（3v3 剖面：3600 帧漏 292 对象，
+# 其中 CPUParticles2D×78/Polygon2D×18/Node2D×20 等）。
+static var _pool_root: Node = null
+
+static func _get_pool_root() -> Node:
+	if _pool_root != null and is_instance_valid(_pool_root) and _pool_root.is_inside_tree():
+		return _pool_root
+	var loop := Engine.get_main_loop()
+	if loop == null or not (loop is SceneTree):
+		return null
+	var tree := loop as SceneTree
+	if tree.root == null:
+		return null
+	_pool_root = Node.new()
+	_pool_root.name = "VfxPoolRoot"
+	_pool_root.process_mode = Node.PROCESS_MODE_DISABLED
+	tree.root.add_child(_pool_root)
+	return _pool_root
+
+## release 路径统一收口：从战斗父节点摘下 -> 挂池根（挂不上=树正在拆，回退树外持有）
+
+static func _park_in_pool(n: Node) -> void:
+	var root := _get_pool_root()
+	if n.get_parent() == root:
+		return
+	if n.get_parent() != null:
+		n.get_parent().remove_child(n)
+	if root != null and root.is_inside_tree():
+		root.add_child(n)
+
 static var _active_indicators: int = 0
 const MAX_INDICATORS: int = 40  # weakpoint 3s / radar 6s / resonance 5s，并发量可控
 const _INDICATOR_KINDS: Array = ["weakpoint", "radar_lock", "resonance"]
@@ -124,6 +161,9 @@ const ELEMENT_COLORS: Dictionary = {
 
 # ── v9.2: 烟柱 Gradient 按颜色缓存（spawn_smoke_column 频繁调用）──
 static var _smoke_grad_cache: Dictionary = {}
+# ── v26.x: 命中闪光/破片 Gradient 按色缓存（_spawn_flash_layer/_spawn_shrapnel_layer
+#    此前每次命中 new Gradient——密集命中的稳定堆分配源，对齐 _get_smoke_grad 先例）──
+static var _fx_grad_cache: Dictionary = {}
 
 ## ======================================================================
 ## 主入口：分层化命中特效
@@ -216,12 +256,12 @@ static func spawn_layered_impact(parent: Node2D, world_pos: Vector2, weapon_type
 			# v18-R9b: 微烟 3→5 粒（R9 后 AI 批"烟雾层完全缺失"——3 粒在簇滴命中里
 			# 读不出）。smin/smax 经 DSCALE 0.5 × 128px 贴图 → 51-90px 软散烟仍"微量"档。
 			_spawn_smoke_puff_layer(parent, world_pos, base_color, weapon_type,
-				{"amount": 5, "life": 0.45, "smin": 0.8, "smax": 1.4})
+				{"amount": 5, "life": 0.45, "smin": 1.0, "smax": 1.6})
 	# v13: 战场痕迹——重型爆炸武器命中留下焦痕弹坑(概率 50%,免刷屏;幂次越小越稀)
 	if not motion_reduce and (weapon_type in [1, 2, 3, 7, 9] or int(opts.get("power_tier", -1)) == 2):
 		if randf() < 0.5:
 			var tr_r: float = clampf(float(recipe.get("ring_r", 24.0)) * 0.5, 8.0, 18.0)
-			spawn_battle_trace(parent, world_pos, tr_r, "scorch")
+			spawn_battle_trace(parent, world_pos, tr_r)
 	# 特殊伤害叠加
 	if opts.get("is_crit", false) and not motion_reduce:
 		spawn_crit_aura(parent, world_pos)
@@ -320,22 +360,22 @@ static func spawn_crit_aura(parent: Node2D, world_pos: Vector2) -> void:
 	if ring1 == null:
 		return
 	ring1.position = world_pos
-	_configure_ring_polygon(ring1, 8.0, Color(1.0, 0.88, 0.35, 1.0), 2.0)  # 亮金椭圆
+	_configure_ring_line(ring1, 8.0, Color(1.0, 0.88, 0.35, 1.0), 2.0)  # 亮金椭圆
 	parent.add_child(ring1)
 	var target_r: float = 46.0
 	var tween1 := ring1.create_tween()
-	tween1.tween_method(func(r: float): _configure_ring_polygon(ring1, r, Color(1.0, 0.88, 0.35, 1.0 * (1.0 - r / target_r)), 2.0), 8.0, target_r, 0.45)
+	tween1.tween_method(func(r: float): _configure_ring_line(ring1, r, Color(1.0, 0.88, 0.35, 1.0 * (1.0 - r / target_r)), 2.0), 8.0, target_r, 0.45)
 	tween1.tween_callback(func(): _release_ring(ring1))
 	# 第二层：延迟0.08s的二次脉冲（让暴击有"连击"的层次感）
 	var ring2 := _acquire_ring()
 	if ring2 == null:
 		return
 	ring2.position = world_pos
-	_configure_ring_polygon(ring2, 6.0, Color(1.0, 0.7, 0.2, 0.7), 2.0)
+	_configure_ring_line(ring2, 6.0, Color(1.0, 0.7, 0.2, 0.7), 2.0)
 	parent.add_child(ring2)
 	var tween2 := ring2.create_tween()
 	tween2.tween_interval(0.08)
-	tween2.tween_method(func(r: float): _configure_ring_polygon(ring2, r, Color(1.0, 0.7, 0.2, 0.7 * (1.0 - r / 34.0)), 2.0), 6.0, 34.0, 0.40)
+	tween2.tween_method(func(r: float): _configure_ring_line(ring2, r, Color(1.0, 0.7, 0.2, 0.7 * (1.0 - r / 34.0)), 2.0), 6.0, 34.0, 0.40)
 	tween2.tween_callback(func(): _release_ring(ring2))
 
 
@@ -410,9 +450,9 @@ static func spawn_hit_blood(parent: Node2D, world_pos: Vector2, direction: Vecto
 			p.scale_amount_min = 0.6
 			p.scale_amount_max = 1.2
 			p.color_ramp = _get_blood_ramp(is_player)
-			# 注：debris 池默认带 ADD material（_acquire_debris_particle 新建时设）。
-			# 不在此覆盖 material=null——会污染池（复用时其他 debris 特效失去 ADD）。
-			# 血溅走 ADD 偏亮（暗红→粉红血雾高光），与火花层视觉协调，且零池污染风险。
+			p.material = _get_normal_mat()
+			# v26.12: 血溅烟层 ADD→MIX——灰烟贴图被 ADD 抬成白雾（实拍血雾读成白烟，
+			# 与 v20.27 命中烟同病）。MIX 下暗红 ramp 直接成立；release 时池自动归位 ADD。
 			parent.add_child(p)
 			var tree := p.get_tree()
 			if tree != null:
@@ -460,8 +500,8 @@ static func spawn_death_burst(parent: Node2D, world_pos: Vector2, is_player: boo
 		return
 	# 阵营色：我方青蓝、敌方暗红（与 hit_blood 配色一致，避免饱和糊图）
 	var faction_c: Color = Color(0.35, 0.7, 1.0, 0.85) if is_player else Color(0.9, 0.35, 0.2, 0.85)
-	# v13: 残骸印记——阵亡位置留暗痕,战场"打过的痕迹"能累积
-	spawn_battle_trace(parent, world_pos, 12.0 + randf() * 6.0, "wreck")
+	# v26.x: 不再留残骸印记——每死一个深色圆斑驻留 14s，密集战斗满地圆斑（用户反馈）。
+	# "打过的痕迹"由武器焦痕（spawn_battle_trace "scorch"，重型爆炸 50% 概率）继续承担。
 	# 第1层：阵营色小冲击波（半径 8→32，0.38s 扩散淡出）
 	spawn_shockwave(parent, world_pos, 32.0, faction_c)
 	# 第2层：碎片/血雾爆散（debris 池，向上+四周迸射后重力下落）
@@ -486,6 +526,7 @@ static func spawn_death_burst(parent: Node2D, world_pos: Vector2, is_player: boo
 			p.scale_amount_min = 0.7
 			p.scale_amount_max = 1.3
 			p.color_ramp = _get_blood_ramp(is_player)
+			p.material = _get_normal_mat()  # v26.12: ADD→MIX（同血溅，白雾→暗红/青蓝阵营烟）
 			parent.add_child(p)
 			var tree := p.get_tree()
 			if tree != null:
@@ -573,25 +614,28 @@ static func spawn_muzzle_flash(parent: Node2D, local_pos: Vector2, facing_right:
 		# 连发（审计 3 连拍/实战 SMG 10发/s）叠成连续火舌。规格要"细碎橙火星一闪即逝"：
 		# 减粒（26→12，拉开粒间距）+ 缩尺寸（12-26→7-15px，贴回 ≤16px 规格）
 		# + 提速缩寿（560×0.10s 轨迹更利落，驻留减半）+ 收锥（48°→30°，减少纵向涂抹）。
-		p.lifetime = 0.10            # 一闪即逝（0.14 仍有拖尾感）
-		p.amount = 12                # v18: 26→12（密度是糊团主因；ADD 亮贴图 12 粒足够可见）
-		p.emission_sphere_radius = 1.0  # v18: 1.5→1.0 进一步收紧爆发核心
-		p.spread = 30.0              # v18: 48→30 更窄锥（细碎感）
-		p.initial_velocity_min = 340.0   # v18: 260→340 快出快灭
-		p.initial_velocity_max = 560.0   # v18: 460→560
-		# 贴图内容实宽 100px（v17b 注释 74-84px 已过时，PIL 复测 100×26）。
-		p.scale_amount_min = 0.07    # → 单粒显示 ~7px 细火星
-		p.scale_amount_max = 0.15    # → ~15px（≤16px 规格内）
+		# v26.15f: 枪口火星显式清重力——火花池默认 (0,380) 是 v20.28 给命中火花设的，
+		# 枪口火星继承后 0.1s 内整体下垂（实拍读成"枪口往下掉渣"）。枪口语义直线喷射。
+		p.gravity = Vector2.ZERO
+		p.lifetime = 0.14            # v26.15f: 0.10→0.14（旧档最亮帧也只拍到火星尾巴）
+		p.amount = 16
+		p.emission_sphere_radius = 1.0
+		p.spread = 22.0
+		p.initial_velocity_min = 340.0
+		p.initial_velocity_max = 560.0
+		p.scale_amount_min = 0.11    # v26.15f: 0.09-0.18→0.11-0.22（配合清重力直线喷）
+		p.scale_amount_max = 0.22
 	elif is_energy_wt:
-		p.lifetime = 0.24            # 喷流稍持久但告别 0.4s
-		p.amount = 36                # v17l: 28→36（AI 批"开火无存在感"）
+		# v26.11: 新能量喷流贴图（白热核心+电弧丝，内容~1000×180 薄带）下的连贯化——
+		# 36 粒散开读成"碎屑带"（f08/f10 枪口主诉），收成 20 粒×窄锥×长条重叠喷流。
+		p.lifetime = 0.20
+		p.amount = 20
 		p.emission_sphere_radius = 1.5
-		p.spread = 8.0               # 极窄喷流（保持）
-		p.initial_velocity_min = 560.0
-		p.initial_velocity_max = 980.0
-		# v17b 实测贴图内容 974×597px。v17l: 0.035-0.085→0.05-0.12（喷流亮体加码）
-		p.scale_amount_min = 0.05
-		p.scale_amount_max = 0.12
+		p.spread = 5.0               # 窄喷流
+		p.initial_velocity_min = 640.0
+		p.initial_velocity_max = 1050.0
+		p.scale_amount_min = 0.07    # ~70px 条状
+		p.scale_amount_max = 0.14    # ~140px（与旧 974px 内容 48-116px 量级衔接）
 	else:  # 重型化学（曲射/空射/火箭/高炮/导弹）
 		p.lifetime = 0.22            # 大闪光但短促（原 0.40）
 		# v20.21 批次C: 定向爆喷收拢——42 粒 × 67-109px 火舌在 24° 锥内 ADD 叠加成
@@ -627,15 +671,16 @@ static func spawn_muzzle_flash(parent: Node2D, local_pos: Vector2, facing_right:
 			lcore.texture = PARTICLE_TEX_IMPACT_METAL     # 放射圆爆纹（等比，无长条）
 			lcore.position = local_pos
 			lcore.rotation = randf() * TAU
-			lcore.scale = Vector2(0.45, 0.45)             # ~58px 圆闪（轻武器级）
+			# v26.11: 0.45→0.58 起、0.65→0.82 峰（~74-105px 白闪核；旧 58-83px 实拍偏弱）
+			lcore.scale = Vector2(0.70, 0.70)
 			lcore.modulate = Color(1.0, 0.98, 0.90, 1.0)  # 近纯白
 			lcore.visible = true
 			lcore.material = _get_add_mat()
 			parent.add_child(lcore)
 			lcore.add_to_group("battle_vfx")
 			var tw_core := lcore.create_tween()
-			tw_core.tween_property(lcore, "scale", Vector2(0.65, 0.65), 0.05).set_ease(Tween.EASE_OUT)
-			tw_core.parallel().tween_property(lcore, "modulate:a", 0.0, 0.12).set_ease(Tween.EASE_IN)
+			tw_core.tween_property(lcore, "scale", Vector2(0.95, 0.95), 0.05).set_ease(Tween.EASE_OUT)
+			tw_core.parallel().tween_property(lcore, "modulate:a", 0.0, 0.16).set_ease(Tween.EASE_IN)
 			tw_core.tween_callback(func(): _release_impact_sprite(lcore))
 		# 第 2 层：宽幅低透暖光晕（R36: 同样改放射纹避免长条）
 		if _active_impact_sprites < MAX_IMPACT_SPRITES:
@@ -644,14 +689,15 @@ static func spawn_muzzle_flash(parent: Node2D, local_pos: Vector2, facing_right:
 				lglow.texture = PARTICLE_TEX_IMPACT_METAL   # R36: 横条→放射圆纹
 				lglow.position = local_pos
 				lglow.rotation = randf() * TAU
-				lglow.scale = Vector2(0.60, 0.60)             # ~77px 光晕
-				lglow.modulate = Color(1.0, 0.82, 0.55, 0.40)  # 暖橙光晕
+				# v26.11: 0.60→0.72 起、alpha 0.40→0.55（实拍光晕几乎不可读）
+				lglow.scale = Vector2(0.72, 0.72)             # ~92px 光晕
+				lglow.modulate = Color(1.0, 0.82, 0.55, 0.55)  # 暖橙光晕
 				lglow.visible = true
 				lglow.material = _get_add_mat()
 				parent.add_child(lglow)
 				lglow.add_to_group("battle_vfx")
 				var tw_glow := lglow.create_tween()
-				tw_glow.tween_property(lglow, "scale", Vector2(0.85, 0.85), 0.07).set_ease(Tween.EASE_OUT)
+				tw_glow.tween_property(lglow, "scale", Vector2(0.95, 0.95), 0.07).set_ease(Tween.EASE_OUT)
 				tw_glow.parallel().tween_property(lglow, "modulate:a", 0.0, 0.15).set_ease(Tween.EASE_IN)
 				tw_glow.tween_callback(func(): _release_impact_sprite(lglow))
 	# v19-R31: 磁轨炮(wt11)白热爆闪核——R30 AI 复审批 f11 双方枪口"仅几粒散蓝点，
@@ -941,9 +987,9 @@ static func spawn_railgun_penetration(parent: Node2D, pos: Vector2, dir: Vector2
 				if is_instance_valid(flash):
 					flash.material = null
 					_release_impact_sprite(flash))
-	# 入口锐利白冲击环(震撼)
+	# 入口锐利白冲击环(震撼)。v26.11: alpha 0.9→0.55——环空心化后纯白 0.9 描边过峻。
 	if not motion_reduce:
-		spawn_shockwave(parent, entry, 95.0, Color(1.0, 1.0, 0.95, 0.9))
+		spawn_shockwave(parent, entry, 95.0, Color(1.0, 1.0, 0.95, 0.55))
 	# ② 白热穿透光迹:贯穿入口→出口,亮核 + 辉光,贯穿瞬间保持全亮后骤淡
 	var core := _acquire_beam()
 	if core != null:
@@ -1353,7 +1399,7 @@ static func spawn_shockwave(parent: Node2D, world_pos: Vector2, radius: float, c
 	if ring == null:
 		return
 	ring.position = world_pos
-	_configure_ring_polygon(ring, 8.0, color, aspect_ratio)
+	_configure_ring_line(ring, 8.0, color, aspect_ratio)
 	parent.add_child(ring)
 	# v12e: 消散感——扩散到 1.22x 半径(向外继续散,不停在固定位置=不"撞墙消失"),
 	# alpha 用 ease(开头实→末尾平滑渐淡,非末尾骤淡),duration 0.40→0.52 留尾。
@@ -1365,7 +1411,7 @@ static func spawn_shockwave(parent: Node2D, world_pos: Vector2, radius: float, c
 			var t: float = clampf((r - 8.0) / maxf(end_r - 8.0, 1.0), 0.0, 1.0)
 			# ease_out_cubic 近似:留尾(前段实,后段渐淡),t^1.6 让淡出更柔
 			var a: float = base_a * (1.0 - pow(t, 1.6))
-			_configure_ring_polygon(ring, r, Color(color.r, color.g, color.b, a), aspect_ratio),
+			_configure_ring_line(ring, r, Color(color.r, color.g, color.b, a), aspect_ratio),
 		8.0, end_r, 0.52)
 	tween.tween_callback(func(): _release_ring(ring))
 
@@ -1514,13 +1560,13 @@ static func spawn_spell_burst(parent: Node2D, world_pos: Vector2, texture: Textu
 	var warn_ring := _acquire_ring()
 	if warn_ring != null:
 		warn_ring.position = world_pos
-		_configure_ring_polygon(warn_ring, warn_r, Color(body_tint.r, body_tint.g, body_tint.b, 0.7))
+		_configure_ring_line(warn_ring, warn_r, Color(body_tint.r, body_tint.g, body_tint.b, 0.7))
 		parent.add_child(warn_ring)
-		var captured_warn: Polygon2D = warn_ring
+		var captured_warn: Line2D = warn_ring
 		var captured_wtint: Color = body_tint
 		var captured_warn_r: float = warn_r
 		var tw_warn := warn_ring.create_tween()
-		tw_warn.tween_method(func(r: float): _configure_ring_polygon(captured_warn, r, Color(captured_wtint.r, captured_wtint.g, captured_wtint.b, 0.7 * (r / captured_warn_r if captured_warn_r > 0.0 else 0.0))), warn_r, warn_r * 0.33, 0.15)
+		tw_warn.tween_method(func(r: float): _configure_ring_line(captured_warn, r, Color(captured_wtint.r, captured_wtint.g, captured_wtint.b, 0.7 * (r / captured_warn_r if captured_warn_r > 0.0 else 0.0))), warn_r, warn_r * 0.33, 0.15)
 		tw_warn.tween_callback(func(): _release_ring(captured_warn))
 	# 延迟 0.15s 后贴图爆炸（与预警环同步）
 	var weak_parent: WeakRef = weakref(parent)
@@ -1755,7 +1801,7 @@ const MAX_TRACES: int = 48
 const TRACE_TEX_BASE_R: float = 32.0  # impact_scorch 贴图基准半径(64px/2)
 
 ## kind: "scorch"(重型命中弹坑焦痕) / "wreck"(单位阵亡残骸印记,更大更暗)
-static func spawn_battle_trace(parent: Node2D, world_pos: Vector2, radius: float, kind: String = "scorch") -> void:
+static func spawn_battle_trace(parent: Node2D, world_pos: Vector2, radius: float) -> void:
 	if parent == null or not is_instance_valid(parent):
 		return
 	if DT.is_motion_reduce():
@@ -1798,9 +1844,9 @@ static func spawn_battle_trace(parent: Node2D, world_pos: Vector2, radius: float
 	node.rotation = randf() * TAU
 	node.scale = Vector2(sc, sc) * (0.9 + randf() * 0.25)
 	node.visible = true
-	var is_wreck: bool = kind == "wreck"
-	node.modulate = Color(0.10, 0.08, 0.06, 0.0) if is_wreck else Color(0.16, 0.12, 0.08, 0.0)
-	var peak_a: float = 0.55 if is_wreck else 0.42
+	# v26.x: 原 "wreck" 残骸分支（更深 0.55/独立色）随死亡印记退役，仅剩武器焦痕
+	node.modulate = Color(0.16, 0.12, 0.08, 0.0)
+	var peak_a: float = 0.42
 	var tw := node.create_tween()
 	tw.tween_property(node, "modulate:a", peak_a, 0.18)
 	tw.tween_interval(14.0)
@@ -1995,16 +2041,16 @@ static func spawn_summon_portal(parent: Node2D, pos: Vector2, color: Color = Col
 			continue
 		var start_r: float = 110.0 - float(layer) * 28.0  # 外110/中82/内54
 		ring.position = pos
-		_configure_ring_polygon(ring, start_r, color)
+		_configure_ring_line(ring, start_r, color)
 		parent.add_child(ring)
 		var layer_delay: float = float(layer) * 0.08
-		var captured_ring: Polygon2D = ring
+		var captured_ring: Line2D = ring
 		var captured_color: Color = color
 		var captured_start: float = start_r
 		var tw := ring.create_tween()
 		tw.tween_interval(layer_delay)
 		# 收缩到中心 + 旋转 + 淡出（半径缩小时 alpha 按比例衰减）
-		tw.tween_method(func(r: float): _configure_ring_polygon(captured_ring, r, Color(captured_color.r, captured_color.g, captured_color.b, captured_color.a * (r / captured_start if captured_start > 0.0 else 0.0))), start_r, 16.0, duration - layer_delay)
+		tw.tween_method(func(r: float): _configure_ring_line(captured_ring, r, Color(captured_color.r, captured_color.g, captured_color.b, captured_color.a * (r / captured_start if captured_start > 0.0 else 0.0))), start_r, 16.0, duration - layer_delay)
 		tw.parallel().tween_property(ring, "rotation", TAU * 0.8, duration - layer_delay)
 		tw.tween_callback(func(): _release_ring(captured_ring))
 
@@ -2088,7 +2134,12 @@ static func spawn_ultimate_projectile(parent: Node2D, from: Vector2, target: Vec
 		if on_arrival.is_valid():
 			var tw_fb := parent.create_tween()
 			tw_fb.tween_interval(flight_time)
-			tw_fb.tween_callback(func(): on_arrival.call(target))
+			# v26.x: 与有贴图路径同守卫（battle_on_at_launch 已在函数头快照）——
+			# 飞行窗口内战斗结束时到达回调作废
+			tw_fb.tween_callback(func():
+				if battle_on_at_launch and not _battle_active_now():
+					return
+				on_arrival.call(target))
 		return flight_time
 	# 创建飞行体 Sprite2D
 	var missile := Sprite2D.new()
@@ -2098,6 +2149,9 @@ static func spawn_ultimate_projectile(parent: Node2D, from: Vector2, target: Vec
 	var mscale: float = target_width / tex_w if tex_w > 0.0 else 0.05
 	missile.scale = Vector2(mscale, mscale)
 	missile.modulate = tint
+	# 混合模式：保持正常混合。v26.12 曾试 ADD"自发光"，实拍证伪——银色弹体在明亮
+	# 云层背景被加色洗到不可见（核子轰炸弹头在弧顶整段消失）；弹体的发光语义由
+	# 尾迹（ADD 光条）承担，弹体本身是实体物。
 	missile.global_position = from
 	missile.z_index = 50  # 盖在单位上方，飞行时清晰可见
 	parent.add_child(missile)
@@ -2111,6 +2165,11 @@ static func spawn_ultimate_projectile(parent: Node2D, from: Vector2, target: Vec
 		"dive":
 			# 低空俯冲：浅弧度（空投燃烧弹，从侧方低空飞入）
 			apex = Vector2((from.x + target.x) / 2.0, min(from.y, target.y) - 60.0)
+		"high_arc":
+			# v26.15g: 高抛物线（核子轰炸等战略打击语义）——顶点 -320px，读"升空→高空顶点
+			# →下砸目标"。默认 arc 的 -160 顶点让导弹贴着单位排面平飞（用户实机截图：
+			# 黄色弹团横漂中场，读不出"轰炸"）。
+			apex = Vector2((from.x + target.x) / 2.0, min(from.y, target.y) - 320.0)
 		_:  # "arc" 默认
 			# 标准贝塞尔弧：中点上方抬升（像炮弹/导弹抛物线）
 			apex = Vector2((from.x + target.x) / 2.0, min(from.y, target.y) - 160.0)
@@ -2146,6 +2205,7 @@ static func spawn_ultimate_projectile(parent: Node2D, from: Vector2, target: Vec
 	var captured_apex: Vector2 = apex
 	var captured_target: Vector2 = target
 	var captured_arrival: Callable = on_arrival
+	var trail_pts := PackedVector2Array()  # v26.12: 拖尾轨迹点（lambda 内累积）
 	var tw := parent.create_tween()
 	tw.tween_method(func(progress: float):
 		if not is_instance_valid(captured_missile):
@@ -2163,15 +2223,16 @@ static func spawn_ultimate_projectile(parent: Node2D, from: Vector2, target: Vec
 		if dir.length() > 0.5:
 			captured_missile.rotation = dir.angle() - PI / 2.0
 		prev_pt = pt
-		# 更新拖尾（从飞行体后方延伸；主线 24px + 辉光 44px 更长，层次感）
+		# v26.12: 拖尾改为轨迹积累——旧实现每帧重画 26/46px 固定短棍，高速飞行体身后
+	# 几乎无痕（实拍读成"孤儿药丸"）。现把已飞过的路径累积成折线（保留最近 14 点，
+	# ~0.23s @60fps），火尾沿整段弹道展开，"从天而降"的动势可见。
 		if captured_trail != null and is_instance_valid(captured_trail):
-			captured_trail.clear_points()
-			captured_trail.add_point(pt - dir.normalized() * 26.0)
-			captured_trail.add_point(pt)
+			trail_pts.append(pt)
+			if trail_pts.size() > 14:
+				trail_pts = trail_pts.slice(trail_pts.size() - 14)
+			captured_trail.points = trail_pts
 		if captured_trail_glow != null and is_instance_valid(captured_trail_glow):
-			captured_trail_glow.clear_points()
-			captured_trail_glow.add_point(pt - dir.normalized() * 46.0)
-			captured_trail_glow.add_point(pt)
+			captured_trail_glow.points = trail_pts
 	, 0.0, 1.0, flight_time)
 	# 到达：移除飞行体 + 回收拖尾 + 触发回调
 	tw.tween_callback(func():
@@ -2377,10 +2438,10 @@ static func _spawn_guided_indicator(parent: Node2D, pos: Vector2, is_player: boo
 	var outer := _acquire_ring()
 	if outer != null:
 		outer.position = pos
-		_configure_ring_polygon(outer, 50.0, Color(0.4, 0.9, 1.0, 0.7))
+		_configure_ring_line(outer, 50.0, Color(0.4, 0.9, 1.0, 0.7))
 		parent.add_child(outer)
 		var tw1 := outer.create_tween()
-		tw1.tween_method(func(r: float): _configure_ring_polygon(outer, r, Color(0.4, 0.9, 1.0, 0.7 * (r / 50.0))), 50.0, 8.0, 0.25)
+		tw1.tween_method(func(r: float): _configure_ring_line(outer, r, Color(0.4, 0.9, 1.0, 0.7 * (r / 50.0))), 50.0, 8.0, 0.25)
 		tw1.tween_callback(func(): _release_ring(outer))
 	# 内环（延迟 0.08s，更小更快 → 强化"锁定"感）
 	var tree: SceneTree = Engine.get_main_loop() as SceneTree
@@ -2395,10 +2456,10 @@ static func _spawn_guided_indicator(parent: Node2D, pos: Vector2, is_player: boo
 			if inner == null:
 				return
 			inner.position = captured_pos
-			_configure_ring_polygon(inner, 30.0, Color(0.6, 1.0, 1.0, 0.8))
+			_configure_ring_line(inner, 30.0, Color(0.6, 1.0, 1.0, 0.8))
 			wp.add_child(inner)
 			var tw2 := inner.create_tween()
-			tw2.tween_method(func(r: float): _configure_ring_polygon(inner, r, Color(0.6, 1.0, 1.0, 0.8 * (r / 30.0))), 30.0, 5.0, 0.18)
+			tw2.tween_method(func(r: float): _configure_ring_line(inner, r, Color(0.6, 1.0, 1.0, 0.8 * (r / 30.0))), 30.0, 5.0, 0.18)
 			tw2.tween_callback(func(): _release_ring(inner))
 		)
 
@@ -2443,12 +2504,12 @@ static func _spawn_ring(parent: Node2D, pos: Vector2, target_r: float, duration:
 	if ring == null:
 		return
 	ring.position = pos
-	_configure_ring_polygon(ring, 5.0, Color(color.r, color.g, color.b, 0.8), aspect_ratio)
+	_configure_ring_line(ring, 5.0, Color(color.r, color.g, color.b, 0.8), aspect_ratio)
 	parent.add_child(ring)
 	var tween := ring.create_tween()
 	# 扩散同时 alpha 从 0.8 → 0
 	var col_end := Color(color.r, color.g, color.b, 0.0)
-	tween.tween_method(func(r: float): _configure_ring_polygon(ring, r, color.lerp(col_end, (r - 5.0) / maxf(target_r - 5.0, 1.0))), 5.0, target_r, duration)
+	tween.tween_method(func(r: float): _configure_ring_line(ring, r, color.lerp(col_end, (r - 5.0) / maxf(target_r - 5.0, 1.0))), 5.0, target_r, duration)
 	tween.tween_callback(func(): _release_ring(ring))
 
 
@@ -2576,11 +2637,11 @@ static func spawn_debris_only(parent: Node2D, pos: Vector2, weapon_type: int, is
 		if weapon_type in [3, 7, 9]:
 			recipe["debris"] = {"amount": 16, "life": 0.8, "vmin": 40.0, "vmax": 100.0,
 				"smin": 2.5, "smax": 5.0, "is_smoke": true,
-				"smoke_color": Color(0.45, 0.4, 0.35, 0.45)}
+				"smoke_color": Color(0.55, 0.49, 0.43, 0.42)}
 		elif weapon_type in [8, 10, 11]:
 			recipe["debris"] = {"amount": 10, "life": 0.6, "vmin": 30.0, "vmax": 80.0,
 				"smin": 2.0, "smax": 4.0, "is_smoke": true,
-				"smoke_color": Color(0.35, 0.4, 0.8, 0.4)}
+				"smoke_color": Color(0.45, 0.52, 0.85, 0.38)}
 		else:
 			return  # 轻武器无 debris 层
 	var base_color: Color = _impact_color(weapon_type, -1, is_player)
@@ -2728,10 +2789,13 @@ static func _spawn_debris(parent: Node2D, pos: Vector2, debris_cfg: Dictionary, 
 		return
 	p.position = pos
 	# v9.2: 烟尘/碎片按武器类型分流贴图（池复用需显式赋值，否则继承上次的 texture）
+	# v26.15d: 爆炸系烟尘换浅灰白烟贴图——smoke_generic 均值 0.40 在持续命中下
+	# 叠成近黑大团吞掉单位（实机截图 FT-17 案例）；light 烟 0.8 亮度下按 tint
+	# 读作棕灰扬尘，多团叠加也保持可读。
 	if weapon_type in [8, 10, 11]:
 		p.texture = PARTICLE_TEX_SMOKE_ENERGY
 	else:
-		p.texture = PARTICLE_TEX_SMOKE_GENERIC
+		p.texture = PARTICLE_TEX_SMOKE_PUFF_LIGHT
 	p.amount = int(debris_cfg.get("amount", 10))
 	p.lifetime = float(debris_cfg.get("life", 0.5))
 	p.initial_velocity_min = float(debris_cfg.get("vmin", 30.0))
@@ -2751,12 +2815,13 @@ static func _spawn_debris(parent: Node2D, pos: Vector2, debris_cfg: Dictionary, 
 			p.direction = Vector2(1, 0)  # 横向（左甩+右甩由 spread=180 实现）
 			p.spread = 180.0
 			p.gravity = Vector2(0, 40.0)  # 轻微下沉，模拟尘土回落
-			p.color = debris_cfg.get("smoke_color", Color(0.5, 0.45, 0.38, 0.45))
+			# v26.11: 扬尘提亮（0.5,0.45,0.38,0.45）→ 土黄色尘（黑球→地表扬尘）
+			p.color = debris_cfg.get("smoke_color", Color(0.58, 0.52, 0.43, 0.42))
 		else:
 			p.direction = Vector2(0, -1)  # 向上
 			p.spread = 40.0
 			p.gravity = Vector2(0, -8.0)  # 轻微上飘
-			p.color = debris_cfg.get("smoke_color", Color(0.4, 0.35, 0.3, 0.6))
+			p.color = debris_cfg.get("smoke_color", Color(0.52, 0.47, 0.41, 0.5))
 	else:
 		p.direction = Vector2(0, 0)
 		p.spread = 360.0
@@ -2813,11 +2878,13 @@ static func _spawn_flash_layer(parent: Node2D, pos: Vector2, base_color: Color, 
 	p.scale_amount_max = float(cfg.get("smax", _flash_smax)) * FSCALE
 	var flash_col: Color = Color(1.0, 1.0, 0.96, 1.0) if not is_energy else Color(0.85, 0.95, 1.0, 1.0)
 	p.color = flash_col
-	var g := Gradient.new()
-	g.add_point(0.0, flash_col)
-	g.add_point(0.5, Color(flash_col.r, flash_col.g * 0.9, flash_col.b * 0.6, 0.6))
-	g.add_point(1.0, Color(flash_col.r, flash_col.g * 0.6, flash_col.b * 0.3, 0.0))
-	p.color_ramp = g
+	# v26.x: Gradient 按色缓存（原每次命中 new）
+	var _fkey: String = "flash_%02x%02x%02x" % [int(flash_col.r * 255), int(flash_col.g * 255), int(flash_col.b * 255)]
+	p.color_ramp = _get_cached_gradient(_fkey, [
+		[0.0, flash_col],
+		[0.5, Color(flash_col.r, flash_col.g * 0.9, flash_col.b * 0.6, 0.6)],
+		[1.0, Color(flash_col.r, flash_col.g * 0.6, flash_col.b * 0.3, 0.0)],
+	])
 	parent.add_child(p)
 	var tree := p.get_tree()
 	if tree != null:
@@ -2836,24 +2903,76 @@ static func _spawn_smoke_puff_layer(parent: Node2D, pos: Vector2, base_color: Co
 		return
 	p.position = pos
 	var is_energy: bool = weapon_type in [8, 10, 11]
-	p.texture = PARTICLE_TEX_SMOKE_ENERGY if is_energy else PARTICLE_TEX_SMOKE_GENERIC
+	# v26.11: 非能量烟换浅灰白枪烟贴图——smoke_generic 均值 0.40 乘任何 tint 都是暗团
+	# （轻武器命中"黑球"的残源），light 贴图 0.8 亮度下中性暖灰才成立。
+	p.texture = PARTICLE_TEX_SMOKE_ENERGY if is_energy else PARTICLE_TEX_SMOKE_PUFF_LIGHT
 	var light_factor: float = 0.85 if weapon_type in [0, 1, 2, 4] else 1.0  # v11b: 0.5→0.85 轻武器烟量恢复可见(报告:完全无烟)
-	p.amount = int(float(cfg.get("amount", 6)) * light_factor)
+	p.amount = int(float(cfg.get("amount", 5)) * light_factor)
 	p.lifetime = float(cfg.get("life", 0.7))
 	p.initial_velocity_min = float(cfg.get("vmin", 20.0))
 	p.initial_velocity_max = float(cfg.get("vmax", 55.0))
 	const DSCALE: float = 0.5
-	p.scale_amount_min = float(cfg.get("smin", 2.5)) * DSCALE
-	p.scale_amount_max = float(cfg.get("smax", 4.5)) * DSCALE
+	# v26.11: 默认档 2.5-4.5→1.8-3.0（×0.5×128px = 115-192px/粒；旧 160-288px×6 粒
+	# 叠成 230px 黑球）+ 配色整体提亮两档（暗底黑球 → 中性暖灰烟）。
+	p.scale_amount_min = float(cfg.get("smin", 1.8)) * DSCALE
+	p.scale_amount_max = float(cfg.get("smax", 3.0)) * DSCALE
 	p.direction = Vector2(0, -1)   # 向上飘
 	p.spread = 55.0
 	p.gravity = Vector2(0, -15.0)  # 轻微上飘
 	# v20.27: 烟层 ADD→MIX（同 _spawn_debris 烟分支）——ADD 洗掉灰烟暗部读成白雾，
 	# 烟回归"微量配角"档。release 时 _release_debris_particle 已归位池默认 ADD。
 	p.material = _get_normal_mat()
-	var smoke_col: Color = cfg.get("color", (Color(0.32, 0.3, 0.28, 0.55) if not is_energy else Color(0.3, 0.38, 0.6, 0.45)))
+	var smoke_col: Color = cfg.get("color", (Color(0.55, 0.51, 0.45, 0.5) if not is_energy else Color(0.45, 0.54, 0.72, 0.45)))
 	p.color = smoke_col
 	p.color_ramp = _get_smoke_grad(smoke_col)
+	parent.add_child(p)
+	var tree := p.get_tree()
+	if tree != null:
+		var timer := tree.create_timer(p.lifetime + 0.1)
+		_connect_deferred_release(timer, p, _release_debris_particle)
+
+
+## v26.x: 曲射 batch 弹道烟迹团——MultiMesh 主路径此前零拖尾（兜底 bullet 的 36 粒
+## 烟迹只覆盖单发路径），"有开火/爆炸声没弹尾"观感差距的补齐。debris 池一次性
+## 小烟团（对齐 bullet 拖尾 23-41px 规格），MIX 混合（v20.27 烟语义），池满自动
+## 跳过——拖尾是配角，命中特效优先用池。
+static func spawn_projectile_trail_puff(parent: Node2D, pos: Vector2, weapon_type: int, is_enemy: bool) -> void:
+	if parent == null or not is_instance_valid(parent):
+		return
+	if _active_debris >= MAX_DEBRIS:
+		return
+	_active_debris += 1
+	var p := _acquire_debris_particle()
+	if p == null:
+		_active_debris -= 1
+		return
+	p.position = pos
+	# v26.11: 换浅灰白枪烟贴图——smoke_generic 均值亮度 0.40，MIX 尾烟团叠加收敛到
+	# 贴图自身色 → 暗夜空下读成"深色土块串"（f01/f02/f03/f07/f09 弹道格主诉）。
+	# 新贴图亮度 ~0.8，MIX 叠加收敛到浅灰 = 真实硝烟。
+	p.texture = PARTICLE_TEX_SMOKE_PUFF_LIGHT
+	# 配色对齐 bullet._trail_color_for_weapon：1/2 灰白硝烟 / 3/7/9 橙尾焰 / 敌方统一橙红
+	# v26.11: alpha 0.7-0.8→0.5-0.6（亮贴图下同 alpha 会过实），暖色微提亮。
+	var col: Color
+	if is_enemy:
+		col = Color(1.0, 0.5, 0.28, 0.55)
+	elif weapon_type in [1, 2]:
+		col = Color(0.92, 0.90, 0.86, 0.6)
+	else:
+		col = Color(1.0, 0.62, 0.3, 0.6)
+	p.material = _get_normal_mat()  # 烟 MIX（release 归位 ADD，v18-R9 同先例）
+	p.amount = 2
+	p.lifetime = 0.5
+	p.lifetime_randomness = 0.2
+	p.initial_velocity_min = 8.0
+	p.initial_velocity_max = 24.0
+	p.direction = Vector2(0, -1)
+	p.spread = 60.0
+	p.gravity = Vector2(0, -12.0)  # 轻微上飘（硝烟语义，v20.28 勿统一）
+	p.scale_amount_min = 0.16
+	p.scale_amount_max = 0.28
+	p.color = col
+	p.color_ramp = _get_smoke_grad(col)
 	parent.add_child(p)
 	var tree := p.get_tree()
 	if tree != null:
@@ -2894,11 +3013,9 @@ static func _spawn_shrapnel_layer(parent: Node2D, pos: Vector2, base_color: Colo
 		# v18-R9: color 白——metal_chunk 自带暗钢/受光/炽热边色彩，modulate 会洗掉层次。
 		# 渐变只控 alpha 渐隐（末尾整体变透明而非变色）。
 		p.color = Color.WHITE
-		var sge := Gradient.new()
-		sge.add_point(0.0, Color(1, 1, 1, 1.0))
-		sge.add_point(0.6, Color(1, 1, 1, 0.9))
-		sge.add_point(1.0, Color(1, 1, 1, 0.0))
-		p.color_ramp = sge
+		# v26.x: Gradient 缓存（原每次命中 new；渐变只控 alpha 渐隐，恒白不随色变）
+		p.color_ramp = _get_cached_gradient("metal_chunk_alpha", [
+			[0.0, Color(1, 1, 1, 1.0)], [0.6, Color(1, 1, 1, 0.9)], [1.0, Color(1, 1, 1, 0.0)]])
 		parent.add_child(p)
 		var tree_e := p.get_tree()
 		if tree_e != null:
@@ -2917,11 +3034,13 @@ static func _spawn_shrapnel_layer(parent: Node2D, pos: Vector2, base_color: Colo
 	p.gravity = Vector2(0, 260.0)  # 重力下落(破片抛物线)
 	var shrap_col: Color = cfg.get("color", (Color(0.85, 0.78, 0.55, 1.0) if weapon_type not in [8, 10, 11] else Color(0.6, 0.75, 1.0, 1.0)))
 	p.color = shrap_col
-	var sg := Gradient.new()
-	sg.add_point(0.0, shrap_col)
-	sg.add_point(0.6, Color(shrap_col.r * 0.6, shrap_col.g * 0.5, shrap_col.b * 0.4, 0.9))
-	sg.add_point(1.0, Color(0.2, 0.15, 0.1, 0.0))
-	p.color_ramp = sg
+	# v26.x: Gradient 按色缓存（原每次命中 new）
+	var _skey: String = "shrap_%02x%02x%02x" % [int(shrap_col.r * 255), int(shrap_col.g * 255), int(shrap_col.b * 255)]
+	p.color_ramp = _get_cached_gradient(_skey, [
+		[0.0, shrap_col],
+		[0.6, Color(shrap_col.r * 0.6, shrap_col.g * 0.5, shrap_col.b * 0.4, 0.9)],
+		[1.0, Color(0.2, 0.15, 0.1, 0.0)],
+	])
 	parent.add_child(p)
 	var tree := p.get_tree()
 	if tree != null:
@@ -3098,14 +3217,14 @@ static func _impact_recipe_build(weapon_type: int, flavor: int) -> Dictionary:
 				"ring_r": 48.0, "ring_dur": 0.48,
 				"spark_amount": 32, "spark_vmin": 90.0, "spark_vmax": 260.0,
 				"spark_smin": 2.0, "spark_smax": 3.8, "spark_life": 0.60, "spark_spread": 360.0,
-				"debris": {"amount": 14, "life": 0.9, "vmin": 40.0, "vmax": 90.0, "smin": 3.5, "smax": 5.5, "is_smoke": true, "smoke_color": Color(0.5, 0.45, 0.38, 0.45), "low_dust": true},
+				"debris": {"amount": 14, "life": 0.9, "vmin": 40.0, "vmax": 90.0, "smin": 3.5, "smax": 5.5, "is_smoke": true, "smoke_color": Color(0.58, 0.52, 0.43, 0.42), "low_dust": true},
 			}
 		3:  # ROCKET — 大环 + 烟尘
 			return {
 				"ring_r": 80.0, "ring_dur": 0.60,
 				"spark_amount": 48, "spark_vmin": 100.0, "spark_vmax": 320.0,
 				"spark_smin": 3.0, "spark_smax": 6.0, "spark_life": 0.70, "spark_spread": 360.0,
-				"debris": {"amount": 18, "life": 1.0, "vmin": 50.0, "vmax": 120.0, "smin": 3.0, "smax": 5.0, "is_smoke": true, "smoke_color": Color(0.4, 0.35, 0.3, 0.5)},
+				"debris": {"amount": 18, "life": 1.0, "vmin": 50.0, "vmax": 120.0, "smin": 3.0, "smax": 5.0, "is_smoke": true, "smoke_color": Color(0.52, 0.47, 0.41, 0.45)},
 			}
 		9, 2:  # MISSILE / AERIAL — 大环 + 碎片 + 烟柱
 			return {
@@ -3119,7 +3238,7 @@ static func _impact_recipe_build(weapon_type: int, flavor: int) -> Dictionary:
 				"ring_r": 64.0, "ring_dur": 0.52,
 				"spark_amount": 38, "spark_vmin": 90.0, "spark_vmax": 270.0,
 				"spark_smin": 2.5, "spark_smax": 5.0, "spark_life": 0.62, "spark_spread": 360.0,
-				"debris": {"amount": 16, "life": 0.9, "vmin": 45.0, "vmax": 95.0, "smin": 3.0, "smax": 4.0, "is_smoke": true, "smoke_color": Color(0.45, 0.4, 0.35, 0.45)},
+				"debris": {"amount": 16, "life": 0.9, "vmin": 45.0, "vmax": 95.0, "smin": 3.0, "smax": 4.0, "is_smoke": true, "smoke_color": Color(0.55, 0.49, 0.43, 0.42)},
 			}
 		8:  # LASER — 细环 + 高速线状火花（能量武器灼烧感，仍比动能武器短，但已能看清）
 			return {
@@ -3132,7 +3251,7 @@ static func _impact_recipe_build(weapon_type: int, flavor: int) -> Dictionary:
 				"ring_r": 50.0, "ring_dur": 0.45,
 				"spark_amount": 35, "spark_vmin": 90.0, "spark_vmax": 280.0,
 				"spark_smin": 2.0, "spark_smax": 4.5, "spark_life": 0.58, "spark_spread": 360.0,
-				"debris": {"amount": 12, "life": 0.7, "vmin": 30.0, "vmax": 70.0, "smin": 2.5, "smax": 4.0, "is_smoke": true, "smoke_color": Color(0.35, 0.4, 0.8, 0.4)},
+				"debris": {"amount": 12, "life": 0.7, "vmin": 30.0, "vmax": 70.0, "smin": 2.5, "smax": 4.0, "is_smoke": true, "smoke_color": Color(0.45, 0.52, 0.85, 0.38)},
 			}
 		11:  # RAIL(电磁轨道炮) — 青色 + 高速定向喷射（电磁穿透感，窄角集中）
 			return {
@@ -3176,15 +3295,28 @@ static func _get_smoke_grad(tint: Color) -> Gradient:
 	if _smoke_grad_cache.has(key):
 		return _smoke_grad_cache[key]
 	var grad := Gradient.new()
-	grad.add_point(0, Color(tint.r, tint.g, tint.b, 0.85))
-	grad.add_point(0.5, Color(tint.r, tint.g, tint.b, 0.45))
+	# v26.11: 起始 alpha 0.85→0.62 / 中段 0.45→0.30——旧档烟团首帧近乎实心，
+	# MIX 叠加收敛出"黑球"观感（f00/f04/f05 命中主诉）；降档后烟回归半透明配角。
+	grad.add_point(0, Color(tint.r, tint.g, tint.b, 0.62))
+	grad.add_point(0.5, Color(tint.r, tint.g, tint.b, 0.30))
 	grad.add_point(1.0, Color(tint.r, tint.g, tint.b, 0.0))
 	_smoke_grad_cache[key] = grad
 	return grad
 
 
-## 冲击波环（Polygon2D）池
-static func _acquire_ring() -> Polygon2D:
+## v26.x: 通用按色 Gradient 缓存（命中闪光/金属破片层）。points = [[offset, Color], ...]。
+static func _get_cached_gradient(key: String, points: Array) -> Gradient:
+	if _fx_grad_cache.has(key):
+		return _fx_grad_cache[key]
+	var grad := Gradient.new()
+	for pt: Array in points:
+		grad.add_point(float(pt[0]), pt[1])
+	_fx_grad_cache[key] = grad
+	return grad
+
+
+## 冲击波环（Line2D 闭环）池——v26.12c 从 Polygon2D 迁移（见常量区注释）
+static func _acquire_ring() -> Line2D:
 	var i := _ring_pool.size() - 1
 	while i >= 0:
 		var candidate = _ring_pool[i]
@@ -3196,78 +3328,47 @@ static func _acquire_ring() -> Polygon2D:
 			_active_rings += 1
 			candidate.visible = true
 			candidate.modulate.a = 1.0
-			_ensure_ring_buffer(candidate)  # v7.4: 防御性确保 buffer 存在
 			return candidate
-		else:
-			# 失效节点，清理其 buffer 缓存
-			_ring_buffers.erase(candidate)
 		i -= 1
 	if _active_rings >= MAX_RINGS:
 		return null
 	_active_rings += 1
-	var ring := Polygon2D.new()
+	var ring := Line2D.new()
+	ring.closed = true
+	ring.joint_mode = Line2D.LINE_JOINT_ROUND
 	ring.material = _get_add_mat()
-	_ensure_ring_buffer(ring)  # v7.4: 新建 ring 时预分配顶点 buffer
 	return ring
 
 
-## v7.4: 为 ring 创建/确保预分配顶点 buffer（单位圆坐标 + 工作数组）。
-## 单位圆坐标按原 _configure_ring_polygon 的内外圈交错布局预计算，每帧只需 × radius 缩放。
-static func _ensure_ring_buffer(ring: Polygon2D) -> void:
-	if _ring_buffers.has(ring):
-		return
-	var unit_pts := PackedVector2Array()
-	unit_pts.resize(_RING_VERTS)
-	for i in range(_RING_SEGS):
-		var a := (float(i) / float(_RING_SEGS)) * TAU
-		var outer := Vector2(cos(a), sin(a))
-		var inner := Vector2(cos(a + PI / _RING_SEGS), sin(a + PI / _RING_SEGS))
-		unit_pts[i * 2] = outer       # 外圈点（radius 缩放）
-		unit_pts[i * 2 + 1] = inner   # 内圈点（radius-3 缩放，configure 时动态算）
-	var scratch := PackedVector2Array()
-	scratch.resize(_RING_VERTS)
-	_ring_buffers[ring] = {"unit": unit_pts, "scratch": scratch}
-
-
-static func _release_ring(ring: Polygon2D) -> void:
+static func _release_ring(ring: Line2D) -> void:
 	if ring == null or not is_instance_valid(ring):
 		_active_rings -= 1
-		_ring_buffers.erase(ring)  # v7.4: 清理失效 buffer 缓存
 		return
 	# v7.5: 用 get_parent()!=null 判定而非 is_inside_tree()。父节点可能在战斗拆卸时
 	# 被移出场景树但尚未 free，此时 is_inside_tree()=false 会跳过 remove_child，
 	# 导致 ring 带父归还池中，下次 acquire 的 add_child 触发 "already has a parent"。
-	if ring.get_parent() != null:
-		ring.get_parent().remove_child(ring)
+	_park_in_pool(ring)
 	ring.visible = false
+	ring.material = null
 	_active_rings -= 1
 	if _ring_pool.size() < MAX_RINGS:
-		_ring_pool.append(ring)  # buffer 保留，下次 acquire 复用
+		_ring_pool.append(ring)
 	else:
-		_ring_buffers.erase(ring)  # v7.4: 即将 free，清理 buffer 缓存
 		ring.queue_free()
 
 
-## v7.4: 配置 Polygon2D 为给定半径的圆环（空心，24段）。
-## 原实现每次 new PackedVector2Array + 48 append（每帧每 ring 一次 = 热点 GC 源）。
-## 现从预分配 buffer 取数组，原地 × radius 缩放（零堆分配），最后整体赋值给 polygon。
-static func _configure_ring_polygon(ring: Polygon2D, radius: float, color: Color, aspect_ratio: float = 1.0) -> void:
-	var buf: Dictionary = _ring_buffers.get(ring, {})
-	if buf.is_empty():
-		_ensure_ring_buffer(ring)
-		buf = _ring_buffers[ring]
-	var unit_pts: PackedVector2Array = buf["unit"]
-	var scratch: PackedVector2Array = buf["scratch"]
-	var inner := maxf(radius - 3.0, 1.0)
-	for i in range(_RING_VERTS):
-		var vx: float = unit_pts[i].x * radius * aspect_ratio  # v17e: 横向拉伸做侧视椭圆
-		var vy: float = unit_pts[i].y * radius
-		if i % 2 == 0:
-			scratch[i] = Vector2(vx, vy)    # 外圈
-		else:
-			scratch[i] = Vector2(vx, vy)     # 内圈
-	ring.polygon = scratch  # 引擎侧拷贝无法避免，但 GDScript 侧零分配
-	ring.color = color
+## v26.12c: 配置 Line2D 闭环为给定半径的空心环。points 共享单位圆缓存（36 点零分配），
+## 半径/纵横比走 scale（厚度=width×scale 随半径同比缩放），小环保底 2.2px 屏幕厚度。
+static func _configure_ring_line(ring: Line2D, radius: float, color: Color, aspect_ratio: float = 1.0) -> void:
+	if _ring_unit_pts.is_empty():
+		for i in range(36):
+			var a := TAU * float(i) / 36.0
+			_ring_unit_pts.append(Vector2(cos(a), sin(a)))
+	ring.points = _ring_unit_pts
+	ring.width = maxf(0.28, 2.2 / maxf(radius, 0.01))
+	ring.scale = Vector2(radius * aspect_ratio, radius)
+	ring.default_color = color
+	ring.material = _get_add_mat()
 
 
 ## v7.4: Line2D 特效池（穿透光线/闪电链/激光余晖共用）
@@ -3299,10 +3400,12 @@ static func _release_beam(beam: Line2D) -> void:
 		_active_beams -= 1
 		return
 	# v7.5: 用 get_parent()!=null 判定（同 _release_ring 注释说明）
-	if beam.get_parent() != null:
-		beam.get_parent().remove_child(beam)
+	_park_in_pool(beam)
 	beam.visible = false
 	beam.clear_points()
+	# v26.x: 复位默认 ADD（对齐 _release_debris_particle v18-R9 先例）——部分签名置 null
+	# 归还后，依赖池默认的电弧/辉光/追踪线会丢失发光混合
+	beam.material = _get_add_mat()
 	_active_beams -= 1
 	if _beam_pool.size() < MAX_BEAMS:
 		_beam_pool.append(beam)
@@ -3342,8 +3445,7 @@ static func _release_debris_particle(p: CPUParticles2D) -> void:
 		_active_debris -= 1
 		return
 	# v7.5: 用 get_parent()!=null 判定（同 _release_ring 注释说明）
-	if p.get_parent() != null:
-		p.get_parent().remove_child(p)
+	_park_in_pool(p)
 	p.emitting = false
 	p.visible = false
 	p.position = Vector2.ZERO
@@ -3405,11 +3507,15 @@ static func _release_spark_particle(p: CPUParticles2D) -> void:
 		_active_sparks -= 1
 		return
 	# v7.5: 用 get_parent()!=null 判定（同 _release_ring 注释说明）
-	if p.get_parent() != null:
-		p.get_parent().remove_child(p)
+	_park_in_pool(p)
 	p.emitting = false
 	p.visible = false
 	p.position = Vector2.ZERO
+	# v26.x: 复位 gravity/material（对齐 _release_debris_particle 的 v18-R9 先例）——
+	# v20.28 起命中火花设 (0,380) 下坠，而枪口火/暴击火花不设 gravity，池循环一圈后
+	# 枪口火/暴击火花永久继承下坠（同 bullet._blitz_applied 池卫生家族）
+	p.gravity = Vector2.ZERO
+	p.material = _get_add_mat()
 	# v9.2: 不清 texture（同 _release_debris_particle，池复用需保留贴图）
 	_active_sparks -= 1
 	if _spark_pool.size() < MAX_SPARKS:
@@ -3446,10 +3552,13 @@ static func _release_impact_sprite(s: Sprite2D) -> void:
 	if s == null or not is_instance_valid(s):
 		_active_impact_sprites -= 1
 		return
-	if s.get_parent() != null:
-		s.get_parent().remove_child(s)
+	_park_in_pool(s)
 	s.visible = false
 	s.position = Vector2.ZERO
+	# v26.x: 复位混合材质（池默认=普通混合）——爆炸族带 ADD 材质归还后，依赖
+	# "无材质=普通混合"的消费方（spawn_laser_burn 焦痕/spawn_rising_sprite 蘑菇云）
+	# 会被残留 ADD 洗到几乎不可见
+	s.material = null
 	s.texture = null  # 释放贴图引用，避免池中持有资源
 	if s.is_in_group("battle_vfx"):
 		s.remove_from_group("battle_vfx")  # v9.4: 归还池时移除组（避免池中节点被 end_battle 误清）
@@ -3593,11 +3702,14 @@ static func show_combo_activate_banner(text: String, duration: float = 2.0, is_t
 	tw.tween_property(banner, "position:y", 60.0, 0.3).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 	tw.tween_property(banner, "modulate:a", 1.0, 0.3)
 	# 停留后淡出 + 滑出
+	# v26.x: 修复 set_parallel(true) 下的链式语义——chain()/parallel() 只影响紧随的
+	# 一个 tweener，其后回到并行默认。旧写法淡出与停留 interval 并行（duration 停留
+	# 参数无效，入场即开始淡出）、queue_free 回调与滑出并行（提前回收）。
 	var hold := maxf(duration - 0.6, 0.2)
 	tw.chain().tween_interval(hold)
-	tw.tween_property(banner, "modulate:a", 0.0, 0.3)
+	tw.chain().tween_property(banner, "modulate:a", 0.0, 0.3)
 	tw.parallel().tween_property(banner, "position:y", -20.0, 0.3).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
-	tw.tween_callback(func(): if is_instance_valid(banner): banner.queue_free())
+	tw.chain().tween_callback(func(): if is_instance_valid(banner): banner.queue_free())
 	# 全队激活：轻微震动
 	if is_team:
 		var cam := tree.root.get_node_or_null("Main/BattleContainer/SubViewportContainer/SubViewport/Battlefield/BattleCamera")
@@ -3903,9 +4015,8 @@ static func _release_indicator(node: Node2D) -> void:
 		return  # 失效节点：不操作（不计入 active，避免计数变负）
 	# kill 该节点所有 tween（通过 _vfx_tweens meta 记录的引用）
 	_kill_indicator_tweens(node)
-	# 移除 parent
-	if node.get_parent() != null:
-		node.get_parent().remove_child(node)
+	# 移除 parent（v26.11(D1): 摘下后挂池根，消除退出孤儿泄漏）
+	_park_in_pool(node)
 	# 清 name（radar_lock 防重复标记），避免池中残留 name 干扰下次 has_node 检查
 	if not node.name.is_empty() and node.name.begins_with("combo_radar_lock_"):
 		node.name = ""

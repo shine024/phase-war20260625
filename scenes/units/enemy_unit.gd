@@ -117,6 +117,18 @@ const EnemyLoadoutTiers = preload("res://data/enemy_loadout_tiers.gd")
 # 已应用的词缀列表（供 _do_attack 触发机制型效果 + UI 显示）
 var _elite_affixes: Array = []
 var _elite_spawn_type: String = "normal"
+
+# ── v27 星冥族机制态（黑门无限模式；非 xeno 单位全部保持零值/False 零开销）──
+var _is_xeno: bool = false
+var _psi_shield: float = 0.0          # 灵能护盾当前值（先于血量吸收）
+var _psi_shield_max: float = 0.0      # 盾上限（= 解析后 hp × psi_shield_frac）
+var _psi_shield_last_hit_msec: int = -1
+var _xeno_communion_member: bool = false  # 共感协议成员（吃节点增益）
+var _xeno_communion_node: bool = false    # 共感节点（被击杀则全族增益永久削弱）
+var _communion_base_atk: float = -1.0     # 共感基准攻击（首 tick 采样）
+var _communion_stats_base: Dictionary = {}  # 三维基准（首 tick 采样 stats，含词缀/档案乘区）
+var _communion_refresh_accum: float = 0.0
+var _mimic_rewind_used: bool = false  # 拟时者回溯（每场一次）
 # v21 P3-A: 同源词条上下文（_apply_archetype_stats 时从 ctx 抓取，setup 末尾消费）
 var _loadout_tier: int = 1        # 本关配装档位（EnemyLoadoutTiers 1/2/3）
 var _loadout_level_id: int = 1    # 关卡 id（seed 组成部分）
@@ -310,6 +322,8 @@ func _apply_archetype_stats() -> void:
 	_build_enemy_unit_stats(r, cfg)
 	# v8: 缓存行为 tag 并应用 tag 驱动的数值差异（fast/stealth/antitank）
 	_apply_behavior_tags(cfg)
+	# v27: 星冥族机制初始化（灵能护盾/共感/回溯/拦截——非 xeno 单位直接 return）
+	_apply_xeno_mechanics(cfg)
 	if cfg.is_empty():
 		return
 	_base_max_hp = hp
@@ -933,13 +947,9 @@ func _enemy_acquisition_range() -> float:
 		return CombatTargeting.card_grid_enemy_acquisition_range(attack_range, true)
 	return r
 
-
-func _effective_fire_range() -> float:
-	var rng: float = _enemy_fire_range_for_motion()
-	if target != null and is_instance_valid(target) and CombatTargeting.is_phase_field_node(target):
-		if not CombatTargeting.has_alive_player_units(BattleManager):
-			return maxf(rng, _enemy_acquisition_range() * 1.5)
-	return rng
+# v26.11(A1.5b)：死函数 _effective_fire_range 已删（零调用方；其"瞄准相位场且场上无
+# 存活玩家单位时射程×1.5"逻辑从未接线，实战射程全部直读 _enemy_fire_range_for_motion。
+# 原实现 git 历史可找回）。
 
 
 func _physics_process(delta: float) -> void:
@@ -970,6 +980,10 @@ func _physics_process(delta: float) -> void:
 		ModuleEffectHandler.on_tick(self, delta)
 		# v10(H1): 势力 on_hit_debuff 过期恢复——此前仅玩家单位 tick，敌方中了 debuff 永不过期
 		FactionSkillEffectHandler.process_debuff_expirations(self, delta)
+		# v27 星冥族：灵能护盾延迟再生 + 共感协议增益周期刷新（非 xeno 首行守卫直退）
+		if _is_xeno:
+			_update_psi_shield(delta)
+			_update_communion(delta)
 	# v8: stealth 开局减伤计时器递减
 	_update_stealth_grace(delta)
 	# 性能优化：不再每帧更新 HP 条，改为在 HP 变化时更新
@@ -1331,7 +1345,15 @@ func _process_attack_timing(delta: float) -> void:
 	# 与玩家侧同源（ConstructUnitAI.get_attack_delta_scale，秒制时间戳 + 过期顺带清理），
 	# 替换原硬编码 0.75（boss 削弱 30% 此前被硬编码吞成 25%）。
 	var _atk_delta_mult: float = ConstructUnitAI.get_attack_delta_scale(self)
-	if _atk_delta_mult < 1.0:
+	# v26.13(B2): 先手突袭（本关前 3 秒敌方开火积累 ×1.6，等效攻击间隔 ×0.62）
+	if BattleManager != null and BattleManager.has_method("has_special_rule") \
+			and BattleManager.has_special_rule("first_strike") \
+			and "_battle_elapsed_time" in BattleManager and float(BattleManager._battle_elapsed_time) <= 3.0:
+		_atk_delta_mult = maxf(_atk_delta_mult, 1.0) * 1.6
+	# v26.13(B2): boss 半血狂暴（interval ×0.8 = delta 积累 ×1.25）
+	if has_meta("_enrage_active"):
+		_atk_delta_mult = maxf(_atk_delta_mult, 1.0) * 1.25
+	if _atk_delta_mult != 1.0:
 		delta = delta * _atk_delta_mult
 	# 获取攻速参数：优先使用缓存（仅目标变化时重算）
 	var timing: Dictionary
@@ -1444,12 +1466,16 @@ func _do_attack() -> void:
 			)
 			pre_calc = true
 		else:
-			wt = stats.weapon_type
+			# v26.x: 兜底 wt 过槽位消歧义（v9.5 漏网的读取端）——未经 _default_enemy_slot_
+			# weapon_type 归一的 1/2（legacy 步枪/机枪 或 新枚举曲射/空射）会被
+			# is_indirect_weapon_type 撞值误判，直射单位被路由进曲射 batch（抛物线+AOE）
+			wt = _default_enemy_slot_weapon_type(0, int(stats.weapon_type), int(stats.combat_kind), GC)
 			# 修复：使用attack_damage而非attack_light，避免未初始化导致的1点伤害
 			dmg_out = stats.attack_damage
 	else:
 		var cfg: Dictionary = _cached_archetype_cfg
-		wt = int(cfg.get("weapon_type", GC.WeaponType.DIRECT))
+		# v26.x: 同上——archetype 的 weapon_type 是 legacy 域（1/2=步枪/机枪），必须过消歧义
+		wt = _default_enemy_slot_weapon_type(0, int(cfg.get("weapon_type", GC.WeaponType.DIRECT)), int(cfg.get("combat_kind", 0)), GC)
 	# v9.x: 直射武器跨行射击减伤（同行全额；曲射/空射全场全额，不受行约束）
 	dmg_out *= CardGridBattleLayout.cross_row_direct_multiplier(self, target, wt)
 	# v20.19: 机枪换弹周期（敌我同源 gate，与玩家侧 do_attack_with_damage 同一状态机）——
@@ -1502,6 +1528,10 @@ func _do_attack() -> void:
 
 func _try_fire_enemy_projectile_batch(p_target: Node2D, wt: int, p_damage: float = -1.0, p_miss: bool = false, p_weapon_name: String = "", p_vfx_variant: String = "") -> bool:
 	if wt not in GC.BATCH_FIRE_WEAPON_TYPES:  # SMG, PISTOL, RIFLE, MG
+		return false
+	# v26.15e: 坦克炮单发语义——不进 batch 曳光弹幕（敌方主炮此前因 wt=DIRECT
+	# 恒吃机枪式曳光连发）。回落单发 bullet 路径走写实炮弹贴图。
+	if DirectWeaponFlavor.classify(p_weapon_name, wt) == DirectWeaponFlavor.Flavor.TANK_GUN:
 		return false
 	if BattleManager == null or BattleManager.enemy_projectile_batch == null:
 		return false
@@ -1570,6 +1600,10 @@ func _update_card_grid_buff_strip(force: bool = false) -> void:
 	UnitSharedHelpers.update_card_grid_buff_strip(self, force, false, "Sprite2D")  # 敌方无 preview 虚影，守卫恒 false
 
 func take_damage(amount: float, attacker: Variant = null) -> void:
+	# v26.13(B2): boss 半血狂暴——首次跌破 50% 置旗标（攻速通道在 _process_attack_timing）
+	if not has_meta("_enrage_active") and has_meta("_is_boss_unit") and stats != null \
+			and float(stats.max_hp) > 0.0 and hp <= float(stats.max_hp) * 0.5:
+		set_meta("_enrage_active", true)
 	# v7.x 战场视觉反馈：记录最后攻击者，供 unit_killed 信号携带（击杀定帧/连杀提示依赖）
 	if attacker != null and is_instance_valid(attacker):
 		set_meta("_last_attacker", attacker)
@@ -1617,6 +1651,11 @@ func take_damage(amount: float, attacker: Variant = null) -> void:
 		# v10 组合规则①：照明标记+曲射=必中（被标记目标受曲射攻击时闪避失效）
 		if dodge > 0.0 and attacker != null and ModuleEffectHandler.is_marked_for_indirect(self, attacker):
 			dodge = 0.0
+		# v27.1: 暴击势能词条——攻击者打出上次暴击后武装的下一次必中（一次性，无视闪避）
+		if dodge > 0.0 and attacker != null and is_instance_valid(attacker) \
+				and attacker.has_meta("_affix_ensure_hit_pending"):
+			dodge = 0.0
+			attacker.remove_meta("_affix_ensure_hit_pending")
 		# v21 P1: 精确制导针（gen_truestrike_pinpoint）——攻击者无视目标 50% 闪避（按比例削减）
 		if dodge > 0.0:
 			dodge = dodge * (1.0 - clampf(ModuleEffectHandler.get_attacker_dodge_ignore(attacker), 0.0, 1.0))
@@ -1704,6 +1743,14 @@ func take_damage(amount: float, attacker: Variant = null) -> void:
 			var _fs_bonus: float = float(get_meta("_fort_shelter_bonus", 0.0))
 			if _fs_bonus > 0.0:
 				final_loss = final_loss * (1.0 - _fs_bonus)
+	# v27 星冥灵能护盾：先扣盾再扣血（盾破后溢出伤害入血；盾延迟再生见 _update_psi_shield）
+	if _psi_shield > 0.0 and final_loss > 0.0:
+		_psi_shield_last_hit_msec = Time.get_ticks_msec()
+		var absorbed: float = minf(_psi_shield, final_loss)
+		_psi_shield -= absorbed
+		final_loss -= absorbed
+		if absorbed > 0.0 and final_loss <= 0.0:
+			_update_hp_bar()  # 盾全吸收也刷一次条（盾环显示走 _update_psi_shield_ring）
 	hp -= final_loss
 	# v8 批次2: 反伤词缀（armor_reflect）——受到伤害时反弹给攻击者
 	# 标记 _vfx_is_reflect 防止递归（反伤伤害不再触发对方的反伤）
@@ -1779,9 +1826,24 @@ func _die() -> void:
 	if ModuleEffectHandler.on_death(self, _killer_for_death):
 		_is_dying = false  # 复活成功，清除死亡锁
 		return
+	# v27 拟时者回溯：每场一次，死亡瞬间倒回半血（盾不回复）——时序玻璃炮的反斩杀保险。
+	# 必须在死亡锁保持 true 的状态下判断并复位（死亡锁防重入，回溯后清除）。
+	if _is_xeno and not _mimic_rewind_used and has_meta("xeno_mimic_rewind"):
+		_mimic_rewind_used = true
+		_is_dying = false
+		hp = maxf(1.0, max_hp * 0.5)
+		_update_hp_bar()
+		var rp: Node = get_parent()
+		if rp != null:
+			# 回溯特效：青紫时滞波纹（复用工厂对象池，无新增节点类型）
+			VfxImpactFactory.spawn_shockwave(rp, global_position, 48.0, Color(0.65, 0.45, 1.0, 0.8))
+		return
 	# v8.6: 通知击杀者（玩家单位击杀敌方时，shield_on_kill 等击杀型改造）。
 	if _killer_for_death != null:
 		ModuleEffectHandler.on_kill(_killer_for_death)
+	# v27 星冥死亡爆裂（龙骑式残躯折射/异变体酸血双向）：死亡确认后、清场前结算
+	if _is_xeno and has_meta("xeno_death_burst"):
+		_xeno_execute_death_burst(get_meta("xeno_death_burst", {}) as Dictionary)
 	# 性能优化：从空间分区网格移除
 	_unregister_from_spatial_grid()
 
@@ -1883,8 +1945,12 @@ func _update_in_spatial_grid() -> void:
 func start_as_deploy_ghost() -> void:
 	is_deploy_ghost = true
 	var actual_delay: float = ConstructUnitDeploy.calculate_deploy_delay(stats)
+	# v27 星冥折跃进场：部署时间 ×0.5（快但可预判——折跃信标=虚影本身，反制窗口保留）
+	if _is_xeno:
+		actual_delay *= 0.5
 	_ghost_materialize_time_left = maxf(0.05, actual_delay)
-	modulate = Color(1.0, 1.0, 1.0, 0.42)
+	# 星冥虚影染蓝青色（与常规敌兵半透明白区分，读得出"这不是常规敌人"）
+	modulate = Color(0.62, 0.82, 1.0, 0.5) if _is_xeno else Color(1.0, 1.0, 1.0, 0.42)
 
 ## 部署虚影每帧更新（由 _physics_process 调用，返回 true 表示本帧已实体化）
 func _update_enemy_deploy_ghost(delta: float) -> bool:
@@ -1909,3 +1975,155 @@ func _materialize_enemy_deploy_ghost() -> void:
 	var vp: Node = get_parent()
 	if vp != null:
 		VfxImpactFactory.spawn_shockwave(vp, global_position, 36.0, Color(1.0, 0.55, 0.25, 0.75))
+
+
+# ═══════════════════════════════════════════════════════════════════
+#  v27 星冥族机制（黑门无限模式，docs/无限模式_异族设定（草案）.md §4）
+#  全部字段在 _apply_xeno_mechanics 初始化；非 xeno 单位首行守卫直退，零开销。
+# ═══════════════════════════════════════════════════════════════════
+
+const PSI_SHIELD_REGEN_DELAY_SEC: float = 5.0   # 受击后 5s 不回盾
+const PSI_SHIELD_REGEN_RATE: float = 0.10       # 每秒回盾上限的 10%
+const COMMUNION_BONUS_PER_NODE: float = 0.08    # 每个存活共感节点 +8% 攻击
+const COMMUNION_NODE_CAP: int = 3               # 最多吃 3 节点（+24%）
+const COMMUNION_REFRESH_SEC: float = 0.5        # 增益刷新周期
+const COMMUNION_NODE_GROUP := "xeno_communion_nodes"
+const XENO_DEATH_BURST_DMG_CAP: float = 260.0   # 死亡爆裂伤害上限（防深层数值爆炸）
+
+
+## 机制初始化（_apply_archetype_stats 尾段调用，hp 已是解析后最终值）
+func _apply_xeno_mechanics(cfg: Dictionary) -> void:
+	_is_xeno = String(archetype_id).begins_with("xeno_")
+	if not _is_xeno:
+		return
+	# 灵能护盾：按最终生命比例立盾（深层数值越涨盾越厚——"先拆盾"是星冥战的核心节奏）
+	var frac: float = clampf(float(cfg.get("psi_shield_frac", 0.0)), 0.0, 0.8)
+	if frac > 0.0:
+		_psi_shield_max = maxf(0.0, hp * frac)
+		_psi_shield = _psi_shield_max
+	# 共感协议：成员吃增益，节点入组供全场计数（节点死亡即全族永久削弱——强反制位）
+	_xeno_communion_member = bool(cfg.get("communion", false))
+	_xeno_communion_node = bool(cfg.get("communion_node", false))
+	if _xeno_communion_node:
+		add_to_group(COMMUNION_NODE_GROUP)
+	# 死亡爆裂参数挂 meta（_die 消费，避免常驻字段）
+	if cfg.has("death_burst"):
+		set_meta("xeno_death_burst", cfg["death_burst"])
+	# 拟时者回溯标记（每场一次，_die 消费）
+	if bool(cfg.get("mimic_rewind", false)):
+		set_meta("xeno_mimic_rewind", true)
+	# 飞碟灵能拦截：复用 aa_06 激光近防通道（take_damage 的 try_intercept 已接线敌侧）
+	var icpt: float = clampf(float(cfg.get("psi_intercept_chance", 0.0)), 0.0, 0.75)
+	if icpt > 0.0 and stats != null:
+		stats.intercept_chance = icpt
+		stats.intercept_charges = -1  # 无限次（概率本身就是预算）
+
+
+## 灵能护盾延迟再生（受击 5s 后每秒回 10% 盾上限）
+func _update_psi_shield(delta: float) -> void:
+	if _psi_shield_max <= 0.0:
+		return
+	if _psi_shield < _psi_shield_max:
+		if _psi_shield_last_hit_msec > 0 \
+				and Time.get_ticks_msec() - _psi_shield_last_hit_msec < int(PSI_SHIELD_REGEN_DELAY_SEC * 1000.0):
+			_update_psi_shield_ring()
+			return
+		_psi_shield = minf(_psi_shield_max, _psi_shield + _psi_shield_max * PSI_SHIELD_REGEN_RATE * delta)
+	_update_psi_shield_ring()
+
+
+## 护盾环视觉：盾存在时青蓝细环（懒建 Line2D，随单位释放，无资源依赖）
+var _psi_ring: Line2D = null
+var _psi_ring_ratio_cache: float = -1.0
+
+func _update_psi_shield_ring() -> void:
+	if _psi_shield_max <= 0.0:
+		return
+	var ratio: float = _psi_shield / _psi_shield_max
+	if ratio <= 0.005:
+		if _psi_ring != null:
+			_psi_ring.visible = false
+		_psi_ring_ratio_cache = -1.0
+		return
+	# 比率变化 >4% 才重建几何（避免每帧重算 24 点）
+	if _psi_ring != null and absf(ratio - _psi_ring_ratio_cache) < 0.04 and _psi_ring.visible:
+		return
+	if _psi_ring == null:
+		_psi_ring = Line2D.new()
+		_psi_ring.width = 2.0
+		_psi_ring.default_color = Color(0.45, 0.85, 1.0, 0.85)
+		_psi_ring.z_index = 8
+		add_child(_psi_ring)
+	var radius: float = 30.0 + 12.0 * ratio
+	var pts: PackedVector2Array = PackedVector2Array()
+	for i in range(25):
+		var ang: float = TAU * float(i) / 24.0
+		pts.append(Vector2(cos(ang), sin(ang)) * radius)
+	_psi_ring.points = pts
+	_psi_ring.visible = true
+	_psi_ring_ratio_cache = ratio
+
+
+## 共感协议：每 0.5s 按存活节点数刷新攻击倍率（节点死亡即全族永久削弱）
+func _update_communion(delta: float) -> void:
+	if not _xeno_communion_member:
+		return
+	if _communion_base_atk < 0.0:
+		_communion_base_atk = attack_damage
+		if stats != null:
+			# 首 tick 采样（此时词缀/档案乘区已就位；共感是其后动态增益）
+			_communion_stats_base = {
+				"light": stats.attack_light, "armor": stats.attack_armor, "air": stats.attack_air,
+			}
+	_communion_refresh_accum += delta
+	if _communion_refresh_accum < COMMUNION_REFRESH_SEC:
+		return
+	_communion_refresh_accum = 0.0
+	var nodes: int = _count_alive_communion_nodes()
+	var mult: float = 1.0 + COMMUNION_BONUS_PER_NODE * float(mini(nodes, COMMUNION_NODE_CAP))
+	attack_damage = _communion_base_atk * mult
+	if stats != null and not _communion_stats_base.is_empty():
+		stats.attack_damage = attack_damage
+		stats.attack_light = float(_communion_stats_base["light"]) * mult
+		stats.attack_armor = float(_communion_stats_base["armor"]) * mult
+		stats.attack_air = float(_communion_stats_base["air"]) * mult
+	# 精英词缀等后续缩放以当次 attack_damage 为基数，不回写 _base_attack_damage
+	# （_base_* 是档案基准；共感是战斗内动态增益，语义分离）
+
+
+## 存活共感节点计数（组遍历 + 存活/实例守卫）
+func _count_alive_communion_nodes() -> int:
+	var n: int = 0
+	for node in get_tree().get_nodes_in_group(COMMUNION_NODE_GROUP):
+		if node == self:
+			continue
+		var u: Node = node as Node
+		if u == null or not is_instance_valid(u):
+			continue
+		if not u.is_in_group("enemy_units"):
+			continue
+		if float(u.get("hp")) > 0.0 and not bool(u.get("is_deploy_ghost")):
+			n += 1
+	return n
+
+
+## 死亡爆裂（龙骑式残躯折射/异变体酸血双向）：以死亡位置为圆心对指定阵营结算一次范围伤害。
+## cfg: {"radius": px, "dmg_frac": 占基础攻击比, "hit_allies": bool}
+func _xeno_execute_death_burst(cfg: Dictionary) -> void:
+	var radius: float = clampf(float(cfg.get("radius", 90.0)), 30.0, 300.0)
+	var dmg: float = minf(attack_damage * clampf(float(cfg.get("dmg_frac", 0.8)), 0.1, 3.0), XENO_DEATH_BURST_DMG_CAP)
+	var hit_allies: bool = bool(cfg.get("hit_allies", false))
+	var fx_parent: Node = get_parent()
+	if fx_parent != null:
+		VfxImpactFactory.spawn_shockwave(fx_parent, global_position, radius, Color(0.75, 0.5, 1.0, 0.8))
+	var targets_group: String = "enemy_units" if hit_allies else "player_units"
+	for node in get_tree().get_nodes_in_group(targets_group):
+		var u: Node2D = node as Node2D
+		if u == null or not is_instance_valid(u) or u == self:
+			continue
+		if float(u.get("hp")) <= 0.0 or bool(u.get("is_deploy_ghost")):
+			continue
+		if global_position.distance_to(u.global_position) > radius:
+			continue
+		if u.has_method("take_damage"):
+			u.take_damage(dmg, self)

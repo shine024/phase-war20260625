@@ -1882,6 +1882,11 @@ func take_damage(amount: float, attacker: Variant = null) -> void:
 		# v10 组合规则①：照明标记+曲射=必中（被标记目标受曲射攻击时闪避失效）
 		if dodge > 0.0 and attacker != null and ModuleEffectHandler.is_marked_for_indirect(self, attacker):
 			dodge = 0.0
+		# v27.1: 暴击势能词条——攻击者打出上次暴击后武装的下一次必中（一次性，无视闪避）
+		if dodge > 0.0 and attacker != null and is_instance_valid(attacker) \
+				and attacker.has_meta("_affix_ensure_hit_pending"):
+			dodge = 0.0
+			attacker.remove_meta("_affix_ensure_hit_pending")
 		# v7.5: 传入 damage_reduction（此前全链路空转，现 resolve_hit 接入）
 		var dmg_red: float = float(stats.damage_reduction)
 		# v25.1: 巷战掩蔽接通——受 ARMOR/AIR 攻击者时生效（v8 起写入 urban_defense_bonus
@@ -2012,6 +2017,12 @@ func take_damage(amount: float, attacker: Variant = null) -> void:
 ## 共用本方法，溢出 max_hp 的部分按改造比例（overflow_to_shield，默认 0.60）转为护盾。
 func heal(amount: float) -> void:
 	if stats == null:
+		return
+	# v26.13(B2): 禁疗规则——本关所有我方治疗入口（吸血/维修光环/击杀维修/亡语治疗）
+	# 均汇聚本方法，此处 ×0 即全局禁疗（敌方侧不经此路径，不受影响）。
+	var _bm_for_rule: Node = get_node_or_null("/root/BattleManager")
+	if _bm_for_rule != null and _bm_for_rule.has_method("has_special_rule") \
+			and _bm_for_rule.has_special_rule("no_heal"):
 		return
 	# v21 P1: 溢流转化——先算溢出量再夹取（原逻辑行为不变，仅新增护盾转化分支）
 	var before_hp: float = hp

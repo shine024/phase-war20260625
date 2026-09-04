@@ -515,7 +515,7 @@ func _on_back() -> void:
 	if BattleManager != null:
 		BattleManager.battle_active = false
 	get_tree().paused = false
-	get_tree().change_scene_to_file("res://scenes/title_screen.tscn")
+	SceneTransition.change(get_tree(), "res://scenes/title_screen.tscn")
 
 
 # ============================================================
@@ -920,7 +920,7 @@ func _on_trace_test() -> void:
 	var pos := _get_spark_test_pos()
 	var wt := _get_player_wt()
 	if wt in [1, 2, 3, 7, 9]:
-		VfxImpactFactory.spawn_battle_trace(_get_parent(), pos, 14.0, "scorch")
+		VfxImpactFactory.spawn_battle_trace(_get_parent(), pos, 14.0)
 		print("[焦痕] wt=%d 触发" % wt)
 	else:
 		print("[焦痕] wt=%d 无此层" % wt)

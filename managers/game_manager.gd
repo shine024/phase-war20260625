@@ -43,6 +43,9 @@ const PHASE_MASTER_GRACE_LEVELS: int = 10
 
 var game_mode: GameMode = GameMode.FREE
 
+## v27 黑门无限模式：当前战斗是否为黑门无尽 run（星冥族波次、永不判胜、专用结算链）
+var _is_endless_battle: bool = false
+
 # v7.3 修复 BUG-1: 记录"本次战斗实际打的关卡号"，避免 battle_ended 时序错位。
 # 原 bug：battle_ended emit 后 GameManager 先于 QuestManager 执行（autoload 顺序），
 #   GameManager 在 _on_battle_ended 里 set_current_level(max_unlocked) 把 current_level 更新成下一关，
@@ -417,9 +420,27 @@ func _ready() -> void:
 func is_card_grid_battle() -> bool:
 	return true
 
+## v27 黑门无限模式：是否处于无尽 run
+func is_endless_battle() -> bool:
+	return _is_endless_battle
+
+## v27 黑门无限模式：从大地图黑门节点进入。
+## 只挂起标记（_is_endless_battle=true）——真正 begin_run 在 go_to_battle 生效瞬间执行，
+## 确保战场/刷新系统已就位（与"开始战斗"按钮链路一致，见 main_battle_setup）。
+## current_level 维持 100 关口径（档位/难度链以近未来满档为基准），
+## 波次构成/敌池由 battle_spawn_system 的 endless 分支接管。
+func start_endless_battle() -> void:
+	_is_endless_battle = true
+
 func go_to_battle() -> void:
 	if DEBUG_GAME_LOG:
 		pass  # LOG: go_to_battle 被调用
+	# v27 黑门无尽 run：生效瞬间 roll 裂隙环境（BattleManager.start_battle 随后读取）
+	if _is_endless_battle:
+		ManagerLazyLoader.ensure_loaded("endless")
+		var endless_pre: Node = get_node_or_null("/root/EndlessBlackgateManager")
+		if endless_pre != null and endless_pre.has_method("begin_run"):
+			endless_pre.call("begin_run")
 	current_phase = GamePhase.BATTLE
 	# v7.3 修复 BUG-1: 记录本次战斗实际打的关号（set_current_level 切关前）
 	_pending_battle_level = current_level
@@ -427,8 +448,9 @@ func go_to_battle() -> void:
 	last_battle_reward_summary = {}
 	clear_battle_reward_collector()  # v7.x 胜利面板漏显修复：战斗开始时清空本局收集器
 	_snapshot_battle_reward_baselines()
-	# 检查是否遭遇相位师
-	check_phase_master_encounter()
+	# 检查是否遭遇相位师（v27 黑门无尽 run 不遭遇相位师）
+	if not _is_endless_battle:
+		check_phase_master_encounter()
 	if battle_scene == null:
 		push_error("battle_scene 为空，请检查 Main 是否调用了 GameManager.set_battle_scene")
 		return
@@ -450,6 +472,13 @@ func _on_battle_ended(player_won: bool) -> void:
 
 	# v6.6(剧情): 清理最终战标记（防跨战斗残留）
 	clear_final_battle_state()
+
+	# v27 黑门无限模式：专用结算链（分数/星髓/排行榜提交），跳过关卡进度/
+	# 势力反应/星级/基础资源等胜利结算（无尽 run 恒以"驱动器被毁"收场 = 玩家视角
+	# 的"打完一轮"，不是失败语义）。缴获掉落在 BattleManager.end_battle 链已生成。
+	if _is_endless_battle:
+		_settle_endless_battle()
+		return
 
 	# v6.11: sync_battle_stars_to_cards 调用已移除（战力星级系统②已删）
 
@@ -667,6 +696,58 @@ func _on_battle_ended(player_won: bool) -> void:
 		_current_phase_master = {}
 
 
+## v27 黑门无限模式结算：波次/击杀 → 分数 + 星髓（周封顶）+ survival_highscore 提交。
+## 结算面板复用 show_battle_result（战报读 last_battle_reward_summary.endless 段）；
+## Toast 播报分数/纪录/星髓，避免"战败"文案误导（无尽 run 无败局语义）。
+func _settle_endless_battle() -> void:
+	_is_endless_battle = false
+	_is_phase_master_battle = false
+	_current_phase_master = {}
+
+	var waves: int = 0
+	var kills: int = 0
+	if BattleManager and BattleManager.has_method("get_battle_result"):
+		var endless_r: Dictionary = (BattleManager.get_battle_result() as Dictionary).get("endless", {}) as Dictionary
+		waves = int(endless_r.get("waves", 0))
+		kills = int(endless_r.get("kills", 0))
+
+	# 战斗经验照常平分（失败口径 30%——卡牌成长不因模式中断）
+	_grant_battle_experience(false)
+
+	ManagerLazyLoader.ensure_loaded("endless")
+	var endless: Node = get_node_or_null("/root/EndlessBlackgateManager")
+	var summary: Dictionary = {}
+	if endless != null and endless.has_method("settle_run"):
+		summary = endless.call("settle_run", waves, kills)
+
+	last_battle_reward_summary = {
+		"player_won": false,
+		"victory_stars": 0,
+		"era": 5,
+		"endless": summary.duplicate(true) if not summary.is_empty() else {"waves": waves, "kills": kills},
+		# v7.x 本局收集器快照（缴获卡等战中奖励照常展示）
+		"collected_rewards": _battle_reward_collector.duplicate(true),
+	}
+
+	# Toast 播报（分层反馈：Toast=即时，面板=明细）
+	var toast_lines: PackedStringArray = ["黑门征程结束：第 %d 波 · 击杀 %d" % [waves, kills]]
+	if not summary.is_empty():
+		toast_lines.append("分数 %d" % int(summary.get("score", 0)))
+		if bool(summary.get("is_best", false)):
+			toast_lines.append("★ 新纪录！")
+		var marrow: int = int(summary.get("marrow", 0))
+		if marrow > 0:
+			var cap_note: String = "（本周封顶）" if bool(summary.get("marrow_capped", false)) else ""
+			toast_lines.append("星髓 +%d%s" % [marrow, cap_note])
+	if SignalBus != null and SignalBus.has_signal("show_toast"):
+		SignalBus.show_toast.emit(" · ".join(toast_lines))
+
+	if _is_afk_running():
+		return_to_prep()
+	elif main_scene and main_scene.has_method("show_battle_result"):
+		main_scene.call_deferred("show_battle_result", false)
+
+
 func _deferred_phase_master_reward(master_name: String) -> void:
 	## 延迟执行的相位师战胜奖励——Boss掉落表+符文抽取+改造蓝图+星级评估
 	## 在结算面板弹出后执行，不影响玩家感知的"面板出现速度"
@@ -763,6 +844,9 @@ func set_main_scene(node: Node) -> void:
 
 func set_current_level(level: int) -> void:
 	var new_level: int = max(1, level)
+	# v27: 显式选关 = 放弃挂起的黑门无尽 run（防串场：点黑门后改打普通关）
+	if _is_endless_battle and current_phase != GamePhase.BATTLE:
+		_is_endless_battle = false
 	if current_level == new_level:
 		return
 	current_level = new_level
@@ -1092,9 +1176,15 @@ func get_era(level: int) -> int:
 	return GC.get_era_for_level(level)
 
 func get_enemy_wave_total_for_level(level: int) -> int:
+	# v27 黑门无尽 run：波次恒"未耗尽"（_check_win_lose 的 endless 分支永不判胜，
+	# 此值仅供 HUD 波次显示兜底；真实出兵由 spawn 系统 endless 分支驱动）
+	if _is_endless_battle:
+		return 999999
 	return LevelEras.get_wave_total_for_level(max(1, level))
 
 func get_enemy_wave_interval_for_level(level: int) -> float:
+	if _is_endless_battle:
+		return 7.0  # 星冥带节奏（设计 §5.2，与近未来同档）
 	return LevelEras.get_wave_interval_for_level(max(1, level))
 
 func get_enemy_spawn_count_for_wave(level: int, wave_index: int) -> int:
@@ -1198,6 +1288,12 @@ func _grant_battle_experience(player_won: bool) -> void:
 		var exp_bonus: float = float(effects.get("experience_bonus", 0.0))
 		if exp_bonus > 0.0:
 			total_exp = int(float(total_exp) * (1.0 + exp_bonus))
+	# v26.15b: 势力 xp_bonus（resource 桶此前零消费）——叠加在技能树加成之后
+	var fsm_xp: Node = get_node_or_null("/root/FactionSystemManager")
+	if fsm_xp != null and fsm_xp.has_method("get_active_faction_skill_effects"):
+		var xp_bonus: float = float(fsm_xp.get_active_faction_skill_effects().get("resource", {}).get("xp_bonus", 0.0))
+		if xp_bonus > 0.0:
+			total_exp = int(float(total_exp) * (1.0 + xp_bonus))
 	# 平分给上场卡（设计以 9 卡为基准；少卡时每张更多，升级更快）
 	var per_card: int = int(total_exp / instance_ids.size())
 	if per_card <= 0:

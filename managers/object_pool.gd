@@ -57,6 +57,10 @@ class ObjectPool extends Node:
 		for i in range(target):
 			var obj = _create_object()
 			if obj:
+				add_child(obj)  # v26.11(D1): 挂池下（常驻树），退出随树释放
+				obj.process_mode = Node.PROCESS_MODE_DISABLED
+				if obj is CanvasItem:
+					obj.visible = false
 				available.append(obj)
 
 	func _create_object() -> Node:
@@ -102,6 +106,12 @@ class ObjectPool extends Node:
 			else:
 				push_warning("[ObjectPool] 对象池已空且不允许自动扩展")
 				return null
+		# v26.11(D1): 脱离池容器（归还时挂到本池节点下，见 return_object）
+		if obj.get_parent() == self:
+			remove_child(obj)
+		obj.process_mode = Node.PROCESS_MODE_INHERIT  # 归还时被 DISABLED，取出恢复
+		if obj is CanvasItem:
+			obj.visible = true  # 归还时被隐藏，复用时恢复（原流程重进树即恢复可见）
 		# 激活对象
 		if obj.has_method("set_process"):
 			obj.set_process(true)
@@ -127,9 +137,17 @@ class ObjectPool extends Node:
 			obj.set_process(false)
 		if obj.has_method("set_physics_process"):
 			obj.set_physics_process(false)
-		# 从场景树移除，减少objects计数（get时会重新加入）
-		if obj.is_inside_tree() and obj.get_parent():
+		# v26.11(D1): 归还后挂到本池节点下（常驻树上、隐藏）——原先 remove_child 后仅由
+		# available 数组持有（树外孤儿），进程退出无法随树拆除，是 ObjectDB 泄漏来源之一。
+		if obj.get_parent() != null and obj.get_parent() != self:
 			obj.get_parent().remove_child(obj)
+		if obj.get_parent() != self:
+			add_child(obj)
+		if obj is CanvasItem:
+			obj.visible = false
+		# v26.11(D1): DISABLED 兜底——入树停靠后，残留的 set_process(true)（双重归还边角，
+		# 原先树外持有时惰性无害）会真触发一次 _process 再自行归还，造成拒绝告警刷屏
+		obj.process_mode = Node.PROCESS_MODE_DISABLED
 		# 返回到可用池
 		available.append(obj)
 

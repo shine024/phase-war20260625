@@ -120,6 +120,8 @@ var _runes_grid: GridContainer = null  ## v6.2: 符文格子
 var _mod_sidebar: VBoxContainer = null
 ## v8.0: 相位仪标签页列表容器（垂直排列，相位仪卡片按星级降序）
 @onready var _phase_inst_list: VBoxContainer = $VBoxOuter/TabContainer/PhaseInstTab/ScrollContainer/PhaseInstList
+## v26.11(A1.5e): 全局强化标签页列表容器（战斗掉落 stat_boost 的查看位）
+@onready var _stat_boost_list: VBoxContainer = get_node_or_null("VBoxOuter/TabContainer/StatBoostTab/ScrollContainer/StatBoostList")
 ## v7.x: 符文右侧信息栏引用（从 rune_panel 合并而来）
 var _rune_bonus_label: RichTextLabel = null
 var _runeword_list_inner: VBoxContainer = null
@@ -128,11 +130,14 @@ var _runeword_list_inner: VBoxContainer = null
 
 ## 标签页索引枚举
 ## v9.0 精简：6→4（砍掉 RESOURCES + STAT_BOOSTS，资源在顶部资源栏已有显示，属性提升极少用）
+## v26.11(A1.5e)：STAT_BOOST 回归为第 5 页签——v26.6 接通 stat_boost 实战后战斗掉落
+## 有了真实收益，但玩家拿到无处查看（TODO_BACKLOG 中价值#6），故恢复查看位（只读展示）
 enum TabIndex {
 	COMBAT_CARDS = 0,
 	INTEL = 1,            ## 改造（v6.5：标题改为"改造"，内容是改造蓝图）
 	RUNES = 2,            ## v6.2: 符文标签
 	PHASE_INSTRUMENTS = 3, ## v8.0: 相位仪标签（已获得列表 + 装备切换）
+	STAT_BOOST = 4,       ## v26.9: 全局强化标签（战斗掉落的永久属性提升查看）
 }
 
 ## 全量重建排到 idle 再执行：在背包卡 item 的 gui_input / 拖拽 / 装备信号栈内不能对其 free()，否则会报 Object is locked
@@ -209,6 +214,8 @@ func _ready() -> void:
 		_tab_container.set_tab_title(TabIndex.RUNES, "符文")
 		# v8.0: 相位仪标签（显示已获得列表 + 装备切换）
 		_tab_container.set_tab_title(TabIndex.PHASE_INSTRUMENTS, "相位仪")
+		# v26.11(A1.5e): 全局强化标签（战斗掉落的 stat_boost 查看位）
+		_tab_container.set_tab_title(TabIndex.STAT_BOOST, "全局强化")
 		_tab_container.tab_changed.connect(_on_tab_changed)
 
 	# 初始化详情弹窗（信号连接延迟到首次显示时）
@@ -301,6 +308,9 @@ func _refresh_title_bar(tab_index: int) -> void:
 		TabIndex.PHASE_INSTRUMENTS:
 			accent = DesignTokens.COLOR_AMBER_SOFT  # gold = #fbbf24
 			title_text = "相位仪中枢 · CORE NEXUS"
+		TabIndex.STAT_BOOST:
+			accent = DesignTokens.COLOR_GREEN_UP
+			title_text = "全局强化 · WAR BONDS"
 	# 顶线条（按 Tab 切换签名色，alpha 0.7 保持与原 SignatureStrip 一致）
 	if _top_accent_strip:
 		_top_accent_strip.color = Color(accent.r, accent.g, accent.b, 0.7)
@@ -713,6 +723,7 @@ func _tab_accent_color(tab_index: int) -> Color:
 		TabIndex.INTEL: return DesignTokens.COLOR_CYAN_TECH
 		TabIndex.RUNES: return DesignTokens.COLOR_VIOLET
 		TabIndex.PHASE_INSTRUMENTS: return DesignTokens.COLOR_AMBER_SOFT
+		TabIndex.STAT_BOOST: return DesignTokens.COLOR_GREEN_UP
 	return DesignTokens.COLOR_AMBER
 
 
@@ -915,6 +926,9 @@ func _on_tab_changed(tab_index: int) -> void:
 		TabIndex.PHASE_INSTRUMENTS:
 			# v8.0: 相位仪标签页刷新（已获得列表 + 装备切换）
 			refresh_phase_instruments_tab()
+		TabIndex.STAT_BOOST:
+			# v26.11(A1.5e): 全局强化标签页刷新——战斗掉落的 stat_boost 此前玩家拿到无处查看
+			refresh_stat_boost_tab()
 
 ## v7.x：标签切换微动效——内容区透明度先降后升，制造切换感。tab 控件结构因 tab 而异
 ## （RunesTab 是 HSplit 而非纯 ScrollContainer），防御性查找失败则跳过。
@@ -1757,6 +1771,82 @@ func refresh_rune_info_panel() -> void:
 
 ## 刷新相位仪标签页：列出所有已解锁的相位仪，点击装备切换。
 ## UI 逻辑复用自 phase_instrument_selector.gd（保持两处外观一致）。
+## v26.11(A1.5e): 刷新全局强化标签页——战斗掉落/商店购买的 stat_boost 查看位
+## （TODO_BACKLOG 中价值#6："v9.0 砍掉页签，战斗掉落 stat_boost 玩家拿到无处查看"）。
+## 只读展示：名称/描述/层数/当前总加成，绿色系行卡。
+func refresh_stat_boost_tab() -> void:
+	if _stat_boost_list == null:
+		return
+	for c in _stat_boost_list.get_children():
+		c.queue_free()
+	var ml: Node = get_node_or_null("/root/ManagerLazyLoader")
+	if ml and ml.has_method("ensure_loaded"):
+		ml.ensure_loaded("stat_boost")
+	var sbm: Node = get_node_or_null("/root/StatBoostManager")
+	# 说明头
+	var hint := Label.new()
+	hint.add_theme_font_size_override("font_size", DesignTokens.FONT_SIZE_SMALL)
+	hint.add_theme_color_override("font_color", DesignTokens.COLOR_TEXT_MID)
+	hint.autowrap_mode = TextServer.AUTOWRAP_WORD
+	hint.custom_minimum_size = Vector2(0, 36)
+	if sbm == null or not sbm.has_method("get_all_boosts"):
+		hint.text = "属性强化系统未初始化。"
+		_stat_boost_list.add_child(hint)
+		return
+	hint.text = "战斗掉落与势力商店获得的永久属性强化，对全部我方单位生效。"
+	_stat_boost_list.add_child(hint)
+	var boosts: Array = sbm.get_all_boosts()
+	if boosts.is_empty():
+		var empty := Label.new()
+		empty.text = "暂无强化——通关战斗有几率掉落属性强化。"
+		empty.add_theme_font_size_override("font_size", DesignTokens.FONT_SIZE_SMALL)
+		empty.add_theme_color_override("font_color", DesignTokens.COLOR_TEXT_DIM)
+		_stat_boost_list.add_child(empty)
+		return
+	for b in boosts:
+		var row := PanelContainer.new()
+		var sb := StyleBoxFlat.new()
+		sb.bg_color = Color(DesignTokens.COLOR_GREEN_UP.r, DesignTokens.COLOR_GREEN_UP.g, DesignTokens.COLOR_GREEN_UP.b, 0.08)
+		sb.border_color = Color(DesignTokens.COLOR_GREEN_UP.r, DesignTokens.COLOR_GREEN_UP.g, DesignTokens.COLOR_GREEN_UP.b, 0.45)
+		sb.set_border_width_all(1)
+		sb.corner_radius_top_left = 4
+		sb.corner_radius_top_right = 4
+		sb.corner_radius_bottom_left = 4
+		sb.corner_radius_bottom_right = 4
+		sb.content_margin_left = 8
+		sb.content_margin_right = 8
+		sb.content_margin_top = 5
+		sb.content_margin_bottom = 5
+		row.add_theme_stylebox_override("panel", sb)
+		var hbox := HBoxContainer.new()
+		hbox.add_theme_constant_override("separation", 10)
+		row.add_child(hbox)
+		var name_lbl := Label.new()
+		name_lbl.text = String(b.get("name", b.get("id", "?")))
+		name_lbl.add_theme_font_size_override("font_size", DesignTokens.FONT_SIZE_SMALL)
+		name_lbl.add_theme_color_override("font_color", DesignTokens.COLOR_TEXT_BRIGHT)
+		name_lbl.custom_minimum_size = Vector2(140, 0)
+		hbox.add_child(name_lbl)
+		var desc_lbl := Label.new()
+		desc_lbl.text = String(b.get("description", ""))
+		desc_lbl.add_theme_font_size_override("font_size", DesignTokens.FONT_SIZE_SMALL)
+		desc_lbl.add_theme_color_override("font_color", DesignTokens.COLOR_TEXT_MID)
+		desc_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		hbox.add_child(desc_lbl)
+		var stacks_lbl := Label.new()
+		stacks_lbl.text = "%d/%d 层" % [int(b.get("count", 0)), int(b.get("max_stacks", 0))]
+		stacks_lbl.add_theme_font_size_override("font_size", DesignTokens.FONT_SIZE_SMALL)
+		stacks_lbl.add_theme_color_override("font_color", DesignTokens.COLOR_TEXT_SOFT)
+		hbox.add_child(stacks_lbl)
+		var total_lbl := Label.new()
+		total_lbl.text = "当前 %+.0f%%" % (float(b.get("current_bonus", 0.0)) * 100.0)
+		total_lbl.add_theme_font_size_override("font_size", DesignTokens.FONT_SIZE_SMALL)
+		total_lbl.add_theme_color_override("font_color", DesignTokens.COLOR_GREEN_UP)
+		total_lbl.custom_minimum_size = Vector2(90, 0)
+		hbox.add_child(total_lbl)
+		_stat_boost_list.add_child(row)
+
+
 func refresh_phase_instruments_tab() -> void:
 	if _phase_inst_list == null:
 		return

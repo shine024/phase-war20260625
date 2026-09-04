@@ -66,6 +66,19 @@ static func get_active_effects(state: Dictionary, faction_id: String) -> Diction
 		# 收集 deploy
 		if skill.get("effect_type", "") == "deploy":
 			merged["deploy"] = fx
+			# v26.15b: deploy 桶此前零消费（全 7 势力 13 条"快速部署"幽灵技能）——
+			# 并入 stat_bonus additive 键走 battle_spawn 既有注入链；带兵种过滤的
+			# 变体（combat_kind_filter）按 kind 记账。
+			var dadd: int = int(fx.get("deploy_speed", 0))
+			if dadd != 0:
+				var kfilter: Array = fx.get("combat_kind_filter", [])
+				if kfilter.is_empty():
+					merged["stat_bonus"]["deploy_speed_add"] = int(merged["stat_bonus"].get("deploy_speed_add", 0)) + dadd
+				else:
+					var byk: Dictionary = merged["stat_bonus"].get("deploy_speed_add_by_kind", {})
+					for ck in kfilter:
+						byk[str(ck)] = int(byk.get(String(ck), 0)) + dadd
+					merged["stat_bonus"]["deploy_speed_add_by_kind"] = byk
 		# 收集 resource
 		if skill.get("effect_type", "") == "resource":
 			for k in fx:
@@ -76,6 +89,12 @@ static func get_active_effects(state: Dictionary, faction_id: String) -> Diction
 		if skill.get("effect_type", "") == "special":
 			merged["special"].append(fx)
 	return merged
+
+## v26.15b: 读取该势力 resource 类技能效果合计（reputation_bonus/shop_discount 等）。
+## 此前 resource 桶被收集但零消费（声望加成/商店折扣全势力幽灵）。
+static func get_resource_value(state: Dictionary, faction_id: String, key: String) -> float:
+	var fx: Dictionary = get_active_effects(state, faction_id)
+	return float(fx.get("resource", {}).get(key, 0.0))
 
 ## 获取已花费点数
 static func get_total_spent(state: Dictionary) -> int:

@@ -8,6 +8,12 @@ var _occupation_dirty: bool = false
 static var _cached_level_map_template: Control = null  # 跨场景复用模板，避免每次重建100按钮
 
 func _input(event: InputEvent) -> void:
+	# v28 方案11：滚轮缩放 + 拖拽平移的移动/释放走全局输入——
+	# gui_input 收不到被关卡按钮吞掉的 motion/滚轮事件（指针扫过按钮时拖拽会断）；
+	# 面板隐藏时不得截胡全局滚轮，_runtime_active 守卫必须有
+	if MAP_SCHEME == 11 and _runtime_active and _map_built and not event.is_echo():
+		if _handle_map_view_input(event):
+			return
 	# ESC键返回主场景
 	if event.is_action("ui_cancel"):
 		_on_back_to_title()
@@ -18,6 +24,38 @@ func _input(event: InputEvent) -> void:
 		if key_event.keycode == KEY_ESCAPE:
 			_on_back_to_title()
 			_safe_set_input_handled()
+
+## v28 方案11 全局视图输入：滚轮以光标为锚缩放；左键拖空白平移（移动/释放在此续接）。
+## 返回 true 表示事件已消费。拖拽的"按下"起点在 _on_map_gui_input_s11（只有空白底图会走到那，
+## 从关卡按钮上起手不会误触拖拽）。
+func _handle_map_view_input(event: InputEvent) -> bool:
+	var scroll := get_node_or_null("Margin/VBox/ScrollContainer") as ScrollContainer
+	var canvas: Control = scroll.get_node_or_null("MapCanvas") if scroll else null
+	if scroll == null or canvas == null:
+		return false
+	if event is InputEventMouseButton:
+		var mb := event as InputEventMouseButton
+		if mb.pressed and mb.button_index == MOUSE_BUTTON_WHEEL_UP:
+			_apply_zoom_at(canvas, scroll, 1.18,
+				scroll.get_global_transform().affine_inverse() * mb.position)
+			_safe_set_input_handled()
+			return true
+		if mb.pressed and mb.button_index == MOUSE_BUTTON_WHEEL_DOWN:
+			_apply_zoom_at(canvas, scroll, 1.0 / 1.18,
+				scroll.get_global_transform().affine_inverse() * mb.position)
+			_safe_set_input_handled()
+			return true
+		if not mb.pressed and mb.button_index == MOUSE_BUTTON_LEFT and _pan_dragging:
+			_pan_dragging = false
+			_safe_set_input_handled()
+			return true
+		return false
+	if event is InputEventMouseMotion and _pan_dragging:
+		canvas.position += (event as InputEventMouseMotion).relative
+		_clamp_canvas_pos(canvas, scroll)
+		_safe_set_input_handled()
+		return true
+	return false
 
 func _safe_set_input_handled() -> void:
 	if not is_inside_tree():
@@ -131,6 +169,12 @@ const ERA_CLUSTER_ANCHORS: Array = [
 const ERA_CLUSTER_RADII: Vector2 = Vector2(400, 240)
 const LIGHTHOUSE_DISPLAY_H: float = 420.0
 
+# v28：boss 环改亮金——旧值 (0.93,0.72,0.25) 与一战时代橙 (0.9,0.65,0.2) 几乎同色，
+# 100 关里 boss 关与 era1 已通关环分不清。图例（_build_map_screen_chrome）引用同常量。
+const BOSS_RING_COLOR := Color(1.0, 0.85, 0.15)
+# v28 局部缩放上限：2.8× 时 40px 节点盘径屏显约 34px、数字约 17px，够读；再大地图纹理开始糊
+const ZOOM_MAX: float = 2.8
+
 # 静态布局/状态（模板跨实例复用时布局一致；动态状态在每次重建时刷新）
 static var _s_level_points: Dictionary = {}  # level(int) -> Vector2 画布坐标
 static var _s_bridges: Array = []  # [{a: Vector2, b: Vector2, era: int}]
@@ -140,6 +184,8 @@ static var _s_tex_cache: Dictionary = {}
 
 var _overlay_layer: Control = null  # v22 overlay 绘制层（微光桥/占领环/当前关光圈）
 var _pan_dragging: bool = false  # v22 拖拽平移状态
+var _zoom_factor: float = 1.0  # v28 方案11 用户缩放（1.0=整图适配，>1 时可拖拽平移）
+var _next_marker: Label = null  # v28 “下一关”屏幕空间引导标（不随地图缩放变小）
 
 var _level_info_popup: Window = null
 var _runtime_active: bool = false
@@ -207,6 +253,8 @@ func _ready() -> void:
 	# v23.1：方案 11 单屏——上下横条撤掉，标题/势力按钮/返回键浮在地图角上
 	if MAP_SCHEME == 11:
 		_apply_floating_chrome()
+		# v28：图例 + “回到当前关”按钮（屏幕空间，不随地图画布缩放）
+		_build_map_screen_chrome()
 
 ## 单屏浮层：Margin 归零，标题/势力领地图/返回从 VBox 摘出浮在地图上（地图占满面板）
 func _apply_floating_chrome() -> void:
@@ -381,6 +429,32 @@ func _build_level_map() -> void:
 		home_lbl.position = _home_pos() + Vector2(20, -16)
 		home_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		canvas.add_child(home_lbl)
+
+		# 4b) v27 黑门（星冥族入口）：终局巨环上的可点热区（解锁判定见 _is_blackgate_unlocked）
+		var gate_entry := Button.new()
+		gate_entry.name = "BlackGateEntry"
+		gate_entry.flat = true
+		var gate_unlocked: bool = _is_blackgate_unlocked()
+		var gate_p := _gate_pos()
+		gate_entry.size = Vector2(150, 130)
+		gate_entry.position = gate_p - gate_entry.size * 0.5
+		gate_entry.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+		gate_entry.tooltip_text = "黑门——星冥族的裂隙（无限模式）" if gate_unlocked \
+			else "黑门（通关第 100 关后开启）"
+		gate_entry.modulate = Color(1, 1, 1, 1.0) if gate_unlocked else Color(1, 1, 1, 0.35)
+		gate_entry.gui_input.connect(_on_blackgate_gui_input)
+		canvas.add_child(gate_entry)
+		var gate_lbl := Label.new()
+		# v28：未解锁时可见文案直接带解锁条件（原"黑门（未启）"玩家不知道怎么开）
+		gate_lbl.text = "黑门·无限" if gate_unlocked else "黑门（通关第100关开启）"
+		gate_lbl.add_theme_font_size_override("font_size", 20)
+		gate_lbl.add_theme_color_override("font_color", Color(0.62, 0.85, 1.0, 0.95) if gate_unlocked \
+			else Color(0.62, 0.85, 1.0, 0.4))
+		gate_lbl.add_theme_color_override("font_outline_color", DesignTokens.COLOR_BACKDROP_DEEP)
+		gate_lbl.add_theme_constant_override("outline_size", 3)
+		gate_lbl.position = gate_p + Vector2(-34, 64)
+		gate_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		canvas.add_child(gate_lbl)
 	else:
 		# 方案 6/8：灯塔/掩体贴图（可点击回基地）
 		var lh := TextureRect.new()
@@ -475,6 +549,7 @@ func _fit_canvas_to_viewport(canvas: Control, scroll: ScrollContainer) -> void:
 	await get_tree().process_frame
 	if not is_instance_valid(canvas) or not is_instance_valid(scroll):
 		return
+	_zoom_factor = 1.0  # v28：重适配（重开面板/改窗）一律回整图视图
 	if not scroll.resized.is_connected(_on_fit_scroll_resized):
 		scroll.resized.connect(_on_fit_scroll_resized)   # 尺寸变化（开面板/改窗）自动重适配
 	var avail: Vector2 = scroll.size
@@ -490,6 +565,10 @@ func _fit_canvas_to_viewport(canvas: Control, scroll: ScrollContainer) -> void:
 	if OS.has_environment("WM_DEBUG_FIT"):
 		print("[WM_DEBUG] fit: scroll.size=%s → scale=%.3f pos=%s reused=%s" %
 			[avail, s, canvas.position, str(canvas != _cached_level_map_template)])
+	# 截图/测试辅助：WM_DEBUG_ZOOM=N 以 N 倍缩放居中当前关（验证局部放大视图）
+	if OS.has_environment("WM_DEBUG_ZOOM"):
+		_center_view_on_level(clampi(GameManager.current_level if GameManager else 1, 1, LEVEL_COUNT),
+			clampf(float(OS.get_environment("WM_DEBUG_ZOOM")), 1.0, ZOOM_MAX))
 
 ## 尺寸变化重适配（防"放大后不恢复"：面板/窗口尺寸变了自动重算）
 func _on_fit_scroll_resized() -> void:
@@ -567,10 +646,23 @@ static func _layout_scheme8() -> void:
 ## 方案 11 黑日战线（v23 定稿）：布点来自原型管线导出（data/world_map_layout_s11.gd）——
 ## 内容锚定簇布局，100 关压在图内废墟城邦/晶体/冰穹等醒目内容上，大致从左到右。
 ## 布局调参走 tools/prototype_level_layout.py（改锚点/参数后重跑导出）。
+## v28 用户定稿微调（管线重导出后本表仍生效；原型脚本若修正锚点可删）：
+## - 30 关原点 (1074,1352) 吊在南部海面孤点 → 挪到 29(1065,1103) 西侧 70px
+## - 末段 95-100 聚拢成黑门前最后一段路：98→97 左下、99→97 右下、100 压到岩岬下缘
+##   （98 原 (2162,724) / 99 原 (2207,688) 与 100(2209,938) 松散；黑门在 (2272,774)）
+const S11_POINT_OVERRIDES: Dictionary = {
+	30: Vector2(1010, 1060),
+	98: Vector2(2096, 997),
+	99: Vector2(2226, 995),
+	100: Vector2(2150, 1055),
+}
+
 static func _layout_scheme11() -> void:
 	var points: Array = LayoutS11.POINTS
 	for i in range(points.size()):
 		_s_level_points[i + 1] = points[i]
+	for lv in S11_POINT_OVERRIDES:
+		_s_level_points[lv] = S11_POINT_OVERRIDES[lv]
 	_s_bridges.append({"a": _home_pos(), "b": _s_level_points[1], "era": 0})
 	for lv in range(1, LEVEL_COUNT):
 		_s_bridges.append({"a": _s_level_points[lv], "b": _s_level_points[lv + 1],
@@ -811,6 +903,10 @@ func _make_level_node(level_index: int, era_idx: int, point: Vector2, _current_l
 	var sb := StyleBoxFlat.new()
 	sb.set_corner_radius_all(half)
 	var bw := 3
+	# v28：深色投影衬底——雪原/亮色地形上白盘不再隐身（盘与地形分层）
+	sb.shadow_color = Color(0, 0, 0, 0.45)
+	sb.shadow_size = 5
+	sb.shadow_offset = Vector2(0, 2)
 	# v23.3：所有节点一律实心白盘 + 深字（未解锁靠灰环区分，不再半透明/压暗——
 	# 半透明白+灰字+modulate 三层叠加会导致数字不可读）
 	var ring_col := Color(0.52, 0.56, 0.62, 0.95)
@@ -820,7 +916,7 @@ func _make_level_node(level_index: int, era_idx: int, point: Vector2, _current_l
 		ring_col = era_col
 		num_col = Color(0.10, 0.11, 0.13)
 	if is_boss:
-		ring_col = Color(0.93, 0.72, 0.25)
+		ring_col = BOSS_RING_COLOR
 		bw = 4
 	if is_cur:
 		bw = 5
@@ -915,26 +1011,197 @@ func _get_level_occupation_safe(level: int) -> String:
 func _process(_delta: float) -> void:
 	# v23.2 单屏自校验：每帧比对 ScrollContainer 实际尺寸与当前缩放，
 	# 偏差超阈值立即重适配——构建期一次性的 fit 若量错/尺寸后来变化，一帧内自愈
+	# v28：目标缩放 = 适配基准 × 用户缩放（滚轮缩放/拖拽平移后不再强拉回整图居中）
 	if MAP_SCHEME != 11 or not _map_built:
 		return
 	var scroll := get_node_or_null("Margin/VBox/ScrollContainer") as ScrollContainer
 	var canvas := scroll.get_node_or_null("MapCanvas") as Control if scroll else null
 	if scroll == null or canvas == null or scroll.size.x <= 1.0:
 		return
-	var s: float = clampf(min(scroll.size.x / MAP_CANVAS_SIZE.x, scroll.size.y / MAP_CANVAS_SIZE.y),
-		0.30, 0.55)
-	if absf(canvas.scale.x - s) > 0.004:
-		canvas.scale = Vector2(s, s)
-		canvas.position = Vector2(max(0.0, (scroll.size.x - MAP_CANVAS_SIZE.x * s) * 0.5),
-			max(0.0, (scroll.size.y - MAP_CANVAS_SIZE.y * s) * 0.5))
+	var s_target: float = _view_fit_scale(scroll) * _zoom_factor
+	if absf(canvas.scale.x - s_target) > 0.004:
+		# 视口中心锚定重适配：缩放变化前后视口中心指向的地图点不动
+		var center := Vector2(scroll.size) * 0.5
+		var map_pt := (center - canvas.position) / canvas.scale.x
+		canvas.scale = Vector2(s_target, s_target)
+		canvas.position = center - map_pt * s_target
+		_clamp_canvas_pos(canvas, scroll)
+	_update_next_marker(canvas, scroll)
+
+## v28 方案11 视图辅助：适配基准缩放（整图刚好一屏放下）
+func _view_fit_scale(scroll: ScrollContainer) -> float:
+	var avail := scroll.size
+	if avail.x <= 1.0 or avail.y <= 1.0:
+		avail = get_viewport_rect().size
+	return clampf(min(avail.x / MAP_CANVAS_SIZE.x, avail.y / MAP_CANVAS_SIZE.y), 0.30, 0.55)
+
+## v28：画布位置夹紧——地图比视口大时四边不得拉出空隙；整图放得下时居中
+func _clamp_canvas_pos(canvas: Control, scroll: ScrollContainer) -> void:
+	var avail := scroll.size
+	var w := MAP_CANVAS_SIZE.x * canvas.scale.x
+	var h := MAP_CANVAS_SIZE.y * canvas.scale.y
+	var px := (avail.x - w) * 0.5 if w <= avail.x else clampf(canvas.position.x, avail.x - w, 0.0)
+	var py := (avail.y - h) * 0.5 if h <= avail.y else clampf(canvas.position.y, avail.y - h, 0.0)
+	canvas.position = Vector2(px, py)
+
+## v28：以光标为锚缩放（光标下的地图点缩放前后不动）
+func _apply_zoom_at(canvas: Control, scroll: ScrollContainer, factor: float, mouse_local: Vector2) -> void:
+	var new_zoom := clampf(_zoom_factor * factor, 1.0, ZOOM_MAX)
+	if is_equal_approx(new_zoom, _zoom_factor):
+		return
+	var f := (_view_fit_scale(scroll) * new_zoom) / canvas.scale.x
+	canvas.position = mouse_local + (canvas.position - mouse_local) * f
+	canvas.scale = Vector2(_view_fit_scale(scroll) * new_zoom, _view_fit_scale(scroll) * new_zoom)
+	_zoom_factor = new_zoom
+	_clamp_canvas_pos(canvas, scroll)
+
+## v28：以某关为中心设置缩放视图（“回到当前关”按钮用）
+func _center_view_on_level(level_index: int, zoom: float) -> void:
+	var scroll := get_node_or_null("Margin/VBox/ScrollContainer") as ScrollContainer
+	var canvas := scroll.get_node_or_null("MapCanvas") as Control if scroll else null
+	if scroll == null or canvas == null:
+		return
+	var p: Vector2 = _s_level_points.get(level_index, MAP_LIGHTHOUSE_POS)
+	_zoom_factor = clampf(zoom, 1.0, ZOOM_MAX)
+	var s_target := _view_fit_scale(scroll) * _zoom_factor
+	canvas.scale = Vector2(s_target, s_target)
+	canvas.position = Vector2(scroll.size) * 0.5 - p * s_target
+	_clamp_canvas_pos(canvas, scroll)
+
+## v28 方案11 屏幕空间 chrome：左下“回到当前关”+ 节点状态图例 + “下一关”引导标。
+## 不进 MapCanvas——不随地图缩放/平移变形，尺寸恒定可读。
+## 挂到全屏 MapOverlay 而非 world_map 根：嵌入模式根被 CenterContainer 收进内容矩形，
+## 其"左下角"不是屏幕左下角；独立场景模式无 MapOverlay 祖先，回退 self。
+func _build_map_screen_chrome() -> void:
+	var chrome_parent: Node = self
+	var ancestor: Node = self
+	while ancestor != null:
+		if ancestor is Control and ancestor.name == "MapOverlay":
+			chrome_parent = ancestor
+			break
+		ancestor = ancestor.get_parent()
+	var panel := PanelContainer.new()
+	panel.name = "MapLegend"
+	var psb := StyleBoxFlat.new()
+	psb.bg_color = Color(0.05, 0.08, 0.14, 0.82)
+	psb.set_border_width_all(1)
+	psb.border_color = Color(0, 0.75, 0.85, 0.45)
+	psb.set_corner_radius_all(6)
+	psb.content_margin_left = 10
+	psb.content_margin_right = 10
+	psb.content_margin_top = 8
+	psb.content_margin_bottom = 8
+	panel.add_theme_stylebox_override("panel", psb)
+	# 显式底部左锚 + 生长方向（右/上）：preset 在子内容未填充、size=0 时调用会让
+	# PanelContainer 向下生长出屏，grow 方向显式声明后才与填充时序无关
+	panel.anchor_left = 0.0
+	panel.anchor_top = 1.0
+	panel.anchor_right = 0.0
+	panel.anchor_bottom = 1.0
+	panel.offset_left = 12.0
+	panel.offset_top = -12.0
+	panel.offset_right = 12.0
+	panel.offset_bottom = -12.0
+	panel.grow_horizontal = Control.GROW_DIRECTION_END
+	panel.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	chrome_parent.add_child(panel)
+
+	var vb := VBoxContainer.new()
+	vb.add_theme_constant_override("separation", 6)
+	panel.add_child(vb)
+
+	var locate_btn := Button.new()
+	locate_btn.text = "◎ 回到当前关"
+	locate_btn.tooltip_text = "以当前关为中心放大视图\n滚轮缩放 · 拖拽空白处平移"
+	locate_btn.focus_mode = Control.FOCUS_NONE
+	locate_btn.add_theme_color_override("font_color", DesignTokens.COLOR_ACCENT_CYAN)
+	locate_btn.add_theme_font_size_override("font_size", 14)
+	var styles := PanelStyles.make_button_styles(DesignTokens.COLOR_ACCENT_CYAN)
+	for key in ["normal", "hover", "pressed", "disabled", "focus"]:
+		locate_btn.add_theme_stylebox_override(key, styles[key])
+	locate_btn.pressed.connect(_on_locate_current_pressed)
+	vb.add_child(locate_btn)
+
+	vb.add_child(_make_legend_row(Color(0.0, 0.9, 1.0), "当前关（青色双环）"))
+	vb.add_child(_make_legend_row(BOSS_RING_COLOR, "相位师首领关（金环加大）"))
+	vb.add_child(_make_legend_row(Color(0.4, 0.95, 0.35), "已通关（环色=所在时代）"))
+	vb.add_child(_make_legend_row(Color(0.52, 0.56, 0.62), "未通关"))
+	# v28：占领势力光环是 overlay 画的节点外圈（半透明），图例同补一行
+	var occ_row := _make_legend_row(Color(0.9, 0.55, 0.2, 0.85), "外圈光环 = 占领势力")
+	vb.add_child(occ_row)
+
+	# “下一关”引导标：屏幕空间 Label，钉在当前关节点上方，出视口时贴边示向
+	_next_marker = Label.new()
+	_next_marker.name = "NextLevelMarker"
+	_next_marker.add_theme_font_size_override("font_size", 14)
+	_next_marker.add_theme_color_override("font_color", Color(0.0, 0.9, 1.0))
+	_next_marker.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.85))
+	_next_marker.add_theme_constant_override("outline_size", 4)
+	_next_marker.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_next_marker.visible = false
+	chrome_parent.add_child(_next_marker)
+
+## v28 图例行：迷你节点样例（白盘彩环，与真实节点同构）+ 说明文字
+func _make_legend_row(ring: Color, text: String) -> Control:
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 7)
+	var swatch := Panel.new()
+	swatch.custom_minimum_size = Vector2(18, 18)
+	swatch.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	var ssb := StyleBoxFlat.new()
+	ssb.set_corner_radius_all(9)
+	ssb.bg_color = Color(0.97, 0.97, 0.95)
+	ssb.set_border_width_all(3)
+	ssb.border_color = ring
+	ssb.shadow_color = Color(0, 0, 0, 0.4)
+	ssb.shadow_size = 2
+	swatch.add_theme_stylebox_override("panel", ssb)
+	row.add_child(swatch)
+	var lbl := Label.new()
+	lbl.text = text
+	lbl.add_theme_font_size_override("font_size", 13)
+	lbl.add_theme_color_override("font_color", Color(0.88, 0.92, 0.96))
+	row.add_child(lbl)
+	return row
+
+func _on_locate_current_pressed() -> void:
+	SignalBus.play_sound.emit("button")
+	_center_view_on_level(clampi(GameManager.current_level if GameManager else 1, 1, LEVEL_COUNT), 2.0)
+
+## v28：“下一关”引导标跟随——画布坐标→屏幕坐标，节点拖出视口时贴边指示方位
+func _update_next_marker(canvas: Control, scroll: ScrollContainer) -> void:
+	if _next_marker == null or not is_instance_valid(_next_marker):
+		return
+	if not _map_built or canvas == null or scroll == null or scroll.size.x <= 1.0:
+		_next_marker.visible = false
+		return
+	var cur: int = clampi(GameManager.current_level if GameManager else 1, 1, LEVEL_COUNT)
+	var txt := "▼ 第 %d 关" % cur
+	if _next_marker.text != txt:
+		_next_marker.text = txt
+		_next_marker.reset_size()
+	var p: Vector2 = _s_level_points.get(cur, Vector2.ZERO)
+	if p == Vector2.ZERO:
+		_next_marker.visible = false
+		return
+	var node_r: float = 20.0 * canvas.scale.x
+	var local := canvas.position + p * canvas.scale.x - Vector2(_next_marker.size.x * 0.5, node_r + 16.0)
+	var g: Vector2 = scroll.get_global_transform() * local
+	var rect := Rect2(scroll.get_global_position(), scroll.size)
+	var ms := _next_marker.size
+	_next_marker.visible = true
+	_next_marker.global_position = Vector2(
+		clampf(g.x, rect.position.x + 4.0, maxf(rect.position.x + 4.0, rect.end.x - ms.x - 4.0)),
+		clampf(g.y, rect.position.y + 4.0, maxf(rect.position.y + 4.0, rect.end.y - ms.y - 4.0)))
 
 func _draw() -> void:
 	# v22：地图内容全部由 MapCanvas 子树绘制，根节点不再画星空/扫描线
 	pass
 
-## 拖拽平移：左键拖空白处滚动视口（方案 11 单屏模式无平移）
+## 拖拽平移：左键拖空白处滚动视口（方案 11 单屏模式走 v28 局部缩放/平移分支）
 func _on_map_gui_input(ev: InputEvent) -> void:
 	if MAP_SCHEME == 11:
+		_on_map_gui_input_s11(ev)
 		return
 	if ev is InputEventMouseButton and (ev as InputEventMouseButton).button_index == MOUSE_BUTTON_LEFT:
 		_pan_dragging = (ev as InputEventMouseButton).pressed
@@ -945,13 +1212,20 @@ func _on_map_gui_input(ev: InputEvent) -> void:
 			scroll.set_h_scroll(int(scroll.get_h_scroll() - rel.x))
 			scroll.set_v_scroll(int(scroll.get_v_scroll() - rel.y))
 
+## v28 方案11：这里只负责"空白底图上按下左键"=拖拽起点（关卡按钮会自行消费按压，
+## 从节点上起手不会误触拖拽）；滚轮/移动/释放统一在 _handle_map_view_input 全局处理。
+func _on_map_gui_input_s11(ev: InputEvent) -> void:
+	if ev is InputEventMouseButton and (ev as InputEventMouseButton).pressed \
+			and (ev as InputEventMouseButton).button_index == MOUSE_BUTTON_LEFT:
+		_pan_dragging = true
+
 func _on_back_to_title() -> void:
 	# 嵌入到 Main 的 MapOverlay 时，不切场景，改为通知父层关闭。
 	if has_meta("embedded_mode") and bool(get_meta("embedded_mode")):
 		back_to_main.emit()
 		return
 	# 独立场景模式：直接切换回主场景
-	get_tree().change_scene_to_file("res://scenes/main.tscn")
+	SceneTransition.change(get_tree(), "res://scenes/main.tscn")
 
 ## v22.4（P1-6）：点"家"（余烬要塞标记）回基地。嵌入/独立两模式统一直切场景。
 func _on_home_gui_input(event: InputEvent) -> void:
@@ -961,7 +1235,119 @@ func _on_home_gui_input(event: InputEvent) -> void:
 		if Engine.has_meta("launch_from_bunker"):
 			Engine.remove_meta("launch_from_bunker")
 		SignalBus.play_sound.emit("button")
-		get_tree().change_scene_to_file("res://scenes/bunker/bunker_main.tscn")
+		SceneTransition.change(get_tree(), "res://scenes/bunker/bunker_main.tscn")
+
+
+# ═══════════ v27 黑门（星冥族·无限模式入口） ═══════════
+
+## 解锁判定：第 100 关已通关（星级 > 0）。LPM 未加载时按 GameManager 进度兜底。
+func _is_blackgate_unlocked() -> bool:
+	var lpm = get_node_or_null("/root/LevelProgressManager")
+	if lpm != null and lpm.has_method("get_level_stars"):
+		return int(lpm.get_level_stars(100)) > 0
+	if GameManager != null:
+		return int(GameManager.current_level) > 100
+	return false
+
+
+func _on_blackgate_gui_input(event: InputEvent) -> void:
+	if event is InputEventMouseButton and (event as InputEventMouseButton).pressed \
+			and (event as InputEventMouseButton).button_index == MOUSE_BUTTON_LEFT:
+		SignalBus.play_sound.emit("button")
+		if _is_blackgate_unlocked():
+			_show_blackgate_popup()
+		else:
+			SignalBus.show_toast.emit("黑门沉寂未启——通关第 100 关「终局」后，裂隙将在此撕开。")
+
+
+## 黑门信息弹窗：模式说明 + 最佳纪录 + 进入按钮（镜像关卡弹窗的 AcceptDialog 模式）
+func _show_blackgate_popup() -> void:
+	if _level_info_popup and is_instance_valid(_level_info_popup):
+		_level_info_popup.queue_free()
+	var popup := AcceptDialog.new()
+	popup.title = "黑门 · 无限模式"
+	popup.set_ok_button_text("")
+	if popup.get_ok_button() != null:
+		popup.get_ok_button().visible = false
+	popup.canceled.connect(_close_popup_safe.bind(popup))
+	add_child(popup)
+	_level_info_popup = popup
+
+	var margin := MarginContainer.new()
+	margin.add_theme_constant_override("margin_left", 18)
+	margin.add_theme_constant_override("margin_right", 18)
+	margin.add_theme_constant_override("margin_top", 14)
+	margin.add_theme_constant_override("margin_bottom", 14)
+	popup.add_child(margin)
+	var vb := VBoxContainer.new()
+	vb.add_theme_constant_override("separation", 8)
+	margin.add_child(vb)
+
+	var lines: PackedStringArray = [
+		"门后是星冥族的晶脉浮陆——波次永不耗尽，撑到驱动器被毁为止。",
+		"每 5 波精英 / 每 10 波首领；每 10 波渗度 +1（敌人更强、缴获品质更好）。",
+		"星冥单位只可通过缴获获取（黑门内击杀掉落），品质随渗度提升。",
+		"每场随机 1 条裂隙环境（灵能风暴/低重力/裂隙潮汐/晶脉浮陆），敌我双向生效。",
+		"星髓按渗度里程碑发放，每周获取有上限。",
+	]
+	for line in lines:
+		var lbl := Label.new()
+		lbl.text = line
+		lbl.add_theme_font_size_override("font_size", 14)
+		lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		lbl.custom_minimum_size = Vector2(480, 0)
+		vb.add_child(lbl)
+
+	# 最佳纪录（管理器懒加载；首场前无纪录则跳过该行）
+	var best_line: String = ""
+	var ebm = get_node_or_null("/root/EndlessBlackgateManager")
+	if ebm == null:
+		var mll = get_node_or_null("/root/ManagerLazyLoader")
+		if mll != null and mll.has_method("ensure_loaded"):
+			mll.ensure_loaded("endless")
+		ebm = get_node_or_null("/root/EndlessBlackgateManager")
+	if ebm != null and int(ebm.get("best_score")) > 0:
+		best_line = "最佳：第 %d 波 · 分数 %d" % [int(ebm.get("best_waves")), int(ebm.get("best_score"))]
+		if ebm.has_method("weekly_marrow_remaining"):
+			best_line += " · 本周还可获取星髓 %d" % int(ebm.weekly_marrow_remaining())
+		var best_lbl := Label.new()
+		best_lbl.text = best_line
+		best_lbl.add_theme_font_size_override("font_size", 14)
+		best_lbl.add_theme_color_override("font_color", Color(0.62, 0.85, 1.0))
+		vb.add_child(best_lbl)
+
+	var hb := HBoxContainer.new()
+	hb.alignment = BoxContainer.ALIGNMENT_CENTER
+	hb.add_theme_constant_override("separation", 16)
+	vb.add_child(hb)
+	var enter_btn := Button.new()
+	enter_btn.text = "踏入黑门"
+	enter_btn.custom_minimum_size = Vector2(180, 44)
+	enter_btn.pressed.connect(_enter_blackgate.bind(popup))
+	hb.add_child(enter_btn)
+	var close_btn := Button.new()
+	close_btn.text = "再准备一下"
+	close_btn.custom_minimum_size = Vector2(140, 44)
+	close_btn.pressed.connect(_close_popup_safe.bind(popup))
+	hb.add_child(close_btn)
+
+	popup.popup_centered(Vector2i(600, 0))
+
+
+## 进入黑门：挂起无尽标记（GameManager.start_endless_battle 只置标志，
+## begin_run 在"开始战斗"的 go_to_battle 链路里才生效——与普通关卡进入同构）。
+## 先对齐 current_level=100（档位/难度链基准；set_current_level 会清挂起标记，故先关卡后标记）。
+func _enter_blackgate(popup: Window) -> void:
+	_close_popup_safe(popup)
+	if GameManager != null:
+		if GameManager.has_method("set_current_level"):
+			GameManager.set_current_level(100)
+		if GameManager.has_method("start_endless_battle"):
+			GameManager.start_endless_battle()
+	if has_meta("embedded_mode") and bool(get_meta("embedded_mode")):
+		back_to_main.emit()
+		return
+	SceneTransition.change(get_tree(), "res://scenes/main.tscn")
 
 ## v6.10: 打开势力领地图面板
 func _on_territory_map_button() -> void:
@@ -1309,6 +1695,21 @@ func _format_special_rules(rules: Dictionary) -> String:
 	var wt: String = String(rules.get("win_type", ""))
 	if wt == "survive_waves":
 		parts.append("胜利条件: 坚守 %d 波" % int(rules.get("win_param", 0)))
+	# v26.13(B2): 新规则键战前摘要
+	if rules.has("time_limit_sec"):
+		parts.append("限时 %d 秒" % int(rules.get("time_limit_sec", 0)))
+	if bool(rules.get("no_heal", false)):
+		parts.append("禁疗：治疗无效")
+	if bool(rules.get("no_mods", false)):
+		parts.append("禁用改造")
+	if bool(rules.get("elite_wave_bonus", false)):
+		parts.append("每波+1精英")
+	if bool(rules.get("first_strike", false)):
+		parts.append("敌方先手突袭")
+	if bool(rules.get("energy_starvation", false)):
+		parts.append("能量枯竭：回能-50%")
+	if bool(rules.get("boss_enrage_half", false)):
+		parts.append("头目半血狂暴")
 	# 注：deploy_limit 已移除——可上场单位数现由相位仪实际装备的战斗卡数决定，不再作为关卡修饰显示。
 	return "  ·  ".join(parts) if not parts.is_empty() else ""
 
@@ -1344,7 +1745,7 @@ func _auto_deploy_from_popup(level_index: int, popup: Window) -> void:
 	if has_meta("embedded_mode") and bool(get_meta("embedded_mode")):
 		back_to_main.emit()
 		return
-	get_tree().call_deferred("change_scene_to_file", "res://scenes/main.tscn")
+	SceneTransition.change(get_tree(), "res://scenes/main.tscn")
 
 func _close_popup_safe(popup: Window) -> void:
 	if is_instance_valid(popup):
@@ -1359,7 +1760,7 @@ func _enter_level_from_popup(level_index: int, popup: Window) -> void:
 		return
 	# 独立场景模式：切回主场景
 	# 同步切场景会在按键输入分发中途释放本 Window 视口，易触发 Viewport::_push_unhandled_input_internal
-	get_tree().call_deferred("change_scene_to_file", "res://scenes/main.tscn")
+	SceneTransition.change(get_tree(), "res://scenes/main.tscn")
 
 func _collect_level_info(level_index: int) -> Dictionary:
 	var info_db = LevelInformation.get_shared()

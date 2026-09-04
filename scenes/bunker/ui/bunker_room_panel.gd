@@ -233,6 +233,19 @@ func _build_locked_actions(room_id: String) -> void:
 		(BunkerRoomDefs.cost_text(cost) if not cost.is_empty() else "免费"), battles]
 	_action_box.add_child(info)
 
+	# v26.12：掏资源前先告诉玩家这房间修好了有什么用 + 之后能升到什么（不靠猜）
+	var fn := str(_def.get("function_note", ""))
+	if not fn.is_empty():
+		var fnote := _make_info_label()
+		fnote.text = "修复后：%s" % fn
+		fnote.add_theme_color_override("font_color", DT.COLOR_TEXT_MID)
+		_action_box.add_child(fnote)
+	var ups_text := BunkerRoomDefs.upgrade_lines_preview(room_id)
+	if not ups_text.is_empty():
+		var ups_lbl := _make_info_label()
+		ups_lbl.text = ups_text
+		_action_box.add_child(ups_lbl)
+
 	# P3：荣誉陈列室碎片门槛提示
 	if room_id == "honor_hall":
 		var gate := _make_info_label()
@@ -273,6 +286,14 @@ func _build_repairing_actions(room_id: String, progress: float) -> void:
 		info.text = "每完成一场战斗推进一格（%d 场后恢复供电）。" % [
 			ceil((1.0 - progress) * max(1, int(_def.get("battles", 1))))]
 	_action_box.add_child(info)
+
+	# v26.12：修复中也能看到"修好了有什么用"
+	var fn := str(_def.get("function_note", ""))
+	if not fn.is_empty():
+		var fnote := _make_info_label()
+		fnote.text = "修复后：%s" % fn
+		fnote.add_theme_color_override("font_color", DT.COLOR_TEXT_MID)
+		_action_box.add_child(fnote)
 
 	# 圆角进度条（橙填充）+ 百分比角标
 	_action_box.add_child(_make_progress_bar(progress))
@@ -354,6 +375,7 @@ func _build_active_actions(room_id: String) -> void:
 			_add_embedded_buttons([
 				["改造", "modification"],
 				["制造中心", "evolution"],  # v26：进化退役，id 保留（护栏），仅改显示文案
+				["词条工坊（洗练）", "affix"],  # v26.11(A1.1)：词缀洗练/锁定/Boss 词条池
 			])
 		"comms":
 			_add_embedded_buttons([

@@ -206,8 +206,28 @@ static func _is_high_value_target(e: Node) -> bool:
 			return true
 	return false
 
+## v26.13(D-2): 指令轮盘集火——attacker 带 _focus_target_ref（弱引用）且目标在候选中 → 必选。
+## 候选已被上游按射程/可攻击过滤，集火目标不在其中（超射程/已死）时回退正常索敌，不会卡死。
+static func _take_focus_target(attacker: Node2D, enemies: Array) -> Node2D:
+	if attacker == null or not attacker.has_meta("_focus_target_ref"):
+		return null
+	var ref = attacker.get_meta("_focus_target_ref")
+	if ref == null or not (ref is WeakRef):
+		return null
+	var t = ref.get_ref()
+	if t == null or not is_instance_valid(t):
+		return null
+	for e in enemies:
+		if e == t:
+			return t
+	return null
+
 ## 根据武器类型选目标
 static func select_target(attacker: Node2D, enemies: Array, weapon_type: int) -> Node2D:
+	# v26.13(D-2): 集火指令优先级最高（设计：索敌优先级 +∞）
+	var _focus: Node2D = _take_focus_target(attacker, enemies)
+	if _focus != null:
+		return _focus
 	# v8.x: 远程单位优先集火暴击标注目标（无标注或非远程则原样）
 	enemies = _prioritize_crit_marked(attacker, enemies)
 	match weapon_type:

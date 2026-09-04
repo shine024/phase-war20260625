@@ -17,6 +17,7 @@ from PIL import Image, ImageDraw, ImageFilter, ImageEnhance
 
 SRC = r"docs/基地重设计/generated3"
 SRC4 = r"docs/基地重设计/generated4"
+SRC5 = r"docs/基地重设计/generated5"   # v26 批次4：房间"时代升级态"AI 图（cap_<rid>_upg.jpeg，可选）
 DST = r"assets/bunker/v3"
 DEFS = r"data/bunker_room_defs.gd"
 
@@ -131,6 +132,32 @@ def load_cap(rid):
         return None   # 胶囊未生成（如新增房）→ 留空腔待补图
     return Image.open(p).convert("RGBA")
 
+## v26 批次4：房间"时代升级态"胶囊。
+## 优先级：AI 升级图（generated5/cap_<rid>_upg.*，agnes 批量生成的更现代房间图）
+##        → 程序化后处理兜底（modernize_cap：冷青色温位移，"基地随时代进化"）。
+def load_cap_upg(rid):
+    if os.path.isdir(SRC5):
+        for f in sorted(os.listdir(SRC5)):
+            stem = os.path.splitext(f)[0]
+            if stem == "cap_%s_upg" % rid and f.lower().endswith((".jpeg", ".jpg", ".png")):
+                return autocrop(flood_white_to_alpha(Image.open(os.path.join(SRC5, f)))).convert("RGBA")
+    base = load_cap(rid)
+    if base is None:
+        return None
+    return modernize_cap(base)
+
+## 暖黄旧灯 → 冷青高科技观感。只做逐像素锐利操作（色温位移+轻锐化），
+## 不叠加任何模糊层——v26.1 修正：初版辉光=高斯模糊叠回原图，整图发糊（用户实测否决）。
+def modernize_cap(cap):
+    r, g, b, a = cap.split()
+    r = r.point(lambda v: int(v * 0.78))                       # 压暖红
+    g = g.point(lambda v: min(255, int(v * 1.06)))             # 微抬绿
+    b = b.point(lambda v: min(255, int(v * 1.20 + 10)))        # 抬冷蓝
+    cap = Image.merge("RGBA", (r, g, b, a))
+    # 轻锐化补偿（jpeg→缩放的软化），UnsharpMask 不引入模糊
+    cap = cap.filter(ImageFilter.UnsharpMask(radius=2, percent=68, threshold=2))
+    return cap
+
 def aspect_fit(img, w, h):
     s = min(w / img.width, h / img.height)
     nw, nh = int(img.width * s + 0.5), int(img.height * s + 0.5)
@@ -161,7 +188,7 @@ def build_base():
     canvas.alpha_composite(Image.composite(rock, Image.new("RGBA", rock.size), mask), (0, 330))
     return canvas
 
-def bake(all_lit):
+def bake(all_lit, upgraded=False):
     random.seed(20260827)
     canvas = build_base()
     d = ImageDraw.Draw(canvas, "RGBA")
@@ -186,7 +213,9 @@ def bake(all_lit):
     # 胶囊嵌入：全部 aspect-fill 贴底（竖向裁顶保地面线与侧壁门洞；
     # 胶囊四边贴合房间矩形 → 房名/门位/隧道与胶囊逐边对齐，无黑边错位）
     for (rid, x, y, w, h, side, ty, via, init) in ROOMS:
-        cap = load_cap(rid)
+        cap = load_cap_upg(rid) if upgraded else load_cap(rid)
+        if cap is None:
+            cap = load_cap(rid)   # 升级态缺图兜底（新房间未烘 upg 时）
         if cap is None:
             print("[空腔] %s 胶囊未生成，留暗腔待补（generated4/cap_%s）" % (rid, rid))
             continue
@@ -201,14 +230,24 @@ def bake(all_lit):
             tint = Image.new("RGBA", cap.size, (18, 14, 10, 110))
             cap = Image.alpha_composite(cap, tint)
         canvas.alpha_composite(cap, (px_, py_))
-        if all_lit or init:  # 光池（仓库青 / 其余暖）
-            lw, lh = int(w * .9), int(h * .78)
+        if all_lit or init:  # 光池（仓库青 / 其余暖；升级态更大更亮偏冷白青）
+            if upgraded:
+                lw, lh = int(w * 1.02), int(h * .9)
+            else:
+                lw, lh = int(w * .9), int(h * .78)
             pool = Image.new("RGBA", (lw, lh), (0, 0, 0, 0))
             pd = ImageDraw.Draw(pool)
-            pc = (120, 229, 255, 44) if rid == "depot" else (255, 170, 90, 40)
+            if upgraded:
+                pc = (150, 235, 255, 66)
+            else:
+                pc = (120, 229, 255, 44) if rid == "depot" else (255, 170, 90, 40)
             pd.ellipse([lw * .05, lh * .04, lw * .95, lh * .92], fill=pc)
             canvas.alpha_composite(pool.filter(ImageFilter.GaussianBlur(20)),
                                    (x + (w - lw) // 2, y + (h - lh) // 2))
+        if upgraded and (all_lit or init):
+            # 时代升级灯带：胶囊顶边一条冷白青发光线（"整修一新"的识别记号）
+            d.rounded_rectangle([x + 8, y + 5, x + w - 8, y + 11], radius=3,
+                                fill=(185, 240, 255, 170))
     # 反应堆辉光 + 岩缝
     glow = Image.new("RGBA", (W, H), (0, 0, 0, 0))
     gd = ImageDraw.Draw(glow)
@@ -252,3 +291,5 @@ if __name__ == "__main__":
     print("saved bunker_bg_v3.png", dark.size)
     lit = bake(True); lit.save(os.path.join(DST, "bunker_bg_v3_lit.png"))
     print("saved bunker_bg_v3_lit.png", lit.size)
+    upg = bake(True, upgraded=True); upg.save(os.path.join(DST, "bunker_bg_v3_upg.png"))
+    print("saved bunker_bg_v3_upg.png", upg.size)

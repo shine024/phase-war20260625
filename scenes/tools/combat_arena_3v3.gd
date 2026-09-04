@@ -344,7 +344,7 @@ func _on_back() -> void:
 	if BattleManager != null:
 		BattleManager.battle_active = false
 	get_tree().paused = false
-	get_tree().change_scene_to_file("res://scenes/title_screen.tscn")
+	SceneTransition.change(get_tree(), "res://scenes/title_screen.tscn")
 
 
 # ============================================================

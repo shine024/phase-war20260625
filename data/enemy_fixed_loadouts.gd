@@ -1,6 +1,7 @@
 extends RefCounted
 class_name EnemyFixedLoadouts
-## v26 敌方固定配装表（109 卡全量）——每张敌方战斗卡的"特点定位 + 四档增量改造序列"
+## v26 敌方固定配装表（137 卡全量 = 109 经典 + 8 新飞机 + v27 星冥 20）——每张敌方战斗卡的"特点定位 + 四档增量改造序列"
+## v27: 星冥 xeno_* 条目改造池兼容映射近未来带（生成器 pool_era=4，era=5 查询亦走该带）。
 ##
 ## 数据结构（LOADOUTS，由 tools/gen_enemy_loadout_draft.gd 生成 + 人工核对）：
 ##   "<archetype_id>": {
@@ -387,8 +388,8 @@ const LOADOUTS: Dictionary = {
 		cuts = {1: 5, 2: 6, 3: 8, 4: 9},
 	},
 	"mod_air_technical_e": {
-		identity = "皮卡武装·机动游击——快速穿插，先手接敌",
-		mods = ["enh_speed_up", "enh_dodge", "inf_16_exoskeleton", "inf_10_saw", "gen_05_shield", "inf_04_bullpup", "inf_14_knee_pads", "rec_07_gps", "gen_stealth_coating"],
+		identity = "皮卡武装·火力压制——面杀伤持续输出，压制步兵集群",
+		mods = ["enh_dmg_up", "enh_splash", "gen_unified_splash", "inf_03_small_caliber", "inf_06_hp_ammo", "gen_combustion_catalyst", "inf_07_optical_scope", "inf_10_saw", "enh_chain"],
 		cuts = {1: 5, 2: 6, 3: 8, 4: 9},
 	},
 	"mod_arm_stryker_e": {
@@ -512,8 +513,8 @@ const LOADOUTS: Dictionary = {
 		cuts = {1: 5, 2: 6, 3: 9, 4: 9},
 	},
 	"fut_arm_mech_e": {
-		identity = "机甲步兵·破甲攻坚——反装甲火力特化，专啃硬目标",
-		mods = ["enh_dmg_up", "enh_penetration", "arm_06_apfsds", "gen_11_phase_resonance", "arm_07_gun_missile", "enh_crit_dmg", "gen_weakpoint_analyzer", "gen_beam_splitter", "gen_combustion_catalyst"],
+		identity = "机甲步兵·重装防御——厚甲消耗战，正面硬抗",
+		mods = ["enh_hp_up", "enh_def_up", "enh_def_flat", "gen_12_phase_shielding", "arm_02_composite_armor", "arm_10_diesel_turbo", "enh_regen", "enh_dodge", "gen_stealth_coating"],
 		cuts = {1: 5, 2: 7, 3: 8, 4: 9},
 	},
 	"fut_arm_hovertank_e": {
@@ -650,6 +651,106 @@ const LOADOUTS: Dictionary = {
 		identity = "能量护盾发生器·攻城压制——反堡垒面轰炸，拆阵洗地",
 		mods = ["enh_dmg_up", "enh_splash", "gen_combustion_catalyst", "enh_atkspd_up", "gen_unified_splash", "gen_11_phase_resonance", "enh_range_up", "for_05_ammo_dump", "gen_beam_splitter"],
 		cuts = {1: 5, 2: 6, 3: 8, 4: 9},
+	},
+	"xeno_swarmling": {
+		identity = "蚀群幼体·机动游击——快速穿插，先手接敌",
+		mods = ["enh_speed_up", "enh_dodge", "inf_16_exoskeleton", "inf_10_saw", "gen_05_shield", "inf_04_bullpup", "inf_14_knee_pads", "rec_07_gps", "inf_08_holographic"],
+		cuts = {1: 5, 2: 7, 3: 8, 4: 9},
+	},
+	"xeno_probe": {
+		identity = "晶工探测器·火力压制——面杀伤持续输出，压制步兵集群",
+		mods = ["enh_dmg_up", "enh_splash", "aa_07_aesa", "art_01_rifling", "art_02_extended_range", "gen_unified_splash", "gen_11_phase_resonance", "aa_02_iff", "eng_optical_fiber"],
+		cuts = {1: 5, 2: 7, 3: 8, 4: 9},
+	},
+	"xeno_zealot": {
+		identity = "渡暮狂战士·火力压制——面杀伤持续输出，压制步兵集群",
+		mods = ["enh_dmg_up", "enh_splash", "enh_chain", "gen_unified_splash", "inf_03_small_caliber", "gen_11_phase_resonance", "inf_06_hp_ammo", "gen_beam_splitter", "gen_combustion_catalyst"],
+		cuts = {1: 5, 2: 7, 3: 8, 4: 9},
+	},
+	"xeno_stalker": {
+		identity = "影跃猎者·机动游击——快速穿插，先手接敌",
+		mods = ["enh_speed_up", "enh_dodge", "rec_07_gps", "gen_stealth_coating", "inf_16_exoskeleton", "inf_10_saw", "gen_05_shield", "inf_04_bullpup", "inf_14_knee_pads"],
+		cuts = {1: 5, 2: 6, 3: 8, 4: 9},
+	},
+	"xeno_adept": {
+		identity = "灵裔侍从·火力压制——面杀伤持续输出，压制步兵集群",
+		mods = ["enh_dmg_up", "enh_splash", "gen_combustion_catalyst", "enh_chain", "gen_unified_splash", "inf_03_small_caliber", "gen_11_phase_resonance", "inf_06_hp_ammo", "gen_beam_splitter"],
+		cuts = {1: 5, 2: 7, 3: 9, 4: 9},
+	},
+	"xeno_sentinel": {
+		identity = "哨兵浮棱·火力压制——面杀伤持续输出，压制步兵集群",
+		mods = ["enh_dmg_up", "enh_splash", "aa_02_iff", "eng_optical_fiber", "aa_07_aesa", "art_01_rifling", "art_02_extended_range", "gen_unified_splash", "gen_11_phase_resonance"],
+		cuts = {1: 5, 2: 6, 3: 9, 4: 9},
+	},
+	"xeno_dragoon": {
+		identity = "龙骑残躯·重装防御——厚甲消耗战，正面硬抗",
+		mods = ["enh_hp_up", "enh_def_up", "enh_def_flat", "gen_12_phase_shielding", "arm_02_composite_armor", "arm_10_diesel_turbo", "enh_regen", "enh_dodge", "gen_stealth_coating"],
+		cuts = {1: 5, 2: 6, 3: 9, 4: 9},
+	},
+	"xeno_plasma_bug": {
+		identity = "等离囊虫·破甲攻坚——反装甲火力特化，专啃硬目标",
+		mods = ["enh_dmg_up", "enh_penetration", "art_chem_cluster", "gen_11_phase_resonance", "art_01_rifling", "art_02_extended_range", "enh_crit_dmg", "gen_weakpoint_analyzer", "aa_02_iff"],
+		cuts = {1: 5, 2: 7, 3: 8, 4: 9},
+	},
+	"xeno_tripod": {
+		identity = "【精英】三足行者·重装防御——厚甲消耗战，正面硬抗",
+		mods = ["enh_hp_up", "enh_def_up", "gen_stealth_coating", "enh_def_flat", "gen_12_phase_shielding", "arm_02_composite_armor", "arm_10_diesel_turbo", "enh_regen", "enh_dodge"],
+		cuts = {1: 5, 2: 7, 3: 8, 4: 9},
+	},
+	"xeno_hunter": {
+		identity = "【精英】隐面猎手·火力压制——面杀伤持续输出，压制步兵集群",
+		mods = ["enh_dmg_up", "enh_splash", "enh_chain", "gen_unified_splash", "inf_03_small_caliber", "gen_11_phase_resonance", "inf_06_hp_ammo", "gen_beam_splitter", "gen_combustion_catalyst"],
+		cuts = {1: 5, 2: 7, 3: 9, 4: 9},
+	},
+	"xeno_mimic": {
+		identity = "【精英】拟时者·机动游击——快速穿插，先手接敌",
+		mods = ["enh_speed_up", "enh_dodge", "inf_16_exoskeleton", "inf_10_saw", "gen_05_shield", "inf_04_bullpup", "inf_14_knee_pads", "rec_07_gps", "gen_stealth_coating"],
+		cuts = {1: 5, 2: 6, 3: 9, 4: 9},
+	},
+	"xeno_biomorph": {
+		identity = "【精英】异变体·机动游击——快速穿插，先手接敌",
+		mods = ["enh_speed_up", "enh_dodge", "inf_16_exoskeleton", "inf_10_saw", "gen_05_shield", "inf_04_bullpup", "inf_14_knee_pads", "rec_07_gps", "gen_stealth_coating"],
+		cuts = {1: 5, 2: 7, 3: 9, 4: 9},
+	},
+	"xeno_dark_templar": {
+		identity = "【精英】暗影执刃·火力压制——面杀伤持续输出，压制步兵集群",
+		mods = ["enh_dmg_up", "enh_splash", "enh_chain", "gen_unified_splash", "inf_03_small_caliber", "gen_11_phase_resonance", "inf_06_hp_ammo", "gen_beam_splitter", "gen_combustion_catalyst"],
+		cuts = {1: 5, 2: 6, 3: 9, 4: 9},
+	},
+	"xeno_reaver": {
+		identity = "【精英】蚀甲虫·重装防御——厚甲消耗战，正面硬抗",
+		mods = ["enh_hp_up", "enh_def_up", "enh_def_flat", "gen_12_phase_shielding", "arm_02_composite_armor", "arm_10_diesel_turbo", "enh_regen", "enh_dodge", "arm_05_smoothbore"],
+		cuts = {1: 5, 2: 6, 3: 9, 4: 9},
+	},
+	"xeno_interceptor": {
+		identity = "【精英】拦截机群·对地轰炸——洗地火力，一片焦土",
+		mods = ["enh_dmg_up", "enh_splash", "gen_combustion_catalyst", "gen_weakpoint_analyzer", "gen_11_phase_resonance", "air_04_aesa", "air_19_cluster_dispenser", "gen_unified_splash", "gen_beam_splitter"],
+		cuts = {1: 5, 2: 7, 3: 9, 4: 9},
+	},
+	"xeno_carrier": {
+		identity = "【精英】蚀空母舰·对地轰炸——洗地火力，一片焦土",
+		mods = ["enh_dmg_up", "enh_splash", "gen_11_phase_resonance", "air_04_aesa", "air_19_cluster_dispenser", "gen_unified_splash", "gen_beam_splitter", "gen_combustion_catalyst", "gen_weakpoint_analyzer"],
+		cuts = {1: 5, 2: 7, 3: 9, 4: 9},
+	},
+	"xeno_saucer": {
+		identity = "【精英】猎能碟·制空战机——空优格斗，先抢制空权",
+		mods = ["enh_dmg_up", "enh_crit", "air_22_countermeasure", "gen_11_phase_resonance", "air_antiradiation_missile", "air_targeting_laser", "gen_reflector_array", "air_02_vector_thrust", "air_14_swing_wing"],
+		cuts = {1: 5, 2: 7, 3: 9, 4: 9},
+	},
+	"xeno_templar": {
+		identity = "【首领】渡师·风暴·破甲攻坚——反装甲火力特化，专啃硬目标",
+		mods = ["enh_dmg_up", "enh_penetration", "eng_optical_fiber", "gen_11_phase_resonance", "art_01_rifling", "art_02_extended_range", "enh_crit_dmg", "gen_weakpoint_analyzer", "aa_02_iff"],
+		cuts = {1: 5, 2: 7, 3: 8, 4: 9},
+	},
+	"xeno_thing": {
+		identity = "【首领】拟形之惧·重装防御——厚甲消耗战，正面硬抗",
+		mods = ["enh_hp_up", "enh_def_up", "enh_dodge", "arm_05_smoothbore", "enh_def_flat", "gen_12_phase_shielding", "arm_02_composite_armor", "arm_10_diesel_turbo", "enh_regen"],
+		cuts = {1: 5, 2: 7, 3: 9, 4: 9},
+	},
+	"xeno_mothership": {
+		identity = "【首领】蚀冕方舟·制空战机——空优格斗，先抢制空权",
+		mods = ["enh_dmg_up", "enh_crit", "air_14_swing_wing", "air_21_terrain_radar", "gen_11_phase_resonance", "air_antiradiation_missile", "air_targeting_laser", "gen_reflector_array", "air_02_vector_thrust"],
+		cuts = {1: 5, 2: 7, 3: 8, 4: 9},
 	},
 }
 # 【GEN:LOADOUTS:END】

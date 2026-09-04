@@ -44,6 +44,12 @@ const BOSS_POS := Vector2(1050, 430)
 const PLAYER_POS := [Vector2(200, 330), Vector2(200, 430), Vector2(200, 530)]
 
 func _ready() -> void:
+	# v26.12: 强制 1280×720 无边框（v20.20 同款补丁）——桌面工作区装不下窗口时 OS
+	# 压缩窗口尺寸，截图被等比缩水且右缘构图（boss 位 x=1050）被裁。
+	var _win: Window = get_window()
+	_win.borderless = true
+	_win.size = Vector2i(1280, 720)
+	_win.position = Vector2i(0, 0)
 	_build_stage()
 	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(SHOT_DIR))
 	_engine = SkillEngine.new()

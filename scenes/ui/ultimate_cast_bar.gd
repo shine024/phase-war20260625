@@ -106,7 +106,8 @@ func _build_mode_btn() -> void:
 
 
 func _build_ability_btn() -> void:
-	var entry := _make_entry("核爆", "核子轰炸", "核子轰炸：相位仪周期大招（充能上限 2）")
+	# v26.13(D-1): 文案中性化（按钮随激活能力复用：核爆/火炮连发）
+	var entry := _make_entry("大招", "周期大招", "相位仪周期大招（手动模式下充能择时释放）")
 	_ability_box = entry["box"]
 	_ability_btn = entry["btn"]
 	_ability_btn.pressed.connect(_on_ability_btn_pressed)
@@ -149,9 +150,12 @@ func _make_entry(short: String, full_name: String, tooltip: String) -> Dictionar
 func _refresh_buttons() -> void:
 	# 核子轰炸：仅玩家相位仪当前激活能力带它时显示
 	var ab: Dictionary = PhaseInstrumentAbilitiesScript.get_active_ability(PhaseInstrumentAbilitiesScript.Owner.PLAYER)
-	var has_nuke: bool = String(ab.get("id", "")) == "nuclear_bombardment"
-	_ability_box.visible = has_nuke
-	if has_nuke:
+	var aid: String = String(ab.get("id", ""))
+	# v26.13(D-1): 手动能力按钮按激活能力 id 复用（核爆/火炮连发二选一，相位仪单激活）
+	var is_nuke: bool = aid == "nuclear_bombardment"
+	var is_barrage: bool = aid == "artillery_barrage"
+	_ability_box.visible = is_nuke or is_barrage
+	if is_nuke:
 		var charge: int = PhaseInstrumentAbilitiesScript.get_nuclear_bombardment_charge()
 		_set_ready_visual(_ability_btn, charge > 0)
 		_set_badge(_ability_btn, charge)
@@ -159,6 +163,12 @@ func _refresh_buttons() -> void:
 			charge, PhaseInstrumentAbilitiesScript.NUKE_CHARGE_CAP,
 			"（满）" if charge >= PhaseInstrumentAbilitiesScript.NUKE_CHARGE_CAP else "",
 			"，可双发齐放打爆发" if charge >= 2 else ""]
+	elif is_barrage:
+		var charge2: int = PhaseInstrumentAbilitiesScript.get_artillery_barrage_charge()
+		_set_ready_visual(_ability_btn, charge2 > 0)
+		_set_badge(_ability_btn, charge2)
+		_ability_btn.tooltip_text = "火炮连发：齐射充能 %d/%d——点击择时释放" % [
+			charge2, PhaseInstrumentAbilitiesScript.ARTILLERY_CHARGE_CAP]
 	# 兵种机制按钮：场上出现对应单位才显示；armed 数亮起 + 角标
 	var armed: Dictionary = UltimateCastControllerScript.get_armed_mechanisms()
 	for def in MECH_DEFS:
@@ -259,12 +269,21 @@ func _on_ability_btn_pressed() -> void:
 	if not UltimateCastControllerScript.is_manual():
 		_toast("当前为自动释放（左侧可切手动）")
 		return
-	var result: String = PhaseInstrumentAbilitiesScript.manual_release_nuclear_bombardment()
+	# v26.13(D-1): 按激活能力 id 分发（单激活能力，二选一）
+	var aid2: String = String(PhaseInstrumentAbilitiesScript.get_active_ability(PhaseInstrumentAbilitiesScript.Owner.PLAYER).get("id", ""))
+	var result: String = "no_charge"
+	var label := "大招"
+	if aid2 == "artillery_barrage":
+		result = PhaseInstrumentAbilitiesScript.manual_release_artillery_barrage()
+		label = "火炮连发"
+	else:
+		result = PhaseInstrumentAbilitiesScript.manual_release_nuclear_bombardment()
+		label = "核子轰炸"
 	match result:
 		"fired":
-			pass  # 演出与播报由引擎（_fire_nuclear_bombardment）负责
+			pass  # 演出与播报由引擎负责
 		"no_charge":
-			_toast("核子轰炸充能中…")
+			_toast(label + "充能中…")
 		"no_target":
 			_toast("暂无目标，充能保留")
 

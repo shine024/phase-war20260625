@@ -36,6 +36,17 @@ const LAYOUT_BY_LEVEL: Dictionary = {
 	55: {"enemy_excluded": [0, 8], "note": "敌方废墟——敌上右/下左塌陷，趁机突击"},
 	77: {"player_excluded": [1, 7], "note": "废墟走廊——上中/下中堵死，只余两翼与中行"},
 	96: {"rows": 2, "player_cols": 3, "enemy_cols": 4, "note": "终局前夜——窄守 6 格抗 8 格"},
+	# ── v26.13(B1)：机制多样性扩充（与新规则/环境联动成"题面+棋面"复合关） ──
+	3: {"player_excluded": [3], "note": "限时首秀——下右塌方堵角，通路收窄"},
+	8: {"enemy_cols": 4, "note": "先手突袭——敌宽 4 列 12 槽抢攻"},
+	19: {"player_excluded": [1, 4], "note": "限时+先手——我方两角废墟，开局压力大"},
+	27: {"rows": 2, "enemy_cols": 4, "note": "禁改造——双行 8 槽对冲，拼基础兵"},
+	35: {"player_cols": 2, "note": "限时+禁疗——我方窄门 6 格死守"},
+	47: {"enemy_excluded": [2], "note": "先手+枯竭——敌方中列弹坑，两翼快攻"},
+	52: {"player_cols": 4, "enemy_cols": 4, "note": "270 秒——12v12 全宽对攻"},
+	62: {"enemy_cols": 4, "player_excluded": [5], "note": "先手+我方中下堵位"},
+	70: {"rows": 2, "enemy_cols": 3, "note": "限时——双行 6 格快节奏"},
+	88: {"enemy_cols": 4, "note": "先手+枯竭——终局宽阵抢攻"}
 }
 
 
