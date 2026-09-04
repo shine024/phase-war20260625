@@ -54,6 +54,41 @@ const TIME_OF_DAY_EFFECTS: Dictionary = {
 	"night": {"direct_range": 0.88, "desc": "夜战：直射武器射程 -12%"},
 }
 
+## v27 黑门裂隙环境（每场无尽 run 随机 1 条，敌我对称；设计 §5.5）。
+## 与四维环境不同源（黑门无天气/地形/时段——彼岸无昼夜），单独表 + 静态 override：
+## EndlessBlackgateManager.begin_run roll 键 → BattleManager.start_battle 置
+## set_rift_override / end_battle 清除，get_level_env_mults 自动叠加，
+## 玩家/敌兵/相位师产兵三处乘区零新增接线。
+const RIFT_ENV_EFFECTS: Dictionary = {
+	"psi_storm": {"indirect_dmg": 1.15, "desc": "灵能风暴：曲射武器伤害 +15%（双向）"},
+	"low_gravity": {"direct_dmg": 1.10, "desc": "低重力晶脉：直射武器伤害 +10%（双向）"},
+	"rift_tide": {"regen": 1.25, "desc": "裂隙潮汐：能量回复 +25%"},
+	# kill_energy_bonus 非乘区（击杀能量 +2/杀），由 BattleManager 击杀链读取结算
+	"crystal_vein": {"kill_energy_bonus": 2, "desc": "晶脉浮陆：每次击杀额外 +2 能量"},
+}
+
+## 当前裂隙 override 键（""=无；仅无尽 run 战斗期间非空）
+static var _rift_override: String = ""
+
+
+static func set_rift_override(key: String) -> void:
+	_rift_override = key if RIFT_ENV_EFFECTS.has(key) else ""
+
+
+static func clear_rift_override() -> void:
+	_rift_override = ""
+
+
+static func get_rift_override() -> String:
+	return _rift_override
+
+
+## 裂隙附加非乘区效果读取（如晶脉击杀能量）；无 override/无键返回 0
+static func rift_flat_bonus(key: String) -> float:
+	if _rift_override.is_empty():
+		return 0.0
+	return float(RIFT_ENV_EFFECTS.get(_rift_override, {}).get(key, 0.0))
+
 const _MULT_KEYS: Array = ["indirect_dmg", "direct_dmg", "all_dmg", "direct_range", "atk_speed", "regen"]
 
 
@@ -75,6 +110,9 @@ static func get_level_env_mults(level: int) -> Dictionary:
 	_accumulate(out, TERRAIN_EFFECTS.get(String(env.get("terrain", "plain")), {}))
 	_accumulate(out, ENERGY_FIELD_EFFECTS.get(String(env.get("energy_field", "normal")), {}))
 	_accumulate(out, TIME_OF_DAY_EFFECTS.get(String(env.get("time_of_day", "day")), {}))
+	# v27 黑门裂隙 override（无尽 run 期间非空；乘区键走同一 _accumulate，desc 追加）
+	if not _rift_override.is_empty():
+		_accumulate(out, RIFT_ENV_EFFECTS.get(_rift_override, {}))
 	return out
 
 

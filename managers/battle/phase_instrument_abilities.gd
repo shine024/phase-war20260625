@@ -39,6 +39,8 @@ static var _periodic_timers: Dictionary = {}
 static var _ability_charges: Dictionary = {}
 ## 充能上限：手动攒双发打 boss 是本设计唯一收益点，上限 2 封住与自动玩家的差距
 const NUKE_CHARGE_CAP: int = 2
+## v26.13(D-1): 火炮连发手动充能上限（1 发齐射额度）
+const ARTILLERY_CHARGE_CAP: int = 1
 ## v24.1 大招双轨：玩家侧手动保持旗标——由 UltimateCastController.set_manual_mode 推入。
 ## 本文件刻意不反向 preload 控制器：4.5.1 实测给本脚本新增跨脚本 preload 后，
 ## 个别静态函数的编译期绑定调用会静默失效（reset_state 整体不执行），保持依赖集原样最稳。
@@ -273,21 +275,19 @@ static func _tick_artillery_barrage(owner: Owner, params: Dictionary, delta: flo
 	var interval: float = float(params.get("interval", 10.0))
 	var elapsed: float = float(_periodic_timers.get(pkey, interval))  # 首次跳过等待
 	elapsed += delta
+	# v26.13(D-1) 大招双轨：玩家手动模式改充能制（攒 1 发齐射额度择时放）；自动/敌方即攒即放
+	var hold_for_manual: bool = owner == Owner.PLAYER and player_manual_hold
+	var charges: int = int(_ability_charges.get(pkey, 0))
+	while elapsed >= interval and charges < ARTILLERY_CHARGE_CAP:
+		charges += 1
+		elapsed -= interval
 	if elapsed >= interval:
-		elapsed = 0.0
-		var shots: int = int(params.get("shots", 7))
-		var shot_interval: float = float(params.get("shot_interval", 1.0))
-		# 排队连发：每 shot_interval 发射一发
-		var bq_key: String = _owner_key(owner)
-		if not _barrage_queue.has(bq_key):
-			_barrage_queue[bq_key] = []
-		var queue: Array = _barrage_queue[bq_key]
-		for i in range(shots):
-			queue.append({"fire_at": float(i) * shot_interval, "fired": false})
-		_show_toast(_owner_msg(owner,
-			"💥 火炮连发启动！",
-			"💥 敌方相位仪炮击！我方阵地遭轰击！"))
+		elapsed = interval  # 满仓停涨
+	_ability_charges[pkey] = charges
 	_periodic_timers[pkey] = elapsed
+	if charges > 0 and not hold_for_manual:
+		_ability_charges[pkey] = charges - 1
+		_fire_artillery_barrage_volley(owner, params)
 
 static func _process_barrage_queue(owner: Owner, delta: float) -> void:
 	var key: String = _owner_key(owner)
@@ -304,6 +304,37 @@ static func _process_barrage_queue(owner: Owner, delta: float) -> void:
 				_fire_artillery_shot(owner)
 	# 清理已发射的
 	_barrage_queue[key] = queue.filter(func(e): return not bool(e.get("fired", true)))
+
+## v26.13(D-1): 齐射入队（从 _tick_artillery_barrage 提取，自动/手动两路径共用）
+static func _fire_artillery_barrage_volley(owner: Owner, params: Dictionary) -> void:
+	var shots: int = int(params.get("shots", 7))
+	var shot_interval: float = float(params.get("shot_interval", 1.0))
+	var bq_key: String = _owner_key(owner)
+	if not _barrage_queue.has(bq_key):
+		_barrage_queue[bq_key] = []
+	var queue: Array = _barrage_queue[bq_key]
+	for i in range(shots):
+		queue.append({"fire_at": float(i) * shot_interval, "fired": false})
+	_show_toast(_owner_msg(owner,
+		"💥 火炮连发启动！",
+		"💥 敌方相位仪炮击！我方阵地遭轰击！"))
+
+
+## v26.13(D-1): 火炮连发手动释放（镜像 manual_release_nuclear_bombardment）
+static func get_artillery_barrage_charge() -> int:
+	return int(_ability_charges.get("player:artillery_barrage", 0))
+
+static func manual_release_artillery_barrage() -> String:
+	var pkey: String = "player:artillery_barrage"
+	var charges: int = int(_ability_charges.get(pkey, 0))
+	if charges <= 0:
+		return "no_charge"
+	if _get_targets(Owner.PLAYER).is_empty():
+		return "no_target"
+	_ability_charges[pkey] = charges - 1
+	_fire_artillery_barrage_volley(Owner.PLAYER, get_active_params(Owner.PLAYER))
+	return "fired"
+
 
 ## 单发炮击：PLAYER=曲射弹道（玩家 v6.6 升级），ENEMY=红色标记+延迟爆炸（敌方风格，VFX owner 配色）
 static func _fire_artillery_shot(owner: Owner) -> void:
@@ -349,7 +380,10 @@ static func _fire_artillery_shot_enemy(target: Node, dmg: float) -> void:
 	# 第二阶段：延迟爆炸 + 伤害（tween）
 	# v20.15: 快照战斗状态——延迟窗口内战斗结束则爆炸/伤害作废（贴图残留根因之一）
 	var was_live: bool = _battle_active_now()
-	var captured_target = target
+	# v26.11(D2): weakref 捕获——延迟窗口内目标单位可能死亡被 free，直接捕获 Node
+	# 会让引擎在回调前报 "Lambda capture was freed"（is_instance_valid 守卫只护逻辑
+	# 不护报错）；weakref 后捕获本体恒有效，消除该错误类别。
+	var weak_target: WeakRef = weakref(target)
 	var captured_pos = tpos
 	var captured_dmg = dmg
 	var tw := _battlefield.create_tween()
@@ -359,6 +393,7 @@ static func _fire_artillery_shot_enemy(target: Node, dmg: float) -> void:
 			return
 		if was_live and not _battle_active_now():
 			return  # v20.15: 战斗已结束——落地爆炸/伤害不再生成
+		var captured_target = weak_target.get_ref()
 		var cur_pos: Vector2 = captured_pos
 		if is_instance_valid(captured_target) and captured_target is Node2D:
 			cur_pos = (captured_target as Node2D).global_position
@@ -439,7 +474,7 @@ static func _fire_nuclear_bombardment(owner: Owner, params: Dictionary) -> void:
 	var mark_color: Color = Color(0.6, 0.3, 1.0, 1.0) if owner == Owner.PLAYER else Color(1.0, 0.2, 0.2, 1.0)
 	var shock_color: Color = Color(0.3, 0.7, 1.0, 0.85) if owner == Owner.PLAYER else Color(1.0, 0.4, 0.2, 0.85)
 	var beam_color: Color = Color(0.5, 0.6, 1.0, 0.7) if owner == Owner.PLAYER else Color(1.0, 0.5, 0.3, 0.7)
-	var mark_delay: float = 0.35
+	var mark_delay: float = 0.55  # v26.15g: 0.35→0.55（high_arc 高抛物线需要更长飞行时间）
 	# v20.15: 快照战斗状态——导弹错峰发射（最长 ~0.54s）+ 飞行 0.35s 期间战斗结束，
 	# 后续发射与落地演出全部作废（核导弹贴图残留在结算/准备背景的直接根因）
 	var was_live: bool = _battle_active_now()
@@ -474,7 +509,8 @@ static func _fire_nuclear_bombardment(owner: Owner, params: Dictionary) -> void:
 		# 第一阶段：标记（立即出现，提示轰炸即将命中）
 		PhaseLawCastEffect.create_phase_law_effect(_battlefield, epos, mark_color)
 		# v9.5: 发射核导弹弹道（arc 抛物线，飞行 mark_delay 秒），到达时触发核爆 + 伤害
-		var captured_enemy = e
+		# v26.11(D2): weakref 捕获（同 captured_target——延迟落点内敌人可能已被 free）
+		var weak_enemy: WeakRef = weakref(e)
 		var captured_pos = epos
 		var captured_owner = owner
 		var captured_dmg = base_dmg
@@ -496,12 +532,13 @@ static func _fire_nuclear_bombardment(owner: Owner, params: Dictionary) -> void:
 			# v20.15: 战斗在错峰窗口内结束 → 该枚导弹不再发射（落地演出由弹体到达守卫兜底）
 			if was_live and not _battle_active_now():
 				return
-			VfxImpactFactory.spawn_ultimate_projectile(_battlefield, captured_launch, captured_pos, captured_missile_tex, "arc", 52.0, captured_missile_tint, captured_missile_trail, mark_delay,
+			VfxImpactFactory.spawn_ultimate_projectile(_battlefield, captured_launch, captured_pos, captured_missile_tex, "high_arc", 100.0, captured_missile_tint, captured_missile_trail, mark_delay,
 				func(land_pos: Vector2):
 					if _battlefield == null or not is_instance_valid(_battlefield):
 						return
 					# 延迟后目标可能已死亡/移除，跟踪其当前位置
 					var cur_pos: Vector2 = land_pos
+					var captured_enemy = weak_enemy.get_ref()
 					if is_instance_valid(captured_enemy) and captured_enemy is Node2D:
 						cur_pos = (captured_enemy as Node2D).global_position
 					# v19-R38: 光柱点名（阵营色）+ 核火球爆图（240px，染色）+ 地面环。
@@ -522,6 +559,9 @@ static func _fire_nuclear_bombardment(owner: Owner, params: Dictionary) -> void:
 	var tw_impact := _battlefield.create_tween()
 	tw_impact.tween_interval(mark_delay + 0.06)
 	tw_impact.tween_callback(func():
+		# v26.x: 战斗结束守卫（v20.15 漏网）——impact 信号不再打在结算画面上
+		if was_live and not _battle_active_now():
+			return
 		_emit_ability_triggered("nuclear_bombardment", "impact",
 			{"position": first_pos, "damage": base_dmg, "is_enemy": owner == Owner.ENEMY})
 	)
@@ -547,6 +587,9 @@ static func _fire_nuclear_bombardment(owner: Owner, params: Dictionary) -> void:
 	var tw_core := _battlefield.create_tween()
 	tw_core.tween_interval(mark_delay + 0.25)
 	tw_core.tween_callback(func():
+		# v26.x: 战斗结束守卫（v20.15 漏网）——阵型核心核爆不再打在结算画面上
+		if was_live and not _battle_active_now():
+			return
 		if _battlefield != null and is_instance_valid(_battlefield):
 			VfxImpactFactory.spawn_nuclear_explosion(_battlefield, core_center, nuke_pack, nuke_cols, 1.0)
 			_trigger_screen_shake(12.0, 0.6))

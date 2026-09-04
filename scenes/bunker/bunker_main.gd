@@ -35,6 +35,7 @@ const ESCROW_ROOM_MAP := {
 const EMBEDDED_PANELS := {
 	"backpack": "res://scenes/ui/backpack_panel.tscn",
 	"modification": "res://scenes/ui/modification_panel.tscn",
+	"affix": "res://scenes/ui/affix_forge_panel.tscn",  # v26.11(A1.1): 词条工坊（洗练/锁定/Boss 池）
 	"evolution": "res://scenes/ui/evolution_panel.tscn",
 	"growth": "res://scenes/ui/growth_panel.tscn",
 	"phase_master_skill": "res://scenes/ui/phase_master_skill_panel.tscn",
@@ -730,13 +731,13 @@ func _show_monologue() -> void:
 func _on_go_to_battle() -> void:
 	_panel.call("close")
 	Engine.set_meta("launch_from_bunker", true)
-	get_tree().change_scene_to_file("res://scenes/main.tscn")
+	SceneTransition.change(get_tree(), "res://scenes/main.tscn")
 
 func _on_back_to_title() -> void:
 	# v22.4（P2）：与 main→标题行为对齐——先存档再离开（"睡觉=存档"之外唯一的明示存档点）
 	if SaveManager and SaveManager.has_method("save_game"):
 		SaveManager.save_game()
-	get_tree().change_scene_to_file("res://scenes/title_screen.tscn")
+	SceneTransition.change(get_tree(), "res://scenes/title_screen.tscn")
 
 func _unhandled_input(event: InputEvent) -> void:
 	# v24：醒来演出中按任意键跳过（鼠标点击走 WakeupCinematic.gui_input）

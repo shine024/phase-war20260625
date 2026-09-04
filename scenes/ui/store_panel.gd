@@ -310,6 +310,11 @@ func _refresh_items() -> void:
 	# ═══ v6.2: 符文售卖区 ═══
 	_build_rune_items_section(current_rep)
 
+	# ═══ v26.11(A1.2): 势力补给 · 声望特购区 ═══
+	# FactionShop 返回四类商品，此前 UI 只渲染 RUNE——MATERIAL（纳米/合金/属性强化/
+	# 情报资料包）与不在公司目录 JSON 里的 CARD（缴获卡/终赢单位）全部不可见
+	_build_faction_shop_extras_section(current_rep, items)
+
 	# ═══ v6.0: 情报道具售卖区 ═══
 	_build_intel_items_section()
 
@@ -433,6 +438,173 @@ func _build_rune_items_section(current_rep: int) -> void:
 		row.tooltip_text = "\n".join(rune_tip)
 
 		item_list.add_child(row)
+
+
+## v26.11(A1.2): 势力补给 · 声望特购区。
+## FactionShop.get_faction_store_items 的商品分四类，此前只有 RUNE 进了符文区，
+## 其余被静默丢弃（TODO_BACKLOG 高价值#2："势力装备/卡牌商品全部不可见"）。本区补齐：
+## - MATERIAL（type 1）：纳米/合金包、stat_boost 永久强化、lore_page 资料包
+## - CARD（type 0）：与公司目录 JSON（上方纳米购买区）按 card_id 去重，只渲染差额
+##   特购（bp_ 缴获卡、omega_cannon 等），扣声望+发独立养成实例
+## - 有限库存商品显示"剩余N"，归零禁购——can_purchase_item 的 out_of_stock
+##   分支首次有了 UI 呈现（库存侧的上下架消费端即此；add/remove_item_to_store
+##   保留为预留接口）
+func _build_faction_shop_extras_section(current_rep: int, company_items: Array) -> void:
+	var fsm: Node = get_node_or_null("/root/FactionSystemManager")
+	if fsm == null or not fsm.has_method("get_faction_store_items"):
+		return
+	var all_items: Array = fsm.get_faction_store_items(_current_company_id)
+	# 公司目录已上架的卡（纳米价，上方主列表）——特购区跳过，避免同卡双轨重复售卖
+	var listed_cards: Dictionary = {}
+	for it in company_items:
+		if it is Dictionary:
+			listed_cards[String(it.get("card_id", ""))] = true
+	var extras: Array = []
+	for it in all_items:
+		if it == null:
+			continue
+		var t: int = int(it.item_type)
+		if t == 1:  # StoreItemType.MATERIAL
+			extras.append(it)
+		elif t == 0 and not listed_cards.has(String(it.item_id)):  # CARD 且不在主目录
+			extras.append(it)
+		# RUNE(3) 已由符文区渲染；CARD_BUNDLE(2) 数据层无上架实例，跳过
+	if extras.is_empty():
+		return
+	var sep := HSeparator.new()
+	sep.add_theme_color_override("color", Color(DT.COLOR_GOLD.r, DT.COLOR_GOLD.g, DT.COLOR_GOLD.b, 0.3))
+	item_list.add_child(sep)
+	var title := Label.new()
+	title.text = "◈ 势力补给 · 声望特购（%d种）" % extras.size()
+	title.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
+	title.add_theme_color_override("font_color", DT.COLOR_GOLD)
+	item_list.add_child(title)
+	for it in extras:
+		_build_faction_extra_row(it, current_rep)
+
+func _build_faction_extra_row(it, current_rep: int) -> void:
+	var item_id: String = String(it.item_id)
+	var is_card: bool = int(it.item_type) == 0
+	var rep_cost: int = int(it.reputation_cost)
+	var stock: int = int(it.stock)
+	var out_of_stock: bool = stock == 0
+	# 名称：卡走 DefaultCards/缴获蓝图表解析真实卡名；材料用 StoreItem.display_name（已含量词）
+	var display_name: String = String(it.display_name)
+	if is_card:
+		var card: CardResource = DefaultCards.get_card_by_id(item_id)
+		if card == null:
+			var EnemyBpForShop = preload("res://data/enemy_blueprints.gd")
+			card = EnemyBpForShop.get_card_by_id(item_id)
+		if card != null:
+			display_name = card.display_name
+		elif LEGACY_BLUEPRINT_DISPLAY_NAMES.has(item_id):
+			display_name = String(LEGACY_BLUEPRINT_DISPLAY_NAMES[item_id])
+	var desc_line: String = _describe_faction_extra_item(item_id, is_card, rep_cost)
+	var rep_locked: bool = current_rep < rep_cost
+	# 行容器（复用符文区行范式：金色调面板 + 名称/说明/价格/按钮）
+	var row := PanelContainer.new()
+	row.custom_minimum_size = Vector2(0, 44)
+	var style := PanelStyles.make_panel_style(
+		Color(DT.COLOR_GOLD.r, DT.COLOR_GOLD.g, DT.COLOR_GOLD.b, 0.08),
+		Color(DT.COLOR_GOLD.r, DT.COLOR_GOLD.g, DT.COLOR_GOLD.b, 0.5), 1, 4
+	)
+	row.add_theme_stylebox_override("panel", style)
+	var hbox := HBoxContainer.new()
+	hbox.add_theme_constant_override("separation", 10)
+	row.add_child(hbox)
+	var name_lbl := Label.new()
+	name_lbl.text = display_name if not out_of_stock else "%s（售罄）" % display_name
+	name_lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
+	name_lbl.custom_minimum_size = Vector2(280, 0)
+	name_lbl.add_theme_color_override("font_color", DT.COLOR_TEXT_BRIGHT if not out_of_stock else DT.COLOR_TEXT_FAINT)
+	hbox.add_child(name_lbl)
+	var desc_lbl := Label.new()
+	desc_lbl.text = desc_line
+	desc_lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
+	desc_lbl.add_theme_color_override("font_color", DT.COLOR_TEXT_MID)
+	desc_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	hbox.add_child(desc_lbl)
+	var price_lbl := Label.new()
+	price_lbl.text = "%d声望" % rep_cost
+	price_lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
+	price_lbl.add_theme_color_override("font_color", DT.COLOR_GOLD)
+	price_lbl.custom_minimum_size = Vector2(80, 0)
+	hbox.add_child(price_lbl)
+	var buy_btn := Button.new()
+	buy_btn.text = "购买"
+	buy_btn.custom_minimum_size = Vector2(60, 30)
+	buy_btn.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
+	buy_btn.disabled = rep_locked or out_of_stock
+	var btn_styles := PanelStyles.make_button_styles(DT.COLOR_GOLD)
+	buy_btn.add_theme_color_override("font_color", DT.COLOR_TEXT_BRIGHT)
+	buy_btn.add_theme_color_override("font_hover_color", DT.COLOR_TEXT_BRIGHT)
+	buy_btn.add_theme_color_override("font_pressed_color", DT.COLOR_TEXT_BRIGHT)
+	buy_btn.add_theme_color_override("font_focus_color", DT.COLOR_TEXT_BRIGHT)
+	for sb_key in ["normal", "hover", "pressed", "disabled", "focus"]:
+		if btn_styles.has(sb_key):
+			buy_btn.add_theme_stylebox_override(sb_key, btn_styles[sb_key])
+	var captured_item = it
+	var captured_row := row
+	buy_btn.pressed.connect(func() -> void:
+		_on_buy_faction_extra(captured_item, captured_row)
+	)
+	hbox.add_child(buy_btn)
+	# 悬浮情报
+	var tip := PackedStringArray()
+	tip.append(display_name)
+	tip.append(desc_line)
+	tip.append("价格：%d 声望（当前 %d）" % [rep_cost, current_rep])
+	if stock > 0:
+		tip.append("剩余库存：%d" % stock)
+	if out_of_stock:
+		tip.append("⚠ 已售罄")
+	elif rep_locked:
+		tip.append("⚠ 声望不足，暂无法购买")
+	row.tooltip_text = "\n".join(tip)
+	item_list.add_child(row)
+
+## 材料商品的购买效果描述（与 FactionShop.deliver_item 的发放口径一致，勿单边改）
+func _describe_faction_extra_item(item_id: String, is_card: bool, rep_cost: int) -> String:
+	if is_card:
+		return "声望特购卡 · 获得独立养成实例"
+	match item_id:
+		"nano_materials":
+			return "纳米材料 ×%d" % (50 if rep_cost < 300 else 100)
+		"alloy":
+			return "合金 ×%d" % (20 if rep_cost < 300 else 50)
+		"crystal", "energy_block":
+			return "%s ×10" % item_id
+		"stat_boost_hp":
+			return "永久属性强化 · 生命"
+		"stat_boost_atk":
+			return "永久属性强化 · 攻击"
+		"stat_boost_damage":
+			return "永久属性强化 · 伤害"
+		"lore_page":
+			return "随机解锁一页势力背景档案"
+	return "势力补给品"
+
+## v26.11(A1.2): 购买势力补给/声望特购商品（走 fsm.purchase_item 正规链：验声望→扣→发放→失败回退）
+func _on_buy_faction_extra(it, row_node: Control) -> void:
+	var fsm: Node = get_node_or_null("/root/FactionSystemManager")
+	if fsm == null or not fsm.has_method("purchase_item"):
+		return
+	var result: Dictionary = fsm.purchase_item(_current_company_id, it)
+	if not bool(result.get("ok", false)):
+		var reason := String(result.get("reason", ""))
+		if reason == "reputation_insufficient":
+			_show_buy_error("声望不足：需要 %d（当前 %d）" % [
+				int(result.get("required_rep", 0)), int(result.get("current_rep", 0))])
+		elif reason == "out_of_stock":
+			_show_buy_warning("该商品已售罄")
+		else:
+			_show_buy_error("购买失败：%s" % (reason if not reason.is_empty() else "未知原因"))
+		_flash_row(row_node, Color(DT.COLOR_DANGER.r, DT.COLOR_DANGER.g, DT.COLOR_DANGER.b, 0.3))
+		return
+	_flash_row(row_node, Color(DT.COLOR_GREEN_BRIGHT.r, DT.COLOR_GREEN_BRIGHT.g, DT.COLOR_GREEN_BRIGHT.b, 0.3))
+	if SignalBus != null and SignalBus.has_signal("show_toast"):
+		SignalBus.show_toast.emit("已购买：%s" % String(it.display_name))
+	_refresh_items()
 
 
 ## v6.2: 购买符文

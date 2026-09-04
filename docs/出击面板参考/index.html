@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>出击面板 · 视觉参考库（2026-09-04）</title>
+<style>
+  :root{ --amber:#ffb45e; --cyan:#00e5ff; --ink:#d8d2c4; --dim:#8f8674; --line:#3a342a; }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{background:#12110e;color:var(--ink);font-family:"Segoe UI","Microsoft YaHei",sans-serif;padding:24px 32px 64px;}
+  h1{font-size:22px;color:#f0e4c8;margin-bottom:6px;}
+  .sub{font-size:13px;color:var(--dim);margin-bottom:20px;line-height:1.7;}
+  .sub b{color:#cfe08a;}
+  h2{font-size:16px;color:var(--amber);margin:34px 0 6px;letter-spacing:1px;border-left:4px solid var(--amber);padding-left:10px;}
+  .gdesc{font-size:12.5px;color:var(--dim);margin:0 0 14px 14px;line-height:1.7;}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(560px,1fr));gap:18px;}
+  .card{background:#1a1813;border:1px solid var(--line);border-radius:8px;overflow:hidden;}
+  .card img{display:block;width:100%;height:auto;cursor:zoom-in;}
+  .card .body{padding:12px 14px 14px;}
+  .card .title{font-size:14.5px;color:#f0e4c8;margin-bottom:4px;}
+  .card .src{font-size:11.5px;color:#7d7462;margin-bottom:8px;}
+  .card .take{font-size:12.5px;line-height:1.75;color:#c9c0aa;}
+  .card .take b{color:#9feaf6;}
+  .card .map{margin-top:8px;font-size:12px;line-height:1.7;color:#a8b58a;background:#151310;border:1px dashed #3a342a;border-radius:6px;padding:8px 10px;}
+  .card .map b{color:#cfe08a;}
+  /* 头牌 */
+  #hero{background:#141a18;border:1px solid #1e6b74;border-radius:10px;padding:18px 20px;margin-bottom:10px;}
+  #hero h3{color:#9feaf6;font-size:15px;margin-bottom:10px;}
+  table{width:100%;border-collapse:collapse;font-size:12.5px;margin-top:6px;}
+  th,td{border:1px solid #2c3328;padding:6px 9px;text-align:left;vertical-align:top;line-height:1.6;}
+  th{background:#1b2318;color:#9ee89a;font-weight:normal;white-space:nowrap;}
+  td b{color:#ffd9a0;}
+  .sketch{background:#0e100d;border:1px solid #2c3328;border-radius:8px;padding:16px 18px;margin:10px 0 4px;overflow-x:auto;}
+  .sketch pre{font-family:Consolas,"Courier New",monospace;font-size:12.5px;line-height:1.5;color:#9ee89a;}
+  .pts{font-size:13px;line-height:1.9;color:#c9c0aa;margin:8px 0 0 14px;}
+  .pts li{margin-bottom:4px;}
+  .pts b{color:#ffd9a0;}
+</style>
+</head>
+<body>
+<h1>出击面板 · 视觉参考库</h1>
+<div class="sub">
+  用途：机枢大厅「沙盘台」点开后的 <b>战前出击面板</b>（关卡信息 + 环境四维 + 敌情预告 + 出战编队 + 出击按钮）的视觉与结构参考。
+  图片来自网络检索（2026-09-04），37 张候选经目检筛出 10 张；检索词、来源与淘汰记录见 <b>candidates.json</b> 与 .review_sheet_*.png。
+  点击图片可放大。
+</div>
+
+<!-- ═══ 头牌参考 ═══ -->
+<h2>★ 头牌参考：皇牌空战 7 出击简报（与需求逐项对位）</h2>
+<div class="gdesc">AC7 每次出击前的简报图几乎就是本面板的完稿蓝图——任务名/目标/时间/区域/天候/敌机构成/全息沙盘/出击准备，全部对得上本项目现成系统。</div>
+<div class="grid" style="grid-template-columns:1fr;">
+  <div class="card"><img src="img/jb03.jpg" alt="">
+    <div class="body">
+      <div class="title">《皇牌空战7》出击简报 · 全息作战地图（飞行者联盟转载）</div>
+      <div class="src">左上任务信息栏 · 右上敌情统计 · 中央全息沙盘（蓝=我方 绿=航线 红=敌） · 右下坐标小图 · 底部「出擊準備」步骤流</div>
+      <table>
+        <tr><th>AC7 元素</th><th>Phase War 对应（全部现成系统，零新数据）</th></tr>
+        <tr><td>OPERATION NAME</td><td>关卡名 + 编号（<b>level_information</b>）</td></tr>
+        <tr><td>OPERATION OBJECTIVE</td><td>本关目标：守住 N 波 / 击败相位师（<b>LevelTacticalThemes</b> 战术主题一句话）</td></tr>
+        <tr><td>DATE/TIME</td><td>第 N 天 + 时段（<b>DayClock</b>；时段本身就是环境四维之一）</td></tr>
+        <tr><td>AREA + 坐标</td><td>时代战区 era I-V（<b>level_eras</b>）</td></tr>
+        <tr><td>SKY CONDITIONS / CLOUD COVER</td><td><b>环境四维</b>：天气/地形/能量场/时段（<b>describe_level_env</b> 现成，世界地图战前摘要已用同源）</td></tr>
+        <tr><td>ALL ENEMIES: AIR/GROUND/NAVAL</td><td><b>敌情预告</b>：本关兵种构成计数（步/装/炮/防空/空中）+ 敌方四档档位预告；已情报解锁的敌人显示真实配装，未解锁显示 ???（情报系统天然支持）</td></tr>
+        <tr><td>全息沙盘 + 单位标记</td><td>本关迷你沙盘：我方箭头 → 敌方基地，波次来向红标（T3 投影皮肤下即「投影仪投出的作战地图」）</td></tr>
+        <tr><td>底部「出擊準備」</td><td>右下大按钮「出击」——大厅点沙盘台(1击) → 本面板出击(2击)，≤2 击铁律达成</td></tr>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ A 编队/携带 ═══ -->
+<h2>A · 编队/携带型——「带谁去、带什么装备」</h2>
+<div class="gdesc">出击面板的右下/底部编队区参考：一眼看清出战配置，点卡可下钻检查单卡装备。</div>
+<div class="grid">
+  <div class="card"><img src="img/xc01.png" alt="">
+    <div class="body">
+      <div class="title">《XCOM2》出击前小队选择</div>
+      <div class="src">RoyalCDKeys</div>
+      <div class="take">左侧任务信息（目标/时限），<b>底部士兵卡行</b>（头像/职业/状态），选中卡展开装备详情，右下 DEPLOY。<b>借鉴</b>：编队卡行贴底横排的节奏 + 「全员就绪才亮出击」的门控感（缺卡/装备不全时出击按钮灰显+缺口提示）。</div>
+      <div class="map"><b>Phase War 对应</b>：底部 = 相位仪 4 色装备槽 + 符文行 + 出战卡摘要行；缺口 = 「某槽空缺 / 纳米不足」。</div>
+    </div>
+  </div>
+  <div class="card"><img src="img/ws01.png" alt="">
+    <div class="body">
+      <div class="title">《战舰少女R》舰船详情（伊势）</div>
+      <div class="src">NGA</div>
+      <div class="take">属性面板 + <b>底部 4 装备格</b>（图标+强化度）。<b>借鉴</b>：出击面板里点编队卡弹出的「单卡检查」弹窗照此布局——左立绘右属性、底排装备格；4 格与相位仪 4 色槽直接同构。</div>
+      <div class="map"><b>Phase War 对应</b>：单卡弹窗 = 卡面 + 军衔/等级 + 改造模块 9 条摘要 + 词条。</div>
+    </div>
+  </div>
+  <div class="card"><img src="img/gf04.png" alt="">
+    <div class="body">
+      <div class="title">《少女前线》人形详情（含装备格）</div>
+      <div class="src">NGA</div>
+      <div class="take">与上例同族的单位详情页，装备/配件格更突出。<b>借鉴</b>：装备格的<b>稀有度描边</b>和空格「+」态——空槽永远是明确的可点击目标，而不是留白。</div>
+      <div class="map"><b>Phase War 对应</b>：改造图纸不足时装备格显示灰态 + 「图纸不足」（与改造面板口径一致）。</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ B 战前部署 ═══ -->
+<h2>B · 战前部署型——「怎么摆」</h2>
+<div class="gdesc">本项目战斗是固定格子槽位部署（v26.2 布局），战前不做自由布阵；这组主要借「一眼清点」和「敌我对比」的表达。</div>
+<div class="grid">
+  <div class="card"><img src="img/tw01.jpg" alt="">
+    <div class="body">
+      <div class="title">《全面战争：罗马2》开战前部署阶段</div>
+      <div class="src">Gamesplanet</div>
+      <div class="take"><b>左下单位卡矩阵</b>（全军一屏清点）+ 战场部署区高亮 + 顶部敌我兵力对比条。<b>借鉴</b>：①单位卡矩阵的「清点感」可用于出战卡摘要（按兵种 5 类排卡）；②<b>敌我兵力对比条</b>放进敌情栏顶部——双色横条比数字更直觉（数据源 = 敌我战力预估，敌方按档位乘区口径）。</div>
+      <div class="map"><b>Phase War 对应</b>：编队卡按 CombatKind 5 类分组；对比条 = 我方上阵总战力 vs 本关敌方总战力（比例条，不露具体数值防剧透）。</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ C 战区/任务结构 ═══ -->
+<h2>C · 战区图/任务结构型——「从哪进、打哪里」</h2>
+<div class="gdesc">出击面板中央沙盘与世界地图（选关）可共用的地图语言。</div>
+<div class="grid">
+  <div class="card"><img src="img/gf01.jpg" alt="">
+    <div class="body">
+      <div class="title">《少女前线》战区地图（进攻箭头）</div>
+      <div class="src">Steam社区</div>
+      <div class="take">章节大地图 + <b>红色进攻箭头</b> + 节点占领态。<b>借鉴</b>：时代战线（100 关 × 5 时代）用「箭头推进+节点」表达最贴切——当前关=箭头头部，已通关=占领节点，boss 关=骷髅标记。选关世界地图与出击面板沙盘共用这一套图标语言。</div>
+      <div class="map"><b>Phase War 对应</b>：中央沙盘 = 本关所在时代的一段战线 + 我方箭头 + 本关红标。</div>
+    </div>
+  </div>
+  <div class="card"><img src="img/al03.jpg" alt="">
+    <div class="body">
+      <div class="title">《碧蓝航线》活动「作战准备」总览</div>
+      <div class="src">九游</div>
+      <div class="take">左侧任务列表（进行中/待办打勾）+ 中央大 banner + 底部章节选择卡。<b>借鉴</b>：「活动总览 → 选关」的两段式层级；<b>左侧任务清单</b>可以做成「今日目标链」（任务系统 QuestManager 现成）——出击前顺手看一眼「打这关能顺带完成什么」。</div>
+      <div class="map"><b>Phase War 对应</b>：左栏底部「顺路目标」小节（进行中的委托/剧情任务与本病关联时显示）。</div>
+    </div>
+  </div>
+  <div class="card"><img src="img/ym01.jpg" alt="">
+    <div class="body">
+      <div class="title">独立战棋风地图界面（游戏名待考）</div>
+      <div class="src">游民星空</div>
+      <div class="take"><b>框架式布局</b>：左侧竖排资源/状态栏 + 中央地图 + 右侧竖排圆形按钮列。<b>借鉴</b>：金属铆钉外框把地图「镶进」控制台的质感——正是沙盘台「台面」该有的样子；右侧竖排按钮列适合放「更换装备/情报站/返回」等次级操作。</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ D 信息可视化 ═══ -->
+<h2>D · 信息可视化——「敌情/战力怎么一眼读」</h2>
+<div class="grid">
+  <div class="card"><img src="img/al04.png" alt="">
+    <div class="body">
+      <div class="title">《碧蓝航线》舰船档案 · 性能雷达</div>
+      <div class="src">骑士助手</div>
+      <div class="take">六边形雷达量化单位性能。<b>借鉴</b>：敌情栏「威胁构成」小雷达（数量/护甲/射程/空中/爆发/续航六轴，由本关敌池 tag 分布算出，<b>enemy_archetypes</b> 的 tags 现成）——玩家一眼知道「这关防空压力有多大」，正好回应 v23.3 起空中兵种上升的可读性诉求。</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ E 氛围质感 ═══ -->
+<h2>E · 氛围/质感——「军用控制台」材质基调</h2>
+<div class="grid">
+  <div class="card"><img src="img/rd01.jpg" alt="">
+    <div class="body">
+      <div class="title">复古雷达控制台界面（游戏不详）</div>
+      <div class="src">Steam社区</div>
+      <div class="take">磷光绿雷达 + 机械表盘边框 + 仪表字体。<b>借鉴</b>：这正是大厅 <b>T2 显示器皮肤</b>下出击面板的材质基调；雷达扫描线动效可复用在「出击」按钮待机态或敌情雷达上。T1 白板皮肤下则换成「纸质作战命令贴在沙盘上」的手写风，T3 投影下就是 jb03 的全息态——<b>出击面板容器跟随大厅三档皮肤换装，信息结构不变</b>。</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ 推荐方案 ═══ -->
+<h2>综合推荐布局（1280×720 单屏，零新数据系统）</h2>
+<div class="sketch"><pre>
+┌──────────────────────────────────────────────────────────────────────────┐
+│ ▌作战简报  第 12 关「XX」  ·  时代 II 寒潮战区  ·  第 12 天 08:00  [返回基地]│
+├───────────────┬──────────────────────────────────────┬───────────────────┤
+│ ▌任务目标      │                                      │ ▌敌情预告          │
+│   守住 3 波    │         全 息 沙 盘                   │  步兵×12 装甲×6    │
+│   战术主题:炮兵 │    （时代战线一段 · 我方箭头           │  空中×2 ▲警惕      │
+│   阵地防御     │      → 本关红标 · 波次来向）           │  相位师·传奇档 ★   │
+│ ▌环境          │                                      │  [威胁雷达 六轴]   │
+│   天气 寒潮 ❄  │                                      │ ▌兵力对比          │
+│   地形 废墟    │                                      │  我███▊━━━▏敌     │
+│   能量场 直射+10%│                                      │ ▌首通奖励         │
+│ ▌顺路目标      │                                      │   缴获卡×1 情报×2  │
+│   ◻ 教学任务…  │                                      │                   │
+├───────────────┴──────────────────────────────────────┴───────────────────┤
+│ [相位仪 ■■■■] [符文 ◆◆◆] [出战卡 ▤×6 ▸]     [更换装备]   ▶▶ 出  击 ◀◀     │
+└──────────────────────────────────────────────────────────────────────────┘
+</pre></div>
+<ul class="pts">
+  <li><b>交互铁律</b>：大厅点沙盘台 → 本面板（1 击）→「出击」（2 击）进战斗 ✓；顶栏常显「出击」按钮直达本面板（跳过沙盘台动画）。</li>
+  <li><b>出击按钮</b>是全屏唯一高饱和色（相位青/警示橙二选一，建议橙=全项目统一的敌方/行动色），军规 stencil 字；装备不齐时灰显并列缺口。</li>
+  <li><b>三档皮肤联动</b>（与机枢大厅换肤叙事同构，是本面板的记忆点）：T1 白板=纸质作战命令+手写标注钉在沙盘上；T2 显示器=磷光绿终端（rd01 材质）；T3 投影=全息作战地图（jb03 形态）+ 沙盘扫描线动画。信息结构三档完全一致，只换容器材质与沙盘表现——一次布局，三套皮。</li>
+  <li><b>信息全部现成</b>：环境四维 describe_level_env、敌档位 enemy_loadout_tiers、波次主题 LevelTacticalThemes、情报已揭示状态（未揭示显示 ???）、DayClock、任务 QuestManager、掉落预览 DropTables——本面板是纯 UI 汇编层，不新增任何数据/存档。</li>
+  <li><b>分期</b>：P1 = 静态简报 + 编队摘要 + 出击按钮（对齐 AC7 左栏三节）；P2 = 敌情预告 + 威胁雷达 + 兵力对比条；P3 = 全息沙盘地图动效（随 T3 皮肤落地，观星台叙事可并入投影沙盘）。</li>
+  <li><b>牌面注意</b>：面板底色压暗（军规灰绿 a0.85+），中央沙盘区是唯一亮区——保证战场卡图式的高对比可读性；避免本面板挤满文字（AC7 的留白节奏值得抄）。</li>
+</ul>
+</body>
+</html>

@@ -173,9 +173,9 @@ static func get_all_blueprint_ids() -> Array:
 	return ids
 
 ## v7.x 性能：返回所有蓝图 ID 的轻量版——不构建任何 CardResource。
-## get_all_blueprint_ids() 会触发 _ensure_card_cache() 构建 133 张完整卡对象，
+## get_all_blueprint_ids() 会触发 _ensure_card_cache() 构建 131 张完整卡对象（UCT 玩家侧 117 + 势力专属 14），
 ## 但 BlueprintManager._unlock_default_blueprints 等调用方只需 card_id 字符串做集合判断。
-## 轻量版直接从数据表提取 id，启动期可省去 133 次 CardResource.new() + 派生计算。
+## 轻量版直接从数据表提取 id，启动期可省去 131 次 CardResource.new() + 派生计算。
 ## 与 get_all_blueprint_ids() 返回的 id 集合完全一致（玩家战斗卡 + 势力专属卡 + 敌人蓝图）。
 static func get_all_blueprint_ids_lightweight() -> Array:
 	var ids: Array = []

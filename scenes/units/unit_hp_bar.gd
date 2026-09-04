@@ -76,6 +76,14 @@ var _elite_tier: int = 0  # 0=普通 1=精英 2=boss
 var _status_overflow: int = 0      # 状态图标溢出数（"+N" 显示）
 var _status_overflow_x: float = 0.0
 
+# ── v26.x 满血减噪（透明度分级）──
+# 满血且无护盾时血条视觉层淡到 IDLE_FADE_ALPHA，受击/掉血/挂盾/选中即恢复不透明——
+# 密集战场里前排满血单位的血条不再糊住后排头顶元素；状态图标（_draw 层）、
+# 等级文字与选中框保持不透明（身份与战术信息不降级）。
+const IDLE_FADE_ALPHA: float = 0.45
+var _idle_alpha: float = 1.0       # 当前淡出系数（平滑过渡）
+var _idle_faded := false           # 目标态：是否处于满血淡出
+
 func _ready() -> void:
 	position = Vector2(0, -40)
 	# 血条根节点抬到头顶 UI 专属 z 带（见 CardGridUnitVisuals.OVERHEAD_UI_Z）：
@@ -142,6 +150,10 @@ func _ready() -> void:
 	# 缓存默认字体用于绘制状态层数数字（Node2D 无 get_theme_default_font，从 HpLabel 取）
 	if _hp_label != null:
 		_status_font = _hp_label.get_theme_default_font()
+	# v26.x 满血减噪：新单位出生即满血，直接落到淡出稳态（不走过渡动画）
+	_update_idle_fade()
+	_idle_alpha = _fade_target_alpha()
+	_apply_idle_alpha()
 	set_process(false)
 
 ## 选中信号回调
@@ -159,6 +171,7 @@ func set_selected(value: bool) -> void:
 	_selected = value
 	if _selection_border != null:
 		_selection_border.visible = _selected
+	_update_idle_fade()
 
 ## 选中描边
 func _update_selection_border() -> void:
@@ -174,6 +187,7 @@ func _update_selection_border() -> void:
 	_selection_border.color = Color(0.98, 0.75, 0.15, 0.85)
 
 func _needs_active_process() -> bool:
+	if absf(_idle_alpha - _fade_target_alpha()) > 0.01: return true  # v26.x 淡出过渡中
 	if absf(_ratio - _target_ratio) > 0.001: return true
 	if _damage_flash > 0.0 or _heal_flash > 0.0: return true
 	if _shield_gain > 0.0: return true
@@ -206,14 +220,17 @@ func _process(delta: float) -> void:
 	# 用 _target_ratio 判断（即时响应掉血），避开 lerp 未收敛的过渡帧。
 	if _target_ratio <= 0.3:
 		_update_low_hp_pulse()
+	_apply_fade_step(delta)  # v26.x 满血减噪过渡
 	_sync_process_state()
 
 func set_ratio(r: float) -> void:
 	_target_ratio = clampf(r, 0.0, 1.0)
+	_update_idle_fade()
 	_sync_process_state()
 
 func trigger_damage_flash() -> void:
 	_damage_flash = 1.0
+	_update_idle_fade()
 	set_process(true)
 
 ## v8.x: 血条已固定单一形态，set_folded 保留为空操作以兼容外部调用方（不再影响渲染）。
@@ -342,6 +359,43 @@ func _update_heal_effect() -> void:
 		var heal_color = Color(0.4, 1.0, 0.6, 1.0)
 		_fill.color = heal_color.lerp(_fill.color, 1.0 - _heal_flash)
 
+## ── v26.x 满血减噪（透明度分级）──
+
+func _fade_target_alpha() -> float:
+	return IDLE_FADE_ALPHA if _idle_faded else 1.0
+
+
+func _update_idle_fade() -> void:
+	var shield_on: bool = _shield_fill != null and is_instance_valid(_shield_fill) and _shield_fill.visible
+	var active: bool = _target_ratio < 0.999 or _damage_flash > 0.0 or _heal_flash > 0.0 			or shield_on or _selected
+	var want: bool = not active
+	if want != _idle_faded:
+		_idle_faded = want
+		_sync_process_state()
+
+
+func _apply_fade_step(delta: float) -> void:
+	var target_a := _fade_target_alpha()
+	if is_equal_approx(_idle_alpha, target_a):
+		return
+	var dt := preload("res://resources/design_tokens.gd")
+	if dt.is_motion_reduce():
+		_idle_alpha = target_a  # 减少动效：直接落位不做过渡
+	else:
+		_idle_alpha = move_toward(_idle_alpha, target_a, delta * 3.0)
+	_apply_idle_alpha()
+
+
+## 只淡血条视觉层；_level_label / 选中框不淡（身份信息），状态图标在 _draw 层不受影响
+func _apply_idle_alpha() -> void:
+	for n: CanvasItem in [_bg, _fill, _glow, _shield_bg, _shield_fill, _hp_label]:
+		if n != null and is_instance_valid(n):
+			n.modulate.a = _idle_alpha
+	for n: CanvasItem in _elite_frame_nodes:
+		if n != null and is_instance_valid(n):
+			n.modulate.a = _idle_alpha
+
+
 ## ── 护盾条渲染 ──
 
 func set_shield(shield_value: float, max_hp_val: float) -> void:
@@ -352,9 +406,11 @@ func set_shield(shield_value: float, max_hp_val: float) -> void:
 	if shield_ratio <= 0.0:
 		_shield_bg.visible = false
 		_shield_fill.visible = false
+		_update_idle_fade()
 		return
 	_shield_bg.visible = true
 	_shield_fill.visible = true
+	_update_idle_fade()
 
 	var half_w: float = BAR_WIDTH * 0.5
 	var shield_h: float = 6.0
@@ -386,7 +442,8 @@ func _update_shield_gain_effect() -> void:
 	if _shield_fill == null or _shield_gain <= 0.0: return
 	var flash_color: Color = Color.WHITE.lerp(Color(0.3, 0.7, 1.0, 0.9), 1.0 - _shield_gain)
 	_shield_fill.color = flash_color
-	_shield_fill.modulate = Color(1.0, 1.0, 1.0, 0.5 + _shield_gain * 0.5)
+	# v26.x: 乘 _idle_alpha——闪光衰减到底时回归当前淡出系数（原实现残留 ~0.6 永久发暗）
+	_shield_fill.modulate = Color(1.0, 1.0, 1.0, _idle_alpha * (0.5 + _shield_gain * 0.5))
 
 func trigger_shield_gain(amount: float, max_hp_val: float) -> void:
 	_shield_gain = 1.0

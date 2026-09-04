@@ -214,12 +214,14 @@ enum CardType {
 }
 
 # 时代枚举
+# v27: XENO=5 星冥族（黑门无限模式专用时代带，不出现在 1-100 关的 level→era 映射）
 enum Era {
 	WW1,
 	WW2,
 	COLD_WAR,
 	MODERN,
-	NEAR_FUTURE
+	NEAR_FUTURE,
+	XENO
 }
 
 const RealWorldUnitLabels = preload("res://data/real_world_unit_labels.gd")
@@ -268,6 +270,7 @@ static func get_era_name(era: int) -> String:
 		Era.COLD_WAR: return "冷战"
 		Era.MODERN: return "现代"
 		Era.NEAR_FUTURE: return "近未来"
+		Era.XENO: return "星冥"
 		_: return "未知时代"
 
 static func get_era_for_level(level: int) -> int:

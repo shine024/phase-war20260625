@@ -41,7 +41,7 @@ Add `--rendering-driver opengl3` if Vulkan issues (applies to `--headless` / `--
 > **验证方式分层建议（避免撞 5 分钟超时）**：
 > - **纯逻辑文件**（无 `key = value` 字典写法）→ `gdparse <file>`（秒级，但 gdtoolkit 4.5.0 不支持 GDScript `key = value` 字典语法，对数据字典文件集体误报）
 > - **单文件改动**（数据字典等）→ `--script` 模式单独 `load()` 改动文件 + 断言（几秒出结果，不启动全部 autoload）
-> - **全项目兜底** → `--check-only`（启动 31 autoload + 构建 133 卡，常撞 5 分钟超时，仅大改动用）
+> - **全项目兜底** → `--check-only`（启动 30 autoload + 构建 131 卡，常撞 5 分钟超时，仅大改动用）
 
 ```powershell
 # Version check
@@ -107,6 +107,8 @@ print(call('logs.read'))                          # 读 Output 面板日志（�
 4. **大项目慢工具**：`refs.validate_project`/`fs.list res://`（本项目 2043 文件）可能数秒到超时，按需缩小范围或分批。
 5. **方法不存在** → `-32601 method not found: <method>`（去 `registry.gd` 核对全名）。
 6. **会话注册表**：插件按 PID 在 `~/.godot-agent-tools/sessions/<pid>.json` 写端口/项目路径，供 MCP shim 的 `session.list` 发现多个编辑器实例。
+7. **`run.scene_headless` 裸模式陷阱（2026-09-02 Steam 采集实测）**：**不传 `screenshots`/`input_script` 参数时走 `--headless` 裸模式——64×64 假窗口 + dummy 渲染**，游戏逻辑照跑但视口纹理全空（截图/录制全黑）。要画面必须带至少一个截图参数（预热截图即可）。另：`extra_args` 会被插在场景路径**之前**，不能用 `--` 传 user args（会把场景路径吞掉）——参数改走临时文件（如 `.godot/steam_cap_mode.txt`）。
+8. **采集编排器（Steam 素材管线范例 `tests/_tmp_steam_cap.gd`）**：挂载场景用 `root.add_child + current_scene 赋值`（**绝不能 `change_scene_to_file`，会连驱动器一起释放导致静默断链**）；match 分支里的协程函数必须 `await`（不 await 则协程链在首个 await 处被孤儿回收，现象是"函数只跑了前半段"）；运行期改 `w.size` 在 ANGLE 环境会杀渲染表面（启动参数给分辨率才安全）；战场 1080p 截图走 SubViewport 超采样（容器 `stretch=false` + 自建第二相机 `make_current` + zoom 1.5 复刻 1280×720 设计取景，实测内容带 world y∈[140,853] 最佳机位 cam.y=495）。
 
 ## 崩溃/错误日志诊断速查（2026-08-05 踩坑沉淀）
 
@@ -171,14 +173,14 @@ func _redirect_stdout_to_file() -> void:
 
 ## Architecture
 
-### Autoload Singletons（project.godot 实际 31 个，2026-08-23 核对——PhaseLawManager 已随 P2-7 法则退役删除）
+### Autoload Singletons（project.godot 实际 30 个，2026-09-03 核对——PhaseLawManager 已随 P2-7 法则退役删除；EvolutionPathRegistry 已随 v26.6 结构收敛删除，autoload 31→30，见停用清单）
 
 > 双层设计说明：部分 manager **同时**存在于 project.godot [autoload] 与 ManagerLazyLoader 配置——
 > 后者仅作 `ensure_loaded("<id>")` 的统一访问入口，命中 `/root/NodeName` 即复用，不会重复实例化。
 
 | # | Singleton | File | Role |
 |---|---|---|---|
-| 1 | `SignalBus` | `scripts/signal_bus.gd` | 中央事件总线（~76 活跃信号；同名死信号已清理） |
+| 1 | `SignalBus` | `scripts/signal_bus.gd` | 中央事件总线（79 个 signal 声明；同名死信号已清理） |
 | 2 | `BattleInputState` | `scripts/battle_input_state.gd` | 战斗输入状态机 |
 | 3 | `EnergyManager` | `managers/energy_manager.gd` | 战斗能量池 |
 | 4 | `PhaseInstrumentManager` | `managers/phase_instrument_manager.gd` | 4色装备槽 + 符文槽 + 相位场等级(Lv1-30)/属性点分配 |
@@ -193,22 +195,21 @@ func _redirect_stdout_to_file() -> void:
 | 13 | `UILazyLoader` | `managers/ui_lazy_loader.gd` | UI 面板按需加载 |
 | 14 | `ManagerLazyLoader` | `managers/manager_lazy_loader.gd` | 非 core manager 按需加载 |
 | 15 | `PerformanceMetricsManager` | `managers/performance_metrics_manager.gd` | FPS/性能采样 |
-| 16 | `ModificationRegistry` | `scripts/systems/modification_registry.gd` | 9 兵种 202 改造模块（静态注册表，数量锁在 modification_modules_test） |
-| 17 | `EvolutionPathRegistry` | `scripts/systems/evolution_path_registry.gd` | 8 兵种进化路径 |
-| 18 | `DayClock` | `managers/day_clock.gd` | 游戏内日时钟 |
-| 19 | `AuraManager` | `managers/aura_manager.gd` | 平台光环 |
-| 20 | `IntelItemBag` | `managers/intel_item_bag.gd` | 情报道具背包 |
-| 21 | `IntelManual` | `scripts/systems/intel_manual.gd` | 4维情报手册 |
-| 22 | `QuestManager` | `managers/quest_manager.gd` | 任务（委托/剧情/引导/动态） |
-| 23 | `FactionSystemManager` | `managers/faction_system_manager.gd` | 7 势力（声望/商店/技能/事件/占领状态机） |
-| 24 | `AffixManager` | `managers/affix_manager.gd` | 模块化词条 |
-| 25 | `LevelProgressManager` | `managers/level_progress_manager.gd` | 关卡进度 |
-| 26 | `CardEnhancementManager` | `managers/card_enhancement_manager.gd` | 卡牌强化（词条节点按等级驱动） |
-| 27 | `InstanceRegistry` | `managers/instance_registry.gd` | **卡牌实例+养成数据唯一真身**（见下方铁律章节） |
-| 28 | `PhaseMasterSkillManager` | `managers/phase_master_skill_manager.gd` | 相位师技能树 |
-| 29 | `TutorialProgressionManager` | `managers/tutorial_progression_manager.gd` | 引导 |
-| 30 | `BattleSpectacle` | `managers/battle/battle_spectacle.gd` | 战斗演出/大招编排 |
-| 31 | `_MCPGameBridge` | `addons/agent_tools/runtime/game_bridge.gd` | agent_tools 编辑器插件运行时桥 |
+| 16 | `ModificationRegistry` | `scripts/systems/modification_registry.gd` | 10 模块类 202 改造模块（8 兵种 + 通用 + 强化词条；静态注册表，数量锁在 modification_modules_test） |
+| 17 | `DayClock` | `managers/day_clock.gd` | 游戏内日时钟 |
+| 18 | `AuraManager` | `managers/aura_manager.gd` | 平台光环 |
+| 19 | `IntelItemBag` | `managers/intel_item_bag.gd` | 情报道具背包 |
+| 20 | `IntelManual` | `scripts/systems/intel_manual.gd` | 4维情报手册 |
+| 21 | `QuestManager` | `managers/quest_manager.gd` | 任务（委托/剧情/引导/动态） |
+| 22 | `FactionSystemManager` | `managers/faction_system_manager.gd` | 7 势力（声望/商店/技能/事件/占领状态机） |
+| 23 | `AffixManager` | `managers/affix_manager.gd` | 模块化词条 |
+| 24 | `LevelProgressManager` | `managers/level_progress_manager.gd` | 关卡进度 |
+| 25 | `CardEnhancementManager` | `managers/card_enhancement_manager.gd` | 卡牌强化（词条节点按等级驱动） |
+| 26 | `InstanceRegistry` | `managers/instance_registry.gd` | **卡牌实例+养成数据唯一真身**（见下方铁律章节） |
+| 27 | `PhaseMasterSkillManager` | `managers/phase_master_skill_manager.gd` | 相位师技能树 |
+| 28 | `TutorialProgressionManager` | `managers/tutorial_progression_manager.gd` | 引导 |
+| 29 | `BattleSpectacle` | `managers/battle/battle_spectacle.gd` | 战斗演出/大招编排 |
+| 30 | `_MCPGameBridge` | `addons/agent_tools/runtime/game_bridge.gd` | agent_tools 编辑器插件运行时桥 |
 
 **Lazy-loaded managers**（`ManagerLazyLoader.ensure_loaded()`，23 个配置项；v9.x 2026-08-22 清理：battle_feedback/character/challenge_mode/version 四项已删，见停用清单；v26.4 核对更新）：
 aura, level_progress, drop, quest, achievement, daily_task,
@@ -260,9 +261,9 @@ BlueprintManager → CardEvolutionManager, ModManager, EvolutionHelpers,
 
 CardEnhancementManager → DefaultCards, UnifiedRankSystem (military titles)
 
-ModificationRegistry → 9 unit-type mod modules (infantry/armor/artillery/anti_air/air/recon/engineer/fort/universal)
+ModificationRegistry → 10 mod module classes (infantry/armor/artillery/anti_air/air/recon/engineer/fort/universal/enhancement)
 
-EvolutionPathRegistry → 8 unit-type evolution modules (infantry/armor/air/artillery/fort/recon/engineer/anti_air)
+~~EvolutionPathRegistry → 8 unit-type evolution modules~~（注册表文件+autoload 已随 v26.6 删除，权威迁 unit_lineage_config + BlueprintManager.get_evolution_options；进化整链后随 v26.8 退役，见停用清单）
 
 FactionSystemManager → FactionReputation, FactionShop, FactionSkillManager,
                         FactionEventManager, FactionCardGenerator
@@ -307,6 +308,60 @@ IntelEvolutionManager → IntelManual, IntelEvolutionBranches
   `GameConfig.battle_layouts_enabled`。数据锁 `tests/unit/data/battle_env_layouts_test.gd`。
 - aura 槽距坐标走 `aura_data.slot_grid_coords(idx, is_enemy)`（敌我列数可不同；
   单位侧别判定用新 `slot_grid_coords_for_unit`）。
+
+### v26.8 制造系统 + 基地房间时代升级视觉（2026-09-02，详见 CHANGELOG）
+
+**改制造/房间升级/房间美术前必读本节。**
+
+- **制造系统四批次**（配方目录 38 / 制造中心面板 / 进化 UI 退役 / 分析仪 / 缴获品质 /
+  仓库打印 / 气象站探索 / 洗点费 / 沙盘 / 敬礼 / 天气预报）：数值与挂钩真身见 CHANGELOG
+  v26.8 A/B 节；品质池/成本/保底参数改 `data/manufacture_pools.gd`（balance_audit_mods_evo.py
+  MF 段守方向性：common 单调降、epic+ 单调不降、中段驼峰合法）。
+- **基地房间升级视觉三图管线**：`bunker_bg_v3{,_lit,_upg}.png` 三图 + `bunker_room_overlay.gd`
+  第四视觉档（Lv2/Lv3 切 upg 图层，Lv3 金描边）。改布局只动 `bunker_room_defs.gd` rect/
+  场景占位块再重跑 `generate_bunker_bg_v3.py`；换升级图=往 `docs/基地重设计/generated5/`
+  放 `cap_<rid>_upg.jpeg` 再重跑烘焙（agnes 批量生成器 `generate_bunker_caps_upg.py`）。
+- **agnes 生图模型特点**（负面词反激活/正面意象锁死/风格词垃圾暗示/屏幕内容限定）：
+  ⚠️ 写新生图 prompt 前必读 `tools/_agnes_image_api.md` 行为实测段——v26.8 三轮实测
+  （负面词拉黑垃圾无效、正面意象锁死有效）直接推翻直觉写法。
+- **新 png 资产导入**：`--import` 直跑崩（0xC0000005），用 `--headless --editor --quit` 触发。
+
+### v26.9 战场单位可读性：深色描边 + 全单位投影 + 背景压暗（2026-09-02，详见 CHANGELOG）
+
+**改单位贴图/换帧/缩放相关代码前必读本节。** 三件套修复"我方灰褐卡图在沙漠亮底融底"
+（实测本体/背景亮度差仅 30-60）：
+
+- **单位深色描边**（`shaders/unit_outline.gdshader` + `scripts/battle/unit_outline.gd`）：
+  alpha 膨胀 shader，presentation 链自动挂。⚠️ **契约：凡运行期直写 `unit_spr.texture`
+  或 `scale`，必须调 `UnitOutline.refresh(spr)`**——`edge_texels` 依赖 scale（帧动画
+  attach 有 scale×2 补偿）、`region_uv` 依赖当前贴图（雪碧图 AtlasTexture 需收敛到当前帧，
+  否则膨胀取样越帧采到相邻帧轮廓出鬼影）。已接入：UnitFrameAnim.FrameDriver 三处、
+  BossIdleAnim.FrameDriver（兜底）；AttackPoseAnim 攻击帧=同分辨率整图无需刷新。
+- **全单位投影**：`air_unit_shadow.gd` 双模式——空中=悬空影（随浮动呼吸），地面=贴地
+  接触影（更宽更淡、静止）；由 `_sync_unit_shadow`（原 `_sync_air_shadow`）统一调度。
+- **背景压暗**：`battlefield.gd` 的 `BG_DIM`（0.80/0.80/0.87）叠乘时代 tint，
+  收口在 `_apply_background_texture`；调背景明暗只动这一个常量。
+
+### v26.10 改造模块消耗品化 + 双通道供给（2026-09-02，详见 CHANGELOG）
+
+**改改造安装/图纸掉落/制造站相关代码前必读本节。** 核心语义：安装一条改造 =
+消耗 1 张对应图纸（IntelItemBag 库存）+ 纳米费；图纸是库存货币不是永久解锁。
+
+- **安装链**（`blueprint_manager.gd`）：`install_modification` 落账扣图纸；价格公式唯一
+  真身在 `preview_install_cost(card)`（UI 显示与扣款同源，勿在面板重抄公式）；
+  总开关 `GameConfig.mod_consumable_enabled`（false=回退旧永久解锁行为）。
+- **见过集合**（`intel_item_bag.gd`）：`consume_item` 归零删 key 查不到"得到过"——
+  制造门槛（**得到过就可造**：掉落负责发现、制造负责补给）依赖 `_seen` 集合 +
+  `has_seen`；旧档回填=库存∪已装改造（SaveManager critical 批后调
+  `backfill_seen_from_registry`）。改造面板列表数据源=见过集合（消耗光仍留在列表，
+  灰显"图纸不足"），**勿改回读库存**。
+- **制造通道**（`data/mod_manufacture.gd` + `manufacture_manager.gd` + evolution_panel
+  双模式）：common/uncommon/rare 定向兑换（80/150/280 纳米档）；epic+ 只能随机箱
+  （按 mod 稀有度加权 + pity）；工坊折扣经 `_apply_workshop_discount` 与卡牌制造共用。
+- 新档 starter：`clear_slots_for_new_game` 送 2 张 `blueprint_inf_14_knee_pads`
+  （全注册表唯一 common/GRUNT 档模块，教程第 6 步依赖）。
+- 掉率/纳米费首版未动（单变量原则），供需实测后调；数据锁
+  `tests/unit/economy/test_mod_consumable.gd`（14 用例）。
 
 ### v26 敌方四档真实配装 + 新飞机（2026-09-01，详见 CHANGELOG）
 
@@ -356,6 +411,14 @@ IntelEvolutionManager → IntelManual, IntelEvolutionBranches
 - **遗留节点墓碑**：main.tscn 的 BattleTopStatusBar 恒 hidden 但内含 BattleInfoDisplay
   （隐形统计引擎，battle_status_strip/mvp_panel 消费）——删除前先迁移统计累积；
   TopLeftMeta 已删。大招按钮文案"大招:自动/手动"（勿改回"自动"，与自动部署按钮重名）。
+- **满血血条减噪**：unit_hp_bar 满血且无护盾/未选中时视觉层淡到 0.45（状态图标/等级
+  文字/选中框不降级）——改血条视觉或加新的血面子节点时，记得挂进 `_apply_idle_alpha`
+  的淡出名册，否则满血态会突兀地全亮。
+- **子弹特效父节点铁律**：v26.11(D1) 起归池子弹常驻 ObjectPool 节点下——bullet.gd 里
+  任何特效父节点**禁止裸 `get_parent()`**，一律走 `_resolve_fx_parent()`（识别池容器
+  并回退缓存的开火父层），否则归还后时序触发类型报错+特效丢失。
+- **战斗实机截图工具**：`tests/_tmp_ui_battle_shot.gd`（.godot/ui_battle_shot_mode.txt
+  配 level/frame，载档→选关→自动部署→全视口含 HUD 截图到 .godot/agent_tools/）。
 
 ### v25.0/v25.1 改造数值四通道 + 时代适配 + 平衡核查（2026-08-31，详见 CHANGELOG）
 
@@ -423,7 +486,7 @@ IntelEvolutionManager → IntelManual, IntelEvolutionBranches
 数据主体为纯 GDScript 静态类（`extends RefCounted`）；`data/json/` 子目录是例外——8 个 JSON 文件作为懒加载真身（getter 懒读 + LEGACY 兜底），消费方见 Key Patterns #5。
 
 **Core Cards & Enemies:**
-- `default_cards.gd` — ~110 battle unit definitions (WWI to near-future, 5 eras × 20 levels)
+- `default_cards.gd` — 统一表驱动构建（v8.0 起）：UCT 231 行（玩家侧 117 + 敌专属 114）+ 14 势力专属卡 = 启动构建 131 张卡对象；旧 ~110 张硬编码 _unit() 已废弃（WWI to near-future, 5 eras × 20 levels）
 - `enemy_archetypes.gd` (+ era-split variants: `_ww.gd`, `_cold_modern.gd`, `_future.gd`) — Enemy types, drops
 - `enemy_phase_masters*.gd` (5 era files + combined) — Phase master (boss) definitions
 - `enemy_equipment_*.gd` — Enemy weapons, armor modules, specials
@@ -442,17 +505,17 @@ IntelEvolutionManager → IntelManual, IntelEvolutionBranches
 
 **v6.0 Intel System:**
 - `intel_dimensions.gd` — 4 intel dimensions (basic/tactical/material/secret)
-- `intel_reveal_events.gd` — 112 reveal events (7 enemy types × 4 dimensions × 4 tiers)
+- `intel_reveal_events.gd` — 28 reveal events（7 enemy types × 4 tiers；原 v6.0 的 112 条 7×4×4 已合并去维）
 - `intel_evolution_branches.gd` — 4 hidden evolution branches
-- `intel_manual_items.gd` — 6 intel consumable items
+- `intel_manual_items.gd` — 蓝图道具目录（商店可售/掉落蓝图 id 清单；v26.10 起改造图纸为 IntelItemBag 库存消耗品。文件头注明确否定旧设计"6 种消耗品"）
 
-**Evolution:**
+**Evolution（已随 v26.8 退役，数据保留）：** 进化 UI 链/权威判定已退役（新卡获取唯一通道=制造）；下列谱系数据保留，供制造中心"来源"展示与 lineage 查询——
 - `data/evolution_paths/` — 8 files: infantry/armor/air/artillery/fort/recon/engineer/anti_air evolution paths
 - `unit_lineage_config.gd` — Unit lineage and evolution target mapping
 - `evolution_paths_supplement.gd` — Supplementary evolution data
 
 **Modification:**
-- `data/modification_modules/` — 9 files: infantry/armor/artillery/anti_air/air/recon/engineer/fort/universal mods (140+ total)
+- `data/modification_modules/` — 10 files: infantry/armor/artillery/anti_air/air/recon/engineer/fort/universal/enhancement mods（共 202 条；注册表 ModificationRegistry）
 - `mod_effects.gd` — Mod effect definitions and slot cost formulas
 
 **Military Titles:**
@@ -474,7 +537,7 @@ IntelEvolutionManager → IntelManual, IntelEvolutionBranches
 - `GameConstants` — All enums: CardType, WeaponType, CombatKind(5), Era(5)。PlatformType(13) 与 WeaponTypeLegacy(12) 枚举壳**已删除**（全项目零枚举引用；12 值 legacy 语义经数据表 + `legacy_weapon_to_new_weapon_type` 映射层存活，v26.4 核对）
 - `DropTables` — Weighted drop entries (13 drop types), tables, guarantee drops
 - `DesignTokens` — UI theming constants (neon palette, typography, spacing, glow, accessibility)
-- `GameConfig` — Tunable game config（v26.4 收敛后仅存 5 个有真实消费点的项：cross_row_direct_damage_mult / aura_range_enabled / env_effects_enabled / battle_layouts_enabled / debug_no_deploy_limits；15 个零消费字段已删）
+- `GameConfig` — Tunable game config（v26.4 收敛后仅存有真实消费点的项（v26.9 核对 6 个）：cross_row_direct_damage_mult / aura_range_enabled / env_effects_enabled / battle_layouts_enabled / debug_no_deploy_limits / debug_grant_all_blueprints（v26.11 实装：新档全蓝图发放的门控开关，默认 false；消费点 save_manager）；15 个零消费字段已删）
 
 ### Test Structure
 
@@ -508,7 +571,7 @@ tests/
 
 ## 美术资源工作流（卡图自动生成）
 
-**⚠️ 美术 PNG 全量备份铁律（发行机迁移/换机硬前提）**：`.gitignore` 全局忽略 `*.png`——美术资产**不入 git，删=永久丢失**。两大目录：`assets/card_icons/`（866 张卡面 + 缩略图树）与 `assets/ui/instruments/`（相位仪徽章）。基线备份：项目外 `phase-war-art-backup-YYYY-MM-DD.zip`（2026-08-23 首份 144.1MB/960 文件，sha256 前 16 位 `7c9da35781ffe08c`）。新增/修改图后按同日期惯例重打包，并建议同步一份到网盘/异机。打包：两树 walk（png/svg/txt）→ zipfile ZIP_STORED → 项目外。
+**⚠️ 美术 PNG 全量备份铁律（发行机迁移/换机硬前提）**：`.gitignore` 全局忽略 `*.png`——美术资产**不入 git，删=永久丢失**。两大目录：`assets/card_icons/`（2026-09-03 核对：卡面 316 张 = enemy 158 + player 158，缩略图树 632 张 = _thumb256/_thumb384，共 951 png）与 `assets/ui/instruments/`（相位仪徽章）。基线备份：项目外 `phase-war-art-backup-YYYY-MM-DD.zip`（2026-08-23 首份 144.1MB/960 文件，sha256 前 16 位 `7c9da35781ffe08c`）。新增/修改图后按同日期惯例重打包，并建议同步一份到网盘/异机。打包：两树 walk（png/svg/txt）→ zipfile ZIP_STORED → 项目外。
 
 **新增卡牌缺卡面图时**，用 AI API 自动生成，完整流程见 `docs/ART_PIPELINE_AI_ICON_GENERATION.md`。
 
@@ -560,12 +623,14 @@ User-driven collaboration. Every task follows: **Question → Options → Decisi
 - Multi-file changes need explicit approval for the full changeset
 - No commits without user instruction
 
-## 已知停用/移除系统清单（2026-08-31 更新）
+## 已知停用/移除系统清单（2026-09-03 更新）
 
 改代码/排查 bug 前先对照本表，避免给停用系统"修 bug"或误以为功能缺失：
 
 | 系统 | 状态 | 说明 |
 |------|------|------|
+| 进化系统（E1/E2 形态升级 + 低进化/完整进化 + 谱系进化链） | **已整体退役** | 2026-09-02 v26.8：由情报驱动的制造系统接管新卡获取（见 docs/design_manufacture_system.md）。进化 UI 链退役（evolution_panel 重写为制造中心，内部 API 护栏保留）；`blueprint_evol_` 进化图纸掉落改道；技能树节点语义平移（"形态进化"→"制造授权"）。谱系数据（data/evolution_paths/ 8 文件 + unit_lineage_config）保留，供制造"来源"展示；hp_floor/inherit_bonus 存档字段保留为惰性数值 |
+| EvolutionPathRegistry（autoload + scripts/systems/evolution_path_registry.gd） | **已删除** | 2026-09-02 v26.6 结构收敛批B：零引用整文件下线，权威先迁 LINEAGES + BlueprintManager.get_evolution_options，后随 v26.8 进化退役。autoload 31→30。data/evolution_paths/*.gd 的 check_requirements 存根仍在（fail-closed，指向文案勿再引用） |
 | 产能点 + 账号改造解锁集 + 相位师首杀解锁（v21 P3-B） | **已整体删除** | 2026-08-31 v25.3 系统收敛：解锁集（mod_unlock_state）自上线起无任何 UI/门禁消费方（安装认蓝图），craft_mod 零 UI 调用方，首杀"解锁"是玩家不可见的幻影奖励。删除：ModificationRegistry 解锁集段（craft_mod/unlock_mod/unlock_boss_first_kill/CRAFT 表）、BRM production_points、DayClock 产能结算、GameManager 首杀发放、SaveManager 三处清单、SK_MOD_UNLOCK_STATE；v9 迁移体改 no-op（版本号保留）。旧档 mod_unlock_state/production_points key 静默跳过。将来重做"打造"从 git 找回 |
 | 进化战力门 + 进化情报基础门 | **已拆除** | 2026-08-31 v25.3：card_evolution_manager 权威判定 7 条件 → 4（保留等级/改造数/进化图纸/技能树时代 + 势力分支门）。战力门是"战力→军衔→战力"循环的根；情报门（low_evo 50%/100%）与低进化对蓝图豁免构成双轴资格。拒绝码映射保留（防御）。连带删 evolution_path_registry 遗留四门死代码 + card_resource 休眠 intel_requirements 门 |
 | 战斗抽屉 8 面板入口（势力/任务/商店/排行/情报/图鉴/成就/帮助） | **已收敛** | 2026-08-31 v25.3：BottomFunctionBar 14→6（留背包/成长/地图/设置/存档/挂机），战前字母热键同步裁（留 B/1、7、9、M）。overlay 与 handler 全保留（教程 toggle_* 链/growth 转发仍用），面板本体移基地入口（EMBEDDED_PANELS 同款） |

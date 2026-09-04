@@ -88,6 +88,12 @@ static func resolve_traced(weapon_name: String, raw_wt: int, shooter_is_player: 
 		for kw in ROCKET_KEYWORDS:
 			if weapon_name.find(kw) >= 0:
 				return {"visual_wt": Family.ROCKET, "via": "keyword", "matched": kw}
+		# v26.x: 空射弹药捕获——v26 新机 29 个武器名此前全部 wt_fallback（玩家侧
+		# 兜底 raw_wt=0 被画成轻动能曳光）。插在 ROCKET 后；激光制导炸弹已被
+		# LASER 先行捕获不受影响。
+		for kw in AERIAL_KEYWORDS:
+			if weapon_name.find(kw) >= 0:
+				return {"visual_wt": Family.AERIAL, "via": "keyword", "matched": kw}
 		for kw in FLAK_KEYWORDS:
 			if weapon_name.find(kw) >= 0:
 				return {"visual_wt": Family.FLAK, "via": "keyword", "matched": kw}
@@ -117,20 +123,24 @@ static func resolve_traced(weapon_name: String, raw_wt: int, shooter_is_player: 
 
 # ── 视觉关键词表（按特征性从强到弱排列，先匹配先赢）──
 # 与弹道侧关键词（card_resource._BEAM_WEAPON_KEYWORDS 等）语义分工见 resolve_traced 注释。
-const RAIL_KEYWORDS: Array = ["轨道炮", "电磁轨道", "磁轨"]          # 动能穿透签名
-const LASER_KEYWORDS: Array = ["激光", "雷射"]                       # 烧灼签名（区别于通用光束）
+const RAIL_KEYWORDS: Array = ["轨道炮", "电磁轨道", "磁轨", "高超音速"]          # 动能穿透签名（+高超音速动能弹）
+const LASER_KEYWORDS: Array = ["激光", "雷射", "定向能"]             # 烧灼签名（区别于通用光束；+定向能扫射/自卫阵列）
 const OMEGA_KEYWORDS: Array = ["等离子"]                             # 径向放电签名
 const MISSILE_KEYWORDS: Array = ["导弹"]                             # 含"防空导弹"（先于防空炮判定）
 const ROCKET_KEYWORDS: Array = ["火箭"]                              # 火箭弹/火箭炮
+const AERIAL_KEYWORDS: Array = ["炸弹", "钻地弹", "云爆弹", "战斗部", "FAB", "AIM-9", "AIM-120"]  # v26.x 空射弹药（航弹/空空导弹，卡表 weapon_type=2）
 const FLAK_KEYWORDS: Array = ["高炮", "防空炮", "高射炮", "近防炮"]   # 防空速射炮
-const ARTY_KEYWORDS: Array = ["迫击炮", "榴弹炮", "要塞炮", "野战炮", "舰炮", "自行火炮"]  # 曲射压制火炮
+const ARTY_KEYWORDS: Array = ["迫击炮", "榴弹炮", "榴弹", "要塞炮", "野战炮", "舰炮", "自行火炮", "雷霆防空"]  # 曲射压制火炮（+40mm榴弹；雷霆防空 卡表 wt=1）
 const SHOTGUN_KEYWORDS: Array = ["霰弹"]                             # 面散射
 const BEAM_KEYWORDS: Array = ["光束", "粒子束", "粒子炮", "电磁炮", "射线", "狙击", "狙击炮"]  # 其余光束/狙击
 # 轻动能捕获（排最后，见 resolve_traced 内注释）。"火炮/加农炮"归此档：
 # 直射槽的 105mm 炮直射步兵——族仍轻动能，但 DirectWeaponFlavor 给坦克炮级
 # 加粗弹体+重环风味（直射 HE 弹道平直，爆炸观感交给 power_tier 伤害分级）。
 # "MG" 兜拉丁字母机枪名（MG42 等，DirectWeaponFlavor 侧同词已匹配）。
-const LIGHT_KINETIC_KEYWORDS: Array = ["火炮", "加农炮", "坦克炮", "反坦克炮", "机枪", "步枪", "冲锋枪", "手枪", "卡宾", "马刀", "MG", "炮", "枪"]
+# v26.x 追加（原 wt_fallback 29 名清零）：弹链=重机枪穿甲曳光 / 大毒蛇=25mm 链炮 /
+# 指挥·护盾=支援伪武器（卡表 wt=0/3 直射口径）/ 相位刃=近战能量（卡表 wt=0）/
+# 守护者·终焉·闪电防空=卡表 wt0 直射防空（雷霆防空 wt1 归上曲射行）
+const LIGHT_KINETIC_KEYWORDS: Array = ["火炮", "加农炮", "坦克炮", "反坦克炮", "机枪", "步枪", "冲锋枪", "手枪", "卡宾", "马刀", "MG", "弹链", "大毒蛇", "指挥", "爆破", "护盾", "相位刃", "守护者防空", "终焉防空", "闪电防空", "炮", "枪"]
 
 ## ======================================================================
 ## B. 档案表（审计工具与验收文档的单一数据源）

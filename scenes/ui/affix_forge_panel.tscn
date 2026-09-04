@@ -1,0 +1,19 @@
+[gd_scene load_steps=2 format=3 uid="uid://affix_forge_panel"]
+
+[ext_resource type="Script" path="res://scenes/ui/affix_forge_panel.gd" id="1_script"]
+
+[node name="AffixForgePanel" type="PanelContainer"]
+custom_minimum_size = Vector2(1060, 640)
+layout_mode = 2
+script = ExtResource("1_script")
+
+[node name="Margin" type="MarginContainer" parent="."]
+layout_mode = 2
+theme_override_constants/margin_left = 16
+theme_override_constants/margin_top = 16
+theme_override_constants/margin_right = 16
+theme_override_constants/margin_bottom = 16
+
+[node name="VBoxMain" type="VBoxContainer" parent="Margin"]
+layout_mode = 2
+theme_override_constants/separation = 10

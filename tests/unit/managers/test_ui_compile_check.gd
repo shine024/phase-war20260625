@@ -10,6 +10,11 @@ const MasterPowerEvaluator = preload("res://scripts/master_power_evaluator.gd")
 const MasterPlayerAssembler = preload("res://scripts/master_player_assembler.gd")
 const MasterPlatformPower = preload("res://scripts/master_platform_power.gd")
 const EnemyPhaseMasters = preload("res://data/enemy_phase_masters.gd")
+# v26.x 改造消耗品化改动面：两个面板 + 存档管线 + 相位仪管理器（starter 图纸钩子）
+const ModificationPanel = preload("res://scenes/ui/modification_panel.gd")
+const EvolutionPanel = preload("res://scenes/ui/evolution_panel.gd")
+const SaveManagerScript = preload("res://managers/save_manager.gd")
+const PhaseInstrumentManagerScript = preload("res://managers/phase_instrument_manager.gd")
 
 
 func test_scripts_compile() -> void:
@@ -21,3 +26,7 @@ func test_scripts_compile() -> void:
 	assert_bool(MasterPlayerAssembler != null).is_true()
 	assert_bool(MasterPlatformPower != null).is_true()
 	assert_bool(EnemyPhaseMasters != null).is_true()
+	assert_bool(ModificationPanel != null).is_true()
+	assert_bool(EvolutionPanel != null).is_true()
+	assert_bool(SaveManagerScript != null).is_true()
+	assert_bool(PhaseInstrumentManagerScript != null).is_true()

@@ -34,13 +34,21 @@ const KIND_POOL_CHANCE: float = 0.55
 const UNIQUE_AFFIX_MIN_TIER: int = 3
 
 ## 强化触发等级（每5级强化一次）
-const ENHANCE_TRIGGER_LEVELS: Array = [5, 10, 15, 20, 25]
+const ENHANCE_TRIGGER_LEVELS: Array = [5, 10, 15, 20, 25, 30]  # v27.4 勘误：对齐 affix_manager 权威 6 节点口径（旧 5 节点为 v18 遗留）
 
 ## 词条升级概率（每次强化）
 const AFFIX_UPGRADE_CHANCE: float = 0.20
 
 ## 重随消耗（每级递增）
 const REROLL_COSTS: Array = [500, 800, 1200, 1800, 2500, 3500, 5000, 7000, 10000]
+
+## v27.2: 星冥卡洗练计费（星髓）——星髓收入口径：单 run 渗度里程碑合计 350、每周封顶 400，
+## 故取纳米档约 1/30 量级；首版曲线，供需实测后调。
+const XENO_REROLL_COSTS: Array = [12, 20, 30, 45, 65, 90, 125, 165, 210]
+
+static func get_xeno_reroll_cost(slot_index: int) -> int:
+	var idx: int = clampi(slot_index, 0, XENO_REROLL_COSTS.size() - 1)
+	return int(XENO_REROLL_COSTS[idx])
 
 ## 锁定倍率（本次锁定k个词条 -> 额外纳米倍率）
 ## 口径：extra_lock_cost = round_to_10(base_reroll_cost * LOCK_MULTIPLIER[k])
@@ -492,37 +500,598 @@ const AFFIX_TABLE: Dictionary = {
 		"affix_name":         "暴击势能",
 		"description":        "打出暴击后，下一次攻击必定命中（无视闪避）",
 		"affix_type":         "special_mechanic",
-		"effect_key":         "crit_ensure_hit",  # 数据就绪、执行挂点待接（attack_calculator 命中判定）
+		"effect_key":         "crit_ensure_hit",  # v27.1 已接线：bullet.gd 暴击武装 → 受击侧 take_damage 消费
 		"base_value":         1.0,                # 机制开关型：1.0=启用
 		"card_type_filter":   1,
 		"weapon_type_filter": -1,
 		"rarity_pool":        ["epic", "legendary"],
 		"unlock_condition":   "none",
-		"wired":              false,
+		"wired":              true,
 	},
 	"sm_fullhp_onslaught": {
 		"affix_name":         "满员突击",
 		"description":        "生命值全满时，造成的伤害提升 15%",
 		"affix_type":         "special_mechanic",
-		"effect_key":         "full_hp_damage_bonus",  # 数据就绪、执行挂点待接（attack_calculator 伤害段）
+		"effect_key":         "full_hp_damage_bonus",  # v27.1 已接线：construct_unit_ai.do_attack_with_damage 伤害段
 		"base_value":         0.15,
 		"card_type_filter":   2,
 		"weapon_type_filter": -1,
 		"rarity_pool":        ["epic", "legendary"],
 		"unlock_condition":   "none",
-		"wired":              false,
+		"wired":              true,
 	},
 	"sm_double_tap": {
 		"affix_name":         "双重齐射",
 		"description":        "攻击有 8% 概率造成双倍伤害",
 		"affix_type":         "special_mechanic",
-		"effect_key":         "double_strike_chance",  # 数据就绪、执行挂点待接（attack_calculator 结算段）
+		"effect_key":         "double_strike_chance",  # v27.1 已接线：construct_unit_ai.do_attack_with_damage 结算段
 		"base_value":         0.08,
 		"card_type_filter":   1,
 		"weapon_type_filter": -1,
 		"rarity_pool":        ["epic", "legendary"],
 		"unlock_condition":   "none",
-		"wired":              false,
+		"wired":              true,
+	},
+
+	# ─── v27.2 星冥专属词条（xeno_only：仅星冥缴获卡 captured_xeno_* 可刷出） ─────
+	## 主题取材星冥三机制（灵能护盾/共感/拟时回溯）；全部复用已接线 effect_key（零死词条），
+	## 数值较同级通用词条强 20~40%。普通卡 roll 池恒排除（is_affix_available_for 默认拒绝）。
+	## 不设 min_tier：星冥缴获卡无 tier 字段（默认 0），设了门槛就永远刷不出来。
+	"xeno_veil_step": {
+		"affix_name":         "蜃影游走",
+		"description":        "【星冥专属】平台获得闪避几率（完全回避一次攻击）",
+		"affix_type":         "combat_feature",
+		"effect_key":         "dodge_chance",
+		"base_value":         0.10,    # +10% 闪避（Lv1），通用相位闪避 5% / 轻装战术翻滚 8%
+		"card_type_filter":   0,
+		"weapon_type_filter": -1,
+		"rarity_pool":        ["rare", "epic", "legendary"],
+		"unlock_condition":   "none",
+		"xeno_only":          true,
+	},
+	"xeno_star_surge": {
+		"affix_name":         "星潮涌动",
+		"description":        "【星冥专属】武器攻击伤害提升",
+		"affix_type":         "base_property",
+		"effect_key":         "attack_damage",
+		"base_value":         0.20,    # +20% 伤害（Lv1），通用 15% / 空中俯冲 18%
+		"card_type_filter":   1,
+		"weapon_type_filter": -1,
+		"rarity_pool":        ["rare", "epic", "legendary"],
+		"unlock_condition":   "none",
+		"xeno_only":          true,
+	},
+	"xeno_psi_carapace": {
+		"affix_name":         "灵能甲壳",
+		"description":        "【星冥专属】平台最大生命值提升",
+		"affix_type":         "base_property",
+		"effect_key":         "max_hp",
+		"base_value":         0.20,    # +20% HP（Lv1），铁甲 12% / 重装甲列 18%
+		"card_type_filter":   0,
+		"weapon_type_filter": -1,
+		"rarity_pool":        ["rare", "epic", "legendary"],
+		"unlock_condition":   "none",
+		"xeno_only":          true,
+	},
+	"xeno_communion": {
+		"affix_name":         "共感协议",
+		"description":        "【星冥专属】每次击杀获得一层护盾（每层抵挡部分伤害）",
+		"affix_type":         "special_mechanic",
+		"effect_key":         "shield_on_kill",
+		"base_value":         0.08,    # 8% 最大HP护盾/击杀（Lv1），歼灭护盾 5% / 堡垒协议 10%
+		"card_type_filter":   0,
+		"weapon_type_filter": -1,
+		"rarity_pool":        ["epic", "legendary"],
+		"unlock_condition":   "none",
+		"xeno_only":          true,
+	},
+	"xeno_nova_burst": {
+		"affix_name":         "星核爆裂",
+		"description":        "【星冥专属】攻击造成大范围溅射伤害",
+		"affix_type":         "combat_feature",
+		"effect_key":         "splash_damage",
+		"base_value":         0.35,    # +35% 溅射（Lv1），爆裂弹头 20% / 轨道支援 30%
+		"card_type_filter":   1,
+		"weapon_type_filter": -1,
+		"rarity_pool":        ["epic", "legendary"],
+		"unlock_condition":   "none",
+		"xeno_only":          true,
+	},
+	"xeno_apex_field": {
+		"affix_name":         "威压星场",
+		"description":        "【星冥专属】暴击伤害倍率提升（基础暴击1.5倍）",
+		"affix_type":         "combat_feature",
+		"effect_key":         "crit_damage_bonus",
+		"base_value":         0.35,    # +0.35x 暴伤（Lv1），致命一击 0.2 / 斩首猎杀 0.3
+		"card_type_filter":   1,
+		"weapon_type_filter": -1,
+		"rarity_pool":        ["epic", "legendary"],
+		"unlock_condition":   "none",
+		"xeno_only":          true,
+	},
+
+	# ─── v27.3 兵种专属词条扩充（每兵种 +2 常规 rare+ / +1 冠军 epic+ min_tier 3） ─────
+	## 设计原则：词条语义贴合兵种身份（轻装=速射/精准、装甲=破甲/拦截/推进、
+	## 支援=弹幕/工事/射程、空中=掠袭/机动/双发、堡垒=火网/自持/超射）；
+	## 全部复用已接线 effect_key（零死词条）；同兵种内不重复 effect_key。
+
+	# 轻装步兵（0）——快、灵、先手精准
+	"light_blitz": {
+		"affix_name":         "闪电速射",
+		"description":        "【轻装专属】武器攻击间隔缩短（加快攻速）",
+		"affix_type":         "base_property",
+		"effect_key":         "attack_interval",
+		"base_value":         0.10,    # 攻击间隔 -10%（Lv1）
+		"card_type_filter":   1,
+		"weapon_type_filter": -1,
+		"rarity_pool":        ["rare", "epic", "legendary"],
+		"unlock_condition":   "none",
+		"combat_kinds":       [0],
+		"min_tier":           0,
+	},
+	"light_salvage": {
+		"affix_name":         "战场搜救",
+		"description":        "【轻装专属】击杀敌方单位后，回复自身最大生命值",
+		"affix_type":         "combat_feature",
+		"effect_key":         "kill_repair",
+		"base_value":         0.04,    # 4% 自身最大HP/击杀（Lv1）
+		"card_type_filter":   0,
+		"weapon_type_filter": -1,
+		"rarity_pool":        ["rare", "epic", "legendary"],
+		"unlock_condition":   "none",
+		"combat_kinds":       [0],
+		"min_tier":           0,
+	},
+	"light_deadeye": {
+		"affix_name":         "神射手训练",
+		"description":        "【轻装·冠军级独有】打出暴击后，下一次攻击必定命中（无视闪避）",
+		"affix_type":         "special_mechanic",
+		"effect_key":         "crit_ensure_hit",
+		"base_value":         1.0,     # 机制开关型：1.0=启用
+		"card_type_filter":   1,
+		"weapon_type_filter": -1,
+		"rarity_pool":        ["epic", "legendary"],
+		"unlock_condition":   "none",
+		"combat_kinds":       [0],
+		"min_tier":           3,
+	},
+
+	# 装甲（1）——硬、破甲、推进
+	"armor_ap_shell": {
+		"affix_name":         "破甲弹",
+		"description":        "【装甲专属】攻击忽视目标伤害减免",
+		"affix_type":         "combat_feature",
+		"effect_key":         "armor_penetration",
+		"base_value":         0.15,    # +15% 破甲（Lv1）
+		"card_type_filter":   1,
+		"weapon_type_filter": -1,
+		"rarity_pool":        ["rare", "epic", "legendary"],
+		"unlock_condition":   "none",
+		"combat_kinds":       [1],
+		"min_tier":           0,
+	},
+	"armor_intercept": {
+		"affix_name":         "主动拦截",
+		"description":        "【装甲专属】受到攻击时，有概率完全格挡该次伤害",
+		"affix_type":         "special_mechanic",
+		"effect_key":         "intercept_chance",
+		"base_value":         0.08,    # 8% 格挡（Lv1）
+		"card_type_filter":   0,
+		"weapon_type_filter": -1,
+		"rarity_pool":        ["rare", "epic", "legendary"],
+		"unlock_condition":   "none",
+		"combat_kinds":       [1],
+		"min_tier":           0,
+	},
+	"armor_spearhead": {
+		"affix_name":         "钢铁洪流",
+		"description":        "【装甲·冠军级独有】生命值全满时，造成的伤害提升",
+		"affix_type":         "special_mechanic",
+		"effect_key":         "full_hp_damage_bonus",
+		"base_value":         0.15,    # 满血 +15% 伤害（Lv1）
+		"card_type_filter":   1,
+		"weapon_type_filter": -1,
+		"rarity_pool":        ["epic", "legendary"],
+		"unlock_condition":   "none",
+		"combat_kinds":       [1],
+		"min_tier":           3,
+	},
+
+	# 支援（2）——弹幕、工事、超远射程
+	"support_ballistics": {
+		"affix_name":         "弹道计算机",
+		"description":        "【支援专属】攻击附加暴击几率（暴击造成1.5倍伤害）",
+		"affix_type":         "combat_feature",
+		"effect_key":         "crit_chance",
+		"base_value":         0.08,    # +8% 暴击率（Lv1）
+		"card_type_filter":   1,
+		"weapon_type_filter": -1,
+		"rarity_pool":        ["rare", "epic", "legendary"],
+		"unlock_condition":   "none",
+		"combat_kinds":       [2],
+		"min_tier":           0,
+	},
+	"support_fortify": {
+		"affix_name":         "野战工事",
+		"description":        "【支援专属】平台受到伤害减少",
+		"affix_type":         "base_property",
+		"effect_key":         "damage_reduction",
+		"base_value":         0.06,    # -6% 受伤（Lv1）
+		"card_type_filter":   0,
+		"weapon_type_filter": -1,
+		"rarity_pool":        ["rare", "epic", "legendary"],
+		"unlock_condition":   "none",
+		"combat_kinds":       [2],
+		"min_tier":           0,
+	},
+	"support_strategic_range": {
+		"affix_name":         "战略射程",
+		"description":        "【支援·冠军级独有】武器攻击射程大幅提升",
+		"affix_type":         "base_property",
+		"effect_key":         "attack_range",
+		"base_value":         0.30,    # +30% 射程（Lv1），超视距打击 0.18
+		"card_type_filter":   1,
+		"weapon_type_filter": -1,
+		"rarity_pool":        ["epic", "legendary"],
+		"unlock_condition":   "none",
+		"combat_kinds":       [2],
+		"min_tier":           3,
+	},
+
+	# 空中（3）——掠袭、机动、双发
+	"air_strafe": {
+		"affix_name":         "掠袭扫射",
+		"description":        "【空中专属】武器攻击间隔缩短（加快攻速）",
+		"affix_type":         "base_property",
+		"effect_key":         "attack_interval",
+		"base_value":         0.09,    # 攻击间隔 -9%（Lv1）
+		"card_type_filter":   1,
+		"weapon_type_filter": -1,
+		"rarity_pool":        ["rare", "epic", "legendary"],
+		"unlock_condition":   "none",
+		"combat_kinds":       [3],
+		"min_tier":           0,
+	},
+	"air_ecm_detach": {
+		"affix_name":         "电子对抗",
+		"description":        "【空中专属】平台获得闪避几率（完全回避一次攻击）",
+		"affix_type":         "combat_feature",
+		"effect_key":         "dodge_chance",
+		"base_value":         0.08,    # +8% 闪避（Lv1）
+		"card_type_filter":   0,
+		"weapon_type_filter": -1,
+		"rarity_pool":        ["rare", "epic", "legendary"],
+		"unlock_condition":   "none",
+		"combat_kinds":       [3],
+		"min_tier":           0,
+	},
+	"air_double_rack": {
+		"affix_name":         "双联挂架",
+		"description":        "【空中·冠军级独有】攻击有概率造成双倍伤害",
+		"affix_type":         "special_mechanic",
+		"effect_key":         "double_strike_chance",
+		"base_value":         0.10,    # 10% 双倍伤害（Lv1）
+		"card_type_filter":   1,
+		"weapon_type_filter": -1,
+		"rarity_pool":        ["epic", "legendary"],
+		"unlock_condition":   "none",
+		"combat_kinds":       [3],
+		"min_tier":           3,
+	},
+
+	# 堡垒（4）——火网、自持、超越射击
+	"fort_flaknet": {
+		"affix_name":         "防空火网",
+		"description":        "【堡垒专属】受到攻击时，有概率完全格挡该次伤害",
+		"affix_type":         "special_mechanic",
+		"effect_key":         "intercept_chance",
+		"base_value":         0.06,    # 6% 格挡（Lv1）
+		"card_type_filter":   0,
+		"weapon_type_filter": -1,
+		"rarity_pool":        ["rare", "epic", "legendary"],
+		"unlock_condition":   "none",
+		"combat_kinds":       [4],
+		"min_tier":           0,
+	},
+	"fort_selfrepair": {
+		"affix_name":         "自修工事",
+		"description":        "【堡垒专属】战斗中缓慢回复生命值",
+		"affix_type":         "special_mechanic",
+		"effect_key":         "hp_regen",
+		"base_value":         0.005,   # 每秒回复 0.5% 最大HP（Lv1）
+		"card_type_filter":   0,
+		"weapon_type_filter": -1,
+		"rarity_pool":        ["rare", "epic", "legendary"],
+		"unlock_condition":   "none",
+		"combat_kinds":       [4],
+		"min_tier":           0,
+	},
+	"fort_overwatch": {
+		"affix_name":         "超越射击",
+		"description":        "【堡垒·冠军级独有】武器攻击射程大幅提升",
+		"affix_type":         "base_property",
+		"effect_key":         "attack_range",
+		"base_value":         0.22,    # +22% 射程（Lv1）
+		"card_type_filter":   1,
+		"weapon_type_filter": -1,
+		"rarity_pool":        ["epic", "legendary"],
+		"unlock_condition":   "none",
+		"combat_kinds":       [4],
+		"min_tier":           3,
+	},
+
+	# ─── v27.4 兵种专属词条再扩充（每兵种 +3 常规 rare+ / +1 冠军 epic+ min_tier 3） ─────
+	## 每兵种累计 10 条专属（7 常规 + 3 冠军）；原则同 v27.3：语义贴兵种身份、
+	## 全部已接线 effect_key、同兵种内不重复 effect_key。
+
+	# 轻装步兵——渗透/掩体/反装甲/人海
+	"light_penetration": {
+		"affix_name":         "渗透突袭",
+		"description":        "【轻装专属】武器攻击伤害提升",
+		"affix_type":         "base_property",
+		"effect_key":         "attack_damage",
+		"base_value":         0.12,
+		"card_type_filter":   1,
+		"weapon_type_filter": -1,
+		"rarity_pool":        ["rare", "epic", "legendary"],
+		"unlock_condition":   "none",
+		"combat_kinds":       [0],
+		"min_tier":           0,
+	},
+	"light_dig_in": {
+		"affix_name":         "临时掩体",
+		"description":        "【轻装专属】平台受到伤害减少",
+		"affix_type":         "base_property",
+		"effect_key":         "damage_reduction",
+		"base_value":         0.05,
+		"card_type_filter":   0,
+		"weapon_type_filter": -1,
+		"rarity_pool":        ["rare", "epic", "legendary"],
+		"unlock_condition":   "none",
+		"combat_kinds":       [0],
+		"min_tier":           0,
+	},
+	"light_tandem": {
+		"affix_name":         "猎杀小组",
+		"description":        "【轻装专属】攻击忽视目标伤害减免",
+		"affix_type":         "combat_feature",
+		"effect_key":         "armor_penetration",
+		"base_value":         0.12,    # 步兵反装甲（火箭筒组）
+		"card_type_filter":   1,
+		"weapon_type_filter": -1,
+		"rarity_pool":        ["rare", "epic", "legendary"],
+		"unlock_condition":   "none",
+		"combat_kinds":       [0],
+		"min_tier":           0,
+	},
+	"light_swarm": {
+		"affix_name":         "蜂群战术",
+		"description":        "【轻装·冠军级独有】攻击有概率造成双倍伤害",
+		"affix_type":         "special_mechanic",
+		"effect_key":         "double_strike_chance",
+		"base_value":         0.10,    # 10% 双倍伤害（Lv1）
+		"card_type_filter":   1,
+		"weapon_type_filter": -1,
+		"rarity_pool":        ["epic", "legendary"],
+		"unlock_condition":   "none",
+		"combat_kinds":       [0],
+		"min_tier":           3,
+	},
+
+	# 装甲——装弹/附加装甲/机动/榴弹
+	"armor_autoloader": {
+		"affix_name":         "自动装弹机",
+		"description":        "【装甲专属】武器攻击间隔缩短（加快攻速）",
+		"affix_type":         "base_property",
+		"effect_key":         "attack_interval",
+		"base_value":         0.08,
+		"card_type_filter":   1,
+		"weapon_type_filter": -1,
+		"rarity_pool":        ["rare", "epic", "legendary"],
+		"unlock_condition":   "none",
+		"combat_kinds":       [1],
+		"min_tier":           0,
+	},
+	"armor_def_skirt": {
+		"affix_name":         "附加裙板",
+		"description":        "【装甲专属】平台防御值提升（直接增加护甲）",
+		"affix_type":         "base_property",
+		"effect_key":         "defense",
+		"base_value":         3.0,     # +3 DEF（Lv1）
+		"card_type_filter":   0,
+		"weapon_type_filter": -1,
+		"rarity_pool":        ["rare", "epic", "legendary"],
+		"unlock_condition":   "none",
+		"combat_kinds":       [1],
+		"min_tier":           0,
+	},
+	"armor_offroad": {
+		"affix_name":         "越野底盘",
+		"description":        "【装甲专属】平台移动速度提升",
+		"affix_type":         "base_property",
+		"effect_key":         "move_speed",
+		"base_value":         0.12,
+		"card_type_filter":   0,
+		"weapon_type_filter": -1,
+		"rarity_pool":        ["rare", "epic", "legendary"],
+		"unlock_condition":   "none",
+		"combat_kinds":       [1],
+		"min_tier":           0,
+	},
+	"armor_thunder": {
+		"affix_name":         "榴弹轰击",
+		"description":        "【装甲·冠军级独有】攻击造成大范围溅射伤害",
+		"affix_type":         "combat_feature",
+		"effect_key":         "splash_damage",
+		"base_value":         0.25,    # +25% 溅射（Lv1）
+		"card_type_filter":   1,
+		"weapon_type_filter": -1,
+		"rarity_pool":        ["epic", "legendary"],
+		"unlock_condition":   "none",
+		"combat_kinds":       [1],
+		"min_tier":           3,
+	},
+
+	# 支援——压制/工程/护航/弹链
+	"support_heavy_charge": {
+		"affix_name":         "增压装药",
+		"description":        "【支援专属】武器攻击伤害提升",
+		"affix_type":         "base_property",
+		"effect_key":         "attack_damage",
+		"base_value":         0.12,
+		"card_type_filter":   1,
+		"weapon_type_filter": -1,
+		"rarity_pool":        ["rare", "epic", "legendary"],
+		"unlock_condition":   "none",
+		"combat_kinds":       [2],
+		"min_tier":           0,
+	},
+	"support_pioneers": {
+		"affix_name":         "工兵班组",
+		"description":        "【支援专属】平台防御值提升（直接增加护甲）",
+		"affix_type":         "base_property",
+		"effect_key":         "defense",
+		"base_value":         3.0,     # +3 DEF（Lv1）
+		"card_type_filter":   0,
+		"weapon_type_filter": -1,
+		"rarity_pool":        ["rare", "epic", "legendary"],
+		"unlock_condition":   "none",
+		"combat_kinds":       [2],
+		"min_tier":           0,
+	},
+	"support_escort": {
+		"affix_name":         "护航车队",
+		"description":        "【支援专属】平台最大生命值提升",
+		"affix_type":         "base_property",
+		"effect_key":         "max_hp",
+		"base_value":         0.10,    # +10% HP（Lv1）
+		"card_type_filter":   0,
+		"weapon_type_filter": -1,
+		"rarity_pool":        ["rare", "epic", "legendary"],
+		"unlock_condition":   "none",
+		"combat_kinds":       [2],
+		"min_tier":           0,
+	},
+	"support_seismic": {
+		"affix_name":         "地震战术",
+		"description":        "【支援·冠军级独有】攻击有几率对附近敌人触发连锁伤害",
+		"affix_type":         "special_mechanic",
+		"effect_key":         "chain_chance",
+		"base_value":         0.20,    # +20% 连锁（Lv1），交叉火力网 0.15
+		"card_type_filter":   1,
+		"weapon_type_filter": -1,
+		"rarity_pool":        ["epic", "legendary"],
+		"unlock_condition":   "none",
+		"combat_kinds":       [2],
+		"min_tier":           3,
+	},
+
+	# 空中——对地挂载/火箭巢/高空/王牌
+	"air_hardpoint": {
+		"affix_name":         "重型挂载",
+		"description":        "【空中专属】攻击造成范围溅射伤害",
+		"affix_type":         "combat_feature",
+		"effect_key":         "splash_damage",
+		"base_value":         0.18,    # +18% 溅射（Lv1）
+		"card_type_filter":   1,
+		"weapon_type_filter": -1,
+		"rarity_pool":        ["rare", "epic", "legendary"],
+		"unlock_condition":   "none",
+		"combat_kinds":       [3],
+		"min_tier":           0,
+	},
+	"air_rockets": {
+		"affix_name":         "火箭巢",
+		"description":        "【空中专属】攻击忽视目标伤害减免",
+		"affix_type":         "combat_feature",
+		"effect_key":         "armor_penetration",
+		"base_value":         0.12,
+		"card_type_filter":   1,
+		"weapon_type_filter": -1,
+		"rarity_pool":        ["rare", "epic", "legendary"],
+		"unlock_condition":   "none",
+		"combat_kinds":       [3],
+		"min_tier":           0,
+	},
+	"air_strato": {
+		"affix_name":         "高空巡航",
+		"description":        "【空中专属】武器攻击射程提升",
+		"affix_type":         "base_property",
+		"effect_key":         "attack_range",
+		"base_value":         0.10,    # +10% 射程（Lv1）
+		"card_type_filter":   1,
+		"weapon_type_filter": -1,
+		"rarity_pool":        ["rare", "epic", "legendary"],
+		"unlock_condition":   "none",
+		"combat_kinds":       [3],
+		"min_tier":           0,
+	},
+	"air_ace_pride": {
+		"affix_name":         "王牌气场",
+		"description":        "【空中·冠军级独有】每次击杀获得一层护盾（每层抵挡部分伤害）",
+		"affix_type":         "special_mechanic",
+		"effect_key":         "shield_on_kill",
+		"base_value":         0.08,    # 8% 最大HP护盾/击杀（Lv1）
+		"card_type_filter":   0,
+		"weapon_type_filter": -1,
+		"rarity_pool":        ["epic", "legendary"],
+		"unlock_condition":   "none",
+		"combat_kinds":       [3],
+		"min_tier":           3,
+	},
+
+	# 堡垒——加固/伺服/闸门/湮灭
+	"fort_thick_walls": {
+		"affix_name":         "加固城墙",
+		"description":        "【堡垒专属】平台最大生命值提升",
+		"affix_type":         "base_property",
+		"effect_key":         "max_hp",
+		"base_value":         0.15,    # +15% HP（Lv1）
+		"card_type_filter":   0,
+		"weapon_type_filter": -1,
+		"rarity_pool":        ["rare", "epic", "legendary"],
+		"unlock_condition":   "none",
+		"combat_kinds":       [4],
+		"min_tier":           0,
+	},
+	"fort_servo_mount": {
+		"affix_name":         "伺服炮座",
+		"description":        "【堡垒专属】武器攻击间隔缩短（加快攻速）",
+		"affix_type":         "base_property",
+		"effect_key":         "attack_interval",
+		"base_value":         0.08,
+		"card_type_filter":   1,
+		"weapon_type_filter": -1,
+		"rarity_pool":        ["rare", "epic", "legendary"],
+		"unlock_condition":   "none",
+		"combat_kinds":       [4],
+		"min_tier":           0,
+	},
+	"fort_blast_door": {
+		"affix_name":         "装甲闸门",
+		"description":        "【堡垒专属】平台受到伤害减少",
+		"affix_type":         "base_property",
+		"effect_key":         "damage_reduction",
+		"base_value":         0.06,    # -6% 受伤（Lv1）
+		"card_type_filter":   0,
+		"weapon_type_filter": -1,
+		"rarity_pool":        ["rare", "epic", "legendary"],
+		"unlock_condition":   "none",
+		"combat_kinds":       [4],
+		"min_tier":           0,
+	},
+	"fort_annihilator": {
+		"affix_name":         "湮灭炮击",
+		"description":        "【堡垒·冠军级独有】暴击伤害倍率提升（基础暴击1.5倍）",
+		"affix_type":         "combat_feature",
+		"effect_key":         "crit_damage_bonus",
+		"base_value":         0.32,    # +0.32x 暴伤（Lv1）
+		"card_type_filter":   1,
+		"weapon_type_filter": -1,
+		"rarity_pool":        ["epic", "legendary"],
+		"unlock_condition":   "none",
+		"combat_kinds":       [4],
+		"min_tier":           3,
 	},
 }
 
@@ -601,9 +1170,12 @@ static func get_ids_for_card_type(card_type: int) -> Array:
 ## v19: 词条是否对该兵种/档位可用
 ## combat_kinds 空/缺省 = 通用词条（任何兵种可用）；非空 = 仅列表内兵种可用
 ## min_tier > tier 时不可用（特殊兵种独特词条门槛）
-static func is_affix_available_for(affix_id: String, combat_kind: int, tier: int = 0) -> bool:
+## v27.2: xeno_only 词条仅异族卡（p_is_xeno=true）可用——普通卡 roll 池恒排除
+static func is_affix_available_for(affix_id: String, combat_kind: int, tier: int = 0, p_is_xeno: bool = false) -> bool:
 	var def: Dictionary = get_definition(affix_id)
 	if def.is_empty():
+		return false
+	if bool(def.get("xeno_only", false)) and not p_is_xeno:
 		return false
 	var kinds: Array = def.get("combat_kinds", []) as Array
 	if not kinds.is_empty() and not kinds.has(combat_kind):
@@ -637,15 +1209,23 @@ static func get_mutation_description(affix_id: String) -> String:
 
 ## 按稀有度权重随机抽取一个词条ID（card_type: 0=平台, 1=武器）
 ## v19: 新增 combat_kind/tier 可选参数——传入时按兵种/档位过滤（空结果回退全池）
-static func roll_random_affix_id(card_type: int, rarity_override: String = "", combat_kind: int = -1, tier: int = 0) -> String:
+## v27.2: 新增 p_is_xeno——星冥专属词条（xeno_only）仅异族卡可出；
+## 基础池先剔除（kind 过滤只在 combat_kind>=0 时生效，<0 的回退路径也必须排除）
+static func roll_random_affix_id(card_type: int, rarity_override: String = "", combat_kind: int = -1, tier: int = 0, p_is_xeno: bool = false) -> String:
 	var pool: Array = get_ids_for_card_type(card_type)
+	if not p_is_xeno:
+		var no_xeno: Array = []
+		for id in pool:
+			if not bool((AFFIX_TABLE[id] as Dictionary).get("xeno_only", false)):
+				no_xeno.append(id)
+		pool = no_xeno
 	if pool.is_empty():
 		return ""
-	# v19: 兵种维度过滤
+	# v19: 兵种维度过滤；v27.2: 穿 p_is_xeno（否则 xeno_only 词条在此被默认拒绝）
 	if combat_kind >= 0:
 		var filtered: Array = []
 		for id in pool:
-			if is_affix_available_for(String(id), combat_kind, tier):
+			if is_affix_available_for(String(id), combat_kind, tier, p_is_xeno):
 				filtered.append(id)
 		if not filtered.is_empty():
 			pool = filtered
@@ -786,8 +1366,15 @@ static func get_unlocked_affix_ids(card_type: int, unlocked_bosses: Array) -> Ar
 ## 在已解锁词条中随机抽取一个
 ## v19: 新增 combat_kind/tier 参数——两段式 roll：先以 KIND_POOL_CHANCE 概率走本兵种
 ## 专属池（combat_kinds 匹配 + tier 达标），未命中/空池走通用池（combat_kinds 为空的词条）
-static func roll_unlocked_affix_id(card_type: int, rarity: String, unlocked_bosses: Array, combat_kind: int = -1, tier: int = 0) -> String:
+static func roll_unlocked_affix_id(card_type: int, rarity: String, unlocked_bosses: Array, combat_kind: int = -1, tier: int = 0, p_is_xeno: bool = false) -> String:
 	var pool: Array = get_unlocked_affix_ids(card_type, unlocked_bosses)
+	# v27.2: 星冥专属词条仅异族卡可出（同 roll_random_affix_id 的基础池剔除）
+	if not p_is_xeno:
+		var no_xeno: Array = []
+		for id in pool:
+			if not bool((AFFIX_TABLE[id] as Dictionary).get("xeno_only", false)):
+				no_xeno.append(id)
+		pool = no_xeno
 	if pool.is_empty():
 		return ""
 	# v19: 兵种两段式分流

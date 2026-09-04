@@ -731,6 +731,12 @@ func _on_mechanism_jamming_field_activated(center: Vector2, radius: float) -> vo
 		return
 	VfxImpactFactory.spawn_shockwave(parent, center, radius, Color(0.6, 0.3, 0.9, 0.6))
 
+## v26.x: 真实战斗存活查询（同 phase_instrument_abilities._battle_active_now 范式）——
+## 延迟 tween 回调守卫：发射时在战斗中 && 回调时战斗已结束 → 拦截，防结算画面炸核爆。
+func _is_battle_live() -> bool:
+	var bm: Node = get_node_or_null("/root/BattleManager")
+	return bm != null and bool(bm.get("battle_active"))
+
 ## 战术核武（导弹发射井）：弹道飞行 → 落点预警 → 多层核爆（闪光/火球/双冲击波/蘑菇云/焦痕）→ 延迟伤害结算
 ## v8.5+: 从原「瞬时闪白+冲击波」升级为完整演出。
 ##   owner_str: "player"/"enemy" 用于敌我配色（当前仅玩家）
@@ -739,6 +745,8 @@ func _on_mechanism_jamming_field_activated(center: Vector2, radius: float) -> vo
 ## 避免「敌人 0.35s 前就死、导弹还在飞」的视觉伤害脱节。
 func _on_mechanism_nuclear_launched(from_pos: Vector2, target_pos: Vector2, owner_str: String, victims: Array) -> void:
 	var parent: Node2D = _get_vfx_parent()
+	# v26.x: 快照战斗状态——0.5s 落地窗口内战斗结束则整套落地演出作废
+	var was_live: bool = _is_battle_live()
 	# 写实橙白核爆配色（白热闪光→橙红火球→黑灰蘑菇云→焦黑地面）
 	# 与核子轰炸（科幻绿紫能量调）彻底拉开：玩家一眼识别橙红+蘑菇云=导弹井
 	var fireball_tint: Color = Color(1.0, 0.6, 0.2, 0.95)  # 橙红火球（写实核爆火光）
@@ -762,6 +770,9 @@ func _on_mechanism_nuclear_launched(from_pos: Vector2, target_pos: Vector2, owne
 		var warn_tween := create_tween()
 		warn_tween.tween_interval(0.15)  # 弹道飞行 0.15s 后出现预警
 		warn_tween.tween_callback(func():
+			# v26.x: 战斗结束守卫——预警环不打在结算画面上
+			if was_live and not _is_battle_live():
+				return
 			if is_instance_valid(parent):
 				# 收缩预警环（橙红→警示）
 				VfxImpactFactory.spawn_shockwave(parent, target_pos, 220.0, Color(1.0, 0.2, 0.1, 0.45)))
@@ -770,6 +781,10 @@ func _on_mechanism_nuclear_launched(from_pos: Vector2, target_pos: Vector2, owne
 	var detonate_tween := create_tween()
 	detonate_tween.tween_interval(0.5)
 	detonate_tween.tween_callback(func():
+		# v26.x: 战斗结束守卫（v20.15 漏网）——0.5s 飞行窗口内战斗结束（如最后一波被
+		# 其它火力清掉）时，补刀结算与全屏核爆演出作废，不再打在胜负画面上
+		if was_live and not _is_battle_live():
+			return
 		# 伤害结算（延迟回调内逐个 take_damage，victims 在发射时已锁定）
 		_settle_nuclear_victims(victims, target_pos)
 		# ①全屏闪白（overlay 0→0.95→0，0.15s）
@@ -882,26 +897,33 @@ func _spawn_nuclear_missile(parent: Node2D, from_pos: Vector2, target_pos: Vecto
 	# 贝塞尔短弧：起点 → 弧顶（中点上方抬升）→ 目标
 	var apex := Vector2((from_pos.x + target_pos.x) / 2.0, min(from_pos.y, target_pos.y) - 160.0)
 	var prev_pt := from_pos
+	# v26.11(D2): weakref 捕获——本 tween 绑在 BattleSpectacle（autoload，跨场存活），
+	# 而 missile 是战场 VFX 节点：战斗结束清扫（battle_vfx 组 queue_free）若落在 0.5s
+	# 飞行窗口内，直接捕获 Node 会让引擎报 "Lambda capture was freed"。weakref 后
+	# 捕获本体恒有效（is_instance_valid 守卫保留）。
+	var weak_missile: WeakRef = weakref(missile)
 	var trail_tw := create_tween()
 	# tween_method 沿二次贝塞尔曲线移动 + 朝向飞行方向旋转（0.5s 飞行，足够看清导弹）
 	trail_tw.tween_method(func(progress: float):
-		if not is_instance_valid(missile):
+		var m = weak_missile.get_ref()
+		if not is_instance_valid(m):
 			return
 		var t: float = progress
 		var q0 := from_pos.lerp(apex, t)
 		var q1 := apex.lerp(target_pos, t)
 		var pt := q0.lerp(q1, t)
-		missile.global_position = pt
+		m.global_position = pt
 		# 朝向飞行方向
 		var dir := pt - prev_pt
 		if dir.length() > 0.5:
-			missile.rotation = dir.angle()
+			m.rotation = dir.angle()
 		prev_pt = pt
 	, 0.0, 1.0, 0.5)
 	# 落地时移除导弹（爆炸特效接管）
 	trail_tw.tween_callback(func():
-		if is_instance_valid(missile):
-			missile.queue_free())
+		var m = weak_missile.get_ref()
+		if is_instance_valid(m):
+			m.queue_free())
 
 ## 加载核爆专用纹理（带资源守卫，缺失返回 null 由调用方回退）
 ## name_id: "nuke_fireball" / "nuke_missile" / "nuke_mushroom" 等

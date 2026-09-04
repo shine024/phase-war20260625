@@ -117,12 +117,21 @@ func _make_layer(wt: int) -> MultiMeshInstance2D:
 	var mm := MultiMesh.new()
 	mm.transform_format = MultiMesh.TRANSFORM_2D
 	mm.use_colors = true
-	mm.mesh = WeaponProjectileVfx.build_bullet_arraymesh(wt)
+	# v26.15e: 坦克炮层贴图化——写实弹壳（QuadMesh+层贴图，正常混合保金属感；
+	# 程序化多边形 + ADD 在实战里读成"发光飞镖"）。
+	if wt == WeaponProjectileVfx.FLAVOR_LAYER_TANK_GUN:
+		var quad := QuadMesh.new()
+		quad.size = WeaponProjectileVfx.TANK_SHELL_TEX.get_size() * WeaponProjectileVfx.TANK_SHELL_DISPLAY_SCALE
+		mm.mesh = quad
+		mmi.texture = WeaponProjectileVfx.TANK_SHELL_TEX
+	else:
+		mm.mesh = WeaponProjectileVfx.build_bullet_arraymesh(wt)
 	mmi.multimesh = mm
-	# v6.4: 发光叠加，让弹头产生霓虹发光
-	var mat := CanvasItemMaterial.new()
-	mat.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
-	mmi.material = mat
+	# v6.4: 发光叠加，让弹头产生霓虹发光（坦克炮贴图层除外——正常混合保壳体）
+	if wt != WeaponProjectileVfx.FLAVOR_LAYER_TANK_GUN:
+		var mat := CanvasItemMaterial.new()
+		mat.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
+		mmi.material = mat
 	return mmi
 
 func fire(from: Vector2, tgt: Node2D, dmg: float, wt: int, shooter: Node2D, shooter_stats: Variant, forced_miss: bool = false, weapon_name: String = "", p_vfx_variant: String = "") -> void:
@@ -209,6 +218,10 @@ func _physics_process(delta: float) -> void:
 		var raw_tgt: Variant = r["tgt"]
 		var tgt: Node2D = raw_tgt if raw_tgt != null and is_instance_valid(raw_tgt) else null
 		if tgt == null:
+			# v26.x: 目标中途死亡不再静默回收——当前位置补一发轻动能命中火花
+			# （弹已飞出的可见反馈；无伤害语义，目标已死）。命中特效 40ms 限流在 _apply_hit，
+			# 此处低频事件不做节流。
+			WeaponProjectileVfx.spawn_impact_with_kind(self, r["pos"], 0, true, -1, {}, "")
 			_release_proj_dict(r)  # v9.2: 归还池（目标失效，弹道废弃）
 			continue
 		var pos: Vector2 = r["pos"]
@@ -222,7 +235,9 @@ func _physics_process(delta: float) -> void:
 		r["traveled"] = float(r["traveled"]) + spd * delta
 		if pos.distance_squared_to(aim) <= _HIT_R2:
 			_apply_hit(r)
-			_release_proj_dict(r)  # v9.2: 归还池（命中结算完）
+			# v26.x: 同曲射 batch——伤害链同步触发 clear_all 时防双重归还
+			if _proj.has(r):
+				_release_proj_dict(r)
 			continue
 		if float(r["traveled"]) > float(r["max_dist"]):
 			_release_proj_dict(r)  # v9.2: 归还池（超射程丢失）

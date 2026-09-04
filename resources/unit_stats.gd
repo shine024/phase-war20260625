@@ -353,6 +353,15 @@ var intercept_chance: float = 0.0
 ## 拦截次数（-1=无限，3=拦截3次后失效）
 var intercept_charges: int = -1
 
+# ── v27.1 传奇机制词条（special_mechanic，改玩法不加数值）──
+## 暴击势能（≥1.0 启用）：打出暴击后，下一次攻击必定命中（无视闪避）。
+## 开关型字段：词条侧取 maxf，不做加法叠加。
+var crit_ensure_hit: float = 0.0
+## 满员突击：生命值全满时造成的伤害提升比例（0.15 = +15%）
+var full_hp_damage_bonus: float = 0.0
+## 双重齐射：每次攻击有该概率造成双倍伤害（0.08 = 8%）
+var double_strike_chance: float = 0.0
+
 # ── 亡语治疗（死亡时治疗周围友军）──
 ## 死亡时治疗周围友军的比例（基于自身max_hp，0.20 = 治疗20%）
 var death_heal_allies_pct: float = 0.0

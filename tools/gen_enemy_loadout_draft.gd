@@ -47,10 +47,23 @@ const TEMPLATES := {
 		"enh": ["enh_splash", "enh_dmg_up"]},
 }
 
+## 逐卡覆写（v27.7 新增）——审计超差卡经此强制模板/档位条数，重生成不丢。
+## 依据 tools/enemy_tier_strength_audit.gd 实测（±15% 容差）：
+## - fut_arm_mech_e：BREAK 在 1260 攻甲底上叠 apfsds/相位共振/炮射导弹 → 档1/2 +28%/+17%，改 TANK 降温；
+## - mod_air_technical_e：MOBILE 九条全移速/闪避/护盾，攻血贡献 0.93（档4 -31%），改 SUPPRESS 补输出件。
+## 已知不修（结构性小底子，cuts 已顶格）：ww1_sup_mg_nest / ww2_sup_mg42（HP 109/233，
+## pct/flat 贡献天然上不去，-17~-19% 接受——固定机枪巢不该有精锐坦克级强度）。
+const CARD_OVERRIDES := {
+	"fut_arm_mech_e": {"tpl": "TANK"},
+	"mod_air_technical_e": {"tpl": "SUPPRESS"},
+}
+
 func _initialize() -> void:
 	var entries: Array[String] = []
 	var stats := {"total": 0, "by_tpl": {}, "miss_pool": [], "short_pool": []}
-	for era in range(5):
+	# v27: range(6) 纳入 era=5 星冥带（黑门无限模式 xeno_*）——era 5 的改造池
+	# 兼容判定映射到近未来带（改造系统无星冥专属条目，用最高时代带）。
+	for era in range(6):
 		var ids: Array = EnemyArchetypes.get_ids_for_era(era)
 		for aid in ids:
 			var cfg: Dictionary = EnemyArchetypes.get_config(String(aid))
@@ -91,16 +104,22 @@ func _pick_template(cfg: Dictionary) -> String:
 func _build_entry(aid: String, cfg: Dictionary, era: int, stats: Dictionary) -> String:
 	stats["total"] += 1
 	var tpl_key := _pick_template(cfg)
+	# v27.7 逐卡覆写优先于画像选模板（超差卡降温/补件，见 CARD_OVERRIDES 注释）
+	var ov: Dictionary = CARD_OVERRIDES.get(aid, {}) as Dictionary
+	if not ov.is_empty() and String(ov.get("tpl", "")) != "":
+		tpl_key = String(ov["tpl"])
 	var tpl: Dictionary = TEMPLATES[tpl_key]
 	stats["by_tpl"][tpl_key] = int(stats["by_tpl"].get(tpl_key, 0)) + 1
 	# 池口径：按 combat_kind 取兵种模块粗池（get_for_unit_type，绕开玩家卡前缀表——
 	# 敌方 UCT id 带兵种中缀如 ww1_inf_mp18，与玩家前缀 ww1_mp18 不匹配），
 	# 再逐条过时代带硬门。
 	var pool_ids: Array = Registry.get_for_unit_type(int(cfg.get("combat_kind", 0)))
+	# v27: era=5（星冥）改造池兼容映射到近未来带（4）——改造注册表无 era5 条目
+	var pool_era: int = 4 if era >= 5 else era
 	var pool: Array = []
 	for mid in pool_ids:
 		var md0: Dictionary = Registry.get_data(String(mid))
-		if not Registry.is_mod_era_compatible(md0, era):
+		if not Registry.is_mod_era_compatible(md0, pool_era):
 			continue
 		pool.append(String(mid))
 	# 打分选条（白名单键命中才入选；conflict_group 去重）
@@ -182,6 +201,11 @@ func _build_entry(aid: String, cfg: Dictionary, era: int, stats: Dictionary) -> 
 		3: 8 + (h / 11) % 2,
 		4: 9,
 	}
+	# v27.7 逐卡覆写 cuts（缺省档走哈希；覆写不得超 9/不高于池深由 picked 长度兜底）
+	var ov_cuts: Dictionary = (CARD_OVERRIDES.get(aid, {}) as Dictionary).get("cuts", {}) as Dictionary
+	for t in [1, 2, 3, 4]:
+		if ov_cuts.has(t):
+			cuts[t] = clampi(int(ov_cuts[t]), 1, 9)
 	var dn := String(cfg.get("display_name", aid))
 	var tags: Array = cfg.get("tags", []) as Array
 	var tag_prefix := ""

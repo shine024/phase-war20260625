@@ -21,6 +21,7 @@ const EnemyUnitManifest = preload("res://data/enemy_unit_manifest.gd")
 const EnemyArchetypes = preload("res://data/enemy_archetypes.gd")
 const CardFootAnchors = preload("res://data/card_foot_anchors.gd")
 const AirUnitShadow = preload("res://scripts/battle/air_unit_shadow.gd")
+const UnitOutline = preload("res://scripts/battle/unit_outline.gd")  # v26.9: 单位深色描边
 const GC = preload("res://resources/game_constants.gd")
 
 ## v8.x 性能优化：sync_buff_labels 的签名缓存（按 host instance_id），状态不变则跳过重建。
@@ -110,6 +111,10 @@ static func apply_battle_unit_presentation(
 		var vs: float = CardFootAnchors.get_visual_scale(card)
 		if vs > 0.0 and vs != 1.0:
 			unit_spr.scale *= vs
+	# v26.9: 深色描边（alpha 膨胀 shader）——沙漠亮底上我方灰褐卡图与背景同明度融底的修复。
+	# 必须在 visual scale 定格后挂：edge_texels = 目标屏宽 / scale.x（帧动画 attach 的
+	# scale×2 补偿由 FrameDriver 内 refresh 兜住）。
+	UnitOutline.apply(unit_spr)
 	# 立绘居中（position 默认原点），不悬浮、不按脚线对齐。
 	unit_spr.position = Vector2(unit_spr.position.x, 0.0)
 	# v23.5 空中单位悬空化：立绘抬升到飞行高度——只动 sprite，host 仍钉在槽位地面，
@@ -143,7 +148,7 @@ static func apply_battle_unit_presentation(
 		for m in ["_air_lift", "_air_dy", "_air_vert_tw"]:
 			if unit_spr.has_meta(m):
 				unit_spr.remove_meta(m)
-	_sync_air_shadow(host, unit_spr, air_lift)
+	_sync_unit_shadow(host, unit_spr, air_lift)
 	if card != null:
 		apply_battle_card_chrome(host, unit_spr, card)
 	sync_rank_strip(host, rank_level, unit_spr)
@@ -173,7 +178,11 @@ static func apply_battle_unit_presentation(
 		var st_meta: String = String(unit.get_meta("elite_spawn_type", ""))
 		is_boss_tier = is_boss_tier or st_meta == "elite" or st_meta == "boss"
 	if is_boss_tier and not anim_id.is_empty():
-		BossIdleAnim.attach(unit_spr, anim_id)
+		var boss_frames_hit: bool = BossIdleAnim.attach(unit_spr, anim_id)
+		if not boss_frames_hit and anim_id.trim_prefix("captured_").begins_with("xeno_"):
+			# v27.2: 精英/首领词缀星冥——占位卡是雪碧条资产（无 boss 独立帧），
+			# 走全单位帧动画兜底（idle+attack 都有）；经典词缀怪行为不变（仅威压摇摆）。
+			UnitFrameAnim.attach(unit_spr, anim_id, face_right)
 		_boss_sway_idle(unit_spr)
 	elif not anim_id.is_empty():
 		# v24.2: 敌我双方普通单位帧动画（敌=朝左原图; 我方=同套 sheet 驱动内 flip_h 镜像;
@@ -208,27 +217,32 @@ static func _boss_sway_idle(unit_spr: Sprite2D) -> void:
 
 ## v13/v14: 待机微动效——Phase2 审计实锤"单位完全静止站桩,画面死"。
 ## v23.5: 空中单位地面投影——锚定槽位地面线，随浮动呼吸（advance_idle_motion 联动）。
-## air_lift<=0（非空中）时隐藏/清理。
-static func _sync_air_shadow(host: Node2D, unit_spr: Sprite2D, air_lift: float) -> void:
+## v26.9: 推广为全单位投影——air_lift<=0（地面单位）改挂贴地接触影（更淡更贴脚线），
+## 地面单位此前零投影，在亮底背景上没有"落地"分离感。节点名保留 AirShadow（消费方不变）。
+## 只有空中影写 _air_shadow meta（随浮动呼吸）；贴地影静止。
+static func _sync_unit_shadow(host: Node2D, unit_spr: Sprite2D, air_lift: float) -> void:
 	if host == null or unit_spr == null:
 		return
 	var shadow := host.get_node_or_null("AirShadow") as Node2D
-	if air_lift <= 0.0:
-		if shadow != null:
-			shadow.visible = false
-		if unit_spr.has_meta("_air_shadow"):
-			unit_spr.remove_meta("_air_shadow")
-		return
 	if shadow == null:
 		shadow = AirUnitShadow.new()
 		shadow.name = "AirShadow"
 		shadow.z_index = 3  # 单位 sprite(z10)/名字条(z15) 之下，战场地面之上
 		host.add_child(shadow)
+	if air_lift > 0.0:
+		if shadow.has_method("setup"):
+			shadow.call("setup", air_lift / 0.34, false)  # 反解实体高度（= lift / 系数）
+		shadow.position = Vector2(unit_spr.position.x, 4.0)
+		shadow.visible = true
+		unit_spr.set_meta("_air_shadow", shadow)
+		return
+	# v26.9 贴地接触影：按实体视觉高度标定，比悬空影淡（AirUnitShadow.setup ground 模式）
 	if shadow.has_method("setup"):
-		shadow.call("setup", air_lift / 0.34)  # 反解实体高度（= lift / 系数），供椭圆尺寸标定
-	shadow.position = Vector2(unit_spr.position.x, 4.0)
+		shadow.call("setup", absf(entity_top_y(unit_spr)), true)
+	shadow.position = Vector2(unit_spr.position.x, 3.0)
 	shadow.visible = true
-	unit_spr.set_meta("_air_shadow", shadow)
+	if unit_spr.has_meta("_air_shadow"):
+		unit_spr.remove_meta("_air_shadow")  # 换形态从空中落回地面时清浮动联动
 
 
 ## v14 按兵种差异化:空中(AIR)大幅浮动±3px / 装甲缓浮(2.2s 周期,厚重) /

@@ -13,6 +13,7 @@ signal relit(room_id: String)   # 点亮演出触发（bunker_main 接震屏等�
 const BunkerRoomDefs = preload("res://data/bunker_room_defs.gd")
 const DT = preload("res://resources/design_tokens.gd")
 const LIT_TEX_PATH := "res://assets/bunker/v3/bunker_bg_v3_lit.png"
+const UPG_TEX_PATH := "res://assets/bunker/v3/bunker_bg_v3_upg.png"
 
 ## v3 烘焙已把锁定房"涂黑"（只留胶囊轮廓），遮罩只需极轻一层
 const COL_LOCK_TINT := Color(0.02, 0.02, 0.04, 0.14)
@@ -21,12 +22,16 @@ const COL_HOVER := Color(1.0, 0.95, 0.85, 0.10)
 
 var _room_id := ""
 var _lit_rect: TextureRect
+var _upg_rect: TextureRect          # v26 批次4：时代升级态图层（Lv2/Lv3 换新观感）
+var _upg_border: Panel              # Lv3 金色描边框
 var _relight_tween: Tween
 var _prev_state := -1
+var _prev_level := -1
 var _tint: ColorRect
 var _hover: ColorRect
 var _name_label: Label
 var _tag_label: Label
+var _upgrade_hint: Label     # v26.12：可升级角标（运转中未满级时底部提示）
 var _progress_bg: ColorRect
 var _progress_fill: ColorRect
 var _is_hover := false
@@ -58,6 +63,34 @@ func _build() -> void:
 		add_child(_lit_rect)
 	else:
 		push_warning("[BunkerOverlay] 全亮背景图缺失: %s（点亮演出不可用）" % LIT_TEX_PATH)
+
+	# v26 批次4：时代升级态图层——与 lit 同 region 裁切，Lv2/Lv3 时叠加显示
+	var upg_tex := load(UPG_TEX_PATH) as Texture2D
+	if upg_tex != null and lit_tex != null:
+		var upg_atlas := AtlasTexture.new()
+		upg_atlas.atlas = upg_tex
+		upg_atlas.region = Rect2(position, size)
+		_upg_rect = TextureRect.new()
+		_upg_rect.set_anchors_preset(Control.PRESET_FULL_RECT)
+		_upg_rect.texture = upg_atlas
+		_upg_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		_upg_rect.stretch_mode = TextureRect.STRETCH_SCALE
+		_upg_rect.modulate.a = 0.0
+		_upg_rect.visible = false
+		_upg_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		add_child(_upg_rect)
+		# Lv3 金色描边（draw_center=false 只画框）
+		var border_sb := StyleBoxFlat.new()
+		border_sb.draw_center = false
+		border_sb.set_border_width_all(2)
+		border_sb.border_color = Color(0.98, 0.82, 0.42, 0.85)
+		border_sb.set_corner_radius_all(10)
+		_upg_border = Panel.new()
+		_upg_border.set_anchors_preset(Control.PRESET_FULL_RECT)
+		_upg_border.add_theme_stylebox_override("panel", border_sb)
+		_upg_border.visible = false
+		_upg_border.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		add_child(_upg_border)
 
 	_tint = ColorRect.new()
 	_tint.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -95,6 +128,21 @@ func _build() -> void:
 	_tag_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_tag_label)
 
+	# v26.12：可升级角标——运转中且未满级时亮出（与修复进度条同属底部状态带）
+	_upgrade_hint = Label.new()
+	_upgrade_hint.anchor_left = 0.50
+	_upgrade_hint.anchor_right = 0.95
+	_upgrade_hint.anchor_top = 0.82
+	_upgrade_hint.anchor_bottom = 0.99
+	_upgrade_hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	_upgrade_hint.vertical_alignment = VERTICAL_ALIGNMENT_BOTTOM
+	_upgrade_hint.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
+	_upgrade_hint.add_theme_color_override("font_color", DT.COLOR_AMBER_SOFT)
+	_upgrade_hint.text = "▲ 可升级"
+	_upgrade_hint.visible = false
+	_upgrade_hint.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(_upgrade_hint)
+
 	_progress_bg = ColorRect.new()
 	_progress_bg.anchor_left = 0.05
 	_progress_bg.anchor_right = 0.95
@@ -117,28 +165,12 @@ func _build() -> void:
 	mouse_entered.connect(_set_hover.bind(true))
 	mouse_exited.connect(_set_hover.bind(false))
 
-## 悬停就地解释：按状态给修复条件/进度/功能说明
-func _refresh_tooltip(def: Dictionary, state: int, progress: float, frozen: bool,
+## 悬停就地解释：按状态给"修复条件/进度/功能/升级线"完整情报
+## （文本真身在 BunkerRoomDefs.hover_tooltip_text，与房间面板共用数据源）
+func _refresh_tooltip(_def: Dictionary, state: int, progress: float, frozen: bool,
 		level: int, upgrade_tag: String) -> void:
-	match state:
-		BunkerRoomDefs.STATE_LOCKED:
-			if bool(def.get("is_terminal", false)):
-				tooltip_text = "终局房间：需满足特定条件后开启"
-			else:
-				var cost_text: String = BunkerRoomDefs.cost_text(def.get("cost", {}))
-				tooltip_text = "废弃房间：修复需 %s，修复进度靠完成战斗推进" % cost_text
-		BunkerRoomDefs.STATE_REPAIRING:
-			if frozen:
-				tooltip_text = "修复进度冻结：反应堆修复并上线后继续"
-			else:
-				tooltip_text = "修复中 %d%%：每完成一场战斗推进一格" % int(round(progress * 100.0))
-		_:
-			if not upgrade_tag.is_empty():
-				tooltip_text = "%s：点击打开房间面板查看升级详情" % upgrade_tag
-				return
-			var note := str(def.get("function_note", ""))
-			var base := note if not note.is_empty() else str(def.get("tag", ""))
-			tooltip_text = ("%s · Lv%d" % [base, level]) if level >= 2 else base
+	tooltip_text = BunkerRoomDefs.hover_tooltip_text(
+		_room_id, state, level, frozen, upgrade_tag, progress)
 
 func _set_hover(on: bool) -> void:
 	_is_hover = on
@@ -149,11 +181,18 @@ func refresh(state: int, level: int, progress: float, frozen: bool, upgrade_tag 
 	_name_label.text = str(def.get("name", ""))
 	# v23.6.1：悬停就地解释——修复条件/进度/功能说明按状态给（ui-review 检查单）
 	_refresh_tooltip(def, state, progress, frozen, level, upgrade_tag)
+	# v26.12：可升级角标默认隐藏，仅运转中未满级时在下方分支点亮
+	_upgrade_hint.visible = false
 	var is_transition := _prev_state != -1 and state != _prev_state
+	# v26 批次4：等级提升（1→2→3）也播一次点亮演出——升级可感知
+	var level_up := _prev_level != -1 and level > _prev_level \
+			and state == BunkerRoomDefs.STATE_ACTIVE
 	_prev_state = state
+	_prev_level = level
 	match state:
 		BunkerRoomDefs.STATE_LOCKED:
 			_hide_lit()
+			_hide_upg()
 			_tint.visible = true
 			_tint.color = COL_LOCK_TINT
 			_name_label.add_theme_color_override("font_color", Color(0.55, 0.55, 0.58))
@@ -163,6 +202,7 @@ func refresh(state: int, level: int, progress: float, frozen: bool, upgrade_tag 
 			_progress_fill.visible = false
 		BunkerRoomDefs.STATE_REPAIRING:
 			_hide_lit()
+			_hide_upg()
 			_tint.visible = true
 			_tint.color = COL_FIX_TINT
 			_name_label.add_theme_color_override("font_color", Color(0.92, 0.78, 0.55))
@@ -175,21 +215,28 @@ func refresh(state: int, level: int, progress: float, frozen: bool, upgrade_tag 
 		_:
 			_tint.visible = false
 			_name_label.add_theme_color_override("font_color", DT.COLOR_TEXT_BRIGHT)
-			# v26：升级中的房间角标切橙色升级态；否则功能角标 + 等级（Lv2+ 才标）
+			# v26：升级中的房间角标切橙色升级态；否则功能角标 + 等级（Lv2+ 标级+星）
 			if not upgrade_tag.is_empty():
 				_tag_label.text = upgrade_tag
 				_tag_label.add_theme_color_override("font_color", Color(0.95, 0.66, 0.18))
 			else:
 				var tag := str(def.get("tag", ""))
-				_tag_label.text = ("%s · Lv%d" % [tag, level]) if level >= 2 else tag
+				var stars := ""
+				if level >= 2:
+					stars = " " + "★".repeat(mini(level - 1, 2))
+				_tag_label.text = ("%s · Lv%d%s" % [tag, level, stars]) if level >= 2 else tag
 				_tag_label.add_theme_color_override("font_color", Color(0.0, 0.94, 1.0, 0.9))
+				# v26.12：可升级（资源未扣、进度未开跑）→ 底部琥珀提示引导玩家点进面板
+				_upgrade_hint.visible = level < BunkerRoomDefs.get_max_level(_room_id)
 			_progress_bg.visible = false
 			_progress_fill.visible = false
+			# v26 批次4：时代升级态——Lv2 半透明叠加（焕新感）/ Lv3 全量+金描边（完全体）
+			_show_upg(level)
 			if _lit_rect == null:
 				pass  # 全亮图缺失：退回"揭遮罩露初始烘焙"旧观感
 			elif _relight_tween and _relight_tween.is_valid():
 				pass  # 点亮演出进行中：同状态重复刷新不打断
-			elif is_transition and not DT.is_motion_reduce():
+			elif (is_transition or level_up) and not DT.is_motion_reduce():
 				_play_relight()
 			else:
 				# 首次刷新（读档/初始3亮房）或动效减弱：直接点亮，不闪烁
@@ -214,6 +261,24 @@ func _hide_lit() -> void:
 	if _lit_rect:
 		_lit_rect.visible = false
 		_lit_rect.modulate.a = 0.0
+
+## v26.1：时代升级层——Lv2/Lv3 都全量切换（半透明叠加会与 lit 重影发糊，用户实测否决）；
+## 档位区分靠 Lv3 金描边 + 角标星。其余状态隐藏。
+func _show_upg(level: int) -> void:
+	if _upg_rect == null:
+		return
+	var show := level >= 2
+	_upg_rect.visible = show
+	_upg_rect.modulate.a = 1.0 if show else 0.0
+	if _upg_border != null:
+		_upg_border.visible = show and level >= 3
+
+func _hide_upg() -> void:
+	if _upg_rect:
+		_upg_rect.visible = false
+		_upg_rect.modulate.a = 0.0
+	if _upg_border:
+		_upg_border.visible = false
 
 func _stop_relight_tween() -> void:
 	if _relight_tween and _relight_tween.is_valid():

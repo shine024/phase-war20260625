@@ -25,6 +25,11 @@ const ANIM_ROOT := "res://assets/effects/unit_anims/"
 const DRIVER_NAME := "UnitFrameAnimDriver"
 ## v24.3: 预加载 EnemyCardModMap（用于敌方 archetype_id → 玩家卡 ID 映射）
 const EnemyCardModMap := preload("res://data/enemy_card_mod_map.gd")
+## v27.2: 星冥占位/缴获镜像——archetype 的 visual_id（复用卡图 id）帧资产继承
+const EnemyUnitManifest := preload("res://data/enemy_unit_manifest.gd")
+## v26.9: 描边 uniform 刷新——换帧（AtlasTexture 区域）/尺寸补偿后必须同步，
+## 否则描边取样越帧出鬼影、scale×2 后描边宽度翻倍（契约见 unit_outline.gd 头注）
+const UnitOutline := preload("res://scripts/battle/unit_outline.gd")
 
 
 static func _resolve_key(anim_id: String) -> String:
@@ -42,6 +47,14 @@ static func _resolve_key(anim_id: String) -> String:
 			and ResourceLoader.exists(ANIM_ROOT + player_card_id + "/sheet_idle.png") \
 			and ResourceLoader.exists(ANIM_ROOT + player_card_id + "/anim.json"):
 		return player_card_id
+	## v27.2: 占位图源回退——archetype（含 captured_ 缴获镜像剥前缀）的 visual_id
+	## 本身是带雪碧条资产的卡图 id 时（星冥 20 单位复用现有卡图），继承该卡
+	## idle/attack 动画。经典单位 visual_id 多为自身 → 无行为变化。
+	var vis_fb: String = EnemyUnitManifest.visual_id_for_archetype(String(anim_id).trim_prefix("captured_"))
+	if not vis_fb.is_empty() and vis_fb != String(anim_id) and vis_fb != player_card_id:
+		if ResourceLoader.exists(ANIM_ROOT + vis_fb + "/sheet_idle.png") \
+				and ResourceLoader.exists(ANIM_ROOT + vis_fb + "/anim.json"):
+			return vis_fb
 	return ""
 
 
@@ -134,6 +147,7 @@ class FrameDriver extends Node:
 			return
 		_compensate_size()
 		_spr.texture = idle_frames[0]
+		UnitOutline.refresh(_spr)  # v26.9: 首帧换 AtlasTexture + scale 补偿后刷描边 uniform
 
 	## 静态卡图(512²)与帧(fs²)分辨率不同时, 补偿 scale/offset 保持视觉一致:
 	## scale ×(base_w/frame_w); offset.y ×(frame_h/base_h)（offset 在纹理空间随 scale 缩放）
@@ -183,6 +197,7 @@ class FrameDriver extends Node:
 				_idx = 0
 				_dir = 1
 		_spr.texture = seq[_idx]
+		UnitOutline.refresh(_spr)  # v26.9: 换帧同步描边区域（防雪碧图越帧取样）
 
 	func play_attack() -> void:
 		if attack_frames.is_empty():
@@ -194,3 +209,4 @@ class FrameDriver extends Node:
 			_spr = get_parent() as Sprite2D
 		if _spr != null:
 			_spr.texture = attack_frames[0]
+			UnitOutline.refresh(_spr)

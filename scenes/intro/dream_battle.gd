@@ -539,7 +539,7 @@ func _hand_off(dry: bool) -> void:
 	tw.tween_property(_curtain, "color:a", 1.0, 0.6)
 	tw.tween_callback(func():
 		battle_finished.emit()
-		get_tree().change_scene_to_file(COMIC_SCENE))
+		SceneTransition.change(get_tree(), COMIC_SCENE))
 
 ## 任意时刻跳过 = 跳过整段序章：直落基地（bunker 侧消费 wakeup + mark comic_seen）
 func _skip_all() -> void:
@@ -553,4 +553,4 @@ func _skip_all() -> void:
 	Engine.remove_meta(META_COMIC_PENDING)
 	Engine.set_meta(META_WAKEUP, true)
 	battle_finished.emit()
-	get_tree().change_scene_to_file(BUNKER_SCENE)
+	SceneTransition.change(get_tree(), BUNKER_SCENE)

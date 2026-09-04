@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>装甲卡车基地 · 衔接原型（Truck Mockup）</title>
+<style>
+  :root{ --amber:#ffb45e; --cyan:#00e5ff; --orange:#ff7a2e; --line:#3a342a; }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  html,body{height:100%;background:#08090c;font-family:"Segoe UI","Microsoft YaHei",sans-serif;color:#d8d2c4;overflow:hidden;}
+  #wrap{display:flex;flex-direction:column;height:100vh;}
+  #topbar{height:56px;display:flex;align-items:center;gap:12px;padding:0 14px;background:linear-gradient(#1b1813,#12100c);border-bottom:1px solid #3a342a;font-size:13.5px;flex:none;}
+  .chip{background:#211d15;border:1px solid #3a342a;border-radius:5px;padding:3px 9px;white-space:nowrap;}
+  .chip b{color:var(--amber);}
+  #bonusStrip{flex:1;text-align:center;font-size:12px;color:#9aa87a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  #bonusStrip b{color:#cfe08a;}
+  .btn{cursor:pointer;background:#2a2419;border:1px solid #57492e;border-radius:6px;color:#e8dcbf;padding:6px 12px;font-size:13px;white-space:nowrap;}
+  .btn:hover{background:#3a3120;border-color:#7a6538;}
+  .btn.primary{background:#14343a;border-color:#1e6b74;color:#bdf0f5;}
+  .btn.primary:hover{background:#1a4a52;}
+  .btn.on{border-color:var(--amber);color:#ffd9a0;background:#33270f;}
+  #main{flex:1;display:flex;min-height:0;}
+  #stage{flex:1;position:relative;display:flex;align-items:center;justify-content:center;background:#050608;min-width:0;}
+  #hall{position:relative;width:1080px;height:648px;border:1px solid #2c2820;border-radius:8px;overflow:hidden;background:#171310;box-shadow:0 0 40px #000 inset;}
+  /* ── 剖面视图：战场背景做底，卡车剖面坐落下部 ── */
+  #cutawayView{position:absolute;inset:0;}
+  #cutBg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;filter:brightness(.5) saturate(.85);}
+  #cutBgLabel{position:absolute;left:12px;top:10px;font-size:11.5px;color:#cfc7b4;background:rgba(10,10,8,.66);border:1px solid #3a342a;border-radius:4px;padding:2px 8px;}
+  #rig{position:absolute;left:36px;bottom:52px;width:1010px;height:436px;}
+  .bodyBox{position:absolute;background:linear-gradient(#3a352a,#241f18 60%,#1b1712);border:2px solid #57503c;border-radius:8px;box-shadow:0 14px 26px rgba(0,0,0,.55);}
+  #cab{left:8px;top:96px;width:138px;height:296px;background:linear-gradient(#403a2c,#262119);clip-path:polygon(26% 0,100% 0,100% 100%,0 100%,0 26%);}
+  #mainBody{left:154px;top:34px;width:540px;height:358px;}
+  #trailer{left:716px;top:34px;width:284px;height:358px;background:linear-gradient(#373226,#221d16 60%,#191510);border-style:dashed;}
+  #hitch{position:absolute;left:694px;top:250px;width:24px;height:26px;background:#4a4536;border-radius:3px;}
+  .segLabel{position:absolute;font-size:10.5px;color:#8f8674;letter-spacing:2px;}
+  #roofLine{position:absolute;left:154px;top:22px;width:540px;height:6px;background:#57503c;border-radius:3px;}
+  #winStrip{position:absolute;left:162px;top:38px;width:524px;height:20px;border:1px solid #6a6248;border-radius:3px;overflow:hidden;}
+  #winStrip img{width:100%;height:100%;object-fit:cover;object-position:center 30%;filter:brightness(1.05);}
+  #cabWin{position:absolute;left:34px;top:112px;width:96px;height:40px;border:1px solid #6a6248;border-radius:3px;overflow:hidden;}
+  #cabWin img{width:100%;height:100%;object-fit:cover;filter:brightness(1.05);}
+  .wheel{position:absolute;width:56px;height:56px;border-radius:50%;background:radial-gradient(circle at 50% 50%,#2a2620 28%,#141210 30%,#201d18 62%,#0d0c0a 64%);border:2px solid #3c372c;bottom:0;}
+  #ground{position:absolute;left:0;right:0;bottom:0;height:5px;background:#3a342a;border-radius:3px;}
+  .decor{position:absolute;background:#221e16;border:1px solid #55503f;border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:10.5px;color:#8f8674;}
+  .ramp{position:absolute;width:86px;height:10px;background:#57503c;border-radius:3px;transform:rotate(-24deg);}
+  /* ── 工位块 ── */
+  .station{position:absolute;background:rgba(22,19,14,.94);border:1px solid #55503f;border-radius:7px;cursor:pointer;transition:transform .12s;overflow:hidden;}
+  .station:hover{transform:translateY(-2px);border-color:#8a7c56;}
+  .station .ic{font-size:19px;line-height:1.1;margin-top:5px;}
+  .station .nm{font-size:12.5px;color:#e8dcbf;margin-top:2px;}
+  .station .st{font-size:10.5px;margin-top:3px;color:#8f8674;}
+  .station.locked{filter:grayscale(.6);opacity:.62;}
+  .station.locked .st{color:#9a8f7a;}
+  .station.repairing{border-color:#a8793c;}
+  .station.repairing .st{color:#ffcf7a;}
+  .station.active{border-color:#2e7d8a;box-shadow:0 0 12px rgba(0,229,255,.22), inset 0 0 18px rgba(0,229,255,.05);}
+  .station.active .st{color:#8fe8c8;}
+  .station .pbar{height:5px;background:#3a342a;border-radius:3px;margin:4px 8px 6px;overflow:hidden;display:none;}
+  .station.repairing .pbar{display:block;}
+  .station .pbar i{display:block;height:100%;background:var(--amber);width:0;}
+  .station .bubble{position:absolute;right:-9px;top:-9px;width:27px;height:27px;border-radius:50% 50% 50% 4%;background:radial-gradient(circle at 35% 30%,#ffd9a0,var(--amber));color:#3a2410;font-weight:bold;font-size:14px;display:none;align-items:center;justify-content:center;box-shadow:0 0 10px rgba(255,180,94,.7);animation:floaty 2s infinite;}
+  .station .bubble.on{display:flex;}
+  @keyframes floaty{50%{transform:translateY(-4px);}}
+  /* ── 外景视图 ── */
+  #exteriorView{position:absolute;inset:0;display:none;background:#0a0b0d;}
+  #exteriorView.on{display:block;}
+  #extImg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;}
+  #exteriorView.arrive #extImg{animation:drivein 1.3s ease-out;}
+  @keyframes drivein{from{transform:translateX(14%) scale(1.06);opacity:.4;}to{transform:none;opacity:1;}}
+  #extCap{position:absolute;left:16px;top:12px;font-size:13px;color:#ffe2b0;background:rgba(10,10,8,.72);border:1px solid #77591c;border-radius:6px;padding:6px 14px;}
+  #enterCab{position:absolute;right:18px;bottom:16px;}
+  #battleFx{position:absolute;inset:0;display:none;align-items:center;justify-content:center;background:rgba(8,8,6,.42);font-size:20px;color:#ffd9a0;letter-spacing:4px;}
+  #battleFx.on{display:flex;}
+  #eraSwitch{position:absolute;left:10px;bottom:10px;display:flex;gap:5px;z-index:5;font-size:11px;align-items:center;color:#8f8674;flex-wrap:wrap;max-width:70%;}
+  .eraBtn{cursor:pointer;padding:2px 8px;border:1px solid #3a342a;border-radius:4px;background:rgba(20,18,14,.85);color:#cfc7b4;}
+  .eraBtn:hover{border-color:#7a6538;}
+  .eraBtn.on{border-color:var(--amber);color:#ffd9a0;}
+  #stageNote{position:absolute;left:12px;bottom:38px;font-size:11px;color:#6e675a;max-width:72%;line-height:1.5;}
+  /* ── 右侧总览面板 ── */
+  #panelSide{width:392px;flex:none;display:flex;flex-direction:column;border-left:1px solid #3a342a;background:#121110;min-height:0;}
+  #panelFrame{flex:1;display:flex;flex-direction:column;min-height:0;position:relative;background:#15171a;border:8px solid #4a4536;border-radius:12px;margin:8px;box-shadow:inset 0 0 0 3px #23231d,0 0 24px rgba(0,0,0,.6);}
+  #panelHead{padding:9px 12px 7px;font-size:12px;color:#7ab872;font-family:Consolas,monospace;letter-spacing:1px;border-bottom:1px solid #2c3328;}
+  #stationList{flex:1;overflow-y:auto;padding:4px 10px;min-height:0;}
+  .groupHead{font-size:11px;letter-spacing:2px;color:#7d7462;margin:9px 0 4px;font-family:Consolas,monospace;}
+  .stRow{display:flex;align-items:center;gap:7px;padding:6px 8px;border-radius:6px;margin-bottom:4px;cursor:pointer;border:1px solid #2c3328;background:rgba(20,30,18,.5);}
+  .stRow:hover{background:rgba(120,220,120,.07);}
+  .stIcon{width:24px;flex:none;text-align:center;font-size:15px;}
+  .stName{width:64px;flex:none;font-size:12.5px;color:#9ee89a;font-family:Consolas,monospace;}
+  .pips{width:40px;flex:none;display:flex;gap:3px;}
+  .pip{width:8px;height:8px;border-radius:50%;background:#3a342a;border:1px solid #55503f;}
+  .pip.lit{background:#9ee89a;border-color:#5a8f56;box-shadow:0 0 5px rgba(120,220,120,.6);}
+  .stInfo{flex:1;font-size:10.5px;color:#88a882;font-family:Consolas,monospace;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .stBtn{flex:none;font-size:11px;padding:3px 8px;border-radius:4px;background:#1b2318;border:1px solid #3d5a36;color:#9ee89a;cursor:pointer;font-family:Consolas,monospace;}
+  .stBtn.up{background:#2a2210;border-color:#77591c;color:#ffd27a;}
+  #panelDetail{flex:none;height:118px;border-top:1px solid #2c3328;padding:9px 12px;overflow-y:auto;font-size:11.5px;color:#88a882;line-height:1.7;}
+  #panelDetail b{color:#9ee89a;}
+  /* ── 弹层 ── */
+  #modal{position:fixed;inset:0;background:rgba(0,0,0,.58);display:none;align-items:center;justify-content:center;z-index:50;}
+  #modal.on{display:flex;}
+  #modalCard{width:600px;max-width:92vw;max-height:80vh;overflow-y:auto;border-radius:8px;padding:16px 20px;background:#0c0e0c;border:6px solid #4a4536;color:#9ee89a;font-family:Consolas,monospace;box-shadow:inset 0 0 30px rgba(0,60,0,.15),0 14px 50px rgba(0,0,0,.7);}
+  #modalCard h3{font-size:15px;margin-bottom:4px;color:#c9f5c4;letter-spacing:1px;}
+  #modalCard .sub{font-size:11px;color:#7ab872;margin-bottom:10px;}
+  #modalCard .body{font-size:12.5px;line-height:1.85;color:#a8c8a2;}
+  #modalCard .body .ph{background:#131a11;border:1px dashed #3d5a36;border-radius:6px;padding:10px 12px;margin:8px 0;color:#88a882;}
+  #modalCard .fnRow{margin:10px 0;}
+  .fnBtn{display:inline-block;font-size:12.5px;padding:5px 13px;border-radius:5px;background:#131a11;border:1px solid #3d5a36;color:#9ee89a;margin:0 6px 6px 0;cursor:pointer;}
+  .fnBtn:hover{border-color:#6a9a60;}
+  .fnBtn.warm{background:#2a2210;border-color:#77591c;color:#ffd27a;}
+  #modalCard .foot{margin-top:12px;text-align:right;}
+  .chipRow{display:flex;gap:6px;flex-wrap:wrap;margin:6px 0;}
+  .chipRow span{font-size:11px;background:#131a11;border:1px solid #3d5a36;border-radius:4px;padding:2px 8px;color:#88a882;}
+  ::-webkit-scrollbar{width:9px;} ::-webkit-scrollbar-thumb{background:#3a342a;border-radius:5px;}
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div id="topbar">
+    <span class="chip">第 <b id="day">12</b> 天</span>
+    <span class="chip">精神 <b id="san">64</b>/100</span>
+    <span class="chip">纳米 <b id="rNano">820</b></span>
+    <span class="chip">合金 <b id="rAlloy">310</b></span>
+    <span class="chip">晶体 <b id="rCrystal">90</b></span>
+    <span class="chip">能量 <b id="rEnergy">45</b></span>
+    <div id="bonusStrip">✦ 基地加成：<b id="bonusText">尚无运转中的工位</b></div>
+    <button class="btn primary" id="btnSortie">▶ 出击</button>
+    <button class="btn" id="btnView">外观</button>
+    <button class="btn" id="btnCollectAll">一键收取</button>
+    <button class="btn" id="btnPaper">晨报</button>
+  </div>
+  <div id="main">
+    <div id="stage">
+      <div id="hall">
+        <div id="cutawayView">
+          <img id="cutBg" src="generated_truck/truck_era1.jpeg" alt="">
+          <div id="cutBgLabel"></div>
+          <div id="rig">
+            <div id="ground"></div>
+            <div class="bodyBox" id="cab"></div>
+            <div class="bodyBox" id="mainBody"></div>
+            <div class="bodyBox" id="trailer"></div>
+            <div id="hitch"></div>
+            <div id="roofLine"></div>
+            <div id="winStrip"><img id="winImg" src="generated_truck/truck_era1.jpeg" alt=""></div>
+            <div id="cabWin"><img id="cabWinImg" src="generated_truck/truck_era1.jpeg" alt=""></div>
+            <div class="segLabel" style="left:166px;top:20px;">货厢剖面 · 上架（电子/科技/生活） · 下架（作战）</div>
+            <div class="segLabel" style="left:726px;top:44px;">拖车 · 仓储/动力</div>
+            <div class="decor" style="left:730px;top:62px;width:118px;height:64px;">仓库箱</div>
+            <div class="decor" style="left:856px;top:62px;width:118px;height:64px;">备件架</div>
+            <div class="ramp" style="right:6px;bottom:96px;"></div>
+            <div class="segLabel" style="right:26px;bottom:112px;">尾门跳板</div>
+            <div class="wheel" style="left:46px;"></div>
+            <div class="wheel" style="left:300px;"></div>
+            <div class="wheel" style="left:540px;"></div>
+            <div class="wheel" style="left:790px;"></div>
+            <div class="wheel" style="left:924px;"></div>
+            <!-- 工位由 JS 注入 -->
+          </div>
+        </div>
+        <div id="exteriorView">
+          <img id="extImg" src="generated_truck/truck_era1.jpeg" alt="">
+          <div id="extCap"></div>
+          <div id="battleFx"></div>
+          <button class="btn" id="enterCab">▶ 进入车厢（剖面）</button>
+        </div>
+        <div id="eraSwitch">车体/战区：</div>
+      </div>
+      <div id="stageNote">衔接规则：<b style="color:#9ee89a">运转工位单击=主功能直开</b>（1 击）· 锁定/修复中=工位卡片 ·
+      右侧行点击=工位卡片（全部功能按钮）· 气泡=战利品归仓收取 · 出击=指挥位/顶栏 → 简报 → 开走演出。
+      面板容器皮肤三档沿用机枢大厅方案，原型用单一 CRT 风。车窗/背景=当前战区战场图（背景复用验证）。</div>
+    </div>
+    <div id="panelSide">
+      <div id="panelFrame">
+        <div id="panelHead">TRUCK STATIONS · 工位总览（15 房 id 归并 9 工位）</div>
+        <div id="stationList"></div>
+        <div id="panelDetail"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="modal"><div id="modalCard"></div></div>
+
+<script>
+/* ── 工位表：9 工位 = 机枢大厅 9 站迁移 + 房 id 归并（存档零迁移） ── */
+const S = {
+  generator:{name:'发电机', group:'动力', icon:'⚡', slot:[858,208,116,104], rooms:['reactor'], need:3, cost:{alloy:500,energy:200}, tag:'全车电力', bonus:'解锁拖车电力', fns:[{l:'电力总览',panel:null,info:true}]},
+  war_table:{name:'指挥位', group:'作战', icon:'🎯', slot:[20,120,120,190], rooms:['war_room','entry_hall'], need:1, cost:{nano:200}, tag:'出击·简报', bonus:'出击入口', primary:0, fns:[{l:'出击简报',act:'sortie'},{l:'任务',panel:'quest'},{l:'设置',panel:'settings'}]},
+  radio:{name:'售货机', group:'作战', icon:'🏪', slot:[292,196,116,104], rooms:['comms'], need:2, cost:{nano:250,crystal:80}, tag:'商店·势力', bonus:'声望+15%', power:true, primary:0, fns:[{l:'商店',panel:'store'},{l:'势力',panel:'faction'},{l:'排行榜',panel:'leaderboard'}]},
+  workbench:{name:'工作台', group:'作战', icon:'🛠', slot:[424,196,116,104], rooms:['workshop'], need:2, cost:{nano:300,crystal:50}, tag:'改造·词条', bonus:'制造-10%', primary:0, fns:[{l:'改造',panel:'modification'},{l:'词条工坊',panel:'affix'},{l:'成长',panel:'growth'}]},
+  printer:{name:'3D打印', group:'作战', icon:'🖨', slot:[556,196,124,104], rooms:['depot'], need:1, cost:{alloy:150}, tag:'制造·卡仓', bonus:'每日缴获卡', primary:0, fns:[{l:'制造中心',panel:'evolution'},{l:'卡仓',panel:'collection'}]},
+  lab_bench:{name:'实验台', group:'科技', icon:'⚗', slot:[292,64,116,104], rooms:['phase_lab'], need:1, cost:{nano:250,energy:50}, tag:'技能·相位仪', bonus:'洗点费-50%', primary:0, fns:[{l:'相位师技能树',panel:'phase_master_skill'},{l:'相位仪调试',panel:'instruments'}]},
+  analyzer:{name:'分析仪', group:'科技', icon:'🔍', slot:[424,64,116,104], rooms:['archive'], need:1, cost:{nano:100,energy:60}, tag:'情报·档案', bonus:'情报+10%', primary:0, fns:[{l:'情报中心',panel:'intelligence'},{l:'英雄档案',panel:'hero_archive'}]},
+  galley:{name:'转换机', group:'生活', icon:'🍲', slot:[556,64,124,104], rooms:['mess_hall','medical'], need:1, cost:{nano:200,alloy:100}, tag:'配给·医疗', bonus:'每日配给+50%', primary:0, fns:[{l:'每日配给',act:'ration'},{l:'治疗',act:'medical'}]},
+  rest_pod:{name:'充能舱', group:'生活', icon:'🛏', slot:[726,208,120,104], rooms:['dormitory'], need:0, cost:{}, tag:'睡眠·存档', bonus:'睡觉回精神+10', primary:0, fns:[{l:'睡觉(推进天数)',act:'sleep'},{l:'背包',panel:'backpack'}]},
+};
+const GROUPS=['动力','作战','科技','生活'];
+const RES_NAME={nano:'纳米',alloy:'合金',crystal:'晶体',energy:'能量'};
+const ESCROW={material:'printer',card:'printer',lore:'analyzer',stat_boost:'lab_bench',mod_blueprint:'workbench'};
+const ERAS=[
+  {id:'era1',label:'I 一战',img:'generated_truck/truck_era1.jpeg',zone:'索姆前线'},
+  {id:'era2',label:'II 二战',img:'generated_truck/truck_era2.jpeg',zone:'东部砖镇'},
+  {id:'era3',label:'III 冷战',img:'generated_truck/truck_era3.jpeg',zone:'沙漠前哨'},
+  {id:'era4',label:'IV 近未来',img:'generated_truck/truck_era4.jpeg',zone:'废墟都会'},
+  {id:'era5',label:'V 相位',img:'generated_truck/truck_era5.jpeg',zone:'相位荒原'},
+  {id:'era2g',label:'II·决战兵器',img:'generated_truck/truck_era2_giant.jpeg',zone:'兵器试验场'},
+  {id:'era3g',label:'III·陆地列车',img:'generated_truck/truck_era3_giant.jpeg',zone:'冻原试炼'},
+];
+const state={}; Object.keys(S).forEach(k=>state[k]={st:k==='rest_pod'?'active':'locked',prog:0,lv:1,bubble:false,uping:0,need:0});
+let view='cutaway', era=ERAS[0];
+
+/* ── 场景注入 ── */
+const rig=document.getElementById('rig');
+Object.keys(S).forEach(k=>{
+  const m=S[k], el=document.createElement('div');
+  el.className='station'; el.id='st_'+k;
+  el.style.left=m.slot[0]+'px'; el.style.top=m.slot[1]+'px'; el.style.width=m.slot[2]+'px'; el.style.height=m.slot[3]+'px';
+  el.innerHTML=`<div class="ic">${m.icon}</div><div class="nm">${m.name}</div><div class="st"></div><div class="pbar"><i></i></div><div class="bubble">✦</div>`;
+  el.addEventListener('click',e=>{ if(e.target.classList.contains('bubble')){collect(k);return;} clickStation(k); });
+  rig.appendChild(el);
+});
+
+/* ── 视图/era ── */
+function setView(v,anim){
+  view=v;
+  document.getElementById('cutawayView').style.display = v==='cutaway'?'block':'none';
+  const ext=document.getElementById('exteriorView');
+  ext.style.display = v==='exterior'?'block':'none';
+  ext.classList.toggle('arrive', !!anim);
+  document.getElementById('btnView').textContent = v==='cutaway'?'外观':'剖面';
+  document.getElementById('btnView').classList.toggle('on', v==='exterior');
+  if(v==='exterior'){
+    document.getElementById('extImg').src=era.img;
+    document.getElementById('extCap').textContent='已抵达 · '+era.zone+'（'+era.label+'车体）';
+  }
+}
+function setEra(e,showArrive){
+  era=e;
+  document.querySelectorAll('.eraBtn').forEach(b=>b.classList.toggle('on',b.dataset.id===e.id));
+  document.getElementById('cutBg').src=e.img;
+  document.getElementById('winImg').src=e.img;
+  document.getElementById('cabWinImg').src=e.img;
+  document.getElementById('cutBgLabel').textContent='当前战区：'+e.zone+' · '+e.label;
+  if(showArrive){ setView('exterior',true); }
+}
+document.getElementById('btnView').onclick=()=>setView(view==='cutaway'?'exterior':'cutaway',view==='cutaway');
+document.getElementById('enterCab').onclick=()=>setView('cutaway');
+(function(){ const box=document.getElementById('eraSwitch');
+  ERAS.forEach((e,i)=>{ const b=document.createElement('span'); b.className='eraBtn'+(i===0?' on':''); b.dataset.id=e.id; b.textContent=e.label;
+    b.onclick=()=>setEra(e,true); box.appendChild(b); });
+})();
+
+/* ── 渲染 ── */
+function refresh(){ renderScene(); renderList(); }
+function renderScene(){
+  Object.keys(S).forEach(k=>{
+    const m=S[k], st=state[k], el=document.getElementById('st_'+k);
+    el.className='station '+st.st;
+    el.querySelector('.st').textContent = st.st==='locked'?'🔒 未修复':st.st==='repairing'?`⏳ ${st.prog}/${st.need} 场`:`运转 · Lv${st.lv}`;
+    el.querySelector('.pbar i').style.width=(st.need?Math.round(100*st.prog/st.need):0)+'%';
+    el.querySelector('.bubble').classList.toggle('on',st.bubble);
+  });
+}
+function costTxt(c){ const ks=Object.keys(c); return ks.length?ks.map(k=>`${RES_NAME[k]}×${c[k]}`).join(' '):'免费'; }
+function renderList(){
+  const box=document.getElementById('stationList'); box.innerHTML='';
+  GROUPS.forEach(g=>{
+    const h=document.createElement('div'); h.className='groupHead'; h.textContent='— '+g+' —'; box.appendChild(h);
+    Object.keys(S).filter(k=>S[k].group===g).forEach(k=>{
+      const m=S[k], st=state[k], row=document.createElement('div');
+      row.className='stRow'; row.onclick=()=>clickStation(k);
+      let info='', btn='';
+      if(st.st==='locked'){
+        info=`修复 ${costTxt(m.cost)} · ${m.need}场`+(m.power&&state.generator.st!=='active'?' ❄':'');
+        btn=`<span class="stBtn" onclick="repair('${k}');event.stopPropagation()">修复</span>`;
+      }else if(st.st==='repairing'){ info=`修复中 ${st.prog}/${st.need} 场`; }
+      else if(st.uping>0){ info=`升级中 ${st.prog}/${st.need} 场`; }
+      else{ info=`✦ ${m.bonus}`; if(st.lv<3) btn=`<span class="stBtn up" onclick="upgrade('${k}');event.stopPropagation()">升级</span>`; }
+      if(st.bubble) info+=' ✦可收取';
+      let pips=''; for(let i=1;i<=3;i++) pips+=`<div class="pip${st.st==='active'&&i<=st.lv?' lit':''}"></div>`;
+      row.innerHTML=`<div class="stIcon">${m.icon}</div><div class="stName">${m.name}</div><div class="pips">${pips}</div><div class="stInfo">${info}</div>${btn}`;
+      box.appendChild(row);
+    });
+  });
+  const act=Object.keys(S).filter(k=>state[k].st==='active');
+  document.getElementById('bonusText').textContent=act.length?act.map(k=>S[k].bonus).join(' · '):'尚无运转中的工位';
+  document.getElementById('panelDetail').innerHTML=
+    `<b>衔接说明</b>：运转工位（场景或右侧）单击 → <b>主功能直开</b>；锁定/修复中 → 工位卡片。`+
+    `右侧行点击 → <b>工位卡片</b>（该工位全部功能按钮 + 升级线）。功能面板为占位弹层——`+
+    `<b>真实实现</b>调起 bunker EMBEDDED_PANELS 对应面板至 _embed_layer，关闭即回剖面（bunker_main.gd:539 链路原样）。`;
+}
+
+/* ── 衔接核心：工位点击 ── */
+function clickStation(k){
+  const m=S[k], st=state[k];
+  if(st.st==='active'){ openPrimary(k); }
+  else{ openCard(k); }
+}
+function openPrimary(k){
+  const m=S[k], f=m.fns[m.primary||0];
+  if(f.act) doAction(f.act,k);
+  else openPanelModal(k,f);
+}
+function openCard(k){
+  const m=S[k], st=state[k];
+  let body='';
+  if(st.st==='locked'){
+    body=`<div class="ph">状态：🔒 未修复<br>修复需 ${costTxt(m.cost)} · 出击推进 ${m.need} 场`+
+      (m.power&&state.generator.st!=='active'?'<br>❄ 电力冻结：需发电机先运转':'')+
+      `</div><div class="fnRow"><span class="fnBtn warm" onclick="repair('${k}')">开始修复</span></div>`;
+  }else if(st.st==='repairing'){
+    body=`<div class="ph">修复中 ${st.prog}/${st.need} 场 —— 出击推进</div>`;
+  }else{
+    body=`<div class="ph">运转中 · Lv${st.lv}${st.lv<3?'（可升级）':'（满级）'} · ✦ ${m.bonus}</div>`+
+      `<div class="fnRow">`+m.fns.map(f=>`<span class="fnBtn${f.act?' warm':''}" onclick="${f.act?`doAction('${f.act}','${k}')`:`openPanelModal('${k}',S['${k}'].fns[${m.fns.indexOf(f)}])`}">${f.l}</span>`).join('')+`</div>`+
+      (st.lv<3?`<div class="fnRow"><span class="fnBtn warm" onclick="upgrade('${k}')">升级 Lv${st.lv+1}</span></div>`:'');
+  }
+  body+=`<div class="sub">归并房间 id：${m.rooms.join(' + ')}</div>`;
+  openModal(m.icon+' '+m.name+' · '+m.tag, '工位卡片（'+({locked:'未修复',repairing:'修复中',active:'运转中'})[st.st]+'）', body);
+}
+function openPanelModal(k,f){
+  const m=S[k];
+  const body=`<div class="ph">原型占位 —— 真实实现：调起 <b style="color:#ffd27a">EMBEDDED_PANELS['${f.panel||'…'}']</b>`+
+    (f.panel?`（${({'quest':'任务面板','settings':'设置面板','store':'商店面板','faction':'势力面板','leaderboard':'排行榜面板','modification':'改造面板','affix':'词条工坊','growth':'成长中枢','evolution':'制造中心(原evolution_panel)','collection':'收藏/卡墙','phase_master_skill':'相位师技能树','instruments':'背包-相位仪页签','intelligence':'情报中心','hero_archive':'英雄档案','backpack':'背包'})[f.panel]||f.panel}）`:'')+
+    ` 至 _embed_layer 内嵌容器，关闭即返回剖面。</div>
+    <div class="body">此处将呈现「${f.l}」的完整面板内容。<br>面板可叠加（现有 _open_overlay 语义），关闭最上层回剖面。</div>`;
+  openModal(m.icon+' '+m.name+' → '+f.l, '功能面板占位（1 击直开演示）', body);
+}
+function doAction(act,k){
+  if(act==='sortie'){ openSortie(); return; }
+  if(act==='sleep'){ state.day=(state.day||12)+1; document.getElementById('day').textContent=state.day;
+    const rec=30; state.san=Math.min(100,(state.san||64)+rec); document.getElementById('san').textContent=state.san;
+    flash('睡觉 · 第 '+state.day+' 天 · 精神 +'+rec); closeModal(); return; }
+  if(act==='ration'){ flash('每日配给已领取（+配给）'); closeModal(); return; }
+  if(act==='medical'){ flash('治疗完成（-纳米，精神回升）'); closeModal(); return; }
+}
+function openSortie(){
+  const env={era1:['天气 寒雾','地形 战壕','能量场 —','时段 晨'],era2:['天气 阴雨','地形 城镇','能量场 —','时段 昼'],
+    era3:['天气 晴热','地形 沙丘','能量场 —','时段 昼'],era4:['天气 酸雨','地形 废墟','能量场 直射+10%','时段 昏'],
+    era5:['天气 相位风暴','地形 浮岩','能量场 全队+15%','时段 夜'],era2g:['天气 阴','地形 试验场','能量场 —','时段 昼'],
+    era3g:['天气 风雪','地形 冻原','能量场 —','时段 晨']}[era.id]||['—','—','—','—'];
+  const body=`<div class="body">作战目标：守住 3 波 · 战术主题：阵地防御</div>
+    <div class="chipRow">`+env.map(x=>`<span>${x}</span>`).join('')+`</div>
+    <div class="body">敌情预告：步兵×12 装甲×6 空中×2 ▲ · 相位师·传奇档 ★<br>
+    <span style="color:#6e8a6a">（原型占位——正式版为 AC7 式简报：全息沙盘 + 威胁雷达 + 兵力对比，见 出击面板参考/index.html）</span></div>
+    <div class="foot"><span class="fnBtn" onclick="closeModal()">取消</span> <span class="fnBtn warm" onclick="launch()">▶ 出 击</span></div>`;
+  openModal('🎯 出击简报 · '+era.zone+'（'+era.label+'）', '指挥位主功能 · ≤2 击的第 2 击', body);
+}
+function launch(){
+  closeModal(); setView('exterior');
+  const fx=document.getElementById('battleFx'); fx.textContent='—— 交战中 ——'; fx.classList.add('on');
+  setTimeout(()=>{ fx.textContent='✦ 战斗胜利';
+    setTimeout(()=>{ fx.classList.remove('on'); battle(); setView('cutaway'); }, 900);
+  }, 1300);
+}
+function battle(){
+  let changed=false;
+  Object.keys(S).forEach(k=>{ const st=state[k];
+    if(st.st==='repairing'){ st.prog++; if(st.prog>=st.need){ st.st='active'; changed=true; } }
+    else if(st.st==='active'&&st.uping>0){ st.prog++; if(st.prog>=st.need){ st.uping=0; st.lv++; changed=true; } } });
+  if(state.galley.st==='active') state.galley.bubble=true;
+  if(state.printer.st==='active'&&Math.random()<.7) state.printer.bubble=true;
+  if(state.analyzer.st==='active'&&Math.random()<.5) state.analyzer.bubble=true;
+  refresh();
+  if(changed) flash('✦ 有工位上线/升级完成');
+}
+/* ── 修复/升级/收取 ── */
+function pay(c){ for(const k in c){ const el=document.getElementById('r'+({nano:'Nano',alloy:'Alloy',crystal:'Crystal',energy:'Energy'}[k])); if(parseInt(el.textContent)<c[k]){ flash('资源不足'); return false; } }
+  for(const k in c){ const el=document.getElementById('r'+({nano:'Nano',alloy:'Alloy',crystal:'Crystal',energy:'Energy'}[k])); el.textContent=parseInt(el.textContent)-c[k]; } return true; }
+window.repair=function(k){ const m=S[k],st=state[k];
+  if(m.power&&state.generator.st!=='active'){ flash('❄ 电力冻结：先修复发电机'); return; }
+  if(!pay(m.cost)) return;
+  st.st='repairing'; st.prog=0; st.need=m.need; refresh(); openCard(k); };
+window.upgrade=function(k){ const m=S[k],st=state[k];
+  if(!pay({nano:Math.round((m.cost.nano||200)*1.5)})) return;
+  st.uping=1; st.prog=0; st.need=1; refresh(); openCard(k); };
+function collect(k){ state[k].bubble=false; addRes('nano',60); refresh(); flash(S[k].name+' 收取 +纳米60'); }
+window.collectAll=function(){ let n=0; Object.keys(S).forEach(k=>{ if(state[k].bubble){n++;state[k].bubble=false;addRes('nano',60);} }); refresh(); flash(n?'收取 '+n+' 项产出':'暂无可收取产出'); };
+function addRes(k,v){ const el=document.getElementById('r'+({nano:'Nano',alloy:'Alloy',crystal:'Crystal',energy:'Energy'}[k])); el.textContent=parseInt(el.textContent)+v; }
+function flash(msg){ const n=document.createElement('div'); n.textContent=msg;
+  n.style.cssText='position:fixed;top:66px;left:50%;transform:translateX(-50%);background:#241e13;border:1px solid #77591c;color:#ffd9a0;padding:8px 18px;border-radius:8px;z-index:99;transition:opacity .4s';
+  document.body.appendChild(n); setTimeout(()=>{n.style.opacity=0;},1400); setTimeout(()=>n.remove(),1900); }
+/* ── 弹层壳 ── */
+function openModal(title,sub,bodyHtml){ const c=document.getElementById('modalCard');
+  c.innerHTML=`<h3>${title}</h3><div class="sub">${sub}</div><div class="body">${bodyHtml}</div>`+
+    `<div class="foot"><span class="fnBtn" onclick="closeModal()">关闭</span></div>`;
+  document.getElementById('modal').classList.add('on'); }
+function closeModal(){ document.getElementById('modal').classList.remove('on'); }
+document.getElementById('modal').addEventListener('click',e=>{ if(e.target.id==='modal') closeModal(); });
+/* ── 晨报 ── */
+document.getElementById('btnPaper').onclick=()=>{
+  let rows='';
+  Object.keys(S).forEach(k=>{ const m=S[k],st=state[k];
+    let msg=null;
+    if(st.bubble) msg=`${m.name}：产出待收取`;
+    else if(st.st==='repairing') msg=`${m.name}：修复中 ${st.prog}/${st.need} 场`;
+    else if(st.st==='active'&&st.uping>0) msg=`${m.name}：升级中 ${st.prog}/${st.need} 场`;
+    else if(st.st==='active') msg=`${m.name}：运转正常（✦ ${m.bonus}）`;
+    if(msg) rows+=`<div>· ${msg}</div>`; });
+  if(!rows) rows='<div>今日无事——车队在安静运转。</div>';
+  openModal('晨报 · 第 '+document.getElementById('day').textContent+' 天','贴在指挥位板上的一页',rows);
+};
+document.getElementById('btnSortie').onclick=openSortie;
+document.getElementById('btnCollectAll').onclick=collectAll;
+/* ── 初始：模拟开局（充能舱已运转，其余待修） ── */
+refresh(); setEra(ERAS[0],false); setView('cutaway');
+</script>
+</body>
+</html>

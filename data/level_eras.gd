@@ -16,12 +16,14 @@ const Era := ERA
 const ERA_LEVELS: int = 20
 
 ## 时代内波次范围 [最小波, 最大波] - 调整波次数控制战斗时长
+## v27: XENO 键供黑门无限模式读取（波次恒无限，表值仅作开局节奏参考）
 const ERA_WAVES: Dictionary = {
 	Era.WW1: [3, 5],
 	Era.WW2: [4, 7],     # 二战降低上限
 	Era.COLD_WAR: [5, 8], # 冷战适度控制
 	Era.MODERN: [6, 9],   # 现代避免过长
 	Era.NEAR_FUTURE: [7, 10], # 近未来集中但不过度
+	Era.XENO: [8, 12],    # 星冥带（黑门）：开局节奏参考
 }
 
 ## 时代内每波敌人数范围 [最小, 最大] - 调整以匹配玩家5单位上限
@@ -31,6 +33,7 @@ const ERA_SPAWN_COUNT: Dictionary = {
 	Era.COLD_WAR: [2, 3],  # 冷战降低上限
 	Era.MODERN: [2, 4],    # 现代降低上限
 	Era.NEAR_FUTURE: [3, 4], # 近未来控制上限
+	Era.XENO: [3, 4],      # 星冥带：与近未来同档
 }
 
 ## 普通关卡敌方「同时在场」单位数上限（2026-08-25 用户反馈对称性问题）
@@ -43,6 +46,7 @@ const ERA_ENEMY_FIELD_CAP: Dictionary = {
 	Era.COLD_WAR: 8,
 	Era.MODERN: 9,
 	Era.NEAR_FUTURE: 9,
+	Era.XENO: 9,          # 星冥带：9 格封顶（3×3 敌阵格数上限，渗度只提密度不破格子）
 }
 
 ## 波次间隔（秒）- v8.x：整体缩短 ~40%（原 14/13/12/12/11），
@@ -53,6 +57,7 @@ const ERA_WAVE_INTERVAL: Dictionary = {
 	Era.COLD_WAR: 8.0,
 	Era.MODERN: 7.5,
 	Era.NEAR_FUTURE: 7.0,
+	Era.XENO: 7.0,        # 星冥带：沿用近未来节奏
 }
 
 ## 掉落率倍数（时代越靠后掉落越高）
@@ -65,6 +70,7 @@ const ERA_DROP_MULTIPLIER: Dictionary = {
 	Era.COLD_WAR: 1.15,
 	Era.MODERN: 1.25,
 	Era.NEAR_FUTURE: 1.4,
+	Era.XENO: 0.85,       # 星冥带：整体 ×0.6 防刷原则的击杀路径近似（缴获掉率防刷见 EndlessManager）
 }
 
 ## 每关「相位仪经验」插值锚点（时代内第 1 / 10 / 20 关），约 +10% 让成长反馈更明显
@@ -101,6 +107,12 @@ static func get_era(level: int) -> int:
 	var lv: int = clampi(level, 1, LEVEL_COUNT)
 	var idx: int = int((lv - 1) / float(ERA_LEVELS))
 	return clampi(idx, 0, Era.NEAR_FUTURE)
+
+
+## v27 黑门无限模式：关卡号 → 时代。endless_level <= 0 视为无效。
+## 无限模式不走 1-100 关映射，专用哨兵 ENDLESS_LEVEL（见 EndlessBlackgateManager）
+## 也会经 get_era 落到近未来档（resolver/档位链以 100 关口径为基准）。
+const ENDLESS_LEVEL_SENTINEL: int = 100
 
 static func get_wave_total_for_level(level: int) -> int:
 	var era: int = get_era(level)
@@ -160,6 +172,7 @@ static func get_era_name(era: int) -> String:
 		Era.COLD_WAR: return "冷战"
 		Era.MODERN: return "现代"
 		Era.NEAR_FUTURE: return "近未来"
+		Era.XENO: return "星冥"
 	return ""
 
 ## 根据关卡返回本关基础相位仪经验（胜利后直接注入 PhaseInstrumentManager）

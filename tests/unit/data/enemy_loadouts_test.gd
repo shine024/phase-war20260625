@@ -1,7 +1,8 @@
 extends GdUnitTestSuite
 ## v26 敌方固定配装表完整性测试
-## 覆盖：117 敌方 id 全量覆盖 / 四档 cuts 口径 / 改造 id 已注册 / conflict 无同组 /
+## 覆盖：全量敌方 id 覆盖 / 四档 cuts 口径 / 改造 id 已注册 / conflict 无同组 /
 ## era_band 兼容 / 效果键白名单命中 / 档位切分边界。
+## v27: 全量口径扩到 era=5（星冥 20，配装池兼容映射近未来带）。
 
 var EnemyArchetypes = preload("res://data/enemy_archetypes.gd")
 var Registry = preload("res://scripts/systems/modification_registry.gd")
@@ -9,9 +10,9 @@ var Tiers = preload("res://data/enemy_loadout_tiers.gd")
 var Loadouts = preload("res://data/enemy_fixed_loadouts.gd")
 
 func test_all_enemy_ids_have_loadout() -> void:
-	# 全量覆盖：每个敌方原型 id 都有配装条目（含 8 张新飞机）
+	# 全量覆盖：每个敌方原型 id 都有配装条目（含 8 张新飞机 + v27 星冥 20）
 	var missing: Array = []
-	for era in range(5):
+	for era in range(6):
 		for aid in EnemyArchetypes.get_ids_for_era(era):
 			if Loadouts.get_loadout(String(aid)).is_empty():
 				missing.append(String(aid))
@@ -20,7 +21,7 @@ func test_all_enemy_ids_have_loadout() -> void:
 
 func test_loadout_table_size() -> void:
 	assert_int(Loadouts.LOADOUTS.size()).override_failure_message(
-		"配装表应 117 条（109 经典 + 8 新飞机）").is_equal(117)
+		"配装表应 137 条（109 经典 + 8 新飞机 + 20 星冥）").is_equal(137)
 
 func _entries() -> Array:
 	return Loadouts.LOADOUTS.keys()
@@ -50,7 +51,7 @@ func test_mods_whitelist_and_era_compatible() -> void:
 		var lo: Dictionary = Loadouts.LOADOUTS[aid]
 		var mods: Array = lo.get("mods", [])
 		var era: int = -1
-		for e in range(5):
+		for e in range(6):
 			if EnemyArchetypes.get_ids_for_era(e).has(aid):
 				era = e
 				break
@@ -58,7 +59,9 @@ func test_mods_whitelist_and_era_compatible() -> void:
 			var md: Dictionary = Registry.get_data(String(mid))
 			if md.is_empty():
 				continue
-			if era >= 0 and not Registry.is_mod_era_compatible(md, era):
+			# v27: 星冥（era=5）配装池按近未来带（4）校验（生成器同口径映射）
+			var compat_era: int = 4 if era >= 5 else era
+			if compat_era >= 0 and not Registry.is_mod_era_compatible(md, compat_era):
 				bad.append("%s(era%d): %s 超时代带" % [aid, era, mid])
 			var eff: Dictionary = md.get("effects", {})
 			if eff.is_empty():

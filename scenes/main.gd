@@ -377,7 +377,9 @@ func _input(event: InputEvent) -> void:
 
 	if in_battle:
 		# 战斗中的快捷键
-		if event.is_action("ui_pause") or event.keycode == KEY_SPACE:
+		# v26.11(A2.5): 删除恒 false 的 is_action("ui_pause") 判断（Godot 4 无该默认
+		# action 且项目未注册 InputMap），战斗暂停键唯一入口 = SPACE。
+		if event.keycode == KEY_SPACE:
 			_on_pause_pressed()
 			return
 		# P2-14: 数字键 1-9 快捷进入部署模式（第 N 个有战斗卡的绿槽，与点击槽位同链路）
@@ -1188,13 +1190,176 @@ func _on_start_battle() -> void:
 func _deferred_go_to_battle() -> void:
 	_battle_setup.deferred_go_to_battle()
 
+# ── v26.11(A2.2): 暂停菜单 ──────────────────────────────────────
+# 原暂停=裸 tree.paused 翻转（暂停态无菜单：进不了设置/退不出战斗）。
+# 现暂停时弹自绘菜单（继续/设置/返回标题），process_mode=ALWAYS 保证暂停树内可交互。
+var _pause_menu: Control = null
+
 func _on_pause_pressed() -> void:
 	var tree := get_tree()
 	if tree == null:
 		return
-	tree.paused = not tree.paused
+	if tree.paused:
+		_resume_from_pause()
+	else:
+		tree.paused = true
+		if top_hud_bar:
+			top_hud_bar.set_pause_text("继续")
+		_show_pause_menu()
+
+func _resume_from_pause() -> void:
+	var tree := get_tree()
+	if tree != null:
+		tree.paused = false
 	if top_hud_bar:
-		top_hud_bar.set_pause_text("继续" if tree.paused else "暂停")
+		top_hud_bar.set_pause_text("暂停")
+	if _pause_menu != null and is_instance_valid(_pause_menu):
+		_pause_menu.visible = false
+	# 撤销设置面板的暂停期豁免（_on_pause_menu_settings 设置）
+	if settings_overlay:
+		settings_overlay.process_mode = Node.PROCESS_MODE_INHERIT
+
+func _show_pause_menu() -> void:
+	if _pause_menu != null and is_instance_valid(_pause_menu):
+		_pause_menu.visible = true
+		_refresh_pause_intel()
+		return
+	_pause_menu = _build_pause_menu()
+	popup_layer.add_child(_pause_menu)
+	_refresh_pause_intel()
+
+## 暂停菜单"设置"：暂停树内打开设置面板（overlay 豁免暂停，关闭后回到暂停菜单）
+func _on_pause_menu_settings() -> void:
+	if settings_overlay:
+		settings_overlay.process_mode = Node.PROCESS_MODE_ALWAYS
+		_toggle_overlay(settings_overlay, "settings")
+
+## 暂停菜单"返回标题"：先解除暂停（对齐撤退链——结算/切场景不卡暂停树）再走
+## _on_back_to_title（战斗中 end_battle(false) 正常结算 + 存档 + 切场景）
+func _on_pause_menu_back_to_title() -> void:
+	_resume_from_pause()
+	_on_back_to_title()
+
+## 自绘暂停菜单（AcceptDialog 在 CanvasLayer 下不可显示，走撤退确认框同款范式）
+func _build_pause_menu() -> Control:
+	var overlay := Control.new()
+	overlay.name = "PauseMenuOverlay"
+	overlay.set_anchors_preset(Control.PRESET_FULL_RECT)
+	overlay.mouse_filter = Control.MOUSE_FILTER_STOP
+	overlay.process_mode = Node.PROCESS_MODE_ALWAYS
+	var dim := ColorRect.new()
+	dim.color = DT.COLOR_BACKDROP_DEEP
+	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
+	dim.mouse_filter = Control.MOUSE_FILTER_STOP
+	overlay.add_child(dim)
+	var center := CenterContainer.new()
+	center.set_anchors_preset(Control.PRESET_FULL_RECT)
+	center.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	overlay.add_child(center)
+	var panel := PanelContainer.new()
+	panel.custom_minimum_size = Vector2(320, 0)
+	var sb := PanelStyles.make_panel_frame_textured(DT.get_panel_accent("settings"))
+	sb.content_margin_left = 20
+	sb.content_margin_right = 20
+	sb.content_margin_top = 18
+	sb.content_margin_bottom = 18
+	panel.add_theme_stylebox_override("panel", sb)
+	center.add_child(panel)
+	var vbox := VBoxContainer.new()
+	vbox.add_theme_constant_override("separation", 12)
+	panel.add_child(vbox)
+	var title := Label.new()
+	title.text = "已暂停 · PAUSED"
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title.add_theme_font_size_override("font_size", 20)
+	title.add_theme_color_override("font_color", DT.get_panel_accent("settings"))
+	vbox.add_child(title)
+	# 三个动作按钮（继续=主操作/设置=次操作/返回标题=危险操作）
+	var resume_btn := Button.new()
+	resume_btn.text = "继续游戏"
+	resume_btn.custom_minimum_size = Vector2(240, 38)
+	var r_styles := PanelStyles.make_button_styles(DT.get_panel_accent("settings"))
+	for state in ["normal", "hover", "pressed", "disabled", "focus"]:
+		resume_btn.add_theme_stylebox_override(state, r_styles[state])
+	resume_btn.pressed.connect(_resume_from_pause)
+	vbox.add_child(resume_btn)
+	var settings_btn := Button.new()
+	settings_btn.text = "设置"
+	settings_btn.custom_minimum_size = Vector2(240, 38)
+	var s_styles := PanelStyles.make_button_styles(DT.COLOR_TEXT_MID)
+	for state in ["normal", "hover", "pressed", "disabled", "focus"]:
+		settings_btn.add_theme_stylebox_override(state, s_styles[state])
+	settings_btn.pressed.connect(_on_pause_menu_settings)
+	vbox.add_child(settings_btn)
+	var back_btn := Button.new()
+	back_btn.text = "返回标题（本场按战败结算）"
+	back_btn.custom_minimum_size = Vector2(240, 38)
+	var b_styles := PanelStyles.make_button_styles(DT.COLOR_RED_DOWN, "danger")
+	for state in ["normal", "hover", "pressed", "disabled", "focus"]:
+		back_btn.add_theme_stylebox_override(state, b_styles[state])
+	back_btn.pressed.connect(_on_pause_menu_back_to_title)
+	vbox.add_child(back_btn)
+	# v26.13(D-3): 战场情报区（打开时 _refresh_pause_intel 填充）
+	vbox.add_child(HSeparator.new())
+	var intel_title := Label.new()
+	intel_title.text = "── 战场情报 ──"
+	intel_title.add_theme_font_size_override("font_size", 14)
+	intel_title.add_theme_color_override("font_color", Color(0.6, 0.75, 0.9))
+	vbox.add_child(intel_title)
+	var intel := VBoxContainer.new()
+	intel.name = "PauseIntelBox"
+	intel.add_theme_constant_override("separation", 4)
+	vbox.add_child(intel)
+	return overlay
+
+## v26.13(D-3): 暂停战场情报——波次/下一波/环境/相位师状态快照（打开暂停菜单时刷新）。
+## 信息全部读既有 collector/缓存数据，只补展示位；暂停期数据静态，无轮询开销。
+func _refresh_pause_intel() -> void:
+	var intel := _pause_menu.find_child("PauseIntelBox", true, false) as VBoxContainer
+	if intel == null:
+		return
+	for c in intel.get_children():
+		c.queue_free()
+	var lines: Array[String] = []
+	# 波次进度
+	if BattleManager != null and BattleManager.get("_spawn_system") != null:
+		var sp: Node = BattleManager.get("_spawn_system")
+		var wi: int = int(sp.get("enemy_wave_index")) if "enemy_wave_index" in sp else 0
+		var wt: int = int(sp.get("_enemy_wave_total")) if "_enemy_wave_total" in sp else 0
+		if wt > 0:
+			lines.append("波次：%d / %d" % [wi, wt])
+	# 限时歼灭剩余
+	if "_time_limit_left" in BattleManager and float(BattleManager.get("_time_limit_left")) > 0.0:
+		lines.append("剩余时间：%d 秒" % int(BattleManager.get("_time_limit_left")))
+	# 环境四维（world_map/TopHudBar 战前摘要同源描述，返回行数组）
+	var env_lines: Array = []
+	var gm_lv: int = int(GameManager.get("current_level")) if GameManager != null and "current_level" in GameManager else 0
+	if gm_lv > 0:
+		var bee = load("res://data/battle_env_effects.gd")
+		if bee != null and bee.has_method("describe_level_env"):
+			env_lines = bee.describe_level_env(gm_lv)
+	if not env_lines.is_empty():
+		lines.append("环境：" + "，".join(PackedStringArray(env_lines)))
+	# 相位师战状态
+	if BattleManager != null and bool(BattleManager.get("_is_phase_master_battle")):
+		var cfg: Dictionary = BattleManager.get("_phase_master_config")
+		var mname: String = String(cfg.get("name", "敌方相位师"))
+		var drv: Node = BattleManager.get("_enemy_phase_driver")
+		if drv != null and is_instance_valid(drv) and "hp" in drv and "max_hp" in drv:
+			var mx: float = float(drv.get("max_hp"))
+			if mx > 0.0:
+				lines.append("%s：血量 %d%%" % [mname, int(float(drv.get("hp")) / mx * 100.0)])
+		else:
+			lines.append("对战：%s" % mname)
+	if lines.is_empty():
+		lines.append("（暂无战场情报）")
+	for line in lines:
+		var lbl := Label.new()
+		lbl.text = line
+		lbl.add_theme_font_size_override("font_size", 13)
+		lbl.add_theme_color_override("font_color", Color(0.85, 0.89, 0.95))
+		intel.add_child(lbl)
+
 
 # ── 撤退（放弃本场战斗，判定为失败） ───────────────────────────
 # 用一个实例字段追踪当前确认框，避免重复弹出
@@ -1317,9 +1482,9 @@ func _on_back_to_title() -> void:
 	# v21 余烬要塞：从基地经兵棋室进入战场时，返回按钮回基地而非标题
 	if Engine.has_meta("launch_from_bunker"):
 		Engine.remove_meta("launch_from_bunker")
-		get_tree().change_scene_to_file("res://scenes/bunker/bunker_main.tscn")
+		SceneTransition.change(get_tree(), "res://scenes/bunker/bunker_main.tscn")
 		return
-	get_tree().change_scene_to_file("res://scenes/title_screen.tscn")
+	SceneTransition.change(get_tree(), "res://scenes/title_screen.tscn")
 
 func _on_world_map() -> void:
 	_open_overlay(map_overlay, "map")
@@ -1352,6 +1517,10 @@ func _all_overlays() -> Array:
 ## P1-8: ESC 语义——只关最上层可见 overlay（PopupLayer 子序最大者），
 ## 全关后战斗中再次按 ESC 切换暂停
 func _close_top_overlay() -> void:
+	# v26.11(A2.2): 暂停菜单是最顶层模态——开着时 ESC 等价"继续游戏"
+	if _pause_menu != null and is_instance_valid(_pause_menu) and _pause_menu.visible:
+		_resume_from_pause()
+		return
 	# BU-1: 功能抽屉比 overlay 更浅——ESC 先收抽屉
 	if bottom_function_bar != null \
 			and bottom_function_bar.has_method("is_drawer_open") \

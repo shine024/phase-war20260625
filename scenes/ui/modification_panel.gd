@@ -57,6 +57,8 @@ const FILTER_MAX := "max"
 var _filter_mode: String = FILTER_ALL
 
 var selected_card: CardResource = null
+var _first_list_card: CardResource = null   ## v26.13: 名册首卡（打开自动选中用）
+var _pending_first_card: CardResource = null  ## v26.13: 单次刷新内暂存
 var selected_mod_id: String = ""
 var _embedded_mode: bool = false
 # v7.x 性能优化：_refresh_mod_list 期间缓存选中卡的战力/档位，供 _create_mod_item 复用，
@@ -160,6 +162,11 @@ func _run_open_refresh_pipeline() -> void:
 		_open_refresh_inflight = false
 		return
 	_refresh_card_list()
+	# v26.13: 打开时无选中卡 → 自动选中名册第一张。旧行为下中栏改造模块库完全空白
+	#（_refresh_mod_list 对无 selected_card 直接 return，连空态提示都不渲染），
+	# 玩家面对三栏两个空区不知所措（ui-review 便捷性优先）。
+	if selected_card == null and _first_list_card != null:
+		_on_card_selected(_first_list_card)
 	_open_refresh_inflight = false
 
 
@@ -489,6 +496,8 @@ func _refresh_card_list() -> void:
 				var item = _create_card_item(card, inst_card)
 				card_list_container.add_child(item)
 				shown_count += 1
+				if _pending_first_card == null:
+					_pending_first_card = inst_card if inst_card != null else card
 		else:
 			# 无实例：仅显示模板（蓝图解锁但未入包的卡）
 			total_count += 1
@@ -497,6 +506,11 @@ func _refresh_card_list() -> void:
 			var item = _create_card_item(card, null)
 			card_list_container.add_child(item)
 			shown_count += 1
+			if _pending_first_card == null:
+				_pending_first_card = card
+	# v26.13: 记录名册首张显示的卡（供打开管线自动选中）
+	_first_list_card = _pending_first_card
+	_pending_first_card = null
 	# 更新计数（已显示 / 总数）
 	if col_head_count:
 		col_head_count.text = "%d / %d" % [shown_count, total_count]
@@ -578,6 +592,7 @@ func _create_card_item(card: CardResource, instance_card: CardResource = null) -
 	var thumb := PanelContainer.new()
 	thumb.custom_minimum_size = Vector2(36, 40)
 	thumb.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	thumb.mouse_filter = Control.MOUSE_FILTER_IGNORE  # v26.16 修复：默认 STOP 会吃掉行按钮点击（缩略图死区）
 	var thumb_sb := StyleBoxFlat.new()
 	thumb_sb.bg_color = DT.COLOR_SLOT_LOCKED
 	thumb_sb.border_color = _get_kind_color(card.combat_kind)
@@ -675,14 +690,13 @@ func _refresh_mod_list() -> void:
 	for child in mod_list_container.get_children():
 		child.queue_free()
 
-	## 从 IntelItemBag 读所有已解锁改造图纸（照搬 backpack_panel.refresh_intel_tab 的口径）
+	## v26.x 改造消耗品化：数据源从「库存>0」改为「见过集合」——消耗光最后一张
+	## 图纸后模块仍留在列表（灰显"图纸不足"+详情区显示库存 0），不再凭空消失；
+	## 旧体系下 consume_item 零调用、库存只增不减，inventory 回填已覆盖全部历史获取。
 	var bag = get_node_or_null("/root/IntelItemBag")
 	var unlocked_mod_ids: Array = []
-	if bag and bag.has_method("get_all_inventory"):
-		var inv: Dictionary = bag.get_all_inventory()
-		for item_type in inv.keys():
-			if int(inv[item_type]) <= 0:
-				continue
+	if bag and bag.has_method("get_seen_item_ids"):
+		for item_type in bag.get_seen_item_ids():
 			# 仅处理改造图纸（blueprint_ 前缀，排除 blueprint_evol_ 进化图纸）
 			if not IntelManualItems.is_mod_blueprint(item_type):
 				continue
@@ -706,7 +720,7 @@ func _refresh_mod_list() -> void:
 		empty_label.add_theme_color_override("font_color", DT.COLOR_SLATE_A80)
 		mod_list_container.add_child(empty_label)
 		if mod_list_head_count:
-			mod_list_head_count.text = "可用 0 · 总持有 %d" % total_owned
+			mod_list_head_count.text = "可用 0 · 已解锁 %d" % total_owned
 		return
 
 	## 按稀有度排序（高→低），让玩家先看到珍贵改造
@@ -727,9 +741,9 @@ func _refresh_mod_list() -> void:
 			continue  # 找不到改造数据（旧/无效 mod_id），跳过避免渲染异常
 		var item = _create_mod_item(mod_id, mod_data)
 		mod_list_container.add_child(item)
-	# v7.x：更新改造库计数（可用数 = 过滤后适用数；总持有 = 过滤前总数，让玩家知道还有其他兵种的改造）
+	# v7.x：更新改造库计数（可用数 = 过滤后适用数；已解锁 = 见过集合总数，让玩家知道还有其他兵种的改造）
 	if mod_list_head_count:
-		mod_list_head_count.text = "适用 %d · 总持有 %d" % [applicable_mod_ids.size(), total_owned]
+		mod_list_head_count.text = "适用 %d · 已解锁 %d" % [applicable_mod_ids.size(), total_owned]
 
 func _create_mod_item(mod_id: String, mod_data: Dictionary) -> Control:
 	var btn := Button.new()
@@ -800,6 +814,7 @@ func _create_mod_item(mod_id: String, mod_data: Dictionary) -> Control:
 		var placeholder := PanelContainer.new()
 		placeholder.custom_minimum_size = Vector2(26, 26)
 		placeholder.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		placeholder.mouse_filter = Control.MOUSE_FILTER_IGNORE  # v26.16 修复：默认 STOP 会吃掉行按钮点击
 		var ph_sb := StyleBoxFlat.new()
 		ph_sb.bg_color = Color(0.05, 0.09, 0.16, 0.6)
 		ph_sb.border_color = rarity_col
@@ -945,13 +960,19 @@ func _card_level_of(card: CardResource) -> int:
 
 ## 获取改造安装的阻断原因（空串表示可安装）。
 ## v7.x：透传 can_install_modification 的 reason，让"✗冲突"细分为冲突/槽满/情报不足。
+## v26.x 改造消耗品化：追加图纸库存拦截（消耗品模型下 has_item 即库存≥1；
+## 卡牌级硬门（冲突/槽满/时代带）优先展示，资源类原因其后）。
 func _get_install_block_reason(mod_id: String) -> String:
 	if not selected_card:
 		return ""
 	var check_result: Dictionary = selected_card.can_install_modification(mod_id)
-	if check_result.get("can_install", true):
-		return ""
-	return String(check_result.get("reason", "冲突"))
+	if not check_result.get("can_install", true):
+		return String(check_result.get("reason", "冲突"))
+	var bag = get_node_or_null("/root/IntelItemBag")
+	if bag and bag.has_method("has_item"):
+		if not bag.has_item(BlueprintDefinitions.get_mod_blueprint_id(mod_id)):
+			return "图纸不足"
+	return ""
 
 ## v1.4：刷新右栏单位面板（恒定显示，不随模块选中切换）
 ## 动态构建 6 个视觉区块：Hero头部 / PowerBlock战力块 / TierProgress5档条 / 基础属性6格 / 已装改造列表
@@ -1304,13 +1325,15 @@ func _on_sim_button_pressed() -> void:
 		_close_sim_drawer()
 
 
-## v1.5：打开效果模拟抽屉——填充当前选中模块的完整 effect 列表 + 同类对比 + 战力预估
+## v1.5：打开效果模拟抽屉——完整 effect 列表 + 逐属性前后对比（v26.16 新增）+ 战力预估
 func _open_sim_drawer() -> void:
 	if sim_drawer == null or selected_mod_id.is_empty():
 		return
 	var mod_data: Dictionary = ModificationRegistry.get_data(selected_mod_id) if ModificationRegistry != null else {}
 	if mod_data.is_empty():
 		return
+	# v26.16：已安装改造的"预估"会把第二份的重复收益算进去，抽屉改为明示不适用
+	var already_installed: bool = _is_mod_installed(selected_mod_id)
 	# 清空旧内容
 	for child in sim_drawer.get_children():
 		sim_drawer.remove_child(child)
@@ -1350,24 +1373,62 @@ func _open_sim_drawer() -> void:
 				else:
 					col1.add_child(_make_sim_kv(line, "", Color(0.9, 0.92, 0.96, 1)))
 	hbox.add_child(col1)
-	# 栏2：同类已装对比（当前已装该冲突组的模块数 + 战力前后）
+	# 栏2：逐属性前后对比（v26.16 视觉批次：与战力预估同源，走真实 build_stats 路径；
+	# 只显示有变化的行，机制类改造零变化时给明确文案而非空列）
 	var col2 := VBoxContainer.new()
 	col2.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	col2.add_theme_constant_override("separation", 2)
-	col2.add_child(_make_sim_section_label("◆ 战力预估"))
+	col2.add_child(_make_sim_section_label("◆ 属性对比"))
+	var can_preview: bool = selected_card != null and BlueprintManager != null
+	var before_stats: UnitStats = EvolutionHelpers.build_unit_stats_for_power_preview(selected_card, BlueprintManager) if can_preview else null
+	var after_stats: UnitStats = EvolutionHelpers.estimate_stats_with_extra_mod(selected_card, selected_mod_id, BlueprintManager) if can_preview else null
+	if already_installed:
+		col2.add_child(_make_sim_kv("该改造已安装", "无需预估", Color(0.5, 0.55, 0.65, 0.6)))
+	elif before_stats != null and after_stats != null:
+		var stat_rows := [
+			["耐久", before_stats.max_hp, after_stats.max_hp],
+			["攻轻", before_stats.attack_light, after_stats.attack_light],
+			["攻甲", before_stats.attack_armor, after_stats.attack_armor],
+			["攻空", before_stats.attack_air, after_stats.attack_air],
+			["防轻", before_stats.defense_light, after_stats.defense_light],
+			["防甲", before_stats.defense_armor, after_stats.defense_armor],
+			["防空", before_stats.defense_air, after_stats.defense_air],
+		]
+		var changed_count := 0
+		for r in stat_rows:
+			var d: float = float(r[2]) - float(r[1])
+			if absf(d) < 0.5:
+				continue
+			changed_count += 1
+			col2.add_child(_make_sim_kv(String(r[0]), "%d → %d (%s%d)" % [
+				int(r[1]), int(r[2]), "+" if d > 0.0 else "", int(round(d))],
+				DT.COLOR_GREEN_UP if d > 0.0 else DT.COLOR_RED_DOWN))
+		if changed_count == 0:
+			col2.add_child(_make_sim_kv("无直接数值变化", "机制类", Color(0.5, 0.55, 0.65, 0.6)))
+	else:
+		col2.add_child(_make_sim_kv("属性预览不可用", "—", Color(0.5, 0.55, 0.65, 0.6)))
+	hbox.add_child(col2)
+	# 栏3：战力预估（当前已装该冲突组的模块数 + 战力前后）
+	var col3 := VBoxContainer.new()
+	col3.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	col3.add_theme_constant_override("separation", 2)
+	col3.add_child(_make_sim_section_label("◆ 战力预估"))
 	var before_power: float = _cached_card_power
 	# v1.5 修复：原 after = before × power_mult 严重虚高（power_mult 是稀有度/成本权重，非战力增益倍率，
 	# 1.35 会对 3000 战力卡显示 +1050）。改为克隆实例卡 + 追加候选改造，走与真实安装完全相同的
 	# build_stats→combat_power 路径，预览值与右栏/intel 面板实际安装后显示的战力一致。
-	var after_power: float = EvolutionHelpers.estimate_power_with_extra_mod(selected_card, selected_mod_id, BlueprintManager) if (selected_card != null and BlueprintManager != null) else before_power
-	col2.add_child(_make_sim_kv("当前战力", str(int(before_power)) if before_power > 0 else "—", Color(0.55, 0.6, 0.7, 0.8)))
-	col2.add_child(_make_sim_kv("装上后", str(int(after_power)), DT.COLOR_GREEN_UP))
-	var delta: int = int(after_power - before_power)
-	col2.add_child(_make_sim_kv("变化", ("+" if delta >= 0 else "") + str(delta), DT.COLOR_GREEN_UP if delta >= 0 else DT.COLOR_RED_DOWN))
 	# 槽位占用
 	var mod_count: int = selected_card.mods.size() if (selected_card and "mods" in selected_card) else 0
-	col2.add_child(_make_sim_kv("槽位", "%d/9 → %d/9" % [mod_count, mod_count + 1], DT.COLOR_CYAN_TECH_SOFT))
-	hbox.add_child(col2)
+	if already_installed:
+		col3.add_child(_make_sim_kv("槽位", "%d/9" % mod_count, DT.COLOR_CYAN_TECH_SOFT))
+	else:
+		var after_power: float = EvolutionHelpers.estimate_power_with_extra_mod(selected_card, selected_mod_id, BlueprintManager) if (selected_card != null and BlueprintManager != null) else before_power
+		col3.add_child(_make_sim_kv("当前战力", str(int(before_power)) if before_power > 0 else "—", Color(0.55, 0.6, 0.7, 0.8)))
+		col3.add_child(_make_sim_kv("装上后", str(int(after_power)), DT.COLOR_GREEN_UP))
+		var delta: int = int(after_power - before_power)
+		col3.add_child(_make_sim_kv("变化", ("+" if delta >= 0 else "") + str(delta), DT.COLOR_GREEN_UP if delta >= 0 else DT.COLOR_RED_DOWN))
+		col3.add_child(_make_sim_kv("槽位", "%d/9 → %d/9" % [mod_count, mod_count + 1], DT.COLOR_CYAN_TECH_SOFT))
+	hbox.add_child(col3)
 	sim_drawer.add_child(hbox)
 	sim_drawer.visible = true
 	if deck_sim_button:
@@ -1657,11 +1718,16 @@ func _install_modification(mod_id: String) -> void:
 
 	if result.success:
 		_show_result("改造安装成功：%s" % result.message)
+		# v26.16 反馈链：安装成功=enhance 音 / 失败=error 音（此前安装全程静默）
+		if SignalBus and SignalBus.has_signal("play_sound"):
+			SignalBus.play_sound.emit("enhance")
 		selected_mod_id = ""  # v1.5 修复：清空选中，避免安装后 SPACE/ENTER 重复触发
 		_refresh_mod_list()
 		_update_card_info()
 	else:
 		_show_result("安装失败：%s" % result.message)
+		if SignalBus and SignalBus.has_signal("play_sound"):
+			SignalBus.play_sound.emit("error")
 
 ## ─────────────────────────────────────────────
 ##  事件处理
@@ -1753,27 +1819,33 @@ func _show_mod_details(mod_data: Dictionary) -> void:
 		var unlock = mod_data.get("unlock_conditions", {})
 		if unlock is Dictionary and unlock.has("required_level"):
 			req_parts.append("强化≥%d" % int(unlock["required_level"]))
-		# 纳米成本
-		var base_power: float = BlueprintManager.get_base_power_for_mod_cost(selected_card.card_id) if selected_card else 100.0
-		var nano_cost = int(base_power * 0.5)
+		# 纳米成本（v26.x：改读 BlueprintManager.preview_install_cost，与实际扣款同源——
+		# 原显示用模板战力×0.5 且无每装一条 +20% 递增，与实际扣款长期不一致）
+		var cost_preview: Dictionary = BlueprintManager.preview_install_cost(selected_card) if selected_card else {nano = 50, blueprints = 1}
+		var nano_cost = int(cost_preview.nano)
 		req_parts.append("纳米%d" % nano_cost)
-		# 图纸
+		# 图纸（消耗品化：显示库存张数；总开关关=回退旧"持有✓/✗"语义）
 		var blueprint_id = BlueprintDefinitions.get_mod_blueprint_id(selected_mod_id)
-		var has_blueprint = false
+		var stock_count := 0
 		var _iib = Engine.get_main_loop().get_root().get_node_or_null("IntelItemBag")
 		if _iib:
-			has_blueprint = _iib.has_item(blueprint_id)
-		req_parts.append("图纸" + ("✓" if has_blueprint else "✗"))
+			stock_count = int(_iib.get_count(blueprint_id))
+		if int(cost_preview.blueprints) > 0:
+			req_parts.append("图纸×%d" % stock_count)
+		else:
+			req_parts.append("图纸" + ("✓" if stock_count > 0 else "✗"))
 		deck_req_label.text = " · ".join(req_parts)
 
 	# 安装按钮状态 + 重连
 	if deck_install_button:
-		var base_power2: float = BlueprintManager.get_base_power_for_mod_cost(selected_card.card_id) if selected_card else 100.0
-		var nano_cost2 = int(base_power2 * 0.5)
-		var has_blueprint2 = false
+		var cost_preview2: Dictionary = BlueprintManager.preview_install_cost(selected_card) if selected_card else {nano = 50, blueprints = 1}
+		var nano_cost2 = int(cost_preview2.nano)
+		var need_blueprint2 := int(cost_preview2.blueprints) > 0
+		var stock_count2 := 0
 		var _iib2 = Engine.get_main_loop().get_root().get_node_or_null("IntelItemBag")
 		if _iib2:
-			has_blueprint2 = _iib2.has_item(BlueprintDefinitions.get_mod_blueprint_id(selected_mod_id))
+			stock_count2 = int(_iib2.get_count(BlueprintDefinitions.get_mod_blueprint_id(selected_mod_id)))
+		var has_blueprint2 = stock_count2 > 0
 		var nano_amount = BasicResourceManager.get_total(BasicResources.ID_NANO_MATERIALS) if BasicResourceManager else 0
 		var has_nano = nano_amount >= nano_cost2
 		var is_installed = _is_mod_installed(selected_mod_id)
@@ -1785,8 +1857,8 @@ func _show_mod_details(mod_data: Dictionary) -> void:
 		elif not has_blueprint2:
 			deck_install_button.text = "缺图纸"
 			deck_install_button.disabled = true
-			# 批次三 B2d：禁用按钮就地说明缺什么、去哪拿
-			deck_install_button.tooltip_text = "缺少【%s】——改造图纸可通过战斗掉落与情报道具获得" % BlueprintDefinitions.get_mod_blueprint_name(selected_mod_id)
+			# 批次三 B2d：禁用按钮就地说明缺什么、去哪拿（v26.x 消耗品化后补制造站补给出口）
+			deck_install_button.tooltip_text = "缺少【%s】（库存 0 张）——战斗掉落可获得，或到战术制造站补给" % BlueprintDefinitions.get_mod_blueprint_name(selected_mod_id)
 		elif not has_nano:
 			deck_install_button.text = "纳米不足"
 			deck_install_button.disabled = true
@@ -1794,7 +1866,10 @@ func _show_mod_details(mod_data: Dictionary) -> void:
 		else:
 			deck_install_button.text = "安装"
 			deck_install_button.disabled = false
-			deck_install_button.tooltip_text = "消耗 %d 纳米材料安装到当前选中的这张卡（只影响该实例）" % nano_cost2
+			if need_blueprint2:
+				deck_install_button.tooltip_text = "消耗 1 张图纸（库存 %d）+ %d 纳米材料安装到当前选中的这张卡（只影响该实例）" % [stock_count2, nano_cost2]
+			else:
+				deck_install_button.tooltip_text = "消耗 %d 纳米材料安装到当前选中的这张卡（只影响该实例）" % nano_cost2
 
 		# v5.0: 信号重连（先断开所有旧 callable，再绑定新的）
 		var connections: Array = deck_install_button.pressed.get_connections()

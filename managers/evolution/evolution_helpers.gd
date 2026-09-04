@@ -497,19 +497,27 @@ static func _mechanic_flat_score(stats: UnitStats, hp: float, dps_raw: float, dp
 ## 原 modification_panel 用 before × power_mult 严重虚高（power_mult 是稀有度/成本权重，
 ## 非战力增益倍率，1.35 会对 3000 战力卡显示 +1050）。
 static func estimate_power_with_extra_mod(card: CardResource, mod_id: String, bpm_ref: Node) -> float:
-	if card == null or mod_id.is_empty() or bpm_ref == null:
+	var stats: UnitStats = estimate_stats_with_extra_mod(card, mod_id, bpm_ref)
+	if stats == null:
 		return 0.0
+	return combat_power_from_unit_stats(stats)
+
+
+## 预览：额外装一个改造后的完整 UnitStats（不真正写入养成数据）。
+## v26.16 视觉批次：效果模拟抽屉的逐属性对比用；与 estimate_power_with_extra_mod
+## 共用同一克隆路径（克隆 + 追加 {id, enabled} + build_unit_stats_for_power_preview），
+## 战力口径不分裂——power 一律由本函数结果再过 combat_power_from_unit_stats 得出。
+static func estimate_stats_with_extra_mod(card: CardResource, mod_id: String, bpm_ref: Node) -> UnitStats:
+	if card == null or mod_id.is_empty() or bpm_ref == null:
+		return null
 	var clone: CardResource = card.duplicate(true)
 	if clone == null:
-		return 0.0
+		return null
 	# 追加候选改造（与真实 install_modification 写入的 entry 结构一致：{id, enabled}）
 	if clone.mods == null:
 		clone.mods = []
 	clone.mods.append({"id": mod_id, "enabled": true})
-	var stats: UnitStats = build_unit_stats_for_power_preview(clone, bpm_ref)
-	if stats == null:
-		return 0.0
-	return combat_power_from_unit_stats(stats)
+	return build_unit_stats_for_power_preview(clone, bpm_ref)
 
 
 ## ─────────── 属性增长 ───────────

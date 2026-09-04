@@ -220,12 +220,16 @@ const PROJ_BULLET_DISPLAY_SCALE: float = 1.3  # v17k-R2: 0.8→1.3（10px 弹体
 ## 键值取 100+，避开 0-11 的 wt 值域（新枚举 4 值 + legacy 12 值均不撞）。
 const FLAVOR_LAYER_RIFLE: int = 100     # 步枪——细长尖锥
 const FLAVOR_LAYER_MG: int = 101        # 机枪——短钝弹丸
-const FLAVOR_LAYER_TANK_GUN: int = 102  # 直射坦克炮——大号钝头炮弹
+const FLAVOR_LAYER_TANK_GUN: int = 102  # 直射坦克炮——写实炮弹贴图层（v26.15e）
+## v26.15e: 坦克炮亚类层改用写实弹壳贴图（artillery_ballistic 水平翻转，鼻锥朝 +X）。
+## 程序化纯色多边形（锥头+矩形+ADD）在实战里读成"发光飞镖/黄色蝌蚪"，壳体感出不来。
+const TANK_SHELL_TEX := preload("res://assets/effects/projectiles/weapons_realistic/weapon_tank_shell.png")
+const TANK_SHELL_DISPLAY_SCALE: float = 0.026  # v26.15g: 0.040→0.026（~29×4.8px；45px 达单位长 70% 过大，用户实测反馈）
 ## v20.16d: 手枪/卡宾——微型近光点弹体。此前 SMALL_ARMS 与 GENERIC 共用 wt 档默认层，
 ## 形状/染色/曳光/弹速四轴全同（用户主诉"单体弹道差异太小"的病根之一）。
 const FLAVOR_LAYER_SMALL_ARMS: int = 103
 ## 坦克炮弹战场显示缩放（其余亚类沿用 PROJ_BULLET_DISPLAY_SCALE；炮弹要一眼炮弹级）
-const TANK_GUN_DISPLAY_SCALE: float = 2.0
+const TANK_GUN_DISPLAY_SCALE: float = 1.8  # v26.15d: 2.0→1.8（配合修长弹形）
 
 ## 亚类 → 形状层键。GENERIC/NONE 返回 -1（用原 wt 层，形状零变化）。
 static func flavor_layer_key(flavor: int) -> int:
@@ -279,6 +283,10 @@ static func flavor_tint(flavor: int) -> Color:
 
 ## 渲染层弹头染色：亚类层用亚类色（阵营无关），基础层返回阵营基础 tint。
 static func layer_tint(layer_key: int, base_tint: Color) -> Color:
+	# v26.15e: 坦克炮层已贴图化（金属壳体），instance color 降为暖白增辉——
+	# 橙色乘色会把橄榄绿弹壳洗成棕橙。
+	if layer_key == FLAVOR_LAYER_TANK_GUN:
+		return Color(1.0, 0.93, 0.82)
 	var f := _flavor_for_layer_key(layer_key)
 	if f >= 0:
 		return flavor_tint(f)
@@ -520,11 +528,13 @@ static func build_bullet_points(weapon_type: int, size_scale: float = 1.0, flavo
 				half_h = 2.6 * s
 				neck = 0.5
 			DirectWeaponFlavor.Flavor.TANK_GUN:
-				# 直射坦克炮——大号钝头炮弹（此前落 SMG 微型档；炮弹级体量）
-				body_len = 10.0 * s
-				nose_len = 4.0 * s
-				half_h = 4.6 * s
-				neck = 0.55
+				# 直射坦克炮——修长炮弹剪影。v26.15d: 旧"大号钝头"（10/4/4.6/0.55）
+				# 在实战叠加 ADD 后读成黄色蝌蚪/箭头（2026-09-04 实机截图）；
+				# 收瘦拉长读"炮弹"，体量靠 display_scale 保持。
+				body_len = 12.0 * s
+				nose_len = 5.0 * s
+				half_h = 3.2 * s
+				neck = 0.38
 			DirectWeaponFlavor.Flavor.SMALL_ARMS:
 				# v20.16d: 手枪/卡宾——微型近光点（比 SMG 档更小更圆；近距离点射读"小弹"）
 				body_len = 2.5 * s
@@ -776,7 +786,7 @@ static func spawn_impact_with_kind(parent: Node2D, world_pos: Vector2, weapon_ty
 	if impact_tex != null:
 		VfxFactory.spawn_impact_sprite(parent, world_pos, impact_tex, peak_scale, 0.45)
 	# v9.2/v9.4: 爆炸帧动画层——有帧序列的武器播帧动画（火球膨胀），宽度按 power_tier 分级。
-	#   MEDIUM=96px（标准）/ HEAVY=160px（放大）/ LIGHT=0（无帧动画）。
+	#   MEDIUM=96px（标准）/ HEAVY=128px（v18-R4 放大档）/ LIGHT=0（无帧动画）。
 	#   无帧序列的武器（轻武器等）explosion_frames_by_wt 返回空数组，跳过此层。
 	var _frames: Array = explosion_frames_by_wt(weapon_type)
 	# v9.4: 按 tier 决定帧动画宽度（LIGHT 不播；缺省 tier 走原 96px 逻辑兼容）
@@ -811,7 +821,7 @@ static func impact_shake_for_kind(target_combat_kind: int) -> Vector2:
 ## Tier 分档与判据（任一满足即升级）：
 ##   0 LIGHT    默认（直射无爆炸+非狙击+低伤）—— 小火花，无帧动画
 ##   1 MEDIUM   explosion_radius∈[1,50) 或 damage∈[100,700) —— 96px 帧动画
-##   2 HEAVY    explosion_radius∈[50,70) 或 damage∈[700,1500) —— 160px 帧动画 + 配方×1.4
+##   2 HEAVY    explosion_radius∈[50,70) 或 damage∈[700,1500) —— 128px 帧动画（v18-R4）+ 配方×0.85
 ##   3 NUCLEAR  radius≥70 且 damage≥1500 —— 完整核爆特效栈（相位仪核子轰炸能力走独立路径，不经本函数）
 ##
 ## 调用方（bullet/batch）命中时算 tier 写入 opts["power_tier"]，本函数据此分派渲染。

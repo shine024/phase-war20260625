@@ -198,6 +198,11 @@ func take_damage(amount: float, attacker: Variant = null) -> void:
 		# v21 P1: 精确制导针（gen_truestrike_pinpoint）——攻击者无视目标 50% 闪避（按比例削减）
 		if swarm_dodge > 0.0:
 			swarm_dodge = swarm_dodge * (1.0 - clampf(ModuleEffectHandler.get_attacker_dodge_ignore(attacker), 0.0, 1.0))
+		# v27.1: 暴击势能词条——攻击者打出上次暴击后武装的下一次必中（一次性，无视闪避）
+		if swarm_dodge > 0.0 and attacker != null and is_instance_valid(attacker) \
+				and attacker.has_meta("_affix_ensure_hit_pending"):
+			swarm_dodge = 0.0
+			attacker.remove_meta("_affix_ensure_hit_pending")
 		var swarm_red: float = float(stats.damage_reduction) if stats != null else 0.0
 		swarm_red = minf(0.60, swarm_red + float(damage_reduction))
 		var _swarm_hit: Dictionary = CardGridDamage.resolve_hit(amount, eff_def, swarm_dodge, swarm_red)

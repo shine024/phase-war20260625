@@ -14,10 +14,12 @@ enum PanelMode { MODE_BACKPACK = 0, MODE_PHASE_INSTRUMENT = 1, MODE_BATTLEFIELD 
 enum TabIdx { INFO = 0, REINFORCE = 1, MODIFY = 2, EVOLVE = 3 }  # EVOLVE 索引保留（tscn 节点占位），语义=制造
 
 const GC = preload("res://resources/game_constants.gd")
+const DT = preload("res://resources/design_tokens.gd")
 const PanelStyles = preload("res://scripts/ui/panel_styles.gd")
 const DefaultCards = preload("res://data/default_cards.gd")
 const BattleExperienceConfig = preload("res://data/battle_experience_config.gd")
 const EnemyArchetypes = preload("res://data/enemy_archetypes.gd")
+const IntelUIKit = preload("res://scenes/ui/components/intel_ui_kit.gd")
 const PhaseLaws = preload("res://data/phase_laws.gd")
 const EnemyPhaseMasters = preload("res://data/enemy_phase_masters.gd")
 const MasterPowerEvaluator = preload("res://scripts/master_power_evaluator.gd")
@@ -77,7 +79,7 @@ var _card_skill_label: Label = null
 var _bonus_section: PanelContainer = null
 var _bonus_label: Label = null
 var status_label: RichTextLabel = null
-var desc_label: Label = null
+var desc_label: RichTextLabel = null  # v26.16: Label→RichTextLabel（bbcode 关键词高亮）
 var flavor_label: Label = null
 var rank_badge_host: HBoxContainer = null
 var rarity_label: Label = null
@@ -119,6 +121,7 @@ func _ready() -> void:
 	z_index = 100
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_resolve_nodes()
+	_setup_section_headers()
 	_setup_tab_titles()
 	_setup_action_buttons_container()
 	if close_button:
@@ -166,7 +169,7 @@ func _resolve_nodes() -> void:
 	# v9.x 当前状态区用 BBCode 渲染彩色 [正面]/[负面] 标记
 	if status_label:
 		status_label.bbcode_enabled = true
-	desc_label = get_node_or_null("Margin/VBox/TabBar/TabInfo/InfoVBox/DescSection/DescVBox/DescLabel") as Label
+	desc_label = get_node_or_null("Margin/VBox/TabBar/TabInfo/InfoVBox/DescSection/DescVBox/DescLabel") as RichTextLabel
 	flavor_label = get_node_or_null("Margin/VBox/TabBar/TabInfo/InfoVBox/FlavorLabel") as Label
 	action_buttons_container = get_node_or_null("Margin/VBox/ActionButtons") as HBoxContainer
 	close_button = get_node_or_null("Margin/VBox/CloseButton") as Button
@@ -592,7 +595,7 @@ func _refresh_info_sections(card: CardResource) -> void:
 	_refresh_card_skill_section(card)
 	# 描述
 	if desc_label:
-		desc_label.text = card.description
+		desc_label.text = _apply_desc_highlight(card.description)
 	# 风味
 	if flavor_label:
 		flavor_label.text = card.flavor_text
@@ -1282,6 +1285,56 @@ func _build_unit_description(stats: UnitStats, is_player: bool, base_text: Strin
 	var side_verb := "推进" if is_player else "来袭"
 	return "%s，%s交战。" % [role_str, side_verb]
 
+
+## ── v26.16 视觉批次：描述关键词高亮 + 区块标题条升级 ──
+
+## 高亮词表 = _build_unit_description 角色短语闭集（与生成器同源，生成文本零误标）；
+## 对少量自带 description 的卡文本同样适用。命中词着科技青（token 取色）。
+const DESC_KEYWORDS: Array[String] = [
+	"曲射越过前排", "范围溅射", "连锁攻击", "攻城特化", "目标标记", "破甲叠加",
+	"连击输出", "狂怒增益", "爆反反伤", "拦截格挡", "濒死复活", "相位护盾",
+	"巷战防御", "亡语治疗", "减速光环", "指挥光环", "战场回收", "自我回复",
+	"远程火力", "中程交战", "近战突击", "对空能力", "堡垒固守", "支援职能",
+	"空中单位", "固定部署",
+]
+
+func _apply_desc_highlight(raw: String) -> String:
+	if raw.is_empty():
+		return raw
+	# 方括号转全角，防 bbcode 语法被正文吞掉
+	var text := raw.replace("[", "［").replace("]", "］")
+	var col: String = DT.COLOR_CYAN_TECH_SOFT.to_html(false)
+	for kw in DESC_KEYWORDS:
+		text = text.replace(kw, "[color=#%s]%s[/color]" % [col, kw])
+	return text
+
+
+## 情报 Tab 区块标题升级为 IntelUIKit 签名标题条（发光竖条+粗体+底线，对齐情报中心）。
+## 原 *Title 为 .tscn 静态 Label（脚本零引用）——隐藏保留节点、同位置插 header，零场景树手术。
+func _setup_section_headers() -> void:
+	var accent: Color = DT.get_panel_accent("backpack")
+	var base := "Margin/VBox/TabBar/TabInfo/InfoVBox/"
+	var titles := [
+		[base + "StatsSection/StatsVBox/StatsTitle", "核心属性"],
+		[base + "AffixSection/AffixVBox/AffixTitle", "词条"],
+		[base + "StarSection/StarVBox/StarTitle", "星级"],
+		[base + "NurtureSection/NurtureVBox/NurtureTitle", "养成"],
+		[base + "CardSkillSection/CardSkillVBox/CardSkillTitle", "关联技能"],
+		[base + "BonusSection/BonusVBox/BonusTitle", "加成来源"],
+		[base + "StatusSection/StatusVBox/StatusTitle", "当前状态"],
+		[base + "DescSection/DescVBox/DescTitle", "描述"],
+	]
+	for entry in titles:
+		var title_node := get_node_or_null(String(entry[0]))
+		if title_node == null or title_node.get_parent() == null:
+			continue
+		var host := title_node.get_parent()
+		var header := IntelUIKit.section_header(String(entry[1]), accent)
+		host.add_child(header)
+		host.move_child(header, title_node.get_index())
+		title_node.visible = false
+
+
 func _build_affix_summary_lines(stats: UnitStats) -> String:
 	if stats == null:
 		return ""
@@ -1808,7 +1861,7 @@ func _show_enemy_phase_driver(unit: Node) -> void:
 			if not abilities_text.is_empty():
 				lines.append("【主动能力】")
 				lines.append(abilities_text)
-	if desc_label: desc_label.text = "\n".join(lines)
+	if desc_label: desc_label.text = _apply_desc_highlight("\n".join(lines))
 	if flavor_label: flavor_label.text = "“相位师的意志锚定在这片场上。”"
 	_clear_non_summary_info_sections()
 
@@ -1902,7 +1955,7 @@ func _show_player_phase_driver(unit: Node) -> void:
 				lines.append("已解锁卡片技能：")
 				for sl in skill_lines:
 					lines.append(sl)
-	if desc_label: desc_label.text = "\n".join(lines)
+	if desc_label: desc_label.text = _apply_desc_highlight("\n".join(lines))
 	if flavor_label: flavor_label.text = "“守护这片相位场，即是守护军团存续。”"
 	_clear_non_summary_info_sections()
 
@@ -2006,7 +2059,7 @@ func _show_enemy_construct_unit(unit: Node) -> void:
 		nurture_label.text = enemy_nurture
 	_set_section_visible_by_content(_nurture_section, enemy_nurture)
 	if desc_label:
-		desc_label.text = base_desc
+		desc_label.text = _apply_desc_highlight(base_desc)
 	if flavor_label:
 		flavor_label.text = "“同一套装甲，站在战场的另一侧。”"
 	# v7.x(敌方加成来源明细): 显示产兵 7 层加成来源明细
@@ -2109,7 +2162,7 @@ func _show_player_unit(unit: Node) -> void:
 		nurture_label.text = nurture_text
 	_set_section_visible_by_content(_nurture_section, nurture_text)
 	if desc_label:
-		desc_label.text = _build_unit_description(stats, true, "向敌侧推进，在射程内交战。选中后可点击地面微调站位。")
+		desc_label.text = _apply_desc_highlight(_build_unit_description(stats, true, "向敌侧推进，在射程内交战。选中后可点击地面微调站位。"))
 	if flavor_label:
 		flavor_label.text = "“装甲军团永不疲倦。”"
 	# v8.x：战场单位也显示关联卡片技能（source_tag 命中本单位 + 已解锁），口径与卡牌查看模式一致。
@@ -2266,7 +2319,7 @@ func _show_enemy_phase_master_unit(unit: Node, master_name: String) -> void:
 			base_desc += "\n\n【主动能力】\n" + abilities_m
 	# 敌方相位师的本体属性/装备/符文已在 base_desc 里展示。
 	if desc_label:
-		desc_label.text = base_desc
+		desc_label.text = _apply_desc_highlight(base_desc)
 	if flavor_label:
 		flavor_label.text = "“相位师的威严不容侵犯。”"
 	_clear_other_unit_sections()
@@ -2449,7 +2502,7 @@ func _show_generic_enemy_unit(unit: Node) -> void:
 		summary_label.text = _format_enemy_combat_summary(unit, s2, speed_text + _combat_power_suffix(unit.stats if ("stats" in unit and unit.stats != null) else null))
 	if desc_label:
 		var _e_stats: UnitStats = unit.stats if ("stats" in unit and unit.stats != null) else null
-		desc_label.text = _build_unit_description(_e_stats, false, "来袭的敌方单位，优先攻击我方单位，其次攻击相位场驱动器。")
+		desc_label.text = _apply_desc_highlight(_build_unit_description(_e_stats, false, "来袭的敌方单位，优先攻击我方单位，其次攻击相位场驱动器。"))
 	# v19: 词缀行（名称+档位色）置顶——EnemyUnit.get_elite_affixes()（elite/boss 词缀怪）
 	var _e_affix_tags: Array = []
 	if unit.has_method("get_elite_affixes"):

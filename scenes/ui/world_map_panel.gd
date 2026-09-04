@@ -22,13 +22,18 @@ func _ready() -> void:
 func _cycle_reload() -> void:
 	await get_tree().create_timer(2.5).timeout
 	print("[WM_DEBUG] cycle: 重载 main.tscn（模拟战后回基地）")
-	get_tree().change_scene_to_file("res://scenes/main.tscn")
+	SceneTransition.change(get_tree(), "res://scenes/main.tscn")
 
 func _auto_open() -> void:
 	await get_tree().create_timer(0.5).timeout
-	var overlay := get_parent()
-	if overlay is Control:
-		(overlay as Control).visible = true
+	# v28：本面板外层还包着 CenterContainer——直接 get_parent() 只点亮内层容器，
+	# 外层 MapOverlay 仍隐藏（调试钩子截到战场的根因）。向上找到真正的 MapOverlay 层。
+	var node: Node = self
+	while node != null:
+		if node is Control and node.name == "MapOverlay":
+			(node as Control).visible = true
+			break
+		node = node.get_parent()
 	refresh()
 	# 调试：WM_DEBUG_SHOT=路径 时延时存视口截图（验证重载/回基地后的实际渲染）
 	if OS.has_environment("WM_DEBUG_SHOT"):

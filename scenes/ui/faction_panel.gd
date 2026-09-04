@@ -143,9 +143,13 @@ func _update_faction_detail() -> void:
 	# 清空现有内容
 	for child in faction_detail.get_children():
 		child.queue_free()
-	
+
 	var faction_info = faction_mgr.get_faction_info(selected_faction_id)
-	
+
+	# v26.11(A1.3): 当前势力事件决策区（事件是全局的，挂详情区顶部任意势力可见）——
+	# 此前 resolve_faction_event 全项目零调用方，事件生成后只能挂到读档丢弃
+	_append_active_faction_event(faction_mgr)
+
 	# 势力名称
 	var name_label = Label.new()
 	name_label.text = faction_info.get("name", "")
@@ -250,6 +254,117 @@ func _update_faction_detail() -> void:
 
 	# ── v8.5: 势力技能树区块（12 节点，按 tier 分组，A/B 互斥并排）──
 	_append_faction_skill_tree(faction_mgr, selected_faction_id, level)
+
+# ═══ v26.11(A1.3): 势力事件决策区 ═══
+# 事件每 5 场战斗生成一次（toast 播报），此前玩家无处做选择、奖励只发声望。
+# 本区块补齐决策 UI + 生效加成可见性。
+
+## 事件决策区 + 生效加成显示（挂在详情区顶部）
+func _append_active_faction_event(faction_mgr: Node) -> void:
+	# —— 生效中的势力加成（事件奖励激活，按战斗场次递减）——
+	var active_fid: String = String(faction_mgr.get("active_faction")) if "active_faction" in faction_mgr else ""
+	if not active_fid.is_empty() and faction_mgr.has_method("get_active_faction_bonus_state"):
+		var st: Dictionary = faction_mgr.get_active_faction_bonus_state(active_fid)
+		if not st.is_empty():
+			var bonus: Dictionary = st.get("bonus", {})
+			var bonus_lbl := Label.new()
+			bonus_lbl.text = "⚡ 生效加成：%s（剩 %d 场）" % [String(bonus.get("name", "?")), int(st.get("remaining", 0))]
+			bonus_lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
+			bonus_lbl.add_theme_color_override("font_color", DT.COLOR_GOLD)
+			faction_detail.add_child(bonus_lbl)
+	# —— 待决策事件 ——
+	if not faction_mgr.has_method("get_active_event"):
+		return
+	var evt: Dictionary = faction_mgr.get_active_event()
+	if evt.is_empty():
+		return
+	var panel := PanelContainer.new()
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(DT.COLOR_GOLD.r, DT.COLOR_GOLD.g, DT.COLOR_GOLD.b, 0.08)
+	sb.border_color = Color(DT.COLOR_GOLD.r, DT.COLOR_GOLD.g, DT.COLOR_GOLD.b, 0.6)
+	sb.set_border_width_all(1)
+	sb.corner_radius_top_left = 4
+	sb.corner_radius_top_right = 4
+	sb.corner_radius_bottom_left = 4
+	sb.corner_radius_bottom_right = 4
+	sb.content_margin_left = 8
+	sb.content_margin_right = 8
+	sb.content_margin_top = 6
+	sb.content_margin_bottom = 6
+	panel.add_theme_stylebox_override("panel", sb)
+	var vb := VBoxContainer.new()
+	panel.add_child(vb)
+	var title_lbl := Label.new()
+	title_lbl.text = "⚔ 势力事件（等待你的抉择）"
+	title_lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_MEDIUM)
+	title_lbl.add_theme_color_override("font_color", DT.COLOR_GOLD)
+	vb.add_child(title_lbl)
+	var name_lbl := Label.new()
+	name_lbl.text = String(evt.get("name", ""))
+	name_lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
+	vb.add_child(name_lbl)
+	var desc_lbl := Label.new()
+	desc_lbl.text = String(evt.get("desc", ""))
+	desc_lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
+	desc_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD
+	desc_lbl.custom_minimum_size = Vector2(360, 0)
+	vb.add_child(desc_lbl)
+	# 三个选择按钮（仅渲染该事件模板实际提供的选项）
+	var rewards: Dictionary = evt.get("template", {}).get("rewards", {})
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 8)
+	for choice_key in ["support_a", "support_b", "neutral"]:
+		if not rewards.has(choice_key):
+			continue
+		var btn := Button.new()
+		btn.text = _event_choice_button_text(choice_key, rewards[choice_key], evt, faction_mgr)
+		btn.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
+		btn.custom_minimum_size = Vector2(0, 44)
+		var btn_styles := PanelStyles.make_button_styles(DT.COLOR_GOLD)
+		btn.add_theme_color_override("font_color", DT.COLOR_TEXT_BRIGHT)
+		btn.add_theme_color_override("font_hover_color", DT.COLOR_HOVER_WHITE)
+		btn.add_theme_color_override("font_pressed_color", DT.COLOR_HOVER_WHITE)
+		btn.add_theme_color_override("font_focus_color", DT.COLOR_HOVER_WHITE)
+		for sb_key in ["normal", "hover", "pressed", "disabled", "focus"]:
+			if btn_styles.has(sb_key):
+				btn.add_theme_stylebox_override(sb_key, btn_styles[sb_key])
+		btn.pressed.connect(_on_event_choice_pressed.bind(choice_key))
+		row.add_child(btn)
+	vb.add_child(row)
+	faction_detail.add_child(panel)
+
+## 选择按钮文案：阵营名 + 奖励摘要
+func _event_choice_button_text(choice_key: String, rw: Dictionary, evt: Dictionary, faction_mgr: Node) -> String:
+	var parts := PackedStringArray()
+	if rw.has("reputation"):
+		parts.append("声望+%d" % int(rw["reputation"]))
+	if rw.has("skill_points"):
+		parts.append("技能点+%d" % int(rw["skill_points"]))
+	var nano: int = int(rw.get("nano", rw.get("nanomaterial", 0)))
+	if nano > 0:
+		parts.append("纳米+%d" % nano)
+	if rw.has("exclusive_card"):
+		parts.append("专属卡")
+	if rw.has("faction_bonus_duration"):
+		parts.append("加成%d场" % int(rw["faction_bonus_duration"]))
+	var summary: String = "，".join(parts) if not parts.is_empty() else "无直接奖励"
+	var fid: String = String(evt.get("faction_a" if choice_key == "support_a" else "faction_b", ""))
+	var fname: String = faction_mgr.get_faction_display_name(fid) if faction_mgr.has_method("get_faction_display_name") else fid
+	match choice_key:
+		"support_a", "support_b":
+			return "支持 %s\n%s" % [fname, summary]
+	return "保持中立\n%s" % summary
+
+## 事件选择回调（走 fsm.resolve_faction_event 正规链：声望/忠诚度/奖励全字段结算）
+func _on_event_choice_pressed(choice: String) -> void:
+	var faction_mgr = get_node_or_null("/root/FactionSystemManager")
+	if faction_mgr == null or not faction_mgr.has_method("resolve_faction_event"):
+		return
+	var result: Dictionary = faction_mgr.resolve_faction_event(choice)
+	if result.is_empty():
+		if SignalBus.has_signal("show_toast"):
+			SignalBus.show_toast.emit("⚠ 事件已过期或已结算")
+	_update_faction_detail()
 
 ## v8.5: 追加势力技能树区块到详情区
 func _append_faction_skill_tree(faction_mgr: Node, faction_id: String, faction_level: int) -> void:

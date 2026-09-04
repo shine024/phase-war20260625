@@ -22,6 +22,7 @@ const FactionSkillEffectHandler = preload("res://scripts/battle/faction_skill_ef
 const CardGrowthConfig = preload("res://data/card_growth_config.gd")
 const UnifiedCardTable = preload("res://data/unified_card_table.gd")
 const BattleEnvEffects = preload("res://data/battle_env_effects.gd")  # v26.2: 战斗环境效果
+const XenoUnits = preload("res://data/xeno_units.gd")  # v27: 黑门无尽波次构成
 const DEPLOY_FAIL_LOG_THROTTLE_MS := 350
 # v7.x: 诊断开关——对比「上场端」vs「评估端」单卡 stats，定位战场 vs 面板战力差异源
 const DEBUG_DEPLOY_POWER_LOG := false
@@ -66,6 +67,10 @@ var _wave_boss_spawns: Array = []
 var _last_deploy_fail_key: String = ""
 var _last_deploy_fail_ts_ms: int = -999999
 var _stats_cache: Dictionary = {}
+
+## v27 黑门无限模式：无尽出兵开关（BattleManager.start_battle 依 GameManager 标志置位；
+## reset 时回 false。开启后 can_spawn_more_waves 恒真、波次构成走 _spawn_endless_xeno_wave）
+var _endless_mode: bool = false
 
 ## 卡牌格子战术
 var _card_grid_active: bool = false
@@ -338,7 +343,17 @@ func sync_enemy_unit_count_from_field() -> void:
 		enemy_unit_count = BattleManager.recount_enemy_units_on_field()
 
 
+func set_endless_mode(enabled: bool) -> void:
+	_endless_mode = enabled
+
+
+func is_endless_mode() -> bool:
+	return _endless_mode
+
+
 func all_enemy_waves_spawned() -> bool:
+	if _endless_mode:
+		return false  # 无尽 run 波次永不耗尽（终局=驱动器被毁）
 	if _enemy_wave_total <= 0:
 		return true
 	return enemy_wave_index >= _enemy_wave_total
@@ -348,6 +363,9 @@ func all_enemy_waves_spawned() -> bool:
 func spawn_card_grid_enemy_wave(current_level: int) -> bool:
 	if not _card_grid_active or _enemy_units_node == null:
 		return false
+	# v27 黑门无限模式：星冥族专用波次构成（每 5 波精英 / 每 10 波首领，设计 §5.2）
+	if _endless_mode:
+		return _spawn_endless_xeno_wave(current_level)
 	sync_enemy_unit_count_from_field()
 	if enemy_unit_count >= _enemy_field_unit_cap():
 		return false
@@ -472,15 +490,116 @@ func spawn_card_grid_enemy_wave(current_level: int) -> bool:
 		if unit == null:
 			continue
 		# v8 批次2: 精英/boss 词缀（type_pick=elite/boss 时 roll 词缀并应用）
+		# v26.13(B2): boss 身份标记（boss_enrage_half 半血狂暴的判定锚，spawn 处 set_meta）
+		# boss_spawn_meta_marker_v2613
 		if type_pick == "elite" or type_pick == "boss":
 			if unit.has_method("apply_elite_affixes"):
 				unit.apply_elite_affixes(type_pick)
+				if type_pick == "boss":
+					unit.set_meta("_is_boss_unit", true)
 		if not spawn_enemy_unit_on_card_grid(unit, -1):
 			if is_instance_valid(unit):
 				unit.queue_free()
 			continue
 
+	# v26.13(B2): 精英增援规则——本波额外 +1 精英（精英池非空且名额/格数允许）
+	if _bm_rule_cached_has_rule("elite_wave_bonus") and not elite_ids.is_empty():
+		if enemy_unit_count < _enemy_field_unit_cap() and _card_grid_count_free_enemy_slots() > 0:
+			var _extra_e: Node2D = _create_enemy_unit_with_id(elite_ids[randi() % elite_ids.size()]) as Node2D
+			if _extra_e != null:
+				if _extra_e.has_method("apply_elite_affixes"):
+					_extra_e.apply_elite_affixes("elite")
+				if not spawn_enemy_unit_on_card_grid(_extra_e, -1) and is_instance_valid(_extra_e):
+					_extra_e.queue_free()
+
 	# v7.x 战场视觉反馈：本波生成了 boss → 广播 BOSS 波次开始（BattleSpectacle 播放登场特效）
+	if _signal_bus and not _wave_boss_spawns.is_empty():
+		_signal_bus.boss_wave_started.emit(_wave_boss_spawns.duplicate())
+	_wave_boss_spawns.clear()
+	return true
+
+
+## v27 黑门无限模式：星冥族波次构成（设计 §5.2）。
+## - 每 10 波首领波：1 首领（D 段轮换）+ 1-2 基础伴随
+## - 每 5 波精英波：2-3 精英/王牌
+## - 其余常规波：2-4 基础（A 段，渗度只提密度/档位概率，不破 9 格）
+## 数值成长不在此处——enemy_stat_resolver 的波数乘区（hp/dmg 斜率 0.08/0.06）+ 100 关
+## 满档档位天然构成渗度曲线（设计 §5.3 公式的引擎内等价实现）。
+func _spawn_endless_xeno_wave(current_level: int) -> bool:
+	sync_enemy_unit_count_from_field()
+	if enemy_unit_count >= _enemy_field_unit_cap():
+		return false
+	var free_n: int = _card_grid_count_free_enemy_slots()
+	if free_n <= 0:
+		return false
+	var grid: Node = _battlefield.get_node_or_null("BattleSlotGrid") if _battlefield else null
+	if grid != null and grid.has_method("rebuild_slot_centers_now"):
+		grid.rebuild_slot_centers_now()
+
+	var next_wave: int = enemy_wave_index + 1
+	enemy_wave_index = next_wave
+	if _signal_bus:
+		_signal_bus.wave_spawned.emit(enemy_wave_index)
+
+	var is_boss_wave: bool = next_wave % 10 == 0
+	var is_elite_wave: bool = (not is_boss_wave) and next_wave % 5 == 0
+
+	# 出兵量：2 起步，每 8 波 +1，封顶 4（boss 波 1 首领 + 伴随）
+	var to_spawn: int = 2 + mini(2, int((next_wave - 1) / 8.0))
+	if is_boss_wave:
+		to_spawn = mini(to_spawn, 3)
+	to_spawn = mini(to_spawn, free_n)
+
+	var basic_ids: Array = XenoUnits.get_ids_for_role("basic")
+	var elite_ids: Array = XenoUnits.get_ids_for_role("elite") + XenoUnits.get_ids_for_role("ace")
+	var boss_ids: Array = XenoUnits.get_ids_for_role("boss")
+
+	for _i in range(to_spawn):
+		if enemy_unit_count >= _enemy_field_unit_cap():
+			break
+		var archetype_id: String = ""
+		var type_pick: String = "basic"
+		if is_boss_wave:
+			# 首波伴随走基础池；首领唯一性命中时降级精英
+			if _i == 0 and not boss_ids.is_empty():
+				var cand: String = boss_ids[(int(next_wave / 10.0) - 1) % boss_ids.size()]
+				if _count_alive_enemy_by_archetype(cand) < 1:
+					archetype_id = cand
+					type_pick = "boss"
+			if archetype_id.is_empty():
+				archetype_id = String(elite_ids[randi() % elite_ids.size()]) if not elite_ids.is_empty() \
+					else String(basic_ids[randi() % basic_ids.size()])
+				type_pick = "elite"
+		elif is_elite_wave:
+			archetype_id = String(elite_ids[randi() % elite_ids.size()])
+			type_pick = "elite"
+		else:
+			# 深处常规波混入精英（渗度≥2 后 25% 概率，密度不变质量提升）
+			var depth: int = int(next_wave / 10.0)
+			if depth >= 2 and not elite_ids.is_empty() and randf() < 0.25:
+				archetype_id = String(elite_ids[randi() % elite_ids.size()])
+				type_pick = "elite"
+			else:
+				archetype_id = String(basic_ids[randi() % basic_ids.size()])
+
+		if archetype_id.is_empty():
+			continue
+		if type_pick == "boss" and archetype_id not in _wave_boss_spawns:
+			_wave_boss_spawns.append(archetype_id)
+
+		var unit: Node2D = _create_enemy_unit_with_id(archetype_id) as Node2D
+		if unit == null:
+			continue
+		if type_pick == "elite" or type_pick == "boss":
+			if unit.has_method("apply_elite_affixes"):
+				unit.apply_elite_affixes(type_pick)
+				if type_pick == "boss":
+					unit.set_meta("_is_boss_unit", true)
+		if not spawn_enemy_unit_on_card_grid(unit, -1):
+			if is_instance_valid(unit):
+				unit.queue_free()
+			continue
+
 	if _signal_bus and not _wave_boss_spawns.is_empty():
 		_signal_bus.boss_wave_started.emit(_wave_boss_spawns.duplicate())
 	_wave_boss_spawns.clear()
@@ -590,6 +709,7 @@ func reset(battle_scene: Node, enemy_wave_interval: float, enemy_wave_total: int
 	_card_grid_active = false
 	_card_grid_enemy_quota = _CardGridSlotsPerSide
 	_reset_deploy_uses()
+	_endless_mode = false  # v27: 每场重置；黑门 run 由 BattleManager.start_battle 显式置位
 
 # =========================================================================
 #  波次计时（由 BattleManager._process 调用）
@@ -1361,7 +1481,12 @@ func _build_stats_cached(platform_card: CardResource, weapon_cards: Array, weapo
 		_apply_player_stat_boosts(hit_stats)
 		return hit_stats
 
-	var stats = UnitStatsTable.build_stats_from_card(effective_card, battle_era)
+	# v26.13(B2): 禁改造规则——本场玩家 stats 构建跳过 mods 通道（敌方配装不受影响）
+	var _no_mods_rule: bool = false
+	var _bm_rule: Node = _get_cached_autoload("BattleManager")
+	if _bm_rule != null and _bm_rule.has_method("has_special_rule"):
+		_no_mods_rule = _bm_rule.has_special_rule("no_mods")
+	var stats = UnitStatsTable.build_stats_from_card(effective_card, battle_era, _no_mods_rule)
 
 	# v6.14: 重接势力技能注入——玩家"主动构筑"的激活势力 stat_bonus 应用到我方单位。
 	# 注意：v6.8 停用的是"势力变体生成路径"，此处注入的是技能树的数值加成（玩家选择投入技能点获得），
@@ -1580,6 +1705,17 @@ func _apply_active_faction_stat_bonus(stats: UnitStats, stat_bonus: Dictionary) 
 	# 攻击速度（提速）。v10(H1)：统一走 scale_attack_speeds（见上方同款修复说明）
 	if stat_bonus.has("attack_speed") and float(stat_bonus["attack_speed"]) != 0.0:
 		AttackCalculator.scale_attack_speeds(stats, 1.0 + float(stat_bonus["attack_speed"]))
+	# v26.15b: 快速部署 additive（势力 deploy 桶并入的 deploy_speed_add，"部署速度+1"语义）
+	if stat_bonus.has("deploy_speed_add") and int(stat_bonus["deploy_speed_add"]) != 0:
+		stats.deploy_speed = maxi(0, stats.deploy_speed + int(stat_bonus["deploy_speed_add"]))
+	if stat_bonus.has("deploy_speed_add_by_kind"):
+		# 带兵种过滤的变体（如"支援/堡垒单位部署+1"）
+		var byk: Dictionary = stat_bonus["deploy_speed_add_by_kind"]
+		var ck_i: int = int(stats.combat_kind)
+		if byk.has(str(ck_i)):
+			stats.deploy_speed = maxi(0, stats.deploy_speed + int(byk[str(ck_i)]))
+		elif byk.has(ck_i):
+			stats.deploy_speed = maxi(0, stats.deploy_speed + int(byk[ck_i]))
 
 func _get_autoload_node(name: String) -> Node:
 	var loop := Engine.get_main_loop()
@@ -1719,3 +1855,11 @@ func get_deploy_uses_remaining(key: String) -> int:
 		if hit >= 0:
 			return hit
 	return int(_deploy_uses_remaining.get(key, 0))
+
+## v26.13(B2): 特殊规则旗标查询（内部经 BattleManager.has_special_rule；
+## 独立包装便于波次组装段多处调用与测试替换）。
+func _bm_rule_cached_has_rule(key: String) -> bool:
+	var bm: Node = _get_cached_autoload("BattleManager")
+	if bm != null and bm.has_method("has_special_rule"):
+		return bm.has_special_rule(key)
+	return false

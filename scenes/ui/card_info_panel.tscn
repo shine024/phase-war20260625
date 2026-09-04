@@ -529,11 +529,13 @@ theme_override_colors/font_color = Color(0.78, 0.8, 0.88, 1)
 theme_override_font_sizes/font_size = 13
 text = "描述"
 
-[node name="DescLabel" type="Label" parent="Margin/VBox/TabBar/TabInfo/InfoVBox/DescSection/DescVBox"]
+[node name="DescLabel" type="RichTextLabel" parent="Margin/VBox/TabBar/TabInfo/InfoVBox/DescSection/DescVBox"]
 layout_mode = 2
-theme_override_colors/font_color = Color(0.82, 0.82, 0.9, 1)
-theme_override_font_sizes/font_size = 12
-autowrap_mode = 2
+theme_override_colors/default_color = Color(0.82, 0.82, 0.9, 1)
+theme_override_font_sizes/normal_font_size = 12
+bbcode_enabled = true
+fit_content = true
+scroll_active = false
 
 [node name="FlavorLabel" type="Label" parent="Margin/VBox/TabBar/TabInfo/InfoVBox"]
 layout_mode = 2

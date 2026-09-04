@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>机枢大厅 · 可交互原型（Machine Hall Mockup）</title>
+<style>
+  :root{
+    --amber:#ffb45e; --cyan:#00e5ff; --orange:#ff7a2e;
+    --panel-bg:#14120e; --panel-line:#2c2820;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  html,body{height:100%;background:#08090c;font-family:"Segoe UI","Microsoft YaHei",sans-serif;color:#d8d2c4;overflow:hidden;}
+  #wrap{display:flex;flex-direction:column;height:100vh;}
+  /* ── 顶栏 ─────────────────────────────── */
+  #topbar{height:58px;display:flex;align-items:center;gap:14px;padding:0 16px;background:linear-gradient(#1b1813,#12100c);border-bottom:1px solid #3a342a;font-size:14px;flex:none;}
+  #topbar .res{display:flex;gap:10px;}
+  .chip{background:#211d15;border:1px solid #3a342a;border-radius:5px;padding:3px 9px;white-space:nowrap;}
+  .chip b{color:var(--amber);}
+  #bonusStrip{flex:1;text-align:center;font-size:12.5px;color:#9aa87a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  #bonusStrip b{color:#cfe08a;}
+  .btn{cursor:pointer;background:#2a2419;border:1px solid #57492e;border-radius:6px;color:#e8dcbf;padding:6px 13px;font-size:13.5px;white-space:nowrap;}
+  .btn:hover{background:#3a3120;border-color:#7a6538;}
+  .btn.primary{background:#14343a;border-color:#1e6b74;color:#bdf0f5;}
+  .btn.primary:hover{background:#1a4a52;}
+  .btn:disabled{opacity:.4;cursor:not-allowed;}
+  /* ── 主区：场景 + 面板 ─────────────────── */
+  #main{flex:1;display:flex;min-height:0;}
+  /* 场景侧 */
+  #stage{flex:1;position:relative;display:flex;align-items:center;justify-content:center;background:#050608;min-width:0;}
+  #hall{position:relative;width:820px;height:636px;border:1px solid #2c2820;border-radius:8px;overflow:hidden;background:#171310;box-shadow:0 0 40px #000 inset;}
+  #hallBg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;filter:brightness(.9);}
+  .machine{position:absolute;cursor:pointer;transition:transform .15s;}
+  .machine:hover{transform:translateY(-3px);}
+  .machine .sprite{position:relative;background:transparent;filter:drop-shadow(0 8px 8px rgba(0,0,0,.55));}
+  .machine .sprite img{display:block;width:100%;height:auto;}
+  .machine.locked .sprite img{filter:grayscale(.4) brightness(.7);}
+  .machine.repairing .sprite img{filter:grayscale(.35) brightness(.8);}
+  .machine.active .sprite{filter:drop-shadow(0 8px 8px rgba(0,0,0,.55)) drop-shadow(0 0 16px rgba(0,229,255,.28));}
+  .machine.sel .sprite{outline:2px solid var(--cyan);outline-offset:2px;}
+  .machine .tag{position:absolute;left:50%;transform:translateX(-50%);bottom:-21px;font-size:11.5px;white-space:nowrap;background:rgba(10,10,8,.78);border:1px solid #3a342a;border-radius:4px;padding:1px 7px;color:#cfc7b4;}
+  .machine .tag .st{margin-left:5px;}
+  .machine.active .tag .st{color:#8fe8c8;}
+  .machine.repairing .tag .st{color:#ffcf7a;}
+  .machine .ring{position:absolute;right:-8px;top:-8px;width:26px;height:26px;border-radius:50%;background:var(--orange);color:#140a04;font-weight:bold;font-size:13px;display:flex;align-items:center;justify-content:center;box-shadow:0 0 10px rgba(255,122,46,.8);animation:pulse 1.2s infinite;visibility:hidden;}
+  .machine .ring.on{visibility:visible;}
+  @keyframes pulse{50%{transform:scale(1.18);}}
+  .bubble{position:absolute;right:-14px;top:-16px;width:30px;height:30px;border-radius:50% 50% 50% 4%;background:radial-gradient(circle at 35% 30%,#ffd9a0,var(--amber));color:#3a2410;font-weight:bold;font-size:15px;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 0 12px rgba(255,180,94,.7);animation:floaty 2s infinite;display:none;}
+  .bubble.on{display:flex;}
+  @keyframes floaty{50%{transform:translateY(-4px);}}
+  #doorHint{position:absolute;right:26px;top:96px;width:64px;height:64px;border:1px dashed #5a5240;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;color:#a89b7c;cursor:help;background:rgba(0,0,0,.25);}
+  #bgSwitch{position:absolute;left:10px;bottom:30px;display:flex;gap:5px;z-index:5;font-size:11.5px;align-items:center;color:#8f8674;}
+  .bgBtn{cursor:pointer;padding:2px 9px;border:1px solid #3a342a;border-radius:4px;background:rgba(20,18,14,.82);color:#cfc7b4;}
+  .bgBtn:hover{border-color:#7a6538;}
+  .bgBtn.on{border-color:var(--amber);color:#ffd9a0;}
+  #stageNote{position:absolute;left:12px;bottom:10px;font-size:11.5px;color:#6e675a;}
+  /* 面板侧（默认 T2 中性深色骨架，皮肤类覆盖） */
+  #panelSide{width:452px;flex:none;display:flex;flex-direction:column;border-left:1px solid #3a342a;background:var(--panel-bg);min-height:0;}
+  #panelFrame{flex:1;display:flex;flex-direction:column;min-height:0;position:relative;}
+  #skinTabs{display:flex;gap:6px;padding:10px 12px 8px;flex:none;}
+  .skinTab{flex:1;text-align:center;padding:6px 4px;border-radius:6px;cursor:pointer;font-size:13px;border:1px solid #3a342a;background:#181510;color:#8f8674;}
+  .skinTab.on{border-color:var(--amber);color:#f0e4c8;background:#241e13;}
+  .skinTab.locked{opacity:.45;}
+  .skinTab small{display:block;font-size:10.5px;opacity:.75;}
+  #stationList{flex:1;overflow-y:auto;padding:4px 12px;min-height:0;}
+  #panelDetail{flex:none;height:196px;border-top:1px solid var(--panel-line);padding:10px 14px;overflow-y:auto;}
+  .groupHead{font-size:11.5px;letter-spacing:2px;color:#7d7462;margin:10px 0 5px;}
+  .stRow{display:flex;align-items:center;gap:8px;padding:7px 9px;border-radius:6px;margin-bottom:5px;cursor:pointer;border:1px solid transparent;}
+  .stRow:hover{background:rgba(255,255,255,.04);}
+  .stRow.sel{border-color:#4d6e64;background:rgba(0,229,255,.05);}
+  .stIcon{width:34px;height:26px;flex:none;display:flex;align-items:center;justify-content:center;font-size:17px;}
+  .stName{width:88px;flex:none;font-size:13.5px;}
+  .pips{width:46px;flex:none;display:flex;gap:3px;}
+  .pip{width:9px;height:9px;border-radius:50%;background:#3a342a;border:1px solid #55503f;}
+  .pip.lit{background:var(--amber);border-color:#a8793c;box-shadow:0 0 5px rgba(255,180,94,.6);}
+  .stInfo{flex:1;font-size:11.5px;color:#a89c84;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .stInfo .fin{color:#7fb8c9;}
+  .stBtn{flex:none;font-size:12px;padding:4px 10px;border-radius:5px;background:#2a2419;border:1px solid #57492e;color:#e8dcbf;cursor:pointer;white-space:nowrap;}
+  .stBtn:hover{background:#3a3120;}
+  .stBtn.go{background:#14343a;border-color:#1e6b74;color:#bdf0f5;}
+  .stBtn.up{background:#33270f;border-color:#77591c;color:#ffd9a0;}
+  /* 详情 */
+  #dTitle{font-size:15px;margin-bottom:4px;}
+  #dState{font-size:12px;color:#a89c84;margin-bottom:7px;}
+  #dBody{display:flex;gap:12px;}
+  #dArt{width:150px;flex:none;background:#f2eee4;border-radius:6px;overflow:hidden;border:1px solid #55503f;align-self:flex-start;}
+  #dArt img{display:block;width:100%;height:auto;}
+  #dFuncs{flex:1;min-width:0;}
+  .fnBtn{display:inline-block;font-size:12px;padding:4px 11px;border-radius:5px;background:#241f16;border:1px solid #4c4230;color:#d8ccb0;margin:0 5px 6px 0;cursor:pointer;}
+  .fnBtn:hover{border-color:#7a6538;}
+  #dUp{font-size:12px;color:#b7a988;margin-top:6px;line-height:1.65;}
+  /* 晨报 */
+  #modal{position:fixed;inset:0;background:rgba(0,0,0,.55);display:none;align-items:center;justify-content:center;z-index:50;}
+  #modal.on{display:flex;}
+  #paper{width:560px;max-height:78vh;overflow-y:auto;border-radius:8px;padding:20px 24px;background:#1c1812;border:1px solid #57492e;color:#e8dcbf;box-shadow:0 12px 50px rgba(0,0,0,.6);}
+  #paper h3{margin-bottom:10px;}
+  .mrow{display:flex;align-items:center;gap:10px;padding:6px 4px;border-bottom:1px dashed rgba(128,110,80,.35);font-size:13px;}
+  .mrow .claim{margin-left:auto;cursor:pointer;font-size:12px;padding:2px 10px;border-radius:4px;border:1px solid #77591c;color:#ffd9a0;background:#33270f;}
+  ::-webkit-scrollbar{width:9px;} ::-webkit-scrollbar-thumb{background:#3a342a;border-radius:5px;}
+
+  /* ══ 皮肤 T1 · 白板 ══ */
+  .sk-t1 #panelSide{background:#efe9db;border-left:1px solid #8b7f66;}
+  .sk-t1 #panelFrame{background:
+      linear-gradient(rgba(255,255,255,.6),rgba(255,255,255,.6)),
+      repeating-linear-gradient(0deg,#f6f2e8 0 3px,#efe9db 3px 6px);
+      border:10px solid #7a5f3e;border-radius:10px;margin:10px;box-shadow:0 4px 18px rgba(0,0,0,.5), inset 0 0 40px rgba(120,100,60,.12);}
+  .sk-t1 .skinTab{background:#fffdf6;border-color:#c9bda0;color:#5a4f3a;font-family:"Segoe Script","KaiTi","STKaiti",cursive;}
+  .sk-t1 .groupHead{color:#8a5a2e;font-family:"Segoe Script","KaiTi",cursive;}
+  .sk-t1 .stRow{background:#fffdf6;border:1px solid #d8ccae;box-shadow:1px 2px 4px rgba(90,70,40,.18);transform:rotate(-.4deg);}
+  .sk-t1 .stRow:nth-child(2n){transform:rotate(.5deg);}
+  .sk-t1 .stRow.sel{border-color:#c0392b;box-shadow:0 0 0 2px rgba(192,57,43,.25);}
+  .sk-t1 .stName,.sk-t1 #dTitle{font-family:"Segoe Script","KaiTi",cursive;color:#33301f;}
+  .sk-t1 .stInfo{color:#6b6350;}
+  .sk-t1 .pip{background:#e6dfcd;border-color:#b8ad90;}
+  .sk-t1 .pip.lit{background:#c0392b;border-color:#8f2b21;box-shadow:none;}
+  .sk-t1 .stBtn{background:#fdf6e3;border:1.5px solid #2980b9;color:#2980b9;font-family:"Segoe Script","KaiTi",cursive;border-radius:4px;}
+  .sk-t1 .stBtn.up{border-color:#c0392b;color:#c0392b;}
+  .sk-t1 .stBtn.go{border-color:#1e8449;color:#1e8449;}
+  .sk-t1 #panelDetail{background:#fffdf6;border-top:2px dashed #c9bda0;}
+  .sk-t1 .fnBtn{background:#fff;border-color:#2980b9;color:#2980b9;font-family:"Segoe Script","KaiTi",cursive;}
+  .sk-t1 #dUp{color:#6b5b3d;font-family:"Segoe Script","KaiTi",cursive;}
+  #modal.sk-t1 #paper{background:#fdf8ec;border:2px solid #b8ad90;color:#3d3423;font-family:"Segoe Script","KaiTi",cursive;}
+  /* ══ 皮肤 T2 · 显示器 ══ */
+  .sk-t2 #panelSide{background:#101210;}
+  .sk-t2 #panelFrame{background:#15171a;border:8px solid #4a4536;border-radius:12px;margin:8px;box-shadow:inset 0 0 0 3px #23231d,0 0 24px rgba(0,0,0,.6);}
+  .sk-t2 #panelFrame::after{content:"";position:absolute;inset:0;pointer-events:none;background:repeating-linear-gradient(0deg,rgba(0,0,0,.16) 0 1px,transparent 1px 3px);border-radius:6px;}
+  .sk-t2 #stationList,#panelDetail{position:relative;z-index:1;}
+  .sk-t2 .stName,.sk-t2 #dTitle{font-family:Consolas,"Courier New",monospace;color:#9ee89a;letter-spacing:1px;}
+  .sk-t2 .groupHead{color:#7ab872;font-family:Consolas,monospace;}
+  .sk-t2 .stRow{border:1px solid #2c3328;background:rgba(20,30,18,.55);}
+  .sk-t2 .stRow.sel{border-color:#9ee89a;box-shadow:0 0 8px rgba(120,220,120,.25);}
+  .sk-t2 .stInfo{color:#88a882;font-family:Consolas,monospace;}
+  .sk-t2 .stInfo .fin{color:#ffd27a;}
+  .sk-t2 .pip.lit{background:#9ee89a;border-color:#5a8f56;box-shadow:0 0 6px rgba(120,220,120,.7);}
+  .sk-t2 .stBtn{background:#1b2318;border-color:#3d5a36;color:#9ee89a;font-family:Consolas,monospace;}
+  .sk-t2 .stBtn.up{background:#2a2210;border-color:#77591c;color:#ffd27a;}
+  .sk-t2 .stBtn.go{background:#10262a;border-color:#1e6b74;color:#7adce6;}
+  .sk-t2 .fnBtn{background:#131a11;border-color:#3d5a36;color:#9ee89a;font-family:Consolas,monospace;}
+  .sk-t2 #dUp{color:#88a882;font-family:Consolas,monospace;}
+  #modal.sk-t2 #paper{background:#0c0e0c;border:6px solid #4a4536;color:#9ee89a;font-family:Consolas,monospace;box-shadow:inset 0 0 30px rgba(0,60,0,.2);}
+  /* ══ 皮肤 T3 · 投影 ══ */
+  .sk-t3 #panelSide{background:radial-gradient(ellipse at 50% 0%,#0a1420 0%,#05070f 70%);}
+  .sk-t3 #panelFrame{background:linear-gradient(180deg,rgba(0,229,255,.045),rgba(0,229,255,.015));border:1px solid rgba(0,229,255,.28);border-radius:14px;margin:8px;box-shadow:0 0 30px rgba(0,229,255,.12), inset 0 0 24px rgba(0,229,255,.05);backdrop-filter:blur(2px);}
+  .sk-t3 #stationList,#panelDetail{position:relative;z-index:1;}
+  .sk-t3 #panelFrame::before{content:"";position:absolute;inset:0;pointer-events:none;background:
+      radial-gradient(2px 2px at 12% 18%,rgba(0,229,255,.5),transparent 60%),
+      radial-gradient(2px 2px at 84% 30%,rgba(0,229,255,.4),transparent 60%),
+      radial-gradient(1.6px 1.6px at 30% 72%,rgba(120,255,255,.4),transparent 60%),
+      radial-gradient(1.6px 1.6px at 66% 86%,rgba(0,229,255,.35),transparent 60%),
+      radial-gradient(1.6px 1.6px at 92% 62%,rgba(160,255,255,.35),transparent 60%);}
+  .sk-t3 .stName,.sk-t3 #dTitle{color:#bff4ff;text-shadow:0 0 8px rgba(0,229,255,.6);letter-spacing:1.5px;}
+  .sk-t3 .groupHead{color:#5fc9dd;letter-spacing:3px;}
+  .sk-t3 .stRow{border:1px solid rgba(0,229,255,.18);background:rgba(0,229,255,.04);}
+  .sk-t3 .stRow.sel{border-color:var(--cyan);box-shadow:0 0 12px rgba(0,229,255,.35);animation:holog 3s infinite;}
+  @keyframes holog{50%{box-shadow:0 0 4px rgba(0,229,255,.2);}}
+  .sk-t3 .stInfo{color:#7db4c4;}
+  .sk-t3 .pip.lit{background:var(--cyan);border-color:#0d7c8c;box-shadow:0 0 8px rgba(0,229,255,.9);}
+  .sk-t3 .stBtn{background:rgba(0,229,255,.07);border-color:rgba(0,229,255,.4);color:#9feaf6;}
+  .sk-t3 .stBtn.up{background:rgba(255,180,94,.08);border-color:rgba(255,180,94,.45);color:#ffd9a0;}
+  .sk-t3 .stBtn.go{background:rgba(0,229,255,.12);}
+  .sk-t3 .fnBtn{background:rgba(0,229,255,.07);border-color:rgba(0,229,255,.35);color:#9feaf6;}
+  .sk-t3 #dUp{color:#8fc7d6;}
+  .sk-t3 #dArt{background:rgba(0,229,255,.06);border-color:rgba(0,229,255,.35);}
+  #modal.sk-t3 #paper{background:rgba(4,10,18,.94);border:1px solid rgba(0,229,255,.35);color:#bff4ff;box-shadow:0 0 40px rgba(0,229,255,.2);}
+  #modal.sk-t3 #paper h3{text-shadow:0 0 10px rgba(0,229,255,.7);}
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div id="topbar">
+    <span class="chip">第 <b id="day">12</b> 天</span>
+    <span class="chip">精神 <b>64</b>/100</span>
+    <div class="res">
+      <span class="chip">纳米 <b id="rNano">820</b></span>
+      <span class="chip">合金 <b id="rAlloy">310</b></span>
+      <span class="chip">晶体 <b id="rCrystal">90</b></span>
+      <span class="chip">能量 <b id="rEnergy">45</b></span>
+    </div>
+    <div id="bonusStrip">✦ 基地加成：<b id="bonusText">尚无运转中的机器</b></div>
+    <button class="btn primary" id="btnBattle">▶ 模拟出击 +1场</button>
+    <button class="btn" id="btnCollectAll">一键收取</button>
+    <button class="btn" id="btnPaper">晨报</button>
+  </div>
+  <div id="main">
+    <div id="stage">
+      <div id="hall">
+        <img id="hallBg" src="generated_mh/mh_hall_bg.jpeg" alt=""
+             onerror="this.style.display='none';this.parentElement.style.background='linear-gradient(#1c1712,#241c14 55%,#191410)'">
+        <div id="doorHint" title="终局之门：9 台机器全部运转且发电机 Lv2 后开启">终局<br>之门</div>
+        <div id="bgSwitch">底图:</div>
+        <!-- 机器由 JS 注入 -->
+      </div>
+      <div id="stageNote">透明抠图已应用（边缘泛洪法，机身白色保留）；机器按底部基线落地——后排踩高台、前排踩地板，坐标在 JS 的 S 表一处可调</div>
+    </div>
+    <div id="panelSide" class="sk-t2">
+      <div id="panelFrame">
+        <div id="skinTabs">
+          <div class="skinTab" data-skin="t1">T1 白板<small>默认</small></div>
+          <div class="skinTab on" data-skin="t2">T2 显示器<small id="t2cond">6 台运转解锁</small></div>
+          <div class="skinTab" data-skin="t3">T3 投影<small id="t3cond">9 台运转+发电机Lv2</small></div>
+        </div>
+        <div id="stationList"></div>
+        <div id="panelDetail">
+          <div id="dTitle">选择一台机器</div>
+          <div id="dState">点击场景中的机器，或上方列表行</div>
+          <div id="dBody">
+            <div id="dArt" style="display:none"><img id="dArtImg" src=""></div>
+            <div id="dFuncs">
+              <div id="dFnRow" style="font-size:12px;color:#8f8674">功能按钮将在此出现（制造/情报/商店…均为现有面板调起的占位演示）</div>
+              <div id="dUp"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="modal"><div id="paper">
+  <h3 id="paperTitle">晨报 · 第 12 天</h3>
+  <div id="paperRows"></div>
+  <div style="margin-top:12px;text-align:right"><button class="btn" onclick="document.getElementById('modal').classList.remove('on')">关闭</button></div>
+</div></div>
+
+<script>
+/* ── 数据：9 站点（对齐 机枢大厅方案 的合并表） ─────────────── */
+const S = {
+  generator:{name:'发电机',   group:'深层', icon:'⚡', rect:[16,322,150], need:3, cost:{alloy:500,energy:200}, tag:'全厅电力', bonus:'深层设施解冻',
+    fns:['电力总览'], ups:['电网增容：生产类效果 +10%','应急协议：低精神惩罚减半']},
+  war_table:{name:'沙盘台',   group:'作战', icon:'⚔', rect:[176,324,178], need:1, cost:{nano:200}, tag:'出击', bonus:'出击入口', fns:['前往战场','战区地图'],
+    ups:['战前简报：胜利精神消耗 10→8','沙盘演武：每日未上阵卡 50% 经验']},
+  workbench:{name:'工作台',   group:'作战', icon:'🛠', rect:[220,600,205], need:2, cost:{nano:300,crystal:50}, tag:'整备', bonus:'制造 -10%',
+    fns:['改造','制造中心','成长'], ups:['制造流水线：消耗 -10%','大师工位：消耗 -20%']},
+  printer:{name:'打印机',    group:'作战', icon:'🖨', rect:[636,596,162], need:1, cost:{alloy:150}, tag:'卡仓·打印', bonus:'每日 1 张缴获卡',
+    fns:['卡墙','战利品打印'], ups:['卡墙：拥有过的卡逐一点亮','每日领取随机缴获卡']},
+  radio:{name:'电台',       group:'作战', icon:'📡', rect:[616,320,100], need:2, cost:{nano:250,crystal:80}, tag:'商店·势力', bonus:'声望 +15%',
+    fns:['商店','势力','排行榜'], ups:['商业频道：免费刷新 +1','势力热线：声望 +15%'], power:true},
+  lab_bench:{name:'实验台',   group:'科技', icon:'⚗', rect:[364,322,140], need:1, cost:{nano:250,energy:50}, tag:'技能·相位仪', bonus:'洗点费 -50%',
+    fns:['相位师技能树','相位仪调试'], ups:['校准工装：洗点费 -50%','自动校准：每日 1 次免费洗点']},
+  analyzer:{name:'分析仪',   group:'科技', icon:'🔍', rect:[512,320,100], need:1, cost:{nano:100,energy:60}, tag:'情报·档案', bonus:'情报获取 +10%',
+    fns:['情报中心','英雄档案','分析仪'], ups:['分析仪上线：烧缴获卡得情报','深度解析：高品质制造 ×1.5']},
+  rest_pod:{name:'充能舱',   group:'生活', icon:'🛏', rect:[56,596,148], need:0, cost:{}, tag:'睡眠·存档', bonus:'睡觉回精神 +10',
+    fns:['睡觉(推进天数)','背包'], ups:['床垫升级：回精神 20→30','落地窗：回精神 30→40']},
+  galley:{name:'炊事机',    group:'生活', icon:'🍳', rect:[448,596,168], need:1, cost:{nano:200,alloy:100}, tag:'配给·医疗', bonus:'每日配给 +50%',
+    fns:['每日配给','治疗'], ups:['加菜：配给 +50%','丰收：配给翻倍']},
+};
+const GROUPS=['生活','作战','科技','深层'];
+const RES_NAME={nano:'纳米',alloy:'合金',crystal:'晶体',energy:'能量'};
+const state={}; Object.keys(S).forEach(k=>state[k]={st:k==='rest_pod'?'active':'locked',prog:0,lv:1,bubble:false,uping:0});
+let sel=null, skin='t2';
+
+/* ── 场景注入 ── */
+const hall=document.getElementById('hall');
+Object.keys(S).forEach(k=>{
+  const m=S[k], st=state[k];
+  const el=document.createElement('div');
+  el.className='machine'; el.id='m_'+k; el.dataset.k=k;
+  el.style.left=m.rect[0]+'px'; el.style.width=m.rect[2]+'px';
+  el.innerHTML=`<div class="sprite"><img src="generated_mh/mh_${k}_wreck.png" onerror="this.src='data:image/svg+xml,${encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' width='300' height='200'><rect width='100%' height='100%' fill='#2a251d'/><text x='50%' y='50%' fill='#8f8674' font-size='20' text-anchor='middle'>${m.name}·图未生成</text></svg>`)}'"></div>
+    <div class="tag">${m.name}<span class="st"></span></div>
+    <div class="bubble">✦</div>`;
+  // 底部基线对齐：rect[1]=落地线 y；图加载后回算 top（两态切换 src 也会触发重排）
+  const im=el.querySelector('img');
+  const align=()=>{ if(im.naturalWidth){ const h=im.naturalHeight*(m.rect[2]/im.naturalWidth); el.style.top=Math.round(m.rect[1]-h)+'px'; } };
+  im.onload=align; if(im.complete) align();
+  el.addEventListener('click',e=>{ if(e.target.classList.contains('bubble')){collect(k);return;} select(k); });
+  hall.appendChild(el);
+});
+
+/* ── 渲染 ── */
+function select(k){ sel=k; renderScene(); renderList(); renderDetail(); }
+function machineSrc(k){ const st=state[k]; return `generated_mh/mh_${k}_${st.st==='active'?'active':'wreck'}.png`; }
+function renderScene(){
+  Object.keys(S).forEach(k=>{
+    const el=document.getElementById('m_'+k), st=state[k];
+    el.className='machine '+st.st+(k===sel?' sel':'');
+    el.querySelector('img').src=machineSrc(k);
+    el.querySelector('.tag .st').textContent = st.st==='locked'?'🔒':st.st==='repairing'?`⏳${st.prog}/${S[k].need}`:`Lv${st.lv}`;
+    el.querySelector('.bubble').classList.toggle('on',st.bubble);
+  });
+}
+function renderList(){
+  const box=document.getElementById('stationList'); box.innerHTML='';
+  GROUPS.forEach(g=>{
+    const h=document.createElement('div'); h.className='groupHead'; h.textContent='— '+g+' —'; box.appendChild(h);
+    Object.keys(S).filter(k=>S[k].group===g).forEach(k=>{
+      const m=S[k], st=state[k]; const row=document.createElement('div');
+      row.className='stRow'+(k===sel?' sel':''); row.onclick=()=>select(k);
+      let info='',btn='';
+      if(st.st==='locked'){
+        info=`修复需 ${costTxt(m.cost)} · ${m.need} 场`+(m.power&&state.generator.st!=='active'?' <span style="color:#e0906a">❄需发电机</span>':'');
+        btn=`<button class="stBtn go" onclick="repair('${k}');event.stopPropagation()">修复</button>`;
+      }else if(st.st==='repairing'){
+        info=`修复中 <span class="fin">${st.prog}/${m.need} 场</span>——出击推进`;
+      }else if(st.uping>0){
+        info=`升级中 <span class="fin">${st.prog}/${m.need} 场</span>`;
+      }else{
+        info=`<span class="fin">✦ ${m.bonus}</span>`;
+        if(st.lv<3) btn=`<button class="stBtn up" onclick="upgrade('${k}');event.stopPropagation()">升级 Lv${st.lv+1}</button>`;
+        else btn=`<span style="font-size:11px;color:#7d7462">满级</span>`;
+      }
+      if(st.bubble) info+=' <b style="color:var(--amber)">✦可收取</b>';
+      let pips=''; for(let i=1;i<=3;i++) pips+=`<div class="pip${st.st==='active'&&i<=st.lv?' lit':''}"></div>`;
+      row.innerHTML=`<div class="stIcon">${m.icon}</div><div class="stName">${m.name}</div><div class="pips">${pips}</div><div class="stInfo">${info}</div>${btn}`;
+      box.appendChild(row);
+    });
+  });
+  renderBonus(); renderSkinLocks();
+}
+function renderDetail(){
+  const d=document.getElementById('dTitle'),s=document.getElementById('dState'),
+        a=document.getElementById('dArt'),img=document.getElementById('dArtImg'),
+        fr=document.getElementById('dFnRow'),up=document.getElementById('dUp');
+  if(!sel){ d.textContent='选择一台机器'; s.textContent='点击场景中的机器，或上方列表行'; a.style.display='none'; fr.textContent='功能按钮将在此出现'; up.textContent=''; return; }
+  const m=S[sel], st=state[sel];
+  d.textContent=m.icon+' '+m.name+' · '+m.tag;
+  a.style.display='block'; img.src=machineSrc(sel);
+  if(st.st==='locked'){ s.textContent=`残破——修复需 ${costTxt(m.cost)}，耗时 ${m.need} 场（出击推进）`; fr.textContent='修复后解锁功能'; up.innerHTML=m.ups.map((u,i)=>`Lv${i+2} ${u}`).join('<br>'); }
+  else if(st.st==='repairing'){ s.textContent=`修复中 ${st.prog}/${m.need} 场`; fr.textContent='…'; up.innerHTML=''; }
+  else{
+    s.textContent=`运转中 · Lv${st.lv}${st.lv<3?'（可升级）':'（满级）'}`;
+    fr.innerHTML=m.fns.map(f=>`<span class="fnBtn">${f}</span>`).join('');
+    up.innerHTML=(st.uping>0?`升级中 ${st.prog}/${m.need} 场`:m.ups.map((u,i)=>st.lv>=i+2?`<span style="opacity:.5">Lv${i+2} ${u} ✓</span>`:`Lv${i+2} ${u}`).join('<br>'));
+  }
+}
+function renderBonus(){
+  const act=Object.keys(S).filter(k=>state[k].st==='active');
+  document.getElementById('bonusText').textContent = act.length?act.map(k=>S[k].bonus).join(' · '):'尚无运转中的机器';
+}
+function renderSkinLocks(){
+  const act=Object.keys(S).filter(k=>state[k].st==='active').length;
+  const g2=state.generator.st==='active'&&state.generator.lv>=2;
+  setLock('t1',false); setLock('t2',act<6,`6 台运转解锁（${act}/6）`);
+  setLock('t3',!(act>=9&&g2),`9 台运转+发电机Lv2（${act}/9${g2?' ✓发电机':''}）`);
+  if(skin==='t2'&&act<6) switchSkin('t1'); if(skin==='t3'&&!(act>=9&&g2)) switchSkin(act>=6?'t2':'t1');
+}
+function setLock(t,locked,txt){
+  const el=document.querySelector(`.skinTab[data-skin=${t}]`);
+  el.classList.toggle('locked',locked);
+  if(txt) el.querySelector('small').textContent=locked?txt:'✓ 已解锁';
+}
+function costTxt(c){ const ks=Object.keys(c); return ks.length?ks.map(k=>`${RES_NAME[k]}×${c[k]}`).join(' '):'免费'; }
+
+/* ── 操作 ── */
+function pay(c){ for(const k in c){ const el=document.getElementById('r'+({nano:'Nano',alloy:'Alloy',crystal:'Crystal',energy:'Energy'}[k])); if(parseInt(el.textContent)<c[k]) return false; }
+  for(const k in c){ const el=document.getElementById('r'+({nano:'Nano',alloy:'Alloy',crystal:'Crystal',energy:'Energy'}[k])); el.textContent=parseInt(el.textContent)-c[k]; } return true; }
+window.repair=function(k){ const m=S[k],st=state[k];
+  if(m.power&&state.generator.st!=='active'){ flash('❄ 电力冻结：先修复发电机'); return; }
+  if(!pay(m.cost)){ flash('资源不足'); return; }
+  st.st='repairing'; st.prog=0; st.need=m.need; select(k); };
+window.upgrade=function(k){ const m=S[k],st=state[k];
+  const upgCost={nano:Math.round((m.cost.nano||200)*1.5)}; if(!pay(upgCost)){ flash('资源不足'); return; }
+  st.uping=1; st.prog=0; st.need=1; select(k); };
+window.battle=function(){ // 模拟出击 +1 场：推进所有修复/升级 + 触发产出
+  let changed=false;
+  Object.keys(S).forEach(k=>{ const st=state[k];
+    if(st.st==='repairing'){ st.prog++; if(st.prog>=st.need){ st.st='active'; changed=true; } }
+    else if(st.st==='active'&&st.uping>0){ st.prog++; if(st.prog>=st.need){ st.uping=0; st.lv++; changed=true; } } });
+  if(state.galley.st==='active') state.galley.bubble=true;
+  if(state.printer.st==='active'&&Math.random()<.7) state.printer.bubble=true;
+  if(state.analyzer.st==='active'&&Math.random()<.5) state.analyzer.bubble=true;
+  document.getElementById('day').textContent=parseInt(document.getElementById('day').textContent)+0;
+  renderScene(); renderList(); renderDetail();
+  if(changed) flash('✦ 有机器上线/升级完成'); };
+function collect(k){ state[k].bubble=false; addRes('nano',60); renderScene(); renderList(); flash(S[k].name+' 收取 +纳米60'); }
+window.collectAll=function(){ let n=0; Object.keys(S).forEach(k=>{ if(state[k].bubble){n++;state[k].bubble=false;addRes('nano',60);} }); renderScene(); renderList(); flash(n?`收取 ${n} 项产出`:'暂无可收取产出'); };
+function addRes(k,v){ const el=document.getElementById('r'+({nano:'Nano',alloy:'Alloy',crystal:'Crystal',energy:'Energy'}[k])); el.textContent=parseInt(el.textContent)+v; }
+function flash(msg){ const n=document.createElement('div'); n.textContent=msg;
+  n.style.cssText='position:fixed;top:70px;left:50%;transform:translateX(-50%);background:#241e13;border:1px solid #77591c;color:#ffd9a0;padding:8px 18px;border-radius:8px;z-index:99;transition:opacity .4s';
+  document.body.appendChild(n); setTimeout(()=>{n.style.opacity=0;},1400); setTimeout(()=>n.remove(),1900); }
+document.getElementById('btnBattle').onclick=battle;
+document.getElementById('btnCollectAll').onclick=collectAll;
+document.getElementById('btnPaper').onclick=openPaper;
+
+function openPaper(){
+  document.getElementById('paperTitle').textContent=`晨报 · 第 ${document.getElementById('day').textContent} 天`;
+  const rows=document.getElementById('paperRows'); rows.innerHTML='';
+  Object.keys(S).forEach(k=>{ const m=S[k],st=state[k];
+    let msg=null,claim=null;
+    if(st.bubble){ msg=`${m.name}：产出待收取（${m.bonus}）`; claim=k; }
+    else if(st.st==='repairing'){ msg=`${m.name}：修复中 ${st.prog}/${st.need} 场`; }
+    else if(st.st==='active'&&st.uping>0){ msg=`${m.name}：升级中 ${st.prog}/${st.need} 场`; }
+    else if(st.st==='active'&&Math.random()<.4){ msg=`${m.name}：运转正常（✦ ${m.bonus}）`; }
+    if(!msg) return;
+    const d=document.createElement('div'); d.className='mrow';
+    d.innerHTML=`<span>${m.icon}</span><span>${msg}</span>${claim?`<span class="claim" onclick="collect('${k}');this.parentElement.remove()">领取</span>`:''}`;
+    rows.appendChild(d); });
+  if(!rows.children.length) rows.innerHTML='<div class="mrow">今日无事——基地在安静运转。</div>';
+  const modal=document.getElementById('modal');
+  modal.className='on sk-'+skin;
+}
+/* 皮肤切换 */
+function switchSkin(t){ skin=t;
+  document.querySelectorAll('.skinTab').forEach(el=>el.classList.toggle('on',el.dataset.skin===t));
+  document.getElementById('panelSide').className='sk-'+t; }
+document.querySelectorAll('.skinTab').forEach(el=>el.onclick=()=>{
+  const t=el.dataset.skin;
+  if(el.classList.contains('locked')){ flash('该皮肤档未解锁（见解锁条件）'); return; }
+  switchSkin(t); });
+
+/* 初始：模拟开局——充能舱已运转 */
+select('rest_pod'); renderScene(); renderList();
+
+/* 底图切换（"房间不好"→四取向候选现场对比） */
+const BGS=[["原","generated_mh/mh_hall_bg.jpeg"],["A 亮平层","generated_mh/mh_hall_bg_a.jpeg"],
+           ["B 高台","generated_mh/mh_hall_bg_b.jpeg"],["C 拱厅","generated_mh/mh_hall_bg_c.jpeg"],
+           ["D 月光","generated_mh/mh_hall_bg_d.jpeg"]];
+(function(){ const bs=document.getElementById('bgSwitch');
+  BGS.forEach(([n,src],i)=>{ const b=document.createElement('span'); b.className='bgBtn'+(i===0?' on':''); b.textContent=n;
+    b.onclick=()=>{ const hb=document.getElementById('hallBg'); hb.style.display='block'; hb.src=src;
+      document.querySelectorAll('.bgBtn').forEach(x=>x.classList.remove('on')); b.classList.add('on'); };
+    bs.appendChild(b); });
+})();
+</script>
+</body>
+</html>

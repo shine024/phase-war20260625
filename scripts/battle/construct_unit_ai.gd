@@ -61,6 +61,15 @@ static func get_target_find_interval(u: CharacterBody2D) -> float:
 static func find_target(u: CharacterBody2D, _delta: float) -> void:
 	if should_retain_current_target(u):
 		return
+	# v26.13(D-2): 指令轮盘"守住"——锁定当前目标不主动切换（目标存活且在射程内才保持；
+	# 目标死亡/脱离射程后走正常索敌重选，之后继续锁定）。集火目标切换不受此限。
+	if u.has_meta("_cmd_hold") and u.target != null and is_instance_valid(u.target):
+		var _ht: Node2D = u.target as Node2D
+		var _alive: bool = "hp" not in _ht or float(_ht.hp) > 0.0
+		var _rng: float = effective_fire_range(u)
+		var _in_rng: bool = _rng <= 0.0 or u.global_position.distance_to(_ht.global_position) <= _rng
+		if _alive and _in_rng:
+			return
 	u.target = null
 
 	## 获取索敌方式（三攻三防系统）
@@ -635,6 +644,16 @@ static func do_attack_with_damage(u: CharacterBody2D, damage: float, weapon_type
 		# VFX：穿透开火信号
 		if SignalBus.has_signal("mechanism_blitz_fired"):
 			SignalBus.mechanism_blitz_fired.emit(u.global_position, u.target.global_position)
+	# v27.1 传奇机制词条消费（special_mechanic，仅玩家侧——敌方固定配装不含此类词条）。
+	# 本函数是玩家全部弹道路径（直射 batch/曲射 batch/bullet 兜底）的伤害共同上游，
+	# 乘区在此统一应用一次，下游 batch/bullet 不再重复判。
+	if u.stats != null:
+		# 满员突击：生命值全满时伤害提升（容差 0.5 吸收治疗浮点残差）
+		if u.stats.full_hp_damage_bonus > 0.0 and u.hp >= u.stats.max_hp - 0.5:
+			damage = damage * (1.0 + u.stats.full_hp_damage_bonus)
+		# 双重齐射：每次攻击概率双倍伤害（与暴击独立乘区，per-attack 掷骰）
+		if u.stats.double_strike_chance > 0.0 and randf() < u.stats.double_strike_chance:
+			damage = damage * 2.0
 	var dist_t := u.global_position.distance_to(u.target.global_position)
 	var miss := false
 	# v7.x: wt 优先读当前槽位 weapon_resource.weapon_type（按目标类型差异化的弹道），
@@ -726,7 +745,10 @@ static func do_attack_with_damage(u: CharacterBody2D, damage: float, weapon_type
 		# 批处理不可用时回退到独立子弹
 
 	# 高速直射 → 批处理（v8.x: 发射点改为头脚中点，不再从脚部发射）
-	if wt == GC.WeaponType.DIRECT and weapon_speed > 2.0:
+	# v26.15e: 坦克炮是单发语义武器——不进 batch 曳光弹幕。高速数据层的坦克炮
+	# 此前也吃机枪式曳光连发（实机截图 FT-17 案例：一屏多条黄色曳光）。
+	# 走单发 bullet 路径：burst_count_for 对 TANK_GUN 恒 1，弹体为写实炮弹贴图。
+	if wt == GC.WeaponType.DIRECT and weapon_speed > 2.0 			and DirectWeaponFlavor.classify(w_name, wt) != DirectWeaponFlavor.Flavor.TANK_GUN:
 		var _fire_spawn_pos = _get_direct_fire_spawn_pos(u)
 		var batch = BattleManager.player_projectile_batch if u.is_player else BattleManager.enemy_projectile_batch
 		if batch and is_instance_valid(batch) and batch.has_method("fire"):

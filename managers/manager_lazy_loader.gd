@@ -188,6 +188,13 @@ func _ensure_configs_initialized() -> void:
 			"script_path": "res://managers/manufacture_manager.gd",
 			"priority": 9,
 			"description": "制造系统（配方目录+品质掷）"
+		},
+		# ── v27 黑门无限模式 ── 星冥族 run 开局/结算/星髓封顶（非战斗实时）
+		"endless": {
+			"node_name": "EndlessBlackgateManager",
+			"script_path": "res://managers/endless_blackgate_manager.gd",
+			"priority": 9,
+			"description": "黑门无限模式（星冥族）"
 		}
 	}
 

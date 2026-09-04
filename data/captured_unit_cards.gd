@@ -190,12 +190,18 @@ static func _build_captured_card(
 	c.power = int(roundf((c.base_hp * 0.3) + (total_attack * 2.0) + (total_defense * 1.5) + (c.base_speed * 0.1)))
 	c.power = maxi(c.power, 10)  # 最低10点战力
 
-	# type_line
-	var era_label: String = ["一战", "二战", "冷战", "现代", "近未来"][clampi(era, 0, 4)]
+	# type_line（v27: era=5 星冥带入标签数组）
+	var era_label: String = _era_label_for(era)
 	var kind_label: String = CardResource.get_combat_kind_name(c.combat_kind)
 	c.type_line = "%s — 缴获%s" % [era_label, kind_label]
 
 	return c
+
+
+## v27: 时代 → 缴获卡类型行标签（含 era=5 星冥；clamp 收敛防越界）
+static func _era_label_for(era: int) -> String:
+	var labels: Array[String] = ["一战", "二战", "冷战", "现代", "近未来", "星冥"]
+	return labels[clampi(era, 0, labels.size() - 1)]
 
 
 ## ── 从静态数据表构建缴获卡 ──
@@ -225,7 +231,7 @@ static func _build_from_static(drop_id: String, stats: Dictionary) -> CardResour
 	c.power = int(stats.get("power", 10))
 	c.weapon_label = String(stats.get("weapon_label", ""))
 
-	var era_label: String = ["一战", "二战", "冷战", "现代", "近未来"][clampi(c.era, 0, 4)]
+	var era_label: String = _era_label_for(c.era)
 	var kind_label: String = CardResource.get_combat_kind_name(c.combat_kind)
 	c.type_line = "%s — 缴获%s" % [era_label, kind_label]
 
@@ -234,6 +240,6 @@ static func _build_from_static(drop_id: String, stats: Dictionary) -> CardResour
 
 ## v8.0: 缴获卡类型行（统一表构建路径用）
 static func _make_captured_type_line(era: int, combat_kind: int) -> String:
-	var era_label: String = ["一战", "二战", "冷战", "现代", "近未来"][clampi(era, 0, 4)]
+	var era_label: String = _era_label_for(era)
 	var kind_label: String = CardResource.get_combat_kind_name(combat_kind)
 	return "%s — 缴获%s" % [era_label, kind_label]

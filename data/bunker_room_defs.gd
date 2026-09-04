@@ -5,10 +5,9 @@ class_name BunkerRoomDefs
 ## 本文件是房间布局/成本/文案的唯一真身；BunkerManager 与 bunker_main 只读此处。
 ##
 ## 布局（v3 胶囊版，1280×720 单屏：上半屏星空+地表废土，下半屏地下岩层紧凑分层）：
-##   地表半地上四房：气象站 / 纪念碑墙 / 入口闸塔 / 观星台
-##   地下一排·生活 y366-440：宿舍 / 食堂 / 医疗 / 仓库
-##   地下二排·战备 y452-522：兵棋 / 工坊 / 档案 / 通讯
-##   底部双厅 y566-684：荣誉陈列室（左 500 宽）/ 反应堆核心（右 520 宽）
+##   地表半上一排 y293-411 五房：气象站 / 纪念碑墙 / 入口大厅 / 相位实验室 / 观星台
+##   地下一排 y421-551 五房：宿舍 / 食堂 / 档案(中枢) / 医疗 / 仓库
+##   地下二排 y551-681 五房：兵棋 / 工坊 / 反应堆(中枢) / 荣誉 / 通讯
 ##   寻路三式：via 门连锁（同层穿门）→ 竖井电梯 → 水平隧道（tunnel_y）
 
 ## 房间三态。升级不占状态位：ACTIVE 房间通过 upgrades 数组付费升级（level 1-3），
@@ -320,6 +319,67 @@ static func cost_text(cost: Dictionary) -> String:
 	for k in cost:
 		parts.append("%s×%d" % [NAMES.get(k, k), int(cost[k])])
 	return " ".join(parts) if not parts.is_empty() else "免费"
+
+## ── 房间情报文本（tooltip 与面板共用，升级情报单一真身）──────────────
+
+## 单档升级行："Lv2 天气预报：…（纳米×180 · 1 场）"；无该档返回空串
+static func upgrade_line(room_id: String, target_level: int) -> String:
+	var upg := get_upgrade_def(room_id, target_level)
+	if upg.is_empty():
+		return ""
+	return "Lv%d %s（%s · %d 场）" % [
+		target_level, str(upg.get("note", "")),
+		cost_text(upg.get("cost", {})), int(upg.get("battles", 1))]
+
+## 升级线预览："修复后可升级：Lv2 … / Lv3 …"；无升级档返回空串
+static func upgrade_lines_preview(room_id: String) -> String:
+	var parts: Array[String] = []
+	for i in range(get_upgrades(room_id).size()):
+		parts.append(upgrade_line(room_id, i + 2))
+	if parts.is_empty():
+		return ""
+	return "修复后可升级：" + " / ".join(parts)
+
+## 悬停情报：按状态给"功能 + 升级线"完整说明（房间瓦片 tooltip 唯一数据源）。
+## 废弃/修复中 → 修复条件 + 修好后有什么用 + 升级线；
+## 运转中 → 功能 + 下一档升级预告（满级/升级中分别收口）。
+static func hover_tooltip_text(room_id: String, state: int, level: int,
+		frozen: bool, upgrade_tag: String, progress := 0.0) -> String:
+	var def := get_room(room_id)
+	if def.is_empty():
+		return ""
+	var fn := str(def.get("function_note", ""))
+	match state:
+		STATE_LOCKED:
+			if bool(def.get("is_terminal", false)):
+				return "终局房间：需满足特定条件后开启"
+			var lines: Array[String] = [
+				"废弃房间——修复需 %s，进度靠完成战斗推进" % cost_text(def.get("cost", {}))]
+			if not fn.is_empty():
+				lines.append("修复后：%s" % fn)
+			var ups := upgrade_lines_preview(room_id)
+			if not ups.is_empty():
+				lines.append(ups)
+			return "\n".join(lines)
+		STATE_REPAIRING:
+			var head := ("修复进度冻结：反应堆上线后继续" if frozen
+				else "修复中 %d%%：每完成一场战斗推进一格" % int(round(progress * 100.0)))
+			if not fn.is_empty():
+				head += "\n修复后：%s" % fn
+			return head
+		_:
+			if not upgrade_tag.is_empty():
+				var line := upgrade_line(room_id, level + 1)
+				if line.is_empty():
+					return "%s：点击打开房间面板查看详情" % upgrade_tag
+				return "%s\n目标：%s" % [upgrade_tag, line]
+			var base := fn if not fn.is_empty() else str(def.get("tag", ""))
+			if level >= 2:
+				base += " · Lv%d" % level
+			var next_line := upgrade_line(room_id, level + 1)
+			if not next_line.is_empty():
+				base += "\n▲ 可升级——%s" % next_line
+			return base
 
 ## 情感四阶段 × 发呆独白池（阶段号 1-4；bunker_main 停留 5s 触发）
 ## 2026-08-26 扩充 3/3/3/2 → 8/8/8/6：情绪递进 麻木→投入→羁绊→选择

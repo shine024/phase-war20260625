@@ -15,6 +15,9 @@ const PhaseDriverScene = preload("res://scenes/units/phase_field_driver.tscn")
 const EnemyPhaseDriverScene = preload("res://scenes/units/enemy_phase_field_driver.tscn")
 const COMMON_BATTLE_BG_PATH := "res://assets/backgrounds/bg_level_01.png"
 const LEVEL_BG_PATH_FMT := "res://assets/backgrounds/bg_level_%02d.png"
+## v26.9: 背景整体压暗一档（叠乘在时代 tint 上，略偏冷）——"背景永远比单位暗"，
+## 让单位深色描边/投影把轮廓从亮底（沙漠/雪原）里衬出来，弹道特效也更跳。
+const BG_DIM := Color(0.80, 0.80, 0.87)
 ## 缺省 PNG 时生成的战场背景尺寸（与常见关卡图比例接近）
 const _PROCEDURAL_BG_WIDTH: int = 1280
 const _PROCEDURAL_BG_HEIGHT: int = 720
@@ -180,6 +183,15 @@ func _update_background() -> void:
 	var battle_bottom_y: float = get_viewport_rect().size.y
 	if battle_bottom_y <= 0.0:
 		battle_bottom_y = 648.0
+
+	# v27 黑门无限模式：程序化星空背景（晶脉浮陆）——置于终局视觉判定之前，
+	# 避免第 100 关哨兵把无尽 run 误染成记忆城市灰白调。无资产依赖（运行时
+	# ImageTexture 点绘；AI 生图管线产出专属底图后可替换为贴图加载）。
+	if GameManager != null and GameManager.has_method("is_endless_battle") and GameManager.is_endless_battle():
+		_bg_pending_era = 5
+		_bg_pending_battle_bottom_y = battle_bottom_y
+		_apply_background_texture(_build_endless_starfield_texture())
+		return
 
 	# v6.6(剧情): 第100关终战视觉模式（补剧情.txt L137 记忆场景）
 	# 用灰白冷色调覆盖背景，表现"主角记忆中的城市/办公楼/小区"
@@ -423,8 +435,9 @@ func _apply_background_texture(tex: Texture2D) -> void:
 		Color(0.85, 0.9, 1.0),
 		Color(0.95, 0.95, 0.95),
 		Color(0.85, 0.95, 1.0),
+		Color(0.92, 0.94, 1.0),  # v27 era=5 星冥（近中性冷白，星空底图自带色调）
 	]
-	level10_bg.modulate = era_tints[era % era_tints.size()]
+	level10_bg.modulate = era_tints[era % era_tints.size()] * BG_DIM  # v26.9: 压暗一档
 	var lane_center_y: float = bg_top_y + tex_h * BATTLE_LANE_CENTER_RATIO
 	var lane_h: float = tex_h * BATTLE_LANE_HEIGHT_RATIO
 	var lane_half_h: float = lane_h * 0.5
@@ -460,6 +473,60 @@ func _resolve_missing_background(level: int, era: int) -> void:
 		return
 	var tex: Texture2D = _make_procedural_level_background_texture(level, era)
 	_apply_background_texture(tex)
+
+
+## v27 黑门星域底图（晶脉浮陆）：深空靛紫渐变 + 星点 + 底部晶脉地面。
+## 纯 fill_rect 点绘（无逐像素循环），一次性构建 ~1ms 级；星空占位——
+## AI 生图管线产出专属底图后可整体替换为贴图加载。
+func _build_endless_starfield_texture() -> Texture2D:
+	var w: int = 1280
+	var h: int = 648
+	var img := Image.create(w, h, false, Image.FORMAT_RGB8)
+	# 1) 深空渐变：天顶近黑靛 → 中段暗紫 → 地平线微亮（星云侧光）
+	var top: Color = Color(0.030, 0.020, 0.075)
+	var mid: Color = Color(0.075, 0.045, 0.150)
+	var hor: Color = Color(0.135, 0.105, 0.235)
+	var hor_y: int = int(h * 0.80)
+	for y in range(h):
+		var t: float = float(y) / float(hor_y) if y < hor_y else 1.0
+		var c: Color
+		if y < hor_y:
+			c = top.lerp(mid, t * 0.85) if t < 0.6 else mid.lerp(hor, (t - 0.6) / 0.4)
+		else:
+			c = hor
+		# 低频起伏（星云带），两段 sin 叠加
+		var wave: float = 0.5 + 0.5 * sin(float(y) * 0.021) * cos(float(y) * 0.008 + 1.7)
+		c = c.lerp(Color(0.10, 0.06, 0.19), wave * 0.35)
+		img.fill_rect(Rect2i(0, y, w, 1), c)
+	# 2) 星点：上密下疏，白/青/紫三色，亮度分级（少数亮星画十字光芒）
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 20270101
+	var star_tints: Array[Color] = [
+		Color(1.0, 1.0, 1.0), Color(0.78, 0.92, 1.0), Color(0.88, 0.80, 1.0),
+	]
+	for i in range(230):
+		var sy: int = int(pow(rng.randf(), 1.35) * float(hor_y))  # 幂分布：高处密
+		var sx: int = rng.randi_range(0, w - 1)
+		var bright: float = rng.randf_range(0.35, 1.0)
+		var sc: Color = star_tints[rng.randi() % star_tints.size()] * bright
+		img.fill_rect(Rect2i(sx, sy, 1, 1), sc)
+		if bright > 0.88 and i % 9 == 0:
+			# 亮星十字光芒（2px 臂）
+			img.fill_rect(Rect2i(sx - 2, sy, 5, 1), sc * 0.55)
+			img.fill_rect(Rect2i(sx, sy - 2, 1, 5), sc * 0.55)
+	# 3) 晶脉浮陆地面：暗青岩体 + 发光晶脉纹（青色短线网，对比 ≥90 亮度差）
+	var ground_y: int = int(h * 0.86)
+	for y in range(ground_y, h):
+		var gt: float = float(y - ground_y) / float(h - ground_y)
+		var gc: Color = Color(0.050, 0.075, 0.095).lerp(Color(0.020, 0.032, 0.045), gt)
+		img.fill_rect(Rect2i(0, y, w, 1), gc)
+	for i in range(260):
+		var vy: int = rng.randi_range(ground_y + 2, h - 2)
+		var vx: int = rng.randi_range(0, w - 3)
+		var glow: float = rng.randf_range(0.45, 0.95)
+		img.fill_rect(Rect2i(vx, vy, rng.randi_range(2, 5), 1), Color(0.25, 0.90, 0.85) * glow)
+	var tex := ImageTexture.create_from_image(img)
+	return tex
 
 func _make_procedural_level_background_texture(level: int, era: int) -> Texture2D:
 	var g := Gradient.new()

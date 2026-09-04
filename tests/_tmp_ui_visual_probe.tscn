@@ -1,6 +1,0 @@
-[gd_scene load_steps=2 format=3 uid="uid://cskh0cp8p0ijo"]
-
-[ext_resource type="Script" path="res://tests/_tmp_ui_visual_probe.gd" id="1"]
-
-[node name="UiVisualProbe" type="Node2D"]
-script = ExtResource("1")

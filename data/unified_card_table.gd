@@ -466,8 +466,8 @@ const _TABLE: Array = [
 	 "def_l":5,"def_a":17,"def_air":3,
 	 "w_light":"81mm/105mm火炮","w_armor":"81mm/105mm火炮","w_air":""},
 
-	{"card_id":"ww2_pz3","display_name":"三号坦克","era":1,"combat_kind":1,"tier":Tier.ELITE,
-	 "base_hp":419,"range_value":3,"deploy_speed":3,"base_speed":70,"power":216,"weapon_type":0,
+	 {"card_id":"ww2_pz3","display_name":"三号坦克","era":1,"combat_kind":1,"tier":Tier.ELITE,
+	 "base_hp":419,"range_value":3,"deploy_speed":4,"base_speed":70,"power":216,"weapon_type":0,  # v27.7 deploy 3→4：对同价 panther 全轴完胜的唯一补偿轴（轻型坦克更快进场）
 	 "weapon_label":"75mm/76mm坦克炮",
 	 "atk_l":71,"atk_l_speed":0.67,"atk_l_windup":0.299,"atk_l_active":0.149,
 	 "atk_a":318,"atk_a_speed":0.5,"atk_a_windup":0.4,"atk_a_active":0.2,
@@ -789,8 +789,8 @@ const _TABLE: Array = [
 	 "def_l":43,"def_a":153,"def_air":37,
 	 "w_light":"25mm M242链炮","w_armor":"TOW反坦克导弹","w_air":"7.62mm同轴机枪"},
 
-	{"card_id":"cold_arm_t55","display_name":"T-55坦克","era":2,"combat_kind":1,"tier":Tier.ELITE,
-	 "base_hp":668,"range_value":3,"deploy_speed":3,"base_speed":65,"power":576,"weapon_type":0,
+	 {"card_id":"cold_arm_t55","display_name":"T-55坦克","era":2,"combat_kind":1,"tier":Tier.ELITE,
+	 "base_hp":668,"range_value":3,"deploy_speed":4,"base_speed":65,"power":576,"weapon_type":0,  # v27.7 deploy 3→4：对同价 cold_m1 全轴完胜的唯一补偿轴（量产坦克更快进场）
 	 "weapon_label":"100mm主炮",
 	 "atk_l":114,"atk_l_speed":0.67,"atk_l_windup":0.299,"atk_l_active":0.149,
 	 "atk_a":508,"atk_a_speed":0.5,"atk_a_windup":0.4,"atk_a_active":0.2,
@@ -1462,7 +1462,7 @@ const _TABLE: Array = [
 	 "atk_l":344,"atk_l_speed":0.67,"atk_l_windup":0.299,"atk_l_active":0.149,
 	 "atk_a":1536,"atk_a_speed":0.5,"atk_a_windup":0.4,"atk_a_active":0.2,
 	 "atk_air":103,"atk_air_speed":0.5,"atk_air_windup":0.4,"atk_air_active":0.2,
-	 "def_l":128,"def_a":452,"def_air":110,
+	 "def_l":128,"def_a":390,"def_air":110,
 	 "w_light":"122mm主炮","w_armor":"双联装电磁炮","w_air":"20mm机炮"},
 
 	{"card_id":"fut_arm_heavy_mech","display_name":"重装机甲","era":4,"combat_kind":1,"tier":Tier.CHAMPION,
@@ -1471,7 +1471,7 @@ const _TABLE: Array = [
 	 "atk_l":417,"atk_l_speed":0.67,"atk_l_windup":0.299,"atk_l_active":0.149,
 	 "atk_a":1865,"atk_a_speed":0.5,"atk_a_windup":0.4,"atk_a_active":0.2,
 	 "atk_air":125,"atk_air_speed":0.5,"atk_air_windup":0.4,"atk_air_active":0.2,
-	 "def_l":155,"def_a":548,"def_air":133,
+	 "def_l":155,"def_a":440,"def_air":133,
 	 "w_light":"105mm主炮","w_armor":"重型等离子加农炮","w_air":"20mm机炮"},
 
 	{"card_id":"fut_arm_hovertank","display_name":"悬浮坦克","era":4,"combat_kind":1,"tier":Tier.CHAMPION,
@@ -1480,7 +1480,7 @@ const _TABLE: Array = [
 	 "atk_l":319,"atk_l_speed":0.67,"atk_l_windup":0.299,"atk_l_active":0.149,
 	 "atk_a":1426,"atk_a_speed":0.5,"atk_a_windup":0.4,"atk_a_active":0.2,
 	 "atk_air":96,"atk_air_speed":0.5,"atk_air_windup":0.4,"atk_air_active":0.2,
-	 "def_l":119,"def_a":420,"def_air":102,
+	 "def_l":119,"def_a":370,"def_air":102,
 	 "w_light":"105mm/120mm主炮","w_armor":"重型等离子加农炮","w_air":"20mm机炮"},
 
 	{"card_id":"fut_howitzer","display_name":"悬浮自行火炮","short_name":"悬浮火炮","era":4,"combat_kind":2,"tier":Tier.ELITE,
@@ -1498,7 +1498,7 @@ const _TABLE: Array = [
 	 "atk_l":282,"atk_l_speed":0.67,"atk_l_windup":0.299,"atk_l_active":0.149,
 	 "atk_a":1262,"atk_a_speed":0.5,"atk_a_windup":0.4,"atk_a_active":0.2,
 	 "atk_air":85,"atk_air_speed":0.5,"atk_air_windup":0.4,"atk_air_active":0.2,
-	 "def_l":105,"def_a":371,"def_air":90,
+	 "def_l":105,"def_a":340,"def_air":90,
 	 "w_light":"125mm滑膛炮","w_armor":"双联装电磁炮","w_air":"25mm M242大毒蛇"},
 
 	{"card_id":"fut_aa_hover","display_name":"防空悬浮车","era":4,"combat_kind":2,"tier":Tier.ELITE,
@@ -1529,8 +1529,8 @@ const _TABLE: Array = [
 	 "def_l":42,"def_a":69,"def_air":70,
 	 "w_light":"空天导弹/粒子炮","w_armor":"粒子炮/激光","w_air":"轨道炮/激光"},
 
-	{"card_id":"fut_spectre","display_name":"幽灵特工","era":4,"combat_kind":0,"tier":Tier.ELITE,
-	 "base_hp":950,"range_value":3,"deploy_speed":5,"base_speed":100,"power":530,"weapon_type":0,
+	 {"card_id":"fut_spectre","display_name":"幽灵特工","era":4,"combat_kind":0,"tier":Tier.ELITE,
+	 "base_hp":950,"range_value":3,"deploy_speed":5,"base_speed":100,"power":470,"weapon_type":0,  # v27.7 power 530→470：全轴弱于同档 scout_mech（其另带 recon 机制）且更贵——定价对齐最弱位
 	 "weapon_label":"植入式自动步枪/重型粒子炮",
 	 "atk_l":241,"atk_l_speed":1.5,"atk_l_windup":0.133,"atk_l_active":0.067,
 	 "atk_a":108,"atk_a_speed":1.0,"atk_a_windup":0.2,"atk_a_active":0.1,
@@ -1563,7 +1563,7 @@ const _TABLE: Array = [
 	 "atk_l":470,"atk_l_speed":0.67,"atk_l_windup":0.299,"atk_l_active":0.149,
 	 "atk_a":2100,"atk_a_speed":0.5,"atk_a_windup":0.4,"atk_a_active":0.2,
 	 "atk_air":141,"atk_air_speed":0.5,"atk_air_windup":0.4,"atk_air_active":0.2,
-	 "def_l":210,"def_a":741,"def_air":180,
+	 "def_l":210,"def_a":500,"def_air":180,
 	 "w_light":"105mm/120mm主炮","w_armor":"攻城电磁炮","w_air":"25mm M242大毒蛇"},
 
 	{"card_id":"fut_stormcore","display_name":"风暴核心原型","short_name":"风暴核心","era":4,"combat_kind":2,"tier":Tier.ULTIMATE,
@@ -1582,7 +1582,7 @@ const _TABLE: Array = [
 	 "atk_l":495,"atk_l_speed":0.67,"atk_l_windup":0.299,"atk_l_active":0.149,
 	 "atk_a":2211,"atk_a_speed":0.5,"atk_a_windup":0.4,"atk_a_active":0.2,
 	 "atk_air":74,"atk_air_speed":0.5,"atk_air_windup":0.4,"atk_air_active":0.2,
-	 "def_l":221,"def_a":781,"def_air":189,
+	 "def_l":221,"def_a":520,"def_air":189,
 	 "w_light":"125mm滑膛炮","w_armor":"重型等离子加农炮","w_air":"40mm榴弹"},
 
 	{"card_id":"fut_arm_omega","display_name":"全装型机动舱","short_name":"全装机动舱","era":4,"combat_kind":1,"tier":Tier.ULTIMATE,
@@ -1591,7 +1591,7 @@ const _TABLE: Array = [
 	 "atk_l":470,"atk_l_speed":0.67,"atk_l_windup":0.299,"atk_l_active":0.149,
 	 "atk_a":2100,"atk_a_speed":0.5,"atk_a_windup":0.4,"atk_a_active":0.2,
 	 "atk_air":141,"atk_air_speed":0.5,"atk_air_windup":0.4,"atk_air_active":0.2,
-	 "def_l":210,"def_a":741,"def_air":180,
+	 "def_l":210,"def_a":500,"def_air":180,
 	 "w_light":"全装型导弹巢","w_armor":"攻城电磁炮","w_air":"25mm M242大毒蛇"},
 
 	# --- 近未来敌方独有单位（enemy_only）---
@@ -1628,7 +1628,7 @@ const _TABLE: Array = [
 	 "atk_l":210,"atk_l_speed":0.67,"atk_l_windup":0.299,"atk_l_active":0.149,
 	 "atk_a":945,"atk_a_speed":0.5,"atk_a_windup":0.4,"atk_a_active":0.2,
 	 "atk_air":0,"atk_air_speed":1,"atk_air_windup":0.4,"atk_air_active":0.2,
-	 "def_l":78,"def_a":480,"def_air":55,
+	 "def_l":78,"def_a":400,"def_air":55,
 	 "w_light":"等离子炮","w_armor":"重型等离子加农炮","w_air":""},
 
 	{"card_id":"fut_inf_spectre_e","display_name":"幽灵特工·精锐","era":4,"combat_kind":0,"tier":Tier.ELITE,
@@ -1646,7 +1646,7 @@ const _TABLE: Array = [
 	 "atk_l":280,"atk_l_speed":0.67,"atk_l_windup":0.299,"atk_l_active":0.149,
 	 "atk_a":1260,"atk_a_speed":0.5,"atk_a_windup":0.4,"atk_a_active":0.2,
 	 "atk_air":0,"atk_air_speed":1,"atk_air_windup":0.4,"atk_air_active":0.2,
-	 "def_l":95,"def_a":620,"def_air":65,
+	 "def_l":95,"def_a":480,"def_air":65,
 	 "w_light":"攻城电磁炮","w_armor":"攻城电磁炮","w_air":""},
 
 	{"card_id":"fut_boss_nexus","display_name":"风暴核心·Boss","era":4,"combat_kind":1,"tier":Tier.BOSS,
@@ -1655,7 +1655,7 @@ const _TABLE: Array = [
 	 "atk_l":504,"atk_l_speed":0.67,"atk_l_windup":0.299,"atk_l_active":0.149,
 	 "atk_a":2250,"atk_a_speed":0.5,"atk_a_windup":0.4,"atk_a_active":0.2,
 	 "atk_air":76,"atk_air_speed":1,"atk_air_windup":0.4,"atk_air_active":0.2,
-	 "def_l":130,"def_a":840,"def_air":110,
+	 "def_l":130,"def_a":560,"def_air":110,
 	 "w_light":"重型等离子加农炮","w_armor":"重型等离子加农炮","w_air":"40mm榴弹"},
 
 	# --- 近未来特殊精英（B段，enemy_only）---
@@ -1674,7 +1674,7 @@ const _TABLE: Array = [
 	 "atk_l":300,"atk_l_speed":1,"atk_l_windup":0.299,"atk_l_active":0.149,
 	 "atk_a":1350,"atk_a_speed":0.5,"atk_a_windup":0.4,"atk_a_active":0.2,
 	 "atk_air":0,"atk_air_speed":1,"atk_air_windup":0.4,"atk_air_active":0.2,
-	 "def_l":100,"def_a":700,"def_air":70,
+	 "def_l":100,"def_a":500,"def_air":70,
 	 "w_light":"重型导弹/粒子炮","w_armor":"泰坦巨炮/电磁主炮","w_air":""},
 
 	{"card_id":"fut_inf_storm_rider","display_name":"暴风骑士","era":4,"combat_kind":0,"tier":Tier.ELITE,
@@ -2034,7 +2034,7 @@ const _TABLE: Array = [
 	 "atk_l":170,"atk_l_speed":1,"atk_l_windup":0.299,"atk_l_active":0.149,
 	 "atk_a":765,"atk_a_speed":1,"atk_a_windup":0.4,"atk_a_active":0.2,
 	 "atk_air":0,"atk_air_speed":1,"atk_air_windup":0.4,"atk_air_active":0.2,
-	 "def_l":55,"def_a":390,"def_air":39,
+	 "def_l":55,"def_a":340,"def_air":39,
 	 "w_light":"光束步枪","w_armor":"","w_air":""},
 	{"card_id":"platform_future_radar","display_name":"近未来雷达平台","era":4,"combat_kind":2,"tier":Tier.GRUNT,
 	 "base_hp":300,"range_value":3,"deploy_speed":0,"base_speed":0,"power":495,"weapon_type":3,
@@ -2050,7 +2050,7 @@ const _TABLE: Array = [
 	 "atk_l":220,"atk_l_speed":0.67,"atk_l_windup":0.299,"atk_l_active":0.149,
 	 "atk_a":990,"atk_a_speed":0.5,"atk_a_windup":0.4,"atk_a_active":0.2,
 	 "atk_air":0,"atk_air_speed":1,"atk_air_windup":0.4,"atk_air_active":0.2,
-	 "def_l":85,"def_a":500,"def_air":60,
+	 "def_l":85,"def_a":420,"def_air":60,
 	 "w_light":"粒子炮","w_armor":"","w_air":""},
 
 	# ══════════ v8 批次5: 时代守护者独占卡系列 ══════════

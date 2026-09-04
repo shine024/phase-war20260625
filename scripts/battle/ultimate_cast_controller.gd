@@ -23,7 +23,7 @@ extends RefCounted
 ## 编译期绑定会静默失效（reset_state 整体不执行），引擎依赖集保持原样。
 
 ## 手动白名单：相位仪能力 id（PhaseInstrumentAbilities 侧有对应充能/释放实现）
-const MANUAL_ABILITY_IDS: Array[String] = ["nuclear_bombardment"]
+const MANUAL_ABILITY_IDS: Array[String] = ["nuclear_bombardment", "artillery_barrage"]  # v26.13(D-1): +火炮连发
 ## 手动白名单：兵种机制 id（construct_unit 侧有 armed meta + try_manual_fire_ 方法）
 const MANUAL_MECHANISM_IDS: Array[String] = ["nuclear_strike", "shield_projector", "jamming_field"]
 

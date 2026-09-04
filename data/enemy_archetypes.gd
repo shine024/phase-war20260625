@@ -68,7 +68,9 @@ static var ARCHETYPES: Dictionary:
 		return _archetypes_cache
 
 const GC = preload("res://resources/game_constants.gd")
-const ERA_PREFIX: Array[String] = ["ww1", "ww2", "cold", "modern", "near"]
+## v27: 索引 5 = xeno（星冥带，era=5 原型只存在于黑门无限模式波次）。
+## get_ids_for_era 的 clamp 上限取本数组长度，追加 "xeno" 后 era=5 查询合法。
+const ERA_PREFIX: Array[String] = ["ww1", "ww2", "cold", "modern", "near", "xeno"]
 const TARGET_ARCHETYPE_COUNT: int = 150
 ## 100 基本敌人清单启用后关闭程序批量生成（见 data/enemy_unit_manifest.gd）
 const GENERATED_PER_ERA: int = 0

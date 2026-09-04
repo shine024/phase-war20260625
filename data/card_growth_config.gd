@@ -36,11 +36,14 @@ const ERA_BASE: Dictionary = {
 }
 
 ## 兵种权重（combat_kind → 各维权重；强化兵种个性：堡垒血厚攻弱、空军攻锐血薄）
+## v26.17 修复：SUPPORT/AIR 两行曾按错误键序写反（旧注释把 key 2 标成 AIR、key 3 标成
+## SUPPORT，而枚举真身 SUPPORT=2/AIR=3，见 game_constants.gd）——按设计意图换位：
+## 空军（3）攻锐血薄、支援（2）均衡。Lv1-30 flat 成长敌我双侧同表生效。
 const KIND_WEIGHT: Dictionary = {
 	0: {"atk": 1.0, "hp": 1.0, "def": 1.0},    # LIGHT
 	1: {"atk": 0.8, "hp": 1.4, "def": 1.3},    # ARMOR
-	2: {"atk": 1.2, "hp": 0.8, "def": 0.8},    # AIR
-	3: {"atk": 0.9, "hp": 0.9, "def": 1.0},    # SUPPORT
+	2: {"atk": 0.9, "hp": 0.9, "def": 1.0},    # SUPPORT
+	3: {"atk": 1.2, "hp": 0.8, "def": 0.8},    # AIR
 	4: {"atk": 0.6, "hp": 1.6, "def": 1.5},    # FORT
 }
 

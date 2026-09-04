@@ -729,7 +729,7 @@ func _show_ng_plus_confirm() -> void:
 		close.call()
 		# 重置进度并保存（符文/相位仪保留、ng_plus 激活），回标题屏以新周目重新开始
 		SaveManager.start_ng_plus()
-		get_tree().change_scene_to_file("res://scenes/title_screen.tscn")
+		SceneTransition.change(get_tree(), "res://scenes/title_screen.tscn")
 	)
 	cancel_btn.pressed.connect(close)
 
@@ -893,7 +893,7 @@ func _on_return_bunker_pressed() -> void:
 			tw.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
 			tw.tween_property(panel, "modulate:a", 0.0, DT.MOTION_FADE_OUT)
 	tw.tween_callback(func():
-		get_tree().change_scene_to_file("res://scenes/bunker/bunker_main.tscn"))
+		SceneTransition.change(get_tree(), "res://scenes/bunker/bunker_main.tscn"))
 
 
 # =========================================================================

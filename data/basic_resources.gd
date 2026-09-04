@@ -1,9 +1,11 @@
 extends RefCounted
 class_name BasicResources
-## 基础资源：纳米材料、合金、晶体、能量块、研究点
+## 基础资源：纳米材料、合金、晶体、能量块、星髓
 ##
 ## - 以背包格子形式展示，每格最多存放 STACK_SIZE 数量
 ## - 总量由 BasicResourceManager 维护，这里只提供配置与关卡掉落计算
+## - v27: 星髓（star_marrow）——黑门无限模式专属货币（渗度里程碑发放，每周封顶；
+##   用途=星冥缴获卡洗词条/灵能穿透图纸/裂隙增益道具，设计 §7）
 
 const STACK_SIZE: int = 10000
 
@@ -12,6 +14,7 @@ const ID_NANO_MATERIALS := "nano_materials"
 const ID_ALLOY := "alloy"
 const ID_CRYSTAL := "crystal"
 const ID_ENERGY_BLOCK := "energy_block"
+const ID_STAR_MARROW := "star_marrow"
 # v9.x（P2-7范围C）：科研点 ID_RESEARCH_POINTS 已随研究/合成系统退役移除（2026-08-23）
 # v7.3: 许可证系统已删除（5种资源全项目零消耗，是死系统）。
 # 原 ID_PERMIT_GENERAL / ID_PERMIT_TYPE_ASSAULT/HEAVY/SUPPORT/LAW 已移除。
@@ -43,6 +46,13 @@ const DEFINITIONS: Dictionary = {
 		"name": "能量块",
 		"desc": "可在后勤节点中转换为战场能源或其它增益。",
 		"icon": "res://assets/resources/energy_block.png",
+	},
+	# v27: 黑门无限模式专属货币（图标沿用晶体占位，美术管线出图后替换 star_marrow.png）
+	ID_STAR_MARROW: {
+		"id": ID_STAR_MARROW,
+		"name": "星髓",
+		"desc": "黑门彼岸的灵能结晶。黑门无限模式渗度里程碑产出，每周获取有上限。",
+		"icon": "res://assets/resources/crystal.png",
 	},
 	# v7.3: 5 种许可证定义已删除（死系统）
 	# 兼容性定义（映射到新ID）

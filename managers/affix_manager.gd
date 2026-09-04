@@ -132,6 +132,7 @@ func on_card_level_up_instance(instance_id: String, old_lv: int, new_lv: int) ->
 	var ctx: Array = _combat_context_for_identity(instance_id)
 	var combat_kind: int = int(ctx[0])
 	var card_tier: int = int(ctx[1])
+	var is_xeno_card: bool = bool(ctx[2])  # v27.2: 星冥卡 roll 星冥专属池
 	var key_body: String = _get_affix_key(instance_id, 0)
 	var key_weapon: String = _get_affix_key(instance_id, 1)
 	var expected: int = clampi(new_lv / 5, 0, ENHANCE_TRIGGER_LEVELS.size())
@@ -142,23 +143,23 @@ func on_card_level_up_instance(instance_id: String, old_lv: int, new_lv: int) ->
 		if not CardGrowthConfig.is_affix_milestone(lv):
 			continue
 		if allow_roll:
-			if _roll_milestone_affix(key_body, 0, lv, combat_kind, card_tier):
+			if _roll_milestone_affix(key_body, 0, lv, combat_kind, card_tier, is_xeno_card):
 				changed = true
 				# v20: toast 通知——词条首次获得
 				var _rarity: String = AffixDefs.roll_rarity_by_level(lv)
-				var _aid: String = AffixDefs.roll_unlocked_affix_id(0, _rarity, _unlocked_bosses, combat_kind, card_tier)
+				var _aid: String = AffixDefs.roll_unlocked_affix_id(0, _rarity, _unlocked_bosses, combat_kind, card_tier, is_xeno_card)
 				if _aid.is_empty():
-					_aid = AffixDefs.roll_random_affix_id(0, _rarity, combat_kind, card_tier)
+					_aid = AffixDefs.roll_random_affix_id(0, _rarity, combat_kind, card_tier, is_xeno_card)
 				var _def: Dictionary = AffixDefs.get_definition(_aid)
 				if not _def.is_empty():
 					_toast_msg = "获得词条：%s" % _def.get("affix_name", _aid)
 				continue
-			if _roll_milestone_affix(key_weapon, 1, lv, combat_kind, card_tier):
+			if _roll_milestone_affix(key_weapon, 1, lv, combat_kind, card_tier, is_xeno_card):
 				changed = true
 				var _rarity2: String = AffixDefs.roll_rarity_by_level(lv)
-				var _aid2: String = AffixDefs.roll_unlocked_affix_id(1, _rarity2, _unlocked_bosses, combat_kind, card_tier)
+				var _aid2: String = AffixDefs.roll_unlocked_affix_id(1, _rarity2, _unlocked_bosses, combat_kind, card_tier, is_xeno_card)
 				if _aid2.is_empty():
-					_aid2 = AffixDefs.roll_random_affix_id(1, _rarity2, combat_kind, card_tier)
+					_aid2 = AffixDefs.roll_random_affix_id(1, _rarity2, combat_kind, card_tier, is_xeno_card)
 				var _def2: Dictionary = AffixDefs.get_definition(_aid2)
 				if not _def2.is_empty():
 					_toast_msg = "获得词条：%s" % _def2.get("affix_name", _aid2)
@@ -194,21 +195,34 @@ func _get_instance_card_by_identity(identity: String) -> CardResource:
 	return DefaultCards.get_card_by_id(identity)
 
 ## 从 affix_key/identity 解析兵种上下文（roll 过滤用；查不到卡回退 -1/0 = 通用池）
+## v27.2: 第三元素 = 是否星冥卡（captured_xeno_* / xeno_* 前缀），星冥专属词条 roll 用
 func _combat_context_for_identity(identity: String) -> Array:
+	var xeno: bool = _is_xeno_identity(identity)
 	var ctx_card: CardResource = _get_instance_card_by_identity(identity)
 	if ctx_card == null:
-		return [-1, 0]
-	return [int(ctx_card.combat_kind), int(ctx_card.tier)]
+		return [-1, 0, xeno]
+	return [int(ctx_card.combat_kind), int(ctx_card.tier), xeno]
+
+## v27.2: 星冥卡判定——按裸 id 前缀（captured_xeno_* 缴获卡 / xeno_* 裸 archetype），
+## 剥 #N 序号。字符串判定而非查卡：headless 测试无 InstanceRegistry 也成立。
+func _is_xeno_identity(identity: String) -> bool:
+	var base := String(identity).split("#")[0]
+	return base.begins_with("captured_xeno_") or base.begins_with("xeno_")
+
+## UI/外部查询用（面板顶栏按选中卡切换货币显示）
+func is_xeno_card_identity(identity: String) -> bool:
+	return _is_xeno_identity(identity)
 
 ## v18.c: 词条节点 roll 新词条（返回是否成功放入空槽）
 ## v19: 新增 combat_kind/card_tier 参数——兵种专属词条按兵种分池、独特词条按档位门槛
-func _roll_milestone_affix(affix_key: String, affix_type: int, level: int, combat_kind: int = -1, card_tier: int = 0) -> bool:
+## v27.2: 新增 p_is_xeno——星冥卡可出星冥专属词条（xeno_only 池）
+func _roll_milestone_affix(affix_key: String, affix_type: int, level: int, combat_kind: int = -1, card_tier: int = 0, p_is_xeno: bool = false) -> bool:
 	if not has_empty_affix_slot(affix_key):
 		return false
 	var rarity: String = AffixDefs.roll_rarity_by_level(level)
-	var affix_id: String = AffixDefs.roll_unlocked_affix_id(affix_type, rarity, _unlocked_bosses, combat_kind, card_tier)
+	var affix_id: String = AffixDefs.roll_unlocked_affix_id(affix_type, rarity, _unlocked_bosses, combat_kind, card_tier, p_is_xeno)
 	if affix_id.is_empty():
-		affix_id = AffixDefs.roll_random_affix_id(affix_type, rarity, combat_kind, card_tier)
+		affix_id = AffixDefs.roll_random_affix_id(affix_type, rarity, combat_kind, card_tier, p_is_xeno)
 	if affix_id.is_empty():
 		return false
 	return _add_affix(affix_key, affix_id, rarity, 1)
@@ -330,6 +344,49 @@ func _upgrade_affix_by_index(affix_key: String, slot_index: int) -> void:
 #  词条重随
 # ─────────────────────────────────────────────
 
+## v27.2: 洗练计费路由——星冥卡（captured_xeno_*）走星髓（BasicResourceManager），
+## 普通卡走纳米（BlueprintManager）。价目曲线：星髓 XENO_REROLL_COSTS / 纳米 REROLL_COSTS。
+func _is_xeno_affix_key(affix_key: String) -> bool:
+	var sep_idx: int = affix_key.rfind("_")
+	if sep_idx < 0:
+		return false
+	return _is_xeno_identity(affix_key.substr(0, sep_idx))
+
+## 洗练货币标签（UI 计费文案用）
+func get_reroll_currency_label(affix_key: String) -> String:
+	return "星髓" if _is_xeno_affix_key(affix_key) else "纳米材料"
+
+## 按词条 key 取洗练费用（星冥卡星髓曲线 / 普通卡纳米曲线）
+func get_reroll_cost_for(affix_key: String, slot_index: int) -> int:
+	if _is_xeno_affix_key(affix_key):
+		return AffixDefs.get_xeno_reroll_cost(slot_index)
+	return get_reroll_cost(slot_index)
+
+## 余额是否够付洗练费（不扣款；UI 按钮置灰判定也走这里）
+func can_pay_reroll(affix_key: String, amount: int) -> bool:
+	if amount <= 0:
+		return true
+	if _is_xeno_affix_key(affix_key):
+		var brm: Node = _get_root_node_or_null("BasicResourceManager")
+		return brm != null and brm.has_method("can_afford") \
+				and bool(brm.can_afford(BasicResources.ID_STAR_MARROW, amount))
+	var bm: Node = _get_root_node_or_null("BlueprintManager")
+	return bm != null and bm.has_method("get_nano_materials") and int(bm.get_nano_materials()) >= amount
+
+## 扣款（调用前须 can_pay_reroll 通过）
+func _pay_reroll(affix_key: String, amount: int) -> bool:
+	if _is_xeno_affix_key(affix_key):
+		var brm: Node = _get_root_node_or_null("BasicResourceManager")
+		if brm == null or not brm.has_method("add_resource"):
+			return false
+		brm.add_resource(BasicResources.ID_STAR_MARROW, -amount)
+		return true
+	var bm: Node = _get_root_node_or_null("BlueprintManager")
+	if bm == null or not bm.has_method("add_nano_materials"):
+		return false
+	bm.add_nano_materials(-amount)
+	return true
+
 ## 重随指定槽位的词条
 ## 返回是否成功
 func reroll_affix(affix_key: String, slot_index: int) -> bool:
@@ -348,23 +405,19 @@ func reroll_affix(affix_key: String, slot_index: int) -> bool:
 	var affix_type: int = int(affix_key.substr(sep_idx + 1))
 	# 旧实现会基于等级重新 roll 稀有度；新方案为“同层池”，保持该词条当前稀有度不变
 
-	# 消耗纳米材料
-	var cost: int = get_reroll_cost(slot_index)
-	var bm: Node = _get_root_node_or_null("BlueprintManager")
-	if bm == null or not bm.has_method("get_nano_materials"):
+	# 消耗洗练货币（v27.2: 星冥卡扣星髓，普通卡扣纳米）
+	var cost: int = get_reroll_cost_for(affix_key, slot_index)
+	if not _pay_reroll(affix_key, cost):
 		return false
-	if int(bm.get_nano_materials()) < cost:
-		return false
-	bm.add_nano_materials(-cost)
 
 	# 重新随机词条
 	var rarity: String = affix.rarity  # 同层池：保持不变
-	# v19: 兵种上下文——重随也按本卡兵种分池（key 前段为 identity）
+	# v19: 兵种上下文——重随也按本卡兵种分池（key 前段为 identity）；v27.2: 星冥卡含专属池
 	var rctx: Array = _combat_context_for_identity(affix_key.substr(0, sep_idx))
-	var new_affix_id: String = AffixDefs.roll_unlocked_affix_id(affix_type, rarity, _unlocked_bosses, int(rctx[0]), int(rctx[1]))
+	var new_affix_id: String = AffixDefs.roll_unlocked_affix_id(affix_type, rarity, _unlocked_bosses, int(rctx[0]), int(rctx[1]), bool(rctx[2]))
 
 	if new_affix_id.is_empty():
-		new_affix_id = AffixDefs.roll_random_affix_id(affix_type, rarity, int(rctx[0]), int(rctx[1]))
+		new_affix_id = AffixDefs.roll_random_affix_id(affix_type, rarity, int(rctx[0]), int(rctx[1]), bool(rctx[2]))
 
 	if new_affix_id.is_empty():
 		return false
@@ -405,11 +458,8 @@ func can_reroll_affix(affix_key: String, slot_index: int) -> bool:
 	if affix.is_locked:
 		return false
 
-	var cost: int = get_reroll_cost(slot_index)
-	var bm: Node = _get_root_node_or_null("BlueprintManager")
-	if bm and bm.has_method("get_nano_materials"):
-		return int(bm.get_nano_materials()) >= cost
-	return false
+	# v27.2: 计费路由统一（星冥卡星髓 / 普通卡纳米）
+	return can_pay_reroll(affix_key, get_reroll_cost_for(affix_key, slot_index))
 
 ## 批量重随费用计算
 ## locked_count: 本次锁定的词条数量（按 is_locked=true 统计）
@@ -426,7 +476,8 @@ func get_batch_reroll_cost(affix_key: String) -> Dictionary:
 		if a.is_locked:
 			locked_count += 1
 		else:
-			base_cost += get_reroll_cost(i)
+			# v27.2: 按卡身份取价目曲线（星冥卡星髓 / 普通卡纳米）
+			base_cost += get_reroll_cost_for(affix_key, i)
 	var extra: int = 0
 	if locked_count > 0 and base_cost > 0:
 		var mult: float = AffixDefs.get_lock_multiplier(locked_count)
@@ -451,19 +502,16 @@ func batch_reroll_affixes(affix_key: String) -> bool:
 	if reroll_count <= 0 or total_cost <= 0:
 		return false
 
-	var bm: Node = _get_root_node_or_null("BlueprintManager")
-	if bm == null or not bm.has_method("get_nano_materials"):
+	# v27.2: 扣洗练货币（星冥卡星髓 / 普通卡纳米），can_pay 已在 UI 侧前置判定
+	if not _pay_reroll(affix_key, total_cost):
 		return false
-	if int(bm.get_nano_materials()) < total_cost:
-		return false
-	bm.add_nano_materials(-total_cost)
 
 	# 从 affix_key 解析 affix_type（0=机体, 1=武器）。identity 可能含 _，故用 rfind
 	var sep_idx: int = affix_key.rfind("_")
 	if sep_idx < 0:
 		return false
 	var affix_type: int = int(affix_key.substr(sep_idx + 1))
-	# v19: 兵种上下文——批量重随同样按本卡兵种分池
+	# v19: 兵种上下文——批量重随同样按本卡兵种分池；v27.2: 星冥卡含专属池
 	var bctx: Array = _combat_context_for_identity(affix_key.substr(0, sep_idx))
 
 	for i in range(affixes.size()):
@@ -471,9 +519,9 @@ func batch_reroll_affixes(affix_key: String) -> bool:
 		if affix.is_locked:
 			continue
 		var rarity: String = affix.rarity  # 同层池：保持不变
-		var new_affix_id: String = AffixDefs.roll_unlocked_affix_id(affix_type, rarity, _unlocked_bosses, int(bctx[0]), int(bctx[1]))
+		var new_affix_id: String = AffixDefs.roll_unlocked_affix_id(affix_type, rarity, _unlocked_bosses, int(bctx[0]), int(bctx[1]), bool(bctx[2]))
 		if new_affix_id.is_empty():
-			new_affix_id = AffixDefs.roll_random_affix_id(affix_type, rarity, int(bctx[0]), int(bctx[1]))
+			new_affix_id = AffixDefs.roll_random_affix_id(affix_type, rarity, int(bctx[0]), int(bctx[1]), bool(bctx[2]))
 		if new_affix_id.is_empty():
 			continue
 
@@ -801,6 +849,18 @@ func _apply_card_affixes(stats: UnitStats, affix_key: String) -> void:
 				# 消费点已有：module_effect_handler 拦截判定（stats.intercept_chance 概率格挡），
 				# 与 APS 拦截改造同字段；上限 0.75 对齐 ModificationRegistry 同字段钳制。
 				stats.intercept_chance = minf(0.75, stats.intercept_chance + val)
+			"crit_ensure_hit":
+				# v27.1：暴击势能词条——开关型（base_value 1.0），取最大不做加法。
+				# 消费链：bullet.gd 暴击判定武装 _affix_ensure_hit_pending → 受击侧
+				# take_damage 的 dodge 计算处消费（下一次攻击必中，无视闪避）。
+				stats.crit_ensure_hit = maxf(stats.crit_ensure_hit, val)
+			"full_hp_damage_bonus":
+				# v27.1：满员突击词条——满血伤害乘区，消费点 construct_unit_ai
+				# do_attack_with_damage（玩家弹道伤害共同上游）。上限 0.50 防叠加超模。
+				stats.full_hp_damage_bonus = minf(0.50, stats.full_hp_damage_bonus + val)
+			"double_strike_chance":
+				# v27.1：双重齐射词条——每攻击概率双倍伤害，消费点同上。上限 0.50。
+				stats.double_strike_chance = minf(0.50, stats.double_strike_chance + val)
 
 		# 标记变异词条
 		if affix.is_mutated:
