@@ -50,13 +50,11 @@ func _ready() -> void:
 	var cc_btn: Button = get_node_or_null("CenterContainer/MainVBox/ButtonsVBox/CombatCheckButton")
 	if cc_btn:
 		cc_btn.pressed.connect(_on_combat_check)
-	var arena_btn: Button = get_node_or_null("CenterContainer/MainVBox/ButtonsVBox/Arena3v3Button")
-	if arena_btn:
-		arena_btn.pressed.connect(_on_arena_3v3)
+	# v26.12: 3v3 群战演练入口已从首页移除（场景文件 scenes/tools/combat_arena_3v3.tscn 保留）
 	# v26.9: 开发调试按钮仅 debug 构建显示（上架版标题页不应出现开发入口）
-	# 覆盖四个：切换存档/战斗效果检查/3v3 群战演练/重看开场(开发,见 _add_replay_intro_button)
+	# 覆盖三个：切换存档/战斗效果检查/重看开场(开发,见 _add_replay_intro_button)
 	if not OS.is_debug_build():
-		for dbn in ["SwitchSlotButton", "CombatCheckButton", "Arena3v3Button", "ReplayIntroButton"]:
+		for dbn in ["SwitchSlotButton", "CombatCheckButton", "ReplayIntroButton"]:
 			var dev_btn: Button = get_node_or_null("CenterContainer/MainVBox/ButtonsVBox/" + dbn)
 			if dev_btn != null:
 				dev_btn.visible = false
@@ -90,13 +88,13 @@ func _apply_button_tiers() -> void:
 	var ghost := PanelStyles.make_button_styles(accent, "ghost")
 	var dev_ghost := PanelStyles.make_button_styles(Color(0.55, 0.58, 0.66), "ghost")
 	# 主操作：accent 实心 + 深色文字（对比可读）
-	for bn in ["NewGameButton", "ContinueButton", "EnterBunkerButton"]:
+	for bn in ["NewGameButton", "ContinueButton", "EnterBunkerButton", "EnterTruckBaseButton"]:
 		_style_tier_btn(vbox, bn, solid, 20, Color(0.03, 0.10, 0.14), Color(0.03, 0.10, 0.14))
 	# 次操作：描边 ghost + 白字/青悬停
 	for bn in ["SettingsButton", "QuitButton"]:
 		_style_tier_btn(vbox, bn, ghost, 18, Color(1, 1, 1, 0.92), accent)
 	# 开发按钮：灰 ghost 弱化（debug 构建才可见）
-	for bn in ["SwitchSlotButton", "CombatCheckButton", "Arena3v3Button", "ReplayIntroButton"]:
+	for bn in ["SwitchSlotButton", "CombatCheckButton", "ReplayIntroButton"]:
 		_style_tier_btn(vbox, bn, dev_ghost, 13, Color(0.62, 0.65, 0.72), Color(0.8, 0.84, 0.9))
 
 
@@ -254,6 +252,8 @@ func _add_bunker_button() -> void:
 	var btn := Button.new()
 	btn.name = "EnterBunkerButton"
 	btn.text = "进入基地"
+	# v26.12d：固定主基地停用（移动基地接管，入口保留随时可恢复=删掉下面一行）
+	btn.visible = false
 	if continue_btn:
 		# 样式全盘复刻继续按钮（tscn 内嵌 StyleBoxFlat 三态）
 		for style_key in ["normal", "hover", "pressed", "disabled", "focus"]:
@@ -269,7 +269,41 @@ func _add_bunker_button() -> void:
 	if continue_btn:
 		insert_idx = continue_btn.get_index() + 1
 	vbox.move_child(btn, insert_idx)
+	_add_mobile_base_button(btn)
+
+
+## v26.12：程序化添加"移动基地"按钮（插在进入基地下方，样式同源）——卡车剖面驻地入口
+func _add_mobile_base_button(style_source: Button) -> void:
+	var vbox = get_node_or_null("CenterContainer/MainVBox/ButtonsVBox")
+	if vbox == null or vbox.has_node("EnterTruckBaseButton"):
+		return
+	var btn := Button.new()
+	btn.name = "EnterTruckBaseButton"
+	btn.text = "移动基地"
+	for style_key in ["normal", "hover", "pressed", "disabled", "focus"]:
+		var sb: StyleBox = style_source.get_theme_stylebox(style_key)
+		if sb:
+			btn.add_theme_stylebox_override(style_key, sb)
+	btn.add_theme_font_size_override("font_size",
+		style_source.get_theme_font_size("font_size"))
+	btn.custom_minimum_size = style_source.custom_minimum_size
+	btn.pressed.connect(_on_enter_truck_base)
+	vbox.add_child(btn)
+	vbox.move_child(btn, style_source.get_index() + 1)
 	_add_replay_intro_button(btn)
+
+
+## v26.12：进入移动基地（卡车剖面驻地视觉壳 MVP）
+## 与进入基地同源的档位保障：有档读档/无档开新档（跳过基地开场漫画——那是 bunker 链的演出）
+func _on_enter_truck_base() -> void:
+	_play_sfx("button")
+	if SaveManager:
+		if SaveManager.has_save_slot(SaveManager.get_slot()):
+			SaveManager.load_game()
+			SaveManager.flush_deferred_manager_loads()
+		else:
+			SaveManager.start_new_game()
+	SceneTransition.change(get_tree(), "res://scenes/bunker/truck_base.tscn")
 
 ## v24.5：开发预览"重看开场"——带 comic pending 直播开场，不改存档进度
 ## v26.9: 仅 debug 构建创建（上架版不出现该按钮）
@@ -372,11 +406,6 @@ func _update_slot_display() -> void:
 ## 进入战斗效果检查场（独立测试场景，复用项目真实战斗效果）
 func _on_combat_check() -> void:
 	SceneTransition.change(get_tree(), "res://scenes/tools/combat_check.tscn")
-
-
-## 进入 3v3 群战演练场（我方3 vs 敌方3 自动对打，看群体弹道/命中/大招效果）
-func _on_arena_3v3() -> void:
-	SceneTransition.change(get_tree(), "res://scenes/tools/combat_arena_3v3.tscn")
 
 
 func _on_quit() -> void:

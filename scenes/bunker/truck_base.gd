@@ -1,0 +1,1464 @@
+extends Control
+## v26.12 移动基地（MVP 视觉壳）——装甲卡车剖面驻地，五时代地域切换
+## 边界（用户 2026-09-04 口径）：旧基地 bunker_main 与战斗系统零改动，对战方式仍为 3v3 对 3v3；
+## 本场景：剖面常驻视图 + 地域到达演出 + 工位热区 + 出击简报（复用 bunker 的 launch_from_bunker 链）。
+## v26.12b 接线轮：工位面板真调 EMBEDDED_PANELS（复刻 bunker_main 539-615 链）、
+## 统计终端接真数据（LevelProgressManager/BasicResourceManager/InstanceRegistry/IntelItemBag）、
+## 睡觉接 BunkerManager.sleep()（与基地同一存档日状态）。战绩页仍占位（战斗统计无跨战持久化）。
+
+const SCENE_TITLE := "res://scenes/title_screen.tscn"
+const SCENE_MAIN := "res://scenes/main.tscn"
+const INSTRUMENT_BAR_SCENE := "res://scenes/ui/bottom_instrument_bar.tscn"
+const PanelStyles = preload("res://scripts/ui/panel_styles.gd")
+const DT = preload("res://resources/design_tokens.gd")
+
+const COLOR_CYAN := Color(0.0, 0.9, 1.0)
+const COLOR_AMBER := Color(1.0, 0.71, 0.37)
+const COLOR_LINE := Color(0.23, 0.21, 0.16)
+
+# ── 五时代地域表（图=图生图定稿 truck_cutN：全部从用户原版 1734 剖面 img2img 派生，构图/工位对齐）──
+## accent = 时代主题色源：chips 高亮/caption/热区描边/简报强调/终端字色共用（切时代=换驻地氛围）
+const ERAS := [
+	{"id": "era1", "tex": "res://assets/ui/truck_base/truck_cut1.png",
+		"label": "I 一战", "zone": "索姆战壕", "level": 5,
+		"accent": Color(0.85, 0.66, 0.32),
+		"env": ["天气 寒雾", "地形 战壕", "能量场 —", "时段 晨"]},
+	{"id": "era2", "tex": "res://assets/ui/truck_base/truck_cut2.png",
+		"label": "II 二战", "zone": "东部砖镇", "level": 25,
+		"accent": Color(0.65, 0.72, 0.40),
+		"env": ["天气 阴雨", "地形 城镇", "能量场 —", "时段 昼"]},
+	{"id": "era3", "tex": "res://assets/ui/truck_base/truck_cut3.png",
+		"label": "III 冷战", "zone": "沙漠前哨", "level": 45,
+		"accent": Color(0.45, 0.93, 0.62),
+		"env": ["天气 晴热", "地形 沙丘", "能量场 —", "时段 昼"]},
+	{"id": "era4", "tex": "res://assets/ui/truck_base/truck_cut4.png",
+		"label": "IV 现代", "zone": "浮岩荒原", "level": 65,
+		"accent": Color(0.0, 0.9, 1.0),
+		"env": ["天气 相位风暴", "地形 浮岩", "能量场 全队+15%", "时段 夜"]},
+	{"id": "era5", "tex": "res://assets/ui/truck_base/truck_cut5.png",
+		"label": "V 相位", "zone": "相位极光带", "level": 85,
+		"accent": Color(0.74, 0.58, 1.0),
+		"env": ["天气 相位风暴", "地形 浮岩", "能量场 全队+15%", "时段 夜"]},
+]
+
+# ── 每时代热区表（[l,t,w,h] 占画面比例，按各图 50px 网格实测；kind: sortie/terminal/panel/sleep/info）──
+const HOTSPOTS := {
+	"era1": [
+		{"r": [0.018, 0.160, 0.210, 0.530], "name": "驾驶室", "hint": "出击简报", "kind": "sortie"},
+		{"r": [0.255, 0.393, 0.139, 0.208], "name": "指挥电脑桌", "hint": "战术统计终端", "kind": "terminal", "rooms": "war_room + entry_hall"},
+		{"r": [0.282, 0.254, 0.107, 0.138], "name": "世界地图墙", "hint": "情报中心", "kind": "panel", "key": "intelligence", "rooms": "archive"},
+		{"r": [0.398, 0.312, 0.067, 0.323], "name": "补给售货机", "hint": "商店·势力", "kind": "panel", "key": "store", "rooms": "comms"},
+		{"r": [0.470, 0.277, 0.103, 0.185], "name": "卡牌展示墙", "hint": "背包·卡仓", "kind": "panel", "key": "backpack", "rooms": "dormitory（挂靠）"},
+		{"r": [0.506, 0.277, 0.138, 0.323], "name": "工具工作台", "hint": "改造·词条", "kind": "panel", "key": "modification", "rooms": "workshop"},
+		{"r": [0.680, 0.335, 0.040, 0.260], "name": "3D 打印机", "hint": "制造中心·卡仓", "kind": "panel", "key": "evolution", "rooms": "depot"},
+		{"r": [0.450, 0.650, 0.040, 0.100], "name": "医疗柜", "hint": "医疗·配给", "kind": "info", "rooms": "medical + mess_hall"},
+		{"r": [0.925, 0.660, 0.055, 0.170], "name": "发电机", "hint": "全车电力·配给", "kind": "info", "rooms": "reactor + mess_hall"},
+		{"r": [0.792, 0.462, 0.152, 0.140], "name": "铺位", "hint": "睡眠·存档", "kind": "sleep", "rooms": "dormitory"},
+		{"r": [0.940, 0.327, 0.055, 0.400], "name": "尾门跳板", "hint": "出击口", "kind": "sortie"},
+	],
+	"era2": [
+		{"r": [0.009, 0.140, 0.222, 0.530], "name": "驾驶室", "hint": "出击简报", "kind": "sortie"},
+		{"r": [0.244, 0.371, 0.146, 0.209], "name": "指挥电脑桌", "hint": "战术统计终端", "kind": "terminal", "rooms": "war_room + entry_hall"},
+		{"r": [0.284, 0.232, 0.106, 0.139], "name": "世界地图墙", "hint": "情报中心", "kind": "panel", "key": "intelligence", "rooms": "archive"},
+		{"r": [0.394, 0.267, 0.066, 0.348], "name": "补给售货机", "hint": "商店·势力", "kind": "panel", "key": "store", "rooms": "comms"},
+		{"r": [0.465, 0.244, 0.106, 0.220], "name": "卡牌展示墙", "hint": "背包·卡仓", "kind": "panel", "key": "backpack", "rooms": "dormitory（挂靠）"},
+		{"r": [0.580, 0.452, 0.128, 0.160], "name": "工具工作台", "hint": "改造·词条", "kind": "panel", "key": "modification", "rooms": "workshop"},
+		{"r": [0.700, 0.278, 0.040, 0.325], "name": "3D 打印机", "hint": "制造中心·卡仓", "kind": "panel", "key": "evolution", "rooms": "depot"},
+		{"r": [0.447, 0.661, 0.036, 0.104], "name": "医疗柜", "hint": "医疗·配给", "kind": "info", "rooms": "medical + mess_hall"},
+		{"r": [0.918, 0.661, 0.070, 0.174], "name": "发电机", "hint": "全车电力·配给", "kind": "info", "rooms": "reactor + mess_hall"},
+		{"r": [0.780, 0.452, 0.141, 0.139], "name": "铺位", "hint": "睡眠·存档", "kind": "sleep", "rooms": "dormitory"},
+		{"r": [0.922, 0.220, 0.060, 0.452], "name": "尾门跳板", "hint": "出击口", "kind": "sortie"},
+	],
+	"era3": [
+		{"r": [0.009, 0.357, 0.260, 0.430], "name": "驾驶室", "hint": "出击简报", "kind": "sortie"},
+		{"r": [0.264, 0.513, 0.123, 0.120], "name": "指挥雷达台", "hint": "战术统计终端", "kind": "terminal", "rooms": "war_room + entry_hall"},
+		{"r": [0.272, 0.403, 0.101, 0.110], "name": "世界地图屏", "hint": "情报中心", "kind": "panel", "key": "intelligence", "rooms": "archive"},
+		{"r": [0.431, 0.394, 0.044, 0.211], "name": "补给售货机", "hint": "商店·势力", "kind": "panel", "key": "store", "rooms": "comms"},
+		{"r": [0.584, 0.394, 0.097, 0.240], "name": "物资货架", "hint": "背包·卡仓", "kind": "panel", "key": "backpack", "rooms": "dormitory（挂靠）"},
+		{"r": [0.606, 0.632, 0.062, 0.100], "name": "工坊工具台", "hint": "改造·词条", "kind": "panel", "key": "modification", "rooms": "workshop"},
+		{"r": [0.677, 0.485, 0.053, 0.147], "name": "钻床打印机", "hint": "制造中心·卡仓", "kind": "panel", "key": "evolution", "rooms": "depot"},
+		{"r": [0.479, 0.733, 0.048, 0.092], "name": "医疗柜", "hint": "医疗·配给", "kind": "info", "rooms": "medical + mess_hall"},
+		{"r": [0.844, 0.420, 0.060, 0.240], "name": "服务器机柜", "hint": "全车电力·配给", "kind": "info", "rooms": "reactor + mess_hall"},
+		{"r": [0.751, 0.550, 0.124, 0.100], "name": "铺位", "hint": "睡眠·存档", "kind": "sleep", "rooms": "dormitory"},
+		{"r": [0.920, 0.450, 0.065, 0.350], "name": "尾门跳板", "hint": "出击口", "kind": "sortie"},
+	],
+	"era4": [
+		{"r": [0.009, 0.374, 0.200, 0.490], "name": "驾驶室", "hint": "出击简报", "kind": "sortie"},
+		{"r": [0.250, 0.545, 0.123, 0.160], "name": "全息指挥台", "hint": "战术统计终端", "kind": "terminal", "rooms": "war_room + entry_hall"},
+		{"r": [0.254, 0.417, 0.088, 0.139], "name": "全息地图墙", "hint": "情报中心", "kind": "panel", "key": "intelligence", "rooms": "archive"},
+		{"r": [0.818, 0.417, 0.050, 0.374], "name": "补给货架", "hint": "商店·势力", "kind": "panel", "key": "store", "rooms": "comms"},
+		{"r": [0.412, 0.449, 0.079, 0.257], "name": "卡牌展示墙", "hint": "背包·卡仓", "kind": "panel", "key": "backpack", "rooms": "dormitory（挂靠）"},
+		{"r": [0.710, 0.587, 0.096, 0.180], "name": "机械臂工位", "hint": "改造·词条", "kind": "panel", "key": "modification", "rooms": "workshop"},
+		{"r": [0.727, 0.705, 0.066, 0.075], "name": "3D 打印机", "hint": "制造中心·卡仓", "kind": "panel", "key": "evolution", "rooms": "depot"},
+		{"r": [0.438, 0.705, 0.053, 0.182], "name": "医疗冰箱", "hint": "医疗·配给", "kind": "info", "rooms": "medical + mess_hall"},
+		{"r": [0.692, 0.812, 0.190, 0.145], "name": "聚变缆线", "hint": "全车电力·配给", "kind": "info", "rooms": "reactor + mess_hall"},
+		{"r": [0.565, 0.652, 0.127, 0.150], "name": "铺位", "hint": "睡眠·存档", "kind": "sleep", "rooms": "dormitory"},
+		{"r": [0.885, 0.380, 0.080, 0.530], "name": "尾门跳板", "hint": "出击口", "kind": "sortie"},
+	],
+	"era5": [
+		{"r": [0.017, 0.393, 0.190, 0.488], "name": "驾驶室", "hint": "出击简报", "kind": "sortie"},
+		{"r": [0.224, 0.552, 0.170, 0.170], "name": "全息指挥台", "hint": "战术统计终端", "kind": "terminal", "rooms": "war_room + entry_hall"},
+		{"r": [0.250, 0.435, 0.060, 0.117], "name": "全息地图投影", "hint": "情报中心", "kind": "panel", "key": "intelligence", "rooms": "archive"},
+		{"r": [0.392, 0.414, 0.047, 0.265], "name": "补给售货机", "hint": "商店·势力", "kind": "panel", "key": "store", "rooms": "comms"},
+		{"r": [0.444, 0.414, 0.112, 0.202], "name": "卡牌展示墙", "hint": "背包·卡仓", "kind": "panel", "key": "backpack", "rooms": "dormitory（挂靠）"},
+		{"r": [0.565, 0.488, 0.108, 0.190], "name": "相位机械臂", "hint": "改造·词条", "kind": "panel", "key": "modification", "rooms": "workshop"},
+		{"r": [0.596, 0.616, 0.060, 0.117], "name": "相位打印机", "hint": "制造中心·卡仓", "kind": "panel", "key": "evolution", "rooms": "depot"},
+		{"r": [0.255, 0.695, 0.040, 0.090], "name": "医疗柜", "hint": "医疗·配给", "kind": "info", "rooms": "medical + mess_hall"},
+		{"r": [0.695, 0.775, 0.115, 0.200], "name": "相位能源盘", "hint": "全车电力·配给", "kind": "info", "rooms": "reactor + mess_hall"},
+		{"r": [0.752, 0.672, 0.135, 0.165], "name": "铺位", "hint": "睡眠·存档", "kind": "sleep", "rooms": "dormitory"},
+		{"r": [0.900, 0.420, 0.085, 0.340], "name": "尾门跳板", "hint": "出击口", "kind": "sortie"},
+	],
+}
+
+const PANEL_LABELS := {
+	"store": "商店面板 EMBEDDED_PANELS['store']",
+	"modification": "改造面板 EMBEDDED_PANELS['modification']",
+	"evolution": "制造中心（原 evolution_panel）EMBEDDED_PANELS['evolution']",
+	"backpack": "背包面板 EMBEDDED_PANELS['backpack']",
+	"intelligence": "情报中心 EMBEDDED_PANELS['intelligence']",
+}
+
+## 与 bunker_main.EMBEDDED_PANELS 同源（只取本场景热区会用到的键；路径改动两处同步）
+const PANEL_SCENES := {
+	"store": "res://scenes/ui/store_panel.tscn",
+	"modification": "res://scenes/ui/modification_panel.tscn",
+	"affix": "res://scenes/ui/affix_forge_panel.tscn",
+	"evolution": "res://scenes/ui/evolution_panel.tscn",
+	"growth": "res://scenes/ui/growth_panel.tscn",
+	"backpack": "res://scenes/ui/backpack_panel.tscn",
+	"intelligence": "res://scenes/ui/intelligence_hub_panel.tscn",
+	"collection": "res://scenes/ui/collection_panel.tscn",
+	"faction": "res://scenes/ui/faction_panel.tscn",
+	"leaderboard": "res://scenes/ui/leaderboard_panel.tscn",
+}
+
+const RES_LABELS := [
+	["nano_materials", "纳米材料"], ["alloy", "合金"], ["crystal", "晶体"],
+	["energy_block", "能量块"], ["star_marrow", "星髓"],
+]
+const ERA_NAMES := ["I 一战", "II 二战", "III 冷战", "IV 现代", "V 相位"]
+
+var _era_idx := 3  # 默认 IV 现代；_ready 按战线进度折算覆盖
+var _textures := {}
+var _era_buttons: Array = []
+var _topbar: HBoxContainer
+var _image_holder: Control
+var _int_bg: TextureRect
+var _tex_rect: TextureRect
+var _hot_layer: Control
+var _caption: Label
+var _modal_layer: Control
+var _modal_card: PanelContainer = null      # CRT 覆盖层/开机闪挂靠（v26.13 氛围）
+var _briefing_layer: Control = null
+var _embed_layer: Control
+var _embed_wrappers: Dictionary = {}
+var _sortie_btn: Button = null              # 出击主按钮（时代主题色跟随）
+var _pulse_tween: Tween = null              # 热区呼吸（v26.13）
+var _int_shadow: Control = null             # 剖面车底软投影
+var _ext_shadow: Control = null             # 外景车底软投影
+var _lb_top: Control = null                 # 外景电影黑边（上）
+var _lb_bot: Control = null                 # 外景电影黑边（下）
+
+# ── v26.12c 外景/剖面双视图 ──
+const EXT_BG_FMT := "res://assets/backgrounds/bg_level_%02d.png"
+const TRUCK_SPRITE_FMT := "res://assets/ui/truck_base/truck_tier%d.png"
+var _view_mode: String = "interior"
+var _view_buttons: Array = []
+var _ext_holder: Control
+var _ext_bg: TextureRect
+var _ext_truck: TextureRect
+var _ext_caption: Label
+
+func _ready() -> void:
+	DesignTokens.ensure_cjk_fallback()
+	# v26.12c：从世界地图切来时未经标题入口的 flush——战线号/资源读数先排空延迟批次
+	if SaveManager and SaveManager.has_method("flush_deferred_manager_loads"):
+		SaveManager.flush_deferred_manager_loads()
+	set_anchors_preset(Control.PRESET_FULL_RECT)
+	var bg := ColorRect.new()
+	bg.color = DesignTokens.COLOR_BG
+	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
+	add_child(bg)
+	_build_topbar()
+	_build_image_area()
+	_build_exterior_area()
+	# 内嵌面板层（真面板容器，位于图区之上、弹层之下）
+	_embed_layer = Control.new()
+	_embed_layer.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_embed_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(_embed_layer)
+	# v26.13：入场时代跟战线进度走（进度在哪个时代带，车就停哪个时代）
+	_era_idx = clampi((_get_display_level() - 1) / 20, 0, ERAS.size() - 1)
+	set_era(_era_idx, false)
+	# v26.12c：世界地图卡车点击进入时默认外景（Engine meta "truck_base_view"）
+	var initial_view := "interior"
+	if Engine.has_meta("truck_base_view"):
+		initial_view = String(Engine.get_meta("truck_base_view"))
+		Engine.remove_meta("truck_base_view")
+	_set_view(initial_view, false)
+
+# ── 顶栏 ──
+func _build_topbar() -> void:
+	# v26.13：顶栏换战斗 HUD 同款浮板（圆角半透明底板），告别"网页导航条"观感
+	var plate := PanelContainer.new()
+	plate.set_anchors_preset(Control.PRESET_TOP_WIDE)
+	plate.offset_left = 8.0
+	plate.offset_right = -8.0
+	plate.offset_top = 6.0
+	plate.offset_bottom = 46.0
+	plate.add_theme_stylebox_override("panel", PanelStyles.make_hud_panel(0.36))
+	plate.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(plate)
+	_topbar = HBoxContainer.new()
+	_topbar.add_theme_constant_override("separation", 8)
+	plate.add_child(_topbar)
+
+	var title := Label.new()
+	title.text = "移动基地 · 装甲卡车驻地"
+	title.add_theme_font_size_override("font_size", 17)
+	title.add_theme_color_override("font_color", Color(0.91, 0.86, 0.75))
+	_topbar.add_child(title)
+
+	# v26.12c：外景/剖面视图切换
+	var vg := ButtonGroup.new()
+	for vm in [["exterior", "外景"], ["interior", "剖面"]]:
+		var vb := Button.new()
+		vb.text = String(vm[1])
+		vb.toggle_mode = true
+		vb.button_group = vg
+		vb.focus_mode = Control.FOCUS_NONE
+		vb.set_meta("view_mode", String(vm[0]))
+		vb.add_theme_font_size_override("font_size", 13)
+		_style_chip(vb)
+		vb.pressed.connect(_on_view_pressed.bind(String(vm[0])))
+		_topbar.add_child(vb)
+		_view_buttons.append(vb)
+
+	var era_note := Label.new()
+	era_note.text = "驻地："
+	era_note.add_theme_font_size_override("font_size", 13)
+	era_note.add_theme_color_override("font_color", Color(0.56, 0.53, 0.45))
+	_topbar.add_child(era_note)
+
+	var group := ButtonGroup.new()
+	for i in ERAS.size():
+		var e: Dictionary = ERAS[i]
+		var b := Button.new()
+		b.text = String(e["label"])
+		b.tooltip_text = String(e["zone"])
+		b.toggle_mode = true
+		b.button_group = group
+		b.focus_mode = Control.FOCUS_NONE
+		b.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+		b.add_theme_font_size_override("font_size", 13)
+		_style_chip(b)
+		b.pressed.connect(_on_era_pressed.bind(i))
+		_topbar.add_child(b)
+		_era_buttons.append(b)
+
+	var sp := Control.new()
+	sp.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_topbar.add_child(sp)
+
+	var sortie := Button.new()
+	sortie.text = "▶ 出击"
+	sortie.focus_mode = Control.FOCUS_NONE
+	sortie.add_theme_font_size_override("font_size", 14)
+	sortie.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	_style_btn(sortie, COLOR_CYAN)
+	sortie.pressed.connect(_open_sortie)
+	_topbar.add_child(sortie)
+	_sortie_btn = sortie
+
+	var back := Button.new()
+	back.text = "返回标题"
+	back.focus_mode = Control.FOCUS_NONE
+	back.add_theme_font_size_override("font_size", 13)
+	_style_btn(back, Color(0.6, 0.56, 0.48))
+	back.pressed.connect(_on_back_to_title)
+	_topbar.add_child(back)
+
+# ── 图区：剖面底图 + 热区层 + 到达字幕 ──
+func _build_image_area() -> void:
+	_image_holder = Control.new()
+	_image_holder.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_image_holder.offset_top = 48.0
+	_image_holder.offset_bottom = -8.0
+	_image_holder.offset_left = 8.0
+	_image_holder.offset_right = -8.0
+	_image_holder.resized.connect(_layout_hotspots)
+	add_child(_image_holder)
+
+	# v26.12e：剖面车也要坐在场景里——垫当前时代 zone 的关卡战场背景（与外景同源回退链）
+	_int_bg = TextureRect.new()
+	_int_bg.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_int_bg.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	_int_bg.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+	_int_bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_image_holder.add_child(_int_bg)
+
+	# v26.13：车底软投影（在车图之下）——车"坐"进背景而不是浮在图上
+	_int_shadow = _make_soft_shadow()
+	_image_holder.add_child(_int_shadow)
+
+	_tex_rect = TextureRect.new()
+	_tex_rect.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_tex_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	_tex_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	_tex_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_image_holder.add_child(_tex_rect)
+
+	_hot_layer = Control.new()
+	_hot_layer.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_hot_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_image_holder.add_child(_hot_layer)
+
+	# v26.13：氛围层——全屏暗角 + 漂浮尘埃（动效减弱则不加尘埃）
+	_image_holder.add_child(_make_vignette())
+	if not DT.is_motion_reduce():
+		_image_holder.add_child(_make_dust())
+
+	_caption = Label.new()
+	_caption.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
+	_caption.offset_left = 14.0
+	_caption.offset_top = -34.0
+	_caption.offset_bottom = -10.0
+	_caption.add_theme_font_size_override("font_size", 13)
+	_caption.add_theme_color_override("font_color", Color(1.0, 0.89, 0.69))
+	_image_holder.add_child(_caption)
+
+# ── 时代切换 ──
+## 贴图双通道：优先走导入管线 load()；未导入（headless 首跑/新机克隆）时
+## 用 Image.load_from_file 直读文件兜底——剖面图 1312×736 静态底图，无需压缩纹理收益
+func _load_era_texture(path: String) -> Texture2D:
+	var t: Texture2D = load(path)
+	if t == null:
+		var img := Image.load_from_file(ProjectSettings.globalize_path(path))
+		if img != null:
+			t = ImageTexture.create_from_image(img)
+	return t
+
+func _on_era_pressed(i: int) -> void:
+	if i == _era_idx:
+		return
+	set_era(i, true)
+
+func set_era(i: int, animate: bool) -> void:
+	_era_idx = clampi(i, 0, ERAS.size() - 1)
+	var e: Dictionary = ERAS[_era_idx]
+	var id: String = String(e["id"])
+	if not _textures.has(id):
+		_textures[id] = _load_era_texture(String(e["tex"]))
+	_tex_rect.texture = _textures[id]
+	if _int_bg != null:
+		_int_bg.texture = _load_era_texture(_ext_bg_path(int(e["level"])))
+	for b_i in _era_buttons.size():
+		_era_buttons[b_i].set_pressed_no_signal(b_i == _era_idx)
+	_caption.text = "驻防地域 · %s（%s）· 战线第 %d 关" % [String(e["zone"]), String(e["label"]), _get_display_level()]
+	_rebuild_hotspots()
+	_apply_era_theme()
+	if _view_mode == "exterior":
+		_refresh_exterior(false)
+	if animate:
+		_play_sfx("panel_open", 0.7, 1.15)
+		_image_holder.modulate.a = 0.0
+		_image_holder.position.x = 90.0
+		var tw := create_tween()
+		tw.set_parallel(true)
+		tw.tween_property(_image_holder, "modulate:a", 1.0, 0.55).set_ease(Tween.EASE_OUT)
+		tw.tween_property(_image_holder, "position:x", 0.0, 0.55).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_CUBIC)
+
+## v26.13 时代主题：accent 一处换，chips/出击/热区/caption/外景 caption 全跟
+func _era_accent() -> Color:
+	return ERAS[_era_idx].get("accent", COLOR_CYAN)
+
+func _apply_era_theme() -> void:
+	var accent: Color = _era_accent()
+	# 时代 chips 选中态染主题色
+	for b in _era_buttons:
+		var sb_on: StyleBoxFlat = b.get_theme_stylebox("pressed") as StyleBoxFlat
+		if sb_on != null:
+			sb_on = sb_on.duplicate()
+			sb_on.border_color = accent
+			sb_on.bg_color = Color(accent.r, accent.g, accent.b, 0.12)
+			b.add_theme_stylebox_override("pressed", sb_on)
+		b.add_theme_color_override("font_pressed_color", accent.lerp(Color.WHITE, 0.35))
+	# 出击主按钮 = 时代色实心
+	if _sortie_btn != null:
+		var styles: Dictionary = PanelStyles.make_button_styles(accent, "solid")
+		for key in ["normal", "hover", "pressed", "disabled", "focus"]:
+			_sortie_btn.add_theme_stylebox_override(key, styles[key])
+		_sortie_btn.add_theme_color_override("font_color", Color(0.06, 0.08, 0.09))
+		_sortie_btn.add_theme_color_override("font_hover_color", Color(0.03, 0.05, 0.06))
+		_sortie_btn.add_theme_color_override("font_pressed_color", Color(0.03, 0.05, 0.06))
+	# 双 caption 染主题色（向白混 30% 保暗底可读）
+	var cap_col := accent.lerp(Color.WHITE, 0.30)
+	_caption.add_theme_color_override("font_color", cap_col)
+	_ext_caption.add_theme_color_override("font_color", cap_col)
+	# 热区呼吸（动效减弱则静态常显）
+	if _pulse_tween != null and _pulse_tween.is_valid():
+		_pulse_tween.kill()
+		_pulse_tween = null
+	_hot_layer.modulate.a = 1.0
+	if not DT.is_motion_reduce():
+		_pulse_tween = create_tween().set_loops()
+		_pulse_tween.tween_property(_hot_layer, "modulate:a", 0.80, 0.95).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+		_pulse_tween.tween_property(_hot_layer, "modulate:a", 1.0, 0.95).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+
+func _rebuild_hotspots() -> void:
+	for c in _hot_layer.get_children():
+		# remove_child 立即出树：queue_free 的节点要等帧末才消失，会把新按钮挤出
+		# _layout_hotspots 的对位循环（症状：切时代后新热区 size=0，点不到）
+		_hot_layer.remove_child(c)
+		c.queue_free()
+	var id: String = String(ERAS[_era_idx]["id"])
+	var hs: Array = HOTSPOTS.get(id, [])
+	for h in hs:
+		var b := Button.new()
+		b.flat = true
+		b.focus_mode = Control.FOCUS_NONE
+		b.tooltip_text = "%s · %s" % [String(h["name"]), String(h["hint"])]
+		b.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+		b.pressed.connect(_on_hotspot.bind(h))
+		_hot_layer.add_child(b)
+		_style_hotspot(b)
+		# v26.13：悬停工位牌——立刻报出工位名与功能（原生 tooltip 有延迟，氛围+易用双补）
+		var tag := Label.new()
+		tag.text = "%s · %s" % [String(h["name"]), String(h["hint"])]
+		tag.add_theme_font_size_override("font_size", 12)
+		tag.add_theme_color_override("font_color", Color(0.96, 0.97, 0.93))
+		var tsb := StyleBoxFlat.new()
+		tsb.bg_color = Color(0.03, 0.05, 0.06, 0.92)
+		tsb.border_color = _era_accent()
+		tsb.set_border_width_all(1)
+		tsb.set_corner_radius_all(4)
+		tsb.content_margin_left = 7
+		tsb.content_margin_right = 7
+		tsb.content_margin_top = 3
+		tsb.content_margin_bottom = 3
+		tag.add_theme_stylebox_override("normal", tsb)
+		tag.position = Vector2(2, 2)
+		tag.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		tag.visible = false
+		b.add_child(tag)
+		b.mouse_entered.connect(func() -> void:
+			tag.visible = true
+			_play_sfx("button_hover", 0.5))
+		b.mouse_exited.connect(func() -> void:
+			tag.visible = false)
+	_layout_hotspots()
+
+func _layout_hotspots() -> void:
+	if _tex_rect == null or _tex_rect.texture == null:
+		return
+	var ts: Vector2 = _tex_rect.texture.get_size()
+	var area: Vector2 = _image_holder.size
+	if area.x <= 0.0 or area.y <= 0.0 or ts.x <= 0.0 or ts.y <= 0.0:
+		return
+	# v26.12e：剖面车在背景场景中占位——只占 holder 中下部一条带（x 8%~92%、y 30%~92%），
+	# 不再铺满整屏（用户：在背景中不要太大）；_tex_rect 与热区都按这条带定位
+	var band_x: float = area.x * 0.08
+	var band_y: float = area.y * 0.30
+	var band_w: float = area.x * 0.84
+	var band_h: float = area.y * 0.62
+	var s: float = minf(band_w / ts.x, band_h / ts.y)
+	var dw: float = ts.x * s
+	var dh: float = ts.y * s
+	var ox: float = band_x + (band_w - dw) * 0.5
+	var oy: float = band_y + (band_h - dh) * 0.5
+	_tex_rect.position = Vector2(ox, oy)
+	_tex_rect.size = Vector2(dw, dh)
+	var buttons := _hot_layer.get_children()
+	var id: String = String(ERAS[_era_idx]["id"])
+	var hs: Array = HOTSPOTS.get(id, [])
+	for i in mini(buttons.size(), hs.size()):
+		var r: Array = hs[i]["r"]
+		var b: Button = buttons[i]
+		b.position = Vector2(ox + float(r[0]) * dw, oy + float(r[1]) * dh)
+		b.size = Vector2(float(r[2]) * dw, float(r[3]) * dh)
+	# v26.13：车底软投影跟随车带（贴图尺寸在本次布局里刚算好）
+	if _int_shadow != null:
+		_int_shadow.position = Vector2(ox + dw * 0.06, oy + dh - 14.0)
+		_int_shadow.size = Vector2(dw * 0.88, 30.0)
+
+# ── v26.13 氛围小件 ──
+
+## 径向渐变软投影（黑心→透明），压扁即"车底影子"
+func _make_soft_shadow() -> Control:
+	var g := Gradient.new()
+	g.set_color(0, Color(0, 0, 0, 0.55))
+	g.set_color(1, Color(0, 0, 0, 0.0))
+	var tex := GradientTexture2D.new()
+	tex.gradient = g
+	tex.fill = GradientTexture2D.FILL_RADIAL
+	tex.fill_from = Vector2(0.5, 0.5)
+	tex.fill_to = Vector2(1.0, 0.5)
+	tex.width = 256
+	tex.height = 64
+	var tr := TextureRect.new()
+	tr.texture = tex
+	tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	tr.stretch_mode = TextureRect.STRETCH_SCALE
+	tr.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	return tr
+
+## 全屏暗角（shader 压边缘，视线收中间）
+func _make_vignette() -> Control:
+	var rect := ColorRect.new()
+	rect.set_anchors_preset(Control.PRESET_FULL_RECT)
+	rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var mat := ShaderMaterial.new()
+	mat.shader = load("res://shaders/screen_vignette.gdshader")
+	rect.material = mat
+	return rect
+
+## 漂浮尘埃（极淡暖白微粒缓慢上飘，画面有"空气"）
+func _make_dust() -> CPUParticles2D:
+	var p := CPUParticles2D.new()
+	p.amount = 16
+	p.lifetime = 7.0
+	p.preprocess = 7.0
+	p.emission_shape = CPUParticles2D.EMISSION_SHAPE_RECTANGLE
+	p.emission_rect_extents = Vector2(620, 300)
+	p.direction = Vector2(0, -1)
+	p.spread = 25.0
+	p.gravity = Vector2.ZERO
+	p.initial_velocity_min = 4.0
+	p.initial_velocity_max = 12.0
+	p.scale_amount_min = 1.0
+	p.scale_amount_max = 2.2
+	p.color = Color(1.0, 0.95, 0.8, 0.15)
+	p.position = Vector2(632, 400)
+	return p
+
+# ── 热区点击 ──
+func _on_hotspot(h: Dictionary) -> void:
+	_play_sfx("button")
+	match String(h.get("kind", "info")):
+		"sortie":
+			_open_sortie()
+		"terminal":
+			_open_terminal()
+		"panel":
+			_open_panel(String(h.get("key", "")))
+		"sleep":
+			_on_sleep()
+		_:
+			_open_card("%s · %s" % [String(h["name"]), String(h["hint"])], String(h.get("rooms", "")),
+				"工位卡片占位（info 类工位无常驻面板，正式版在基地 HUD 呈现产出/状态）。")
+
+# ── 出击简报 ──
+func _open_sortie() -> void:
+	_close_modal()
+	_close_briefing()
+	_play_sfx("panel_open", 0.6)
+	var level := _get_display_level()
+	var era_i := clampi((level - 1) / 20 + 1, 1, 5)
+	var in_era := (level - 1) % 20 + 1
+	var e: Dictionary = ERAS[era_i - 1]
+	var lname := String(LevelInformation.get_shared().get_level_display_name(level))
+	if lname == "":
+		lname = String(e["zone"])
+	var desc := String(LevelInformation.get_shared().get_level_info(level).get("description", ""))
+	var theme: Dictionary = LevelTacticalThemes.get_theme_display(level)
+	# 敌方档位（时代内 1-5 新兵 / 6-11 老兵 / 12-17 精英 / 18-20 传奇）
+	var tier_name := "新兵"
+	if in_era >= 18:
+		tier_name = "传奇"
+	elif in_era >= 12:
+		tier_name = "精英"
+	elif in_era >= 6:
+		tier_name = "老兵"
+	# 敌我兵力（自定义布局 rows×enemy_cols；缺省 3×3）
+	var layout: Dictionary = LevelBattleLayouts.get_for_level(level)
+	var rows := int(layout.get("rows", 3))
+	var e_cols := int(layout.get("enemy_cols", 3))
+	var enemy_slots := rows * e_cols
+	var layout_note := LevelBattleLayouts.get_note(level)
+	var my_slots := 1
+	var my_cards := 0
+	var card_names: Array = []
+	if PhaseInstrumentManager:
+		my_slots = maxi(int(PhaseInstrumentManager.get_green_slot_count()), 1)
+		for lo in PhaseInstrumentManager.get_loadouts():
+			my_cards += 1
+			if card_names.size() < 5:
+				card_names.append(String(lo["platform"].display_name))
+	var day := 1
+	if DayClock:
+		day = int(DayClock.current_day)
+
+	_briefing_layer = Control.new()
+	_briefing_layer.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_briefing_layer.mouse_filter = Control.MOUSE_FILTER_STOP
+	add_child(_briefing_layer)
+	var dim := ColorRect.new()
+	dim.color = Color(0, 0, 0, 0.62)
+	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_briefing_layer.add_child(dim)
+	var frame := PanelContainer.new()
+	frame.set_anchors_preset(Control.PRESET_FULL_RECT)
+	frame.offset_left = 28.0
+	frame.offset_right = -28.0
+	frame.offset_top = 18.0
+	frame.offset_bottom = -18.0
+	# v26.13：游戏同款纹理底 + 主题色（替代手写平灰框）
+	var fsb: StyleBoxTexture = PanelStyles.make_panel_frame_textured(_era_accent())
+	fsb.content_margin_left = 18
+	fsb.content_margin_right = 18
+	fsb.content_margin_top = 14
+	fsb.content_margin_bottom = 14
+	frame.add_theme_stylebox_override("panel", fsb)
+	_briefing_layer.add_child(frame)
+	# v26.13：四角 L 形军用角标（AC7 简报语言的第一识别件）
+	var brackets := Control.new()
+	brackets.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	brackets.draw.connect(_draw_brief_brackets.bind(brackets))
+	frame.add_child(brackets)
+	brackets.resized.connect(func() -> void: brackets.queue_redraw())
+	var root := VBoxContainer.new()
+	root.add_theme_constant_override("separation", 8)
+	frame.add_child(root)
+
+	# v26.13：顶部警示斜纹条（军用简报语言）
+	var hazard := Control.new()
+	hazard.custom_minimum_size = Vector2(0, 6)
+	hazard.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	hazard.draw.connect(_draw_hazard_strip.bind(hazard))
+	hazard.resized.connect(func() -> void: hazard.queue_redraw())
+	root.add_child(hazard)
+
+	# ── 顶栏：作战简报 · 关卡 · 时代 · 天数 ──
+	var top := HBoxContainer.new()
+	top.add_theme_constant_override("separation", 10)
+	root.add_child(top)
+	var h3 := Label.new()
+	h3.text = "▍作战简报 · 第 %d 关「%s」 · %s · 第 %d 天" % [level, lname, String(e["label"]), day]
+	h3.add_theme_font_size_override("font_size", 18)
+	h3.add_theme_color_override("font_color", _era_accent().lerp(Color.WHITE, 0.25))
+	top.add_child(h3)
+	var tsp := Control.new()
+	tsp.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	top.add_child(tsp)
+	var back := Button.new()
+	back.text = "返回基地"
+	back.focus_mode = Control.FOCUS_NONE
+	_style_btn(back, Color(0.6, 0.56, 0.48))
+	back.pressed.connect(_close_briefing)
+	top.add_child(back)
+
+	root.add_child(HSeparator.new())
+
+	# ── 中区三栏 ──
+	var mid := HBoxContainer.new()
+	mid.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	mid.add_theme_constant_override("separation", 14)
+	root.add_child(mid)
+
+	# 左栏：任务目标 + 环境四维 + 战术主题
+	var left := VBoxContainer.new()
+	left.custom_minimum_size = Vector2(320, 0)
+	left.add_theme_constant_override("separation", 6)
+	mid.add_child(left)
+	left.add_child(_brief_section("任务目标"))
+	var dl := Label.new()
+	dl.text = desc if desc != "" else "击溃敌军，推进战线。"
+	dl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	dl.add_theme_font_size_override("font_size", 12.5)
+	left.add_child(dl)
+	left.add_child(_brief_section("环境四维（本场实际乘区）"))
+	var chips := HBoxContainer.new()
+	chips.add_theme_constant_override("separation", 6)
+	var envs: Array = BattleEnvEffects.describe_level_env(level)
+	if envs.is_empty():
+		chips.add_child(_make_chip("无特殊环境乘区"))
+	else:
+		for env in envs:
+			chips.add_child(_make_chip(String(env)))
+	left.add_child(chips)
+	left.add_child(_brief_section("战术主题"))
+	var tl := Label.new()
+	tl.text = "%s\n威胁：%s\n%s" % [String(theme.get("name", "")), String(theme.get("threat", "")), String(theme.get("advice", ""))]
+	tl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	tl.add_theme_font_size_override("font_size", 12)
+	tl.add_theme_color_override("font_color", Color(0.85, 0.82, 0.72))
+	left.add_child(tl)
+
+	mid.add_child(VSeparator.new())
+
+	# 中栏：战线沙盘（五时代进度 + 本关红标）
+	var center := VBoxContainer.new()
+	center.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	center.add_theme_constant_override("separation", 6)
+	mid.add_child(center)
+	center.add_child(_brief_section("战线沙盘"))
+	if LevelProgressManager and LevelProgressManager.has_method("get_era_progress"):
+		for era in range(1, 6):
+			var pr: Dictionary = LevelProgressManager.get_era_progress(era)
+			var done := int(pr.get("completed", 0))
+			var total := int(pr.get("total", 20))
+			var row := HBoxContainer.new()
+			row.add_theme_constant_override("separation", 8)
+			var nm := Label.new()
+			nm.text = ERA_NAMES[era - 1]
+			nm.custom_minimum_size = Vector2(72, 0)
+			nm.add_theme_font_size_override("font_size", 12)
+			nm.add_theme_color_override("font_color", Color(0.56, 0.53, 0.45))
+			row.add_child(nm)
+			var bar := ProgressBar.new()
+			bar.min_value = 0
+			bar.max_value = total
+			bar.value = done
+			bar.show_percentage = false
+			bar.custom_minimum_size = Vector2(180, 12)
+			bar.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+			row.add_child(bar)
+			var num := Label.new()
+			num.text = "%d/%d" % [done, total]
+			num.add_theme_font_size_override("font_size", 11.5)
+			row.add_child(num)
+			if level >= (era - 1) * 20 + 1 and level <= era * 20:
+				var mk := Label.new()
+				mk.text = "◀ 本关 · 第 %d 关" % level
+				mk.add_theme_font_size_override("font_size", 12)
+				mk.add_theme_color_override("font_color", _era_accent())
+				row.add_child(mk)
+			center.add_child(row)
+	var arrow := Label.new()
+	arrow.text = "我方箭头 ──▶ 红标阵地（波次来向见战内预警）"
+	arrow.add_theme_font_size_override("font_size", 11)
+	arrow.add_theme_color_override("font_color", Color(0.45, 0.42, 0.36))
+	center.add_child(arrow)
+
+	mid.add_child(VSeparator.new())
+
+	# 右栏：敌情预告 + 兵力对比
+	var right := VBoxContainer.new()
+	right.custom_minimum_size = Vector2(300, 0)
+	right.add_theme_constant_override("separation", 6)
+	mid.add_child(right)
+	right.add_child(_brief_section("敌情预告"))
+	var tier_l := Label.new()
+	tier_l.text = "敌方档位：%s档（时代内第 %d 关）" % [tier_name, in_era]
+	tier_l.add_theme_font_size_override("font_size", 12.5)
+	right.add_child(tier_l)
+	var slot_l := Label.new()
+	slot_l.text = "敌方阵地：%d 行 × %d 列 = %d 槽" % [rows, e_cols, enemy_slots]
+	slot_l.add_theme_font_size_override("font_size", 12.5)
+	right.add_child(slot_l)
+	if layout_note != "":
+		var ln := Label.new()
+		ln.text = "题面：" + layout_note
+		ln.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		ln.add_theme_font_size_override("font_size", 11.5)
+		ln.add_theme_color_override("font_color", Color(0.56, 0.72, 0.56))
+		right.add_child(ln)
+	right.add_child(_brief_section("兵力对比"))
+	var cmp := HBoxContainer.new()
+	cmp.custom_minimum_size = Vector2(0, 14)
+	cmp.add_theme_constant_override("separation", 2)
+	var mine := ColorRect.new()
+	mine.color = Color(0.0, 0.9, 1.0, 0.75)
+	mine.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	mine.size_flags_stretch_ratio = float(my_slots)
+	cmp.add_child(mine)
+	var theirs := ColorRect.new()
+	theirs.color = Color(1.0, 0.48, 0.18, 0.7)
+	theirs.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	theirs.size_flags_stretch_ratio = float(enemy_slots)
+	cmp.add_child(theirs)
+	right.add_child(cmp)
+	var cmp_l := Label.new()
+	cmp_l.text = "我方 %d 槽 ▏敌 %d 槽" % [my_slots, enemy_slots]
+	cmp_l.add_theme_font_size_override("font_size", 11.5)
+	right.add_child(cmp_l)
+
+	root.add_child(HSeparator.new())
+
+	# ── 底栏：出击配置 + 更换装备 + 出击 ──
+	var bottom := HBoxContainer.new()
+	bottom.add_theme_constant_override("separation", 10)
+	root.add_child(bottom)
+	var cfg := Label.new()
+	var cfg_cards := "，".join(card_names) if not card_names.is_empty() else "（空——先去背包装备平台卡）"
+	cfg.text = "出击配置 %d/%d：%s" % [my_cards, my_slots, cfg_cards]
+	cfg.add_theme_font_size_override("font_size", 12.5)
+	cfg.add_theme_color_override("font_color", Color(0.85, 0.82, 0.72))
+	bottom.add_child(cfg)
+	var bsp := Control.new()
+	bsp.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	bottom.add_child(bsp)
+	var swap := Button.new()
+	swap.text = "更换装备"
+	swap.focus_mode = Control.FOCUS_NONE
+	_style_btn(swap, Color(0.6, 0.56, 0.48))
+	swap.pressed.connect(func() -> void:
+		_close_briefing()
+		_open_panel("backpack"))
+	bottom.add_child(swap)
+	var go := Button.new()
+	go.text = "▶ 出 击 ◀"
+	go.focus_mode = Control.FOCUS_NONE
+	_style_btn(go, COLOR_AMBER)
+	go.add_theme_font_size_override("font_size", 15)
+	go.pressed.connect(_launch_battle)
+	bottom.add_child(go)
+
+func _brief_section(text: String) -> Label:
+	var l := Label.new()
+	l.text = text
+	l.add_theme_font_size_override("font_size", 12)
+	l.add_theme_color_override("font_color", _era_accent())
+	return l
+
+## v26.13：简报四角 L 形角标（bind 挂 control 自身，resize 由调用侧 queue_redraw）
+func _draw_brief_brackets(ctrl: Control) -> void:
+	var s := ctrl.size
+	var L := 26.0
+	var col := _era_accent()
+	col.a = 0.85
+	ctrl.draw_polyline(PackedVector2Array([Vector2(1, L), Vector2(1, 1), Vector2(L, 1)]), col, 2.5)
+	ctrl.draw_polyline(PackedVector2Array([Vector2(s.x - L, 1), Vector2(s.x - 1, 1), Vector2(s.x - 1, L)]), col, 2.5)
+	ctrl.draw_polyline(PackedVector2Array([Vector2(1, s.y - L), Vector2(1, s.y - 1), Vector2(L, s.y - 1)]), col, 2.5)
+	ctrl.draw_polyline(PackedVector2Array([Vector2(s.x - L, s.y - 1), Vector2(s.x - 1, s.y - 1), Vector2(s.x - 1, s.y - L)]), col, 2.5)
+
+## v26.13：警示斜纹条（主题色 45° 斜纹，军用简报封条语言）
+func _draw_hazard_strip(ctrl: Control) -> void:
+	var s := ctrl.size
+	if s.x <= 0.0 or s.y <= 0.0:
+		return
+	ctrl.draw_rect(Rect2(Vector2.ZERO, s), Color(0.04, 0.05, 0.05, 1.0))
+	var col := _era_accent()
+	col.a = 0.45
+	var w := 7.0
+	var x := -s.y
+	while x < s.x:
+		var pts := PackedVector2Array([
+			Vector2(x, s.y), Vector2(x + s.y, 0.0),
+			Vector2(x + s.y + w, 0.0), Vector2(x + w, s.y)])
+		ctrl.draw_colored_polygon(pts, col)
+		x += w * 3.0
+
+func _close_briefing() -> void:
+	if _briefing_layer != null:
+		_briefing_layer.queue_free()
+		_briefing_layer = null
+
+func _launch_battle() -> void:
+	_play_sfx("button")
+	# 与 bunker_main._on_go_to_battle 同链：main 场景读 launch_from_bunker 直入当前关卡战斗
+	Engine.set_meta("launch_from_bunker", true)
+	SceneTransition.change(get_tree(), SCENE_MAIN)
+
+func _on_back_to_title() -> void:
+	_play_sfx("button")
+	if SaveManager and SaveManager.has_method("save_game"):
+		SaveManager.save_game()
+	SceneTransition.change(get_tree(), SCENE_TITLE)
+
+# ── 弹层壳 ──
+func _modal_shell() -> VBoxContainer:
+	_close_modal()
+	_modal_layer = Control.new()
+	_modal_layer.set_anchors_preset(Control.PRESET_FULL_RECT)
+	add_child(_modal_layer)
+	var dim := ColorRect.new()
+	dim.color = Color(0, 0, 0, 0.55)
+	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
+	dim.gui_input.connect(func(ev: InputEvent) -> void:
+		if ev is InputEventMouseButton and ev.pressed:
+			_close_modal())
+	_modal_layer.add_child(dim)
+	var center := CenterContainer.new()
+	center.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_modal_layer.add_child(center)
+	var card := PanelContainer.new()
+	# v26.13：换游戏同款九宫格渐变纹理底（时代主题色），替代手写平灰 StyleBox
+	var sb: StyleBoxTexture = PanelStyles.make_panel_frame_textured(_era_accent())
+	sb.content_margin_left = 16
+	sb.content_margin_right = 16
+	sb.content_margin_top = 14
+	sb.content_margin_bottom = 14
+	card.add_theme_stylebox_override("panel", sb)
+	center.add_child(card)
+	_modal_card = card
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 8)
+	card.add_child(v)
+	# 开机闪：亮起入场 + 面板音（动效减弱则直接出现）
+	_play_sfx("panel_open", 0.6)
+	if not DT.is_motion_reduce():
+		card.modulate = Color(1.5, 1.5, 1.5, 0.0)
+		var tw := create_tween()
+		tw.tween_property(card, "modulate", Color(1, 1, 1, 1), 0.26).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	return v
+
+## v26.13：弹卡标题行（签名竖条 + 亮标题 + 主题色分隔线），替代裸 Label
+func _modal_header(v: VBoxContainer, title_text: String, subtitle := "") -> void:
+	var head := HBoxContainer.new()
+	head.add_theme_constant_override("separation", 8)
+	v.add_child(head)
+	var bar := PanelContainer.new()
+	bar.add_theme_stylebox_override("panel", PanelStyles.make_title_accent_bar(_era_accent()))
+	bar.custom_minimum_size = Vector2(4, 0)
+	bar.size_flags_vertical = Control.SIZE_FILL
+	head.add_child(bar)
+	var hbox := VBoxContainer.new()
+	head.add_child(hbox)
+	var h3 := Label.new()
+	h3.text = title_text
+	h3.add_theme_font_size_override("font_size", 16)
+	h3.add_theme_color_override("font_color", _era_accent().lerp(Color.WHITE, 0.25))
+	hbox.add_child(h3)
+	if subtitle != "":
+		var sub := Label.new()
+		sub.text = subtitle
+		sub.add_theme_font_size_override("font_size", 10)
+		sub.add_theme_color_override("font_color", Color(0.55, 0.58, 0.60))
+		hbox.add_child(sub)
+	var line := ColorRect.new()
+	line.color = Color(_era_accent().r, _era_accent().g, _era_accent().b, 0.35)
+	line.custom_minimum_size = Vector2(0, 1)
+	v.add_child(line)
+
+func _open_card(title_text: String, rooms: String, body_text: String) -> void:
+	var v := _modal_shell()
+	_modal_header(v, title_text)
+	if rooms != "":
+		var sub := Label.new()
+		sub.text = "对应基地房间：" + rooms
+		sub.add_theme_font_size_override("font_size", 11)
+		sub.add_theme_color_override("font_color", Color(0.50, 0.55, 0.52))
+		v.add_child(sub)
+	var body := Label.new()
+	body.text = body_text
+	body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	body.custom_minimum_size = Vector2(460, 0)
+	body.add_theme_font_size_override("font_size", 12.5)
+	v.add_child(body)
+	var foot := HBoxContainer.new()
+	foot.alignment = BoxContainer.ALIGNMENT_END
+	var close := Button.new()
+	close.text = "关闭"
+	close.focus_mode = Control.FOCUS_NONE
+	_style_btn(close, Color(0.6, 0.56, 0.48))
+	close.pressed.connect(_close_modal)
+	foot.add_child(close)
+	v.add_child(foot)
+
+func _close_modal() -> void:
+	if _modal_layer != null:
+		_modal_layer.queue_free()
+		_modal_layer = null
+		_modal_card = null
+
+func _unhandled_input(event: InputEvent) -> void:
+	if event is InputEventKey and event.pressed and event.keycode == KEY_ESCAPE:
+		if _briefing_layer != null:
+			_close_briefing()
+		elif _modal_layer != null:
+			_close_modal()
+
+# ── 样式小件 ──
+func _make_chip(text: String) -> Label:
+	var l := Label.new()
+	l.text = text
+	l.add_theme_font_size_override("font_size", 11.5)
+	l.add_theme_color_override("font_color", Color(0.53, 0.66, 0.51))
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(0.07, 0.09, 0.07)
+	sb.border_color = Color(0.24, 0.35, 0.24)
+	sb.set_border_width_all(1)
+	sb.set_corner_radius_all(4)
+	sb.content_margin_left = 8
+	sb.content_margin_right = 8
+	sb.content_margin_top = 3
+	sb.content_margin_bottom = 3
+	l.add_theme_stylebox_override("normal", sb)
+	return l
+
+func _style_btn(b: Button, accent: Color) -> void:
+	var sb_n := StyleBoxFlat.new()
+	sb_n.bg_color = Color(accent.r, accent.g, accent.b, 0.16)
+	sb_n.border_color = accent
+	sb_n.set_border_width_all(1)
+	sb_n.set_corner_radius_all(6)
+	sb_n.content_margin_left = 12
+	sb_n.content_margin_right = 12
+	sb_n.content_margin_top = 5
+	sb_n.content_margin_bottom = 5
+	b.add_theme_stylebox_override("normal", sb_n)
+	var sb_h := sb_n.duplicate()
+	sb_h.bg_color = Color(accent.r, accent.g, accent.b, 0.30)
+	b.add_theme_stylebox_override("hover", sb_h)
+	var sb_p := sb_n.duplicate()
+	sb_p.bg_color = Color(accent.r, accent.g, accent.b, 0.40)
+	b.add_theme_stylebox_override("pressed", sb_p)
+	b.add_theme_color_override("font_color", Color(0.92, 0.94, 0.9))
+
+func _style_chip(b: Button) -> void:
+	var sb_n := StyleBoxFlat.new()
+	sb_n.bg_color = Color(0.10, 0.10, 0.08)
+	sb_n.border_color = COLOR_LINE
+	sb_n.set_border_width_all(1)
+	sb_n.set_corner_radius_all(5)
+	sb_n.content_margin_left = 9
+	sb_n.content_margin_right = 9
+	sb_n.content_margin_top = 3
+	sb_n.content_margin_bottom = 3
+	b.add_theme_stylebox_override("normal", sb_n)
+	var sb_on := sb_n.duplicate()
+	sb_on.border_color = COLOR_CYAN
+	sb_on.bg_color = Color(0.05, 0.16, 0.18)
+	b.add_theme_stylebox_override("pressed", sb_on)
+	var sb_h := sb_n.duplicate()
+	sb_h.border_color = Color(0.48, 0.40, 0.22)
+	b.add_theme_stylebox_override("hover", sb_h)
+	b.add_theme_color_override("font_color", Color(0.82, 0.78, 0.70))
+	b.add_theme_color_override("font_pressed_color", Color(0.74, 0.94, 0.96))
+	b.add_theme_color_override("font_hover_color", Color(1, 0.95, 0.85))
+
+func _style_hotspot(b: Button) -> void:
+	# v26.13：热区可见化——常显主题色描边（原 0.30 alpha 实测不可见，玩家无从发现可点）
+	var accent: Color = _era_accent()
+	var sb_n := StyleBoxFlat.new()
+	sb_n.bg_color = Color(accent.r, accent.g, accent.b, 0.06)
+	sb_n.border_color = Color(accent.r, accent.g, accent.b, 0.50)
+	sb_n.set_border_width_all(1)
+	sb_n.set_corner_radius_all(5)
+	b.add_theme_stylebox_override("normal", sb_n)
+	var sb_h := sb_n.duplicate()
+	sb_h.bg_color = Color(accent.r, accent.g, accent.b, 0.16)
+	sb_h.border_color = accent
+	sb_h.set_border_width_all(2)
+	b.add_theme_stylebox_override("hover", sb_h)
+	var sb_p := sb_n.duplicate()
+	sb_p.bg_color = Color(accent.r, accent.g, accent.b, 0.24)
+	b.add_theme_stylebox_override("pressed", sb_p)
+
+func _play_sfx(sound_name: String, volume: float = 1.0, pitch: float = 1.0) -> void:
+	var am := get_node_or_null("/root/AudioManager")
+	if am and am.has_method("play_sfx"):
+		am.play_sfx(sound_name, volume, pitch)
+
+# ───────────────────── v26.12b 接线：真战线号 ─────────────────────
+
+## 显示用战线号：与出击同源——GameManager.current_level（地图标记/简报/外景三处一致）
+func _get_display_level() -> int:
+	var lv := 0
+	if GameManager != null:
+		lv = int(GameManager.get("current_level"))
+	if lv < 1 and LevelProgressManager and LevelProgressManager.has_method("get_max_unlocked_level"):
+		lv = int(LevelProgressManager.get_max_unlocked_level())
+	return maxi(lv, 1)
+
+# ───────────────────── v26.12b 接线：内嵌真面板（复刻 bunker_main 539-615 链） ─────────────────────
+
+func _open_panel(panel_id: String) -> void:
+	var wrapper := _ensure_panel_wrapper(panel_id)
+	if wrapper == null:
+		_open_card("面板不可用", "", "EMBEDDED_PANELS['%s'] 加载失败（见日志）。" % panel_id)
+		return
+	wrapper.visible = true
+	var p: Control = _embed_wrappers[panel_id]["panel"]
+	# 与 main.gd _open_overlay 同约定：on_overlay_opened → refresh 顺序尝试
+	# （store 等面板的商品列表在 on_overlay_opened 拆帧构建，_ready 只建骨架）
+	if p.has_method("on_overlay_opened"):
+		p.call("on_overlay_opened")
+	elif p.has_method("refresh"):
+		p.call("refresh")
+
+func _ensure_panel_wrapper(panel_id: String) -> Control:
+	if _embed_wrappers.has(panel_id):
+		return _embed_wrappers[panel_id]["wrapper"]
+	var path: String = String(PANEL_SCENES.get(panel_id, ""))
+	if path == "" or not path.ends_with(".tscn"):
+		return null
+	var packed: PackedScene = load(path)
+	if packed == null:
+		push_error("[TruckBase] 嵌入面板加载失败: " + path)
+		return null
+	var panel: Control = packed.instantiate()
+	var wrapper := Control.new()
+	wrapper.set_anchors_preset(Control.PRESET_FULL_RECT)
+	wrapper.mouse_filter = Control.MOUSE_FILTER_STOP
+	wrapper.visible = false
+	var dim := ColorRect.new()
+	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
+	dim.color = Color(0, 0, 0, 0.45)
+	dim.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	wrapper.add_child(dim)
+	var center := CenterContainer.new()
+	center.name = "EmbedCenter"
+	center.set_anchors_preset(Control.PRESET_FULL_RECT)
+	wrapper.add_child(center)
+	center.add_child(panel)
+	if panel.has_signal("closed"):
+		panel.closed.connect(func() -> void: wrapper.visible = false)
+	_embed_layer.add_child(wrapper)
+	_embed_wrappers[panel_id] = {"wrapper": wrapper, "panel": panel}
+	# 背包内嵌随行相位仪栏（bunker_main 619 的简化版：固定内容带 -86，无动态重排）
+	if panel_id == "backpack":
+		_attach_embed_instrument_bar(wrapper, center, panel)
+	return wrapper
+
+func _attach_embed_instrument_bar(wrapper: Control, center: Control, bp: Control) -> void:
+	if wrapper.has_node("EmbedInstrumentBar"):
+		return
+	var packed: PackedScene = load(INSTRUMENT_BAR_SCENE)
+	if packed == null:
+		push_error("[TruckBase] 相位仪栏场景加载失败: " + INSTRUMENT_BAR_SCENE)
+		return
+	var bar: Control = packed.instantiate()
+	bar.name = "EmbedInstrumentBar"
+	wrapper.add_child(bar)
+	var menu_btn: Node = bar.get_node_or_null("Margin/HBox/MenuBtn")
+	if menu_btn != null:
+		menu_btn.visible = false
+	center.offset_bottom = -86.0
+	if bar.has_signal("phase_level_label_clicked"):
+		bar.phase_level_label_clicked.connect(func() -> void:
+			if bp != null and is_instance_valid(bp) and bp.has_method("switch_to_phase_instruments_tab"):
+				bp.switch_to_phase_instruments_tab())
+	# v26.13 修复：贴底锚定此前缺失——栏按场景默认锚点落在左上角，盖住背包标题/关闭按钮。
+	# 与 bunker_main._layout_embed_instrument_bar 同构：栏贴底全出血，内容带按实测高让位。
+	_layout_embed_instrument_bar.call_deferred(bar, wrapper)
+	if not bar.minimum_size_changed.is_connected(_on_embed_bar_min_size_changed):
+		bar.minimum_size_changed.connect(_on_embed_bar_min_size_changed.bind(bar, wrapper))
+
+func _on_embed_bar_min_size_changed(bar: Control, wrapper: Control) -> void:
+	_layout_embed_instrument_bar(bar, wrapper)
+
+func _layout_embed_instrument_bar(bar: Control, wrapper: Control) -> void:
+	if not is_instance_valid(bar) or not bar.is_inside_tree():
+		return
+	var ms: Vector2 = bar.get_combined_minimum_size()
+	var band: float = maxf(ms.y, 64.0) + 22.0  # 底边距 22 与主场景一致；64 = 栏固定高
+	bar.anchor_left = 0.0
+	bar.anchor_right = 1.0
+	bar.anchor_top = 1.0
+	bar.anchor_bottom = 1.0
+	bar.offset_left = 16.0
+	bar.offset_right = -16.0
+	bar.offset_top = -band
+	bar.offset_bottom = -22.0
+	var center: Control = wrapper.get_node_or_null("EmbedCenter")
+	if center != null:
+		center.offset_bottom = -band
+
+# ───────────────────── v26.12b 接线：统计终端（真数据） ─────────────────────
+
+func _open_terminal() -> void:
+	var v := _modal_shell()
+	var card_box: VBoxContainer = v
+	_modal_header(card_box, "战术统计终端", "TACT-STAT · 战地情报终端")
+
+	# 战线（LevelProgressManager 真进度）
+	card_box.add_child(_terminal_section("─ 战线进度 ─"))
+	var max_lv := _get_display_level()
+	var head := Label.new()
+	head.text = "当前战线：第 %d 关（已解锁最远）" % max_lv
+	head.add_theme_font_size_override("font_size", 12.5)
+	card_box.add_child(head)
+	if LevelProgressManager and LevelProgressManager.has_method("get_era_progress"):
+		for era in range(1, 6):
+			var pr: Dictionary = LevelProgressManager.get_era_progress(era)
+			var done := int(pr.get("completed", 0))
+			var total := int(pr.get("total", 20))
+			var row := HBoxContainer.new()
+			row.add_theme_constant_override("separation", 8)
+			var nm := Label.new()
+			nm.text = ERA_NAMES[era - 1]
+			nm.custom_minimum_size = Vector2(70, 0)
+			nm.add_theme_font_size_override("font_size", 11.5)
+			nm.add_theme_color_override("font_color", Color(0.56, 0.53, 0.45))
+			row.add_child(nm)
+			var bar := ProgressBar.new()
+			bar.min_value = 0
+			bar.max_value = total
+			bar.value = done
+			bar.show_percentage = false
+			bar.custom_minimum_size = Vector2(220, 12)
+			bar.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+			row.add_child(bar)
+			var num := Label.new()
+			num.text = "%d/%d" % [done, total]
+			num.add_theme_font_size_override("font_size", 11.5)
+			row.add_child(num)
+			card_box.add_child(row)
+
+	# 资源（BasicResourceManager 真库存）
+	card_box.add_child(_terminal_section("─ 资源库存 ─"))
+	if BasicResourceManager and BasicResourceManager.has_method("get_total"):
+		var res_parts: Array = []
+		for pair in RES_LABELS:
+			res_parts.append("%s %d" % [String(pair[1]), int(BasicResourceManager.get_total(String(pair[0])))])
+		var rl := Label.new()
+		rl.text = "  ".join(res_parts)
+		rl.add_theme_font_size_override("font_size", 12.5)
+		card_box.add_child(rl)
+
+	# 收集（InstanceRegistry 拥有种数 + IntelItemBag 见过种数）
+	card_box.add_child(_terminal_section("─ 收集 ─"))
+	var coll_parts: Array = []
+	if InstanceRegistry and InstanceRegistry.has_method("get_all_instance_ids"):
+		var uniq := {}
+		for iid in InstanceRegistry.get_all_instance_ids():
+			uniq[String(iid).split("#")[0]] = true
+		coll_parts.append("拥有卡种 %d" % uniq.size())
+	if IntelItemBag and IntelItemBag.has_method("get_seen_item_ids"):
+		coll_parts.append("情报/图纸见过 %d 种" % IntelItemBag.get_seen_item_ids().size())
+	var cl := Label.new()
+	cl.text = "  ".join(coll_parts)
+	cl.add_theme_font_size_override("font_size", 12.5)
+	card_box.add_child(cl)
+
+	# 战绩（v26.12b：BunkerManager 战斗日志——开打抓关卡号，结束记胜负；击杀曲线待 BattleInfoDisplay 落库）
+	card_box.add_child(_terminal_section("─ 战绩 ─"))
+	if ManagerLazyLoader and ManagerLazyLoader.has_method("ensure_loaded"):
+		ManagerLazyLoader.ensure_loaded("bunker")
+	var bm: Node = get_node_or_null("/root/BunkerManager")
+	var log: Array = bm.get_battle_log() if bm != null and bm.has_method("get_battle_log") else []
+	if log.is_empty():
+		var empty := Label.new()
+		empty.text = "还没有战斗记录——出击一场后回来看。"
+		empty.add_theme_font_size_override("font_size", 11.5)
+		empty.add_theme_color_override("font_color", Color(0.52, 0.50, 0.44))
+		card_box.add_child(empty)
+	else:
+		var wins := 0
+		var kills_sum := 0
+		for entry in log:
+			if bool(entry.get("won", false)):
+				wins += 1
+			kills_sum += int(entry.get("kills", 0))
+		var streak := 0
+		for i in range(log.size() - 1, -1, -1):
+			if not bool(log[i].get("won", false)):
+				break
+			streak += 1
+		var stat := Label.new()
+		stat.text = "总场次 %d · 胜率 %d%% · 当前连胜 %d · 总击杀 %d" % [log.size(), int(round(100.0 * wins / log.size())), streak, kills_sum]
+		stat.add_theme_font_size_override("font_size", 12.5)
+		card_box.add_child(stat)
+		var strip := HBoxContainer.new()
+		strip.add_theme_constant_override("separation", 3)
+		var recent: Array = log.slice(maxi(0, log.size() - 10))
+		for entry2 in recent:
+			var w := bool(entry2.get("won", false))
+			var cell := Label.new()
+			cell.text = "胜" if w else "负"
+			cell.custom_minimum_size = Vector2(26, 20)
+			cell.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+			cell.add_theme_font_size_override("font_size", 11)
+			cell.add_theme_color_override("font_color", Color(0.62, 0.91, 0.6) if w else Color(0.88, 0.42, 0.35))
+			var csb := StyleBoxFlat.new()
+			csb.bg_color = Color(0.16, 0.24, 0.16) if w else Color(0.24, 0.13, 0.11)
+			csb.border_color = Color(0.24, 0.35, 0.24) if w else Color(0.35, 0.2, 0.18)
+			csb.set_border_width_all(1)
+			csb.set_corner_radius_all(3)
+			cell.add_theme_stylebox_override("normal", csb)
+			strip.add_child(cell)
+		card_box.add_child(strip)
+		var recent_l := Label.new()
+		var parts: Array = []
+		for i in range(recent.size()):
+			var en: Dictionary = recent[i]
+			parts.append("第%d天·%d关·%s" % [int(en.get("day", 0)), int(en.get("level", 0)), "胜" if bool(en.get("won", false)) else "负"])
+		recent_l.text = "  ".join(parts)
+		recent_l.add_theme_font_size_override("font_size", 10.5)
+		recent_l.add_theme_color_override("font_color", Color(0.52, 0.50, 0.44))
+		card_box.add_child(recent_l)
+		# v26.12c：击杀曲线（日志含 kills——BattleInfoDisplay 落库）
+		var kill_vals: Array = []
+		for entry3 in recent:
+			kill_vals.append(int(entry3.get("kills", 0)))
+		var kmax := 1
+		for kv in kill_vals:
+			kmax = maxi(kmax, int(kv))
+		var curve := HBoxContainer.new()
+		curve.custom_minimum_size = Vector2(0, 38)
+		curve.add_theme_constant_override("separation", 3)
+		for kv in kill_vals:
+			var kbar := ColorRect.new()
+			kbar.color = Color(1.0, 0.71, 0.37, 0.85)
+			kbar.custom_minimum_size = Vector2(26, 4 + 32.0 * float(kv) / float(kmax))
+			kbar.size_flags_vertical = Control.SIZE_SHRINK_END
+			curve.add_child(kbar)
+		card_box.add_child(curve)
+		var curve_l := Label.new()
+		curve_l.text = "击杀曲线（近 %d 场 · 单场峰 %d）" % [kill_vals.size(), kmax]
+		curve_l.add_theme_font_size_override("font_size", 10.5)
+		curve_l.add_theme_color_override("font_color", Color(0.52, 0.50, 0.44))
+		card_box.add_child(curve_l)
+
+	var foot := HBoxContainer.new()
+	foot.alignment = BoxContainer.ALIGNMENT_END
+	var close := Button.new()
+	close.text = "关闭"
+	close.focus_mode = Control.FOCUS_NONE
+	_style_btn(close, Color(0.6, 0.56, 0.48))
+	close.pressed.connect(_close_modal)
+	foot.add_child(close)
+	card_box.add_child(foot)
+	# v26.13：CRT 扫描线覆盖层（磷光屏质感；时代主题色已由 _modal_header/分节字色承担）
+	if _modal_card != null:
+		var scan := ColorRect.new()
+		scan.set_anchors_preset(Control.PRESET_FULL_RECT)
+		scan.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var mat := ShaderMaterial.new()
+		mat.shader = load("res://shaders/crt_scanlines.gdshader")
+		scan.material = mat
+		_modal_card.add_child(scan)
+
+func _terminal_section(text: String) -> Label:
+	var l := Label.new()
+	l.text = text
+	l.add_theme_font_size_override("font_size", 12)
+	l.add_theme_color_override("font_color", _era_accent())
+	return l
+
+# ───────────────────── v26.12b 接线：睡觉（BunkerManager.sleep，与基地同一存档状态） ─────────────────────
+
+func _on_sleep() -> void:
+	if ManagerLazyLoader and ManagerLazyLoader.has_method("ensure_loaded"):
+		ManagerLazyLoader.ensure_loaded("bunker")
+	var bm: Node = get_node_or_null("/root/BunkerManager")
+	if bm == null or not bm.has_method("sleep"):
+		_open_card("充能舱 · 睡觉", "dormitory", "BunkerManager 未就绪——请先从标题页进入一次（读档/开档后重试）。")
+		return
+	_close_modal()
+	var summary: Dictionary = bm.sleep()
+	if SaveManager and SaveManager.has_method("save_game"):
+		SaveManager.save_game()
+	var txt := "醒来时是第 %d 天。\n精神 %.0f → %.0f（睡觉回复）" % [
+		int(summary.get("day", 0)), float(summary.get("sanity_before", 0)), float(summary.get("sanity_after", 0))]
+	var loot: Dictionary = summary.get("loot_printed", {})
+	if not loot.is_empty():
+		var loot_name := String(loot.get("name", ""))
+		txt += "\n仓库打印：缴获卡「%s」已入包" % (loot_name if loot_name != "" else "1 张")
+	var completed: int = (summary.get("completed_today", []) as Array).size()
+	if completed > 0:
+		txt += "\n今日完成事项：%d 项已结算" % completed
+	_open_card("充能舱 · 睡觉结算", "dormitory（同一存档，与旧基地共享天数/精神）", txt)
+
+# ───────────────────── v26.12c 外景视图：那关地图 + 卡车停靠 ─────────────────────
+
+func _build_exterior_area() -> void:
+	_ext_holder = Control.new()
+	_ext_holder.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_ext_holder.offset_top = 48.0
+	_ext_holder.offset_bottom = -8.0
+	_ext_holder.offset_left = 8.0
+	_ext_holder.offset_right = -8.0
+	_ext_holder.visible = false
+	add_child(_ext_holder)
+	_ext_bg = TextureRect.new()
+	_ext_bg.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_ext_bg.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	_ext_bg.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+	_ext_bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_ext_holder.add_child(_ext_bg)
+	# v26.13：外景车底投影（锚同卡车、贴地一条带）
+	_ext_shadow = _make_soft_shadow()
+	_ext_shadow.anchor_left = 0.16
+	_ext_shadow.anchor_right = 0.88
+	_ext_shadow.anchor_top = 0.905
+	_ext_shadow.anchor_bottom = 0.965
+	_ext_shadow.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_ext_holder.add_child(_ext_shadow)
+	_ext_truck = TextureRect.new()
+	_ext_truck.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	_ext_truck.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	_ext_truck.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_ext_truck.anchor_left = 0.16
+	_ext_truck.anchor_right = 0.88
+	_ext_truck.anchor_top = 0.38
+	_ext_truck.anchor_bottom = 0.96
+	_ext_holder.add_child(_ext_truck)
+	# v26.13：全屏暗角
+	_ext_holder.add_child(_make_vignette())
+	# v26.13：电影黑边（切外景时滑入，"抵达战地"的观感）
+	_lb_top = ColorRect.new()
+	_lb_top.color = Color(0, 0, 0, 0.96)
+	_lb_top.anchor_left = 0.0
+	_lb_top.anchor_right = 1.0
+	_lb_top.anchor_top = 0.0
+	_lb_top.anchor_bottom = 0.0
+	_lb_top.offset_bottom = 0.0
+	_lb_top.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_ext_holder.add_child(_lb_top)
+	_lb_bot = ColorRect.new()
+	_lb_bot.color = Color(0, 0, 0, 0.96)
+	_lb_bot.anchor_left = 0.0
+	_lb_bot.anchor_right = 1.0
+	_lb_bot.anchor_top = 1.0
+	_lb_bot.anchor_bottom = 1.0
+	_lb_bot.offset_top = 0.0
+	_lb_bot.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_ext_holder.add_child(_lb_bot)
+	_ext_caption = Label.new()
+	_ext_caption.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
+	_ext_caption.offset_left = 14.0
+	_ext_caption.offset_top = -34.0
+	_ext_caption.offset_bottom = -10.0
+	_ext_caption.add_theme_font_size_override("font_size", 13)
+	_ext_caption.add_theme_color_override("font_color", Color(1.0, 0.89, 0.69))
+	_ext_holder.add_child(_ext_caption)
+
+func _on_view_pressed(mode: String) -> void:
+	_set_view(mode, true)
+
+func _set_view(mode: String, animate: bool) -> void:
+	_view_mode = mode
+	var ext := mode == "exterior"
+	_ext_holder.visible = ext
+	_image_holder.visible = not ext
+	for vb in _view_buttons:
+		vb.set_pressed_no_signal(String(vb.get_meta("view_mode")) == mode)
+	if ext:
+		_refresh_exterior(animate)
+	# v26.13：外景电影黑边滑入/收起（动效减弱直接归位）
+	var bar_h := 52.0
+	if _lb_top != null and _lb_bot != null:
+		if not animate or DT.is_motion_reduce():
+			_lb_top.offset_bottom = bar_h if ext else 0.0
+			_lb_bot.offset_top = -bar_h if ext else 0.0
+		else:
+			var tw := create_tween().set_parallel(true)
+			tw.tween_property(_lb_top, "offset_bottom", bar_h if ext else 0.0, 0.45).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+			tw.tween_property(_lb_bot, "offset_top", -bar_h if ext else 0.0, 0.45).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+
+## 外景刷新：背景=当前进度那关的战场地图（与战斗同源），卡车精灵=时代匹配
+func _refresh_exterior(animate: bool) -> void:
+	var level := _get_display_level()
+	_ext_bg.texture = _load_era_texture(_ext_bg_path(level))
+	var era := clampi((level - 1) / 20 + 1, 1, 5)
+	_ext_truck.texture = _load_era_texture(TRUCK_SPRITE_FMT % era)
+	var lname := _display_level_name(level)
+	_ext_caption.text = "驻地 · 第 %d 关「%s」 · %s" % [level, lname if lname != "" else String(ERAS[_era_idx]["zone"]), String(ERAS[era - 1]["label"])]
+	if animate:
+		await get_tree().process_frame
+		if _ext_truck == null or not is_instance_valid(_ext_truck):
+			return
+		var target_x := _ext_truck.position.x
+		_ext_truck.position.x = target_x - 320.0
+		var tw := create_tween()
+		tw.tween_property(_ext_truck, "position:x", target_x, 0.7).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_CUBIC)
+
+## 关卡战场背景路径：本关图 → 同时代首关图 → 时代通用图 → 默认（battlefield 同源回退链简化版）
+func _ext_bg_path(level: int) -> String:
+	var era := clampi((level - 1) / 20 + 1, 1, 5)
+	var candidates := [
+		EXT_BG_FMT % level,
+		EXT_BG_FMT % ((era - 1) * 20 + 1),
+		"res://assets/backgrounds/bg_%02d.png" % era,
+		"res://assets/backgrounds/bg_default.png",
+	]
+	for p in candidates:
+		if ResourceLoader.exists(p):
+			return p
+	return String(ERAS[_era_idx]["tex"])
+
+func _display_level_name(level: int) -> String:
+	return String(LevelInformation.get_shared().get_level_display_name(level))

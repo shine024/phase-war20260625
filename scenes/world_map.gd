@@ -227,6 +227,9 @@ func _ready() -> void:
 	call_deferred("_build_level_map")
 	visibility_changed.connect(_on_visibility_changed)
 	_on_visibility_changed()
+	# v26.12c：进度变化 → 卡车开往新驻地
+	if not GameManager.current_level_changed.is_connected(_on_truck_level_changed):
+		GameManager.current_level_changed.connect(_on_truck_level_changed)
 	# v6.10: 监听占领变化，刷新关卡按钮色标（攻克易主后实时更新）
 	if SignalBus and SignalBus.has_signal("occupation_changed"):
 		SignalBus.occupation_changed.connect(_on_occupation_changed_refresh)
@@ -417,11 +420,11 @@ func _build_level_map() -> void:
 		marker.size = Vector2(26, 26)
 		marker.position = _home_pos() - Vector2(13, 13)
 		marker.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-		marker.tooltip_text = "余烬要塞（家）——点击回基地"
+		marker.tooltip_text = "家 · 移动基地——点击进入"
 		marker.gui_input.connect(_on_home_gui_input)
 		canvas.add_child(marker)
 		var home_lbl := Label.new()
-		home_lbl.text = "余烬要塞"
+		home_lbl.text = "移动基地"
 		home_lbl.add_theme_font_size_override("font_size", 26)
 		home_lbl.add_theme_color_override("font_color", Color(1.0, 0.71, 0.37, 0.95))
 		home_lbl.add_theme_color_override("font_outline_color", DesignTokens.COLOR_BACKDROP_DEEP)
@@ -455,6 +458,9 @@ func _build_level_map() -> void:
 		gate_lbl.position = gate_p + Vector2(-34, 64)
 		gate_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		canvas.add_child(gate_lbl)
+
+		# 4c) v26.12c：移动基地卡车标记（停在当前关节点旁，时代换车，点击进移动基地）
+		_add_truck_marker(canvas)
 	else:
 		# 方案 6/8：灯塔/掩体贴图（可点击回基地）
 		var lh := TextureRect.new()
@@ -1227,15 +1233,98 @@ func _on_back_to_title() -> void:
 	# 独立场景模式：直接切换回主场景
 	SceneTransition.change(get_tree(), "res://scenes/main.tscn")
 
-## v22.4（P1-6）：点"家"（余烬要塞标记）回基地。嵌入/独立两模式统一直切场景。
+## v22.4（P1-6）：点"家"回基地。v26.12d 固定主基地停用 → 家=移动基地（外景视图）。
 func _on_home_gui_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
 		if SaveManager and SaveManager.has_method("save_game"):
 			SaveManager.save_game()
 		if Engine.has_meta("launch_from_bunker"):
 			Engine.remove_meta("launch_from_bunker")
+		Engine.set_meta("truck_base_view", "exterior")
 		SignalBus.play_sound.emit("button")
-		SceneTransition.change(get_tree(), "res://scenes/bunker/bunker_main.tscn")
+		SceneTransition.change(get_tree(), "res://scenes/bunker/truck_base.tscn")
+
+
+# ═══════════ v26.12c 移动基地卡车标记 ═══════════
+
+var _truck_marker: TextureButton = null
+
+## 卡车精灵停在当前关节点旁（不遮节点盘），时代换代换车；点击进入移动基地。
+func _add_truck_marker(canvas: Control) -> void:
+	if canvas.has_node("TruckMarker"):
+		return
+	var tex: Texture2D = _truck_marker_tex()
+	if tex == null:
+		return
+	var btn := TextureButton.new()
+	btn.name = "TruckMarker"
+	btn.texture_normal = tex
+	btn.ignore_texture_size = true
+	btn.stretch_mode = TextureButton.STRETCH_KEEP_ASPECT
+	var lvl := clampi(GameManager.current_level, 1, 100)
+	btn.size = Vector2(tex.get_width() * 56.0 / tex.get_height(), 56.0)
+	btn.position = _truck_marker_pos(lvl, btn.size)
+	btn.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	btn.tooltip_text = "移动基地（当前驻扎：第 %d 关）——点击进入" % lvl
+	# alpha 点击掩码：矩形透明区不挡底下关卡节点的点击
+	btn.texture_click_mask = _truck_click_mask(tex)
+	btn.gui_input.connect(_on_truck_gui_input)
+	canvas.add_child(btn)
+	_truck_marker = btn
+
+func _truck_marker_tex() -> Texture2D:
+	var era := clampi((clampi(GameManager.current_level, 1, 100) - 1) / 20 + 1, 1, 5)
+	return load("res://assets/ui/truck_base/truck_tier%d.png" % era)
+
+func _truck_marker_pos(lvl: int, sz: Vector2) -> Vector2:
+	_ensure_layout()
+	var pt: Vector2 = _s_level_points.get(lvl, _home_pos())
+	# 停在节点右侧偏下，车头朝左正对节点；不遮节点盘
+	return pt + Vector2(12.0, -sz.y * 0.5 + 10.0)
+
+## 进度变化：卡车沿地图开往新驻地（换时代同时换车）
+func _on_truck_level_changed(_level: int) -> void:
+	if _truck_marker == null or not is_instance_valid(_truck_marker):
+		return
+	var lvl := clampi(GameManager.current_level, 1, 100)
+	var tex := _truck_marker_tex()
+	if tex != null:
+		_truck_marker.texture_normal = tex
+		_truck_marker.texture_click_mask = _truck_click_mask(tex)
+	var target := _truck_marker_pos(lvl, _truck_marker.size)
+	var tw := create_tween()
+	tw.tween_property(_truck_marker, "position", target, 0.8).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+
+## 面板打开时无动画对位（含缩放布局变化后的重排）
+func _update_truck_marker_snap() -> void:
+	if _truck_marker == null or not is_instance_valid(_truck_marker):
+		return
+	var lvl := clampi(GameManager.current_level, 1, 100)
+	var tex := _truck_marker_tex()
+	if tex != null:
+		_truck_marker.texture_normal = tex
+		_truck_marker.texture_click_mask = _truck_click_mask(tex)
+	_truck_marker.position = _truck_marker_pos(lvl, _truck_marker.size)
+
+## 车身 alpha 蒙版（纹理分辨率；随按钮缩放）——透明区不拦截关卡节点点击
+func _truck_click_mask(tex: Texture2D) -> BitMap:
+	var img := tex.get_image()
+	if img == null:
+		return null
+	var mask := BitMap.new()
+	mask.create_from_image_alpha(img, 0.1)
+	return mask
+
+## 点卡车 → 进移动基地（外景视图；与点"家"回基地同款切换模式）
+func _on_truck_gui_input(event: InputEvent) -> void:
+	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+		if SaveManager and SaveManager.has_method("save_game"):
+			SaveManager.save_game()
+		if Engine.has_meta("launch_from_bunker"):
+			Engine.remove_meta("launch_from_bunker")
+		Engine.set_meta("truck_base_view", "exterior")
+		SignalBus.play_sound.emit("button")
+		SceneTransition.change(get_tree(), "res://scenes/bunker/truck_base.tscn")
 
 
 # ═══════════ v27 黑门（星冥族·无限模式入口） ═══════════
@@ -1980,3 +2069,4 @@ func refresh_for_open() -> void:
 	_on_visibility_changed()
 	if not _map_built:
 		_build_level_map()
+	_update_truck_marker_snap()

@@ -167,6 +167,8 @@ func _add_lore_placeholder(message: String) -> void:
 	lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	lbl.add_theme_color_override("font_color", DT.COLOR_TEXT_DIM)
+	# 修复：GridContainer 里 autowrap 无最小宽度会把标签压成 1 字宽（逐字竖排塌缩）
+	lbl.custom_minimum_size = Vector2(520, 80)
 	_lore_grid.add_child(lbl)
 
 
