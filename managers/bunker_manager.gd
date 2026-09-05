@@ -41,6 +41,9 @@ var _weather_day: int = -1            # 今日天气预报生成天（-1=从未�
 var _weather_idx: int = 0             # 今日天气索引（WEATHERS 表）
 var _weather_armed := false           # 已锁定预报（下一场战斗生效，结算时消耗）
 var _respec_free_day: int = 0         # 洗点免费额度已用天（Lv3 每日首免）
+var _battle_log: Array = []           # v26.12b 战斗日志（最近60条 {day,level,won}）——移动基地统计终端数据源
+var _pending_battle_level: int = 0    # 开打时抓的关卡号（battle_ended 时 current_level 可能已被胜利推进）
+var _pending_battle_endless: bool = false  # 开打时抓的黑门无尽标记（battle_ended 时 GameManager 已复位，事后查不到）
 
 ## 荣誉陈列室解锁所需碎片数（P3 定 10：让中期玩家够得着；30 全收集是观星台条件）
 const HONOR_HALL_FRAGMENT_GATE := 10
@@ -81,6 +84,21 @@ func _ready() -> void:
 	# 战斗结束 → 扣精神值 + 推进修复进度（本节点常驻 root，跨场景存活）
 	if SignalBus and not SignalBus.battle_ended.is_connected(_on_battle_ended):
 		SignalBus.battle_ended.connect(_on_battle_ended)
+	# v26.12b：开打时抓关卡号（battle_ended 时 GameManager.current_level 可能已被胜利推进成下一关）
+	if SignalBus and not SignalBus.battle_started.is_connected(_on_battle_started):
+		SignalBus.battle_started.connect(_on_battle_started)
+
+## v26.12b：战斗日志只读副本（移动基地统计终端消费）
+func get_battle_log() -> Array:
+	return _battle_log.duplicate(true)
+
+func _on_battle_started() -> void:
+	if GameManager != null:
+		_pending_battle_level = int(GameManager.current_level)
+		# 黑门无尽标记必须开打时抓：GameManager 的 battle_ended handler 先于本节点执行
+		# 并在 _settle_endless_battle 里复位 _is_endless_battle，事后查恒 false
+		_pending_battle_endless = GameManager.has_method("is_endless_battle") \
+			and GameManager.is_endless_battle()
 
 func _init_rooms_from_defs() -> void:
 	_rooms.clear()
@@ -183,6 +201,18 @@ func start_repair(room_id: String) -> Dictionary:
 ## P3：胜利 + 相位师战斗 → 掉落英雄遗物碎片（ GameManager 在同一信号链上先跑且
 ## 延迟清除 _current_phase_master，此处读取安全）。
 func _on_battle_ended(player_won: bool) -> void:
+	# v26.12b：记录战斗日志（仅关卡战斗）。黑门无尽 run 不记——world_map 进门前把
+	# current_level 对齐 100，且唯一终局是 end_battle(false)（"永不判胜"），混入会
+	# 把无尽 run 记成"第100关·负"污染胜率统计；无尽战报由 EndlessBlackgateManager
+	# .settle_run 自行记账（波数/击杀/星髓/最佳）。
+	var fought := _pending_battle_level
+	var was_endless := _pending_battle_endless
+	_pending_battle_level = 0
+	_pending_battle_endless = false
+	if fought > 0 and not was_endless:
+		_battle_log.append({"day": _day, "level": fought, "won": bool(player_won), "kills": _read_battle_kills()})
+		if _battle_log.size() > 60:
+			_battle_log = _battle_log.slice(_battle_log.size() - 60)
 	advance_after_battle(player_won)
 	if player_won and GameManager != null and GameManager.has_method("is_phase_master_battle") \
 			and GameManager.is_phase_master_battle():
@@ -190,6 +220,17 @@ func _on_battle_ended(player_won: bool) -> void:
 		var master_id := str(master.get("id", ""))
 		if not master_id.is_empty():
 			record_hero_fragment(master_id)
+
+## v26.12c：读战斗统计引擎的我方击杀数（main.tscn 墓碑节点内的 BattleInfoDisplay；
+## 不在场——如从移动基地外的非常规流程结束时——返回 0，日志照记）
+func _read_battle_kills() -> int:
+	var tree := get_tree()
+	if tree == null:
+		return 0
+	var disp: Node = tree.root.find_child("BattleInfoDisplay", true, false)
+	if disp != null and disp.has_method("get_battle_stats"):
+		return int(disp.call("get_battle_stats").get("player_kills", 0))
+	return 0
 
 func advance_after_battle(player_won: bool) -> Array:
 	# 兵棋室 Lv2 战前简报：胜利精神消耗 10→8；失败 -20 不变
@@ -850,6 +891,7 @@ func save_state() -> Dictionary:
 		"weather_idx": _weather_idx,
 		"weather_armed": _weather_armed,
 		"respec_free_day": _respec_free_day,
+		"battle_log": _battle_log.duplicate(true),
 	}
 
 ## SaveManager 应用入口（_safe_load_manager 按此方法名加载）；空字典=新游戏全重置
@@ -867,6 +909,20 @@ func load_state(data: Dictionary) -> void:
 	_ending_day = int(data.get("ending_day", 0))
 	_intro_shown = bool(data.get("intro_shown", false))
 	_comic_seen = bool(data.get("comic_seen", false))
+	# v26.12b：战斗日志回读（增量 key，旧档缺省=空日志；先重置再覆盖）
+	_battle_log = []
+	var saved_log: Variant = data.get("battle_log", [])
+	if saved_log is Array:
+		for entry in saved_log:
+			if entry is Dictionary:
+				_battle_log.append({
+					"day": int(entry.get("day", 0)),
+					"level": int(entry.get("level", 0)),
+					"won": bool(entry.get("won", false)),
+					"kills": int(entry.get("kills", 0)),
+				})
+	_pending_battle_level = 0
+	_pending_battle_endless = false
 	# v26 批次3：分析仪/探索/打印状态回读
 	_analyzer_slot = {}
 	var saved_slot: Variant = data.get("analyzer_slot", {})

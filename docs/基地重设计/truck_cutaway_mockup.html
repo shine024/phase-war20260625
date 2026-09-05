@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>装甲卡车 · 剖面热区原型（Truck Cutaway Mockup）</title>
+<style>
+  :root{ --amber:#ffb45e; --cyan:#00e5ff; --orange:#ff7a2e; --green:#9ee89a; --line:#3a342a; }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  html,body{height:100%;background:#08090c;font-family:"Segoe UI","Microsoft YaHei",sans-serif;color:#d8d2c4;overflow:hidden;}
+  #wrap{display:flex;flex-direction:column;height:100vh;}
+  /* ── 顶栏 ── */
+  #topbar{height:54px;display:flex;align-items:center;gap:10px;padding:0 14px;background:linear-gradient(#1b1813,#12100c);border-bottom:1px solid var(--line);font-size:13px;flex:none;}
+  #topbar .title{font-size:14.5px;color:#e8dcbf;letter-spacing:1px;margin-right:4px;white-space:nowrap;}
+  .chip{background:#211d15;border:1px solid var(--line);border-radius:5px;padding:3px 9px;white-space:nowrap;}
+  .chip b{color:var(--amber);}
+  .chip.zone b{color:var(--cyan);}
+  .btn{cursor:pointer;background:#2a2419;border:1px solid #57492e;border-radius:6px;color:#e8dcbf;padding:6px 12px;font-size:13px;white-space:nowrap;}
+  .btn:hover{background:#3a3120;border-color:#7a6538;}
+  .btn.primary{background:#14343a;border-color:#1e6b74;color:#bdf0f5;}
+  .btn.primary:hover{background:#1a4a52;}
+  .btn.on{border-color:var(--amber);color:#ffd9a0;background:#33270f;}
+  #topbar .sp{flex:1;}
+  /* ── 舞台：底图 + 热区层 ── */
+  #stage{flex:1;position:relative;display:flex;align-items:center;justify-content:center;background:#050608;min-height:0;}
+  #frame{position:relative;width:min(97vw,calc((100vh - 148px)*1.7917));aspect-ratio:1376/768;border:1px solid #2c2820;border-radius:8px;overflow:hidden;box-shadow:0 0 46px #000 inset;}
+  #baseImg{position:absolute;inset:0;width:100%;height:100%;display:block;}
+  .hs{position:absolute;cursor:pointer;border-radius:6px;}
+  .hs::after{ /* 常驻呼吸定位点 */
+    content:'';position:absolute;left:50%;top:50%;width:7px;height:7px;border-radius:50%;
+    transform:translate(-50%,-50%);background:rgba(0,229,255,.75);box-shadow:0 0 8px rgba(0,229,255,.8);
+    animation:pulse 2.4s infinite;opacity:.55;}
+  @keyframes pulse{0%,100%{opacity:.35;transform:translate(-50%,-50%) scale(1);}50%{opacity:.8;transform:translate(-50%,-50%) scale(1.35);}}
+  .hs:hover{border:1.5px dashed rgba(0,229,255,.85);background:rgba(0,229,255,.06);box-shadow:0 0 16px rgba(0,229,255,.18) inset;}
+  .hs:hover::after{opacity:0;animation:none;}
+  .hs .tag{position:absolute;left:50%;bottom:100%;transform:translate(-50%,-4px);white-space:nowrap;font-size:11.5px;
+    background:rgba(8,10,12,.92);border:1px solid #1e6b74;color:#bdf0f5;border-radius:4px;padding:2px 8px;
+    opacity:0;pointer-events:none;transition:opacity .12s;}
+  .hs .tag b{color:var(--cyan);}
+  .hs:hover .tag,.hs.show .tag{opacity:1;}
+  #hsLayer.showall .hs{border:1.5px dashed rgba(0,229,255,.55);background:rgba(0,229,255,.05);}
+  #hsLayer.showall .hs .tag{opacity:1;}
+  /* ── 底部提示条 ── */
+  #hintbar{height:40px;flex:none;display:flex;align-items:center;gap:8px;padding:0 14px;background:#0d0d0b;border-top:1px solid var(--line);font-size:11.5px;color:#8f8674;white-space:nowrap;overflow:hidden;}
+  #hintbar b{color:#cfc7b4;}
+  /* ── 出击演出浮层 ── */
+  #battleFx{position:absolute;inset:0;display:none;align-items:center;justify-content:center;background:rgba(8,8,6,.45);font-size:22px;color:#ffd9a0;letter-spacing:6px;z-index:20;}
+  #battleFx.on{display:flex;}
+  /* ── 弹层壳（继承 truck_mockup CRT 语言） ── */
+  #modal{position:fixed;inset:0;background:rgba(0,0,0,.58);display:none;align-items:center;justify-content:center;z-index:50;}
+  #modal.on{display:flex;}
+  #modalCard{width:760px;max-width:94vw;max-height:84vh;overflow-y:auto;border-radius:8px;padding:16px 20px;background:#0c0e0c;border:6px solid #4a4536;color:var(--green);font-family:Consolas,"Microsoft YaHei",monospace;box-shadow:inset 0 0 30px rgba(0,60,0,.15),0 14px 50px rgba(0,0,0,.7);}
+  #modalCard h3{font-size:15px;margin-bottom:4px;color:#c9f5c4;letter-spacing:1px;}
+  #modalCard .sub{font-size:11px;color:#7ab872;margin-bottom:10px;}
+  #modalCard .body{font-size:12.5px;line-height:1.85;color:#a8c8a2;}
+  #modalCard .ph{background:#131a11;border:1px dashed #3d5a36;border-radius:6px;padding:10px 12px;margin:8px 0;color:#88a882;}
+  #modalCard .foot{margin-top:12px;text-align:right;}
+  .fnBtn{display:inline-block;font-size:12.5px;padding:5px 13px;border-radius:5px;background:#131a11;border:1px solid #3d5a36;color:var(--green);margin:0 0 0 8px;cursor:pointer;font-family:inherit;}
+  .fnBtn:hover{border-color:#6a9a60;}
+  .fnBtn.warm{background:#2a2210;border-color:#77591c;color:#ffd27a;}
+  .chipRow{display:flex;gap:6px;flex-wrap:wrap;margin:6px 0;}
+  .chipRow span{font-size:11px;background:#131a11;border:1px solid #3d5a36;border-radius:4px;padding:2px 8px;color:#88a882;}
+  /* ── 统计终端 ── */
+  #tabs{display:flex;gap:6px;margin:2px 0 10px;}
+  .tabBtn{font-size:12px;padding:4px 12px;border-radius:5px;border:1px solid #2c3a2c;background:#101510;color:#7da877;cursor:pointer;font-family:inherit;letter-spacing:1px;}
+  .tabBtn:hover{border-color:#3d5a36;color:#9ee89a;}
+  .tabBtn.on{background:#15251a;border-color:#3d7a4a;color:#c9f5c4;}
+  .statChips{display:flex;gap:8px;flex-wrap:wrap;margin:2px 0 8px;}
+  .statChips span{font-size:11.5px;background:#101510;border:1px solid #2c3a2c;border-radius:4px;padding:3px 9px;color:#88a882;}
+  .statChips span b{color:#cfe8c8;font-size:13px;margin-left:4px;}
+  .chartBox{background:#0a0f0a;border:1px solid #223122;border-radius:6px;padding:8px 6px 4px;}
+  .legend{display:flex;gap:12px;flex-wrap:wrap;margin:6px 2px 2px;font-size:11px;color:#88a882;}
+  .legend i{display:inline-block;width:14px;height:3px;border-radius:2px;margin-right:4px;vertical-align:middle;}
+  /* 战线 */
+  .frontRow{position:relative;display:flex;gap:4px;margin:10px 0 4px;}
+  .frontSeg{flex:1;border:1px solid #2c3a2c;border-radius:4px;background:#0a0f0a;padding:5px 7px 7px;}
+  .frontSeg .fsName{font-size:10.5px;color:#7da877;letter-spacing:1px;}
+  .frontSeg .fsBar{height:9px;background:#141d14;border-radius:3px;margin:5px 0 4px;overflow:hidden;}
+  .frontSeg .fsBar i{display:block;height:100%;border-radius:3px;}
+  .frontSeg .fsNum{font-size:10px;color:#5a7a5a;}
+  #frontMark{position:absolute;top:-14px;transform:translateX(-50%);font-size:10px;color:var(--cyan);white-space:nowrap;text-shadow:0 0 6px rgba(0,229,255,.6);}
+  /* 收集进度条 */
+  .pRow{display:flex;align-items:center;gap:10px;margin:7px 0;}
+  .pRow .pName{width:80px;font-size:12px;color:#a8c8a2;flex:none;}
+  .pRow .pBar{flex:1;height:12px;background:#141d14;border:1px solid #223122;border-radius:4px;overflow:hidden;}
+  .pRow .pBar i{display:block;height:100%;}
+  .pRow .pNum{width:70px;font-size:11px;color:#7da877;text-align:right;flex:none;}
+  .termFoot{margin-top:10px;font-size:10.5px;color:#5a7a5a;line-height:1.7;border-top:1px dashed #223122;padding-top:7px;}
+  ::-webkit-scrollbar{width:9px;} ::-webkit-scrollbar-thumb{background:#3a342a;border-radius:5px;}
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div id="topbar">
+    <span class="title">装甲卡车 · 相位荒原驻地</span>
+    <span class="chip">第 <b id="day">37</b> 天</span>
+    <span class="chip">精神 <b id="san">64</b>/100</span>
+    <span class="chip">纳米 <b id="rNano">820</b></span>
+    <span class="chip">合金 <b id="rAlloy">310</b></span>
+    <span class="chip">晶体 <b id="rCrystal">90</b></span>
+    <span class="chip">能量 <b id="rEnergy">45</b></span>
+    <span class="chip zone">战线 <b>第 82 关 · era V</b></span>
+    <span class="sp"></span>
+    <button class="btn primary" id="btnSortie">▶ 出击</button>
+    <button class="btn" id="btnPaper">晨报</button>
+    <button class="btn" id="btnHot">热区</button>
+  </div>
+  <div id="stage">
+    <div id="frame">
+      <img id="baseImg" src="单独图/Gravity_well_sprite_animation_202609041734.jpeg" alt="装甲卡车剖面底图">
+      <div id="hsLayer"></div>
+      <div id="battleFx"></div>
+    </div>
+  </div>
+  <div id="hintbar">
+    <b>车厢内可点击：</b>指挥电脑＝统计终端 · 售货机＝商店 · 3D打印＝制造 · 工作台＝改造 · 储物柜＝背包 · 铺位＝充能舱 · 尾门跳板/驾驶室＝出击简报
+  </div>
+</div>
+
+<div id="modal"><div id="modalCard"></div></div>
+
+<script>
+/* ═══ 热区表：坐标为底图(1376×768)实测百分比 [left, top, width, height] ═══ */
+const HS=[
+  {id:'cab',    name:'驾驶室',   hint:'出击简报',       r:[10.4,42.3,16.9,23.4], act:'sortie'},
+  {id:'term',   name:'指挥电脑', hint:'战术统计终端',   r:[32.1,39.3,11.2,21.7], act:'terminal'},
+  {id:'bench',  name:'工作台',   hint:'改造 · 词条',    r:[42.9,43.6,9.1,13.7],  act:'panel',
+   p:{key:'modification', pname:'改造面板', rooms:'workshop', extra:['affix 词条工坊','growth 成长中枢']}},
+  {id:'vend',   name:'售货机',   hint:'商店 · 势力',    r:[52.9,45.3,6.0,19.2],  act:'panel',
+   p:{key:'store', pname:'商店面板', rooms:'comms', extra:['faction 势力面板','leaderboard 排行榜']}},
+  {id:'printer',name:'3D打印机', hint:'制造中心 · 卡仓', r:[60.3,46.6,5.5,12.0],  act:'panel',
+   p:{key:'evolution', pname:'制造中心（原 evolution_panel）', rooms:'depot', extra:['collection 收藏/卡墙']}},
+  {id:'locker', name:'储物柜',   hint:'背包 · 卡仓',    r:[65.2,38.8,9.7,22.7],  act:'panel',
+   p:{key:'backpack', pname:'背包面板', rooms:'dormitory(挂靠)', extra:['collection 收藏/卡墙']}},
+  {id:'bunk',   name:'充能舱',   hint:'睡眠 · 存档',    r:[74.9,38.4,11.3,23.4], act:'bunk'},
+  {id:'ramp',   name:'尾门跳板', hint:'出击口',         r:[86.5,64.5,11.5,17.5], act:'sortie'},
+];
+
+/* ═══ 状态（原型固定值） ═══ */
+const state={day:37,san:64,res:{nano:820,alloy:310,crystal:90,energy:45}};
+
+/* ═══ 热区注入 ═══ */
+const layer=document.getElementById('hsLayer');
+HS.forEach(h=>{
+  const el=document.createElement('div');
+  el.className='hs'; el.id='hs_'+h.id; el.title=h.name+' · '+h.hint;
+  el.style.left=h.r[0]+'%'; el.style.top=h.r[1]+'%'; el.style.width=h.r[2]+'%'; el.style.height=h.r[3]+'%';
+  el.innerHTML=`<span class="tag"><b>${h.name}</b> · ${h.hint}</span>`;
+  el.addEventListener('click',()=>clickHot(h));
+  layer.appendChild(el);
+});
+function clickHot(h){
+  if(h.act==='terminal') return openTerminal();
+  if(h.act==='sortie')   return openSortie();
+  if(h.act==='bunk')     return openBunk();
+  if(h.act==='panel')    return openStationPanel(h);
+}
+
+/* ═══ 弹层壳 ═══ */
+const modal=document.getElementById('modal'), card=document.getElementById('modalCard');
+function openModal(html){ card.innerHTML=html; modal.classList.add('on'); }
+function closeModal(){ modal.classList.remove('on'); }
+modal.addEventListener('click',e=>{ if(e.target.id==='modal') closeModal(); });
+document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeModal(); });
+
+/* ═══ 战术统计终端（指挥电脑主功能） ═══ */
+const TABS=[['wip','战绩'],['res','资源'],['front','战线'],['coll','收集']];
+let curTab='wip';
+function openTerminal(){
+  openModal(`<h3>▣ 战术统计终端 TACT-STAT v0.3</h3>
+    <div class="sub">指挥位车载电脑 · 相位荒原前线数据回传 · 示例数据（原型占位）</div>
+    <div id="tabs">${TABS.map(t=>`<button class="tabBtn${t[0]===curTab?' on':''}" data-tab="${t[0]}">${t[1]}</button>`).join('')}</div>
+    <div id="termBody"></div>
+    <div class="termFoot">真实实现：读 BattleInfoDisplay 统计引擎（battle_status_strip / mvp_panel 同源数据）+ BasicResourceManager 库存曲线 +
+    LevelProgressManager 战线进度；本弹层即「指挥位电脑」的 diegetic 面板，不占用 EMBEDDED_PANELS 叠加栈。</div>`);
+  card.querySelectorAll('.tabBtn').forEach(b=>b.addEventListener('click',()=>{ curTab=b.dataset.tab;
+    card.querySelectorAll('.tabBtn').forEach(x=>x.classList.toggle('on',x.dataset.tab===curTab)); renderTab(); }));
+  renderTab();
+}
+function renderTab(){
+  const box=card.querySelector('#termBody');
+  box.innerHTML = {wip:tabWip,res:tabRes,front:tabFront,coll:tabColl}[curTab]();
+}
+
+/* ── 示例数据（确定性生成，标注为占位） ── */
+const BATTLES=[{k:14,l:1},{k:18,l:0},{k:9,l:2},{k:22,l:0},{k:16,l:1},{k:25,l:0},{k:12,l:3},{k:19,l:0},{k:28,l:0},{k:15,l:1}];
+function walk(base,end,amp,ph){ const n=30; return Array.from({length:n},(_,i)=>{
+  const t=i/(n-1); return Math.round(base+(end-base)*t + amp*Math.sin(i/3.1+ph) + ((i*13)%7-3)); }); }
+const SERIES=[['纳米材料',walk(430,820,40,0),'#9ee89a'],['合金',walk(190,310,25,2),'#ffb45e'],
+              ['晶体',walk(55,90,10,4),'#00e5ff'],['能量块',walk(15,45,8,1),'#ff7a2e']];
+const FRONTS=[['I 一战',20,20,'#8f8674'],['II 二战',20,20,'#9ee89a'],['III 冷战',20,20,'#ffb45e'],
+              ['IV 近未来',20,20,'#00e5ff'],['V 相位',2,20,'#ff7a2e']];
+const COLL=[['卡牌图鉴',96,131,'#9ee89a'],['改造模块',88,202,'#00e5ff'],['制造配方',24,38,'#ffb45e']];
+
+/* ── Tab① 战绩：近10场击杀柱状图 ── */
+function tabWip(){
+  const wins=BATTLES.filter(b=>b.l<2).length, total=BATTLES.reduce((s,b)=>s+b.k,0);
+  const best=Math.max(...BATTLES.map(b=>b.k));
+  let streak=0; for(let i=BATTLES.length-1;i>=0&&BATTLES[i].l<2;i--)streak++;
+  let g=''; const W=690,H=232,pl=34,pr=8,pt=16,pb=24,max=30, iw=(W-pl-pr)/BATTLES.length;
+  [10,20,30].forEach(v=>{ const y=H-pb-(H-pt-pb)*v/max;
+    g+=`<line x1="${pl}" y1="${y}" x2="${W-pr}" y2="${y}" stroke="#1c2a1c"/><text x="${pl-6}" y="${y+4}" fill="#5a7a5a" font-size="10" text-anchor="end">${v}</text>`;});
+  BATTLES.forEach((b,i)=>{ const x=pl+i*iw+iw*0.18, bw=iw*0.64, h=(H-pt-pb)*b.k/max, y=H-pb-h;
+    const lose=b.l>=2;
+    g+=`<rect x="${x}" y="${y}" width="${bw}" height="${h}" rx="2" fill="${lose?'#e06c5a':'#9ee89a'}" opacity="${lose?0.9:0.72}"/>`+
+       `<text x="${x+bw/2}" y="${y-4}" fill="#cfe8c8" font-size="10.5" text-anchor="middle">${b.k}</text>`+
+       `<text x="${x+bw/2}" y="${H-9}" fill="${lose?'#c98a7a':'#5a7a5a'}" font-size="9.5" text-anchor="middle">${lose?'负':'胜'}</text>`+
+       `<text x="${x+bw/2}" y="${H+14}" fill="#3d5a3d" font-size="0"> </text>`; });
+  return `<div class="statChips">
+      <span>近10场胜率<b>${wins*10}%</b></span><span>场均击杀<b>${(total/BATTLES.length).toFixed(1)}</b></span>
+      <span>单场最高<b>${best}</b></span><span>当前连胜<b>${streak}</b></span><span>昨日（第36天）<b>胜 · 击杀15</b></span></div>
+    <div class="chartBox"><svg viewBox="0 0 ${W} ${H}" style="width:100%;display:block">${g}</svg></div>
+    <div class="legend"><span>■ 绿＝胜场击杀</span><span style="color:#c98a7a">■ 红＝败场击杀</span><span>坐标＝击杀数 / 场</span></div>`;
+}
+/* ── Tab② 资源：30天四资源折线 ── */
+function tabRes(){
+  const W=690,H=232,pl=44,pr=8,pt=14,pb=22,max=900;
+  const X=i=>pl+(W-pl-pr)*i/29, Y=v=>H-pb-(H-pt-pb)*v/max;
+  let g='';
+  [0,300,600,900].forEach(v=>{ const y=Y(v);
+    g+=`<line x1="${pl}" y1="${y}" x2="${W-pr}" y2="${y}" stroke="#1c2a1c"/><text x="${pl-6}" y="${y+4}" fill="#5a7a5a" font-size="10" text-anchor="end">${v}</text>`;});
+  SERIES.forEach(([nm,arr,col])=>{
+    g+=`<polyline points="${arr.map((v,i)=>X(i)+','+Y(v)).join(' ')}" fill="none" stroke="${col}" stroke-width="2" opacity=".92"/>`; });
+  g+=`<text x="${pl}" y="${H-7}" fill="#5a7a5a" font-size="10">第 8 天</text><text x="${W-pr}" y="${H-7}" fill="#5a7a5a" font-size="10" text-anchor="end">第 37 天（今日）</text>`;
+  return `<div class="statChips">${SERIES.map(([nm,arr])=>`<span>${nm}<b>${arr[29]}</b></span>`).join('')}<span>战线囤积目标<b>纳米×1500</b></span></div>
+    <div class="chartBox"><svg viewBox="0 0 ${W} ${H}" style="width:100%;display:block">${g}</svg></div>
+    <div class="legend">${SERIES.map(([nm,,col])=>`<span><i style="background:${col}"></i>${nm}</span>`).join('')}<span>坐标＝库存量 / 30 天</span></div>`;
+}
+/* ── Tab③ 战线：100 关五时代分段进度 ── */
+function tabFront(){
+  const done=FRONTS.reduce((s,f)=>s+f[1],0); // 82
+  const pct=done; // /100
+  return `<div class="statChips"><span>当前战线<b>第 ${done} 关 · era V 相位荒原</b></span><span>总进度<b>${done}/100</b></span><span>本时代剩余<b>${FRONTS[4][2]-FRONTS[4][1]} 关</b></span><span>下一驻点<b>第 85 关 · 相位要塞前哨</b></span></div>
+  <div class="frontRow"><span id="frontMark" style="left:${pct}%">▲ 第${done}关</span>
+    ${FRONTS.map(([nm,d,t,col])=>`<div class="frontSeg"><div class="fsName">${nm}</div>
+      <div class="fsBar"><i style="width:${Math.round(100*d/t)}%;background:${col}"></i></div>
+      <div class="fsNum">${d}/${t}</div></div>`).join('')}</div>
+  <div class="body" style="margin-top:8px">车窗外＝当前战区战场图（浮岩 · 相位风暴 · 夜）——战前摘要「抬头看天」同源：天气/地形/能量场/时段 四维环境在出击简报中逐项列出。</div>`;
+}
+/* ── Tab④ 收集：图鉴/改造/配方进度 ── */
+function tabColl(){
+  return `<div class="statChips"><span>拥有卡种<b>96 / 131</b></span><span>见过改造模块<b>88 / 202</b></span><span>图纸库存(顶)<b>步兵×12</b></span></div>
+  ${COLL.map(([nm,d,t,col])=>`<div class="pRow"><span class="pName">${nm}</span>
+    <span class="pBar"><i style="width:${(100*d/t).toFixed(1)}%;background:${col};opacity:.85"></i></span>
+    <span class="pNum">${d} / ${t}</span></div>`).join('')}
+  <div class="body" style="margin-top:6px">图纸库存：步兵×12 · 装甲×7 · 火炮×5 · 通用×9 ——「得到过就可造」，制造中心消耗库存打印。</div>`;
+}
+
+/* ═══ 其余工位：占位面板（标注 EMBEDDED_PANELS 落点） ═══ */
+function openStationPanel(h){
+  const p=h.p;
+  openModal(`<h3>${h.name} · ${h.hint}</h3><div class="sub">原型占位 —— 真实实现：调起 <b style="color:#ffd27a">EMBEDDED_PANELS['${p.key}']</b> 至 _embed_layer，关闭回剖面</div>
+    <div class="ph">此处将呈现「${p.pname}」完整面板内容。<br>可叠加面板（_open_overlay 语义），关闭最上层返回剖面视图。</div>
+    ${p.extra&&p.extra.length?`<div class="body">该工位其余功能：${p.extra.map(e=>`<span class="fnBtn" style="cursor:default">${e}</span>`).join(' ')}</div>`:''}
+    <div class="sub" style="margin-top:8px">归并房间 id：${p.rooms} · 单击热区＝主功能直开（1 击）</div>
+    <div class="foot"><span class="fnBtn" onclick="closeModal()">关闭</span></div>`);
+}
+/* ═══ 充能舱：睡觉推进天数 ═══ */
+function openBunk(){
+  openModal(`<h3>🛏 充能舱 · 睡眠 / 存档</h3><div class="sub">归并房间 id：dormitory · 自动存档于战斗结束与关窗</div>
+    <div class="body">双层铺位已整理完毕。睡觉推进 1 天，精神 +30。</div>
+    <div class="foot"><span class="fnBtn" onclick="closeModal()">再等等</span>
+    <span class="fnBtn warm" id="btnSleep">睡觉（推进至第 ${state.day+1} 天）</span></div>`);
+  card.querySelector('#btnSleep').addEventListener('click',()=>{
+    state.day++; state.san=Math.min(100,state.san+30);
+    document.getElementById('day').textContent=state.day;
+    document.getElementById('san').textContent=state.san;
+    closeModal(); flash(`睡觉 · 第 ${state.day} 天 · 精神 +30`);
+  });
+}
+/* ═══ 出击简报（驾驶室 / 尾门跳板 / 顶栏） ═══ */
+function openSortie(){
+  openModal(`<h3>🎯 出击简报 · 相位荒原（第 82 关 · era V）</h3>
+    <div class="sub">作战目标：守住 3 波 · 战术主题：阵地防御</div>
+    <div class="chipRow"><span>天气 相位风暴</span><span>地形 浮岩</span><span>能量场 全队+15%</span><span>时段 夜</span></div>
+    <div class="body">敌情预告：步兵×12 装甲×6 空中×2 ▲ · 相位师·传奇档 ★<br>
+    <span style="color:#6e8a6a">（原型占位——正式版为 AC7 式简报：全息沙盘+威胁雷达+兵力对比，见 出击面板参考/index.html）</span></div>
+    <div class="foot"><span class="fnBtn" onclick="closeModal()">取消</span><span class="fnBtn warm" id="btnGo">▶ 出 击</span></div>`);
+  card.querySelector('#btnGo').addEventListener('click',()=>{ closeModal(); launch(); });
+}
+function launch(){
+  const fx=document.getElementById('battleFx');
+  fx.textContent='—— 交战中 ——'; fx.classList.add('on');
+  setTimeout(()=>{ fx.textContent='✦ 战斗胜利';
+    setTimeout(()=>{ fx.classList.remove('on');
+      state.res.nano+=60; document.getElementById('rNano').textContent=state.res.nano;
+      flash('胜利 · 缴获纳米×60（缴获入归仓池，气泡收取）'); },900);
+  },1300);
+}
+/* ═══ 晨报 ═══ */
+document.getElementById('btnPaper').addEventListener('click',()=>{
+  openModal(`<h3>晨报 · 第 ${state.day} 天</h3><div class="sub">贴在指挥位板上的一页</div>
+    <div class="body">· 全车 8 工位运转正常<br>· 昨日战况：胜 · 击杀 15（详见指挥电脑·战绩页）<br>· printer 产出待收取（归仓池）<br>· 今日战线：第 82 关 · 相位荒原 · 相位风暴</div>
+    <div class="foot"><span class="fnBtn" onclick="closeModal()">收下</span></div>`);
+});
+/* ═══ 热区显示开关 ═══ */
+document.getElementById('btnHot').addEventListener('click',function(){
+  layer.classList.toggle('showall'); this.classList.toggle('on');
+});
+/* ═══ 顶栏出击 ═══ */
+document.getElementById('btnSortie').addEventListener('click',openSortie);
+/* ═══ toast ═══ */
+function flash(msg){ const n=document.createElement('div'); n.textContent=msg;
+  n.style.cssText='position:fixed;top:64px;left:50%;transform:translateX(-50%);background:#241e13;border:1px solid #77591c;color:#ffd9a0;padding:8px 18px;border-radius:8px;z-index:99;transition:opacity .4s';
+  document.body.appendChild(n); setTimeout(()=>{n.style.opacity=0;},1400); setTimeout(()=>n.remove(),1900); }
+</script>
+</body>
+</html>
