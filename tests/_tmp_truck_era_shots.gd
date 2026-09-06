@@ -65,12 +65,66 @@ func _run() -> void:
 	print("[TruckChk] entry caption: ", _tb.get("_caption").text,
 		" | view=", _tb.get("_view_mode"), " | era_idx=", _tb.get("_era_idx"))
 
+	# ── B2. 首次引导弹层（ui-review 便捷性修复回归锁）──
+	# 弹层是 deferred 加载（popup 节点 → 内含 CanvasLayer），等稳后递归查找
+	await _wait(12)
+	var popup_layer: Node = get_tree().root.find_child("FeatureUnlockLayer", true, false)
+	if popup_layer != null:
+		print("[TruckChk] intro popup shown OK")
+		popup_layer.get_parent().call("queue_free")
+		await _wait(6)
+	else:
+		print("[TruckChk] intro popup NOT shown（seen 已持久化或引导缺失——查 FeatureUnlockPopup）")
+
+	# ── D2. ESC 关闭链（ui-review 包容性修复回归锁）──
+	await _test_esc_chain()
+
 	# ── C. 五时代 × 全工位 ──
 	for e in range(5):
 		await _check_era(e)
 
 	# ── D. 睡觉（真实推进一天；外部恢复存档）──
 	await _test_sleep()
+
+
+func _press_esc() -> void:
+	var ev := InputEventKey.new()
+	ev.keycode = KEY_ESCAPE
+	ev.pressed = true
+	Input.parse_input_event(ev)
+
+
+func _test_esc_chain() -> void:
+	_tb.call("set_era", 0, false)
+	await _wait(4)
+	# 内嵌面板
+	_tb.call("_open_panel", "store")
+	await _wait(15)
+	_press_esc()
+	await _wait(6)
+	var wrappers: Dictionary = _tb.get("_embed_wrappers")
+	if wrappers.has("store") and wrappers["store"]["wrapper"].visible:
+		_err("ESC 未关闭内嵌商店面板")
+	else:
+		print("[TruckChk] ESC closes embed panel OK")
+	# 模态卡
+	_tb.call("_open_card", "ESC测试卡", "", "esc chain test")
+	await _wait(6)
+	_press_esc()
+	await _wait(6)
+	if _tb.get("_modal_layer") != null:
+		_err("ESC 未关闭模态卡")
+	else:
+		print("[TruckChk] ESC closes modal OK")
+	# 简报
+	_tb.call("_open_sortie")
+	await _wait(10)
+	_press_esc()
+	await _wait(6)
+	if _tb.get("_briefing_layer") != null:
+		_err("ESC 未关闭出击简报")
+	else:
+		print("[TruckChk] ESC closes briefing OK")
 
 
 func _check_era(e: int) -> void:
@@ -99,6 +153,15 @@ func _check_era(e: int) -> void:
 	for k in kids:
 		if k.size.x < 4.0 or k.size.y < 4.0:
 			_err("%s 存在零尺寸热区" % era_id)
+			break
+	# v26.17：常显工位牌回归锁——每热区挂 hot_tag、可见、短牌文案非空
+	for k in kids:
+		if not k.has_meta("hot_tag"):
+			_err("%s 热区缺常显标牌(hot_tag)" % era_id)
+			break
+		var tg: Label = k.get_meta("hot_tag") as Label
+		if tg == null or not tg.visible or String(tg.text).strip_edges() == "":
+			_err("%s 工位标牌不可见或空文案" % era_id)
 			break
 	print("[TruckChk] era%d caption: %s" % [e + 1, _tb.get("_caption").text])
 	await _shot("%02d_interior_era%d" % [e + 2, e + 1])

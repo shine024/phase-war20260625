@@ -1086,6 +1086,13 @@ func _on_buy_pressed(card_id: String, card_count: int, price_nano: int, row_node
 	var qm = get_node_or_null("/root/QuestManager")
 	if qm and qm.has_method("notify_item_bought"):
 		qm.notify_item_bought()
+	# v26.13(gameplay)：商店购买成就统计接线（此前 record_system_operation 零调用）
+	var _am: Node = get_node_or_null("/root/AchievementManager")
+	if _am == null:
+		ManagerLazyLoader.ensure_loaded("achievement")
+		_am = get_node_or_null("/root/AchievementManager")
+	if _am and _am.has_method("record_system_operation"):
+		_am.record_system_operation("shop_purchase")
 	# P1-6: 购买成功反馈——此前只有行内绿闪，无 toast/音效（买了卡感知弱）
 	if card_id.begins_with("permit_"):
 		SignalBus.show_toast.emit("已购入：许可函 ×%d" % maxi(1, card_count))

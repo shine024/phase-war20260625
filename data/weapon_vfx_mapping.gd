@@ -95,8 +95,6 @@ static func get_weapon_safe_id(weapon_name: String) -> String:
 		return WEAPON_ID_MAP[weapon_name]
 	return ""
 
-## 获取武器分类
-static func get_category(weapon_name: String) -> String:
-	if weapon_name in WEAPON_ID_MAP:
-		return WEAPON_ID_MAP[weapon_name]["category"] if WEAPON_ID_MAP[weapon_name] is Dictionary else "generic"
-	return "generic"
+## v26.x: get_category 已删除（零引用）——WEAPON_ID_MAP 值是 safe_id 字符串而非字典，
+## 它恒返 "generic"（分类假象，见 weapon_projectile_vfx.proj_scale_by_name 勘误注释）。
+## 未来若引入名字贴图分档，需先给 WEAPON_ID_MAP 重建真实分类结构。

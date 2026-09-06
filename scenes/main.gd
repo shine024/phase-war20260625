@@ -1480,9 +1480,10 @@ func _on_back_to_title() -> void:
 	if SaveManager:
 		SaveManager.save_game()
 	# v21 余烬要塞：从基地经兵棋室进入战场时，返回按钮回基地而非标题
+	# v26.12d：固定主基地停用——launch_from_bunker 现由移动基地出击链设置，返回也回移动基地
 	if Engine.has_meta("launch_from_bunker"):
 		Engine.remove_meta("launch_from_bunker")
-		SceneTransition.change(get_tree(), "res://scenes/bunker/bunker_main.tscn")
+		SceneTransition.change(get_tree(), "res://scenes/bunker/truck_base.tscn")
 		return
 	SceneTransition.change(get_tree(), "res://scenes/title_screen.tscn")
 

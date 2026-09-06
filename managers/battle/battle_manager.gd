@@ -343,6 +343,12 @@ func start_battle(battle_scene: Node) -> void:
 	CardGridBattleLayout.apply_for_level(_current_level_for_env())
 	if battlefield != null and battlefield.has_method("_sync_battle_slot_grid_lane"):
 		battlefield.call_deferred("_sync_battle_slot_grid_lane")
+	# v27 修复：战场是 main.tscn 静态实例（_ready 在 boot 跑过一次），而背景刷新只挂
+	# set_current_level→current_level_changed 链——黑门入口"先关卡后标记"（set_current_level
+	# 会清无尽标记），内嵌大地图进黑门时星空分支永不生效、迟到的地球图异步回调还会盖上来。
+	# 此刻 endless 标志已定，每场开战强制重评一次背景选图。
+	if battlefield != null and battlefield.has_method("_update_background"):
+		battlefield._update_background()
 	# 批次9（2026-08-23）：世代号护栏——end_battle 的结算链跨 3+ 帧延迟，快速重试时
 	# 旧链会 clobber 新战状态（_is_phase_master_battle 重置/重复 battle_ended/吞掉
 	# 新战 begin_card_grid_combat）。每场递增世代号，延迟调用携带并校验。
@@ -559,6 +565,11 @@ func end_battle(player_won: bool) -> void:
 	# 结束能量系统
 	if energy_manager:
 		energy_manager.end_battle()
+	# v26.13(gameplay)：败因快照——清引用/清场前定格击杀与残存敌军构成，随 _battle_result
+	# 供结算面板读取。修复：面板渲染窗口里数组/战场单位已脱离可读状态，败因分析恒显示
+	# "未能记录/无"，与结算"击毁敌方 N"自相矛盾（实机 P1）。
+	_battle_result["defeat_kills_by_type"] = _defeated_type_counts()
+	_battle_result["defeat_alive_by_type"] = _alive_type_counts_from(enemy_units_node)
 	# 清空节点引用，防止悬空指针
 	player_units_node = null
 	enemy_units_node = null
@@ -946,6 +957,52 @@ func _disconnect_battle_scoped_signals() -> void:
 # =========================================================================
 #  v6.0: 记录击败的敌人信息（供情报系统使用）
 # =========================================================================
+
+## v26.13(gameplay)：按 enemy_type 聚合本局击败敌人（败因快照用）
+func _defeated_type_counts() -> Dictionary:
+	var counts: Dictionary = {}
+	for e in _defeated_enemies:
+		var et: String = str(e.get("enemy_type", "infantry")) if e is Dictionary else "infantry"
+		counts[et] = int(counts.get(et, 0)) + 1
+	return counts
+
+## v26.13(gameplay)：从战场容器聚合残存敌人构成（败因快照用；queue_free 前调用）。
+## v26 起 3v3 构装对战：敌方也是 ConstructUnit（无 archetype_id，is_player=false）——
+## 敌我判定走 is_player；兵种分类优先 archetype_id，回落 stats.platform_card_id 启发式。
+func _alive_type_counts_from(units_node: Node) -> Dictionary:
+	var counts: Dictionary = {}
+	if units_node == null or not is_instance_valid(units_node):
+		return counts
+	for c in units_node.get_children():
+		if c == null or not is_instance_valid(c):
+			continue
+		var hp_val = c.get("hp")
+		if hp_val != null and float(hp_val) <= 0.0:
+			continue
+		var is_p = c.get("is_player")
+		if is_p != null and bool(is_p):
+			continue
+		var aid: String = ""
+		var aid_v = c.get("archetype_id")
+		if aid_v != null:
+			aid = str(aid_v)
+		if aid.is_empty():
+			# stats 是 UnitStats 对象（非 Dictionary）——platform_card_id 走对象属性读
+			var stats_v = c.get("stats")
+			if stats_v != null:
+				var pcid = stats_v.get("platform_card_id")
+				if pcid != null and str(pcid) != "":
+					aid = str(pcid)
+		if aid.is_empty():
+			continue
+		var et := "infantry"
+		var cfg: Dictionary = EnemyArchetypes.get_config(aid)
+		if not cfg.is_empty():
+			et = _guess_enemy_type_from_archetype(aid, cfg.get("tags", []))
+		else:
+			et = _guess_enemy_type_from_archetype(aid, [])
+		counts[et] = int(counts.get(et, 0)) + 1
+	return counts
 
 func _record_defeated_enemy(unit: Node) -> void:
 	if not is_instance_valid(unit):

@@ -24,16 +24,23 @@ var _result: Dictionary = {}
 
 
 ## 静态构造：parent 通常是 Main；result 为 OfflineIdleManager.compute_offline_rewards 的返回值
+## v26.24 修复"空壳遮罩锁死全部点击"：此前同步 add_child + 手动 _build_ui——main 场景
+## 启动竞态下 add_child 撞 "Parent node is busy setting up children" 半途而废，遮罩挂上
+## 而"领取"按钮没挂上 → 不可见全屏 STOP 空壳永久吃掉地图等一切点击（用户"点大地图
+## 无反应"根因）。改 deferred 挂载 + _ready 内构建（同 FeatureUnlockPopup/归仓引导的
+## 既有 deferred 惯例），从生命周期上根治。
 static func create(parent: Node, result: Dictionary) -> OfflineRewardDialog:
 	var dialog := OfflineRewardDialog.new()
 	dialog._result = result
 	dialog.set_anchors_preset(Control.PRESET_FULL_RECT)
 	dialog.mouse_filter = Control.MOUSE_FILTER_STOP
 	dialog.process_mode = Node.PROCESS_MODE_ALWAYS
-	parent.add_child(dialog)
-	dialog._build_ui()
+	parent.add_child.call_deferred(dialog)
 	return dialog
 
+
+func _ready() -> void:
+	_build_ui()
 
 func _build_ui() -> void:
 	# 半透明遮罩（铺满整个屏幕）

@@ -115,6 +115,16 @@ static func apply_battle_unit_presentation(
 	# 必须在 visual scale 定格后挂：edge_texels = 目标屏宽 / scale.x（帧动画 attach 的
 	# scale×2 补偿由 FrameDriver 内 refresh 兜住）。
 	UnitOutline.apply(unit_spr)
+	# v27.x: 无尽暗底可读性——黑门战场是暗紫星空底,深紫/深青单位本体与背景明度差
+	# 不足（v26.9 深色描边为亮底设计,暗底下失效）。单位 sprite 自身提亮 +16% 并偏冷
+	# +30% 蓝通道,与暗底拉开对比;普通关零影响。⚠️ 用 self_modulate（modulate 在上方
+	# 被显式重置,后续逻辑还会改它）; GameManager autoload 经 main_loop 解析（static
+	# 函数禁 autoload 标识符,同 XenoWeaponFlavor.enabled() 先例）。
+	var _ml := Engine.get_main_loop()
+	if _ml is SceneTree:
+		var _gm: Node = (_ml as SceneTree).root.get_node_or_null("GameManager")
+		if _gm != null and _gm.has_method("is_endless_battle") and _gm.is_endless_battle():
+			unit_spr.self_modulate = Color(1.16, 1.16, 1.30)
 	# 立绘居中（position 默认原点），不悬浮、不按脚线对齐。
 	unit_spr.position = Vector2(unit_spr.position.x, 0.0)
 	# v23.5 空中单位悬空化：立绘抬升到飞行高度——只动 sprite，host 仍钉在槽位地面，

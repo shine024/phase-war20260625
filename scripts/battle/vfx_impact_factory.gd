@@ -131,6 +131,42 @@ static func _park_in_pool(n: Node) -> void:
 	if root != null and root.is_inside_tree():
 		root.add_child(n)
 
+# ── v26.x: 池节点 meta 路由（外部清场工具用）──
+## acquire 出口打池别标签 + 清释放标记；release 幂等护栏防"清场早归还 + tween 迟到
+## 回调"双扣减计数器。
+static func _tag_pool_node(n: Node, pool: String) -> void:
+	n.set_meta("vfx_pool", pool)
+	n.remove_meta("vfx_released")
+
+static func _release_guard(n: Node) -> bool:
+	if n.has_meta("vfx_released"):
+		return true
+	n.set_meta("vfx_released", true)
+	return false
+
+## 工具/清场专用：把仍在树中的特效节点按池别归还（_active_* 计数同步回落）。
+## 直接 free() 会绕过延迟释放回调（weakref 失效 → 计数只增不减），长跑审计后半场
+## 会被池上限静默拒发（假性空格）。非池节点返回 false，调用方自行 free。
+static func release_to_pool(n: Node) -> bool:
+	if n == null or not is_instance_valid(n):
+		return true
+	if not n.has_meta("vfx_pool"):
+		return false
+	match str(n.get_meta("vfx_pool")):
+		"ring":
+			_release_ring(n as Line2D)
+		"beam":
+			_release_beam(n as Line2D)
+		"debris":
+			_release_debris_particle(n as CPUParticles2D)
+		"spark":
+			_release_spark_particle(n as CPUParticles2D)
+		"impact_sprite":
+			_release_impact_sprite(n as Sprite2D)
+		_:
+			return false
+	return true
+
 static var _active_indicators: int = 0
 const MAX_INDICATORS: int = 40  # weakpoint 3s / radar 6s / resonance 5s，并发量可控
 const _INDICATOR_KINDS: Array = ["weakpoint", "radar_lock", "resonance"]
@@ -197,10 +233,13 @@ static func spawn_layered_impact(parent: Node2D, world_pos: Vector2, weapon_type
 	# 族规格明令："放射状黄白小火花+微量烟，无火球帧"——轻武器只留 火花+快环+弹痕+微烟。
 	var is_light_kinetic: bool = weapon_type in [0, 4]
 	# 第1层：冲击波环（motion_reduce 时跳过）
-	# v13.1: 环色混入攻击方阵营色（55%）——密集交火时一眼分辨"这团爆炸是谁打的"。
+	# v13.1: 环色承载攻击方阵营色——密集交火时一眼分辨"这团爆炸是谁打的"。
 	# 火花/碎片层保持武器本色（武器辨识优先），阵营信息只承载在环上不喧宾夺主。
 	if not motion_reduce:
-		var ring_color: Color = base_color.lerp(side_color(is_player), 0.55)
+		# 环色 = 阵营色为主（70%）+ 武器本色微混（30%）。旧向 base.lerp(阵营,0.55) 对
+		# 暖色武器正好落进互补色灰区（导弹橙×青蓝55% ≈ 灰米），我方环完全读不出阵营。
+		# 火花/碎片仍保持武器本色（武器辨识优先，阵营信息只承载在环上）。
+		var ring_color: Color = side_color(is_player).lerp(base_color, 0.30)
 		# v20.21 批次B: 爆炸族环径 ×1.6（上限 96px 半径）+ 时长 +0.1s——22-80px 半径的环
 		# 整个待在 96px 火球贴图 + 闪光爆内部，读不出层次（AI 高频批"缺冲击波环"的
 		# 结构性病根）。×1.6 后快环 70-96px 半径（aspect1.6 椭圆 224-307px 宽），扩散时
@@ -772,8 +811,10 @@ static func spawn_muzzle_flash(parent: Node2D, local_pos: Vector2, facing_right:
 	# v18-R8: 欧米茄(10)枪口补径向放电签名——impact 已有 7 星芒而枪口只有细喷流，
 	# AI 批"零条射线/无能量核/无辉光环"（f10 muzzle 3-4/10）。紧凑版三层：能量核 +
 	# 5 短星芒 + 辉光环，全复用现有池。配色与 spawn_omega_discharge 敌我分色对齐。
+	# v26.x: 敌方绿→阵营橙红能量色——绿既不接敌方阵营语言（弹体 tint/拖尾/命中染全橙红）
+	# 也不接欧米茄家族色（蓝紫），疑似 v18-R8 临时取值；我方保持家族紫。
 	if weapon_type == 10 and not DT.is_motion_reduce():
-		var mcol: Color = Color(0.75, 0.40, 1.0, 1.0) if facing_right else Color(0.50, 1.0, 0.40, 1.0)
+		var mcol: Color = Color(0.75, 0.40, 1.0, 1.0) if facing_right else Color(1.0, 0.50, 0.22, 1.0)
 		mcol = _era_tint_energy(mcol)
 		# ① 能量核（白热闪 → 族色，ADD 快速放大骤淡）
 		if _active_impact_sprites < MAX_IMPACT_SPRITES:
@@ -1275,13 +1316,14 @@ static func spawn_laser_burn(parent: Node2D, pos: Vector2, is_player: bool = tru
 ## v12d: 欧米茄粒子炮签名放电——重型带电粒子径向迸发(大能量核+星芒射线+外向电火花+持续辉光)。
 ##   与激光/轨道炮刻意区分:激光=紧焦烧灼+焦痕+上升火星;轨道炮=贯穿+spall+速度线;
 ##   欧米茄=大范围径向放电(粒子炮打到表面炸开放射状能量,四面八方)。原与激光/轨道炮共用 OMEGA 贴图。
-##   is_player: 玩家=紫罗兰粒子;敌方=酸绿粒子——战术可读性。
+##   is_player: 玩家=紫罗兰粒子;敌方=阵营橙红能量粒子（v26.x 勘误：旧"酸绿"与敌方
+##   阵营语言/欧米茄家族色均不接，与枪口侧同步改橙红）——战术可读性。
 ##   dir: 攻击方向(来弹方向,v12d 加)——粒子炮从射手射来一束粒子流,命中点画指向来源的入射流。
 static func spawn_omega_discharge(parent: Node2D, pos: Vector2, is_player: bool = true, dir: Vector2 = Vector2.RIGHT) -> void:
 	if parent == null or not is_instance_valid(parent):
 		return
 	var motion_reduce: bool = DT.is_motion_reduce()
-	var pcol: Color = Color(0.75, 0.40, 1.0, 1.0) if is_player else Color(0.50, 1.0, 0.40, 1.0)
+	var pcol: Color = Color(0.75, 0.40, 1.0, 1.0) if is_player else Color(1.0, 0.50, 0.22, 1.0)
 	pcol = _era_tint_energy(pcol)  # v13: 时代化能量配色
 	var d := dir.normalized() if dir.length() > 0.01 else Vector2.RIGHT
 	# ⓪ 来弹粒子流:从射手方向(pos - d*L)射向命中点的粒子束——给欧米茄"从哪打来"的方向感。
@@ -1387,6 +1429,268 @@ static func spawn_omega_discharge(parent: Node2D, pos: Vector2, is_player: bool 
 	# ④ 持续辉光环:慢扩散能量环(重武器余波)
 	if not motion_reduce:
 		spawn_shockwave(parent, pos, 80.0, Color(pcol.r, pcol.g, pcol.b, 0.5))
+
+
+## ======================================================================
+## v27.x: 星冥武器专属命中/刀光（xeno_weapon_flavor 精确表分派，WPV
+## spawn_impact_with_kind 在通用贴图层之前转发到此）
+## 配色 = XenoWeaponFlavor 双色（青金晶髓/灵能紫，与黑门氛围层同源），
+## 故意不做阵营分化——星冥武器辨识优先，阵营信息由命中环/血条承担
+## （与 flavor_tint 语言同一规格原则）。
+## ======================================================================
+
+## 星冥能量爆炸帧（与 WPV.EXPLOSION_ENERGY_FRAMES 同一批贴图；资源缓存同份，
+## 本地 const 免工厂↔WPV 循环引用）。PLASMA_LOB 曲射族命中时播（替代橙红火球帧）。
+const XENO_EXPLOSION_FRAMES := [
+	preload("res://assets/effects/explosion_frames/explosion_energy_f0.png"),
+	preload("res://assets/effects/explosion_frames/explosion_energy_f1.png"),
+	preload("res://assets/effects/explosion_frames/explosion_energy_f2.png"),
+	preload("res://assets/effects/explosion_frames/explosion_energy_f3.png"),
+	preload("res://assets/effects/explosion_frames/explosion_energy_f4.png"),
+	preload("res://assets/effects/explosion_frames/explosion_energy_f5.png"),
+]
+
+## 星冥武器命中签名入口。按 flavor 分形态：
+##   MELEE_EDGE  —— 爪痕爆裂（交叉斜切光痕 + 小能量核 + 径向电火花）——近战刃光落点
+##   PLASMA_LOB  —— 能量爆炸帧（蓝白帧紫青 tint）+ 放电层 —— 曲射能量弹落点
+##   其余远程    —— 灵能放电（来弹流 + 能量核 + 星芒 + 径向火花 + 辉光环，欧米茄同构紫青版）
+static func spawn_xeno_impact(parent: Node2D, pos: Vector2, flavor: int, _is_player: bool, dir: Vector2 = Vector2.RIGHT, _opts: Dictionary = {}) -> void:
+	if parent == null or not is_instance_valid(parent):
+		return
+	var motion_reduce: bool = DT.is_motion_reduce()
+	var pcol: Color = XenoWeaponFlavor.flavor_color(flavor)
+	var d := dir.normalized() if dir.length() > 0.01 else Vector2.RIGHT
+	if flavor == XenoWeaponFlavor.Flavor.MELEE_EDGE:
+		_spawn_xeno_claw_burst(parent, pos, pcol, d, motion_reduce)
+		return
+	# ── 远程共用：来弹粒子流（方向感）——比欧米茄细一点（星冥弹道纤细语言）──
+	var istream := _acquire_beam()
+	if istream != null:
+		var is_start := pos - d * 75.0
+		istream.width = 5.0
+		istream.default_color = Color(pcol.r, pcol.g, pcol.b, 0.9)
+		istream.joint_mode = Line2D.LINE_JOINT_ROUND
+		istream.end_cap_mode = Line2D.LINE_CAP_ROUND
+		istream.add_point(is_start)
+		istream.add_point(pos)
+		istream.position = Vector2.ZERO
+		istream.material = _get_add_mat()
+		parent.add_child(istream)
+		_spawn_beam_glow(parent, is_start, pos, pcol, 14.0, 0.15)
+		var twis := istream.create_tween().bind_node(istream)
+		twis.tween_interval(0.02)
+		twis.tween_property(istream, "width", 1.5, 0.15)
+		twis.parallel().tween_property(istream, "modulate:a", 0.0, 0.2)
+		twis.tween_callback(func():
+			if is_instance_valid(istream):
+				istream.material = null
+				_release_beam(istream))
+	# ── PLASMA_LOB：能量爆炸帧层（替代曲射族橙红火球帧；tier 感知由 opts 同款简化为固定 80px）──
+	if flavor == XenoWeaponFlavor.Flavor.PLASMA_LOB and not motion_reduce:
+		spawn_animated_nuclear(parent, pos, XENO_EXPLOSION_FRAMES, 80.0, 20.0, 10.0)
+	# ── 能量核：impact_energy 贴图，白热冲击→粒子色缓缩（比欧米茄核略小：星冥弹单发质量较低）──
+	if _active_impact_sprites < MAX_IMPACT_SPRITES:
+		var xcore := _acquire_impact_sprite()
+		if xcore != null:
+			xcore.texture = PARTICLE_TEX_IMPACT_ENERGY
+			xcore.position = pos
+			xcore.scale = Vector2(1.4, 1.4)
+			xcore.modulate = Color(1.0, 1.0, 1.0, 1.0)
+			xcore.visible = true
+			xcore.material = _get_add_mat()
+			parent.add_child(xcore)
+			xcore.add_to_group("battle_vfx")
+			var twc := xcore.create_tween().bind_node(xcore)
+			twc.tween_property(xcore, "scale", Vector2(2.6, 2.6), 0.07)
+			twc.tween_property(xcore, "modulate", pcol, 0.1)
+			twc.parallel().tween_property(xcore, "scale", Vector2(1.5, 1.5), 0.26)
+			twc.tween_property(xcore, "modulate:a", 0.0, 0.3)
+			twc.tween_callback(func():
+				if is_instance_valid(xcore):
+					xcore.material = null
+					_release_impact_sprite(xcore))
+	# ── 径向星芒：5 条细线（比欧米茄 7 线收敛——纤细语言）──
+	if not motion_reduce:
+		for i in range(5):
+			var ray := _acquire_beam()
+			if ray == null:
+				continue
+			var ang: float = (float(i) / 5.0) * TAU + randf() * 0.35
+			var rdir := Vector2(cos(ang), sin(ang))
+			ray.width = 2.2
+			ray.default_color = Color(pcol.r, pcol.g, pcol.b, 0.95)
+			ray.joint_mode = Line2D.LINE_JOINT_ROUND
+			ray.end_cap_mode = Line2D.LINE_CAP_ROUND
+			ray.add_point(pos + rdir * 7.0)
+			ray.add_point(pos + rdir * (56.0 + randf() * 24.0))
+			ray.position = Vector2.ZERO
+			ray.material = _get_add_mat()
+			parent.add_child(ray)
+			var twr := ray.create_tween().bind_node(ray)
+			twr.tween_interval(0.02)
+			twr.tween_property(ray, "modulate:a", 0.0, 0.17)
+			twr.tween_callback(func():
+				if is_instance_valid(ray):
+					ray.material = null
+					_release_beam(ray))
+	# ── 径向电火花（v20.28 语义：命中主火花层带下坠重力）──
+	if not motion_reduce and _active_sparks < MAX_SPARKS:
+		_active_sparks += 1
+		var sp := _acquire_spark_particle()
+		if sp != null:
+			sp.position = pos
+			sp.texture = PARTICLE_TEX_SPARK_ENERGY
+			sp.amount = 16
+			sp.lifetime = 0.38
+			sp.lifetime_randomness = 0.3
+			sp.initial_velocity_min = 160.0
+			sp.initial_velocity_max = 320.0
+			sp.direction = Vector2(0, -1)
+			sp.spread = 180.0
+			sp.angle_min = 0.0
+			sp.angle_max = 360.0
+			sp.gravity = Vector2(0, 380.0)
+			sp.scale_amount_min = 0.35
+			sp.scale_amount_max = 0.6
+			sp.color = pcol
+			sp.color_ramp = _get_tinted_ramp(pcol)
+			sp.emitting = true
+			parent.add_child(sp)
+			var tree := sp.get_tree()
+			if tree != null:
+				_connect_deferred_release(tree.create_timer(sp.lifetime + 0.1), sp, _release_spark_particle)
+		else:
+			_active_sparks -= 1
+	# ── 辉光环余波 ──
+	if not motion_reduce:
+		spawn_shockwave(parent, pos, 62.0, Color(pcol.r, pcol.g, pcol.b, 0.45))
+
+
+## 近战爪痕爆裂：2 条交叉斜切光痕（顺来弹方向 ±22°，读"利刃斜劈"）+ 小能量核 +
+## 少量径向电火花。近战落点轻快（挥砍是高频动作，特效寿命压短防刷屏）。
+static func _spawn_xeno_claw_burst(parent: Node2D, pos: Vector2, pcol: Color, d: Vector2, motion_reduce: bool) -> void:
+	if motion_reduce:
+		return
+	for i in range(2):
+		var cut := _acquire_beam()
+		if cut == null:
+			continue
+		var ang: float = d.angle() + (0.38 if i == 0 else -0.38)
+		var cdir := Vector2(cos(ang), sin(ang))
+		cut.width = 2.8
+		cut.default_color = Color(1.0, 1.0, 1.0, 0.95) if i == 0 else Color(pcol.r, pcol.g, pcol.b, 0.95)
+		cut.joint_mode = Line2D.LINE_JOINT_ROUND
+		cut.end_cap_mode = Line2D.LINE_CAP_ROUND
+		cut.add_point(pos - cdir * 20.0)
+		cut.add_point(pos + cdir * 20.0)
+		cut.position = Vector2.ZERO
+		cut.material = _get_add_mat()
+		parent.add_child(cut)
+		var twc := cut.create_tween().bind_node(cut)
+		twc.tween_interval(0.02)
+		twc.tween_property(cut, "modulate:a", 0.0, 0.13)
+		twc.tween_callback(func():
+			if is_instance_valid(cut):
+				cut.material = null
+				_release_beam(cut))
+	if _active_impact_sprites < MAX_IMPACT_SPRITES:
+		var claw := _acquire_impact_sprite()
+		if claw != null:
+			claw.texture = PARTICLE_TEX_IMPACT_ENERGY
+			claw.position = pos
+			claw.scale = Vector2(0.9, 0.9)
+			claw.modulate = pcol
+			claw.visible = true
+			claw.material = _get_add_mat()
+			parent.add_child(claw)
+			claw.add_to_group("battle_vfx")
+			var twk := claw.create_tween().bind_node(claw)
+			twk.tween_property(claw, "scale", Vector2(1.7, 1.7), 0.06)
+			twk.parallel().tween_property(claw, "modulate:a", 0.0, 0.22)
+			twk.tween_callback(func():
+				if is_instance_valid(claw):
+					claw.material = null
+					_release_impact_sprite(claw))
+	if _active_sparks < MAX_SPARKS:
+		_active_sparks += 1
+		var sp := _acquire_spark_particle()
+		if sp != null:
+			sp.position = pos
+			sp.texture = PARTICLE_TEX_SPARK_ENERGY
+			sp.amount = 10
+			sp.lifetime = 0.3
+			sp.lifetime_randomness = 0.25
+			sp.initial_velocity_min = 140.0
+			sp.initial_velocity_max = 260.0
+			sp.direction = Vector2(0, -1)
+			sp.spread = 180.0
+			sp.angle_min = 0.0
+			sp.angle_max = 360.0
+			sp.gravity = Vector2(0, 380.0)
+			sp.scale_amount_min = 0.3
+			sp.scale_amount_max = 0.5
+			sp.color = pcol
+			sp.color_ramp = _get_tinted_ramp(pcol)
+			sp.emitting = true
+			parent.add_child(sp)
+			var tree := sp.get_tree()
+			if tree != null:
+				_connect_deferred_release(tree.create_timer(sp.lifetime + 0.1), sp, _release_spark_particle)
+		else:
+			_active_sparks -= 1
+
+
+## 星冥近战出刀弧光（枪口火替身，消费方 ConstructUnitAI._play_muzzle_feedback /
+## enemy_unit._do_attack 的 MELEE_EDGE 分支）——在单位身前画一道挥砍扫弧：
+## 半环 Line2D（前向 -64°..+64°，半径 ~30px），白热亮芯速淡（0.14s），同步
+## AttackPoseAnim 前冲姿态。unit 本地空间（add_child(unit)，随单位翻转/浮动）。
+static func spawn_melee_slash(unit: Node2D, local_pos: Vector2, facing_right: bool, _weapon_name: String = "") -> void:
+	if unit == null or not is_instance_valid(unit):
+		return
+	if DT.is_motion_reduce():
+		return
+	var pcol: Color = XenoWeaponFlavor.COLOR_EDGE
+	var fwd := 1.0 if facing_right else -1.0
+	var arc := _acquire_beam()
+	if arc == null:
+		return
+	var seg := 6
+	var r := 30.0
+	for i in range(seg + 1):
+		var a := -1.12 + (2.24 * float(i) / float(seg))
+		arc.add_point(local_pos + Vector2(cos(a) * r * fwd, sin(a) * r * 0.72))
+	arc.width = 4.2
+	arc.default_color = Color(pcol.r, pcol.g, pcol.b, 0.95)
+	arc.joint_mode = Line2D.LINE_JOINT_ROUND
+	arc.end_cap_mode = Line2D.LINE_CAP_ROUND
+	arc.position = Vector2.ZERO
+	arc.material = _get_add_mat()
+	unit.add_child(arc)
+	var tw := arc.create_tween().bind_node(arc)
+	tw.tween_property(arc, "width", 1.2, 0.14)
+	tw.parallel().tween_property(arc, "modulate:a", 0.0, 0.14)
+	tw.tween_callback(func():
+		if is_instance_valid(arc):
+			arc.material = null
+			_release_beam(arc))
+	# 白热小核心（弧心一闪，读"刃锋聚能"）
+	if _active_impact_sprites < MAX_IMPACT_SPRITES:
+		var tip := _acquire_impact_sprite()
+		if tip != null:
+			tip.texture = PARTICLE_TEX_IMPACT_ENERGY
+			tip.position = local_pos + Vector2(14.0 * fwd, -4.0)
+			tip.scale = Vector2(0.10, 0.10)
+			tip.modulate = Color(1.0, 1.0, 1.0, 0.9)
+			tip.visible = true
+			tip.material = _get_add_mat()
+			unit.add_child(tip)
+			var twt := tip.create_tween().bind_node(tip)
+			twt.tween_property(tip, "scale", Vector2(0.22, 0.22), 0.05)
+			twt.parallel().tween_property(tip, "modulate:a", 0.0, 0.12)
+			twt.tween_callback(func():
+				if is_instance_valid(tip):
+					tip.material = null
+					_release_impact_sprite(tip))
 
 
 ## 溅射冲击波环（v8.2：加长到可看清）
@@ -3328,6 +3632,7 @@ static func _acquire_ring() -> Line2D:
 			_active_rings += 1
 			candidate.visible = true
 			candidate.modulate.a = 1.0
+			_tag_pool_node(candidate, "ring")
 			return candidate
 		i -= 1
 	if _active_rings >= MAX_RINGS:
@@ -3337,6 +3642,7 @@ static func _acquire_ring() -> Line2D:
 	ring.closed = true
 	ring.joint_mode = Line2D.LINE_JOINT_ROUND
 	ring.material = _get_add_mat()
+	_tag_pool_node(ring, "ring")
 	return ring
 
 
@@ -3344,6 +3650,8 @@ static func _release_ring(ring: Line2D) -> void:
 	if ring == null or not is_instance_valid(ring):
 		_active_rings -= 1
 		return
+	if _release_guard(ring):
+		return  # v26.x: 幂等——清场已归还，tween 迟到回调不再二次扣减
 	# v7.5: 用 get_parent()!=null 判定而非 is_inside_tree()。父节点可能在战斗拆卸时
 	# 被移出场景树但尚未 free，此时 is_inside_tree()=false 会跳过 remove_child，
 	# 导致 ring 带父归还池中，下次 acquire 的 add_child 触发 "already has a parent"。
@@ -3385,6 +3693,7 @@ static func _acquire_beam() -> Line2D:
 			candidate.visible = true
 			candidate.modulate.a = 1.0
 			candidate.clear_points()  # 清空旧点（复用时重设）
+			_tag_pool_node(candidate, "beam")
 			return candidate
 		i -= 1
 	if _active_beams >= MAX_BEAMS:
@@ -3392,6 +3701,7 @@ static func _acquire_beam() -> Line2D:
 	_active_beams += 1
 	var beam := Line2D.new()
 	beam.material = _get_add_mat()
+	_tag_pool_node(beam, "beam")
 	return beam
 
 
@@ -3399,6 +3709,8 @@ static func _release_beam(beam: Line2D) -> void:
 	if beam == null or not is_instance_valid(beam):
 		_active_beams -= 1
 		return
+	if _release_guard(beam):
+		return  # v26.x: 幂等——清场已归还，tween 迟到回调不再二次扣减
 	# v7.5: 用 get_parent()!=null 判定（同 _release_ring 注释说明）
 	_park_in_pool(beam)
 	beam.visible = false
@@ -3426,6 +3738,7 @@ static func _acquire_debris_particle() -> CPUParticles2D:
 			candidate.visible = true
 			candidate.emitting = true
 			candidate.restart()
+			_tag_pool_node(candidate, "debris")
 			return candidate
 		i -= 1
 	var p := CPUParticles2D.new()
@@ -3437,6 +3750,7 @@ static func _acquire_debris_particle() -> CPUParticles2D:
 	p.material = _get_add_mat()
 	# v9.2: 默认贴图（常规烟尘）——调用方 acquire 后会按 weapon_type 覆盖
 	p.texture = PARTICLE_TEX_SMOKE_GENERIC
+	_tag_pool_node(p, "debris")
 	return p
 
 
@@ -3444,6 +3758,8 @@ static func _release_debris_particle(p: CPUParticles2D) -> void:
 	if p == null or not is_instance_valid(p):
 		_active_debris -= 1
 		return
+	if _release_guard(p):
+		return  # v26.x: 幂等——清场已归还，迟到回调不再二次扣减
 	# v7.5: 用 get_parent()!=null 判定（同 _release_ring 注释说明）
 	_park_in_pool(p)
 	p.emitting = false
@@ -3454,6 +3770,10 @@ static func _release_debris_particle(p: CPUParticles2D) -> void:
 	# v18-R9: 材质恢复池默认 ADD——金属碎块层会临时覆盖普通混合（暗色实体），
 	# 归还时归位，防止其他 debris 消费方（烟/血溅）拿到 MIX 丢失发光感。
 	p.material = _get_add_mat()
+	# v26.x: 同 _release_spark_particle——color×color_ramp 相乘，只写其一的消费方
+	# 会继承上一消费方残留（血溅红×烟渐变带之类）。两字段归还即归零。
+	p.color = Color.WHITE
+	p.color_ramp = null
 	_active_debris -= 1
 	if _debris_pool.size() < MAX_DEBRIS:
 		_debris_pool.append(p)
@@ -3475,6 +3795,7 @@ static func _acquire_spark_particle() -> CPUParticles2D:
 			candidate.visible = true
 			candidate.emitting = true
 			candidate.restart()
+			_tag_pool_node(candidate, "spark")
 			return candidate
 		i -= 1
 	var p := CPUParticles2D.new()
@@ -3499,6 +3820,7 @@ static func _acquire_spark_particle() -> CPUParticles2D:
 	# 此处赋默认值是防御性：若未来新增调用方漏赋 texture，至少不是方块
 	p.texture = PARTICLE_TEX_SPARK_METAL
 	p.emitting = true
+	_tag_pool_node(p, "spark")
 	return p
 
 
@@ -3506,6 +3828,8 @@ static func _release_spark_particle(p: CPUParticles2D) -> void:
 	if p == null or not is_instance_valid(p):
 		_active_sparks -= 1
 		return
+	if _release_guard(p):
+		return  # v26.x: 幂等——清场已归还，迟到回调不再二次扣减
 	# v7.5: 用 get_parent()!=null 判定（同 _release_ring 注释说明）
 	_park_in_pool(p)
 	p.emitting = false
@@ -3516,6 +3840,12 @@ static func _release_spark_particle(p: CPUParticles2D) -> void:
 	# 枪口火/暴击火花永久继承下坠（同 bullet._blitz_applied 池卫生家族）
 	p.gravity = Vector2.ZERO
 	p.material = _get_add_mat()
+	# v26.x: 复位 color/color_ramp——CPUParticles2D 最终色 = color × color_ramp。
+	# 命中火花/欧米茄放电等按武器/阵营写 color（橙/紫/绿），枪口火只写 color_ramp
+	# 不写 color，池循环一圈后白青喷流×残留紫/橙 = "枪口喷出异色火舌"
+	#（v26.x 审计实拍：f10 我方枪口继承 f09 导弹橙、敌方枪口继承 f10 我方放电紫）。
+	p.color = Color.WHITE
+	p.color_ramp = null
 	# v9.2: 不清 texture（同 _release_debris_particle，池复用需保留贴图）
 	_active_sparks -= 1
 	if _spark_pool.size() < MAX_SPARKS:
@@ -3535,6 +3865,7 @@ static func _acquire_impact_sprite() -> Sprite2D:
 			if candidate.get_parent() != null:
 				candidate.get_parent().remove_child(candidate)
 			_active_impact_sprites += 1
+			_tag_pool_node(candidate, "impact_sprite")
 			return candidate
 		i -= 1
 	if _active_impact_sprites >= MAX_IMPACT_SPRITES:
@@ -3545,6 +3876,7 @@ static func _acquire_impact_sprite() -> Sprite2D:
 	s.offset = Vector2.ZERO
 	s.scale = Vector2.ONE  # Sprite2D 无 expand_mode（属 TextureRect/Control）；按 scale 渲染是默认行为
 	s.visible = false
+	_tag_pool_node(s, "impact_sprite")
 	return s
 
 
@@ -3552,6 +3884,8 @@ static func _release_impact_sprite(s: Sprite2D) -> void:
 	if s == null or not is_instance_valid(s):
 		_active_impact_sprites -= 1
 		return
+	if _release_guard(s):
+		return  # v26.x: 幂等——清场已归还，tween 迟到回调不再二次扣减
 	_park_in_pool(s)
 	s.visible = false
 	s.position = Vector2.ZERO

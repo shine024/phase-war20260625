@@ -57,8 +57,9 @@ static func resolve_visual_wt(weapon_name: String, raw_wt: int, shooter_is_playe
 	return int(resolve_traced(weapon_name, raw_wt, shooter_is_player)["visual_wt"])
 
 ## 带溯源版解析（审计工具/排错用）。返回：
-##   {"visual_wt": int, "via": "exact"|"keyword"|"wt_fallback", "matched": String}
-## via 说明——exact=签名精确表命中；keyword=视觉关键词命中；wt_fallback=名字无信号
+##   {"visual_wt": int, "via": "exact"|"xeno"|"keyword"|"wt_fallback", "matched": String}
+## via 说明——exact=签名精确表命中；xeno=星冥武器精确表（xeno_weapon_flavor）；
+## keyword=视觉关键词命中；wt_fallback=名字无信号
 ## 按域解释原始 wt（保持解析前行为）。审计工具统计 wt_fallback 占比即为
 ## "视觉身份未确定"的武器清单（新武器漏配会在 smoke 阶段暴露）。
 static func resolve_traced(weapon_name: String, raw_wt: int, shooter_is_player: bool) -> Dictionary:
@@ -68,6 +69,15 @@ static func resolve_traced(weapon_name: String, raw_wt: int, shooter_is_player: 
 		var exact: int = CardRes.trajectory_override_exact(weapon_name)
 		if exact >= 0:
 			return {"visual_wt": exact, "via": "exact", "matched": weapon_name}
+	# ── 第1.5优先级：星冥武器精确表（xeno_weapon_flavor.gd 单一真身）──
+	# 必须插在关键词链之前：防"等离子抛射"被 OMEGA_KEYWORDS"等离子"抢占误归 wt10，
+	# 并把"棱光束/热射线"等光束语义显式钉住。via 记 "xeno"（审计可区分来源）。
+	# 注意：本层无开关判断（保持纯数据、--script 模式零 autoload 依赖）；回退开关
+	# GameConfig.xeno_vfx_enabled 在各视觉消费方（bullet/batch/命中/枪口）短路。
+	if not weapon_name.is_empty():
+		var xeno_wt: int = XenoWeaponFlavor.visual_wt_exact(weapon_name)
+		if xeno_wt >= 0:
+			return {"visual_wt": xeno_wt, "via": "xeno", "matched": weapon_name}
 	# ── 第2优先级：视觉关键词（按特征性从强到弱；命中即返回）──
 	# 注意与弹道侧 _BEAM_WEAPON_KEYWORDS 的分工：弹道侧把所有光束语义词统一为
 	# SNIPER(6) 光束弹道；视觉侧进一步细分——激光是烧灼(8)、磁轨是穿透(11)、

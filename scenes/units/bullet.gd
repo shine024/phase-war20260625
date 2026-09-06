@@ -62,6 +62,9 @@ var _visual_wt: int = 0
 ## 弹头形状分化轴——玩家侧直射 weapon_type 恒为 0（新枚举 DIRECT），wt 档永远
 ## 到不了 RIFLE/MG 形状分支，亚类是直射弹形分流的唯一有效键。
 var _shape_flavor: int = -1
+## v27.x: 星冥武器 flavor（XenoWeaponFlavor.classify 值，setup 时按武器名解析）。
+## 消费点：弹体染色/贴图弹 tint/拖尾色/近战弹速——紫青双色替代黄白/橙红默认。
+var _xeno_flavor: int = -1
 ## v20.16c: 坦克炮口径量级（tank_caliber_scale 解析值）——TANK_GUN 桶内再分层，
 ## 初级 57mm 坦克炮与终级 120mm+ 机甲主炮的弹体/曳光粗细随口径拉开。仅 TANK_GUN 消费。
 var _caliber_scale: float = 1.0
@@ -182,6 +185,7 @@ func setup(p_target: Node2D, p_damage: float, p_is_player: bool, p_weapon_type: 
 		weapon_type = p_weapon_type
 	_visual_wt = WeaponVisuals.resolve_visual_wt(_weapon_name, weapon_type, shooter_is_player)
 	_shape_flavor = DirectWeaponFlavor.classify(_weapon_name, weapon_type)
+	_xeno_flavor = XenoWeaponFlavor.classify(_weapon_name)
 	_caliber_scale = WeaponProjectileVfx.tank_caliber_scale(_weapon_name)
 	_indirect_flavor = WeaponProjectileVfx.classify_indirect(_weapon_name)
 	_start_position = global_position
@@ -277,6 +281,10 @@ func _configure_behavior() -> void:
 	# 曲射/空射（_is_indirect）弧线节奏不参与，防亚类关键词误改曲射弹道。
 	if not _is_indirect:
 		speed = WeaponProjectileVfx.flavor_speed(_shape_flavor, speed)
+	# v27.x: 星冥近战刃光弹速 ×1.5（迅捷劈砍读感；伤害结算仍在命中时点，纯视觉提速，
+	# 近战 100-300px 飞行压到 0.1-0.28s）
+	if _xeno_flavor == XenoWeaponFlavor.Flavor.MELEE_EDGE and XenoWeaponFlavor.enabled():
+		speed *= 1.5
 
 	# 霰弹：在本弹上直接设置随机初始方向偏移
 	if pellet_count > 1:
@@ -363,6 +371,12 @@ func _apply_visual() -> void:
 	# 命中环承担，规格原则 5）。仅已分化亚类覆盖。
 	if WeaponProjectileVfx.flavor_layer_key(_shape_flavor) >= 0:
 		bullet_color = WeaponProjectileVfx.flavor_tint(_shape_flavor)
+	# v27.x: 星冥弹体染色（阵营无关）——紫青双色优先于亚类色/阵营默认色。
+	# 近战刃光片放大一档（近战距离短，弹体可读窗口 <0.2s）。
+	if _xeno_flavor >= 0 and XenoWeaponFlavor.enabled():
+		bullet_color = XenoWeaponFlavor.flavor_color(_xeno_flavor)
+		if _xeno_flavor == XenoWeaponFlavor.Flavor.MELEE_EDGE:
+			size_scale = maxf(size_scale, 1.25)
 	# v20.16: 直射坦克炮弹体加粗（flavor 轴）——直射炮 weapon_type 恒 0 落轻武器档
 	# size 1.0，此前坦克炮弹与冲锋枪弹同尺寸；亚类判定后放大到炮弹级。
 	# v20.16c: 再乘口径量级（57mm 0.65 / 75mm 0.85 / 105mm 1.05 / 120mm+ 1.25）——
@@ -444,6 +458,9 @@ func _apply_tex_sprite_visual(is_player: bool) -> void:
 	# v20.25: 敌方贴图弹 tint 粉红→亮橙红——与直射/曲射 batch 的 _ENEMY_TINT 统一
 	#（v18-R9b 已否掉粉红"棉花糖失真"，此处是曲射弹体阵营色的最后一个粉红残留）。
 	var tint := Color.WHITE if is_player else Color(1.0, 0.55, 0.25)
+	# v27.x: 星冥贴图弹（单发兜底路径的曲射/空射族）紫青覆盖阵营橙红
+	if _xeno_flavor >= 0 and XenoWeaponFlavor.enabled():
+		tint = XenoWeaponFlavor.flavor_color(_xeno_flavor)
 	# v6.0: 优先使用武器名查贴图
 	var sc: float
 	var tex: Texture2D
@@ -473,8 +490,14 @@ func _apply_tex_sprite_visual(is_player: bool) -> void:
 		_tracer_line.visible = _show_tracer
 		if _show_tracer:
 			_tracer_line.default_color = _trail_color_for_weapon()
-			_tracer_line.width = 2.5
-			_tracer_line.set_point_position(1, Vector2(-speed * 0.10, 0.0))
+			# v26.x: 磁轨(11)曳光加粗加长——超高初速动能弹的速度线是可读性主载体，
+			# 通用 2.5px×0.10s 档对磁轨太弱（审计实拍弹道格近乎空场）。
+			if weapon_type == 11:
+				_tracer_line.width = 3.8
+				_tracer_line.set_point_position(1, Vector2(-speed * 0.22, 0.0))
+			else:
+				_tracer_line.width = 2.5
+				_tracer_line.set_point_position(1, Vector2(-speed * 0.10, 0.0))
 	_apply_trail()
 
 
@@ -626,6 +649,11 @@ func _apply_trail_tier() -> void:
 
 ## v8.1: 按武器类型获取拖尾粒子颜色
 func _trail_color_for_weapon() -> Color:
+	# v27.x: 星冥拖尾（紫青双色）——优先于敌方橙红/亚类色（武器辨识优先语言一致）
+	if _xeno_flavor >= 0 and XenoWeaponFlavor.enabled():
+		var xc := XenoWeaponFlavor.flavor_color(_xeno_flavor)
+		xc.a = 0.75
+		return xc
 	if not shooter_is_player:
 		# v18-R9b: 敌方拖尾粉红→橙红（AI 批"粉红色棉花糖状完全失真"——粉红是
 		# 阵营代码色不是物理色；橙红保持敌我区分且符合燃烧语义）

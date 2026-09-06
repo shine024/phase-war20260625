@@ -636,9 +636,9 @@ func _refresh_card_skill_section(card: CardResource, override_stats: UnitStats =
 			lines.append("  · %s%s（%s）：%s" % [nm, ulti, itv_s, eff_cn])
 	var text: String = "\n".join(lines)
 	_card_skill_label.text = text
-	# 悬浮情报：来源标签清单（标签命中即触发上列技能，由兵种/阵营/法则家族决定）
+	# 悬浮情报：来源标签清单（标签命中即触发上列技能，由兵种与阵营决定）
 	if not tag_list.is_empty():
-		_card_skill_label.tooltip_text = "来源标签：%s\n（标签命中的周期技能见上；标签由兵种/阵营/法则家族决定）" % "、".join(PackedStringArray(tag_list))
+		_card_skill_label.tooltip_text = "来源标签：%s\n（标签命中的周期技能见上；标签由兵种与阵营决定）" % "、".join(PackedStringArray(tag_list))
 	else:
 		_card_skill_label.tooltip_text = ""
 	_set_section_visible_by_content(_card_skill_section, text)

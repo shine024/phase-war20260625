@@ -22,6 +22,11 @@ class_name GameConfig
 ## IntelItemBag 库存）+ 纳米费；false=图纸只验持有不消耗（旧"永久解锁"行为）。
 ## 消费点 blueprint_manager.install_modification
 @export var mod_consumable_enabled: bool = true
+## v27.x: 星冥武器专属 VFX 总开关——true=星冥 20 武器名（xeno_weapon_flavor 精确表）
+## 走紫青专属开火/弹道/命中视觉（近战刃光/灵能放电/能量爆炸帧）；false=全部消费方
+## （bullet/三 batch/命中分派/枪口反馈）短路回人类通用视觉（星冥武器蹭既有 wt 族）。
+## 消费点 weapon_visual_profiles 之外的全部 XenoWeaponFlavor 分支（解析层无开关，纯数据）
+@export var xeno_vfx_enabled: bool = true
 
 ## 调试配置
 @export_group("调试配置")
@@ -51,5 +56,6 @@ func reset_to_defaults() -> void:
 	env_effects_enabled = true
 	battle_layouts_enabled = true
 	mod_consumable_enabled = true
+	xeno_vfx_enabled = true
 	debug_no_deploy_limits = false  # P0-5 修复：测试开关此前漏重置
 	debug_grant_all_blueprints = false

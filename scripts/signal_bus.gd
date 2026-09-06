@@ -230,5 +230,7 @@ signal mechanism_drone_marked(from_pos: Vector2, target_positions: Array)
 signal bunker_room_state_changed(room_id: String, new_state: int)
 # 睡觉推进天数——HUD/氛围层刷新
 signal bunker_day_ended(day: int)
+# v26.19 卡车行军状态变化（启程/到站/回充/引擎升级）——地图燃料 chip/卡车标记徽标/基地 caption 刷新
+signal truck_travel_changed()
 # 英雄档案解锁（P3：击败相位师掉碎片集齐后发）——纪念墙点灯
 signal hero_archive_unlocked(master_id: String)

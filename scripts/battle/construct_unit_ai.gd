@@ -1226,7 +1226,14 @@ static func _play_muzzle_feedback(u: Node2D, firing_wt: int = -1, weapon_name: S
 		var _st = u.get("stats")
 		flash_wt = int(_st.weapon_type) if _st != null else 0
 	flash_wt = WeaponVisuals.resolve_visual_wt(weapon_name, flash_wt, shooter_is_player)
-	VfxImpactFactory.spawn_muzzle_flash(u, muzzle_offset, facing_right, flash_wt)
+	# v27.x: 星冥近战刃光——枪口火替换为出刀弧光（挥砍扫弧 + 刃锋白热闪），同步
+	# AttackPoseAnim 前冲姿态（调用方随后的 play 不变）。敌方 _do_attack 复用本
+	# 静态方法 → 敌我双侧同款；缴获星冥卡的玩家单位自动同享。其余星冥远程武器
+	# 枪口火经 resolve_visual_wt 已归能量族（白青喷流），照常。
+	if XenoWeaponFlavor.enabled() and XenoWeaponFlavor.classify(weapon_name) == XenoWeaponFlavor.Flavor.MELEE_EDGE:
+		VfxImpactFactory.spawn_melee_slash(u, muzzle_offset, facing_right, weapon_name)
+	else:
+		VfxImpactFactory.spawn_muzzle_flash(u, muzzle_offset, facing_right, flash_wt)
 	# 开火缩放脉冲：交给单位实例方法处理（避开根 scale.x 翻转，只动 Sprite 子节点）
 	# reduce motion 时跳过脉冲（保留炮口火——静态闪烁非抖动）
 	var reduce_motion: bool = false

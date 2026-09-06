@@ -346,6 +346,11 @@ func _style_battle_button(btn: Button, font_color: Color, bg_color: Color) -> vo
 	style.set_border_width_all(1)
 	style.set_corner_radius_all(5)
 	btn.add_theme_stylebox_override("normal", style)
+	# ui-review·易用性：hover/pressed 反馈（原单态悬停无响应）
+	var hover_sb: StyleBoxFlat = style.duplicate()
+	hover_sb.bg_color = style.bg_color.lightened(0.14)
+	btn.add_theme_stylebox_override("hover", hover_sb)
+	btn.add_theme_stylebox_override("pressed", style.duplicate())
 
 ## 功能按钮点击：高亮状态 + 发出信号
 func _on_func_btn_pressed(key: String, signal_name: String) -> void:

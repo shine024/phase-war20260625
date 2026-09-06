@@ -347,9 +347,13 @@ func _spawn_impact_cell(f: int, side: bool) -> void:
 func _clear_fx() -> void:
 	# v19-R25: queue_free() 延迟释放导致上一格节点仍残留在树中，污染当前格截图。
 	# 改用立即 remove_child + free，确保清理完成后再 spawn 新节点。
+	# v26.x: 池化特效改走 release_to_pool（归还池 + 计数器回落）——直接 free 绕过
+	# 延迟释放回调（weakref 失效），_active_* 只增不减，长跑审计后半场会被池上限
+	# 静默拒发（假性空格）。非池节点（贴图残骸/指示器等）照旧立即 free。
 	for child in _fx_layer.get_children():
-		_fx_layer.remove_child(child)
-		child.free()
+		if not VfxFactory.release_to_pool(child):
+			_fx_layer.remove_child(child)
+			child.free()
 
 func _capture(file_name: String, center: Vector2) -> void:
 	# v17c 三帧择优：见 CAPTURE_FRAMES 注释。逐帧截取特效区亮度最高的一张落盘。

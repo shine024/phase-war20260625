@@ -70,6 +70,11 @@ func _ready() -> void:
 	btn_style.corner_radius_bottom_right = 3
 	btn_style.corner_radius_bottom_left = 3
 	_toggle_btn.add_theme_stylebox_override("normal", btn_style)
+	# ui-review·易用性：hover/pressed 反馈（原单态悬停无响应）
+	var btn_hover: StyleBoxFlat = btn_style.duplicate()
+	btn_hover.bg_color = btn_style.bg_color.lightened(0.18)
+	_toggle_btn.add_theme_stylebox_override("hover", btn_hover)
+	_toggle_btn.add_theme_stylebox_override("pressed", btn_style.duplicate())
 	_toggle_btn.add_theme_color_override("font_color", DT.COLOR_TEXT_DIM)
 	_toggle_btn.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
 	hbox.add_child(_toggle_btn)

@@ -11,6 +11,8 @@ const SCENE_MAIN := "res://scenes/main.tscn"
 const INSTRUMENT_BAR_SCENE := "res://scenes/ui/bottom_instrument_bar.tscn"
 const PanelStyles = preload("res://scripts/ui/panel_styles.gd")
 const DT = preload("res://resources/design_tokens.gd")
+const TruckTravel = preload("res://data/truck_travel.gd")          # v26.19: 行军数值真身
+const BunkerRoomDefs = preload("res://data/bunker_room_defs.gd")   # v26.19: cost_text 价目文案
 
 const COLOR_CYAN := Color(0.0, 0.9, 1.0)
 const COLOR_AMBER := Color(1.0, 0.71, 0.37)
@@ -168,6 +170,30 @@ var _ext_holder: Control
 var _ext_bg: TextureRect
 var _ext_truck: TextureRect
 var _ext_caption: Label
+var _caption_base := ""   # v26.19：caption 静态段（行军状态段动态拼接）
+
+## v26.19 基地管理器入口（行军状态真身；bunker 是懒加载管理器，先 ensure 再取）
+func _bunker_mgr() -> Node:
+	if ManagerLazyLoader and ManagerLazyLoader.has_method("ensure_loaded"):
+		ManagerLazyLoader.ensure_loaded("bunker")
+	return get_node_or_null("/root/BunkerManager")
+
+func _refresh_caption(_day: int = 0) -> void:
+	if _caption == null or not is_instance_valid(_caption):
+		return
+	_caption.text = _caption_base + _caption_status()
+
+## caption 行军状态段：停靠点 + 燃料 / 行驶中倒计时
+func _caption_status() -> String:
+	var bm := _bunker_mgr()
+	if bm == null:
+		return ""
+	if bm.is_traveling():
+		return " ｜ 行驶中 → 第%d关 · 剩%d天 ｜ 燃料 %d/%d" % [
+			int(bm.get_travel_dest()), int(bm.get_travel_days_left()),
+			int(bm.get_fuel()), int(bm.get_fuel_cap())]
+	return " ｜ 停靠 第%d关 ｜ 燃料 %d/%d" % [
+		int(bm.get_parked_level()), int(bm.get_fuel()), int(bm.get_fuel_cap())]
 
 func _ready() -> void:
 	DesignTokens.ensure_cjk_fallback()
@@ -196,6 +222,11 @@ func _ready() -> void:
 		initial_view = String(Engine.get_meta("truck_base_view"))
 		Engine.remove_meta("truck_base_view")
 	_set_view(initial_view, false)
+	# v26.19：行军状态变化（启程/到站/回充/引擎升级）→ caption 燃料段即时刷新
+	if not SignalBus.truck_travel_changed.is_connected(_refresh_caption):
+		SignalBus.truck_travel_changed.connect(_refresh_caption)
+	if not SignalBus.bunker_day_ended.is_connected(_refresh_caption):
+		SignalBus.bunker_day_ended.connect(_refresh_caption)
 
 # ── 顶栏 ──
 func _build_topbar() -> void:
@@ -215,7 +246,7 @@ func _build_topbar() -> void:
 
 	var title := Label.new()
 	title.text = "移动基地 · 装甲卡车驻地"
-	title.add_theme_font_size_override("font_size", 17)
+	title.add_theme_font_size_override("font_size", 16)
 	title.add_theme_color_override("font_color", Color(0.91, 0.86, 0.75))
 	_topbar.add_child(title)
 
@@ -259,6 +290,18 @@ func _build_topbar() -> void:
 	var sp := Control.new()
 	sp.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_topbar.add_child(sp)
+
+	# v26.18：战区地图入口——基地此前无法选关（时代 chips 只是换驻地观感，不切关卡），
+	# 地图侧本就支持滚轮缩放/拖拽平移/点关卡就地出击，缺的只是这条通路
+	var map_btn := Button.new()
+	map_btn.text = "🗺 战区地图"
+	map_btn.focus_mode = Control.FOCUS_NONE
+	map_btn.add_theme_font_size_override("font_size", 13)
+	map_btn.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	map_btn.tooltip_text = "打开战区地图：滚轮缩放、拖拽移动，点关卡直接出击"
+	_style_btn(map_btn, COLOR_CYAN)
+	map_btn.pressed.connect(_open_world_map)
+	_topbar.add_child(map_btn)
 
 	var sortie := Button.new()
 	sortie.text = "▶ 出击"
@@ -327,6 +370,16 @@ func _build_image_area() -> void:
 	_caption.add_theme_color_override("font_color", Color(1.0, 0.89, 0.69))
 	_image_holder.add_child(_caption)
 
+	# v26.13(ui-review)：首次进入一句话引导（便捷性：新界面零说明=流失点）
+	_maybe_show_truck_intro.call_deferred()
+
+## 首次见到移动基地的一句话说明（show_once 随存档持久化）。
+## ⚠️ deferred：_ready 期间 tree.root.add_child 会因"Parent node is busy"失败
+##（bunker_main._refresh_reward_bubbles 同款踩坑），key 会被提前标记 seen。
+func _maybe_show_truck_intro() -> void:
+	FeatureUnlockPopup.show_once("truck_base_intro", "移动基地 · 指南",
+		"外景看驻地，剖面干活——车厢里每个发光框都挂着常显工位牌，一眼直达。行军规则：顶栏「战区地图」点任意节点出车（耗燃料×地形，回程半价），出发后实时行军（1 天≈1 分钟，离线也计时），睡觉回充燃料；停哪才能打哪，行驶中无法出击。")
+
 # ── 时代切换 ──
 ## 贴图双通道：优先走导入管线 load()；未导入（headless 首跑/新机克隆）时
 ## 用 Image.load_from_file 直读文件兜底——剖面图 1312×736 静态底图，无需压缩纹理收益
@@ -354,7 +407,8 @@ func set_era(i: int, animate: bool) -> void:
 		_int_bg.texture = _load_era_texture(_ext_bg_path(int(e["level"])))
 	for b_i in _era_buttons.size():
 		_era_buttons[b_i].set_pressed_no_signal(b_i == _era_idx)
-	_caption.text = "驻防地域 · %s（%s）· 战线第 %d 关" % [String(e["zone"]), String(e["label"]), _get_display_level()]
+	_caption_base = "驻防地域 · %s（%s）· 战线第 %d 关" % [String(e["zone"]), String(e["label"]), _get_display_level()]
+	_refresh_caption()
 	_rebuild_hotspots()
 	_apply_era_theme()
 	if _view_mode == "exterior":
@@ -422,9 +476,12 @@ func _rebuild_hotspots() -> void:
 		b.pressed.connect(_on_hotspot.bind(h))
 		_hot_layer.add_child(b)
 		_style_hotspot(b)
-		# v26.13：悬停工位牌——立刻报出工位名与功能（原生 tooltip 有延迟，氛围+易用双补）
+		# v26.13：悬停工位牌 + v26.17：常显短牌——玩家不悬停也要一眼认出工位功能
+		#（ui-review 便捷性：短牌=功能关键词常驻，悬停展开"全名 · 功能"完整情报）
 		var tag := Label.new()
-		tag.text = "%s · %s" % [String(h["name"]), String(h["hint"])]
+		var full_text := "%s · %s" % [String(h["name"]), String(h["hint"])]
+		var short_text := _hotspot_tag(h)
+		tag.text = short_text
 		tag.add_theme_font_size_override("font_size", 12)
 		tag.add_theme_color_override("font_color", Color(0.96, 0.97, 0.93))
 		var tsb := StyleBoxFlat.new()
@@ -439,14 +496,31 @@ func _rebuild_hotspots() -> void:
 		tag.add_theme_stylebox_override("normal", tsb)
 		tag.position = Vector2(2, 2)
 		tag.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		tag.visible = false
 		b.add_child(tag)
+		b.set_meta("hot_tag", tag)
 		b.mouse_entered.connect(func() -> void:
-			tag.visible = true
+			tag.text = full_text
 			_play_sfx("button_hover", 0.5))
 		b.mouse_exited.connect(func() -> void:
-			tag.visible = false)
+			tag.text = short_text)
 	_layout_hotspots()
+
+## 工位常显短牌文案：从 kind/key/name 语义字段推导，五时代同功能同叫法（勿逐时代手抄）
+func _hotspot_tag(h: Dictionary) -> String:
+	match String(h.get("kind", "info")):
+		"sortie":
+			return "出击"
+		"terminal":
+			return "统计"
+		"sleep":
+			return "睡觉"
+		"panel":
+			return {
+				"intelligence": "情报", "store": "商店", "backpack": "背包",
+				"modification": "改造", "evolution": "制造",
+			}.get(String(h.get("key", "")), "工位")
+		_:
+			return "医疗" if String(h.get("name", "")).contains("医疗") else "电力"
 
 func _layout_hotspots() -> void:
 	if _tex_rect == null or _tex_rect.texture == null:
@@ -476,10 +550,35 @@ func _layout_hotspots() -> void:
 		var b: Button = buttons[i]
 		b.position = Vector2(ox + float(r[0]) * dw, oy + float(r[1]) * dh)
 		b.size = Vector2(float(r[2]) * dw, float(r[3]) * dh)
+	_resolve_tag_overlaps(buttons)
 	# v26.13：车底软投影跟随车带（贴图尺寸在本次布局里刚算好）
 	if _int_shadow != null:
 		_int_shadow.position = Vector2(ox + dw * 0.06, oy + dh - 14.0)
 		_int_shadow.size = Vector2(dw * 0.88, 30.0)
+
+## v26.17：常显短牌防重叠——工位框允许交叠（卡牌墙×工作台），牌撞牌时后者向下让位。
+## 每次布局先归位 (2,2) 再重算，窗口缩放/换时代都收敛到同一结果。
+func _resolve_tag_overlaps(buttons: Array) -> void:
+	var placed: Array[Rect2] = []
+	for b in buttons:
+		if not b.has_meta("hot_tag"):
+			continue
+		var tag: Label = b.get_meta("hot_tag") as Label
+		if tag == null:
+			continue
+		tag.position = Vector2(2, 2)
+		var ms := tag.get_combined_minimum_size()
+		for _step in 6:
+			var rect := Rect2((b as Control).position + tag.position, ms)
+			var hit := false
+			for pr in placed:
+				if rect.intersects(pr):
+					hit = true
+					break
+			if not hit:
+				break
+			tag.position.y += ms.y + 4.0
+		placed.append(Rect2((b as Control).position + tag.position, ms))
 
 # ── v26.13 氛围小件 ──
 
@@ -544,13 +643,27 @@ func _on_hotspot(h: Dictionary) -> void:
 		"sleep":
 			_on_sleep()
 		_:
-			_open_card("%s · %s" % [String(h["name"]), String(h["hint"])], String(h.get("rooms", "")),
-				"工位卡片占位（info 类工位无常驻面板，正式版在基地 HUD 呈现产出/状态）。")
+			# v26.19：发电机/动力类工位 → 燃料/引擎管理卡（行军经济主界面）
+			if String(h.get("rooms", "")).contains("reactor"):
+				_open_fuel_station_card()
+			else:
+				_open_card("%s · %s" % [String(h["name"]), String(h["hint"])], String(h.get("rooms", "")),
+					"工位卡片占位（info 类工位无常驻面板，正式版在基地 HUD 呈现产出/状态）。")
 
 # ── 出击简报 ──
 func _open_sortie() -> void:
 	_close_modal()
 	_close_briefing()
+	# v26.19 停靠门控：行驶中锁定出击；出击对象=停靠关（停哪打哪）
+	var bm := _bunker_mgr()
+	if bm != null and bm.is_traveling():
+		_play_sfx("error", 0.7)
+		_open_card("行驶中", "—", "卡车正在前往第 %d 关（剩 %d 天 ≈ %d 分钟，实时行军、离线也计时）。\n到站停靠后才能出击。" % [
+			int(bm.get_travel_dest()), int(bm.get_travel_days_left()),
+			int(bm.get_travel_days_left())])
+		return
+	if bm != null and GameManager != null:
+		GameManager.set_current_level(int(bm.get_parked_level()))
 	_play_sfx("panel_open", 0.6)
 	var level := _get_display_level()
 	var era_i := clampi((level - 1) / 20 + 1, 1, 5)
@@ -664,7 +777,7 @@ func _open_sortie() -> void:
 	var dl := Label.new()
 	dl.text = desc if desc != "" else "击溃敌军，推进战线。"
 	dl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	dl.add_theme_font_size_override("font_size", 12.5)
+	dl.add_theme_font_size_override("font_size", 13)
 	left.add_child(dl)
 	left.add_child(_brief_section("环境四维（本场实际乘区）"))
 	var chips := HBoxContainer.new()
@@ -715,7 +828,7 @@ func _open_sortie() -> void:
 			row.add_child(bar)
 			var num := Label.new()
 			num.text = "%d/%d" % [done, total]
-			num.add_theme_font_size_override("font_size", 11.5)
+			num.add_theme_font_size_override("font_size", 12)
 			row.add_child(num)
 			if level >= (era - 1) * 20 + 1 and level <= era * 20:
 				var mk := Label.new()
@@ -726,9 +839,37 @@ func _open_sortie() -> void:
 			center.add_child(row)
 	var arrow := Label.new()
 	arrow.text = "我方箭头 ──▶ 红标阵地（波次来向见战内预警）"
-	arrow.add_theme_font_size_override("font_size", 11)
+	arrow.add_theme_font_size_override("font_size", 12)
 	arrow.add_theme_color_override("font_color", Color(0.45, 0.42, 0.36))
 	center.add_child(arrow)
+	# v26.13(gameplay)：出击编队卡行——本场带什么卡/等级一目了然（补决策信息+中部空置）
+	center.add_child(_brief_section("出击编队"))
+	var load_flow := HFlowContainer.new()
+	load_flow.add_theme_constant_override("h_separation", 6)
+	load_flow.add_theme_constant_override("v_separation", 4)
+	center.add_child(load_flow)
+	var _loadouts: Array = PhaseInstrumentManager.get_loadouts() if PhaseInstrumentManager != null else []
+	for lo2 in _loadouts:
+		var plat = lo2.get("platform")
+		var nm2 := "?"
+		var lv2 := 0
+		if plat != null:
+			var dn = plat.get("display_name")
+			if dn != null:
+				nm2 = String(dn)
+			var lvv = plat.get("card_level")
+			if lvv != null:
+				lv2 = maxi(int(lvv), 1)  # 未上阵卡 level 存 0，显示钳 1（等级轴 Lv1-30）
+		load_flow.add_child(_loadout_chip("%s Lv.%d" % [nm2, lv2], false))
+	var empty_n: int = maxi(my_slots - _loadouts.size(), 0)
+	for e_i in range(mini(empty_n, 9)):
+		load_flow.add_child(_loadout_chip("空槽", true))
+	if _loadouts.is_empty():
+		var none_l := Label.new()
+		none_l.text = "（未装备任何平台卡——点「更换装备」去背包绿槽装机）"
+		none_l.add_theme_font_size_override("font_size", 12)
+		none_l.add_theme_color_override("font_color", Color(0.8, 0.5, 0.4))
+		load_flow.add_child(none_l)
 
 	mid.add_child(VSeparator.new())
 
@@ -740,17 +881,17 @@ func _open_sortie() -> void:
 	right.add_child(_brief_section("敌情预告"))
 	var tier_l := Label.new()
 	tier_l.text = "敌方档位：%s档（时代内第 %d 关）" % [tier_name, in_era]
-	tier_l.add_theme_font_size_override("font_size", 12.5)
+	tier_l.add_theme_font_size_override("font_size", 13)
 	right.add_child(tier_l)
 	var slot_l := Label.new()
 	slot_l.text = "敌方阵地：%d 行 × %d 列 = %d 槽" % [rows, e_cols, enemy_slots]
-	slot_l.add_theme_font_size_override("font_size", 12.5)
+	slot_l.add_theme_font_size_override("font_size", 13)
 	right.add_child(slot_l)
 	if layout_note != "":
 		var ln := Label.new()
 		ln.text = "题面：" + layout_note
 		ln.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		ln.add_theme_font_size_override("font_size", 11.5)
+		ln.add_theme_font_size_override("font_size", 12)
 		ln.add_theme_color_override("font_color", Color(0.56, 0.72, 0.56))
 		right.add_child(ln)
 	right.add_child(_brief_section("兵力对比"))
@@ -770,7 +911,7 @@ func _open_sortie() -> void:
 	right.add_child(cmp)
 	var cmp_l := Label.new()
 	cmp_l.text = "我方 %d 槽 ▏敌 %d 槽" % [my_slots, enemy_slots]
-	cmp_l.add_theme_font_size_override("font_size", 11.5)
+	cmp_l.add_theme_font_size_override("font_size", 12)
 	right.add_child(cmp_l)
 
 	root.add_child(HSeparator.new())
@@ -782,12 +923,22 @@ func _open_sortie() -> void:
 	var cfg := Label.new()
 	var cfg_cards := "，".join(card_names) if not card_names.is_empty() else "（空——先去背包装备平台卡）"
 	cfg.text = "出击配置 %d/%d：%s" % [my_cards, my_slots, cfg_cards]
-	cfg.add_theme_font_size_override("font_size", 12.5)
+	cfg.add_theme_font_size_override("font_size", 13)
 	cfg.add_theme_color_override("font_color", Color(0.85, 0.82, 0.72))
 	bottom.add_child(cfg)
 	var bsp := Control.new()
 	bsp.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	bottom.add_child(bsp)
+	# v26.18：简报内就地换关——省"返回基地→战区地图"两步（便捷性：一步直达）
+	var pick := Button.new()
+	pick.text = "选关"
+	pick.focus_mode = Control.FOCUS_NONE
+	pick.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	_style_btn(pick, COLOR_CYAN)
+	pick.pressed.connect(func() -> void:
+		_close_briefing()
+		_open_world_map())
+	bottom.add_child(pick)
 	var swap := Button.new()
 	swap.text = "更换装备"
 	swap.focus_mode = Control.FOCUS_NONE
@@ -800,7 +951,7 @@ func _open_sortie() -> void:
 	go.text = "▶ 出 击 ◀"
 	go.focus_mode = Control.FOCUS_NONE
 	_style_btn(go, COLOR_AMBER)
-	go.add_theme_font_size_override("font_size", 15)
+	go.add_theme_font_size_override("font_size", 14)
 	go.pressed.connect(_launch_battle)
 	bottom.add_child(go)
 
@@ -846,9 +997,22 @@ func _close_briefing() -> void:
 
 func _launch_battle() -> void:
 	_play_sfx("button")
+	# v26.19：出击=停靠关（停哪打哪；简报路径已同步，此处防御兜底）
+	var bm := _bunker_mgr()
+	if bm != null and GameManager != null and not bm.is_traveling():
+		GameManager.set_current_level(int(bm.get_parked_level()))
 	# 与 bunker_main._on_go_to_battle 同链：main 场景读 launch_from_bunker 直入当前关卡战斗
 	Engine.set_meta("launch_from_bunker", true)
 	SceneTransition.change(get_tree(), SCENE_MAIN)
+
+## v26.18：打开战区地图选关（自由缩放/拖拽 + 点击关卡就地操作）。
+## 从卡车进图的标记让地图的 ESC/返回键回本基地，而不是 main 战斗场景。
+func _open_world_map() -> void:
+	_play_sfx("button")
+	if SaveManager and SaveManager.has_method("save_game"):
+		SaveManager.save_game()
+	Engine.set_meta("world_map_from_truck", true)
+	SceneTransition.change(get_tree(), "res://scenes/world_map.tscn")
 
 func _on_back_to_title() -> void:
 	_play_sfx("button")
@@ -913,7 +1077,7 @@ func _modal_header(v: VBoxContainer, title_text: String, subtitle := "") -> void
 	if subtitle != "":
 		var sub := Label.new()
 		sub.text = subtitle
-		sub.add_theme_font_size_override("font_size", 10)
+		sub.add_theme_font_size_override("font_size", 12)
 		sub.add_theme_color_override("font_color", Color(0.55, 0.58, 0.60))
 		hbox.add_child(sub)
 	var line := ColorRect.new()
@@ -927,14 +1091,14 @@ func _open_card(title_text: String, rooms: String, body_text: String) -> void:
 	if rooms != "":
 		var sub := Label.new()
 		sub.text = "对应基地房间：" + rooms
-		sub.add_theme_font_size_override("font_size", 11)
+		sub.add_theme_font_size_override("font_size", 12)
 		sub.add_theme_color_override("font_color", Color(0.50, 0.55, 0.52))
 		v.add_child(sub)
 	var body := Label.new()
 	body.text = body_text
 	body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	body.custom_minimum_size = Vector2(460, 0)
-	body.add_theme_font_size_override("font_size", 12.5)
+	body.add_theme_font_size_override("font_size", 13)
 	v.add_child(body)
 	var foot := HBoxContainer.new()
 	foot.alignment = BoxContainer.ALIGNMENT_END
@@ -954,16 +1118,34 @@ func _close_modal() -> void:
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and event.keycode == KEY_ESCAPE:
-		if _briefing_layer != null:
-			_close_briefing()
-		elif _modal_layer != null:
+		# v26.13(ui-review)：ESC 关最上层弹层——模态卡 > 简报 > 内嵌面板
+		#（不能默认玩家知道要去找 X，包容性铁律）
+		if _modal_layer != null:
 			_close_modal()
+			get_viewport().set_input_as_handled()
+		elif _briefing_layer != null:
+			_close_briefing()
+			get_viewport().set_input_as_handled()
+		elif _close_top_embed_panel():
+			get_viewport().set_input_as_handled()
+
+## v26.13(ui-review)：ESC 关闭最上层可见的内嵌面板；有则 true
+func _close_top_embed_panel() -> bool:
+	var top: Control = null
+	for key in _embed_wrappers:
+		var wr: Control = _embed_wrappers[key]["wrapper"]
+		if wr.visible:
+			top = wr  # 字典按插入序，最后一个可见的即最上层
+	if top != null:
+		top.visible = false
+		return true
+	return false
 
 # ── 样式小件 ──
 func _make_chip(text: String) -> Label:
 	var l := Label.new()
 	l.text = text
-	l.add_theme_font_size_override("font_size", 11.5)
+	l.add_theme_font_size_override("font_size", 12)
 	l.add_theme_color_override("font_color", Color(0.53, 0.66, 0.51))
 	var sb := StyleBoxFlat.new()
 	sb.bg_color = Color(0.07, 0.09, 0.07)
@@ -974,6 +1156,29 @@ func _make_chip(text: String) -> Label:
 	sb.content_margin_right = 8
 	sb.content_margin_top = 3
 	sb.content_margin_bottom = 3
+	l.add_theme_stylebox_override("normal", sb)
+	return l
+
+## v26.13(gameplay)：简报出击编队 chip（有卡=青字亮框 / 空槽=暗灰）
+func _loadout_chip(text: String, empty: bool) -> Label:
+	var l := Label.new()
+	l.text = text
+	l.add_theme_font_size_override("font_size", 12)
+	var sb := StyleBoxFlat.new()
+	sb.set_corner_radius_all(4)
+	sb.set_border_width_all(1)
+	sb.content_margin_left = 8
+	sb.content_margin_right = 8
+	sb.content_margin_top = 3
+	sb.content_margin_bottom = 3
+	if empty:
+		l.add_theme_color_override("font_color", Color(0.5, 0.48, 0.42))
+		sb.bg_color = Color(0.06, 0.06, 0.06, 0.8)
+		sb.border_color = Color(0.3, 0.28, 0.24, 0.6)
+	else:
+		l.add_theme_color_override("font_color", Color(0.74, 0.94, 0.96))
+		sb.bg_color = Color(0.05, 0.14, 0.16, 0.85)
+		sb.border_color = Color(COLOR_CYAN.r, COLOR_CYAN.g, COLOR_CYAN.b, 0.55)
 	l.add_theme_stylebox_override("normal", sb)
 	return l
 
@@ -1158,7 +1363,7 @@ func _open_terminal() -> void:
 	var max_lv := _get_display_level()
 	var head := Label.new()
 	head.text = "当前战线：第 %d 关（已解锁最远）" % max_lv
-	head.add_theme_font_size_override("font_size", 12.5)
+	head.add_theme_font_size_override("font_size", 13)
 	card_box.add_child(head)
 	if LevelProgressManager and LevelProgressManager.has_method("get_era_progress"):
 		for era in range(1, 6):
@@ -1170,7 +1375,7 @@ func _open_terminal() -> void:
 			var nm := Label.new()
 			nm.text = ERA_NAMES[era - 1]
 			nm.custom_minimum_size = Vector2(70, 0)
-			nm.add_theme_font_size_override("font_size", 11.5)
+			nm.add_theme_font_size_override("font_size", 12)
 			nm.add_theme_color_override("font_color", Color(0.56, 0.53, 0.45))
 			row.add_child(nm)
 			var bar := ProgressBar.new()
@@ -1183,7 +1388,7 @@ func _open_terminal() -> void:
 			row.add_child(bar)
 			var num := Label.new()
 			num.text = "%d/%d" % [done, total]
-			num.add_theme_font_size_override("font_size", 11.5)
+			num.add_theme_font_size_override("font_size", 12)
 			row.add_child(num)
 			card_box.add_child(row)
 
@@ -1195,7 +1400,7 @@ func _open_terminal() -> void:
 			res_parts.append("%s %d" % [String(pair[1]), int(BasicResourceManager.get_total(String(pair[0])))])
 		var rl := Label.new()
 		rl.text = "  ".join(res_parts)
-		rl.add_theme_font_size_override("font_size", 12.5)
+		rl.add_theme_font_size_override("font_size", 13)
 		card_box.add_child(rl)
 
 	# 收集（InstanceRegistry 拥有种数 + IntelItemBag 见过种数）
@@ -1210,7 +1415,7 @@ func _open_terminal() -> void:
 		coll_parts.append("情报/图纸见过 %d 种" % IntelItemBag.get_seen_item_ids().size())
 	var cl := Label.new()
 	cl.text = "  ".join(coll_parts)
-	cl.add_theme_font_size_override("font_size", 12.5)
+	cl.add_theme_font_size_override("font_size", 13)
 	card_box.add_child(cl)
 
 	# 战绩（v26.12b：BunkerManager 战斗日志——开打抓关卡号，结束记胜负；击杀曲线待 BattleInfoDisplay 落库）
@@ -1222,7 +1427,7 @@ func _open_terminal() -> void:
 	if log.is_empty():
 		var empty := Label.new()
 		empty.text = "还没有战斗记录——出击一场后回来看。"
-		empty.add_theme_font_size_override("font_size", 11.5)
+		empty.add_theme_font_size_override("font_size", 12)
 		empty.add_theme_color_override("font_color", Color(0.52, 0.50, 0.44))
 		card_box.add_child(empty)
 	else:
@@ -1239,7 +1444,7 @@ func _open_terminal() -> void:
 			streak += 1
 		var stat := Label.new()
 		stat.text = "总场次 %d · 胜率 %d%% · 当前连胜 %d · 总击杀 %d" % [log.size(), int(round(100.0 * wins / log.size())), streak, kills_sum]
-		stat.add_theme_font_size_override("font_size", 12.5)
+		stat.add_theme_font_size_override("font_size", 13)
 		card_box.add_child(stat)
 		var strip := HBoxContainer.new()
 		strip.add_theme_constant_override("separation", 3)
@@ -1250,7 +1455,7 @@ func _open_terminal() -> void:
 			cell.text = "胜" if w else "负"
 			cell.custom_minimum_size = Vector2(26, 20)
 			cell.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-			cell.add_theme_font_size_override("font_size", 11)
+			cell.add_theme_font_size_override("font_size", 12)
 			cell.add_theme_color_override("font_color", Color(0.62, 0.91, 0.6) if w else Color(0.88, 0.42, 0.35))
 			var csb := StyleBoxFlat.new()
 			csb.bg_color = Color(0.16, 0.24, 0.16) if w else Color(0.24, 0.13, 0.11)
@@ -1266,7 +1471,7 @@ func _open_terminal() -> void:
 			var en: Dictionary = recent[i]
 			parts.append("第%d天·%d关·%s" % [int(en.get("day", 0)), int(en.get("level", 0)), "胜" if bool(en.get("won", false)) else "负"])
 		recent_l.text = "  ".join(parts)
-		recent_l.add_theme_font_size_override("font_size", 10.5)
+		recent_l.add_theme_font_size_override("font_size", 12)
 		recent_l.add_theme_color_override("font_color", Color(0.52, 0.50, 0.44))
 		card_box.add_child(recent_l)
 		# v26.12c：击杀曲线（日志含 kills——BattleInfoDisplay 落库）
@@ -1288,9 +1493,39 @@ func _open_terminal() -> void:
 		card_box.add_child(curve)
 		var curve_l := Label.new()
 		curve_l.text = "击杀曲线（近 %d 场 · 单场峰 %d）" % [kill_vals.size(), kmax]
-		curve_l.add_theme_font_size_override("font_size", 10.5)
+		curve_l.add_theme_font_size_override("font_size", 12)
 		curve_l.add_theme_color_override("font_color", Color(0.52, 0.50, 0.44))
 		card_box.add_child(curve_l)
+		# v26.13：伤害曲线（青色，独立归一；日志已落 damage 字段）
+		var dmg_vals: Array = []
+		var dur_sum := 0
+		for entry4 in recent:
+			dmg_vals.append(int(entry4.get("damage", 0)))
+			dur_sum += int(entry4.get("duration", 0))
+		var dmax: int = 1
+		for dv in dmg_vals:
+			dmax = maxi(dmax, int(dv))
+		var dcurve := HBoxContainer.new()
+		dcurve.custom_minimum_size = Vector2(0, 38)
+		dcurve.add_theme_constant_override("separation", 3)
+		for dv2 in dmg_vals:
+			var dbar := ColorRect.new()
+			dbar.color = Color(0.0, 0.9, 1.0, 0.8)
+			dbar.custom_minimum_size = Vector2(26, 4 + 32.0 * float(dv2) / float(dmax))
+			dbar.size_flags_vertical = Control.SIZE_SHRINK_END
+			dcurve.add_child(dbar)
+		card_box.add_child(dcurve)
+		var dcurve_l := Label.new()
+		dcurve_l.text = "伤害曲线（近 %d 场 · 单场峰 %d）" % [dmg_vals.size(), dmax]
+		dcurve_l.add_theme_font_size_override("font_size", 12)
+		dcurve_l.add_theme_color_override("font_color", Color(0.52, 0.50, 0.44))
+		card_box.add_child(dcurve_l)
+		if dur_sum > 0:
+			var dur_l := Label.new()
+			dur_l.text = "场均时长 %d 秒" % (dur_sum / maxi(dmg_vals.size(), 1))
+			dur_l.add_theme_font_size_override("font_size", 12)
+			dur_l.add_theme_color_override("font_color", Color(0.52, 0.50, 0.44))
+			card_box.add_child(dur_l)
 
 	var foot := HBoxContainer.new()
 	foot.alignment = BoxContainer.ALIGNMENT_END
@@ -1318,6 +1553,71 @@ func _terminal_section(text: String) -> Label:
 	l.add_theme_color_override("font_color", _era_accent())
 	return l
 
+## v26.19：发电机工位 = 燃料/引擎管理卡（回充规则/安全储备/引擎升级；行军经济主界面）
+func _open_fuel_station_card() -> void:
+	var bm := _bunker_mgr()
+	if bm == null:
+		_open_card("燃料 · 引擎", "reactor", "基地管理系统未就绪——从标题页进入一次后重试。")
+		return
+	var v := _modal_shell()
+	_modal_header(v, "燃料 · 引擎", "移动基地动力段 · 发电机工位")
+	var cap := int(bm.get_fuel_cap())
+	var eng := int(bm.get_engine_level())
+	var bar := ProgressBar.new()
+	bar.min_value = 0
+	bar.max_value = cap
+	bar.value = bm.get_fuel()
+	bar.show_percentage = false
+	bar.custom_minimum_size = Vector2(360, 22)
+	v.add_child(bar)
+	var main_l := Label.new()
+	main_l.text = "燃料 %d/%d ｜ 引擎 Lv%d（速度 %d/天 · 油罐 +%d/级）" % [
+		int(bm.get_fuel()), cap, eng, int(TruckTravel.speed_for(eng)), TruckTravel.TANK_PER_LV]
+	main_l.add_theme_font_size_override("font_size", 13)
+	v.add_child(main_l)
+	var rule_l := Label.new()
+	rule_l.text = "睡觉回充 +%d/晚 · 安全储备 %d 以下不予出车 · 行驶期间无法出击\n在战区地图点已解锁节点即可规划行军（目的地地形影响油耗，回程走熟路半价）。" % [
+		TruckTravel.SLEEP_REFUEL, TruckTravel.RESERVE_FLOOR]
+	rule_l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	rule_l.custom_minimum_size = Vector2(360, 0)
+	rule_l.add_theme_font_size_override("font_size", 12)
+	rule_l.add_theme_color_override("font_color", Color(0.7, 0.68, 0.6))
+	v.add_child(rule_l)
+	var foot := HBoxContainer.new()
+	foot.alignment = BoxContainer.ALIGNMENT_END
+	foot.add_theme_constant_override("separation", 8)
+	var up_btn := Button.new()
+	up_btn.focus_mode = Control.FOCUS_NONE
+	up_btn.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	var up_cost: Dictionary = TruckTravel.upgrade_cost(eng)
+	if up_cost.is_empty():
+		up_btn.text = "引擎已满级 Lv%d" % eng
+		up_btn.disabled = true
+		_style_btn(up_btn, Color(0.6, 0.56, 0.48))
+	else:
+		up_btn.text = "升级引擎 Lv%d→%d（%s）" % [eng, eng + 1, BunkerRoomDefs.cost_text(up_cost)]
+		up_btn.tooltip_text = "提升行驶速度与燃料罐容量"
+		_style_btn(up_btn, COLOR_AMBER)
+		up_btn.pressed.connect(func() -> void:
+			var res: Dictionary = bm.upgrade_engine()
+			if bool(res.get("ok", false)):
+				_play_sfx("achievement")
+				if SignalBus.has_signal("show_toast"):
+					SignalBus.show_toast.emit(str(res.get("reason", "")))
+				_close_modal()
+				_open_fuel_station_card()
+			else:
+				if SignalBus.has_signal("show_error"):
+					SignalBus.show_error.emit(str(res.get("reason", ""))))
+	foot.add_child(up_btn)
+	var close := Button.new()
+	close.text = "关闭"
+	close.focus_mode = Control.FOCUS_NONE
+	_style_btn(close, Color(0.6, 0.56, 0.48))
+	close.pressed.connect(_close_modal)
+	foot.add_child(close)
+	v.add_child(foot)
+
 # ───────────────────── v26.12b 接线：睡觉（BunkerManager.sleep，与基地同一存档状态） ─────────────────────
 
 func _on_sleep() -> void:
@@ -1333,6 +1633,8 @@ func _on_sleep() -> void:
 		SaveManager.save_game()
 	var txt := "醒来时是第 %d 天。\n精神 %.0f → %.0f（睡觉回复）" % [
 		int(summary.get("day", 0)), float(summary.get("sanity_before", 0)), float(summary.get("sanity_after", 0))]
+	# v26.21：燃料回充（行程实时推进，睡觉不再到站）
+	txt += "\n燃料回充 → %d/%d" % [int(float(summary.get("fuel", 0.0))), int(summary.get("fuel_cap", 0))]
 	var loot: Dictionary = summary.get("loot_printed", {})
 	if not loot.is_empty():
 		var loot_name := String(loot.get("name", ""))

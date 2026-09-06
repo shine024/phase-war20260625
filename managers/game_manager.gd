@@ -518,6 +518,10 @@ func _on_battle_ended(player_won: bool) -> void:
 		_grant_phase_field_xp_for_victory()
 		# 攻克关卡后触发势力反应
 		_apply_faction_reaction_for_conquest()
+	else:
+		# v26.13(gameplay)：败局也给相位场经验（胜利值 30%，与下方战斗卡失败 30% 同口径）
+		#——失败也有成长进尺，回收"白打一场"的挫败感。
+		_grant_phase_field_xp_for_defeat()
 	# v8.x: 战斗经验平分给上场存活卡（胜负都给，失败按 30% 比例），达阈值自动升 star_level
 	_grant_battle_experience(player_won)
 
@@ -565,6 +569,27 @@ func _on_battle_ended(player_won: bool) -> void:
 			var _am_evo = get_node_or_null("/root/AchievementManager")
 			if _am_evo and _am_evo.has_method("record_level_progress"):
 				_am_evo.record_level_progress(current_level, victory_stars)
+			# v26.13(gameplay)：战斗类成就统计接线（此前 record_battle_victory 零调用，
+			# battle 类 8 成就全部不可解锁）。数据源=BattleInfoDisplay 战况统计。
+			var _bid: Node = get_tree().root.find_child("BattleInfoDisplay", true, false)
+			var _battle_data: Dictionary = {}
+			if _bid != null and _bid.has_method("get_battle_stats"):
+				var _bs: Dictionary = _bid.get_battle_stats()
+				_battle_data = {
+					"kills": int(_bs.get("player_kills", 0)),
+					"damage_dealt": int(_bs.get("damage_dealt", 0)),
+					"battle_time": float(_bs.get("battle_time", 999.0)),
+					"no_damage": int(_bs.get("damage_taken", 0)) <= 0,
+				}
+			if _is_phase_master_battle and _current_phase_master != null:
+				_battle_data["defeated_master"] = str(_current_phase_master.get("id", ""))
+			var _am_bat = get_node_or_null("/root/AchievementManager")
+			if _am_bat and _am_bat.has_method("record_battle_victory"):
+				_am_bat.record_battle_victory(_battle_data)
+			# v26.13(gameplay)：时代完成成就接线（此前 record_era_completion 零调用）
+			if current_level % 20 == 0:
+				if _am_evo and _am_evo.has_method("record_era_completion"):
+					_am_evo.record_era_completion("era%d" % (current_level / 20 - 1))
 		# 与已解锁关卡的「最前沿」对齐，否则 save.json 里 game.current_level 会永远停在 1（读档像没进度）
 		if level_progress and level_progress.has_method("get_max_unlocked_level"):
 			set_current_level(level_progress.get_max_unlocked_level())
@@ -1230,6 +1255,18 @@ func _grant_phase_field_xp_for_victory() -> void:
 	# v6.2: 符文之语探索奖励加成
 	total_xp = int(float(total_xp) * (1.0 + _get_rune_special_bonus("on_explore_bonus")))
 	PhaseInstrumentManager.grant_phase_field_xp("battle_victory", total_xp)
+
+## v26.13(gameplay)：败局相位场经验——胜利值的 30%（与战斗卡失败比例同口径）
+func _grant_phase_field_xp_for_defeat() -> void:
+	if not PhaseInstrumentManager:
+		return
+	if not PhaseInstrumentManager.has_method("grant_phase_field_xp"):
+		return
+	var total_xp: int = LevelEras.get_base_xp_for_level(current_level)
+	total_xp = int(float(total_xp) * 0.3 * (1.0 + _get_rune_special_bonus("on_explore_bonus")))
+	if total_xp <= 0:
+		return
+	PhaseInstrumentManager.grant_phase_field_xp("battle_defeat", total_xp)
 
 ## v6.2: 获取符文之语结算类特殊效果的加成比例（0.0-1.0+）
 ## 支持：on_explore_bonus（探索奖励）、on_resource_yield（资源产出）

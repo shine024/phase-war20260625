@@ -11,6 +11,8 @@ const HeroArchiveTexts = preload("res://data/hero_archive_texts.gd")
 const ManufacturePools = preload("res://data/manufacture_pools.gd")
 const DefaultCards = preload("res://data/default_cards.gd")
 const EnemyUnitManifest = preload("res://data/enemy_unit_manifest.gd")
+const TruckTravel = preload("res://data/truck_travel.gd")
+const LevelInformationData = preload("res://data/level_information.gd")
 
 ## 运行期状态
 var _day: int = 1
@@ -44,6 +46,14 @@ var _respec_free_day: int = 0         # 洗点免费额度已用天（Lv3 每日
 var _battle_log: Array = []           # v26.12b 战斗日志（最近60条 {day,level,won}）——移动基地统计终端数据源
 var _pending_battle_level: int = 0    # 开打时抓的关卡号（battle_ended 时 current_level 可能已被胜利推进）
 var _pending_battle_endless: bool = false  # 开打时抓的黑门无尽标记（battle_ended 时 GameManager 已复位，事后查不到）
+# ── v26.19 卡车行军（停哪打哪：出击=停靠关；行车耗燃料×地形，睡觉推进+回充）──
+var _fuel := -1.0            # 燃料储备；<0=未初始化哨兵（首次读取按满罐结算，旧档免迁移）
+var _engine_level := 1       # 引擎/传动 Lv1-5：速度与罐容随级提升
+var _parked_level := 0       # 停靠关卡（0=未初始化哨兵→懒解析为战线前沿，旧档不被拽回第1关）
+var _travel_dest := 0        # 行驶目的地（0=未在途）
+var _travel_days_total := 0  # 行程总天数（大地图路线进度分母；0=未在途）
+var _travel_started_unix := 0.0  # 出发时刻（unix 秒；v26.21 实时行军）
+var _travel_ends_unix := 0.0     # 预计到站时刻（unix 秒）
 
 ## 荣誉陈列室解锁所需碎片数（P3 定 10：让中期玩家够得着；30 全收集是观星台条件）
 const HONOR_HALL_FRAGMENT_GATE := 10
@@ -99,6 +109,139 @@ func _on_battle_started() -> void:
 		# 并在 _settle_endless_battle 里复位 _is_endless_battle，事后查恒 false
 		_pending_battle_endless = GameManager.has_method("is_endless_battle") \
 			and GameManager.is_endless_battle()
+
+## ───────────────────── v26.19 卡车行军（停泊/燃料/引擎） ─────────────────────
+## 数值真身在 data/truck_travel.gd（TruckTravel）；本节只管状态与结算。
+
+## 停靠关卡：哨兵 0 → 懒解析为战线前沿（旧档不被拽回第 1 关；新档=第 1 关）
+func get_parked_level() -> int:
+	if _parked_level < 1:
+		var lv := 0
+		var lp := get_node_or_null("/root/LevelProgressManager")
+		if lp != null and lp.has_method("get_max_unlocked_level"):
+			lv = int(lp.get_max_unlocked_level())
+		if lv < 1 and GameManager != null:
+			lv = int(GameManager.get("current_level"))
+		_parked_level = clampi(lv, 1, 100)
+	return _parked_level
+
+func get_fuel() -> float:
+	if _fuel < 0.0:
+		_fuel = float(get_fuel_cap())
+	return _fuel
+
+func get_fuel_cap() -> int:
+	return TruckTravel.TANK_BASE + TruckTravel.TANK_PER_LV * (_engine_level - 1)
+
+func get_engine_level() -> int:
+	return _engine_level
+
+func is_traveling() -> bool:
+	return _travel_dest > 0 and _travel_ends_unix > 0.0
+
+func get_travel_dest() -> int:
+	return _travel_dest
+
+## 剩余天数（实时行军：由剩余秒数换算，向上取整）
+func get_travel_days_left() -> int:
+	var rem := _travel_seconds_left()
+	if rem <= 0.0:
+		return 0
+	return maxi(1, int(ceil(rem / TruckTravel.SECONDS_PER_DAY)))
+
+func get_travel_days_total() -> int:
+	return _travel_days_total
+
+func _travel_seconds_left() -> float:
+	if not is_traveling():
+		return 0.0
+	return maxf(0.0, _travel_ends_unix - Time.get_unix_time_from_system())
+
+## 路线已走比例 0..1（大地图光点走位/路线两段绘制用；时间驱动）
+func get_travel_progress() -> float:
+	if not is_traveling() or _travel_days_total <= 0:
+		return 0.0
+	var total: float = float(_travel_days_total) * TruckTravel.SECONDS_PER_DAY
+	if total <= 0.0:
+		return 0.0
+	return clampf(1.0 - _travel_seconds_left() / total, 0.0, 1.0)
+
+func _process(_delta: float) -> void:
+	# v26.21 实时行军：每帧对表，到点即到站（玩家在任何场景都成立）
+	if _travel_dest > 0:
+		_check_travel_arrival()
+
+## 实时到站结算：unix 时间基准——挂机/离线/切场景都计时，读档后 _process 立即补结算
+func _check_travel_arrival() -> void:
+	if _travel_dest <= 0 or _travel_ends_unix <= 0.0:
+		return
+	if Time.get_unix_time_from_system() < _travel_ends_unix:
+		return
+	var dest := _travel_dest
+	_parked_level = dest
+	_travel_dest = 0
+	_travel_days_total = 0
+	_travel_started_unix = 0.0
+	_travel_ends_unix = 0.0
+	_sync_current_level_to_park()
+	if SignalBus and SignalBus.has_signal("show_toast"):
+		var nm := String(LevelInformationData.get_shared().get_level_display_name(dest))
+		SignalBus.show_toast.emit("移动基地抵达 第%d关「%s」——可在此出击" % [dest, nm if nm != "" else str(dest)])
+	_emit_travel_changed()
+
+## 行军可行性预检（UI 规划弹窗与 start_travel 共用；不改任何状态）
+func plan_travel(dest: int) -> Dictionary:
+	if is_traveling():
+		return {"ok": false, "reason": "卡车正在行驶中（剩 %d 天）" % get_travel_days_left()}
+	var from := get_parked_level()
+	dest = clampi(dest, 1, 100)
+	if dest == from:
+		return {"ok": false, "reason": "卡车已停靠该节点"}
+	var cost := TruckTravel.fuel_cost(from, dest)
+	if get_fuel() < float(cost):
+		return {"ok": false, "reason": "燃料不足（本次需 %d，现有 %d）" % [cost, int(get_fuel())], "cost": cost}
+	if float(cost) > get_fuel() - float(TruckTravel.RESERVE_FLOOR):
+		return {"ok": false, "reason": "须预留安全储备 %d——燃料不够出车（本次需 %d）" % [TruckTravel.RESERVE_FLOOR, cost], "cost": cost}
+	return {"ok": true, "cost": cost, "days": TruckTravel.travel_days(from, dest, _engine_level)}
+
+## 启程：预检通过后即扣燃料、进入在途（到站靠睡觉推进）
+func start_travel(dest: int) -> Dictionary:
+	var plan := plan_travel(dest)
+	if not bool(plan.get("ok", false)):
+		return plan
+	_fuel = maxf(0.0, get_fuel() - float(int(plan["cost"])))
+	_travel_dest = clampi(dest, 1, 100)
+	_travel_days_total = maxi(1, int(plan["days"]))
+	_travel_started_unix = Time.get_unix_time_from_system()
+	_travel_ends_unix = _travel_started_unix + float(_travel_days_total) * TruckTravel.SECONDS_PER_DAY
+	_emit_travel_changed()
+	return {"ok": true, "cost": int(plan["cost"]), "days": _travel_days_total}
+
+## 引擎升级（纳米+合金，价目见 TruckTravel.ENGINE_UPGRADES）
+func upgrade_engine() -> Dictionary:
+	if _engine_level >= TruckTravel.ENGINE_MAX_LV:
+		return {"ok": false, "reason": "引擎已满级（Lv%d）" % TruckTravel.ENGINE_MAX_LV}
+	var cost: Dictionary = TruckTravel.upgrade_cost(_engine_level)
+	for short_id in cost:
+		if BasicResourceManager == null or not BasicResourceManager.can_afford(
+				BunkerRoomDefs.res_full_id(String(short_id)), int(cost[short_id])):
+			return {"ok": false, "reason": "资源不足：需 %s" % BunkerRoomDefs.cost_text(cost)}
+	for short_id2 in cost:
+		BasicResourceManager.consume(BunkerRoomDefs.res_full_id(String(short_id2)), int(cost[short_id2]))
+	_engine_level += 1
+	_fuel = minf(get_fuel(), float(get_fuel_cap()))
+	_emit_travel_changed()
+	return {"ok": true, "reason": "引擎升级到 Lv%d" % _engine_level}
+
+## 战后把 current_level 拉回停靠关——GameManager 胜利后会把 current_level 推进到
+## 战线前沿（quest/挂机读它），但"现在能打哪"由停靠点决定，deferred 等各 handler 落定
+func _sync_current_level_to_park() -> void:
+	if GameManager != null and GameManager.has_method("set_current_level"):
+		GameManager.set_current_level(get_parked_level())
+
+func _emit_travel_changed() -> void:
+	if SignalBus and SignalBus.has_signal("truck_travel_changed"):
+		SignalBus.truck_travel_changed.emit()
 
 func _init_rooms_from_defs() -> void:
 	_rooms.clear()
@@ -210,7 +353,14 @@ func _on_battle_ended(player_won: bool) -> void:
 	_pending_battle_level = 0
 	_pending_battle_endless = false
 	if fought > 0 and not was_endless:
-		_battle_log.append({"day": _day, "level": fought, "won": bool(player_won), "kills": _read_battle_kills()})
+		# v26.13：日志扩展伤害/时长（统计终端曲线数据源）
+		var _bs: Dictionary = _read_battle_stats()
+		_battle_log.append({
+			"day": _day, "level": fought, "won": bool(player_won),
+			"kills": int(_bs.get("player_kills", 0)),
+			"damage": int(_bs.get("damage_dealt", 0)),
+			"duration": int(float(_bs.get("battle_time", 0.0))),
+		})
 		if _battle_log.size() > 60:
 			_battle_log = _battle_log.slice(_battle_log.size() - 60)
 	advance_after_battle(player_won)
@@ -220,17 +370,19 @@ func _on_battle_ended(player_won: bool) -> void:
 		var master_id := str(master.get("id", ""))
 		if not master_id.is_empty():
 			record_hero_fragment(master_id)
+	# v26.19：current_level 回归停靠关（GameManager 的胜利推进在其自身 handler 里已落定）
+	call_deferred("_sync_current_level_to_park")
 
 ## v26.12c：读战斗统计引擎的我方击杀数（main.tscn 墓碑节点内的 BattleInfoDisplay；
 ## 不在场——如从移动基地外的非常规流程结束时——返回 0，日志照记）
-func _read_battle_kills() -> int:
+func _read_battle_stats() -> Dictionary:
 	var tree := get_tree()
 	if tree == null:
-		return 0
+		return {}
 	var disp: Node = tree.root.find_child("BattleInfoDisplay", true, false)
 	if disp != null and disp.has_method("get_battle_stats"):
-		return int(disp.call("get_battle_stats").get("player_kills", 0))
-	return 0
+		return disp.call("get_battle_stats") as Dictionary
+	return {}
 
 func advance_after_battle(player_won: bool) -> Array:
 	# 兵棋室 Lv2 战前简报：胜利精神消耗 10→8；失败 -20 不变
@@ -684,6 +836,8 @@ func sleep() -> Dictionary:
 	var new_stage: int = BunkerRoomDefs.narrative_stage_for_day(_day)
 	if new_stage != _narrative_stage:
 		_narrative_stage = new_stage
+	# v26.19：睡觉回充燃料；v26.21 起行程由实时时间推进，睡觉不再 tick 行程
+	_fuel = minf(float(get_fuel_cap()), get_fuel() + float(TruckTravel.SLEEP_REFUEL))
 	# v26 批次3：仓库 Lv3 战利品打印——每天醒来随机 1 张缴获卡入包
 	var loot_printed := {}
 	if is_loot_printer_online() and _loot_print_day != _day \
@@ -697,10 +851,13 @@ func sleep() -> Dictionary:
 		"completed_today": _completed_today.duplicate(),
 		"stage": _narrative_stage,
 		"loot_printed": loot_printed,
+		"fuel": get_fuel(),
+		"fuel_cap": get_fuel_cap(),
 	}
 	_completed_today.clear()
 	if SignalBus and SignalBus.has_signal("bunker_day_ended"):
 		SignalBus.bunker_day_ended.emit(_day)
+	_emit_travel_changed()
 	return summary
 
 ## 医疗室治疗：费用/疗效随医疗室等级提升（基础 纳米50 · 精神+40）。返回 {"ok", "reason"}。
@@ -892,6 +1049,14 @@ func save_state() -> Dictionary:
 		"weather_armed": _weather_armed,
 		"respec_free_day": _respec_free_day,
 		"battle_log": _battle_log.duplicate(true),
+		# v26.19 卡车行军（哨兵值原样存：fuel<0 / parked=0 表示"未初始化"，读侧懒解析）
+		"fuel": _fuel,
+		"engine_level": _engine_level,
+		"parked_level": _parked_level,
+		"travel_dest": _travel_dest,
+		"travel_days_total": _travel_days_total,
+		"travel_started_unix": _travel_started_unix,
+		"travel_ends_unix": _travel_ends_unix,
 	}
 
 ## SaveManager 应用入口（_safe_load_manager 按此方法名加载）；空字典=新游戏全重置
@@ -945,6 +1110,19 @@ func load_state(data: Dictionary) -> void:
 	_weather_idx = clampi(int(data.get("weather_idx", 0)), 0, WEATHERS.size() - 1)
 	_weather_armed = bool(data.get("weather_armed", false))
 	_respec_free_day = int(data.get("respec_free_day", 0))
+	# v26.19 卡车行军回读（哨兵缺省：fuel<0→首读满罐；parked=0→首读战线前沿）
+	_fuel = float(data.get("fuel", -1.0))
+	_engine_level = clampi(int(data.get("engine_level", 1)), 1, TruckTravel.ENGINE_MAX_LV)
+	_parked_level = clampi(int(data.get("parked_level", 0)), 0, 100)
+	_travel_dest = clampi(int(data.get("travel_dest", 0)), 0, 100)
+	_travel_days_total = maxi(0, int(data.get("travel_days_total", 0)))
+	_travel_started_unix = float(data.get("travel_started_unix", 0.0))
+	_travel_ends_unix = float(data.get("travel_ends_unix", 0.0))
+	# 兼容当日旧档（v26.19 剩余天数字段）：换算成 unix 到站时刻
+	var legacy_days_left := maxi(0, int(data.get("travel_days_left", 0)))
+	if _travel_dest > 0 and _travel_ends_unix <= 0.0 and legacy_days_left > 0:
+		_travel_started_unix = Time.get_unix_time_from_system()
+		_travel_ends_unix = _travel_started_unix + float(legacy_days_left) * TruckTravel.SECONDS_PER_DAY
 	_hero_fragments = []
 	for f in data.get("hero_fragments", []):
 		_hero_fragments.append(str(f))
@@ -998,6 +1176,14 @@ func reset_to_defaults() -> void:
 	_weather_idx = 0
 	_weather_armed = false
 	_respec_free_day = 0
+	# v26.19 卡车行军复位（哨兵值同 load_state：fuel<0 / parked=0 → 首读懒解析）
+	_fuel = -1.0
+	_engine_level = 1
+	_parked_level = 0
+	_travel_dest = 0
+	_travel_days_total = 0
+	_travel_started_unix = 0.0
+	_travel_ends_unix = 0.0
 	for room_id in _rooms:
 		var def := BunkerRoomDefs.get_room(room_id)
 		_rooms[room_id]["state"] = int(def.get("initial", BunkerRoomDefs.STATE_LOCKED))

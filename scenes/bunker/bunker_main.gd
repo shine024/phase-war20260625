@@ -484,6 +484,8 @@ func _on_bunker_day_ended(_day: int) -> void:
 	_sync_dot_sanity()
 
 ## 战斗掉落英雄碎片 → 已打开的档案/纪念墙实时刷新 + 全局 toast
+## v26.13(gameplay)：toast 聚合——Boss/无尽连杀多碎片时 0.7s 窗口合并为一条，
+## 防"英雄档案解锁"绿墙盖屏（同文案 ×N 合并救不了名字各异的连爆）。
 func _on_hero_archive_unlocked(master_id: String) -> void:
 	for pid in ["hero_archive", "memorial"]:
 		if _embed_wrappers.has(pid):
@@ -491,15 +493,38 @@ func _on_hero_archive_unlocked(master_id: String) -> void:
 			if p != null and is_instance_valid(p) and p.has_method("refresh"):
 				p.call("refresh")
 	if SignalBus.has_signal("show_toast") and _manager != null:
-		var name_text := master_id
-		var masters: Array = []
-		for era in range(5):
-			masters.append_array(EnemyPhaseMasters.get_era_masters(era))
+		_hero_toast_ids.append(master_id)
+		if _hero_toast_timer == null:
+			_hero_toast_timer = Timer.new()
+			_hero_toast_timer.wait_time = 0.7
+			_hero_toast_timer.one_shot = true
+			_hero_toast_timer.timeout.connect(_flush_hero_toast)
+			add_child(_hero_toast_timer)
+		_hero_toast_timer.start()
+
+var _hero_toast_ids: Array = []
+var _hero_toast_timer: Timer
+
+func _flush_hero_toast() -> void:
+	if _hero_toast_ids.is_empty() or _manager == null:
+		return
+	var ids: Array = _hero_toast_ids.duplicate()
+	_hero_toast_ids.clear()
+	var masters: Array = []
+	for era in range(5):
+		masters.append_array(EnemyPhaseMasters.get_era_masters(era))
+	var names: Array[String] = []
+	for mid in ids:
+		var name_text := str(mid)
 		for m in masters:
-			if str(m.get("id", "")) == master_id:
-				name_text = str(m.get("name", master_id))
+			if str(m.get("id", "")) == str(mid):
+				name_text = str(m.get("name", name_text))
 				break
-		SignalBus.show_toast.emit("英雄档案解锁：%s（%d/30）" % [name_text, _manager.get_hero_fragment_count()])
+		names.append(name_text)
+	var shown := "、".join(names.slice(0, 3))
+	if names.size() > 3:
+		shown += " 等 %d 位" % names.size()
+	SignalBus.show_toast.emit("英雄档案解锁 ×%d：%s（%d/30）" % [ids.size(), shown, _manager.get_hero_fragment_count()])
 
 ## 点亮演出反馈：轻微震屏（动效减弱选项下静默）+ 完工音
 func _on_room_relit(_room_id: String) -> void:
@@ -744,9 +769,29 @@ func _unhandled_input(event: InputEvent) -> void:
 	if _wakeup_active and event is InputEventKey and event.is_pressed():
 		_finish_wakeup()
 		return
+	# v26.13(ui-review)：ESC 关最上层内嵌面板——不能默认玩家知道要去找 X
+	if event is InputEventKey and event.pressed and event.keycode == KEY_ESCAPE:
+		if _close_top_embed_panel():
+			get_viewport().set_input_as_handled()
+			return
 	if event is InputEventKey or event is InputEventMouseButton:
 		if _monologue_timer and not _monologue_timer.is_stopped():
 			_monologue_timer.start()
+
+## v26.13(ui-review)：ESC 关闭最上层可见的内嵌面板；有则 true（字典插入序=层序）
+func _close_top_embed_panel() -> bool:
+	if _embed_wrappers.is_empty():
+		return false
+	var top: Control = null
+	for key in _embed_wrappers:
+		var wr: Control = _embed_wrappers[key]["wrapper"]
+		if wr.visible:
+			top = wr
+	if top != null:
+		top.visible = false
+		_monologue_timer.start()
+		return true
+	return false
 
 # ───────────────────── v22.4：首次进基地引导卡（P1-5） ─────────────────────
 

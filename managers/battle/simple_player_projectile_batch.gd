@@ -25,6 +25,7 @@ const _FLAVOR_LAYER_KEYS: Array[int] = [
 	WeaponProjectileVfx.FLAVOR_LAYER_MG,
 	WeaponProjectileVfx.FLAVOR_LAYER_TANK_GUN,
 	WeaponProjectileVfx.FLAVOR_LAYER_SMALL_ARMS,  # v20.16d: 手枪/卡宾微型光点层
+	WeaponProjectileVfx.FLAVOR_LAYER_XENO_MELEE,  # v27.x: 星冥近战刃光层（紫青光片，缴获卡同享）
 ]
 const _PLAYER_TINT := Color(1.0, 0.95, 0.4)  # v9.2: 亮金黄（原淡黄，提亮让弹道更醒目）
 
@@ -124,6 +125,12 @@ func _make_layer(wt: int) -> MultiMeshInstance2D:
 		quad.size = WeaponProjectileVfx.TANK_SHELL_TEX.get_size() * WeaponProjectileVfx.TANK_SHELL_DISPLAY_SCALE
 		mm.mesh = quad
 		mmi.texture = WeaponProjectileVfx.TANK_SHELL_TEX
+	elif wt == WeaponProjectileVfx.FLAVOR_LAYER_XENO_MELEE:
+		# v27.x: 星冥近战刃光层——横条光带贴图（ADD 发光 + 旋转对齐飞行方向，读"光片掠过"）
+		var edge_quad := QuadMesh.new()
+		edge_quad.size = WeaponProjectileVfx.XENO_EDGE_TEX.get_size() * WeaponProjectileVfx.XENO_EDGE_DISPLAY_SCALE
+		mm.mesh = edge_quad
+		mmi.texture = WeaponProjectileVfx.XENO_EDGE_TEX
 	else:
 		mm.mesh = WeaponProjectileVfx.build_bullet_arraymesh(wt)
 	mmi.multimesh = mm
@@ -157,6 +164,13 @@ func fire(from: Vector2, tgt: Node2D, dmg: float, wt: int, shooter: Node2D, shoo
 	d["dir"] = Vector2.RIGHT
 	# 命中/出界结算仍按原 wt；渲染层键（sk）分流形状/染色/曳光。
 	var sk: int = WeaponProjectileVfx.flavor_layer_key(flavor)
+	# v27.x: 星冥武器分流（与 enemy batch 同构）——近战刃光=专用光片层 + 弹速 ×1.5。
+	# 玩家缴获星冥卡（captured_xeno_*）同享同款视觉；开关关闭 = 回人类通用层。
+	if XenoWeaponFlavor.enabled() and not weapon_name.is_empty():
+		var xf: int = XenoWeaponFlavor.classify(weapon_name)
+		if xf == XenoWeaponFlavor.Flavor.MELEE_EDGE:
+			sk = WeaponProjectileVfx.FLAVOR_LAYER_XENO_MELEE
+			d["speed"] *= 1.5
 	d["sk"] = sk if sk >= 0 else wt
 	# v16: 透传武器名（命中配方亚类：机枪/坦克炮/步枪）与改造专属视觉标识
 	d["weapon_name"] = weapon_name
