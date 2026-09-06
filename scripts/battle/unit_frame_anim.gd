@@ -205,6 +205,17 @@ class FrameDriver extends Node:
 		_mode = "attack"
 		_idx = 0
 		_t = 0.0
+		# v27.x: attack 播放时长对齐宿主攻击间隔——动态 fps = 帧数/间隔,播完正好回
+		# idle（此前恒 anim.json 的 8fps=1.5s:快攻单位 0.55s 间隔被打断重播、慢攻
+		# 单位 2.4s 间隔尾部空窗 ~0.9s）。宿主单位挂 unit_spr 的父节点,stats 缺失
+		# 或 interval 异常时保持原 fps。clamp 6-24:低于 6 失去打击感,高于 24 帧闪。
+		var host: Node = _spr.get_parent() if _spr != null and is_instance_valid(_spr) else null
+		if host != null:
+			var st: Variant = host.get("stats")
+			if st != null and "attack_interval" in st:
+				var itv: float = float(st.attack_interval)
+				if itv > 0.05:
+					fps = clampf(float(attack_frames.size()) / itv, 6.0, 24.0)
 		if _spr == null or not is_instance_valid(_spr):
 			_spr = get_parent() as Sprite2D
 		if _spr != null:

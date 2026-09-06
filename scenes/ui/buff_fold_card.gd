@@ -76,6 +76,11 @@ func _build_fold_card(title: String, expanded: bool, head_bg: Color) -> Dictiona
 	title_st.bg_color = head_bg
 	title_st.set_content_margin_all(4)
 	toggle.add_theme_stylebox_override("normal", title_st)
+	# ui-review·易用性：hover/pressed 底色反馈（原有 hover 字色，补底色同语言）
+	var title_hover: StyleBoxFlat = title_st.duplicate()
+	title_hover.bg_color = title_st.bg_color.lightened(0.10)
+	toggle.add_theme_stylebox_override("hover", title_hover)
+	toggle.add_theme_stylebox_override("pressed", title_st.duplicate())
 	vbox.add_child(toggle)
 	# 内容容器
 	var content := VBoxContainer.new()

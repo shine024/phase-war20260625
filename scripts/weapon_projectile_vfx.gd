@@ -133,7 +133,8 @@ const PROJ_TEX_SCALE: Dictionary = {
 	8: 0.70,    # LASER — 能量光束（原 0.30）
 	9: 0.95,    # MISSILE — v17m: 0.75→0.95（同火箭，弹体可见性）
 	10: 0.95,   # OMEGA — 终极能量炮，最粗（原 0.51）
-	11: 0.85,   # RAIL — 电磁轨道炮（原 0.48）
+	11: 1.25,   # RAIL — 电磁轨道炮（原 0.48；v26.x 0.85→1.25：0.085 显示倍率下 83×18px
+	            # 在暗背景读不出"细长高能弹"——审计实拍弹体近乎不可见，提至 ~122×27px）
 	4: 0.38,    # PISTOL — 轻武器但可见（原 0.22，加粗让手枪弹看得见）
 }
 
@@ -228,6 +229,14 @@ const TANK_SHELL_DISPLAY_SCALE: float = 0.026  # v26.15g: 0.040→0.026（~29×4
 ## v20.16d: 手枪/卡宾——微型近光点弹体。此前 SMALL_ARMS 与 GENERIC 共用 wt 档默认层，
 ## 形状/染色/曳光/弹速四轴全同（用户主诉"单体弹道差异太小"的病根之一）。
 const FLAVOR_LAYER_SMALL_ARMS: int = 103
+## v27.x: 星冥近战刃光层（仿 TANK_GUN 贴图层）——batch 弹体=紫青光片（beam_h_strip
+## 旋转拉伸），命中=爪痕爆裂。层键 104 与 DirectWeaponFlavor 亚类层键空间共存，
+## 反解走 XenoWeaponFlavor（不经 _flavor_for_layer_key，避免与 GENERIC=0 撞值）。
+const FLAVOR_LAYER_XENO_MELEE: int = 104
+## 近战刃光贴图（横条光带 256×16，内容 ~145×16，PIL 实测）——QuadMesh 旋转对齐
+## 飞行方向 + ADD 发光，36×2.2px 显示 + 46px 长曳光读"刃光掠过"。
+const XENO_EDGE_TEX := preload("res://assets/effects/particle_textures/beam_h_strip.png")
+const XENO_EDGE_DISPLAY_SCALE: float = 0.14
 ## 坦克炮弹战场显示缩放（其余亚类沿用 PROJ_BULLET_DISPLAY_SCALE；炮弹要一眼炮弹级）
 const TANK_GUN_DISPLAY_SCALE: float = 1.8  # v26.15d: 2.0→1.8（配合修长弹形）
 
@@ -287,6 +296,10 @@ static func layer_tint(layer_key: int, base_tint: Color) -> Color:
 	# 橙色乘色会把橄榄绿弹壳洗成棕橙。
 	if layer_key == FLAVOR_LAYER_TANK_GUN:
 		return Color(1.0, 0.93, 0.82)
+	# v27.x: 星冥近战刃光层——贴图白芯乘青金晶髓辉光（batch 消费，GameConfig 开关
+	# 关闭时 batch 侧根本不会把弹分到本层，此处无需重复判断）
+	if layer_key == FLAVOR_LAYER_XENO_MELEE:
+		return XenoWeaponFlavor.COLOR_EDGE
 	var f := _flavor_for_layer_key(layer_key)
 	if f >= 0:
 		return flavor_tint(f)
@@ -300,6 +313,7 @@ static func tracer_width_for(layer_key: int) -> float:
 		FLAVOR_LAYER_RIFLE: return 1.8
 		FLAVOR_LAYER_TANK_GUN: return 3.5
 		FLAVOR_LAYER_SMALL_ARMS: return 2.0
+		FLAVOR_LAYER_XENO_MELEE: return 2.2  # v27.x: 刃光细亮快弹
 		_: return 2.5
 
 ## 亚类曳光线长度。机枪加长（弹幕感）/ 步枪略长（精确轨迹）/ 坦克炮缩短
@@ -312,10 +326,15 @@ static func tracer_len_for(layer_key: int) -> float:
 		FLAVOR_LAYER_RIFLE: return 46.0
 		FLAVOR_LAYER_TANK_GUN: return 14.0
 		FLAVOR_LAYER_SMALL_ARMS: return 12.0
+		FLAVOR_LAYER_XENO_MELEE: return 46.0  # v27.x: 近战飞行窗口 <0.2s，长曳光保证可读
 		_: return 26.0
 
 ## 亚类曳光线颜色（同 flavor_tint 语言，曳光透明度 0.82）。基础层返回阵营基准色。
 static func tracer_color_for(layer_key: int, base_color: Color) -> Color:
+	if layer_key == FLAVOR_LAYER_XENO_MELEE:
+		var xe := XenoWeaponFlavor.COLOR_EDGE
+		xe.a = 0.82
+		return xe
 	var f := _flavor_for_layer_key(layer_key)
 	if f < 0:
 		return base_color
@@ -636,15 +655,12 @@ static func impact_texture_by_name(weapon_name: String) -> Texture2D:
 
 
 static func proj_scale_by_name(weapon_name: String) -> float:
-	var cat: String = WeaponVfxMapping.get_category(weapon_name)
-	match cat:
-		"energy", "railgun": return 0.48 * PROJ_DISPLAY_SCALE_MUL
-		"missile": return 0.48 * PROJ_DISPLAY_SCALE_MUL
-		"cannon": return 0.45 * PROJ_DISPLAY_SCALE_MUL
-		"mortar": return 0.45 * PROJ_DISPLAY_SCALE_MUL
-		"machinegun": return 0.30 * PROJ_DISPLAY_SCALE_MUL
-		"rifle": return 0.30 * PROJ_DISPLAY_SCALE_MUL
-		_: return 0.30 * PROJ_DISPLAY_SCALE_MUL
+	# v26.x 勘误（死分支收敛）：get_category 对 WEAPON_ID_MAP（值=safe_id 字符串，非字典）
+	# 恒返 "generic"，旧分类 match 从未生效——名字查表实际恒走 0.30 档。且
+	# weapons_realistic/ 目录无任何 *_proj.png（名字贴图路径整体不活跃），唯一消费点
+	# bullet.gd 在 tex==null 时会用类型表 PROJ_TEX_SCALE 重新配对 tex+scale。
+	# 死 match 按死代码移除；未来真引入名字贴图时再按武器类重建分档。
+	return 0.30 * PROJ_DISPLAY_SCALE_MUL
 
 
 ## v9.2: 按 weapon_type 返回爆炸帧序列（有帧动画的武器才有，无则返回空数组）。
@@ -758,6 +774,13 @@ static func spawn_impact_with_kind(parent: Node2D, world_pos: Vector2, weapon_ty
 	# 跳过通用 OMEGA 贴图+能量帧(原与激光/轨道炮共享)。欧米茄=重型粒子径向迸发。
 	if weapon_type == 10:
 		VfxFactory.spawn_omega_discharge(parent, world_pos, is_player_shot, atk_d)
+		return
+	# v27.x: 星冥武器签名命中（xeno_weapon_flavor 精确表）——紫青能量系，与人类
+	# 火药/能量武器区分：近战刃光=爪痕爆裂+能量核，远程=灵能放电，PLASMA_LOB
+	# 播星冥能量爆炸帧（替代曲射族默认橙红火球）。仿 wt==8/10/11 先例在通用
+	# 贴图层之前直接 return（不进 _impact_recipe 缓存键）；开关关=回人类通用视觉。
+	if XenoWeaponFlavor.enabled() and XenoWeaponFlavor.is_xeno_weapon(weapon_name):
+		VfxFactory.spawn_xeno_impact(parent, world_pos, XenoWeaponFlavor.classify(weapon_name), is_player_shot, atk_d, opts)
 		return
 	# v18: 命中贴图层 scale 重标定（AI 审计 4.2/10 基线的主病根，像素级实测确认）。
 	# 病根：weapon_impact_*.png 画布实为 1536px（内容 1062-1410px），旧 scale 按"512px

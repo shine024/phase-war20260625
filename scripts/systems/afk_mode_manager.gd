@@ -148,6 +148,11 @@ func start_afk() -> bool:
 				start_lvl = max_unlocked
 			if start_lvl < 1:
 				start_lvl = 1
+		# v26.19 停靠门控：挂机推图收敛到"停靠关"（卡车停哪打哪，战线推进靠手动行车+出击）。
+		# 前沿跟随/续推/低关刷取等场景全部对齐停靠点；无 BunkerManager 时保持旧行为。
+		var tb := get_node_or_null("/root/BunkerManager")
+		if tb != null and tb.has_method("get_parked_level"):
+			start_lvl = clampi(int(tb.get_parked_level()), 1, 100)
 		push_level = start_lvl
 	else:
 		# 循环模式：剔除未解锁的 slot 关卡，避免挂机进入未解锁关。
@@ -420,10 +425,15 @@ func _advance_to_next_level() -> void:
 	# 触发存档把累计奖励/统计/进度落盘，避免崩溃丢失本轮挂机全部收益。
 	_trigger_afk_save()
 	if mode == Mode.PUSH:
-		_pending_level += 1
-		if _pending_level > 100:
-			stop_afk()
-			return
+		# v26.19 停靠门控：不再逐关推进——反复刷停靠关（搬家/推进靠玩家手动行车）
+		var tb := get_node_or_null("/root/BunkerManager")
+		if tb != null and tb.has_method("get_parked_level"):
+			_pending_level = clampi(int(tb.get_parked_level()), 1, 100)
+		else:
+			_pending_level += 1
+			if _pending_level > 100:
+				stop_afk()
+				return
 	else:
 		# 循环模式：用已解锁 slot 集合推进，避免进入未解锁关
 		var lp = get_node_or_null("/root/LevelProgressManager")

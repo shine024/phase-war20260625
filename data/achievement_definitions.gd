@@ -25,6 +25,9 @@ const ACHIEVEMENTS: Dictionary = {
 		"name": "初露锋芒",
 		"description": "赢得你的第一场战斗胜利",
 		"category": "battle",
+		"requirements": {
+			"type": "wins", "count": 1
+		},
 		"reward": {
 			"nano_materials": 50,
 			"company_rep": {"iron_wall_corp": 20}
@@ -38,6 +41,9 @@ const ACHIEVEMENTS: Dictionary = {
 		"name": "百战老兵",
 		"description": "累计赢得10场战斗",
 		"category": "battle",
+		"requirements": {
+			"type": "wins", "count": 10
+		},
 		"reward": {
 			"nano_materials": 100
 		},
@@ -50,6 +56,9 @@ const ACHIEVEMENTS: Dictionary = {
 		"name": "战场传奇",
 		"description": "累计赢得50场战斗",
 		"category": "battle",
+		"requirements": {
+			"type": "wins", "count": 50
+		},
 		"reward": {
 			"nano_materials": 300
 		},
@@ -62,6 +71,9 @@ const ACHIEVEMENTS: Dictionary = {
 		"name": "收割者",
 		"description": "累计击毁100个敌方单位",
 		"category": "battle",
+		"requirements": {
+			"type": "kills", "count": 100
+		},
 		"reward": {
 			"nano_materials": 200
 		},
@@ -74,6 +86,9 @@ const ACHIEVEMENTS: Dictionary = {
 		"name": "战场主宰",
 		"description": "累计击毁500个敌方单位",
 		"category": "battle",
+		"requirements": {
+			"type": "kills", "count": 500
+		},
 		"reward": {
 			"nano_materials": 500
 		},
@@ -86,6 +101,9 @@ const ACHIEVEMENTS: Dictionary = {
 		"name": "完美战役",
 		"description": "在一场战斗中不受到任何伤害",
 		"category": "challenge",
+		"requirements": {
+			"type": "no_damage_wins", "count": 1
+		},
 		"reward": {
 			"nano_materials": 150
 		},
@@ -96,8 +114,11 @@ const ACHIEVEMENTS: Dictionary = {
 	"battle_speed_run": {
 		"id": "battle_speed_run",
 		"name": "闪电战",
-		"description": "在30秒内完成一场战斗",
+		"description": "在 180 秒内完成任意关卡",
 		"category": "challenge",
+		"requirements": {
+			"type": "fast_wins", "count": 1
+		},
 		"reward": {
 			"nano_materials": 120,
 			"company_rep": {"aether_dynamics": 30}
@@ -113,6 +134,9 @@ const ACHIEVEMENTS: Dictionary = {
 		"name": "收藏家",
 		"description": "拥有20张不同的卡片",
 		"category": "collection",
+		"requirements": {
+			"type": "unique_cards", "count": 20
+		},
 		"reward": {
 			"nano_materials": 100
 		},
@@ -125,6 +149,9 @@ const ACHIEVEMENTS: Dictionary = {
 		"name": "卡片大师",
 		"description": "拥有50张不同的卡片",
 		"category": "collection",
+		"requirements": {
+			"type": "unique_cards", "count": 50
+		},
 		"reward": {
 			"nano_materials": 300
 		},
@@ -137,6 +164,9 @@ const ACHIEVEMENTS: Dictionary = {
 		"name": "卡牌收集者",
 		"description": "收集10种不同的卡牌",
 		"category": "collection",
+		"requirements": {
+			"type": "unique_blueprints", "count": 10
+		},
 		"reward": {
 			"nano_materials": 150
 		},
@@ -147,8 +177,11 @@ const ACHIEVEMENTS: Dictionary = {
 	"collection_rare_card": {
 		"id": "collection_rare_card",
 		"name": "稀世珍宝",
-		"description": "拥有5张稀有度以上的卡片",
+		"description": "获得一张稀有品质卡牌",
 		"category": "collection",
+		"requirements": {
+			"type": "rarity_collection", "target": "rare", "rarity_count": 1
+		},
 		"reward": {
 			"nano_materials": 200
 		},
@@ -159,8 +192,11 @@ const ACHIEVEMENTS: Dictionary = {
 	"collection_legendary": {
 		"id": "collection_legendary",
 		"name": "传说猎手",
-		"description": "拥有1张传说稀有度的卡片",
+		"description": "获得一张传说品质卡牌",
 		"category": "collection",
+		"requirements": {
+			"type": "rarity_collection", "target": "legendary", "rarity_count": 1
+		},
 		"reward": {
 			"nano_materials": 400
 		},
@@ -170,9 +206,12 @@ const ACHIEVEMENTS: Dictionary = {
 
 	"collection_affix_10": {
 		"id": "collection_affix_10",
-		"name": "词条大师",
-		"description": "为卡片添加总共10个词条",
+		"name": "改造入门",
+		"description": "为卡牌累计安装 5 条改造模块",
 		"category": "collection",
+		"requirements": {
+			"type": "enhancement_operations", "count": 5
+		},
 		"reward": {
 			"nano_materials": 180,
 			"company_rep": {"void_research": 40}
@@ -188,6 +227,9 @@ const ACHIEVEMENTS: Dictionary = {
 		"name": "突破中期",
 		"description": "通关第20关（一战时代）",
 		"category": "progress",
+		"requirements": {
+			"type": "max_level", "count": 20
+		},
 		"reward": {
 			"nano_materials": 100,
 			"type": "card", "card_id": "guardian_ww1_ironclad", "amount": 1
@@ -201,6 +243,9 @@ const ACHIEVEMENTS: Dictionary = {
 		"name": "二战英雄",
 		"description": "通关第40关（二战时代）",
 		"category": "progress",
+		"requirements": {
+			"type": "max_level", "count": 40
+		},
 		"reward": {
 			"nano_materials": 150,
 			"type": "card", "card_id": "guardian_ww2_blitzkrieg", "amount": 1
@@ -214,6 +259,9 @@ const ACHIEVEMENTS: Dictionary = {
 		"name": "冷战胜利",
 		"description": "通关第60关（冷战时代）",
 		"category": "progress",
+		"requirements": {
+			"type": "max_level", "count": 60
+		},
 		"reward": {
 			"nano_materials": 200,
 			"type": "card", "card_id": "guardian_cold_thunder", "amount": 1
@@ -227,6 +275,9 @@ const ACHIEVEMENTS: Dictionary = {
 		"name": "现代主宰",
 		"description": "通关第80关（现代时代）",
 		"category": "progress",
+		"requirements": {
+			"type": "max_level", "count": 80
+		},
 		"reward": {
 			"nano_materials": 250,
 			"type": "card", "card_id": "guardian_modern_stealth", "amount": 1
@@ -240,6 +291,9 @@ const ACHIEVEMENTS: Dictionary = {
 		"name": "终极征服",
 		"description": "通关第100关（近未来时代）",
 		"category": "progress",
+		"requirements": {
+			"type": "max_level", "count": 100
+		},
 		"reward": {
 			"nano_materials": 1000,
 			"type": "card", "card_id": "guardian_future_omega", "amount": 1
@@ -250,9 +304,12 @@ const ACHIEVEMENTS: Dictionary = {
 
 	"progress_all_boss": {
 		"id": "progress_all_boss",
-		"name": "Boss征服者",
-		"description": "击败所有5个时代的Boss关卡",
+		"name": "相位师克星",
+		"description": "击败任意驻守相位师",
 		"category": "challenge",
+		"requirements": {
+			"type": "defeat_master", "target": "enemy_master_005", "count": 1
+		},
 		"reward": {
 			"nano_materials": 500,
 			"type": "mod_blueprint", "mod_blueprint_id": "gen_11_phase_resonance", "amount": 1
@@ -264,8 +321,11 @@ const ACHIEVEMENTS: Dictionary = {
 	"progress_all_era": {
 		"id": "progress_all_era",
 		"name": "时空穿越者",
-		"description": "在所有5个时代都取得过胜利",
+		"description": "通关第 100 关（相位界终点）",
 		"category": "progress",
+		"requirements": {
+			"type": "complete_era", "target": "era4"
+		},
 		"reward": {
 			"nano_materials": 300
 		},
@@ -277,9 +337,12 @@ const ACHIEVEMENTS: Dictionary = {
 
 	"faction_max_rep": {
 		"id": "faction_max_rep",
-		"name": "势力领袖",
-		"description": "与任意一个势力的声望达到50",
+		"name": "后勤大师",
+		"description": "在商店累计购买 10 次",
 		"category": "progress",
+		"requirements": {
+			"type": "shop_purchases", "count": 10
+		},
 		"reward": {
 			"nano_materials": 200
 		},
@@ -289,9 +352,12 @@ const ACHIEVEMENTS: Dictionary = {
 
 	"faction_all_20": {
 		"id": "faction_all_20",
-		"name": "各方势力",
-		"description": "与所有7个势力的声望都达到20",
+		"name": "连战连捷",
+		"description": "累计获胜 20 场",
 		"category": "challenge",
+		"requirements": {
+			"type": "wins", "count": 20
+		},
 		"reward": {
 			"nano_materials": 400
 		},
@@ -303,9 +369,12 @@ const ACHIEVEMENTS: Dictionary = {
 
 	"enhance_card_10": {
 		"id": "enhance_card_10",
-		"name": "强化新手",
-		"description": "将任意卡片的强化等级提升至满级（强化 Lv.10）。",
+		"name": "改造熟练",
+		"description": "为卡牌累计安装 10 条改造模块",
 		"category": "progress",
+		"requirements": {
+			"type": "enhancement_operations", "count": 105
+		},
 		"reward": {
 			"nano_materials": 150,
 			"company_rep": {"void_research": 30}
@@ -316,9 +385,12 @@ const ACHIEVEMENTS: Dictionary = {
 
 	"enhance_card_20": {
 		"id": "enhance_card_20",
-		"name": "强化大师",
-		"description": "将任意卡片的战斗等级达到 Lv.20（通过战斗积累经验）。",
+		"name": "改造大师",
+		"description": "为卡牌累计安装 15 条改造模块",
 		"category": "challenge",
+		"requirements": {
+			"type": "enhancement_operations", "count": 15
+		},
 		"reward": {
 			"nano_materials": 300
 		},
@@ -328,9 +400,12 @@ const ACHIEVEMENTS: Dictionary = {
 
 	"enhance_breakthrough": {
 		"id": "enhance_breakthrough",
-		"name": "突破极限",
-		"description": "完成一次卡片突破（提升稀有度）",
+		"name": "史诗战力",
+		"description": "获得一张史诗品质卡牌",
 		"category": "challenge",
+		"requirements": {
+			"type": "rarity_collection", "target": "epic", "rarity_count": 1
+		},
 		"reward": {
 			"nano_materials": 250
 		},
@@ -345,6 +420,9 @@ const ACHIEVEMENTS: Dictionary = {
 		"name": "完美游戏",
 		"description": "在一场战斗中获得三星评价",
 		"category": "challenge",
+		"requirements": {
+			"type": "perfect_levels", "count": 1
+		},
 		"reward": {
 			"nano_materials": 200
 		},
@@ -354,9 +432,12 @@ const ACHIEVEMENTS: Dictionary = {
 
 	"special_speed_clear": {
 		"id": "special_speed_clear",
-		"name": "速通专家",
-		"description": "在60秒内完成任意关卡",
+		"name": "速通大师",
+		"description": "累计 5 次快速取胜（180 秒内）",
 		"category": "challenge",
+		"requirements": {
+			"type": "fast_wins", "count": 5
+		},
 		"reward": {
 			"nano_materials": 180,
 			"company_rep": {"nova_arms": 35}
@@ -367,9 +448,12 @@ const ACHIEVEMENTS: Dictionary = {
 
 	"special_survival": {
 		"id": "special_survival",
-		"name": "生存大师",
-		"description": "在一场战斗中存活15个波次",
+		"name": "五连胜",
+		"description": "取得 5 连胜",
 		"category": "challenge",
+		"requirements": {
+			"type": "max_win_streak", "count": 5
+		},
 		"reward": {
 			"nano_materials": 220
 		},

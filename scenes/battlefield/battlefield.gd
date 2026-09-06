@@ -30,6 +30,9 @@ const BATTLE_LANE_HEIGHT_RATIO := 0.28
 
 const _BattleSlotGridScript: Script = preload("res://scenes/battlefield/battle_slot_grid.gd")
 const _CardGridLayout = preload("res://scripts/card_grid_battle_layout.gd")
+## v27 黑门彼岸氛围层 + 背景微扭曲（仅无尽模式挂载，见 _ensure_endless_rift_fx）
+const _EndlessRiftAmbienceScript: Script = preload("res://scripts/battle/endless_rift_ambience.gd")
+const _EndlessWarpShader: Shader = preload("res://shaders/endless_warp.gdshader")
 
 ## 结算/清场时保留的战场子节点（勿在此列表外的节点会被 queue_free）
 const PERSISTENT_CHILD_NAMES: Dictionary = {
@@ -57,6 +60,12 @@ var _bg_load_generation: int = 0
 var _bg_pending_level: int = 1
 var _bg_pending_era: int = 0
 var _bg_pending_battle_bottom_y: float = 648.0
+## v27: 黑门档位底图缓存 [t0,t1,t2]（AI 专属图优先 bg_endless_gate_t{0,1,2}.png，程序化回退；
+## 退出无尽在 _apply_background_texture 清除）+ 交叉淡入副底图状态
+var _endless_tier_tex: Array = []
+var _endless_bg_b: Sprite2D = null
+var _endless_tier_cur: int = -1
+var _endless_fading: bool = false
 
 # v9.1 组合技浓度场 VFX：订阅 combo_field_state.field_changed 信号，按浓度绘制半透明区域
 var _combo_field_state: RefCounted = null
@@ -190,7 +199,15 @@ func _update_background() -> void:
 	if GameManager != null and GameManager.has_method("is_endless_battle") and GameManager.is_endless_battle():
 		_bg_pending_era = 5
 		_bg_pending_battle_bottom_y = battle_bottom_y
-		_apply_background_texture(_build_endless_starfield_texture())
+		# v27: 渗度档位底图（0-1 初期 / 2-3 中期 / 4-5 深渊）；档位变化由
+		# ambience 的 seepage_changed 信号触发交叉淡入（_switch_endless_tier）。
+		var depth0 := 0
+		var amb0 := get_node_or_null("EndlessRiftAmbience")
+		if amb0 != null:
+			depth0 = int(amb0.get("current_depth"))
+		var tier0: int = _EndlessRiftAmbienceScript.tier_for_depth(depth0)
+		_endless_tier_cur = tier0
+		_apply_background_texture(_get_endless_tier_tex(tier0))
 		return
 
 	# v6.6(剧情): 第100关终战视觉模式（补剧情.txt L137 记忆场景）
@@ -422,6 +439,17 @@ func _is_import_marked_invalid(path: String) -> bool:
 func _apply_background_texture(tex: Texture2D) -> void:
 	if level10_bg == null:
 		return
+	# v27 修复：黑门入口"先关卡后标记"（set_current_level 会清无尽标记，故先关卡后
+	# start_endless_battle）——boot 时战场 _ready / 选关信号触发的刷新 / 迟到的地球图
+	# 异步加载回调，都会带着地球图走到这里且此时 endless 标志已置真。endless 态下收到
+	# 非档位底图一律重走选图（_update_background 的 endless 分支换星空）；档位底图放行。
+	var endless_now: bool = GameManager != null and GameManager.has_method("is_endless_battle") and GameManager.is_endless_battle()
+	if endless_now and not _endless_tier_tex.has(tex):
+		_update_background()
+		return
+	if not endless_now:
+		_endless_tier_tex = []
+		_endless_tier_cur = -1
 	var battle_bottom_y: float = _bg_pending_battle_bottom_y
 	var era: int = _bg_pending_era
 	level10_bg.texture = tex
@@ -465,6 +493,51 @@ func _apply_background_texture(tex: Texture2D) -> void:
 		background.visible = false
 	if ground:
 		ground.visible = false
+	# v27 黑门：无尽 run 挂彼岸氛围层 + 背景微扭曲；普通关确保清除
+	# （战场节点跨场复用，材质/氛围层不摘会串场到普通关）
+	if GameManager != null and GameManager.has_method("is_endless_battle") and GameManager.is_endless_battle():
+		_ensure_endless_rift_fx()
+	else:
+		_clear_endless_rift_fx()
+
+
+# ═══════════════════════════════════════════════════════════════════
+# v27 黑门彼岸视觉（美术定案 docs/无限模式_异族设定（草案）.md §5.1；
+# 层内容见 endless_rift_ambience.gd：晶脉/格线/星点/星云 + 渗度驱动强度）
+# ═══════════════════════════════════════════════════════════════════
+
+func _ensure_endless_rift_fx() -> void:
+	if level10_bg.material == null \
+			or not (level10_bg.material is ShaderMaterial) \
+			or (level10_bg.material as ShaderMaterial).shader != _EndlessWarpShader:
+		var mat := ShaderMaterial.new()
+		mat.shader = _EndlessWarpShader
+		level10_bg.material = mat
+	var amb := get_node_or_null("EndlessRiftAmbience")
+	if amb == null or not is_instance_valid(amb):
+		amb = Node2D.new()
+		amb.name = "EndlessRiftAmbience"
+		amb.set_script(_EndlessRiftAmbienceScript)
+		amb.set("warp_material", level10_bg.material)
+		add_child(amb)
+	else:
+		amb.set("warp_material", level10_bg.material)
+	# 渗度变化 → 换档底图交叉淡入（字符串 connect：amb 为 Node 类型，信号是脚本动态成员）
+	if not amb.is_connected("seepage_changed", Callable(self, "_on_endless_seepage_changed")):
+		amb.connect("seepage_changed", Callable(self, "_on_endless_seepage_changed"))
+
+
+func _clear_endless_rift_fx() -> void:
+	if level10_bg.material != null:
+		level10_bg.material = null
+	var amb := get_node_or_null("EndlessRiftAmbience")
+	if amb != null and is_instance_valid(amb):
+		amb.queue_free()
+	if _endless_bg_b != null and is_instance_valid(_endless_bg_b):
+		_endless_bg_b.queue_free()
+	_endless_bg_b = null
+	_endless_tier_cur = -1
+	_endless_fading = false
 
 ## 当 res://assets/backgrounds/*.png 全部缺失时，用关卡/时代驱动的渐变图代替，避免战场只剩纯色底。
 func _resolve_missing_background(level: int, era: int) -> void:
@@ -475,17 +548,18 @@ func _resolve_missing_background(level: int, era: int) -> void:
 	_apply_background_texture(tex)
 
 
-## v27 黑门星域底图（晶脉浮陆）：深空靛紫渐变 + 星点 + 底部晶脉地面。
-## 纯 fill_rect 点绘（无逐像素循环），一次性构建 ~1ms 级；星空占位——
-## AI 生图管线产出专属底图后可整体替换为贴图加载。
-func _build_endless_starfield_texture() -> Texture2D:
+## v27 黑门档位底图（晶脉浮陆）：深空靛紫渐变 + 星点 + 底部晶脉地面。
+## tier 0-2 = 渗度初期/中期/深渊——越深：天越暗紫、星点越密、星云越浓、晶脉越亮。
+## 纯 fill_rect 点绘（无逐像素循环），一次性构建 ~1ms 级；Phase B 的 AI 专属图
+## （bg_endless_gate_t{0,1,2}.png）落地后由 _get_endless_tier_tex 优先加载，本函数仅回退。
+func _build_endless_starfield_texture(tier: int = 0) -> Texture2D:
 	var w: int = 1280
 	var h: int = 648
 	var img := Image.create(w, h, false, Image.FORMAT_RGB8)
-	# 1) 深空渐变：天顶近黑靛 → 中段暗紫 → 地平线微亮（星云侧光）
-	var top: Color = Color(0.030, 0.020, 0.075)
-	var mid: Color = Color(0.075, 0.045, 0.150)
-	var hor: Color = Color(0.135, 0.105, 0.235)
+	# 1) 深空渐变：天顶近黑靛 → 中段暗紫 → 地平线微亮（星云侧光）；tier 越高越暗紫
+	var top: Color = Color(0.030, 0.020, 0.075).lerp(Color(0.012, 0.008, 0.050), tier * 0.4)
+	var mid: Color = Color(0.075, 0.045, 0.150).lerp(Color(0.060, 0.032, 0.135), tier * 0.4)
+	var hor: Color = Color(0.135, 0.105, 0.235).lerp(Color(0.155, 0.095, 0.260), tier * 0.4)
 	var hor_y: int = int(h * 0.80)
 	for y in range(h):
 		var t: float = float(y) / float(hor_y) if y < hor_y else 1.0
@@ -494,17 +568,18 @@ func _build_endless_starfield_texture() -> Texture2D:
 			c = top.lerp(mid, t * 0.85) if t < 0.6 else mid.lerp(hor, (t - 0.6) / 0.4)
 		else:
 			c = hor
-		# 低频起伏（星云带），两段 sin 叠加
+		# 低频起伏（星云带），两段 sin 叠加；tier 越浓
 		var wave: float = 0.5 + 0.5 * sin(float(y) * 0.021) * cos(float(y) * 0.008 + 1.7)
-		c = c.lerp(Color(0.10, 0.06, 0.19), wave * 0.35)
+		c = c.lerp(Color(0.10, 0.06, 0.19), wave * (0.35 + 0.16 * tier))
 		img.fill_rect(Rect2i(0, y, w, 1), c)
-	# 2) 星点：上密下疏，白/青/紫三色，亮度分级（少数亮星画十字光芒）
+	# 2) 星点：上密下疏，白/青/紫三色，亮度分级（少数亮星画十字光芒）；tier 越密
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 20270101
 	var star_tints: Array[Color] = [
 		Color(1.0, 1.0, 1.0), Color(0.78, 0.92, 1.0), Color(0.88, 0.80, 1.0),
 	]
-	for i in range(230):
+	var star_count: int = int(230.0 * (1.0 + 0.45 * tier))
+	for i in range(star_count):
 		var sy: int = int(pow(rng.randf(), 1.35) * float(hor_y))  # 幂分布：高处密
 		var sx: int = rng.randi_range(0, w - 1)
 		var bright: float = rng.randf_range(0.35, 1.0)
@@ -514,19 +589,82 @@ func _build_endless_starfield_texture() -> Texture2D:
 			# 亮星十字光芒（2px 臂）
 			img.fill_rect(Rect2i(sx - 2, sy, 5, 1), sc * 0.55)
 			img.fill_rect(Rect2i(sx, sy - 2, 1, 5), sc * 0.55)
-	# 3) 晶脉浮陆地面：暗青岩体 + 发光晶脉纹（青色短线网，对比 ≥90 亮度差）
+	# 3) 晶脉浮陆地面：暗青岩体 + 发光晶脉纹（青色短线网）；tier 越亮越密
 	var ground_y: int = int(h * 0.86)
 	for y in range(ground_y, h):
 		var gt: float = float(y - ground_y) / float(h - ground_y)
 		var gc: Color = Color(0.050, 0.075, 0.095).lerp(Color(0.020, 0.032, 0.045), gt)
 		img.fill_rect(Rect2i(0, y, w, 1), gc)
-	for i in range(260):
+	var vein_count: int = int(260.0 * (1.0 + 0.35 * tier))
+	for i in range(vein_count):
 		var vy: int = rng.randi_range(ground_y + 2, h - 2)
 		var vx: int = rng.randi_range(0, w - 3)
-		var glow: float = rng.randf_range(0.45, 0.95)
-		img.fill_rect(Rect2i(vx, vy, rng.randi_range(2, 5), 1), Color(0.25, 0.90, 0.85) * glow)
+		var glow: float = rng.randf_range(0.45, 0.95) + 0.08 * tier
+		img.fill_rect(Rect2i(vx, vy, rng.randi_range(2, 5), 1), Color(0.25, 0.90, 0.85) * minf(glow, 1.15))
 	var tex := ImageTexture.create_from_image(img)
 	return tex
+
+## 档位底图取用：AI 专属图（Phase B）优先，缺失回退程序化；按档惰性构建缓存
+const _ENDLESS_TIER_TEX_PATHS: Array[String] = [
+	"res://assets/backgrounds/bg_endless_gate_t0.png",
+	"res://assets/backgrounds/bg_endless_gate_t1.png",
+	"res://assets/backgrounds/bg_endless_gate_t2.png",
+]
+
+func _get_endless_tier_tex(tier: int) -> Texture2D:
+	tier = clampi(tier, 0, 2)
+	while _endless_tier_tex.size() <= tier:
+		_endless_tier_tex.append(null)
+	if _endless_tier_tex[tier] != null:
+		return _endless_tier_tex[tier]
+	var tex: Texture2D = null
+	var p: String = _ENDLESS_TIER_TEX_PATHS[tier]
+	if ResourceLoader.exists(p):
+		tex = ResourceLoader.load(p) as Texture2D
+	if tex == null:
+		tex = _build_endless_starfield_texture(tier)
+	_endless_tier_tex[tier] = tex
+	return tex
+
+
+## 渗度变化 → 换档底图 + 交叉淡入（ambience.seepage_changed 触发；战斗中实时）
+func _on_endless_seepage_changed(depth: int) -> void:
+	if not (GameManager != null and GameManager.has_method("is_endless_battle") and GameManager.is_endless_battle()):
+		return
+	var tier: int = _EndlessRiftAmbienceScript.tier_for_depth(int(depth))
+	if tier == _endless_tier_cur or _endless_fading or level10_bg == null:
+		return
+	_switch_endless_tier(tier)
+
+
+func _switch_endless_tier(tier: int) -> void:
+	var new_tex: Texture2D = _get_endless_tier_tex(tier)
+	if new_tex == null or level10_bg == null:
+		return
+	if _endless_tier_cur < 0:
+		_endless_tier_cur = tier  # 首次由 _apply 直接呈现，无需淡入
+		return
+	_endless_tier_cur = tier
+	if _endless_bg_b == null or not is_instance_valid(_endless_bg_b):
+		_endless_bg_b = Sprite2D.new()
+		_endless_bg_b.name = "EndlessBgB"
+		_endless_bg_b.centered = false
+		_endless_bg_b.z_index = level10_bg.z_index  # 同层 -10；树序在后 → 画在主底图上
+		_endless_bg_b.material = level10_bg.material  # 共享扭曲材质（uniform 同步）
+		add_child(_endless_bg_b)
+	var mc := level10_bg.modulate
+	_endless_bg_b.texture = new_tex
+	_endless_bg_b.position = level10_bg.position
+	_endless_bg_b.modulate = Color(mc.r, mc.g, mc.b, 0.0)
+	_endless_fading = true
+	var tw := create_tween()
+	tw.tween_property(_endless_bg_b, "modulate:a", 1.0, 2.5)
+	tw.tween_callback(func() -> void:
+		if level10_bg != null and is_instance_valid(level10_bg) \
+				and _endless_bg_b != null and is_instance_valid(_endless_bg_b):
+			level10_bg.texture = _endless_bg_b.texture
+			_endless_bg_b.modulate.a = 0.0
+		_endless_fading = false)
 
 func _make_procedural_level_background_texture(level: int, era: int) -> Texture2D:
 	var g := Gradient.new()

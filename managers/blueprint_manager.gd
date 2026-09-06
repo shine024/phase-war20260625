@@ -596,6 +596,15 @@ func install_modification(card: CardResource, mod_id: String, slot: int = -1) ->
 	# 自动保存
 	_auto_save("modification")
 
+	# v26.13(gameplay)：改造安装成就统计接线（此前 record_system_operation 零调用，
+	# system 类成就不可解锁）
+	var _am: Node = get_node_or_null("/root/AchievementManager")
+	if _am == null:
+		ManagerLazyLoader.ensure_loaded("achievement")
+		_am = get_node_or_null("/root/AchievementManager")
+	if _am and _am.has_method("record_system_operation"):
+		_am.record_system_operation("enhancement")
+
 	# v7.x: 改造改变第 1/2 层加成，刷新玩家相位师战力缓存避免面板陈旧
 	_refresh_player_master_eval_safe()
 

@@ -735,7 +735,16 @@ func _refresh_capacity_label() -> void:
 		TabIndex.COMBAT_CARDS:
 			var stats: Dictionary = get_backpack_statistics()
 			var total: int = int(stats.get("total_cards", 0))
-			_capacity_label.text = "容量 %d/%d" % [total, MAX_CARD_SLOTS]
+			# v26.13(ui-review)：假上限"容量 x/50"移除——50 只是网格布局参数从未生效，
+			# 427/50 这类显示纯属误导；改为真实决策信息：卡牌张数 + 拥有卡种数。
+			var kinds := 0
+			var ir: Node = get_node_or_null("/root/InstanceRegistry")
+			if ir and ir.has_method("get_all_instance_ids"):
+				var seen := {}
+				for iid in ir.get_all_instance_ids():
+					seen[String(iid).split("#")[0]] = true
+				kinds = seen.size()
+			_capacity_label.text = "卡牌 %d 张 · 卡种 %d" % [total, kinds]
 		TabIndex.INTEL:
 			_capacity_label.text = "改造 %d" % _count_owned_mods()
 		TabIndex.RUNES:

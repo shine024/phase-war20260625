@@ -383,6 +383,12 @@ func _set_mode_button_style(btn: Button, active: bool) -> void:
 		style.bg_color = _NORMAL_BG
 		style.border_color = Color(0.2, 0.45, 0.75, 0.4)
 	btn.add_theme_stylebox_override("normal", style)
+	# ui-review·易用性：可交互处必须有多个状态（hover 亮边、pressed 同色）
+	var hover_sb: StyleBoxFlat = style.duplicate()
+	hover_sb.bg_color = style.bg_color.lightened(0.10)
+	hover_sb.border_color = style.border_color.lightened(0.18)
+	btn.add_theme_stylebox_override("hover", hover_sb)
+	btn.add_theme_stylebox_override("pressed", style.duplicate())
 
 
 # ── 开始/停止 ──

@@ -139,6 +139,10 @@ const TAG_PATCH: Dictionary = {
 	"foe_mod_arm_m1a2sep": ["boss"],          # M1A2 SEP（era3，1234hp vs 指挥中枢1800）
 	"foe_fut_arm_heavy_mech": ["boss"],       # 重装机甲（era4，2220hp vs 风暴核心2500）
 	"foe_fut_arm_nexus": ["boss"],            # 虚空领主（3158hp 终极单位——修正其混入基础波当杂兵的异常）
+	# ── support（支援突击）──
+	"ww1_sup_mg_nest": ["support"],           # 机枪巢（支援班组火力点）
+	"ww2_sup_mg42": ["support"],              # MG42 机枪组（支援班组火力）
+	"fut_sup_nrepair": ["support"],           # N-Repair 纳米工程车（支援工程）
 }
 ## 战场视觉缩放表已迁移到 data/card_foot_anchors.gd（VISUAL_SCALE，单一真理源）。
 ## 本文件的 get_visual_scale_for_archetype 转发到 CardFootAnchors。

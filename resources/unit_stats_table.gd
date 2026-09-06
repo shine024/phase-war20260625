@@ -13,6 +13,10 @@ const GC = preload("res://resources/game_constants.gd")
 const ComboTactics = preload("res://data/combo_tactics.gd")
 # 卡片定时技能：派生 law_family meta（阵营→flame/thunder/void），供 source_tag 触发判定
 const CardPeriodicSkills = preload("res://data/card_periodic_skills.gd")
+## v27.3: 经 preload 静态调用（apply_to_weapon_slots 为 static func）——
+## 原写法引用 autoload 名 ModificationRegistry，在 --script 模式（不加载 autoload）
+## 编译期即炸，导致 master_power_smoke / test_v27_xeno_data_smoke 无法运行。
+const _ModRegistry = preload("res://scripts/systems/modification_registry.gd")
 
 
 # ─────────────────────────────────────────────
@@ -118,8 +122,7 @@ static func build_stats_from_card(card: CardResource, era_override: int = -1, sk
 		# 只写 stats per-target 轴会空转（敌我同构；v7.5 的 registry 转写只落 stats 侧）。
 		_sync_mod_speed_ratio_to_weapon_slots(stats, tmp_slots, _pre_spd)
 		# v6.0/v6.13: 再应用改造效果到武器槽位（传入 stats 作 source_stats，grant_slot 据此派生伤害）
-		if ModificationRegistry and ModificationRegistry.has_method("apply_to_weapon_slots"):
-			tmp_slots = ModificationRegistry.apply_to_weapon_slots(tmp_slots, card.mods, stats)
+		tmp_slots = _ModRegistry.apply_to_weapon_slots(tmp_slots, card.mods, stats)
 
 	stats.weapon_slots = tmp_slots
 
@@ -463,7 +466,7 @@ static func _apply_mod_stat_effects(stats: UnitStats, mods: Array, host_era: int
 		"hijack_aura_cd": stats.hijack_aura_cd,
 	}
 	# 统一应用（支持 level_effects + effects 两种格式）
-	var result: Dictionary = ModificationRegistry.apply_with_level(base_dict, mods, {"era": host_era})
+	var result: Dictionary = _ModRegistry.apply_with_level(base_dict, mods, {"era": host_era})
 	# 写回 UnitStats
 	stats.max_hp = float(result.get("max_hp", stats.max_hp))
 	stats.attack_light = float(result.get("attack_light", stats.attack_light))
@@ -668,7 +671,7 @@ static func _extract_aura_summary_to_meta(stats: UnitStats, mods: Array) -> void
 		if mod_id.is_empty():
 			continue
 		# 通过 registry 查改造数据拿 effects
-		var mod_data: Dictionary = ModificationRegistry.get_data(mod_id)
+		var mod_data: Dictionary = _ModRegistry.get_data(mod_id)
 		if mod_data.is_empty():
 			continue
 		var effects: Dictionary = mod_data.get("effects", {})

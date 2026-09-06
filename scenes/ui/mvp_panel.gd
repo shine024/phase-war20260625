@@ -244,8 +244,10 @@ func _render_battle_stats(vbox: VBoxContainer) -> void:
 	data_grid.add_theme_constant_override("h_separation", 32)
 	data_grid.add_theme_constant_override("v_separation", 6)
 	vbox.add_child(data_grid)
-	_add_data_row(data_grid, "击毁敌方", str(stats.get("enemy_kills", 0)), DT.COLOR_GREEN_BRIGHT)
-	_add_data_row(data_grid, "我方损失", str(stats.get("player_kills", 0)), DT.COLOR_DANGER)
+	# v26.13(gameplay) 修复：两行此前读反——"击毁敌方"读的是 enemy_kills（敌方击杀数）、
+	# "我方损失"读的是 player_kills（我方击杀数），败局/胜局核心数据恒显示反值。
+	_add_data_row(data_grid, "击毁敌方", str(stats.get("player_kills", 0)), DT.COLOR_GREEN_BRIGHT)
+	_add_data_row(data_grid, "我方损失", str(stats.get("enemy_kills", 0)), DT.COLOR_DANGER)
 	_add_data_row(data_grid, "造成伤害", FormatUtil.format_thousands(int(stats.get("damage_dealt", 0))), DT.COLOR_ACCENT_CYAN)
 	_add_data_row(data_grid, "承受伤害", FormatUtil.format_thousands(int(stats.get("damage_taken", 0))), DT.COLOR_ENERGY)
 
@@ -287,7 +289,11 @@ func _render_phase_field_xp(vbox: VBoxContainer) -> void:
 			lv_up_text = "  (Lv.%d → Lv.%d)" % [_level_before, phase_level_after]
 		phase_info.text = "相位场经验 +%d%s" % [phase_xp_gain, lv_up_text]
 	else:
-		phase_info.text = "相位场经验 +0"
+		# v26.13(gameplay)：败局现发 30% 相位场经验——显示真实增量而非硬编码 +0
+		var lv_up_text2: String = ""
+		if phase_level_after > _level_before:
+			lv_up_text2 = "  (Lv.%d → Lv.%d)" % [_level_before, phase_level_after]
+		phase_info.text = "相位场经验 +%d%s（败局 30%%）" % [phase_xp_gain, lv_up_text2]
 	vbox.add_child(phase_info)
 
 
@@ -893,7 +899,8 @@ func _on_return_bunker_pressed() -> void:
 			tw.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
 			tw.tween_property(panel, "modulate:a", 0.0, DT.MOTION_FADE_OUT)
 	tw.tween_callback(func():
-		SceneTransition.change(get_tree(), "res://scenes/bunker/bunker_main.tscn"))
+		# v26.12d：固定主基地停用，返回落移动基地（出击链 truck_base 设置本 meta）
+		SceneTransition.change(get_tree(), "res://scenes/bunker/truck_base.tscn"))
 
 
 # =========================================================================
@@ -944,6 +951,16 @@ func _kill_type_breakdown() -> Array:
 	var out: Array = []
 	for i in range(mini(3, sorted.size())):
 		out.append("%s ×%d" % [_type_display_name(sorted[i]), counts[sorted[i]]])
+	return out
+
+
+## v26.13(gameplay)：把 {type: count} 快照格式化为前 3 名文案（同 _kill_type_breakdown 输出）
+func _format_type_counts(counts: Dictionary) -> Array:
+	var sorted: Array = counts.keys()
+	sorted.sort_custom(func(a, b): return counts[a] > counts[b])
+	var out: Array = []
+	for i in range(mini(3, sorted.size())):
+		out.append("%s ×%d" % [_type_display_name(str(sorted[i])), int(counts[sorted[i]])])
 	return out
 
 
@@ -1018,7 +1035,12 @@ func _render_defeat_analysis(vbox: VBoxContainer) -> void:
 	body.add_theme_color_override("font_color", DT.COLOR_TEXT_BRIGHT)
 
 	var lines: Array = []
-	var alive: Dictionary = _alive_enemy_breakdown()
+	# v26.13(gameplay)：优先读 end_battle 定格的败因快照（实机 P1：渲染窗口里
+	# 战场/数组已脱离可读状态，活读恒空）；快照缺失时回退活读。
+	var bm: Node = get_node_or_null("/root/BattleManager")
+	var res_snap = bm.get("_battle_result") if bm != null else null
+	var snap_alive: Dictionary = (res_snap.get("defeat_alive_by_type", {}) if res_snap is Dictionary else {})
+	var alive: Dictionary = snap_alive if not snap_alive.is_empty() else _alive_enemy_breakdown()
 	if alive.is_empty():
 		lines.append("· 敌军构成：未能记录（战场已清场）")
 	else:
@@ -1037,7 +1059,8 @@ func _render_defeat_analysis(vbox: VBoxContainer) -> void:
 				advised += 1
 				if advised >= 3:
 					break
-	var killed: Array = _kill_type_breakdown()
+	var snap_kills: Dictionary = (res_snap.get("defeat_kills_by_type", {}) if res_snap is Dictionary else {})
+	var killed: Array = _format_type_counts(snap_kills) if not snap_kills.is_empty() else _kill_type_breakdown()
 	lines.append("· 本场击杀：" + ("、".join(killed) if not killed.is_empty() else "无"))
 	lines.append("· 情报：在情报中心把对应敌种情报推到 75%+ 可解锁弱点/抗性提示")
 	lines.append("· 整备：提升卡牌等级/改造/制造高品质卡后再战，或稍后用大招手动模式攒爆发打 Boss 波")
@@ -1049,8 +1072,10 @@ func _render_defeat_analysis(vbox: VBoxContainer) -> void:
 func _compute_stars(stats: Dictionary) -> int:
 	if not player_won:
 		return 1
-	var kills: int = int(stats.get("enemy_kills", 0))
-	var losses: int = int(stats.get("player_kills", 0))
+	# v26.13(gameplay) 修复：此前 kills 读 enemy_kills（敌方击杀我方数）当击杀门槛、
+	# losses 读 player_kills 当损失——星级评定与实际战果相反。
+	var kills: int = int(stats.get("player_kills", 0))
+	var losses: int = int(stats.get("enemy_kills", 0))
 	var time_s: float = float(stats.get("battle_time", 0.0))
 	var stars: int = 1
 	# 击杀数门槛

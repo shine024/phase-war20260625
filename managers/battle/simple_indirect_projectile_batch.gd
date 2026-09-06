@@ -323,6 +323,12 @@ func _sync_multimesh_layers() -> void:
 			mm.set_instance_transform_2d(idx, xf)
 			# v20.17: 亚类染色覆盖（火箭橙红/导弹微橙白；NONE 保持阵营 tint）
 			var tint_r: Color = WeaponProjectileVfx.indirect_tint(int(r.get("flavor", -1)), tint)
+			# v27.x: 星冥曲射族（等离子抛射/蠕虫弹药/灵能风暴）弹体紫青覆盖——
+			# 灵能抛射物观感；命中侧由 spawn_xeno_impact 播星冥能量爆炸帧（替代橙红火球）。
+			if XenoWeaponFlavor.enabled():
+				var xw: int = XenoWeaponFlavor.classify(String(r.get("weapon_name", "")))
+				if xw >= 0:
+					tint_r = XenoWeaponFlavor.flavor_color(xw)
 			mm.set_instance_color(idx, tint_r)
 			idx += 1
 

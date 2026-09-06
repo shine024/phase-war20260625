@@ -19,10 +19,13 @@ class_name XenoUnits
 ##   mimic_rewind                                 拟时者死亡回溯（每场一次，半血复活）
 ##   psi_intercept_chance                         猎能碟无限拦截（intercept_charges=-1）
 ##
-## 视觉：visual_fallback 为占位卡图——v27.2 起全部选用带 unit_anims 雪碧条资产的卡
-## （UnitFrameAnim 经 visual_id 继承该卡 idle ping-pong + attack 帧动画；卡面=动画同图）。
-## AI 生图管线产出 vis_xeno_* 后替换，届时改本字段 + 跑 tools/generate_card_foot_anchors.py
-## + 补 unit_anims/xeno_* 帧资产 + 美术打包铁律。
+## 视觉：visual_fallback 已升级为星冥专属资产 vis_xeno_*（2026-09-04，v27.3）——
+## 卡图 assets/card_icons/{enemy,player}/vis_xeno_*.png（enemy 朝左 / player 翻转）+
+## 帧动画 assets/effects/unit_anims/vis_xeno_*/（idle ping-pong + attack，UnitFrameAnim
+## 经 visual_id 继承；卡面=动画同图）。AI 生图配置单一真身 tools/xeno_assets_config.py，
+## 动画管线 tools/generate_xeno_anims.py（串行流水，视频 API 限流≈1 在途）。
+## 新增/换图后：跑 tools/generate_card_foot_anchors.py + --headless --editor --quit 导入
+## + deploy_unit_anims.py 部署雪碧条 + 美术打包铁律。
 
 const XENO_ERA: int = 5
 
@@ -40,7 +43,7 @@ const UNITS: Dictionary = {
 		"defense_light": 18.0, "defense_armor": 8.0, "defense_air": 6.0,
 		"tags": ["infantry", "frontline", "fast"],
 		"psi_shield_frac": 0.15, "communion": true,
-		"visual_fallback": "cold_inf_metis", "visual_scale": 0.55,
+		"visual_fallback": "vis_xeno_swarmling", "visual_scale": 0.55,
 		"drop_chance": 0.08, "power": 140,
 	},
 	"xeno_probe": {
@@ -55,7 +58,7 @@ const UNITS: Dictionary = {
 		"defense_light": 30.0, "defense_armor": 25.0, "defense_air": 20.0,
 		"tags": ["turret", "sustained", "communion_node"],
 		"psi_shield_frac": 0.25, "communion": false, "communion_node": true,
-		"visual_fallback": "fut_sup_nrepair", "visual_scale": 0.7,
+		"visual_fallback": "vis_xeno_probe", "visual_scale": 0.7,
 		"drop_chance": 0.08, "power": 160,
 	},
 	"xeno_zealot": {
@@ -70,7 +73,7 @@ const UNITS: Dictionary = {
 		"defense_light": 52.0, "defense_armor": 88.0, "defense_air": 15.0,
 		"tags": ["infantry", "frontline"],
 		"psi_shield_frac": 0.40, "communion": true,
-		"visual_fallback": "ww1_inf_mp18_x", "visual_scale": 0.75,
+		"visual_fallback": "vis_xeno_zealot", "visual_scale": 0.75,
 		"drop_chance": 0.08, "power": 320,
 	},
 	"xeno_stalker": {
@@ -85,7 +88,7 @@ const UNITS: Dictionary = {
 		"defense_light": 40.0, "defense_armor": 70.0, "defense_air": 12.0,
 		"tags": ["infantry", "fast"],
 		"psi_shield_frac": 0.30, "communion": true,
-		"visual_fallback": "mod_sup_growler", "visual_scale": 0.75,
+		"visual_fallback": "vis_xeno_stalker", "visual_scale": 0.75,
 		"drop_chance": 0.08, "power": 300,
 	},
 	"xeno_adept": {
@@ -100,7 +103,7 @@ const UNITS: Dictionary = {
 		"defense_light": 36.0, "defense_armor": 60.0, "defense_air": 10.0,
 		"tags": ["infantry"],
 		"psi_shield_frac": 0.25, "communion": true,
-		"visual_fallback": "fut_inf_neural", "visual_scale": 0.7,
+		"visual_fallback": "vis_xeno_adept", "visual_scale": 0.7,
 		"drop_chance": 0.08, "power": 270,
 	},
 	"xeno_sentinel": {
@@ -115,7 +118,7 @@ const UNITS: Dictionary = {
 		"defense_light": 60.0, "defense_armor": 55.0, "defense_air": 50.0,
 		"tags": ["turret", "sustained", "communion_node"],
 		"psi_shield_frac": 0.35, "communion": false, "communion_node": true,
-		"visual_fallback": "fut_arty_hel30", "visual_scale": 0.9,
+		"visual_fallback": "vis_xeno_sentinel", "visual_scale": 0.9,
 		"drop_chance": 0.08, "power": 290,
 	},
 	"xeno_dragoon": {
@@ -131,7 +134,7 @@ const UNITS: Dictionary = {
 		"tags": ["vehicle", "armored"],
 		"psi_shield_frac": 0.30, "communion": true,
 		"death_burst": {"radius": 140.0, "dmg_frac": 0.6, "hit_allies": false},
-		"visual_fallback": "fut_arm_hk07", "visual_scale": 1.1,
+		"visual_fallback": "vis_xeno_dragoon", "visual_scale": 1.1,
 		"drop_chance": 0.08, "power": 380,
 	},
 	"xeno_plasma_bug": {
@@ -146,7 +149,7 @@ const UNITS: Dictionary = {
 		"defense_light": 38.0, "defense_armor": 66.0, "defense_air": 18.0,
 		"tags": ["turret", "artillery"],
 		"psi_shield_frac": 0.20, "communion": true,
-		"visual_fallback": "fut_arty_ssc1", "visual_scale": 0.85,
+		"visual_fallback": "vis_xeno_plasma_bug", "visual_scale": 0.85,
 		"drop_chance": 0.08, "power": 300,
 	},
 
@@ -163,7 +166,7 @@ const UNITS: Dictionary = {
 		"defense_light": 90.0, "defense_armor": 260.0, "defense_air": 60.0,
 		"tags": ["vehicle", "armored", "elite"],
 		"psi_shield_frac": 0.35, "communion": true,
-		"visual_fallback": "mod_arm_himars", "visual_scale": 1.5,
+		"visual_fallback": "vis_xeno_tripod", "visual_scale": 1.5,
 		"drop_chance": 0.22, "power": 720,
 	},
 	"xeno_hunter": {
@@ -178,7 +181,7 @@ const UNITS: Dictionary = {
 		"defense_light": 48.0, "defense_armor": 75.0, "defense_air": 14.0,
 		"tags": ["infantry", "stealth", "elite"],
 		"psi_shield_frac": 0.25, "communion": true,
-		"visual_fallback": "fut_inf_x9", "visual_scale": 0.8,
+		"visual_fallback": "vis_xeno_hunter", "visual_scale": 0.8,
 		"drop_chance": 0.22, "power": 460,
 	},
 	"xeno_mimic": {
@@ -194,7 +197,7 @@ const UNITS: Dictionary = {
 		"tags": ["infantry", "fast", "elite"],
 		"psi_shield_frac": 0.30, "communion": true,
 		"mimic_rewind": true,
-		"visual_fallback": "mod_sup_m4_carbine", "visual_scale": 0.7,
+		"visual_fallback": "vis_xeno_mimic", "visual_scale": 0.7,
 		"drop_chance": 0.22, "power": 430,
 	},
 	"xeno_biomorph": {
@@ -210,7 +213,7 @@ const UNITS: Dictionary = {
 		"tags": ["infantry", "fast", "elite"],
 		"psi_shield_frac": 0.0, "communion": true,
 		"death_burst": {"radius": 130.0, "dmg_frac": 0.8, "hit_allies": true},
-		"visual_fallback": "fut_inf_c96", "visual_scale": 0.7,
+		"visual_fallback": "vis_xeno_biomorph", "visual_scale": 0.7,
 		"drop_chance": 0.22, "power": 440,
 	},
 	"xeno_dark_templar": {
@@ -225,7 +228,7 @@ const UNITS: Dictionary = {
 		"defense_light": 44.0, "defense_armor": 78.0, "defense_air": 13.0,
 		"tags": ["infantry", "stealth", "elite"],
 		"psi_shield_frac": 0.15, "communion": true,
-		"visual_fallback": "ww2_arty_hummel", "visual_scale": 0.78,
+		"visual_fallback": "vis_xeno_dark_templar", "visual_scale": 0.78,
 		"drop_chance": 0.22, "power": 560,
 	},
 	"xeno_reaver": {
@@ -240,7 +243,7 @@ const UNITS: Dictionary = {
 		"defense_light": 70.0, "defense_armor": 230.0, "defense_air": 45.0,
 		"tags": ["vehicle", "armored", "artillery", "elite"],
 		"psi_shield_frac": 0.25, "communion": true,
-		"visual_fallback": "ww2_arty_pak40", "visual_scale": 1.2,
+		"visual_fallback": "vis_xeno_reaver", "visual_scale": 1.2,
 		"drop_chance": 0.22, "power": 640,
 	},
 
@@ -257,7 +260,7 @@ const UNITS: Dictionary = {
 		"defense_light": 26.0, "defense_armor": 38.0, "defense_air": 24.0,
 		"tags": ["aircraft", "fast", "elite"],
 		"psi_shield_frac": 0.15, "communion": true,
-		"visual_fallback": "mod_arty_rq7", "visual_scale": 0.6,
+		"visual_fallback": "vis_xeno_interceptor", "visual_scale": 0.6,
 		"drop_chance": 0.35, "power": 320,
 	},
 	"xeno_carrier": {
@@ -272,7 +275,7 @@ const UNITS: Dictionary = {
 		"defense_light": 120.0, "defense_armor": 180.0, "defense_air": 150.0,
 		"tags": ["aircraft", "elite", "communion_node"],
 		"psi_shield_frac": 0.35, "communion": false, "communion_node": true,
-		"visual_fallback": "cold_sup_bmp1_x", "visual_scale": 1.8,
+		"visual_fallback": "vis_xeno_carrier", "visual_scale": 1.8,
 		"drop_chance": 0.35, "power": 980,
 	},
 	"xeno_saucer": {
@@ -288,7 +291,7 @@ const UNITS: Dictionary = {
 		"tags": ["aircraft", "elite"],
 		"psi_shield_frac": 0.50, "communion": true,
 		"psi_intercept_chance": 0.30,
-		"visual_fallback": "mod_inf_patriot", "visual_scale": 1.5,
+		"visual_fallback": "vis_xeno_saucer", "visual_scale": 1.5,
 		"drop_chance": 0.35, "power": 1100,
 	},
 
@@ -305,7 +308,7 @@ const UNITS: Dictionary = {
 		"defense_light": 130.0, "defense_armor": 220.0, "defense_air": 180.0,
 		"tags": ["turret", "sustained", "boss", "communion_node"],
 		"psi_shield_frac": 0.45, "communion": false, "communion_node": true,
-		"visual_fallback": "cold_arty_bmd1", "visual_scale": 1.6,
+		"visual_fallback": "vis_xeno_templar", "visual_scale": 1.6,
 		"drop_chance": 0.55, "power": 1600,
 	},
 	"xeno_thing": {
@@ -320,7 +323,7 @@ const UNITS: Dictionary = {
 		"defense_light": 110.0, "defense_armor": 280.0, "defense_air": 70.0,
 		"tags": ["vehicle", "armored", "boss", "fast"],
 		"psi_shield_frac": 0.25, "communion": true,
-		"visual_fallback": "fut_sup_ps9", "visual_scale": 1.4,
+		"visual_fallback": "vis_xeno_thing", "visual_scale": 1.4,
 		"drop_chance": 0.55, "power": 1700,
 	},
 	"xeno_mothership": {
@@ -335,7 +338,7 @@ const UNITS: Dictionary = {
 		"defense_light": 160.0, "defense_armor": 240.0, "defense_air": 200.0,
 		"tags": ["aircraft", "boss", "communion_node"],
 		"psi_shield_frac": 0.50, "communion": false, "communion_node": true,
-		"visual_fallback": "cold_arm_p18", "visual_scale": 2.0,
+		"visual_fallback": "vis_xeno_mothership", "visual_scale": 2.0,
 		"drop_chance": 0.55, "power": 2400,
 	},
 }
