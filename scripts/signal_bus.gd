@@ -140,6 +140,14 @@ signal show_toast(message: String)
 signal panel_opened(panel_id: String)
 signal panel_closed(panel_id: String)
 
+# 底部功能抽屉开合广播（bottom_function_bar 发出；battle_log 淡出让位用——
+# 抽屉展开时底部栏向上生长会顶进日志面板区域，日志需让位避免相互遮挡）
+signal bottom_drawer_toggled(open: bool)
+
+# 大招条按钮簇几何变化广播（ultimate_cast_bar 发出；battle_log 贴边定位用——
+# 日志右缘动态紧挨按钮簇左缘，簇宽随可见按钮增减时通知重排）
+signal ult_cluster_geometry_changed()
+
 # v6.2: 符文系统信号
 signal rune_acquired(rune_id: String, source: String)  ## 获得符文（掉落/购买/奖励）
 

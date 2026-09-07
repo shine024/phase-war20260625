@@ -1,0 +1,38 @@
+[b6_black_gates] 跳过（--skip=1）
+[b7_deep_voyage] 开始...
+  dry-run OK (30.2s)
+  output:  9e29ee7f (334 KB)
+[15:41:14] [save] F:\godot fair duet\create\phase-war\assets\intro\comic\_raw\flow-b7_deep_voyage_20260907-154114_9e29ee7f.jpg (334 KB, (1280, 720))
+[15:41:14] [run] [OK] 成功: F:\godot fair duet\create\phase-war\assets\intro\comic\_raw\flow-b7_deep_voyage_20260907-154114_9e29ee7f.jpg
+
+  stderr tail: (empty)
+  [b7_deep_voyage] done in 50.7s
+  saved -> F:\godot fair duet\create\phase-war\assets\intro\comic\_raw\b7_deep_voyage.png (960KB)
+[b8_departure] 开始...
+  dry-run OK (24.9s)
+  output:  [gen] 已提交 (attempt 1)
+[15:42:29] [save] F:\godot fair duet\create\phase-war\assets\intro\comic\_raw\flow-b8_departure_20260907-154229_07f14d88.jpg (334 KB, (1280, 720))
+[15:42:29] [run] [OK] 成功: F:\godot fair duet\create\phase-war\assets\intro\comic\_raw\flow-b8_departure_20260907-154229_07f14d88.jpg
+
+  stderr tail: (empty)
+  [b8_departure] done in 45.0s
+  saved -> F:\godot fair duet\create\phase-war\assets\intro\comic\_raw\b8_sacrifice.png (723KB)
+[b10_rift_stream] 开始...
+  dry-run OK (26.1s)
+  output: 64b57eb (334 KB)
+[15:43:48] [save] F:\godot fair duet\create\phase-war\assets\intro\comic\_raw\flow-b10_rift_stream_20260907-154348_b64b57eb.jpg (334 KB, (1280, 720))
+[15:43:48] [run] [OK] 成功: F:\godot fair duet\create\phase-war\assets\intro\comic\_raw\flow-b10_rift_stream_20260907-154348_b64b57eb.jpg
+
+  stderr tail: (empty)
+  [b10_rift_stream] done in 48.2s
+  saved -> F:\godot fair duet\create\phase-war\assets\intro\comic\_raw\b10_rift_stream.png (799KB)
+[wakeup_snowfield] 开始...
+  dry-run OK (23.6s)
+  output: 提交 (attempt 1)
+[15:45:01] [save] F:\godot fair duet\create\phase-war\assets\intro\comic\_raw\flow-wakeup_snowfield_20260907-154501_6e6f949f.jpg (334 KB, (1280, 720))
+[15:45:02] [run] [OK] 成功: F:\godot fair duet\create\phase-war\assets\intro\comic\_raw\flow-wakeup_snowfield_20260907-154501_6e6f949f.jpg
+
+  stderr tail: (empty)
+  [wakeup_snowfield] done in 44.5s
+  saved -> F:\godot fair duet\create\phase-war\assets\intro\comic\_raw\wakeup_snowfield.png (932KB)
+完成 4/5 张

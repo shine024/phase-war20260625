@@ -10,8 +10,13 @@ extends PanelContainer
 ## 性能：仿 battle_info_display 的 _stats_dirty 模式——事件先入队列，
 ## _process 每 0.3s 合并刷新一次 Label，避免高频事件每帧重建文本。
 ##
-## 挂载：HudLayer/BattleLogBar（BattleBottomBar 兄弟节点，紧贴底部栏上方，左半屏宽）
+## 挂载：HudLayer/BattleLogBar（BattleBottomBar 兄弟节点）。
 ## 保留最近 30 条，FIFO。
+## v26.16 收窄贴边：不再占左半屏浮在底部栏上方，改为左下窄列——右缘动态紧挨
+## 大招条按钮簇左缘（订阅 ult_cluster_geometry_changed，簇宽随可见按钮变化重排）、
+## 底缘紧贴相位仪栏顶边、折叠态与大招条带同高成行。展开态（96px）会向上探进
+## 功能抽屉展开区——仅该态在抽屉开（bottom_drawer_toggled）时淡出让位，收起复原；
+## 战斗结束后收抽屉不复活。
 
 const DT = preload("res://resources/design_tokens.gd")
 const PanelStyles = preload("res://scripts/ui/panel_styles.gd")
@@ -20,6 +25,9 @@ const _MAX_ENTRIES: int = 30           # 保留条目上限
 const _REFRESH_SEC: float = 0.3        # 合并刷新间隔
 const _COLLAPSED_LINES: int = 1        # 折叠时显示行数
 const _EXPANDED_LINES: int = 5         # 展开时显示行数
+const _HEIGHT_COLLAPSED: float = 50.0  # 折叠态高度：与大招条带同高成行，底缘贴相位仪栏顶
+const _HEIGHT_EXPANDED: float = 96.0   # 展开态高度（5 行），向上加高
+const _BAND_HUG_GAP: float = 12.0      # 右缘与大招按钮簇的间隙（底板左外扩 10px + 2px 呼吸）
 
 var _entries: Array[Dictionary] = []   # {text, color}
 var _dirty: bool = false
@@ -27,6 +35,9 @@ var _refresh_acc: float = 0.0
 var _expanded: bool = false
 var _log_label: RichTextLabel = null
 var _toggle_btn: Button = null
+var _battle_active: bool = false       # 战斗进行中（让位复原的门卫：战后收抽屉不复活）
+var _drawer_open: bool = false         # 底部功能抽屉当前开合（bottom_drawer_toggled 维护）
+var _alpha_tween: Tween = null         # 本面板唯一的 alpha 补间（让位/复原/战后淡出共用，互斥）
 
 func _ready() -> void:
 	# v25 HUD 家族：半透明深底 + 6 圆角；保留左侧 3px 青色签名条
@@ -89,31 +100,45 @@ func _ready() -> void:
 		SignalBus.battle_started.connect(_on_battle_started)
 		SignalBus.battle_ended.connect(_on_battle_ended)
 		SignalBus.unit_damaged.connect(_on_unit_damaged)
+		SignalBus.bottom_drawer_toggled.connect(_on_bottom_drawer_toggled)
+		SignalBus.ult_cluster_geometry_changed.connect(_reflow)
+	get_viewport().size_changed.connect(func() -> void: _reflow.call_deferred())
 
 # =========================================================================
 #  信号处理
 # =========================================================================
 
 func _on_battle_started() -> void:
+	_kill_alpha_tween()
 	_entries.clear()
 	_dirty = true
 	set_process(true)
 	_expanded = false
+	_battle_active = true
 	if _toggle_btn != null:
 		_toggle_btn.text = "▼"
 	modulate.a = 1.0
 	visible = true
+	_reflow.call_deferred()
+	# 抽屉残留展开时开战：立即让位（开场序列的强制收抽屉晚到也不闪日志）
+	if _drawer_open:
+		_yield_for_drawer()
 
 func _on_battle_ended(_player_won: bool) -> void:
 	# 战斗结束停止采集，但保留最后日志 2s 供查看，然后淡出
 	set_process(false)
-	if not visible or modulate.a <= 0.01:
+	_battle_active = false
+	_kill_alpha_tween()
+	if not visible or modulate.a <= 0.01 or (_drawer_open and _expanded):
+		# 让位态（alpha 已 0/让位中）或本就隐藏：直接收摊，防"战后收抽屉复活"
 		_entries.clear()
+		modulate.a = 0.0
+		visible = false
 		return
-	var tw := create_tween()
-	tw.tween_interval(2.0)
-	tw.tween_property(self, "modulate:a", 0.0, 0.5)
-	tw.tween_callback(func():
+	_alpha_tween = create_tween()
+	_alpha_tween.tween_interval(2.0)
+	_alpha_tween.tween_property(self, "modulate:a", 0.0, 0.5)
+	_alpha_tween.tween_callback(func():
 		visible = false
 		_entries.clear()
 	)
@@ -150,6 +175,86 @@ func _on_unit_damaged(unit: Node, is_player: bool, amount: float, _pos: Vector2)
 			var amt := int(amount)
 			if amt > 0:
 				_add_entry("基地 -%d HP" % amt, DT.COLOR_DANGER)
+
+# =========================================================================
+#  抽屉让位（v26.16：战斗中开功能抽屉时，日志面板不再盖住抽屉上半截）
+# =========================================================================
+
+func _on_bottom_drawer_toggled(open: bool) -> void:
+	_drawer_open = open
+	if open:
+		_yield_for_drawer()
+	else:
+		_restore_from_drawer()
+
+## 抽屉展开 → 日志淡出让位（抽屉关闭注意力在菜单上，日志暂隐代价最小）。
+## v26.16 收窄贴边后：折叠态（带内左侧）与抽屉展开区天然不重叠，无需让位；
+## 仅展开态（96px 上探进抽屉区）让位。
+func _yield_for_drawer() -> void:
+	if not _expanded:
+		return
+	if not visible:
+		return
+	_kill_alpha_tween()
+	if not _battle_active:
+		# 战后 2s 保留窗内开抽屉：让位即收摊，跳过保留期
+		modulate.a = 0.0
+		visible = false
+		_entries.clear()
+		return
+	if DT.is_motion_reduce():
+		modulate.a = 0.0
+		return
+	_alpha_tween = create_tween()
+	_alpha_tween.tween_property(self, "modulate:a", 0.0, DT.MOTION_FADE_OUT)\
+		.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+
+func _restore_from_drawer() -> void:
+	# 仅展开态有让位可复原；战斗已结束（战后淡出链管终态）/ 本就隐藏 / 竞态：不复原
+	if not _expanded:
+		return
+	if not _battle_active or not visible or _drawer_open:
+		return
+	_kill_alpha_tween()
+	if DT.is_motion_reduce():
+		modulate.a = 1.0
+		return
+	_alpha_tween = create_tween()
+	_alpha_tween.tween_property(self, "modulate:a", 1.0, DT.MOTION_FADE_IN)\
+		.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+
+func _kill_alpha_tween() -> void:
+	if _alpha_tween != null and _alpha_tween.is_valid():
+		_alpha_tween.kill()
+	_alpha_tween = null
+
+## v26.16 收窄贴边重排：右缘动态紧挨大招条按钮簇左缘（簇宽随可见按钮变化，
+## 由 ult_cluster_geometry_changed 驱动），底缘紧贴相位仪栏顶边，左缘对齐底部栏
+## 边距；折叠态与大招条带同高（50px）成行，展开态向上加高到 96px。
+func _reflow() -> void:
+	if not is_inside_tree():
+		return
+	var ult: Control = get_node_or_null("../BattleBottomBar/UltimateCastBar") as Control
+	var inst: Control = get_node_or_null("../BattleBottomBar/BottomInstrumentBar") as Control
+	if ult == null or inst == null:
+		return
+	var vp_h: float = get_viewport_rect().size.y
+	var cluster_left: float = ult.get_global_rect().get_center().x
+	if ult.has_method("get_cluster_left_x"):
+		cluster_left = float(ult.call("get_cluster_left_x"))
+	var bar_top: float = inst.get_global_rect().position.y
+	# 折叠态高度跟随大招条带实际高度（呼吸垫等会使带宽 50→53px 浮动），保证两行齐平
+	var h: float = _HEIGHT_EXPANDED if _expanded else maxf(_HEIGHT_COLLAPSED, ult.get_global_rect().size.y)
+	anchor_left = 0.0
+	anchor_right = 0.0
+	anchor_top = 1.0
+	anchor_bottom = 1.0
+	grow_horizontal = Control.GROW_DIRECTION_END
+	grow_vertical = Control.GROW_DIRECTION_BEGIN
+	offset_left = 16.0
+	offset_right = cluster_left - _BAND_HUG_GAP
+	offset_bottom = bar_top - vp_h
+	offset_top = offset_bottom - h
 
 # =========================================================================
 #  日志条目管理
@@ -190,6 +295,10 @@ func _on_toggle_pressed() -> void:
 	_expanded = not _expanded
 	_toggle_btn.text = "▲" if _expanded else "▼"
 	_dirty = true
+	_reflow()
+	# 抽屉开着时展开会上探进抽屉展开区：立即让位
+	if _expanded and _drawer_open:
+		_yield_for_drawer()
 
 # =========================================================================
 #  辅助

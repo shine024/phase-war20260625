@@ -82,7 +82,6 @@ const BattleEnvironments = preload("res://data/battle_environments.gd")  # 2026-
 const EnemyLoadoutTiers = preload("res://data/enemy_loadout_tiers.gd")  # 2026-08-16: 难度显示单一真源（战斗链真实档位乘区）
 const LayoutS11 := preload("res://data/world_map_layout_s11.gd")  # v23: 方案11 内容锚定布点（原型管线导出，勿手改）
 const TruckTravel = preload("res://data/truck_travel.gd")  # v26.19: 行军数值真身（燃料/天数/引擎）
-const BunkerRoomDefsRef = preload("res://data/bunker_room_defs.gd")  # v26.19: cost_text 价目文案复用
 
 # v6.10: 关卡按钮占领色标——势力色统一从 CompanyDefinitions.get_faction_color() 读取（Palette B）
 # 无主之地兜底（右边框半透明灰）
@@ -258,7 +257,7 @@ func _ready() -> void:
 		_fuel_chip = Label.new()
 		_fuel_chip.add_theme_font_size_override("font_size", 13)
 		_fuel_chip.add_theme_color_override("font_color", Color(0.95, 0.78, 0.45))
-		_fuel_chip.tooltip_text = "移动基地燃料：睡觉回充；低于安全储备不可出车（点关卡节点规划行军）"
+		_fuel_chip.tooltip_text = "移动基地燃料：自动回复（离线也涨，速率随引擎等级）；低于安全储备不可出车；可用能量块 1:1 充能（基地发电机工位）"
 		vbox_r.add_child(_fuel_chip)
 		vbox_r.move_child(_fuel_chip, 2)
 	_refresh_fuel_chip()
@@ -390,6 +389,15 @@ func _build_level_map() -> void:
 			scroll.add_child(reused)
 			_reconnect_level_buttons(reused)
 			_rebind_overlay(reused)
+			# v26.26 修复：模板快照带着死连接的卡车标记/路线副本（duplicate 不复制运行期
+			# draw/gui_input 连接）——二次进图表现为无光点/无路线/徽标不显示，死标记
+			# 还是隐形点击阻塞块。先摘除死副本，再按首建同款重建活的。
+			for stale_name in ["TruckMarker", "TravelRoute"]:
+				var stale := reused.get_node_or_null(stale_name)
+				if stale != null:
+					reused.remove_child(stale)
+					stale.queue_free()
+			_add_truck_marker(reused)
 			_apply_gate_state(reused)
 			if MAP_SCHEME == 11:
 				_fit_canvas_to_viewport.call_deferred(reused, scroll)
@@ -501,9 +509,6 @@ func _build_level_map() -> void:
 		gate_lbl.position = gate_p + Vector2(-34, 64)
 		gate_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		canvas.add_child(gate_lbl)
-
-		# 4c) v26.12c：移动基地卡车标记（停在当前关节点旁，时代换车，点击进移动基地）
-		_add_truck_marker(canvas)
 	else:
 		# 方案 6/8：灯塔/掩体贴图（可点击回基地）
 		var lh := TextureRect.new()
@@ -585,6 +590,11 @@ func _build_level_map() -> void:
 			canvas.add_child(_make_level_node(lv_s8, era_idx_s8,
 				_s_level_points.get(lv_s8, Vector2.ZERO), current_level))
 	_overlay_layer.queue_redraw()
+
+	# 4c) v26.12c：移动基地卡车标记——v26.28 放到节点层之后创建（压在节点盘/关卡名
+	# 之上，到站不被节点盖上）；路线层随之同层（线端画进节点盘，衔接可读）
+	if MAP_SCHEME == 11:
+		_add_truck_marker(canvas)
 
 	# 标记地图已构建（静态模板供跨场景复用）
 	_cached_level_map_template = canvas.duplicate(Node.DUPLICATE_USE_INSTANTIATION) as Control
@@ -1008,7 +1018,11 @@ func _make_level_node(level_index: int, era_idx: int, point: Vector2, _current_l
 		dot.name = "CurDot"
 		var dsb := StyleBoxFlat.new()
 		dsb.set_corner_radius_all(7)
-		dsb.bg_color = era_col
+		# v26.28：改青色（与"▼第N关"引导标/当前关双环同族）——原时代色在一战等时代
+		# 是橙铜色，与移动基地金色光点撞色（用户实测混淆"两个橙点"）
+		dsb.bg_color = Color(0.0, 0.9, 1.0)
+		dsb.border_color = Color(0, 0, 0, 0.6)
+		dsb.set_border_width_all(2)
 		dot.add_theme_stylebox_override("panel", dsb)
 		dot.size = Vector2(16, 16)
 		dot.position = Vector2(size_px * 0.5 - 8, -18)
@@ -1077,6 +1091,9 @@ func _process(_delta: float) -> void:
 	_update_next_marker(canvas, scroll)
 	_update_travel_badge_screen(canvas, scroll)
 	_follow_travel_dot()
+	# v26.25：燃料自动回复——chip 数字每秒跟涨（读侧结算，_refresh 内部自带 get_fuel）
+	if is_visible_in_tree() and Engine.get_process_frames() % 60 == 0:
+		_refresh_fuel_chip()
 
 ## v28 方案11 视图辅助：适配基准缩放（整图刚好一屏放下）
 func _view_fit_scale(scroll: ScrollContainer) -> float:
@@ -1295,7 +1312,10 @@ func _follow_travel_dot() -> void:
 		return
 	var from := _level_point(int(bm.get_parked_level()))
 	var to := _level_point(int(bm.get_travel_dest()))
-	_truck_marker.position = from.lerp(to, bm.get_travel_progress()) 		+ Vector2(16.0 + _truck_marker.size.x * 0.5, 14.0)
+	# v26.27 修复：行驶中光点中心钉在路线插值点上（与 _draw_travel_route 同 from/to/progress）。
+	# 原实现照抄 _truck_marker_pos 的停靠位避让偏移（中心 +46,+29 画布px）——光点常年浮在
+	# 连线外；避让偏移只在停靠态有意义（防压节点盘），在途态以"点在线上"为准。
+	_truck_marker.position = from.lerp(to, bm.get_travel_progress()) - _truck_marker.size * 0.5
 	if Engine.get_process_frames() % 20 == 0:
 		_refresh_travel_route()
 
@@ -1456,8 +1476,10 @@ func _level_point(lvl: int) -> Vector2:
 	return _s_level_points.get(clampi(lvl, 1, 100), _home_pos())
 
 func _truck_marker_pos(lvl: int, sz: Vector2) -> Vector2:
-	# 光点中心锚在节点右侧偏下，不遮节点盘
-	return _level_point(lvl) + Vector2(16.0 + sz.x * 0.5, 14.0)
+	# v26.28：停靠位=节点中心（走到哪停到哪）——与行驶终点同点，到站/再出发零跳变；
+	# 原右侧偏下避让位废弃（到站跳开、出发跳回的跳变源）。层级上光点压在节点盘之上，
+	# 不存在遮盘问题，无需避让。
+	return _level_point(lvl) - sz * 0.5
 
 ## 进度变化：直接对位（小光点瞬移可读；行驶中的走位由 _on_truck_travel_changed 动画承担）
 func _on_truck_level_changed(_level: int) -> void:
@@ -1656,7 +1678,7 @@ func _on_territory_map_button() -> void:
 		panel._refresh_all()
 
 func _on_level_selected(level_index: int) -> void:
-	# v26.23 自由行军：任意节点可停靠——停靠关=战前准备（关卡情报/出击），其余节点=行军规划
+	# v26.26 一点即发：停靠关=战前准备（关卡情报/出击），其余节点=直接启程（连线+光点即走）
 	var bm := _truck_mgr()
 	if bm != null:
 		if bm.is_traveling():
@@ -1665,7 +1687,7 @@ func _on_level_selected(level_index: int) -> void:
 		if level_index == int(bm.get_parked_level()):
 			_show_level_info_popup(level_index)
 			return
-		_show_move_dialog(level_index)
+		_try_depart_to(level_index)
 		return
 	_show_level_info_popup(level_index)
 
@@ -1711,118 +1733,23 @@ func _level_display_name(level_index: int) -> String:
 	var nm := String(LevelInformation.get_shared().get_level_display_name(level_index))
 	return nm if nm != "" else "第%d关" % level_index
 
-## v26.19：行军规划弹窗（目的地地形 × 燃料消耗 × 行程天数 + 引擎升级入口）
-func _show_move_dialog(level_index: int) -> void:
-	if _level_info_popup and is_instance_valid(_level_info_popup):
-		_level_info_popup.queue_free()
+## v26.26 一点即发：点非停靠节点=直接启程——连线+光点即走。燃料结存常显在顶栏 chip，
+## 出发耗时/油耗在启程 toast；燃料不够→toast 带回复 ETA 与充能指引。
+## （v26.19 行军规划弹窗就此退役：引擎升级/能量块充能入口收敛到基地发电机工位）
+func _try_depart_to(level_index: int) -> void:
 	var bm := _truck_mgr()
 	if bm == null:
 		_show_level_info_popup(level_index)
 		return
-	var from := int(bm.get_parked_level())
-	var cost := TruckTravel.fuel_cost(from, level_index)
-	var days := TruckTravel.travel_days(from, level_index, int(bm.get_engine_level()))
-	var terrain: Dictionary = TruckTravel.terrain_of(level_index)
-	var popup := AcceptDialog.new()
-	popup.title = "行军规划"
-	popup.set_ok_button_text("")
-	if popup.get_ok_button() != null:
-		popup.get_ok_button().visible = false
-	popup.canceled.connect(_close_popup_safe.bind(popup))
-	add_child(popup)
-	_level_info_popup = popup
-
-	var margin := MarginContainer.new()
-	margin.add_theme_constant_override("margin_left", 16)
-	margin.add_theme_constant_override("margin_right", 16)
-	margin.add_theme_constant_override("margin_top", 14)
-	margin.add_theme_constant_override("margin_bottom", 14)
-	popup.add_child(margin)
-	var root_vbox := VBoxContainer.new()
-	root_vbox.add_theme_constant_override("separation", 10)
-	margin.add_child(root_vbox)
-
-	var header := HBoxContainer.new()
-	header.add_theme_constant_override("separation", 8)
-	var title := Label.new()
-	title.text = "行军规划 → 第%d关「%s」" % [level_index, _level_display_name(level_index)]
-	title.add_theme_font_size_override("font_size", 16)
-	title.add_theme_color_override("font_color", Color(0.95, 0.78, 0.45))
-	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	header.add_child(title)
-	var close_btn := Button.new()
-	close_btn.text = "×"
-	close_btn.custom_minimum_size = Vector2(28, 28)
-	close_btn.add_theme_font_size_override("font_size", 16)
-	close_btn.pressed.connect(_close_popup_safe.bind(popup))
-	header.add_child(close_btn)
-	root_vbox.add_child(header)
-
-	var body := VBoxContainer.new()
-	body.add_theme_constant_override("separation", 6)
-	root_vbox.add_child(body)
-	var fuel: int = int(bm.get_fuel())
-	var lines := [
-		"当前停靠：第%d关「%s」" % [from, _level_display_name(from)],
-		"目的地地形：%s（移动消耗 ×%.1f）" % [String(terrain.get("name", "")), float(terrain.get("mult", 1.0))],
-		"燃料消耗：%d（油罐 %d/%d，须预留安全储备 %d）" % [cost, fuel, int(bm.get_fuel_cap()), TruckTravel.RESERVE_FLOOR],
-		"行程：%d 天 ≈ %d 分钟（实时行军 · 引擎 Lv%d）" % [days, ceili(days * TruckTravel.SECONDS_PER_DAY / 60.0), int(bm.get_engine_level())],
-		"出发后自动行军（离线也计时），行驶期间无法出击；到站即可在新停靠点作战。",
-	]
-	# v26.23 自由行军：未解锁节点也可停靠，但出战仍以战线推进为准
-	var max_unlocked := 100
-	var lp := get_node_or_null("/root/LevelProgressManager")
-	if lp != null and lp.has_method("get_max_unlocked_level"):
-		max_unlocked = maxi(int(lp.get_max_unlocked_level()), 1)
-	if level_index > max_unlocked:
-		lines.append("⚠ 此节点尚未解锁（战线前沿：第%d关）——可停靠，但在此出战需先推进战线。" % max_unlocked)
-	for line_text in lines:
-		var l := Label.new()
-		l.text = line_text
-		l.add_theme_font_size_override("font_size", 13)
-		body.add_child(l)
-
-	var actions := HBoxContainer.new()
-	actions.add_theme_constant_override("separation", 10)
-	actions.alignment = BoxContainer.ALIGNMENT_END
-	root_vbox.add_child(actions)
-	var eng := int(bm.get_engine_level())
-	var up_cost: Dictionary = TruckTravel.upgrade_cost(eng)
-	var up_btn := Button.new()
-	up_btn.focus_mode = Control.FOCUS_NONE
-	if up_cost.is_empty():
-		up_btn.text = "引擎已满级 Lv%d" % eng
-		up_btn.disabled = true
-	else:
-		up_btn.text = "升级引擎 Lv%d→%d（%s）" % [eng, eng + 1, BunkerRoomDefsRef.cost_text(up_cost)]
-		up_btn.tooltip_text = "提升行驶速度与燃料罐容量"
-		up_btn.pressed.connect(func() -> void:
-			var res: Dictionary = bm.upgrade_engine()
-			if bool(res.get("ok", false)):
-				SignalBus.play_sound.emit("achievement")
-				_toast_gate(str(res.get("reason", "")))
-				_close_popup_safe(popup)
-				_show_move_dialog(level_index)
-			else:
-				SignalBus.show_error.emit(str(res.get("reason", ""))))
-	actions.add_child(up_btn)
-	var back_btn := Button.new()
-	back_btn.text = "返回"
-	back_btn.focus_mode = Control.FOCUS_NONE
-	back_btn.pressed.connect(_close_popup_safe.bind(popup))
-	actions.add_child(back_btn)
-	var go_btn := Button.new()
-	go_btn.text = "▶ 开始行驶"
-	go_btn.focus_mode = Control.FOCUS_NONE
-	go_btn.pressed.connect(func() -> void:
-		var res: Dictionary = bm.start_travel(level_index)
-		if not bool(res.get("ok", false)):
-			SignalBus.show_error.emit(str(res.get("reason", "")))
-			return
-		_close_popup_safe(popup)
-		_toast_gate("启程 → 第%d关「%s」· 预计 %d 天 · 燃料 -%d" % [
-			level_index, _level_display_name(level_index), int(res["days"]), int(res["cost"])]))
-	actions.add_child(go_btn)
+	var res: Dictionary = bm.start_travel(level_index)
+	if not bool(res.get("ok", false)):
+		_toast_gate(str(res.get("reason", "")))
+		return
+	SignalBus.play_sound.emit("button")
+	_toast_gate("启程 → 第%d关「%s」· 预计 %d 天 ≈ %d 分钟 · 燃料 -%d（结存 %d）" % [
+		level_index, _level_display_name(level_index), int(res["days"]),
+		ceili(float(int(res["days"])) * TruckTravel.SECONDS_PER_DAY / 60.0),
+		int(res["cost"]), int(bm.get_fuel())])
 
 func _set_truck_badge(text: String) -> void:
 	if _truck_badge == null or not is_instance_valid(_truck_badge):

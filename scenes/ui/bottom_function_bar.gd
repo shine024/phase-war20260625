@@ -135,6 +135,8 @@ func set_drawer_open(open: bool, animated: bool = true) -> void:
 	if open == _drawer_open:
 		return
 	_drawer_open = open
+	# 开合广播（battle_log 淡出让位用——抽屉展开时底部栏向上生长会顶进日志面板区域）
+	SignalBus.bottom_drawer_toggled.emit(open)
 	if _drawer_tween != null and _drawer_tween.is_valid():
 		_drawer_tween.kill()
 		_drawer_tween = null
