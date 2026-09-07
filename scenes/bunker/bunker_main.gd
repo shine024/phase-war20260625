@@ -876,10 +876,12 @@ const ACCENT_INTRO := Color(1.0, 0.72, 0.32)
 
 # ───────────────────── v24：序章醒来演出（B8，方案9 实机衔接） ─────────────────────
 
-## 漫画开场（scenes/intro/comic_intro.tscn）收尾携 META_WAKEUP 切入本场景：
-## 黑幕梦呓 → 睁眼（含回眨）→ 三拍梦境闪回 → 画外音落定 → 放首次引导卡。
+## 漫画开场（scenes/intro/comic_intro.tscn）收尾携 META_WAKEUP 切入本场景（深航计划版）：
+## 黑幕梦呓 → 睁眼见雪原（含回眨；雪原图缺失退化为直接见基地房间）→ 三拍梦境闪回 →
+## 画外音落定 → 钻进基地车 → 相位仪教学三拍 → 放首次引导卡。
 ## 无标记（续档/标题直进）= 直接走 _maybe_show_intro 旧路径，零感知。
 const META_WAKEUP := "bunker_intro_wakeup_pending"
+const SNOW_BG_PATH := "res://assets/intro/wakeup_snowfield.png"   # 雪原+基地车+远处黑门（FLOW 待生成，缺图走退化路径）
 
 func _maybe_play_wakeup() -> void:
 	var pending := Engine.has_meta(META_WAKEUP)
@@ -904,6 +906,19 @@ func _play_wakeup_cinematic() -> void:
 	_ui_stage.add_child(root)
 	_wakeup_root = root
 
+	# 雪原底图（深航计划版）：压在眼睑之下，睁眼先见雪原+基地车+远处黑门；缺图时睁眼直接见基地房间
+	var snow_bg: TextureRect = null
+	if ResourceLoader.exists(SNOW_BG_PATH):
+		snow_bg = TextureRect.new()
+		snow_bg.name = "SnowBg"
+		snow_bg.texture = load(SNOW_BG_PATH)
+		snow_bg.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		snow_bg.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+		snow_bg.size = Vector2(1280, 720)
+		snow_bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		root.add_child(snow_bg)
+		root.move_child(snow_bg, 0)
+
 	# 眼睑：上下两片黑（闭合态 = 全黑）
 	var lid_top := ColorRect.new()
 	lid_top.color = Color(0, 0, 0)
@@ -924,7 +939,7 @@ func _play_wakeup_cinematic() -> void:
 	thought.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	thought.add_theme_font_size_override("font_size", DT.FONT_SIZE_LARGE)
 	thought.add_theme_color_override("font_color", Color(0.6, 0.68, 0.8, 0.85))
-	thought.text = "（太阳穴一跳一跳地疼……又是那个梦。）"
+	thought.text = "（好冷……我还活着？）"
 	thought.modulate.a = 0.0
 	thought.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.add_child(thought)
@@ -972,9 +987,9 @@ func _play_wakeup_cinematic() -> void:
 	root.add_child(hint)
 
 	var beats := [
-		{"text": "天，是裂的。", "col": Color(0.9, 0.2, 0.12, 0.72), "sfx": "enhance"},
-		{"text": "两个空间重合——最终只会剩下一个。", "col": Color(0.5, 0.35, 0.9, 0.65), "sfx": "enhance"},
-		{"text": "「去拿属于你的力量。」", "col": Color(0.2, 0.7, 0.85, 0.55), "sfx": "card_pickup"},
+		{"text": "黑门，吞掉了整个天空。", "col": Color(0.9, 0.2, 0.12, 0.72), "sfx": "enhance"},
+		{"text": "「深航计划——回溯至黑门初立之时。」", "col": Color(0.5, 0.35, 0.9, 0.65), "sfx": "enhance"},
+		{"text": "「找到他们。一千个，一个都不能少。」", "col": Color(0.2, 0.7, 0.85, 0.55), "sfx": "card_pickup"},
 	]
 
 	var tw := create_tween()
@@ -1009,15 +1024,22 @@ func _play_wakeup_cinematic() -> void:
 		tw.tween_interval(0.85)
 		tw.tween_property(flash, "color:a", 0.0, 0.45)
 		tw.parallel().tween_property(flash_label, "modulate:a", 0.0, 0.4)
-	# D 画外音落定
+	# D 画外音落定（雪原之上）
 	tw.tween_property(dim, "color:a", 0.42, 0.6)
-	tw.tween_callback(func(): sub.text = "从床沿坐起。头顶是岩层，四周是陌生仪器的微光。")
+	tw.tween_callback(func(): sub.text = "你从雪里坐起。身旁，是随你一同坠落的基地车。")
 	tw.tween_property(sub, "modulate:a", 1.0, 0.5)
 	tw.tween_interval(2.5)
 	tw.tween_property(sub, "modulate:a", 0.0, 0.5)
-	tw.tween_callback(func(): sub.text = "梦里的“我”说过——机会，就在这座要塞里。")
+	tw.tween_callback(func(): sub.text = "天边尽头，黑门矗立在大地上——仿佛没有顶。")
 	tw.tween_property(sub, "modulate:a", 1.0, 0.5)
 	tw.tween_interval(2.6)
+	# E0 进车过场（深航计划版）：雪原 → 基地房间（无雪原图时本拍仅作过场字幕）
+	tw.tween_callback(func(): sub.text = "你钻进基地车。风雪被关在了舱门之外。")
+	tw.tween_property(sub, "modulate:a", 1.0, 0.5)
+	tw.tween_interval(1.9)
+	tw.tween_property(sub, "modulate:a", 0.0, 0.5)
+	if snow_bg != null:
+		tw.parallel().tween_property(snow_bg, "modulate:a", 0.0, 1.1)
 	# E 相位仪三拍教学（v24.7：手腕相位仪 → 纸条 → 床下背包；图缺失时仅字幕兜底）
 	tw.tween_callback(func(): _wakeup_teach_beat(root, sub, 0))
 	tw.tween_interval(3.2)
@@ -1029,7 +1051,7 @@ func _play_wakeup_cinematic() -> void:
 	tw.tween_property(root, "modulate:a", 0.0, 0.9)
 	tw.tween_callback(_finish_wakeup)
 
-## v24.7 醒来演出教学三拍：0=手腕相位仪图 1=纸条（相位仪装卡）2=床下背包图（起始卡）
+## v24.7 醒来演出教学三拍：0=手腕相位仪图 1=纸条（相位仪装卡+找同伴）2=床下背包图（起始卡）
 ## 图走 FLOW 生成（assets/intro/wakeup_*.png，缺图自动退化为纯字幕），由主 tween 驱动时序
 func _wakeup_teach_beat(root: Control, sub: Label, beat: int) -> void:
 	if not _wakeup_active:
@@ -1039,7 +1061,7 @@ func _wakeup_teach_beat(root: Control, sub: Label, beat: int) -> void:
 	var caption := ""
 	if beat == 0:
 		img_path = "res://assets/intro/wakeup_wrist.png"
-		caption = "手腕上的相位仪微微发亮——三个卡槽，空着。"
+		caption = "腕上的相位仪微微发亮——它在感应同伴的位置。"
 	elif beat == 1:
 		caption = ""
 	else:
@@ -1082,7 +1104,7 @@ func _wakeup_teach_beat(root: Control, sub: Label, beat: int) -> void:
 		nt.add_theme_color_override("font_color", Color(0.4, 0.35, 0.28))
 		nv.add_child(nt)
 		var nb := Label.new()
-		nb.text = "相位仪装载卡片，卡片便能随你出战。\n起始的几张贴身放在床下背包里。\n　　　　　　　　　　　　——留给醒来的人"
+		nb.text = "相位仪装载卡片，卡片便能随你出战。\n它会指引同伴的位置——迷失者被战胜后，其力量将随你同行。\n　　　　　　　　　　　　——深航计划"
 		nb.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		nb.add_theme_font_size_override("font_size", DT.FONT_SIZE_BODY)
 		nb.add_theme_color_override("font_color", Color(0.22, 0.19, 0.14))

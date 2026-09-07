@@ -227,13 +227,13 @@ layout_mode = 2
 layout_mode = 1
 anchor_left = 0.0
 anchor_top = 1.0
-anchor_right = 0.5
+anchor_right = 0.0
 anchor_bottom = 1.0
-offset_left = 8.0
-offset_top = -232.0
-offset_right = -8.0
-offset_bottom = -136.0
-grow_horizontal = 2
+offset_left = 16.0
+offset_top = -128.0
+offset_right = 460.0
+offset_bottom = -78.0
+grow_horizontal = 1
 grow_vertical = 0
 
 [node name="UnitInfoPanel" parent="HudLayer" instance=ExtResource("6_unit_info")]

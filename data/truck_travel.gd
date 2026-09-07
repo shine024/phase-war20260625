@@ -3,11 +3,13 @@ class_name TruckTravel
 ## v26.19 移动基地行军数值真身：地形消耗 / 行程天数 / 引擎升级
 ## （BunkerManager 结算、世界地图行军规划弹窗、基地燃料卡三处共读；改数值只动本文件）
 ##
-## 模型（停哪打哪）：
+## 模型（停哪打哪；v26.25 起燃料定期自动回复 + 能量块 1:1 充能）：
 ##   燃料消耗 = clamp(ceil(距离px/48), 4, 60) × 目的地地形系数 ×（回程走熟路 ×0.5）
-##   行程天数 = ceil(距离px / 速度)，速度 = 300 + 90 ×(引擎Lv-1)，至少 1 天；睡觉推进
-##   安全储备：燃料 - 本次消耗 < RESERVE_FLOOR 不予出车；睡觉回充 SLEEP_REFUEL/晚
-##   引擎 Lv1-5：速度与罐容随级提升；纳米+合金付费升级
+##   行程天数 = ceil(距离px / 速度)，速度 = 300 + 90 ×(引擎Lv-1)，至少 1 天
+##   自动回复 = REGEN_BASE + REGEN_PER_LV ×(引擎Lv-1) /分钟（实时，离线/挂机都计时）
+##   充能 = 能量块 → 燃料 1:1（基地发电机工位/行军弹窗，补满为止）
+##   安全储备：燃料 - 本次消耗 < RESERVE_FLOOR 不予出车；睡觉快充 SLEEP_REFUEL/晚
+##   引擎 Lv1-5：速度/罐容/回复速率随级提升；纳米+合金付费升级
 
 const TANK_BASE := 100
 const TANK_PER_LV := 25
@@ -16,6 +18,9 @@ const RESERVE_FLOOR := 10
 const SPEED_BASE := 300.0
 const SPEED_PER_LV := 90.0
 const ENGINE_MAX_LV := 5
+## v26.25 燃料自动回复速率（每分钟；引擎每级再 +1）
+const REGEN_BASE_PER_MIN := 3.0
+const REGEN_PER_LV_PER_MIN := 1.0
 ## v26.21 实时行军换算：1 天行程 = 60 秒真实时间（出发即走，离线/切场景也计时）
 const SECONDS_PER_DAY := 60.0
 
@@ -56,6 +61,21 @@ static func dist_between(a: int, b: int) -> float:
 
 static func speed_for(engine_level: int) -> float:
 	return SPEED_BASE + SPEED_PER_LV * float(clampi(engine_level, 1, ENGINE_MAX_LV) - 1)
+
+## v26.25 燃料自动回复速率（每分钟；引擎升级同时提速）
+static func regen_per_minute(engine_level: int) -> float:
+	return REGEN_BASE_PER_MIN + REGEN_PER_LV_PER_MIN * float(clampi(engine_level, 1, ENGINE_MAX_LV) - 1)
+
+## 补满油罐还差多少（能量块 1:1 充能的"补满"语义用）
+static func fuel_needed_to_fill(cur: float, cap: int) -> int:
+	return maxi(0, ceili(float(cap) - cur))
+
+## 燃料不够出车时，自动回复到够用还需多少分钟（拒绝提示 ETA 用）
+static func regen_minutes_until(cur: float, needed: int, engine_level: int) -> int:
+	var deficit: float = float(needed) - cur
+	if deficit <= 0.0:
+		return 0
+	return maxi(1, ceili(deficit / regen_per_minute(engine_level)))
 
 ## 单段行军燃料消耗（回程走熟路半价）
 static func fuel_cost(from_level: int, to_level: int) -> int:

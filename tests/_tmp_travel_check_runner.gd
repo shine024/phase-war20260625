@@ -2,8 +2,9 @@ extends Node
 ## v26.19 卡车行军 E2E 执行体（直挂 /root 存活换场景）
 ## 跑法：godot --rendering-driver opengl3 --path . res://tests/_tmp_travel_check_boot.tscn
 ## 流程：满罐起步 → 回程一关 start_travel（地图开着看动画/徽标）→ 在途拒绝再规划 →
-##       睡觉推进到站（停靠点/current_level 同步断言）→ 低储备拒出车 → 引擎升级 →
-##       地图门控 UI（停靠关=情报弹窗 / 非停靠=行军规划 / 直呼出击被守卫拦）
+##       实时到期结算（停靠点/current_level 同步断言）→ 低储备拒出车 → 引擎升级 →
+##       自动回复/能量块充能 → 地图门控（停靠关=情报弹窗 / 非停靠=一点即发直接启程 /
+##       非停靠出击被守卫拦）
 ## 截图 .godot/agent_tools/travel_*.png；退出码非 0 = 有断言失败
 ## ⚠️ sleep 推进天数 + 引擎/资源入账会随退出存档——跑前备份、跑后由外部恢复存档。
 
@@ -90,23 +91,18 @@ func _run() -> void:
 	print("[Travel] B4: 地图节点到手")
 	await _shot("fresh_map")
 	if OS.get_environment("TRAVEL_FRESH") == "1":
-		# 新档全流程：自由行军到未解锁关5 → 到站 → 关卡情报（战前准备）→ 进入该关直接开打
+		# 新档全流程：点未解锁关5=一点即发直接启程 → 到站 → 关卡情报（战前准备）→ 进入该关直接开打
 		if SignalBus.has_signal("show_toast"):
 			SignalBus.show_toast.connect(func(m: String) -> void: print("[Travel][toast] ", m))
 		var map2: Node = get_tree().current_scene
 		map2.call("_on_level_selected", 5)
 		await _wait(6)
-		var p5: Window = map2.get("_level_info_popup")
-		print("[Travel] 点未解锁关5 → 弹窗标题: ", (p5.title if p5 != null else "无"))
-		if p5 != null:
-			map2.call("_close_popup_safe", p5)
-			await _wait(4)
-		var res5: Dictionary = bm.start_travel(5)
-		if not bool(res5.get("ok", false)):
-			_fails.append("新档 start_travel(5) 失败: " + str(res5.get("reason", "")))
+		if not bool(bm.is_traveling()) or int(bm.get_travel_dest()) != 5:
+			_fails.append("点关5未直接启程（一点即发）: traveling=%s dest=%d" % [
+				bool(bm.is_traveling()), int(bm.get_travel_dest())])
 			get_tree().quit(1)
 			return
-		print("[Travel] 出发→关5 OK：", res5)
+		print("[Travel] 点未解锁关5 → 直接启程 OK（连线+光点即走）")
 		bm.set("_travel_ends_unix", Time.get_unix_time_from_system() - 1.0)
 		bm.call("_check_travel_arrival")
 		if int(bm.get_parked_level()) != 5:
@@ -155,9 +151,23 @@ func _run() -> void:
 	if bool(bm.plan_travel(park).get("ok", false)):
 		_fails.append("行驶中仍可规划新行程（应拒绝）")
 	await _wait(140)
-	# 诊断：光点/路线节点状态
+	# 诊断+硬断言：光点/路线节点必须在位（runner 双切场景=模板复用路径，曾整段漏建——
+	# 表现为二次进图无连线无光点，v26.26 修复）
 	var mk: Control = map.get("_truck_marker")
 	var rt: Control = map.get("_travel_route")
+	if mk == null or not is_instance_valid(mk):
+		_fails.append("卡车光点缺失（模板复用路径漏建 TruckMarker）")
+	if rt == null or not is_instance_valid(rt):
+		_fails.append("行驶路线层缺失（模板复用路径漏建 TravelRoute）")
+	# v26.27：光点中心必须钉在路线插值点上（不得保留停靠位避让偏移）
+	if mk != null and is_instance_valid(mk) and bm.is_traveling():
+		var from_p: Vector2 = map.call("_level_point", int(bm.get_parked_level()))
+		var to_p: Vector2 = map.call("_level_point", int(bm.get_travel_dest()))
+		var expect_c: Vector2 = from_p.lerp(to_p, float(bm.get_travel_progress()))
+		var actual_c: Vector2 = mk.position + mk.size * 0.5
+		if actual_c.distance_to(expect_c) > 2.0:
+			_fails.append("光点中心偏离路线插值点: %s != %s（差 %.1fpx）" % [
+				actual_c, expect_c, actual_c.distance_to(expect_c)])
 	print("[Travel] marker=", mk,
 		" in_tree=", (mk != null and mk.is_inside_tree()),
 		" visible=", (mk != null and mk.is_visible_in_tree()),
@@ -199,6 +209,13 @@ func _run() -> void:
 		_fails.append("到站后 current_level 未同步: %d" % int(GameManager.get("current_level")))
 	print("[Travel] 到站 OK（实时到期结算；睡觉仅回充不推进）")
 	await _wait(80)
+	# v26.28：停靠位=节点中心（走到哪停到哪）——到站/再出发不得跳位
+	var mk_arr: Control = map.get("_truck_marker")
+	if mk_arr != null and is_instance_valid(mk_arr):
+		var park_c: Vector2 = mk_arr.position + mk_arr.size * 0.5
+		var node_c: Vector2 = map.call("_level_point", 1)
+		if park_c.distance_to(node_c) > 2.0:
+			_fails.append("停靠位不在节点中心（到站跳位回归）: %s != %s" % [park_c, node_c])
 	await _shot("arrived")
 
 	# ── D. 安全储备门槛：油只剩地板附近时应拒出车（除非路程便宜到不越线）──
@@ -220,8 +237,45 @@ func _run() -> void:
 		_fails.append("罐容未随引擎升级")
 	print("[Travel] 引擎 Lv2 OK，罐容 %d" % int(bm.get_fuel_cap()))
 
-	# ── F. 地图门控 UI：停靠摆回 2（存档前沿=1）
-	#        关2=停靠关→关卡情报弹窗；关1=已解锁非停靠→行军规划弹窗；直呼出击被守卫拦 ──
+	# ── E2. v26.25 燃料自动回复（读侧累计/封顶）+ 能量块 1:1 充能 + 拒绝理由带指引 ──
+	bm.set("_fuel", 10.0)
+	bm.set("_fuel_regen_unix", Time.get_unix_time_from_system() - 600.0)  # 10 分钟前（Lv2=4/分钟）
+	var regen_fuel: float = float(bm.get_fuel())
+	if regen_fuel < 48.0 or regen_fuel > 52.0:
+		_fails.append("自动回复数值不符: %.2f（期望 ~50 = 10 + 10min × 4/min）" % regen_fuel)
+	bm.set("_fuel", 5.0)
+	bm.set("_fuel_regen_unix", Time.get_unix_time_from_system() - 100000.0)  # 离线超长 → 封顶
+	var capped_fuel: float = float(bm.get_fuel())
+	if absf(capped_fuel - float(bm.get_fuel_cap())) > 0.5:
+		_fails.append("离线长时回复未封顶罐容: %.1f/%d" % [capped_fuel, int(bm.get_fuel_cap())])
+	var energy_before := 0
+	if BasicResourceManager != null:
+		energy_before = int(BasicResourceManager.get_total("energy_block"))
+		BasicResourceManager.add_resource("energy_block", 500)
+	bm.set("_fuel", 20.0)
+	var fuel_cap_e2: int = int(bm.get_fuel_cap())
+	var ch: Dictionary = bm.charge_fuel_to_full()
+	if not bool(ch.get("ok", false)):
+		_fails.append("充能失败: " + str(ch.get("reason", "")))
+	elif absf(float(bm.get_fuel()) - float(fuel_cap_e2)) > 0.5:
+		_fails.append("充能未补满: %.1f/%d" % [float(bm.get_fuel()), fuel_cap_e2])
+	if BasicResourceManager != null:
+		var energy_left := int(BasicResourceManager.get_total("energy_block"))
+		if energy_left != energy_before + 500 - (fuel_cap_e2 - 20):
+			_fails.append("能量块扣减不符 1:1: 剩 %d（期望 %d）" % [energy_left, energy_before + 500 - (fuel_cap_e2 - 20)])
+	var ch2: Dictionary = bm.charge_fuel_to_full()
+	if bool(ch2.get("ok", false)):
+		_fails.append("已满仍充能成功（应拒绝）")
+	bm.set("_fuel", 5.0)
+	var rej: Dictionary = bm.plan_travel(60)
+	if bool(rej.get("ok", false)) or not str(rej.get("reason", "")).contains("充能"):
+		_fails.append("燃料拒绝理由未带充能指引: " + str(rej.get("reason", "")))
+	print("[Travel] E2 自动回复/充能 OK（回复 ~%.0f、封顶 %.0f、补满 %d）" % [regen_fuel, capped_fuel, int(ch.get("charged", 0))])
+
+	# ── F. 地图门控 UI（v26.26 一点即发）：停靠摆回 2（存档前沿=1）
+	#        关2=停靠关→关卡情报弹窗；关1=非停靠→点即直接启程；非停靠出击守卫仍拦 ──
+	bm.set("_fuel", float(bm.get_fuel_cap()))  # E2 后燃料≈5，补满保证点关1能出发
+	bm.set("_fuel_regen_unix", Time.get_unix_time_from_system())
 	bm.set("_parked_level", 2)
 	map.call("_on_level_selected", 2)
 	await _wait(6)
@@ -235,17 +289,25 @@ func _run() -> void:
 	await _wait(4)
 	map.call("_on_level_selected", 1)
 	await _wait(6)
+	if not bool(bm.is_traveling()) or int(bm.get_travel_dest()) != 1:
+		_fails.append("点非停靠关1未直接启程: traveling=%s dest=%d" % [
+			bool(bm.is_traveling()), int(bm.get_travel_dest())])
+	else:
+		print("[Travel] 一点即发 OK：点关1 → 在途 → 关1")
+	if bool(bm.is_traveling()):
+		bm.set("_travel_ends_unix", Time.get_unix_time_from_system() - 1.0)
+		bm.call("_check_travel_arrival")
+	await _wait(4)
+	# 到站停靠1后：借停靠关情报弹窗直呼"进入第2关"必须被守卫拦（防旁路）
+	map.call("_on_level_selected", 1)
+	await _wait(6)
 	var pop2: Window = map.get("_level_info_popup")
-	if pop2 == null:
-		_fails.append("非停靠点点击无弹窗")
-	elif not str(pop2.title).contains("行军规划"):
-		_fails.append("行军规划弹窗标题不符: " + str(pop2.title))
 	if pop2 != null:
 		var before_lv := int(GameManager.get("current_level"))
-		map.call("_enter_level_from_popup", 1, pop2)
+		map.call("_enter_level_from_popup", 2, pop2)
 		await _wait(6)
-		if int(GameManager.get("current_level")) != before_lv:
+		if int(GameManager.get("current_level")) == 2:
 			_fails.append("非停靠点出击未被守卫拦截")
 		else:
 			print("[Travel] 门控守卫 OK")
-	# 守卫内部已 deferred 关闭 pop2，此处不得重复 close（freed）
+		map.call("_close_popup_safe", pop2)

@@ -54,6 +54,7 @@ var _travel_dest := 0        # 行驶目的地（0=未在途）
 var _travel_days_total := 0  # 行程总天数（大地图路线进度分母；0=未在途）
 var _travel_started_unix := 0.0  # 出发时刻（unix 秒；v26.21 实时行军）
 var _travel_ends_unix := 0.0     # 预计到站时刻（unix 秒）
+var _fuel_regen_unix := 0.0      # v26.25 燃料自动回复结算时刻（unix 秒；0=未起算，首读置now——离线补结算走读侧累计）
 
 ## 荣誉陈列室解锁所需碎片数（P3 定 10：让中期玩家够得着；30 全收集是观星台条件）
 const HONOR_HALL_FRAGMENT_GATE := 10
@@ -128,7 +129,25 @@ func get_parked_level() -> int:
 func get_fuel() -> float:
 	if _fuel < 0.0:
 		_fuel = float(get_fuel_cap())
+	_sync_fuel_regen()
 	return _fuel
+
+## v26.25 燃料自动回复结算（读侧累计，写侧不额外触发）：按距上次结算的真实时长
+## 增量回复并前移时间戳——离线/挂机/切场景的时长在下一次读取时一次性补齐；
+## 时钟回拨（dt<0）只前移时间戳不倒扣；哨兵未初始化（_fuel<0）与满罐不累计。
+func _sync_fuel_regen() -> void:
+	var now := Time.get_unix_time_from_system()
+	if _fuel_regen_unix <= 0.0:
+		_fuel_regen_unix = now
+		return
+	var dt := now - _fuel_regen_unix
+	_fuel_regen_unix = now
+	if dt <= 0.0 or _fuel < 0.0:
+		return
+	var cap := float(get_fuel_cap())
+	if _fuel >= cap:
+		return
+	_fuel = minf(cap, _fuel + dt / 60.0 * TruckTravel.regen_per_minute(_engine_level))
 
 func get_fuel_cap() -> int:
 	return TruckTravel.TANK_BASE + TruckTravel.TANK_PER_LV * (_engine_level - 1)
@@ -198,10 +217,10 @@ func plan_travel(dest: int) -> Dictionary:
 	if dest == from:
 		return {"ok": false, "reason": "卡车已停靠该节点"}
 	var cost := TruckTravel.fuel_cost(from, dest)
-	if get_fuel() < float(cost):
-		return {"ok": false, "reason": "燃料不足（本次需 %d，现有 %d）" % [cost, int(get_fuel())], "cost": cost}
-	if float(cost) > get_fuel() - float(TruckTravel.RESERVE_FLOOR):
-		return {"ok": false, "reason": "须预留安全储备 %d——燃料不够出车（本次需 %d）" % [TruckTravel.RESERVE_FLOOR, cost], "cost": cost}
+	if get_fuel() < float(cost) or float(cost) > get_fuel() - float(TruckTravel.RESERVE_FLOOR):
+		var eta := TruckTravel.regen_minutes_until(get_fuel(), cost + TruckTravel.RESERVE_FLOOR, _engine_level)
+		return {"ok": false, "reason": "燃料不够出车（本次需 %d，现有 %d）——自动回复 +%.0f/分钟，约 %d 分钟后够用；也可用能量块 1:1 充能（基地发电机工位）" % [
+			cost, int(get_fuel()), TruckTravel.regen_per_minute(_engine_level), eta], "cost": cost}
 	return {"ok": true, "cost": cost, "days": TruckTravel.travel_days(from, dest, _engine_level)}
 
 ## 启程：预检通过后即扣燃料、进入在途（到站靠睡觉推进）
@@ -216,6 +235,24 @@ func start_travel(dest: int) -> Dictionary:
 	_travel_ends_unix = _travel_started_unix + float(_travel_days_total) * TruckTravel.SECONDS_PER_DAY
 	_emit_travel_changed()
 	return {"ok": true, "cost": int(plan["cost"]), "days": _travel_days_total}
+
+## v26.25 能量块 → 燃料 1:1 充能（补满为止；能量块不足则把余额全部充入）
+func charge_fuel_to_full() -> Dictionary:
+	if BasicResourceManager == null:
+		return {"ok": false, "reason": "资源系统未就绪"}
+	_sync_fuel_regen()
+	var need := TruckTravel.fuel_needed_to_fill(_fuel, get_fuel_cap())
+	if need <= 0:
+		return {"ok": false, "reason": "燃料已满（%d/%d）" % [int(_fuel), get_fuel_cap()]}
+	var energy_id := BunkerRoomDefs.res_full_id("energy")
+	var have := int(BasicResourceManager.get_total(energy_id))
+	var spend := mini(need, have)
+	if spend <= 0:
+		return {"ok": false, "reason": "能量块不足（现有 %d）——战斗掉落/挂机可获得" % have}
+	BasicResourceManager.consume(energy_id, spend)
+	_fuel = minf(float(get_fuel_cap()), _fuel + float(spend))
+	_emit_travel_changed()
+	return {"ok": true, "charged": spend, "reason": "充能 +%d 燃料（能量块 1:1，剩 %d）" % [spend, have - spend]}
 
 ## 引擎升级（纳米+合金，价目见 TruckTravel.ENGINE_UPGRADES）
 func upgrade_engine() -> Dictionary:
@@ -1049,9 +1086,11 @@ func save_state() -> Dictionary:
 		"weather_armed": _weather_armed,
 		"respec_free_day": _respec_free_day,
 		"battle_log": _battle_log.duplicate(true),
-		# v26.19 卡车行军（哨兵值原样存：fuel<0 / parked=0 表示"未初始化"，读侧懒解析）
-		"fuel": _fuel,
-		"engine_level": _engine_level,
+	# v26.19 卡车行军（哨兵值原样存：fuel<0 / parked=0 表示"未初始化"，读侧懒解析）
+	# v26.25：fuel 经 get_fuel() 读取=顺带结算自动回复后入档；regen 时间戳随档持久化（离线回复）
+	"fuel": get_fuel(),
+	"fuel_regen_unix": _fuel_regen_unix,
+	"engine_level": _engine_level,
 		"parked_level": _parked_level,
 		"travel_dest": _travel_dest,
 		"travel_days_total": _travel_days_total,
@@ -1112,6 +1151,9 @@ func load_state(data: Dictionary) -> void:
 	_respec_free_day = int(data.get("respec_free_day", 0))
 	# v26.19 卡车行军回读（哨兵缺省：fuel<0→首读满罐；parked=0→首读战线前沿）
 	_fuel = float(data.get("fuel", -1.0))
+	# v26.25 回复时间戳：旧档缺 key=0 → 首读置 now（不追溯补发）；
+	# 带档读取则由下一次 get_fuel() 按离线时长一次性补结算（与实时到站同口径）
+	_fuel_regen_unix = maxf(0.0, float(data.get("fuel_regen_unix", 0.0)))
 	_engine_level = clampi(int(data.get("engine_level", 1)), 1, TruckTravel.ENGINE_MAX_LV)
 	_parked_level = clampi(int(data.get("parked_level", 0)), 0, 100)
 	_travel_dest = clampi(int(data.get("travel_dest", 0)), 0, 100)
@@ -1178,6 +1220,7 @@ func reset_to_defaults() -> void:
 	_respec_free_day = 0
 	# v26.19 卡车行军复位（哨兵值同 load_state：fuel<0 / parked=0 → 首读懒解析）
 	_fuel = -1.0
+	_fuel_regen_unix = 0.0
 	_engine_level = 1
 	_parked_level = 0
 	_travel_dest = 0

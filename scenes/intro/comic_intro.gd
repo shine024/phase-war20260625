@@ -1,6 +1,6 @@
 extends Control
-## 序章漫画开场（docs/开场剧情_10方案.md 方案1）：分格动画讲 B1–B7，
-## 收尾转黑 → 携 META_WAKEUP 切 bunker_main 播醒来演出（B8，方案9 实机衔接）。
+## 序章漫画开场（docs/开场剧情_10方案.md 方案1）：分格动画讲序章（深航计划版，11 格），
+## 收尾转黑 → 携 META_WAKEUP 切 bunker_main 播醒来演出（雪原睁眼，方案9 实机衔接）。
 ##
 ## 流线：标题屏“进入基地”无档 → SaveManager.start_new_game() → 本场景
 ##   逐格点击推进（画格砸入 + ken-burns 缓推 + 打字机旁白）→ 结束/跳过 → bunker_main。
@@ -150,7 +150,7 @@ func _build_chrome() -> void:
 	_end_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	_end_label.add_theme_font_size_override("font_size", DT.FONT_SIZE_TITLE)
 	_end_label.add_theme_color_override("font_color", Color(0.9, 0.85, 0.72))
-	_end_label.text = "——然后，你醒了。"
+	_end_label.text = "——然后，你在雪原上睁开了眼。"
 	_end_label.visible = false
 	_end_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_stage.add_child(_end_label)

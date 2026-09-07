@@ -378,7 +378,7 @@ func _build_image_area() -> void:
 ##（bunker_main._refresh_reward_bubbles 同款踩坑），key 会被提前标记 seen。
 func _maybe_show_truck_intro() -> void:
 	FeatureUnlockPopup.show_once("truck_base_intro", "移动基地 · 指南",
-		"外景看驻地，剖面干活——车厢里每个发光框都挂着常显工位牌，一眼直达。行军规则：顶栏「战区地图」点任意节点出车（耗燃料×地形，回程半价），出发后实时行军（1 天≈1 分钟，离线也计时），睡觉回充燃料；停哪才能打哪，行驶中无法出击。")
+		"外景看驻地，剖面干活——车厢里每个发光框都挂着常显工位牌，一眼直达。行军规则：顶栏「战区地图」点任意节点出车（耗燃料×地形，回程半价），出发后实时行军（1 天≈1 分钟，离线也计时）；燃料自动回复（离线也涨），睡觉快充、或在发电机工位用能量块 1:1 充能；停哪才能打哪，行驶中无法出击。")
 
 # ── 时代切换 ──
 ## 贴图双通道：优先走导入管线 load()；未导入（headless 首跑/新机克隆）时
@@ -1571,18 +1571,47 @@ func _open_fuel_station_card() -> void:
 	bar.custom_minimum_size = Vector2(360, 22)
 	v.add_child(bar)
 	var main_l := Label.new()
-	main_l.text = "燃料 %d/%d ｜ 引擎 Lv%d（速度 %d/天 · 油罐 +%d/级）" % [
-		int(bm.get_fuel()), cap, eng, int(TruckTravel.speed_for(eng)), TruckTravel.TANK_PER_LV]
+	main_l.text = "燃料 %d/%d ｜ 引擎 Lv%d（速度 %d/天 · 回复 +%.0f/分钟 · 油罐 +%d/级）" % [
+		int(bm.get_fuel()), cap, eng, int(TruckTravel.speed_for(eng)),
+		TruckTravel.regen_per_minute(eng), TruckTravel.TANK_PER_LV]
 	main_l.add_theme_font_size_override("font_size", 13)
 	v.add_child(main_l)
 	var rule_l := Label.new()
-	rule_l.text = "睡觉回充 +%d/晚 · 安全储备 %d 以下不予出车 · 行驶期间无法出击\n在战区地图点已解锁节点即可规划行军（目的地地形影响油耗，回程走熟路半价）。" % [
-		TruckTravel.SLEEP_REFUEL, TruckTravel.RESERVE_FLOOR]
+	rule_l.text = "自动回复 +%.0f/分钟（实时，离线也涨）· 睡觉快充 +%d/晚 · 安全储备 %d 以下不予出车 · 行驶期间无法出击\n在战区地图点任意节点即可规划行军（目的地地形影响油耗，回程走熟路半价）。" % [
+		TruckTravel.regen_per_minute(eng), TruckTravel.SLEEP_REFUEL, TruckTravel.RESERVE_FLOOR]
 	rule_l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	rule_l.custom_minimum_size = Vector2(360, 0)
 	rule_l.add_theme_font_size_override("font_size", 12)
 	rule_l.add_theme_color_override("font_color", Color(0.7, 0.68, 0.6))
 	v.add_child(rule_l)
+	# v26.25 能量块 → 燃料 1:1 充能行（余额 + 补满按钮）
+	var charge_row := HBoxContainer.new()
+	charge_row.add_theme_constant_override("separation", 10)
+	var energy_have := 0
+	if BasicResourceManager != null:
+		energy_have = int(BasicResourceManager.get_total(BunkerRoomDefs.res_full_id("energy")))
+	var charge_l := Label.new()
+	charge_l.text = "能量块余额 %d ｜ 充入燃料 1:1" % energy_have
+	charge_l.add_theme_font_size_override("font_size", 12)
+	charge_l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	charge_row.add_child(charge_l)
+	var fill_btn := Button.new()
+	fill_btn.focus_mode = Control.FOCUS_NONE
+	fill_btn.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	fill_btn.text = "⚡ 充能补满（需 %d）" % TruckTravel.fuel_needed_to_fill(bm.get_fuel(), cap)
+	fill_btn.tooltip_text = "消耗能量块补满油罐（不足时充入全部余额）；能量块：战斗掉落/挂机可获得"
+	fill_btn.disabled = energy_have <= 0 or int(bm.get_fuel()) >= cap
+	_style_btn(fill_btn, COLOR_AMBER)
+	fill_btn.pressed.connect(func() -> void:
+		var res: Dictionary = bm.charge_fuel_to_full()
+		if SignalBus.has_signal("show_toast"):
+			SignalBus.show_toast.emit(str(res.get("reason", "")))
+		if bool(res.get("ok", false)):
+			_play_sfx("achievement")
+			_close_modal()
+			_open_fuel_station_card())
+	charge_row.add_child(fill_btn)
+	v.add_child(charge_row)
 	var foot := HBoxContainer.new()
 	foot.alignment = BoxContainer.ALIGNMENT_END
 	foot.add_theme_constant_override("separation", 8)
@@ -1607,8 +1636,9 @@ func _open_fuel_station_card() -> void:
 				_close_modal()
 				_open_fuel_station_card()
 			else:
-				if SignalBus.has_signal("show_error"):
-					SignalBus.show_error.emit(str(res.get("reason", ""))))
+				# v26.25 修复：show_error 信号不存在（守卫恒假→失败零反馈），改走 toast
+				if SignalBus.has_signal("show_toast"):
+					SignalBus.show_toast.emit(str(res.get("reason", ""))))
 	foot.add_child(up_btn)
 	var close := Button.new()
 	close.text = "关闭"

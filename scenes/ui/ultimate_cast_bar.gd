@@ -29,6 +29,7 @@ var _ability_box: VBoxContainer = null
 var _ability_btn: Button = null      # 核子轰炸（充能制，仅玩家相位仪带该能力时显示）
 var _mech_btns: Dictionary = {}      # mech_id -> Button
 var _mech_boxes: Dictionary = {}     # mech_id -> VBoxContainer
+var _last_cluster_rect: Rect2 = Rect2()  # 簇几何广播 memo（v26.16 贴边）
 
 
 func _ready() -> void:
@@ -39,13 +40,12 @@ func _ready() -> void:
 	_build_ability_btn()
 	for def in MECH_DEFS:
 		_build_mech_btn(def)
+	_broadcast_cluster_geometry.call_deferred()
 
 
-## v26.x 悬空治理：按钮簇垫底板（贴可见按钮簇宽度，非全宽）。
-## 此前本条夹在卡槽条上方且无底板，按钮直接浮在战场上——截图反馈"核弹悬空突兀"即此。
-## 底板语言与下方相位仪栏/功能抽屉同款（make_panel_frame 青色 accent 悬浮卡片），
-## 三者叠成一体；alpha 0.92 与 instrument bar 对齐。
-func _draw() -> void:
+## 可见按钮簇的内容矩形（本地坐标）；无可见子件返回空 Rect2。
+## _draw 底板与 _broadcast_cluster_geometry 广播共用同一口径。
+func _visible_content_rect() -> Rect2:
 	var content := Rect2()
 	var has_content := false
 	for child in get_children():
@@ -55,7 +55,18 @@ func _draw() -> void:
 		var r := Rect2(c.position, c.size)
 		content = r if not has_content else content.merge(r)
 		has_content = true
-	if not has_content:
+	return content if has_content else Rect2()
+
+
+## v26.x 悬空治理：按钮簇垫底板（贴可见按钮簇宽度，非全宽）。
+## 此前本条夹在卡槽条上方且无底板，按钮直接浮在战场上——截图反馈"核弹悬空突兀"即此。
+## 底板语言与下方相位仪栏/功能抽屉同款（make_panel_frame 青色 accent 悬浮卡片），
+## 三者叠成一体；alpha 0.92 与 instrument bar 对齐。
+## v26.16：底部外扩 3px→0——下缘与相位仪栏顶边齐平，不再压住条目标签（"周期大招"
+## 文字下缘被卡槽条上缘裁住的观感即此）。
+func _draw() -> void:
+	var content := _visible_content_rect()
+	if content == Rect2():
 		return
 	var backdrop: StyleBoxFlat = PanelStyles.make_panel_frame(DT.COLOR_ACCENT_CYAN)
 	backdrop.bg_color.a = 0.92
@@ -63,12 +74,31 @@ func _draw() -> void:
 	backdrop.content_margin_right = 8
 	backdrop.content_margin_top = 3
 	backdrop.content_margin_bottom = 3
-	backdrop.draw(get_canvas_item(), content.grow_individual(10.0, 3.0, 10.0, 3.0))
+	backdrop.draw(get_canvas_item(), content.grow_individual(10.0, 3.0, 10.0, 0.0))
 
 
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_RESIZED or what == NOTIFICATION_SORT_CHILDREN:
 		queue_redraw()
+		_broadcast_cluster_geometry.call_deferred()
+
+
+## v26.16 贴边查询：按钮簇可视左缘的屏幕 x（含底板左外扩 10px）。
+## battle_log 据此把右缘紧挨本条；无可见按钮（非战斗）回退条中心。
+func get_cluster_left_x() -> float:
+	var content := _visible_content_rect()
+	if content == Rect2():
+		return get_global_rect().get_center().x
+	return content.position.x + get_global_rect().position.x - 10.0
+
+
+## v26.16 簇几何变化广播（memo 去重）——按钮显隐/条宽变化时通知 battle_log 重排贴边。
+func _broadcast_cluster_geometry() -> void:
+	var content := _visible_content_rect()
+	if content == _last_cluster_rect:
+		return
+	_last_cluster_rect = content
+	SignalBus.ult_cluster_geometry_changed.emit()
 
 
 func _process(delta: float) -> void:
@@ -139,6 +169,11 @@ func _make_entry(short: String, full_name: String, tooltip: String) -> Dictionar
 	lb.add_theme_color_override("font_color", DT.COLOR_TEXT_DIM)
 	lb.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	box.add_child(lb)
+	# v26.16: 底部 4px 呼吸垫——标签下缘与条底/底板边线保持间隙（与模式按钮 4px 上下边距同观感）
+	var pad := Control.new()
+	pad.custom_minimum_size = Vector2(0, 4)
+	pad.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	box.add_child(pad)
 	add_child(box)
 	return {"box": box, "btn": btn, "label": lb}
 
@@ -182,6 +217,7 @@ func _refresh_buttons() -> void:
 		_set_ready_visual(btn, count > 0)
 		_set_badge(btn, count)
 	queue_redraw()  # v26.x: 底板贴按钮簇，可见性变化即重绘
+	_broadcast_cluster_geometry.call_deferred()  # v26.16: 簇宽变化同步贴边方（battle_log）
 
 
 ## 就绪态切换（带 memo，避免每轮 poll 重刷样式）
