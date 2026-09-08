@@ -1,6 +1,6 @@
 extends Control
 class_name AFKSettlementDialog
-## 挂机结算弹窗 — 停止/失败时显示累计奖励总账与战绩
+## 自动哨戒结算弹窗 — 停止/失败时显示累计缴获总账与战绩
 ## 仿 OfflineRewardDialog 的静态 create 模式，运行时动态构建 UI
 ## result 结构：
 ##   wins: int, losses: int, battles: int,
@@ -66,7 +66,7 @@ func _build_ui() -> void:
 	panel.add_theme_stylebox_override("panel", style)
 	center.add_child(panel)
 
-	# 根 VBox：铺满 Panel，标题/战绩（顶部）→ 奖励列表（中间弹性+滚动）→ 合计/按钮（底部）
+	# 根 VBox：铺满 Panel，标题/战绩（顶部）→ 缴获列表（中间弹性+滚动）→ 合计/按钮（底部）
 	var vbox := VBoxContainer.new()
 	vbox.set_anchors_preset(Control.PRESET_FULL_RECT)
 	vbox.add_theme_constant_override("separation", 10)
@@ -75,7 +75,7 @@ func _build_ui() -> void:
 	# 标题（失败用警示色，停止用强调色）
 	var title := Label.new()
 	var failed: bool = bool(_result.get("failed", false))
-	title.text = "挂机结算" if not failed else "挂机结束（失败）"
+	title.text = "自动哨戒结算" if not failed else "自动哨戒结束（失败）"
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	title.add_theme_font_size_override("font_size", DT.FONT_SIZE_LARGE)
 	title.add_theme_color_override("font_color", _WARN if failed else _ACCENT)
@@ -94,7 +94,7 @@ func _build_ui() -> void:
 
 	vbox.add_child(_make_separator())
 
-	# 奖励明细 —— 放进 ScrollContainer，占据中间弹性空间，物品多时可滚动
+	# 缴获明细 —— 放进 ScrollContainer，占据中间弹性空间，物品多时可滚动
 	var rewards: Dictionary = _result.get("rewards", {})
 	# ScrollContainer 弹性占据 VBox 中间区域，size_flags_vertical = EXPAND_FILL
 	var scroll := ScrollContainer.new()
@@ -112,13 +112,13 @@ func _build_ui() -> void:
 	var total_count: int = 0
 	if rewards.is_empty():
 		var empty := Label.new()
-		empty.text = "本次挂机无掉落奖励"
+		empty.text = "本次哨戒无缴获"
 		empty.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		empty.add_theme_color_override("font_color", _TEXT_DIM)
 		list.add_child(empty)
 	else:
 		var rew_title := Label.new()
-		rew_title.text = "累计掉落"
+		rew_title.text = "累计缴获"
 		rew_title.add_theme_color_override("font_color", _TEXT)
 		rew_title.add_theme_font_size_override("font_size", DT.FONT_SIZE_MEDIUM)
 		list.add_child(rew_title)
@@ -151,7 +151,7 @@ func _build_ui() -> void:
 		escrow_count = int(dm.get_escrow_total_count())
 	if escrow_count > 0:
 		var escrow_hint := Label.new()
-		escrow_hint.text = "本次战利品已暂存基地仓库（%d 件）——回基地可在房间气泡处收取" % escrow_count
+		escrow_hint.text = "本次战利品已暂存移动基地仓库（%d 件）——回移动基地可在房间气泡处收取" % escrow_count
 		escrow_hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		escrow_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		escrow_hint.add_theme_color_override("font_color", _TEXT_DIM)
