@@ -151,6 +151,65 @@
 
 ---
 
+## 三、系统→叙事映射表（外壳层）
+
+> 统一化手术批次②前置章（2026-09-08 增补）。计划书称「第二章」；因宪法既有「一、叙述人称」「二、权威词汇表」，本章顺延编号为三，未改动既有章节。
+>
+> **盘点源（panel_id 权威）**：`managers/ui_lazy_loader.gd` _panel_configs 11 项——经逐一比对**完全包含于** `scenes/bunker/bunker_main.gd:35` EMBEDDED_PANELS 18 项（计划书所记「main.tscn 的 EMBEDDED_PANELS 段」位置有误：真身在 bunker_main.gd，战斗场景侧仅是 main.tscn PopupLayer 挂载点；移动基地镜像表 truck_base.gd PANEL_SCENES 11 键亦为其子集）。EMBEDDED_PANELS 独有 7 项（affix／phase_master_skill／hero_archive／memorial／intelligence／leaderboard／observatory_ending）；底部功能栏（`scenes/ui/bottom_function_bar.gd` BTN_CONFIGS 6 按钮）独有 3 项（map／save／afk），其中「成长」按钮打开 growth 面板（main.gd:1064），并入 growth 行。**并集 21 条目，零遗漏。**
+>
+> 旧名列全部于 2026-09-08 去源文件逐字核实（出处表见附录 D）。**「待审」＝提案；「待用户裁决」＝含分叉方案或结构披露的裁决项——均需用户裁决后方可进批次②替换显示层。**（v2.1 修订，按质量审查：backpack「卡仓」依据失实改立 C-1 裁决项；modification 弃「改装舱」避撞机制词，详见相应行。）
+
+### 命名规则
+
+1. 面板名 ≤6 字，优先使用第一章词汇表词根
+2. 系统名带所属感（基地车内部功能 → 功能位后缀族：**舱／台／库（＝仓，同义）／坊／簿／榜／手册／图鉴／档案**——**提案新名受族约束；保留名既存自洽豁免**（纪念墙之「墙」、相位师技能树之「树」、设置之无后缀，均不受族形约束））
+3. 面板启动按钮名词 ≤4 字；动作类按钮动词开头（存档／出击）
+4. 【安全边界】下表所有新名仅替换显示层字符串；panel_id／函数名／场景路径／存档 key 一律不动
+
+### 面板映射
+
+| panel_id | 旧名（现状） | 新名（提案） | 词汇依据 | 状态 |
+|----------|--------------|--------------|----------|------|
+| backpack | 按钮「背包」；面板标题「战斗卡阵列 · COMBAT ROSTER」（随 Tab 动态切换） | C-1 裁决：(a) 辎重舱／(b) 卡仓 | 如实陈述：truck_base.gd:53/:66/:79 热区「卡牌展示墙」hint「背包·卡仓」之「·」为**同热区双功能分隔符**（同构 :104「商店·势力」、:106「改造·词条」），非「背包」别名——「卡仓」实指 collection（三源直证见 collection 行 C-1）。(a) 分支「辎重舱」依据：军事辎重＝随行军械物资，恰合背包五 Tab（战斗卡／改造／符文／相位仪／全局强化）皆随车携行之物；后缀族「舱」。代价权衡：「辎」为低频字有识读门槛；与「补给舱」物流语感一字之差易混；且系全部提案中唯一无既有文本锚点的新铸词 | 待用户裁决 |
+| quest | 「任务面板」（Tab：委托／日常） | 委托台 | Tab 名「委托」既有（quest_panel.tscn:53）；第一章「公司」条——任务即七公司之委托。自注：日常 Tab＝每日勤务语义，名下分工「委托＝公司委托、日常＝每日勤务」 | 待审 |
+| store | 「公司商店」 | 补给舱 | truck_base.gd:104 热区「补给售货机」；基地车车内功能位「舱」 | 待审 |
+| faction | 「势力系统」 | 联络台 | 第一章「公司／势力」双轨——委托与贡献度语境即与七公司往来；旧基地通讯室同组承接「商店/势力/排行」（bunker_room_defs.gd comms） | 待审 |
+| settings | 「设置」 | 设置（不改） | 系统级功能豁免世界观壳（先例：第一章「迷失者」双轨制——机制语境不受限） | 保留 |
+| achievement | 「成就系统」 | 战功簿 | 「战功」族成员意图：战功簿（成就）／战功榜（排行）／战功卡（world_map.gd:2315/:2317 既有活词）同根成族；「簿」＝车内随行记录物；旧基地荣誉陈列室同组承接「成就／收藏」（bunker_room_defs.gd honor_hall）。自注：成就定义含收藏家／卡片大师等非战功语义条目（战功语义覆盖约 2/3），采用与否随裁决 | 待审 |
+| help | 「游戏帮助」 | 车长手册 | 玩家＝车队相位师、基地车内操作一切（本章总则，第一章叙述人称「你」）；面板内容已述移动基地／黑日战线（help_panel.gd:167/:306） | 待审 |
+| modification | 「战术改造站」（副标题自署「战术改造舱」——站／舱两套并存） | 改造舱 | 现副题已自署「改造舱」——站／舱收敛一步到位、零新词；truck_base.gd:106 热区「相位机械臂」hint「改造·词条」。**弃「改装舱」（审查纠正）**：「改装」为既有卡牌成长机制词——card_progression_settings.gd:4/:24「改装分支」（火力/防护/功能）、unit_progression_detail_view.gd:153「改装：%d / %d」、blueprint_manager.gd:60「已选改装分支」；游戏代码（*.gd）域词频 改造 1083 处 vs 改装 17 处，不得占用 | 待审 |
+| evolution | 「战术制造站」（truck_base PANEL_LABELS 又称「制造中心」——三套并存） | 制造舱 | truck_base.gd:107 热区「相位打印机」hint「制造中心·卡仓」；与「改造舱」对仗 | 待审 |
+| growth | 按钮「成长」；面板「成长中枢」 | 整备舱 | 最强依据＝活 UI 已有实义自称：mvp_panel.gd:750 战后按钮「返回整备」、:1066「整备：提升卡牌等级/改造/制造高品质卡后再战」——即成长中枢的功能自述（硬于已停用旧基地 workshop tag「作战·整备」）。**舱中舱披露**：growth 为聚合中枢（等级／改造／制造／技能树），更名后「整备舱」内含「改造舱／制造舱」子面板——嵌套结构请裁决时知悉；按钮「成长」随改「整备」或保留，二选一 | 待用户裁决 |
+| collection | 「卡牌图鉴」 | C-1 裁决：(a) 卡仓（主提案，「生灵图鉴」作别名或弃）／(b) 生灵图鉴（「卡仓」语义搬家至 backpack，明示推翻 mockup 旧分配） | 三源直证「卡仓」现绑 collection：truck_mockup.html:188（fns 含 {l:'卡仓',panel:'collection'}）、bunker_room_defs.gd:75/:79（仓库 tag「卡仓·打印」＋「卡墙：拥有过的卡种逐一点亮陈列」＝图鉴陈列功能）、help_panel.gd:278「卡牌展示墙：背包·卡仓」。(b) 依据：第一章「生灵」条可作定语（生灵卡牌），图鉴所录即生灵寄身之卡；自注：以「生灵」替「卡牌」与第一章「卡牌」条（面板标题走「卡牌」轨）存在张力，采 (a) 则自解 | 待用户裁决 |
+| affix | 「词条工坊 · AFFIX FORGE」 | 词条工坊（不改） | 「工坊」与舱／台／库同族功能位；「词条」为第一章「星髓」条既有用法（洗词条） | 保留 |
+| phase_master_skill | 「相位师技能树」 | 相位师技能树（不改） | 第一章「相位师」词根直取；面板内「技能主板」小节名自洽 | 保留 |
+| intelligence | 「情报中心」 | 情报舱 | truck_base.gd:103 热区「全息地图投影」hint 现称「情报中心」；「中心」为大设施语感，车内功能位宜「舱」 | 待审 |
+| leaderboard | 「排行榜」（Tab：公司势力排名／相位师排名／敌方相位师） | 战功榜 | 第一章「势力」玩法语境；与「战功簿／战功卡」同根成族（见 achievement 行）；末世工业布告语感。如实记：第三 Tab「敌方相位师」（leaderboard_panel.gd:73–75）非战功语义，族名覆盖以前二 Tab 为限 | 待审 |
+| hero_archive | 「英雄档案」 | 同伴档案 | 第一章「迷失者」条——驻守相位师首领即迷失的同伴；档案基调「曾经牺牲的英雄」为同一对象两说，向序章口径「同伴」收拢。注意：宪法行文与 hero_archive_texts 引用处的「英雄档案」指称需随裁决同步 | 待审 |
+| memorial | 「纪念墙」 | 纪念墙（不改） | 已是纪念位正名；「每一盏灯，都是一个名字」原文自洽 | 保留 |
+| observatory_ending | 「观星台」（标题随剧情阶段切换） | 观星台（不改） | 终局特殊面板，阶段化标题属演出设计，豁免统一格式 | 保留 |
+| map（功能栏按钮「地图」） | world_map 标题「— 黑日战线 · 100 关 —」；入口三别名：功能栏「地图」／移动基地顶栏「🗺 战区地图」（truck_base.gd:300）／tooltip「世界地图」（bottom_function_bar.gd:91） | 不改 | 第一章「黑日战线」条已法定（world_map.gd:349 权威）；按钮「地图」≤4 字合规。三别名并存记批次②观察项（是否统一入口称呼） | 保留 |
+| save（功能栏按钮「存档」） | 动作非面板（toast「游戏已保存」） | 不改 | 系统动作豁免世界观壳；按钮动词开头合规 | 保留 |
+| afk | 「挂机模式 · AFK MODE」 | 自动哨戒 | tooltip 现状「自动部署刷资源」——哨戒即自动戒备，末世工业语感；可用性代价（「挂机」秒懂）已权衡，重清晰度可保留旧名。按钮联动：功能栏按钮「挂机」随改「自动哨戒」或保留（二选一），SHORTCUT_TOOLTIPS（bottom_function_bar.gd:94）同步 | 待用户裁决 |
+
+**按钮联动（随面板名待审）**：功能栏「背包」→随 C-1 裁决（(a) 辎重舱／(b) 卡仓）；**若** growth 裁决为「整备舱」**则**「成长」→「整备」，否则保留（bottom_function_bar.gd BTN_CONFIGS／SHORTCUT_TOOLTIPS 均为显示层）；战前热键 B/1、7、9、M 与信号名／overlay 名一律不动（AGENTS.md v25.3 收敛口径）。
+**随改名须同步的活显示层引用（批次②清单）**：① truck_base.gd:331 顶栏按钮「❓ 帮助」——help 若改「车长手册」须同步；② help_panel.gd:273–281「车厢工位」段（「背包·卡仓／改造·词条／制造中心／情报中心／商店·势力」等旧名密集）；③ help_panel.gd:160–171（改造模块／制造中心节）；④ tutorial_progression_manager.gd:80/:81/:98/:128/:136/:137/:176（教程 title／description／action_text 教旧名：「成长中枢」「制造中心」「卡牌墙＝背包」等）；⑤ truck_base.gd PANEL_LABELS（:115–121，面板加载失败兜底文案）。
+
+### 资源映射（真身 data/basic_resources.gd DEFINITIONS）
+
+| 资源 id | 现名 | 处置 | 依据 |
+|---------|------|------|------|
+| nano_materials | 纳米材料 | 保留 | 第一章权威词条已立 |
+| alloy | 合金 | 保留 | 同上 |
+| crystal | 晶体 | 保留 | 同上（「严禁水晶」勘误在册） |
+| energy_block | 能量块 | 保留 | 同上 |
+| star_marrow | 星髓 | 保留 | 第一章「星髓」条（v27） |
+
+- 兼容弃用键 `basic_nano`（内部映射 nano_materials）不单列。
+- **存量违规随记**：bunker_room_defs.gd `cost_text` 以「纳米×200」式单用「纳米」，medical 房 function_note「基础 纳米50」同病——违第一章「纳米材料」禁用变体「纳米（单用指该资源时）」，记批次②。
+
+---
+
 ## 附录 A · 收割记录（词 → 出处）
 
 | 词 | 出处 |
@@ -201,3 +260,30 @@
 | 13 | managers/lore_manager.gd:17 | 活文案「一战时期」 | 改「一战时代」 | 时代条（「时期」断代专名语境禁） |
 
 **豁免清单（不清理）**：航空术语「伙伴加油」（air_mods.gd:118，buddy refueling）；美术术语「阵营色」（company_definitions.gd 注释语境）；程序容错「类型 N」（world_map.gd:2135 兜底显示，非正式文案）；关卡 flavor「构装纪元」「新纪元黎明」（level_information.gd:299–303）。
+
+## 附录 D · 面板标题现状出处（第三章盘点记录，2026-09-08 逐字核实）
+
+| panel_id | 玩家所见标题（逐字，括注英文副标题） | 出处 |
+|---|---|---|
+| backpack | 战斗卡阵列 · COMBAT ROSTER（随 Tab 动态：改造模块库／符文图鉴／相位仪中枢／全局强化） | backpack_panel.tscn:105；动态 backpack_panel.gd:297–313 |
+| quest | 任务面板（QUESTS） | quest_panel.gd:26；Tab「委托 COMMISSIONS」tscn:53、「日常 DAILY」tscn:86 |
+| store | 公司商店（COMPANY STORE） | store_panel.gd:53 |
+| faction | 势力系统（FACTION） | faction_panel.gd:36 |
+| settings | 设置（SETTINGS） | settings_panel.gd:36 |
+| achievement | 成就系统（ACHIEVEMENTS） | achievement_panel.gd:44 |
+| help | 游戏帮助（HELP） | help_panel.gd:32 |
+| modification | 战术改造站（副标题：战术改造舱） | modification_panel.tscn:180／:185 |
+| evolution | 战术制造站（副标题动态） | evolution_panel.tscn:147；gd:148 重赋值 |
+| growth | 成长中枢（GROWTH COMMANDO） | growth_panel.tscn:288；副标题 :293 |
+| collection | 卡牌图鉴（COLLECTION） | collection_panel.gd:32 |
+| affix | 词条工坊 · AFFIX FORGE（AFFIX） | affix_forge_panel.gd:39 |
+| phase_master_skill | 相位师技能树（CIRCUIT BOARD） | phase_master_skill_panel.gd:109 |
+| intelligence | 情报中心（INTEL HUB） | intelligence_hub_panel.gd:33 |
+| leaderboard | 排行榜（LEADERBOARD） | scenes/ui/leaderboard/leaderboard_panel.gd:64（脚本在子目录，tscn 在 scenes/ui/） |
+| hero_archive | 英雄档案 | scenes/bunker/ui/hero_archive_panel.gd:76（纯代码构建） |
+| memorial | 纪念墙 | scenes/bunker/ui/memorial_wall.gd:81 |
+| observatory_ending | 观星台（标题随阶段切换：「三十个人守出来的答案」等） | scenes/bunker/ui/observatory_ending_panel.gd:137/:145/:202 |
+| map | — 黑日战线 · 100 关 — | world_map.gd:349（tscn:44 默认「战区地图 · 100 关」被运行时覆盖，玩家不可见） |
+| save | 动作非面板：toast「游戏已保存」／「存档失败，请重试」 | main.gd:1082–1093 |
+| afk | 挂机模式（AFK MODE） | scenes/ui/afk_panel.gd:79 |
+| （功能栏按钮） | 背包／成长／地图／设置／存档／挂机 | bottom_function_bar.gd:78–85 BTN_CONFIGS |
