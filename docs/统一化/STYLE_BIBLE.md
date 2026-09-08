@@ -118,7 +118,11 @@ plus one small warm amber glow from (muzzle flash / headlights / exhaust embers)
     场景里画青 rim 会把实景变成"贴在 UI 上的一张图"。
 
 若 资产 = 相位仪徽章：
-    无光效 rim——青色以矢量勾线形式出现（现状纹章风全量保留，新徽章照此）。
+    无光效 rim——青色以发光勾线形式出现（现状纹章风全量保留，新徽章照此）。
+    徽章域特例注（2026-09-08 质量审查裁决）：本条"无光效 rim"指徽章不吃卡图
+    rim 三档——rim 三档只辖卡图域；徽章是 UI 发光体域，自身辉光
+    合法且是域语言，现图实况即霓虹辉光勾线（存量 189 张族图全为霓虹系），
+    新徽章听现图、域级特例维持系列统一（锚段与发光判据见第六章 6.4）。
 ```
 
 （历史写实系分支即现状 ww1 步兵青蓝轮廓光的"雏形收编"；三档 rim 色见第一章点缀色表。）
@@ -182,7 +186,7 @@ blue-grey haze
 
 - 卡图：厚涂 + 后处理颗粒，无描边。
 - 场景 / 漫画：厚涂 + 版画排线 + 颗粒（序章漫画 11 格已合规，零换血样板）。
-- 相位仪徽章：扁平矢量纹章风（深灰蓝底 + 青勾线 + 放射底纹）——**不套厚涂**，徽章是纹章语言不是插画语言。
+- 相位仪徽章：扁平矢量纹章风（深灰蓝底 + 青勾线 + 放射底纹）——**不套厚涂**，徽章是纹章语言不是插画语言。（2026-09-08 质量审查裁决修订：辉光载体听现图霓虹系——域级媒介特例见章二徽章注与 6.4；"放射底纹"描述与现图不符，自此以 6.4 锚段为准。）
 - 基地房间：厚涂 + 颗粒（三图管线 v3 prompt 骨架不变，换本章场景串风格词重跑）。
 
 ### 措辞红线
@@ -215,7 +219,7 @@ hard-edge scuffed steel, clean painterly silhouettes defined by value contrast
 - **视平线**：卡图无画面内视平线——无地面无天空（`clean pure white background with NO ground`，结构性白名单词），视角取**平视全身侧面**（eye-level full body side view）；`perspective view` 是结构性排除词。超大型单位（巨舰 / 球舰）允许微仰视——串内写 `slight low angle`，幅度以不触发 perspective view 排除为限（微仰是机位倾斜，不是透视变形）。
 - **朝向**：生图串一律写 `facing right`，**生成即朝右**；enemy 侧由 FLIP_LEFT_RIGHT 镜像产出，player 侧直出——同 ID 配对 player 朝右 / enemy 朝左。构图必须**翻转安全**（画面内禁文字 / 字母 / 带字旗帜徽标 / 单侧不对称符号）。
 - **主体占比**：约 65%~80%；四周留 8%~15% 白边安全距（泛洪 + 裁切适配需要）；脚部完整落在画面内不裁切（白色椭圆脚锚是 `generate_card_foot_anchors.py` 后处理产物，不进生图）。
-- **生成尺寸**：agnes 实测 1152x768（≈3:2）可用；卡图管线终态 512×512 透明底——1152x768 出图 → 裁切适配 → flood_white_to_alpha → 脚部锚 → grain 后处理叠加。
+- **生成尺寸**：agnes 实测 1152x768（≈3:2）可用；卡图管线终态 512×512 透明底——1152x768 出图 → flood_white_to_alpha → 裁切适配 → 脚部锚 → grain 后处理叠加。
 - **构图自由度**（透明底约束下投在哪）：全部投资在**姿态与装备细节**——待发 / 缓行静姿为主、装备完整可见；战斗动感由游戏内 VFX 承担，卡图是识别层不是动作帧。
 - **背景虚化层级**：不存在——无背景即无层级，空间感由主体自身的明度阶梯（第一章辅色层）表达。
 
@@ -254,7 +258,7 @@ white background with NO ground
 - **视平线**：地平线压低（下 1/3 附近），天空占 40%~60%，天空必须是平坦阴天（禁戏剧云）。
 - **背景虚化层级**：景深用**大气雾三段**表达——前景实（主体 / 结构）、中景灰蓝雾、远景沉入雾中；禁摄影镜头虚化（painterly 语言里没有 bokeh）。
 - **漫画格**：一格一个视觉焦点（b6"火光焦点"即样板）。
-- **徽章**：1024×1024 对称纹章构图、中心放射底纹。
+- **徽章**：1024×1024 对称纹章构图（以 6.4 锚段为准）。
 
 〔场景〕构图串
 
@@ -297,6 +301,230 @@ with faint violet halo
 
 ---
 
+## 六、资产类别 prompt 锚模板（拿来即用）
+
+> 本章职责：把一~五章片段按资产类别组装成固定模板，**不发明新风格**——描述词优先原文取自既有章节片段；确需新增的词句（6.1 兵种主体句、6.2 时代基础段与环境修饰词表、6.4 徽章族写法）一律带〔域〕标注，并已逐条对照第五章禁则 12 条自检。与一~五章冲突时以一~五章为准。每类模板结构固定：基础锚段 → 变体段 → 行为适配 → 生成后流程 → 合规自检 5 问。
+
+### 6.1 卡图（agnes 管线，512×512 透明底，356 张主战场）
+
+**拼装顺序**（附录二口径固化，10 段串接、顺序不可换）：
+
+| # | 段 | 取法 |
+|---|----|------|
+| 1 | era 插槽（句首） | 五时代词全表：`WWI` / `WWII` / `cold war era` / `modern` / `near-future`（记号与 6.2 时代基础段统一；第四章词插槽） |
+| 2 | 单位族构图串头 | 第四章三档构图串选一（历史写实系/科幻系/xeno 系），档位按第二章判定链；**取至 even white margins 止**——串尾白底句不随取，白底句仅第 9 步收尾出现一次 |
+| 3 | 兵种变体句 | 6.1.2 十三选一，拼在构图串头之后细化主体 |
+| 4 | 主光句 | `overcast diffused lighting`（固定） |
+| 5 | rim 句 | 第二章三档词，与第 2 步同档（判定链：写实度①→前缀族②→发光要素③→兜底冰天青+人工复核） |
+| 6 | 基色句 | 第一章〔卡图〕基色句（固定） |
+| 7 | 笔触串 | 第三章〔卡图〕串（固定） |
+| 8 | 暖缀条件句 | 仅单位自带自然暖源时写入对应载体词，无源整句删除（第一章条件句） |
+| 9 | 白底句 | `clean pure white background with NO ground`（固定收尾） |
+| 10 | 负面栏 | `text, perspective view, frame, ground, ceiling`（固定，结构性白名单） |
+
+**基础锚段**（第 4~7、9 步固定原文，逐字粘贴；rim 句按三档插入主光句之后）：
+
+```
+overcast diffused lighting, 〔rim 三档选一〕, muted cold palette of deep
+blue-grey steel and cold grey, thick painterly illustration, clean painterly
+silhouettes defined by value contrast and a narrow rim light, smooth blended
+brushwork, hard-edge steel surfaces, clean pure white background with NO ground
+```
+
+rim 三档插入词（判定见第二章条件树）：
+
+```
+历史写实系：one narrow cool sky-blue rim light along the back edge
+科幻系：    one narrow cyan rim light along the back edge, faint glow
+            limited to emissive parts
+xeno 系：   one narrow faint violet rim light along the back edge
+```
+
+负面栏（固定）：
+
+```
+text, perspective view, frame, ground, ceiling
+```
+
+**三个独立轴**：era（时代装备细节）× 兵种（6.1.2 主体句）× 单位族档（rim 词 + 构图串头）——默认独立、逐轴独立选词（两处显式例外见 6.1.2 表后注：科幻系装备词替换、隐身兵种 era 取值）；族档拿不准走第二章兜底（冰天青 + 登记人工复核清单）。
+
+#### 6.1.2 按兵种变体段（〔卡图〕域新增，13 兵种语义——CombatKind+子类+模组系汇总，era 无关）
+
+主体句拼在第 2 步构图串头之后；装备词只锁兵种剪形与姿态，时代敏感词一律让位给 era 插槽。
+
+| 兵种 | 主体句（prompt-ready） | 注 |
+|------|----------------------|-----|
+| 步兵 | a single foot soldier with shouldered rifle, full field pack and helmet, calm ready stance | 姿态静不战斗（第四章：卡图是识别层不是动作帧） |
+| 装甲 | a single tank with rotating turret and long main gun barrel, layered hull armor, wide track runs | |
+| 空军 | a single aircraft with full wingspan and tail assembly visible, level flight attitude | 禁俯冲/翻滚/大坡度倾斜（会拉向 perspective view） |
+| 支援 | a single support vehicle or field station with mast antennas and equipment racks | 车载屏幕必加第二章屏幕限定句（禁则 8） |
+| 侦察 | a single light wheeled scout vehicle with slim low silhouette and raised optics mast, plain unmarked hull | 正面锁定 plain unmarked hull——旗帜/徽标类符号翻转穿帮（禁则 3），只禁不锁模型会自造徽标 |
+| 炮兵 | a single artillery piece with long barrel at moderate elevation, recoil spades and ammunition racks | |
+| 防空 | a single anti-air gun mount with barrels angled steeply upward | 火控雷达等时代件由 era 插槽给 |
+| 工兵 | a single engineering vehicle with articulated crane arm and front dozer blade | |
+| 航母 | a single aircraft carrier with flat flight deck and parked deck aircraft | 超大型单位允许 `slight low angle`（第四章） |
+| 医疗 | a single field ambulance truck with stretcher loading hatch and roof vents, body painted in the same muted cold tones | 禁白车漆——贴边大片白撞禁则 12（泛洪误抠）且撞禁色白 |
+| 隐身 | a single stealth aircraft with faceted angular panels and dark matte coating | 天然 mod/近未来，era 插槽相应取 |
+| 堡垒 | a single massive fortified emplacement with embedded gun casemates and layered armor plates | 超大型单位允许 `slight low angle`（第四章） |
+| 指挥 | a single command vehicle with clustered communication masts and open map-table hatch | 带数字屏时同加屏幕限定句 |
+
+（科幻系拼装时，变体句里的时代敏感装备词替换为能量系等价物——rifle→energy rifle 一类——兵种剪形不变；历史写实系禁科幻化改型（禁则 11），判定按第二章优先级①。）
+
+**agnes 行为适配**（源 `tools/_agnes_image_api.md` 三轮实测）：
+
+- **正面意象锁死**：全部描述写"该画什么"（上表主体句均正面表述）；要干净背景就靠白底句本身，绝不写 no trash 类概念否定。
+- **负面词只留结构性白名单**（第 10 步 5 词）。存量脚本 `tools/generate_missing_card_icons_11.py` 的 NO 词前缀 + 中文负面词堆叠为宪法前写法——复用脚本只保留 API 管线（key/轮换/输出到待生成审核目录），prompt 段一律按本章重拼。
+- **质感词落材质不落破败**：`oil-stained steel` 可，dusty/gritty/grimy/battle-worn 禁（禁则 5）。
+- **屏幕限定句**：装备带屏幕（雷达/指挥车）时加第二章禁则 8 原文整句。
+- **hex 不进串**（第一章口径）；**grain 不进串**（第三章——白底上生成颗粒污染泛洪边缘，一律后处理）。
+
+**生成后流程**（每张必走全链）：
+
+1152×768 出图 → 人工审核（对照本节自检 5 问）→ flood_white_to_alpha 白底转透明 → 裁切适配 512×512（deploy 脚本 `fit_square` 现成实现——getbbox 依赖已透明才裁得准内容边界，顺序不可倒；内容 88% 占比为脚本终值，与第四章 65%~80% 主体占比分立：后者是生图构图要求、前者是部署缩放终态）→ 配对翻转 → `python tools/generate_card_foot_anchors.py`（铁律：新增卡图后必须重跑）→ grain 后处理叠加（附录一标定清单②）→ 新 png 导入用 `godot --headless --editor --quit`（`--import` 直跑崩）→ 备份铁律（重打包至 `F:\godot fair duet\_art_backup\`）→ 敌方卡复查页 `tools/enemy_card_review（敌方卡）.html` 浏览器打开复查。
+
+> ⚠️ **翻转口径**：宪法第四章规定**生成一律朝右、player=直出、enemy=FLIP_LEFT_RIGHT 翻转版**；存量部署脚本模板 `deploy_card_icons_11.py` 翻转的是 player 版（旧口径：enemy 原图朝左，AGENTS.md 美术节）。两口径落点画面等价（player 朝右 / enemy 朝左），新批次一律按宪法口径执行——复用脚本模板时把翻转目标对调到 enemy 副本。
+
+**合规自检 5 问**：
+
+1. 朝向右？（`facing right` 在构图串头；enemy 由翻转产出，画面无单侧不对称符号）
+2. 透明底合规？（白底句固定收尾；串内无雾/软烟雾词污染剪影、无泛辉光词——科幻系 rim 句的 emissive 限定辉光除外；主体无贴剪影边缘的大白块）
+3. 色板内？（冷灰蓝基调 + 至多一处自然暖缀（无源删句）；无禁用色；无 hex 进串）
+4. 笔触合规？（厚涂档 4 串原文逐字在位；grain 未进串、只走后处理；无勾边/卡通词）
+5. 无文字水印？（负面栏 text 在位；画面内无文字/字母/带字旗帜徽标——翻转安全）
+
+### 6.2 战场背景（agnes，时代×环境矩阵）
+
+**组装法**：不穷举 5×全环境组合——「时代基础段 + 环境修饰词表四维各查一行 + 场景域固定段」三块拼装。
+
+**时代基础段**（〔场景〕域新增，5 时代各一句；识别度全部由结构剪形表达、色相不换——第一章）：
+
+| 时代 | 基础段 |
+|------|--------|
+| WW1 | great war era landscape, long trench lines and timber revetments, early steel gantries, distant biplane silhouette |
+| WW2 | WWII era landscape, fortified blockhouse silhouettes, steel truss bridge, an armored column on a raised road |
+| COLD | cold war era landscape, brutalist concrete structures, radar arrays on the horizon, wide frozen plain |
+| MODERN | modern era landscape, container yards and highway viaducts, distant glass-and-steel towers |
+| NEAR_FUTURE | near-future landscape, sleek monolithic towers, elevated transit lines, one colossal dark monolith on the horizon |
+
+**环境修饰词表**（〔场景〕域新增，四维源 `data/battle_environments.gd`；逐维查表取句）：
+
+| 维度 | 取值 | 修饰句 |
+|------|------|--------|
+| 天气 weather | rain | fine rain across the whole scene |
+| | storm | heavy storm with driving rain, sky one low unbroken grey |
+| | snow | 直接用第四章〔场景·雪原专用〕锁意象串整段 |
+| | sandstorm | dense pale sand haze swallowing the midground |
+| | clear | flat pale overcast sky, diffuse daylight |
+| 地形 terrain | city | low dense skyline of cold grey buildings on the horizon |
+| | plain | wide open flatland stretching to the horizon |
+| 能量场 energy_field | normal | （无修饰句，整维省略） |
+| | low_field | faint violet shimmer in the air |
+| | high_field | violet aurora bands rippling high over the horizon |
+| | nano_fog | low-lying luminous blue-grey nano fog drifting through the midground |
+| 时段 time_of_day | day | diffuse daylight |
+| | dusk | dim grey-blue dusk |
+| | night | deep blue-grey night |
+
+（时段修饰不得引入第二光源——夜城灯海=多光源，违反禁则 10；夜色的暖只来自那一个叙事光源。）
+
+**组合与去重规则**：
+
+- **city×night**（实卡 13/47/68/97 皆此组合）不得只禁不锁——加正面锁定句 `the skyline stays fully dark, unlit building silhouettes`，否则模型自造灯海（正面意象锁死，第一章/agnes 实测口径）。
+- **snow×high_field**（实卡 level 93）＝双紫晕 + 双巨碑，违反自检 Q3——删雪原串的 halo 词，monolith 只保留一座（优先雪原串版本）。
+- 雪原串与场景固定段同含 `flat overcast sky` 等天空词——同词第三次出现可省（重复堆叠无增益）。
+
+**场景域固定段**（一~四章〔场景〕片段在背景类全部解禁，拼装顺序）：
+
+时代基础段 → 环境修饰句（最多四句）→ 第四章场景构图串（vast empty composition… one tiny human silhouette against huge machinery）→ 第一章场景色板串（… flat overcast sky）→ 第二章场景光源句（single warm ember light source… fade into blue-grey haze）→ 第三章场景笔触串（film grain / soft airbrush smoke / hard-edge scuffed steel）。
+
+负面栏〔场景〕：`text, frame`（ground 是画面本体必须存在，不得入负面栏；perspective view 是卡图平拍专属排除；ceiling 只用于室内图）。
+
+**agnes 行为适配**（场景域）：正面意象锁死——要干净地面写实测句式"the floor/ground is one smooth continuous surface of …"；废墟字面词全禁（wasteland/ruined/bleak，禁则 4），荒芜只由第四章空旷公式表达（空旷构图 + 比例差 ≥1:10 一处 + 单一暖光源）；`scuffed` 首跑小样验证（附录一③）。
+
+**生成后流程**：1152×768 出图 → 审核 → aspect-fill 裁 16:9（战场视口 1280×720 口径）→ 落 `assets/backgrounds/bg_level_NN.png`（命名沿用 battlefield.gd 的 `LEVEL_BG_PATH_FMT`，加载回退链自动接图、零代码改动）→ `--headless --editor --quit` 导入 → 备份。存量照片感背景按附录一处置（压冷+加雾保留、不再新增）；运行期另有 BG_DIM 压暗 + 时代 tint 叠乘（battlefield.gd v26.9），生图不必预压暗。
+
+**合规自检 5 问**：
+
+1. 地平线压低下 1/3、天空占 40%~60% 且平坦阴天（无戏剧云）？
+2. 恰好一个叙事光源（一冷暖对撞，无灯海/双光源）？
+3. 色板内（冷灰蓝世界 + 至多一处暖橙或紫晕点缀）？
+4. 雾/grain/软烟只以〔场景〕串词出现（未混入任何〔卡图〕串）？
+5. 无废墟字面词（荒芜由空旷公式表达）且无文字水印？
+
+### 6.3 序章漫画（FLOW 主路，1280×720，prompt ≤900 字）
+
+**待生成清单**（源 `docs/开场文本.md`；缺图自动退化程序化画格）：`b6_black_gates` / `b7_deep_voyage` / `b8_sacrifice`（⚠️ 格 id 为 b8_departure、贴图文件名为 b8_sacrifice.png，落盘以数据文件为准）/ `b10_rift_stream`，落 `assets/intro/comic/`，1280×720；另有雪原醒来大图 `assets/intro/wakeup_snowfield.png`。旁白内容真源：`data/intro_comic_panels.gd`。**五图已于 2026-09-07 批次生成在位（文件已核实）——本节降格为重生成/复核模板：任何重生前先按本节自检 5 问复核现状图，合格即不重生**（与"现状 11 格已合规零换血"口径一致）。
+
+**FLOW 特殊约束**（与 agnes 是两套行为模型，本节注记不适用于 agnes、反之亦然——源 AGENTS.md FLOW 节）：
+
+- **prompt ≤900 字**（超 ~950 触发"错误卡片"限流；报错等 60s 重试即好）。
+- **`--ref` 是强内容锚**：参考图里画什么就出什么，prompt 只能微调；要换内容级元素必须换参考图或走纯文生图（不传 --ref）。
+- **纯文生图语言理解强**（方向/朝向/谁在动都能听懂）——首次生成走纯文生图，微调迭代再上 --ref。
+- 原生 1376×768 → PIL aspect-fill 裁 1280×720。
+- flow-mcp（labs.google 直调）已死（2026-09-05 站点迁移后），只走 `docs/基地重设计/flow_edit_tool.py` 网页自动化。
+
+**模板拼装**（每格）：一格一个视觉焦点（第四章漫画格条款）｜媒介=厚涂+版画排线+颗粒（第三章；现状 11 格已合规零换血）｜rim 不开（漫画格属场景族，第二章）｜一图一冷暖对撞（第一章；b6"暖橙火光×冷紫门光"即合规样板）｜内容锚以旁白为真源——四格场景句可参考 agnes 备路 `tools/generate_intro_shenhua.py` 已写好的 Scene 段直接移植（那是 agnes 管线产物，移植到 FLOW 只保留内容描述，行为约束换用本节）。
+
+负面栏（沿用 shenhua 先例的域结构性扩展）：`text, watermark, signature, frame, border, comic panel grid, split panels`（防整图退化成多格漫画网格——结构性排除，非概念否定）。FLOW 无独立负面栏字段——负面词以 `Avoid: …` 尾缀并入 prompt 正文（`generate_intro_shenhua.py` L190 先例同法：`风格串 + 场景句 + "Avoid: " + 负面串`）。
+
+**生成后流程**：出图 → 审核 → 裁 1280×720 → 落 `assets/intro/comic/<贴图文件名>.png`（以 `data/intro_comic_panels.gd` texture 字段为准）→ 缺图退化逻辑自动接真图 → `--headless --editor --quit` 导入 → 备份（序章专项包惯例）。
+
+**合规自检 5 问**：
+
+1. prompt ≤900 字？
+2. 一格一个视觉焦点？
+3. 恰好一冷暖对撞、单一叙事光源？
+4. rim/辉光未开（漫画格=场景族）？
+5. 无文字水印、未退化成多格网格（负面栏在位）？
+
+### 6.4 相位仪徽章（agnes，1024×1024 深底徽章风，6 阵营族）
+
+**基础锚段**（〔徽章〕域新增，章二徽章域特例注 + 族先例脚本语言拼装；中文串）：
+
+```
+科幻策略游戏装备徽章图标，单一主体居中，对称纹章构图，
+深空黑到深灰蓝的深底径向渐变，
+霓虹发光勾线与能量光晕，正方形徽章构图，主体完整居中，无文字无水印无logo
+```
+
+（串内「霓虹发光勾线与能量光晕」为族先例措辞。）
+
+**媒介特例裁决（2026-09-08 质量审查）**：徽章域媒介**听现图**——存量 189 张族图全为霓虹辉光系（pi_aegis_01 等实看 + umbra / gen_missing_instruments_32 先例脚本皆写"霓虹发光轮廓与能量光晕"），域级特例维持系列统一；章二"无光效 rim"指徽章不吃卡图 rim 三档（rim 三档只辖卡图/场景写实体域），非禁徽章自身发光——徽章是 UI 发光体域。末句"无文字无水印无logo"为徽章域实测先例措辞（2026-08-23 影幕系列未触发反激活），其余域不得效仿——概念否定仍按禁则 2 只走结构性负面栏；厚涂/照片写实仍为规范判定语，不写进串。
+
+**按族变体段**（6 族，既有图源 `assets/ui/instruments/pi_*.png`）：aegis / helix / nova / iron / umbra / eon 各有既系列——**生成前先开同族 3~5 张现有图对照，勾线主色与氛围句以族内既有系列为准**（umbra=黑门紫系粉紫勾线，先例 `tools/generate_umbra_instruments_4.py`；其余族以现有 pi_* 图实测取色，不凭记忆写）。umbra 族变体句（替换锚段默认深底渐变句，对齐先例原文）：`深紫黑色径向渐变背景`。主体意象句先例写法：单一主体 + 一句功能意象 + 族氛围句（如"一柄悬浮的虚空匕首……体现『一击薄刃』的隐秘锋锐感"）。传奇 r_ 系列为 128×128 小图——同管线生成后缩放部署。
+
+**agnes 行为适配**（徽章域）：正面意象（主体物象 + 功能意象正面描述，不给场景不给人物）；先例脚本的 NEGATIVE「不要：…」段**弃用**（概念否定堆叠撞禁则 2）——负面栏只留结构性 `text, frame`；1024×1024 不透明深底——**不做透明化处理**（与卡图白底管线相反，勿混用）。
+
+**生成后流程**：出图到 `docs/待生成徽章_<批次>/`（命名对齐 `docs/待生成卡图_11张`、`docs/待生成相位仪图标_32张` 惯例）→ 审核 → 复制 `assets/ui/instruments/`（不透明底直接可用）→ `godot --headless --editor --quit` 生成 .import 元数据（`--import` 直跑崩 0xC0000005，AGENTS.md 铁律）→ 备份。
+
+**合规自检 5 问**：
+
+1. 纹章语言非插画（无厚涂/无照片写实——判定不写进串），且辉光为族先例同款霓虹勾线（非泛光滥用、非整圈 halo）？
+2. 对称居中 + 单一主体 + 同心/放射刻度类族内既有元素（如 aegis 表盘刻度；无多主体/无场景/无人物）？
+3. 勾线主色与族内既有系列一致（生成前对照过 pi_* 现图）？
+4. 深底不透明（未误走白底转透明管线）？
+5. 无文字水印（先例句 + 负面栏 text 双保险在位）？
+
+### 6.5 UI 底纹/图标（对齐 DesignTokens——冲突时以 DT 为准并回写本节）
+
+**判断规则——多数 UI 元素不该用 AI 生图**：
+
+- **默认程序化**：按钮/面板/槽位/进度条/分隔线/边框/功能图标符号，一律走 `resources/design_tokens.gd` + StyleBox/shader 绘制（COLOR_* 色板、CORNER_RADIUS、BORDER_WIDTH、PADDING_*、字号七档、PANEL_SIZE 三档）。**精确色只有代码能给**——agnes 无 hex 解析证据（第一章口径），生图只产出"近似的氛围"；UI 信息语义色（血量绿/危险红/能量橙）必须代码着色。
+- **生图仅限两类**：①叙事插画资产（标题页大图/成就章/漫画格——走 6.2/6.3 管线）；②程序化无法表达的有机质感底纹（材质图章类）。胶片噪点/网格/扫描线等规则纹理优先程序化或后处理生成（第三章颗粒家族——噪点本就该程序化叠加）。
+- **底纹类若确需生图**：底色沉入深底色环（深空黑 #0A121F / 面板灰蓝 #262B40 族）、低对比不抢前景、平铺无缝、无方向性强光影。
+- **权威优先**：任何生图 UI 资产与 DesignTokens 冲突，以 DT 为准，并回写登记下方登记区（用途/色板映射/落盘路径）。
+- **回写登记区**：已登记生图 UI 资产 = 相位仪徽章族（6.4 管线管辖，`assets/ui/instruments/`）；除此之外当前为空，新增即填。
+
+**合规自检 5 问**：
+
+1. 该资产程序化可替代吗？（可替代即不生图）
+2. 信息语义色是否全部来自 DT 代码而非生图近似？
+3. 若生图：底色在深底色环内、低对比不抢前景？
+4. 平铺/缩放安全（无缝、无强方向光影）？
+5. 已回写登记本节？
+
+---
+
 ## 附录一、存量适配与批次④复核流程
 
 - **总量口径**（抽样外推，批次④前以分档脚本全量复核）：卡图 356 张——调色归队约 55%~60%（压冷 LUT + rim 后处理补齐 + grain 后处理叠加），重生成约 40%~45%（勾边 / 卡通 / 构图姿态不合格，含现状 ww1 步兵、fut_swarm）。
@@ -318,7 +546,9 @@ with faint violet halo
 ```
 WWII single military vehicle, full body, eye-level side view, facing right,
 historically accurate equipment detail, unit fills about three quarters of
-the frame with even white margins, overcast diffused lighting, one narrow
+the frame with even white margins, a single tank with rotating turret and
+long main gun barrel, layered hull armor, wide track runs, overcast diffused
+lighting, one narrow
 cool sky-blue rim light along the back edge, muted cold palette of deep
 blue-grey steel and cold grey, thick painterly illustration, clean painterly
 silhouettes defined by value contrast and a narrow rim light, smooth blended
@@ -332,7 +562,7 @@ headlights, clean pure white background with NO ground
 text, perspective view, frame, ground, ceiling
 ```
 
-拼装决策记录：era 插槽 = WWII（句首）｜单位族 = 历史写实系 → rim 句取冰天青档（第二章条件树①）｜暖缀 = headlights（坦克待发姿态自带车灯暖源，成立写入；若单位无自然暖源——如纯步枪步兵——暖缀句整句删除）｜朝向 = facing right（player 直出，enemy 由 FLIP 产出）｜出图 1152x768 → 裁切 512×512 → flood_white_to_alpha → 脚部锚 → grain 后处理叠加。
+拼装决策记录：era 插槽 = WWII（句首）｜单位族 = 历史写实系 → rim 句取冰天青档（第二章条件树①）｜兵种句 = 装甲系（6.1.2 表，era 无关——即串中 a single tank… 一句原文）｜暖缀 = headlights（坦克待发姿态自带车灯暖源，成立写入；若单位无自然暖源——如纯步枪步兵——暖缀句整句删除）｜朝向 = facing right（player 直出，enemy 由 FLIP 产出）｜出图 1152x768 → flood_white_to_alpha → 裁切 512×512（透明先行才裁得准内容边界，见 6.1 生成后流程）→ 脚部锚 → grain 后处理叠加。
 
 ---
 
