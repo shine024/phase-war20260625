@@ -1,9 +1,9 @@
 extends Control
-## v7.x 整合结算面板（MVP 战绩 + 奖励明细合并）
+## v7.x 整合结算面板（MVP 战绩 + 缴获明细合并）
 ##
 ## 战斗结束瞬间一次性弹出，展示完整结算：
 ##   上半区：战绩横幅（胜利/失败 + 时长 + 星级 + 核心数据 + 击杀分布）
-##   下半区：奖励明细（本关获得 / 相位场经验 / 战斗掉落 / 相位仪掉落 / 情报揭示）
+##   下半区：缴获明细（本关缴获 / 相位场经验 / 战斗缴获 / 相位仪缴获 / 情报揭示）
 ##
 ## 合并自原 mvp_panel + battle_result_dialog，消除"两次弹窗 + 切换动画"割裂感。
 ##
@@ -12,12 +12,12 @@ extends Control
 ##   - 核心数据（击毁 X · 损失 Y · 伤害 Z）
 ##   - 击杀类型（前 3 类敌人，来自 BattleManager._defeated_enemies）
 ##   - 星级评定（★1~3，基于击杀比/损失比/时长）
-##   - 奖励摘要（能量块/纳米材料/卡牌副本）
+##   - 缴获摘要（能量块/纳米材料/战斗卡）
 ##   - 相位场经验结算
-##   - 战斗掉落列表（DropManager 待领取）
+##   - 战斗缴获列表（DropManager 待接收）
 ##   - 相位仪掉落（独立展示）
 ##   - 情报揭示（IntelHarvestDisplay + IntelRevealPopup）
-##   - 关闭按钮 → 领取全部 + 返回准备界面
+##   - 关闭按钮 → 接收全部 + 返回准备界面
 ##
 ## 数据来源：BattleInfoDisplay.get_battle_stats() + BattleManager._defeated_enemies + GameManager.last_battle_reward_summary
 
@@ -152,7 +152,7 @@ func _build() -> void:
 		if not player_won:
 			_render_defeat_analysis(vbox)
 
-	# ═══ 奖励明细区域 ═══
+	# ═══ 缴获明细区域 ═══
 	_render_phase_field_xp(vbox)
 	if player_won:
 		_render_reward_summary(vbox)
@@ -160,7 +160,7 @@ func _build() -> void:
 	if player_won:
 		_render_drops(vbox)
 		_render_phase_instrument_drop(vbox)
-		# v7.x 胜利面板漏显修复：本局缴获与战利品（战中击杀卡/符文/相位师全部奖励）
+		# v7.x 胜利面板漏显修复：本局缴获与战利品（战中击杀卡/符文/相位师全部缴获）
 		_render_collected_rewards(vbox)
 	# v22.4（P0-2）：要塞反馈行——修复进度/精神/回基地入口（未进过基地的玩家不显示）
 	_render_bunker_status(vbox)
@@ -208,7 +208,7 @@ func _render_victory_banner(vbox: VBoxContainer) -> void:
 	# 副标题描述
 	var desc := Label.new()
 	desc.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	desc.text = "任务完成！前进到下一战区。" if player_won else "阵地失守…重新整备后再战。"
+	desc.text = "阵地已夺取。车队向前。" if player_won else "阵地失守。重新整备后再战。"
 	desc.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
 	desc.add_theme_color_override("font_color", DT.COLOR_TEXT_BRIGHT)
 	vbox.add_child(desc)
@@ -269,7 +269,7 @@ func _render_battle_stats(vbox: VBoxContainer) -> void:
 
 
 # =========================================================================
-#  奖励明细区域
+#  缴获明细区域
 # =========================================================================
 
 func _render_phase_field_xp(vbox: VBoxContainer) -> void:
@@ -304,7 +304,7 @@ func _render_reward_summary(vbox: VBoxContainer) -> void:
 	reward_sep.add_theme_color_override("color", Color(0, 0.9, 0.7, 0.25))
 	vbox.add_child(reward_sep)
 	var reward_title := Label.new()
-	reward_title.text = "◆ 本关获得"
+	reward_title.text = "◆ 本关缴获"
 	reward_title.add_theme_font_size_override("font_size", 13)
 	reward_title.add_theme_color_override("font_color", DT.COLOR_GREEN_BRIGHT)
 	vbox.add_child(reward_title)
@@ -315,14 +315,14 @@ func _render_reward_summary(vbox: VBoxContainer) -> void:
 	var dm_for_summary: Node = Engine.get_main_loop().root.get_node_or_null("DropManager")
 	var pending_mats: Dictionary = _summarize_pending_materials(dm_for_summary)
 	var energy_gain: int = int(_reward_summary.get("energy_block_gain", 0)) + int(pending_mats.get("energy_block", 0))
-	# 纳米材料统一显示一行（固定关卡奖励 + 随机掉落，合并总量）
+	# 纳米材料统一显示一行（固定关卡缴获 + 随机掉落，合并总量）
 	var basic_nano_gain: int = int(_reward_summary.get("basic_nano_gain", 0)) + int(pending_mats.get("nano_materials", 0))
 	var fragment_gain_total: int = int(_reward_summary.get("fragment_gain_total", 0))
 	var recon_bonus_percent: int = int(_reward_summary.get("recon_fragment_bonus_percent", 0))
 	var reward_lines: Array[String] = [
 		"  ▸ 能量块 +%d" % energy_gain,
 		"  ▸ 纳米材料 +%d" % basic_nano_gain,
-		"  ▸ 卡牌副本 +%d（侦查加成 %+d%%）" % [fragment_gain_total, recon_bonus_percent],
+		"  ▸ 战斗卡 +%d（侦察加成 %+d%%）" % [fragment_gain_total, recon_bonus_percent],
 		]
 	for line_text in reward_lines:
 		var reward_lbl := Label.new()
@@ -374,7 +374,7 @@ func _render_drops(vbox: VBoxContainer) -> void:
 	drop_sep.add_theme_color_override("color", Color(DT.COLOR_CYAN_TECH.r, DT.COLOR_CYAN_TECH.g, DT.COLOR_CYAN_TECH.b, 0.25))
 	vbox.add_child(drop_sep)
 	var drop_title := Label.new()
-	drop_title.text = "◆ 战斗掉落（点击继续自动领取）"
+	drop_title.text = "◆ 战斗缴获（继续后自动接收）"
 	drop_title.add_theme_font_size_override("font_size", 13)
 	drop_title.add_theme_color_override("font_color", DT.COLOR_CYAN_TECH)
 	vbox.add_child(drop_title)
@@ -445,7 +445,7 @@ func _render_phase_instrument_drop(vbox: VBoxContainer) -> void:
 	pi_sep.add_theme_color_override("color", Color(DT.COLOR_CYAN_TECH.r, DT.COLOR_CYAN_TECH.g, DT.COLOR_CYAN_TECH.b, 0.25))
 	vbox.add_child(pi_sep)
 	var pi_title := Label.new()
-	pi_title.text = "◆ 相位仪掉落"
+	pi_title.text = "◆ 相位仪缴获"
 	pi_title.add_theme_font_size_override("font_size", 13)
 	pi_title.add_theme_color_override("font_color", DT.COLOR_CYAN_TECH)
 	vbox.add_child(pi_title)
@@ -473,7 +473,7 @@ func _render_phase_instrument_drop(vbox: VBoxContainer) -> void:
 			vbox.add_child(p_line)
 		if pi_props.size() > show_n:
 			var more_line := Label.new()
-			more_line.text = "    · 还有 %d 条属性…" % (pi_props.size() - show_n)
+			more_line.text = "    · 另有 %d 条属性" % (pi_props.size() - show_n)
 			more_line.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
 			more_line.add_theme_color_override("font_color", Color(DT.COLOR_TEXT_DIM.r, DT.COLOR_TEXT_DIM.g, DT.COLOR_TEXT_DIM.b, 0.95))
 			vbox.add_child(more_line)
@@ -481,9 +481,9 @@ func _render_phase_instrument_drop(vbox: VBoxContainer) -> void:
 
 # =========================================================================
 #  v7.x 胜利面板漏显修复：本局缴获与战利品
-#  渲染绕过 DropManager.pending_drops 直接入背包/库存的奖励：
+#  渲染绕过 DropManager.pending_drops 直接入背包/库存的缴获：
 #  战中击杀卡 / 战中符文 / 相位师 Boss掉落卡 / 缴获平台卡 / 相位师符文 /
-#  相位师改造蓝图 / 特殊相位仪 / 相位师额外材料
+#  相位师改造图纸 / 特殊相位仪 / 相位师额外材料
 # =========================================================================
 
 func _render_collected_rewards(vbox: VBoxContainer) -> void:
@@ -524,7 +524,7 @@ func _render_collected_rewards(vbox: VBoxContainer) -> void:
 	vbox.add_child(col_list)
 
 
-## 渲染单个分类区块（卡牌/符文/改造蓝图/特殊相位仪/资源）
+## 渲染单个分类区块（卡牌/符文/改造图纸/特殊相位仪/资源）
 func _render_collected_section(parent_vbox: VBoxContainer, cat: String, entries: Array) -> void:
 	var section_title: String = _collected_section_title(cat)
 	var sh := Label.new()
@@ -548,7 +548,7 @@ static func _collected_section_title(cat: String) -> String:
 	match cat:
 		"card": return "缴获卡牌"
 		"rune": return "符文"
-		"mod_blueprint": return "改造蓝图"
+		"mod_blueprint": return "改造图纸"
 		"instrument": return "特殊相位仪"
 		"resource": return "相位师额外战利品"
 		_: return cat
@@ -593,7 +593,7 @@ static func _collected_entry_color(cat: String, entry: Dictionary) -> Color:
 		_: return DT.COLOR_TEXT_BRIGHT
 
 
-## 稀有度中文名（符文/改造蓝图用）
+## 稀有度中文名（符文/改造图纸用）
 static func _collected_rarity_name(rarity: String) -> String:
 	match rarity:
 		"common": return "普通"
@@ -762,7 +762,7 @@ func _render_close_button_anchored(panel: Control) -> void:
 	if _bunker_return_available:
 		btn.offset_left = 260.0
 		var home_btn := Button.new()
-		home_btn.text = "← 返回基地"
+		home_btn.text = "← 返回移动基地"
 		home_btn.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
 		home_btn.anchor_top = 1.0
 		home_btn.anchor_bottom = 1.0
@@ -812,8 +812,8 @@ func _render_bunker_status(vbox: VBoxContainer) -> void:
 		if bunker.has_method("get_drop_reward_multiplier") else 1.0
 	var sanity_txt: String = "精神 %d" % int(round(bunker.get_sanity()))
 	if mult < 1.0:
-		sanity_txt += "（低精神：奖励 ×%.2f）" % mult
-	title.text = "◆ 余烬要塞 · 第 %d 天 · %s · 英雄档案 %d/30" % [
+		sanity_txt += "（低精神：缴获 ×%.2f）" % mult
+	title.text = "◆ 移动基地 · 第 %d 天 · %s · 同伴档案 %d/30" % [
 		bunker.get_day(), sanity_txt, bunker.get_hero_fragment_count()]
 	title.add_theme_font_size_override("font_size", DT.FONT_SIZE_BODY)
 	title.add_theme_color_override("font_color", Color(1.0, 0.72, 0.32))
@@ -823,7 +823,7 @@ func _render_bunker_status(vbox: VBoxContainer) -> void:
 	var pen: Dictionary = _reward_summary.get("sanity_penalty", {})
 	if not pen.is_empty():
 		var pen_l := Label.new()
-		pen_l.text = "  ⚠ 低精神折损：纳米 -%d · 能量块 -%d（医疗室/睡觉可恢复）" % [
+		pen_l.text = "  ⚠ 低精神折损：纳米材料 -%d · 能量块 -%d（医疗室/休整可恢复）" % [
 			int(pen.get("nano", 0)), int(pen.get("energy", 0))]
 		pen_l.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
 		pen_l.add_theme_color_override("font_color", Color(0.95, 0.55, 0.35))
@@ -843,7 +843,7 @@ func _render_bunker_status(vbox: VBoxContainer) -> void:
 		done_names.append(BunkerRoomDefs.completed_entry_label(str(entry)))
 	if not done_names.is_empty():
 		parts.append("✔ 完工：" + "、".join(done_names))
-	detail.text = "  " + ("；".join(parts) if not parts.is_empty() else "暂无施工中的房间——回基地可开工新修复")
+	detail.text = "  " + ("；".join(parts) if not parts.is_empty() else "暂无施工中的房间——回移动基地可开工新修复")
 	detail.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
 	detail.add_theme_color_override("font_color", Color(0.85, 0.78, 0.62))
 	detail.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -851,12 +851,12 @@ func _render_bunker_status(vbox: VBoxContainer) -> void:
 	vbox.add_child(detail)
 
 # =========================================================================
-#  按钮回调（统一领取 + 返回准备界面）
+#  按钮回调（统一接收 + 返回准备界面）
 # =========================================================================
 
 func _on_continue_pressed() -> void:
 	result_confirmed.emit(player_won)
-	# 领取全部掉落
+	# 接收全部掉落
 	ManagerLazyLoader.ensure_loaded("drop")  # DropManager 为 autoload+别名双层（ensure_loaded 幂等）
 	var dm_claim: Node = Engine.get_main_loop().root.get_node_or_null("DropManager")
 	if dm_claim != null and dm_claim.has_method("claim_drops"):
@@ -879,7 +879,7 @@ func _on_continue_pressed() -> void:
 		queue_free()
 	)
 
-## v22.4（P0-2）：直接回基地——领取掉落 + 存档 + 清 meta + 切场景。
+## v22.4（P0-2）：直接回移动基地——接收掉落 + 存档 + 清 meta + 切场景。
 ## 不走 main 的 _on_result_confirmed（那是"返回整备"路径），场景切换自然拆除战斗态。
 func _on_return_bunker_pressed() -> void:
 	ManagerLazyLoader.ensure_loaded("drop")
@@ -1012,14 +1012,14 @@ func _alive_enemy_breakdown() -> Dictionary:
 
 ## 克制建议（按残存敌军构成给最多 3 条；口径与战斗克制链一致：对空封锁/装甲碾压/曲射压制）
 const _COUNTER_ADVICE: Dictionary = {
-	"armor": "装甲单位多——上火炮/反坦克单位，或给主力安装穿甲类改造",
-	"air": "空中单位多——需要防空单位（对空特化 +25%），其余地面单位打不到飞机",
-	"infantry": "轻步兵海——机枪/范围伤害类单位清杂效率最高",
+	"armor": "装甲单位多——部署火炮/反坦克单位，或给主力安装穿甲类改造",
+	"air": "空中单位多——需要防空单位（对空特化 +25%），其余地面单位无法对空",
+	"infantry": "轻步兵集群——机枪/范围伤害类单位清扫效率最高",
 	"fort": "堡垒/重装单位——用曲射单位（迫击炮/火炮）在对方射程外压制",
 	"artillery": "敌方火炮威胁大——高机动单位快速突进斩首，避免战线僵持对轰",
-	"anti_air": "敌方防空压制我方空军——先地面单位拔点，再放飞行卡",
-	"recon": "侦察渗透骚扰后排——补前排防线单位堵住缺口",
-	"engineer": "工兵近身爆破——提升前排硬度（堡垒/装甲）优先",
+	"anti_air": "敌方防空压制我方空军——先以地面单位拔点，再投入空中战斗卡",
+	"recon": "侦察渗透骚扰后排——增补前排防线单位，堵住缺口",
+	"engineer": "工兵近身爆破——优先提升前排防护（堡垒/装甲）",
 }
 
 func _render_defeat_analysis(vbox: VBoxContainer) -> void:
@@ -1063,7 +1063,7 @@ func _render_defeat_analysis(vbox: VBoxContainer) -> void:
 	var killed: Array = _format_type_counts(snap_kills) if not snap_kills.is_empty() else _kill_type_breakdown()
 	lines.append("· 本场击杀：" + ("、".join(killed) if not killed.is_empty() else "无"))
 	lines.append("· 情报：在情报舱把对应敌种情报推到 75%+ 可解锁弱点/抗性提示")
-	lines.append("· 整备：提升卡牌等级/改造/制造高品质卡后再战，或稍后用大招手动模式攒爆发打 Boss 波")
+	lines.append("· 整备：提升卡牌等级/改造/制造高品质卡后再战，或稍后以大招手动模式蓄势攻坚 Boss 波")
 	body.text = "\n".join(lines)
 	vbox.add_child(body)
 
@@ -1086,7 +1086,7 @@ func _compute_stars(stats: Dictionary) -> int:
 	# 损失扣星
 	if losses > kills * 0.8 and kills > 0:
 		stars = max(1, stars - 1)
-	# 时长奖励（速胜）
+	# 时长加成（速胜）
 	if time_s > 0 and time_s < 60 and kills >= 5:
 		stars = min(3, stars + 1)
 	return clampi(stars, 1, 3)
@@ -1152,7 +1152,7 @@ static func _drop_type_is_card_lane(t: int) -> bool:
 	)
 
 
-## 扫描 DropManager 待领取掉落，统计已在"本关获得"区汇总的 MATERIAL 资源总量。
+## 扫描 DropManager 待接收掉落，统计已在"本关缴获"区汇总的 MATERIAL 资源总量。
 ## 这些资源（nano_materials / energy_block）会合并到顶部汇总行显示，
 ## 故需从"战斗掉落"列表中过滤掉，避免同一资源在面板上重复出现。
 ## 返回 {"nano_materials": int, "energy_block": int}

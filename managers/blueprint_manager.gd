@@ -53,7 +53,7 @@ const EXCLUDED_WAR_PLATFORM_TYPES: Array = ["striker", "sniper", "stealth", "mag
 
 ## card_id -> 副本数量（≥1 表示可制造）
 
-## {card_id: 变动前的副本数}。结算面板的"卡牌副本 +N"据此增量计算，免去全量遍历 ~133 蓝图。
+## {card_id: 变动前的副本数}。结算面板的"战斗卡 +N"据此增量计算，免去全量遍历 ~133 蓝图。
 
 ## blueprint_stars 已在 v5 迁移中彻底废弃，不再保留字段
 
