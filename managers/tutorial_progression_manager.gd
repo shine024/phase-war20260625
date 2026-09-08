@@ -1,12 +1,14 @@
 extends Node
 ## 新手教程进度管理器（A 系统）：主界面首次进入时的系统引导
 ##
-## v3（FTUE A2 首战提前，2026-09-01）：播放顺序重排——核心循环先于系统导览：
+## v4（FTUE A3 移动基地核心，2026-09-08）：以移动基地为叙事中心重排文案——
+## 首战后新增「移动基地 · 你的家」步（工位/睡觉存档/行军入口），世界地图步改写为
+## 行军语义（点节点=出车、停靠关=战前准备、停哪打哪），改造步改图纸消耗口径（v26.10）。
 ##   1. 欢迎 / 2. 背包 / 3. 装配（预装初始三卡）/ 4. 首战
-##   5. 养成 / 6. 改造 / 7. 符文 / 8. 制造 / 9. 势力 / 10. 商店 / 11. 世界地图 / 12. 相位场加点
-##   13. 自由模式（教程结束）
-## 枚举值保持 v2 不变（存档兼容），推进沿 STEP_ORDER 数组走；
-## 旧档兼容：save_state version=3；version<3 停在旧序 4-7 步的档迁到首战步。
+##   5. 移动基地 / 6. 养成 / 7. 改造 / 8. 符文 / 9. 制造 / 10. 势力 / 11. 商店
+##   12. 世界地图·行军 / 13. 相位场加点 / 14. 自由模式（教程结束）
+## 枚举值保持不变（存档兼容），推进沿 STEP_ORDER 数组走；
+## v3 旧档兼容：枚举值一一对应，原位续看（未看过移动基地步属预期——老玩家已在玩）。
 ##
 ## 设计要点：
 ##   - 每一步打开一个不同的面板，不再重复（原 step1/step2 都开背包）
@@ -24,6 +26,7 @@ enum TutorialStep {
 	MODIFICATION = 5,         # 改造：安装模块
 	RUNES = 6,                # 符文：符文/符文之语
 	FIRST_BATTLE = 7,         # 首战：进入第1关
+	TRUCK_BASE = 14,          # v4：移动基地 · 你的家（工位/睡觉存档/行军入口）
 	EVOLUTION = 8,            # v9.x：制造（兵种制造线）
 	FACTION_REP = 9,          # v9.x：势力声望
 	SHOP = 10,                # v9.x：商店（声望购物）
@@ -32,12 +35,13 @@ enum TutorialStep {
 	FREEDOM_MODE = 13,        # 自由模式（教程结束）——v1 枚举此值为 8，旧档兼容见 load_state
 }
 
-## v3：实际播放顺序（首战提前到第 4 位；数组大小 = 总步数 13）
+## v4：实际播放顺序（首战提前到第 4 位；移动基地步插在首战后=战后续播首步；数组大小 = 总步数 14）
 const STEP_ORDER: Array = [
 	TutorialStep.INTRO_WELCOME,
 	TutorialStep.CARD_COLLECTION,
 	TutorialStep.PHASE_INSTRUMENT,
 	TutorialStep.FIRST_BATTLE,
+	TutorialStep.TRUCK_BASE,
 	TutorialStep.ENHANCEMENT,
 	TutorialStep.MODIFICATION,
 	TutorialStep.RUNES,
@@ -65,105 +69,113 @@ func _initialize_tutorial_data() -> void:
 	tutorial_data = {
 		TutorialStep.INTRO_WELCOME: {
 			"title": "欢迎来到 Phase War",
-			"description": "你将指挥跨越 5 个时代的军事力量，通过策略和卡牌组合击败敌人，守护相位场驱动器。",
-			"highlights": ["100 个关卡（一战 → 近未来）", "300+ 卡牌组合", "7 大势力"],
-			"action_text": "开始旅程",
+			"description": "你将驾驶移动基地（装甲卡车驻地）跨越 5 个时代推进战线：行军换防、出击作战、养兵造卡，逐步逼近黑门。以策略与卡牌组合击败敌人，守护相位场驱动器。",
+			"highlights": ["移动基地 = 你的大本营，停哪打哪", "100 个关卡（一战 → 近未来）", "300+ 卡牌组合、7 大势力"],
+			"action_text": "启程",
 			"action_target": "next",
 			"highlight_elements": []
 		},
 		TutorialStep.CARD_COLLECTION: {
-			"title": "卡牌收藏",
-			"description": "背包里是你拥有的所有卡牌。战斗单位卡用于部署作战，符文与资源在对应标签页管理。",
-			"highlights": ["战斗卡：部署到战场作战", "同名卡各自独立养成", "符文/资源在对应标签页"],
-			"action_text": "查看背包",
+			"title": "清点卡仓",
+			"description": "卡仓里是你拥有的所有卡牌。战斗卡用于部署作战，符文与资源在对应标签页管理。在移动基地点击「卡牌展示墙」工位也能打开同一个卡仓。",
+			"highlights": ["战斗卡：部署到战场作战", "同名战斗卡各自独立养成", "符文/资源在对应标签页；卡牌墙工位即卡仓"],
+			"action_text": "打开卡仓",
 			"action_target": "open_backpack",
 			"highlight_elements": ["backpack_button"]
 		},
 		TutorialStep.PHASE_INSTRUMENT: {
-			"title": "装配卡牌",
-			"description": "初始三张卡（毛瑟步枪班/81mm迫击炮组/FT-17坦克）已预装入底部绿色装配槽，首战即可部署。之后获得新卡时，从背包拖到底部绿槽装备（战斗中只能部署已装配的卡）。",
-			"highlights": ["绿色槽：战斗单位卡", "初始三张基础卡已预装备", "新卡从背包拖到底部槽位"],
+			"title": "装载战斗卡",
+			"description": "初始三张卡（毛瑟步枪班/81mm迫击炮组/FT-17坦克）已预装入底部绿色装配槽，首战即可部署。之后获得新卡时，从卡仓拖到底部绿槽装备（战斗中只能部署已装配的战斗卡）。",
+			"highlights": ["绿色槽：战斗卡", "初始三张基础卡已预装备", "新卡从卡仓拖到底部槽位"],
 			"action_text": "查看装配",
 			"action_target": "open_backpack",
 			"highlight_elements": ["phase_instrument_button"]
 		},
 		TutorialStep.ENHANCEMENT: {
-			"title": "卡牌养成",
-			"description": "刚才的战斗中，上阵卡牌已经获得了经验。卡牌靠战斗经验自动升级（Lv1-30），Lv5/10/15/20/25/30 各解锁一个词条；相位师技能树用技能点解锁全局强化。",
-			"highlights": ["战斗经验→等级 Lv1-30（自动）", "关键等级解锁词条", "技能树：全局被动强化"],
-			"action_text": "打开成长中枢",
+			"title": "战斗卡整备",
+			"description": "刚才的战斗中，上阵的战斗卡已经获得了经验。战斗卡靠战斗经验自动升级（Lv1-30），Lv5/10/15/20/25/30 各解锁一个词条；相位师技能树用技能点解锁全局强化。",
+			"highlights": ["战斗经验→等级 Lv1-30（自动）", "关键等级解锁词条", "技能树：全局强化"],
+			"action_text": "打开整备舱",
 			"action_target": "open_enhancement",
 			"highlight_elements": []
 		},
 		TutorialStep.MODIFICATION: {
-			"title": "改造卡牌",
-			"description": "给卡牌安装改造模块（穿甲、装甲、火力等），每个模块改变一张卡的战斗方式。",
-			"highlights": ["改造槽位与模块类型匹配", "消耗合金/材料", "改造不失败，稳定提升"],
-			"action_text": "打开改造",
+			"title": "安装改造",
+			"description": "为战斗卡安装改造模块（穿甲、装甲、火力等），定向强化其战斗方式。安装一条改造 = 消耗 1 张对应图纸 + 纳米材料；图纸三路补给：战斗掉落 / 制造舱制造 / 补给舱采购。车厢「改造·词条」工位即改造舱。",
+			"highlights": ["安装消耗图纸 + 纳米材料", "图纸三路补给：掉落 / 制造 / 补给舱", "改造不失败，稳定提升；同名战斗卡互不影响"],
+			"action_text": "打开改造舱",
 			"action_target": "open_modification",
 			"highlight_elements": []
 		},
 		TutorialStep.RUNES: {
 			"title": "符文系统",
-			"description": "符文提供全局加成。把符文装进相位仪紫色槽位，满足条件可激活强大的符文之语。",
-			"highlights": ["符文提供全局属性加成", "特定组合激活符文之语", "在背包符文标签页管理"],
+			"description": "符文提供全局加成。把符文装进相位仪紫色槽位，满足组合条件即激活符文之语。",
+			"highlights": ["符文提供全局属性加成", "特定组合激活符文之语", "在卡仓符文标签页管理"],
 			"action_text": "查看符文",
 			"action_target": "open_runes",
 			"highlight_elements": []
 		},
 		TutorialStep.FIRST_BATTLE: {
 			"title": "首次战斗",
-			"description": "装配好卡牌后进入战斗。点击底部绿槽选中单位，再点战场格子部署。单位会自动攻击敌人。",
+			"description": "装配好战斗卡后进入战斗。点底部绿槽选中单位，再点战场格子部署，单位自动攻击敌人。",
 			"highlights": ["点底部绿槽选单位", "点战场格子部署", "保护相位场驱动器"],
 			"action_text": "开始首战",
 			"action_target": "start_first_battle",
 			"highlight_elements": ["battlefield"]
 		},
+		TutorialStep.TRUCK_BASE: {
+			"title": "移动基地 · 装甲卡车驻地",
+			"description": "战场之外的一切都在你的装甲卡车里。从标题屏「移动基地」按钮或战区地图的「家」标记进入：剖面车厢里每个发光工位都挂着常显标牌——卡牌墙=卡仓、工作台=改造舱、3D 打印机=制造舱、售货机=补给舱、地图墙=情报舱、电脑桌=统计、发电机=燃料与引擎、铺位=睡觉存档；驾驶室和尾门跳板负责出击简报。",
+			"highlights": ["外景看驻地 / 剖面干活，顶栏可切换", "铺位睡觉 = 存档 + 回充燃料 + 恢复精神", "顶栏「战区地图」= 行军换防与选关"],
+			"action_text": "收到",
+			"action_target": "next",
+			"highlight_elements": []
+		},
 		TutorialStep.EVOLUTION: {
 			"title": "兵种制造",
-			"description": "在制造中心用情报与资源直接生产卡牌：击败敌形积累情报，25% 解锁配方，品质随档位提升。工坊可享制造折扣。",
-			"highlights": ["成长中枢→制造中心", "情报解锁配方与品质", "资源制造，暗保底兜底"],
-			"action_text": "打开制造中心",
+			"description": "在制造舱用情报与资源直接生产卡牌：击败敌形积累情报，25% 解锁配方，品质随档位提升。入口在整备舱，移动基地的「3D 打印机」工位同款；工坊可降制造消耗。",
+			"highlights": ["整备舱 / 移动基地 3D 打印机", "情报解锁配方与品质", "资源制造，品质有下限"],
+			"action_text": "打开制造舱",
 			"action_target": "open_evolution",
 			"highlight_elements": []
 		},
 		TutorialStep.FACTION_REP: {
 			"title": "势力声望",
-			"description": "战斗与委托提升 7 大势力的声望。声望等级解锁势力专属卡、相位仪与技能。",
-			"highlights": ["7 大势力各有声望等级", "声望解锁专属卡与相位仪", "势力技能树全局生效"],
-			"action_text": "打开势力面板",
+			"description": "战斗与委托提升 7 大势力的声望。声望等级解锁势力专属卡牌、相位仪与技能。",
+			"highlights": ["7 大势力各有声望等级", "声望解锁专属卡牌与相位仪", "势力技能树全局生效"],
+			"action_text": "打开联络台",
 			"action_target": "open_faction",
 			"highlight_elements": []
 		},
 		TutorialStep.SHOP: {
-			"title": "势力商店",
-			"description": "用声望在势力商店购买卡牌、材料与符文。不同势力上架不同商品。",
-			"highlights": ["声望=商店货币", "各势力商品不同", "符文也可购买"],
-			"action_text": "打开商店",
+			"title": "声望采购",
+			"description": "用声望在补给舱采购卡牌、资源与符文。各公司上架的物资不同；移动基地的「补给售货机」工位是同一个补给舱。",
+			"highlights": ["声望 = 采购货币", "各公司物资不同", "符文亦可采购"],
+			"action_text": "打开补给舱",
 			"action_target": "open_store",
 			"highlight_elements": []
 		},
 		TutorialStep.WORLD_MAP: {
-			"title": "世界地图",
-			"description": "在世界地图上选择关卡推进战线。已占领的领地可反复挑战获取资源。",
-			"highlights": ["点地图节点选关出战", "100 关 5 个时代", "领地占领影响势力格局"],
+			"title": "世界地图 · 行军与出击",
+			"description": "战区地图上，金色光点就是你的移动基地（纯指示，点节点即可操作）。点任意节点 = 出车行军（耗燃料，按地形计价，回程半价）；点停靠的关卡 = 战前准备，一键出击——停哪打哪，行驶中无法出击。行军实时推进（1 天 ≈ 12 秒，离线也计时），到站自动停靠。",
+			"highlights": ["点任意节点行军，自由停靠", "停靠关 = 战前准备 → 出击", "燃料不足 / 行驶中会被拦截并说明原因"],
 			"action_text": "打开世界地图",
 			"action_target": "open_world_map",
 			"highlight_elements": []
 		},
 		TutorialStep.PHASE_FIELD_POINTS: {
 			"title": "相位场加点",
-			"description": "相位仪升级获得属性点，在相位仪选择面板分配到攻击/防御/能量等方向，打造你的Build。",
+			"description": "相位仪升级获得属性点，在相位仪选择面板分配到攻击/防御/能量等方向，构筑你的作战风格。",
 			"highlights": ["相位仪升级→属性点", "自由分配与洗点", "点数全局生效"],
 			"action_text": "打开相位仪面板",
 			"action_target": "open_phase_field",
 			"highlight_elements": []
 		},
 		TutorialStep.FREEDOM_MODE: {
-			"title": "自由探索",
-			"description": "你已经掌握了核心系统！合理搭配卡牌、管理资源、灵活调整战术是通关的关键。",
-			"highlights": ["100 关等你征服", "7 势力声望系统", "关卡掉落卡牌与改造"],
-			"action_text": "开始冒险",
+			"title": "自由模式",
+			"description": "核心系统已经掌握。「出击 → 行军 → 养兵」的循环就是推进战线的关键。推进受阻就回移动基地：睡觉存档、接收自动哨戒的战利品，休整后再战。",
+			"highlights": ["100 关 + 黑门 · 无限模式", "回移动基地睡觉 = 存档", "合理搭配卡牌、管理资源、灵活调整战术"],
+			"action_text": "自由出击",
 			"action_target": "close_tutorial",
 			"highlight_elements": []
 		},
@@ -216,8 +228,8 @@ func get_tutorial_progress() -> Dictionary:
 	return {
 		"current_step": current_step,
 		"completed_steps": completed_steps.size(),
-		"total_steps": TutorialStep.FREEDOM_MODE,
-		"completion_rate": float(completed_steps.size()) / float(TutorialStep.FREEDOM_MODE)
+		"total_steps": STEP_ORDER.size(),
+		"completion_rate": float(completed_steps.size()) / float(STEP_ORDER.size())
 	}
 
 ## 执行教程动作（打开对应面板/进首关/纯推进）
@@ -265,11 +277,11 @@ func execute_tutorial_action(action_target: String) -> void:
 
 
 ## 保存状态（给SaveManager用）
-## v3（2026-09-01 FTUE A2）：13 步制 + STEP_ORDER 播放顺序（首战提前到第 4 位）。
-## v2 为旧序（首战第 7 位）；v1 为 8 步制（FREEDOM=8）。
+## v4（2026-09-08 FTUE A3）：14 步制——首战后插入移动基地步（枚举值不变，仅 STEP_ORDER 插项）。
+## v3 为 13 步制（首战提前到第 4 位）；v2 为旧序（首战第 7 位）；v1 为 8 步制（FREEDOM=8）。
 func save_state() -> Dictionary:
 	return {
-		"version": 3,
+		"version": 4,
 		"current_step": current_step,
 		"completed_steps": completed_steps
 	}
@@ -278,6 +290,8 @@ func save_state() -> Dictionary:
 ## v1 旧档为 8 步制（FREEDOM=8）——step>=8 视为已完成，防止旧完档被拉回重看；
 ## v2→v3 迁移：旧序停在 4-7 步（养成导览中、首战未打）的档直接跳到新序首战步
 ##（枚举值同为 FIRST_BATTLE=7，内容不变）；1-3/8-13 步两序一一对应，原位续看。
+## v3→v4 无迁移：TRUCK_BASE=14 是新增枚举值且只插入播放序——旧档 current_step
+## 枚举值全部有效，原位续看即可（老玩家跳过移动基地步属预期）。
 func load_state(data: Dictionary) -> void:
 	if not data.is_empty():
 		var version: int = int(data.get("version", 1))
