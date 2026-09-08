@@ -122,7 +122,7 @@ func _bind_nodes() -> void:
 	if mod_btn:
 		mod_btn.tooltip_text = "打开改造面板：为选中的这张卡安装/调整改造模块（最多 9 格，只影响本实例）"
 	if evo_btn:
-		evo_btn.tooltip_text = "打开制造中心：消耗情报与资源直接生产全新卡牌（品质随情报档提升）"
+		evo_btn.tooltip_text = "打开制造舱：消耗情报与资源直接生产全新卡牌（品质随情报档提升）"
 	if prog_card_amber:
 		prog_card_amber.tooltip_text = "战斗经验：上阵参战自动积累（胜利+击杀加成），驱动等级提升"
 	if prog_card_gold:
@@ -945,7 +945,7 @@ func _on_evo_pressed() -> void:
 	if not _selected_card:
 		return
 	# B4: 首次进入进化面板给一句话说明（学黑猴首解锁引导，仅弹一次）
-	FeatureUnlockPopup.show_once("evolution_panel", "制造中心",
+	FeatureUnlockPopup.show_once("evolution_panel", "制造舱",
 		"情报达 25% 的卡种可直接制造：资源换新卡，品质随情报档提升，暗保底兜底。")
 	_open_target_panel("evolution")
 

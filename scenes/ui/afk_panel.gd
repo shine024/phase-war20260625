@@ -76,7 +76,7 @@ func _ready() -> void:
 	# 注意：本面板的 Backdrop/Panel/自身三层可见性协议特殊（main.gd 依赖），保持不变。
 	var accent := DT.COLOR_ACCENT_CYAN
 	panel.add_theme_stylebox_override("panel", PanelStyles.make_panel_frame_textured(accent))
-	var chrome = PanelChrome.attach_to($Panel/MarginContainer/MainVBox, "挂机模式", accent, "AFK MODE")
+	var chrome = PanelChrome.attach_to($Panel/MarginContainer/MainVBox, "自动哨戒", accent, "AFK MODE")
 	chrome.closed.connect(_on_close)
 	start_btn.pressed.connect(_on_start)
 	stop_btn.pressed.connect(_on_stop)
@@ -262,7 +262,7 @@ func _open() -> void:
 	backdrop.visible = true
 	panel.visible = true
 	# B4: 首次打开挂机模式给一句话说明（学黑猴首解锁引导，仅弹一次）
-	FeatureUnlockPopup.show_once("afk_mode", "挂机模式",
+	FeatureUnlockPopup.show_once("afk_mode", "自动哨戒",
 		"选好关卡后自动循环战斗：离线也能推进进度，收益回来一键领取。")
 	# 自动填入槽位：循环模式下若所有槽位均未关联，且 GameManager 有当前关卡，
 	# 则自动将当前关卡填入第一个空槽位。这样用户在世界地图选关后打开挂机面板

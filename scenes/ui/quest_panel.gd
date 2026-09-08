@@ -23,7 +23,7 @@ func _ready() -> void:
 	custom_minimum_size = DT.PANEL_SIZE_MEDIUM
 	var accent := DT.get_panel_accent("quest")
 	add_theme_stylebox_override("panel", PanelStyles.make_panel_frame_textured(accent))
-	var chrome = PanelChrome.attach_to($Margin/VBox, "任务面板", accent, "QUESTS")
+	var chrome = PanelChrome.attach_to($Margin/VBox, "委托台", accent, "QUESTS")
 	chrome.closed.connect(_on_close)
 	ManagerLazyLoader.ensure_loaded("quest")
 	var QuestManager = get_node_or_null("/root/QuestManager")

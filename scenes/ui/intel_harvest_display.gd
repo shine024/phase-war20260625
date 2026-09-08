@@ -82,7 +82,7 @@ func _refresh_ui() -> void:
 	var hidden_count: int = _card_entries.size() - shown_count
 	if hidden_count > 0:
 		outer.add_child(IntelUIKit.label(
-			"…另 +%d 种敌人（详见 情报中心·敌方情报）" % hidden_count,
+			"…另 +%d 种敌人（详见 情报舱·敌方情报）" % hidden_count,
 			DT.FONT_SIZE_SMALL, DT.COLOR_TEXT_DIM))
 
 	## 情报道具掉落展示

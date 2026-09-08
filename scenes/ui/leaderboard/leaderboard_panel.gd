@@ -61,7 +61,7 @@ func _ready() -> void:
 	custom_minimum_size = DT.PANEL_SIZE_MEDIUM
 	var accent := DT.get_panel_accent("leaderboard")
 	add_theme_stylebox_override("panel", PanelStyles.make_panel_frame_textured(accent))
-	var chrome = PanelChrome.attach_to($Margin/VBox, "排行榜", accent, "LEADERBOARD")
+	var chrome = PanelChrome.attach_to($Margin/VBox, "战功榜", accent, "LEADERBOARD")
 	chrome.closed.connect(_on_close)
 	# 获取各个节点
 	_tab_bar = get_node_or_null("Margin/VBox/TabBar") as TabBar

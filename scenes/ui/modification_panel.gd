@@ -1858,7 +1858,7 @@ func _show_mod_details(mod_data: Dictionary) -> void:
 			deck_install_button.text = "缺图纸"
 			deck_install_button.disabled = true
 			# 批次三 B2d：禁用按钮就地说明缺什么、去哪拿（v26.x 消耗品化后补制造站补给出口）
-			deck_install_button.tooltip_text = "缺少【%s】（库存 0 张）——战斗掉落可获得，或到战术制造站补给" % BlueprintDefinitions.get_mod_blueprint_name(selected_mod_id)
+			deck_install_button.tooltip_text = "缺少【%s】（库存 0 张）——战斗掉落可获得，或到制造舱补给" % BlueprintDefinitions.get_mod_blueprint_name(selected_mod_id)
 		elif not has_nano:
 			deck_install_button.text = "纳米不足"
 			deck_install_button.disabled = true

@@ -26,7 +26,7 @@ func _ready() -> void:
 	custom_minimum_size = DT.PANEL_SIZE_SMALL
 	var accent := DT.get_panel_accent("help")
 	add_theme_stylebox_override("panel", PanelStyles.make_panel_frame_textured(accent))
-	var chrome = PanelChrome.attach_to($Margin/VBox, "游戏帮助", accent, "HELP")
+	var chrome = PanelChrome.attach_to($Margin/VBox, "车长手册", accent, "HELP")
 	chrome.closed.connect(_on_close)
 
 	# 填充 Tab 内容
@@ -83,7 +83,7 @@ func _populate_tabs() -> void:
 	_add_tab("相位仪", _get_phase_instrument_content())
 
 	# Tab 3: 势力系统
-	_add_tab("势力系统", _get_faction_content())
+	_add_tab("联络台", _get_faction_content())
 
 	# Tab 4: 日常任务
 	_add_tab("日常任务", _get_daily_quest_content())
@@ -155,17 +155,17 @@ func _get_card_growth_content() -> String:
 - 等级同时决定光环/能力星级：每 3 级折合 1 星（Lv30 即满星 10★）
 
 [b][color=#88ccff]◆ 改造模块（图纸消耗品）[/color][/b]
-在改造面板为卡牌安装模块，定向强化特定属性。
+在改造舱为卡牌安装模块，定向强化特定属性。
 - 安装 1 条改造 = 消耗 [color=#ff9944]1 张对应图纸[/color]（库存消耗品）+ 纳米材料
-- 图纸来自战斗掉落、制造中心与商店；装上后只对选中的那张卡生效
+- 图纸来自战斗掉落、制造舱与补给舱；装上后只对选中的那张卡生效
 - 武器类改造可随时启用/禁用，卸下返还部分纳米
 
-[b][color=#88ccff]◆ 制造中心（获取新卡牌的唯一通道）[/color][/b]
+[b][color=#88ccff]◆ 制造舱（获取新卡牌的唯一通道）[/color][/b]
 入口：基地/移动基地的 3D 打印机工位。
 - 配方目录 [color=#88ee88]38 张[/color]：情报达标即解锁制造资格
 - 制造消耗纳米/合金/晶体，工坊折扣可降费
 - [color=#cc88ff]品质概率池[/color]：情报推进解锁更高品质概率（史诗/传说）
-- 缴获卡（captured_ 前缀）可在制造中心滚动品质
+- 缴获卡（captured_ 前缀）可在制造舱滚动品质
 
 [b][color=#88ccff]◆ 词条与词缀工坊[/color][/b]
 - 卡牌词条槽随等级解锁，词条等级 Lv1-3
@@ -175,7 +175,7 @@ func _get_card_growth_content() -> String:
 同一张卡可以拥有多张（如 T-72#1、T-72#2），部署时按实例各自结算属性。
 养成操作只作用于你选中的那一张，不会牵连同名卡。
 
-[color=#888888]提示：优先培养常用主力卡；缺新卡就去制造中心看情报门槛。[/color]"""
+[color=#888888]提示：优先培养常用主力卡；缺新卡就去制造舱看情报门槛。[/color]"""
 
 func _get_phase_instrument_content() -> String:
 	return """[b][color=#ffcc44]◈ 相位仪[/color][/b]
@@ -205,7 +205,7 @@ func _get_phase_instrument_content() -> String:
 [color=#888888]提示：优先把主力卡装备进绿槽再开战，符文之语激活后收益可观。[/color]"""
 
 func _get_faction_content() -> String:
-	return """[b][color=#ffcc44]⚔ 势力系统[/color][/b]
+	return """[b][color=#ffcc44]⚔ 联络台[/color][/b]
 
 游戏中有多个势力，每个势力都有独特的背景故事、奖励和专属内容。
 
@@ -251,7 +251,7 @@ func _get_daily_quest_content() -> String:
 - [color=#ee6644]专家[/color]：高难度，奖励最丰厚
 
 [b][color=#88ccff]◆ 奖励领取[/color][/b]
-完成任务后，在任务面板的"日常"标签页手动领取奖励：
+完成任务后，在委托台的"日常"标签页手动领取奖励：
 - 点击已完成任务的 [color=#88ee88]"领取"[/color] 按钮获取奖励
 - 奖励内容按难度递增，可能包括：
   - [color=#88ccff]纳米材料[/color]（养成通用资源）
@@ -304,10 +304,10 @@ func _get_map_content() -> String:
 [color=#88ee88]新兵[/color](1-5) → [color=#88ccff]老兵[/color](6-11) → [color=#ff9944]精英[/color](12-17) → [color=#ee6644]传奇[/color](18-20)
 出击简报会预告本场档位与阵地规模。
 
-[b][color=#88ccff]◆ 情报中心（四页签）[/color][/b]
+[b][color=#88ccff]◆ 情报舱（四页签）[/color][/b]
 世界观情报 / 单位谱系图谱 / 符文图鉴 / 敌方情报。
 - 把对应敌种情报推到 [color=#eeee44]75%+[/color] 可解锁弱点/抗性提示（败因分析会提醒）
-- 情报推进同时是制造中心解锁配方与品质池的核心资源
+- 情报推进同时是制造舱解锁配方与品质池的核心资源
 
 [b][color=#88ccff]◆ 成就[/color][/b]
 战斗/收集/进度/挑战/系统五大类，完成即解锁并可在成就面板领取奖励。
@@ -317,4 +317,4 @@ func _get_map_content() -> String:
 - 特定卡牌组合触发[color=#eeee44]组合技[/color]，满档机制由组合引擎每秒并入全队
 - 医疗/侦查/雷达/堡垒光环按带内槽距生效，指挥/维修恒全场
 
-[color=#888888]提示：卡住了就去情报中心看敌方情报——知彼后针对性改造，比硬堆等级有效。[/color]"""
+[color=#888888]提示：卡住了就去情报舱看敌方情报——知彼后针对性改造，比硬堆等级有效。[/color]"""

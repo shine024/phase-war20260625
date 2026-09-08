@@ -30,7 +30,7 @@ func _ready() -> void:
 	custom_minimum_size = DT.PANEL_SIZE_MEDIUM
 	var accent := DT.get_panel_accent("intelligence")
 	add_theme_stylebox_override("panel", PanelStyles.make_panel_frame_textured(accent))
-	var chrome = PanelChrome.attach_to($Margin/VBox, "情报中心", accent, "INTEL HUB")
+	var chrome = PanelChrome.attach_to($Margin/VBox, "情报舱", accent, "INTEL HUB")
 	chrome.closed.connect(_on_close)
 	# v9.x 性能：同步路径只保留样式/标题/骨架。atlas 条目与 lore 卡全部入队分帧
 	# （首开同步冻结 1.2~3s 的热点即 _setup_evolution_tab 全量构建 + _refresh_lore 整表重建）。
@@ -577,7 +577,7 @@ func _add_intel_row(card_id: String, entry: Dictionary, im: Node) -> void:
 		hbox.add_child(IntelUIKit.status_chip("完全掌握", DT.COLOR_GOLD))
 	elif progress >= 0.5 and EnemyCardModMap.can_low_evolve(card_id):
 		var low_chip := IntelUIKit.status_chip("配方已解锁", DT.COLOR_GOLD)
-		low_chip.tooltip_text = "该形态情报过半——可在「制造中心」直接制造对应我方卡"
+		low_chip.tooltip_text = "该形态情报过半——可在「制造舱」直接制造对应我方卡"
 		hbox.add_child(low_chip)
 
 	# v20.13c: 该敌卡掉落获得后作为我方卡的每场可部署次数（UCT 口径预览）

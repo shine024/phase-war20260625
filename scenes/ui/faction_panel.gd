@@ -33,7 +33,7 @@ func _ready() -> void:
 	custom_minimum_size = DT.PANEL_SIZE_MEDIUM
 	var accent := DT.get_panel_accent("faction")
 	add_theme_stylebox_override("panel", PanelStyles.make_panel_frame_textured(accent))
-	var chrome = PanelChrome.attach_to($VBoxContainer, "势力系统", accent, "FACTION")
+	var chrome = PanelChrome.attach_to($VBoxContainer, "联络台", accent, "FACTION")
 	chrome.closed.connect(_on_close)
 	# v9 perf：重新显示时补刷隐藏期间积累的势力变化
 	visibility_changed.connect(_on_visibility_refresh)

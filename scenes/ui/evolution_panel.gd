@@ -145,7 +145,7 @@ func _ready() -> void:
 	# 栏目标题改语义（普通路径节点）
 	var title_label = get_node_or_null("%TitleLabel")
 	if title_label:
-		title_label.text = "战术制造站"
+		title_label.text = "制造舱"
 	var title_sub = get_node_or_null("VBoxContainer/TitleRow/TitleHBox/TitleSub")
 	if title_sub:
 		title_sub.text = "情报 × 资源 → 兵种卡"

@@ -540,8 +540,8 @@ func _notify_panel_opened(overlay: Control, panel_key: String) -> void:
 	# 批次三 B4：情报中心首开一句话引导（面板静态实例化，_ready 在游戏启动时触发，
 	# 必须挂打开路径而非面板 _ready）
 	if panel_key == "info":
-		FeatureUnlockPopup.show_once("intel_hub", "情报中心",
-			"这里汇总制造中心、符文图鉴与敌方情报手册——战斗中遇到看不懂的敌人，来这里查。")
+		FeatureUnlockPopup.show_once("intel_hub", "情报舱",
+			"这里汇总制造舱、符文图鉴与敌方情报手册——战斗中遇到看不懂的敌人，来这里查。")
 
 func _close_overlay(overlay: Control, panel_key: String = "") -> void:
 	if overlay == null:

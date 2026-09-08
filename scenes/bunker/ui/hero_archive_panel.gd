@@ -73,7 +73,7 @@ func _build() -> void:
 	var title_row := HBoxContainer.new()
 	outer.add_child(title_row)
 	var title := Label.new()
-	title.text = "英雄档案"
+	title.text = "同伴档案"
 	title.add_theme_font_size_override("font_size", DT.FONT_SIZE_TITLE - 8)
 	title.add_theme_color_override("font_color", DT.COLOR_TEXT_BRIGHT)
 	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL

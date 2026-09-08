@@ -81,7 +81,7 @@ func _build_ui() -> void:
 	# 情报
 	_lore_count_label = _create_resource_item(hbox,
 		UiAssetLoader.load_tex("res://assets/ui/icons/res_lore.png"),
-		"情报\n已解锁的世界观情报条目数，可在情报中心浏览", DT.COLOR_TEXT_MID)
+		"情报\n已解锁的世界观情报条目数，可在情报舱浏览", DT.COLOR_TEXT_MID)
 
 func _resource_tooltip(res_id: String) -> String:
 	var def := BasicResources.get_def(res_id)
