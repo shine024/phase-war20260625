@@ -17,32 +17,34 @@ const MARK_START := "# 【GEN:LOADOUTS:START】"
 const MARK_END := "# 【GEN:LOADOUTS:END】"
 
 ## 套路模板（label=档位展示词，flavor=定位一句话，keys=偏好效果键按权重降序，enh=主题训练条）
+## flavor 军语克制体（批次② Task 9 收编 2026-09-08）：去「专啃/洗地/拆阵/硬抗/先抢」游戏黑话，
+## 按 LANGUAGE_BIBLE 第五章语气规则与样例门基调（「专啃→专破」先例）改军语陈述；label 原已合规保留。
 const TEMPLATES := {
-	"BREAK":  {"label": "破甲攻坚", "flavor": "反装甲火力特化，专啃硬目标",
+	"BREAK":  {"label": "破甲攻坚", "flavor": "反装甲火力特化，专破硬目标",
 		"keys": ["attack_armor", "attack_armor_pct", "armor_penetration", "armor_pen_vs_armor", "true_damage", "attack_fort_bonus", "armor_break", "siege_bonus_pct", "crit_damage_bonus", "attack_light", "crit_chance"],
 		"enh": ["enh_penetration", "enh_dmg_up"]},
-	"SUPPRESS": {"label": "火力压制", "flavor": "面杀伤持续输出，压制步兵集群",
+	"SUPPRESS": {"label": "火力压制", "flavor": "持续面杀伤，压制步兵集群",
 		"keys": ["attack_light", "attack_light_pct", "splash_damage", "splash_radius", "chain_chance", "attack_interval", "crit_chance", "attack_range", "kill_repair", "true_damage", "attack_armor"],
 		"enh": ["enh_dmg_up", "enh_splash"]},
 	"AA":     {"label": "防空特化", "flavor": "制空拦截，猎杀飞行单位",
 		"keys": ["attack_air", "crit_chance", "armor_pen_vs_air", "attack_interval", "attack_range", "attack_light", "dodge_chance", "crit_damage_bonus"],
 		"enh": ["enh_crit", "enh_dmg_up"]},
-	"TANK":   {"label": "重装防御", "flavor": "厚甲消耗战，正面硬抗",
+	"TANK":   {"label": "重装防御", "flavor": "厚甲消耗战，正面接敌",
 		"keys": ["defense_armor", "defense_armor_pct", "max_hp", "max_hp_pct", "damage_reduction", "defense_light", "defense_light_pct", "hp_regen", "dodge_chance"],
 		"enh": ["enh_hp_up", "enh_def_up"]},
 	"MOBILE": {"label": "机动游击", "flavor": "快速穿插，先手接敌",
 		"keys": ["move_speed", "dodge_chance", "deploy_speed", "crit_chance", "attack_range", "attack_light"],
 		"enh": ["enh_speed_up", "enh_dodge"]},
-	"RECON":  {"label": "侦察标记", "flavor": "标记集火，为全队指目标",
+	"RECON":  {"label": "侦察标记", "flavor": "标记目标，引导全队集火",
 		"keys": ["crit_chance", "mark_chance", "mark_vuln_bonus", "vision", "night_bonus", "crit_damage_bonus", "dodge_chance"],
 		"enh": ["enh_crit", "enh_range_up"]},
-	"SIEGE":  {"label": "攻城压制", "flavor": "反堡垒面轰炸，拆阵洗地",
+	"SIEGE":  {"label": "攻城压制", "flavor": "反堡垒面轰炸，摧毁阵地工事",
 		"keys": ["attack_fort_bonus", "attack_armor", "splash_damage", "splash_radius", "siege_bonus_pct", "true_damage", "attack_range", "attack_light"],
 		"enh": ["enh_splash", "enh_dmg_up"]},
-	"AIR_SUP": {"label": "制空战机", "flavor": "空优格斗，先抢制空权",
+	"AIR_SUP": {"label": "制空战机", "flavor": "空优格斗，先夺制空权",
 		"keys": ["attack_air", "crit_chance", "dodge_chance", "attack_light", "attack_range"],
 		"enh": ["enh_crit", "enh_dmg_up"]},
-	"BOMBER": {"label": "对地轰炸", "flavor": "洗地火力，一片焦土",
+	"BOMBER": {"label": "对地轰炸", "flavor": "地毯式轰炸，覆盖地面目标",
 		"keys": ["attack_light", "attack_armor", "splash_damage", "splash_radius", "true_damage", "crit_damage_bonus", "attack_range"],
 		"enh": ["enh_splash", "enh_dmg_up"]},
 }
