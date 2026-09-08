@@ -56,6 +56,20 @@ const FACTION_THEMES: Dictionary = {
 	},
 }
 
+## 敌对势力显示名兜底：iron_wall_corp 不在 FACTION_THEMES（非动态委托发布方，
+## 仅作为 nova_arms 的敌对势力出现），此处补其势力显示名供文案填充
+## （公司权威全名见 company_definitions.gd：钢壁防务公司）
+const FACTION_NAME_FALLBACK: Dictionary = {
+	"iron_wall_corp": "钢壁防务",
+}
+
+## 势力显示名（文案填充用；防裸 faction_id 直出玩家可见文本）
+static func _faction_display_name(faction_id: String) -> String:
+	var t: Dictionary = FACTION_THEMES.get(faction_id, {})
+	if not t.is_empty():
+		return String(t.get("name", faction_id))
+	return String(FACTION_NAME_FALLBACK.get(faction_id, faction_id))
+
 ## 生成势力动态任务
 ## [param faction_id] 势力ID
 ## [param faction_level] 势力等级（1-10，决定任务难度/奖励）
@@ -117,8 +131,8 @@ static func _build_quest_def(quest_type: String, faction_id: String, faction_lev
 			var battles: int = [3, 4, 5, 6][tier]
 			def["objective_type"] = "win_battles"
 			def["target"] = battles
-			def["_short_title"] = "战术作战×%d" % battles
-			def["description"] = "为%s完成%d场胜利，巩固我们在该领地的影响力。" % [fname, battles]
+			def["_short_title"] = "战术作战 ×%d" % battles
+			def["description"] = "为%s胜利完成 %d 场战斗。" % [fname, battles]
 			# 敌对势力任务额外扣敌对声望
 			if not enemy_faction.is_empty():
 				def["rewards"]["faction_rep"] = {enemy_faction: -(40 + faction_level * 20)}
@@ -129,8 +143,8 @@ static func _build_quest_def(quest_type: String, faction_id: String, faction_lev
 			var kills: int = [20, 30, 40, 60][tier]
 			def["objective_type"] = "kill_enemies"
 			def["target"] = kills
-			def["_short_title"] = "清剿敌军×%d" % kills
-			def["description"] = "消灭%d个敌方单位，削弱领地内的反抗力量。" % kills
+			def["_short_title"] = "清剿敌军 ×%d" % kills
+			def["description"] = "击毁 %d 个敌方单位，削弱该领地的抵抗力量。" % kills
 
 		"attack_faction":
 			# 打击敌对势力：在敌对势力领地击败其相位师
@@ -138,8 +152,9 @@ static func _build_quest_def(quest_type: String, faction_id: String, faction_lev
 			# target_master 精确匹配名，而动态任务要匹配"任意该势力相位师"，defend_faction 更合适
 			def["objective_type"] = "defend_faction"
 			def["target"] = {"defend_faction": enemy_faction}
-			def["_short_title"] = "打击%s" % enemy_faction
-			def["description"] = "前往%s领地击败其相位师，为%s扩张势力范围。" % [enemy_faction, fname]
+			var enemy_name: String = _faction_display_name(enemy_faction)
+			def["_short_title"] = "打击%s" % enemy_name
+			def["description"] = "前往%s领地击败其驻守相位师，为%s扩张势力范围。" % [enemy_name, fname]
 			def["rewards"]["faction_rep"] = {enemy_faction: -(100 + faction_level * 30)}
 
 		"defend_faction":
@@ -147,7 +162,7 @@ static func _build_quest_def(quest_type: String, faction_id: String, faction_lev
 			def["objective_type"] = "defend_faction"
 			def["target"] = {"defend_faction": faction_id}
 			def["_short_title"] = "驻防击退"
-			def["description"] = "在%s领地击败来犯的敌方相位师，保卫我们的领地。" % fname
+			def["description"] = "在%s领地击退来犯的敌方相位师。" % fname
 			# 额外奖励：敌对势力声望下降
 			if not enemy_faction.is_empty():
 				def["rewards"]["faction_rep"] = {enemy_faction: -(60 + faction_level * 20)}
@@ -183,7 +198,7 @@ static func _make_win_battles_outcomes(nano_base: int, rep_base: int, faction_id
 	var outcomes: Array = [
 		{
 			"weight": 50,
-			"label": "圆满成功",
+			"label": "任务达成",
 			"rewards": {
 				"nano_materials": nano_base,
 				"company_rep": {faction_id: rep_base},
@@ -191,7 +206,7 @@ static func _make_win_battles_outcomes(nano_base: int, rep_base: int, faction_id
 		},
 		{
 			"weight": 35,
-			"label": "部分成功（战损较大，奖励减半）",
+			"label": "部分达成（战损较大，补给减半）",
 			"rewards": {
 				"nano_materials": int(nano_base * 0.5),
 				"company_rep": {faction_id: int(rep_base * 0.5)},
@@ -199,7 +214,7 @@ static func _make_win_battles_outcomes(nano_base: int, rep_base: int, faction_id
 		},
 		{
 			"weight": 15,
-			"label": "意外缴获敌方物资（额外声望+纳米）",
+			"label": "意外缴获敌方物资（追加声望与纳米材料）",
 			"rewards": {
 				"nano_materials": nano_base + 20,
 				"company_rep": {faction_id: rep_base + 40},
