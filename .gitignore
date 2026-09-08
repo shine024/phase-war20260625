@@ -84,6 +84,9 @@ node_modules/
 # 临时脚本走显式文件名（不进库的直接不 add，_tmp_* 批次审计脚本反而要进库）。
 tmp_*
 gen_*.py
+# 白名单：术语映射生成器（批次① Task 3）为常驻工具非临时脚本。已跟踪文件
+# gitignore 本无实效，此行是给协作者的意图声明（防被当作可删的生成物）
+!tools/gen_term_mapping_draft.py
 update_unit_manifest.py
 *_backup*
 *_v3_fixed*

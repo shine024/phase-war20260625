@@ -1,0 +1,434 @@
+﻿id,旧名,来源,类型,提案新名,词汇依据,状态
+ww1_mp18,MP18突击班,data/unified_card_table.gd,卡,,轻装·一战·普通·含实名(R4)｜规则:第四章R1-R5,待审
+ww1_mauser,毛瑟步枪班,data/unified_card_table.gd,卡,,轻装·一战·普通｜规则:第四章R1-R5,待审
+ww1_enfield,李恩菲尔德班,data/unified_card_table.gd,卡,,轻装·一战·普通｜规则:第四章R1-R5,待审
+ww1_mg08,MG08机枪巢,data/unified_card_table.gd,卡,,支援·一战·老练·含实名(R4)｜规则:第四章R1-R5,待审
+ww1_vickers,维克斯机枪巢,data/unified_card_table.gd,卡,,支援·一战·老练｜规则:第四章R1-R5,待审
+ww1_arty_m81,81mm迫击炮组,data/unified_card_table.gd,卡,,支援·一战·老练·含实名(R4)｜规则:第四章R1-R5,待审
+ww1_m76,76mm迫击炮组,data/unified_card_table.gd,卡,,支援·一战·老练·含实名(R4)｜规则:第四章R1-R5,待审
+ww1_storm,暴风突击队,data/unified_card_table.gd,卡,,轻装·一战·老练｜规则:第四章R1-R5,待审
+ww1_arm_rolls,罗尔斯装甲车,data/unified_card_table.gd,卡,,装甲·一战·老练｜规则:第四章R1-R5,待审
+ww1_lanchest,兰彻斯特装甲车,data/unified_card_table.gd,卡,,装甲·一战·老练｜规则:第四章R1-R5,待审
+ww1_arm_ft17,FT-17轻型坦克,data/unified_card_table.gd,卡,,装甲·一战·老练·含实名(R4)｜规则:第四章R1-R5,待审
+ww1_saint,圣沙蒙坦克,data/unified_card_table.gd,卡,,装甲·一战·精英｜规则:第四章R1-R5,待审
+ww1_a7v,A7V重型坦克,data/unified_card_table.gd,卡,,装甲·一战·精英·含实名(R4)｜规则:第四章R1-R5,待审
+ww1_mark4,马克IV型坦克,data/unified_card_table.gd,卡,,装甲·一战·精英·含实名(R4)｜规则:第四章R1-R5,待审
+ww1_arty_77mm,77mm野战炮,data/unified_card_table.gd,卡,,支援·一战·老练·含实名(R4)｜规则:第四章R1-R5,待审
+ww1_105mm,105mm榴弹炮,data/unified_card_table.gd,卡,,支援·一战·老练·含实名(R4)｜规则:第四章R1-R5,待审
+ww1_37mm,37mm高射炮,data/unified_card_table.gd,卡,,支援·一战·老练·含实名(R4)｜规则:第四章R1-R5,待审
+ww1_inf_cavalry,骑兵斥候,data/unified_card_table.gd,卡,,轻装·一战·普通｜规则:第四章R1-R5,待审
+ww1_flame,火焰喷射兵,data/unified_card_table.gd,卡,,轻装·一战·普通｜规则:第四章R1-R5,待审
+ww1_sup_engineer,工兵班,data/unified_card_table.gd,卡,,支援·一战·普通｜规则:第四章R1-R5,待审
+ww1_inf_mp18,步兵班·MP18,data/unified_card_table.gd,卡,,轻装·一战·普通·敌专属·含实名(R4)｜规则:第四章R1-R5,待审
+ww1_inf_rifle,步兵班·步枪,data/unified_card_table.gd,卡,,轻装·一战·普通·敌专属｜规则:第四章R1-R5,待审
+ww1_sup_mg_nest,机枪巢,data/unified_card_table.gd,卡,,支援·一战·普通·敌专属｜规则:第四章R1-R5,待审
+ww1_arty_mortar,迫击炮组,data/unified_card_table.gd,卡,,支援·一战·普通·敌专属｜规则:第四章R1-R5,待审
+ww1_inf_storm_e,暴风突击队·精锐,data/unified_card_table.gd,卡,,轻装·一战·精英·敌专属｜规则:第四章R1-R5,待审
+ww1_arm_rolls_e,装甲车·精锐,data/unified_card_table.gd,卡,,装甲·一战·精英·敌专属｜规则:第四章R1-R5,待审
+ww1_boss_av7,圣沙蒙坦克·Boss,data/unified_card_table.gd,卡,,装甲·一战·Boss·敌专属·含实名(R4)｜规则:第四章R1-R5,待审
+ww1_fort_pillbox,混凝土机枪碉堡,data/unified_card_table.gd,卡,,堡垒·一战·堡垒｜规则:第四章R1-R5,待审
+ww1_fort_artillery,要塞炮台,data/unified_card_table.gd,卡,,堡垒·一战·堡垒｜规则:第四章R1-R5,待审
+ww1_inf_enfield,李-恩菲尔德志愿兵排,data/unified_card_table.gd,卡,,轻装·一战·普通·敌专属｜规则:第四章R1-R5,待审
+ww1_arm_rolls_mk2,劳斯莱斯 Mk.II 装甲车,data/unified_card_table.gd,卡,,装甲·一战·老练·敌专属·含实名(R4)｜规则:第四章R1-R5,待审
+ww1_sup_vickers,维克斯 .303 机枪阵地,data/unified_card_table.gd,卡,,支援·一战·普通·敌专属·含实名(R4)｜规则:第四章R1-R5,待审
+ww1_sup_ford_ambulance,福特 T 型战地救护车,data/unified_card_table.gd,卡,,支援·一战·普通·敌专属·含实名(R4)｜规则:第四章R1-R5,待审
+ww1_inf_mp18_x,MP18 突击队,data/unified_card_table.gd,卡,,轻装·一战·老练·敌专属·含实名(R4)｜规则:第四章R1-R5,待审
+ww2_thompson,汤普森班,data/unified_card_table.gd,卡,,轻装·二战·老练｜规则:第四章R1-R5,待审
+ww2_garand,加兰德班,data/unified_card_table.gd,卡,,轻装·二战·老练｜规则:第四章R1-R5,待审
+ww2_mp40,MP40班,data/unified_card_table.gd,卡,,轻装·二战·老练·含实名(R4)｜规则:第四章R1-R5,待审
+ww2_ppsh,波波沙班,data/unified_card_table.gd,卡,,轻装·二战·老练｜规则:第四章R1-R5,待审
+ww2_mg42,MG42机枪组,data/unified_card_table.gd,卡,,支援·二战·老练·含实名(R4)｜规则:第四章R1-R5,待审
+ww2_browning,勃朗宁机枪组,data/unified_card_table.gd,卡,,支援·二战·老练｜规则:第四章R1-R5,待审
+ww2_inf_panzerschrek,铁拳反坦克组,data/unified_card_table.gd,卡,,轻装·二战·老练｜规则:第四章R1-R5,待审
+ww2_inf_bazooka,巴祖卡组,data/unified_card_table.gd,卡,,轻装·二战·老练｜规则:第四章R1-R5,待审
+ww2_arty_m81,81mm迫击炮,data/unified_card_table.gd,卡,,支援·二战·老练·含实名(R4)｜规则:第四章R1-R5,待审
+ww2_m120,120mm重迫击炮,data/unified_card_table.gd,卡,,支援·二战·老练·含实名(R4)｜规则:第四章R1-R5,待审
+ww2_pz3,三号坦克,data/unified_card_table.gd,卡,,装甲·二战·精英｜规则:第四章R1-R5,待审
+ww2_pz4,四号坦克,data/unified_card_table.gd,卡,,装甲·二战·精英｜规则:第四章R1-R5,待审
+ww2_panther,黑豹坦克,data/unified_card_table.gd,卡,,装甲·二战·精英｜规则:第四章R1-R5,待审
+ww2_arm_tiger,虎式坦克,data/unified_card_table.gd,卡,,装甲·二战·精英｜规则:第四章R1-R5,待审
+ww2_kingtiger,虎王坦克,data/unified_card_table.gd,卡,,装甲·二战·精英头目｜规则:第四章R1-R5,待审
+ww2_t34_76,T-34/76坦克,data/unified_card_table.gd,卡,,装甲·二战·精英·含实名(R4)｜规则:第四章R1-R5,待审
+ww2_t34_85,T-34/85坦克,data/unified_card_table.gd,卡,,装甲·二战·精英·含实名(R4)｜规则:第四章R1-R5,待审
+ww2_is2,IS-2重型坦克,data/unified_card_table.gd,卡,,装甲·二战·精英·含实名(R4)｜规则:第四章R1-R5,待审
+ww2_arm_sherman,M4谢尔曼,data/unified_card_table.gd,卡,,装甲·二战·精英·含实名(R4)｜规则:第四章R1-R5,待审
+ww2_inf_hellcat,M18地狱猫,data/unified_card_table.gd,卡,,装甲·二战·精英·含实名(R4)｜规则:第四章R1-R5,待审
+ww2_inf_thompson,步兵班·汤普森,data/unified_card_table.gd,卡,,轻装·二战·普通·敌专属｜规则:第四章R1-R5,待审
+ww2_inf_garand,步枪班·加兰德,data/unified_card_table.gd,卡,,轻装·二战·普通·敌专属｜规则:第四章R1-R5,待审
+ww2_sup_mg42,MG42机枪组·敌方,data/unified_card_table.gd,卡,,支援·二战·老练·敌专属·含实名(R4)｜规则:第四章R1-R5,待审
+ww2_inf_panzerschreck_e,反坦克组·精锐,data/unified_card_table.gd,卡,,轻装·二战·精英·敌专属｜规则:第四章R1-R5,待审
+ww2_inf_para_e,伞兵精英,data/unified_card_table.gd,卡,,轻装·二战·精英·敌专属｜规则:第四章R1-R5,待审
+ww2_arm_panther_e,黑豹坦克·精锐,data/unified_card_table.gd,卡,,装甲·二战·精英·敌专属｜规则:第四章R1-R5,待审
+ww2_boss_kingtiger,虎王坦克·Boss,data/unified_card_table.gd,卡,,装甲·二战·Boss·敌专属·含实名(R4)｜规则:第四章R1-R5,待审
+ww2_arm_garand_para,M1 加兰德伞兵班,data/unified_card_table.gd,卡,,轻装·二战·老练·敌专属·含实名(R4)｜规则:第四章R1-R5,待审
+ww2_arty_hummel,黄蜂 Hummel 自行火炮,data/unified_card_table.gd,卡,,支援·二战·老练·敌专属·含实名(R4)｜规则:第四章R1-R5,待审
+ww2_arty_pak40,PaK 40 反坦克炮组,data/unified_card_table.gd,卡,,支援·二战·老练·敌专属·含实名(R4)｜规则:第四章R1-R5,待审
+ww2_sup_gmc_truck,GMC 2.5t 补给卡车,data/unified_card_table.gd,卡,,支援·二战·普通·敌专属·含实名(R4)｜规则:第四章R1-R5,待审
+ww2_inf_kar98k,毛瑟 Kar98k 狙击组,data/unified_card_table.gd,卡,,轻装·二战·老练·敌专属·含实名(R4)｜规则:第四章R1-R5,待审
+ww2_air_bomber,B-17 空中堡垒,data/unified_card_table.gd,卡,,空中·二战·精英·敌专属·含实名(R4)｜规则:第四章R1-R5,待审
+ww2_air_dive_bomber,Ju 87 斯图卡,data/unified_card_table.gd,卡,,空中·二战·精英·敌专属·含实名(R4)｜规则:第四章R1-R5,待审
+ww2_fort_bunker,混凝土碉堡,data/unified_card_table.gd,卡,,堡垒·二战·堡垒｜规则:第四章R1-R5,待审
+ww2_fort_flak,88mm防空塔,data/unified_card_table.gd,卡,,堡垒·二战·堡垒·含实名(R4)｜规则:第四章R1-R5,待审
+cold_rpg,RPG火箭筒组,data/unified_card_table.gd,卡,,轻装·冷战·老练·含实名(R4)｜规则:第四章R1-R5,待审
+cold_ak47,AK-47步兵班,data/unified_card_table.gd,卡,,轻装·冷战·老练·含实名(R4)｜规则:第四章R1-R5,待审
+cold_m14,M14步兵班,data/unified_card_table.gd,卡,,轻装·冷战·老练·含实名(R4)｜规则:第四章R1-R5,待审
+cold_m60,M60机枪班,data/unified_card_table.gd,卡,,轻装·冷战·老练·含实名(R4)｜规则:第四章R1-R5,待审
+cold_rpk,RPK机枪班,data/unified_card_table.gd,卡,,轻装·冷战·老练·含实名(R4)｜规则:第四章R1-R5,待审
+cold_inf_btr60,BTR-60装甲车,data/unified_card_table.gd,卡,,装甲·冷战·精英·含实名(R4)｜规则:第四章R1-R5,待审
+cold_sup_m113,M113装甲车,data/unified_card_table.gd,卡,,装甲·冷战·老练·含实名(R4)｜规则:第四章R1-R5,待审
+cold_inf_bmp1,BMP-1步战车,data/unified_card_table.gd,卡,,装甲·冷战·精英·含实名(R4)｜规则:第四章R1-R5,待审
+cold_bradley,M2布雷德利,data/unified_card_table.gd,卡,,装甲·冷战·精英·含实名(R4)｜规则:第四章R1-R5,待审
+cold_arm_t55,T-55坦克,data/unified_card_table.gd,卡,,装甲·冷战·精英·含实名(R4)｜规则:第四章R1-R5,待审
+cold_t62,T-62坦克,data/unified_card_table.gd,卡,,装甲·冷战·精英·含实名(R4)｜规则:第四章R1-R5,待审
+cold_t72,T-72坦克,data/unified_card_table.gd,卡,,装甲·冷战·精英·含实名(R4)｜规则:第四章R1-R5,待审
+cold_m60t,M60坦克,data/unified_card_table.gd,卡,,装甲·冷战·精英·含实名(R4)｜规则:第四章R1-R5,待审
+cold_m1,M1主战坦克,data/unified_card_table.gd,卡,,装甲·冷战·精英·含实名(R4)｜规则:第四章R1-R5,待审
+cold_leo1,豹1坦克,data/unified_card_table.gd,卡,,装甲·冷战·精英·含实名(R4)｜规则:第四章R1-R5,待审
+cold_chieftain,酋长坦克,data/unified_card_table.gd,卡,,装甲·冷战·精英｜规则:第四章R1-R5,待审
+cold_sup_zsu23,ZSU-23-4自行高炮,data/unified_card_table.gd,卡,,支援·冷战·老练·含实名(R4)｜规则:第四章R1-R5,待审
+cold_sam7,萨姆-7防空组,data/unified_card_table.gd,卡,,支援·冷战·老练·含实名(R4)｜规则:第四章R1-R5,待审
+cold_mig21,米格-21战机,data/unified_card_table.gd,卡,,空中·冷战·精英·含实名(R4)｜规则:第四章R1-R5,待审
+cold_f4,F-4鬼怪战机,data/unified_card_table.gd,卡,,空中·冷战·精英·含实名(R4)｜规则:第四章R1-R5,待审
+cold_spetsnaz,阿尔法特种部队,data/unified_card_table.gd,卡,,轻装·冷战·精英｜规则:第四章R1-R5,待审
+cold_inf_m60,美军步兵·M60,data/unified_card_table.gd,卡,,轻装·冷战·普通·敌专属·含实名(R4)｜规则:第四章R1-R5,待审
+cold_inf_ak,苏军步兵,data/unified_card_table.gd,卡,,轻装·冷战·普通·敌专属｜规则:第四章R1-R5,待审
+cold_arm_btr_e,BTR装甲车·敌方,data/unified_card_table.gd,卡,,装甲·冷战·老练·敌专属·含实名(R4)｜规则:第四章R1-R5,待审
+cold_air_m113_e,M113装甲车·敌方,data/unified_card_table.gd,卡,,装甲·冷战·老练·敌专属·含实名(R4)｜规则:第四章R1-R5,待审
+cold_inf_spetsnaz_e,特种部队·精锐,data/unified_card_table.gd,卡,,轻装·冷战·精英·敌专属｜规则:第四章R1-R5,待审
+cold_arm_t72_e,T-72坦克·精锐,data/unified_card_table.gd,卡,,装甲·冷战·精英·敌专属·含实名(R4)｜规则:第四章R1-R5,待审
+cold_boss_mig,米格-29·Boss,data/unified_card_table.gd,卡,,空中·冷战·Boss·敌专属·含实名(R4)｜规则:第四章R1-R5,待审
+cold_arty_bmd1,BMD-1 空降战车,data/unified_card_table.gd,卡,,装甲·冷战·老练·敌专属·含实名(R4)｜规则:第四章R1-R5,待审
+cold_sup_bmp1_x,BMP-1 步兵战车·改,data/unified_card_table.gd,卡,,装甲·冷战·老练·敌专属·含实名(R4)｜规则:第四章R1-R5,待审
+cold_inf_metis,9K111 法特导弹组,data/unified_card_table.gd,卡,,轻装·冷战·老练·敌专属·含实名(R4)｜规则:第四章R1-R5,待审
+cold_arm_p18,P-18 雷达警戒车,data/unified_card_table.gd,卡,,支援·冷战·普通·敌专属·含实名(R4)｜规则:第四章R1-R5,待审
+cold_arty_brem1,BREM-1 装甲抢修车,data/unified_card_table.gd,卡,,装甲·冷战·老练·敌专属·含实名(R4)｜规则:第四章R1-R5,待审
+cold_air_strike_fighter,F-111 土豚,data/unified_card_table.gd,卡,,空中·冷战·精英·敌专属·含实名(R4)｜规则:第四章R1-R5,待审
+cold_air_bomber,图-95 熊式,data/unified_card_table.gd,卡,,空中·冷战·精英·敌专属·含实名(R4)｜规则:第四章R1-R5,待审
+cold_fort_missile,导弹发射井,data/unified_card_table.gd,卡,,堡垒·冷战·堡垒｜规则:第四章R1-R5,待审
+cold_fort_radar,雷达站,data/unified_card_table.gd,卡,,堡垒·冷战·堡垒｜规则:第四章R1-R5,待审
+mod_marine,海军陆战队,data/unified_card_table.gd,卡,,轻装·现代·精英｜规则:第四章R1-R5,待审
+mod_ranger,游骑兵,data/unified_card_table.gd,卡,,轻装·现代·精英｜规则:第四章R1-R5,待审
+mod_javelin,标枪导弹兵,data/unified_card_table.gd,卡,,轻装·现代·精英｜规则:第四章R1-R5,待审
+mod_stinger,毒刺导弹兵,data/unified_card_table.gd,卡,,支援·现代·老练｜规则:第四章R1-R5,待审
+mod_inf_technical,武装皮卡,data/unified_card_table.gd,卡,,轻装·现代·老练｜规则:第四章R1-R5,待审
+mod_stryker_mgs,斯特赖克MGS,data/unified_card_table.gd,卡,,装甲·现代·精英·含实名(R4)｜规则:第四章R1-R5,待审
+mod_stryker_m2,斯特赖克M2,data/unified_card_table.gd,卡,,装甲·现代·精英·含实名(R4)｜规则:第四章R1-R5,待审
+mod_hummer_tow,悍马·陶式,data/unified_card_table.gd,卡,,轻装·现代·老练｜规则:第四章R1-R5,待审
+mod_hummer_m2,悍马·M2,data/unified_card_table.gd,卡,,轻装·现代·老练·含实名(R4)｜规则:第四章R1-R5,待审
+mod_arm_m1a1,M1A1坦克,data/unified_card_table.gd,卡,,装甲·现代·精英头目·含实名(R4)｜规则:第四章R1-R5,待审
+mod_m1a2,M1A2艾布拉姆斯,data/unified_card_table.gd,卡,,装甲·现代·精英头目·含实名(R4)｜规则:第四章R1-R5,待审
+mod_arm_m1a2sep,M1A2 SEP,data/unified_card_table.gd,卡,,装甲·现代·精英头目·含实名(R4)｜规则:第四章R1-R5,待审
+mod_t90,T-90坦克,data/unified_card_table.gd,卡,,装甲·现代·精英头目·含实名(R4)｜规则:第四章R1-R5,待审
+mod_leo2a6,豹2A6坦克,data/unified_card_table.gd,卡,,装甲·现代·精英头目·含实名(R4)｜规则:第四章R1-R5,待审
+mod_challenger2,挑战者2坦克,data/unified_card_table.gd,卡,,装甲·现代·精英头目·含实名(R4)｜规则:第四章R1-R5,待审
+mod_ah64,AH-64阿帕奇,data/unified_card_table.gd,卡,,空中·现代·精英·含实名(R4)｜规则:第四章R1-R5,待审
+mod_ah1,AH-1眼镜蛇,data/unified_card_table.gd,卡,,空中·现代·精英·含实名(R4)｜规则:第四章R1-R5,待审
+mod_uh60,UH-60黑鹰,data/unified_card_table.gd,卡,,空中·现代·老练·含实名(R4)｜规则:第四章R1-R5,待审
+mod_arty_m270,M270火箭炮,data/unified_card_table.gd,卡,,支援·现代·精英·含实名(R4)｜规则:第四章R1-R5,待审
+mod_sup_m6,自行高炮M6,data/unified_card_table.gd,卡,,支援·现代·老练·含实名(R4)｜规则:第四章R1-R5,待审
+mod_inf_scout_drone,侦察无人机,data/unified_card_table.gd,卡,,空中·现代·老练｜规则:第四章R1-R5,待审
+mod_inf_marine,海军陆战队·敌方,data/unified_card_table.gd,卡,,轻装·现代·老练·敌专属｜规则:第四章R1-R5,待审
+mod_air_technical_e,皮卡武装·敌方,data/unified_card_table.gd,卡,,轻装·现代·普通·敌专属｜规则:第四章R1-R5,待审
+mod_arm_stryker_e,斯特赖克装甲车·敌方,data/unified_card_table.gd,卡,,装甲·现代·老练·敌专属｜规则:第四章R1-R5,待审
+mod_arty_mlrs_e,火箭炮车·敌方,data/unified_card_table.gd,卡,,支援·现代·老练·敌专属｜规则:第四章R1-R5,待审
+mod_inf_delta_e,三角洲部队·精锐,data/unified_card_table.gd,卡,,轻装·现代·精英·敌专属｜规则:第四章R1-R5,待审
+mod_arm_abrams_e,M1A2坦克·精锐,data/unified_card_table.gd,卡,,装甲·现代·精英头目·敌专属·含实名(R4)｜规则:第四章R1-R5,待审
+mod_air_apache_e,阿帕奇直升机·精锐,data/unified_card_table.gd,卡,,空中·现代·精英·敌专属｜规则:第四章R1-R5,待审
+mod_boss_command,指挥中枢·Boss,data/unified_card_table.gd,卡,,堡垒·现代·Boss·敌专属·含实名(R4)｜规则:第四章R1-R5,待审
+mod_sup_m4_carbine,M4 卡宾特遣班,data/unified_card_table.gd,卡,,轻装·现代·老练·敌专属·含实名(R4)｜规则:第四章R1-R5,待审
+mod_inf_patriot,爱国者 PAC-3 发射车,data/unified_card_table.gd,卡,,支援·现代·精英·敌专属·含实名(R4)｜规则:第四章R1-R5,待审
+mod_arm_himars,HIMARS 火箭炮组,data/unified_card_table.gd,卡,,支援·现代·精英·敌专属·含实名(R4)｜规则:第四章R1-R5,待审
+mod_arty_rq7,RQ-7 影子无人机班,data/unified_card_table.gd,卡,,支援·现代·老练·敌专属·含实名(R4)｜规则:第四章R1-R5,待审
+mod_sup_growler,EA-18G 电子战小组,data/unified_card_table.gd,卡,,空中·现代·老练·敌专属·含实名(R4)｜规则:第四章R1-R5,待审
+mod_arm_abrams_mk2,艾布拉姆斯Mk.II,data/unified_card_table.gd,卡,,装甲·现代·精英头目·敌专属·含实名(R4)｜规则:第四章R1-R5,待审
+mod_air_multirole,F-15E 攻击鹰,data/unified_card_table.gd,卡,,空中·现代·精英·敌专属·含实名(R4)｜规则:第四章R1-R5,待审
+mod_air_bomber,B-52 同温层堡垒,data/unified_card_table.gd,卡,,空中·现代·精英·敌专属·含实名(R4)｜规则:第四章R1-R5,待审
+mod_fort_citadel,要塞核心,data/unified_card_table.gd,卡,,堡垒·现代·堡垒｜规则:第四章R1-R5,待审
+mod_fort_phalanx,近防炮系统,data/unified_card_table.gd,卡,,堡垒·现代·堡垒｜规则:第四章R1-R5,待审
+fut_swarm,蜂群无人机,data/unified_card_table.gd,卡,,空中·近未来·老练｜规则:第四章R1-R5,待审
+fut_attack_drone,攻击无人机,data/unified_card_table.gd,卡,,空中·近未来·精英｜规则:第四章R1-R5,待审
+fut_cyborg,机械步兵,data/unified_card_table.gd,卡,,轻装·近未来·精英｜规则:第四章R1-R5,待审
+fut_heavy_trooper,重装机兵,data/unified_card_table.gd,卡,,轻装·近未来·精英｜规则:第四章R1-R5,待审
+fut_inf_scout_mech,侦察机甲,data/unified_card_table.gd,卡,,轻装·近未来·精英｜规则:第四章R1-R5,待审
+fut_assault_mech,突击机甲,data/unified_card_table.gd,卡,,装甲·近未来·精英头目｜规则:第四章R1-R5,待审
+fut_arm_heavy_mech,重装机甲,data/unified_card_table.gd,卡,,装甲·近未来·精英头目｜规则:第四章R1-R5,待审
+fut_arm_hovertank,悬浮坦克,data/unified_card_table.gd,卡,,装甲·近未来·精英头目｜规则:第四章R1-R5,待审
+fut_howitzer,悬浮自行火炮,data/unified_card_table.gd,卡,,支援·近未来·精英｜规则:第四章R1-R5,待审
+fut_arm_prism,光棱坦克,data/unified_card_table.gd,卡,,装甲·近未来·精英头目｜规则:第四章R1-R5,待审
+fut_aa_hover,防空悬浮车,data/unified_card_table.gd,卡,,支援·近未来·精英｜规则:第四章R1-R5,待审
+fut_stealth_bomber,隐形轰炸机,data/unified_card_table.gd,卡,,空中·近未来·精英｜规则:第四章R1-R5,待审
+fut_space_fighter,空天战斗机,data/unified_card_table.gd,卡,,空中·近未来·精英｜规则:第四章R1-R5,待审
+fut_spectre,幽灵特工,data/unified_card_table.gd,卡,,轻装·近未来·精英｜规则:第四章R1-R5,待审
+fut_nano_drone,纳米修复机,data/unified_card_table.gd,卡,,空中·近未来·老练｜规则:第四章R1-R5,待审
+fut_shield,力场发生器,data/unified_card_table.gd,卡,,支援·近未来·堡垒｜规则:第四章R1-R5,待审
+fut_colossus,巨神机甲,data/unified_card_table.gd,卡,,装甲·近未来·终极｜规则:第四章R1-R5,待审
+fut_stormcore,风暴核心原型,data/unified_card_table.gd,卡,,支援·近未来·终极｜规则:第四章R1-R5,待审
+fut_arm_nexus,虚空领主,data/unified_card_table.gd,卡,,装甲·近未来·终极｜规则:第四章R1-R5,待审
+fut_arm_omega,全装型机动舱,data/unified_card_table.gd,卡,,装甲·近未来·终极｜规则:第四章R1-R5,待审
+fut_inf_cyborg,机械步兵·敌方,data/unified_card_table.gd,卡,,轻装·近未来·老练·敌专属｜规则:第四章R1-R5,待审
+fut_air_drone,无人机群,data/unified_card_table.gd,卡,,空中·近未来·普通·敌专属｜规则:第四章R1-R5,待审
+fut_arm_mech_e,机甲步兵·敌方,data/unified_card_table.gd,卡,,装甲·近未来·老练·敌专属｜规则:第四章R1-R5,待审
+fut_arm_hovertank_e,悬浮坦克·精锐,data/unified_card_table.gd,卡,,装甲·近未来·精英·敌专属｜规则:第四章R1-R5,待审
+fut_inf_spectre_e,幽灵特工·精锐,data/unified_card_table.gd,卡,,轻装·近未来·精英·敌专属｜规则:第四章R1-R5,待审
+fut_arm_colossus_e,巨神机甲·精锐,data/unified_card_table.gd,卡,,装甲·近未来·精英头目·敌专属｜规则:第四章R1-R5,待审
+fut_boss_nexus,风暴核心·Boss,data/unified_card_table.gd,卡,,装甲·近未来·Boss·敌专属·含实名(R4)｜规则:第四章R1-R5,待审
+fut_sup_bulwark,壁垒,data/unified_card_table.gd,卡,,支援·近未来·精英·敌专属｜规则:第四章R1-R5,待审
+fut_arm_titan_mk2,泰坦Mk.II,data/unified_card_table.gd,卡,,装甲·近未来·精英头目·敌专属·含实名(R4)｜规则:第四章R1-R5,待审
+fut_inf_storm_rider,暴风骑士,data/unified_card_table.gd,卡,,轻装·近未来·精英·敌专属｜规则:第四章R1-R5,待审
+fut_air_heavy_carrier,重装母舰,data/unified_card_table.gd,卡,,空中·近未来·精英·敌专属｜规则:第四章R1-R5,待审
+fut_air_regen_frame,再生骨架,data/unified_card_table.gd,卡,,空中·近未来·老练·敌专属｜规则:第四章R1-R5,待审
+fut_inf_neural,神经接口突击兵,data/unified_card_table.gd,卡,,轻装·近未来·精英·敌专属｜规则:第四章R1-R5,待审
+fut_arm_hk07,HK-07 量产机兵,data/unified_card_table.gd,卡,,装甲·近未来·老练·敌专属·含实名(R4)｜规则:第四章R1-R5,待审
+fut_arty_hel30,HEL-30 激光炮阵列,data/unified_card_table.gd,卡,,支援·近未来·精英·敌专属·含实名(R4)｜规则:第四章R1-R5,待审
+fut_sup_nrepair,N-Repair 纳米工程车,data/unified_card_table.gd,卡,,支援·近未来·老练·敌专属·含实名(R4)｜规则:第四章R1-R5,待审
+fut_inf_x9,X-9 猎杀者渗透组,data/unified_card_table.gd,卡,,轻装·近未来·精英·敌专属·含实名(R4)｜规则:第四章R1-R5,待审
+fut_inf_c96,毛瑟 C96 征召兵排,data/unified_card_table.gd,卡,,轻装·近未来·普通·敌专属·含实名(R4)｜规则:第四章R1-R5,待审
+fut_arm_sdkfz,Sd.Kfz.251/1 半履带车,data/unified_card_table.gd,卡,,装甲·近未来·老练·敌专属·含实名(R4)｜规则:第四章R1-R5,待审
+fut_arty_ssc1,SS-C-1 岸防导弹组,data/unified_card_table.gd,卡,,支援·近未来·精英·敌专属·含实名(R4)｜规则:第四章R1-R5,待审
+fut_sup_ps9,PS-9 相位中继站,data/unified_card_table.gd,卡,,支援·近未来·老练·敌专属·含实名(R4)｜规则:第四章R1-R5,待审
+fut_air_stealth_multirole,六代机制空型,data/unified_card_table.gd,卡,,空中·近未来·精英·敌专属｜规则:第四章R1-R5,待审
+fut_air_stealth_bomber,B-21 突袭者,data/unified_card_table.gd,卡,,空中·近未来·精英·敌专属·含实名(R4)｜规则:第四章R1-R5,待审
+fut_fort_ion,离子炮台,data/unified_card_table.gd,卡,,堡垒·近未来·堡垒｜规则:第四章R1-R5,待审
+fut_fort_shield,能量护盾发生器,data/unified_card_table.gd,卡,,堡垒·近未来·堡垒｜规则:第四章R1-R5,待审
+platform_ww1_light,一战轻型平台,data/unified_card_table.gd,卡,,轻装·一战·普通·敌专属｜规则:第四章R1-R5,待审
+platform_ww1_medium,一战中型平台,data/unified_card_table.gd,卡,,装甲·一战·老练·敌专属｜规则:第四章R1-R5,待审
+platform_ww1_fort,一战炮台平台,data/unified_card_table.gd,卡,,支援·一战·堡垒·敌专属｜规则:第四章R1-R5,待审
+platform_ww1_radar,一战雷达平台,data/unified_card_table.gd,卡,,支援·一战·普通·敌专属｜规则:第四章R1-R5,待审
+platform_ww1_medic,一战医疗平台,data/unified_card_table.gd,卡,,支援·一战·普通·敌专属｜规则:第四章R1-R5,待审
+platform_ww2_light,二战轻型平台,data/unified_card_table.gd,卡,,轻装·二战·普通·敌专属｜规则:第四章R1-R5,待审
+platform_ww2_medium,二战中型平台,data/unified_card_table.gd,卡,,装甲·二战·老练·敌专属｜规则:第四章R1-R5,待审
+platform_ww2_heavy,二战重型平台,data/unified_card_table.gd,卡,,装甲·二战·精英·敌专属｜规则:第四章R1-R5,待审
+platform_ww2_raider,二战突袭平台,data/unified_card_table.gd,卡,,轻装·二战·普通·敌专属｜规则:第四章R1-R5,待审
+platform_ww2_radar,二战雷达平台,data/unified_card_table.gd,卡,,支援·二战·普通·敌专属｜规则:第四章R1-R5,待审
+platform_ww2_siege,二战攻城平台,data/unified_card_table.gd,卡,,支援·二战·堡垒·敌专属｜规则:第四章R1-R5,待审
+platform_ww2_fortress,二战要塞平台,data/unified_card_table.gd,卡,,堡垒·二战·堡垒·敌专属｜规则:第四章R1-R5,待审
+platform_cold_light,冷战轻型平台,data/unified_card_table.gd,卡,,轻装·冷战·普通·敌专属｜规则:第四章R1-R5,待审
+platform_cold_medium,冷战中型平台,data/unified_card_table.gd,卡,,装甲·冷战·老练·敌专属｜规则:第四章R1-R5,待审
+platform_cold_ifv,冷战步战车平台,data/unified_card_table.gd,卡,,装甲·冷战·老练·敌专属｜规则:第四章R1-R5,待审
+platform_cold_scout,冷战侦察平台,data/unified_card_table.gd,卡,,轻装·冷战·普通·敌专属｜规则:第四章R1-R5,待审
+platform_cold_radar,冷战雷达平台,data/unified_card_table.gd,卡,,支援·冷战·普通·敌专属｜规则:第四章R1-R5,待审
+platform_cold_carrier,冷战运输平台,data/unified_card_table.gd,卡,,空中·冷战·老练·敌专属｜规则:第四章R1-R5,待审
+platform_modern_light,现代轻型平台,data/unified_card_table.gd,卡,,轻装·现代·普通·敌专属｜规则:第四章R1-R5,待审
+platform_modern_medium,现代中型平台,data/unified_card_table.gd,卡,,装甲·现代·老练·敌专属｜规则:第四章R1-R5,待审
+platform_modern_radar,现代雷达平台,data/unified_card_table.gd,卡,,支援·现代·普通·敌专属｜规则:第四章R1-R5,待审
+platform_modern_spg,现代自行火炮平台,data/unified_card_table.gd,卡,,支援·现代·堡垒·敌专属｜规则:第四章R1-R5,待审
+platform_modern_stealth,现代隐形平台,data/unified_card_table.gd,卡,,轻装·现代·普通·敌专属｜规则:第四章R1-R5,待审
+platform_modern_guard_heavy,现代重型卫戍平台,data/unified_card_table.gd,卡,,装甲·现代·精英·敌专属｜规则:第四章R1-R5,待审
+platform_future_light,近未来轻型平台,data/unified_card_table.gd,卡,,轻装·近未来·普通·敌专属｜规则:第四章R1-R5,待审
+platform_future_medium,近未来中型平台,data/unified_card_table.gd,卡,,装甲·近未来·老练·敌专属｜规则:第四章R1-R5,待审
+platform_future_radar,近未来雷达平台,data/unified_card_table.gd,卡,,支援·近未来·普通·敌专属｜规则:第四章R1-R5,待审
+platform_future_heavy,近未来重型平台,data/unified_card_table.gd,卡,,装甲·近未来·精英·敌专属｜规则:第四章R1-R5,待审
+guardian_ww1_ironclad,铁壁守护者·一战,data/unified_card_table.gd,卡,,装甲·一战·终极｜规则:第四章R1-R5,待审
+guardian_ww2_blitzkrieg,闪电守护者·二战,data/unified_card_table.gd,卡,,装甲·二战·终极｜规则:第四章R1-R5,待审
+guardian_cold_thunder,雷霆守护者·冷战,data/unified_card_table.gd,卡,,支援·冷战·终极｜规则:第四章R1-R5,待审
+guardian_modern_stealth,幽灵守护者·现代,data/unified_card_table.gd,卡,,空中·现代·终极｜规则:第四章R1-R5,待审
+guardian_future_omega,终焉守护者·近未来,data/unified_card_table.gd,卡,,装甲·近未来·终极｜规则:第四章R1-R5,待审
+drop_smg_mk2,MP18-II 冲锋班,data/unified_card_table.gd,卡,,轻装·一战·精英·敌专属·含实名(R4)｜规则:第四章R1-R5,待审
+drop_phase_lance,相位刺刀班,data/unified_card_table.gd,卡,,轻装·二战·精英·敌专属｜规则:第四章R1-R5,待审
+drop_railgun,电磁步枪班,data/unified_card_table.gd,卡,,轻装·近未来·精英·敌专属｜规则:第四章R1-R5,待审
+drop_mega_beam_cannon,巨型光束炮,data/unified_card_table.gd,卡,,支援·冷战·精英头目·敌专属｜规则:第四章R1-R5,待审
+drop_thunder_field,雷霆突击班,data/unified_card_table.gd,卡,,轻装·现代·精英·敌专属｜规则:第四章R1-R5,待审
+drop_overclock_matrix,超频矩阵机,data/unified_card_table.gd,卡,,空中·现代·精英·敌专属｜规则:第四章R1-R5,待审
+drop_mega_particle_cannon,巨型粒子炮,data/unified_card_table.gd,卡,,装甲·近未来·精英头目·敌专属｜规则:第四章R1-R5,待审
+inf_01_submachine_gun,冲锋枪改装,data/modification_modules/infantry_mods.gd,改造·步兵,,weapon·rare·原型MP18/汤普森｜规则:第四章R-改1-R-改4,待审
+inf_02_assault_rifle,突击步枪化,data/modification_modules/infantry_mods.gd,改造·步兵,,weapon·rare·原型STG44｜规则:第四章R-改1-R-改4,待审
+inf_03_small_caliber,小口径化,data/modification_modules/infantry_mods.gd,改造·步兵,,weapon·rare·原型M16/5.56mm｜规则:第四章R-改1-R-改4,待审
+inf_04_bullpup,无托结构,data/modification_modules/infantry_mods.gd,改造·步兵,,weapon·rare·原型AUG/法玛斯｜规则:第四章R-改1-R-改4,待审
+inf_05_ap_ammo,穿甲弹,data/modification_modules/infantry_mods.gd,改造·步兵,,ammunition·epic·原型M993钨芯弹｜规则:第四章R-改1-R-改4,待审
+inf_06_hp_ammo,空尖弹,data/modification_modules/infantry_mods.gd,改造·步兵,,ammunition·epic·原型.45 ACP HP｜规则:第四章R-改1-R-改4,待审
+inf_07_optical_scope,光学瞄准镜,data/modification_modules/infantry_mods.gd,改造·步兵,,optics·rare·原型ACOG 4倍镜｜规则:第四章R-改1-R-改4,待审
+inf_08_holographic,全息瞄准镜,data/modification_modules/infantry_mods.gd,改造·步兵,,optics·rare·原型EOTech｜规则:第四章R-改1-R-改4,待审
+inf_09_dual_mag,双弹匣并联,data/modification_modules/infantry_mods.gd,改造·步兵,,ergonomics·uncommon·原型丛林弹匣扣｜规则:第四章R-改1-R-改4,待审
+inf_10_saw,班用机枪化,data/modification_modules/infantry_mods.gd,改造·步兵,,weapon·epic·原型M249 SAW｜规则:第四章R-改1-R-改4,待审
+inf_11_armor_insert,防弹插板,data/modification_modules/infantry_mods.gd,改造·步兵,,armor·rare·原型ESAPI碳化硼板｜规则:第四章R-改1-R-改4,待审
+inf_12_body_armor,防弹背心,data/modification_modules/infantry_mods.gd,改造·步兵,,armor·rare·原型IOTV模块化｜规则:第四章R-改1-R-改4,待审
+inf_13_helmet_upgrade,头盔升级,data/modification_modules/infantry_mods.gd,改造·步兵,,helmet·uncommon·原型MICH 2000→FAST｜规则:第四章R-改1-R-改4,待审
+inf_14_knee_pads,护膝护肘,data/modification_modules/infantry_mods.gd,改造·步兵,,mobility·common·原型战斗服内置护具｜规则:第四章R-改1-R-改4,待审
+inf_15_riot_shield,防弹盾牌,data/modification_modules/infantry_mods.gd,改造·步兵,,shield·epic·原型防弹盾（凯夫拉）｜规则:第四章R-改1-R-改4,待审
+inf_16_exoskeleton,外骨骼原型,data/modification_modules/infantry_mods.gd,改造·步兵,,exoskeleton·legendary·原型HULC/XOS 2｜规则:第四章R-改1-R-改4,待审
+inf_17_tourniquet,止血带,data/modification_modules/infantry_mods.gd,改造·步兵,,medical·uncommon·原型CAT止血带｜规则:第四章R-改1-R-改4,待审
+inf_18_ifak,战场急救包,data/modification_modules/infantry_mods.gd,改造·步兵,,medical·rare·原型IFAK单兵急救｜规则:第四章R-改1-R-改4,待审
+inf_19_radio,单兵电台,data/modification_modules/infantry_mods.gd,改造·步兵,,comms·rare·原型PRC-152｜规则:第四章R-改1-R-改4,待审
+inf_20_night_vision,夜视仪,data/modification_modules/infantry_mods.gd,改造·步兵,,optics·rare·原型PVS-14｜规则:第四章R-改1-R-改4,待审
+inf_21_thermal,热成像,data/modification_modules/infantry_mods.gd,改造·步兵,,optics·epic·原型AN/PAS-13｜规则:第四章R-改1-R-改4,待审
+inf_22_breaching,破门工具,data/modification_modules/infantry_mods.gd,改造·步兵,,environment·uncommon·原型霰弹枪/破门锤｜规则:第四章R-改1-R-改4,待审
+inf_23_combat_stimulant,战斗兴奋剂,data/modification_modules/infantry_mods.gd,改造·步兵,,special·epic·原型肾上腺素自动注射器｜规则:第四章R-改1-R-改4,待审
+inf_24_urban_warfare,巷战教范,data/modification_modules/infantry_mods.gd,改造·步兵,,special·epic·原型城市作战手册+反应装甲套件｜规则:第四章R-改1-R-改4,待审
+inf_25_medic_sacrifice,医疗兵牺牲,data/modification_modules/infantry_mods.gd,改造·步兵,,medical·legendary·原型战场医疗兵遗言｜规则:第四章R-改1-R-改4,待审
+inf_26_chemical_warhead,化学弹头,data/modification_modules/infantry_mods.gd,改造·步兵,,weapon·epic·原型芥子气/神经毒剂弹头｜规则:第四章R-改1-R-改4,待审
+inf_27_napalm,凝固汽油弹,data/modification_modules/infantry_mods.gd,改造·步兵,,weapon·epic·原型M202 FLASH 燃烧火箭｜规则:第四章R-改1-R-改4,待审
+arm_01_sloped_armor,倾斜装甲,data/modification_modules/armor_mods.gd,改造·装甲,,armor·rare·原型T-34革命设计｜规则:第四章R-改1-R-改4,待审
+arm_02_composite_armor,复合装甲,data/modification_modules/armor_mods.gd,改造·装甲,,armor·epic·原型乔巴姆｜规则:第四章R-改1-R-改4,待审
+arm_03_reactive_armor,爆反装甲,data/modification_modules/armor_mods.gd,改造·装甲,,armor·epic·原型接触-1｜规则:第四章R-改1-R-改4,待审
+arm_04_aps,主动防护,data/modification_modules/armor_mods.gd,改造·装甲,,active·legendary·原型铁拳/竞技场｜规则:第四章R-改1-R-改4,待审
+arm_05_smoothbore,滑膛炮,data/modification_modules/armor_mods.gd,改造·装甲,,gun·epic·原型莱茵金属L44｜规则:第四章R-改1-R-改4,待审
+arm_06_apfsds,尾翼稳定脱壳穿甲弹,data/modification_modules/armor_mods.gd,改造·装甲,,ammunition·epic·原型北约标准｜规则:第四章R-改1-R-改4,待审
+arm_07_gun_missile,炮射导弹,data/modification_modules/armor_mods.gd,改造·装甲,,gun·legendary·原型红宝石/反射｜规则:第四章R-改1-R-改4,待审
+arm_08_autoloader,自动装弹机,data/modification_modules/armor_mods.gd,改造·装甲,,autoloader·epic·原型T-64首创｜规则:第四章R-改1-R-改4,待审
+arm_09_turbine,燃气轮机,data/modification_modules/armor_mods.gd,改造·装甲,,engine·legendary·原型M1艾布拉姆斯｜规则:第四章R-改1-R-改4,待审
+arm_10_diesel_turbo,柴油增压引擎,data/modification_modules/armor_mods.gd,改造·装甲,,engine·epic·原型MTU发动机｜规则:第四章R-改1-R-改4,待审
+arm_11_fire_control,猎歼火控,data/modification_modules/armor_mods.gd,改造·装甲,,fire_control·epic·原型豹2｜规则:第四章R-改1-R-改4,待审
+arm_12_thermal_sight,热成像瞄准镜,data/modification_modules/armor_mods.gd,改造·装甲,,optics·epic·原型M60A3 TTS｜规则:第四章R-改1-R-改4,待审
+arm_13_deep_wading,火控计算机,data/modification_modules/armor_mods.gd,改造·装甲,,environment·uncommon·原型M1艾布拉姆斯火控系统｜规则:第四章R-改1-R-改4,待审
+arm_14_mine_plow,扫雷滚/犁,data/modification_modules/armor_mods.gd,改造·装甲,,engineering·rare·原型以色列地毯｜规则:第四章R-改1-R-改4,待审
+arm_15_data_link,战术数据链,data/modification_modules/armor_mods.gd,改造·装甲,,command·epic·原型Link 16｜规则:第四章R-改1-R-改4,待审
+arm_16_battle_frenzy,战斗狂热,data/modification_modules/armor_mods.gd,改造·装甲,,special·legendary·原型损伤响应式反应装甲｜规则:第四章R-改1-R-改4,待审
+arm_17_spacer_armor,附加钢板,data/modification_modules/armor_mods.gd,改造·装甲,,armor·uncommon·原型谢尔曼/四号附加装甲板（Standeschützen）｜规则:第四章R-改1-R-改4,待审
+arm_18_gun_mantlet,厚重炮盾,data/modification_modules/armor_mods.gd,改造·装甲,,mantlet·uncommon·原型虎式 150mm 炮盾（Turmschild）｜规则:第四章R-改1-R-改4,待审
+art_01_rifling,膛线强化,data/modification_modules/artillery_mods.gd,改造·炮兵,,barrel·rare·原型莱茵金属L55｜规则:第四章R-改1-R-改4,待审
+art_02_extended_range,增程弹,data/modification_modules/artillery_mods.gd,改造·炮兵,,ammunition·rare·原型M549火箭增程弹｜规则:第四章R-改1-R-改4,待审
+art_03_guided_shell,精确制导炮弹,data/modification_modules/artillery_mods.gd,改造·炮兵,,guidance·legendary·原型M982神剑｜规则:第四章R-改1-R-改4,待审
+art_04_cluster_munition,子母弹,data/modification_modules/artillery_mods.gd,改造·炮兵,,ammunition·epic·原型M26火箭弹｜规则:第四章R-改1-R-改4,待审
+art_05_counter_battery_radar,反炮兵雷达,data/modification_modules/artillery_mods.gd,改造·炮兵,,radar·epic·原型AN/TPQ-53｜规则:第四章R-改1-R-改4,待审
+art_06_fire_computer,射击计算机,data/modification_modules/artillery_mods.gd,改造·炮兵,,fire_control·epic·原型M18弹道计算机｜规则:第四章R-改1-R-改4,待审
+art_07_ammo_supply,弹药运输车,data/modification_modules/artillery_mods.gd,改造·炮兵,,logistics·rare·原型补给车｜规则:第四章R-改1-R-改4,待审
+art_08_uav,炮兵侦察无人机,data/modification_modules/artillery_mods.gd,改造·炮兵,,recon·epic·原型RQ-7影子｜规则:第四章R-改1-R-改4,待审
+art_09_rapid_fire,急速射系统,data/modification_modules/artillery_mods.gd,改造·炮兵,,autoloader·rare·原型立楔式炮闩｜规则:第四章R-改1-R-改4,待审
+art_10_auto_nav,自动导航系统,data/modification_modules/artillery_mods.gd,改造·炮兵,,mobility·uncommon·原型车载GPS/惯导｜规则:第四章R-改1-R-改4,待审
+art_11_thermobaric,温压弹,data/modification_modules/artillery_mods.gd,改造·炮兵,,ammunition·legendary·原型TOS-1喷火坦克｜规则:第四章R-改1-R-改4,待审
+art_12_fortification,火炮掩体,data/modification_modules/artillery_mods.gd,改造·炮兵,,fortification·uncommon·原型混凝土阵地｜规则:第四章R-改1-R-改4,待审
+art_13_apfsds_sabot,尾翼稳定脱壳穿甲,data/modification_modules/artillery_mods.gd,改造·炮兵,,ammunition·legendary·原型M829A4 穿甲弹｜规则:第四章R-改1-R-改4,待审
+art_14_counter_battery,反击炮击,data/modification_modules/artillery_mods.gd,改造·炮兵,,special·legendary·原型AN/TPQ-36 反炮兵雷达｜规则:第四章R-改1-R-改4,待审
+art_15_emp_round,电磁脉冲弹,data/modification_modules/artillery_mods.gd,改造·炮兵,,special·epic·原型电磁脉冲炮弹｜规则:第四章R-改1-R-改4,待审
+art_16_nano_virus,纳米病毒弹,data/modification_modules/artillery_mods.gd,改造·炮兵,,special·legendary·原型纳米机械病毒弹头｜规则:第四章R-改1-R-改4,待审
+art_incendiary_mix,助燃剂弹,data/modification_modules/artillery_mods.gd,改造·炮兵,,ammunition·epic·原型镁粉混合弹药｜规则:第四章R-改1-R-改4,待审
+art_white_phosphorus,白磷弹,data/modification_modules/artillery_mods.gd,改造·炮兵,,ammunition·epic·原型M825白磷发烟弹｜规则:第四章R-改1-R-改4,待审
+art_graphite_fiber,石墨纤维弹,data/modification_modules/artillery_mods.gd,改造·炮兵,,ammunition·epic·原型石墨纤维战斗部｜规则:第四章R-改1-R-改4,待审
+art_nano_amp,纳米放大器,data/modification_modules/artillery_mods.gd,改造·炮兵,,special·legendary·原型纳米谐振弹头｜规则:第四章R-改1-R-改4,待审
+art_chem_cluster,化学集束弹,data/modification_modules/artillery_mods.gd,改造·炮兵,,ammunition·epic·原型M687化学子母弹｜规则:第四章R-改1-R-改4,待审
+sup_nano_seeder,纳米播种机,data/modification_modules/artillery_mods.gd,改造·炮兵,,special·epic·原型纳米粒子播撒装置｜规则:第四章R-改1-R-改4,待审
+sup_targeting_drone,目标指示无人机,data/modification_modules/artillery_mods.gd,改造·炮兵,,sensor·legendary·原型标定攻击无人机｜规则:第四章R-改1-R-改4,待审
+aa_01_radar,炮瞄雷达,data/modification_modules/anti_air_mods.gd,改造·防空,,radar·rare·原型SCR-584｜规则:第四章R-改1-R-改4,待审
+aa_02_iff,敌我识别器,data/modification_modules/anti_air_mods.gd,改造·防空,,electronics·uncommon·原型IFF Mark X｜规则:第四章R-改1-R-改4,待审
+aa_03_missile_rail,防空导弹挂架,data/modification_modules/anti_air_mods.gd,改造·防空,,missile·epic·原型毒刺/萨姆-7｜规则:第四章R-改1-R-改4,待审
+aa_04_quad_mount,双联/四联装,data/modification_modules/anti_air_mods.gd,改造·防空,,mount·rare·原型M45四联.50｜规则:第四章R-改1-R-改4,待审
+aa_05_proximity_fuze,近炸引信,data/modification_modules/anti_air_mods.gd,改造·防空,,fuze·epic·原型二战重大发明｜规则:第四章R-改1-R-改4,待审
+aa_06_laser,激光近防系统,data/modification_modules/anti_air_mods.gd,改造·防空,,laser·legendary·原型HELIOS｜规则:第四章R-改1-R-改4,待审
+aa_07_aesa,相控阵雷达,data/modification_modules/anti_air_mods.gd,改造·防空,,radar·legendary·原型AN/MPQ-65｜规则:第四章R-改1-R-改4,待审
+aa_08_power_gen,车载发电机组,data/modification_modules/anti_air_mods.gd,改造·防空,,power·uncommon·原型自行高炮必备｜规则:第四章R-改1-R-改4,待审
+aa_09_smoke_launcher,烟幕弹发射器,data/modification_modules/anti_air_mods.gd,改造·防空,,countermeasure·rare·原型76mm烟幕｜规则:第四章R-改1-R-改4,待审
+aa_10_camouflage,伪装网,data/modification_modules/anti_air_mods.gd,改造·防空,,stealth·uncommon·原型红外伪装网｜规则:第四章R-改1-R-改4,待审
+aa_11_auto_fc,自动化火控,data/modification_modules/anti_air_mods.gd,改造·防空,,fire_control·epic·原型天空卫士｜规则:第四章R-改1-R-改4,待审
+aa_12_fire_on_move,行进间射击,data/modification_modules/anti_air_mods.gd,改造·防空,,mobility·epic·原型ZSU-23-4｜规则:第四章R-改1-R-改4,待审
+aa_13_radar_lock,雷达锁定,data/modification_modules/anti_air_mods.gd,改造·防空,,guidance·legendary·原型AN/MPQ-64 哨兵雷达｜规则:第四章R-改1-R-改4,待审
+aa_emp_warhead,电磁战斗部,data/modification_modules/anti_air_mods.gd,改造·防空,,ammunition·legendary·原型微波战斗部｜规则:第四章R-改1-R-改4,待审
+aa_acid_warhead,酸液战斗部,data/modification_modules/anti_air_mods.gd,改造·防空,,ammunition·epic·原型腐蚀性酸战斗部｜规则:第四章R-改1-R-改4,待审
+aa_14_searchlight,探照灯组,data/modification_modules/anti_air_mods.gd,改造·防空,,optics·uncommon·原型不列颠空战 150cm 探照灯带｜规则:第四章R-改1-R-改4,待审
+aa_15_flak_burst,定时引信防空弹,data/modification_modules/anti_air_mods.gd,改造·防空,,ammunition·rare·原型Flak 88 / 博福斯定时引信弹｜规则:第四章R-改1-R-改4,待审
+air_01_turbofan,涡扇发动机,data/modification_modules/air_mods.gd,改造·空军,,engine·epic·原型F100-PW-220｜规则:第四章R-改1-R-改4,待审
+air_02_vector_thrust,矢量推力,data/modification_modules/air_mods.gd,改造·空军,,thrust·legendary·原型F-22/F-35｜规则:第四章R-改1-R-改4,待审
+air_03_stealth_coating,隐身涂层,data/modification_modules/air_mods.gd,改造·空军,,stealth·legendary·原型RAM吸波材料｜规则:第四章R-改1-R-改4,待审
+air_04_aesa,有源相控阵雷达,data/modification_modules/air_mods.gd,改造·空军,,radar·legendary·原型AN/APG-77｜规则:第四章R-改1-R-改4,待审
+air_05_helmet_sight,头盔瞄准具,data/modification_modules/air_mods.gd,改造·空军,,optics·epic·原型苏-27/阿帕奇｜规则:第四章R-改1-R-改4,待审
+air_06_bvr_missile,超视距导弹,data/modification_modules/air_mods.gd,改造·空军,,missile·epic·原型AIM-120C｜规则:第四章R-改1-R-改4,待审
+air_07_dogfight_missile,格斗弹舱,data/modification_modules/air_mods.gd,改造·空军,,missile·epic·原型AIM-9X｜规则:第四章R-改1-R-改4,待审
+air_08_ecm,电子对抗系统,data/modification_modules/air_mods.gd,改造·空军,,ecm·epic·原型AN/ALQ-211｜规则:第四章R-改1-R-改4,待审
+air_09_air_refuel,空中加油口,data/modification_modules/air_mods.gd,改造·空军,,logistics·rare·原型伙伴加油｜规则:第四章R-改1-R-改4,待审
+air_10_drop_tank,副油箱,data/modification_modules/air_mods.gd,改造·空军,,logistics·uncommon·原型增加燃料｜规则:第四章R-改1-R-改4,待审
+air_11_weapon_rack,外挂武器架,data/modification_modules/air_mods.gd,改造·空军,,weapons·rare·原型复合挂架｜规则:第四章R-改1-R-改4,待审
+air_12_data_link,数据链系统,data/modification_modules/air_mods.gd,改造·空军,,command·epic·原型Link 16｜规则:第四章R-改1-R-改4,待审
+air_13_ejection_seat,钛合金浴缸座舱,data/modification_modules/air_mods.gd,改造·空军,,survival·uncommon·原型A-10钛合金装甲浴缸｜规则:第四章R-改1-R-改4,待审
+air_14_swing_wing,可变后掠翼,data/modification_modules/air_mods.gd,改造·空军,,aerodynamics·epic·原型F-14雄猫｜规则:第四章R-改1-R-改4,待审
+air_15_afterburner,加力燃烧室,data/modification_modules/air_mods.gd,改造·空军,,special·legendary·原型F-119 推力矢量引擎｜规则:第四章R-改1-R-改4,待审
+air_thermolite_bomb,温压弹,data/modification_modules/air_mods.gd,改造·空军,,ammunition·legendary·原型云爆弹战斗部｜规则:第四章R-改1-R-改4,待审
+air_antiradiation_missile,反辐射导弹,data/modification_modules/air_mods.gd,改造·空军,,ammunition·legendary·原型AGM-88 HARM｜规则:第四章R-改1-R-改4,待审
+air_targeting_laser,瞄准激光,data/modification_modules/air_mods.gd,改造·空军,,sensor·epic·原型机载激光指示吊舱｜规则:第四章R-改1-R-改4,待审
+air_16_phase_shift,相位偏移,data/modification_modules/air_mods.gd,改造·空军,,special·legendary·原型相位偏移装甲板｜规则:第四章R-改1-R-改4,待审
+air_17_bombsight,轰炸瞄准具,data/modification_modules/air_mods.gd,改造·空军,,optics·uncommon·原型诺顿瞄准具（Norden M-9）｜规则:第四章R-改1-R-改4,待审
+air_18_heavy_rack,重载挂架,data/modification_modules/air_mods.gd,改造·空军,,hardpoint·uncommon·原型B-17 载弹挂架（单机 8 吨载弹量）｜规则:第四章R-改1-R-改4,待审
+air_19_cluster_dispenser,集束布撒器,data/modification_modules/air_mods.gd,改造·空军,,ammunition·rare·原型CBU-87 集束炸弹 / SUU-64 布撒器｜规则:第四章R-改1-R-改4,待审
+air_20_standoff_missile,防区外导弹,data/modification_modules/air_mods.gd,改造·空军,,weapon·epic·原型AGM-158 JASSM｜规则:第四章R-改1-R-改4,待审
+air_21_terrain_radar,地形跟随雷达,data/modification_modules/air_mods.gd,改造·空军,,system·uncommon·原型F-111 TFR / 德州仪器 AN/APQ-116｜规则:第四章R-改1-R-改4,待审
+air_22_countermeasure,干扰弹布撒器,data/modification_modules/air_mods.gd,改造·空军,,countermeasure·rare·原型AN/ALE-47 箔条/曳光弹｜规则:第四章R-改1-R-改4,待审
+rec_01_optical_camouflage,光学伪装,data/modification_modules/recon_mods.gd,改造·侦察,,stealth·rare·原型吉利服｜规则:第四章R-改1-R-改4,待审
+rec_02_ir_suppression,红外抑制,data/modification_modules/recon_mods.gd,改造·侦察,,stealth·epic·原型热信号遮蔽｜规则:第四章R-改1-R-改4,待审
+rec_03_suppressor,消音器,data/modification_modules/recon_mods.gd,改造·侦察,,weapon·rare·原型抑制器｜规则:第四章R-改1-R-改4,待审
+rec_04_high_power_scope,高倍瞄准镜,data/modification_modules/recon_mods.gd,改造·侦察,,optics·epic·原型施华洛世奇｜规则:第四章R-改1-R-改4,待审
+rec_05_uav,无人侦察机,data/modification_modules/recon_mods.gd,改造·侦察,,drone·epic·原型RQ-11大乌鸦｜规则:第四章R-改1-R-改4,待审
+rec_06_tactical_radio,战术电台,data/modification_modules/recon_mods.gd,改造·侦察,,comms·uncommon·原型单兵超短波｜规则:第四章R-改1-R-改4,待审
+rec_07_gps,GPS定位仪,data/modification_modules/recon_mods.gd,改造·侦察,,navigation·uncommon·原型军用GPS｜规则:第四章R-改1-R-改4,待审
+rec_08_nvg,夜视仪,data/modification_modules/recon_mods.gd,改造·侦察,,optics·rare·原型PVS-14｜规则:第四章R-改1-R-改4,待审
+rec_09_breaching,破门工具,data/modification_modules/recon_mods.gd,改造·侦察,,environment·uncommon·原型霰弹枪/破门锤｜规则:第四章R-改1-R-改4,待审
+rec_10_medkit,急救包,data/modification_modules/recon_mods.gd,改造·侦察,,medical·rare·原型IFAK｜规则:第四章R-改1-R-改4,待审
+rec_11_decoy,假目标,data/modification_modules/recon_mods.gd,改造·侦察,,deception·rare·原型充气坦克/假人｜规则:第四章R-改1-R-改4,待审
+rec_12_atv,越野摩托,data/modification_modules/recon_mods.gd,改造·侦察,,mobility·uncommon·原型侦察摩托｜规则:第四章R-改1-R-改4,待审
+rec_13_target_designator,目标指示器,data/modification_modules/recon_mods.gd,改造·侦察,,guidance·epic·原型SOFLAM 激光指示器｜规则:第四章R-改1-R-改4,待审
+rec_14_crit_designator,暴击指示器,data/modification_modules/recon_mods.gd,改造·侦察,,guidance·epic·原型精确标定仪｜规则:第四章R-改1-R-改4,待审
+rec_phased_radar,相控阵雷达,data/modification_modules/recon_mods.gd,改造·侦察,,sensor·legendary·原型AN/APG-81 相控阵｜规则:第四章R-改1-R-改4,待审
+eng_01_mine_sweeper,反应装甲,data/modification_modules/engineer_mods.gd,改造·工兵,,engineering·rare·原型Kontakt-5爆炸反应装甲｜规则:第四章R-改1-R-改4,待审
+eng_02_explosives,爆破装置,data/modification_modules/engineer_mods.gd,改造·工兵,,demolition·epic·原型C4/塑胶炸药｜规则:第四章R-改1-R-改4,待审
+eng_03_welding,焊接设备,data/modification_modules/engineer_mods.gd,改造·工兵,,repair·rare·原型战场抢修｜规则:第四章R-改1-R-改4,待审
+eng_04_bridge,架桥设备,data/modification_modules/engineer_mods.gd,改造·工兵,,bridge·epic·原型坦克架桥车｜规则:第四章R-改1-R-改4,待审
+eng_05_shovel,工程铲,data/modification_modules/engineer_mods.gd,改造·工兵,,digging·uncommon·原型推土铲｜规则:第四章R-改1-R-改4,待审
+eng_06_crane,间隙装甲,data/modification_modules/engineer_mods.gd,改造·工兵,,recovery·rare·原型谢尔曼/四号附加装甲板｜规则:第四章R-改1-R-改4,待审
+eng_07_generator,发电机,data/modification_modules/engineer_mods.gd,改造·工兵,,power·rare·原型野战发电站｜规则:第四章R-改1-R-改4,待审
+eng_08_medical,战场急救站,data/modification_modules/engineer_mods.gd,改造·工兵,,medical·epic·原型机动医疗单元｜规则:第四章R-改1-R-改4,待审
+eng_09_supply,弹药补给车,data/modification_modules/engineer_mods.gd,改造·工兵,,logistics·rare·原型运输车｜规则:第四章R-改1-R-改4,待审
+eng_10_camouflage,伪装网系统,data/modification_modules/engineer_mods.gd,改造·工兵,,stealth·epic·原型大型伪装系统｜规则:第四章R-改1-R-改4,待审
+eng_11_breaching_charge,爆破装药,data/modification_modules/engineer_mods.gd,改造·工兵,,ammunition·legendary·原型M112 定向爆破装药｜规则:第四章R-改1-R-改4,待审
+eng_12_reactive_engineering,爆反工程装甲,data/modification_modules/engineer_mods.gd,改造·工兵,,armor·legendary·原型扫雷艇反应装甲套件｜规则:第四章R-改1-R-改4,待审
+eng_13_supply_cache,补给遗物,data/modification_modules/engineer_mods.gd,改造·工兵,,special·epic·原型自毁式补给投放器｜规则:第四章R-改1-R-改4,待审
+eng_optical_fiber,光纤链路,data/modification_modules/engineer_mods.gd,改造·工兵,,electronic·epic·原型战场光纤通信网｜规则:第四章R-改1-R-改4,待审
+eng_chem_sprayer,化学喷洒器,data/modification_modules/engineer_mods.gd,改造·工兵,,special·epic·原型车载化学喷洒系统｜规则:第四章R-改1-R-改4,待审
+eng_14_salvage_drone,回收无人机,data/modification_modules/engineer_mods.gd,改造·工兵,,special·epic·原型战场回收无人机群｜规则:第四章R-改1-R-改4,待审
+for_01_concrete,钢筋混凝土装甲,data/modification_modules/fort_mods.gd,改造·堡垒,,armor·rare·原型碉堡标准｜规则:第四章R-改1-R-改4,待审
+for_02_tunnel,地下坑道,data/modification_modules/fort_mods.gd,改造·堡垒,,network·epic·原型马奇诺防线｜规则:第四章R-改1-R-改4,待审
+for_03_auto_turret,自动炮塔,data/modification_modules/fort_mods.gd,改造·堡垒,,automation·epic·原型遥控武器站｜规则:第四章R-改1-R-改4,待审
+for_04_filtration,通风过滤系统,data/modification_modules/fort_mods.gd,改造·堡垒,,protection·epic·原型核生化防护｜规则:第四章R-改1-R-改4,待审
+for_05_ammo_dump,弹药库,data/modification_modules/fort_mods.gd,改造·堡垒,,ammunition·rare·原型地下弹药库｜规则:第四章R-改1-R-改4,待审
+for_06_radar,雷达天线,data/modification_modules/fort_mods.gd,改造·堡垒,,radar·legendary·原型远程预警雷达｜规则:第四章R-改1-R-改4,待审
+for_07_camouflage,伪装系统,data/modification_modules/fort_mods.gd,改造·堡垒,,stealth·rare·原型伪装网/植被｜规则:第四章R-改1-R-改4,待审
+for_08_trench,反坦克壕,data/modification_modules/fort_mods.gd,改造·堡垒,,obstacle·rare·原型堑壕系统｜规则:第四章R-改1-R-改4,待审
+for_09_minefield,雷场,data/modification_modules/fort_mods.gd,改造·堡垒,,minefield·epic·原型反坦克/人员地雷｜规则:第四章R-改1-R-改4,待审
+for_10_command,指挥塔,data/modification_modules/fort_mods.gd,改造·堡垒,,command·legendary·原型要塞核心｜规则:第四章R-改1-R-改4,待审
+for_11_advanced_minefield,强化雷场,data/modification_modules/fort_mods.gd,改造·堡垒,,special·legendary·原型智能反坦克雷场｜规则:第四章R-改1-R-改4,待审
+for_12_anti_tank_trench,反坦克壕,data/modification_modules/fort_mods.gd,改造·堡垒,,special·epic·原型壕堑系统｜规则:第四章R-改1-R-改4,待审
+for_13_command_bunker,指挥地堡,data/modification_modules/fort_mods.gd,改造·堡垒,,command·legendary·原型地下指挥中心｜规则:第四章R-改1-R-改4,待审
+for_14_bomb_shelter,防空洞加固,data/modification_modules/fort_mods.gd,改造·堡垒,,shelter·uncommon·原型马奇诺/齐格菲地下工事｜规则:第四章R-改1-R-改4,待审
+gen_01_comms,战场通讯,data/modification_modules/universal_mods.gd,改造·通用,,comms·uncommon·原型SCR-536对讲机｜规则:第四章R-改1-R-改4,待审
+gen_02_digital,数字化单兵,data/modification_modules/universal_mods.gd,改造·通用,,system·rare·原型陆地勇士系统｜规则:第四章R-改1-R-改4,待审
+gen_03_camouflage,伪装迷彩,data/modification_modules/universal_mods.gd,改造·通用,,stealth·uncommon·原型多地形迷彩｜规则:第四章R-改1-R-改4,待审
+gen_04_vest,战术背心,data/modification_modules/universal_mods.gd,改造·通用,,armor·uncommon·原型IOTV模块化｜规则:第四章R-改1-R-改4,待审
+gen_05_shield,防弹盾牌,data/modification_modules/universal_mods.gd,改造·通用,,shield·rare·原型防弹盾｜规则:第四章R-改1-R-改4,待审
+gen_06_laser_designator,激光指示器,data/modification_modules/universal_mods.gd,改造·通用,,designator·rare·原型激光目标指示器｜规则:第四章R-改1-R-改4,待审
+gen_07_mine_resistant,防雷座椅,data/modification_modules/universal_mods.gd,改造·通用,,survival·epic·原型悬挂防雷座椅｜规则:第四章R-改1-R-改4,待审
+gen_08_nbc_protection,三防系统,data/modification_modules/universal_mods.gd,改造·通用,,protection·epic·原型核生化防护｜规则:第四章R-改1-R-改4,待审
+gen_09_ir_jammer,红外干扰机,data/modification_modules/universal_mods.gd,改造·通用,,countermeasure·epic·原型窗帘光电干扰｜规则:第四章R-改1-R-改4,待审
+gen_10_ammo_rack,备用弹药架,data/modification_modules/universal_mods.gd,改造·通用,,ammunition·uncommon·原型外挂弹药箱｜规则:第四章R-改1-R-改4,待审
+gen_11_phase_resonance,相位共鸣,data/modification_modules/universal_mods.gd,改造·通用,,phase_core·legendary·原型相位共鸣放大器｜规则:第四章R-改1-R-改4,待审
+gen_12_phase_shielding,相位护盾,data/modification_modules/universal_mods.gd,改造·通用,,phase_core·legendary·原型相位偏转护盾｜规则:第四章R-改1-R-改4,待审
+gen_13_phase_overdrive,相位过载,data/modification_modules/universal_mods.gd,改造·通用,,phase_core·legendary·原型相位过载核心｜规则:第四章R-改1-R-改4,待审
+gen_14_phase_shield_gen,相位护盾发生器,data/modification_modules/universal_mods.gd,改造·通用,,phase_core·legendary·原型相位偏转护盾发生器｜规则:第四章R-改1-R-改4,待审
+gen_15_laser_marker,激光指示器,data/modification_modules/universal_mods.gd,改造·通用,,guidance·epic·原型SOFLAM 激光目标指示器｜规则:第四章R-改1-R-改4,待审
+gen_16_emp_pulse,电磁脉冲装置,data/modification_modules/universal_mods.gd,改造·通用,,electronic·epic·原型车载电磁脉冲发生器｜规则:第四章R-改1-R-改4,待审
+gen_17_electronic_hijack,电子劫持,data/modification_modules/universal_mods.gd,改造·通用,,electronic·legendary·原型电子战劫持阵列｜规则:第四章R-改1-R-改4,待审
+gen_combustion_catalyst,燃烧催化剂,data/modification_modules/universal_mods.gd,改造·通用,,special·epic·原型化学催化涂层｜规则:第四章R-改1-R-改4,待审
+gen_overload_capacitor,过载电容,data/modification_modules/universal_mods.gd,改造·通用,,electronic·legendary·原型储能电容阵列｜规则:第四章R-改1-R-改4,待审
+gen_nano_catalyst,纳米催化剂,data/modification_modules/universal_mods.gd,改造·通用,,special·legendary·原型自复制纳米颗粒｜规则:第四章R-改1-R-改4,待审
+gen_beam_splitter,光束分裂器,data/modification_modules/universal_mods.gd,改造·通用,,optical·legendary·原型分光棱镜组件｜规则:第四章R-改1-R-改4,待审
+gen_reflector_array,反射阵列,data/modification_modules/universal_mods.gd,改造·通用,,optical·epic·原型可调反射镜组｜规则:第四章R-改1-R-改4,待审
+gen_weakpoint_analyzer,弱点分析仪,data/modification_modules/universal_mods.gd,改造·通用,,sensor·legendary·原型目标弱点推演模块｜规则:第四章R-改1-R-改4,待审
+gen_pollution_accumulator,污染蓄能器,data/modification_modules/universal_mods.gd,改造·通用,,special·epic·原型化学物质浓缩舱｜规则:第四章R-改1-R-改4,待审
+gen_converted_munitions,弹道重赋,data/modification_modules/universal_mods.gd,改造·通用,,ammunition·legendary·原型模块化弹药重赋系统｜规则:第四章R-改1-R-改4,待审
+gen_expansion_chamber,扩容弹舱,data/modification_modules/universal_mods.gd,改造·通用,,ammunition·legendary·原型多联装供弹机构｜规则:第四章R-改1-R-改4,待审
+gen_overflow_shield,溢流护盾,data/modification_modules/universal_mods.gd,改造·通用,,protection·legendary·原型再生式能量缓冲层｜规则:第四章R-改1-R-改4,待审
+gen_truestrike_pinpoint,精确制导针,data/modification_modules/universal_mods.gd,改造·通用,,guidance·legendary·原型末端成像制导组件｜规则:第四章R-改1-R-改4,待审
+gen_relay_antenna,中继天线,data/modification_modules/universal_mods.gd,改造·通用,,comms·legendary·原型战场数据链中继塔｜规则:第四章R-改1-R-改4,待审
+gen_unified_splash,统一装药,data/modification_modules/universal_mods.gd,改造·通用,,ammunition·legendary·原型标准化高爆装药｜规则:第四章R-改1-R-改4,待审
+gen_stealth_coating,雷达吸波涂层,data/modification_modules/universal_mods.gd,改造·通用,,camo·rare·原型铁氧体吸波材料（RAM 涂层）｜规则:第四章R-改1-R-改4,待审
+enh_hp_up,体质训练,data/modification_modules/enhancement_mods.gd,改造·全局强化,,enhancement·uncommon·原型体能强化训练｜规则:第四章R-改1-R-改4,待审
+enh_dmg_up,火力训练,data/modification_modules/enhancement_mods.gd,改造·全局强化,,enhancement·uncommon·原型火力压制训练｜规则:第四章R-改1-R-改4,待审
+enh_def_up,防护训练,data/modification_modules/enhancement_mods.gd,改造·全局强化,,enhancement·uncommon·原型防护战术训练｜规则:第四章R-改1-R-改4,待审
+enh_def_flat,坚壁训练,data/modification_modules/enhancement_mods.gd,改造·全局强化,,enhancement·uncommon·原型阵地防御训练｜规则:第四章R-改1-R-改4,待审
+enh_speed_up,机动训练,data/modification_modules/enhancement_mods.gd,改造·全局强化,,enhancement·uncommon·原型机动突击训练｜规则:第四章R-改1-R-改4,待审
+enh_range_up,索敌训练,data/modification_modules/enhancement_mods.gd,改造·全局强化,,enhancement·uncommon·原型侦察索敌训练｜规则:第四章R-改1-R-改4,待审
+enh_atkspd_up,反应训练,data/modification_modules/enhancement_mods.gd,改造·全局强化,,enhancement·uncommon·原型快速反应训练｜规则:第四章R-改1-R-改4,待审
+enh_crit,弱点洞察,data/modification_modules/enhancement_mods.gd,改造·全局强化,,enhancement·rare·原型弱点识别训练｜规则:第四章R-改1-R-改4,待审
+enh_lifesteal,战场回收,data/modification_modules/enhancement_mods.gd,改造·全局强化,,enhancement·rare·原型战场补给训练｜规则:第四章R-改1-R-改4,待审
+enh_splash,爆破战技,data/modification_modules/enhancement_mods.gd,改造·全局强化,,enhancement·rare·原型区域压制战技｜规则:第四章R-改1-R-改4,待审
+enh_penetration,破甲专精,data/modification_modules/enhancement_mods.gd,改造·全局强化,,enhancement·rare·原型反装甲战技｜规则:第四章R-改1-R-改4,待审
+enh_regen,野战急救,data/modification_modules/enhancement_mods.gd,改造·全局强化,,enhancement·rare·原型战场急救训练｜规则:第四章R-改1-R-改4,待审
+enh_chain,连锁战术,data/modification_modules/enhancement_mods.gd,改造·全局强化,,enhancement·rare·原型多目标接战训练｜规则:第四章R-改1-R-改4,待审
+enh_shield_kill,收割本能,data/modification_modules/enhancement_mods.gd,改造·全局强化,,enhancement·epic·原型战意觉醒｜规则:第四章R-改1-R-改4,待审
+enh_dodge,本能闪避,data/modification_modules/enhancement_mods.gd,改造·全局强化,,enhancement·epic·原型危机感知训练｜规则:第四章R-改1-R-改4,待审
+enh_crit_dmg,致命精通,data/modification_modules/enhancement_mods.gd,改造·全局强化,,enhancement·epic·原型致命打击精通｜规则:第四章R-改1-R-改4,待审
