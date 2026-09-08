@@ -324,6 +324,15 @@ IntelEvolutionManager → IntelManual, IntelEvolutionBranches
 - **agnes 生图模型特点**（负面词反激活/正面意象锁死/风格词垃圾暗示/屏幕内容限定）：
   ⚠️ 写新生图 prompt 前必读 `tools/_agnes_image_api.md` 行为实测段——v26.8 三轮实测
   （负面词拉黑垃圾无效、正面意象锁死有效）直接推翻直觉写法。
+- **FLOW 生图工作流**（`docs/基地重设计/flow_edit_tool.py`，Google Flow 网页 UI 自动化，
+  登录态 `%LOCALAPPDATA%\ffroliva\gflow-cli\profile_default`，默认项目
+  5bffb93f-5026-4009-872c-cb70d0304f45；v27.11 序章五图全靠它）：
+  ① **纯文生图模式**（v27.11 新增）：不传 `--ref` 直接 `--prompt`，语言理解强，
+  方向/朝向/谁在动都能听懂；② ⚠️ **prompt 超 ~950 字触发「错误卡片」限流**，
+  控制在 900 字内，报错等 60s 重试即好；③ **--ref 是强内容锚**（图里画什么就出什么，
+  prompt 只能微调），要换内容级元素必须换参考图或走纯文生图；④ 原生 1376×768，
+  PIL aspect-fill 裁 1280×720；⑤ flow-mcp（labs.google API 直调）自 2026-09-05
+  站点迁移后已死，别再试。
 - **新 png 资产导入**：`--import` 直跑崩（0xC0000005），用 `--headless --editor --quit` 触发。
 
 ### v26.9 战场单位可读性：深色描边 + 全单位投影 + 背景压暗（2026-09-02，详见 CHANGELOG）
@@ -569,9 +578,17 @@ tests/
 - v26.4 修复：`last_active_at` 此前只在迁移分支读取——v9 现行档（不触发迁移）恒读 0，离线挂机奖励失效；已移出分支
 - **读侧两条不变式（v26.6 起，改任何 manager 的 load_state 前必读）**：①"先重置再覆盖"——`load_state({})` 必须复位到默认（SaveManager 对存档缺段会调它），禁止空字典早退；②字典 key 若为 int，load_state 必须重建 int key（JSON 往返全变 String）。回归锁 `tests/unit/save/test_save_load_invariants.gd`。另：战斗中回标题走 `end_battle(false)` 正常结算（main.gd _on_back_to_title），勿删该守卫
 
+## ★ 统一化双宪法（改美术/文案前必读，2026-09-08 起）
+
+任何生图 prompt、资产修改、面板/卡牌/改造/任务文案改动，动笔前先查：
+- 视觉：`docs/统一化/STYLE_BIBLE.md`（色板/光线/笔触/构图/禁则/资产 prompt 锚模板/分档标准；判档前先跑第二章 rim 判定链）
+- 语言：`docs/统一化/LANGUAGE_BIBLE.md`(权威词汇表/面板与卡牌映射/禁用词/语气规则；条目层明细在 `docs/统一化/term_mapping_draft.csv`)
+- 铁律：只改显示层（display_name/description/面板标题/按钮文本），id/存档 key/效果键/信号名不动；与宪法冲突时以宪法为准，改宪法须用户批准
+
 ## 美术资源工作流（卡图自动生成）
 
-**⚠️ 美术 PNG 全量备份铁律（发行机迁移/换机硬前提）**：`.gitignore` 全局忽略 `*.png`——美术资产**不入 git，删=永久丢失**。两大目录：`assets/card_icons/`（2026-09-03 核对：卡面 316 张 = enemy 158 + player 158，缩略图树 632 张 = _thumb256/_thumb384，共 951 png）与 `assets/ui/instruments/`（相位仪徽章）。基线备份：项目外 `phase-war-art-backup-YYYY-MM-DD.zip`（2026-08-23 首份 144.1MB/960 文件，sha256 前 16 位 `7c9da35781ffe08c`）。新增/修改图后按同日期惯例重打包，并建议同步一份到网盘/异机。打包：两树 walk（png/svg/txt）→ zipfile ZIP_STORED → 项目外。
+**⚠️ 美术 PNG 全量备份铁律（发行机迁移/换机硬前提）**：`.gitignore` 全局忽略 `*.png`——美术资产**不入 git，删=永久丢失**。两大目录：`assets/card_icons/`（2026-09-07 核对：enemy 178 + player 178 全配对，缩略图四树全齐，共 991 png）与 `assets/ui/instruments/`（相位仪徽章）。
+**备份唯一权威目录（2026-09-07 起）**：`F:\godot fair duet\_art_backup\`——所有美术备份 zip 集中于此，**勿再散落**到 F: 根/项目旁其它层级。现存清单（含专项）：`phase-war-art-backup-2026-08-26.zip`（全量 1005 文件，sha16 `cc59b8c8e5a4f77d`，接替已消失的 08-23 首份）、`phase-war-art-backup-2026-09-07.zip`（全量 1153 文件/201MB，sha16 `9bfd539a1da464e6`，含 v26.31 修复后状态）、bunker-v2/v3-2026-08-27（基地专项）、`phase_war_intro_art_v24.5_20260831.zip`（序章专项）。新增/修改图后按日期惯例在权威目录重打包全量基线，并建议同步一份到网盘/异机。打包：两树 walk（png/svg/txt）→ zipfile ZIP_STORED → 权威目录。
 
 **新增卡牌缺卡面图时**，用 AI API 自动生成，完整流程见 `docs/ART_PIPELINE_AI_ICON_GENERATION.md`。
 
@@ -735,7 +752,7 @@ User-driven collaboration. Every task follows: **Question → Options → Decisi
 
 ### 教程系统检查 + 修复（2026-08-30，v20.31）
 
-检查范围：`tutorial_progression_manager.gd`（13 步 A 系统）、`tutorial_overlay.gd`、main.gd 教程 handler、`quest_definitions.gd` 教学任务（C 系统）。内容健康项：初始三卡（ww1_mauser/ww1_arty_m81/ww1_arm_ft17，v21.6 预装）、词条里程碑 Lv5/10/15/20/25/30（card_growth_config 每 5 级）、符文入口 `_open_backpack_runes_tab`、9 个 toggle 信号 handler、存档 v1→v2 门控全部核验无误。
+检查范围：`tutorial_progression_manager.gd`（13 步 A 系统；**v26.33 起 14 步**——首战后新增「移动基地」步、改造步改图纸口径、世界地图步改行军语义，save version 4，见 CHANGELOG v26.33）、`tutorial_overlay.gd`、main.gd 教程 handler、`quest_definitions.gd` 教学任务（C 系统）。内容健康项：初始三卡（ww1_mauser/ww1_arty_m81/ww1_arm_ft17，v21.6 预装）、词条里程碑 Lv5/10/15/20/25/30（card_growth_config 每 5 级）、符文入口 `_open_backpack_runes_tab`、9 个 toggle 信号 handler、存档 v1→v2 门控全部核验无误。
 
 **v20.31 已修复**（改动：`scenes/main.gd` / `data/quest_definitions.gd` / `managers/card_enhancement_manager.gd`）：
 
