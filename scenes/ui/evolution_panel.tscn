@@ -144,7 +144,7 @@ theme_override_colors/font_color = Color(0.769, 0.71, 0.992, 1)
 [node name="TitleLabel" type="Label" parent="VBoxContainer/TitleRow/TitleHBox"]
 unique_name_in_owner = true
 layout_mode = 2
-text = "战术制造站"
+text = "制造舱"
 theme_override_font_sizes/font_size = 20
 theme_override_colors/font_color = Color(0.95, 0.96, 0.98, 1)
 [node name="TitleSub" type="Label" parent="VBoxContainer/TitleRow/TitleHBox"]

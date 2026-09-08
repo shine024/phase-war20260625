@@ -264,9 +264,9 @@ func _add_manufacture_block() -> void:
 				text = "资源（需 %s）：%s" % [cond.get("required_text", "?"), cond.get("current_text", "?")]
 		_add_line("  %s %s" % ["✔" if met else "✘", text], col, 11)
 	if bool(check.get("ok", false)):
-		_add_line("✔ 可在「制造中心」直接生产", Color(0.55, 0.95, 0.65), 12)
+		_add_line("✔ 可在「制造舱」直接生产", Color(0.55, 0.95, 0.65), 12)
 	else:
-		_add_line("条件齐备后即可在「制造中心」生产", Color(0.65, 0.7, 0.78), 11)
+		_add_line("条件齐备后即可在「制造舱」生产", Color(0.65, 0.7, 0.78), 11)
 
 
 func _add_separator() -> void:

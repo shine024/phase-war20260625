@@ -294,11 +294,11 @@ func _setup_title_bar_fonts() -> void:
 ## 4 张 Tab 各有独立签名色与英文副标题，对齐 HTML 设计稿 panel-frame
 func _refresh_title_bar(tab_index: int) -> void:
 	var accent: Color = DesignTokens.COLOR_AMBER
-	var title_text: String = "战斗卡阵列 · COMBAT ROSTER"
+	var title_text: String = "卡仓 · COMBAT ROSTER"
 	match tab_index:
 		TabIndex.COMBAT_CARDS:
 			accent = DesignTokens.COLOR_AMBER
-			title_text = "战斗卡阵列 · COMBAT ROSTER"
+			title_text = "卡仓 · COMBAT ROSTER"
 		TabIndex.INTEL:
 			accent = DesignTokens.COLOR_CYAN_TECH
 			title_text = "改造模块库 · MOD REPOSITORY"

@@ -48,11 +48,11 @@ const HOTSPOTS := {
 	"era1": [
 		{"r": [0.018, 0.160, 0.210, 0.530], "name": "驾驶室", "hint": "出击简报", "kind": "sortie"},
 		{"r": [0.255, 0.393, 0.139, 0.208], "name": "指挥电脑桌", "hint": "战术统计终端", "kind": "terminal", "rooms": "war_room + entry_hall"},
-		{"r": [0.282, 0.254, 0.107, 0.138], "name": "世界地图墙", "hint": "情报中心", "kind": "panel", "key": "intelligence", "rooms": "archive"},
-		{"r": [0.398, 0.312, 0.067, 0.323], "name": "补给售货机", "hint": "商店·势力", "kind": "panel", "key": "store", "rooms": "comms"},
-		{"r": [0.470, 0.277, 0.103, 0.185], "name": "卡牌展示墙", "hint": "背包·卡仓", "kind": "panel", "key": "backpack", "rooms": "dormitory（挂靠）"},
+		{"r": [0.282, 0.254, 0.107, 0.138], "name": "世界地图墙", "hint": "情报舱", "kind": "panel", "key": "intelligence", "rooms": "archive"},
+		{"r": [0.398, 0.312, 0.067, 0.323], "name": "补给售货机", "hint": "补给舱·联络台", "kind": "panel", "key": "store", "rooms": "comms"},
+		{"r": [0.470, 0.277, 0.103, 0.185], "name": "卡牌展示墙", "hint": "卡仓", "kind": "panel", "key": "backpack", "rooms": "dormitory（挂靠）"},
 		{"r": [0.506, 0.277, 0.138, 0.323], "name": "工具工作台", "hint": "改造·词条", "kind": "panel", "key": "modification", "rooms": "workshop"},
-		{"r": [0.680, 0.335, 0.040, 0.260], "name": "3D 打印机", "hint": "制造中心·卡仓", "kind": "panel", "key": "evolution", "rooms": "depot"},
+		{"r": [0.680, 0.335, 0.040, 0.260], "name": "3D 打印机", "hint": "制造舱·卡仓", "kind": "panel", "key": "evolution", "rooms": "depot"},
 		{"r": [0.450, 0.650, 0.040, 0.100], "name": "医疗柜", "hint": "医疗·配给", "kind": "info", "rooms": "medical + mess_hall"},
 		{"r": [0.925, 0.660, 0.055, 0.170], "name": "发电机", "hint": "全车电力·配给", "kind": "info", "rooms": "reactor + mess_hall"},
 		{"r": [0.792, 0.462, 0.152, 0.140], "name": "铺位", "hint": "睡眠·存档", "kind": "sleep", "rooms": "dormitory"},
@@ -61,11 +61,11 @@ const HOTSPOTS := {
 	"era2": [
 		{"r": [0.009, 0.140, 0.222, 0.530], "name": "驾驶室", "hint": "出击简报", "kind": "sortie"},
 		{"r": [0.244, 0.371, 0.146, 0.209], "name": "指挥电脑桌", "hint": "战术统计终端", "kind": "terminal", "rooms": "war_room + entry_hall"},
-		{"r": [0.284, 0.232, 0.106, 0.139], "name": "世界地图墙", "hint": "情报中心", "kind": "panel", "key": "intelligence", "rooms": "archive"},
-		{"r": [0.394, 0.267, 0.066, 0.348], "name": "补给售货机", "hint": "商店·势力", "kind": "panel", "key": "store", "rooms": "comms"},
-		{"r": [0.465, 0.244, 0.106, 0.220], "name": "卡牌展示墙", "hint": "背包·卡仓", "kind": "panel", "key": "backpack", "rooms": "dormitory（挂靠）"},
+		{"r": [0.284, 0.232, 0.106, 0.139], "name": "世界地图墙", "hint": "情报舱", "kind": "panel", "key": "intelligence", "rooms": "archive"},
+		{"r": [0.394, 0.267, 0.066, 0.348], "name": "补给售货机", "hint": "补给舱·联络台", "kind": "panel", "key": "store", "rooms": "comms"},
+		{"r": [0.465, 0.244, 0.106, 0.220], "name": "卡牌展示墙", "hint": "卡仓", "kind": "panel", "key": "backpack", "rooms": "dormitory（挂靠）"},
 		{"r": [0.580, 0.452, 0.128, 0.160], "name": "工具工作台", "hint": "改造·词条", "kind": "panel", "key": "modification", "rooms": "workshop"},
-		{"r": [0.700, 0.278, 0.040, 0.325], "name": "3D 打印机", "hint": "制造中心·卡仓", "kind": "panel", "key": "evolution", "rooms": "depot"},
+		{"r": [0.700, 0.278, 0.040, 0.325], "name": "3D 打印机", "hint": "制造舱·卡仓", "kind": "panel", "key": "evolution", "rooms": "depot"},
 		{"r": [0.447, 0.661, 0.036, 0.104], "name": "医疗柜", "hint": "医疗·配给", "kind": "info", "rooms": "medical + mess_hall"},
 		{"r": [0.918, 0.661, 0.070, 0.174], "name": "发电机", "hint": "全车电力·配给", "kind": "info", "rooms": "reactor + mess_hall"},
 		{"r": [0.780, 0.452, 0.141, 0.139], "name": "铺位", "hint": "睡眠·存档", "kind": "sleep", "rooms": "dormitory"},
@@ -74,11 +74,11 @@ const HOTSPOTS := {
 	"era3": [
 		{"r": [0.009, 0.357, 0.260, 0.430], "name": "驾驶室", "hint": "出击简报", "kind": "sortie"},
 		{"r": [0.264, 0.513, 0.123, 0.120], "name": "指挥雷达台", "hint": "战术统计终端", "kind": "terminal", "rooms": "war_room + entry_hall"},
-		{"r": [0.272, 0.403, 0.101, 0.110], "name": "世界地图屏", "hint": "情报中心", "kind": "panel", "key": "intelligence", "rooms": "archive"},
-		{"r": [0.431, 0.394, 0.044, 0.211], "name": "补给售货机", "hint": "商店·势力", "kind": "panel", "key": "store", "rooms": "comms"},
-		{"r": [0.584, 0.394, 0.097, 0.240], "name": "物资货架", "hint": "背包·卡仓", "kind": "panel", "key": "backpack", "rooms": "dormitory（挂靠）"},
+		{"r": [0.272, 0.403, 0.101, 0.110], "name": "世界地图屏", "hint": "情报舱", "kind": "panel", "key": "intelligence", "rooms": "archive"},
+		{"r": [0.431, 0.394, 0.044, 0.211], "name": "补给售货机", "hint": "补给舱·联络台", "kind": "panel", "key": "store", "rooms": "comms"},
+		{"r": [0.584, 0.394, 0.097, 0.240], "name": "物资货架", "hint": "卡仓", "kind": "panel", "key": "backpack", "rooms": "dormitory（挂靠）"},
 		{"r": [0.606, 0.632, 0.062, 0.100], "name": "工坊工具台", "hint": "改造·词条", "kind": "panel", "key": "modification", "rooms": "workshop"},
-		{"r": [0.677, 0.485, 0.053, 0.147], "name": "钻床打印机", "hint": "制造中心·卡仓", "kind": "panel", "key": "evolution", "rooms": "depot"},
+		{"r": [0.677, 0.485, 0.053, 0.147], "name": "钻床打印机", "hint": "制造舱·卡仓", "kind": "panel", "key": "evolution", "rooms": "depot"},
 		{"r": [0.479, 0.733, 0.048, 0.092], "name": "医疗柜", "hint": "医疗·配给", "kind": "info", "rooms": "medical + mess_hall"},
 		{"r": [0.844, 0.420, 0.060, 0.240], "name": "服务器机柜", "hint": "全车电力·配给", "kind": "info", "rooms": "reactor + mess_hall"},
 		{"r": [0.751, 0.550, 0.124, 0.100], "name": "铺位", "hint": "睡眠·存档", "kind": "sleep", "rooms": "dormitory"},
@@ -87,11 +87,11 @@ const HOTSPOTS := {
 	"era4": [
 		{"r": [0.009, 0.374, 0.200, 0.490], "name": "驾驶室", "hint": "出击简报", "kind": "sortie"},
 		{"r": [0.250, 0.545, 0.123, 0.160], "name": "全息指挥台", "hint": "战术统计终端", "kind": "terminal", "rooms": "war_room + entry_hall"},
-		{"r": [0.254, 0.417, 0.088, 0.139], "name": "全息地图墙", "hint": "情报中心", "kind": "panel", "key": "intelligence", "rooms": "archive"},
-		{"r": [0.818, 0.417, 0.050, 0.374], "name": "补给货架", "hint": "商店·势力", "kind": "panel", "key": "store", "rooms": "comms"},
-		{"r": [0.412, 0.449, 0.079, 0.257], "name": "卡牌展示墙", "hint": "背包·卡仓", "kind": "panel", "key": "backpack", "rooms": "dormitory（挂靠）"},
+		{"r": [0.254, 0.417, 0.088, 0.139], "name": "全息地图墙", "hint": "情报舱", "kind": "panel", "key": "intelligence", "rooms": "archive"},
+		{"r": [0.818, 0.417, 0.050, 0.374], "name": "补给货架", "hint": "补给舱·联络台", "kind": "panel", "key": "store", "rooms": "comms"},
+		{"r": [0.412, 0.449, 0.079, 0.257], "name": "卡牌展示墙", "hint": "卡仓", "kind": "panel", "key": "backpack", "rooms": "dormitory（挂靠）"},
 		{"r": [0.710, 0.587, 0.096, 0.180], "name": "机械臂工位", "hint": "改造·词条", "kind": "panel", "key": "modification", "rooms": "workshop"},
-		{"r": [0.727, 0.705, 0.066, 0.075], "name": "3D 打印机", "hint": "制造中心·卡仓", "kind": "panel", "key": "evolution", "rooms": "depot"},
+		{"r": [0.727, 0.705, 0.066, 0.075], "name": "3D 打印机", "hint": "制造舱·卡仓", "kind": "panel", "key": "evolution", "rooms": "depot"},
 		{"r": [0.438, 0.705, 0.053, 0.182], "name": "医疗冰箱", "hint": "医疗·配给", "kind": "info", "rooms": "medical + mess_hall"},
 		{"r": [0.692, 0.812, 0.190, 0.145], "name": "聚变缆线", "hint": "全车电力·配给", "kind": "info", "rooms": "reactor + mess_hall"},
 		{"r": [0.565, 0.652, 0.127, 0.150], "name": "铺位", "hint": "睡眠·存档", "kind": "sleep", "rooms": "dormitory"},
@@ -100,11 +100,11 @@ const HOTSPOTS := {
 	"era5": [
 		{"r": [0.017, 0.393, 0.190, 0.488], "name": "驾驶室", "hint": "出击简报", "kind": "sortie"},
 		{"r": [0.224, 0.552, 0.170, 0.170], "name": "全息指挥台", "hint": "战术统计终端", "kind": "terminal", "rooms": "war_room + entry_hall"},
-		{"r": [0.250, 0.435, 0.060, 0.117], "name": "全息地图投影", "hint": "情报中心", "kind": "panel", "key": "intelligence", "rooms": "archive"},
-		{"r": [0.392, 0.414, 0.047, 0.265], "name": "补给售货机", "hint": "商店·势力", "kind": "panel", "key": "store", "rooms": "comms"},
-		{"r": [0.444, 0.414, 0.112, 0.202], "name": "卡牌展示墙", "hint": "背包·卡仓", "kind": "panel", "key": "backpack", "rooms": "dormitory（挂靠）"},
+		{"r": [0.250, 0.435, 0.060, 0.117], "name": "全息地图投影", "hint": "情报舱", "kind": "panel", "key": "intelligence", "rooms": "archive"},
+		{"r": [0.392, 0.414, 0.047, 0.265], "name": "补给售货机", "hint": "补给舱·联络台", "kind": "panel", "key": "store", "rooms": "comms"},
+		{"r": [0.444, 0.414, 0.112, 0.202], "name": "卡牌展示墙", "hint": "卡仓", "kind": "panel", "key": "backpack", "rooms": "dormitory（挂靠）"},
 		{"r": [0.565, 0.488, 0.108, 0.190], "name": "相位机械臂", "hint": "改造·词条", "kind": "panel", "key": "modification", "rooms": "workshop"},
-		{"r": [0.596, 0.616, 0.060, 0.117], "name": "相位打印机", "hint": "制造中心·卡仓", "kind": "panel", "key": "evolution", "rooms": "depot"},
+		{"r": [0.596, 0.616, 0.060, 0.117], "name": "相位打印机", "hint": "制造舱·卡仓", "kind": "panel", "key": "evolution", "rooms": "depot"},
 		{"r": [0.255, 0.695, 0.040, 0.090], "name": "医疗柜", "hint": "医疗·配给", "kind": "info", "rooms": "medical + mess_hall"},
 		{"r": [0.695, 0.775, 0.115, 0.200], "name": "相位能源盘", "hint": "全车电力·配给", "kind": "info", "rooms": "reactor + mess_hall"},
 		{"r": [0.752, 0.672, 0.135, 0.165], "name": "铺位", "hint": "睡眠·存档", "kind": "sleep", "rooms": "dormitory"},
@@ -113,11 +113,11 @@ const HOTSPOTS := {
 }
 
 const PANEL_LABELS := {
-	"store": "商店面板 EMBEDDED_PANELS['store']",
-	"modification": "改造面板 EMBEDDED_PANELS['modification']",
-	"evolution": "制造中心（原 evolution_panel）EMBEDDED_PANELS['evolution']",
-	"backpack": "背包面板 EMBEDDED_PANELS['backpack']",
-	"intelligence": "情报中心 EMBEDDED_PANELS['intelligence']",
+	"store": "补给舱 EMBEDDED_PANELS['store']",
+	"modification": "改造舱 EMBEDDED_PANELS['modification']",
+	"evolution": "制造舱 EMBEDDED_PANELS['evolution']",
+	"backpack": "卡仓 EMBEDDED_PANELS['backpack']",
+	"intelligence": "情报舱 EMBEDDED_PANELS['intelligence']",
 }
 
 ## 与 bunker_main.EMBEDDED_PANELS 同源（只取本场景热区会用到的键；路径改动两处同步）
@@ -516,7 +516,7 @@ func _hotspot_tag(h: Dictionary) -> String:
 			return "睡觉"
 		"panel":
 			return {
-				"intelligence": "情报", "store": "商店", "backpack": "背包",
+				"intelligence": "情报", "store": "补给", "backpack": "卡仓",
 				"modification": "改造", "evolution": "制造",
 			}.get(String(h.get("key", "")), "工位")
 		_:

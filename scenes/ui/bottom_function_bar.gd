@@ -70,14 +70,14 @@ const BATTLE_BTN_ICON_BY_KEY: Dictionary = {
 }
 
 # 按钮配置：[key, 显示文字, 信号名]
-# v25.3 系统收敛（14→6）：战斗场景只保留战斗即时需要的功能——背包（换装）/成长（战前查养成）/
+# v25.3 系统收敛（14→6）：战斗场景只保留战斗即时需要的功能——卡仓（换装）/整备（战前查养成）/
 # 地图（选关主链路）/设置/存档/挂机。其余 8 个纯养成查册面板（势力/任务/商店/排行/情报/
 # 图鉴/成就/帮助）只留基地入口（bunker EMBEDDED_PANELS 全有同款），战斗屏不再为 15 个系统
-# 打广告。main.gd 的面板 handler/overlay 机制保留不动（成长中枢转发 modification/evolution
+# 打广告。main.gd 的面板 handler/overlay 机制保留不动（整备舱转发 modification/evolution
 # 仍依赖），仅移除按钮与热键两个入口。
 const BTN_CONFIGS: Array = [
-	["backpack",     "背包",   "btn_backpack_pressed"],
-	["progression",  "成长",   "btn_progression_pressed"],
+	["backpack",     "卡仓",   "btn_backpack_pressed"],
+	["progression",  "整备",   "btn_progression_pressed"],
 	["map",          "地图",   "btn_map_pressed"],
 	["settings",     "设置",   "btn_settings_pressed"],
 	["save",         "存档",   "btn_save_pressed"],
@@ -86,12 +86,12 @@ const BTN_CONFIGS: Array = [
 
 # 批次三 B8：左排面板按钮 tooltip 文案（含快捷键宣传；键位以 main.gd _input 为准）
 const SHORTCUT_TOOLTIPS: Dictionary = {
-	"backpack":     "背包：查看拥有的卡牌与实例（快捷键 1 / B）",
-	"progression":  "成长中枢：等级 / 改造 / 制造 / 技能树（快捷键 7）",
+	"backpack":     "卡仓：查看拥有的卡牌与实例（快捷键 1 / B）",
+	"progression":  "整备舱：等级 / 改造 / 制造 / 技能树（快捷键 7）",
 	"map":          "世界地图：选择关卡推进（快捷键 M）",
 	"settings":     "设置（快捷键 9）",
 	"save":         "手动存档",
-	"afk":          "挂机模式：自动部署刷资源",
+	"afk":          "自动哨戒：自动部署刷资源",
 }
 
 # 右侧战斗控制按钮（开始/暂停/撤退/返回）

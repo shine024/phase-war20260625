@@ -1062,7 +1062,7 @@ func _render_defeat_analysis(vbox: VBoxContainer) -> void:
 	var snap_kills: Dictionary = (res_snap.get("defeat_kills_by_type", {}) if res_snap is Dictionary else {})
 	var killed: Array = _format_type_counts(snap_kills) if not snap_kills.is_empty() else _kill_type_breakdown()
 	lines.append("· 本场击杀：" + ("、".join(killed) if not killed.is_empty() else "无"))
-	lines.append("· 情报：在情报中心把对应敌种情报推到 75%+ 可解锁弱点/抗性提示")
+	lines.append("· 情报：在情报舱把对应敌种情报推到 75%+ 可解锁弱点/抗性提示")
 	lines.append("· 整备：提升卡牌等级/改造/制造高品质卡后再战，或稍后用大招手动模式攒爆发打 Boss 波")
 	body.text = "\n".join(lines)
 	vbox.add_child(body)

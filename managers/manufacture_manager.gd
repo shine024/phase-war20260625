@@ -396,7 +396,7 @@ func craft_mod_blueprint_direct(mod_id: String) -> Dictionary:
 		BasicResourceManager.consume(String(rid), int(cost[rid]))
 	if not _grant_mod_blueprint(mod_id):
 		_refund(cost)
-		return {"ok": false, "reason_zh": "入包失败（背包异常）"}
+		return {"ok": false, "reason_zh": "入包失败（卡仓异常）"}
 	return {"ok": true, "reason_zh": "制造成功", "mod_id": mod_id}
 
 ## 开一次随机箱（从见过集合的 epic+ 池按稀有度加权 roll，含暗保底）。
@@ -411,7 +411,7 @@ func craft_mod_blueprint_random() -> Dictionary:
 	var mod_id := ModManufacture.roll_box_mod(get_mod_box_pool(), _mod_box_pity)
 	if mod_id.is_empty() or not _grant_mod_blueprint(mod_id):
 		_refund(cost)
-		return {"ok": false, "reason_zh": "入包失败（背包/随机池异常）"}
+		return {"ok": false, "reason_zh": "入包失败（卡仓/随机池异常）"}
 	# 暗保底记账：出 legendary+ 清零，否则 +1
 	var rolled_rarity := String(ModificationRegistry.get_data(mod_id).get("rarity", "epic"))
 	if ModManufacture.is_pity_reset_rarity(rolled_rarity):
