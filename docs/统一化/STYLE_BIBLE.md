@@ -3,7 +3,7 @@
 > 唯一权威源。任何生图（agnes/Flow）与资产修改动笔前先查本文档。
 > 挑定方向：〔B 末世工业·荒芜史诗 为主锚，缝合 D 的青色 rim-light 恒定规则〕
 > 依据：`docs/统一化/风格方向候选.md`（复审定稿 75604e2）· `resources/design_tokens.gd`（UI 色板唯一权威）· `tools/_agnes_image_api.md`（生图行为三轮实测）。2026-09-08 制定。
-> 适用资产域：卡图立绘 356 张（白底→透明管线，占 96%，最大战场）· 战场背景 · 序章漫画 11 格 · 相位仪徽章（1024×1024 深底纹章，6 阵营族）· 基地房间三图管线（5 时代 × 3 图）· 后续一切新增生图。
+> 适用资产域：卡图立绘 356 张（白底→透明管线，占 96%，最大战场）· 战场背景 · 序章漫画 12 格 · 相位仪徽章（1024×1024 深底纹章，6 阵营族）· 基地房间三图管线（5 时代 × 3 图）· 后续一切新增生图。
 > 串即法规：凡标〔卡图/场景/徽章〕的 prompt 片段只在其标注域内拼装，跨域拼装即违规（天空句进卡图串=灰天空=泛洪报废，此类事故见禁则章）。
 > 参考系：《Frostpunk》冷灰蓝雪原 × 暖橙炉火 ·《This War of Mine》炭笔渲染 ·《FTL》宏大叙事插画。
 > 修订：v2（2026-09-08）——新增第七章「资产分档标准」（A/B/C 三档判据 + rim 判定链前置总则）与附录三「首轮审计方案与盘点」（四类资产盘点实数 / 抽检密度 / 记录表模板 / 执行注意 / 产出物）。
@@ -122,7 +122,7 @@ plus one small warm amber glow from (muzzle flash / headlights / exhaust embers)
     无光效 rim——青色以发光勾线形式出现（现状纹章风全量保留，新徽章照此）。
     徽章域特例注（2026-09-08 质量审查裁决）：本条"无光效 rim"指徽章不吃卡图
     rim 三档——rim 三档只辖卡图域；徽章是 UI 发光体域，自身辉光
-    合法且是域语言，现图实况即霓虹辉光勾线（存量 189 张族图全为霓虹系），
+    合法且是域语言，现图实况即霓虹辉光勾线（存量 94 张族图全为霓虹系），
     新徽章听现图、域级特例维持系列统一（锚段与发光判据见第六章 6.4）。
 ```
 
@@ -186,7 +186,7 @@ blue-grey haze
 ### 媒介分资产
 
 - 卡图：厚涂 + 后处理颗粒，无描边。
-- 场景 / 漫画：厚涂 + 版画排线 + 颗粒（序章漫画 11 格已合规，零换血样板）。
+- 场景 / 漫画：厚涂 + 版画排线 + 颗粒（序章漫画 12 格已合规，零换血样板）。
 - 相位仪徽章：扁平矢量纹章风（深灰蓝底 + 青勾线 + 放射底纹）——**不套厚涂**，徽章是纹章语言不是插画语言。（2026-09-08 质量审查裁决修订：辉光载体听现图霓虹系——域级媒介特例见章二徽章注与 6.4；"放射底纹"描述与现图不符，自此以 6.4 锚段为准。）
 - 基地房间：厚涂 + 颗粒（三图管线 v3 prompt 骨架不变，换本章场景串风格词重跑）。
 
@@ -454,7 +454,7 @@ text, perspective view, frame, ground, ceiling
 
 ### 6.3 序章漫画（FLOW 主路，1280×720，prompt ≤900 字）
 
-**待生成清单**（源 `docs/开场文本.md`；缺图自动退化程序化画格）：`b6_black_gates` / `b7_deep_voyage` / `b8_sacrifice`（⚠️ 格 id 为 b8_departure、贴图文件名为 b8_sacrifice.png，落盘以数据文件为准）/ `b10_rift_stream`，落 `assets/intro/comic/`，1280×720；另有雪原醒来大图 `assets/intro/wakeup_snowfield.png`。旁白内容真源：`data/intro_comic_panels.gd`。**五图已于 2026-09-07 批次生成在位（文件已核实）——本节降格为重生成/复核模板：任何重生前先按本节自检 5 问复核现状图，合格即不重生**（与"现状 11 格已合规零换血"口径一致）。
+**待生成清单**（源 `docs/开场文本.md`；缺图自动退化程序化画格）：`b6_black_gates` / `b7_deep_voyage` / `b8_sacrifice`（⚠️ 格 id 为 b8_departure、贴图文件名为 b8_sacrifice.png，落盘以数据文件为准）/ `b10_rift_stream`，落 `assets/intro/comic/`，1280×720；另有雪原醒来大图 `assets/intro/wakeup_snowfield.png`。旁白内容真源：`data/intro_comic_panels.gd`。**五图已于 2026-09-07 批次生成在位（文件已核实）——本节降格为重生成/复核模板：任何重生前先按本节自检 5 问复核现状图，合格即不重生**（与"现状 12 格已合规零换血"口径一致）。
 
 **FLOW 特殊约束**（与 agnes 是两套行为模型，本节注记不适用于 agnes、反之亦然——源 AGENTS.md FLOW 节）：
 
@@ -464,7 +464,7 @@ text, perspective view, frame, ground, ceiling
 - 原生 1376×768 → PIL aspect-fill 裁 1280×720。
 - flow-mcp（labs.google 直调）已死（2026-09-05 站点迁移后），只走 `docs/基地重设计/flow_edit_tool.py` 网页自动化。
 
-**模板拼装**（每格）：一格一个视觉焦点（第四章漫画格条款）｜媒介=厚涂+版画排线+颗粒（第三章；现状 11 格已合规零换血）｜rim 不开（漫画格属场景族，第二章）｜一图一冷暖对撞（第一章；b6"暖橙火光×冷紫门光"即合规样板）｜内容锚以旁白为真源——四格场景句可参考 agnes 备路 `tools/generate_intro_shenhua.py` 已写好的 Scene 段直接移植（那是 agnes 管线产物，移植到 FLOW 只保留内容描述，行为约束换用本节）。
+**模板拼装**（每格）：一格一个视觉焦点（第四章漫画格条款）｜媒介=厚涂+版画排线+颗粒（第三章；现状 12 格已合规零换血）｜rim 不开（漫画格属场景族，第二章）｜一图一冷暖对撞（第一章；b6"暖橙火光×冷紫门光"即合规样板）｜内容锚以旁白为真源——四格场景句可参考 agnes 备路 `tools/generate_intro_shenhua.py` 已写好的 Scene 段直接移植（那是 agnes 管线产物，移植到 FLOW 只保留内容描述，行为约束换用本节）。
 
 负面栏（沿用 shenhua 先例的域结构性扩展）：`text, watermark, signature, frame, border, comic panel grid, split panels`（防整图退化成多格漫画网格——结构性排除，非概念否定）。FLOW 无独立负面栏字段——负面词以 `Avoid: …` 尾缀并入 prompt 正文（`generate_intro_shenhua.py` L190 先例同法：`风格串 + 场景句 + "Avoid: " + 负面串`）。
 
@@ -490,7 +490,7 @@ text, perspective view, frame, ground, ceiling
 
 （串内「霓虹发光勾线与能量光晕」为族先例措辞。）
 
-**媒介特例裁决（2026-09-08 质量审查）**：徽章域媒介**听现图**——存量 189 张族图全为霓虹辉光系（pi_aegis_01 等实看 + umbra / gen_missing_instruments_32 先例脚本皆写"霓虹发光轮廓与能量光晕"），域级特例维持系列统一；章二"无光效 rim"指徽章不吃卡图 rim 三档（rim 三档只辖卡图/场景写实体域），非禁徽章自身发光——徽章是 UI 发光体域。末句"无文字无水印无logo"为徽章域实测先例措辞（2026-08-23 影幕系列未触发反激活），其余域不得效仿——概念否定仍按禁则 2 只走结构性负面栏；厚涂/照片写实仍为规范判定语，不写进串。
+**媒介特例裁决（2026-09-08 质量审查）**：徽章域媒介**听现图**——存量 94 张族图全为霓虹辉光系（pi_aegis_01 等实看 + umbra / gen_missing_instruments_32 先例脚本皆写"霓虹发光轮廓与能量光晕"），域级特例维持系列统一；章二"无光效 rim"指徽章不吃卡图 rim 三档（rim 三档只辖卡图/场景写实体域），非禁徽章自身发光——徽章是 UI 发光体域。末句"无文字无水印无logo"为徽章域实测先例措辞（2026-08-23 影幕系列未触发反激活），其余域不得效仿——概念否定仍按禁则 2 只走结构性负面栏；厚涂/照片写实仍为规范判定语，不写进串。
 
 **按族变体段**（6 族，既有图源 `assets/ui/instruments/pi_*.png`）：aegis / helix / nova / iron / umbra / eon 各有既系列——**生成前先开同族 3~5 张现有图对照，勾线主色与氛围句以族内既有系列为准**（umbra=黑门紫系粉紫勾线，先例 `tools/generate_umbra_instruments_4.py`；其余族以现有 pi_* 图实测取色，不凭记忆写）。umbra 族变体句（替换锚段默认深底渐变句，对齐先例原文）：`深紫黑色径向渐变背景`。主体意象句先例写法：单一主体 + 一句功能意象 + 族氛围句（如"一柄悬浮的虚空匕首……体现『一击薄刃』的隐秘锋锐感"）。传奇 r_ 系列为 128×128 小图——同管线生成后缩放部署。
 
@@ -635,7 +635,7 @@ text, perspective view, frame, ground, ceiling
 |--------|------|------|---------|
 | 卡图立绘 | `assets/card_icons/` | **356**（player 178 + enemy 178） | 独立单位 ID 178 个，enemy 为镜像副本（第四章口径）；`_thumb256/` / `_thumb384/` 各 356 张为缩略图副本、`bak_fix6_card/` 2 张为备份——均不计入审计对象。与宪法口径 356 吻合 |
 | 战场背景 | `assets/backgrounds/` | **108** = FMT 域 100 + 非 FMT 8 | FMT 域 = `bg_level_01` ~ `bg_level_100`（`LEVEL_BG_PATH_FMT` 辖域）。非 FMT 8 张仍被引用：`bg_01/02/03`（旧命名）、`bg_default`（回退图）、`bg_endless_gate_t0~2`（无尽门演出）、`title_bg` |
-| 序章漫画 | `assets/intro/` | 在用 **16**（12 格真图 + wakeup 3 + battle_bg 1）；另 3 张未引用 | 数据真源 `data/intro_comic_panels.gd` 现为 **12 格**（宪法 header"11 格"为制定时快照，`b11_comrades` 系后增、复用 `b7_comrades.png`）。格 id ≠ 文件名两例：`b2c_too_late`→`b2c_hope.png`、`b8_departure`→`b8_sacrifice.png`。五图（`b6_black_gates` / `b7_deep_voyage` / `b8_sacrifice` / `b10_rift_stream` + `wakeup_snowfield`）2026-09-07 批次已生成在位。未引用 3 张：`b3_future_self` / `b4_overlap` / `b8_timeline`（弃图，登记清理项、不审） |
+| 序章漫画 | `assets/intro/` | 在用 **16**（12 格真图 + wakeup 3 + battle_bg 1）；另 3 张未引用 | 数据真源 `data/intro_comic_panels.gd` 现为 **12 格**（宪法 header 原"11 格"系制定时快照、已随本勘误同步改为 12；`b11_comrades` 系后增、复用 `b7_comrades.png`）。格 id ≠ 文件名两例：`b2c_too_late`→`b2c_hope.png`、`b8_departure`→`b8_sacrifice.png`。五图（`b6_black_gates` / `b7_deep_voyage` / `b8_sacrifice` / `b10_rift_stream` + `wakeup_snowfield`）2026-09-07 批次已生成在位。未引用 3 张：`b3_future_self` / `b4_overlap` / `b8_timeline`（弃图，登记清理项、不审） |
 | 相位仪徽章 | `assets/ui/instruments/` | **94**（`pi_*.png`） | ⚠️ 宪法正文"存量 189 张"系 `ls` 全行数误计（94 png + 94 `.import` 元数据 + 1 个 `_thumb128` 目录行 = 189），png 实数 **94**（`_thumb128/` 68 张缩略图不计）。6 阵营族实数 22 张：aegis 4 / helix 4 / nova 4 / iron 3 / umbra 4 / eon 3；其余 72 张 = generic 12 · 元素系 20（void / thunder / steel / flame 各 5）· atlas 4 · 组合词 4 · special 4 · r_ 传奇 14 · 功能图标 14 |
 
 ### 2. 抽检密度规则
@@ -675,6 +675,8 @@ text, perspective view, frame, ground, ceiling
 ### 5. 产出物
 
 `docs/统一化/资产分档审计-2026-09-08.md`——下一棒按第 3 节模板产出。文件头固定三行：盘点口径引自本附录三 ｜ 实际抽中的完整路径清单随文附上 ｜ rim 判定链名单状态（已定稿 / 附人工复核清单）。
+
+**豁免注**：首轮抽样审计在 rim 名单定稿前执行（2026-09-08），36 张卡图按第二章判定链现场逐张判定，存疑项 7 项登记人工复核清单（见审计报告）；名单定稿后（批次④前）须对账回补。
 
 ---
 
