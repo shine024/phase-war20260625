@@ -1447,6 +1447,9 @@ func _build_retreat_confirm_dialog() -> Control:
 		_retreat_confirm = null
 	confirm_btn.pressed.connect(func():
 		close.call()
+		# 批次③ Task 2：撤退叙事标记——结算面板取撤退池而非失败池（一次性 meta，
+		# mvp_panel 消费后清除；battle_ended 信号协议不动，只加 meta）
+		Engine.set_meta("battle_retreated", true)
 		# 判定战斗失败，走正常结算流程（battle_ended(false) → GameManager 失败结算）
 		if BattleManager != null and BattleManager.has_method("end_battle"):
 			BattleManager.end_battle(false)

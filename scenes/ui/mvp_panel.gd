@@ -27,8 +27,32 @@ const PanelStyles = preload("res://scripts/ui/panel_styles.gd")   # v23.6.1 按�
 const DefaultCards = preload("res://data/default_cards.gd")
 const FormatUtil = preload("res://scripts/ui/format_util.gd")
 const BunkerRoomDefs = preload("res://data/bunker_room_defs.gd")   # v22.4 要塞反馈行
+const EnemyPhaseMasters = preload("res://data/enemy_phase_masters.gd")   # 批次③ T2 败仗英雄名
 
 signal result_confirmed(player_won: bool)
+
+## ── 批次③ Task 2：结算战报体文案池（军语克制体，零数值虚构、零运营腔）──
+## 胜利 4 句 / 失败 3 句 / 撤退 3 句，按结果态取池随机轮换。
+const BANNER_LINES_VICTORY: Array[String] = [
+	"阵地拿下。车轮继续向前。",
+	"这一仗打完了。下一处坐标已经标好。",
+	"枪声停了。路还在。",
+	"守住的就是阵地。继续开进。",
+]
+const BANNER_LINES_DEFEAT: Array[String] = [
+	"阵地没守住。收拢队伍，清点损失。",
+	"这一仗输了。输账记下，下次讨回。",
+	"战线退了一步。人还在，就还有下一仗。",
+]
+const BANNER_LINES_RETREAT: Array[String] = [
+	"车队脱离接触。装备点清，人员归位。",
+	"今天不在这里打。会有更合适的地方。",
+	"保存力量不是丢掉阵地，是把它记在账上。",
+]
+## 撤退标记：main.gd 撤退确认链写入，本面板一次性消费（防串到下一场败仗）
+const META_RETREATED := "battle_retreated"
+## 败仗低概率挂一位牺牲相位师名字（找同伴主旨；名册同 hero_archive 30 位）
+const HERO_LINE_CHANCE := 0.25
 
 ## v22.4（P0-2）：从基地出击时，结算面板提供"返回基地"直达按钮
 var _bunker_return_available := false
@@ -57,6 +81,9 @@ var _reward_summary: Dictionary = {}
 var _is_afk: bool = false
 # 星级 Label 引用，供逐个亮起动画使用
 var _star_lbl: Label = null
+# 批次③ T2：横幅叙事落档（冒烟断言用）——title=「胜利/失败/撤退」文案，desc=战报体正文
+var last_banner_title: String = ""
+var last_banner_text: String = ""
 
 
 func _ready() -> void:
@@ -189,6 +216,13 @@ func _build() -> void:
 # =========================================================================
 
 func _render_victory_banner(vbox: VBoxContainer) -> void:
+	# 批次③ Task 2：三态叙事——胜利池 / 撤退池（meta 一次性消费）/ 失败池；
+	# 撤退标题不复用「失败」红字，走中性色，避免"撤退被判失败"的文案打架。
+	var retreated := false
+	if not player_won:
+		retreated = Engine.has_meta(META_RETREATED)
+		if retreated:
+			Engine.remove_meta(META_RETREATED)
 	# 战绩横幅（大标题）
 	var title := Label.new()
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -197,21 +231,56 @@ func _render_victory_banner(vbox: VBoxContainer) -> void:
 		title.text = "✓ 胜  利"
 		title_ls.font_color = DT.COLOR_GOLD
 		title_ls.font_size = DT.FONT_SIZE_HUGE
+		last_banner_title = "胜利"
+	elif retreated:
+		title.text = "✕ 撤  退"
+		title_ls.font_color = DT.COLOR_TEXT_BRIGHT
+		title_ls.font_size = DT.FONT_SIZE_TITLE
+		last_banner_title = "撤退"
 	else:
 		title.text = "✗ 失  败"
 		title_ls.font_color = Color(1, 0.3, 0.3, 1)
 		title_ls.font_size = DT.FONT_SIZE_TITLE
+		last_banner_title = "失败"
 	title_ls.outline_color = Color(0, 0, 0, 0.85)
 	title_ls.outline_size = 4
 	title.label_settings = title_ls
 	vbox.add_child(title)
-	# 副标题描述
+	# 副标题描述（战报体轮换池；败仗低概率挂牺牲相位师名）
 	var desc := Label.new()
 	desc.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	desc.text = "阵地已夺取。车队向前。" if player_won else "阵地失守。重新整备后再战。"
+	var pool: Array = BANNER_LINES_VICTORY if player_won else (
+		BANNER_LINES_RETREAT if retreated else BANNER_LINES_DEFEAT)
+	desc.text = _pick_banner_line(pool)
+	if not player_won and not retreated:
+		var hero_line := _render_field_report()
+		if hero_line != "":
+			desc.text += "\n" + hero_line
 	desc.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
 	desc.add_theme_color_override("font_color", DT.COLOR_TEXT_BRIGHT)
 	vbox.add_child(desc)
+	last_banner_text = desc.text
+
+
+## 批次③ Task 2：战报体取句（池内随机轮换）
+func _pick_banner_line(pool: Array) -> String:
+	if pool.is_empty():
+		return ""
+	return String(pool[randi() % pool.size()])
+
+
+## 批次③ Task 2：败仗专属叙事段——低概率记下一位牺牲相位师的名字（找同伴主旨）。
+## 撤退态不挂（人没牺牲，只是离开）；名册取不到时静默降级为无此行。
+func _render_field_report() -> String:
+	if randf() >= HERO_LINE_CHANCE:
+		return ""
+	var masters: Array = EnemyPhaseMasters.ENEMY_MASTERS
+	if masters.is_empty():
+		return ""
+	var hero_name := String(masters[randi() % masters.size()].get("name", ""))
+	if hero_name.is_empty():
+		return ""
+	return "记下这个名字：%s。" % hero_name
 
 
 func _render_battle_stats(vbox: VBoxContainer) -> void:

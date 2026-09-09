@@ -34,6 +34,9 @@ func _sortie_report_lines() -> Array[String]:
 ## 执行战斗开始序列
 func run_start_battle_sequence() -> void:
 	main._play_sfx("button")
+	# 批次③ Task 2：清掉上一场可能未消费的撤退标记（防串场——撤退 meta 只该
+	# 影响它自己那场的结算面板）
+	Engine.remove_meta("battle_retreated")
 	# 批次③ Task 1：出征过场拍点（裁决 A2 黑屏战报）。meta 由出征入口写入
 	# （truck_base._launch_battle / world_map._enter_level_from_popup），此处一次性消费——
 	# 挂机推图（afk_mode_manager 复用本函数）与教程首战不带 meta，不触发。过场只是
