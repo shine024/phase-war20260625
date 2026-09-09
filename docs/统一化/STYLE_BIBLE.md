@@ -454,6 +454,8 @@ text, perspective view, frame, ground, ceiling
 
 ### 6.3 序章漫画（FLOW 主路，1280×720，prompt ≤900 字）
 
+> **画框规范（用户裁决 2026-09-09「现代感」）**：序章漫画全部格统一**全出血无框**——格内不得烙黑边框/白色装裱框/上下遮幅；存量带框格（b8 遮幅、b2c 白装裱）已裁除并 aspect-fill 回 1280×720。生图 prompt 不得要求任何画框元素；审计『漫画格黑边框』类措辞自此废止。
+
 **待生成清单**（源 `docs/开场文本.md`；缺图自动退化程序化画格）：`b6_black_gates` / `b7_deep_voyage` / `b8_sacrifice`（⚠️ 格 id 为 b8_departure、贴图文件名为 b8_sacrifice.png，落盘以数据文件为准）/ `b10_rift_stream`，落 `assets/intro/comic/`，1280×720；另有雪原醒来大图 `assets/intro/wakeup_snowfield.png`。旁白内容真源：`data/intro_comic_panels.gd`。**五图已于 2026-09-07 批次生成在位（文件已核实）——本节降格为重生成/复核模板：任何重生前先按本节自检 5 问复核现状图，合格即不重生**（与"现状 12 格已合规零换血"口径一致）。
 
 **FLOW 特殊约束**（与 agnes 是两套行为模型，本节注记不适用于 agnes、反之亦然——源 AGENTS.md FLOW 节）：
