@@ -59,10 +59,63 @@ var tutorial_data: Dictionary = {}
 
 signal tutorial_step_changed(new_step: TutorialStep)
 ## tutorial_completed 已迁移至 SignalBus: SignalBus.tutorial_completed(tutorial_id)
+## 批次③ Task 5：按需点播请求——链暂停期间玩家首次触达对应面板时，主场景据此拉起 overlay
+signal overlay_requested
+
+## 批次③ Task 5：首战后 10 屏按需点播开关。true=连讲暂停，玩家首次打开对应面板才
+## 播当前步（见 notify_surface_opened）；战斗结束续播链（main.gd）据此不再整段倾倒。
+var chain_paused: bool = false
+
+## 步骤 → 首次触达面板键（与 truck_base._open_panel 键名 + main toggle 键对齐）
+const SURFACE_FOR_STEP: Dictionary = {
+	TutorialStep.TRUCK_BASE: "truck_base",
+	TutorialStep.ENHANCEMENT: "growth",
+	TutorialStep.MODIFICATION: "modification",
+	TutorialStep.RUNES: "backpack",
+	TutorialStep.EVOLUTION: "evolution",
+	TutorialStep.FACTION_REP: "faction",
+	TutorialStep.SHOP: "store",
+	TutorialStep.WORLD_MAP: "world_map",
+	TutorialStep.PHASE_FIELD_POINTS: "phase_instrument",
+}
 
 func _ready() -> void:
 	pass  # SaveManager会自动调用load_state
 	_initialize_tutorial_data()
+
+## ── 批次③ Task 5 A4：教程行动验证化（三处实操门）──────────────────
+## 装配（绿槽非空）/符文（starter 符文在槽）/相位场加点（真分过点）。
+## 管理器不可达或字段缺失时一律放行（fail-open：门只是引导，不卡死流程）。
+func _step_gate_blocked(step: TutorialStep) -> bool:
+	var pim: Node = get_node_or_null("/root/PhaseInstrumentManager")
+	if pim == null:
+		return false
+	match step:
+		TutorialStep.PHASE_INSTRUMENT:
+			# 绿槽至少装备 1 张战斗卡
+			if pim.has_method("get_loadouts"):
+				return (pim.get_loadouts() as Array).is_empty()
+		TutorialStep.RUNES:
+			# 符文槽至少装 1 枚符文（starter 发放后需玩家自行装配）
+			var slots: Array = pim.get("_rune_slots") if "_rune_slots" in pim else []
+			for s in slots:
+				if s != null and str(s) != "":
+					return false
+			return true
+		TutorialStep.PHASE_FIELD_POINTS:
+			# 至少真分过 1 点（phase_field_allocations 非空）
+			if pim.has_method("get_phase_field_allocations"):
+				return (pim.get_phase_field_allocations() as Dictionary).is_empty()
+	return false
+
+## 按需点播：面板打开时由 main/truck_base 调用。链暂停中且面板与当前步匹配才放行一次。
+func notify_surface_opened(surface_key: String) -> void:
+	if not chain_paused or not should_show_tutorial():
+		return
+	if String(SURFACE_FOR_STEP.get(current_step, "")) != surface_key:
+		return
+	chain_paused = false
+	overlay_requested.emit()
 
 ## 初始化教程数据（每步：标题/描述/要点/按钮文案/动作目标/高亮元素）
 func _initialize_tutorial_data() -> void:
@@ -192,13 +245,19 @@ func get_tutorial_content() -> Dictionary:
 	return tutorial_data.get(current_step, {})
 
 ## 完成当前教程步骤（v3：沿 STEP_ORDER 推进——首战提前后枚举值不再连续递增）
+## 批次③ Task 5 A4：三处实操门（装配/符文/加点）不满足时拒绝推进并 toast 反馈。
 func complete_current_step() -> void:
+	if _step_gate_blocked(current_step):
+		SignalBus.show_toast.emit("先按引导完成这一步的实际操作，再继续")
+		return
 	if not completed_steps.has(current_step):
 		completed_steps.append(current_step)
 
 	var idx: int = STEP_ORDER.find(current_step)
 	if idx >= 0 and idx + 1 < STEP_ORDER.size():
 		current_step = STEP_ORDER[idx + 1] as TutorialStep
+		# 批次③ Task 5：首战打完进入战后续播段——连讲暂停，改面板首触时点播
+		chain_paused = SURFACE_FOR_STEP.has(current_step)
 		tutorial_step_changed.emit(current_step)
 
 		if current_step == TutorialStep.FREEDOM_MODE:
@@ -214,6 +273,7 @@ func is_past_first_battle() -> bool:
 ## 跳过教程
 func skip_tutorial() -> void:
 	current_step = TutorialStep.FREEDOM_MODE
+	chain_paused = false
 	SignalBus.tutorial_completed.emit("")
 	# v26.6 批4b: 补反馈链（与正常完成路径一致）
 	SignalBus.show_toast.emit("🎓 教学完成，自由模式已解锁")
@@ -222,6 +282,7 @@ func skip_tutorial() -> void:
 func reset_tutorial() -> void:
 	current_step = TutorialStep.NONE
 	completed_steps.clear()
+	chain_paused = false
 
 ## 获取教程进度
 func get_tutorial_progress() -> Dictionary:

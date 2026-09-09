@@ -151,6 +151,11 @@ func _ready() -> void:
 			SignalBus.toggle_store.connect(_on_toggle_store_from_tutorial)
 		if SignalBus.has_signal("toggle_world_map") and not SignalBus.toggle_world_map.is_connected(_on_toggle_world_map_from_tutorial):
 			SignalBus.toggle_world_map.connect(_on_toggle_world_map_from_tutorial)
+		# 批次③ Task 5：按需点播——链暂停中玩家首次触达对应面板时拉起教程覆盖层
+		var _tpm := get_node_or_null("/root/TutorialProgressionManager")
+		if _tpm != null and _tpm.has_signal("overlay_requested") \
+				and not _tpm.overlay_requested.is_connected(_show_tutorial_overlay):
+			_tpm.overlay_requested.connect(_show_tutorial_overlay)
 		if SignalBus.has_signal("open_phase_field_points") and not SignalBus.open_phase_field_points.is_connected(_on_open_phase_field_from_tutorial):
 			SignalBus.open_phase_field_points.connect(_on_open_phase_field_from_tutorial)
 		# v20.31: start_level（教程第 7 步"开始首战"）此前零消费方——按钮点击后无任何
@@ -441,6 +446,10 @@ func _open_overlay(overlay: Control, panel_key: String = "") -> void:
 	_ensure_lazy_panel(panel_key)
 	if DEBUG_MAIN_LOG:
 		print("[Main] _open_overlay: showing overlay for key=", panel_key)
+	# 批次③ Task 5：教程按需点播触达面（面板首触 = 打开动作）
+	var _tpm2 := get_node_or_null("/root/TutorialProgressionManager")
+	if _tpm2 != null and _tpm2.has_method("notify_surface_opened"):
+		_tpm2.notify_surface_opened(panel_key)
 	# 先显示，再fade in（v25 UI：开合过渡见 _animate_overlay_in/out，尊重减少动效）
 	overlay.visible = true
 	_animate_overlay_in(overlay)
@@ -1705,6 +1714,10 @@ func _open_phase_instrument_selector() -> void:
 	for c in popup_layer.get_children():
 		if c.is_in_group("phase_instrument_selector"):
 			return
+	# 批次③ Task 5：教程按需点播触达面（相位场加点步）
+	var _tpm3 := get_node_or_null("/root/TutorialProgressionManager")
+	if _tpm3 != null and _tpm3.has_method("notify_surface_opened"):
+		_tpm3.notify_surface_opened("phase_instrument")
 	# 使用普通 Control 全屏遮罩，避免 Window/AcceptDialog 在 CanvasLayer 下无法显示
 	popup_layer.add_child(selector)
 	selector.instrument_selected.connect(_on_phase_selector_selected.bind(selector))
@@ -1784,6 +1797,9 @@ func _on_battle_ended_resume_tutorial(_player_won: bool) -> void:
 	if tm.has_method("is_past_first_battle"):
 		if not tm.is_past_first_battle():
 			return
+	# 批次③ Task 5：按需点播段（链暂停）不再战后整段续播——等面板首触
+	if tm.get("chain_paused"):
+		return
 	elif not ("current_step" in tm) or int(tm.current_step) < 8:
 		return
 	# 战斗结束瞬间结算面板/场景切换仍在进行，延迟到界面稳定后再弹出
