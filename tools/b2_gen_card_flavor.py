@@ -66,6 +66,7 @@ RE_CARD_ERA = re.compile(r'"era"\s*:\s*(\d+)')
 RE_CARD_KIND = re.compile(r'"combat_kind"\s*:\s*(\d+)')
 RE_CARD_TIER = re.compile(r"Tier\.([A-Z]+)")
 RE_CARD_ENEMY = re.compile(r'"enemy_only"\s*:\s*true')
+RE_CARD_TAGS = re.compile(r'"tags"\s*:\s*\[([^\]]*)\]')
 
 # ── 模板矩阵：时代 × 兵种 → 战术短句（军语克制体；基调锚＝样例 1「堑壕近战中泼洒弹幕」）──
 TACTIC_MATRIX: dict[int, dict[int, str]] = {
@@ -115,6 +116,20 @@ TACTIC_MATRIX: dict[int, dict[int, str]] = {
 
 # 兵种自称（样例 1「本班原型为…」句式）
 KIND_NOUN = {0: "班", 1: "车", 2: "组", 3: "机", 4: "阵地"}
+
+# ── 支援保障类战术句（Task 8 修正：救护/补给/抢修/中继/雷达/工兵类卡不得套战斗句——
+#    「救护车被『交叉火力封锁阵地』」「纳米修复车被『定向能持续压制』」式错位）。
+#    识别源 = UCT tags（medic/supply/repair/relay）＋ card_id/名称/武器关键词，
+#    命中即整句替换 TACTIC_MATRIX 战术短句。关键词已对全 UCT display_name/weapon_label
+#    核对，无误伤（「雷达」另中 cold_fort_radar 工事——语境成立，属改善）。──
+CARE_RULES: list[tuple[tuple[str, ...], str]] = [
+    (("medic", "救护", "医疗"), "战地救护，后送伤员"),
+    (("supply", "补给"), "输送弹药油料，维系前线补给"),
+    (("repair", "抢修", "修复"), "伴随战线抢修战损单位"),
+    (("relay", "中继"), "沿战线架设，接力指挥信号"),
+    (("雷达",), "警戒空情，引导火力"),
+    (("工兵",), "破障开路，抢修工事"),
+]
 
 # 星冥缴获语境式（样例 3 逐字锚）
 XENO_FLAVOR = "黑门内缴获。星冥构装，无从考据其原型。"
@@ -170,6 +185,7 @@ def parse_uct() -> list[dict]:
             "kind": int(_g(RE_CARD_KIND, -1)),
             "tier": _g(RE_CARD_TIER, ""),
             "enemy": bool(RE_CARD_ENEMY.search(chunk)),
+            "tags": _g(RE_CARD_TAGS, "") or "",
         })
     return rows
 
@@ -190,23 +206,41 @@ CN_REALNAME_ROOTS = (
     "暴风突击队", "谢尔曼",
 )
 
-# 建制后缀（display_name 兜底作原型词时剥去，避免「原型为汤普森班」式拗口）
-RE_UNIT_SUFFIX = re.compile(r"(班|组|巢|排|连|营|队|车|机|群|阵地|要塞级)$")
+# 建制后缀（display_name 兜底作原型词时剥去，避免「原型为汤普森班」式拗口；
+# 「小组」置前——交替序保证先匹配长词，否则「EA-18G 电子战小组」剥「组」留「小」截断）
+RE_UNIT_SUFFIX = re.compile(r"(班|小组|组|巢|排|连|营|队|车|机|群|阵地|要塞级)$")
+# 「·」段中的档位/阵营/时代后缀——非实名载体。不跳过则「米格-29·Boss」的原型词
+# 会因 Latin 匹配落到「Boss」上（Task 8 抽查实测），「xxx·精锐/敌方/改/一战」同理。
+RE_DOT_SKIP = re.compile(r"^(精锐|Boss|敌方|改|一战|二战|冷战|现代|近未来|原型|量产|终极|头目)$")
 
 
 def _strip_unit_suffix(name: str) -> str:
     return RE_UNIT_SUFFIX.sub("", name.strip())
 
 
+def _is_real_seg(seg: str) -> bool:
+    """段含实名（拉丁/数字）或中译实名词根，且非档位/阵营后缀。"""
+    if not seg or RE_DOT_SKIP.match(seg):
+        return False
+    return bool(re.search(r"[A-Za-z0-9]", seg) or any(r in seg for r in CN_REALNAME_ROOTS))
+
+
 def _display_proto(name: str) -> str:
     """display_name 兜底作原型词：剥建制后缀；敌卡「步兵班·MP18」式复合名取
-    含实名（拉丁/数字或中译词根）的「·」段——两段皆无实名则保留全名交人工判。"""
+    含实名（拉丁/数字或中译词根）的「·」段；第二段起皆无实名时回退首段
+    （「米格-29·Boss」式——首段本身即实名）；全无实名时剔除档位/阵营后缀段
+    后拼接（「指挥中枢·Boss」→「指挥中枢」——「·Boss」尾段非实名载体不得入句）。"""
     s = name.strip()
     if "·" in s:
         segs = [RE_UNIT_SUFFIX.sub("", seg.strip()) for seg in s.split("·")]
         for seg in segs[1:]:  # 首段多为兵种/建制前缀，从第二段起找实名
-            if seg and (re.search(r"[A-Za-z0-9]", seg) or any(r in seg for r in CN_REALNAME_ROOTS)):
+            if _is_real_seg(seg):
                 return seg
+        if _is_real_seg(segs[0]):
+            return segs[0]
+        kept = [seg for seg in segs if not RE_DOT_SKIP.match(seg)]
+        if kept:
+            return "·".join(kept)
     return RE_UNIT_SUFFIX.sub("", s)
 
 
@@ -228,7 +262,20 @@ def _weapon_of(card: dict) -> str:
 
 
 def _tactic(card: dict) -> str:
+    care = _care_tactic(card)
+    if care:
+        return care
     return TACTIC_MATRIX.get(card["era"], TACTIC_MATRIX[0]).get(card["kind"], "列阵接战")
+
+
+def _care_tactic(card: dict) -> str | None:
+    """支援保障类战术句命中（CARE_RULES）；匹配域 = tags + card_id + 名称 + 武器串。"""
+    hay = " ".join((card.get("tags", ""), card["id"], card["name"],
+                    card["wlabel"], card["w_light"]))
+    for keys, tactic in CARE_RULES:
+        if any(k in hay for k in keys):
+            return tactic
+    return None
 
 
 def _glue(prefix: str, token: str) -> str:
@@ -257,7 +304,8 @@ def make_flavor(card: dict) -> str:
         s = _glue(f"本{noun}原型为", weapon) + "，" + tactic
         return s + "。" if tier == "GRUNT" else s + "，久经战阵。"
     if tier == "ELITE":
-        return f"{era_w}战线拣选的老兵骨干。" + _glue("原型为", weapon) + f"，{tactic}。"
+        # 兵种自适应骨干词（Task 8 抽查修正：装甲/空中单位套「老兵骨干」错位）
+        return f"{era_w}战线拣选的精锐{noun}。" + _glue("原型为", weapon) + f"，{tactic}。"
     if tier == "CHAMPION":
         return (f"{era_w}战线拣选的先锋{noun}。" + _glue("原型为", weapon)
                 + f"，{tactic}，火力与耐久同步强化。")
@@ -279,9 +327,11 @@ def _dedupe(flavors: dict[str, str], cards: list[dict]) -> int:
             seen[base] = c["id"]
             continue
         variants = []
-        if c["w_armor"].strip():
+        # 武器串已在句中出现则跳过该变体（Task 8 抽查修正：「原型为 120mm 滑膛炮…
+        # 对装甲目标换用 120mm 滑膛炮」纯冗余——w_armor 与主武器同串时直接落到下一变体）
+        if c["w_armor"].strip() and _space_latin(c["w_armor"].strip()) not in base:
             variants.append(base + _glue("对装甲目标换用", _space_latin(c["w_armor"].strip())) + "。")
-        if c["w_air"].strip():
+        if c["w_air"].strip() and _space_latin(c["w_air"].strip()) not in base:
             variants.append(base + _glue("对空警戒依托", _space_latin(c["w_air"].strip())) + "。")
         variants.append(base + f"驻{ERA_NAMES.get(c['era'], '未知时代')}战线待命。")
         variants.append(base + f"沿革记录为「{c['name']}」。")  # 样例 2「沿革」式——卡名几乎必唯一
@@ -305,19 +355,35 @@ def check_numeric_core(flavors: dict[str, str]) -> list[str]:
     return bad
 
 
-def render_gd(flavors: dict[str, str]) -> str:
+def _load_manual(path: Path) -> dict[str, str]:
+    """读取既有产出文件的 MANUAL 字典（重生成保留人工覆写——Task 8 落地机制）。"""
+    manual: dict[str, str] = {}
+    if not path.exists():
+        return manual
+    text = _read(path)
+    m = re.search(r"const MANUAL\s*:\s*Dictionary\s*=\s*\{(.*?)\n\}", text, re.S)
+    if not m:
+        return manual
+    for mm in re.finditer(r'"([^"]+)"\s*:\s*"((?:[^"\\]|\\.)*)"', m.group(1)):
+        manual[mm.group(1)] = mm.group(2).replace('\\"', '"').replace("\\\\", "\\")
+    return manual
+
+
+def render_gd(flavors: dict[str, str], manual: dict[str, str] | None = None) -> str:
+    manual = manual or {}
     lines = [
         "extends RefCounted",
         "class_name CardFlavorTexts",
         "## ══════════════════════════════════════════════════════════════════",
-        f"## 批次②生成——卡面原型叙述表（生成于 {_dt.date.today().isoformat()}，草案）。",
+        f"## 批次②生成——卡面原型叙述表（生成于 {_dt.date.today().isoformat()}，Task 8 落地稿）。",
         "## 生成器：tools/b2_gen_card_flavor.py（模板矩阵：时代×兵种×档位）。",
         "## 基调锚：docs/统一化/批次2-样例审批.md 样例 1/2/3（军语克制／一句原型＋至多",
         "## 一句战术特征／去庆祝腔）；宪法 docs/统一化/LANGUAGE_BIBLE.md 约束：",
         "## · 条目名只读不写（v2.4 终局裁决）——本表只新增 flavor，不改任何卡名；",
         "## · 数值内核——flavor 不含数值（机制与数值由 MECHANISM_DESC/动态模板承载）；",
-        "## · 手工可覆写——改下方 MANUAL 字典（键=card_id，运行时优先于生成稿），",
-        "##   勿直改 FLAVOR（重新生成会覆盖）；消费由 Task 8 落地（default_cards/card_info_panel）。",
+        "## · 手工可覆写——改下方 MANUAL 字典（键=card_id，运行时优先于生成稿，重生成保留）；",
+        "##   勿直改 FLAVOR（重新生成会覆盖）。",
+        f"## 消费：scenes/ui/card_info_panel.gd 卡牌模式 flavor 显示（flavor_text 空值兜底）。",
         f"## 对账：FLAVOR 键集 == UCT card_id 集（{len(flavors)}/{len(flavors)}，生成时断言）。",
         "## ══════════════════════════════════════════════════════════════════",
         "",
@@ -329,8 +395,13 @@ def render_gd(flavors: dict[str, str]) -> str:
     lines += [
         "}",
         "",
-        "## 手工覆写区（card_id → 覆写文案；留空即全用生成稿）",
+        "## 手工覆写区（card_id → 覆写文案；留空即全用生成稿；重生成自动保留）",
         "const MANUAL: Dictionary = {",
+    ]
+    for cid, text in manual.items():
+        escaped = text.replace("\\", "\\\\").replace('"', '\\"')
+        lines.append(f'\t"{cid}": "{escaped}",')
+    lines += [
         "}",
         "",
         "static func get_flavor(card_id: String) -> String:",
@@ -397,8 +468,12 @@ def main(argv: list[str] | None = None) -> int:
         args.out = DEFAULT_OUT
     if args.out:
         args.out.parent.mkdir(parents=True, exist_ok=True)
-        args.out.write_text(render_gd(flavors), encoding="utf-8", newline="\n")
-        print(f"[OK] 草案已写出：{args.out.as_posix()}（{len(flavors)} 条；Task 8 前不落 data/）")
+        manual = _load_manual(args.out)  # 既有 MANUAL 人工覆写随重生成保留
+        if manual:
+            print(f"[OK] MANUAL 人工覆写保留：{len(manual)} 条")
+        args.out.write_text(render_gd(flavors, manual), encoding="utf-8", newline="\n")
+        print(f"[OK] 已写出：{args.out.as_posix()}（FLAVOR {len(flavors)} 条"
+              f"{'＋MANUAL ' + str(len(manual)) + ' 条' if manual else ''}）")
     else:
         print("（dry-run 未落盘——落地用 --out/--write，Task 8 消费）")
     return 0
