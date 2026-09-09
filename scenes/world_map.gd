@@ -500,7 +500,7 @@ func _build_level_map() -> void:
 		canvas.add_child(gate_entry)
 		var gate_lbl := Label.new()
 		# v28：未解锁时可见文案直接带解锁条件（原"黑门（未启）"玩家不知道怎么开）
-		gate_lbl.text = "黑门·无限" if gate_unlocked else "黑门（通关第100关开启）"
+		gate_lbl.text = "黑门·无限" if gate_unlocked else "黑门（通关第 100 关开启）"
 		gate_lbl.add_theme_font_size_override("font_size", 20)
 		gate_lbl.add_theme_color_override("font_color", Color(0.62, 0.85, 1.0, 0.95) if gate_unlocked \
 			else Color(0.62, 0.85, 1.0, 0.4))

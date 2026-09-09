@@ -39,7 +39,7 @@ const DATA: Dictionary = {
 		"reward": {"nano_materials": 400},
 		"icon": "🏰",
 		"hidden": false,
-		"flavor_text": "你已经是一名经验丰富的指挥官。"
+		"flavor_text": "你已经是一名经验丰富的相位师。"
 		},
 	"progress_level_75": {
 		"id": "progress_level_75",
@@ -63,7 +63,7 @@ const DATA: Dictionary = {
 		"reward": {"nano_materials": 5000, "mythic_card": 5, "title": "战争之王"},
 		"icon": "👑",
 		"hidden": false,
-		"flavor_text": "你已经成为战争的主宰。"
+		"flavor_text": "第 100 关已在身后。黑门，近了。"
 		},
 	"progress_all_ww1_levels": {
 		"id": "progress_all_ww1_levels",
@@ -75,7 +75,7 @@ const DATA: Dictionary = {
 		"reward": {"nano_materials": 300},
 		"icon": "🪖",
 		"hidden": false,
-		"flavor_text": "一战的历史你已经完全掌握。"
+		"flavor_text": "一战的战线，你已经走完。"
 		},
 	"progress_all_ww2_levels": {
 		"id": "progress_all_ww2_levels",
@@ -87,7 +87,7 @@ const DATA: Dictionary = {
 		"reward": {"nano_materials": 300},
 		"icon": "✈️",
 		"hidden": false,
-		"flavor_text": "二战的荣耀属于你。"
+		"flavor_text": "二战的战线，你已经走完。"
 		},
 	"progress_all_cold_levels": {
 		"id": "progress_all_cold_levels",
@@ -99,11 +99,11 @@ const DATA: Dictionary = {
 		"reward": {"nano_materials": 300},
 		"icon": "☢",
 		"hidden": false,
-		"flavor_text": "冷战的硝烟你已经散去。"
+		"flavor_text": "冷战的战线，你已经走完。"
 		},
 	"progress_all_modern_levels": {
 		"id": "progress_all_modern_levels",
-		"name": "现代指挥官",
+		"name": "现代尖兵",
 		"description": "完成所有现代时代关卡",
 		"category": "progress",
 		"rarity": "RARE",
@@ -111,7 +111,7 @@ const DATA: Dictionary = {
 		"reward": {"nano_materials": 300},
 		"icon": "🚀",
 		"hidden": false,
-		"flavor_text": "现代战争你已经游刃有余。"
+		"flavor_text": "现代的战线，你已经走完。"
 		},
 	"progress_all_future_levels": {
 		"id": "progress_all_future_levels",
@@ -123,7 +123,7 @@ const DATA: Dictionary = {
 		"reward": {"nano_materials": 300},
 		"icon": "⚡",
 		"hidden": false,
-		"flavor_text": "未来的战争你也已征服。"
+		"flavor_text": "近未来的战线，你已经走完。"
 		},
 	"progress_perfect_all_levels": {
 		"id": "progress_perfect_all_levels",
@@ -135,7 +135,7 @@ const DATA: Dictionary = {
 		"reward": {"nano_materials": 10000, "mythic_card": 10, "title": "完美征服者"},
 		"icon": "⭐",
 		"hidden": false,
-		"flavor_text": "完美的征服，完美的荣耀。"
+		"flavor_text": "每一关，都以三星收场。"
 		},
 
 	
@@ -150,7 +150,7 @@ const DATA: Dictionary = {
 		"reward": {"nano_materials": 50},
 		"icon": "💾",
 		"hidden": false,
-		"flavor_text": "好的开始是成功的一半。"
+		"flavor_text": "档案开始记录你的战线。"
 		},
 	"system_save_100": {
 		"id": "system_save_100",
@@ -162,7 +162,7 @@ const DATA: Dictionary = {
 		"reward": {"nano_materials": 200},
 		"icon": "📁",
 		"hidden": false,
-		"flavor_text": "你总是记得保存进度。"
+		"flavor_text": "你始终记得让档案保持最新。"
 		},
 	"system_play_time_10h": {
 		"id": "system_play_time_10h",
@@ -174,7 +174,7 @@ const DATA: Dictionary = {
 		"reward": {"nano_materials": 150},
 		"icon": "⏰",
 		"hidden": false,
-		"flavor_text": "你对战争的热情令人敬佩。"
+		"flavor_text": "累计 10 小时。战线仍在延伸。"
 		},
 	"system_play_time_100h": {
 		"id": "system_play_time_100h",
@@ -186,7 +186,7 @@ const DATA: Dictionary = {
 		"reward": {"nano_materials": 800},
 		"icon": "⌛",
 		"hidden": false,
-		"flavor_text": "战争已经成为你生活的一部分。"
+		"flavor_text": "累计 100 小时。你与车队同行已久。"
 	},
 	"system_enhancement_50": {
 		"id": "system_enhancement_50",
@@ -198,7 +198,7 @@ const DATA: Dictionary = {
 		"reward": {"nano_materials": 200},
 		"icon": "🔧",
 		"hidden": false,
-		"flavor_text": "强化让你的卡牌更加强大。"
+		"flavor_text": "第 50 条安装记录，在案。"
 		},
 	"system_shop_purchase_100": {
 		"id": "system_shop_purchase_100",
@@ -210,7 +210,7 @@ const DATA: Dictionary = {
 		"reward": {"nano_materials": 180},
 		"icon": "🛒",
 		"hidden": false,
-		"flavor_text": "购物也是战争的一部分。"
+		"flavor_text": "补给舱的第 100 笔军需。"
 		},
 
 	
@@ -225,7 +225,7 @@ const DATA: Dictionary = {
 		"reward": {"nano_materials": 500},
 		"icon": "🥚",
 		"hidden": true,
-		"flavor_text": "你发现了开发者埋藏的秘密。"
+		"flavor_text": "有些角落，不在任何地图上。"
 		},
 	"special_nano_millionaire": {
 		"id": "special_nano_millionaire",
@@ -237,7 +237,7 @@ const DATA: Dictionary = {
 		"reward": {"nano_materials": 1000, "mythic_card": 1, "title": "纳米大亨"},
 		"icon": "💰",
 		"hidden": false,
-		"flavor_text": "财富已经不再是问题。"
+		"flavor_text": "纳米材料库存，七位数。"
 		},
 	"special_defeat_ultimate_boss": {
 		"id": "special_defeat_ultimate_boss",
@@ -249,7 +249,7 @@ const DATA: Dictionary = {
 		"reward": {"nano_materials": 10000, "mythic_card": 10, "title": "世界拯救者"},
 		"icon": "🌟",
 		"hidden": false,
-		"flavor_text": "你拯救了世界，成为真正的传奇。"
+		"flavor_text": "驻守终局的相位师，力量随你同行。"
 		},
 	"special_perfect_collection": {
 		"id": "special_perfect_collection",
@@ -261,7 +261,7 @@ const DATA: Dictionary = {
 		"reward": {"nano_materials": 15000, "mythic_card": 15, "title": "完美收藏家"},
 		"icon": "👑",
 		"hidden": false,
-		"flavor_text": "你已经达到了收集的终极境界。"
+		"flavor_text": "全部传说档案，等级封顶。"
 		},
 	"special_speed_demon": {
 		"id": "special_speed_demon",
@@ -273,7 +273,7 @@ const DATA: Dictionary = {
 		"reward": {"nano_materials": 700},
 		"icon": "💨",
 		"hidden": false,
-		"flavor_text": "你的速度快得不可思议。"
+		"flavor_text": "30 秒，战斗结束。"
 		},
 	"special_pacifist": {
 		"id": "special_pacifist",
@@ -285,7 +285,7 @@ const DATA: Dictionary = {
 		"reward": {"nano_materials": 600},
 		"icon": "☮️",
 		"hidden": false,
-		"flavor_text": "和平是最强的武器。"
+		"flavor_text": "未击杀一名敌人，阵地照样易手。"
 		},
 	"special_all_factions_max": {
 		"id": "special_all_factions_max",
@@ -297,7 +297,7 @@ const DATA: Dictionary = {
 		"reward": {"nano_materials": 8000, "mythic_card": 8, "title": "势力领袖"},
 		"icon": "🎖️",
 		"hidden": false,
-		"flavor_text": "所有势力都对你心悦诚服。"
+		"flavor_text": "七家公司的联络线，全部为你亮起。"
 		}
 }
 
