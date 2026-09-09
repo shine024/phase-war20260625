@@ -15,7 +15,7 @@ const DATA: Dictionary = {
 		"reward": {"nano_materials": 100},
 		"icon": "📚",
 		"hidden": false,
-		"flavor_text": "知识的积累始于好奇心。"
+		"flavor_text": "十种卡，入册。"
 	},
 	"collect_blueprints_30": {
 		"id": "collect_blueprints_30",
@@ -27,7 +27,7 @@ const DATA: Dictionary = {
 		"reward": {"nano_materials": 200},
 		"icon": "📐",
 		"hidden": false,
-		"flavor_text": "卡牌在手，天下我有。"
+		"flavor_text": "三十种卡，入册。"
 		},
 	"collect_blueprints_50": {
 		"id": "collect_blueprints_50",
@@ -39,7 +39,7 @@ const DATA: Dictionary = {
 		"reward": {"nano_materials": 400, "rare_card": 1},
 		"icon": "🗺️",
 		"hidden": false,
-		"flavor_text": "你已经掌握了大部分卡牌的奥秘。"
+		"flavor_text": "五十种卡，入册过半。"
 		},
 	"collect_blueprints_80": {
 		"id": "collect_blueprints_80",
@@ -51,7 +51,7 @@ const DATA: Dictionary = {
 		"reward": {"nano_materials": 800, "mythic_card": 1},
 		"icon": "📖",
 		"hidden": false,
-		"flavor_text": "你就是行走的卡牌百科全书。"
+		"flavor_text": "八十种卡。卡仓渐满。"
 		},
 	"collect_all_blueprints": {
 		"id": "collect_all_blueprints",
@@ -63,7 +63,7 @@ const DATA: Dictionary = {
 		"reward": {"nano_materials": 10000, "mythic_card": 5, "title": "终极收藏家"},
 		"icon": "🏆",
 		"hidden": false,
-		"flavor_text": "没有任何卡牌能逃过你的收藏。"
+		"flavor_text": "全部卡种，尽数入册。"
 		},
 	"collect_common_complete": {
 		"id": "collect_common_complete",
@@ -75,7 +75,7 @@ const DATA: Dictionary = {
 		"reward": {"nano_materials": 300},
 		"icon": "🟩",
 		"hidden": false,
-		"flavor_text": "普通并不平凡。"
+		"flavor_text": "普通卡种，集齐。"
 		},
 	"collect_rare_complete": {
 		"id": "collect_rare_complete",
@@ -87,7 +87,7 @@ const DATA: Dictionary = {
 		"reward": {"nano_materials": 600, "rare_card": 1},
 		"icon": "🟦",
 		"hidden": false,
-		"flavor_text": "稀有中的稀有。"
+		"flavor_text": "稀有卡种，集齐。"
 		},
 	"collect_mythic_complete": {
 		"id": "collect_mythic_complete",
@@ -99,7 +99,7 @@ const DATA: Dictionary = {
 		"reward": {"nano_materials": 2000, "mythic_card": 3, "title": "神话征服者"},
 		"icon": "🟪",
 		"hidden": false,
-		"flavor_text": "神话在向你低头。"
+		"flavor_text": "神话卡种，集齐。"
 		},
 	"collect_cards_100": {
 		"id": "collect_cards_100",
@@ -111,7 +111,7 @@ const DATA: Dictionary = {
 		"reward": {"nano_materials": 150},
 		"icon": "🃏",
 		"hidden": false,
-		"flavor_text": "卡牌就是力量。"
+		"flavor_text": "卡仓藏卡一百张。"
 		},
 	"collect_cards_500": {
 		"id": "collect_cards_500",
@@ -123,7 +123,7 @@ const DATA: Dictionary = {
 		"reward": {"nano_materials": 300},
 		"icon": "🎴",
 		"hidden": false,
-		"flavor_text": "你的卡牌收藏令人印象深刻。"
+		"flavor_text": "卡仓藏卡五百张。"
 		},
 	"collect_max_rarity": {
 		"id": "collect_max_rarity",
@@ -135,6 +135,6 @@ const DATA: Dictionary = {
 		"reward": {"nano_materials": 120},
 		"icon": "💎",
 		"hidden": false,
-		"flavor_text": "品质就是一切。"
+		"flavor_text": "首张高品质卡，入册。"
 		},
 }

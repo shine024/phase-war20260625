@@ -74,7 +74,7 @@ static func get_all_rooms() -> Array[Dictionary]:
 			"battles": 1,
 			"tag": "卡仓·打印",
 			"flavor": "卡墙一格一格亮着，旁边那台纳米打印机还在轻声运转——每一张卡，都是被重新打印出来的。",
-			"function_note": "纳米打印台：以纳米与能量块为原料打印战利品（缴获卡，喂分析仪）。",
+			"function_note": "纳米打印台：以纳米材料与能量块为原料打印战利品（缴获卡，喂分析仪）。",
 			"upgrades": [
 				{"cost": {"alloy": 220}, "battles": 1, "note": "卡墙：拥有过的卡种逐一点亮陈列"},
 				{"cost": {"alloy": 450}, "battles": 2, "note": "战利品打印：每日领取 1 张随机缴获卡"},
@@ -132,8 +132,8 @@ static func get_all_rooms() -> Array[Dictionary]:
 			"flavor": "长桌纵贯整个房间。桌上只有一把椅子，朝向门口。",
 			"function_note": "每日配给：每天可领取一次（量随食堂等级提升）。挂机战利品会暂存到各房间，看到发光气泡点击即可收取。修复后，空椅子会被灯照亮。",
 			"upgrades": [
-				{"cost": {"nano": 300, "alloy": 150}, "battles": 1, "note": "加菜：每日配给 +50%（纳米 180 · 合金 60）"},
-				{"cost": {"nano": 600, "alloy": 300}, "battles": 2, "note": "丰收：每日配给翻倍（纳米 240 · 合金 80）"},
+				{"cost": {"nano": 300, "alloy": 150}, "battles": 1, "note": "加菜：每日配给 +50%（纳米材料 180 · 合金 60）"},
+				{"cost": {"nano": 600, "alloy": 300}, "battles": 2, "note": "丰收：每日配给翻倍（纳米材料 240 · 合金 80）"},
 			],
 		},
 		{
@@ -145,10 +145,10 @@ static func get_all_rooms() -> Array[Dictionary]:
 			"battles": 1,
 			"tag": "起居·医疗",
 			"flavor": "一只蒙布的治疗舱，舱旁的镜子上有人用手指写过字又擦掉了。",
-			"function_note": "消耗纳米材料治疗：效果与费用随等级提升（基础 纳米50 · 精神+40）。",
+			"function_note": "消耗纳米材料治疗：效果与费用随等级提升（基础 纳米材料 50 · 精神+40）。",
 			"upgrades": [
 				{"cost": {"nano": 220, "alloy": 120}, "battles": 1, "note": "疗效提升：治疗精神 +40→+60"},
-				{"cost": {"nano": 450, "alloy": 240}, "battles": 2, "note": "战地药品：治疗费用 50→30 纳米"},
+				{"cost": {"nano": 450, "alloy": 240}, "battles": 2, "note": "战地药品：治疗费用 50→30 纳米材料"},
 			],
 		},
 		{
@@ -312,12 +312,12 @@ static func completed_entry_label(entry: String) -> String:
 static func res_full_id(short: String) -> String:
 	return RES.get(short, short)
 
-## 成本字典（短名）→ 可读文本，如 "纳米×200 合金×100"
+## 成本字典（短名）→ 可读文本，如 "纳米材料 ×200 合金 ×100"
 static func cost_text(cost: Dictionary) -> String:
-	const NAMES := {"nano": "纳米", "alloy": "合金", "crystal": "晶体", "energy": "能量块"}
+	const NAMES := {"nano": "纳米材料", "alloy": "合金", "crystal": "晶体", "energy": "能量块"}
 	var parts: Array[String] = []
 	for k in cost:
-		parts.append("%s×%d" % [NAMES.get(k, k), int(cost[k])])
+		parts.append("%s ×%d" % [NAMES.get(k, k), int(cost[k])])
 	return " ".join(parts) if not parts.is_empty() else "免费"
 
 ## ── 房间情报文本（tooltip 与面板共用，升级情报单一真身）──────────────

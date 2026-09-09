@@ -26,32 +26,32 @@ const DEFINITIONS: Dictionary = {
 	ID_NANO_MATERIALS: {
 		"id": ID_NANO_MATERIALS,
 		"name": "纳米材料",
-		"desc": "用于制造与研究的基础纳米单元。",
+		"desc": "细至纳米级，制造与研究作业的基础耗材。",
 		"icon": "res://assets/resources/basic_nano.png",
 	},
 	ID_ALLOY: {
 		"id": ID_ALLOY,
 		"name": "合金",
-		"desc": "高强度金属材料，用于装甲和武器制造。",
+		"desc": "高强度结构材料，装甲与武器制造的中坚。",
 		"icon": "res://assets/resources/alloy.png",
 	},
 	ID_CRYSTAL: {
 		"id": ID_CRYSTAL,
 		"name": "晶体",
-		"desc": "能量晶体，用于高级装备和能量系统。",
+		"desc": "能量晶体，高级装备与能量系统的动力来源。",
 		"icon": "res://assets/resources/crystal.png",
 	},
 	ID_ENERGY_BLOCK: {
 		"id": ID_ENERGY_BLOCK,
 		"name": "能量块",
-		"desc": "可在后勤节点中转换为战场能源或其它增益。",
+		"desc": "在后勤节点转换为战场能源，或兑换其它战地增益。",
 		"icon": "res://assets/resources/energy_block.png",
 	},
 	# v27: 黑门无限模式专属货币（图标沿用晶体占位，美术管线出图后替换 star_marrow.png）
 	ID_STAR_MARROW: {
 		"id": ID_STAR_MARROW,
 		"name": "星髓",
-		"desc": "黑门彼岸的灵能结晶。黑门无限模式渗度里程碑产出，每周获取有上限。",
+		"desc": "黑门彼岸的灵能结晶。黑门无限模式渗度里程碑产出，每周获取设有上限。",
 		"icon": "res://assets/resources/crystal.png",
 	},
 	# v7.3: 5 种许可证定义已删除（死系统）
@@ -59,7 +59,7 @@ const DEFINITIONS: Dictionary = {
 	ID_BASIC_NANO: {
 		"id": ID_NANO_MATERIALS,  # 映射到新的纳米材料ID
 		"name": "纳米材料",
-		"desc": "用于制造与研究的基础纳米单元。（已弃用ID）",
+		"desc": "细至纳米级，制造与研究作业的基础耗材。（已弃用ID）",
 		"icon": "res://assets/resources/basic_nano.png",
 	},
 }

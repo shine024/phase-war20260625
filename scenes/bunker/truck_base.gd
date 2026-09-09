@@ -36,11 +36,11 @@ const ERAS := [
 	{"id": "era4", "tex": "res://assets/ui/truck_base/truck_cut4.png",
 		"label": "IV 现代", "zone": "浮岩荒原", "level": 65,
 		"accent": Color(0.0, 0.9, 1.0),
-		"env": ["天气 相位风暴", "地形 浮岩", "能量场 全队+15%", "时段 夜"]},
+		"env": ["天气 磁暴", "地形 浮岩", "能量场 全队+15%", "时段 夜"]},
 	{"id": "era5", "tex": "res://assets/ui/truck_base/truck_cut5.png",
-		"label": "V 相位", "zone": "相位极光带", "level": 85,
+		"label": "V 近未来", "zone": "极光冻原", "level": 85,
 		"accent": Color(0.74, 0.58, 1.0),
-		"env": ["天气 相位风暴", "地形 浮岩", "能量场 全队+15%", "时段 夜"]},
+		"env": ["天气 极光磁暴", "地形 浮岩", "能量场 全队+15%", "时段 夜"]},
 ]
 
 # ── 每时代热区表（[l,t,w,h] 占画面比例，按各图 50px 网格实测；kind: sortie/terminal/panel/sleep/info）──
@@ -80,7 +80,7 @@ const HOTSPOTS := {
 		{"r": [0.606, 0.632, 0.062, 0.100], "name": "工坊工具台", "hint": "改造·词条", "kind": "panel", "key": "modification", "rooms": "workshop"},
 		{"r": [0.677, 0.485, 0.053, 0.147], "name": "钻床打印机", "hint": "制造舱·卡仓", "kind": "panel", "key": "evolution", "rooms": "depot"},
 		{"r": [0.479, 0.733, 0.048, 0.092], "name": "医疗柜", "hint": "医疗·配给", "kind": "info", "rooms": "medical + mess_hall"},
-		{"r": [0.844, 0.420, 0.060, 0.240], "name": "服务器机柜", "hint": "全车电力·配给", "kind": "info", "rooms": "reactor + mess_hall"},
+		{"r": [0.844, 0.420, 0.060, 0.240], "name": "配电柜", "hint": "全车电力·配给", "kind": "info", "rooms": "reactor + mess_hall"},
 		{"r": [0.751, 0.550, 0.124, 0.100], "name": "铺位", "hint": "睡眠·存档", "kind": "sleep", "rooms": "dormitory"},
 		{"r": [0.920, 0.450, 0.065, 0.350], "name": "尾门跳板", "hint": "出击口", "kind": "sortie"},
 	],
@@ -138,7 +138,7 @@ const RES_LABELS := [
 	["nano_materials", "纳米材料"], ["alloy", "合金"], ["crystal", "晶体"],
 	["energy_block", "能量块"], ["star_marrow", "星髓"],
 ]
-const ERA_NAMES := ["I 一战", "II 二战", "III 冷战", "IV 现代", "V 相位"]
+const ERA_NAMES := ["I 一战", "II 二战", "III 冷战", "IV 现代", "V 近未来"]
 
 var _era_idx := 3  # 默认 IV 现代；_ready 按战线进度折算覆盖
 var _textures := {}

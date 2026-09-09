@@ -14,7 +14,7 @@ const LORE_DATABASE: Dictionary = {
 		"name": "堑壕战术手册",
 		"era": 0,
 		"category": "tactics",
-		"description": "记录了一战时期堑壕战的战术细节，包括地道挖掘、突击队战术等。",
+		"description": "记录了一战时代堑壕战的战术细节，包括地道挖掘、突击队战术等。",
 		"flavor_text": "\"在泥泞与铁丝网之间，勇气与绝望并存。\"",
 	},
 	"lore_ww1_gas": {
@@ -128,7 +128,7 @@ const LORE_DATABASE: Dictionary = {
 			"name": "秘密配方·隐匿步兵",
 			"era": 3,
 			"category": "intelligence",
-			"description": "一份关于步兵特种改造的秘密配方，将光学迷彩技术与步兵护甲结合的方案。这种隐匿技术不在标准进化图谱中，属于非对称作战的特殊路线。",
+			"description": "一份关于步兵特种改造的秘密配方，将光学迷彩技术与步兵护甲结合的方案。这种隐匿技术不在标准制造图谱中，属于非对称作战的特殊路线。",
 			"flavor_text": "\"看不见的士兵，才是战场上最致命的威胁。\"",
 		},
 		# v6.6: 隐藏情报 — 空中炮艇路线（火炮+航空）核心配方
@@ -138,7 +138,7 @@ const LORE_DATABASE: Dictionary = {
 			"name": "秘密配方·空中炮艇",
 			"era": 4,
 			"category": "intelligence",
-			"description": "一份关于空中炮艇装载系统的秘密配方——如何在飞行平台上稳定发射重型火炮。这种跨类型武器融合了航空机动与火炮火力，是隐藏进化路线【空中炮艇】的关键解锁条件。",
+			"description": "一份关于空中炮艇装载系统的秘密配方——如何在飞行平台上稳定发射重型火炮。这种跨类型武器融合了航空机动与火炮火力，是隐藏制造路线【空中炮艇】的关键解锁条件。",
 			"flavor_text": "\"当大炮长出翅膀，地面再无安全之处。\"",
 		},
 		# v6.6: 隐藏情报 — 来自 intel_reveal_events.gd 揭示事件奖励
@@ -149,7 +149,7 @@ const LORE_DATABASE: Dictionary = {
 			"name": "密码碎片·第七计划",
 			"era": 1,
 			"category": "intelligence",
-			"description": "从缴获的步兵通讯设备中破译的加密片段，提及'第七计划'与代号'影刃'的特种作战研究。这暗示着步兵存在一条非标准的进化路线。",
+			"description": "从缴获的步兵通讯设备中破译的加密片段，提及'第七计划'与代号'影刃'的特种作战研究。这暗示着步兵存在一条非标准的制造路线。",
 			"flavor_text": "\"最普通的兵种，藏着最不普通的秘密。\"",
 		},
 		"cipher_fragment_02": {
@@ -189,7 +189,7 @@ const LORE_DATABASE: Dictionary = {
 			"name": "密码碎片·创世纪计划",
 			"era": 4,
 			"category": "intelligence",
-			"description": "纳米核心 BOSS 的核心数据，详述了'创世纪计划'——纳米技术与人类的终极融合，追求永不消亡的自我进化形态。",
+			"description": "纳米核心 BOSS 的核心数据，详述了'创世纪计划'——纳米技术与人类的终极融合，追求永不消亡的自我演进形态。",
 			"flavor_text": "\"死亡，只是另一种需要被修复的故障。\"",
 		},
 		"cipher_fragment_07": {

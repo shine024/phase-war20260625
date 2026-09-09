@@ -17,7 +17,7 @@ const DATA: Dictionary = {
 		"reward": {"nano_materials": 50, "xp": 100},
 		"icon": "⚔️",
 		"hidden": false,
-		"flavor_text": "千里之行，始于足下。"
+		"flavor_text": "首胜，已记入战功簿。"
 	},
 	"battle_wins_10": {
 		"id": "battle_wins_10",
@@ -29,7 +29,7 @@ const DATA: Dictionary = {
 		"reward": {"nano_materials": 100},
 		"icon": "🎖️",
 		"hidden": false,
-		"flavor_text": "胜利会成为习惯。"
+		"flavor_text": "十场胜利，十行记录。"
 	},
 	"battle_wins_50": {
 		"id": "battle_wins_50",
@@ -41,7 +41,7 @@ const DATA: Dictionary = {
 		"reward": {"nano_materials": 300},
 		"icon": "🏆",
 		"hidden": false,
-		"flavor_text": "战场是最好的老师。"
+		"flavor_text": "五十场。战线记得每一场。"
 	},
 	"battle_wins_100": {
 		"id": "battle_wins_100",
@@ -53,7 +53,7 @@ const DATA: Dictionary = {
 		"reward": {"nano_materials": 500, "rare_card": 1},
 		"icon": "👑",
 		"hidden": false,
-		"flavor_text": "战争已经融入你的血液。"
+		"flavor_text": "百战之后，出击如常。"
 	},
 	"battle_wins_500": {
 		"id": "battle_wins_500",
@@ -65,7 +65,7 @@ const DATA: Dictionary = {
 		"reward": {"nano_materials": 2000, "mythic_card": 1},
 		"icon": "🌟",
 		"hidden": false,
-		"flavor_text": "你的名字将载入史册。"
+		"flavor_text": "五百场胜利，皆在案。"
 	},
 	"battle_kills_100": {
 		"id": "battle_kills_100",
@@ -77,7 +77,7 @@ const DATA: Dictionary = {
 		"reward": {"nano_materials": 150},
 		"icon": "💀",
 		"hidden": false,
-		"flavor_text": "每一次击倒都是胜利的前奏。"
+		"flavor_text": "击毁一百。计数仍在继续。"
 	},
 	"battle_kills_500": {
 		"id": "battle_kills_500",
@@ -89,7 +89,7 @@ const DATA: Dictionary = {
 		"reward": {"nano_materials": 400},
 		"icon": "☠️",
 		"hidden": false,
-		"flavor_text": "战场上无人能挡。"
+		"flavor_text": "击毁五百。火力已成体系。"
 	},
 	"battle_kills_1000": {
 		"id": "battle_kills_1000",
@@ -101,7 +101,7 @@ const DATA: Dictionary = {
 		"reward": {"nano_materials": 800},
 		"icon": "💥",
 		"hidden": false,
-		"flavor_text": "毁灭是你的第二名字。"
+		"flavor_text": "击毁一千。档案另起一册。"
 	},
 	"battle_kills_5000": {
 		"id": "battle_kills_5000",
@@ -113,7 +113,7 @@ const DATA: Dictionary = {
 		"reward": {"nano_materials": 3000, "mythic_card": 1},
 		"icon": "🔱",
 		"hidden": false,
-		"flavor_text": "你就是行走的末日。"
+		"flavor_text": "击毁五千。这个数字此前无人抵达。"
 	},
 	"battle_damage_dealt_100k": {
 		"id": "battle_damage_dealt_100k",
@@ -125,7 +125,7 @@ const DATA: Dictionary = {
 		"reward": {"nano_materials": 200},
 		"icon": "🔨",
 		"hidden": false,
-		"flavor_text": "每一分伤害都算数。"
+		"flavor_text": "累计十万点伤害，均已入账。"
 	},
 	"battle_damage_dealt_1m": {
 		"id": "battle_damage_dealt_1m",
@@ -137,7 +137,7 @@ const DATA: Dictionary = {
 		"reward": {"nano_materials": 500},
 		"icon": "💎",
 		"hidden": false,
-		"flavor_text": "破坏是你的艺术。"
+		"flavor_text": "累计一百万点伤害。账面仍在增长。"
 	},
 	"battle_no_damage_win": {
 		"id": "battle_no_damage_win",
@@ -149,7 +149,7 @@ const DATA: Dictionary = {
 		"reward": {"nano_materials": 200},
 		"icon": "🛡️",
 		"hidden": false,
-		"flavor_text": "完美的胜利，无瑕的战役。"
+		"flavor_text": "无伤取胜。阵型未乱。"
 		},
 	"battle_no_damage_wins_10": {
 		"id": "battle_no_damage_wins_10",
@@ -161,7 +161,7 @@ const DATA: Dictionary = {
 		"reward": {"nano_materials": 1000, "rare_card": 1},
 		"icon": "✨",
 		"hidden": false,
-		"flavor_text": "你的操作已经超越了凡人。"
+		"flavor_text": "十场无伤取胜。部署滴水不漏。"
 		},
 	"battle_speed_run_3min": {
 		"id": "battle_speed_run_3min",
@@ -173,7 +173,7 @@ const DATA: Dictionary = {
 		"reward": {"nano_materials": 150},
 		"icon": "⚡",
 		"hidden": false,
-		"flavor_text": "时间就是生命。"
+		"flavor_text": "三分钟内结束战斗。"
 		},
 	"battle_speed_run_1min": {
 		"id": "battle_speed_run_1min",
@@ -185,7 +185,7 @@ const DATA: Dictionary = {
 		"reward": {"nano_materials": 300},
 		"icon": "🌩",
 		"hidden": false,
-		"flavor_text": "闪电般的速度，雷霆般的打击。"
+		"flavor_text": "六十秒内结束战斗。"
 		},
 	"battle_win_streak_5": {
 		"id": "battle_win_streak_5",
@@ -197,7 +197,7 @@ const DATA: Dictionary = {
 		"reward": {"nano_materials": 180},
 		"icon": "🔥",
 		"hidden": false,
-		"flavor_text": "胜利的势头不可阻挡。"
+		"flavor_text": "五连胜。攻势正劲。"
 		},
 	"battle_win_streak_20": {
 		"id": "battle_win_streak_20",
@@ -209,7 +209,7 @@ const DATA: Dictionary = {
 		"reward": {"nano_materials": 800, "rare_card": 1},
 		"icon": "👑",
 		"hidden": false,
-		"flavor_text": "你已经习惯了胜利的滋味。"
+		"flavor_text": "连胜二十场。记录仍在延续。"
 		},
 	"battle_kill_master_all": {
 		"id": "battle_kill_master_all",
@@ -221,7 +221,7 @@ const DATA: Dictionary = {
 		"reward": {"nano_materials": 5000, "mythic_card": 3, "title": "相位师终结者"},
 		"icon": "🏅",
 		"hidden": false,
-		"flavor_text": "没有任何相位师能逃过你的手掌。"
+		"flavor_text": "三十位驻守相位师，力量尽随你同行。"
 		},
 
 	
@@ -236,7 +236,7 @@ const DATA: Dictionary = {
 		"reward": {"nano_materials": 400},
 		"icon": "🛡️",
 		"hidden": false,
-		"flavor_text": "生存是最基本的技能。"
+		"flavor_text": "二十波。阵地仍在。"
 		},
 	"challenge_survival_50_waves": {
 		"id": "challenge_survival_50_waves",
@@ -248,7 +248,7 @@ const DATA: Dictionary = {
 		"reward": {"nano_materials": 800, "rare_card": 1},
 		"icon": "🏰",
 		"hidden": false,
-		"flavor_text": "没有任何波浪能击倒你。"
+		"flavor_text": "五十波。防线未失一寸。"
 		},
 	"challenge_survival_100_waves": {
 		"id": "challenge_survival_100_waves",
@@ -260,7 +260,7 @@ const DATA: Dictionary = {
 		"reward": {"nano_materials": 2000, "mythic_card": 2, "title": "不朽生存者"},
 		"icon": "♾️",
 		"hidden": false,
-		"flavor_text": "你就是生存的代名词。"
+		"flavor_text": "一百波。阵地仍在原地。"
 		},
 	"challenge_boss_rush_all": {
 		"id": "challenge_boss_rush_all",
@@ -272,19 +272,19 @@ const DATA: Dictionary = {
 		"reward": {"nano_materials": 1000, "rare_card": 2},
 		"icon": "👹",
 		"hidden": false,
-		"flavor_text": "没有任何Boss能幸存。"
+		"flavor_text": "全部首领战，一场未失。"
 		},
 	"challenge_time_attack_100_kills": {
 		"id": "challenge_time_attack_100_kills",
 		"name": "速度与激情",
-		"description": "在限时挑战中击杀100个敌人",
+		"description": "在时限挑战中击杀 100 个敌人",
 		"category": "challenge",
 		"rarity": "UNCOMMON",
 		"requirements": {"type": "time_attack_kills", "count": 100},
 		"reward": {"nano_materials": 200},
 		"icon": "⏱️",
 		"hidden": false,
-		"flavor_text": "速度和激情缺一不可。"
+		"flavor_text": "百次击杀，一场时限。"
 		},
 	"challenge_no_loss_complete": {
 		"id": "challenge_no_loss_complete",
@@ -296,7 +296,7 @@ const DATA: Dictionary = {
 		"reward": {"nano_materials": 600, "rare_card": 1},
 		"icon": "🎯",
 		"hidden": false,
-		"flavor_text": "完美就是你的标准。"
+		"flavor_text": "十场无损。标准如一。"
 		},
 	"challenge_max_damage_1m": {
 		"id": "challenge_max_damage_1m",
@@ -308,7 +308,7 @@ const DATA: Dictionary = {
 		"reward": {"nano_materials": 500},
 		"icon": "💪",
 		"hidden": false,
-		"flavor_text": "伤害没有上限。"
+		"flavor_text": "单场伤害，突破百万。"
 		},
 	"challenge_random_deck_win_10": {
 		"id": "challenge_random_deck_win_10",
@@ -320,6 +320,6 @@ const DATA: Dictionary = {
 		"reward": {"nano_materials": 250},
 		"icon": "🎲",
 		"hidden": false,
-		"flavor_text": "任何情况都能应对。"
+		"flavor_text": "随机手牌，连胜十场。"
 		}
 }
