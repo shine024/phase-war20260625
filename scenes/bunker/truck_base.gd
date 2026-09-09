@@ -257,6 +257,10 @@ func _ready() -> void:
 		SignalBus.truck_travel_changed.connect(_refresh_caption)
 	if not SignalBus.bunker_day_ended.is_connected(_refresh_caption):
 		SignalBus.bunker_day_ended.connect(_refresh_caption)
+	# 批次③ Task 5：教程按需点播触达面（进入移动基地 = TRUCK_BASE 步）
+	var _tpm := get_node_or_null("/root/TutorialProgressionManager")
+	if _tpm != null and _tpm.has_method("notify_surface_opened"):
+		_tpm.notify_surface_opened("truck_base")
 
 # ── 顶栏 ──
 func _build_topbar() -> void:
@@ -1040,6 +1044,10 @@ func _launch_battle() -> void:
 ## v26.18：打开战区地图选关（自由缩放/拖拽 + 点击关卡就地操作）。
 ## 从卡车进图的标记让地图的 ESC/返回键回本基地，而不是 main 战斗场景。
 func _open_world_map() -> void:
+	# 批次③ Task 5：教程按需点播触达面（战区地图步）
+	var _tpm := get_node_or_null("/root/TutorialProgressionManager")
+	if _tpm != null and _tpm.has_method("notify_surface_opened"):
+		_tpm.notify_surface_opened("world_map")
 	_play_sfx("button")
 	if SaveManager and SaveManager.has_method("save_game"):
 		SaveManager.save_game()
@@ -1292,6 +1300,10 @@ func _get_display_level() -> int:
 # ───────────────────── v26.12b 接线：内嵌真面板（复刻 bunker_main 539-615 链） ─────────────────────
 
 func _open_panel(panel_id: String) -> void:
+	# 批次③ Task 5：教程按需点播触达面（工位面板首触，键名与 SURFACE_FOR_STEP 对齐）
+	var _tpm_panel := get_node_or_null("/root/TutorialProgressionManager")
+	if _tpm_panel != null and _tpm_panel.has_method("notify_surface_opened"):
+		_tpm_panel.notify_surface_opened(panel_id)
 	var wrapper := _ensure_panel_wrapper(panel_id)
 	if wrapper == null:
 		_open_card("面板不可用", "", "EMBEDDED_PANELS['%s'] 加载失败（见日志）。" % panel_id)

@@ -227,6 +227,10 @@ func _exit_tree() -> void:
 		Engine.remove_meta("world_map_from_truck")
 
 func _ready() -> void:
+	# 批次③ Task 5：教程按需点播触达面（战区地图步，覆盖行军到站/菜单进图）
+	var _tpm := get_node_or_null("/root/TutorialProgressionManager")
+	if _tpm != null and _tpm.has_method("notify_surface_opened"):
+		_tpm.notify_surface_opened("world_map")
 	# v22 百灯群岛：旧网格地图的星空/扫描线绘制退役，由 map_void_base 底图承担
 	var scroll_ready := get_node_or_null("Margin/VBox/ScrollContainer") as ScrollContainer
 	if scroll_ready != null and not scroll_ready.gui_input.is_connected(_on_map_gui_input):

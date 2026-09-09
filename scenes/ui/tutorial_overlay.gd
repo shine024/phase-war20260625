@@ -11,10 +11,26 @@ var _current_content: Dictionary = {}
 
 signal tutorial_action_executed(action_target: String)
 
+## 批次③ Task 5：导航框按步骤锚定——面板介绍步靠左（不盖住被介绍面板主体，玩家可
+## 直接操作右侧面板），欢迎/首战/移动基地居中。键 = TutorialStep 枚举值（存档兼容恒定）。
+const BOX_POS_BY_STEP := {
+	2: "left",   # CARD_COLLECTION 卡仓
+	3: "left",   # PHASE_INSTRUMENT 装配
+	4: "left",   # ENHANCEMENT 等级
+	5: "left",   # MODIFICATION 改造
+	6: "left",   # RUNES 符文
+	8: "left",   # EVOLUTION 制造
+	9: "left",   # FACTION_REP 势力
+	10: "left",  # SHOP 商店
+	11: "left",  # WORLD_MAP 地图
+	12: "left",  # PHASE_FIELD_POINTS 加点
+}
+
 @onready var _title_label: Label = $TutorialBox/Margin/VBox/TitleLabel
 @onready var _content_label: RichTextLabel = $TutorialBox/Margin/VBox/ContentLabel
 @onready var _skip_button: Button = $TutorialBox/Margin/VBox/ButtonRow/SkipButton
 @onready var _next_button: Button = $TutorialBox/Margin/VBox/ButtonRow/NextButton
+@onready var _tutorial_box: PanelContainer = $TutorialBox
 
 
 func _ready() -> void:
@@ -54,6 +70,38 @@ func _show_current_step() -> void:
 	if _next_button:
 		# action_text 作为下一步按钮文案
 		_next_button.text = str(_current_content.get("action_text", "下一步"))
+	_apply_box_pos()
+
+
+## 批次③ Task 5：导航框锚定（left=屏幕左侧竖带；center=居中默认）
+func _apply_box_pos() -> void:
+	if _tutorial_box == null:
+		return
+	var step := 0
+	if _tutorial_manager != null and "current_step" in _tutorial_manager:
+		step = int(_tutorial_manager.current_step)
+	if BOX_POS_BY_STEP.get(step, "center") == "left":
+		_tutorial_box.anchor_left = 0.01
+		_tutorial_box.anchor_top = 0.28
+		_tutorial_box.anchor_right = 0.30
+		_tutorial_box.anchor_bottom = 0.72
+		_tutorial_box.offset_left = 0.0
+		_tutorial_box.offset_top = 0.0
+		_tutorial_box.offset_right = 0.0
+		_tutorial_box.offset_bottom = 0.0
+		_tutorial_box.grow_horizontal = Control.GROW_DIRECTION_END
+		_tutorial_box.grow_vertical = Control.GROW_DIRECTION_BOTH
+	else:
+		_tutorial_box.anchor_left = 0.5
+		_tutorial_box.anchor_top = 0.5
+		_tutorial_box.anchor_right = 0.5
+		_tutorial_box.anchor_bottom = 0.5
+		_tutorial_box.offset_left = -250.0
+		_tutorial_box.offset_top = -150.0
+		_tutorial_box.offset_right = 250.0
+		_tutorial_box.offset_bottom = 150.0
+		_tutorial_box.grow_horizontal = Control.GROW_DIRECTION_BOTH
+		_tutorial_box.grow_vertical = Control.GROW_DIRECTION_BOTH
 
 
 func _on_next_pressed() -> void:
@@ -73,6 +121,11 @@ func _on_next_pressed() -> void:
 	# 战斗期间不再弹窗遮挡战场（面板类动作在战斗中本就被 _is_in_battle 拦截）；
 	# 战斗结束（胜/负/撤退/僵持超时）由 main.gd _on_battle_ended_resume_tutorial 续播 8-13 步。
 	if action_target == "start_first_battle":
+		queue_free()
+		return
+	# 批次③ Task 5：下一步进入按需点播段（链暂停）——overlay 收起，等玩家首次
+	# 打开对应面板时由 notify_surface_opened → overlay_requested 重新拉起
+	if bool(_tutorial_manager.get("chain_paused")):
 		queue_free()
 		return
 	# 显示下一步或退出
