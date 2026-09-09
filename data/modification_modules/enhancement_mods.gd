@@ -9,7 +9,7 @@ const DATA: Dictionary = {
 	"enh_hp_up" = {
 		id = "enh_hp_up", name = "体质训练", name_en = "HP Up",
 		icon = "res://assets/ui/icons/mod_icons/mod_enhancement.png",
-		prototype = "体能强化训练", description = "HP提升",
+		prototype = "体能强化训练", description = "生命值上限提升。",
 		rarity = "uncommon",
 		power_mult = 1.2, cost_research = 100, cost_install = 50,
 		slot_type = "enhancement", conflict_group = "enh_hp",
@@ -37,7 +37,7 @@ const DATA: Dictionary = {
 	"enh_def_up" = {
 		id = "enh_def_up", name = "防护训练", name_en = "Damage Reduction",
 		icon = "res://assets/ui/icons/mod_icons/mod_enhancement.png",
-		prototype = "防护战术训练", description = "伤害减免",
+		prototype = "防护战术训练", description = "伤害减免提升。",
 		rarity = "uncommon",
 		power_mult = 1.2, cost_research = 100, cost_install = 50,
 		slot_type = "enhancement", conflict_group = "enh_def",
@@ -91,7 +91,7 @@ const DATA: Dictionary = {
 	"enh_atkspd_up" = {
 		id = "enh_atkspd_up", name = "反应训练", name_en = "Attack Speed Up",
 		icon = "res://assets/ui/icons/mod_icons/mod_enhancement.png",
-		prototype = "快速反应训练", description = "攻速提升（间隔降低）",
+		prototype = "快速反应训练", description = "攻速提升，射击间隔缩短。",
 		rarity = "uncommon",
 		power_mult = 1.2, cost_research = 100, cost_install = 50,
 		slot_type = "enhancement", conflict_group = "enh_atkspd",
@@ -131,7 +131,7 @@ const DATA: Dictionary = {
 	"enh_splash" = {
 		id = "enh_splash", name = "爆破战技", name_en = "Splash",
 		icon = "res://assets/ui/icons/mod_icons/mod_enhancement.png",
-		prototype = "区域压制战技", description = "溅射伤害",
+		prototype = "区域压制战技", description = "溅射伤害提升。",
 		rarity = "rare",
 		power_mult = 1.35, cost_research = 200, cost_install = 100,
 		slot_type = "enhancement", conflict_group = "enh_splash",
@@ -157,7 +157,7 @@ const DATA: Dictionary = {
 	"enh_regen" = {
 		id = "enh_regen", name = "野战急救", name_en = "HP Regen",
 		icon = "res://assets/ui/icons/mod_icons/mod_enhancement.png",
-		prototype = "战场急救训练", description = "每秒回血",
+		prototype = "战场急救训练", description = "每秒回复生命值。",
 		rarity = "rare",
 		power_mult = 1.35, cost_research = 200, cost_install = 100,
 		slot_type = "enhancement", conflict_group = "enh_regen",
@@ -170,7 +170,7 @@ const DATA: Dictionary = {
 	"enh_chain" = {
 		id = "enh_chain", name = "连锁战术", name_en = "Chain",
 		icon = "res://assets/ui/icons/mod_icons/mod_enhancement.png",
-		prototype = "多目标接战训练", description = "连锁概率",
+		prototype = "多目标接战训练", description = "连锁概率提升。",
 		rarity = "rare",
 		power_mult = 1.35, cost_research = 200, cost_install = 100,
 		slot_type = "enhancement", conflict_group = "enh_chain",
@@ -184,7 +184,7 @@ const DATA: Dictionary = {
 	"enh_shield_kill" = {
 		id = "enh_shield_kill", name = "收割本能", name_en = "Shield on Kill",
 		icon = "res://assets/ui/icons/mod_icons/mod_enhancement.png",
-		prototype = "战意觉醒", description = "击杀获得护盾",
+		prototype = "战意觉醒", description = "击杀敌人后生成护盾，掩护连续接战。",
 		rarity = "epic",
 		power_mult = 1.5, cost_research = 400, cost_install = 200,
 		slot_type = "enhancement", conflict_group = "enh_shield_kill",
@@ -210,7 +210,7 @@ const DATA: Dictionary = {
 	"enh_crit_dmg" = {
 		id = "enh_crit_dmg", name = "致命精通", name_en = "Crit Damage",
 		icon = "res://assets/ui/icons/mod_icons/mod_enhancement.png",
-		prototype = "致命打击精通", description = "暴击伤害加成",
+		prototype = "致命打击精通", description = "暴击伤害加成提升。",
 		rarity = "epic",
 		power_mult = 1.5, cost_research = 400, cost_install = 200,
 		slot_type = "enhancement", conflict_group = "enh_crit_dmg",
