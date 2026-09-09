@@ -142,7 +142,7 @@ static func _card_resource_from_war_platform(d: Dictionary, equipment_id: String
 	var stats: Dictionary = d.get("stats", {}) as Dictionary
 	c.summary_line = "耐久 %d｜攻击 %d｜移速 %d" % [
 		int(stats.get("hp", 0)), int(stats.get("attack", 0)), int(stats.get("move_speed", 0))]
-	c.description = "由敌方相位师装备数据生成的平台蓝图（展示用）。"
+	c.description = "由敌方相位师装备数据生成的平台图纸（展示用）。"
 	c.flavor_text = ""
 	#c.max_weapons = 2
 	#c.weight_capacity = 0
@@ -174,7 +174,7 @@ static func _card_resource_from_war_weapon(d: Dictionary, equipment_id: String) 
 	var _atk_rate: float = 1.0 / maxf(0.001, _fire_interval) if _fire_interval > 0.0 else 1.0
 	c.summary_line = "伤害 %d｜攻速 %.2f次/秒｜射程 %d" % [
 		int(d.get("damage", 0)), _atk_rate, int(d.get("range", 0))]
-	c.description = "由敌方相位师装备数据生成的武器蓝图（展示用）。"
+	c.description = "由敌方相位师装备数据生成的武器图纸（展示用）。"
 	#c.weight = 1
 	c.era = 0
 	c.combat_kind = 0
@@ -199,7 +199,7 @@ static func _card_resource_from_energy_card(d: Dictionary, equipment_id: String)
 	c.type_line = "能量 — %s／敌方相位师" % String(d.get("faction", ""))
 	c.summary_line = "能量 +%d｜回充 +%.1f" % [
 		int(float(d.get("energy_amount", 0.0))), float(d.get("energy_regen_boost", 0.0))]
-	c.description = "由敌方相位师装备数据生成的能量卡蓝图（展示用）。"
+	c.description = "由敌方相位师装备数据生成的充能槽图纸（展示用）。"
 	return c
 
 static func _card_resource_from_phase_instrument(d: Dictionary, equipment_id: String) -> CardResource:
@@ -220,7 +220,7 @@ static func _card_resource_from_phase_instrument(d: Dictionary, equipment_id: St
 	var traits: Array = d.get("special_traits", [])
 	var trait_txt: String = String(traits[0]) if not traits.is_empty() else ""
 	c.summary_line = "%d★｜Lv.%d｜%s" % [star, int(d.get("level", 0)), trait_txt]
-	c.description = "由统一相位仪池生成的相位仪蓝图（展示用）。"
+	c.description = "由统一相位仪池生成的相位仪图纸（展示用）。"
 	c.era = 0
 	c.base_hp = 100.0
 	c.base_range = 120.0

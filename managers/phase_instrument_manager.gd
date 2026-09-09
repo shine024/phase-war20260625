@@ -871,7 +871,7 @@ func _compensate_removed_energy_card(base_card_id: String) -> void:
 	if BasicResourceManager and BasicResourceManager.has_method("add_resource"):
 		BasicResourceManager.add_resource("nano_materials", comp)
 	if SignalBus and SignalBus.has_signal("show_toast"):
-		SignalBus.show_toast.emit("能量卡系统已移除，%s 补偿 %d 纳米材料" % [base_card_id, comp])
+		SignalBus.show_toast.emit("充能槽系统已移除，%s 补偿 %d 纳米材料" % [base_card_id, comp])
 
 ## v7.x: 遍历 InstanceRegistry，清理所有 energy_start_* 实例（背包残留）并逐个补偿。
 ## 用 _compensated_energy_cards 去重（槽位守卫可能已补偿过同卡），避免重复发奖。

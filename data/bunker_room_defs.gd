@@ -89,7 +89,7 @@ static func get_all_rooms() -> Array[Dictionary]:
 			"battles": 0,
 			"tag": "地表·纪念",
 			"flavor": "一面风化的石墙，刻着一些名字。有些刻痕很深，有些只起了一半。",
-			"function_note": "逝者的名字安放于此。随英雄档案解锁逐一点亮（P3）。",
+			"function_note": "逝者的名字安放于此。随同伴档案解锁逐一点亮。",
 		},
 		{
 			"id": "entry_hall",
@@ -193,7 +193,7 @@ static func get_all_rooms() -> Array[Dictionary]:
 			"battles": 1,
 			"tag": "作战·情报",
 			"flavor": "档案屏一列列立在黑暗里，屏幕幽光映出浮尘。有些条目永远停在了某一天。",
-			"function_note": "情报中心与英雄档案。升级解锁分析仪（烧缴获卡得情报）。",
+			"function_note": "情报中心与同伴档案。升级解锁分析仪（烧缴获卡得情报）。",
 			"upgrades": [
 				{"cost": {"nano": 150, "energy": 90}, "battles": 1, "note": "分析仪上线：放入缴获卡，2 场后烧出情报（每日 3 张）"},
 				{"cost": {"nano": 300, "energy": 180}, "battles": 2, "note": "深度解析：高品质制造权重 ×1.5 · 全局情报获取 +10%"},
@@ -241,7 +241,7 @@ static func get_all_rooms() -> Array[Dictionary]:
 			"flavor": "三十盏灯照着一面墙。先辈的精神没有散去——它们凝成了符文，在灯下轻轻发亮。",
 			"function_note": "纪念墙（30 位牺牲相位师）· 符文圣所：装备符文、搭配符文之语（先辈精神的凝结）· 成就 / 收藏。",
 			"upgrades": [
-				{"cost": {"nano": 600}, "battles": 2, "note": "纪念铭牌：已纪念英雄可回看完整档案与遗言"},
+				{"cost": {"nano": 600}, "battles": 2, "note": "纪念铭牌：已纪念同伴可回看完整档案与遗言"},
 				{"cost": {"nano": 1200}, "battles": 2, "note": "出征仪式：每日一次敬礼，本场战斗掉落 +10%"},
 			],
 			"needs_power": true,
@@ -272,7 +272,7 @@ static func get_all_rooms() -> Array[Dictionary]:
 			"battles": 0,
 			"tag": "终局·？？？",
 			"flavor": "最深处的一扇门。门后有风声——但这里不该有风。",
-			"function_note": "终局：全房间修复 + 通关 + 集齐英雄档案后开启，三选一抉择（重写/守望/远行）。",
+			"function_note": "终局：全房间修复 + 通关 + 集齐同伴档案后开启，三选一抉择（重写/守望/远行）。",
 			"is_terminal": true,
 		},
 	]

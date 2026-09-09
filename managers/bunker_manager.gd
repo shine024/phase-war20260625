@@ -357,7 +357,7 @@ func start_repair(room_id: String) -> Dictionary:
 		return {"ok": false, "reason": "房间状态未初始化"}
 	# P3：荣誉陈列室碎片门槛（10 位英雄遗物）
 	if room_id == "honor_hall" and _hero_fragments.size() < HONOR_HALL_FRAGMENT_GATE:
-		return {"ok": false, "reason": "需要 %d 份英雄遗物（当前 %d）——去击败驻守的相位师" % [
+		return {"ok": false, "reason": "需要 %d 份同伴遗物（当前 %d）——去击败驻守的相位师" % [
 			HONOR_HALL_FRAGMENT_GATE, _hero_fragments.size()]}
 	# 成本校验与扣除（BasicResourceManager 为 autoload）
 	var cost: Dictionary = def.get("cost", {})
@@ -1014,7 +1014,7 @@ func is_observatory_unlockable() -> Dictionary:
 			var def := BunkerRoomDefs.get_room(room_id)
 			reasons.append("房间未修复：%s" % def.get("name", room_id))
 	if _hero_fragments.size() < 30:
-		reasons.append("英雄档案 %d/30" % _hero_fragments.size())
+		reasons.append("同伴档案 %d/30" % _hero_fragments.size())
 	if LevelProgressManager != null and LevelProgressManager.has_method("get_max_unlocked_level") \
 			and LevelProgressManager.get_max_unlocked_level() < 100:
 		reasons.append("尚未通关第 100 关")

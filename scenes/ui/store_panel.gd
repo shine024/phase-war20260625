@@ -789,7 +789,7 @@ func _build_store_item_row(
 		if info_card != null:
 			match info_card.card_type:
 				GC.CardType.COMBAT_UNIT: m_parts.append("战斗卡")
-				GC.CardType.ENERGY:      m_parts.append("能量卡")
+				GC.CardType.ENERGY:      m_parts.append("充能槽")
 		m_parts.append("超出当前进度的储备（梯度 +%d）" % maxi(tier_gap, 1))
 		info_label_m.text = "  |  ".join(m_parts)
 		info_label_m.visible = true
@@ -800,7 +800,7 @@ func _build_store_item_row(
 		var info_parts: Array[String] = []
 		match info_card.card_type:
 			GC.CardType.COMBAT_UNIT: info_parts.append("战斗卡")
-			GC.CardType.ENERGY:      info_parts.append("能量卡")
+			GC.CardType.ENERGY:      info_parts.append("充能槽")
 		var rarity_text := ""
 		match info_card.rarity:
 			"uncommon":  rarity_text = "优秀"
@@ -938,7 +938,7 @@ func _build_instrument_row(cfg: Dictionary, fsm: Node) -> PanelContainer:
 	row_panel.add_theme_stylebox_override("panel", _instrument_row_style)
 	# 批次三 B2b：相位仪行的属性词典——星级/能量恢复就地解释
 	# v21.x: 部署范围展示移除（功能下线）
-	row_panel.tooltip_text = "相位仪：星级决定槽位数量与能量上限；能量恢复加快战斗中能量回复"
+	row_panel.tooltip_text = "相位仪：等级决定槽位数量与能量上限；能量恢复加快战斗中能量回复"
 
 	# 名称
 	var name2: Label = row_panel.get_node("M2/HB2/VB2/NameLabel")
@@ -951,7 +951,7 @@ func _build_instrument_row(cfg: Dictionary, fsm: Node) -> PanelContainer:
 	# 基础属性
 	var attr_label: Label = row_panel.get_node("M2/HB2/VB2/AttrLabel")
 	var attr_parts: Array[String] = []
-	attr_parts.append("星级 %d" % star)
+	attr_parts.append("等级 %d" % star)
 	attr_parts.append("能量恢复 %.2f(实际%.1f/s)" % [recovery_rate, recovery_rate * 3.0])
 	attr_label.text = "  |  ".join(attr_parts)
 	attr_label.custom_minimum_size = Vector2(350, 0)

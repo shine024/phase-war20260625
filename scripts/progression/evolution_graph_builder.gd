@@ -125,7 +125,7 @@ static func get_predecessors(target_id: String) -> Array[Dictionary]:
 static func format_predecessor_summary(target_id: String) -> String:
 	var preds: Array[Dictionary] = get_predecessors(target_id)
 	if preds.is_empty():
-		return "初始单位（无前置进化）"
+		return "初始单位（无前置谱系）"
 	var parts: PackedStringArray = PackedStringArray()
 	for p in preds:
 		parts.append("%s（%s）" % [String(p.get("from_label", "")), String(p.get("stage_label", ""))])
@@ -134,7 +134,7 @@ static func format_predecessor_summary(target_id: String) -> String:
 
 static func faction_display_name(faction_id: String) -> String:
 	if faction_id.is_empty() or faction_id == "base":
-		return "基础进化"
+		return "基础谱系"
 	var cfg: Dictionary = CompanyDefinitions.get_by_id(faction_id)
 	var name_text: String = String(cfg.get("name", "")).strip_edges()
 	return name_text if not name_text.is_empty() else faction_id

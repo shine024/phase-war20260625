@@ -173,7 +173,7 @@ func _refresh_panel() -> void:
 		if "max_player_units" in battle_mgr:
 			unit_limit = int(battle_mgr.max_player_units)
 	content.add_child(_make_kv_row("卡牌总数", "%d" % total_cards, DT.COLOR_CYAN_TECH_SOFT))
-	content.add_child(_make_kv_row("最高星级", "★%d" % max_star if max_star > 0 else "—", DT.COLOR_AMBER_SOFT))
+	content.add_child(_make_kv_row("最高等级", "★%d" % max_star if max_star > 0 else "—", DT.COLOR_AMBER_SOFT))
 	var field_str := "%d / %d" % [on_field, unit_limit] if unit_limit > 0 else "%d" % on_field
 	content.add_child(_make_kv_row("场上兵力", field_str, Color(0.2, 0.85, 0.4, 1)))
 

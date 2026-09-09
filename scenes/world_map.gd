@@ -521,11 +521,11 @@ func _build_level_map() -> void:
 		lh.position = _home_pos() - lh.size * 0.5
 		lh.mouse_filter = Control.MOUSE_FILTER_STOP
 		lh.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-		lh.tooltip_text = "余烬要塞（家）——点击回基地"
+		lh.tooltip_text = "移动基地（家）——点击回基地"
 		lh.gui_input.connect(_on_home_gui_input)
 		canvas.add_child(lh)
 		var home_lbl2 := Label.new()
-		home_lbl2.text = "余烬要塞"
+		home_lbl2.text = "移动基地"
 		home_lbl2.add_theme_font_size_override("font_size", 14)
 		home_lbl2.add_theme_color_override("font_color", Color(1.0, 0.71, 0.37, 0.9))
 		home_lbl2.position = _home_pos() + Vector2(-28, lh.size.y * 0.42)

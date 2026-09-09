@@ -188,7 +188,7 @@ func _setup_tab_titles() -> void:
 	_hide_all_sub_tabs()
 	# 批次三 B2e：头部与三维攻防卡 tooltip（新玩家最常困惑的数值语义）
 	if star_label:
-		star_label.tooltip_text = "光环/能力星级：由卡牌等级折算（每 3 级 = 1 星，Lv30 满星 10★）"
+		star_label.tooltip_text = "光环/能力等级：由卡牌等级折算（每 3 级 = 1★，Lv30 满级 10★）"
 	if rarity_label:
 		rarity_label.tooltip_text = "稀有度：普通/优秀/稀有/史诗/传说/神话，影响基础属性与掉落概率"
 	if cost_label:
@@ -533,7 +533,7 @@ func _refresh_header(card: CardResource) -> void:
 					tier_label.text = PowerTiers.get_tier_name(_t)
 					tier_label.visible = _t > 0
 			GC.CardType.ENERGY:
-				type_label.text = "能量卡 · 提供 %d 能量" % int(card.energy_cost)
+				type_label.text = "充能槽 · 提供 %d 能量" % int(card.energy_cost)
 			_:
 				# v9.x（P2-7范围B）：法则卡类型标签分支已随法则系统退役移除
 				type_label.text = card.type_line
@@ -1328,7 +1328,7 @@ func _setup_section_headers() -> void:
 	var titles := [
 		[base + "StatsSection/StatsVBox/StatsTitle", "核心属性"],
 		[base + "AffixSection/AffixVBox/AffixTitle", "词条"],
-		[base + "StarSection/StarVBox/StarTitle", "星级"],
+		[base + "StarSection/StarVBox/StarTitle", "等级"],
 		[base + "NurtureSection/NurtureVBox/NurtureTitle", "养成"],
 		[base + "CardSkillSection/CardSkillVBox/CardSkillTitle", "关联技能"],
 		[base + "BonusSection/BonusVBox/BonusTitle", "加成来源"],

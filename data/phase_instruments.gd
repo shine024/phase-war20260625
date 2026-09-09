@@ -99,7 +99,7 @@ static func build_property_display(property_id: String, value: float) -> String:
 		"pi_r_cascade": return "连锁反应：单位死亡时对周围敌人造成攻击力 50% 的伤害"
 		"pi_r_overload": return "过载强化：单位生命 <50% 时伤害 +25%"
 		"pi_r_last_stand": return "最后意志：单位死亡前最后攻击伤害 ×2.5"
-		"pi_r_energy_burst": return "能量爆发：施放法则时所有单位 5 秒内伤害 +25%"
+		"pi_r_energy_burst": return "能量爆发：施放条令时所有单位 5 秒内伤害 +25%"
 		"pi_r_scale": return "越战越强：每存在 10 秒单位全属性 +3%（上限 45%）"
 		"pi_r_free_deploy": return "零成本部署：部署消耗有 30% 几率为 0（每单位限 1 次）"
 	return property_id
@@ -670,7 +670,7 @@ static func get_default_id() -> String:
 static func get_slot_color_name(color_key: String) -> String:
 	match color_key:
 		"green":  return "战斗卡"
-		"yellow": return "能量卡"
+		"yellow": return "充能槽"
 		"rune":   return "符文"
 		# 兼容旧调用（返回空字符串，表示已废弃）
 		"red":    return ""

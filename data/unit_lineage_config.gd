@@ -35,19 +35,19 @@ const E2_MIN_MOD_COUNT: int = 5              ## 势力分支：至少装5个MOD
 const E2_FACTION_LEVEL_REQUIRED: int = 3        ## 势力分支：目标势力需达到Lv3（声望约1200+）
 
 const EVOLVE_REASON_ZH: Dictionary = {
-	"ok": "可进化",
+	"ok": "可进阶",
 	"invalid": "条件无效",
-	"card_locked": "蓝图未解锁",
-	"invalid_target": "进化目标不存在",
-	"target_not_in_path": "目标不在该卡进化路线中",
-	"enhance_not_enough": "卡牌等级不足（基础进化需Lv5，势力分支需Lv10——上阵参战积累经验升级）",
-	"mod_not_enough": "改造模块不足（基础进化需2个，势力分支需5个）",
+	"card_locked": "图纸未解锁",
+	"invalid_target": "谱系目标不存在",
+	"target_not_in_path": "目标不在该卡谱系路线中",
+	"enhance_not_enough": "卡牌等级不足（基础进阶需Lv5，势力分支需Lv10——上阵参战积累经验升级）",
+	"mod_not_enough": "改造模块不足（基础进阶需2个，势力分支需5个）",
 	"power_not_enough": "培养战力未达标",
-	"cross_class": "不能跨类型进化",
+	"cross_class": "不能跨类型进阶",
 	"intel_not_full": "目标情报未满100%（已废弃）",
-		"evo_blueprint_missing": "缺少进化蓝图（需从战斗中获得目标卡的进化蓝图）",
-		"faction_level_not_enough": "势力贡献度不足（势力分支进化需目标势力达到Lv3）",
-		"evolution_not_unlocked_in_skill_tree": "进化能力未在相位师技能树解锁（需解锁概念武器分支的进化节点）",
+		"evo_blueprint_missing": "缺少谱系图纸（需从战斗中获得目标卡的谱系图纸）",
+		"faction_level_not_enough": "势力贡献度不足（势力分支进阶需目标势力达到Lv3）",
+		"evolution_not_unlocked_in_skill_tree": "谱系能力未在相位师技能树解锁（需解锁概念武器分支的谱系节点）",
 		"intel_base_not_enough": "敌方形态情报不足（击败/部署该敌卡积累，获取实物缴获卡直接过半）",  # v21.0
 		}
 

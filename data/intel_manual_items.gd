@@ -407,7 +407,7 @@ static func get_def(blueprint_id: String) -> Dictionary:
 			return {}
 		return {
 			"name": "退役图纸：%s → %s" % [from_card, to_card],
-			"desc": "（进化已退役）此图纸不再有用途，仅作纪念收藏",
+			"desc": "（谱系已退役）此图纸不再有用途，仅作纪念收藏",
 			"rarity": "epic",
 			"type": "evolution",
 			"from": from_card,
