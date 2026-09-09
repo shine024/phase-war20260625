@@ -9,9 +9,43 @@ var main: Control = null
 func on_start_battle() -> void:
 	run_start_battle_sequence()
 
+## 批次③ Task 1：出征战报目的地行（军语克制体，数值取真实系统）
+func _sortie_dest_text() -> String:
+	var lvl := 1
+	if GameManager != null:
+		lvl = int(GameManager.current_level)
+	return "第 %d 关 · %s" % [lvl, LevelEras.get_era_name(LevelEras.get_era(lvl))]
+
+## 批次③ Task 1：出征战报正文。卡组张数=绿槽实际装备的战斗卡数（get_loadouts），
+## 相位仪具数=已解锁相位仪数；任一取不到（≤0）即降级为不含数值行的两行版，禁止虚构。
+func _sortie_report_lines() -> Array[String]:
+	var lines: Array[String] = ["车队向目标阵地开进。"]
+	var pim: Node = PhaseInstrumentManager
+	var card_count := 0
+	var instrument_count := 0
+	if pim != null:
+		if pim.has_method("get_loadouts"):
+			card_count = pim.get_loadouts().size()
+		instrument_count = pim.unlocked_instrument_ids.size()
+	if card_count > 0 and instrument_count > 0:
+		lines.append("携行 %d 张卡牌 · 相位仪 %d 具。" % [card_count, instrument_count])
+	return lines
+
 ## 执行战斗开始序列
 func run_start_battle_sequence() -> void:
 	main._play_sfx("button")
+	# 批次③ Task 1：出征过场拍点（裁决 A2 黑屏战报）。meta 由出征入口写入
+	# （truck_base._launch_battle / world_map._enter_level_from_popup），此处一次性消费——
+	# 挂机推图（afk_mode_manager 复用本函数）与教程首战不带 meta，不触发。过场只是
+	# 黑屏上的 UI 层：不切场景、不碰 battle_ended 信号协议。
+	var tutorial_active: bool = (
+		TutorialProgressionManager != null
+		and TutorialProgressionManager.has_method("should_show_tutorial")
+		and TutorialProgressionManager.should_show_tutorial()
+	)
+	if not tutorial_active and Engine.has_meta(SortieInterstitial.META_PENDING):
+		Engine.remove_meta(SortieInterstitial.META_PENDING)
+		await SortieInterstitial.present(_sortie_dest_text(), _sortie_report_lines())
 	# 关闭所有弹出面板
 	main._close_all_overlays()
 	if main.bottom_function_bar:
