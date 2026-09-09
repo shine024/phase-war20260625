@@ -156,6 +156,12 @@ static func create_all() -> Array:
 	for cfg in EC.EXCLUSIVE_CARDS:
 		list.append(EC.create_card(cfg))
 
+	# ─── 卡面原型叙述（批次②文案收编 Task 8）：CardFlavorTexts 按 card_id 注入；
+	# 仅填空值——势力专属卡自带 flavor 不覆盖，查不到的卡保持空串（面板侧另有兜底）。───
+	for c in list:
+		if c is CardResource and c.flavor_text.is_empty():
+			c.flavor_text = CardFlavorTexts.get_flavor(c.card_id)
+
 	return list
 ## 返回所有蓝图 ID(战斗卡 + 能量卡 + 敌人蓝图)
 static func get_all_blueprint_ids() -> Array:
@@ -223,7 +229,6 @@ static func create_law_card_resource(law_id: String) -> CardResource:
 		c.type_line = "法则 — 被动"
 		c.summary_line = "激活纳米 %d" % int(ac.get("nano", 0))
 	c.description = "自蓝图印制；装配至相位仪红/蓝槽后,在战前环境满足时可激活。"
-	c.flavor_text = "\"法则需要载体。\""
 	return c
 
 ## 根据 card_id 获取卡牌(兼容层)

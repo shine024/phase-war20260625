@@ -596,9 +596,9 @@ func _refresh_info_sections(card: CardResource) -> void:
 	# 描述
 	if desc_label:
 		desc_label.text = _apply_desc_highlight(card.description)
-	# 风味
+	# 风味（批次② Task 8：flavor_text 空值兜底查 CardFlavorTexts 原型叙述表）
 	if flavor_label:
-		flavor_label.text = card.flavor_text
+		flavor_label.text = card.flavor_text if not card.flavor_text.is_empty() else CardFlavorTexts.get_flavor(card.card_id)
 	# 隐藏战场专用状态区
 	if status_section:
 		status_section.visible = false
@@ -1214,6 +1214,17 @@ func _combat_power_suffix(stats: UnitStats) -> String:
 	return "｜战力 %d" % int(EvolutionHelpers.combat_power_from_unit_stats(stats))
 
 ## 战场单位动态描述——基于单位实际特殊机制生成定位句，不写过时模板。
+## 战场单位模式 flavor（批次② Task 8）：实例卡 flavor_text → CardFlavorTexts 按 card_id
+## 查表，查不到回落调用点原有固定句。相位师/相位场驱动器等非卡面板不适用，保持原句。
+func _battlefield_flavor(card_res: CardResource, fallback: String) -> String:
+	if card_res != null:
+		if not card_res.flavor_text.is_empty():
+			return card_res.flavor_text
+		var flavor: String = CardFlavorTexts.get_flavor(card_res.card_id)
+		if not flavor.is_empty():
+			return flavor
+	return fallback
+
 ## 扫描 stats 的特殊功能字段，拼成反映当前机制的描述；无特殊机制时回退 base_text。
 func _build_unit_description(stats: UnitStats, is_player: bool, base_text: String) -> String:
 	if stats == null:
@@ -2061,7 +2072,7 @@ func _show_enemy_construct_unit(unit: Node) -> void:
 	if desc_label:
 		desc_label.text = _apply_desc_highlight(base_desc)
 	if flavor_label:
-		flavor_label.text = "“同一套装甲，站在战场的另一侧。”"
+		flavor_label.text = _battlefield_flavor(card_res, "“同一套装甲，站在战场的另一侧。”")
 	# v7.x(敌方加成来源明细): 显示产兵 7 层加成来源明细
 	var _spawn_bonus_text := _build_bonus_breakdown_text(unit)
 	if _bonus_label: _bonus_label.text = _spawn_bonus_text
@@ -2164,7 +2175,7 @@ func _show_player_unit(unit: Node) -> void:
 	if desc_label:
 		desc_label.text = _apply_desc_highlight(_build_unit_description(stats, true, "向敌侧推进，在射程内交战。选中后可点击地面微调站位。"))
 	if flavor_label:
-		flavor_label.text = "“装甲军团永不疲倦。”"
+		flavor_label.text = _battlefield_flavor(card_res, "“装甲军团永不疲倦。”")
 	# v8.x：战场单位也显示关联卡片技能（source_tag 命中本单位 + 已解锁），口径与卡牌查看模式一致。
 	# 直接传 unit.stats（已含 law_family/is_engineer 等 meta），无需构建显示缓存。
 	_refresh_card_skill_section(card_res, stats)
