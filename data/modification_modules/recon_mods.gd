@@ -19,7 +19,7 @@ const DATA: Dictionary = {
 	"rec_01_optical_camouflage" = {
 		id = REC_01_OPTICAL_CAMOUFLAGE, name = "光学伪装", name_en = "Optical Camouflage",
 		icon = "res://assets/ui/icons/mod_icons/mod_stealth.png",
-		prototype = "吉利服", description = "隐蔽接敌，暴击+50%",
+		prototype = "吉利服", description = "光学迷彩隐蔽接敌。暴击 +50%。",
 		rarity = "rare",
 	power_mult = 1.3, cost_research = 140, cost_install = 70,
 		slot_type = "stealth", conflict_group = "stealth",
@@ -29,7 +29,7 @@ const DATA: Dictionary = {
 	"rec_02_ir_suppression" = {
 		id = REC_02_IR_SUPPRESSION, name = "红外抑制", name_en = "IR Suppression",
 		icon = "res://assets/ui/icons/mod_icons/mod_stealth.png",
-		prototype = "热信号遮蔽", description = "减伤提升",
+		prototype = "热信号遮蔽", description = "热信号遮蔽处理。减伤提升。",
 		rarity = "epic",
 	power_mult = 1.6, cost_research = 280, cost_install = 140,
 		slot_type = "stealth", conflict_group = "stealth",
@@ -40,7 +40,7 @@ const DATA: Dictionary = {
 	"rec_03_suppressor" = {
 		id = REC_03_SUPPRESSOR, name = "消音器", name_en = "Suppressor",
 		icon = "res://assets/ui/icons/mod_icons/mod_weapon.png",
-		prototype = "抑制器", description = "闪避+50%",
+		prototype = "抑制器", description = "枪口抑制器压制声光。闪避 +50%。",
 		rarity = "rare",
 	power_mult = 1.3, cost_research = 160, cost_install = 80,
 		slot_type = "weapon", conflict_group = "weapon",
@@ -50,7 +50,7 @@ const DATA: Dictionary = {
 	"rec_04_high_power_scope" = {
 		id = REC_04_HIGH_POWER_SCOPE, name = "高倍瞄准镜", name_en = "High-Power Scope",
 		icon = "res://assets/ui/icons/mod_icons/mod_optics.png",
-		prototype = "施华洛世奇", description = "高倍瞄具，射程和暴击提升",
+		prototype = "施华洛世奇", description = "高倍观测瞄准。射程与暴击提升。",
 		rarity = "epic",
 	power_mult = 1.6, cost_research = 300, cost_install = 150,
 		slot_type = "optics", conflict_group = "optics",
@@ -63,7 +63,7 @@ const DATA: Dictionary = {
 	"rec_05_uav" = {
 		id = REC_05_UAV, name = "无人侦察机", name_en = "Recon UAV",
 		icon = "res://assets/ui/icons/mod_icons/mod_drone.png",
-		prototype = "RQ-11大乌鸦", description = "无人机侦察，暴击率提升",
+		prototype = "RQ-11大乌鸦", description = "无人侦察机校射。暴击率提升。",
 		rarity = "epic",
 	power_mult = 1.6, cost_research = 320, cost_install = 160,
 		slot_type = "drone", conflict_group = "drone",
@@ -74,7 +74,7 @@ const DATA: Dictionary = {
 	"rec_06_tactical_radio" = {
 		id = REC_06_TACTICAL_RADIO, name = "战术电台", name_en = "Tactical Radio",
 		icon = "res://assets/ui/icons/mod_icons/mod_comms.png",
-		prototype = "单兵超短波", description = "战术通讯协调，暴击率+30%",
+		prototype = "单兵超短波", description = "战术电台通讯协调。暴击率 +30%。",
 		rarity = "uncommon",
 	power_mult = 1.0, cost_research = 80, cost_install = 40,
 		slot_type = "comms", conflict_group = "comms",
@@ -85,7 +85,7 @@ const DATA: Dictionary = {
 	"rec_07_gps" = {
 		id = REC_07_GPS, name = "GPS定位仪", name_en = "GPS Receiver",
 		icon = "res://assets/ui/icons/mod_icons/mod_navigation.png",
-		prototype = "军用GPS", description = "GPS定位，部署加速20%",
+		prototype = "军用GPS", description = "GPS 定位引导。部署加速 20%。",
 		rarity = "uncommon",
 	power_mult = 1.0, cost_research = 90, cost_install = 45,
 		slot_type = "navigation", conflict_group = "navigation",
@@ -96,7 +96,7 @@ const DATA: Dictionary = {
 	"rec_08_nvg" = {
 		id = REC_08_NVG, name = "夜视仪", name_en = "Night Vision",
 		icon = "res://assets/ui/icons/mod_icons/mod_optics.png",
-		prototype = "PVS-14", description = "夜视瞄准，暴击率+15%",
+		prototype = "PVS-14", description = "微光夜视瞄准。暴击率 +15%。",
 		rarity = "rare",
 	power_mult = 1.3, cost_research = 180, cost_install = 90,
 		slot_type = "optics", conflict_group = "optics",
@@ -107,7 +107,7 @@ const DATA: Dictionary = {
 	"rec_09_breaching" = {
 		id = REC_09_BREACHING, name = "破门工具", name_en = "Breaching Tools",
 		icon = "res://assets/ui/icons/mod_icons/mod_engineering.png",
-		prototype = "霰弹枪/破门锤", description = "城市战部署更快",
+		prototype = "霰弹枪/破门锤", description = "破门器材随行。城市战部署更快。",
 		rarity = "uncommon",
 	power_mult = 1.0, cost_research = 100, cost_install = 50,
 		slot_type = "environment", conflict_group = "environment",
@@ -119,7 +119,7 @@ const DATA: Dictionary = {
 	"rec_10_medkit" = {
 		id = REC_10_MEDKIT, name = "急救包", name_en = "Medical Kit",
 		icon = "res://assets/ui/icons/mod_icons/mod_medical.png",
-		prototype = "IFAK", description = "濒死回复15%HP",
+		prototype = "IFAK", description = "急救包随行。濒死时回复 15% 生命值。",
 		rarity = "rare",
 	power_mult = 1.3, cost_research = 120, cost_install = 60,
 		slot_type = "medical", conflict_group = "medical",
@@ -129,7 +129,7 @@ const DATA: Dictionary = {
 	"rec_11_decoy" = {
 		id = REC_11_DECOY, name = "假目标", name_en = "Decoy",
 		icon = "res://assets/ui/icons/mod_icons/mod_deception.png",
-		prototype = "充气坦克/假人", description = "假目标诱饵，暴击率+20%",
+		prototype = "充气坦克/假人", description = "充气假目标误导敌方。暴击率 +20%。",
 		rarity = "rare",
 	power_mult = 1.3, cost_research = 160, cost_install = 80,
 		slot_type = "deception", conflict_group = "deception",
@@ -139,7 +139,7 @@ const DATA: Dictionary = {
 	"rec_12_atv" = {
 		id = REC_12_ATV, name = "越野摩托", name_en = "All-Terrain Vehicle",
 		icon = "res://assets/ui/icons/mod_icons/mod_mobility.png",
-		prototype = "侦察摩托", description = "越野摩托，部署加速60%",
+		prototype = "侦察摩托", description = "越野摩托机动。部署加速 60%。",
 		rarity = "uncommon",
 	power_mult = 1.0, cost_research = 110, cost_install = 55,
 		slot_type = "mobility", conflict_group = "mobility",
@@ -175,7 +175,7 @@ const DATA: Dictionary = {
 		name_en = "Crit Designator",
 		icon = "res://assets/ui/icons/mod_icons/mod_guidance.png",
 		prototype = "精确标定仪",
-		description = "攻击命中 30% 概率挂暴击标注，被标注目标受到攻击时暴击率 +50%，持续 5 秒（全队远程优先集火）",
+		description = "攻击命中 30% 概率挂暴击标注。被标注目标受攻击时暴击率 +50%，持续 5 秒，全队远程优先集火。",
 		rarity = "epic",
 		power_mult = 1.6,
 		cost_research = 320,
@@ -195,7 +195,7 @@ const DATA: Dictionary = {
 		name_en = "Phased Array Radar",
 		icon = "res://assets/ui/icons/mod_icons/mod_radar.png",
 		prototype = "AN/APG-81 相控阵",
-		description = "周期性扫描锁定敌方高威胁单位（雷达锁定易伤+15%），与无人机标记叠加触发集火链式；侦察链式触发器",
+		description = "周期扫描锁定敌方高威胁单位，雷达锁定易伤 +15%。与无人机标记叠加触发集火链式。侦察链式触发器。",
 		rarity = "legendary",
 		power_mult = 1.7,
 		cost_research = 380,
