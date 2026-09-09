@@ -1158,6 +1158,15 @@ UNITS = {
             },
         },
     },
+    # ── 批次④批 2 卡图重生成配套注册（动画走 anim_fallback_from_card 保底直出，卡图换新必须同步）──
+    "fut_inf_c96": {
+        "name": "毛瑟C96征召兵排",
+        "ref": "fut_inf_c96_white.jpg",
+    },
+    "ww2_arm_garand_para": {
+        "name": "空降兵连",
+        "ref": "ww2_arm_garand_para_white.jpg",
+    },
 }
 
 
