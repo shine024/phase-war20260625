@@ -218,7 +218,11 @@ func _on_accessibility_changed(_toggled: bool) -> void:
 func _on_reset_tutorial_pressed() -> void:
 	var dialog := ConfirmationDialog.new()
 	dialog.title = "重置新手引导"
-	dialog.dialog_text = "将清空当前教学进度，重新播放 13 步新手引导。\n确认重置？"
+	var step_count := 0
+	var tm := get_node_or_null("/root/TutorialProgressionManager")
+	if tm and "STEP_ORDER" in tm:
+		step_count = tm.STEP_ORDER.size()
+	dialog.dialog_text = "将清空当前教学进度，重新播放 %d 步新手引导。\n确认重置？" % step_count
 	dialog.ok_button_text = "重置"
 	dialog.cancel_button_text = "取消"
 	add_child(dialog)
