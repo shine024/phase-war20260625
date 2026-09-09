@@ -1479,6 +1479,8 @@ func _on_back_to_title() -> void:
 				return
 	if SaveManager:
 		SaveManager.save_game()
+	# 批次③ Task 1：作废未消费的出征过场拍点（防下次开局首战误触发一次过场）
+	Engine.remove_meta(SortieInterstitial.META_PENDING)
 	# v21 余烬要塞：从基地经兵棋室进入战场时，返回按钮回基地而非标题
 	# v26.12d：固定主基地停用——launch_from_bunker 现由移动基地出击链设置，返回也回移动基地
 	if Engine.has_meta("launch_from_bunker"):

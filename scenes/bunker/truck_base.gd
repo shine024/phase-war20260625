@@ -1003,6 +1003,8 @@ func _launch_battle() -> void:
 		GameManager.set_current_level(int(bm.get_parked_level()))
 	# 与 bunker_main._on_go_to_battle 同链：main 场景读 launch_from_bunker 直入当前关卡战斗
 	Engine.set_meta("launch_from_bunker", true)
+	# 批次③ Task 1：出征过场拍点——main 侧 run_start_battle_sequence 头部消费（一次性）
+	Engine.set_meta(SortieInterstitial.META_PENDING, true)
 	SceneTransition.change(get_tree(), SCENE_MAIN)
 
 ## v26.18：打开战区地图选关（自由缩放/拖拽 + 点击关卡就地操作）。

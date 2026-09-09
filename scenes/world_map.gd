@@ -2177,6 +2177,8 @@ func _enter_level_from_popup(level_index: int, popup: Window) -> void:
 	if GameManager and GameManager.has_method("set_current_level"):
 		GameManager.set_current_level(level_index)
 	_close_popup_safe(popup)
+	# 批次③ Task 1：出击确认 → 出征过场拍点（main 侧 run_start_battle_sequence 消费，一次性）
+	Engine.set_meta(SortieInterstitial.META_PENDING, true)
 	if has_meta("embedded_mode") and bool(get_meta("embedded_mode")):
 		back_to_main.emit()
 		return
