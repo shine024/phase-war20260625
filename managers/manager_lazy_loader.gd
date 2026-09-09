@@ -106,7 +106,7 @@ func _ensure_configs_initialized() -> void:
 			"node_name": "IntelEvolutionManager",
 			"script_path": "res://scripts/systems/intel_evolution_manager.gd",
 			"priority": 3,
-			"description": "情报进化分支"
+			"description": "情报谱系分支"
 		},
 		# ── 收集和强化 (priority 4) ──
 		"card_collection": {

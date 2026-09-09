@@ -555,8 +555,8 @@ func _on_base_progress_changed(card_id: String, old_val: float, new_val: float) 
 			and EnemyCardModMap.can_low_evolve(card_id):
 		FeatureUnlockPopup.show_once(
 			"v21_low_evo_" + card_id,
-			"低进化可用",
-			"「%s」情报过半——该敌方形态的缴获卡可在「成长」面板进化为对应我方卡。" % DefaultCards.get_safe_display_name(card_id))
+			"低谱系可用",
+			"「%s」情报过半——该敌方形态的缴获卡可在「成长」面板沿谱系进阶为对应我方卡。" % DefaultCards.get_safe_display_name(card_id))
 
 ## mod 解锁：静默记录到 _pending_mod_unlocks，由结算面板统一展示（不在战斗中弹窗）
 func _on_mod_unlocked(card_id: String, mod_id: String) -> void:

@@ -18,7 +18,7 @@ const INTEL_BRANCHES: Dictionary = {
 	"IB_INFANTRY_SPECIAL": {
 		"branch_id": "IB_INFANTRY_SPECIAL",
 		"name": "特种作战路线",
-		"description": "结合步兵战术与隐匿技术的混合进化——从步兵到幽灵特种兵",
+		"description": "结合步兵战术与隐匿技术的混合谱系——从步兵到幽灵特种兵",
 		"source_card_ids": ["ww1_mp18", "cold_ak47", "mod_marine"],
 		"target_card_id": "fut_spectre",
 		"intel_requirements": {
@@ -36,7 +36,7 @@ const INTEL_BRANCHES: Dictionary = {
 	"IB_ARMOR_BREAKER": {
 		"branch_id": "IB_ARMOR_BREAKER",
 		"name": "破甲猎手路线",
-		"description": "研究重装甲弱点后开发的反坦克专家进化——从反坦克兵到终极破甲手",
+		"description": "研究重装甲弱点后开发的反坦克专家谱系——从反坦克兵到终极破甲手",
 		"source_card_ids": ["ww2_inf_panzerschrek", "cold_rpg", "mod_javelin"],
 		"target_card_id": "fut_cyborg",
 		"intel_requirements": {
@@ -55,7 +55,7 @@ const INTEL_BRANCHES: Dictionary = {
 	"IB_ADAPTIVE_ARMOR": {
 		"branch_id": "IB_ADAPTIVE_ARMOR",
 		"name": "自适应装甲路线",
-		"description": "融合纳米技术与热能防护的主战坦克进化——从坦克到纳米机甲",
+		"description": "融合纳米技术与热能防护的主战坦克谱系——从坦克到纳米机甲",
 		"source_card_ids": ["ww2_pz3", "cold_arm_t55", "mod_arm_m1a1"],
 		"target_card_id": "fut_arm_heavy_mech",
 		"intel_requirements": {
@@ -75,7 +75,7 @@ const INTEL_BRANCHES: Dictionary = {
 	"IB_CROSS_ARTILLERY_AIR": {
 		"branch_id": "IB_CROSS_ARTILLERY_AIR",
 		"name": "空中炮艇路线",
-		"description": "将火炮装载到飞行平台的跨类型疯狂进化——支援线到空中线",
+		"description": "将火炮装载到飞行平台的跨类型谱系——支援线到空中线",
 		"source_card_ids": ["mod_arty_m270", "fut_howitzer"],
 		"target_card_id": "fut_space_fighter",
 		"intel_requirements": {

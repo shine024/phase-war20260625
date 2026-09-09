@@ -126,7 +126,7 @@ func _bind_nodes() -> void:
 	if prog_card_amber:
 		prog_card_amber.tooltip_text = "战斗经验：上阵参战自动积累（胜利+击杀加成），驱动等级提升"
 	if prog_card_gold:
-		prog_card_gold.tooltip_text = "等级进度：Lv5/10/15/20/25/30 各解锁一个词条节点；每 3 级折合 1 星光环/能力星级"
+		prog_card_gold.tooltip_text = "等级进度：Lv5/10/15/20/25/30 各解锁一个词条节点；每 3 级折合 1★ 光环/能力等级"
 	if prog_card_cyan:
 		prog_card_cyan.tooltip_text = "改造系统：安装模块定向强化属性，最多 9 格，只影响当前这张卡"
 	if prog_card_violet:

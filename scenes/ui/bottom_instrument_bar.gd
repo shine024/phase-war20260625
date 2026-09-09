@@ -695,7 +695,7 @@ func _refresh_all() -> void:
 func _format_card_slot_tooltip(color: String, card: CardResource) -> String:
 	if card == null:
 		return ""
-	var display_name: String = "能量卡" if card.card_type == GC.CardType.ENERGY else DefaultCardsData.get_safe_display_name(card.card_id)
+	var display_name: String = "充能槽" if card.card_type == GC.CardType.ENERGY else DefaultCardsData.get_safe_display_name(card.card_id)
 	# v7.x：同名卡追加序号后缀（#1/#2…）
 	display_name += DefaultCardsData.seq_suffix(card)
 	var cost_text: String = "%d⚡" % int(card.energy_cost)
@@ -1210,7 +1210,7 @@ func _build_slot_panel(entry: Dictionary) -> PanelContainer:
 		)
 		var detail_lines: Array[String] = []
 		detail_lines.append("%s 槽：%s" % [_slot_name(color), law_name])
-		detail_lines.append("类型：%s" % ("主动法则" if law_kind == "active" else "被动法则"))
+		detail_lines.append("类型：%s" % ("主动条令" if law_kind == "active" else "被动条令"))
 		if battle_energy > 0:
 			detail_lines.append("战斗能量消耗：%d⚡" % battle_energy)
 		if activate_nano > 0:
@@ -1341,8 +1341,8 @@ func _on_slot_gui_input(ev: InputEvent, panel: Control) -> void:
 func _slot_name(color: String) -> String:
 	match color:
 		"green": return "单位"
-		"red": return "主动法则"
-		"blue": return "被动法则"
+		"red": return "主动条令"
+		"blue": return "被动条令"
 		"yellow": return "能量"
 		"rune": return "符文"
 	return color

@@ -249,7 +249,7 @@ func _build_locked_actions(room_id: String) -> void:
 	# P3：荣誉陈列室碎片门槛提示
 	if room_id == "honor_hall":
 		var gate := _make_info_label()
-		gate.text = "★ 另需英雄遗物 %d 份（当前 %d）——击败驻守相位师获取" % [
+		gate.text = "★ 另需同伴遗物 %d 份（当前 %d）——击败驻守相位师获取" % [
 			10, _manager.get_hero_fragment_count()]
 		gate.add_theme_color_override("font_color", Color(1.0, 0.82, 0.45))
 		_action_box.add_child(gate)
@@ -403,7 +403,7 @@ func _build_active_actions(room_id: String) -> void:
 					"solid", _on_ration_pressed, 44))
 		"archive":
 			_add_embedded_buttons([
-				["英雄档案", "hero_archive"],
+				["同伴档案", "hero_archive"],
 				["情报中心", "intelligence"],
 			])
 			_build_analyzer_section()

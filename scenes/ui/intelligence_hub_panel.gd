@@ -637,7 +637,7 @@ func _add_mod_intel_rows(card_id: String, im: Node) -> void:
 		row.add_child(prog_lbl)
 		var bp_chip := IntelUIKit.status_chip("图纸 ✓" if has_bp else "图纸 ✗",
 			DT.COLOR_GOLD, not has_bp)
-		bp_chip.tooltip_text = "安装改造需要图纸（蓝图战后掉落，永久持有）；研究进度不替代图纸"
+		bp_chip.tooltip_text = "安装改造需要图纸（战后掉落的消耗品）；研究进度不替代图纸"
 		row.add_child(bp_chip)
 		rows.add_child(row)
 

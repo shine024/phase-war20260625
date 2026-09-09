@@ -136,7 +136,7 @@ func _rebuild_content() -> void:
 func _add_progress_block() -> void:
 	_add_line("当前养成", Color(0.55, 0.82, 1.0), 14)
 	if BlueprintManager == null:
-		_add_line("蓝图系统未就绪", Color(0.7, 0.5, 0.5))
+		_add_line("图纸系统未就绪", Color(0.7, 0.5, 0.5))
 		return
 	# v20.12 等级统一：显示战斗卡等级（该卡全部实例中的最高等级；强化①已退役）
 	var card_lvl: int = 1

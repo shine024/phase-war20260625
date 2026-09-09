@@ -364,7 +364,7 @@ func _build_player_header() -> Control:
 	container.add_child(h_name)
 	container.add_child(_make_header_label("当前关", 55, HORIZONTAL_ALIGNMENT_CENTER))
 	container.add_child(_make_header_label("势力", 90, HORIZONTAL_ALIGNMENT_CENTER))
-	container.add_child(_make_header_label("星级", 50, HORIZONTAL_ALIGNMENT_RIGHT))
+	container.add_child(_make_header_label("等级", 50, HORIZONTAL_ALIGNMENT_RIGHT))
 	return container
 
 func _build_enemy_header() -> Control:

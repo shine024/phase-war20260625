@@ -47,8 +47,8 @@
       "event_type": "resource_collected"
     },
     "unlock_blueprints": {
-      "name": "解锁蓝图",
-      "description_template": "解锁{target}张蓝图",
+      "name": "解锁图纸",
+      "description_template": "解锁{target}张图纸",
       "event_type": "blueprint_unlocked"
     },
     "defeat_masters": {
@@ -74,8 +74,8 @@
       "check_condition": "enhancement_level >= target"
     },
     "synthesize_items": {
-      "name": "合成物品",
-      "description_template": "合成{target}个物品",
+      "name": "制造物品",
+      "description_template": "制造{target}个物品",
       "event_type": "item_synthesized"
     },
     "reach_level": {
@@ -85,7 +85,7 @@
       "check_condition": "level >= target"
     },
     "complete_level_with_stars": {
-      "name": "星级通关",
+      "name": "等级通关",
       "description_template": "以{stars}星通关第{target}关",
       "event_type": "level_completed",
       "check_condition": "level == target and stars >= target"

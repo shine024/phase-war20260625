@@ -218,7 +218,7 @@ static func create_law_card_resource(law_id: String) -> CardResource:
 	var ac: Dictionary = law.get("activate_cost", {})
 	if kind == "active":
 		c.energy_cost = float(bc.get("energy", 0.0))
-		c.type_line = "法则 — 主动"
+		c.type_line = "条令 — 主动"
 		var nano_b: int = int(bc.get("nano", 0))
 		if nano_b > 0:
 			c.summary_line = "战中 %d⚡｜纳米 %d" % [int(c.energy_cost), nano_b]
@@ -226,9 +226,9 @@ static func create_law_card_resource(law_id: String) -> CardResource:
 			c.summary_line = "战中能耗 %d⚡" % int(c.energy_cost)
 	else:
 		c.energy_cost = float(ac.get("nano", 0))
-		c.type_line = "法则 — 被动"
+		c.type_line = "条令 — 被动"
 		c.summary_line = "激活纳米 %d" % int(ac.get("nano", 0))
-	c.description = "自蓝图印制；装配至相位仪红/蓝槽后,在战前环境满足时可激活。"
+	c.description = "自图纸印制；装配至相位仪红/蓝槽后,在战前环境满足时可激活。"
 	return c
 
 ## 根据 card_id 获取卡牌(兼容层)

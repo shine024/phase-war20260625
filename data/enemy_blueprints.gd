@@ -200,7 +200,7 @@ static func _create_generated_blueprints() -> Array:
 			list.append(_p(id_key_p, name_p, cost_p, pt, "common",
 				"平台 — %s／战场缴获" % label,
 				"移速 %d｜耐久 %d" % [55 + (i % 6) * 6, 90 + (i % 7) * 10],
-				"由%s时代敌军装备逆向解析而来的平台蓝图。" % label,
+				"由%s时代敌军装备逆向解析而来的平台图纸。" % label,
 				"“改造后可直接投入战区。”"))
 	return list
 

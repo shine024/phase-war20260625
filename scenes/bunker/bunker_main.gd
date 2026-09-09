@@ -524,7 +524,7 @@ func _flush_hero_toast() -> void:
 	var shown := "、".join(names.slice(0, 3))
 	if names.size() > 3:
 		shown += " 等 %d 位" % names.size()
-	SignalBus.show_toast.emit("英雄档案解锁 ×%d：%s（%d/30）" % [ids.size(), shown, _manager.get_hero_fragment_count()])
+	SignalBus.show_toast.emit("同伴档案解锁 ×%d：%s（%d/30）" % [ids.size(), shown, _manager.get_hero_fragment_count()])
 
 ## 点亮演出反馈：轻微震屏（动效减弱选项下静默）+ 完工音
 func _on_room_relit(_room_id: String) -> void:
@@ -832,7 +832,7 @@ func _maybe_show_intro() -> void:
 	card.add_child(vbox)
 
 	var title := Label.new()
-	title.text = "余烬要塞 · 指南"
+	title.text = "移动基地 · 指南"
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	title.add_theme_font_size_override("font_size", DT.FONT_SIZE_TITLE - 6)
 	title.add_theme_color_override("font_color", DT.COLOR_TEXT_BRIGHT)

@@ -183,7 +183,7 @@ static func can_evolve_blueprint(card_id_or_instance: String, target_card_id: St
 			"current_text": "持有" if has_evo_bp else "缺失",
 			"required_text": "持有",
 			## v9.x：指明获取渠道（战后掉落规则见 intel_discovery_manager 掉落表）
-			"detail": "击败精英/Boss 敌人，战后结算几率掉落进化图纸",
+			"detail": "击败精英/Boss 敌人，战后结算几率掉落谱系图纸",
 		})
 
 	var stage: String = UnitLineageConfig.get_stage(card_id, target_card_id)
@@ -450,5 +450,5 @@ static func _skill_tree_era_hint(card_era: int) -> String:
 						SkillTreeData.get_branch_display_name(String(branch)),
 						int(s.get("tier", 0))])
 	if node_names.is_empty():
-		return "需在相位师技能树解锁该时代的进化能力"
+		return "需在相位师技能树解锁该时代的谱系能力"
 	return "在技能树点亮：%s" % " 或 ".join(PackedStringArray(node_names))

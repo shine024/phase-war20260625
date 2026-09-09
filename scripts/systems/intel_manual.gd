@@ -543,7 +543,7 @@ func get_tier_description(card_id: String) -> String:
 		TIER_BASIC_STATS:  return "基础属性可见"
 		TIER_DETAIL_STATS: return "详细属性可见"
 		TIER_WEAKNESS:     return "弱点/抗性提示"
-		TIER_EVOLUTION:    return "进化资格已解锁 + 掉落率+50%"
+		TIER_EVOLUTION:    return "谱系资格已解锁 + 掉落率+50%"
 	return "未知"
 
 ## 是否首次遭遇过
