@@ -159,7 +159,7 @@ const DATA: Dictionary = {
 		cost_research = 350,
 		cost_install = 175,
 		slot_type = "recon",
-		conflict_group = "recon",
+		conflict_group = "uav",
 		era_band = [3, 4],
 		effects = {accuracy_bonus = 0.20, attack_interval = -0.15},
 		unlock_conditions = {required_level = 6}
@@ -194,7 +194,7 @@ const DATA: Dictionary = {
 		cost_research = 100,
 		cost_install = 50,
 		slot_type = "mobility",
-		conflict_group = "mobility",
+		conflict_group = "navigation",
 		era_band = [3, 4],
 		effects = {deploy_speed = 2},
 		level_effects = {1: {deploy_speed = 2}, 2: {deploy_speed = 3}, 3: {deploy_speed = 3}},
@@ -473,7 +473,7 @@ const DATA: Dictionary = {
 		cost_research = 50,
 		cost_install = 25,
 		slot_type = "weapon",
-		conflict_group = "fire_rate",
+		conflict_group = "barrel",
 		effects = {attack_interval = -0.04},
 		level_effects = {1: {attack_interval = -0.04}, 2: {attack_interval = -0.05}, 3: {attack_interval = -0.07}},
 		unlock_conditions = {required_level = 1}
