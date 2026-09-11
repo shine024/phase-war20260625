@@ -485,9 +485,10 @@ const LEGACY_QUESTS: Array[Dictionary] = [
 	{
 		"id": "q_collect_rare",
 		"title": "稀有收藏",
-		"description": "拥有 3 张稀有度以上的战斗卡。",
+		"description": "拥有 3 种稀有度以上的战斗卡。",
 		"objective_type": "collect_cards",
 		"target": 3,
+		"card_min_rarity": "rare",
 		"company_id": "void_research",
 		"rewards": {
 			"nano_materials": 30,
@@ -536,6 +537,7 @@ const LEGACY_QUESTS: Array[Dictionary] = [
 		"description": "拥有 5 种现代时代的战斗卡。",
 		"objective_type": "collect_cards",
 		"target": 5,
+		"card_era": 3,
 		"company_id": "aether_dynamics",
 		"rewards": {
 			"nano_materials": 28,
@@ -749,6 +751,7 @@ const LEGACY_QUESTS: Array[Dictionary] = [
 		"description": "快速完成 10 场战斗（每场 90 秒内结束）。",
 		"objective_type": "win_battles",
 		"target": 10,
+		"time_limit_sec": 90,
 		"company_id": "helix_recon",
 		"rewards": {
 			"nano_materials": 50,
@@ -761,6 +764,7 @@ const LEGACY_QUESTS: Array[Dictionary] = [
 		"description": "收集 5 种现代时代的战斗卡。",
 		"objective_type": "collect_cards",
 		"target": 5,
+		"card_era": 3,
 		"company_id": "helix_recon",
 		"rewards": {
 			"nano_materials": 45,
