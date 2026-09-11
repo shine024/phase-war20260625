@@ -610,6 +610,125 @@ func install_modification(card: CardResource, mod_id: String, slot: int = -1) ->
 
 	return result
 
+## ══════════ v27 改造升级系统（Lv1→3）══════════
+## 已装改造消耗同改造图纸 + 纳米升档。引擎侧零改动：modification_registry.apply_with_level
+## 已按条目 level 读档（_resolve_mod_effects 优先 level_effects[lv]），安装/战场/属性预览自动生效；
+## 旧档条目缺 level 字段默认 Lv1，免迁移。无 level_effects 的改造不可升级（三代同值无意义）。
+
+## 升档纳米费系数（对 preview_install_cost 卡牌基准价的倍率；图纸费 = 目标等级 − 1 张）
+const MOD_UPGRADE_NANO_MULT := {2: 1.5, 3: 2.5}
+
+## v27.13: 升级新增合金/晶体消耗——两资源此前纯展示（合成/蓝图制造已删），给真实 sink
+## 定价锚点：合金≈纳米10%量级、晶体≈4%量级
+const MOD_UPGRADE_ALLOY_COST := {2: 40, 3: 100}
+const MOD_UPGRADE_CRYSTAL_COST := {2: 15, 3: 40}
+
+## 升级资格查询（UI 按钮态/费用行数据源）。
+## 返回 {can_upgrade, level, reason, mod_id}；level 为当前等级（1-3）。
+func get_mod_upgrade_info(card: CardResource, mod_index: int) -> Dictionary:
+	if card == null or card.instance_id.is_empty():
+		return {can_upgrade = false, level = 0, reason = "卡牌未实例化"}
+	if mod_index < 0 or mod_index >= card.mods.size():
+		return {can_upgrade = false, level = 0, reason = "改造槽位无效"}
+	var entry = card.mods[mod_index]
+	if not (entry is Dictionary):
+		return {can_upgrade = false, level = 1, reason = "旧格式条目"}
+	var mod_id := String(entry.get("id", ""))
+	var level := clampi(int(entry.get("level", 1)), 1, 3)
+	var mod_data := _get_mod_data_from_registry(mod_id)
+	if mod_data.is_empty():
+		return {can_upgrade = false, level = level, reason = "找不到改造数据：%s" % mod_id}
+	if (mod_data.get("level_effects", {}) as Dictionary).is_empty():
+		return {can_upgrade = false, level = level, reason = "该改造无升级档位"}
+	if level >= 3:
+		return {can_upgrade = false, level = level, reason = "已满级"}
+	return {can_upgrade = true, level = level, reason = "", mod_id = mod_id}
+
+## 升级费用预览（UI 显示与 upgrade_modification 扣款同源，公式唯一真身）。
+## 返回 {can_upgrade, reason, nano, blueprints, alloy, crystal, from_level, to_level}。
+func preview_upgrade_cost(card: CardResource, mod_index: int) -> Dictionary:
+	var info := get_mod_upgrade_info(card, mod_index)
+	if not bool(info.get("can_upgrade", false)):
+		return {can_upgrade = false, reason = info.get("reason", ""), nano = 0, blueprints = 0,
+			alloy = 0, crystal = 0,
+			from_level = int(info.get("level", 0)), to_level = int(info.get("level", 0))}
+	var to_level: int = int(info.get("level", 1)) + 1
+	var nano_cost := int(round(preview_install_cost(card).nano * MOD_UPGRADE_NANO_MULT.get(to_level, 2.5)))
+	var need_bp: int = to_level - 1
+	if not GameCfg.get_default().mod_consumable_enabled:
+		need_bp = 0
+	return {can_upgrade = true, reason = "", nano = nano_cost, blueprints = need_bp,
+		alloy = int(MOD_UPGRADE_ALLOY_COST.get(to_level, 0)),
+		crystal = int(MOD_UPGRADE_CRYSTAL_COST.get(to_level, 0)),
+		from_level = to_level - 1, to_level = to_level}
+
+## 升级已装改造：entry.level += 1，扣同改造图纸 ×(目标等级−1) + 纳米。守卫链照抄 install_modification。
+func upgrade_modification(card: CardResource, mod_index: int) -> Dictionary:
+	var result := {success = false, message = ""}
+	# 养成隔离守卫——严禁操作共享模板
+	if card == null or card.instance_id.is_empty():
+		result.message = "卡牌未实例化，无法升级（拒绝操作共享模板）"
+		push_warning("[BlueprintManager] upgrade_modification 拒绝模板: instance_id 为空")
+		return result
+	var info := get_mod_upgrade_info(card, mod_index)
+	if not bool(info.get("can_upgrade", false)):
+		result.message = String(info.get("reason", "无法升级"))
+		return result
+	var mod_id := String(info.get("mod_id", ""))
+	var cost := preview_upgrade_cost(card, mod_index)
+	var nano_cost: int = int(cost.nano)
+	var need_bp: int = int(cost.blueprints)
+
+	var bag = get_node_or_null("/root/IntelItemBag")
+	var skip_blueprint_check: bool = bag == null
+	var blueprint_id: String = BlueprintDefinitions.get_mod_blueprint_id(mod_id)
+	if not skip_blueprint_check and need_bp > 0:
+		if not bag.has_item(blueprint_id, need_bp):
+			result.message = "图纸不足（需要 %d 张）" % need_bp
+			return result
+	if not BasicResourceManager.can_afford("nano", nano_cost):
+		result.message = "纳米材料不足（需要%d）" % nano_cost
+		return result
+	# v27.13: 合金/晶体守卫（同纳米口径——先查后扣，余额不足拒绝且不扣款）
+	var alloy_cost: int = int(cost.get("alloy", 0))
+	var crystal_cost: int = int(cost.get("crystal", 0))
+	if alloy_cost > 0 and not BasicResourceManager.can_afford("alloy", alloy_cost):
+		result.message = "合金不足（需要%d）" % alloy_cost
+		return result
+	if crystal_cost > 0 and not BasicResourceManager.can_afford("crystal", crystal_cost):
+		result.message = "晶体不足（需要%d）" % crystal_cost
+		return result
+
+	# 执行升档
+	var entry: Dictionary = card.mods[mod_index]
+	entry["level"] = int(info.get("level", 1)) + 1
+	card.mods[mod_index] = entry
+
+	BasicResourceManager.consume("nano", nano_cost)
+	if alloy_cost > 0:
+		BasicResourceManager.consume("alloy", alloy_cost)
+	if crystal_cost > 0:
+		BasicResourceManager.consume("crystal", crystal_cost)
+	if GameCfg.get_default().mod_consumable_enabled and not skip_blueprint_check:
+		for i in range(need_bp):
+			bag.consume_item(blueprint_id)
+
+	var mod_data := _get_mod_data_from_registry(mod_id)
+	result.success = true
+	result.message = "改造升级成功：%s → Lv%d" % [mod_data.get("name", mod_id), entry["level"]]
+
+	_update_blueprint_mods_cache_for_card(card)
+	emit_signal("fragments_changed")
+	_auto_save("mod_upgrade")
+	var _am: Node = get_node_or_null("/root/AchievementManager")
+	if _am == null:
+		ManagerLazyLoader.ensure_loaded("achievement")
+		_am = get_node_or_null("/root/AchievementManager")
+	if _am and _am.has_method("record_system_operation"):
+		_am.record_system_operation("enhancement")
+	_refresh_player_master_eval_safe()
+	return result
+
 ## v6.5: 切换武器类改造的启用/禁用状态
 ## 仅对武器类改造（slot_type 为 "weapon" 或 "gun"）有效，禁用后跳过效果但仍占用槽位
 ## v7.0: 参数 card_id 实际是 instance_id；优先取实例对象
