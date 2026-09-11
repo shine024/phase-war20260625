@@ -19,7 +19,8 @@ tmp_audio_dl/
 tmp_*/
 
 # ── 导出预设（含密钥，不应提交）──
-export_presets.cfg
+#export_presets.cfg
+!export_presets.cfg
 
 # ── IDE / 编辑器 ──
 .vs/
@@ -111,6 +112,7 @@ data/test_half1*
 *.hdr
 *.gif
 *.ico
+!icon.ico
 *.dds
 # 音频
 *.mp3
