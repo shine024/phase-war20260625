@@ -30,21 +30,18 @@
 
 ## 二、中价值
 
-### 5. 成就服务面板
-- [ ] 现状：最近解锁 / 推荐区块数据齐、无展示位
-- [ ] 工作量：中
+### 5. 成就服务面板 ✅（2026-09-11 用户裁决 E1）
+- [x] 已完成：成就面板 SummaryPanel 与列表之间加服务区块——「最近解锁」5 条金名 chip（tooltip=描述）+「即将完成」3 条（≥50% 进度带百分比）；数据走既有 get_recent_achievements/get_recommended_achievements，随 refresh() 重建（remove+free 防同帧共存）
 
 ### 6. stat_boost 背包页签 ✅（v26.11）
 - [x] 已完成：背包第 5 页签"全局强化"（只读：名称/描述/层数/当前加成）（原：v9.0 砍掉页签，战斗掉落 stat_boost 玩家拿到无处查看）
 - [ ] 工作量：小（背包加页签，复用既有渲染）
 
-### 7. intel get_stat_visibility 消费端
-- [ ] 现状：情报揭示的敌方数值可见性分级无人读（分级逻辑空转）
-- [ ] 工作量：小~中（需先定展示规则：可见/模糊/隐藏三档在敌详情面板如何呈现）
+### 7. intel get_stat_visibility 消费端 ✅（2026-09-11 用户裁决 F1）
+- [x] 已完成：敌详情数值行三档呈现——full_stats=精确；behavior_summary/equipment_type/name_and_type=区间模糊（±30% 取整到 5，攻速 1 位小数）；空/hidden_stats=???。fail-open：情报管理器缺席/无法判型按精确显示。收口在 card_info_panel._format_enemy_combat_summary，等级词表对齐 data/intel_reveal_events.gd
 
-### 8. Boss 套路展示
-- [ ] 现状：Boss 行为套路数据在、战前无预告 UI
-- [ ] 工作量：中（战前准备界面加 Boss 情报卡）
+### 8. Boss 套路展示 ✅（2026-09-11 用户裁决 G1）
+- [x] 已完成：出征过场（SortieInterstitial）战报对相位师驻守关追加两行——「⚠ 相位师驻守：名号「称号」— 威胁度」+「情报：驻防平台…」（平台走 EnemyPhaseEquipment 真名）。取不到数据静默降级普通战报；AFK/教程链不带 meta 不触发
 
 ---
 
@@ -59,13 +56,11 @@
 
 ## 四、需先决策再做
 
-### 9. blueprint 自定义武器槽
-- [ ] 实现半齐。先决策：要不要这个玩法？
-  - 要 → 补 UI + 平衡校准
-  - 不要 → 删干净（入批A/B 同款清理流程）
+### 9. blueprint 自定义武器槽 ✅ 销项（2026-09-11 用户裁决 C1）
+- [x] 玩法不做。数据层 `blueprint_manager.gd blueprint_weapon_slots` 保留作存档兼容——纯存档基建（保存链/save_migration_v8/存档不变量测试在位），零 UI/玩法消费方，删除需动存档 schema 得零收益。若未来做武器自定义再启用
 
-### 10. 相位仪战斗掉落链
-- [ ] 停用状态。先决策：恢复还是删干净？
+### 10. 相位仪战斗掉落链 ✅ 保持停用（2026-09-11 用户裁决 D1）
+- [x] 停用观察。不恢复不删除；后续若做"击杀掉真卡通道复活"（ROADMAP P2-9）时一并评估
 
 ---
 

@@ -29,6 +29,11 @@ var use_extended_definitions: bool = false
 # v27.12 性能：面板不可见期间的刷新请求只置脏不重建（面板常驻，战斗中成就进度信号高频），
 # 恢复可见时由 _on_visibility_refresh 统一补刷
 var _refresh_dirty: bool = false
+# v27.15（TODO#5 用户裁决 E1）：成就服务区块——最近解锁 + 即将完成推荐
+#（数据 API 原已齐：get_recent_achievements/get_recommended_achievements，此前无展示位）
+var _service_block: VBoxContainer = null
+var _recent_content: HBoxContainer = null
+var _reco_content: HBoxContainer = null
 
 func _ready() -> void:
 	# v7.x 性能：AchievementManager 延迟加载，面板打开时确保实例化（否则信号连不上）
@@ -73,6 +78,8 @@ func _ready() -> void:
 	# v27.12 性能：隐藏期间置脏的刷新在恢复可见时统一补刷
 	if not visibility_changed.is_connected(_on_visibility_refresh):
 		visibility_changed.connect(_on_visibility_refresh)
+	# v27.15（E1）：服务区块一次性构建，内容随 refresh() 重建
+	_build_service_block()
 
 ## v7.x 修复 W6：面板释放时断开 autoload 信号，避免残留死 Callable
 func _exit_tree() -> void:
@@ -90,6 +97,7 @@ func refresh() -> void:
 		return
 	_refresh_dirty = false
 	_refresh_summary()
+	_refresh_service_block()
 	_refresh_achievement_list()
 
 
@@ -97,6 +105,73 @@ func refresh() -> void:
 func _on_visibility_refresh() -> void:
 	if is_visible_in_tree() and _refresh_dirty:
 		refresh()
+
+## v27.15（E1）：构建服务区块（一次性）——插在 SummaryPanel 与 Body 之间，
+## 内容行随 refresh() 重建（remove_child + free，非 queue_free——避免同帧新旧共存撑高布局）
+func _build_service_block() -> void:
+	var vbox: VBoxContainer = get_node_or_null("Margin/VBox")
+	var body: Control = get_node_or_null("Margin/VBox/Body")
+	if vbox == null or body == null:
+		return
+	_service_block = VBoxContainer.new()
+	_service_block.add_theme_constant_override("separation", 2)
+	vbox.add_child(_service_block)
+	vbox.move_child(_service_block, body.get_index())
+	var accent := DT.get_panel_accent("achievement")
+	_service_block.add_child(_make_service_title("◆ 最近解锁", accent))
+	_recent_content = HBoxContainer.new()
+	_recent_content.add_theme_constant_override("separation", 10)
+	_service_block.add_child(_recent_content)
+	_service_block.add_child(_make_service_title("◆ 即将完成", accent))
+	_reco_content = HBoxContainer.new()
+	_reco_content.add_theme_constant_override("separation", 10)
+	_service_block.add_child(_reco_content)
+
+func _make_service_title(text: String, accent: Color) -> Label:
+	var lbl := Label.new()
+	lbl.text = text
+	lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
+	lbl.add_theme_color_override("font_color", accent)
+	return lbl
+
+## v27.15（E1）：刷新服务区块——最近解锁 5 条（金名）+ 即将完成 3 条（≥50% 进度）
+func _refresh_service_block() -> void:
+	if _service_block == null or achievement_manager == null:
+		return
+	if not achievement_manager.has_method("get_recent_achievements"):
+		return
+	_clear_service_row(_recent_content)
+	var recent: Array = achievement_manager.get_recent_achievements(5)
+	if recent.is_empty():
+		_add_service_chip(_recent_content, "暂无解锁记录——先去打一场战斗", false)
+	else:
+		for ach in recent:
+			_add_service_chip(_recent_content, String(ach.get("name", ach.get("id", "?"))), true, String(ach.get("description", "")))
+	_clear_service_row(_reco_content)
+	var recos: Array = achievement_manager.get_recommended_achievements(3)
+	if recos.is_empty():
+		_add_service_chip(_reco_content, "暂无接近完成的成就", false)
+	else:
+		for ach in recos:
+			var pct := 0
+			if achievement_manager.has_method("get_achievement_progress"):
+				pct = int(achievement_manager.get_achievement_progress(String(ach.get("id", ""))).get("percentage", 0))
+			_add_service_chip(_reco_content, "%s %d%%" % [String(ach.get("name", "?")), pct], true, String(ach.get("description", "")))
+
+func _clear_service_row(row: HBoxContainer) -> void:
+	for child in row.get_children():
+		row.remove_child(child)
+		child.free()
+
+func _add_service_chip(row: HBoxContainer, text: String, lit: bool, tip: String = "") -> void:
+	var chip := Label.new()
+	chip.text = text
+	chip.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
+	chip.add_theme_color_override("font_color", Color(1.0, 0.85, 0.45) if lit else Color(0.5, 0.55, 0.65, 0.8))
+	chip.mouse_filter = Control.MOUSE_FILTER_STOP
+	if not tip.is_empty():
+		chip.tooltip_text = tip
+	row.add_child(chip)
 
 ## 设置分类标签页
 func _setup_categories() -> void:
