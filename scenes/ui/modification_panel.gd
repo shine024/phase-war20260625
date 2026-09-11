@@ -1632,6 +1632,16 @@ func _refresh_installed_list(installed_list: Control) -> void:
 		lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		hbox.add_child(lbl)
 
+		# v27.14（改造审查报告 5.3）：已装超带改造不追溯仍生效——加时效标注防"过期还亮着"困惑
+		if selected_card != null and not ModificationRegistry.is_mod_era_compatible(mod_data, int(selected_card.era)):
+			var expired_lbl := Label.new()
+			expired_lbl.text = "已归档·仍生效"
+			expired_lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
+			expired_lbl.add_theme_color_override("font_color", Color(0.75, 0.62, 0.35, 0.85))
+			expired_lbl.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+			expired_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			hbox.add_child(expired_lbl)
+
 		# v6.5: 武器类改造显示启用/禁用切换按钮
 		if is_weapon_mod:
 			var toggle_btn := Button.new()
