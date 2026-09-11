@@ -21,14 +21,14 @@
 
 ## P0 发行阻断（不做就不能出门；合计 S~M，约 1~2 天）
 
-- [ ] **P0-1 移除新档作弊发放**（S）
+- [x] **P0-1 移除新档作弊发放**（S）✅ v21.x（2026-08-27）：`save_manager.gd:911-918` 恢复正式起步量（短板报告 §一复核）
   - `managers/save_manager.gd` `_enqueue_starter_backpack_cards()`（L866-924）：5 种资源各 100,000、相位师 +100 技能点、开局全送全部改造+进化蓝图。
   - 三处注释自认"⚠️ 测试模式…正式上线前需改回"，正式起步量注释（nano 1500/alloy 800 等）就在旁边。
   - 验收：新建档资源/技能点/蓝图数与正式注释一致；`tests/` 相关断言更新。
-- [ ] **P0-2 摘除标题屏开发按钮**（S）
+- [x] **P0-2 摘除标题屏开发按钮**（S）✅ v26.9（2026-09-06）：`OS.is_debug_build()` 门控（短板报告 §一复核）
   - `scenes/title_screen.tscn` L185-207 两个可见按钮："🔧 战斗效果检查"、"⚔ 3v3 群战演练"，直达 `scenes/tools/combat_check.tscn` / `combat_arena_3v3.tscn`。
   - 方案：`OS.is_debug_build()` 门控或直接删。
-- [ ] **P0-3 从零建导出配置**（当前**无 export_presets.cfg**）（M）
+- [x] **P0-3 从零建导出配置**（M）✅ 2026-09-11 全链收口：preset 2026-09-06 已建（46 行 Windows Desktop），33afd7b 入库，导出模板装好后出包 778MB 零 ERROR + 12s 存活冒烟通过（短板报告 §2.1）。裸机新档打 3 关仍留人工清单
   - 排除清单：`docs/`（280MB！含 vfx_realism_shots 66M、enemy_fire_icons 55M）、`addons/`（agent_tools/gdunit4/godot-mcp 共 3.9M）、`tests/`（1.1M）、`tools/`（1.2M Python 脚本）、`skill_tree_designs/`——默认导出会全部打进包。
   - `config/name`：`phase-war` → 显示名（如 "Phase War 相位战争"）；补 `config/version`（现在没有版本号设置）。
   - Windows 图标（现仅 icon.svg，需 .ico/.png 多尺寸）。
@@ -101,16 +101,16 @@
   - **存档兼容**：旧档背包中的法则卡按项目惯例静默跳过（先例：eom/characters/challenge_records 的 key 级忽略）；**已装备在红/蓝槽的法则卡读档时静默移出槽位**（避免退役后残留在 slot 数组里被 UI 渲染成空引用）；是否对拥有法则卡的旧档折算补偿（如转符文）执行时定
   - **验证**：panel_open_smoke 五面板 + main boot headless + 掉落/商店购买冒烟（含买符文正路径）+ gdunit 全量与既有基线对比（19 失败清单外不得新增）
   - **文档**：AGENTS.md 停用清单补条目 + CHANGELOG 记批次；`work_全卡面加工/卡面文件名与显示名_最全表.txt` 过时清单顺带删除或标记废弃
-- [ ] **P2-8 相位师基地战出口机制**（S~M；2026-08-24 批次9 回灌）
+- [x] **P2-8 相位师基地战出口机制**（S~M）✅ 已实现：`battle_manager.gd` PM_STALEMATE_TIMEOUT_SEC=180.0 超时判负 + 批次③ T2 撤退独立结算（9271672），短板报告 §一复核
   - soak 实测：弱势方（打不动也打不死）可令 PM 基地战无限僵持（bot 视角 20+ 游戏分钟无结算）。真实玩家可重开规避，但缺体面出口。
   - 方案候选：战斗内"撤退"按钮（判负保进度）；或 N 游戏分钟无有效伤害判平/判负。
 - [ ] **P2-9 击杀掉真卡通道复活**（M；2026-08-24 批次9 回灌，经济面需评估）
   - bp_* 蓝图掉落已随体系退役清零（批次9 F1）。原"敌人作为装备来源"设计可复活为真卡直掉（先例：ww2_panther/ww2_kingtiger/ww1_saint），但掉率/经济影响需重审计（批次7 经济审计基于无此通道的现状）。
-- [ ] **P2-10 合金/晶体资源处置**（S~M；2026-08-23 批次7 决议：EA 保持现状 + 记录）
+- [x] **P2-10 合金/晶体资源处置**（S~M）✅ 2026-09-11 方案A 落地（4389dbb）：改造升级接入合金/晶体消耗（Lv2 40/15、Lv3 100/40），两资源获得真实 sink；回归锁 tests/unit/economy/test_mod_upgrade_alloy_crystal_cost.gd
   - 合成+蓝图制造删除后两资源零消耗方、纯展示。1.0 前接消耗（如改造升级/商店定价）或退役。
 - [ ] **P2-11 L43+ 难度曲线人工核验**（S；2026-08-24 批次9 观察）
   - soak 中无强化账号在冷战后期（L43+）遭遇秒败级首波。真实玩家有商店/强化/满 4 卡位缓冲，但断崖体感需实测（挂 P1-2 人工 B 部分一起做）。
-- [ ] **P2-12 低频 Lambda capture 残留定位**（S；工程尾巴）
+- [x] **P2-12 低频 Lambda capture 残留定位**（S）✅ 2026-09-11（aad5271）：三处源头 weakref 修复（连锁闪电/单体大招/战术核弹预警环），GdUnit 271/271 绿；detonate parent index 4 备查项见 commit message
   - ~1/25 场战斗一次 "Lambda capture at index 1 was freed"（良性有守卫）。attack_pose 已修一例（批次9 F4），余一处无堆栈未定位。
 
 ---
