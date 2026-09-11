@@ -18,7 +18,7 @@ bin/
 tmp_audio_dl/
 tmp_*/
 
-# ── 导出预设（含密钥，不应提交）──
+# ── 导出预设（已入库 33afd7b；勿向此文件写入密钥类字段：加密留空、encrypt_pck=false）──
 #export_presets.cfg
 !export_presets.cfg
 
