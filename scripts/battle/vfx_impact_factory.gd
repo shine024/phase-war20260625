@@ -163,6 +163,8 @@ static func release_to_pool(n: Node) -> bool:
 			_release_spark_particle(n as CPUParticles2D)
 		"impact_sprite":
 			_release_impact_sprite(n as Sprite2D)
+		"decal":
+			_release_decal(n as Sprite2D)
 		_:
 			return false
 	return true
@@ -367,9 +369,11 @@ static func _spawn_shotgun_scatter(parent: Node2D, world_pos: Vector2, recipe: D
 
 
 # v27.12 perf: 弹痕 Sprite 池——原每命中 new Sprite2D + 渐隐后 queue_free（密集弹幕高频节点
-# churn）。池跨战斗保留（static）；归还时脱离树，battle_vfx 组清场扫不到池内节点。
+# churn）。池跨战斗保留（static）。
+# v27.13 review: 对齐 v26.11(D1) 池基建——release 走 _park_in_pool 挂池根（常驻树内、禁处理），
+# 不再 remove_child + 静态数组树外孤儿持有（本文件 :102-105 存档记载的 ObjectDB leaked 告警源头）。
 static var _decal_pool: Array[Sprite2D] = []
-const DECAL_POOL_CAP: int = 48
+const MAX_DECALS: int = 48
 
 static func _acquire_decal(parent: Node2D, pos: Vector2, scl: float) -> Sprite2D:
 	var s: Sprite2D = null
@@ -381,6 +385,9 @@ static func _acquire_decal(parent: Node2D, pos: Vector2, scl: float) -> Sprite2D
 	if s == null:
 		s = Sprite2D.new()
 		s.texture = PARTICLE_TEX_IMPACT_SCORCH
+	# v27.13 review: 非持久组成员资格离树即失效（重挂不恢复），每次 acquire 补挂（幂等）——
+	# 否则复用弹痕被战斗末 battle_vfx 双轮清扫漏扫，只剩 0.65s tween 自释放侥幸兜底
+	if not s.is_in_group("battle_vfx"):
 		s.add_to_group("battle_vfx")
 	var old_parent: Node = s.get_parent()
 	if old_parent != parent:
@@ -389,17 +396,24 @@ static func _acquire_decal(parent: Node2D, pos: Vector2, scl: float) -> Sprite2D
 		parent.add_child(s)
 	s.position = pos
 	s.scale = Vector2(scl, scl)
+	# 随机旋转，避免每个弹痕朝向一致
 	s.rotation = randf() * TAU
 	s.modulate = Color(1.0, 1.0, 1.0, 0.92)
+	s.visible = true  # v27.13 review: release 归还池根时置 false，重取须复显
+	_tag_pool_node(s, "decal")
 	return s
 
 static func _release_decal(s: Sprite2D) -> void:
 	if s == null or not is_instance_valid(s):
 		return
-	var p: Node = s.get_parent()
-	if p != null:
-		p.remove_child(s)
-	if _decal_pool.size() < DECAL_POOL_CAP:
+	if _release_guard(s):
+		return  # v26.x: 幂等——清场早归还后，tween 迟到回调不再二次入池
+	_park_in_pool(s)
+	s.visible = false
+	s.position = Vector2.ZERO
+	if s.is_in_group("battle_vfx"):
+		s.remove_from_group("battle_vfx")  # v9.4 同款：归还池时移除组（池中节点不被 end_battle 误清）
+	if _decal_pool.size() < MAX_DECALS:
 		_decal_pool.append(s)
 	else:
 		s.queue_free()
@@ -4038,6 +4052,7 @@ static func spawn_chem_field(parent: Node2D, world_pos: Vector2, amount: float) 
 
 
 ## 清理已存在的浓度场 VFX（防止重复创建）。
+## v27.13 review: 已无调用方（仅下方警告段被两处注释引用），保留作为 ⚠️ 事故警告存档，勿删。
 ## ⚠️ 禁止改回 get_node_or_null 单发 + queue_free：queue_free 延迟到帧末，同帧再 add
 ## 同名子节点会被 Godot 4.5 静默改名为 @Polygon2D@N（实测），此后 get_node 永远找不到
 ## 旧节点 → 0.4s 重绘只增不减，ADD 混合下十几层 0.15 青色叠成不透明白色大圆
