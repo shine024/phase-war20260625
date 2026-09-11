@@ -1,5 +1,8 @@
 # Steam 商店素材包（_steam_assets）
 
+> ⚠️ 审核被拒修复档案：**[REVIEW_FIX_LOG_2026-09-10.md](REVIEW_FIX_LOG_2026-09-10.md)**
+> （根因诊断 / 各版本图片 sha256 指纹 / 兜底方案，再出问题先读它）
+
 生成日期：2026-09-02（源自 slot 1 存档 L100 实机录制，采集工具 `tests/_tmp_steam_cap.gd`）
 **v2 重制（2026-09-03）**：战斗图三张重拍 + 天空压缩后处理；05 换制造站；胶囊标题可读性修复。
 
@@ -54,19 +57,26 @@
 
 旧 community_icon_184x184.png / main_capsule_616x353.png / 各 2x 版已从 upload 移除（Steam 拒收）。
 
-统一设计：机甲 key art（assets/backgrounds/title_bg.png，与标题页同源）+「相位战争」标题
-（Noto Sans SC）+ 青色 UI 主色。
-**v2（2026-09-03）**：header/main/small 三张给标题块加了半透明底板 + 描边（修英文副标题
-压碎石对比度差）；small 标题 52→58px 左对齐放大（修推荐位缩略图不可读）。
-重新生成：`python tools/make_steam_capsules.py`（改文案/换底图直接编辑脚本头部常量）。
+统一设计：机甲 key art（assets/backgrounds/title_bg.png，与标题页同源）+ 双语游戏名 lockup。
+**v28 合规修正（2026-09-07，审核被拒后）**：拒信判定旧图 "additional text" 的根因是
+自造标语 **"· CONSTRUCT ERA"** 与库胶囊营销语 **「百关战术卡牌战役」**——规则允许的恰恰是
+"game artwork + the game name + official subtitle"，游戏名本身（相位战争/PHASE WAR）合规。
+v28：删两处违规文案、保留双语游戏名；修复 v27 库资产标题未绘制的 bug；修图标圆环越界。
+重新生成：`python tools/make_steam_capsules_v28.py`。
+预览：capsules/_contact_sheet.png（v2 未重生成，看单图为准）。
 预览：capsules/_contact_sheet.png（v2 未重生成，看单图为准）。
 
 ## ✅ 上架前待办
 
 1. ~~标题页开发按钮无 debug 门控~~ **已修复（v26.9）**：`title_screen.gd` 四个开发按钮
    （切换存档/战斗效果检查/3v3 群战演练/重看开场）现按 `OS.is_debug_build()` 隐藏，商店截图与正式构建不再出现
-2. 视频如需更精剪（字幕/节奏/配乐），母带在 video/battle_raw.avi
-3. 商店文案（简短描述/详细介绍/标签）与定价——需用户在 Steamworks 后台填写
+2. ~~胶囊图/库资产含文字被拒~~ **已修复（v28）**：根因是自造标语 "CONSTRUCT ERA" 与
+   库胶囊营销语——两处已删，双语游戏名（相位战争/PHASE WAR）保留（规则明确允许 game name）。
+   Library Hero 保持零文字；图标修复圆环越界。
+3. 视频如需更精剪（字幕/节奏/配乐），母带在 video/battle_raw.avi
+4. **商店文案（简短描述/详细介绍/标签）与定价**——需在 Steamworks 后台填写，json 草稿在 `upload/storepage_*.json`
+5. **AI 内容披露**——美术/音效大量 AI 生成，在内容问卷如实勾选
+6. **年龄分级问卷**——后台必填
 
 ## 🖼 标题页 v26.9 重制（2026-09-02 晚）
 

@@ -377,14 +377,21 @@ static func _scan_slot_targets(u: CharacterBody2D, gr: Array) -> Node2D:
 	# v20.x 口径守卫：候选中的我方单位 stats.platform_type 为 CombatKind(0-4)，与 legacy
 	# 指挥/光环平台值（12=COMMAND / 3=FORTRESS / 4=RADAR）撞值——我方候选不做 legacy
 	# 高价值分类，保持 v7 实例化以来"我方卡 platform_type 恒不命中"的现行为。
-	var commanders: Array = valid.filter(func(n):
-		return not bool(n.get("is_player")) and _is_command_unit(n.get("stats") as UnitStats))
+	# v27.12 perf: 原两条 valid.filter(lambda) 各分配一次新数组+Callable，改单遍循环收集。
+	var commanders: Array = []
+	var aura_units: Array = []
+	for n in valid:
+		if bool(n.get("is_player")):
+			continue
+		var nst: UnitStats = n.get("stats") as UnitStats
+		if _is_command_unit(nst):
+			commanders.append(n)
+		elif _is_aura_unit(nst):
+			aura_units.append(n)
 	if not commanders.is_empty():
 		return _nearest_of(origin, commanders)
 
 	# L2 光环单位（同上守卫）
-	var aura_units: Array = valid.filter(func(n):
-		return not bool(n.get("is_player")) and _is_aura_unit(n.get("stats") as UnitStats))
 	if not aura_units.is_empty():
 		return _nearest_of(origin, aura_units)
 
@@ -544,12 +551,24 @@ static func do_attack(u: CharacterBody2D) -> void:
 ## 获取武器发射起点（v16 起直射与曲射共用）：优先用 MuzzleAnchors 标注的枪口位置
 ## （fireX/fireY 独立二维；锚点表标注的语义本就是"弹道起始点"），
 ## 无标注时回退到 entity_top_y * 0.5（实体垂直中点）。
-static func _get_direct_fire_spawn_pos(u: CharacterBody2D) -> Vector2:
-	var unit_spr: Sprite2D = null
-	if u.is_player:
-		unit_spr = u.get_node_or_null("Sprite") as Sprite2D
+## v27.12 perf: 单位 Sprite 引用缓存（挂 meta 随单位生死，免每开火两次字符串 get_node）。
+## 消费方：_get_direct_fire_spawn_pos / _play_muzzle_feedback。
+static func _get_unit_sprite_cached(u: Node2D) -> Sprite2D:
+	if u.has_meta("_ai_cached_sprite"):
+		var c: Variant = u.get_meta("_ai_cached_sprite")
+		if c is Sprite2D and is_instance_valid(c):
+			return c
+	var spr: Sprite2D = null
+	if u.get("is_player"):
+		spr = u.get_node_or_null("Sprite") as Sprite2D
 	else:
-		unit_spr = u.get_node_or_null("Sprite2D") as Sprite2D
+		spr = u.get_node_or_null("Sprite2D") as Sprite2D
+	if spr != null:
+		u.set_meta("_ai_cached_sprite", spr)
+	return spr
+
+static func _get_direct_fire_spawn_pos(u: CharacterBody2D) -> Vector2:
+	var unit_spr: Sprite2D = _get_unit_sprite_cached(u)
 	# v23.5: 叠加 sprite 节点位移——空中单位悬空后出膛点跟随机身（含待机浮动）
 	var spr_dy: float = unit_spr.position.y if unit_spr != null else 0.0
 	# v9.x: 我方单位优先用 PlayerMuzzleAnchors（按 card_id 直查，fireX 已按我方朝左图转换）
@@ -845,10 +864,14 @@ static func _mg_in_reload(u: Node, weapon_name: String, weapon_type: int = 0) ->
 static func get_attack_delta_scale(u: Node) -> float:
 	if u == null:
 		return 1.0
-	var now: float = Time.get_ticks_msec() / 1000.0
+	# v27.12 perf: 时间戳惰性读取——无任何 debuff meta 的单位（绝大多数）不再每帧付
+	# get_ticks_msec；四段 has_meta 链保留（无分配，成本可忽略）
+	var now: float = -1.0
 	var mult: float = 1.0
 	# ① ECM/EMP
 	if u.has_meta("_ecm_debuffed_until"):
+		if now < 0.0:
+			now = Time.get_ticks_msec() / 1000.0
 		if now < float(u.get_meta("_ecm_debuffed_until", 0.0)):
 			var penalty: float = float(u.get_meta("_ecm_attack_speed_penalty", ECM_DEFAULT_ATK_SPEED_PENALTY))
 			mult *= maxf(0.1, 1.0 - penalty)
@@ -864,6 +887,8 @@ static func get_attack_delta_scale(u: Node) -> float:
 			mult *= clampf(float(d.get("factor", 1.0)), 0.1, 1.0)
 	# ③ 卡片周期技能攻速惩罚
 	if u.has_meta("_atk_speed_penalty_until"):
+		if now < 0.0:
+			now = Time.get_ticks_msec() / 1000.0
 		if now < float(u.get_meta("_atk_speed_penalty_until", 0.0)):
 			mult *= clampf(float(u.get_meta("_atk_speed_penalty_mult", 1.0)), 0.1, 1.0)
 		else:
@@ -871,6 +896,8 @@ static func get_attack_delta_scale(u: Node) -> float:
 			u.remove_meta("_atk_speed_penalty_mult")
 	# ④ 区域减速光环
 	if u.has_meta("_slow_aura_until"):
+		if now < 0.0:
+			now = Time.get_ticks_msec() / 1000.0
 		if now < float(u.get_meta("_slow_aura_until", 0.0)):
 			mult *= clampf(float(u.get_meta("_slow_aura_mult", 1.0)), 0.1, 1.0)
 		else:
@@ -937,6 +964,10 @@ static func _process_single_weapon_attack(u: CharacterBody2D, delta: float) -> v
 			if is_card_grid_active or dist <= fire_range:
 				u._attack_phase = u.AttackPhase.WINDUP
 				u._attack_phase_timer = 0.0
+				# v26.32: 首击错峰——同帧部署的同型单位若无初始相位差将永久锁步齐射
+				if not u.has_meta("first_attack_staggered"):
+					u.set_meta("first_attack_staggered", true)
+					u._attack_phase_timer = -randf_range(0.0, float(timing.get("cycle", 1.0)) * 0.45)
 				AttackPoseAnim.play_windup(u, wt, float(timing["windup"]))
 		u.AttackPhase.WINDUP:
 			u._attack_phase_timer += delta
@@ -952,7 +983,8 @@ static func _process_single_weapon_attack(u: CharacterBody2D, delta: float) -> v
 				u._attack_phase_timer = 0.0
 		u.AttackPhase.COOLDOWN:
 			u._attack_phase_timer += delta
-			if u._attack_phase_timer >= timing["cooldown"]:
+			# v26.32: 每单位射速个性（±8%，setup 掷定）——同型单位节奏各有快慢
+			if u._attack_phase_timer >= float(timing["cooldown"]) * _attack_cadence(u):
 				u._attack_phase = u.AttackPhase.IDLE
 				u._attack_phase_timer = 0.0
 
@@ -1037,6 +1069,11 @@ static func _process_multi_weapons(u: CharacterBody2D, delta: float) -> void:
 				if is_card_grid_multi or dist <= eff_rng:
 					phase = u.AttackPhase.WINDUP
 					phase_timer = 0.0
+					# v26.32: 首击错峰（每武器槽一次性）——同帧部署的同型单位若无初始
+					# 相位差将永久锁步齐射；负 timer 在 WINDUP 相位即额外瞄准延迟。
+					if not w.has("first_attack_staggered"):
+						w["first_attack_staggered"] = true
+						phase_timer = -randf_range(0.0, float(timing.get("cycle", 1.0)) * 0.45)
 					AttackPoseAnim.play_windup(u, w_wt, float(timing["windup"]))
 			u.AttackPhase.WINDUP:
 				phase_timer += delta
@@ -1077,13 +1114,20 @@ static func _process_multi_weapons(u: CharacterBody2D, delta: float) -> void:
 					phase_timer = 0.0
 			u.AttackPhase.COOLDOWN:
 				phase_timer += delta
-				if phase_timer >= timing["cooldown"]:
+				# v26.32: 每单位射速个性（±8%，setup 掷定）——同型单位节奏各有快慢，
+				# 即使武器槽相位被超射程/击晕重置，重新对齐的节拍也各不相同。
+				if phase_timer >= float(timing["cooldown"]) * _attack_cadence(u):
 					phase = u.AttackPhase.IDLE
 					phase_timer = 0.0
 		w["phase"] = phase
 		w["phase_timer"] = phase_timer
 
 ## ===== 辅助函数 =====
+
+## v26.32: 每单位射速个性系数（setup/_init_unit_mechanisms 掷定 ±8%；无 meta 回退 1.0）。
+## 消费点：单武器/多武器 COOLDOWN 相位门槛——同型单位节奏各有快慢，消除节拍器齐射。
+static func _attack_cadence(u: CharacterBody2D) -> float:
+	return float(u.get_meta("attack_cadence", 1.0))
 
 static func acquisition_range(u: CharacterBody2D) -> float:
 	if u.stats == null:
@@ -1179,11 +1223,7 @@ static func _play_muzzle_feedback(u: Node2D, firing_wt: int = -1, weapon_name: S
 	# v9.2: 枪口火位置对齐弹道起点——优先用 MuzzleAnchors（与 _get_direct_fire_spawn_pos 同源），
 	# 无标注时回退 entity_top_y * 0.5。
 	var muzzle_offset: Vector2 = Vector2.ZERO
-	var unit_spr: Sprite2D = null
-	if u.get("is_player"):
-		unit_spr = u.get_node_or_null("Sprite") as Sprite2D
-	else:
-		unit_spr = u.get_node_or_null("Sprite2D") as Sprite2D
+	var unit_spr: Sprite2D = _get_unit_sprite_cached(u)
 	# 取 archetype_id（敌方裸字段 / 我方 _visual_archetype_id 或 platform 映射）
 	# v9.x: 我方单位优先用 PlayerMuzzleAnchors（按 card_id 直查，fireX 已按我方朝左图转换）
 	var is_player_unit: bool = bool(u.get("is_player"))

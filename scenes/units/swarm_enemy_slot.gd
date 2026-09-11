@@ -70,6 +70,14 @@ func setup(p_wave: int, p_archetype_id: String, local_pos: Vector2) -> void:
 	damage_reduction = 0.0
 	grid_update_timer = randf_range(0.0, 0.08)
 	_apply_archetype_stats()
+	# v26.32: 射速个性（±8%）——与随机开火相位叠加，同波步兵班节奏各有快慢，
+	# 彻底消除"节拍器齐射"。
+	attack_interval = maxf(0.05, attack_interval * randf_range(0.92, 1.08))
+	# v26.32: 开火相位去同步——同波多个步兵班在同一帧生成，attack_timer 同为 0 且
+	# attack_interval 相同（虚影延迟也相同）→ 永久锁步齐射：每 interval 全班同一帧
+	# 开火，观感读成"一个步兵一次开火多条弹道"（用户实测报告）。随机相位错开后
+	# 各士兵独立开火，读成班组建制交火。
+	attack_timer = randf_range(0.0, attack_interval * 0.9)
 	max_hp = hp
 	add_to_group("enemy_units")
 	_register_to_spatial_grid()

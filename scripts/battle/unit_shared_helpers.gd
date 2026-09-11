@@ -17,6 +17,8 @@ const VfxImpactFactory = preload("res://scripts/battle/vfx_impact_factory.gd")
 const UnitOutline = preload("res://scripts/battle/unit_outline.gd")  # v26.9: 描边 uniform 契约
 
 const HIT_SHAKE_DURATION: float = 0.14  # v8.3: 0.12→0.14（4×0.035s）
+# v27.12: 受击抖动关键帧常量（原每次受击在 update_hit_animations 内分配同值数组）
+const HIT_SHAKE_KEYS: Array[float] = [0.78, 1.12, 0.92, 1.0]
 
 # ─────────────────────────────────────────────
 #  资源/节点引用缓存
@@ -90,9 +92,8 @@ static func update_hit_animations(unit: Node2D, delta: float, enable_flash: bool
 			if seg > 3:
 				seg = 3
 			var local_t: float = (unit._hit_shake_t - seg * 0.035) / 0.035
-			var keys: Array = [0.78, 1.12, 0.92, 1.0]
-			var s_start: float = 1.0 if seg == 0 else keys[seg - 1]
-			var s_end: float = keys[seg]
+			var s_start: float = 1.0 if seg == 0 else HIT_SHAKE_KEYS[seg - 1]
+			var s_end: float = HIT_SHAKE_KEYS[seg]
 			var s: float = lerpf(s_start, s_end, local_t)
 			unit.scale = Vector2(s, s)
 			if enable_flash and not DT.is_motion_reduce():
@@ -183,9 +184,13 @@ static func clamp_inside_battlefield(unit: Node2D, x_min: float, max_x: float, y
 ## 开火缩放脉冲 + 方向冲撞（前倾→后坐→归位，本体参与开火演出）。
 ## sprite_node_name：我方 "Sprite" / 敌方 "Sprite2D"；lunge_forward：我方 true / 敌方 false（朝左）。
 static func fire_scale_pulse(unit: Node2D, sprite_node_name: String, lunge_forward: bool) -> void:
-	var spr: Sprite2D = unit.get_node_or_null(sprite_node_name)
-	if spr == null:
-		return
+	# v27.12 perf: sprite 引用 meta 缓存（原每次开火字符串路径查找；失效自动重查）
+	var spr: Sprite2D = unit.get_meta("_fire_pulse_sprite", null)
+	if spr == null or not is_instance_valid(spr) or spr.get_parent() != unit:
+		spr = unit.get_node_or_null(sprite_node_name)
+		if spr == null:
+			return
+		unit.set_meta("_fire_pulse_sprite", spr)
 	if unit._fire_pulse_tween != null and unit._fire_pulse_tween.is_valid():
 		unit._fire_pulse_tween.kill()
 	# 记录当前 scale 作回归点（可能被 faction_glow 等改过，不硬编码）
@@ -195,7 +200,8 @@ static func fire_scale_pulse(unit: Node2D, sprite_node_name: String, lunge_forwa
 	unit._fire_pulse_tween.tween_property(spr, "scale", base_s, 0.07)
 	# v26.x: 契约收口（全项目唯一漏接的 scale 直写点）——动画回归后刷描边 uniform
 	# （edge_texels=OUTLINE_PX/scale.x，见 unit_outline.gd 头注）
-	unit._fire_pulse_tween.tween_callback(func(): UnitOutline.refresh(spr))
+	# v27.12: lambda 闭包改 Callable.bind（免每次开火分配捕获环境）
+	unit._fire_pulse_tween.tween_callback(UnitOutline.refresh.bind(spr))
 	# v14: 方向冲撞——前倾→后坐→归位(预备-发力-跟随)
 	var wt: int = unit.stats.weapon_type if unit.stats != null else 0
 	CardGridUnitVisuals.fire_lunge_sprite(spr, lunge_forward, wt in [1, 2, 3, 7, 9, 10, 11])

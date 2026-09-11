@@ -7127,6 +7127,283 @@ ScrollContainer）。修复（结构级兜底）：`_on_map_gui_input_s11` 左�
 - 行军主链 + TRAVEL_FRESH 新档 E2E ALL PASS（含钉线/停靠中心/复用路径标记三断言）；
   gdparse 0 错；像素抽检：当前关跳点青色在位（537px）、基地金点在位。
 
+## v26.29 行军提速 5 倍：1 天 = 12 秒真实时间（2026-09-07）
+
+> 用户反馈"移动基地在大地图上移动速度太慢"。单变量提速：`SECONDS_PER_DAY` 60→12
+> （`data/truck_travel.gd` 唯一真身），全部行程耗时等比 ÷5——最短一跳 60 秒→12 秒，
+> 天数/距离/引擎提速/燃料语义全部不变。
+
+- 启程 toast ETA 改秒/分钟自适应（`≈ N 秒`/`≈ N 分钟`，12 秒/天后再写"≈1 分钟"会失真）。
+- 基地首次引导文案同步（"1 天≈1 分钟"→"1 天≈12 秒"）。
+- E2E C 段时序窗 15 秒→5 秒（12 秒/天下 15 秒等待会自然到站，断言口径同步）。
+
+#### 验证
+
+- gdparse 0 错；行军主链 E2E ALL PASS；TRAVEL_FRESH 新档 ALL PASS（toast 实测
+  "预计 2 天 ≈ 24 秒"）。仍嫌慢/太快只动 SECONDS_PER_DAY 一个常量。
+
+## v26.30 出击语义统一：按出击=进战场，否则明确提示（2026-09-07）
+
+> 用户反馈三处歧义：基地按出击"有时进大地图、有时进战斗界面"；地图上按出击"有时
+> 回到移动基地"。要求：出击=进战场，或明确提示不可战斗的原因。
+
+**根因 1（基地出击的随机分支）**：main.gd 的 `launch_from_bunker` 落地行为是 v22.3
+旧兵棋室语义——**自动打开战区地图**，且带"教程未完成则跳过"守卫 → 教程状态决定
+玩家落进地图还是战斗界面，体感随机。
+**根因 2（地图出击误回基地）**：v26.28 把光点钉到停靠节点中心后，光点的 STOP 点击
+区盖住节点中心——点节点想出击时命中光点 → 触发"点卡车进基地"，像素级随机。
+
+**修复**：
+- `scenes/main.gd`：出击链（launch_from_bunker）落地改为**直接开打当前关**
+  （`_auto_battle_from_truck_sortie` → on_start_battle，与教程首战同链）；meta 不在
+  此消耗（保留"返回标题→回移动基地"）。旧自动开图语义退役。
+- `scenes/bunker/truck_base.gd`：顶栏"▶ 出击"从"打开简报"改为**直接进战场**
+  （战前简报保留在驾驶室/出击口工位，选关在战区地图）；`_launch_battle` 补行驶中
+  拦截（提示卡"到站停靠后才能出击"，不切场景）。
+- `scenes/world_map.gd`：光点改**纯指示器**（mouse IGNORE 穿透）——点节点=战前准备/
+  出击恒成立，不再劫持点击回基地；死代码 `_on_truck_gui_input` 删除；tooltip 改
+  "点节点=战前准备/出击；返回/ESC 回基地"。
+
+**新 E2E**（`tests/_tmp_sortie_direct_boot.tscn`）：①行驶中出击被拦（提示卡+不切
+场景）②停靠态出击 → main + in_battle=true ③**未**自动弹战区地图（旧语义回归锁）。
+`_tmp_truck_base_check` 结构清单同步（_on_truck_gui_input → _truck_marker_tooltip_refresh）。
+
+#### 验证
+
+- 出击直达 E2E ALL PASS；结构 smoke ALL PASS；卡车↔地图链 ALL PASS；行军主链/新档
+  E2E ALL PASS；gdparse 0 错。
+
+## v26.31 战斗弹体朝向三连修：核子轰炸/战术核武弹头反飞 + 坦克炮弹倒飞（2026-09-07）
+
+> 用户实测报告"核武/轰炸弹头方向错了"。全项目只有 4 处按飞行方向旋转弹体的公式
+> （bullet.gd ×2 / vfx_impact_factory / battle_spectacle），逐贴图 PIL 内容实测 +
+> 目视核对 20 张弹体/特效贴图后确认三处贴图朝向与旋转约定不匹配，全部修复。
+
+**根因（贴图朝向 × 旋转约定错配）**：
+- 大招弹体家族约定 = 竖贴图、弹头朝 +Y（`spawn_ultimate_projectile` 的
+  `rotation = dir.angle() - PI/2`，v17f 定）；直射/曲射 batch 与 bullet.gd 约定 =
+  横贴图、弹头朝 +X（`Transform2D(dir.angle())`）。六个大招弹体贴图五个朝下，
+  唯独 `ult_nuke_player.png`（核子轰炸）是横构图（内容 988×304，弹头 +X）——
+  被 -PI/2 套用后全程弹头朝后飞、尾焰朝前（high_arc 抛物线全程可见，用户实测）。
+- `nuke_missile.png`（战术核武弹道）是竖构图、弹头朝上（-Y），而
+  `_spawn_nuclear_missile` 用 `dir.angle()`（+X 约定）→ 弹头滞后飞行方向 90°。
+- `weapon_tank_shell.png`（直射坦克炮亚类层，敌我同用）落盘时翻转方向做反：
+  鼻锥朝 -X（对照 artillery_ballistic 鼻锥 +X），batch 按 +X 旋转 → 弹头倒飞。
+
+**修复**：
+- `scripts/battle/vfx_impact_factory.gd`：`spawn_ultimate_projectile` 新增尾部可选参
+  `nose_offset`（默认 -PI/2，竖贴图家族零行为变化）；核子轰炸调用点
+  （`phase_instrument_abilities._fire_nuclear_bombardment`，玩家/敌方共用）传 0.0。
+  弹体尺寸/缩放标定（ULT_PROJ_CONTENT_W 988 / target_width 100）不动，观感不变。
+- `managers/battle/battle_spectacle.gd`：`_spawn_nuclear_missile` 旋转改
+  `dir.angle() + PI/2`（竖贴图弹头 -Y 对准飞行方向）。
+- `assets/effects/projectiles/weapons_realistic/weapon_tank_shell.png`：水平重翻转，
+  鼻锥回 +X（仅玩家/敌方直射 batch TANK_GUN 层消费，无其他引用）。
+- `scenes/tools/vfx_showcase.gd`：两处 TEX_ULT_NUKE 演示调用同步传 nose_offset 0.0。
+
+**记录级（不修）**：`bullet.gd` 的 `_trail_sprite`（omega_platform 飞船拖尾贴图，
+HEAVY_TRAIL 武器）因 setup 时序（`_apply_visual` 先于 `_is_heavy` 赋值）恒不可见，
+属死代码；且 79e79f6 早已丢失其 scale=0.35 设置——实战重型武器拖尾=电弧粒子+曳光线
+（v17/v18 审计调优后的观感），实拍确认无全尺寸飞船漏出。勿"修复"时序复活该贴图
+（会改变已验收观感）；将来清理死代码时从 git 找回。
+
+**验证**：窗口化实拍（`spawn_ultimate_projectile` high_arc 中段帧：银色弹体弹头顺
+飞行方向、尾焰在后；`_spawn_nuclear_missile` 同向；tank_shell PIL 目视鼻锥 +X）；
+weapon_visual_profiles_smoke 119/119；master_power_smoke 8/8；Godot 加载四改动文件
+无解析错误（gdparse 对单行 if-lambda 的既有误报除外）。
+
+## v26.32 敌方弹体阵营色回混 + "单发多条弹道"排查结论（2026-09-07）
+
+> 用户报告"敌方一战步兵·步枪，单发，一次开火多条弹道"。三个 batch 的 fire() 全部
+> 插桩实测三场战斗（L2 强档/L6 弱档 60s/L16）：**每条弹道都来自一次独立合法的开火**
+> ——敌方士兵开火节奏 0.6-1.0s 与 attack_interval 一致，无任何双重生成路径
+> （蜂群 `_fire_from_slot`、经典 `_do_attack`→直射/曲射 batch、bullet 兜底逐路径核对，
+> 曲射 batch 每发 1 实例、直射 batch 单键分桶无双重渲染）。"一次开火多条弹道"的观感
+> 由三件事叠加：①步兵班密集站位（前排列槽位相邻）+ 每 0.3s 重索敌多目标分叉；
+> ②MP18 冲锋枪 attack_interval=0.25s（冲锋枪语义，视觉上"步枪连发"）；③**敌方弹体
+> 被亚类层染成我方色系，归属完全不可读**（③为实锤回归，本轮修复）。
+
+**根因③（已修）**：v20.16b 直射亚类层 tint 设计为"阵营无关"（`layer_tint` 直接返回
+`flavor_tint`）——敌方步枪/机枪弹体与曳光渲染成青白/亮黄（我方同款色），v18-R9b
+定下的"敌=橙红 / 我=金黄"阵营弹道语言在亚类层失效。混战中敌方步兵班的多条并列
+弹道全部读成我方或"一个兵连发多条"，直接触发本报告。
+
+**修复**：
+- `scripts/weapon_projectile_vfx.gd`：`layer_tint`/`tracer_color_for` 新增可选
+  `camp_blend`（默认 0.0）——亚类色向阵营 tint 回混。敌方直射 batch 传 0.65
+  （步枪弹体实测 (0.62,0.95,1.0)→(0.87,0.69,0.51) 暖橙化）；我方 batch 传默认 0，
+  历轮 AI 实拍调优过的观感零变化。坦克炮贴图层（橄榄绿壳体语义）与星冥刃光层
+  （专属辉光）不参与回混。
+- `managers/battle/simple_enemy_projectile_batch.gd`：两处调用传 0.65。
+
+**记录级（不修，设计语义）**：MP18 attack_interval=0.25s（冲锋枪压制语义，DPS 32 vs
+步枪 18 有意拉开）；直射亚类"冲锋枪→RIFLE 档"映射（DirectWeaponFlavor 有意注释）。
+
+**回归锁**：`tests/weapon_visual_profiles_smoke.gd` 新增 `_test_camp_blend` 5 断言
+（我方 0 回混原样/敌方暖橙化/敌我同层可区分/曳光透明度保持/坦克炮层豁免），
+124/124 PASS；master_power_smoke 8/8 PASS。
+
+**v26.32 补完（同轮追查）——"一个步枪兵一次开火多条弹道"的真正机制：蜂群锁步齐射**：
+受控实验（直接实例化 SwarmEnemyController + 3 个 ww1_inf_rifle 槽位）实锤——同波
+多个步兵班在**同一帧**生成（`spawn_card_grid_enemy_wave` 为同步循环），attack_timer
+同为 0、attack_interval 相同、部署虚影延迟也相同 → 三者**永久锁步**，每个 interval
+整班同一帧齐射（实验日志 t=11.63/11.64/11.65 连续三轮）。叠加步兵班相邻格站位，
+观感即"一个步兵一次开火多条弹道"。修复：`swarm_enemy_slot.gd` setup 在
+`_apply_archetype_stats()` 后给 `attack_timer` 随机相位（0~0.9×interval）——实验复跑
+三槽错开 ~0.25s 独立开火（10.46/10.71/10.93），节奏仍合法。
+**附带发现（记录级）**：蜂群/经典敌兵的 weapon_type 经 resolver 归一为 0（DIRECT），
+开火不带武器名 → 走通用层（阵营色）无亚类形状/色温；敌方步枪弹因此与冲锋枪弹同观感
+（有配装名的单位不受影响，走槽位名分类）。另：蜂群部署虚影按 deploy_speed=1 约
+10.5s 才实体化开火（v7.x 设计，敌兵入场后约 10 秒才开始射击）。
+
+## v26.31 卡图/动画帧全量体检 + 修复：翻转归一/缩略图补齐/新基线备份（2026-09-07）
+
+> 用户要求"重新检查卡图和动画帧"。全量体检结论：131 卡加载器视角零缺图零占位、
+> 138 个雪碧图动画目录与 anim.json 契约全吻合（含 HEAD 新增 9 个）、22 个旧式散帧
+> 目录（2 boss 待机 + 20 攻击姿态）规格一致各有消费者、FOOT/HEAD 脚锚覆盖全部
+> 178 张。修复三项 + 打新备份：
+
+- **player 088/090 按管线规则重翻**（enemy 为源 FLIP_LEFT_RIGHT）——088 此前有
+  RMS 9.2 内容漂移、090 噪声级差异；修后 **178 对全部严格镜像**（vis 99 + id/xeno 79）。
+- **缩略图补齐 84 张**（vis_xeno 20×双侧×双档 80 张 + player 088/090 刷新 4 张，
+  LANCZOS thumbnail 同 regen_wwi_icons 法）——_thumb256/_thumb384 四树全齐
+  （178/侧/档）；新 PNG 经 `--headless --editor --quit` 导入，.import 侧车 0 缺。
+- **新基线备份**：`phase-war-art-backup-2026-09-07.zip`（项目外，1153 文件/201MB/
+  sha256 前 16 位 `9bfd539a1da464e6`，ZIP_STORED，card_icons+ui/instruments 两树）。
+- 不动项：fe_* 4 张势力专属卡 1024²（非缺陷观察项，降采样不可逆留待定夺）；enemy 树
+  未动 → 脚锚无需重跑。
+- 复检：翻转 0 不一致、加载器终检 0 占位/0 缺路径/0 缩略图回退；审计探针留档
+  `tests/_tmp_icon_audit_boot.tscn` 可复跑。
+
+**v26.32 再补完（2026-09-08）——去节拍器推广到敌我全体**：用户反馈"敌我双方全是
+固定频率，差不多的单位一起开火，缺少真实感"。同型单位锁步的根因与蜂群同构：同帧
+部署/同波生成 → 攻击三阶段状态机（IDLE→WINDUP→ACTIVE→COOLDOWN）的 timing 全同
+→ 永久同步。修复三处：
+- `construct_unit.gd` `_init_unit_mechanisms`：每单位掷定 `attack_cadence` meta
+  （±8%，消费于 COOLDOWN 门槛）；
+- `construct_unit_ai.gd`：单武器/多武器两条路径的 IDLE→WINDUP 加**首击错峰**
+  （每武器槽一次性，负 phase_timer ≤0.45 cycle = 额外瞄准延迟；多武器按槽独立掷定，
+  主炮与机枪自然错开）；COOLDOWN 门槛乘 cadence；
+- `enemy_unit.gd`：setup 掷定同款 cadence meta，`_process_attack_timing` 的首击错峰
+  与 COOLDOWN 门槛同构；
+- `swarm_enemy_slot.gd`：interval 补乘 ±8% 个性（与 v26.32 相位随机叠加）。
+
+实测（L16 插桩）：李恩菲尔德步枪连发间隔 0.66/0.72/0.75/0.69/0.76 浮动（原精确
+等间隔），要塞炮 0.87~1.05，不同单位零同帧开火。DPS 影响：±8% 单位级、班平均
+中性；MG 换弹循环/点射/曲射节奏不受影响。视觉 smoke 124/124、master_power_smoke
+8/8 PASS。
+
+## v26.33 引导与帮助移动基地核心化：教程 14 步、帮助面板重写、帮助入口复活（2026-09-08）
+
+> 用户定调"以后用移动基地版本，以移动基地为核心重新整理引导和帮助"。v26.12-29 移动基地
+> 全链落地后，FTUE 教程（13 步 v3，2026-09-01）与帮助面板（v26.13 补全）仍以旧叙事为中心，
+> 且帮助面板自 v25.3 收敛+旧基地停用后全项目零入口。本轮三件套收口：
+
+**1) 教程 13→14 步（FTUE A3，`managers/tutorial_progression_manager.gd`）**：
+- 新增「移动基地 · 你的家」步（枚举 TRUCK_BASE=14，插入 STEP_ORDER 首战后=战后续播首步）：
+  双视图/车厢工位一览/铺位睡觉=存档+回充燃料+恢复精神/顶栏战区地图=行军换防。动作=纯推进
+  （教程 overlay 活在 main 场景，不切场景）。
+- 口径纠偏：改造步"消耗合金/材料"→图纸+纳米（v26.10 消耗品语义，旧文案自 v26.10 起失实）；
+  世界地图步改行军语义（金色光点=纯指示器、点任意节点=出车、停靠关=战前准备→出击、
+  停哪打哪、1 天≈12 秒离线也计时）；欢迎/背包/制造/商店/自由模式步补移动基地锚点
+  （卡牌墙=背包、3D 打印机=制造、售货机=商店、回基地睡觉存档）。
+- 存档兼容：枚举值不变，v3 档原位续看（老玩家跳过新步属预期）；save version 3→4；
+  `total_steps` 改 `STEP_ORDER.size()`（原硬编码 FREEDOM=13 恰与 13 步同值，14 步制下会错）。
+
+**2) 帮助面板移动基地版（`scenes/ui/help_panel.gd`）**：
+- Tab5「基地与移动基地」→「移动基地」：主体改卡车——车厢工位表（含 v26.19 发电机=燃料/
+  引擎）/行军与燃料（地形系数、回程半价、安全储备 10、实时行军）/燃料回复与睡觉（自动回复、
+  +45/晚、能量块 1:1、睡觉=存档点）/挂机与归仓（结算弹窗「全部入账」）。旧基地（余烬要塞）
+  内容退场，仅留一句"已停用，功能并入移动基地工位"灰字。
+- Tab6 地图与进阶：金色光点/西南「家」标记进基地/点节点=行军/停靠关=战前准备/黑门=通关
+  第 100 关开启且进入需停靠 100 关（原"卡车标记点它进入"已随 v26.20/26.28/26.30 失实）。
+- 相位仪 Tab 撤「符文圣所」（旧基地荣誉陈列室）→背包符文标签页；卡牌成长 Tab 词缀工坊去
+  「基地工位」表述、制造中心入口锚定移动基地 3D 打印机/成长中枢。
+
+**3) 帮助入口复活（`scenes/bunker/truck_base.gd`）**：顶栏新增「❓ 帮助」按钮（出击右、
+  返回标题左）+ PANEL_SCENES 注册 help——帮助面板自 v25.3 战斗屏入口删除后唯一活入口在
+  已停用的旧基地，本轮起由移动基地接管。附带修复嵌入链坑：help_panel 在 _ready 自隐藏
+  （visible=false + modulate 归零），嵌入包装只切 wrapper 可见性——`_open_panel` 补
+  「自隐藏面板首开调 show_panel()」自愈（旧基地 help 嵌入即栽此坑：wrapper 亮了面板本体
+  还黑着，等于从未真正修好过）。
+
+**记录级（不修，另行立项）**：词缀工坊面板（affix_forge_panel）在移动基地与旧基地都只有
+PANEL_SCENES 注册、零打开方——功能在线但无入口；移动基地无战利品归仓气泡（收取走挂机
+结算弹窗「全部入账」）；英雄档案/纪念墙仅存旧基地（已停用）。
+
+#### 验证
+
+- gdparse 3 改动文件 + 2 检查脚本 0 错。
+- 新增回归锁 `tests/_tmp_help_tutorial_check_boot.tscn`（+ `_tmp_help_tutorial_check_runner.gd`，
+  boot 场景模式=autoload 齐备下编译+断言）：14 步制/字段完整/TRUCK_BASE 位次与纯推进动作/
+  改造图纸口径/地图行军关键词/total=14/save v4/load v3 原位续看/v1 完档判定/战后续播覆盖
+  新步/帮助 7 Tab 名与内容口径/旧表述禁词（余烬要塞（旧基地）/归仓气泡/纪念墙/符文圣所/
+  卡车标记）/PANEL_SCENES 注册——ALL PASS。
+- `tests/_tmp_truck_base_check.gd` ALL PASS（5 时代 55 热区；PANEL_SCENES 新键过文件存在
+  断言）；master_power_smoke 8/8 PASS。
+
+## v27 改造 2.0：升级系统 + 六新套装 + 触发式 + mythic + 47 条新改造（2026-09-11）
+
+**总量 202 → 249（+47）**，四个玩法支柱全部落地，全部玩家侧（不动敌方白名单/配装表，
+敌方 125 引用 id 零漂移实测）。改改造相关代码前先读本条。
+
+**A. 改造升级系统 Lv1→3（`managers/blueprint_manager.gd`）**：
+- 已装改造消耗**同改造图纸 ×(目标等级−1) + 纳米**升档。费用唯一真身 `preview_upgrade_cost`
+  （纳米 = `preview_install_cost` 卡牌基准 × {Lv2: 1.5, Lv3: 2.5}；`mod_consumable_enabled=false`
+  时图纸 0）。资格查询 `get_mod_upgrade_info`（无 level_effects 的改造不可升级）；执行
+  `upgrade_modification`（守卫链照抄 install：实例守卫→档位→图纸→纳米→entry.level+=1→
+  缓存/存档/成就/相位师战力刷新）。
+- **引擎侧零改动**：registry `apply_with_level` 早已按条目 level 读档（clamp 1-3），
+  `_resolve_mod_effects` 优先 `level_effects[lv]`——安装/战场/属性预览/存档自动生效；
+  旧档条目缺 level 默认 Lv1 免迁移。
+- UI（`modification_panel.gd`）：已装行显示 `[LvN]` 前缀 + `↑Lv2/↑Lv3` 升级按钮（满级显示
+  金色"满级"标签）；效果行按当前等级取档；详情面板已装态按钮变"升级 →LvN"（与扣款同源）。
+
+**B. level_effects 数据补齐（56 条 backfill）**：`tools/gen_mod_level_effects.py`（可重跑）
+对未被敌方引用（enemy_fixed_loadouts + enemy_card_mod_map 并集 125 id 之外）且纯数值键的
+改造按 Lv2=1.3×/Lv3=1.7× 生成（int 取整、pct 帽 0.60 对齐 balance test CAP_STAT、负副作用/
+布尔/语义 int 三代平坦、全平坦条目跳过）。可升级面 31 → 143（31 既有 + 56 backfill + 47 新增
+− 重叠）。**敌方 tier 走 level_effects 消费，backfill 排除集保难度零扰动（125 id 实测零漂移）**。
+
+**C. 六新套装（`data/combo_tactics.gd` COMBOS 6→12）**，结构照抄既有套路（mod_ids≥2 单卡
+basic / 集齐 full / kind_combo 全队机制）：
+| 套装 | 四件 | 满档机制 |
+|---|---|---|
+| 重装方阵 | arm_01/02/03/04 | `reactive_recharge` 爆反每 5s 回充 1 层 |
+| 防空火网 | aa_02/05/07/11 | `intercept_barrage` 拦截次数 +2 |
+| 野战医疗链 | inf_17/18/19/35 | `revive_team_heal` 复活时全队回 8% |
+| 炮兵饱和 | art_04/09/11/21 | `saturation_barrage` 溅射帽→1.0 + 曲射目标+2 |
+| 工兵防线 | eng_02/03/12/18 | `minefield_rearm` 雷场伤害×2 |
+| 堡垒固守 | for_01/08/13/17 | `fortress_bulwark` 庇护光环范围+60% |
+basic 档机制：phalanx_reflect（爆反+50%）/ flak_barrage（对空命中 20% 瘫痪 0.4s）/
+field_triage（击杀→最弱友军回 2%）/ saturation_fire（溅射半径+30%）/ demo_charge（工兵
+爆破+50%）/ bulwark_shelter（庇护效果+50%）。消费点全在 `module_effect_handler.gd` 既有
+函数的档位分支（新增 `_mech_active()` 查询助手）+ 曲射 batch aoe_cap 分支。
+
+**D. 触发式改造 6 条**（效果键落 `_special`→`mod_special_flags`，消费点 handler 四入口 +
+battle_manager 波次链转发 `on_wave_spawned`）：
+inf_34 击杀战地敷料（击杀→范围治疗）/ arm_22 受击反击脉冲（CD 范围反伤）/ art_20 濒死爆发
+（<30% 一次性自疗+爆发）/ gen_18 痛苦传导（受击→攻击者减速，复用 _slow_aura meta）/
+gen_19 波次动员（新波次全队 5% 护盾）/ for_18 殉爆预案（阵亡范围殉爆）。新键全部进
+`MECHANIC_EFFECT_KEYS`（面板"机制"分类）。
+
+**E. mythic 稀有度启用**：`mod_manager.get_min_power_tier_for_mod` 补 mythic→OVERLORD 分支
+（原回退 GRUNT 是陷阱）；掉落权重 mythic 0→1（boss×3，制造随机箱仍是主通道）；3 条 mythic
+行为改写改造（`gen_21_vanguard_repair` 全队击杀自回 / `gen_22_aegis_protocol` 周期最弱友军
+补盾 / `gen_23_singularity_core` 周期引力脉冲真伤+减速），power_mult 2.0-2.4，era3-4。
+
+**F. 47 条新改造分布**：common 10（补池——原全池仅 1 条 common）/ uncommon 12 / rare 12 /
+epic 7 / legendary 3 / mythic 3；按模块：inf+8 / arm+5 / art+5 / aa+4 / air+4 / rec+4 /
+eng+4 / fort+4 / gen+6 / enh+3。全部带三档 level_effects（升级系统首批完全体）、图标复用
+既有 mod_icons 池、套装四件套新件：inf_35 野战医院 / art_21 饱和校射机 / eng_18 防线蓝图 /
+for_17 永备工事。
+
+**验证**：全量 GdUnit 268/268（含新增 `tests/unit/blueprint/test_mod_upgrade.gd` 15 用例：
+升级链/费用公式/守卫/等级解析/数据完整性/机制键分类/套装检测）；数量锁两处 bump
+202→249；master_power_smoke 8/8；balance_audit_mods_evo 零问题（2 条 -0.40 攻速警告为
+存量值）；敌方 125 引用 id level_effects 状态 vs HEAD 零漂移。注入工具
+`tools/gen_v27_mod_batch.py` + backfill 生成器 `tools/gen_mod_level_effects.py` 入库可重跑。
+
 ## v27.10 战斗热路径性能批：on_tick 门禁前置 + 引用缓存 + 恒定量预计算（2026-09-10）
 
 **背景**: 全面性能静态审计（`docs/PERF_AUDIT_2026-09-11.md`，下同）定位项，代码改动统一带

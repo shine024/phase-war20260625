@@ -91,8 +91,9 @@ func _connect_signals() -> void:
 		SignalBus.wave_spawned.connect(_on_wave_spawned)
 	if not SignalBus.unit_selected.is_connected(_on_unit_selected):
 		SignalBus.unit_selected.connect(_on_unit_selected)
-	if not SignalBus.unit_damaged.is_connected(_on_unit_damaged):
-		SignalBus.unit_damaged.connect(_on_unit_damaged)
+	# v27.12: 伤害数字统一走 BattleManager → CombatFeedback 管线（80ms 节流合并 + 暴击/
+	# 穿透/克制样式 + 阵营双色已并入）。本面板的原 _on_unit_damaged → show_damage_popup
+	# 是同信号上的第二套无节流管线，造成双份数字，已删除。
 	if not SignalBus.battle_started.is_connected(_on_battle_started):
 		SignalBus.battle_started.connect(_on_battle_started)
 	if not SignalBus.battle_ended.is_connected(_on_battle_ended):
@@ -117,8 +118,6 @@ func _disconnect_signals() -> void:
 			SignalBus.wave_spawned.disconnect(_on_wave_spawned)
 		if SignalBus.unit_selected.is_connected(_on_unit_selected):
 			SignalBus.unit_selected.disconnect(_on_unit_selected)
-		if SignalBus.unit_damaged.is_connected(_on_unit_damaged):
-			SignalBus.unit_damaged.disconnect(_on_unit_damaged)
 		if SignalBus.battle_started.is_connected(_on_battle_started):
 			SignalBus.battle_started.disconnect(_on_battle_started)
 		if SignalBus.battle_ended.is_connected(_on_battle_ended):
@@ -168,10 +167,6 @@ func _on_wave_spawned(wave_index: int) -> void:
 func _on_unit_selected(unit: Node, _is_player: bool, _at_position: Vector2) -> void:
 	# BottomCenterPanel 已被移除，单位信息现在由 UnitInfoPanel（暂停时）显示
 	pass
-
-func _on_unit_damaged(unit: Node, is_player: bool, amount: float, at_position: Vector2) -> void:
-	# v13.1: 信号自带受害方阵营（无友伤 → 受害方反推攻击方），优先于分组探测
-	show_damage_popup(amount, at_position, unit, "in" if is_player else "out")
 
 func _on_battle_started() -> void:
 	_battle_active = true
@@ -282,36 +277,6 @@ func _make_danger_panel_style() -> StyleBoxFlat:
 	s.shadow_color = Color(DT.COLOR_DANGER.r, DT.COLOR_DANGER.g, DT.COLOR_DANGER.b, 0.5)
 	s.shadow_size = 10
 	return s
-
-# ── 伤害弹出数字 ──────────────────────────────────────────────
-
-const DamageNumberScript = preload("res://scenes/effects/damage_number_display.gd")
-
-func show_damage_popup(damage: float, world_pos: Vector2, unit: Node = null, side: String = "") -> void:
-	# 使用对象池的 damage_number_display 替代每击创建 Label+Tween
-	var parent: Node = null
-	if unit and is_instance_valid(unit):
-		parent = unit.get_parent()
-	if parent == null:
-		parent = get_tree().current_scene if get_tree() else null
-	if parent == null:
-		return
-
-	var dmg_type: String = "normal"
-	if damage >= 80:
-		dmg_type = "critical"
-	elif damage >= 40:
-		dmg_type = "normal"
-
-	# v13.1: 阵营双色——敌人掉血=我方输出(out/青)，我方掉血=敌方输出(in/红)。
-	# 调用方未传 side 时按受害方分组兜底（覆盖直接调用路径）；判定不了保持 neutral 白。
-	if side.is_empty() and unit != null and is_instance_valid(unit):
-		if unit.is_in_group("enemy_units"):
-			side = "out"
-		elif unit.is_in_group("player_units"):
-			side = "in"
-
-	DamageNumberScript.create_damage_number(parent, world_pos, int(damage), damage >= 80, dmg_type, side)
 
 # ── 公开 API（兼容旧调用） ────────────────────────────────────
 

@@ -449,6 +449,7 @@ const DATA: Dictionary = {
 		conflict_group = "armor",
 		era_band = [0, 1],
 		effects = {defense_armor = 12, defense_armor_pct = 0.06},
+		level_effects = {1: {defense_armor = 12, defense_armor_pct = 0.06}, 2: {defense_armor = 16, defense_armor_pct = 0.078}, 3: {defense_armor = 20, defense_armor_pct = 0.102}},
 		unlock_conditions = {required_level = 1}
 	},
 
@@ -470,6 +471,95 @@ const DATA: Dictionary = {
 		unlock_conditions = {required_level = 1}
 	},
 
+
+	# ══════════ v27 改造2.0 批：普及档 + 受击触发 + 重装方阵套件锚点 ══════════
+	"arm_19_track_guards" = {
+		id = "arm_19_track_guards",
+		name = "履带护板",
+		name_en = "Track Guards",
+		icon = "res://assets/ui/icons/mod_icons/mod_armor.png",
+		prototype = "侧裙板/履带护罩",
+		description = "履带侧裙防护。对轻装防御 +6。",
+		rarity = "common",
+		power_mult = 0.8,
+		cost_research = 50,
+		cost_install = 25,
+		slot_type = "armor",
+		conflict_group = "armor",
+		effects = {defense_light = 6},
+		level_effects = {1: {defense_light = 6}, 2: {defense_light = 8}, 3: {defense_light = 10}},
+		unlock_conditions = {required_level = 1}
+	},
+	"arm_20_commander_sight" = {
+		id = "arm_20_commander_sight",
+		name = "车长周视镜",
+		name_en = "Commander's Panoramic Sight",
+		icon = "res://assets/ui/icons/mod_icons/mod_optics.png",
+		prototype = "周视瞄准镜",
+		description = "独立周视镜。暴击率 +5%，索敌 +10%。",
+		rarity = "uncommon",
+		power_mult = 1.0,
+		cost_research = 100,
+		cost_install = 50,
+		slot_type = "optics",
+		conflict_group = "optics",
+		effects = {crit_chance = 0.05, vision = 0.10},
+		level_effects = {1: {crit_chance = 0.05, vision = 0.10}, 2: {crit_chance = 0.065, vision = 0.10}, 3: {crit_chance = 0.085, vision = 0.10}},
+		unlock_conditions = {required_level = 2}
+	},
+	"arm_21_turret_stabilizer" = {
+		id = "arm_21_turret_stabilizer",
+		name = "炮塔稳定器",
+		name_en = "Turret Stabilizer",
+		icon = "res://assets/ui/icons/mod_icons/mod_fire_control.png",
+		prototype = "双向稳定器",
+		description = "行进间射击。射速 +7%，移动 +5px/s。",
+		rarity = "rare",
+		power_mult = 1.3,
+		cost_research = 160,
+		cost_install = 80,
+		slot_type = "fire_control",
+		conflict_group = "fire_rate",
+		effects = {attack_interval = -0.07, move_speed = 5},
+		level_effects = {1: {attack_interval = -0.07, move_speed = 5}, 2: {attack_interval = -0.09, move_speed = 5}, 3: {attack_interval = -0.12, move_speed = 5}},
+		unlock_conditions = {required_level = 3}
+	},
+	# v27 触发式：受击反击脉冲（CD 内受击 → 范围真伤脉冲）。消费点 module_effect_handler.on_damage_taken
+	"arm_22_counter_pulse" = {
+		id = "arm_22_counter_pulse",
+		name = "受击反击脉冲",
+		name_en = "Counter Pulse",
+		icon = "res://assets/ui/icons/mod_icons/mod_shield_reactive.png",
+		prototype = "车载主动反击系统",
+		description = "受击后向 120px 内敌方释放反击脉冲，造成本次所受伤害 35% 的伤害（冷却 4 秒）。",
+		rarity = "epic",
+		power_mult = 1.5,
+		cost_research = 300,
+		cost_install = 150,
+		slot_type = "special",
+		conflict_group = "special",
+		effects = {counter_pulse_damage = 0.35, counter_pulse_radius = 120.0, counter_pulse_cd = 4.0},
+		level_effects = {1: {counter_pulse_damage = 0.35, counter_pulse_radius = 120.0, counter_pulse_cd = 4.0}, 2: {counter_pulse_damage = 0.45, counter_pulse_radius = 130.0, counter_pulse_cd = 3.5}, 3: {counter_pulse_damage = 0.55, counter_pulse_radius = 140.0, counter_pulse_cd = 3.0}},
+		unlock_conditions = {required_level = 5}
+	},
+	"arm_23_platoon_datalink" = {
+		id = "arm_23_platoon_datalink",
+		name = "装甲连数据链",
+		name_en = "Platoon Datalink",
+		icon = "res://assets/ui/icons/mod_icons/mod_network.png",
+		prototype = "车际信息互联",
+		description = "全连态势共享。周围友军攻击 +6%，指挥效率 +10%。",
+		rarity = "legendary",
+		power_mult = 1.8,
+		cost_research = 420,
+		cost_install = 210,
+		slot_type = "comms",
+		conflict_group = "comms",
+		era_band = [2, 4],
+		effects = {ally_bonus = 0.06, command_efficiency = 0.10},
+		level_effects = {1: {ally_bonus = 0.06, command_efficiency = 0.10}, 2: {ally_bonus = 0.08, command_efficiency = 0.13}, 3: {ally_bonus = 0.10, command_efficiency = 0.17}},
+		unlock_conditions = {required_level = 6}
+	},
 }
 
 ## ─────────────────────────────────────────────

@@ -330,6 +330,9 @@ func _apply_archetype_stats() -> void:
 	_base_attack_damage = attack_damage
 	_base_move_speed = move_speed
 	_base_attack_interval = attack_interval
+	# v26.32: 每单位射速个性（cooldown 门槛 ×此系数）——同型单位节奏各有快慢，
+	# 消除"节拍器齐射"（消费点 _process_attack_timing COOLDOWN 相位）。
+	set_meta("attack_cadence", randf_range(0.92, 1.08))
 	_base_stats_ready = true
 	_apply_visual_from_archetype(cfg)
 	# v7.x(敌方加成来源明细): 把 resolve_classic_enemy 返回的加成明细挂到单位 meta，
@@ -779,7 +782,10 @@ func _update_fort_shield_aura(delta: float) -> void:
 	if not _fort_aura_meta_set:
 		_fort_shield_aura.set_meta(&"is_player", false)  # 敌方光环用红色系
 		_fort_aura_meta_set = true
-	_fort_shield_aura.set_meta(&"hit_boost", _fort_aura_hit_boost)
+	# v27.12 perf: meta 写守卫——值未变不写（承压衰减期仍每帧写，稳定 0 期零写入）
+	if not _fort_shield_aura.has_meta(&"hit_boost") \
+			or float(_fort_shield_aura.get_meta(&"hit_boost")) != _fort_aura_hit_boost:
+		_fort_shield_aura.set_meta(&"hit_boost", _fort_aura_hit_boost)
 	# v7.4: 承压闪光时每帧 redraw，正常态每4帧一次（呼吸动画降频）
 	if _fort_aura_hit_boost > 0.0 or (_aura_low_freq_frame % 4) == 0:
 		_fort_shield_aura.queue_redraw()
@@ -1410,6 +1416,12 @@ func _process_attack_timing(delta: float) -> void:
 			if _is_card_grid_combat or dist <= fire_range:
 				_attack_phase = 1
 				_attack_phase_timer = 0.0
+				# v26.32: 首击错峰——同帧生成的同型单位若无初始相位差将永久锁步齐射
+				# （观感读成"一个兵一次开火多条弹道"）。首击前随机延迟 ≤0.45 cycle。
+				if not has_meta("first_attack_staggered"):
+					set_meta("first_attack_staggered", true)
+					var cyc: float = float(timing.get("windup", 0.0)) + float(timing.get("active", 0.0)) + float(timing.get("cooldown", 0.0))
+					_attack_phase_timer = -randf_range(0.0, cyc * 0.45)
 				# v25.2 前摇预载：与玩家侧 construct_unit_ai 同构（蓄力→爆发弧线）
 				AttackPoseAnim.play_windup(self, wt, float(timing["windup"]))
 		1:  # WINDUP
@@ -1426,7 +1438,9 @@ func _process_attack_timing(delta: float) -> void:
 				_attack_phase_timer = 0.0
 		3:  # COOLDOWN
 			_attack_phase_timer += delta
-			if _attack_phase_timer >= timing["cooldown"]:
+			# v26.32: 每单位射速个性（±8%，setup 掷定一次）——同型单位节奏各有快慢，
+			# 被击晕/换目标重置后也不会重新对齐成节拍器。
+			if _attack_phase_timer >= timing["cooldown"] * get_meta("attack_cadence", 1.0):
 				_attack_phase = 0
 				_attack_phase_timer = 0.0
 
@@ -1561,7 +1575,7 @@ func _get_direct_fire_spawn_pos() -> Vector2:
 func _update_hp_bar() -> void:
 	if _presentation_card_grid:
 		# v7.x: 格子战启用迷你 HP 条（与设计稿 v9 对齐——HP 条 + HP 数值配套）
-		var bar_grid := get_node_or_null("HpBar")
+		var bar_grid := _get_hpbar_cached()  # v27.12: 走引用缓存
 		if bar_grid != null and bar_grid.has_method("set_ratio"):
 			var grid_ratio := hp / max_hp if max_hp > 0 else 1.0
 			if absf(grid_ratio - _cached_hp_ratio) >= 0.01:
@@ -1577,7 +1591,7 @@ func _update_hp_bar() -> void:
 				if bar_grid.has_method("set_hp_text"):
 					bar_grid.set_hp_text(hp, max_hp)
 		return
-	var bar = get_node_or_null("HpBar")
+	var bar = _get_hpbar_cached()  # v27.12: 走引用缓存
 	if bar == null or not bar.has_method("set_ratio"):
 		return
 	# 性能优化：只在 HP 比率变化时更新 UI
@@ -1773,7 +1787,7 @@ func take_damage(amount: float, attacker: Variant = null) -> void:
 			# v8.x: 命中点血溅粒子（敌方暗红血色）
 			VfxImpactFactory.spawn_hit_blood(get_parent(), global_position, kb_dir, kb_str, false)
 		# v8.1: 血条受击闪白（接通 unit_hp_bar.trigger_damage_flash，原为未连线死功能）
-		var _hpbar := get_node_or_null("HpBar")
+		var _hpbar := _get_hpbar_cached()  # v27.12: 走引用缓存
 		if _hpbar != null and _hpbar.has_method("trigger_damage_flash"):
 			_hpbar.trigger_damage_flash()
 		# v7.1: 堡垒防护光环受击强化（扩张+闪亮）

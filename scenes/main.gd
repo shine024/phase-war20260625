@@ -259,14 +259,15 @@ func _deferred_non_critical_init() -> void:
 		var _auto_lvl: int = int(Engine.get_meta("world_map_auto_deploy_level"))
 		Engine.remove_meta("world_map_auto_deploy_level")
 		call_deferred("_auto_start_afk_from_world_map", _auto_lvl)
-	# v22.3 余烬要塞：从基地兵棋室"前往战场"进入时自动打开战区地图——按钮文案
-	# 承诺"战区地图·选关出击"，不该让玩家落地后再自己找地图按钮。
-	# 教程未完成的玩家不抢焦点（教程有自己的引导节奏；meta 保留供"返回"回基地）。
+	# v26.30 出击=进战场：移动基地出击链（launch_from_bunker）落地即开打当前关——
+	# 替换 v22.3 旧兵棋室"落地自动开战区地图"语义（旧语义曾表现为"基地按出击有时进
+	# 地图、有时进战斗"——分支实际由教程完成状态决定，体感随机）。教程未完成不抢焦点
+	# （教程有自己的节奏）；meta 不在此消耗，留给"返回标题→回移动基地"。
 	if Engine.has_meta("launch_from_bunker") \
 			and not (TutorialProgressionManager != null
 				and TutorialProgressionManager.has_method("should_show_tutorial")
 				and TutorialProgressionManager.should_show_tutorial()):
-		call_deferred("_on_world_map")
+		call_deferred("_auto_battle_from_truck_sortie")
 	# v9.x 性能：SubViewportContainer(stretch) 入树时会把子视口强制 UPDATE_ALWAYS，
 	# tscn/战斗结束还原的 UPDATE_ONCE 全被覆盖，非战斗期战场每帧空渲染。
 	# 入树后补设一次即生效（容器不会再次改写）。挂机运行中除外（缩略图需要持续渲染）。
@@ -1014,6 +1015,13 @@ func _on_start_level_from_tutorial(level: int) -> void:
 	# v27（FTUE A4 首战行动验证）：15s 内未部署任何单位则循环提示操作方法，
 	# 防"全程看戏→180s 僵持判负还不知道自己做错了什么"（FTUE 审计 S3 关联场景）
 	_start_tutorial_deploy_nudge()
+
+## v26.30：移动基地出击落地直接开打——停靠关已在出击链（truck_base._launch_battle）
+## 写入 current_level，与教程首战同链（on_start_battle）。不消耗 launch_from_bunker
+## meta（留给"返回标题→回移动基地"）。
+func _auto_battle_from_truck_sortie() -> void:
+	if _battle_setup != null:
+		_battle_setup.on_start_battle()
 
 ## v27：教程首战部署提醒 Timer（重复 15s；部署成功/战斗结束自动停）
 var _tutorial_deploy_nudge_timer: Timer = null

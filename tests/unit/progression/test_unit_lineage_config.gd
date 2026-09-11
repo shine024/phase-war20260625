@@ -10,7 +10,8 @@ func test_localize_evolve_reason_known_keys() -> void:
 	# 批次8（2026-08-23）：enemy_mod_not_enough 键已随敌源改造（EOM）系统删除，
 	# 不再是已知键——走 unknown 直通分支（见下一测试）。
 	assert_str(UnitLineageConfig.localize_evolve_reason("enemy_mod_not_enough")).is_equal("enemy_mod_not_enough")
-	assert_str(UnitLineageConfig.localize_evolve_reason("ok")).is_equal("可进化")
+	# 批次③统一化改词：进化→进阶（LANGUAGE_BIBLE 口径），"ok" 文案随数据表为"可进阶"
+	assert_str(UnitLineageConfig.localize_evolve_reason("ok")).is_equal("可进阶")
 
 
 func test_localize_evolve_reason_unknown_passthrough() -> void:

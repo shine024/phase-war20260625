@@ -31,8 +31,25 @@ const EnemyUnitManifest := preload("res://data/enemy_unit_manifest.gd")
 ## 否则描边取样越帧出鬼影、scale×2 后描边宽度翻倍（契约见 unit_outline.gd 头注）
 const UnitOutline := preload("res://scripts/battle/unit_outline.gd")
 
+## v27.12: anim.json 解析结果跨单位静态缓存——同 path 只读盘+解析一次（资产只读，会话内恒定）
+static var _json_cache: Dictionary = {}
+## v27.12: _resolve_key 探测结果缓存（含未命中空串）——同 id 多次出生不再重复磁盘探测
+static var _key_cache: Dictionary = {}
+## v27.12: 帧序列跨单位静态缓存（key/anim → AtlasTexture 数组）——同单位类型多次出生
+## 不再每 attach 重建 N 个 AtlasTexture；数组只读共享（驱动器只按下标取，不改内容）
+static var _seq_cache: Dictionary = {}
+
 
 static func _resolve_key(anim_id: String) -> String:
+	## v27.12: 先查缓存再走原探测链（语义不变，探测函数本身无副作用）
+	if _key_cache.has(anim_id):
+		return String(_key_cache[anim_id])
+	var key := _resolve_key_impl(anim_id)
+	_key_cache[anim_id] = key
+	return key
+
+
+static func _resolve_key_impl(anim_id: String) -> String:
 	## id → 资产目录名（剥 foe_ 前缀）; 有 sheet_idle 且带 anim.json 才算命中
 	for cand in [anim_id, anim_id.trim_prefix("foe_")]:
 		var c := String(cand)
@@ -59,11 +76,18 @@ static func _resolve_key(anim_id: String) -> String:
 
 
 static func _load_json(path: String) -> Dictionary:
+	## v27.12: 路径级缓存（资产只读会话内恒定）——attach 原每单位出生读盘+解析一次，
+	## 现全场同 key 只解析一次；负结果（空字典）同样缓存
+	if _json_cache.has(path):
+		return _json_cache[path]
 	var txt := FileAccess.get_file_as_string(path)
 	if txt.is_empty():
+		_json_cache[path] = {}
 		return {}
 	var parsed = JSON.parse_string(txt)
-	return parsed if parsed is Dictionary else {}
+	var d: Dictionary = parsed if parsed is Dictionary else {}
+	_json_cache[path] = d
+	return d
 
 
 ## 给单位挂 idle ping-pong + attack 单次驱动（敌我双方通用, v24.2）。
@@ -100,20 +124,27 @@ static func attach(unit_spr: Sprite2D, anim_id: String, face_right: bool = false
 
 
 static func _load_seq(key: String, anim: String, n: int, fs: int) -> Array:
+	## v27.12: 序列级缓存——AtlasTexture 只读资源共享给全部同型单位（含空结果负缓存）
+	var ck := "%s/%s" % [key, anim]
+	if _seq_cache.has(ck):
+		return _seq_cache[ck]
 	var out: Array = []
 	if n <= 0:
+		_seq_cache[ck] = out
 		return out
 	var sheet_path := ANIM_ROOT + key + "/sheet_%s.png" % anim
 	if not ResourceLoader.exists(sheet_path):
 		return out
 	var sheet: Texture2D = load(sheet_path)
 	if sheet == null:
+		_seq_cache[ck] = out
 		return out
 	for i in range(n):
 		var at := AtlasTexture.new()
 		at.atlas = sheet
 		at.region = Rect2(i * fs, 0.0, fs, fs)
 		out.append(at)
+	_seq_cache[ck] = out
 	return out
 
 

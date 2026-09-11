@@ -171,6 +171,10 @@ class ObjectPool extends Node:
 				obj.queue_free()
 		available.clear()
 		in_use.clear()
+		# v27.12: 同步重置创建计数——否则清池后 get_object 的 total_created >= max_size
+		# 会拿旧值误判"已达上限"，池空却拒绝新建（潜伏雷：当前无 clear 调用方，防御性修复）
+		total_created = 0
+		_prewarmed = false
 
 ## 对象池管理器
 var _pools: Dictionary = {}

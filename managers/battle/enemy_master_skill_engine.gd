@@ -366,6 +366,10 @@ func _get_enemy_units() -> Array:
 	var tree := _driver.get_tree() if _driver != null else null
 	if tree == null:
 		return []
+	# v27.12 perf: 走 BattleManager 缓存组查询（战斗中免每次全组扫描分配；调用方只读遍历）
+	var bm: Node = tree.root.get_node_or_null("BattleManager")
+	if bm != null and bm.has_method("get_cached_nodes_in_group"):
+		return bm.get_cached_nodes_in_group("enemy_units")
 	return tree.get_nodes_in_group("enemy_units")
 
 ## 触发单个技能：按 effect 名聚类映射到通用执行函数
@@ -1185,6 +1189,10 @@ func _get_player_units() -> Array:
 	var tree := _driver.get_tree() if _driver != null else null
 	if tree == null:
 		return []
+	# v27.12 perf: 走 BattleManager 缓存组查询（同 _get_enemy_units）
+	var bm: Node = tree.root.get_node_or_null("BattleManager")
+	if bm != null and bm.has_method("get_cached_nodes_in_group"):
+		return bm.get_cached_nodes_in_group("player_units")
 	return tree.get_nodes_in_group("player_units")
 
 ## v20.15: 真实战斗存活查询（延迟链守卫用，快照式判定）。

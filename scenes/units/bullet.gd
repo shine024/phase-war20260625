@@ -126,6 +126,7 @@ var _tag_result_cache: Dictionary = {}
 ## 曲射（INDIRECT）弹道参数
 var _is_indirect: bool = false
 var _indirect_apex: float = 200.0      # 抛物线顶点高度（相对于起点和目标连线）
+var _indirect_apex_point: Vector2 = Vector2.ZERO  # v27.12 perf: 贝塞尔控制点首帧预计算（原每帧重建 mid+UP*apex）
 var _indirect_progress: float = 0.0    # 0→1 飞行进度
 var _indirect_duration: float = 1.2    # 全程飞行时间（秒）
 var _indirect_start: Vector2           # 起点位置
@@ -537,7 +538,8 @@ func _apply_trail() -> void:
 			_trail_particles.visible = false
 			return
 		# v9.3: TANK_GUN（重型单发炮）禁用粒子拖尾——单发重炮只需要清晰弹体，火星拖尾会让多发射击重叠成杂乱光带
-		if DirectWeaponFlavor.classify(_weapon_name, weapon_type) == DirectWeaponFlavor.Flavor.TANK_GUN:
+		# v27.12 perf: 复用 setup 已解析的 _shape_flavor（原重复 classify 字符串匹配）
+		if _shape_flavor == DirectWeaponFlavor.Flavor.TANK_GUN:
 			_trail_particles.emitting = false
 			_trail_particles.visible = false
 			return
@@ -600,7 +602,7 @@ func _apply_trail_tier() -> void:
 			# v19-R34: 世界空间(local_coords=false)下轻武器拖尾在枪口→弹道间
 			# 沉积成"长条火花链"（用户反馈"开火枪口有一个长条火花"）——
 			# 缩寿命(≤0.30s)+减量，让枪口只留短促闪光尾巴。
-			match DirectWeaponFlavor.classify(_weapon_name, weapon_type):
+			match _shape_flavor:  # v27.12 perf: 复用 setup 已解析的 _shape_flavor
 				DirectWeaponFlavor.Flavor.MG:
 					# 机枪：连发弹幕轨迹（量最多但寿命短，沉积密度靠连发频率堆）
 					amount = 20; life = 0.30; vmin = 18.0; vmax = 48.0; smin = 0.4; smax = 0.7
@@ -666,7 +668,7 @@ func _trail_color_for_weapon() -> Color:
 		3, 7, 9: return Color(1.0, 0.55, 0.2, 0.8)  # 爆炸类 橙（火箭/高炮/导弹尾焰）
 		0, 4:  # 直射系——按亚类细分配色
 			# v8.x/6.1: MG 亮黄/步枪冷白/坦克炮橙白/手枪亮黄，让连发混战也能辨出武器类型
-			match DirectWeaponFlavor.classify(_weapon_name, weapon_type):
+			match _shape_flavor:  # v27.12 perf: 复用 setup 已解析的 _shape_flavor
 				DirectWeaponFlavor.Flavor.MG: return Color(1.0, 0.95, 0.3, 0.85)   # 机枪 亮黄
 				DirectWeaponFlavor.Flavor.TANK_GUN: return Color(1.0, 0.75, 0.3, 0.85)  # 坦克炮 橙白
 				DirectWeaponFlavor.Flavor.RIFLE: return Color(0.6, 0.95, 1.0, 0.85)  # 步枪 冷青白
@@ -929,6 +931,8 @@ func _process_indirect(delta: float) -> void:
 		# 榴弹族中弧/火箭低平快弹/导弹俯冲。无名恒 1.0 零行为变化。
 		_indirect_apex *= WeaponProjectileVfx.indirect_apex_mul(_indirect_flavor)
 		_indirect_duration *= WeaponProjectileVfx.indirect_duration_mul(_indirect_flavor)
+		# v27.12 perf: 贝塞尔控制点首帧算好（原每帧 mid + UP*apex 重建）
+		_indirect_apex_point = (_indirect_start + _indirect_end) * 0.5 + Vector2.UP * _indirect_apex
 
 	# 记录旧位置，用于计算朝向
 	_indirect_prev_pos = global_position
@@ -949,8 +953,8 @@ func _process_indirect(delta: float) -> void:
 
 	# 计算抛物线位置（二次贝塞尔曲线）
 	var t = _indirect_progress
-	var mid := (_indirect_start + _indirect_end) * 0.5
-	var apex_point := mid + Vector2.UP * _indirect_apex
+	# v27.12 perf: 控制点读首帧预计算值
+	var apex_point := _indirect_apex_point
 
 	global_position = (1.0 - t) * (1.0 - t) * _indirect_start + 2.0 * (1.0 - t) * t * apex_point + t * t * _indirect_end
 
@@ -1082,7 +1086,7 @@ func _request_hit_shake() -> void:
 				BattleManager.request_screen_shake(10.0, 0.45)
 			_:
 				# v9.3: TANK_GUN 重炮应有重打击感（5.5 vs 原 3.0），与 OMEGA/RAIL 量级对齐
-				if DirectWeaponFlavor.classify(_weapon_name, weapon_type) == DirectWeaponFlavor.Flavor.TANK_GUN:
+				if _shape_flavor == DirectWeaponFlavor.Flavor.TANK_GUN:  # v27.12 perf: 复用已解析值
 					BattleManager.request_screen_shake(5.5, 0.25)
 				else:
 					BattleManager.request_screen_shake(3.0, 0.15)
@@ -1218,7 +1222,7 @@ func _on_hit(primary: Node2D) -> void:
 		_finish_tex_bullet()
 		return
 	# v9.3: TANK_GUN 命中后立即开始淡出计时
-	if DirectWeaponFlavor.classify(_weapon_name, weapon_type) == DirectWeaponFlavor.Flavor.TANK_GUN:
+	if _shape_flavor == DirectWeaponFlavor.Flavor.TANK_GUN:  # v27.12 perf: 复用 setup 已解析的 _shape_flavor
 		_tank_gun_terminate = true
 		_tank_gun_timer = 0.0
 	# v9.2: 记录已撞目标（穿透去重用，非穿透子弹仅撞一次无副作用）
@@ -1735,6 +1739,7 @@ func reset_pool_object() -> void:
 	_is_indirect = false
 	_indirect_progress = 0.0
 	_indirect_apex = 200.0
+	_indirect_apex_point = Vector2.ZERO  # v27.12: 池化复用卫生（随首帧重算）
 	_indirect_duration = 1.2
 	_muzzle_spawned = false
 	_impact_spawned = false

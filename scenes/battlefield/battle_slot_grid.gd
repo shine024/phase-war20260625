@@ -159,6 +159,7 @@ class SlotHighlight extends Node2D:
 	var _occupied_cache: Array = []
 	var _occ_refresh_acc: float = 1.0
 	var _player_units: Node = null
+	var _bis: Node = null  ## v27.12: BattleInputState autoload 引用缓存（常驻节点，查一次即稳）
 	var _free_sb: StyleBoxFlat = null
 	var _occ_sb: StyleBoxFlat = null
 	var _hov_sb: StyleBoxFlat = null
@@ -177,8 +178,11 @@ class SlotHighlight extends Node2D:
 
 	func _process(delta: float) -> void:
 		# 本文件会被纯数据链 preload（master_platform_power 等）——禁用 autoload 全局名
-		# （--script 测试模式无 autoload，编译期 Identifier not found），改运行时按路径解析
-		var bis: Node = get_node_or_null("/root/BattleInputState")
+		# （--script 测试模式无 autoload，编译期 Identifier not found），改运行时按路径解析。
+		# v27.12 perf: autoload 常驻不销毁，查到后缓存引用，免每帧每格全路径字符串查找
+		if _bis == null or not is_instance_valid(_bis):
+			_bis = get_node_or_null("/root/BattleInputState")
+		var bis: Node = _bis
 		var pending: bool = bis != null \
 			and not String(bis.get("pending_deploy_platform_card_id")).is_empty()
 		var target: float = 1.0 if pending else 0.0
@@ -190,27 +194,33 @@ class SlotHighlight extends Node2D:
 		modulate.a = _alpha
 		if not visible:
 			return
-		_refresh_occupancy(delta)
+		var occ_changed: bool = _refresh_occupancy(delta)
 		if pending:
 			_update_hover()
 		else:
 			_hover_slot = -1
-		queue_redraw()
+		# v27.12 perf: 稳态免重绘——仅 alpha 过渡中 / 悬停跟随鼠标 / 占用缓存变化时重绘
+		#（原每帧无条件 queue_redraw，挂起部署期全程全格重绘）
+		if absf(_alpha - target) > 0.001 or pending or occ_changed:
+			queue_redraw()
 
-	## 占用态 0.25s 节流刷新（部署/死亡瞬间有延迟可接受，省每帧遍历）
-	func _refresh_occupancy(delta: float) -> void:
+	## 占用态 0.25s 节流刷新（部署/死亡瞬间有延迟可接受，省每帧遍历）。
+	## v27.12: 返回缓存是否变化，供 _process 决定是否需要重绘。
+	func _refresh_occupancy(delta: float) -> bool:
 		_occ_refresh_acc += delta
 		if _occ_refresh_acc < OCC_REFRESH_SEC:
-			return
+			return false
 		_occ_refresh_acc = 0.0
 		if _player_units == null or not is_instance_valid(_player_units):
 			var bf: Node = _grid.get_parent() if _grid != null else null
 			_player_units = bf.get_node_or_null("PlayerUnits") if bf != null else null
 			if _player_units == null:
-				return
+				return false
+		var old := _occupied_cache.duplicate()
 		_occupied_cache.clear()
 		for i in range(_grid.player_slot_count()):
 			_occupied_cache.append(_grid.is_player_slot_occupied(i, _player_units))
+		return old != _occupied_cache
 
 	func _update_hover() -> void:
 		if _grid == null:

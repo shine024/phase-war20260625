@@ -625,12 +625,20 @@ func _ensure_title_label() -> void:
 	get_tree().root.add_child(_title_label)
 
 ## 构造 LabelSettings（缓存 outline 提升可读性）
+## v27.12 perf: 按颜色+字号查表复用（原每次演出 new 一份；调用方只赋值不改写，共享安全）
+static var _label_settings_cache: Dictionary = {}
+
 func _make_label_settings(color: Color, size: int) -> LabelSettings:
+	var key: String = color.to_html() + "|" + str(size)
+	var hit: LabelSettings = _label_settings_cache.get(key)
+	if hit != null:
+		return hit
 	var ls: LabelSettings = LabelSettings.new()
 	ls.font_color = color
 	ls.font_size = size
 	ls.outline_color = Color(0, 0, 0, 0.85)
 	ls.outline_size = 4
+	_label_settings_cache[key] = ls
 	return ls
 
 
@@ -919,9 +927,12 @@ func _spawn_nuclear_missile(parent: Node2D, from_pos: Vector2, target_pos: Vecto
 		var pt := q0.lerp(q1, t)
 		m.global_position = pt
 		# 朝向飞行方向
+		# v26.31: nuke_missile 是竖贴图（弹头朝上/-Y，尾焰在下）——dir.angle() 把贴图
+		# +X 对准飞行方向，竖弹体会横躺/倒飞（弹头滞后飞行方向 90°，用户实测报告）。
+		# +PI/2 让贴图 -Y（弹头）对准飞行方向：横飞(1,0)→rot=+π/2 弹头朝右 ✓。
 		var dir := pt - prev_pt
 		if dir.length() > 0.5:
-			m.rotation = dir.angle()
+			m.rotation = dir.angle() + PI / 2.0
 		prev_pt = pt
 	, 0.0, 1.0, 0.5)
 	# 落地时移除导弹（爆炸特效接管）

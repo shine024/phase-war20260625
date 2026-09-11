@@ -19,7 +19,7 @@ const META_COMIC_PENDING := "bunker_intro_comic_pending"
 const META_WAKEUP := "bunker_intro_wakeup_pending"
 const META_DRY_RUN := "bunker_intro_dry_run"
 const META_BATTLE_RESUME := "bunker_intro_battle_resume"
-const BUNKER_SCENE := "res://scenes/bunker/bunker_main.tscn"
+const BUNKER_SCENE := "res://scenes/bunker/truck_base.tscn"   # v27.13：交接现役移动基地（旧固定基地 bunker_main 已停用）
 const BATTLE_SCENE := "res://scenes/intro/dream_battle.tscn"
 const BATTLE_RESUME_INDEX := 2   # 梦境战结束回到本场景续播的格（B3 邀约）
 const ACCENT := Color(0.92, 0.89, 0.78)
@@ -42,6 +42,7 @@ var _fx: Tween
 var _index := -1
 var _busy := false
 var _finished := false
+var _dot_rects: Array[ColorRect] = []  # v27.12: 进度点缓存复用（原每次翻格 free+new 全部 ColorRect）
 
 func _ready() -> void:
 	DesignTokens.ensure_cjk_fallback()
@@ -277,15 +278,20 @@ func _show_panel(i: int) -> void:
 	_play_sfx("panel_open")
 
 func _refresh_dots(cur: int) -> void:
-	for c in _dots.get_children():
-		c.free()
-	for i in PanelsData.PANELS.size():
-		var d := ColorRect.new()
-		d.custom_minimum_size = Vector2(14, 6)
+	# v27.12: 进度 ColorRect 首建后缓存复用——翻格只改颜色透明度，不再 free+new 重建 11 个节点
+	if _dot_rects.size() != PanelsData.PANELS.size():
+		for c in _dots.get_children():
+			c.free()
+		_dot_rects.clear()
+		for i in PanelsData.PANELS.size():
+			var d := ColorRect.new()
+			d.custom_minimum_size = Vector2(14, 6)
+			d.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			_dots.add_child(d)
+			_dot_rects.append(d)
+	for i in _dot_rects.size():
 		var col: Color = PanelsData.PANELS[i]["accent"]
-		d.color = Color(col.r, col.g, col.b, 0.9 if i == cur else 0.28)
-		d.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		_dots.add_child(d)
+		_dot_rects[i].color = Color(col.r, col.g, col.b, 0.9 if i == cur else 0.28)
 
 # ───────────────────── v24.3：梦境战衔接 ─────────────────────
 

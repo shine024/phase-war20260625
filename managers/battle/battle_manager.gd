@@ -183,6 +183,14 @@ func _ready() -> void:
 		if SignalBus.has_signal("counter_break_triggered"):
 			if not SignalBus.counter_break_triggered.is_connected(_on_counter_break_count):
 				SignalBus.counter_break_triggered.connect(_on_counter_break_count)
+		# v27 触发式改造：波次动员（gen_19 wave_surge）——新敌方波次 → 全队护盾
+		if SignalBus.has_signal("wave_spawned"):
+			if not SignalBus.wave_spawned.is_connected(_on_wave_spawned_surge):
+				SignalBus.wave_spawned.connect(_on_wave_spawned_surge)
+
+## v27：波次动员转发（触发式改造消费入口，battle_spawn_system 发射 wave_spawned 时调用）
+func _on_wave_spawned_surge(wave_index: int) -> void:
+	ModuleEffectHandler.on_wave_spawned(wave_index)
 
 ## v10：克制质变触发计数（战斗开始时清零，战斗结束写入 _battle_result）
 var counter_break_count: int = 0

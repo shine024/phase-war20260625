@@ -41,12 +41,12 @@ TARGETS = {
     "b6_black_gates": (
         os.path.join("assets", "intro", "comic"),
         "b6_black_gates.png",
-        "Scene: a night sky over a dark continent seen from a high hilltop: "
-        "dozens of colossal black rectangular gates hang in the low storm clouds, "
-        "each gate a towering monolith slab of pure black with a thin edge of violet glow, "
-        "narrow beams of violet light pour down from the gates onto distant cities, "
-        "one distant city burns with a faint amber glow on the horizon, "
-        "a tiny column of fleeing silhouettes walks along a road in the lower foreground. ",
+        "Scene: a wide distant view of a modern city avenue at night: "
+        "colossal black rectangular gates hang in the sky at the RIGHT side above the skyline, "
+        "violet light beams pour down and the right buildings burn with orange fire, "
+        "a scattered ragged crowd of tiny fleeing silhouettes runs toward the LEFT along "
+        "the avenue away from the gates, small and distant and unevenly spaced, "
+        "some stumbling behind, abandoned cars dot the street. ",
     ),
     "b7_deep_voyage": (
         os.path.join("assets", "intro", "comic"),
@@ -73,11 +73,15 @@ TARGETS = {
     "b10_rift_stream": (
         os.path.join("assets", "intro", "comic"),
         "b10_rift_stream.png",
-        "Scene: a long river of a thousand tiny walking silhouettes drifts through a tunnel "
-        "of fractured space at night, the tunnel is lined with cracked glass-like shards, "
-        "each shard reflecting a different starfield, ribbons of violet energy tear silently "
-        "between the travelers, some silhouettes glow faintly golden and hold together "
-        "while others crumble into drifting motes of light, the river of people stretches into the far distance. ",
+        "Scene: a distant view inside a shattered space rift tunnel at night with intense spatial distortion: "
+        "fractured glass-like shards float and rotate in the air, each shard reflecting "
+        "a different galaxy and starfield, violent ribbons of violet energy tear across, "
+        "small debris floats weightless, "
+        "a long military convoy seen from BEHIND drives away from the camera toward "
+        "a bright warm glow at the far end of the tunnel: olive military trucks with canvas covers "
+        "in a receding line, red taillights glowing toward the viewer, headlights lighting the road "
+        "ahead, tiny soldier silhouettes march between the trucks, "
+        "some soldiers crumble into drifting golden light motes. ",
     ),
     "wakeup_snowfield": (
         os.path.join("assets", "intro"),

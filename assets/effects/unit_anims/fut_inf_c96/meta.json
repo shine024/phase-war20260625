@@ -1,0 +1,7 @@
+{
+ "anim": "attack",
+ "frames": 12,
+ "loop": "raise-level-fire-lower",
+ "pose": "先举枪端平(+12°)再水平开火",
+ "generated_at": "v6"
+}

@@ -104,7 +104,7 @@ func _init() -> void:
 		if not tbsrc.contains("func " + fn2):
 			fails.append("truck_base.gd 缺外景方法: " + fn2)
 	var wmsrc := FileAccess.get_file_as_string("res://scenes/world_map.gd")
-	for fn3 in ["_add_truck_marker", "_on_truck_level_changed", "_update_truck_marker_snap", "_on_truck_gui_input"]:
+	for fn3 in ["_add_truck_marker", "_on_truck_level_changed", "_update_truck_marker_snap", "_truck_marker_tooltip_refresh"]:  # v26.30：_on_truck_gui_input 已随光点穿透化删除
 		if not wmsrc.contains("func " + fn3):
 			fails.append("world_map.gd 缺卡车标记方法: " + fn3)
 	# world_map.gd 真实引擎解析（gdtoolkit 对其存量的多行字符串误报，以引擎为准）

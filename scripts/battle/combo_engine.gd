@@ -405,6 +405,20 @@ static func try_incendiary_death_seed(mechanisms: Array, target: Node, source: N
 #  辅助：单位收集 + 感染函数（复用现有 meta 范式）
 # ─────────────────────────────────────────────
 
+## v27.12 perf: BattleManager 静态缓存（autoload 全会话存活；未命中不缓存保持回退语义），
+## 替代扩散/反射路径上每次调用的 root 字符串全树查找。
+static var _bm_cache: Node = null
+
+static func _get_battle_manager_cached(tree: SceneTree) -> Node:
+	if _bm_cache != null and is_instance_valid(_bm_cache):
+		return _bm_cache
+	if tree != null and tree.root != null:
+		var bm: Node = tree.root.get_node_or_null("BattleManager")
+		if bm != null:
+			_bm_cache = bm
+		return bm
+	return null
+
 ## 取目标周围（半径内）的"敌方单位"（从 target 视角：target 是敌方，周围是玩家单位；target 是玩家，周围是敌方）。
 ## source 是攻击者（用于判断阵营）。这里简化：取与 source 同阵营的单位（source 的友军，即 target 的敌人）。
 ## 实际用于"扩散感染 target 的相邻敌人"——所以返回 target 附近的敌方单位（source 同阵营）。
@@ -420,7 +434,7 @@ static func _get_nearby_enemies(target: Node, radius: float, source: Node) -> Ar
 	# 优先用 BattleManager 的节流缓存，避免每次扩散全树遍历
 	var result: Array = []
 	var cached: Array = []
-	var _bm = tree.root.get_node_or_null("BattleManager")
+	var _bm = _get_battle_manager_cached(tree)  # v27.12 perf: 静态缓存
 	if _bm != null and _bm.has_method("get_cached_nodes_in_group"):
 		cached = _bm.get_cached_nodes_in_group(group_name)
 	else:
@@ -446,7 +460,7 @@ static func _get_nearby_enemy_units(target: Node, radius: float) -> Array:
 	# 优先用 BattleManager 的节流缓存
 	var result: Array = []
 	var cached: Array = []
-	var _bm = tree.root.get_node_or_null("BattleManager")
+	var _bm = _get_battle_manager_cached(tree)  # v27.12 perf: 静态缓存
 	if _bm != null and _bm.has_method("get_cached_nodes_in_group"):
 		cached = _bm.get_cached_nodes_in_group("enemy_units")
 	else:

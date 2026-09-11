@@ -26,6 +26,9 @@ const PanelChrome = preload("res://scenes/ui/components/panel_chrome.gd")
 var _current_category: String = "all"
 var achievement_manager: Node
 var use_extended_definitions: bool = false
+# v27.12 性能：面板不可见期间的刷新请求只置脏不重建（面板常驻，战斗中成就进度信号高频），
+# 恢复可见时由 _on_visibility_refresh 统一补刷
+var _refresh_dirty: bool = false
 
 func _ready() -> void:
 	# v7.x 性能：AchievementManager 延迟加载，面板打开时确保实例化（否则信号连不上）
@@ -67,6 +70,10 @@ func _ready() -> void:
 		if achievement_manager.has_signal("achievement_progress_updated"):
 			achievement_manager.achievement_progress_updated.connect(_on_progress_updated)
 
+	# v27.12 性能：隐藏期间置脏的刷新在恢复可见时统一补刷
+	if not visibility_changed.is_connected(_on_visibility_refresh):
+		visibility_changed.connect(_on_visibility_refresh)
+
 ## v7.x 修复 W6：面板释放时断开 autoload 信号，避免残留死 Callable
 func _exit_tree() -> void:
 	if achievement_manager == null:
@@ -77,8 +84,19 @@ func _exit_tree() -> void:
 		achievement_manager.achievement_progress_updated.disconnect(_on_progress_updated)
 
 func refresh() -> void:
+	# v27.12 性能：面板不可见时只置脏不重建（成就解锁/进度信号战斗中高频触发），恢复可见时补刷
+	if not is_visible_in_tree():
+		_refresh_dirty = true
+		return
+	_refresh_dirty = false
 	_refresh_summary()
 	_refresh_achievement_list()
+
+
+## v27.12 性能：恢复可见时补刷隐藏期间置脏的摘要 + 成就列表
+func _on_visibility_refresh() -> void:
+	if is_visible_in_tree() and _refresh_dirty:
+		refresh()
 
 ## 设置分类标签页
 func _setup_categories() -> void:

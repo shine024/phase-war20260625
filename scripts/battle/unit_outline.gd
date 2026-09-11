@@ -27,14 +27,19 @@ static func apply(spr: Sprite2D) -> void:
 
 
 ## 换贴图 / scale 变化后重算 uniform（见类头契约）
+## v27.12 perf: uniform 值缓存于材质 meta——换帧 tick（8-24Hz/单位全场）时 scale/region
+## 未变则跳过 uniform 写（同分辨率帧序列两项恒定，boss 帧动画原每帧白写 2 次 uniform）。
+## 缓存挂 ShaderMaterial（随材质生死），材质换挡自动失效，无泄漏。
 static func refresh(spr: Sprite2D) -> void:
 	if spr == null or spr.texture == null:
 		return
 	var mat := spr.material as ShaderMaterial
 	if mat == null or mat.shader != SHADER:
 		return
-	mat.set_shader_parameter("edge_texels", OUTLINE_PX / maxf(absf(spr.scale.x), 0.0001))
+	var edge: float = OUTLINE_PX / maxf(absf(spr.scale.x), 0.0001)
 	var tex := spr.texture
+	var uv: Vector4 = Vector4(0.0, 0.0, 1.0, 1.0)
+	var uv_valid := true
 	if tex is AtlasTexture:
 		var at := tex as AtlasTexture
 		var sheet: Texture2D = at.atlas
@@ -42,8 +47,18 @@ static func refresh(spr: Sprite2D) -> void:
 			var sw: float = maxf(float(sheet.get_width()), 1.0)
 			var sh: float = maxf(float(sheet.get_height()), 1.0)
 			var r := at.region
-			mat.set_shader_parameter("region_uv", Vector4(
+			uv = Vector4(
 				r.position.x / sw, r.position.y / sh,
-				(r.position.x + r.size.x) / sw, (r.position.y + r.size.y) / sh))
-	else:
-		mat.set_shader_parameter("region_uv", Vector4(0.0, 0.0, 1.0, 1.0))
+				(r.position.x + r.size.x) / sw, (r.position.y + r.size.y) / sh)
+		else:
+			uv_valid = false  # 原行为：atlas 缺失时不写 region_uv
+	if uv_valid and bool(mat.get_meta("_outline_clean", false)) \
+			and is_equal_approx(float(mat.get_meta("_outline_edge", -1.0)), edge) \
+			and (mat.get_meta("_outline_uv", Vector4(-1.0, -1.0, -1.0, -1.0)) as Vector4) == uv:
+		return
+	mat.set_shader_parameter("edge_texels", edge)
+	if uv_valid:
+		mat.set_shader_parameter("region_uv", uv)
+		mat.set_meta("_outline_edge", edge)
+		mat.set_meta("_outline_uv", uv)
+		mat.set_meta("_outline_clean", true)

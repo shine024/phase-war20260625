@@ -35,7 +35,8 @@ const SHAPE_KEY_UNIT_ICON: Dictionary = {
 ## 全局贴图缓存（path → Texture2D 或 null）。
 ## v9.4: 加 LRU 上限，避免背包/图鉴等列表场景一次性加载大量图标后常驻显存导致 OOM。
 ## 访问顺序队列（队首=最久未用，队尾=最近使用）；超出上限时从队首淘汰。
-const MAX_CACHED_TEXTURES := 80
+## v27.12: 80 → 256——背包 131+ 卡同屏滚动时 80 上限必逐出，LRU 退化成每次滚动重加载
+const MAX_CACHED_TEXTURES := 256
 static var _tex_cache: Dictionary = {}
 static var _tex_cache_lru: Array[String] = []
 
@@ -54,8 +55,9 @@ static func _tex_evict_if_needed() -> void:
 	# 先按上限淘汰真纹理（Texture2D）
 	while _tex_cache_lru.size() > MAX_CACHED_TEXTURES:
 		var oldest: String = _tex_cache_lru.pop_front()
-		# 释放引用：置 null 让引擎可回收 VRAM（若没有其它强引用）
-		_tex_cache[oldest] = null
+		# v27.12: 删除原"先置 null 再 erase"的死存储——erase 后条目已不存在，前置赋值无效果
+		# 还误导读者。CACHE_MODE_REUSE 下引擎 ResourceCache 可能仍持有该资源引用，
+		# 驱逐只解除本字典的引用，不保证立即释放 VRAM（由引擎引用计数与其它强引用决定）
 		_tex_cache.erase(oldest)
 	# 顺带清理 null 负缓存条目中已不在 LRU 的（防负缓存无限增长）
 	if _tex_cache.size() > MAX_CACHED_TEXTURES * 2:
@@ -305,18 +307,29 @@ static func load_tex(path: String) -> Texture2D:
 ## 检查资源的 .import sidecar 是否标记 valid=false（导入失败）。
 ## 对"文件在但导入失败"的情况返回 true，用于 load_tex 拦截引擎橙色占位纹理。
 ## 逻辑原自 Battlefield._is_import_marked_invalid，提取为公共工具供 UI 层复用。
+## v27.12: 判定结果静态缓存（key=贴图路径，value=bool）——同会话 .import 不会变化，
+## 缓存未命中路径原每次 FileAccess 逐行重读，背包滚动时成热点
+static var _import_invalid_cache: Dictionary = {}
+
 static func is_import_marked_invalid(path: String) -> bool:
+	if _import_invalid_cache.has(path):
+		return _import_invalid_cache[path]
 	var import_path: String = "%s.import" % path
 	if not FileAccess.file_exists(import_path):
+		_import_invalid_cache[path] = false
 		return false
 	var f: FileAccess = FileAccess.open(import_path, FileAccess.READ)
 	if f == null:
+		_import_invalid_cache[path] = false
 		return false
+	var invalid := false
 	while not f.eof_reached():
 		var line: String = f.get_line().strip_edges()
 		if line == "valid=false":
-			return true
-	return false
+			invalid = true
+			break
+	_import_invalid_cache[path] = invalid
+	return invalid
 
 
 static func ui_icon(icon_basename: String) -> Texture2D:

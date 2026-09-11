@@ -35,6 +35,7 @@ const DATA: Dictionary = {
 		slot_type = "stealth", conflict_group = "stealth",
 		era_band = [3, 4],
 		effects = {thermal_immunity = 0.70},
+		level_effects = {1: {thermal_immunity = 0.7}, 2: {thermal_immunity = 0.6}, 3: {thermal_immunity = 0.6}},
 		unlock_conditions = {required_level = 4}
 	},
 	"rec_03_suppressor" = {
@@ -80,6 +81,7 @@ const DATA: Dictionary = {
 		slot_type = "comms", conflict_group = "comms",
 		era_band = [1, 4],
 		effects = {intel_speed = 0.30},
+		level_effects = {1: {intel_speed = 0.3}, 2: {intel_speed = 0.39}, 3: {intel_speed = 0.51}},
 		unlock_conditions = {required_level = 1}
 	},
 	"rec_07_gps" = {
@@ -102,6 +104,7 @@ const DATA: Dictionary = {
 		slot_type = "optics", conflict_group = "optics",
 		era_band = [2, 4],
 		effects = {night_bonus = 0.15},
+		level_effects = {1: {night_bonus = 0.15}, 2: {night_bonus = 0.195}, 3: {night_bonus = 0.255}},
 		unlock_conditions = {required_level = 3}
 	},
 	"rec_09_breaching" = {
@@ -114,6 +117,7 @@ const DATA: Dictionary = {
 		# v7.x: per-slot 弹道——对轻装槽改 SHOTGUN 霰弹（破门近战）
 		condition_slot = 0,
 		effects = {urban_move_bonus = 20, slot_weapon_type = 5},  # v7.x: 对轻装槽霰弹弹道,
+		level_effects = {1: {urban_move_bonus = 20, slot_weapon_type = 5}, 2: {urban_move_bonus = 26, slot_weapon_type = 5}, 3: {urban_move_bonus = 34, slot_weapon_type = 5}},
 		unlock_conditions = {required_level = 2}
 	},
 	"rec_10_medkit" = {
@@ -124,6 +128,7 @@ const DATA: Dictionary = {
 	power_mult = 1.3, cost_research = 120, cost_install = 60,
 		slot_type = "medical", conflict_group = "medical",
 		effects = {ifak_revive = 0.15},  # v7.x 第二批：修复为濒死复活（原 ifak_heal 误为 hp_regen）
+		level_effects = {1: {ifak_revive = 0.15}, 2: {ifak_revive = 0.195}, 3: {ifak_revive = 0.255}},
 		unlock_conditions = {required_level = 2}
 	},
 	"rec_11_decoy" = {
@@ -134,6 +139,7 @@ const DATA: Dictionary = {
 	power_mult = 1.3, cost_research = 160, cost_install = 80,
 		slot_type = "deception", conflict_group = "deception",
 		effects = {enemy_confusion = 0.20},
+		level_effects = {1: {enemy_confusion = 0.2}, 2: {enemy_confusion = 0.26}, 3: {enemy_confusion = 0.34}},
 		unlock_conditions = {required_level = 3}
 	},
 	"rec_12_atv" = {
@@ -144,6 +150,7 @@ const DATA: Dictionary = {
 	power_mult = 1.0, cost_research = 110, cost_install = 55,
 		slot_type = "mobility", conflict_group = "mobility",
 		effects = {move_speed = 30},
+		level_effects = {1: {move_speed = 30}, 2: {move_speed = 39}, 3: {move_speed = 51}},
 		unlock_conditions = {required_level = 2}
 	},
 
@@ -165,6 +172,7 @@ const DATA: Dictionary = {
 		conflict_group = "guidance",
 		era_band = [3, 4],
 		effects = {target_marking = 0.30, mark_vuln = 0.25, mark_duration = 5.0},
+		level_effects = {1: {target_marking = 0.3, mark_vuln = 0.25, mark_duration = 5}, 2: {target_marking = 0.39, mark_vuln = 0.325, mark_duration = 6.5}, 3: {target_marking = 0.51, mark_vuln = 0.425, mark_duration = 8.5}},
 		unlock_conditions = {required_level = 5}
 	},
 
@@ -184,6 +192,7 @@ const DATA: Dictionary = {
 		conflict_group = "crit_designator",
 		era_band = [3, 4],
 		effects = {crit_mark_chance = 0.30, crit_mark_bonus = 0.50, crit_mark_duration = 5.0},
+		level_effects = {1: {crit_mark_chance = 0.3, crit_mark_bonus = 0.5, crit_mark_duration = 5}, 2: {crit_mark_chance = 0.39, crit_mark_bonus = 0.6, crit_mark_duration = 6.5}, 3: {crit_mark_chance = 0.51, crit_mark_bonus = 0.6, crit_mark_duration = 8.5}},
 		unlock_conditions = {required_level = 5}
 	},
 
@@ -204,7 +213,78 @@ const DATA: Dictionary = {
 		conflict_group = "sensor",
 		era_band = [3, 4],
 		effects = {radar_lock_interval = 12.0, radar_lock_radius = 400.0, radar_lock_vuln = 0.15, radar_lock_duration = 8.0, crit_chance = 0.05},
+		level_effects = {1: {radar_lock_interval = 12, radar_lock_radius = 400, radar_lock_vuln = 0.15, radar_lock_duration = 8, crit_chance = 0.05}, 2: {radar_lock_interval = 15.6, radar_lock_radius = 520, radar_lock_vuln = 0.195, radar_lock_duration = 10.4, crit_chance = 0.065}, 3: {radar_lock_interval = 20.4, radar_lock_radius = 680, radar_lock_vuln = 0.255, radar_lock_duration = 13.6, crit_chance = 0.085}},
 		unlock_conditions = {required_level = 6}
+	},
+
+	# ══════════ v27 改造2.0 批：普及档 + 标记系统强化 ══════════
+	"rec_15_field_binoculars" = {
+		id = "rec_15_field_binoculars",
+		name = "野战双筒镜",
+		name_en = "Field Binoculars",
+		icon = "res://assets/ui/icons/mod_icons/mod_optics.png",
+		prototype = "制式观测双筒镜",
+		description = "基础观瞄。射程 +15px，暴击率 +2%。",
+		rarity = "common",
+		power_mult = 0.8,
+		cost_research = 50,
+		cost_install = 25,
+		slot_type = "optics",
+		conflict_group = "optics",
+		effects = {attack_range = 15, crit_chance = 0.02},
+		level_effects = {1: {attack_range = 15, crit_chance = 0.02}, 2: {attack_range = 20, crit_chance = 0.03}, 3: {attack_range = 26, crit_chance = 0.04}},
+		unlock_conditions = {required_level = 1}
+	},
+	"rec_16_silent_boots" = {
+		id = "rec_16_silent_boots",
+		name = "静音靴",
+		name_en = "Silent Boots",
+		icon = "res://assets/ui/icons/mod_icons/mod_stealth.png",
+		prototype = "消音胶底靴",
+		description = "消音机动。闪避 +6%。",
+		rarity = "uncommon",
+		power_mult = 1.0,
+		cost_research = 90,
+		cost_install = 45,
+		slot_type = "stealth",
+		conflict_group = "stealth",
+		effects = {dodge_chance = 0.06},
+		level_effects = {1: {dodge_chance = 0.06}, 2: {dodge_chance = 0.08}, 3: {dodge_chance = 0.10}},
+		unlock_conditions = {required_level = 1}
+	},
+	"rec_17_multiband_sensor" = {
+		id = "rec_17_multiband_sensor",
+		name = "多光谱传感",
+		name_en = "Multiband Sensor",
+		icon = "res://assets/ui/icons/mod_icons/mod_radar.png",
+		prototype = "多频段传感融合",
+		description = "多光谱穿透遮蔽。暴击率 +6%，无视烟雾。",
+		rarity = "rare",
+		power_mult = 1.3,
+		cost_research = 160,
+		cost_install = 80,
+		slot_type = "sensor",
+		conflict_group = "sensor",
+		effects = {crit_chance = 0.06, smoke_ignore = true},
+		level_effects = {1: {crit_chance = 0.06, smoke_ignore = true}, 2: {crit_chance = 0.08, smoke_ignore = true}, 3: {crit_chance = 0.10, smoke_ignore = true}},
+		unlock_conditions = {required_level = 3}
+	},
+	"rec_18_target_database" = {
+		id = "rec_18_target_database",
+		name = "目标数据库",
+		name_en = "Target Database",
+		icon = "res://assets/ui/icons/mod_icons/mod_recon.png",
+		prototype = "威胁特征库",
+		description = "特征比对快速标记。命中 30% 概率标记目标，被标记者受伤 +15%。",
+		rarity = "epic",
+		power_mult = 1.5,
+		cost_research = 300,
+		cost_install = 150,
+		slot_type = "system",
+		conflict_group = "system",
+		effects = {target_marking = 0.30, mark_vuln = 0.15},
+		level_effects = {1: {target_marking = 0.30, mark_vuln = 0.15}, 2: {target_marking = 0.39, mark_vuln = 0.20}, 3: {target_marking = 0.51, mark_vuln = 0.26}},
+		unlock_conditions = {required_level = 5}
 	},
 }
 

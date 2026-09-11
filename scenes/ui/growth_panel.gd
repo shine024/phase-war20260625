@@ -24,6 +24,9 @@ var _is_open: bool = false
 var _selected_card: CardResource = null
 var _last_unlocked_ids: Array[String] = []
 var _filter_mode: String = FILTER_ALL
+# v27.12 性能：面板不可见期间的卡牌列表重建请求只置脏不重建，
+# 恢复可见时由 _on_visibility_refresh 统一补扫补刷
+var _card_list_dirty: bool = false
 
 # 缓存样式
 var _tag_stylebox: StyleBoxFlat
@@ -73,6 +76,9 @@ func _ready() -> void:
 	_bind_nodes()
 	_connect_signals()
 	_apply_visual_styles()
+	# v27.12 性能：隐藏期间置脏的列表在恢复可见时统一补刷
+	if not visibility_changed.is_connected(_on_visibility_refresh):
+		visibility_changed.connect(_on_visibility_refresh)
 
 
 func _bind_nodes() -> void:
@@ -260,6 +266,12 @@ func _deferred_load_unlocked_cards() -> void:
 	_load_unlocked_cards()
 
 
+## v27.12 性能：恢复可见时补扫补刷隐藏期间置脏的卡牌列表（重扫注册表 + 重建名册）
+func _on_visibility_refresh() -> void:
+	if is_visible_in_tree() and _card_list_dirty:
+		_load_unlocked_cards()
+
+
 func hide_panel() -> void:
 	if not _is_open:
 		return
@@ -277,6 +289,10 @@ func hide_panel() -> void:
 # 卡牌加载（数据层逻辑保持不变）
 # ============================================================
 func _load_unlocked_cards() -> void:
+	# v27.12 性能：面板不可见时只置脏，跳过注册表扫描 + 名册重建，恢复可见时由 _on_visibility_refresh 补扫
+	if not is_visible_in_tree():
+		_card_list_dirty = true
+		return
 	var all_ids: Array[String] = []
 	var seen_full: Dictionary = {}
 	var seen_base: Dictionary = {}
@@ -346,6 +362,11 @@ func _resolve_card(id_str: String) -> CardResource:
 func refresh_card_list(unlocked_ids: Array[String]) -> void:
 	if not card_list_container:
 		return
+	# v27.12 性能：面板不可见时只置脏不重建（筛选/选中回调可能穿透到隐藏态），恢复可见时补刷
+	if not is_visible_in_tree():
+		_card_list_dirty = true
+		return
+	_card_list_dirty = false
 	for child in card_list_container.get_children():
 		child.queue_free()
 

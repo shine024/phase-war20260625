@@ -37,6 +37,7 @@ const DATA: Dictionary = {
 		condition_slot = 1,
 		era_band = [1, 4],
 		effects = {attack_fort = 0.40, slot_weapon_type = 3},  # v7.x: 对装甲槽火箭弹道（爆破）,
+		level_effects = {1: {attack_fort = 0.4, slot_weapon_type = 3}, 2: {attack_fort = 0.52, slot_weapon_type = 3}, 3: {attack_fort = 0.6, slot_weapon_type = 3}},
 		unlock_conditions = {required_level = 4}
 	},
 	"eng_03_welding" = {
@@ -47,6 +48,7 @@ const DATA: Dictionary = {
 	power_mult = 1.3, cost_research = 160, cost_install = 80,
 		slot_type = "repair", conflict_group = "repair",
 		effects = {hp_regen = 0.005},
+		level_effects = {1: {hp_regen = 0.005}, 2: {hp_regen = 0.007}, 3: {hp_regen = 0.009}},
 		unlock_conditions = {required_level = 3}
 	},
 	"eng_04_bridge" = {
@@ -57,6 +59,7 @@ const DATA: Dictionary = {
 	power_mult = 1.6, cost_research = 300, cost_install = 150,
 		slot_type = "bridge", conflict_group = "bridge",
 		effects = {ally_river_bonus = 1.00},
+		level_effects = {1: {ally_river_bonus = 1}, 2: {ally_river_bonus = 0.6}, 3: {ally_river_bonus = 0.6}},
 		unlock_conditions = {required_level = 5}
 	},
 	"eng_05_shovel" = {
@@ -90,6 +93,7 @@ const DATA: Dictionary = {
 	power_mult = 1.3, cost_research = 200, cost_install = 100,
 		slot_type = "power", conflict_group = "power",
 		effects = {ally_fort_regen = 0.50},
+		level_effects = {1: {ally_fort_regen = 0.5}, 2: {ally_fort_regen = 0.6}, 3: {ally_fort_regen = 0.6}},
 		unlock_conditions = {required_level = 4}
 	},
 	"eng_08_medical" = {
@@ -141,6 +145,7 @@ const DATA: Dictionary = {
 		conflict_group = "ammunition",
 		era_band = [1, 4],
 		effects = {siege_bonus = 0.05},
+		level_effects = {1: {siege_bonus = 0.05}, 2: {siege_bonus = 0.065}, 3: {siege_bonus = 0.085}},
 		unlock_conditions = {required_level = 6}
 	},
 
@@ -160,6 +165,7 @@ const DATA: Dictionary = {
 		conflict_group = "armor",
 		era_band = [2, 4],
 		effects = {reactive_armor = 0.25, reflect_charges = 2},
+		level_effects = {1: {reactive_armor = 0.25, reflect_charges = 2}, 2: {reactive_armor = 0.325, reflect_charges = 3}, 3: {reactive_armor = 0.425, reflect_charges = 3}},
 		unlock_conditions = {required_level = 5}
 	},
 
@@ -177,6 +183,7 @@ const DATA: Dictionary = {
 		slot_type = "special",
 		conflict_group = "special",
 		effects = {death_heal = 0.15, death_heal_radius = 180.0},
+		level_effects = {1: {death_heal = 0.15, death_heal_radius = 180}, 2: {death_heal = 0.195, death_heal_radius = 234}, 3: {death_heal = 0.255, death_heal_radius = 306}},
 		unlock_conditions = {required_level = 5}
 	},
 
@@ -234,7 +241,79 @@ const DATA: Dictionary = {
 		conflict_group = "special",
 		era_band = [3, 4],
 		effects = {salvage_repair = 0.08},
+		level_effects = {1: {salvage_repair = 0.08}, 2: {salvage_repair = 0.104}, 3: {salvage_repair = 0.136}},
 		unlock_conditions = {required_level = 5}
+	},
+
+	# ══════════ v27 改造2.0 批：普及档 + 维修强化 + 工兵防线套装件 ══════════
+	"eng_15_entrenching_kit" = {
+		id = "eng_15_entrenching_kit",
+		name = "工兵铲套装",
+		name_en = "Entrenching Kit",
+		icon = "res://assets/ui/icons/mod_icons/mod_digging.png",
+		prototype = "制式工兵铲",
+		description = "快速构筑掩体。对轻装防御 +5，部署加速。",
+		rarity = "common",
+		power_mult = 0.8,
+		cost_research = 50,
+		cost_install = 25,
+		slot_type = "environment",
+		conflict_group = "environment",
+		effects = {defense_light = 5, deploy_speed = 1},
+		level_effects = {1: {defense_light = 5, deploy_speed = 1}, 2: {defense_light = 7, deploy_speed = 1}, 3: {defense_light = 9, deploy_speed = 1}},
+		unlock_conditions = {required_level = 1}
+	},
+	"eng_16_field_generator" = {
+		id = "eng_16_field_generator",
+		name = "野战发电机",
+		name_en = "Field Generator",
+		icon = "res://assets/ui/icons/mod_icons/mod_power.png",
+		prototype = "移动电站",
+		description = "供电与检修。生命 +20，回复 0.2%/s。",
+		rarity = "uncommon",
+		power_mult = 1.0,
+		cost_research = 100,
+		cost_install = 50,
+		slot_type = "power",
+		conflict_group = "power",
+		effects = {max_hp = 20, hp_regen = 0.002},
+		level_effects = {1: {max_hp = 20, hp_regen = 0.002}, 2: {max_hp = 26, hp_regen = 0.003}, 3: {max_hp = 34, hp_regen = 0.004}},
+		unlock_conditions = {required_level = 2}
+	},
+	"eng_17_recovery_crane" = {
+		id = "eng_17_recovery_crane",
+		name = "抢修起重机",
+		name_en = "Recovery Crane",
+		icon = "res://assets/ui/icons/mod_icons/mod_repair.png",
+		prototype = "抢修车起重机",
+		description = "战场抢修作业。周围友军回复 0.4%/s。",
+		rarity = "rare",
+		power_mult = 1.3,
+		cost_research = 160,
+		cost_install = 80,
+		slot_type = "repair",
+		conflict_group = "repair",
+		effects = {ally_hp_regen = 0.004},
+		level_effects = {1: {ally_hp_regen = 0.004}, 2: {ally_hp_regen = 0.005}, 3: {ally_hp_regen = 0.007}},
+		unlock_conditions = {required_level = 3}
+	},
+	# v27 工兵防线套装第 4 件（eng_02/eng_03/eng_12 + 本条集齐满档）
+	"eng_18_defense_blueprints" = {
+		id = "eng_18_defense_blueprints",
+		name = "防线工程蓝图",
+		name_en = "Defense Blueprints",
+		icon = "res://assets/ui/icons/mod_icons/mod_engineering.png",
+		prototype = "永备防线施工图",
+		description = "按图施工防线。受装甲/空军攻击减伤 20%，生命 +8%。",
+		rarity = "rare",
+		power_mult = 1.3,
+		cost_research = 180,
+		cost_install = 90,
+		slot_type = "special",
+		conflict_group = "special",
+		effects = {urban_defense = 0.20, max_hp = 0.08},
+		level_effects = {1: {urban_defense = 0.20, max_hp = 0.08}, 2: {urban_defense = 0.26, max_hp = 0.10}, 3: {urban_defense = 0.34, max_hp = 0.14}},
+		unlock_conditions = {required_level = 4}
 	},
 }
 

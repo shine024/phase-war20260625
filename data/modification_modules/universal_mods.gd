@@ -271,6 +271,7 @@ const DATA: Dictionary = {
 			applicable_types = [0, 1, 2, 3, 4],
 			era_band = [4, 4],
 			effects = {hijack_aura_radius = 200.0, hijack_aura_duration = 4.0, hijack_aura_cd = 18.0},
+			level_effects = {1: {hijack_aura_radius = 200, hijack_aura_duration = 4, hijack_aura_cd = 18}, 2: {hijack_aura_radius = 260, hijack_aura_duration = 5.2, hijack_aura_cd = 23.4}, 3: {hijack_aura_radius = 340, hijack_aura_duration = 6.8, hijack_aura_cd = 30.6}},
 			unlock_conditions = {required_level = 6}
 		},
 
@@ -310,6 +311,7 @@ const DATA: Dictionary = {
 			applicable_types = [0, 1, 2, 3, 4],
 			era_band = [3, 4],
 			effects = {emp_true_damage_bonus = 8.0, emp_reflect_trigger = true},
+			level_effects = {1: {emp_true_damage_bonus = 8, emp_reflect_trigger = true}, 2: {emp_true_damage_bonus = 10.4, emp_reflect_trigger = true}, 3: {emp_true_damage_bonus = 13.6, emp_reflect_trigger = true}},
 			unlock_conditions = {required_level = 6}
 		},
 		# 套路3 纳米浓度场：纳米催化剂（感染扩散触发）
@@ -329,6 +331,7 @@ const DATA: Dictionary = {
 			applicable_types = [0, 1, 2, 3, 4],
 			era_band = [4, 4],
 			effects = {nano_chance = 0.20, nano_pct = 0.015, nano_duration = 6.0, nano_spread_trigger = true},
+			level_effects = {1: {nano_chance = 0.2, nano_pct = 0.015, nano_duration = 6, nano_spread_trigger = true}, 2: {nano_chance = 0.26, nano_pct = 0.019, nano_duration = 7.8, nano_spread_trigger = true}, 3: {nano_chance = 0.34, nano_pct = 0.025, nano_duration = 10.2, nano_spread_trigger = true}},
 			unlock_conditions = {required_level = 6}
 		},
 		# 套路4 光束谐振链：光束分裂器（多重攻击触发）
@@ -404,6 +407,7 @@ const DATA: Dictionary = {
 			conflict_group = "catalyst",
 			applicable_types = [0, 1, 2, 3, 4],
 			effects = {chem_dps_mult = 0.20, chem_pollute = 2.0},
+			level_effects = {1: {chem_dps_mult = 0.2, chem_pollute = 2}, 2: {chem_dps_mult = 0.26, chem_pollute = 2.6}, 3: {chem_dps_mult = 0.34, chem_pollute = 3.4}},
 			unlock_conditions = {required_level = 5}
 		},
 
@@ -467,6 +471,7 @@ const DATA: Dictionary = {
 			applicable_types = [0, 1, 2, 4],  # 有医疗/维修光环收益的地面位
 			era_band = [4, 4],
 			effects = {overflow_to_shield = 0.60},
+			level_effects = {1: {overflow_to_shield = 0.6}, 2: {overflow_to_shield = 0.6}, 3: {overflow_to_shield = 0.6}},
 			unlock_conditions = {required_level = 7}
 		},
 		# 精确制导针：无视 50% 闪避（补"命中 vs 闪避"缺失的半轴）
@@ -486,6 +491,7 @@ const DATA: Dictionary = {
 			applicable_types = [0, 1, 2, 3, 4],
 			era_band = [3, 4],
 			effects = {dodge_ignore = 0.50},
+			level_effects = {1: {dodge_ignore = 0.5}, 2: {dodge_ignore = 0.6}, 3: {dodge_ignore = 0.6}},
 			unlock_conditions = {required_level = 6}
 		},
 		# 中继天线：该卡改造光环 R1→全场（联动 P0 范围化，unit_stats_table 写 range_override=-1）
@@ -548,7 +554,126 @@ const DATA: Dictionary = {
 			unlock_conditions = {required_level = 3}
 		},
 
-	}
+	
+		# ══════════ v27 改造2.0 批：触发式 ×2 + 团队增益 + mythic 行为改写 ×3 ══════════
+		# v27 触发式：痛苦传导（受击 → 攻击者减速）。消费点 module_effect_handler.on_damage_taken（复用 _slow_aura meta）
+		"gen_18_pain_conductor" = {
+			id = "gen_18_pain_conductor",
+			name = "痛苦传导",
+			name_en = "Pain Conductor",
+			icon = "res://assets/ui/icons/mod_icons/mod_protection.png",
+			prototype = "诱饵应答机",
+			description = "受击时向攻击者传导迟滞信号：减速 20%，持续 2 秒。",
+			rarity = "uncommon",
+			power_mult = 1.0,
+			cost_research = 110,
+			cost_install = 55,
+			slot_type = "protection",
+			conflict_group = "protection",
+			applicable_types = [0, 1, 2, 3, 4],
+			effects = {pain_conduct_slow = 0.20, pain_conduct_duration = 2.0},
+			level_effects = {1: {pain_conduct_slow = 0.20, pain_conduct_duration = 2.0}, 2: {pain_conduct_slow = 0.25, pain_conduct_duration = 2.5}, 3: {pain_conduct_slow = 0.30, pain_conduct_duration = 3.0}},
+			unlock_conditions = {required_level = 2}
+		},
+		# v27 触发式：波次动员（新波次 → 全队护盾）。消费点 module_effect_handler.on_wave_spawned（battle_manager 波次链调用）
+		"gen_19_wave_surge" = {
+			id = "gen_19_wave_surge",
+			name = "波次动员",
+			name_en = "Wave Surge",
+			icon = "res://assets/ui/icons/mod_icons/mod_command.png",
+			prototype = "全员动员令",
+			description = "敌方新波次来袭时全员进入戒备：全队获得 5% 最大生命的护盾。",
+			rarity = "rare",
+			power_mult = 1.3,
+			cost_research = 180,
+			cost_install = 90,
+			slot_type = "comms",
+			conflict_group = "comms",
+			applicable_types = [0, 1, 2, 3, 4],
+			effects = {wave_surge_shield = 0.05},
+			level_effects = {1: {wave_surge_shield = 0.05}, 2: {wave_surge_shield = 0.07}, 3: {wave_surge_shield = 0.09}},
+			unlock_conditions = {required_level = 4}
+		},
+		"gen_20_squad_tablet" = {
+			id = "gen_20_squad_tablet",
+			name = "班组战术平板",
+			name_en = "Squad Tactical Tablet",
+			icon = "res://assets/ui/icons/mod_icons/mod_command.png",
+			prototype = "班组态势平板",
+			description = "班组级态势共享。周围友军攻击 +4%，指挥效率 +8%。",
+			rarity = "rare",
+			power_mult = 1.3,
+			cost_research = 170,
+			cost_install = 85,
+			slot_type = "comms",
+			conflict_group = "comms",
+			applicable_types = [0, 1, 2, 3, 4],
+			effects = {ally_bonus = 0.04, command_efficiency = 0.08},
+			level_effects = {1: {ally_bonus = 0.04, command_efficiency = 0.08}, 2: {ally_bonus = 0.05, command_efficiency = 0.10}, 3: {ally_bonus = 0.07, command_efficiency = 0.14}},
+			unlock_conditions = {required_level = 3}
+		},
+		# ── v27 mythic 行为改写三件（顶级追求；效果键均落 _special，消费点 module_effect_handler）──
+		# 全队击杀 → 自身回复（先锋维修矩阵）
+		"gen_21_vanguard_repair" = {
+			id = "gen_21_vanguard_repair",
+			name = "先锋维修矩阵",
+			name_en = "Vanguard Repair Matrix",
+			icon = "res://assets/ui/icons/mod_icons/mod_repair.png",
+			prototype = "自愈维修矩阵",
+			description = "全队任意成员击杀敌方时，自身回复 4% 最大生命值（不要求本人击杀）。",
+			rarity = "mythic",
+			power_mult = 2.2,
+			cost_research = 600,
+			cost_install = 300,
+			slot_type = "repair",
+			conflict_group = "repair",
+			applicable_types = [0, 1, 2, 3, 4],
+			era_band = [3, 4],
+			effects = {vanguard_repair = 0.04},
+			level_effects = {1: {vanguard_repair = 0.04}, 2: {vanguard_repair = 0.05}, 3: {vanguard_repair = 0.06}},
+			unlock_conditions = {required_level = 8}
+		},
+		# 周期性为最低血量友军补盾（神盾协议）
+		"gen_22_aegis_protocol" = {
+			id = "gen_22_aegis_protocol",
+			name = "神盾协议",
+			name_en = "Aegis Protocol",
+			icon = "res://assets/ui/icons/mod_icons/mod_shield.png",
+			prototype = "自主防御协议",
+			description = "每 8 秒自动为 200px 内生命比例最低的友军提供 6% 最大生命的护盾。",
+			rarity = "mythic",
+			power_mult = 2.0,
+			cost_research = 600,
+			cost_install = 300,
+			slot_type = "protection",
+			conflict_group = "protection",
+			applicable_types = [0, 1, 2, 3, 4],
+			era_band = [3, 4],
+			effects = {aegis_pulse_cd = 8.0, aegis_pulse_shield = 0.06},
+			level_effects = {1: {aegis_pulse_cd = 8.0, aegis_pulse_shield = 0.06}, 2: {aegis_pulse_cd = 6.5, aegis_pulse_shield = 0.08}, 3: {aegis_pulse_cd = 5.0, aegis_pulse_shield = 0.10}},
+			unlock_conditions = {required_level = 8}
+		},
+		# 周期性引力脉冲（范围真伤 + 减速）
+		"gen_23_singularity_core" = {
+			id = "gen_23_singularity_core",
+			name = "奇点核心",
+			name_en = "Singularity Core",
+			icon = "res://assets/ui/icons/mod_special.png",
+			prototype = "微型奇点发生器",
+			description = "每 6 秒释放引力脉冲：180px 内敌方受到自身 3% 最大生命的真实伤害并减速 20%（1.5 秒）。",
+			rarity = "mythic",
+			power_mult = 2.4,
+			cost_research = 650,
+			cost_install = 320,
+			slot_type = "special",
+			conflict_group = "special",
+			applicable_types = [0, 1, 2, 3, 4],
+			era_band = [4, 4],
+			effects = {gravity_pulse_cd = 6.0, gravity_pulse_damage = 0.03, gravity_pulse_radius = 180.0},
+			level_effects = {1: {gravity_pulse_cd = 6.0, gravity_pulse_damage = 0.03, gravity_pulse_radius = 180.0}, 2: {gravity_pulse_cd = 5.0, gravity_pulse_damage = 0.04, gravity_pulse_radius = 180.0}, 3: {gravity_pulse_cd = 4.0, gravity_pulse_damage = 0.05, gravity_pulse_radius = 180.0}},
+			unlock_conditions = {required_level = 8}
+		},
+}
 
 static func get_mod_data(mod_id: String) -> Dictionary:
 	return DATA.get(mod_id, {}).duplicate(true)
