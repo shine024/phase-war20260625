@@ -366,25 +366,56 @@ static func _spawn_shotgun_scatter(parent: Node2D, world_pos: Vector2, recipe: D
 			_spawn_pellet_mark(parent, world_pos + offset)
 
 
+# v27.12 perf: 弹痕 Sprite 池——原每命中 new Sprite2D + 渐隐后 queue_free（密集弹幕高频节点
+# churn）。池跨战斗保留（static）；归还时脱离树，battle_vfx 组清场扫不到池内节点。
+static var _decal_pool: Array[Sprite2D] = []
+const DECAL_POOL_CAP: int = 48
+
+static func _acquire_decal(parent: Node2D, pos: Vector2, scl: float) -> Sprite2D:
+	var s: Sprite2D = null
+	while not _decal_pool.is_empty():
+		s = _decal_pool.pop_back()
+		if is_instance_valid(s):
+			break
+		s = null
+	if s == null:
+		s = Sprite2D.new()
+		s.texture = PARTICLE_TEX_IMPACT_SCORCH
+		s.add_to_group("battle_vfx")
+	var old_parent: Node = s.get_parent()
+	if old_parent != parent:
+		if old_parent != null:
+			old_parent.remove_child(s)
+		parent.add_child(s)
+	s.position = pos
+	s.scale = Vector2(scl, scl)
+	s.rotation = randf() * TAU
+	s.modulate = Color(1.0, 1.0, 1.0, 0.92)
+	return s
+
+static func _release_decal(s: Sprite2D) -> void:
+	if s == null or not is_instance_valid(s):
+		return
+	var p: Node = s.get_parent()
+	if p != null:
+		p.remove_child(s)
+	if _decal_pool.size() < DECAL_POOL_CAP:
+		_decal_pool.append(s)
+	else:
+		s.queue_free()
+
 ## v20.9-R2c: 霰弹弹着点小贴图——复用 scorch 贴图 0.35 缩放（约 22px 着点痕），
 ## 与中央主弹痕（_spawn_impact_decal 0.6）拉开大小层次。寿命同主弹痕（0.35s 保持 + 0.30s 渐隐）。
 static func _spawn_pellet_mark(parent: Node2D, pos: Vector2) -> void:
 	if parent == null or not is_instance_valid(parent):
 		return
-	var decal := Sprite2D.new()
-	decal.texture = PARTICLE_TEX_IMPACT_SCORCH
-	decal.position = pos
-	decal.scale = Vector2(0.35, 0.35)
-	decal.rotation = randf() * TAU
-	decal.modulate = Color(1.0, 1.0, 1.0, 0.92)
-	decal.add_to_group("battle_vfx")
-	parent.add_child(decal)
+	var decal := _acquire_decal(parent, pos, 0.35)  # v27.12: 走弹痕池
 	var tree := decal.get_tree()
 	if tree != null:
 		var tw := tree.create_tween().bind_node(decal)
 		tw.tween_interval(0.35)
 		tw.tween_property(decal, "modulate:a", 0.0, 0.30)
-		tw.tween_callback(decal.queue_free)
+		tw.tween_callback(_release_decal.bind(decal))
 
 
 ## ======================================================================
@@ -2169,6 +2200,7 @@ static func spawn_battle_trace(parent: Node2D, world_pos: Vector2, radius: float
 ## ======================================================================
 static var _era_cache: int = -2      # -2=未查, -1=非战斗(不调色)
 static var _era_check_msec: int = -1
+static var _cached_bm: Node = null   # v27.13 perf: BattleManager autoload 缓存（v27.12 同范式）
 
 static func _current_battle_era() -> int:
 	var now := Time.get_ticks_msec()
@@ -2177,7 +2209,10 @@ static func _current_battle_era() -> int:
 	_era_cache = -1
 	var tree := Engine.get_main_loop() as SceneTree
 	if tree != null and tree.root != null:
-		var bm: Node = tree.root.get_node_or_null("BattleManager")
+		# v27.13 perf: BattleManager 为 autoload，static 缓存 + 树内守卫，免每次全树查找（v27.12 同范式）
+		if _cached_bm == null or not is_instance_valid(_cached_bm) or not _cached_bm.is_inside_tree():
+			_cached_bm = tree.root.get_node_or_null("BattleManager")
+		var bm: Node = _cached_bm
 		if bm != null and bool(bm.get("battle_active")):
 			var gm: Node = tree.root.get_node_or_null("GameManager")
 			if gm != null:
@@ -2417,10 +2452,13 @@ static func _battle_active_now() -> bool:
 	var tree := Engine.get_main_loop() as SceneTree
 	if tree == null or tree.root == null:
 		return false
-	var bm: Node = tree.root.get_node_or_null("BattleManager")
+	# v27.13 perf: BattleManager 为 autoload，static 缓存 + 树内守卫，免每次全树查找（v27.12 同范式）
+	if _cached_bm == null or not is_instance_valid(_cached_bm) or not _cached_bm.is_inside_tree():
+		_cached_bm = tree.root.get_node_or_null("BattleManager")
+	var bm: Node = _cached_bm
 	return bm != null and bool(bm.get("battle_active"))
 
-static func spawn_ultimate_projectile(parent: Node2D, from: Vector2, target: Vector2, texture: Texture2D, trajectory: String = "vertical", target_width: float = 48.0, tint: Color = Color.WHITE, trail_color: Color = Color(1.0, 0.8, 0.3, 0.9), flight_time: float = 0.5, on_arrival: Callable = Callable()) -> float:
+static func spawn_ultimate_projectile(parent: Node2D, from: Vector2, target: Vector2, texture: Texture2D, trajectory: String = "vertical", target_width: float = 48.0, tint: Color = Color.WHITE, trail_color: Color = Color(1.0, 0.8, 0.3, 0.9), flight_time: float = 0.5, on_arrival: Callable = Callable(), nose_offset: float = -PI / 2.0) -> float:
 	if parent == null or not is_instance_valid(parent):
 		return 0.0
 	# v20.15: 发射时快照战斗状态——飞行途中战斗结束（胜利/撤退/判负）时到达回调作废，
@@ -2508,6 +2546,7 @@ static func spawn_ultimate_projectile(parent: Node2D, from: Vector2, target: Vec
 	var captured_from: Vector2 = from
 	var captured_apex: Vector2 = apex
 	var captured_target: Vector2 = target
+	var captured_nose_offset: float = nose_offset
 	var captured_arrival: Callable = on_arrival
 	var trail_pts := PackedVector2Array()  # v26.12: 拖尾轨迹点（lambda 内累积）
 	var tw := parent.create_tween()
@@ -2523,9 +2562,11 @@ static func spawn_ultimate_projectile(parent: Node2D, from: Vector2, target: Vec
 		# v17f: 竖直贴图约定（头朝 +Y 即画面下方）——rotation=dir.angle() 把贴图 +X 对准
 		# 飞行方向，竖贴图会被转成横躺。偏移 -PI/2 让贴图 +Y（弹头）对准飞行方向：
 		# vertical(0,1)→rot=0 头朝下 ✓；dive(1,1)→rot=-π/4 头朝右下 ✓。
+		# v26.31: 弹头朝向例外走 nose_offset——ult_nuke_player（核子轰炸）是横贴图
+		# （弹头 +X，尾焰 -X），调用方传 0.0 才不致全程弹头朝后飞（用户实测报告）。
 		var dir := pt - prev_pt
 		if dir.length() > 0.5:
-			captured_missile.rotation = dir.angle() - PI / 2.0
+			captured_missile.rotation = dir.angle() + captured_nose_offset
 		prev_pt = pt
 		# v26.12: 拖尾改为轨迹积累——旧实现每帧重画 26/46px 固定短棍，高速飞行体身后
 	# 几乎无痕（实拍读成"孤儿药丸"）。现把已飞过的路径累积成折线（保留最近 14 点，
@@ -3360,21 +3401,14 @@ static func _spawn_impact_decal(parent: Node2D, pos: Vector2, weapon_type: int) 
 		return  # 能量/重型爆炸不留小弹痕
 	if parent == null or not is_instance_valid(parent):
 		return
-	var decal := Sprite2D.new()
-	decal.texture = PARTICLE_TEX_IMPACT_SCORCH
-	decal.position = pos
-	decal.scale = Vector2(0.6, 0.6)
-	decal.rotation = randf() * TAU   # 随机旋转,避免每个弹痕朝向一致
-	decal.modulate = Color(1.0, 1.0, 1.0, 0.92)
-	decal.add_to_group("battle_vfx")
-	parent.add_child(decal)
+	var decal := _acquire_decal(parent, pos, 0.6)  # v27.12: 走弹痕池（acquire 复位 transform/modulate）
 	var tree := decal.get_tree()
 	if tree != null:
 		# bind_node:节点被清场 group-free 时自动 kill tween,避免操作已释放节点
 		var tw := tree.create_tween().bind_node(decal)
 		tw.tween_interval(0.35)   # 先保持清晰可辨
 		tw.tween_property(decal, "modulate:a", 0.0, 0.30)
-		tw.tween_callback(decal.queue_free)
+		tw.tween_callback(_release_decal.bind(decal))
 
 
 ## ======================================================================
@@ -3913,32 +3947,57 @@ static func _release_impact_sprite(s: Sprite2D) -> void:
 ## 战场纳米浓度可视化（青色半透明区域）。
 ## amount: 当前浓度（0~50）；parent 是 battlefield Node2D；world_pos 是战场中心。
 ## 浓度越高：范围越大、alpha 越高。每 0.5s 由 battlefield 重建（非每帧 spawn）。
+# v27.12 perf: 浓度场 ADD 材质静态复用（原每 0.4s 重建多边形时各配新材质）
+static var _field_add_mat: CanvasItemMaterial = null
+
+static func _get_field_add_mat() -> CanvasItemMaterial:
+	if _field_add_mat == null:
+		_field_add_mat = CanvasItemMaterial.new()
+		_field_add_mat.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
+	return _field_add_mat
+
+static func _make_circle_points(radius: float, segments: int = 32) -> PackedVector2Array:
+	var pts := PackedVector2Array()
+	pts.resize(segments)
+	for i in range(segments):
+		var ang := TAU * float(i) / float(segments)
+		pts[i] = Vector2(cos(ang), sin(ang)) * radius
+	return pts
+
 static func spawn_nano_field(parent: Node2D, world_pos: Vector2, amount: float) -> void:
 	if parent == null or not is_instance_valid(parent):
 		return
+	# v27.12 perf: 更新式复用——原每 0.4s 销毁重建 32 段多边形+材质；现已有节点则
+	# 只更新位置/几何/透明度（半径与透明度变化低于阈值时仅跟随中心，免重建）
+	var existing: Polygon2D = null
+	for ch in parent.get_children():
+		if ch is Polygon2D and ch.name == "combo_nano_field":
+			existing = ch
+			break
 	if amount <= 0.5:
-		_cleanup_field_vfx(parent, "combo_nano_field")
+		if existing != null:
+			parent.remove_child(existing)  # 同帧 add 同名防改名（见 _cleanup_field_vfx 警告）
+			existing.queue_free()
 		return
 	var t: float = clampf(amount / 50.0, 0.0, 1.0)
 	var radius: float = lerp(100.0, 280.0, t)
 	var alpha: float = lerp(0.0, 0.15, t)
-	_cleanup_field_vfx(parent, "combo_nano_field")
-	var pts := PackedVector2Array()
-	var segments := 32
-	for i in range(segments):
-		var ang := TAU * float(i) / float(segments)
-		pts.append(Vector2(cos(ang), sin(ang)) * radius)
-	var poly := Polygon2D.new()
-	poly.polygon = pts
+	var poly := existing
+	if poly == null:
+		poly = Polygon2D.new()
+		poly.name = "combo_nano_field"
+		poly.z_index = -5  # 盖在地面背景之上、单位之下
+		poly.material = _get_field_add_mat()
+		parent.add_child(poly)
+		poly.add_to_group("battle_vfx")  # 浓度场 name 管理替换，战斗结束若浓度还在则残留
 	poly.position = world_pos
+	if existing != null and absf(radius - float(poly.get_meta("field_r", -1.0))) < 2.0 \
+			and absf(alpha - float(poly.get_meta("field_a", -1.0))) < 0.005:
+		return
+	poly.set_meta("field_r", radius)
+	poly.set_meta("field_a", alpha)
+	poly.polygon = _make_circle_points(radius)
 	poly.color = Color(0.2, 0.9, 1.0, alpha)
-	poly.z_index = -5  # 盖在地面背景之上、单位之下
-	var mat := CanvasItemMaterial.new()
-	mat.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
-	poly.material = mat
-	poly.name = "combo_nano_field"
-	parent.add_child(poly)
-	poly.add_to_group("battle_vfx")  # 浓度场 name 管理替换，战斗结束若浓度还在则残留
 
 
 ## 战场化学污染可视化（绿色半透明区域）。
@@ -3946,29 +4005,36 @@ static func spawn_nano_field(parent: Node2D, world_pos: Vector2, amount: float) 
 static func spawn_chem_field(parent: Node2D, world_pos: Vector2, amount: float) -> void:
 	if parent == null or not is_instance_valid(parent):
 		return
+	# v27.12 perf: 更新式复用（同 spawn_nano_field）
+	var existing: Polygon2D = null
+	for ch in parent.get_children():
+		if ch is Polygon2D and ch.name == "combo_chem_field":
+			existing = ch
+			break
 	if amount <= 0.5:
-		_cleanup_field_vfx(parent, "combo_chem_field")
+		if existing != null:
+			parent.remove_child(existing)  # 同帧 add 同名防改名（见 _cleanup_field_vfx 警告）
+			existing.queue_free()
 		return
 	var t: float = clampf(amount / 60.0, 0.0, 1.0)
 	var radius: float = lerp(80.0, 320.0, t)
 	var alpha: float = lerp(0.0, 0.18, t)
-	_cleanup_field_vfx(parent, "combo_chem_field")
-	var pts := PackedVector2Array()
-	var segments := 32
-	for i in range(segments):
-		var ang := TAU * float(i) / float(segments)
-		pts.append(Vector2(cos(ang), sin(ang)) * radius)
-	var poly := Polygon2D.new()
-	poly.polygon = pts
+	var poly := existing
+	if poly == null:
+		poly = Polygon2D.new()
+		poly.name = "combo_chem_field"
+		poly.z_index = -5
+		poly.material = _get_field_add_mat()
+		parent.add_child(poly)
+		poly.add_to_group("battle_vfx")  # 浓度场 name 管理替换，战斗结束若浓度还在则残留
 	poly.position = world_pos
+	if existing != null and absf(radius - float(poly.get_meta("field_r", -1.0))) < 2.0 \
+			and absf(alpha - float(poly.get_meta("field_a", -1.0))) < 0.005:
+		return
+	poly.set_meta("field_r", radius)
+	poly.set_meta("field_a", alpha)
+	poly.polygon = _make_circle_points(radius)
 	poly.color = Color(0.3, 1.0, 0.2, alpha)
-	poly.z_index = -5
-	var mat := CanvasItemMaterial.new()
-	mat.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
-	poly.material = mat
-	poly.name = "combo_chem_field"
-	parent.add_child(poly)
-	poly.add_to_group("battle_vfx")  # 浓度场 name 管理替换，战斗结束若浓度还在则残留
 
 
 ## 清理已存在的浓度场 VFX（防止重复创建）。
