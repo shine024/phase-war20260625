@@ -154,6 +154,13 @@ func notify_battle_result(battle_time_sec: float, victory_stars: int, survived_w
 				_set_progress(qid, "best_time", battle_time_sec)
 			quest_progress_changed.emit(qid)
 			_try_complete(qid)
+		elif otype == "win_battles" and float(def.get("time_limit_sec", 0.0)) > 0.0:
+			# v27.15（批②未尽 #2）：时限类胜场——描述承诺"每场 N 秒内结束"，此前后端零校验
+			# （纯文案）。超时胜场不计入；_notify_battle_won 已跳过此类任务防双计。
+			if battle_time_sec <= float(def.get("time_limit_sec")):
+				_inc_progress(qid, "win_battles")
+				quest_progress_changed.emit(qid)
+				_try_complete(qid)
 		elif otype == "perfect_battle" and victory_stars >= 3:
 			_inc_progress(qid, "perfect_count")
 			_try_complete(qid)
@@ -215,6 +222,11 @@ func notify_phase_master_defeated(master_name: String) -> void:
 func _notify_battle_won(level: int) -> void:
 	for qid in _accepted.keys():
 		var data: Dictionary = _accepted[qid]
+		var won_def: Dictionary = QuestDefs.get_by_id(qid)
+		# v27.15（批②未尽 #2）：时限类胜场（如"每场 90 秒内"）不在此盲计——
+		# 走 notify_battle_result 带 battle_time 校验的分支
+		if float(won_def.get("time_limit_sec", 0.0)) > 0.0:
+			continue
 		_ensure_progress(data)
 		if not data.has("cleared_levels"):
 			data["cleared_levels"] = []
@@ -366,7 +378,7 @@ func get_current_progress_for_quest(quest_id: String) -> int:
 	if otype == "enhance":
 		return int(progress.get("enhance_count", 0))
 	if otype == "collect_cards":
-		return _count_player_cards()
+		return _count_player_cards(int(def.get("card_era", -1)), String(def.get("card_min_rarity", "")))
 	if otype == "research_law":
 		return int(progress.get("research_count", 0))
 	if otype == "reach_reputation":
@@ -464,7 +476,7 @@ func is_quest_done(quest_id: String) -> bool:
 	if otype == "enhance":
 		return int(progress.get("enhance_count", 0)) >= int(target_val)
 	if otype == "collect_cards":
-		return _count_player_cards() >= int(target_val)
+		return _count_player_cards(int(def.get("card_era", -1)), String(def.get("card_min_rarity", ""))) >= int(target_val)
 	if otype == "research_law":
 		return int(progress.get("research_count", 0)) >= int(target_val)
 	if otype == "reach_reputation":
@@ -483,12 +495,25 @@ func is_quest_done(quest_id: String) -> bool:
 # ──────────────── 实时查询辅助 ────────────────
 
 ## 收集口径 = 拥有过的卡种数（2026-08-22：原蓝图解锁计数已随蓝图体系移除，改数实例基卡去重）
-func _count_player_cards() -> int:
+## v27.15（批②未尽 #2）：collect_cards 过滤——"收集 N 种现代时代的战斗卡"缺时代过滤、
+## "稀有度以上"缺稀有度过滤，此前任意卡种都计数。era_filter >= 0 只计该时代；
+## min_rarity 非空时按稀有度 rank 只计 >= 该档（与 PowerTiers 档位派生同序）。
+func _count_player_cards(era_filter: int = -1, min_rarity: String = "") -> int:
+	const RARITY_RANK := {"common": 0, "uncommon": 1, "rare": 2, "epic": 3, "legendary": 4, "mythic": 5}
+	var min_rank: int = RARITY_RANK.get(min_rarity, -1)
 	var ir = get_node_or_null("/root/InstanceRegistry")
 	if ir and ir.has_method("get_all_instance_ids"):
 		var species: Dictionary = {}
 		for iid in ir.get_all_instance_ids():
 			var base_id: String = String(iid).split("#")[0]
+			if era_filter >= 0 or min_rank >= 0:
+				var inst = ir.get_instance(iid) if ir.has_method("get_instance") else null
+				if inst == null:
+					continue
+				if era_filter >= 0 and int(inst.get("era")) != era_filter:
+					continue
+				if min_rank >= 0 and int(RARITY_RANK.get(String(inst.get("rarity", "common")), 0)) < min_rank:
+					continue
 			species[base_id] = true
 		return species.size()
 	return 0
