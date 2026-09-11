@@ -1500,9 +1500,51 @@ func _format_enemy_combat_summary(unit: Node, scombat: Array, extra_suffix: Stri
 	var rng: float = float(scombat[2]) if scombat.size() > 2 else 0.0
 	var itv: float = float(scombat[3]) if scombat.size() > 3 else 1.0
 	var def: float = float(scombat[4]) if scombat.size() > 4 else 0.0
-	if "stats" in unit and unit.stats != null:
-		return _format_unit_stats_summary(unit.stats as UnitStats, hp, extra_suffix)
-	return "生命 %d｜防 %d｜攻 %d｜射程 %d｜攻速 %.2f%s" % [int(hp), int(def), int(dmg), int(rng), itv, extra_suffix]
+	# v27.15（TODO#7 用户裁决 F1）：情报可见性三档呈现——full_stats=精确数值行；
+	# behavior_summary/equipment_type/name_and_type=区间模糊（±30% 取整到 5）；
+	# 空或 hidden_stats=???。详细数值行（_format_unit_stats_summary）仅精确档走。
+	var vis: int = _enemy_stat_visibility_level(unit)
+	if vis >= 2:
+		if "stats" in unit and unit.stats != null:
+			return _format_unit_stats_summary(unit.stats as UnitStats, hp, extra_suffix)
+		return "生命 %d｜防 %d｜攻 %d｜射程 %d｜攻速 %.2f%s" % [int(hp), int(def), int(dmg), int(rng), itv, extra_suffix]
+	return "生命 %s｜防 %s｜攻 %s｜射程 %s｜攻速 %s%s" % [
+		_mask_stat_value(hp, vis), _mask_stat_value(def, vis), _mask_stat_value(dmg, vis),
+		_mask_stat_value(rng, vis), _mask_stat_value(itv, vis, 0.1), extra_suffix]
+
+## v27.15（F1）：敌详情数值可见性等级 → 2=精确 / 1=区间 / 0=???。
+## fail-open：情报管理器缺席、无 archetype 或无揭示记录中低档以外的未知值不误伤——
+## 管理器不在/无法判型按精确显示；等级词表见 data/intel_reveal_events.gd。
+func _enemy_stat_visibility_level(unit: Node) -> int:
+	var idm: Node = get_node_or_null("/root/IntelDiscoveryManager")
+	if idm == null or not idm.has_method("get_stat_visibility"):
+		return 2
+	var aid: String = String(unit.get("archetype_id")) if "archetype_id" in unit else ""
+	if aid.is_empty():
+		return 2
+	var etype: String = aid
+	if idm.has_method("_guess_enemy_type"):
+		etype = String(idm.call("_guess_enemy_type", aid))
+	var vis: String = String(idm.get_stat_visibility(etype))
+	match vis:
+		"full_stats", "skill_list":
+			return 2
+		"behavior_summary", "equipment_type", "name_and_type":
+			return 1
+		_:
+			return 0  # ""（从未揭示）/ hidden_stats
+
+## v27.15（F1）：数值三档掩码——精确原值 / 区间 ±30%（整数取整到 step=5，小数保留 1 位）/ ???
+func _mask_stat_value(v: float, level: int, step: float = 5.0) -> String:
+	if level >= 2:
+		if step >= 1.0:
+			return str(int(round(v)))
+		return "%.2f" % v
+	if level == 1:
+		if step >= 1.0:
+			return "%d–%d" % [int(floor(v * 0.7 / step) * step), int(ceil(v * 1.3 / step) * step)]
+		return "%.1f–%.1f" % [v * 0.7, v * 1.3]
+	return "???"
 
 ## ── 敌方相位驱动器 ──
 

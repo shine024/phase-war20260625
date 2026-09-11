@@ -29,6 +29,27 @@ func _sortie_report_lines() -> Array[String]:
 		instrument_count = pim.unlocked_instrument_ids.size()
 	if card_count > 0 and instrument_count > 0:
 		lines.append("携行 %d 张卡牌 · 相位仪 %d 具。" % [card_count, instrument_count])
+	# v27.15（TODO#8 用户裁决 G1）：相位师关战报加驻守者情报行——名号+威胁度+驻防平台。
+	# 取不到数据即静默降级为普通战报（与上文"禁止虚构"口径一致），AFK/教程不带 meta 不受影响。
+	var boss_level: int = 1
+	if GameManager != null:
+		boss_level = int(GameManager.current_level)
+	if PhaseMasterGarrison.is_garrison_level(boss_level):
+		var master: Dictionary = EnemyPhaseMasters.get_master_by_id(
+			PhaseMasterGarrison.get_garrison_master_id(boss_level))
+		if not master.is_empty():
+			var threat: String = {"easy": "威胁·低", "normal": "威胁·中", "hard": "威胁·高"}.get(
+				String(master.get("difficulty", "")), "威胁·评估中")
+			lines.append("⚠ 相位师驻守：%s「%s」— %s。" % [
+				master.get("name", "?"), master.get("title", ""), threat])
+			var plat_names: Array[String] = []
+			var equip: Dictionary = master.get("equipment", {})
+			for pid in equip.get("platforms", []):
+				var plat: Dictionary = EnemyPhaseEquipment.get_war_platform(String(pid))
+				if not plat.is_empty():
+					plat_names.append(String(plat.get("name", String(pid))))
+			if not plat_names.is_empty():
+				lines.append("情报：驻防平台 %s。" % "、".join(plat_names))
 	return lines
 
 ## 执行战斗开始序列
