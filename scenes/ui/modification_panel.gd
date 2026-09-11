@@ -77,6 +77,10 @@ var _hover_card: PanelContainer = null
 var _hover_token: int = 0
 # v1.5 修复：_show_result 多 timer 互相清空——新消息 bump token，旧 timer 自查 token 失配则不清
 var _result_token: int = 0
+# v27.12 性能：面板不可见期间的列表重建请求只置脏不重建（名册/改造库各自独立置脏），
+# 恢复可见时由 _on_visibility_refresh 统一补刷，避免隐藏态的全量 queue_free + 重建
+var _card_list_dirty: bool = false
+var _mod_list_dirty: bool = false
 
 
 ## 计算当前选中卡的战力值（单次刷新内复用，避免 N 次重复 build_stats）。
@@ -141,6 +145,9 @@ func _ready() -> void:
 	# 嵌入模式（背包情报 Tab）的列表刷新由 set_embedded_mode 调用方负责。
 	# v1.5：键盘导航——面板可获焦接收 _gui_input
 	focus_mode = Control.FOCUS_ALL
+	# v27.12 性能：隐藏期间的置脏列表在恢复可见时统一补刷（overlay 开合 / 嵌入 Tab 切换均会触发）
+	if not visibility_changed.is_connected(_on_visibility_refresh):
+		visibility_changed.connect(_on_visibility_refresh)
 
 ## v8.x 性能：外部打开面板时调用（main.gd._open_overlay 分发）。
 ## 将卡片名册重建拆到下一帧，避开打开同帧的实例化尖峰。
@@ -168,6 +175,16 @@ func _run_open_refresh_pipeline() -> void:
 	if selected_card == null and _first_list_card != null:
 		_on_card_selected(_first_list_card)
 	_open_refresh_inflight = false
+
+
+## v27.12 性能：恢复可见时补刷隐藏期间置脏的列表（名册 / 改造库各自独立判定）
+func _on_visibility_refresh() -> void:
+	if not is_visible_in_tree():
+		return
+	if _card_list_dirty:
+		_refresh_card_list()
+	if _mod_list_dirty:
+		_refresh_mod_list()
 
 
 ## v7.x：给标题/资源栏/主要 Label 加载 Rajdhani 字体（视觉焕新）
@@ -411,6 +428,11 @@ func _apply_embedded_layout() -> void:
 func _refresh_card_list() -> void:
 	if card_list_container == null:
 		return
+	# v27.12 性能：面板不可见时只置脏不重建（打开/chip 筛选之外的回调可能穿透到隐藏态），恢复可见时补刷
+	if not is_visible_in_tree():
+		_card_list_dirty = true
+		return
+	_card_list_dirty = false
 	for child in card_list_container.get_children():
 		child.queue_free()
 
@@ -684,6 +706,11 @@ func _create_card_item(card: CardResource, instance_card: CardResource = null) -
 ## 这样背包里有的改造在面板里一定能看到，不会再出现"背包有、面板没有"。
 ## 兵种适用性由 _create_mod_item 的"⊘该兵种不适用"灰态标识，不再从列表里剔除。
 func _refresh_mod_list() -> void:
+	# v27.12 性能：面板不可见时只置脏不重建（选卡/安装回调可能穿透到隐藏态），恢复可见时补刷
+	if not is_visible_in_tree():
+		_mod_list_dirty = true
+		return
+	_mod_list_dirty = false
 	if not selected_card:
 		return
 
@@ -1591,7 +1618,12 @@ func _refresh_installed_list(installed_list: Control) -> void:
 
 		var lbl := Label.new()
 		var status_prefix: String = "✓ " if enabled else "⊘ "
-		lbl.text = status_prefix + String(mod_data.get("name", mod_id))
+		# v27 改造升级：已装条目显示当前等级（旧档缺 level 字段默认 Lv1 不显示前缀）
+		var entry_level := 1
+		if mod_entry is Dictionary and mod_entry.has("level"):
+			entry_level = clampi(int(mod_entry["level"]), 1, 3)
+		var level_prefix: String = "[Lv%d] " % entry_level if entry_level > 1 else ""
+		lbl.text = status_prefix + level_prefix + String(mod_data.get("name", mod_id))
 		lbl.add_theme_font_size_override("font_size", 13)
 		if enabled:
 			lbl.add_theme_color_override("font_color", Color(0.85, 0.88, 0.95, 1))
@@ -1613,6 +1645,36 @@ func _refresh_installed_list(installed_list: Control) -> void:
 			)
 			hbox.add_child(toggle_btn)
 
+		# v27 改造升级：可升档的已装条目追加"升级"按钮（费用与扣款同源 preview_upgrade_cost）
+		var up_info: Dictionary = BlueprintManager.get_mod_upgrade_info(selected_card, mod_index) \
+			if (selected_card and BlueprintManager and BlueprintManager.has_method("get_mod_upgrade_info")) else {}
+		if not up_info.is_empty() and bool(up_info.get("can_upgrade", false)):
+			var up_cost: Dictionary = BlueprintManager.preview_upgrade_cost(selected_card, mod_index)
+			var up_btn := Button.new()
+			up_btn.text = "↑Lv%d" % int(up_cost.get("to_level", 2))
+			up_btn.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
+			up_btn.custom_minimum_size = Vector2(52, 0)
+			var up_nano: int = int(up_cost.get("nano", 0))
+			var up_bp: int = int(up_cost.get("blueprints", 0))
+			# v27.13: 合金/晶体费用行（preview_upgrade_cost 同源）
+			var up_alloy: int = int(up_cost.get("alloy", 0))
+			var up_crystal: int = int(up_cost.get("crystal", 0))
+			if up_bp > 0:
+				up_btn.tooltip_text = "升级到 Lv%d：消耗图纸×%d + 纳米×%d + 合金×%d + 晶体×%d" % [int(up_cost.get("to_level", 2)), up_bp, up_nano, up_alloy, up_crystal]
+			else:
+				up_btn.tooltip_text = "升级到 Lv%d：消耗纳米×%d" % [int(up_cost.get("to_level", 2)), up_nano]
+			up_btn.pressed.connect(func():
+				_on_upgrade_pressed(mod_index)
+			)
+			hbox.add_child(up_btn)
+		elif not up_info.is_empty() and int(up_info.get("level", 0)) >= 3:
+			var maxed_lbl := Label.new()
+			maxed_lbl.text = "满级"
+			maxed_lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
+			maxed_lbl.add_theme_color_override("font_color", Color(0.95, 0.8, 0.35, 0.8))
+			maxed_lbl.custom_minimum_size = Vector2(36, 0)
+			hbox.add_child(maxed_lbl)
+
 		# v1.5：对所有已装项追加"替换"按钮（卸载 API 未实装，语义对齐 replace_modification）
 		# 点击后收起右栏详情、引导玩家从改造库选新模块；新模块若同冲突组会触发替换。
 		var replace_btn := Button.new()
@@ -1632,8 +1694,8 @@ func _refresh_installed_list(installed_list: Control) -> void:
 		vbox.add_child(hbox)
 
 		# v6.10: 第二行——显示完整改造效果（复用已修好的 _format_effects_for_display）
-		# 让玩家一眼看到"装了什么、加什么"，而不只是改造名字
-		var effect_lines := _format_effects_for_display(mod_data)
+		# v27：已装条目按当前等级取 level_effects 档（Lv1 仍走 effects 原值，口径一致）
+		var effect_lines := _format_effects_for_display(mod_data, entry_level)
 		if not effect_lines.is_empty():
 			var effect_lbl := Label.new()
 			effect_lbl.text = " · ".join(effect_lines)
@@ -1665,6 +1727,33 @@ func _on_weapon_mod_toggled(mod_index: int, enable: bool) -> void:
 				_refresh_installed_list(installed_list)
 			_update_card_info()
 
+
+## v27 改造升级：已装条目升级按钮回调（已装行与详情面板共用）
+func _on_upgrade_pressed(mod_index: int) -> void:
+	if selected_card == null:
+		return
+	if not (BlueprintManager and BlueprintManager.has_method("upgrade_modification")):
+		return
+	var result: Dictionary = BlueprintManager.upgrade_modification(selected_card, mod_index)
+	_show_result(String(result.get("message", "")))
+	if bool(result.get("success", false)):
+		# 刷新已装列表 + 单位面板属性（升级改变第 1/2 层加成）
+		var installed_list = unit_panel.get_node_or_null("InstalledList") if unit_panel else null
+		if installed_list:
+			_refresh_installed_list(installed_list)
+		_update_card_info()
+
+## v27: 按改造 id 找当前选中卡上的已装索引（-1 = 未装）——详情面板升级按钮定位用
+func _installed_index_of(mod_id: String) -> int:
+	if selected_card == null:
+		return -1
+	var idx := 0
+	for mod_entry in selected_card.mods:
+		var eid = mod_entry.get("id", "") if mod_entry is Dictionary else ""
+		if String(eid) == mod_id:
+			return idx
+		idx += 1
+	return -1
 
 ## v7.0: 取当前选中卡的身份标识（优先 instance_id，回退 card_id）
 func _selected_id() -> String:
@@ -1849,11 +1938,29 @@ func _show_mod_details(mod_data: Dictionary) -> void:
 		var nano_amount = BasicResourceManager.get_total(BasicResources.ID_NANO_MATERIALS) if BasicResourceManager else 0
 		var has_nano = nano_amount >= nano_cost2
 		var is_installed = _is_mod_installed(selected_mod_id)
+		# v27 改造升级：已装且可升档 → 按钮变升级入口（费用与扣款同源）；满级/无档位保持只读态
+		var up_idx: int = _installed_index_of(selected_mod_id) if is_installed else -1
+		var up_info: Dictionary = BlueprintManager.get_mod_upgrade_info(selected_card, up_idx) \
+			if (selected_card != null and up_idx >= 0 and BlueprintManager and BlueprintManager.has_method("get_mod_upgrade_info")) else {}
+		var upgradable: bool = (not up_info.is_empty()) and bool(up_info.get("can_upgrade", false))
 
-		if is_installed:
-			deck_install_button.text = "已安装"
+		if is_installed and upgradable:
+			var up_cost: Dictionary = BlueprintManager.preview_upgrade_cost(selected_card, up_idx)
+			var up_nano: int = int(up_cost.get("nano", 0))
+			var up_bp: int = int(up_cost.get("blueprints", 0))
+			# v27.13: 合金/晶体费用行（preview_upgrade_cost 同源）
+			var up_alloy: int = int(up_cost.get("alloy", 0))
+			var up_crystal: int = int(up_cost.get("crystal", 0))
+			deck_install_button.disabled = false
+			deck_install_button.text = "升级 →Lv%d" % int(up_cost.get("to_level", 2))
+			if up_bp > 0:
+				deck_install_button.tooltip_text = "升级当前已装实例：消耗图纸×%d + 纳米×%d + 合金×%d + 晶体×%d（只影响该实例）" % [up_bp, up_nano, up_alloy, up_crystal]
+			else:
+				deck_install_button.tooltip_text = "升级当前已装实例：消耗纳米×%d（只影响该实例）" % up_nano
+		elif is_installed:
+			deck_install_button.text = "已安装" if int(up_info.get("level", 0)) < 3 else "已满级"
 			deck_install_button.disabled = true
-			deck_install_button.tooltip_text = "该模块已安装在当前这张卡上"
+			deck_install_button.tooltip_text = "该模块已安装在当前这张卡上（升级入口在右侧已装列表）"
 		elif not has_blueprint2:
 			deck_install_button.text = "缺图纸"
 			deck_install_button.disabled = true
@@ -1877,7 +1984,11 @@ func _show_mod_details(mod_data: Dictionary) -> void:
 			if conn.callable.is_valid():
 				deck_install_button.pressed.disconnect(conn.callable)
 		var install_callable = func(): _install_modification(selected_mod_id)
-		deck_install_button.pressed.connect(install_callable)
+		# v27: 已装可升档时按钮语义是升级（文案已切换），回调随之切换
+		if is_installed and upgradable:
+			deck_install_button.pressed.connect(func(): _on_upgrade_pressed(up_idx))
+		else:
+			deck_install_button.pressed.connect(install_callable)
 
 	# v1.5：选中模块即展开效果抽屉——完整效果直接可见，无需按"效果模拟"
 	if sim_drawer != null:
@@ -1956,9 +2067,21 @@ func _translate_effect_key(key: String) -> String:
 ## 返回行数组（供 effects_label 展示）
 ## 2026-08-25：weapon_type/slot_weapon_type 等弹道路由内部键过滤（值恒 0-4，
 ## 显示成"武器型号 +0"是噪音，非玩家效果）。
-func _format_effects_for_display(mod_data: Dictionary) -> PackedStringArray:
+func _format_effects_for_display(mod_data: Dictionary, entry_level: int = 0) -> PackedStringArray:
 	var lines: PackedStringArray = []
 	const _INTERNAL_ROUTE_KEYS := ["weapon_type", "legacy_weapon_type", "slot_weapon_type", "condition_slot"]
+	# v27：entry_level > 0（已装条目）时优先显示该等级档——Lv1 与 effects 原值同口径
+	if entry_level > 0 and mod_data.has("level_effects") \
+			and (mod_data["level_effects"] as Dictionary).has(entry_level):
+		var lvl_eff: Dictionary = (mod_data["level_effects"] as Dictionary)[entry_level]
+		lines.append("—— 当前 Lv.%d ——" % entry_level)
+		for key in lvl_eff.keys():
+			if String(key) in _INTERNAL_ROUTE_KEYS:
+				continue
+			lines.append(_format_one_effect(String(key), lvl_eff[key]))
+		if mod_data.has("grant_slot") and (mod_data["grant_slot"] as Dictionary).size() > 0:
+			lines.append(_format_grant_slot(mod_data["grant_slot"]))
+		return lines
 	# 优先 effects（单档），其次 level_effects（Lv1/2/3 多档，enhancement 词条用）
 	if mod_data.has("effects") and (mod_data["effects"] as Dictionary).size() > 0:
 		var eff: Dictionary = mod_data["effects"]
