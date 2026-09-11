@@ -24,6 +24,9 @@ const META_PAIR_BUFF := "_pair_buff_applied"
 ## onetime 守卫 meta（挂 stats 上，防重复叠加）
 const META_PAIR_ONETIME := "_pair_onetime_applied"
 
+## v27.13 perf: BattleManager autoload 引用缓存（v27.12 同范式）
+static var _cached_bm: Node = null
+
 var _battlefield: Node = null
 var _active_pairs: Array = []          # 当前激活的 pair_id 列表
 
@@ -110,8 +113,11 @@ func _get_player_units() -> Array:
 	var root: Node = (ml as SceneTree).root
 	if root == null:
 		return []
-	var bm: Node = root.get_node_or_null("BattleManager")
-	if bm != null and is_instance_valid(bm) and bm.is_inside_tree() and bm.has_method("get_cached_nodes_in_group"):
+	# v27.13 perf: BattleManager 为 autoload，static 缓存 + 树内守卫，免每次全树查找（v27.12 同范式）
+	if _cached_bm == null or not is_instance_valid(_cached_bm) or not _cached_bm.is_inside_tree():
+		_cached_bm = root.get_node_or_null("BattleManager")
+	var bm: Node = _cached_bm
+	if bm != null and bm.has_method("get_cached_nodes_in_group"):
 		return bm.get_cached_nodes_in_group("player_units")
 	return (ml as SceneTree).get_nodes_in_group("player_units")
 
@@ -223,6 +229,11 @@ func _apply_onetime_pair(pair_id: String, def: Dictionary) -> void:
 ## ─── 静态查询（消费点用）───
 
 ## 查询搭档激活态（--script 模式 / 战斗外安全返回 false）
+## v27.12 perf: BattleManager 静态缓存——本查询在弹道命中热路径上（每发子弹命中/每次
+## 溅射都会调 is_artillery_mark_crit / get_artillery_mark_splash_mult），此前每次都
+## root 字符串全树查找。autoload 全会话存活，缓存安全；未命中不缓存保持回退语义。
+static var _bm_cache: Node = null
+
 static func query_pair_active(pair_id: String) -> bool:
 	var ml := Engine.get_main_loop()
 	if ml == null or not (ml is SceneTree):
@@ -230,7 +241,11 @@ static func query_pair_active(pair_id: String) -> bool:
 	var root: Node = (ml as SceneTree).root
 	if root == null:
 		return false
-	var bm: Node = root.get_node_or_null("BattleManager")
+	var bm: Node = _bm_cache
+	if bm == null or not is_instance_valid(bm):
+		bm = root.get_node_or_null("BattleManager")
+		if bm != null:
+			_bm_cache = bm
 	if bm == null or not bm.has_method("get_combo_engine"):
 		return false
 	var eng: RefCounted = bm.get_combo_engine()

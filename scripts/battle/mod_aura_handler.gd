@@ -30,6 +30,9 @@ extends RefCounted
 const AuraDataScript = preload("res://data/aura_data.gd")
 const AuraRangeIndicator = preload("res://scenes/effects/aura_range_indicator.gd")
 
+## v27.13 perf: BattleManager autoload 引用缓存（v27.12 同范式）
+static var _cached_bm: Node = null
+
 ## 在单位 setup 时调用：读取节点的 mod_aura_summary meta，给范围内友军加 buff
 ## v21 P0: 范围 = get_mod_aura_range(summary)（默认 1 格，range_override 可覆盖/全场）；
 ## 受影响的友军会在自身 meta 中记录 mod_aura_applied，供 buff_strip 和情报面板显示
@@ -101,8 +104,11 @@ static func receive_mod_auras_from_field(unit: Node) -> void:
 	var is_player: bool = bool(unit.get("is_player")) if "is_player" in unit else true
 	var group_name: String = "player_units" if is_player else "enemy_units"
 	var allies: Array = []
-	var bm: Node = tree.root.get_node_or_null("BattleManager")
-	if bm != null and is_instance_valid(bm) and bm.has_method("get_cached_nodes_in_group"):
+	# v27.13 perf: BattleManager 为 autoload，static 缓存 + 树内守卫，免每次全树查找（v27.12 同范式）
+	if _cached_bm == null or not is_instance_valid(_cached_bm) or not _cached_bm.is_inside_tree():
+		_cached_bm = tree.root.get_node_or_null("BattleManager")
+	var bm: Node = _cached_bm
+	if bm != null and bm.has_method("get_cached_nodes_in_group"):
 		allies = bm.get_cached_nodes_in_group(group_name)
 	if allies.is_empty():
 		allies = tree.get_nodes_in_group(group_name)
@@ -174,9 +180,12 @@ static func _get_all_allies(unit: Node, range_cells: int = -1) -> Array:
 	var is_player: bool = bool(unit.get("is_player")) if "is_player" in unit else true
 	var group_name: String = "player_units" if is_player else "enemy_units"
 	# 优先用 BattleManager 缓存
-	var bm: Node = tree.root.get_node_or_null("BattleManager")
+	# v27.13 perf: BattleManager 为 autoload，static 缓存 + 树内守卫，免每次全树查找（v27.12 同范式）
+	if _cached_bm == null or not is_instance_valid(_cached_bm) or not _cached_bm.is_inside_tree():
+		_cached_bm = tree.root.get_node_or_null("BattleManager")
+	var bm: Node = _cached_bm
 	var group_nodes: Array = []
-	if bm != null and is_instance_valid(bm) and bm.has_method("get_cached_nodes_in_group"):
+	if bm != null and bm.has_method("get_cached_nodes_in_group"):
 		var active: bool = bool(bm.get("battle_active")) if "battle_active" in bm else false
 		if active:
 			group_nodes = bm.get_cached_nodes_in_group(group_name)
