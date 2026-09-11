@@ -718,6 +718,9 @@ func _init_unit_mechanisms() -> void:
 	_recon_grace_timer = 0.0
 	_is_air_assault = false
 	_air_assault_timer = 0.0
+	# v26.32: 每单位射速个性（±8%，掷定一次）——同型单位节奏各有快慢，
+	# 消除"节拍器齐射"（消费点 construct_unit_ai 的 COOLDOWN 相位门槛）。
+	set_meta("attack_cadence", randf_range(0.92, 1.08))
 	if stats == null:
 		return
 	# 侦察潜入开局
@@ -1313,7 +1316,10 @@ func _update_fort_shield_aura(delta: float) -> void:
 		if not _fort_aura_player_meta_set:
 			_fort_shield_aura.set_meta(&"is_player", is_player)
 			_fort_aura_player_meta_set = true
-		_fort_shield_aura.set_meta(&"hit_boost", _fort_aura_hit_boost)
+		# v27.12 perf: meta 写守卫——值未变不写（承压衰减期仍每帧写，稳定 0 期零写入）
+		if not _fort_shield_aura.has_meta(&"hit_boost") \
+				or float(_fort_shield_aura.get_meta(&"hit_boost")) != _fort_aura_hit_boost:
+			_fort_shield_aura.set_meta(&"hit_boost", _fort_aura_hit_boost)
 		# v7.3: 承压闪光时每帧 redraw，正常态每4帧一次（呼吸动画降频）
 		if _fort_aura_hit_boost > 0.0 or (_aura_low_freq_frame % 4) == 0:
 			_fort_shield_aura.queue_redraw()
@@ -2005,7 +2011,7 @@ func take_damage(amount: float, attacker: Variant = null) -> void:
 		var blood_str: float = kb_str * 0.5 if _is_fort_aura_unit else kb_str
 		VfxImpactFactory.spawn_hit_blood(get_parent(), global_position, kb_dir, blood_str, true)
 	# v8.1: 血条受击闪白（接通 unit_hp_bar.trigger_damage_flash，原为未连线死功能）
-	var _hpbar := get_node_or_null("HpBar")
+	var _hpbar := _get_hpbar_cached()  # v27.12: 走引用缓存
 	if _hpbar != null and _hpbar.has_method("trigger_damage_flash"):
 		_hpbar.trigger_damage_flash()
 	# v7.1: 堡垒防护光环受击强化（扩张+闪亮）
@@ -2041,7 +2047,7 @@ func add_shield(amount: float) -> void:
 	var old_shield = shield
 	shield = min(shield + amount, stats.max_hp * 2.0)  # 护盾上限为双倍 HP
 	# 更新护盾条显示
-	var hpbar = get_node_or_null("HpBar") as Node2D
+	var hpbar = _get_hpbar_cached() as Node2D  # v27.12: 走引用缓存
 	if hpbar and hpbar.has_method("set_shield") and hpbar.has_method("trigger_shield_gain"):
 		hpbar.set_shield(shield, stats.max_hp)
 		if old_shield <= 0.0 or old_shield < shield * 0.5:  # 首次获得或大幅增加时触发闪光

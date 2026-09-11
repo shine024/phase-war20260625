@@ -15,8 +15,9 @@ static func get_base_power_for_mod_cost(card_id: String, bpm_ref: Node) -> float
 	return (80.0 + 28.0) * rarity_mul * (1.0 + inherit_bonus)
 
 ## v6.14: 获取改造模块的最低战力档位要求（按 rarity 派生，无需改 140+ 定义数据）。
-## common→GRUNT(无门槛), uncommon→VETERAN, rare→ELITE, epic→CHAMPION, legendary→OVERLORD。
+## common→GRUNT(无门槛), uncommon→VETERAN, rare→ELITE, epic→CHAMPION, legendary/mythic→OVERLORD。
 ## 未知 rarity 回退 GRUNT（无门槛，向后兼容）。
+## v27：mythic 补分支——此前回退 GRUNT 是陷阱（顶级改造反而无门槛）。
 static func get_min_power_tier_for_mod(mod_id: String) -> int:
 	var mod_data: Dictionary = ModificationRegistry.get_data(mod_id)
 	var rarity: String = String(mod_data.get("rarity", "common"))
@@ -30,6 +31,8 @@ static func get_min_power_tier_for_mod(mod_id: String) -> int:
 		"epic":
 			return PowerTiers.Tier.CHAMPION
 		"legendary":
+			return PowerTiers.Tier.OVERLORD
+		"mythic":
 			return PowerTiers.Tier.OVERLORD
 		_:
 			return PowerTiers.Tier.GRUNT

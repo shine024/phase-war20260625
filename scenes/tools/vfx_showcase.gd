@@ -449,7 +449,8 @@ func _trig_pillar() -> Callable:
 	return func(): VfxFactory.spawn_energy_pillar(_bf, Vector2.ZERO, Color(0.5, 0.6, 1.0, 0.8), 400.0, 0.7)
 
 func _trig_ult() -> Callable:
-	return func(): VfxFactory.spawn_ultimate_projectile(_bf, Vector2(-220, -180), Vector2.ZERO, TEX_ULT_NUKE, "arc", 72.0, Color.WHITE, Color(1.0, 0.8, 0.3, 0.9), 0.6)
+	# v26.31: TEX_ULT_NUKE 横贴图（弹头 +X）→ nose_offset 0.0（同 phase_instrument_abilities 修复）
+	return func(): VfxFactory.spawn_ultimate_projectile(_bf, Vector2(-220, -180), Vector2.ZERO, TEX_ULT_NUKE, "arc", 72.0, Color.WHITE, Color(1.0, 0.8, 0.3, 0.9), 0.6, Callable(), 0.0)
 
 func _trig_muzzle(wt: int) -> Callable:
 	return func(): VfxFactory.spawn_muzzle_flash(_bf, Vector2.ZERO, true, wt)
@@ -472,7 +473,7 @@ func _trig_pi_nuclear() -> Callable:
 		var pack: Dictionary = _load_nuke_texture_pack()
 		var colors := {"shock": Color(1.0, 0.85, 0.5, 0.9), "aftershock": Color(0.6, 0.7, 1.0, 0.5), "smoke": Color(0.35, 0.32, 0.30, 0.6)}
 		VfxFactory.spawn_ultimate_projectile(_bf, Vector2(-260, -200), Vector2.ZERO, TEX_ULT_NUKE, "arc", 72.0, Color.WHITE, Color(1.0, 0.8, 0.3, 0.9), 0.6,
-			func(_p: Vector2): VfxFactory.spawn_nuclear_explosion(_bf, Vector2.ZERO, pack, colors, 0.6))
+			func(_p: Vector2): VfxFactory.spawn_nuclear_explosion(_bf, Vector2.ZERO, pack, colors, 0.6), 0.0)
 
 ## 纳米虫群:对齐 on_battle_start nano_swarm(owner=PLAYER 配色虫群云)
 func _trig_pi_nano() -> Callable:

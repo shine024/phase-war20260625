@@ -280,8 +280,8 @@ async def do_login() -> int:
 # ── 主流程 ──────────────────────────────────────────────────────────────
 
 async def run_edit(args) -> int:
-    ref = Path(args.ref).resolve()
-    if not ref.exists():
+    ref = Path(args.ref).resolve() if args.ref else None
+    if args.ref and not ref.exists():
         print(f"参考图不存在: {ref}")
         return 1
     prompt = (Path(args.prompt_file).read_text(encoding="utf-8").strip()
@@ -289,11 +289,11 @@ async def run_edit(args) -> int:
     if not prompt and not args.dry_run:
         print("需要 --prompt 或 --prompt-file")
         return 1
-    out_dir = Path(args.outdir).resolve() if args.outdir else ref.parent
+    out_dir = Path(args.outdir).resolve() if args.outdir else (ref.parent if ref else Path.cwd())
     out_dir.mkdir(parents=True, exist_ok=True)
     log = make_logger(out_dir / "flow_edit.log")
-    ref_dims = jpeg_size(ref.read_bytes()[:65536])
-    log(f"[run] ref={ref.name} dims={ref_dims} prompt={len(prompt or '')}字 out={out_dir} dry_run={args.dry_run}")
+    ref_dims = jpeg_size(ref.read_bytes()[:65536]) if ref else None
+    log(f"[run] ref={ref.name if ref else '(无·纯文生图)'} dims={ref_dims} prompt={len(prompt or '')}字 out={out_dir} dry_run={args.dry_run}")
 
     profile_dir = copy_profile(log)
     from playwright.async_api import async_playwright
@@ -332,30 +332,33 @@ async def run_edit(args) -> int:
                 log("[nav] 项目页未就绪（检查代理/登录状态）")
                 return 1
 
-            # 2) 上传参考图
+            # 2) 上传参考图（--ref 可选；缺省即纯文生图）
             if args.dry_run:
                 log("[dry-run] ✅ 环境/登录/项目均正常，未提交生成")
                 return 0
-            add_btn = page.get_by_role("button", name="在提示框中添加素材")
-            if await add_btn.count() == 0:
-                log("[ref] 找不到「在提示框中添加素材」按钮")
-                return 1
-            await add_btn.first.click()
-            await page.wait_for_timeout(1500)
-            upload_item = page.locator('button:has-text("上传媒体内容")').first
-            if await upload_item.count() == 0:
-                upload_item = page.locator('button:has-text("上传")').first
-            try:
-                async with page.expect_file_chooser(timeout=10000) as fc_info:
-                    await upload_item.click()
-                fc = await fc_info.value
-                await fc.set_files(str(ref))
-                log("[ref] 已选择文件")
-            except Exception as exc:
-                log(f"[ref] 上传失败: {type(exc).__name__}: {str(exc)[:150]}")
-                return 1
-            await page.wait_for_timeout(15000)
-            await close_overlays(page)
+            if ref:
+                add_btn = page.get_by_role("button", name="在提示框中添加素材")
+                if await add_btn.count() == 0:
+                    log("[ref] 找不到「在提示框中添加素材」按钮")
+                    return 1
+                await add_btn.first.click()
+                await page.wait_for_timeout(1500)
+                upload_item = page.locator('button:has-text("上传媒体内容")').first
+                if await upload_item.count() == 0:
+                    upload_item = page.locator('button:has-text("上传")').first
+                try:
+                    async with page.expect_file_chooser(timeout=10000) as fc_info:
+                        await upload_item.click()
+                    fc = await fc_info.value
+                    await fc.set_files(str(ref))
+                    log("[ref] 已选择文件")
+                except Exception as exc:
+                    log(f"[ref] 上传失败: {type(exc).__name__}: {str(exc)[:150]}")
+                    return 1
+                await page.wait_for_timeout(15000)
+                await close_overlays(page)
+            else:
+                log("[ref] 未提供参考图 → 纯文生图模式")
 
             # 3) 提示词 + 提交
             pm = page.locator("div.ProseMirror").first
@@ -487,8 +490,8 @@ def main() -> int:
 
     if args.login:
         return asyncio.run(do_login())
-    if not args.ref:
-        ap.error("需要 --ref（或 --login 首次登录）")
+    if not args.ref and not args.prompt and not args.prompt_file and not args.dry_run:
+        ap.error("需要 --ref 或 --prompt/--prompt-file（纯文生图）")
     try:
         return asyncio.run(run_edit(args))
     except KeyboardInterrupt:

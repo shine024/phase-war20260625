@@ -1,0 +1,113 @@
+## 第 91 关
+
+**关卡介绍：** 虚拟现实战争，两个世界的碰撞
+
+**场景说明：** 浓雾、平原、夜晚、纳米雾场；虚空相位（Void Research）
+
+```text
+16:9 horizontal 2D side-scrolling mobile game background, bright, clean, polished art style, high detail, readable composition, no characters, no combat VFX, no text, no split layers, no segmented composition, no grid, no tile pattern, no checkerboard, no square markings.
+
+A glitched virtual reality forest at night under heavy fog, viewed from a low forward perspective with the horizon placed high in the frame, leaving the entire lower portion as open ground. A dark foggy night sky with cool moonlight diffused through nano-mist fills the upper distance, with pixel-leaf tree silhouettes, neon seam lines, and digital glitch patterns fading into atmospheric distortion. Faint cyan and magenta VR shimmer pulses across the horizon, blending a strong sci-fi virtual-reality undertone into the scene. The sky and horizon are unified as a single atmospheric backdrop.
+
+In the middle distance, the landscape shows pixel-leaf tree outlines, neon seam lines running through the terrain, and digital glitch patterns across the forest edge. All midground elements remain low and non-obstructive.
+
+The foreground and entire lower portion of the frame is open, flat cool-blue digital-ground with worn VR-grid texture, extending continuously across the full width. The ground surface has a deep blue-grey tone with faint glowing grid lines, subtle pixelation patches, and shimmering neon reflections characteristic of a VR environment blending with reality. Only subtle ground-level details are present near the edges: scattered tiny glowing pixel fragments, faint neon seam lines on the surface, and small shimmering data reflections. The center of the ground remains completely clear and unobstructed.
+
+Negative prompt: characters, people, soldiers, infantry, human silhouettes, enemies, monsters, weapons held by figures, rifles, pistols, combat effects, blood, corpses, aircraft, airplanes, helicopters, drones, tanks, armored vehicles, warships, missiles, skill VFX, muzzle flashes, explosions with debris bodies, UI, HUD, buttons, text, letters, numbers, watermark, logo, large obstacles, dense clutter, crowded foreground, oversized props, giant objects, tall structures, large debris, bulky items, curved road, S-shaped path, broken path, blocked ground, top-down view, isometric, strong perspective distortion, fisheye, photorealistic 3D render, unreal engine screenshot, dark horror, gore, blur, low resolution, messy composition, split composition, stitched together, panorama panels, collage, grid layout, central obstruction, sky larger than ground, upper portion larger than lower, three separate images, checkerboard, tile pattern, grid, square markings, board game, chessboard, tactical grid, measurement lines
+```
+
+
+## 第 92 关
+
+**关卡介绍：** 相位跳跃，维度的切割
+
+**场景说明：** 晴朗、山地、黎明、常规能量场；虚空相位（Void Research）
+
+```text
+16:9 horizontal 2D side-scrolling mobile game background, bright, clean, polished art style, high detail, readable composition, no characters, no combat VFX, no text, no split layers, no segmented composition, no grid, no tile pattern, no checkerboard, no square markings.
+
+A phase-jump cliff landscape at dawn under a clear sky, viewed from a low forward perspective with the horizon placed high in the frame, leaving the entire lower portion as open ground. A warm-cool gradient morning sky with soft golden glow and clear layered clouds fills the upper distance, with sliced terrain cube silhouettes floating slightly above ground, cliff edge outlines, and layered mountain ridges fading into atmospheric perspective. Subtle dimensional shimmer ripples across the horizon. The sky and horizon are unified as a single atmospheric backdrop.
+
+In the middle distance, the landscape shows sliced terrain cube outlines floating slightly above ground, cliff edge shapes, and layered mountain ridge patterns. All midground elements remain low and non-obstructive.
+
+The foreground and entire lower portion of the frame is open, flat warm-umber rocky ground with worn cliff texture, extending continuously across the full width. The ground surface has a rich brown-orange tone with sharp angular cracks and clean slice marks where terrain has been cut and repositioned. Only subtle ground-level details are present near the edges: scattered angular rock fragments, small dust patches from sliced surfaces, and faint cube-shadow impressions on the ground. The center of the ground remains completely clear and unobstructed.
+
+Negative prompt: characters, people, soldiers, infantry, human silhouettes, enemies, monsters, weapons held by figures, rifles, pistols, combat effects, blood, corpses, aircraft, airplanes, helicopters, drones, tanks, armored vehicles, warships, missiles, skill VFX, muzzle flashes, explosions with debris bodies, UI, HUD, buttons, text, letters, numbers, watermark, logo, large obstacles, dense clutter, crowded foreground, oversized props, giant objects, tall structures, large debris, bulky items, curved road, S-shaped path, broken path, blocked ground, top-down view, isometric, strong perspective distortion, fisheye, photorealistic 3D render, unreal engine screenshot, dark horror, gore, blur, low resolution, messy composition, split composition, stitched together, panorama panels, collage, grid layout, central obstruction, sky larger than ground, upper portion larger than lower, three separate images, checkerboard, tile pattern, grid, square markings, board game, chessboard, tactical grid, measurement lines
+```
+
+
+## 第 93 关
+
+**关卡介绍：** 能量场对撞，物理法则的突破
+
+**场景说明：** 雨天、城市、白昼、强能量场；虚空相位（Void Research）
+
+```text
+16:9 horizontal 2D side-scrolling mobile game background, bright, clean, polished art style, high detail, readable composition, no characters, no combat VFX, no text, no split layers, no segmented composition, no grid, no tile pattern, no checkerboard, no square markings.
+
+A colliding energy dome landscape at midday under light rain, viewed from a low forward perspective with the horizon placed high in the frame, leaving the entire lower portion as open ground. A cool overcast sky with gray-blue atmosphere and rain haze fills the upper distance, with two-color energy dome silhouettes, ground crack patterns, and city structure outlines fading into the wet atmosphere. Faint cyan and orange glow pulses from the colliding fields across the horizon, blending a strong sci-fi energy-undertone into the scene. The sky and horizon are unified as a single atmospheric backdrop.
+
+In the middle distance, the landscape shows two-color energy dome outlines, ground crack patterns radiating from the collision point, and city structure shapes. All midground elements remain low and non-obstructive.
+
+The foreground and entire lower portion of the frame is open, flat grey-blasted ground with worn energy-scarred texture, extending continuously across the full width. The ground surface has a dark grey tone with faint orange and cyan scorch marks, radiating crack patterns, and small glassed patches where the energy has fused the earth. Only subtle ground-level details are present near the edges: scattered tiny glassed fragments, small scorch marks on the surface, and faint crack lines radiating outward. The center of the ground remains completely clear and unobstructed.
+
+Negative prompt: characters, people, soldiers, infantry, human silhouettes, enemies, monsters, weapons held by figures, rifles, pistols, combat effects, blood, corpses, aircraft, airplanes, helicopters, drones, tanks, armored vehicles, warships, missiles, skill VFX, muzzle flashes, explosions with debris bodies, UI, HUD, buttons, text, letters, numbers, watermark, logo, large obstacles, dense clutter, crowded foreground, oversized props, giant objects, tall structures, large debris, bulky items, curved road, S-shaped path, broken path, blocked ground, top-down view, isometric, strong perspective distortion, fisheye, photorealistic 3D render, unreal engine screenshot, dark horror, gore, blur, low resolution, messy composition, split composition, stitched together, panorama panels, collage, grid layout, central obstruction, sky larger than ground, upper portion larger than lower, three separate images, checkerboard, tile pattern, grid, square markings, board game, chessboard, tactical grid, measurement lines
+```
+
+
+## 第 94 关
+
+**关卡介绍：** 思想控制，精神层面的战争
+
+**场景说明：** 风暴、森林、黄昏、虚空裂隙；虚空相位（Void Research）
+
+```text
+16:9 horizontal 2D side-scrolling mobile game background, bright, clean, polished art style, high detail, readable composition, no characters, no combat VFX, no text, no split layers, no segmented composition, no grid, no tile pattern, no checkerboard, no square markings.
+
+A mind control tower landscape at dusk under a stormy sky, viewed from a low forward perspective with the horizon placed high in the frame, leaving the entire lower portion as open ground. A dramatic golden hour sky with amber rim light, purple-void aurora streaks, and storm cloud stacks fills the upper distance, with obelisk tower silhouettes, halo ring patterns, and empty street outlines fading into atmospheric distortion. Faint psychic shimmer pulses from the tower across the horizon. The sky and horizon are unified as a single atmospheric backdrop.
+
+In the middle distance, the landscape shows obelisk tower outlines, halo ring patterns circling the tower, and empty street shapes below. All midground elements remain low and non-obstructive.
+
+The foreground and entire lower portion of the frame is open, flat pale-grey empty street ground with worn urban texture, extending continuously across the full width. The ground surface has a cool grey tone with faint halo-reflection patches and subtle ripple patterns radiating from the tower direction, characteristic of an area under psychic influence. Only subtle ground-level details are present near the edges: scattered tiny pebbles, small dust patches, and faint ripple marks in the surface. The center of the ground remains completely clear and unobstructed.
+
+Negative prompt: characters, people, soldiers, infantry, human silhouettes, enemies, monsters, weapons held by figures, rifles, pistols, combat effects, blood, corpses, aircraft, airplanes, helicopters, drones, tanks, armored vehicles, warships, missiles, skill VFX, muzzle flashes, explosions with debris bodies, UI, HUD, buttons, text, letters, numbers, watermark, logo, large obstacles, dense clutter, crowded foreground, oversized props, giant objects, tall structures, large debris, bulky items, curved road, S-shaped path, broken path, blocked ground, top-down view, isometric, strong perspective distortion, fisheye, photorealistic 3D render, unreal engine screenshot, dark horror, gore, blur, low resolution, messy composition, split composition, stitched together, panorama panels, collage, grid layout, central obstruction, sky larger than ground, upper portion larger than lower, three separate images, checkerboard, tile pattern, grid, square markings, board game, chessboard, tactical grid, measurement lines
+```
+
+
+## 第 95 关
+
+**关卡介绍：** 集群智能，群体的力量
+
+**场景说明：** 浓雾、沙漠、夜晚、纳米雾场；虚空相位（Void Research）
+
+```text
+16:9 horizontal 2D side-scrolling mobile game background, bright, clean, polished art style, high detail, readable composition, no characters, no combat VFX, no text, no split layers, no segmented composition, no grid, no tile pattern, no checkerboard, no square markings.
+
+A swarm drone dock landscape at night under heavy fog, viewed from a low forward perspective with the horizon placed high in the frame, leaving the entire lower portion as open ground. A dark foggy night sky with cool moonlight diffused through nano-mist fills the upper distance, with hex-pad dock silhouettes, charging light patterns, and desert dune outlines fading into atmospheric haze. Faint blue-white charging pulses shimmer across the horizon, blending a subtle sci-fi swarm-undertone into the scene. The sky and horizon are unified as a single atmospheric backdrop.
+
+In the middle distance, the landscape shows hex-pad dock outlines, charging light patterns across the pads, and desert dune shapes beyond. All midground elements remain low and non-obstructive.
+
+The foreground and entire lower portion of the frame is open, flat cool-grey desert sand ground with worn drone-dock texture, extending continuously across the full width. The ground surface has a cool grey-tan tone with faint blue-white charging reflections, subtle hex-grid impressions, and small indentations where drones have rested. Only subtle ground-level details are present near the edges: scattered tiny sand grains, small metal fragments from drone maintenance, and faint charging light reflections on the surface. The center of the ground remains completely clear and unobstructed.
+
+Negative prompt: characters, people, soldiers, infantry, human silhouettes, enemies, monsters, weapons held by figures, rifles, pistols, combat effects, blood, corpses, aircraft, airplanes, helicopters, drones, tanks, armored vehicles, warships, missiles, skill VFX, muzzle flashes, explosions with debris bodies, UI, HUD, buttons, text, letters, numbers, watermark, logo, large obstacles, dense clutter, crowded foreground, oversized props, giant objects, tall structures, large debris, bulky items, curved road, S-shaped path, broken path, blocked ground, top-down view, isometric, strong perspective distortion, fisheye, photorealistic 3D render, unreal engine screenshot, dark horror, gore, blur, low resolution, messy composition, split composition, stitched together, panorama panels, collage, grid layout, central obstruction, sky larger than ground, upper portion larger than lower, three separate images, checkerboard, tile pattern, grid, square markings, board game, chessboard, tactical grid, measurement lines
+```
+
+---
+
+**91-95 已生成，差异化总览：**
+
+| 关卡 | 地面材质 | 地面颜色 | 中远景结构 |
+|------|----------|----------|-----------|
+| 91 VR战争 | 数字地面 | 深蓝灰色带发光网格 | 像素树叶树、霓虹接缝线、数字故障 |
+| 92 相位跳跃 | 岩石地面 | 暖棕色带锋利切痕 | 切片地形立方体、悬崖边缘、山脉 |
+| 93 能量对撞 | 能量灼烧地面 | 深灰带橙/青色灼痕 | 双色能量穹顶、辐射裂纹、城市结构 |
+| 94 思想控制 | 空街道地面 | 冷灰色带光晕反射 | 方尖塔、光环环、空旷街道 |
+| 95 集群智能 | 沙漠地面 | 冷灰褐色带充电反光 | 六角形停机坪、充电光点、沙丘 |
+
+继续 **96-100**？🎯
+
+
+
+
+
+

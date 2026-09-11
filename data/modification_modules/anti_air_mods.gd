@@ -89,6 +89,7 @@ const DATA: Dictionary = {
 		slot_type = "laser", conflict_group = "laser",
 		era_band = [3, 4],
 		effects = {intercept_system = 0.30, intercept_charges = -1, infinite_ammo = true},
+		level_effects = {1: {intercept_system = 0.3, intercept_charges = -1, infinite_ammo = true}, 2: {intercept_system = 0.39, intercept_charges = -1, infinite_ammo = true}, 3: {intercept_system = 0.51, intercept_charges = -1, infinite_ammo = true}},
 		unlock_conditions = {required_level = 8}
 	},
 	"aa_07_aesa" = {
@@ -122,6 +123,7 @@ const DATA: Dictionary = {
 	power_mult = 1.3, cost_research = 160, cost_install = 80,
 		slot_type = "countermeasure", conflict_group = "countermeasure",
 		effects = {missile_dodge = 0.30},
+		level_effects = {1: {missile_dodge = 0.3}, 2: {missile_dodge = 0.39}, 3: {missile_dodge = 0.51}},
 		unlock_conditions = {required_level = 3}
 	},
 	"aa_10_camouflage" = {
@@ -176,6 +178,7 @@ const DATA: Dictionary = {
 		conflict_group = "guidance",
 		era_band = [3, 4],
 		effects = {target_marking = 0.40, mark_vuln = 0.30, mark_duration = 5.0},
+		level_effects = {1: {target_marking = 0.4, mark_vuln = 0.3, mark_duration = 5}, 2: {target_marking = 0.52, mark_vuln = 0.39, mark_duration = 6.5}, 3: {target_marking = 0.6, mark_vuln = 0.51, mark_duration = 8.5}},
 		unlock_conditions = {required_level = 6}
 	},
 
@@ -196,6 +199,7 @@ const DATA: Dictionary = {
 		conflict_group = "special_ammo",
 		era_band = [3, 4],
 		effects = {emp_chance = 0.40, emp_true_damage = 12.0, graphite_amp = true},
+		level_effects = {1: {emp_chance = 0.4, emp_true_damage = 12, graphite_amp = true}, 2: {emp_chance = 0.52, emp_true_damage = 15.6, graphite_amp = true}, 3: {emp_chance = 0.6, emp_true_damage = 20.4, graphite_amp = true}},
 		applicable_types = [0, 4],
 		unlock_conditions = {required_level = 6}
 	},
@@ -254,6 +258,77 @@ const DATA: Dictionary = {
 		unlock_conditions = {required_level = 2}
 	},
 
+
+	# ══════════ v27 改造2.0 批：普及档 + 对空强化（防空火网套装件为既有 aa_02/05/07/11）══════════
+	"aa_16_ammo_cache" = {
+		id = "aa_16_ammo_cache",
+		name = "备弹库",
+		name_en = "Ammunition Cache",
+		icon = "res://assets/ui/icons/mod_icons/mod_ammunition.png",
+		prototype = "阵地备弹库",
+		description = "就近备弹。射速 +4%。",
+		rarity = "common",
+		power_mult = 0.8,
+		cost_research = 50,
+		cost_install = 25,
+		slot_type = "ammunition",
+		conflict_group = "ammunition",
+		effects = {attack_interval = -0.04},
+		level_effects = {1: {attack_interval = -0.04}, 2: {attack_interval = -0.05}, 3: {attack_interval = -0.07}},
+		unlock_conditions = {required_level = 1}
+	},
+	"aa_17_altimeter" = {
+		id = "aa_17_altimeter",
+		name = "测高仪",
+		name_en = "Altimeter",
+		icon = "res://assets/ui/icons/mod_icons/mod_radar.png",
+		prototype = "机械测高仪",
+		description = "目标高度数据。暴击率 +5%，对空伤害 +8%。",
+		rarity = "uncommon",
+		power_mult = 1.0,
+		cost_research = 100,
+		cost_install = 50,
+		slot_type = "sensor",
+		conflict_group = "sensor",
+		effects = {crit_chance = 0.05, attack_air = 0.08},
+		level_effects = {1: {crit_chance = 0.05, attack_air = 0.08}, 2: {crit_chance = 0.065, attack_air = 0.10}, 3: {crit_chance = 0.085, attack_air = 0.14}},
+		unlock_conditions = {required_level = 2}
+	},
+	"aa_18_twin_mount" = {
+		id = "aa_18_twin_mount",
+		name = "双联装改装",
+		name_en = "Twin Mount Conversion",
+		icon = "res://assets/ui/icons/mod_icons/mod_mount.png",
+		prototype = "双联装炮架",
+		description = "双炮身交错射击。对空伤害 +15%。",
+		rarity = "rare",
+		power_mult = 1.3,
+		cost_research = 160,
+		cost_install = 80,
+		slot_type = "weapon",
+		conflict_group = "damage",
+		effects = {attack_air = 0.15},
+		level_effects = {1: {attack_air = 0.15}, 2: {attack_air = 0.20}, 3: {attack_air = 0.26}},
+		unlock_conditions = {required_level = 3}
+	},
+	"aa_19_barrage_computer" = {
+		id = "aa_19_barrage_computer",
+		name = "弹幕计算机",
+		name_en = "Barrage Computer",
+		icon = "res://assets/ui/icons/mod_icons/mod_fire_control.png",
+		prototype = "提前量弹幕解算",
+		description = "弹幕射击解算。射速 +10%，对空伤害 +10%。",
+		rarity = "epic",
+		power_mult = 1.5,
+		cost_research = 300,
+		cost_install = 150,
+		slot_type = "fire_control",
+		conflict_group = "fire_rate",
+		era_band = [2, 4],
+		effects = {attack_interval = -0.10, attack_air = 0.10},
+		level_effects = {1: {attack_interval = -0.10, attack_air = 0.10}, 2: {attack_interval = -0.13, attack_air = 0.13}, 3: {attack_interval = -0.17, attack_air = 0.17}},
+		unlock_conditions = {required_level = 5}
+	},
 }
 
 static func get_mod_data(mod_id: String) -> Dictionary:

@@ -51,6 +51,26 @@ var _dict_pool: Array[Dictionary] = []
 var _last_boom_msec: int = -10000
 # v26.x: 开火音节流时间戳（110ms，对齐直射 batch 开火音）——多门高射速 FLAK 齐射压制
 var _last_fire_sfx_msec: int = -10000
+# v27.12 perf: BattleManager/GameManager 引用缓存（autoload 常驻；null 不缓存保回退语义）
+var _bm_ref: Node = null
+var _gm_ref: Node = null
+
+func _get_bm() -> Node:
+	if _bm_ref == null or not is_instance_valid(_bm_ref):
+		var tree := get_tree()
+		_bm_ref = tree.root.get_node_or_null("BattleManager") if tree else null
+	return _bm_ref
+
+func _get_gm() -> Node:
+	if _gm_ref == null or not is_instance_valid(_gm_ref):
+		var tree := get_tree()
+		_gm_ref = tree.root.get_node_or_null("GameManager") if tree else null
+	return _gm_ref
+
+## 格子战模式判定（战斗中恒定；此前主目标+每个溅射目标各做一次全树查找）
+func _is_card_grid_battle() -> bool:
+	var gm: Node = _get_gm()
+	return gm != null and gm.has_method("is_card_grid_battle") and gm.is_card_grid_battle()
 
 func _acquire_proj_dict() -> Dictionary:
 	if not _dict_pool.is_empty():
@@ -142,6 +162,14 @@ func fire(from: Vector2, tgt: Node2D, dmg: float, wt: int, shooter: Node2D, shoo
 	apex *= WeaponProjectileVfx.indirect_apex_mul(flavor)
 	duration *= WeaponProjectileVfx.indirect_duration_mul(flavor)
 	var body_scale: float = WeaponProjectileVfx.indirect_body_scale(flavor)
+	# v27.12 perf: 弹体染色 fire 时算一次存表（原每帧每弹 indirect_tint + xeno classify 查表）
+	var base_tint := _PLAYER_TINT if is_player_side else _ENEMY_TINT
+	var tint_r: Color = WeaponProjectileVfx.indirect_tint(flavor, base_tint)
+	# v27.x: 星冥曲射族（等离子抛射/蠕虫弹药/灵能风暴）弹体紫青覆盖
+	if XenoWeaponFlavor.enabled():
+		var xw: int = XenoWeaponFlavor.classify(weapon_name)
+		if xw >= 0:
+			tint_r = XenoWeaponFlavor.flavor_color(xw)
 
 	# v9.2: 从字典池取复用字典（替代每次 new 字典字面量）
 	var d: Dictionary = _acquire_proj_dict()
@@ -160,6 +188,9 @@ func fire(from: Vector2, tgt: Node2D, dmg: float, wt: int, shooter: Node2D, shoo
 	d["trail_acc"] = 0.0  # v26.x: 烟迹拖尾累积器
 	d["duration"] = duration
 	d["apex"] = apex
+	# v27.12 perf: 贝塞尔控制点 fire 时预计算（原每帧每弹重建 mid + UP*apex）
+	d["apex_point"] = (start + end) * 0.5 + Vector2.UP * apex
+	d["tint"] = tint_r
 	d["flavor_scale"] = body_scale  # v20.17: per-instance 弹体尺寸（亚类）
 	d["flavor"] = flavor            # v20.17: 亚类染色键（sync 时查表）
 	d["dir"] = Vector2.RIGHT
@@ -249,8 +280,8 @@ func _physics_process(delta: float) -> void:
 		var t := float(r["progress"])
 		var start := r["start"] as Vector2
 		var end := r["end"] as Vector2
-		var mid := (start + end) * 0.5
-		var apex_point := mid + Vector2.UP * float(r["apex"])
+		# v27.12 perf: apex_point 读 fire 时预计算值（免每帧重建 mid+UP*apex）
+		var apex_point := r["apex_point"] as Vector2
 		var new_pos := (1.0 - t) * (1.0 - t) * start + 2.0 * (1.0 - t) * t * apex_point + t * t * end
 		r["pos"] = new_pos
 
@@ -321,15 +352,8 @@ func _sync_multimesh_layers() -> void:
 			var xf: Transform2D = Transform2D(dir.angle(), Vector2(sc, sc), 0.0, local_pos) if sc != 1.0 \
 				else Transform2D(dir.angle(), local_pos)
 			mm.set_instance_transform_2d(idx, xf)
-			# v20.17: 亚类染色覆盖（火箭橙红/导弹微橙白；NONE 保持阵营 tint）
-			var tint_r: Color = WeaponProjectileVfx.indirect_tint(int(r.get("flavor", -1)), tint)
-			# v27.x: 星冥曲射族（等离子抛射/蠕虫弹药/灵能风暴）弹体紫青覆盖——
-			# 灵能抛射物观感；命中侧由 spawn_xeno_impact 播星冥能量爆炸帧（替代橙红火球）。
-			if XenoWeaponFlavor.enabled():
-				var xw: int = XenoWeaponFlavor.classify(String(r.get("weapon_name", "")))
-				if xw >= 0:
-					tint_r = XenoWeaponFlavor.flavor_color(xw)
-			mm.set_instance_color(idx, tint_r)
+			# v27.12 perf: 染色读 fire 时预存值（免每帧每弹 indirect_tint + xeno classify 查表）
+			mm.set_instance_color(idx, r.get("tint", tint) as Color)
 			idx += 1
 
 func _apply_hit(r: Dictionary) -> void:
@@ -373,9 +397,9 @@ func _apply_hit(r: Dictionary) -> void:
 		_play_explosion_sfx()
 		# v6.4: 曲射爆炸触发中等屏幕震动
 		# v7.x: 优先用 combat_kind 的震动参数（对空重震/对装甲中震/对轻装轻震）
-		var tree := get_tree()
-		var bm: Node = tree.root.get_node_or_null("BattleManager") if tree else null
-		if bm != null and is_instance_valid(bm) and bm.has_method("request_screen_shake"):
+		# v27.12 perf: BattleManager 走成员缓存（原每次命中全树字符串查找）
+		var bm: Node = _get_bm()
+		if bm != null and bm.has_method("request_screen_shake"):
 			# v9.4: 按 power_tier 分级震屏（HEAVY/NUCLEAR 显著强于 MEDIUM）
 			var _tier: int = int(_opts.get("power_tier", 1))
 			var _base_shake: Vector2 = WeaponProjectileVfx.impact_shake_for_kind(_tgt_kind) if _tgt_kind >= 0 else Vector2(5.0, 0.25)
@@ -411,21 +435,26 @@ func _apply_hit(r: Dictionary) -> void:
 			aoe_cap = clampi(int(shooter.get_meta("aoe_cap")), 1, 12)
 		elif shooter_stats != null and shooter_stats is UnitStats and shooter_stats.has_meta("aoe_cap"):
 			aoe_cap = clampi(int(shooter_stats.get_meta("aoe_cap")), 1, 12)
+		# v27 套装10 满档（saturation_barrage）：曲射溅射目标上限 +2（与直射 _apply_splash 的
+		# 上限 0.80→1.00 同为"炮兵饱和"满档收益）
+		# v27.12 perf: BattleManager 走成员缓存
+		var _bm27: Node = _get_bm()
+		if _bm27 != null and _bm27.has_method("get_combo_engine"):
+			var _ce27: Variant = _bm27.get_combo_engine()
+			if _ce27 != null and (_ce27.get_active_mechanisms() as Array).has("saturation_barrage"):
+				aoe_cap += 2
 
 		# Fix-9: 修复曲射批处理的防御计算（v6.2 核心修复）
 		# 应用防御减免、改造加成、强化加成
 		var final_primary_dmg: float = raw_dmg
+		# v27.12 perf: 格子战判定一次（原主目标+每个溅射目标各做一次 GameManager 全树查找）
+		var is_card_grid := _is_card_grid_battle()
 
 		if tgt.has_method("take_damage"):
 			var target_stats: UnitStats = tgt.get("stats") as UnitStats if tgt != null and "stats" in tgt else null
 			if target_stats != null and shooter_stats != null and shooter_stats is UnitStats:
-				# 检测格子战模式：防御由 CardGridDamage 处理，跳过防御减免避免双重计算
-				var is_card_grid := false
-				var tree := get_tree()
-				if tree != null:
-					var gm: Node = tree.root.get_node_or_null("GameManager")
-					if gm != null and gm.has_method("is_card_grid_battle"):
-						is_card_grid = gm.is_card_grid_battle()
+				# 格子战模式：防御由 CardGridDamage 处理，跳过防御减免避免双重计算
+				#（v27.12: 判定提前到本函数开头，见上）
 
 				# 1. 根据攻击者单位类型获取对应的防御值（v6.2: 攻防维度对齐）
 				# 2. 应用防御减免（仅在非格子战模式）
@@ -480,13 +509,7 @@ func _apply_hit(r: Dictionary) -> void:
 
 				var target_stats_splash: UnitStats = target.get("stats") as UnitStats if target != null and "stats" in target else null
 				if target_stats_splash != null and shooter_stats != null and shooter_stats is UnitStats:
-					# 检测格子战模式
-					var is_card_grid := false
-					var tree := get_tree()
-					if tree != null:
-						var gm: Node = tree.root.get_node_or_null("GameManager")
-						if gm != null and gm.has_method("is_card_grid_battle"):
-							is_card_grid = gm.is_card_grid_battle()
+					# 格子战模式判定复用函数开头算好的一次（v27.12: 原每溅射目标各查一次 GameManager）
 
 					# 仅在非格子战模式下应用防御减免
 					if not is_card_grid:
@@ -513,9 +536,9 @@ func _apply_hit(r: Dictionary) -> void:
 func _get_aoe_targets(center: Vector2, radius: float, primary: Node2D) -> Array:
 	var targets: Array = []
 	var r2: float = radius * radius
-	var tree := get_tree()
-	var bm: Node = tree.root.get_node_or_null("BattleManager") if tree else null
-	if bm != null and is_instance_valid(bm) and bm.get("battle_active") == true:
+	# v27.12 perf: BattleManager 走成员缓存
+	var bm: Node = _get_bm()
+	if bm != null and bm.get("battle_active") == true:
 		var grid: Variant = bm.get("spatial_grid")
 		if grid != null and is_instance_valid(grid) and grid.has_method("query_nearby"):
 			for node in grid.query_nearby(center, radius):

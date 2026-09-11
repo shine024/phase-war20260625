@@ -50,6 +50,9 @@ var _icon_cache: Dictionary = {}
 var _icon_loaded: bool = false
 ## v9.4: 当前关联的 icon_rect（set_card 时记录），供滚动钩子重扫时复用。
 var _bound_icon_rect: TextureRect = null
+## v27.12: Icon 节点引用缓存——Icon 实例终身稳定（结构切换只换父不换实例），
+## 缓存命中免掉每次 set_card 的递归 find_child 子树扫描；被释放才重查
+var _cached_icon_rect: TextureRect = null
 
 # 各卡片类型对应的顶部色条颜色
 const TYPE_BAR_COLORS := {
@@ -270,10 +273,15 @@ func _find_icon_row() -> Control:
 
 
 func _find_icon_row_icon() -> TextureRect:
+	# v27.12: 缓存命中直接返回，失效（被释放）才重新递归查找
+	if _cached_icon_rect != null and is_instance_valid(_cached_icon_rect):
+		return _cached_icon_rect
 	var icon_row: Node = _find_icon_row()
 	if icon_row == null:
 		return null
-	return icon_row.find_child("Icon", true, false) as TextureRect
+	var icon := icon_row.find_child("Icon", true, false) as TextureRect
+	_cached_icon_rect = icon
+	return icon
 
 
 func _find_slot_name_label() -> Label:
@@ -319,6 +327,9 @@ func set_card(c: CardResource) -> void:
 		# v9.4: 重置视口裁切状态，避免池化复用时残留"已加载"标记
 		_icon_loaded = false
 		_bound_icon_rect = null
+		# v27.12: 归还池清空贴图缓存——池化 item 长期持有 Texture2D 引用，
+		# 会阻碍 UiAssetLoader LRU 淘汰与 VRAM 回收
+		_icon_cache.clear()
 		return
 
 	if ENABLE_MINIMAL_CARD_RENDER:

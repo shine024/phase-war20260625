@@ -185,9 +185,10 @@ func _run() -> void:
 	await _shot("en_route")
 
 	# ── C. 实时行军：睡觉只回充不推进；ETA 换算；强制到期结算 ──
-	await get_tree().create_timer(15.0).timeout
+	# v26.29 提速 5 倍（12 秒/天，本行程 1 天）——等待窗改 5 秒，须仍在途
+	await get_tree().create_timer(5.0).timeout
 	if not bool(bm.is_traveling()):
-		_fails.append("15 秒后应仍在途（60 秒/天）")
+		_fails.append("5 秒后应仍在途（12 秒/天 × 1 天）")
 	bm.sleep()
 	if not bool(bm.is_traveling()):
 		_fails.append("睡觉不应推进实时行军（应仍在途）")

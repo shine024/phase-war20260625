@@ -224,6 +224,8 @@ const FLAVOR_LAYER_MG: int = 101        # 机枪——短钝弹丸
 const FLAVOR_LAYER_TANK_GUN: int = 102  # 直射坦克炮——写实炮弹贴图层（v26.15e）
 ## v26.15e: 坦克炮亚类层改用写实弹壳贴图（artillery_ballistic 水平翻转，鼻锥朝 +X）。
 ## 程序化纯色多边形（锥头+矩形+ADD）在实战里读成"发光飞镖/黄色蝌蚪"，壳体感出不来。
+## v26.31 修正：实tank_shell.png 落盘时翻转方向做反了（鼻锥朝 -X，与 batch
+## Transform2D(dir.angle()) 的 +X 约定相反，实战弹头朝后飞）——已重翻转回鼻锥 +X。
 const TANK_SHELL_TEX := preload("res://assets/effects/projectiles/weapons_realistic/weapon_tank_shell.png")
 const TANK_SHELL_DISPLAY_SCALE: float = 0.026  # v26.15g: 0.040→0.026（~29×4.8px；45px 达单位长 70% 过大，用户实测反馈）
 ## v20.16d: 手枪/卡宾——微型近光点弹体。此前 SMALL_ARMS 与 GENERIC 共用 wt 档默认层，
@@ -291,9 +293,13 @@ static func flavor_tint(flavor: int) -> Color:
 		_: return Color(1.0, 1.0, 1.0)
 
 ## 渲染层弹头染色：亚类层用亚类色（阵营无关），基础层返回阵营基础 tint。
-static func layer_tint(layer_key: int, base_tint: Color) -> Color:
+## v26.31: 新增 camp_blend——亚类色向阵营色回混的比例。v20.16b 的"阵营无关"让敌方
+## 步枪/机枪弹体与我方完全同色（青白/亮黄），弹幕混战分不清谁打的（用户报告
+## "敌方步兵一次开火多条弹道"的误读根源之一）；敌方 batch 传 0.65 回归 v18-R9b
+## 定下的"敌=橙红"阵营语言，我方保持 0.0（审计调优过的观感不动）。
+static func layer_tint(layer_key: int, base_tint: Color, camp_blend: float = 0.0) -> Color:
 	# v26.15e: 坦克炮层已贴图化（金属壳体），instance color 降为暖白增辉——
-	# 橙色乘色会把橄榄绿弹壳洗成棕橙。
+	# 橙色乘色会把橄榄绿弹壳洗成棕橙。大弹体单发归属清晰，不做阵营回混。
 	if layer_key == FLAVOR_LAYER_TANK_GUN:
 		return Color(1.0, 0.93, 0.82)
 	# v27.x: 星冥近战刃光层——贴图白芯乘青金晶髓辉光（batch 消费，GameConfig 开关
@@ -302,7 +308,7 @@ static func layer_tint(layer_key: int, base_tint: Color) -> Color:
 		return XenoWeaponFlavor.COLOR_EDGE
 	var f := _flavor_for_layer_key(layer_key)
 	if f >= 0:
-		return flavor_tint(f)
+		return flavor_tint(f).lerp(base_tint, camp_blend)
 	return base_tint
 
 ## 亚类曳光线宽度。机枪基准 / 步枪细 / 坦克炮粗（重弹余辉，非细 streak）/ 手枪窄。
@@ -330,7 +336,8 @@ static func tracer_len_for(layer_key: int) -> float:
 		_: return 26.0
 
 ## 亚类曳光线颜色（同 flavor_tint 语言，曳光透明度 0.82）。基础层返回阵营基准色。
-static func tracer_color_for(layer_key: int, base_color: Color) -> Color:
+## v26.31: camp_blend 同 layer_tint——敌方 batch 传 0.65 让曳光回归橙红阵营语言。
+static func tracer_color_for(layer_key: int, base_color: Color, camp_blend: float = 0.0) -> Color:
 	if layer_key == FLAVOR_LAYER_XENO_MELEE:
 		var xe := XenoWeaponFlavor.COLOR_EDGE
 		xe.a = 0.82
@@ -338,7 +345,7 @@ static func tracer_color_for(layer_key: int, base_color: Color) -> Color:
 	var f := _flavor_for_layer_key(layer_key)
 	if f < 0:
 		return base_color
-	var c := flavor_tint(f)
+	var c := flavor_tint(f).lerp(Color(base_color.r, base_color.g, base_color.b, 1.0), camp_blend)
 	c.a = 0.82
 	return c
 

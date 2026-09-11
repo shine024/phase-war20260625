@@ -29,6 +29,8 @@ const FIELD_CAPS: Dictionary = {
 }
 
 var _fields: Dictionary = {}   # tag -> {amount: float, decay: float, expire_at: float}
+var _emit_acc: Dictionary = {}  # v27.12: tag -> 衰减通知节流累加器（见 update）
+const EMIT_MIN_INTERVAL: float = 0.2  # v27.12: field_changed 每 tag 最小发射间隔（秒）
 
 ## 浓度变化信号（tag, 新值）。供 battlefield 层订阅以驱动浓度场 VFX。
 signal field_changed(tag: String, amount: float)
@@ -53,6 +55,7 @@ func _init() -> void:
 ## 清空所有状态（战斗开始/结束调用）
 func reset() -> void:
 	_fields.clear()
+	_emit_acc.clear()
 
 # ─────────────────────────────────────────────
 #  战场浓度 API
@@ -109,11 +112,19 @@ func update(delta: float, decay_scale: float = 1.0) -> void:
 			to_erase.append(tag)
 	for tag in to_erase:
 		_fields.erase(tag)
+		_emit_acc.erase(tag)
 		field_changed.emit(tag, 0.0)
 	# 衰减后通知仍在激活的浓度（让 VFX 跟随衰减）
+	# v27.12 perf: 原=每帧每活跃 tag 各 emit 一次（常驻每帧信号发射）。消费方只有战场
+	# 浓度场 VFX（其重建自身就是 0.4s 周期），改 0.2s/每 tag 节流；过期清零仍即时 emit。
 	for tag in _fields.keys():
 		var f2: Dictionary = _fields[tag]
-		field_changed.emit(tag, float(f2.get("amount", 0.0)))
+		var acc: float = float(_emit_acc.get(tag, 0.0)) + delta
+		if acc >= EMIT_MIN_INTERVAL:
+			_emit_acc[tag] = 0.0
+			field_changed.emit(tag, float(f2.get("amount", 0.0)))
+		else:
+			_emit_acc[tag] = acc
 
 # ─────────────────────────────────────────────
 #  目标级 meta API（封装过期语义）

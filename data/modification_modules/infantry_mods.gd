@@ -413,6 +413,7 @@ const DATA: Dictionary = {
 			defense_light = 0.40,    # +40%
 			move_speed = -20,        # -20px/s 副作用
 		},
+		level_effects = {1: {defense_light = 0.4, move_speed = -20}, 2: {defense_light = 0.52, move_speed = -20}, 3: {defense_light = 0.6, move_speed = -20}},
 		unlock_conditions = {
 			required_level = 4,
 		}
@@ -630,6 +631,7 @@ const DATA: Dictionary = {
 		slot_type = "medical",
 		conflict_group = "medical",
 		effects = {death_heal = 0.20, death_heal_radius = 200.0},
+		level_effects = {1: {death_heal = 0.2, death_heal_radius = 200}, 2: {death_heal = 0.26, death_heal_radius = 260}, 3: {death_heal = 0.34, death_heal_radius = 340}},
 		unlock_conditions = {required_level = 6}
 	},
 
@@ -648,6 +650,7 @@ const DATA: Dictionary = {
 		slot_type = "weapon",
 		conflict_group = "special_ammo",
 		effects = {chem_chance = 0.35, chem_dps = 8.0, chem_duration = 6.0},
+		level_effects = {1: {chem_chance = 0.35, chem_dps = 8, chem_duration = 6}, 2: {chem_chance = 0.455, chem_dps = 10.4, chem_duration = 7.8}, 3: {chem_chance = 0.595, chem_dps = 13.6, chem_duration = 10.2}},
 		applicable_types = [0, 1],
 		unlock_conditions = {required_level = 4}
 	},
@@ -667,8 +670,149 @@ const DATA: Dictionary = {
 		conflict_group = "special_ammo",
 		era_band = [1, 4],
 		effects = {burn_chance = 0.30, burn_dps = 6.0, burn_duration = 5.0},
+		level_effects = {1: {burn_chance = 0.3, burn_dps = 6, burn_duration = 5}, 2: {burn_chance = 0.39, burn_dps = 7.8, burn_duration = 6.5}, 3: {burn_chance = 0.51, burn_dps = 10.2, burn_duration = 8.5}},
 		applicable_types = [0],
 		unlock_conditions = {required_level = 4}
+	},
+
+	# ══════════ v27 改造2.0 批：普及档补池 + 医疗链套装件 + 击杀触发 ══════════
+	"inf_28_combat_boots" = {
+		id = "inf_28_combat_boots",
+		name = "战斗靴",
+		name_en = "Combat Boots",
+		icon = "res://assets/ui/icons/mod_icons/mod_mobility.png",
+		prototype = "减负鞋垫/作战靴",
+		description = "合脚战靴与减负鞋垫。移动速度 +8。",
+		rarity = "common",
+		power_mult = 0.8,
+		cost_research = 50,
+		cost_install = 25,
+		slot_type = "mobility",
+		conflict_group = "mobility",
+		effects = {move_speed = 8},
+		level_effects = {1: {move_speed = 8}, 2: {move_speed = 10}, 3: {move_speed = 14}},
+		unlock_conditions = {required_level = 1}
+	},
+	"inf_29_iron_sights" = {
+		id = "inf_29_iron_sights",
+		name = "机械瞄具",
+		name_en = "Iron Sights",
+		icon = "res://assets/ui/icons/mod_icons/mod_optics.png",
+		prototype = "照门准星校射",
+		description = "出厂瞄具精校。暴击率 +3%。",
+		rarity = "common",
+		power_mult = 0.8,
+		cost_research = 50,
+		cost_install = 25,
+		slot_type = "optics",
+		conflict_group = "optics",
+		effects = {crit_chance = 0.03},
+		level_effects = {1: {crit_chance = 0.03}, 2: {crit_chance = 0.04}, 3: {crit_chance = 0.05}},
+		unlock_conditions = {required_level = 1}
+	},
+	"inf_30_load_vest" = {
+		id = "inf_30_load_vest",
+		name = "负重背心",
+		name_en = "Load-Bearing Vest",
+		icon = "res://assets/ui/icons/mod_icons/mod_ergonomics.png",
+		prototype = "模块化负重背心",
+		description = "载荷分布到躯干。生命 +25，部署加速。",
+		rarity = "uncommon",
+		power_mult = 1.0,
+		cost_research = 90,
+		cost_install = 45,
+		slot_type = "ergonomics",
+		conflict_group = "ergonomics",
+		effects = {max_hp = 25, deploy_speed = 1},
+		level_effects = {1: {max_hp = 25, deploy_speed = 1}, 2: {max_hp = 33, deploy_speed = 1}, 3: {max_hp = 43, deploy_speed = 1}},
+		unlock_conditions = {required_level = 1}
+	},
+	"inf_31_flash_suppressor" = {
+		id = "inf_31_flash_suppressor",
+		name = "消焰器",
+		name_en = "Flash Suppressor",
+		icon = "res://assets/ui/icons/mod_icons/mod_weapon.png",
+		prototype = "枪口消焰装置",
+		description = "抑制枪口焰。射速 +6%，暴击率 +2%。",
+		rarity = "uncommon",
+		power_mult = 1.0,
+		cost_research = 90,
+		cost_install = 45,
+		slot_type = "weapon",
+		conflict_group = "fire_rate",
+		effects = {attack_interval = -0.06, crit_chance = 0.02},
+		level_effects = {1: {attack_interval = -0.06, crit_chance = 0.02}, 2: {attack_interval = -0.08, crit_chance = 0.02}, 3: {attack_interval = -0.10, crit_chance = 0.02}},
+		unlock_conditions = {required_level = 2}
+	},
+	"inf_32_heavy_barrel" = {
+		id = "inf_32_heavy_barrel",
+		name = "重型枪管",
+		name_en = "Heavy Barrel",
+		icon = "res://assets/ui/icons/mod_icons/mod_weapon.png",
+		prototype = "match 级重枪管",
+		description = "重枪管抑制抖动。对轻装伤害 +12%，射程 +15px。",
+		rarity = "rare",
+		power_mult = 1.3,
+		cost_research = 150,
+		cost_install = 75,
+		slot_type = "weapon",
+		conflict_group = "damage",
+		effects = {attack_light = 0.12, attack_range = 15},
+		level_effects = {1: {attack_light = 0.12, attack_range = 15}, 2: {attack_light = 0.16, attack_range = 15}, 3: {attack_light = 0.20, attack_range = 15}},
+		unlock_conditions = {required_level = 3}
+	},
+	"inf_33_ammo_belt" = {
+		id = "inf_33_ammo_belt",
+		name = "弹链供弹",
+		name_en = "Ammo Belt Feed",
+		icon = "res://assets/ui/icons/mod_icons/mod_ammunition.png",
+		prototype = "散装弹链/帆布弹带",
+		description = "弹链持续供弹。射速 +8%，移动 -5px/s。",
+		rarity = "rare",
+		power_mult = 1.3,
+		cost_research = 150,
+		cost_install = 75,
+		slot_type = "ammunition",
+		conflict_group = "ammunition",
+		effects = {attack_interval = -0.08, move_speed = -5},
+		level_effects = {1: {attack_interval = -0.08, move_speed = -5}, 2: {attack_interval = -0.10, move_speed = -5}, 3: {attack_interval = -0.12, move_speed = -5}},
+		unlock_conditions = {required_level = 3}
+	},
+	# v27 触发式：击杀战地敷料（击杀 → 范围治疗友军）。消费点 module_effect_handler.on_unit_killed
+	"inf_34_kill_field_dressing" = {
+		id = "inf_34_kill_field_dressing",
+		name = "击杀战地敷料",
+		name_en = "Kill Field Dressing",
+		icon = "res://assets/ui/icons/mod_icons/mod_medical.png",
+		prototype = "战利品急救物资回收",
+		description = "击杀敌方后立即为周围 170px 内友军敷伤：每名回复自身 6% 最大生命值。",
+		rarity = "epic",
+		power_mult = 1.5,
+		cost_research = 280,
+		cost_install = 140,
+		slot_type = "medical",
+		conflict_group = "medical",
+		effects = {kill_pulse_heal = 0.06, kill_pulse_radius = 170.0},
+		level_effects = {1: {kill_pulse_heal = 0.06, kill_pulse_radius = 170.0}, 2: {kill_pulse_heal = 0.08, kill_pulse_radius = 190.0}, 3: {kill_pulse_heal = 0.10, kill_pulse_radius = 210.0}},
+		unlock_conditions = {required_level = 4}
+	},
+	# v27 野战医疗链套装第 4 件（inf_17/18/19 + 本条集齐满档）
+	"inf_35_field_hospital" = {
+		id = "inf_35_field_hospital",
+		name = "野战医院",
+		name_en = "Field Hospital",
+		icon = "res://assets/ui/icons/mod_icons/mod_medical.png",
+		prototype = "折叠式野战医院",
+		description = "随军野战医院。周围友军持续回复 0.6%/s，自身生命 +10%。",
+		rarity = "legendary",
+		power_mult = 1.8,
+		cost_research = 420,
+		cost_install = 210,
+		slot_type = "medical",
+		conflict_group = "medical",
+		effects = {ally_hp_regen = 0.006, max_hp = 0.10},
+		level_effects = {1: {ally_hp_regen = 0.006, max_hp = 0.10}, 2: {ally_hp_regen = 0.008, max_hp = 0.13}, 3: {ally_hp_regen = 0.010, max_hp = 0.17}},
+		unlock_conditions = {required_level = 6}
 	},
 }
 

@@ -23,6 +23,7 @@ func _initialize() -> void:
 	_test_indirect_flavor()
 	_test_burst_and_mg_tempo()
 	_test_mg_reload_cycle()
+	_test_camp_blend()
 	_summary()
 	quit(0 if _fail == 0 else 1)
 
@@ -469,6 +470,34 @@ func _test_flavor_traj_params() -> void:
 	_ok(WPV.tracer_color_for(WPV.FLAVOR_LAYER_MG, tc) != tc
 		and WPV.tracer_color_for(0, tc) == tc,
 		"曳光颜色：亚类层覆盖，基础层保持阵营基准")
+
+## [v26.31] 亚类色阵营回混：敌方弹体/曳光回归橙红阵营语言（我方观感不变）
+func _test_camp_blend() -> void:
+	print("
+--- v26.31 亚类色阵营回混 ---")
+	var WPV: GDScript = load("res://scripts/weapon_projectile_vfx.gd")
+	var DWF: GDScript = load("res://data/direct_weapon_flavor.gd")
+	var enemy_tint := Color(1.0, 0.55, 0.25)
+	var c_rifle: Color = WPV.flavor_tint(DWF.Flavor.RIFLE)
+	# 我方（默认 blend 0）：亚类色原样（历轮审计观感不动）
+	_ok(WPV.layer_tint(WPV.FLAVOR_LAYER_RIFLE, Color(1.0, 0.95, 0.4)) == c_rifle,
+		"layer_tint 我方默认 0 回混：亚类色原样")
+	# 敌方（blend 0.65）：暖色化——红色分量升、绿色/蓝色分量降（向橙红回混）
+	var e_tint: Color = WPV.layer_tint(WPV.FLAVOR_LAYER_RIFLE, enemy_tint, 0.65)
+	_ok(e_tint.r > c_rifle.r + 0.1 and e_tint.b < c_rifle.b - 0.3,
+		"layer_tint 敌方 0.65 回混：步枪弹体暖橙化（%.2f,%.2f,%.2f）" % [e_tint.r, e_tint.g, e_tint.b])
+	# 敌我同层不同色（阵营可读性）
+	_ok(WPV.layer_tint(WPV.FLAVOR_LAYER_RIFLE, Color(1.0, 0.95, 0.4)) != e_tint,
+		"layer_tint 敌我同层颜色可区分")
+	# 曳光：敌方回混后仍保持 0.82 透明度且暖橙化
+	var tc_enemy := Color(1.0, 0.45, 0.28, 0.78)
+	var t_before: Color = WPV.tracer_color_for(WPV.FLAVOR_LAYER_RIFLE, tc_enemy)
+	var t_after: Color = WPV.tracer_color_for(WPV.FLAVOR_LAYER_RIFLE, tc_enemy, 0.65)
+	_ok(absf(t_after.a - 0.82) < 0.001 and t_after.r > t_before.r and t_after.b < t_before.b,
+		"tracer_color_for 敌方回混：透明度 0.82 保持且暖橙化")
+	# 坦克炮贴图层/星冥层不受回混影响（贴图金属壳/星冥专属辉光语义）
+	var tg: Color = WPV.layer_tint(WPV.FLAVOR_LAYER_TANK_GUN, enemy_tint, 0.65)
+	_ok(tg == Color(1.0, 0.93, 0.82), "layer_tint 坦克炮贴图层不回混（保橄榄绿壳体）")
 
 func _summary() -> void:
 	print("\n=== 汇总: %d PASS / %d FAIL ===" % [_pass, _fail])

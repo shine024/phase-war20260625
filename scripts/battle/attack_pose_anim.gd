@@ -210,17 +210,22 @@ static func _try_play_frames(u: Node2D, spr: Sprite2D) -> void:
 	# 改捕获 WeakRef，get_ref() 判活。
 	var spr_ref2: WeakRef = weakref(spr)
 	var driver_ref: Variant = weakref(driver) if driver != null else null
+	## v27.12 perf: 快速连发时上一轮 SceneTreeTimer 未到期——旧 t2 会把 texture 复位到
+	## 上一轮 orig（视觉闪回旧图）。SceneTreeTimer 不可 kill，改代次门禁让过期回调自弃。
+	var seq_id: int = int(spr.get_meta("_attack_seq", 0)) + 1
+	spr.set_meta("_attack_seq", seq_id)
 	if frames.size() >= 2:
 		var t1: SceneTreeTimer = u.get_tree().create_timer(FRAME_HOLD_SEC * 0.5)
 		t1.timeout.connect(func() -> void:
 			var s: Sprite2D = spr_ref2.get_ref() as Sprite2D
-			if s != null:
-				s.texture = frames[1]
+			if s == null or int(s.get_meta("_attack_seq", 0)) != seq_id:
+				return
+			s.texture = frames[1]
 		)
 	var t2: SceneTreeTimer = u.get_tree().create_timer(FRAME_HOLD_SEC)
 	t2.timeout.connect(func() -> void:
 		var s: Sprite2D = spr_ref2.get_ref() as Sprite2D
-		if s == null:
+		if s == null or int(s.get_meta("_attack_seq", 0)) != seq_id:
 			return
 		var drv: Node = driver_ref.get_ref() as Node if driver_ref != null else null
 		if drv != null:
@@ -270,6 +275,14 @@ static func _resolve_unit_id(u: Node2D) -> String:
 
 
 static func _find_sprite(u: Node2D) -> Sprite2D:
+	## v27.12 perf: 结果挂单位 meta 缓存——play/play_windup 每次开火（含前摇）各查一次树，
+	## 高攻速全场单位合并后 get_node_or_null 调用量可观。缓存随单位生死自动失效（meta 挂引用），
+	## 节点换父/释放时 is_instance_valid + get_parent 校验兜底重查。
+	if u.has_meta("_pose_spr"):
+		var c: Sprite2D = u.get_meta("_pose_spr") as Sprite2D
+		if c != null and is_instance_valid(c) and c.get_parent() == u:
+			return c
+		u.remove_meta("_pose_spr")
 	var spr: Sprite2D = null
 	if bool(u.get("is_player")):
 		spr = u.get_node_or_null("Sprite") as Sprite2D
@@ -279,5 +292,7 @@ static func _find_sprite(u: Node2D) -> Sprite2D:
 		spr = u.get_node_or_null("Sprite") as Sprite2D
 		if spr == null:
 			spr = u.get_node_or_null("Sprite2D") as Sprite2D
+	if spr != null:
+		u.set_meta("_pose_spr", spr)
 	return spr
 

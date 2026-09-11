@@ -33,6 +33,7 @@ const DATA: Dictionary = {
 	power_mult = 1.6, cost_research = 280, cost_install = 140,
 		slot_type = "network", conflict_group = "network",
 		effects = {defense_light = 0.20, defense_air = 0.20, defense_armor = 0.15},
+		level_effects = {1: {defense_light = 0.2, defense_air = 0.2, defense_armor = 0.15}, 2: {defense_light = 0.26, defense_air = 0.26, defense_armor = 0.195}, 3: {defense_light = 0.34, defense_air = 0.34, defense_armor = 0.255}},
 		unlock_conditions = {required_level = 4}
 	},
 	"for_03_auto_turret" = {
@@ -140,6 +141,7 @@ const DATA: Dictionary = {
 		conflict_group = "special",
 		era_band = [3, 4],
 		effects = {minefield = 150.0},
+		level_effects = {1: {minefield = 150}, 2: {minefield = 195}, 3: {minefield = 255}},
 		unlock_conditions = {required_level = 6}
 	},
 
@@ -157,6 +159,7 @@ const DATA: Dictionary = {
 		slot_type = "special",
 		conflict_group = "special",
 		effects = {slow_aura = 0.40, slow_aura_radius = 200.0},
+		level_effects = {1: {slow_aura = 0.4, slow_aura_radius = 200}, 2: {slow_aura = 0.52, slow_aura_radius = 260}, 3: {slow_aura = 0.6, slow_aura_radius = 340}},
 		unlock_conditions = {required_level = 5}
 	},
 
@@ -174,6 +177,7 @@ const DATA: Dictionary = {
 		slot_type = "command",
 		conflict_group = "command",
 		effects = {command_aura = 0.15},
+		level_effects = {1: {command_aura = 0.15}, 2: {command_aura = 0.195}, 3: {command_aura = 0.255}},
 		unlock_conditions = {required_level = 7}
 	},
 	# ─── v26 轰炸防御批 ───
@@ -191,9 +195,82 @@ const DATA: Dictionary = {
 		slot_type = "shelter",
 		conflict_group = "shelter",
 		effects = {damage_reduction = 0.10, max_hp_pct = 0.10},
+		level_effects = {1: {damage_reduction = 0.1, max_hp_pct = 0.1}, 2: {damage_reduction = 0.13, max_hp_pct = 0.13}, 3: {damage_reduction = 0.17, max_hp_pct = 0.17}},
 		unlock_conditions = {required_level = 2}
 	},
 
+
+	# ══════════ v27 改造2.0 批：普及档 + 死亡触发 + 堡垒固守套装件 ══════════
+	"for_15_sandbag" = {
+		id = "for_15_sandbag",
+		name = "沙袋工事",
+		name_en = "Sandbag Emplacement",
+		icon = "res://assets/ui/icons/mod_icons/mod_fortification.png",
+		prototype = "沙袋垒筑",
+		description = "快速垒筑沙袋。对轻装防御 +6。",
+		rarity = "common",
+		power_mult = 0.8,
+		cost_research = 50,
+		cost_install = 25,
+		slot_type = "fortification",
+		conflict_group = "fortification",
+		effects = {defense_light = 6},
+		level_effects = {1: {defense_light = 6}, 2: {defense_light = 8}, 3: {defense_light = 10}},
+		unlock_conditions = {required_level = 1}
+	},
+	"for_16_drainage" = {
+		id = "for_16_drainage",
+		name = "排水系统",
+		name_en = "Drainage System",
+		icon = "res://assets/ui/icons/mod_icons/mod_survival.png",
+		prototype = "阵地排水沟",
+		description = "防涝防潮驻守。回复 0.2%/s。",
+		rarity = "uncommon",
+		power_mult = 1.0,
+		cost_research = 100,
+		cost_install = 50,
+		slot_type = "survival",
+		conflict_group = "survival",
+		effects = {hp_regen = 0.002},
+		level_effects = {1: {hp_regen = 0.002}, 2: {hp_regen = 0.003}, 3: {hp_regen = 0.004}},
+		unlock_conditions = {required_level = 2}
+	},
+	# v27 堡垒固守套装第 4 件（for_01/for_08/for_13 + 本条集齐满档）
+	"for_17_hardened_bunker" = {
+		id = "for_17_hardened_bunker",
+		name = "永备工事",
+		name_en = "Hardened Bunker",
+		icon = "res://assets/ui/icons/mod_icons/mod_fortification.png",
+		prototype = "钢筋混凝土永备工事",
+		description = "永备工事标准。对轻装防御 +12%，生命 +12%。",
+		rarity = "rare",
+		power_mult = 1.3,
+		cost_research = 180,
+		cost_install = 90,
+		slot_type = "fortification",
+		conflict_group = "fortification",
+		effects = {defense_light = 0.12, max_hp = 0.12},
+		level_effects = {1: {defense_light = 0.12, max_hp = 0.12}, 2: {defense_light = 0.16, max_hp = 0.12}, 3: {defense_light = 0.20, max_hp = 0.12}},
+		unlock_conditions = {required_level = 4}
+	},
+	# v27 触发式：死亡引爆（阵亡 → 范围殉爆）。消费点 module_effect_handler.on_death
+	"for_18_demolition_cache" = {
+		id = "for_18_demolition_cache",
+		name = "殉爆预案",
+		name_en = "Demolition Cache",
+		icon = "res://assets/ui/icons/mod_icons/mod_demolition.png",
+		prototype = "预置爆破预案",
+		description = "阵地失守时殉爆。阵亡时对 160px 内敌方造成自身 35% 最大生命的伤害。",
+		rarity = "epic",
+		power_mult = 1.5,
+		cost_research = 300,
+		cost_install = 150,
+		slot_type = "special",
+		conflict_group = "special",
+		effects = {death_detonate_damage = 0.35, death_detonate_radius = 160.0},
+		level_effects = {1: {death_detonate_damage = 0.35, death_detonate_radius = 160.0}, 2: {death_detonate_damage = 0.45, death_detonate_radius = 180.0}, 3: {death_detonate_damage = 0.55, death_detonate_radius = 200.0}},
+		unlock_conditions = {required_level = 5}
+	},
 }
 
 static func get_mod_data(mod_id: String) -> Dictionary:

@@ -18,6 +18,7 @@ const COLOR_BG := DesignTokens.COLOR_BG
 var _tween: Tween
 var _scan_line_y: float = 0.0
 var _stars: Array = []
+var _redraw_acc: float = 0.0  # v27.12: 星空重绘节流累加器（~20fps）
 @onready var _title_label: Label = get_node_or_null("CenterContainer/MainVBox/TitleContainer/TitleLabel")
 
 
@@ -200,7 +201,12 @@ func _process(delta: float) -> void:
 		_scan_line_y = fmod(_scan_line_y + delta * 80.0, vp_h)
 
 	# 星星闪烁：隔帧重绘，减轻标题界面 GPU/CPU
-	if Engine.get_process_frames() % 2 == 0:
+	# v27.12: 重绘节流到 ~20fps——原每 2 帧 queue_redraw 全量重绘 120 星 + 扫描线；
+	# _draw 的星星闪烁/扫描线均按 Time/连续量计算，降频不破坏动画连续性；
+	# 上方脉冲与扫描线位移仍每帧更新（连续性变量保留）
+	_redraw_acc += delta
+	if _redraw_acc >= 0.05:
+		_redraw_acc = 0.0
 		queue_redraw()
 
 func _update_continue_button(btn: Button) -> void:
@@ -294,15 +300,24 @@ func _add_mobile_base_button(style_source: Button) -> void:
 
 
 ## v26.12：进入移动基地（卡车剖面驻地视觉壳 MVP）
-## 与进入基地同源的档位保障：有档读档/无档开新档（跳过基地开场漫画——那是 bunker 链的演出）
+## v27.13：与旧 bunker 链同构的档位保障——无档开新档先播开场漫画（12 格 + 雪原醒来
+## 演出在 truck_base 内播）；有档读档，comic_seen 未落档的老档自动补播一次。
 func _on_enter_truck_base() -> void:
 	_play_sfx("button")
 	if SaveManager:
 		if SaveManager.has_save_slot(SaveManager.get_slot()):
 			SaveManager.load_game()
 			SaveManager.flush_deferred_manager_loads()
+			var bunker: Node = get_node_or_null("/root/BunkerManager")
+			if bunker == null or not bunker.is_comic_seen():
+				Engine.set_meta("bunker_intro_comic_pending", true)
+				SceneTransition.change(get_tree(), "res://scenes/intro/comic_intro.tscn")
+				return
 		else:
 			SaveManager.start_new_game()
+			Engine.set_meta("bunker_intro_comic_pending", true)
+			SceneTransition.change(get_tree(), "res://scenes/intro/comic_intro.tscn")
+			return
 	SceneTransition.change(get_tree(), "res://scenes/bunker/truck_base.tscn")
 
 ## v24.5：开发预览"重看开场"——带 comic pending 直播开场，不改存档进度

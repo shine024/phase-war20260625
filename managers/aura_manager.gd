@@ -406,8 +406,9 @@ func receive_auras_from_field_deferred(unit: Node2D) -> void:
 ## 导致 L302-314 成为 get_unit_aura_types return 之后的死代码。补回后由
 ## battle_manager.end_battle 调用，清空 autoload 单例跨战斗残留的 _unit_auras 缓存。
 func clear_all() -> void:
-	if _global_tick_timer != null and is_instance_valid(_global_tick_timer):
-		_global_tick_timer.stop()
+	# v27.12 修复: 此前这里 stop 了 _global_tick_timer 且全项目无重启点——首场
+	# end_battle 之后 0.5s 全局 tick 永久停摆，MEDIC/CARRIER 周期光环第二场起静默失效。
+	# 现在不再 stop：tick 空转成本仅 3 个 float 累加 + 空 Map 扫描，常开无害。
 	_aura_timers.clear()
 	_unit_map.clear()
 	_unit_auras.clear()

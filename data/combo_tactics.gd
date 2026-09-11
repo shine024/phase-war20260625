@@ -1,6 +1,6 @@
 extends RefCounted
 class_name ComboTactics
-## v9.1 我方组合技套路系统 — 6 套路定义
+## v9.1 我方组合技套路系统 — 12 套路定义（v9.1 首批 6 + v27 改造2.0 新增 6）
 ##
 ## 每套路是一条"状态链"：A 投射写状态 → B 投射读状态增伤/变形。
 ## 激活条件两种（叠加生效）：
@@ -22,6 +22,13 @@ const COMBO_NANO         := "nano_field"            # 套路3 纳米浓度场
 const COMBO_LASER        := "laser_resonance"       # 套路4 光束谐振链
 const COMBO_RECON        := "recon_chain"           # 套路5 侦察链式
 const COMBO_CHEM         := "chem_pollution"        # 套路6 化学污染场
+# v27 改造2.0：新六套
+const COMBO_ARMOR_PHALANX := "armor_phalanx"        # 套路7 重装方阵
+const COMBO_FLAK_CURTAIN  := "flak_curtain"         # 套路8 防空火网
+const COMBO_MEDIC_CHAIN   := "medic_chain"          # 套路9 野战医疗链
+const COMBO_SATURATION    := "saturation_barrage"   # 套路10 炮兵饱和
+const COMBO_ENGINEER_LINE := "engineer_line"        # 套路11 工兵防线
+const COMBO_FORTRESS_HOLD := "fortress_hold"        # 套路12 堡垒固守
 
 # CombatKind 整数（硬编码避免跨类求值时序问题）
 const _KIND_LIGHT  := 0
@@ -128,6 +135,96 @@ const COMBOS: Dictionary = {
 		"fields": [ComboFieldState.FIELD_CHEM],
 		"mechanisms": ["chem_corrosion", "chem_spread"],   # 化学腐蚀降防 + 污染扩散
 		"full_mechanisms": ["chem_cross_column"],           # v21 P1 满档：污染跨列蔓延
+	},
+
+	# ══════════ v27 改造2.0：新六套（重装/防空/医疗/炮兵/工兵/堡垒）══════════
+	# 结构与既有六套同构：mod_ids 配套改造（≥2 单卡增益）+ kind_combo 兵种组合解锁全队机制
+	# + mod_combo_full 集齐满档升级。机制消费点：module_effect_handler（phalanx_reflect/
+	# flak_barrage/field_triage/saturation_fire/demo_charge/bulwark_shelter）与
+	# combo_engine/拦截/雷场/堡垒光环的档位分支。
+	COMBO_ARMOR_PHALANX: {
+		"id": COMBO_ARMOR_PHALANX,
+		"name": "重装方阵",
+		"icon": "🛡",
+		"desc": "倾斜+复合+爆反+主动防护协同，爆反反伤 +50%",
+		"mod_ids": ["arm_01_sloped_armor", "arm_02_composite_armor", "arm_03_reactive_armor", "arm_04_aps"],
+		"mod_combo_min": 2,
+		"mod_combo_full": ["arm_01_sloped_armor", "arm_02_composite_armor", "arm_03_reactive_armor", "arm_04_aps"],
+		"desc_full": "爆反装甲层数每 5 秒自动回充 1 层（战斗中期不再耗尽）",
+		"kind_combo": {_KIND_ARMOR: 2},
+		"fields": [],
+		"mechanisms": ["phalanx_reflect"],
+		"full_mechanisms": ["reactive_recharge"],
+	},
+	COMBO_FLAK_CURTAIN: {
+		"id": COMBO_FLAK_CURTAIN,
+		"name": "防空火网",
+		"icon": "⧗",
+		"desc": "识别+近炸+相控阵+自动火控协同，对空命中 20% 概率瘫痪 0.4s",
+		"mod_ids": ["aa_02_iff", "aa_05_proximity_fuze", "aa_07_aesa", "aa_11_auto_fc"],
+		"mod_combo_min": 2,
+		"mod_combo_full": ["aa_02_iff", "aa_05_proximity_fuze", "aa_07_aesa", "aa_11_auto_fc"],
+		"desc_full": "拦截系统每场拦截次数 +2（弹幕硬拦截更耐久）",
+		"kind_combo": {_KIND_SUPPORT: 2},
+		"fields": [],
+		"mechanisms": ["flak_barrage"],
+		"full_mechanisms": ["intercept_barrage"],
+	},
+	COMBO_MEDIC_CHAIN: {
+		"id": COMBO_MEDIC_CHAIN,
+		"name": "野战医疗链",
+		"icon": "✚",
+		"desc": "止血+急救+电台+野战医院链式救护，任意友军击杀时最弱友军回血",
+		"mod_ids": ["inf_17_tourniquet", "inf_18_ifak", "inf_19_radio", "inf_35_field_hospital"],
+		"mod_combo_min": 2,
+		"mod_combo_full": ["inf_17_tourniquet", "inf_18_ifak", "inf_19_radio", "inf_35_field_hospital"],
+		"desc_full": "濒死复活触发时全队回复 8% 最大生命值（救一个、稳一队）",
+		"kind_combo": {_KIND_SUPPORT: 1, _KIND_LIGHT: 1},
+		"fields": [],
+		"mechanisms": ["field_triage"],
+		"full_mechanisms": ["revive_team_heal"],
+	},
+	COMBO_SATURATION: {
+		"id": COMBO_SATURATION,
+		"name": "炮兵饱和",
+		"icon": "☄",
+		"desc": "集束+速射+温压+校射机火力叠加，溅射半径 +30%",
+		"mod_ids": ["art_04_cluster_munition", "art_09_rapid_fire", "art_11_thermobaric", "art_21_saturation_director"],
+		"mod_combo_min": 2,
+		"mod_combo_full": ["art_04_cluster_munition", "art_09_rapid_fire", "art_11_thermobaric", "art_21_saturation_director"],
+		"desc_full": "溅射伤害上限提升至 100%，单次溅射目标数 +2",
+		"kind_combo": {_KIND_SUPPORT: 2},
+		"fields": [],
+		"mechanisms": ["saturation_fire"],
+		"full_mechanisms": ["saturation_barrage"],
+	},
+	COMBO_ENGINEER_LINE: {
+		"id": COMBO_ENGINEER_LINE,
+		"name": "工兵防线",
+		"icon": "⛨",
+		"desc": "爆破+抢修+机动工程+蓝图协同施工，工兵爆破效果 +50%",
+		"mod_ids": ["eng_02_explosives", "eng_03_welding", "eng_12_reactive_engineering", "eng_18_defense_blueprints"],
+		"mod_combo_min": 2,
+		"mod_combo_full": ["eng_02_explosives", "eng_03_welding", "eng_12_reactive_engineering", "eng_18_defense_blueprints"],
+		"desc_full": "雷场伤害 ×2（防线火力翻倍）",
+		"kind_combo": {_KIND_SUPPORT: 1, _KIND_FORT: 1},
+		"fields": [],
+		"mechanisms": ["demo_charge"],
+		"full_mechanisms": ["minefield_rearm"],
+	},
+	COMBO_FORTRESS_HOLD: {
+		"id": COMBO_FORTRESS_HOLD,
+		"name": "堡垒固守",
+		"icon": "🏰",
+		"desc": "混凝土+堑壕+指挥碉堡+永备工事纵深防御，堡垒庇护光环效果 +50%",
+		"mod_ids": ["for_01_concrete", "for_08_trench", "for_13_command_bunker", "for_17_hardened_bunker"],
+		"mod_combo_min": 2,
+		"mod_combo_full": ["for_01_concrete", "for_08_trench", "for_13_command_bunker", "for_17_hardened_bunker"],
+		"desc_full": "堡垒庇护光环范围 +60%（庇护更多友军）",
+		"kind_combo": {_KIND_FORT: 1},
+		"fields": [],
+		"mechanisms": ["bulwark_shelter"],
+		"full_mechanisms": ["fortress_bulwark"],
 	},
 }
 

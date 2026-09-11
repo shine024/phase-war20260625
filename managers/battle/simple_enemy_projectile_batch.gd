@@ -39,11 +39,24 @@ var _last_fire_sfx_msec: int = -10000
 var _buckets: Dictionary = {}  # weapon_type -> Array（成员级复用，clear 保留 buffer 容量）
 # v9.2: 弹道字典池——fire 时从池取，命中/出界/清场时归还，消除每发字典分配（同 player batch）
 var _dict_pool: Array[Dictionary] = []
+# v27.12 perf: 层色缓存 + 前帧实例数——颜色恒定，仅新增实例补写色（免每帧全量 set_instance_color）
+var _layer_tints: Dictionary = {}   # 渲染层键 -> Color
+var _prev_counts: Dictionary = {}   # 渲染层键 -> 前帧 instance_count
+# v27.12 perf: BattleManager 引用缓存（autoload 常驻；null 不缓存保回退语义）
+var _bm_ref: Node = null
+
+func _get_bm() -> Node:
+	if _bm_ref == null or not is_instance_valid(_bm_ref):
+		var tree := get_tree()
+		_bm_ref = tree.root.get_node_or_null("BattleManager") if tree else null
+	return _bm_ref
 # ── v17k: 曳光线——同玩家 batch（实战主力路径零弹道视觉的最大缺口）。敌方橙红曳光。
 var _tracer_lines: Array = []
 const MAX_TRACERS: int = 48
 const TRACER_COLOR := Color(1.0, 0.45, 0.28, 0.78)  # 敌方橙红曳光
 static var _tracer_mat: CanvasItemMaterial = null
+## v27.12 perf: 曳光色按 sk 缓存（camp_blend=0.65 结果恒定）——width/len 纯 match 免缓存
+static var _tracer_color_cache: Dictionary = {}
 
 func _update_tracers() -> void:
 	var need: int = mini(_proj.size(), MAX_TRACERS)
@@ -70,7 +83,12 @@ func _update_tracers() -> void:
 		var sk_r: int = int(r.get("sk", r["wt"]))  # v20.16b: 亚类曳光参数（宽/长/色）
 		t2.position = to_local(r["pos"])
 		t2.width = WeaponProjectileVfx.tracer_width_for(sk_r)
-		t2.default_color = WeaponProjectileVfx.tracer_color_for(sk_r, TRACER_COLOR)
+		if _tracer_color_cache.has(sk_r):
+			t2.default_color = _tracer_color_cache[sk_r]
+		else:
+			var tc: Color = WeaponProjectileVfx.tracer_color_for(sk_r, TRACER_COLOR, 0.65)  # v26.31: 敌方曳光回混橙红阵营色
+			_tracer_color_cache[sk_r] = tc
+			t2.default_color = tc
 		t2.clear_points()
 		t2.add_point(Vector2.ZERO)
 		t2.add_point(-dir * WeaponProjectileVfx.tracer_len_for(sk_r))
@@ -285,19 +303,28 @@ func _sync_multimesh_layers() -> void:
 	for k: int in _layer_keys:
 		var mmi: MultiMeshInstance2D = _layers[k]
 		var mm: MultiMesh = mmi.multimesh
+		# v27.12 perf: 记改前实例数——颜色恒定，仅新增实例需补色
+		_prev_counts[k] = mm.instance_count
 		mm.instance_count = (_buckets[k] as Array).size()
 	for k: int in _layer_keys:
 		var arr: Array = _buckets[k]
 		if arr.is_empty():
 			continue
 		var mm2: MultiMesh = (_layers[k] as MultiMeshInstance2D).multimesh
-		var tint: Color = WeaponProjectileVfx.layer_tint(k, _ENEMY_TINT)  # v20.16b: 亚类层按武器配色
+		# v27.12 perf: 层色查缓存（原每帧每层 layer_tint 查表）
+		var tint: Color = _layer_tints.get(k)
+		if tint == null:
+			tint = WeaponProjectileVfx.layer_tint(k, _ENEMY_TINT, 0.65)  # v26.31: 亚类色回混阵营橙红（v20.16b 阵营无关导致敌我弹体同色）
+			_layer_tints[k] = tint
+		var prev_n: int = int(_prev_counts.get(k, 0))
 		var idx: int = 0
 		for r: Dictionary in arr:
 			var dir: Vector2 = r.get("dir", Vector2.RIGHT) as Vector2
 			var local_pos: Vector2 = to_local(r["pos"])
 			mm2.set_instance_transform_2d(idx, Transform2D(dir.angle(), local_pos))
-			mm2.set_instance_color(idx, tint)
+			# v27.12 perf: 仅新增实例补色（缩容后再生时 prev_n 读当前值，增量正确）
+			if idx >= prev_n:
+				mm2.set_instance_color(idx, tint)
 			idx += 1
 
 func _apply_hit(r: Dictionary) -> void:
@@ -341,9 +368,9 @@ func _apply_hit(r: Dictionary) -> void:
 			WeaponProjectileVfx.spawn_impact_with_kind(self, hit_pos, impact_wt, false, _tgt_kind, _opts, _wname)
 		# v9.4: 仅 HEAVY+ 档震屏（轻武器密集命中不震屏避免干扰；重型直射/核武才震）
 		if _tier >= 2:
-			var tree := get_tree()
-			var bm: Node = tree.root.get_node_or_null("BattleManager") if tree else null
-			if bm != null and is_instance_valid(bm) and bm.has_method("request_screen_shake"):
+			# v27.12 perf: BattleManager 走成员缓存
+			var bm: Node = _get_bm()
+			if bm != null and bm.has_method("request_screen_shake"):
 				if _tier == 3:
 					bm.request_screen_shake(20.0, 0.8)
 				else:

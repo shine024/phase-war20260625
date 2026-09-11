@@ -43,6 +43,9 @@ func _ready() -> void:
 func _on_resources_changed_light() -> void:
 	if not is_visible_in_tree():
 		return
+	# v27.12 性能：资源段折叠时内容不可见，跳过重建（展开瞬间由 _toggle 立即补刷）
+	if not bool(_res_card.get("expanded", false)):
+		return
 	_refresh_resource()
 
 
@@ -100,11 +103,16 @@ func _toggle(info: Dictionary) -> void:
 	var btn: Button = info["toggle"]
 	var t: String = btn.text.rstrip("▼▶ ").strip_edges()
 	btn.text = "%s %s" % [t, "▼" if exp else "▶"]
+	# v27.12 性能：折叠段在轮询里被跳过重建——展开瞬间立即补刷一次，消除最长 1s 的旧数据窗口
+	if exp:
+		_refresh()
 
 
 func _process(delta: float) -> void:
 	# P2 性能优化：卡片隐藏时不做任何刷新
-	if not visible:
+	# v27.12 性能：原只查自身 visible——祖先（战斗 HUD 等）隐藏时 1s 轮询仍会全量重建三段；
+	# 改 is_visible_in_tree 全链可见判定
+	if not is_visible_in_tree():
 		return
 	_refresh_accum += delta
 	if _refresh_accum >= _REFRESH_SEC:
@@ -114,8 +122,12 @@ func _process(delta: float) -> void:
 
 func _refresh() -> void:
 	_refresh_buff()
-	_refresh_panel()
-	_refresh_resource()
+	# v27.12 性能：折叠段内容不可见，跳过重建（我的面板段含全注册表线性扫描）；
+	# buff 段保持每秒刷新的现有逻辑；展开瞬间由 _toggle 立即补刷
+	if bool(_panel_card.get("expanded", false)):
+		_refresh_panel()
+	if bool(_res_card.get("expanded", false)):
+		_refresh_resource()
 
 
 # ========== 段1：BUFF（已装备符文；v9.x P2-7范围B 由被动法则改为符文展示）==========

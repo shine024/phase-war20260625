@@ -36,6 +36,9 @@ var _buy_in_progress: bool = false
 var _open_refresh_inflight: bool = false
 ## 资源变动信号去重：购买流程自身会刷新 items，期间跳过 resources_changed 回弹触发的全量重建
 var _suppress_resources_refresh: bool = false
+## v27.12 性能：面板不可见期间的商品行重建请求只置脏不重建（resources_changed 战斗中高频），
+## 恢复可见时由 _on_visibility_refresh 统一补刷
+var _items_dirty: bool = false
 
 ## 缓存样式
 var _row_style_normal: StyleBoxFlat
@@ -62,6 +65,9 @@ func _ready() -> void:
 	# 监听资源变动，实时刷新余额和购买按钮状态
 	if BasicResourceManager and BasicResourceManager.has_signal("resources_changed"):
 		BasicResourceManager.resources_changed.connect(_on_resources_changed)
+	# v27.12 性能：隐藏期间置脏的商品行在恢复可见时统一补刷
+	if not visibility_changed.is_connected(_on_visibility_refresh):
+		visibility_changed.connect(_on_visibility_refresh)
 
 ## 外部打开商店面板时调用：将刷新拆帧，先保证余额可见，再补齐商品列表（仿 backpack_presenter 模式）
 func on_overlay_opened() -> void:
@@ -106,6 +112,8 @@ func _on_resources_changed() -> void:
 	# v9 perf：面板隐藏时直接跳过——resources_changed 战斗中每次击杀都发，
 	# 隐藏商店的全量重建是纯浪费；打开路径 on_overlay_opened 会全量刷新，余额/商品都不会漏
 	if not is_visible_in_tree():
+		# v27.12 性能：隐藏时不裸丢刷新请求——置脏待恢复可见时补刷商品行
+		_items_dirty = true
 		return
 	# 余额轻量，保持即时刷新（购买后用户立即看到扣减后的数字）
 	_refresh_balance()
@@ -113,6 +121,12 @@ func _on_resources_changed() -> void:
 	if _suppress_resources_refresh:
 		return
 	_refresh_items()
+
+
+## v27.12 性能：恢复可见时补刷置脏的商品行（隐藏期间 resources_changed 只置脏不重建）
+func _on_visibility_refresh() -> void:
+	if is_visible_in_tree() and _items_dirty:
+		_refresh_items()
 
 func _build_company_tabs() -> void:
 	for c in company_tabs.get_children():
@@ -219,6 +233,11 @@ func _refresh_balance() -> void:
 
 
 func _refresh_items() -> void:
+	# v27.12 性能：不可见时只置脏不重建（延迟购买刷新/资源回弹等统一挪到恢复可见时补刷）
+	if not is_visible_in_tree():
+		_items_dirty = true
+		return
+	_items_dirty = false
 	for c in item_list.get_children():
 		c.queue_free()
 	if _current_company_id.is_empty():

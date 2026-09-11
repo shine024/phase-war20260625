@@ -6,6 +6,10 @@ var _map_built: bool = false  # 地图是否已构建（缓存）
 # v9 perf：隐藏期间的占领变化置脏，重新打开时补刷（见 _on_occupation_changed_refresh）
 var _occupation_dirty: bool = false
 static var _cached_level_map_template: Control = null  # 跨场景复用模板，避免每次重建100按钮
+# v27.12: _process 每帧用的节点引用缓存（原每帧两次字符串 get_node_or_null 查找），
+# 重建会换实例（旧画布 queue_free 后失效），每帧开头 is_instance_valid 校验，失效才重查
+var _proc_scroll: ScrollContainer = null
+var _proc_canvas: Control = null
 
 func _input(event: InputEvent) -> void:
 	# v28 方案11：滚轮缩放 + 拖拽平移的移动/释放走全局输入——
@@ -337,6 +341,11 @@ func _on_visibility_changed() -> void:
 	_runtime_active = is_visible_in_tree()
 	# v23.2：方案 11 单屏需要逐帧自校验缩放（防"打开后尺寸变化没人重算→放大"）
 	set_process(_runtime_active and MAP_SCHEME == 11)
+	# v27.12: 隐藏期间占领变化过 → 变可见时补一次全量重建（覆盖不经过 refresh_for_open
+	# 的显隐路径；refresh_for_open 已先行清脏标记，不会在这里二次重建）
+	if _runtime_active and _occupation_dirty:
+		_occupation_dirty = false
+		refresh_levels()
 	if _runtime_active:
 		queue_redraw()
 
@@ -1080,8 +1089,13 @@ func _process(_delta: float) -> void:
 	# v28：目标缩放 = 适配基准 × 用户缩放（滚轮缩放/拖拽平移后不再强拉回整图居中）
 	if MAP_SCHEME != 11 or not _map_built:
 		return
-	var scroll := get_node_or_null("Margin/VBox/ScrollContainer") as ScrollContainer
-	var canvas := scroll.get_node_or_null("MapCanvas") as Control if scroll else null
+	# v27.12: 节点引用缓存替代每帧字符串查找——失效（重建换实例/被释放）才重查一次
+	if not is_instance_valid(_proc_scroll):
+		_proc_scroll = get_node_or_null("Margin/VBox/ScrollContainer") as ScrollContainer
+	if not is_instance_valid(_proc_canvas):
+		_proc_canvas = _proc_scroll.get_node_or_null("MapCanvas") as Control if _proc_scroll else null
+	var scroll := _proc_scroll
+	var canvas := _proc_canvas
 	if scroll == null or canvas == null or scroll.size.x <= 1.0:
 		return
 	var s_target: float = _view_fit_scale(scroll) * _zoom_factor
@@ -1406,7 +1420,8 @@ var _truck_marker: Control = null
 var _travel_route: Control = null   # v26.20 路线进度层（画布空间：虚线路线+已走亮段+终点圈）
 var _dot_pulse_tween: Tween = null  # 行驶中光点呼吸
 
-## v26.20 移动基地标记=22px"移动光点"（金点白芯，行驶中呼吸脉冲），点击进入移动基地。
+## v26.20 移动基地标记=22px"移动光点"（金点白芯，行驶中呼吸脉冲）。v26.30 起纯指示器：
+## 点击穿透到下层节点（光点钉在停靠节点中心，STOP 会劫持节点点击）。
 ## 替换原 56px 卡车贴图（用户反馈：大地图上车太大）；行驶路线与剩余天数画在 _travel_route。
 func _add_truck_marker(canvas: Control) -> void:
 	if canvas.has_node("TruckMarker"):
@@ -1424,9 +1439,9 @@ func _add_truck_marker(canvas: Control) -> void:
 	var lvl := _truck_anchor_level()
 	btn.size = Vector2(30, 30)
 	btn.position = _truck_marker_pos(lvl, btn.size)
-	btn.mouse_filter = Control.MOUSE_FILTER_STOP
-	btn.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-	btn.gui_input.connect(_on_truck_gui_input)
+	# v26.30：光点钉在停靠节点中心（v26.28），STOP 会劫持节点点击误触"回基地"——
+	# 改纯指示器穿透（点节点=战前准备/出击恒成立；回基地走 返回/ESC）
+	btn.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	btn.draw.connect(_draw_truck_marker.bind(btn))
 	btn.resized.connect(func() -> void: btn.queue_redraw())
 	canvas.add_child(btn)
@@ -1541,17 +1556,6 @@ func _refresh_travel_route() -> void:
 		_travel_route.queue_redraw()
 
 ## 点卡车 → 进移动基地（外景视图；与点"家"回基地同款切换模式）
-func _on_truck_gui_input(event: InputEvent) -> void:
-	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
-		if SaveManager and SaveManager.has_method("save_game"):
-			SaveManager.save_game()
-		if Engine.has_meta("launch_from_bunker"):
-			Engine.remove_meta("launch_from_bunker")
-		Engine.set_meta("truck_base_view", "exterior")
-		SignalBus.play_sound.emit("button")
-		SceneTransition.change(get_tree(), "res://scenes/bunker/truck_base.tscn")
-
-
 # ═══════════ v27 黑门（星冥族·无限模式入口） ═══════════
 
 ## 解锁判定：第 100 关已通关（星级 > 0）。LPM 未加载时按 GameManager 进度兜底。
@@ -1750,10 +1754,11 @@ func _try_depart_to(level_index: int) -> void:
 		_toast_gate(str(res.get("reason", "")))
 		return
 	SignalBus.play_sound.emit("button")
-	_toast_gate("启程 → 第%d关「%s」· 预计 %d 天 ≈ %d 分钟 · 燃料 -%d（结存 %d）" % [
+	var eta_secs := int(ceili(float(int(res["days"])) * TruckTravel.SECONDS_PER_DAY))
+	var eta_txt := ("≈ %d 秒" % eta_secs) if eta_secs < 60 else ("≈ %d 分钟" % ceili(eta_secs / 60.0))
+	_toast_gate("启程 → 第%d关「%s」· 预计 %d 天 %s · 燃料 -%d（结存 %d）" % [
 		level_index, _level_display_name(level_index), int(res["days"]),
-		ceili(float(int(res["days"])) * TruckTravel.SECONDS_PER_DAY / 60.0),
-		int(res["cost"]), int(bm.get_fuel())])
+		eta_txt, int(res["cost"]), int(bm.get_fuel())])
 
 func _set_truck_badge(text: String) -> void:
 	if _truck_badge == null or not is_instance_valid(_truck_badge):
@@ -1776,7 +1781,7 @@ func _truck_marker_tooltip_refresh() -> void:
 		_truck_marker.tooltip_text = "移动基地行驶中 → 第%d关（剩%d天）——到站后可出击" % [
 			int(bm.get_travel_dest()), int(bm.get_travel_days_left())]
 	elif bm != null:
-		_truck_marker.tooltip_text = "移动基地（停靠：第 %d 关）——点击进入" % int(bm.get_parked_level())
+		_truck_marker.tooltip_text = "移动基地（停靠：第 %d 关）——点节点=战前准备/出击；返回/ESC 回基地" % int(bm.get_parked_level())
 
 func _show_level_info_popup(level_index: int) -> void:
 	if _level_info_popup and is_instance_valid(_level_info_popup):
