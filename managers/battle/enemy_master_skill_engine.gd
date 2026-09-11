@@ -1042,13 +1042,17 @@ func _exec_chain_lightning(dmg_mult: float, name_text: String, delay: float = 0.
 		var fork_end: Vector2 = tpos + Vector2(randf_range(-90.0, 90.0), randf_range(-70.0, 50.0))
 		VfxImpactFactory.spawn_lightning_arc(_battlefield, tpos, fork_end, Color(0.5, 0.75, 1.0, 0.7))
 		# 伤害（v17f 延迟 delay 秒，与预警窗口对齐；VFX 已铺开所以跳序仍可读）
-		var captured_t = t
+		# v26.11(D2) 同款: weakref 捕获——延迟窗口内目标可能死亡被 free，裸捕 Node
+		# 会令引擎在回调前报 "Lambda capture at index 1 was freed"（is_instance_valid
+		# 守卫只护逻辑不护报错）；weakref 后捕获本体恒有效（soak 定位的源头之一）。
+		var weak_t: WeakRef = weakref(t)
 		var captured_dmg = dmg
 		var tw_h := _battlefield.create_tween()
 		tw_h.tween_interval(maxf(delay, 0.05))
 		tw_h.tween_callback(func():
 			if was_live and not _battle_active_now():
 				return  # v20.15: 战斗已结束——延迟电伤不再结算
+			var captured_t = weak_t.get_ref()
 			if is_instance_valid(captured_t) and captured_t.has_method("take_damage"):
 				captured_t.take_damage(captured_dmg, _driver)
 		)
@@ -1136,13 +1140,16 @@ func _exec_single_target(dmg_mult: float, name_text: String, delay: float = 0.4)
 	# v17f: 延迟结算与光矛落地同帧（锁定环/激光预览立即，伤害随光效到达）
 	# v20.15: 快照战斗状态——延迟窗口内战斗结束则作废（防对已结算单位补刀）
 	var was_live: bool = _battle_active_now()
-	var captured_best = best
+	# v26.11(D2) 同款: weakref 捕获——延迟窗口内目标可能死亡被 free，裸捕 Node 会令
+	# 引擎报 "Lambda capture at index 1 was freed"（soak 定位的源头之一）。
+	var weak_best: WeakRef = weakref(best)
 	var captured_base_dmg = base_dmg
 	var tw_d := _battlefield.create_tween()
 	tw_d.tween_interval(maxf(delay, 0.05))
 	tw_d.tween_callback(func():
 		if was_live and not _battle_active_now():
 			return  # v20.15: 战斗已结束——延迟单体伤害不再结算
+		var captured_best = weak_best.get_ref()
 		if is_instance_valid(captured_best) and captured_best.has_method("take_damage"):
 			captured_best.take_damage(captured_base_dmg, _driver)
 	)

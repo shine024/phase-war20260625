@@ -767,15 +767,20 @@ func _on_mechanism_nuclear_launched(from_pos: Vector2, target_pos: Vector2, owne
 
 	# ── 阶段2：预警（弹道飞行中段，落点红圈标记）──
 	if parent != null:
+		# v26.11(D2) 同款: weakref 捕获——本 tween 绑 BattleSpectacle（autoload 跨场存活）
+		# 而 parent 是战场 VFX 层节点：战场退出被 free 后 0.15s 触发会令引擎报
+		# "Lambda capture at index 1 was freed"（is_instance_valid 守卫只护逻辑不护报错）。
+		var weak_parent: WeakRef = weakref(parent)
 		var warn_tween := create_tween()
 		warn_tween.tween_interval(0.15)  # 弹道飞行 0.15s 后出现预警
 		warn_tween.tween_callback(func():
 			# v26.x: 战斗结束守卫——预警环不打在结算画面上
 			if was_live and not _is_battle_live():
 				return
-			if is_instance_valid(parent):
+			var warn_p: Node2D = weak_parent.get_ref()
+			if is_instance_valid(warn_p):
 				# 收缩预警环（橙红→警示）
-				VfxImpactFactory.spawn_shockwave(parent, target_pos, 220.0, Color(1.0, 0.2, 0.1, 0.45)))
+				VfxImpactFactory.spawn_shockwave(warn_p, target_pos, 220.0, Color(1.0, 0.2, 0.1, 0.45)))
 
 	# ── 阶段3：落地核爆（弹道飞行 0.5s 后，与 _spawn_nuclear_missile 的飞行时间一致）
 	var detonate_tween := create_tween()
