@@ -41,6 +41,12 @@ func _ready() -> void:
 	if _mll and _mll.has_method("ensure_loaded"):
 		_mll.ensure_loaded("achievement")
 	achievement_manager = get_node_or_null("/root/AchievementManager")
+	# v27.15 修复：ManagerLazyLoader 启动期 root 未就绪时走 call_deferred 挂载——
+	# 紧跟的 get_node_or_null 拿到 null 且此前永不重试，面板首次打开成空壳。
+	# 等一帧让延迟挂载落地后重取；refresh() 内另有自愈兜底。
+	if achievement_manager == null:
+		await get_tree().process_frame
+		achievement_manager = get_node_or_null("/root/AchievementManager")
 
 	# 检查是否使用扩展成就定义（AchievementDefsExtended 是 preload 脚本对象）
 	use_extended_definitions = AchievementDefsExtended != null
@@ -78,8 +84,10 @@ func _ready() -> void:
 	# v27.12 性能：隐藏期间置脏的刷新在恢复可见时统一补刷
 	if not visibility_changed.is_connected(_on_visibility_refresh):
 		visibility_changed.connect(_on_visibility_refresh)
-	# v27.15（E1）：服务区块一次性构建，内容随 refresh() 重建
+	# v27.15（E1）：服务区块一次性构建 + 首刷（_ready 不走 refresh()——直调 summary/list，
+	# 服务区块若只挂 refresh() 首次打开恒空白，须与 :68-69 两行同批首刷）
 	_build_service_block()
+	_refresh_service_block()
 
 ## v7.x 修复 W6：面板释放时断开 autoload 信号，避免残留死 Callable
 func _exit_tree() -> void:
@@ -91,6 +99,9 @@ func _exit_tree() -> void:
 		achievement_manager.achievement_progress_updated.disconnect(_on_progress_updated)
 
 func refresh() -> void:
+	# v27.15 自愈：启动期延迟挂载竞态下 _ready 可能没拿到 manager，每次刷新先补取
+	if achievement_manager == null:
+		achievement_manager = get_node_or_null("/root/AchievementManager")
 	# v27.12 性能：面板不可见时只置脏不重建（成就解锁/进度信号战斗中高频触发），恢复可见时补刷
 	if not is_visible_in_tree():
 		_refresh_dirty = true
