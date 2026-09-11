@@ -11,7 +11,7 @@ config_version=5
 [application]
 
 config/name="phase-war"
-config/version="0.26.9"
+config/version="0.27.0"
 run/main_scene="res://scenes/title_screen.tscn"
 config/features=PackedStringArray("4.5", "Mobile")
 config/icon="res://icon.svg"
