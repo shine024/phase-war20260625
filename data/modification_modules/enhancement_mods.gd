@@ -220,6 +220,47 @@ const DATA: Dictionary = {
 		},
 		unlock_conditions = {required_level = 3}
 	},
+
+	# ─── v27 改造2.0 批：词条池补 3 条（暴击/闪避/回复）───
+	"enh_crit_up" = {
+		id = "enh_crit_up", name = "精准训练", name_en = "Crit Up",
+		icon = "res://assets/ui/icons/mod_icons/mod_enhancement.png",
+		prototype = "要害射击训练", description = "暴击率提升。",
+		rarity = "common",
+		power_mult = 0.9, cost_research = 70, cost_install = 35,
+		slot_type = "enhancement", conflict_group = "enh_crit",
+		applicable_types = [0, 1, 2, 3, 4], max_level = 3, source = "enhancement",
+		level_effects = {
+			1: {crit_chance = 0.05}, 2: {crit_chance = 0.065}, 3: {crit_chance = 0.085},
+		},
+		unlock_conditions = {required_level = 1}
+	},
+	"enh_dodge_up" = {
+		id = "enh_dodge_up", name = "回避训练", name_en = "Dodge Up",
+		icon = "res://assets/ui/icons/mod_icons/mod_enhancement.png",
+		prototype = "掩体转移训练", description = "闪避率提升。",
+		rarity = "uncommon",
+		power_mult = 1.2, cost_research = 100, cost_install = 50,
+		slot_type = "enhancement", conflict_group = "enh_dodge",
+		applicable_types = [0, 1, 2, 3, 4], max_level = 3, source = "enhancement",
+		level_effects = {
+			1: {dodge_chance = 0.05}, 2: {dodge_chance = 0.065}, 3: {dodge_chance = 0.085},
+		},
+		unlock_conditions = {required_level = 1}
+	},
+	"enh_regen_up" = {
+		id = "enh_regen_up", name = "休整训练", name_en = "Regen Up",
+		icon = "res://assets/ui/icons/mod_icons/mod_enhancement.png",
+		prototype = "轮换休整制度", description = "生命回复提升。",
+		rarity = "uncommon",
+		power_mult = 1.2, cost_research = 100, cost_install = 50,
+		slot_type = "enhancement", conflict_group = "enh_regen",
+		applicable_types = [0, 1, 2, 3, 4], max_level = 3, source = "enhancement",
+		level_effects = {
+			1: {hp_regen = 0.003}, 2: {hp_regen = 0.004}, 3: {hp_regen = 0.005},
+		},
+		unlock_conditions = {required_level = 1}
+	},
 }
 
 ## 获取词条定义

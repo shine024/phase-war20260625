@@ -41,6 +41,8 @@ func _process(delta: float) -> void:
 		offset = original_offset + shake_offset
 	else:
 		offset = original_offset
+		# v27.12 perf: 震动结束即停帧——原每帧无条件回写 offset（闲置期白跑）
+		set_process(false)
 
 ## 开始震动
 func start_shake(intensity: float, duration: float, decay: bool = true) -> void:
@@ -54,6 +56,7 @@ func start_shake(intensity: float, duration: float, decay: bool = true) -> void:
 	shake_duration = duration
 	shake_decay = decay
 	shake_timer = 0.0
+	set_process(true)  # v27.12: 闲置停帧后由新震动重启
 
 	# v8.3 视觉增强：强度→频率分层。高强度用更高频噪声（模拟"抖动"感），
 	# 低强度用低频（模拟"厚重"感）。frequency 1.0~1.5 区间，避免过度抖动眩晕。

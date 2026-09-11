@@ -57,6 +57,8 @@ var _menu_btn: Button = null
 var _last_pending_deploy_id: String = ""
 var _selected_deploy_panel: Control = null
 var _breath_phase: float = 0.0
+# v27.12 性能：呼吸微光 0.1s 节流累加器（原每帧对每个槽位 modulate + EnergyManager.can_afford）
+var _anim_acc: float = 0.0
 # v20.13b：每卡部署次数缓存（base_card_id → [remaining, total]），由 deploy_uses_changed 信号驱动
 var _deploy_uses_map: Dictionary = {}
 
@@ -95,8 +97,16 @@ func _ready() -> void:
 func _process(delta: float) -> void:
 	if _auto_deploy != null:
 		_auto_deploy.process(delta)
-	_process_slot_breathing(delta)
+	# v27.12 性能：pending 轮询保持每帧（部署选中金框的即时反馈），挪到节流 return 之前
 	_poll_pending_deploy_selection()
+	# v27.12 性能：呼吸微光 0.1s 节流——原每帧对每个槽位 modulate + EnergyManager.can_afford
+	#（战斗中稳态空耗），10Hz 步进对 1.2s 周期的呼吸视觉无感；用累计时长推进相位，周期不变；
+	# 战斗态 / motion_reduce 既有守卫仍在 _process_slot_breathing 内部生效
+	_anim_acc += delta
+	if _anim_acc < 0.1:
+		return
+	_process_slot_breathing(_anim_acc)
+	_anim_acc = 0.0
 
 
 ## v7.x(自动部署)：在 InstrumentSection 最前面创建"自动"toggle 按钮 + 初始化控制器。

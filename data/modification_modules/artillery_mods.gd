@@ -108,6 +108,7 @@ const DATA: Dictionary = {
 		conflict_group = "radar",
 		era_band = [3, 4],
 		effects = {counter_bonus = 0.30},
+		level_effects = {1: {counter_bonus = 0.3}, 2: {counter_bonus = 0.39}, 3: {counter_bonus = 0.51}},
 		unlock_conditions = {required_level = 5}
 	},
 
@@ -196,6 +197,7 @@ const DATA: Dictionary = {
 		conflict_group = "mobility",
 		era_band = [3, 4],
 		effects = {deploy_speed = 2},
+		level_effects = {1: {deploy_speed = 2}, 2: {deploy_speed = 3}, 3: {deploy_speed = 3}},
 		unlock_conditions = {required_level = 2}
 	},
 
@@ -255,6 +257,7 @@ const DATA: Dictionary = {
 		conflict_group = "ammunition",
 		era_band = [2, 4],
 		effects = {armor_break = 0.08, armor_break_stacks = 5},
+		level_effects = {1: {armor_break = 0.08, armor_break_stacks = 5}, 2: {armor_break = 0.104, armor_break_stacks = 6}, 3: {armor_break = 0.136, armor_break_stacks = 8}},
 		unlock_conditions = {required_level = 6}
 	},
 
@@ -274,6 +277,7 @@ const DATA: Dictionary = {
 		conflict_group = "special",
 		era_band = [3, 4],
 		effects = {counter_battery = 1},
+		level_effects = {1: {counter_battery = 1}, 2: {counter_battery = 1}, 3: {counter_battery = 2}},
 		unlock_conditions = {required_level = 7}
 	},
 
@@ -293,6 +297,7 @@ const DATA: Dictionary = {
 		conflict_group = "special_ammo",
 		era_band = [3, 4],
 		effects = {emp_chance = 0.40, emp_true_damage = 12.0},
+		level_effects = {1: {emp_chance = 0.4, emp_true_damage = 12}, 2: {emp_chance = 0.52, emp_true_damage = 15.6}, 3: {emp_chance = 0.6, emp_true_damage = 20.4}},
 		applicable_types = [2],
 		unlock_conditions = {required_level = 5}
 	},
@@ -312,6 +317,7 @@ const DATA: Dictionary = {
 		conflict_group = "special_ammo",
 		era_band = [4, 4],
 		effects = {nano_chance = 0.25, nano_pct = 0.02, nano_duration = 8.0},
+		level_effects = {1: {nano_chance = 0.25, nano_pct = 0.02, nano_duration = 8}, 2: {nano_chance = 0.325, nano_pct = 0.026, nano_duration = 10.4}, 3: {nano_chance = 0.425, nano_pct = 0.034, nano_duration = 13.6}},
 		applicable_types = [2],
 		unlock_conditions = {required_level = 6}
 	},
@@ -332,6 +338,7 @@ const DATA: Dictionary = {
 		slot_type = "ammunition",
 		conflict_group = "special_ammo",
 		effects = {incendiary_chance = 0.40, incendiary_stacks = 1, attack_light = 0.08},
+		level_effects = {1: {incendiary_chance = 0.4, incendiary_stacks = 1, attack_light = 0.08}, 2: {incendiary_chance = 0.52, incendiary_stacks = 1, attack_light = 0.104}, 3: {incendiary_chance = 0.6, incendiary_stacks = 2, attack_light = 0.136}},
 		applicable_types = [2],
 		unlock_conditions = {required_level = 5}
 	},
@@ -350,6 +357,7 @@ const DATA: Dictionary = {
 		slot_type = "ammunition",
 		conflict_group = "special_ammo",
 		effects = {burn_chance = 0.35, burn_dps = 8.0, incendiary_synergy = true, attack_light = 0.06},
+		level_effects = {1: {burn_chance = 0.35, burn_dps = 8, incendiary_synergy = true, attack_light = 0.06}, 2: {burn_chance = 0.455, burn_dps = 10.4, incendiary_synergy = true, attack_light = 0.078}, 3: {burn_chance = 0.595, burn_dps = 13.6, incendiary_synergy = true, attack_light = 0.102}},
 		applicable_types = [2],
 		unlock_conditions = {required_level = 5}
 	},
@@ -369,6 +377,7 @@ const DATA: Dictionary = {
 		conflict_group = "special_ammo",
 		era_band = [3, 4],
 		effects = {graphite_chance = 0.50, graphite_stacks = 1},
+		level_effects = {1: {graphite_chance = 0.5, graphite_stacks = 1}, 2: {graphite_chance = 0.6, graphite_stacks = 1}, 3: {graphite_chance = 0.6, graphite_stacks = 2}},
 		applicable_types = [2],
 		unlock_conditions = {required_level = 5}
 	},
@@ -388,6 +397,7 @@ const DATA: Dictionary = {
 		conflict_group = "special_ammo",
 		era_band = [4, 4],
 		effects = {nano_chance = 0.30, nano_pct = 0.03, nano_duration = 8.0, nano_concentration_amp = true},
+		level_effects = {1: {nano_chance = 0.3, nano_pct = 0.03, nano_duration = 8, nano_concentration_amp = true}, 2: {nano_chance = 0.39, nano_pct = 0.039, nano_duration = 10.4, nano_concentration_amp = true}, 3: {nano_chance = 0.51, nano_pct = 0.051, nano_duration = 13.6, nano_concentration_amp = true}},
 		applicable_types = [2],
 		unlock_conditions = {required_level = 6}
 	},
@@ -425,6 +435,7 @@ const DATA: Dictionary = {
 		conflict_group = "special_ammo",
 		era_band = [4, 4],
 		effects = {nano_seeder_amount = 1.5, nano_chance = 0.15, nano_pct = 0.015, nano_duration = 6.0},
+		level_effects = {1: {nano_seeder_amount = 1.5, nano_chance = 0.15, nano_pct = 0.015, nano_duration = 6}, 2: {nano_seeder_amount = 1.95, nano_chance = 0.195, nano_pct = 0.019, nano_duration = 7.8}, 3: {nano_seeder_amount = 2.55, nano_chance = 0.255, nano_pct = 0.025, nano_duration = 10.2}},
 		applicable_types = [2],
 		unlock_conditions = {required_level = 5}
 	},
@@ -444,7 +455,98 @@ const DATA: Dictionary = {
 		conflict_group = "sensor",
 		era_band = [3, 4],
 		effects = {drone_mark_vuln_bonus = 0.10, crit_chance = 0.04},
+		level_effects = {1: {drone_mark_vuln_bonus = 0.1, crit_chance = 0.04}, 2: {drone_mark_vuln_bonus = 0.13, crit_chance = 0.052}, 3: {drone_mark_vuln_bonus = 0.17, crit_chance = 0.068}},
 		applicable_types = [2],
+		unlock_conditions = {required_level = 6}
+	},
+
+	# ══════════ v27 改造2.0 批：普及档 + 濒死触发 + 炮兵饱和套装件 ══════════
+	"art_17_barrel_maintenance" = {
+		id = "art_17_barrel_maintenance",
+		name = "身管维护",
+		name_en = "Barrel Maintenance",
+		icon = "res://assets/ui/icons/mod_icons/mod_barrel.png",
+		prototype = "身管定期维护",
+		description = "定期维护身管。射速 +4%。",
+		rarity = "common",
+		power_mult = 0.8,
+		cost_research = 50,
+		cost_install = 25,
+		slot_type = "weapon",
+		conflict_group = "fire_rate",
+		effects = {attack_interval = -0.04},
+		level_effects = {1: {attack_interval = -0.04}, 2: {attack_interval = -0.05}, 3: {attack_interval = -0.07}},
+		unlock_conditions = {required_level = 1}
+	},
+	"art_18_rapid_loader" = {
+		id = "art_18_rapid_loader",
+		name = "快速装填机构",
+		name_en = "Rapid Loader",
+		icon = "res://assets/ui/icons/mod_icons/mod_autoloader.png",
+		prototype = "半自动装弹机",
+		description = "助锄件加速装填。射速 +8%。",
+		rarity = "uncommon",
+		power_mult = 1.0,
+		cost_research = 100,
+		cost_install = 50,
+		slot_type = "ergonomics",
+		conflict_group = "ergonomics",
+		effects = {attack_interval = -0.08},
+		level_effects = {1: {attack_interval = -0.08}, 2: {attack_interval = -0.10}, 3: {attack_interval = -0.13}},
+		unlock_conditions = {required_level = 2}
+	},
+	"art_19_met_datalink" = {
+		id = "art_19_met_datalink",
+		name = "气象数据链",
+		name_en = "Meteorological Datalink",
+		icon = "res://assets/ui/icons/mod_icons/mod_navigation.png",
+		prototype = "炮兵气象站数据链",
+		description = "实时风修正弹道。射程 +25px，暴击率 +4%。",
+		rarity = "rare",
+		power_mult = 1.3,
+		cost_research = 160,
+		cost_install = 80,
+		slot_type = "sensor",
+		conflict_group = "sensor",
+		era_band = [2, 4],
+		effects = {attack_range = 25, crit_chance = 0.04},
+		level_effects = {1: {attack_range = 25, crit_chance = 0.04}, 2: {attack_range = 33, crit_chance = 0.04}, 3: {attack_range = 43, crit_chance = 0.04}},
+		unlock_conditions = {required_level = 3}
+	},
+	# v27 触发式：濒死爆发（血量首次 <30% → 自疗 + 范围爆发）。消费点 module_effect_handler.on_tick
+	"art_20_last_stand" = {
+		id = "art_20_last_stand",
+		name = "濒死爆发",
+		name_en = "Last Stand",
+		icon = "res://assets/ui/icons/mod_icons/mod_explosion.png",
+		prototype = "殉爆防御协议",
+		description = "生命首次跌破 30% 时引爆殉爆防御：回复 20% 生命，并对 150px 内敌方造成自身 25% 最大生命的伤害（每战 1 次）。",
+		rarity = "epic",
+		power_mult = 1.5,
+		cost_research = 300,
+		cost_install = 150,
+		slot_type = "special",
+		conflict_group = "special",
+		effects = {last_stand_threshold = 0.30, last_stand_heal = 0.20, last_stand_burst = 0.25, last_stand_radius = 150.0},
+		level_effects = {1: {last_stand_threshold = 0.30, last_stand_heal = 0.20, last_stand_burst = 0.25, last_stand_radius = 150.0}, 2: {last_stand_threshold = 0.30, last_stand_heal = 0.25, last_stand_burst = 0.32, last_stand_radius = 160.0}, 3: {last_stand_threshold = 0.30, last_stand_heal = 0.30, last_stand_burst = 0.40, last_stand_radius = 170.0}},
+		unlock_conditions = {required_level = 5}
+	},
+	# v27 炮兵饱和套装第 4 件（art_04/art_09/art_11 + 本条集齐满档）
+	"art_21_saturation_director" = {
+		id = "art_21_saturation_director",
+		name = "饱和射击校射机",
+		name_en = "Saturation Director",
+		icon = "res://assets/ui/icons/mod_icons/mod_fire_control.png",
+		prototype = "区域饱和校射系统",
+		description = "多炮协同校射。溅射伤害 +30%，溅射范围 +10%。",
+		rarity = "legendary",
+		power_mult = 1.8,
+		cost_research = 420,
+		cost_install = 210,
+		slot_type = "fire_control",
+		conflict_group = "fire_control",
+		effects = {splash_damage = 0.30, splash_radius = 0.10},
+		level_effects = {1: {splash_damage = 0.30, splash_radius = 0.10}, 2: {splash_damage = 0.39, splash_radius = 0.13}, 3: {splash_damage = 0.51, splash_radius = 0.17}},
 		unlock_conditions = {required_level = 6}
 	},
 }

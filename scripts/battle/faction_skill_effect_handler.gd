@@ -619,12 +619,21 @@ static func _get_player_units_cached() -> Array:
 	return (tree.root as Node).get_nodes_in_group("player_units")
 
 
+# v27.12 perf: autoload 引用缓存（常驻节点；null 不缓存保战斗外回退语义）
+static var _autoload_cache: Dictionary = {}
+
 ## 获取 autoload 节点
 static func _get_autoload(name_str: String) -> Node:
+	var hit: Node = _autoload_cache.get(name_str)
+	if hit != null and is_instance_valid(hit):
+		return hit
 	var tree = Engine.get_main_loop() as SceneTree
 	if tree == null or tree.root == null:
 		return null
-	return tree.root.get_node_or_null(name_str)
+	var n: Node = tree.root.get_node_or_null(name_str)
+	if n != null:
+		_autoload_cache[name_str] = n
+	return n
 
 
 ## 显示势力技能 VFX 提示（复用 toast）

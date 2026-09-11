@@ -195,7 +195,7 @@ func _redirect_stdout_to_file() -> void:
 | 13 | `UILazyLoader` | `managers/ui_lazy_loader.gd` | UI 面板按需加载 |
 | 14 | `ManagerLazyLoader` | `managers/manager_lazy_loader.gd` | 非 core manager 按需加载 |
 | 15 | `PerformanceMetricsManager` | `managers/performance_metrics_manager.gd` | FPS/性能采样 |
-| 16 | `ModificationRegistry` | `scripts/systems/modification_registry.gd` | 10 模块类 202 改造模块（8 兵种 + 通用 + 强化词条；静态注册表，数量锁在 modification_modules_test） |
+| 16 | `ModificationRegistry` | `scripts/systems/modification_registry.gd` | 10 模块类 249 改造模块（8 兵种 + 通用 + 强化词条；静态注册表，数量锁在 modification_modules_test） |
 | 17 | `DayClock` | `managers/day_clock.gd` | 游戏内日时钟 |
 | 18 | `AuraManager` | `managers/aura_manager.gd` | 平台光环 |
 | 19 | `IntelItemBag` | `managers/intel_item_bag.gd` | 情报道具背包 |
@@ -351,6 +351,29 @@ IntelEvolutionManager → IntelManual, IntelEvolutionBranches
 - **背景压暗**：`battlefield.gd` 的 `BG_DIM`（0.80/0.80/0.87）叠乘时代 tint，
   收口在 `_apply_background_texture`；调背景明暗只动这一个常量。
 
+### v27 改造 2.0：升级系统 + 六新套装 + 触发式 + mythic（2026-09-11，详见 CHANGELOG）
+
+**改改造升级/套装/触发式效果相关代码前必读本节。** 总量 202→**249**（+47），全部玩家侧。
+
+- **改造升级 Lv1→3**（`blueprint_manager.gd`）：费用唯一真身 `preview_upgrade_cost`（图纸 =
+  同改造 ×(目标等级−1)；纳米 = `preview_install_cost` 基准 × {2:1.5, 3:2.5}）；资格
+  `get_mod_upgrade_info`（**无 level_effects 的改造不可升级**）；执行 `upgrade_modification`。
+  引擎零改动——registry `apply_with_level` 按条目 level 读档，旧档缺 level 默认 Lv1 免迁移。
+  UI：已装行 `[LvN]` 前缀 + `↑Lv2/3` 按钮；详情面板已装态变升级按钮。
+- **level_effects backfill 纪律**：`tools/gen_mod_level_effects.py` 可重跑；**只对未被敌方引用
+  的 id 生成**（enemy_fixed_loadouts + enemy_card_mod_map 并集，现 125 id）——敌方 tier 走
+  level_effects 消费，给敌方引用 id 补档 = 改敌方强度。pct 帽 0.60（balance test CAP_STAT）、
+  负副作用/布尔/语义 int 三代平坦、全平坦条目跳过。
+- **新六套装**（`combo_tactics.gd` COMBOS 6→12）：重装方阵/防空火网/野战医疗链/炮兵饱和/
+  工兵防线/堡垒固守。basic 与 full 机制 flag 消费点在 `module_effect_handler` 既有函数的
+  档位分支（查询助手 `_mech_active()`）+ 曲射 batch `aoe_cap` 分支；新增机制键勿忘
+  消费点先查 `_mech_active` 零成本早退。
+- **触发式改造**（效果键落 `_special`→`mod_special_flags`）：消费点 = handler 四入口
+  （on_hit/on_kill/on_tick/on_damage_taken/on_death）+ battle_manager 波次链转发
+  `ModuleEffectHandler.on_wave_spawned`。新触发键必须进 `MECHANIC_EFFECT_KEYS`（面板"机制"分类）。
+- **mythic 启用**：`mod_manager` mythic→OVERLORD；掉落权重 1（boss×3）；三条 gen_21~23
+  行为改写（全队击杀自回/周期补盾/引力脉冲）。
+
 ### v26.10 改造模块消耗品化 + 双通道供给（2026-09-02，详见 CHANGELOG）
 
 **改改造安装/图纸掉落/制造站相关代码前必读本节。** 核心语义：安装一条改造 =
@@ -397,7 +420,7 @@ IntelEvolutionManager → IntelManual, IntelEvolutionBranches
   **玩家飞行单位索敌已加 AIR 优先**（空优对称）。8 张卡图待 AI 生图（生成后必跑
   `generate_card_foot_anchors.py` + 美术打包铁律）。
 - v21 同源词条门槛=精英档（1 条）/传奇（2 条）。
-- 数量锁：改造总数 **202**（`modification_modules_test` + `combo_tier_smoke` 两处 +
+- 数量锁：改造总数 **249**（`modification_modules_test` + `combo_tier_smoke` 两处 +
   armor per-module 18）。
 
 ### v26.2 战斗界面 UI 整编（2026-09-01，详见 CHANGELOG）
@@ -459,7 +482,7 @@ IntelEvolutionManager → IntelManual, IntelEvolutionBranches
   无对冲**（掩蔽只覆盖步兵），留实测。
 - 数值审计：`tools/balance_audit_mods_evo.py` 已含 float>1.0 误写检查 / era_band
   合法性 / set 值域（attack_armor_set 帽 800、其余 400）——**改改造数据后必跑**。
-  改造总数锁 202（v26 起与 modification_modules_test/combo_tier_smoke 双锁一致；本节旧值 190 已过时，v26.4 勘误）。
+  改造总数锁 249（v26 起与 modification_modules_test/combo_tier_smoke 双锁一致；v27 改造2.0 批 202→249，旧值 190/202 均已过时）。
 
 ### v21 光环范围化 / 组合满档 / 搭档协同 / 产能打造（2026-08-31，详见 CHANGELOG）
 
@@ -470,7 +493,7 @@ IntelEvolutionManager → IntelManual, IntelEvolutionBranches
   `receive_auras_from_field_deferred`）。回滚开关 `GameConfig.aura_range_enabled`。
 - **组合满档**：`ComboTactics.detect_card_combo_tiers()`（basic/full），满档机制
   flag 由 combo_engine 每秒并入全队机制表；6 个行为改写传奇改造（gen_* v21 P1）
-  effect key 走未知键→`_special` 通道；改造总数锁定断言 202（加改造要 bump
+  effect key 走未知键→`_special` 通道；改造总数锁定断言 249（加改造要 bump
   `modification_modules_test.gd` 与 combo_tier_smoke 双处；旧值 190 已过时，v26.4 勘误）。
 - **搭档协同**：`data/unit_roles.gd` 九角色归一化 + `pair_synergy_engine.gd`
   事件驱动激活（部署/死亡 + 1s 兜底，禁止每帧扫描），数值对称记账（meta 存原值）。
@@ -592,6 +615,8 @@ tests/
 
 **新增卡牌缺卡面图时**，用 AI API 自动生成，完整流程见 `docs/ART_PIPELINE_AI_ICON_GENERATION.md`。
 
+**单位分帧动画生成/替换时**，完整管线（agnes-video keyframe 图生视频：参考图规范/并行限流/质检门/已知坑/部署规范/轮次台账）见 `docs/单位分帧动画生成管线.md`——2026-09-10 批次④重生成轮沉淀，半身/朝向翻面/接缝/脏帧等坑与对策全在表内，动笔前必读。
+
 **相位师（30 位 master）美术已定稿（2026-08-24）**：EA 走 C 方案——战场共享底座图+势力染色、产兵复用时代原型卡图、世界地图仅 tooltip 名字，**零美术工作量**；1.0 前升级专属立绘（届时方案 A/B 二选一）。现状核实与升级路径见 `docs/PHASE_MASTER_ART_PLAN.md`。勿在 EA 阶段给 master 加专属立绘挂载点。
 
 **快速要点**：
@@ -673,11 +698,12 @@ User-driven collaboration. Every task follows: **Question → Options → Decisi
 | LevelSelectOverlay 空壳 | 已删除 | 2026-08-22：main.tscn 空节点，level_select 配置 v9.x 已先删（选关由 world_map 承担） |
 | docs/tech-debt-register.md | 已删除 | 2026-04-09 停更全过时；活债务改记本清单 + CHANGELOG |
 
-### 已知断链资产（不修只记录，2026-08-22 核对）
+### 已知断链资产（不修只记录，2026-09-10 核对）
 
 - `data/combo_tactics.gd`：combo_icons/ 下 chem/emp/incendiary/laser/nano/recon 6 张 PNG 缺失
 - `scripts/ui_asset_loader.gd`：`assets/card_icons/law.png` 缺失
-- `data/phase_instruments.gd`：pi_r_free_deploy、pi_umbra_01~03 图标缺失（pi_umbra_04 在）
+- ~~`data/phase_instruments.gd`：pi_r_free_deploy、pi_umbra_01~03 图标缺失~~ — 已补齐（2026-09-10 实测四图全部在）
+- ~~enemy/ 目录混入 vis_player_001/075.png（2026-09-09 b4 部署残留，= vis_enemy 同编号原图的镜像，无独有内容）~~ — 已确认无引用后删除（2026-09-11 清理轮）
 
 ### 已知弹道路由问题（2026-08-25 核对，P1 已修复）
 

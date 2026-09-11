@@ -386,6 +386,7 @@ class TwinkleLayer extends Node2D:
 	var _t: float = 0.0
 	var _n: float = 0.0
 	var _static := false
+	var _redraw_acc: float = 0.0  # v27.12: 重绘节流累加器
 
 	func setup(w: float, sky_bottom: float, motion_reduce: bool) -> void:
 		_static = motion_reduce
@@ -411,8 +412,13 @@ class TwinkleLayer extends Node2D:
 	func _process(delta: float) -> void:
 		if _static:
 			return
-		_t += delta
-		queue_redraw()
+		_t += delta  # 相位每帧推进（动画数学不变）
+		# v27.12 perf: 重绘 20fps 节流——闪烁为慢相位动画（speed≤1.8 rad/s），20fps 无感知差异；
+		# 原每帧 queue_redraw → 44 星 × 5 次 dict 取值
+		_redraw_acc += delta
+		if _redraw_acc >= 0.05:
+			_redraw_acc = 0.0
+			queue_redraw()
 
 	func _draw() -> void:
 		var max_i: int = int(STAR_COUNT * lerpf(0.45, 1.0, _n))

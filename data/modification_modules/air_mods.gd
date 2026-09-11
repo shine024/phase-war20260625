@@ -121,6 +121,7 @@ const DATA: Dictionary = {
 		slot_type = "logistics", conflict_group = "logistics",
 		era_band = [1, 4],
 		effects = {sustained_combat = 0.50},
+		level_effects = {1: {sustained_combat = 0.5}, 2: {sustained_combat = 0.6}, 3: {sustained_combat = 0.6}},
 		unlock_conditions = {required_level = 4}
 	},
 	"air_10_drop_tank" = {
@@ -131,6 +132,7 @@ const DATA: Dictionary = {
 	power_mult = 1.0, cost_research = 100, cost_install = 50,
 		slot_type = "logistics", conflict_group = "logistics",
 		effects = {combat_range = 0.40},
+		level_effects = {1: {combat_range = 0.4}, 2: {combat_range = 0.52}, 3: {combat_range = 0.6}},
 		unlock_conditions = {required_level = 2}
 	},
 	"air_11_weapon_rack" = {
@@ -196,6 +198,7 @@ const DATA: Dictionary = {
 		conflict_group = "special",
 		era_band = [2, 4],
 		effects = {combo_system = 3, combo_bonus = 0.40},
+		level_effects = {1: {combo_system = 3, combo_bonus = 0.4}, 2: {combo_system = 4, combo_bonus = 0.52}, 3: {combo_system = 5, combo_bonus = 0.6}},
 		unlock_conditions = {required_level = 6}
 	},
 
@@ -216,6 +219,7 @@ const DATA: Dictionary = {
 		conflict_group = "special_ammo",
 		era_band = [3, 4],
 		effects = {burn_chance = 0.30, burn_dps = 10.0, chem_burst_trigger = true, attack_air = 0.08},
+		level_effects = {1: {burn_chance = 0.3, burn_dps = 10, chem_burst_trigger = true, attack_air = 0.08}, 2: {burn_chance = 0.39, burn_dps = 13, chem_burst_trigger = true, attack_air = 0.104}, 3: {burn_chance = 0.51, burn_dps = 17, chem_burst_trigger = true, attack_air = 0.136}},
 		applicable_types = [3],
 		unlock_conditions = {required_level = 6}
 	},
@@ -274,6 +278,7 @@ const DATA: Dictionary = {
 		slot_type = "special",
 		conflict_group = "special",
 		effects = {phase_shift_counter = 1},
+		level_effects = {1: {phase_shift_counter = 1}, 2: {phase_shift_counter = 1}, 3: {phase_shift_counter = 2}},
 		applicable_types = [3],
 		unlock_conditions = {required_level = 6}
 	},
@@ -347,6 +352,7 @@ const DATA: Dictionary = {
 		conflict_group = "weapon",
 		era_band = [3, 4],
 		effects = {attack_range = 40, attack_armor_pct = 0.20},
+		level_effects = {1: {attack_range = 40, attack_armor_pct = 0.2}, 2: {attack_range = 52, attack_armor_pct = 0.26}, 3: {attack_range = 68, attack_armor_pct = 0.34}},
 		unlock_conditions = {required_level = 4}
 	},
 
@@ -386,6 +392,78 @@ const DATA: Dictionary = {
 		unlock_conditions = {required_level = 3}
 	},
 
+
+	# ══════════ v27 改造2.0 批：普及档 + 机动/生存强化 ══════════
+	"air_23_cockpit_armor" = {
+		id = "air_23_cockpit_armor",
+		name = "座舱装甲",
+		name_en = "Cockpit Armor",
+		icon = "res://assets/ui/icons/mod_icons/mod_armor.png",
+		prototype = "浴缸座舱装甲",
+		description = "飞行员座舱装甲板。生命 +30，暴击抗性 +5%。",
+		rarity = "common",
+		power_mult = 0.8,
+		cost_research = 50,
+		cost_install = 25,
+		slot_type = "armor",
+		conflict_group = "armor",
+		effects = {max_hp = 30, crit_resist = 0.05},
+		level_effects = {1: {max_hp = 30, crit_resist = 0.05}, 2: {max_hp = 39, crit_resist = 0.05}, 3: {max_hp = 51, crit_resist = 0.05}},
+		unlock_conditions = {required_level = 1}
+	},
+	"air_24_canard" = {
+		id = "air_24_canard",
+		name = "鸭翼前置",
+		name_en = "Canard Foreplanes",
+		icon = "res://assets/ui/icons/mod_icons/mod_aerodynamics.png",
+		prototype = "鸭式气动布局",
+		description = "鸭翼增升机动。闪避 +6%，移动 +8px/s。",
+		rarity = "uncommon",
+		power_mult = 1.0,
+		cost_research = 100,
+		cost_install = 50,
+		slot_type = "aerodynamics",
+		conflict_group = "aerodynamics",
+		effects = {dodge_chance = 0.06, move_speed = 8},
+		level_effects = {1: {dodge_chance = 0.06, move_speed = 8}, 2: {dodge_chance = 0.08, move_speed = 10}, 3: {dodge_chance = 0.10, move_speed = 14}},
+		unlock_conditions = {required_level = 2}
+	},
+	"air_25_dual_mode_seeker" = {
+		id = "air_25_dual_mode_seeker",
+		name = "双模导引头",
+		name_en = "Dual-Mode Seeker",
+		icon = "res://assets/ui/icons/mod_icons/mod_guidance.png",
+		prototype = "雷达/红外双模导引",
+		description = "双模导引抗干扰。对轻装伤害 +10%，暴击率 +4%。",
+		rarity = "rare",
+		power_mult = 1.3,
+		cost_research = 160,
+		cost_install = 80,
+		slot_type = "guidance",
+		conflict_group = "guidance",
+		era_band = [2, 4],
+		effects = {attack_light = 0.10, crit_chance = 0.04},
+		level_effects = {1: {attack_light = 0.10, crit_chance = 0.04}, 2: {attack_light = 0.13, crit_chance = 0.05}, 3: {attack_light = 0.17, crit_chance = 0.07}},
+		unlock_conditions = {required_level = 3}
+	},
+	"air_26_drone_wingman" = {
+		id = "air_26_drone_wingman",
+		name = "蜂群僚机",
+		name_en = "Drone Wingman",
+		icon = "res://assets/ui/icons/mod_icons/mod_drone.png",
+		prototype = "伴随无人机群",
+		description = "僚机群掩护与指示。暴击率 +7%，闪避 +5%。",
+		rarity = "epic",
+		power_mult = 1.5,
+		cost_research = 300,
+		cost_install = 150,
+		slot_type = "special",
+		conflict_group = "special",
+		era_band = [3, 4],
+		effects = {crit_chance = 0.07, dodge_chance = 0.05},
+		level_effects = {1: {crit_chance = 0.07, dodge_chance = 0.05}, 2: {crit_chance = 0.09, dodge_chance = 0.065}, 3: {crit_chance = 0.12, dodge_chance = 0.085}},
+		unlock_conditions = {required_level = 5}
+	},
 }
 
 static func get_mod_data(mod_id: String) -> Dictionary:

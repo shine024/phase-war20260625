@@ -72,6 +72,16 @@ const MECHANIC_EFFECT_KEYS: Array = [
 	"kill_repair",
 	# v10 转换型（劣势转优势）
 	"salvage_repair", "phase_shift_counter", "hijack_aura_radius", "hijack_aura_duration", "hijack_aura_cd",
+	# v27 改造2.0 触发式（事件驱动规则变化；消费点 module_effect_handler 四入口 + 波次链）
+	"kill_pulse_heal", "kill_pulse_radius",
+	"counter_pulse_damage", "counter_pulse_radius", "counter_pulse_cd",
+	"last_stand_threshold", "last_stand_heal", "last_stand_burst", "last_stand_radius",
+	"pain_conduct_slow", "pain_conduct_duration",
+	"wave_surge_shield",
+	"death_detonate_damage", "death_detonate_radius",
+	# v27 mythic 行为改写（周期脉冲/全队联动）
+	"vanguard_repair", "aegis_pulse_cd", "aegis_pulse_shield",
+	"gravity_pulse_cd", "gravity_pulse_damage", "gravity_pulse_radius",
 ]
 
 ## ─────────────────────────────────────────────

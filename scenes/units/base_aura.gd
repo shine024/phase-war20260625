@@ -27,6 +27,7 @@ var _punch_tween: Tween = null
 var _pulse_t: float = 0.0      # 能量脉冲计时（每 3s 一轮）
 var _pulse_p: float = -1.0     # 当前脉冲进度 0~1；<0 = 无脉冲
 var _smoke: CPUParticles2D = null
+var _redraw_acc: float = 0.0   # v27.12: 重绘节流累加器
 
 func setup(aura_color: Color, radius: float, label: String,
 		bar_width: float = 120.0, fill_color: Color = Color(0.2, 0.85, 0.4, 1.0)) -> void:
@@ -54,7 +55,12 @@ func _process(delta: float) -> void:
 			_pulse_p += delta / 0.9
 			if _pulse_p > 1.0:
 				_pulse_p = -1.0
-	queue_redraw()
+	# v27.12 perf: 重绘 20fps 节流——呼吸/脉动/慢闪均为慢动画，20fps 无感知差异
+	#（update_hp/set_shield/flash_hit 各自即时 queue_redraw，不受此节流影响）
+	_redraw_acc += delta
+	if _redraw_acc >= 0.05:
+		_redraw_acc = 0.0
+		queue_redraw()
 
 func update_hp(cur: float, mx: float) -> void:
 	_hp_cur = cur

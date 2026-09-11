@@ -50,6 +50,9 @@ static func show_damage(world_pos: Vector2, amount: float, unit: Node = null, is
 	if final_type_for_check.is_empty():
 		crit_for_type = is_critical or amount >= 80.0
 		final_type_for_check = "critical" if crit_for_type else "normal"
+	# v27.12: 阵营双色（原 battle_hud.show_damage_popup 管线的 v13.1 语义迁入）——
+	# 敌人掉血=我方输出(out/青)，我方掉血=敌方输出(in/红)。
+	var side_for_check := _resolve_damage_side(unit)
 	var is_priority: bool = crit_for_type or final_type_for_check in ["critical", "pierce", "heal", "shield", "salvage", "counter_break"]
 	if not is_priority and unit != null and is_instance_valid(unit):
 		var uid: int = unit.get_instance_id()
@@ -81,15 +84,26 @@ static func show_damage(world_pos: Vector2, amount: float, unit: Node = null, is
 			"is_critical": is_critical,
 			"dmg_type": final_type_for_check,
 			"pos": world_pos,
+			"side": side_for_check,
 		}
-		_do_show_damage(world_pos, amount, unit, is_critical, final_type_for_check)
+		_do_show_damage(world_pos, amount, unit, is_critical, final_type_for_check, side_for_check)
 		return
 	# 无单位或高优先级类型：直接显示
-	_do_show_damage(world_pos, amount, unit, is_critical, final_type_for_check)
+	_do_show_damage(world_pos, amount, unit, is_critical, final_type_for_check, side_for_check)
+
+
+## v27.12: 按受害方分组反推阵营色（与信号 is_player 语义一致，分组探测兜底）
+static func _resolve_damage_side(unit: Node) -> String:
+	if unit != null and is_instance_valid(unit):
+		if unit.is_in_group("enemy_units"):
+			return "out"
+		elif unit.is_in_group("player_units"):
+			return "in"
+	return ""
 
 
 ## 实际创建伤害数字（原 show_damage 主体）
-static func _do_show_damage(world_pos: Vector2, amount: float, unit: Node, is_critical: bool, final_type: String) -> void:
+static func _do_show_damage(world_pos: Vector2, amount: float, unit: Node, is_critical: bool, final_type: String, side: String = "") -> void:
 	var parent: Node = resolve_fx_parent(unit)
 	if parent == null:
 		return
@@ -99,7 +113,7 @@ static func _do_show_damage(world_pos: Vector2, amount: float, unit: Node, is_cr
 	var type_str: String = final_type
 	if type_str.is_empty():
 		type_str = "critical" if crit else "normal"
-	_DmgNum.create_damage_number(parent, world_pos, dmg, crit, type_str)
+	_DmgNum.create_damage_number(parent, world_pos, dmg, crit, type_str, side)
 
 
 ## flush 一个节流表项：把累积的伤害作为合并数字显示出来
@@ -122,7 +136,8 @@ static func _flush_throttle_entry(uid: int, entry: Dictionary) -> void:
 	if parent == null:
 		return
 	var dmg: int = int(roundf(amount))
-	_DmgNum.create_damage_number(parent, pos, dmg, is_critical, dmg_type)
+	var side: String = String(entry.get("side", ""))
+	_DmgNum.create_damage_number(parent, pos, dmg, is_critical, dmg_type, side)
 
 
 ## 定期清理过期但未被 flush 的节流表项（由 BattleManager 在战斗中周期性调用）

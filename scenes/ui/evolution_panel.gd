@@ -100,6 +100,9 @@ var _mode_btn_card: Button = null
 var _mode_btn_mod: Button = null
 # v8.x 性能：on_overlay_opened 拆帧重入守卫
 var _open_refresh_inflight: bool = false
+# v27.12 性能：面板不可见期间的配方目录重建请求只置脏不重建，
+# 恢复可见时由 _on_visibility_refresh 统一补刷
+var _recipe_list_dirty: bool = false
 
 func _ready() -> void:
 	# D1: 根框架统一 PanelStyles 签名框
@@ -226,6 +229,10 @@ func _ready() -> void:
 	if _embedded_mode:
 		_apply_embedded_layout()
 
+	# v27.12 性能：隐藏期间置脏的配方目录在恢复可见时统一补刷
+	if not visibility_changed.is_connected(_on_visibility_refresh):
+		visibility_changed.connect(_on_visibility_refresh)
+
 ## v8.x 性能：外部打开面板时调用（main.gd._open_overlay 分发，拆帧避尖峰）
 func on_overlay_opened() -> void:
 	if _embedded_mode:
@@ -245,6 +252,12 @@ func _run_open_refresh_pipeline() -> void:
 		return
 	_refresh_all()
 	_open_refresh_inflight = false
+
+
+## v27.12 性能：恢复可见时补刷隐藏期间置脏的配方目录
+func _on_visibility_refresh() -> void:
+	if is_visible_in_tree() and _recipe_list_dirty:
+		_refresh_recipe_list()
 
 ## ───────────────────────── 外部接口（兼容保留） ─────────────────────────
 
@@ -440,6 +453,11 @@ func _refresh_resource_bar() -> void:
 func _refresh_recipe_list() -> void:
 	if card_list_container == null:
 		return
+	# v27.12 性能：面板不可见时只置脏不重建（筛选/选中/制造回调可能穿透到隐藏态），恢复可见时补刷
+	if not is_visible_in_tree():
+		_recipe_list_dirty = true
+		return
+	_recipe_list_dirty = false
 	var mgr: Node = _mgr()
 	if mgr == null:
 		return

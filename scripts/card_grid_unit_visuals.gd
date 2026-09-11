@@ -294,29 +294,36 @@ static func advance_idle_motion(spr: Sprite2D, delta: float) -> void:
 	if spr == null or not spr.has_meta("_idle_params"):
 		return
 	var p: Dictionary = spr.get_meta("_idle_params")
-	var t: float = float(p["t"]) + delta
-	var half: float = float(p["half"])
+	# v27.12 perf: 参数一次读齐 + StringName 键查找（原每 physics 帧 ~8 次 String hash 查找）
+	var t: float = float(p[&"t"]) + delta
+	var half: float = float(p[&"half"])
 	if t >= half * 2.0:
 		t = fmod(t, half * 2.0)  # 有界化，避免长战浮点累积
-	p["t"] = t
+	p[&"t"] = t
+	var base_y: float = float(p[&"base_y"])
+	var amp: float = float(p[&"amp"])
 	# v25: 空中垂直动态合成——_air_dy 为高度补偿（起飞=巡航高度→0；俯冲=0→深度→0），
 	# 由 _air_vert_tw tween_method 驱动；浮动在此基础上叠加，二者不抢 position.y
 	var dy: float = 0.0
-	if spr.has_meta("_air_dy"):
+	var has_air_dy: bool = spr.has_meta("_air_dy")
+	if has_air_dy:
 		dy = float(spr.get_meta("_air_dy"))
-	spr.position.y = float(p["base_y"]) + dy - float(p["amp"]) * 0.5 * (1.0 - cos(PI * t / half))
+	spr.position.y = base_y + dy - amp * 0.5 * (1.0 - cos(PI * t / half))
 	# v23.5: 空中单位投影随浮动呼吸（升起→缩小变淡，贴地→复原）
 	if spr.has_meta("_air_shadow"):
 		var sh: Node2D = spr.get_meta("_air_shadow")
-		if sh != null and is_instance_valid(sh) and sh.has_method("set_bob"):
-			if spr.has_meta("_air_dy") and spr.has_meta("_air_lift"):
-				# v25: 有垂直动态时投影跟随真实高度（爬升→淡影，俯冲→满影）
-				var lift_v: float = maxf(float(spr.get_meta("_air_lift")), 1.0)
-				sh.call("set_bob", clampf(1.0 - dy / lift_v, 0.0, 1.0))
-			else:
-				var amp_v: float = maxf(float(p["amp"]), 0.001)
-				var cur: float = float(p["base_y"]) - spr.position.y
-				sh.call("set_bob", clampf(cur / amp_v, 0.0, 1.0))
+		if sh != null and is_instance_valid(sh):
+			# v27.12 perf: 类型化直调 set_bob（原每帧反射 call + has_method 探测）
+			var shadow := sh as AirUnitShadow
+			if shadow != null:
+				if has_air_dy and spr.has_meta("_air_lift"):
+					# v25: 有垂直动态时投影跟随真实高度（爬升→淡影，俯冲→满影）
+					var lift_v: float = maxf(float(spr.get_meta("_air_lift")), 1.0)
+					shadow.set_bob(clampf(1.0 - dy / lift_v, 0.0, 1.0))
+				else:
+					var amp_v: float = maxf(amp, 0.001)
+					var cur: float = base_y - spr.position.y
+					shadow.set_bob(clampf(cur / amp_v, 0.0, 1.0))
 
 
 ## v23.5: 弹道/命中判定的目标瞄准点——空中单位返回悬空视觉位（sprite 已抬升，
@@ -764,6 +771,10 @@ static func sync_buff_labels(host: Node2D, unit_spr: Sprite2D, unit: Node) -> vo
 	var host_id: int = host.get_instance_id()
 	if _buff_label_sig_cache.has(host_id) and String(_buff_label_sig_cache[host_id]) == sig:
 		return  # 状态未变，跳过
+	# v27.12: 残留 key 自愈——长会话单位反复生灭（id 复用但唯一化递增）缓存只增；超阈值
+	# 整体清空，最坏代价一轮全量重建（~全场单位一次，无感）
+	if _buff_label_sig_cache.size() > 512:
+		_buff_label_sig_cache.clear()
 	_buff_label_sig_cache[host_id] = sig
 	# 容器节点（Node2D，挂在 host 下；子标签是 CardGridFloatingLabel）
 	var container := host.get_node_or_null("BuffLabelsRow")

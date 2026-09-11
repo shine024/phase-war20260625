@@ -320,6 +320,8 @@ static func _unit_type_name_to_int(type_name: String) -> int:
 
 static func _get_rarity_drop_weight(rarity: String, rank: String) -> int:
 	# 根据稀有度和敌人等级返回掉落权重
+	# v27：mythic 0→1（极稀）——gen_21~23 三件 mythic 行为改写改造自此可掉落；
+	# boss ×3 也仅 3 权重，与 legendary(基础2) 同量级，制造箱仍是主通道。
 	var base = 0
 	match rarity:
 		"common": base = 40
@@ -327,6 +329,7 @@ static func _get_rarity_drop_weight(rarity: String, rank: String) -> int:
 		"rare": base = 12
 		"epic": base = 5
 		"legendary": base = 2
+		"mythic": base = 1
 		_: base = 0
 
 	match rank:

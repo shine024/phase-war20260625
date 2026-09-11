@@ -110,6 +110,8 @@ static func apply_on_hit_side_effects(attacker: Node, target: Node, deal_damage:
 	# v21 P2: 侦察×火炮搭档——侦察单位命中 → 目标挂 _pair_art_mark_until（火炮侧必暴+溅射+50%）
 	# unit_status_collector 范式（meta + 秒制到期戳）；搭档未激活/非侦察命中时零成本跳过。
 	PairSynergyEngineRef.try_apply_recon_artillery_mark(attacker, target)
+	# v27 套装8 防空火网（flak_barrage）：对空命中 20% 概率瘫痪 0.4s（与 EMP 满档瘫痪同管道）
+	_try_flak_barrage_stun(attacker, target)
 
 ## v7.x: 主目标减伤补偿（single_target_penalty 的落地）。对目标恢复 heal_amount 血量。
 ## 直接操作 hp 字段并 clamp 到 max_hp，避免触发 take_damage 的反击/信号链路。
@@ -173,6 +175,11 @@ static func on_tick(unit: Node, delta: float) -> void:
 	_tick_radar_lock(unit, delta)
 	# v10 转换型：电子劫持周期扫描（装了 gen_17 的单位每 CD 秒劫持范围内敌方增益光环）
 	_tick_hijack_aura(unit, stats, delta)
+	# ── v27 改造2.0 tick 链（触发式濒死爆发 / mythic 神盾·奇点 / 套装爆反回充）──
+	_check_last_stand(unit, stats, delta)
+	_tick_aegis_pulse(unit, stats, delta)
+	_tick_gravity_pulse(unit, stats, delta)
+	_try_reactive_recharge(unit, stats, delta)
 
 # ─────────────────────────────────────────────
 #  受击处理（v7.x 新增活跃路径）
@@ -309,6 +316,9 @@ static func on_damage_taken(target: Node, attacker: Variant, damage: float) -> v
 	_apply_counter_battery_mark(target, attacker, stats)
 	# v7.x 第二批：爆反装甲（受击反伤攻击者）
 	_apply_reflect_damage(target, attacker, damage, stats)
+	# ── v27 触发式受击链：反击脉冲（arm_22）/ 痛苦传导（gen_18）──
+	_try_counter_pulse(target, attacker, damage)
+	_try_pain_conduct(target, attacker)
 
 # ─────────────────────────────────────────────
 #  死亡处理（v7.x 第二批新增：复活 + 亡语治疗）
@@ -326,9 +336,16 @@ static func on_death(dying_unit: Node, killer: Variant) -> bool:
 	# 1. 濒死复活检查（每场战斗仅1次）
 	if stats.revive_on_death and not stats.has_revived:
 		_revive_unit(dying_unit, stats)
+		# v27 套装9 满档（revive_team_heal）：复活触发时全队回复 8% 最大生命
+		var _eng_r: RefCounted = _get_combo_engine()
+		if _eng_r != null and _eng_r.has_method("get_active_mechanisms") \
+				and (_eng_r.get_active_mechanisms() as Array).has("revive_team_heal"):
+			_try_revive_team_heal(dying_unit)
 		return true  # 复活成功，中止死亡流程
 	# 2. 亡语治疗（未复活才触发）
 	_apply_death_heal_allies(dying_unit, stats)
+	# v27 触发式：殉爆预案（for_18）——阵亡时范围殉爆
+	_try_death_detonate(dying_unit, stats)
 	return false
 
 # ─────────────────────────────────────────────
@@ -386,6 +403,18 @@ static func on_unit_killed(_victim: Node, killer: Node, _is_player_victim: bool)
 	if _eng != null and _eng.has_method("get_active_mechanisms"):
 		if (_eng.get_active_mechanisms() as Array).has("incendiary_death_seed"):
 			ComboEngine.try_incendiary_death_seed(_eng.get_active_mechanisms(), _victim, killer)
+	# ── v27 改造2.0 击杀链（仅玩家方击杀结算；kills 是离散事件，扫描成本可接受）──
+	if not _is_player_victim and killer != null and is_instance_valid(killer) and killer.is_in_group("player_units"):
+		# 触发式：击杀战地敷料（inf_34）——击杀 → 周围友军治疗（不含自己，自身走 kill_repair）
+		var kflags: Dictionary = _get_attacker_special_flags(killer)
+		if kflags.has("kill_pulse_heal"):
+			_apply_kill_pulse(killer, kflags)
+		# mythic：先锋维修矩阵（gen_21）——全队任意击杀时自身回复（不要求本人击杀）
+		_vanguard_repair_scan(killer)
+		# 套装9 野战医疗链（field_triage）——任意友军击杀 → 全场最弱友军回复
+		if _eng != null and _eng.has_method("get_active_mechanisms") \
+				and (_eng.get_active_mechanisms() as Array).has("field_triage"):
+			_try_field_triage(killer)
 
 static func _apply_kill_repair(attacker: Node, stats: UnitStats) -> void:
 	var heal: float = stats.kill_repair * _get_unit_max_hp(attacker)
@@ -399,12 +428,19 @@ static func _apply_splash(attacker: Node, target: Node, damage: float, stats: Un
 	if stats.splash_damage <= 0.0:
 		return
 	# 溅射逻辑：对目标周围其他敌人造成溅射伤害
-	var splash_dmg = damage * clampf(stats.splash_damage, 0.10, 0.80)  # v7.x: 上限 60%→80%，下限 10%
+	# v27 套装10 炮兵饱和：saturation_fire 半径 +30%；saturation_barrage（满档）伤害上限 0.80→1.00
+	var _splash_cap: float = 0.80
+	if _mech_active("saturation_barrage"):
+		_splash_cap = 1.00
+	var splash_dmg = damage * clampf(stats.splash_damage, 0.10, _splash_cap)  # v7.x: 上限 60%→80%，下限 10%
 	# v21 P2: 侦察×火炮搭档——主目标带侦察标记且射手是火炮角色时溅射 ×1.5
 	splash_dmg *= PairSynergyEngineRef.get_artillery_mark_splash_mult(attacker, target)
 	# v7.x: 半径支持改造加成（子母弹/近炸引信），改造加成 x2 使其更显著
 	# v9.3: 基础半径 80→100，覆盖三行布局对角线（row0↔row2 = 90px）
 	var radius: float = 100.0 * (1.0 + maxf(0.0, stats.splash_radius_bonus) * 2.0)
+	# v27 套装10（saturation_fire）：溅射半径 +30%
+	if _mech_active("saturation_fire"):
+		radius *= 1.30
 	# v10 组合规则②：减速+曲射=溅射扩大——目标被减速（_slow_aura_until 未过期）时溅射半径 ×1.3
 	# （被压制目标无法散开，曲射火力覆盖面扩大。协同：减速光环单位 × 曲射单位）
 	if target != null and is_instance_valid(target) and target.has_meta("_slow_aura_until"):
@@ -500,12 +536,22 @@ static func _deal_damage_to_unit(unit: Node, damage: float, source: Node = null)
 ## 直接引用全局标识符 BattleManager 在 --script 模式下会触发编译错误
 ## (autoload 未注册)，故用 SceneTree.root 动态查找。
 ## 运行时行为不变（autoload 仍挂在 root 下）；--script 模式下返回 null 走回退路径。
+## v27.12 perf: 命中结果静态缓存（autoload 全会话存活，缓存安全；此前每次调用都是
+## root 字符串全树查找，被溅射/连锁/光环 tick/_mech_active 按命中按 tick 反复触发）。
+## 未命中（--script 模式 / 首帧未就绪）不缓存，保持 null 回退语义。
+static var _bm_cache: Node = null
+
 static func _get_battle_manager() -> Node:
+	if _bm_cache != null and is_instance_valid(_bm_cache):
+		return _bm_cache
 	var ml = Engine.get_main_loop()
 	if ml != null and ml is SceneTree:
 		var tree := ml as SceneTree
 		if tree.root != null:
-			return tree.root.get_node_or_null("BattleManager")
+			var bm: Node = tree.root.get_node_or_null("BattleManager")
+			if bm != null:
+				_bm_cache = bm
+			return bm
 	return null
 
 ## v9.1: 获取组合技引擎（可能为 null，--script 模式或非战斗时）
@@ -809,6 +855,9 @@ static func _apply_siege_bonus(attacker: Node, target: Node, stats: UnitStats) -
 	if current_hp <= 0.0:
 		return
 	var siege_dmg: float = current_hp * stats.siege_bonus_pct
+	# v27 套装11 工兵防线（demo_charge）：工兵爆破效果 +50%
+	if siege_dmg > 0.0 and _mech_active("demo_charge"):
+		siege_dmg *= 1.5
 	if siege_dmg > 0.0:
 		_deal_damage_to_unit(target, siege_dmg, attacker)
 
@@ -889,6 +938,9 @@ static func _apply_reflect_damage(target: Node, attacker: Variant, damage: float
 		stats.reflect_charges -= 1
 	# 反伤给攻击者
 	var reflect_dmg: float = damage * stats.reflect_damage_pct
+	# v27 套装7 重装方阵（phalanx_reflect）：爆反反伤 +50%
+	if reflect_dmg > 0.0 and _mech_active("phalanx_reflect"):
+		reflect_dmg *= 1.5
 	if reflect_dmg > 0.0 and attacker != null and is_instance_valid(attacker) and attacker is Node:
 		if (attacker as Node).has_method("take_damage"):
 			(attacker as Node).take_damage(reflect_dmg, target)
@@ -905,6 +957,11 @@ static func try_intercept(target: Node) -> bool:
 		return false
 	if stats.intercept_chance <= 0.0:
 		return false
+	# v27 套装8 满档（intercept_barrage）：拦截系统每场次数 +2（一次性注入，meta 防重复）
+	if not stats.has_meta("_intercept_barrage_applied") and _mech_active("intercept_barrage"):
+		if stats.intercept_charges > 0:
+			stats.intercept_charges += 2
+		stats.set_meta("_intercept_barrage_applied", true)
 	# 检查次数（-1=无限）
 	if stats.intercept_charges == 0:
 		return false  # 已耗尽
@@ -1054,7 +1111,14 @@ static func _apply_fort_shelter_aura(unit: Node, stats: UnitStats, delta: float)
 		unit.set_meta("_fort_shelter_acc", acc)
 		return
 	unit.set_meta("_fort_shelter_acc", 0.0)
-	var allies: Array = _find_nearby_allies(unit, stats.fort_shelter_radius)
+	# v27 套装12 堡垒固守：bulwark_shelter 光环效果 +50%；fortress_bulwark（满档）光环范围 +60%
+	var shelter_radius: float = stats.fort_shelter_radius
+	var shelter_bonus: float = stats.fort_shelter_aura
+	if _mech_active("fortress_bulwark"):
+		shelter_radius *= 1.6
+	if _mech_active("bulwark_shelter"):
+		shelter_bonus *= 1.5
+	var allies: Array = _find_nearby_allies(unit, shelter_radius)
 	for ally in allies:
 		if ally == null or not is_instance_valid(ally):
 			continue
@@ -1064,7 +1128,7 @@ static func _apply_fort_shelter_aura(unit: Node, stats: UnitStats, delta: float)
 			continue
 		# 挂堡垒庇护 meta（持续 1 秒，每 AURA_TICK_INTERVAL 秒刷新）
 		ally.set_meta("_fort_shelter_until", Time.get_ticks_msec() / 1000.0 + 1.0)
-		ally.set_meta("_fort_shelter_bonus", stats.fort_shelter_aura)
+		ally.set_meta("_fort_shelter_bonus", shelter_bonus)
 
 ## v9.x: 光环（slow/command/fort_shelter）节流累加器间隔。
 ## 此前 on_tick 每帧刷新光环 meta（每帧全组扫描），改造后每 0.3s 刷新一次。
@@ -1090,6 +1154,9 @@ static func _apply_minefield_damage(unit: Node, stats: UnitStats, delta: float) 
 	# 到达节流阈值，重置计时并触发伤害
 	unit.set_meta("_minefield_acc", 0.0)
 	var dmg_per_tick: float = stats.minefield_damage * MINEFIELD_TICK_INTERVAL  # 每秒 = minefield_damage
+	# v27 套装11 满档（minefield_rearm）：雷场伤害 ×2
+	if dmg_per_tick > 0.0 and _mech_active("minefield_rearm"):
+		dmg_per_tick *= 2.0
 	# v9.3: 复用 splash 半径口径（100 × (1 + bonus)），与 _apply_splash 保持一致
 	var radius: float = 100.0 * (1.0 + maxf(0.0, stats.splash_radius_bonus) * 2.0)
 	var enemies: Array = _find_nearby_enemies(unit, radius)
@@ -1415,6 +1482,12 @@ const DOT_TICK_INTERVAL: float = 0.25
 static func _tick_dot_damage(unit: Node, delta: float) -> void:
 	if unit == null or not is_instance_valid(unit):
 		return
+	# v27.12 perf: 廉价门禁前置——无任何 DOT 的单位（绝大多数）不再每帧付
+	# get_ticks_msec + _dot_acc meta 累加器读写三连；顺手清掉 DOT 过期后的残留累加器
+	if not unit.has_meta("_chem_until") and not unit.has_meta("_burn_until") and not unit.has_meta("_nano_until"):
+		if unit.has_meta("_dot_acc"):
+			unit.remove_meta("_dot_acc")
+		return
 	var now: float = Time.get_ticks_msec() / 1000.0
 	var total_dmg: float = 0.0
 	# v9.x: 分别追踪每种 DOT 伤害，结算后显示彩色数字（玩家一眼看出被哪种伤害）
@@ -1559,3 +1632,329 @@ static func _tick_hijack_aura(unit: Node, stats: UnitStats, delta: float) -> voi
 			CombatFeedback.show_damage((enemy as Node2D).global_position, 0.0 + 1.0, enemy, false, "counter_break")
 		if hijacked_any and unit is Node2D:
 			CombatFeedback.show_damage((unit as Node2D).global_position, 1.0, unit, false, "counter_break")
+
+# ═══════════════════════════════════════════════════════════════
+#  v27 改造2.0：触发式改造 + 新六套机制执行（效果键经 _special → mod_special_flags
+#  meta 读取；套装 flag 经 combo_engine 全队机制表读取。所有函数零成本早退）
+# ═══════════════════════════════════════════════════════════════
+
+## v27: 查询全队套装机制 flag 是否激活（combo_engine 活跃表；无引擎/未激活返回 false）
+## v27.12 perf: 走引擎零拷贝查询 is_mechanism_active——原 get_active_mechanisms() 每次
+## duplicate 整个数组，被每命中/每受击/每 0.25s tick 的调用点反复触发堆分配。
+static func _mech_active(mech: String) -> bool:
+	var eng: RefCounted = _get_combo_engine()
+	if eng == null:
+		return false
+	if eng.has_method("is_mechanism_active"):
+		return eng.is_mechanism_active(mech)
+	if eng.has_method("get_active_mechanisms"):
+		return (eng.get_active_mechanisms() as Array).has(mech)
+	return false
+
+## v27 套装8（flak_barrage）：对空命中 20% 概率瘫痪 0.4s（复用 _hit_stun_left 硬直管道）
+static func _try_flak_barrage_stun(_attacker: Node, target: Node) -> void:
+	if target == null or not is_instance_valid(target):
+		return
+	var t_stats := _get_target_stats(target)
+	if t_stats == null or t_stats.combat_kind != GC.CombatKind.AIR:
+		return
+	if not _mech_active("flak_barrage"):
+		return
+	if randf() > 0.20:
+		return
+	if "_hit_stun_left" in target:
+		target._hit_stun_left = maxf(float(target._hit_stun_left), 0.4)
+	if target is Node2D:
+		var parent := _resolve_fx_parent_node(target)
+		if parent != null:
+			VfxImpactFactory.spawn_shockwave(parent, (target as Node2D).global_position, 26.0, Color(0.55, 0.85, 1.0, 0.8))
+
+## v27 触发式（inf_34 击杀战地敷料）：击杀 → 周围友军按击杀者 max_hp 比例治疗
+static func _apply_kill_pulse(killer: Node, kflags: Dictionary) -> void:
+	var pct: float = float(kflags.get("kill_pulse_heal", 0.0))
+	var radius: float = float(kflags.get("kill_pulse_radius", 170.0))
+	if pct <= 0.0 or radius <= 0.0:
+		return
+	var heal: float = _get_unit_max_hp(killer) * pct
+	if heal <= 0.0:
+		return
+	var allies: Array = _find_nearby_allies(killer, radius)
+	for ally in allies:
+		if ally == null or not is_instance_valid(ally):
+			continue
+		_heal_unit(ally, heal)
+	if killer is Node2D and not allies.is_empty():
+		var parent := _resolve_fx_parent_node(killer)
+		if parent != null:
+			VfxImpactFactory.spawn_shockwave(parent, (killer as Node2D).global_position, radius, Color(0.4, 0.9, 0.5, 0.7))
+
+## v27 mythic（gen_21 先锋维修矩阵）：全队任意击杀 → 持有者自身回复（不要求本人击杀）
+static func _vanguard_repair_scan(killer: Node) -> void:
+	if killer == null or not is_instance_valid(killer):
+		return
+	var tree: SceneTree = killer.get_tree()
+	if tree == null:
+		return
+	var _bm: Node = _get_battle_manager()  # v27.12 perf: 走静态缓存，免 root 字符串全树查找
+	var units: Array = []
+	if _bm != null and _bm.has_method("get_cached_nodes_in_group"):
+		units = _bm.get_cached_nodes_in_group("player_units")
+	else:
+		units = tree.get_nodes_in_group("player_units")
+	for u in units:
+		if u == null or not is_instance_valid(u):
+			continue
+		var flags: Dictionary = _get_attacker_special_flags(u)
+		if not flags.has("vanguard_repair"):
+			continue
+		var heal: float = _get_unit_max_hp(u) * float(flags.get("vanguard_repair", 0.0))
+		if heal > 0.0:
+			_heal_unit(u, heal)
+
+## v27 套装9（field_triage）：任意友军击杀 → 全场生命比例最低的友军回复 2% max_hp
+static func _try_field_triage(_killer: Node) -> void:
+	var tree: SceneTree = Engine.get_main_loop() as SceneTree
+	if tree == null or tree.root == null:
+		return
+	var _bm: Node = _get_battle_manager()  # v27.12 perf: 走静态缓存，免 root 字符串全树查找
+	var units: Array = []
+	if _bm != null and _bm.has_method("get_cached_nodes_in_group"):
+		units = _bm.get_cached_nodes_in_group("player_units")
+	else:
+		units = tree.get_nodes_in_group("player_units")
+	var weakest: Node = null
+	var weakest_ratio: float = 2.0
+	for u in units:
+		if u == null or not is_instance_valid(u):
+			continue
+		var r: float = _get_unit_hp_ratio(u)
+		if r < weakest_ratio:
+			weakest_ratio = r
+			weakest = u
+	if weakest != null and weakest_ratio < 1.0:
+		_heal_unit(weakest, _get_unit_max_hp(weakest) * 0.02)
+
+## v27 套装9 满档（revive_team_heal）：复活触发时全队各回复 8% 自身 max_hp
+static func _try_revive_team_heal(dying_unit: Node) -> void:
+	var tree: SceneTree = dying_unit.get_tree() if dying_unit != null else null
+	if tree == null:
+		return
+	var _bm: Node = _get_battle_manager()  # v27.12 perf: 走静态缓存，免 root 字符串全树查找
+	var units: Array = []
+	if _bm != null and _bm.has_method("get_cached_nodes_in_group"):
+		units = _bm.get_cached_nodes_in_group("player_units")
+	else:
+		units = tree.get_nodes_in_group("player_units")
+	for u in units:
+		if u == null or not is_instance_valid(u):
+			continue
+		_heal_unit(u, _get_unit_max_hp(u) * 0.08)
+		if u is Node2D:
+			var parent := _resolve_fx_parent_node(u)
+			if parent != null:
+				VfxImpactFactory.spawn_shockwave(parent, (u as Node2D).global_position, 30.0, Color(0.3, 1.0, 0.4, 0.6))
+
+## v27 触发式（arm_22 受击反击脉冲）：受击 → CD 外对周围敌方造成本次伤害比例的范围伤害
+static func _try_counter_pulse(target: Node, _attacker: Variant, damage: float) -> void:
+	if damage <= 0.0:
+		return
+	var flags: Dictionary = _get_attacker_special_flags(target)
+	if not flags.has("counter_pulse_damage"):
+		return
+	var now_sec: float = Time.get_ticks_msec() / 1000.0
+	var cd: float = float(flags.get("counter_pulse_cd", 4.0))
+	if target.has_meta("_counter_pulse_until") and now_sec < float(target.get_meta("_counter_pulse_until", 0.0)):
+		return
+	target.set_meta("_counter_pulse_until", now_sec + maxf(1.0, cd))
+	var pulse_dmg: float = damage * float(flags.get("counter_pulse_damage", 0.0))
+	var radius: float = float(flags.get("counter_pulse_radius", 120.0))
+	if pulse_dmg <= 0.0:
+		return
+	var enemies: Array = _find_nearby_enemies(target, radius)
+	for e in enemies:
+		if e == null or not is_instance_valid(e):
+			continue
+		_deal_damage_to_unit(e, pulse_dmg, target)
+	if target is Node2D and not enemies.is_empty():
+		var parent := _resolve_fx_parent_node(target)
+		if parent != null:
+			VfxImpactFactory.spawn_shockwave(parent, (target as Node2D).global_position, radius, Color(1.0, 0.55, 0.25, 0.85))
+
+## v27 触发式（gen_18 痛苦传导）：受击 → 攻击者减速（复用 _slow_aura meta，消费端同现有减速链）
+static func _try_pain_conduct(target: Node, attacker: Variant) -> void:
+	if attacker == null or not is_instance_valid(attacker) or not (attacker is Node):
+		return
+	var flags: Dictionary = _get_attacker_special_flags(target)
+	if not flags.has("pain_conduct_slow"):
+		return
+	var slow: float = clampf(float(flags.get("pain_conduct_slow", 0.0)), 0.05, 0.5)
+	var duration: float = maxf(0.5, float(flags.get("pain_conduct_duration", 2.0)))
+	var a: Node = attacker as Node
+	a.set_meta("_slow_aura_until", Time.get_ticks_msec() / 1000.0 + duration)
+	a.set_meta("_slow_aura_mult", 1.0 - slow)
+
+## v27 触发式（art_20 濒死爆发）：生命首次跌破阈值 → 自疗 + 范围爆发（每战 1 次）
+static func _check_last_stand(unit: Node, stats: UnitStats, _delta: float) -> void:
+	if unit.has_meta("_last_stand_done"):
+		return
+	# v27.12 perf: 零成本门禁前置（同 _tick_radar_lock 写法）——无 special flags 的单位
+	# 不再每帧白付 _get_attacker_special_flags 的字典分配
+	if stats != null and not stats.has_meta("mod_special_flags") and not unit.has_meta("mod_special_flags"):
+		return
+	var flags: Dictionary = _get_attacker_special_flags(unit)
+	if not flags.has("last_stand_burst"):
+		return
+	var threshold: float = float(flags.get("last_stand_threshold", 0.30))
+	if _get_unit_hp_ratio(unit) > threshold:
+		return
+	unit.set_meta("_last_stand_done", true)
+	var own_max: float = _get_unit_max_hp(unit)
+	if own_max <= 0.0:
+		own_max = float(stats.max_hp)
+	_heal_unit(unit, own_max * float(flags.get("last_stand_heal", 0.20)))
+	var burst: float = own_max * float(flags.get("last_stand_burst", 0.25))
+	var radius: float = float(flags.get("last_stand_radius", 150.0))
+	var enemies: Array = _find_nearby_enemies(unit, radius)
+	for e in enemies:
+		if e == null or not is_instance_valid(e):
+			continue
+		_deal_damage_to_unit(e, burst, unit)
+	if unit is Node2D:
+		var parent := _resolve_fx_parent_node(unit)
+		if parent != null:
+			VfxImpactFactory.spawn_shockwave(parent, (unit as Node2D).global_position, radius, Color(1.0, 0.45, 0.2, 0.9))
+
+## v27 mythic（gen_22 神盾协议）：每 CD 秒为半径内生命比例最低的友军补盾
+static func _tick_aegis_pulse(unit: Node, _stats: UnitStats, delta: float) -> void:
+	if unit == null or not is_instance_valid(unit):
+		return
+	# v27.12 perf: 零成本门禁前置（同 _tick_radar_lock 写法）——未装 special flag 的单位
+	# 不再每帧白付 _get_attacker_special_flags 的空字典分配
+	var stats = _get_attacker_stats(unit)
+	if stats == null:
+		return
+	if not stats.has_meta("mod_special_flags") and not unit.has_meta("mod_special_flags"):
+		return
+	var flags: Dictionary = _get_attacker_special_flags(unit)
+	if not flags.has("aegis_pulse_shield"):
+		return
+	var acc: float = float(unit.get_meta("_aegis_acc", 0.0)) + delta
+	var cd: float = maxf(2.0, float(flags.get("aegis_pulse_cd", 8.0)))
+	if acc < cd:
+		unit.set_meta("_aegis_acc", acc)
+		return
+	unit.set_meta("_aegis_acc", 0.0)
+	var allies: Array = _find_nearby_allies(unit, 200.0)
+	var weakest: Node = null
+	var weakest_ratio: float = 2.0
+	for ally in allies:
+		if ally == null or not is_instance_valid(ally):
+			continue
+		var r: float = _get_unit_hp_ratio(ally)
+		if r < weakest_ratio:
+			weakest_ratio = r
+			weakest = ally
+	if weakest != null:
+		_apply_shield(weakest, _get_unit_max_hp(weakest) * float(flags.get("aegis_pulse_shield", 0.06)))
+		if weakest is Node2D:
+			var parent := _resolve_fx_parent_node(weakest)
+			if parent != null:
+				VfxImpactFactory.spawn_shockwave(parent, (weakest as Node2D).global_position, 28.0, Color(0.4, 0.8, 1.0, 0.7))
+
+## v27 mythic（gen_23 奇点核心）：每 CD 秒引力脉冲——范围真伤 + 减速
+static func _tick_gravity_pulse(unit: Node, _stats: UnitStats, delta: float) -> void:
+	if unit == null or not is_instance_valid(unit):
+		return
+	# v27.12 perf: 零成本门禁前置（同 _tick_radar_lock 写法）
+	var stats = _get_attacker_stats(unit)
+	if stats == null:
+		return
+	if not stats.has_meta("mod_special_flags") and not unit.has_meta("mod_special_flags"):
+		return
+	var flags: Dictionary = _get_attacker_special_flags(unit)
+	if not flags.has("gravity_pulse_damage"):
+		return
+	var acc: float = float(unit.get_meta("_gravity_acc", 0.0)) + delta
+	var cd: float = maxf(2.0, float(flags.get("gravity_pulse_cd", 6.0)))
+	if acc < cd:
+		unit.set_meta("_gravity_acc", acc)
+		return
+	unit.set_meta("_gravity_acc", 0.0)
+	var own_max: float = _get_unit_max_hp(unit)
+	var dmg: float = own_max * float(flags.get("gravity_pulse_damage", 0.03))
+	var radius: float = maxf(80.0, float(flags.get("gravity_pulse_radius", 180.0)))
+	var enemies: Array = _find_nearby_enemies(unit, radius)
+	var now_sec: float = Time.get_ticks_msec() / 1000.0
+	for e in enemies:
+		if e == null or not is_instance_valid(e):
+			continue
+		_deal_damage_to_unit(e, dmg, unit)
+		e.set_meta("_slow_aura_until", now_sec + 1.5)
+		e.set_meta("_slow_aura_mult", 0.8)
+	if unit is Node2D and not enemies.is_empty():
+		var parent := _resolve_fx_parent_node(unit)
+		if parent != null:
+			VfxImpactFactory.spawn_shockwave(parent, (unit as Node2D).global_position, radius, Color(0.7, 0.4, 1.0, 0.8))
+
+## v27 套装7 满档（reactive_recharge）：爆反层数每 5 秒回充 1 层（至上限；无限档无意义不处理）
+static func _try_reactive_recharge(unit: Node, stats: UnitStats, delta: float) -> void:
+	if stats.reflect_damage_pct <= 0.0 or stats.reflect_charges < 0:
+		return
+	if not stats.has_meta("_reflect_max"):
+		stats.set_meta("_reflect_max", stats.reflect_charges)
+	var max_charges: int = int(stats.get_meta("_reflect_max", 0))
+	if max_charges <= 0:
+		return
+	var acc: float = float(unit.get_meta("_reflect_recharge_acc", 0.0)) + delta
+	if acc < 5.0:
+		unit.set_meta("_reflect_recharge_acc", acc)
+		return
+	unit.set_meta("_reflect_recharge_acc", 0.0)
+	if stats.reflect_charges < max_charges and _mech_active("reactive_recharge"):
+		stats.reflect_charges = mini(stats.reflect_charges + 1, max_charges)
+
+## v27 触发式（for_18 殉爆预案）：阵亡 → 范围殉爆（对自身 max_hp 比例伤害）
+static func _try_death_detonate(dying_unit: Node, stats: UnitStats) -> void:
+	var flags: Dictionary = _get_attacker_special_flags(dying_unit)
+	if not flags.has("death_detonate_damage"):
+		return
+	var own_max: float = _get_unit_max_hp(dying_unit)
+	if own_max <= 0.0:
+		own_max = float(stats.max_hp)
+	var dmg: float = own_max * float(flags.get("death_detonate_damage", 0.35))
+	var radius: float = maxf(80.0, float(flags.get("death_detonate_radius", 160.0)))
+	var enemies: Array = _find_nearby_enemies(dying_unit, radius)
+	for e in enemies:
+		if e == null or not is_instance_valid(e):
+			continue
+		_deal_damage_to_unit(e, dmg, dying_unit)
+	if dying_unit is Node2D and not enemies.is_empty():
+		var parent := _resolve_fx_parent_node(dying_unit)
+		if parent != null:
+			VfxImpactFactory.spawn_shockwave(parent, (dying_unit as Node2D).global_position, radius, Color(1.0, 0.6, 0.2, 0.95))
+
+## v27 触发式（gen_19 波次动员）：新敌方波次 → 全队护盾（battle_manager 波次信号转发调用）。
+## 全队任一成员持有该改造即生效；护盾量按各单元自身 max_hp 比例。
+static func on_wave_spawned(_wave_index: int) -> void:
+	var tree: SceneTree = Engine.get_main_loop() as SceneTree
+	if tree == null or tree.root == null:
+		return
+	var _bm: Node = _get_battle_manager()  # v27.12 perf: 走静态缓存，免 root 字符串全树查找
+	var units: Array = []
+	if _bm != null and _bm.has_method("get_cached_nodes_in_group"):
+		units = _bm.get_cached_nodes_in_group("player_units")
+	else:
+		units = tree.get_nodes_in_group("player_units")
+	var surge_pct: float = 0.0
+	for u in units:
+		if u == null or not is_instance_valid(u):
+			continue
+		var flags: Dictionary = _get_attacker_special_flags(u)
+		if flags.has("wave_surge_shield"):
+			surge_pct = maxf(surge_pct, float(flags.get("wave_surge_shield", 0.0)))
+	if surge_pct <= 0.0:
+		return
+	for u in units:
+		if u == null or not is_instance_valid(u):
+			continue
+		_apply_shield(u, _get_unit_max_hp(u) * surge_pct)

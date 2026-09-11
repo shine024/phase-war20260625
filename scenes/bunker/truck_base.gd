@@ -150,7 +150,9 @@ const PANEL_LABELS := {
 	"intelligence": "情报舱 EMBEDDED_PANELS['intelligence']",
 }
 
-## 与 bunker_main.EMBEDDED_PANELS 同源（只取本场景热区会用到的键；路径改动两处同步）
+## 与 bunker_main.EMBEDDED_PANELS 同源（只取本场景会用的键；路径改动两处同步）
+## v26.33：+help——战斗屏帮助入口已随 v25.3 收敛删除、旧基地停用后帮助面板全项目
+## 零入口，移动基地顶栏接管（ui-review 便捷性：帮助必须在玩家找得到的地方）
 const PANEL_SCENES := {
 	"store": "res://scenes/ui/store_panel.tscn",
 	"modification": "res://scenes/ui/modification_panel.tscn",
@@ -162,6 +164,7 @@ const PANEL_SCENES := {
 	"collection": "res://scenes/ui/collection_panel.tscn",
 	"faction": "res://scenes/ui/faction_panel.tscn",
 	"leaderboard": "res://scenes/ui/leaderboard_panel.tscn",
+	"help": "res://scenes/ui/help_panel.tscn",
 }
 
 const RES_LABELS := [
@@ -201,6 +204,16 @@ var _ext_bg: TextureRect
 var _ext_truck: TextureRect
 var _ext_caption: Label
 var _caption_base := ""   # v26.19：caption 静态段（行军状态段动态拼接）
+
+# ── v27.13 开场链移植（自废弃 bunker_main.gd 879-1141 平移，深航计划版醒来演出）──
+## 漫画开场（comic_intro.tscn）收尾携 META_WAKEUP 切入本场景：
+## 黑幕梦呓 → 睁眼见雪原（回眨）→ 三拍闪回 → 画外音 → 钻进基地车 → 相位仪教学三拍。
+## 无标记（续档/直进）= 零感知直进基地。
+const META_WAKEUP := "bunker_intro_wakeup_pending"
+const SNOW_BG_PATH := "res://assets/intro/wakeup_snowfield.png"   # 雪原+基地车+远处黑门（缺图退化）
+var _wakeup_active := false
+var _wakeup_root: Control = null
+var _wakeup_tween: Tween = null
 
 ## v26.19 基地管理器入口（行军状态真身；bunker 是懒加载管理器，先 ensure 再取）
 func _bunker_mgr() -> Node:
@@ -261,6 +274,8 @@ func _ready() -> void:
 	var _tpm := get_node_or_null("/root/TutorialProgressionManager")
 	if _tpm != null and _tpm.has_method("notify_surface_opened"):
 		_tpm.notify_surface_opened("truck_base")
+	# v27.13：漫画开场收尾携 wakeup 标记切入 → 播醒来演出（deferred 等全 UI 落位）
+	call_deferred("_maybe_play_wakeup")
 
 # ── 顶栏 ──
 func _build_topbar() -> void:
@@ -342,8 +357,10 @@ func _build_topbar() -> void:
 	sortie.focus_mode = Control.FOCUS_NONE
 	sortie.add_theme_font_size_override("font_size", 14)
 	sortie.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	# v26.30 出击=进战场：顶栏出击直达战斗（战前简报在驾驶室工位，选关在战区地图）
+	sortie.tooltip_text = "直接出击当前停靠关；行驶中会提示。战前简报：驾驶室工位"
 	_style_btn(sortie, COLOR_CYAN)
-	sortie.pressed.connect(_open_sortie)
+	sortie.pressed.connect(_launch_battle)
 	_topbar.add_child(sortie)
 	_sortie_btn = sortie
 
@@ -354,6 +371,18 @@ func _build_topbar() -> void:
 	_style_btn(back, Color(0.6, 0.56, 0.48))
 	back.pressed.connect(_on_back_to_title)
 	_topbar.add_child(back)
+
+	# v26.33：帮助入口——移动基地是帮助面板的唯一活入口（战斗屏 v25.3 已收敛删除）
+	var help_btn := Button.new()
+	help_btn.text = "❓ 车长手册"
+	help_btn.focus_mode = Control.FOCUS_NONE
+	help_btn.add_theme_font_size_override("font_size", 13)
+	help_btn.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	help_btn.tooltip_text = "系统说明：战斗 / 卡牌成长 / 相位仪 / 势力 / 移动基地 / 地图行军"
+	_style_btn(help_btn, Color(0.6, 0.56, 0.48))
+	help_btn.pressed.connect(func() -> void: _open_panel("help"))
+	_topbar.add_child(help_btn)
+	_topbar.move_child(help_btn, back.get_index())
 
 # ── 图区：剖面底图 + 热区层 + 到达字幕 ──
 func _build_image_area() -> void:
@@ -411,8 +440,11 @@ func _build_image_area() -> void:
 ## ⚠️ deferred：_ready 期间 tree.root.add_child 会因"Parent node is busy"失败
 ##（bunker_main._refresh_reward_bubbles 同款踩坑），key 会被提前标记 seen。
 func _maybe_show_truck_intro() -> void:
+	# v27.13：醒来演出期间不弹（否则盖在眼睑动画上）；演出收场由 _finish_wakeup 补弹
+	if _wakeup_active or Engine.has_meta(META_WAKEUP):
+		return
 	FeatureUnlockPopup.show_once("truck_base_intro", "移动基地 · 指南",
-		"外景看驻地，剖面干活——车厢里每个发光框都挂着常显工位牌，一眼直达。行军规则：顶栏「战区地图」点任意节点出车（耗燃料×地形，回程半价），出发后实时行军（1 天≈1 分钟，离线也计时）；燃料自动回复（离线也涨），睡觉快充、或在发电机工位用能量块 1:1 充能；停哪才能打哪，行驶中无法出击。")
+		"外景看驻地，剖面干活——车厢里每个发光框都挂着常显工位牌，一眼直达。行军规则：顶栏「战区地图」点任意节点出车（耗燃料×地形，回程半价），出发后实时行军（1 天≈12 秒，离线也计时）；燃料自动回复（离线也涨），睡觉快充、或在发电机工位用能量块 1:1 充能；停哪才能打哪，行驶中无法出击。")
 
 # ── 时代切换 ──
 ## 贴图双通道：优先走导入管线 load()；未导入（headless 首跑/新机克隆）时
@@ -438,7 +470,12 @@ func set_era(i: int, animate: bool) -> void:
 		_textures[id] = _load_era_texture(String(e["tex"]))
 	_tex_rect.texture = _textures[id]
 	if _int_bg != null:
-		_int_bg.texture = _load_era_texture(_ext_bg_path(int(e["level"])))
+		# v27.12: 内背景先查 _textures 缓存（key=路径），未命中才加载并存入
+		# （原每次切时代直调 _load_era_texture 重读，与上方主图同款缓存写法）
+		var int_bg_path := _ext_bg_path(int(e["level"]))
+		if not _textures.has(int_bg_path):
+			_textures[int_bg_path] = _load_era_texture(int_bg_path)
+		_int_bg.texture = _textures[int_bg_path]
 	for b_i in _era_buttons.size():
 		_era_buttons[b_i].set_pressed_no_signal(b_i == _era_idx)
 	_caption_base = "驻防地域 · %s（%s）· 战线第 %d 关" % [String(e["zone"]), String(e["label"]), _get_display_level()]
@@ -1033,9 +1070,16 @@ func _launch_battle() -> void:
 	_play_sfx("button")
 	# v26.19：出击=停靠关（停哪打哪；简报路径已同步，此处防御兜底）
 	var bm := _bunker_mgr()
+	# v26.30：行驶中拦截——出击=进战场或明确提示，不落地歧义分支
+	if bm != null and bm.is_traveling():
+		_play_sfx("error", 0.7)
+		_open_card("行驶中", "—", "卡车正在前往第 %d 关（剩 %d 天，实时行军、离线也计时）。\n到站停靠后才能出击。" % [
+			int(bm.get_travel_dest()), int(bm.get_travel_days_left())])
+		return
 	if bm != null and GameManager != null and not bm.is_traveling():
 		GameManager.set_current_level(int(bm.get_parked_level()))
 	# 与 bunker_main._on_go_to_battle 同链：main 场景读 launch_from_bunker 直入当前关卡战斗
+	# （v26.30：main 侧落地即开打——_auto_battle_from_truck_sortie）
 	Engine.set_meta("launch_from_bunker", true)
 	# 批次③ Task 1：出征过场拍点——main 侧 run_start_battle_sequence 头部消费（一次性）
 	Engine.set_meta(SortieInterstitial.META_PENDING, true)
@@ -1316,6 +1360,16 @@ func _open_panel(panel_id: String) -> void:
 		p.call("on_overlay_opened")
 	elif p.has_method("refresh"):
 		p.call("refresh")
+	# v26.33：自隐藏面板（help_panel 在 _ready 里 visible=false + modulate 归零，
+	# 嵌入包装链只切 wrapper 可见性）——首次打开补调 show_panel 才真显示
+	#（旧基地 help 嵌入即栽在此：wrapper 亮了面板本体还黑着）
+	if p.has_method("show_panel") and not p.visible:
+		# 只补调零参签名（growth_panel.show_panel(tab) 需 1 参，盲调运行时报错）
+		for _m in p.get_method_list():
+			if _m["name"] == "show_panel":
+				if (_m.get("args", []) as Array).is_empty():
+					p.call("show_panel")
+				break
 
 func _ensure_panel_wrapper(panel_id: String) -> Control:
 	if _embed_wrappers.has(panel_id):
@@ -1808,9 +1862,17 @@ func _set_view(mode: String, animate: bool) -> void:
 ## 外景刷新：背景=当前进度那关的战场地图（与战斗同源），卡车精灵=时代匹配
 func _refresh_exterior(animate: bool) -> void:
 	var level := _get_display_level()
-	_ext_bg.texture = _load_era_texture(_ext_bg_path(level))
+	# v27.12: 两张贴图先查 _textures 缓存（key=路径），未命中才加载并存入
+	# （原每次切外景直调 _load_era_texture 重读；Image 兜底路径还会重建 ImageTexture）
+	var ext_bg_path := _ext_bg_path(level)
+	if not _textures.has(ext_bg_path):
+		_textures[ext_bg_path] = _load_era_texture(ext_bg_path)
+	_ext_bg.texture = _textures[ext_bg_path]
 	var era := clampi((level - 1) / 20 + 1, 1, 5)
-	_ext_truck.texture = _load_era_texture(TRUCK_SPRITE_FMT % era)
+	var truck_path: String = TRUCK_SPRITE_FMT % era
+	if not _textures.has(truck_path):
+		_textures[truck_path] = _load_era_texture(truck_path)
+	_ext_truck.texture = _textures[truck_path]
 	var lname := _display_level_name(level)
 	_ext_caption.text = "驻地 · 第 %d 关「%s」 · %s" % [level, lname if lname != "" else String(ERAS[_era_idx]["zone"]), String(ERAS[era - 1]["label"])]
 	if animate:
@@ -1838,3 +1900,264 @@ func _ext_bg_path(level: int) -> String:
 
 func _display_level_name(level: int) -> String:
 	return String(LevelInformation.get_shared().get_level_display_name(level))
+
+# ═══════════ v27.13 开场链：醒来演出（自 bunker_main.gd 879-1141 平移适配）═══════════
+
+func _maybe_play_wakeup() -> void:
+	var pending := Engine.has_meta(META_WAKEUP)
+	if pending:
+		Engine.remove_meta(META_WAKEUP)
+	if pending:
+		var bm := _bunker_mgr()
+		if bm != null and bm.has_method("mark_comic_seen"):
+			bm.mark_comic_seen()   # 开场已完整播放（或跳过），落档防重播
+	if not pending:
+		_maybe_show_truck_intro()
+		return
+	_play_wakeup_cinematic()
+
+func _play_wakeup_cinematic() -> void:
+	_wakeup_active = true
+	var root := Control.new()
+	root.name = "WakeupCinematic"
+	root.size = Vector2(1280, 720)
+	root.mouse_filter = Control.MOUSE_FILTER_STOP   # 演出期间挡住工位点击
+	root.gui_input.connect(func(ev: InputEvent):
+		if ev is InputEventMouseButton and ev.is_pressed():
+			_finish_wakeup())
+	add_child(root)
+	_wakeup_root = root
+
+	# 雪原底图：压在眼睑之下，睁眼先见雪原+基地车+远处黑门；缺图时睁眼直接见基地
+	var snow_bg: TextureRect = null
+	if ResourceLoader.exists(SNOW_BG_PATH):
+		snow_bg = TextureRect.new()
+		snow_bg.name = "SnowBg"
+		snow_bg.texture = load(SNOW_BG_PATH)
+		snow_bg.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		snow_bg.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+		snow_bg.size = Vector2(1280, 720)
+		snow_bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		root.add_child(snow_bg)
+		root.move_child(snow_bg, 0)
+
+	# 眼睑：上下两片黑（闭合态 = 全黑）
+	var lid_top := ColorRect.new()
+	lid_top.color = Color(0, 0, 0)
+	lid_top.position = Vector2.ZERO
+	lid_top.size = Vector2(1280, 360)
+	lid_top.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	root.add_child(lid_top)
+	var lid_bot := ColorRect.new()
+	lid_bot.color = Color(0, 0, 0)
+	lid_bot.position = Vector2(0, 360)
+	lid_bot.size = Vector2(1280, 360)
+	lid_bot.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	root.add_child(lid_bot)
+
+	var thought := Label.new()
+	thought.position = Vector2(140, 250)
+	thought.size = Vector2(1000, 60)
+	thought.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	thought.add_theme_font_size_override("font_size", DT.FONT_SIZE_LARGE)
+	thought.add_theme_color_override("font_color", Color(0.6, 0.68, 0.8, 0.85))
+	thought.text = "（好冷……我还活着？）"
+	thought.modulate.a = 0.0
+	thought.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	root.add_child(thought)
+
+	var flash := ColorRect.new()
+	flash.color = Color(1, 0.25, 0.15, 0)
+	flash.size = Vector2(1280, 720)
+	flash.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	root.add_child(flash)
+	var flash_label := Label.new()
+	flash_label.position = Vector2(90, 300)
+	flash_label.size = Vector2(1100, 120)
+	flash_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	flash_label.add_theme_font_size_override("font_size", DT.FONT_SIZE_TITLE)
+	flash_label.add_theme_color_override("font_color", Color(0.95, 0.93, 0.88))
+	flash_label.modulate.a = 0.0
+	flash_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	root.add_child(flash_label)
+
+	var dim := ColorRect.new()
+	dim.color = DT.COLOR_TRANSPARENT
+	dim.size = Vector2(1280, 720)
+	dim.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	root.add_child(dim)
+	var sub := Label.new()
+	sub.position = Vector2(100, 596)
+	sub.size = Vector2(1080, 80)
+	sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	sub.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	sub.add_theme_font_size_override("font_size", DT.FONT_SIZE_LARGE)
+	sub.add_theme_color_override("font_color", Color(0.72, 0.82, 0.95, 0.9))
+	sub.modulate.a = 0.0
+	sub.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	root.add_child(sub)
+
+	var hint := Label.new()
+	hint.position = Vector2(1080, 690)
+	hint.size = Vector2(180, 22)
+	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	hint.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
+	hint.add_theme_color_override("font_color", Color(0.75, 0.75, 0.8))
+	hint.text = "点击跳过 ▸"
+	hint.modulate.a = 0.0
+	hint.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	root.add_child(hint)
+
+	var beats := [
+		{"text": "黑门，吞掉了整个天空。", "col": Color(0.9, 0.2, 0.12, 0.72), "sfx": "enhance"},
+		{"text": "「深航计划——回溯至黑门初立之时。」", "col": Color(0.5, 0.35, 0.9, 0.65), "sfx": "enhance"},
+		{"text": "「找到他们。一千个，一个都不能少。」", "col": Color(0.2, 0.7, 0.85, 0.55), "sfx": "card_pickup"},
+	]
+
+	var tw := create_tween()
+	_wakeup_tween = tw
+	# A 梦呓
+	tw.tween_interval(0.7)
+	tw.tween_property(thought, "modulate:a", 1.0, 0.6)
+	tw.tween_interval(1.7)
+	tw.tween_property(thought, "modulate:a", 0.0, 0.45)
+	# B 睁眼（开→快速回眨→再开）
+	tw.tween_property(lid_top, "size:y", 0.0, 1.0).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	tw.parallel().tween_property(lid_bot, "position:y", 720.0, 1.0).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	tw.parallel().tween_property(lid_bot, "size:y", 0.0, 1.0).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	tw.tween_property(lid_top, "size:y", 360.0, 0.22)
+	tw.parallel().tween_property(lid_bot, "position:y", 360.0, 0.22)
+	tw.parallel().tween_property(lid_bot, "size:y", 360.0, 0.22)
+	tw.tween_property(lid_top, "size:y", 0.0, 0.5).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	tw.parallel().tween_property(lid_bot, "position:y", 720.0, 0.5).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	tw.parallel().tween_property(lid_bot, "size:y", 0.0, 0.5).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	tw.tween_property(hint, "modulate:a", 0.45, 0.4)
+	# C 三拍梦境闪回（眼睑全开后额外留白 2s，让雪原图有足够时间被看到）
+	tw.tween_interval(2.0)
+	for b in beats:
+		var beat: Dictionary = b
+		var col: Color = beat["col"]
+		tw.tween_callback(func():
+			flash.color = Color(col.r, col.g, col.b, 0.0)
+			flash_label.text = str(beat["text"])
+			if SignalBus != null and SignalBus.has_signal("play_sound"):
+				SignalBus.play_sound.emit(str(beat["sfx"])))
+		tw.tween_property(flash, "color:a", col.a, 0.12)
+		tw.parallel().tween_property(flash_label, "modulate:a", 1.0, 0.16)
+		tw.tween_interval(0.85)
+		tw.tween_property(flash, "color:a", 0.0, 0.45)
+		tw.parallel().tween_property(flash_label, "modulate:a", 0.0, 0.4)
+	# D 画外音落定（雪原之上）
+	tw.tween_property(dim, "color:a", 0.42, 0.6)
+	tw.tween_callback(func(): sub.text = "你从雪里坐起。身旁，是随你一同坠落的基地车。")
+	tw.tween_property(sub, "modulate:a", 1.0, 0.5)
+	tw.tween_interval(2.5)
+	tw.tween_property(sub, "modulate:a", 0.0, 0.5)
+	tw.tween_callback(func(): sub.text = "天边尽头，黑门矗立在大地上——仿佛没有顶。")
+	tw.tween_property(sub, "modulate:a", 1.0, 0.5)
+	tw.tween_interval(2.6)
+	# E0 进车过场：雪原 → 车厢（本场景本体；无雪原图时本拍仅作过场字幕）
+	tw.tween_callback(func(): sub.text = "你钻进基地车。风雪被关在了舱门之外。")
+	tw.tween_property(sub, "modulate:a", 1.0, 0.5)
+	tw.tween_interval(1.9)
+	tw.tween_property(sub, "modulate:a", 0.0, 0.5)
+	if snow_bg != null:
+		tw.parallel().tween_property(snow_bg, "modulate:a", 0.0, 1.1)
+	# E 相位仪三拍教学（手腕相位仪 → 纸条 → 床下背包；图缺失时仅字幕兜底）
+	tw.tween_callback(func(): _wakeup_teach_beat(root, sub, 0))
+	tw.tween_interval(3.2)
+	tw.tween_callback(func(): _wakeup_teach_beat(root, sub, 1))
+	tw.tween_interval(4.2)
+	tw.tween_callback(func(): _wakeup_teach_beat(root, sub, 2))
+	tw.tween_interval(3.2)
+	# F 收场 → 移动基地指南
+	tw.tween_property(root, "modulate:a", 0.0, 0.9)
+	tw.tween_callback(_finish_wakeup)
+
+## 醒来演出教学三拍：0=手腕相位仪图 1=纸条（相位仪装卡+找同伴）2=床下背包图（起始卡）
+func _wakeup_teach_beat(root: Control, sub: Label, beat: int) -> void:
+	if not _wakeup_active:
+		return
+	var vp := Vector2(1280, 720)
+	var img_path := ""
+	var caption := ""
+	if beat == 0:
+		img_path = "res://assets/intro/wakeup_wrist.png"
+		caption = "腕上的相位仪微微发亮——它在感应同伴的位置。"
+	elif beat == 1:
+		caption = ""
+	else:
+		img_path = "res://assets/intro/wakeup_backpack.png"
+		caption = "床下的背包里，静静躺着几张卡。"
+	# 图（有图才铺满）
+	var tex: TextureRect = null
+	if img_path != "" and ResourceLoader.exists(img_path):
+		tex = TextureRect.new()
+		tex.name = "TeachImg"
+		tex.texture = load(img_path)
+		tex.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		tex.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+		tex.size = vp
+		tex.modulate.a = 0.0
+		tex.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		root.add_child(tex)
+	# 纸条（beat 1：浅纸面板 + 手写字感的说明）
+	var note: PanelContainer = null
+	if beat == 1:
+		note = PanelContainer.new()
+		note.name = "TeachNote"
+		var sb := StyleBoxFlat.new()
+		sb.bg_color = Color(0.87, 0.82, 0.68, 0.96)
+		sb.border_color = Color(0.55, 0.45, 0.3, 0.9)
+		sb.set_border_width_all(2)
+		sb.set_corner_radius_all(4)
+		sb.set_content_margin_all(20.0)
+		note.add_theme_stylebox_override("panel", sb)
+		note.position = Vector2(390, 220)
+		note.custom_minimum_size = Vector2(500, 0)
+		note.rotation_degrees = -1.5
+		note.modulate.a = 0.0
+		note.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var nv := VBoxContainer.new()
+		note.add_child(nv)
+		var nt := Label.new()
+		nt.text = "（一张压在枕头下的纸条）"
+		nt.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
+		nt.add_theme_color_override("font_color", Color(0.4, 0.35, 0.28))
+		nv.add_child(nt)
+		var nb := Label.new()
+		nb.text = "相位仪装载卡片，卡片便能随你出战。\n它会指引同伴的位置——迷失者被战胜后，其力量将随你同行。\n　　　　　　　　　　　　——深航计划"
+		nb.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		nb.add_theme_font_size_override("font_size", DT.FONT_SIZE_BODY)
+		nb.add_theme_color_override("font_color", Color(0.22, 0.19, 0.14))
+		nv.add_child(nb)
+		root.add_child(note)
+	# 淡出上一拍内容与旧字幕
+	var ft := create_tween()
+	for old_name in ["TeachImg", "TeachNote"]:
+		var old = root.get_node_or_null(NodePath(old_name))
+		if old != null and is_instance_valid(old):
+			ft.parallel().tween_property(old, "modulate:a", 0.0, 0.35)
+	ft.parallel().tween_property(sub, "modulate:a", 0.0, 0.3)
+	# 淡入本拍
+	ft.tween_interval(0.35)
+	ft.tween_callback(func(): sub.text = caption)
+	ft.set_parallel(true)
+	if tex != null:
+		ft.tween_property(tex, "modulate:a", 1.0, 0.5)
+	if note != null:
+		ft.tween_property(note, "modulate:a", 1.0, 0.45)
+	if caption != "":
+		ft.tween_property(sub, "modulate:a", 1.0, 0.45)
+
+## 跳过 / 收场共用：清演出 → 补弹移动基地首次指南（show_once 随档持久化）
+func _finish_wakeup() -> void:
+	if not _wakeup_active:
+		return
+	_wakeup_active = false
+	if _wakeup_tween != null and _wakeup_tween.is_valid():
+		_wakeup_tween.kill()
+	if _wakeup_root != null and is_instance_valid(_wakeup_root):
+		_wakeup_root.queue_free()
+	_wakeup_root = null
+	_maybe_show_truck_intro()

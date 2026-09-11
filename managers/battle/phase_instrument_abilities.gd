@@ -155,6 +155,36 @@ static func get_active_params(owner: Owner = Owner.PLAYER) -> Dictionary:
 static func _owner_key(owner: Owner) -> String:
 	return "player" if owner == Owner.PLAYER else "enemy"
 
+# v27.12 perf: periodic 计时键名（"player:artillery_barrage" 等）只由 owner×能力名组成，
+# 原三处 tick 每帧拼接字符串分配 → 查表缓存，每种组合只拼一次
+static var _pkey_cache: Dictionary = {}   # 能力名 -> {owner: 完整键}
+
+static func _pkey(owner: Owner, ability: String) -> String:
+	var per: Dictionary = _pkey_cache.get_or_add(ability, {})
+	var hit: Variant = per.get(owner)
+	if hit != null:
+		return hit
+	var made: String = _owner_key(owner) + ":" + ability
+	per[owner] = made
+	return made
+
+# v27.12 perf: BattleManager 引用静态缓存（nano tick 等查询复用；null 不缓存保 --script 回退语义）
+static var _bm_cache: Node = null
+
+static func _get_battle_manager_cached() -> Node:
+	if _bm_cache != null and is_instance_valid(_bm_cache):
+		return _bm_cache
+	var ml := Engine.get_main_loop()
+	if ml == null or not (ml is SceneTree):
+		return null
+	var root: Node = (ml as SceneTree).root
+	if root == null:
+		return null
+	_bm_cache = root.get_node_or_null("BattleManager")
+	return _bm_cache
+
+const ComboFieldStateRef = preload("res://scripts/battle/combo_field_state.gd")
+
 static func _owner_active(owner: Owner) -> Dictionary:
 	return _player_active if owner == Owner.PLAYER else _enemy_active
 
@@ -271,7 +301,7 @@ static func _tick_periodic(owner: Owner, aid: String, ab: Dictionary, delta: flo
 
 # ── 火炮连发（periodic）──
 static func _tick_artillery_barrage(owner: Owner, params: Dictionary, delta: float) -> void:
-	var pkey: String = _owner_key(owner) + ":artillery_barrage"
+	var pkey: String = _pkey(owner, "artillery_barrage")  # v27.12: 查表缓存键名，免每帧拼接
 	var interval: float = float(params.get("interval", 10.0))
 	var elapsed: float = float(_periodic_timers.get(pkey, interval))  # 首次跳过等待
 	elapsed += delta
@@ -303,7 +333,13 @@ static func _process_barrage_queue(owner: Owner, delta: float) -> void:
 				entry["fired"] = true
 				_fire_artillery_shot(owner)
 	# 清理已发射的
-	_barrage_queue[key] = queue.filter(func(e): return not bool(e.get("fired", true)))
+	# v27.12 perf: filter+lambda 每帧分配闭包+新数组 → 就地压缩（写前指针，保留未发射原顺序）
+	var w: int = 0
+	for i in range(queue.size()):
+		if not bool(queue[i].get("fired", true)):
+			queue[w] = queue[i]
+			w += 1
+	queue.resize(w)
 
 ## v26.13(D-1): 齐射入队（从 _tick_artillery_barrage 提取，自动/手动两路径共用）
 static func _fire_artillery_barrage_volley(owner: Owner, params: Dictionary) -> void:
@@ -429,7 +465,7 @@ static func _compute_artillery_damage(owner: Owner) -> float:
 
 # ── 核子轰炸（periodic）──
 static func _tick_nuclear_bombardment(owner: Owner, params: Dictionary, delta: float) -> void:
-	var pkey: String = _owner_key(owner) + ":nuclear_bombardment"
+	var pkey: String = _pkey(owner, "nuclear_bombardment")  # v27.12: 查表缓存键名，免每帧拼接
 	var interval: float = float(params.get("interval", 30.0))
 	# v24.1 大招双轨：玩家手动模式改充能制（攒满 1 interval 得 1 充能，上限 2 满后停涨不浪费）；
 	# 自动模式/敌方侧攒到 1 立即放，总吞吐与旧"interval 即触发"一致，手动唯一收益是攒爆发时机。
@@ -532,6 +568,8 @@ static func _fire_nuclear_bombardment(owner: Owner, params: Dictionary) -> void:
 			# v20.15: 战斗在错峰窗口内结束 → 该枚导弹不再发射（落地演出由弹体到达守卫兜底）
 			if was_live and not _battle_active_now():
 				return
+			# v26.31: ult_nuke_player 是横贴图（弹头 +X），nose_offset 传 0——默认 -PI/2
+			# 是竖贴图（弹头 +Y）家族约定，套在横弹体上会全程弹头朝后飞（尾焰朝前）。
 			VfxImpactFactory.spawn_ultimate_projectile(_battlefield, captured_launch, captured_pos, captured_missile_tex, "high_arc", 100.0, captured_missile_tint, captured_missile_trail, mark_delay,
 				func(land_pos: Vector2):
 					if _battlefield == null or not is_instance_valid(_battlefield):
@@ -551,7 +589,7 @@ static func _fire_nuclear_bombardment(owner: Owner, params: Dictionary) -> void:
 						CombatFeedback.show_damage(cur_pos, captured_dmg, captured_enemy, true, "critical")
 						if captured_enemy.has_method("take_damage"):
 							captured_enemy.take_damage(captured_dmg, null)
-			)
+			, 0.0)
 		)
 	# v8.1: impact 信号延迟到首枚导弹落地后（mark_delay + 0.06s 首发延迟）
 	# v20.29: 删除 fired_impact/captured_fired 守卫——GDScript lambda 按值捕获 bool，
@@ -683,16 +721,14 @@ static func _apply_nano_swarm_tick(owner: Owner, ab: Dictionary, delta: float) -
 	# 每个敌方单位每 tick 贡献 0.5 浓度（tick=0.25s，即每单位每秒 +2.0 浓度）。
 	# 浓度供纳米病毒改造读取增伤 + 纳米感染扩散触发。
 	var _combo_fs: RefCounted = null
-	var _ml := Engine.get_main_loop()
-	var _bm_for_combo: Node = null
-	if _ml != null and _ml is SceneTree and (_ml as SceneTree).root != null:
-		_bm_for_combo = (_ml as SceneTree).root.get_node_or_null("BattleManager")
+	# v27.12 perf: BattleManager 引用走静态缓存（原每 tick 字符串全树查找）
+	var _bm_for_combo: Node = _get_battle_manager_cached()
 	if _bm_for_combo != null and _bm_for_combo.has_method("get_combo_field_state"):
 		_combo_fs = _bm_for_combo.get_combo_field_state()
 	var targets: Array = _get_targets(owner)
 	if _combo_fs != null and targets.size() > 0:
-		var _CFS = preload("res://scripts/battle/combo_field_state.gd")
-		_combo_fs.add_field(_CFS.FIELD_NANO, float(targets.size()) * 0.5, 0.8, 30.0)
+		_combo_fs.add_field(ComboFieldStateRef.FIELD_NANO, float(targets.size()) * 0.5, 0.8, 30.0)
+	var hit_fx: int = 0  # v27.12: 每 tick 命中特效计数（见下方上限）
 	for e in targets:
 		if e == null or not is_instance_valid(e):
 			continue
@@ -708,7 +744,9 @@ static func _apply_nano_swarm_tick(owner: Owner, ab: Dictionary, delta: float) -
 			e.take_damage(dmg, null)
 			# v7.x: 伤害数字由 take_damage → unit_damaged 信号统一驱动，
 			# 每 tick 显示一次命中视觉特效（频率已从每帧降到每 0.25s）。
-			if e is Node2D:
+			# v27.12 perf: 每 tick 特效上限——大群目标时免 20×节点 churn；超出目标仍正常掉血
+			if e is Node2D and hit_fx < NANO_HIT_FX_CAP:
+				hit_fx += 1
 				_create_nano_swarm_hit((e as Node2D).global_position, owner)
 
 # ── 巨型能量罩（on_battle_start，给 allies 加护盾）──
@@ -763,7 +801,7 @@ static func _tick_rage_buff(owner: Owner, params: Dictionary, delta: float) -> v
 	# 若狂暴已激活，等待其过期（_check_rage_expire 在 _update_owner 中调用）
 	if bool(_rage_state.get(key, {}).get("active", false)):
 		return
-	var pkey: String = key + ":rage_buff"
+	var pkey: String = _pkey(owner, "rage_buff")  # v27.12: 查表缓存键名，免每帧拼接
 	var interval: float = float(params.get("interval", 15.0))
 	var elapsed: float = float(_periodic_timers.get(pkey, interval))
 	elapsed += delta
@@ -1052,6 +1090,28 @@ static func _create_nano_swarm_cloud(center: Vector2, owner: Owner) -> void:
 	tw.tween_interval(1.5)
 	tw.tween_callback(func(): cloud.queue_free())
 
+## v27.12 perf: 每 tick 纳米命中特效上限（大群目标免节点 churn，超出目标只掉血无特效）
+const NANO_HIT_FX_CAP: int = 6
+# v27.12 perf: 两款命中粒子渐变色预构建复用（原每 hit Gradient.new + 3 次 add_point）
+static var _nano_hit_gradients: Dictionary = {}   # Owner -> Gradient
+
+static func _get_nano_hit_gradient(owner: Owner) -> Gradient:
+	var g: Gradient = _nano_hit_gradients.get(owner)
+	if g != null:
+		return g
+	g = Gradient.new()
+	if owner == Owner.PLAYER:
+		# 紫色纳米粒子爆炸
+		g.add_point(0.0, Color(0.9, 0.4, 1.0, 1.0))
+		g.add_point(0.5, Color(0.6, 0.2, 0.9, 0.7))
+	else:
+		# 暗红色酸液飞溅
+		g.add_point(0.0, Color(0.8, 0.2, 0.3, 1.0))
+		g.add_point(0.5, Color(0.5, 0.1, 0.2, 0.7))
+	g.add_point(1.0, Color.TRANSPARENT)
+	_nano_hit_gradients[owner] = g
+	return g
+
 ## 纳米虫群命中：粒子爆炸（PLAYER=紫色 / ENEMY=暗红色）
 static func _create_nano_swarm_hit(pos: Vector2, owner: Owner) -> void:
 	if _battlefield == null or not (_battlefield is Node2D):
@@ -1074,17 +1134,8 @@ static func _create_nano_swarm_hit(pos: Vector2, owner: Owner) -> void:
 	p.scale_amount_min = 0.5 if owner == Owner.PLAYER else 0.4
 	p.scale_amount_max = 1.2 if owner == Owner.PLAYER else 1.0
 
-	var gradient := Gradient.new()
-	if owner == Owner.PLAYER:
-		# 紫色纳米粒子爆炸
-		gradient.add_point(0.0, Color(0.9, 0.4, 1.0, 1.0))
-		gradient.add_point(0.5, Color(0.6, 0.2, 0.9, 0.7))
-	else:
-		# 暗红色酸液飞溅
-		gradient.add_point(0.0, Color(0.8, 0.2, 0.3, 1.0))
-		gradient.add_point(0.5, Color(0.5, 0.1, 0.2, 0.7))
-	gradient.add_point(1.0, Color.TRANSPARENT)
-	p.color_ramp = gradient
+	# v27.12 perf: gradient 查表复用（两款预构建，免每 hit 重建）
+	p.color_ramp = _get_nano_hit_gradient(owner)
 	hit.add_child(p)
 
 	var tw := hit.create_tween()

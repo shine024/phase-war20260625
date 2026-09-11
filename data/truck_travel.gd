@@ -21,8 +21,9 @@ const ENGINE_MAX_LV := 5
 ## v26.25 燃料自动回复速率（每分钟；引擎每级再 +1）
 const REGEN_BASE_PER_MIN := 3.0
 const REGEN_PER_LV_PER_MIN := 1.0
-## v26.21 实时行军换算：1 天行程 = 60 秒真实时间（出发即走，离线/切场景也计时）
-const SECONDS_PER_DAY := 60.0
+## v26.21 实时行军换算：1 天行程 = 12 秒真实时间（出发即走，离线/切场景也计时；
+## v26.29 由 60 秒提速 5 倍——用户实测原速过慢）
+const SECONDS_PER_DAY := 12.0
 
 ## 升级到下一级的资源价（索引=当前等级 1..4）；短名对齐 BunkerRoomDefs.RES
 const ENGINE_UPGRADES := [

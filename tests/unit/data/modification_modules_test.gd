@@ -11,7 +11,8 @@ var ModificationRegistry = preload("res://scripts/systems/modification_registry.
 func test_infantry_modifications_count() -> void:
 	var all_mods = InfantryModifications.get_all_mod_ids()
 	# 批次8（2026-08-23）：inf_23~27（战斗兴奋剂/巷战/医疗牺牲/化学弹头/凝固汽油）加入后 22→27
-	assert_int(all_mods.size()).override_failure_message("步兵应有27个改造").is_equal(27)
+	# v27 改造2.0：inf_28~35（普及档 6 + 触发式击杀敷料 + 医疗链套装件）加入后 27→35
+	assert_int(all_mods.size()).override_failure_message("步兵应有35个改造").is_equal(35)
 
 func test_infantry_modifications_data_completeness() -> void:
 	var all_mods = InfantryModifications.get_all_mod_ids()
@@ -32,7 +33,8 @@ func test_infantry_modifications_data_completeness() -> void:
 func test_armor_modifications_count() -> void:
 	var all_mods = ArmorModifications.get_all_mod_ids()
 	# v26：arm_17 附加钢板 + arm_18 炮盾加入后 16→18
-	assert_int(all_mods.size()).override_failure_message("装甲应有18个改造").is_equal(18)
+	# v27 改造2.0：arm_19~23（普及档 3 + 触发式反击脉冲 + 数据链）加入后 18→23
+	assert_int(all_mods.size()).override_failure_message("装甲应有23个改造").is_equal(23)
 
 func test_modification_id_uniqueness() -> void:
 	ModificationRegistry.register_all()
@@ -51,9 +53,9 @@ func test_conflict_groups() -> void:
 
 func test_modification_for_unit_type() -> void:
 	var infantry_mods = InfantryModifications.get_for_unit_type(0)  # LIGHT
-	assert_int(infantry_mods.size()).is_equal(27)
+	assert_int(infantry_mods.size()).is_equal(35)
 	var armor_mods = ArmorModifications.get_for_unit_type(1)  # ARMOR
-	assert_int(armor_mods.size()).is_equal(18)
+	assert_int(armor_mods.size()).is_equal(23)
 	# 步兵不应返回装甲改造
 	var armor_for_infantry = ArmorModifications.get_for_unit_type(0)
 	assert_int(armor_for_infantry.size()).is_equal(0)
@@ -71,4 +73,6 @@ func test_total_modification_count() -> void:
 	# 批次8（2026-08-23）：全模块注册总数实测 184（原 120-140 区间过期；
 	# registry 注释里"154 条"亦为旧值）。精确锁定防未来无感知增删。
 	# v26：新增 12 条（air+6 轰炸主题/armor+2 era0-1 补强/aa+2 对空反制/fort+1 防空洞/gen+1 吸波涂层）→ 190+12=202
-	assert_int(all_ids.size()).is_equal(202)
+	# v27 改造2.0：新增 47 条（普及档 common 10/uncommon 12/rare 12/epic 7/legendary 3/mythic 3，
+	# 含 6 条触发式 + 3 条 mythic 行为改写 + 4 个新套装件）→ 202+47=249
+	assert_int(all_ids.size()).is_equal(249)

@@ -83,6 +83,7 @@ var _status_overflow_x: float = 0.0
 const IDLE_FADE_ALPHA: float = 0.45
 var _idle_alpha: float = 1.0       # 当前淡出系数（平滑过渡）
 var _idle_faded := false           # 目标态：是否处于满血淡出
+var _pulse_acc: float = 0.0        # v27.12: 低血脉动重绘节流累加器
 
 func _ready() -> void:
 	position = Vector2(0, -40)
@@ -218,8 +219,13 @@ func _process(delta: float) -> void:
 		_update_shield_gain_effect()
 	# v8.x: 低血量脉动——血条 lerp 收敛后仍需每帧刷新 glow，否则 sin 脉动冻在末帧形同虚设。
 	# 用 _target_ratio 判断（即时响应掉血），避开 lerp 未收敛的过渡帧。
+	# v27.12 perf: 脉动 20fps 节流——相位取自 Time.get_ticks_msec 绝对时钟，降频不跳相；
+	# 785ms 周期在 50ms 步长下 15+ 采样/周期，肉眼无差。全场低血单位合并省 ~2/3 色写。
 	if _target_ratio <= 0.3:
-		_update_low_hp_pulse()
+		_pulse_acc += delta
+		if _pulse_acc >= 0.05:
+			_pulse_acc = 0.0
+			_update_low_hp_pulse()
 	_apply_fade_step(delta)  # v26.x 满血减噪过渡
 	_sync_process_state()
 
