@@ -7126,3 +7126,65 @@ ScrollContainer）。修复（结构级兜底）：`_on_map_gui_input_s11` 左�
 
 - 行军主链 + TRAVEL_FRESH 新档 E2E ALL PASS（含钉线/停靠中心/复用路径标记三断言）；
   gdparse 0 错；像素抽检：当前关跳点青色在位（537px）、基地金点在位。
+
+## v27.10 战斗热路径性能批：on_tick 门禁前置 + 引用缓存 + 恒定量预计算（2026-09-10）
+
+**背景**: 全面性能静态审计（`docs/PERF_AUDIT_2026-09-11.md`，下同）定位项，代码改动统一带
+`v27.12` 注释前缀（审计台账回写口径）；本条按主题归档分报告①/④ 战斗侧，编号可溯源审计「已修」清单。
+
+**module_effect_handler（①-P1-1/2、P2-7/8）**:
+- `_tick_aegis_pulse`/`_tick_gravity_pulse`/`_check_last_stand`/`_tick_dot_damage` 零成本门禁前置——无模块单位不再每帧白付昂贵调用
+- `_get_battle_manager` 静态缓存；`_mech_active` 改走引擎零拷贝 `is_mechanism_active`
+
+**其余热路径（①-P1-3/4/5/6、P2-14/19/20、P3-24/31）**:
+- phase_instrument_abilities：`_pkey` 键名查表缓存、`_process_barrage_queue` 就地压缩（免 filter lambda）
+- construct_unit_ai `get_attack_delta_scale` 时间戳惰性读取
+- enemy_master_skill_engine 走 `get_cached_nodes_in_group`；nano_swarm hit 特效 gradient 复用 + hit_fx 上限 6；combo_field_state `to_erase` 分配消除
+- unit_shared_helpers `HIT_SHAKE_KEYS` const + sprite meta 缓存 + `Callable.bind` 替代 lambda；endless_rift_ambience TwinkleLayer 20fps 重绘节流
+
+**弹道恒定量预计算（①-P2-10/11、④-P1）**:
+- indirect batch：格子战判定提函数头一次、BM 成员缓存、fire 时预计算 mid/apex/tint 存弹道字典；bullet.gd 单发路径 `_indirect_apex_point` 同步
+
+**命中贴花池化（①-P2-21、④-P2）**:
+- vfx_impact_factory decal 池（48 上限），`_spawn_impact_decal`/`_spawn_pellet_mark` 接入
+- battle_spectacle `_make_label_settings` 静态缓存；bullet.gd `_shape_flavor` 复用（classify 5 处→1 处）
+
+**验证**：GdUnit 268/268 全绿 + master_power_smoke 8/8（2026-09-11 口径）
+
+## v27.11 UI 层性能批：五面板可见守卫+置脏补刷 + 伤害数字双管线删除（2026-09-10）
+
+**五面板可见守卫+脏标记（⑤）**:
+- modification / store / achievement / growth / evolution：面板不可见期间的列表/商品行/目录重建请求只置脏不重建，恢复可见时统一补刷——战斗中 `resources_changed`/成就进度等高频信号不再触发隐藏面板全量重建（五文件均带 `v27.12` 标记，审计⑤段点名其中三个）
+
+**伤害数字双份管线下线（③-P2-1）**:
+- battle_hud 原 `_on_unit_damaged → show_damage_popup` 是同信号上第二套无节流管线，与 BattleManager→CombatFeedback 管线（80ms 节流合并 + 暴击/穿透/克制样式 + 阵营双色）叠加造成双份数字，已删除（battle_hud.gd:94-96 注释存档）
+
+**其余 UI 项（①-P2-9、⑤）**:
+- pair_synergy_engine root 链缓存
+- backpack_card_item 归还清缓存、ui_asset_loader LRU、buff_fold_card 脏标记、world_map
+
+**验证**：GdUnit 268/268 全绿 + master_power_smoke 8/8（2026-09-11 口径）
+
+## v27.12 AuraManager tick 永久停摆修复 + 单位视觉层节流批 + 曳光色缓存（2026-09-10）
+
+**正确性回归修复（③-P2-2）**:
+- `clear_all()` 此前 stop `_global_tick_timer` 且全项目无重启点——首场 `end_battle` 之后 0.5s 全局 tick 永久停摆，MEDIC/CARRIER 周期光环第二场起静默失效。现不再 stop：tick 空转成本仅 3 个 float 累加 + 空 Map 扫描，常开无害（aura_manager.gd:409-411）
+
+**曳光色缓存（①-P2-12）**:
+- simple_player / simple_enemy_projectile_batch 曳光色按 sk 静态缓存（width/len 纯 match 免缓存）
+
+**单位视觉层批（②）**:
+- unit_outline.refresh：uniform 值挂 ShaderMaterial meta 缓存，换帧 tick 恒定值零写入（连带覆盖 boss no-op refresh）
+- unit_hp_bar 低血脉动 20fps 节流（相位走绝对时钟不跳相）；base_aura `_draw` 20fps 节流
+- attack_pose_anim：timer 代次门禁（修 SceneTreeTimer 不可取消的纹理二次复位视觉瑕疵）+ `_find_sprite` meta 缓存
+- unit_frame_anim：anim.json 路径级缓存 + `_resolve_key` 探测缓存 + 帧序列 AtlasTexture 跨单位共享
+- construct/enemy_unit hit_boost meta 写守卫 + `_get_hpbar_cached` 接入；deploy_progress_bar bg 恒定几何一次性构建
+- card_grid_unit_visuals `_buff_label_sig_cache` 512 上限自愈；advance_idle_motion StringName 键 + AirUnitShadow 类型化直调（免反射）
+
+**VFX/autoload 杂项（③-P3-6、④-P1）**:
+- MultiMesh `set_instance_color` 增量补写（`_prev_counts` 记前帧）；screen_shake 无震动 `set_process(false)`
+- object_pool `clear()` 重置 `total_created` + `_prewarmed`（潜伏雷防御性修复）
+
+**明确延期（需实机验证/架构级重构）**: CPUParticles→GPUParticles2D 迁移评估；单位本体整树池化（ConstructUnit/EnemyUnit 场景级 churn）。
+
+**验证**：GdUnit 268/268 全绿 + master_power_smoke 8/8（2026-09-11 口径）
