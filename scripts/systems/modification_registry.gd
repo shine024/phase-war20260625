@@ -250,21 +250,23 @@ static func _rebuild_flat_index() -> void:
 				_flat_index[mod_id] = type_cache[mod_id]
 
 ## v27.14（改造审查报告 5.5）：conflict_group 完整性校验——组内仅 1 个条目时
-## 冲突检查对该组无效（永远命中不了同组成员）。注册期聚合单行警告（正式包零刷屏），
-## 不阻断加载。孤儿组处置（补同组条目/移除组）属平衡性决策，另行裁决。
+## 冲突检查对该组无家族互斥效果。例外：**自守卫组**（组名 = 条目 id 前缀，如 enh_hp_up
+## 的 "enh_hp"）是有意设计——can_install_modification 无独立防重复安装检查，自命名组
+## 承担"同改造不可装两次"职责，合法。注册期聚合单行警告，不阻断加载。
 static func _validate_conflict_groups() -> void:
-	var group_counts: Dictionary = {}
+	var group_info: Dictionary = {}
 	for mod_id in _flat_index.keys():
 		var data: Dictionary = _flat_index[mod_id]
 		var group: String = String(data.get("conflict_group", ""))
 		if group.is_empty():
 			continue
-		if not group_counts.has(group):
-			group_counts[group] = 0
-		group_counts[group] = int(group_counts[group]) + 1
+		if not group_info.has(group):
+			group_info[group] = {"count": 0, "example": String(mod_id)}
+		group_info[group]["count"] = int(group_info[group]["count"]) + 1
 	var orphans: Array[String] = []
-	for group in group_counts.keys():
-		if int(group_counts[group]) < 2:
+	for group in group_info.keys():
+		var entry: Dictionary = group_info[group]
+		if int(entry["count"]) < 2 and not String(entry["example"]).begins_with(group):
 			orphans.append(String(group))
 	if not orphans.is_empty():
 		push_warning("[ModificationRegistry] %d 个 conflict_group 仅 1 个条目、冲突检查对其无效（%s…）——补同组条目或移除该组" % [orphans.size(), ", ".join(orphans.slice(0, 6))])

@@ -465,7 +465,7 @@ const DATA: Dictionary = {
 		cost_research = 90,
 		cost_install = 45,
 		slot_type = "mantlet",
-		conflict_group = "mantlet",
+		conflict_group = "arm_18_gun_mantlet",
 		era_band = [0, 2],
 		effects = {defense_armor = 18},
 		unlock_conditions = {required_level = 1}

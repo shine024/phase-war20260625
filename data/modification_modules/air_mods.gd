@@ -35,7 +35,7 @@ const DATA: Dictionary = {
 		prototype = "F-22/F-35", description = "推力矢量喷管。机动性大幅提升。",
 		rarity = "legendary",
 	power_mult = 2.0, cost_research = 450, cost_install = 225,
-		slot_type = "thrust", conflict_group = "thrust",
+		slot_type = "thrust", conflict_group = "air_02_vector_thrust",
 		era_band = [3, 4],
 		effects = {dodge_chance = 0.15},
 		unlock_conditions = {required_level = 7}
@@ -107,7 +107,7 @@ const DATA: Dictionary = {
 		prototype = "AN/ALQ-211", description = "电子对抗干扰。导弹闪避提升。",
 		rarity = "epic",
 	power_mult = 1.6, cost_research = 380, cost_install = 190,
-		slot_type = "ecm", conflict_group = "ecm",
+		slot_type = "ecm", conflict_group = "countermeasure",
 		era_band = [2, 4],
 		effects = {missile_dodge = 0.30},
 		unlock_conditions = {required_level = 6}
@@ -141,7 +141,7 @@ const DATA: Dictionary = {
 		prototype = "复合挂架", description = "复合挂架外挂武器。攻速 +50%。",
 		rarity = "rare",
 	power_mult = 1.3, cost_research = 200, cost_install = 100,
-		slot_type = "weapons", conflict_group = "weapons",
+		slot_type = "weapons", conflict_group = "hardpoint",
 		effects = {ammo_capacity = 0.50},
 		unlock_conditions = {required_level = 4}
 	},
@@ -386,7 +386,7 @@ const DATA: Dictionary = {
 		cost_research = 140,
 		cost_install = 70,
 		slot_type = "countermeasure",
-		conflict_group = "cm",
+		conflict_group = "countermeasure",
 		era_band = [2, 4],
 		effects = {dodge_chance = 0.06, damage_reduction = 0.08},
 		unlock_conditions = {required_level = 3}
