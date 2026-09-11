@@ -11,6 +11,9 @@ const IntelManualItems = preload("res://data/intel_manual_items.gd")
 const BlueprintDefinitions = preload("res://data/blueprint_definitions.gd")
 const GC = preload("res://resources/game_constants.gd")
 const ModEffectLabels = preload("res://scripts/ui/mod_effect_labels.gd")
+# v27.15（5.9 首拆）：效果模拟抽屉控制器（preload 而非 class_name 引用——headless/CI 无编辑器扫描，
+# 全局类缓存未注册新类会解析失败；与既有 UI 组件 preload 惯例一致）
+const ModPanelSimDrawerScript = preload("res://scripts/ui/mod_panel_sim_drawer.gd")
 const ModEraBands = preload("res://data/mod_era_bands.gd")
 
 # v7.x UI 重设计基建
@@ -55,6 +58,10 @@ const FILTER_ALL := "all"
 const FILTER_MOD := "mod"
 const FILTER_MAX := "max"
 var _filter_mode: String = FILTER_ALL
+# v27.15（改造审查报告 5.6）：改造库搜索词（小写、去首尾空白；空 = 不过滤）
+var _mod_search_text: String = ""
+# v27.15（改造审查报告 5.9 首拆）：效果模拟抽屉控制器（_ready 首段初始化，逻辑在 mod_panel_sim_drawer.gd）
+var _sim_drawer_ctl: RefCounted = null
 
 var selected_card: CardResource = null
 var _first_list_card: CardResource = null   ## v26.13: 名册首卡（打开自动选中用）
@@ -93,6 +100,8 @@ func _compute_card_power_once() -> float:
 	return EvolutionHelpers.estimate_power_score(key, BlueprintManager)
 
 func _ready() -> void:
+	# v27.15（5.9 首拆）：抽屉控制器先行初始化（后续 connect/选中流要用）
+	_sim_drawer_ctl = ModPanelSimDrawerScript.new(self)
 	# D1: 根框架统一 PanelStyles 签名框（覆盖 BgPanel 的 tscn 手写样式）
 	var bg_panel := get_node_or_null("BgPanel")
 	if bg_panel is Control:
@@ -118,7 +127,7 @@ func _ready() -> void:
 		_apply_fold_state()  # 初始化按钮文案/样式
 	# v1.5 效果模拟抽屉切换按钮
 	if deck_sim_button:
-		deck_sim_button.pressed.connect(_on_sim_button_pressed)
+		deck_sim_button.pressed.connect(_sim_drawer_ctl.toggle)
 
 	# 批次三 B2d（2026-08-24）：tooltip 攻坚——chip/折叠/模拟/资源栏就地解释
 	if chip_all:
@@ -127,6 +136,17 @@ func _ready() -> void:
 		chip_mod.tooltip_text = "只显示还有空改造槽（未满 9 格）的卡牌"
 	if chip_max:
 		chip_max.tooltip_text = "只显示改造槽已满（9/9）的卡牌"
+	# v27.15（改造审查报告 5.6）：改造库搜索框——挂进 ModListHeadHBox（与计数 Label 同行）
+	if mod_list_head_count and mod_list_head_count.get_parent() is HBoxContainer:
+		var search_edit := LineEdit.new()
+		search_edit.placeholder_text = "搜索改造（名称/描述/编号）…"
+		search_edit.clear_button_enabled = true
+		search_edit.custom_minimum_size = Vector2(110, 0)
+		search_edit.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		search_edit.add_theme_font_size_override("font_size", 12)
+		search_edit.tooltip_text = "在当前单位适用的改造里按关键词过滤"
+		search_edit.text_changed.connect(_on_mod_search_changed)
+		mod_list_head_count.get_parent().add_child(search_edit)
 	if fold_button:
 		fold_button.tooltip_text = "折叠/展开右侧详情栏（三档：完整 → 紧凑 → 收起；收起时悬停名册行可看迷你浮卡）"
 	if deck_sim_button:
@@ -239,6 +259,11 @@ func _update_chip_styles() -> void:
 
 
 ## v7.x 新增：筛选 chip 回调
+## v27.15（改造审查报告 5.6）：搜索框回调——变更即刷新改造库
+func _on_mod_search_changed(new_text: String) -> void:
+	_mod_search_text = new_text.strip_edges().to_lower()
+	_refresh_mod_list()
+
 func _on_filter_pressed(mode: String) -> void:
 	_filter_mode = mode
 	_update_chip_styles()
@@ -740,9 +765,20 @@ func _refresh_mod_list() -> void:
 		if _is_mod_applicable_to_card(String(mod_id)):
 			applicable_mod_ids.append(mod_id)
 
+	# v27.15（改造审查报告 5.6）：搜索过滤——名称/描述/原型/mod_id 不区分大小写包含匹配
+	if not _mod_search_text.is_empty():
+		var matched: Array = []
+		for mod_id in applicable_mod_ids:
+			var md: Dictionary = ModificationRegistry.get_data(String(mod_id))
+			var haystack: String = ("%s %s %s %s" % [md.get("name", ""), md.get("description", ""), md.get("prototype", ""), mod_id]).to_lower()
+			if haystack.contains(_mod_search_text):
+				matched.append(mod_id)
+		applicable_mod_ids = matched
+
 	if applicable_mod_ids.is_empty():
 		var empty_label = Label.new()
-		empty_label.text = "暂无可用改造\n（当前单位兵种不适用任何已解锁改造，或尚未获得图纸）"
+		empty_label.text = "无匹配改造\n（换个关键词，或点 ✕ 清空搜索）" if not _mod_search_text.is_empty() \
+			else "暂无可用改造\n（当前单位兵种不适用任何已解锁改造，或尚未获得图纸）"
 		empty_label.add_theme_font_size_override("font_size", 13)
 		empty_label.add_theme_color_override("font_color", DT.COLOR_SLATE_A80)
 		mod_list_container.add_child(empty_label)
@@ -1338,168 +1374,8 @@ func _show_deck_empty() -> void:
 		action_deck.visible = false
 	if deck_empty:
 		deck_empty.visible = true
-	_close_sim_drawer()
-
-
-## v1.5：效果模拟抽屉切换按钮回调
-func _on_sim_button_pressed() -> void:
-	if sim_drawer == null:
-		return
-	var will_open: bool = not sim_drawer.visible
-	if will_open:
-		_open_sim_drawer()
-	else:
-		_close_sim_drawer()
-
-
-## v1.5：打开效果模拟抽屉——完整 effect 列表 + 逐属性前后对比（v26.16 新增）+ 战力预估
-func _open_sim_drawer() -> void:
-	if sim_drawer == null or selected_mod_id.is_empty():
-		return
-	var mod_data: Dictionary = ModificationRegistry.get_data(selected_mod_id) if ModificationRegistry != null else {}
-	if mod_data.is_empty():
-		return
-	# v26.16：已安装改造的"预估"会把第二份的重复收益算进去，抽屉改为明示不适用
-	var already_installed: bool = _is_mod_installed(selected_mod_id)
-	# 清空旧内容
-	for child in sim_drawer.get_children():
-		sim_drawer.remove_child(child)
-		child.free()
-	# 抽屉底色 + 内边距
-	var sb := StyleBoxFlat.new()
-	sb.bg_color = Color(0.04, 0.07, 0.12, 0.6)
-	sb.border_width_top = 1
-	sb.border_color = Color(0.024, 0.714, 0.831, 0.25)
-	sb.content_margin_left = 12
-	sb.content_margin_top = 8
-	sb.content_margin_right = 12
-	sb.content_margin_bottom = 8
-	sim_drawer.add_theme_stylebox_override("panel", sb)
-	# 三栏内容
-	var hbox := HBoxContainer.new()
-	hbox.add_theme_constant_override("separation", 14)
-	hbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	# 栏1：完整效果列表（复用 _format_effects_for_display：兼容 effects/level_effects/grant_slot，
-	# 修复吸血等 level_effects 机制改造原显示"（无效果数据）"的 bug）
-	var col1 := VBoxContainer.new()
-	col1.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	col1.add_theme_constant_override("separation", 2)
-	col1.add_child(_make_sim_section_label("◆ 完整效果"))
-	var effect_lines: PackedStringArray = _format_effects_for_display(mod_data)
-	if effect_lines.is_empty():
-		col1.add_child(_make_sim_kv("（无效果数据）", "", Color(0.5, 0.55, 0.65, 0.6)))
-	else:
-		for line in effect_lines:
-			# 段头（"—— Lv.3（满级）——"）/ 布尔解锁（"✓ xxx"）走标题样式；数值行拆"标签 值"
-			if line.begins_with("——") or line.begins_with("✓"):
-				col1.add_child(_make_sim_section_label(line))
-			else:
-				var sp: int = line.find(" ")
-				if sp > 0:
-					col1.add_child(_make_sim_kv(line.substr(0, sp), line.substr(sp + 1), DT.COLOR_GREEN_UP))
-				else:
-					col1.add_child(_make_sim_kv(line, "", Color(0.9, 0.92, 0.96, 1)))
-	hbox.add_child(col1)
-	# 栏2：逐属性前后对比（v26.16 视觉批次：与战力预估同源，走真实 build_stats 路径；
-	# 只显示有变化的行，机制类改造零变化时给明确文案而非空列）
-	var col2 := VBoxContainer.new()
-	col2.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	col2.add_theme_constant_override("separation", 2)
-	col2.add_child(_make_sim_section_label("◆ 属性对比"))
-	var can_preview: bool = selected_card != null and BlueprintManager != null
-	var before_stats: UnitStats = EvolutionHelpers.build_unit_stats_for_power_preview(selected_card, BlueprintManager) if can_preview else null
-	var after_stats: UnitStats = EvolutionHelpers.estimate_stats_with_extra_mod(selected_card, selected_mod_id, BlueprintManager) if can_preview else null
-	if already_installed:
-		col2.add_child(_make_sim_kv("该改造已安装", "无需预估", Color(0.5, 0.55, 0.65, 0.6)))
-	elif before_stats != null and after_stats != null:
-		var stat_rows := [
-			["耐久", before_stats.max_hp, after_stats.max_hp],
-			["攻轻", before_stats.attack_light, after_stats.attack_light],
-			["攻甲", before_stats.attack_armor, after_stats.attack_armor],
-			["攻空", before_stats.attack_air, after_stats.attack_air],
-			["防轻", before_stats.defense_light, after_stats.defense_light],
-			["防甲", before_stats.defense_armor, after_stats.defense_armor],
-			["防空", before_stats.defense_air, after_stats.defense_air],
-		]
-		var changed_count := 0
-		for r in stat_rows:
-			var d: float = float(r[2]) - float(r[1])
-			if absf(d) < 0.5:
-				continue
-			changed_count += 1
-			col2.add_child(_make_sim_kv(String(r[0]), "%d → %d (%s%d)" % [
-				int(r[1]), int(r[2]), "+" if d > 0.0 else "", int(round(d))],
-				DT.COLOR_GREEN_UP if d > 0.0 else DT.COLOR_RED_DOWN))
-		if changed_count == 0:
-			col2.add_child(_make_sim_kv("无直接数值变化", "机制类", Color(0.5, 0.55, 0.65, 0.6)))
-	else:
-		col2.add_child(_make_sim_kv("属性预览不可用", "—", Color(0.5, 0.55, 0.65, 0.6)))
-	hbox.add_child(col2)
-	# 栏3：战力预估（当前已装该冲突组的模块数 + 战力前后）
-	var col3 := VBoxContainer.new()
-	col3.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	col3.add_theme_constant_override("separation", 2)
-	col3.add_child(_make_sim_section_label("◆ 战力预估"))
-	var before_power: float = _cached_card_power
-	# v1.5 修复：原 after = before × power_mult 严重虚高（power_mult 是稀有度/成本权重，非战力增益倍率，
-	# 1.35 会对 3000 战力卡显示 +1050）。改为克隆实例卡 + 追加候选改造，走与真实安装完全相同的
-	# build_stats→combat_power 路径，预览值与右栏/intel 面板实际安装后显示的战力一致。
-	# 槽位占用
-	var mod_count: int = selected_card.mods.size() if (selected_card and "mods" in selected_card) else 0
-	if already_installed:
-		col3.add_child(_make_sim_kv("槽位", "%d/9" % mod_count, DT.COLOR_CYAN_TECH_SOFT))
-	else:
-		var after_power: float = EvolutionHelpers.estimate_power_with_extra_mod(selected_card, selected_mod_id, BlueprintManager) if (selected_card != null and BlueprintManager != null) else before_power
-		col3.add_child(_make_sim_kv("当前战力", str(int(before_power)) if before_power > 0 else "—", Color(0.55, 0.6, 0.7, 0.8)))
-		col3.add_child(_make_sim_kv("装上后", str(int(after_power)), DT.COLOR_GREEN_UP))
-		var delta: int = int(after_power - before_power)
-		col3.add_child(_make_sim_kv("变化", ("+" if delta >= 0 else "") + str(delta), DT.COLOR_GREEN_UP if delta >= 0 else DT.COLOR_RED_DOWN))
-		col3.add_child(_make_sim_kv("槽位", "%d/9 → %d/9" % [mod_count, mod_count + 1], DT.COLOR_CYAN_TECH_SOFT))
-	hbox.add_child(col3)
-	sim_drawer.add_child(hbox)
-	sim_drawer.visible = true
-	if deck_sim_button:
-		deck_sim_button.text = "效果模拟 ↑"
-		deck_sim_button.add_theme_color_override("font_color", DT.COLOR_CYAN_TECH_SOFT)
-
-
-## v1.5：关闭效果模拟抽屉
-func _close_sim_drawer() -> void:
-	if sim_drawer != null:
-		sim_drawer.visible = false
-	if deck_sim_button:
-		deck_sim_button.text = "效果模拟 ↓"
-		deck_sim_button.add_theme_color_override("font_color", DT.COLOR_SLATE_A80)
-
-
-## v1.5：抽屉小区块标题
-func _make_sim_section_label(text: String) -> Label:
-	var lbl := Label.new()
-	lbl.text = text
-	lbl.add_theme_font_override("font", DT.get_title_font_bold())
-	lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
-	lbl.add_theme_color_override("font_color", Color(0.7, 0.75, 0.85, 0.9))
-	return lbl
-
-
-## v1.5：抽屉 key-value 行（左标签右值）
-func _make_sim_kv(key: String, val: String, val_color: Color) -> HBoxContainer:
-	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 6)
-	var kl := Label.new()
-	kl.text = key
-	kl.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
-	kl.add_theme_color_override("font_color", DT.COLOR_SLATE_DIM_A85)
-	kl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	row.add_child(kl)
-	var vl := Label.new()
-	vl.text = val
-	vl.add_theme_font_override("font", DT.get_title_font_bold())
-	vl.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
-	vl.add_theme_color_override("font_color", val_color)
-	vl.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	row.add_child(vl)
-	return row
+	if _sim_drawer_ctl:
+		_sim_drawer_ctl.close()
 
 
 ## v1.5：effect 值格式化——委托 _format_effect_number（与列表行同口径，eff_key 仅用于签名兼容）
@@ -2001,8 +1877,8 @@ func _show_mod_details(mod_data: Dictionary) -> void:
 			deck_install_button.pressed.connect(install_callable)
 
 	# v1.5：选中模块即展开效果抽屉——完整效果直接可见，无需按"效果模拟"
-	if sim_drawer != null:
-		_open_sim_drawer()
+	if sim_drawer != null and _sim_drawer_ctl:
+		_sim_drawer_ctl.open()
 
 ## 槽位类型翻译
 func _translate_slot_type(raw: String) -> String:
@@ -2277,7 +2153,8 @@ func _navigate_mod_list(go_down: bool) -> bool:
 func _handle_escape() -> bool:
 	# 1. 抽屉开→先关
 	if sim_drawer != null and sim_drawer.visible:
-		_close_sim_drawer()
+		if _sim_drawer_ctl:
+			_sim_drawer_ctl.close()
 		return true
 	# 2. 有选中模块→回空态
 	if not selected_mod_id.is_empty():

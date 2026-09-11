@@ -42,6 +42,13 @@ static var _flat_index: Dictionary = {}
 ## 分类依据 effect key：effects 命中 MECHANIC_EFFECT_KEYS 任一 key → mechanic。
 ## 新增机制型 effect 时必须把 key 加进此表，否则面板会把它当数值改造显示。
 
+## Effect Key 速查（改造审查报告 5.8）——机制键按下方行内注释分组，行为消费点：
+## · 受击/反伤/拦截类 → 战斗结算受击链（unit_shared_helpers / module_effect_handler 受击入口）
+## · v27 触发式（kill_pulse/counter_pulse/last_stand/pain_conduct/wave_surge/death_detonate）
+##   → module_effect_handler 四入口 + 波次链（v27 改造2.0）
+## · v27 mythic 周期脉冲（vanguard_repair/aegis_*/gravity_*）→ 各管理器 tick
+## · 弹道/维度（weapon_type/slot_weapon_type/grant_slot）→ 武器配置装配链
+## · 数值键（set/flat/pct/混合）不在此表——四通道语义见下方 v22 节注释
 const MECHANIC_EFFECT_KEYS: Array = [
 	# 反伤/拦截（受击规则变化）
 	"reactive_armor", "reflect_charges", "intercept_system", "intercept_charges", "missile_intercept",
