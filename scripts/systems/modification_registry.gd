@@ -1,6 +1,6 @@
 extends Node
 ## 改造模块注册表
-## 管理所有140+个改造模块的注册、查询和验证
+## 管理所有 249 个改造模块的注册、查询和验证（数量锁：tests/unit/data/modification_modules_test.gd）
 
 const InfantryModifications = preload("res://data/modification_modules/infantry_mods.gd")
 const ArmorModifications = preload("res://data/modification_modules/armor_mods.gd")
@@ -223,6 +223,10 @@ static func register_all() -> void:
 	# v8.x 性能：建扁平反向索引（mod_id → mod_data），让 get_data 从 O(N) 扫描降到 O(1)。
 	_rebuild_flat_index()
 
+	# v27.14（改造审查报告 5.5）：conflict_group 完整性校验——同名组仅 1 个条目时
+	# check_conflict 永远遇不到同组成员，冲突拦截形同虚设；注册期警告提示补数据。
+	_validate_conflict_groups()
+
 	_initialized = true
 	# [LOG-v5.1] print("[ModificationRegistry] Registered %d modification modules" % _count_total())
 
@@ -244,6 +248,26 @@ static func _rebuild_flat_index() -> void:
 		for mod_id in type_cache.keys():
 			if not _flat_index.has(mod_id):
 				_flat_index[mod_id] = type_cache[mod_id]
+
+## v27.14（改造审查报告 5.5）：conflict_group 完整性校验——组内仅 1 个条目时
+## 冲突检查对该组无效（永远命中不了同组成员）。注册期聚合单行警告（正式包零刷屏），
+## 不阻断加载。孤儿组处置（补同组条目/移除组）属平衡性决策，另行裁决。
+static func _validate_conflict_groups() -> void:
+	var group_counts: Dictionary = {}
+	for mod_id in _flat_index.keys():
+		var data: Dictionary = _flat_index[mod_id]
+		var group: String = String(data.get("conflict_group", ""))
+		if group.is_empty():
+			continue
+		if not group_counts.has(group):
+			group_counts[group] = 0
+		group_counts[group] = int(group_counts[group]) + 1
+	var orphans: Array[String] = []
+	for group in group_counts.keys():
+		if int(group_counts[group]) < 2:
+			orphans.append(String(group))
+	if not orphans.is_empty():
+		push_warning("[ModificationRegistry] %d 个 conflict_group 仅 1 个条目、冲突检查对其无效（%s…）——补同组条目或移除该组" % [orphans.size(), ", ".join(orphans.slice(0, 6))])
 
 static func _count_total() -> int:
 	var count = 0

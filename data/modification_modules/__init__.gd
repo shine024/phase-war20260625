@@ -1,6 +1,7 @@
 ## 改造模块系统入口
-## 包含全部 202 个改造模块定义（数量锁：tests/unit/data/modification_modules_test.gd）
+## 包含全部 249 个改造模块定义（数量锁：tests/unit/data/modification_modules_test.gd）
 
+const DefaultCards = preload("res://data/default_cards.gd")
 const InfantryModifications = preload("res://data/modification_modules/infantry_mods.gd")
 const ArmorModifications = preload("res://data/modification_modules/armor_mods.gd")
 const ArtilleryModifications = preload("res://data/modification_modules/artillery_mods.gd")
@@ -82,7 +83,15 @@ static func get_mods_for_card(card_id: String) -> Array:
 
 ## 从 card_id 前缀推算 combat_kind
 ## v7.x: 卡牌 ID 规范化后（加兵种中缀），前缀已同步更新。
+## v27.14（改造审查报告 5.1）：优先读卡表正身 combat_kind——前缀链实测误判 14 张卡
+## （fe_* 势力专属 8 张 / guardian_* 5 张全被默认成 LIGHT / cold_sup_m113 判 2 实为 1），
+## 漏判卡会错过整族兵种通用改造。前缀链降级为卡表未注册 id 的兜底。
+## 回归锁：tests/unit/data/test_mod_kind_consistency.gd
 static func _guess_combat_kind(card_id: String) -> int:
+	var card: CardResource = DefaultCards.get_card_by_id(card_id)
+	if card != null:
+		return int(card.combat_kind)
+	# 兜底：前缀链（覆盖缴获动态卡等未入表 id）
 	# 堡垒卡 ID 是 {era}_fort_* 中缀形式，用 find 判定（begins_with("fort_") 匹配 0 张）
 	if card_id.find("_fort_") > 0: return 4
 	if card_id.begins_with("cold_mig21") or card_id.begins_with("cold_f4"): return 3

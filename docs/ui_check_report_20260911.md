@@ -4,6 +4,13 @@
 **检查日期**: 2026-09-11
 **检查范围**: 全部UI面板与按钮交互
 
+> **⚠️ 执行核实（2026-09-11，Claude Code）——两条 🔴"严重问题"均不成立，引用本报告前先看本节**：
+> - ❌ **P0-1"ModificationPanel 语法错误"不存在**：`modification_panel.gd` L54-58 实为 `const FILTER_ALL/"mod"/"max" + var _filter_mode` 正常声明；报告所引 `var bg_panel := get_node_or_null(...) if ...` 代码块在文件中不存在。反证：当日 GdUnit 全量 311 例 0 失败、`--export-release` 导出零 ERROR、产物 12s 存活冒烟通过——若面板脚本有解析错误，以上全不可能。
+> - ❌ **P1-2"backpack_panel 信号连接无守卫"不存在**：实查 :247/:857/:860/:864 的 `SignalBus.*.connect()` 全部带 `is_connected` 守卫；报告"问题示例"代码非本文件实际内容。
+> - ⚠️ **P1-3"性能监控失效"系误读**：`battle_performance_monitor.gd` 全文仅 30 行（报告引 L44 越界），`pass #[LOG-v5.1]` 在 L30；文件头注明"默认关闭控制台输出，避免 print 尖峰"——有意设计，非缺陷（ENABLE_CONSOLE_LOG 开关即报告想要的建议，已内建）。
+> - ⏸ **P2 项未逐条核实**：PanelChrome 池化与 v27.12 已做的五面板可见守卫+池化+脏标记（见 docs/短板诊断报告 §一）是否同一层面待分辨；AudioCache LRU/DesignTokens 统一为可选优化。
+> - 面板清单/按钮链路表/签名色表与实况相符，可继续作参考。
+
 ---
 
 ## 📊 UI面板总览
