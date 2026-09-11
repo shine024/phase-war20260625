@@ -67,7 +67,7 @@ const DATA: Dictionary = {
 		prototype = "RQ-11大乌鸦", description = "无人侦察机校射。暴击率提升。",
 		rarity = "epic",
 	power_mult = 1.6, cost_research = 320, cost_install = 160,
-		slot_type = "drone", conflict_group = "drone",
+		slot_type = "drone", conflict_group = "uav",
 		era_band = [3, 4],
 		effects = {vision_bonus = 0.50, stealth_detect = 0.20},
 		unlock_conditions = {required_level = 5}
@@ -137,7 +137,7 @@ const DATA: Dictionary = {
 		prototype = "充气坦克/假人", description = "充气假目标误导敌方。暴击率 +20%。",
 		rarity = "rare",
 	power_mult = 1.3, cost_research = 160, cost_install = 80,
-		slot_type = "deception", conflict_group = "deception",
+		slot_type = "deception", conflict_group = "stealth",
 		effects = {enemy_confusion = 0.20},
 		level_effects = {1: {enemy_confusion = 0.2}, 2: {enemy_confusion = 0.26}, 3: {enemy_confusion = 0.34}},
 		unlock_conditions = {required_level = 3}
@@ -189,7 +189,7 @@ const DATA: Dictionary = {
 		cost_research = 320,
 		cost_install = 160,
 		slot_type = "guidance",
-		conflict_group = "crit_designator",
+		conflict_group = "designator",
 		era_band = [3, 4],
 		effects = {crit_mark_chance = 0.30, crit_mark_bonus = 0.50, crit_mark_duration = 5.0},
 		level_effects = {1: {crit_mark_chance = 0.3, crit_mark_bonus = 0.5, crit_mark_duration = 5}, 2: {crit_mark_chance = 0.39, crit_mark_bonus = 0.6, crit_mark_duration = 6.5}, 3: {crit_mark_chance = 0.51, crit_mark_bonus = 0.6, crit_mark_duration = 8.5}},

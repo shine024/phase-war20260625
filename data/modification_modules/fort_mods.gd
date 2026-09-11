@@ -31,7 +31,7 @@ const DATA: Dictionary = {
 		prototype = "马奇诺防线", description = "地下坑道工事，全方位防御。对轻装、对空、对装甲伤害减免。",
 		rarity = "epic",
 	power_mult = 1.6, cost_research = 280, cost_install = 140,
-		slot_type = "network", conflict_group = "network",
+		slot_type = "network", conflict_group = "fortification",
 		effects = {defense_light = 0.20, defense_air = 0.20, defense_armor = 0.15},
 		level_effects = {1: {defense_light = 0.2, defense_air = 0.2, defense_armor = 0.15}, 2: {defense_light = 0.26, defense_air = 0.26, defense_armor = 0.195}, 3: {defense_light = 0.34, defense_air = 0.34, defense_armor = 0.255}},
 		unlock_conditions = {required_level = 4}
@@ -42,7 +42,7 @@ const DATA: Dictionary = {
 		prototype = "遥控武器站", description = "遥控武器站自动射击。射速提升。",
 		rarity = "epic",
 	power_mult = 1.6, cost_research = 300, cost_install = 150,
-		slot_type = "automation", conflict_group = "automation",
+		slot_type = "automation", conflict_group = "autoloader",
 		# v7.x: per-slot 弹道——对装甲槽改 SNIPER 要塞炮穿甲
 		condition_slot = 1,
 		era_band = [3, 4],
@@ -138,7 +138,7 @@ const DATA: Dictionary = {
 		cost_research = 400,
 		cost_install = 200,
 		slot_type = "special",
-		conflict_group = "special",
+		conflict_group = "minefield",
 		era_band = [3, 4],
 		effects = {minefield = 150.0},
 		level_effects = {1: {minefield = 150}, 2: {minefield = 195}, 3: {minefield = 255}},
@@ -157,7 +157,7 @@ const DATA: Dictionary = {
 		cost_research = 320,
 		cost_install = 160,
 		slot_type = "special",
-		conflict_group = "special",
+		conflict_group = "obstacle",
 		effects = {slow_aura = 0.40, slow_aura_radius = 200.0},
 		level_effects = {1: {slow_aura = 0.4, slow_aura_radius = 200}, 2: {slow_aura = 0.52, slow_aura_radius = 260}, 3: {slow_aura = 0.6, slow_aura_radius = 340}},
 		unlock_conditions = {required_level = 5}
@@ -193,7 +193,7 @@ const DATA: Dictionary = {
 		cost_research = 110,
 		cost_install = 55,
 		slot_type = "shelter",
-		conflict_group = "shelter",
+		conflict_group = "survival",
 		effects = {damage_reduction = 0.10, max_hp_pct = 0.10},
 		level_effects = {1: {damage_reduction = 0.1, max_hp_pct = 0.1}, 2: {damage_reduction = 0.13, max_hp_pct = 0.13}, 3: {damage_reduction = 0.17, max_hp_pct = 0.17}},
 		unlock_conditions = {required_level = 2}
