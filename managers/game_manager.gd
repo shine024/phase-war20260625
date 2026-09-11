@@ -518,6 +518,18 @@ func _on_battle_ended(player_won: bool) -> void:
 		_grant_phase_field_xp_for_victory()
 		# 攻克关卡后触发势力反应
 		_apply_faction_reaction_for_conquest()
+		# v27.15（TODO#10 复活，用户裁决）：普通战斗相位仪掉落链——"战场缴获"通道。
+		# 通用系列开局全解锁（_init_unlocked_instruments 白送）、特殊仪走相位师战利品，
+		# 故掉落池 = 未解锁的势力专属仪（常态渠道=商店声望/势力技能，掉落是幸运捷径，
+		# 低星为主、6-7★招牌不进池保持商店稀缺）。相位师战自身另有特殊仪掉落，跳过防双掉。
+		if not _is_phase_master_battle:
+			var _drop_inst_id: String = _maybe_roll_regular_instrument_drop()
+			if not _drop_inst_id.is_empty():
+				if PhaseInstrumentManager and PhaseInstrumentManager.has_method("unlock_instrument"):
+					PhaseInstrumentManager.unlock_instrument(_drop_inst_id)
+				last_battle_reward_summary["instrument_drop"] = _drop_inst_id
+				var _drop_inst_cfg: Dictionary = PhaseInstrumentsData.get_by_id(_drop_inst_id)
+				collect_battle_instrument(_drop_inst_id, String(_drop_inst_cfg.get("name", _drop_inst_id)), victory_stars, "战场缴获")
 	else:
 		# v26.13(gameplay)：败局也给相位场经验（胜利值 30%，与下方战斗卡失败 30% 同口径）
 		#——失败也有成长进尺，回收"白打一场"的挫败感。
@@ -1151,6 +1163,41 @@ func _maybe_roll_special_instrument_drop(stars: int, faction: String) -> String:
 	# 势力未命中（all/未知）：随机抽一个
 	var all_specials: Array = faction_to_special.values()
 	return String(all_specials[randi() % all_specials.size()])
+
+## v27.15（TODO#10 复活）：普通战斗相位仪掉落——胜利 8% 掉 1 台未解锁势力专属仪。
+## 池 = is_generic=false 且 star ≤ 5 且未解锁；权重按 star 递减（32/16/8/4/2）——
+## 低星常见、高星珍稀；6-7★（含主动大招招牌）不进池，保持商店声望渠道稀缺。
+## 全解锁后返回空串，掉落链自然熄火；AFK 推图同样适用（自限性：池只减不增）。
+func _maybe_roll_regular_instrument_drop() -> String:
+	if randf() >= 0.08:
+		return ""
+	if PhaseInstrumentManager == null or not PhaseInstrumentManager.has_method("has_unlocked_instrument"):
+		return ""
+	var star_weights: Array[int] = [0, 32, 16, 8, 4, 2, 0, 0]  # index=star；6/7★=0 不进池
+	var pool: Array[Dictionary] = []
+	var weights: Array[int] = []
+	for d in PhaseInstrumentsData.get_all():
+		if not (d is Dictionary) or bool(d.get("is_generic", true)):
+			continue
+		var star: int = clampi(int(d.get("star", 1)), 1, 7)
+		if star_weights[star] <= 0:
+			continue
+		var iid: String = String(d.get("id", ""))
+		if iid.is_empty() or PhaseInstrumentManager.has_unlocked_instrument(iid):
+			continue
+		pool.append(d)
+		weights.append(star_weights[star])
+	if pool.is_empty():
+		return ""
+	var total: int = 0
+	for w in weights:
+		total += w
+	var pick: int = randi() % maxi(total, 1)
+	for i in pool.size():
+		pick -= weights[i]
+		if pick < 0:
+			return String(pool[i].get("id", ""))
+	return ""
 
 ## v8.2 B1: 敌方家族 faction（steel/flame/thunder/void/混合）→ 玩家势力 ID 映射。
 ## 修复 faction 命名空间不一致：FACTION_MOD_BIAS / 特殊仪表 的 key 是玩家势力 ID，
