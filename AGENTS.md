@@ -374,6 +374,25 @@ IntelEvolutionManager → IntelManual, IntelEvolutionBranches
 - **mythic 启用**：`mod_manager` mythic→OVERLORD；掉落权重 1（boss×3）；三条 gen_21~23
   行为改写（全队击杀自回/周期补盾/引力脉冲）。
 
+### v27.16 游戏手感三批次（2026-09-12，详见 CHANGELOG）
+
+**改面板开合/按钮反馈/入战流程前必读。**
+
+- **面板开合动画唯一真身 `scripts/ui/panel_anim.gd`（PanelAnim）**：main 17 个 overlay 与
+  全部旁路面板（相位师/技能树/卡车基地内嵌/标题屏弹窗）都经它——**新面板勿再手写
+  开合 tween**。Control 宿主走 open/close；CanvasLayer 宿主（无 modulate）走
+  open_layer/close_layer（backdrop 同步淡出+收尾 tween 竞态守卫）。组件自身不播音效
+  （防群关 15 重奏），开合音归调用点
+- **点击音/按压微动效是全局钩子**（AudioManager node_added → BaseButton.pressed）：
+  新按钮无需手写反馈；play_sfx("button") 带 50ms 去重，既有手写调用保留不删
+- **StageBanner（stage_banner.gd）= 轻节拍横幅**（~1s，全链 mouse IGNORE 不挡点击），
+  SortieInterstitial = 重仪式战报（1.5s 可跳过）——两者构成过场体系；挂机/教程链路
+  对横幅**全部豁免**。入战揭幕的 dip 用树定时器 await（tw.finished 有挂起协程风险）
+- help/growth 面板内层动画已拆（动画归外层 PanelAnim）；growth 的重活分帧语义保留在
+  show_panel 的 0.08s interval 链上，勿删
+- tab 内容过渡只动 modulate（fade_content_in）——容器子节点的 position/scale 会被
+  下次布局排序覆盖，勿加位移动画
+
 ### v26.10 改造模块消耗品化 + 双通道供给（2026-09-02，详见 CHANGELOG）
 
 **改改造安装/图纸掉落/制造站相关代码前必读本节。** 核心语义：安装一条改造 =

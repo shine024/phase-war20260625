@@ -75,6 +75,16 @@ func on_result_confirmed() -> void:
 		main.bottom_function_bar.set_start_battle_text("开始战斗")
 	if GameManager:
 		GameManager.return_to_prep()
+	# 批次3（流程缝合）：回整备宣告横幅——结算面板淡出（0.15s）与之重叠，状态切换
+	# 从同帧瞬切变成有呼吸拍的过渡。挂机（每场自动续战，横幅会刷屏）与教程
+	# （战后引导步骤接管节奏）豁免。
+	var tutorial_active: bool = (
+		TutorialProgressionManager != null
+		and TutorialProgressionManager.has_method("should_show_tutorial")
+		and TutorialProgressionManager.should_show_tutorial()
+	)
+	if not tutorial_active and not (main._afk_manager != null and main._afk_manager.is_running):
+		StageBanner.post("返回整备")
 	# 刷新底部仪表栏
 	if main.bottom_instrument_bar and main.bottom_instrument_bar.has_method("refresh"):
 		main.bottom_instrument_bar.refresh()
