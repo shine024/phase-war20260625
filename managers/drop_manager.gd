@@ -276,6 +276,10 @@ func grant_dropped_cards_by_id(card_id: String, count: int) -> void:
 		return
 	_add_dropped_card(id, maxi(1, int(count)))
 
+## v27.18 击杀缴获通道：按时代+兵种随机一张真卡 id（battle_damage_system 通用缴获用）
+func pick_capture_card_id(era: int, combat_kind: int) -> String:
+	return drop_tables.get_random_card_for_era_kind(era, combat_kind)
+
 
 ## 添加掉落成品卡（带星级和强化）
 func _add_dropped_card(card_id: String, count: int) -> void:
