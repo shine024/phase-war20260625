@@ -47,8 +47,8 @@ InstanceRegistry="*res://managers/instance_registry.gd"
 PhaseMasterSkillManager="*res://managers/phase_master_skill_manager.gd"
 TutorialProgressionManager="*res://managers/tutorial_progression_manager.gd"
 BattleSpectacle="*res://managers/battle/battle_spectacle.gd"
-_MCPGameBridge="*res://addons/agent_tools/runtime/game_bridge.gd"
 _mcp_game_helper="*res://addons/godot_ai/runtime/game_helper.gd"
+_MCPGameBridge="*res://addons/agent_tools/runtime/game_bridge.gd"
 
 [debug]
 
