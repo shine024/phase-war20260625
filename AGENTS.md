@@ -110,6 +110,17 @@ print(call('logs.read'))                          # 读 Output 面板日志（�
 7. **`run.scene_headless` 裸模式陷阱（2026-09-02 Steam 采集实测）**：**不传 `screenshots`/`input_script` 参数时走 `--headless` 裸模式——64×64 假窗口 + dummy 渲染**，游戏逻辑照跑但视口纹理全空（截图/录制全黑）。要画面必须带至少一个截图参数（预热截图即可）。另：`extra_args` 会被插在场景路径**之前**，不能用 `--` 传 user args（会把场景路径吞掉）——参数改走临时文件（如 `.godot/steam_cap_mode.txt`）。
 8. **采集编排器（Steam 素材管线范例 `tests/_tmp_steam_cap.gd`）**：挂载场景用 `root.add_child + current_scene 赋值`（**绝不能 `change_scene_to_file`，会连驱动器一起释放导致静默断链**）；match 分支里的协程函数必须 `await`（不 await 则协程链在首个 await 处被孤儿回收，现象是"函数只跑了前半段"）；运行期改 `w.size` 在 ANGLE 环境会杀渲染表面（启动参数给分辨率才安全）；战场 1080p 截图走 SubViewport 超采样（容器 `stretch=false` + 自建第二相机 `make_current` + zoom 1.5 复刻 1280×720 设计取景，实测内容带 world y∈[140,853] 最佳机位 cam.y=495）。
 
+## godot_ai 插件（DSH 游戏创造模式，2026-09-12 安装）
+
+**`addons/godot_ai` v3.1.5** 已安装并通过 `agent_tools` 桥写入 `editor_plugins/enabled`（带 agent_tools/gdunit4/godot-mcp 三插件共存）。配套 **DSH 插件 `dsh-godot-ai@0.6.0`** 已装入 web profile。三者分工：agent_tools（9920 TCP JSON-RPC，自研）、godot-mcp（1.0.0，独立 MCP）、godot_ai（编辑器 Addon + uv Python sidecar，HTTP 8000 / WS 9500 + 编辑器 dock）。
+
+- **版本锁 v3.1.5**：`dsh-godot-ai 0.6.0` 仅测试过 Godot AI 3.1.5（45 工具、attach 协议 v1）；GitHub 最新已是 v4.1.0（协议大版本变更），**不要升级到 v4**，也警惕 addon 自更新（dock 里有更新控件，弹 v4 拒绝）。
+- **⚠️ 2026-09-12 实测勘误**：`session_manage` 报 **plugin/server 3.2.5**（非 3.1.5）——实际装的是 3.2.5，高于文档版本锁一个 minor，DSH 兼容性未回归。同日可玩性检查实测：编辑器集成链（project_run / get_scene_tree / get_ui_elements / logs_read）正常，但 **`editor_screenshot` / `game_eval` 调用会打死 MCP 连接层**（"Failed to initialize server session"，sidecar 进程与 HTTP 8000 仍存活、连接本会话不可恢复）→ 挂了就回退 agent_tools（截图走 `editor_game_screenshot`，深流程走 CLI `--script`）。是否 3.2.5 特有回归待查。
+- **启用尚需编辑器重启**（写设置时编辑器在跑，走 `EditorInterface.set_plugin_enabled` 才能免重启热加载，agent_tools 未暴露该方法）。
+- headless 自动禁用（`GODOT_AI_ALLOW_HEADLESS` 可越过）→ 不影响 `--check-only` / gdunit 测试流程；启用时会自动加 autoload `_mcp_game_helper`（禁用插件时自动移除）。
+- sidecar 经 `uvx` 拉 `godot-ai` PyPI 包，首次启动需网络。
+- 完整启用流程（DSH 侧）：重启 DSH Web → Settings 点"安装游戏创造模式"（创建 `godot-creator` / `godot-creator-adaptive` 两个用户 preset）→ 新会话选 Godot Creator，顶部状态"已连接"即通。
+
 ## 崩溃/错误日志诊断速查（2026-08-05 踩坑沉淀）
 
 > 游戏崩溃（signal 11 / 0xc0000005 段错误）后，"日志在哪"反复找不准。下面是**每个日志源的确切位置 + 局限**，按优先级排查。
@@ -674,6 +685,8 @@ tests/
 
 LLM training data covers Godot up to ~4.3. This project uses Godot 4.5.
 Check `docs/engine-reference/godot/VERSION.md` before suggesting API calls.
+
+- ⚠️ **Godot 4.5.1 的 `SceneTree` 没有 `about_to_quit` 信号**（2026-09-12 实测 `get_signal_list()` 共 12 项无此项；旧训练数据里的常用信号，4.5 已移除）。任何 `tree.connect("about_to_quit", ...)` / `has_signal("about_to_quit")` 守卫都**静默失效**——save_manager/debug_log_manager 的连接因此从未生效过（代码保留，未来引擎恢复即自动生效）。程序化退出（`get_tree().quit()`）的收尾存档由退出调用点显式调 `SaveManager.save_game_on_exit()`（title_screen 退出确认已接）；窗口 X 关闭走 `WM_CLOSE_REQUEST` 不受影响。新的退出清理需求一律用调用点显式方案，**别再挂 about_to_quit**；也不用 `_exit_tree` 替代（autoload 逆序析构，退树时后加载的 manager 可能已释放）。
 
 ## Collaboration Protocol
 

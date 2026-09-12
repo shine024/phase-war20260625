@@ -289,7 +289,8 @@ func _add_mobile_base_button(style_source: Button) -> void:
 		return
 	var btn := Button.new()
 	btn.name = "EnterTruckBaseButton"
-	btn.text = "移动基地"
+	# 可玩性检查收口（2026-09-12）：补英文副标，与"新游戏 NEW GAME/继续 CONTINUE"双语风格统一
+	btn.text = "移动基地 MOBILE BASE"
 	for style_key in ["normal", "hover", "pressed", "disabled", "focus"]:
 		var sb: StyleBox = style_source.get_theme_stylebox(style_key)
 		if sb:
@@ -420,7 +421,8 @@ func _update_slot_display() -> void:
 		var info: Array = SaveManager.get_slot_info() if SaveManager else []
 		var parts: Array = []
 		for s in info:
-			var marker := "▸ " if int(s.get("slot", 0)) == SaveManager.get_slot() else "  "
+			# 行首补一空格：SlotLabel 无内边距，贴 VBox 左缘视觉上似裁切（与其他按钮文字留边对齐）
+			var marker := " ▸ " if int(s.get("slot", 0)) == SaveManager.get_slot() else "   "
 			var level_str := "第 %d 关" % int(s.get("level", 0)) if int(s.get("level", 0)) > 0 else "空"
 			parts.append("%s%d: %s" % [marker, int(s.get("slot", 0)), level_str])
 		slot_label.text = "\n".join(parts)
@@ -445,8 +447,8 @@ func _on_quit() -> void:
 	add_child(dialog)
 	dialog.confirmed.connect(func() -> void:
 		var sm := get_node_or_null("/root/SaveManager")
-		if sm != null and sm.has_method("save_game"):
-			sm.call("save_game")
+		if sm != null and sm.has_method("save_game_on_exit"):
+			sm.call("save_game_on_exit")
 		get_tree().quit())
 	dialog.confirmed.connect(dialog.queue_free)
 	dialog.canceled.connect(dialog.queue_free)

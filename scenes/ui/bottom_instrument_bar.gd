@@ -1090,6 +1090,15 @@ func _sync_slot_icon(panel: Control, card: CardResource, _law_id: String) -> voi
 	var tex: Texture2D = null
 	if card != null:
 		tex = UiAssetLoader.load_tex(UiAssetLoader.card_icon_path_for_list(card))
+	# 可玩性检查修复（2026-09-12）：精简模式槽位无文字区（v7.x 删），空槽只剩纯色底，
+	# 观感如贴图丢失。补/撤"＋"占位符与卡图互斥——空槽语义从"色块"变"可放置格"。
+	var clip: Control = tr.get_parent()
+	var hint: Label = clip.get_node_or_null("EmptyHint") if clip != null else null
+	if card != null:
+		if hint != null:
+			hint.queue_free()
+	elif hint == null:
+		_add_empty_slot_hint(panel)
 	# v9.x（P2-7范围B）：法则格图标分支已随法则槽退役移除（参数保留兼容调用签名）
 	var slot_h: float = panel.size.y if panel.size.y > 4.0 else float(SLOT_FIXED_SIZE.y)
 	# v7.x：精简模式槽位无底部文字区，图标占满整个可用高度（留 4px 上下边距）
@@ -1099,6 +1108,25 @@ func _sync_slot_icon(panel: Control, card: CardResource, _law_id: String) -> voi
 		UiAssetLoader.setup_card_unit_icon(tr, tex, Vector2(art_w, art_h), true)
 	else:
 		UiAssetLoader.setup_texrect_icon(tr, tex, Vector2(art_w, art_h))
+
+
+## 空槽占位符：icon 区中央半透明"＋"（槽边框色低透明）——空=可放置而非渲染缺陷
+func _add_empty_slot_hint(panel: Control) -> void:
+	var clip: Control = panel.get_node_or_null("SlotVBox/SlotIconClip")
+	if clip == null:
+		return
+	var bc: Color = _slot_border(String(panel.get_meta("slot_color", "")))
+	var hint := Label.new()
+	hint.name = "EmptyHint"
+	hint.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	hint.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	hint.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	hint.add_theme_font_size_override("font_size", 22)
+	hint.add_theme_color_override("font_color", Color(bc.r, bc.g, bc.b, 0.55))
+	hint.add_theme_color_override("font_outline_color", Color(0.0, 0.0, 0.0, 0.4))
+	hint.add_theme_constant_override("outline_size", 2)
+	clip.add_child(hint)
 
 
 func _build_slot_panel(entry: Dictionary) -> PanelContainer:
