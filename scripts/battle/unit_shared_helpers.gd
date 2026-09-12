@@ -185,7 +185,11 @@ static func clamp_inside_battlefield(unit: Node2D, x_min: float, max_x: float, y
 ## sprite_node_name：我方 "Sprite" / 敌方 "Sprite2D"；lunge_forward：我方 true / 敌方 false（朝左）。
 static func fire_scale_pulse(unit: Node2D, sprite_node_name: String, lunge_forward: bool) -> void:
 	# v27.12 perf: sprite 引用 meta 缓存（原每次开火字符串路径查找；失效自动重查）
-	var spr: Sprite2D = unit.get_meta("_fire_pulse_sprite", null)
+	# v6.14: 必须 has_meta 守卫——get_meta(key, null) 传 null 默认值在缺 key 时
+	# 仍打 ERROR 日志（每单位首火一条，L3 短局刷 6-7 条，实测踩坑）
+	var spr: Sprite2D = null
+	if unit.has_meta("_fire_pulse_sprite"):
+		spr = unit.get_meta("_fire_pulse_sprite")
 	if spr == null or not is_instance_valid(spr) or spr.get_parent() != unit:
 		spr = unit.get_node_or_null(sprite_node_name)
 		if spr == null:

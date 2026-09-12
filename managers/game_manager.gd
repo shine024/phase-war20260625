@@ -460,15 +460,6 @@ func go_to_battle() -> void:
 
 func _on_battle_ended(player_won: bool) -> void:
 	current_phase = GamePhase.POST_BATTLE
-	# 调试：检查 InstanceRegistry 状态
-	var ir_dbg: Node = get_node_or_null("/root/InstanceRegistry")
-	if ir_dbg != null and ir_dbg.has_method("get_all_instance_ids"):
-		var all_ids: Array = ir_dbg.get_all_instance_ids()
-		push_warning("[GameManager] 战斗结束: InstanceRegistry 中实例数=%d" % all_ids.size())
-		for aid in all_ids:
-			var lvl: int = ir_dbg.get_card_level(aid) if ir_dbg.has_method("get_card_level") else 0
-			var exp: int = ir_dbg.get_battle_experience(aid) if ir_dbg.has_method("get_battle_experience") else 0
-			push_warning("[GameManager]   实例: %s, lv=%d, exp=%d" % [aid, lvl, exp])
 
 	# v6.6(剧情): 清理最终战标记（防跨战斗残留）
 	clear_final_battle_state()

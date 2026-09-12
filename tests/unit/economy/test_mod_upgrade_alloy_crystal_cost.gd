@@ -1,7 +1,8 @@
 class_name ModUpgradeAlloyCrystalCostTest
 extends GdUnitTestSuite
 ## v27.13: 改造升级合金/晶体消耗——preview 与扣款同源、Lv3 定价阶梯、余额守卫（不足拒绝不扣款）。
-## fixture：ww1_mauser 实例卡 + inf_12_body_armor（save_manager 起始改造同款、有 level_effects 三档；
+## fixture：ww1_mauser 实例卡 + inf_12_body_armor（直塞 mods 不走安装门；有 level_effects 三档；
+## 历史上曾是 save_manager 起始改造（v6.14 起被时代带门替换为 inf_30_load_vest），
 ## 任务原提的 inf_05_ap_ammo 无 level_effects 不可升级，故换用同卡同先例的可升档模块）。
 ## 状态隔离抄 test_mod_consumable.gd：资源快照+清零基线+测后恢复、实例用后 dispose、压住自动存档。
 ## 图纸开关关闭（mod_consumable_enabled=false 只豁免图纸费，合金/晶体不受其控制——聚焦被测路径）。

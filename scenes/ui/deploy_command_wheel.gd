@@ -44,18 +44,24 @@ func _build() -> void:
 		add_child(btn)
 		_buttons.append(btn)
 
-## 在锚点（屏幕坐标，单位所在处）周围以扇形展开
+## 在锚点（父容器局部坐标，单位所在处）周围以扇形展开
 func open(anchor_screen: Vector2) -> void:
 	if _buttons.size() != _CMD_DEFS.size():
 		return
 	# 三向扇形：集火左上 / 守住右上 / 自由正下（角度以锚点为圆心）
 	var angles := [-PI * 0.75, -PI * 0.25, PI * 0.5]
+	# 父容器（BattleContainer）局部域尺寸——按钮钳制其内，防贴边单位把按钮顶出屏
+	var area := get_parent_area_size()
 	for i in range(_buttons.size()):
 		var b := _buttons[i]
-		b.position = anchor_screen + Vector2(cos(angles[i]), sin(angles[i])) * _ARC_RADIUS \
+		var pos: Vector2 = anchor_screen + Vector2(cos(angles[i]), sin(angles[i])) * _ARC_RADIUS \
 			- b.custom_minimum_size * 0.5
-	# 全屏遮罩尺寸跟随父视口
-	set_anchors_preset(Control.PRESET_FULL_RECT)
+		pos.x = clampf(pos.x, 0.0, maxf(0.0, area.x - b.custom_minimum_size.x))
+		pos.y = clampf(pos.y, 0.0, maxf(0.0, area.y - b.custom_minimum_size.y))
+		b.position = pos
+	# 全屏遮罩尺寸跟随父容器（set_anchors_and_offsets_preset 连带归零 offsets，
+	# 确保"点轮盘外取消"的全屏截击不因根矩形残缺而失效）
+	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	visible = true
 
 func close() -> void:

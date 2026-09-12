@@ -356,6 +356,14 @@ func _on_about_to_quit() -> void:
 	_is_exiting = true
 	save_game()
 
+## 程序化退出前的收尾存档（title_screen 退出确认调用）。
+## Godot 4.5.1 无 about_to_quit 信号（ready 期连接从未生效，见 _ready 注），
+## 改由退出调用点显式触发；_is_exiting 绕过 battle/deferred/throttle 守卫，
+## 确保节流窗口内也不丢档。
+func save_game_on_exit() -> void:
+	_is_exiting = true
+	save_game()
+
 func _exit_tree() -> void:
 	_is_exiting = true
 
@@ -921,15 +929,18 @@ func _enqueue_starter_backpack_cards() -> void:
 		BasicResourceManager.add_resource("crystal", 500)
 		BasicResourceManager.add_resource("energy_block", 1000)
 	# v21.6（用户 2026-08-27 指示）：起始改造 5 个基础档预装（步兵2/坦克1/炮兵2）。
+	# v6.14 可玩性测试回修：原清单 4/5 被 v25.0 时代带/v26 稀有度档位门拦死
+	# （inf_05_ap_ammo/art_07_ammo_supply 需勇士档、inf_12_body_armor/art_01_rifling
+	#  时代不符）——替换件全为全时代带 + 档位门 ≤ 老兵档（starter 出厂档位）。
 	# 图纸先入情报背包（install_modification 的蓝图门），安装走常规链路——
 	# 纳米实付（合计约 160/1500，经济账真实）、paid_cost 记账、槽位校验全走正门。
 	# 失败只 push_warning 不阻断开档（如图纸/槽位异常时宁可少装不可开档失败）。
 	var starter_mods: Array = [
-		["ww1_mauser", "inf_05_ap_ammo"],
-		["ww1_mauser", "inf_12_body_armor"],
+		["ww1_mauser", "inf_29_iron_sights"],
+		["ww1_mauser", "inf_30_load_vest"],
 		["ww1_arm_ft17", "arm_01_sloped_armor"],
-		["ww1_arty_m81", "art_01_rifling"],
-		["ww1_arty_m81", "art_07_ammo_supply"],
+		["ww1_arty_m81", "art_17_barrel_maintenance"],
+		["ww1_arty_m81", "art_12_fortification"],
 	]
 	var bpm_starter: Node = get_node_or_null("/root/BlueprintManager")
 	if bpm_starter != null and bpm_starter.has_method("install_modification"):

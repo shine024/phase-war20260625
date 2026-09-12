@@ -1680,7 +1680,13 @@ func _on_territory_map_button() -> void:
 	var overlay = get_node_or_null("/root/Main/PopupLayer/OccupationOverlay")
 	if overlay == null:
 		return
-	overlay.visible = true
+	# v6.14: 走 main 统一开关（开面板淡入动效，与其它 16 入口同路径）；
+	# 直接 visible=true 时 ESC/关闭链仍正常（close_top 按 visible 找），仅无动效。
+	var main = get_node_or_null("/root/Main")
+	if main != null and main.has_method("_open_overlay"):
+		main._open_overlay(overlay, "occupation")
+	else:
+		overlay.visible = true
 	var panel = overlay.get_node_or_null("CenterContainer/OccupationPanel")
 	if panel and panel.has_method("_refresh_all"):
 		panel._refresh_all()
