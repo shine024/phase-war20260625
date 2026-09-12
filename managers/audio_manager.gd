@@ -131,8 +131,10 @@ func _ready() -> void:
 	# v27: 全局按钮悬停音——所有 BaseButton 挂 mouse_entered（60ms 节流 + 低音量）。
 	# 与 main.gd 手型光标钩子同构：那是视觉反馈，这是听觉反馈（ui-review 易用性：可交互处多状态）。
 	# 挂在 autoload 上而非 main.gd，覆盖标题屏等所有场景。
-	if not get_tree().node_added.is_connected(_on_node_added_hover_sfx):
-		get_tree().node_added.connect(_on_node_added_hover_sfx)
+	# 批次1（拼凑感修复）：同一钩子补挂 pressed → 点击音，覆盖全部无点击音面板
+	#（faction/achievement/collection/settings/help/intelligence_hub 等内部按钮此前全哑）。
+	if not get_tree().node_added.is_connected(_on_node_added_ui_sfx):
+		get_tree().node_added.connect(_on_node_added_ui_sfx)
 
 	# 初始化 BGM 系统
 	_init_music_player()
@@ -178,8 +180,8 @@ func _exit_tree() -> void:
 			SignalBus.phase_driver_hp_changed.disconnect(_on_phase_driver_hp_changed_alarm)
 		if SignalBus.has_signal("battle_started") and SignalBus.battle_started.is_connected(_on_battle_started_reset_alarm):
 			SignalBus.battle_started.disconnect(_on_battle_started_reset_alarm)
-		if get_tree().node_added.is_connected(_on_node_added_hover_sfx):
-			get_tree().node_added.disconnect(_on_node_added_hover_sfx)
+		if get_tree().node_added.is_connected(_on_node_added_ui_sfx):
+			get_tree().node_added.disconnect(_on_node_added_ui_sfx)
 		# BGM 监听（_init_music_player 内连接的 3 条）
 		if SignalBus.has_signal("battle_ended") and SignalBus.battle_ended.is_connected(_on_battle_ended_bgm):
 			SignalBus.battle_ended.disconnect(_on_battle_ended_bgm)
@@ -203,6 +205,14 @@ func _exit_tree() -> void:
 func play_sfx(name: String, volume: float = 1.0, pitch: float = 1.0) -> void:
 	if name.is_empty():
 		return
+
+	# 批次1: "button" 点击音 50ms 去重——全局钩子与 ~65 处手写调用并存，
+	# 同一次点击（含 50ms 内的极快连点）只响一次，防双响/机关枪
+	if name == "button":
+		var now_msec := Time.get_ticks_msec()
+		if now_msec - _last_button_sfx_msec < BUTTON_SFX_MIN_INTERVAL_MSEC:
+			return
+		_last_button_sfx_msec = now_msec
 
 	var p: AudioStreamPlayer = _players.get(name)
 	if p == null:
@@ -471,9 +481,23 @@ var _last_hover_sfx_msec: int = -10000
 const HOVER_SFX_MIN_INTERVAL_MSEC: int = 60
 const HOVER_SFX_VOLUME: float = 0.35
 
-func _on_node_added_hover_sfx(node: Node) -> void:
-	if node is BaseButton and not node.mouse_entered.is_connected(_on_button_hovered):
-		node.mouse_entered.connect(_on_button_hovered.bind(node))
+# ── 批次1: 全局按钮点击音（与悬停音同构挂 node_added → BaseButton.pressed）──
+# 既有 ~65 处手写 _play_sfx("button") 保留不删（少数在非按钮 gui_input 路径上，
+# 删了会哑）；play_sfx 内对 "button" 做 50ms 窗口去重——钩子与手写谁先触发都只响一次。
+var _last_button_sfx_msec: int = -10000
+const BUTTON_SFX_MIN_INTERVAL_MSEC: int = 50
+
+func _on_node_added_ui_sfx(node: Node) -> void:
+	if node is BaseButton:
+		if not node.mouse_entered.is_connected(_on_button_hovered):
+			node.mouse_entered.connect(_on_button_hovered.bind(node))
+		if not node.pressed.is_connected(_on_button_clicked_sfx):
+			node.pressed.connect(_on_button_clicked_sfx)
+		# 批次2：按压微动效（视觉反馈也走这唯一全局钩子，PanelAnim 承担行为）
+		PanelAnim.attach_press_feedback(node)
+
+func _on_button_clicked_sfx() -> void:
+	play_sfx("button")
 
 func _on_button_hovered(btn: BaseButton) -> void:
 	if btn == null or not is_instance_valid(btn) or btn.disabled:
