@@ -78,11 +78,13 @@ func _run() -> void:
 					legacy_overlap += 1
 		_pass_log.append("① %s：17 热区，新 6 区零重叠（存量交叠 %d 对记录在案）" % [era, legacy_overlap])
 	var missing: Array = []
+	# v27.17：hero_archive/memorial 是顶栏按钮入口（用户裁决），不走热区——不按悬空判死
+	const TOPBAR_ONLY_KEYS := ["hero_archive", "memorial"]
 	for key in panels:
-		if not covered.has(key):
+		if not covered.has(key) and not TOPBAR_ONLY_KEYS.has(key):
 			missing.append(key)
 	if missing.is_empty():
-		_pass_log.append("① PANEL_SCENES %d 键全部有热区落点（零悬空）" % panels.size())
+		_pass_log.append("① PANEL_SCENES 热区键零悬空（另 %d 键走顶栏入口）" % TOPBAR_ONLY_KEYS.size())
 	else:
 		_fails.append("① 悬空键残留：%s" % ", ".join(missing))
 

@@ -11,6 +11,7 @@ const EnemyArchetypes = preload("res://data/enemy_archetypes.gd")
 const BasicResources = preload("res://data/basic_resources.gd")
 const CardDropGrants = preload("res://scripts/card_drop_grants.gd")
 const BattleEnvs = preload("res://data/battle_environments.gd")
+const DefaultCards = preload("res://data/default_cards.gd")  # v27.18 通用缴获 toast 取卡名
 
 # ---- 外部依赖引用（由 BattleManager 注入） ----
 var _signal_bus: Node = null
@@ -65,8 +66,48 @@ func roll_blueprint_drops(unit: Node) -> void:
 		var qm: Node = _get_autoload_node("QuestManager")
 		if qm and qm.has_method("notify_fragments_changed"):
 			qm.notify_fragments_changed()
+	# ── v27.18 通用缴获（发行差距清单 P2-9 复活·保守档）──
+	# 显式 drops 表是 15 个特殊原型（缴获卡/时代旗舰）的精调通道；普通/无表精英单位
+	# 走这里：按兵种过滤时代卡池真卡直掉。普通 2% / 精英 15%，每场上限 2 张
+	#（boss 不参与：显式表多为 1.0 必掉旗舰）。卡 id 与战后随机滚卡同源（无死 id 风险）。
+	if drops.is_empty() and _generic_captures_this_battle < GENERIC_CAPTURE_MAX_PER_BATTLE:
+		var spawn_type: String = String(unit.get_elite_spawn_type()) if unit.has_method("get_elite_spawn_type") else "normal"
+		if spawn_type != "boss":
+			var cap_chance: float = (GENERIC_CAPTURE_ELITE_CHANCE if spawn_type == "elite"
+				else GENERIC_CAPTURE_NORMAL_CHANCE) * drop_mult
+			if randf() <= cap_chance:
+				_roll_generic_capture(unit, gm, bm)
 	## v9.x（P2-7）：法则知识值掉落函数已随 PhaseLawManager 退役删除
 	_roll_rune_drops(unit)  # v6.2: 符文掉落
+
+## v27.18 通用缴获常量（保守档；CHANGELOG 留观——实测后单变量调参）
+const GENERIC_CAPTURE_NORMAL_CHANCE := 0.02
+const GENERIC_CAPTURE_ELITE_CHANCE := 0.15
+const GENERIC_CAPTURE_MAX_PER_BATTLE := 2
+var _generic_captures_this_battle := 0   # BattleManager 每战 new 本类，天然按场清零
+
+## v27.18：缴获一张所杀兵种同类的时代真卡（直发背包 + MVP 缴获分区 + toast 反馈）
+func _roll_generic_capture(unit: Node, gm: Node, bm: Node) -> void:
+	var era: int = 0
+	if gm != null and "current_level" in gm and gm.has_method("get_era"):
+		era = int(gm.get_era(int(gm.current_level)))
+	var kind: int = -1
+	var ustats = unit.get("stats")
+	if ustats != null:
+		kind = int(ustats.combat_kind)
+	var mll: Node = _get_autoload_node("ManagerLazyLoader")
+	if mll != null and mll.has_method("ensure_loaded"):
+		mll.ensure_loaded("drop")
+	var dm: Node = _get_autoload_node("DropManager")
+	if dm == null or not dm.has_method("pick_capture_card_id"):
+		return
+	var pick: String = dm.pick_capture_card_id(era, kind)
+	if pick.is_empty():
+		return
+	CardDropGrants.grant_enemy_style_card(bm, pick, 0, 1, "击杀缴获")
+	_generic_captures_this_battle += 1
+	# 低频即时反馈（2%/15% × 每场上限 2 → 不刷屏；符文掉落 toast 同款先例）
+	SignalBus.show_toast.emit("🎖 缴获：%s" % DefaultCards.get_safe_display_name(pick))
 
 # =========================================================================
 #  v6.2 符文掉落（敌人死亡时调用）

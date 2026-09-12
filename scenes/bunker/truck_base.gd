@@ -13,6 +13,8 @@ const PanelStyles = preload("res://scripts/ui/panel_styles.gd")
 const DT = preload("res://resources/design_tokens.gd")
 const TruckTravel = preload("res://data/truck_travel.gd")          # v26.19: 行军数值真身
 const BunkerRoomDefs = preload("res://data/bunker_room_defs.gd")   # v26.19: cost_text 价目文案
+const RewardBubbleScript = preload("res://scenes/bunker/bunker_reward_bubble.gd")  # v27.17 归仓气泡（v23.6 组件原样复用）
+const EnemyPhaseMasters = preload("res://data/enemy_phase_masters.gd")  # v27.17 碎片解锁 toast 聚合取名
 
 const COLOR_CYAN := Color(0.0, 0.9, 1.0)
 const COLOR_AMBER := Color(1.0, 0.71, 0.37)
@@ -165,6 +167,10 @@ const PANEL_SCENES := {
 	"faction": "res://scenes/ui/faction_panel.tscn",
 	"leaderboard": "res://scenes/ui/leaderboard_panel.tscn",
 	"help": "res://scenes/ui/help_panel.tscn",
+	# v27.17：英雄档案/纪念墙自停用的旧基地迁入（纯 .gd 面板，_ensure_panel_wrapper 双路径加载）。
+	## 碎片数据链（BunkerManager.record_hero_fragment）与基地场景无关，玩家碎片一直在累积只是无处看。
+	"hero_archive": "res://scenes/bunker/ui/hero_archive_panel.gd",
+	"memorial": "res://scenes/bunker/ui/memorial_wall.gd",
 }
 
 const RES_LABELS := [
@@ -204,6 +210,20 @@ var _ext_bg: TextureRect
 var _ext_truck: TextureRect
 var _ext_caption: Label
 var _caption_base := ""   # v26.19：caption 静态段（行军状态段动态拼接）
+
+# ── v27.17 归仓气泡（v23.6 功能移植：数据层 DropManager 归仓池本就基地无关）──
+var _bubble_layer: Control = null
+## 类别 → 工位键（挂气泡的工位热区）。卡车工位恒可用，无旧基地"房间未修复回退"链。
+## 旧基地映射参考 bunker_main.ESCROW_ROOM_MAP：material=仓库→制造舱(depot)、mod_blueprint=工坊→改造、
+## lore=档案室→情报；card(旧荣誉室)/stat_boost(旧相位实验室) 卡车无对应房间，就近挂卡仓/成长。
+const ESCROW_HOTSPOT_MAP := {
+	"material": "evolution", "mod_blueprint": "modification", "lore": "intelligence",
+	"card": "backpack", "stat_boost": "growth",
+}
+
+# ── v27.17 碎片解锁 toast 聚合（抄 bunker_main._on_hero_archive_unlocked 同款 0.7s 合并）──
+var _hero_toast_ids: Array = []
+var _hero_toast_timer: Timer = null
 
 # ── v27.13 开场链移植（自废弃 bunker_main.gd 879-1141 平移，深航计划版醒来演出）──
 ## 漫画开场（comic_intro.tscn）收尾携 META_WAKEUP 切入本场景：
@@ -270,6 +290,14 @@ func _ready() -> void:
 		SignalBus.truck_travel_changed.connect(_refresh_caption)
 	if not SignalBus.bunker_day_ended.is_connected(_refresh_caption):
 		SignalBus.bunker_day_ended.connect(_refresh_caption)
+	# v27.17：归仓池存取即时刷新气泡（DropManager 是 autoload，随时可连；deferred 防重入）
+	var _dm := _drop_manager()
+	if _dm != null and _dm.has_signal("escrow_changed") \
+			and not _dm.escrow_changed.is_connected(_on_escrow_changed):
+		_dm.escrow_changed.connect(_on_escrow_changed)
+	# v27.17：碎片解锁 → 已开档案/纪念墙实时刷新 + 聚合 toast（bunker_main 同款接线）
+	if not SignalBus.hero_archive_unlocked.is_connected(_on_hero_archive_unlocked):
+		SignalBus.hero_archive_unlocked.connect(_on_hero_archive_unlocked)
 	# 批次③ Task 5：教程按需点播触达面（进入移动基地 = TRUCK_BASE 步）
 	var _tpm := get_node_or_null("/root/TutorialProgressionManager")
 	if _tpm != null and _tpm.has_method("notify_surface_opened"):
@@ -384,6 +412,30 @@ func _build_topbar() -> void:
 	_topbar.add_child(help_btn)
 	_topbar.move_child(help_btn, back.get_index())
 
+	# v27.17：英雄档案/纪念墙入口——两面板原仅存停用的旧基地（发行差距清单第八节），
+	# 迁入后顶栏按钮直达（低饱和色，不与出击主按钮抢视觉）
+	var archive_btn := Button.new()
+	archive_btn.text = "🎖 同伴档案"
+	archive_btn.focus_mode = Control.FOCUS_NONE
+	archive_btn.add_theme_font_size_override("font_size", 13)
+	archive_btn.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	archive_btn.tooltip_text = "30 位牺牲相位师的档案：击败驻守相位师带回遗物解锁"
+	_style_btn(archive_btn, Color(0.6, 0.56, 0.48))
+	archive_btn.pressed.connect(func() -> void: _open_panel("hero_archive"))
+	_topbar.add_child(archive_btn)
+	_topbar.move_child(archive_btn, back.get_index())
+
+	var memorial_btn := Button.new()
+	memorial_btn.text = "🕯 纪念墙"
+	memorial_btn.focus_mode = Control.FOCUS_NONE
+	memorial_btn.add_theme_font_size_override("font_size", 13)
+	memorial_btn.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	memorial_btn.tooltip_text = "30 盏灯 = 30 位牺牲相位师；灯亮可点击读名"
+	_style_btn(memorial_btn, Color(0.6, 0.56, 0.48))
+	memorial_btn.pressed.connect(func() -> void: _open_panel("memorial"))
+	_topbar.add_child(memorial_btn)
+	_topbar.move_child(memorial_btn, back.get_index())
+
 # ── 图区：剖面底图 + 热区层 + 到达字幕 ──
 func _build_image_area() -> void:
 	_image_holder = Control.new()
@@ -425,6 +477,14 @@ func _build_image_area() -> void:
 	_image_holder.add_child(_make_vignette())
 	if not DT.is_motion_reduce():
 		_image_holder.add_child(_make_dust())
+
+	# v27.17：归仓气泡层——与 _hot_layer 同坐标系（同 full-rect 于 _image_holder），
+	# 氛围层之上不被暗角压暗；外景视图随 _image_holder 整体隐藏
+	_bubble_layer = Control.new()
+	_bubble_layer.name = "RewardBubbleLayer"
+	_bubble_layer.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_bubble_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_image_holder.add_child(_bubble_layer)
 
 	_caption = Label.new()
 	_caption.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
@@ -591,6 +651,9 @@ func _hotspot_tag(h: Dictionary) -> String:
 			return {
 				"intelligence": "情报", "store": "补给", "backpack": "卡仓",
 				"modification": "改造", "evolution": "制造",
+				# v27.17：fb5c57b 挂的 6 个新工位此前落兜底显示通用词「工位」
+				"growth": "成长", "affix": "词缀", "collection": "图鉴",
+				"faction": "势力", "leaderboard": "战功", "help": "手册",
 			}.get(String(h.get("key", "")), "工位")
 		_:
 			return "医疗" if String(h.get("name", "")).contains("医疗") else "电力"
@@ -628,6 +691,8 @@ func _layout_hotspots() -> void:
 	if _int_shadow != null:
 		_int_shadow.position = Vector2(ox + dw * 0.06, oy + dh - 14.0)
 		_int_shadow.size = Vector2(dw * 0.88, 30.0)
+	# v27.17：气泡骑的是热区 rect，布局变了（缩放/换时代）跟着重铺
+	_refresh_reward_bubbles()
 
 ## v26.17：常显短牌防重叠——工位框允许交叠（卡牌墙×工作台），牌撞牌时后者向下让位。
 ## 每次布局先归位 (2,2) 再重算，窗口缩放/换时代都收敛到同一结果。
@@ -652,6 +717,141 @@ func _resolve_tag_overlaps(buttons: Array) -> void:
 				break
 			tag.position.y += ms.y + 4.0
 		placed.append(Rect2((b as Control).position + tag.position, ms))
+
+# ───────────────────── v27.17 归仓气泡 + 碎片解锁（v23.6/v22 功能移植自停用的 bunker_main） ─────────────────────
+
+func _drop_manager() -> Node:
+	if ManagerLazyLoader and ManagerLazyLoader.has_method("ensure_loaded"):
+		ManagerLazyLoader.ensure_loaded("drop")
+	return get_node_or_null("/root/DropManager")
+
+func _on_escrow_changed() -> void:
+	# deferred 防重入（collect 内部也 emit；且 _ready 期 add_child 会撞 "Parent busy"）
+	call_deferred("_refresh_reward_bubbles")
+
+## 按工位键找热区按钮实际 rect（_hot_layer 与 _bubble_layer 同 full-rect 坐标系）。
+## 找不到（理论不发生：五时代热区表键齐全）回退图区底边中央。
+func _hotspot_rect_for_key(key: String) -> Rect2:
+	var id: String = String(ERAS[_era_idx]["id"])
+	var hs: Array = HOTSPOTS.get(id, [])
+	var buttons := _hot_layer.get_children()
+	for i in mini(buttons.size(), hs.size()):
+		if String(hs[i].get("key", "")) != key:
+			continue
+		var b: Control = buttons[i]
+		return Rect2(b.position, b.size)
+	var fb: Vector2 = _image_holder.size
+	return Rect2(Vector2(fb.x * 0.5 - 60.0, fb.y - 90.0), Vector2(120.0, 60.0))
+
+func _refresh_reward_bubbles() -> void:
+	if _bubble_layer == null or not is_inside_tree() or _hot_layer == null:
+		return
+	for child in _bubble_layer.get_children():
+		child.queue_free()
+	var dm := _drop_manager()
+	if dm == null or not dm.has_method("get_escrow_categories"):
+		return
+	var cats: Array[String] = dm.get_escrow_categories()
+	if cats.is_empty():
+		return
+	# 类别按工位分组：同工位多类别合一泡（旧基地同款口径）
+	var by_spot: Dictionary = {}
+	for cat in cats:
+		var spot_key := String(ESCROW_HOTSPOT_MAP.get(String(cat), "evolution"))
+		if not by_spot.has(spot_key):
+			by_spot[spot_key] = {"categories": [], "count": 0}
+		by_spot[spot_key]["categories"].append(String(cat))
+		by_spot[spot_key]["count"] += int(dm.get_escrow_category_count(String(cat)))
+	for spot_key in by_spot:
+		var cats_arr: Array = by_spot[spot_key]["categories"]
+		var bubble: Control = RewardBubbleScript.new()
+		_bubble_layer.add_child(bubble)
+		bubble.setup(cats_arr, int(by_spot[spot_key]["count"]),
+			_hotspot_rect_for_key(String(spot_key)), _escrow_tooltip(dm, cats_arr))
+		bubble.collected.connect(_on_reward_bubble_collected)
+	# 首见引导（⚠️ deferred：show_once 的 root.add_child 在 _ready 期会撞 Parent busy，
+	# 且 key 被提前标 seen → 永远弹不出——v23.6.1 实测踩坑，复用旧 key 老档不重弹）
+	_maybe_show_escrow_intro.call_deferred()
+
+func _maybe_show_escrow_intro() -> void:
+	FeatureUnlockPopup.show_once("escrow_bubble", "战利品归仓",
+		"挂机的战利品已暂存到车厢各工位——看到发光气泡点击收取，或等下次挂机结算弹窗「全部入账」。")
+
+func _escrow_tooltip(dm: Node, cats: Array) -> String:
+	const NAMES := {
+		"material": "物资", "card": "战利品", "lore": "情报",
+		"stat_boost": "强化", "mod_blueprint": "图纸",
+	}
+	var lines: Array[String] = ["点击收取："]
+	for cat in cats:
+		lines.append("  %s ×%d" % [String(NAMES.get(String(cat), cat)), int(dm.get_escrow_category_count(String(cat)))])
+	return "\n".join(lines)
+
+func _on_reward_bubble_collected(categories: Array) -> void:
+	var dm := _drop_manager()
+	if dm == null or not dm.has_method("collect_escrow"):
+		return
+	var collected: Array = dm.collect_escrow(categories)
+	# 收取反馈：toast 拼前 4 项明细 + 任务完成音（bunker_main._toast_collected 同款）
+	if collected.is_empty():
+		return
+	var parts: Array[String] = []
+	var rest: int = 0
+	for i in range(collected.size()):
+		var entry: Dictionary = collected[i]
+		if i < 4:
+			parts.append("%s×%d" % [String(entry.get("name", "??")), int(entry.get("count", 0))])
+		else:
+			rest += 1
+	var text := "已收取：" + " · ".join(parts)
+	if rest > 0:
+		text += " 等 %d 项" % rest
+	if SignalBus != null:
+		if SignalBus.has_signal("show_toast"):
+			SignalBus.show_toast.emit(text)
+		if SignalBus.has_signal("play_sound"):
+			SignalBus.play_sound.emit("quest_complete")
+
+## 战斗掉落英雄碎片 → 已打开的档案/纪念墙实时刷新 + 全局 toast（0.7s 聚合，防绿墙盖屏）
+func _on_hero_archive_unlocked(master_id: String) -> void:
+	for pid in ["hero_archive", "memorial"]:
+		if _embed_wrappers.has(pid):
+			var p: Control = _embed_wrappers[pid]["panel"]
+			if p != null and is_instance_valid(p) and p.has_method("refresh"):
+				p.call("refresh")
+	if SignalBus.has_signal("show_toast"):
+		_hero_toast_ids.append(master_id)
+		if _hero_toast_timer == null:
+			_hero_toast_timer = Timer.new()
+			_hero_toast_timer.wait_time = 0.7
+			_hero_toast_timer.one_shot = true
+			_hero_toast_timer.timeout.connect(_flush_hero_toast)
+			add_child(_hero_toast_timer)
+		_hero_toast_timer.start()
+
+func _flush_hero_toast() -> void:
+	if _hero_toast_ids.is_empty():
+		return
+	var bm := _bunker_mgr()
+	if bm == null or not bm.has_method("get_hero_fragment_count"):
+		return
+	var ids: Array = _hero_toast_ids.duplicate()
+	_hero_toast_ids.clear()
+	var masters: Array = []
+	for era in range(5):
+		masters.append_array(EnemyPhaseMasters.get_era_masters(era))
+	var names: Array[String] = []
+	for mid in ids:
+		var name_text := str(mid)
+		for m in masters:
+			if str(m.get("id", "")) == str(mid):
+				name_text = str(m.get("name", name_text))
+				break
+		names.append(name_text)
+	var shown := "、".join(names.slice(0, 3))
+	if names.size() > 3:
+		shown += " 等 %d 位" % names.size()
+	SignalBus.show_toast.emit("同伴档案解锁 ×%d：%s（%d/30）" % [ids.size(), shown, int(bm.get_hero_fragment_count())])
 
 # ── v26.13 氛围小件 ──
 
@@ -1389,13 +1589,24 @@ func _ensure_panel_wrapper(panel_id: String) -> Control:
 	if _embed_wrappers.has(panel_id):
 		return _embed_wrappers[panel_id]["wrapper"]
 	var path: String = String(PANEL_SCENES.get(panel_id, ""))
-	if path == "" or not path.ends_with(".tscn"):
+	if path == "":
 		return null
-	var packed: PackedScene = load(path)
-	if packed == null:
-		push_error("[TruckBase] 嵌入面板加载失败: " + path)
-		return null
-	var panel: Control = packed.instantiate()
+	# v27.17：补 .gd 双路径（移植 bunker_main._ensure_embed_wrapper）——
+	# hero_archive/memorial 是纯脚本面板（_ready 自建全 UI），原先只收 .tscn 会加载失败
+	var panel: Control = null
+	if path.ends_with(".tscn"):
+		var packed: PackedScene = load(path)
+		if packed == null:
+			push_error("[TruckBase] 嵌入面板加载失败: " + path)
+			return null
+		panel = packed.instantiate()
+	else:
+		var s: GDScript = load(path)
+		if s == null:
+			push_error("[TruckBase] 嵌入面板脚本加载失败: " + path)
+			return null
+		panel = Control.new()
+		panel.set_script(s)
 	var wrapper := Control.new()
 	wrapper.set_anchors_preset(Control.PRESET_FULL_RECT)
 	wrapper.mouse_filter = Control.MOUSE_FILTER_STOP
