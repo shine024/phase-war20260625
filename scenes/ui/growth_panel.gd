@@ -19,7 +19,6 @@ const FILTER_ALL := "all"
 const FILTER_ENHANCEABLE := "enhanceable"
 const FILTER_MAXED := "maxed"
 
-var _anim_duration: float = 0.25
 var _is_open: bool = false
 var _selected_card: CardResource = null
 var _last_unlocked_ids: Array[String] = []
@@ -240,18 +239,20 @@ func _update_chip_styles() -> void:
 # ============================================================
 # 打开/关闭（保持公开契约）
 # ============================================================
+## 批次2：面板内层动画已拆除（与外层 PanelAnim 双层叠加、时序错拍）——开合动画
+## 统一归外层（main overlay / 基地嵌入 wrapper 均已走 PanelAnim）。v8.x 的
+## "重活分帧"语义保留：列表重建/刷新仍延后短一拍，避免打开同帧尖峰。
 func show_panel(card: CardResource) -> void:
 	if _is_open:
 		return
 	_is_open = true
 	_selected_card = card
 	visible = true
-	modulate.a = 0.0
-	scale = Vector2(0.92, 0.92)
+	modulate.a = 1.0
+	scale = Vector2.ONE
 	_update_skill_tree_badge()  # v8.x: 刷新技能树按钮红点（轻量，立即刷）
 	var tw := create_tween()
-	tw.tween_property(self, "modulate:a", 1.0, _anim_duration).set_trans(Tween.TRANS_SINE)
-	tw.parallel().tween_property(self, "scale", Vector2(1.0, 1.0), _anim_duration).set_trans(Tween.TRANS_BACK)
+	tw.tween_interval(0.08)
 	# v8.x 性能：_load_unlocked_cards（扫 InstanceRegistry + SaveManager 重建名册；
 	# v9.x 蓝图体系已删，Blueprint 回退来源随之移除），
 	# 内部对每张卡调 _format_power 触发 estimate_power_score 重操作）原与显示同帧，
@@ -276,12 +277,9 @@ func hide_panel() -> void:
 	if not _is_open:
 		return
 	_is_open = false
-	var tw := create_tween()
-	tw.tween_property(self, "modulate:a", 0.0, _anim_duration).set_trans(Tween.TRANS_SINE)
-	tw.parallel().tween_property(self, "scale", Vector2(0.92, 0.92), _anim_duration).set_trans(Tween.TRANS_QUAD)
-	tw.tween_callback(func():
-		visible = false
-	)
+	visible = false
+	modulate.a = 1.0  # 复位（原关闭动画终点 0，残留靠下次 show 重设掩盖）
+	scale = Vector2.ONE
 	closed.emit()
 
 

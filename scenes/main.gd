@@ -451,9 +451,9 @@ func _open_overlay(overlay: Control, panel_key: String = "") -> void:
 	var _tpm2 := get_node_or_null("/root/TutorialProgressionManager")
 	if _tpm2 != null and _tpm2.has_method("notify_surface_opened"):
 		_tpm2.notify_surface_opened(panel_key)
-	# 先显示，再fade in（v25 UI：开合过渡见 _animate_overlay_in/out，尊重减少动效）
+	# 先显示，再fade in（v25 UI：开合过渡统一走 PanelAnim，尊重减少动效）
 	overlay.visible = true
-	_animate_overlay_in(overlay)
+	PanelAnim.open(overlay)
 	# v25.2 面板开合音（此前仅基地 bunker_main 播，主场景 17 个 overlay 全哑）
 	if SignalBus and SignalBus.has_signal("play_sound"):
 		SignalBus.play_sound.emit("panel_open")
@@ -570,7 +570,7 @@ func _close_overlay(overlay: Control, panel_key: String = "") -> void:
 	if panel_key in _FULLBLEED_PANEL_KEYS:
 		_exit_fullbleed_layout()
 	if overlay:
-		_animate_overlay_out(overlay)
+		PanelAnim.close(overlay)
 	# v25.2 面板开合音（与 _open_overlay 对称）
 	if SignalBus and SignalBus.has_signal("play_sound"):
 		SignalBus.play_sound.emit("panel_close")
@@ -582,50 +582,8 @@ func _close_overlay(overlay: Control, panel_key: String = "") -> void:
 	# 性能优化：面板全部关闭后，若无其他面板打开，恢复 SubViewport 状态
 	_restore_subviewport_if_needed()
 
-## v25 UI：面板开合过渡。淡入 0.2s + 内容 0.25s 微弹出（TRANS_BACK），
-## 淡出 0.15s 后隐藏；is_motion_reduce() 时全部短路为瞬切。
-## 关闭 tween 挂 overlay meta 防"淡出途中重开"竞态（回调会把新开的面板藏掉）。
-func _animate_overlay_in(overlay: Control) -> void:
-	if overlay.has_meta("close_tween"):
-		var pending: Variant = overlay.get_meta("close_tween")
-		if pending is Tween and (pending as Tween).is_valid():
-			(pending as Tween).kill()
-	if DT.is_motion_reduce():
-		overlay.modulate.a = 1.0
-		return
-	var cc := overlay.get_node_or_null("CenterContainer") as Control
-	overlay.modulate.a = 0.0
-	var tw := create_tween()
-	tw.tween_property(overlay, "modulate:a", 1.0, DT.MOTION_FADE_IN) 		.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
-	if cc == null:
-		return
-	await get_tree().process_frame  # 等一帧布局，取真实 size 作缩放枢轴
-	if not is_instance_valid(overlay) or not overlay.visible:
-		return
-	cc.pivot_offset = cc.size * 0.5
-	cc.scale = Vector2(0.96, 0.96)
-	var tw2 := create_tween()
-	tw2.tween_property(cc, "scale", Vector2.ONE, DT.MOTION_POP) 		.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-
-
-func _animate_overlay_out(overlay: Control) -> void:
-	if DT.is_motion_reduce():
-		overlay.visible = false
-		return
-	if overlay.has_meta("close_tween"):
-		var pending: Variant = overlay.get_meta("close_tween")
-		if pending is Tween and (pending as Tween).is_valid():
-			(pending as Tween).kill()
-	var cc := overlay.get_node_or_null("CenterContainer") as Control
-	var tw := overlay.create_tween()
-	overlay.set_meta("close_tween", tw)
-	tw.tween_property(overlay, "modulate:a", 0.0, DT.MOTION_FADE_OUT) 		.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
-	tw.tween_callback(func() -> void:
-		overlay.visible = false
-		overlay.modulate.a = 1.0
-		if is_instance_valid(cc):
-			cc.scale = Vector2.ONE
-	)
+## v25 UI：面板开合过渡已抽为 scripts/ui/panel_anim.gd 单一真身（批次1 一致性收口，
+## 旁路面板与 17 个 main overlay 共用同一规格）；本文件经 PanelAnim.open/close 调用。
 
 
 func _toggle_overlay(overlay: Control, panel_key: String = "") -> void:
@@ -1582,6 +1540,9 @@ func _close_top_overlay() -> void:
 		_on_pause_pressed()
 
 func _close_all_overlays() -> void:
+	# 批次1：全关从一帧硬切改为统一淡出（0.15s）——进战斗时 UI 群淡出叠在战场
+	# 浮现上。AFK 跳过等既有逻辑不动；音效只播一次（15 面板各自发声会重奏）。
+	var closed_any := false
 	for entry in _all_overlays():
 		var ov: Control = entry.get("overlay")
 		if ov == null:
@@ -1594,7 +1555,13 @@ func _close_all_overlays() -> void:
 		# 须统一复位面板/backdrop 可见性，避免下次打开时状态错乱。
 		if ov == afk_overlay:
 			_reset_afk_panel_visibility(false)
-		ov.visible = false
+		if ov.visible:
+			closed_any = true
+			PanelAnim.close(ov)
+		else:
+			ov.visible = false
+	if closed_any and SignalBus and SignalBus.has_signal("play_sound"):
+		SignalBus.play_sound.emit("panel_close")
 	# BU-1：功能抽屉随全关一并收起（战斗开场序列调用本函数时抽屉不该残留在战场上）
 	if bottom_function_bar != null and bottom_function_bar.has_method("set_drawer_open"):
 		bottom_function_bar.set_drawer_open(false, false)
@@ -1741,6 +1708,7 @@ func _open_phase_instrument_selector() -> void:
 	selector.instrument_selected.connect(_on_phase_selector_selected.bind(selector))
 
 ## v7.x: 打开玩家相位师详细面板（9维战力分解 + 星级 + Lv + 构成明细）
+## 批次1：收口到统一开合动画+音效（原 visible 硬切，与 17 个 overlay 行为不一）
 func _open_player_master_panel() -> void:
 	_play_sfx("button")
 	if player_master_overlay == null:
@@ -1748,15 +1716,20 @@ func _open_player_master_panel() -> void:
 	var panel: Node = player_master_overlay.get_node_or_null("CenterContainer/PlayerMasterPanel")
 	if panel and panel.has_method("open_panel"):
 		panel.open_panel()
-	player_master_overlay.visible = true
 	var cc: Node = player_master_overlay.get_node_or_null("CenterContainer")
 	if cc is Control:
 		(cc as Control).visible = true
+	player_master_overlay.visible = true
+	PanelAnim.open(player_master_overlay)
+	if SignalBus and SignalBus.has_signal("play_sound"):
+		SignalBus.play_sound.emit("panel_open")
 
 ## v7.x: 玩家相位师详细面板关闭 → 隐藏 overlay
 func _on_player_master_panel_closed() -> void:
 	if player_master_overlay != null:
-		player_master_overlay.visible = false
+		PanelAnim.close(player_master_overlay)
+		if SignalBus and SignalBus.has_signal("play_sound"):
+			SignalBus.play_sound.emit("panel_close")
 
 func _on_phase_selector_selected(_instrument_id: String, selector: Node) -> void:
 	if is_instance_valid(selector):
