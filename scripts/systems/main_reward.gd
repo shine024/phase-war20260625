@@ -17,6 +17,13 @@ func on_battle_ended_clear_pending(_player_won: bool) -> void:
 	# 主场景已离树（战斗中回标题的切场景竞态）：无从创建定时器，放弃视口冻结
 	if main == null or not is_instance_valid(main) or not main.is_inside_tree():
 		return
+	# v6.14 修复：战斗结束残留 UI——战斗开场 _close_all_overlays，结束却无人关。
+	# 玩家战斗中开着 overlay（情报舱等）/在最后单位阵亡到结算落地窗口内按下暂停时，
+	# 结算面板被压在底下，"框还在那里"残留到下一状态。现对齐开场语义：
+	# 结算落地即解除暂停（若暂停中）并关闭全部 overlay（AFK 运行中仍豁免预览面板）。
+	if main.has_method("_resume_from_pause") and main.get_tree() != null and main.get_tree().paused:
+		main._resume_from_pause()
+	main._close_all_overlays()
 	# v20.15: 不再立即冻结 SubViewport——战斗结束瞬间半空中的大招弹体/命中贴图
 	# 会被定格成结算/准备界面背景上的"残留贴图"。延迟 1.6s（大招尾链最长 ~1.2s）
 	# 让最后的爆炸/淡出在结算面板后自然播完，再定格"战后余烬"帧。

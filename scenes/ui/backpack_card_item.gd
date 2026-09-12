@@ -1639,10 +1639,9 @@ func _get_cached_icon_texture(tex_path: String) -> Texture2D:
 		return null
 	if _icon_cache.has(tex_path):
 		return _icon_cache[tex_path] as Texture2D
-	# 源文件缺失时 .import 仍可能存在，exists/load 会报错；先检查实际文件
-	if not FileAccess.file_exists(tex_path):
-		_icon_cache[tex_path] = null
-		return null
+	# v6.14 修复：删除 FileAccess.file_exists 前置守卫——导出 PCK 只含 .import/.ctex
+	# 不含原始 png，该检查在导出版恒 false，全部卡图被负缓存成"？"占位（编辑器正常、
+	# 导出全空的根因）。ResourceLoader.exists 走导入 remap，编辑器/导出两侧语义一致。
 	if not ResourceLoader.exists(tex_path):
 		_icon_cache[tex_path] = null
 		return null

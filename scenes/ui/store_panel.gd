@@ -53,7 +53,7 @@ func _ready() -> void:
 	custom_minimum_size = DT.PANEL_SIZE_MEDIUM
 	var accent := DT.get_panel_accent("store")
 	add_theme_stylebox_override("panel", PanelStyles.make_panel_frame_textured(accent))
-	var chrome = PanelChrome.attach_to($Margin/VBox, "补给舱", accent, "COMPANY STORE")
+	var chrome = PanelChrome.attach_to($Margin/VBox, "补给舱", accent, "军需补给")
 	chrome.closed.connect(_on_close)
 	_init_cached_styles()
 	_build_company_tabs()

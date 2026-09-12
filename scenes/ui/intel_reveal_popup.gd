@@ -33,6 +33,8 @@ func _ready() -> void:
 static func create(parent: Node) -> IntelRevealPopup:
 	var popup := IntelRevealPopup.new()
 	popup._parent_node = parent
+	# 根必须全屏锚：dim/CenterContainer 都以根矩形为基准，零尺寸根会让面板缩在左上角、遮罩失效
+	popup.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	parent.add_child(popup)
 	return popup
 

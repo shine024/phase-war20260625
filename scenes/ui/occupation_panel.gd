@@ -44,7 +44,7 @@ func _ready() -> void:
 	custom_minimum_size = DT.PANEL_SIZE_MEDIUM
 	var accent := DT.get_panel_accent("occupation")
 	add_theme_stylebox_override("panel", PanelStyles.make_panel_frame_textured(accent))
-	var chrome = PanelChrome.attach_to($Margin/VBox, "势力领地图", accent, "TERRITORY MAP")
+	var chrome = PanelChrome.attach_to($Margin/VBox, "势力领地图", accent, "领地态势")
 	chrome.closed.connect(_on_close)
 
 	# 监听占领/声望变化实时刷新

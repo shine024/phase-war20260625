@@ -40,11 +40,17 @@ func setup(categories: Array, count: int, room_rect: Rect2, tooltip: String) -> 
 
 	# 定位：骑在房间底边中央（读作"战利品从房间里冒出来"）。
 	# v23.6.1：底排房间房底 y≈699，直接骑边会越出 720 画布 15px——钳回屏内贴房底内缘悬浮。
+	# v6.14 加固：x/y 双向钳制（原 y 只钳上限，房间矩形异常偏上时气泡会顶出屏幕外），
+	# 且钳制基准用宿主层实际尺寸（expand 拉伸下画布可能非 1280×720），不再写死。
 	var center_x: float = room_rect.get_center().x
 	var bottom_y: float = room_rect.end.y
 	_base_pos = Vector2(center_x - _BUBBLE_SIZE * 0.5, bottom_y - _BUBBLE_SIZE * 0.42)
-	_base_pos.y = minf(_base_pos.y, 720.0 - _BUBBLE_SIZE - 2.0)
-	_base_pos.x = clampf(_base_pos.x, 2.0, 1280.0 - _BUBBLE_SIZE - 2.0)
+	var canvas := Vector2(1280, 720)
+	var host := get_parent()
+	if host is Control and (host as Control).size.x > 1.0 and (host as Control).size.y > 1.0:
+		canvas = (host as Control).size
+	_base_pos.y = clampf(_base_pos.y, 2.0, canvas.y - _BUBBLE_SIZE - 2.0)
+	_base_pos.x = clampf(_base_pos.x, 2.0, canvas.x - _BUBBLE_SIZE - 2.0)
 	position = _base_pos
 	size = Vector2(_BUBBLE_SIZE, _BUBBLE_SIZE)
 	mouse_filter = Control.MOUSE_FILTER_STOP

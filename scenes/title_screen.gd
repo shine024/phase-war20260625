@@ -425,15 +425,21 @@ func _on_combat_check() -> void:
 
 func _on_quit() -> void:
 	_play_sfx("button")
-	# v26.11(A2.3): 退出确认（原直接 quit——存档虽有 about_to_quit 双保险自动保存，
-	# 加一道确认防误点，成本一行对话框）
+	# v26.11(A2.3): 退出确认（原直接 quit——存档虽有自动保存双保险，加一道确认防误点）
+	# v6.14 勘误：Godot 4.5.1 的 SceneTree 无 about_to_quit 信号（实测信号表无此项），
+	# save_manager/debug_log_manager 的 about_to_quit 连接从未生效——程序化退出路径
+	# 在此显式收尾存档（此刻全部 manager 仍在树上，晚于退树钩子的安全窗口）。
 	var dialog := ConfirmationDialog.new()
 	dialog.title = "退出游戏"
 	dialog.dialog_text = "确认退出 相位战争？"
 	dialog.ok_button_text = "退出"
 	dialog.cancel_button_text = "取消"
 	add_child(dialog)
-	dialog.confirmed.connect(func() -> void: get_tree().quit())
+	dialog.confirmed.connect(func() -> void:
+		var sm := get_node_or_null("/root/SaveManager")
+		if sm != null and sm.has_method("save_game"):
+			sm.call("save_game")
+		get_tree().quit())
 	dialog.confirmed.connect(dialog.queue_free)
 	dialog.canceled.connect(dialog.queue_free)
 	dialog.popup_centered()

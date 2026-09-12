@@ -55,7 +55,7 @@ func _ready() -> void:
 	custom_minimum_size = DT.PANEL_SIZE_SMALL
 	var accent := DT.get_panel_accent("achievement")
 	add_theme_stylebox_override("panel", PanelStyles.make_panel_frame_textured(accent))
-	var chrome = PanelChrome.attach_to($Margin/VBox, "战功簿", accent, "ACHIEVEMENTS")
+	var chrome = PanelChrome.attach_to($Margin/VBox, "战功簿", accent, "功勋档案")
 	chrome.closed.connect(_on_close)
 
 	if claim_all_button != null:

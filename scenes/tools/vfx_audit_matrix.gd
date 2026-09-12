@@ -357,18 +357,25 @@ func _clear_fx() -> void:
 
 func _capture(file_name: String, center: Vector2) -> void:
 	# v17c 三帧择优：见 CAPTURE_FRAMES 注释。逐帧截取特效区亮度最高的一张落盘。
+	# v20.33: 四帧全落盘（<名>_t<毫秒>.png）——"一个效果多张图"人眼逐帧检查用；
+	# 择优主文件不变（manifest / AI 评分管线只认主文件，不受影响）。
 	var best_img: Image = null
 	var best_bright: float = -1.0
 	var last_t: float = 0.0
+	var frames: Array = []
 	for t in CAPTURE_FRAMES:
 		await get_tree().create_timer(t - last_t).timeout
 		last_t = t
 		await RenderingServer.frame_post_draw
 		var img: Image = get_viewport().get_texture().get_image()
+		frames.append({"t": t, "img": img})
 		var b: float = _region_brightness(img, center)
 		if b > best_bright:
 			best_bright = b
 			best_img = img
+	var base: String = file_name.get_basename()
+	for fr in frames:
+		(fr["img"] as Image).save_png("%s%s_t%03d.png" % [SHOT_DIR, base, int(round(float(fr["t"]) * 1000.0))])
 	if best_img != null:
 		best_img.save_png(SHOT_DIR + file_name)
 
