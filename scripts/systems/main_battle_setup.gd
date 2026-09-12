@@ -67,9 +67,22 @@ func run_start_battle_sequence() -> void:
 		and TutorialProgressionManager.has_method("should_show_tutorial")
 		and TutorialProgressionManager.should_show_tutorial()
 	)
+	var interstitial_played := false
 	if not tutorial_active and Engine.has_meta(SortieInterstitial.META_PENDING):
 		Engine.remove_meta(SortieInterstitial.META_PENDING)
 		await SortieInterstitial.present(_sortie_dest_text(), _sortie_report_lines())
+		interstitial_played = true
+	# 批次3（流程缝合）：直开链入战揭幕——主界面"开始战斗"此前零过渡（面板一关
+	# 战场同帧从静到动）。出击链已有 1.5s 战报不叠双层；挂机豁免（缩略图预览不受
+	# 打扰）；教程有自己的引导节奏。压暗→亮起 + 「交战开始」横幅，波次刷在亮度
+	# 爬坡里（go_to_battle 本就 call_deferred，战斗时序零改动）。
+	var unveil: bool = not tutorial_active and not interstitial_played \
+		and not (main._afk_manager != null and main._afk_manager.is_running)
+	if unveil:
+		await _dip_battlefield()
+	# 压暗窗口内主场景被切走（回标题/基地竞态）：放弃开战序列
+	if main == null or not is_instance_valid(main) or not main.is_inside_tree():
+		return
 	# 关闭所有弹出面板
 	main._close_all_overlays()
 	if main.bottom_function_bar:
@@ -88,6 +101,8 @@ func run_start_battle_sequence() -> void:
 		if main.bottom_function_bar:
 			main.bottom_function_bar.set_pause_text("暂停")
 	show_battle()
+	if unveil:
+		_unveil_battlefield()
 	var battlefield: Node2D = main._get_battlefield()
 	if not battlefield:
 		if main.bottom_function_bar:
@@ -108,6 +123,37 @@ func run_start_battle_sequence() -> void:
 func deferred_go_to_battle() -> void:
 	if GameManager:
 		GameManager.go_to_battle()
+
+## 批次3：入战揭幕——战场压暗 0.1s（await 侧用作节拍闸）
+const UNVEIL_DIP_SEC := 0.10
+const UNVEIL_DIP_LEVEL := 0.25
+const UNVEIL_RISE_SEC := 0.30
+
+func _dip_battlefield() -> void:
+	if main.battle_container == null or not (main.battle_container is CanvasItem):
+		return
+	if DesignTokens.is_motion_reduce():
+		return  # 减少动效：跳过压暗节拍（横幅自身也降档）
+	var container: CanvasItem = main.battle_container
+	var tw := container.create_tween()
+	tw.tween_property(container, "modulate:a", UNVEIL_DIP_LEVEL, UNVEIL_DIP_SEC)
+	# await 树定时器而非 tw.finished——极端窗口（0.1s 内切场景释放战场）下
+	# tween 随节点死亡不发光，tw.finished 会挂起整条开战协程；定时器恒发
+	if main.get_tree() != null:
+		await main.get_tree().create_timer(UNVEIL_DIP_SEC).timeout
+
+
+func _unveil_battlefield() -> void:
+	StageBanner.post("交战开始")
+	if main.battle_container == null or not (main.battle_container is CanvasItem):
+		return
+	var container: CanvasItem = main.battle_container
+	if DesignTokens.is_motion_reduce():
+		container.modulate.a = 1.0
+		return
+	var tw := container.create_tween()
+	tw.tween_property(container, "modulate:a", 1.0, UNVEIL_RISE_SEC)
+
 
 ## 显示战场、清理上一场残留
 func show_battle() -> void:
