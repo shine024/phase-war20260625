@@ -4280,7 +4280,7 @@ static func spawn_resonance_ring(parent: Node2D, pos: Vector2, stacks: int, dura
 ## v14: 持续削弱印记环(暗蚀/虚弱类 debuff 命中后长留 3-5s)。
 ## 读图 6/10"读作一次性爆炸而非持续削弱"——双环反向旋转+呼吸脉动,
 ## 让"debuff 挂在身上"的持续语义成立(爆炸消散后环还在转 = 还在被削弱)。
-static func spawn_lingering_debuff_ring(parent: Node2D, pos: Vector2, color: Color, duration: float = 4.0) -> void:
+static func spawn_lingering_debuff_ring(parent: Node2D, pos: Vector2, color: Color, duration: float = 4.0, ring_scale: float = 1.0) -> void:
 	if parent == null or not is_instance_valid(parent):
 		return
 	if DT.is_motion_reduce():
@@ -4288,6 +4288,7 @@ static func spawn_lingering_debuff_ring(parent: Node2D, pos: Vector2, color: Col
 	var root := Node2D.new()
 	root.position = pos
 	root.z_index = 12
+	root.scale = Vector2(ring_scale, ring_scale)  # v27.19: 大招余波用加大档（默认 1.0 不变）
 	parent.add_child(root)
 	root.add_to_group("battle_vfx")
 	for layer in range(2):
