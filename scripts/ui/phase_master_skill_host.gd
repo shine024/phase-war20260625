@@ -73,10 +73,17 @@ func _open(full_bleed: bool) -> void:
 		panel.set("full_bleed", full_bleed)
 		if panel.has_method("_apply_viewport_fit"):
 			panel.call("_apply_viewport_fit")
-	panel.visible = true
-	canvas.visible = true
+	# 批次1：收口统一开合（原 visible 硬切无声）——open_layer 处理面板淡入弹出、
+	# backdrop 同步、canvas 收尾 tween 竞态守卫；开合音对齐 main overlay。
+	if panel is Control:
+		PanelAnim.open_layer(canvas, panel, canvas.get_node_or_null("Backdrop"))
+	else:
+		panel.visible = true
+		canvas.visible = true
 	if panel.has_method("_refresh"):
 		panel.call("_refresh")
+	if SignalBus and SignalBus.has_signal("play_sound"):
+		SignalBus.play_sound.emit("panel_open")
 
 func _on_panel_closed() -> void:
 	close()
@@ -88,14 +95,21 @@ func _on_backdrop_gui_input(ev: InputEvent) -> void:
 		closed.emit()
 
 ## 隐藏面板（连 CanvasLayer 一起，彻底释放点击拦截；退出全出血供下次开档切换）
+## 批次1：统一淡出（0.15s）后再藏 canvas——close_layer 处理 backdrop 同步淡出
+## 与收尾 tween 竞态守卫（_open 侧重开时杀掉）。
 func close() -> void:
 	var canvas: CanvasLayer = get_node_or_null("PhaseMasterSkillCanvas")
 	if canvas == null:
 		return
-	canvas.visible = false
 	var p: Node = canvas.get_node_or_null("PhaseMasterSkillPanel")
 	if p != null and "full_bleed" in p:
 		p.set("full_bleed", false)
+	if p is Control:
+		PanelAnim.close_layer(canvas, p, canvas.get_node_or_null("Backdrop"))
+	else:
+		canvas.visible = false
+	if SignalBus and SignalBus.has_signal("play_sound"):
+		SignalBus.play_sound.emit("panel_close")
 
 ## ESC 先关技能面板——canvas(110) 悬在 PopupLayer(100) 之上，不 consume 会
 ## 连带关掉底下面板。growth_panel 的同款 _input 并存无害（双方都幂等隐藏）。

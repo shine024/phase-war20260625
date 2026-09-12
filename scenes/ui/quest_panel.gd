@@ -38,9 +38,19 @@ func _ready() -> void:
 			dtm.task_completed.connect(_on_daily_task_changed)
 		if dtm.has_signal("daily_tasks_refreshed") and not dtm.daily_tasks_refreshed.is_connected(_on_daily_task_changed):
 			dtm.daily_tasks_refreshed.connect(_on_daily_task_changed)
+	# 批次2：tab 切换当前页淡入（原瞬跳）
+	if tab_container and not tab_container.tab_changed.is_connected(_on_tab_changed_fade):
+		tab_container.tab_changed.connect(_on_tab_changed_fade)
 	# v8.x 性能：_ready 只连信号，列表刷新交给 on_overlay_opened 拆帧。
 	# QuestManager 信号 handler (_on_quest_changed/_on_quest_completed) 自身就是完整刷新流程，
 	# 不依赖 _ready 设置任何状态，故窗口期安全。
+
+
+## 批次2：tab 切换微过渡
+func _on_tab_changed_fade(_tab: int) -> void:
+	var page := tab_container.get_current_tab_control() if tab_container else null
+	if page is Control:
+		PanelAnim.fade_content_in(page)
 
 ## v22.4：DailyTaskManager 访问器（懒加载 + root 查询双保险）
 func _get_daily_task_manager() -> Node:

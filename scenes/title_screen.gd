@@ -243,9 +243,13 @@ func _on_save_restored_from_backup(_slot: int) -> void:
 
 func _on_settings() -> void:
 	_play_sfx("button")
-	var overlay = get_node_or_null("SettingsOverlay")
-	if overlay:
-		overlay.visible = true
+	var overlay := get_node_or_null("SettingsOverlay") as CanvasLayer
+	var cc := overlay.get_node_or_null("CenterContainer") as Control if overlay else null
+	if overlay and cc:
+		# 批次1：收口统一开合（原 visible 硬切无声，与主场景面板行为不一）。
+		# SettingsOverlay 是 CanvasLayer——走 layer 适配（内容淡入弹出 + Dim 同步）。
+		PanelAnim.open_layer(overlay, cc, overlay.get_node_or_null("Dim"))
+		_play_sfx("panel_open")
 
 ## v21 余烬要塞：程序化添加"进入基地"按钮（复刻继续按钮样式，插在其下方第一位）
 func _add_bunker_button() -> void:
@@ -382,13 +386,17 @@ func _on_enter_bunker() -> void:
 			Engine.set_meta("bunker_intro_comic_pending", true)
 			SceneTransition.change(get_tree(), "res://scenes/intro/comic_intro.tscn")
 			return
-	SceneTransition.change(get_tree(), "res://scenes/bunker/bunker_main.tscn")
+	# v6.14：入口对齐现役移动基地（按钮 v26.12d 起隐藏，此处为可达性兜底/随时可恢复的
+	# 路径真身——旧固定基地 bunker_main 已停用，勿再指回）
+	SceneTransition.change(get_tree(), "res://scenes/bunker/truck_base.tscn")
 
 
 func _on_settings_closed() -> void:
-	var overlay = get_node_or_null("SettingsOverlay")
-	if overlay:
-		overlay.visible = false
+	var overlay := get_node_or_null("SettingsOverlay") as CanvasLayer
+	var cc := overlay.get_node_or_null("CenterContainer") as Control if overlay else null
+	if overlay and cc:
+		PanelAnim.close_layer(overlay, cc, overlay.get_node_or_null("Dim"))
+		_play_sfx("panel_close")
 
 ## 切换存档位
 func _on_switch_slot() -> void:

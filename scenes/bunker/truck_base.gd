@@ -1353,6 +1353,11 @@ func _open_panel(panel_id: String) -> void:
 		_open_card("面板不可用", "", "EMBEDDED_PANELS['%s'] 加载失败（见日志）。" % panel_id)
 		return
 	wrapper.visible = true
+	# 批次1：收口统一开合（原 visible 硬切无声）——wrapper 结构与 main overlay 同构
+	#（全屏 wrapper + EmbedCenter 内容层），PanelAnim 直接适用；开合音对齐 main。
+	PanelAnim.open(wrapper)
+	if SignalBus and SignalBus.has_signal("play_sound"):
+		SignalBus.play_sound.emit("panel_open")
 	var p: Control = _embed_wrappers[panel_id]["panel"]
 	# 与 main.gd _open_overlay 同约定：on_overlay_opened → refresh 顺序尝试
 	# （store 等面板的商品列表在 on_overlay_opened 拆帧构建，_ready 只建骨架）
@@ -1404,7 +1409,12 @@ func _ensure_panel_wrapper(panel_id: String) -> Control:
 	wrapper.add_child(center)
 	center.add_child(panel)
 	if panel.has_signal("closed"):
-		panel.closed.connect(func() -> void: wrapper.visible = false)
+		# 批次1：统一淡出 + 关闭音（与 _open_panel 开侧对称）
+		panel.closed.connect(func() -> void:
+			PanelAnim.close(wrapper)
+			if SignalBus and SignalBus.has_signal("play_sound"):
+				SignalBus.play_sound.emit("panel_close")
+		)
 	_embed_layer.add_child(wrapper)
 	_embed_wrappers[panel_id] = {"wrapper": wrapper, "panel": panel}
 	# 背包内嵌随行相位仪栏（bunker_main 619 的简化版：固定内容带 -86，无动态重排）

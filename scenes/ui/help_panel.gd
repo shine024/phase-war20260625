@@ -16,8 +16,6 @@ const PanelChrome = preload("res://scenes/ui/components/panel_chrome.gd")
 # UI 组件引用
 @onready var tab_container: TabContainer = $Margin/VBox/TabContainer
 
-# 动画参数
-var _anim_duration: float = DT.MOTION_POP  # C7: 动效时长走 token（弹出 TRANS_BACK 组合）
 var _is_open: bool = false
 
 func _ready() -> void:
@@ -29,7 +27,7 @@ func _ready() -> void:
 	custom_minimum_size = DT.PANEL_SIZE_SMALL
 	var accent := DT.get_panel_accent("help")
 	add_theme_stylebox_override("panel", PanelStyles.make_panel_frame_textured(accent))
-	var chrome = PanelChrome.attach_to($Margin/VBox, "车长手册", accent, "HELP")
+	var chrome = PanelChrome.attach_to($Margin/VBox, "车长手册", accent, "操作指南")
 	chrome.closed.connect(_on_close)
 
 	# 填充 Tab 内容
@@ -39,28 +37,25 @@ func _ready() -> void:
 ## v9.x 修复：加可选 card 参数对齐 main._notify_panel_opened 的统一分发约定
 ## （show_panel(null)）——原零参签名导致分发侧带参调用不兼容，且面板从未被
 ## 分发叫醒（_PANEL_NODE_NAMES 缺 "help" 键），表现为空遮罩且无法关闭。
+## 批次2：面板内层动画已拆除（与外层 PanelAnim 双层叠加、时序错拍）——
+## 开合动画统一归外层（main overlay / 基地嵌入 wrapper 均已走 PanelAnim），
+## 内层只保留打开状态与可见性逻辑；modulate/scale 显式归位防残留。
 func show_panel(_card: CardResource = null) -> void:
 	if _is_open:
 		return
 	_is_open = true
 	visible = true
-	var tween := create_tween()
-	# Godot 4 已移除 TRANS_FADE 枚举, modulate:a 渐变本身即线性 fade, 无需 set_trans
-	tween.tween_property(self, "modulate:a", 1.0, _anim_duration)
-	# 轻微缩放动画
-	scale = Vector2(0.9, 0.9)
-	tween.parallel().tween_property(self, "scale", Vector2(1.0, 1.0), _anim_duration).set_trans(Tween.TRANS_BACK)
+	modulate.a = 1.0
+	scale = Vector2.ONE
 
 ## 关闭帮助面板
 func hide_panel() -> void:
 	if not _is_open:
 		return
 	_is_open = false
-	var tween := create_tween()
-	# Godot 4 已移除 TRANS_FADE 枚举, modulate:a 渐变本身即线性 fade, 无需 set_trans
-	tween.tween_property(self, "modulate:a", 0.0, _anim_duration)
-	tween.parallel().tween_property(self, "scale", Vector2(0.9, 0.9), _anim_duration).set_trans(Tween.TRANS_QUAD)
-	tween.tween_callback(func(): visible = false)
+	visible = false
+	modulate.a = 1.0
+	scale = Vector2.ONE
 
 ## 关闭按钮回调
 func _on_close() -> void:

@@ -170,6 +170,8 @@ func _build_company_tabs() -> void:
 			_current_company_id = cid
 			_update_tab_states()
 			_refresh_items()
+			# 批次2：tab 切换内容淡入（原瞬跳白板）
+			PanelAnim.fade_content_in(item_list)
 		)
 		company_tabs.add_child(btn)
 	_update_tab_states()

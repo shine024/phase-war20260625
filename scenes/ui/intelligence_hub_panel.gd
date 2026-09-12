@@ -100,6 +100,10 @@ func _on_tab_changed(tab: int) -> void:
 		_refresh_runes_tab()
 	if tab == 3:
 		_refresh_intel_tab()
+	# 批次2：tab 切换当前页淡入（原瞬跳）
+	var page := _tab_container.get_current_tab_control() if _tab_container else null
+	if page is Control:
+		PanelAnim.fade_content_in(page)
 
 
 ## v9.x 性能：lore 分帧加载状态（整表销毁重建曾是首开冻结热点之一）
