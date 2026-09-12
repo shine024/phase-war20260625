@@ -10,6 +10,7 @@ extends Node2D
 ## 产物：docs/boss_spell_shots/*.png + manifest.json（AI 评分管线消费）
 
 const SkillEngine = preload("res://managers/battle/enemy_master_skill_engine.gd")
+const VfxImpactFactory = preload("res://scripts/battle/vfx_impact_factory.gd")  # v27.19: 案间清场正门
 const DT = preload("res://resources/design_tokens.gd")
 
 const SHOT_DIR := "res://docs/boss_spell_shots/"
@@ -39,6 +40,7 @@ var _boss_mock: Node2D
 var _manifest: Array = []
 var _frame_idx: int = 0
 var _total_frames: int = 0
+var _stage_nodes: Array = []   # v27.19: 案间清场豁免的舞台固定件
 
 const BOSS_POS := Vector2(1050, 430)
 const PLAYER_POS := [Vector2(200, 330), Vector2(200, 430), Vector2(200, 530)]
@@ -62,10 +64,13 @@ func _ready() -> void:
 	_boss_mock.position = BOSS_POS
 	add_child(_boss_mock)
 	_engine.setup(_boss_mock, self)  # driver=mock boss（BOSS_POS），battlefield=self
-	_total_frames = CASES.size() * 2
+	# v27.19: 舞台固定件登记（此刻树上的都是布景；案间清场据此豁免）
+	_stage_nodes = get_children().duplicate()
+	_total_frames = CASES.size() * 4  # v17h 起 4 帧/案（warn/flight/land/after），旧 *2 是残留计数
 	for case in CASES:
 		_run_case(case)
 		await _settle()
+		_clear_case_fx()
 	_write_manifest()
 	print("[boss_spell_audit] 完成 %d 帧 → %s" % [_total_frames, ProjectSettings.globalize_path(SHOT_DIR)])
 	await get_tree().process_frame
@@ -147,29 +152,53 @@ func _run_case(case: Dictionary) -> void:
 		{"t": case["land"], "tag": "land"},     # 落地爆炸
 		{"t": case["land"] + 0.35, "tag": "after"},  # 余波（烟柱/焦痕/残焰）
 	]
-	var prev_t: float = 0.0
+	# v27.19: 绝对时钟锚定——旧版「增量等待」把 PNG 保存耗时（老 GPU 单张可达数百 ms）
+	# 累计进后续帧，after 帧实拍于 ~1.5-1.9s：目标环(duration 0.9)已淡完、boss 环近尾、
+	# 烟柱升顶 → "after 帧空场"假象（v20.30 把 land 0.85→0.68 提前实为同病补偿）。
+	# 现以案起始 ticks 为锚，每帧按剩余时差等待，保存耗时只吃下一帧的等待量。
+	var t0_ms := Time.get_ticks_msec()
 	for m in marks:
-		await _capture_at(m["t"] - prev_t, "%s_%s.png" % [case["id"], m["tag"]], case, m["tag"])
-		prev_t = m["t"]
+		var target_ms := int(float(m["t"]) * 1000.0)
+		var now_ms := Time.get_ticks_msec() - t0_ms
+		if target_ms > now_ms:
+			await get_tree().create_timer(float(target_ms - now_ms) / 1000.0).timeout
+		await RenderingServer.frame_post_draw
+		var img := get_viewport().get_texture().get_image()
+		img.save_png(SHOT_DIR + String("%s_%s.png" % [case["id"], m["tag"]]))
+		_manifest.append({
+			"file": String("%s_%s.png" % [case["id"], m["tag"]]),
+			"id": case["id"],
+			"label": case["label"],
+			"stage": String(m["tag"]),
+			"spec": _spec_for(case["id"], String(m["tag"])),
+		})
+		_frame_idx += 1
+		print("[dbg] shot=%s t=%.2fs children=%d" % [m["tag"],
+			float(Time.get_ticks_msec() - t0_ms) / 1000.0, get_child_count()])  # v27.19 排障
 
-func _capture_at(delay: float, file_name: String, case: Dictionary, stage_name: String) -> void:
-	await get_tree().create_timer(delay).timeout
-	await RenderingServer.frame_post_draw
-	var img: Image = get_viewport().get_texture().get_image()
-	img.save_png(SHOT_DIR + file_name)
-	_frame_idx += 1
-	_manifest.append({
-		"file": file_name,
-		"id": case["id"],
-		"label": case["label"],
-		"stage": stage_name,
-		"spec": _spec_for(case["id"], stage_name),
-	})
+func _capture_at(_delay: float, _file_name: String, _case: Dictionary, _stage_name: String) -> void:
+	pass  # v27.19: 旧增量等待路径退役（PNG 保存耗时串进累计时钟的病根），保留签名防外部引用
 
 func _settle() -> void:
 	# v20.30: 1.2→2.6s——spawn_smoke_column 发射 2.4s + 粒子寿命，旧 settle 让上一案
 	# （如 inferno）的烟柱串进下一案截图（chain_after 2/10 的"红色烟雾团"即此）。
 	await get_tree().create_timer(2.6).timeout
+
+## v27.19: 案间硬清场——settle 等「已发射粒子」自然消亡后，把残余 VFX 节点
+## （烟柱尾段/池化环/贴图层）从战场树上摘除，下一案从零开始。
+## v20.30 的纯时间兜底挡不住长寿命粒子串味（烟柱 2.5s 停止发射后粒子还能活 2.4s，
+## 5_案序里 inferno→chain 的余波污染使 chain_after 连续两轮 2-3/10——测的是上一案）。
+## 顺序：captures → settle（待延迟链自然发射完毕）→ clear → 下一案。
+## 池化节点走 VfxImpactFactory.release_to_pool 正门（计数回落；直接 free 会让
+## _active_* 只增不减，长跑后半场池上限假性拒发）；非池节点返回 false 自行 free。
+func _clear_case_fx() -> void:
+	for c in get_children():
+		if c in _stage_nodes:
+			continue
+		if VfxImpactFactory.release_to_pool(c):
+			continue
+		remove_child(c)   # 立即出树（queue_free 要等帧末，下一案 warn 帧可能先拍）
+		c.queue_free()
 
 func _spec_for(case_id: String, stage: String) -> String:
 	match case_id:

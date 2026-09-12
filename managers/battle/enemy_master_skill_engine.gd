@@ -737,6 +737,24 @@ func _play_chain_cinematic(_effect: String, name_text: String) -> float:
 	var chain_tex: Texture2D = _load_spell_texture("chain_lightning")
 	if chain_tex != null:
 		VfxImpactFactory.spawn_spell_burst(_battlefield, boss_pos, chain_tex, Color(0.5, 0.75, 1.0), 400.0, 0.7)
+	# v27.19: 余波层——4 帧审计实锤连锁闪电零余波（蓄力环/爆图 ~0.85s 全灭，after 帧
+	# 空场；v20.29/v20.30 两轮 2-3/10 的"棕红烟球"实为上一案 inferno 烟柱串味，审计
+	# 工具已加案间硬清场，本帧缺口暴露为真）。电系余波语义=电离残场：蓝白持续环 +
+	# 电灼焦痕 + 电离烟（ADD 细柱）。R1 参数强化：环 ×1.8（78→140px，boss 级体量）、
+	# 烟 alpha 0.35→0.65 提亮（探针实测 0.35 在暗底近乎不可见，inferno 0.7 为可见基准）。
+	VfxImpactFactory.spawn_lingering_debuff_ring(_battlefield, boss_pos, Color(0.55, 0.78, 1.0, 0.8), 1.4, 1.8)
+	VfxImpactFactory.spawn_ground_burn(_battlefield, boss_pos, 84.0, 0.15, VfxImpactFactory.PARTICLE_TEX_IMPACT_SCORCH)
+	VfxImpactFactory.spawn_smoke_column(_battlefield, boss_pos, Color(0.55, 0.75, 1.0, 0.65))
+	# 跳击落点小电灼环（3 目标，与预电弧同目标序）——连锁痕迹挂到目标身上
+	var mark_n: int = 0
+	for t in _get_player_units():
+		if mark_n >= 3:
+			break
+		if t == null or not is_instance_valid(t) or not (t is Node2D):
+			continue
+		VfxImpactFactory.spawn_lingering_debuff_ring(_battlefield,
+			(t as Node2D).global_position, Color(0.5, 0.72, 1.0, 0.5), 0.9, 1.2)
+		mark_n += 1
 	_emit_cinematic("enemy_spell_chain", "impact", {})
 	_trigger_screen_shake(7.0, 0.45)
 	return 0.3
@@ -784,7 +802,13 @@ func _play_single_target_cinematic(_effect: String, name_text: String) -> float:
 			# 光矛落地：主激光（boss→命中点，红紫能量贯穿）+ 命中点穿甲光线（垂直下劈）
 			# v17h 补层：SNIPER 级层次 + 焦痕（AI 批"仅单色线条，缺冲击波穿甲熔蚀碎片"）
 			VfxImpactFactory.spawn_layered_impact(_battlefield, land_pos, 6, false, -1, {"power_tier": 2, "direction": Vector2.DOWN})
-			VfxImpactFactory.spawn_ground_burn(_battlefield, land_pos, 60.0, 0.2, VfxImpactFactory.PARTICLE_TEX_IMPACT_SCORCH)
+			# v27.19: 余波层——旧版仅 60px 暗焦痕（z=-5 暗底暗背景几乎不可读，AI after
+			# 3/10"散射光点过小/灰黄暗淡"）。神罚语义=高热贯穿残场：大焦痕 + 暖烟柱 +
+			# 粉红残环（与激光/穿甲同色系，ADD 发光件在 after 帧保持可读）。R1 强化：
+			# 烟 0.4→0.6、环 ×1.6（对齐 chain 余波同轮标定）
+			VfxImpactFactory.spawn_ground_burn(_battlefield, land_pos, 96.0, 0.15, VfxImpactFactory.PARTICLE_TEX_IMPACT_SCORCH)
+			VfxImpactFactory.spawn_smoke_column(_battlefield, land_pos, Color(1.0, 0.45, 0.32, 0.6))
+			VfxImpactFactory.spawn_lingering_debuff_ring(_battlefield, land_pos, Color(1.0, 0.35, 0.7, 0.65), 1.2, 1.6)
 			VfxImpactFactory.spawn_laser_beam(_battlefield, captured_boss_pos, land_pos, Color(1.0, 0.3, 0.85, 1.0))
 			# v17i: 穿甲方向改 Vector2.DOWN——与光矛垂直下落一致。AI 批"激光斜线贯穿 vs 光矛
 			# 垂直下落的方向断裂，观众无法建立因果"。boss→目标激光保留（发射源语义），
