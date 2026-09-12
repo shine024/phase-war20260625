@@ -56,8 +56,9 @@ func _build_ui() -> void:
 	center.mouse_filter = Control.MOUSE_FILTER_IGNORE  # 让点击穿透到 dim 拦截
 	add_child(center)
 
-	# 居中面板
-	var panel := Panel.new()
+	# 居中面板（PanelContainer：随内容撑高——普通 Panel 不布局子节点，实测高度恒 0，
+	# 奖励卡片悬浮无底框；v6.14 修复）
+	var panel := PanelContainer.new()
 	panel.custom_minimum_size = Vector2(580, 0)
 	var style := StyleBoxFlat.new()
 	style.bg_color = _BG_PANEL

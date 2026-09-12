@@ -408,7 +408,9 @@ func _build_image_area() -> void:
 	_image_holder.add_child(_int_shadow)
 
 	_tex_rect = TextureRect.new()
-	_tex_rect.set_anchors_preset(Control.PRESET_FULL_RECT)
+	# v6.14: 用自由锚点——布局真身在 _layout_hotspots 手写 position/size（车带 letterbox），
+	# PRESET_FULL_RECT 的对边不等锚点会在 _ready 期把手写 size 顶掉并刷引擎警告
+	_tex_rect.set_anchors_preset(Control.PRESET_TOP_LEFT)
 	_tex_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	_tex_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	_tex_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE

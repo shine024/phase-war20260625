@@ -2,9 +2,20 @@
 
 [ext_resource type="Script" uid="uid://u1stqk3quara" path="res://scenes/title_screen.gd" id="1_script"]
 [ext_resource type="PackedScene" path="res://scenes/ui/settings_panel.tscn" id="2_settings"]
-[ext_resource type="Texture2D" path="res://assets/backgrounds/title_bg.png" id="3_backdrop"]
-[ext_resource type="FontFile" path="res://assets/fonts/NotoSansSC-Medium.ttf" id="4_fontzh"]
-[ext_resource type="FontFile" path="res://assets/fonts/Rajdhani-Bold.ttf" id="5_fonten"]
+[ext_resource type="Texture2D" uid="uid://onyroujk4551" path="res://assets/backgrounds/title_bg.png" id="3_backdrop"]
+[ext_resource type="FontFile" uid="uid://bo5qgjorgs7oq" path="res://assets/fonts/NotoSansSC-Medium.ttf" id="4_fontzh"]
+[ext_resource type="FontFile" uid="uid://dgp55j0ex2dm7" path="res://assets/fonts/Rajdhani-Bold.ttf" id="5_fonten"]
+
+[sub_resource type="Gradient" id="Gradient_shade"]
+offsets = PackedFloat32Array(0, 0.5, 1)
+colors = PackedColorArray(0.015, 0.03, 0.06, 0.85, 0.015, 0.03, 0.06, 0.45, 0.015, 0.03, 0.06, 0)
+
+[sub_resource type="GradientTexture2D" id="GradTex_shade"]
+gradient = SubResource("Gradient_shade")
+width = 256
+height = 256
+fill_from = Vector2(0, 0.5)
+fill_to = Vector2(1, 0.5)
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_btn_normal"]
 bg_color = Color(0.04, 0.07, 0.12, 0.9)
@@ -55,17 +66,6 @@ corner_radius_top_left = 4
 corner_radius_top_right = 4
 corner_radius_bottom_right = 4
 corner_radius_bottom_left = 4
-
-[sub_resource type="Gradient" id="Gradient_shade"]
-offsets = PackedFloat32Array(0, 0.5, 1)
-colors = PackedColorArray(0.015, 0.03, 0.06, 0.85, 0.015, 0.03, 0.06, 0.45, 0.015, 0.03, 0.06, 0)
-
-[sub_resource type="GradientTexture2D" id="GradTex_shade"]
-gradient = SubResource("Gradient_shade")
-width = 256
-height = 256
-fill_from = Vector2(0, 0.5)
-fill_to = Vector2(1, 0.5)
 
 [node name="TitleScreen" type="Control"]
 layout_mode = 3
@@ -126,7 +126,6 @@ layout_mode = 1
 anchors_preset = -1
 anchor_right = 0.52
 anchor_bottom = 1.0
-grow_horizontal = 1
 grow_vertical = 2
 
 [node name="MainVBox" type="VBoxContainer" parent="CenterContainer"]
@@ -148,7 +147,6 @@ theme_override_constants/outline_size = 8
 theme_override_fonts/font = ExtResource("4_fontzh")
 theme_override_font_sizes/font_size = 88
 text = "相 位 战 争"
-horizontal_alignment = 0
 vertical_alignment = 1
 
 [node name="Subtitle" type="Label" parent="CenterContainer/MainVBox/TitleContainer"]
@@ -157,7 +155,6 @@ theme_override_colors/font_color = Color(0.55, 0.8, 0.92, 0.9)
 theme_override_fonts/font = ExtResource("5_fonten")
 theme_override_font_sizes/font_size = 20
 text = "P H A S E   W A R   ·   C O N S T R U C T   E R A"
-horizontal_alignment = 0
 vertical_alignment = 1
 
 [node name="AccentLine" type="ColorRect" parent="CenterContainer/MainVBox/TitleContainer"]

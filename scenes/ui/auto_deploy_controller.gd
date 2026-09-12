@@ -11,6 +11,8 @@ class_name AutoDeployController
 ##   - 仅当前战斗：battle_ended 自动 disable，下场战斗需重新开启
 
 const GC = preload("res://resources/game_constants.gd")
+## v6.14: 废墟禁放格判定（CardGridBattleLayout 激活态；占用检查看不见"禁放"）
+const BattleLayout = preload("res://scripts/card_grid_battle_layout.gd")
 
 
 # ── 信号 ──
@@ -208,6 +210,15 @@ func _start_deploy_round() -> void:
 	for battlefield_slot in DEPLOY_ORDER:
 		if card_ordinal >= valid_loadouts.size():
 			break
+		# v6.14: 废墟禁放格不可部署，显式跳过——is_player_slot_occupied 只认单位占用，
+		# 禁放空格会被当空闲入队→部署请求 find_nearest 吸附邻格→撞车刷"该格子已有单位"
+		# （L3 player_excluded=[3] 恰撞 DEPLOY_ORDER 首位，实测 ×4）
+		if BattleLayout.is_slot_excluded(battlefield_slot, "player"):
+			continue
+		# v6.14: 窄阵布局（cols=2 → 6 槽）越界槽位不存在的坐标会折算成网格原点，
+		# 同样触发 find_nearest 吸附/撞车——入队前一并拦掉
+		if battlefield_slot >= BattleLayout.player_slots_total():
+			continue
 		if grid != null and player_units != null and grid.has_method("is_player_slot_occupied"):
 			if grid.is_player_slot_occupied(battlefield_slot, player_units):
 				continue  # 该位已有单位，跳过
@@ -318,6 +329,13 @@ func _deploy_next() -> void:
 			var slot_index_fallback: int = int(entry.get("slot_index", 0))
 			battlefield_slot = slot_index_fallback + SLOT_INDEX_OFFSET
 		# 该战场位已有单位 → 跳过（不部署，不报错）
+		# v6.14: 禁放格条目作废（旧轮次建的）——移除后立即重建，把这张卡重映射到
+		# 有效空位。不能只跳过：process 空队列不自动重建，只移除会让该卡干等到
+		# 下次玩家单位死亡才补铺。
+		if BattleLayout.is_slot_excluded(battlefield_slot, "player"):
+			_deploy_queue.remove_at(i)
+			_start_deploy_round()
+			return
 		if grid.has_method("is_player_slot_occupied") and player_units != null:
 			if grid.is_player_slot_occupied(battlefield_slot, player_units):
 				continue
