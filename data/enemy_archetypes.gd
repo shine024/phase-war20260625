@@ -495,7 +495,8 @@ static func resolve_card_icon_texture_path(archetype_id: String, cfg: Dictionary
 		var tcfg: Dictionary = get_config(tpl)
 		return resolve_card_icon_texture_path(archetype_id, tcfg, tpl)
 	const PLACEHOLDER := "res://assets/card_icons/_enemy_placeholder.png"
-	if FileAccess.file_exists(PLACEHOLDER):
+	# v6.14：FileAccess.file_exists 在导出版恒 false（PCK 无原始 png），改 ResourceLoader.exists
+	if ResourceLoader.exists(PLACEHOLDER):
 		return PLACEHOLDER
 	return ""
 

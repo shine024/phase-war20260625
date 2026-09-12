@@ -106,7 +106,7 @@ func _build_ui() -> void:
 	add_child(main_vb)
 
 	# —— 外壳标题栏 ——
-	var chrome = PanelChrome.attach_to(main_vb, "相位师技能树", DT.get_panel_accent("phase_master_skill"), "CIRCUIT BOARD")
+	var chrome = PanelChrome.attach_to(main_vb, "相位师技能树", DT.get_panel_accent("phase_master_skill"), "技能主板")
 	chrome.closed.connect(_on_close_pressed)
 
 	# —— 状态行：技能点 + 总览入口 ——
@@ -181,8 +181,9 @@ func _build_ui() -> void:
 	for lane_idx in SkillBoard.LANE_ORDER.size():
 		var branch: String = String(SkillBoard.LANE_ORDER[lane_idx])
 		var lane_title := Label.new()
-		lane_title.text = "▎%s %s" % [SkillTree.get_branch_display_name(branch),
-				["COMMAND", "INTEL", "FIRE"][lane_idx]]
+		# v6.14：去掉英文道标 COMMAND/INTEL/FIRE（用户报技能树残留英文）——
+		# 分支中文名已由 get_branch_display_name 给出，英文后缀纯装饰径删
+		lane_title.text = "▎%s" % SkillTree.get_branch_display_name(branch)
 		lane_title.custom_minimum_size = Vector2(SkillBoard.LANE_W, 0)
 		lane_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		lane_title.add_theme_font_size_override("font_size", DT.FONT_SIZE_BODY)

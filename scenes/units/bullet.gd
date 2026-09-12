@@ -806,14 +806,24 @@ func _process(delta: float) -> void:
 		_process_indirect(delta)
 		return
 	# TANK_GUN 命中后淡出计时
+	# v6.14 修复：①淡出补齐程序化弹头（_sprite，直射坦克炮的实际视觉路径）与曳光线——
+	# 原来只摸 _tex_sprite（贴图弹路径，程序化弹恒隐藏），弹体+曳光冻结在命中点全程可见；
+	# ②到期回收从函数尾部的死分支（被本分支提前 return 挡住，永不执行）移入此处——
+	# 此前弹体既不淡出也不归池，残留到战斗结束清场才消失。
 	if _tank_gun_terminate:
 		_tank_gun_timer += delta
-		var life_pct := 1.0 - _tank_gun_timer / TANK_GUN_DISAPPEAR_AFTER
+		var life_pct := maxf(0.0, 1.0 - _tank_gun_timer / TANK_GUN_DISAPPEAR_AFTER)
 		if _tex_sprite:
-			_tex_sprite.modulate.a = maxf(0.0, life_pct)
+			_tex_sprite.modulate.a = life_pct
+		if _sprite:
+			_sprite.modulate.a = life_pct
+		if _tracer_line and _tracer_line.visible:
+			_tracer_line.modulate.a = life_pct
 		if _trail_particles:
 			# CPUParticles2D 无 process_material；停止 emitting 后粒子按自身 lifetime 自然消散
 			_trail_particles.emitting = _tank_gun_timer < TANK_GUN_DISAPPEAR_AFTER
+		if _tank_gun_timer >= TANK_GUN_DISAPPEAR_AFTER:
+			_finish_tex_bullet()
 		return
 	# v19-R35: 光束改回【定长尾段】——R16 的"枪口锚定连续光束"在读图时被感知为
 	# "一条常亮长条"（用户反馈"激光不能是一直长条施放的"；f08 弹道格亮区横跨 797px）。
@@ -864,9 +874,8 @@ func _process(delta: float) -> void:
 	# v6.4: 重型武器拖尾跟随飞行方向（直射类，如 RAIL/OMEGA）
 	_update_trail_transform()
 	var max_d2: float = max_distance * max_distance
-	if _tank_gun_terminate and _tank_gun_timer >= TANK_GUN_DISAPPEAR_AFTER:
-		_finish_tex_bullet()
-		return
+	# （v6.14：原 TANK_GUN 到期回收分支已移入 _process 头部淡出分支——此处在本帧
+	# 提前 return 之后，从未被执行过）
 	if global_position.distance_squared_to(_start_position) > max_d2:
 		_finish_tex_bullet()
 		return
@@ -1650,9 +1659,10 @@ func _on_hit(primary: Node2D) -> void:
 			target = _next_target
 		return
 
-	# v26.x: TANK_GUN 已在函数头置淡出状态（1159-1162），这里不再即时回收——
-	# 否则 v9.3 的"命中后 0.2s 淡出"被饿死（重炮弹命中瞬间即消失），
-	# 淡出计时由 _process 驱动、到期回收在 _physics_process（_tank_gun_timer 分支）
+	# v26.x: TANK_GUN 已在函数头置淡出状态，这里不再即时回收——
+	# 否则 v9.3 的"命中后 0.2s 淡出"被饿死（重炮弹命中瞬间即消失）。
+	# 淡出计时与到期回收均由 _process 头部的 _tank_gun_terminate 分支驱动
+	# （v6.14 勘误：原注"到期回收在 _physics_process"不实，本文件无该函数）
 	if _tank_gun_terminate:
 		return
 	_finish_tex_bullet()
@@ -1721,6 +1731,12 @@ func reset_pool_object() -> void:
 	# 状态会延续到下一发任意武器类型，导致新子弹一出生就立刻淡出消失）
 	_tank_gun_terminate = false
 	_tank_gun_timer = 0.0
+	# v6.14: TANK_GUN 淡出改写 _sprite/_tex_sprite/_tracer_line 的 alpha，复用前必须
+	# 还原，否则下一发弹体半透明甚至不可见（_apply_visual 只重写 _tex_sprite.modulate）
+	if _sprite:
+		_sprite.modulate.a = 1.0
+	if _tracer_line:
+		_tracer_line.modulate.a = 1.0
 	# v9.2: 穿透去重 + 衰减状态重置
 	_pierce_falloff = 0.0
 	_pierce_damage_mult = 1.0

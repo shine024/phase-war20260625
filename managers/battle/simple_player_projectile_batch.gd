@@ -313,9 +313,13 @@ func _sync_multimesh_layers() -> void:
 		if arr.is_empty():
 			continue
 		var mm2: MultiMesh = (_layers[k] as MultiMeshInstance2D).multimesh
-		# v27.12 perf: 层色查缓存（原每帧每层 layer_tint 查表）
-		var tint: Color = _layer_tints.get(k)
-		if tint == null:
+		# v27.12 perf: 层色查缓存（原每帧每层 layer_tint 查表）。v27.13 修复：
+		# `Color = dict.get(k)` 首帧拿到 Nil 直接运行期报错且语句中止（tint 停留默认黑、
+		# `tint == null` 对 Color 恒 false 使回退永不生效，每帧刷错）——改 has 守卫。
+		var tint: Color
+		if _layer_tints.has(k):
+			tint = _layer_tints[k]
+		else:
 			tint = WeaponProjectileVfx.layer_tint(k, _PLAYER_TINT)  # v20.16b: 亚类层按武器配色
 			_layer_tints[k] = tint
 		var prev_n: int = int(_prev_counts.get(k, 0))

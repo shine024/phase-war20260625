@@ -240,7 +240,9 @@ static func has_attack_frames(uid: String) -> bool:
 		return false
 	if _frame_probe.has(uid):
 		return bool(_frame_probe[uid])
-	var ok: bool = FileAccess.file_exists(FRAME_ROOT + uid + "/attack_f0.png")
+	# v6.14：FileAccess.file_exists 在导出版恒 false（PCK 无原始 png），改 ResourceLoader.exists
+	#（与 _load_frames 的存在性检查同源，两侧判定自此一致）
+	var ok: bool = ResourceLoader.exists(FRAME_ROOT + uid + "/attack_f0.png")
 	_frame_probe[uid] = ok
 	return ok
 
