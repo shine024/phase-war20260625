@@ -7466,6 +7466,51 @@ for_17 永备工事。
 
 **验证**：GdUnit 268/268 全绿 + master_power_smoke 8/8（2026-09-11 口径）
 
+## v27.18 击杀掉真卡·通用缴获通道复活（发行差距 P2-9，保守档留观）（2026-09-12）
+
+> 差距清单第七节「bp_* 清零后复活为真卡直掉」。**核实勘误**：显式缴获通道一直活着——
+> `battle_damage_system.roll_blueprint_drops` 每击杀滚 `EnemyArchetypes.drops` 表
+> （15 个特殊原型：缴获卡 drop_*/时代旗舰 fut_*，chance 0.2-1.0），清零的只是
+> bp_* 死 id 自动生成机（批次9 F1）。本次补的是**普通/无表精英单位**的通用缴获。
+
+- `battle_damage_system.gd`：`roll_blueprint_drops` 追加通用缴获滚动——victim 原型
+  无显式 drops 且非 boss 时，普通 2% / 精英 15%（×关卡掉率乘区），**每场上限 2 张**
+  （保守档：普通场 ~30 杀期望 ≈0.6 张 + 精英补差，约每 2-3 场多 1 卡）
+- 卡 id 来源：`drop_tables.get_random_card_for_era_kind(era, combat_kind)`——按所杀
+  兵种过滤时代卡池（"缴获同类装备"语义），无命中回退全池；与战后随机滚卡同源
+  （ERA_BLUEPRINT_IDS），无死 id 风险
+- 发放走既有正门：`CardDropGrants.grant_enemy_style_card(source="击杀缴获")` →
+  InstanceRegistry 实例化 + MVP 面板「本局缴获」分区 + 低频 toast（2% × 上限2 不刷屏）
+- **留观**：战后随机滚卡（1-3 张/场）不动，缴获渠道独立；实测体感后再单变量调
+  GENERIC_CAPTURE_* 三常量（参照 v25.x 敌方词条留观惯例）
+
+**验证**：`tests/_tmp_v2717_feature_check.gd` 14/14 PASS（缴获挑选兵种过滤/回退/常量断言）+ test_drop_escrow 10/10。
+
+## v27.17 功能补口三件套：归仓气泡 + 英雄档案/纪念墙迁入移动基地（发行差距第八节）（2026-09-12）
+
+> 差距清单第八节三条。**核实勘误**：「词缀工坊零入口」已过时——fb5c57b（批次③房间化
+> 收尾）已挂五时代热区；本次只补短牌标签。「曲射主路径无烟迹」亦已过时（v26.x 落地）。
+> 真缺口两条全部落在 truck_base 一个文件（约 160 行）。
+
+- **归仓气泡移植（v23.6 功能复活到现役基地）**：数据层（DropManager 归仓池）本就
+  基地无关且活着，truck_base 零消费端——玩家挂机保留的战利品无限期滞留无 UI 可收。
+  现 `_bubble_layer` 挂剖面图区（氛围层之上不被暗角压暗），类别→工位映射
+  （material→制造舱/mod_blueprint→改造/lore→情报/card→卡仓/stat_boost→成长），
+  同工位多类别合一泡；`escrow_changed` deferred 刷新 + `_layout_hotspots` 尾部重铺
+  （缩放/换时代跟随）；收取 → collect_escrow + toast 前 4 项明细 + quest_complete 音。
+  首见引导复用旧 key `escrow_bubble`（老档不重弹）；help_panel 文案恢复气泡口径
+- **英雄档案/纪念墙迁入**：两面板（hero_archive_panel/memorial_wall，纯 .gd 自包含）
+  原仅存停用的旧基地，碎片数据链（BunkerManager 相位师战胜记录）却一直在默默累积。
+  `_ensure_panel_wrapper` 补 .gd 双路径（移植 bunker_main 同款 8 行）；PANEL_SCENES
+  +2 键；顶栏「🎖 同伴档案」「🕯 纪念墙」按钮（低饱和色不抢出击主按钮，用户裁决入口
+  方案）；`hero_archive_unlocked` 接线实时刷新 + 0.7s 聚合 toast（抄旧基地同款）
+- **词缀短牌**：`_hotspot_tag` 补 fb5c57b 挂的 6 个新工位短名（affix=词缀/growth=成长/
+  collection=图鉴/faction=势力/leaderboard=战功/help=手册），此前落兜底显示通用词「工位」
+- 观星台终局面板（observatory_ending）不挂（终局剧透风险），差距文档记另议
+
+**验证**：`tests/_tmp_v2717_feature_check.gd` ALL PASS（两面板实开+气泡生成/收取清零链）；
+T3 热区冒烟 11 键零悬空（hero_archive/memorial 顶栏入口豁免）+ 六新键实开不回归。
+
 ## v27.16 游戏手感三批次：一致性收口 + 微交互注入 + 流程缝合（2026-09-12）
 
 > 用户反馈「内容够了但有拼凑感、不像一个游戏、操作不流畅」——诊断结论三层：

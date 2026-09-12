@@ -258,6 +258,21 @@ func get_random_blueprint_for_era(era: int) -> String:
 		return String(ids[randi() % ids.size()])
 	return ""
 
+## v27.18 击杀缴获通道：按时代+兵种过滤的卡池随机真卡 id（"缴获所杀同类装备"语义）。
+## combat_kind 无命中（池窄/兵种错位）回退全时代池——id 全部来自 ERA_BLUEPRINT_IDS，
+## 与战后随机滚卡同源，DefaultCards 必命中（无死 id 风险）。
+func get_random_card_for_era_kind(era: int, combat_kind: int) -> String:
+	var ids: Array = ERA_BLUEPRINT_IDS.get(era, [])
+	if ids.is_empty():
+		return ""
+	var filtered: Array = []
+	for id in ids:
+		var card = DefaultCards.get_card_by_id(String(id))
+		if card != null and int(card.combat_kind) == combat_kind:
+			filtered.append(id)
+	var pool: Array = filtered if not filtered.is_empty() else ids
+	return String(pool[randi() % pool.size()])
+
 
 func _pick_random_rare_enemy_drop_id(era: int) -> String:
 	var ids = ERA_BLUEPRINT_IDS.get(era, [])
