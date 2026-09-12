@@ -7465,3 +7465,51 @@ for_17 永备工事。
 **明确延期（需实机验证/架构级重构）**: CPUParticles→GPUParticles2D 迁移评估；单位本体整树池化（ConstructUnit/EnemyUnit 场景级 churn）。
 
 **验证**：GdUnit 268/268 全绿 + master_power_smoke 8/8（2026-09-11 口径）
+
+## v27.16 游戏手感三批次：一致性收口 + 微交互注入 + 流程缝合（2026-09-12）
+
+> 用户反馈「内容够了但有拼凑感、不像一个游戏、操作不流畅」——诊断结论三层：
+> ①同类行为不一致 ②面板内部静态（34/57 UI 脚本零 tween）③世界间只有遮盖无连接。
+> 常规打磨件（转场/开合动画/BGM 交叉淡出）此前已各自存在，病灶在结构层。
+
+**批次1 一致性收口（拼凑感直接来源）**:
+- 新组件 `scripts/ui/panel_anim.gd`（PanelAnim）：main.gd 面板开合动画抽出的单一真身
+  （open/close + CanvasLayer 适配 open_layer/close_layer；规格零变化：淡入0.2s+内容弹出
+  0.25s TRANS_BACK/淡出0.15s；motion_reduce 短路；close_tween meta 竞态守卫；无协程 GC 风险）
+- 点击音全局钩子：AudioManager node_added 钩挂 BaseButton.pressed（与 v27 悬停音同构）；
+  play_sfx 对 "button" 50ms 窗口去重防双响；既有 ~65 处手写调用保留不删（少数在非按钮
+  gui_input 路径上）——faction/achievement/collection/settings/help/intelligence_hub 等
+  内部按钮全哑的面板即刻有声，新面板自动覆盖
+- 旁路收口：相位师面板（main._open_player_master_panel）/技能树（phase_master_skill_host）/
+  卡车基地内嵌面板（truck_base._open_panel）/标题屏设置弹窗，原 visible 硬切无声 →
+  统一动画+开合音；`_close_all_overlays` 全关从一帧硬切改统一淡出+单次 panel_close
+  （进战斗时 UI 群淡出叠在战场浮现上，ESC 全关同享）
+
+**批次2 微交互注入（"操作不流畅"直接来源）**:
+- 全局按钮按压微动效：PanelAnim.attach_press_feedback（按下 scale 0.97/0.05s、松开回弹
+  0.12s TRANS_BACK 轻微过冲）经 AudioManager 钩子覆盖全部 BaseButton——全项目既有 scale
+  tween 均在非 Button 节点，零冲突；button_up 在禁用/拖出释放全路径触发（_unpress 兜底）
+  无卡死态
+- tab 切换内容淡入：fade_content_in 0.18s（只动 modulate 不动 position/scale——容器子
+  节点布局属性会被下次排序覆盖打架）接入商店公司 tab/任务面板/情报中枢
+- help/growth 面板内层自播动画拆除（与外层 PanelAnim 双层叠加时序错拍）；growth 的
+  重活分帧语义保留（0.08s interval 链）；顺带修掉关闭后 scale 残留 0.9/0.92 不归位
+- 侦察改判不做：resource_info_panel 数值滚动已有（v7.x 完整实现）；卡车基地三套自写
+  样式是场景热点/筹码的专属界面语言，不并入 PanelStyles（按压钩子已自动覆盖手感）
+
+**批次3 流程缝合（"不像一个游戏"深层来源）**:
+- 新组件 `scripts/ui/stage_banner.gd`（StageBanner）：全屏中央战报横幅（黑带+白字+暖橙
+  细线，与 SortieInterstitial 同一视觉方言；layer 350；全链 mouse_filter IGNORE 不挡
+  操作；防重入；motion_reduce 降档 0.5s）
+- 直开链入战揭幕：主界面「开始战斗」原零过渡（面板一关战场同帧从静到动）→ 战场压暗
+  0.1s → 横幅「交战开始」+ 0.3s 回亮；波次刷在亮度爬坡里（go_to_battle 本就
+  call_deferred，战斗时序零改动）。出击链（已有 1.5s 战报）/挂机（缩略图预览）/教程
+  三路豁免。dip 的 await 走树定时器而非 tw.finished（极端切场景窗口下 tween 随节点
+  死亡不发光会挂起开战协程），dip 后补 main 实例守卫
+- 结算「继续」回整备宣告：on_result_confirmed 播「返回整备」横幅，与结算面板淡出
+  重叠（挂机/教程豁免）
+- 明确不做：单位列队入场动画（动 spawn 时序，战斗系统时序敏感风险不成比）；相机
+  运镜（固定格子取景无相机系统）
+
+**验证**：gdparse 全过 + 编辑器 `--headless --editor --quit` 全量编译零错 +
+master_power_smoke 8/8 + GdUnit 276/276（每批次落地后各跑一轮）
