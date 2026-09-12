@@ -115,7 +115,7 @@ print(call('logs.read'))                          # 读 Output 面板日志（�
 **`addons/godot_ai` v3.1.5** 已安装并通过 `agent_tools` 桥写入 `editor_plugins/enabled`（带 agent_tools/gdunit4/godot-mcp 三插件共存）。配套 **DSH 插件 `dsh-godot-ai@0.6.0`** 已装入 web profile。三者分工：agent_tools（9920 TCP JSON-RPC，自研）、godot-mcp（1.0.0，独立 MCP）、godot_ai（编辑器 Addon + uv Python sidecar，HTTP 8000 / WS 9500 + 编辑器 dock）。
 
 - **版本锁 v3.1.5**：`dsh-godot-ai 0.6.0` 仅测试过 Godot AI 3.1.5（45 工具、attach 协议 v1）；GitHub 最新已是 v4.1.0（协议大版本变更），**不要升级到 v4**，也警惕 addon 自更新（dock 里有更新控件，弹 v4 拒绝）。
-- **⚠️ 2026-09-12 实测勘误**：`session_manage` 报 **plugin/server 3.2.5**（非 3.1.5）——实际装的是 3.2.5，高于文档版本锁一个 minor，DSH 兼容性未回归。同日可玩性检查实测：编辑器集成链（project_run / get_scene_tree / get_ui_elements / logs_read）正常，但 **`editor_screenshot` / `game_eval` 调用会打死 MCP 连接层**（"Failed to initialize server session"，sidecar 进程与 HTTP 8000 仍存活、连接本会话不可恢复）→ 挂了就回退 agent_tools（截图走 `editor_game_screenshot`，深流程走 CLI `--script`）。是否 3.2.5 特有回归待查。
+- **⚠️ 2026-09-12 实测勘误（已解决）**：当日 `session_manage` 曾报 **plugin/server 3.2.5**（高于版本锁一个 minor，DSH 兼容性未回归；`editor_screenshot` / `game_eval` 会打死 MCP 连接层——"Failed to initialize server session"，sidecar 与 HTTP 8000 仍存活、本会话不可恢复）。**同日晚些 DSH 侧重装回 3.1.5（用户拍板锁定），plugin.cfg 已核**；3.2.5 特有回归是否消失待复测，挂了仍回退 agent_tools（截图走 `editor_game_screenshot`，深流程走 CLI `--script`）。
 - **启用尚需编辑器重启**（写设置时编辑器在跑，走 `EditorInterface.set_plugin_enabled` 才能免重启热加载，agent_tools 未暴露该方法）。
 - headless 自动禁用（`GODOT_AI_ALLOW_HEADLESS` 可越过）→ 不影响 `--check-only` / gdunit 测试流程；启用时会自动加 autoload `_mcp_game_helper`（禁用插件时自动移除）。
 - sidecar 经 `uvx` 拉 `godot-ai` PyPI 包，首次启动需网络。
