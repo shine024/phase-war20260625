@@ -48,6 +48,7 @@ PhaseMasterSkillManager="*res://managers/phase_master_skill_manager.gd"
 TutorialProgressionManager="*res://managers/tutorial_progression_manager.gd"
 BattleSpectacle="*res://managers/battle/battle_spectacle.gd"
 _MCPGameBridge="*res://addons/agent_tools/runtime/game_bridge.gd"
+_mcp_game_helper="*res://addons/godot_ai/runtime/game_helper.gd"
 
 [debug]
 
@@ -62,7 +63,7 @@ window/stretch/aspect="expand"
 
 [editor_plugins]
 
-enabled=PackedStringArray("res://addons/agent_tools/plugin.cfg", "res://addons/gdunit4/plugin.cfg", "res://addons/godot-mcp/plugin.cfg")
+enabled=PackedStringArray("res://addons/agent_tools/plugin.cfg", "res://addons/gdunit4/plugin.cfg", "res://addons/godot-mcp/plugin.cfg", "res://addons/godot_ai/plugin.cfg")
 
 [gui]
 
