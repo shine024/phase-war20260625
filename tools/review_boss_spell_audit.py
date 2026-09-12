@@ -107,6 +107,9 @@ def main():
     ap = argparse.ArgumentParser(description="boss 大招截图 AI 评分（boss_spell_audit 专用）")
     ap.add_argument("--limit", type=int, default=0, help="只评前 N 帧(0=全量)")
     ap.add_argument("--only", default="", help="只评指定 case id（逗号分隔，如 chain,single,inferno）")
+    ap.add_argument("--resume", action="store_true",
+                    help="断点续评：复用输出 json 里已有的帧结果（被 OOM/超时打断后续跑不白干）。"
+                         "⚠️ 仅当截图未重拍时使用（按文件名匹配，不校验内容）")
     ap.add_argument("--host", default=DEFAULT_HOST)
     ap.add_argument("--model", default=DEFAULT_MODEL)
     ap.add_argument("--deterministic", action="store_true",
@@ -129,12 +132,26 @@ def main():
     print(f"模式: {'降噪(t=0,×3中位)' if args.deterministic else '常规(t=0.3 单次)'}\n")
 
     results = []
+    # v27.19: --resume 预载历史结果（同文件名直接复用）
+    prev_results = {}
+    if args.resume and os.path.isfile(OUT_JSON):
+        try:
+            old = json.load(open(OUT_JSON, encoding="utf-8"))
+            for r in old.get("results", []):
+                if r.get("file"):
+                    prev_results[r["file"]] = r
+        except Exception as e:  # noqa: BLE001
+            print(f"[resume] 旧 json 读取失败，忽略: {e}")
     t_all = time.time()
     for i, cell in enumerate(cells):
         fname = cell.get("file", "")
         png = os.path.join(SHOTS_DIR, fname)
         if not os.path.isfile(png):
             print(f"[{i+1}/{len(cells)}] {fname} 缺文件，跳过")
+            continue
+        if fname in prev_results:
+            print(f"[{i+1}/{len(cells)}] {fname:34s} (resume) 复用")
+            results.append(prev_results[fname])
             continue
         t0 = time.time()
         prompt = user_prompt(cell)
@@ -155,6 +172,12 @@ def main():
             "parse_error": r.get("parse_error", ""),
             "denoise": r.get("denoise"),
         })
+        # v27.19: 逐帧 checkpoint——进程被杀（OOM/超时）也不丢已评帧，--resume 续跑
+        with open(OUT_JSON, "w", encoding="utf-8") as f:
+            json.dump({"model": args.model, "deterministic": args.deterministic,
+                       "generated_at": time.strftime("%Y-%m-%d %H:%M:%S"),
+                       "note": "checkpoint（进程中断后续跑加 --resume）", "results": results},
+                      f, ensure_ascii=False, indent=2)
 
     total = time.time() - t_all
     valid = [r for r in results if (r.get("critique") or {}).get("realism_score", -1) >= 0]
