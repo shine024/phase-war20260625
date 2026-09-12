@@ -197,6 +197,10 @@ func _ready() -> void:
 	# v7.x(B2): about_to_quit 覆盖 get_tree().quit() 路径（程序化退出不会触发
 	# WM_CLOSE_REQUEST，但会发 about_to_quit）。与 _notification(WM_CLOSE_REQUEST)
 	# 形成双保险，确保任意退出路径都收尾存档。
+	# ⚠️ v6.14 勘误：Godot 4.5.1 实测 SceneTree 无 about_to_quit 信号（has_signal 恒
+	# false，连接从未发生）——程序化退出的收尾存档由退出调用点显式调 save_game()
+	# 承担（title_screen._on_quit）。此处连接保留：未来引擎若恢复该信号即自动生效。
+	# 不用 _exit_tree 替代：autoload 逆序析构，退树时后加载的 manager 可能已释放。
 	# 用字符串名 connect 规避 --check-only 静态分析对信号属性的误报。
 	var tree := get_tree()
 	if tree != null and tree.has_signal("about_to_quit"):

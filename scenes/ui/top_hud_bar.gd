@@ -119,6 +119,10 @@ func _apply_button_icons() -> void:
 	_apply_icon_to(_pause_btn, _PAUSE_ICON, "停", Color(0.3, 0.25, 0.05, 0.85))
 	_apply_icon_to(_start_btn, _START_ICON, "战", Color(0.05, 0.25, 0.15, 0.85))
 	_apply_icon_to(_back_btn, _BACK_ICON, "返", Color(0.1, 0.1, 0.15, 0.85))
+	# v6.14：返回语义=回移动基地（原按出击来源分流，非基地出击时回标题，用户反馈
+	# 战斗界面找不到回基地入口）——按钮是纯图标，悬停说明必须给出去向
+	if _back_btn:
+		_back_btn.tooltip_text = "返回移动基地"
 
 func _apply_icon_to(btn: Button, icon_key: String, fallback_text: String = "", _bg_color: Color = Color(0.06, 0.10, 0.18, 0.85)) -> void:
 	if btn == null:

@@ -76,7 +76,7 @@ func _ready() -> void:
 	# 注意：本面板的 Backdrop/Panel/自身三层可见性协议特殊（main.gd 依赖），保持不变。
 	var accent := DT.COLOR_ACCENT_CYAN
 	panel.add_theme_stylebox_override("panel", PanelStyles.make_panel_frame_textured(accent))
-	var chrome = PanelChrome.attach_to($Panel/MarginContainer/MainVBox, "自动哨戒", accent, "AFK MODE")
+	var chrome = PanelChrome.attach_to($Panel/MarginContainer/MainVBox, "自动哨戒", accent, "自动作战")
 	chrome.closed.connect(_on_close)
 	start_btn.pressed.connect(_on_start)
 	stop_btn.pressed.connect(_on_stop)

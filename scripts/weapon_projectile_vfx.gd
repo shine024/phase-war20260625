@@ -770,7 +770,10 @@ static func spawn_impact_with_kind(parent: Node2D, world_pos: Vector2, weapon_ty
 	var atk_dir: Variant = opts.get("direction", Vector2.RIGHT)
 	var atk_d: Vector2 = atk_dir if atk_dir is Vector2 else Vector2.RIGHT
 	if weapon_type == 11:
-		VfxFactory.spawn_railgun_penetration(parent, world_pos, atk_d, 170.0)
+		# v27.13: 穿透距离 170→100——实战单位宽 37-118px（58.9px 基准 × VISUAL_SCALE
+		# 0.62-2.0），170px 的出口 spall 落在多数单位身后悬空（四帧审计实锤：碎片锥
+		# 脱离弹着点 ~200px 读成第二个独立爆炸）。100px ≈ 出口贴着目标背面。
+		VfxFactory.spawn_railgun_penetration(parent, world_pos, atk_d, 100.0)
 		return
 	# v12d: 激光(LASER=8)走签名灼烧效果(来弹光束+白热光斑+焦痕+热火花),跳过通用 OMEGA 贴图+
 	# 能量帧(原与轨道炮/欧米茄共享,读成"通用能量团")。激光是表面能量沉积,非动能穿透。

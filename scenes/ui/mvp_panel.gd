@@ -867,14 +867,15 @@ func _render_close_button_anchored(panel: Control) -> void:
 # =========================================================================
 
 ## 打完仗的基地一览：修复进度推进/今日完工/精神状态（低精神折损提示）。
-## 从基地出击（launch_from_bunker）且非挂机时，底部追加"返回基地"直达按钮。
-## 从未进过基地的玩家（/root/BunkerManager 不存在）整区不显示，零干扰。
+## v6.14：底部"返回移动基地"直达按钮不再要求从基地出击——移动基地是现役主枢纽，
+## 任何手动战斗的结算都给（挂机结算仍不给，自动链无需中断）。从未进过基地的玩家
+## （/root/BunkerManager 不存在）整区不显示，零干扰。
 func _render_bunker_status(vbox: VBoxContainer) -> void:
 	var bunker: Node = Engine.get_main_loop().root.get_node_or_null("BunkerManager") \
 		if Engine.get_main_loop() != null else null
 	if bunker == null or not bunker.has_method("get_day"):
 		return
-	_bunker_return_available = Engine.has_meta("launch_from_bunker") and not _is_afk
+	_bunker_return_available = not _is_afk
 
 	var title := Label.new()
 	var mult: float = bunker.get_drop_reward_multiplier() \

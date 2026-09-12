@@ -108,7 +108,7 @@ func _ready() -> void:
 		top_hud_bar.btn_start_battle_pressed.connect(_on_start_battle)
 		top_hud_bar.btn_pause_pressed.connect(_on_pause_pressed)
 		top_hud_bar.btn_retreat_pressed.connect(_on_retreat_pressed)
-		top_hud_bar.btn_back_pressed.connect(_on_back_to_title)
+		top_hud_bar.btn_back_pressed.connect(_on_back_to_base)
 	# 任务红点角标：连接 DailyTaskManager 信号刷新可领取数量
 	_connect_quest_badge_signals()
 
@@ -1286,7 +1286,7 @@ func _build_pause_menu() -> Control:
 	vbox.add_theme_constant_override("separation", 12)
 	panel.add_child(vbox)
 	var title := Label.new()
-	title.text = "已暂停 · PAUSED"
+	title.text = "已暂停"
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	title.add_theme_font_size_override("font_size", 20)
 	title.add_theme_color_override("font_color", DT.get_panel_accent("settings"))
@@ -1476,8 +1476,21 @@ func _build_retreat_confirm_dialog() -> Control:
 
 var _leaving_scene: bool = false
 
+## v6.14：顶栏「返回」语义收口——恒回移动基地。原先仅 launch_from_bunker（基地出击）
+## 时回基地，其余路径（战前开始/地图出征/教程首战）回标题，战斗界面自此没有任何
+## 回基地入口（用户反馈）。移动基地已是现役主枢纽，卡车基地自带「返回标题」按钮，
+## 标题屏可达性不受影响。暂停菜单「返回标题（本场按战败结算）」保留标题语义不变。
+func _on_back_to_base() -> void:
+	_exit_battle_and_change("res://scenes/bunker/truck_base.tscn")
+
+## 暂停菜单「返回标题」——显式退出会话语义，落标题屏。
 func _on_back_to_title() -> void:
-	# v26.6 修复：战斗中返回标题此前直接存档+切场景——battle_active 恒卡死
+	_exit_battle_and_change("res://scenes/title_screen.tscn")
+
+## 退出战斗收尾链共用体：挂机先停机 → 战斗中 end_battle(false) 正常结算 →
+## 存档 → 消费一次性 meta → 切目标场景。
+func _exit_battle_and_change(scene_path: String) -> void:
+	# v26.6 修复：战斗中返回此前直接存档+切场景——battle_active 恒卡死
 	# （战斗结束存档钩子永不触发）、battlefield 变 freed 悬垂实例（battle_manager
 	# 每帧踩空）。现对齐撤退确认按钮的语义：挂机先停机（避免拦截 battle_ended
 	# 再排下一场），战斗中走 end_battle(false) 正常结算，然后再存档切场景。
@@ -1501,13 +1514,10 @@ func _on_back_to_title() -> void:
 		SaveManager.save_game()
 	# 批次③ Task 1：作废未消费的出征过场拍点（防下次开局首战误触发一次过场）
 	Engine.remove_meta(SortieInterstitial.META_PENDING)
-	# v21 余烬要塞：从基地经兵棋室进入战场时，返回按钮回基地而非标题
-	# v26.12d：固定主基地停用——launch_from_bunker 现由移动基地出击链设置，返回也回移动基地
-	if Engine.has_meta("launch_from_bunker"):
-		Engine.remove_meta("launch_from_bunker")
-		SceneTransition.change(get_tree(), "res://scenes/bunker/truck_base.tscn")
-		return
-	SceneTransition.change(get_tree(), "res://scenes/title_screen.tscn")
+	# launch_from_bunker 标记无条件消费：回基地与否不再依赖它，但必须清掉——
+	# 该标记在 main._ready 是「出击=进战场」自动开打链的扳机，残留会误触下一场
+	Engine.remove_meta("launch_from_bunker")
+	SceneTransition.change(get_tree(), scene_path)
 
 func _on_world_map() -> void:
 	_open_overlay(map_overlay, "map")

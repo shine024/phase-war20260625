@@ -1363,13 +1363,20 @@ func _open_panel(panel_id: String) -> void:
 	# v26.33：自隐藏面板（help_panel 在 _ready 里 visible=false + modulate 归零，
 	# 嵌入包装链只切 wrapper 可见性）——首次打开补调 show_panel 才真显示
 	#（旧基地 help 嵌入即栽在此：wrapper 亮了面板本体还黑着）
+	# v6.14 修复：原"零参签名"检测 args.is_empty() 把 help_panel.show_panel(_card=null)
+	# 这类"1 个可选参"误判成需参签名，show_panel 永不执行 → 车长手册打开后恒黑屏空壳。
+	# 现按真实参数个数分流：零参直接调；有参（可选/必填）一律传 null（两场景面板
+	# 的既有契约，main.gd _notify_panel_opened 同款）。守卫 not p.visible 保留：
+	# 只补自隐藏面板，非自隐藏面板行为与 v26.33 前完全一致。
 	if p.has_method("show_panel") and not p.visible:
-		# 只补调零参签名（growth_panel.show_panel(tab) 需 1 参，盲调运行时报错）
 		for _m in p.get_method_list():
-			if _m["name"] == "show_panel":
-				if (_m.get("args", []) as Array).is_empty():
-					p.call("show_panel")
-				break
+			if _m["name"] != "show_panel":
+				continue
+			if (_m.get("args", []) as Array).is_empty():
+				p.call("show_panel")
+			else:
+				p.call("show_panel", null)
+			break
 
 func _ensure_panel_wrapper(panel_id: String) -> Control:
 	if _embed_wrappers.has(panel_id):

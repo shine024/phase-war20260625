@@ -151,7 +151,7 @@ func _build_ui() -> void:
 		escrow_count = int(dm.get_escrow_total_count())
 	if escrow_count > 0:
 		var escrow_hint := Label.new()
-		escrow_hint.text = "本次战利品已暂存移动基地仓库（%d 件）——回移动基地可在房间气泡处收取" % escrow_count
+		escrow_hint.text = "本次战利品已暂存归仓（%d 件）——点「全部入账」就地收取，也可稍后结算时一并领取" % escrow_count
 		escrow_hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		escrow_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		escrow_hint.add_theme_color_override("font_color", _TEXT_DIM)

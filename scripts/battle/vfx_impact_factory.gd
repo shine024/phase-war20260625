@@ -1258,29 +1258,34 @@ static func spawn_laser_burn(parent: Node2D, pos: Vector2, is_player: bool = tru
 				lb.material = null
 				_release_beam(lb))
 	# ① 聚焦灼热光斑:白热核心(亮于光束色),放大→收缩→转光束色(冷却),ADD 过曝
+	# v27.13: 光斑缩半——impact_energy 是 127px 全幅"放射爆裂"星芒贴图，旧 1.6-1.8 倍
+	# = 210-230px 径向大爆散（四帧审计实锤），正是族规格反例"径向爆散=和欧米茄混淆"。
+	# 收到 0.95-1.05（≈121-133px 峰值闪），焦痕(91px)在光斑收缩后段仍可读，v12d 约束保持。
 	if _active_impact_sprites < MAX_IMPACT_SPRITES:
 		var spot := _acquire_impact_sprite()
 		if spot != null:
 			spot.texture = PARTICLE_TEX_IMPACT_ENERGY
 			spot.position = pos
-			spot.scale = Vector2(1.6, 1.6)
+			spot.scale = Vector2(0.95, 0.95)
 			spot.modulate = Color(1.0, 1.0, 1.0, 1.0)  # 白热核心(冲击瞬间全白)
 			spot.visible = true
 			spot.material = _get_add_mat()
 			parent.add_child(spot)
 			spot.add_to_group("battle_vfx")
 			var tws := spot.create_tween().bind_node(spot)
-			tws.tween_property(spot, "scale", Vector2(1.8, 1.8), 0.06)  # 紧聚焦光斑(激光=相干,小光点)
+			tws.tween_property(spot, "scale", Vector2(1.05, 1.05), 0.06)  # 紧聚焦光斑(激光=相干,小光点)
 			tws.tween_property(spot, "modulate", beam_col, 0.10)  # 白热→光束色(冷却)
-			tws.parallel().tween_property(spot, "scale", Vector2(0.9, 0.9), 0.18)
+			tws.parallel().tween_property(spot, "scale", Vector2(0.55, 0.55), 0.18)
 			tws.tween_property(spot, "modulate:a", 0.0, 0.22)
 			tws.tween_callback(func():
 				if is_instance_valid(spot):
 					spot.material = null
 					_release_impact_sprite(spot))
 	# ② 能量辉光晕:光束色冲击环脉冲一次(能量扩散,非动能震波)
+	# v27.13: 60→34——60px 半径 × aspect2 椭圆 = 292×146px"平板"（四帧审计实锤：
+	# 读成命中点漂着一块巨椭圆色板）。34px ≈ 166×83px，能量扩散感保留、不再压过单位。
 	if not motion_reduce:
-		spawn_shockwave(parent, pos, 60.0, Color(beam_col.r, beam_col.g, beam_col.b, 0.55))
+		spawn_shockwave(parent, pos, 34.0, Color(beam_col.r, beam_col.g, beam_col.b, 0.55))
 	# ③ 焦痕:深色烧蚀印记,长留(1.2s——比动能焦痕久,激光持续烧蚀表面)。
 	# v12d-fix: 焦痕必须比光斑大(scale 1.6→2.6,>光斑 2.15),否则被 ADD 光斑完全淹没看不到。
 	# 外圈焦黑+微暖色边(烧灼感,非纯黑阴影),作为"激光烧穿表面"的核心证据。
@@ -3565,32 +3570,40 @@ static func _impact_recipe_build(weapon_type: int, flavor: int) -> Dictionary:
 					"spark_dir": true,
 				}
 			# 曲射：加低矮横向扬尘（is_smoke + 低重力），模拟炮弹落地激起的尘土
+			# v27.13: 烟团缩量——旧 14 团 × 190-300px/团（108px 内容 × 1.75-2.75）把 96px
+			# 火球帧全程吞掉（四帧逐帧审计实锤：命中读成土黄烟墙，火核 300ms 才浮出）。
+			# 收到 9 团 × 119-172px，烟退回配角，火球帧+冲击波环回主角位。
 			return {
 				"ring_r": 48.0, "ring_dur": 0.48,
 				"spark_amount": 32, "spark_vmin": 90.0, "spark_vmax": 260.0,
 				"spark_smin": 2.0, "spark_smax": 3.8, "spark_life": 0.60, "spark_spread": 360.0,
-				"debris": {"amount": 14, "life": 0.9, "vmin": 40.0, "vmax": 90.0, "smin": 3.5, "smax": 5.5, "is_smoke": true, "smoke_color": Color(0.58, 0.52, 0.43, 0.42), "low_dust": true},
+				"debris": {"amount": 9, "life": 0.9, "vmin": 40.0, "vmax": 90.0, "smin": 2.2, "smax": 3.2, "is_smoke": true, "smoke_color": Color(0.58, 0.52, 0.43, 0.42), "low_dust": true},
 			}
 		3:  # ROCKET — 大环 + 烟尘
+			# v27.13: 同曲射烟墙病（18 团 × 162-270px 吞火球）——收到 11 团 × 108-162px。
 			return {
 				"ring_r": 80.0, "ring_dur": 0.60,
 				"spark_amount": 48, "spark_vmin": 100.0, "spark_vmax": 320.0,
 				"spark_smin": 3.0, "spark_smax": 6.0, "spark_life": 0.70, "spark_spread": 360.0,
-				"debris": {"amount": 18, "life": 1.0, "vmin": 50.0, "vmax": 120.0, "smin": 3.0, "smax": 5.0, "is_smoke": true, "smoke_color": Color(0.52, 0.47, 0.41, 0.45)},
+				"debris": {"amount": 11, "life": 1.0, "vmin": 50.0, "vmax": 120.0, "smin": 2.0, "smax": 3.0, "is_smoke": true, "smoke_color": Color(0.52, 0.47, 0.41, 0.45)},
 			}
 		9, 2:  # MISSILE / AERIAL — 大环 + 碎片 + 烟柱
+			# v27.13: 白棉团减饱和——旧 55 粒 × 最大 218px 火花（SPARK_DROP 78px 内容 ×
+			# 2.8）ADD 叠加中心全白（四帧审计实锤"白棉花"）。收到 40 粒 × 最大 156px，
+			# 花瓣瓣形保留、中心退回橙红。
 			return {
 				"ring_r": 90.0, "ring_dur": 0.65,
-				"spark_amount": 55, "spark_vmin": 110.0, "spark_vmax": 350.0,
-				"spark_smin": 3.0, "spark_smax": 7.0, "spark_life": 0.75, "spark_spread": 360.0,
+				"spark_amount": 40, "spark_vmin": 110.0, "spark_vmax": 350.0,
+				"spark_smin": 3.0, "spark_smax": 5.0, "spark_life": 0.75, "spark_spread": 360.0,
 				"debris": {"amount": 20, "life": 1.1, "vmin": 60.0, "vmax": 140.0, "smin": 2.0, "smax": 4.0, "is_smoke": false, "debris_color": Color(0.5, 0.45, 0.4, 1.0)},
 			}
 		7:  # FLAK — 中大环 + 烟尘
+			# v27.13: 同烟墙病（16 团 × 162-216px）——收到 10 团 × 108-151px。
 			return {
 				"ring_r": 64.0, "ring_dur": 0.52,
 				"spark_amount": 38, "spark_vmin": 90.0, "spark_vmax": 270.0,
 				"spark_smin": 2.5, "spark_smax": 5.0, "spark_life": 0.62, "spark_spread": 360.0,
-				"debris": {"amount": 16, "life": 0.9, "vmin": 45.0, "vmax": 95.0, "smin": 3.0, "smax": 4.0, "is_smoke": true, "smoke_color": Color(0.55, 0.49, 0.43, 0.42)},
+				"debris": {"amount": 10, "life": 0.9, "vmin": 45.0, "vmax": 95.0, "smin": 2.0, "smax": 2.8, "is_smoke": true, "smoke_color": Color(0.55, 0.49, 0.43, 0.42)},
 			}
 		8:  # LASER — 细环 + 高速线状火花（能量武器灼烧感，仍比动能武器短，但已能看清）
 			return {

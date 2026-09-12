@@ -25,7 +25,10 @@ const META_WAKEUP := "bunker_intro_wakeup_pending"
 const META_DRY_RUN := "bunker_intro_dry_run"
 const META_BATTLE_RESUME := "bunker_intro_battle_resume"
 const COMIC_SCENE := "res://scenes/intro/comic_intro.tscn"
-const BUNKER_SCENE := "res://scenes/bunker/bunker_main.tscn"
+# v6.14 修复：跳过序章漏改——仍指已停用的旧固定基地 bunker_main，落入旧场景弹
+# 退役系统文案的旧版"移动基地·指南"引导卡（用户报"旧教程还跳出来"根因）。
+# 对齐 comic_intro.BUNKER_SCENE（v27.13 已改 truck_base），wakeup/comic_seen 消费链两场景同构。
+const BUNKER_SCENE := "res://scenes/bunker/truck_base.tscn"
 
 const DEFENDERS := ["ww1_mauser", "ww1_arty_m81", "ww1_arm_ft17"]   # v20.31 起始三卡
 const FOE_SCOUT := "foe_fut_inf_scout_mech"

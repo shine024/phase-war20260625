@@ -36,7 +36,7 @@ func _ready() -> void:
 	add_theme_stylebox_override("panel", PanelStyles.make_panel_frame_textured(accent))
 	var vbox := get_node_or_null("Margin/VBoxMain") as VBoxContainer
 	if vbox:
-		var chrome = PanelChrome.attach_to(vbox, "词条工坊 · AFFIX FORGE", accent, "AFFIX")
+		var chrome = PanelChrome.attach_to(vbox, "词条工坊", accent, "词条改装")
 		chrome.closed.connect(_on_close)
 	_build_layout()
 	_refresh_all()

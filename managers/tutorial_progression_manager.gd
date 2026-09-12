@@ -340,11 +340,14 @@ func execute_tutorial_action(action_target: String) -> void:
 ## 保存状态（给SaveManager用）
 ## v4（2026-09-08 FTUE A3）：14 步制——首战后插入移动基地步（枚举值不变，仅 STEP_ORDER 插项）。
 ## v3 为 13 步制（首战提前到第 4 位）；v2 为旧序（首战第 7 位）；v1 为 8 步制（FREEDOM=8）。
+## v6.14：chain_paused 入档——按需点播段（链暂停）中途退游戏，此前暂停态丢失，
+## 旧档此后每场战斗结束都会弹一次 overlay（用户报"旧教程还跳出来"成因之一）。
 func save_state() -> Dictionary:
 	return {
 		"version": 4,
 		"current_step": current_step,
-		"completed_steps": completed_steps
+		"completed_steps": completed_steps,
+		"chain_paused": chain_paused
 	}
 
 ## 加载状态（给SaveManager用）
@@ -353,24 +356,31 @@ func save_state() -> Dictionary:
 ##（枚举值同为 FIRST_BATTLE=7，内容不变）；1-3/8-13 步两序一一对应，原位续看。
 ## v3→v4 无迁移：TRUCK_BASE=14 是新增枚举值且只插入播放序——旧档 current_step
 ## 枚举值全部有效，原位续看即可（老玩家跳过移动基地步属预期）。
+## v6.14 修复：完成判定 `>= FREEDOM_MODE` 会把 v4 新档停在 TRUCK_BASE(14) 的存档
+## 误拉回 FREEDOM_MODE(13)——点播暂停点丢失。改精确相等判定（存档值域内只有
+## 13 是终态；14 是合法暂停点，走原位续看分支）。
 func load_state(data: Dictionary) -> void:
-	if not data.is_empty():
-		var version: int = int(data.get("version", 1))
-		var saved_step: int = int(data.get("current_step", TutorialStep.NONE))
-		if version < 2 and saved_step >= 8:
-			current_step = TutorialStep.FREEDOM_MODE
-			completed_steps = data.get("completed_steps", [])
-			return
-		if version < 3 and saved_step >= int(TutorialStep.ENHANCEMENT) \
-				and saved_step <= int(TutorialStep.FIRST_BATTLE):
-			saved_step = int(TutorialStep.FIRST_BATTLE)
-		if saved_step >= int(TutorialStep.FREEDOM_MODE):
-			current_step = TutorialStep.FREEDOM_MODE
-		elif saved_step <= int(TutorialStep.NONE):
-			current_step = TutorialStep.NONE
-		else:
-			current_step = saved_step as TutorialStep
+	# v6.14: 空段（存档缺段）时 chain_paused 复位默认——读侧不变式"先重置再覆盖"
+	if data.is_empty():
+		chain_paused = false
+		return
+	var version: int = int(data.get("version", 1))
+	var saved_step: int = int(data.get("current_step", TutorialStep.NONE))
+	if version < 2 and saved_step >= 8:
+		current_step = TutorialStep.FREEDOM_MODE
 		completed_steps = data.get("completed_steps", [])
+		return
+	if version < 3 and saved_step >= int(TutorialStep.ENHANCEMENT) \
+			and saved_step <= int(TutorialStep.FIRST_BATTLE):
+		saved_step = int(TutorialStep.FIRST_BATTLE)
+	if saved_step == int(TutorialStep.FREEDOM_MODE):
+		current_step = TutorialStep.FREEDOM_MODE
+	elif saved_step <= int(TutorialStep.NONE):
+		current_step = TutorialStep.NONE
+	else:
+		current_step = saved_step as TutorialStep
+	completed_steps = data.get("completed_steps", [])
+	chain_paused = bool(data.get("chain_paused", false))
 
 ## 获取高亮元素列表
 func get_highlight_elements() -> Array:
