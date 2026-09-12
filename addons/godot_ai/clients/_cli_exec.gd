@@ -30,7 +30,6 @@ extends RefCounted
 ##                 stderr, so callers that only read `stdout` would surface
 ##                 a generic "exit code 1" instead.
 ##   timed_out:    true if we killed the process at the wall-clock budget.
-##   cancelled:    true if the caller requested a cooperative early stop.
 ##   spawn_failed: true if `OS.execute_with_pipe` didn't return a usable PID.
 
 const DEFAULT_TIMEOUT_MS := 8000
@@ -42,12 +41,11 @@ static func run(
 	exe: String,
 	args: Array,
 	timeout_ms: int = DEFAULT_TIMEOUT_MS,
-	capture_stderr: bool = true,
-	cancel_check: Callable = Callable(),
+	capture_stderr: bool = true
 ) -> Dictionary:
 	if exe.is_empty():
 		return _spawn_failed_result()
-	return _run_piped(exe, args, timeout_ms, capture_stderr, cancel_check)
+	return _run_piped(exe, args, timeout_ms, capture_stderr)
 
 
 static func _run_piped(
@@ -55,7 +53,6 @@ static func _run_piped(
 	args: Array,
 	timeout_ms: int,
 	capture_stderr: bool,
-	cancel_check: Callable,
 ) -> Dictionary:
 
 	var spawn_exe := exe
@@ -88,8 +85,7 @@ static func _run_piped(
 
 	var deadline := Time.get_ticks_msec() + maxi(timeout_ms, _POLL_INTERVAL_MS)
 	while OS.is_process_running(pid):
-		var cancelled := cancel_check.is_valid() and bool(cancel_check.call())
-		if cancelled or Time.get_ticks_msec() >= deadline:
+		if Time.get_ticks_msec() >= deadline:
 			## Kill before draining: a pipe read can block while the child is
 			## still alive. Once it exits, drain any buffered partial output.
 			OS.kill(pid)
@@ -108,8 +104,7 @@ static func _run_piped(
 				"stdout": partial_stdout,
 				"stderr": partial_stderr,
 				"output": _join_streams(partial_stdout, partial_stderr),
-				"timed_out": not cancelled,
-				"cancelled": cancelled,
+				"timed_out": true,
 				"spawn_failed": false,
 			}
 		OS.delay_msec(_POLL_INTERVAL_MS)
@@ -124,7 +119,6 @@ static func _run_piped(
 		"stderr": stderr_text,
 		"output": _join_streams(stdout, stderr_text),
 		"timed_out": false,
-		"cancelled": false,
 		"spawn_failed": false,
 	}
 
@@ -136,7 +130,6 @@ static func _spawn_failed_result() -> Dictionary:
 		"stderr": "",
 		"output": "",
 		"timed_out": false,
-		"cancelled": false,
 		"spawn_failed": true,
 	}
 
