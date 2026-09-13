@@ -142,6 +142,12 @@ var faction_variants_unlocked: Array = []
 ## v6.6: 已发放的势力独占卡ID列表（避免升级时重复发放）
 var exclusive_cards_granted: Array = []
 
+## v30 R2b（设计审查 F-04 根治，2026-09-13）：功勋——势力商店/符文的消费货币。
+## 语义分离：声望=等级进度轴（只反映立场变化，不再被消费拉低）；功勋=全局可花货币，
+## 与正声望增量 1:1 镜像获取（相位师战/关卡反应/任务/事件）。购买扣功勋不扣声望。
+const DEFAULT_STARTING_MERIT := 500
+var merit_points: int = DEFAULT_STARTING_MERIT
+
 ## v6.10: 运行时关卡占领状态 { level: faction_id }，缺省=无主之地（回退静态 level_information）
 ## 新游戏为空字典，get_level_occupation 自然回退静态表；攻克后动态变化
 var level_occupation: Dictionary = {}
@@ -222,6 +228,13 @@ func add_faction_reputation(faction_id: String, delta: int) -> int:
 	var old_rep: int = faction_reputation[faction_id]
 	var result: Dictionary = FactionReputation.apply_delta(old_rep, delta)
 	faction_reputation[faction_id] = result["new_rep"]
+
+	# v30 R2b：正声望增量 1:1 镜像为功勋（含 reputation_bonus 加成后的最终值）。
+	# 购买扣减（delta<0）不镜像——功勋只赚不亏，消费走 merit_points 直扣。
+	if delta > 0:
+		merit_points += delta
+		FeatureUnlockPopup.show_once("merit_intro", "获得功勋",
+			"战斗胜利、攻克关卡与完成任务都会积累功勋——势力补给与符文现在用功勋支付，不再占用声望等级。")
 
 	if result["leveled_up"]:
 		faction_level[faction_id] = result["new_level"]
@@ -440,33 +453,47 @@ func get_faction_store_items(faction_id: String) -> Array[FactionShop.StoreItem]
 	var level: int = get_faction_level(faction_id)
 	return FactionShop.get_faction_store_items(faction_id, level)
 
-## 检查是否可以购买
+## 检查是否可以购买（v30 R2b：货币轴=功勋；等级门沿用声望等级）
 func can_purchase_item(faction_id: String, item: FactionShop.StoreItem) -> Dictionary:
-	return FactionShop.can_purchase_item(get_faction_reputation(faction_id), get_faction_level(faction_id), item)
+	return FactionShop.can_purchase_item(merit_points, get_faction_level(faction_id), item)
+
+## 功勋余额（v30 R2b：商店/符文消费货币，UI 显示用）
+func get_merit_points() -> int:
+	return merit_points
+
+## 扣功勋（v30 R2b：符文直购路径用；返回 false=余额不足，未扣款）
+func spend_merit(amount: int) -> bool:
+	if amount <= 0:
+		return true
+	if merit_points < amount:
+		return false
+	merit_points -= amount
+	return true
 
 ## 购买物品
+## v30 R2b：消费货币从声望改为功勋（声望等级不再因购买下跌）；等级门与库存检查不变。
 func purchase_item(faction_id: String, item: FactionShop.StoreItem) -> Dictionary:
 	var can: Dictionary = can_purchase_item(faction_id, item)
 	if not can.get("ok", false):
 		return can
 
-	# v26.15b: 商店折扣消费（resource 桶 shop_discount 此前零消费）——按折扣价扣声望
+	# v26.15b: 商店折扣消费（resource 桶 shop_discount 此前零消费）——按折扣价扣功勋
 	var shop_discount: float = 0.0
 	if faction_skill_states.has(faction_id):
 		shop_discount = clampf(FactionSkillManager.get_resource_value(faction_skill_states[faction_id], faction_id, "shop_discount"), 0.0, 0.5)
 	var eff_cost: int = int(ceil(float(item.reputation_cost) * (1.0 - shop_discount)))
 	# 折扣后余额复核（can_purchase_item 用原价预检，可能原价不足而折扣价足够）
-	if get_faction_reputation(faction_id) < eff_cost:
-		return {"ok": false, "reason": "reputation_insufficient", "required_rep": eff_cost, "current_rep": get_faction_reputation(faction_id)}
+	if merit_points < eff_cost:
+		return {"ok": false, "reason": "reputation_insufficient", "required_rep": eff_cost, "current_rep": merit_points}
 
-	# 扣除声望（折扣价）
-	add_faction_reputation(faction_id, -eff_cost)
+	# 扣除功勋（折扣价）
+	merit_points -= eff_cost
 
 	# 发放物品
 	var delivered: bool = FactionShop.deliver_item(item)
 	if not delivered:
-		# 回退声望
-		add_faction_reputation(faction_id, item.reputation_cost)
+		# 回退功勋（按实付折扣价；旧代码按原价回退会白送差价，顺手修正）
+		merit_points += eff_cost
 		return {"ok": false, "reason": "delivery_failed"}
 
 	# 更新库存（如果有库存限制）
@@ -680,6 +707,8 @@ func save_state() -> Dictionary:
 	return {
 		"faction_reputation": faction_reputation.duplicate(true),
 		"faction_level": faction_level.duplicate(true),
+		# v30 R2b：功勋（旧档缺 key = 起步值，免迁移）
+		"faction_merit": merit_points,
 		"faction_store_inventory": faction_store_inventory.duplicate(true),
 		"unlocked_faction_instruments": unlocked_faction_instruments.duplicate(true),
 		"faction_active": active_faction,
@@ -699,6 +728,7 @@ func load_state(data: Dictionary) -> void:
 	# 新游戏：SaveManager 传入空字典，必须整表重置（否则仍保留上一局的声望）
 	if data.is_empty():
 		_init_faction_data()
+		merit_points = DEFAULT_STARTING_MERIT  # v30 R2b：功勋重置
 		active_faction = ""
 		faction_variants_unlocked.clear()
 		exclusive_cards_granted.clear()
@@ -707,6 +737,9 @@ func load_state(data: Dictionary) -> void:
 		return
 	if data.has("faction_reputation") and data["faction_reputation"] is Dictionary:
 		faction_reputation = (data["faction_reputation"] as Dictionary).duplicate(true)
+
+	# v30 R2b：功勋（旧档缺 key = 起步值 500，免 schema 迁移）
+	merit_points = int(data.get("faction_merit", DEFAULT_STARTING_MERIT))
 
 	if data.has("faction_level") and data["faction_level"] is Dictionary:
 		faction_level = (data["faction_level"] as Dictionary).duplicate(true)

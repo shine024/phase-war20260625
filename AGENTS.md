@@ -184,7 +184,7 @@ func _redirect_stdout_to_file() -> void:
 
 ## Architecture
 
-### Autoload Singletons（project.godot 实际 30 个，2026-09-03 核对——PhaseLawManager 已随 P2-7 法则退役删除；EvolutionPathRegistry 已随 v26.6 结构收敛删除，autoload 31→30，见停用清单）
+### Autoload Singletons（project.godot 实际 31 个，2026-09-12 核对——PhaseLawManager 已随 P2-7 法则退役删除；EvolutionPathRegistry 已随 v26.6 结构收敛删除，autoload 31→30；v28 质感轮 +ColorGrade 30→31，见停用清单）
 
 > 双层设计说明：部分 manager **同时**存在于 project.godot [autoload] 与 ManagerLazyLoader 配置——
 > 后者仅作 `ensure_loaded("<id>")` 的统一访问入口，命中 `/root/NodeName` 即复用，不会重复实例化。
@@ -220,7 +220,8 @@ func _redirect_stdout_to_file() -> void:
 | 27 | `PhaseMasterSkillManager` | `managers/phase_master_skill_manager.gd` | 相位师技能树 |
 | 28 | `TutorialProgressionManager` | `managers/tutorial_progression_manager.gd` | 引导 |
 | 29 | `BattleSpectacle` | `managers/battle/battle_spectacle.gd` | 战斗演出/大招编排 |
-| 30 | `_MCPGameBridge` | `addons/agent_tools/runtime/game_bridge.gd` | agent_tools 编辑器插件运行时桥 |
+| 30 | `ColorGrade` | `managers/color_grade.gd` | v28 全局调色后期层（时代色温/暗角/抑带；battle_started→时代预设、battle_ended→2s 回 neutral；开关 GameConfig.color_grade_enabled，A/B 环境变量 PW_GRADE_OFF=1） |
+| 31 | `_MCPGameBridge` | `addons/agent_tools/runtime/game_bridge.gd` | agent_tools 编辑器插件运行时桥 |
 
 **Lazy-loaded managers**（`ManagerLazyLoader.ensure_loaded()`，23 个配置项；v9.x 2026-08-22 清理：battle_feedback/character/challenge_mode/version 四项已删，见停用清单；v26.4 核对更新）：
 aura, level_progress, drop, quest, achievement, daily_task,
@@ -599,7 +600,7 @@ IntelEvolutionManager → IntelManual, IntelEvolutionBranches
 - `GameConstants` — All enums: CardType, WeaponType, CombatKind(5), Era(5)。PlatformType(13) 与 WeaponTypeLegacy(12) 枚举壳**已删除**（全项目零枚举引用；12 值 legacy 语义经数据表 + `legacy_weapon_to_new_weapon_type` 映射层存活，v26.4 核对）
 - `DropTables` — Weighted drop entries (13 drop types), tables, guarantee drops
 - `DesignTokens` — UI theming constants (neon palette, typography, spacing, glow, accessibility)
-- `GameConfig` — Tunable game config（v26.4 收敛后仅存有真实消费点的项（v26.9 核对 6 个）：cross_row_direct_damage_mult / aura_range_enabled / env_effects_enabled / battle_layouts_enabled / debug_no_deploy_limits / debug_grant_all_blueprints（v26.11 实装：新档全蓝图发放的门控开关，默认 false；消费点 save_manager）；15 个零消费字段已删）
+- `GameConfig` — Tunable game config（仅存有真实消费点的项（v26.9 核对 6 个 + v28 新增 2 个）：cross_row_direct_damage_mult / aura_range_enabled / env_effects_enabled / battle_layouts_enabled / debug_no_deploy_limits / debug_grant_all_blueprints（v26.11 实装：新档全蓝图发放的门控开关，默认 false；消费点 save_manager）/ color_grade_enabled + ground_dressing_enabled（v28 质感轮：调色后期层 + 战场地面 dressing，消费点 color_grade.gd / ground_dressing.gd）；15 个零消费字段已删）
 
 ### Test Structure
 

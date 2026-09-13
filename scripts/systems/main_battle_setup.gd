@@ -144,7 +144,16 @@ func _dip_battlefield() -> void:
 
 
 func _unveil_battlefield() -> void:
-	StageBanner.post("交战开始")
+	# v30.2 R4（设计审查 F-08）：入战揭幕串——[时代仪式(首关·每会话一次)] →
+	# [驻守相位师战前台词] → 交战开始。缺数据项静默跳过，普通关仍只播"交战开始"。
+	var unveil_seq: Array[String] = []
+	var lvl := 1
+	if GameManager != null:
+		lvl = int(GameManager.current_level)
+	unveil_seq.append_array(CampaignNarrative.get_era_rite_lines(lvl))
+	unveil_seq.append_array(CampaignNarrative.get_pre_battle_lines(lvl))
+	unveil_seq.append("交战开始")
+	StageBanner.post_queue(unveil_seq)
 	if main.battle_container == null or not (main.battle_container is CanvasItem):
 		return
 	var container: CanvasItem = main.battle_container

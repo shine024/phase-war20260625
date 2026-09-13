@@ -30,25 +30,29 @@ var _last_refresh_time: int = 0
 var _task_refresh_interval: int = 86400  # 24小时
 
 ## 任务奖励池
+## v29 R2a（设计审查 F-09）：纳米/能量块整体 ×3——原全天日常 ≈ 780-1500 纳米只抵 1-2 场
+## 战斗（单场 ~790），任务面板操作成本高于打一场 90s 战斗，日常沦为"顺手点一下"。
+## 调整后全天 ≈ 2300-4700 纳米 + 49-225 能量块 ≈ 3-6 场等值，日活循环有存在感。
+## 碎片奖励不动（收集轴不受经济批影响）。
 var _reward_pools: Dictionary = {
 	TaskDifficulty.EASY: {
-		"nano_materials": [50, 100],
-		"energy_blocks": [2, 5],
+		"nano_materials": [150, 300],
+		"energy_blocks": [6, 15],
 		"common_fragment": [1, 2]
 	},
 	TaskDifficulty.NORMAL: {
-		"nano_materials": [100, 200],
-		"energy_blocks": [5, 10],
+		"nano_materials": [300, 600],
+		"energy_blocks": [15, 30],
 		"rare_fragment": [1, 2]
 	},
 	TaskDifficulty.HARD: {
-		"nano_materials": [200, 400],
-		"energy_blocks": [10, 20],
+		"nano_materials": [600, 1200],
+		"energy_blocks": [30, 60],
 		"epic_fragment": [1, 2]
 	},
 	TaskDifficulty.EXPERT: {
-		"nano_materials": [400, 800],
-		"energy_blocks": [20, 40],
+		"nano_materials": [1200, 2400],
+		"energy_blocks": [60, 120],
 		"legendary_fragment": [1, 2]
 	}
 }

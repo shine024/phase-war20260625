@@ -167,6 +167,11 @@ const PANEL_SCENES := {
 	"faction": "res://scenes/ui/faction_panel.tscn",
 	"leaderboard": "res://scenes/ui/leaderboard_panel.tscn",
 	"help": "res://scenes/ui/help_panel.tscn",
+	# R1-1（设计审查 F-01/02，2026-09-13）：委托台/成就入口回迁——两面板原入口随
+	# v25.3 战斗屏 14→6 收敛移除（"只留基地入口"），随后旧基地停用，入口在两次
+	# 迁移之间坠落（委托台承载日常任务领奖，帮助面板 help_panel.gd:252 仍在指路）。
+	"quest": "res://scenes/ui/quest_panel.tscn",
+	"achievement": "res://scenes/ui/achievement_panel.tscn",
 	# v27.17：英雄档案/纪念墙自停用的旧基地迁入（纯 .gd 面板，_ensure_panel_wrapper 双路径加载）。
 	## 碎片数据链（BunkerManager.record_hero_fragment）与基地场景无关，玩家碎片一直在累积只是无处看。
 	"hero_archive": "res://scenes/bunker/ui/hero_archive_panel.gd",
@@ -177,6 +182,19 @@ const RES_LABELS := [
 	["nano_materials", "纳米材料"], ["alloy", "合金"], ["crystal", "晶体"],
 	["energy_block", "能量块"], ["star_marrow", "星髓"],
 ]
+
+## v30 R3（设计审查 F-24）：零引导面板的首开一次性气泡（FeatureUnlockPopup.show_once
+## 按 key 去重）。教程 14 步不覆盖这些功能面，靠首开 30 字内自我介绍补发现性。
+const PANEL_INTROS := {
+	"quest": ["委托台", "接取委托与日常任务——日常每天刷新 7 个，奖励需在\"日常\"页签手动领取。"],
+	"achievement": ["成就", "生涯里程碑自动累计：达成即领纳米/稀有卡/称号。"],
+	"intelligence": ["情报舱", "敌方情报阶梯：25% 解锁制造配方，50%/75% 扩品质池，100% 含神话品质。"],
+	"collection": ["收藏图鉴", "按时代检阅收藏过的卡种；缴获与制造都会录入。"],
+	"leaderboard": ["生涯战绩", "你的战斗生涯统计档案（最快通关/最高伤害/收集完成度）。"],
+	"affix": ["词条工坊", "对卡牌词条洗练/锁定/批量重随——普通卡耗纳米+晶体，星冥卡耗星髓。"],
+	"hero_archive": ["同伴档案", "30 位牺牲相位师的生平与遗言——击败驻守相位师带回遗物解锁。"],
+	"memorial": ["纪念墙", "30 盏灯对应 30 位牺牲相位师；灯亮可点击读名。"],
+}
 const ERA_NAMES := ["I 一战", "II 二战", "III 冷战", "IV 现代", "V 近未来"]
 
 var _era_idx := 3  # 默认 IV 现代；_ready 按战线进度折算覆盖
@@ -322,7 +340,8 @@ func _build_topbar() -> void:
 	plate.add_child(_topbar)
 
 	var title := Label.new()
-	title.text = "移动基地 · 装甲卡车驻地"
+	# R1-1：顶栏新增委托台/成就两钮后收紧标题防溢出（1280px 顶栏预算，纯显示层）
+	title.text = "移动基地"
 	title.add_theme_font_size_override("font_size", 16)
 	title.add_theme_color_override("font_color", Color(0.91, 0.86, 0.75))
 	_topbar.add_child(title)
@@ -435,6 +454,30 @@ func _build_topbar() -> void:
 	memorial_btn.pressed.connect(func() -> void: _open_panel("memorial"))
 	_topbar.add_child(memorial_btn)
 	_topbar.move_child(memorial_btn, back.get_index())
+
+	# R1-1（设计审查 F-01/02，2026-09-13）：委托台/成就顶栏入口——两面板全项目零活入口，
+	# 日常任务奖励不可领取（帮助面板仍在指路委托台）。样式随低饱和组（不与出击主按钮抢视觉）。
+	var quest_btn := Button.new()
+	quest_btn.text = "📋 委托台"
+	quest_btn.focus_mode = Control.FOCUS_NONE
+	quest_btn.add_theme_font_size_override("font_size", 13)
+	quest_btn.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	quest_btn.tooltip_text = "委托与日常任务：日常奖励需在此手动领取"
+	_style_btn(quest_btn, Color(0.6, 0.56, 0.48))
+	quest_btn.pressed.connect(func() -> void: _open_panel("quest"))
+	_topbar.add_child(quest_btn)
+	_topbar.move_child(quest_btn, back.get_index())
+
+	var achieve_btn := Button.new()
+	achieve_btn.text = "🏅 成就"
+	achieve_btn.focus_mode = Control.FOCUS_NONE
+	achieve_btn.add_theme_font_size_override("font_size", 13)
+	achieve_btn.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	achieve_btn.tooltip_text = "成就与里程碑奖励（纳米/稀有卡/称号）"
+	_style_btn(achieve_btn, Color(0.6, 0.56, 0.48))
+	achieve_btn.pressed.connect(func() -> void: _open_panel("achievement"))
+	_topbar.add_child(achieve_btn)
+	_topbar.move_child(achieve_btn, back.get_index())
 
 # ── 图区：剖面底图 + 热区层 + 到达字幕 ──
 func _build_image_area() -> void:
@@ -1560,6 +1603,10 @@ func _open_panel(panel_id: String) -> void:
 	PanelAnim.open(wrapper)
 	if SignalBus and SignalBus.has_signal("play_sound"):
 		SignalBus.play_sound.emit("panel_open")
+	# v30 R3：零引导面板首开一次性气泡（show_once 按 key 去重，不打扰二次进入）
+	var _intro: Array = PANEL_INTROS.get(panel_id, [])
+	if not _intro.is_empty():
+		FeatureUnlockPopup.show_once("panel_intro_" + panel_id, String(_intro[0]), String(_intro[1]))
 	var p: Control = _embed_wrappers[panel_id]["panel"]
 	# 与 main.gd _open_overlay 同约定：on_overlay_opened → refresh 顺序尝试
 	# （store 等面板的商品列表在 on_overlay_opened 拆帧构建，_ready 只建骨架）

@@ -322,6 +322,8 @@ func _process_reveal_rewards(event_data: Dictionary, enemy_type: String) -> void
 					_stat_visibility[enemy_type] = vis
 			"intel_branch_unlock":
 				# 直接解锁进化分支（标记为已发现）
+				# R1-5（2026-09-13）：reveal 表已无该类型奖励（进化系统退役，tier-3 改 hint），
+				# 分支保留为防御性消费——若将来恢复分支玩法，数据侧加回 unlock 奖励即通。
 				var branch_id: String = reward.get("branch_id", "")
 				if not branch_id.is_empty():
 					var iem: Node = get_node_or_null("/root/IntelEvolutionManager")

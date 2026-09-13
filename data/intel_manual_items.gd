@@ -426,18 +426,23 @@ static func _get_mod_blueprint_desc(mod_id: String, rarity: String) -> String:
 	return "允许安装【%s】改造模块（%s）" % [mod_id, rarity_name]
 
 ## 获取商店价格（基于稀有度）
+## R1-4（设计审查 F-10，2026-09-13）：common/uncommon/rare 与制造补给站同价目对齐
+## （制造定向兑换 80/150/280 纳米，mod_manufacture.gd）——原 100/250/600 与制造价差
+## 最高 2.1 倍（rare 600 vs 280），同物双渠道明码冲突，理性玩家永远绕开商店。
+## 现按"制造价 ×1.5 直购便利溢价"定价；epic+ 制造侧只能开随机箱（无定向渠道），
+## 商店高价定位为"跳过随机的奢侈品通道"，无冲突，维持原价。
 static func get_shop_price(blueprint_id: String) -> int:
 	var def = get_def(blueprint_id)
 	if def.is_empty():
 		return 0
 	var rarity = def.get("rarity", "common")
 	match rarity:
-		"common": return 100
-		"uncommon": return 250
-		"rare": return 600
+		"common": return 120
+		"uncommon": return 225
+		"rare": return 420
 		"epic": return 1500
 		"legendary": return 3500
-		_: return 100
+		_: return 120
 
 # v9.x（P1-5 批次4）：get_available_blueprints（声望解锁 TODO 死函数，零调用方）已删除
 # ——蓝图体系 2026-08-22 退役后该入口再无消费方，蓝图解锁逻辑随体系消亡

@@ -27,6 +27,7 @@ var _ration_day: int = 0           # 每日配给最后领取的天数（0=从�
 var _ending_id := ""               # P4 观星台终局抉择（rewrite/keep/depart；空=未抉择）
 var _ending_day: int = 0           # 抉择发生的天数（结局徽记展示用）
 var _intro_shown := false          # 首次进基地引导卡是否已展示（v22.4 P1-5）
+var _win_streak := 0               # v29 R2a 连胜计数（运行态不入档；≥3 胜场精神消耗 -2，败场归零）
 var _comic_seen := false           # 序章漫画开场是否已播过（v24，新档 comic_intro 收尾/醒来演出落档）
 
 # ── v26 批次3：分析仪 / 地表探索 / 战利品打印 ──
@@ -423,7 +424,19 @@ func _read_battle_stats() -> Dictionary:
 
 func advance_after_battle(player_won: bool) -> Array:
 	# 兵棋室 Lv2 战前简报：胜利精神消耗 10→8；失败 -20 不变
-	adjust_sanity(-get_battle_sanity_win_cost() if player_won else -20.0)
+	# v29 R2a（设计审查 F-15）：连胜 3 场起胜场消耗再 -2（下限 6）——满精神原本
+	# 10-12 场胜仗就强制回基地睡觉，与燃料税叠加对主动玩家节奏税过重；
+	# 连胜减免让"状态好连续推进"的体验成立（_win_streak 运行态，读档重置=软机制）。
+	if player_won:
+		_win_streak += 1
+	else:
+		_win_streak = 0
+	var win_cost: float = 20.0
+	if player_won:
+		win_cost = get_battle_sanity_win_cost()
+		if _win_streak >= 3:
+			win_cost = maxf(6.0, win_cost - 2.0)
+	adjust_sanity(-win_cost if player_won else -20.0)
 	var completed: Array = []
 	for room_id in _rooms:
 		if int(_rooms[room_id]["state"]) != BunkerRoomDefs.STATE_REPAIRING:

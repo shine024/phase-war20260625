@@ -63,6 +63,12 @@ func _ready() -> void:
 	_add_bunker_button()
 	# v26.9: 按钮层级（主操作实心/次操作描边/开发按钮弱化）——统一走 PanelStyles 工厂
 	_apply_button_tiers()
+	# v28 T2: 主标题落地影——从背景画里托出来（深影 + 微弱青辉双层）
+	if _title_label != null:
+		_title_label.add_theme_color_override("font_shadow_color", Color(0.0, 0.05, 0.08, 0.55))
+		_title_label.add_theme_constant_override("shadow_offset_x", 0)
+		_title_label.add_theme_constant_override("shadow_offset_y", 4)
+		_title_label.add_theme_constant_override("shadow_outline_size", 6)
 	_update_version_label()
 	var settings_panel = get_node_or_null("SettingsOverlay/CenterContainer/SettingsPanel")
 	if settings_panel and settings_panel.has_signal("closed"):
@@ -85,9 +91,10 @@ func _apply_button_tiers() -> void:
 	if vbox == null:
 		return
 	var accent: Color = DesignTokens.COLOR_ACCENT_CYAN
-	var solid := PanelStyles.make_button_styles(accent, "solid")
-	var ghost := PanelStyles.make_button_styles(accent, "ghost")
-	var dev_ghost := PanelStyles.make_button_styles(Color(0.55, 0.58, 0.66), "ghost")
+	# v28 T2: 渐变面材版按钮（SDF 圆角渐变+烘焙边框）；旧 flat 工厂保留给其余面板
+	var solid := PanelStyles.make_button_styles_graded(accent, "solid")
+	var ghost := PanelStyles.make_button_styles_graded(accent, "ghost")
+	var dev_ghost := PanelStyles.make_button_styles_graded(Color(0.55, 0.58, 0.66), "ghost")
 	# 主操作：accent 实心 + 深色文字（对比可读）
 	for bn in ["NewGameButton", "ContinueButton", "EnterBunkerButton", "EnterTruckBaseButton"]:
 		_style_tier_btn(vbox, bn, solid, 20, Color(0.03, 0.10, 0.14), Color(0.03, 0.10, 0.14))
@@ -217,6 +224,13 @@ func _on_new_game() -> void:
 	_play_sfx("button")
 	if SaveManager:
 		SaveManager.start_new_game()
+		# R1-9（设计审查 F-12，2026-09-13）：新游戏统一走序章链——原直进 main.tscn
+		# 会跳过 12 格开场漫画与基地醒来演出（教学拍点也在此链上），同一新玩家
+		# 走"新游戏/移动基地"两个入口得到不同序章。与 _on_enter_truck_base
+		# 新档分支同构：comic pending → truck_base 醒来演出 → 教程链。
+		Engine.set_meta("bunker_intro_comic_pending", true)
+		SceneTransition.change(get_tree(), "res://scenes/intro/comic_intro.tscn")
+		return
 	SceneTransition.change(get_tree(), "res://scenes/main.tscn")
 
 func _on_continue() -> void:

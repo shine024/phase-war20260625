@@ -200,6 +200,34 @@ static func make_panel_frame_textured(accent: Color) -> StyleBoxTexture:
 	return sb
 
 
+## 结算/大事记面板框：accent 边框 + 带 bg 色相的渐变底（保留胜利绿底/失败红底语义）。
+## 与 make_panel_frame_textured 同构造但 bg 不锁 COLOR_VOID，按 (accent,bg) 缓存。
+## ⚠️ 缓存的是 StyleBoxTexture 不是贴图（v28 跟进批修复：原缓存命中分支返回裸
+## ImageTexture，同色第二次调用必炸——同会话第二张结算页/二次打开商店都触发）。
+static func make_result_frame(accent: Color, bg: Color) -> StyleBoxTexture:
+	var key := "res|%s|%s" % [accent.to_html(), bg.to_html()]
+	if _surface_tex_cache.has(key):
+		# 命中即复制：贴图（烘焙贵）共享，StyleBox 壳独立——调用方普遍事后改
+		# content_margin，共享实例会让两个弹窗互相踩边距（offline 20/18 vs afk 22/20）
+		return (_surface_tex_cache[key] as StyleBoxTexture).duplicate()
+	var tex := _bake_surface_texture(_PANEL_TEX_SIZE, float(_PANEL_TEX_RADIUS),
+		bg.lightened(0.055), bg,
+		Color(accent.r, accent.g, accent.b, 0.80))
+	var sb := StyleBoxTexture.new()
+	sb.texture = tex
+	var m := _PANEL_TEX_RADIUS + 2
+	sb.texture_margin_left = m
+	sb.texture_margin_right = m
+	sb.texture_margin_top = m
+	sb.texture_margin_bottom = m
+	sb.content_margin_left = 2
+	sb.content_margin_right = 2
+	sb.content_margin_top = 3
+	sb.content_margin_bottom = 2
+	_surface_tex_cache[key] = sb
+	return sb
+
+
 ## 标题栏左侧发光竖条（PanelChrome 用，也可单独复用）。
 static func make_title_accent_bar(accent: Color) -> StyleBoxFlat:
 	var sb := StyleBoxFlat.new()
@@ -263,6 +291,134 @@ static func make_button_styles(accent: Color, kind := "ghost") -> Dictionary:
 		"disabled": disabled,
 		"focus": focus,
 	}
+
+
+# ===== v28 质感轮 T2：渐变"面材"按钮 / 列表行（StyleBoxTexture 九宫格） =====
+# StyleBoxFlat 无渐变，"纯色块按钮/列表行"是标题/结算/商店/背包四屏平感主因。
+# 沿用 _make_panel_texture 的 SDF 圆角+烘焙边框思路，推广为通用表面烘焙器；
+# 新工厂 make_button_styles_graded / make_row_surface 只迁新目标屏，
+# 旧 make_button_styles 返回 StyleBoxFlat 不动（多处消费方 duplicate() as StyleBoxFlat 强转改属性）。
+
+static func _bake_surface_texture(size: int, radius: float, top: Color, bottom: Color, border: Color) -> ImageTexture:
+	var img := Image.create(size, size, false, Image.FORMAT_RGBA8)
+	for y in size:
+		var row: Color = top.lerp(bottom, float(y) / float(size - 1))
+		for x in size:
+			var d := _rounded_rect_sdf(float(x), float(y), float(size - 1) * 0.5, radius)
+			if d > 0.75:
+				continue
+			var c: Color
+			if d > -2.0:
+				c = border
+			else:
+				c = row
+			c.a *= clampf(0.5 - d, 0.0, 1.0)
+			img.set_pixel(x, y, c)
+	return ImageTexture.create_from_image(img)
+
+
+const _BTN_TEX_SIZE := 64
+const _BTN_TEX_RADIUS := 6
+const _ROW_TEX_SIZE := 64
+const _ROW_TEX_RADIUS := 6
+
+static var _surface_tex_cache: Dictionary = {}
+
+
+## 渐变按钮贴图：solid=实底亮渐变 / ghost=低掺量罩；state 分 normal/hover/pressed 三档亮度
+static func _make_button_surface_tex(accent: Color, solid: bool, state: String) -> ImageTexture:
+	var key := "btn|%s|%s|%s" % [accent.to_html(), solid, state]
+	if _surface_tex_cache.has(key):
+		return _surface_tex_cache[key]
+	var top: Color
+	var bottom: Color
+	var border: Color
+	if solid:
+		match state:
+			"hover":
+				top = accent.lightened(0.26); bottom = accent.darkened(0.16)
+				border = accent.lightened(0.55); border.a = 1.0
+			"pressed":
+				top = accent.darkened(0.08); bottom = accent.darkened(0.38)
+				border = accent.lightened(0.20); border.a = 1.0
+			_:
+				top = accent.lightened(0.16); bottom = accent.darkened(0.28)
+				border = accent.lightened(0.35); border.a = 0.95
+	else:
+		match state:
+			"hover":
+				top = Color(accent.r, accent.g, accent.b, 0.30); bottom = Color(accent.r, accent.g, accent.b, 0.12)
+				border = Color(accent.r, accent.g, accent.b, 0.95)
+			"pressed":
+				top = Color(accent.r, accent.g, accent.b, 0.34); bottom = Color(accent.r, accent.g, accent.b, 0.16)
+				border = Color(accent.r, accent.g, accent.b, 1.0)
+			_:
+				top = Color(accent.r, accent.g, accent.b, 0.20); bottom = Color(accent.r, accent.g, accent.b, 0.07)
+				border = Color(accent.r, accent.g, accent.b, 0.60)
+	var tex := _bake_surface_texture(_BTN_TEX_SIZE, float(_BTN_TEX_RADIUS), top, bottom, border)
+	_surface_tex_cache[key] = tex
+	return tex
+
+
+## 按钮四态（渐变版）。返回键集与 make_button_styles 一致：
+## normal/hover/pressed = StyleBoxTexture（SDF 圆角渐变 + 烘焙边框），
+## disabled/focus = StyleBoxFlat（disabled 灰哑光；focus 仅描边环，叠在常态之上）。
+## kind: "solid"（accent 实底主按钮）/ "ghost"（描边次按钮，默认）/ "danger"（红 ghost）。
+static func make_button_styles_graded(accent: Color, kind := "ghost") -> Dictionary:
+	var a: Color = DT.COLOR_RED_DOWN if kind == "danger" else accent
+	var solid := kind == "solid"
+	var result := {}
+	for st in ["normal", "hover", "pressed"]:
+		var sb := StyleBoxTexture.new()
+		sb.texture = _make_button_surface_tex(a, solid, st)
+		var m := _BTN_TEX_RADIUS + 2
+		sb.texture_margin_left = m
+		sb.texture_margin_right = m
+		sb.texture_margin_top = m
+		sb.texture_margin_bottom = m
+		sb.content_margin_left = 14
+		sb.content_margin_right = 14
+		sb.content_margin_top = 6
+		sb.content_margin_bottom = 6
+		result[st] = sb
+	var disabled := StyleBoxFlat.new()
+	disabled.bg_color = Color(0.08, 0.10, 0.15, 0.6)
+	disabled.border_color = Color(0.3, 0.34, 0.42, 0.4)
+	disabled.set_border_width_all(1)
+	disabled.set_corner_radius_all(6)
+	_set_button_margins(disabled)
+	var focus := StyleBoxFlat.new()
+	focus.draw_center = false
+	focus.border_color = Color(a.r, a.g, a.b, 0.9)
+	focus.set_border_width_all(2)
+	focus.set_corner_radius_all(6)
+	result["disabled"] = disabled
+	result["focus"] = focus
+	return result
+
+
+## 列表行"面材"：深底微渐变 + accent 暗边（商店商品行/设置行等）。
+## emphasized=true 用亮一点的底（行内重要条目）；每 accent 缓存 StyleBox（同
+## make_result_frame 的修复：缓存命中必须返回 StyleBox，不能返回裸贴图）。
+static func make_row_surface(accent: Color, emphasized := false) -> StyleBoxTexture:
+	var key := "row|%s|%s" % [accent.to_html(), emphasized]
+	if _surface_tex_cache.has(key):
+		return (_surface_tex_cache[key] as StyleBoxTexture).duplicate()  # 命中即复制（同 make_result_frame）
+	var base := DT.COLOR_CARD_HI if emphasized else DT.COLOR_CARD
+	var top: Color = base.lightened(0.045)
+	var bottom: Color = base.darkened(0.03)
+	var border: Color = Color(accent.r, accent.g, accent.b, 0.32 if emphasized else 0.22)
+	var tex := _bake_surface_texture(_ROW_TEX_SIZE, float(_ROW_TEX_RADIUS), top, bottom, border)
+	var sb := StyleBoxTexture.new()
+	sb.texture = tex
+	var m := _ROW_TEX_RADIUS + 2
+	sb.texture_margin_left = m
+	sb.texture_margin_right = m
+	sb.texture_margin_top = m
+	sb.texture_margin_bottom = m
+	# 内边距归零：行容器（MarginContainer/RowMargin）自管 padding，避免双份
+	_surface_tex_cache[key] = sb
+	return sb
 
 
 static func _set_button_margins(sb: StyleBoxFlat) -> void:
