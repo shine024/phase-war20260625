@@ -12,6 +12,8 @@ class_name IntelRevealEvents
 #   "stat_visibility"     — 属性可见性等级提升
 #   "intel_branch_hint"   — 进化分支线索文字
 #   "intel_branch_unlock" — 直接解锁进化分支 (branch_id: String)
+#                           （R1-5 2026-09-13 起零数据使用——进化系统 v26.8 已退役，
+#                            7 系 tier-3 奖励统一为 intel_branch_hint 纯线索文案）
 #   "lore_page"           — 解锁世界观页面
 
 const REVEAL_EVENTS: Dictionary = {
@@ -48,9 +50,13 @@ const REVEAL_EVENTS: Dictionary = {
 	},
 	"infantry_3": {
 		"title": "完全掌握·步兵机密",
-		"desc": "步兵相关情报全部破译！解锁隐藏情报分支【特种作战路线】。",
+		# R1-5（设计审查 F-16）：tier-3 奖励原为 intel_branch_unlock——进化系统 v26.8 退役后
+		# 分支无玩法出口（弹窗承诺"解锁分支"却无处可用）。改 intel_branch_hint 纯线索文案
+		# （与其余 4 系 tier-3 同款），branch_id 保留在注释供谱系查询：
+		# 原 branch_id=IB_INFANTRY_SPECIAL（特种作战路线）
+		"desc": "步兵相关情报全部破译！发现隐藏研究线索【特种作战路线】。",
 		"rewards": [
-			{"type": "intel_branch_unlock", "branch_id": "IB_INFANTRY_SPECIAL"},
+			{"type": "intel_branch_hint", "text": "特种作战路线的完整研究线索已归档。"},
 		],
 		"icon": "🏆",
 	},
@@ -87,9 +93,10 @@ const REVEAL_EVENTS: Dictionary = {
 	},
 	"flame_3": {
 		"title": "完全掌握·火焰机密",
-		"desc": "火焰相关机密全部破译！解锁隐藏情报分支【自适应装甲路线】。",
+		# R1-5：同 infantry_3——unlock 改 hint（原 branch_id=IB_ADAPTIVE_ARMOR 自适应装甲）
+		"desc": "火焰相关机密全部破译！发现隐藏研究线索【自适应装甲路线】。",
 		"rewards": [
-			{"type": "intel_branch_unlock", "branch_id": "IB_ADAPTIVE_ARMOR"},
+			{"type": "intel_branch_hint", "text": "自适应装甲路线的完整研究线索已归档。"},
 		],
 		"icon": "🏆",
 	},
@@ -126,9 +133,10 @@ const REVEAL_EVENTS: Dictionary = {
 	},
 	"heavy_armor_3": {
 		"title": "完全掌握·重装甲机密",
-		"desc": "重装甲相关机密全部破译！解锁隐藏情报分支【破甲猎手路线】。",
+		# R1-5：同 infantry_3——unlock 改 hint（原 branch_id=IB_ARMOR_BREAKER 破甲猎手）
+		"desc": "重装甲相关机密全部破译！发现隐藏研究线索【破甲猎手路线】。",
 		"rewards": [
-			{"type": "intel_branch_unlock", "branch_id": "IB_ARMOR_BREAKER"},
+			{"type": "intel_branch_hint", "text": "破甲猎手路线的完整研究线索已归档。"},
 		],
 		"icon": "🏆",
 	},

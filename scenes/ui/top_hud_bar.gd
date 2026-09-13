@@ -44,7 +44,9 @@ var _in_battle: bool = false
 
 # ── 倍速 ──
 var _speed_scale: float = 1.0
-const _SPEED_OPTIONS: Array = [1.0, 2.0]
+# R1-6（设计审查 F-13，2026-09-13）：加 ×3 档——近未来末关 7-10 波 ×7s 单场 1x 约 90s，
+# ×2 仍显拖；×3 供回刷/挂机看护场景（引擎 time_scale 上限内，音频不受影响）。
+const _SPEED_OPTIONS: Array = [1.0, 2.0, 3.0]
 
 # ── 暂停态图标 ──
 const _PAUSE_ICON := "icon_pause"

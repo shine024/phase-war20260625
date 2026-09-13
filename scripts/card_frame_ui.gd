@@ -108,6 +108,27 @@ static func rarity_panel_style(rarity: String) -> StyleBoxFlat:
 	s.border_width_bottom = 1
 	s.border_color = Color(0.12, 0.16, 0.24, 0.55)
 	s.set_corner_radius_all(6)
+	# v28 T4: 网格尺寸下的稀有度可读性——PNG 框之外再叠"稀有度色外辉光"第三编码
+	# （递进档位沿用 tile_rarity_style 的既有语言；common 保持无光中性灰边）
+	var rc: Color = GC.get_rarity_color(rarity)
+	match rarity:
+		"uncommon":
+			s.shadow_color = Color(rc.r, rc.g, rc.b, 0.22); s.shadow_size = 3
+			s.border_color = Color(rc.r, rc.g, rc.b, 0.45)
+		"rare":
+			s.shadow_color = Color(rc.r, rc.g, rc.b, 0.28); s.shadow_size = 3
+			s.border_color = Color(rc.r, rc.g, rc.b, 0.45)
+		"epic":
+			s.shadow_color = Color(rc.r, rc.g, rc.b, 0.36); s.shadow_size = 4
+			s.border_color = Color(rc.r, rc.g, rc.b, 0.45)
+		"legendary":
+			s.shadow_color = Color(rc.r, rc.g, rc.b, 0.45); s.shadow_size = 5
+			s.border_color = Color(rc.r, rc.g, rc.b, 0.50)
+		"mythic":
+			s.shadow_color = Color(rc.r, rc.g, rc.b, 0.55); s.shadow_size = 6
+			s.border_color = Color(rc.r, rc.g, rc.b, 0.55)
+		_:
+			pass
 	_rarity_panel_style_cache[rarity] = s
 	return s
 

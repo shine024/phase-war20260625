@@ -60,11 +60,8 @@ func _build_ui() -> void:
 	# 奖励卡片悬浮无底框；v6.14 修复）
 	var panel := PanelContainer.new()
 	panel.custom_minimum_size = Vector2(580, 0)
-	var style := StyleBoxFlat.new()
-	style.bg_color = _BG_PANEL
-	style.border_color = _BORDER
-	style.set_border_width_all(2)
-	style.set_corner_radius_all(12)
+	# v28b: 面材化——SDF 圆角渐变底 + 烘焙边框（与 mvp 结算同族），保留原内容边距
+	var style: StyleBox = _PanelStyles.make_result_frame(_BORDER, _BG_PANEL)
 	style.content_margin_left = 20
 	style.content_margin_right = 20
 	style.content_margin_top = 18

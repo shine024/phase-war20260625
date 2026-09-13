@@ -5,13 +5,20 @@ class_name OfflineIdleManager
 ## 核心机制：
 ##   游戏关闭 → save_game() 记录 last_active_at (epoch 秒)
 ##   游戏重开 → load_game() → 计算 elapsed = now - last_active_at
-##   离线超阈值 → 按波次估算 battles_per_hour × capped 时长 = 战斗次数 N
+##   离线超阈值 → 按波次估算 battles_per_hour × capped 时长 × 离线收益乘数 = 战斗次数 N
 ##   聚合货币(get_drops_for_level × N) + 相位仪经验(base_xp × N)
-##   + 关卡推进(每场推一关) + 掉落模拟(generate_battle_drops 抽样)
+##   + 关卡推进(每场推一关；v29 R2a 默认冻结) + 掉落模拟(generate_battle_drops 抽样)
 ##   弹"欢迎回来"窗 → 玩家领取 → 入账
+##   v29 R2a：收益乘数 = 效率系数(0.5) × 边际递减(前2h全额/其后半额)，GameConfig 三参可调
 
 
 # ── 常量 ──
+
+## v29 R2a 经济批（设计审查 F-05）：离线收益三参数经 GameConfig 注入，见 game_config.gd
+## （offline_idle_efficiency / offline_idle_decay_enabled / offline_push_levels_enabled）。
+## 乘数公式真身 = GameConfig.offline_reward_factor（无 autoload 依赖，可独立单测）。
+## 设计目标：主动单场收入 / 离线时均收入 ≥ 3:1（原 1:1 略强，睡觉碾压主动游玩）。
+const _GameConfigScript = preload("res://resources/game_config.gd")
 
 ## 在线挂机模式枚举（preload 避免 class_name 注册时序依赖）
 const _AFKModeManager = preload("res://scripts/systems/afk_mode_manager.gd")
@@ -70,7 +77,10 @@ func compute_offline_rewards(last_active_at: int, now: int) -> Dictionary:
 	var level: int = _resolve_reward_level()
 	var era: int = LevelEras.get_era(level)
 	var bph: float = _estimate_battles_per_hour(level)
-	var battles: int = maxi(1, int(float(capped) * bph / 3600.0))
+	# v29 R2a：效率系数 × 边际递减双乘数（各有独立开关，可单变量 A/B）。
+	# battles 是货币/XP/掉落模拟的单一驱动乘数，此处收敛即全链生效。
+	var battles: int = maxi(1, int(float(capped) * bph / 3600.0
+			* _GameConfigScript.offline_reward_factor(capped)))
 
 	# 货币聚合：get_drops_for_level 是纯静态无副作用，× battles
 	var currencies: Dictionary = {}
@@ -86,7 +96,11 @@ func compute_offline_rewards(last_active_at: int, now: int) -> Dictionary:
 	var phase_field_xp: int = int(LevelEras.get_base_xp_for_level(level)) * battles
 
 	# 关卡推进：从 reward_level 开始每场推一关（保守，上限 100 关）
-	var levels_unlocked: Array = _compute_offline_level_progress(level, battles)
+	# v29 R2a：默认冻结（offline_push_levels_enabled=false）——离线只产资源不推关；
+	# 推图与首通奖励需玩家在场（在线挂机 PUSH 模式不受影响）。
+	var levels_unlocked: Array = []
+	if _GameConfigScript.get_default().offline_push_levels_enabled:
+		levels_unlocked = _compute_offline_level_progress(level, battles)
 
 	return {
 		"elapsed_sec": elapsed,

@@ -13,6 +13,9 @@ extends Node2D
 
 const PhaseDriverScene = preload("res://scenes/units/phase_field_driver.tscn")
 const EnemyPhaseDriverScene = preload("res://scenes/units/enemy_phase_field_driver.tscn")
+## v28 T3: 地面 dressing（弹坑/碎石/履带印/枯草撒点，纯视觉）
+const _GroundDressingScript = preload("res://scripts/battle/ground_dressing.gd")
+var _dressing: Node2D = null
 const COMMON_BATTLE_BG_PATH := "res://assets/backgrounds/bg_level_01.png"
 const LEVEL_BG_PATH_FMT := "res://assets/backgrounds/bg_level_%02d.png"
 ## v26.9: 背景整体压暗一档（叠乘在时代 tint 上，略偏冷）——"背景永远比单位暗"，
@@ -85,6 +88,14 @@ func _ready() -> void:
 		var sg: Node2D = _BattleSlotGridScript.new() as Node2D
 		sg.name = "BattleSlotGrid"
 		add_child(sg)
+	# v28 T3: 地面 dressing 节点——树序钉在 Ground 之上（贴片压背景、被 Ambience/单位压）
+	# 注意必须先于 _update_background() 创建：_apply_background_texture 尾部会对它 setup
+	if _dressing == null:
+		_dressing = _GroundDressingScript.new()
+		_dressing.name = "GroundDressing"
+		add_child(_dressing)
+		var ground_node := get_node_or_null("Ground")
+		move_child(_dressing, (ground_node.get_index() + 1) if ground_node != null else get_child_count() - 1)
 	_update_background()
 	call_deferred("_sync_battle_slot_grid_lane")
 	# v6.4: 把震动相机对齐到视口中心，使其严格等价于无相机渲染（世界原点在视口左上）
@@ -499,6 +510,13 @@ func _apply_background_texture(tex: Texture2D) -> void:
 		_ensure_endless_rift_fx()
 	else:
 		_clear_endless_rift_fx()
+	# v28 T3: 地面 dressing——tint 对齐背景，撒点参数随关复现（setup 内部按 key 幂等）
+	if _dressing != null and is_instance_valid(_dressing):
+		_dressing.modulate = level10_bg.modulate
+		var endless_for_dressing: bool = GameManager != null \
+			and GameManager.has_method("is_endless_battle") and GameManager.is_endless_battle()
+		_dressing.setup(GameManager.current_level if GameManager != null else 1,
+			lane_top_y, lane_bottom_y, endless_for_dressing)
 
 
 # ═══════════════════════════════════════════════════════════════════

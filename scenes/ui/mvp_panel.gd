@@ -1,9 +1,11 @@
 extends Control
 ## v7.x 整合结算面板（MVP 战绩 + 缴获明细合并）
+## v30.1 R3（设计审查 F-13）：单列长滚动拆三页签——战报（横幅/数据/协同/败因）、
+## 缴获（经验/奖励/情报/战利品）、养成（基地状态默认折叠 + 二周目入口）。
 ##
 ## 战斗结束瞬间一次性弹出，展示完整结算：
-##   上半区：战绩横幅（胜利/失败 + 时长 + 星级 + 核心数据 + 击杀分布）
-##   下半区：缴获明细（本关缴获 / 相位场经验 / 战斗缴获 / 相位仪缴获 / 情报揭示）
+##   战报页：战绩横幅（胜利/失败 + 时长 + 星级 + 核心数据 + 击杀分布）
+##   缴获页：缴获明细（本关缴获 / 相位场经验 / 战斗缴获 / 相位仪缴获 / 情报揭示）
 ##
 ## 合并自原 mvp_panel + battle_result_dialog，消除"两次弹窗 + 切换动画"割裂感。
 ##
@@ -33,6 +35,21 @@ signal result_confirmed(player_won: bool)
 
 ## ── 批次③ Task 2：结算战报体文案池（军语克制体，零数值虚构、零运营腔）──
 ## 胜利 4 句 / 失败 3 句 / 撤退 3 句，按结果态取池随机轮换。
+const ComboTacticsRef = preload("res://data/combo_tactics.gd")   # v30 R3: 本局协同小结
+
+## v30 R3：本局协同小结的检阅顺序（12 组合/套装 + 5 搭档，与 combo_status_strip 同源口径）
+const _SYNERGY_COMBO_ORDER: Array[String] = [
+	ComboTacticsRef.COMBO_INCENDIARY, ComboTacticsRef.COMBO_EMP, ComboTacticsRef.COMBO_NANO,
+	ComboTacticsRef.COMBO_LASER, ComboTacticsRef.COMBO_RECON, ComboTacticsRef.COMBO_CHEM,
+	ComboTacticsRef.COMBO_ARMOR_PHALANX, ComboTacticsRef.COMBO_FLAK_CURTAIN,
+	ComboTacticsRef.COMBO_MEDIC_CHAIN, ComboTacticsRef.COMBO_SATURATION,
+	ComboTacticsRef.COMBO_ENGINEER_LINE, ComboTacticsRef.COMBO_FORTRESS_HOLD,
+]
+const _SYNERGY_PAIR_ORDER: Array[String] = [
+	"pair_recon_artillery", "pair_engineer_infantry", "pair_aa_air",
+	"pair_armor_infantry", "pair_fort_support",
+]
+
 const BANNER_LINES_VICTORY: Array[String] = [
 	"阵地拿下。车轮继续向前。",
 	"这一仗打完了。下一处坐标已经标好。",
@@ -81,6 +98,11 @@ var _reward_summary: Dictionary = {}
 var _is_afk: bool = false
 # 星级 Label 引用，供逐个亮起动画使用
 var _star_lbl: Label = null
+# v30.1 R3（F-13）：三页签容器 + 基地状态折叠态（标题头/内容体/去箭头基文）
+var _tabs: TabContainer = null
+var _bunker_head: Button = null
+var _bunker_body: VBoxContainer = null
+var _bunker_title_base: String = ""
 # 批次③ T2：横幅叙事落档（冒烟断言用）——title=「胜利/失败/撤退」文案，desc=战报体正文
 var last_banner_title: String = ""
 var last_banner_text: String = ""
@@ -124,76 +146,82 @@ func _build() -> void:
 	panel.offset_bottom = 300
 	panel.mouse_filter = Control.MOUSE_FILTER_STOP
 	overlay_layer.add_child(panel)
-	# 面板样式
-	var style := StyleBoxFlat.new()
+	# 面板样式（v28 T2 质感版：SDF 圆角渐变底 + 烘焙 accent 边框，胜/败底色语义保留）
+	var style: StyleBox
 	if player_won:
-		style.bg_color = Color(0.04, 0.12, 0.10, 0.98)
-		style.border_color = Color(0.0, 0.9, 0.7, 0.8)
-		style.shadow_color = Color(0.0, 0.9, 0.7, 0.3)
+		style = PanelStyles.make_result_frame(
+			Color(0.0, 0.9, 0.7), Color(0.04, 0.12, 0.10, 0.98))
 	else:
-		style.bg_color = Color(0.14, 0.04, 0.04, 0.98)
-		style.border_color = Color(0.9, 0.2, 0.2, 0.8)
-		style.shadow_color = Color(0.9, 0.2, 0.2, 0.3)
-	style.corner_radius_top_left = DT.CORNER_RADIUS
-	style.corner_radius_top_right = DT.CORNER_RADIUS
-	style.corner_radius_bottom_right = DT.CORNER_RADIUS
-	style.corner_radius_bottom_left = DT.CORNER_RADIUS
-	style.border_width_left = 2
-	style.border_width_top = 2
-	style.border_width_right = 2
-	style.border_width_bottom = 2
-	style.content_margin_left = 0.0
-	style.content_margin_right = 0.0
-	style.content_margin_top = 0.0
-	style.content_margin_bottom = 0.0
-	style.shadow_size = 6
+		style = PanelStyles.make_result_frame(
+			Color(0.9, 0.2, 0.2), Color(0.14, 0.04, 0.04, 0.98))
 	panel.add_theme_stylebox_override("panel", style)
 
-	# ═══ 可滚动内容区：anchors 钉在面板上半部（留出底部 60px 给按钮） ═══
-	var scroll := ScrollContainer.new()
-	scroll.set_anchors_preset(Control.PRESET_FULL_RECT)
-	scroll.anchor_right = 1.0
-	scroll.anchor_bottom = 1.0
-	scroll.offset_left = 20.0        # 左内边距
-	scroll.offset_right = -20.0      # 右内边距
-	scroll.offset_top = 16.0         # 上内边距
-	scroll.offset_bottom = -70.0     # 底部留 70px 给按钮区（按钮高44 + 分隔 + margin）
-	scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
-	# 关键：设为 0，防止 ScrollContainer 用内容高度作为自身 min_size 顶开按钮
-	scroll.custom_minimum_size = Vector2(0, 0)
-	panel.add_child(scroll)
-	# 内容列（所有可滚动内容放这里）
-	var vbox := VBoxContainer.new()
-	vbox.add_theme_constant_override("separation", 12)
-	vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	scroll.add_child(vbox)
+	# ═══ v30.1 R3（设计审查 F-13）：三页签内容区——战报/缴获/养成 ═══
+	# 原单列长滚动（战绩+缴获+基地+NG+ 六段连排）每场战后都要滚一遍，重复百次疲劳；
+	# 拆页签后默认页=战报，缴获按需翻看，养成段（基地状态）默认折叠。
+	# TabContainer 走全局主题（quest_panel/card_info_panel 同款观感），切页微过渡同批次2惯例。
+	_tabs = TabContainer.new()
+	_tabs.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_tabs.anchor_right = 1.0
+	_tabs.anchor_bottom = 1.0
+	_tabs.offset_left = 20.0        # 左内边距
+	_tabs.offset_right = -20.0      # 右内边距
+	_tabs.offset_top = 16.0         # 上内边距
+	_tabs.offset_bottom = -70.0     # 底部留 70px 给按钮区（按钮高44 + 分隔 + margin）
+	panel.add_child(_tabs)
+	_tabs.tab_changed.connect(_on_result_tab_changed)
 
-	# ═══ 战绩区域（挂机模式跳过） ═══
+	# 战报页（挂机模式无战绩内容，整页隐藏）
+	var vbox := _make_result_tab("战报", "胜败横幅、核心数据、星级、本局协同与迷失者讯息")
 	if not _is_afk:
 		_render_victory_banner(vbox)
 		_render_battle_stats(vbox)
+		# v30 R3（设计审查 F-07）：本局协同小结——组合/套装/搭档的战斗内贡献在结算收口
+		_render_synergy_summary(vbox)
+		# v30.2 R4（设计审查 F-08）：驻守关战胜后的迷失者遗言——叙事收口
+		if player_won:
+			_render_master_epilogue(vbox)
 		# v27: 败因分析——失败要产出知识（残存敌军构成 + 克制建议 + 情报提示）
 		if not player_won:
 			_render_defeat_analysis(vbox)
+		# v30.2 R4（F-08）：L100 通关结局演出（独白+致谢+黑门钩子；NG+ 入口在养成页）
+		_render_ending(vbox)
 
-	# ═══ 缴获明细区域 ═══
-	_render_phase_field_xp(vbox)
+	# 缴获页
+	var loot_vbox := _make_result_tab("缴获", "本关缴获、相位场经验、情报揭示与战利品清单")
+	_render_phase_field_xp(loot_vbox)
 	if player_won:
-		_render_reward_summary(vbox)
-	_render_intel_harvest(vbox)
+		_render_reward_summary(loot_vbox)
+	_render_intel_harvest(loot_vbox)
 	if player_won:
-		_render_drops(vbox)
-		_render_phase_instrument_drop(vbox)
+		_render_drops(loot_vbox)
+		_render_phase_instrument_drop(loot_vbox)
 		# v7.x 胜利面板漏显修复：本局缴获与战利品（战中击杀卡/符文/相位师全部缴获）
-		_render_collected_rewards(vbox)
-	# v22.4（P0-2）：要塞反馈行——修复进度/精神/回基地入口（未进过基地的玩家不显示）
-	_render_bunker_status(vbox)
+		_render_collected_rewards(loot_vbox)
 
+	# 养成页：基地状态（v30.1 默认折叠）+ 二周目入口
+	var growth_vbox := _make_result_tab("养成", "移动基地修复进度与战役后入口")
+	# v22.4（P0-2）：要塞反馈行——修复进度/精神/回基地入口（未进过基地的玩家不显示）
+	_render_bunker_status(growth_vbox)
 	# ═══ 二周目入口（v26.6 断链补链：start_ng_plus 此前零入口） ═══
-	_render_ng_plus_entry(vbox)
+	_render_ng_plus_entry(growth_vbox)
+
+	# 空页隐藏（挂机无战报/极端空段）+ 默认页：挂机直落缴获，否则战报
+	for i in range(_tabs.get_tab_count()):
+		var page := _tabs.get_tab_control(i)
+		var col: Container = page.get_child(0) as Container \
+				if page != null and page.get_child_count() > 0 else null
+		if col == null or col.get_child_count() == 0:
+			_tabs.set_tab_hidden(i, true)
+	var preferred := 1 if _is_afk else 0
+	if _tabs.is_tab_hidden(preferred):
+		preferred = 0
+	if _tabs.is_tab_hidden(preferred):
+		for i in range(_tabs.get_tab_count()):
+			if not _tabs.is_tab_hidden(i):
+				preferred = i
+				break
+	_tabs.current_tab = preferred
 
 	# ═══ 关闭按钮：anchors 钉在面板底部，永远可见 ═══
 	_render_close_button_anchored(panel)
@@ -212,8 +240,157 @@ func _build() -> void:
 
 
 # =========================================================================
+#  v30.1 R3：三页签辅助
+# =========================================================================
+
+## 建一个页签页（ScrollContainer + 内容列），返回内容列。
+## 沿用原单列滚动的全部防顶开约束（横向禁滚/纵向自动/min_size=0）。
+func _make_result_tab(title: String, tip: String) -> VBoxContainer:
+	var scroll := ScrollContainer.new()
+	scroll.name = title
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
+	# 关键：设为 0，防止 ScrollContainer 用内容高度作为自身 min_size 顶开布局
+	scroll.custom_minimum_size = Vector2(0, 0)
+	scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_tabs.add_child(scroll)
+	_tabs.set_tab_title(_tabs.get_tab_count() - 1, title)
+	if not tip.is_empty():
+		_tabs.set_tab_tooltip(_tabs.get_tab_count() - 1, tip)
+	var col := VBoxContainer.new()
+	col.add_theme_constant_override("separation", 12)
+	col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.add_child(col)
+	return col
+
+
+## 切页微过渡（批次2 tab 淡入惯例；减少动效时 fade_content_in 内部短路）
+func _on_result_tab_changed(_tab: int) -> void:
+	var page := _tabs.get_current_tab_control() if _tabs != null else null
+	if page is Control:
+		PanelAnim.fade_content_in(page)
+
+
+# =========================================================================
 #  战绩区域
 # =========================================================================
+
+## v30 R3：本局协同小结——战末读 BattleManager 组合引擎，列出本场激活过的
+## 组合/套装（全队满档）与搭档；无激活则整节不渲染（信息密度守门）。
+## 数据源与战场组合条同一引擎实例（get_active_mechanisms / is_pair_active）。
+func _render_synergy_summary(vbox: VBoxContainer) -> void:
+	var bm := get_node_or_null("/root/BattleManager")
+	if bm == null or not bm.has_method("get_combo_engine"):
+		return
+	var eng = bm.get_combo_engine()
+	if eng == null or not eng.has_method("get_active_mechanisms"):
+		return
+	var mechs: Array = eng.get_active_mechanisms()
+	var lines: Array[String] = []
+	for combo_id in _SYNERGY_COMBO_ORDER:
+		var def: Dictionary = ComboTacticsRef.get_combo_def(String(combo_id))
+		if def.is_empty():
+			continue
+		var combo_mechs: Array = def.get("mechanisms", [])
+		var hit := false
+		for m in combo_mechs:
+			if mechs.has(String(m)):
+				hit = true
+				break
+		if hit:
+			lines.append("✦ %s %s — %s" % [
+				String(def.get("icon", "")), String(def.get("name", String(combo_id))),
+				String(def.get("desc", ""))])
+	var pair_hits: int = 0
+	if eng.has_method("is_pair_active"):
+		for pid in _SYNERGY_PAIR_ORDER:
+			if bool(eng.is_pair_active(String(pid))):
+				pair_hits += 1
+	if lines.is_empty() and pair_hits == 0:
+		return
+	var title := Label.new()
+	title.text = "⚔ 本局协同（%d 组合 · %d/5 搭档）" % [lines.size(), pair_hits]
+	title.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
+	title.add_theme_color_override("font_color", Color(0.55, 0.95, 0.65, 0.95))
+	vbox.add_child(title)
+	var body := Label.new()
+	body.text = "\n".join(lines) if not lines.is_empty() else "（本场无组合/套装满档激活）"
+	body.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
+	body.add_theme_color_override("font_color", DT.COLOR_TEXT_MID)
+	vbox.add_child(body)
+
+
+## v30.2 R4（设计审查 F-08）：驻守关遗言——战胜驻守相位师（迷失的同伴）后的
+## 一句讯息，收在战报页协同小结之后。非驻守关/台词未注入 → 整节不渲染（守门）。
+## 文风口径：LANGUAGE_BIBLE 迷失者条——战胜=带回其力量，不是消灭。
+func _render_master_epilogue(vbox: VBoxContainer) -> void:
+	var lvl := 1
+	if GameManager != null:
+		lvl = int(GameManager.current_level)
+	var epilogue := CampaignNarrative.get_post_battle_line(lvl)
+	if epilogue.is_empty():
+		return
+	var master_name := CampaignNarrative.get_post_battle_master_name(lvl)
+	vbox.add_child(_make_separator())
+	var title := Label.new()
+	title.text = ("🕯 来自 %s 的讯息" % master_name) if not master_name.is_empty() else "🕯 迷失者的讯息"
+	title.add_theme_font_size_override("font_size", DT.FONT_SIZE_BODY)
+	title.add_theme_color_override("font_color", Color(1.0, 0.72, 0.32))
+	vbox.add_child(title)
+	var body := Label.new()
+	body.text = epilogue
+	body.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
+	body.add_theme_color_override("font_color", DT.COLOR_TEXT_MID)
+	body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	vbox.add_child(body)
+	var hint := Label.new()
+	hint.text = "他的生平与遗言已录入同伴档案——移动基地 · 同伴档案 / 纪念墙"
+	hint.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
+	hint.add_theme_color_override("font_color", Color(0.6, 0.62, 0.66, 1.0))
+	vbox.add_child(hint)
+
+
+## v30.2 R4（设计审查 F-08）：L100 结局演出——通关独白 + 致谢 + 黑门钩子，
+## 收在战报页尾部（胜利高潮处）；NG+ 入口留在养成页不动。仅最终关胜利且
+## 非挂机渲染；通关低频，二周目重通允许重播（重温语义）。
+func _render_ending(vbox: VBoxContainer) -> void:
+	if _is_afk or not player_won:
+		return
+	if GameManager == null or GameManager.current_level < LevelInformation.LEVEL_COUNT:
+		return
+	var ending := CampaignNarrative.get_ending()
+	vbox.add_child(_make_separator())
+	var wrap := VBoxContainer.new()
+	wrap.add_theme_constant_override("separation", 8)
+	vbox.add_child(wrap)
+	for line in ending.get("monologue", []):
+		var ml := Label.new()
+		ml.text = String(line)
+		ml.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		ml.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		ml.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		ml.add_theme_font_size_override("font_size", DT.FONT_SIZE_BODY)
+		ml.add_theme_color_override("font_color", DT.COLOR_TEXT_BRIGHT)
+		wrap.add_child(ml)
+	var credits := Label.new()
+	credits.text = String(ending.get("credits", ""))
+	credits.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	credits.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	credits.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	credits.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
+	credits.add_theme_color_override("font_color", DT.COLOR_GOLD)
+	wrap.add_child(credits)
+	var hook := Label.new()
+	hook.text = String(ending.get("hook", ""))
+	hook.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	hook.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	hook.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	hook.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
+	hook.add_theme_color_override("font_color", Color(0.5, 0.9, 0.85, 0.95))
+	wrap.add_child(hook)
+
 
 func _render_victory_banner(vbox: VBoxContainer) -> void:
 	# 批次③ Task 2：三态叙事——胜利池 / 撤退池（meta 一次性消费）/ 失败池；
@@ -244,6 +421,12 @@ func _render_victory_banner(vbox: VBoxContainer) -> void:
 		last_banner_title = "失败"
 	title_ls.outline_color = Color(0, 0, 0, 0.85)
 	title_ls.outline_size = 4
+	# v28 T2: 大标题落地影——胜利染金辉、败/撤染深影，把"高光时刻"从纯平文字里托出来
+	if player_won:
+		title_ls.shadow_color = Color(DT.COLOR_GOLD.r, DT.COLOR_GOLD.g, DT.COLOR_GOLD.b, 0.30)
+	else:
+		title_ls.shadow_color = Color(0, 0, 0, 0.45)
+	title_ls.shadow_offset = Vector2(0, 3)
 	title.label_settings = title_ls
 	vbox.add_child(title)
 	# 副标题描述（战报体轮换池；败仗低概率挂牺牲相位师名）
@@ -840,8 +1023,8 @@ func _render_close_button_anchored(panel: Control) -> void:
 		home_btn.offset_top = -60.0
 		home_btn.offset_bottom = -16.0
 		home_btn.custom_minimum_size = Vector2(0, 44)
-		# v23.6.1：走 PanelStyles 工厂四态（替换手写单态，圆角归按钮档 6）
-		var home_styles: Dictionary = PanelStyles.make_button_styles(Color(1.0, 0.72, 0.32), "solid")
+		# v23.6.1：走 PanelStyles 工厂四态（替换手写单态，圆角归按钮档 6）；v28 T2 迁渐变版
+		var home_styles: Dictionary = PanelStyles.make_button_styles_graded(Color(1.0, 0.72, 0.32), "solid")
 		for key in ["normal", "hover", "pressed", "disabled", "focus"]:
 			home_btn.add_theme_stylebox_override(key, home_styles[key])
 		home_btn.add_theme_color_override("font_color", Color(0.09, 0.07, 0.04))
@@ -851,9 +1034,9 @@ func _render_close_button_anchored(panel: Control) -> void:
 		panel.add_child(home_btn)
 	btn.grow_horizontal = Control.GROW_DIRECTION_BOTH
 	btn.custom_minimum_size = Vector2(0, 44)
-	# v23.6.1：走 PanelStyles 工厂四态（原仅 normal 有样式，无 hover/按下反馈）
+	# v23.6.1：走 PanelStyles 工厂四态（原仅 normal 有样式，无 hover/按下反馈）；v28 T2 渐变版
 	var btn_accent: Color = DT.COLOR_GOLD if player_won else DT.COLOR_BORDER
-	var btn_styles: Dictionary = PanelStyles.make_button_styles(btn_accent, "solid")
+	var btn_styles: Dictionary = PanelStyles.make_button_styles_graded(btn_accent, "solid")
 	for key in ["normal", "hover", "pressed", "disabled", "focus"]:
 		btn.add_theme_stylebox_override(key, btn_styles[key])
 	btn.add_theme_color_override("font_color", DT.COLOR_VOID)
@@ -877,17 +1060,35 @@ func _render_bunker_status(vbox: VBoxContainer) -> void:
 		return
 	_bunker_return_available = not _is_afk
 
-	var title := Label.new()
 	var mult: float = bunker.get_drop_reward_multiplier() \
 		if bunker.has_method("get_drop_reward_multiplier") else 1.0
 	var sanity_txt: String = "精神 %d" % int(round(bunker.get_sanity()))
 	if mult < 1.0:
 		sanity_txt += "（低精神：缴获 ×%.2f）" % mult
-	title.text = "◆ 移动基地 · 第 %d 天 · %s · 同伴档案 %d/30" % [
+	# v30.1 R3（F-13）：标题行改可点折叠头（默认收起）——基地状态是每场都重复的
+	# 长尾段，滚动疲劳主因；摘要信息（天数/精神/同伴数）留在标题行常显不丢。
+	_bunker_title_base = "移动基地 · 第 %d 天 · %s · 同伴档案 %d/30" % [
 		bunker.get_day(), sanity_txt, bunker.get_hero_fragment_count()]
-	title.add_theme_font_size_override("font_size", DT.FONT_SIZE_BODY)
-	title.add_theme_color_override("font_color", Color(1.0, 0.72, 0.32))
-	vbox.add_child(title)
+	var head := Button.new()
+	head.flat = true
+	head.text = "▸ " + _bunker_title_base
+	head.alignment = HORIZONTAL_ALIGNMENT_LEFT
+	head.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	head.tooltip_text = "修复进度与精神状态——点击展开/收起"
+	head.focus_mode = Control.FOCUS_NONE
+	head.add_theme_font_size_override("font_size", DT.FONT_SIZE_BODY)
+	head.add_theme_color_override("font_color", Color(1.0, 0.72, 0.32))
+	head.add_theme_color_override("font_hover_color", Color(1.0, 0.85, 0.55))
+	head.add_theme_color_override("font_pressed_color", Color(1.0, 0.72, 0.32))
+	head.add_theme_color_override("font_focus_color", Color(1.0, 0.72, 0.32))
+	head.pressed.connect(_toggle_bunker_body)
+	vbox.add_child(head)
+	_bunker_head = head
+
+	_bunker_body = VBoxContainer.new()
+	_bunker_body.visible = false   # v30.1：默认折叠
+	_bunker_body.add_theme_constant_override("separation", 6)
+	vbox.add_child(_bunker_body)
 
 	# 低精神本战折损（game_manager 已实际扣除，这里只展示）
 	var pen: Dictionary = _reward_summary.get("sanity_penalty", {})
@@ -897,7 +1098,7 @@ func _render_bunker_status(vbox: VBoxContainer) -> void:
 			int(pen.get("nano", 0)), int(pen.get("energy", 0))]
 		pen_l.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
 		pen_l.add_theme_color_override("font_color", Color(0.95, 0.55, 0.35))
-		vbox.add_child(pen_l)
+		_bunker_body.add_child(pen_l)
 
 	# 施工中的房间（进度已含本场推进）+ 今日完工
 	var detail := Label.new()
@@ -918,7 +1119,16 @@ func _render_bunker_status(vbox: VBoxContainer) -> void:
 	detail.add_theme_color_override("font_color", Color(0.85, 0.78, 0.62))
 	detail.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	detail.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	vbox.add_child(detail)
+	_bunker_body.add_child(detail)
+
+
+## v30.1 R3（F-13）：基地状态折叠头切换（▸ 收起 / ▾ 展开）
+func _toggle_bunker_body() -> void:
+	if _bunker_body == null or not is_instance_valid(_bunker_body):
+		return
+	_bunker_body.visible = not _bunker_body.visible
+	if _bunker_head != null and is_instance_valid(_bunker_head):
+		_bunker_head.text = ("▾ " if _bunker_body.visible else "▸ ") + _bunker_title_base
 
 # =========================================================================
 #  按钮回调（统一接收 + 返回准备界面）

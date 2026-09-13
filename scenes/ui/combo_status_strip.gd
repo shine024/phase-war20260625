@@ -26,8 +26,22 @@ const _PAIR_ORDER: Array[String] = [
 	"pair_armor_infantry", "pair_fort_support",
 ]
 
-var _icon_buttons: Array = []  # [{btn:Button, combo_id:String}]
+## R1-8（设计审查 F-07，2026-09-13）：v27 新六套装显示顺序。
+## 12 套全铺图标需 +252px 超顶部 472px 预算——采用搭档区同款聚合按钮（🛡n/6 + tooltip），
+## 激活态/名称/说明仍在 tooltip 完整可查（修复"新六套零 UI"的可见性缺口）。
+const _SUIT_ORDER: Array[String] = [
+	ComboTactics.COMBO_ARMOR_PHALANX,
+	ComboTactics.COMBO_FLAK_CURTAIN,
+	ComboTactics.COMBO_MEDIC_CHAIN,
+	ComboTactics.COMBO_SATURATION,
+	ComboTactics.COMBO_ENGINEER_LINE,
+	ComboTactics.COMBO_FORTRESS_HOLD,
+]
+
+var _icon_buttons: Array = []  # [{btn:Button, combo_id:String, prev:int}]
 var _pair_btn: Button = null   # v21 P2: 搭档协同指示按钮
+var _suit_btn: Button = null   # R1-8: 新六套装（v27 改造2.0 套装）指示按钮
+var _suit_prev := 0            # v30 R3: 套装聚合钮上一激活档（弹跳触发用）
 var _refresh_acc: float = 0.0
 const REFRESH_SEC: float = 0.6
 var _dt_accum: float = 0.0  # 用于 tooltip 更新
@@ -75,12 +89,15 @@ func _ready() -> void:
 			continue
 		var btn := _make_combo_icon_button(def, combo_id)
 		hbox.add_child(btn)
-		_icon_buttons.append({"btn": btn, "combo_id": combo_id})
+		_icon_buttons.append({"btn": btn, "combo_id": combo_id, "prev": 0})
 	# v21 P2: 搭档协同指示按钮（🤝 n/5，tooltip 列出全部搭档）
 	_pair_btn = _make_pair_button()
 	hbox.add_child(_pair_btn)
-	# 宽度预算：原 348 + 8(分隔) + 52(搭档钮) = 408 ≤ 472 顶部预算
-	custom_minimum_size = Vector2(408, 40)
+	# R1-8: 新六套装聚合指示按钮（🛡 n/6，tooltip 列出套装与激活态）
+	_suit_btn = _make_suit_button()
+	hbox.add_child(_suit_btn)
+	# 宽度预算：原 408 + 4(间隔) + 56(套装钮) = 468 ≤ 472 顶部预算
+	custom_minimum_size = Vector2(468, 40)
 
 
 ## v21 P2: 创建搭档协同指示按钮
@@ -108,6 +125,35 @@ func _build_pair_tooltip(active_count: int) -> String:
 			continue
 		var active: bool = eng != null and eng.has_method("is_pair_active") and bool(eng.is_pair_active(pid))
 		lines.append("%s %s — %s" % ["✓" if active else "○", String(def.get("name", pid)), String(def.get("desc", ""))])
+	return "\n".join(lines)
+
+
+## R1-8: 创建新六套装聚合指示按钮（🛡 n/6）
+func _make_suit_button() -> Button:
+	var btn := Button.new()
+	btn.custom_minimum_size = Vector2(56, 30)
+	btn.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	btn.text = "🛡0/6"
+	btn.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
+	btn.add_theme_color_override("font_color", Color(0.6, 0.6, 0.6, 1))
+	btn.add_theme_color_override("font_outline_color", DT.COLOR_BACKDROP_DEEP)
+	btn.add_theme_constant_override("outline_size", 1)
+	_set_combo_style(btn, 0)
+	btn.tooltip_text = _build_suit_tooltip([])
+	return btn
+
+
+## R1-8: 新六套装 tooltip（列出 6 套 v27 改造2.0 套装与激活态）
+func _build_suit_tooltip(active_ids: Array) -> String:
+	var active_count: int = active_ids.size()
+	var lines: Array[String] = ["改造套装（%d/6 激活）" % active_count]
+	for combo_id in _SUIT_ORDER:
+		var def: Dictionary = ComboTactics.get_combo_def(combo_id)
+		if def.is_empty():
+			continue
+		var mark := "✓" if active_ids.has(combo_id) else "○"
+		lines.append("%s %s — %s" % [mark, String(def.get("name", combo_id)), String(def.get("desc", ""))])
+	lines.append("单卡装 ≥2 配套改造即激活（单卡增益）；凑齐兵种组合升满档")
 	return "\n".join(lines)
 
 
@@ -190,10 +236,16 @@ func _refresh() -> void:
 			var btn: Button = entry["btn"]
 			_set_combo_style(btn, 0)
 			btn.tooltip_text = _build_tooltip(entry["combo_id"], 0)
+			entry["prev"] = 0
 		if _pair_btn != null:
 			_set_combo_style(_pair_btn, 0)
 			_pair_btn.text = "0/5"
 			_pair_btn.tooltip_text = _build_pair_tooltip(0)
+		if _suit_btn != null:
+			_set_combo_style(_suit_btn, 0)
+			_suit_btn.text = "🛡0/6"
+			_suit_btn.tooltip_text = _build_suit_tooltip([])
+		_suit_prev = 0
 		return
 	# 全队激活 combo_id（通过 mechanisms 反推）
 	var team_mechs: Array = eng.get_active_mechanisms()
@@ -213,6 +265,10 @@ func _refresh() -> void:
 			level = 1
 		_set_combo_style(btn, level)
 		btn.tooltip_text = _build_tooltip(combo_id, level)
+		# v30 R3：激活档位跃升瞬间弹跳（协同可见性——"图标亮了"升级为"激活时刻"）
+		if level > int(entry.get("prev", 0)):
+			_pop_button(btn)
+		entry["prev"] = level
 	# v21 P2: 搭档协同指示刷新
 	if _pair_btn != null:
 		var pair_active: int = 0
@@ -223,12 +279,50 @@ func _refresh() -> void:
 		_set_combo_style(_pair_btn, 2 if pair_active > 0 else 0)
 		_pair_btn.text = "%d/5" % pair_active
 		_pair_btn.tooltip_text = _build_pair_tooltip(pair_active)
+	# R1-8: 新六套装指示刷新（全队满档=绿 / 单卡激活=橙，聚合为计数）
+	if _suit_btn != null:
+		var suit_active: Array = []
+		for combo_id in _SUIT_ORDER:
+			if team_combos.has(combo_id) or card_combos.has(combo_id):
+				suit_active.append(combo_id)
+		var suit_level := 0
+		for combo_id in suit_active:
+			if team_combos.has(combo_id):
+				suit_level = 2
+				break
+		if suit_level == 0 and not suit_active.is_empty():
+			suit_level = 1
+		_set_combo_style(_suit_btn, suit_level)
+		_suit_btn.text = "%d/6" % suit_active.size()
+		_suit_btn.tooltip_text = _build_suit_tooltip(suit_active)
+		if suit_level > _suit_prev:
+			_pop_button(_suit_btn)
+		_suit_prev = suit_level
 
+
+## v30 R3：按钮激活弹跳（一次性 scale 脉冲；减少动效开关旁路）
+func _pop_button(btn: Button) -> void:
+	if btn == null or not is_instance_valid(btn) or DT.is_motion_reduce():
+		return
+	if btn.has_meta("pop_tween") and (btn.get_meta("pop_tween") as Tween) != null \
+			and (btn.get_meta("pop_tween") as Tween).is_valid():
+		return  # 上一次弹跳未完不叠发
+	var tw := create_tween()
+	btn.set_meta("pop_tween", tw)
+	tw.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tw.tween_property(btn, "scale", Vector2(1.3, 1.3), 0.12)
+	tw.tween_property(btn, "scale", Vector2.ONE, 0.18)
+	tw.finished.connect(func() -> void:
+		if is_instance_valid(btn):
+			btn.remove_meta("pop_tween")
+	)
 
 ## 从 active mechanisms 反推 combo_id（机制名→套路映射）
+## R1-8：遍历范围扩到 12 套（旧 6 + v27 新 6）——图标按钮只查询各自 id，
+## 返回集扩大对旧 6 钮无行为影响；新六套装经聚合按钮消费。
 func _mechs_to_combo_ids(mechs: Array) -> Array:
 	var result: Array = []
-	for combo_id in _COMBO_ORDER:
+	for combo_id in (_COMBO_ORDER + _SUIT_ORDER):
 		var def := ComboTactics.get_combo_def(combo_id)
 		var combo_mechs: Array = def.get("mechanisms", [])
 		var hit: bool = false

@@ -12,6 +12,7 @@ const ModRegistry = preload("res://scripts/systems/modification_registry.gd")
 const StoreItemRowScene = preload("res://scenes/ui/store_item_row.tscn")
 const StoreInstrumentRowScene = preload("res://scenes/ui/store_instrument_row.tscn")
 const FormatUtil = preload("res://scripts/ui/format_util.gd")
+const UiAssetLoader = preload("res://scripts/ui_asset_loader.gd")
 const UnifiedCardTable = preload("res://data/unified_card_table.gd")  # v20.13c: 商店预览每卡部署次数
 const DT = preload("res://resources/design_tokens.gd")
 const PanelStyles = preload("res://scripts/ui/panel_styles.gd")
@@ -41,9 +42,9 @@ var _suppress_resources_refresh: bool = false
 var _items_dirty: bool = false
 
 ## 缓存样式
-var _row_style_normal: StyleBoxFlat
+var _row_style_normal: StyleBox
 var _row_style_locked: StyleBoxFlat
-var _instrument_row_style: StyleBoxFlat
+var _instrument_row_style: StyleBox
 
 ## 全局访问声望阈值（8级 = 6200声望）
 const GLOBAL_ACCESS_THRESHOLD: int = 6200
@@ -92,18 +93,13 @@ func _run_open_refresh_pipeline() -> void:
 	_open_refresh_inflight = false
 
 func _init_cached_styles() -> void:
-	_row_style_normal = PanelStyles.make_panel_style(
-		Color(DT.COLOR_CARD.r, DT.COLOR_CARD.g, DT.COLOR_CARD.b, 0.9),
-		Color(DT.COLOR_GOLD.r, DT.COLOR_GOLD.g, DT.COLOR_GOLD.b, 0.30), 1, 4
-	)
+	# v28 T2: 商品行迁"面材"渐变底（金边卡底 / 青边仪更亮）；锁行保持 flat 灰
+	_row_style_normal = PanelStyles.make_row_surface(DT.COLOR_GOLD)
 	_row_style_locked = PanelStyles.make_panel_style(
 		Color(DT.COLOR_PANEL_DEEP.r, DT.COLOR_PANEL_DEEP.g, DT.COLOR_PANEL_DEEP.b, 0.7),
 		Color(DT.COLOR_BORDER_DIM.r, DT.COLOR_BORDER_DIM.g, DT.COLOR_BORDER_DIM.b, 0.25), 1, 4
 	)
-	_instrument_row_style = PanelStyles.make_panel_style(
-		Color(DT.COLOR_CARD.r, DT.COLOR_CARD.g, DT.COLOR_CARD.b, 0.92),
-		Color(DT.COLOR_CYAN_TECH.r, DT.COLOR_CYAN_TECH.g, DT.COLOR_CYAN_TECH.b, 0.35), 1, 4
-	)
+	_instrument_row_style = PanelStyles.make_row_surface(DT.COLOR_CYAN_TECH, true)
 
 func _on_close() -> void:
 	closed.emit()
@@ -260,7 +256,12 @@ func _refresh_items() -> void:
 	var current_rep: int = 0
 	if fsm != null and fsm.has_method("get_faction_reputation"):
 		current_rep = int(fsm.get_faction_reputation(_current_company_id))
-	var current_tier: int = current_rep / 10
+	# R1-3（设计审查 F-04，2026-09-13）：声望门槛复活——company_store.json 的
+	# required_rep 是 0-100 旧轴口径（旧代码 tier=rep/10），而运行时声望真轴是
+	# 0-10000（起始 5000，faction_reputation.gd），直接比较恒为"已满足"，
+	# 打码/锁定逻辑从未触发。此处统一按 ×100 边界换算到真轴；
+	# 档位（梯度差/打码）改按声望等级（1-10）计算，与势力面板同口径。
+	var current_tier: int = FactionReputation.get_level_from_reputation(current_rep) - 1
 
 	# 检查是否启用全局访问
 	var global_access: bool = _has_global_access()
@@ -271,8 +272,9 @@ func _refresh_items() -> void:
 		var card_id: String = it.get("card_id", "")
 		var frag_amount: int = int(it.get("fragment_amount", 1))
 		var price_nano: int = int(it.get("price_nano_materials", 0))
-		var required_rep: int = int(it.get("required_rep", 0))
-		var item_tier: int = required_rep / 10
+		# R1-3：JSON 旧轴 0-100 → 声望真轴 0-10000（×100 边界换算，显示与判定同源）
+		var required_rep: int = int(it.get("required_rep", 0)) * 100
+		var item_tier: int = FactionReputation.get_level_from_reputation(required_rep) - 1
 		var card_name: String = card_id
 		var card = null
 
@@ -367,6 +369,8 @@ func _build_rune_items_section(current_rep: int) -> void:
 	item_list.add_child(title)
 	# 渲染每个符文商品
 	var current_nano: int = BasicResourceManager.get_total(BasicResources.ID_NANO_MATERIALS)
+	# v30 R2b：符文消费货币=功勋（不再扣声望等级）
+	var merit_now: int = int(fsm.get_merit_points()) if fsm.has_method("get_merit_points") else 0
 	var RuneDefsForStore = preload("res://data/runes.gd")
 	for it in rune_items:
 		var rune_id: String = it.item_id
@@ -418,7 +422,7 @@ func _build_rune_items_section(current_rep: int) -> void:
 		hbox.add_child(effect_lbl)
 		# 价格
 		var price_lbl := Label.new()
-		price_lbl.text = "%d声望" % rep_cost
+		price_lbl.text = "%d功勋" % rep_cost
 		price_lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
 		price_lbl.add_theme_color_override("font_color", DT.COLOR_GOLD)
 		price_lbl.custom_minimum_size = Vector2(80, 0)
@@ -428,7 +432,7 @@ func _build_rune_items_section(current_rep: int) -> void:
 		buy_btn.text = "购买" if not already_owned else "已拥有"
 		buy_btn.custom_minimum_size = Vector2(60, 30)
 		buy_btn.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
-		buy_btn.disabled = already_owned or current_rep < rep_cost
+		buy_btn.disabled = already_owned or merit_now < rep_cost
 		var rune_btn_styles := PanelStyles.make_button_styles(DT.COLOR_VIOLET)
 		buy_btn.add_theme_color_override("font_color", DT.COLOR_TEXT_BRIGHT)
 		buy_btn.add_theme_color_override("font_hover_color", DT.COLOR_TEXT_BRIGHT)
@@ -451,11 +455,12 @@ func _build_rune_items_section(current_rep: int) -> void:
 		rune_tip.append(display_name)
 		if not eff_line.is_empty():
 			rune_tip.append(eff_line)
-		rune_tip.append("价格：%d 声望（当前 %d）" % [rep_cost, current_rep])
+		rune_tip.append("价格：%d 功勋（当前 %d）" % [rep_cost, merit_now])
+		rune_tip.append("功勋由战斗胜利/攻克关卡/任务获得，不占用声望等级")
 		if already_owned:
 			rune_tip.append("✓ 已拥有")
-		elif current_rep < rep_cost:
-			rune_tip.append("⚠ 声望不足，暂无法购买")
+		elif merit_now < rep_cost:
+			rune_tip.append("⚠ 功勋不足，暂无法购买")
 		row.tooltip_text = "\n".join(rune_tip)
 
 		item_list.add_child(row)
@@ -470,10 +475,12 @@ func _build_rune_items_section(current_rep: int) -> void:
 ## - 有限库存商品显示"剩余N"，归零禁购——can_purchase_item 的 out_of_stock
 ##   分支首次有了 UI 呈现（库存侧的上下架消费端即此；add/remove_item_to_store
 ##   保留为预留接口）
-func _build_faction_shop_extras_section(current_rep: int, company_items: Array) -> void:
+func _build_faction_shop_extras_section(_current_rep: int, company_items: Array) -> void:
 	var fsm: Node = get_node_or_null("/root/FactionSystemManager")
 	if fsm == null or not fsm.has_method("get_faction_store_items"):
 		return
+	# v30 R2b：特购区消费货币=功勋（声望等级不再因购买下跌）
+	var merit_now: int = int(fsm.get_merit_points()) if fsm.has_method("get_merit_points") else 0
 	var all_items: Array = fsm.get_faction_store_items(_current_company_id)
 	# 公司目录已上架的卡（纳米价，上方主列表）——特购区跳过，避免同卡双轨重复售卖
 	var listed_cards: Dictionary = {}
@@ -496,14 +503,19 @@ func _build_faction_shop_extras_section(current_rep: int, company_items: Array) 
 	sep.add_theme_color_override("color", Color(DT.COLOR_GOLD.r, DT.COLOR_GOLD.g, DT.COLOR_GOLD.b, 0.3))
 	item_list.add_child(sep)
 	var title := Label.new()
-	title.text = "◈ 势力补给 · 声望特购（%d种）" % extras.size()
+	title.text = "◈ 势力补给 · 功勋特购（%d种）｜功勋余额 %d" % [extras.size(), merit_now]
 	title.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
 	title.add_theme_color_override("font_color", DT.COLOR_GOLD)
 	item_list.add_child(title)
+	var merit_note := Label.new()
+	merit_note.text = "功勋由战斗胜利/攻克关卡/任务/势力事件获得——消费不占用声望等级"
+	merit_note.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
+	merit_note.add_theme_color_override("font_color", DT.COLOR_TEXT_DIM)
+	item_list.add_child(merit_note)
 	for it in extras:
-		_build_faction_extra_row(it, current_rep)
+		_build_faction_extra_row(it, merit_now)
 
-func _build_faction_extra_row(it, current_rep: int) -> void:
+func _build_faction_extra_row(it, merit_now: int) -> void:
 	var item_id: String = String(it.item_id)
 	var is_card: bool = int(it.item_type) == 0
 	var rep_cost: int = int(it.reputation_cost)
@@ -521,7 +533,7 @@ func _build_faction_extra_row(it, current_rep: int) -> void:
 		elif LEGACY_BLUEPRINT_DISPLAY_NAMES.has(item_id):
 			display_name = String(LEGACY_BLUEPRINT_DISPLAY_NAMES[item_id])
 	var desc_line: String = _describe_faction_extra_item(item_id, is_card, rep_cost)
-	var rep_locked: bool = current_rep < rep_cost
+	var rep_locked: bool = merit_now < rep_cost  # v30 R2b：功勋余额判定（变量名沿用旧 UI 链路）
 	# 行容器（复用符文区行范式：金色调面板 + 名称/说明/价格/按钮）
 	var row := PanelContainer.new()
 	row.custom_minimum_size = Vector2(0, 44)
@@ -546,7 +558,7 @@ func _build_faction_extra_row(it, current_rep: int) -> void:
 	desc_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	hbox.add_child(desc_lbl)
 	var price_lbl := Label.new()
-	price_lbl.text = "%d声望" % rep_cost
+	price_lbl.text = "%d功勋" % rep_cost
 	price_lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
 	price_lbl.add_theme_color_override("font_color", DT.COLOR_GOLD)
 	price_lbl.custom_minimum_size = Vector2(80, 0)
@@ -574,20 +586,20 @@ func _build_faction_extra_row(it, current_rep: int) -> void:
 	var tip := PackedStringArray()
 	tip.append(display_name)
 	tip.append(desc_line)
-	tip.append("价格：%d 声望（当前 %d）" % [rep_cost, current_rep])
+	tip.append("价格：%d 功勋（当前 %d）" % [rep_cost, merit_now])
 	if stock > 0:
 		tip.append("剩余库存：%d" % stock)
 	if out_of_stock:
 		tip.append("⚠ 已售罄")
 	elif rep_locked:
-		tip.append("⚠ 声望不足，暂无法购买")
+		tip.append("⚠ 功勋不足，暂无法购买")
 	row.tooltip_text = "\n".join(tip)
 	item_list.add_child(row)
 
 ## 材料商品的购买效果描述（与 FactionShop.deliver_item 的发放口径一致，勿单边改）
 func _describe_faction_extra_item(item_id: String, is_card: bool, rep_cost: int) -> String:
 	if is_card:
-		return "声望特购卡 · 获得独立养成实例"
+		return "功勋特购卡 · 获得独立养成实例"
 	match item_id:
 		"nano_materials":
 			return "纳米材料 ×%d" % (50 if rep_cost < 300 else 100)
@@ -614,7 +626,7 @@ func _on_buy_faction_extra(it, row_node: Control) -> void:
 	if not bool(result.get("ok", false)):
 		var reason := String(result.get("reason", ""))
 		if reason == "reputation_insufficient":
-			_show_buy_error("声望不足：需要 %d（当前 %d）" % [
+			_show_buy_error("功勋不足：需要 %d（当前 %d）——战斗胜利与任务可获得功勋" % [
 				int(result.get("required_rep", 0)), int(result.get("current_rep", 0))])
 		elif reason == "out_of_stock":
 			_show_buy_warning("该商品已售罄")
@@ -628,22 +640,20 @@ func _on_buy_faction_extra(it, row_node: Control) -> void:
 	_refresh_items()
 
 
-## v6.2: 购买符文
+## v6.2: 购买符文（v30 R2b：消费货币从声望改为功勋，不再拉低声望等级）
 func _on_buy_rune(rune_id: String, rep_cost: int, row_node: Control) -> void:
 	var fsm: Node = get_node_or_null("/root/FactionSystemManager")
 	if fsm == null:
 		return
-	# 检查声望是否足够
-	var current_rep: int = 0
-	if fsm.has_method("get_faction_reputation"):
-		current_rep = int(fsm.get_faction_reputation(_current_company_id))
-	if current_rep < rep_cost:
+	# 检查功勋是否足够
+	var merit_now: int = int(fsm.get_merit_points()) if fsm.has_method("get_merit_points") else 0
+	if merit_now < rep_cost:
 		_flash_row(row_node, Color(DT.COLOR_DANGER.r, DT.COLOR_DANGER.g, DT.COLOR_DANGER.b, 0.3))
 		# 批次三 B3：失败给具体原因（原仅红闪，玩家不知道差多少）
-		_show_buy_error("声望不足：%s 需要声望 %d（当前 %d）" % [_get_company_name(_current_company_id), rep_cost, current_rep])
+		_show_buy_error("功勋不足：需要 %d（当前 %d）——战斗胜利与任务可获得功勋" % [rep_cost, merit_now])
 		return
-	# v6.2 修复 M14：先发放符文并校验返回值，成功才扣声望（原顺序是先扣再发，
-	# 若 add_owned_rune 因重复持有返回 false，声望会被误扣不退还）
+	# v6.2 修复 M14：先发放符文并校验返回值，成功才扣款（原顺序是先扣再发，
+	# 若 add_owned_rune 因重复持有返回 false，货币会被误扣不退还）
 	var pim: Node = get_node_or_null("/root/PhaseInstrumentManager")
 	var acquired: bool = false
 	if pim and pim.has_method("add_owned_rune"):
@@ -653,10 +663,10 @@ func _on_buy_rune(rune_id: String, rep_cost: int, row_node: Control) -> void:
 		# 批次三 B3：add_owned_rune 仅在重复持有时返回 false（已核实）
 		_show_buy_warning("已拥有该符文，无需重复购买")
 		return
-	# 扣除声望（仅在符文发放成功后）
-	if fsm.has_method("add_faction_reputation"):
-		fsm.add_faction_reputation(_current_company_id, -rep_cost)
-	# 刷新（add_faction_reputation 不触发 resources_changed，无需 suppress 守卫）
+	# 扣除功勋（仅在符文发放成功后）
+	if fsm.has_method("spend_merit"):
+		fsm.spend_merit(rep_cost)
+	# 刷新（功勋变化不触发 resources_changed，无需 suppress 守卫）
 	_flash_row(row_node, Color(DT.COLOR_GREEN_BRIGHT.r, DT.COLOR_GREEN_BRIGHT.g, DT.COLOR_GREEN_BRIGHT.b, 0.3))
 	_refresh_items()
 
@@ -787,6 +797,17 @@ func _build_store_item_row(
 	# 样式
 	row_panel.add_theme_stylebox_override("panel", _row_style_locked if locked else _row_style_normal)
 
+	# v28 T4: 商品行卡面缩略图（卖坦克见坦克；声望锁行也显示——锁交易不锁认知）
+	var icon_rect: TextureRect = row_panel.get_node_or_null("RowMargin/RowHBox/IconRect") as TextureRect
+	if icon_rect != null:
+		var icon_tex: Texture2D = null
+		if card != null:
+			var icon_path: String = UiAssetLoader.card_icon_path_for_list(card)
+			if icon_path != "":
+				icon_tex = UiAssetLoader.load_tex(icon_path)
+		icon_rect.texture = icon_tex
+		icon_rect.visible = icon_tex != null
+
 	# 名称
 	var name_label: Label = row_panel.get_node("RowMargin/RowHBox/InfoVBox/NameLabel")
 	name_label.text = "%s  × %d 卡牌" % [card_name, frag_amount]
@@ -896,7 +917,8 @@ func _build_store_item_row(
 
 	# 购买按钮
 	var buy_btn: Button = row_panel.get_node("RowMargin/RowHBox/BuyBtn")
-	var buy_styles := PanelStyles.make_button_styles(DT.COLOR_GOLD)
+	# v28 T2: 渐变面材版购买按钮（ghost 金——整列购买键不抢行内信息）
+	var buy_styles := PanelStyles.make_button_styles_graded(DT.COLOR_GOLD)
 	buy_btn.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
 	buy_btn.add_theme_stylebox_override("normal", buy_styles["normal"])
 	buy_btn.add_theme_stylebox_override("hover", buy_styles["hover"])

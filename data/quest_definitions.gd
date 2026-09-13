@@ -67,7 +67,7 @@ const LEGACY_QUESTS: Array[Dictionary] = [
 		"target": 3,
 		"company_id": "iron_wall_corp",
 		"rewards": {
-			"nano_materials": 10,
+			"nano_materials": 30,
 			"company_rep": {"iron_wall_corp": 10},
 		},
 	},
@@ -79,7 +79,7 @@ const LEGACY_QUESTS: Array[Dictionary] = [
 		"target": 10,
 		"company_id": "iron_wall_corp",
 		"rewards": {
-			"nano_materials": 25,
+			"nano_materials": 75,
 			"company_rep": {"iron_wall_corp": 20},
 		},
 	},
@@ -91,7 +91,7 @@ const LEGACY_QUESTS: Array[Dictionary] = [
 		"target": 20,
 		"company_id": "nova_arms",
 		"rewards": {
-			"nano_materials": 15,
+			"nano_materials": 45,
 			"company_rep": {"nova_arms": 12},
 		},
 	},
@@ -103,7 +103,7 @@ const LEGACY_QUESTS: Array[Dictionary] = [
 		"target": 50,
 		"company_id": "nova_arms",
 		"rewards": {
-			"nano_materials": 40,
+			"nano_materials": 120,
 			"company_rep": {"nova_arms": 20},
 		},
 	},
@@ -115,7 +115,7 @@ const LEGACY_QUESTS: Array[Dictionary] = [
 		"target": 3,
 		"company_id": "void_research",
 		"rewards": {
-			"nano_materials": 20,
+			"nano_materials": 60,
 			"company_rep": {"void_research": 15},
 		},
 	},
@@ -127,7 +127,7 @@ const LEGACY_QUESTS: Array[Dictionary] = [
 		"target": 5,
 		"company_id": "frontier_union",
 		"rewards": {
-			"nano_materials": 15,
+			"nano_materials": 45,
 			"company_rep": {"frontier_union": 12},
 		},
 	},
@@ -139,7 +139,7 @@ const LEGACY_QUESTS: Array[Dictionary] = [
 		"target": 10,
 		"company_id": "frontier_union",
 		"rewards": {
-			"nano_materials": 30,
+			"nano_materials": 90,
 			"company_rep": {"frontier_union": 20},
 		},
 	},
@@ -151,7 +151,7 @@ const LEGACY_QUESTS: Array[Dictionary] = [
 		"target": 5,
 		"company_id": "quantum_logistics",
 		"rewards": {
-			"nano_materials": 12,
+			"nano_materials": 36,
 			"company_rep": {"quantum_logistics": 10},
 		},
 	},
@@ -163,7 +163,7 @@ const LEGACY_QUESTS: Array[Dictionary] = [
 		"target": 20,
 		"company_id": "iron_wall_corp",
 		"rewards": {
-			"nano_materials": 50,
+			"nano_materials": 150,
 			"company_rep": {"iron_wall_corp": 35},
 		},
 	},
@@ -175,7 +175,7 @@ const LEGACY_QUESTS: Array[Dictionary] = [
 		"target": 100,
 		"company_id": "nova_arms",
 		"rewards": {
-			"nano_materials": 60,
+			"nano_materials": 180,
 			"company_rep": {"nova_arms": 40},
 		},
 	},
@@ -187,7 +187,7 @@ const LEGACY_QUESTS: Array[Dictionary] = [
 		"target": 20,
 		"company_id": "frontier_union",
 		"rewards": {
-			"nano_materials": 45,
+			"nano_materials": 135,
 			"company_rep": {"frontier_union": 30},
 		},
 	},
@@ -202,7 +202,7 @@ const LEGACY_QUESTS: Array[Dictionary] = [
 		"target": {"target_faction": "void_research", "target_master": "终焉之镰"},
 		"company_id": "nova_arms",
 		"rewards": {
-			"nano_materials": 80,
+			"nano_materials": 240,
 			"faction_rep": {"nova_arms": 25, "void_research": -20},
 		},
 	},
@@ -214,7 +214,7 @@ const LEGACY_QUESTS: Array[Dictionary] = [
 		"target": {"target_faction": "nova_arms", "target_master": "炽焰星痕"},
 		"company_id": "iron_wall_corp",
 		"rewards": {
-			"nano_materials": 80,
+			"nano_materials": 240,
 			"faction_rep": {"iron_wall_corp": 25, "nova_arms": -20},
 		},
 	},
@@ -226,7 +226,7 @@ const LEGACY_QUESTS: Array[Dictionary] = [
 		"target": {"target_faction": "aether_dynamics", "target_master": "雷霆判官"},
 		"company_id": "quantum_logistics",
 		"rewards": {
-			"nano_materials": 80,
+			"nano_materials": 240,
 			"faction_rep": {"quantum_logistics": 25, "aether_dynamics": -20},
 		},
 	},
@@ -238,7 +238,7 @@ const LEGACY_QUESTS: Array[Dictionary] = [
 		"target": {"defend_faction": "iron_wall_corp"},
 		"company_id": "iron_wall_corp",
 		"rewards": {
-			"nano_materials": 60,
+			"nano_materials": 180,
 			"faction_rep": {"iron_wall_corp": 30},
 		},
 	},
@@ -250,7 +250,7 @@ const LEGACY_QUESTS: Array[Dictionary] = [
 		"target": {"defend_faction": "frontier_union"},
 		"company_id": "frontier_union",
 		"rewards": {
-			"nano_materials": 60,
+			"nano_materials": 180,
 			"faction_rep": {"frontier_union": 30},
 		},
 	},
@@ -262,7 +262,7 @@ const LEGACY_QUESTS: Array[Dictionary] = [
 		"target": {"defend_faction": "helix_recon"},
 		"company_id": "helix_recon",
 		"rewards": {
-			"nano_materials": 60,
+			"nano_materials": 180,
 			"faction_rep": {"helix_recon": 30},
 		},
 	},
@@ -277,7 +277,7 @@ const LEGACY_QUESTS: Array[Dictionary] = [
 		"target": 1,
 		"company_id": "iron_wall_corp",
 		"rewards": {
-			"nano_materials": 5,
+			"nano_materials": 15,
 			"company_rep": {"iron_wall_corp": 5},
 		},
 	},
@@ -289,7 +289,7 @@ const LEGACY_QUESTS: Array[Dictionary] = [
 		"target": 3,
 		"company_id": "void_research",
 		"rewards": {
-			"nano_materials": 15,
+			"nano_materials": 45,
 			"company_rep": {"void_research": 10},
 		},
 	},
@@ -301,7 +301,7 @@ const LEGACY_QUESTS: Array[Dictionary] = [
 		"target": 3,
 		"company_id": "frontier_union",
 		"rewards": {
-			"nano_materials": 8,
+			"nano_materials": 24,
 			"company_rep": {"frontier_union": 8},
 		},
 	},
@@ -313,7 +313,7 @@ const LEGACY_QUESTS: Array[Dictionary] = [
 		"target": 5,
 		"company_id": "quantum_logistics",
 		"rewards": {
-			"nano_materials": 10,
+			"nano_materials": 30,
 			"company_rep": {"quantum_logistics": 8},
 		},
 	},
@@ -328,7 +328,7 @@ const LEGACY_QUESTS: Array[Dictionary] = [
 		"target": 10,
 		"company_id": "helix_recon",
 		"rewards": {
-			"nano_materials": 10,
+			"nano_materials": 30,
 			"company_rep": {"helix_recon": 10},
 		},
 	},
@@ -343,7 +343,7 @@ const LEGACY_QUESTS: Array[Dictionary] = [
 		"target": 30,
 		"company_id": "iron_wall_corp",
 		"rewards": {
-			"nano_materials": 70,
+			"nano_materials": 210,
 			"company_rep": {"iron_wall_corp": 40},
 		},
 	},
@@ -355,7 +355,7 @@ const LEGACY_QUESTS: Array[Dictionary] = [
 		"target": 50,
 		"company_id": "iron_wall_corp",
 		"rewards": {
-			"nano_materials": 100,
+			"nano_materials": 300,
 			"company_rep": {"iron_wall_corp": 60},
 		},
 	},
@@ -367,7 +367,7 @@ const LEGACY_QUESTS: Array[Dictionary] = [
 		"target": 150,
 		"company_id": "nova_arms",
 		"rewards": {
-			"nano_materials": 80,
+			"nano_materials": 240,
 			"company_rep": {"nova_arms": 50},
 		},
 	},
@@ -379,7 +379,7 @@ const LEGACY_QUESTS: Array[Dictionary] = [
 		"target": 200,
 		"company_id": "nova_arms",
 		"rewards": {
-			"nano_materials": 120,
+			"nano_materials": 360,
 			"company_rep": {"nova_arms": 70},
 		},
 	},
@@ -391,7 +391,7 @@ const LEGACY_QUESTS: Array[Dictionary] = [
 		"target": 40,
 		"company_id": "frontier_union",
 		"rewards": {
-			"nano_materials": 55,
+			"nano_materials": 165,
 			"company_rep": {"frontier_union": 35},
 		},
 	},
@@ -403,7 +403,7 @@ const LEGACY_QUESTS: Array[Dictionary] = [
 		"target": 60,
 		"company_id": "frontier_union",
 		"rewards": {
-			"nano_materials": 65,
+			"nano_materials": 195,
 			"company_rep": {"frontier_union": 40},
 		},
 	},
@@ -415,7 +415,7 @@ const LEGACY_QUESTS: Array[Dictionary] = [
 		"target": 80,
 		"company_id": "frontier_union",
 		"rewards": {
-			"nano_materials": 75,
+			"nano_materials": 225,
 			"company_rep": {"frontier_union": 45},
 		},
 	},
@@ -427,7 +427,7 @@ const LEGACY_QUESTS: Array[Dictionary] = [
 		"target": 100,
 		"company_id": "frontier_union",
 		"rewards": {
-			"nano_materials": 200,
+			"nano_materials": 600,
 			"company_rep": {"frontier_union": 100},
 		},
 	},
@@ -439,7 +439,7 @@ const LEGACY_QUESTS: Array[Dictionary] = [
 		"target": 3,
 		"company_id": "frontier_union",
 		"rewards": {
-			"nano_materials": 75,
+			"nano_materials": 225,
 			"company_rep": {"frontier_union": 45},
 		},
 	},
@@ -451,7 +451,7 @@ const LEGACY_QUESTS: Array[Dictionary] = [
 		"target": 5,
 		"company_id": "void_research",
 		"rewards": {
-			"nano_materials": 90,
+			"nano_materials": 270,
 			"company_rep": {"void_research": 50},
 		},
 	},
@@ -463,7 +463,7 @@ const LEGACY_QUESTS: Array[Dictionary] = [
 		"target": 60,
 		"company_id": "nova_arms",
 		"rewards": {
-			"nano_materials": 40,
+			"nano_materials": 120,
 			"company_rep": {"nova_arms": 25},
 		},
 	},
@@ -478,7 +478,7 @@ const LEGACY_QUESTS: Array[Dictionary] = [
 		"target": 10,
 		"company_id": "quantum_logistics",
 		"rewards": {
-			"nano_materials": 20,
+			"nano_materials": 60,
 			"company_rep": {"quantum_logistics": 15},
 		},
 	},
@@ -491,7 +491,7 @@ const LEGACY_QUESTS: Array[Dictionary] = [
 		"card_min_rarity": "rare",
 		"company_id": "void_research",
 		"rewards": {
-			"nano_materials": 30,
+			"nano_materials": 90,
 			"company_rep": {"void_research": 20},
 		},
 	},
@@ -503,7 +503,7 @@ const LEGACY_QUESTS: Array[Dictionary] = [
 		"target": 1,
 		"company_id": "void_research",
 		"rewards": {
-			"nano_materials": 50,
+			"nano_materials": 150,
 			"company_rep": {"void_research": 35},
 		},
 	},
@@ -515,7 +515,7 @@ const LEGACY_QUESTS: Array[Dictionary] = [
 		"target": {"total": 50},
 		"company_id": "void_research",
 		"rewards": {
-			"nano_materials": 35,
+			"nano_materials": 105,
 			"company_rep": {"void_research": 25},
 		},
 	},
@@ -527,7 +527,7 @@ const LEGACY_QUESTS: Array[Dictionary] = [
 		"target": 5,
 		"company_id": "iron_wall_corp",
 		"rewards": {
-			"nano_materials": 22,
+			"nano_materials": 66,
 			"company_rep": {"iron_wall_corp": 16},
 		},
 	},
@@ -540,7 +540,7 @@ const LEGACY_QUESTS: Array[Dictionary] = [
 		"card_era": 3,
 		"company_id": "aether_dynamics",
 		"rewards": {
-			"nano_materials": 28,
+			"nano_materials": 84,
 			"company_rep": {"aether_dynamics": 20},
 		},
 	},
@@ -552,7 +552,7 @@ const LEGACY_QUESTS: Array[Dictionary] = [
 		"target": 5,
 		"company_id": "void_research",
 		"rewards": {
-			"nano_materials": 32,
+			"nano_materials": 96,
 			"company_rep": {"void_research": 22},
 		},
 	},
@@ -567,7 +567,7 @@ const LEGACY_QUESTS: Array[Dictionary] = [
 		"target": 30,
 		"company_id": "iron_wall_corp",
 		"rewards": {
-			"nano_materials": 35,
+			"nano_materials": 105,
 			"company_rep": {"iron_wall_corp": 20},
 		},
 	},
@@ -579,7 +579,7 @@ const LEGACY_QUESTS: Array[Dictionary] = [
 		"target": 30,
 		"company_id": "nova_arms",
 		"rewards": {
-			"nano_materials": 35,
+			"nano_materials": 105,
 			"company_rep": {"nova_arms": 20},
 		},
 	},
@@ -591,7 +591,7 @@ const LEGACY_QUESTS: Array[Dictionary] = [
 		"target": 30,
 		"company_id": "aether_dynamics",
 		"rewards": {
-			"nano_materials": 35,
+			"nano_materials": 105,
 			"company_rep": {"aether_dynamics": 20},
 		},
 	},
@@ -603,7 +603,7 @@ const LEGACY_QUESTS: Array[Dictionary] = [
 		"target": 30,
 		"company_id": "void_research",
 		"rewards": {
-			"nano_materials": 35,
+			"nano_materials": 105,
 			"company_rep": {"void_research": 20},
 		},
 	},
@@ -615,7 +615,7 @@ const LEGACY_QUESTS: Array[Dictionary] = [
 		"target": 20,
 		"company_id": "frontier_union",
 		"rewards": {
-			"nano_materials": 80,
+			"nano_materials": 240,
 			"company_rep": {"frontier_union": 50, "iron_wall_corp": 15, "nova_arms": 15, "aether_dynamics": 15, "void_research": 15, "quantum_logistics": 15, "helix_recon": 15},
 		},
 	},
@@ -627,7 +627,7 @@ const LEGACY_QUESTS: Array[Dictionary] = [
 		"target": 50,
 		"company_id": "quantum_logistics",
 		"rewards": {
-			"nano_materials": 60,
+			"nano_materials": 180,
 			"company_rep": {"quantum_logistics": 35},
 		},
 	},
@@ -639,7 +639,7 @@ const LEGACY_QUESTS: Array[Dictionary] = [
 		"target": 10,
 		"company_id": "quantum_logistics",
 		"rewards": {
-			"nano_materials": 25,
+			"nano_materials": 75,
 			"company_rep": {"quantum_logistics": 18},
 		},
 	},
@@ -654,7 +654,7 @@ const LEGACY_QUESTS: Array[Dictionary] = [
 		"target": 5,
 		"company_id": "frontier_union",
 		"rewards": {
-			"nano_materials": 150,
+			"nano_materials": 450,
 			"company_rep": {"frontier_union": 80},
 		},
 	},
@@ -666,7 +666,7 @@ const LEGACY_QUESTS: Array[Dictionary] = [
 		"target": 1,
 		"company_id": "iron_wall_corp",
 		"rewards": {
-			"nano_materials": 60,
+			"nano_materials": 180,
 			"company_rep": {"iron_wall_corp": 40},
 		},
 	},
@@ -678,7 +678,7 @@ const LEGACY_QUESTS: Array[Dictionary] = [
 		"target": 30,
 		"company_id": "aether_dynamics",
 		"rewards": {
-			"nano_materials": 65,
+			"nano_materials": 195,
 			"company_rep": {"aether_dynamics": 42},
 		},
 	},
@@ -690,7 +690,7 @@ const LEGACY_QUESTS: Array[Dictionary] = [
 		"target": 15,
 		"company_id": "iron_wall_corp",
 		"rewards": {
-			"nano_materials": 70,
+			"nano_materials": 210,
 			"company_rep": {"iron_wall_corp": 45},
 		},
 	},
@@ -705,7 +705,7 @@ const LEGACY_QUESTS: Array[Dictionary] = [
 		"target": 30,
 		"company_id": "helix_recon",
 		"rewards": {
-			"nano_materials": 25,
+			"nano_materials": 75,
 			"company_rep": {"helix_recon": 30},
 		},
 	},
@@ -717,7 +717,7 @@ const LEGACY_QUESTS: Array[Dictionary] = [
 		"target": 50,
 		"company_id": "helix_recon",
 		"rewards": {
-			"nano_materials": 40,
+			"nano_materials": 120,
 			"company_rep": {"helix_recon": 25},
 		},
 	},
@@ -729,7 +729,7 @@ const LEGACY_QUESTS: Array[Dictionary] = [
 		"target": 5,
 		"company_id": "helix_recon",
 		"rewards": {
-			"nano_materials": 35,
+			"nano_materials": 105,
 			"company_rep": {"helix_recon": 20},
 		},
 	},
@@ -741,7 +741,7 @@ const LEGACY_QUESTS: Array[Dictionary] = [
 		"target": 100,
 		"company_id": "helix_recon",
 		"rewards": {
-			"nano_materials": 60,
+			"nano_materials": 180,
 			"company_rep": {"helix_recon": 40},
 		},
 	},
@@ -754,7 +754,7 @@ const LEGACY_QUESTS: Array[Dictionary] = [
 		"time_limit_sec": 90,
 		"company_id": "helix_recon",
 		"rewards": {
-			"nano_materials": 50,
+			"nano_materials": 150,
 			"company_rep": {"helix_recon": 35},
 		},
 	},
@@ -767,7 +767,7 @@ const LEGACY_QUESTS: Array[Dictionary] = [
 		"card_era": 3,
 		"company_id": "helix_recon",
 		"rewards": {
-			"nano_materials": 45,
+			"nano_materials": 135,
 			"company_rep": {"helix_recon": 30},
 		},
 	},
