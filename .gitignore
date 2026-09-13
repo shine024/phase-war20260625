@@ -90,6 +90,8 @@ gen_*.py
 !tools/gen_term_mapping_draft.py
 update_unit_manifest.py
 *_backup*
+# 白名单：美术备份打包铁律脚本（v30.6）是常驻工具非备份产物，勿被上一行误伤
+!tools/pack_art_backup.py
 *_v3_fixed*
 data/test_half1*
 
