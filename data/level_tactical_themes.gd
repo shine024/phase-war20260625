@@ -141,10 +141,14 @@ const THEMES: Dictionary = {
 	},
 }
 
-## 时代可用主题约束（v23.2 修正）：
-## - 一战/二战/冷战：池内无基础档飞行单位（一战二战 0 个 aircraft tag；冷战唯一飞行单位
-##   cold_boss_mig 在 boss 池，普通波抽不到）→ AIR_SUPREMACY 不参与分配，否则题面失实
-##   （如旧 Lv39 空中压制关全波随机）。
+## 时代可用主题约束（v23.2 修正；v30.5 R5 增补）：
+## - 一战：池内无飞行单位（0 个 aircraft tag）→ AIR_SUPREMACY 不参与分配，
+##   否则题面失实（如旧 Lv39 空中压制关全波随机）。
+## - 二战：常规关同上；v30.5 尾部试点例外——L36-40 池有 min_level 门的实验性
+##   飞行单位（ww2_air_me262/ww2_air_meteor_e，1944 末日科技原型机），其中 L39 经
+##   MANUAL_OVERRIDES 手工指定 AIR_SUPREMACY（覆盖不受本表约束）；era1 候选表
+##   维持无 AIR_SUPREMACY（其余二战关不会被抽到无解的空中题面）。
+## - 冷战：池内无基础档飞行单位（唯一飞行单位 cold_boss_mig 在 boss 池，普通波抽不到）。
 ## - 现代：保留（mod_air_apache_e 精英池，精英波真题面）；近未来：保留（fut_air_drone 基础池）。
 ## 教学关固定 SWARM_RUSH 不在约束表内单独处理。
 const ERA_AVAILABLE_THEMES: Dictionary = {
@@ -159,7 +163,14 @@ const ERA_AVAILABLE_THEMES: Dictionary = {
 ## 关卡题面 = 关卡级"战斗配制"（确定的构成倾向，不是随机的）。
 ## 程序分配（种子哈希）保证未手工配置的关卡也有确定题面；此表为设计精调入口。
 ## 示例：{10: ARTILLERY_POSITION, 25: AIR_SUPREMACY}
-const MANUAL_OVERRIDES: Dictionary = {}
+## v30.5 R5：L39 = 空中压制（二战尾部飞行试点的真题面关——v23.2 曾因 era1 池
+## 零飞行单位把空中压制从时代候选剔除，旧 L39 空中压制关全波随机；今 L36-40 池
+## 有实验性飞行单位（min_level 门，Me-262/流星），本关题面复活且这次诚实）。覆盖在
+## _assign_theme 顶部短路，不受 ERA_AVAILABLE_THEMES 约束（era1 候选表维持无
+## AIR_SUPREMACY，其余二战关不会被抽到无解的空中题面）。
+const MANUAL_OVERRIDES: Dictionary = {
+	39: AIR_SUPREMACY,
+}
 
 ## 主题分配缓存：level → theme_id
 static var _assignment_cache: Dictionary = {}
@@ -203,8 +214,10 @@ static func get_theme_display(level: int) -> Dictionary:
 ## v23.4 时代感知过滤：era >= 0 时，tag 在该时代敌池零匹配的波型槽直接剔除
 ## （权重重分配到活槽）——消灭"预告了但实战不会发生"的死槽（如 era0/1 混合绞杀的
 ## aircraft 槽、era0/2 渗透的 stealth 槽，此前占波次 20-25% 且预警失实）。
+## v30.5 R5：level >= 0 时过滤用关卡域池（min_level 门）——二战尾部（L36-40）
+## 飞行试点关的 aircraft 槽是活的，era1 其余关仍剔除（题面诚实口径不变）。
 ## 全部非空槽都死时返回 []（本波不限，即"混合"）。
-static func roll_wave_bias(theme_id: String, rng: RandomNumberGenerator, era: int = -1) -> Array:
+static func roll_wave_bias(theme_id: String, rng: RandomNumberGenerator, era: int = -1, level: int = -1) -> Array:
 	var t: Dictionary = get_theme(theme_id)
 	var patterns: Array = t.get("wave_patterns", [])
 	if patterns.is_empty():
@@ -213,7 +226,7 @@ static func roll_wave_bias(theme_id: String, rng: RandomNumberGenerator, era: in
 		var live: Array = []
 		for p in patterns:
 			var ptags: Array = p.get("tags", [])
-			if ptags.is_empty() or _tags_match_era_pool(ptags, era):
+			if ptags.is_empty() or _tags_match_era_pool(ptags, era, level):
 				live.append(p)
 		if not live.is_empty():
 			patterns = live
@@ -239,15 +252,18 @@ static func roll_wave_bias(theme_id: String, rng: RandomNumberGenerator, era: in
 
 ## v23.4: 检查 tags 是否在该时代敌池中有任一 archetype 匹配（任一 tag 命中即真）。
 ## 与 battle_spawn_system._pick_archetype_with_bias 的匹配语义一致。
+## v30.5 R5：level >= 0 时用关卡域池（min_level 等级门），与出怪侧同口径。
 ## 延迟 preload（避免数据模块顶层互相 preload 的加载时序问题）。
 static var _enemy_archetypes_ref: RefCounted = null
 
-static func _tags_match_era_pool(tags: Array, era: int) -> bool:
+static func _tags_match_era_pool(tags: Array, era: int, level: int = -1) -> bool:
 	if _enemy_archetypes_ref == null:
 		_enemy_archetypes_ref = load("res://data/enemy_archetypes.gd")
 	if _enemy_archetypes_ref == null:
 		return true  # 数据模块加载失败时不过滤（保守：保持旧行为）
-	for aid in _enemy_archetypes_ref.get_ids_for_era(era):
+	var pool: Array = _enemy_archetypes_ref.get_ids_for_era_at_level(era, level) \
+			if level >= 0 else _enemy_archetypes_ref.get_ids_for_era(era)
+	for aid in pool:
 		var cfg: Dictionary = _enemy_archetypes_ref.get_config(String(aid))
 		var atags: Array = cfg.get("tags", [])
 		for bt in tags:

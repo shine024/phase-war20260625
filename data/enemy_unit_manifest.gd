@@ -86,6 +86,8 @@ const POOL_ENEMY_IDS: Array[String] = [
 	# v26 新飞机（轰炸机/多用途，era1-4 各一组）
 	"ww2_air_bomber", "ww2_air_dive_bomber", "cold_air_strike_fighter", "cold_air_bomber",
 	"mod_air_multirole", "mod_air_bomber", "fut_air_stealth_multirole", "fut_air_stealth_bomber",
+	# v30.5 R5：二战尾部实验性喷气机（L36-40 试点，等级门见 _POOL_MIN_LEVEL）
+	"ww2_air_me262", "ww2_air_meteor_e",
 ]
 
 ## D段显示名
@@ -98,7 +100,16 @@ const POOL_DISPLAY_NAMES: Array[String] = [
 	"毛瑟 C96 征召兵排", "Sd.Kfz.251/1 半履带车", "SS-C-1 岸防导弹组", "PS-9 相位中继站",
 	"B-17 空中堡垒", "Ju 87 斯图卡", "F-111 土豚", "图-95 熊式",
 	"F-15E 攻击鹰", "B-52 同温层堡垒", "六代机制空型", "B-21 突袭者",
+	"Me-262 燕子", "流星 F.3 特遣机",
 ]
+
+## v30.5 R5（设计审查 F-11）：D 段等级门——带 min_level 的原型只在 level >= min_level
+## 的关卡出场（二战尾部飞行试点限定 L36-40；缺省 0 = 全程可出）。
+## 出怪/波次槽过滤/关卡情报三处消费点统一走 EnemyArchetypes.get_ids_for_era_at_level。
+const POOL_MIN_LEVEL: Dictionary = {
+	"ww2_air_me262": 36,
+	"ww2_air_meteor_e": 36,
+}
 
 static var _entries_cache: Array = []
 static var _unit_icon_by_archetype: Dictionary = {}
@@ -470,6 +481,8 @@ static func _make_pool_row(index: int) -> Dictionary:
 			"defense_air": s.defense_air,
 			"tags": _tags_for_kind(kind),
 			"swarm_unit": (kind == 0),
+			# v30.5 R5：D 段等级门（实验性单位限定时代尾部关卡）
+			"min_level": int(POOL_MIN_LEVEL.get(aid, 0)),
 			"drops": [{"card_id": captured_card_id_for(aid), "chance": 0.08}],
 		},
 	}

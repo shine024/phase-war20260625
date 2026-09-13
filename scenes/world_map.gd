@@ -71,6 +71,7 @@ func _safe_set_input_handled() -> void:
 const LevelEras = preload("res://data/level_eras.gd")
 const LevelInformation = preload("res://data/level_information.gd")
 const BasicResourcesData = preload("res://data/basic_resources.gd")
+const _GameConfigRef = preload("res://resources/game_config.gd")  # v30 R2b: 黑门能量门票开关
 const EnemyArchetypesData = preload("res://data/enemy_archetypes.gd")
 const DefaultCardsData = preload("res://data/default_cards.gd")
 const PhaseLawsData = preload("res://data/phase_laws.gd")
@@ -82,6 +83,8 @@ const TacticalThemes = preload("res://data/level_tactical_themes.gd")  # v10: �
 const BattleEnvEffectsRef = preload("res://data/battle_env_effects.gd")  # v26.2: 环境效果摘要（战前）
 const LevelBattleLayoutsRef = preload("res://data/level_battle_layouts.gd")  # v26.2: 本场布阵题面
 const EnemyPhaseMasters = preload("res://data/enemy_phase_masters.gd")  # v7.x: 相位师详情查询
+# R3-lite（设计审查 F-07，2026-09-13）：相位师套路查询——战前简报展示补兵套路题面
+const EnemyPhaseMasterPatterns = preload("res://data/enemy_phase_master_patterns.gd")
 const BattleEnvironments = preload("res://data/battle_environments.gd")  # 2026-08-16: 环境单一真源（与 phase_law_manager/battle_damage_system 同源）
 const EnemyLoadoutTiers = preload("res://data/enemy_loadout_tiers.gd")  # 2026-08-16: 难度显示单一真源（战斗链真实档位乘区）
 const LayoutS11 := preload("res://data/world_map_layout_s11.gd")  # v23: 方案11 内容锚定布点（原型管线导出，勿手改）
@@ -235,6 +238,10 @@ func _ready() -> void:
 	var _tpm := get_node_or_null("/root/TutorialProgressionManager")
 	if _tpm != null and _tpm.has_method("notify_surface_opened"):
 		_tpm.notify_surface_opened("world_map")
+	# R1-7（设计审查 F-17，2026-09-13）：地图 BGM——不显式切歌会沿用上一场景曲目
+	# （战后经基地进图仍是基地曲，从标题直进则是标题曲）；与 v22.4 基地同款处理。
+	if AudioManager != null and AudioManager.has_method("play_music"):
+		AudioManager.play_music("hub")
 	# v22 百灯群岛：旧网格地图的星空/扫描线绘制退役，由 map_void_base 底图承担
 	var scroll_ready := get_node_or_null("Margin/VBox/ScrollContainer") as ScrollContainer
 	if scroll_ready != null and not scroll_ready.gui_input.is_connected(_on_map_gui_input):
@@ -987,6 +994,10 @@ func _make_level_node(level_index: int, era_idx: int, point: Vector2, _current_l
 	if cleared or is_cur:
 		ring_col = era_col
 		num_col = Color(0.10, 0.11, 0.13)
+	# v28b：时代身份——盘面淡染时代色（100 个同款白盘的"数据表"感主因；
+	# 6-10% 掺量不动数字对比度），徽记在盘角（见下方 draw 绑定）
+	disc = disc.lerp(Color(era_col.r, era_col.g, era_col.b),
+		0.10 if (cleared or is_cur) else 0.055)
 	if is_boss:
 		ring_col = BOSS_RING_COLOR
 		bw = 4
@@ -1008,7 +1019,9 @@ func _make_level_node(level_index: int, era_idx: int, point: Vector2, _current_l
 	btn.size = Vector2(size_px, size_px)
 	btn.position = point - Vector2(size_px, size_px) * 0.5
 	btn.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-	btn.tooltip_text = "第 %d 关" % level_index
+	btn.tooltip_text = "第 %d 关 · %s" % [level_index, ERA_COLORS[era_idx]["name"]]
+	# v28b：盘角时代徽记——挂在 Button 自身 draw 上（画在白盘之上、数字 Label 之下）
+	btn.draw.connect(_draw_era_sigil.bind(btn, era_idx, size_px, cleared or is_cur))
 
 	var num := Label.new()
 	num.name = "LevelNum"
@@ -1075,6 +1088,58 @@ func _make_level_node(level_index: int, era_idx: int, point: Vector2, _current_l
 	return btn
 
 ## v6.10: 安全查询关卡占领势力（FSM 优先动态，未加载/无方法时回退静态 level_information）
+## v28b：节点盘右下角时代徽记（程序化线稿，免 emoji 字体依赖/染色不可控）。
+## 五时代语汇：一战=交叉刺刀 / 二战=双翼机 / 冷战=辐射三叶 / 现代=火箭 / 近未来=闪电。
+## 画在 Button 自身 draw 里 → 层序天然为 白盘 < 徽记 < 数字 Label。
+func _draw_era_sigil(btn: Control, era_idx: int, size_px: float, strong: bool) -> void:
+	var c: Color = ERA_COLORS[era_idx]["title"]
+	# v28c：实拍校准——0.55 在实机 40px 盘上偏隐，提到 0.68（通关/当前关 0.85 保持强调）
+	c.a = 0.85 if strong else 0.68
+	var s := size_px * 0.29
+	var ctr := Vector2(size_px * 0.70, size_px * 0.72)
+	match era_idx:
+		0:  # 一战：交叉刺刀（X 双线 + 下端短护手）
+			for d: Vector2 in [Vector2(1, 1), Vector2(1, -1)]:
+				var u := d.normalized()
+				btn.draw_line(ctr - u * s, ctr + u * s, c, maxf(1.5, s * 0.16))
+				btn.draw_line(ctr + u * s * 0.42 - u.orthogonal() * s * 0.30,
+					ctr + u * s * 0.42 + u.orthogonal() * s * 0.30, c, maxf(1.5, s * 0.16))
+		1:  # 二战：双翼机剪影（三角翼 + 机身）
+			var pts := PackedVector2Array([
+				ctr + Vector2(-1.0, -0.15) * s, ctr + Vector2(0.1, -0.42) * s,
+				ctr + Vector2(1.0, -0.05) * s, ctr + Vector2(0.28, 0.05) * s,
+				ctr + Vector2(0.55, 0.55) * s, ctr + Vector2(0.12, 0.16) * s,
+				ctr + Vector2(-0.55, 0.42) * s, ctr + Vector2(0.05, 0.02) * s,
+			])
+			btn.draw_colored_polygon(pts, c)
+		2:  # 冷战：辐射三叶（三枚扇叶 + 中心点）
+			for i in 3:
+				var a0: float = -PI / 2.0 + i * TAU / 3.0 - 0.42
+				var a1: float = a0 + 0.84
+				var wedge := PackedVector2Array([ctr])
+				var steps := 6
+				for k in steps + 1:
+					wedge.append(ctr + Vector2(cos(a0 + (a1 - a0) * k / steps), sin(a0 + (a1 - a0) * k / steps)) * s)
+				btn.draw_colored_polygon(wedge, c)
+			btn.draw_circle(ctr, s * 0.22, c)
+		3:  # 现代：火箭（竖置，鼻锥+身+双侧尾翼）
+			var pts3 := PackedVector2Array([
+				ctr + Vector2(0.0, -1.05) * s, ctr + Vector2(0.34, -0.3) * s,
+				ctr + Vector2(0.34, 0.45) * s, ctr + Vector2(0.78, 0.95) * s,
+				ctr + Vector2(0.3, 0.72) * s, ctr + Vector2(-0.3, 0.72) * s,
+				ctr + Vector2(-0.78, 0.95) * s, ctr + Vector2(-0.34, 0.45) * s,
+				ctr + Vector2(-0.34, -0.3) * s,
+			])
+			btn.draw_colored_polygon(pts3, c)
+		4:  # 近未来：闪电（六点折线面）
+			var pts4 := PackedVector2Array([
+				ctr + Vector2(0.28, -1.0) * s, ctr + Vector2(-0.5, 0.1) * s,
+				ctr + Vector2(-0.02, 0.1) * s, ctr + Vector2(-0.28, 1.0) * s,
+				ctr + Vector2(0.5, -0.15) * s, ctr + Vector2(0.02, -0.15) * s,
+			])
+			btn.draw_colored_polygon(pts4, c)
+
+
 func _get_level_occupation_safe(level: int) -> String:
 	var fsm = get_node_or_null("/root/FactionSystemManager")
 	if fsm and fsm.has_method("get_level_occupation"):
@@ -1662,6 +1727,17 @@ func _enter_blackgate(popup: Window) -> void:
 		_toast_gate("黑门静止不动——需将移动基地停靠至第 100 关（当前第 %d 关）" % int(bm.get_parked_level()))
 		_close_popup_safe(popup)
 		return
+	# v30 R2b：黑门能量块门票（"锚定裂隙坐标"）——能量块确定性 sink，
+	# 关闭=GameConfig.blackgate_energy_cost 置 0
+	var _ticket: int = _GameConfigRef.get_default().blackgate_energy_cost
+	if _ticket > 0:
+		var _eb_now: int = int(BasicResourceManager.get_total(BasicResources.ID_ENERGY_BLOCK))
+		if _eb_now < _ticket:
+			_toast_gate("能量块不足——锚定裂隙坐标需要 %d（当前 %d）；可用能量块给燃料充能的同款渠道补充" % [_ticket, _eb_now])
+			return
+		BasicResourceManager.add_resource(BasicResources.ID_ENERGY_BLOCK, -_ticket)
+		if SignalBus.has_signal("show_toast"):
+			SignalBus.show_toast.emit("裂隙坐标已锚定（能量块 -%d）" % _ticket)
 	_close_popup_safe(popup)
 	if GameManager != null:
 		if GameManager.has_method("set_current_level"):
@@ -1892,6 +1968,20 @@ func _show_level_info_popup(level_index: int) -> void:
 	var garrison_master_name: String = String(info.get("garrison_master_name", ""))
 	if not garrison_master_name.is_empty():
 		body.add_child(_make_detail_row("驻守相位师", garrison_master_name, Color(1.0, 0.55, 0.3, 1.0)))
+		# R3-lite（设计审查 F-07）：相位师套路战前可见——套路数据自 v9.0 起就是敌方核心
+		# 行为（补兵策略+动态补兵延迟），但全项目零展示，玩家读不到题面。与战术主题的
+		# 威胁/建议同格式呈现，速杀压制/对空针对等构筑决策有依据。
+		var _pat_id: String = EnemyPhaseMasterPatterns.get_pattern(
+			EnemyPhaseMasters.get_master_by_id(PhaseMasterGarrison.get_garrison_master_id(level_index)))
+		if _pat_id != EnemyPhaseMasterPatterns.PATTERN_NONE:
+			var _pat: Dictionary = EnemyPhaseMasterPatterns.get_pattern_config(_pat_id)
+			if not _pat.is_empty():
+				body.add_child(_make_detail_row("相位师套路",
+					"%s %s" % [String(_pat.get("icon", "")), String(_pat.get("name", ""))],
+					Color(1.0, 0.55, 0.3, 1.0)))
+				body.add_child(_make_detail_desc(
+					"· %s（阵亡单位按套路补位；速杀可拉长补兵间隔，扩大压制窗口）" % String(_pat.get("description", "")),
+					Color(0.85, 0.7, 0.6, 0.95)))
 
 	# v10: 敌情简报——关卡战术主题（题面）。威胁=敌方在做什么，建议=可用解法提示
 	var theme_info: Dictionary = TacticalThemes.get_theme_display(level_index)
@@ -1944,6 +2034,10 @@ func _show_level_info_popup(level_index: int) -> void:
 	# ▸ 关卡描述
 	body.add_child(_make_detail_section_title("关卡描述"))
 	body.add_child(_make_detail_desc(String(info.get("description", "（无描述）"))))
+	# v30.2 R4（设计审查 F-08）：主线呼应副句（陈末视角，第二人称；未注入的关静默跳过）
+	var level_echo := CampaignNarrative.get_level_echo(level_index)
+	if not level_echo.is_empty():
+		body.add_child(_make_detail_desc(level_echo, Color(1.0, 0.72, 0.32, 0.92)))
 
 	# ── ActionRow：进入该关 + 自动部署 ──
 	var action_row := HBoxContainer.new()
@@ -2209,7 +2303,8 @@ func _collect_level_info(level_index: int) -> Dictionary:
 	var env: Dictionary = BattleEnvironments.get_for_level(level_index)
 	var drops: Dictionary = BasicResourcesData.get_drops_for_level(level_index)
 	var era: int = LevelEras.get_era(level_index)
-	var enemy_ids: Array = EnemyArchetypesData.get_ids_for_era(era)
+	# v30.5 R5：关卡域池（min_level 门）——情报弹窗"本关敌人"与实战出怪同口径
+	var enemy_ids: Array = EnemyArchetypesData.get_ids_for_era_at_level(era, level_index)
 	enemy_ids.sort()
 	var level_enemy_ids: Array = _pick_level_enemy_ids(level_index, enemy_ids)
 	var enemy_names: Array = []

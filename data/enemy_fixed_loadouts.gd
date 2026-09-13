@@ -267,6 +267,17 @@ const LOADOUTS: Dictionary = {
 		mods = ["enh_dmg_up", "enh_splash", "air_18_heavy_rack", "enh_atkspd_up", "gen_unified_splash", "gen_combustion_catalyst", "air_17_bombsight", "enh_crit_dmg", "enh_range_up"],
 		cuts = {1: 5, 2: 6, 3: 9, 4: 9},
 	},
+	# v30.5 R5：二战尾部实验性喷气机（L36-40 试点）——截击/突防两型
+	"ww2_air_me262": {
+		identity = "Me-262 燕子·喷气截击——高速突防，直插后排软肋",
+		mods = ["enh_dmg_up", "enh_atkspd_up", "enh_crit", "enh_crit_dmg", "enh_range_up", "enh_dodge", "enh_chain", "gen_combustion_catalyst", "enh_splash"],
+		cuts = {1: 5, 2: 6, 3: 8, 4: 9},
+	},
+	"ww2_air_meteor_e": {
+		identity = "流星 F.3 特遣机·喷气强袭——制空掠地，双弹幕洗场",
+		mods = ["enh_dmg_up", "enh_splash", "enh_atkspd_up", "enh_crit_dmg", "gen_unified_splash", "gen_combustion_catalyst", "enh_crit", "enh_range_up", "air_18_heavy_rack"],
+		cuts = {1: 5, 2: 6, 3: 9, 4: 9},
+	},
 	"ww2_fort_bunker": {
 		identity = "混凝土碉堡·攻城压制——反堡垒面轰炸，摧毁阵地工事",
 		mods = ["enh_dmg_up", "enh_splash", "enh_chain", "enh_crit_dmg", "gen_unified_splash", "enh_range_up", "for_05_ammo_dump", "gen_combustion_catalyst", "enh_atkspd_up"],

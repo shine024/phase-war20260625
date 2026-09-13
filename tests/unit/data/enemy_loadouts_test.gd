@@ -21,7 +21,7 @@ func test_all_enemy_ids_have_loadout() -> void:
 
 func test_loadout_table_size() -> void:
 	assert_int(Loadouts.LOADOUTS.size()).override_failure_message(
-		"配装表应 137 条（109 经典 + 8 新飞机 + 20 星冥）").is_equal(137)
+		"配装表应 139 条（109 经典 + 8 新飞机 + 2 二战尾部试验机[v30.5 R5] + 20 星冥）").is_equal(139)
 
 func _entries() -> Array:
 	return Loadouts.LOADOUTS.keys()
