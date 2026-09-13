@@ -18,6 +18,7 @@ const DefaultCards = preload("res://data/default_cards.gd")
 const ModManufacture = preload("res://data/mod_manufacture.gd")
 const BlueprintDefinitions = preload("res://data/blueprint_definitions.gd")
 const IntelManualItems = preload("res://data/intel_manual_items.gd")
+const GC = preload("res://resources/game_constants.gd")   # v30.5 R5: CardType 过滤
 
 ## 存档键（SaveManager 段 "manufacture_state"）
 const SAVE_KEY_PITY := "pity"
@@ -56,6 +57,21 @@ func _ensure_recipes() -> void:
 			_arch_index[pid] = []
 			_recipe_cache.append(pid)
 		_arch_index[pid].append(String(arch))
+	# v30.5 R5（设计审查 F-11）：era0/1 直接入池——前期（新手留存敏感期）卡池更新率
+	# 最低，放宽"须有敌形原型"口径：WW1/WW2 玩家战斗卡无原型也进配方目录。
+	# 无原型卡情报轴恒 0 → 恒 tier1 白板池（与"配方解锁=白板起步"语义一致；
+	# era2+ 维持原型口径，情报驱动解锁的中后期节奏不变）。
+	for pid_v in valid_ids:
+		var pid2 := String(pid_v)
+		if _arch_index.has(pid2) or pid2.begins_with("captured_"):
+			continue
+		var card = DefaultCards.get_card_by_id(pid2)
+		if card == null or not (card is CardResource):
+			continue
+		var cres := card as CardResource
+		if cres.era <= 1 and cres.card_type == GC.CardType.COMBAT_UNIT:
+			_arch_index[pid2] = []
+			_recipe_cache.append(pid2)
 
 func is_manufacturable(card_id: String) -> bool:
 	_ensure_recipes()
@@ -79,8 +95,17 @@ func get_intel_base(card_id: String) -> float:
 	return best
 
 ## 品质档位（0=未解锁配方 … 4=满池）
+## v30.5 R5：era0/1 直入卡无原型 → 情报恒 0，特判为白板档 1（否则恒 0=“未解锁”
+## 被配方门挡死，扩容失效）。白板档=普通 100%，与“配方解锁=白板起步”语义一致。
 func get_pool_tier(card_id: String) -> int:
-	return ManufacturePools.get_pool_tier(get_intel_base(card_id))
+	var tier := ManufacturePools.get_pool_tier(get_intel_base(card_id))
+	if tier == 0 and _arch_index.has(card_id) and (_arch_index[card_id] as Array).is_empty():
+		return 1
+	return tier
+
+## v30.5 R5：era0/1 直入卡判定（在目录且无敌形原型）
+func is_direct_pool_card(card_id: String) -> bool:
+	return _arch_index.has(card_id) and (_arch_index[card_id] as Array).is_empty()
 
 ## 档案室 Lv3 高品权重（epic+ ×1.5；BunkerManager 缺省=无加成）
 func get_pool_high_boost() -> float:
@@ -89,9 +114,17 @@ func get_pool_high_boost() -> float:
 		return float(bunker.get_pool_high_boost())
 	return 1.0
 
+## v30.5 R5：直入卡（era0/1 无原型）按白板档口径取池——intel 0 视作刚过配方门
+## （GATE_RECIPE 0.25 → tier1），否则 roll 空 pool。
+func _pool_base(card_id: String) -> float:
+	var base := get_intel_base(card_id)
+	if base < ManufacturePools.GATE_RECIPE and is_direct_pool_card(card_id):
+		return ManufacturePools.GATE_RECIPE
+	return base
+
 ## 有效概率池（含暗保底 + 档案室 Lv3 高品权重；UI 预览与 roll 同源）
 func get_effective_pool(card_id: String) -> Array:
-	return ManufacturePools.get_effective_pool(get_intel_base(card_id), get_pity(card_id), get_pool_high_boost())
+	return ManufacturePools.get_effective_pool(_pool_base(card_id), get_pity(card_id), get_pool_high_boost())
 
 ## 基础消耗（按卡时代；未乘折扣）
 func get_base_cost(card_id: String) -> Dictionary:
@@ -132,20 +165,23 @@ func can_manufacture(card_id: String) -> Dictionary:
 	var conditions: Array = []
 	if not is_manufacturable(card_id):
 		return {"ok": false,
-			"reason_zh": "该卡种无法制造（无敌形原型，仅可经掉落/势力渠道获取）",
+			"reason_zh": "该卡种无法制造（不在配方目录）",
 			"conditions": conditions}
 	var card: CardResource = DefaultCards.get_card_by_id(card_id)
 	if card == null:
 		return {"ok": false, "reason_zh": "卡牌数据缺失：%s" % card_id, "conditions": conditions}
 
-	# 1. 情报档（≥25% 解锁配方）
+	# 1. 情报档（≥25% 解锁配方；v30.5 R5：era0/1 直入卡免情报门，tier 特判白板档）
 	var base := get_intel_base(card_id)
-	var tier := ManufacturePools.get_pool_tier(base)
+	var direct := is_direct_pool_card(card_id)
+	var tier := get_pool_tier(card_id)
 	var intel_ok := tier >= 1
 	conditions.append({
 		"key": "intel", "met": intel_ok,
-		"current_text": "%d%%" % int(round(base * 100.0)), "required_text": "25%",
-		"detail": "击败该敌形、分析仪烧缴获卡、获取缴获卡都会累积情报",
+		"current_text": ("直接入目录" if direct else "%d%%" % int(round(base * 100.0))),
+		"required_text": "—" if direct else "25%",
+		"detail": "一战/二战卡种直接入目录（白板起步）" if direct
+			else "击败该敌形、分析仪烧缴获卡、获取缴获卡都会累积情报",
 	})
 
 	# 2. 时代授权（技能树指挥系节点，era0 一战豁免——开局唯一自造渠道，不得锁死）

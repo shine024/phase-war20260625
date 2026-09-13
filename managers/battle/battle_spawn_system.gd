@@ -283,11 +283,12 @@ func get_next_wave_preview() -> Dictionary:
 
 ## v23.2: 检查 bias tags 是否在本关卡时代的 archetype 池中有任一匹配（预警诚实化用）。
 ## 与 _pick_archetype_with_bias 的匹配语义一致（任一 tag 命中即算）。
+## v30.5 R5：改关卡域池（min_level 门）——二战尾部关的 aircraft 槽在预警里才算活。
 func _bias_tags_match_era_pool(level: int, bias_tags: Array) -> bool:
 	if bias_tags.is_empty():
 		return true
 	var era: int = _current_battle_era(level)
-	for aid in EnemyArchetypes.get_ids_for_era(era):
+	for aid in EnemyArchetypes.get_ids_for_era_at_level(era, level):
 		var tags: Array = EnemyArchetypes.get_config(String(aid)).get("tags", [])
 		for bt in bias_tags:
 			if tags.has(bt):
@@ -396,7 +397,8 @@ func spawn_card_grid_enemy_wave(current_level: int) -> bool:
 		_signal_bus.wave_spawned.emit(enemy_wave_index)
 
 	var era: int = _current_battle_era(current_level)
-	var era_archetypes: Array = EnemyArchetypes.get_ids_for_era(era)
+	# v30.5 R5：关卡域取池（min_level 等级门，二战尾部飞行试点限 L36-40）
+	var era_archetypes: Array = EnemyArchetypes.get_ids_for_era_at_level(era, current_level)
 	var basic_ids: Array = []
 	var elite_ids: Array = []
 	var boss_ids: Array = []
