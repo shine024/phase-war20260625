@@ -1,3 +1,5 @@
+> ⚠️ **历史快照（v6.14 R6 归档轮 2026-09-13）**：v20.29 修复前错位样本（AGENTS.md/审计工具引用），现行基线为 boss_spell_report_baseline_v20.29.md。本文仅留档不再维护；活索引见 [docs/INDEX.md](INDEX.md)。
+
 # Boss 大招演出 AI 评分报告
 
 - 生成时间：2026-09-12 18:16:22

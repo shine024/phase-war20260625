@@ -15,6 +15,42 @@ uniform vec3 highlight_tint = vec3(1.0, 1.0, 1.0);
 uniform float tint_balance : hint_range(0.0, 1.0) = 0.25;
 uniform float vignette_strength : hint_range(0.0, 1.0) = 0.10;
 uniform float grain_amount : hint_range(0.0, 0.1) = 0.010;
+// R6-1 色盲辅助滤镜（F-18）：0=关 1=红色弱(protan) 2=绿色弱(deutan) 3=蓝黄(tritan)。
+// 独立于 enabled 开关——可及性滤镜不受调色总开关/PW_GRADE_OFF 影响。
+// 算法 = 经典 Daltonize：Machado(2009) 模拟矩阵求视觉误差 → err2mod 重分布补偿回原图。
+uniform float color_blind_mode : hint_range(0.0, 3.0) = 0.0;
+
+vec3 cvd_simulate(vec3 c, float mode) {
+	// Machado et al. 2009 线性 RGB 模拟矩阵（severity 1.0）
+	if (mode < 1.5) { // protanopia
+		return clamp(vec3(
+			0.152286 * c.r + 1.052583 * c.g - 0.204868 * c.b,
+			0.114503 * c.r + 0.786281 * c.g + 0.099216 * c.b,
+			-0.003882 * c.r - 0.048116 * c.g + 1.051998 * c.b), vec3(0.0), vec3(1.0));
+	} else if (mode < 2.5) { // deuteranopia
+		return clamp(vec3(
+			0.367322 * c.r + 0.860646 * c.g - 0.227968 * c.b,
+			0.280085 * c.r + 0.672501 * c.g + 0.047413 * c.b,
+			-0.011820 * c.r + 0.042940 * c.g + 0.968881 * c.b), vec3(0.0), vec3(1.0));
+	}
+	return clamp(vec3( // tritanopia
+		1.255528 * c.r - 0.076749 * c.g - 0.178779 * c.b,
+		-0.078411 * c.r + 0.930809 * c.g + 0.147602 * c.b,
+		0.004733 * c.r + 0.691367 * c.g + 0.303900 * c.b), vec3(0.0), vec3(1.0));
+}
+
+vec3 daltonize(vec3 c, float mode) {
+	vec3 err = c - cvd_simulate(c, mode);
+	vec3 corrected;
+	if (mode < 1.5) { // protan：红轴误差重分布进 G/B
+		corrected = c + vec3(0.0, 0.7 * err.r + err.g, 0.7 * err.r + err.b);
+	} else if (mode < 2.5) { // deutan：绿轴误差压进 B
+		corrected = c + vec3(0.0, err.g, 0.75 * err.g + err.b);
+	} else { // tritan：蓝轴误差压进 R/G
+		corrected = c + vec3(err.r + 0.7 * err.b, err.g + 0.7 * err.b, err.b);
+	}
+	return clamp(corrected, vec3(0.0), vec3(1.0));
+}
 
 void fragment() {
 	vec3 col = texture(screen_tex, SCREEN_UV).rgb;
@@ -39,6 +75,10 @@ void fragment() {
 		// 细颗粒（微幅抖动，压暗部色带 + 胶片感；随 TIME 缓动）
 		float n = fract(sin(dot(SCREEN_UV * vec2(1234.5, 6789.1) + fract(TIME) * 7.13, vec2(12.9898, 78.233))) * 43758.5453);
 		col += (n - 0.5) * grain_amount;
+	}
+	// 色盲辅助：独立于调色 enabled（可及性开关不受 PW_GRADE_OFF/调色总开关影响）
+	if (color_blind_mode > 0.5) {
+		col = daltonize(clamp(col, vec3(0.0), vec3(1.0)), color_blind_mode);
 	}
 	COLOR = vec4(clamp(col, vec3(0.0), vec3(1.0)), 1.0);
 }

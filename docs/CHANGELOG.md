@@ -8041,3 +8041,133 @@ MVP 协同小结、8 面板首开气泡。**R3 余项**：结算面板三页签�
   更新 0.541→0.363（合法浮动）。备份基线重打包 sha16 `014781558d44022a`（接替上行
   `529507c19c60deb6` 为最新基线，仍落本机镜像待发行机同步）。验证：boot ALL PASS
   + GdUnit 276/276。
+
+## v31 R6 发行工程批：三硬选项 + 战功榜收口 + 死数据清点 + 版本 1.0 + docs 索引（2026-09-13）
+
+> 计划文档（设计审查与优化计划_2026-09-13）R6 节 6 项落地 4 项；Steam Cloud 先决不满足、
+> 批次 9 人工验收属人工项——两项移交后续。设计审查证据经逐条验真后**三处勘误**（见各条）。
+
+- **R6-1 发行三硬选项（F-18，M-L）**：
+  - **色盲辅助三档**（Daltonize 算法）：`shaders/color_grade.gdshader` 新增
+    `color_blind_mode` uniform（0关/1protan/2deutan/3tritan）——Machado(2009) 模拟矩阵
+    求视觉误差 + err2mod 重分布补偿；**独立于调色 enabled 开关**（可及性不受
+    PW_GRADE_OFF/总开关影响）。`ColorGrade.set_color_blind_mode` 启动自读 settings.cfg。
+  - **键位重绑**：新 `scripts/systems/keybinds.gd`（KeyBinds 静态类，InputMap 运行时
+    覆盖层零 project.godot 改动）——6 个可重绑动作（暂停/开始战斗/地图/背包/成长/设置，
+    默认值=旧硬编码，行为零漂移）；`main._input` 全改 `is_action`（ESC 走 ui_cancel 固定、
+    数字 1-9 槽位固定）；捕捉期间 `KeyBinds.capture_active` 让 main 让路（防绑定键误触
+    暂停/开战）。设置面板键位段代码构建（点击按键→"按任意键…（ESC 取消）"→即绑即存）。
+  - **分辨率/窗口模式**：窗口模式三档（窗口/无边框全屏/独占全屏）取代旧全屏二元
+    （旧配置 fullscreen=true 自动迁移为独占全屏）+ 分辨率四档（1280×720 推荐/1366×768/
+    1600×900/1920×1080，仅窗口模式生效自动居中）。`settings_panel.apply_display_at_boot`
+    由 title_screen 调用。
+  - **settings.cfg 保全修复（连带发现的存量 bug）**：`_save()` 原实现新建 ConfigFile 整文件
+    覆写——任何设置改动都会抹掉 KeyBinds 写入的 keybinds 段；改先 load 再写。
+- **R6-4 战功榜收口（F-20，S）**：
+  - **勘误①**：设计审查"7 类中 2 类死榜"证据滞后——`survival_highscore` 被黑门无限
+    （endless_blackgate_manager）周榜复用是活榜；真死榜仅 `time_attack_best` 一张，删除。
+  - **勘误②**：`LEADERBOARD_CATEGORIES` + `get_leaderboards_by_category` 全项目零消费，
+    连带删除；其余 10 张零提交方零 UI 榜单定义**留档不删**（将来生涯统计页数据源候选）。
+  - 显示层宪法对齐（LANGUAGE_BIBLE 2026-09-08 已批条目）：面板 chrome 标题「战功榜」
+    与基地房间按钮族（战功板/战功屏/战功光墙/战功光廊）此前已落地——本轮补齐偏差点：
+    truck_base 首开气泡「生涯战绩」→「战功榜」（描述改面板真实三 Tab，原描述的
+    "最快通关/最高伤害/收集完成度"指向零展示的 _player_scores 幻影内容）；旧基地
+    comms 房按钮与 function_note 两处「排行榜」→「战功榜」。
+  - ⚠️ 计划文档原拟名「生涯战绩」与语言宪法冲突，**按 AGENTS.md 铁律以宪法为准**；
+    如需改判须先修宪法（用户批准）。
+- **R6-3 死数据清点（F-16，M）**：
+  - **相位仪商店残骸整链删除**（R1-2 改道项）：store_panel 相位仪渲染分支 +
+    `_build_instrument_row` + `_on_buy_instrument_pressed` + 行场景
+    （store_instrument_row.tscn 已删）；faction_system_manager 侧
+    `get_faction_phase_instruments`（v8.x 恒返空）/can_buy/buy/grant/unlock 五函数 +
+    `unlocked_faction_instruments` 状态（含存档键，load 缺 key 静默跳过）+ PhaseInstruments
+    preload——活链在 PhaseInstrumentManager 直连（掉落/技能树），fsm 平行死链零消费。
+  - **情报舱「单位谱系图谱」Tab 移除**（与制造中心"来源"展示重叠）：tscn EvolutionTab +
+    脚本 `_setup_evolution_tab`/三个 handler/信号接线，Tab 重排为 3 个；孤儿视图类
+    evolution_atlas_view.gd / unit_progression_detail_view.gd（零外部消费）删除；
+    QA 脚本文件清单同步（ui_batch2_validation / _tmp_b3_t4_loadcheck_runner）。
+  - **法则家族死数据删除**：level_information 五时代 builder 的 families 局部块 +
+    `available_law_families` 键 ×5 + 三个查询函数（零消费）——P2-7 法则退役后全链死数据
+    （文件头注自认"仅为兼容保留"）。**勘误③**：审查证据"faction_id 死数据"不成立——
+    faction_id 是活数据（世界地图驻守加成/势力榜消费），死的只有法则家族数组。
+  - **勘误④**："IntelEvolutionManager 仍在 autoload 链"不成立（纯懒加载+存档延迟批，
+    非 autoload）——本批不动，留观（进化退役后仅剩分支查询消费，随谱系玩法去留定夺）。
+- **R6-2 版本号收敛（F-22+P3-1 部分）**：`config/version 0.27.0 → 1.0.0`（唯一消费点
+  标题屏版本标签自动跟随）。**Steam Cloud 未做**：全项目零 Steamworks 集成（无
+  godotsteam/addon），auto-cloud 需 SDK 先决——发行机 Steam 接入批次一并做。
+- **R6-5 docs/INDEX.md（F-23）**：190 个 md 建活索引——必读权威（宪法/路线图）/工作流/
+  系统设计/架构/VFX/提示词档案分域 + 历史快照归档候选表（vfx_realism_report 三版、
+  effect_check_reports、reports/ 早期会话稿等，均注取代者）。**本轮只建索引未物理搬移**，
+  归档执行规则（grep 引用面→搬移或加过时横幅）写在索引文末。
+- **顺手修（验证轮发现）**：`enemy_master_skill_engine._exec_chain_lightning` 排序 lambda
+  对已释放目标做 `is Node2D` 报"freed instance"——`is_instance_valid` 短路前置
+  （与 per-jump 守卫同款口径）；实战驻守战 boss 连锁闪电必现路径。
+- **验证**：改动文件 gdparse 全过；实机（带窗）三轮递进——①class_name 缓存缺失/②漏删
+  引用/③capture_active 未声明各抓出修复，终轮 **SCRIPT_ERROR=0 + SHADER_ERROR=0**；
+  smoke 8/8；GdUnit 全量首两轮 test_frame_budget p95 假红（套件尾部内存紧张，交接文档
+  已记载的环境性假红）→ 单文件复跑 PASSED（p95=16.05ms ≪ 40 预算）→ 终轮全量
+  **276/276、0 failures、exit 0**（frame_budget 套件内 p95=13.73ms 亦过）。
+- **待人工实机验收**：设置面板三新段（窗口模式/分辨率切换、色盲四档选后的战场可辨度、
+  键位重绑点击→按键→生效链 + 恢复默认）、战功榜气泡文案、情报舱 3 Tab 观感、
+  独占/无边框全屏切换的 1280×720 设计分辨率表现。
+- **R6 余项**：Steam Cloud（SDK 先决）；批次 9 人工验收 B1-B5（RELEASE_ACCEPTANCE_BATCH9）。
+- **同日收尾补记（回归锁 + 归档轮 + 实机 QA）**：
+  - **回归锁**：新 `tests/unit/systems/test_r6_release_options.gd`（6 用例）——KeyBinds
+    注册/重绑往返/覆盖持久化、settings.cfg 保全、色盲档读写、死榜不复活；附带修掉
+    KeyBinds 全新安装启动刷 12 条 ConfigFile ERROR 的噪声（get_value null 默认值/
+    缺段 erase 未守卫）。GdUnit 总量 276→**282**。
+  - **设置面板 QA 探针**（`tests/_tmp_settings_probe`，合成按键走真实输入管线）：
+    重绑捕捉→落盘→恢复默认、色盲下拉→ColorGrade 同步端到端全过；抓出并修复
+    **面板先于 main 场景打开（标题屏入口）时键位行全显"未绑定"**（panel._ready 自注册）。
+  - **色盲滤镜定量 A/B**：静态场景 cb=0/2 双跑像素差分——变化像素 100% 集中于
+    含彩度内容（精灵行），消色差背景不动（Daltonize 对灰≈恒等，数学正确）；
+    side-by-side 目检色相偏移明确、明度结构保持。
+  - **Me-262 确定性实拍收口**：`tests/_tmp_me262_probe` 直接走 card_grid_unit_visuals
+    呈现链三机同框（Me-262 新图/流星/斯图卡基线）——专属贴图解析、统一缩放 0.288、
+    悬空抬升、名牌条全达标，替代此前 4 局随机抽卡未遇的不确定验收。
+  - **docs 物理归档轮**（F-23 后半句执行）：25 个零引用历史快照 `git mv` 入
+    `docs/archive/`（镜像结构）；12 个被代码/工具/宪法引用的加"历史快照"横幅留位
+    （拦截原因逐个登记进 INDEX.md 第七节）；"生图需求清单-副本"与正本 diff 全同删除。
+  - **批次 9 程序化预检**（RELEASE_ACCEPTANCE_BATCH9.md 新增 D 节）：B1 教程/任务
+    文案退役词扫描 0 命中；bgm_battle_cold 资产在盘；B 清单 3 处时效勘误
+    （教程 14 步/进化引导项作废/商店扣功勋口径）。
+
+## v32.0 定位转向批1：战术构筑放置 B1-1 观战节奏（2026-09-14）
+
+**定位宪法修订**：用户拍板「战术构筑放置」——自动战斗是特性不是妥协，构筑深度是核心技能，
+观战（看自己的构筑打赢）是核心乐趣。修订案 `docs/定位转向_战术构筑放置_2026-09-14.md`
+（含 B1 观战/B2 构筑/B3 经济三批次与发行壳路线）；`design/gdd/game-pillars.md` Pillar 1
+由"战中部署时机"改写为"战前构筑与克制准备"，Anti-Pillars 新增 NOT Micro-Management。
+
+**B1-1 战斗倍速升级 + 跳过（极速推演）**：
+
+1. **新真身 `scripts/battle/battle_time_state.gd`（BattleTimeState，RefCounted 静态类，
+   不注册 class_name 防两台机器全局类缓存漂移）**：倍速档位 [1,2,3,4]（R1-6 的 ×3 保留，
+   新增 ×4）+ 极速推演旗标 + 偏好持久化 `user://battle_speed.cfg`（独立 ConfigFile，
+   避开 settings.cfg 双写纪律）；`enter_fast_forward` = time_scale 8 +
+   `Engine.max_physics_steps_per_frame` 16（默认 8，保 8x 下物理步进产能；低帧机自然降速不卡死）。
+2. **BattleSpectacle 是时间状态的应用方与收口点**（胜利慢动作/击杀顿帧恢复链的既有持有者）：
+   `_ready` 读倍速偏好；新增 `battle_started → _on_battle_started_speed` 应用玩家倍速；
+   `set_fast_forward(on)` 切推演态并联动 AudioManager SFX 压制；`_on_battle_ended` 先退推演
+   再 **战斗外回归中性 1x**——顺手修掉存量泄漏：旧败北路径与胜利慢动作恢复都回到
+   `_user_time_scale`，玩家 ×3 时结算/基地界面全部动画跑在 3x 上；现在统一 1x，
+   倍速在下一场 battle_started 重新应用。击杀顿帧新增 ff_active 短路（防 8x 推演中被降到 0.1）。
+3. **TopHudBar**：倍速按钮 ×4 档 + 跨会话记忆（_ready 读档吸附，`_sync_speed_btn_label` 统一
+   文案/激活态）；新增「跳过」按钮（编程式挂 RightSection 倍速后，不动 tscn）——点击进入
+   8x 真实推演（战斗自然打完、奖励照常结算，无虚假结算），再点取消，战斗结束自动复位；
+   非战斗态点击无效。
+4. **极速推演反馈压制**（8x 下不可读/堆积，全部读 `BattleTimeState.ff_active` 或经理旗标短路）：
+   AudioManager `battle_sfx_suppressed`（play_sfx 早退，UI 白名单 button/panel/error/cancel
+   放行）；VfxImpactFactory 28 个高频生成入口早退（layered_impact/muzzle_flash/death_burst/
+   crit/sparks/blood/tracer/beam/nuclear/spell_burst/smoke 等；`spawn_ultimate_projectile`/
+   `spawn_summon_portal` 刻意不压——boss 大招编排有 on_arrival 回调链，压 VFX 不压编排）；
+   CombatFeedback.show_damage 早退。
+5. **title_screen._ready 兜底** `restore_neutral()`（正常路径由 battle_ended 收口，防任意
+   路径泄漏 time_scale/物理步进进标题屏）。
+6. **已知副作用（接受）**：在线挂机战斗同样吃到倍速 → 单位墙钟时间战斗数上升，挂机流水/小时
+   相应上升——倍速是 QoL 节奏工具，B3 经济审计时把该变量计入模型。
+7. **验证**：smoke `tests/_tmp_battle_speed_smoke.gd` ALL PASS（7 文件真实引擎 load + 行为
+   断言 + 工厂守卫抽样）；新增 GdUnit `tests/unit/battle/test_battle_time_state.gd` 7 用例
+   （档位吸附/持久化往返/越档吸附/FF 进出/中性复位/四档锁定）；全量回归见同日 CI 记录。
+   注意 `vfx_impact_factory.gd` 对 gdparse 存量误报（4140 行 lambda 内联 if，gdtoolkit 4.5.0
+   不支持、Godot 实际接受），以 --script load 验证为准。

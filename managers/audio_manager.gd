@@ -56,6 +56,13 @@ var sfx_volume: float = 1.0
 var music_volume: float = 0.7
 var master_volume: float = 1.0
 
+# ── v32.0 B1-1: 极速推演期间的战斗音效压制（UI 白名单外静默，防 8x 下音效堆积）──
+var battle_sfx_suppressed: bool = false
+const _FF_SFX_ALLOWLIST: Array[String] = ["button", "button_hover", "panel_open", "panel_close", "error", "cancel"]
+
+func set_battle_sfx_suppressed(on: bool) -> void:
+	battle_sfx_suppressed = on
+
 func _ready() -> void:
 	if Engine.is_editor_hint():
 		return
@@ -204,6 +211,10 @@ func _exit_tree() -> void:
 ## v8.3: 增加 volume（0.0~1.0，线性→db）和 pitch（0.5~2.0，音高倍率）参数（默认值保证旧调用零变化）
 func play_sfx(name: String, volume: float = 1.0, pitch: float = 1.0) -> void:
 	if name.is_empty():
+		return
+
+	# v32.0 B1-1: 极速推演期间战斗音效静默（UI 白名单放行；结算音在推演结束后才触发）
+	if battle_sfx_suppressed and not (name in _FF_SFX_ALLOWLIST):
 		return
 
 	# 批次1: "button" 点击音 50ms 去重——全局钩子与 ~65 处手写调用并存，

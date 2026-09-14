@@ -114,7 +114,8 @@ func _ready() -> void:
 
 	# 连接各面板 closed 信号
 	_connect_panel_closed_signals()
-	_connect_intelligence_hub_signals()
+	# R6-1（F-18）：注册可重绑快捷键动作（InputMap 运行时覆盖层 + settings.cfg 持久化）
+	KeyBinds.ensure_registered()
 
 	# 注册到 GameManager
 	if GameManager:
@@ -385,10 +386,12 @@ func _input(event: InputEvent) -> void:
 		# 战斗中的快捷键
 		# v26.11(A2.5): 删除恒 false 的 is_action("ui_pause") 判断（Godot 4 无该默认
 		# action 且项目未注册 InputMap），战斗暂停键唯一入口 = SPACE。
-		if event.keycode == KEY_SPACE:
+		# v6.14 R6：暂停键改走 KeyBinds 可重绑动作（默认仍 SPACE，设置面板可改）
+		if event.is_action("pw_pause"):
 			_on_pause_pressed()
 			return
-		# P2-14: 数字键 1-9 快捷进入部署模式（第 N 个有战斗卡的绿槽，与点击槽位同链路）
+		# P2-14: 数字键 1-9 快捷进入部署模式（第 N 个有战斗卡的绿槽，与点击槽位同链路；
+		# 固定数字键，不进重绑表）
 		if event.keycode >= KEY_1 and event.keycode <= KEY_9:
 			var slot_no: int = event.keycode - KEY_1 + 1
 			if bottom_instrument_bar and bottom_instrument_bar.has_method("begin_deploy_from_slot_index"):
@@ -398,21 +401,18 @@ func _input(event: InputEvent) -> void:
 		# 战前准备状态的快捷键
 		# v25.3 系统收敛：随战斗抽屉 14→6 同步裁剪——势力/任务/商店/排行/情报/图鉴/成就/
 		# 帮助的面板入口移回基地（保留 handler，基地链路与 growth 转发仍用）
-		match event.keycode:
-			KEY_1, KEY_B:
-				_on_backpack_pressed()
-			KEY_7:
-				_on_progression_pressed()
-			KEY_9:
-				_on_settings_pressed()
-			KEY_M:
-				_on_map_pressed()
-			KEY_ESCAPE:
-				_close_all_overlays()
-			KEY_ENTER:
-				_on_start_battle()
-			KEY_SPACE:
-				_on_start_battle()
+		# v6.14 R6：键位改走 KeyBinds 可重绑动作（默认值与旧硬编码一致，行为零漂移；
+		# ESC 关闭走顶部 ui_cancel 分支——此处原 KEY_ESCAPE match 分支本就不可达，随改造移除）
+		if event.is_action("pw_start_battle"):
+			_on_start_battle()
+		elif event.is_action("pw_open_backpack"):
+			_on_backpack_pressed()
+		elif event.is_action("pw_open_growth"):
+			_on_progression_pressed()
+		elif event.is_action("pw_open_settings"):
+			_on_settings_pressed()
+		elif event.is_action("pw_open_map"):
+			_on_map_pressed()
 
 func _connect_panel_closed_signals() -> void:
 	var panels := {
@@ -864,14 +864,6 @@ func _connect_panel_closed_runtime(panel: Node, panel_key: String) -> void:
 		panel.closed.connect(_on_panel_closed.bind(panel_key))
 
 
-func _connect_intelligence_hub_signals() -> void:
-	var hub: Node = get_node_or_null("PopupLayer/IntelligenceOverlay/CenterContainer/IntelligenceHubPanel")
-	if hub == null:
-		return
-	if hub.has_signal("open_progression_requested") and not hub.open_progression_requested.is_connected(_on_intelligence_open_progression):
-		hub.open_progression_requested.connect(_on_intelligence_open_progression)
-
-
 ## 连接 DailyTaskManager 信号以刷新任务按钮红点角标
 func _connect_quest_badge_signals() -> void:
 	var dtm := get_node_or_null("/root/DailyTaskManager")
@@ -905,16 +897,6 @@ func _refresh_quest_badge(_dummy = null) -> void:
 		if task.get("completed", false) and not task.get("claimed", false):
 			claimable += 1
 	bottom_function_bar.set_btn_badge("quest", claimable)
-
-
-func _on_intelligence_open_progression(card_id: String) -> void:
-	_close_overlay(intelligence_overlay, "info")
-	_toggle_overlay(growth_overlay, "growth")
-	var panel: Node = growth_overlay.get_node_or_null("CenterContainer/GrowthPanel")
-	if panel == null:
-		panel = growth_overlay.find_child("GrowthPanel", true, false)
-	if panel and panel.has_method("select_card_by_id") and not card_id.is_empty():
-		panel.select_card_by_id(card_id)
 
 
 # v6.11: _on_blueprint_star_upgraded 回调已移除（战力星级系统②已删）

@@ -50,6 +50,7 @@ var _rect: ColorRect
 var _mat: ShaderMaterial
 var _tween: Tween
 var _apply_gen := 0  ## 每次应用自增；battle_ended 的延迟回调按代号失效，防止新开局被旧回退踩掉
+var _cb_mode := 0  ## R6-1 色盲辅助档（0关/1protan/2deutan/3tritan）——独立于调色预设，_apply 不触碰
 
 
 func _ready() -> void:
@@ -62,12 +63,30 @@ func _ready() -> void:
 	_mat.shader = SHADER
 	_rect.material = _mat
 	add_child(_rect)
+	# R6-1：色盲辅助档从设置读（settings.cfg 与设置面板同源；面板运行时改走 set_color_blind_mode）
+	_cb_mode = _load_cb_mode_from_settings()
+	_mat.set_shader_parameter("color_blind_mode", float(_cb_mode))
 	if not _grade_on():
 		_mat.set_shader_parameter("enabled", 0.0)
 	else:
 		_apply("neutral", 0.0)
 	SignalBus.battle_started.connect(_on_battle_started)
 	SignalBus.battle_ended.connect(_on_battle_ended)
+
+
+## R6-1（F-18 可及性）：色盲辅助档切换（0关/1protan/2deutan/3tritan）
+func set_color_blind_mode(mode: int) -> void:
+	_cb_mode = clampi(mode, 0, 3)
+	_mat.set_shader_parameter("color_blind_mode", float(_cb_mode))
+
+func get_color_blind_mode() -> int:
+	return _cb_mode
+
+static func _load_cb_mode_from_settings() -> int:
+	var cfg := ConfigFile.new()
+	if cfg.load("user://settings.cfg") != OK:
+		return 0
+	return clampi(int(cfg.get_value("settings", "color_blind_mode", 0)), 0, 3)
 
 
 ## 对外显式切换入口（菜单/特殊场景将来要钉死色温时用；当前链路全走信号自动切换）

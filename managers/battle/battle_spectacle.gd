@@ -20,6 +20,8 @@ extends Node
 
 const DT = preload("res://resources/design_tokens.gd")
 const VfxImpactFactory = preload("res://scripts/battle/vfx_impact_factory.gd")
+# v32.0 B1-1: 战斗时间状态（倍速档位/极速推演旗标唯一真身）
+const BattleTimeState = preload("res://scripts/battle/battle_time_state.gd")
 
 # --- 节流时间戳（毫秒，同类特效冷却）---
 const _THROTTLE_KILL_MS: int = 1000        # 击杀定帧 1s 冷却
@@ -49,9 +51,31 @@ var _user_time_scale: float = 1.0
 ## 外部设置玩家倍速（top_battle_controls 调用）。立即应用到 Engine.time_scale。
 func set_user_time_scale(scale: float) -> void:
 	_user_time_scale = scale
-	# 慢动作进行中不立即覆盖（等慢动作结束自然恢复到 _user_time_scale）
-	if not _slowmo_active:
+	# v32.0 B1-1: 倍速偏好持久化（battle_time_state 持有；top_hud_bar 开战时读档同步 UI）
+	BattleTimeState.user_scale = scale
+	BattleTimeState.save_pref()
+	# 慢动作/极速推演进行中不立即覆盖（等各自结束恢复到 _user_time_scale）
+	if not _slowmo_active and not BattleTimeState.ff_active:
 		Engine.time_scale = scale
+
+## v32.0 B1-1: 战斗开始应用玩家倍速偏好（开战时刻推演/慢动作态均不存在）
+func _on_battle_started_speed() -> void:
+	_user_time_scale = BattleTimeState.load_pref()
+	if not _slowmo_active and not BattleTimeState.ff_active:
+		Engine.time_scale = _user_time_scale
+
+## v32.0 B1-1: 极速推演开关（top_hud_bar 跳过按钮调用）。真实模拟至战斗结束，
+## 奖励结算不受影响；期间压制战斗 SFX，VFX/伤害数字/顿帧各自读 ff_active 短路。
+func set_fast_forward(on: bool) -> void:
+	if on == BattleTimeState.ff_active:
+		return
+	var am := get_node_or_null("/root/AudioManager")
+	if on:
+		BattleTimeState.enter_fast_forward()
+	else:
+		BattleTimeState.exit_fast_forward(_user_time_scale)
+	if am != null and am.has_method("set_battle_sfx_suppressed"):
+		am.set_battle_sfx_suppressed(on)
 
 # --- 临时节点引用（按需创建，战斗结束清理）---
 var _overlay: ColorRect = null             # 全屏覆盖层（暗化/闪光）
@@ -62,11 +86,16 @@ var _nano_rain_layer: CPUParticles2D = null  # v8.1: 纳米虫群全屏降雨粒
 func _ready() -> void:
 	# 监听核心战斗事件。process_mode 默认 ALWAYS，但慢动作期间 Engine.time_scale 不影响
 	# autoload 节点的 _process（autoload 走 PROCESS_MODE_ALWAYS 链路），await 用 ignore_time_scale。
+	# v32.0 B1-1: 倍速偏好读档（battle_speed.cfg），battle_started 时应用
+	_user_time_scale = BattleTimeState.load_pref()
 	if SignalBus:
 		SignalBus.unit_killed.connect(_on_unit_killed)
 		SignalBus.boss_wave_started.connect(_on_boss_wave_started)
 		SignalBus.phase_master_appeared.connect(_on_phase_master_appeared)
 		SignalBus.battle_ended.connect(_on_battle_ended)
+		# v32.0 B1-1: 开战应用玩家倍速偏好
+		if SignalBus.has_signal("battle_started"):
+			SignalBus.battle_started.connect(_on_battle_started_speed)
 		# v8.1: 相位仪主动能力全屏演出
 		if SignalBus.has_signal("phase_instrument_ability_triggered"):
 			SignalBus.phase_instrument_ability_triggered.connect(_on_ability_triggered)
@@ -117,7 +146,7 @@ func _on_unit_killed(victim: Node, killer: Node, is_player_victim: bool) -> void
 ## 路径调用）；尊重 motion_reduce；慢动作/顿帧进行中不叠加；恢复回到玩家倍速
 ## （同胜利慢动作约定）。顿帧期内战斗结束由胜利慢动作自己的恢复逻辑收尾。
 func _play_kill_hitstop() -> void:
-	if DT.is_motion_reduce() or _slowmo_active or _hitstop_active:
+	if DT.is_motion_reduce() or _slowmo_active or _hitstop_active or BattleTimeState.ff_active:
 		return
 	if Engine.time_scale <= 0.0:
 		return
@@ -149,6 +178,11 @@ func _on_phase_master_appeared(master_config: Dictionary) -> void:
 # v9.x（P2-7范围B）：_on_phase_law_cast 法则施放演出已随法则系统退役移除
 
 func _on_battle_ended(player_won: bool) -> void:
+	# v32.0 B1-1: 极速推演中先退出（解除 SFX/VFX 压制）；战斗外时间回归中性 1x——
+	# 此前败北路径不恢复 time_scale，玩家倍速会泄漏进结算/基地界面的所有动画
+	if BattleTimeState.ff_active:
+		set_fast_forward(false)
+	Engine.time_scale = 1.0
 	_cleanup_ability_fx()  # v8.1: 清理技能演出残留（如纳米降雨层）
 	if player_won:
 		_play_victory()
@@ -553,8 +587,9 @@ func _play_victory() -> void:
 		Engine.time_scale = 0.3
 		# ignore_time_scale=true 保证即使 time_scale<1 也能准时恢复
 		await get_tree().create_timer(0.6, true, false, true).timeout
-		# v7.x: 恢复到玩家设定的倍速（而非硬编码 1.0），避免覆盖玩家的 ×2 选择
-		Engine.time_scale = _user_time_scale
+		# v32.0 B1-1: 恢复战斗外中性 1x（倍速偏好在下一场 battle_started 重新应用，
+		# 不再让结算/基地界面跑在玩家倍速上——旧"恢复到玩家倍速"会泄漏出战斗作用域）
+		Engine.time_scale = 1.0
 		_slowmo_active = false
 	# VICTORY 金字弹出
 	_title_label.text = "VICTORY"
@@ -661,11 +696,11 @@ func _trim_kill_window(now_ms: int) -> void:
 		_last_combo_count = 0
 
 func _exit_tree() -> void:
-	# 守卫：节点销毁时确保 time_scale 恢复（防 autoload 被卸载时慢动作卡死）
-	# 用 _user_time_scale 恢复，尊重玩家设定的倍速
-	if _slowmo_active:
-		Engine.time_scale = _user_time_scale
-		_slowmo_active = false
+	# 守卫：节点销毁时确保时间状态复位（防慢动作/极速推演卡死）
+	# v32.0 B1-1: 一并复位极速推演的物理步进产能与倍速
+	BattleTimeState.restore_neutral()
+	_slowmo_active = false
+	_hitstop_active = false
 
 # =========================================================================
 #  v8.5 兵种机制技能 VFX 回调

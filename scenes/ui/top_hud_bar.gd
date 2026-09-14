@@ -6,6 +6,8 @@ extends Control
 const DT = preload("res://resources/design_tokens.gd")
 # v26.2: 战场环境效果（chip 数据源）+ 每关布局题面
 const BattleEnvEffects = preload("res://data/battle_env_effects.gd")
+# v32.0 B1-1: 战斗时间状态（倍速档位/极速推演旗标唯一真身）
+const BTS = preload("res://scripts/battle/battle_time_state.gd")
 const LevelBattleLayouts = preload("res://data/level_battle_layouts.gd")
 
 signal btn_start_battle_pressed
@@ -44,9 +46,11 @@ var _in_battle: bool = false
 
 # ── 倍速 ──
 var _speed_scale: float = 1.0
-# R1-6（设计审查 F-13，2026-09-13）：加 ×3 档——近未来末关 7-10 波 ×7s 单场 1x 约 90s，
-# ×2 仍显拖；×3 供回刷/挂机看护场景（引擎 time_scale 上限内，音频不受影响）。
-const _SPEED_OPTIONS: Array = [1.0, 2.0, 3.0]
+# R1-6（设计审查 F-13）加 ×3 档；v32.0 B1-1 加 ×4 档 + 档位跨会话记忆
+#（真身在 BTS.SPEED_OPTIONS，持久化 user://battle_speed.cfg，读档就近吸附）
+const _SPEED_OPTIONS: Array = [1.0, 2.0, 3.0, 4.0]
+# v32.0 B1-1: 跳过（极速推演）按钮
+var _skip_btn: Button = null
 
 # ── 暂停态图标 ──
 const _PAUSE_ICON := "icon_pause"
@@ -65,9 +69,11 @@ func _ready() -> void:
 	_ensure_wave_progress_style()
 	_build_base_chip()
 	_build_env_chip()
-	# 强制确保 SpeedBtn 有可见文字（防被其他逻辑覆盖）
+	# v32.0 B1-1: 倍速档位跨会话记忆（读 battle_speed.cfg 就近吸附；实际应用在 battle_started）
+	_speed_scale = BTS.load_pref()
 	if _speed_btn:
-		_speed_btn.text = "×1"
+		_sync_speed_btn_label()
+	_build_skip_btn()
 	_refresh_level()
 	_refresh_wave()
 	_refresh_time()
@@ -340,6 +346,9 @@ func _on_battle_started() -> void:
 
 func _on_battle_ended(_won) -> void:
 	_in_battle = false
+	# v32.0 B1-1: 跳过按钮复位（引擎态 time_scale 由 BattleSpectacle 收口）
+	if _skip_btn != null:
+		_skip_btn.text = "跳过"
 	if _wave_progress != null:
 		_wave_progress.visible = false
 	# v27: 战斗结束隐藏基地 chip + 停危急闪烁
@@ -483,16 +492,60 @@ func _on_speed_pressed() -> void:
 	var idx := _SPEED_OPTIONS.find(_speed_scale)
 	idx = (idx + 1) % _SPEED_OPTIONS.size()
 	_speed_scale = _SPEED_OPTIONS[idx]
-	if _speed_btn:
-		_speed_btn.text = "×%d" % int(_speed_scale)
-		_speed_btn.tooltip_text = "战斗倍速 ×%d" % int(_speed_scale)
-		# 倍速 > 1 时显示激活态（设计稿 .ctl-on：青色边框 + 微亮背景）
-		_update_speed_btn_active_state()
+	_sync_speed_btn_label()
+	# v32.0 B1-1: 偏好持久化+立即应用（推演/慢动作进行中由 BattleSpectacle 守卫延迟生效）
 	var bs := get_node_or_null("/root/BattleSpectacle")
 	if bs and bs.has_method("set_user_time_scale"):
 		bs.set_user_time_scale(_speed_scale)
 	else:
 		Engine.time_scale = _speed_scale
+
+
+## v32.0 B1-1: 倍速按钮文案/激活态统一同步（_ready 读档与点击切档共用）
+func _sync_speed_btn_label() -> void:
+	if _speed_btn == null:
+		return
+	_speed_btn.text = "×%d" % int(_speed_scale)
+	_speed_btn.tooltip_text = "战斗倍速 ×%d" % int(_speed_scale)
+	# 倍速 > 1 时显示激活态（设计稿 .ctl-on：青色边框 + 微亮背景）
+	_update_speed_btn_active_state()
+
+
+# ========== v32.0 B1-1: 跳过（极速推演）==========
+## 编程式挂进 RightSection（倍速之后），不动 tscn——与 chip 同风格。
+## 进入 8x 真实推演（SFX/命中特效/伤害数字/顿帧全压制，物理步进产能加倍），
+## 战斗自然打完、奖励照常结算；再点一次取消，战斗结束自动复位。
+func _build_skip_btn() -> void:
+	var right: Node = get_node_or_null("RightSection")
+	if right == null:
+		return
+	_skip_btn = Button.new()
+	_skip_btn.text = "跳过"
+	_skip_btn.add_theme_font_size_override("font_size", 13)
+	_skip_btn.tooltip_text = "极速推演至战斗结束（奖励照常结算）\n推演中再点一次可取消"
+	_apply_normal_btn_style(_skip_btn)
+	_skip_btn.pressed.connect(_on_skip_pressed)
+	right.add_child(_skip_btn)
+	var insert_idx := right.get_child_count() - 1
+	if _speed_btn != null:
+		insert_idx = _speed_btn.get_index() + 1
+	right.move_child(_skip_btn, insert_idx)
+
+
+func _on_skip_pressed() -> void:
+	if not _in_battle:
+		return
+	var bs := get_node_or_null("/root/BattleSpectacle")
+	if bs == null or not bs.has_method("set_fast_forward"):
+		return
+	var ff_on: bool = not BTS.ff_active
+	bs.set_fast_forward(ff_on)
+	if _skip_btn != null:
+		_skip_btn.text = "推演中" if ff_on else "跳过"
+		if ff_on:
+			_skip_btn.add_theme_color_override("font_color", DT.COLOR_CYAN_TECH_SOFT)
+		else:
+			_apply_normal_btn_style(_skip_btn)
 
 
 ## 倍速按钮激活态：×1 用普通样式，×2 用青色激活样式（设计稿 .ctl-on）

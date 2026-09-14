@@ -3,22 +3,23 @@
 > **Status**: Designed
 > **Created**: 2026-04-24
 > **Source**: Derived from game-concept.md and 7 core GDD implicit pillar references
+> **Revised (v32.0, 2026-09-14)**: 定位转向「战术构筑放置」——Pillar 1 由「战中部署时机」改写为「战前构筑与克制准备」，新增 Anti-Pillar NOT Micro-Management。见 docs/定位转向_战术构筑放置_2026-09-14.md
 
 ---
 
 ## Pillar 1: Tactical Build & Deploy
 
-**One-line**: 战前装配决定可用兵种，战中部署时机决定胜负。
+**One-line**: 战前构筑（装配/改造/符文/克制准备）决定胜负大头；战斗自动演出，看自己的构取胜是核心乐趣。
 
-**Design Test**: 当在特性 X（更多兵种选择）和特性 Y（自动优化部署）之间争论时，此 Pillar 说选择 **X** — 玩家的构筑和部署决策必须有意义。
+**Design Test**: 当在特性 X（更多兵种/构筑选择）和特性 Y（自动优化构筑）之间争论时，此 Pillar 说选择 **X** — 玩家的构筑决策必须有意义，战前准备的时间投入（而非手速）是技能表达。
 
 **System Ownership**: battle-system, unit-stats-system, energy-system
 
 **What this means**:
 - 每张卡牌的选择都应改变战斗体验
-- 部署时机（何时、何地投入单位）是核心技能
-- 相同单位在不同时机部署应有不同结果
-- 能量限制让每次部署都有代价
+- 战前构筑（阵容/改造/符文/克制）是核心技能——胜负在开战前已大体注定
+- 相同阵容面对不同环境/敌方构成应有不同表现（克制可见、可提前准备）
+- 能量限制保留部署节奏代价；倍速/跳过服务观战节奏，永不影响结算
 
 **GDD References**:
 - "Tactical Combat & Strategic Planning" (battle-system.md)
@@ -92,6 +93,7 @@
 | Anti-Pillar | Description |
 |-------------|-------------|
 | **NOT Action-Reflex** | 战斗是自动的，玩家不操控单位移动或攻击。操作速度不是技能。 |
+| **NOT Micro-Management** | 我们不奖励手速与多线操作；自动部署/自动大招是默认最优路径，倍速与跳过永远可用且不损失收益。 |
 | **NOT Pay-to-Win** | 所有内容通过游戏内获取，无内购影响战斗平衡。 |
 | **NOT Infinite Grind** | 蓝图有上限（9星），收集有完成感，不是无尽刷。 |
 | **NOT PvP Competitive** | 当前为单人体验，排行榜是自我比较工具。 |
