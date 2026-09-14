@@ -6,8 +6,6 @@ class_name LevelInformation
 ## - display_name: 关卡显示名称
 ## - description: 关卡背景故事简介
 ## - faction_id: 控制该关卡的势力ID
-## - available_law_families: 该关卡允许的法则家族列表（空=全部可用）
-##   家族: "STEEL"|"FLAME"|"THUNDER"|"VOID"
 ## - special_rules: v8 批次3 特殊规则（见 _apply_special_rules，仅部分关卡挂载）
 ##
 ## 2026-08-16 关卡设计审查（单源真理收敛）：
@@ -73,7 +71,7 @@ func _add_ww1_levels() -> void:
 	"""一战（1-20关）：无主之地教学时代
 	v6.9: 前 20 关 faction_id 为空——无势力占领/势力加成/势力相位师（21 关起启用）。
 	注：旧文档"钢壁防务为主/法则家族限制"已随 v6.9 无主之地改造与 P2-7 法则退役失效，
-	下方 families 数组仅为兼容保留的死数据。"""
+	available_law_families 死数据已随 v6.14 R6 清点移除。"""
 	var descriptions = [
 		"晨曦中的索姆河，第一阶段突破作战",
 		"泥泞的堡垒区，持续的炮火覆盖",
@@ -102,16 +100,6 @@ func _add_ww1_levels() -> void:
 		# v6.9: 前20关（一战教学时代）为无主之地，无势力占领/势力加成/势力相位师
 		# 21关起启用势力占领机制（见 faction_conquest_buffs.gd + enemy_stat_resolver.gd）
 		var faction_id = ""
-		# 一战法则限制：逐步开放家族
-		var families: Array = []
-		if i <= 5:
-			families = ["STEEL"]
-		elif i <= 14:
-			families = ["STEEL", "FLAME"]
-		elif i <= 19:
-			families = ["STEEL", "FLAME", "THUNDER"]
-		else:  # Boss关
-			families = ["STEEL", "FLAME", "THUNDER", "VOID"]
 		# 从描述中提取短名称作为关卡名
 		var desc = descriptions[i - 1]
 		var short_name = desc.split("，")[0].split(" ")[0]  # 取逗号前的第一个短语
@@ -119,7 +107,6 @@ func _add_ww1_levels() -> void:
 			"display_name": "一战·%s" % short_name,
 			"description": descriptions[i - 1],
 			"faction_id": faction_id,
-			"available_law_families": families,
 		}
 
 func _add_ww2_levels() -> void:
@@ -154,23 +141,12 @@ func _add_ww2_levels() -> void:
 	for i in range(1, 21):
 		var level_num = 20 + i
 		var faction_id = "nova_arms"
-		# 二战法则限制：以FLAME为核心逐步开放
-		var families: Array = []
-		if i <= 5:
-			families = ["FLAME"]
-		elif i <= 14:
-			families = ["FLAME", "STEEL"]
-		elif i <= 19:
-			families = ["FLAME", "STEEL", "THUNDER"]
-		else:  # Boss关
-			families = ["STEEL", "FLAME", "THUNDER", "VOID"]
 		var desc = descriptions[i - 1]
 		var short_name = desc.split("，")[0].split(" ")[0]
 		_level_db[level_num] = {
 			"display_name": "二战·%s" % short_name,
 			"description": descriptions[i - 1],
 			"faction_id": faction_id,
-			"available_law_families": families,
 		}
 
 func _add_cold_war_levels() -> void:
@@ -205,23 +181,12 @@ func _add_cold_war_levels() -> void:
 	for i in range(1, 21):
 		var level_num = 40 + i
 		var faction_id = "aether_dynamics"
-		# 冷战法则限制：以THUNDER+STEEL为起点逐步开放
-		var families: Array = []
-		if i <= 5:
-			families = ["THUNDER", "STEEL"]
-		elif i <= 14:
-			families = ["THUNDER", "STEEL", "FLAME"]
-		elif i <= 19:
-			families = ["THUNDER", "STEEL", "FLAME", "VOID"]
-		else:  # Boss关
-			families = ["STEEL", "FLAME", "THUNDER", "VOID"]
 		var desc = descriptions[i - 1]
 		var short_name = desc.split("，")[0].split(" ")[0]
 		_level_db[level_num] = {
 			"display_name": "冷战·%s" % short_name,
 			"description": descriptions[i - 1],
 			"faction_id": faction_id,
-			"available_law_families": families,
 		}
 
 func _add_modern_levels() -> void:
@@ -256,21 +221,12 @@ func _add_modern_levels() -> void:
 	for i in range(1, 21):
 		var level_num = 60 + i
 		var faction_id = "quantum_logistics"
-		# 现代法则限制：STEEL+FLAME起步，快速开放全部
-		var families: Array = []
-		if i <= 5:
-			families = ["STEEL", "FLAME"]
-		elif i <= 14:
-			families = ["STEEL", "FLAME", "THUNDER", "VOID"]
-		else:  # Boss关及后期
-			families = ["STEEL", "FLAME", "THUNDER", "VOID"]
 		var desc = descriptions[i - 1]
 		var short_name = desc.split("，")[0].split(" ")[0]
 		_level_db[level_num] = {
 			"display_name": "现代·%s" % short_name,
 			"description": descriptions[i - 1],
 			"faction_id": faction_id,
-			"available_law_families": families,
 		}
 
 func _add_future_levels() -> void:
@@ -307,23 +263,12 @@ func _add_future_levels() -> void:
 		var level_num = 80 + i
 		# 81-90关螺旋侦察，91-100关虚空相位
 		var faction_id = "helix_recon" if i <= 10 else "void_research"
-		# 近未来法则限制：大部分关卡开放全部家族
-		var families: Array = []
-		if i <= 5:
-			families = ["THUNDER", "VOID", "FLAME"]
-		elif i <= 10:
-			families = ["THUNDER", "VOID", "FLAME", "STEEL"]
-		elif i <= 15:
-			families = ["VOID", "FLAME", "STEEL", "THUNDER"]
-		else:
-			families = ["STEEL", "FLAME", "THUNDER", "VOID"]
 		var desc = descriptions[i - 1]
 		var short_name = desc.split("，")[0].split(" ")[0]
 		_level_db[level_num] = {
 			"display_name": "近未来·%s" % short_name,
 			"description": descriptions[i - 1],
 			"faction_id": faction_id,
-			"available_law_families": families,
 		}
 
 func get_level_info(level: int) -> Dictionary:
@@ -466,23 +411,6 @@ func get_level_faction(level: int) -> String:
 	"""获取控制该关卡的势力ID"""
 	var info = get_level_info(level)
 	return info.get("faction_id", "")
-
-func get_available_law_families_for_level(level: int) -> Array:
-	"""获取该关卡允许的法则家族列表（空数组表示全部可用）"""
-	var info = get_level_info(level)
-	var families = info.get("available_law_families", [])
-	return families if not families.is_empty() else []
-
-func is_law_family_available_for_level(family: String, level: int) -> bool:
-	"""检查某个法则家族在该关卡是否可用"""
-	var allowed = get_available_law_families_for_level(level)
-	if allowed.is_empty():
-		return true  # 空限制 = 全部可用
-	return allowed.has(family)
-
-## 已弃用：请使用 get_available_law_families_for_level
-func get_available_laws_for_level(level: int) -> Array:
-	return get_available_law_families_for_level(level)
 
 func get_levels_for_faction(faction_id: String) -> Array:
 	"""获取某个势力控制的所有关卡"""

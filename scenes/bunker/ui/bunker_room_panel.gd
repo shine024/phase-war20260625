@@ -381,7 +381,7 @@ func _build_active_actions(room_id: String) -> void:
 			_add_embedded_buttons([
 				["商店", "store"],
 				["势力", "faction"],
-				["排行榜", "leaderboard"],
+				["战功榜", "leaderboard"],
 			])
 			# P3：预录来电（随碎片/反应堆进度变化）
 			var call_lbl := _make_info_label()

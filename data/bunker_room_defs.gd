@@ -208,7 +208,7 @@ static func get_all_rooms() -> Array[Dictionary]:
 			"battles": 2,
 			"tag": "深层·通讯",
 			"flavor": "通讯台上还亮着一盏待听指示灯——不知等了多久，也不知留言的人还在不在。",
-			"function_note": "商店 / 势力 / 排行榜（P2 迁入）；预录来电（P3）。",
+			"function_note": "商店 / 势力 / 战功榜（P2 迁入）；预录来电（P3）。",
 			"upgrades": [
 				{"cost": {"nano": 380, "crystal": 120}, "battles": 2, "note": "商业频道：商店每日免费刷新 +1"},
 				{"cost": {"nano": 750, "crystal": 240}, "battles": 2, "note": "势力热线：势力声望获取 +15%"},

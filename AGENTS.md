@@ -405,7 +405,60 @@ IntelEvolutionManager → IntelManual, IntelEvolutionBranches
 - tab 内容过渡只动 modulate（fade_content_in）——容器子节点的 position/scale 会被
   下次布局排序覆盖，勿加位移动画
 
-### v26.10 改造模块消耗品化 + 双通道供给（2026-09-02，详见 CHANGELOG）
+### v31 R6 发行工程批（2026-09-13，详见 CHANGELOG）
+
+**改键位/设置/存档配置文件/战功榜/情报舱前必读本节。**
+
+- **键位重绑唯一真身 `scripts/systems/keybinds.gd`（KeyBinds）**：6 个可重绑动作
+  （pw_pause / pw_start_battle / pw_open_map / pw_open_backpack / pw_open_growth /
+  pw_open_settings）在此注册——InputMap 运行时覆盖层，project.godot [input] 零条目；
+  main._input 全走 `is_action`（ESC=ui_cancel 固定、数字 1-9 部署槽位固定不重绑）。
+  覆盖持久化在 settings.cfg 的 [keybinds] 段；main._ready 调 `ensure_registered`。
+  **捕捉契约**：设置面板捕捉重绑按键期间置静态 `KeyBinds.capture_active=true`，
+  main._input 见 true 即整体让路——新增键盘消费点前先想清楚与捕捉流程的互斥。
+  **默认键=旧硬编码值；改默认值=改玩家习惯，勿顺手调**。
+- **user://settings.cfg 双段契约**：[settings]（音量/难度/窗口模式 window_mode/
+  分辨率 resolution_idx/色盲 color_blind_mode/可及性三键/教程重置）由 settings_panel
+  读写；[keybinds] 由 KeyBinds 读写。⚠️ **settings_panel._save 必须先 load 再写**——
+  v31 修掉的存量 bug 就是新建 ConfigFile 整文件覆写、抹掉 keybinds 段（回归锁
+  `tests/unit/systems/test_r6_release_options.gd`，含 settings.cfg 备份还原纪律）。
+  新增设置键时两个写入方都遵守该纪律。
+- **色盲辅助层**：color_grade.gdshader 的 `color_blind_mode` uniform（0关/1protan/
+  2deutan/3tritan，Daltonize 算法）——**独立于 GameConfig.color_grade_enabled 与
+  PW_GRADE_OFF**（可及性不受调色开关影响）。入口 `ColorGrade.set_color_blind_mode`；
+  启动自读 settings.cfg。
+- **分辨率/窗口模式**：window_mode 0窗口/1无边框全屏/2独占全屏（旧 fullscreen=true
+  配置自动迁移为 2）；分辨率四档仅窗口模式生效、自动居中。boot 应用器
+  `settings_panel.apply_display_at_boot`（title_screen 调用，与 apply_ui_scale_at_boot
+  同点）。
+- **战功榜（leaderboard）**：显示名以语言宪法为准（宪法 2026-09-08 已批条目：
+  战功榜，与战功簿/战功卡同族；计划文档原拟「生涯战绩」与宪法冲突未采用）。
+  榜单数据真身 leaderboard_definitions.gd——`survival_highscore` 是黑门无限周榜的
+  **活榜**（唯一提交方 endless_blackgate_manager），勿当死榜再删；其余 10 张
+  零提交方零 UI 定义留档（将来生涯统计页候选），`time_attack_best` 已删。
+
+### v32.0 定位转向批：战术构筑放置（2026-09-14 起，详见 CHANGELOG 与 docs/定位转向_战术构筑放置_2026-09-14.md）
+
+**改战斗节奏/倍速/结算链相关代码前必读本节。** 定位拍板「战术构筑放置」：自动战斗是特性，
+构筑深度是核心技能（game-pillars Pillar 1 已改写 + Anti-Pillar NOT Micro-Management）。
+
+- **战斗时间状态唯一真身 `scripts/battle/battle_time_state.gd`（BattleTimeState，静态类，
+  无 class_name）**：倍速档 [1,2,3,4] + 极速推演旗标 + 偏好持久化 `user://battle_speed.cfg`
+  （独立 ConfigFile，勿并入 settings.cfg——那是 settings_panel/KeyBinds 双写领域）。
+  ⚠️ **`Engine.time_scale` 是全局作用域**：战斗外必须 1x——BattleSpectacle 是应用方与收口点
+  （battle_started 应用玩家倍速 / battle_ended 先退推演再回中性 1x / _exit_tree + title_screen
+  兜底）。任何新"战斗内时间流速"需求走 BattleTimeState + BattleSpectacle，勿直写 Engine.time_scale
+  （工具场景 combat_check/combat_arena_3v3/intro dream_battle 自管除外）。
+- **极速推演（TopHudBar「跳过」）**：8x 真实模拟至战斗结束（奖励照常结算，无虚假结算）；
+  压制清单=AudioManager battle_sfx_suppressed（UI 白名单外静默）+ VfxImpactFactory 28 个高频
+  生成入口 + CombatFeedback.show_damage + 击杀顿帧；`spawn_ultimate_projectile`/`spawn_summon_portal`
+  刻意不压（boss 大招 on_arrival 编排链）——给 boss 编排加新 VFX 时想清楚是否该进压制名单。
+- 顺手修复的存量泄漏：旧胜利慢动作/败北路径把 time_scale 恢复到玩家倍速，结算/基地界面
+  跑在 ×3 上；现在战斗外恒 1x，倍速在下一场 battle_started 重新应用。
+- 后续批次：B1-2 观战镜头 / B1-3 战报升级 / B1-4 挂机观战 → B2 构筑可见化（阵容预设/
+  战前克制提示/体系可见）→ B3 经济重校准（首通大额/晶体能量块 sink/黑门软门）→ 演出层 → 发行壳。
+
+## v26.10 改造模块消耗品化 + 双通道供给（2026-09-02，详见 CHANGELOG）
 
 **改改造安装/图纸掉落/制造站相关代码前必读本节。** 核心语义：安装一条改造 =
 消耗 1 张对应图纸（IntelItemBag 库存）+ 纳米费；图纸是库存货币不是永久解锁。
@@ -729,6 +782,9 @@ User-driven collaboration. Every task follows: **Question → Options → Decisi
 | VersionManager | **已删除** | 2026-08-22：零调用方，永不实例化 |
 | UILazyLoader 死配置 5 项 | 已清理 | 2026-08-22：occupation/leaderboard/intelligence（面板静态实例化且不在 prune 释放名单）/phase_master_skill（parent 节点不存在）/reinforcement（活于 card_info_panel 嵌入实例化）。**⚠️ 教训：quest/store/faction/settings 曾被同批误删当晚会回滚**——main.`_prune_preloaded_panels` 启动时会释放这四个面板的静态实例"转按需加载"，UILazyLoader 配置是其唯一重建路径，删=面板永远空壳（商店打不开事故）。真懒加载全集：backpack/growth/quest/store/faction/settings/achievement/help/modification/evolution/collection（11 项；旧记载"10 项"为误计，v26.4 勘误） |
 | LevelSelectOverlay 空壳 | 已删除 | 2026-08-22：main.tscn 空节点，level_select 配置 v9.x 已先删（选关由 world_map 承担） |
+| 相位仪商店（势力商店卖相位仪） | **残骸整链删除** | 2026-09-13 v31（R6 死数据清点）：v8.x 起相位仪改技能树/掉落获取，商店区恒空。删除 fsm 五函数（get_faction_phase_instruments 恒返空/can_buy/buy/grant/unlock）+ unlocked_faction_instruments 存档键（旧档 key 静默跳过）+ store_panel 渲染分支/行构建/购买 handler + store_instrument_row.tscn。活链在 PhaseInstrumentManager 直连（掉落/技能树），勿在 fsm 侧"复活" |
+| 情报舱「单位谱系图谱」Tab | **已删除** | 2026-09-13 v31（F-16）：与制造中心"来源"展示重叠。EvolutionTab/EvolutionHost 节点 + _setup_evolution_tab/三 handler + open_progression_requested 信号及 main 接线全移；孤儿视图类 evolution_atlas_view.gd / unit_progression_detail_view.gd 删除。情报舱现为 3 Tab（世界观/符文图鉴/敌方情报）；lineage 数据本体保留（制造中心消费） |
+| 法则家族关卡数据（available_law_families） | **已删除** | 2026-09-13 v31：P2-7 法则退役后全链死数据（level_information 自注"仅为兼容保留"）。五时代 builder 的 families 块 + 数据键 + 三个查询函数删除；**faction_id 是活数据**（世界地图驻守加成/势力榜消费），勿连带误删 |
 | docs/tech-debt-register.md | 已删除 | 2026-04-09 停更全过时；活债务改记本清单 + CHANGELOG |
 
 ### 已知断链资产（不修只记录，2026-09-10 核对）

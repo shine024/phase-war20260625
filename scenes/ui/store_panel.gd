@@ -10,7 +10,6 @@ const IntelManualItems = preload("res://data/intel_manual_items.gd")
 const UnitStatsTable = preload("res://resources/unit_stats_table.gd")
 const ModRegistry = preload("res://scripts/systems/modification_registry.gd")
 const StoreItemRowScene = preload("res://scenes/ui/store_item_row.tscn")
-const StoreInstrumentRowScene = preload("res://scenes/ui/store_instrument_row.tscn")
 const FormatUtil = preload("res://scripts/ui/format_util.gd")
 const UiAssetLoader = preload("res://scripts/ui_asset_loader.gd")
 const UnifiedCardTable = preload("res://data/unified_card_table.gd")  # v20.13c: 商店预览每卡部署次数
@@ -44,7 +43,6 @@ var _items_dirty: bool = false
 ## 缓存样式
 var _row_style_normal: StyleBox
 var _row_style_locked: StyleBoxFlat
-var _instrument_row_style: StyleBox
 
 ## 全局访问声望阈值（8级 = 6200声望）
 const GLOBAL_ACCESS_THRESHOLD: int = 6200
@@ -99,7 +97,6 @@ func _init_cached_styles() -> void:
 		Color(DT.COLOR_PANEL_DEEP.r, DT.COLOR_PANEL_DEEP.g, DT.COLOR_PANEL_DEEP.b, 0.7),
 		Color(DT.COLOR_BORDER_DIM.r, DT.COLOR_BORDER_DIM.g, DT.COLOR_BORDER_DIM.b, 0.25), 1, 4
 	)
-	_instrument_row_style = PanelStyles.make_row_surface(DT.COLOR_CYAN_TECH, true)
 
 func _on_close() -> void:
 	closed.emit()
@@ -310,25 +307,6 @@ func _refresh_items() -> void:
 			locked, afford, enemy_bp, card, masked, item_tier - current_tier
 		)
 		item_list.add_child(row_panel)
-
-	# 相位仪（势力专属）
-	if fsm != null and fsm.has_method("get_faction_phase_instruments"):
-		var instruments: Array = fsm.get_faction_phase_instruments(_current_company_id)
-		if not instruments.is_empty():
-			var sep := HSeparator.new()
-			item_list.add_child(sep)
-			var title := Label.new()
-			title.text = "相位仪（势力专属）"
-			title.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
-			title.add_theme_color_override("font_color", DT.COLOR_CYAN_TECH)
-			item_list.add_child(title)
-			for cfg_raw in instruments:
-				if not (cfg_raw is Dictionary):
-					continue
-				var cfg: Dictionary = cfg_raw
-				var row_panel2: PanelContainer = _build_instrument_row(cfg, fsm)
-				if row_panel2:
-					item_list.add_child(row_panel2)
 
 	# ═══ v6.2: 符文售卖区 ═══
 	_build_rune_items_section(current_rep)
@@ -965,123 +943,6 @@ func _build_store_item_row(
 	return row_panel
 
 
-func _build_instrument_row(cfg: Dictionary, fsm: Node) -> PanelContainer:
-	var iid: String = String(cfg.get("id", ""))
-	var iname: String = String(cfg.get("name", iid))
-	var star: int = int(cfg.get("star", 1))
-	var req_rep: int = int(cfg.get("required_rep", 0))
-	var price_eb: int = int(cfg.get("price_energy_block", 0))
-	# v7.x: 移除 energy_output_rate，改显示能量恢复
-	var recovery_rate: float = float(cfg.get("energy_recovery_rate", 0.3))
-	var can: Dictionary = fsm.can_buy_instrument(_current_company_id, cfg) if fsm.has_method("can_buy_instrument") else {"ok": false}
-	var reason: String = String(can.get("reason", ""))
-	var owned: bool = reason == "owned"
-
-	var row_panel: PanelContainer = StoreInstrumentRowScene.instantiate()
-	row_panel.add_theme_stylebox_override("panel", _instrument_row_style)
-	# 批次三 B2b：相位仪行的属性词典——星级/能量恢复就地解释
-	# v21.x: 部署范围展示移除（功能下线）
-	row_panel.tooltip_text = "相位仪：等级决定槽位数量与能量上限；能量恢复加快战斗中能量回复"
-
-	# 名称
-	var name2: Label = row_panel.get_node("M2/HB2/VB2/NameLabel")
-	name2.text = "★%d  %s" % [star, iname]
-
-	# 描述
-	var desc2: Label = row_panel.get_node("M2/HB2/VB2/DescLabel")
-	desc2.text = "需声望 %d，价格 %d 能量块" % [req_rep, price_eb]
-
-	# 基础属性
-	var attr_label: Label = row_panel.get_node("M2/HB2/VB2/AttrLabel")
-	var attr_parts: Array[String] = []
-	attr_parts.append("等级 %d" % star)
-	attr_parts.append("能量恢复 %.2f(实际%.1f/s)" % [recovery_rate, recovery_rate * 3.0])
-	attr_label.text = "  |  ".join(attr_parts)
-	attr_label.custom_minimum_size = Vector2(350, 0)
-	attr_label.visible = true
-
-	# 高级属性
-	var advanced_label: Label = row_panel.get_node("M2/HB2/VB2/AdvancedLabel")
-	var advanced_parts: Array[String] = []
-	var props: Array = cfg.get("properties", [])
-	if props is Array and not props.is_empty():
-		for p in props:
-			if p is Dictionary:
-				var display: String = String((p as Dictionary).get("display", ""))
-				if not display.is_empty():
-					advanced_parts.append(display)
-	else:
-		if cfg.has("card_damage_bonus"):
-			var bonus = float(cfg.card_damage_bonus)
-			if bonus > 0: advanced_parts.append("卡牌伤害+%.0f%%" % (bonus * 100))
-		if cfg.has("defense_bonus"):
-			var bonus = float(cfg.defense_bonus)
-			if bonus > 0: advanced_parts.append("防御+%.0f%%" % (bonus * 100))
-		if cfg.has("xp_bonus"):
-			var bonus = float(cfg.xp_bonus)
-			if bonus > 0: advanced_parts.append("经验+%.0f%%" % (bonus * 100))
-		if cfg.has("energy_cost_reduction"):
-			var reduction = int(cfg.energy_cost_reduction)
-			if reduction > 0: advanced_parts.append("能量消耗-%d" % reduction)
-	if advanced_parts.size() > 0:
-		advanced_label.text = "  |  ".join(advanced_parts.slice(0, 5))
-		advanced_label.custom_minimum_size = Vector2(350, 0)
-		advanced_label.visible = true
-
-	# 独特特性
-	var trait_label: Label = row_panel.get_node("M2/HB2/VB2/TraitLabel")
-	if cfg.has("special_traits"):
-		var traits: Array = cfg.get("special_traits", [])
-		if not traits.is_empty():
-			trait_label.text = "✦ " + "  |  ".join(PackedStringArray(traits))
-			trait_label.custom_minimum_size = Vector2(350, 0)
-			trait_label.visible = true
-
-	# v6.7: 主动特殊能力（active_ability）— 7星相位仪的招牌技能，原商店漏显示
-	# 与 phase_instrument_selector.gd:331 的展示格式保持一致
-	var ability_label: Label = row_panel.get_node_or_null("M2/HB2/VB2/AbilityLabel")
-	if ability_label and cfg.has("active_ability"):
-		var ability: Dictionary = cfg.get("active_ability", {})
-		if not ability.is_empty():
-			var ability_name: String = String(ability.get("name", ""))
-			var ability_desc: String = String(ability.get("description", ""))
-			if not ability_name.is_empty() and not ability_desc.is_empty():
-				ability_label.text = "⚡ %s：%s" % [ability_name, ability_desc]
-			elif not ability_desc.is_empty():
-				ability_label.text = "⚡ %s" % ability_desc
-			else:
-				ability_label.text = "⚡ %s" % ability_name
-			ability_label.custom_minimum_size = Vector2(350, 0)
-			ability_label.visible = true
-
-	# 购买按钮
-	var btn2: Button = row_panel.get_node("M2/HB2/BuyBtn")
-	if owned:
-		btn2.disabled = true
-		btn2.text = "已拥有"
-		btn2.tooltip_text = "你已拥有这台相位仪"
-	elif bool(can.get("ok", false)):
-		btn2.text = "购买并装备"
-		btn2.tooltip_text = "消耗 %d 能量块购买，并立即装备这台相位仪" % price_eb
-	else:
-		btn2.disabled = true
-		# 批次三 B2b：禁用按钮挂具体原因 tooltip（点了没反应的困惑就地消解）
-		if reason == "rep":
-			btn2.text = "声望不足"
-			btn2.tooltip_text = "需要 %s 声望 %d（当前最高声望 %d）" % [_get_company_name(_current_company_id), req_rep, _get_max_faction_reputation()]
-		elif reason == "energy_block":
-			btn2.text = "能量块不足"
-			btn2.tooltip_text = "需要 %d 能量块——能量块可通过日常任务与战斗掉落获得" % price_eb
-		else:
-			btn2.text = "未解锁"
-			btn2.tooltip_text = "尚未满足购买条件"
-
-	var iid_copy: String = iid
-	btn2.pressed.connect(func() -> void:
-		_on_buy_instrument_pressed(iid_copy, row_panel)
-	)
-
-	return row_panel
 
 func _on_buy_pressed(card_id: String, card_count: int, price_nano: int, row_node: Control) -> void:
 	# 防抖：购买流程（含反馈动画）期间禁止重复触发，避免快速连点多次 emit 导致多发卡。
@@ -1178,22 +1039,3 @@ func _flash_row(row_node: Control, flash_color: Color) -> void:
 	_feedback_tween.tween_property(row_node, "modulate", Color(flash_color.r, flash_color.g, flash_color.b, 1.0), 0.08)
 	_feedback_tween.tween_property(row_node, "modulate", DT.COLOR_HOVER_WHITE, 0.3)
 
-func _on_buy_instrument_pressed(instrument_id: String, row_node: Control) -> void:
-	var fsm: Node = get_node_or_null("/root/FactionSystemManager")
-	if fsm == null or not fsm.has_method("buy_instrument"):
-		return
-	# 屏蔽 buy_instrument 内部 add_resource 触发的 resources_changed 回弹
-	_suppress_resources_refresh = true
-	var res: Dictionary = fsm.buy_instrument(_current_company_id, instrument_id)
-	_suppress_resources_refresh = false
-	if bool(res.get("ok", false)):
-		var qm2 = get_node_or_null("/root/QuestManager")
-		if qm2 and qm2.has_method("notify_item_bought"):
-			qm2.notify_item_bought()
-		_flash_row(row_node, Color(DT.COLOR_GREEN_BRIGHT.r, DT.COLOR_GREEN_BRIGHT.g, DT.COLOR_GREEN_BRIGHT.b, 0.65))
-	else:
-		_flash_row(row_node, Color(DT.COLOR_DANGER.r, DT.COLOR_DANGER.g, DT.COLOR_DANGER.b, 0.65))
-	_refresh_balance()
-	await get_tree().create_timer(0.35).timeout
-	if is_instance_valid(row_node):
-		call_deferred("_refresh_items")

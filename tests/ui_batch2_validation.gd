@@ -22,7 +22,6 @@ const FILES: Array[String] = [
 	# Phase B
 	"res://scenes/ui/bottom_instrument_bar.gd",
 	"res://scenes/ui/resource_slot_item.gd",
-	"res://scenes/ui/evolution_atlas_view.gd",
 	"res://scenes/ui/backpack/backpack_presenter.gd",
 	"res://scenes/ui/phase_master_skill_panel.gd",
 	"res://scenes/ui/backpack_panel.gd",

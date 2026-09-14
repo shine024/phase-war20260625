@@ -3,6 +3,8 @@ class_name CombatFeedback
 ## 战斗飘字：伤害 / MISS（格子战无 BattleHud 时由 BattleManager 信号驱动）
 
 const _DmgNum = preload("res://scenes/effects/damage_number_display.gd")
+# v32.0 B1-1: 极速推演旗标源（show_damage 读 ff_active 短路）
+const BattleTimeState = preload("res://scripts/battle/battle_time_state.gd")
 
 ## v6.6: 伤害数字节流——同一单位 80ms 内的伤害合并显示一次（累加伤害值）。
 ## 避免密集交火（弹道批量命中）时同一单位瞬间迸溅大量伤害数字节点和 Tween。
@@ -42,6 +44,9 @@ static func resolve_fx_parent(unit: Node) -> Node:
 
 static func show_damage(world_pos: Vector2, amount: float, unit: Node = null, is_critical: bool = false, dmg_type: String = "") -> void:
 	if amount <= 0.0:
+		return
+	# v32.0 B1-1: 极速推演期间跳过伤害数字（8x 下不可读且刷屏）
+	if BattleTimeState.ff_active:
 		return
 	# v6.6: 节流——同一单位 80ms 内的伤害合并为一个数字。
 	# 暴击/穿甲等高优先级类型不节流（视觉冲击感重要）。

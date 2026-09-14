@@ -12,7 +12,6 @@ const DEBUG_LOG := false
 
 const CompanyDefinitions = preload("res://data/company_definitions.gd")
 const LevelInformation = preload("res://data/level_information.gd")
-const PhaseInstruments = preload("res://data/phase_instruments.gd")
 const FactionStatus = preload("res://data/faction_status.gd")  # v6.10: 派生势力状态
 const BasicResources = preload("res://data/basic_resources.gd")
 const FactionCardGenerator = preload("res://managers/faction/faction_card_generator.gd")
@@ -131,7 +130,6 @@ var faction_level: Dictionary = {}
 
 ## 势力商店库存：faction_id -> [card_ids...]
 var faction_store_inventory: Dictionary = {}
-var unlocked_faction_instruments: Dictionary = {}
 
 ## 当前激活势力（空字符串=未激活）
 var active_faction: String = ""
@@ -205,7 +203,6 @@ func _init_faction_data() -> void:
 		faction_reputation[faction_id] = start_rep
 		faction_level[faction_id] = start_lv
 		faction_store_inventory[faction_id] = FactionShop.get_default_store_inventory(faction_id)
-		unlocked_faction_instruments[faction_id] = []
 		_faction_definitions[faction_id] = faction_data
 		_all_faction_ids.append(faction_id)
 
@@ -613,86 +610,6 @@ func get_all_factions_info() -> Array:
 			result.append(get_faction_info(faction_id))
 	return result
 
-## 获取势力的相位仪列表
-func get_faction_phase_instruments(faction_id: String) -> Array:
-	# v8.x: 相位仪改为技能树解锁，不再在势力商店出售。返回空数组。
-	# 玩家通过相位师技能树（command/firepower 等分支）解锁相位仪。
-	return []
-
-func is_instrument_unlocked_for_faction(faction_id: String, instrument_id: String) -> bool:
-	var arr: Array = unlocked_faction_instruments.get(faction_id, [])
-	return arr.has(instrument_id)
-
-func unlock_instrument_for_faction(faction_id: String, instrument_id: String) -> bool:
-	if faction_id.is_empty() or instrument_id.is_empty():
-		return false
-	var arr: Array = unlocked_faction_instruments.get(faction_id, [])
-	if not arr.has(instrument_id):
-		arr.append(instrument_id)
-	unlocked_faction_instruments[faction_id] = arr
-	var pim: Node = get_node_or_null("/root/PhaseInstrumentManager")
-	if pim != null and pim.has_method("unlock_instrument"):
-		pim.unlock_instrument(instrument_id)
-	return true
-
-# ─────────────────────────────────────────────
-#  相位仪购买
-# ─────────────────────────────────────────────
-
-func can_buy_instrument(faction_id: String, instrument_cfg: Dictionary) -> Dictionary:
-	if instrument_cfg.is_empty():
-		return {"ok": false, "reason": "invalid"}
-	var iid: String = String(instrument_cfg.get("id", ""))
-	if iid.is_empty():
-		return {"ok": false, "reason": "invalid"}
-	if String(instrument_cfg.get("faction_id", "")) != faction_id:
-		return {"ok": false, "reason": "faction_mismatch"}
-	# v8.x: phase_master_drop 仪仅相位师掉落，商店不可购买（双保险）
-	if String(instrument_cfg.get("acquire_rule", "")) == "phase_master_drop":
-		return {"ok": false, "reason": "phase_master_only"}
-	if is_instrument_unlocked_for_faction(faction_id, iid):
-		return {"ok": false, "reason": "owned"}
-	var rep_need: int = int(instrument_cfg.get("required_rep", 0))
-	var rep_now: int = get_faction_reputation(faction_id)
-	if rep_now < rep_need and not has_global_access():
-		return {"ok": false, "reason": "rep", "required_rep": rep_need, "current_rep": rep_now}
-	var price_eb: int = int(instrument_cfg.get("price_energy_block", 0))
-	var brm: Node = get_node_or_null("/root/BasicResourceManager")
-	var eb_now: int = brm.get_total(BasicResources.ID_ENERGY_BLOCK) if brm and brm.has_method("get_total") else 0
-	if eb_now < price_eb:
-		return {"ok": false, "reason": "energy_block", "required_energy_block": price_eb, "current_energy_block": eb_now}
-	return {"ok": true}
-
-func buy_instrument(faction_id: String, instrument_id: String) -> Dictionary:
-	var cfg: Dictionary = PhaseInstruments.get_by_id(instrument_id)
-	if cfg.is_empty():
-		return {"ok": false, "reason": "invalid"}
-	var can: Dictionary = can_buy_instrument(faction_id, cfg)
-	if not bool(can.get("ok", false)):
-		return can
-	var price_eb: int = int(cfg.get("price_energy_block", 0))
-	var brm: Node = get_node_or_null("/root/BasicResourceManager")
-	if brm == null or not brm.has_method("add_resource"):
-		return {"ok": false, "reason": "no_resource_manager"}
-	brm.add_resource(BasicResources.ID_ENERGY_BLOCK, -price_eb)
-	unlock_instrument_for_faction(faction_id, instrument_id)
-	var pim: Node = get_node_or_null("/root/PhaseInstrumentManager")
-	if pim != null and pim.has_method("equip_instrument"):
-		pim.equip_instrument(instrument_id)
-	return {"ok": true, "price_energy_block": price_eb}
-
-# ─────────────────────────────────────────────
-#  相位仪奖励
-# ─────────────────────────────────────────────
-
-func grant_instrument_quest_reward(faction_id: String, instrument_id: String) -> bool:
-	var cfg: Dictionary = PhaseInstruments.get_by_id(instrument_id)
-	if cfg.is_empty():
-		return false
-	if String(cfg.get("faction_id", "")) != faction_id:
-		return false
-	return unlock_instrument_for_faction(faction_id, instrument_id)
-
 # ─────────────────────────────────────────────
 #  存档功能
 # ─────────────────────────────────────────────
@@ -710,7 +627,6 @@ func save_state() -> Dictionary:
 		# v30 R2b：功勋（旧档缺 key = 起步值，免迁移）
 		"faction_merit": merit_points,
 		"faction_store_inventory": faction_store_inventory.duplicate(true),
-		"unlocked_faction_instruments": unlocked_faction_instruments.duplicate(true),
 		"faction_active": active_faction,
 		"faction_variants_unlocked": faction_variants_unlocked.duplicate(),
 		"faction_skill_states": skill_states,
@@ -746,8 +662,7 @@ func load_state(data: Dictionary) -> void:
 
 	if data.has("faction_store_inventory") and data["faction_store_inventory"] is Dictionary:
 		faction_store_inventory = (data["faction_store_inventory"] as Dictionary).duplicate(true)
-	if data.has("unlocked_faction_instruments") and data["unlocked_faction_instruments"] is Dictionary:
-		unlocked_faction_instruments = (data["unlocked_faction_instruments"] as Dictionary).duplicate(true)
+	# v6.14 R6：unlocked_faction_instruments 残段已删——旧档该 key 静默跳过
 	# 势力激活（向后兼容：旧存档无此字段→默认无势力激活）
 	if data.has("faction_active"):
 		active_faction = String(data["faction_active"])
@@ -827,8 +742,6 @@ func _ensure_faction_keys_after_load() -> void:
 			faction_level[fid] = int(faction_level[fid])
 		if not faction_store_inventory.has(fid):
 			faction_store_inventory[fid] = FactionShop.get_default_store_inventory(fid)
-		if not unlocked_faction_instruments.has(fid):
-			unlocked_faction_instruments[fid] = []
 		if not faction_skill_states.has(fid):
 			faction_skill_states[fid] = FactionSkillManager.create_default_state(fid)
 

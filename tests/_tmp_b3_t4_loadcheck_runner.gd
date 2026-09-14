@@ -8,7 +8,7 @@ const FILES := [
 	"scenes/ui/bottom_instrument_bar.gd", "scenes/ui/store_panel.gd",
 	"scenes/ui/card_info_panel.gd", "scenes/ui/help_panel.gd", "scenes/ui/growth_panel.gd",
 	"scenes/ui/leaderboard/leaderboard_panel.gd", "scenes/ui/buff_fold_card.gd",
-	"scenes/ui/intelligence_hub_panel.gd", "scenes/ui/unit_progression_detail_view.gd",
+	"scenes/ui/intelligence_hub_panel.gd",
 	"scripts/progression/evolution_graph_builder.gd", "scripts/systems/intel_discovery_manager.gd",
 	"scripts/systems/intel_manual.gd", "managers/evolution/card_evolution_manager.gd",
 	"managers/manager_lazy_loader.gd", "managers/phase_instrument_manager.gd",

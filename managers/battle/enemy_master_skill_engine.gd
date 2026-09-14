@@ -1051,8 +1051,10 @@ func _exec_chain_lightning(dmg_mult: float, name_text: String, delay: float = 0.
 	# v20.15: 快照战斗状态——延迟结算窗口内战斗结束则作废
 	var was_live: bool = _battle_active_now()
 	targets.sort_custom(func(a, b):
-		var da: float = boss_pos.distance_to((a as Node2D).global_position) if a is Node2D else 9999.0
-		var db: float = boss_pos.distance_to((b as Node2D).global_position) if b is Node2D else 9999.0
+		# R6-1 验证轮顺手修：目标可能同帧已释放——`is` 对已释放实例会报错，
+		# is_instance_valid 短路前置（与下方 per-jump 守卫同款口径）
+		var da: float = boss_pos.distance_to((a as Node2D).global_position) if is_instance_valid(a) and a is Node2D else 9999.0
+		var db: float = boss_pos.distance_to((b as Node2D).global_position) if is_instance_valid(b) and b is Node2D else 9999.0
 		return da < db
 	)
 	var max_jumps: int = min(5, targets.size())

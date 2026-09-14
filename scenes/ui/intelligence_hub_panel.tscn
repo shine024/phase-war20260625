@@ -41,15 +41,6 @@ theme_override_constants/h_separation = 10
 theme_override_constants/v_separation = 10
 columns = 3
 
-[node name="EvolutionTab" type="VBoxContainer" parent="Margin/VBox/TabContainer"]
-layout_mode = 2
-metadata/_tab_name = "单位谱系图谱"
-
-[node name="EvolutionHost" type="Control" parent="Margin/VBox/TabContainer/EvolutionTab"]
-layout_mode = 2
-size_flags_vertical = 3
-size_flags_horizontal = 3
-
 [node name="RuneTab" type="VBoxContainer" parent="Margin/VBox/TabContainer"]
 layout_mode = 2
 metadata/_tab_name = "符文图鉴"

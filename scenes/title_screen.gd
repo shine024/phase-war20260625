@@ -30,6 +30,11 @@ func _ready() -> void:
 	var _settings_script := load("res://scenes/ui/settings_panel.gd")
 	if _settings_script:
 		_settings_script.apply_ui_scale_at_boot()
+		# R6-1（F-18）：窗口模式/分辨率启动应用（settings.cfg → DisplayServer）
+		_settings_script.apply_display_at_boot()
+	# v32.0 B1-1: 兜底复位战斗时间状态（正常路径由 BattleSpectacle 的 battle_ended 收口，
+	# 此处防 Engine.time_scale/物理步进从任何路径泄漏进标题屏）
+	preload("res://scripts/battle/battle_time_state.gd").restore_neutral()
 	# 获取按钮节点
 	var new_btn: Button = get_node_or_null("CenterContainer/MainVBox/ButtonsVBox/NewGameButton")
 	var continue_btn: Button = get_node_or_null("CenterContainer/MainVBox/ButtonsVBox/ContinueButton")

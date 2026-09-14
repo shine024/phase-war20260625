@@ -1,10 +1,11 @@
 extends PanelContainer
 class_name IntelligenceHubPanel
 
-## 情报中心：V1 世界观情报 · V3 单位进化总图 + 详情 · v6.2 符文图鉴
+## 情报中心：世界观情报 · 符文图鉴 · 敌方情报手册
+## v6.14 R6（F-16 死数据清点）：「单位谱系图谱」Tab 已移除——谱系信息与制造中心
+## "来源"展示重叠，lineage 数据本体保留（制造中心消费）。
 
 signal closed
-signal open_progression_requested(card_id: String)
 
 const RuneDefs = preload("res://data/runes.gd")
 const RunewordDefs = preload("res://data/runewords.gd")
@@ -18,11 +19,7 @@ const IntelUIKit = preload("res://scenes/ui/components/intel_ui_kit.gd")
 
 @onready var _tab_container: TabContainer = $Margin/VBox/TabContainer
 @onready var _lore_grid: GridContainer = $Margin/VBox/TabContainer/LoreTab/LoreScroll/LoreGrid
-@onready var _evolution_host: Control = $Margin/VBox/TabContainer/EvolutionTab/EvolutionHost
 @onready var _rune_content: VBoxContainer = $Margin/VBox/TabContainer/RuneTab/RuneScroll/RuneContent
-
-var _atlas: EvolutionAtlasView
-var _detail: UnitProgressionDetailView
 
 
 func _ready() -> void:
@@ -32,9 +29,8 @@ func _ready() -> void:
 	add_theme_stylebox_override("panel", PanelStyles.make_panel_frame_textured(accent))
 	var chrome = PanelChrome.attach_to($Margin/VBox, "情报舱", accent, "情报中枢")
 	chrome.closed.connect(_on_close)
-	# v9.x 性能：同步路径只保留样式/标题/骨架。atlas 条目与 lore 卡全部入队分帧
-	# （首开同步冻结 1.2~3s 的热点即 _setup_evolution_tab 全量构建 + _refresh_lore 整表重建）。
-	_setup_evolution_tab()
+	# v9.x 性能：同步路径只保留样式/标题/骨架。lore 卡入队分帧
+	# （首开同步冻结 1.2~3s 的热点即 _refresh_lore 整表重建）。
 	_refresh_lore()
 	_lore_dirty = false
 	_refresh_runes_tab()
@@ -43,9 +39,8 @@ func _ready() -> void:
 	_setup_intel_tab()
 	if _tab_container:
 		_tab_container.set_tab_title(0, "世界观情报")
-		_tab_container.set_tab_title(1, "单位谱系图谱")
-		_tab_container.set_tab_title(2, "符文图鉴")
-		_tab_container.set_tab_title(3, "敌方情报")
+		_tab_container.set_tab_title(1, "符文图鉴")
+		_tab_container.set_tab_title(2, "敌方情报")
 		_tab_container.tab_changed.connect(_on_tab_changed)
 	# v9.x 性能：监听 lore 解锁置脏，refresh() 未脏时跳过 lore 整表重建
 	var lm: Node = get_node_or_null("/root/LoreManager")
@@ -64,41 +59,14 @@ func refresh() -> void:
 		_refresh_lore()
 		_lore_dirty = false
 	_refresh_runes_tab()
-	if _atlas:
-		_atlas.refresh()
-	if _detail and _detail.visible and not _detail.get_card_id().is_empty():
-		_detail.show_card(_detail.get_card_id())
-	if _tab_container and _tab_container.current_tab == 3:
+	if _tab_container and _tab_container.current_tab == 2:
 		_refresh_intel_tab()
 
 
-func _setup_evolution_tab() -> void:
-	if _evolution_host == null:
-		return
-	for child in _evolution_host.get_children():
-		child.queue_free()
-
-	_atlas = EvolutionAtlasView.new()
-	_atlas.name = "EvolutionAtlas"
-	_atlas.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	_atlas.card_selected.connect(_on_atlas_card_selected)
-	_evolution_host.add_child(_atlas)
-
-	_detail = UnitProgressionDetailView.new()
-	_detail.name = "UnitDetail"
-	_detail.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	_detail.back_pressed.connect(_on_detail_back)
-	_detail.open_progression_requested.connect(_on_detail_open_progression)
-	_evolution_host.add_child(_detail)
-	_detail.hide_detail()
-
-
 func _on_tab_changed(tab: int) -> void:
-	if tab == 1 and _atlas:
-		_atlas.refresh()
-	if tab == 2:
+	if tab == 1:
 		_refresh_runes_tab()
-	if tab == 3:
+	if tab == 2:
 		_refresh_intel_tab()
 	# 批次2：tab 切换当前页淡入（原瞬跳）
 	var page := _tab_container.get_current_tab_control() if _tab_container else null
@@ -202,27 +170,6 @@ func _add_lore_card(lore_data: Dictionary) -> void:
 	panel.tooltip_text = "%s\n%s" % [name_text, desc_text]
 
 	_lore_grid.add_child(panel)
-
-
-func _on_atlas_card_selected(card_id: String) -> void:
-	if _detail == null or _atlas == null:
-		return
-	_detail.show_card(card_id)
-	_atlas.visible = false
-
-
-func _on_detail_back() -> void:
-	var focus_id: String = _detail.get_card_id() if _detail else ""
-	if _detail:
-		_detail.hide_detail()
-	if _atlas:
-		_atlas.visible = true
-		if not focus_id.is_empty():
-			_atlas.focus_card(focus_id)
-
-
-func _on_detail_open_progression(card_id: String) -> void:
-	open_progression_requested.emit(card_id)
 
 
 # ═══════════════════════════════════════════════════════════════════
@@ -647,5 +594,4 @@ func _add_mod_intel_rows(card_id: String, im: Node) -> void:
 
 
 func _on_close() -> void:
-	_on_detail_back()
 	closed.emit()
