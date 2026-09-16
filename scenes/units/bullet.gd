@@ -22,7 +22,6 @@ const CardGridUnitVisuals = preload("res://scripts/card_grid_unit_visuals.gd")  
 ## 配合窄锥角喷射形态，替代圆形爆发贴图。
 const ARTILLERY_MUZZLE_TEX := preload("res://assets/effects/particle_textures/muzzle_heavy.png")   # 默认/轻型枪口火（橙红爆发）
 const MUZZLE_JET_TEX       := preload("res://assets/effects/particle_textures/muzzle_jet_sym.png")      # v17e: 侧视前向喷流（白核居中+两侧橙尾，朝左朝右都对）
-const FLAME_STAR_TEX       := preload("res://assets/effects/particle_textures/flame_star.png")    # v17d: 8 放射火舌（已被 FLAME_JET_TEX 替代，保留兼容）
 ## v18-R5: 重型枪口水平火舌（对称 ±X，内容 149×25px）——放射星被 AI 读成"径向爆散"。
 const FLAME_JET_TEX        := preload("res://assets/effects/particle_textures/flame_jet_sym.png")
 ## v18-R9: 摄影感火舌 v2（黑体色序+噪声边缘，内容 160×45px）。
@@ -133,7 +132,6 @@ var _indirect_start: Vector2           # 起点位置
 var _indirect_end: Vector2             # 目标位置
 var _indirect_prev_pos: Vector2  # 上一帧位置（用于计算朝向）
 var _muzzle_spawned: bool = false      # 是否已生成炮口火焰
-var _impact_spawned: bool = false      # 是否已生成爆炸效果
 
 var _finished: bool = false  # 防重复归还：_finish_tex_bullet 幂等守卫
 var _start_position: Vector2
@@ -147,7 +145,6 @@ var _use_tex_sprite: bool = false
 ## 光束类（SNIPER/LASER）不旋转（用 Line2D 端点）。命中特效也据此判断走贴图路径。
 var _rotates_with_direction: bool = false
 var _direction: Vector2 = Vector2.RIGHT
-var _beam_visual_phase: int = 0
 # v18-R12f: 光束轨迹 Sprite2D 方案已回退，恢复 Line2D 光束
 # const BEAM_VISUAL_LEN: float = 100.0
 # const BEAM_FADEOUT_DIST: float = 120.0
@@ -209,7 +206,6 @@ func setup(p_target: Node2D, p_damage: float, p_is_player: bool, p_weapon_type: 
 		_tracer_line.visible = false
 	_apply_visual()
 	_configure_behavior()
-	_beam_visual_phase = 0
 	# v8.3: 发射音效（所有武器类型，按 WeaponTypeLegacy 分流）
 	# v20.18: 纯视觉弹（点射后续发）不播——N 发同帧 setup 会音效叠加成爆音
 	if not _visual_only:
@@ -929,7 +925,6 @@ func _process_indirect(delta: float) -> void:
 		_indirect_start = global_position
 		_indirect_end = CardGridUnitVisuals.aim_pos_for(target) if target and is_instance_valid(target) else global_position + _direction * 500.0
 		_muzzle_spawned = false
-		_impact_spawned = false
 		# 根据距离计算飞行时间
 		var dist = _indirect_start.distance_to(_indirect_end)
 		_indirect_duration = 0.6 + dist / 2000.0 * 0.8  # 0.6~1.4秒
@@ -984,9 +979,8 @@ func _process_indirect(delta: float) -> void:
 	if _rotates_with_direction:
 		rotation = _direction.angle()
 
-	# 目标死亡：沿抛物线继续飞完
-	if target == null or not is_instance_valid(target):
-		pass
+	# v26.x: 目标失效处理在 _process_indirect 落地分支（照常飞完落地爆炸）——
+	# 此处原有一个恒空 `if target == null: pass` 死块，v35 随死代码清理删除。
 
 func _spawn_muzzle_effect(pos: Vector2) -> void:
 	# v7.4: 炮口火焰改用 VfxImpactFactory 的 spark 池（原每次 new CPUParticles2D+Gradient）
@@ -1214,6 +1208,45 @@ func _find_next_pierce_target(origin: Vector2, fly_dir: Vector2, search_radius: 
 			best_d2 = d2
 			best = np
 	return best
+
+## v35 perf: 光束谐振（分裂/反射）邻搜——原 get_nodes_in_group 全组扫描 + 逐个
+## distance_to 的 O(N) 扫描，改走 spatial_grid.query_enemies（本文件 AOE/穿透既路）。
+## 返回按距离升序的相邻敌方单位（不含 exclude，最多 max_n 个；>max_n 候选时取最近，
+## 原实现取组序前 N——分裂/反射弧线指向最近邻居更符合直觉）。grid 不可用时回退
+## 全组扫描保持旧行为。
+func _find_beam_neighbors(origin: Vector2, radius: float, p_shooter_is_player: bool, exclude: Node2D, max_n: int) -> Array:
+	var out: Array = []
+	var best_d2: Array = []
+	var bm: Node = BattleManager if (BattleManager != null and is_instance_valid(BattleManager)) else null
+	if bm != null and bm.get("battle_active") == true:
+		var grid: Variant = bm.get("spatial_grid")
+		if grid != null and is_instance_valid(grid) and grid.has_method("query_enemies"):
+			for n in grid.query_enemies(origin, radius, p_shooter_is_player):
+				var u := n as Node2D
+				if u == null or u == exclude or not is_instance_valid(u):
+					continue
+				var d2: float = u.global_position.distance_squared_to(origin)
+				var idx: int = 0
+				while idx < out.size() and d2 >= float(best_d2[idx]):
+					idx += 1
+				if idx >= max_n:
+					continue
+				out.insert(idx, u)
+				best_d2.insert(idx, d2)
+				if out.size() > max_n:
+					out.resize(max_n)
+					best_d2.resize(max_n)
+			return out
+	# 回退：全组扫描（原行为，按组序取前 N）
+	var grp: String = "enemy_units" if p_shooter_is_player else "player_units"
+	for n in (get_tree().get_nodes_in_group(grp) if get_tree() != null else []):
+		if n == null or not is_instance_valid(n) or not (n is Node2D) or n == exclude:
+			continue
+		if origin.distance_to((n as Node2D).global_position) <= radius:
+			out.append(n as Node2D)
+			if out.size() >= max_n:
+				break
+	return out
 
 ## v9.3: TANK_GUN 命中后淡出（避免与下一发射击叠加，让重炮视觉清晰）
 const TANK_GUN_DISAPPEAR_AFTER: float = 0.20  # 命中后保持可见 0.2s（约 12 帧）
@@ -1464,16 +1497,11 @@ func _on_hit(primary: Node2D) -> void:
 						if primary.has_method("take_damage"):
 							primary.take_damage(final_damage * 0.4, shooter)
 					# v9.1 光束分裂 VFX：从主目标射向相邻 2 个敌人
+					# v35 perf: 邻搜改走 spatial_grid（原 get_nodes_in_group 全组扫描）
 					var _split_pos: Vector2 = (primary.global_position if primary is Node2D else global_position)
-					var _split_grp: String = "enemy_units" if shooter_is_player else "player_units"
 					var _split_targets: Array = []
-					for _n in (get_tree().get_nodes_in_group(_split_grp) if get_tree() != null else []):
-						if _n == null or not is_instance_valid(_n) or not (_n is Node2D) or _n == primary:
-							continue
-						if _split_pos.distance_to((_n as Node2D).global_position) <= 120.0:
-							_split_targets.append((_n as Node2D).global_position)
-							if _split_targets.size() >= 2:
-								break
+					for _sn in _find_beam_neighbors(_split_pos, 120.0, shooter_is_player, primary, 2):
+						_split_targets.append(_sn.global_position)
 					var _vfx_parent := _resolve_fx_parent()
 					if _vfx_parent != null:
 						VfxImpactFactory.spawn_beam_split_arcs(_vfx_parent, _split_pos, _split_targets, Color(0.9, 0.8, 1.0))
@@ -1482,23 +1510,13 @@ func _on_hit(primary: Node2D) -> void:
 					# v21 P1: 满档（beam_reflect_plus1）反射次数 +1（最多 2 个相邻目标）
 					var _reflect_max: int = 2 if _mechs.has("beam_reflect_plus1") else 1
 					var _tpos: Vector2 = (primary.global_position if primary is Node2D else global_position)
-					var _grp: String = "enemy_units" if shooter_is_player else "player_units"
-					var _reflect_pos: Vector2 = _tpos
-					var _reflected: int = 0
-					for _n in (get_tree().get_nodes_in_group(_grp) if get_tree() != null else []):
-						if _n == null or not is_instance_valid(_n) or not (_n is Node2D) or _n == primary:
-							continue
-						if _tpos.distance_to((_n as Node2D).global_position) <= 120.0:
-							if _n.has_method("take_damage"):
-								_n.take_damage(final_damage * 0.4, shooter)   # 衰减 60% → 40%
-							_reflect_pos = (_n as Node2D).global_position
-							# v9.1 光束反射 VFX
-							var _rp := get_parent() as Node2D
-							if _rp != null:
-								VfxImpactFactory.spawn_beam_reflect_arc(_rp, _tpos, _reflect_pos)
-							_reflected += 1
-							if _reflected >= _reflect_max:
-								break
+					var _rp := get_parent() as Node2D
+					for _rn in _find_beam_neighbors(_tpos, 120.0, shooter_is_player, primary, _reflect_max):
+						if _rn.has_method("take_damage"):
+							_rn.take_damage(final_damage * 0.4, shooter)   # 衰减 60% → 40%
+						# v9.1 光束反射 VFX
+						if _rp != null:
+							VfxImpactFactory.spawn_beam_reflect_arc(_rp, _tpos, _rn.global_position)
 			# 套路5 集火链式弱点暴露：读 shooter _special weakpoint_trigger + 目标有双标记
 			# v21 P1: 满档（weakpoint_team_share）——弱点暴露全队共享：任意友军命中
 			# 双标记目标都可触发暴露（不再要求 shooter 自带 weakpoint_trigger 改造）
@@ -1747,7 +1765,6 @@ func reset_pool_object() -> void:
 
 	_start_position = Vector2.ZERO
 	_direction = Vector2.RIGHT
-	_beam_visual_phase = 0
 	_use_tex_sprite = false  # v26.x: 去除相邻双写（复制粘贴残留）
 	_rotates_with_direction = false  # v9.4: 对象池卫生（防复用残留）
 
@@ -1758,7 +1775,6 @@ func reset_pool_object() -> void:
 	_indirect_apex_point = Vector2.ZERO  # v27.12: 池化复用卫生（随首帧重算）
 	_indirect_duration = 1.2
 	_muzzle_spawned = false
-	_impact_spawned = false
 
 	global_position = Vector2.ZERO
 	rotation = 0.0

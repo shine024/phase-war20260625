@@ -32,6 +32,9 @@ const TIER_MID: int = TIER_VETERAN
 const TIER_HIGH: int = TIER_LEGENDARY
 
 ## 档位 → 加成配置（标量乘区；mod_count 为默认配装条数上限，逐卡 cuts 可微调）
+## ⚠️ v6.14.3 实测：本标量不影响强度审计的"档位归因"指标（该指标是各档相对新兵的倍率，
+## 整体抬 pct 会等比抬所有档）——但它会真实抬高战斗内高档敌人（t4 +13%），故不得用作
+## 审计回中旋钮；审计均值 -10~-12% 的三件套软化已按 ±15% 容差接受（见生成器头注）。
 const TIER_BONUS: Dictionary = {
 	TIER_RECRUIT:   {"name": "新兵", "atk_pct": 0.20, "hp_pct": 0.20, "def_pct": 0.20, "mod_count": 5, "rune_count": 1, "enhance_level": 3},
 	TIER_VETERAN:   {"name": "老兵", "atk_pct": 0.30, "hp_pct": 0.30, "def_pct": 0.30, "mod_count": 7, "rune_count": 3, "enhance_level": 6},

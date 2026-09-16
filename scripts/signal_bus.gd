@@ -242,3 +242,6 @@ signal bunker_day_ended(day: int)
 signal truck_travel_changed()
 # 英雄档案解锁（P3：击败相位师掉碎片集齐后发）——纪念墙点灯
 signal hero_archive_unlocked(master_id: String)
+# v34 渐进解锁：关卡进度跨过节奏表阈值（LevelProgressManager 发）——
+# truck_base 重建热区+开张高亮 / 底栏刷新 / 教程步重挂解锁时刻（消费方见 feature_unlock_schedule.gd 契约注）
+signal feature_unlocked(feature_key: String)

@@ -12,9 +12,11 @@ const INSTRUMENT_BAR_SCENE := "res://scenes/ui/bottom_instrument_bar.tscn"
 const PanelStyles = preload("res://scripts/ui/panel_styles.gd")
 const DT = preload("res://resources/design_tokens.gd")
 const TruckTravel = preload("res://data/truck_travel.gd")          # v26.19: 行军数值真身
-const BunkerRoomDefs = preload("res://data/bunker_room_defs.gd")   # v26.19: cost_text 价目文案
+const MobileBaseFacilities = preload("res://data/mobile_base_facilities.gd")   # v26.19: cost_text 价目文案
 const RewardBubbleScript = preload("res://scenes/bunker/bunker_reward_bubble.gd")  # v27.17 归仓气泡（v23.6 组件原样复用）
 const EnemyPhaseMasters = preload("res://data/enemy_phase_masters.gd")  # v27.17 碎片解锁 toast 聚合取名
+const OfflineIdleManagerScript = preload("res://scripts/systems/offline_idle_manager.gd")  # v32.3 A5
+const OfflineRewardDialogScript = preload("res://scenes/ui/offline_reward_dialog.gd")      # v32.3 A5
 
 const COLOR_CYAN := Color(0.0, 0.9, 1.0)
 const COLOR_AMBER := Color(1.0, 0.71, 0.37)
@@ -58,12 +60,12 @@ const HOTSPOTS := {
 		{"r": [0.450, 0.650, 0.040, 0.100], "name": "医疗柜", "hint": "医疗·配给", "kind": "info", "rooms": "medical + mess_hall"},
 		{"r": [0.925, 0.660, 0.055, 0.170], "name": "发电机", "hint": "全车电力·配给", "kind": "info", "rooms": "reactor + mess_hall"},
 		{"r": [0.792, 0.462, 0.152, 0.140], "name": "铺位", "hint": "睡眠·存档", "kind": "sleep", "rooms": "dormitory"},
-		{"r": [0.940, 0.327, 0.055, 0.400], "name": "尾门跳板", "hint": "出击口", "kind": "sortie"},
+		{"r": [0.940, 0.327, 0.055, 0.400], "name": "尾门跳板", "hint": "行军选关", "kind": "march"},
 		{"r": [0.255, 0.610, 0.139, 0.080], "name": "通讯架", "hint": "成长规划", "kind": "panel", "key": "growth"},
 		{"r": [0.506, 0.610, 0.138, 0.080], "name": "词缀工具车", "hint": "词缀·洗练", "kind": "panel", "key": "affix"},
 		{"r": [0.470, 0.180, 0.174, 0.090], "name": "资料柜", "hint": "图鉴·收藏档案", "kind": "panel", "key": "collection"},
 		{"r": [0.398, 0.180, 0.067, 0.100], "name": "电台", "hint": "势力联络", "kind": "panel", "key": "faction"},
-		{"r": [0.792, 0.610, 0.130, 0.070], "name": "战功板", "hint": "战功记录", "kind": "panel", "key": "leaderboard"},
+		{"r": [0.792, 0.250, 0.130, 0.070], "name": "战功板", "hint": "战功记录", "kind": "panel", "key": "leaderboard"},
 		{"r": [0.852, 0.327, 0.080, 0.080], "name": "告示板", "hint": "车长手册", "kind": "panel", "key": "help"},
 	],
 	"era2": [
@@ -77,12 +79,12 @@ const HOTSPOTS := {
 		{"r": [0.447, 0.661, 0.036, 0.104], "name": "医疗柜", "hint": "医疗·配给", "kind": "info", "rooms": "medical + mess_hall"},
 		{"r": [0.918, 0.661, 0.070, 0.174], "name": "发电机", "hint": "全车电力·配给", "kind": "info", "rooms": "reactor + mess_hall"},
 		{"r": [0.780, 0.452, 0.141, 0.139], "name": "铺位", "hint": "睡眠·存档", "kind": "sleep", "rooms": "dormitory"},
-		{"r": [0.922, 0.220, 0.060, 0.452], "name": "尾门跳板", "hint": "出击口", "kind": "sortie"},
+		{"r": [0.922, 0.220, 0.060, 0.452], "name": "尾门跳板", "hint": "行军选关", "kind": "march"},
 		{"r": [0.244, 0.590, 0.146, 0.080], "name": "通讯架", "hint": "成长规划", "kind": "panel", "key": "growth"},
 		{"r": [0.580, 0.620, 0.128, 0.080], "name": "词缀工具车", "hint": "词缀·洗练", "kind": "panel", "key": "affix"},
 		{"r": [0.465, 0.150, 0.275, 0.085], "name": "资料柜", "hint": "图鉴·收藏档案", "kind": "panel", "key": "collection"},
 		{"r": [0.394, 0.150, 0.066, 0.100], "name": "电台", "hint": "势力联络", "kind": "panel", "key": "faction"},
-		{"r": [0.780, 0.600, 0.130, 0.055], "name": "战功板", "hint": "战功记录", "kind": "panel", "key": "leaderboard"},
+		{"r": [0.780, 0.150, 0.130, 0.060], "name": "战功板", "hint": "战功记录", "kind": "panel", "key": "leaderboard"},
 		{"r": [0.830, 0.300, 0.085, 0.090], "name": "告示板", "hint": "车长手册", "kind": "panel", "key": "help"},
 	],
 	"era3": [
@@ -96,12 +98,12 @@ const HOTSPOTS := {
 		{"r": [0.479, 0.733, 0.048, 0.092], "name": "医疗柜", "hint": "医疗·配给", "kind": "info", "rooms": "medical + mess_hall"},
 		{"r": [0.844, 0.420, 0.060, 0.240], "name": "配电柜", "hint": "全车电力·配给", "kind": "info", "rooms": "reactor + mess_hall"},
 		{"r": [0.751, 0.550, 0.124, 0.100], "name": "铺位", "hint": "睡眠·存档", "kind": "sleep", "rooms": "dormitory"},
-		{"r": [0.920, 0.450, 0.065, 0.350], "name": "尾门跳板", "hint": "出击口", "kind": "sortie"},
+		{"r": [0.920, 0.450, 0.065, 0.350], "name": "尾门跳板", "hint": "行军选关", "kind": "march"},
 		{"r": [0.272, 0.645, 0.115, 0.070], "name": "通讯台", "hint": "成长规划", "kind": "panel", "key": "growth"},
 		{"r": [0.676, 0.640, 0.062, 0.092], "name": "词缀工具台", "hint": "词缀·洗练", "kind": "panel", "key": "affix"},
 		{"r": [0.584, 0.290, 0.097, 0.095], "name": "档案屏", "hint": "图鉴·收藏档案", "kind": "panel", "key": "collection"},
 		{"r": [0.431, 0.280, 0.044, 0.100], "name": "通讯阵列", "hint": "势力联络", "kind": "panel", "key": "faction"},
-		{"r": [0.751, 0.450, 0.085, 0.090], "name": "战功屏", "hint": "战功记录", "kind": "panel", "key": "leaderboard"},
+		{"r": [0.751, 0.290, 0.085, 0.090], "name": "战功屏", "hint": "战功记录", "kind": "panel", "key": "leaderboard"},
 		{"r": [0.838, 0.670, 0.075, 0.080], "name": "电子告示牌", "hint": "车长手册", "kind": "panel", "key": "help"},
 	],
 	"era4": [
@@ -115,12 +117,12 @@ const HOTSPOTS := {
 		{"r": [0.438, 0.705, 0.053, 0.182], "name": "医疗冰箱", "hint": "医疗·配给", "kind": "info", "rooms": "medical + mess_hall"},
 		{"r": [0.692, 0.812, 0.190, 0.145], "name": "聚变缆线", "hint": "全车电力·配给", "kind": "info", "rooms": "reactor + mess_hall"},
 		{"r": [0.565, 0.652, 0.127, 0.150], "name": "铺位", "hint": "睡眠·存档", "kind": "sleep", "rooms": "dormitory"},
-		{"r": [0.885, 0.380, 0.080, 0.530], "name": "尾门跳板", "hint": "出击口", "kind": "sortie"},
+		{"r": [0.885, 0.380, 0.080, 0.530], "name": "尾门跳板", "hint": "行军选关", "kind": "march"},
 		{"r": [0.250, 0.715, 0.123, 0.070], "name": "全息通讯塔", "hint": "成长规划", "kind": "panel", "key": "growth"},
 		{"r": [0.710, 0.500, 0.096, 0.080], "name": "词缀机械臂", "hint": "词缀·洗练", "kind": "panel", "key": "affix"},
 		{"r": [0.412, 0.330, 0.079, 0.080], "name": "全息档案柜", "hint": "图鉴·收藏档案", "kind": "panel", "key": "collection"},
 		{"r": [0.254, 0.300, 0.088, 0.080], "name": "外交全息台", "hint": "势力联络", "kind": "panel", "key": "faction"},
-		{"r": [0.565, 0.540, 0.127, 0.080], "name": "战功光墙", "hint": "战功记录", "kind": "panel", "key": "leaderboard"},
+		{"r": [0.565, 0.300, 0.127, 0.080], "name": "战功光墙", "hint": "战功记录", "kind": "panel", "key": "leaderboard"},
 		{"r": [0.806, 0.290, 0.070, 0.080], "name": "全息手册架", "hint": "车长手册", "kind": "panel", "key": "help"},
 	],
 	"era5": [
@@ -134,12 +136,12 @@ const HOTSPOTS := {
 		{"r": [0.255, 0.695, 0.040, 0.090], "name": "医疗柜", "hint": "医疗·配给", "kind": "info", "rooms": "medical + mess_hall"},
 		{"r": [0.695, 0.775, 0.115, 0.200], "name": "相位能源盘", "hint": "全车电力·配给", "kind": "info", "rooms": "reactor + mess_hall"},
 		{"r": [0.752, 0.672, 0.135, 0.165], "name": "铺位", "hint": "睡眠·存档", "kind": "sleep", "rooms": "dormitory"},
-		{"r": [0.900, 0.420, 0.085, 0.340], "name": "尾门跳板", "hint": "出击口", "kind": "sortie"},
+		{"r": [0.900, 0.420, 0.085, 0.340], "name": "尾门跳板", "hint": "行军选关", "kind": "march"},
 		{"r": [0.300, 0.735, 0.094, 0.070], "name": "相位通讯塔", "hint": "成长规划", "kind": "panel", "key": "growth"},
 		{"r": [0.565, 0.745, 0.108, 0.070], "name": "词缀相位台", "hint": "词缀·洗练", "kind": "panel", "key": "affix"},
 		{"r": [0.444, 0.320, 0.112, 0.085], "name": "相位档案柜", "hint": "图鉴·收藏档案", "kind": "panel", "key": "collection"},
 		{"r": [0.392, 0.300, 0.047, 0.100], "name": "相位外交台", "hint": "势力联络", "kind": "panel", "key": "faction"},
-		{"r": [0.565, 0.395, 0.187, 0.080], "name": "战功光廊", "hint": "战功记录", "kind": "panel", "key": "leaderboard"},
+		{"r": [0.565, 0.260, 0.187, 0.080], "name": "战功光廊", "hint": "战功记录", "kind": "panel", "key": "leaderboard"},
 		{"r": [0.895, 0.320, 0.080, 0.080], "name": "相位手册架", "hint": "车长手册", "kind": "panel", "key": "help"},
 	],
 }
@@ -320,6 +322,44 @@ func _ready() -> void:
 	var _tpm := get_node_or_null("/root/TutorialProgressionManager")
 	if _tpm != null and _tpm.has_method("notify_surface_opened"):
 		_tpm.notify_surface_opened("truck_base")
+	# v32.3 B2：教学覆盖层基地本地挂载——overlay_requested 此前全项目只有 main.gd 一个
+	# 监听者，教学步走到基地（首战后回基地的「移动基地」步等）被静默消费、晚一拍弹在战场。
+	if _tpm != null and _tpm.has_signal("overlay_requested") \
+			and not _tpm.overlay_requested.is_connected(_show_tutorial_overlay_local):
+		_tpm.overlay_requested.connect(_show_tutorial_overlay_local)
+	# v32.3 B3：教学首战步的基地出击——start_level 此前只有 main 监听；教学自举前移后
+	# 玩家在基地点「开始首战」时 main 尚未加载，信号会落空。转 _launch_battle 进 main
+	# 开打（tutorial_first_battle meta 由 main 消费，绕过教程态的 launch 自动开战守卫）。
+	if SignalBus.has_signal("start_level") and not SignalBus.start_level.is_connected(_on_start_level_from_tutorial):
+		SignalBus.start_level.connect(_on_start_level_from_tutorial)
+	# v32.3 B1：教学动作「打开XX」的 toggle_* 信号在基地的落地点（自举前移后 2-11 步
+	# 按钮需能在基地场景打开对应嵌入面板。场景互斥，与 main 同名接线不冲突——同一
+	# 时刻树上只有一个场景）。RUNES 步的 toggle_phase_instrument 在基地的等价入口
+	# 是卡仓（符文页在卡仓内）。
+	if SignalBus.has_signal("toggle_backpack") and not SignalBus.toggle_backpack.is_connected(_on_tutorial_open_panel):
+		SignalBus.toggle_backpack.connect(_on_tutorial_open_panel.bind("backpack"))
+	if SignalBus.has_signal("toggle_phase_instrument") and not SignalBus.toggle_phase_instrument.is_connected(_on_tutorial_open_panel):
+		SignalBus.toggle_phase_instrument.connect(_on_tutorial_open_panel.bind("backpack"))
+	if SignalBus.has_signal("toggle_enhancement") and not SignalBus.toggle_enhancement.is_connected(_on_tutorial_open_panel):
+		SignalBus.toggle_enhancement.connect(_on_tutorial_open_panel.bind("growth"))
+	if SignalBus.has_signal("toggle_modification") and not SignalBus.toggle_modification.is_connected(_on_tutorial_open_panel):
+		SignalBus.toggle_modification.connect(_on_tutorial_open_panel.bind("modification"))
+	if SignalBus.has_signal("toggle_evolution") and not SignalBus.toggle_evolution.is_connected(_on_tutorial_open_panel):
+		SignalBus.toggle_evolution.connect(_on_tutorial_open_panel.bind("evolution"))
+	if SignalBus.has_signal("toggle_faction") and not SignalBus.toggle_faction.is_connected(_on_tutorial_open_panel):
+		SignalBus.toggle_faction.connect(_on_tutorial_open_panel.bind("faction"))
+	if SignalBus.has_signal("toggle_store") and not SignalBus.toggle_store.is_connected(_on_tutorial_open_panel):
+		SignalBus.toggle_store.connect(_on_tutorial_open_panel.bind("store"))
+	if SignalBus.has_signal("toggle_world_map") and not SignalBus.toggle_world_map.is_connected(_on_tutorial_open_panel):
+		SignalBus.toggle_world_map.connect(_on_tutorial_open_panel.bind("world_map"))
+	# v34 渐进解锁：跨级解锁 → 热区重建 + 新工位金色脉冲；时代解锁 → chips 门控刷新。
+	# 战斗中跨级时本场景不在树上收不到信号，仪式经 LPM 待播队列在回基地时补播。
+	if not SignalBus.feature_unlocked.is_connected(_on_feature_unlocked):
+		SignalBus.feature_unlocked.connect(_on_feature_unlocked)
+	if LevelProgressManager != null and LevelProgressManager.has_signal("era_unlocked") \
+			and not LevelProgressManager.era_unlocked.is_connected(_on_era_unlocked_signal):
+		LevelProgressManager.era_unlocked.connect(_on_era_unlocked_signal)
+	call_deferred("_consume_pending_unlock_ceremonies")
 	# v27.13：漫画开场收尾携 wakeup 标记切入 → 播醒来演出（deferred 等全 UI 落位）
 	call_deferred("_maybe_play_wakeup")
 
@@ -346,7 +386,7 @@ func _build_topbar() -> void:
 	title.add_theme_color_override("font_color", Color(0.91, 0.86, 0.75))
 	_topbar.add_child(title)
 
-	# v26.12c：外景/剖面视图切换
+	# v26.12c：外景/剖面视图切换（v32.3 D1：补 tooltip——此前零说明）
 	var vg := ButtonGroup.new()
 	for vm in [["exterior", "外景"], ["interior", "剖面"]]:
 		var vb := Button.new()
@@ -356,6 +396,7 @@ func _build_topbar() -> void:
 		vb.focus_mode = Control.FOCUS_NONE
 		vb.set_meta("view_mode", String(vm[0]))
 		vb.add_theme_font_size_override("font_size", 13)
+		vb.tooltip_text = "外景=看驻地与战场环境；剖面=车厢工位干活"
 		_style_chip(vb)
 		vb.pressed.connect(_on_view_pressed.bind(String(vm[0])))
 		_topbar.add_child(vb)
@@ -372,7 +413,8 @@ func _build_topbar() -> void:
 		var e: Dictionary = ERAS[i]
 		var b := Button.new()
 		b.text = String(e["label"])
-		b.tooltip_text = String(e["zone"])
+		# v32.3 D1：tooltip 从纯地名改为说明语义（chips 只换驻地观感，不切关卡）
+		b.tooltip_text = "切换到%s驻地观感（%s）——只换场景主题，不改变当前关卡" % [String(e["label"]), String(e["zone"])]
 		b.toggle_mode = true
 		b.button_group = group
 		b.focus_mode = Control.FOCUS_NONE
@@ -382,6 +424,8 @@ func _build_topbar() -> void:
 		b.pressed.connect(_on_era_pressed.bind(i))
 		_topbar.add_child(b)
 		_era_buttons.append(b)
+	# v34 渐进解锁：时代 chips 按时代解锁态灰显（era N 观感 = 通关 (N-1)*20 关 Boss）
+	_refresh_era_chip_locks()
 
 	var sp := Control.new()
 	sp.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -415,6 +459,7 @@ func _build_topbar() -> void:
 	back.text = "返回标题"
 	back.focus_mode = Control.FOCUS_NONE
 	back.add_theme_font_size_override("font_size", 13)
+	back.tooltip_text = "返回标题屏（自动存档）"
 	_style_btn(back, Color(0.6, 0.56, 0.48))
 	back.pressed.connect(_on_back_to_title)
 	_topbar.add_child(back)
@@ -548,6 +593,11 @@ func _maybe_show_truck_intro() -> void:
 	# v27.13：醒来演出期间不弹（否则盖在眼睑动画上）；演出收场由 _finish_wakeup 补弹
 	if _wakeup_active or Engine.has_meta(META_WAKEUP):
 		return
+	# v32.3 B1：教学进行中不弹指南气泡——第一步「欢迎」即开场教学，两窗叠加互相遮挡；
+	# 教学完成后的下次回基地按 show_once 原样补弹
+	var _tm_intro := get_node_or_null("/root/TutorialProgressionManager")
+	if _tm_intro != null and _tm_intro.has_method("should_show_tutorial") and _tm_intro.should_show_tutorial():
+		return
 	FeatureUnlockPopup.show_once("truck_base_intro", "移动基地 · 指南",
 		"外景看驻地，剖面干活——车厢里每个发光框都挂着常显工位牌，一眼直达。行军规则：顶栏「战区地图」点任意节点出车（耗燃料×地形，回程半价），出发后实时行军（1 天≈12 秒，离线也计时）；燃料自动回复（离线也涨），睡觉快充、或在发电机工位用能量块 1:1 充能；停哪才能打哪，行驶中无法出击。")
 
@@ -564,6 +614,13 @@ func _load_era_texture(path: String) -> Texture2D:
 
 func _on_era_pressed(i: int) -> void:
 	if i == _era_idx:
+		return
+	# v34 渐进解锁：未解锁时代的驻地观感不可切（防 ButtonGroup 假选中，复位回当前）
+	if not _is_era_viewable(i):
+		_play_sfx("error", 0.7)
+		SignalBus.show_toast.emit("🔒 通关第 %d 关解锁%s驻地观感" % [i * 20, String(ERAS[i]["label"])])
+		for b_i in _era_buttons.size():
+			_era_buttons[b_i].set_pressed_no_signal(b_i == _era_idx)
 		return
 	set_era(i, true)
 
@@ -647,7 +704,21 @@ func _rebuild_hotspots() -> void:
 		var b := Button.new()
 		b.flat = true
 		b.focus_mode = Control.FOCUS_NONE
-		b.tooltip_text = "%s · %s" % [String(h["name"]), String(h["hint"])]
+		# v34 渐进解锁：panel 工位按节奏表门控——锁定=灰显+🔒短牌，点击 toast 提示解锁关。
+		# 其余 kind（sortie/march/terminal/sleep/info）恒开（L1 常开集，见节奏表头注）。
+		var panel_key := ""
+		if String(h.get("kind", "")) == "panel":
+			panel_key = String(h.get("key", ""))
+		b.set_meta("panel_key", panel_key)
+		var gated := not _is_feature_unlocked(panel_key)
+		b.set_meta("gate_locked", gated)
+		var hdesc := _hotspot_desc(h)
+		var htitle := "%s · %s" % [String(h["name"]), String(h["hint"])]
+		if gated:
+			b.tooltip_text = "🔒 %s\n当前灰显锁定，通关后开启" % _gate_hint(panel_key)
+			b.modulate = Color(0.60, 0.60, 0.60, 0.85)
+		else:
+			b.tooltip_text = htitle if hdesc.is_empty() else "%s\n%s" % [htitle, hdesc]
 		b.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 		b.pressed.connect(_on_hotspot.bind(h))
 		_hot_layer.add_child(b)
@@ -657,6 +728,10 @@ func _rebuild_hotspots() -> void:
 		var tag := Label.new()
 		var full_text := "%s · %s" % [String(h["name"]), String(h["hint"])]
 		var short_text := _hotspot_tag(h)
+		if gated:
+			short_text = "🔒 第%d关" % FeatureUnlockSchedule.unlock_level_for(panel_key)
+			full_text = "🔒 %s" % _gate_hint(panel_key)
+			tag.add_theme_color_override("font_color", Color(0.62, 0.60, 0.55))
 		tag.text = short_text
 		tag.add_theme_font_size_override("font_size", 12)
 		tag.add_theme_color_override("font_color", Color(0.96, 0.97, 0.93))
@@ -681,11 +756,48 @@ func _rebuild_hotspots() -> void:
 			tag.text = short_text)
 	_layout_hotspots()
 
+## v32.3 D1：热区功能说明句（悬浮 tooltip 第二行）——按 panel key > 工位名 > kind 查表，
+## 五时代同功能同一句话（勿逐时代手抄）
+const HOTSPOT_DESC := {
+	"sortie": "打开出击简报：确认目的地、敌情与兵力后出击当前停靠关",
+	"march": "打开战区地图：点任意节点出车行军（耗燃料），到站停靠后即可出击",
+	"terminal": "打开战术统计终端：战线进度、资源家底与收集总览",
+	"sleep": "睡觉 = 存档 + 快充燃料 + 恢复精神，推进游戏内一天",
+	"intelligence": "打开情报舱：敌方情报阶梯——25% 解锁制造配方，50%/75% 扩品质池",
+	"store": "打开补给舱：用声望采购卡牌、资源与符文",
+	"backpack": "打开卡仓：管理战斗卡、符文与装配",
+	"modification": "打开改造舱：给战斗卡安装/升级/卸下改造模块",
+	"evolution": "打开制造舱：用情报与资源制造新卡牌",
+	"growth": "打开成长面板：卡牌等级、技能树与战力总览",
+	"affix": "打开词条工坊：词条洗练/锁定/批量重随",
+	"collection": "打开收藏图鉴：检阅收藏过的卡种与获取进度",
+	"faction": "打开势力联络：7 大势力声望、专属卡与技能树",
+	"leaderboard": "打开战功榜：势力排名、相位师排名与敌方相位师图鉴",
+	"help": "打开车长手册：全部系统的用法说明",
+	"发电机": "燃料与引擎管理：燃料自动回复（离线也涨），或用能量块 1:1 充能",
+	"配电柜": "燃料与引擎管理：燃料自动回复（离线也涨），或用能量块 1:1 充能",
+	"聚变缆线": "燃料与引擎管理：燃料自动回复（离线也涨），或用能量块 1:1 充能",
+	"相位能源盘": "燃料与引擎管理：燃料自动回复（离线也涨），或用能量块 1:1 充能",
+	"医疗柜": "医疗配给（占位）：正式版将在基地 HUD 呈现产出/状态",
+	"医疗冰箱": "医疗配给（占位）：正式版将在基地 HUD 呈现产出/状态",
+}
+
+func _hotspot_desc(h: Dictionary) -> String:
+	var key := String(h.get("key", ""))
+	if HOTSPOT_DESC.has(key):
+		return String(HOTSPOT_DESC[key])
+	var hname := String(h.get("name", ""))
+	if HOTSPOT_DESC.has(hname):
+		return String(HOTSPOT_DESC[hname])
+	return String(HOTSPOT_DESC.get(String(h.get("kind", "")), ""))
+
 ## 工位常显短牌文案：从 kind/key/name 语义字段推导，五时代同功能同叫法（勿逐时代手抄）
 func _hotspot_tag(h: Dictionary) -> String:
 	match String(h.get("kind", "info")):
 		"sortie":
 			return "出击"
+		"march":
+			return "行军"  # v32.3 D2：尾门跳板与驾驶室分化——驾驶室=出击简报，尾门=行军
 		"terminal":
 			return "统计"
 		"sleep":
@@ -790,31 +902,68 @@ func _refresh_reward_bubbles() -> void:
 	if _bubble_layer == null or not is_inside_tree() or _hot_layer == null:
 		return
 	for child in _bubble_layer.get_children():
+		if child == _collect_all_btn:
+			continue
 		child.queue_free()
 	var dm := _drop_manager()
 	if dm == null or not dm.has_method("get_escrow_categories"):
+		_show_collect_all_chip(false, 0, 0)
 		return
 	var cats: Array[String] = dm.get_escrow_categories()
 	if cats.is_empty():
+		_show_collect_all_chip(false, 0, 0)
 		return
 	# 类别按工位分组：同工位多类别合一泡（旧基地同款口径）
 	var by_spot: Dictionary = {}
+	var total_items := 0
 	for cat in cats:
 		var spot_key := String(ESCROW_HOTSPOT_MAP.get(String(cat), "evolution"))
 		if not by_spot.has(spot_key):
 			by_spot[spot_key] = {"categories": [], "count": 0}
 		by_spot[spot_key]["categories"].append(String(cat))
-		by_spot[spot_key]["count"] += int(dm.get_escrow_category_count(String(cat)))
+		var cat_count := int(dm.get_escrow_category_count(String(cat)))
+		by_spot[spot_key]["count"] += cat_count
+		total_items += cat_count
+	# v32.3 D3：气泡 tooltip 末尾加全车总量行——玩家此前无从知道"一共几处结算"
+	var total_line := "全车共 %d 个工位待收 · %d 件" % [by_spot.size(), total_items]
 	for spot_key in by_spot:
 		var cats_arr: Array = by_spot[spot_key]["categories"]
 		var bubble: Control = RewardBubbleScript.new()
 		_bubble_layer.add_child(bubble)
 		bubble.setup(cats_arr, int(by_spot[spot_key]["count"]),
-			_hotspot_rect_for_key(String(spot_key)), _escrow_tooltip(dm, cats_arr))
+			_hotspot_rect_for_key(String(spot_key)),
+			_escrow_tooltip(dm, cats_arr) + "\n" + total_line)
 		bubble.collected.connect(_on_reward_bubble_collected)
+	# v32.3 D3：收取全部 chip（有暂存才显示）——一键全收，不再逐泡点
+	_show_collect_all_chip(true, total_items, by_spot.size())
 	# 首见引导（⚠️ deferred：show_once 的 root.add_child 在 _ready 期会撞 Parent busy，
 	# 且 key 被提前标 seen → 永远弹不出——v23.6.1 实测踩坑，复用旧 key 老档不重弹）
 	_maybe_show_escrow_intro.call_deferred()
+
+## v32.3 D3：右下角"收取全部(N)"chip——挂空时隐藏。collect_escrow([]) 即全收。
+var _collect_all_btn: Button = null
+
+func _show_collect_all_chip(show_it: bool, total_items: int, spots: int) -> void:
+	if not show_it:
+		if _collect_all_btn != null and is_instance_valid(_collect_all_btn):
+			_collect_all_btn.visible = false
+		return
+	if _collect_all_btn == null:
+		_collect_all_btn = Button.new()
+		_collect_all_btn.focus_mode = Control.FOCUS_NONE
+		_collect_all_btn.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+		_collect_all_btn.add_theme_font_size_override("font_size", 14)
+		_collect_all_btn.pressed.connect(func() -> void: _on_reward_bubble_collected([]))
+		_style_btn(_collect_all_btn, COLOR_AMBER)
+		_collect_all_btn.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
+		_collect_all_btn.offset_left = -190.0
+		_collect_all_btn.offset_right = -14.0
+		_collect_all_btn.offset_top = -46.0
+		_collect_all_btn.offset_bottom = -14.0
+		_bubble_layer.add_child(_collect_all_btn)
+	_collect_all_btn.text = "🔔 收取全部（%d 件）" % total_items
+	_collect_all_btn.tooltip_text = "一键收取全车暂存战利品（%d 个工位 · %d 件）" % [spots, total_items]
+	_collect_all_btn.visible = true
 
 func _maybe_show_escrow_intro() -> void:
 	FeatureUnlockPopup.show_once("escrow_bubble", "战利品归仓",
@@ -952,10 +1101,18 @@ func _on_hotspot(h: Dictionary) -> void:
 	match String(h.get("kind", "info")):
 		"sortie":
 			_open_sortie()
+		"march":
+			_open_world_map()  # v32.3 D2：尾门跳板=行军选关（与驾驶室出击分化）
 		"terminal":
 			_open_terminal()
 		"panel":
-			_open_panel(String(h.get("key", "")))
+			var pk := String(h.get("key", ""))
+			# v34 渐进解锁：锁定工位点击 → toast 提示解锁关（灰显可点，锁即期待感外显）
+			if not _is_feature_unlocked(pk):
+				_play_sfx("error", 0.7)
+				SignalBus.show_toast.emit("🔒 %s" % _gate_hint(pk))
+				return
+			_open_panel(pk)
 		"sleep":
 			_on_sleep()
 		_:
@@ -965,6 +1122,68 @@ func _on_hotspot(h: Dictionary) -> void:
 			else:
 				_open_card("%s · %s" % [String(h["name"]), String(h["hint"])], String(h.get("rooms", "")),
 					"工位卡片占位（info 类工位无常驻面板，正式版在基地 HUD 呈现产出/状态）。")
+
+# ── v34 渐进解锁：门控查询 / 时代chips 门控 / 解锁开张高亮 / 仪式补播 ──
+func _is_feature_unlocked(key: String) -> bool:
+	if key.is_empty():
+		return true
+	if LevelProgressManager == null or not LevelProgressManager.has_method("is_feature_unlocked"):
+		return true  # 管理器不可达 fail-open，勿卡死入口
+	return bool(LevelProgressManager.is_feature_unlocked(key))
+
+func _gate_hint(key: String) -> String:
+	if LevelProgressManager != null and LevelProgressManager.has_method("feature_gate_hint"):
+		return String(LevelProgressManager.feature_gate_hint(key))
+	return ""
+
+func _is_era_viewable(idx: int) -> bool:
+	if not GameConfig.get_default().feature_gates_enabled:
+		return true
+	if LevelProgressManager == null or not LevelProgressManager.has_method("is_era_unlocked"):
+		return true
+	return bool(LevelProgressManager.is_era_unlocked(idx + 1))
+
+## 时代 chips 锁定态刷新（构建后/时代解锁信号时调用）——锁定=灰显+🔒tooltip
+func _refresh_era_chip_locks() -> void:
+	for i in _era_buttons.size():
+		var b: Button = _era_buttons[i]
+		if _is_era_viewable(i):
+			b.modulate = Color.WHITE
+			b.tooltip_text = "切换到%s驻地观感（%s）——只换场景主题，不改变当前关卡" % [
+				String(ERAS[i]["label"]), String(ERAS[i]["zone"])]
+		else:
+			b.modulate = Color(0.55, 0.55, 0.55, 0.75)
+			b.tooltip_text = "🔒 通关第 %d 关解锁%s驻地观感" % [i * 20, String(ERAS[i]["label"])]
+
+func _on_era_unlocked_signal(_era: int) -> void:
+	_refresh_era_chip_locks()
+
+## 跨级解锁信号（玩家在基地时即时反馈）：热区重建 + 新工位金色脉冲
+func _on_feature_unlocked(key: String) -> void:
+	_rebuild_hotspots()
+	_glow_hotspot(key)
+
+func _glow_hotspot(key: String) -> void:
+	for c in _hot_layer.get_children():
+		if not (c is Button) or String(c.get_meta("panel_key", "")) != key:
+			continue
+		var b := c as Button
+		if DesignTokens.is_motion_reduce():
+			b.modulate = Color(1.0, 0.86, 0.45)
+			return
+		var tw := create_tween().set_loops(3)
+		tw.tween_property(b, "modulate", Color(1.0, 0.86, 0.45), 0.35)
+		tw.tween_property(b, "modulate", Color.WHITE, 0.35)
+		return
+
+## 回基地补播离场期间的解锁仪式（战斗结算中跨级 → LPM 待播队列 → 此处批量弹窗）
+func _consume_pending_unlock_ceremonies() -> void:
+	if LevelProgressManager == null \
+			or not LevelProgressManager.has_method("consume_pending_feature_unlocks"):
+		return
+	var pending: Array = LevelProgressManager.consume_pending_feature_unlocks()
+	if not pending.is_empty():
+		FeatureUnlockPopup.show_unlock_batch(pending)
 
 # ── 出击简报 ──
 func _open_sortie() -> void:
@@ -1589,6 +1808,12 @@ func _get_display_level() -> int:
 # ───────────────────── v26.12b 接线：内嵌真面板（复刻 bunker_main 539-615 链） ─────────────────────
 
 func _open_panel(panel_id: String) -> void:
+	# v34 渐进解锁守卫：未解锁面板拒绝打开（教程 toggle_* 接线与旁路调用同口径；
+	# 锁定期内对应教程步自然等待——面板解锁后首次打开才触发 notify_surface_opened）
+	if not _is_feature_unlocked(panel_id):
+		_play_sfx("error", 0.7)
+		SignalBus.show_toast.emit("🔒 %s" % _gate_hint(panel_id))
+		return
 	# 批次③ Task 5：教程按需点播触达面（工位面板首触，键名与 SURFACE_FOR_STEP 对齐）
 	var _tpm_panel := get_node_or_null("/root/TutorialProgressionManager")
 	if _tpm_panel != null and _tpm_panel.has_method("notify_surface_opened"):
@@ -1654,6 +1879,11 @@ func _ensure_panel_wrapper(panel_id: String) -> Control:
 			return null
 		panel = Control.new()
 		panel.set_script(s)
+		# v6.14 修复：脚本型面板根是裸 Control（min=0），会被下方 CenterContainer 折成
+		# 0×0 摆在屏幕中心，面板本体（PANEL_SIZE_LARGE 1180×640 等）从中心向右下展开
+		# ——同伴档案/纪念墙"主体缩在右下角、一大半出屏"的本因。给满舞台最小尺寸，
+		# 内部全屏锚点才能展开（bunker_main.gd 嵌入链同款补丁，v27.17 迁移时漏抄）。
+		panel.custom_minimum_size = Vector2(1280, 720)
 	var wrapper := Control.new()
 	wrapper.set_anchors_preset(Control.PRESET_FULL_RECT)
 	wrapper.mouse_filter = Control.MOUSE_FILTER_STOP
@@ -1964,7 +2194,7 @@ func _open_fuel_station_card() -> void:
 	charge_row.add_theme_constant_override("separation", 10)
 	var energy_have := 0
 	if BasicResourceManager != null:
-		energy_have = int(BasicResourceManager.get_total(BunkerRoomDefs.res_full_id("energy")))
+		energy_have = int(BasicResourceManager.get_total(MobileBaseFacilities.res_full_id("energy")))
 	var charge_l := Label.new()
 	charge_l.text = "能量块余额 %d ｜ 充入燃料 1:1" % energy_have
 	charge_l.add_theme_font_size_override("font_size", 12)
@@ -1999,7 +2229,7 @@ func _open_fuel_station_card() -> void:
 		up_btn.disabled = true
 		_style_btn(up_btn, Color(0.6, 0.56, 0.48))
 	else:
-		up_btn.text = "升级引擎 Lv%d→%d（%s）" % [eng, eng + 1, BunkerRoomDefs.cost_text(up_cost)]
+		up_btn.text = "升级引擎 Lv%d→%d（%s）" % [eng, eng + 1, MobileBaseFacilities.cost_text(up_cost)]
 		up_btn.tooltip_text = "提升行驶速度与燃料罐容量"
 		_style_btn(up_btn, COLOR_AMBER)
 		up_btn.pressed.connect(func() -> void:
@@ -2190,6 +2420,8 @@ func _maybe_play_wakeup() -> void:
 			bm.mark_comic_seen()   # 开场已完整播放（或跳过），落档防重播
 	if not pending:
 		_maybe_show_truck_intro()
+		_maybe_show_offline_rewards_home()  # v32.3 A5：非首启路径回基地即查离线奖励
+		_bootstrap_tutorial_if_needed()     # v32.3 B1：非首启旧档教程未启动也在此自举
 		return
 	_play_wakeup_cinematic()
 
@@ -2438,3 +2670,82 @@ func _finish_wakeup() -> void:
 		_wakeup_root.queue_free()
 	_wakeup_root = null
 	_maybe_show_truck_intro()
+	_maybe_show_offline_rewards_home()  # v32.3 A5：首启醒来演出结束后补查
+	_bootstrap_tutorial_if_needed()     # v32.3 B1：醒来演出结束=玩家获得控制权，教学自此开始
+
+
+# ── v32.3 B 批：教学起点前移到移动基地 ────────────────────────────
+## 教学自举（镜像 main.gd _start_tutorial_if_needed）。此前教学唯一自举点在 main.tscn，
+## 而新档开场终点是本场景（漫画→醒来），玩家要在零提示的基地里盲操作找到出击口，
+## 第一步「欢迎」才在战场 HUD 弹出。醒来演出结束=玩家获得控制权的精确时刻，在此自举。
+func _bootstrap_tutorial_if_needed() -> void:
+	var tm := get_node_or_null("/root/TutorialProgressionManager")
+	if tm == null or not tm.has_method("should_show_tutorial"):
+		return
+	if not tm.should_show_tutorial():
+		return
+	if "current_step" in tm and int(tm.current_step) != 0:
+		return  # 非 NONE：教程进行中/已完成，走既有步进/点播链
+	if tm.has_method("get_tutorial_content"):
+		tm.get_tutorial_content()  # 副作用：NONE → INTRO_WELCOME
+	_show_tutorial_overlay_local()
+
+
+## 教学覆盖层基地本地挂载（镜像 main.gd _show_tutorial_overlay；防重复挂）
+func _show_tutorial_overlay_local() -> void:
+	if get_node_or_null("TutorialOverlay") != null:
+		return
+	var scene := load("res://scenes/ui/tutorial_overlay.tscn") as PackedScene
+	if scene == null:
+		return
+	var overlay := scene.instantiate()
+	overlay.name = "TutorialOverlay"
+	add_child(overlay)
+
+
+## 教学首战步的基地出击（镜像 main.gd _on_start_level_from_tutorial + 顶栏出击同链）：
+## 写 tutorial_first_battle meta（main 落地即开打首战）+ launch_from_bunker（回基地链复用）
+func _on_start_level_from_tutorial(level: int) -> void:
+	if level > 0 and GameManager != null:
+		GameManager.set_current_level(level)
+	Engine.set_meta("tutorial_first_battle", true)
+	_launch_battle()
+
+
+## 教学动作「打开XX」的基地落地——打开对应嵌入面板；world_map 走行军地图。
+## toggle 语义在基地简化为打开（关闭走面板自身关闭钮）。
+func _on_tutorial_open_panel(panel_id: String) -> void:
+	if panel_id == "world_map":
+		_open_world_map()
+	else:
+		_open_panel(panel_id)
+
+
+# ── v32.3 A5 离线奖励（自 main.gd 迁入）──────────────────────────
+## "欢迎回来"弹窗检查。时机=回基地（main 落地即开战后，出征节奏里弹结算既打断
+## 流程也时机错误——"距上次存档≥5分钟"≠真离线）。每进程只判一次（static 守卫，
+## 基地/地图往返不重查）；存档快照在进程启动时即定，中途管理基地多久都不会误弹。
+static var _offline_checked: bool = false
+var _offline_idle: OfflineIdleManager = null
+
+func _maybe_show_offline_rewards_home() -> void:
+	if _offline_checked:
+		return
+	_offline_checked = true
+	if SaveManager == null or not SaveManager.has_method("get_last_active_at"):
+		return
+	if _offline_idle == null:
+		_offline_idle = OfflineIdleManagerScript.new()
+		_offline_idle.init(self)
+	var last_active: int = SaveManager.get_last_active_at()
+	var now: int = int(Time.get_unix_time_from_system())
+	var result: Dictionary = _offline_idle.compute_offline_rewards(last_active, now)
+	if result.is_empty():
+		return   # 离线不足/无时间戳，不弹
+	var dialog := OfflineRewardDialogScript.create(self, result)
+	if dialog:
+		dialog.claimed.connect(_on_offline_reward_claimed)
+
+func _on_offline_reward_claimed(rewards: Dictionary) -> void:
+	if _offline_idle != null:
+		_offline_idle.grant_rewards(rewards)

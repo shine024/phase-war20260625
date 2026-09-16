@@ -16,11 +16,23 @@ const EnemyPhaseDriverScene = preload("res://scenes/units/enemy_phase_field_driv
 ## v28 T3: 地面 dressing（弹坑/碎石/履带印/枯草撒点，纯视觉）
 const _GroundDressingScript = preload("res://scripts/battle/ground_dressing.gd")
 var _dressing: Node2D = null
+## v33: 地面战利品层（击杀掉落实体：纳米颗粒/电池/情报碎片/符文/缴获卡）
+const _GroundLootLayerScript = preload("res://scripts/battle/ground_loot_layer.gd")
+var _ground_loot: Node2D = null
 const COMMON_BATTLE_BG_PATH := "res://assets/backgrounds/bg_level_01.png"
 const LEVEL_BG_PATH_FMT := "res://assets/backgrounds/bg_level_%02d.png"
 ## v26.9: 背景整体压暗一档（叠乘在时代 tint 上，略偏冷）——"背景永远比单位暗"，
 ## 让单位深色描边/投影把轮廓从亮底（沙漠/雪原）里衬出来，弹道特效也更跳。
 const BG_DIM := Color(0.80, 0.80, 0.87)
+## v33: 时代背景 tint（自 _apply_background_texture 局部数组提出——出征战报背景共用同色）
+const ERA_BG_TINTS := [
+	Color(1.0, 0.95, 0.85),
+	Color(0.9, 0.95, 0.85),
+	Color(0.85, 0.9, 1.0),
+	Color(0.95, 0.95, 0.95),
+	Color(0.85, 0.95, 1.0),
+	Color(0.92, 0.94, 1.0),  # v27 era=5 星冥（近中性冷白，星空底图自带色调）
+]
 ## 缺省 PNG 时生成的战场背景尺寸（与常见关卡图比例接近）
 const _PROCEDURAL_BG_WIDTH: int = 1280
 const _PROCEDURAL_BG_HEIGHT: int = 720
@@ -52,6 +64,8 @@ const PERSISTENT_CHILD_NAMES: Dictionary = {
 	"EnemySpawn": true,
 	"BattlePerformanceMonitor": true,
 	"BattleCamera": true,  # v6.4: 屏幕震动相机，清场时保留
+	"GroundDressing": true,  # v33 复检修复：贴花不在名单→首战结算被 prune 回收且 _ready 不重跑，第二场起永久消失（v28 存量 bug；setup 按 key 幂等，保留后每场照常重撒）
+	"GroundLoot": true,    # v33: 地面战利品层跨场常驻（内容自管，battle_started/battle_ended 清理）
 }
 
 # 性能优化：调试日志文件句柄缓存
@@ -96,6 +110,13 @@ func _ready() -> void:
 		add_child(_dressing)
 		var ground_node := get_node_or_null("Ground")
 		move_child(_dressing, (ground_node.get_index() + 1) if ground_node != null else get_child_count() - 1)
+	# v33: 地面战利品层——z=-3（战场焦痕 -4 之上/槽位高亮 -2 之下/单位 0 之下）；
+	# 跨场常驻（进 PERSISTENT_CHILD_NAMES），内容自管：battle_started 清空/battle_ended 收拢
+	if _ground_loot == null or not is_instance_valid(_ground_loot):
+		_ground_loot = _GroundLootLayerScript.new()
+		_ground_loot.name = "GroundLoot"
+		_ground_loot.z_index = -3
+		add_child(_ground_loot)
 	_update_background()
 	call_deferred("_sync_battle_slot_grid_lane")
 	# v6.4: 把震动相机对齐到视口中心，使其严格等价于无相机渲染（世界原点在视口左上）
@@ -468,14 +489,7 @@ func _apply_background_texture(tex: Texture2D) -> void:
 	var tex_h: float = float(tex.get_height())
 	var bg_top_y: float = battle_bottom_y - tex_h
 	level10_bg.position = Vector2(0.0, bg_top_y)
-	var era_tints: Array[Color] = [
-		Color(1.0, 0.95, 0.85),
-		Color(0.9, 0.95, 0.85),
-		Color(0.85, 0.9, 1.0),
-		Color(0.95, 0.95, 0.95),
-		Color(0.85, 0.95, 1.0),
-		Color(0.92, 0.94, 1.0),  # v27 era=5 星冥（近中性冷白，星空底图自带色调）
-	]
+	var era_tints: Array = ERA_BG_TINTS
 	level10_bg.modulate = era_tints[era % era_tints.size()] * BG_DIM  # v26.9: 压暗一档
 	var lane_center_y: float = bg_top_y + tex_h * BATTLE_LANE_CENTER_RATIO
 	var lane_h: float = tex_h * BATTLE_LANE_HEIGHT_RATIO

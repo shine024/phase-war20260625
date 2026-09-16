@@ -15,8 +15,10 @@ const SHADER := preload("res://shaders/unit_outline.gdshader")
 const OUTLINE_PX := 1.6  # 目标描边宽（屏幕像素），全单位一致
 
 ## 单位呈现时挂材质（幂等：重复呈现复用已有材质，只刷 uniform）
-static func apply(spr: Sprite2D) -> void:
-	if spr == null:
+## v6.15: skip_pre_baked=true 时直接跳过——该单位雪碧图已在发布管线预烘焙描边
+##（deploy_unit_anims.py → anim.json outline.baked），再挂 shader 会二次外扩（描边翻倍）。
+static func apply(spr: Sprite2D, skip_pre_baked := false) -> void:
+	if spr == null or skip_pre_baked:
 		return
 	var mat := spr.material as ShaderMaterial
 	if mat == null or mat.shader != SHADER:

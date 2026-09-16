@@ -28,7 +28,8 @@ const GC = preload("res://resources/game_constants.gd")   # v23.6.1 稀有度色
 const PanelStyles = preload("res://scripts/ui/panel_styles.gd")   # v23.6.1 按钮工厂
 const DefaultCards = preload("res://data/default_cards.gd")
 const FormatUtil = preload("res://scripts/ui/format_util.gd")
-const BunkerRoomDefs = preload("res://data/bunker_room_defs.gd")   # v22.4 要塞反馈行
+const BattleUnitRecord = preload("res://scripts/battle/battle_unit_record.gd")
+const MobileBaseFacilities = preload("res://data/mobile_base_facilities.gd")   # v22.4 要塞反馈行
 const EnemyPhaseMasters = preload("res://data/enemy_phase_masters.gd")   # 批次③ T2 败仗英雄名
 
 signal result_confirmed(player_won: bool)
@@ -73,6 +74,8 @@ const HERO_LINE_CHANCE := 0.25
 
 ## v22.4（P0-2）：从基地出击时，结算面板提供"返回基地"直达按钮
 var _bunker_return_available := false
+## v34 B1 再战回路：胜利且下一关就绪时 >0（主按钮位让给「出击下一关」直通键）
+var _next_level: int = 0
 
 
 static func create(parent: Node, player_won: bool, blueprints: Array, \
@@ -188,8 +191,10 @@ func _build() -> void:
 		_render_ending(vbox)
 
 	# 缴获页
-	var loot_vbox := _make_result_tab("缴获", "本关缴获、相位场经验、情报揭示与战利品清单")
+	var loot_vbox := _make_result_tab("缴获", "首通奖励、本关缴获、战斗卡成长、情报揭示与战利品清单")
+	_render_first_clear(loot_vbox)
 	_render_phase_field_xp(loot_vbox)
+	_render_card_growth(loot_vbox)
 	if player_won:
 		_render_reward_summary(loot_vbox)
 	_render_intel_harvest(loot_vbox)
@@ -503,6 +508,30 @@ func _render_battle_stats(vbox: VBoxContainer) -> void:
 	_add_data_row(data_grid, "造成伤害", FormatUtil.format_thousands(int(stats.get("damage_dealt", 0))), DT.COLOR_ACCENT_CYAN)
 	_add_data_row(data_grid, "承受伤害", FormatUtil.format_thousands(int(stats.get("damage_taken", 0))), DT.COLOR_ENERGY)
 
+	# v32.0 B1-3: 本场最佳（每单位战斗记录——输出/击杀/承伤各 Top1）
+	var mvp: Dictionary = BattleUnitRecord.get_top_entries()
+	if not mvp.is_empty():
+		vbox.add_child(_make_separator())
+		var mvp_title := Label.new()
+		mvp_title.text = "本场最佳"
+		mvp_title.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
+		mvp_title.add_theme_color_override("font_color", DT.COLOR_TEXT_DIM)
+		vbox.add_child(mvp_title)
+		var mvp_grid := GridContainer.new()
+		mvp_grid.columns = 2
+		mvp_grid.add_theme_constant_override("h_separation", 32)
+		mvp_grid.add_theme_constant_override("v_separation", 6)
+		vbox.add_child(mvp_grid)
+		if mvp.has("top_dealer"):
+			var d: Dictionary = mvp["top_dealer"]
+			_add_data_row(mvp_grid, "输出最佳", "%s（%s）" % [d["label"], FormatUtil.format_thousands(int(d["value"]))], DT.COLOR_ACCENT_CYAN)
+		if mvp.has("top_killer"):
+			var k: Dictionary = mvp["top_killer"]
+			_add_data_row(mvp_grid, "击杀最多", "%s（%d 杀）" % [k["label"], int(k["value"])], DT.COLOR_GREEN_BRIGHT)
+		if mvp.has("top_tank"):
+			var t: Dictionary = mvp["top_tank"]
+			_add_data_row(mvp_grid, "承伤最坚", "%s（%s）" % [t["label"], FormatUtil.format_thousands(int(t["value"]))], DT.COLOR_ENERGY)
+
 	# 击杀类型分布
 	var kill_breakdown := _kill_type_breakdown()
 	if not kill_breakdown.is_empty():
@@ -523,6 +552,79 @@ func _render_battle_stats(vbox: VBoxContainer) -> void:
 # =========================================================================
 #  缴获明细区域
 # =========================================================================
+
+## v34 B3：首通奖励仪式化区块——此前只有一行 Toast，"打完新关的大额回报"无感知。
+## 金色标题 + 三资源行逐项亮起（与星级动画同语言；减少动效直接显示）。
+func _render_first_clear(vbox: VBoxContainer) -> void:
+	var fc: Dictionary = _reward_summary.get("first_clear", {})
+	var reward: Dictionary = fc.get("reward", {}) if fc is Dictionary else {}
+	if reward.is_empty():
+		return
+	var sep := HSeparator.new()
+	sep.add_theme_color_override("color", Color(1.0, 0.85, 0.4, 0.35))
+	vbox.add_child(sep)
+	var title := Label.new()
+	title.text = "★ 首次通关奖励（第 %d 关）" % int(fc.get("level", 0))
+	title.add_theme_font_size_override("font_size", 14)
+	title.add_theme_color_override("font_color", DT.COLOR_GOLD)
+	vbox.add_child(title)
+	var res_names := {"crystal": "晶体", "nano_materials": "纳米材料", "energy_block": "能量块"}
+	var list := VBoxContainer.new()
+	list.add_theme_constant_override("separation", 3)
+	var delay := 0.0
+	for id in reward:
+		var lbl := Label.new()
+		lbl.text = "  ★ %s +%d" % [String(res_names.get(String(id), String(id))), int(reward[id])]
+		lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
+		lbl.add_theme_color_override("font_color", DT.COLOR_TEXT_BRIGHT)
+		list.add_child(lbl)
+		if not DT.is_motion_reduce():
+			lbl.modulate.a = 0.0
+			var tw := create_tween()
+			tw.tween_interval(delay)
+			tw.tween_property(lbl, "modulate:a", 1.0, 0.25)
+		delay += 0.18
+	vbox.add_child(list)
+
+## v34 B2：战斗卡成长区块——卡牌经验此前静默入账（升级回调零玩家可见反馈），
+## "打完变强了"的数字被藏起来。本区块逐行展示上阵卡 +XP，升级行金色高亮。
+func _render_card_growth(vbox: VBoxContainer) -> void:
+	var rows: Array = _reward_summary.get("card_growth", [])
+	if rows.is_empty():
+		return
+	var sep := HSeparator.new()
+	sep.add_theme_color_override("color", Color(DT.COLOR_AMBER.r, DT.COLOR_AMBER.g, DT.COLOR_AMBER.b, 0.25))
+	vbox.add_child(sep)
+	var title := Label.new()
+	title.text = "◆ 战斗卡成长"
+	title.add_theme_font_size_override("font_size", 13)
+	title.add_theme_color_override("font_color", DT.COLOR_AMBER)
+	vbox.add_child(title)
+	var list := VBoxContainer.new()
+	list.add_theme_constant_override("separation", 3)
+	var leveled_count := 0
+	for row in rows:
+		if not (row is Dictionary):
+			continue
+		var lv: int = int(row.get("lv", 0))
+		var lv_txt: String = ("Lv.%d" % lv) if lv > 0 else "未成长"
+		var lbl := Label.new()
+		if bool(row.get("leveled", false)):
+			leveled_count += 1
+			lbl.text = "  ▲ %s  升级 → %s（经验 +%d）" % [String(row.get("name", "?")), lv_txt, int(row.get("xp", 0))]
+			lbl.add_theme_color_override("font_color", DT.COLOR_GOLD)
+		else:
+			lbl.text = "  ▸ %s  %s（经验 +%d）" % [String(row.get("name", "?")), lv_txt, int(row.get("xp", 0))]
+			lbl.add_theme_color_override("font_color", DT.COLOR_TEXT_MID)
+		lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
+		list.add_child(lbl)
+	vbox.add_child(list)
+	if leveled_count > 0:
+		var sum_lbl := Label.new()
+		sum_lbl.text = "上阵 %d 张卡获得经验，%d 张升级" % [rows.size(), leveled_count]
+		sum_lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_XSMALL)
+		sum_lbl.add_theme_color_override("font_color", Color(1.0, 0.85, 0.4, 0.85))
+		vbox.add_child(sum_lbl)
 
 func _render_phase_field_xp(vbox: VBoxContainer) -> void:
 	var pim: Node = Engine.get_main_loop().root.get_node_or_null("PhaseInstrumentManager")
@@ -993,9 +1095,15 @@ func _show_ng_plus_confirm() -> void:
 
 
 func _render_close_button_anchored(panel: Control) -> void:
+	# v34 B1 再战回路：胜利且下一关就绪 → 主按钮位让给「▶ 出击下一关」直通键，
+	# 旧「继 续」降级为左侧次按钮（接收掉落+回整备语义不变，文案改「返回整备」）
+	_next_level = _compute_next_level()
+	var next_mode: bool = player_won and not _is_afk and _next_level > 0
 	var btn := Button.new()
 	if _is_afk:
 		btn.text = "自动继续 →"
+	elif next_mode:
+		btn.text = "▶ 出击下一关（第 %d 关）" % _next_level
 	elif player_won:
 		btn.text = "继  续"
 	else:
@@ -1012,7 +1120,6 @@ func _render_close_button_anchored(panel: Control) -> void:
 	btn.offset_bottom = -16.0
 	# v22.4（P0-2）：从基地出击时，左下角加"返回基地"直达按钮，主按钮让位右移
 	if _bunker_return_available:
-		btn.offset_left = 260.0
 		var home_btn := Button.new()
 		home_btn.text = "← 返回移动基地"
 		home_btn.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
@@ -1032,17 +1139,93 @@ func _render_close_button_anchored(panel: Control) -> void:
 		home_btn.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 		home_btn.pressed.connect(_on_return_bunker_pressed)
 		panel.add_child(home_btn)
+		if not next_mode:
+			btn.offset_left = 260.0
+	if next_mode:
+		# 主键收窄靠右；左侧补「返回整备」次键（旧继续路径：接收掉落 + 回整备）
+		btn.offset_left = 460.0
+		btn.offset_right = -24.0
+		var prep_btn := Button.new()
+		prep_btn.text = "返回整备"
+		prep_btn.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
+		prep_btn.anchor_top = 1.0
+		prep_btn.anchor_bottom = 1.0
+		prep_btn.offset_left = 240.0 if _bunker_return_available else 100.0
+		prep_btn.offset_right = 440.0 if _bunker_return_available else 300.0
+		prep_btn.offset_top = -60.0
+		prep_btn.offset_bottom = -16.0
+		prep_btn.custom_minimum_size = Vector2(0, 44)
+		var prep_styles: Dictionary = PanelStyles.make_button_styles_graded(Color(0.58, 0.64, 0.60), "solid")
+		for key in ["normal", "hover", "pressed", "disabled", "focus"]:
+			prep_btn.add_theme_stylebox_override(key, prep_styles[key])
+		prep_btn.add_theme_color_override("font_color", Color(0.88, 0.92, 0.90))
+		prep_btn.add_theme_font_size_override("font_size", DT.FONT_SIZE_MEDIUM)
+		prep_btn.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+		prep_btn.pressed.connect(_on_continue_pressed)
+		panel.add_child(prep_btn)
 	btn.grow_horizontal = Control.GROW_DIRECTION_BOTH
 	btn.custom_minimum_size = Vector2(0, 44)
 	# v23.6.1：走 PanelStyles 工厂四态（原仅 normal 有样式，无 hover/按下反馈）；v28 T2 渐变版
-	var btn_accent: Color = DT.COLOR_GOLD if player_won else DT.COLOR_BORDER
+	var btn_accent: Color = DT.COLOR_GREEN_BRIGHT if next_mode else (DT.COLOR_GOLD if player_won else DT.COLOR_BORDER)
 	var btn_styles: Dictionary = PanelStyles.make_button_styles_graded(btn_accent, "solid")
 	for key in ["normal", "hover", "pressed", "disabled", "focus"]:
 		btn.add_theme_stylebox_override(key, btn_styles[key])
 	btn.add_theme_color_override("font_color", DT.COLOR_VOID)
 	btn.add_theme_font_size_override("font_size", DT.FONT_SIZE_MEDIUM)
-	btn.pressed.connect(_on_continue_pressed)
+	if next_mode:
+		btn.pressed.connect(_on_next_level_pressed)
+	else:
+		btn.pressed.connect(_on_continue_pressed)
 	panel.add_child(btn)
+
+## v34 B1：下一关直通条件——胜利 · 非挂机 · 教程已完（教程期战后要回基地续播）·
+## 本战关号+1 在 1-100 且已解锁。下一关取 _pending_battle_level（本战实际打的关），
+## 防"重打旧关后 current_level 已被推进到最高解锁关"时按钮指向跳变。
+func _compute_next_level() -> int:
+	if not player_won or _is_afk:
+		return 0
+	var root: Node = Engine.get_main_loop().root if Engine.get_main_loop() != null else null
+	if root == null:
+		return 0
+	var tpm: Node = root.get_node_or_null("TutorialProgressionManager")
+	if tpm != null and tpm.has_method("should_show_tutorial") and tpm.should_show_tutorial():
+		return 0
+	var gm: Node = root.get_node_or_null("GameManager")
+	var lpm: Node = root.get_node_or_null("LevelProgressManager")
+	if gm == null or lpm == null:
+		return 0
+	var played: int = int(gm.get("_pending_battle_level")) if "_pending_battle_level" in gm else int(gm.get("current_level"))
+	var next: int = played + 1
+	if next < 1 or next > 100:
+		return 0
+	if lpm.has_method("is_level_unlocked") and not lpm.is_level_unlocked(next):
+		return 0
+	return next
+
+## v34 B1：下一关直通——接收掉落 + 淡出 + main.launch_next_level_from_settlement
+## （清场/推进关号/出战报拍点/run_start_battle_sequence 开打，与挂机连续开战同管线）
+func _on_next_level_pressed() -> void:
+	result_confirmed.emit(player_won)
+	ManagerLazyLoader.ensure_loaded("drop")  # DropManager 为 autoload+别名双层（ensure_loaded 幂等）
+	var dm_claim: Node = Engine.get_main_loop().root.get_node_or_null("DropManager")
+	if dm_claim != null and dm_claim.has_method("claim_drops"):
+		dm_claim.claim_drops()
+	var panel: Control = get_node_or_null("MvpPanelOverlay/Panel")
+	var tw := create_tween()
+	if panel != null:
+		if DT.is_motion_reduce():
+			panel.modulate.a = 0.0
+		else:
+			tw.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+			tw.tween_property(panel, "modulate:a", 0.0, DT.MOTION_FADE_OUT)
+	tw.tween_callback(func():
+		var parent: Node = get_parent()
+		if parent != null and parent.has_method("launch_next_level_from_settlement"):
+			parent.launch_next_level_from_settlement(_next_level)
+		elif parent != null and parent.has_method("_on_result_confirmed"):
+			parent._on_result_confirmed()
+		queue_free()
+	)
 
 
 # =========================================================================
@@ -1103,15 +1286,15 @@ func _render_bunker_status(vbox: VBoxContainer) -> void:
 	# 施工中的房间（进度已含本场推进）+ 今日完工
 	var detail := Label.new()
 	var parts: Array[String] = []
-	for def in BunkerRoomDefs.get_all_rooms():
+	for def in MobileBaseFacilities.get_all_rooms():
 		var rid: String = def.get("id", "")
-		if bunker.get_room_state(rid) == BunkerRoomDefs.STATE_REPAIRING:
+		if bunker.get_room_state(rid) == MobileBaseFacilities.STATE_REPAIRING:
 			var pct: int = int(round(bunker.get_room_progress(rid) * 100.0))
 			var frozen_txt: String = "（冻结·需反应堆）" if bunker.is_repair_frozen(rid) else ""
 			parts.append("%s +%d%%%s" % [str(def.get("name", rid)), pct, frozen_txt])
 	var done_names: Array[String] = []
 	for entry in bunker.get_completed_today():
-		done_names.append(BunkerRoomDefs.completed_entry_label(str(entry)))
+		done_names.append(MobileBaseFacilities.completed_entry_label(str(entry)))
 	if not done_names.is_empty():
 		parts.append("✔ 完工：" + "、".join(done_names))
 	detail.text = "  " + ("；".join(parts) if not parts.is_empty() else "暂无施工中的房间——回移动基地可开工新修复")

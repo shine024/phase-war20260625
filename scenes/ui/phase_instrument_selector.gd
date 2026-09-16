@@ -7,6 +7,7 @@ const PhaseInstruments = preload("res://data/phase_instruments.gd")
 const CompanyDefs = preload("res://data/company_definitions.gd")
 const DT = preload("res://resources/design_tokens.gd")
 const PanelStyles = preload("res://scripts/ui/panel_styles.gd")
+const PanelAnim = preload("res://scripts/ui/panel_anim.gd")
 
 var _main_instance = null
 
@@ -51,14 +52,14 @@ func _ready() -> void:
 
 func _on_backdrop_gui_input(ev: InputEvent) -> void:
 	if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT:
-		queue_free()
+		_on_close()
 
 ## P0: ESC 关闭选择器——原实现只有背景点击和关闭按钮，ESC 会越过本面板
 ## 关掉底下面板或误触暂停。consume 防止穿透。
 func _input(ev: InputEvent) -> void:
 	if ev.is_action_pressed("ui_cancel"):
 		get_viewport().set_input_as_handled()
-		queue_free()
+		_on_close()
 
 ## v8.x: 属性点分配变化时刷新列表（重建属性点区块，反映新分配状态）
 func _on_phase_field_points_changed(_unspent: int) -> void:
@@ -625,6 +626,9 @@ func _on_equip_pressed(instrument_id: String) -> void:
 			# B2: 装备成功音效（此前全程静音）
 			if SignalBus.has_signal("play_sound"):
 				SignalBus.play_sound.emit("card_place")
+			# v32.3 C1：原地刷新列表显示新装备态——选择器不再整面板销毁重建，
+			# 玩家可连换多具相位仪（原同帧全量重建是"换装卡顿/跳动"的主因之一）
+			_refresh_instrument_list()
 		else:
 			# P0: 装备失败此前零反馈（"点了没反应"典型），补 toast + error 音
 			SignalBus.show_toast.emit("装备失败：该相位仪当前无法装备")
@@ -632,7 +636,15 @@ func _on_equip_pressed(instrument_id: String) -> void:
 				SignalBus.play_sound.emit("error")
 
 func _on_close() -> void:
-	queue_free()
+	# v32.3 C1：关闭加统一过渡（原裸 queue_free 同帧消失，观感突跳）
+	PanelAnim.close(self)
+	if SignalBus.has_signal("play_sound"):
+		SignalBus.play_sound.emit("panel_close")
+	var t := get_tree()
+	if t != null:
+		await t.create_timer(0.2).timeout
+	if is_instance_valid(self):
+		queue_free()
 
 func _on_detail_pressed() -> void:
 	# 打开战力详情面板

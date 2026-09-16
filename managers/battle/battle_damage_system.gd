@@ -32,6 +32,9 @@ func roll_blueprint_drops(unit: Node) -> void:
 	if unit.get("archetype_id") == null:
 		return
 	var archetype_id: String = unit.archetype_id
+	# v33: 阵亡点入池（胜利"打扫战场"撒电池取样；极速推演层内自守卫不记）
+	if unit is Node2D:
+		GroundLootLayer.record_death_pos(unit.global_position)
 	var gm: Node = _get_autoload_node("GameManager")
 	var drop_mult: float = 1.0
 	if gm and gm.has_method("get_drop_rate_multiplier"):
@@ -41,6 +44,9 @@ func roll_blueprint_drops(unit: Node) -> void:
 		var brm: Node = _get_autoload_node("BasicResourceManager")
 		if brm != null and brm.has_method("add_resource"):
 			brm.add_resource(BasicResources.ID_NANO_MATERIALS, nano_amt)
+		# v33: 纳米颗粒地面实体（入账照旧，本行只补可见性；FF/减动效层内自守卫）
+		if unit is Node2D:
+			GroundLootLayer.spawn_loot(GroundLootLayer.TYPE_NANO, unit.global_position, "common", nano_amt)
 	var drops: Array = EnemyArchetypes.get_drop_definitions(archetype_id)
 	var bm: Node = _get_autoload_node("BlueprintManager")
 	if bm == null:
@@ -63,6 +69,8 @@ func roll_blueprint_drops(unit: Node) -> void:
 			fragment_amount += 1
 		fragment_amount = max(1, fragment_amount)
 		CardDropGrants.grant_enemy_style_card(bm, card_id, 0, fragment_amount, "击杀缴获")
+		if unit is Node2D:
+			_spawn_capture_loot(unit.global_position, card_id)   # v33 缴获卡地面实体
 		var qm: Node = _get_autoload_node("QuestManager")
 		if qm and qm.has_method("notify_fragments_changed"):
 			qm.notify_fragments_changed()
@@ -108,6 +116,8 @@ func _roll_generic_capture(unit: Node, gm: Node, bm: Node) -> void:
 	_generic_captures_this_battle += 1
 	# 低频即时反馈（2%/15% × 每场上限 2 → 不刷屏；符文掉落 toast 同款先例）
 	SignalBus.show_toast.emit("🎖 缴获：%s" % DefaultCards.get_safe_display_name(pick))
+	if unit is Node2D:
+		_spawn_capture_loot(unit.global_position, pick)   # v33 缴获卡地面实体
 
 # =========================================================================
 #  v6.2 符文掉落（敌人死亡时调用）
@@ -145,6 +155,10 @@ func _roll_rune_drops(unit: Node) -> void:
 	var pim: Node = _get_autoload_node("PhaseInstrumentManager")
 	if pim and pim.has_method("add_owned_rune"):
 		var is_new: bool = pim.add_owned_rune(rune_id)
+		# v33: 符文地面实体（已入账即展示，重复符文也掉——真实口径；toast 仍仅新获得）
+		if unit is Node2D:
+			var rune_label: String = RuneDefs.RUNE_NAMES.get(rune_id, "符文")
+			GroundLootLayer.spawn_loot(GroundLootLayer.TYPE_RUNE, unit.global_position, rarity, 1, rune_label)
 		# v6.2: 显示掉落提示（仅新获得的符文）
 		if is_new:
 			var RuneDefsForDrop = preload("res://data/runes.gd")
@@ -294,6 +308,43 @@ func generate_battle_completion_drops(player_won: bool, elapsed_time: float, wav
 	if player_won:
 		result = generate_intel_harvest(result)
 	return result
+
+
+# =========================================================================
+#  v33 地面战利品视觉钩子（反馈剧场——入账逻辑一律照旧，本段只补可见性；
+#  GroundLootLayer 静态入口自带 ff_active/层活性双守卫）
+# =========================================================================
+
+## 缴获卡地面实体：卡图本体 mini + 稀有度光效（一眼认出缴获了什么）
+func _spawn_capture_loot(pos: Vector2, card_id: String) -> void:
+	var card = DefaultCards.get_card_by_id(card_id)
+	var rarity := "common"
+	var label := DefaultCards.get_safe_display_name(card_id)
+	if card != null and "rarity" in card:
+		rarity = String(card.rarity)
+	GroundLootLayer.spawn_loot(GroundLootLayer.TYPE_CARD, pos, rarity, 1, label, card)
+
+
+## v33 情报图纸主腿（击杀瞬间掷骰 + 地面碎片展示）。
+## 由 battle_manager._record_defeated_enemy 在 info dict 构建后调用：命中时 idm 侧打
+## intel_main_hit 标记进 pending，战后 generate_battle_intel_harvest 原口收编发放。
+## 相位师战不预掷（战后 disable 口径不变）。懒加载在首次击杀 ensure——保证每杀都过
+## 主腿，分布拆腿等价才成立。
+func roll_kill_intel_drop(enemy_info: Dictionary, unit: Node) -> void:
+	var bm: Node = _get_autoload_node("BattleManager")
+	if bm != null and bool(bm.get("_is_phase_master_battle")):
+		return
+	var mll: Node = _get_autoload_node("ManagerLazyLoader")
+	if mll != null and mll.has_method("ensure_loaded"):
+		mll.ensure_loaded("intel_discovery")
+	var idm: Node = _get_autoload_node("IntelDiscoveryManager")
+	if idm == null or not idm.has_method("roll_kill_intel_drop"):
+		return
+	var drop: Dictionary = idm.roll_kill_intel_drop(enemy_info)
+	if drop.is_empty() or not (unit is Node2D):
+		return
+	GroundLootLayer.spawn_loot(GroundLootLayer.TYPE_FRAG, unit.global_position,
+		String(drop.get("rarity", "common")), 1, String(drop.get("name", "")))
 
 
 func generate_battle_drops_only(player_won: bool, elapsed_time: float, wave_total: int, wave_interval: float, max_deployed: int, units_lost: int) -> Dictionary:

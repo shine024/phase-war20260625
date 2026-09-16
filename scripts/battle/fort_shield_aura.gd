@@ -105,12 +105,8 @@ func _draw_shield() -> void:
 
 
 ## 绘制一个闭合圆环（描边）
+## v35.x perf: 引擎内置 draw_arc 替代手搓 40 点数组 + duplicate——承压期父节点每帧
+## queue_redraw（construct_unit:1325），常态每 4 帧，每帧最多 3 个环；draw_arc 几何
+## 等价（SEGMENTS+1 点 = SEGMENTS 段、end=TAU 闭合、antialiased 对齐），零 GDScript 分配。
 func _draw_ring(radius: float, color: Color, width: float) -> void:
-	var pts: PackedVector2Array = PackedVector2Array()
-	pts.resize(SEGMENTS)
-	for i in SEGMENTS:
-		var ang: float = TAU * i / SEGMENTS
-		pts[i] = Vector2(cos(ang), sin(ang)) * radius
-	var closed_pts := pts.duplicate()
-	closed_pts.append(pts[0])
-	draw_polyline(closed_pts, color, width, true)
+	draw_arc(Vector2.ZERO, radius, 0.0, TAU, SEGMENTS + 1, color, width, true)

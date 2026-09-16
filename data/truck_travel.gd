@@ -28,7 +28,7 @@ const REGEN_PER_LV_PER_MIN := 1.0
 ## v26.29 由 60 秒提速 5 倍——用户实测原速过慢）
 const SECONDS_PER_DAY := 12.0
 
-## 升级到下一级的资源价（索引=当前等级 1..4）；短名对齐 BunkerRoomDefs.RES
+## 升级到下一级的资源价（索引=当前等级 1..4）；短名对齐 MobileBaseFacilities.RES
 const ENGINE_UPGRADES := [
 	{"nano": 150, "alloy": 80},
 	{"nano": 300, "alloy": 160},

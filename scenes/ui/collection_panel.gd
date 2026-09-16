@@ -31,6 +31,15 @@ func _ready() -> void:
 	add_theme_stylebox_override("panel", PanelStyles.make_panel_frame_textured(accent))
 	var chrome = PanelChrome.attach_to($Margin/VBox, "生灵图鉴", accent, "收藏档案")
 	chrome.closed.connect(_on_close)
+	# v32.3 E3：详情区顶部大卡图（插到 DetailName 之前，懒建一次）
+	_detail_icon = TextureRect.new()
+	_detail_icon.custom_minimum_size = Vector2(0, 170)
+	_detail_icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	_detail_icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	var _detail_vbox := get_node_or_null("Margin/VBox/ContentHBox/RightVBox/DetailScroll/DetailVBox")
+	if _detail_vbox != null:
+		_detail_vbox.add_child(_detail_icon)
+		_detail_vbox.move_child(_detail_icon, 0)
 	# v7.x 性能：CardCollectionManager 延迟加载，面板初始化时确保已实例化（否则本地信号连不上）
 	var _mll: Node = get_node_or_null("/root/ManagerLazyLoader")
 	if _mll and _mll.has_method("ensure_loaded"):
@@ -166,55 +175,114 @@ func _refresh_card_list() -> void:
 		if not groups.has(rarity):
 			groups[rarity] = []
 		groups[rarity].append(cid)
-	# 按固定稀有度顺序渲染分组
+	# v32.3 E3：卡图网格化（原单列 220×34 纯文字按钮流无收集欲）——每组标题+5 列卡格；
+	# 拥有=真彩卡图+稀有度描边，未获得=黑影+？？？（收集目标感）
+	const GRID_COLS := 5
 	for rarity in ["mythic", "legendary", "epic", "rare", "uncommon", "common", "普通", "稀有", "史诗", "传说", "神话"]:
 		if not groups.has(rarity):
 			continue
+		var owned_in_group := 0
+		for cid in groups[rarity]:
+			if _is_owned(cid):
+				owned_in_group += 1
 		var header := Label.new()
-		header.text = "—— %s（%d）——" % [_rarity_display(rarity), groups[rarity].size()]
+		header.text = "%s  %d / %d" % [_rarity_display(rarity), owned_in_group, groups[rarity].size()]
 		header.add_theme_font_size_override("font_size", 13)
 		header.add_theme_color_override("font_color", _rarity_color(rarity))
 		_card_list.add_child(header)
+		var grid := GridContainer.new()
+		grid.columns = GRID_COLS
+		grid.add_theme_constant_override("h_separation", 6)
+		grid.add_theme_constant_override("v_separation", 6)
+		_card_list.add_child(grid)
 		for cid in groups[rarity]:
-			_card_list.add_child(_make_card_row(cid))
+			grid.add_child(_make_card_cell(cid))
 	# 选中态保持
 	if _selected_card_id.is_empty() and all_ids.size() > 0:
 		_selected_card_id = all_ids[0]
+	_update_cell_selection()
 
 
-func _make_card_row(card_id: String) -> Control:
+## v32.3 E3：单卡格（118×132：72px 卡图 + 名字行）——拥有亮卡图，未获得黑影+问号
+func _make_card_cell(card_id: String) -> Button:
 	var btn := Button.new()
-	btn.text = _card_display_name(card_id)
-	btn.custom_minimum_size = Vector2(220, 34)
-	# v7.x 视觉审查：列表行补卡牌缩略图（原来纯文字，无视觉层级）
+	btn.custom_minimum_size = Vector2(118, 132)
+	btn.set_meta("cell_card_id", card_id)
 	var card = DefaultCards.get_card_by_id(card_id) if DefaultCards else null
-	if card != null and UiAssetLoader.card_icon_for_list(card) != null:
-		btn.icon = UiAssetLoader.card_icon_for_list(card)
-		btn.expand_icon = false
-		btn.add_theme_constant_override("icon_max_width", 26)
-		btn.icon_alignment = HORIZONTAL_ALIGNMENT_LEFT
-	var row_styles := PanelStyles.make_button_styles(DT.get_panel_accent("collection"))
-	btn.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
-	btn.add_theme_color_override("font_color", _status_color(card_id))
-	btn.add_theme_color_override("font_hover_color", DT.COLOR_TEXT_BRIGHT)
-	btn.add_theme_color_override("font_pressed_color", DT.COLOR_TEXT_BRIGHT)
-	btn.add_theme_color_override("font_focus_color", DT.COLOR_TEXT_BRIGHT)
-	btn.add_theme_stylebox_override("normal", row_styles["normal"])
-	btn.add_theme_stylebox_override("hover", row_styles["hover"])
-	btn.add_theme_stylebox_override("pressed", row_styles["pressed"])
-	# 选中态沿用 disabled 高亮惯例：disabled 复用 pressed 样式（accent 填充），观感即"选中"
-	btn.add_theme_stylebox_override("disabled", row_styles["pressed"])
+	var owned := _is_owned(card_id)
+	# 描边：稀有度色（拥有）/ 暗灰（未获得）
+	var border: Color = DT.COLOR_SLOT_LOCKED
+	if card != null:
+		border = card.get_rarity_color() if owned else Color(card.get_rarity_color().r, card.get_rarity_color().g, card.get_rarity_color().b, 0.28)
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(0.06, 0.09, 0.13, 0.85) if owned else Color(0.04, 0.05, 0.08, 0.72)
+	sb.border_color = border
+	sb.set_border_width_all(1)
+	sb.set_corner_radius_all(6)
+	var sb_h := sb.duplicate()
+	sb_h.border_color = DT.COLOR_ACCENT_CYAN if not owned else border.lightened(0.25)
+	sb_h.bg_color = Color(0.09, 0.13, 0.19, 0.92)
+	btn.add_theme_stylebox_override("normal", sb)
+	btn.add_theme_stylebox_override("hover", sb_h)
+	btn.add_theme_stylebox_override("pressed", sb_h)
+	btn.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
+	btn.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	# 内容：卡图 + 名字
+	var vbox := VBoxContainer.new()
+	vbox.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	vbox.offset_top = 6.0
+	vbox.offset_bottom = -4.0
+	vbox.offset_left = 5.0
+	vbox.offset_right = -5.0
+	vbox.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	vbox.add_theme_constant_override("separation", 3)
+	btn.add_child(vbox)
+	var icon := TextureRect.new()
+	icon.custom_minimum_size = Vector2(0, 84)
+	icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var tex: Texture2D = UiAssetLoader.card_icon_for_list(card) if card != null else null
+	if tex != null:
+		icon.texture = tex
+		# 未获得 → 黑影剪影（保留轮廓神秘感）
+		icon.modulate = Color.WHITE if owned else Color(0.05, 0.07, 0.10, 0.92)
+	vbox.add_child(icon)
+	var name_lbl := Label.new()
+	name_lbl.text = _card_display_name(card_id) if owned else "？？？"
+	name_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	name_lbl.add_theme_font_size_override("font_size", 12)
+	name_lbl.add_theme_color_override("font_color",
+		DT.COLOR_GOLD if _is_max_level(card_id) else (DT.COLOR_TEXT_BRIGHT if owned else Color(DT.COLOR_TEXT_DIM.r, DT.COLOR_TEXT_DIM.g, DT.COLOR_TEXT_DIM.b, 0.75)))
+	name_lbl.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	name_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	vbox.add_child(name_lbl)
+	# tooltip：拥有=档案一句话；未获得=获取指向
+	if owned:
+		var st := "★ 已满级" if _is_max_level(card_id) else "已拥有"
+		btn.tooltip_text = "%s · %s · %s" % [_card_display_name(card_id),
+			_rarity_display(str(card.rarity)) if card != null else "",
+			GameConstants.get_era_name(card.era) if card != null else ""] + "\n" + st
+	else:
+		btn.tooltip_text = "未获得——击败该敌形积累情报（25% 解锁配方），或在制造舱直接生产"
 	btn.pressed.connect(func() -> void:
 		_selected_card_id = card_id
-		_refresh_detail()
-		# 更新选中高亮
-		for child in _card_list.get_children():
-			if child is Button:
-				child.disabled = (child.text == btn.text)
-	)
-	if card_id == _selected_card_id:
-		btn.disabled = true  # 用 disabled 态作选中高亮
+		_update_cell_selection()
+		_refresh_detail())
 	return btn
+
+
+## v32.3 E3：选中态（描边加亮），只改样式不重建（避免 ~250 格全量重刷）
+func _update_cell_selection() -> void:
+	for child in _card_list.get_children():
+		if child is GridContainer:
+			for cell in child.get_children():
+				if cell is Button and cell.has_meta("cell_card_id"):
+					var is_sel: bool = String(cell.get_meta("cell_card_id")) == _selected_card_id
+					cell.set_meta("cell_selected", is_sel)
+					var sb: StyleBoxFlat = cell.get_theme_stylebox("normal")
+					if sb != null:
+						sb.set_border_width_all(2 if is_sel else 1)
 
 
 func _refresh_detail() -> void:
@@ -225,6 +293,7 @@ func _refresh_detail() -> void:
 			_detail_status.text = ""
 		if _detail_info:
 			_detail_info.text = ""
+		_update_detail_icon(null, false)
 		return
 	var card = DefaultCards.get_card_by_id(_selected_card_id) if DefaultCards else null
 	if _detail_name:
@@ -248,6 +317,7 @@ func _refresh_detail() -> void:
 		lines.append("卡牌类型：%s" % GameConstants.get_card_type_name(card.card_type))
 		lines.append("兵种：%s" % CardResource.get_combat_kind_name(card.combat_kind))
 		lines.append("时代：%s" % GameConstants.get_era_name(card.era))
+		lines.append("战力：%d" % int(card.power))
 		# 三维攻防（若存在）
 		if card.attack_light > 0.0:
 			lines.append("轻装攻击：%s" % str(card.attack_light))
@@ -260,6 +330,24 @@ func _refresh_detail() -> void:
 		info = "\n".join(lines)
 	if _detail_info:
 		_detail_info.text = info
+	# v32.3 E3：详情大卡图（未获得显示剪影）
+	var owned := _is_owned(_selected_card_id)
+	var tex: Texture2D = UiAssetLoader.card_icon_for_list(card) if card != null else null
+	_update_detail_icon(tex, owned)
+
+
+## v32.3 E3：详情区顶部大卡图（懒建一次，之后只换纹理/明暗）
+var _detail_icon: TextureRect = null
+
+func _update_detail_icon(tex: Texture2D, owned: bool) -> void:
+	if _detail_icon == null:
+		return
+	if tex != null:
+		_detail_icon.texture = tex
+		_detail_icon.modulate = Color.WHITE if owned else Color(0.05, 0.07, 0.10, 0.92)
+		_detail_icon.visible = true
+	else:
+		_detail_icon.visible = false
 
 
 func _on_milestone_reached(milestone: Dictionary) -> void:

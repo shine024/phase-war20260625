@@ -74,13 +74,14 @@ const BasicResourcesData = preload("res://data/basic_resources.gd")
 const _GameConfigRef = preload("res://resources/game_config.gd")  # v30 R2b: 黑门能量门票开关
 const EnemyArchetypesData = preload("res://data/enemy_archetypes.gd")
 const DefaultCardsData = preload("res://data/default_cards.gd")
-const PhaseLawsData = preload("res://data/phase_laws.gd")
 const DropTablesPreview = preload("res://resources/drop_tables.gd")
 const FactionConquestBuffs = preload("res://data/faction_conquest_buffs.gd")  # v6.9: 占领势力加成描述
 const CompanyDefs = preload("res://data/company_definitions.gd")  # v6.14: 统一阵营色来源
 const PhaseMasterGarrison = preload("res://data/phase_master_garrison.gd")  # v7.x: Boss相位师驻守关判定
 const TacticalThemes = preload("res://data/level_tactical_themes.gd")  # v10: 关卡战术主题（敌情简报）
 const BattleEnvEffectsRef = preload("res://data/battle_env_effects.gd")  # v26.2: 环境效果摘要（战前）
+# v32.0 B2-2: 战前构筑建议（特殊规则+环境乘区→克制提示）
+const BuildAdvisor = preload("res://data/build_advisor.gd")
 const LevelBattleLayoutsRef = preload("res://data/level_battle_layouts.gd")  # v26.2: 本场布阵题面
 const EnemyPhaseMasters = preload("res://data/enemy_phase_masters.gd")  # v7.x: 相位师详情查询
 # R3-lite（设计审查 F-07，2026-09-13）：相位师套路查询——战前简报展示补兵套路题面
@@ -729,6 +730,10 @@ static func _layout_scheme8() -> void:
 ## - 30 关原点 (1074,1352) 吊在南部海面孤点 → 挪到 29(1065,1103) 西侧 70px
 ## - 末段 95-100 聚拢成黑门前最后一段路：98→97 左下、99→97 右下、100 压到岩岬下缘
 ##   （98 原 (2162,724) / 99 原 (2207,688) 与 100(2209,938) 松散；黑门在 (2272,774)）
+## v6.14 全量体检（2026-09-14）：100 节点逐点目检——中段"落海"疑点（L23-L51 等 17 个）
+## 实为压在冰穹冰川/冰晶构造/岩柱等内容锚点上，布点无需修；真正待裁决的是美术可读性：
+## 冰穹纯白无墨线描边，玩家会读成"海面"（自动海色掩膜同样误判）。改图需用户批准
+## （手绘定稿），备选：a) 冰穹加淡墨线描边/冷色晕 b) 外海加蓝饱和对比。
 const S11_POINT_OVERRIDES: Dictionary = {
 	30: Vector2(1010, 1060),
 	98: Vector2(2096, 997),
@@ -1083,6 +1088,16 @@ func _make_level_node(level_index: int, era_idx: int, point: Vector2, _current_l
 			btn.tooltip_text = "占领：%s" % occ_name
 		else:
 			btn.tooltip_text += "\n占领：%s" % occ_name
+
+	# v32.3 D2：行军预提示——非停靠关的节点 hover 明示"点击=行军"（此前点击直接启程
+	# 只有事后的 toast，玩家以为点错/在驾驶）
+	var _wm_bm := _truck_mgr()
+	var _is_parked: bool = _wm_bm != null and int(level_index) == int(_wm_bm.get_parked_level())
+	if _wm_bm != null and not _is_parked and not bool(_wm_bm.is_traveling()):
+		if btn.tooltip_text.is_empty():
+			btn.tooltip_text = "行军至第 %d 关" % level_index
+		else:
+			btn.tooltip_text += "\n点击 = 行军至该关（耗燃料，到站停靠）"
 
 	btn.pressed.connect(func() -> void: _on_level_selected(level_index))
 	return btn
@@ -2017,6 +2032,10 @@ func _show_level_info_popup(level_index: int) -> void:
 	var _layout_note: String = LevelBattleLayoutsRef.get_note(level_index)
 	if not _layout_note.is_empty():
 		body.add_child(_make_detail_desc("本场布阵：" + _layout_note, Color(0.75, 0.9, 1.0, 0.95)))
+	# v32.0 B2-2: 战前构筑建议（规则/环境→克制提示；主题 threat/advice 已在上文题面展示）
+	var _build_tips: Array = BuildAdvisor.get_build_tips(level_index)
+	if not _build_tips.is_empty():
+		body.add_child(_make_detail_desc("构筑建议：" + "；".join(_build_tips), Color(0.72, 1.0, 0.8, 0.95)))
 
 	# ▸ 敌情预览（敌方单位 + 可能掉落 + 资源掉落）
 	body.add_child(_make_detail_section_title("敌情预览"))
@@ -2288,12 +2307,30 @@ func _enter_level_from_popup(level_index: int, popup: Window) -> void:
 	_close_popup_safe(popup)
 	# 批次③ Task 1：出击确认 → 出征过场拍点（main 侧 run_start_battle_sequence 消费，一次性）
 	Engine.set_meta(SortieInterstitial.META_PENDING, true)
+	# v32.5 复审修复：地图进关意图覆盖过期的基地出击标记——launch_from_bunker 是
+	# "写过不消费"的（教程期被守卫跳过后残留），不清掉会与 level_auto_start_pending
+	# 双触发、同帧开两次战斗
+	Engine.remove_meta("launch_from_bunker")
 	if has_meta("embedded_mode") and bool(get_meta("embedded_mode")):
 		back_to_main.emit()
+		# v32.3 A2 进关即开战：内嵌模式下主场景已加载（deferred init 不会再跑），直调
+		_trigger_main_auto_start()
 		return
 	# 独立场景模式：切回主场景
 	# 同步切场景会在按键输入分发中途释放本 Window 视口，易触发 Viewport::_push_unhandled_input_internal
+	# v32.3 A2 进关即开战：main 落地后消费此 meta 自动开打（黑幕战报即关卡进入揭幕）
+	Engine.set_meta("level_auto_start_pending", true)
 	SceneTransition.change(get_tree(), "res://scenes/main.tscn")
+
+## v32.3 A2：内嵌模式直调主场景自动开战入口（独立场景链走 level_auto_start_pending meta）
+func _trigger_main_auto_start() -> void:
+	var tree := get_tree()
+	if tree == null or tree.root == null:
+		return
+	for c in tree.root.get_children():
+		if c.has_method("auto_start_battle_from_world_map"):
+			c.call_deferred("auto_start_battle_from_world_map")
+			return
 
 func _collect_level_info(level_index: int) -> Dictionary:
 	var info_db = LevelInformation.get_shared()

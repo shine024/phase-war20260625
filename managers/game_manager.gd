@@ -458,6 +458,27 @@ func go_to_battle() -> void:
 		pass  # LOG: 调用 BattleManager.start_battle
 	BattleManager.start_battle(battle_scene)
 
+const FirstClearRewards = preload("res://data/first_clear_rewards.gd")
+
+## v32.0 B3-S1: 推图首通奖励（三层收入模型——主动游玩核心回报）
+## 时序契约：必须在 LevelProgressManager.complete_level 记账**之前**调用（stars==0 判首通）；
+## 本函数在 _on_battle_ended 的 player_won 分支头部位执行，结算链后续才落星。
+func _grant_first_clear_if_eligible() -> void:
+	var lvl := int(current_level)
+	if lvl < 1:
+		return
+	var lpm := get_node_or_null("/root/LevelProgressManager")
+	if lpm == null or int(lpm.get_level_stars(lvl)) != 0:
+		return  # 已通关过 = 非首通（信号重入/重复结算同此守卫）
+	var reward: Dictionary = FirstClearRewards.get_first_clear_reward(lvl)
+	if reward.is_empty() or BasicResourceManager == null:
+		return
+	for id in reward:
+		BasicResourceManager.add_resource(String(id), int(reward[id]))
+	SignalBus.show_toast.emit("★ 首通奖励已发放：" + FirstClearRewards.format_reward_text(reward))
+	# v34 B3：首通奖励入结算摘要——缴获页「首次通关奖励」区块消费（Toast 保留双通道）
+	last_battle_reward_summary["first_clear"] = {"level": lvl, "reward": reward.duplicate()}
+
 func _on_battle_ended(player_won: bool) -> void:
 	current_phase = GamePhase.POST_BATTLE
 
@@ -505,6 +526,8 @@ func _on_battle_ended(player_won: bool) -> void:
 
 	# 发放原有奖励
 	if player_won:
+		# v32.0 B3-S1: 首通判定须先于 complete_level 记账
+		_grant_first_clear_if_eligible()
 		_grant_basic_resources_for_current_level()
 		_grant_phase_field_xp_for_victory()
 		# 攻克关卡后触发势力反应
@@ -741,6 +764,8 @@ func _settle_endless_battle() -> void:
 
 	# 战斗经验照常平分（失败口径 30%——卡牌成长不因模式中断）
 	_grant_battle_experience(false)
+	# v34 B2 修复：card_growth 写在旧摘要字典里，下方整字典重建会抹掉——备份后回填
+	var growth_bak: Array = last_battle_reward_summary.get("card_growth", [])
 
 	ManagerLazyLoader.ensure_loaded("endless")
 	var endless: Node = get_node_or_null("/root/EndlessBlackgateManager")
@@ -756,6 +781,9 @@ func _settle_endless_battle() -> void:
 		# v7.x 本局收集器快照（缴获卡等战中奖励照常展示）
 		"collected_rewards": _battle_reward_collector.duplicate(true),
 	}
+	# v34 B2：回填战斗卡成长（结算面板缴获页消费）
+	if not growth_bak.is_empty():
+		last_battle_reward_summary["card_growth"] = growth_bak
 
 	# Toast 播报（分层反馈：Toast=即时，面板=明细）
 	var toast_lines: PackedStringArray = ["黑门征程结束：第 %d 波 · 击杀 %d" % [waves, kills]]
@@ -1037,6 +1065,8 @@ func _grant_phase_master_victory_reward(master_name: String) -> void:
 	if not _bias.is_empty():
 		_pm_enemy_type = String(_bias[0])
 	var _pm_power_tier: int = _PT.get_tier_by_stars(_stars)
+	# v6.14: 掉落时代过滤（对齐安装侧 era_band 硬门）——相位师战利品不再掉当前时代装不上的图纸
+	var _pm_max_era: int = clampi(LevelEras.get_era(current_level), 0, 4)
 	# 必掉数量按星级梯度：基础1 + 3★+1 + 5★+2 + 7★+3
 	var _pm_guaranteed: int = 1
 	if _stars >= 7:
@@ -1047,14 +1077,14 @@ func _grant_phase_master_victory_reward(master_name: String) -> void:
 		_pm_guaranteed = 2
 	# 发放必掉
 	for _i in range(_pm_guaranteed):
-		var _mod_drop: Dictionary = IntelManualItems.roll_random_mod_blueprint(_pm_enemy_type, "boss", _pm_power_tier, _bias)
+		var _mod_drop: Dictionary = IntelManualItems.roll_random_mod_blueprint(_pm_enemy_type, "boss", _pm_power_tier, _bias, _pm_max_era)
 		if not _mod_drop.is_empty() and _drop_bag and _drop_bag.has_method("add_item"):
 			_drop_bag.add_item(String(_mod_drop.get("item_type", "")), 1)
 			# v7.x 胜利面板漏显修复：相位师改造蓝图记入本局收集器（_mod_drop dict 已含 name/rarity 字段）
 			collect_battle_mod_blueprint(String(_mod_drop.get("item_type", "")), String(_mod_drop.get("name", "")), String(_mod_drop.get("rarity", "")), "相位师战利品")
 	# 30% 额外1个
 	if randf() < 0.30:
-		var _mod_drop2: Dictionary = IntelManualItems.roll_random_mod_blueprint(_pm_enemy_type, "boss", _pm_power_tier, _bias)
+		var _mod_drop2: Dictionary = IntelManualItems.roll_random_mod_blueprint(_pm_enemy_type, "boss", _pm_power_tier, _bias, _pm_max_era)
 		if not _mod_drop2.is_empty() and _drop_bag and _drop_bag.has_method("add_item"):
 			_drop_bag.add_item(String(_mod_drop2.get("item_type", "")), 1)
 			# v7.x 胜利面板漏显修复
@@ -1373,8 +1403,25 @@ func _grant_battle_experience(player_won: bool) -> void:
 	var per_card: int = int(total_exp / instance_ids.size())
 	if per_card <= 0:
 		return
+	# v34 B2 卡牌经验结算可见：收集每张上阵卡的 +XP 与升级事件，入结算摘要供
+	# mvp_panel 缴获页「战斗卡成长」区块展示（发钱逻辑不变，纯展示层附带数据）
+	var growth_rows: Array = []
 	for iid in instance_ids:
-		ir.add_experience(iid, per_card)
+		var leveled: bool = ir.add_experience(iid, per_card)
+		var lv_after: int = ir.get_card_level(iid) if ir.has_method("get_card_level") else 0
+		var disp_name: String = iid
+		if ir.has_method("get_instance"):
+			var inst_card: CardResource = ir.get_instance(iid)
+			if inst_card != null:
+				disp_name = String(inst_card.display_name)
+		growth_rows.append({
+			"iid": iid,
+			"name": disp_name,
+			"xp": per_card,
+			"lv": lv_after,
+			"leveled": leveled,
+		})
+	last_battle_reward_summary["card_growth"] = growth_rows
 	# v26 批次4：兵棋室 Lv3 沙盘演武——1 张未上阵卡后台吃 50% 单卡经验
 	var bunker_gm: Node = get_node_or_null("/root/BunkerManager")
 	if bunker_gm != null and bunker_gm.has_method("grant_sandbox_exp"):

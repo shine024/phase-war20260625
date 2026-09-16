@@ -255,11 +255,11 @@ static func spawn_layered_impact(parent: Node2D, world_pos: Vector2, weapon_type
 		var ring_dur: float = float(recipe.get("ring_dur", 0.2))
 		if weapon_type in [1, 2, 3, 7, 9]:
 			ring_r = minf(ring_r * 1.6, 96.0)
-			# v20.23: dur ×0.7 压缩（替换 v20.21 的 +0.1s）——审计亮度取帧偏向闪光时刻
-			#（0.05-0.12s），环须在该窗内展开过半才可读：0.36s→0.25s 时 0.12s 已展开
-			# 48%（46px 半径 ≈ 火球面宽），冲击波"快速掠过"的感知也更正确。慢环 ×1.6
-			# 仍保留余波层次。
-			ring_dur *= 0.7
+			# v20.23: dur ×0.7 压缩——审计亮度取帧偏向闪光时刻（0.05-0.12s）。
+			# v6.14: 恢复 ×1.0——实测反馈"直射与曲射节奏雷同"：×0.7 后曲射快环 0.336s
+			# 比直射坦克炮环（0.40s）还短，冲击波层次读不出。审计亮度窗口由 ×1.6 放大的
+			# 环径（0.12s 已展开 46px+）保证，不依赖时长压缩。
+			ring_dur *= 1.0
 		_spawn_ring(parent, world_pos, ring_r, ring_dur, ring_color)
 		# v17k: 第二慢环（快环收束动量 + 慢环拉开扩散层次）——boss 轮 v17j 同款模式，
 		# AI 高频批"冲击波单层无落差"。慢环半径 ×1.4、alpha 减半、时长 +60%。
@@ -668,13 +668,9 @@ static func _get_blood_spark_ramp() -> Gradient:
 ## 注：SNIPER(6) 保持轻型（族内多为动能狙击枪，非能量武器）。
 const HEAVY_MUZZLE_WT: Array = [1, 2, 3, 7, 8, 9, 10, 11]
 
-## v16: legacy 轻武器域归一——调用方持有的 wt 若是 legacy 值（敌方 archetype/直射 batch 的
-## BATCH_FIRE_WEAPON_TYPES=[0,4,1,2]），其中 1/2 是 RIFLE/MG，会被上面"新枚举优先"约定
-## 读成 INDIRECT/AERIAL（重型枪口火/爆炸贴图/火球帧），步枪机枪被渲染成火炮。
-## legacy 域调用方（敌方枪口火、直射 batch 命中）传参前先经本函数归一为 0(SMG 档轻武器)。
-static func normalize_light_kinetic_wt(wt: int) -> int:
-	return 0 if wt == 1 or wt == 2 else wt
-
+## v16: legacy 轻武器域归一（normalize_light_kinetic_wt 已随 v35 死代码清理删除——
+## 零调用方，实际归一由 WeaponVisualProfiles.resolve_visual_wt 承担：legacy 1/2=RIFLE/MG
+## 在 VFX 入参前已归一为 0，"新枚举优先"约定因此恒成立）。
 ## v7.4: 炮口火焰（复用 spark 池，替代 bullet.gd 每次 new CPUParticles2D+Gradient）。
 ## 参数对齐原 bullet._spawn_muzzle_effect 的配置。
 static func spawn_muzzle_flash(parent: Node2D, local_pos: Vector2, facing_right: bool, weapon_type: int = 0) -> void:
@@ -3180,7 +3176,9 @@ static var _spark_ramp_cache: Dictionary = {}
 # 能量武器(激光/欧米茄/电磁)保留蓝青但加白热核心。报告:原"白→武器色→淡出"颜色单一缺高温梯度。
 static func _get_spark_ramp(base_color: Color, weapon_type: int = -1) -> Gradient:
 	var family: String = "energy" if weapon_type in [8, 10, 11] else "thermal"
-	var key: String = family + "_%02x%02x%02x" % [int(base_color.r*255), int(base_color.g*255), int(base_color.b*255)]
+	# v35 perf: 缓存键改 int 打包（salt+RGB，免每命中 % 格式化拼串分配）
+	var key: int = ((1 if family == "energy" else 0) << 24) \
+		| (int(base_color.r * 255) << 16) | (int(base_color.g * 255) << 8) | int(base_color.b * 255)
 	if _spark_ramp_cache.has(key):
 		return _spark_ramp_cache[key]
 	var g := Gradient.new()
@@ -3301,8 +3299,8 @@ static func _spawn_flash_layer(parent: Node2D, pos: Vector2, base_color: Color, 
 	p.scale_amount_max = float(cfg.get("smax", _flash_smax)) * FSCALE
 	var flash_col: Color = Color(1.0, 1.0, 0.96, 1.0) if not is_energy else Color(0.85, 0.95, 1.0, 1.0)
 	p.color = flash_col
-	# v26.x: Gradient 按色缓存（原每次命中 new）
-	var _fkey: String = "flash_%02x%02x%02x" % [int(flash_col.r * 255), int(flash_col.g * 255), int(flash_col.b * 255)]
+	# v26.x: Gradient 按色缓存（原每次命中 new）；v35 perf: 键改 int 打包
+	var _fkey: int = (1 << 24) | (int(flash_col.r * 255) << 16) | (int(flash_col.g * 255) << 8) | int(flash_col.b * 255)
 	p.color_ramp = _get_cached_gradient(_fkey, [
 		[0.0, flash_col],
 		[0.5, Color(flash_col.r, flash_col.g * 0.9, flash_col.b * 0.6, 0.6)],
@@ -3329,7 +3327,10 @@ static func _spawn_smoke_puff_layer(parent: Node2D, pos: Vector2, base_color: Co
 	# v26.11: 非能量烟换浅灰白枪烟贴图——smoke_generic 均值 0.40 乘任何 tint 都是暗团
 	# （轻武器命中"黑球"的残源），light 贴图 0.8 亮度下中性暖灰才成立。
 	p.texture = PARTICLE_TEX_SMOKE_ENERGY if is_energy else PARTICLE_TEX_SMOKE_PUFF_LIGHT
-	var light_factor: float = 0.85 if weapon_type in [0, 1, 2, 4] else 1.0  # v11b: 0.5→0.85 轻武器烟量恢复可见(报告:完全无烟)
+	# v35 修正: 轻武器域 [0,1,2,4]→[0,4]——本工厂"新枚举优先"约定下碰撞值 1/2 恒是
+	# 曲射/空射（重型），此前会被 0.85 轻档压烟量；legacy RIFLE/MG 在上游 resolve_visual_wt
+	# 已归一为 0，[1,2] 条目是双枚举撞值期的残留。
+	var light_factor: float = 0.85 if weapon_type in [0, 4] else 1.0  # v11b: 0.5→0.85 轻武器烟量恢复可见(报告:完全无烟)
 	p.amount = int(float(cfg.get("amount", 5)) * light_factor)
 	p.lifetime = float(cfg.get("life", 0.7))
 	p.initial_velocity_min = float(cfg.get("vmin", 20.0))
@@ -3437,7 +3438,7 @@ static func _spawn_shrapnel_layer(parent: Node2D, pos: Vector2, base_color: Colo
 		# 渐变只控 alpha 渐隐（末尾整体变透明而非变色）。
 		p.color = Color.WHITE
 		# v26.x: Gradient 缓存（原每次命中 new；渐变只控 alpha 渐隐，恒白不随色变）
-		p.color_ramp = _get_cached_gradient("metal_chunk_alpha", [
+		p.color_ramp = _get_cached_gradient(3, [  # 3 = metal_chunk_alpha 固定档（v35 int 键）
 			[0.0, Color(1, 1, 1, 1.0)], [0.6, Color(1, 1, 1, 0.9)], [1.0, Color(1, 1, 1, 0.0)]])
 		parent.add_child(p)
 		var tree_e := p.get_tree()
@@ -3457,8 +3458,8 @@ static func _spawn_shrapnel_layer(parent: Node2D, pos: Vector2, base_color: Colo
 	p.gravity = Vector2(0, 260.0)  # 重力下落(破片抛物线)
 	var shrap_col: Color = cfg.get("color", (Color(0.85, 0.78, 0.55, 1.0) if weapon_type not in [8, 10, 11] else Color(0.6, 0.75, 1.0, 1.0)))
 	p.color = shrap_col
-	# v26.x: Gradient 按色缓存（原每次命中 new）
-	var _skey: String = "shrap_%02x%02x%02x" % [int(shrap_col.r * 255), int(shrap_col.g * 255), int(shrap_col.b * 255)]
+	# v26.x: Gradient 按色缓存（原每次命中 new）；v35 perf: 键改 int 打包
+	var _skey: int = (2 << 24) | (int(shrap_col.r * 255) << 16) | (int(shrap_col.g * 255) << 8) | int(shrap_col.b * 255)
 	p.color_ramp = _get_cached_gradient(_skey, [
 		[0.0, shrap_col],
 		[0.6, Color(shrap_col.r * 0.6, shrap_col.g * 0.5, shrap_col.b * 0.4, 0.9)],
@@ -3729,7 +3730,8 @@ static func _get_smoke_grad(tint: Color) -> Gradient:
 
 
 ## v26.x: 通用按色 Gradient 缓存（命中闪光/金属破片层）。points = [[offset, Color], ...]。
-static func _get_cached_gradient(key: String, points: Array) -> Gradient:
+## v35 perf: key 改 int（调用方 salt+RGB 打包；金属破片固定档传 3）
+static func _get_cached_gradient(key: int, points: Array) -> Gradient:
 	if _fx_grad_cache.has(key):
 		return _fx_grad_cache[key]
 	var grad := Gradient.new()

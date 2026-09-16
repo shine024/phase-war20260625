@@ -90,6 +90,30 @@ static func _load_json(path: String) -> Dictionary:
 	return d
 
 
+## v6.15: 该单位的动画雪碧图是否已预烘焙描边（deploy_unit_anims.py 写 anim.json 的
+## outline.baked）——是则呈现层跳过 alpha 膨胀 shader（unit_outline.gd），否则烘焙描边
+## 会被 shader 二次外扩。anim_id 口径与 attach 一致；非动画单位返回 false 继续走 shader。
+## v6.15.1: boss/相位师逐帧资产目录（idle_f*.png，BossIdleAnim 消费，无雪碧图），
+## _resolve_key 因缺 sheet_idle 不命中——兜底直读该目录 anim.json 的 outline 标记
+##（deploy_unit_anims.py --bake-boss-frames 写入，纯标记文件）。
+## ⚠️ 只按目录名直查（与 BossIdleAnim._load_frames 同口径），不做 captured_ 剥前缀——
+## 缴获 boss 卡走 vis_player 卡图回退（无帧资产），静态卡图未烘焙，必须继续吃 shader。
+static func is_outline_baked(anim_id: String) -> bool:
+	if anim_id.is_empty():
+		return false
+	var key := _resolve_key(anim_id)
+	if not key.is_empty():
+		return bool(_load_json(ANIM_ROOT + key + "/anim.json").get("outline", {}).get("baked", false))
+	for cand in [anim_id, anim_id.trim_prefix("foe_")]:
+		var c := String(cand)
+		if c.is_empty():
+			continue
+		var p := ANIM_ROOT + c + "/anim.json"
+		if ResourceLoader.exists(p):
+			return bool(_load_json(p).get("outline", {}).get("baked", false))
+	return false
+
+
 ## 给单位挂 idle ping-pong + attack 单次驱动（敌我双方通用, v24.2）。
 ## 敌方(sheet 原图朝左) face_right=false; 我方传 true → 驱动给 unit_spr.flip_h=true 镜像成朝右。
 ## 成功返回 true（失败时不动 flip_h, 静态卡图朝向不受影响）。

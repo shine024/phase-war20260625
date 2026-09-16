@@ -75,7 +75,7 @@ func _test_resolver_domain_fallback() -> void:
 	_ok(WVP.resolve_visual_wt("", 1, true) == 1, "我方 wt=1 → INDIRECT(1) 保持")
 	_ok(WVP.resolve_visual_wt("", 2, true) == 2, "我方 wt=2 → AERIAL(2) 保持")
 	_ok(WVP.resolve_visual_wt("", 11, true) == 11, "我方 wt=11 → RAIL(11) 保持")
-	# 敌方域：legacy 解释——1/2 = 步枪/机枪 → 归一 0（等价 normalize_light_kinetic_wt）
+	# 敌方域：legacy 解释——1/2 = 步枪/机枪 → 归一 0
 	_ok(WVP.resolve_visual_wt("", 1, false) == 0, "敌方 wt=1(RIFLE) → 归一 0")
 	_ok(WVP.resolve_visual_wt("", 2, false) == 0, "敌方 wt=2(MG) → 归一 0")
 	_ok(WVP.resolve_visual_wt("", 7, false) == 7, "敌方 wt=7(FLAK) → 7 保持")

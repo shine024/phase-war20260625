@@ -104,6 +104,10 @@ func _ready() -> void:
 	## to skip registration in the game and time out every capture.
 	if Engine.is_editor_hint():
 		return
+	## v32.0 发行包卫生：release 导出不注册调试捕获/常驻进程（对齐 agent_tools 桥先例）——
+	## 保留 debug 模板导出时的完整捕获能力
+	if not OS.is_debug_build():
+		return
 	## Keep ticking while the tree is paused: _process both ferries game logs
 	## and timestamps main-loop liveness for the stalled-loop screenshot
 	## fallback (#777). A paused game still iterates its loop and renders, and

@@ -51,7 +51,7 @@ enum Family {
 ## [param weapon_name] 武器显示名（v16 起所有开火/命中路径已透传；空名直接走兜底）
 ## [param raw_wt] 调用方持有的原始 weapon_type（域可能混合，仅兜底时使用）
 ## [param shooter_is_player] 我方=true（新枚举域：1/2=曲射/空射）；敌方=false
-##   （legacy 域：1/2=步枪/机枪，归一为 0 轻动能——保持 normalize_light_kinetic_wt 行为）
+##   （legacy 域：1/2=步枪/机枪，归一为 0 轻动能）
 ## 返回 Family 值（恒在 0-11），可直接传给 VfxImpactFactory / WeaponProjectileVfx。
 static func resolve_visual_wt(weapon_name: String, raw_wt: int, shooter_is_player: bool) -> int:
 	return int(resolve_traced(weapon_name, raw_wt, shooter_is_player)["visual_wt"])
@@ -125,7 +125,7 @@ static func resolve_traced(weapon_name: String, raw_wt: int, shooter_is_player: 
 				return {"visual_wt": Family.LIGHT_KINETIC, "via": "keyword", "matched": kw}
 	# ── 第3优先级：域感知 wt 兜底（名字无信号，保持本文件出现前的行为）──
 	# 我方域：新枚举优先，1/2/3 = 曲射/空射/支援(重型)——原样透传。
-	# 敌方域：legacy 解释，1/2 = 步枪/机枪 → 归一 0（等价 normalize_light_kinetic_wt）。
+	# 敌方域：legacy 解释，1/2 = 步枪/机枪 → 归一 0。
 	var wt: int = clampi(raw_wt, 0, 11)
 	if not shooter_is_player and (wt == 1 or wt == 2):
 		wt = 0

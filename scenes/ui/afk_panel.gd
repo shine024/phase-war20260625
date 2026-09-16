@@ -52,6 +52,8 @@ const _NORMAL_BG := Color(0.06, 0.1, 0.18, 0.85)
 var _battle_viewport: SubViewport = null
 ## 缓存的 AtlasTexture：TextureRect 不支持 region，用 atlas 包装 ViewportTexture 取交战带子区域
 var _preview_atlas: AtlasTexture = null
+## v32.0 B1-4: 观看战场按钮（隐藏面板不停机）
+var _watch_btn: Button = null
 
 # 子面板引用
 var _afk_manager: AFKModeManager = null
@@ -113,6 +115,8 @@ func _ready() -> void:
 	_level_info = _LevelInfoScript.get_shared()
 	# v6.6(挂机缩略图): 缓存战斗 SubViewport 引用（延迟到首次 refresh 时再查，此时 BattleContainer 可能还未就绪）
 	call_deferred("_cache_battle_viewport")
+	# v32.0 B1-4: 观看战场按钮（定位转向 B1 观战体验批）
+	_build_watch_btn()
 
 
 func _input(event: InputEvent) -> void:
@@ -300,6 +304,35 @@ func _on_close() -> void:
 	_close()
 
 
+# ── v32.0 B1-4: 观看战场（挂机观战入口）──
+## 隐藏挂机面板但不停机，玩家全屏直接看 AFK 战斗。AFK 战斗本就在面板后全屏运行
+##（缩略图是活的 ViewportTexture），管理器生命周期与面板无关（stop_afk 只由 StopBtn
+## 触发）；回来走底部功能栏「挂机」重开面板。配合 B1-1 的倍速/跳过按钮即可全程控场。
+func _build_watch_btn() -> void:
+	var preview_area: Panel = get_node_or_null("Panel/MarginContainer/MainVBox/PreviewArea") as Panel
+	if preview_area == null:
+		return
+	_watch_btn = Button.new()
+	_watch_btn.text = "▶ 观看战场"
+	_watch_btn.tooltip_text = "隐藏本面板、全屏观看挂机战斗（挂机不会停止）\n从底部功能栏「挂机」回到本面板"
+	_watch_btn.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
+	_watch_btn.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
+	_watch_btn.offset_left = -136
+	_watch_btn.offset_top = -40
+	_watch_btn.offset_right = -10
+	_watch_btn.offset_bottom = -10
+	_watch_btn.pressed.connect(_on_watch_battle)
+	preview_area.add_child(_watch_btn)
+
+
+func _on_watch_battle() -> void:
+	var pm := get_node_or_null("/root/PerformanceMetricsManager")
+	if pm != null and pm.has_method("count_event"):
+		pm.count_event("afk_watch")
+	_close()
+	SignalBus.show_toast.emit("挂机战斗继续进行中——从底部功能栏「挂机」回到面板")
+
+
 # ── Slot 关卡关联 ──
 
 func _on_slot_gui_input(event: InputEvent, slot_idx: int) -> void:
@@ -453,6 +486,18 @@ func _on_level_completed(level: int, won: bool) -> void:
 	_refresh_battle_preview()
 
 
+## v32.3 A5：战斗中暂存的结算（战斗结束再弹，防"进关瞬间蹦结算"）
+var _pending_settlement: Dictionary = {}
+var _pending_settlement_connected: bool = false
+
+## 战斗占位判定：交战中或出征战报黑幕还在屏上
+func _is_battle_busy() -> bool:
+	var bm: Node = get_node_or_null("/root/BattleManager")
+	if bm != null and "battle_active" in bm and bool(bm.get("battle_active")):
+		return true
+	return SortieInterstitial.is_showing()
+
+
 ## v6.6(挂机): 挂机结束（停止/失败）时收到累计奖励总账
 func _on_afk_settled(rewards: Dictionary) -> void:
 	_update_stats_display()
@@ -466,8 +511,27 @@ func _on_afk_settled(rewards: Dictionary) -> void:
 		status_label.text = "状态: 已结束（无奖励）"
 	else:
 		status_label.text = "状态: 已结束 | 累计 %d 种 / %d 件" % [rewards.size(), total_count]
+	# v32.3 A5：战斗中（含出征过场）只暂存，battle_ended 后再弹——玩家点出击进关
+	# 的路上不再蹦结算窗
+	if _is_battle_busy():
+		_pending_settlement = rewards
+		if not _pending_settlement_connected:
+			_pending_settlement_connected = true
+			var sb: Node = get_node_or_null("/root/SignalBus")
+			if sb != null and sb.has_signal("battle_ended"):
+				sb.battle_ended.connect(_on_battle_ended_flush_settlement)
+		return
 	# 弹出结算汇总弹窗（显示完整掉落明细 + 战绩）
 	_show_settlement_dialog(rewards)
+
+
+## v32.3 A5：战斗结束后补弹暂存的挂机结算
+func _on_battle_ended_flush_settlement(_won: bool) -> void:
+	if _pending_settlement.is_empty():
+		return
+	var rewards := _pending_settlement
+	_pending_settlement = {}
+	_show_settlement_dialog.call_deferred(rewards)
 
 
 ## 弹出挂机结算弹窗。挂到 PopupLayer（layer=100），确保覆盖所有 UI。

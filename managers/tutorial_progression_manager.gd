@@ -170,15 +170,15 @@ func _initialize_tutorial_data() -> void:
 		},
 		TutorialStep.FIRST_BATTLE: {
 			"title": "首次战斗",
-			"description": "装配好战斗卡后进入战斗。点底部绿槽选中单位，再点战场格子部署，单位自动攻击敌人。",
-			"highlights": ["点底部绿槽选单位", "点战场格子部署", "保护相位场驱动器"],
+			"description": "卡组已装配，出击后自动部署会自动把绿槽卡组摆上战场，单位自动攻击敌人。想手动摆位，点底部绿槽选单位再点战场格子即可。",
+			"highlights": ["自动部署默认开启，自动上阵+阵亡补位", "手动部署：点绿槽选单位→点格子", "保护相位场驱动器"],
 			"action_text": "开始首战",
 			"action_target": "start_first_battle",
 			"highlight_elements": ["battlefield"]
 		},
 		TutorialStep.TRUCK_BASE: {
-			"title": "移动基地 · 装甲卡车驻地",
-			"description": "战场之外的一切都在你的装甲卡车里。从标题屏「移动基地」按钮或战区地图的「家」标记进入：剖面车厢里每个发光工位都挂着常显标牌——卡牌墙=卡仓、工作台=改造舱、3D 打印机=制造舱、售货机=补给舱、地图墙=情报舱、电脑桌=统计、发电机=燃料与引擎、铺位=睡觉存档；驾驶室和尾门跳板负责出击简报。",
+			"title": "回到移动基地 · 车厢指南",
+			"description": "首战打通了！战场之外的一切都在这辆装甲卡车里：剖面车厢每个发光工位都挂着常显标牌——卡牌墙=卡仓、工作台=改造舱、3D 打印机=制造舱、售货机=补给舱、地图墙=情报舱、发电机=燃料引擎、铺位=睡觉存档。接下来去「成长」面板看看首战经验。",
 			"highlights": ["外景看驻地 / 剖面干活，顶栏可切换", "铺位睡觉 = 存档 + 回充燃料 + 恢复精神", "顶栏「战区地图」= 行军换防与选关"],
 			"action_text": "收到",
 			"action_target": "next",
@@ -237,6 +237,11 @@ func _initialize_tutorial_data() -> void:
 ## 检查是否应该显示教程
 func should_show_tutorial() -> bool:
 	return current_step != TutorialStep.FREEDOM_MODE
+
+## v34 渐进解锁：教程是否已完成（正常走完或跳过均算）。
+## LevelProgressManager.is_feature_unlocked 消费——教程已完成的存档全系统开放（老档兜底）。
+func is_tutorial_completed() -> bool:
+	return current_step == TutorialStep.FREEDOM_MODE
 
 ## 获取当前教程内容（副作用：NONE 时推进到首步）
 func get_tutorial_content() -> Dictionary:

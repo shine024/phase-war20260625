@@ -163,9 +163,27 @@ func _on_card_added(card: CardResource) -> void:
 	if not _is_view_visible():
 		_grid_dirty_while_hidden = true
 	else:
-		_refresh_card_grid()
+		_queue_grid_refresh()
 	if _view and _view.has_method("highlight_last_card_by_id"):
 		_view.highlight_last_card_by_id(inst_id)
+
+
+## v32.3 C1：同帧多次 card_added（相位仪整套卸下返还 N 张卡）合并为一次全量重建——
+## 原先每张卡各排一次 deferred rebuild，同帧 N 次全量 free+重建网格 = 换装卡顿主因
+var _grid_refresh_queued := false
+
+func _queue_grid_refresh() -> void:
+	if _grid_refresh_queued:
+		return
+	_grid_refresh_queued = true
+	_flush_queued_grid_refresh.call_deferred()
+
+func _flush_queued_grid_refresh() -> void:
+	_grid_refresh_queued = false
+	if not _is_view_visible():
+		_grid_dirty_while_hidden = true
+		return
+	_refresh_card_grid()
 
 ## v7.x：实例被销毁时（进化消耗/拆解/相位仪清理），从背包列表移除对应的幽灵 instance_id。
 ## 根因：dispose_instance 只清 InstanceRegistry，不通知背包列表，导致 _extra_card_ids 残留

@@ -29,6 +29,14 @@ import urllib.request
 
 sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
+# 批次④ §9 已知坑：本机证书链过期 → 统一装 netfix（跳过校验+代理旁路）
+try:
+    import _netfix as _nf
+
+    _nf.install()
+except Exception as _e:  # noqa: BLE001 - 无 netfix 环境下按原行为跑
+    print("[warn] _netfix 不可用: %r" % (_e,))
+
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT_DIR = os.path.join(ROOT, "资料", "单位分帧动画")
 REF_DIR = os.path.join(OUT_DIR, "_ref")

@@ -6,7 +6,7 @@ extends Node
 ##
 ## 职责：房间状态机 / 天数 / 精神值 / 修复经济；P2 接存档段，P3 接英雄碎片。
 
-const BunkerRoomDefs = preload("res://data/bunker_room_defs.gd")
+const MobileBaseFacilities = preload("res://data/mobile_base_facilities.gd")
 const HeroArchiveTexts = preload("res://data/hero_archive_texts.gd")
 const ManufacturePools = preload("res://data/manufacture_pools.gd")
 const DefaultCards = preload("res://data/default_cards.gd")
@@ -245,7 +245,7 @@ func charge_fuel_to_full() -> Dictionary:
 	var need := TruckTravel.fuel_needed_to_fill(_fuel, get_fuel_cap())
 	if need <= 0:
 		return {"ok": false, "reason": "燃料已满（%d/%d）" % [int(_fuel), get_fuel_cap()]}
-	var energy_id := BunkerRoomDefs.res_full_id("energy")
+	var energy_id := MobileBaseFacilities.res_full_id("energy")
 	var have := int(BasicResourceManager.get_total(energy_id))
 	var spend := mini(need, have)
 	if spend <= 0:
@@ -262,10 +262,10 @@ func upgrade_engine() -> Dictionary:
 	var cost: Dictionary = TruckTravel.upgrade_cost(_engine_level)
 	for short_id in cost:
 		if BasicResourceManager == null or not BasicResourceManager.can_afford(
-				BunkerRoomDefs.res_full_id(String(short_id)), int(cost[short_id])):
-			return {"ok": false, "reason": "资源不足：需 %s" % BunkerRoomDefs.cost_text(cost)}
+				MobileBaseFacilities.res_full_id(String(short_id)), int(cost[short_id])):
+			return {"ok": false, "reason": "资源不足：需 %s" % MobileBaseFacilities.cost_text(cost)}
 	for short_id2 in cost:
-		BasicResourceManager.consume(BunkerRoomDefs.res_full_id(String(short_id2)), int(cost[short_id2]))
+		BasicResourceManager.consume(MobileBaseFacilities.res_full_id(String(short_id2)), int(cost[short_id2]))
 	_engine_level += 1
 	_fuel = minf(get_fuel(), float(get_fuel_cap()))
 	_emit_travel_changed()
@@ -283,9 +283,9 @@ func _emit_travel_changed() -> void:
 
 func _init_rooms_from_defs() -> void:
 	_rooms.clear()
-	for def in BunkerRoomDefs.get_all_rooms():
+	for def in MobileBaseFacilities.get_all_rooms():
 		_rooms[def["id"]] = {
-			"state": int(def.get("initial", BunkerRoomDefs.STATE_LOCKED)),
+			"state": int(def.get("initial", MobileBaseFacilities.STATE_LOCKED)),
 			"level": 1,
 			"progress": 0.0,
 			"upgrading": false,
@@ -312,7 +312,7 @@ func get_narrative_stage() -> int:
 	return _narrative_stage
 
 func get_room_state(room_id: String) -> int:
-	return int(_rooms.get(room_id, {}).get("state", BunkerRoomDefs.STATE_LOCKED))
+	return int(_rooms.get(room_id, {}).get("state", MobileBaseFacilities.STATE_LOCKED))
 
 func get_room_progress(room_id: String) -> float:
 	return float(_rooms.get(room_id, {}).get("progress", 0.0))
@@ -321,14 +321,14 @@ func get_room_level(room_id: String) -> int:
 	return int(_rooms.get(room_id, {}).get("level", 1))
 
 func is_reactor_online() -> bool:
-	return get_room_state("reactor") == BunkerRoomDefs.STATE_ACTIVE
+	return get_room_state("reactor") == MobileBaseFacilities.STATE_ACTIVE
 
 ## 反应堆未上线时，深层设施（needs_power：通讯室/荣誉室）修复进度冻结；
 ## 上层房间靠基地备用电池供电，不受影响。反应堆自身当然不冻结。
 func is_repair_frozen(room_id: String) -> bool:
 	if room_id == "reactor" or is_reactor_online():
 		return false
-	var def := BunkerRoomDefs.get_room(room_id)
+	var def := MobileBaseFacilities.get_room(room_id)
 	return bool(def.get("needs_power", false))
 
 ## ───────────────────────── 修复经济 ─────────────────────────
@@ -342,17 +342,17 @@ func maybe_grant_bootstrap() -> void:
 	_bootstrap_granted = true
 	if BasicResourceManager == null:
 		return
-	BasicResourceManager.add_resource(BunkerRoomDefs.res_full_id("nano"), 250)
-	BasicResourceManager.add_resource(BunkerRoomDefs.res_full_id("alloy"), 80)
+	BasicResourceManager.add_resource(MobileBaseFacilities.res_full_id("nano"), 250)
+	BasicResourceManager.add_resource(MobileBaseFacilities.res_full_id("alloy"), 80)
 
 ## 启动修复。返回 {"ok": bool, "reason": String}；成功即扣资源并入修复中状态。
 func start_repair(room_id: String) -> Dictionary:
-	var def := BunkerRoomDefs.get_room(room_id)
+	var def := MobileBaseFacilities.get_room(room_id)
 	if def.is_empty():
 		return {"ok": false, "reason": "未知房间"}
 	if def.get("is_terminal", false):
 		return {"ok": false, "reason": "终局房间：需满足特定条件才能开启"}
-	if get_room_state(room_id) != BunkerRoomDefs.STATE_LOCKED:
+	if get_room_state(room_id) != MobileBaseFacilities.STATE_LOCKED:
 		return {"ok": false, "reason": "该房间不在可修复状态"}
 	if not _rooms.has(room_id):
 		return {"ok": false, "reason": "房间状态未初始化"}
@@ -366,14 +366,14 @@ func start_repair(room_id: String) -> Dictionary:
 		if BasicResourceManager == null:
 			return {"ok": false, "reason": "资源系统未就绪"}
 		for short_id in cost:
-			var full_id: String = BunkerRoomDefs.res_full_id(short_id)
+			var full_id: String = MobileBaseFacilities.res_full_id(short_id)
 			var amount: int = int(cost[short_id])
 			if not BasicResourceManager.can_afford(full_id, amount):
-				return {"ok": false, "reason": "资源不足（需 %s）" % BunkerRoomDefs.cost_text(cost)}
+				return {"ok": false, "reason": "资源不足（需 %s）" % MobileBaseFacilities.cost_text(cost)}
 		for short_id in cost:
 			BasicResourceManager.consume(
-				BunkerRoomDefs.res_full_id(short_id), int(cost[short_id]))
-	_rooms[room_id]["state"] = BunkerRoomDefs.STATE_REPAIRING
+				MobileBaseFacilities.res_full_id(short_id), int(cost[short_id]))
+	_rooms[room_id]["state"] = MobileBaseFacilities.STATE_REPAIRING
 	_rooms[room_id]["progress"] = 0.0
 	_emit_room_changed(room_id)
 	return {"ok": true, "reason": "开始修复"}
@@ -439,16 +439,16 @@ func advance_after_battle(player_won: bool) -> Array:
 	adjust_sanity(-win_cost if player_won else -20.0)
 	var completed: Array = []
 	for room_id in _rooms:
-		if int(_rooms[room_id]["state"]) != BunkerRoomDefs.STATE_REPAIRING:
+		if int(_rooms[room_id]["state"]) != MobileBaseFacilities.STATE_REPAIRING:
 			continue
 		if is_repair_frozen(room_id):
 			continue  # 反应堆未上线：进度冻结
-		var def := BunkerRoomDefs.get_room(room_id)
+		var def := MobileBaseFacilities.get_room(room_id)
 		var battles_needed: int = max(1, int(def.get("battles", 1)))
 		_rooms[room_id]["progress"] = float(_rooms[room_id]["progress"]) + 1.0 / battles_needed
 		if float(_rooms[room_id]["progress"]) >= 1.0:
 			_rooms[room_id]["progress"] = 1.0
-			_rooms[room_id]["state"] = BunkerRoomDefs.STATE_ACTIVE
+			_rooms[room_id]["state"] = MobileBaseFacilities.STATE_ACTIVE
 			completed.append(room_id)
 			_completed_today.append(room_id)
 			_emit_room_changed(room_id)
@@ -472,7 +472,7 @@ func advance_after_battle(player_won: bool) -> Array:
 			_rooms[room_id]["level"] = int(_rooms[room_id]["level"]) + 1
 			completed.append(room_id)
 			# 升级完工带 #up 后缀（与修复完工区分；消费方走
-			# BunkerRoomDefs.completed_entry_label 统一解析）
+			# MobileBaseFacilities.completed_entry_label 统一解析）
 			_completed_today.append(room_id + "#up")
 			_emit_room_changed(room_id)
 	# v26 批次3：分析仪在机卡每场推进（出炉即烧毁入账，见 _analyzer_tick）
@@ -483,11 +483,11 @@ func advance_after_battle(player_won: bool) -> Array:
 
 ## 房间最高等级（无升级档的房间恒 1）
 func get_max_room_level(room_id: String) -> int:
-	return BunkerRoomDefs.get_max_level(room_id)
+	return MobileBaseFacilities.get_max_level(room_id)
 
 ## 下一级升级定义（已满级/无升级档返回 {}）
 func get_next_upgrade(room_id: String) -> Dictionary:
-	return BunkerRoomDefs.get_upgrade_def(room_id, get_room_level(room_id) + 1)
+	return MobileBaseFacilities.get_upgrade_def(room_id, get_room_level(room_id) + 1)
 
 func is_upgrading(room_id: String) -> bool:
 	return bool(_rooms.get(room_id, {}).get("upgrading", false))
@@ -497,12 +497,12 @@ func get_upgrade_progress(room_id: String) -> float:
 
 ## 升级资格检查。返回 {"ok": bool, "reason": String}。
 func can_start_upgrade(room_id: String) -> Dictionary:
-	var def := BunkerRoomDefs.get_room(room_id)
+	var def := MobileBaseFacilities.get_room(room_id)
 	if def.is_empty():
 		return {"ok": false, "reason": "未知房间"}
 	if def.get("is_terminal", false):
 		return {"ok": false, "reason": "终局房间不可升级"}
-	if get_room_state(room_id) != BunkerRoomDefs.STATE_ACTIVE:
+	if get_room_state(room_id) != MobileBaseFacilities.STATE_ACTIVE:
 		return {"ok": false, "reason": "房间须先修复可用"}
 	if is_upgrading(room_id):
 		return {"ok": false, "reason": "升级进行中"}
@@ -513,8 +513,8 @@ func can_start_upgrade(room_id: String) -> Dictionary:
 		return {"ok": false, "reason": "资源系统未就绪"}
 	var cost: Dictionary = upg.get("cost", {})
 	for short_id in cost:
-		if not BasicResourceManager.can_afford(BunkerRoomDefs.res_full_id(short_id), int(cost[short_id])):
-			return {"ok": false, "reason": "资源不足（需 %s）" % BunkerRoomDefs.cost_text(cost)}
+		if not BasicResourceManager.can_afford(MobileBaseFacilities.res_full_id(short_id), int(cost[short_id])):
+			return {"ok": false, "reason": "资源不足（需 %s）" % MobileBaseFacilities.cost_text(cost)}
 	return {"ok": true, "reason": "可升级"}
 
 ## 开始升级：即扣资源，升级进度由完成战斗推进（与修复同构）。
@@ -526,7 +526,7 @@ func start_upgrade(room_id: String) -> Dictionary:
 	var upg := get_next_upgrade(room_id)
 	var cost: Dictionary = upg.get("cost", {})
 	for short_id in cost:
-		BasicResourceManager.consume(BunkerRoomDefs.res_full_id(short_id), int(cost[short_id]))
+		BasicResourceManager.consume(MobileBaseFacilities.res_full_id(short_id), int(cost[short_id]))
 	_rooms[room_id]["upgrading"] = true
 	_rooms[room_id]["upg_progress"] = 0.0
 	_emit_room_changed(room_id)
@@ -708,7 +708,7 @@ func expedition_used_today() -> bool:
 func start_expedition() -> Dictionary:
 	if not is_expedition_online():
 		return {"ok": false, "reason": "地表探索未解锁（需气象站 Lv3）"}
-	if get_room_state("weather_station") != BunkerRoomDefs.STATE_ACTIVE:
+	if get_room_state("weather_station") != MobileBaseFacilities.STATE_ACTIVE:
 		return {"ok": false, "reason": "气象站尚未修复"}
 	if expedition_used_today():
 		return {"ok": false, "reason": "侦察队今日已派出，明天再来"}
@@ -724,7 +724,7 @@ func start_expedition() -> Dictionary:
 		if BasicResourceManager == null:
 			return {"ok": false, "reason": "资源系统未就绪"}
 		for short_id in EXPEDITION_RESOURCES:
-			BasicResourceManager.add_resource(BunkerRoomDefs.res_full_id(short_id), int(EXPEDITION_RESOURCES[short_id]))
+			BasicResourceManager.add_resource(MobileBaseFacilities.res_full_id(short_id), int(EXPEDITION_RESOURCES[short_id]))
 			rewards.append("%s×%d" % [EXPEDITION_RES_NAMES.get(short_id, short_id), int(EXPEDITION_RESOURCES[short_id])])
 	return {"ok": true, "reason": "侦察队带回：" + "、".join(rewards), "rewards": rewards}
 
@@ -794,7 +794,7 @@ func is_salute_armed() -> bool:
 func do_salute() -> Dictionary:
 	if not is_salute_online():
 		return {"ok": false, "reason": "出征仪式未解锁（需荣誉室 Lv3）"}
-	if get_room_state("honor_hall") != BunkerRoomDefs.STATE_ACTIVE:
+	if get_room_state("honor_hall") != MobileBaseFacilities.STATE_ACTIVE:
 		return {"ok": false, "reason": "荣誉室尚未修复"}
 	if salute_used_today():
 		return {"ok": false, "reason": "今日已敬礼，明天再来"}
@@ -835,7 +835,7 @@ func is_weather_armed() -> bool:
 func lock_weather() -> Dictionary:
 	if not is_forecast_online():
 		return {"ok": false, "reason": "天气预报未解锁（需气象站 Lv2）"}
-	if get_room_state("weather_station") != BunkerRoomDefs.STATE_ACTIVE:
+	if get_room_state("weather_station") != MobileBaseFacilities.STATE_ACTIVE:
 		return {"ok": false, "reason": "气象站尚未修复"}
 	if _weather_armed:
 		return {"ok": false, "reason": "预报已锁定——先出击消耗它"}
@@ -883,7 +883,7 @@ func sleep() -> Dictionary:
 	_day += 1
 	var before: float = _sanity
 	adjust_sanity(get_sleep_recovery())
-	var new_stage: int = BunkerRoomDefs.narrative_stage_for_day(_day)
+	var new_stage: int = MobileBaseFacilities.narrative_stage_for_day(_day)
 	if new_stage != _narrative_stage:
 		_narrative_stage = new_stage
 	# v26.19：睡觉回充燃料；v26.21 起行程由实时时间推进，睡觉不再 tick 行程
@@ -891,7 +891,7 @@ func sleep() -> Dictionary:
 	# v26 批次3：仓库 Lv3 战利品打印——每天醒来随机 1 张缴获卡入包
 	var loot_printed := {}
 	if is_loot_printer_online() and _loot_print_day != _day \
-			and get_room_state("depot") == BunkerRoomDefs.STATE_ACTIVE:
+			and get_room_state("depot") == MobileBaseFacilities.STATE_ACTIVE:
 		_loot_print_day = _day
 		loot_printed = print_random_captured_card()
 	var summary := {
@@ -917,7 +917,7 @@ func medical_treatment() -> Dictionary:
 	if BasicResourceManager == null:
 		return {"ok": false, "reason": "资源系统未就绪"}
 	var cost := get_medical_cost()
-	var nano_id: String = BunkerRoomDefs.res_full_id("nano")
+	var nano_id: String = MobileBaseFacilities.res_full_id("nano")
 	if not BasicResourceManager.can_afford(nano_id, cost):
 		return {"ok": false, "reason": "纳米材料不足（需 %d）" % cost}
 	BasicResourceManager.consume(nano_id, cost)
@@ -936,7 +936,7 @@ func is_ration_claimed_today() -> bool:
 ## 每天一次的免费补给（睡觉推进天数后重置）。量随食堂等级/反应堆电网提升。
 ## 返回 {"ok", "reason"}。
 func claim_daily_ration() -> Dictionary:
-	if get_room_state("mess_hall") != BunkerRoomDefs.STATE_ACTIVE:
+	if get_room_state("mess_hall") != MobileBaseFacilities.STATE_ACTIVE:
 		return {"ok": false, "reason": "食堂尚未修复"}
 	if is_ration_claimed_today():
 		return {"ok": false, "reason": "今日配给已领取，明天再来"}
@@ -945,9 +945,9 @@ func claim_daily_ration() -> Dictionary:
 	var ration := get_daily_ration()
 	for short_id in ration:
 		BasicResourceManager.add_resource(
-			BunkerRoomDefs.res_full_id(short_id), int(ration[short_id]))
+			MobileBaseFacilities.res_full_id(short_id), int(ration[short_id]))
 	_ration_day = _day
-	return {"ok": true, "reason": "每日配给已发放：%s" % BunkerRoomDefs.cost_text(ration)}
+	return {"ok": true, "reason": "每日配给已发放：%s" % MobileBaseFacilities.cost_text(ration)}
 
 ## 精神值档位（UI 光点表现/掉落惩罚用）：0 正常 / 1 偏低(<50) / 2 低(<30)
 func sanity_tier() -> int:
@@ -1023,8 +1023,8 @@ func is_observatory_unlockable() -> Dictionary:
 	for room_id in _rooms:
 		if room_id == "observatory":
 			continue
-		if int(_rooms[room_id]["state"]) != BunkerRoomDefs.STATE_ACTIVE:
-			var def := BunkerRoomDefs.get_room(room_id)
+		if int(_rooms[room_id]["state"]) != MobileBaseFacilities.STATE_ACTIVE:
+			var def := MobileBaseFacilities.get_room(room_id)
 			reasons.append("房间未修复：%s" % def.get("name", room_id))
 	if _hero_fragments.size() < 30:
 		reasons.append("同伴档案 %d/30" % _hero_fragments.size())
@@ -1064,10 +1064,10 @@ func choose_ending(id: String) -> Dictionary:
 func debug_grant_resources() -> void:
 	if BasicResourceManager == null:
 		return
-	BasicResourceManager.add_resource(BunkerRoomDefs.res_full_id("nano"), 500)
-	BasicResourceManager.add_resource(BunkerRoomDefs.res_full_id("alloy"), 300)
-	BasicResourceManager.add_resource(BunkerRoomDefs.res_full_id("crystal"), 50)
-	BasicResourceManager.add_resource(BunkerRoomDefs.res_full_id("energy"), 100)
+	BasicResourceManager.add_resource(MobileBaseFacilities.res_full_id("nano"), 500)
+	BasicResourceManager.add_resource(MobileBaseFacilities.res_full_id("alloy"), 300)
+	BasicResourceManager.add_resource(MobileBaseFacilities.res_full_id("crystal"), 50)
+	BasicResourceManager.add_resource(MobileBaseFacilities.res_full_id("energy"), 100)
 
 ## ───────────────────────── 存档序列化（SaveManager 段） ─────────────────────────
 
@@ -1118,7 +1118,7 @@ func load_state(data: Dictionary) -> void:
 		return
 	_day = int(data.get("day", 1))
 	_sanity = float(data.get("sanity", 100.0))
-	_narrative_stage = int(data.get("narrative_stage", BunkerRoomDefs.narrative_stage_for_day(_day)))
+	_narrative_stage = int(data.get("narrative_stage", MobileBaseFacilities.narrative_stage_for_day(_day)))
 	_announced_stage = int(data.get("announced_stage", _narrative_stage))
 	_bootstrap_granted = bool(data.get("bootstrap_granted", false))
 	_ration_day = int(data.get("ration_day", 0))
@@ -1189,7 +1189,7 @@ func load_state(data: Dictionary) -> void:
 			_rooms[room_id]["state"] = int(sr.get("state", _rooms[room_id]["state"]))
 			# 等级按 defs 上限收敛（防旧档/改档后 level 越界）
 			_rooms[room_id]["level"] = clampi(int(sr.get("level", 1)), 1,
-				BunkerRoomDefs.get_max_level(room_id))
+				MobileBaseFacilities.get_max_level(room_id))
 			_rooms[room_id]["progress"] = float(sr.get("progress", 0.0))
 			_rooms[room_id]["upgrading"] = bool(sr.get("upgrading", false))
 			_rooms[room_id]["upg_progress"] = float(sr.get("upg_progress", 0.0))
@@ -1198,12 +1198,12 @@ func load_state(data: Dictionary) -> void:
 	# 依然无法从基地出击。这里按 defs 抬底：仅 LOCKED→ACTIVE（修复中/已点亮
 	# 等更高状态原样保留）。
 	for room_id in _rooms:
-		var def: Dictionary = BunkerRoomDefs.get_room(room_id)
+		var def: Dictionary = MobileBaseFacilities.get_room(room_id)
 		if def.is_empty():
 			continue
-		if int(def.get("initial", BunkerRoomDefs.STATE_LOCKED)) == BunkerRoomDefs.STATE_ACTIVE \
-				and int(_rooms[room_id]["state"]) == BunkerRoomDefs.STATE_LOCKED:
-			_rooms[room_id]["state"] = BunkerRoomDefs.STATE_ACTIVE
+		if int(def.get("initial", MobileBaseFacilities.STATE_LOCKED)) == MobileBaseFacilities.STATE_ACTIVE \
+				and int(_rooms[room_id]["state"]) == MobileBaseFacilities.STATE_LOCKED:
+			_rooms[room_id]["state"] = MobileBaseFacilities.STATE_ACTIVE
 
 ## 新游戏重置（_reset_manager_by_name 链第二优先命中）
 func reset_to_defaults() -> void:
@@ -1241,8 +1241,8 @@ func reset_to_defaults() -> void:
 	_travel_started_unix = 0.0
 	_travel_ends_unix = 0.0
 	for room_id in _rooms:
-		var def := BunkerRoomDefs.get_room(room_id)
-		_rooms[room_id]["state"] = int(def.get("initial", BunkerRoomDefs.STATE_LOCKED))
+		var def := MobileBaseFacilities.get_room(room_id)
+		_rooms[room_id]["state"] = int(def.get("initial", MobileBaseFacilities.STATE_LOCKED))
 		_rooms[room_id]["level"] = 1
 		_rooms[room_id]["progress"] = 0.0
 		_rooms[room_id]["upgrading"] = false

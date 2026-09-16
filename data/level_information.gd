@@ -292,6 +292,48 @@ func get_special_rules(level: int) -> Dictionary:
 	var info = _level_db.get(level, {})
 	return info.get("special_rules", {})
 
+# ── v34 C2：首机制关预告（开战 StageBanner 播一句，main_battle_setup 消费）──
+## 机制 → 一句话文案（首现关播报用；新机制键记得同步补文案，缺文案静默跳过）
+const MECHANIC_BANNER_TEXT := {
+	"time_limit_sec": "限时作战：在时限内结束战斗",
+	"energy_regen_mult": "能量枯竭：能量回复减半",
+	"energy_mult": "能量匮乏：能量池减半",
+	"restrict_platforms": "兵种限制：仅特定兵种可部署",
+	"first_strike": "先手突袭：敌方抢先进场",
+	"no_heal": "无疗伤：战斗中无法回复生命",
+	"energy_starvation": "能量饥荒：能量获取大幅受限",
+	"elite_wave_bonus": "精英云集：精英波威胁增强",
+	"boss_enrage_half": "狂暴预警：首领半血后狂暴",
+	"no_mods": "干扰场：改造模块失效",
+}
+
+## 机制键 → 首现关卡缓存（{key: min_level}；首次调用时扫 1-100 关构建）
+static var _first_seen_mechanic_cache: Dictionary = {}
+
+## 本关 special_rules 中"全战役首次出现"的机制键（首现关才有提示，重遇见不播）
+func get_first_seen_mechanic_keys(level: int) -> Array:
+	if _first_seen_mechanic_cache.is_empty():
+		var min_lv: Dictionary = {}
+		for lv in range(1, LEVEL_COUNT + 1):
+			for key in get_special_rules(lv):
+				if not min_lv.has(key):
+					min_lv[key] = lv
+		_first_seen_mechanic_cache = min_lv
+	var out: Array = []
+	for key in _first_seen_mechanic_cache:
+		if int(_first_seen_mechanic_cache[key]) == level:
+			out.append(key)
+	return out
+
+## 首现机制的播报行（"⚑ 新战术条件 · …"；无首现机制返回空数组）
+func get_first_seen_mechanic_banner_lines(level: int) -> Array[String]:
+	var out: Array[String] = []
+	for key in get_first_seen_mechanic_keys(level):
+		var text: String = String(MECHANIC_BANNER_TEXT.get(key, ""))
+		if not text.is_empty():
+			out.append("⚑ 新战术条件 · %s" % text)
+	return out
+
 ## v8 批次3: 集中挂载关卡特殊规则。
 ## 给关键关（每时代 Boss 关 + 时代首关 + 中段关卡）挂规则。
 ## 字段全可选；未挂规则的关卡 get_special_rules 返回空字典=普通关。

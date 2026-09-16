@@ -22,6 +22,14 @@ var _phase_last_ms: Dictionary = {}
 
 ## v6.6: 延迟写入缓冲
 var _deferred_write_payload: String = ""
+## v32.0 实机验收埋点：观战节奏工具使用率（倍速档位/跳过激活/挂机观战点击）
+var event_counters: Dictionary = {}   # name -> int
+
+func count_event(name: String) -> void:
+	if name.is_empty():
+		return
+	event_counters[name] = int(event_counters.get(name, 0)) + 1
+	_deferred_flush("counter_" + name)
 
 func _ready() -> void:
 	_session_started_ms = Time.get_ticks_msec()
@@ -83,6 +91,7 @@ func get_snapshot() -> Dictionary:
 		"battle_p95_ms": _percentile(_battle_frame_ms_samples, 95.0),
 		"battle_avg_ms": _average(_battle_frame_ms_samples),
 		"phase_last_ms": _phase_last_ms.duplicate(true),
+		"event_counters": event_counters.duplicate(),
 	}
 
 func begin_phase(phase_name: String) -> void:
@@ -119,7 +128,9 @@ func _percentile(values: Array[float], p: float) -> float:
 ## v6.6: 延迟磁盘写入：通过 call_deferred 将 I/O 移出当前帧，避免阻塞战斗结算
 func _deferred_flush(reason: String) -> void:
 	# P0-4 发行门控：release 构建不向 user:// 写性能采集文件（编辑器/调试构建保持原行为）
-	if not OS.is_debug_build():
+	# P0-4 发行门控：release 构建默认不写性能采集文件；v32.0 试玩构建
+	#（custom feature "pw_playtest"）解锁采集——实机验收埋点的载体
+	if not OS.is_debug_build() and not OS.has_feature("pw_playtest"):
 		return
 	var payload: Dictionary = {
 		"timestamp_ms": Time.get_ticks_msec(),
@@ -138,6 +149,13 @@ func _do_write_flush(reason: String) -> void:
 		_deferred_write_payload = ""
 		return
 	f.store_string(_deferred_write_payload)
+	# v32.0: 试玩构建额外落一份到 exe 旁（测试者免翻 APPDATA；写失败静默跳过）
+	if OS.has_feature("pw_playtest"):
+		var exe_dir := OS.get_executable_path().get_base_dir()
+		var f2 := FileAccess.open(exe_dir.path_join("playtest_metrics.json"), FileAccess.WRITE)
+		if f2 != null:
+			f2.store_string(_deferred_write_payload)
+			f2.close()
 	_deferred_write_payload = ""
 	if DEBUG_LOG:
 		pass

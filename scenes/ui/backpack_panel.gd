@@ -2322,8 +2322,9 @@ func _add_rune_item(grid: GridContainer, rune_id: String, count: int, is_equippe
 	# v9.0: 主效果简短显示（primary_effect.stat + value）
 	var effect_short: String = _format_rune_primary_effect(rune_def)
 	# extra_data 让 ResourceSlotItem 显示自定义名称和描述
-	# 已装备的符文格子整体变暗（modulate），表明已在使用中
-	var display_color: Color = rune_color if not is_equipped else rune_color.darkened(0.35)
+	# v32.3 C3：已装备不再整体压暗（原 darkened(0.35) 叠加稀有度暗 tint 后亮度仅 ~30%，
+	# 符文页发暗主因）——已装备态由 [装] 前缀 + 状态行 + 瓷砖激活发光 + 装备角标承载
+	var display_color: Color = rune_color
 	var extra_data: Dictionary = {
 		"name": display_name,
 		"description": "【%s】%s\n%s%s" % [rarity_name, _rune_category_name(category), desc, status_line],
@@ -2700,17 +2701,26 @@ func _highlight_card_item(item: Control) -> void:
 func _ensure_min_card_slots(grid: GridContainer) -> void:
 	if grid == null:
 		return
+	# v32.3 C2：只数真实卡 item（原把空槽占位/空状态提示也计入卡数 → 目标=含空槽
+	# 总数+整行，每次装备/移除净增 5 个空槽直到 50 上限的"只增不减棘轮"）
 	var card_count := 0
+	var empty_slots: Array = []
 	for child in grid.get_children():
 		if child.has_meta("is_resource_slot") and child.get_meta("is_resource_slot"):
 			continue
+		if child.has_meta("is_empty_hint") and child.get_meta("is_empty_hint"):
+			continue
+		if child.has_meta("is_empty_slot") and child.get_meta("is_empty_slot"):
+			empty_slots.append(child)
+			continue
 		card_count += 1
-	# 不再强制补满固定格数：按「至少一行 + 多一行余量」扩展，上限 MAX_CARD_SLOTS
+	# 不再强制补满固定格数：按「至少一行 + 多一行余量」扩展，上限 MAX_CARD_SLOTS；
+	# v32.3 C2：目标随真实卡数双向收敛——空槽多了回池，少了补位
 	var target_total: int = mini(
 		MAX_CARD_SLOTS,
 		maxi(BACKPACK_GRID_COLUMNS, card_count + BACKPACK_GRID_COLUMNS)
 	)
-	while card_count < target_total:
+	while empty_slots.size() + card_count < target_total:
 		# 空槽用轻量 Panel 占位，避免实例化完整 backpack_card_item
 		var placeholder: Panel
 		if _empty_slot_pool.size() > 0:
@@ -2724,7 +2734,13 @@ func _ensure_min_card_slots(grid: GridContainer) -> void:
 			placeholder.add_theme_stylebox_override("panel", _get_empty_slot_style())
 		_ensure_empty_slot_plus(placeholder)
 		grid.add_child(placeholder)
-		card_count += 1
+		empty_slots.append(placeholder)
+	# v32.3 C2：修剪——卡永远排在空槽之前（插入逻辑保证），从网格尾部回收多余空槽
+	while empty_slots.size() + card_count > target_total and not empty_slots.is_empty():
+		var excess: Panel = empty_slots.pop_back() as Panel
+		if is_instance_valid(excess):
+			grid.remove_child(excess)
+			_empty_slot_pool.append(excess)
 
 ## v9.2：空槽位添加居中两行内容（"空槽位" / "— 未获得 —"）。
 ## 对齐 HTML 设计稿 .card-tile[空槽位] 视觉：虚线边框 + 居中小字。

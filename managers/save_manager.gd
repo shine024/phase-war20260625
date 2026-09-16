@@ -129,7 +129,6 @@ const SK_SCHEMA_VERSION: String = SaveConstants.SK_SCHEMA_VERSION
 const SK_INSTANCES: String = SaveConstants.SK_INSTANCES
 const SK_BLUEPRINT: String = SaveConstants.SK_BLUEPRINT
 const SK_BASIC_RESOURCES: String = SaveConstants.SK_BASIC_RESOURCES
-const SK_PHASE_LAW: String = SaveConstants.SK_PHASE_LAW
 const SK_QUEST: String = SaveConstants.SK_QUEST
 const SK_FACTION_SYSTEM: String = SaveConstants.SK_FACTION_SYSTEM
 const SK_AFFIX_DATA: String = SaveConstants.SK_AFFIX_DATA
@@ -155,9 +154,9 @@ const SK_DAY_CLOCK: String = SaveConstants.SK_DAY_CLOCK
 const SK_STATISTICS: String = "statistics"  # v7.x: 常量源已删，保留字面量兼容旧存档读取
 const SK_CARD_ENHANCEMENT: String = SaveConstants.SK_CARD_ENHANCEMENT
 # v7.x: SK_LAW_SHARDS 别名已删除（SaveConstants 常量本身已删，全项目零引用）
+# v35: SK_CHARACTERS/SK_CHALLENGE_RECORDS 别名已删（CharacterManager/ChallengeMode
+# 2026-08-22 退役，别名零消费；SaveConstants 本体保留供迁移链映射）
 const SK_TUTORIAL_PROGRESS: String = SaveConstants.SK_TUTORIAL_PROGRESS
-const SK_CHARACTERS: String = SaveConstants.SK_CHARACTERS
-const SK_CHALLENGE_RECORDS: String = SaveConstants.SK_CHALLENGE_RECORDS
 const SK_CARD_COLLECTION: String = SaveConstants.SK_CARD_COLLECTION
 const SK_LEADERBOARD: String = SaveConstants.SK_LEADERBOARD
 const SK_LEGACY_COMPANY_REP: String = SaveConstants.SK_LEGACY_COMPANY_REP

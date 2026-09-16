@@ -14,6 +14,13 @@ func _initialize() -> void:
 		"res://scripts/combat_feedback.gd",
 		"res://scenes/title_screen.gd",
 		"res://scripts/battle/vfx_impact_factory.gd",
+		"res://scenes/ui/afk_panel.gd",
+		"res://scripts/battle/battle_unit_record.gd",
+		"res://scenes/units/construct_unit.gd",
+		"res://scenes/units/enemy_unit.gd",
+		"res://managers/battle/battle_manager.gd",
+		"res://scenes/ui/mvp_panel.gd",
+		"res://managers/audio_manager.gd",
 	]:
 		var s = load(path)
 		if s == null:

@@ -1577,6 +1577,20 @@ func _refresh_installed_list(installed_list: Control) -> void:
 		)
 		hbox.add_child(replace_btn)
 
+		# v6.14.6：对所有已装项追加"卸下"按钮（图纸返还方案 A）——
+		# 件回库存可转装别的卡，纳米返还实付 50%；出厂赠品（gift）无返还、件消失。
+		var uninstall_btn := Button.new()
+		uninstall_btn.text = "卸下"
+		uninstall_btn.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
+		uninstall_btn.custom_minimum_size = Vector2(44, 0)
+		uninstall_btn.tooltip_text = "卸下该模块：图纸回库存（可转装其他卡），纳米返还实付的 50%。"
+		uninstall_btn.add_theme_color_override("font_color", DT.COLOR_SLATE_A70)
+		uninstall_btn.add_theme_color_override("font_hover_color", DT.COLOR_RED_DOWN)
+		uninstall_btn.pressed.connect(func():
+			_on_uninstall_pressed(mod_index, String(mod_data.get("name", mod_id)))
+		)
+		hbox.add_child(uninstall_btn)
+
 		vbox.add_child(hbox)
 
 		# v6.10: 第二行——显示完整改造效果（复用已修好的 _format_effects_for_display）
@@ -1596,6 +1610,29 @@ func _refresh_installed_list(installed_list: Control) -> void:
 		item.add_child(vbox)
 		installed_list.add_child(item)
 		mod_index += 1
+
+
+## v6.14.6 卸下已装改造（图纸返还方案 A：件回库存 + 纳米 50% 返还）
+func _on_uninstall_pressed(mod_index: int, mod_name: String) -> void:
+	if selected_card == null:
+		return
+	if BlueprintManager == null or not BlueprintManager.has_method("uninstall_modification"):
+		return
+	var result: Dictionary = BlueprintManager.uninstall_modification(selected_card, mod_index)
+	if not bool(result.get("success", false)):
+		_show_result(String(result.get("message", "卸下失败")))
+		return
+	var parts: Array[String] = []
+	if int(result.get("refunded_nano", 0)) > 0:
+		parts.append("返还纳米×%d" % int(result["refunded_nano"]))
+	if String(result.get("returned_blueprint", "")) != "":
+		parts.append("图纸回库存")
+	_show_result("已卸下「%s」（%s）" % [mod_name, "、".join(parts) if not parts.is_empty() else "赠品无返还"])
+	# 刷新已安装列表 + 单位面板属性（与启用/禁用切换同一刷新链）
+	var installed_list = unit_panel.get_node_or_null("InstalledList") if unit_panel else null
+	if installed_list:
+		_refresh_installed_list(installed_list)
+	_update_card_info()
 
 
 ## v6.5: 武器类改造启用/禁用切换
@@ -1620,6 +1657,21 @@ func _on_upgrade_pressed(mod_index: int) -> void:
 		return
 	if not (BlueprintManager and BlueprintManager.has_method("upgrade_modification")):
 		return
+	# v32.0 B3-S2: 缺图纸两步升级——第一次失败且因图纸不足时提示；再点自动晶体兑换后升级
+	#（占位 40 晶体/张，见 BlueprintManager.CRYSTAL_PER_BLUEPRINT；避免静默扣费，二次点击即确认）
+	var sid := _selected_id()
+	var pkey := "pending_bp_exchange_idx"
+	var skey := "pending_bp_exchange_sid"
+	var do_exchange: bool = int(get_meta(pkey, -1)) == mod_index and String(get_meta(skey, "")) == sid
+	if do_exchange:
+		remove_meta(pkey)
+		remove_meta(skey)
+		var ex: Dictionary = BlueprintManager.exchange_crystals_for_upgrade_blueprint(selected_card, mod_index)
+		if bool(ex.get("ok", false)):
+			SignalBus.show_toast.emit("已用晶体补齐图纸 ×%d（晶体 -%d）" % [int(ex.get("exchanged", 0)), int(ex.get("crystal_spent", 0))])
+		else:
+			_show_result(String(ex.get("reason", "兑换失败")))
+			return
 	var result: Dictionary = BlueprintManager.upgrade_modification(selected_card, mod_index)
 	_show_result(String(result.get("message", "")))
 	if bool(result.get("success", false)):
@@ -1628,6 +1680,11 @@ func _on_upgrade_pressed(mod_index: int) -> void:
 		if installed_list:
 			_refresh_installed_list(installed_list)
 		_update_card_info()
+	elif String(result.get("message", "")).contains("图纸") and BlueprintManager.has_method("exchange_crystals_for_upgrade_blueprint"):
+		set_meta(pkey, mod_index)
+		set_meta(skey, sid)
+		SignalBus.show_toast.emit("再点一次「升级」：将以晶体补齐缺口图纸（占位 40/张）")
+
 
 ## v27: 按改造 id 找当前选中卡上的已装索引（-1 = 未装）——详情面板升级按钮定位用
 func _installed_index_of(mod_id: String) -> int:
