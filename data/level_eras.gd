@@ -41,7 +41,7 @@ const ERA_SPAWN_COUNT: Dictionary = {
 ## min(master.unit_limit, 敌方相位仪绿槽数, 9) 独立控制）；普通关按时代梯度递增，
 ## 避免低星相位仪玩家（绿槽 3-4）面对满 9 格敌军的数量碾压。
 const ERA_ENEMY_FIELD_CAP: Dictionary = {
-	Era.WW1: 6,
+	Era.WW1: 4,           # v36 实机验收：6→4——新档绿槽 3 卡对 6 敌碾压感太重，对齐绿槽起步数+1
 	Era.WW2: 7,
 	Era.COLD_WAR: 8,
 	Era.MODERN: 9,

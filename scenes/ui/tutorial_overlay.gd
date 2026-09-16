@@ -26,6 +26,12 @@ const BOX_POS_BY_STEP := {
 	12: "left",  # PHASE_FIELD_POINTS 加点
 }
 
+## v36 实机验收：欢迎步剧情化后文案变长——居中框半高 150→210（500×420），
+## 其余居中步维持原 300 高（键 = TutorialStep 枚举值）。
+const BOX_HALF_H_BY_STEP := {
+	1: 210,      # INTRO_WELCOME 欢迎登车
+}
+
 @onready var _title_label: Label = $TutorialBox/Margin/VBox/TitleLabel
 @onready var _content_label: RichTextLabel = $TutorialBox/Margin/VBox/ContentLabel
 @onready var _skip_button: Button = $TutorialBox/Margin/VBox/ButtonRow/SkipButton
@@ -92,14 +98,15 @@ func _apply_box_pos() -> void:
 		_tutorial_box.grow_horizontal = Control.GROW_DIRECTION_END
 		_tutorial_box.grow_vertical = Control.GROW_DIRECTION_BOTH
 	else:
+		var half_h: float = float(BOX_HALF_H_BY_STEP.get(step, 150))
 		_tutorial_box.anchor_left = 0.5
 		_tutorial_box.anchor_top = 0.5
 		_tutorial_box.anchor_right = 0.5
 		_tutorial_box.anchor_bottom = 0.5
 		_tutorial_box.offset_left = -250.0
-		_tutorial_box.offset_top = -150.0
+		_tutorial_box.offset_top = -half_h
 		_tutorial_box.offset_right = 250.0
-		_tutorial_box.offset_bottom = 150.0
+		_tutorial_box.offset_bottom = half_h
 		_tutorial_box.grow_horizontal = Control.GROW_DIRECTION_BOTH
 		_tutorial_box.grow_vertical = Control.GROW_DIRECTION_BOTH
 

@@ -284,7 +284,10 @@ func manufacture(card_id: String) -> Dictionary:
 		BasicResourceManager.consume(String(rid), int(cost[rid]))
 
 	# 失败退款防御：掷品质/建实例任何一步失败，资源原路退回
-	var rarity := ManufacturePools.roll_rarity(get_intel_base(card_id), get_pity(card_id), get_pool_high_boost())
+	# v6.14.7：roll 口径对齐 UI（_pool_base）——era0/1 直入卡 get_intel_base 恒 0，
+	# 直查 roll 恒空池必失败"品质池异常"；_pool_base 的直入特判（白板档）才是
+	# can_manufacture/get_effective_pool 同源口径，UI 预览与实际 roll 不得分叉。
+	var rarity := ManufacturePools.roll_rarity(_pool_base(card_id), get_pity(card_id), get_pool_high_boost())
 	if rarity.is_empty():
 		_refund(cost)
 		return {"ok": false, "reason_zh": "品质池异常（进度未达门槛）"}

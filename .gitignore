@@ -142,3 +142,6 @@ tools/level_bg_workflow/api_keys.txt
 reports/
 tests/*.gd.uid
 .font_src/
+
+# Steam 预告片等大体积视频不入库（美术二进制纪律同 png）
+*.mp4

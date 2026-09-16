@@ -8595,3 +8595,47 @@ MVP 协同小结、8 面板首开气泡。**R3 余项**：结算面板三页签�
 
 **验证**：gdparse 14 文件全过（vfx_impact_factory/tests smoke 两处 FAIL 与 HEAD 逐字节同错=gdtoolkit lambda/多行字符串已知误报；universal_mods 为 key=value 字典已知误报）；headless 加载探针 ALL PASS（纯脚本编译+行为断言 21 项：quad 活档 is_equal_approx 全对/死档回默认/渐变 int 键缓存命中/图标路径存在/visual_profiles 回归锁语义不变/main.tscn 结构文本断言）；`--check-only` 全项目编译检查通过（含 autoload 全量注册环境）。已知限制：--script 模式无法编译裸 autoload 引用脚本（card_frame_ui 链 BlueprintManager / save_manager 链 ManagerLazyLoader），为项目在案限制非本批引入。二批追验：探针扩至 11 文件（+construct_unit/fort_shield_aura）ALL PASS；gdunit 全套 55 套 351/351 用例 0 失败（43s）。三批实机验证：battle_shot 工具真窗截帧（载档→L1 自动部署→第 7 秒），目视确认 draw_arc 环（敌红环/我方基地光环+核心血条）、直射曳光、爆炸特效、头顶血条/名牌、全 HUD 渲染正常，且「核子轰炸」机制实弹发射（=缓存组收集器端到端跑通）；无黑块/粉贴图/错位。
 **复检轮（同日二次全面自查）**：①发现并如实改口——蜂群 wt_canon 连带修复了 legacy 步枪/机枪蜂群的跨行直射减伤豁免（撞值误判成曲射恒 ×1.0，现与经典敌兵对齐跨行 ×0.70；蜂群槽位带 card_grid_enemy_slot meta，跨行判定真实生效，card_grid_battle_layout 注释本就将蜂群列为预期调用方——旧豁免确属 bug）；②aim 缓存守卫加固（is_instance_valid 前置，防 sprite 换建窗口期对已释放对象做类型检查）；③首批代码注释误标 v34.x 统一为 v35（24 处）；④删除重复审计脚本 _tmp_v34_legacy_audit_check.gd（首轮"文件消失"实为自建文件名不一致，非并行会话干扰）；⑤删除常量全项目残留扫描零命中（含 tests/tools）。复验：审计探针 34 断言 ALL PASS、编译探针 ALL PASS、gdunit 全套 351/351 二次全绿。
+
+## v36 实机验收反馈修复批3：开场链演出 + 进度节奏 + 精神同调战力门 + 战斗手感（2026-09-16）
+
+**改掉落视觉/挂机/技能树战力门/世界地图窗口/首关难度前必读本节。** 12 项实机反馈（新档开场到战斗手感）一次收口。
+
+- **开场链**：①自动存档 toast 全局静默（`save_manager.gd` 成功分支删 toast；失败提示与手动存档反馈保留）——战斗中/开场剧情中途"游戏已保存"居中弹出打断沉浸；②ToastManager 层从屏幕中部（y≈200-280）移右上角（top 64/右缘 24/宽 300 向下堆叠），全套通知受益；③跳过开场按钮改 PanelStyles ghost 四态（半透明玻璃 pill+hover 辉光+tooltip），原 solid 灰块无修饰；④`INTRO_WELCOME` 教程步剧情化重写（用户口径：登上基地车+纳米制造机/时空交换机/深空扫描仪+关闭黑门+种族意志；术语按语言宪法——「同伴」非「伙伴」），欢迎步面板半高 150→210（`BOX_HALF_H_BY_STEP`）。
+- **雪原车图重生成**：`wakeup_snowfield.png` 与基地外景 `truck_tier1.png` 车辆不一致（用户拍板重生成）。FLOW 站点当日连接超时不可达 → 兜底 agnes-image 1152x768 三轮，选构图最接近原图的 1 号部署（prompt 按 _agnes_image_api.md 正面意象锁死：方正军卡+青色饰条+车顶行李架+远处黑门）。原图备份 `_art_backup/wakeup_snowfield_original_20260916.png`，候选 2/3 号存 `.godot/art_regen/` 供换选；生成器 `tools/_tmp_regen_snowfield.py` 可重跑。
+- **精神同调战力门（新系统）**：设定入档——相位师越强→精神与暗能量交换越深（越易失控迷失，穿越而来者中低位居多）→可运用战力上限越高。技能树三系各 3 节点（开窍 500/深潜 1200/无垠 2400，`unlocks type="power_cap"` max 语义，基础层 tier2/4 + 扩展层 tier7），`PhaseMasterSkillManager.BASE_POWER_CAP=200`（实测 power 分布 era0 p50=28/era1 p50=204/全表 max=2200）+ `get_power_cap()`；部署链 `request_player_deploy` 拦卡（reason=power_cap，豁免 debug_no_deploy_limits/`GameConfig.power_cap_enabled` 关/教学进行中）；技能面板状态行并显"可运用战力上限"。老档注意：中期存档若未点精神同调节点，>200 战力的卡会被锁部署（点 tier2 节点即解 500）——试玩数据回来后校准 BASE。
+- **挂机改版（用户拍板）**：选关槽位退役（afk_level_selector 不再被引用，.tscn 结构保留、`SlotsHBox` 隐藏一行可回滚）。CYCLE=本关循环（恒刷停靠关，`_resolve_parked_level`）；PUSH=从停靠关向前逐关推进（去 v26.19 推进钳制，起点仍=停靠关），胜利 +1；**关间行进节拍**：新增 `State.TRAVELING` + `StageBanner.post("车队向第 N 关行进…")` + 4s（motion_reduce 1.2s），`_travel_gen` 代际守卫防停止后进战斗；失败重试 3 次逻辑不变。世界地图 ⚙自动部署入口（PUSH 从停靠关）不受影响。
+- **世界地图窗口**：只建停靠关 ±10 的关卡节点（`MAP_WINDOW_RADIUS`，锚点=在途目的地/停靠关，底图手绘不动）；overlay 桥线/占领环同口径过滤（两端可见才画，防悬空线）；锚点变化自动全量重建（模板缓存失效）+ 右下角常驻提示"战线视野 第 X–Y 关 · 前方还有 N 关，随行军揭示"。
+- **首关难度（A1）**：`FORT_MIN_LEVEL`——ww1 碉堡/要塞炮 min_level=4（机制同 POOL_MIN_LEVEL，出怪/30% 全池/波次槽三处同链生效；其余时代堡垒靠时代门天然限位不动）；`ERA_ENEMY_FIELD_CAP` WW1 6→4（对齐绿槽起步 3+1，单变量只动 WW1 档）。
+- **直射前排优先（A2）**：`construct_unit_ai.has_more_forward_same_row_target`（共享静态，enemy_unit 对称消费）——同排出现严格更靠前（朝敌方方向 x 极值，容差 12px 防抖）的可攻击目标时 retain 放弃，靠既有 0.3-0.55s 索敌周期自动重选（最近口径下同排最近=同排最前）；检查半径钳 300px（query_enemies 盒扫成本）；守住指令/曲射/antitank 锁定语义不动。
+- **进关空白（A3）**：部署虚影透明度 0.42→0.62（敌我同批，enemy 星冥 0.5 不动）；auto_deploy INITIAL_DELAY 0.3→0.1s。部署时长公式（平衡面）不动。
+- **掉落分档变体（A4）**：`basic_nano.png` 原位抠透明底（原图备份 _art_backup；HUD 资源条同源受益）；新增 `assets/resources/drops/drop_{nano,battery}_{1,2,3}.png` 六张数量分档变体（单体/双粒簇/五晶小堆，256 画布内容高 190px 标定，`tools/_tmp_drop_variants.py` 可重跑）；`ground_loot_layer` 按 amount 分档（1-7/8-29/30+），纳米并堆跨档自动换贴图（`refresh_currency_visual`）；货币档加地面柔光呼吸（_draw 实心圆脉冲，motion_reduce 静态化）；缴获卡 36→30px。位置维持地面层 z=-3（用户裁决：脚下+光圈）。
+- **势力设定文案（C4）**：`company_definitions.gd` 7 条 desc 重写为"未来公司/军队/学校/科技机构参与穿越行动+时空交换机联络+完成任务赢得支持"口径（desc 是唯一真身，faction_panel/store 等既有管道自动展示）；相位师迷失设定入 `docs/暗能卡牌世界观.md`。
+- **数据锁**：`tests/unit/data/test_l1_fort_gate.gd`（5 用例）+ `tests/unit/systems/test_power_cap.gd`（5 用例）。
+
+## v6.14.7 缴获卡可部署 + 直入卡制造修复 + rolls 动画重建（2026-09-16）
+
+用户实机反馈：「背包新卡约一半自动/手动都布置不到战斗中」「坦克精灵图变成 2 辆」，并要求全量目视体检卡图与分帧动画。三路定位后一次修复。
+
+**① 缴获卡/势力卡部署硬拒（长期 P1，本次实锤）**
+
+- 根因链：`_reset_deploy_uses` 对 `UnifiedCardTable.get_entry(card.card_id)` 查空的卡 `continue`（跳过=池无键），部署门 `_has_deploy_uses` 对缺键返回 false → `request_player_deploy` 弹"该单位部署次数已耗尽"。而缴获卡 card_id 保留 `captured_` 前缀（`captured_unit_cards` 存档兼容设计），UCT 全表 0 个 `captured_`/`fe_` 键——**约 100 张缴获卡 + 14 张 fe_ 势力卡自 v20.13 起永远无法部署**：自动部署管线重试 20 轮后静默放弃；手动 pickup 门 `_slot_deploy_blocked` 用 `has()` 反而不拦，拖到落点才被拒（体验即"怎么都放不上去"）。headless 探针实证 `get_entry("captured_ww1_inf_storm_e")`/`get_entry("fe_iron_wall_bastion")` 均空。
+- 修复：新增 `_resolve_deploy_uses_entry(card)`——UCT 直查落空先剥 `captured_`/`foe_` 前缀回表重查（与 `_build_captured_card` 的 arch_id 口径一致），仍空按卡自身 combat_kind 构造基线条目；`_reset_deploy_uses` 与 `_get_deploy_uses_total`（HUD 角标/维修车返还共用）都改走它。
+- 同类缺口顺手堵：`_has_deploy_uses` 缺键时经 `_seed_deploy_use_key` 懒建键——战斗中途换装进绿槽的卡不在开战快照池，查询时自动补建并广播 `deploy_uses_changed`（底栏角标同步）；不在绿槽的键不建键，保持拒绝语义。
+
+**② era0/1 直入卡制造必失败（v30.5 引入回归）**
+
+- `manufacture()` 掷品质用裸 `get_intel_base(card_id)`：直入卡无敌形原型 → 情报恒 0 → 品质池 tier0 空池 → `roll_rarity` 返回 "" → 退款报"品质池异常（进度未达门槛）"。而 UI 资格判定 `can_manufacture`/预览 `get_effective_pool` 走 `_pool_base`（直入白板档 0.25 特判）——面板全绿可造，实际 roll 100% 失败，约 30/46 新配方（直入卡）永远造不出。`_pool_base` 注释原话"否则 roll 空 pool"即为此设，执行函数漏改。
+- 修复：roll 改 `_pool_base(card_id)`。非直入卡（intel≥门或有原型）两条口径数学等价，零行为变化；旧行为锁入测试（裸 intel 0 掷池恒空，防误用回退）。
+
+**③ ww1_arm_rolls 精灵图"一辆变两辆"（资产元数据错位 + 美术过时）**
+
+- 存量 `sheet_idle.png` 1024×256 实际为 128px 帧距×8 帧（attack 1536px 同理 12 帧），anim.json 却声明 `frame_size=256` → `unit_frame_anim` 按 256 切格每格装 2 辆车（v32.2 记录的"rolls 帧 4/8、6/12 读越界"真身即此）。列空隙剖面实测空隙严格按 128px 间距分布实锤；全项目 160 套动画逐帧扫描唯一双主体户。
+- 重建：用工作区 `_anim_review/资料/单位分帧动画/039_ww1_arm_rolls_罗尔斯装甲车/` 源帧（idle 8 + attack 12，512²，含手工修正），按 `deploy_unit_anims.py` 同管线（LANCZOS 256 + cv2 逐帧切片描边烘焙）重部署：idle 2048×256 / attack 3072×256，anim.json 同构写盘。旧资产（错距 sheet + 遗留散帧 f00-f11）备份 `.godot/art_backup_rolls_fix_2026-09-16/`。
+- ⚠️ 直接把 anim.json 改成 `frame_size=128` 不可行：内容集中画面下半带（y135-207），引擎按正方形 128² 切格会把内容整个切掉——**必须源帧重建**。
+- 附带发现：旧 sheet 美术本身也是过时版（老式圆钝装甲车），与卡图 `vis_player_001`/`ww1_arm_rolls_mk2` 的现役轻型坦克设计族不一致；重建后动画与卡图同族同占比（v32.2 部署验收②达标）。
+
+**全量目视体检（用户要求）**：卡图 360 张（enemy/player 各 180，12 张拼图逐格目视）零双主体、零空图、敌左我右镜像纪律完好；动画 160 套（≈2900 帧程序化扫描 + 逐套代表帧目视）唯一缺陷即 rolls；载具类宽高比 2.4-4.0 属天然剪影、attack 帧占比跳变属突击动作，非缺陷；16 个仅含 attack_f0.png 的目录是攻击姿态系统（AttackPoseAnim）合法资产（待机回退静态卡图），勿当垃圾清理；boss 散帧（cold_boss_mig/fut_boss_nexus）帧帧体检干净。工具沉淀 `tools/_tmp_visual_audit.py`（全量审计）+ `tools/_tmp_visual_sheets.py`（拼图生成）可复用。
+
+**本机环境顺带修复**：`assets/resources/drops/*.png`（v36 A4 新增）在本机缺 .import 边车（.gitignore 连 `*.import` 一起忽略，边车为每机本地生成），preload 编译失败拖垮任何触及 ground_loot_layer 的 headless 启动链——headless 编辑器补导入即愈；⚠️ `--headless --editor --quit` 会在扫描中途退出，需 `timeout` 给足时长。
+
+**验证**：端到端探针场景（完整 autoload 环境）13 项全 PASS——含懒加载 manager、`_pool_base` 两口径对照、真实 `manufacture()` 成功、缴获卡入池次数=真身条目口径；新增回归锁 `tests/unit/systems/test_deploy_uses_fallback.gd`（6 用例：captured 剥前缀/`captured_foe_` 双前缀/未知 id 兜底 kind/reset 全量入池/中途换装懒建/缺键仍拒）+ `tests/unit/economy/test_manufacture_direct_roll.gd`（4 用例：白板档口径/roll 恒非空/裸 intel 恒空旧径锁/UI 池同源），定向 GdUnit 10/10、0 孤儿；老锁 `deploy_uses_smoke`（v20.13 次数档位表）与 `manufacture_smoke`（68 配方全链）ALL PASS；重建后全量动画审计 0 空帧 0 双主体，目视 ABC 对照（卡图/新帧/mk2 卡图）同族确认。

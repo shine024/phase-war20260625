@@ -27,8 +27,8 @@ signal state_changed(enabled: bool)
 
 ## 部署间隔（秒）：能量充足时每 0.4 秒部署一张，避免一次性铺满导致时序问题
 const DEPLOY_INTERVAL: float = 0.4
-## 战斗开始后初始延迟（秒）：等能量/战场稳定
-const INITIAL_DELAY: float = 0.3
+## 战斗开始后初始延迟（秒）：v36 实机验收 0.3→0.1——揭幕后首卡尽快落位，压"空场"观感
+const INITIAL_DELAY: float = 0.1
 ## 单张连续失败次数上限：超过则放弃该张（防死循环，如该卡能量永远不够）
 const FAIL_GIVEUP: int = 20
 ## 绿槽索引 → 战场位的偏移量（单行 3×3 布局：绿槽0→战场位0，无偏移）

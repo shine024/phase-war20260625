@@ -1204,7 +1204,49 @@ static func should_retain_current_target(u: CharacterBody2D) -> bool:
 	if CardAbilityManager.is_unit_hidden(u.target) and not CardAbilityManager.side_has_detection(bool(u.is_player)):
 		return false
 	var d: float = u.global_position.distance_to(u.target.global_position)
-	return d <= acquisition_range(u)
+	if d > acquisition_range(u):
+		return false
+	# v36 实机验收（直射前排优先）：同排出现严格更靠前的可攻击目标 → 放弃锁定重选。
+	# 最近口径下同排最近=同排最前，重选自然切到前排新敌；曲射/空射/守住指令不受影响。
+	if not _fires_indirect(u) and has_more_forward_same_row_target(
+			u, minf(acquisition_range(u), FRONT_SWITCH_CHECK_RANGE)):
+		return false
+	return true
+
+
+## v36 直射前排优先：检查半径上限——切排只对交战距离有意义，超远距扫描纯浪费
+## （敌侧索敌半径可到 1600px，query_enemies 盒扫随半径平方涨格数）。
+const FRONT_SWITCH_CHECK_RANGE: float = 300.0
+## 同 x 容差（px）：防同列目标间抖动
+const FRONT_SWITCH_TOL_PX: float = 12.0
+
+## v36 实机验收：直射单位"前排优先"保持性检查——同排存在严格更靠前（朝敌方方向）
+## 的可攻击目标时返回 true（调用方据此放弃现目标，本轮索敌重选）。
+## "靠前"口径 = 朝敌方方向 x 极值：我方 x 减小为前，敌方 x 增大为前（与站位/弹道一致）。
+## 只查同排：保住 v9.2 分行索敌的道纪律，跨排目标不触发切换。仅直射单位调用。
+static func has_more_forward_same_row_target(u: Node2D, check_range: float) -> bool:
+	var cur = u.get("target")
+	if cur == null or not is_instance_valid(cur):
+		return false
+	if BattleManager == null or BattleManager.spatial_grid == null:
+		return false
+	var is_p: bool = bool(u.get("is_player"))
+	var forward_sign: float = -1.0 if is_p else 1.0
+	var cur_fwd: float = forward_sign * (cur as Node2D).global_position.x
+	var cand: Array = BattleManager.spatial_grid.query_enemies(u.global_position, check_range, is_p)
+	for c in cand:
+		if c == null or not is_instance_valid(c) or c == cur:
+			continue
+		var c2d := c as Node2D
+		if c2d == null:
+			continue
+		if not CardAbilityManager.is_unit_targetable(c2d, u):
+			continue
+		if not CardGridLayout.units_in_same_row(u, c2d):
+			continue
+		if forward_sign * c2d.global_position.x > cur_fwd + FRONT_SWITCH_TOL_PX:
+			return true
+	return false
 
 ## 格子战术卡面攻击姿态（v9.x 由 AttackPoseAnim 取代——按武器类型分化前冲/后坐/上扬 + 攻击帧）
 

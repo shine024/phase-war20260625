@@ -59,6 +59,15 @@ const FORT_ENEMY_IDS: Array[String] = [
 	"fut_fort_ion", "fut_fort_shield",
 ]
 
+## v36 实机验收：堡垒等级门（机制同 POOL_MIN_LEVEL，get_ids_for_era_at_level 统一消费，
+## 出怪/30% 全池随机/波次槽过滤三处同链生效）。ww1 碉堡/要塞炮 646HP 带堡垒护盾，
+## 从 L1 混入新档教学期打不动——L1-3 无堡垒，L4 起照常出。其余时代堡垒受时代门天然
+## 限制（ww2 堡垒最早 L21），无需另设门。
+const FORT_MIN_LEVEL: Dictionary = {
+	"ww1_fort_pillbox": 4,
+	"ww1_fort_artillery": 4,
+}
+
 ## C 段：固定敌人（与 enemy_archetypes.json 一致，36张）
 ## 前14张（索引0-13）缴获卡面 → vis_player_036~049（C'段已接入）
 ## 后22张（索引14-35）缴获卡面 → vis_player_050~071（需生成素材后接入）
@@ -526,6 +535,8 @@ static func _make_fort_row(fort_id: String) -> Dictionary:
 			"defense_air": float(s.get("defense_air", 0.0)),
 			"tags": ["fortress", "immobile"],
 			"swarm_unit": false,
+			# v36：堡垒等级门（ww1 教学期保护，见 FORT_MIN_LEVEL）
+			"min_level": int(FORT_MIN_LEVEL.get(fort_id, 0)),
 			"drops": [{"card_id": captured_card_id_for(fort_id), "chance": 0.12}],
 		},
 	}
