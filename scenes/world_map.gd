@@ -184,6 +184,13 @@ const BOSS_RING_COLOR := Color(1.0, 0.85, 0.15)
 # v28 局部缩放上限：2.8× 时 40px 节点盘径屏显约 34px、数字约 17px，够读；再大地图纹理开始糊
 const ZOOM_MAX: float = 2.8
 
+## v36 实机验收：地图关卡窗口——只显示停靠关 ±MAP_WINDOW_RADIUS 的节点，
+## 100 关全铺是选择过载（用户反馈）；远端随行军逐渐揭示，与挂机"向前推进"节奏互配。
+## 底图手绘（黑日战线整图）保留不动，只收拢节点盘/桥线/占领环。
+const MAP_WINDOW_RADIUS: int = 10
+static var _built_window_anchor: int = -1   # 本次画布构建时的窗口锚点（变则禁模板复用全量重建）
+var _window_hint_label: Label = null        # 屏幕空间窗口提示（chrome 层）
+
 # 静态布局/状态（模板跨实例复用时布局一致；动态状态在每次重建时刷新）
 static var _s_level_points: Dictionary = {}  # level(int) -> Vector2 画布坐标
 static var _s_bridges: Array = []  # [{a: Vector2, b: Vector2, era: int}]
@@ -219,6 +226,28 @@ func _truck_anchor_level() -> int:
 			return clampi(int(bm.get_travel_dest()), 1, 100)
 		return clampi(int(bm.get_parked_level()), 1, 100)
 	return clampi(GameManager.current_level if GameManager else 1, 1, 100)
+
+
+## v36 窗口：关卡是否在锚点 ±MAP_WINDOW_RADIUS 视野内
+func _in_map_window(level_index: int, anchor: int) -> bool:
+	return absi(level_index - anchor) <= MAP_WINDOW_RADIUS
+
+
+## v36 窗口提示（屏幕空间 chrome）：当前视野范围 + 前方剩余关数
+func _refresh_window_hint() -> void:
+	if _window_hint_label == null or not is_instance_valid(_window_hint_label):
+		return
+	if MAP_SCHEME != 11:
+		_window_hint_label.visible = false
+		return
+	_window_hint_label.visible = true
+	var anchor: int = _built_window_anchor if _built_window_anchor > 0 else _truck_anchor_level()
+	var lo: int = maxi(1, anchor - MAP_WINDOW_RADIUS)
+	var hi: int = mini(LEVEL_COUNT, anchor + MAP_WINDOW_RADIUS)
+	if hi >= LEVEL_COUNT:
+		_window_hint_label.text = "战线视野 第 %d–%d 关 · 终点「终局」已在视野内" % [lo, hi]
+	else:
+		_window_hint_label.text = "战线视野 第 %d–%d 关 · 前方还有 %d 关，随行军揭示" % [lo, hi, LEVEL_COUNT - hi]
 
 func _toast_gate(msg: String) -> void:
 	if SignalBus and SignalBus.has_signal("show_toast"):
@@ -397,6 +426,11 @@ func _build_level_map() -> void:
 	var current_level: int = GameManager.current_level if GameManager else 1
 	_refresh_static_state(current_level)
 	_ensure_layout()
+	# v36 窗口锚点（在途=目的地，否则停靠关）：锚点变了禁用跨实例模板复用，强制全量重建
+	var window_anchor: int = _truck_anchor_level() if MAP_SCHEME == 11 else current_level
+	if MAP_SCHEME == 11 and _built_window_anchor != window_anchor:
+		_cached_level_map_template = null
+	_built_window_anchor = window_anchor
 
 	# v23.1 单屏模式：方案 11 整图等比缩放进可视区，无滚动/拖拽
 	if MAP_SCHEME == 11:
@@ -607,10 +641,14 @@ func _build_level_map() -> void:
 				canvas.add_child(_make_level_node(level_index_s6, era_idx, pts[j], current_level))
 	for lv_s8 in range(1, LEVEL_COUNT + 1):
 		if MAP_SCHEME == 8 or MAP_SCHEME == 11:
+			# v36 窗口：窗外关卡不建节点（底图手绘仍在，桥线由 overlay 同口径过滤）
+			if MAP_SCHEME == 11 and not _in_map_window(lv_s8, window_anchor):
+				continue
 			var era_idx_s8: int = floori((lv_s8 - 1) / 20.0)
 			canvas.add_child(_make_level_node(lv_s8, era_idx_s8,
 				_s_level_points.get(lv_s8, Vector2.ZERO), current_level))
 	_overlay_layer.queue_redraw()
+	_refresh_window_hint()
 
 	# 4c) v26.12c：移动基地卡车标记——v26.28 放到节点层之后创建（压在节点盘/关卡名
 	# 之上，到站不被节点盖上）；路线层随之同层（线端画进节点盘，衔接可读）
@@ -847,7 +885,17 @@ func _draw_map_overlay() -> void:
 	var layer := _overlay_layer
 	if layer == null or not is_instance_valid(layer):
 		return
+	# v36 窗口：只画窗内可见点集合（桥线两端都可见才画，防悬空线）
+	var visible_pts: Dictionary = {}
+	if MAP_SCHEME == 11 and _built_window_anchor > 0:
+		for lv in range(maxi(1, _built_window_anchor - MAP_WINDOW_RADIUS),
+				mini(LEVEL_COUNT, _built_window_anchor + MAP_WINDOW_RADIUS) + 1):
+			var vp: Vector2 = _s_level_points.get(lv, Vector2.ZERO)
+			if vp != Vector2.ZERO:
+				visible_pts[vp] = true
 	for br in _s_bridges:
+		if not visible_pts.is_empty() and not (visible_pts.has(br["a"]) and visible_pts.has(br["b"])):
+			continue
 		var col: Color = ERA_COLORS[br["era"]]["border"]
 		col.a = 0.32
 		var lw: float = 3.0 if MAP_SCHEME == 11 else 1.5   # 单屏缩放显示，线宽加倍
@@ -863,6 +911,11 @@ func _draw_map_overlay() -> void:
 		layer.draw_line(seam_a, seam_b, Color(0.0, 0.9, 1.0, 0.14), 6.0)
 		layer.draw_line(seam_a, seam_b, Color(0.55, 0.95, 1.0, 0.55), 2.0)
 	for lv in _s_occ_colors:
+		# v36 窗口：窗外占领环不画（节点都没了，环成空标记）
+		if not visible_pts.is_empty():
+			var op: Vector2 = _s_level_points.get(lv, Vector2.ZERO)
+			if op == Vector2.ZERO or not visible_pts.has(op):
+				continue
 		var p: Vector2 = _s_level_points.get(lv, Vector2.ZERO)
 		if p != Vector2.ZERO:
 			layer.draw_arc(p, 30.0 if MAP_SCHEME == 11 else 46.0, 0.0, TAU, 40,
@@ -1327,6 +1380,27 @@ func _build_map_screen_chrome() -> void:
 	_next_marker.visible = false
 	chrome_parent.add_child(_next_marker)
 
+	# v36 窗口提示：右下角常驻小字（视野范围/前方剩余）
+	_window_hint_label = Label.new()
+	_window_hint_label.name = "MapWindowHint"
+	_window_hint_label.add_theme_font_size_override("font_size", 13)
+	_window_hint_label.add_theme_color_override("font_color", Color(0.62, 0.68, 0.76, 0.9))
+	_window_hint_label.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.7))
+	_window_hint_label.add_theme_constant_override("outline_size", 3)
+	_window_hint_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_window_hint_label.anchor_left = 1.0
+	_window_hint_label.anchor_right = 1.0
+	_window_hint_label.anchor_top = 1.0
+	_window_hint_label.anchor_bottom = 1.0
+	_window_hint_label.offset_left = -520.0
+	_window_hint_label.offset_right = -14.0
+	_window_hint_label.offset_top = -34.0
+	_window_hint_label.offset_bottom = -12.0
+	_window_hint_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	_window_hint_label.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	_window_hint_label.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	chrome_parent.add_child(_window_hint_label)
+
 ## v28 图例行：迷你节点样例（白盘彩环，与真实节点同构）+ 说明文字
 func _make_legend_row(ring: Color, text: String) -> Control:
 	var row := HBoxContainer.new()
@@ -1583,6 +1657,9 @@ func _truck_marker_pos(lvl: int, sz: Vector2) -> Vector2:
 ## 进度变化：直接对位（小光点瞬移可读；行驶中的走位由 _on_truck_travel_changed 动画承担）
 func _on_truck_level_changed(_level: int) -> void:
 	_update_truck_marker_snap()
+	# v36 窗口：锚点（在途=目的地/停靠关）变了 → 窗口随行军迁移，全量重建节点
+	if MAP_SCHEME == 11 and _built_window_anchor > 0 and _built_window_anchor != _truck_anchor_level():
+		refresh_levels()
 
 ## 面板打开/状态回稳时无动画对位（含缩放布局变化后的重排）
 func _update_truck_marker_snap() -> void:

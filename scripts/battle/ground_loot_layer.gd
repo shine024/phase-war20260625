@@ -19,8 +19,11 @@ extends Node2D
 ## 挂载：battlefield._ready 创建（z=-3：焦痕 -4 之上/槽位高亮 -2 之下/单位 0 之下），
 ## 进 PERSISTENT_CHILD_NAMES 跨场常驻；内容自管——battle_started 清空、
 ## battle_ended 胜利"打扫战场"（撒电池+收拢，需在 v20.15 的 1.6s 视口冻结窗内
-## 完成）/失败静默淡出。贴图实寸（PIL 实测，vfx-tuning 铁律）：basic_nano 1024 全幅、
-## energy_block 画布 1024 内容 840×923——scale 均按此标定。
+## 完成）/失败静默淡出。
+## v36 实机验收：货币贴图换数量分档变体家族（drops/drop_{nano,battery}_{1,2,3}.png，
+## 256 画布内容高 190px 标定，tools/_tmp_drop_variants.py 可重跑）；
+## basic_nano.png 已原位抠透明底（原图备份 _art_backup/，HUD 资源条同源受益）；
+## 货币档加地面柔光呼吸、缴获卡 36→30px。
 
 const BattleTimeState = preload("res://scripts/battle/battle_time_state.gd")
 const DT = preload("res://resources/design_tokens.gd")
@@ -29,8 +32,19 @@ const VfxImpactFactory = preload("res://scripts/battle/vfx_impact_factory.gd")
 const CardGridFloatingLabelScript = preload("res://scripts/card_grid_floating_label.gd")
 const UiAssetLoader = preload("res://scripts/ui_asset_loader.gd")
 
-const TEX_NANO := preload("res://assets/resources/basic_nano.png")       # 1024 全幅（纳米颗粒）
-const TEX_BATTERY := preload("res://assets/resources/energy_block.png")  # 画布 1024，内容 840×923（电池）
+const TEX_NANO_TIERS: Array[Texture2D] = [   # 数量分档变体（v36：tools/_tmp_drop_variants.py 产出，256 画布内容高 ~190px）
+	preload("res://assets/resources/drops/drop_nano_1.png"),
+	preload("res://assets/resources/drops/drop_nano_2.png"),
+	preload("res://assets/resources/drops/drop_nano_3.png"),
+]
+const TEX_BATTERY_TIERS: Array[Texture2D] = [
+	preload("res://assets/resources/drops/drop_battery_1.png"),
+	preload("res://assets/resources/drops/drop_battery_2.png"),
+	preload("res://assets/resources/drops/drop_battery_3.png"),
+]
+const CURRENCY_TEX_CONTENT_PX: float = 190.0   # 变体画布内容标定高（scale = 目标px / 此值）
+const CURRENCY_PX_NANO: Array[float] = [20.0, 26.0, 31.0]     # 单体/双粒/小堆 目标高
+const CURRENCY_PX_BATTERY: Array[float] = [23.0, 29.0, 34.0]
 
 ## 类型常量（spawn_loot 的 type 入参）
 const TYPE_NANO := "nano"
@@ -120,6 +134,19 @@ func _spawn(type: String, pos: Vector2, rarity: String, amount: int,
 	_enforce_persist_cap()
 
 
+## 数量分档：1-7 单体 / 8-29 双粒簇 / 30+ 小堆（纳米并堆累计同口径升档）
+static func currency_tier(amount: int) -> int:
+	if amount >= 30:
+		return 2
+	if amount >= 8:
+		return 1
+	return 0
+
+
+static func _currency_scale(px_table: Array[float], tier: int) -> float:
+	return px_table[clampi(tier, 0, 2)] / CURRENCY_TEX_CONTENT_PX
+
+
 func _spawn_nano(pos: Vector2, amount: int) -> void:
 	# 并堆：60px 内已有活纳米堆 → 数量累加+刷新飘字（蜂群连杀不刷屏）
 	_prune_dead_piles()
@@ -127,6 +154,7 @@ func _spawn_nano(pos: Vector2, amount: int) -> void:
 		var node: LootItem = pile["node"]
 		if node.global_position.distance_to(pos) <= NANO_MERGE_RADIUS:
 			node.amount = int(node.amount) + amount
+			node.refresh_currency_visual()   # v36：跨档升贴图（单体→双粒→小堆）
 			node.show_gain_float("+%d" % int(node.amount), DT.COLOR_RES_NANO)
 			return
 	var item: LootItem = LootItem.new()
@@ -222,7 +250,9 @@ class LootItem extends Node2D:
 	var _toss_tween: Tween = null
 	var _fade_tween: Tween = null
 	var _ring_color: Color = Color(0, 0, 0, 0)
-	var ring_t := 0.0   # 色环脉动相位（0→1 循环，_draw 消费）
+	var _glow_color: Color = Color(0, 0, 0, 0)   # v36：货币档地面柔光（防被单位遮挡后找不到）
+	var _cur_tier: int = 0                        # v36：货币数量档（跨档换贴图用）
+	var ring_t := 0.0   # 脉动相位（0→1 循环，_draw 消费：rare 环 / 货币柔光共用）
 
 	## 浮字相对层 z(-3) 的抬升值：净 15 = 单位(0) 之上、头顶 UI(20) 之下
 	const FLOAT_LABEL_Z := 18
@@ -243,13 +273,14 @@ class LootItem extends Node2D:
 	func _build_body(card: Resource) -> void:
 		match ltype:
 			GroundLootLayer.TYPE_NANO:
-				# 颗粒簇：主粒 ~31px + 两小粒（basic_nano 1024 全幅 → scale 0.030/0.020）
-				_body = _make_sprite(GroundLootLayer.TEX_NANO, 0.030, Vector2.ZERO)
-				_make_sprite(GroundLootLayer.TEX_NANO, 0.020, Vector2(11, 4))
-				_make_sprite(GroundLootLayer.TEX_NANO, 0.020, Vector2(-9, 6))
+				# v36 数量分档变体：单体晶石 / 双粒簇 / 五晶小堆（tools/_tmp_drop_variants.py 产出）
+				_cur_tier = GroundLootLayer.currency_tier(amount)
+				_body = _make_sprite(GroundLootLayer.TEX_NANO_TIERS[_cur_tier],
+					GroundLootLayer._currency_scale(GroundLootLayer.CURRENCY_PX_NANO, _cur_tier), Vector2.ZERO)
 			GroundLootLayer.TYPE_BATTERY:
-				# 电池（energy_block 内容 840×923 → scale 0.034 ≈ 29×31px）
-				_body = _make_sprite(GroundLootLayer.TEX_BATTERY, 0.034, Vector2.ZERO)
+				_cur_tier = GroundLootLayer.currency_tier(amount)
+				_body = _make_sprite(GroundLootLayer.TEX_BATTERY_TIERS[_cur_tier],
+					GroundLootLayer._currency_scale(GroundLootLayer.CURRENCY_PX_BATTERY, _cur_tier), Vector2.ZERO)
 			GroundLootLayer.TYPE_CARD:
 				var tex: Texture2D = null
 				if card != null:
@@ -264,6 +295,20 @@ class LootItem extends Node2D:
 				_body = _make_diamond(GC.get_rarity_color(rarity),
 					11.0 if ltype == GroundLootLayer.TYPE_RUNE else 13.0)
 
+	## v36：纳米并堆跨档时换档贴图（重建本体；货币件无稀有度附件，无需重建）
+	func refresh_currency_visual() -> void:
+		if ltype != GroundLootLayer.TYPE_NANO and ltype != GroundLootLayer.TYPE_BATTERY:
+			return
+		var tier := GroundLootLayer.currency_tier(amount)
+		if tier == _cur_tier:
+			return
+		_cur_tier = tier
+		_body = null
+		for c in get_children():
+			c.queue_free()
+		_build_body(null)
+		_start_idle_pulse()
+
 	func _make_sprite(tex: Texture2D, scl: float, offset: Vector2) -> Sprite2D:
 		var spr := Sprite2D.new()
 		spr.texture = tex
@@ -276,7 +321,8 @@ class LootItem extends Node2D:
 	func _make_card_sprite(tex: Texture2D) -> Sprite2D:
 		var spr := Sprite2D.new()
 		spr.texture = tex
-		spr.scale = Vector2.ONE * (36.0 / maxf(1.0, float(tex.get_width())))
+		# v36 实机验收：36→30px——缴获卡此前接近战场卡宽一半，观感过大
+		spr.scale = Vector2.ONE * (30.0 / maxf(1.0, float(tex.get_width())))
 		add_child(spr)
 		return spr
 
@@ -311,7 +357,12 @@ class LootItem extends Node2D:
 
 	func _build_rarity_fx() -> void:
 		if ltype == GroundLootLayer.TYPE_NANO or ltype == GroundLootLayer.TYPE_BATTERY:
-			return   # 货币档：本体即全部（微光由 idle 脉动承担）
+			# v36：货币档加地面柔光呼吸（原"本体即全部"——贴图缩小后需要拾取线索）
+			_glow_color = DT.COLOR_RES_NANO if ltype == GroundLootLayer.TYPE_NANO else DT.COLOR_RES_ENERGY
+			if not DT.is_motion_reduce():
+				var tw := create_tween().set_loops()
+				tw.tween_method(_advance_ring, 0.0, 1.0, 1.4)
+			return
 		var tier := _rarity_tier()
 		if tier >= 1:
 			_ring_color = GC.get_rarity_color(rarity)
@@ -418,6 +469,13 @@ class LootItem extends Node2D:
 		queue_redraw()
 
 	func _draw() -> void:
+		# v36：货币档地面柔光（实心圆呼吸，给"这里有东西可捡"的地面线索）
+		if _glow_color.a > 0.01:
+			var glow_r := lerpf(11.0, 15.0, ring_t)
+			var glow_a := lerpf(0.05, 0.15, sin(ring_t * PI))
+			draw_circle(Vector2(0, 3), glow_r,
+				Color(_glow_color.r, _glow_color.g, _glow_color.b, glow_a))
+			return
 		if _ring_color.a <= 0.01:
 			return
 		var r := lerpf(13.0, 21.0, ring_t)

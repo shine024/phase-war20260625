@@ -39,7 +39,9 @@ static func start_as_deploy_ghost(u: CharacterBody2D, materialize_after_sec: flo
 		actual_delay = calculate_deploy_delay(u.stats)
 	u._ghost_materialize_time_left = maxf(0.05, actual_delay)
 	u._ghost_total_time = u._ghost_materialize_time_left
-	u.modulate = Color(1.0, 1.0, 1.0, 0.42)
+	# v36 实机验收：虚影透明度 0.42→0.62——揭幕后"敌我都没刷新"的空白感主要来自
+	# 虚影太淡（部署时长公式是平衡面不动，只提存在感）
+	u.modulate = Color(1.0, 1.0, 1.0, 0.62)
 	if u._presentation_card_grid and u.is_player:
 		var hb_hide := u.get_node_or_null("HpBar") as CanvasItem
 		if hb_hide != null:

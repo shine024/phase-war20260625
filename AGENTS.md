@@ -572,6 +572,29 @@ IntelEvolutionManager → IntelManual, IntelEvolutionBranches
 - **前期高潮（C）**：精英波短定格 `_play_elite_wave_beat`（battle_spectacle，time_scale 0.3×0.15s，守卫与击杀顿帧同门：motion_reduce/慢动作/顿帧/极速推演不叠加；号角 boss_warn 信号侧自带压制）；首机制关预告 `LevelInformation.get_first_seen_mechanic_banner_lines`（首现关播"⚑ 新战术条件"StageBanner，main_battle_setup 开战节拍插播，教程/挂机豁免）——**新增 special_rules 机制键记得同步 `MECHANIC_BANNER_TEXT` 文案**，缺文案静默跳过。
 - 数据锁：`tests/unit/systems/test_feature_unlock_schedule.gd`（节奏表/阈值判定/信号与待播队列）+ `tests/unit/ui/test_settlement_next_level.gd`（直通键显隐矩阵/成长区块渲染）。
 
+## v36 实机验收反馈修复批3：开场链演出 + 进度节奏 + 精神同调战力门 + 战斗手感（2026-09-16）
+
+**改掉落视觉/挂机/技能树战力门/世界地图窗口/首关难度前必读本节。**
+
+- **自动存档 toast 静默 + toast 右上角**：`save_manager` 成功分支不再弹"游戏已保存"（失败提示保留；手动存档反馈在 main `_show_save_result_toast`）；ToastManager 层从屏幕中部移右上角（top 64/右缘 24/宽 300 向下堆叠）——改 toast 位置别回"底部居中抬高"旧坐标（实落屏中）。
+- **精神同调战力门（新系统）**：设定=相位师越强→精神与暗能交换越深（越易失控迷失，穿越而来中低位居多）→可运用战力上限越高（卡 power 值）。**唯一查询真身 `PhaseMasterSkillManager.get_power_cap()`**（BASE_POWER_CAP=200 + 三系精神同调链 unlock type="power_cap" max 语义：开窍500/深潜1200/无垠2400，基础层 tier2/4 + v8ext tier7）；拦截点=`battle_spawn_system.request_player_deploy`（reason=power_cap）；豁免三键：`debug_no_deploy_limits`/`GameConfig.power_cap_enabled`（总开关，回退 v36 前）/教学进行中。**改 BASE 或节点 value 必同步 `tests/unit/systems/test_power_cap.gd`**；power 分布实测（era0 p50=28/era1 p50=204/max 2200）见 CHANGELOG，数值轮动以试玩数据为准。
+- **挂机=本关循环/向前推进 + 行进节拍**：选关槽位退役（`afk_level_selector.tscn` 无引用，面板 `SlotsHBox` 隐藏保留可回滚）；CYCLE 恒刷停靠关（`_resolve_parked_level`），PUSH 从停靠关 +1 推进（v26.19 推进钳制已删，起点钳制保留）；关间 `State.TRAVELING` + StageBanner + 4s（motion_reduce 1.2s），`_travel_gen` 代际守卫——**新增 AFK 状态分支记得同步 afk_panel `_on_afk_state_changed`**。
+- **世界地图窗口**：只建停靠关 ±10（`MAP_WINDOW_RADIUS`）节点，overlay 桥线/占领环同口径过滤；锚点（在途=目的地）变化自动重建；**给地图加新图层时按 `_built_window_anchor` 窗口过滤**，防窗外元素悬空。右下角"战线视野"提示标签在 chrome 层。
+- **首关难度**：`FORT_MIN_LEVEL`（manifest）——ww1 双堡垒 min_level=4，`get_ids_for_era_at_level` 全链生效；WW1 `ERA_ENEMY_FIELD_CAP`=4（其余时代不动，单变量原则）。
+- **直射前排优先**：`ConstructUnitAI.has_more_forward_same_row_target`（共享静态，enemy_unit 对称调）——同排更前目标出现则 retain 放弃自动重选；容差 12px/检查半径 300px；守住指令、曲射、antitank 语义不动。
+- **掉落分档变体**：掉落贴图家族 `assets/resources/drops/drop_{nano,battery}_{1,2,3}.png`（256 画布内容高 190px 标定，生成器 `tools/_tmp_drop_variants.py` 可重跑）；`ground_loot_layer` 按 amount 1-7/8-29/30+ 选档，纳米并堆跨档 `refresh_currency_visual` 换贴图；`basic_nano.png` 已抠透明底（原图在 _art_backup，HUD 资源条同源）；货币档地面柔光呼吸在 `_draw`；**换掉落贴图先看 CURRENCY_* 常量标定口径**。
+- **开场链**：雪原图 `wakeup_snowfield.png` 已按基地车特征重生成（agnes 兜底，FLOW 当日不可达；原图备份 _art_backup，候选图在 .godot/art_regen/）；欢迎步文案剧情化（教程 `INTRO_WELCOME`）+ 面板半高表 `BOX_HALF_H_BY_STEP`；跳过开场按钮走 PanelStyles ghost。**「伙伴」是语言宪法禁用词（用「同伴」）**——写开场/剧情文案前过宪法。
+
+## v6.14.7 缴获卡可部署 + 直入卡制造修复 + rolls 动画重建（2026-09-16，详见 CHANGELOG）
+
+**改部署次数池/制造 roll/单位动画资产前必读本节。**
+
+- **部署次数池兑底（`battle_spawn_system._resolve_deploy_uses_entry`）**：captured_*/foe_* 缴获卡（~100 张）与 fe_* 势力卡（14 张）不在 UCT，旧逻辑 reset 跳过=池无键=`_has_deploy_uses` 缺键 false="次数耗尽"硬拒——**自 v20.13 起永远无法部署**（自动管线重试 20 轮静默放弃、手动 pickup 不拦但落点被拒）。现剥缴获前缀回表重查（与 `_build_captured_card` 同口径）→ 仍空按卡 combat_kind 构造基线条目；`_reset_deploy_uses` 与 `_get_deploy_uses_total`（HUD/维修返还共用）都走它。`_has_deploy_uses` 缺键时懒建键自愈（战斗中途换装进绿槽的卡不在开战快照池，查询时补建并广播 deploy_uses_changed）；**不在绿槽的键仍保持拒绝语义**。缴获卡次数=剥前缀后的真身条目口径，非基线兜底值。
+- **制造 roll 口径对齐 UI（`manufacture_manager.manufacture`）**：掷品质必须走 `_pool_base`（era0/1 直入卡白板档 0.25 特判），**勿回退裸 `get_intel_base`**——直入卡无敌形原型情报恒 0，裸口径 roll 恒空池必失败"品质池异常"（v30.5 引入回归，约 30/46 新配方 UI 全绿却永远造不出）。非直入卡两条口径数学等价零行为变化。
+- **rolls 动画已重建（`assets/effects/unit_anims/ww1_arm_rolls/`）**：anim.json 的 frame_size=256 必须与雪碧图实际帧距一致——存量 sheet 曾是 128px 错距（引擎按 256 切格每格 2 辆车，游戏内"一辆变两辆"）且美术本身过时（旧式装甲车，与卡图 vis_player_001/mk2 现役轻型坦克设计族不符）。现从工作区 `039_ww1_arm_rolls_罗尔斯装甲车` 源帧按 `deploy_unit_anims.py` 同管线重建（idle 2048×256 / attack 3072×256）。**改该单位动画走源帧重建，勿手改 anim.json 帧距**——内容集中画面下半带（y135-207），改小帧距会被正方形切格拦腰截断。旧资产+遗留散帧备份 `.godot/art_backup_rolls_fix_2026-09-16/`。
+- **分帧动画/卡图审计工具沉淀**：`tools/_tmp_visual_audit.py`（160 套动画逐帧体检：帧数对账/空帧/双主体/占比离群）+ `tools/_tmp_visual_sheets.py`（卡图/动画拼图目视）可复用。2026-09-16 全量体检结论：双主体唯一户=rolls（已修）；360 张卡图零缺陷、敌左我右镜像纪律完好；16 个仅含 attack_f0.png 的目录是攻击姿态系统（AttackPoseAnim）合法资产勿当垃圾清理。
+- **回归锁**：`tests/unit/systems/test_deploy_uses_fallback.gd`（6 用例）+ `tests/unit/economy/test_manufacture_direct_roll.gd`（4 用例）。⚠️ 本机新 png 首次落盘后 `--headless --editor --quit` 会在扫描中途退出，导入不完整会拖垮 headless 启动链（v36 A4 drops 六图即踩此坑）——给足编辑器时长完成导入。
+
 ## v35 旧设定残留清理批：战斗热路径性能 + 遗留枚举/死配置/断链清零（2026-09-15）
 
 **改 bullet/蜂群开火/曲射 batch/卡图视觉辅助/VFX 工厂渐变前必读本节。** 三路审计（旧设定残留/热路径性能/VFX 死配置）后修复，全部现役行为零变化（除注明两处轻微观感修正）。

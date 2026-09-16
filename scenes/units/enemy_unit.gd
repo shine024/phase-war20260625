@@ -1085,7 +1085,14 @@ func _should_retain_current_target() -> bool:
 		return false
 	# v10(L3): 平方比较（避免每周期 sqrt）
 	var acq: float = _enemy_acquisition_range()
-	return global_position.distance_squared_to(target.global_position) <= acq * acq
+	if global_position.distance_squared_to(target.global_position) > acq * acq:
+		return false
+	# v36 实机验收（直射前排优先）：同排更靠前玩家单位出现 → 放弃锁定重选（与玩家侧对称）
+	var wt_now: int = _get_weapon_type_for_targeting()
+	if not GC.is_indirect_weapon_type(wt_now) and ConstructUnitAI.has_more_forward_same_row_target(
+			self, minf(acq, ConstructUnitAI.FRONT_SWITCH_CHECK_RANGE)):
+		return false
+	return true
 
 
 func _find_target(_delta: float) -> void:
@@ -1976,7 +1983,8 @@ func start_as_deploy_ghost() -> void:
 		actual_delay *= 0.5
 	_ghost_materialize_time_left = maxf(0.05, actual_delay)
 	# 星冥虚影染蓝青色（与常规敌兵半透明白区分，读得出"这不是常规敌人"）
-	modulate = Color(0.62, 0.82, 1.0, 0.5) if _is_xeno else Color(1.0, 1.0, 1.0, 0.42)
+	# v36 实机验收：常规虚影 a 0.42→0.62（与我方同批）——揭幕后敌我不见的空白感来自虚影太淡
+	modulate = Color(0.62, 0.82, 1.0, 0.5) if _is_xeno else Color(1.0, 1.0, 1.0, 0.62)
 
 ## 部署虚影每帧更新（由 _physics_process 调用，返回 true 表示本帧已实体化）
 func _update_enemy_deploy_ghost(delta: float) -> bool:

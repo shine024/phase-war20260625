@@ -89,6 +89,25 @@ func is_evolution_era_unlocked(era: int) -> bool:
 	return false
 
 
+## v36 实机验收：相位师可运用战力上限（精神同调链）。
+## 设定口径：相位师越强→精神与暗能量交换越深（越易失控迷失，穿越而来者中低位居多）
+## →能驾驭越强的战斗卡；直观表现=可部署卡牌的 power 值上限。
+## 消费方：battle_spawn_system.request_player_deploy（超限拒绝部署）+ 技能面板状态行。
+## max 语义：取已解锁 power_cap 节点的最大 value；基础值覆盖时代 0-1 基础卡
+## （实测分布：era0 p50=28 / era1 p50=204 / 全表 max=2200）。
+const BASE_POWER_CAP := 200
+
+func get_power_cap() -> int:
+	var cap: int = BASE_POWER_CAP
+	for nid in _unlocked_nodes:
+		var node: Dictionary = SkillTree.get_skill(nid)
+		var unlocks: Array = node.get("unlocks", [])
+		for u in unlocks:
+			if u is Dictionary and str(u.get("type", "")) == "power_cap":
+				cap = maxi(cap, int(u.get("value", 0)))
+	return cap
+
+
 ## 可用技能点
 func get_available_points() -> int:
 	var max_pts: int = SkillTree.max_skill_points_at_phase_field_level(_phase_field_level) + _bonus_points

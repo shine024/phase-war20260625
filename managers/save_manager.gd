@@ -863,10 +863,9 @@ func save_game() -> bool:
 		return false
 	if DEBUG_SAVE_LOG:
 		pass  # LOG: 已保存到
-	# 显示成功Toast
-	var toast_mgr = get_node_or_null("/root/ToastManager")
-	if not _is_exiting and toast_mgr and toast_mgr.has_method("show_success"):
-		toast_mgr.show_success("游戏已保存")
+	# v36 实机验收：自动存档成功不再弹"游戏已保存"toast——战斗中/开场剧情中途弹出
+	# 打断沉浸（存档状态在存档面板/标题屏仍可见）；失败提示保留（上方 err 分支）；
+	# 手动存档的反馈由 main._show_save_result_toast 承担。
 	_last_save_ms = Time.get_ticks_msec()
 	_slot_info_cache_valid = false
 	_is_saving = false

@@ -809,6 +809,20 @@ func request_player_deploy(platform_card_id: String, world_pos: Vector2, battle_
 	if platform_card == null:
 		_emit_deploy_failed("invalid_loadout", "未找到有效战斗卡配置，请检查绿槽。")
 		return false
+	# v36 精神同调战力门：卡牌 power 超出相位师可运用上限 → 拒绝部署
+	# （豁免：debug_no_deploy_limits / 战力门总开关关 / 教学进行中；教学首战必须畅通）
+	if not _no_limits and bool(GameConfig.get_default().power_cap_enabled):
+		var _pms: Node = _get_cached_autoload("PhaseMasterSkillManager")
+		var _tutorial_active: bool = false
+		if TutorialProgressionManager != null and TutorialProgressionManager.has_method("should_show_tutorial"):
+			_tutorial_active = TutorialProgressionManager.should_show_tutorial()
+		if _pms != null and not _tutorial_active:
+			var cap: int = _pms.get_power_cap()
+			var card_power: int = int(platform_card.power)
+			if card_power > cap:
+				_emit_deploy_failed("power_cap",
+					"该卡战力 %d 超出相位师可运用的上限 %d——在相位师技能树点亮「精神同调」提升上限。" % [card_power, cap])
+				return false
 	# v20.16 次数池键 = 部署身份（实例卡用 instance_id，旧卡/模板回退裸 card_id）——
 	# 同名卡两实例各有一份独立次数，与 v20.11 存活上限"每装备槽各 1"语义对齐。
 	var du_key: String = platform_card.instance_id if not platform_card.instance_id.is_empty() else platform_card.card_id
@@ -1781,6 +1795,21 @@ func _count_alive_enemy_by_archetype(archetype_id: String) -> int:
 ## 战斗开始时初始化所有装备槽卡的部署次数
 ## v20.16：键 = 部署身份（实例卡 instance_id / 旧卡裸 card_id）——同名卡多实例各自独立一份，
 ## 修复共享池导致"两张同名卡一起被锁"的 v20.13 缺陷。
+## v6.14.7：部署次数条目解析。UCT 直查落空的卡（captured_*/foe_* 缴获卡、fe_* 势力卡）
+## 不再跳过——旧逻辑跳过=池无键=部署门按"次数耗尽"硬拒，缴获卡从此永远上不了场。
+## 先剥缴获前缀回表重查（与 captured_unit_cards.gd 的 arch_id 口径一致），
+## 仍无则按卡自身 combat_kind 构造基线条目（走兵种基线次数），保证任何绿槽卡可部署。
+func _resolve_deploy_uses_entry(card: CardResource) -> Dictionary:
+	var entry: Dictionary = UnifiedCardTable.get_entry(card.card_id)
+	if not entry.is_empty():
+		return entry
+	var bare_id: String = card.card_id.trim_prefix("captured_").trim_prefix("foe_")
+	entry = UnifiedCardTable.get_entry(bare_id)
+	if not entry.is_empty():
+		return entry
+	return {"combat_kind": int(card.combat_kind)}
+
+
 func _reset_deploy_uses() -> void:
 	_deploy_uses_remaining.clear()
 	if _phase_instrument == null:
@@ -1793,10 +1822,7 @@ func _reset_deploy_uses() -> void:
 		if card == null:
 			continue
 		var key: String = card.instance_id if not card.instance_id.is_empty() else card.card_id
-		var entry: Dictionary = UnifiedCardTable.get_entry(card.card_id)
-		if entry.is_empty():
-			continue
-		var uses: int = UnifiedCardTable.get_deploy_uses(entry, card)
+		var uses: int = UnifiedCardTable.get_deploy_uses(_resolve_deploy_uses_entry(card), card)
 		_deploy_uses_remaining[key] = uses
 		# v20.13b：reset 也广播——底栏部署次数角标的初始显示由信号驱动（bar 在 _ready 已连接）
 		# v20.16：信号携带部署身份键（底栏按 instance_id 优先匹配槽位）
@@ -1805,7 +1831,28 @@ func _reset_deploy_uses() -> void:
 
 ## 检查某卡是否还有剩余部署次数（key = 部署身份：instance_id 或裸 card_id）
 func _has_deploy_uses(key: String) -> bool:
+	if not _deploy_uses_remaining.has(key):
+		# v6.14.7：战斗中途换装进绿槽的卡不在开战快照池里——懒建键自愈，
+		# 防止缺键被当"次数耗尽"误拒（与 _reset_deploy_uses 兑底同一缺陷类）。
+		_seed_deploy_use_key(key)
 	return int(_deploy_uses_remaining.get(key, 0)) > 0
+
+## 按部署身份键在绿槽里找对应卡并补建次数；找不到不建（保持缺键拒绝语义）。
+func _seed_deploy_use_key(key: String) -> void:
+	if _phase_instrument == null or not _phase_instrument.has_method("get_loadouts"):
+		return
+	for lo in _phase_instrument.get_loadouts():
+		var card: CardResource = lo.get("platform", null)
+		if card == null:
+			continue
+		var k: String = card.instance_id if not card.instance_id.is_empty() else card.card_id
+		if k != key:
+			continue
+		var uses: int = UnifiedCardTable.get_deploy_uses(_resolve_deploy_uses_entry(card), card)
+		_deploy_uses_remaining[key] = uses
+		if _signal_bus:
+			_signal_bus.deploy_uses_changed.emit(key, uses, uses)
+		return
 
 ## 部署时扣减次数
 func _consume_deploy_use(key: String) -> void:
@@ -1837,9 +1884,7 @@ func _get_deploy_uses_total(key: String) -> int:
 			continue
 		var k: String = card.instance_id if not card.instance_id.is_empty() else card.card_id
 		if k == key:
-			var entry: Dictionary = UnifiedCardTable.get_entry(card.card_id)
-			if not entry.is_empty():
-				return UnifiedCardTable.get_deploy_uses(entry, card)
+			return UnifiedCardTable.get_deploy_uses(_resolve_deploy_uses_entry(card), card)
 	return 0
 
 ## 查询剩余次数（HUD 显示用）。key = 部署身份；

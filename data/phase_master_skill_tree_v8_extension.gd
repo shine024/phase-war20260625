@@ -134,6 +134,11 @@ const EXTENSION_NODES: Dictionary = {
 		 "branch": BRANCH_COMMAND, "tier": 14, "cost": 3, "requires": ["pms_cmd_13a"],
 		 "unlocks": [{"type": "card_skill", "id": "cps_steel_storm"}],
 		 "effects": {}},
+		# ═══ v36 精神同调链终点（指挥系）：可用战力上限 ═══
+		{"id": "pms_cmd_sync3", "name": "精神同调·无垠", "desc": "与暗能同频共振，心境如渊——可运用战力上限提升至 2400（最强战斗卡全解锁）",
+		 "branch": BRANCH_COMMAND, "tier": 7, "cost": 4, "requires": ["pms_cmd_sync2"],
+		 "unlocks": [{"type": "power_cap", "value": 2400}],
+		 "effects": {}},
 	],
 
 	# ═══════════ 火力分支扩展（12+8 节点）：狙击手 / 火炮协调 / 战法 + 奇点（核武/大杀伤/火焰） ═══════════
@@ -237,6 +242,11 @@ const EXTENSION_NODES: Dictionary = {
 		 "branch": BRANCH_FIREPOWER, "tier": 15, "cost": 3, "requires": ["pms_cw_12b"],
 		 "unlocks": [{"type": "card_skill", "id": "cps_combustion"}],
 		 "effects": {}, "capstone": true},
+		# ═══ v36 精神同调链终点（火力系）：可用战力上限 ═══
+		{"id": "pms_fp_sync3", "name": "精神同调·无垠", "desc": "与暗能同频共振，心境如渊——可运用战力上限提升至 2400（最强战斗卡全解锁）",
+		 "branch": BRANCH_FIREPOWER, "tier": 7, "cost": 4, "requires": ["pms_fp_sync2"],
+		 "unlocks": [{"type": "power_cap", "value": 2400}],
+		 "effects": {}},
 	],
 
 	# ═══════════ 智能化分支扩展（12+4 节点）：电子战 / 卡片技能 / 战法 + 奇点（控制/时空/雷系） ═══════════
@@ -322,6 +332,11 @@ const EXTENSION_NODES: Dictionary = {
 		 "branch": BRANCH_INTELLIGENCE, "tier": 13, "cost": 3, "requires": ["pms_cw_7a"],
 		 "unlocks": [{"type": "card_skill", "id": "cps_solar_flare"}],
 		 "effects": {}, "capstone": true},
+		# ═══ v36 精神同调链终点（智能化系）：可用战力上限 ═══
+		{"id": "pms_int_sync3", "name": "精神同调·无垠", "desc": "与暗能同频共振，心境如渊——可运用战力上限提升至 2400（最强战斗卡全解锁）",
+		 "branch": BRANCH_INTELLIGENCE, "tier": 7, "cost": 4, "requires": ["pms_int_sync2"],
+		 "unlocks": [{"type": "power_cap", "value": 2400}],
+		 "effects": {}},
 	],
 }
 

@@ -37,6 +37,10 @@ class_name GameConfig
 ## 随通关解锁（开局只留核心入口）；false=全量敞开（v34 前行为，一键回退）。
 ## 消费点 level_progress_manager.is_feature_unlocked 及其三个入口层消费方
 @export var feature_gates_enabled: bool = true
+## v36 精神同调战力门总开关——true=部署链按相位师可运用战力上限拦卡（技能树
+## 精神同调链提升上限）；false=不设上限（v36 前行为，一键回退）。
+## 消费点 battle_spawn_system.request_player_deploy
+@export var power_cap_enabled: bool = true
 
 ## 经济配置（v29 R2a 离线收益再平衡，设计审查 F-05）
 @export_group("经济配置")
@@ -105,6 +109,7 @@ func reset_to_defaults() -> void:
 	color_grade_enabled = true
 	ground_dressing_enabled = true
 	feature_gates_enabled = true
+	power_cap_enabled = true
 	# v29 R2a: 离线收益三参数（经济批，设计审查 F-05）
 	offline_idle_efficiency = 0.5
 	offline_idle_decay_enabled = true

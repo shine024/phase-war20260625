@@ -34,6 +34,8 @@ class_name PhaseMasterSkillTree
 ##    affix             → affix 词条池赋予（替代随机 roll）
 ##    card_skill        → 卡片定时技能解锁（CardPeriodicSkillEngine 查询）
 ##    tactic            → 战法解锁（TacticDetector 查询）
+##    power_cap         → v36 可用战力上限（精神同调链；max 语义取已解锁最大 value，
+##                        PhaseMasterSkillManager.get_power_cap 查询，部署链消费）
 ##  v9 废弃：phase_instrument（技能树不再解锁相位仪，仅旧档兼容）
 ##  v8.5 废弃类型（仅旧存档兼容读取，不再有新节点使用）：
 ##    concept_weapon    → 原概念武器大技（已改为 unit_mechanism 或 stat_bonus）
@@ -121,6 +123,15 @@ const SKILL_TREE: Dictionary = {
 		{"id": "pms_cmd_4b", "name": "相位场强化", "desc": "所有单位与相位场基地生命值 +20%",
 		 "branch": BRANCH_COMMAND, "tier": 4, "cost": 2, "requires": ["pms_cmd_3"],
 		 "unlocks": [], "effects": {"stat_bonus": {"hp": 0.20}}},
+		# ═══ v36 精神同调链（指挥系）：可用战力上限 ═══
+		# 设定口径：相位师越强→精神与暗能量交换越深→能驾驭越强的战斗卡。
+		# unlock type "power_cap"（max 语义：取已解锁节点最大 value），部署链消费。
+		{"id": "pms_cmd_sync1", "name": "精神同调·开窍", "desc": "精神与暗能的交换更深一层：可运用战力上限提升至 500，更强的战斗卡得以部署",
+		 "branch": BRANCH_COMMAND, "tier": 2, "cost": 2, "requires": ["pms_cmd_0"],
+		 "unlocks": [{"type": "power_cap", "value": 500}], "effects": {}},
+		{"id": "pms_cmd_sync2", "name": "精神同调·深潜", "desc": "潜入暗能深处而不失自我：可运用战力上限提升至 1200",
+		 "branch": BRANCH_COMMAND, "tier": 4, "cost": 3, "requires": ["pms_cmd_sync1"],
+		 "unlocks": [{"type": "power_cap", "value": 1200}], "effects": {}},
 		],
 
 	# ═══════════ 智能化分支：自动行为 / AI 加成 / 经验加成 / affix 赋予 ═══════════
@@ -160,6 +171,13 @@ const SKILL_TREE: Dictionary = {
 		 "unlocks": [],
 		 "effects": {"stat_bonus": {"atk_light": 0.08, "atk_armor": 0.08, "atk_air": 0.08,
 		                            "def_light": 0.08, "def_armor": 0.08, "def_air": 0.08, "hp": 0.08}}},
+		# ═══ v36 精神同调链（智能化系）：可用战力上限 ═══
+		{"id": "pms_int_sync1", "name": "精神同调·开窍", "desc": "精神与暗能的交换更深一层：可运用战力上限提升至 500，更强的战斗卡得以部署",
+		 "branch": BRANCH_INTELLIGENCE, "tier": 2, "cost": 2, "requires": ["pms_int_0"],
+		 "unlocks": [{"type": "power_cap", "value": 500}], "effects": {}},
+		{"id": "pms_int_sync2", "name": "精神同调·深潜", "desc": "潜入暗能深处而不失自我：可运用战力上限提升至 1200",
+		 "branch": BRANCH_INTELLIGENCE, "tier": 4, "cost": 3, "requires": ["pms_int_sync1"],
+		 "unlocks": [{"type": "power_cap", "value": 1200}], "effects": {}},
 	],
 
 	# ═══════════ 火力分支：三维攻击 / 暴击 / 穿甲 / 射程 / 兵种特殊能力 ═══════════
@@ -194,6 +212,13 @@ const SKILL_TREE: Dictionary = {
 			"branch": BRANCH_FIREPOWER, "tier": 4, "cost": 3, "requires": ["pms_fp_3"],
 			"unlocks": [],
 			"effects": {"stat_bonus": {"atk_light": 0.15, "atk_armor": 0.15, "atk_air": 0.15, "crit_damage_bonus": 0.30}}},
+		# ═══ v36 精神同调链（火力系）：可用战力上限 ═══
+		{"id": "pms_fp_sync1", "name": "精神同调·开窍", "desc": "精神与暗能的交换更深一层：可运用战力上限提升至 500，更强的战斗卡得以部署",
+		 "branch": BRANCH_FIREPOWER, "tier": 2, "cost": 2, "requires": ["pms_fp_0"],
+		 "unlocks": [{"type": "power_cap", "value": 500}], "effects": {}},
+		{"id": "pms_fp_sync2", "name": "精神同调·深潜", "desc": "潜入暗能深处而不失自我：可运用战力上限提升至 1200",
+		 "branch": BRANCH_FIREPOWER, "tier": 4, "cost": 3, "requires": ["pms_fp_sync1"],
+		 "unlocks": [{"type": "power_cap", "value": 1200}], "effects": {}},
 	],
 
 	# ═══════════ 概念武器分支：v9 已解散 ═══════════

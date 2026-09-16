@@ -724,7 +724,12 @@ func _update_points_label() -> void:
 		return
 	var avail: int = mgr.get_available_points()
 	var spent: int = mgr.get_spent_points()
-	_points_label.text = "  可用技能点：%d（已用 %d）" % [avail, spent]
+	# v36：状态行并显可运用战力上限（精神同调链）——玩家在树内即可看到"能用多强的卡"
+	var cap: int = mgr.get_power_cap() if mgr.has_method("get_power_cap") else -1
+	if cap > 0:
+		_points_label.text = "  可用技能点：%d（已用 %d）　·　可运用战力上限：%d" % [avail, spent, cap]
+	else:
+		_points_label.text = "  可用技能点：%d（已用 %d）" % [avail, spent]
 
 
 func _refresh() -> void:

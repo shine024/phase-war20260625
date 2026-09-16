@@ -2,7 +2,8 @@ extends Node
 ## v7.x: 全局 Toast 管理器
 ## 自建独立 CanvasLayer（layer=200，高于 PopupLayer 的 100），确保 toast 永远在最上层，
 ## 不被 HUD(layer=40)/InfoPanelLayer(90)/PopupLayer(100) 盖住。
-## 所有 toast 放到顶部居中的 VBoxContainer，自动垂直堆叠（不再全叠在屏幕 (0,0)）。
+## 所有 toast 放到右上角 VBoxContainer（v36 实机验收：原底部居中抬高实落屏幕中部），
+## 自动垂直向下堆叠（不再全叠在屏幕 (0,0)）。
 
 var deploy_toast: Control = null
 var save_toast: Control = null
@@ -16,9 +17,11 @@ const MAX_ACTIVE_TOASTS: int = 5
 var _toast_layer: CanvasLayer = null
 var _toast_container: VBoxContainer = null
 
-# toast 锚点：底部居中抬高（避开战斗日志 496-592 / 底部栏 596-720）
-const _TOAST_OFFSET_BOTTOM: float = -440.0   # 距屏幕底部 440px（即 y≈720-440=280 起，向上展开）
-const _TOAST_WIDTH_HALF: float = 240.0       # toast 宽度的一半（offset_left/right 用）
+# toast 锚点：v36 实机验收——原"底部居中抬高"实际坐标落在屏幕中部（y≈200-280），
+# 开场剧情/战斗中被读成居中弹窗很出戏；移右上角小堆叠（顶部 HUD 条之下、向下展开）。
+const _TOAST_MARGIN_TOP: float = 64.0        # 距顶部（避开战斗顶栏 chips）
+const _TOAST_MARGIN_RIGHT: float = 24.0
+const _TOAST_WIDTH: float = 300.0
 
 
 func _ready() -> void:
@@ -45,19 +48,19 @@ func _build_toast_layer() -> void:
 	_toast_container = VBoxContainer.new()
 	_toast_container.name = "ToastContainer"
 	_toast_container.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	# 底部居中：anchor 全 1.0（右下角），offset 用负值往左上偏
-	_toast_container.anchor_left = 0.5
-	_toast_container.anchor_right = 0.5
-	_toast_container.anchor_top = 1.0
-	_toast_container.anchor_bottom = 1.0
-	_toast_container.offset_left = -_TOAST_WIDTH_HALF
-	_toast_container.offset_right = _TOAST_WIDTH_HALF
-	_toast_container.offset_top = _TOAST_OFFSET_BOTTOM - 80.0   # 容器顶缘位置（多 toast 向上扩展留余量）
-	_toast_container.offset_bottom = _TOAST_OFFSET_BOTTOM        # 容器底缘位置
-	# VBox 的子项从顶到底排列；用 size_flags 让 toast 在容器内贴底排列（最新 toast 在最下）
-	_toast_container.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	# 右上角：anchor 全 1.0 偏左上（v36 屏中 → 角落）
+	_toast_container.anchor_left = 1.0
+	_toast_container.anchor_right = 1.0
+	_toast_container.anchor_top = 0.0
+	_toast_container.anchor_bottom = 0.0
+	_toast_container.offset_left = -_TOAST_MARGIN_RIGHT - _TOAST_WIDTH
+	_toast_container.offset_right = -_TOAST_MARGIN_RIGHT
+	_toast_container.offset_top = _TOAST_MARGIN_TOP
+	_toast_container.offset_bottom = _TOAST_MARGIN_TOP   # 高度由内容撑开（grow_vertical 向下）
+	# VBox 子项顶到底排列：最新 toast 在最下（向下生长，不遮先到的）
+	_toast_container.grow_vertical = Control.GROW_DIRECTION_END
 	_toast_container.add_theme_constant_override("separation", 6)   # toast 间距 6px
-	_toast_container.alignment = BoxContainer.ALIGNMENT_END         # 底部对齐：新 toast 出现在最下方
+	_toast_container.alignment = BoxContainer.ALIGNMENT_BEGIN
 
 	_toast_layer.add_child(_toast_container)
 	add_child(_toast_layer)

@@ -1,7 +1,8 @@
 extends Control
 class_name AFKPanel
 ## 挂机模式面板 UI
-## 管理 4 个 slot 关卡关联、模式选择、开始/停止挂机
+## v36 实机验收改版：选关槽位退役（本关循环/向前推进双模式）——不再选关，
+## 循环=停靠关反复刷，推进=胜利后向下一关行进（关间行进节拍由管理器驱动）。
 
 signal closed
 
@@ -57,8 +58,6 @@ var _watch_btn: Button = null
 
 # 子面板引用
 var _afk_manager: AFKModeManager = null
-var _level_selector: AFKLevelSelector = null
-var _current_editing_slot: int = -1
 ## 主场景引用（用于定位 BattleContainer 路径）
 var _main_scene: Node = null
 
@@ -84,31 +83,18 @@ func _ready() -> void:
 	stop_btn.pressed.connect(_on_stop)
 	cycle_btn.pressed.connect(func(): _set_mode(AFKModeManager.Mode.CYCLE))
 	push_btn.pressed.connect(func(): _set_mode(AFKModeManager.Mode.PUSH))
-	# v24.2: 模式语义就地解释（推图起点跟随战役进度是新行为，避免"从哪开始打"困惑）
-	cycle_btn.tooltip_text = "循环模式：在下方槽位关联的关卡间循环刷（适合刷材料）"
-	push_btn.tooltip_text = "推图模式：自动逐关推进直到失败（同关重试3次）\n起点跟随战役进度（最高解锁关 = 最高通关关 + 1），停止/失败后自动续推\n世界地图的\"自动部署\"可显式指定从某一关开始推"
-	
+	# v24.2 → v36: 模式语义就地解释（选关退役后的新口径）
+	cycle_btn.tooltip_text = "本关循环：反复出击卡车当前停靠的关卡（适合刷材料）"
+	push_btn.tooltip_text = "向前推进：胜利后向下一关行进，直到失败或第 100 关\n关与关之间有行进时间（车队赶路）；起点为当前停靠关\n世界地图的\"自动部署\"入口同样从停靠关开推"
+
 	# 初始化模式按钮样式
 	_set_mode_button_style(cycle_btn, true)
 	_set_mode_button_style(push_btn, false)
-	
-	# 初始化 slot 样式
-	for pnl in slot_panels:
-		_apply_slot_style(pnl, false)
-		# B3: 可点击槽位补手型光标 + 悬停提亮（同底栏槽位 P1-5 模式，只动 rgb）
-		pnl.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-		pnl.mouse_entered.connect(func() -> void:
-			pnl.modulate = Color(1.18, 1.18, 1.18, pnl.modulate.a))
-		pnl.mouse_exited.connect(func() -> void:
-			pnl.modulate = Color(1.0, 1.0, 1.0, pnl.modulate.a))
-	
-	# 绑定 slot 点击
-	for i in range(4):
-		var idx = i
-		slot_panels[idx].gui_input.connect(_on_slot_gui_input.bind(idx))
-	
-	# 预加载关卡选择器
-	ResourceLoader.load_threaded_request("res://scenes/ui/afk_level_selector.tscn")
+
+	# v36：选关槽位退役——整行隐藏（.tscn 结构保留，回滚开关=删掉这一行）
+	var slots_hbox := get_node_or_null("Panel/MarginContainer/MainVBox/SlotsHBox")
+	if slots_hbox != null:
+		slots_hbox.visible = false
 
 	# v6.6(挂机): 实例化关卡信息（get_level_display_name 是实例方法）
 	# v7.x 性能：用全局单例，避免每次打开挂机面板重建 100 关字典
@@ -151,7 +137,7 @@ func set_main_scene(main_node: Node) -> void:
 
 
 ## v6.6(挂机存档): 读档加载 AFK 状态后由 SaveManager 调用，刷新面板显示。
-## 反映读档恢复的 slots/mode/push_level/accumulated_rewards。
+## 反映读档恢复的 mode/push_level/accumulated_rewards。
 func refresh_after_load() -> void:
 	if _afk_manager == null:
 		return
@@ -163,7 +149,6 @@ func refresh_after_load() -> void:
 		AFKModeManager.Mode.PUSH:
 			_set_mode_button_style(cycle_btn, false)
 			_set_mode_button_style(push_btn, true)
-	_update_slot_display()
 	_update_stats_display()
 
 
@@ -266,13 +251,9 @@ func _open() -> void:
 	backdrop.visible = true
 	panel.visible = true
 	# B4: 首次打开挂机模式给一句话说明（学黑猴首解锁引导，仅弹一次）
+	# v36：文案随"选关退役"改版
 	FeatureUnlockPopup.show_once("afk_mode", "自动哨戒",
-		"选好关卡后自动循环战斗：离线也能推进进度，收益回来一键领取。")
-	# 自动填入槽位：循环模式下若所有槽位均未关联，且 GameManager 有当前关卡，
-	# 则自动将当前关卡填入第一个空槽位。这样用户在世界地图选关后打开挂机面板
-	# 可直接开始循环，无需手动点选槽位。
-	_auto_fill_slot_from_current_level()
-	_update_slot_display()
+		"基地车自动作战：本关循环刷材料，或向前推进直到失败。离线收益回来一键领取。")
 	_update_stats_display()
 
 
@@ -333,58 +314,7 @@ func _on_watch_battle() -> void:
 	SignalBus.show_toast.emit("挂机战斗继续进行中——从底部功能栏「挂机」回到面板")
 
 
-# ── Slot 关卡关联 ──
-
-func _on_slot_gui_input(event: InputEvent, slot_idx: int) -> void:
-	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
-		if _afk_manager and _afk_manager.is_running:
-			return  # 挂机中不可编辑
-		
-		_current_editing_slot = slot_idx
-		_show_level_selector(slot_idx)
-
-
-func _show_level_selector(slot_idx: int) -> void:
-	# 首次打开才实例化 + 连接信号；后续复用同一实例，避免重复 connect 报错。
-	if _level_selector == null:
-		var resource = ResourceLoader.load_threaded_get("res://scenes/ui/afk_level_selector.tscn")
-		if resource is PackedScene:
-			_level_selector = resource.instantiate()
-
-		if _level_selector == null:
-			# 同步加载作为 fallback
-			var scene = load("res://scenes/ui/afk_level_selector.tscn")
-			if scene:
-				_level_selector = scene.instantiate()
-
-		if _level_selector:
-			# 挂到 PopupLayer（layer=100），与项目其它弹出层一致，
-			# 确保 z-order 高于主场景且不被 HudLayer(40) 遮挡。
-			var popup: Node = get_node_or_null("/root/Main/PopupLayer")
-			if popup == null:
-				popup = get_tree().root  # 回退兜底
-			popup.add_child(_level_selector)
-			_level_selector.level_selected.connect(_on_level_selected)
-			_level_selector.cancelled.connect(_on_level_selector_cancel)
-
-	if _level_selector:
-		_level_selector.show_selector(self, slot_idx)
-
-
-func _on_level_selected(level: int) -> void:
-	if _current_editing_slot < 0 or _current_editing_slot > 3:
-		return
-	if _afk_manager:
-		_afk_manager.set_slot(_current_editing_slot, level)
-	_update_slot_display(_current_editing_slot)
-	_current_editing_slot = -1
-
-
-func _on_level_selector_cancel() -> void:
-	_current_editing_slot = -1
-
-
-# ── 模式选择 ──
+# ── 模式选择（v36：本关循环 / 向前推进，选关槽位已退役）──
 
 func _set_mode(m: AFKModeManager.Mode) -> void:
 	if not _afk_manager:
@@ -430,16 +360,10 @@ func _on_start() -> void:
 	if not _afk_manager:
 		return
 
-	# 循环模式必须至少关联 1 个 slot；推图模式依赖 push_level（始终有值），
-	# 但若推图关卡也未解锁，start_afk 内部会 clamp，仍可能进入。
-	var valid_count := _afk_manager.get_valid_slot_count()
-	if _afk_manager.mode == AFKModeManager.Mode.CYCLE and valid_count == 0:
-		_notify("请先在槽位关联至少一关")
-		return
-
+	# v36：选关槽位退役——两种模式都不再依赖槽位关联（循环/推进起点=卡车停靠关）
 	var success = _afk_manager.start_afk()
 	if not success:
-		_notify("无法开始挂机，请检查槽位关联")
+		_notify("无法开始挂机")
 		return
 	_update_stats_display()
 	# 立即进入第一关
@@ -475,6 +399,14 @@ func _on_afk_state_changed(new_state: int) -> void:
 			start_btn.visible = true
 			stop_btn.visible = false
 			status_label.text = "状态: 已失败"
+		AFKModeManager.State.TRAVELING:
+			# v36：关间行进节拍（胜利后赶往下一关）
+			start_btn.visible = false
+			stop_btn.visible = true
+			if _afk_manager:
+				status_label.text = "状态: 行进中——驶向第 %d 关" % int(_afk_manager._pending_level)
+			else:
+				status_label.text = "状态: 行进中"
 	# v6.6(挂机缩略图): 状态切换时刷新缩略图可见性
 	_refresh_battle_preview()
 
@@ -564,86 +496,37 @@ func _show_settlement_dialog(rewards: Dictionary) -> void:
 
 # ── 显示更新 ──
 
-func _update_slot_display(update_one: int = -1) -> void:
-	if not _afk_manager:
-		return
-	
-	for i in range(4):
-		if update_one >= 0 and i != update_one:
-			continue
-		
-		var level = _afk_manager.get_slot_level(i)
-		var lbl = slot_labels[i]
-		var pnl = slot_panels[i]
-		
-		if level > 0:
-			# 尝试获取关卡显示名（v6.6: 用实例调用，get_level_display_name 是实例方法）
-			var name := ""
-			if _level_info and _level_info.has_method("get_level_display_name"):
-				name = _level_info.get_level_display_name(level)
-			if not name.is_empty():
-				lbl.text = name
-			else:
-				lbl.text = "第 %d 关" % level
-			# v23.6.1：悬停就地解释（槽位用途 + 点击语义）
-			pnl.tooltip_text = "挂机槽位 %d：%s\n点击更换此槽位循环刷的关卡" % [i + 1, lbl.text]
-			_apply_slot_style(pnl, true)
-		else:
-			lbl.text = "未关联"
-			# v23.6.1：悬停就地解释
-			pnl.tooltip_text = "挂机槽位 %d：未关联关卡\n点击选择此槽位循环刷的关卡" % [i + 1]
-			_apply_slot_style(pnl, false)
-
-
-func _apply_slot_style(pnl: Panel, active: bool) -> void:
-	if active:
-		var style := StyleBoxFlat.new()
-		style.bg_color = Color(0.04, 0.08, 0.15, 0.9)
-		style.border_color = Color(0, 0.65, 1, 0.3)
-		style.set_border_width_all(1)
-		style.set_corner_radius_all(8)
-		pnl.add_theme_stylebox_override("panel", style)
-	else:
-		var style := StyleBoxFlat.new()
-		style.bg_color = Color(0.03, 0.05, 0.08, 0.6)
-		style.border_color = Color(0.15, 0.25, 0.4, 0.2)
-		style.set_border_width_all(1)
-		style.set_corner_radius_all(8)
-		pnl.add_theme_stylebox_override("panel", style)
-
-
 func _update_stats_display() -> void:
 	if not _afk_manager:
 		return
 
 	wins_label.text = "胜: %d" % _afk_manager.total_wins
 	losses_label.text = "负: %d" % _afk_manager.total_losses
-	var count = _afk_manager.get_valid_slot_count()
-	# 挂机运行中显示累计奖励件数；待机时按模式显示：推图=下次起点，循环=关联槽位数
+	# 挂机运行中显示累计奖励件数；待机时按模式显示目标关（v36：起点/目标=卡车停靠关）
 	if _afk_manager.is_running and not _afk_manager.accumulated_rewards.is_empty():
 		var total_count: int = 0
 		for key in _afk_manager.accumulated_rewards:
 			total_count += int(_afk_manager.accumulated_rewards[key])
 		slots_used_label.text = "累计: %d 件" % total_count
 	elif _afk_manager.mode == AFKModeManager.Mode.PUSH:
-		slots_used_label.text = "推图起点: 第 %d 关" % _push_start_hint()
-		slots_used_label.tooltip_text = "推图从战役进度前沿开始（最高解锁关 = 最高通关关 + 1）\n停止/失败后自动从进度续推；世界地图\"自动部署\"可显式指定起点"
+		slots_used_label.text = "推进起点: 第 %d 关" % _push_start_hint()
+		slots_used_label.tooltip_text = "向前推进从当前停靠关开始\n胜利后自动向下一关行进（关间有赶路时间）；失败后可从进度续推"
 	else:
-		slots_used_label.text = "已关联: %d/4关" % count
+		slots_used_label.text = "循环目标: 第 %d 关" % _parked_hint()
+		slots_used_label.tooltip_text = "本关循环反复出击卡车当前停靠的关卡（刷材料）\n换关=移动基地行军到新关卡后重启挂机"
 
 
-## 推图起点预览：镜像 start_afk 的起点决策（override 优先 → 与战役前沿取 max →
-## 钳制到已解锁上限），供待机时显示"下次推图从第几关开始"。
+## v36：循环目标预览（=停靠关，与 start_afk 的 _resolve_parked_level 同口径）
+func _parked_hint() -> int:
+	var bm := get_node_or_null("/root/BunkerManager")
+	if bm != null and bm.has_method("get_parked_level"):
+		return clampi(int(bm.get_parked_level()), 1, 100)
+	var gm := get_node_or_null("/root/GameManager")
+	if gm != null and "current_level" in gm:
+		return clampi(int(gm.get("current_level")), 1, 100)
+	return 1
+
+
+## 推进起点预览：v36 口径=停靠关（胜利后 +1 推进，失败重试同关）
 func _push_start_hint() -> int:
-	if _afk_manager == null:
-		return 1
-	var lvl: int = _afk_manager.push_level
-	var max_unlocked: int = 100
-	var lp := get_node_or_null("/root/LevelProgressManager")
-	if lp != null and lp.has_method("get_max_unlocked_level"):
-		max_unlocked = maxi(1, int(lp.get_max_unlocked_level()))
-	if _afk_manager.push_start_override > 0:
-		lvl = _afk_manager.push_start_override
-	else:
-		lvl = maxi(lvl, max_unlocked)
-	return clampi(lvl, 1, max_unlocked)
+	return _parked_hint()
