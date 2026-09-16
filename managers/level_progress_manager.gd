@@ -21,6 +21,17 @@ var first_completion: Dictionary = {}
 ## 当前解锁到的最大关卡
 var max_unlocked_level: int = 1
 
+## v34 渐进解锁仪式待播队列（仅运行期，不入存档）：跨级解锁发生在战斗结算中时，
+## 玩家不在基地收不到即时仪式——由 truck_base._ready / main 返回整备时调
+## consume_pending_feature_unlocks 取走并批量弹 FeatureUnlockPopup。
+var _pending_feature_unlocks: Array = []
+
+## 取走并清空待播解锁仪式（返回 [{key,level,title,desc}]，空数组=无待播）
+func consume_pending_feature_unlocks() -> Array:
+	var out := _pending_feature_unlocks.duplicate()
+	_pending_feature_unlocks.clear()
+	return out
+
 ## 已解锁的时代（era -> bool）
 var unlocked_eras: Dictionary = {
 	1: true  # 默认解锁一战时代
@@ -89,9 +100,23 @@ func _unlock_next_level(completed_level: int) -> void:
 		return  # 已是最后一关
 
 	if next_level not in unlocked_levels:
+		var prev_max := max_unlocked_level
 		unlocked_levels.append(next_level)
 		max_unlocked_level = max(max_unlocked_level, next_level)
 		level_unlocked.emit(next_level)
+		# v34 渐进解锁：跨过节奏表阈值 → 广播系统解锁（基地热区开张高亮/底栏刷新/
+		# 教程步重挂）。prev_max 守卫确保只在"首次跨过该阈值"时发（重打旧关不重弹）。
+		# 战斗结算中玩家不在基地 → 同时入待播队列，回基地/返回整备时由场景补播仪式。
+		if GameConfig.get_default().feature_gates_enabled and prev_max < next_level:
+			for key in FeatureUnlockSchedule.keys_unlocked_at(next_level):
+				var info: Dictionary = FeatureUnlockSchedule.SCHEDULE[key]
+				_pending_feature_unlocks.append({
+					"key": key,
+					"level": next_level,
+					"title": String(info["title"]),
+					"desc": String(info["desc"]),
+				})
+				SignalBus.feature_unlocked.emit(key)
 		if DEBUG_LOG:
 			pass
 			# [LOG-v5.1] print("[LevelProgress] 解锁关卡: %d" % next_level)
@@ -147,6 +172,29 @@ func get_unlocked_levels() -> Array:
 ## 获取最大解锁关卡
 func get_max_unlocked_level() -> int:
 	return max_unlocked_level
+
+# ── v34 渐进解锁门控（真身查询；节奏表 = data/feature_unlock_schedule.gd）──
+## 系统入口是否已解锁。判定链（短路顺序）：
+## 总开关关 = 全开 → 不在节奏表 = 常开不设防 → 教程已完成 = 全开（老档兜底）→ 关卡阈值。
+## 消费方：truck_base 热区/时代chips、bottom_function_bar、main._open_overlay 守卫。
+func is_feature_unlocked(key: String) -> bool:
+	if not GameConfig.get_default().feature_gates_enabled:
+		return true
+	if not FeatureUnlockSchedule.has_key(key):
+		return true
+	var tm := get_node_or_null("/root/TutorialProgressionManager")
+	if tm != null and tm.has_method("is_tutorial_completed") and tm.is_tutorial_completed():
+		return true
+	return max_unlocked_level >= FeatureUnlockSchedule.unlock_level_for(key)
+
+## 未解锁入口的点击提示文案（"通关第 N 关解锁：XX"）
+func feature_gate_hint(key: String) -> String:
+	if not FeatureUnlockSchedule.has_key(key):
+		return ""
+	return "通关第 %d 关解锁：%s" % [
+		FeatureUnlockSchedule.unlock_level_for(key),
+		String(FeatureUnlockSchedule.SCHEDULE[key]["title"]),
+	]
 
 ## 获取时代进度
 func get_era_progress(era: int) -> Dictionary:
@@ -257,6 +305,8 @@ func reset_progress() -> void:
 	level_stars.clear()
 	first_completion.clear()
 	unlocked_eras = {1: true}
+	# v34：清待播解锁仪式队列——防同会话内"旧档跨级→回标题开新档"时旧仪式弹进新游戏
+	_pending_feature_unlocks.clear()
 	if DEBUG_LOG:
 		pass
 		# [LOG-v5.1] print("[LevelProgress] 进度已重置")

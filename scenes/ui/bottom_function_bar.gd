@@ -19,6 +19,8 @@ signal btn_achievement_pressed
 signal btn_help_pressed
 signal btn_store_pressed
 signal btn_progression_pressed
+signal btn_modification_pressed
+signal btn_evolution_pressed
 signal btn_leaderboard_pressed
 signal btn_info_pressed
 signal btn_map_pressed
@@ -50,6 +52,8 @@ const DEBUG_HIDE_BOTTOM_BAR_TEXT := false
 const BTN_ICON_BY_KEY: Dictionary = {
 	"backpack": "icon_backpack",
 	"progression": "icon_upgrade",
+	"modification": "icon_modification",
+	"evolution": "icon_blueprint",
 	"faction": "icon_blueprint",
 	"quest": "icon_quest",
 	"store": "icon_shop",
@@ -70,14 +74,17 @@ const BATTLE_BTN_ICON_BY_KEY: Dictionary = {
 }
 
 # 按钮配置：[key, 显示文字, 信号名]
-# v25.3 系统收敛（14→6）：战斗场景只保留战斗即时需要的功能——卡仓（换装）/整备（战前查养成）/
-# 地图（选关主链路）/设置/存档/挂机。其余 8 个纯养成查册面板（势力/任务/商店/排行/情报/
-# 图鉴/成就/帮助）只留基地入口（bunker EMBEDDED_PANELS 全有同款），战斗屏不再为 15 个系统
-# 打广告。main.gd 的面板 handler/overlay 机制保留不动（整备舱转发 modification/evolution
+# v25.3 系统收敛（14→6）：战斗场景只保留战斗即时需要的功能。其余纯养成查册面板
+#（势力/任务/商店/排行/情报/图鉴/成就/帮助）只留基地入口（bunker EMBEDDED_PANELS 全有
+# 同款）。main.gd 的面板 handler/overlay 机制保留不动（整备舱转发 modification/evolution
 # 仍依赖），仅移除按钮与热键两个入口。
+# v32.3 E1：8 键重排——成长（原「整备」）提为首位+amber 加权；改造/制造从成长面板
+# 详情底部的二级跳转提为一级按钮（实机验收：入口太深）
 const BTN_CONFIGS: Array = [
+	["progression",  "成长",   "btn_progression_pressed"],
 	["backpack",     "卡仓",   "btn_backpack_pressed"],
-	["progression",  "整备",   "btn_progression_pressed"],
+	["modification", "改造",   "btn_modification_pressed"],
+	["evolution",    "制造",   "btn_evolution_pressed"],
 	["map",          "地图",   "btn_map_pressed"],
 	["settings",     "设置",   "btn_settings_pressed"],
 	["save",         "存档",   "btn_save_pressed"],
@@ -86,8 +93,10 @@ const BTN_CONFIGS: Array = [
 
 # 批次三 B8：左排面板按钮 tooltip 文案（含快捷键宣传；键位以 main.gd _input 为准）
 const SHORTCUT_TOOLTIPS: Dictionary = {
+	"progression":  "成长：卡牌等级 / 技能树 / 战力总览（快捷键 7）",
 	"backpack":     "卡仓：查看拥有的卡牌与实例（快捷键 1 / B）",
-	"progression":  "整备舱：等级 / 改造 / 制造 / 技能树（快捷键 7）",
+	"modification": "改造：给战斗卡安装/升级改造模块（消耗图纸+纳米）",
+	"evolution":    "制造：用情报与资源生产新卡牌",
 	"map":          "世界地图：选择关卡推进（快捷键 M）",
 	"settings":     "设置（快捷键 9）",
 	"save":         "手动存档",
@@ -112,6 +121,10 @@ func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	_build_left_buttons()
 	_build_right_buttons()
+	# v34 渐进解锁：改造(L3)/制造(L5)/挂机(L5) 按节奏表灰显；跨级解锁信号实时刷新
+	_refresh_feature_gates()
+	if not SignalBus.feature_unlocked.is_connected(_on_feature_unlocked):
+		SignalBus.feature_unlocked.connect(_on_feature_unlocked)
 	# v7.x: 战斗控制按钮已迁移到 TopBattleControls，隐藏底部 RightSection + Divider
 	# 仍保留 _build_right_buttons 创建按钮到 _btn_map（set_pause_text 回退路径依赖）
 	if right_section:
@@ -212,6 +225,11 @@ func _build_left_buttons() -> void:
 			btn.text = ""
 		_apply_bar_icon(btn, BTN_ICON_BY_KEY.get(key, ""))
 		btn.add_theme_constant_override("icon_max_width", 30)
+		# v32.3 E1：成长按钮视觉加权（amber 主张——养成主链路不与工具键同权）
+		if key == "progression":
+			var gold := PanelStyles.make_button_styles(DT.COLOR_AMBER)
+			btn.add_theme_stylebox_override("normal", gold["normal"])
+			btn.add_theme_color_override("font_color", Color(0.99, 0.86, 0.60))
 		if key == "save":
 			btn.pressed.connect(func():
 				_set_active_btn("")
@@ -356,6 +374,12 @@ func _style_battle_button(btn: Button, font_color: Color, bg_color: Color) -> vo
 
 ## 功能按钮点击：高亮状态 + 发出信号
 func _on_func_btn_pressed(key: String, signal_name: String) -> void:
+	# v34 渐进解锁：锁定键点击 → toast 提示解锁关，不发开面板信号
+	if _btn_map.has(key) and _btn_map[key].has_meta("gate_locked") \
+			and bool(_btn_map[key].get_meta("gate_locked")):
+		_play_sfx("error")
+		SignalBus.show_toast.emit("🔒 %s" % _gate_hint(key))
+		return
 	_play_sfx("button")
 	# 切换高亮：再次点击已高亮的按钮则取消高亮（面板关闭由外部处理）
 	if _active_btn_key == key:
@@ -367,20 +391,55 @@ func _on_func_btn_pressed(key: String, signal_name: String) -> void:
 	if _drawer_open:
 		set_drawer_open(false)
 
+# ── v34 渐进解锁：底栏门控（key 与 data/feature_unlock_schedule.gd 对齐）──
+const GATED_KEYS: Array = ["modification", "evolution", "afk"]
+
+func _gate_hint(key: String) -> String:
+	var lpm := get_node_or_null("/root/LevelProgressManager")
+	if lpm != null and lpm.has_method("feature_gate_hint"):
+		return String(lpm.feature_gate_hint(key))
+	return ""
+
+func _refresh_feature_gates() -> void:
+	var lpm := get_node_or_null("/root/LevelProgressManager")
+	for key in GATED_KEYS:
+		if not _btn_map.has(key):
+			continue
+		var btn: Button = _btn_map[key]
+		var unlocked := true
+		if lpm != null and lpm.has_method("is_feature_unlocked"):
+			unlocked = bool(lpm.is_feature_unlocked(key))
+		if unlocked:
+			btn.modulate = Color.WHITE
+			btn.set_meta("gate_locked", false)
+			var tip: String = String(SHORTCUT_TOOLTIPS.get(key, ""))
+			btn.tooltip_text = tip if not tip.is_empty() else String(btn.text)
+		else:
+			btn.modulate = Color(0.55, 0.55, 0.55, 0.8)
+			btn.set_meta("gate_locked", true)
+			btn.tooltip_text = "🔒 %s" % _gate_hint(key)
+
+func _on_feature_unlocked(_key: String) -> void:
+	_refresh_feature_gates()
+
 ## 设置高亮按钮（传入 "" 清除所有高亮）
 func _set_active_btn(key: String) -> void:
 	_active_btn_key = key
 	# C6: 手写高亮/默认样式 → PanelStyles 工厂（active 复用 pressed 态视觉）
+	# v32.3 E1：成长按钮用 amber 档（高亮/恢复都保持与其它键的视觉区分）
 	var styles := PanelStyles.make_button_styles(DT.COLOR_ACCENT_CYAN)
+	var gold := PanelStyles.make_button_styles(DT.COLOR_AMBER)
 	for k in _btn_map:
 		var btn: Button = _btn_map[k]
+		var st: Dictionary = gold if k == "progression" else styles
+		var base_color: Color = Color(0.99, 0.86, 0.60) if k == "progression" else Color(0.75, 0.85, 1.0, 0.9)
 		if k == key:
-			btn.add_theme_stylebox_override("normal", styles["pressed"])
-			btn.add_theme_color_override("font_color", DT.COLOR_ACCENT_CYAN)
+			btn.add_theme_stylebox_override("normal", st["pressed"])
+			btn.add_theme_color_override("font_color", base_color)
 		elif k not in ["start_battle", "back", "pause", "retreat", "save"]:
 			# 恢复默认样式
-			btn.add_theme_stylebox_override("normal", styles["normal"])
-			btn.add_theme_color_override("font_color", Color(0.75, 0.85, 1.0, 0.9))
+			btn.add_theme_stylebox_override("normal", st["normal"])
+			btn.add_theme_color_override("font_color", base_color)
 
 ## 外部通知：某个面板已关闭，清除对应高亮
 func notify_panel_closed(key: String) -> void:

@@ -69,6 +69,17 @@ const CHANGED_SCRIPTS: Array[String] = [
 	"res://scenes/world_map.gd",
 	# v26.16 UI 视觉批次（2026-09-03）：制造面板缩略列表 / 改造对比 / 详情收口 / hover token
 	"res://managers/evolution/evolution_helpers.gd",
+	# v32.3 实机验收反馈批（2026-09-15）：进关开战流 / 教学前移 / 手感 / 图鉴改版
+	"res://scenes/bunker/truck_base.gd",
+	"res://scripts/systems/main_battle_setup.gd",
+	"res://scripts/ui/sortie_interstitial.gd",
+	"res://scripts/battle/battle_time_state.gd",
+	"res://scenes/ui/auto_deploy_controller.gd",
+	"res://scenes/ui/afk_panel.gd",
+	"res://managers/tutorial_progression_manager.gd",
+	"res://scenes/ui/collection_panel.gd",
+	# v32.5 固定基地删除批：要塞房间表重构归属为移动基地设施数据
+	"res://data/mobile_base_facilities.gd",
 ]
 
 var _fails: Array[String] = []

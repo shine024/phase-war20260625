@@ -24,6 +24,9 @@ static var user_scale: float = 1.0
 static var ff_active: bool = false
 static var _pref_loaded: bool = false
 
+## v32.3 A3：自动部署默认开（"战术构筑放置"定位——自动上阵是特性，手动部署留熟练玩家）
+const AUTO_DEPLOY_DEFAULT := true
+
 
 ## 就近吸附到合法档位（防旧档/手改值越档）
 static func snap_scale(v: float) -> float:
@@ -51,6 +54,7 @@ static func load_pref() -> float:
 static func save_pref() -> void:
 	_pref_loaded = true
 	var cf := ConfigFile.new()
+	cf.load(PREF_PATH)  # v32.3 A3：读-改-写（本文件新增 [deploy] 段——勿整文件覆写，v31 settings.cfg 同款教训）
 	cf.set_value("speed", "user_scale", user_scale)
 	cf.save(PREF_PATH)
 
@@ -58,6 +62,22 @@ static func save_pref() -> void:
 ## 测试隔离用：清惰性读档标记（不删文件）
 static func reset_pref_cache() -> void:
 	_pref_loaded = false
+
+
+## v32.3 A3：自动部署偏好（与倍速同文件不同键；读写双方都走本类，
+## 避免出现第三个 ConfigFile 写手）
+static func load_auto_deploy_pref() -> bool:
+	var cf := ConfigFile.new()
+	if cf.load(PREF_PATH) == OK:
+		return bool(cf.get_value("deploy", "auto_deploy", AUTO_DEPLOY_DEFAULT))
+	return AUTO_DEPLOY_DEFAULT
+
+
+static func save_auto_deploy_pref(enabled: bool) -> void:
+	var cf := ConfigFile.new()
+	cf.load(PREF_PATH)  # 读-改-写：不抹掉同文件的 speed 段
+	cf.set_value("deploy", "auto_deploy", enabled)
+	cf.save(PREF_PATH)
 
 
 ## 进入极速推演：8x 时间流 + 物理步进产能加倍（默认 8 步/帧 → 16，保 8x 下

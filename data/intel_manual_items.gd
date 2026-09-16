@@ -102,7 +102,12 @@ static func get_rarity_name(rarity: String) -> String:
 ##             非空时用它决定的稀有度梯度覆盖 rank 的稀有度权重，实现"不同战力敌人掉不同改造"。
 ## bias_unit_types: v6.14 可选，占领势力偏好的改造类型（ModificationRegistry unit_type 字符串数组）。
 ##                  非空时：70% 概率从 bias 类型池抽（势力占领偏好），30% 走原 enemy_type 池（保留多样性）。
-static func roll_random_mod_blueprint(enemy_type: String, rank: String, power_tier: int = -1, bias_unit_types: Array = []) -> Dictionary:
+## max_era: v6.14 可选，玩家当前战役时代（0-4）——掉落侧对齐安装侧的 era_band 硬门：
+##          普通件只掉时代带覆盖当前时代的改造（无 band=全带恒过），前期不再掉"当前装不上"
+##          的期货图纸。v6.14.1（用户拍板）：极特殊件（史诗/传说/神话）允许按关卡所处时代
+##          跨一级（下一时代）前瞻掉落——日常件即时可用，期货只以稀有惊喜形态偶发。
+##          负值=不过滤（旧行为）；过滤后空池回退全量（有掉落总比没有强）。
+static func roll_random_mod_blueprint(enemy_type: String, rank: String, power_tier: int = -1, bias_unit_types: Array = [], max_era: int = -1) -> Dictionary:
 	# ModificationRegistry 已在类顶部 const 声明，无需重复声明
 
 	# v6.14: 占领势力 bias —— 若指定 bias_unit_types，70% 概率改用 bias 池
@@ -123,6 +128,23 @@ static func roll_random_mod_blueprint(enemy_type: String, rank: String, power_ti
 		available_mods = ModificationRegistry.get_for_unit_type(_enemy_type_to_unit_type(enemy_type))
 		if available_mods.is_empty():
 			return {}
+
+	# v6.14: 时代带过滤——与 ModificationRegistry.is_mod_era_compatible（安装门）同一判定。
+	# v6.14.1（用户拍板）：普通件限当前时代；极特殊件（epic/legendary/mythic）允许跨一级
+	# （下一时代）前瞻掉落，era_hi 钳到 4（近未来无下一时代=无前瞻）。
+	if max_era >= 0:
+		var era_hi: int = mini(max_era + 1, 4)
+		var era_filtered: Array = []
+		for mod_id in available_mods:
+			var md: Dictionary = ModificationRegistry.get_data(mod_id)
+			if ModificationRegistry.is_mod_era_compatible(md, max_era):
+				era_filtered.append(mod_id)
+			elif era_hi > max_era \
+					and String(md.get("rarity", "common")) in ["epic", "legendary", "mythic"] \
+					and ModificationRegistry.is_mod_era_compatible(md, era_hi):
+				era_filtered.append(mod_id)
+		if not era_filtered.is_empty():
+			available_mods = era_filtered
 
 	# 根据稀有度权重随机选择
 	var weighted_pool = []
@@ -156,6 +178,99 @@ static func roll_random_mod_blueprint(enemy_type: String, rank: String, power_ti
 				"mod_id": entry.mod_id,
 			}
 
+	return {}
+
+## v6.14.2: 缴获语义——从指定敌人实际携带的模块（配装档位切片）中随机掉一张蓝图。
+## 与 roll_random_mod_blueprint 同返回形；kit 内无效 id / 时代带不符（max_era≥0 时）的
+## 条目剔除，剔完为空返回 {}（调用方回退全池 roll）。不做稀有度加权——敌人带什么掉什么。
+static func roll_mod_blueprint_from_kit(kit_mods: Array, max_era: int = -1) -> Dictionary:
+	var candidates: Array = []
+	for mod_id in kit_mods:
+		var mid := String(mod_id)
+		if mid.is_empty():
+			continue
+		var md: Dictionary = ModificationRegistry.get_data(mid)
+		if md.is_empty():
+			continue
+		if max_era >= 0 and not ModificationRegistry.is_mod_era_compatible(md, max_era):
+			continue
+		candidates.append(mid)
+	if candidates.is_empty():
+		return {}
+	var picked: String = candidates[randi() % candidates.size()]
+	var blueprint_id := BlueprintDefinitions.get_mod_blueprint_id(picked)
+	return {
+		"item_type": blueprint_id,
+		"name": get_blueprint_name(blueprint_id),
+		"rarity": get_blueprint_rarity(blueprint_id),
+		"mod_id": picked,
+	}
+
+## 掉落侧时代口径（v6.14.1，用户拍板）：普通件时代带覆盖 max_era 即可；
+## 极特殊件（epic/legendary/mythic）允许跨一级（下一时代，钳 4）前瞻。
+static func _era_ok_for_drop(md: Dictionary, max_era: int) -> bool:
+	if max_era < 0:
+		return true
+	if ModificationRegistry.is_mod_era_compatible(md, max_era):
+		return true
+	var era_hi: int = mini(max_era + 1, 4)
+	return era_hi > max_era \
+		and String(md.get("rarity", "common")) in ["epic", "legendary", "mythic"] \
+		and ModificationRegistry.is_mod_era_compatible(md, era_hi)
+
+## v6.14.4 比例发现腿（用户拍板 75/25 分流的发现侧）：全注册表按稀有度加权 roll——
+## 保证全图鉴 249 件保持战斗可发现（发现 → 进见过集合 → 进随机箱池/定向列表）。
+## 时代口径与 roll_random_mod_blueprint 一致（_era_ok_for_drop）；候选优先 is_seen
+## 回调判否的"未见模块"（发现语义，直接怼缺口），全见过时退化为普通全池补给；
+## rank/power_tier 沿用现有稀有度权重梯度（精英/Boss 更易出高稀有）。
+static func roll_discovery_mod_blueprint(rank: String, power_tier: int, max_era: int, is_seen: Callable = Callable()) -> Dictionary:
+	var pool: Array = []
+	for ut in range(5):
+		for mod_id in ModificationRegistry.get_for_unit_type(ut):
+			var mid := String(mod_id)
+			if pool.has(mid):
+				continue
+			var md: Dictionary = ModificationRegistry.get_data(mid)
+			if md.is_empty() or not _era_ok_for_drop(md, max_era):
+				continue
+			pool.append(mid)
+	if pool.is_empty():
+		return {}
+	var candidates: Array = pool
+	if is_seen.is_valid():
+		var unseen: Array = []
+		for mid in pool:
+			if not bool(is_seen.call(mid)):
+				unseen.append(mid)
+		if not unseen.is_empty():
+			candidates = unseen
+	var weighted: Array = []
+	for mid in candidates:
+		var md: Dictionary = ModificationRegistry.get_data(mid)
+		var rarity := String(md.get("rarity", "common"))
+		var w := _get_rarity_drop_weight(rarity, rank)
+		if power_tier >= 0:
+			w = _apply_power_tier_to_weight(w, rarity, power_tier)
+		if w > 0:
+			weighted.append({"mod_id": mid, "weight": w})
+	var total_weight := 0
+	for e in weighted:
+		total_weight += int(e.weight)
+	if total_weight == 0:
+		return {}
+	var roll := randi() % total_weight
+	var cumulative := 0
+	for e in weighted:
+		cumulative += int(e.weight)
+		if roll < cumulative:
+			var picked := String(e.mod_id)
+			var blueprint_id := BlueprintDefinitions.get_mod_blueprint_id(picked)
+			return {
+				"item_type": blueprint_id,
+				"name": get_blueprint_name(blueprint_id),
+				"rarity": get_blueprint_rarity(blueprint_id),
+				"mod_id": picked,
+			}
 	return {}
 
 ## 随机掉落一个进化蓝图

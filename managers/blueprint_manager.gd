@@ -662,6 +662,41 @@ func preview_upgrade_cost(card: CardResource, mod_index: int) -> Dictionary:
 		crystal = int(MOD_UPGRADE_CRYSTAL_COST.get(to_level, 0)),
 		from_level = to_level - 1, to_level = to_level}
 
+## v32.0 B3-S2: 晶体 sink 管线②——晶体→缺图纸兑换（改造升级"加速"，结构层占位价）
+## 语义：把下一次升级的图纸缺口（need_bp - 库存）按占位价 40 晶体/张补齐入库。
+## TODO(B3数值轮) 校准价格；UI 接线随数值轮一起上。
+const CRYSTAL_PER_BLUEPRINT := 40
+
+func exchange_crystals_for_upgrade_blueprint(card: CardResource, mod_index: int) -> Dictionary:
+	var info := get_mod_upgrade_info(card, mod_index)
+	if not bool(info.get("can_upgrade", false)):
+		return {ok = false, reason = String(info.get("reason", "该改造当前不可升级"))}
+	var cost := preview_upgrade_cost(card, mod_index)
+	var need_bp := int(cost.get("blueprints", 0))
+	if need_bp <= 0:
+		return {ok = false, reason = "该升级无需图纸"}
+	var entry: Variant = card.mods[mod_index] if mod_index >= 0 and mod_index < card.mods.size() else null
+	var mod_id := String(entry.get("id", "")) if entry is Dictionary else ""
+	if mod_id.is_empty():
+		return {ok = false, reason = "旧格式改造条目，暂不支持兑换"}
+	var bp_id := "blueprint_" + mod_id
+	var bag := get_node_or_null("/root/IntelItemBag")
+	if bag == null:
+		return {ok = false, reason = "背包未就绪"}
+	var owned := int(bag.get_count(bp_id)) if bag.has_method("get_count") else 0
+	var missing: int = maxi(0, need_bp - owned)
+	if missing <= 0:
+		return {ok = false, reason = "图纸充足，无需兑换"}
+	var price := missing * CRYSTAL_PER_BLUEPRINT
+	if BasicResourceManager == null or not BasicResourceManager.can_afford("crystal", price):
+		return {ok = false, reason = "晶体不足（需 %d）" % price, missing = missing, price = price}
+	if BasicResourceManager.has_method("spend_resource"):
+		BasicResourceManager.spend_resource("crystal", price)
+	else:
+		BasicResourceManager.add_resource("crystal", -price)
+	bag.add_item(bp_id, missing)
+	return {ok = true, exchanged = missing, crystal_spent = price, blueprint_id = bp_id}
+
 ## 升级已装改造：entry.level += 1，扣同改造图纸 ×(目标等级−1) + 纳米。守卫链照抄 install_modification。
 func upgrade_modification(card: CardResource, mod_index: int) -> Dictionary:
 	var result := {success = false, message = ""}
@@ -841,6 +876,61 @@ func replace_modification(card: CardResource, old_mod_id: String, new_mod_id: St
 		card.mods.insert(old_index, {id = old_mod_id, installed_at = 0})
 		result.message = install_result.message
 
+	return result
+
+## 卸下改造（v6.14.6 用户拍板方案 A：图纸返还）
+## 模块回库存（IntelItemBag +1，可再装到别的卡——图纸=库存货币语义）+ 纳米按实付
+## paid_cost 50% 返还（与 replace_modification 同口径，旧存档条目无 paid_cost 时回退
+## 模块表 cost_install 50%）。出厂赠品（gift=true / paid_cost=0）：纳米 0 返、其图纸
+## 从未消耗过不返还——件随卸下消失。mod_consumable_enabled=false（旧永久解锁行为）
+## 时安装本就不耗图纸，同样不返还。
+func uninstall_modification(card: CardResource, slot: int) -> Dictionary:
+	var result = {success = false, refunded_nano = 0, returned_blueprint = "", message = ""}
+
+	# v9.5: 养成隔离守卫——严禁直接改 DefaultCards 共享模板
+	if card == null or card.instance_id.is_empty():
+		result.message = "卡牌未实例化，无法卸下改造（拒绝操作共享模板）"
+		push_warning("[BlueprintManager] uninstall_modification 拒绝模板: instance_id 为空")
+		return result
+	if slot < 0 or slot >= card.mods.size():
+		result.message = "槽位不存在"
+		return result
+	var mod_entry: Variant = card.mods[slot]
+	var mod_id := ""
+	var paid: int = 0
+	var is_gift := false
+	if mod_entry is Dictionary:
+		mod_id = String(mod_entry.get("id", ""))
+		paid = int(mod_entry.get("paid_cost", 0))
+		is_gift = bool(mod_entry.get("gift", false))
+	if mod_id.is_empty():
+		result.message = "槽位数据异常"
+		return result
+
+	card.mods.remove_at(slot)
+
+	# 纳米返还：实付 50% 向下取整；旧存档无 paid_cost 回退模块表 cost_install 50%；
+	# 出厂赠品（gift）实付 0 = 0 返还。
+	var refund := 0
+	if paid > 0:
+		refund = int(paid * 0.5)
+	elif not is_gift:
+		var old_mod_data = _get_mod_data_from_registry(mod_id)
+		refund = int(old_mod_data.get("cost_install", 0) * 0.5)
+	if refund > 0:
+		BasicResourceManager.add_resource("nano", refund)
+	result.refunded_nano = refund
+
+	# 图纸返还：消耗品化语义下安装沉没 1 张 → 卸下回库存 1 张
+	if not is_gift and GameCfg.get_default().mod_consumable_enabled:
+		var bag = get_node_or_null("/root/IntelItemBag")
+		if bag != null:
+			var blueprint_id := BlueprintDefinitions.get_mod_blueprint_id(mod_id)
+			bag.add_item(blueprint_id, 1)
+			result.returned_blueprint = blueprint_id
+
+	result.success = true
+	result.message = "已卸下：%s" % mod_id
 	return result
 
 # v6.7：死代码 evolve_card 已删除。

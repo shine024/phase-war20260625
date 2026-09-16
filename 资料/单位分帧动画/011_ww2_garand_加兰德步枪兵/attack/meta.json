@@ -1,0 +1,33 @@
+{
+ "unit": "ww2_garand",
+ "unit_name": "加兰德步枪兵",
+ "anim": "attack",
+ "frames": 12,
+ "frame_files": [
+  "f00.png",
+  "f01.png",
+  "f02.png",
+  "f03.png",
+  "f04.png",
+  "f05.png",
+  "f06.png",
+  "f07.png",
+  "f08.png",
+  "f09.png",
+  "f10.png",
+  "f11.png"
+ ],
+ "canvas": 512,
+ "suggested_fps": 10,
+ "foot_frac": 0.92,
+ "union_bbox": [
+  99,
+  33,
+  603,
+  675
+ ],
+ "model": "agnes-video-2.5-flash",
+ "mode": "keyframe",
+ "source_video": "source.mp4",
+ "generated_at": "2026-08-29 23:04:22"
+}

@@ -1,11 +1,9 @@
-[gd_scene load_steps=38 format=3 uid="uid://main"]
+[gd_scene load_steps=36 format=3 uid="uid://main"]
 
 [ext_resource type="Script" uid="uid://c6ojqq5kxkm03" path="res://scenes/main.gd" id="1_script"]
 [ext_resource type="Texture2D" path="res://assets/backgrounds/bg_default.png" id="30_backdrop"]
 [ext_resource type="PackedScene" uid="uid://battlefield" path="res://scenes/battlefield/battlefield.tscn" id="2_battlefield"]
 [ext_resource type="PackedScene" path="res://scenes/ui/unit_info_panel.tscn" id="6_unit_info"]
-[ext_resource type="PackedScene" path="res://scenes/ui/player_spawn_hud.tscn" id="8_player_hud"]
-[ext_resource type="PackedScene" path="res://scenes/ui/enemy_spawn_hud.tscn" id="9_enemy_hud"]
 [ext_resource type="Script" uid="uid://crrqivol5erqy" path="res://scenes/ui/battle_click_overlay.gd" id="10_overlay"]
 [ext_resource type="PackedScene" path="res://scenes/ui/quest_panel.tscn" id="13_quest_panel"]
 [ext_resource type="PackedScene" path="res://scenes/ui/store_panel.tscn" id="17_store_panel"]
@@ -130,8 +128,10 @@ layer = 40
 
 ; ⚠️ 墓碑节点（v26.x 标记）：BattleTopStatusBar 恒 visible=false，但内含 BattleInfoDisplay
 ; 这个"隐形数据引擎"（SignalBus 信号驱动的战斗统计累积器）仍被
-; battle_status_strip.gd 与 mvp_panel.gd 消费——删除前必须先迁移统计累积逻辑，
+; battle_status_strip.gd / mvp_panel.gd / bunker_manager 消费——删除前必须先迁移统计累积逻辑，
 ; 详见 docs/CHANGELOG.md v26.x UI 整编条目。
+; v35: 内含的 PlayerSpawnHUD/EnemySpawnHUD 死节点已删（单位数显示早已由 TopHudBar
+; 接管，两 HUD 在恒隐藏父级下 zero 消费；场景文件同步删除）。
 [node name="BattleTopStatusBar" type="HBoxContainer" parent="HudLayer"]
 layout_mode = 1
 anchors_preset = 10
@@ -143,19 +143,9 @@ offset_bottom = 168.0
 theme_override_constants/separation = 10
 visible = false
 
-[node name="PlayerSpawnHUD" parent="HudLayer/BattleTopStatusBar" instance=ExtResource("8_player_hud")]
-layout_mode = 2
-size_flags_horizontal = 1
-size_flags_vertical = 4
-
 [node name="BattleInfoDisplay" parent="HudLayer/BattleTopStatusBar" instance=ExtResource("32_battle_info_display")]
 layout_mode = 2
 size_flags_horizontal = 3
-
-[node name="EnemySpawnHUD" parent="HudLayer/BattleTopStatusBar" instance=ExtResource("9_enemy_hud")]
-layout_mode = 2
-size_flags_horizontal = 1
-size_flags_vertical = 4
 
 ; v26.x: TopLeftMeta/ResourceInfoPanel 死节点已删除（恒 hidden、零脚本消费方、
 ; 不在 _BACKPACK_CHROME_PATHS）；resource_info_panel.tscn 场景文件保留未动。

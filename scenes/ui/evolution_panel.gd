@@ -472,6 +472,8 @@ func _refresh_recipe_list() -> void:
 		var card: CardResource = DefaultCards.get_card_by_id(String(rid))
 		if card == null:
 			continue
+		# v32.3 E2：0 情报行不再隐藏——改为锁定行"？？？+情报数"（实机验收：玩家要
+		# 看得到目标与差距；解锁后行内显示战力/属性）
 		var tier: int = mgr.get_pool_tier(String(rid))
 		if _filter_mode == FILTER_OK and not bool(mgr.can_manufacture(String(rid)).get("ok", false)):
 			continue
@@ -508,7 +510,26 @@ func _create_recipe_row(card_id: String, card: CardResource) -> Button:
 	info.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	info.add_theme_constant_override("separation", 1)
 	var name_lbl := Label.new()
-	name_lbl.text = card.display_name
+	var meta_lbl := Label.new()
+	# v32.3 E2：行信息按情报状态分流（实机验收："一战 · 直入目录"零信息量；玩家要看
+	# 战力/属性，未解锁显示问号+情报数）
+	var intel_pct := 0
+	var mgr_ref: Node = _mgr()
+	if mgr_ref != null and not mgr_ref.is_direct_pool_card(card_id):
+		intel_pct = int(round(mgr_ref.get_intel_base(card_id) * 100.0))
+	if tier == 0:
+		# 情报未达 25%（含 0）：名字问号遮罩 + 情报数与解锁门槛
+		name_lbl.text = "？？？"
+		meta_lbl.text = "情报 %d%%（25%% 解锁配方）" % intel_pct
+		row.tooltip_text = "情报不足 25%：击败该敌形提升情报，解锁配方与属性查看"
+	else:
+		name_lbl.text = card.display_name
+		meta_lbl.text = "战力 %d · HP %d · 攻 %d/%d/%d" % [
+			int(card.power), int(card.base_hp),
+			int(card.attack_light), int(card.attack_armor), int(card.attack_air)]
+		row.tooltip_text = "战力为白板基准（不含养成）；点击查看配方详情与品质概率"
+		if mgr_ref != null and mgr_ref.is_direct_pool_card(card_id):
+			row.tooltip_text = "直入目录卡：无需情报门，制造即得白板\n" + row.tooltip_text
 	name_lbl.add_theme_font_override("font", DT.get_title_font())
 	name_lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
 	# 旧语义保留：品质池未开放（tier 0）整行降为暗色
@@ -516,8 +537,6 @@ func _create_recipe_row(card_id: String, card: CardResource) -> Button:
 		DT.COLOR_TEXT if selected else (DT.COLOR_TEXT_DIM if tier == 0 else Color(0.85, 0.88, 0.94, 1)))
 	name_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	info.add_child(name_lbl)
-	var meta_lbl := Label.new()
-	meta_lbl.text = "%s · 情报 %d%%" % [_era_name(card.era), int(round(_mgr().get_intel_base(card_id) * 100.0))]
 	meta_lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
 	meta_lbl.add_theme_color_override("font_color", DT.COLOR_SLATE_DIM_A85)
 	meta_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -831,6 +850,22 @@ func _update_mod_box_detail(mgr: Node) -> void:
 	if evolve_button:
 		evolve_button.text = "开一次箱"
 		evolve_button.disabled = not bool(mgr.can_craft_mod_random().get("ok", false))
+	# v32.0 B3-S2 UI: 晶体垫保底（占位 80/次）——兄弟节点挂 evolve_button 后，防重复构建
+	if evolve_button != null and mgr.has_method("advance_mod_box_pity_with_crystals"):
+		var pity_parent: Node = evolve_button.get_parent()
+		if pity_parent != null and pity_parent.get_node_or_null("PityAdvanceBtn") == null:
+			var pity_btn := Button.new()
+			pity_btn.name = "PityAdvanceBtn"
+			pity_btn.text = "晶体垫保底（%d/次）" % mgr.CRYSTAL_PER_PITY
+			pity_btn.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
+			pity_btn.tooltip_text = "花晶体推进暗保底计数（连续未出传说+ 次数，下次开箱概率提升）" + String.chr(10) + "占位价待数值轮校准；不直接给保底"
+			pity_btn.pressed.connect(func():
+				var r: Dictionary = mgr.advance_mod_box_pity_with_crystals(1)
+				if bool(r.get("ok", false)):
+					SignalBus.show_toast.emit("暗保底推进 +%d（晶体 -%d），当前连续 %d 次" % [int(r.get("advanced", 1)), int(r.get("crystal_spent", 0)), int(r.get("pity", 0))])
+				else:
+					SignalBus.show_toast.emit(String(r.get("reason", "垫付失败"))))
+			pity_parent.add_child(pity_btn)
 
 ## 条件行渲染（seen/zone/pool/resources 四键，复用卡牌制造的条件行样式）
 func _render_mod_conditions(check: Dictionary) -> void:
@@ -908,11 +943,15 @@ func _update_recipe_detail() -> void:
 	if target_name_label:
 		target_name_label.text = "%s（%s）" % [card.display_name, _era_name(card.era)]
 
-	# 情报说明
+	# 情报说明（v6.14：直入卡显示免情报语义，不再展示"情报 0%"）
 	var base_pct := int(round(mgr.get_intel_base(card_id) * 100.0))
 	var pity: int = mgr.get_pity(card_id)
 	if info_details:
-		var desc := "情报 %d%%（击败敌形 / 分析仪烧缴获卡 / 获取缴获卡积累）" % base_pct
+		var desc := ""
+		if mgr.is_direct_pool_card(card_id):
+			desc = "直接入目录（免情报门，白板品质起步）"
+		else:
+			desc = "情报 %d%%（击败敌形 / 分析仪烧缴获卡 / 获取缴获卡积累）" % base_pct
 		if pity > 0:
 			desc += "\n暗保底：连续 %d 次未出稀有+（下次必出概率提升）" % pity
 		info_details.text = desc
@@ -929,7 +968,10 @@ func _update_recipe_detail() -> void:
 			var text := ""
 			match String(cond.get("key", "")):
 				"intel":
-					text = "情报 %s（需 %s）" % [cond.get("current_text", "?"), cond.get("required_text", "?")]
+					if mgr.is_direct_pool_card(card_id):
+						text = "情报门：直接入目录（免情报，白板起步）"
+					else:
+						text = "情报 %s（需 %s）" % [cond.get("current_text", "?"), cond.get("required_text", "?")]
 				"skill_tree_era":
 					text = "技能树制造授权：%s" % cond.get("current_text", "?")
 				"resources":

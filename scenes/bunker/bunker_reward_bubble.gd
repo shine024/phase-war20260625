@@ -59,6 +59,9 @@ func setup(categories: Array, count: int, room_rect: Rect2, tooltip: String) -> 
 
 	_panel = Panel.new()
 	_panel.set_anchors_preset(Control.PRESET_FULL_RECT)
+	# v6.14 修复：Panel 默认 mouse_filter=STOP 且铺满气泡根——GUI 命中测试取最上层 STOP 控件，
+	# 点击全被它吞掉，根节点的 gui_input/mouse_entered 永不触发（气泡自 v23.6 起点不了的本因）
+	_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_panel.add_theme_stylebox_override("panel", _make_style(_accent, 2.0))
 	add_child(_panel)
 

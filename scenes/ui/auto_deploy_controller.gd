@@ -8,11 +8,14 @@ class_name AutoDeployController
 ##   - 绿槽未装卡 → 对应战场位永远空着
 ##   - instance_id 优先（遵守铁律3：同名多实例卡精确匹配各自实例）
 ##   - 能量不足时卡留在队列，间隔后重试，等回能后自动铺
-##   - 仅当前战斗：battle_ended 自动 disable，下场战斗需重新开启
+##   - v32.3 A3：偏好持久化（battle_speed.cfg，默认开）——battle_ended 不再自动关闭，
+##     下场开战自动继续铺；战前也可开启（预武装，battle_started 后自动铺）
 
 const GC = preload("res://resources/game_constants.gd")
 ## v6.14: 废墟禁放格判定（CardGridBattleLayout 激活态；占用检查看不见"禁放"）
 const BattleLayout = preload("res://scripts/card_grid_battle_layout.gd")
+## v32.3 A3：部署偏好持久化真身（battle_speed.cfg 唯一写手，无 class_name 走 preload）
+const BattleTimeState = preload("res://scripts/battle/battle_time_state.gd")
 
 
 # ── 信号 ──
@@ -57,6 +60,11 @@ var _main: Node = null
 
 func setup(main_node: Node) -> void:
 	_main = main_node
+	# v32.3 A3：默认开（读持久化偏好）。调用方需先连 state_changed 再调 setup，
+	# 才能收到初始开启态（底部仪栏按钮据此亮起）
+	_enabled = BattleTimeState.load_auto_deploy_pref()
+	if _enabled:
+		state_changed.emit(true)
 	_connect_signals()
 
 
@@ -64,7 +72,7 @@ func _connect_signals() -> void:
 	var sb: Node = _get_node("/root/SignalBus")
 	if sb == null:
 		return
-	# 战斗结束 → 自动关闭（仅当前战斗生效）
+	# 战斗结束 → 仅清战场状态（v32.3 A3：不再自动关闭——自动部署是持久化偏好）
 	if sb.has_signal("battle_ended") and not sb.battle_ended.is_connected(_on_battle_ended):
 		sb.battle_ended.connect(_on_battle_ended)
 	# 战斗开始 → 若已开启则启动铺满
@@ -77,26 +85,29 @@ func _connect_signals() -> void:
 
 # ── 公开方法 ──
 
-## 启用自动部署。仅在战斗中生效；非战斗态调用会被记录但等战斗开始才铺。
+## 启用自动部署。战斗中立即铺一轮；战前开启=预武装（battle_started 后自动铺）。
+## v32.3 A3：开关落盘为玩家偏好（battle_speed.cfg）。
 func enable() -> void:
 	if _enabled:
 		return
 	_enabled = true
 	_fail_streak = 0
 	_deploy_queue.clear()
+	BattleTimeState.save_auto_deploy_pref(true)
 	state_changed.emit(true)
 	# 若已在战斗中，立即启动一轮铺满
 	if _battle_active:
 		_start_deploy_round()
 
 
-## 关闭自动部署
+## 关闭自动部署（偏好落盘）
 func disable() -> void:
 	if not _enabled:
 		return
 	_enabled = false
 	_deploy_queue.clear()
 	_fail_streak = 0
+	BattleTimeState.save_auto_deploy_pref(false)
 	state_changed.emit(false)
 
 
@@ -119,9 +130,10 @@ func _on_battle_started() -> void:
 
 func _on_battle_ended(_won: bool) -> void:
 	_battle_active = false
-	# 仅当前战斗生效：战斗结束自动关闭
-	if _enabled:
-		disable()
+	# v32.3 A3：不再自动关闭——自动部署是玩家持久化偏好，下场开战自动继续；
+	# 只清战场态防跨战斗残留（偏好为关的玩家本就开着关，不受影响）
+	_deploy_queue.clear()
+	_fail_streak = 0
 
 
 func _on_unit_died(_unit: Node, is_player: bool) -> void:
@@ -140,8 +152,21 @@ func _on_unit_died(_unit: Node, is_player: bool) -> void:
 
 # ── 每帧驱动（由 bottom_instrument_bar._process 转发）──
 
+## v32.3 A3：挂机推图让位——afk_mode_manager 有自带部署管线（_auto_deploy_pending），
+## 挂机运行中本控制器全线静默，避免双管线同帧抢格/重复耗能
+func _afk_owning_deploy() -> bool:
+	if _main == null or not is_instance_valid(_main):
+		return false
+	var am: Variant = _main.get("_afk_manager")
+	if am == null:
+		return false
+	return bool(am.get("is_running"))
+
+
 func process(delta: float) -> void:
 	if not _enabled or not _battle_active:
+		return
+	if _afk_owning_deploy():
 		return
 	if _deploy_queue.is_empty():
 		return
@@ -159,6 +184,10 @@ func process(delta: float) -> void:
 ## 且跳过已有存活单位的卡；不再用 battlefield_slot % size 循环复用同名卡填格
 ## （单卡限 1 后循环复用只会反复失败并刷部署失败 toast）。
 func _start_deploy_round() -> void:
+	# v32.3 A3：挂机运行中让位（死亡补阵同被此门挡住，AFK 自管补阵）
+	if _afk_owning_deploy():
+		_deploy_queue.clear()
+		return
 	# v8.1d: 快速门控——如果BattleSpawnSystem认为已无部署余量，直接清队
 	var bss: Node = _get_node("/root/BattleSpawnSystem")
 	if bss != null and bss.has_method("get_remaining_deployable_count"):

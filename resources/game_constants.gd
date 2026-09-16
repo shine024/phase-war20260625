@@ -28,17 +28,9 @@ const CARD_GRID_ENLISTED_BASE_HEIGHT_CM: float = 1.5
 const CARD_GRID_BATTLEFIELD_DRAW_SCALE_MULTIPLIER: float = 2.35
 
 ## 初始知识值倍率
-const NEW_GAME_STARTER_LAW_SHARD_AMOUNT: int = 50
-const NEW_GAME_STARTER_ACTIVE_LAW_IDS: Array[String] = ["flame_front_bombard", "thunder_chain_discharge"]
-## v6.8 起我方被动战斗加成停用——开局不再送 ALLY 被动法则知识，改为送 2 个 starter 符文
-const NEW_GAME_STARTER_PASSIVE_LAW_IDS: Array[String] = []
+## v35 清理：法则碎片/starter 法则常量已删（法则系统 P2-7 退役后零消费方；
+## starter 发放真身是 NEW_GAME_STARTER_RUNE_IDS，消费点 phase_instrument_manager）
 const NEW_GAME_STARTER_RUNE_IDS: Array[String] = ["attack_01", "defense_01"]
-
-static func get_all_new_game_starter_law_ids() -> Array[String]:
-	var out: Array[String] = []
-	out.append_array(NEW_GAME_STARTER_ACTIVE_LAW_IDS)
-	out.append_array(NEW_GAME_STARTER_PASSIVE_LAW_IDS)
-	return out
 
 
 # 武器类型枚举（基于攻击方式）

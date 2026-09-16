@@ -2,6 +2,7 @@ extends CharacterBody2D
 ## 敌方单位：卡图立绘（Sprite2D）+ 自动向左移动并攻击；已弃用 SpriteFrames 序列帧
 
 const BulletScene = preload("res://scenes/units/bullet.tscn")
+const BattleUnitRecord = preload("res://scripts/battle/battle_unit_record.gd")
 const EnemyArchetypes = preload("res://data/enemy_archetypes.gd")
 const EnemyStatResolver = preload("res://data/enemy_stat_resolver.gd")
 const MuzzleAnchors = preload("res://data/muzzle_anchors.gd")
@@ -94,6 +95,9 @@ var _cached_timing: Dictionary = {}
 var _cached_fire_range: float = -1.0
 var _cached_weapon_type: int = -1
 var _cached_target_ref: Node2D = null
+## v35 perf: 攻速变化巡检节流累积器（原每帧 get("stats")+武器查询，0.5s 一次足够——
+## 攻速改写源 ECM/光环/搭档协同都是秒级节奏）
+var _timing_chk_accum: float = 0.0
 # P0 性能优化：缓存战斗模式判定，避免每帧 has_method + is_card_grid_battle 反射调用链
 var _cached_is_card_grid: bool = true
 var _cached_combat_started: bool = false
@@ -1350,6 +1354,7 @@ func _process_attack_timing(delta: float) -> void:
 	# v10(C4/H1): 攻速类 debuff 统一 delta 通道——ECM/EMP/势力攻速/周期技能攻速惩罚/减速光环。
 	# 与玩家侧同源（ConstructUnitAI.get_attack_delta_scale，秒制时间戳 + 过期顺带清理），
 	# 替换原硬编码 0.75（boss 削弱 30% 此前被硬编码吞成 25%）。
+	var _raw_delta: float = delta  # v35 perf: 攻速巡检用未缩放 delta
 	var _atk_delta_mult: float = ConstructUnitAI.get_attack_delta_scale(self)
 	# v26.13(B2): 先手突袭（本关前 3 秒敌方开火积累 ×1.6，等效攻击间隔 ×0.62）
 	if BattleManager != null and BattleManager.has_method("has_special_rule") \
@@ -1367,14 +1372,19 @@ func _process_attack_timing(delta: float) -> void:
 	var wt: int
 	# v10(M5): 缓存失效条件扩展——目标变化 或 当前武器攻速变化（攻速类效果改写
 	# weapon.attack_speed 后原缓存永不重算）。武器查询是索引级开销，不进反射。
+	# v35 perf: 攻速巡检从每帧降频到 0.5s（原每帧 target.get("stats") 反射 +
+	# get_weapon_for_target；0.5s 窗口内的生效延迟对秒级 debuff 不可感）
 	var _timing_stale: bool = target != _cached_target_ref
 	if not _timing_stale and stats != null and _cached_timing.has("speed"):
-		var _ts_chk = target.get("stats") as UnitStats
-		var _tk_chk: int = _ts_chk.combat_kind if _ts_chk != null else 0
-		var _w_chk: WeaponResource = AttackCalculator.get_weapon_for_target(stats, _tk_chk)
-		if _w_chk != null and _w_chk.enabled \
-				and absf(float(_cached_timing.get("speed", 1.0)) - float(_w_chk.attack_speed)) > 0.0001:
-			_timing_stale = true
+		_timing_chk_accum += _raw_delta
+		if _timing_chk_accum >= 0.5:
+			_timing_chk_accum = 0.0
+			var _ts_chk = target.get("stats") as UnitStats
+			var _tk_chk: int = _ts_chk.combat_kind if _ts_chk != null else 0
+			var _w_chk: WeaponResource = AttackCalculator.get_weapon_for_target(stats, _tk_chk)
+			if _w_chk != null and _w_chk.enabled \
+					and absf(float(_cached_timing.get("speed", 1.0)) - float(_w_chk.attack_speed)) > 0.0001:
+				_timing_stale = true
 	if _timing_stale:
 		_cached_target_ref = target
 		if stats != null:
@@ -1614,6 +1624,8 @@ func _update_card_grid_buff_strip(force: bool = false) -> void:
 	UnitSharedHelpers.update_card_grid_buff_strip(self, force, false, "Sprite2D")  # 敌方无 preview 虚影，守卫恒 false
 
 func take_damage(amount: float, attacker: Variant = null) -> void:
+	# v32.0 B1-3: 每单位战斗记录挂账（输出/承伤）
+	BattleUnitRecord.record_damage(attacker, self, amount)
 	# v26.13(B2): boss 半血狂暴——首次跌破 50% 置旗标（攻速通道在 _process_attack_timing）
 	if not has_meta("_enrage_active") and has_meta("_is_boss_unit") and stats != null \
 			and float(stats.max_hp) > 0.0 and hp <= float(stats.max_hp) * 0.5:

@@ -34,6 +34,33 @@ static func show_now(title: String, description: String) -> void:
 	popup._setup("", title, description)
 	tree.root.add_child(popup)
 
+## v34 渐进解锁：跨级解锁仪式（同一关解锁多项时合并为一个弹窗，防连弹多层 Modal）。
+## infos: [{key,title,desc}]；按 "gate:"+key 逐项去重（与 PANEL_INTROS 的裸 key 命名空间隔离）。
+## 仪式语义与 show_once 一致——每项只弹一次（user:// 持久化）。
+static func show_unlock_batch(infos: Array) -> void:
+	var fresh: Array = []
+	for info in infos:
+		var dedupe_key := "gate:" + String(info.get("key", ""))
+		if dedupe_key == "gate:" or _already_seen(dedupe_key):
+			continue
+		_mark_seen(dedupe_key)
+		fresh.append(info)
+	if fresh.is_empty():
+		return
+	var tree := Engine.get_main_loop() as SceneTree
+	if tree == null or tree.root == null:
+		return
+	var popup := FeatureUnlockPopup.new()
+	if fresh.size() == 1:
+		popup._setup(String(fresh[0].get("key", "")),
+			String(fresh[0].get("title", "")), String(fresh[0].get("desc", "")))
+	else:
+		var lines := ""
+		for info in fresh:
+			lines += "· %s——%s\n" % [String(info.get("title", "")), String(info.get("desc", ""))]
+		popup._setup("", "通关奖励 · 新系统解锁 ×%d" % fresh.size(), lines.strip_edges(false))
+	tree.root.add_child(popup)
+
 static func _already_seen(feature_key: String) -> bool:
 	_load_cache()
 	return _seen_cache.has(feature_key)

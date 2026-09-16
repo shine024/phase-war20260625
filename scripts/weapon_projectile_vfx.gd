@@ -174,9 +174,12 @@ const IMPACT_TARGET_W_BY_WT: Dictionary = {
 	5: 72.0,    # SHOTGUN — 散射命中
 	8: 96.0,    # LASER（兜底）
 	# v18-R4: 爆炸族目标宽 112→96（见表内注释）
-	1: 96.0,    # INDIRECT — 炮级
-	2: 96.0,    # AERIAL
-	3: 96.0,    # ROCKET — v18-R4: 112→96（同爆炸族）
+	# v6.14: 96→112 恢复炮级量级断层——实测反馈"直射与曲射爆炸雷同"：多轮压缩
+	# （112→96/环时长×0.7）后曲射落点与直射坦克炮命中（52px 环）只差 ~2×。
+	# 112=1.75×单位原值（×1.3 HEAVY 后 146px，规格"火炮级 1-2×单位"上限内）。
+	1: 112.0,   # INDIRECT — 炮级
+	2: 112.0,   # AERIAL
+	3: 112.0,   # ROCKET — v18-R4: 112→96（同爆炸族）；v6.14 随族回 112
 	# v18-R4: 爆炸族(1/2/3/7/9) 112→96px——规格"火炮级爆炸直径≈单位高度1-2倍"，
 	# 96px=1.5×单位取中值；112 叠 HEAVY×1.3 后 146px 仍在 2×上限内。
 	7: 96.0,    # FLAK
@@ -718,26 +721,18 @@ static func proj_quad_size(weapon_type: int) -> Vector2:
 	# quad_h = proj_scale * REF_TEX_PX * (tex_height / REF_TEX_PX)
 	#        = proj_scale * tex_height
 	# 我们已知各武器对应的贴图高度，直接硬编码计算：
+	# v35 收缩：唯一消费方是曲射 batch（simple_indirect_projectile_batch，路由
+	# wt∈{1,2,3,7,9}），死档 0/4、5、6、8、10、11 已删——旧表挂着 PISTOL 567x131、
+	# legacy MG 1349x110 等从未被本函数消费的尺寸（与 PROJ_TEX 档位混杂，误导调参）。
+	# 将来给直射弹体建 MultiMesh 层时按当时贴图另立新表，勿复活本表死档。
 	var s := proj_scale(weapon_type)
 	match weapon_type:
-		0, 4:     # DIRECT/SMG/PISTOL — tex 673x121 / 567x131
-			return Vector2(s * 673, s * 121)
 		1:        # INDIRECT/artillery — tex 1122x184
 			return Vector2(s * 1122, s * 184)
 		2, 9:     # AERIAL/MISSILE — tex 1127x251
 			return Vector2(s * 1127, s * 251)
 		3, 7:     # ROCKET/FLAK — tex 1202x203
 			return Vector2(s * 1202, s * 203)
-		5:        # SHOTGUN — tex 737x472
-			return Vector2(s * 737, s * 472)
-		6:        # SNIPER — tex 629x80
-			return Vector2(s * 629, s * 80)
-		8:        # LASER — tex 365x77
-			return Vector2(s * 365, s * 77)
-		10:       # OMEGA — tex 1071x191
-			return Vector2(s * 1071, s * 191)
-		11:       # RAIL — tex 974x208
-			return Vector2(s * 974, s * 208)
 		_:
 			return Vector2(s * 512, s * 128)
 
@@ -929,11 +924,13 @@ static func compute_power_tier(weapon_type: int, explosion_radius: float, damage
 ## 按 power_tier 返回帧动画 target_width（px）。0=无帧动画。
 ## v18-R4: HEAVY 160→128——规格"火炮级爆炸直径 1-2×单位(64-128px)"，160 已达 2.5×；
 ## v12 报告同向建议"主爆炸尺寸缩小 60%"。MEDIUM 96 保持（1.5×单位中值）。
+## v6.14: MEDIUM 96→112 / HEAVY 128→144——实测反馈"直射与曲射爆炸大小雷同"，
+## 恢复量级断层（直射重炮无火球帧，曲射是唯一尺寸签名；144=2.25×单位，仍在炮级上限内）。
 static func frame_width_for_tier(tier: int) -> float:
 	match tier:
 		0:  return 0.0     # LIGHT 无帧动画
-		1:  return 96.0    # MEDIUM 标准
-		2:  return 128.0   # HEAVY 放大（2×单位上限）
+		1:  return 112.0   # MEDIUM 标准（1.75×单位）
+		2:  return 144.0   # HEAVY 放大（2.25×单位）
 		3:  return 0.0     # NUCLEAR 走 spawn_nuclear_explosion，不播普通帧动画
-		_: return 96.0
+		_: return 112.0
 

@@ -33,6 +33,10 @@ class_name GameConfig
 ## v28 质感轮 T3: 战场地面 dressing 总开关——true=弹坑/碎石/履带印/枯草撒点（纯视觉）；
 ## false=不撒（回退干净地板）。消费点 scripts/battle/ground_dressing.gd
 @export var ground_dressing_enabled: bool = true
+## v34 渐进解锁门控总开关——true=系统入口按 data/feature_unlock_schedule.gd 节奏表
+## 随通关解锁（开局只留核心入口）；false=全量敞开（v34 前行为，一键回退）。
+## 消费点 level_progress_manager.is_feature_unlocked 及其三个入口层消费方
+@export var feature_gates_enabled: bool = true
 
 ## 经济配置（v29 R2a 离线收益再平衡，设计审查 F-05）
 @export_group("经济配置")
@@ -100,6 +104,7 @@ func reset_to_defaults() -> void:
 	xeno_vfx_enabled = true
 	color_grade_enabled = true
 	ground_dressing_enabled = true
+	feature_gates_enabled = true
 	# v29 R2a: 离线收益三参数（经济批，设计审查 F-05）
 	offline_idle_efficiency = 0.5
 	offline_idle_decay_enabled = true

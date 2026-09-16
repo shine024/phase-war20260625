@@ -30,10 +30,17 @@ var _masters: Array = []       # [{id,name,title,faction,level}]
 var _selected_id := ""
 
 func _ready() -> void:
-	set_anchors_preset(Control.PRESET_FULL_RECT)
+	# v6.14 面板尺寸收窄：1180×720 时列表/详情下方大片空带（"面板和内容不匹配"反馈）——
+	# 按内容实需 1180×560，CenterContainer 居中展示
+	custom_minimum_size = Vector2(1180, 560)
+	# v6.14 健壮性：/root/BunkerManager 为懒加载延迟入树，_ready 时可能尚未挂载——
+	# refresh 内部走 Loader 兜底，且帧末补一次刷新兜住时序
+	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	_load_masters()
 	_build()
+	refresh()
+	call_deferred("refresh")
 
 func _load_masters() -> void:
 	_masters.clear()
@@ -51,7 +58,7 @@ func _load_masters() -> void:
 
 func _build() -> void:
 	var center := CenterContainer.new()
-	center.set_anchors_preset(Control.PRESET_FULL_RECT)
+	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(center)
 
 	_root = PanelContainer.new()
@@ -101,7 +108,7 @@ func _build() -> void:
 
 	_grid_scroll = ScrollContainer.new()
 	_grid_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_grid_scroll.custom_minimum_size = Vector2(430, 0)
+	_grid_scroll.custom_minimum_size = Vector2(470, 0)
 	body.add_child(_grid_scroll)
 	_grid = GridContainer.new()
 	_grid.columns = 4
@@ -136,13 +143,21 @@ func _build() -> void:
 	_detail_deed.add_theme_font_size_override("normal_font_size", DT.FONT_SIZE_BODY)
 	_detail_deed.add_theme_color_override("default_color", DT.COLOR_TEXT_DIM)
 	dv.add_child(_detail_deed)
+	# v6.14：纵向弹性垫片——遗言锚在详情区底部，消除"下半屏空带"
+	var dv_spacer := Control.new()
+	dv_spacer.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	dv.add_child(dv_spacer)
 	_detail_words = RichTextLabel.new()
 	_detail_words.bbcode_enabled = false
 	_detail_words.fit_content = true
-	_detail_words.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_detail_words.add_theme_font_size_override("normal_font_size", DT.FONT_SIZE_LARGE - 2)
 	_detail_words.add_theme_color_override("default_color", Color(0.85, 0.78, 0.6))
 	dv.add_child(_detail_words)
+	# v6.14：空态文案（未选中时详情区不再整块空白）
+	_detail_title.text = "档案室"
+	_detail_meta.text = "从左侧选择一位已收录的同伴，查阅生前事迹与遗言。"
+	_detail_deed.text = ""
+	_detail_words.text = ""
 
 	refresh()
 
@@ -150,6 +165,9 @@ func _build() -> void:
 ## 直接查 /root/BunkerManager
 func refresh() -> void:
 	var mgr: Node = get_node_or_null("/root/BunkerManager")
+	if mgr == null:
+		# v6.14 健壮性：懒加载管理器延迟入树时 /root 路径暂时取不到——经 Loader 拿实例
+		mgr = ManagerLazyLoader.get_manager("bunker")
 	var unlocked: Dictionary = {}
 	if mgr:
 		for mid in mgr.get_hero_fragments():
@@ -162,7 +180,7 @@ func refresh() -> void:
 
 func _make_entry_button(m: Dictionary, unlocked: bool) -> Button:
 	var btn := Button.new()
-	btn.custom_minimum_size = Vector2(100, 44)
+	btn.custom_minimum_size = Vector2(108, 56)
 	btn.toggle_mode = true
 	if unlocked:
 		btn.text = m["name"]
@@ -188,6 +206,8 @@ func _select(master_id: String) -> void:
 	if m.is_empty():
 		return
 	var mgr: Node = get_node_or_null("/root/BunkerManager")
+	if mgr == null:
+		mgr = ManagerLazyLoader.get_manager("bunker")
 	if mgr and not mgr.has_hero_fragment(master_id):
 		return
 	var texts: Dictionary = HeroArchiveTexts.get_texts(master_id, m["faction"])

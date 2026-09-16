@@ -1,9 +1,13 @@
 extends SceneTree
-## v26 敌方固定配装表生成器（初稿）——产出 data/enemy_fixed_loadouts.gd 的 LOADOUTS 区块
+## v26 敌方固定配装表生成器——产出 data/enemy_fixed_loadouts.gd 的 LOADOUTS 区块
 ##
-## 流程：枚举全部敌方原型（5 时代）→ 解析源卡 id（剥 foe_ 前缀）→ 按数值画像选套路模板
-## → 从该卡时代兼容+兵种适用的改造池中按模板偏好键打分选 9 条（conflict_group 去重、
-## 白名单键校验）→ 排序（训练条前移）→ 写回数据文件生成区标记之间。
+## 流程：枚举全部敌方原型（5 时代 + 星冥带）→ 解析源卡 id（剥 foe_ 前缀）→ 按数值画像
+## 选套路模板 → 模板打分选 9 条（conflict_group 去重、白名单键校验）→ 【v6.14.3 标准三
+## 件套】两遍扫描：第一遍产出全部模板 9 条并统计"已被引用集"；第二遍按（兵种 unit_type ×
+## 时代）从未被引用的合格件中选 3 条标准件，置于每卡序列头部，剩余 6 条从原模板 9 条中
+## 保留（主题训练条优先、避开三件套冲突组）——每张敌方卡都有"三个标准的改造设定"，且
+## 缴获语义掉落（roll_mod_blueprint_from_kit）自此可覆盖长期不被模板命中的模块。
+## 排序（训练条前移）→ 写回数据文件生成区标记之间。
 ## 生成后需人工核对 identity（boss/精英卡建议全部手写覆写）。
 ##
 ## Usage: godot --headless --path . --script tools/gen_enemy_loadout_draft.gd
@@ -15,6 +19,19 @@ const Loadouts = preload("res://data/enemy_fixed_loadouts.gd")
 const OUT_PATH := "res://data/enemy_fixed_loadouts.gd"
 const MARK_START := "# 【GEN:LOADOUTS:START】"
 const MARK_END := "# 【GEN:LOADOUTS:END】"
+
+## 每卡标准件数量（v6.14.3）：序列头三槽为（兵种×时代）标准三件套
+const TRIO_SIZE := 3
+
+## 兵种家族前缀（v6.14.3）——标准件优先取本兵种家族的模块（"标准改造"语义=该兵种的
+## 制式装备）；enh_ 训练条是泛用数值杆，不作标准件身份（排最低优先）。
+const UT_FAMILIES := {
+	0: ["inf_"],
+	1: ["arm_"],
+	2: ["art_", "aa_", "eng_"],
+	3: ["air_"],
+	4: ["for_"],
+}
 
 ## 套路模板（label=档位展示词，flavor=定位一句话，keys=偏好效果键按权重降序，enh=主题训练条）
 ## flavor 军语克制体（批次② Task 9 收编 2026-09-08）：去「专啃/洗地/拆阵/硬抗/先抢」游戏黑话，
@@ -55,23 +72,44 @@ const TEMPLATES := {
 ## - mod_air_technical_e：MOBILE 九条全移速/闪避/护盾，攻血贡献 0.93（档4 -31%），改 SUPPRESS 补输出件。
 ## 已知不修（结构性小底子，cuts 已顶格）：ww1_sup_mg_nest / ww2_sup_mg42（HP 109/233，
 ## pct/flat 贡献天然上不去，-17~-19% 接受——固定机枪巢不该有精锐坦克级强度）。
+## v6.14.3 三件套轮接受漂移（2026-09-14 审计）：标准三件套（未引用件+排除 set 换装件）
+## 数值贡献天然低于模板偏好件，四档均值 -10~-12%（±15% 容差内，方向=敌人略软，接受）；
+## 单卡负偏 mp18/garand/thompson/marine -17~-24% 同轮接受（ LIGHT 步兵族集中）。
+## 若将来要把 LIGHT 族拉回锚位：优先给这几卡加 cuts/tpl 覆写，勿动 TIER_BONUS 标量
+## （实测标量不进审计指标、却真实抬高战斗内高档敌人，见 enemy_loadout_tiers.gd 头注）。
 const CARD_OVERRIDES := {
 	"fut_arm_mech_e": {"tpl": "TANK"},
 	"mod_air_technical_e": {"tpl": "SUPPRESS"},
 }
 
 func _initialize() -> void:
-	var entries: Array[String] = []
-	var stats := {"total": 0, "by_tpl": {}, "miss_pool": [], "short_pool": []}
+	var stats := {"total": 0, "by_tpl": {}, "miss_pool": [], "short_pool": [], "trio_short": []}
+	# ── 第一遍：逐卡产出模板 9 条记录 ──
+	var records: Array = []
 	# v27: range(6) 纳入 era=5 星冥带（黑门无限模式 xeno_*）——era 5 的改造池
 	# 兼容判定映射到近未来带（改造系统无星冥专属条目，用最高时代带）。
 	for era in range(6):
 		var ids: Array = EnemyArchetypes.get_ids_for_era(era)
 		for aid in ids:
 			var cfg: Dictionary = EnemyArchetypes.get_config(String(aid))
-			var entry := _build_entry(String(aid), cfg, era, stats)
-			if not entry.is_empty():
-				entries.append(entry)
+			var rec: Dictionary = _build_record(String(aid), cfg, era, stats)
+			if not rec.is_empty():
+				records.append(rec)
+	# ── 第二遍：统计已被引用集 → 按（兵种×时代）选标准三件套 ──
+	var referenced: Dictionary = {}
+	for rec in records:
+		for m in (rec["picked"] as Array):
+			referenced[String(m)] = true
+	var trio_cache: Dictionary = {}
+	for rec in records:
+		var key := "%d_%d" % [int(rec["unit_type"]), int(rec["pool_era"])]
+		if not trio_cache.has(key):
+			trio_cache[key] = _build_trio(rec, referenced, stats)
+		rec["trio"] = trio_cache[key]
+	# ── 第三遍：组装（三件套置顶 + 保留 6 条模板件）并写出 ──
+	var entries: Array[String] = []
+	for rec in records:
+		entries.append(_format_record(rec, stats))
 	_emit(entries, stats)
 	quit(0)
 
@@ -103,7 +141,40 @@ func _pick_template(cfg: Dictionary) -> String:
 		return "BREAK"
 	return "SIEGE" if aa >= al else "SUPPRESS"
 
-func _build_entry(aid: String, cfg: Dictionary, era: int, stats: Dictionary) -> String:
+## 模块效果键是否命中敌方白名单（effects 为空回落 level_effects 最高档）
+func _whitelist_hit(md: Dictionary) -> bool:
+	var eff: Dictionary = md.get("effects", {})
+	if eff.is_empty():
+		var le: Dictionary = md.get("level_effects", {})
+		if not le.is_empty():
+			var ks: Array = le.keys()
+			ks.sort()
+			eff = le[int(ks[ks.size() - 1])]
+	if eff.is_empty():
+		return false
+	for k in eff.keys():
+		if Loadouts.LOADOUT_MOD_SUPPORTED_KEYS.has(String(k)):
+			return true
+	return false
+
+## 是否 set 换装件（含 <stat>_set 键）——v6.14.3：set 件直接改写攻击/HP 基线，数值影响
+## 非线性且与宿主底子强耦合（v25 试点语义"更优才生效"），不作"制式标准件"进三件套。
+func _is_set_mod(md: Dictionary) -> bool:
+	var eff: Dictionary = md.get("effects", {})
+	if eff.is_empty():
+		var le: Dictionary = md.get("level_effects", {})
+		if not le.is_empty():
+			var ks: Array = le.keys()
+			ks.sort()
+			eff = le[int(ks[ks.size() - 1])]
+	for k in eff.keys():
+		if String(k).ends_with("_set"):
+			return true
+	return false
+
+## 第一遍：模板打分选 9 条（白名单键命中才入选；conflict_group 去重）。
+## 返回记录字典；模板件选择与 v26 全量一致（确定性哈希差异在第三遍组装段）。
+func _build_record(aid: String, cfg: Dictionary, era: int, stats: Dictionary) -> Dictionary:
 	stats["total"] += 1
 	var tpl_key := _pick_template(cfg)
 	# v27.7 逐卡覆写优先于画像选模板（超差卡降温/补件，见 CARD_OVERRIDES 注释）
@@ -115,7 +186,8 @@ func _build_entry(aid: String, cfg: Dictionary, era: int, stats: Dictionary) -> 
 	# 池口径：按 combat_kind 取兵种模块粗池（get_for_unit_type，绕开玩家卡前缀表——
 	# 敌方 UCT id 带兵种中缀如 ww1_inf_mp18，与玩家前缀 ww1_mp18 不匹配），
 	# 再逐条过时代带硬门。
-	var pool_ids: Array = Registry.get_for_unit_type(int(cfg.get("combat_kind", 0)))
+	var unit_type: int = int(cfg.get("combat_kind", 0))
+	var pool_ids: Array = Registry.get_for_unit_type(unit_type)
 	# v27: era=5（星冥）改造池兼容映射到近未来带（4）——改造注册表无 era5 条目
 	var pool_era: int = 4 if era >= 5 else era
 	var pool: Array = []
@@ -132,6 +204,8 @@ func _build_entry(aid: String, cfg: Dictionary, era: int, stats: Dictionary) -> 
 		var md: Dictionary = Registry.get_data(String(mid))
 		if md.is_empty():
 			continue
+		if not _whitelist_hit(md):
+			continue
 		# effects 为空回落 level_effects 最高档（enhancement 词条全用 level_effects）
 		var eff: Dictionary = md.get("effects", {})
 		if eff.is_empty():
@@ -140,23 +214,15 @@ func _build_entry(aid: String, cfg: Dictionary, era: int, stats: Dictionary) -> 
 				var ks: Array = le.keys()
 				ks.sort()
 				eff = le[int(ks[ks.size() - 1])]
-		if eff.is_empty():
-			continue
 		var score := 0.0
-		var wl_hit := false
 		var pref: Array = tpl["keys"]
 		for k in eff.keys():
-			var ks2 := String(k)
-			if Loadouts.LOADOUT_MOD_SUPPORTED_KEYS.has(ks2):
-				wl_hit = true
-			var idx := pref.find(ks2)
+			var idx := pref.find(String(k))
 			if idx >= 0:
 				score += float(pref.size() - idx)
 		# 主题训练条加权（保证前两槽是训练条）
 		if (tpl["enh"] as Array).has(String(mid)):
 			score += 30.0
-		if not wl_hit:
-			continue
 		scored.append({"id": String(mid), "score": score, "group": String(md.get("conflict_group", ""))})
 	scored.sort_custom(func(a, b): return a.score > b.score or (a.score == b.score and String(a.id) < String(b.id)))
 	for s in scored:
@@ -169,32 +235,135 @@ func _build_entry(aid: String, cfg: Dictionary, era: int, stats: Dictionary) -> 
 			break
 	if picked.size() < 9:
 		stats["short_pool"].append("%s(%d条,%s)" % [aid, picked.size(), tpl_key])
-	# ── 同卡差异化（确定性哈希）──
-	# ① 主题训练条最前（低档先给基础=养成感），其余核心段按 id 哈希轮换 0-2 位——
-	#    同模板不同卡在低档位（新兵5/老兵6-7）暴露不同改造，配装观感逐卡不同；
-	# ② 哈希奇数卡把末位核心件换成下一顺位备选（"签名件"差异）；
-	# ③ cuts 微差：老兵 6/7、精英 8/9 由哈希决定（用户口径 6-7/8-9）。
+	return {
+		"aid": aid, "cfg": cfg, "era": era, "tpl_key": tpl_key, "tpl": tpl,
+		"unit_type": unit_type, "pool_era": pool_era,
+		"pool": pool, "picked": picked, "scored": scored,
+	}
+
+## 第二遍：某（兵种 unit_type × 时代 pool_era）的标准三件套。
+## 候选 = 该组合下白名单合格件；优先级（v6.14.3 修订）：①未被引用且属本兵种家族
+## （收编缺口+制式语义）②未被引用的非词条件（universal 等）③已引用的本兵种件
+## ④未被引用的 enh_ 词条（ 词条家族大且全不被模板引用，防其按字母序淹没前三档）
+## ⑤已引用非词条 ⑥已引用词条；同档按 id 稳定序；conflict_group 去重。
+## 最多 TRIO_SIZE 条，可少于 3（候选枯竭时由第三遍用模板件补齐槽位）。
+func _build_trio(rec: Dictionary, referenced: Dictionary, stats: Dictionary) -> Array:
+	var fams: Array = UT_FAMILIES.get(int(rec["unit_type"]), []) as Array
+	var candidates: Array = []
+	for s in (rec["scored"] as Array):
+		var mid := String(s["id"])
+		if _is_set_mod(Registry.get_data(mid)):
+			continue
+		var is_fresh: bool = not referenced.has(mid)
+		var is_enh: bool = mid.begins_with("enh_")
+		var in_fam := false
+		for f in fams:
+			if mid.begins_with(String(f)):
+				in_fam = true
+				break
+		var tier: int
+		if is_fresh and in_fam:
+			tier = 0
+		elif is_fresh and not is_enh:
+			tier = 1
+		elif in_fam:
+			tier = 2
+		elif is_fresh:
+			tier = 3
+		elif not is_enh:
+			tier = 4
+		else:
+			tier = 5
+		candidates.append({"id": mid, "group": String(s["group"]), "tier": tier})
+	candidates.sort_custom(func(a, b):
+		if int(a["tier"]) != int(b["tier"]):
+			return int(a["tier"]) < int(b["tier"])
+		return String(a["id"]) < String(b["id"]))
+	var trio: Array = []
+	var used_groups: Dictionary = {}
+	for c in candidates:
+		var g := String(c["group"])
+		if not g.is_empty() and used_groups.has(g):
+			continue
+		used_groups[g] = true
+		trio.append(String(c["id"]))
+		if trio.size() >= TRIO_SIZE:
+			break
+	if trio.size() < TRIO_SIZE:
+		stats["trio_short"].append("%s/%s(%d)" % [
+			str(rec["unit_type"]), str(rec["pool_era"]), trio.size()])
+	return trio
+
+## 第三遍：组装单卡条目。序列 = 标准三件套（头三槽）+ 保留的模板件（≤6 条，主题训练条
+## 优先、避开三件套冲突组；不足由 scored 备选补齐）。原同卡差异化（签名件/轮换/cuts 微差）
+## 作用于保留段，确定性哈希不变。
+func _format_record(rec: Dictionary, stats: Dictionary) -> String:
+	var aid := String(rec["aid"])
+	var cfg: Dictionary = rec["cfg"]
+	var tpl: Dictionary = rec["tpl"]
+	var trio: Array = rec["trio"]
 	var h := _id_hash(aid)
+	# 三件套冲突组
+	var used_groups: Dictionary = {}
+	for m in trio:
+		var g := String(Registry.get_data(m).get("conflict_group", ""))
+		if not g.is_empty():
+			used_groups[g] = true
+	# 保留段：原模板 9 条中跳过三件套成员与冲突组，训练条优先，最多 9-trio.size() 条
+	var keep_n := 9 - trio.size()
 	var enh_first: Array = []
 	var rest: Array = []
-	for pid in picked:
-		if (tpl["enh"] as Array).has(pid):
-			enh_first.append(pid)
+	for pid in (rec["picked"] as Array):
+		if enh_first.size() + rest.size() >= keep_n:
+			break
+		if trio.has(pid):
+			continue
+		var g := String(Registry.get_data(String(pid)).get("conflict_group", ""))
+		if not g.is_empty() and used_groups.has(g):
+			continue
+		if not g.is_empty():
+			used_groups[g] = true
+		if (tpl["enh"] as Array).has(String(pid)):
+			enh_first.append(String(pid))
 		else:
-			rest.append(pid)
+			rest.append(String(pid))
+	# 不足额时从 scored 备选补（跳过三件套/已用/冲突组）
+	for s in (rec["scored"] as Array):
+		if enh_first.size() + rest.size() >= keep_n:
+			break
+		var sid := String(s["id"])
+		if trio.has(sid) or enh_first.has(sid) or rest.has(sid):
+			continue
+		var g := String(s["group"])
+		if not g.is_empty() and used_groups.has(g):
+			continue
+		if not g.is_empty():
+			used_groups[g] = true
+		if (tpl["enh"] as Array).has(sid):
+			enh_first.append(sid)
+		else:
+			rest.append(sid)
+	if enh_first.size() + rest.size() + trio.size() < 9:
+		stats["short_pool"].append("%s(%d条,%s)" % [aid, trio.size() + enh_first.size() + rest.size(), String(rec["tpl_key"])])
+	# 同卡差异化（确定性哈希）：签名件替换 + rest 轮换（原 v26 语义，作用于保留段）
 	if h % 2 == 1 and rest.size() >= 3:
-		# 签名件替换：末位核心件 ↔ picked 之外的最高分未用条
-		for s in scored:
-			var sid := String(s.id)
-			var sg := String(s.group)
-			if not picked.has(sid) and (sg.is_empty() or not used_groups.has(sg)):
-				rest[rest.size() - 1] = sid
-				break
+		for s in (rec["scored"] as Array):
+			var sid := String(s["id"])
+			var sg := String(s["group"])
+			if trio.has(sid) or enh_first.has(sid) or rest.has(sid):
+				continue
+			if not sg.is_empty() and used_groups.has(sg):
+				continue
+			if not sg.is_empty():
+				used_groups[sg] = true
+			rest[rest.size() - 1] = sid
+			break
 	var rot: int = h % 3
 	for _i in range(rot):
 		if rest.size() > 2:
 			rest.push_front(rest.pop_back())
 	var ordered: Array = []
+	ordered.append_array(trio)
 	ordered.append_array(enh_first)
 	ordered.append_array(rest)
 	var cuts := {
@@ -203,7 +372,7 @@ func _build_entry(aid: String, cfg: Dictionary, era: int, stats: Dictionary) -> 
 		3: 8 + (h / 11) % 2,
 		4: 9,
 	}
-	# v27.7 逐卡覆写 cuts（缺省档走哈希；覆写不得超 9/不高于池深由 picked 长度兜底）
+	# v27.7 逐卡覆写 cuts（缺省档走哈希；覆写不得超 9/不高于池深由 ordered 长度兜底）
 	var ov_cuts: Dictionary = (CARD_OVERRIDES.get(aid, {}) as Dictionary).get("cuts", {}) as Dictionary
 	for t in [1, 2, 3, 4]:
 		if ov_cuts.has(t):
@@ -254,3 +423,5 @@ func _emit(entries: Array, stats: Dictionary) -> void:
 		print("!! 池解析失败(%d)：%s" % [(stats.miss_pool as Array).size(), ", ".join(stats.miss_pool)])
 	if not (stats.short_pool as Array).is_empty():
 		print("!! 池不足9条(%d)：%s" % [(stats.short_pool as Array).size(), ", ".join((stats.short_pool as Array).slice(0, 20))])
+	if not (stats.trio_short as Array).is_empty():
+		print("!! 三件套不足(%d 组)：%s" % [(stats.trio_short as Array).size(), ", ".join((stats.trio_short as Array).slice(0, 24))])

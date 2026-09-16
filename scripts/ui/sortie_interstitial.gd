@@ -27,9 +27,25 @@ const LAYER_ORDER := 400
 const TEXT_FADE_SEC := 0.18
 const LINE_SWEEP_SEC := 0.6            # 计划书：横线 0.6s 从左 20% 扫到 80%
 const FADE_OUT_SEC := 0.12             # 结束/跳过后揭幕淡出（skip 后战场 ≤0.5s 可见预算内）
-const DEFAULT_DURATION := 1.5          # 计划书 A2：黑屏 1.2-1.8s（取中偏下，给转场留 2.5s 总预算）
+const DEFAULT_DURATION := 0.8          # v32.3 A4：1.5→0.8s——战备已并行（见 main_battle_setup），过场只承担揭幕节拍
 const MOTION_REDUCE_DURATION := 0.6
 const COLOR_WARM := Color(0.961, 0.620, 0.043, 1)   # = DesignTokens.COLOR_AMBER（暖橙）
+
+# ── v33 目的地预览背景 ──────────────────────────────────────────────
+## 用户请求：过场不要全黑。用本关战场底图压暗——"你预览的即你将抵达的"，
+## 揭幕淡出后战场就是这张图（era tint × BG_DIM 与 battlefield 同口径）。
+const _BattlefieldSceneScript = preload("res://scenes/battlefield/battlefield.gd")
+const _LevelEras = preload("res://data/level_eras.gd")
+const _LEVEL_BG_FMT := "res://assets/backgrounds/bg_level_%02d.png"
+const _FALLBACK_BG_PATH := "res://assets/backgrounds/bg_default.png"
+## 压暗层透明度：保战报文字可读（ui-review 铁律——精美底图不得干扰文字）。
+## PIL 实测标定（bg_level_01 文字带原图亮度 ~118）：0.58 → 有效亮度 ~40、
+## 白字对比 5.9:1（远超 4.5:1 可读线）；0.74 会把背景压到 ~25、观感近全黑（用户否）。
+const SCRIM_ALPHA := 0.58
+## 贴图单条目缓存：顺序打同一关免重复读盘；换关丢弃旧引用（1920×1080 解码后
+## ~8MB/张，若按路径全量缓存，长会话打几十关=数百 MB 常驻——故只留最新一张）。
+static var _bg_cache_path: String = ""
+static var _bg_cache_tex: Texture2D = null
 
 static var _active: SortieInterstitial = null
 
@@ -78,6 +94,11 @@ static func _instant_finished_signal() -> Signal:
 	return h.finished
 
 
+## v32.3 A4：并行战备侧轮询用——战报层是否还在屏上（含淡出收尾前）
+static func is_showing() -> bool:
+	return _active != null and is_instance_valid(_active)
+
+
 func _ready() -> void:
 	add_to_group("sortie_interstitial")
 	layer = LAYER_ORDER
@@ -103,9 +124,22 @@ func _build_ui() -> void:
 	_root.mouse_filter = Control.MOUSE_FILTER_STOP
 	add_child(_root)
 
+	# v33: 目的地预览背景（本关底图）→ 压暗层 → 文本。层序即绘制序。
+	var bg_tex := _resolve_bg_texture()
+	if bg_tex != null:
+		var preview := TextureRect.new()
+		preview.name = "DestinationPreview"
+		preview.texture = bg_tex
+		preview.set_anchors_preset(Control.PRESET_FULL_RECT)
+		preview.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		preview.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+		preview.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		preview.modulate = _era_dim_modulate()
+		_root.add_child(preview)
+
 	var bg := ColorRect.new()
 	bg.name = "Blackout"
-	bg.color = Color(0, 0, 0, 1)
+	bg.color = Color(0, 0, 0, SCRIM_ALPHA)
 	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
 	bg.mouse_filter = Control.MOUSE_FILTER_STOP
 	_root.add_child(bg)
@@ -153,16 +187,17 @@ func _build_ui() -> void:
 	_line.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_root.add_child(_line)
 
-	# 跳过提示（弱化到角落，不参与战报正文）
+	# 跳过提示（v32.3 A4：11px→14px 常显可读——战报不再串行挡战备，跳过=立即见战场，
+	# 这是玩家的主动快捷键，不该缩在角落里猜）
 	var hint := Label.new()
 	hint.name = "SkipHint"
-	hint.text = "ESC 跳过"
-	hint.add_theme_font_size_override("font_size", 11)
+	hint.text = "点击 / ESC 跳过"
+	hint.add_theme_font_size_override("font_size", 14)
 	var dim := DesignTokens.COLOR_TEXT_DIM
-	hint.add_theme_color_override("font_color", Color(dim.r, dim.g, dim.b, 0.7))
+	hint.add_theme_color_override("font_color", Color(dim.r, dim.g, dim.b, 0.85))
 	hint.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
-	hint.offset_left = -110.0
-	hint.offset_top = -34.0
+	hint.offset_left = -160.0
+	hint.offset_top = -38.0
 	hint.offset_right = -16.0
 	hint.offset_bottom = -14.0
 	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
@@ -206,6 +241,40 @@ func _input(event: InputEvent) -> void:
 ## 立即收尾（ESC/点击/防重入共用）
 func request_skip() -> void:
 	_finish()
+
+
+## v33: 解析本关背景贴图（缺失逐级回退；单条目缓存避免重复读盘且内存有界）
+static func _resolve_bg_texture() -> Texture2D:
+	var level := 1
+	var tree := Engine.get_main_loop() as SceneTree
+	if tree != null and tree.root != null:
+		var gm: Node = tree.root.get_node_or_null("GameManager")
+		if gm != null and gm.get("current_level") != null:
+			level = maxi(1, int(gm.current_level))
+	for path in [_LEVEL_BG_FMT % level, _FALLBACK_BG_PATH]:
+		if path == _bg_cache_path and _bg_cache_tex != null:
+			return _bg_cache_tex
+		if ResourceLoader.exists(path, "Texture2D"):
+			var tex: Texture2D = load(path)
+			if tex != null:
+				_bg_cache_path = path
+				_bg_cache_tex = tex
+				return tex
+	return null
+
+
+## v33: 时代 tint × BG_DIM——与 battlefield._apply_background_texture 同口径，
+## 揭幕淡出后过场底图与战场底图色调衔接（无跳变）。
+static func _era_dim_modulate() -> Color:
+	var level := 1
+	var tree := Engine.get_main_loop() as SceneTree
+	if tree != null and tree.root != null:
+		var gm: Node = tree.root.get_node_or_null("GameManager")
+		if gm != null and gm.get("current_level") != null:
+			level = maxi(1, int(gm.current_level))
+	var era: int = _LevelEras.get_era(level)
+	var tints: Array = _BattlefieldSceneScript.ERA_BG_TINTS
+	return tints[era % tints.size()] * _BattlefieldSceneScript.BG_DIM
 
 
 func _finish() -> void:

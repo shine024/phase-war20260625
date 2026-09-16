@@ -231,7 +231,49 @@ func _first_unmet_reason(conditions: Array) -> String:
 
 ## ───────────────────────── 执行制造 ─────────────────────────
 
-## 制造一张卡。返回 {"ok", "reason_zh", "instance_id", "rarity", "card_id"}。
+## v6.14.5（用户拍板）：品质 → 出厂附送改造条数（白板 0 起步，神话 5）。
+## 数值轮可调常量——改这里即可整体调出厂强度。
+const STARTUP_MOD_COUNT := {
+	"common": 0, "uncommon": 1, "rare": 2, "epic": 3, "legendary": 4, "mythic": 5,
+}
+
+## 纯选取：按品质档从该卡可用改造（兵种+时代带口径 get_installable_mods_for_card）
+## 随机选 N 条；改造稀有度上限 = 本卡品质档；conflict_group 去重。返回 mod_id 数组。
+static func pick_startup_mods(card_id: String, card_era: int, rarity: String) -> Array:
+	var n := int(STARTUP_MOD_COUNT.get(rarity, 0))
+	if n <= 0:
+		return []
+	var quality_rank: int = ModManufacture.rank_of(rarity)
+	var pool: Array = []
+	for mid in ModificationRegistry.get_installable_mods_for_card(card_id, card_era):
+		var mid_s := String(mid)
+		var md: Dictionary = ModificationRegistry.get_data(mid_s)
+		if md.is_empty():
+			continue
+		if ModManufacture.rank_of(String(md.get("rarity", "common"))) > quality_rank:
+			continue
+		pool.append(mid_s)
+	var granted: Array = []
+	var used_groups: Dictionary = {}
+	for _i in range(n):
+		var candidates: Array = []
+		for mid_s in pool:
+			if granted.has(mid_s):
+				continue
+			var g := String(ModificationRegistry.get_data(mid_s).get("conflict_group", ""))
+			if not g.is_empty() and used_groups.has(g):
+				continue
+			candidates.append(mid_s)
+		if candidates.is_empty():
+			break
+		var pick: String = candidates[randi() % candidates.size()]
+		var pg := String(ModificationRegistry.get_data(pick).get("conflict_group", ""))
+		if not pg.is_empty():
+			used_groups[pg] = true
+		granted.append(pick)
+	return granted
+
+## 制造一张卡。返回 {"ok", "reason_zh", "instance_id", "rarity", "card_id", "startup_mods"}。
 func manufacture(card_id: String) -> Dictionary:
 	var check := can_manufacture(card_id)
 	if not check.get("ok", false):
@@ -253,6 +295,20 @@ func manufacture(card_id: String) -> Dictionary:
 		return {"ok": false, "reason_zh": "卡牌模板缺失：%s" % card_id}
 	inst.rarity = rarity
 
+	# v6.14.5（用户拍板）：出厂随机改造——按品质档附送 N 条（白板 0 → 神话 5）。
+	# 选取口径与安装同源（兵种+时代带），改造稀有度 ≤ 本卡品质档，冲突组去重；
+	# 赠品免费（paid_cost=0，不耗图纸/纳米），等级档位门对出厂赠品豁免
+	#（品质 roll 本身就是稀有度回报，稀有品质的卡理应带得起稀有件）。
+	var startup_mods: Array = pick_startup_mods(card_id, int(inst.era), rarity)
+	for mid_s in startup_mods:
+		inst.mods.append({
+			id = mid_s,
+			installed_at = Time.get_unix_time_from_system(),
+			enabled = true,
+			paid_cost = 0,
+			gift = true,   # v6.14.6 卸下判定：赠品无纳米返还、其图纸从未存在亦不返还
+		})
+
 	# 暗保底记账：出 rare+ 清零，否则 +1
 	if ManufacturePools.is_high_rarity(rarity):
 		_pity[card_id] = 0
@@ -264,10 +320,13 @@ func manufacture(card_id: String) -> Dictionary:
 	SignalBus.card_manufactured.emit(card_id, rarity)
 	# v26.6 批4b: 死信号审计 B 类补反馈链——制造成功 toast（原信号无人监听）
 	const IntelItems := preload("res://data/intel_manual_items.gd")
-	SignalBus.show_toast.emit("✦ 制造成功：%s（%s）" % [inst.display_name, IntelItems.get_rarity_name(rarity)])
+	var toast_text := "✦ 制造成功：%s（%s）" % [inst.display_name, IntelItems.get_rarity_name(rarity)]
+	if not startup_mods.is_empty():
+		toast_text += "·随附改造×%d" % startup_mods.size()
+	SignalBus.show_toast.emit(toast_text)
 
 	return {"ok": true, "reason_zh": "制造成功", "instance_id": String(inst.instance_id),
-		"rarity": rarity, "card_id": card_id}
+		"rarity": rarity, "card_id": card_id, "startup_mods": startup_mods}
 
 func _refund(cost: Dictionary) -> void:
 	for rid in cost:
@@ -331,6 +390,26 @@ func get_mod_blueprint_stock(mod_id: String) -> int:
 ## 随机箱暗保底计数（与卡牌制造 get_pity 同暴露口径，供 UI 显示"连续未出"提示）
 func get_mod_box_pity() -> int:
 	return _mod_box_pity
+
+## v32.0 B3-S2: 晶体 sink 管线①——晶体垫改造随机箱 pity（结构层，占位价）
+## TODO(B3数值轮)：占位 80 晶体/+1，试玩数据校准；并在暴露阈值常量后加
+## "pity ≤ 阈值-1"封顶（不卖免费保底）。UI 接线随数值轮一起上。
+const CRYSTAL_PER_PITY := 80
+
+func advance_mod_box_pity_with_crystals(times: int = 1) -> Dictionary:
+	var n := clampi(times, 1, 3)
+	var price := n * CRYSTAL_PER_PITY
+	if BasicResourceManager == null:
+		return {ok = false, reason = "资源管理器未就绪"}
+	if not BasicResourceManager.can_afford("crystal", price):
+		return {ok = false, reason = "晶体不足（需 %d）" % price}
+	if BasicResourceManager.has_method("spend_resource"):
+		BasicResourceManager.spend_resource("crystal", price)
+	else:
+		BasicResourceManager.add_resource("crystal", -price)
+	_mod_box_pity += n
+	return {ok = true, advanced = n, crystal_spent = price, pity = _mod_box_pity}
+
 
 ## 随机箱各稀有度出率（池内数量 × 稀有度权重归一；供 UI 预览池条）。
 ## 返回 [{r: String, w: float, pct: float}]，空池返回 []。

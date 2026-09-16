@@ -6,6 +6,7 @@ extends Node
 ## 重构: 原单文件 969 行拆分为三个文件，职责清晰分离。
 
 const GC = preload("res://resources/game_constants.gd")
+const BattleUnitRecord = preload("res://scripts/battle/battle_unit_record.gd")
 const SpatialGridClass = preload("res://scripts/spatial_grid.gd")
 const SimpleEnemyProjectileBatchScript = preload("res://managers/battle/simple_enemy_projectile_batch.gd")
 const SimplePlayerProjectileBatchScript = preload("res://managers/battle/simple_player_projectile_batch.gd")
@@ -201,6 +202,8 @@ func _on_counter_break_count(_break_type: String, _target_name: String) -> void:
 ## v6.15: 击杀修复（战场回收）——击杀者按 stats.kill_repair 回复自身最大 HP
 func _on_unit_killed_kill_repair(victim: Node, killer: Node, is_player_victim: bool) -> void:
 	ModuleEffectHandler.on_unit_killed(victim, killer, is_player_victim)
+	# v32.0 B1-3: 每单位击杀挂账（本场最佳战报）
+	BattleUnitRecord.record_kill(killer, victim)
 	# v27 黑门裂隙环境：晶脉浮陆——敌方被击杀时额外能量（读 override 平键，非乘区）
 	if not is_player_victim and energy_manager:
 		var kill_bonus: float = BattleEnvEffects.rift_flat_bonus("kill_energy_bonus")
@@ -346,6 +349,8 @@ func start_battle(battle_scene: Node) -> void:
 		pass
 		# [LOG-v5.1] print("[BattleManager] start_battle 被调用")
 	battlefield = battle_scene
+	# v32.0 B1-3: 新战斗清空每单位记录（结算面板读取上一场数据）
+	BattleUnitRecord.reset_battle_record()
 	# v26.2: 激活本关战场布局（行数/敌我列数/废墟格）——必须先于任何槽位/出生点计算；
 	# 战场节点 _ready 时按默认 3×3 建过槽心，激活后重算一次（GameConfig.battle_layouts_enabled 总开关）。
 	CardGridBattleLayout.apply_for_level(_current_level_for_env())
@@ -477,15 +482,10 @@ func start_battle(battle_scene: Node) -> void:
 			energy_manager.set_meta("level_regen_mult", 1.0)
 		energy_manager.start_battle()
 
-	# v7.x 性能：预热结算路径需要的 lazy manager，消除结算时首次 ensure_loaded 同步开销
-	# （load()+new()+add_child() 在首帧可达数毫秒级；战斗持续数分钟，预热后 ensure_loaded 仅做
-	# is_instance_valid 检查，约 0 开销）
-	var _mll_pre = get_node_or_null("/root/ManagerLazyLoader")
-	if _mll_pre and _mll_pre.has_method("ensure_loaded"):
-		# 注：原 "story" 已移除（StoryManager 删除时的孤儿残留）
-		for _pre_id in ["intel_discovery", "quest", "achievement", "level_progress",
-				"leaderboard", "faction", "stat_boost"]:
-			_mll_pre.ensure_loaded(_pre_id)
+	# v32.3 A4：结算路径懒加载 manager 预热已挪到主场景落地空闲期（main.gd
+	# _warmup_battle_lazy_managers，落地 1s 后执行）——开战帧不再背 7 次
+	# load()+new()+add_child() 的同步开销。非 main 宿主（工具场景/测试）无预热，
+	# 仅结算首次 ensure_loaded 慢一拍，功能不受影响。
 
 	if SignalBus:
 		SignalBus.battle_started.emit()
@@ -1035,11 +1035,16 @@ func _record_defeated_enemy(unit: Node) -> void:
 			enemy_type = _guess_enemy_type_from_archetype(archetype_id, tags)
 	if enemy_type.is_empty():
 		enemy_type = "infantry"
-	_defeated_enemies.append({
+	var defeated_info := {
 		"archetype_id": archetype_id,
 		"rank": rank,
 		"enemy_type": enemy_type,
-	})
+	}
+	# v33: 情报图纸主腿前移——击杀瞬间掷骰（命中当场掉地面碎片），info 打
+	# intel_main_hit 标记供战后星级腿跳过（分布拆腿等价见 intel_discovery_manager 注释）
+	if _damage_system != null:
+		_damage_system.roll_kill_intel_drop(defeated_info, unit)
+	_defeated_enemies.append(defeated_info)
 
 func _guess_enemy_type_from_archetype(archetype_id: String, tags: Array) -> String:
 	var lower: String = archetype_id.to_lower()

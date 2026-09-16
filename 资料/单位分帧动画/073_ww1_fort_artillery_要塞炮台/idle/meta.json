@@ -1,0 +1,29 @@
+{
+ "unit": "ww1_fort_artillery",
+ "unit_name": "要塞炮台",
+ "anim": "idle",
+ "frames": 8,
+ "frame_files": [
+  "f00.png",
+  "f01.png",
+  "f02.png",
+  "f03.png",
+  "f04.png",
+  "f05.png",
+  "f06.png",
+  "f07.png"
+ ],
+ "canvas": 512,
+ "suggested_fps": 8,
+ "foot_frac": 0.92,
+ "union_bbox": [
+  19,
+  155,
+  665,
+  543
+ ],
+ "model": "agnes-video-2.5-flash",
+ "mode": "keyframe",
+ "source_video": "source.mp4",
+ "generated_at": "2026-08-30 00:30:09"
+}

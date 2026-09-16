@@ -239,6 +239,16 @@ static func _attach_emp_aura(dot_node: Node2D) -> void:
 	tw2.tween_interval(0.15)
 
 
+## v35 perf: DOT 状态表提为 const（原每次刷新 new 4 dict + 1 Array；刷新在
+## _tick_dot_damage 0.25s 节流内、每 DOT 挂身单位各一次）
+const _DOT_STATES: Array = [
+	{"type": "burn", "until_meta": "_burn_until"},
+	{"type": "chem", "until_meta": "_chem_until"},
+	{"type": "nano", "until_meta": "_nano_until"},
+	{"type": "emp", "until_meta": "_ecm_debuffed_until"},  # EMP 走 ECM debuff 时效
+]
+
+
 ## 刷新单位的所有 DOT 视觉：过期的移除，激活的保留。
 ## 在 _tick_dot_damage 每次结算时调用（节流 0.25s 一次，开销可忽略）。
 ## emp 无 _xxx_until meta（它是即时 debuff + ECM meta），单独按 _ecm_debuffed_until 判断。
@@ -247,13 +257,7 @@ static func refresh_dot_vfx(unit: Node) -> void:
 		return
 	var now: float = Time.get_ticks_msec() / 1000.0
 	# 4 种 DOT 的过期判断（meta → until 时间戳）
-	var states: Array = [
-		{"type": "burn", "until_meta": "_burn_until"},
-		{"type": "chem", "until_meta": "_chem_until"},
-		{"type": "nano", "until_meta": "_nano_until"},
-		{"type": "emp", "until_meta": "_ecm_debuffed_until"},  # EMP 走 ECM debuff 时效
-	]
-	for st in states:
+	for st in _DOT_STATES:
 		var dot_type: String = st["type"]
 		var cfg: Dictionary = DOT_CONFIGS.get(dot_type, {})
 		if cfg.is_empty():

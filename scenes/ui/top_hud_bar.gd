@@ -499,6 +499,10 @@ func _on_speed_pressed() -> void:
 		bs.set_user_time_scale(_speed_scale)
 	else:
 		Engine.time_scale = _speed_scale
+	# v32.0 埋点：倍速档位使用（speed_x2/x3/x4）
+	var pm := get_node_or_null("/root/PerformanceMetricsManager")
+	if pm != null and pm.has_method("count_event"):
+		pm.count_event("speed_x%d" % int(_speed_scale))
 
 
 ## v32.0 B1-1: 倍速按钮文案/激活态统一同步（_ready 读档与点击切档共用）

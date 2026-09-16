@@ -3,6 +3,7 @@ extends CharacterBody2D
 ## 拆分模块：AI → ConstructUnitAI, 部署 → ConstructUnitDeploy
 
 const GC = preload("res://resources/game_constants.gd")
+const BattleUnitRecord = preload("res://scripts/battle/battle_unit_record.gd")
 const DT = preload("res://resources/design_tokens.gd")
 const AttackPoseAnim = preload("res://scripts/battle/attack_pose_anim.gd")  # v9.x: 按武器分化的攻击姿态/攻击帧
 const BulletScene = preload("res://scenes/units/bullet.tscn")
@@ -834,14 +835,23 @@ func _update_ecm_debuff_aura() -> void:
 # ═══════════════════════════════════════════════════════════
 
 ## 通用：扫描敌方单位（与自身阵营相反），返回有效 Node 数组
+## v35.x perf: 走 BattleManager 0.28s 节流组缓存（player_units/enemy_units 均在缓存
+## 名单；战斗外/未命中缓存自动回退实时扫描）。消费方全部带 is_instance_valid 守卫
+## （缓存窗口内可能含已释放节点），勿删调用侧守卫。
 func _collect_enemy_units_for_mechanism() -> Array:
 	var enemy_group: String = "enemy_units" if is_player else "player_units"
+	if BattleManager != null and BattleManager.has_method("get_cached_nodes_in_group"):
+		return BattleManager.get_cached_nodes_in_group(enemy_group)
 	return get_tree().get_nodes_in_group(enemy_group)
 
 ## 通用：扫描友方单位（与自身阵营相同，排除自己）
 func _collect_ally_units_for_mechanism() -> Array:
 	var ally_group: String = "player_units" if is_player else "enemy_units"
-	var allies: Array = get_tree().get_nodes_in_group(ally_group)
+	var allies: Array
+	if BattleManager != null and BattleManager.has_method("get_cached_nodes_in_group"):
+		allies = BattleManager.get_cached_nodes_in_group(ally_group)
+	else:
+		allies = get_tree().get_nodes_in_group(ally_group)
 	var filtered: Array = []
 	for a in allies:
 		if a == self:
@@ -1822,6 +1832,8 @@ func take_damage(amount: float, attacker: Variant = null) -> void:
 	# 预览模式不会受到伤害
 	if is_preview_mode:
 		return
+	# v32.0 B1-3: 每单位战斗记录挂账（输出/承伤；口径=减免前进账量，跨单位一致）
+	BattleUnitRecord.record_damage(attacker, self, amount)
 	# v20.14: 隐身飞机被命中时退出隐身
 	CardAbilityManager.on_stealth_hit(self)
 	# v8.6: 势力技能 periodic_invuln（周期无敌期间免疫伤害）

@@ -72,6 +72,8 @@ func is_blackgate_unlocked() -> bool:
 
 ## 开局：roll 裂隙环境、置运行态（由 GameManager.start_endless_battle 调用）
 func begin_run() -> void:
+	# v32.0 B3-S3: 开局消耗一次入场次数（门禁在 GameManager.start_endless_battle）
+	consume_entry_for_begin()
 	run_active = true
 	current_rift_env = RIFT_ENV_KEYS[randi() % RIFT_ENV_KEYS.size()]
 
@@ -167,7 +169,60 @@ func _add_marrow(amount: int) -> void:
 		brm.add_resource(BasicResourcesData.ID_STAR_MARROW, amount)
 
 
+# ── v32.0 B3-S3: 黑门入场软门（免费 3 次/日 + 能量块购额外次数；用户拍板 2026-09-14）──
+## 占位价：能量块 60/次——TODO(B3数值轮) 校准。日界=真实日期（与周星髓 _week_key 同口径）。
+## 语义：仅开局计数，进行中的 run 不受影响；购买次数永久有效直到使用。
+const FREE_ENTRIES_PER_DAY := 3
+const ENERGY_PER_EXTRA_ENTRY := 60
+var _entries_used_day_key: String = ""
+var _entries_used_today: int = 0
+var _extra_entries: int = 0
+
+func _day_key() -> String:
+	return "D%d" % int(Time.get_unix_time_from_system() / 86400.0)
+
+func _rollover_day_if_needed() -> void:
+	var dk: String = _day_key()
+	if dk != _entries_used_day_key:
+		_entries_used_day_key = dk
+		_entries_used_today = 0
+
+func get_entry_status() -> Dictionary:
+	_rollover_day_if_needed()
+	var free_left := maxi(0, FREE_ENTRIES_PER_DAY - _entries_used_today)
+	return {free_left = free_left, extra_left = _extra_entries,
+		can_enter = free_left > 0 or _extra_entries > 0}
+
+func can_begin_run() -> bool:
+	return bool(get_entry_status()["can_enter"])
+
+func consume_entry_for_begin() -> bool:
+	_rollover_day_if_needed()
+	if _entries_used_today < FREE_ENTRIES_PER_DAY:
+		_entries_used_today += 1
+		return true
+	if _extra_entries > 0:
+		_extra_entries -= 1
+		return true
+	return false
+
+func buy_extra_entry_with_energy(times: int = 1) -> Dictionary:
+	var n := clampi(times, 1, 3)
+	var price := n * ENERGY_PER_EXTRA_ENTRY
+	var brm: Node = get_node_or_null("/root/BasicResourceManager")
+	if brm == null:
+		return {ok = false, reason = "资源管理器未就绪"}
+	if not brm.can_afford(BasicResourcesData.ID_ENERGY_BLOCK, price):
+		return {ok = false, reason = "能量块不足（需 %d）" % price}
+	if brm.has_method("spend_resource"):
+		brm.spend_resource(BasicResourcesData.ID_ENERGY_BLOCK, price)
+	else:
+		brm.add_resource(BasicResourcesData.ID_ENERGY_BLOCK, -price)
+	_extra_entries += n
+	return {ok = true, bought = n, energy_spent = price, extra_left = _extra_entries}
+
 # ───────────────────── 存档（SaveManager deferred） ─────────────────────
+
 
 func save_state() -> Dictionary:
 	return {
@@ -176,6 +231,9 @@ func save_state() -> Dictionary:
 		"total_runs": total_runs,
 		"weekly_week_key": _weekly_week_key,
 		"weekly_marrow_gained": _weekly_marrow_gained,
+		"entries_used_day_key": _entries_used_day_key,
+		"entries_used_today": _entries_used_today,
+		"extra_entries": _extra_entries,
 	}
 
 
@@ -187,6 +245,10 @@ func load_state(data: Dictionary) -> void:
 	total_runs = int(data.get("total_runs", 0))
 	_weekly_week_key = String(data.get("weekly_week_key", ""))
 	_weekly_marrow_gained = int(data.get("weekly_marrow_gained", 0))
+	# v32.0 B3-S3: 日次限惰性键（旧档缺键=当日未用+无购次，免迁移）
+	_entries_used_day_key = String(data.get("entries_used_day_key", ""))
+	_entries_used_today = int(data.get("entries_used_today", 0))
+	_extra_entries = int(data.get("extra_entries", 0))
 
 
 func reset_state() -> void:
@@ -195,5 +257,8 @@ func reset_state() -> void:
 	total_runs = 0
 	_weekly_week_key = ""
 	_weekly_marrow_gained = 0
+	_entries_used_day_key = ""
+	_entries_used_today = 0
+	_extra_entries = 0
 	run_active = false
 	current_rift_env = ""

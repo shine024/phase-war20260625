@@ -72,6 +72,10 @@ func set_fast_forward(on: bool) -> void:
 	var am := get_node_or_null("/root/AudioManager")
 	if on:
 		BattleTimeState.enter_fast_forward()
+		# v32.0 埋点：跳过（极速推演）激活次数
+		var pm := get_node_or_null("/root/PerformanceMetricsManager")
+		if pm != null and pm.has_method("count_event"):
+			pm.count_event("skip_activated")
 	else:
 		BattleTimeState.exit_fast_forward(_user_time_scale)
 	if am != null and am.has_method("set_battle_sfx_suppressed"):
@@ -158,6 +162,23 @@ func _play_kill_hitstop() -> void:
 	if not _slowmo_active:
 		Engine.time_scale = _user_time_scale
 
+## v34 C1 精英波短定格：time_scale 0.3 持续 0.15s（真实秒）——精英波横幅/震屏/
+## 号角（boss_warn，AudioManager 信号侧自带）之外补一拍时序重量，"有什么大事发生了"。
+## 守卫与 _play_kill_hitstop 同门：motion_reduce / 慢动作 / 顿帧 / 极速推演中一律不叠加；
+## 恢复回玩家倍速。注意：相位师登场（_on_phase_master_appeared）不加定格——它有
+## 自己的全屏演出语言，双定格会抢拍。
+func _play_elite_wave_beat() -> void:
+	if DT.is_motion_reduce() or _slowmo_active or _hitstop_active or BattleTimeState.ff_active:
+		return
+	if Engine.time_scale <= 0.0:
+		return
+	_hitstop_active = true
+	Engine.time_scale = 0.3
+	await get_tree().create_timer(0.15, true, false, true).timeout
+	_hitstop_active = false
+	if not _slowmo_active:
+		Engine.time_scale = _user_time_scale
+
 func _on_boss_wave_started(boss_archetype_ids: Array) -> void:
 	if boss_archetype_ids.is_empty():
 		return
@@ -166,6 +187,7 @@ func _on_boss_wave_started(boss_archetype_ids: Array) -> void:
 		return
 	_last_boss_fx_ms = now_ms
 	_play_boss_appear("精英波次来袭")
+	_play_elite_wave_beat()  # v34 C1：短定格节拍（L1-9 无相位师期的唯一强度高潮）
 
 func _on_phase_master_appeared(master_config: Dictionary) -> void:
 	var now_ms: int = Time.get_ticks_msec()
@@ -305,6 +327,8 @@ func _play_nuclear_impact(params: Dictionary) -> void:
 	tw.tween_callback(func(): _overlay.visible = false)
 	# extreme shake（v8.1a：延长到1.0s，余震感）
 	_request_shake(16.0, 1.0)
+	# v32.0 B1-2: 核爆命中镜头推近（幅度最大的一档）
+	_play_camera_push(1.22, 0.25, 0.5)
 	# 屏幕边缘绿光衰减（overlay 绿色 0.35→0，1.2s，v8.1a：延长+加亮）
 	var tw3: Tween = create_tween()
 	tw3.tween_interval(0.12)
@@ -574,11 +598,15 @@ func _play_boss_appear(title_text: String) -> void:
 	tw2.tween_callback(func(): _title_label.visible = false)
 	# 屏幕震动（medium 档）
 	_request_shake(5.0, 0.3)
+	# v32.0 B1-2: 观战镜头短推近（与 2s 登场节流共门，推近中自动防叠加）
+	_play_camera_push(1.18, 0.35, 0.8)
 
 # v9.x（P2-7范围B）：_play_law_cast/_law_display_name/_family_color（法则施放演出）已随法则系统退役移除
 
 ## 胜利瞬间：Engine.time_scale=0.3 持续 0.6s + VICTORY 金字 + extreme_shake
 func _play_victory() -> void:
+	# v32.0 B1-2: 胜利镜头轻推近（与慢动作同拍，观战收束感）
+	_play_camera_push(1.15, 0.4, 0.9)
 	_ensure_overlay()
 	_ensure_title_label()
 	# 慢动作（仅一次，motion_reduce 短路）
@@ -685,6 +713,35 @@ func _request_shake(intensity: float, duration: float) -> void:
 	if bm != null and bm.has_method("request_screen_shake"):
 		bm.request_screen_shake(intensity, duration)
 
+
+# --- v32.0 B1-2 观战镜头（高潮自动特写）---
+var _camera_push_tween: Tween = null
+
+## 高潮时刻相机短推近（boss 登场/核爆命中/胜利）。全程 zoom 从基准 ×factor 推近、
+## 停留、归位；与震屏（offset 通道）正交可叠加。守卫：减动效短路、极速推演短路
+##（推演期玩家要的是速度）、推近中不叠加（防演出连发时镜头抽搐）。
+## 定位是"克制"：无位置跟踪（裸 Camera2D 定在视口中心，向中心推），幅度 ≤1.22x。
+func _play_camera_push(zoom_factor: float = 1.18, push_sec: float = 0.35, hold_sec: float = 0.7) -> void:
+	if DT.is_motion_reduce() or BattleTimeState.ff_active:
+		return
+	if _camera_push_tween != null and _camera_push_tween.is_valid():
+		return
+	var bm: Node = get_node_or_null("/root/BattleManager")
+	var cam: Camera2D = null
+	if bm != null and is_instance_valid(bm):
+		var bf = bm.get("battlefield")
+		if bf != null and is_instance_valid(bf):
+			cam = bf.get("battle_camera") as Camera2D
+	if cam == null or not is_instance_valid(cam):
+		return
+	var base_zoom: Vector2 = cam.zoom
+	var target_zoom: Vector2 = base_zoom * zoom_factor
+	_camera_push_tween = create_tween()
+	_camera_push_tween.tween_property(cam, "zoom", target_zoom, push_sec).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	_camera_push_tween.tween_interval(hold_sec)
+	_camera_push_tween.tween_property(cam, "zoom", base_zoom, push_sec * 1.4).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	_camera_push_tween.tween_callback(func(): _camera_push_tween = null)
+
 ## 清理连杀窗口外的旧时间戳
 func _trim_kill_window(now_ms: int) -> void:
 	var now_sec: float = float(now_ms) / 1000.0
@@ -701,6 +758,10 @@ func _exit_tree() -> void:
 	BattleTimeState.restore_neutral()
 	_slowmo_active = false
 	_hitstop_active = false
+	# v32.0 B1-2: 相机推近补间随节点销毁终止（防相机释放后补间悬挂）
+	if _camera_push_tween != null and _camera_push_tween.is_valid():
+		_camera_push_tween.kill()
+	_camera_push_tween = null
 
 # =========================================================================
 #  v8.5 兵种机制技能 VFX 回调

@@ -15,6 +15,8 @@ const CardFrameUi = preload("res://scripts/card_frame_ui.gd")
 const CardBackgroundUi = preload("res://scripts/card_background_ui.gd")
 const AutoDeployController = preload("res://scenes/ui/auto_deploy_controller.gd")
 const PanelStyles = preload("res://scripts/ui/panel_styles.gd")
+# v32.0 B2-3: 套装体系检测（备战面预示——战斗内实时态见 combo_status_strip）
+const ComboTactics = preload("res://data/combo_tactics.gd")
 const DEBUG_BOTTOM_BAR_LOG := false
 ## ── 子系统：槽位拖放 ──
 const DragSub = preload("res://scenes/ui/instrument_bar_drag.gd")
@@ -23,6 +25,110 @@ var _drag_system: InstrumentBarDrag = null
 ## ── 子系统：战斗内自动部署（从左到右铺满 + 死亡补阵）──
 var _auto_deploy: AutoDeployController = null
 var _auto_deploy_btn: Button = null
+# v32.0 B2-3: 阵容体系预示行（NameSection 第三行）
+var _synergy_label: Label = null
+## ── v32.0 B2-1: 阵容预设 UI（「阵」按钮 + PopupPanel 五槽）──
+var _preset_btn: Button = null
+var _preset_popup: PopupPanel = null
+var _preset_rows: Array = []
+
+func _build_preset_ui() -> void:
+	var slot_section: Node = get_node_or_null("Margin/HBox/InstrumentSection/SlotSection")
+	if slot_section == null:
+		return
+	_preset_btn = Button.new()
+	_preset_btn.text = "阵"
+	_preset_btn.custom_minimum_size = Vector2(34, 0)
+	_preset_btn.tooltip_text = "阵容预设：保存当前战斗卡装载，一键整套切换"
+	_preset_btn.pressed.connect(_toggle_preset_popup)
+	slot_section.add_child(_preset_btn)
+
+func _toggle_preset_popup() -> void:
+	if _preset_popup != null and _preset_popup.visible:
+		_preset_popup.hide()
+		return
+	if _preset_popup == null:
+		_build_preset_popup()
+	_refresh_preset_popup()
+	_preset_popup.reset_size()
+	var btn_rect: Rect2 = _preset_btn.get_global_rect()
+	_preset_popup.position = Vector2(
+		clampf(btn_rect.position.x - 40.0, 4.0, 1276.0 - _preset_popup.size.x),
+		maxf(btn_rect.position.y - _preset_popup.size.y - 6.0, 4.0))
+	_preset_popup.popup()
+
+func _build_preset_popup() -> void:
+	_preset_popup = PopupPanel.new()
+	_preset_popup.exclusive = false
+	add_child(_preset_popup)
+	var v := VBoxContainer.new()
+	v.custom_minimum_size = Vector2(330, 0)
+	v.add_theme_constant_override("separation", 6)
+	_preset_popup.add_child(v)
+	var title := Label.new()
+	title.text = "阵容预设"
+	title.add_theme_font_size_override("font_size", DT.FONT_SIZE_MEDIUM)
+	title.add_theme_color_override("font_color", DT.COLOR_TEXT_BRIGHT)
+	v.add_child(title)
+	var hint := Label.new()
+	hint.text = "应用=整套切换战斗卡；保存=快照当前绿槽"
+	hint.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
+	hint.add_theme_color_override("font_color", DT.COLOR_TEXT_DIM)
+	v.add_child(hint)
+	_preset_rows.clear()
+	for i in range(PhaseInstrumentManager.LOADOUT_PRESET_SLOTS):
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 6)
+		v.add_child(row)
+		var name_lbl := Label.new()
+		name_lbl.text = "阵%d" % (i + 1)
+		name_lbl.custom_minimum_size = Vector2(34, 0)
+		name_lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
+		row.add_child(name_lbl)
+		var apply_btn := Button.new()
+		apply_btn.text = "应用"
+		apply_btn.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
+		apply_btn.pressed.connect(_on_preset_apply.bind(i))
+		row.add_child(apply_btn)
+		var save_btn := Button.new()
+		save_btn.text = "保存"
+		save_btn.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
+		save_btn.pressed.connect(_on_preset_save.bind(i))
+		row.add_child(save_btn)
+		var summary := Label.new()
+		summary.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
+		summary.add_theme_color_override("font_color", DT.COLOR_TEXT_DIM)
+		summary.clip_text = true
+		summary.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		row.add_child(summary)
+		_preset_rows.append({"apply": apply_btn, "summary": summary})
+
+func _refresh_preset_popup() -> void:
+	if _preset_popup == null:
+		return
+	for i in range(_preset_rows.size()):
+		var row: Dictionary = _preset_rows[i]
+		var summary: Label = row["summary"]
+		summary.text = PhaseInstrumentManager.get_loadout_preset_summary(i)
+		row["apply"].disabled = PhaseInstrumentManager.get_loadout_presets()[i].is_empty()
+
+func _on_preset_apply(idx: int) -> void:
+	var n: int = PhaseInstrumentManager.apply_loadout_preset(idx)
+	if n < 0:
+		SignalBus.show_toast.emit("该预设为空：先「保存」当前阵容")
+	else:
+		SignalBus.show_toast.emit("已应用预设「阵%d」：%d 张战斗卡" % [idx + 1, n])
+		_preset_popup.hide()
+
+func _on_preset_save(idx: int) -> void:
+	var n: int = PhaseInstrumentManager.save_loadout_preset(idx)
+	if n < 0:
+		SignalBus.show_toast.emit("预设槽位无效")
+	else:
+		SignalBus.show_toast.emit("已保存「阵%d」：%d 张战斗卡" % [idx + 1, n])
+		_refresh_preset_popup()
+
+
 
 signal instrument_area_clicked
 signal phase_level_label_clicked
@@ -87,6 +193,8 @@ func _ready() -> void:
 	_build_energy_row()
 	_setup_menu_button()
 	_update_energy_display()
+	_build_synergy_label()
+	_build_preset_ui()
 	_refresh_all()
 	# 布局完成后，让格子高度精确填满条的可用空间
 	call_deferred("_fit_slots_to_bar")
@@ -110,23 +218,25 @@ func _process(delta: float) -> void:
 
 
 ## v7.x(自动部署)：在 InstrumentSection 最前面创建"自动"toggle 按钮 + 初始化控制器。
-## 按钮仅在战斗中可点击；开启后从左到右自动铺满战斗卡，单位死亡立即补阵。
-## 仅当前战斗生效（battle_ended 自动关闭）。
+## v32.3 A3：默认开（偏好持久化）；战前可预武装（开战后自动铺）；战斗结束不再自动关。
 func _setup_auto_deploy() -> void:
 	# 控制器需要主场景引用（定位 Battlefield）
 	var main_node: Node = _find_main_scene()
 	_auto_deploy = AutoDeployController.new()
-	_auto_deploy.setup(main_node)
+	# 先连 state_changed 再 setup——setup 会按持久化偏好发初始开启态
 	_auto_deploy.state_changed.connect(_on_auto_deploy_state_changed)
+	_auto_deploy.setup(main_node)
 	# 按钮插到 InstrumentSection 最前面（InstrumentIcon 之前）
 	_auto_deploy_btn = Button.new()
 	_auto_deploy_btn.name = "AutoDeployBtn"
 	_auto_deploy_btn.text = "自动"
 	_auto_deploy_btn.custom_minimum_size = Vector2(48, BAR_FIXED_HEIGHT - 4)
 	_auto_deploy_btn.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
-	_auto_deploy_btn.tooltip_text = "自动部署：从左到右铺满战斗卡\n单位死亡后自动补阵\n仅当前战斗生效"
+	_auto_deploy_btn.tooltip_text = "自动部署：开战后卡组自动上阵（绿槽顺序）\n单位死亡后自动补阵\n默认开启，偏好自动记忆"
 	_auto_deploy_btn.toggle_mode = true
-	_apply_auto_deploy_btn_style(false)
+	# v32.3 A3：初始按压态对齐持久化偏好（set_pressed_no_signal 防回环触发 enable/disable）
+	_auto_deploy_btn.set_pressed_no_signal(_auto_deploy != null and _auto_deploy.is_enabled())
+	_apply_auto_deploy_btn_style(_auto_deploy != null and _auto_deploy.is_enabled())
 	_auto_deploy_btn.pressed.connect(_on_auto_deploy_btn_pressed)
 	instrument_section.add_child(_auto_deploy_btn)
 	instrument_section.move_child(_auto_deploy_btn, 0)  # 移到最前面
@@ -153,18 +263,17 @@ func _on_auto_deploy_btn_pressed() -> void:
 		SignalBus.play_sound.emit("button")
 	if _auto_deploy == null:
 		return
-	# 战斗中才允许开启；非战斗态点击强制弹回关闭
-	var in_battle: bool = BattleManager != null and "battle_active" in BattleManager and BattleManager.battle_active
-	if not in_battle:
-		_auto_deploy_btn.set_pressed_no_signal(false)
-		_apply_auto_deploy_btn_style(false)
-		if _auto_deploy.is_enabled():
-			_auto_deploy.disable()
-		return
+	# v32.3 A3：解除"战斗中才能开"门控——战前可预武装（battle_started 后自动铺，
+	# 控制器 _on_battle_started 原生支持）；开关即偏好，持久化在控制器侧
 	if _auto_deploy_btn.is_pressed():
 		_auto_deploy.enable()
 	else:
 		_auto_deploy.disable()
+
+
+## v32.3 A3：外部查询自动部署偏好（教程首战 nudge 区分自动/手动语义用）
+func is_auto_deploy_enabled() -> bool:
+	return _auto_deploy != null and _auto_deploy.is_enabled()
 
 
 func _on_auto_deploy_state_changed(enabled: bool) -> void:
@@ -700,6 +809,59 @@ func _refresh_slot_indicators() -> void:
 func _refresh_all() -> void:
 	_refresh_slot_layout()
 	_refresh_phase_level()
+	_refresh_synergy_label()
+
+## v32.0 B2-3: 备战面体系预示——NameSection 第三行。
+## 战斗内实时激活态由 combo_status_strip 轮询场上单位（v9.1/v21）；
+## 本行消费同一 detect API 但读**装载槽卡的已装改造**，在基地调整卡时即时预览
+## "这套阵容将激活什么体系"，闭合构筑决策回路。
+func _build_synergy_label() -> void:
+	var name_section: Node = get_node_or_null("Margin/HBox/InstrumentSection/NameSection")
+	if name_section == null:
+		return
+	_synergy_label = Label.new()
+	_synergy_label.custom_minimum_size = Vector2(0, 16)
+	_synergy_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_synergy_label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	_synergy_label.add_theme_font_size_override("font_size", 12)
+	_synergy_label.add_theme_color_override("font_color", DT.COLOR_GOLD)
+	_synergy_label.clip_text = true
+	_synergy_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_synergy_label.visible = false
+	name_section.add_child(_synergy_label)
+
+
+func _refresh_synergy_label() -> void:
+	if _synergy_label == null or not is_instance_valid(_synergy_label):
+		return
+	# combo_id -> 档位rank（0=基础 1=满档），多卡同类取最高
+	var agg: Dictionary = {}
+	if PhaseInstrumentManager != null:
+		for loadout in PhaseInstrumentManager.get_loadouts():
+			var card: CardResource = loadout.get("platform")
+			if card == null or card.mods.is_empty():
+				continue
+			var tiers: Dictionary = ComboTactics.detect_card_combo_tiers(card.mods)
+			for cid in tiers:
+				var rank: int = 1 if String(tiers[cid]) == ComboTactics.TIER_FULL else 0
+				if rank > int(agg.get(cid, -1)):
+					agg[cid] = rank
+	if agg.is_empty():
+		_synergy_label.visible = false
+		return
+	var parts: Array[String] = []
+	var tips: Array[String] = []
+	for cid in agg:
+		var def: Dictionary = ComboTactics.COMBOS.get(cid, {})
+		var cname: String = String(def.get("name", String(cid)))
+		var is_full: bool = int(agg[cid]) == 1
+		parts.append("%s·%s" % [cname, "满" if is_full else "基"])
+		tips.append("%s（%s）" % [cname, "满档" if is_full else "基础档"])
+	_synergy_label.visible = true
+	_synergy_label.text = "体系：" + "、".join(parts)
+	var nl_sep := String.chr(10)
+	_synergy_label.tooltip_text = "当前阵容体系预览（按已装改造，满档需集齐满档件）：" + nl_sep + nl_sep.join(tips)
+
 
 
 func _format_card_slot_tooltip(color: String, card: CardResource) -> String:
@@ -760,6 +922,7 @@ func _flush_pending_slots_refresh() -> void:
 	_refresh_slot_layout()
 	_refresh_phase_level()
 	_refresh_slot_indicators()
+	_refresh_synergy_label()
 
 
 func _refresh_slot_layout() -> void:
