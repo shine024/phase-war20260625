@@ -151,7 +151,7 @@ const TAG_PATCH: Dictionary = {
 	"ww2_sup_mg42": ["support"],              # MG42 机枪组（支援班组火力）
 	"fut_sup_nrepair": ["support"],           # N-Repair 纳米工程车（支援工程）
 }
-## 战场视觉缩放表已迁移到 data/card_foot_anchors.gd（VISUAL_SCALE，单一真理源）。
+## 战场视觉缩放已迁移到 data/card_foot_anchors.gd（v6.14.8 内容感知模型：档位系数 + override，单一真理源）。
 ## 本文件的 get_visual_scale_for_archetype 转发到 CardFootAnchors。
 ## 若你希望所有敌人都显示完整精灵动画而非蜂群几何体，保持 false。
 ## 需要压测性能时可改回 true（仅对配置了 swarm_unit=true 的敌人生效）。

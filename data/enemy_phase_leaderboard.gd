@@ -223,11 +223,11 @@ static func get_faction_display_info(faction: String) -> Dictionary:
 		"flame": {"name": "烈焰", "color": Color(1.0, 0.4, 0.2, 1), "icon": "🔥"},
 		"thunder": {"name": "雷霆", "color": Color(0.5, 0.7, 1.0, 1), "icon": "⚡"},
 		"void": {"name": "虚空", "color": Color(0.7, 0.3, 1.0, 1), "icon": "🌀"},
-		"steel_flame": {"name": "钢铁烈焰", "color": Color(0.9, 0.6, 0.4, 1), "icon": "🔩"},
-		"thunder_steel": {"name": "雷霆钢铁", "color": Color(0.6, 0.75, 0.95, 1), "icon": "⚙️"},
-		"void_flame": {"name": "虚空烈焰", "color": Color(0.85, 0.35, 0.8, 1), "icon": "🔮"},
-		"steel_thunder": {"name": "钢铁雷霆", "color": Color(0.65, 0.8, 1.0, 1), "icon": "🔧"},
-		"flame_void": {"name": "烈焰虚空", "color": Color(0.9, 0.35, 0.6, 1), "icon": "💀"},
+		"steel_flame": {"name": "钢铁混融系", "color": Color(0.9, 0.6, 0.4, 1), "icon": "🔩"},
+		"thunder_steel": {"name": "雷霆混融系", "color": Color(0.6, 0.75, 0.95, 1), "icon": "⚙️"},
+		"void_flame": {"name": "虚空混融系", "color": Color(0.85, 0.35, 0.8, 1), "icon": "🔮"},
+		"steel_thunder": {"name": "钢铁混融系", "color": Color(0.65, 0.8, 1.0, 1), "icon": "🔧"},
+		"flame_void": {"name": "烈焰混融系", "color": Color(0.9, 0.35, 0.6, 1), "icon": "💀"},
 		"all": {"name": "全能", "color": Color(1.0, 0.9, 0.3, 1), "icon": "👑"}
 	}
 

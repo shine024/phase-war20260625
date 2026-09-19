@@ -262,6 +262,8 @@ func get_next_wave_preview() -> Dictionary:
 	elif gm and gm.has_method("get_enemy_spawn_count_for_wave"):
 		to_spawn = gm.get_enemy_spawn_count_for_wave(level, next_wave)
 	var bias_tags: Array = spec.get("archetype_bias_tags", [])
+	# v6.16 反制配波：与 spawn_card_grid_enemy_wave 同口径并入关卡反制偏好
+	bias_tags = _merged_wave_bias_tags(level, bias_tags)
 	var comp: Dictionary = spec.get("composition", {})
 	var is_boss_wave: bool = (_enemy_wave_total > 0 and next_wave == _enemy_wave_total)
 	# v23.2 预警诚实化：bias tag 在本时代池零匹配时降级显示"混合"，
@@ -425,6 +427,9 @@ func spawn_card_grid_enemy_wave(current_level: int) -> bool:
 
 	# bias_tags：本波偏好的 archetype tag（如 ["infantry"]），空=不限
 	var bias_tags: Array = wave_spec.get("archetype_bias_tags", []) if use_sequence else []
+	# v6.16 反制配波：关卡 special_rules 的 counter_bias_tags 并入本波偏好
+	# （与 get_next_wave_preview 同口径，预警题面必真）
+	bias_tags = _merged_wave_bias_tags(current_level, bias_tags)
 
 	for _i in range(to_spawn):
 		if enemy_unit_count >= _enemy_field_unit_cap():
@@ -1346,6 +1351,20 @@ func _emit_deploy_failed(reason_code: String, message: String) -> void:
 		_last_deploy_fail_ts_ms = now_ms
 	if _signal_bus:
 		_signal_bus.player_deploy_failed.emit(reason_code, message)
+
+
+## v6.16 反制配波（D2 免疫式平衡）：关卡 special_rules.counter_bias_tags 并入
+## 波次 bias tags——该关敌方构成系统性偏向某兵种（装甲洪流/空域压制/步兵海），
+## 单一维度构筑在本关会被克制，多元构筑反而获得碾压窗口。
+## spawn 与预警（get_next_wave_preview）都走本函数，题面必真。
+func _merged_wave_bias_tags(level: int, base_tags: Array) -> Array:
+	var merged: Array = base_tags.duplicate()
+	var li = LevelInformation.get_shared()
+	var rules: Dictionary = li.get_special_rules(level) if li != null else {}
+	for t in rules.get("counter_bias_tags", []):
+		if not merged.has(t):
+			merged.append(t)
+	return merged
 
 
 ## v8 批次3: 获取当前关卡的 special_rules（读 GameManager.current_level → LevelInformation）

@@ -66,11 +66,65 @@ def components(mask):
             comps.append((area, (x0, y0, x1, y1)))
     return comps
 
+def white_metrics(im):
+    """白底残留三指标（2026-09-19 用户复查项：白底/白边未抠完）：
+    corner_white  四角 12×12 块内 近白不透明占比（≥0.5 判白底块）
+    border_white  边框 3px 环 近白不透明占比（≥0.35 判白底环）
+    fringe_white  轮廓带（不透明且 4 邻有透明的像素）近白占比（≥0.45 判白边）
+    近白 = min(r,g,b)≥210 且 alpha≥140（角点用 ≥235/≥200 严格档）。
+    全部在原分辨率算（降采样会糊掉 1-2px 白边）。"""
+    W, H = im.size
+    arr = np.asarray(im).astype(np.int16)
+    rgb = arr[..., :3]
+    a = arr[..., 3]
+    mn = rgb.min(axis=2)
+    res = {"corner_white": 0.0, "border_white": 0.0, "fringe_white": 0.0}
+    if W < 24 or H < 24:
+        return res
+    # 角点 12×12（两档：≥235/alpha≥200 白底块；≥210/alpha>0 含半透明白雾）
+    cmax = 0.0
+    hmax = 0.0
+    for cy in (0, H - 12):
+        for cx in (0, W - 12):
+            blk_mn = mn[cy:cy+12, cx:cx+12]
+            blk_a = a[cy:cy+12, cx:cx+12]
+            cmax = max(cmax, float(((blk_mn >= 235) & (blk_a >= 200)).mean()))
+            hmax = max(hmax, float(((blk_mn >= 210) & (blk_a > 0)).mean()))
+    res["corner_white"] = round(cmax, 3)
+    res["corner_haze"] = round(hmax, 3)
+    # 边框 3px 环
+    ring = np.ones((H, W), dtype=bool)
+    ring[3:-3, 3:-3] = False
+    res["border_white"] = round(float(((mn >= 225) & (a >= 140) & ring).mean()), 3)
+    # 轮廓带：不透明像素且 4 邻至少一个透明
+    op = a >= 140
+    tr = a < 60
+    nb_tr = np.zeros_like(op)
+    for dy, dx in ((-1, 0), (1, 0), (0, -1), (0, 1)):
+        shifted = np.zeros_like(tr)
+        if dy == -1: shifted[:-1, :] = tr[1:, :]
+        elif dy == 1: shifted[1:, :] = tr[:-1, :]
+        elif dx == -1: shifted[:, :-1] = tr[:, 1:]
+        else: shifted[:, 1:] = tr[:, :-1]
+        nb_tr |= shifted
+    band = op & nb_tr
+    n = int(band.sum())
+    if n >= 30:
+        res["fringe_white"] = round(float(((mn >= 210) & band).sum()) / n, 3)
+    return res
+
+
 def analyze(im):
-    """返回 dict: content_frac, bbox(x0,y0,x1,y1) 归一化, aspect, split_gap, multi_subject"""
+    """返回 dict: content_frac, bbox(x0,y0,x1,y1) 归一化, aspect, split_gap, multi_subject,
+    corner_white/border_white/fringe_white（v6.17 白底三指标）"""
     m, md = alpha_mask_small(im)
     res = {"content_frac": 0.0, "bbox": None, "aspect": 0.0,
            "split_gap": 0.0, "multi_subject": 0, "empty": True}
+    wm = white_metrics(im)
+    res.update(wm)
+    res["white_flag"] = (wm["corner_white"] >= 0.5 or wm["border_white"] >= 0.30
+                         or wm["fringe_white"] >= 0.35
+                         or res.get("corner_haze", 0.0) >= 0.40)
     if not m.any():
         return res
     res["empty"] = False
@@ -100,12 +154,44 @@ def audit_anims():
             continue
         jp = os.path.join(p, "anim.json")
         if not os.path.isfile(jp):
-            report[d] = {"error": "no anim.json"}
+            # v6.17 补盲区：AttackPoseAnim 姿态目录（attack_f0.png，无 anim.json）——
+            # 2026-09-19 体检发现此类从未进过审计（多人/白底双漏）
+            ap = os.path.join(p, "attack_f0.png")
+            if os.path.isfile(ap):
+                a = analyze(load_rgba(ap))
+                report[d] = {"mode": "pose", "anims": {"attack_f0": {
+                    "white_flag": a.get("white_flag", False),
+                    "corner": a["corner_white"], "border": a["border_white"],
+                    "fringe": a["fringe_white"],
+                    "multi_subject": a["multi_subject"]}}}
+            else:
+                report[d] = {"error": "no anim.json"}
             continue
         meta = json.load(open(jp, encoding="utf-8"))
         fs = int(meta.get("frame_size", 256))
         counts = meta.get("counts", {})
         entry = {"fps": meta.get("fps"), "frame_size": fs, "counts": counts, "anims": {}}
+        # v6.17: boss 散帧模式（idle_f0..N.png，BossIdleAnim 加载链）——同指标逐帧审
+        loose = sorted(f for f in os.listdir(p)
+                       if f.startswith("idle_f") and f.endswith(".png"))
+        if loose and not os.path.isfile(os.path.join(p, "sheet_idle.png")):
+            le = {"mode": "loose", "frames": [], "white_frames": [], "empty_frames": [],
+                  "multi_frames": []}
+            for i, fn in enumerate(loose):
+                a = analyze(load_rgba(os.path.join(p, fn)))
+                a["idx"] = i
+                le["frames"].append(a)
+                if a["empty"]:
+                    le["empty_frames"].append(i)
+                if a["multi_subject"] >= 2:
+                    le["multi_frames"].append(i)
+                if a.get("white_flag"):
+                    le["white_frames"].append(
+                        {"idx": i, "corner": a["corner_white"],
+                         "border": a["border_white"], "fringe": a["fringe_white"]})
+            entry["anims"]["loose_idle"] = le
+            report[d] = entry
+            continue
         for anim_name in ("idle", "attack"):
             sp = os.path.join(p, f"sheet_{anim_name}.png")
             if not os.path.isfile(sp):
@@ -123,6 +209,10 @@ def audit_anims():
                     a = analyze(fr)
                     a["idx"] = i
                     frames.append(a)
+                    if a.get("white_flag"):
+                        ae.setdefault("white_frames", []).append(
+                            {"idx": i, "corner": a["corner_white"],
+                             "border": a["border_white"], "fringe": a["fringe_white"]})
                 ae["frames"] = frames
                 ae["empty_frames"] = [f["idx"] for f in frames if f["empty"]]
                 ae["multi_frames"] = [f["idx"] for f in frames if f["multi_subject"] >= 2]
@@ -147,6 +237,81 @@ def audit_icons():
             a = analyze(im)
             report[f"{side}/{fn[:-4]}"] = a
     return report
+
+
+def audit_extra():
+    """v6.17 追加扫角点白底：mod 图标 / 掉落物（同 analyze 白三指标，全量）"""
+    report = {}
+    for rel in (os.path.join("assets", "ui", "icons", "mod_icons"),
+                os.path.join("assets", "resources", "drops")):
+        sd = os.path.join(ROOT, rel)
+        if not os.path.isdir(sd):
+            continue
+        for fn in sorted(os.listdir(sd)):
+            if not fn.endswith(".png"):
+                continue
+            try:
+                im = load_rgba(os.path.join(sd, fn))
+            except Exception:
+                continue
+            report[os.path.basename(rel) + "/" + fn[:-4]] = analyze(im)
+    return report
+
+
+def _save_on_gray(im, out, gray=(96, 98, 104)):
+    """RGBA 合成到中灰底保存（白底残留在中灰上一眼可见）"""
+    bg = Image.new("RGBA", im.size, gray + (255,))
+    bg.paste(im, (0, 0), im)
+    bg.convert("RGB").save(out)
+
+
+def gen_white_evidence(rep, cap=72):
+    """白标证据裁切：动画帧从 sheet 裁原帧、图标整图，合成中灰底后拼图"""
+    ev_dir = os.path.join(SHEETS, "white_ev")
+    os.makedirs(ev_dir, exist_ok=True)
+    paths, labels, flags = [], [], []
+    if "anims" in rep:
+        for u, e in rep["anims"].items():
+            fs = int(e.get("frame_size", 256))
+            for an, ae in e.get("anims", {}).items():
+                for wf in ae.get("white_frames", []):
+                    if len(paths) >= cap:
+                        break
+                    i = int(wf["idx"])
+                    if an == "loose_idle":  # boss 散帧模式：单文件即帧
+                        sp = os.path.join(ANIM, u, f"idle_f{i}.png")
+                        if not os.path.isfile(sp):
+                            continue
+                        fr = load_rgba(sp)
+                    else:
+                        sp = os.path.join(ANIM, u, f"sheet_{an}.png")
+                        if not os.path.isfile(sp):
+                            continue
+                        im = load_rgba(sp)
+                        if im.size[0] < fs * (i + 1) or im.size[1] < fs:
+                            continue
+                        fr = im.crop((i * fs, 0, (i + 1) * fs, fs))
+                    out = os.path.join(ev_dir, f"{u}_{an}_f{i}.png")
+                    _save_on_gray(fr, out)
+                    paths.append(out)
+                    labels.append(f"{u}/{an}#f{i} c{wf['corner']} b{wf['border']} f{wf['fringe']}")
+                    flags.append(["◈W"])
+    if "icons" in rep:
+        for k, a in rep["icons"].items():
+            if not a.get("white_flag") or len(paths) >= cap:
+                continue
+            side, name = k.split("/", 1)
+            p = os.path.join(ICONS, side, name + ".png")
+            if not os.path.isfile(p):
+                continue
+            out = os.path.join(ev_dir, "icon_" + k.replace("/", "_") + ".png")
+            _save_on_gray(load_rgba(p), out)
+            paths.append(out)
+            labels.append(f"{k} c{a['corner_white']} b{a['border_white']} f{a['fringe_white']}")
+            flags.append(["◈W"])
+    if paths:
+        sheet_paths(paths, labels, "white_offenders.png", flags)
+    return len(paths)
 
 def sheet_paths(paths, labels, out, flags=None):
     """拼图：每格 = 图 fit 到 CELL + 底部标签；flags 提供警示标记"""
@@ -190,6 +355,9 @@ if __name__ == "__main__":
     if mode in ("all", "icons"):
         print("== 审计卡图 ==")
         rep["icons"] = audit_icons()
+    if mode in ("all", "extra"):
+        print("== 审计 mod 图标/掉落物 ==")
+        rep["extra"] = audit_extra()
     with open(OUT_JSON, "w", encoding="utf-8") as f:
         json.dump(rep, f, ensure_ascii=False)
     print("report ->", OUT_JSON)
@@ -225,3 +393,27 @@ if __name__ == "__main__":
             print(f"  [EMPTY] {k}")
         for k, n, g in bad_m[:40]:
             print(f"  [MULTI] {k}: comps={n} gap={g}")
+    # v6.17 白底残留汇总 + 证据拼图
+    for grp, tag in (("anims", "动画"), ("icons", "卡图"), ("extra", "extra")):
+        if grp not in rep:
+            continue
+        hits = []
+        for k, v in rep[grp].items():
+            if grp == "anims":
+                for an, ae in v.get("anims", {}).items():
+                    for wf in ae.get("white_frames", []):
+                        hits.append(f"{u_name(k, an)}#f{wf['idx']}"
+                                    f" c{wf['corner']} b{wf['border']} f{wf['fringe']}")
+            else:
+                if v.get("white_flag"):
+                    hits.append(f"{k} c{v['corner_white']} b{v['border_white']} f{v['fringe_white']}")
+        print(f"\n[白底 {tag}] 命中 {len(hits)}")
+        for h in hits[:60]:
+            print(f"  [WHITE] {h}")
+    if mode in ("all", "anim", "icons"):
+        n = gen_white_evidence(rep)
+        print(f"\n白标证据 -> {os.path.join(SHEETS, 'white_offenders.png')}（{n} 例）")
+
+
+def u_name(unit, anim):
+    return f"{unit}/{anim}"

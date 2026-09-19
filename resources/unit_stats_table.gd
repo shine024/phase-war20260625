@@ -123,6 +123,11 @@ static func build_stats_from_card(card: CardResource, era_override: int = -1, sk
 		_sync_mod_speed_ratio_to_weapon_slots(stats, tmp_slots, _pre_spd)
 		# v6.0/v6.13: 再应用改造效果到武器槽位（传入 stats 作 source_stats，grant_slot 据此派生伤害）
 		tmp_slots = _ModRegistry.apply_to_weapon_slots(tmp_slots, card.mods, stats)
+		# v37.3: 改造 id 列表入 meta（战法件贴花数据源；同 rune_specials 的 stats-meta 先例）
+		var _decal_ids: Array = []
+		for m in card.mods:
+			_decal_ids.append(String(m.get("id", "")) if m is Dictionary else String(m))
+		stats.set_meta("mod_ids", _decal_ids)
 
 	stats.weapon_slots = tmp_slots
 
@@ -630,6 +635,11 @@ static func _sync_mod_attack_ratio_to_weapon_slots(stats: UnitStats, slots: Arra
 static func _sync_mod_speed_ratio_to_weapon_slots(stats: UnitStats, slots: Array, pre_speeds: Array) -> void:
 	if slots.is_empty():
 		return
+	# v6.16: 攻速断点阶梯开关（false=纯连续乘区，v6.16 前行为）
+	var _bp_enabled: bool = GameConfig.get_default().mod_breakpoints_enabled
+	# v6.16: 断点真身 preload（headless/--script 无编辑器扫描，新类全局缓存未注册，
+	# 裸 class_name 引用会解析失败——v27.15 同款坑，见 modification_panel 头注）
+	var _bp: GDScript = preload("res://data/mod_breakpoints.gd")
 	var post_speeds: Array = [stats.attack_light_speed, stats.attack_armor_speed, stats.attack_air_speed]
 	for i in range(slots.size()):
 		var w = slots[i]
@@ -641,7 +651,21 @@ static func _sync_mod_speed_ratio_to_weapon_slots(stats: UnitStats, slots: Array
 			continue
 		var factor: float = post / pre
 		if absf(factor - 1.0) > 0.001:
-			w.attack_speed = clampf(float(w.attack_speed) * factor, 0.05, 3.0)
+			# v6.16 断点阶梯：改造聚合增益跨档时按档位额外提速 + 削首弹蓄力。
+			# 档位按"改造后/改造前"比值计算（战斗期光环不参与，构筑期一次定档）；
+			# stats 侧同步乘档位乘区，保证 HUD 攻速秒伤/派生槽与武器路径同口径。
+			var _bp_mult: float = 1.0
+			if _bp_enabled:
+				var bp: Dictionary = _bp.resolve(factor - 1.0)
+				_bp_mult = float(bp.get("speed_mult", 1.0))
+				var _wu_mult: float = float(bp.get("windup_mult", 1.0))
+				if _wu_mult < 1.0 and float(w.windup) > 0.03:
+					w.windup = maxf(0.03, float(w.windup) * _wu_mult)
+				match i:
+					0: stats.attack_light_speed = float(stats.attack_light_speed) * _bp_mult
+					1: stats.attack_armor_speed = float(stats.attack_armor_speed) * _bp_mult
+					2: stats.attack_air_speed = float(stats.attack_air_speed) * _bp_mult
+			w.attack_speed = clampf(float(w.attack_speed) * factor * _bp_mult, 0.05, 3.0)
 
 
 ## v6.8: 扫描 mods，提取 ally_* 光环配置存到 stats meta

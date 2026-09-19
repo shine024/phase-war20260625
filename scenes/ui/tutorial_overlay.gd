@@ -124,6 +124,12 @@ func _on_next_pressed() -> void:
 	# 推进到下一步
 	if _tutorial_manager.has_method("complete_current_step"):
 		_tutorial_manager.complete_current_step()
+	# v38.3 教程节奏：面板体验步（开卡仓/装配）——面板保持打开让玩家自由浏览，
+	# 关闭面板（main._close_overlay 通知）后才弹下一步；此处收起本步导航框。
+	if _tutorial_manager.has_method("begin_close_wait_for_action") \
+			and _tutorial_manager.begin_close_wait_for_action(action_target):
+		queue_free()
+		return
 	# v21.x（FTUE 审计 S2，2026-08-27）：第7步（首战）触发战斗后教程收起——
 	# 战斗期间不再弹窗遮挡战场（面板类动作在战斗中本就被 _is_in_battle 拦截）；
 	# 战斗结束（胜/负/撤退/僵持超时）由 main.gd _on_battle_ended_resume_tutorial 续播 8-13 步。

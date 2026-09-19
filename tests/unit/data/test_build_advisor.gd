@@ -46,3 +46,12 @@ func test_no_mods_rule_produces_tip() -> void:
 			var tips: Array = Advisor.get_build_tips(level)
 			assert_bool(tips.size() > 0).is_true()
 			break
+
+
+func test_v616_counter_wave_tip() -> void:
+	# v6.16 反制配波：counter_bias_tags 关必须给出针对性构筑建议（规则条最高优先级）
+	var li = LevelInformation.get_shared()
+	for level in [33, 43, 48, 53, 63, 83, 89]:
+		var tips: Array = Advisor.get_build_tips(level)
+		assert_bool(tips.size() > 0).override_failure_message("L%d 反制关无建议" % level).is_true()
+		assert_str(String(tips[0])).contains("敌方")

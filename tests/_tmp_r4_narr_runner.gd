@@ -36,10 +36,10 @@ const ECHO_LEVELS := [1, 10, 15, 20, 21, 25, 30, 35, 40, 41, 45, 49, 50, 55, 60,
 func _api_checks() -> void:
 	var pre10: Array = CampaignNarrative.get_pre_battle_lines(10)
 	_chk(pre10.size() == 2, "L10 战前台词非 2 句（%d）" % pre10.size())
-	_chk(String(pre10[0]).contains("钢铁元帅·克劳斯"), "L10 台词未带 master 名")
+	_chk(String(pre10[0]).contains("霍北望"), "L10 台词未带 master 名")
 	_chk(CampaignNarrative.get_pre_battle_lines(11).is_empty(), "L11 非驻守关应无台词")
 	_chk(not CampaignNarrative.get_post_battle_line(20).is_empty(), "L20 遗言缺失")
-	_chk(CampaignNarrative.get_post_battle_master_name(20) == "雷神之子·索尔", "L20 署名错误")
+	_chk(CampaignNarrative.get_post_battle_master_name(20) == "秦引路", "L20 署名错误")
 	_chk(CampaignNarrative.get_post_battle_line(11).is_empty(), "L11 应无遗言")
 
 	# 全量批：20 驻守点 × (战前 2 句 + 战后 1 句) 全覆盖
@@ -111,7 +111,7 @@ func _panel_checks() -> void:
 	var p10: Node = mvp_script.create(get_tree().root, true, [], 100, 2, _fake_summary(), false)
 	await get_tree().process_frame
 	await get_tree().process_frame
-	_chk(_has_label_text_containing(p10, "🕯 来自 钢铁元帅·克劳斯 的讯息"), "L10 遗言段未渲染")
+	_chk(_has_label_text_containing(p10, "🕯 来自 霍北望 的讯息"), "L10 遗言段未渲染")
 	_chk(_has_label_text_containing(p10, "盾放下了"), "L10 遗言正文未渲染")
 	await _shot("r4_epilogue_l10.png")
 	p10.queue_free()
@@ -122,7 +122,7 @@ func _panel_checks() -> void:
 	var p100: Node = mvp_script.create(get_tree().root, true, [], 100, 2, _fake_summary(), false)
 	await get_tree().process_frame
 	await get_tree().process_frame
-	_chk(_has_label_text_containing(p100, "🕯 来自 全能相位师·奥米伽 的讯息"), "L100 遗言段未渲染")
+	_chk(_has_label_text_containing(p100, "🕯 来自 贺同舟 的讯息"), "L100 遗言段未渲染")
 	_chk(_has_label_text_containing(p100, "致谢"), "L100 结局致谢未渲染")
 	_chk(_has_label_text_containing(p100, "黑门·无限 已开启"), "L100 黑门钩子未渲染")
 	await _shot("r4_ending_l100.png")

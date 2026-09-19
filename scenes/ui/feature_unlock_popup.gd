@@ -14,30 +14,34 @@ const SAVE_PATH := "user://feature_unlock_seen.json"
 static var _seen_cache: Dictionary = {}
 static var _cache_loaded := false
 
-static func show_once(feature_key: String, title: String, description: String) -> void:
+static func show_once(feature_key: String, title: String, description: String) -> Node:
 	if feature_key.is_empty() or _already_seen(feature_key):
-		return
+		return null
 	_mark_seen(feature_key)
 	var tree := Engine.get_main_loop() as SceneTree
 	if tree == null or tree.root == null:
-		return
+		return null
 	var popup := FeatureUnlockPopup.new()
 	popup._setup(feature_key, title, description)
 	tree.root.add_child(popup)
+	return popup
 
 ## 无视持久化，每次都弹（用于战斗中每次改造解锁即时反馈）。
-static func show_now(title: String, description: String) -> void:
+## v38.3: 返回弹窗实例（结算弹窗链需要 tree_exited 串行挂钩；调用方忽略返回值无影响）。
+static func show_now(title: String, description: String) -> Node:
 	var tree := Engine.get_main_loop() as SceneTree
 	if tree == null or tree.root == null:
-		return
+		return null
 	var popup := FeatureUnlockPopup.new()
 	popup._setup("", title, description)
 	tree.root.add_child(popup)
+	return popup
 
 ## v34 渐进解锁：跨级解锁仪式（同一关解锁多项时合并为一个弹窗，防连弹多层 Modal）。
 ## infos: [{key,title,desc}]；按 "gate:"+key 逐项去重（与 PANEL_INTROS 的裸 key 命名空间隔离）。
 ## 仪式语义与 show_once 一致——每项只弹一次（user:// 持久化）。
-static func show_unlock_batch(infos: Array) -> void:
+## v38.3: 返回弹窗实例（无新解锁时 null）。
+static func show_unlock_batch(infos: Array) -> Node:
 	var fresh: Array = []
 	for info in infos:
 		var dedupe_key := "gate:" + String(info.get("key", ""))
@@ -46,10 +50,10 @@ static func show_unlock_batch(infos: Array) -> void:
 		_mark_seen(dedupe_key)
 		fresh.append(info)
 	if fresh.is_empty():
-		return
+		return null
 	var tree := Engine.get_main_loop() as SceneTree
 	if tree == null or tree.root == null:
-		return
+		return null
 	var popup := FeatureUnlockPopup.new()
 	if fresh.size() == 1:
 		popup._setup(String(fresh[0].get("key", "")),
@@ -60,6 +64,7 @@ static func show_unlock_batch(infos: Array) -> void:
 			lines += "· %s——%s\n" % [String(info.get("title", "")), String(info.get("desc", ""))]
 		popup._setup("", "通关奖励 · 新系统解锁 ×%d" % fresh.size(), lines.strip_edges(false))
 	tree.root.add_child(popup)
+	return popup
 
 static func _already_seen(feature_key: String) -> bool:
 	_load_cache()

@@ -61,7 +61,7 @@ const HOTSPOTS := {
 		{"r": [0.925, 0.660, 0.055, 0.170], "name": "发电机", "hint": "全车电力·配给", "kind": "info", "rooms": "reactor + mess_hall"},
 		{"r": [0.792, 0.462, 0.152, 0.140], "name": "铺位", "hint": "睡眠·存档", "kind": "sleep", "rooms": "dormitory"},
 		{"r": [0.940, 0.327, 0.055, 0.400], "name": "尾门跳板", "hint": "行军选关", "kind": "march"},
-		{"r": [0.255, 0.610, 0.139, 0.080], "name": "通讯架", "hint": "成长规划", "kind": "panel", "key": "growth"},
+		{"r": [0.255, 0.610, 0.139, 0.080], "name": "通讯架", "hint": "技能树", "kind": "panel", "key": "growth"},
 		{"r": [0.506, 0.610, 0.138, 0.080], "name": "词缀工具车", "hint": "词缀·洗练", "kind": "panel", "key": "affix"},
 		{"r": [0.470, 0.180, 0.174, 0.090], "name": "资料柜", "hint": "图鉴·收藏档案", "kind": "panel", "key": "collection"},
 		{"r": [0.398, 0.180, 0.067, 0.100], "name": "电台", "hint": "势力联络", "kind": "panel", "key": "faction"},
@@ -80,7 +80,7 @@ const HOTSPOTS := {
 		{"r": [0.918, 0.661, 0.070, 0.174], "name": "发电机", "hint": "全车电力·配给", "kind": "info", "rooms": "reactor + mess_hall"},
 		{"r": [0.780, 0.452, 0.141, 0.139], "name": "铺位", "hint": "睡眠·存档", "kind": "sleep", "rooms": "dormitory"},
 		{"r": [0.922, 0.220, 0.060, 0.452], "name": "尾门跳板", "hint": "行军选关", "kind": "march"},
-		{"r": [0.244, 0.590, 0.146, 0.080], "name": "通讯架", "hint": "成长规划", "kind": "panel", "key": "growth"},
+		{"r": [0.244, 0.590, 0.146, 0.080], "name": "通讯架", "hint": "技能树", "kind": "panel", "key": "growth"},
 		{"r": [0.580, 0.620, 0.128, 0.080], "name": "词缀工具车", "hint": "词缀·洗练", "kind": "panel", "key": "affix"},
 		{"r": [0.465, 0.150, 0.275, 0.085], "name": "资料柜", "hint": "图鉴·收藏档案", "kind": "panel", "key": "collection"},
 		{"r": [0.394, 0.150, 0.066, 0.100], "name": "电台", "hint": "势力联络", "kind": "panel", "key": "faction"},
@@ -99,7 +99,7 @@ const HOTSPOTS := {
 		{"r": [0.844, 0.420, 0.060, 0.240], "name": "配电柜", "hint": "全车电力·配给", "kind": "info", "rooms": "reactor + mess_hall"},
 		{"r": [0.751, 0.550, 0.124, 0.100], "name": "铺位", "hint": "睡眠·存档", "kind": "sleep", "rooms": "dormitory"},
 		{"r": [0.920, 0.450, 0.065, 0.350], "name": "尾门跳板", "hint": "行军选关", "kind": "march"},
-		{"r": [0.272, 0.645, 0.115, 0.070], "name": "通讯台", "hint": "成长规划", "kind": "panel", "key": "growth"},
+		{"r": [0.272, 0.645, 0.115, 0.070], "name": "通讯台", "hint": "技能树", "kind": "panel", "key": "growth"},
 		{"r": [0.676, 0.640, 0.062, 0.092], "name": "词缀工具台", "hint": "词缀·洗练", "kind": "panel", "key": "affix"},
 		{"r": [0.584, 0.290, 0.097, 0.095], "name": "档案屏", "hint": "图鉴·收藏档案", "kind": "panel", "key": "collection"},
 		{"r": [0.431, 0.280, 0.044, 0.100], "name": "通讯阵列", "hint": "势力联络", "kind": "panel", "key": "faction"},
@@ -118,7 +118,7 @@ const HOTSPOTS := {
 		{"r": [0.692, 0.812, 0.190, 0.145], "name": "聚变缆线", "hint": "全车电力·配给", "kind": "info", "rooms": "reactor + mess_hall"},
 		{"r": [0.565, 0.652, 0.127, 0.150], "name": "铺位", "hint": "睡眠·存档", "kind": "sleep", "rooms": "dormitory"},
 		{"r": [0.885, 0.380, 0.080, 0.530], "name": "尾门跳板", "hint": "行军选关", "kind": "march"},
-		{"r": [0.250, 0.715, 0.123, 0.070], "name": "全息通讯塔", "hint": "成长规划", "kind": "panel", "key": "growth"},
+		{"r": [0.250, 0.715, 0.123, 0.070], "name": "全息通讯塔", "hint": "技能树", "kind": "panel", "key": "growth"},
 		{"r": [0.710, 0.500, 0.096, 0.080], "name": "词缀机械臂", "hint": "词缀·洗练", "kind": "panel", "key": "affix"},
 		{"r": [0.412, 0.330, 0.079, 0.080], "name": "全息档案柜", "hint": "图鉴·收藏档案", "kind": "panel", "key": "collection"},
 		{"r": [0.254, 0.300, 0.088, 0.080], "name": "外交全息台", "hint": "势力联络", "kind": "panel", "key": "faction"},
@@ -137,7 +137,7 @@ const HOTSPOTS := {
 		{"r": [0.695, 0.775, 0.115, 0.200], "name": "相位能源盘", "hint": "全车电力·配给", "kind": "info", "rooms": "reactor + mess_hall"},
 		{"r": [0.752, 0.672, 0.135, 0.165], "name": "铺位", "hint": "睡眠·存档", "kind": "sleep", "rooms": "dormitory"},
 		{"r": [0.900, 0.420, 0.085, 0.340], "name": "尾门跳板", "hint": "行军选关", "kind": "march"},
-		{"r": [0.300, 0.735, 0.094, 0.070], "name": "相位通讯塔", "hint": "成长规划", "kind": "panel", "key": "growth"},
+		{"r": [0.300, 0.735, 0.094, 0.070], "name": "相位通讯塔", "hint": "技能树", "kind": "panel", "key": "growth"},
 		{"r": [0.565, 0.745, 0.108, 0.070], "name": "词缀相位台", "hint": "词缀·洗练", "kind": "panel", "key": "affix"},
 		{"r": [0.444, 0.320, 0.112, 0.085], "name": "相位档案柜", "hint": "图鉴·收藏档案", "kind": "panel", "key": "collection"},
 		{"r": [0.392, 0.300, 0.047, 0.100], "name": "相位外交台", "hint": "势力联络", "kind": "panel", "key": "faction"},
@@ -758,26 +758,27 @@ func _rebuild_hotspots() -> void:
 
 ## v32.3 D1：热区功能说明句（悬浮 tooltip 第二行）——按 panel key > 工位名 > kind 查表，
 ## 五时代同功能同一句话（勿逐时代手抄）
+## v37 实机验收（用户"悬浮信息不详细"）：全部补成两句式——面板是什么 + 关键规则/消耗口径
 const HOTSPOT_DESC := {
-	"sortie": "打开出击简报：确认目的地、敌情与兵力后出击当前停靠关",
-	"march": "打开战区地图：点任意节点出车行军（耗燃料），到站停靠后即可出击",
-	"terminal": "打开战术统计终端：战线进度、资源家底与收集总览",
-	"sleep": "睡觉 = 存档 + 快充燃料 + 恢复精神，推进游戏内一天",
-	"intelligence": "打开情报舱：敌方情报阶梯——25% 解锁制造配方，50%/75% 扩品质池",
-	"store": "打开补给舱：用声望采购卡牌、资源与符文",
-	"backpack": "打开卡仓：管理战斗卡、符文与装配",
-	"modification": "打开改造舱：给战斗卡安装/升级/卸下改造模块",
-	"evolution": "打开制造舱：用情报与资源制造新卡牌",
-	"growth": "打开成长面板：卡牌等级、技能树与战力总览",
-	"affix": "打开词条工坊：词条洗练/锁定/批量重随",
-	"collection": "打开收藏图鉴：检阅收藏过的卡种与获取进度",
-	"faction": "打开势力联络：7 大势力声望、专属卡与技能树",
-	"leaderboard": "打开战功榜：势力排名、相位师排名与敌方相位师图鉴",
-	"help": "打开车长手册：全部系统的用法说明",
-	"发电机": "燃料与引擎管理：燃料自动回复（离线也涨），或用能量块 1:1 充能",
-	"配电柜": "燃料与引擎管理：燃料自动回复（离线也涨），或用能量块 1:1 充能",
-	"聚变缆线": "燃料与引擎管理：燃料自动回复（离线也涨），或用能量块 1:1 充能",
-	"相位能源盘": "燃料与引擎管理：燃料自动回复（离线也涨），或用能量块 1:1 充能",
+	"sortie": "打开出击简报：确认停靠关的敌情、战场环境与出战卡组后一键开战",
+	"march": "打开战区地图：点任意节点出车行军（耗燃料，按地形计价、回程半价），到站停靠后即可出击",
+	"terminal": "打开战术统计终端：战线推进度、资源家底、卡牌收集与作战统计总览",
+	"sleep": "睡觉 = 存档 + 快充燃料 + 恢复精神，推进游戏内一天；离线期间的挂机收益也会一并结算",
+	"intelligence": "打开情报舱：敌方情报阶梯——25% 解锁制造配方，50%/75% 扩品质池，100% 含神话品质；可按卡种查进度",
+	"store": "打开补给舱：用势力声望采购卡牌、资源与符文；各公司上架物资不同，声望靠作战与任务累积",
+	"backpack": "打开卡仓：管理战斗卡、符文与装配——卡可拖入底部绿槽出战，同名卡各自独立养成",
+	"modification": "打开改造舱：给战斗卡安装/升级/卸下改造模块——安装消耗对应图纸 + 纳米材料，每卡最多 9 格",
+	"evolution": "打开制造舱：消耗纳米材料直接生产卡牌——情报 25% 解锁配方，品质随情报档提升、暗保底兜底",
+	"growth": "打开相位师技能树：用技能点解锁全局强化；战斗卡靠战斗经验自动升级（Lv1-30），无需手动操作",
+	"affix": "打开词条工坊：对卡牌词条洗练/锁定/批量重随——普通卡耗纳米+晶体，星冥卡耗星髓",
+	"collection": "打开收藏图鉴：按时代检阅收藏过的卡种与获取进度；缴获与制造都会录入",
+	"faction": "打开势力联络：7 大势力的声望等级、专属卡与势力技能树——声望靠作战与势力事件提升",
+	"leaderboard": "打开战功榜：势力排名、相位师排名与敌方相位师图鉴三大战绩档案",
+	"help": "打开车长手册：卡牌成长 / 相位仪 / 势力 / 任务 / 移动基地 / 地图等全部系统的用法说明",
+	"发电机": "燃料与引擎管理：燃料自动回复（离线也涨），或用能量块 1:1 充能；引擎等级决定行军耗时",
+	"配电柜": "燃料与引擎管理：燃料自动回复（离线也涨），或用能量块 1:1 充能；引擎等级决定行军耗时",
+	"聚变缆线": "燃料与引擎管理：燃料自动回复（离线也涨），或用能量块 1:1 充能；引擎等级决定行军耗时",
+	"相位能源盘": "燃料与引擎管理：燃料自动回复（离线也涨），或用能量块 1:1 充能；引擎等级决定行军耗时",
 	"医疗柜": "医疗配给（占位）：正式版将在基地 HUD 呈现产出/状态",
 	"医疗冰箱": "医疗配给（占位）：正式版将在基地 HUD 呈现产出/状态",
 }
@@ -807,7 +808,8 @@ func _hotspot_tag(h: Dictionary) -> String:
 				"intelligence": "情报", "store": "补给", "backpack": "卡仓",
 				"modification": "改造", "evolution": "制造",
 				# v27.17：fb5c57b 挂的 6 个新工位此前落兜底显示通用词「工位」
-				"growth": "成长", "affix": "词缀", "collection": "图鉴",
+				# v37：growth 工位改直进技能树，短牌同步
+				"growth": "技能", "affix": "词缀", "collection": "图鉴",
 				"faction": "势力", "leaderboard": "战功", "help": "手册",
 			}.get(String(h.get("key", "")), "工位")
 		_:
@@ -1818,6 +1820,12 @@ func _open_panel(panel_id: String) -> void:
 	var _tpm_panel := get_node_or_null("/root/TutorialProgressionManager")
 	if _tpm_panel != null and _tpm_panel.has_method("notify_surface_opened"):
 		_tpm_panel.notify_surface_opened(panel_id)
+	# v37（用户拍板）：growth 工位（通讯架/通讯台/全息通讯塔/相位通讯塔）与教程
+	# 「战斗卡整备」步直进相位师技能树——不再嵌入整备舱 growth_panel（改造/制造
+	# 已有独立工位；教程触达面键仍叫 "growth"，上面 notify 已按原键发出）。
+	if panel_id == "growth":
+		PhaseMasterSkillHost.open(get_tree(), true)
+		return
 	var wrapper := _ensure_panel_wrapper(panel_id)
 	if wrapper == null:
 		_open_card("面板不可用", "", "EMBEDDED_PANELS['%s'] 加载失败（见日志）。" % panel_id)
@@ -2431,9 +2439,8 @@ func _play_wakeup_cinematic() -> void:
 	root.name = "WakeupCinematic"
 	root.size = Vector2(1280, 720)
 	root.mouse_filter = Control.MOUSE_FILTER_STOP   # 演出期间挡住工位点击
-	root.gui_input.connect(func(ev: InputEvent):
-		if ev is InputEventMouseButton and ev.is_pressed():
-			_finish_wakeup())
+	# v38（用户反馈"进基地那段很快没看清"）：撤掉任意点击整段跳过——误点一次就
+	# 把 32s 演出连同相位仪教学三拍全部跳没。改为显式「跳过 ›」按钮（v37 同款 ghost pill）。
 	add_child(root)
 	_wakeup_root = root
 
@@ -2506,16 +2513,23 @@ func _play_wakeup_cinematic() -> void:
 	sub.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.add_child(sub)
 
-	var hint := Label.new()
-	hint.position = Vector2(1080, 690)
-	hint.size = Vector2(180, 22)
-	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	hint.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
-	hint.add_theme_color_override("font_color", Color(0.75, 0.75, 0.8))
-	hint.text = "点击跳过 ▸"
-	hint.modulate.a = 0.0
-	hint.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	root.add_child(hint)
+	# v38：显式跳过按钮（comic_intro/dream_battle 同款 92×26 ghost pill）
+	var skip := Button.new()
+	skip.text = "跳过 ›"
+	skip.tooltip_text = "跳过苏醒演出（可随时在设置里重看教程）"
+	skip.position = Vector2(1280 - 16 - 92, 14)
+	skip.size = Vector2(92, 26)
+	skip.focus_mode = Control.FOCUS_NONE
+	skip.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	var skip_styles: Dictionary = PanelStyles.make_button_styles(DT.COLOR_TEXT_DIM, "ghost")
+	for key in ["normal", "hover", "pressed", "disabled", "focus"]:
+		skip.add_theme_stylebox_override(key, skip_styles[key])
+	skip.add_theme_color_override("font_color", Color(0.72, 0.75, 0.82, 0.62))
+	skip.add_theme_color_override("font_hover_color", Color.WHITE)
+	skip.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
+	skip.modulate.a = 0.8
+	skip.pressed.connect(func(): _finish_wakeup())
+	root.add_child(skip)
 
 	var beats := [
 		{"text": "黑门，吞掉了整个天空。", "col": Color(0.9, 0.2, 0.12, 0.72), "sfx": "enhance"},
@@ -2540,7 +2554,6 @@ func _play_wakeup_cinematic() -> void:
 	tw.tween_property(lid_top, "size:y", 0.0, 0.5).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 	tw.parallel().tween_property(lid_bot, "position:y", 720.0, 0.5).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 	tw.parallel().tween_property(lid_bot, "size:y", 0.0, 0.5).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
-	tw.tween_property(hint, "modulate:a", 0.45, 0.4)
 	# C 三拍梦境闪回（眼睑全开后额外留白 2s，让雪原图有足够时间被看到）
 	tw.tween_interval(2.0)
 	for b in beats:
@@ -2573,12 +2586,14 @@ func _play_wakeup_cinematic() -> void:
 	if snow_bg != null:
 		tw.parallel().tween_property(snow_bg, "modulate:a", 0.0, 1.1)
 	# E 相位仪三拍教学（手腕相位仪 → 纸条 → 床下背包；图缺失时仅字幕兜底）
+	# v38（用户反馈基础说明没看清）：三拍节奏 3.2/4.2/3.2 → 5.0/6.0/5.0——
+	# 这是全游戏唯一一次讲"相位仪是什么/卡在哪/怎么装"，宁慢勿快。
 	tw.tween_callback(func(): _wakeup_teach_beat(root, sub, 0))
-	tw.tween_interval(3.2)
+	tw.tween_interval(5.0)
 	tw.tween_callback(func(): _wakeup_teach_beat(root, sub, 1))
-	tw.tween_interval(4.2)
+	tw.tween_interval(6.0)
 	tw.tween_callback(func(): _wakeup_teach_beat(root, sub, 2))
-	tw.tween_interval(3.2)
+	tw.tween_interval(5.0)
 	# F 收场 → 移动基地指南
 	tw.tween_property(root, "modulate:a", 0.0, 0.9)
 	tw.tween_callback(_finish_wakeup)
@@ -2635,7 +2650,7 @@ func _wakeup_teach_beat(root: Control, sub: Label, beat: int) -> void:
 		nt.add_theme_color_override("font_color", Color(0.4, 0.35, 0.28))
 		nv.add_child(nt)
 		var nb := Label.new()
-		nb.text = "相位仪装载卡片，卡片便能随你出战。\n它会指引同伴的位置——迷失者被战胜后，其力量将随你同行。\n　　　　　　　　　　　　——深航计划"
+		nb.text = "相位仪装载卡片，卡片便能随你出战。\n它会指引同伴的位置——迷失者被战胜后，其力量将随你同行。\n　把卡装进相位仪：打开「卡仓」，把战斗卡拖进底部的绿槽即可。\n　　　　　　　　　　　　——深航计划"
 		nb.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		nb.add_theme_font_size_override("font_size", DT.FONT_SIZE_BODY)
 		nb.add_theme_color_override("font_color", Color(0.22, 0.19, 0.14))

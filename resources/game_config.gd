@@ -41,6 +41,23 @@ class_name GameConfig
 ## 精神同调链提升上限）；false=不设上限（v36 前行为，一键回退）。
 ## 消费点 battle_spawn_system.request_player_deploy
 @export var power_cap_enabled: bool = true
+## v6.16 攻速断点阶梯总开关——true=攻速改造聚合增益跨档（20/40/70/110%）时按
+## 档位跳变（额外提速 + 首弹蓄力削减，data/mod_breakpoints.gd）；false=连续乘区
+## （v6.16 前行为）。消费点 unit_stats_table._sync_mod_speed_ratio_to_weapon_slots
+@export var mod_breakpoints_enabled: bool = true
+## v6.16 改造槽位预算总开关——true=槽位=品质基础槽（common5~mythic10）+兵种专属
+## 槽（+1，堡垒+2），通用件只占基础槽（ModManager.get_max_mod_slots_for_card）；
+## false=全卡恒 9 槽（v6.16 前行为，一键回退）。消费点 card_resource.can_install_modification
+@export var mod_slot_budget_enabled: bool = true
+## v6.17 命中光学层批：战场泛光总开关——true=battlefield 挂 WorldEnvironment glow
+## （配 project.godot viewport/hdr_2d，VFX 发光体 modulate>1 过 bloom 阈值，弹道/爆炸
+## 带光晕）；false=不建 env（v6.17 前无泛光渲染，一键回退）。
+## A/B 环境变量 PW_GLOW_OFF=1 同效。消费点 battle_optics.ensure_glow
+@export var vfx_glow_enabled: bool = true
+## v6.17 命中光学层批：动态光闪总开关——true=枪口/爆炸 PointLight2D 闪光滑池点亮
+## 战场（无投影、并发上限、限世界层）；false=零动态光（v6.17 前行为）。
+## A/B 环境变量 PW_LIGHTS_OFF=1 同效。消费点 battle_optics.flash
+@export var vfx_dynamic_lights_enabled: bool = true
 
 ## 经济配置（v29 R2a 离线收益再平衡，设计审查 F-05）
 @export_group("经济配置")
@@ -110,6 +127,10 @@ func reset_to_defaults() -> void:
 	ground_dressing_enabled = true
 	feature_gates_enabled = true
 	power_cap_enabled = true
+	mod_breakpoints_enabled = true  # v6.16 断点阶梯
+	mod_slot_budget_enabled = true  # v6.16 槽位预算
+	vfx_glow_enabled = true  # v6.17 光学层泛光
+	vfx_dynamic_lights_enabled = true  # v6.17 光学层动态光闪
 	# v29 R2a: 离线收益三参数（经济批，设计审查 F-05）
 	offline_idle_efficiency = 0.5
 	offline_idle_decay_enabled = true

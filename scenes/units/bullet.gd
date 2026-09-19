@@ -402,7 +402,8 @@ func _apply_visual() -> void:
 			# 在场但读不出）。总宽不动（R34 用户认可 20px），只调亮度分布。
 			if _tracer_line:
 				_tracer_line.visible = true
-				_tracer_line.default_color = Color(1.0, 1.0, 1.0, 0.95)
+				# v6.17: 白热内芯 HDR 化（>1 过 bloom 阈值，激光读"发光"）
+				_tracer_line.default_color = Color(1.6, 1.55, 1.4, 0.95)
 				_tracer_line.width = 6.0
 	if _tracer_line:
 		# v19-R27: 光束类用 TracerLine 做亮核（而非尾部曳光），非光束类保持原有逻辑。
@@ -415,20 +416,41 @@ func _apply_visual() -> void:
 				# 白热核缺失。按 v19-R27 白热内芯语言把曳光线统一为白热，敌我辨识交给
 				# 弹体染色/拖尾/命中环（规格原则5）。我方原色本近白热，视觉不变。
 				if weapon_type in [6, 11]:
-					_tracer_line.default_color = Color(1.0, 1.0, 1.0, 0.92)
+					# v6.17: 白热 HDR 化（原 1,1,1 被 LDR 封顶，泛光读不出）
+					_tracer_line.default_color = Color(1.6, 1.55, 1.4, 0.92)
 				else:
-					_tracer_line.default_color = bullet_color
+					# v6.17: 阵营 tint ×1.5 HDR 化（alpha 不动，点射回声 42% 口径不变）
+					_tracer_line.default_color = Color(
+						minf(bullet_color.r * 1.5, 3.0),
+						minf(bullet_color.g * 1.5, 3.0),
+						minf(bullet_color.b * 1.5, 3.0),
+						bullet_color.a)
 				# v20.16c: 尾焰-弹头匹配——坦克炮弹头粗大，2.5px 细针曳光不配套；
 				# 加粗（4.5×口径档）+ 缩短（0.055s 视觉长度）成"底排余辉"读感。
+				# v6.17: 4.5→5.4 加粗 + 0.055→0.065 略拉长（泛光下的重弹余辉档）。
 				if _shape_flavor == DirectWeaponFlavor.Flavor.TANK_GUN:
-					_tracer_line.width = 4.5 * _caliber_scale
-					_tracer_line.set_point_position(1, Vector2(-speed * 0.055, 0.0))
+					_tracer_line.width = 5.4 * _caliber_scale
+					_tracer_line.set_point_position(1, Vector2(-speed * 0.065, 0.0))
 				else:
 					# v20.16d: 其余亚类宽度走 WPV 单射源（与 batch 曳光同语言）——
 					# 步枪 1.8 细亮 / 机枪 3.0 弹幕 / 手枪 2.0 光点；GENERIC 兜底 2.5 不变。
 					_tracer_line.width = WeaponProjectileVfx.tracer_width_for(
 						WeaponProjectileVfx.flavor_layer_key(_shape_flavor))
 					_tracer_line.set_point_position(1, Vector2(-speed * 0.10, 0.0))  # 拖长=当前速度×0.1s 视觉长度
+	# v6.15 P1-R2: 点射后续波（纯视觉弹）降调——弹头/拖尾/曳光统一减淡到 42%。
+	# 一次点射只读出一个明显弹头，后续波读作"曳光回声"（用户实测批"多弹头飞过去"：
+	# 步枪 2 发/机枪 3 发全亮弹头同屏，读成霰弹）。只动 alpha 不动 rgb（阵营/亚类染色
+	# 由其他链路设置，这里覆写会洗色）。真伤弹恢复全亮——池复用对称复位（同一弹对象
+	# 上一轮可能是视觉弹）。
+	var echo_a: float = 0.42 if _visual_only else 1.0
+	if _sprite:
+		_sprite.modulate.a = echo_a
+	if _tex_sprite:
+		_tex_sprite.modulate.a = echo_a
+	if _trail_sprite:
+		_trail_sprite.modulate.a = echo_a * 0.8
+	if _tracer_line:
+		_tracer_line.modulate.a = echo_a
 
 
 ## v7.x: 程序化生成子弹多边形（替代原 3 点三角形）

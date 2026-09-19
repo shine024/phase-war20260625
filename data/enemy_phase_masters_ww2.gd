@@ -8,7 +8,7 @@ class_name EnemyPhaseMastersWW2
 const ERA_MASTERS: Array = [
 	{
 		"id": "enemy_master_007",
-		"name": "雷神之子·索尔",
+		"name": "秦引路",
 		"title": "万钧雷霆",
 		"level": 13,
 		"faction": "thunder",
@@ -30,7 +30,7 @@ const ERA_MASTERS: Array = [
 	},
 	{
 		"id": "enemy_master_008",
-		"name": "虚空领主·萨洛斯",
+		"name": "池晏",
 		"title": "维度撕裂者",
 		"level": 14,
 		"faction": "void",
@@ -54,7 +54,7 @@ const ERA_MASTERS: Array = [
 	# ==================== Tier 3 - 高级相位师 (Lv16-19) ====================
 	{
 		"id": "enemy_master_009",
-		"name": "钢铁军团长·费米",
+		"name": "靳承岗",
 		"title": "钢铁军团统帅",
 		"level": 16,
 		"faction": "steel",
@@ -76,7 +76,7 @@ const ERA_MASTERS: Array = [
 	},
 	{
 		"id": "enemy_master_010",
-		"name": "炎帝·普罗米修斯",
+		"name": "闻人烬",
 		"title": "永恒烈焰",
 		"level": 17,
 		"faction": "flame",
@@ -98,8 +98,8 @@ const ERA_MASTERS: Array = [
 	},
 	{
 		"id": "enemy_master_011",
-		"name": "雷皇·宙斯",
-		"title": "雷霆主宰",
+		"name": "程默雷",
+		"title": "一声没响的雷",
 		"level": 18,
 		"faction": "thunder",
 		"difficulty": "hard",
@@ -120,8 +120,8 @@ const ERA_MASTERS: Array = [
 	},
 	{
 		"id": "enemy_master_012",
-		"name": "虚空虚主·阿扎托斯",
-		"title": "虚空君王",
+		"name": "温折野",
+		"title": "四十天的夹层",
 		"level": 19,
 		"faction": "void",
 		"difficulty": "expert",

@@ -22,6 +22,15 @@ var _reveal_queue: Array = []
 var _current_reveal_index: int = 0
 var _auto_close_timer: Timer = null
 var _is_showing: bool = false
+# v38 修复"胜利后紫色空框"：_build_ui 运行期匿名节点（CenterContainer/MarginContainer/
+# HBoxContainer 未显式命名，Godot 4 自动名带 @ 前缀）导致 _show_current_reveal 的
+# get_node_or_null 路径全部命中 null——标题/描述从未写入，弹窗只剩紫框+按钮。
+# 改为构建期成员引用，不再依赖节点路径。
+var _icon_lbl: Label = null
+var _title_lbl: Label = null
+var _desc_lbl: Label = null
+var _reward_box: VBoxContainer = null
+var _page_lbl: Label = null
 
 func _ready() -> void:
 	## 默认隐藏
@@ -36,6 +45,27 @@ static func create(parent: Node) -> IntelRevealPopup:
 	# 根必须全屏锚：dim/CenterContainer 都以根矩形为基准，零尺寸根会让面板缩在左上角、遮罩失效
 	popup.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	parent.add_child(popup)
+	return popup
+
+
+## v38.3: 无宿主静态工厂——在当前场景树找 PopupLayer 挂载并展示。
+## 结算弹窗链在结算面板（mvp_panel 实例）释放后才执行剩余工厂，工厂不可捕获宿主 self。
+static func spawn_on_current_tree(reveal_events: Array) -> Node:
+	if reveal_events.is_empty():
+		return null
+	var tree := Engine.get_main_loop() as SceneTree
+	if tree == null:
+		return null
+	var main_scene := tree.current_scene
+	var popup_layer: Node = null
+	if main_scene != null:
+		popup_layer = main_scene.get_node_or_null("PopupLayer")
+	if popup_layer == null:
+		popup_layer = tree.root  # 兜底
+	var popup := IntelRevealPopup.create(popup_layer)
+	# deferred：add_child 在树忙上下文（场景 _ready 内）时 _ready/_build_ui 尚未跑，
+	# 立刻 show_reveals 会撞上 _auto_close_timer 空指针——推到下一帧保证已构建
+	popup.show_reveals.call_deferred(reveal_events)
 	return popup
 
 func _build_ui() -> void:
@@ -83,6 +113,7 @@ func _build_ui() -> void:
 	icon_lbl.add_theme_color_override("font_color", DT.COLOR_VIOLET)
 	icon_row.add_child(icon_lbl)
 	vbox.add_child(icon_row)
+	_icon_lbl = icon_lbl
 
 	## 标题
 	var title_lbl := Label.new()
@@ -92,6 +123,7 @@ func _build_ui() -> void:
 	title_lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_LARGE)
 	title_lbl.add_theme_color_override("font_color", DT.COLOR_VIOLET_SOFT)
 	vbox.add_child(title_lbl)
+	_title_lbl = title_lbl
 
 	## 描述
 	var desc_lbl := Label.new()
@@ -102,6 +134,7 @@ func _build_ui() -> void:
 	desc_lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
 	desc_lbl.add_theme_color_override("font_color", DT.COLOR_TEXT_MID)
 	vbox.add_child(desc_lbl)
+	_desc_lbl = desc_lbl
 
 	## 奖励区
 	var reward_box := VBoxContainer.new()
@@ -109,6 +142,7 @@ func _build_ui() -> void:
 	reward_box.add_theme_constant_override("separation", 4)
 	reward_box.alignment = BoxContainer.ALIGNMENT_CENTER
 	vbox.add_child(reward_box)
+	_reward_box = reward_box
 
 	## 关闭按钮（v26 UI：四态工厂——旧单态样式 hover/pressed 零反馈，违反按钮四态铁律）
 	var close_row := HBoxContainer.new()
@@ -148,6 +182,7 @@ func _build_ui() -> void:
 	page_lbl.add_theme_color_override("font_color", DT.COLOR_TEXT_FAINT)
 	page_row.add_child(page_lbl)
 	add_child(page_row)
+	_page_lbl = page_lbl
 
 	## 自动关闭计时器
 	_auto_close_timer = Timer.new()
@@ -185,23 +220,18 @@ func _show_current_reveal() -> void:
 	_is_showing = true
 	visible = true
 
-	## 更新内容
-	var icon_lbl: Label = get_node_or_null("CenterContainer/RevealPanel/MarginContainer/ContentVBox/HBoxContainer/IconLabel")
-	var title_lbl: Label = get_node_or_null("CenterContainer/RevealPanel/MarginContainer/ContentVBox/TitleLabel")
-	var desc_lbl: Label = get_node_or_null("CenterContainer/RevealPanel/MarginContainer/ContentVBox/DescLabel")
-	var reward_box: VBoxContainer = get_node_or_null("CenterContainer/RevealPanel/MarginContainer/ContentVBox/RewardBox")
-	var page_lbl: Label = get_node_or_null("PageRow/PageLabel")
-
-	if icon_lbl:
-		icon_lbl.text = event.get("icon", "✦")
-	if title_lbl:
-		title_lbl.text = event.get("title", "情报揭示")
-	if desc_lbl:
-		desc_lbl.text = event.get("desc", "")
+	## 更新内容（v38：成员引用 + 空串兜底——manager 侧对缺失键写 ""，get 默认值兜不住空串）
+	if _icon_lbl:
+		_icon_lbl.text = String(event.get("icon", "✦"))
+	if _title_lbl:
+		var t: String = String(event.get("title", ""))
+		_title_lbl.text = t if not t.is_empty() else "情报揭示"
+	if _desc_lbl:
+		_desc_lbl.text = String(event.get("desc", ""))
 
 	## 奖励文本
-	if reward_box:
-		for child in reward_box.get_children():
+	if _reward_box:
+		for child in _reward_box.get_children():
 			child.queue_free()
 		var rewards: Array = event.get("rewards", [])
 		for reward in rewards:
@@ -214,14 +244,14 @@ func _show_current_reveal() -> void:
 				r_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 				r_lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
 				r_lbl.add_theme_color_override("font_color", DT.COLOR_GREEN_UP)
-				reward_box.add_child(r_lbl)
+				_reward_box.add_child(r_lbl)
 
 	## 页码
-	if page_lbl:
+	if _page_lbl:
 		if _reveal_queue.size() > 1:
-			page_lbl.text = "%d / %d" % [_current_reveal_index + 1, _reveal_queue.size()]
+			_page_lbl.text = "%d / %d" % [_current_reveal_index + 1, _reveal_queue.size()]
 		else:
-			page_lbl.text = ""
+			_page_lbl.text = ""
 
 	## 入场动画（C7: 统一 DT.MOTION_FADE_IN + SINE，原 0.4 裸 linear；尊重减少动效）
 	modulate = DT.COLOR_TRANSPARENT
@@ -230,13 +260,15 @@ func _show_current_reveal() -> void:
 		tween.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 		tween.tween_property(self, "modulate", DT.COLOR_HOVER_WHITE, DT.MOTION_FADE_IN)
 
-	## 重启自动关闭计时器
-	_auto_close_timer.stop()
-	_auto_close_timer.start()
+	## 重启自动关闭计时器（v38.3: show_reveals 可能早于 _ready 被外部调用——空值防御）
+	if _auto_close_timer != null:
+		_auto_close_timer.stop()
+		_auto_close_timer.start()
 
 func _hide_popup() -> void:
 	_is_showing = false
-	_auto_close_timer.stop()
+	if _auto_close_timer != null:
+		_auto_close_timer.stop()
 	if DT.is_motion_reduce():
 		modulate = DT.COLOR_TRANSPARENT
 		visible = false

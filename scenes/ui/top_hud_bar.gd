@@ -49,8 +49,8 @@ var _speed_scale: float = 1.0
 # R1-6（设计审查 F-13）加 ×3 档；v32.0 B1-1 加 ×4 档 + 档位跨会话记忆
 #（真身在 BTS.SPEED_OPTIONS，持久化 user://battle_speed.cfg，读档就近吸附）
 const _SPEED_OPTIONS: Array = [1.0, 2.0, 3.0, 4.0]
-# v32.0 B1-1: 跳过（极速推演）按钮
-var _skip_btn: Button = null
+# v38：跳过（极速推演）按钮按用户拍板移除——不提供跳过战斗入口。
+# BattleTimeState 的极速推演机制保留（BattleSpectacle 仍是其收口方，AFK 链路不受影响）。
 
 # ── 暂停态图标 ──
 const _PAUSE_ICON := "icon_pause"
@@ -73,7 +73,6 @@ func _ready() -> void:
 	_speed_scale = BTS.load_pref()
 	if _speed_btn:
 		_sync_speed_btn_label()
-	_build_skip_btn()
 	_refresh_level()
 	_refresh_wave()
 	_refresh_time()
@@ -346,9 +345,6 @@ func _on_battle_started() -> void:
 
 func _on_battle_ended(_won) -> void:
 	_in_battle = false
-	# v32.0 B1-1: 跳过按钮复位（引擎态 time_scale 由 BattleSpectacle 收口）
-	if _skip_btn != null:
-		_skip_btn.text = "跳过"
 	if _wave_progress != null:
 		_wave_progress.visible = false
 	# v27: 战斗结束隐藏基地 chip + 停危急闪烁
@@ -516,41 +512,9 @@ func _sync_speed_btn_label() -> void:
 
 
 # ========== v32.0 B1-1: 跳过（极速推演）==========
-## 编程式挂进 RightSection（倍速之后），不动 tscn——与 chip 同风格。
-## 进入 8x 真实推演（SFX/命中特效/伤害数字/顿帧全压制，物理步进产能加倍），
-## 战斗自然打完、奖励照常结算；再点一次取消，战斗结束自动复位。
-func _build_skip_btn() -> void:
-	var right: Node = get_node_or_null("RightSection")
-	if right == null:
-		return
-	_skip_btn = Button.new()
-	_skip_btn.text = "跳过"
-	_skip_btn.add_theme_font_size_override("font_size", 13)
-	_skip_btn.tooltip_text = "极速推演至战斗结束（奖励照常结算）\n推演中再点一次可取消"
-	_apply_normal_btn_style(_skip_btn)
-	_skip_btn.pressed.connect(_on_skip_pressed)
-	right.add_child(_skip_btn)
-	var insert_idx := right.get_child_count() - 1
-	if _speed_btn != null:
-		insert_idx = _speed_btn.get_index() + 1
-	right.move_child(_skip_btn, insert_idx)
-
-
-func _on_skip_pressed() -> void:
-	if not _in_battle:
-		return
-	var bs := get_node_or_null("/root/BattleSpectacle")
-	if bs == null or not bs.has_method("set_fast_forward"):
-		return
-	var ff_on: bool = not BTS.ff_active
-	bs.set_fast_forward(ff_on)
-	if _skip_btn != null:
-		_skip_btn.text = "推演中" if ff_on else "跳过"
-		if ff_on:
-			_skip_btn.add_theme_color_override("font_color", DT.COLOR_CYAN_TECH_SOFT)
-		else:
-			_apply_normal_btn_style(_skip_btn)
-
+## v38：跳过按钮已按用户拍板移除（不提供跳过战斗入口）。
+## 原 _build_skip_btn/_on_skip_pressed 连带删除；极速推演状态机（BattleTimeState +
+## BattleSpectacle.set_fast_forward）保留——引擎侧守卫与自动退出仍需要它。
 
 ## 倍速按钮激活态：×1 用普通样式，×2 用青色激活样式（设计稿 .ctl-on）
 func _update_speed_btn_active_state() -> void:

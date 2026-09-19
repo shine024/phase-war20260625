@@ -76,6 +76,8 @@ const HERO_LINE_CHANCE := 0.25
 var _bunker_return_available := false
 ## v34 B1 再战回路：胜利且下一关就绪时 >0（主按钮位让给「出击下一关」直通键）
 var _next_level: int = 0
+# v38.1（用户拍板"下一关和本关重复挑战都要有"）：再战本关直通键的重打关号
+var _replay_level: int = 0
 
 
 static func create(parent: Node, player_won: bool, blueprints: Array, \
@@ -698,11 +700,13 @@ func _render_intel_harvest(vbox: VBoxContainer) -> void:
 	var harvest_ui = IHD.new()
 	harvest_ui.set_data(intel_harvest)
 	vbox.add_child(harvest_ui)
-	# 有新揭示事件时，延迟弹出 IntelRevealPopup 精致展示
+	# v38.3: 揭示/解锁仪式弹窗不再与结算面板同屏叠弹——入 main 结算弹窗链，
+	# 玩家确认结算（返回整备）后按序播放。工厂用静态调用（不捕 self）：
+	# 结算面板释放后链里剩余工厂仍可安全执行。
 	var reveal_events: Array = intel_harvest.get("reveal_events", [])
 	if not reveal_events.is_empty():
-		call_deferred("_show_intel_reveal_popup", reveal_events)
-	# 改造解锁：结算时批量展示（避免战斗中多次弹窗）
+		_defer_settlement_popup(func() -> Node: return IntelRevealPopup.spawn_on_current_tree(reveal_events))
+	# 改造解锁：结算时批量展示（避免战斗中多次弹窗）——同入弹窗链
 	var mod_unlocks: Array = intel_harvest.get("mod_unlock_events", [])
 	if not mod_unlocks.is_empty():
 		var lines: Array[String] = []
@@ -713,7 +717,19 @@ func _render_intel_harvest(vbox: VBoxContainer) -> void:
 				lines.append("「%s」→ %s" % [card, mod])
 		var title := "改造情报解锁"
 		var desc := "本关共解锁 %d 项改造模块：\n%s" % [lines.size(), "\n".join(lines)]
-		call_deferred("_show_mod_unlock_popup", title, desc)
+		_defer_settlement_popup(func() -> Node: return FeatureUnlockPopup.show_now(title, desc))
+
+
+## v38.3 结算弹窗链入队：main（父场景）提供 enqueue_settlement_popup 时入链串行播放；
+## 父场景不在/非主场景环境（工具冒烟）回退为立即弹出（原 call_deferred 行为）。
+func _defer_settlement_popup(factory: Callable) -> void:
+	var main_node: Node = get_parent()
+	if main_node != null and main_node.has_method("enqueue_settlement_popup"):
+		main_node.enqueue_settlement_popup(factory)
+		return
+	var popup: Node = factory.call()
+	if popup == null or not is_instance_valid(popup):
+		return
 
 
 func _render_drops(vbox: VBoxContainer) -> void:
@@ -1095,15 +1111,22 @@ func _show_ng_plus_confirm() -> void:
 
 
 func _render_close_button_anchored(panel: Control) -> void:
-	# v34 B1 再战回路：胜利且下一关就绪 → 主按钮位让给「▶ 出击下一关」直通键，
-	# 旧「继 续」降级为左侧次按钮（接收掉落+回整备语义不变，文案改「返回整备」）
+	# v38.1 再战回路二段（用户拍板"下一关和本关重复挑战都要有"）：
+	# 底栏最多四键，色相分工各不相同（区分性）——
+	#   绿=▶出击下一关（主推）  青=↻再战本关  灰=返回整备  橙=←返回移动基地
+	# 败局也给出「↻ 再战本关」主键（快速重试），无下一关时（第100关/下一关未解锁）重打升主键。
 	_next_level = _compute_next_level()
+	_replay_level = _compute_replay_level()
 	var next_mode: bool = player_won and not _is_afk and _next_level > 0
+	# 无下一关时（败局/终关/未解锁），再战本关接主键位；与下一关并存时退居中键
+	var replay_primary: bool = (not _is_afk) and _replay_level > 0 and not next_mode
 	var btn := Button.new()
 	if _is_afk:
 		btn.text = "自动继续 →"
 	elif next_mode:
 		btn.text = "▶ 出击下一关（第 %d 关）" % _next_level
+	elif replay_primary:
+		btn.text = "↻ 再战本关（第 %d 关）" % _replay_level
 	elif player_won:
 		btn.text = "继  续"
 	else:
@@ -1126,7 +1149,7 @@ func _render_close_button_anchored(panel: Control) -> void:
 		home_btn.anchor_top = 1.0
 		home_btn.anchor_bottom = 1.0
 		home_btn.offset_left = 24.0
-		home_btn.offset_right = 224.0
+		home_btn.offset_right = 204.0
 		home_btn.offset_top = -60.0
 		home_btn.offset_bottom = -16.0
 		home_btn.custom_minimum_size = Vector2(0, 44)
@@ -1139,19 +1162,19 @@ func _render_close_button_anchored(panel: Control) -> void:
 		home_btn.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 		home_btn.pressed.connect(_on_return_bunker_pressed)
 		panel.add_child(home_btn)
-		if not next_mode:
-			btn.offset_left = 260.0
-	if next_mode:
-		# 主键收窄靠右；左侧补「返回整备」次键（旧继续路径：接收掉落 + 回整备）
-		btn.offset_left = 460.0
-		btn.offset_right = -24.0
+	# 直通键布局：面板宽 920。有基地键时四键 24起每键间隔12（180/168/188/300），
+	# 无基地键时三键 100 起（180/188/主键收尾）
+	if next_mode or replay_primary:
+		var has_home: bool = _bunker_return_available
+		var x0: float = 24.0 if has_home else 100.0
+		# 「返回整备」次键（灰，旧继续路径：接收掉落 + 回整备）
 		var prep_btn := Button.new()
 		prep_btn.text = "返回整备"
 		prep_btn.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
 		prep_btn.anchor_top = 1.0
 		prep_btn.anchor_bottom = 1.0
-		prep_btn.offset_left = 240.0 if _bunker_return_available else 100.0
-		prep_btn.offset_right = 440.0 if _bunker_return_available else 300.0
+		prep_btn.offset_left = x0
+		prep_btn.offset_right = x0 + 168.0
 		prep_btn.offset_top = -60.0
 		prep_btn.offset_bottom = -16.0
 		prep_btn.custom_minimum_size = Vector2(0, 44)
@@ -1163,10 +1186,39 @@ func _render_close_button_anchored(panel: Control) -> void:
 		prep_btn.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 		prep_btn.pressed.connect(_on_continue_pressed)
 		panel.add_child(prep_btn)
+		var x1: float = x0 + 180.0
+		# 「↻ 再战本关」：与下一关并存时为青色中键；独占主位时并入主键（btn 自身）
+		if next_mode:
+			var replay_btn := Button.new()
+			replay_btn.text = "↻ 再战本关"
+			replay_btn.tooltip_text = "重打第 %d 关（第 %d 关）——掉落与情报照常结算" % [_replay_level, _replay_level]
+			replay_btn.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
+			replay_btn.anchor_top = 1.0
+			replay_btn.anchor_bottom = 1.0
+			replay_btn.offset_left = x1
+			replay_btn.offset_right = x1 + 188.0
+			replay_btn.offset_top = -60.0
+			replay_btn.offset_bottom = -16.0
+			replay_btn.custom_minimum_size = Vector2(0, 44)
+			var replay_styles: Dictionary = PanelStyles.make_button_styles_graded(DT.COLOR_CYAN_TECH_SOFT, "solid")
+			for key in ["normal", "hover", "pressed", "disabled", "focus"]:
+				replay_btn.add_theme_stylebox_override(key, replay_styles[key])
+			replay_btn.add_theme_color_override("font_color", Color(0.04, 0.09, 0.12))
+			replay_btn.add_theme_font_size_override("font_size", DT.FONT_SIZE_MEDIUM)
+			replay_btn.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+			replay_btn.pressed.connect(_on_replay_pressed)
+			panel.add_child(replay_btn)
+			btn.offset_left = x1 + 200.0
+			btn.offset_right = -24.0
+		else:
+			# replay_primary：主键（btn）收窄靠右
+			btn.offset_left = x1
+			btn.offset_right = -24.0
 	btn.grow_horizontal = Control.GROW_DIRECTION_BOTH
 	btn.custom_minimum_size = Vector2(0, 44)
 	# v23.6.1：走 PanelStyles 工厂四态（原仅 normal 有样式，无 hover/按下反馈）；v28 T2 渐变版
-	var btn_accent: Color = DT.COLOR_GREEN_BRIGHT if next_mode else (DT.COLOR_GOLD if player_won else DT.COLOR_BORDER)
+	# 主键色相：下一关=亮绿 / 再战本关=琥珀（与青色中键、灰橙辅键构成四色区分）
+	var btn_accent: Color = DT.COLOR_GREEN_BRIGHT if next_mode else (DT.COLOR_AMBER if replay_primary else (DT.COLOR_GOLD if player_won else DT.COLOR_BORDER))
 	var btn_styles: Dictionary = PanelStyles.make_button_styles_graded(btn_accent, "solid")
 	for key in ["normal", "hover", "pressed", "disabled", "focus"]:
 		btn.add_theme_stylebox_override(key, btn_styles[key])
@@ -1174,13 +1226,17 @@ func _render_close_button_anchored(panel: Control) -> void:
 	btn.add_theme_font_size_override("font_size", DT.FONT_SIZE_MEDIUM)
 	if next_mode:
 		btn.pressed.connect(_on_next_level_pressed)
+	elif replay_primary:
+		btn.pressed.connect(_on_replay_pressed)
 	else:
 		btn.pressed.connect(_on_continue_pressed)
 	panel.add_child(btn)
 
-## v34 B1：下一关直通条件——胜利 · 非挂机 · 教程已完（教程期战后要回基地续播）·
+## v34 B1：下一关直通条件——胜利 · 非挂机 · 教程已过首战步 ·
 ## 本战关号+1 在 1-100 且已解锁。下一关取 _pending_battle_level（本战实际打的关），
 ## 防"重打旧关后 current_level 已被推进到最高解锁关"时按钮指向跳变。
+## v38（用户反馈学习成本）：门槛从"教程 14 步全完"放宽到"首战步已过"——
+## 首场胜利即出现直通键，战后续播步（基地/面板类）回基地时照常点播，不因连战丢失。
 func _compute_next_level() -> int:
 	if not player_won or _is_afk:
 		return 0
@@ -1188,7 +1244,7 @@ func _compute_next_level() -> int:
 	if root == null:
 		return 0
 	var tpm: Node = root.get_node_or_null("TutorialProgressionManager")
-	if tpm != null and tpm.has_method("should_show_tutorial") and tpm.should_show_tutorial():
+	if tpm != null and tpm.has_method("is_past_first_battle") and not tpm.is_past_first_battle():
 		return 0
 	var gm: Node = root.get_node_or_null("GameManager")
 	var lpm: Node = root.get_node_or_null("LevelProgressManager")
@@ -1201,6 +1257,25 @@ func _compute_next_level() -> int:
 	if lpm.has_method("is_level_unlocked") and not lpm.is_level_unlocked(next):
 		return 0
 	return next
+
+## v38.1：再战本关直通条件——非挂机 · 教程已过首战步（与下一关同门槛）·
+## 本战关号 1-100。胜/败均可（败局快速重试）；重打关无需解锁检查（打过必解锁过）。
+func _compute_replay_level() -> int:
+	if _is_afk:
+		return 0
+	var root: Node = Engine.get_main_loop().root if Engine.get_main_loop() != null else null
+	if root == null:
+		return 0
+	var tpm: Node = root.get_node_or_null("TutorialProgressionManager")
+	if tpm != null and tpm.has_method("is_past_first_battle") and not tpm.is_past_first_battle():
+		return 0
+	var gm: Node = root.get_node_or_null("GameManager")
+	if gm == null:
+		return 0
+	var played: int = int(gm.get("_pending_battle_level")) if "_pending_battle_level" in gm else int(gm.get("current_level"))
+	if played < 1 or played > 100:
+		return 0
+	return played
 
 ## v34 B1：下一关直通——接收掉落 + 淡出 + main.launch_next_level_from_settlement
 ## （清场/推进关号/出战报拍点/run_start_battle_sequence 开打，与挂机连续开战同管线）
@@ -1222,6 +1297,31 @@ func _on_next_level_pressed() -> void:
 		var parent: Node = get_parent()
 		if parent != null and parent.has_method("launch_next_level_from_settlement"):
 			parent.launch_next_level_from_settlement(_next_level)
+		elif parent != null and parent.has_method("_on_result_confirmed"):
+			parent._on_result_confirmed()
+		queue_free()
+	)
+
+## v38.1：再战本关直通——与下一关同管线（launch_next_level_from_settlement 对同关号
+## 同样成立：清场/return_to_prep/set_current_level(同关)/战报拍点/重开打）
+func _on_replay_pressed() -> void:
+	result_confirmed.emit(player_won)
+	ManagerLazyLoader.ensure_loaded("drop")
+	var dm_claim: Node = Engine.get_main_loop().root.get_node_or_null("DropManager")
+	if dm_claim != null and dm_claim.has_method("claim_drops"):
+		dm_claim.claim_drops()
+	var panel: Control = get_node_or_null("MvpPanelOverlay/Panel")
+	var tw := create_tween()
+	if panel != null:
+		if DT.is_motion_reduce():
+			panel.modulate.a = 0.0
+		else:
+			tw.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+			tw.tween_property(panel, "modulate:a", 0.0, DT.MOTION_FADE_OUT)
+	tw.tween_callback(func():
+		var parent: Node = get_parent()
+		if parent != null and parent.has_method("launch_next_level_from_settlement"):
+			parent.launch_next_level_from_settlement(_replay_level)
 		elif parent != null and parent.has_method("_on_result_confirmed"):
 			parent._on_result_confirmed()
 		queue_free()
@@ -1651,30 +1751,8 @@ static func _is_summarized_material(dr) -> bool:
 #  情报揭示弹窗（从 battle_result_dialog.gd 移植）
 # =========================================================================
 
-func _show_intel_reveal_popup(reveal_events: Array) -> void:
-	if reveal_events.is_empty():
-		return
-	# 找到 PopupLayer 挂载点
-	var tree := get_tree()
-	if tree == null:
-		return
-	var main_scene := tree.current_scene
-	var popup_layer: Node = null
-	if main_scene:
-		popup_layer = main_scene.get_node_or_null("PopupLayer")
-	if popup_layer == null:
-		popup_layer = tree.root  # 兜底
-	# 创建并展示揭示弹窗
-	var IntelRevealPopupClass = load("res://scenes/ui/intel_reveal_popup.gd")
-	if IntelRevealPopupClass == null:
-		return
-	var popup = IntelRevealPopupClass.create(popup_layer)
-	popup.show_reveals(reveal_events)
-
-
-## 改造解锁批量弹窗（结算时调用，与 _show_intel_reveal_popup 同模式）
-func _show_mod_unlock_popup(title: String, description: String) -> void:
-	FeatureUnlockPopup.show_now(title, description)
+## v38.3: 情报揭示/改造解锁弹窗工厂改为静态调用（IntelRevealPopup.spawn_on_current_tree /
+## FeatureUnlockPopup.show_now）——弹窗链在结算面板释放后仍需执行剩余工厂。
 
 
 # =========================================================================

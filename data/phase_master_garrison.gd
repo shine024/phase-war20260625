@@ -15,34 +15,34 @@ class_name PhaseMasterGarrison
 
 const GARRISON_LEVEL_TO_MASTER: Dictionary = {
 	# ── WW1 时代（关卡 1-20）──
-	10: "enemy_master_005",  # 钢铁元帅·克劳斯 Lv10 steel
-	15: "enemy_master_006",  # 炎魔女王·赫卡特 Lv12 flame
-	20: "enemy_master_007",  # 雷神之子·索尔 Lv13 thunder（WW1 Boss）
+	10: "enemy_master_005",  # 霍北望 Lv10 steel
+	15: "enemy_master_006",  # 姜拾烬 Lv12 flame
+	20: "enemy_master_007",  # 秦引路 Lv13 thunder（WW1 Boss）
 
 	# ── WW2 时代（关卡 21-40）──
-	25: "enemy_master_008",  # 虚空领主·萨洛斯 Lv14 void
-	30: "enemy_master_009",  # 钢铁军团长·费米 Lv16 steel
-	35: "enemy_master_011",  # 雷皇·宙斯 Lv18 thunder
-	40: "enemy_master_012",  # 虚空虚主·阿扎托斯 Lv19 void（WW2 Boss）
+	25: "enemy_master_008",  # 池晏 Lv14 void
+	30: "enemy_master_009",  # 靳承岗 Lv16 steel
+	35: "enemy_master_011",  # 程默雷 Lv18 thunder
+	40: "enemy_master_012",  # 温折野 Lv19 void（WW2 Boss）
 
 	# ── COLD 时代（关卡 41-60）──
-	45: "enemy_master_013",  # 钢铁烈焰·卡尔 Lv18 steel_flame
-	49: "enemy_master_014",  # 雷霆钢铁·维克多 Lv19 thunder_steel（原第49关硬编码，驻守化）
-	50: "enemy_master_015",  # 虚空烈焰·塞拉菲娜 Lv20 void_flame
-	55: "enemy_master_016",  # 不朽钢铁·阿特拉斯 Lv22 steel
-	60: "enemy_master_018",  # 万雷之主·雷神 Lv24 thunder（COLD Boss）
+	45: "enemy_master_013",  # 韩铸犁 Lv18 steel_flame
+	49: "enemy_master_014",  # 方镇流 Lv19 thunder_steel（原第49关硬编码，驻守化）
+	50: "enemy_master_015",  # 郁向暖 Lv20 void_flame
+	55: "enemy_master_016",  # 石顶安 Lv22 steel
+	60: "enemy_master_018",  # 纪回春 Lv24 thunder（COLD Boss）
 
 	# ── MODERN 时代（关卡 61-80）──
-	65: "enemy_master_019",  # 虚空主宰·尼德霍格 Lv25 void
-	70: "enemy_master_020",  # 钢铁雷霆·泰尔 Lv24 steel_thunder
-	75: "enemy_master_022",  # 战争机器·铁骑 Lv26 steel
-	80: "enemy_master_024",  # 风暴使者·赛勒斯 Lv27 thunder（MODERN Boss）
+	65: "enemy_master_019",  # 晏怀空 Lv25 void
+	70: "enemy_master_020",  # 盛传书 Lv24 steel_thunder
+	75: "enemy_master_022",  # 宋卸甲 Lv26 steel
+	80: "enemy_master_024",  # 岑风眠 Lv27 thunder（MODERN Boss）
 
 	# ── FUTURE 时代（关卡 81-100）──
-	85: "enemy_master_025",  # 暗影主宰·深渊 Lv28 void
-	90: "enemy_master_026",  # 钢铁之神·赫淮斯托斯 Lv28 steel
-	95: "enemy_master_028",  # 雷神·托尔 Lv29 thunder
-	100: "enemy_master_030", # 全能相位师·奥米伽 Lv30 all（终极Boss）
+	85: "enemy_master_025",  # 宿怀夜 Lv28 void
+	90: "enemy_master_026",  # 鲁满仓 Lv28 steel
+	95: "enemy_master_028",  # 端木近雨 Lv29 thunder
+	100: "enemy_master_030", # 贺同舟 Lv30 all（终极Boss）
 }
 
 # ─────────────────────────────────────────────────────────────

@@ -2,24 +2,27 @@ extends PanelContainer
 
 const DesignTokens = preload("res://resources/design_tokens.gd")
 ## 统一情报面板：背包/相位仪/战场共用
-## 4 Tab：情报 / 强化 / 改造 / 制造（v26：原进化 Tab 由制造中心接管）
+## Tab：情报（六分区速览）/ 详细情报（v38：滚动区明细整棵迁入）/ 改造 / 制造
 ## 模式：
-##   MODE_BACKPACK(0)         → 装备按钮（背包场景；拆解已随蓝图体系移除）
-##   MODE_PHASE_INSTRUMENT(1) → 卸下按钮（相位仪槽位）
-##   MODE_BATTLEFIELD(2)      → 无操作按钮（战场点击，仅情报 Tab）
+##   MODE_BACKPACK(0)         → 背包弹窗（v38：改造/制造 Tab 隐藏——已是独立解锁功能）
+##   MODE_PHASE_INSTRUMENT(1) → 卸下按钮（相位仪槽位；改造/制造 Tab 保留）
+##   MODE_BATTLEFIELD(2)      → 无操作按钮（战场点击，情报+详细情报两 Tab）
 
 signal action_requested(action: String, card: CardResource)
 
 enum PanelMode { MODE_BACKPACK = 0, MODE_PHASE_INSTRUMENT = 1, MODE_BATTLEFIELD = 2 }
-enum TabIdx { INFO = 0, REINFORCE = 1, MODIFY = 2, EVOLVE = 3 }  # EVOLVE 索引保留（tscn 节点占位），语义=制造
+# v38：原 REINFORCE(强化，v20.12 退役占位) 复用为 DETAIL=详细情报——索引 1 不变，
+# tscn 节点已改名 TabDetail 并承接 AffixScroll 整棵子树。
+enum TabIdx { INFO = 0, DETAIL = 1, MODIFY = 2, EVOLVE = 3 }  # EVOLVE 索引保留（tscn 节点占位），语义=制造
 
 const GC = preload("res://resources/game_constants.gd")
 const DT = preload("res://resources/design_tokens.gd")
 const PanelStyles = preload("res://scripts/ui/panel_styles.gd")
+const CardFrameUiRef = preload("res://scripts/card_frame_ui.gd")  # v37.1: ModsBlock 稀有度发光底座
 const DefaultCards = preload("res://data/default_cards.gd")
 const BattleExperienceConfig = preload("res://data/battle_experience_config.gd")
 const EnemyArchetypes = preload("res://data/enemy_archetypes.gd")
-const IntelUIKit = preload("res://scenes/ui/components/intel_ui_kit.gd")
+const UiAssetLoader = preload("res://scripts/ui_asset_loader.gd")  # v6.14.8: 立绘区卡图解析
 const PhaseLaws = preload("res://data/phase_laws.gd")
 const EnemyPhaseMasters = preload("res://data/enemy_phase_masters.gd")
 const MasterPowerEvaluator = preload("res://scripts/master_power_evaluator.gd")
@@ -43,7 +46,7 @@ const ModEffectLabels = preload("res://scripts/ui/mod_effect_labels.gd")
 const _AuraData = preload("res://data/aura_data.gd")  # v21 P0: 光环范围标注
 const AuraData = preload("res://data/aura_data.gd")
 const EvolutionHelpers = preload("res://managers/evolution/evolution_helpers.gd")
-const ModEffects = preload("res://data/mod_effects.gd")  # v7.x: MAX_MOD_SLOTS 槽位上限权威源
+const ModEffects = preload("res://data/mod_effects.gd")  # v6.16 起：槽位预算真身=ModManager.get_max_mod_slots_for_card（品质+兵种）
 const CardPeriodicSkills = preload("res://data/card_periodic_skills.gd")  # 卡片定时技能（关联技能显示）
 const PowerTiers = preload("res://data/power_tiers.gd")
 const UnifiedCardTable = preload("res://data/unified_card_table.gd")  # v20.13c: 每卡部署次数口径
@@ -59,24 +62,26 @@ var _context_data: Dictionary = {}
 var _cached_display_stats: UnitStats = null
 var _cached_display_stats_key: String = ""
 
-# 节点引用
+# 节点引用（v6.14.8 情报卡改版：六分区版式，词条以下区块为无框 VBox，靠留白分层）
 var action_buttons_container: HBoxContainer = null
 var close_button: Button = null
 var name_label: Label = null
-var type_label: Label = null
+var type_label: Label = null          # 战场单位模式的长类型行（主攻维度/兵种/武器）
+var type_badge_label: Label = null    # 卡牌模式的兵种徽章（标题行右角胶囊）
+var type_badge_host: Control = null   # 徽章容器（单位模式整体隐藏，防空胶囊残留边框）
 var tier_label: Label = null
 var summary_label: Label = null
 var affix_label: Label = null
 var star_label: Label = null
 var _star_detail_label: Label = null
-var _star_section: PanelContainer = null
-var _nurture_section: PanelContainer = null
+var _star_section: Control = null
+var _nurture_section: Control = null
 var nurture_label: Label = null
 # 关联卡片技能显示段（该卡作为 source_tag 触发源的已解锁卡片定时技能）
-var _card_skill_section: PanelContainer = null
+var _card_skill_section: Control = null
 var _card_skill_label: Label = null
 # v7.x(敌方加成来源明细): 敌方单位"为什么这么强"的加成来源 section
-var _bonus_section: PanelContainer = null
+var _bonus_section: Control = null
 var _bonus_label: Label = null
 var status_label: RichTextLabel = null
 var desc_label: RichTextLabel = null  # v26.16: Label→RichTextLabel（bbcode 关键词高亮）
@@ -84,20 +89,37 @@ var flavor_label: Label = null
 var rank_badge_host: HBoxContainer = null
 var rarity_label: Label = null
 var cost_label: Label = null
-var status_section: PanelContainer = null
+var status_section: Control = null
 var _tab_container: TabContainer = null
 var evolution_mark: PanelContainer = null
-# v6.4 图形化三维攻防卡节点
-var _hp_value_label: Label = null
-var _hp_sub_label: Label = null
-var _atk_value_label: Label = null
-var _atk_sub_label: Label = null
-var _def_value_label: Label = null
-var _def_sub_label: Label = null
-var _extra_stat_label: Label = null
-var _stats_section: PanelContainer = null
-var _stat_cards_row: HBoxContainer = null
+var _affix_section: Control = null
 var _affix_flow: VBoxContainer = null
+# v6.14.8 二期：改造槽一览（C 版模块槽情报化——只加不减，改造功能面板本身不动）
+var _mods_block: Control = null
+var _mods_caption: Label = null
+var _mods_tiles: HBoxContainer = null
+# v6.14.8 战术格：立绘 / 核心属性 / 克制矩阵 / 斜杠组 / 底行（design/ux/card-info-panel.md §3）
+var portrait_rect: TextureRect = null
+var portrait_placeholder: Label = null
+var power_value_label: Label = null
+var hp_value_label: Label = null
+var range_value_label: Label = null
+var move_value_label: Label = null
+var matrix_value_labels: Array[Label] = []
+var slash_label: Label = null
+var core_row: HBoxContainer = null
+var matrix_row: HBoxContainer = null
+var era_label: Label = null
+var weight_label: Label = null
+var terrain_label: Label = null
+# v6.14.8 二期：目标对比块（D 版敌我对比条——战场单位锁定目标时显示 我 vs 目标 攻防双条）
+var _target_compare_block: Control = null
+var _target_compare_caption: Label = null
+var _target_compare_rows: Array[Dictionary] = []  # [{my_bar, my_val, it_bar, it_val}] ×4（轻/甲/空/防）
+# v6.14.8 二期续：D 版剩余元素——战场单位实时血条（标题行）+ 威胁提示块（射程可达的敌人）
+var _unit_hp_bar: ProgressBar = null
+var _threat_block: Control = null
+var _threat_lines: VBoxContainer = null
 
 # 子面板实例（懒加载；v20.12 强化①面板退役，_reinforce_instance 已移除）
 var _modify_instance: Control = null
@@ -121,84 +143,125 @@ func _ready() -> void:
 	z_index = 100
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_resolve_nodes()
-	_setup_section_headers()
 	_setup_tab_titles()
 	_setup_action_buttons_container()
 	if close_button:
 		close_button.pressed.connect(hide_panel)
 
 func _resolve_nodes() -> void:
-	name_label = get_node_or_null("Margin/VBox/HeaderPanel/HeaderVBox/NameStarRow/NameLabel") as Label
-	star_label = get_node_or_null("Margin/VBox/HeaderPanel/HeaderVBox/NameStarRow/StarLabel") as Label
-	rarity_label = get_node_or_null("Margin/VBox/HeaderPanel/HeaderVBox/RarityCostRow/RarityLabel") as Label
-	cost_label = get_node_or_null("Margin/VBox/HeaderPanel/HeaderVBox/RarityCostRow/CostLabel") as Label
-	type_label = get_node_or_null("Margin/VBox/TypeLabel") as Label
+	name_label = get_node_or_null("Margin/VBox/TitleRow/NameRow/NameLabel") as Label
+	star_label = get_node_or_null("Margin/VBox/TitleRow/NameRow/StarLabel") as Label
+	type_badge_label = get_node_or_null("Margin/VBox/TitleRow/NameRow/TypeBadge/TypeBadgeLabel") as Label
+	type_badge_host = get_node_or_null("Margin/VBox/TitleRow/NameRow/TypeBadge") as Control
+	close_button = get_node_or_null("Margin/VBox/TitleRow/NameRow/CloseButton") as Button
+	rarity_label = get_node_or_null("Margin/VBox/TitleRow/RarityRow/RarityLabel") as Label
+	tier_label = get_node_or_null("Margin/VBox/TitleRow/RarityRow/TierLabel") as Label
+	cost_label = get_node_or_null("Margin/VBox/TitleRow/RarityRow/CostLabel") as Label
 	evolution_mark = get_node_or_null("Margin/VBox/EvolutionMark") as PanelContainer
-	tier_label = get_node_or_null("Margin/VBox/TierLabel") as Label
 	rank_badge_host = get_node_or_null("Margin/VBox/RankBadgeHost") as HBoxContainer
 	_tab_container = get_node_or_null("Margin/VBox/TabBar") as TabContainer
 	# 子面板按需刷新：连接 tab_changed，切到强化/改造/进化 Tab 时才刷新对应子面板
 	if _tab_container and not _info_tab_changed_connected:
 		_tab_container.tab_changed.connect(_on_info_tab_changed)
 		_info_tab_changed_connected = true
-	# v6.4 图形化三维攻防卡
-	_hp_value_label = get_node_or_null("Margin/VBox/TabBar/TabInfo/InfoVBox/StatsSection/StatsVBox/StatCardsRow/HpCard/HpVBox/HpValue") as Label
-	_hp_sub_label = get_node_or_null("Margin/VBox/TabBar/TabInfo/InfoVBox/StatsSection/StatsVBox/StatCardsRow/HpCard/HpVBox/HpSub") as Label
-	_atk_value_label = get_node_or_null("Margin/VBox/TabBar/TabInfo/InfoVBox/StatsSection/StatsVBox/StatCardsRow/AtkCard/AtkVBox/AtkValue") as Label
-	_atk_sub_label = get_node_or_null("Margin/VBox/TabBar/TabInfo/InfoVBox/StatsSection/StatsVBox/StatCardsRow/AtkCard/AtkVBox/AtkSub") as Label
-	_def_value_label = get_node_or_null("Margin/VBox/TabBar/TabInfo/InfoVBox/StatsSection/StatsVBox/StatCardsRow/DefCard/DefVBox/DefValue") as Label
-	_def_sub_label = get_node_or_null("Margin/VBox/TabBar/TabInfo/InfoVBox/StatsSection/StatsVBox/StatCardsRow/DefCard/DefVBox/DefSub") as Label
-	_extra_stat_label = get_node_or_null("Margin/VBox/TabBar/TabInfo/InfoVBox/StatsSection/StatsVBox/ExtraStatLabel") as Label
-	_stats_section = get_node_or_null("Margin/VBox/TabBar/TabInfo/InfoVBox/StatsSection") as PanelContainer
-	_stat_cards_row = get_node_or_null("Margin/VBox/TabBar/TabInfo/InfoVBox/StatsSection/StatsVBox/StatCardsRow") as HBoxContainer
-	summary_label = get_node_or_null("Margin/VBox/TabBar/TabInfo/InfoVBox/StatsSection/StatsVBox/SummaryLabel") as Label
-	# 词条标签化容器
-	_affix_flow = get_node_or_null("Margin/VBox/TabBar/TabInfo/InfoVBox/AffixSection/AffixVBox/AffixFlow") as VBoxContainer
-	affix_label = get_node_or_null("Margin/VBox/TabBar/TabInfo/InfoVBox/AffixSection/AffixVBox/AffixLabel") as Label
-	_star_detail_label = get_node_or_null("Margin/VBox/TabBar/TabInfo/InfoVBox/StarSection/StarVBox/StarLabel") as Label
-	_star_section = get_node_or_null("Margin/VBox/TabBar/TabInfo/InfoVBox/StarSection") as PanelContainer
-	_nurture_section = get_node_or_null("Margin/VBox/TabBar/TabInfo/InfoVBox/NurtureSection") as PanelContainer
-	nurture_label = get_node_or_null("Margin/VBox/TabBar/TabInfo/InfoVBox/NurtureSection/NurtureVBox/NurtureLabel") as Label
-	_card_skill_section = get_node_or_null("Margin/VBox/TabBar/TabInfo/InfoVBox/CardSkillSection") as PanelContainer
-	_card_skill_label = get_node_or_null("Margin/VBox/TabBar/TabInfo/InfoVBox/CardSkillSection/CardSkillVBox/CardSkillLabel") as Label
-	# v7.x(敌方加成来源明细): 加成来源 section 节点连接
-	_bonus_section = get_node_or_null("Margin/VBox/TabBar/TabInfo/InfoVBox/BonusSection") as PanelContainer
-	_bonus_label = get_node_or_null("Margin/VBox/TabBar/TabInfo/InfoVBox/BonusSection/BonusVBox/BonusLabel") as Label
-	status_section = get_node_or_null("Margin/VBox/TabBar/TabInfo/InfoVBox/StatusSection") as PanelContainer
-	status_label = get_node_or_null("Margin/VBox/TabBar/TabInfo/InfoVBox/StatusSection/StatusVBox/StatusLabel") as RichTextLabel
+	# v6.14.8 战术格：立绘 / 核心属性 / 克制矩阵 / 斜杠组
+	portrait_rect = get_node_or_null("Margin/VBox/TabBar/TabInfo/PortraitPanel/PortraitRect") as TextureRect
+	portrait_placeholder = get_node_or_null("Margin/VBox/TabBar/TabInfo/PortraitPanel/PortraitPlaceholder") as Label
+	core_row = get_node_or_null("Margin/VBox/TabBar/TabInfo/CoreRow") as HBoxContainer
+	power_value_label = get_node_or_null("Margin/VBox/TabBar/TabInfo/CoreRow/PowerCell/PowerVBox/PowerValue") as Label
+	hp_value_label = get_node_or_null("Margin/VBox/TabBar/TabInfo/CoreRow/SideCells/HpCell/HpHBox/HpValue") as Label
+	range_value_label = get_node_or_null("Margin/VBox/TabBar/TabInfo/CoreRow/SideCells/RangeCell/RangeHBox/RangeValue") as Label
+	move_value_label = get_node_or_null("Margin/VBox/TabBar/TabInfo/CoreRow/SideCells/MoveCell/MoveHBox/MoveValue") as Label
+	matrix_row = get_node_or_null("Margin/VBox/TabBar/TabInfo/MatrixRow") as HBoxContainer
+	for mv_path in [
+		"Margin/VBox/TabBar/TabInfo/MatrixRow/MatrixCellL/MatrixVBoxL/MValueL",
+		"Margin/VBox/TabBar/TabInfo/MatrixRow/MatrixCellA/MatrixVBoxA/MValueA",
+		"Margin/VBox/TabBar/TabInfo/MatrixRow/MatrixCellAir/MatrixVBoxAir/MValueAir",
+		"Margin/VBox/TabBar/TabInfo/MatrixRow/MatrixCellDef/MatrixVBoxDef/MValueDef",
+	]:
+		var mv := get_node_or_null(mv_path) as Label
+		matrix_value_labels.append(mv)
+	slash_label = get_node_or_null("Margin/VBox/TabBar/TabInfo/SlashLabel") as Label
+	# 词条滚动区各文本块（区块=无框 VBox，标题条已随改版移除）
+	era_label = get_node_or_null("Margin/VBox/TabBar/TabInfo/BottomRow/BottomHBox/EraLabel") as Label
+	weight_label = get_node_or_null("Margin/VBox/TabBar/TabInfo/BottomRow/BottomHBox/WeightLabel") as Label
+	terrain_label = get_node_or_null("Margin/VBox/TabBar/TabInfo/BottomRow/BottomHBox/TerrainLabel") as Label
+	# v6.14.8 二期：目标对比块（4 行固定：对轻装/对装甲/对空中/防御）
+	_target_compare_block = get_node_or_null("Margin/VBox/TabBar/TabDetail/AffixScroll/AffixList/TargetCompareBlock") as Control
+	_target_compare_caption = get_node_or_null("Margin/VBox/TabBar/TabDetail/AffixScroll/AffixList/TargetCompareBlock/TargetCompareCaption") as Label
+	_target_compare_rows.clear()
+	for suffix: String in ["L", "A", "Air", "Def"]:
+		var base: String = "Margin/VBox/TabBar/TabDetail/AffixScroll/AffixList/TargetCompareBlock/CompareRow" + suffix
+		_target_compare_rows.append({
+			"my_bar": get_node_or_null(base + "/CmpMyBar" + suffix) as ProgressBar,
+			"my_val": get_node_or_null(base + "/CmpMyVal" + suffix) as Label,
+			"it_bar": get_node_or_null(base + "/CmpItBar" + suffix) as ProgressBar,
+			"it_val": get_node_or_null(base + "/CmpItVal" + suffix) as Label,
+		})
+	status_section = get_node_or_null("Margin/VBox/TabBar/TabDetail/AffixScroll/AffixList/StatusBlock") as Control
+	status_label = get_node_or_null("Margin/VBox/TabBar/TabDetail/AffixScroll/AffixList/StatusBlock/StatusLabel") as RichTextLabel
+	_bonus_section = get_node_or_null("Margin/VBox/TabBar/TabDetail/AffixScroll/AffixList/BonusBlock") as Control
+	_bonus_label = get_node_or_null("Margin/VBox/TabBar/TabDetail/AffixScroll/AffixList/BonusBlock/BonusLabel") as Label
+	_affix_section = get_node_or_null("Margin/VBox/TabBar/TabDetail/AffixScroll/AffixList/AffixBlock") as Control
+	_affix_flow = get_node_or_null("Margin/VBox/TabBar/TabDetail/AffixScroll/AffixList/AffixBlock/AffixFlow") as VBoxContainer
+	affix_label = get_node_or_null("Margin/VBox/TabBar/TabDetail/AffixScroll/AffixList/AffixBlock/AffixLabel") as Label
+	_mods_block = get_node_or_null("Margin/VBox/TabBar/TabDetail/AffixScroll/AffixList/ModsBlock") as Control
+	_mods_caption = get_node_or_null("Margin/VBox/TabBar/TabDetail/AffixScroll/AffixList/ModsBlock/ModsCaption") as Label
+	_mods_tiles = get_node_or_null("Margin/VBox/TabBar/TabDetail/AffixScroll/AffixList/ModsBlock/ModsTiles") as HBoxContainer
+	_unit_hp_bar = get_node_or_null("Margin/VBox/TitleRow/UnitHpBar") as ProgressBar
+	_threat_block = get_node_or_null("Margin/VBox/TabBar/TabDetail/AffixScroll/AffixList/ThreatBlock") as Control
+	_threat_lines = get_node_or_null("Margin/VBox/TabBar/TabDetail/AffixScroll/AffixList/ThreatBlock/ThreatLines") as VBoxContainer
+	_star_section = get_node_or_null("Margin/VBox/TabBar/TabDetail/AffixScroll/AffixList/StarBlock") as Control
+	_star_detail_label = get_node_or_null("Margin/VBox/TabBar/TabDetail/AffixScroll/AffixList/StarBlock/StarLabel") as Label
+	_nurture_section = get_node_or_null("Margin/VBox/TabBar/TabDetail/AffixScroll/AffixList/NurtureBlock") as Control
+	nurture_label = get_node_or_null("Margin/VBox/TabBar/TabDetail/AffixScroll/AffixList/NurtureBlock/NurtureLabel") as Label
+	_card_skill_section = get_node_or_null("Margin/VBox/TabBar/TabDetail/AffixScroll/AffixList/CardSkillBlock") as Control
+	_card_skill_label = get_node_or_null("Margin/VBox/TabBar/TabDetail/AffixScroll/AffixList/CardSkillBlock/CardSkillLabel") as Label
+	summary_label = get_node_or_null("Margin/VBox/TabBar/TabDetail/AffixScroll/AffixList/SummaryLabel") as Label
+	desc_label = get_node_or_null("Margin/VBox/TabBar/TabDetail/AffixScroll/AffixList/DescBlock/DescLabel") as RichTextLabel
+	flavor_label = get_node_or_null("Margin/VBox/TabBar/TabDetail/AffixScroll/AffixList/FlavorLabel") as Label
+	action_buttons_container = get_node_or_null("Margin/VBox/ActionButtons") as HBoxContainer
 	# v9.x 当前状态区用 BBCode 渲染彩色 [正面]/[负面] 标记
 	if status_label:
 		status_label.bbcode_enabled = true
-	desc_label = get_node_or_null("Margin/VBox/TabBar/TabInfo/InfoVBox/DescSection/DescVBox/DescLabel") as RichTextLabel
-	flavor_label = get_node_or_null("Margin/VBox/TabBar/TabInfo/InfoVBox/FlavorLabel") as Label
-	action_buttons_container = get_node_or_null("Margin/VBox/ActionButtons") as HBoxContainer
-	close_button = get_node_or_null("Margin/VBox/CloseButton") as Button
 
 func _setup_tab_titles() -> void:
 	if _tab_container == null:
 		return
 	_tab_container.set_tab_title(TabIdx.INFO, "情报")
-	_tab_container.set_tab_title(TabIdx.REINFORCE, "强化")
+	_tab_container.set_tab_title(TabIdx.DETAIL, "详细情报")
 	_tab_container.set_tab_title(TabIdx.MODIFY, "改造")
 	_tab_container.set_tab_title(TabIdx.EVOLVE, "制造")
-	# 批次三 B2e：Tab 悬停就地解释（强化 Tab 恒隐藏，tooltip 仅作兜底无害）
+	# 批次三 B2e：Tab 悬停就地解释（改造/制造 Tab 随模式隐藏，tooltip 仅作兜底无害）
 	_tab_container.set_tab_tooltip(TabIdx.INFO, "卡牌/单位的详细属性、词条与说明")
-	_tab_container.set_tab_tooltip(TabIdx.MODIFY, "为这张卡安装/调整改造模块（最多 9 格，只影响本实例）")
+	_tab_container.set_tab_tooltip(TabIdx.DETAIL, "完整明细：状态/加成来源/词条/改造槽/养成/技能/描述/风味")
+	_tab_container.set_tab_tooltip(TabIdx.MODIFY, "为这张卡安装/调整改造模块（槽位按品质与兵种：品质定基础槽，兵种另有专属槽，只影响本实例）")
 	_tab_container.set_tab_tooltip(TabIdx.EVOLVE, "消耗情报与资源直接制造这张卡（品质随情报提升）")
 	_hide_all_sub_tabs()
-	# 批次三 B2e：头部与三维攻防卡 tooltip（新玩家最常困惑的数值语义）
+	# 批次三 B2e：头部与战术格 tooltip（新玩家最常困惑的数值语义）
 	if star_label:
 		star_label.tooltip_text = "光环/能力等级：由卡牌等级折算（每 3 级 = 1★，Lv30 满级 10★）"
 	if rarity_label:
 		rarity_label.tooltip_text = "稀有度：普通/优秀/稀有/史诗/传说/神话，影响基础属性与掉落概率"
 	if cost_label:
 		cost_label.tooltip_text = "部署能耗：战斗中放置该单位消耗的能量（按战力定价 4~15 点）"
-	if _hp_value_label:
-		_hp_value_label.tooltip_text = "耐久（HP）：归零即被摧毁"
-	if _atk_value_label:
-		_atk_value_label.tooltip_text = "攻击：对轻装/装甲/空中三类目标分别有独立伤害值"
-	if _def_value_label:
-		_def_value_label.tooltip_text = "防御：对轻装/装甲/空中三类攻击分别有独立减免"
+	if weight_label:
+		weight_label.tooltip_text = "部署能耗：战斗中放置该单位消耗的能量（按战力定价 4~15 点）；能量卡显示提供量"
+	if power_value_label:
+		power_value_label.tooltip_text = "战力：综合战斗评级（卡牌查看=养成口径，战场单位=属性口径）"
+	if hp_value_label:
+		hp_value_label.tooltip_text = "耐久（HP）：归零即被摧毁"
+	if range_value_label:
+		range_value_label.tooltip_text = "射程：交战距离（像素），决定能否够到目标"
+	if move_value_label:
+		move_value_label.tooltip_text = "移速：战场移动速度；显示\"固定\"= 部署后不移动"
+	for i in matrix_value_labels.size():
+		if matrix_value_labels[i] == null:
+			continue
+		if i < 3:
+			matrix_value_labels[i].tooltip_text = "对轻装/装甲/空中目标类型的单发伤害；\"--\" = 无法攻击该类目标"
+		else:
+			matrix_value_labels[i].tooltip_text = "防御：对轻装/装甲/空中三维防御的最大值（悬停词条区查看三维明细）"
 
 func _setup_action_buttons_container() -> void:
 	if action_buttons_container:
@@ -273,6 +336,11 @@ func show_unit_info(unit: Node, is_player: bool, at_position: Vector2 = Vector2.
 	# 头部残留上次卡牌的 ★5/传说/50⚡。入口统一清理后，敌方单位不设值即默认清空；我方单位 _show_player_unit
 	# 会重设这三项，不受影响。
 	_clear_header_rarity_extras()
+	# v6.14.8 验收修复：战场单位无卡牌操作，清掉相位仪模式残留的"卸下此卡"等按钮
+	# （旧实现 show_unit_info 不刷按钮区，从卡牌模式切单位模式会残留）
+	if action_buttons_container:
+		action_buttons_container.visible = false
+		_clear_action_buttons()
 	_refresh_unit_display(unit, is_player)
 	_apply_unit_tab_visibility()
 	if _tab_container:
@@ -314,7 +382,7 @@ func set_close_button_visible(v: bool) -> void:
 func _hide_all_sub_tabs() -> void:
 	if _tab_container == null:
 		return
-	_tab_container.set_tab_hidden(TabIdx.REINFORCE, true)
+	_tab_container.set_tab_hidden(TabIdx.DETAIL, true)
 	_tab_container.set_tab_hidden(TabIdx.MODIFY, true)
 	_tab_container.set_tab_hidden(TabIdx.EVOLVE, true)
 
@@ -322,10 +390,11 @@ func _apply_card_type_tab_visibility(card: CardResource) -> void:
 	if _tab_container == null:
 		return
 	_hide_all_sub_tabs()
-	if card.card_type == GC.CardType.COMBAT_UNIT:
-		# v20.12 等级统一：强化① Tab 退役（强化等级轴 enhance_level 已废，
-		# 唯一等级轴为战斗卡等级 card_level，上阵攒经验自动升级）。Tab 恒隐藏，
-		# TabIdx.REINFORCE 枚举与 tscn 节点保留（占位保 TabContainer 索引不错位）。
+	# v38：详细情报 Tab 恒显（卡牌/能量/法则卡都有明细内容）
+	_tab_container.set_tab_hidden(TabIdx.DETAIL, false)
+	# v38（用户拍板）：改造/制造已是独立解锁功能（底栏/基地工位直达），
+	# 背包与战场模式不再挂内嵌改造/制造 Tab——仅相位仪槽位模式保留（卸下联动场景）。
+	if _current_mode == PanelMode.MODE_PHASE_INSTRUMENT and card.card_type == GC.CardType.COMBAT_UNIT:
 		_tab_container.set_tab_hidden(TabIdx.MODIFY, false)
 		_tab_container.set_tab_hidden(TabIdx.EVOLVE, false)
 
@@ -333,6 +402,8 @@ func _apply_unit_tab_visibility() -> void:
 	if _tab_container == null:
 		return
 	_hide_all_sub_tabs()
+	# v38：战场单位模式=情报 + 详细情报两 Tab（目标对比/威胁/状态等动态块在详细情报里）
+	_tab_container.set_tab_hidden(TabIdx.DETAIL, false)
 
 ## ── 子面板懒加载 ──────────────────────────────────────────────
 
@@ -439,26 +510,10 @@ func _clear_action_buttons() -> void:
 
 ## ── 卡牌头部刷新 ──────────────────────────────────────────────
 
-## v6.4: 按稀有度染色 HeaderPanel 左侧色带（复制 section 样式并覆盖左边框色）
-func _apply_header_rarity_band(rarity_key: String) -> void:
-	var header := get_node_or_null("Margin/VBox/HeaderPanel") as PanelContainer
-	if header == null:
-		return
-	var band_color: Color = GC.get_rarity_color(rarity_key)
-	var sb := StyleBoxFlat.new()
-	sb.bg_color = Color(0.1, 0.14, 0.22, 0.9)
-	sb.border_color = band_color
-	sb.border_width_left = 4
-	sb.border_width_top = 0
-	sb.border_width_right = 0
-	sb.border_width_bottom = 0
-	sb.corner_radius_top_left = 6
-	sb.corner_radius_top_right = 6
-	sb.corner_radius_bottom_left = 4
-	sb.corner_radius_bottom_right = 4
-	header.add_theme_stylebox_override("panel", sb)
+## v6.14.8 改版：HeaderPanel 左侧稀有度色带已随标题行重排移除，
+## 稀有度改为 RarityRow 文字染色（GC.get_rarity_color，全项目唯一权威源）。
 
-## v7.x 修复：清空头部星级/稀有度/费用三标签 + 移除稀有度色带 override。
+## v7.x 修复：清空头部星级/稀有度/费用三标签。
 ## 用于战场单位模式入口（show_unit_info），消除从卡牌模式切到敌方单位时的头部残留。
 ## 我方单位 _show_player_unit 随后会重设这三项，敌方单位保持清空状态。
 func _clear_header_rarity_extras() -> void:
@@ -468,21 +523,20 @@ func _clear_header_rarity_extras() -> void:
 		rarity_label.text = ""
 	if cost_label:
 		cost_label.text = ""
+	# v6.14.8 验收修复：档位徽标同属卡牌头部，单位模式一并清空（防"精英"残留）
+	if tier_label:
+		tier_label.visible = false
+		tier_label.text = ""
 	if evolution_mark:
 		evolution_mark.visible = false
-	# 移除 HeaderPanel 的稀有度色带 override，恢复 tscn 默认样式
-	var header := get_node_or_null("Margin/VBox/HeaderPanel") as PanelContainer
-	if header:
-		header.remove_theme_stylebox_override("panel")
 
-## v7.x 修复：刷新稀有度色带 + 标签（文本/颜色）。
+## v7.x 修复：刷新稀有度标签（文本/颜色）。
 ## 卡牌模式(_refresh_header)与战场单位模式(_show_player_unit)共用，
 ## 避免战场单位漏刷 rarity_label 导致"相位仪显示稀有、战场显示普通"的残留 bug。
 func _apply_header_rarity_for_card(card: CardResource) -> void:
 	if card == null:
 		return
 	var r_key: String = card.rarity if card.rarity else "common"
-	_apply_header_rarity_band(r_key)
 	if rarity_label:
 		rarity_label.text = RARITY_DISPLAY.get(r_key, r_key)
 		rarity_label.add_theme_color_override("font_color", GC.get_rarity_color(r_key))
@@ -498,45 +552,32 @@ func _refresh_header(card: CardResource) -> void:
 	# v19: 头部等级（三十级制 card_level，Lv1-30；与血条等级文字同口径）——仅战斗卡显示
 	if star_label:
 		star_label.text = ("Lv%d" % _card_level_for_display(card)) if card.card_type == GC.CardType.COMBAT_UNIT else ""
-	# v6.4: 稀有度色带——染色 HeaderPanel 左侧边框
+	# v6.14.8：稀有度染 RarityRow 文字（色带已随标题行重排移除）
 	_apply_header_rarity_for_card(card)
+	# v6.14.8 改版：部署能耗归底行"权重"位（§6 字段映射），标题行不再重复显示
 	if cost_label:
-		if card.card_type == GC.CardType.ENERGY:
-			# v6.2 修复 M8：能量卡应显示提供量（energy_grant）而非部署消耗（energy_cost）
-			# 大部分能量卡是"消耗N提供M"模式，显示提供量对玩家更有意义
-			cost_label.text = "+%d⚡" % int(card.energy_grant if card.energy_grant > 0 else card.energy_cost)
-		else:
-			cost_label.text = "%d⚡" % int(card.energy_cost)
-	if type_label:
+		cost_label.text = ""
+	# v6.14.8 改版：类型徽章（右角胶囊）承载兵种；长类型行（type_label）仅战场单位模式使用
+	if type_badge_host:
+		type_badge_host.visible = true
+	if type_badge_label:
 		match card.card_type:
 			GC.CardType.COMBAT_UNIT:
-				var parts: Array[String] = []
-				parts.append("战斗卡 — %s" % DefaultCards.get_platform_display_name(card.combat_kind))
-				if card.era >= 0 and card.era < ERA_NAMES.size():
-					parts.append(ERA_NAMES[card.era])
-				var wl: String = card.weapon_label if "weapon_label" in card else ""
-				if wl.is_empty() and "weapon_names" in card:
-					# v6.5: weapon_label 从未赋值，改为从 weapon_names[] 拼接具体武器配置名
-					var wnames: Array = []
-					for wn in card.weapon_names:
-						var ws: String = String(wn)
-						if not ws.is_empty() and not wnames.has(ws):
-							wnames.append(ws)
-					if wnames.size() > 0:
-						wl = " / ".join(wnames)
-				if not wl.is_empty():
-					parts.append(wl)
-				type_label.text = " · ".join(parts)
-				# v20: 档位徽标（tier 可见性）——仅战斗卡展示
-				if tier_label != null:
-					var _t: int = clampi(int(card.tier), 0, 6)
-					tier_label.text = PowerTiers.get_tier_name(_t)
-					tier_label.visible = _t > 0
+				type_badge_label.text = DefaultCards.get_platform_display_name(card.combat_kind)
 			GC.CardType.ENERGY:
-				type_label.text = "充能槽 · 提供 %d 能量" % int(card.energy_cost)
+				type_badge_label.text = "充能槽"
 			_:
-				# v9.x（P2-7范围B）：法则卡类型标签分支已随法则系统退役移除
-				type_label.text = card.type_line
+				type_badge_label.text = card.type_line if not card.type_line.is_empty() else "—"
+	if type_label:
+		type_label.visible = false
+	# v20: 档位徽标（tier 可见性）——仅战斗卡展示
+	if tier_label != null:
+		if card.card_type == GC.CardType.COMBAT_UNIT:
+			var _t: int = clampi(int(card.tier), 0, 6)
+			tier_label.text = PowerTiers.get_tier_name(_t)
+			tier_label.visible = _t > 0
+		else:
+			tier_label.visible = false
 	# 进化标记：继承加成 > 0 显示
 	_refresh_evolution_mark(card)
 
@@ -560,39 +601,86 @@ func _refresh_info_sections(card: CardResource) -> void:
 	if _star_section: _star_section.visible = true
 	if _nurture_section: _nurture_section.visible = true
 	if _card_skill_section: _card_skill_section.visible = true
+	if _affix_section: _affix_section.visible = true
 	# v7.x(敌方加成来源明细): 卡牌模式不显示战场加成来源（那是敌方单位专属），确保隐藏
 	if _bonus_section: _bonus_section.visible = false
 	if _bonus_label: _bonus_label.text = ""
 	# v7.3 性能优化：顶部构建一次 UnitStats 缓存，子函数共用（原各调一次 _build_display_stats = build_stats_from_card 跑2遍）
 	_prepare_display_stats_cache(card)
-	# v6.4: 三维攻防——图形化三列数值卡
-	_refresh_stat_cards(card)
-	# 词条（标签化）
+	var is_combat: bool = (card.card_type == GC.CardType.COMBAT_UNIT)
+	# v6.14.8 战术格：立绘 + 核心属性 + 克制矩阵 + 斜杠组 + 底行（非战斗卡整排隐藏）
+	_apply_portrait_texture(_load_card_portrait_tex(card))
+	if core_row: core_row.visible = is_combat
+	if matrix_row: matrix_row.visible = is_combat
+	if slash_label: slash_label.visible = is_combat
+	if is_combat:
+		_fill_combat_cells(_cached_display_stats, -1.0, 2)
+		# 战力大格 = 养成口径（get_current_power），与旧养成摘要行同源
+		if power_value_label:
+			var power: int = card.get_current_power() if card.has_method("get_current_power") else 0
+			power_value_label.text = str(maxi(power, 0))
+		var cost_txt := "%d⚡" % int(card.energy_cost)
+		_refresh_bottom_row(_cached_display_stats, card.era, cost_txt)
+	else:
+		if power_value_label:
+			power_value_label.text = "—"
+		var mid_txt := ""
+		if card.card_type == GC.CardType.ENERGY:
+			# v6.2 修复 M8：能量卡显示提供量而非部署消耗
+			mid_txt = "+%d⚡" % int(card.energy_grant if card.energy_grant > 0 else card.energy_cost)
+		_refresh_bottom_row(null, card.era, mid_txt)
+	# 词条（◆ 行化；顺带修复旧版 for 循环缩进在 return 之后的死代码）
 	_refresh_affix_tags(card)
-	# 星级强化详情（情报 Tab 内，非头部星级）
+	# 改造槽一览（C 版模块槽情报化；非战斗卡内部自隐藏）
+	_refresh_mods_tiles(card)
+	# 等级强化详情（情报 Tab 内，非头部星级）；空内容整块隐藏
+	var _star_text: String = _build_star_lines(card)
 	if _star_detail_label:
-		_star_detail_label.text = _build_star_lines(card)
-	# 养成摘要
+		_star_detail_label.text = _star_text
+	_set_section_visible_by_content(_star_section, _star_text)
+	# 养成摘要（v6.14.8：战力已上战术格大格，include_power=false 防重复）
 	if nurture_label:
-		var _nurture: String = _build_nurture_text(card)
+		var _nurture: String = _build_nurture_text(card, null, false)
 		# v7.x：tags 定位标签（战斗卡）+ 部署后光环预览（无战场 unit 时从 platform_type 反推）
 		var _tags_cn: String = _format_tags_cn(card.tags) if "tags" in card else ""
 		if not _tags_cn.is_empty() and card.card_type == GC.CardType.COMBAT_UNIT:
 			_nurture = "定位：%s\n" % _tags_cn + _nurture
-		# v8.x：兵种机制描述（STALKER隐身/SNIPER首击/ECM光环/ENGINEER 等）
-		# v7.x 修复：card.tags 字段在数据层从不填充（default_cards.gd 0 个 .tags= 赋值），
-		# _format_unit_mechanism_cn(card.tags) 恒返回空。改为优先读 _cached_display_stats 的
-		# is_stalker/is_sniper/is_ecm/is_engineer meta（由 _apply_v8_unit_type_meta 通过 card_id
-		# 前缀打标，是兵种特性真实生效路径），字面量 tags 作兜底。
-		var _mech_desc: String = _format_unit_mechanism_from_stats(_cached_display_stats)
-		if _mech_desc.is_empty() and "tags" in card:
-			_mech_desc = _format_unit_mechanism_cn(card.tags)
-		if not _mech_desc.is_empty():
-			_nurture = "兵种机制：%s\n" % _mech_desc + _nurture
+		# v6.14.8 验收修复：兵种机制仅战斗卡显示——非战斗卡经 build_stats_from_card 会拿到
+		# 默认 combat_kind=0（步兵）的空壳 stats，错显"步兵：巷战掩蔽"
+		if is_combat:
+			# v8.x：优先读 _cached_display_stats 的 is_stalker/is_sniper/is_ecm/is_engineer meta
+			# （由 _apply_v8_unit_type_meta 按 card_id 前缀打标，是兵种特性真实生效路径），
+			# card.tags 数据层恒空只作兜底。
+			var _mech_desc: String = _format_unit_mechanism_from_stats(_cached_display_stats)
+			if _mech_desc.is_empty() and "tags" in card:
+				_mech_desc = _format_unit_mechanism_cn(card.tags)
+			if not _mech_desc.is_empty():
+				_nurture = "兵种机制：%s\n" % _mech_desc + _nurture
 		_nurture += _build_aura_preview_text(card, _cached_display_stats)
 		nurture_label.text = _nurture
+	# v6.14.8 验收修复：非战斗卡无词条行，隐藏"词条"标题防孤行
+	if not is_combat and _affix_section:
+		_affix_section.visible = false
+	# 目标对比块为战场单位专属，卡牌模式恒隐藏
+	if _target_compare_block:
+		_target_compare_block.visible = false
+	# D 版元素（血条/威胁提示）同为战场单位专属
+	if _unit_hp_bar:
+		_unit_hp_bar.visible = false
+	if _threat_block:
+		_threat_block.visible = false
 	# 关联卡片技能（source_tag 命中该卡 + 已解锁）
 	_refresh_card_skill_section(card)
+	# 非战斗卡：无战术格，战斗预览行兜底显示在滚动区
+	if summary_label:
+		if is_combat:
+			summary_label.visible = false
+		else:
+			var preview: String = BackpackCombatPreview.build_line(card)
+			if preview.begins_with("战斗中："):
+				preview = preview.substr(5)
+			summary_label.text = preview if not preview.is_empty() else card.summary_line
+			summary_label.visible = not summary_label.text.is_empty()
 	# 描述
 	if desc_label:
 		desc_label.text = _apply_desc_highlight(card.description)
@@ -658,68 +746,375 @@ func _card_skill_effect_summary(effect: Dictionary) -> String:
 		"execute": return "斩杀"
 		_: return "特效"
 
-## v6.4: 三维攻防图形化——构建 UnitStats 后结构化填充 HP/攻击/防御三张数值卡
-func _refresh_stat_cards(card: CardResource) -> void:
-	var is_combat: bool = (card.card_type == GC.CardType.COMBAT_UNIT)
-	# 非战斗卡：隐藏三维卡区，回退到纯文本 summary
-	if not is_combat:
-		if _stats_section:
-			_stats_section.visible = false
-		if summary_label:
-			var preview: String = BackpackCombatPreview.build_line(card)
-			if preview.begins_with("战斗中："):
-				preview = preview.substr(5)
-			summary_label.text = preview if not preview.is_empty() else card.summary_line
-			summary_label.visible = true
+## ── v6.14.8 情报卡改版：战术格填充（design/ux/card-info-panel.md §3/§6）──
+## 核心属性（战力大格 + 耐久/射程/移速）、克制矩阵（对轻装/装甲/空中/防御）、
+## 斜杠组一行（战争雷霆式）。vis 参数走 _enemy_stat_visibility_level 三档掩码，
+## 敌方情报可见性口径与旧 summary 行完全一致（full_stats=精确 / 区间 / ???）。
+
+## 统一格赋值：空值/不可攻击显示灰色 "--"（设计稿 §4：不可攻击 #33505e）
+func _set_cell_value(lbl: Label, txt: String) -> void:
+	if lbl == null:
 		return
-	# 战斗卡：显示三维卡，隐藏旧 summary
-	if _stats_section:
-		_stats_section.visible = true
-	if _stat_cards_row:
-		_stat_cards_row.visible = true
-	if _extra_stat_label:
-		_extra_stat_label.visible = true
-	if summary_label:
-		summary_label.visible = false
-	# 构建 UnitStats（含时代缩放 + growth + affix）
-	var stats: UnitStats = _build_display_stats(card)
+	lbl.text = txt
+	if txt == "--" or txt == "—":
+		lbl.add_theme_color_override("font_color", DT.COLOR_TEXT_FAINT)
+	else:
+		lbl.add_theme_color_override("font_color", DT.COLOR_TEXT_BRIGHT)
+
+## 掩码封装：vis>=2 原值整数；否则走 _mask_stat_value（区间/???）
+func _cell_mask(v: float, vis: int) -> String:
+	return str(int(round(v))) if vis >= 2 else _mask_stat_value(v, vis)
+
+## 找最强攻击维的配对攻速（v6.2 M6 口径：DPS 用同维攻速，防"装甲攻÷轻装攻速"虚高）
+func _best_attack_speed(stats: UnitStats) -> float:
 	if stats == null:
+		return 0.0
+	var best_atk: float = stats.attack_light
+	var best_speed: float = stats.attack_light_speed if stats.attack_light_speed > 0 else 1.0
+	if stats.attack_armor > best_atk:
+		best_atk = stats.attack_armor
+		best_speed = stats.attack_armor_speed if stats.attack_armor_speed > 0 else 1.0
+	if stats.attack_air > best_atk:
+		best_speed = stats.attack_air_speed if stats.attack_air_speed > 0 else 1.0
+	return best_speed
+
+## 战术格填充主入口。stats=null（相位场驱动器等基地单位）时仅填耐久，其余 "—"。
+## cur_hp>=0 显示 "当前/上限"（战场实时值）；vis<2 走情报掩码。
+func _fill_combat_cells(stats: UnitStats, cur_hp: float, vis: int) -> void:
+	var has_stats: bool = stats != null
+	if core_row:
+		core_row.visible = has_stats or cur_hp >= 0.0
+	if matrix_row:
+		matrix_row.visible = has_stats
+	if slash_label:
+		slash_label.visible = has_stats
+	# 战力大格：属性口径（EvolutionHelpers.combat_power_from_unit_stats，敌我可对比）
+	if power_value_label:
+		if has_stats:
+			power_value_label.text = str(int(EvolutionHelpers.combat_power_from_unit_stats(stats)))
+			power_value_label.add_theme_color_override("font_color", DT.COLOR_GOLD)
+		else:
+			_set_cell_value(power_value_label, "—")
+	# 耐久：战场实时 cur/max；基地单位（无 stats）只显示 当前/—；卡牌查看=上限
+	if hp_value_label:
+		if has_stats and cur_hp >= 0.0:
+			hp_value_label.text = "%s/%s" % [_cell_mask(cur_hp, vis), _cell_mask(float(stats.max_hp), vis)]
+			hp_value_label.add_theme_color_override("font_color", DT.COLOR_TEXT_BRIGHT)
+		elif has_stats:
+			hp_value_label.text = _cell_mask(float(stats.max_hp), vis)
+			hp_value_label.add_theme_color_override("font_color", DT.COLOR_TEXT_BRIGHT)
+		elif cur_hp >= 0.0:
+			hp_value_label.text = "%s/—" % _cell_mask(cur_hp, vis)
+			hp_value_label.add_theme_color_override("font_color", DT.COLOR_TEXT_BRIGHT)
+		else:
+			_set_cell_value(hp_value_label, "—")
+	# 射程 / 移速
+	if range_value_label:
+		if has_stats:
+			range_value_label.text = _cell_mask(float(stats.attack_range), vis)
+			range_value_label.add_theme_color_override("font_color", DT.COLOR_TEXT_BRIGHT)
+		else:
+			_set_cell_value(range_value_label, "—")
+	if move_value_label:
+		if has_stats:
+			move_value_label.text = "固定" if stats.move_speed < 1.0 else _cell_mask(float(stats.move_speed), vis)
+			move_value_label.add_theme_color_override("font_color", DT.COLOR_TEXT_BRIGHT)
+		else:
+			_set_cell_value(move_value_label, "—")
+	# 克制矩阵：对轻装/对装甲/对空中/防御（三维最大值）
+	if matrix_row and matrix_value_labels.size() >= 4:
+		var atk_vals: Array[float] = [0.0, 0.0, 0.0]
+		var def_val: float = 0.0
+		if has_stats:
+			atk_vals = [stats.attack_light, stats.attack_armor, stats.attack_air]
+			def_val = maxf(stats.defense_light, maxf(stats.defense_armor, stats.defense_air))
+		for i in 4:
+			var v: float = atk_vals[i] if i < 3 else def_val
+			var txt := "--" if v <= 0.001 else _cell_mask(v, vis)
+			_set_cell_value(matrix_value_labels[i], txt)
+	# 斜杠组：攻/防三维全值 + 最强维攻速与秒伤（战争雷霆式一行；零值与矩阵同口径显示 "--"）
+	if slash_label:
+		if has_stats:
+			var spd: float = _best_attack_speed(stats)
+			var dps: float = maxf(stats.attack_light, maxf(stats.attack_armor, stats.attack_air)) * spd
+			var slash_val := func(v: float) -> String:
+				return "--" if v <= 0.001 else _cell_mask(v, vis)
+			slash_label.text = "攻 %s / %s / %s　　防 %s / %s / %s　　攻速 %.1f/s · 秒伤 %s" % [
+				slash_val.call(stats.attack_light), slash_val.call(stats.attack_armor), slash_val.call(stats.attack_air),
+				slash_val.call(stats.defense_light), slash_val.call(stats.defense_armor), slash_val.call(stats.defense_air),
+				spd, _cell_mask(dps, vis),
+			]
+		else:
+			slash_label.text = ""
+
+## 底行：时代 / 部署能耗（权重位）/ 地形修正
+func _refresh_bottom_row(stats: UnitStats, era_idx: int, mid_text: String) -> void:
+	if era_label:
+		era_label.text = "时代 %s" % (ERA_NAMES[era_idx] if era_idx >= 0 and era_idx < ERA_NAMES.size() else "—")
+	if weight_label:
+		weight_label.text = mid_text if not mid_text.is_empty() else "—"
+	if terrain_label:
+		if stats != null and stats.urban_defense_bonus > 0.001:
+			terrain_label.text = "巷战减伤 %d%%" % int(stats.urban_defense_bonus * 100.0)
+		else:
+			terrain_label.text = "—"
+
+## ── v6.14.8 二期：战场动态信息（§7 底行动态 + D 版目标对比条）──
+
+## 战场模式底行动态：波次 / 能量 / 剩余部署（§7"底行替换为动态信息"，用本作实时数据
+## 适配设计稿的"回合/控制区/增援"语义）。非战斗场景保持静态 时代/能耗/地形。
+func _fill_battle_bottom(wave_idx: int, wave_total: int, energy: float, deploy_left: int) -> void:
+	if era_label:
+		era_label.text = "波次 %d/%d" % [wave_idx, maxi(wave_total, wave_idx)]
+	if weight_label:
+		weight_label.text = "能量 %d" % int(energy)
+	if terrain_label:
+		terrain_label.text = "剩余部署 ×%d" % deploy_left if deploy_left >= 0 else "—"
+
+## 战场单位模式动态信息入口（显示时一次 + _process 0.4s 周期刷新：波次/能量/部署/目标随战斗变化）
+func _refresh_dynamic_battle_info(unit: Node) -> void:
+	var in_battle: bool = BattleManager != null and "battle_active" in BattleManager and BattleManager.battle_active
+	if not in_battle:
+		if _target_compare_block:
+			_target_compare_block.visible = false
+		if _unit_hp_bar:
+			_unit_hp_bar.visible = false
+		if _threat_block:
+			_threat_block.visible = false
 		return
-	# HP 卡
-	if _hp_value_label:
-		_hp_value_label.text = str(int(stats.max_hp))
-	if _hp_sub_label:
-		_hp_sub_label.text = "射程 %d" % int(stats.attack_range)
-	# 攻击卡（取三维最大值作主数字，子项列三维）
-	var atk_main: float = maxf(stats.attack_light, maxf(stats.attack_armor, stats.attack_air))
-	if _atk_value_label:
-		_atk_value_label.text = str(int(atk_main))
-	if _atk_sub_label:
-		_atk_sub_label.text = "轻%d·甲%d·空%d" % [int(stats.attack_light), int(stats.attack_armor), int(stats.attack_air)]
-	# 防御卡（取三维最大值作主数字，子项列三维）
-	var def_main: float = maxf(stats.defense_light, maxf(stats.defense_armor, stats.defense_air))
-	if _def_value_label:
-		_def_value_label.text = str(int(def_main))
-	if _def_sub_label:
-		_def_sub_label.text = "轻%d·甲%d·空%d" % [int(stats.defense_light), int(stats.defense_armor), int(stats.defense_air)]
-	# 额外信息行（攻速/移速）
-	if _extra_stat_label:
-		# v6.2 修复 M6：DPS 应基于 atk_main 对应的目标类型攻速，原统一用 attack_interval（对轻装）
-		# 会导致"对装甲攻击力÷对轻装攻速"算出虚高 DPS
-		var atk_light: float = stats.attack_light
-		var atk_armor: float = stats.attack_armor
-		var atk_air: float = stats.attack_air
-		# 找到最大攻击力对应的目标类型，用配对攻速算 DPS
-		var best_atk: float = atk_light
-		var best_speed: float = stats.attack_light_speed if stats.attack_light_speed > 0 else 1.0
-		if atk_armor > best_atk:
-			best_atk = atk_armor
-			best_speed = stats.attack_armor_speed if stats.attack_armor_speed > 0 else 1.0
-		if atk_air > best_atk:
-			best_atk = atk_air
-			best_speed = stats.attack_air_speed if stats.attack_air_speed > 0 else 1.0
-		var dps: float = best_atk * best_speed
-		_extra_stat_label.text = "攻速 %.1f/s · 秒伤 %d · 移速 %d" % [best_speed, int(dps), int(stats.move_speed)]
+	var wave_idx: int = 0
+	var wave_total: int = 0
+	if BattleManager.has_method("get_enemy_wave_index"):
+		wave_idx = int(BattleManager.get_enemy_wave_index())
+	if BattleManager.has_method("get_enemy_wave_total"):
+		wave_total = int(BattleManager.get_enemy_wave_total())
+	var energy: float = float(EnergyManager.current) if EnergyManager != null and "current" in EnergyManager else 0.0
+	var deploy_left := -1
+	var is_player_unit: bool = unit != null and is_instance_valid(unit) \
+			and ("is_player" in unit) and bool(unit.get("is_player"))
+	if is_player_unit:
+		var card_res: CardResource = _resolve_source_instance_card(unit)
+		deploy_left = _deploy_uses_remaining_for(card_res)
+	_fill_battle_bottom(wave_idx, wave_total, energy, deploy_left)
+	_refresh_target_compare_for_unit(unit)
+	# D 版剩余元素：标题行实时血条 + 威胁提示（随 0.4s 拍子刷新）
+	if unit != null and is_instance_valid(unit):
+		var cur := float(unit.get("hp")) if "hp" in unit else -1.0
+		var mx := float(unit.get("max_hp")) if "max_hp" in unit else -1.0
+		if cur >= 0.0 and mx > 0.0:
+			_fill_unit_hp_bar(cur, mx)
+		else:
+			if _unit_hp_bar:
+				_unit_hp_bar.visible = false
+		if unit is Node2D:
+			_refresh_threat_block(unit as Node2D)
+
+## 目标对比条填充（可测核心）：双方 UnitStats + 目标侧掩码档 + 目标名。
+## 双方任一缺 stats 时整块隐藏（相位场基地等无 stats 单位不参与攻防对比）。
+func _fill_target_compare(my_stats: UnitStats, its_stats: UnitStats, its_vis: int, target_name: String) -> void:
+	if _target_compare_block == null:
+		return
+	if my_stats == null or its_stats == null:
+		_target_compare_block.visible = false
+		return
+	if _target_compare_caption:
+		_target_compare_caption.text = "目标对比 · %s（青=我方 红=目标）" % target_name
+	var my_vals: Array[float] = [my_stats.attack_light, my_stats.attack_armor, my_stats.attack_air,
+		maxf(my_stats.defense_light, maxf(my_stats.defense_armor, my_stats.defense_air))]
+	var it_vals: Array[float] = [its_stats.attack_light, its_stats.attack_armor, its_stats.attack_air,
+		maxf(its_stats.defense_light, maxf(its_stats.defense_armor, its_stats.defense_air))]
+	for i in mini(4, _target_compare_rows.size()):
+		var row: Dictionary = _target_compare_rows[i]
+		var mv: float = maxf(my_vals[i], 0.0)
+		var iv_raw: float = maxf(it_vals[i], 0.0)
+		# 零攻两侧同口径显示 "--"（与克制矩阵一致：0 = 不可攻击该类目标）
+		var mv_txt := "--" if mv <= 0.001 else str(int(round(mv)))
+		# 目标侧走敌方情报可见性掩码（不可攻击 0 值显示 "--"，与我方口径一致）
+		var iv_txt := "--" if iv_raw <= 0.001 else _cell_mask(iv_raw, its_vis)
+		# 未揭示目标（vis<2）：条长固定 0.4 比例示意、且其数值不参与标尺，防条长泄漏真实数值
+		var row_max: float = maxf(mv, 1.0)
+		var iv_bar: float = row_max * 0.4
+		if its_vis >= 2:
+			row_max = maxf(row_max, iv_raw)
+			iv_bar = iv_raw
+		var my_bar: ProgressBar = row["my_bar"]
+		var it_bar: ProgressBar = row["it_bar"]
+		if my_bar:
+			my_bar.max_value = row_max
+			my_bar.value = mv
+		if it_bar:
+			it_bar.max_value = row_max
+			it_bar.value = iv_bar
+		if row["my_val"] is Label:
+			(row["my_val"] as Label).text = mv_txt
+		if row["it_val"] is Label:
+			(row["it_val"] as Label).text = iv_txt
+	_target_compare_block.visible = true
+
+## 战场单位目标对比入口：unit.target 反查 stats；目标名经显示名鸭子链解析。
+func _refresh_target_compare_for_unit(unit: Node) -> void:
+	if _target_compare_block == null:
+		return
+	if unit == null or not is_instance_valid(unit) or not ("target" in unit):
+		_target_compare_block.visible = false
+		return
+	var target: Node2D = unit.get("target")
+	if target == null or not is_instance_valid(target) or not ("stats" in target) or target.stats == null:
+		_target_compare_block.visible = false
+		return
+	if not ("stats" in unit) or unit.stats == null:
+		_target_compare_block.visible = false
+		return
+	var tname := _ally_display_name(target)
+	if tname == "友军":
+		# 显示名兜底：敌方目标经 archetype 表取 display_name；仍空退 "目标单位"
+		var aid: String = String(target.get("archetype_id")) if "archetype_id" in target else ""
+		if not aid.is_empty():
+			var cfg: Dictionary = EnemyArchetypes.get_config(aid)
+			tname = String(cfg.get("display_name", "")) if not cfg.is_empty() else aid
+		if tname.is_empty():
+			tname = "目标单位"
+	var vis: int = 2
+	if target.is_in_group("enemy_units") or target.is_in_group("enemy_phase_driver"):
+		vis = _enemy_stat_visibility_level(target)
+	_fill_target_compare(unit.stats, target.stats, vis, tname)
+
+## 部署剩余次数查询（-1 = 无限/不可查）；_build_battlefield_deploy_uses_line 共用口径
+func _deploy_uses_remaining_for(card_res: CardResource) -> int:
+	if card_res == null or card_res.card_type != GC.CardType.COMBAT_UNIT:
+		return -1
+	var base_id := card_res.card_id
+	var hi := base_id.rfind("#")
+	if hi > 0:
+		base_id = base_id.substr(0, hi)
+	var du_entry := UnifiedCardTable.get_entry(base_id)
+	if du_entry.is_empty():
+		return -1
+	var total := UnifiedCardTable.get_deploy_uses(du_entry, card_res)
+	if total >= 99:
+		return -1
+	if BattleManager != null and "battle_active" in BattleManager and BattleManager.battle_active \
+			and "_spawn_system" in BattleManager and BattleManager._spawn_system != null:
+		var ss = BattleManager._spawn_system
+		if ss.has_method("get_deploy_uses_remaining"):
+			var du_id: String = String(card_res.instance_id) if not String(card_res.instance_id).is_empty() else base_id
+			return int(ss.get_deploy_uses_remaining(du_id))
+	return total
+
+## ── v6.14.8 二期续：D 版剩余元素——战场单位实时血条（标题行）+ 威胁提示块 ──
+
+## 标题行实时血条：战场单位显示 当前/上限 比例（D 版头部 HP bar 的适配）；
+## 卡牌模式/无血量数据的单位（基地驱动器走耐久格）隐藏。
+func _fill_unit_hp_bar(cur: float, mx: float) -> void:
+	if _unit_hp_bar == null:
+		return
+	if mx <= 0.0:
+		_unit_hp_bar.visible = false
+		return
+	_unit_hp_bar.max_value = mx
+	_unit_hp_bar.value = clampf(cur, 0.0, mx)
+	_unit_hp_bar.visible = true
+
+## 威胁行收集（可测核心）：对侧阵营中射程已覆盖本单位距离的敌人/友军。
+## 我方单位 → 扫 enemy_units；敌方单位 → 扫 player_units。最多 3 条 + 汇总行。
+func _collect_threat_lines(unit: Node2D) -> Array[String]:
+	var lines: Array[String] = []
+	if unit == null or not is_instance_valid(unit):
+		return lines
+	var tree: SceneTree = unit.get_tree()
+	if tree == null:
+		return lines
+	var foe_group := "player_units" if unit.is_in_group("enemy_units") else "enemy_units"
+	var foes: Array = tree.get_nodes_in_group(foe_group)
+	var total := 0
+	for e in foes:
+		if not is_instance_valid(e) or not (e is Node2D):
+			continue
+		# 阵亡单位不计威胁
+		if "hp" in e and float(e.get("hp")) <= 0.0:
+			continue
+		var rng := -1.0
+		if "stats" in e and e.stats != null:
+			rng = float(e.stats.attack_range)
+		elif "attack_range" in e:
+			rng = float(e.get("attack_range"))
+		if rng <= 0.0:
+			continue
+		var d := unit.position.distance_to((e as Node2D).position)
+		if d > rng:
+			continue
+		total += 1
+		if lines.size() < 3:
+			lines.append("%s（距 %d / 射程 %d）" % [_threat_unit_name(e), int(d), int(rng)])
+	if total > lines.size():
+		lines.append("…另有 %d 个威胁" % (total - lines.size()))
+	return lines
+
+## 威胁单位显示名：stats 平台卡 → archetype 表 → 泛称（与目标对比块的鸭子链同源）
+func _threat_unit_name(u: Node) -> String:
+	if "stats" in u and u.stats != null:
+		var dn: String = DefaultCards.get_safe_display_name(String(u.stats.platform_card_id))
+		if not dn.is_empty():
+			return dn
+	var aid: String = String(u.get("archetype_id")) if "archetype_id" in u else ""
+	if not aid.is_empty():
+		var cfg: Dictionary = EnemyArchetypes.get_config(aid)
+		if not cfg.is_empty() and not String(cfg.get("display_name", "")).is_empty():
+			return String(cfg.get("display_name"))
+		return aid
+	return "敌方单位"
+
+## 威胁块刷新：无威胁整块隐藏（别用空标题占位）
+func _refresh_threat_block(unit: Node2D) -> void:
+	if _threat_block == null:
+		return
+	var lines := _collect_threat_lines(unit)
+	if _threat_lines:
+		for ch in _threat_lines.get_children():
+			if is_instance_valid(ch):
+				_threat_lines.remove_child(ch)
+				ch.queue_free()
+		for line in lines:
+			var lbl := Label.new()
+			lbl.text = "· " + line
+			lbl.add_theme_color_override("font_color", DT.COLOR_WARN_SALMON)
+			lbl.add_theme_font_size_override("font_size", 12)
+			_threat_lines.add_child(lbl)
+	_threat_block.visible = not lines.is_empty()
+
+## ── 立绘区（v6.14.8 新增，§3 分区2）──
+
+func _apply_portrait_texture(tex: Texture2D) -> void:
+	if portrait_rect:
+		portrait_rect.texture = tex
+		portrait_rect.visible = tex != null
+	if portrait_placeholder:
+		portrait_placeholder.visible = tex == null
+
+## 卡牌立绘：UiAssetLoader 全回退链（专属图 → manifest → 缩略图 → 占位）
+func _load_card_portrait_tex(card: CardResource) -> Texture2D:
+	if card == null:
+		return null
+	return UiAssetLoader.card_icon_for_list(card)
+
+## 战场单位立绘：实例卡/平台卡反查 → archetype 贴图 → 占位
+func _refresh_unit_portrait(unit: Node) -> void:
+	var tex: Texture2D = null
+	var card_res: CardResource = null
+	if unit != null and is_instance_valid(unit) and "stats" in unit and unit.stats != null:
+		card_res = _resolve_source_instance_card(unit)
+		if card_res == null:
+			card_res = DefaultCards.get_card_by_id(String(unit.stats.platform_card_id))
+	if card_res != null:
+		tex = _load_card_portrait_tex(card_res)
+	if tex == null and unit != null and is_instance_valid(unit) and "archetype_id" in unit:
+		var aid := String(unit.archetype_id)
+		if not aid.is_empty():
+			var cfg: Dictionary = EnemyArchetypes.get_config(aid)
+			var p: String = EnemyArchetypes.resolve_card_icon_texture_path(aid, cfg, aid)
+			if not p.is_empty():
+				tex = load(p) as Texture2D
+	_apply_portrait_texture(tex)
 
 ## 相位师技能树解锁签名（供 _cached_display_stats 缓存 key 使用）。
 ## 解锁 unit_mechanism（战术核武等）后机制 meta 才写入 stats；若不纳入 key，
@@ -772,78 +1167,181 @@ func _build_display_stats(card: CardResource) -> UnitStats:
 		am.apply_affixes_to_stats(stats, card, [])
 	return stats
 
-## v6.4: 词条标签化——把 affix 摘要拆成多个带色点的小标签填入 AffixFlow
+## v6.14.8 词条区行化——◆ 词条名（稀有度色）+ 悬停效果描述（§3 分区5：无边框，留白分层）。
+## 顺带修复存量 bug：旧版 `for tag in tags` 循环缩进在 `return` 之后（死代码），
+## 词条非空时 Flow 永不填充。真词条行来自 fmt_player_affix_tags（text 自带 ◆/★ 符号），
+## stats 派生标签（_build_affix_tag_list）为效果摘要，互补保留。
 func _refresh_affix_tags(card: CardResource) -> void:
+	_clear_affix_rows()
 	if _affix_flow == null:
-		# 回退：用旧 AffixLabel
-		if affix_label:
-			var _fb_text: String = _build_card_affix_summary(card) if card.card_type == GC.CardType.COMBAT_UNIT else ""
-			# v19: 真词条行置顶（标签化容器缺席时拼纯文本）
-			var _fb_tags: Array = []
-			if card.card_type == GC.CardType.COMBAT_UNIT:
-				_fb_tags = AffixDisplayFormat.fmt_player_affix_tags(_card_identity_id(card), AffixManager)
-				_fb_text = AffixDisplayFormat.merge_affix_text(_fb_tags, _fb_text, "词条")
-			affix_label.text = _fb_text
-			affix_label.tooltip_text = AffixDisplayFormat.tags_tooltip(_fb_tags)
-			affix_label.visible = not affix_label.text.is_empty()
 		return
-	# 清空旧标签
+	if card.card_type != GC.CardType.COMBAT_UNIT:
+		return
+	# 武装行（具体武器型号，置顶；数据源与旧类型行同链）
+	var wl := _card_weapon_line(card)
+	if not wl.is_empty():
+		_add_affix_row("◆ 武装", DT.COLOR_GOLD, wl, "该卡的实际武装配置（武器型号）")
+	# 真词条（名称+稀有度符号+等级）置顶，stats 数值摘要随其后
+	var tags: Array = AffixDisplayFormat.fmt_player_affix_tags(_card_identity_id(card), AffixManager) + _build_affix_tag_list(card)
+	if tags.is_empty() and wl.is_empty():
+		var empty := Label.new()
+		empty.text = "无特殊词条"
+		empty.add_theme_color_override("font_color", DT.COLOR_SLATE_A70)
+		empty.add_theme_font_size_override("font_size", DesignTokens.FONT_SIZE_SMALL)
+		_affix_flow.add_child(empty)
+		return
+	for tag in tags:
+		var tip: String = String(tag.get("tooltip", ""))
+		var tag_text: String = String(tag.get("text", ""))
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 6)
+		var hl := Label.new()
+		hl.text = tag_text
+		hl.add_theme_color_override("font_color", tag.get("color", Color(0.85, 0.85, 0.92, 1)))
+		hl.add_theme_font_size_override("font_size", 13)
+		row.add_child(hl)
+		if not tip.is_empty():
+			row.tooltip_text = tip
+		_affix_flow.add_child(row)
+
+func _clear_affix_rows() -> void:
+	if _affix_flow == null:
+		return
 	for ch in _affix_flow.get_children():
 		if is_instance_valid(ch):
 			_affix_flow.remove_child(ch)
 			ch.queue_free()
-	if affix_label:
-		affix_label.visible = false
-	if card.card_type != GC.CardType.COMBAT_UNIT:
-		return
-	# v19: 真词条标签置顶（词条名+稀有度符号+等级），stats 派生标签为效果摘要，互补保留
-	var tags: Array = AffixDisplayFormat.fmt_player_affix_tags(_card_identity_id(card), AffixManager) + _build_affix_tag_list(card)
-	if tags.is_empty():
-		var empty := Label.new()
-		empty.text = "无特殊词条"
-		empty.add_theme_color_override("font_color", DesignTokens.COLOR_SLATE_A70)
-		empty.add_theme_font_size_override("font_size", DesignTokens.FONT_SIZE_SMALL)
-		_affix_flow.add_child(empty)
-		return
-		for tag in tags:
-			var row := HBoxContainer.new()
-			row.add_theme_constant_override("separation", 4)
-			var tip: String = String(tag.get("tooltip", ""))
-			if not tip.is_empty():
-				row.tooltip_text = tip
-			var dot := Label.new()
-			dot.text = "●"
-			dot.add_theme_color_override("font_color", tag.color)
-			dot.add_theme_font_size_override("font_size", DesignTokens.FONT_SIZE_SMALL)
-			var txt := Label.new()
-			txt.text = tag.text
-			txt.add_theme_color_override("font_color", Color(0.85, 0.85, 0.92, 1))
-			txt.add_theme_font_size_override("font_size", DesignTokens.FONT_SIZE_SMALL)
-			row.add_child(dot)
-			row.add_child(txt)
-			_affix_flow.add_child(row)
 
-func _build_card_affix_summary(card: CardResource) -> String:
-	if card.card_type != GC.CardType.COMBAT_UNIT:
+## 词条区行：◆ 名（金/语义色）+ 效果描述（正文色），整行可挂悬停说明
+func _add_affix_row(head: String, head_color: Color, body: String, tooltip: String) -> void:
+	if _affix_flow == null:
+		return
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 6)
+	var hl := Label.new()
+	hl.text = head
+	hl.add_theme_color_override("font_color", head_color)
+	hl.add_theme_font_size_override("font_size", 13)
+	row.add_child(hl)
+	if not body.is_empty():
+		var bl := Label.new()
+		bl.text = body
+		bl.add_theme_color_override("font_color", DT.COLOR_TEXT_SOFT)
+		bl.add_theme_font_size_override("font_size", 13)
+		bl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		bl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		row.add_child(bl)
+	if not tooltip.is_empty():
+		row.tooltip_text = tooltip
+	_affix_flow.add_child(row)
+
+## 卡牌武装行文本：weapon_names[] 去重拼接（与旧类型行同口径），空返回 ""
+func _card_weapon_line(card: CardResource) -> String:
+	if card == null or not ("weapon_names" in card):
 		return ""
-	# P1 性能优化：直接用 autoload 全局引用（原经 Engine.get_main_loop + 全树遍历）
-	if ManagerLazyLoader != null and ManagerLazyLoader.has_method("ensure_loaded"):
-		ManagerLazyLoader.ensure_loaded("affix")
-	var bm: Node = BlueprintManager
-	var am: Node = AffixManager
-	var era: int = 0
-	if GameManager != null and "current_level" in GameManager:
-		era = GC.get_era_for_level(int(GameManager.current_level))
+	var wnames: Array = []
+	for wn in card.weapon_names:
+		var ws: String = String(wn)
+		if not ws.is_empty() and not wnames.has(ws):
+			wnames.append(ws)
+	if wnames.is_empty():
+		return ""
+	return " / ".join(wnames)
 
-	# v5.0: 使用新的 build_stats_from_card 方法，不再检查已弃用的 platform_type
-	if card.card_type == GC.CardType.COMBAT_UNIT:
-		var stats: UnitStats = UnitStatsTable.build_stats_from_card(card, era)
-		if bm and bm.has_method("apply_growth_to_stats"):
-			bm.apply_growth_to_stats(stats, card, [])
-		if am and am.has_method("apply_affixes_to_stats"):
-			am.apply_affixes_to_stats(stats, card, [])
-		return _build_affix_summary_lines(stats)
-	return ""
+## ── v6.14.8 二期：改造槽一览（C 版模块槽情报化）──
+## 只加不减：改造 Tab 的功能面板原样保留，这里在情报 Tab 提供槽位占用一览
+## （稀有度描边砖块 + 完整效果悬停 + 点击直跳改造 Tab）。数据源与养成摘要同源（card.mods）。
+
+func _clear_mods_tiles() -> void:
+	if _mods_tiles == null:
+		return
+	for ch in _mods_tiles.get_children():
+		if is_instance_valid(ch):
+			_mods_tiles.remove_child(ch)
+			ch.queue_free()
+
+## 单槽悬停文本：空槽提示 / 已装名称+稀有度+效果摘要（禁用标注）
+func _mods_tile_tooltip(slot: int, md: Dictionary) -> String:
+	if md.is_empty():
+		return "槽位 %d：空槽\n（点击进入改造页安装模块）" % (slot + 1)
+	var lines := "%s（%s）" % [String(md.get("name", "")), RARITY_DISPLAY.get(String(md.get("rarity", "common")), "")]
+	if bool(md.get("keystone", false)) and ModificationRegistry.is_keystone(String(md.get("id", ""))):
+		lines += " · 门槛核心件"
+	var eff := _format_mod_effects_brief(md)
+	if not eff.is_empty():
+		lines += "\n· " + "\n· ".join(eff)
+	return "槽位 %d：%s" % [slot + 1, lines]
+
+func _refresh_mods_tiles(card: CardResource) -> void:
+	if _mods_block == null:
+		return
+	_clear_mods_tiles()
+	var is_combat: bool = card != null and card.card_type == GC.CardType.COMBAT_UNIT
+	if not is_combat:
+		_mods_block.visible = false
+		return
+	# 槽位 → 注册表数据（同养成摘要的 card.mods 读取口径，禁用条目照常占槽）
+	var installed: Array = card.mods if "mods" in card else []
+	var by_slot: Dictionary = {}
+	for i in installed.size():
+		var entry = installed[i]
+		var mid := String(entry.get("id", "")) if entry is Dictionary else String(entry)
+		if mid.is_empty():
+			continue
+		var md: Dictionary = ModificationRegistry.get_data(mid)
+		if not md.is_empty():
+			by_slot[i] = md
+	# v6.16 槽位预算：砖块数随卡品质+兵种动态（专属槽=尾段，兵种件专用，琥珀描边区分）
+	var max_slots: int = ModManager.get_max_mod_slots_for_card(card)
+	var family_bonus: int = ModManager.get_family_slot_bonus(card)
+	if _mods_caption:
+		_mods_caption.text = "改造 %d/%d（点击槽位进入改造页）" % [installed.size(), max_slots]
+	for slot in max_slots:
+		var is_family_slot: bool = slot >= max_slots - family_bonus
+		var btn := Button.new()
+		btn.text = str(slot + 1)
+		btn.custom_minimum_size = Vector2(48, 30)
+		btn.add_theme_font_size_override("font_size", 12)
+		btn.focus_mode = Control.FOCUS_NONE
+		var md: Dictionary = by_slot.get(slot, {})
+		var sb := StyleBoxFlat.new()
+		sb.bg_color = Color(0.051, 0.086, 0.114, 1)
+		sb.set_border_width_all(1)
+		sb.set_corner_radius_all(0)
+		var sb_hover := sb.duplicate()
+		if md.is_empty():
+			if is_family_slot:
+				# v6.16 专属空槽：琥珀描边（只收本兵种件）
+				sb.border_color = Color(0.72, 0.52, 0.20, 0.85)
+				sb_hover.border_color = Color(0.95, 0.72, 0.30, 0.95)
+			else:
+				sb.border_color = Color(0.141, 0.267, 0.31, 0.7)
+				sb_hover.border_color = Color(0.169, 0.655, 0.788, 0.8)
+			btn.add_theme_color_override("font_color", DT.COLOR_TEXT_FAINT)
+		else:
+			# v37.1：已装槽换统一稀有度发光底座（悬停升激活档）+ 真图标上座；内块直角保留（设计稿拍板）
+			var rk: String = String(md.get("rarity", "common"))
+			sb = CardFrameUiRef.tile_rarity_style(rk, 0).duplicate()
+			sb.set_corner_radius_all(0)
+			sb_hover = CardFrameUiRef.tile_rarity_style(rk, 1).duplicate()
+			sb_hover.set_corner_radius_all(0)
+			btn.add_theme_color_override("font_color", DT.COLOR_TEXT_BRIGHT)
+			var mip := String(md.get("icon", ""))
+			if not mip.is_empty() and ResourceLoader.exists(mip):
+				btn.icon = UiAssetLoader.load_tex(mip)
+				btn.add_theme_constant_override("icon_max_width", 18)
+		btn.add_theme_stylebox_override("normal", sb)
+		btn.add_theme_stylebox_override("hover", sb_hover)
+		btn.add_theme_stylebox_override("pressed", sb)
+		btn.tooltip_text = _mods_tile_tooltip(slot, md)
+		btn.pressed.connect(func() -> void:
+			# 直跳改造 Tab（走既有 tab_changed 懒加载链，不新增逻辑）
+			# v38：改造 Tab 在背包/战场模式隐藏——隐藏态不跳转（砖块降级为悬停摘要）
+			if _tab_container != null and current_card != null \
+					and not _tab_container.is_tab_hidden(TabIdx.MODIFY):
+				_tab_container.current_tab = TabIdx.MODIFY)
+		_mods_tiles.add_child(btn)
+	_mods_block.visible = true
 
 ## v7.3: 取卡牌养成身份 ID——优先 instance_id（实例化养成），空时回退 card_id（兼容旧卡）
 ## 养成相关 manager（CardEnhancementManager/BlueprintManager.blueprint_mods 等）的查询必须用实例身份，
@@ -872,17 +1370,17 @@ func _card_level_for_display(card: CardResource) -> int:
 
 ## v6.11: 强化详情（情报 Tab）→ v19: 等级统一三十级制 card_level
 ## 旧存档 module_slots 的词条效果行保留（旧加成不丢原则），仅等级口径切换
+## v6.14.8：等级数字已在标题行 LvN 显示、块标题即"等级"，此处只输出效果行（空=整块隐藏）
 func _build_star_lines(card: CardResource) -> String:
 	if card == null or card.card_type != GC.CardType.COMBAT_UNIT:
 		return ""
-	var detail_lv: int = _card_level_for_display(card)
 	var cem: Node = get_node_or_null("/root/CardEnhancementManager")
 	if cem and cem.has_method("get_module_effect_lines"):
 		# v7.3: 用实例身份查词条（实例化养成后词条存实例对象，按裸 card_id 查永远空）
 		var lines: Array = cem.get_module_effect_lines(_card_identity_id(card))
 		if not lines.is_empty():
-			return "等级 Lv%d\n- %s" % [detail_lv, "\n- ".join(lines)]
-	return "等级 Lv%d" % detail_lv
+			return "- " + "\n- ".join(lines)
+	return ""
 
 func _build_nurture_text(card: CardResource, _stats: UnitStats = null, include_power: bool = true) -> String:
 	if card == null or BlueprintManager == null:
@@ -926,7 +1424,8 @@ func _build_nurture_text(card: CardResource, _stats: UnitStats = null, include_p
 			var eff_lines: Array = cem.get_module_effect_lines(_card_identity_id(card))
 			if not eff_lines.is_empty():
 				enhance_effect_text = "\n词条效果：" + " · ".join(eff_lines)
-	if "evolution_stage" in card and str(card.evolution_stage) != "":
+	# v6.14.8 验收修复：evolution_stage 默认 int 0，旧条件 str(0)!="" 恒真 → 未继承卡错显"继承 0"
+	if "evolution_stage" in card and str(card.evolution_stage) != "" and str(card.evolution_stage) != "0":
 		var stage: String = str(card.evolution_stage)
 		if not stage.is_empty():
 			parts.append("继承 %s" % stage)
@@ -960,7 +1459,7 @@ func _build_nurture_text(card: CardResource, _stats: UnitStats = null, include_p
 				if mod_disabled:
 					mod_text += "（禁用）"
 				mod_lines.append(mod_text)
-		parts.append("改造 %d/%d" % [mod_lines.size(), ModEffects.MAX_MOD_SLOTS])
+			parts.append("改造 %d/%d" % [mod_lines.size(), ModManager.get_max_mod_slots_for_card(card)])
 		if not mod_lines.is_empty():
 			mod_list_text = "\n已装改造：\n    · " + "\n    · ".join(mod_lines)
 	# v6.11: 战力星级信息已移除（系统②合并到强化等级①，详见 _build_star_lines 的强化加成）
@@ -1022,18 +1521,22 @@ func _translate_mod_key(key: String) -> String:
 func _refresh_unit_display(unit: Node, is_player: bool) -> void:
 	if unit == null or not is_instance_valid(unit):
 		return
-	# v6.4: 战场单位模式——隐藏图形化三维卡区，恢复纯文本 summary/affix。
-	# 注意：不能隐藏整个 _stats_section（summary_label 是其子节点，父节点 visible=false
-	# 会使整棵子树不渲染，导致只显示名字、属性 summary 不显示）。改为保持 section 可见，
-	# 仅隐藏其内的图形化卡片行，让 summary_label 正常显示。
-	if _stats_section:
-		_stats_section.visible = true
-	if _stat_cards_row:
-		_stat_cards_row.visible = false
-	if _extra_stat_label:
-		_extra_stat_label.visible = false
+	# v6.14.8 改版：战场单位模式由战术格（核心属性/克制矩阵/斜杠组）承载精确数值，
+	# 旧 summary 文本行退役（隐藏保留节点；各 _show_* 的填充保留为防御性写入）。
+	# 敌方数值掩码（v27.15 情报可见性三档）在 _fill_combat_cells 内逐格生效。
 	if summary_label:
-		summary_label.visible = true
+		summary_label.visible = false
+	# v6.14.8 立绘区：实例卡/平台卡反查 → archetype 贴图
+	_refresh_unit_portrait(unit)
+	# 长类型行（主攻维度/兵种/武器）仅战场单位模式显示，卡牌模式用右角徽章
+	if type_label:
+		type_label.visible = true
+	if type_badge_host:
+		type_badge_host.visible = false
+	if type_badge_label:
+		type_badge_label.text = ""
+	if _affix_section:
+		_affix_section.visible = true
 	if _affix_flow:
 		for ch in _affix_flow.get_children():
 			if is_instance_valid(ch):
@@ -1061,21 +1564,29 @@ func _refresh_unit_display(unit: Node, is_player: bool) -> void:
 		status_section.visible = true
 	# v9.x 当前状态区：战场单位模式立即填充一次（之后由 _process 周期刷新）
 	_refresh_status_section(unit)
+	# v6.14.8 二期：战场动态信息立即填充一次（波次/能量/剩余部署/目标对比；非战斗态内部自守卫）
+	_refresh_dynamic_battle_info(unit)
+	# 改造槽砖块为卡牌模式专属（战场单位的改造信息走养成摘要文本，双轨保留）
+	if _mods_block:
+		_mods_block.visible = false
+	# 词条块空内容时整块隐藏（防"词条"标题条孤行）
+	if _affix_section and affix_label:
+		_set_section_visible_by_content(_affix_section, affix_label.text)
 
 # v9.x 战场单位模式：周期刷新"当前状态"区（单位 buff/debuff 随战斗变化）
 func _process(delta: float) -> void:
 	# P2 性能优化：面板隐藏时直接跳过（status_section 可能未随面板隐藏而清除）
 	if not visible:
 		return
-	# 仅当处于战场单位模式、单位有效、状态区可见时才刷新（避免静态面板空跑）
-	if status_section == null or not status_section.visible:
-		return
 	if _current_unit == null or not is_instance_valid(_current_unit):
 		return
 	_status_refresh_accum += delta
 	if _status_refresh_accum >= 0.4:
 		_status_refresh_accum = 0.0
-		_refresh_status_section(_current_unit)
+		if status_section != null and status_section.visible:
+			_refresh_status_section(_current_unit)
+		# v6.14.8 二期：战场动态信息同拍刷新（波次/能量/剩余部署/目标对比条随战斗变化）
+		_refresh_dynamic_battle_info(_current_unit)
 
 ## 填充"当前状态"区：复用 UnitStatusCollector 收集激活的 buff/debuff，每条显示
 ## [正面/负面] 名称：效果说明。无激活状态时给出提示并隐藏明细。
@@ -1320,30 +1831,8 @@ func _apply_desc_highlight(raw: String) -> String:
 	return text
 
 
-## 情报 Tab 区块标题升级为 IntelUIKit 签名标题条（发光竖条+粗体+底线，对齐情报中心）。
-## 原 *Title 为 .tscn 静态 Label（脚本零引用）——隐藏保留节点、同位置插 header，零场景树手术。
-func _setup_section_headers() -> void:
-	var accent: Color = DT.get_panel_accent("backpack")
-	var base := "Margin/VBox/TabBar/TabInfo/InfoVBox/"
-	var titles := [
-		[base + "StatsSection/StatsVBox/StatsTitle", "核心属性"],
-		[base + "AffixSection/AffixVBox/AffixTitle", "词条"],
-		[base + "StarSection/StarVBox/StarTitle", "等级"],
-		[base + "NurtureSection/NurtureVBox/NurtureTitle", "养成"],
-		[base + "CardSkillSection/CardSkillVBox/CardSkillTitle", "关联技能"],
-		[base + "BonusSection/BonusVBox/BonusTitle", "加成来源"],
-		[base + "StatusSection/StatusVBox/StatusTitle", "当前状态"],
-		[base + "DescSection/DescVBox/DescTitle", "描述"],
-	]
-	for entry in titles:
-		var title_node := get_node_or_null(String(entry[0]))
-		if title_node == null or title_node.get_parent() == null:
-			continue
-		var host := title_node.get_parent()
-		var header := IntelUIKit.section_header(String(entry[1]), accent)
-		host.add_child(header)
-		host.move_child(header, title_node.get_index())
-		title_node.visible = false
+## v6.14.8 改版注：原 _setup_section_headers（IntelUIKit 签名标题条升级）已随区块标题条
+## 一起退役——新词条区无区块标题框，仅保留 12px 次级灰小标注（tscn 静态 Caption Label）。
 
 
 func _build_affix_summary_lines(stats: UnitStats) -> String:
@@ -1823,6 +2312,9 @@ func _show_enemy_phase_driver(unit: Node) -> void:
 	var cur_hp: float = float(unit.get("hp")) if "hp" in unit else 0.0
 	var mx_hp: float = float(unit.get("max_hp")) if "max_hp" in unit else 1.0
 	if summary_label: summary_label.text = "基地生命 %d / %d" % [int(cur_hp), int(mx_hp)]
+	# v6.14.8：基地单位无 UnitStats，战术格只填耐久（当前/上限），其余 "—"
+	_fill_combat_cells(null, cur_hp, 2)
+	_refresh_bottom_row(null, -1, "")
 	var lines: Array[String] = []
 	lines.append("摧毁敌方相位场驱动器即可获胜；对方会持续生产战斗单位。")
 	if GameManager and GameManager.has_method("get_current_phase_master"):
@@ -1926,6 +2418,9 @@ func _show_player_phase_driver(unit: Node) -> void:
 	var cur_hp: float = float(unit.get("hp")) if "hp" in unit else 0.0
 	var mx_hp: float = float(unit.get("max_hp")) if "max_hp" in unit else 1.0
 	if summary_label: summary_label.text = "基地生命 %d / %d" % [int(cur_hp), int(mx_hp)]
+	# v6.14.8：基地单位无 UnitStats，战术格只填耐久（当前/上限），其余 "—"
+	_fill_combat_cells(null, cur_hp, 2)
+	_refresh_bottom_row(null, -1, "")
 	var lines: Array[String] = []
 	lines.append("保护我方相位场驱动器，摧毁敌方即获胜；己方会持续部署战斗单位。")
 	var pm: Node = get_node_or_null("/root/PhaseInstrumentManager")
@@ -2088,6 +2583,9 @@ func _show_enemy_construct_unit(unit: Node) -> void:
 	var cur_hp: float = float(unit.get("hp")) if "hp" in unit else stats.max_hp
 	if summary_label:
 		summary_label.text = _format_unit_stats_summary(stats, cur_hp, _combat_power_suffix(stats))
+	# v6.14.8：战术格填充（敌方产兵构装单位，精确口径与旧 summary 行一致）
+	_fill_combat_cells(stats, cur_hp, 2)
+	_refresh_bottom_row(stats, stats.era, "")
 	var base_desc := _build_unit_description(stats, false, "由敌方相位师基地生产的构装单位，自动推进并攻击我方。")
 	# v19: 词缀行置顶——产兵词缀挂在 meta elite_affixes（enemy_phase_field_driver 词缀产兵写入）
 	var _sp_affix_tags: Array = []
@@ -2182,6 +2680,9 @@ func _show_player_unit(unit: Node) -> void:
 		type_label.text = "%s\n%s / %s" % [_main_attack_dimension_line(stats), platform_name, weapon_label_text]
 	if summary_label:
 		summary_label.text = _format_unit_stats_summary(stats, -1.0, _combat_power_suffix(stats))
+	# v6.14.8：战术格填充（我方单位，精确口径）
+	_fill_combat_cells(stats, -1.0, 2)
+	_refresh_bottom_row(stats, stats.era, "")
 	if affix_label:
 		# v19: 真词条行（名称+稀有度+等级）置顶，stats 数值摘要保留在后
 		var _p_affix_tags: Array = AffixDisplayFormat.fmt_player_affix_tags(_card_identity_id(card_res) if card_res != null else "", AffixManager)
@@ -2225,29 +2726,14 @@ func _show_player_unit(unit: Node) -> void:
 ## v20.13c: 战场情报面板——该卡本场剩余/总部署次数（实时值）。
 ## remaining 查 BattleManager._spawn_system.get_deploy_uses_remaining（战斗中实时追踪，
 ## 与底栏 ×N 角标同源）；total 走 UnifiedCardTable 口径（与商店/背包预览一致）。
-## 非战斗卡/无限次/无 UCT 条目返回空。
+## v6.14.8：剩余值计算收敛到 _deploy_uses_remaining_for（底行动态行共用）。
 func _build_battlefield_deploy_uses_line(card_res: CardResource) -> String:
 	if card_res == null or card_res.card_type != GC.CardType.COMBAT_UNIT:
 		return ""
-	var base_id := card_res.card_id
-	var hi := base_id.rfind("#")
-	if hi > 0:
-		base_id = base_id.substr(0, hi)
-	var du_entry := UnifiedCardTable.get_entry(base_id)
-	if du_entry.is_empty():
-		return ""
-	var total := UnifiedCardTable.get_deploy_uses(du_entry, card_res)
-	if total >= 99:
-		return ""  # 显式无限次配置，不显示
-	var remaining := total
-	if BattleManager != null and "battle_active" in BattleManager and BattleManager.battle_active \
-			and "_spawn_system" in BattleManager and BattleManager._spawn_system != null:
-		var ss = BattleManager._spawn_system
-		if ss.has_method("get_deploy_uses_remaining"):
-			# v20.16：次数池按实例分池——查询键用部署身份（实例卡 instance_id 优先）
-			var du_id: String = String(card_res.instance_id) if not String(card_res.instance_id).is_empty() else base_id
-			remaining = int(ss.get_deploy_uses_remaining(du_id))
-	return "本场部署次数：%d / %d\n" % [remaining, total]
+	var remaining := _deploy_uses_remaining_for(card_res)
+	if remaining < 0:
+		return ""  # 无限次/无条目配置，不显示
+	return "本场部署次数：%d\n" % remaining
 
 ## ── 敌方单位 ──
 
@@ -2336,6 +2822,10 @@ func _show_enemy_phase_master_unit(unit: Node, master_name: String) -> void:
 	var scombat: Array = _enemy_surface_combat_stats(unit)
 	if summary_label:
 		summary_label.text = _format_enemy_combat_summary(unit, scombat)
+	# v6.14.8：战术格填充（相位师本体，掩码口径与 summary 行一致）
+	var _pm_vis: int = _enemy_stat_visibility_level(unit)
+	_fill_combat_cells(stats, float(scombat[0]) if scombat.size() > 0 else -1.0, _pm_vis)
+	_refresh_bottom_row(stats, stats.era if stats != null else -1, "")
 	var base_desc := "敌方相位师单位，拥有强大的战斗力。"
 	if not master_power_text.is_empty():
 		base_desc += "\n" + master_power_text
@@ -2553,6 +3043,10 @@ func _show_generic_enemy_unit(unit: Node) -> void:
 			speed_text = "｜移速 %d" % int(speed_display)
 	if summary_label:
 		summary_label.text = _format_enemy_combat_summary(unit, s2, speed_text + _combat_power_suffix(unit.stats if ("stats" in unit and unit.stats != null) else null))
+	# v6.14.8：战术格填充（经典敌人/蜂群，情报可见性三档掩码）
+	var _ge_stats: UnitStats = unit.stats if ("stats" in unit and unit.stats != null) else null
+	_fill_combat_cells(_ge_stats, float(s2[0]) if s2.size() > 0 else -1.0, _enemy_stat_visibility_level(unit))
+	_refresh_bottom_row(_ge_stats, _ge_stats.era if _ge_stats != null else -1, "")
 	if desc_label:
 		var _e_stats: UnitStats = unit.stats if ("stats" in unit and unit.stats != null) else null
 		desc_label.text = _apply_desc_highlight(_build_unit_description(_e_stats, false, "来袭的敌方单位，优先攻击我方单位，其次攻击相位场驱动器。"))
@@ -2607,9 +3101,10 @@ func _build_enemy_loadout_text(unit: Node) -> String:
 
 ## ── 法则效果构建 ──
 
-# v7.x: 按 label 文本是否为空，决定其所在 section（父 PanelContainer）的可见性。
+# v7.x: 按 label 文本是否为空，决定其所在 section（父容器）的可见性。
 # 用于战场单位模式：强化/养成等 section 内容为空时整个隐藏，避免空 section 占位。
-func _set_section_visible_by_content(section: PanelContainer, text: String) -> void:
+# v6.14.8：区块节点从 PanelContainer 改为无框 VBoxContainer，参数放宽为 Control。
+func _set_section_visible_by_content(section: Control, text: String) -> void:
 	if section:
 		section.visible = not text.is_empty()
 

@@ -15,6 +15,11 @@ const ModEffectLabels = preload("res://scripts/ui/mod_effect_labels.gd")
 # 全局类缓存未注册新类会解析失败；与既有 UI 组件 preload 惯例一致）
 const ModPanelSimDrawerScript = preload("res://scripts/ui/mod_panel_sim_drawer.gd")
 const ModEraBands = preload("res://data/mod_era_bands.gd")
+# v6.16: 攻速断点真身（preload 而非裸 class_name——headless/CI 全局类缓存未注册新类）
+const ModBreakpoints = preload("res://data/mod_breakpoints.gd")
+# v37.1 改造图标座（稀有度发光底座统一收口）+ 底座样式源
+const ModIconTileRef = preload("res://scripts/ui/mod_icon_tile.gd")
+const CardFrameUiRef = preload("res://scripts/card_frame_ui.gd")
 
 # v7.x UI 重设计基建
 const DT = preload("res://resources/design_tokens.gd")
@@ -133,9 +138,9 @@ func _ready() -> void:
 	if chip_all:
 		chip_all.tooltip_text = "显示全部拥有的卡牌"
 	if chip_mod:
-		chip_mod.tooltip_text = "只显示还有空改造槽（未满 9 格）的卡牌"
+		chip_mod.tooltip_text = "只显示还有空改造槽的卡牌（槽位数=品质基础槽+兵种专属槽）"
 	if chip_max:
-		chip_max.tooltip_text = "只显示改造槽已满（9/9）的卡牌"
+		chip_max.tooltip_text = "只显示改造槽已满的卡牌"
 	# v27.15（改造审查报告 5.6）：改造库搜索框——挂进 ModListHeadHBox（与计数 Label 同行）
 	if mod_list_head_count and mod_list_head_count.get_parent() is HBoxContainer:
 		var search_edit := LineEdit.new()
@@ -311,7 +316,7 @@ func _apply_fold_state() -> void:
 
 
 ## v1.5：右栏收起态下，hover 名册行弹出迷你单位浮卡。
-## 内容=精简右栏（名+战力大字+5档迷你条+已装N/9），约 180×130px。
+## 内容=精简右栏（名+战力大字+5档迷你条+已装N/上限），约 180×130px。
 ## 仅当 _fold_state==2（收起）时显示，否则不弹（右栏已可见，浮卡冗余）。
 func _maybe_show_hover_card(card: CardResource, anchor: Control) -> void:
 	if _fold_state != 2 or card == null or not is_inside_tree():
@@ -407,7 +412,7 @@ func _refresh_hover_card(pc: PanelContainer, card: CardResource) -> void:
 	# 已装 N/9
 	var mod_count: int = card.mods.size() if "mods" in card else 0
 	var mod_lbl := Label.new()
-	mod_lbl.text = "已装改造  %d / 9" % mod_count
+	mod_lbl.text = "已装改造  %d / %d" % [mod_count, ModManager.get_max_mod_slots_for_card(card)]
 	mod_lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
 	mod_lbl.add_theme_color_override("font_color", DT.COLOR_CYAN_TECH_SOFT if mod_count > 0 else DT.COLOR_SLATE_A70)
 	vbox.add_child(mod_lbl)
@@ -573,9 +578,9 @@ func _passes_filter(card: CardResource) -> bool:
 		mod_count = card.mods.size()
 	match _filter_mode:
 		FILTER_MOD:
-			return mod_count < 9
+			return mod_count < ModManager.get_max_mod_slots_for_card(card)
 		FILTER_MAX:
-			return mod_count >= 9
+			return mod_count >= ModManager.get_max_mod_slots_for_card(card)
 		_:
 			return true
 
@@ -705,7 +710,7 @@ func _create_card_item(card: CardResource, instance_card: CardResource = null) -
 
 	# 第二行：Lv.N · Mx/9（单行内联）
 	var meta_label := Label.new()
-	meta_label.text = "Lv.%d  ·  M%d/9" % [display_level, display_mods.size()]
+	meta_label.text = "Lv.%d  ·  M%d/%d" % [display_level, display_mods.size(), ModManager.get_max_mod_slots_for_card(card)]
 	meta_label.add_theme_font_override("font", DT.get_body_font())
 	meta_label.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
 	meta_label.add_theme_color_override("font_color", DT.COLOR_SLATE_DIM_A85)
@@ -714,7 +719,7 @@ func _create_card_item(card: CardResource, instance_card: CardResource = null) -
 	hbox.add_child(info)
 
 	btn.add_child(hbox)
-	btn.tooltip_text = "改造：%d/9" % display_mods.size()
+	btn.tooltip_text = "改造：%d/%d" % [display_mods.size(), ModManager.get_max_mod_slots_for_card(card)]
 	# v7.3: 选中绑定用实例对象（含养成）。实例取不到时传 null，
 	# _on_card_selected 会拒绝选中（避免改造写到无养成的模板污染单例）。
 	# display_card 仅用于列表项显示（含回退模板的展示），不参与养成写入。
@@ -860,42 +865,12 @@ func _create_mod_item(mod_id: String, mod_data: Dictionary) -> Control:
 	hbox.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	hbox.add_theme_constant_override("separation", 6)
 
-	# 图标（28×28）
-	var icon_path: String = mod_data.get("icon", "")
-	if not icon_path.is_empty() and ResourceLoader.exists(icon_path):
-		var tex_rect := TextureRect.new()
-		tex_rect.texture = UiAssetLoader.load_tex(icon_path)
-		tex_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-		tex_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-		tex_rect.custom_minimum_size = Vector2(26, 26)
-		tex_rect.tooltip_text = mod_data.get("name", mod_id)
-		tex_rect.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-		hbox.add_child(tex_rect)
-	else:
-		# 兜底：稀有度色边框 + 稀有度首字母（v1.5：原 v1.4 只是色块，色弱不友好）
-		# 字母规则：common→C / uncommon→U / rare→R / epic→E / legendary→L / mythic→M
-		var placeholder := PanelContainer.new()
-		placeholder.custom_minimum_size = Vector2(26, 26)
-		placeholder.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-		placeholder.mouse_filter = Control.MOUSE_FILTER_IGNORE  # v26.16 修复：默认 STOP 会吃掉行按钮点击
-		var ph_sb := StyleBoxFlat.new()
-		ph_sb.bg_color = Color(0.05, 0.09, 0.16, 0.6)
-		ph_sb.border_color = rarity_col
-		ph_sb.set_border_width_all(1)
-		ph_sb.set_corner_radius_all(3)
-		placeholder.add_theme_stylebox_override("panel", ph_sb)
-		# 稀有度首字母（颜色+字母双重编码）
-		var rar_letter := rarity.substr(0, 1).to_upper() if not rarity.is_empty() else "?"
-		var ph_lbl := Label.new()
-		ph_lbl.text = rar_letter
-		ph_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		ph_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-		ph_lbl.add_theme_font_override("font", DT.get_title_font_bold())
-		ph_lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_MEDIUM)
-		ph_lbl.add_theme_color_override("font_color", rarity_col)
-		ph_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		placeholder.add_child(ph_lbl)
-		hbox.add_child(placeholder)
+	# v37.1 图标座：稀有度发光底座 + 真图标（原裸贴暗色贴图，稀有度在列表里不可见）
+	# tooltip 挂行按钮（tile 全 IGNORE 不接收鼠标——挂 tile 上永不触发）
+	var icon_tile := ModIconTileRef.make(mod_data, 26)
+	if btn.tooltip_text.is_empty():
+		btn.tooltip_text = mod_data.get("name", mod_id)
+	hbox.add_child(icon_tile)
 
 	# 信息列（名 + 效果摘要）
 	var info := VBoxContainer.new()
@@ -936,6 +911,16 @@ func _create_mod_item(mod_id: String, mod_data: Dictionary) -> Control:
 	class_tag.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	class_tag.tooltip_text = "机制改造：改变单位行为规则，可与其他机制组合形成新战法" if class_disp.get("class", "ratio") == "mechanic" else "数值改造：提升属性交换比（更硬/更快/更疼）"
 	name_row.add_child(class_tag)
+	# v6.16 门槛核心件标签（金色）：围绕它构筑整套打法的传奇件（带显式代价）
+	if bool(mod_data.get("keystone", false)) and ModificationRegistry.is_keystone(mod_id):
+		var ks_tag := Label.new()
+		ks_tag.text = "[门槛]"
+		ks_tag.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
+		ks_tag.add_theme_color_override("font_color", Color(1.0, 0.78, 0.35))
+		ks_tag.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		ks_tag.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		ks_tag.tooltip_text = "门槛核心件：改变战法的传奇改造，围绕它构筑流派（自带显式代价）"
+		name_row.add_child(ks_tag)
 	info.add_child(name_row)
 
 	# 效果摘要（取第一条 effect）
@@ -1085,8 +1070,19 @@ func _update_card_info() -> void:
 	# === 区块5：属性 6 格网格 ===
 	unit_panel.add_child(_build_stat_grid(stats))
 
+	# === 区块5b：v6.16 攻速断点档（构筑期静态；有攻速改造才显示） ===
+	var bp_gain: float = ModBreakpoints.max_speed_gain_for_card(selected_card)
+	if bp_gain > 0.005:
+		var bp_lbl := Label.new()
+		bp_lbl.text = "⚡ 攻速断点 · %s" % ModBreakpoints.describe_for_ui(bp_gain)
+		bp_lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
+		bp_lbl.add_theme_color_override("font_color", Color(1.0, 0.78, 0.35) if ModBreakpoints.resolve(bp_gain)["tier"] > 0 else DT.COLOR_SLATE_DIM_A85)
+		bp_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		bp_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		unit_panel.add_child(bp_lbl)
+
 	# === 区块6：已装改造列表 ===
-	unit_panel.add_child(_make_section_header("◆ 已装改造", "%d / 9" % mod_count))
+	unit_panel.add_child(_make_section_header("◆ 已装改造", "%d / %d" % [mod_count, ModManager.get_max_mod_slots_for_card(selected_card)]))
 	var installed_list := VBoxContainer.new()
 	installed_list.name = "InstalledList"
 	installed_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -1189,10 +1185,11 @@ func _build_unit_hero() -> Control:
 	info.add_child(name_lbl)
 	# 标签行：兵种 · Lv · 改造数（v20.12 等级统一：Lv=战斗卡等级 card_level）
 	var tags := Label.new()
-	tags.text = "%s · Lv.%d · 改造 %d/9" % [
+	tags.text = "%s · Lv.%d · 改造 %d/%d" % [
 		CardResource.get_combat_kind_name(selected_card.combat_kind),
 		_card_level_of(selected_card),
-		selected_card.mods.size()
+		selected_card.mods.size(),
+		ModManager.get_max_mod_slots_for_card(selected_card)
 	]
 	tags.clip_text = true
 	_style_lbl(tags, 11, DT.COLOR_SLATE_DIM_A85, -1, true)
@@ -1458,39 +1455,8 @@ func _refresh_installed_list(installed_list: Control) -> void:
 		var hbox := HBoxContainer.new()
 		hbox.add_theme_constant_override("separation", 6)
 
-		# 已安装改造图标
-		var icon_path: String = mod_data.get("icon", "")
-		if not icon_path.is_empty() and ResourceLoader.exists(icon_path):
-			var tex_rect := TextureRect.new()
-			tex_rect.texture = UiAssetLoader.load_tex(icon_path)
-			tex_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-			tex_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-			tex_rect.custom_minimum_size = Vector2(20, 20)
-			tex_rect.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-			hbox.add_child(tex_rect)
-		else:
-			# v1.5：无图标兜底——稀有度色边框 + 首字母（与改造库 mod-ico 一致，原 v1.4 直接省略不统一）
-			var rar_col := _rarity_color(rarity)
-			var ph := PanelContainer.new()
-			ph.custom_minimum_size = Vector2(20, 20)
-			ph.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-			var ph_sb := StyleBoxFlat.new()
-			ph_sb.bg_color = Color(0.05, 0.09, 0.16, 0.6)
-			ph_sb.border_color = rar_col if enabled else (rar_col * Color(1, 1, 1, 0.4))
-			ph_sb.set_border_width_all(1)
-			ph_sb.set_corner_radius_all(3)
-			ph.add_theme_stylebox_override("panel", ph_sb)
-			var rar_letter := rarity.substr(0, 1).to_upper() if not rarity.is_empty() else "?"
-			var ph_lbl := Label.new()
-			ph_lbl.text = rar_letter
-			ph_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-			ph_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-			ph_lbl.add_theme_font_override("font", DT.get_title_font_bold())
-			ph_lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
-			ph_lbl.add_theme_color_override("font_color", rar_col if enabled else (rar_col * Color(1, 1, 1, 0.4)))
-			ph_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
-			ph.add_child(ph_lbl)
-			hbox.add_child(ph)
+		# 已安装改造图标——v37.1 稀有度发光底座（禁用态整体降透明，原为裸贴 20×20）
+		hbox.add_child(ModIconTileRef.make(mod_data, 20, 0, not enabled))
 
 		var lbl := Label.new()
 		var status_prefix: String = "✓ " if enabled else "⊘ "
@@ -1794,22 +1760,41 @@ func _show_mod_details(mod_data: Dictionary) -> void:
 	if deck_empty:
 		deck_empty.visible = false
 
-	# 操作台图标：按稀有度着色边框（视觉化区分模块品质）
+	# 操作台图标：v37.1 真图标上座 + 统一稀有度发光底座（激活档）；无图回退首字母
 	var mod_rarity := String(mod_data.get("rarity", "common"))
-	var rarity_col := _rarity_color(mod_rarity)
 	var deck_icon := get_node_or_null("%DeckIcon")
 	if deck_icon and deck_icon is PanelContainer:
-		var sb := StyleBoxFlat.new()
-		sb.bg_color = Color(rarity_col.r, rarity_col.g, rarity_col.b, 0.06)
-		sb.border_color = rarity_col
-		sb.set_border_width_all(1)
-		sb.set_corner_radius_all(4)
-		deck_icon.add_theme_stylebox_override("panel", sb)
-		# 图标内字母用 Rajdhani
+		var icon_path_d := String(mod_data.get("icon", ""))
+		var has_icon: bool = not icon_path_d.is_empty() and ResourceLoader.exists(icon_path_d)
+		if has_icon:
+			var sb: StyleBoxFlat = CardFrameUiRef.tile_rarity_style(mod_rarity, 1).duplicate()
+			sb.set_content_margin_all(4)
+			deck_icon.add_theme_stylebox_override("panel", sb)
+			var icon_tex := deck_icon.get_node_or_null("DeckIconTex") as TextureRect
+			if icon_tex == null:
+				icon_tex = TextureRect.new()
+				icon_tex.name = "DeckIconTex"
+				icon_tex.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+				icon_tex.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+				icon_tex.mouse_filter = Control.MOUSE_FILTER_IGNORE
+				deck_icon.add_child(icon_tex)
+			icon_tex.texture = UiAssetLoader.load_tex(icon_path_d)
+			icon_tex.visible = true
+		else:
+			# 无图回退：原字母框语义保留
+			var rc := _rarity_color(mod_rarity)
+			var sb := StyleBoxFlat.new()
+			sb.bg_color = Color(rc.r, rc.g, rc.b, 0.06)
+			sb.border_color = rc
+			sb.set_border_width_all(1)
+			sb.set_corner_radius_all(4)
+			deck_icon.add_theme_stylebox_override("panel", sb)
+		# 图标内字母用 Rajdhani（有真图时隐藏字母）
 		var icon_inner := deck_icon.get_node_or_null("DeckIconLabel")
 		if icon_inner is Label:
+			icon_inner.visible = not has_icon
 			icon_inner.add_theme_font_override("font", DT.get_title_font_bold())
-			icon_inner.add_theme_color_override("font_color", rarity_col)
+			icon_inner.add_theme_color_override("font_color", _rarity_color(mod_rarity))
 
 	# 操作台三个 Label 统一加载 Rajdhani 字体（设计稿核心视觉）
 	if deck_name_label:

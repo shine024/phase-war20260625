@@ -43,8 +43,10 @@ const TEX_BATTERY_TIERS: Array[Texture2D] = [
 	preload("res://assets/resources/drops/drop_battery_3.png"),
 ]
 const CURRENCY_TEX_CONTENT_PX: float = 190.0   # 变体画布内容标定高（scale = 目标px / 此值）
-const CURRENCY_PX_NANO: Array[float] = [20.0, 26.0, 31.0]     # 单体/双粒/小堆 目标高
-const CURRENCY_PX_BATTERY: Array[float] = [23.0, 29.0, 34.0]
+# v37 实机验收（用户"掉落晶体还是太大"）：整体缩约 30%——地面线索靠柔光呼吸承担（_draw 段），
+# 本体不再放大撑可读性
+const CURRENCY_PX_NANO: Array[float] = [14.0, 18.0, 23.0]     # 单体/双粒/小堆 目标高
+const CURRENCY_PX_BATTERY: Array[float] = [16.0, 21.0, 26.0]
 
 ## 类型常量（spawn_loot 的 type 入参）
 const TYPE_NANO := "nano"
@@ -151,7 +153,9 @@ func _spawn_nano(pos: Vector2, amount: int) -> void:
 	# 并堆：60px 内已有活纳米堆 → 数量累加+刷新飘字（蜂群连杀不刷屏）
 	_prune_dead_piles()
 	for pile in _nano_piles:
-		var node: LootItem = pile["node"]
+		var node = pile["node"]   # 未类型化同 _prune_dead_piles：freed 实例先判活再触碰
+		if node == null or not is_instance_valid(node):
+			continue
 		if node.global_position.distance_to(pos) <= NANO_MERGE_RADIUS:
 			node.amount = int(node.amount) + amount
 			node.refresh_currency_visual()   # v36：跨档升贴图（单体→双粒→小堆）
@@ -166,7 +170,9 @@ func _spawn_nano(pos: Vector2, amount: int) -> void:
 
 func _prune_dead_piles() -> void:
 	for i in range(_nano_piles.size() - 1, -1, -1):
-		var node: LootItem = _nano_piles[i]["node"]
+		# 局部必须未类型化：已 free 的实例赋给 LootItem 类型化局部会先报运行时错并
+		# 中止本函数——死条目永远删不掉，后续 _spawn_nano 连锁中止、掉落演出被吞
+		var node = _nano_piles[i]["node"]
 		if node == null or not is_instance_valid(node):
 			_nano_piles.remove_at(i)
 
@@ -318,13 +324,38 @@ class LootItem extends Node2D:
 		add_child(spr)
 		return spr
 
-	func _make_card_sprite(tex: Texture2D) -> Sprite2D:
-		var spr := Sprite2D.new()
-		spr.texture = tex
-		# v36 实机验收：36→30px——缴获卡此前接近战场卡宽一半，观感过大
-		spr.scale = Vector2.ONE * (30.0 / maxf(1.0, float(tex.get_width())))
-		add_child(spr)
-		return spr
+	func _make_card_sprite(tex: Texture2D) -> Node2D:
+		# v37 实机验收（用户把裸缩卡图误读成"缩小的骑兵"）：缴获卡地面件加迷你卡框——
+		# 稀有度色描边 + 深底 + 画芯 + 底部名条，一眼读成"一张卡"而不是单位缩略图。
+		# 外框 28×36（对齐旧 30px 站位口径）；_body 挂 holder，待机呼吸 modulate 整组生效。
+		var holder := Node2D.new()
+		var rarity_col: Color = GC.get_rarity_color(rarity)
+		var frame := Polygon2D.new()
+		frame.polygon = _rect_pts(-14.0, -18.0, 28.0, 36.0)
+		frame.color = Color(rarity_col.r, rarity_col.g, rarity_col.b, 0.95)
+		holder.add_child(frame)
+		var face := Polygon2D.new()
+		face.polygon = _rect_pts(-11.5, -15.5, 23.0, 31.0)
+		face.color = Color(0.05, 0.07, 0.11, 0.96)
+		holder.add_child(face)
+		var art := Sprite2D.new()
+		art.texture = tex
+		art.scale = Vector2.ONE * (20.0 / maxf(1.0, float(tex.get_width())))
+		art.position = Vector2(0, -3.5)
+		holder.add_child(art)
+		var strip := Polygon2D.new()
+		strip.polygon = _rect_pts(-8.0, 9.0, 16.0, 3.0)
+		strip.color = Color(rarity_col.r, rarity_col.g, rarity_col.b, 0.55)
+		holder.add_child(strip)
+		add_child(holder)
+		return holder
+
+	## 轴对齐矩形多边形顶点（迷你卡框图层共用）
+	func _rect_pts(x: float, y: float, w: float, h: float) -> PackedVector2Array:
+		return PackedVector2Array([
+			Vector2(x, y), Vector2(x + w, y),
+			Vector2(x + w, y + h), Vector2(x, y + h),
+		])
 
 	## 菱形/六边形本体：稀有度色实心 + 白亮芯（加法混合）
 	func _make_diamond(color: Color, radius: float) -> Polygon2D:
@@ -371,7 +402,7 @@ class LootItem extends Node2D:
 		if tier >= 2:
 			_add_pillar()
 			_add_name_label()
-			_play_drop_sfx()
+			# v38：掉落音效挪到 _on_landed（落地瞬间发声，原在悬空构建期）
 
 	func _rarity_tier() -> int:
 		match rarity:
@@ -419,7 +450,12 @@ class LootItem extends Node2D:
 
 	func _play_drop_sfx() -> void:
 		# AudioManager.play_sfx 自带极速推演压制（非白名单静默），此处无需重复守卫
-		var am := get_node_or_null("/root/AudioManager")
+		# 注意：本函数在 setup() 内执行——LootItem 尚未 add_child（树外），绝对路径
+		# get_node 会触发引擎层报错，须经主循环 root 查 autoload
+		var loop := Engine.get_main_loop()
+		if loop == null or not (loop is SceneTree):
+			return
+		var am := (loop as SceneTree).root.get_node_or_null("AudioManager")
 		if am == null or not am.has_method("play_sfx"):
 			return
 		if ltype == GroundLootLayer.TYPE_CARD:
@@ -430,28 +466,43 @@ class LootItem extends Node2D:
 	# ── 落地/待机/收走 ─────────────────────────────────────────────
 
 	func _play_toss() -> void:
-		var start := position
-		var land := start + Vector2(randf_range(-26.0, 26.0), randf_range(-6.0, 10.0))
+		# v38.2（用户澄清掉落语义）：不是"从天上掉下来"，是**击毁后炸出来散放在地上**——
+		# 每件以随机方向/随机距离从落点甩出（小跳 ≤12px），落定带随机倾角；
+		# 同次多点掉落方向/距离/倾角各异 → 地面"散放"读感。整齐排布/垂直下落都是反例。
+		var eject_dir: float = randf() * TAU
+		var eject_dist: float = randf_range(18.0, 64.0)
+		var land := position + Vector2.from_angle(eject_dir) * eject_dist
+		# 倾角只转本体（光柱/名条/地面柔光保持竖直——散放的是"东西"，不是光）
+		if _body != null and is_instance_valid(_body):
+			_body.rotation = randf_range(-0.24, 0.24)  # ±14°
 		if DT.is_motion_reduce():
 			position = land
 			_on_landed()
 			return
-		scale = Vector2.ONE * 0.5
+		var start := position
 		_toss_tween = create_tween()
 		_toss_tween.tween_method(
 			func(t: float):
-				position = start.lerp(land, t) + Vector2.UP * (26.0 * sin(PI * t))
-				scale = Vector2.ONE * lerpf(0.5, 1.0, t),
-			0.0, 1.0, 0.34).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+				position = start.lerp(land, t) + Vector2.UP * (12.0 * sin(PI * t)),
+			0.0, 1.0, 0.28).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 		_toss_tween.tween_callback(_on_landed)
 
 	func _on_landed() -> void:
-		if _rarity_tier() >= 2 and not DT.is_motion_reduce():
+		var tier := _rarity_tier()
+		var parent := get_parent() as Node2D
+		if not DT.is_motion_reduce() and parent != null:
 			var color := GC.get_rarity_color(rarity)
-			var radius := 56.0 if rarity == "legendary" or rarity == "mythic" else 44.0
-			var parent := get_parent() as Node2D
-			if parent != null:
+			if tier >= 2:
+				var radius := 56.0 if rarity == "legendary" or rarity == "mythic" else 44.0
 				VfxImpactFactory.spawn_shockwave(parent, global_position, radius, color)
+			else:
+				# v38：低档也落地有痕——小尘环（弱/快/低透明），"有东西掉下来"的地面反馈
+				var dust: Color = _glow_color if _glow_color.a > 0.01 else Color(color.r, color.g, color.b, 0.5)
+				VfxImpactFactory.spawn_shockwave(parent, global_position, 24.0,
+					Color(dust.r, dust.g, dust.b, 0.5))
+		# v38：高级件音效挪到落地瞬间（原在 setup 期=悬空发声，音画错位）
+		if tier >= 2:
+			_play_drop_sfx()
 		_start_idle_pulse()
 
 	## 待机微光：本体 modulate 呼吸（廉价循环 tween，≤MAX_PERSIST 件可承受）

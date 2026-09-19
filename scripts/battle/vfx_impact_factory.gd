@@ -15,6 +15,8 @@ const BattleTimeState = preload("res://scripts/battle/battle_time_state.gd")
 const DT = preload("res://resources/design_tokens.gd")
 const GC = preload("res://resources/game_constants.gd")  # v13: 时代化能量配色(era→关卡)
 const DirectWeaponFlavor = preload("res://data/direct_weapon_flavor.gd")
+## v6.17: 命中光学层（战场泛光 + 动态光闪池统一入口；开关/守卫在 OPTICS 内部）
+const OPTICS = preload("res://scripts/battle/battle_optics.gd")
 ## v9.2: 粒子贴图——CPUParticles2D 赋 texture 告别方形小方块。
 ## 按武器类型分流：动能武器（金属火花/灰烟）vs 能量武器（蓝色电弧/蓝烟）。
 ## 池复用继续（性能优先），texture 在 spawn 时按 weapon_type 重新赋值。
@@ -63,6 +65,7 @@ const PARTICLE_TEX_EMBER         := preload("res://assets/effects/particle_textu
 const PARTICLE_TEX_IMPACT_METAL  := preload("res://assets/effects/particle_textures/impact_metal.png")   # 动能命中放射火花
 const PARTICLE_TEX_IMPACT_ENERGY := preload("res://assets/effects/particle_textures/impact_energy.png") # 能量命中放射爆裂
 const PARTICLE_TEX_IMPACT_SCORCH := preload("res://assets/effects/particle_textures/impact_scorch.png")  # v11 弹痕锚点(暗凹陷+刮擦线,持久贴命中点)
+const PARTICLE_TEX_IMPACT_POOF := preload("res://assets/effects/particle_textures/impact_poof_white.png")  # v6.15 打击感: 白色冲击云(软圆白团,轻动能命中第一读感层,DR 对照)
 
 # ── 池化上限 ──
 const MAX_RINGS: int = 80
@@ -268,6 +271,20 @@ static func spawn_layered_impact(parent: Node2D, world_pos: Vector2, weapon_type
 			_spawn_ring(parent, world_pos, ring_r * 1.4,
 				ring_dur * 1.6, Color(ring_color.r, ring_color.g, ring_color.b, ring_color.a * 0.5))
 		_spawn_impact_decal(parent, world_pos, weapon_type)  # v11 弹痕锚点(在火花之下,火花从弹痕溅起)
+	# v6.15 P2（docs/命中表现夸张规则.md 表 #0 裁决定稿）：白团按 power_tier 分档——
+	#   HEAVY(2) 坦克炮级直射：38-46px 大团（"闪"的强化档，规则表 0H）；
+	#   MEDIUM(1)：28-34px；轻武器（LIGHT/缺省）：14-18px tick 闪（D3 律：常规命中
+	#   无"云"只有闪+火花，主反馈在受击白闪）。
+	# 爆炸族已有 115px+ flash 核心不叠此层（防 v18 修掉的"白屏爆"回归）；霰弹(5)
+	# 有散射签名同理不加。
+	if is_light_kinetic and not motion_reduce:
+		var poof_tier: int = int(opts.get("power_tier", -1))
+		var poof_px: float
+		match poof_tier:
+			2: poof_px = randf_range(38.0, 46.0)
+			1: poof_px = randf_range(28.0, 34.0)
+			_: poof_px = randf_range(14.0, 18.0)
+		_spawn_impact_poof(parent, world_pos, poof_px)
 	# 第2层：主火花（始终生成）
 	# v20.9-R2: 霰弹(5)散射签名——单点火花+中央大闪光读成"单弹头命中"（AI 双侧一致
 	# 批"缺散射图案/规则饱满白色光斑"）。改 6 弹丸簇沿来向垂直轴扇开（6 发 18° 散射
@@ -298,15 +315,16 @@ static func spawn_layered_impact(parent: Node2D, world_pos: Vector2, weapon_type
 				else:
 					_spawn_smoke_puff_layer(parent, world_pos, base_color, weapon_type, {})
 			_spawn_shrapnel_layer(parent, world_pos, base_color, weapon_type, {})
-		elif not recipe.has("debris"):
-			# v18-R9b: 微烟 3→5 粒（R9 后 AI 批"烟雾层完全缺失"——3 粒在簇滴命中里
-			# 读不出）。smin/smax 经 DSCALE 0.5 × 128px 贴图 → 51-90px 软散烟仍"微量"档。
-			_spawn_smoke_puff_layer(parent, world_pos, base_color, weapon_type,
-				{"amount": 5, "life": 0.45, "smin": 1.0, "smax": 1.6})
+		# v6.15 P2（docs/命中表现夸张规则.md 五律2 裁决定稿）：轻动能命中微烟层彻底移除
+		# ——非爆炸零烟，烟是爆炸族(1/3/9)专属词汇。历史值 v18-R9b 5 粒 → P1-R2 2 粒 → 现清零。
 	# v13: 战场痕迹——重型爆炸武器命中留下焦痕弹坑(概率 50%,免刷屏;幂次越小越稀)
+	# v6.17: 概率 0.5→0.65、半径 8-18→10-20——暗底+泛光下焦痕是地面积累主词汇，略抬密度；
+	# 环缓冲 MAX_TRACES=48 上限不变，防刷屏约束仍在。
 	if not motion_reduce and (weapon_type in [1, 2, 3, 7, 9] or int(opts.get("power_tier", -1)) == 2):
-		if randf() < 0.5:
-			var tr_r: float = clampf(float(recipe.get("ring_r", 24.0)) * 0.5, 8.0, 18.0)
+		# v6.17 光学层: 爆炸动态光闪（每爆必闪，短寿命；开关/上限守卫在 OPTICS 内部）
+		OPTICS.flash(parent, world_pos, Color(1.0, 0.62, 0.30), 130.0, 1.3, 0.30)
+		if randf() < 0.65:
+			var tr_r: float = clampf(float(recipe.get("ring_r", 24.0)) * 0.5, 10.0, 20.0)
 			spawn_battle_trace(parent, world_pos, tr_r)
 	# 特殊伤害叠加
 	if opts.get("is_crit", false) and not motion_reduce:
@@ -383,10 +401,12 @@ const MAX_DECALS: int = 48
 static func _acquire_decal(parent: Node2D, pos: Vector2, scl: float) -> Sprite2D:
 	var s: Sprite2D = null
 	while not _decal_pool.is_empty():
-		s = _decal_pool.pop_back()
-		if is_instance_valid(s):
+		# 候选局部必须未类型化：池内可能残留已 free 的实例（清场/超上限路径），
+		# 赋给 Sprite2D 类型化局部会先报运行时错并中止本函数→调用方拿到 null
+		var cand = _decal_pool.pop_back()
+		if is_instance_valid(cand):
+			s = cand
 			break
-		s = null
 	if s == null:
 		s = Sprite2D.new()
 		s.texture = PARTICLE_TEX_IMPACT_SCORCH
@@ -689,6 +709,12 @@ static func spawn_muzzle_flash(parent: Node2D, local_pos: Vector2, facing_right:
 	var is_light_wt: bool = not (weapon_type in HEAVY_MUZZLE_WT)
 	# v6.1: 能量武器（LASER/OMEGA/RAIL）使用方向性长条纹理 + 更窄锥角 + 更高速度，呈现喷射流形态
 	var is_energy_wt: bool = not is_light_wt and weapon_type in [6, 8, 10, 11]
+	# v6.17 光学层: 枪口动态光闪（轻=小暖闪 / 能量=冷闪 / 重化学=大暖闪；随武器族换色）
+	OPTICS.flash(parent, local_pos,
+		Color(0.62, 0.82, 1.0) if is_energy_wt else (Color(1.0, 0.80, 0.48) if is_light_wt else Color(1.0, 0.62, 0.30)),
+		64.0 if is_light_wt else 92.0,
+		0.8 if is_light_wt else 1.1,
+		0.10 if is_light_wt else 0.16)
 	if is_light_wt:  # 轻型动能武器
 		p.texture = PARTICLE_TEX_MUZZLE_JET  # v17e: 前向喷流（侧视），替代四向星芒
 	elif is_energy_wt:  # 能量武器：喷射流
@@ -1917,6 +1943,48 @@ static func spawn_impact_sprite(parent: Node2D, world_pos: Vector2, texture: Tex
 	tween.tween_callback(func(): _release_impact_sprite(sprite))
 
 
+## v6.15 打击感(P0/R2)：白色冲击斑/云——命中点第一读感层（DR 对照，design/ux/hit-feedback-plan.md）。
+## 单层软圆白斑（复用 impact_sprite 池，ADD），纯白不染色。尺寸与包络按量级双档：
+##   大团(≥36px，HEAVY 直射)：膨胀 0.06s → 保持 0.04s → 淡出 0.12s（总 0.22s）；
+##   小斑(<36px，轻武器快闪)：膨胀 0.04s → 保持 0.02s → 淡出 0.08s（总 0.14s，干脆不过烟）。
+## 首读层必须"先立得住再散"——旧版膨胀/淡出并行 EASE_IN 亮度立不住（v17 残烟教训同款：
+## 包络与采样窗口联动标定）。
+## 显示宽由调用方目标 px 反算 scale：贴图实寸 116px 为 PIL bbox 标定（skill 第2步铁律，
+## 勿按 128 画布假设）。仅轻动能(0/4)命中调用；motion_reduce/极速推演不生成。
+const POOF_TEX_CONTENT_W: float = 116.0  # impact_poof_white.png 内容实寸（128 画布，v4 实测 bbox 116×117）
+
+static func _spawn_impact_poof(parent: Node2D, world_pos: Vector2, target_px: float) -> void:
+	if BattleTimeState.ff_active:
+		return
+	if parent == null or not is_instance_valid(parent):
+		return
+	if DT.is_motion_reduce():
+		return
+	var pk: float = target_px / POOF_TEX_CONTENT_W
+	var is_big: bool = target_px >= 36.0
+	var sprite := _acquire_impact_sprite()
+	if sprite == null:
+		return  # 池满，静默丢弃（节流）
+	sprite.texture = PARTICLE_TEX_IMPACT_POOF
+	sprite.position = world_pos
+	sprite.rotation = randf() * TAU
+	sprite.scale = Vector2(pk * 0.55, pk * 0.55)
+	# v6.17: modulate HDR 化（rgb>1 过 bloom 阈值，白斑读"闪"而非"棉团"；alpha 包络不动）
+	sprite.modulate = Color(1.45, 1.42, 1.30, 0.92 if is_big else 0.85)
+	sprite.visible = true
+	sprite.material = _get_add_mat()
+	parent.add_child(sprite)
+	sprite.add_to_group("battle_vfx")  # v9.4: 战斗结束兜底清理（tween 中断时不残留）
+	var expand_s: float = 0.06 if is_big else 0.03
+	var hold_s: float = 0.04 if is_big else 0.02
+	var fade_s: float = 0.12 if is_big else 0.06
+	var tw := sprite.create_tween()
+	tw.tween_property(sprite, "scale", Vector2(pk, pk), expand_s).set_ease(Tween.EASE_OUT)
+	tw.tween_interval(hold_s)  # 满亮保持（大团总 0.10s 立得住，覆盖审计 0.05s 采样帧+肉眼前 6 帧）
+	tw.tween_property(sprite, "modulate:a", 0.0, fade_s).set_ease(Tween.EASE_IN)
+	tw.tween_callback(func(): _release_impact_sprite(sprite))
+
+
 ## v9.3c: 大招专属贴图爆炸（敌我双方大招命中演出，对齐核子轰炸表现力）。
 ## 与 spawn_impact_sprite 的区别：
 ##   ① 配色染色（tint 参数 lerp 贴图原色，让每类大招有专属色调）
@@ -1978,6 +2046,9 @@ static func spawn_spell_burst(parent: Node2D, world_pos: Vector2, texture: Textu
 			return
 		# v13 第0层: 白闪核(大招过曝闪)——先于主体 0.08s，制造"大招级"峰值帧。
 		# 小技能不叠(is_ult_scale 门槛)，与普通命中拉开档次。
+		# v6.17 光学层: 大招级动态光闪同拍点亮（白闪核 sprite 池满也不丢光闪）
+		if is_ult_scale:
+			OPTICS.flash(p, captured_pos, Color(1.0, 0.80, 0.50), 210.0, 1.6, 0.5)
 		if is_ult_scale and _active_impact_sprites < MAX_IMPACT_SPRITES:
 			var flash := _acquire_impact_sprite()
 			if flash != null:
@@ -2241,7 +2312,7 @@ static func spawn_battle_trace(parent: Node2D, world_pos: Vector2, radius: float
 	node.visible = true
 	# v26.x: 原 "wreck" 残骸分支（更深 0.55/独立色）随死亡印记退役，仅剩武器焦痕
 	node.modulate = Color(0.16, 0.12, 0.08, 0.0)
-	var peak_a: float = 0.42
+	var peak_a: float = 0.50  # v6.17: 0.42→0.50（暗底一档后保可读）
 	var tw := node.create_tween()
 	tw.tween_property(node, "modulate:a", peak_a, 0.18)
 	tw.tween_interval(14.0)
@@ -3481,6 +3552,8 @@ static func _spawn_impact_decal(parent: Node2D, pos: Vector2, weapon_type: int) 
 	if parent == null or not is_instance_valid(parent):
 		return
 	var decal := _acquire_decal(parent, pos, 0.6)  # v27.12: 走弹痕池（acquire 复位 transform/modulate）
+	if decal == null:
+		return   # 兜底：acquire 异常中断时不再拿 null 触发二次报错
 	var tree := decal.get_tree()
 	if tree != null:
 		# bind_node:节点被清场 group-free 时自动 kill tween,避免操作已释放节点

@@ -69,6 +69,14 @@ static func synthetic_card_for_archetype(archetype_id: String, cfg: Dictionary) 
 	c.display_name = String(cfg.get("display_name", DefaultCards.get_safe_display_name(archetype_id)))
 	c.rarity = "common"
 	c.card_type = GC.CardType.COMBAT_UNIT
+	# v6.14.8: 兵种/时代写实——缩放模型（KIND_ERA_SCALE）按 combat_kind×era 查档位，
+	# synthetic 卡缺兵种会全体跌进轻装档、缺时代会全体跌进一战档。manifest 未收录时保持缺省。
+	var mk: int = EnemyUnitManifest.combat_kind_for(archetype_id)
+	if mk >= 0:
+		c.combat_kind = mk
+	var me: int = EnemyUnitManifest.era_for(archetype_id)
+	if me >= 0:
+		c.era = me
 	return c
 
 
@@ -111,6 +119,17 @@ static func apply_battle_unit_presentation(
 		var vs: float = CardFootAnchors.get_visual_scale(card)
 		if vs > 0.0 and vs != 1.0:
 			unit_spr.scale *= vs
+	# v6.14.8: 精英/首领威压乘区——接替旧 VISUAL_SCALE boss≈2.0 语义（档位系数之上）。
+	# 必须在 UnitOutline.apply 前定格（edge_texels 依赖最终 scale.x）。
+	var _boost_st: String = ""
+	if unit != null and unit.has_method("get_elite_spawn_type"):
+		_boost_st = String(unit.call("get_elite_spawn_type"))
+	elif unit != null and unit.has_meta("elite_spawn_type"):
+		_boost_st = String(unit.get_meta("elite_spawn_type", ""))
+	if _boost_st == "boss":
+		unit_spr.scale *= 1.6
+	elif _boost_st == "elite":
+		unit_spr.scale *= 1.2
 	# v26.9: 深色描边（alpha 膨胀 shader）——沙漠亮底上我方灰褐卡图与背景同明度融底的修复。
 	# 必须在 visual scale 定格后挂：edge_texels = 目标屏宽 / scale.x（帧动画 attach 的
 	# scale×2 补偿由 FrameDriver 内 refresh 兜住）。

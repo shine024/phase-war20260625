@@ -62,23 +62,33 @@ func test_next_level_matrix() -> void:
 	# ① 胜利+教程完+下一关已解锁 → 6
 	var p1: Node = _make_panel(true, false)
 	assert_int(p1._compute_next_level()).is_equal(6)
+	assert_int(p1._compute_replay_level()).is_equal(5)
 	p1.queue_free()
 
-	# ② 败局 → 0
+	# ② 败局 → next 0；replay 仍放行（败局快速重试，v38.1）
 	var p2: Node = _make_panel(false, false)
 	assert_int(p2._compute_next_level()).is_equal(0)
+	assert_int(p2._compute_replay_level()).is_equal(5)
 	p2.queue_free()
 
-	# ③ 挂机结算 → 0
+	# ③ 挂机结算 → 0 / 0
 	var p3: Node = _make_panel(true, true)
 	assert_int(p3._compute_next_level()).is_equal(0)
+	assert_int(p3._compute_replay_level()).is_equal(0)
 	p3.queue_free()
 
-	# ④ 教程进行中 → 0（战后回基地续播教程步）
-	tm.current_step = 4
+	# ④ 教程未过首战步（CARD_COLLECTION=2，STEP_ORDER 在 FIRST_BATTLE 之前）→ 0
+	#（v38 门槛放宽：原"教程全完才放行"改为"过首战步即放行"——战后续播步不拦直通键）
+	tm.current_step = 2
 	var p4: Node = _make_panel(true, false)
 	assert_int(p4._compute_next_level()).is_equal(0)
+	assert_int(p4._compute_replay_level()).is_equal(0)
 	p4.queue_free()
+	# ④b 教程进行中但已过首战步（ENHANCEMENT=4，按需点播段）→ 6（直通放行）
+	tm.current_step = 4
+	var p4b: Node = _make_panel(true, false)
+	assert_int(p4b._compute_next_level()).is_equal(6)
+	p4b.queue_free()
 	tm.current_step = 13
 
 	# ⑤ 打的关是最后一关（played=100）→ 0

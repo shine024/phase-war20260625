@@ -8,7 +8,7 @@ const DATA: Dictionary = {
 	# ─── 基础池（7个） ───
 	"enh_hp_up" = {
 		id = "enh_hp_up", name = "体质训练", name_en = "HP Up",
-		icon = "res://assets/ui/icons/mod_icons/mod_enhancement.png",
+		icon = "res://assets/ui/icons/mod_icons/enh_hp_up.png",
 		prototype = "体能强化训练", description = "生命值上限提升。",
 		rarity = "uncommon",
 		power_mult = 1.2, cost_research = 100, cost_install = 50,
@@ -21,7 +21,7 @@ const DATA: Dictionary = {
 	},
 	"enh_dmg_up" = {
 		id = "enh_dmg_up", name = "火力训练", name_en = "Damage Up",
-		icon = "res://assets/ui/icons/mod_icons/mod_enhancement.png",
+		icon = "res://assets/ui/icons/mod_icons/enh_dmg_up.png",
 		prototype = "火力压制训练", description = "三维攻击提升",
 		rarity = "uncommon",
 		power_mult = 1.2, cost_research = 100, cost_install = 50,
@@ -36,7 +36,7 @@ const DATA: Dictionary = {
 	},
 	"enh_def_up" = {
 		id = "enh_def_up", name = "防护训练", name_en = "Damage Reduction",
-		icon = "res://assets/ui/icons/mod_icons/mod_enhancement.png",
+		icon = "res://assets/ui/icons/mod_icons/enh_def_up.png",
 		prototype = "防护战术训练", description = "伤害减免提升。",
 		rarity = "uncommon",
 		power_mult = 1.2, cost_research = 100, cost_install = 50,
@@ -49,7 +49,7 @@ const DATA: Dictionary = {
 	},
 	"enh_def_flat" = {
 		id = "enh_def_flat", name = "坚壁训练", name_en = "Defense Flat",
-		icon = "res://assets/ui/icons/mod_icons/mod_enhancement.png",
+		icon = "res://assets/ui/icons/mod_icons/enh_def_flat.png",
 		prototype = "阵地防御训练", description = "三维防御提升",
 		rarity = "uncommon",
 		power_mult = 1.2, cost_research = 100, cost_install = 50,
@@ -64,7 +64,7 @@ const DATA: Dictionary = {
 	},
 	"enh_speed_up" = {
 		id = "enh_speed_up", name = "机动训练", name_en = "Speed Up",
-		icon = "res://assets/ui/icons/mod_icons/mod_enhancement.png",
+		icon = "res://assets/ui/icons/mod_icons/enh_speed_up.png",
 		prototype = "机动突击训练", description = "移动速度提升",
 		rarity = "uncommon",
 		power_mult = 1.2, cost_research = 100, cost_install = 50,
@@ -77,7 +77,7 @@ const DATA: Dictionary = {
 	},
 	"enh_range_up" = {
 		id = "enh_range_up", name = "索敌训练", name_en = "Range Up",
-		icon = "res://assets/ui/icons/mod_icons/mod_enhancement.png",
+		icon = "res://assets/ui/icons/mod_icons/enh_range_up.png",
 		prototype = "侦察索敌训练", description = "射程提升",
 		rarity = "uncommon",
 		power_mult = 1.2, cost_research = 100, cost_install = 50,
@@ -90,7 +90,7 @@ const DATA: Dictionary = {
 	},
 	"enh_atkspd_up" = {
 		id = "enh_atkspd_up", name = "反应训练", name_en = "Attack Speed Up",
-		icon = "res://assets/ui/icons/mod_icons/mod_enhancement.png",
+		icon = "res://assets/ui/icons/mod_icons/enh_atkspd_up.png",
 		prototype = "快速反应训练", description = "攻速提升，射击间隔缩短。",
 		rarity = "uncommon",
 		power_mult = 1.2, cost_research = 100, cost_install = 50,
@@ -104,7 +104,7 @@ const DATA: Dictionary = {
 	# ─── 进阶池（6个） ───
 	"enh_crit" = {
 		id = "enh_crit", name = "弱点洞察", name_en = "Crit Scope",
-		icon = "res://assets/ui/icons/mod_icons/mod_enhancement.png",
+		icon = "res://assets/ui/icons/mod_icons/enh_crit.png",
 		prototype = "弱点识别训练", description = "暴击率提升",
 		rarity = "rare",
 		power_mult = 1.35, cost_research = 200, cost_install = 100,
@@ -117,7 +117,7 @@ const DATA: Dictionary = {
 	},
 	"enh_lifesteal" = {
 		id = "enh_lifesteal", name = "战场回收", name_en = "Field Salvage",
-		icon = "res://assets/ui/icons/mod_icons/mod_enhancement.png",
+		icon = "res://assets/ui/icons/mod_icons/enh_lifesteal.png",
 		prototype = "战场补给训练", description = "击杀敌方单位时回复自身最大生命值",
 		rarity = "rare",
 		power_mult = 1.35, cost_research = 200, cost_install = 100,
@@ -130,7 +130,7 @@ const DATA: Dictionary = {
 	},
 	"enh_splash" = {
 		id = "enh_splash", name = "爆破战技", name_en = "Splash",
-		icon = "res://assets/ui/icons/mod_icons/mod_enhancement.png",
+		icon = "res://assets/ui/icons/mod_icons/enh_splash.png",
 		prototype = "区域压制战技", description = "溅射伤害提升。",
 		rarity = "rare",
 		power_mult = 1.35, cost_research = 200, cost_install = 100,
@@ -143,7 +143,7 @@ const DATA: Dictionary = {
 	},
 	"enh_penetration" = {
 		id = "enh_penetration", name = "破甲专精", name_en = "Penetration",
-		icon = "res://assets/ui/icons/mod_icons/mod_enhancement.png",
+		icon = "res://assets/ui/icons/mod_icons/enh_penetration.png",
 		prototype = "反装甲战技", description = "穿甲提升",
 		rarity = "rare",
 		power_mult = 1.35, cost_research = 200, cost_install = 100,
@@ -156,7 +156,7 @@ const DATA: Dictionary = {
 	},
 	"enh_regen" = {
 		id = "enh_regen", name = "野战急救", name_en = "HP Regen",
-		icon = "res://assets/ui/icons/mod_icons/mod_enhancement.png",
+		icon = "res://assets/ui/icons/mod_icons/enh_regen.png",
 		prototype = "战场急救训练", description = "每秒回复生命值。",
 		rarity = "rare",
 		power_mult = 1.35, cost_research = 200, cost_install = 100,
@@ -169,7 +169,7 @@ const DATA: Dictionary = {
 	},
 	"enh_chain" = {
 		id = "enh_chain", name = "连锁战术", name_en = "Chain",
-		icon = "res://assets/ui/icons/mod_icons/mod_enhancement.png",
+		icon = "res://assets/ui/icons/mod_icons/enh_chain.png",
 		prototype = "多目标接战训练", description = "连锁概率提升。",
 		rarity = "rare",
 		power_mult = 1.35, cost_research = 200, cost_install = 100,
@@ -183,7 +183,7 @@ const DATA: Dictionary = {
 	# ─── 终极池（3个） ───
 	"enh_shield_kill" = {
 		id = "enh_shield_kill", name = "收割本能", name_en = "Shield on Kill",
-		icon = "res://assets/ui/icons/mod_icons/mod_enhancement.png",
+		icon = "res://assets/ui/icons/mod_icons/enh_shield_kill.png",
 		prototype = "战意觉醒", description = "击杀敌人后生成护盾，掩护连续接战。",
 		rarity = "epic",
 		power_mult = 1.5, cost_research = 400, cost_install = 200,
@@ -196,7 +196,7 @@ const DATA: Dictionary = {
 	},
 	"enh_dodge" = {
 		id = "enh_dodge", name = "本能闪避", name_en = "Dodge",
-		icon = "res://assets/ui/icons/mod_icons/mod_enhancement.png",
+		icon = "res://assets/ui/icons/mod_icons/enh_dodge.png",
 		prototype = "危机感知训练", description = "闪避率提升",
 		rarity = "epic",
 		power_mult = 1.5, cost_research = 400, cost_install = 200,
@@ -209,7 +209,7 @@ const DATA: Dictionary = {
 	},
 	"enh_crit_dmg" = {
 		id = "enh_crit_dmg", name = "致命精通", name_en = "Crit Damage",
-		icon = "res://assets/ui/icons/mod_icons/mod_enhancement.png",
+		icon = "res://assets/ui/icons/mod_icons/enh_crit_dmg.png",
 		prototype = "致命打击精通", description = "暴击伤害加成提升。",
 		rarity = "epic",
 		power_mult = 1.5, cost_research = 400, cost_install = 200,
@@ -224,7 +224,7 @@ const DATA: Dictionary = {
 	# ─── v27 改造2.0 批：词条池补 3 条（暴击/闪避/回复）───
 	"enh_crit_up" = {
 		id = "enh_crit_up", name = "精准训练", name_en = "Crit Up",
-		icon = "res://assets/ui/icons/mod_icons/mod_enhancement.png",
+		icon = "res://assets/ui/icons/mod_icons/enh_crit_up.png",
 		prototype = "要害射击训练", description = "暴击率提升。",
 		rarity = "common",
 		power_mult = 0.9, cost_research = 70, cost_install = 35,
@@ -237,7 +237,7 @@ const DATA: Dictionary = {
 	},
 	"enh_dodge_up" = {
 		id = "enh_dodge_up", name = "回避训练", name_en = "Dodge Up",
-		icon = "res://assets/ui/icons/mod_icons/mod_enhancement.png",
+		icon = "res://assets/ui/icons/mod_icons/enh_dodge_up.png",
 		prototype = "掩体转移训练", description = "闪避率提升。",
 		rarity = "uncommon",
 		power_mult = 1.2, cost_research = 100, cost_install = 50,
@@ -250,7 +250,7 @@ const DATA: Dictionary = {
 	},
 	"enh_regen_up" = {
 		id = "enh_regen_up", name = "休整训练", name_en = "Regen Up",
-		icon = "res://assets/ui/icons/mod_icons/mod_enhancement.png",
+		icon = "res://assets/ui/icons/mod_icons/enh_regen_up.png",
 		prototype = "轮换休整制度", description = "生命回复提升。",
 		rarity = "uncommon",
 		power_mult = 1.2, cost_research = 100, cost_install = 50,

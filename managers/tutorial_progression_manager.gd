@@ -56,6 +56,9 @@ const STEP_ORDER: Array = [
 var current_step: TutorialStep = TutorialStep.NONE
 var completed_steps: Array = []
 var tutorial_data: Dictionary = {}
+## v38.3 教程节奏（用户"打开卡仓还没怎么看，就跳出准备战斗了"）：面板体验步挂起态——
+## 动作打开面板后非空；玩家关闭该面板（main._close_overlay 通知）才弹下一步。
+var pending_close_surface: String = ""
 
 signal tutorial_step_changed(new_step: TutorialStep)
 ## tutorial_completed 已迁移至 SignalBus: SignalBus.tutorial_completed(tutorial_id)
@@ -117,6 +120,33 @@ func notify_surface_opened(surface_key: String) -> void:
 	chain_paused = false
 	overlay_requested.emit()
 
+
+## ── v38.3 教程节奏：面板体验步（打开面板让玩家自由浏览，关掉才继续）──────────
+## 卡仓/装配这类"打开面板看内容"的步骤，原连讲在点按钮瞬间就弹下一步——玩家还没
+## 看清面板就被推着走。命中动作后挂起等待，main._close_overlay 关面板时放行。
+const CLOSE_WAIT_SURFACE_FOR_ACTION: Dictionary = {
+	"open_backpack": "backpack",
+}
+
+
+## 动作是否走"关闭面板再继续"节奏。命中=true 并挂起（overlay 自行收起，等关闭通知）。
+func begin_close_wait_for_action(action_target: String) -> bool:
+	var surface: String = String(CLOSE_WAIT_SURFACE_FOR_ACTION.get(action_target, ""))
+	if surface.is_empty():
+		return false
+	pending_close_surface = surface
+	return true
+
+
+## 面板关闭通知（main._close_overlay 对每次面板关闭调用；战斗中由调用方守卫跳过）
+func notify_surface_closed(surface_key: String) -> void:
+	if pending_close_surface.is_empty() or pending_close_surface != surface_key:
+		return
+	pending_close_surface = ""
+	if not should_show_tutorial():
+		return
+	overlay_requested.emit()
+
 ## 初始化教程数据（每步：标题/描述/要点/按钮文案/动作目标/高亮元素）
 func _initialize_tutorial_data() -> void:
 	tutorial_data = {
@@ -153,10 +183,12 @@ func _initialize_tutorial_data() -> void:
 			"highlight_elements": ["phase_instrument_button"]
 		},
 		TutorialStep.ENHANCEMENT: {
-			"title": "战斗卡整备",
-			"description": "刚才的战斗中，上阵的战斗卡已经获得了经验。战斗卡靠战斗经验自动升级（Lv1-30），Lv5/10/15/20/25/30 各解锁一个词条；相位师技能树用技能点解锁全局强化。",
-			"highlights": ["战斗经验→等级 Lv1-30（自动）", "关键等级解锁词条", "技能树：全局强化"],
-			"action_text": "打开整备舱",
+			# v37（用户拍板）：成长入口直进技能树——本步从"打开整备舱"改为技能树导览；
+			# 战斗卡自动升级的说明保留（战后结算与卡仓行内都有成长呈现，无需专开面板）。
+			"title": "相位师技能树",
+			"description": "刚才的战斗中，上阵的战斗卡已经获得了经验——战斗卡靠经验自动升级（Lv1-30），Lv5/10/15/20/25/30 各解锁一个词条，无需手动操作。\n相位师自己的成长在技能树：用技能点解锁全局强化，构建你的指挥风格。",
+			"highlights": ["战斗经验→等级 Lv1-30（自动）", "关键等级解锁词条节点", "技能树：技能点换全局强化"],
+			"action_text": "打开技能树",
 			"action_target": "open_enhancement",
 			"highlight_elements": []
 		},
@@ -177,16 +209,18 @@ func _initialize_tutorial_data() -> void:
 			"highlight_elements": []
 		},
 		TutorialStep.FIRST_BATTLE: {
+			# v37 实机验收（用户"开战后不知道相位仪/卡仓在哪"）：开战描述顺带指认
+			# 战斗 HUD 三块位置；进入战斗后 main 还会弹一次底部两栏的悬浮指认（9s 自散）。
 			"title": "首次战斗",
-			"description": "卡组已装配，出击后自动部署会自动把绿槽卡组摆上战场，单位自动攻击敌人。想手动摆位，点底部绿槽选单位再点战场格子即可。",
-			"highlights": ["自动部署默认开启，自动上阵+阵亡补位", "手动部署：点绿槽选单位→点格子", "保护相位场驱动器"],
+			"description": "卡组已装配，出击后自动部署会自动把绿槽卡组摆上战场，单位自动攻击敌人。想手动摆位，点底部绿槽选单位再点战场格子即可。\n战场界面：底部左侧是相位仪装配槽（绿槽），底部右侧「菜单」展开功能栏（卡仓/地图/设置/存档/挂机），顶栏可看战况、环境与倍速。",
+			"highlights": ["自动部署默认开启，自动上阵+阵亡补位", "手动部署：点绿槽选单位→点格子", "底部左=相位仪装配槽 / 底部右=功能栏", "保护相位场驱动器"],
 			"action_text": "开始首战",
 			"action_target": "start_first_battle",
 			"highlight_elements": ["battlefield"]
 		},
 		TutorialStep.TRUCK_BASE: {
 			"title": "回到移动基地 · 车厢指南",
-			"description": "首战打通了！战场之外的一切都在这辆装甲卡车里：剖面车厢每个发光工位都挂着常显标牌——卡牌墙=卡仓、工作台=改造舱、3D 打印机=制造舱、售货机=补给舱、地图墙=情报舱、发电机=燃料引擎、铺位=睡觉存档。接下来去「成长」面板看看首战经验。",
+			"description": "首战打通了！战场之外的一切都在这辆装甲卡车里：剖面车厢每个发光工位都挂着常显标牌——卡牌墙=卡仓、工作台=改造舱、3D 打印机=制造舱、售货机=补给舱、地图墙=情报舱、发电机=燃料引擎、铺位=睡觉存档。接下来去「技能树」看看相位师的成长。",
 			"highlights": ["外景看驻地 / 剖面干活，顶栏可切换", "铺位睡觉 = 存档 + 回充燃料 + 恢复精神", "顶栏「战区地图」= 行军换防与选关"],
 			"action_text": "收到",
 			"action_target": "next",
@@ -194,8 +228,8 @@ func _initialize_tutorial_data() -> void:
 		},
 		TutorialStep.EVOLUTION: {
 			"title": "兵种制造",
-			"description": "在制造舱用情报与资源直接生产卡牌：击败敌形积累情报，25% 解锁配方，品质随档位提升。入口在整备舱，移动基地的「3D 打印机」工位同款；工坊可降制造消耗。",
-			"highlights": ["整备舱 / 移动基地 3D 打印机", "情报解锁配方与品质", "资源制造，品质有下限"],
+			"description": "在制造舱用情报与资源直接生产卡牌：击败敌形积累情报，25% 解锁配方，品质随档位提升。入口在底栏「制造」键，移动基地的「3D 打印机」工位同款；工坊可降制造消耗。新档已附起始卡同族的情报，现在就能造。",
+			"highlights": ["底栏「制造」/ 移动基地 3D 打印机", "情报解锁配方与品质", "资源制造，品质有下限"],
 			"action_text": "打开制造舱",
 			"action_target": "open_evolution",
 			"highlight_elements": []
@@ -287,6 +321,7 @@ func is_past_first_battle() -> bool:
 func skip_tutorial() -> void:
 	current_step = TutorialStep.FREEDOM_MODE
 	chain_paused = false
+	pending_close_surface = ""
 	SignalBus.tutorial_completed.emit("")
 	# v26.6 批4b: 补反馈链（与正常完成路径一致）
 	SignalBus.show_toast.emit("🎓 教学完成，自由模式已解锁")
@@ -296,6 +331,7 @@ func reset_tutorial() -> void:
 	current_step = TutorialStep.NONE
 	completed_steps.clear()
 	chain_paused = false
+	pending_close_surface = ""
 
 ## 获取教程进度
 func get_tutorial_progress() -> Dictionary:
@@ -360,7 +396,9 @@ func save_state() -> Dictionary:
 		"version": 4,
 		"current_step": current_step,
 		"completed_steps": completed_steps,
-		"chain_paused": chain_paused
+		"chain_paused": chain_paused,
+		# v38.3: 面板体验步挂起态（玩家关着卡仓退出游戏，读档后仍在等待关闭放行）
+		"pending_close_surface": pending_close_surface,
 	}
 
 ## 加载状态（给SaveManager用）
@@ -394,6 +432,8 @@ func load_state(data: Dictionary) -> void:
 		current_step = saved_step as TutorialStep
 	completed_steps = data.get("completed_steps", [])
 	chain_paused = bool(data.get("chain_paused", false))
+	# v38.3: 面板体验步挂起态（旧档无此键 → 空串 = 无挂起，行为不变）
+	pending_close_surface = String(data.get("pending_close_surface", ""))
 
 ## 获取高亮元素列表
 func get_highlight_elements() -> Array:

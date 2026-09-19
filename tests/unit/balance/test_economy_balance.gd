@@ -173,20 +173,22 @@ func test_mod_sink_vs_income_sync() -> void:
 
 # ───────────────────────── E4：MOD 效果上限 ─────────────────────────
 
-func _scan_effect_caps(container, source: String, violations: Array) -> void:
+func _scan_effect_caps(container, source: String, violations: Array, rarity := "") -> void:
 	if container == null:
 		return
 	if container is Dictionary:
+		# v6.16：条目级稀有度上下文——pct 帽按 registry 分档表（传奇 0.8/神话 1.0，其余 0.6）
+		var scan_rarity := String(container.get("rarity", rarity))
 		for key in container.keys():
 			var val = container[key]
 			var key_str := str(key)
 			if val is Dictionary:
-				_scan_effect_caps(val, source + "." + key_str, violations)
+				_scan_effect_caps(val, source + "." + key_str, violations, scan_rarity)
 				continue
 			if val is Array:
 				for item in val:
 					if item is Dictionary:
-						_scan_effect_caps(item, source + "." + key_str, violations)
+						_scan_effect_caps(item, source + "." + key_str, violations, scan_rarity)
 				continue
 			if not (val is float or val is int):
 				continue
@@ -220,11 +222,12 @@ func _scan_effect_caps(container, source: String, violations: Array) -> void:
 						fam = "defense"
 					elif key_str.begins_with("max_hp"):
 						fam = "hp"
-				var cap: float = _uct_abs_cap(fam) if fam != "" else CAP_STAT
+				# v6.16：pct 帽按条目稀有度分档（legendary 0.8 / mythic 1.0 / 其余 0.6）
+				var cap: float = _uct_abs_cap(fam) if fam != "" else ModificationRegistry.get_stat_value_cap(scan_rarity)
 				if absf(v) > cap + 0.001:
 					violations.append("%s.%s = %.2f 超%s %.2f" % [
 						source, key_str, v,
-						"固定值上限（UCT %s 包络）" % fam if fam != "" else "属性类上限", cap])
+						"固定值上限（UCT %s 包络）" % fam if fam != "" else "属性类上限（稀有度 %s）" % (scan_rarity if scan_rarity != "" else "?"), cap])
 
 
 func test_mod_effect_caps() -> void:

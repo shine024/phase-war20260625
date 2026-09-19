@@ -336,7 +336,7 @@ const MASTER_NODES: Dictionary = {
 		"num": [
 			{
 				"id": "thunder_domination",
-				"name": "雷霆主宰",
+				"name": "无声之雷",
 				"effects": {
 					"atk_light": 0.15,
 					"atk_armor": 0.15,
@@ -428,7 +428,7 @@ const MASTER_NODES: Dictionary = {
 		"todo": [
 			{
 				"id": "electromagnetic_armor",
-				"name": "电磁装甲师",
+				"name": "吞雷装甲",
 				"kind": "todo",
 				"effect": "trait:armor_reflect"
 			}
@@ -440,13 +440,13 @@ const MASTER_NODES: Dictionary = {
 		"todo": [
 			{
 				"id": "chaos_flame_trait",
-				"name": "熵增炎魔",
+				"name": "减熵之焰",
 				"kind": "todo",
 				"effect": "trait:burn_energy_drain_mult"
 			},
 			{
 				"id": "entropy_flame",
-				"name": "熵增之火",
+				"name": "减熵之火",
 				"kind": "todo",
 				"effect": "fire_lifesteal_chance"
 			},
@@ -486,7 +486,7 @@ const MASTER_NODES: Dictionary = {
 		"num": [
 			{
 				"id": "ragnarok",
-				"name": "诸神黄昏",
+				"name": "断后之火",
 				"effects": {
 					"atk_light": 0.15,
 					"atk_armor": 0.15,
@@ -509,7 +509,7 @@ const MASTER_NODES: Dictionary = {
 		"todo": [
 			{
 				"id": "phoenix_rebirth_auto",
-				"name": "凤凰重生",
+				"name": "火种不灭",
 				"kind": "todo",
 				"effect": "phoenix_rebirth_auto"
 			}
@@ -562,7 +562,7 @@ const MASTER_NODES: Dictionary = {
 		"todo": [
 			{
 				"id": "void_lord",
-				"name": "虚空领主",
+				"name": "吞天",
 				"kind": "todo",
 				"effect": "void_mastery_ultimate"
 			},
@@ -580,7 +580,7 @@ const MASTER_NODES: Dictionary = {
 		"todo": [
 			{
 				"id": "em_war_god",
-				"name": "电磁战神",
+				"name": "装甲天线",
 				"kind": "todo",
 				"effect": "trait:deploy_shield"
 			},
@@ -598,7 +598,7 @@ const MASTER_NODES: Dictionary = {
 		"todo": [
 			{
 				"id": "chaos_inferno_trait",
-				"name": "混沌炎魔",
+				"name": "未晞之焰",
 				"kind": "todo",
 				"effect": "trait:dual_damage_chance"
 			},
@@ -723,7 +723,7 @@ const MASTER_NODES: Dictionary = {
 		"mech": [
 			{
 				"id": "massive_heal_aura",
-				"name": "神之光环",
+				"name": "淬火光环",
 				"kind": "aura_heal",
 				"effect": "massive_heal_aura",
 				"params": {
@@ -735,13 +735,13 @@ const MASTER_NODES: Dictionary = {
 		"todo": [
 			{
 				"id": "divine_forging",
-				"name": "神圣锻造",
+				"name": "锻炉之火",
 				"kind": "todo",
 				"effect": "trait:divine_transform"
 			},
 			{
 				"id": "cheat_death",
-				"name": "神之庇护",
+				"name": "铁砧庇护",
 				"kind": "todo",
 				"effect": "trait:cheat_death_chance"
 			}
@@ -751,7 +751,7 @@ const MASTER_NODES: Dictionary = {
 		"num": [
 			{
 				"id": "hell_queen",
-				"name": "炼狱女王",
+				"name": "恒温烈焰",
 				"effects": {
 					"atk_light": 0.15,
 					"atk_armor": 0.15,
@@ -785,7 +785,7 @@ const MASTER_NODES: Dictionary = {
 		"num": [
 			{
 				"id": "god_of_thunder",
-				"name": "雷霆之神",
+				"name": "引雷之躯",
 				"effects": {
 					"atk_light": 0.15,
 					"atk_armor": 0.15,
@@ -823,7 +823,7 @@ const MASTER_NODES: Dictionary = {
 		"todo": [
 			{
 				"id": "void_goddess_trait",
-				"name": "夜之女神",
+				"name": "点灯人",
 				"kind": "todo",
 				"effect": "trait:permanent_darkness,mass_convert_once"
 			},

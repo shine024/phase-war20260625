@@ -191,6 +191,36 @@ static func visual_id_for_archetype(archetype_id: String) -> String:
 	_ensure_unit_icon_map()
 	return String(_unit_icon_by_archetype.get(String(archetype_id).strip_edges(), ""))
 
+
+## archetype → combat_kind（0-4；manifest 未收录返回 -1）。
+## 供 CardFootAnchors 缩放模型按兵种查档位系数。先用图标映射做收录门
+## （防未收录 id 触发兜底警告）；行内 archetype_config.combat_kind 全段直通
+## （foe/fixed/pool/fort/xeno，v23.3 起统一表口径），缺字段再落 _get_foe_stats。
+static func combat_kind_for(archetype_id: String) -> int:
+	var key := String(archetype_id).strip_edges()
+	if key.is_empty():
+		return -1
+	if visual_id_for_archetype(key).is_empty() and platform_visual_id_for(key).is_empty():
+		return -1
+	for row in get_entries():
+		if String(row.get("archetype_id", "")) == key:
+			var cfg: Dictionary = row.get("archetype_config", {})
+			if not cfg.is_empty() and cfg.has("combat_kind"):
+				return int(cfg.get("combat_kind", -1))
+			break
+	return int(_get_foe_stats(key).get("kind", -1))
+
+
+## archetype → era（0-4；manifest 未收录返回 -1）。供 CardFootAnchors 缩放模型查时代档。
+static func era_for(archetype_id: String) -> int:
+	var key := String(archetype_id).strip_edges()
+	if key.is_empty():
+		return -1
+	for row in get_entries():
+		if String(row.get("archetype_id", "")) == key:
+			return int(row.get("era", -1))
+	return -1
+
 ## v8.0: 统一表条目（玩家口径）→ foe_stats 口径转换。
 ## 字段映射：base_hp→hp, range_value格→rng像素(×100), atk_l_speed次/秒→ivl秒(1/speed),
 ##           base_speed正值→spd正值(manifest 内部再转负), combat_kind→kind

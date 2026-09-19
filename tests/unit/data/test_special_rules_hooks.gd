@@ -8,7 +8,7 @@ const UnitStatsTable = preload("res://resources/unit_stats_table.gd")
 const DefaultCards = preload("res://data/default_cards.gd")
 
 const NEW_KEYS := ["time_limit_sec", "no_heal", "no_mods", "elite_wave_bonus",
-	"first_strike", "energy_starvation", "boss_enrage_half"]
+	"first_strike", "energy_starvation", "boss_enrage_half", "counter_bias_tags"]
 
 
 func test_skip_mods_produces_base_stats() -> void:
@@ -62,6 +62,8 @@ func test_summary_formatter_covers_all_new_keys() -> void:
 	var spawn_src: String = FileAccess.get_file_as_string("res://managers/battle/battle_spawn_system.gd")
 	assert_bool(spawn_src.contains("elite_wave_bonus")).is_true()
 	assert_bool(spawn_src.contains("_is_boss_unit")).is_true()
+	# v6.16 反制配波：spawn 侧消费点存在性
+	assert_bool(spawn_src.contains("_merged_wave_bias_tags")).is_true()
 	var enemy_src: String = FileAccess.get_file_as_string("res://scenes/units/enemy_unit.gd")
 	assert_bool(enemy_src.contains("first_strike")).is_true()
 	assert_bool(enemy_src.contains("_enrage_active")).is_true()
@@ -79,6 +81,18 @@ func test_level1_tutorial_stays_rule_free() -> void:
 	assert_int(rules.size()).is_equal(0)
 	var layouts = preload("res://data/level_battle_layouts.gd")
 	assert_bool(layouts.has_custom_layout(1)).is_false()
+
+
+func test_v616_counter_wave_mounting() -> void:
+	# v6.16 反制配波挂载抽检：L33 教学关装甲反制 + L48 空域 + L1 铁律不受影响
+	var li = preload("res://data/level_information.gd").get_shared()
+	var l33: Array = li.get_special_rules(33).get("counter_bias_tags", [])
+	assert_bool(l33.has("armored")).is_true()
+	var l48: Array = li.get_special_rules(48).get("counter_bias_tags", [])
+	assert_bool(l48.has("aircraft")).is_true()
+	assert_bool(li.get_special_rules(1).has("counter_bias_tags")).is_false()
+	# tag 词汇必须在本关时代池有匹配（题面必真；armored 在二战池存在）
+	assert_bool(l33.has("tank") or l33.has("armored")).is_true()
 
 
 func test_v2613_rule_mounting_and_merge() -> void:

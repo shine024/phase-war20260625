@@ -42,6 +42,10 @@ const _HITSTOP_SCALE: float = 0.1        # 顿帧期间时间流速
 const _HITSTOP_SEC: float = 0.05         # 顿帧时长（真实秒，ignore_time_scale）
 var _hitstop_active: bool = false
 
+# --- v6.15 打击感(P0) 重击微顿帧 ---
+const _BIGHIT_COOLDOWN_MS: int = 450     # 暴击连发冷却——机枪速射不把战斗顿成幻灯片
+var _bighit_last_ms: int = -1000000
+
 # --- 慢动作状态守卫 ---
 var _slowmo_active: bool = false
 
@@ -157,6 +161,27 @@ func _play_kill_hitstop() -> void:
 	_hitstop_active = true
 	Engine.time_scale = _HITSTOP_SCALE
 	# ignore_time_scale=true 保证 time_scale<1 时也能准时恢复
+	await get_tree().create_timer(_HITSTOP_SEC, true, false, true).timeout
+	_hitstop_active = false
+	if not _slowmo_active:
+		Engine.time_scale = _user_time_scale
+
+## v6.15 打击感(P0)：重击（暴击）微顿帧——击杀顿帧同款 0.05s@0.1 的时序重量给到
+## "大数字"命中（DR 对照：打击感=时间轴上的停顿，不只击杀有）。挂点=
+## CombatFeedback.show_damage 的 is_critical 路径。与击杀顿帧差异：450ms 冷却
+## （暴击/机枪速射连发不叠加成幻灯片）；守卫同门：motion_reduce / 慢动作 / 顿帧 /
+## 极速推演不叠加；恢复回玩家倍速。
+func play_big_hit_hitstop() -> void:
+	var now: int = Time.get_ticks_msec()
+	if now - _bighit_last_ms < _BIGHIT_COOLDOWN_MS:
+		return
+	if DT.is_motion_reduce() or _slowmo_active or _hitstop_active or BattleTimeState.ff_active:
+		return
+	if Engine.time_scale <= 0.0:
+		return
+	_bighit_last_ms = now
+	_hitstop_active = true
+	Engine.time_scale = _HITSTOP_SCALE
 	await get_tree().create_timer(_HITSTOP_SEC, true, false, true).timeout
 	_hitstop_active = false
 	if not _slowmo_active:

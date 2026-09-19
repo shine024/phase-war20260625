@@ -1180,6 +1180,12 @@ func equip_instrument(instrument_id: String) -> bool:
 	selected_instrument_id = instrument_id
 	_rebuild_slots()
 	_emit_slots_changed()
+	# v38：换装结果可见化——槽上卡已归还卡仓（玩家常误读为"卡丢了/卡变多"）；
+	# 槽数变化属仪器星级差异（3~9 绿槽），一并说明。
+	var cfg_new: Dictionary = _resolve_instrument_cfg(instrument_id)
+	var counts_new: Dictionary = cfg_new.get("slot_counts", {})
+	SignalBus.show_toast.emit("已装备相位仪（战斗卡槽 %d / 符文槽 %d），原槽上卡已放回卡仓"
+		% [int(counts_new.get("green", 0)), int(counts_new.get("rune", 0))])
 	# v7.x: 换相位仪改变第 5 层加成（pi_atk/pi_def/pi_hp + 星级系数），刷新缓存避免面板陈旧
 	refresh_player_master_eval()
 	return true

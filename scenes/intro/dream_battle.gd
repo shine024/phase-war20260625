@@ -209,16 +209,20 @@ func _build_embers() -> void:
 	_ui_layer.add_child(_offer_box)
 
 	_skip_btn = Button.new()
-	_skip_btn.text = "跳过序章 ▸"
-	_skip_btn.position = Vector2(1130, 14)
-	_skip_btn.size = Vector2(136, 38)
+	# v37：与 comic_intro 跳过键同口径收敛——ghost 小 pill、短文案、低对比常态
+	_skip_btn.text = "跳过 ›"
+	_skip_btn.tooltip_text = "点击或按 Esc 跳过序章"
+	_skip_btn.position = Vector2(1280 - 16 - 92, 14)
+	_skip_btn.size = Vector2(92, 26)
 	_skip_btn.focus_mode = Control.FOCUS_NONE
 	_skip_btn.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-	var styles: Dictionary = preload("res://scripts/ui/panel_styles.gd").make_button_styles(Color(0.45, 0.48, 0.55), "solid")
+	var styles: Dictionary = preload("res://scripts/ui/panel_styles.gd").make_button_styles(Color(0.45, 0.48, 0.55), "ghost")
 	for key in ["normal", "hover", "pressed", "disabled", "focus"]:
 		_skip_btn.add_theme_stylebox_override(key, styles[key])
-	_skip_btn.add_theme_color_override("font_color", DT.COLOR_TEXT_BRIGHT)
-	_skip_btn.add_theme_font_size_override("font_size", DT.FONT_SIZE_BODY)
+	_skip_btn.add_theme_color_override("font_color", Color(0.72, 0.75, 0.82, 0.62))
+	_skip_btn.add_theme_color_override("font_hover_color", Color.WHITE)
+	_skip_btn.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
+	_skip_btn.modulate.a = 0.8
 	_ui_layer.add_child(_skip_btn)
 
 	_curtain = ColorRect.new()

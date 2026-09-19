@@ -14,6 +14,7 @@ const CardGridUnitVisuals = preload("res://scripts/card_grid_unit_visuals.gd")
 const CardGridBattleLayout = preload("res://scripts/card_grid_battle_layout.gd")
 const CardGridBuffStrip = preload("res://scripts/card_grid_buff_strip.gd")
 const UnitSharedHelpers = preload("res://scripts/battle/unit_shared_helpers.gd")  # v26.6: 敌我共享逻辑单一真身
+const UnitModDecal = preload("res://scripts/battle/unit_mod_decal.gd")  # v37.3: 战法件贴花挂载
 const CombatFeedback = preload("res://scripts/combat_feedback.gd")
 const CardGridDamage = preload("res://scripts/card_grid_damage.gd")
 const CombatTargeting = preload("res://scripts/combat_targeting.gd")
@@ -198,6 +199,9 @@ func setup(_is_player: bool, p_wave: int, p_archetype_id: String = "basic_infant
 	_register_to_spatial_grid()
 	# 无有效 archetype 时不会进入 _apply_visual_from_archetype，须仍关掉场景里遗留的编辑器占位。
 	_suppress_stray_editor_visual_nodes()
+	# v37.3b 战法件贴花不在此处挂：_apply_archetype_stats 里 _apply_visual_from_archetype
+	# 塞进来的是 tscn scale=1.0 的裸卡图，此时挂贴花会按裸图内容宽计量出"半个战场"级尺寸；
+	# 改到 apply_card_grid_enemy_presentation 演出归一后再挂（helper 幂等）。
 
 func _suppress_stray_editor_visual_nodes() -> void:
 	# 关闭场景中遗留的编辑器占位节点（原 AnimatedSprite2D2 / PreviewBackground）。
@@ -272,6 +276,9 @@ func apply_card_grid_enemy_presentation() -> void:
 		aura_ring.visible = false
 	if rank_badge != null:
 		rank_badge.visible = false
+	# v37.3b 战法件贴花：演出归一后重挂——此时立绘 texture/scale 已定格，贴花按最终
+	# 可见内容宽计量（helper 自带镜像与幂等重建）；setup 期裸卡图态不再产生错误尺寸。
+	UnitModDecal.apply(self, UnitModDecal.mods_to_ids(get_meta("loadout_mods", [])), true)
 
 
 ## 格子战术卡面攻击姿态（v9.x 由 AttackPoseAnim 取代——按武器类型分化前冲/后坐/上扬 + 攻击帧）
@@ -821,8 +828,11 @@ func _ensure_enemy_weapon_slots(s: UnitStats) -> void:
 		#    磁轨狙击炮→SNIPER(6) 光束（此前统一落进光束关键词→SNIPER，RAIL/OMEGA 签名特效丢失）；
 		# ② 光束关键词 → SNIPER(6)（v9.x 扩展到曲射槽位，敌方曲射单位的光束武器与玩家一致）；
 		# ③ 曲射弹药形态（仅 INDIRECT 单位：机枪/近防炮点防直射、火箭低平弧、导弹中弧）。
-		if (w.weapon_type == GC2.WeaponType.DIRECT or w.weapon_type == GC2.WeaponType.INDIRECT) \
-				and not str(s.weapon_label).is_empty():
+		# v38.3: 覆盖门放宽到全部槽位——原门只放行 wt∈{0,1}，对空槽(MISSILE 9)/空射槽(AERIAL 2)
+		# 被跳过，敌方"激光武器/粒子炮/磁轨狙击炮/棱光束"对空时发射导弹弹道，而玩家侧同名单
+		# 槽位是无条件覆盖（fut_aa_hover[点防御激光]→6）——敌我不对称。解析器自守（无匹配 -1
+		# 不改值），非光束名的 9/2 槽保持原弹道，放宽门零副作用。
+		if not str(s.weapon_label).is_empty():
 			var _traj: int = CardResource.trajectory_override_for_weapon_name(str(s.weapon_label), s.weapon_type)
 			if _traj >= 0:
 				w.weapon_type = _traj
@@ -1784,6 +1794,8 @@ func take_damage(amount: float, attacker: Variant = null) -> void:
 		final_loss -= absorbed
 		if absorbed > 0.0 and final_loss <= 0.0:
 			_update_hp_bar()  # 盾全吸收也刷一次条（盾环显示走 _update_psi_shield_ring）
+		if absorbed > 0.0 and _psi_shield <= 0.0:
+			CombatFeedback.show_callout_at(self, "护盾破碎", "callout_shield")  # v6.15 P1 机制弹出层
 	hp -= final_loss
 	# v8 批次2: 反伤词缀（armor_reflect）——受到伤害时反弹给攻击者
 	# 标记 _vfx_is_reflect 防止递归（反伤伤害不再触发对方的反伤）

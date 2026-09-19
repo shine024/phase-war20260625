@@ -1,6 +1,7 @@
-[gd_scene load_steps=15 format=3 uid="uid://xfff2bifmi26"]
+[gd_scene load_steps=16 format=3 uid="uid://xfff2bifmi26"]
 
 [ext_resource type="Script" uid="uid://gbaqq0364jg5b" path="res://scenes/ui/modification_panel.gd" id="1_script"]
+[ext_resource type="Script" path="res://scripts/ui/blueprint_grid.gd" id="2_bpgrid"]
 [ext_resource type="Texture2D" path="res://assets/ui/icons/icon_modification.svg" id="2_title_icon"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_1"]
@@ -143,6 +144,11 @@ anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 theme_override_styles/panel = SubResource("StyleBoxFlat_1")
+[node name="BlueprintGrid" type="Control" parent="BgPanel"]
+layout_mode = 2
+mouse_filter = 2
+script = ExtResource("2_bpgrid")
+
 [node name="VBoxContainer" type="VBoxContainer" parent="."]
 layout_mode = 1
 anchors_preset = 15
@@ -182,7 +188,7 @@ theme_override_font_sizes/font_size = 20
 theme_override_colors/font_color = Color(0.95, 0.96, 0.98, 1)
 [node name="TitleSub" type="Label" parent="VBoxContainer/TitleRow/TitleHBox"]
 layout_mode = 2
-text = ""
+text = "MODULAR REFIT"
 theme_override_font_sizes/font_size = 12
 theme_override_colors/font_color = Color(0.533, 0.6, 0.678, 0.7)
 [node name="Spacer" type="Control" parent="VBoxContainer/TitleRow/TitleHBox"]
