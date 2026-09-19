@@ -314,8 +314,13 @@ func _on_card_swapped_fallback(_slot_index: int, old_card: CardResource, new_car
 			enqueue_backpack_card_id(cid)
 
 ## 背包懒加载兜底：在未实例化背包面板时，也可先把新增卡加入 pending 队列。
+## v38（用户反馈"换相位仪 3 卡变 6 卡"复发）：入队去重——互斥不变式下（一张卡
+## 要么在相位仪槽位、要么在背包）同一 instance_id 二次入队必为重复记账，会在
+## load_pending_cards 差值兑现时物化成重复卡。历史 v7.x 读档注入 bug 同族，此处收口。
 func enqueue_backpack_card_id(card_id: String) -> void:
 	if card_id.is_empty():
+		return
+	if _pending_backpack_ids.has(card_id) or _last_known_extra_ids.has(card_id):
 		return
 	_pending_backpack_ids.append(card_id)
 	_last_known_extra_ids.append(card_id)
@@ -918,6 +923,23 @@ func _enqueue_starter_backpack_cards() -> void:
 	if pim_starter != null and pim_starter.has_method("equip_starter_card_for_new_game"):
 		for cid in starter_cards:
 			pim_starter.equip_starter_card_for_new_game(cid)
+	# v37 节奏轮（用户拍板）：新档赠起始三卡的敌形情报地板（抬到制造配方门 25%）——
+	# 制造中心已提前到通关第 1 关解锁，首战打完即可立刻制造起始卡同族补战力；
+	# 直入卡（无敌形原型）天然免情报，空列表自然跳过。制造管理器不可达时静默跳过
+	#（宁缺不挡开档）。get_archetypes_of 记在原型域（foe_ww1_*），与情报手册同键。
+	var _ml := get_node_or_null("/root/ManagerLazyLoader")
+	if _ml != null and _ml.has_method("ensure_loaded"):
+		_ml.ensure_loaded("manufacture")
+	var manufacture: Node = null
+	if _ml != null and _ml.has_method("get_manager"):
+		manufacture = _ml.get_manager("manufacture")
+	if manufacture != null and manufacture.has_method("get_archetypes_of"):
+		var im := get_node_or_null("/root/IntelManual")
+		if im != null and im.has_method("grant_intel_floor"):
+			var gate: float = float(load("res://data/manufacture_pools.gd").GATE_RECIPE)
+			for cid in starter_cards:
+				for arch in manufacture.get_archetypes_of(cid):
+					im.grant_intel_floor(String(arch), gate)
 	# v21.x（FTUE 审计 S4 / P0-1 放行，2026-08-27）：起步量恢复正式值（原测试模式各 10 万已移除），
 	# 测试用 +100 相位师技能点发放同步移除（新档回 0 基线）。
 	# 单次强化约 ~100-500 纳米，起步量让玩家初期体验几张卡强化、靠战斗积累。

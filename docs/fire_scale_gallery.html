@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<title>Phase War · 全览手调（大小 × 开火点）</title>
+<script src="fire_scale_data.js"></script>
+<style>
+  body { background:#0e1117; color:#e2e8f0; font-family:Consolas,'Microsoft YaHei',sans-serif; font-size:13px; margin:0; display:flex; flex-direction:column; height:100vh; overflow:hidden; }
+  h1 { font-size:15px; margin:0; padding:8px 14px; color:#58a6ff; }
+  #topbar { display:flex; gap:8px; align-items:center; padding:5px 14px; border-bottom:1px solid #21262d; flex-wrap:wrap; }
+  #topbar select, #topbar input, #topbar button { background:#161b26; color:#e2e8f0; border:1px solid #2a2f3a; border-radius:5px; padding:3px 8px; font:inherit; }
+  #topbar button:hover { border-color:#58a6ff; }
+  #topbar button.primary { background:#1f4fd8; border-color:#1f4fd8; }
+  .stat { color:#8b949e; }
+  #main { flex:1; display:flex; min-height:0; }
+  #cvwrap { flex:1; overflow:auto; background:#0b0e13; position:relative; }
+  #cv { display:block; cursor:crosshair; }
+  #side { width:270px; border-left:1px solid #21262d; padding:10px 12px; overflow-y:auto; }
+  #side h3 { margin:0 0 6px; font-size:14px; color:#58a6ff; }
+  .fld { display:flex; align-items:center; gap:6px; margin:4px 0; }
+  .fld label { width:92px; color:#8b949e; }
+  .fld input { width:88px; background:#0d1117; color:#e2e8f0; border:1px solid #2a2f3a; border-radius:4px; padding:3px 6px; font:inherit; }
+  .kv { color:#8b949e; margin:3px 0; }
+  .kv b { color:#e2e8f0; }
+  .hint { color:#8b949e; font-size:11px; line-height:1.7; margin-top:8px; }
+  #status { padding:3px 14px; border-top:1px solid #21262d; color:#8b949e; font-size:11px; white-space:nowrap; overflow:hidden; }
+  #exportbox { width:100%; height:130px; background:#0d1117; color:#9dcbff; border:1px solid #2a2f3a; border-radius:5px; font:11px Consolas,monospace; margin-top:6px; }
+  button { cursor:pointer; }
+</style>
+</head>
+<body>
+<h1>Phase War · 全览手调 <span class="stat" id="verinfo"></span></h1>
+<div id="topbar">
+  <select id="fSide"><option value="">全部侧</option><option value="P">我方</option><option value="E">敌方</option></select>
+  <select id="fEra"><option value="">全部时代</option><option value="0">一战</option><option value="1">二战</option><option value="2">冷战</option><option value="3">现代</option><option value="4">近未来</option></select>
+  <select id="fKind"><option value="">全部兵种</option><option value="0">轻装</option><option value="1">装甲</option><option value="2">支援</option><option value="3">空中</option><option value="4">堡垒</option></select>
+  <input id="fSearch" placeholder="搜索 id…" style="width:120px">
+  <label style="display:flex;align-items:center;gap:4px;color:#8b949e"><input type="checkbox" id="fDirty">只看已改</label>
+  <select id="zoomSel"><option value="0.75">0.75×</option><option value="1" selected>1×</option><option value="1.5">1.5×</option><option value="2">2×</option></select>
+  <span class="stat" id="count"></span>
+  <span style="flex:1"></span>
+  <button id="btnResetAll">重置全部修改</button>
+  <button class="primary" id="btnExport">导出全部修改 (.gd)</button>
+  <button id="btnJson">下载 JSON</button>
+</div>
+<div id="main">
+  <div id="cvwrap"><canvas id="cv"></canvas></div>
+  <div id="side">
+    <h3 id="sName">未选中</h3>
+    <div class="kv" id="sMeta">点击任意单位选中；拖红点=开火点，横向拖单位本体=拉大小，滚轮=微调。</div>
+    <div class="fld"><label>fireX (0~1)</label><input id="inFx" type="number" step="0.001" min="0" max="1"></div>
+    <div class="fld"><label>fireY% (0~100)</label><input id="inFy" type="number" step="0.1" min="0" max="100"></div>
+    <div class="fld"><label>缩放 override</label><input id="inOv" type="number" step="0.05" min="0.3" max="3"></div>
+    <div class="kv">档位 <b id="sF"></b> · 内容屏宽 <b id="sW"></b>px · 出膛 <b id="sOff"></b></div>
+    <div class="fld"><button id="btnResetOne">重置本单元</button></div>
+    <div class="hint">红点=开火点（纹理空间，fireY 从顶量，战场端自动扣 ff）。<br>
+    大小 = 内容宽归一 × 兵种×时代档位 × override。绿横线=该单位内容屏宽。<br>
+    <b style="color:#9dcbff">选中单位后 ↑/↓ 改大小</b>（按住 Shift=微调 0.01）；修改自动保存到浏览器本地，刷新不丢。<br>
+    全部改完后点「导出全部修改」，把文本贴回对应 .gd 表：
+    我方行 → data/player_muzzle_anchors.gd；敌方行 → data/muzzle_anchors.gd；override → data/card_foot_anchors.gd 的 VISUAL_SCALE_OVERRIDE。</div>
+    <textarea id="exportbox" readonly style="display:none"></textarea>
+  </div>
+</div>
+<div id="status"></div>
+<script>
+"use strict";
+const D = window.PW_DATA;
+const ERA_NAMES = ["一战","二战","冷战","现代","近未来"];
+const KIND_NAMES = ["轻装","装甲","支援","空中","堡垒"];
+const SLOT_W = 150, MARGIN = 24, ROW_H = 232, PER_ROW = 10, GROUND_IN_ROW = 192;
+const U = D.units.map(u => Object.assign({ fx0: u.fx, fy0: u.fy, ov: 1.0, ov0: 1.0 }, u));
+const byId = new Map(U.map(u => [u.side + "|" + u.id, u]));
+let zoom = 1.0, filtered = [], layout = new Map(), sel = null, hover = null;
+let drag = null, hoverU = null;
+const imgCache = new Map(), imgDone = new Set();
+let redrawQueued = false;
+
+function factorOf(u) {
+  const row = D.kind_era[String(u.kind)] || D.kind_era["0"];
+  const era = (u.era >= 0 && u.era <= 4) ? u.era : 2;
+  return row ? row[era] : 1.0;
+}
+function contentW(u, ov) { return D.base_w * factorOf(u) * ov; }
+function isFireDirty(u) { return u.fx !== null && (Math.abs(u.fx - u.fx0) > 1e-4 || Math.abs(u.fy - u.fy0) > 1e-3); }
+function isScaleDirty(u) { return Math.abs(u.ov - 1.0) > 1e-3; }
+
+function iconImg(u, cb) {
+  if (imgCache.has(u.icon)) { cb(imgCache.get(u.icon)); return; }
+  const im = new Image();
+  im.onload = () => {
+    imgCache.set(u.icon, im);
+    if (!redrawQueued) { redrawQueued = true; requestAnimationFrame(() => { redrawQueued = false; draw(); }); }
+    cb(im);
+  };
+  im.onerror = () => { imgCache.set(u.icon, null); cb(null); };
+  im.src = u.icon;
+}
+
+// ── 布局
+function applyFilter() {
+  const side = fSide.value, era = fEra.value, kind = fKind.value, q = fSearch.value.trim().toLowerCase(), only = fDirty.checked;
+  filtered = U.filter(u => {
+    if (side && u.side !== side) return false;
+    if (era !== "" && String(u.era) !== era) return false;
+    if (kind !== "" && String(u.kind) !== kind) return false;
+    if (q && !u.id.toLowerCase().includes(q)) return false;
+    if (only && !isFireDirty(u) && !isScaleDirty(u)) return false;
+    return true;
+  });
+  layout = new Map();
+  filtered.forEach((u, i) => {
+    const row = Math.floor(i / PER_ROW), col = i % PER_ROW;
+    layout.set(u, {
+      row, col,
+      cx: MARGIN + col * SLOT_W + SLOT_W / 2,
+      ground: row * ROW_H + GROUND_IN_ROW,
+    });
+  });
+  document.getElementById("count").textContent = `显示 ${filtered.length} / ${U.length} · 改开火 ${U.filter(isFireDirty).length} · 改缩放 ${U.filter(isScaleDirty).length}`;
+}
+
+function worldSize() {
+  const rows = Math.max(1, Math.ceil(filtered.length / PER_ROW));
+  return { w: MARGIN * 2 + PER_ROW * SLOT_W, h: rows * ROW_H + 40, rows };
+}
+
+function unitGeom(u, im) {
+  const L = layout.get(u);
+  const tw = im ? im.naturalWidth : 512, th = im ? im.naturalHeight : 512;
+  const sf = D.base_w / (tw * Math.max(u.wf, 0.01)) * factorOf(u) * u.ov;
+  const w = tw * sf, h = th * sf;
+  return { L, tw, th, sf, w, h };
+}
+
+// ── 绘制
+const cv = document.getElementById("cv");
+function draw() {
+  const ws = worldSize();
+  cv.width = Math.round(ws.w * zoom);
+  cv.height = Math.round(ws.h * zoom);
+  const c = cv.getContext("2d");
+  c.setTransform(zoom, 0, 0, zoom, 0, 0);
+  c.fillStyle = "#0b0e13";
+  c.fillRect(0, 0, ws.w, ws.h);
+  // 行头 + 地面线
+  c.font = "12px Consolas";
+  for (let r = 0; r < ws.rows; r++) {
+    const gy = r * ROW_H + GROUND_IN_ROW;
+    const sideLabel = (r * PER_ROW) < 131 ? "" : "";
+    c.fillStyle = "rgba(255,255,255,.35)";
+    c.fillText(`#${r + 1}`, 4, r * ROW_H + 16);
+    c.strokeStyle = "#000"; c.lineWidth = 2;
+    c.beginPath(); c.moveTo(4, gy); c.lineTo(ws.w - 4, gy); c.stroke();
+    c.lineWidth = 1;
+  }
+  // 单位
+  for (const u of filtered) {
+    const geom = unitGeom(u, imgCache.get(u.icon));
+    const { L, tw, th, sf, w, h } = geom;
+    const gY = L.ground;
+    const im = imgCache.get(u.icon);
+    const x0 = L.cx - w / 2, y0 = gY - h + u.ff * h;
+    if (im) {
+      c.globalAlpha = 0.94;
+      c.drawImage(im, x0, y0, w, h);
+      c.globalAlpha = 1;
+    } else {
+      iconImg(u, () => {});
+      c.strokeStyle = "rgba(255,255,255,.12)";
+      c.strokeRect(L.cx - contentW(u, 1) / 2, gY - 60, contentW(u, 1), 60);
+    }
+    // 内容宽标尺（绿）
+    const cw = contentW(u, u.ov);
+    c.strokeStyle = isScaleDirty(u) ? "#ffd24d" : "#3fda6f";
+    c.beginPath(); c.moveTo(L.cx - cw / 2, gY + 6); c.lineTo(L.cx + cw / 2, gY + 6); c.stroke();
+    // 开火点（红十字）
+    if (u.fx !== null) {
+      const offx = (u.fx - 0.5) * tw * sf;
+      const offy = -(1.0 - u.ff - u.fy / 100.0) * th * sf;
+      const fx0 = L.cx + offx, fy0 = gY + offy;
+      const hot = (sel === u || hoverU === u);
+      c.strokeStyle = "#ff4d4d"; c.lineWidth = hot ? 3 : 2;
+      c.beginPath(); c.moveTo(fx0 - 6, fy0); c.lineTo(fx0 + 6, fy0); c.moveTo(fx0, fy0 - 6); c.lineTo(fx0, fy0 + 6); c.stroke();
+      c.lineWidth = 1;
+    } else {
+      c.fillStyle = "#e0b89d";
+      c.fillText("无锚", L.cx - 12, gY - 4);
+    }
+    // 选中框
+    if (sel === u) {
+      c.strokeStyle = "#58a6ff";
+      c.strokeRect(L.cx - cw / 2 - 6, gY - Math.max(h, 40) - 8, cw + 12, Math.max(h, 40) + 14);
+    }
+    // 标签
+    c.fillStyle = sel === u ? "#58a6ff" : (isFireDirty(u) || isScaleDirty(u)) ? "#e0d08a" : "rgba(226,232,240,.55)";
+    c.fillText(u.id.length > 17 ? u.id.slice(0, 17) : u.id, L.cx - SLOT_W / 2 + 4, gY + 22);
+    if (Math.abs(u.ov - 1) > 1e-3) {
+      c.fillStyle = "#9dcbff";
+      c.fillText("×" + u.ov.toFixed(2), L.cx + cw / 2 - 24, gY + 34);
+    }
+  }
+}
+
+// ── 交互
+function worldPos(e) {
+  const r = cv.getBoundingClientRect();
+  return { x: (e.clientX - r.left) / zoom, y: (e.clientY - r.top) / zoom };
+}
+function hitTest(wx, wy) {
+  let body = null, cross = null;
+  for (const u of filtered) {
+    const L = layout.get(u);
+    if (!L) continue;
+    const im = imgCache.get(u.icon);
+    const g = unitGeom(u, im);
+    const gY = L.ground;
+    if (u.fx !== null) {
+      const offx = (u.fx - 0.5) * g.tw * g.sf;
+      const offy = -(1.0 - u.ff - u.fy / 100.0) * g.th * g.sf;
+      const dx = wx - (L.cx + offx), dy = wy - (gY + offy);
+      if (dx * dx + dy * dy <= 100) cross = u;
+    }
+    const cw = contentW(u, u.ov);
+    if (Math.abs(wx - L.cx) <= Math.max(cw / 2, 24) && wy >= gY - Math.max(g.h, 46) - 6 && wy <= gY + 12) body = u;
+  }
+  return { body, cross };
+}
+cv.addEventListener("pointerdown", e => {
+  const p = worldPos(e);
+  const { body, cross } = hitTest(p.x, p.y);
+  const u = cross || body;
+  if (!u) { sel = null; renderSide(); draw(); return; }
+  sel = u; renderSide(); draw();
+  drag = cross ? { u, mode: "fire" } : { u, mode: "size", wx0: p.x, ov0: u.ov };
+  try { cv.setPointerCapture(e.pointerId); } catch (_) {}
+});
+cv.addEventListener("pointermove", e => {
+  const p = worldPos(e);
+  if (drag) {
+    const u = drag.u;
+    if (drag.mode === "fire") {
+      const g = unitGeom(u, imgCache.get(u.icon));
+      const L = layout.get(u);
+      const x0 = L.cx - g.w / 2, y0 = L.ground - g.h + u.ff * g.h;
+      u.fx = Math.min(1, Math.max(0, (p.x - x0) / g.w));
+      u.fy = Math.min(100, Math.max(0, (p.y - y0) / g.h * 100));
+      renderSide(); draw();
+    } else {
+      u.ov = Math.min(3, Math.max(0.3, drag.ov0 + (p.x - drag.wx0) / 160));
+      renderSide(); draw();
+    }
+    return;
+  }
+  const { body } = hitTest(p.x, p.y);
+  hoverU = body;
+  cv.style.cursor = body ? "grab" : "default";
+  if (body) {
+    const off = fireOffset(body);
+    status.textContent = `${body.side === "P" ? "我方" : "敌方"} ${body.id} · 内容宽 ${contentW(body, body.ov).toFixed(0)}px · 出膛 (${off.x.toFixed(0)}, ${off.y.toFixed(0)})${body.fx === null ? " · 无锚" : ""} · 拖红点调开火，横拖本体调大小，滚轮微调`;
+    if (hoverU !== sel) draw();
+  } else if (status.textContent) { status.textContent = ""; draw(); }
+});
+cv.addEventListener("pointerup", e => { drag = null; });
+cv.addEventListener("wheel", e => {
+  const p = worldPos(e);
+  const { body } = hitTest(p.x, p.y);
+  if (!body) return;
+  e.preventDefault();
+  body.ov = Math.min(3, Math.max(0.3, body.ov + (e.deltaY < 0 ? 0.05 : -0.05)));
+  renderSide(); draw();
+}, { passive: false });
+
+function fireOffset(u) {
+  const im = imgCache.get(u.icon);
+  const g = unitGeom(u, im);
+  return { x: (u.fx !== null ? (u.fx - 0.5) * g.tw * g.sf : 0), y: (u.fx !== null ? -(1.0 - u.ff - u.fy / 100.0) * g.th * g.sf : 0) };
+}
+
+// ── 侧栏
+const status = document.getElementById("status");
+// ── 本地自动保存（刷新/关页不丢；打开自动恢复）
+const LS_KEY = "pw_fire_scale_edits_v1";
+let saveTimer = null;
+function saveEditsNow() {
+  const edits = {};
+  for (const u of U) {
+    if (isFireDirty(u) || isScaleDirty(u))
+      edits[u.side + "|" + u.id] = { fx: +u.fx.toFixed(4), fy: +u.fy.toFixed(2), ov: +u.ov.toFixed(3) };
+  }
+  try { localStorage.setItem(LS_KEY, JSON.stringify({ ver: D.ver, edits })); } catch (e) {}
+  status.textContent = "✓ 已自动保存本地（" + Object.keys(edits).length + " 项修改）" + new Date().toLocaleTimeString();
+}
+function scheduleSave() { clearTimeout(saveTimer); saveTimer = setTimeout(saveEditsNow, 300); }
+function loadEditsLocal() {
+  try {
+    const raw = localStorage.getItem(LS_KEY);
+    if (!raw) return 0;
+    const data = JSON.parse(raw);
+    let n = 0;
+    for (const [k, e] of Object.entries(data.edits || {})) {
+      const u = byId.get(k);
+      if (!u) continue;
+      if (typeof e.fx === "number") u.fx = Math.min(1, Math.max(0, e.fx));
+      if (typeof e.fy === "number") u.fy = Math.min(100, Math.max(0, e.fy));
+      if (typeof e.ov === "number") u.ov = Math.min(3, Math.max(0.3, e.ov));
+      n++;
+    }
+    return n;
+  } catch (e) { return 0; }
+}
+// 键盘：选中单位后 ↑/↓ 改大小（Shift=微调）
+window.addEventListener("keydown", e => {
+  if (!sel) return;
+  const tag = (document.activeElement || {}).tagName;
+  if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
+  if (e.key === "ArrowUp" || e.key === "ArrowDown") {
+    e.preventDefault();
+    const step = e.shiftKey ? 0.01 : 0.05;
+    sel.ov = Math.min(3, Math.max(0.3, sel.ov + (e.key === "ArrowUp" ? step : -step)));
+    scheduleSave();
+    renderSide(); draw();
+  }
+});
+function renderSide() {
+  if (!sel) { sName.textContent = "未选中"; return; }
+  sName.textContent = (sel.side === "P" ? "我方 · " : "敌方 · ") + sel.id;
+  const eraN = (sel.era >= 0 && sel.era <= 4) ? ERA_NAMES[sel.era] : "?";
+  const kindN = (sel.kind >= 0 && sel.kind <= 4) ? KIND_NAMES[sel.kind] : "?";
+  sMeta.textContent = `${eraN} · ${kindN} · 表键直查可用`;
+  inFx.value = sel.fx !== null ? sel.fx.toFixed(3) : "";
+  inFy.value = sel.fy !== null ? sel.fy.toFixed(1) : "";
+  inOv.value = sel.ov.toFixed(2);
+  sF.textContent = factorOf(sel).toFixed(2);
+  sW.textContent = contentW(sel, sel.ov).toFixed(0);
+  const off = fireOffset(sel);
+  sOff.textContent = `(${off.x.toFixed(1)}, ${off.y.toFixed(1)})`;
+  scheduleSave();
+}
+[inFx, inFy, inOv].forEach(inp => inp.addEventListener("input", () => {
+  if (!sel) return;
+  if (inp === inFx) { const v = parseFloat(inFx.value); if (!isNaN(v)) sel.fx = Math.min(1, Math.max(0, v)); }
+  if (inp === inFy) { const v = parseFloat(inFy.value); if (!isNaN(v)) sel.fy = Math.min(100, Math.max(0, v)); }
+  if (inp === inOv) { const v = parseFloat(inOv.value); if (!isNaN(v)) sel.ov = Math.min(3, Math.max(0.3, v)); }
+  draw();
+  document.getElementById("count").textContent = `显示 ${filtered.length} / ${U.length} · 改开火 ${U.filter(isFireDirty).length} · 改缩放 ${U.filter(isScaleDirty).length}`;
+}));
+document.getElementById("btnResetOne").onclick = () => { if (!sel) return; sel.fx = sel.fx0; sel.fy = sel.fy0; sel.ov = 1.0; renderSide(); draw(); };
+document.getElementById("btnResetAll").onclick = () => { if (!confirm("重置全部未导出的修改（含本地保存）？")) return; U.forEach(u => { u.fx = u.fx0; u.fy = u.fy0; u.ov = 1.0; }); try { localStorage.removeItem(LS_KEY); } catch (e) {} renderSide(); draw(); };
+
+// ── 导出
+function gdLines() {
+  const fire = [], ov = [];
+  for (const u of U) {
+    if (isFireDirty(u)) {
+      const fx = u.fx.toFixed(4).replace(/0+$/, "").replace(/\.$/, "");
+      const fy = u.fy.toFixed(2).replace(/0+$/, "").replace(/\.$/, "");
+      if (u.side === "P")
+        fire.push(`\t"${u.id}": {"fireX": ${fx}, "fireY_pct": ${fy}, "ff": ${u.ff}, "hf": ${u.hf}},`);
+      else
+        fire.push(`\t"${u.id}": {"fireX": ${fx}, "fireY_pct": ${fy}},`);
+    }
+    if (isScaleDirty(u)) ov.push(`\t"${u.id}": ${u.ov.toFixed(2)},`);
+  }
+  let out = "";
+  if (fire.length) out += `// ── 开火点（我方行 → data/player_muzzle_anchors.gd 整行替换；敌方行 → data/muzzle_anchors.gd，放 MUZZLE 字典内）\n` + fire.join("\n") + "\n";
+  if (ov.length) out += `\n// ── 缩放 override（→ data/card_foot_anchors.gd 的 VISUAL_SCALE_OVERRIDE）\n` + ov.join("\n") + "\n";
+  if (!out) out = "（无修改）";
+  return out;
+}
+document.getElementById("btnExport").onclick = () => {
+  const t = document.getElementById("exportbox");
+  t.style.display = "block";
+  t.value = gdLines();
+  t.select();
+  try { navigator.clipboard.writeText(t.value); } catch (e) { document.execCommand("copy"); }
+};
+document.getElementById("btnJson").onclick = () => {
+  const dirty = U.filter(u => isFireDirty(u) || isScaleDirty(u)).map(u => ({
+    id: u.id, side: u.side, fireX: u.fx, fireY_pct: u.fy, scale_override: +u.ov.toFixed(3),
+  }));
+  const blob = new Blob([JSON.stringify({ ver: D.ver, exported: new Date().toISOString(), units: dirty }, null, 2)], { type: "application/json" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob); a.download = "fire_scale_edits.json"; a.click();
+};
+
+// ── init
+[fSide, fEra, fKind, fDirty].forEach(el => el.onchange = () => { applyFilter(); sel = null; renderSide(); draw(); });
+fSearch.oninput = () => { applyFilter(); sel = null; renderSide(); draw(); };
+zoomSel.onchange = () => { zoom = parseFloat(zoomSel.value); draw(); };
+document.getElementById("verinfo").textContent = `数据版本 ${D.ver} · ${D.units.length} 单位 · 基宽 ${D.base_w}px`;
+const restored = loadEditsLocal();
+applyFilter();
+renderSide();
+draw();
+if (restored > 0) status.textContent = "✓ 已从浏览器本地恢复 " + restored + " 项上次修改（导出后点「重置全部修改」可清空）";
+</script>
+</body>
+</html>

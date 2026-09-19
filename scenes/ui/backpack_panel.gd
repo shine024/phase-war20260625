@@ -2607,6 +2607,13 @@ func _on_close() -> void:
 func on_overlay_opened() -> void:
 	if _presenter and _presenter.has_method("on_overlay_opened"):
 		_presenter.on_overlay_opened()
+	# v38（用户反馈"进卡仓各标签页没指导"）：首开一次性指南——讲清三件事：
+	# 相位仪是什么 / 战斗卡怎么装 / 符文怎么装（教程步之外的常驻知识点，show_once 随档持久化）
+	var FUP = load("res://scenes/ui/feature_unlock_popup.gd")
+	if FUP != null:
+		FUP.show_once("backpack_guide",
+			"卡仓指南",
+			"• 相位仪：你的装备核心，底部的装配槽。绿槽装战斗卡，紫槽装符文。\n• 装卡：把战斗卡从卡仓列表拖到底部绿槽（战斗中只能部署已装配的卡）。\n• 符文：切到「符文」标签页，点击符文即可装进紫槽，特定组合激活符文之语。")
 
 func _refresh_aux_sections_after_open() -> void:
 	if not is_visible_in_tree():

@@ -119,7 +119,8 @@ const IMPACT_SHAKE_BY_KIND: Dictionary = {
 const PROJ_TEX_SCALE: Dictionary = {
 	# New enum: 0=DIRECT, 1=INDIRECT, 2=AERIAL
 	0: 0.27,
-	1: 0.70,  # v17m: 曲射炮弹可见性（AI 批'弹道不可见'）。R30 实验放大至 0.95 损害轨迹评分，回退
+	1: 0.45,  # v38（用户拍板"炮弹比兵大"）：0.70→0.45。实测弹体 78.5px > 单位基准 58.9px；
+	         # 缩后基准 ~50px（榴弹拍 ~50px），明确小于一个兵。可见性由拖尾/命中爆炸承担。
 	2: 0.60,  # R30 实验放大至 0.85 损害轨迹评分，回退
 	# v9.2: 拉大轻武器与终极武器的弹体尺寸差异，让"小兵 vs 终极单位"一眼可辨。
 	#   轻武器（SMG/PISTOL）：保持小但可见（显示 ~4-5px 高）
@@ -316,14 +317,16 @@ static func layer_tint(layer_key: int, base_tint: Color, camp_blend: float = 0.0
 
 ## 亚类曳光线宽度。机枪基准 / 步枪细 / 坦克炮粗（重弹余辉，非细 streak）/ 手枪窄。
 ## v20.16d: 机枪 2.5→3.0（弹幕流加粗）、步枪 2.0→1.8（细亮快弹）。
+## v6.17: 全档 ×~1.3 加粗（远机位可读性）——2px 级曳光在 720p 实拍里近乎不可见，
+## 加粗后配泛光成"发光弹道"（对照 R.I.P. 粗曳光语言；弹体本体尺寸不动，守弹体尺寸律）。
 static func tracer_width_for(layer_key: int) -> float:
 	match layer_key:
-		FLAVOR_LAYER_MG: return 3.0
-		FLAVOR_LAYER_RIFLE: return 1.8
-		FLAVOR_LAYER_TANK_GUN: return 3.5
-		FLAVOR_LAYER_SMALL_ARMS: return 2.0
-		FLAVOR_LAYER_XENO_MELEE: return 2.2  # v27.x: 刃光细亮快弹
-		_: return 2.5
+		FLAVOR_LAYER_MG: return 3.8
+		FLAVOR_LAYER_RIFLE: return 2.4
+		FLAVOR_LAYER_TANK_GUN: return 4.5
+		FLAVOR_LAYER_SMALL_ARMS: return 2.5
+		FLAVOR_LAYER_XENO_MELEE: return 2.8  # v27.x: 刃光细亮快弹
+		_: return 3.0
 
 ## 亚类曳光线长度。机枪加长（弹幕感）/ 步枪略长（精确轨迹）/ 坦克炮缩短
 ## （重弹本体即视觉主体，曳光只留余辉）。
@@ -340,16 +343,17 @@ static func tracer_len_for(layer_key: int) -> float:
 
 ## 亚类曳光线颜色（同 flavor_tint 语言，曳光透明度 0.82）。基础层返回阵营基准色。
 ## v26.31: camp_blend 同 layer_tint——敌方 batch 传 0.65 让曳光回归橙红阵营语言。
+## v6.17: rgb ×1.5 HDR 化——hdr_2d 视口下 >1 亮度过 bloom 阈值，曳光带光晕
+## （发光弹道的核心来源；alpha 不动，守既有 42% 点射回声口径）。
 static func tracer_color_for(layer_key: int, base_color: Color, camp_blend: float = 0.0) -> Color:
 	if layer_key == FLAVOR_LAYER_XENO_MELEE:
 		var xe := XenoWeaponFlavor.COLOR_EDGE
-		xe.a = 0.82
-		return xe
+		return Color(xe.r * 1.5, xe.g * 1.5, xe.b * 1.5, 0.82)
 	var f := _flavor_for_layer_key(layer_key)
 	if f < 0:
-		return base_color
+		return Color(base_color.r * 1.5, base_color.g * 1.5, base_color.b * 1.5, base_color.a)
 	var c := flavor_tint(f).lerp(Color(base_color.r, base_color.g, base_color.b, 1.0), camp_blend)
-	c.a = 0.82
+	c = Color(minf(c.r * 1.5, 3.0), minf(c.g * 1.5, 3.0), minf(c.b * 1.5, 3.0), 0.82)
 	return c
 
 ## ── v20.18: 单发路径点射节奏（视觉 burst）──
@@ -358,15 +362,17 @@ static func tracer_color_for(layer_key: int, base_color: Color, camp_blend: floa
 ## 射速>2 的机枪进 batch 弹幕路径；≤2 的武器（步枪/手枪/二战重机枪）在单发路径
 ## 用视觉点射补节奏：一次攻击伤害只结算一次，后续发为纯视觉弹（delay 错开）。
 ## 消费方：construct_unit_ai 单发路径（敌方轻武器无条件走 batch，无需分派）。
+## v38.3: GENERIC 兜底不再吃点射——语义不明的武器（RPG-7火箭筒/离子炮/势力卡
+## 占位名"轻装武器"/幽灵狙击组等）编造连发感会读成"单发伤害视觉多发"；
+## 具名步枪/冲锋枪仍走 RIFLE 档拿 2 连发，机网格不受影响。
 const BURST_INTERVAL: float = 0.09  ## 点射间隔（秒）——60fps 下 5-6 帧，读"哒哒哒"
 
-## 亚类点射数。机枪 3 连珠 / 步枪·冲锋枪 2 连发 / 手枪·坦克炮单发（重武器语义单发）。
+## 亚类点射数。机枪 3 连珠 / 步枪·冲锋枪 2 连发 / 其余（含 GENERIC 兜底）单发。
 static func burst_count_for(flavor: int) -> int:
 	match flavor:
 		DirectWeaponFlavor.Flavor.MG: return 3
 		DirectWeaponFlavor.Flavor.RIFLE: return 2
-		DirectWeaponFlavor.Flavor.GENERIC: return 2
-		_: return 1  # SMALL_ARMS/TANK_GUN/NONE——单发
+		_: return 1  # SMALL_ARMS/TANK_GUN/GENERIC/NONE——单发（v38.3: GENERIC 撤出点射）
 
 ## ── v20.19: 机枪换弹周期（射击-停顿-再射击）──
 ## 病根：机枪匀速连射（2.0/s×3 连珠）无停顿，读感是"永动机"——真实机枪打完弹链
@@ -477,12 +483,13 @@ static func indirect_duration_mul(flavor: int) -> float:
 		IndirectFlavor.MISSILE: return 0.88
 		_: return 1.0
 
-## 亚类弹体尺寸系数（per-instance scale）。榴弹族 1.2（重炮弹更大）/ 迫击炮 0.78（小弹）/
+## 亚类弹体尺寸系数（per-instance scale）。迫击炮 0.78（小弹）/ 榴弹 1.0（v38 随
+## 基准缩幅取消 1.2 加成——0.45×1.2=54px 仍贴单位宽度，读感"和兵一样大"）/
 ## 火箭 0.85（细长火箭弹）。
 static func indirect_body_scale(flavor: int) -> float:
 	match flavor:
 		IndirectFlavor.MORTAR: return 0.78
-		IndirectFlavor.HOWITZER: return 1.2
+		IndirectFlavor.HOWITZER: return 1.0
 		IndirectFlavor.ROCKET: return 0.85
 		IndirectFlavor.MISSILE: return 1.0
 		_: return 1.0

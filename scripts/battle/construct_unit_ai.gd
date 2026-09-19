@@ -13,6 +13,9 @@ const DamageAttenuation = preload("res://scripts/battle/damage_attenuation.gd")
 const AttackCalculator = preload("res://scripts/battle/attack_calculator.gd")
 const VfxImpactFactory = preload("res://scripts/battle/vfx_impact_factory.gd")
 const WeaponVisuals = preload("res://data/weapon_visual_profiles.gd")  # v17: 武器视觉档案（名字优先解析）
+# v38.5: 武器语义哨兵——preload 常量而非全局 class 引用（新建 class_name 在 headless
+# --script 模式的全局类缓存里不存在，会让本文件编译失败连锁打挂 construct/enemy_unit）
+const WeaponSemantics = preload("res://scripts/battle/weapon_semantics.gd")
 const DT = preload("res://resources/design_tokens.gd")
 const CardGridLayout = preload("res://scripts/card_grid_battle_layout.gd")  # v9.2: 分行索敌行判定
 const AttackPoseAnim = preload("res://scripts/battle/attack_pose_anim.gd")  # v9.x: 按武器分化的攻击姿态/攻击帧
@@ -726,6 +729,9 @@ static func do_attack_with_damage(u: CharacterBody2D, damage: float, weapon_type
 	var w_name: String = weapon_name
 	if w_name.is_empty() and weapon_resource and weapon_resource is WeaponResource:
 		w_name = weapon_resource.display_name if weapon_resource.display_name else ""
+	# v38.5: 语义哨兵——直射武器名落 GENERIC 兜底且带重武器/占位语义时一次性告警
+	# （静默错位现场探针，与回归锁 [14] 分工：锁管"拦"哨兵管"喊"，详见 weapon_semantics.gd）
+	WeaponSemantics.note_direct_weapon(w_name, wt)
 	# 开火反馈：炮口闪光 + Sprite 缩放脉冲（所有武器/所有战斗模式统一生效）
 	# 修复传统战场零开火反馈——nudge 仅格子战播，此处无条件补
 	# v17: 火花类别键经 WeaponVisualProfiles 统一解析（武器名优先+域感知兜底），
@@ -785,6 +791,8 @@ static func do_attack_with_damage(u: CharacterBody2D, damage: float, weapon_type
 	# v20.18: 点射节奏——单发直射路径（射速≤2 不进 batch 的玩家武器）按亚类打 2-3 连发。
 	# 伤害仅首波结算，后续波为纯视觉弹（burst_delay 错开 0.09s，见 bullet.gd）。
 	# 仅玩家侧：敌方轻武器无条件走 batch，单发路径只剩重型/签名武器（语义单发）。
+	# v38.3: 点射表收紧——机枪 3 / 具名步枪·冲锋枪（RIFLE）2 / 其余（含 GENERIC 兜底）1，
+	# 语义不明武器不再编造连发感（RPG/线膛炮主炮/势力占位名曾误打 2 发视觉弹）。
 	var burst_n := 1
 	if wt == GC.WeaponType.DIRECT and pellet_n == 1 and u.is_player:
 		burst_n = WeaponProjectileVfx.burst_count_for(DirectWeaponFlavor.classify(w_name, wt))

@@ -8,8 +8,8 @@ class_name EnemyPhaseMastersNEARFUTURE
 const ERA_MASTERS: Array = [
 	{
 		"id": "enemy_master_025",
-		"name": "暗影主宰·深渊",
-		"title": "暗影之王",
+		"name": "宿怀夜",
+		"title": "八小时的影子",
 		"level": 28,
 		"faction": "void",
 		"difficulty": "legendary",
@@ -32,8 +32,8 @@ const ERA_MASTERS: Array = [
 	# ==================== Tier 6 - 神级相位师 (Lv28-30) ====================
 	{
 		"id": "enemy_master_026",
-		"name": "钢铁之神·赫淮斯托斯",
-		"title": "锻造之神",
+		"name": "鲁满仓",
+		"title": "两百把锄头",
 		"level": 28,
 		"faction": "steel",
 		"difficulty": "legendary",
@@ -54,8 +54,8 @@ const ERA_MASTERS: Array = [
 	},
 	{
 		"id": "enemy_master_027",
-		"name": "炎魔之神·赫卡特",
-		"title": "炼狱女王",
+		"name": "涂知温",
+		"title": "三十七度的火",
 		"level": 29,
 		"faction": "flame",
 		"difficulty": "legendary",
@@ -76,8 +76,8 @@ const ERA_MASTERS: Array = [
 	},
 	{
 		"id": "enemy_master_028",
-		"name": "雷神·托尔",
-		"title": "雷霆之神",
+		"name": "端木近雨",
+		"title": "很近的雷雨",
 		"level": 29,
 		"faction": "thunder",
 		"difficulty": "legendary",
@@ -98,8 +98,8 @@ const ERA_MASTERS: Array = [
 	},
 	{
 		"id": "enemy_master_029",
-		"name": "虚空女神·尼克斯",
-		"title": "夜之女神",
+		"name": "叶掌灯",
+		"title": "折下来的星空",
 		"level": 30,
 		"faction": "void",
 		"difficulty": "legendary",
@@ -122,8 +122,8 @@ const ERA_MASTERS: Array = [
 	# ==================== Tier 7 - 终极相位师 (Lv30) ====================
 	{
 		"id": "enemy_master_030",
-		"name": "全能相位师·奥米伽",
-		"title": "完美融合",
+		"name": "贺同舟",
+		"title": "第三十一个",
 		"level": 30,
 		"faction": "all",
 		"difficulty": "ultimate",

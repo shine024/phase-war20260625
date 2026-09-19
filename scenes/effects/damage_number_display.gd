@@ -137,6 +137,34 @@ const DAMAGE_STYLES: Dictionary = {
 		"scale": 1.5,
 		"glow_color": Color(1.0, 0.85, 0.35, 0.95),  # v8.3 金色发光
 		"glow_size": 6
+	},
+	# ── v6.15 P1 机制弹出层（DR 对照）：把静默触发的机制"喊出来"——大黄字黑描边 ──
+	# 通用机制（克制类走 battle_announcer 横幅，不在此重复）
+	"callout": {
+		"font_size": 22,
+		"color": DesignTokens.COLOR_GOLD,
+		"outline_color": Color(0.12, 0.08, 0.0, 0.95),
+		"scale": 1.2,
+		"glow_color": Color(1.0, 0.85, 0.35, 0.8),
+		"glow_size": 4
+	},
+	# 闪避（银白，防御语义）
+	"callout_dodge": {
+		"font_size": 20,
+		"color": Color(0.92, 0.95, 1.0, 1.0),
+		"outline_color": Color(0.1, 0.12, 0.18, 0.92),
+		"scale": 1.05,
+		"glow_color": Color(0.75, 0.85, 1.0, 0.6),
+		"glow_size": 3
+	},
+	# 护盾破碎（青蓝，与护盾条同色系）
+	"callout_shield": {
+		"font_size": 20,
+		"color": Color(0.35, 0.85, 1.0, 1.0),
+		"outline_color": Color(0.0, 0.2, 0.35, 0.92),
+		"scale": 1.1,
+		"glow_color": Color(0.3, 0.8, 1.0, 0.7),
+		"glow_size": 3
 	}
 }
 
@@ -145,6 +173,7 @@ static var _label_settings_cache: Dictionary = {}
 var damage_value: int = 0
 var is_critical: bool = false
 var damage_type: String = "normal"  # normal, critical, heal, shield, dot, miss
+var _override_text: String = ""  # v6.15 P1: callout 弹字文本（非空时替代数字）
 
 var _fade_duration: float = 1.2
 var _lifetime: float = 0.0
@@ -222,6 +251,8 @@ func _create_damage_label() -> void:
 	scale = Vector2(float(style.get("scale", 1.0)), float(style.get("scale", 1.0)))
 
 func _get_display_text() -> String:
+	if not _override_text.is_empty():
+		return _override_text  # v6.15 P1: callout 弹字
 	match damage_type:
 		"heal":
 			return "+" + str(damage_value)
@@ -277,6 +308,7 @@ func reset_pool_object() -> void:
 	_lifetime = 0.0
 	_float_y = 0.0
 	modulate = Color(1.0, 1.0, 1.0, 1.0)
+	_override_text = ""  # v6.15 P1: 弹字文本随归还清空（池复用防串字）
 	# v7.3: 重置手写弹出动画状态
 	_pop_active = false
 	_pop_age = 0.0
@@ -319,7 +351,9 @@ static func create_damage_number(parent: Node, world_pos: Vector2, damage: int, 
 		display.call("prepare_for_display", damage, is_crit, effective_type)
 	parent.add_child(display)
 	if display is Node2D:
-		(display as Node2D).global_position = world_pos + Vector2(randf_range(-15, 15), randf_range(-10, 10))
+		# v6.17: 抖动加宽（±15/±10→±26/-16~+6）——big_crit 金色大字下旧抖动幅度
+		# 仍会多字叠印（L10 实拍 151/92/888 三字同框），加宽横向散开保可读
+		(display as Node2D).global_position = world_pos + Vector2(randf_range(-26, 26), randf_range(-16, 6))
 	# v7.x：暴击/大额伤害附加辐射粒子（克制：3-5片，强化打击感）
 	if is_crit:
 		_spawn_crit_sparks(parent, world_pos, is_crit)
@@ -351,6 +385,32 @@ static func create_dot_damage(parent: Node, world_pos: Vector2, damage: int) -> 
 
 static func create_miss(parent: Node, world_pos: Vector2) -> void:
 	create_damage_number(parent, world_pos, 0, false, "miss")
+
+## v6.15 P1 机制弹出层（DR 对照）：静默触发的机制在触发点"喊出来"——大字黑描边弹跳
+## 入场+上浮淡出（复用伤害数字池与手写动画）。kind 取 DAMAGE_STYLES 键：
+## "callout"金 / "callout_dodge"银白 / "callout_shield"青蓝。
+## 注意：克制破解类机制已由 battle_announcer 横幅播报，勿再走此层（防双报）。
+static func create_callout(parent: Node, world_pos: Vector2, text: String, kind: String = "callout") -> void:
+	if not parent or not is_instance_valid(parent):
+		return
+	if text.is_empty():
+		return
+	if ObjectPoolManager == null:
+		push_warning("[DamageNumberDisplay] ObjectPoolManager 未就绪")
+		return
+	var display: Node = ObjectPoolManager.get_object("damage_numbers")
+	if display == null:
+		return
+	if display.has_method("set_process"):
+		display.set_process(false)
+	display._override_text = text  # prepare_for_display 不清此字段（reset_pool_object 才清）
+	if display.has_method("prepare_for_display"):
+		display.call("prepare_for_display", 0, false, kind)
+	parent.add_child(display)
+	if display is Node2D:
+		(display as Node2D).global_position = world_pos + Vector2(randf_range(-6, 6), randf_range(-4, 4))
+	if display.has_method("set_process"):
+		display.set_process(true)
 
 ## 战斗清理时强制归还（避免 queue_free 破坏池）
 static func try_return_to_pool(node: Node) -> void:

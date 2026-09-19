@@ -152,17 +152,33 @@ func is_combo_full(combo_id: String) -> bool:
 	return _full_tier_combos.has(combo_id)
 
 
-## v9.1 弹全队激活横幅
+## v38.3 激活播报带因果（用户"各种激活跳出字来，但不知道怎么激活的"）——
+## 横幅改为公式样式"支援×1 →「助燃燃烧链」全队激活！"，触发条件直接可见。
+## 兵种中文名与 default_cards.kind_names 同源同序（语言宪法：不造新词）。
+const _KIND_LABELS: Array[String] = ["轻装", "装甲", "支援", "空中", "堡垒"]
+
 func _emit_team_activate_banner(new_combo_ids: Array) -> void:
-	var names: Array = []
+	var parts: Array = []
 	for cid in new_combo_ids:
 		var def: Dictionary = ComboTactics.get_combo_def(String(cid))
-		if not def.is_empty():
-			names.append(String(def.get("name", cid)))
-	if names.is_empty():
+		if def.is_empty():
+			continue
+		var cn: String = String(def.get("name", String(cid)))
+		var causes: PackedStringArray = PackedStringArray()
+		var kc: Dictionary = def.get("kind_combo", {})
+		for k in kc.keys():
+			var idx := int(k)
+			var lbl: String = _KIND_LABELS[idx] if idx >= 0 and idx < _KIND_LABELS.size() else String(k)
+			causes.append("%s×%d" % [lbl, int(kc[k])])
+		if causes.is_empty():
+			parts.append("「%s」" % cn)
+		else:
+			parts.append("%s →「%s」" % [" + ".join(causes), cn])
+	if parts.is_empty():
 		return
+	# 横幅 400px 宽：单轮最多两条公式防溢出（同批更多条目随下次节流刷新补播）
 	VfxImpactFactory.show_combo_activate_banner(
-		"「%s」全队激活！" % ", ".join(names), 2.0, true
+		"%s 全队激活！" % "；".join(parts.slice(0, 2)), 2.0, true
 	)
 
 ## 获取当前全队激活的新机制 flag 列表（供战斗侧查询）

@@ -13,6 +13,8 @@ const CHANGED_SCRIPTS: Array[String] = [
 	"res://scripts/affix_display_format.gd",
 	"res://scenes/ui/card_info_panel.gd",
 	"res://scripts/ui/panel_styles.gd",
+	"res://scripts/ui/mod_icon_tile.gd",  # v37.1 改造图标座（稀有度发光底座统一收口）
+	"res://scripts/ui/blueprint_grid.gd",  # v6.14.8 改造视图蓝图网格（C 版方向装饰）
 	"res://scenes/main.gd",
 	"res://scenes/ui/bottom_instrument_bar.gd",
 	"res://scenes/ui/backpack_card_item.gd",

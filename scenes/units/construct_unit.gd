@@ -17,6 +17,7 @@ const RankRules = preload("res://data/rank_rules.gd")
 const CardGridUnitVisuals = preload("res://scripts/card_grid_unit_visuals.gd")
 const CardGridBuffStrip = preload("res://scripts/card_grid_buff_strip.gd")
 const UnitSharedHelpers = preload("res://scripts/battle/unit_shared_helpers.gd")  # v26.6: 敌我共享逻辑单一真身
+const UnitModDecal = preload("res://scripts/battle/unit_mod_decal.gd")  # v37.3: 战法件贴花挂载
 const CombatFeedback = preload("res://scripts/combat_feedback.gd")
 const CardGridDamage = preload("res://scripts/card_grid_damage.gd")
 const CombatTargeting = preload("res://scripts/combat_targeting.gd")
@@ -58,7 +59,7 @@ const MAX_ENEMY_VISUAL_EXTENT_PX := 220.0
 ## 我方平台类型 -> 用于显示的敌方原型 id
 ## v20.x 重映射：我方卡 stats.platform_type = combat_kind(0-4)（v8 口径），原 0-4 键是
 ## legacy 平台枚举（1=法师/2=泰坦/3=碉堡/4=雷达车），按 CombatKind 查会拿错类别贴图
-## （装甲卡→步兵图）。0-4 改按兵种语义选代表，与 card_foot_anchors.PLAYER_PLATFORM_TO_SCALE_ARCHETYPE 同步。
+## （装甲卡→步兵图）。0-4 改按兵种语义选代表（贴图映射，与缩放无关——缩放走 card_foot_anchors 兵种档位模型）。
 const PLAYER_MIRROR_ARCHETYPE_BY_PLATFORM := {
 	0: "ww1_inf_mp18",
 	1: "cold_arm_btr_e",
@@ -320,6 +321,8 @@ func setup(p_is_player: bool, p_stats: UnitStats, forced_enemy_visual_archetype_
 	_update_visual()
 	_maybe_apply_card_grid_presentation()
 	_update_hp_bar()
+	# v37.3 战法件贴花：形象类/keystone 装备外显（只加兄弟节点，不碰立绘贴图）
+	UnitModDecal.apply(self, stats.get_meta("mod_ids", []) if stats != null else [], not is_player)
 
 	# 性能优化：插入到空间分区网格
 	_register_to_spatial_grid()
@@ -597,18 +600,28 @@ func _trigger_hit_shake() -> void:
 	UnitSharedHelpers.hit_shake(self, is_preview_mode)
 
 
-## v10: 受击闪白——极短(0.08s)过亮 modulate 脉冲,补 v8.x 移除的整体变色(做成轻闪,不糊卡图)。
+## v6.15 打击感: 受击闪白——优先剪影推白（unit_outline shader flash_strength uniform，
+## 全像素向白，深色卡图也读得出；不动 modulate，克隆体青蓝/阵营泛光零冲突，旧
+## "modulate=WHITE 才触发"守卫随之只在兜底路径保留）。无描边材质（预烘焙雪碧图）
+## 回退 v10 的过亮 modulate 脉冲（0.08s 同拍）。
 ## 独立 _hit_flash_tween 句柄,与 faction_glow/phantom/fire_pulse/knockback 各不干扰。
-## 仅正常态(modulate=WHITE)触发:克隆体青蓝/阵营泛光进行中跳过,避免色调冲突。
-## motion_reduce/preview 跳过。玩家侧用 tween(因需守卫 modulate 状态);敌方走 _update_hit_animations 计时。
+## motion_reduce/preview 跳过。玩家侧用 tween;敌方走 unit_shared_helpers.update_hit_animations 计时。
 var _hit_flash_tween: Tween = null
 func _play_hit_flash() -> void:
 	if not is_instance_valid(self) or is_preview_mode or DT.is_motion_reduce():
 		return
-	if modulate != Color.WHITE:
-		return  # 克隆体青蓝/阵营泛光进行中,跳过避免冲突
 	if _hit_flash_tween != null and _hit_flash_tween.is_valid():
 		_hit_flash_tween.kill()
+	if UnitSharedHelpers.hit_flash_apply(self, 1.0):
+		_hit_flash_tween = create_tween()
+		# v6.15 P2: 0.08→0.10s（docs/命中表现夸张规则.md 五律1 主通道强化；敌方侧
+		# update_hit_animations 同步 0.10，两侧同拍）
+		_hit_flash_tween.tween_method(
+			func(v: float): UnitSharedHelpers.hit_flash_apply(self, v),
+			1.0, 0.0, 0.10).set_ease(Tween.EASE_OUT)
+		return
+	if modulate != Color.WHITE:
+		return  # 兜底 modulate 路径保留旧守卫:克隆体青蓝/阵营泛光进行中,跳过避免冲突
 	modulate = Color(1.8, 1.8, 1.8, 1.0)  # 过亮闪(modulate>1 把卡图中色调推白,模拟受击高光)
 	_hit_flash_tween = create_tween()
 	_hit_flash_tween.tween_property(self, "modulate", Color.WHITE, 0.08).set_ease(Tween.EASE_OUT)
@@ -1980,6 +1993,8 @@ func take_damage(amount: float, attacker: Variant = null) -> void:
 			var phase_absorbed: float = min(_phase_shield_current, hp_loss)
 			_phase_shield_current -= phase_absorbed
 			hp_loss -= phase_absorbed
+			if _phase_shield_current <= 0.0:
+				CombatFeedback.show_callout_at(self, "护盾破碎", "callout_shield")  # v6.15 P1 机制弹出层
 	# v6.6: 护盾吸收 — 优先从护盾值扣减，剩余伤害才扣 HP。
 	# 修复前 shield 只增不减（add_shield 被 on_kill/law/rune 调用，但伤害从不走护盾吸收路径），
 	# 导致击杀护盾、法则护盾、符文护盾全部"白给"。现在 take_damage 入口统一扣护盾。
@@ -1990,6 +2005,8 @@ func take_damage(amount: float, attacker: Variant = null) -> void:
 		# v7.2: 护盾承压闪光（护盾环扩张+变亮，让玩家感知"护盾在挡伤害"）
 		_shield_aura_hit_boost = 1.0
 		_update_hp_bar()
+		if shield <= 0.0:
+			CombatFeedback.show_callout_at(self, "护盾破碎", "callout_shield")  # v6.15 P1 机制弹出层
 	# v8.6: 势力技能 conditional.hp_below 已在 setup 时永久注入防御加成（走既有防御结算）
 	hp -= hp_loss
 

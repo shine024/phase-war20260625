@@ -34,8 +34,10 @@ const DOT_CONFIGS: Dictionary = {
 		"node_name": "DotVfxBurn",
 		"tex_path": "res://assets/effects/dot/dot_burn.png",
 		"fallback_color": Color(1.0, 0.4, 0.1, 0.7),
-		"target_width": 80.0,
-		"y_offset": -10.0,  # 火焰在脚下偏下
+		# v6.15 P1 打击感升格（DR 对照）：燃烧状态隔半屏可读——火焰 80→112 宽
+		#（≈单位 0.9-1.2 倍，内容实寸 866×893/1024 画布），y 抬高包住下半身
+		"target_width": 112.0,
+		"y_offset": -26.0,
 	},
 	"chem": {
 		"node_name": "DotVfxChem",

@@ -64,6 +64,43 @@ static func get_modification_count(card_id: String, mods_dict: Dictionary) -> in
 static func get_max_mod_slots() -> int:
 	return ModEffects.MAX_MOD_SLOTS
 
+## ═══════════════════════════════════════════════════════════
+##  v6.16 槽位预算（品质定基础槽 + 兵种专属加成槽）
+## ═══════════════════════════════════════════════════════════
+## 设计：底盘稀有度管两件事——基础值（卡表）+ 改造成长上限（本表）；
+## 兵种专属槽只收兵种件（registry.is_family_mod），通用件（universal/enhancement）
+## 只占基础槽。总开关 GameConfig.mod_slot_budget_enabled（false=全卡恒 9 旧口径）。
+## 旧档超额（如统一 9 槽时代给 common 卡装满 9 件）不剥离——can_install 只封新装。
+
+## 品质 → 基础槽数（通用件与兵种件共享的上限基准）
+const SLOT_BUDGET_BY_RARITY: Dictionary = {
+	"common": 5, "uncommon": 6, "rare": 7, "epic": 8, "legendary": 9, "mythic": 10,
+}
+## 兵种 → 专属加成槽数（CombatKind：0轻装/1装甲/2支援/3空军/4堡垒）
+## 堡垒 +2（防御堆叠身份），其余 +1；无 combat_kind 的卡（能量/法则卡）无加成
+const FAMILY_SLOT_BONUS_BY_KIND: Dictionary = {4: 2}
+const FAMILY_SLOT_BONUS_DEFAULT: int = 1
+
+## 品质基础槽（未知稀有度回退 9 = v6.16 前旧口径，宁松勿紧防误锁）
+static func get_base_mod_slots(card) -> int:
+	if not GameConfig.get_default().mod_slot_budget_enabled or card == null:
+		return ModEffects.MAX_MOD_SLOTS
+	return int(SLOT_BUDGET_BY_RARITY.get(String(card.rarity), ModEffects.MAX_MOD_SLOTS))
+
+## 兵种专属加成槽
+static func get_family_slot_bonus(card) -> int:
+	if not GameConfig.get_default().mod_slot_budget_enabled or card == null:
+		return 0
+	if not ("combat_kind" in card):
+		return 0  # 能量/法则等非战斗卡无兵种概念
+	return int(FAMILY_SLOT_BONUS_BY_KIND.get(int(card.combat_kind), FAMILY_SLOT_BONUS_DEFAULT))
+
+## 该卡改造槽总数（UI 砖块数 / 安装容量 / 过滤口径的唯一真身）
+static func get_max_mod_slots_for_card(card) -> int:
+	if not GameConfig.get_default().mod_slot_budget_enabled or card == null:
+		return ModEffects.MAX_MOD_SLOTS
+	return get_base_mod_slots(card) + get_family_slot_bonus(card)
+
 # v6.6: 以下旧改造系统方法已移除（死代码）：
 #   - get_modification_requirements（基于 ModEffects 槽位成本公式，新系统用 install_modification 动态算纳米）
 #   - get_mod_options（返回 ModEffects 的 MOD_01~20，与新 140+ 模块系统不兼容）

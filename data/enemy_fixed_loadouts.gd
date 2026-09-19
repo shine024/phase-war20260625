@@ -50,7 +50,7 @@ const LOADOUT_MOD_SUPPORTED_KEYS: Array = [
 	"armor_penetration", "armor_pen_vs_light", "armor_pen_vs_armor", "armor_pen_vs_air",
 	"true_damage",
 	# 命中侧机制（敌我共用链）
-	"splash_damage", "splash_radius", "chain_chance",
+	"splash_damage", "splash_radius", "chain_chance", "single_target_penalty",
 	"kill_repair", "armor_break", "armor_break_stacks",
 	"mark_chance", "mark_vuln_bonus", "mark_duration",
 	"chem_chance", "chem_dps", "chem_duration",

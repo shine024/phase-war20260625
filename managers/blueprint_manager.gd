@@ -508,9 +508,10 @@ func install_modification(card: CardResource, mod_id: String, slot: int = -1) ->
 		push_warning("[BlueprintManager] install_modification 拒绝模板: instance_id 为空")
 		return result
 
-	# 检查槽位
-	if card.mods.size() >= 9:
-		result.message = "改造槽位已满（最多9个）"
+	# 检查槽位（v6.16 槽位预算：品质基础槽+兵种专属槽；与 card.can_install_modification 同源）
+	var _max_slots: int = ModManager.get_max_mod_slots_for_card(card)
+	if card.mods.size() >= _max_slots:
+		result.message = "改造槽位已满（最多%d个）" % _max_slots
 		return result
 
 	# 检查冲突

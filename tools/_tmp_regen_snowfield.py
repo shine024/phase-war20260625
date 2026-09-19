@@ -1,9 +1,11 @@
 # -*- coding: utf-8 -*-
-"""v36 B3：重生成开场醒来雪原图（wakeup_snowfield.png），车辆对齐基地车外景。
+"""v37 实机验收二轮：重生成开场醒来雪原图（wakeup_snowfield.png）——黑门压远压小。
 
-FLOW 站点 2026-09-16 连接超时不可达 → 兜底走 agnes-image（1152x768，aspect-fill 裁 1280x720）。
+v36 版生成图用户实测"剧情里的黑门看着太近了"（方尖巨门占右侧半屏、与基地车读成几十米距离）。
+本版 prompt 改构图口径：门锁死在"极远地平线 + 剪影 + 高度不超过画面 1/8"，与车之间
+留大段空旷雪原。FLOW 仍不可达 → 兜底走 agnes-image（1152x768，aspect-fill 裁 1280x720）。
 prompt 按 _agnes_image_api.md 实测纪律：正面意象锁死（车=truck_tier1 的特征清单）、
-无负面词、屏幕级构图描述。原图备份 _art_backup/。产出先落 .godot/ 供人工过目，不直接覆盖。
+无负面词、屏幕级构图描述。原图先备份 _art_backup/，产出落 .godot/art_regen/ 供人工过目。
 """
 from PIL import Image
 import json
@@ -25,7 +27,9 @@ PROMPT = (
     "棱角分明的装甲驾驶舱在车头，橄榄绿军规涂装，车顶纵排行李架与备胎，"
     "车身侧面有一条青色能量发光饰条，六个大尺寸越野轮胎，车尾是封闭式装甲车厢。"
     "车辆在雪地上留下深深车辙，排气管有淡淡废气白雾。"
-    "远景天边地平线上矗立一座巨大的漆黑方尖巨门，剪影感，吞掉周围光线。"
+    "画面尽头极远处的地平线上，矗立一座漆黑方尖巨门的剪影：因为距离极其遥远，"
+    "它在画面里显得很小很细，高度只占画面很小一部分，轮廓与远处低垂的云层几乎融为一体，"
+    "巨门与装甲车之间隔着大片空旷平坦的雪原与风雪薄雾。"
     "地平线处有低垂的云层与淡金色晨光，整体冷蓝灰色调，"
     "电影构图，留白呼吸感，无人物，无文字，高清细节。"
 )
@@ -89,8 +93,8 @@ def aspect_fill(src_path: str, out_path: str, w: int = 1280, h: int = 720) -> No
 if __name__ == "__main__":
     ok_count = 0
     for i in range(1, 4):   # 三轮：按计划兜底纪律，出图供人工挑选/过目
-        raw = os.path.join(OUT_DIR, "snowfield_raw_%d.png" % i)
-        final = os.path.join(OUT_DIR, "snowfield_%d_1280x720.png" % i)
+        raw = os.path.join(OUT_DIR, "snowfield_v2_raw_%d.png" % i)
+        final = os.path.join(OUT_DIR, "snowfield_v2_%d_1280x720.png" % i)
         if os.path.exists(final):
             print("skip", final)
             ok_count += 1

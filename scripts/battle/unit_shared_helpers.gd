@@ -86,6 +86,7 @@ static func update_hit_animations(unit: Node2D, delta: float, enable_flash: bool
 			unit.scale = Vector2.ONE
 			unit._hit_shake_t = -1.0  # 停用
 			if enable_flash:
+				hit_flash_apply(unit, 0.0)  # v6.15: 剪影推白收尾归零（无材质时幂等无害）
 				unit.modulate = Color.WHITE  # v10: 闪白结束复位(敌方正常态 modulate=WHITE)
 		else:
 			var seg: int = int(unit._hit_shake_t / 0.035)
@@ -97,10 +98,39 @@ static func update_hit_animations(unit: Node2D, delta: float, enable_flash: bool
 			var s: float = lerpf(s_start, s_end, local_t)
 			unit.scale = Vector2(s, s)
 			if enable_flash and not DT.is_motion_reduce():
-				# v10: 受击闪白——前 0.08s 把 modulate 推亮再回白
-				var ft: float = clampf(unit._hit_shake_t / 0.08, 0.0, 1.0)
-				var fb: float = 0.8 * (1.0 - ft)  # 0.8 → 0
-				unit.modulate = Color(1.0 + fb, 1.0 + fb, 1.0 + fb, 1.0)
+				# v6.15 打击感: 优先剪影推白（shader uniform 全像素向白——深色卡图也读得出；
+				# 不动 modulate，克隆体青蓝/阵营泛光零冲突）。无描边材质（预烘焙雪碧图）
+				# 回退旧 modulate 过亮脉冲（0.8→0）。
+				# v6.15 P2: 闪白窗 0.08→0.10s（规则文档五律1 主通道强化，衰减窗仍在 0.14s 抖动窗内）。
+				var ft: float = clampf(unit._hit_shake_t / 0.10, 0.0, 1.0)
+				if not hit_flash_apply(unit, 1.0 - ft):
+					var fb: float = 0.8 * (1.0 - ft)
+					unit.modulate = Color(1.0 + fb, 1.0 + fb, 1.0 + fb, 1.0)
+
+# ─────────────────────────────────────────────
+#  v6.15 打击感：受击剪影推白
+# ─────────────────────────────────────────────
+
+## 单位卡图 sprite 解析（我方="Sprite"/敌方="Sprite2D"子节点；_idle_spr 为各单位
+## 懒缓存引用，失效时回退节点名直查）
+static func unit_card_sprite(unit: Node2D) -> Sprite2D:
+	var spr: Sprite2D = unit.get("_idle_spr") as Sprite2D
+	if spr == null or not is_instance_valid(spr):
+		spr = unit.get_node_or_null("Sprite") as Sprite2D
+		if spr == null:
+			spr = unit.get_node_or_null("Sprite2D") as Sprite2D
+	return spr
+
+## 受击剪影推白：写 unit_outline shader 的 flash_strength uniform（0=常态 1=全白）。
+## 返回 false = 单位无描边材质（预烘焙/未挂链），调用方走 modulate 闪白兜底。
+static func hit_flash_apply(unit: Node2D, amount: float) -> bool:
+	if unit == null or not is_instance_valid(unit):
+		return false
+	var spr := unit_card_sprite(unit)
+	if spr == null or not UnitOutline.has_outline_shader(spr):
+		return false
+	UnitOutline.set_flash(spr, amount)
+	return true
 
 # ─────────────────────────────────────────────
 #  死亡视觉

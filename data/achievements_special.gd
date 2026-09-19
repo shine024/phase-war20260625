@@ -242,7 +242,7 @@ const DATA: Dictionary = {
 	"special_defeat_ultimate_boss": {
 		"id": "special_defeat_ultimate_boss",
 		"name": "终极胜利",
-		"description": "击败奥米伽相位师",
+		"description": "击败贺同舟",
 		"category": "special",
 		"rarity": "LEGENDARY",
 		"requirements": {"type": "defeat_boss", "boss_id": "enemy_master_030"},

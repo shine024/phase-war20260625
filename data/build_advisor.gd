@@ -25,6 +25,17 @@ static func get_build_tips(level: int) -> Array[String]:
 		tips.append("敌方先手：开局别裸铺脆皮，留能量应对第一波集火")
 	if String(rules.get("win_type", "")) == "survive_waves":
 		tips.append("坚守波次：生存即胜利，回复与控制优先于爆发")
+	# v6.16 反制配波：敌方构成偏向某兵种——给出针对性构筑提示（规则条最高优先级）
+	var cbt: Array = rules.get("counter_bias_tags", [])
+	if not cbt.is_empty():
+		if cbt.has("aircraft"):
+			tips.append("敌方以飞行单位为主：备足对空火力再出击")
+		elif cbt.has("armored") or cbt.has("tank"):
+			tips.append("敌方装甲洪流：对甲火力不足会被硬推平")
+		elif cbt.has("artillery") or cbt.has("backline"):
+			tips.append("敌方远程炮兵为主：速攻突脸或曲射反制")
+		elif cbt.has("infantry") or cbt.has("fast"):
+			tips.append("敌方步兵海冲锋：溅射与范围武器高效")
 
 	# ── 环境乘区（敌我同源，阈值 0.9/1.1 之外才提示）──
 	var m: Dictionary = BattleEnvEffects.get_level_env_mults(level)

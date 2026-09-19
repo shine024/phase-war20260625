@@ -18,6 +18,8 @@ const GC = preload("res://resources/game_constants.gd")
 # v7.x UI 重设计基建
 const DT = preload("res://resources/design_tokens.gd")
 const PanelStyles = preload("res://scripts/ui/panel_styles.gd")
+# v37.1 改造图纸缩略图收口到统一图标座（稀有度发光底座）
+const ModIconTileRef = preload("res://scripts/ui/mod_icon_tile.gd")
 
 const THEME_VIOLET := DT.COLOR_VIOLET
 const THEME_VIOLET_SOFT := DT.COLOR_VIOLET_SOFT
@@ -733,40 +735,10 @@ func _make_mod_recipe_row(entry: Dictionary) -> Button:
 	row.add_child(hbox)
 	return row
 
-## 改造图纸缩略图标（26×26；无 icon 数据回退稀有度色框+首字母——与 modification_panel 同款）
+## 改造图纸缩略图标（26×26）——v37.1 收口到 ModIconTile 稀有度发光底座
+## （原裸贴暗色贴图/字母框，与改造面板旧款同病；rarity 形参保留给调用方签名）
 func _make_mod_thumb(mod_id: String, rarity: String) -> Control:
-	var mod_data: Dictionary = ModificationRegistry.get_data(mod_id)
-	var icon_path: String = String(mod_data.get("icon", ""))
-	if not icon_path.is_empty() and ResourceLoader.exists(icon_path):
-		var tex_rect := TextureRect.new()
-		tex_rect.texture = UiAssetLoader.load_tex(icon_path)
-		tex_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-		tex_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-		tex_rect.custom_minimum_size = Vector2(26, 26)
-		tex_rect.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-		tex_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		return tex_rect
-	var col: Color = GC.get_rarity_color(rarity)
-	var ph := PanelContainer.new()
-	ph.custom_minimum_size = Vector2(26, 26)
-	ph.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	ph.mouse_filter = Control.MOUSE_FILTER_IGNORE  # 按钮内嵌图块：默认 STOP 会吃点击
-	var sb := StyleBoxFlat.new()
-	sb.bg_color = Color(0.05, 0.09, 0.16, 0.6)
-	sb.border_color = col
-	sb.set_border_width_all(1)
-	sb.set_corner_radius_all(3)
-	ph.add_theme_stylebox_override("panel", sb)
-	var lbl := Label.new()
-	lbl.text = rarity.substr(0, 1).to_upper() if not rarity.is_empty() else "?"
-	lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	lbl.add_theme_font_override("font", DT.get_title_font_bold())
-	lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
-	lbl.add_theme_color_override("font_color", col)
-	lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	ph.add_child(lbl)
-	return ph
+	return ModIconTileRef.make(ModificationRegistry.get_data(mod_id), 26)
 
 func _on_mod_selected(mod_id: String) -> void:
 	_selected_mod_id = mod_id

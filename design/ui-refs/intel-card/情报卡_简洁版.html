@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>情报卡 · 简洁版</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:#0a0e13; display:flex; gap:32px; align-items:flex-start; padding:40px; font-family:"Microsoft YaHei",sans-serif; }
+  .note { color:#8a9aa8; font-size:13px; line-height:2; max-width:300px; padding-top:20px; }
+  .note b { color:#58d5f7; }
+  .note .k { color:#f0b429; }
+
+  .panel { width:540px; height:680px; background:linear-gradient(178deg,#14202b 0%,#101a23 100%);
+           border:2px solid #2ba7c9; border-radius:6px; box-shadow:0 10px 40px rgba(0,0,0,.55);
+           color:#cfe3ee; display:flex; flex-direction:column; overflow:hidden; }
+
+  /* 1. 标题行 */
+  .hd { display:flex; align-items:baseline; gap:12px; padding:16px 20px 10px; border-bottom:1px solid #1e3c4a; }
+  .hd .nm { font-size:26px; color:#f2f8fb; letter-spacing:1px; }
+  .hd .st { color:#f0b429; font-size:14px; letter-spacing:2px; }
+  .hd .cls { margin-left:auto; font-size:12px; color:#7fd4c9; border:1px solid #2a6b64; padding:2px 10px; border-radius:2px; }
+
+  /* 2. 立绘区 */
+  .art { margin:14px 20px 0; height:200px; border:1px solid #24444f;
+         background:linear-gradient(150deg,#1b2f3d 0%,#152634 60%,#122130 100%); position:relative; }
+  .art::after { content:"立绘位"; position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+         color:#3d5a68; font-size:14px; letter-spacing:6px; }
+
+  /* 3. 核心属性：一大三小 */
+  .core { display:flex; gap:10px; padding:14px 20px 0; }
+  .core .big { flex:1.4; background:#0d161d; border:1px solid #24444f; text-align:center; padding:10px 0; }
+  .core .big i { font-style:normal; display:block; font-size:12px; color:#5f8fa0; }
+  .core .big b { font-size:40px; color:#f0b429; font-family:Consolas,monospace; line-height:1.1; }
+  .core .sm { flex:1; display:flex; flex-direction:column; gap:10px; }
+  .core .sm .t { flex:1; background:#0d161d; border:1px solid #24444f; display:flex; align-items:center; justify-content:space-around; }
+  .core .sm .t i { font-style:normal; font-size:12px; color:#5f8fa0; }
+  .core .sm .t b { font-size:19px; color:#dff2fa; font-family:Consolas,monospace; }
+
+  /* 4. 克制三列 */
+  .matrix { display:flex; margin:14px 20px 0; border:1px solid #24444f; }
+  .matrix .m { flex:1; text-align:center; padding:10px 0 8px; border-right:1px solid #16242c; }
+  .matrix .m:last-child { border-right:none; }
+  .matrix .m i { font-style:normal; display:block; font-size:12px; color:#5f8fa0; margin-bottom:2px; }
+  .matrix .m b { font-size:22px; font-family:Consolas,monospace; color:#dff2fa; }
+  .matrix .m b.na { color:#33505e; }
+  .matrix .m b.warn { color:#e0856c; }
+
+  /* 5. 词条 */
+  .skills { margin:12px 20px 0; font-size:13.5px; line-height:1.9; color:#a9c6d4; flex:1; }
+  .skills b { color:#f0b429; font-weight:normal; }
+
+  /* 6. 底行 */
+  .ft { padding:10px 20px; border-top:1px solid #1e3c4a; display:flex; justify-content:space-between; font-size:12px; color:#5f8fa0; }
+</style>
+</head>
+<body>
+
+<div class="panel">
+  <div class="hd">
+    <span class="nm">M4A1 谢尔曼</span>
+    <span class="st">★★★★</span>
+    <span class="cls">中型坦克</span>
+  </div>
+
+  <div class="art"></div>
+
+  <div class="core">
+    <div class="big"><i>战力</i><b>100</b></div>
+    <div class="sm">
+      <div class="t"><i>移动力</i><b>4</b></div>
+      <div class="t"><i>视野</i><b>2</b></div>
+      <div class="t"><i>弹药</i><b>71</b></div>
+    </div>
+  </div>
+
+  <div class="matrix">
+    <div class="m"><i>对轻甲</i><b>30</b></div>
+    <div class="m"><i>对重甲</i><b class="warn">15</b></div>
+    <div class="m"><i>对建筑</i><b class="na">--</b></div>
+    <div class="m"><i>对步兵</i><b>70</b></div>
+  </div>
+
+  <div class="skills">
+    <b>◆ 稳定炮架</b>　巷战地形命中 +25%<br>
+    <b>◆ 老练乘员</b>　遭受首次伤害 -1
+  </div>
+
+  <div class="ft"><span>时代 Ⅳ</span><span>权重 5.0</span><span>巷战 +25%</span></div>
+</div>
+
+<div class="note">
+  <b>简洁版 · 一屏一件事</b><br><br>
+  ① 名称 + 星 + 类型徽章：一行看完身份<br>
+  ② 立绘<br>
+  ③ 战力大数字 + 移动/视野/弹药 三小格<br>
+  ④ 克制四列：大战略精髓，"--"表示不可攻击，红色弱值一眼看到短板<br>
+  ⑤ 词条最多两条，关键词黄色<br>
+  ⑥ 底行放时代/权重/地形修正等次要常量<br><br>
+  <span class="k">砍掉的</span>：模块槽、武装切换、三列分组、敌我对比条、消耗品、后勤区。<br>
+  这些以后要加，全部走"页签"或悬浮层，不进首屏。
+</div>
+
+</body>
+</html>

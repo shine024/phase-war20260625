@@ -303,7 +303,7 @@ func _enemy_pseudo_power(r: Dictionary) -> float:
 # ═══════════════════════════════════════════════════════════
 func _section3_enemy_master() -> void:
 	print("┌────────────────────────────────────────────────────────────┐")
-	print("│ ③ 敌方相位师 master_030（全能相位师·奥米伽，第100关 boss） │")
+	print("│ ③ 敌方相位师 master_030（贺同舟，第100关 boss） │")
 	print("│    走 MasterPowerEvaluator.evaluate（3 分量 A+F+H）        │")
 	print("└────────────────────────────────────────────────────────────┘")
 

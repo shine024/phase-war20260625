@@ -65,7 +65,8 @@ const ERA_WAVE_INTERVAL: Dictionary = {
 ##    的卡牌碎片掉率、_roll_rune_drops 的符文掉率），【不作用于战斗结算的整体掉落表】
 ##    （drop_tables.generate_drops 的保底/随机抽取不读此值）。命名易误导，保留以兼容击杀路径。
 const ERA_DROP_MULTIPLIER: Dictionary = {
-	Era.WW1: 0.85,
+	Era.WW1: 0.70,        # v37（用户实测"首关掉卡偏多"）：0.85→0.70——缴获卡洪随制造提前同步收口；
+	                      # 同乘纳米/符文击杀路径，前期经济大头在首通奖励与起步资源，可承受
 	Era.WW2: 1.0,
 	Era.COLD_WAR: 1.15,
 	Era.MODERN: 1.25,

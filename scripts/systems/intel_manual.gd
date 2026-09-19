@@ -483,6 +483,16 @@ func set_acquired_base_progress(archetype_id: String) -> void:
 	if entry.intel_progress < ACQUIRED_BASE_FLOOR:
 		_add_intel(archetype_id, ACQUIRED_BASE_FLOOR - entry.intel_progress, "acquire")
 
+## v37 节奏轮（用户拍板）：情报地板——把指定原型 base 抬到 floor_value（只抬不降）。
+## 供新档定向赠予（SaveManager._enqueue_starter_backpack_cards 末段）：制造提前到
+## 通关第 1 关解锁后，起始卡同族情报已过 25% 配方门，进制造中心即刻可造；
+## 品质阶梯上限不动，扩池仍靠交战/侦察推进。
+func grant_intel_floor(archetype_id: String, floor_value: float) -> void:
+	var entry := _ensure_entry(archetype_id)
+	var target: float = clampf(floor_value, 0.0, 1.0)
+	if entry.intel_progress < target:
+		_add_intel(archetype_id, target - entry.intel_progress, "starter")
+
 # ── 公开接口：查询 ────────────────────────────────────────────────
 
 ## 获取某卡的情报进度 (0.0-1.0)，加权平均（向后兼容）

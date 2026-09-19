@@ -265,6 +265,7 @@ static func _resolve_bg_texture() -> Texture2D:
 
 ## v33: 时代 tint × BG_DIM——与 battlefield._apply_background_texture 同口径，
 ## 揭幕淡出后过场底图与战场底图色调衔接（无跳变）。
+## v6.17: 改走 battlefield.era_bg_modulate 唯一口径（tint 降饱和 × 压暗一并生效）。
 static func _era_dim_modulate() -> Color:
 	var level := 1
 	var tree := Engine.get_main_loop() as SceneTree
@@ -273,8 +274,7 @@ static func _era_dim_modulate() -> Color:
 		if gm != null and gm.get("current_level") != null:
 			level = maxi(1, int(gm.current_level))
 	var era: int = _LevelEras.get_era(level)
-	var tints: Array = _BattlefieldSceneScript.ERA_BG_TINTS
-	return tints[era % tints.size()] * _BattlefieldSceneScript.BG_DIM
+	return _BattlefieldSceneScript.era_bg_modulate(era)
 
 
 func _finish() -> void:

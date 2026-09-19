@@ -128,21 +128,22 @@ func _build_chrome() -> void:
 	_hint_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_stage.add_child(_hint_label)
 
-	# 跳过按钮（右上）——v36 实机验收重设计：ghost 玻璃 pill（半透明深底+细描边+hover 辉光），
-	# 走 PanelStyles 工厂四态；原 solid 灰块无修饰、与电影化画格脱节。
+	# 跳过按钮（右上）——v36 重设计 ghost 玻璃 pill 后用户仍觉突兀（v37 二次收敛）：
+	# 缩到 92×26、文案短化「跳过 ›」、小字号+低对比常态（hover 才升白），退为"知道在哪就行"。
 	var skip := Button.new()
-	skip.text = "跳过开场"
+	skip.text = "跳过 ›"
 	skip.tooltip_text = "点击或按 Esc 跳过开场演出"
-	skip.position = Vector2(STAGE_SIZE.x - 16 - 148, 16)
-	skip.size = Vector2(148, 36)
+	skip.position = Vector2(STAGE_SIZE.x - 16 - 92, 14)
+	skip.size = Vector2(92, 26)
 	skip.focus_mode = Control.FOCUS_NONE
 	skip.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 	var styles: Dictionary = PanelStyles.make_button_styles(DT.COLOR_TEXT_DIM, "ghost")
 	for key in ["normal", "hover", "pressed", "disabled", "focus"]:
 		skip.add_theme_stylebox_override(key, styles[key])
-	skip.add_theme_color_override("font_color", DT.COLOR_TEXT_BRIGHT)
+	skip.add_theme_color_override("font_color", Color(0.72, 0.75, 0.82, 0.62))
 	skip.add_theme_color_override("font_hover_color", Color.WHITE)
-	skip.add_theme_font_size_override("font_size", DT.FONT_SIZE_BODY)
+	skip.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
+	skip.modulate.a = 0.8
 	skip.pressed.connect(func(): _finish(true))
 	_stage.add_child(skip)
 

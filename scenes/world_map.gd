@@ -1298,35 +1298,66 @@ func _build_map_screen_chrome() -> void:
 			chrome_parent = ancestor
 			break
 		ancestor = ancestor.get_parent()
-	var panel := PanelContainer.new()
-	panel.name = "MapLegend"
-	var psb := StyleBoxFlat.new()
-	psb.bg_color = Color(0.05, 0.08, 0.14, 0.82)
-	psb.set_border_width_all(1)
-	psb.border_color = Color(0, 0.75, 0.85, 0.45)
-	psb.set_corner_radius_all(6)
-	psb.content_margin_left = 10
-	psb.content_margin_right = 10
-	psb.content_margin_top = 8
-	psb.content_margin_bottom = 8
-	panel.add_theme_stylebox_override("panel", psb)
+	# v38.1（用户反馈"文字就在按钮底下，设计不合理"）：动作键与图例文字彻底分离——
+	# 左下角改为竖向堆栈：独立**动作面板**（出击/定位键，视觉强化）在上，
+	# 纯文字**图例面板**（弱化样式）在下；按钮按停靠关通关态区分文案。
+	var stack := VBoxContainer.new()
+	stack.name = "MapChromeStack"
+	stack.add_theme_constant_override("separation", 8)
 	# 显式底部左锚 + 生长方向（右/上）：preset 在子内容未填充、size=0 时调用会让
-	# PanelContainer 向下生长出屏，grow 方向显式声明后才与填充时序无关
-	panel.anchor_left = 0.0
-	panel.anchor_top = 1.0
-	panel.anchor_right = 0.0
-	panel.anchor_bottom = 1.0
-	panel.offset_left = 12.0
-	panel.offset_top = -12.0
-	panel.offset_right = 12.0
-	panel.offset_bottom = -12.0
-	panel.grow_horizontal = Control.GROW_DIRECTION_END
-	panel.grow_vertical = Control.GROW_DIRECTION_BEGIN
-	chrome_parent.add_child(panel)
+	# 面板向下生长出屏，grow 方向显式声明后才与填充时序无关
+	stack.anchor_left = 0.0
+	stack.anchor_top = 1.0
+	stack.anchor_right = 0.0
+	stack.anchor_bottom = 1.0
+	stack.offset_left = 12.0
+	stack.offset_top = -12.0
+	stack.offset_right = 12.0
+	stack.offset_bottom = -12.0
+	stack.grow_horizontal = Control.GROW_DIRECTION_END
+	stack.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	chrome_parent.add_child(stack)
 
-	var vb := VBoxContainer.new()
-	vb.add_theme_constant_override("separation", 6)
-	panel.add_child(vb)
+	# ── 动作面板：出击键（主，绿实底）+ 定位键（辅，幽灵样式）——色相/底感双区分 ──
+	var actions := PanelContainer.new()
+	actions.name = "MapActions"
+	var asb := StyleBoxFlat.new()
+	asb.bg_color = Color(0.05, 0.11, 0.10, 0.94)
+	asb.set_border_width_all(1)
+	asb.border_color = Color(0.2, 0.85, 0.5, 0.62)
+	asb.set_corner_radius_all(6)
+	asb.content_margin_left = 8
+	asb.content_margin_right = 8
+	asb.content_margin_top = 6
+	asb.content_margin_bottom = 6
+	actions.add_theme_stylebox_override("panel", asb)
+	stack.add_child(actions)
+	var action_row := HBoxContainer.new()
+	action_row.add_theme_constant_override("separation", 8)
+	actions.add_child(action_row)
+
+	# v38（用户反馈"进入按钮在关卡点上才知道"）：常驻出击入口——直接进入停靠关，
+	# 与"点关卡锚点 → 关卡情报弹窗 → 进入该关"等价（锚点路径保留不变）。
+	# v38.1：按通关态区分文案——已通关=「↻ 再战本关」（重复挑战语义），未通关=「▶ 进入本关」。
+	var bm_enter := _truck_mgr()
+	var parked_lv: int = int(bm_enter.get_parked_level()) if bm_enter != null and bm_enter.has_method("get_parked_level") else 1
+	var lpm_node: Node = get_node_or_null("/root/LevelProgressManager")
+	var parked_cleared: bool = lpm_node != null and lpm_node.has_method("get_level_stars") \
+		and int(lpm_node.get_level_stars(parked_lv)) > 0
+	var enter_btn := Button.new()
+	enter_btn.name = "EnterParkedLevelBtn"
+	enter_btn.text = ("↻ 再战本关（第 %d 关）" % parked_lv) if parked_cleared else ("▶ 进入本关（第 %d 关）" % parked_lv)
+	enter_btn.tooltip_text = ("重打第 %d 关：掉落与情报照常结算（重复挑战）" % parked_lv) if parked_cleared \
+		else ("直接进入第 %d 关（出击即开战）\n也可点击地图上的关卡点查看关卡情报后再进入" % parked_lv)
+	enter_btn.focus_mode = Control.FOCUS_NONE
+	enter_btn.add_theme_font_size_override("font_size", 14)
+	var enter_styles := PanelStyles.make_button_styles(DesignTokens.COLOR_HEALTH, "solid")
+	for key in ["normal", "hover", "pressed", "disabled", "focus"]:
+		enter_btn.add_theme_stylebox_override(key, enter_styles[key])
+	enter_btn.add_theme_color_override("font_color", Color(0.03, 0.10, 0.06))
+	enter_btn.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	enter_btn.pressed.connect(_on_enter_parked_level_pressed)
+	action_row.add_child(enter_btn)
 
 	var locate_btn := Button.new()
 	locate_btn.text = "◎ 回到当前关"
@@ -1338,7 +1369,26 @@ func _build_map_screen_chrome() -> void:
 	for key in ["normal", "hover", "pressed", "disabled", "focus"]:
 		locate_btn.add_theme_stylebox_override(key, styles[key])
 	locate_btn.pressed.connect(_on_locate_current_pressed)
-	vb.add_child(locate_btn)
+	action_row.add_child(locate_btn)
+
+	# ── 图例面板：纯文字说明（与动作面板分离，弱化底色）──
+	var panel := PanelContainer.new()
+	panel.name = "MapLegend"
+	var psb := StyleBoxFlat.new()
+	psb.bg_color = Color(0.04, 0.06, 0.10, 0.72)
+	psb.set_border_width_all(1)
+	psb.border_color = Color(0, 0.75, 0.85, 0.28)
+	psb.set_corner_radius_all(6)
+	psb.content_margin_left = 10
+	psb.content_margin_right = 10
+	psb.content_margin_top = 6
+	psb.content_margin_bottom = 6
+	panel.add_theme_stylebox_override("panel", psb)
+	stack.add_child(panel)
+
+	var vb := VBoxContainer.new()
+	vb.add_theme_constant_override("separation", 6)
+	panel.add_child(vb)
 
 	vb.add_child(_make_legend_row(Color(0.0, 0.9, 1.0), "当前关（青色双环）"))
 	vb.add_child(_make_legend_row(BOSS_RING_COLOR, "相位师首领关（金环加大）"))
@@ -1427,6 +1477,14 @@ func _make_legend_row(ring: Color, text: String) -> Control:
 func _on_locate_current_pressed() -> void:
 	SignalBus.play_sound.emit("button")
 	_center_view_on_level(clampi(GameManager.current_level if GameManager else 1, 1, LEVEL_COUNT), 2.0)
+
+## v38：常驻出击入口——直接进入卡车停靠关（与锚点弹窗「进入该关」同一条执行链，
+## 含停靠门控 toast / 内嵌模式直调 / 独立模式 meta 链）。锚点交互保持不变。
+func _on_enter_parked_level_pressed() -> void:
+	SignalBus.play_sound.emit("button")
+	var bm := _truck_mgr()
+	var parked: int = int(bm.get_parked_level()) if bm != null and bm.has_method("get_parked_level") else 1
+	_enter_level_from_popup(clampi(parked, 1, LEVEL_COUNT), null)
 
 ## v28：“下一关”引导标跟随——画布坐标→屏幕坐标，节点拖出视口时贴边指示方位
 func _update_next_marker(canvas: Control, scroll: ScrollContainer) -> void:
@@ -2325,8 +2383,29 @@ func _format_special_rules(rules: Dictionary) -> String:
 		parts.append("能量枯竭：回能-50%")
 	if bool(rules.get("boss_enrage_half", false)):
 		parts.append("头目半血狂暴")
+	# v6.16 反制配波：敌方构成偏向（克制单一兵种构筑）
+	var cbt: Array = rules.get("counter_bias_tags", [])
+	if not cbt.is_empty():
+		parts.append("反制构成: " + _counter_bias_display(cbt))
 	# 注：deploy_limit 已移除——可上场单位数现由相位仪实际装备的战斗卡数决定，不再作为关卡修饰显示。
 	return "  ·  ".join(parts) if not parts.is_empty() else ""
+
+
+## v6.16: 反制配波 tag → 中文摘要（armored/tank=装甲洪流 等组合词）
+func _counter_bias_display(tags: Array) -> String:
+	var names: Array = []
+	for t in tags:
+		names.append({
+			"armored": "装甲", "tank": "装甲", "aircraft": "飞行单位",
+			"infantry": "步兵海", "fast": "高速冲锋", "artillery": "远程炮兵",
+			"backline": "纵深阵地",
+		}.get(String(t), String(t)))
+	# 去重保序（armored+tank 同为"装甲"）
+	var uniq: Array = []
+	for n in names:
+		if not uniq.has(n):
+			uniq.append(n)
+	return "+".join(uniq) + "为主"
 
 
 ## v8 批次3: platform_type 枚举值转中文名（供限定兵种提示）

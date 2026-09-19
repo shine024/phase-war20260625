@@ -8,8 +8,8 @@ class_name EnemyPhaseMastersWW1
 const ERA_MASTERS: Array = [
 	{
 		"id": "enemy_master_001",
-		"name": "钢铁先锋·马库斯",
-		"title": "钢铁防线守卫",
+		"name": "沈铸城",
+		"title": "十七天的防线",
 		"level": 5,
 		"faction": "steel",
 		"difficulty": "easy",
@@ -30,8 +30,8 @@ const ERA_MASTERS: Array = [
 	},
 	{
 		"id": "enemy_master_002",
-		"name": "烈焰使者·伊格尼斯",
-		"title": "火焰狂暴者",
+		"name": "祝晚棠",
+		"title": "过载之火",
 		"level": 6,
 		"faction": "flame",
 		"difficulty": "easy",
@@ -52,8 +52,8 @@ const ERA_MASTERS: Array = [
 	},
 	{
 		"id": "enemy_master_003",
-		"name": "雷击者·沃尔特",
-		"title": "闪电链大师",
+		"name": "陆惊鸿",
+		"title": "七重闪电",
 		"level": 7,
 		"faction": "thunder",
 		"difficulty": "medium",
@@ -74,8 +74,8 @@ const ERA_MASTERS: Array = [
 	},
 	{
 		"id": "enemy_master_004",
-		"name": "虚空行者·奈克萨斯",
-		"title": "时空操纵者",
+		"name": "裴溯",
+		"title": "四十一秒的裂隙",
 		"level": 8,
 		"faction": "void",
 		"difficulty": "medium",
@@ -98,7 +98,7 @@ const ERA_MASTERS: Array = [
 	# ==================== Tier 2 - 中级相位师 (Lv10-14) ====================
 	{
 		"id": "enemy_master_005",
-		"name": "钢铁元帅·克劳斯",
+		"name": "霍北望",
 		"title": "不可破之盾",
 		"level": 10,
 		"faction": "steel",
@@ -120,7 +120,7 @@ const ERA_MASTERS: Array = [
 	},
 	{
 		"id": "enemy_master_006",
-		"name": "炎魔女王·赫卡特",
+		"name": "姜拾烬",
 		"title": "毁灭之焰",
 		"level": 12,
 		"faction": "flame",

@@ -23,7 +23,11 @@ const COMMON_BATTLE_BG_PATH := "res://assets/backgrounds/bg_level_01.png"
 const LEVEL_BG_PATH_FMT := "res://assets/backgrounds/bg_level_%02d.png"
 ## v26.9: 背景整体压暗一档（叠乘在时代 tint 上，略偏冷）——"背景永远比单位暗"，
 ## 让单位深色描边/投影把轮廓从亮底（沙漠/雪原）里衬出来，弹道特效也更跳。
-const BG_DIM := Color(0.80, 0.80, 0.87)
+## v6.17: 再压一档（0.80→0.72）——暗底高对比参照 R.I.P. 拆解：亮度让位给发光特效。
+const BG_DIM := Color(0.72, 0.72, 0.81)
+## v6.17: 时代 tint 降饱和保留比——饱和度是特效专属词汇（D3 五律3 颜色即语义），
+## 背景只留 82%，让弹道/爆炸的色相独占注意力。消费点 era_bg_modulate（唯一口径）。
+const BG_SAT_KEEP := 0.82
 ## v33: 时代背景 tint（自 _apply_background_texture 局部数组提出——出征战报背景共用同色）
 const ERA_BG_TINTS := [
 	Color(1.0, 0.95, 0.85),
@@ -37,6 +41,18 @@ const ERA_BG_TINTS := [
 const _PROCEDURAL_BG_WIDTH: int = 1280
 const _PROCEDURAL_BG_HEIGHT: int = 720
 const _BattlePerfMonScript: Script = preload("res://scripts/battle_performance_monitor.gd")
+## v6.17: 命中光学层（泛光 env + 动态光闪池）
+const _BattleOpticsScript = preload("res://scripts/battle/battle_optics.gd")
+
+
+## v6.17: era 底图 modulate 唯一口径 = 时代 tint 降饱和（BG_SAT_KEEP）× 压暗（BG_DIM）。
+## 出征战报背景（sortie_interstitial）同源消费，改背景观感只动 BG_DIM/BG_SAT_KEEP 两个常量。
+static func era_bg_modulate(era: int) -> Color:
+	var tints: Array = ERA_BG_TINTS
+	var tint: Color = tints[era % tints.size()]
+	var gray: float = tint.get_luminance()
+	tint = tint.lerp(Color(gray, gray, gray), 1.0 - BG_SAT_KEEP)
+	return tint * BG_DIM
 ## 道路带位置（基于背景纹理比例）：用于敌我刷新与部署区
 const BATTLE_LANE_CENTER_RATIO := 0.80
 ## 三行布局：车道带需覆盖上行(center - 30)到下行(center + 60)全程，故从 0.14 提到 0.28。
@@ -118,6 +134,8 @@ func _ready() -> void:
 		_ground_loot.z_index = -3
 		add_child(_ground_loot)
 	_update_background()
+	# v6.17 光学层: 战场泛光 env（幂等，GameConfig.vfx_glow_enabled / PW_GLOW_OFF 门控）
+	_BattleOpticsScript.ensure_glow(self)
 	call_deferred("_sync_battle_slot_grid_lane")
 	# v6.4: 把震动相机对齐到视口中心，使其严格等价于无相机渲染（世界原点在视口左上）
 	call_deferred("_align_battle_camera")
@@ -489,8 +507,7 @@ func _apply_background_texture(tex: Texture2D) -> void:
 	var tex_h: float = float(tex.get_height())
 	var bg_top_y: float = battle_bottom_y - tex_h
 	level10_bg.position = Vector2(0.0, bg_top_y)
-	var era_tints: Array = ERA_BG_TINTS
-	level10_bg.modulate = era_tints[era % era_tints.size()] * BG_DIM  # v26.9: 压暗一档
+	level10_bg.modulate = era_bg_modulate(era)  # v6.17: tint 降饱和 × BG_DIM 唯一口径
 	var lane_center_y: float = bg_top_y + tex_h * BATTLE_LANE_CENTER_RATIO
 	var lane_h: float = tex_h * BATTLE_LANE_HEIGHT_RATIO
 	var lane_half_h: float = lane_h * 0.5

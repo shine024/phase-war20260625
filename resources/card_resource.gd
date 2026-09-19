@@ -507,10 +507,11 @@ static func _mod_registry() -> Node:
 func can_install_modification(mod_id: String) -> Dictionary:
 	var result = {can_install = true, conflicts = [], reason = ""}
 
-	# 检查槽位
-	if mods.size() >= 9:
+	# 检查槽位（v6.16 槽位预算：品质基础槽+兵种专属槽；旧档超额只封新装不剥离）
+	var _max_slots: int = ModManager.get_max_mod_slots_for_card(self)
+	if mods.size() >= _max_slots:
 		result.can_install = false
-		result.reason = "改造槽位已满（最多9个）"
+		result.reason = "改造槽位已满（最多%d个）" % _max_slots
 		return result
 
 	# 获取改造数据
@@ -524,6 +525,22 @@ func can_install_modification(mod_id: String) -> Dictionary:
 		result.can_install = false
 		result.reason = "找不到改造数据"
 		return result
+
+	# v6.16 通用件上限：兵种专属加成槽只收兵种件——universal/enhancement 条目
+	# 合计不能超过品质基础槽（专属空位留给本兵种家族件）
+	if mod_reg.has_method("is_family_mod") and not mod_reg.is_family_mod(mod_id):
+		var _base_budget: int = ModManager.get_base_mod_slots(self)
+		var _generic_used: int = 0
+		for _installed in mods:
+			var _iid: String = String(_installed.get("id", "")) if _installed is Dictionary else ""
+			if _iid.is_empty():
+				continue
+			if not mod_reg.is_family_mod(_iid):
+				_generic_used += 1
+		if _generic_used >= _base_budget:
+			result.can_install = false
+			result.reason = "通用槽位已满（%d/%d）——剩余空位为兵种专属槽" % [_generic_used, _base_budget]
+			return result
 
 	# v22: 时代带守卫——改造 era_band 超出本卡时代则不可装（主题代差硬门，
 	# 如"光学瞄准镜"限一战~现代，未来激光卡自带先进火控装不了）

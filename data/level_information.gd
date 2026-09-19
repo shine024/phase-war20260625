@@ -305,6 +305,7 @@ const MECHANIC_BANNER_TEXT := {
 	"elite_wave_bonus": "精英云集：精英波威胁增强",
 	"boss_enrage_half": "狂暴预警：首领半血后狂暴",
 	"no_mods": "干扰场：改造模块失效",
+	"counter_bias_tags": "反制预警：本关敌方构成克制单一兵种构筑",
 }
 
 ## 机制键 → 首现关卡缓存（{key: min_level}；首次调用时扫 1-100 关构建）
@@ -376,7 +377,7 @@ func _apply_special_rules() -> void:
 	_set_rules(85, {"restrict_platforms": [2]})
 	# 第90关：能量减半
 	_set_rules(90, {"energy_mult": 0.5})
-	# 第100关 终局：能量减半（胜负=摧毁奥米伽基地）
+	# 第100关 终局：能量减半（胜负=摧毁贺同舟基地）
 	_set_rules(100, {"energy_mult": 0.5})
 
 	# ═══ v26.13(B1): 关卡机制多样性扩充（B0 设计稿，docs/DESIGN_LEVEL_VARIETY_B0.md）═══
@@ -419,6 +420,25 @@ func _apply_special_rules() -> void:
 	_set_rules(92, {"time_limit_sec": 300})
 	_set_rules(95, {"no_mods": true, "elite_wave_bonus": true})
 	_set_rules(100, {"boss_enrage_half": true})
+
+	# ═══ v6.16 反制配波（D2 免疫式平衡）═══
+	# 每关敌方构成系统性偏向某兵种——单一维度构筑被克制、多元构筑获得碾压窗口。
+	# 消费点：battle_spawn_system._merged_wave_bias_tags（spawn+预警同口径）；
+	# 首现 L33（二战）教学，冷战起每时代一轮四类反制循环加深。
+	# tag 词汇表对齐 enemy_archetypes（armored/tank/aircraft/infantry/fast/artillery/backline）。
+	_set_rules(33, {"counter_bias_tags": ["armored", "tank"]})       # 二战教学：装甲反制
+	_set_rules(43, {"counter_bias_tags": ["armored", "tank"]})       # 冷战：装甲洪流
+	_set_rules(48, {"counter_bias_tags": ["aircraft"]})              # 冷战：空域压制
+	_set_rules(53, {"counter_bias_tags": ["artillery"]})             # 冷战：炮兵阵地（backline 在冷战池零匹配，勿加——题面必真）
+	_set_rules(58, {"counter_bias_tags": ["infantry", "fast"]})      # 冷战：机械化步兵海
+	_set_rules(63, {"counter_bias_tags": ["aircraft"]})              # 现代：空域压制
+	_set_rules(68, {"counter_bias_tags": ["armored", "tank"]})       # 现代：装甲洪流
+	_set_rules(73, {"counter_bias_tags": ["artillery"]})             # 现代：炮兵阵地
+	_set_rules(78, {"counter_bias_tags": ["infantry", "fast"]})      # 现代：步兵海
+	_set_rules(83, {"counter_bias_tags": ["armored", "tank"]})       # 近未来：装甲洪流
+	_set_rules(89, {"counter_bias_tags": ["aircraft", "fast"]})      # 近未来：空域压制
+	_set_rules(93, {"counter_bias_tags": ["infantry", "armored"]})   # 近未来：混合装甲
+	_set_rules(97, {"counter_bias_tags": ["tank", "artillery"]})     # 近未来：装甲炮兵
 
 
 ## v8 批次3: 给指定关卡挂 special_rules（内部辅助，合并到已有字典）。

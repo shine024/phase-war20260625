@@ -80,8 +80,9 @@ const BATTLE_BTN_ICON_BY_KEY: Dictionary = {
 # 仍依赖），仅移除按钮与热键两个入口。
 # v32.3 E1：8 键重排——成长（原「整备」）提为首位+amber 加权；改造/制造从成长面板
 # 详情底部的二级跳转提为一级按钮（实机验收：入口太深）
+# v37（用户拍板）：成长键改标「技能」并直进相位师技能树（原整备舱中转层退役）
 const BTN_CONFIGS: Array = [
-	["progression",  "成长",   "btn_progression_pressed"],
+	["progression",  "技能",   "btn_progression_pressed"],
 	["backpack",     "卡仓",   "btn_backpack_pressed"],
 	["modification", "改造",   "btn_modification_pressed"],
 	["evolution",    "制造",   "btn_evolution_pressed"],
@@ -93,7 +94,7 @@ const BTN_CONFIGS: Array = [
 
 # 批次三 B8：左排面板按钮 tooltip 文案（含快捷键宣传；键位以 main.gd _input 为准）
 const SHORTCUT_TOOLTIPS: Dictionary = {
-	"progression":  "成长：卡牌等级 / 技能树 / 战力总览（快捷键 7）",
+	"progression":  "技能树：相位师技能成长——技能点解锁全局强化；战斗卡靠经验自动升级（快捷键 7）",
 	"backpack":     "卡仓：查看拥有的卡牌与实例（快捷键 1 / B）",
 	"modification": "改造：给战斗卡安装/升级改造模块（消耗图纸+纳米）",
 	"evolution":    "制造：用情报与资源生产新卡牌",
@@ -114,6 +115,13 @@ const BATTLE_BTN_CONFIGS: Array = [
 # key → Button 节点的映射
 var _btn_map: Dictionary = {}
 
+## v38.2（用户反馈"一会儿横的一会儿竖的"）：抽屉**恒为右侧竖排**——基地/备战/战斗
+## 三态同一布局（右缘悬浮竖列），不再随 battle_started 横竖切换；战斗态仅过滤键集
+## （技能/改造/制造为独立解锁功能，战斗中不出现）。
+const BATTLE_HIDDEN_KEYS: Array = ["progression", "modification", "evolution"]
+## 战斗态（仅影响键可见性，不影响布局）
+var _battle_mode: bool = false
+
 @onready var left_section: HBoxContainer = $Margin/HBox/LeftSection
 @onready var right_section: HBoxContainer = $Margin/HBox/RightSection
 
@@ -125,6 +133,11 @@ func _ready() -> void:
 	_refresh_feature_gates()
 	if not SignalBus.feature_unlocked.is_connected(_on_feature_unlocked):
 		SignalBus.feature_unlocked.connect(_on_feature_unlocked)
+	# v38.2：战斗态只过滤键集（布局恒竖排，无横竖切换）
+	if SignalBus.has_signal("battle_started") and not SignalBus.battle_started.is_connected(_on_battle_started_layout):
+		SignalBus.battle_started.connect(_on_battle_started_layout)
+	if SignalBus.has_signal("battle_ended") and not SignalBus.battle_ended.is_connected(_on_battle_ended_layout):
+		SignalBus.battle_ended.connect(_on_battle_ended_layout)
 	# v7.x: 战斗控制按钮已迁移到 TopBattleControls，隐藏底部 RightSection + Divider
 	# 仍保留 _build_right_buttons 创建按钮到 _btn_map（set_pause_text 回退路径依赖）
 	if right_section:
@@ -135,6 +148,59 @@ func _ready() -> void:
 	# BU-1：抽屉化——默认收起 + 悬浮卡片样式（与相位仪栏同一 PanelStyles 语言）
 	_apply_float_frame_style()
 	visible = false
+	_become_right_side_column()
+
+## v38.2：一次性立形——按钮挪入竖排列 + 整条抽屉挂到 HudLayer 右缘锚定（点锚 +
+## grow 向上向左，内容自适应宽高）。仅主场景（BattleBottomBar 父链）执行，测试/
+## 工具直接实例化时保持原地结构。
+func _become_right_side_column() -> void:
+	var margin_host: Node = get_node_or_null("Margin")
+	var hbox: Node = get_node_or_null("Margin/HBox")
+	if margin_host == null or hbox == null:
+		return
+	var column := VBoxContainer.new()
+	column.name = "Column"
+	column.add_theme_constant_override("separation", 6)
+	margin_host.add_child(column)
+	hbox.visible = false
+	for cfg in BTN_CONFIGS:
+		var key: String = cfg[0]
+		if _btn_map.has(key):
+			_btn_map[key].reparent(column)
+	# 主场景链：BattleBottomBar(父) 的父 = HudLayer → 挂上去做右缘悬浮
+	var home: Node = get_parent()
+	var hud: Node = home.get_parent() if home != null else null
+	if hud != null and hud is CanvasLayer:
+		reparent(hud, false)
+		# 点锚（右下角）+ 退化矩形 + grow(BEGIN/BEGIN) = 内容自适应、自锚点向上生长
+		anchor_left = 1.0
+		anchor_top = 1.0
+		anchor_right = 1.0
+		anchor_bottom = 1.0
+		offset_left = -90.0
+		offset_right = -14.0
+		offset_top = -14.0
+		offset_bottom = -140.0   # 底边抬离底部相位仪栏/大招条
+		grow_horizontal = Control.GROW_DIRECTION_BEGIN
+		grow_vertical = Control.GROW_DIRECTION_BEGIN
+		size_flags_horizontal = Control.SIZE_SHRINK_END
+		size_flags_vertical = Control.SIZE_SHRINK_END
+
+func _on_battle_started_layout() -> void:
+	_set_battle_keys_visibility(true)
+
+func _on_battle_ended_layout(_player_won: bool) -> void:
+	_set_battle_keys_visibility(false)
+
+func _set_battle_keys_visibility(in_battle: bool) -> void:
+	if in_battle == _battle_mode:
+		return
+	_battle_mode = in_battle
+	# 开战瞬间收起抽屉（战斗中从菜单点开的另算）
+	set_drawer_open(false, false)
+	for key in BATTLE_HIDDEN_KEYS:
+		if _btn_map.has(key):
+			_btn_map[key].visible = not in_battle
 
 ## BU-1：抽屉开合。展开 = 淡入 + 自底生长（0.2s SINE OUT），收起反向 0.15s。
 ## scale 以底边为支点（容器只管布局不改 scale，安全）；尊重 DT.is_motion_reduce() 直接切换。
@@ -202,11 +268,14 @@ func _apply_float_frame_style() -> void:
 	add_theme_stylebox_override("panel", sb)
 
 ## BU-1：把红点总数透传给相位仪栏「菜单」按钮（同 BattleBottomBar 下的兄弟节点）。
+## v38：战斗态抽屉 reparent 到 HudLayer 后兄弟路径变化，补第二路径兜底。
 func _notify_menu_badge() -> void:
 	var total: int = 0
 	for v in _badge_counts.values():
 		total += maxi(int(v), 0)
 	var ib: Node = get_node_or_null("../BottomInstrumentBar")
+	if ib == null:
+		ib = get_node_or_null("../../BattleBottomBar/BottomInstrumentBar")
 	if ib != null and ib.has_method("set_menu_badge"):
 		ib.set_menu_badge(total)
 
