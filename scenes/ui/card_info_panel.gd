@@ -142,11 +142,24 @@ func _ready() -> void:
 	visible = false
 	z_index = 100
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
+	# UI 四级标准修复 R-D3 子批4：根框归一 PanelStyles 质感框（覆盖 tscn 手写
+	# StyleBoxFlat_panel，与商店等 PanelChrome 面板同一套骨架）。标题行保留
+	# v6.14.8 六分区版式专属 Header（名/Lv/兵种徽章/血条），不套 PanelChrome。
+	add_theme_stylebox_override("panel",
+		PanelStyles.make_panel_frame_textured(DesignTokens.get_panel_accent("backpack")))
 	_resolve_nodes()
 	_setup_tab_titles()
 	_setup_action_buttons_container()
 	if close_button:
 		close_button.pressed.connect(hide_panel)
+		# UI 四级标准修复 R-A3：tscn 里 ✕ 三态共用同一 StyleBoxFlat（hover 无任何反馈，
+		# 与 PanelChrome 关闭钮"hover 转红"标准相悖）。运行时改挂 PanelStyles 工厂——
+		# 与 PanelChrome 完全同款，单一真身，tscn 覆写被运行时覆盖。
+		var close_styles: Dictionary = PanelStyles.make_close_button_styles()
+		close_button.add_theme_stylebox_override("normal", close_styles["normal"])
+		close_button.add_theme_stylebox_override("hover", close_styles["hover"])
+		close_button.add_theme_stylebox_override("pressed", close_styles["pressed"])
+		close_button.add_theme_stylebox_override("focus", close_styles["focus"])
 
 func _resolve_nodes() -> void:
 	name_label = get_node_or_null("Margin/VBox/TitleRow/NameRow/NameLabel") as Label
@@ -318,9 +331,11 @@ func show_card_info(card: CardResource, at_position: Vector2 = Vector2.ZERO) -> 
 	_apply_card_type_tab_visibility(card)
 	if _tab_container:
 		_tab_container.current_tab = TabIdx.INFO
+	var was_hidden := not visible
 	visible = true
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	_position_at(at_position)
+	_play_open_feedback(was_hidden)
 	set_close_button_visible(true)
 	_refresh_sub_panels(card)
 
@@ -345,10 +360,24 @@ func show_unit_info(unit: Node, is_player: bool, at_position: Vector2 = Vector2.
 	_apply_unit_tab_visibility()
 	if _tab_container:
 		_tab_container.current_tab = TabIdx.INFO
+	var was_hidden_unit := not visible
 	visible = true
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	_position_at(at_position)
+	_play_open_feedback(was_hidden_unit)
 	set_close_button_visible(true)
+
+## UI 四级标准修复 R-A2：开板淡入 + 开板音——此前 visible=true 直接"静默突现"，
+## 战场点单位是高频操作里唯一无开板反馈的弹窗。已开状态下切换目标不重播
+## （防连点单位音效轰炸）；PanelAnim.open 幂等守卫已加（panel_anim.gd OPEN_TWEEN_META）。
+## 本面板无 CenterContainer/EmbedCenter 子节点 → PanelAnim 只做 modulate 淡入，
+## _position_at 次帧定位不受影响、无弹起点错位。
+func _play_open_feedback(was_hidden: bool) -> void:
+	if not was_hidden:
+		return
+	PanelAnim.open(self)
+	if SignalBus and SignalBus.has_signal("play_sound"):
+		SignalBus.play_sound.emit("panel_open")
 
 func _position_at(at_position: Vector2) -> void:
 	if at_position == Vector2.ZERO:
@@ -1459,7 +1488,14 @@ func _build_nurture_text(card: CardResource, _stats: UnitStats = null, include_p
 				if mod_disabled:
 					mod_text += "（禁用）"
 				mod_lines.append(mod_text)
-			parts.append("改造 %d/%d" % [mod_lines.size(), ModManager.get_max_mod_slots_for_card(card)])
+		# 2026-09-19 修复：原 append 在 for 循环内（N 个改造重复 append N 次"改造 N/M"）；
+		# 且敌方配装 9 条不受玩家槽位预算约束（v6.16），溢出口径降级为只显示实装件数
+		if card.card_type == GC.CardType.COMBAT_UNIT and "mods" in card and not mod_lines.is_empty():
+			var _max_slots: int = ModManager.get_max_mod_slots_for_card(card)
+			if mod_lines.size() > _max_slots:
+				parts.append("配装 %d 件" % mod_lines.size())
+			else:
+				parts.append("改造 %d/%d" % [mod_lines.size(), _max_slots])
 		if not mod_lines.is_empty():
 			mod_list_text = "\n已装改造：\n    · " + "\n    · ".join(mod_lines)
 	# v6.11: 战力星级信息已移除（系统②合并到强化等级①，详见 _build_star_lines 的强化加成）

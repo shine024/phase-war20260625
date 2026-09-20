@@ -259,8 +259,20 @@ func claim_task_reward(task_id: String) -> bool:
 			return true
 	return false
 
+## UI 四级标准修复 R-B1：一键领取全部已完成未领取任务，返回领取数量。
+## 奖励发放/信号复用单领同链 _grant_task_rewards（无新经济路径、无新持久化）；
+## announce=false 抑制逐条 toast，由调用方汇总播一条，防 7 连弹。
+func claim_all_completed() -> int:
+	var n := 0
+	for task in _daily_tasks:
+		if task.get("completed", false) and not task.get("claimed", false):
+			_grant_task_rewards(task, false)
+			task["claimed"] = true
+			n += 1
+	return n
+
 ## 发放任务奖励
-func _grant_task_rewards(task: Dictionary) -> void:
+func _grant_task_rewards(task: Dictionary, announce: bool = true) -> void:
 	var reward = task["reward"]
 
 	for reward_type in reward:
@@ -278,7 +290,8 @@ func _grant_task_rewards(task: Dictionary) -> void:
 	if SignalBus and SignalBus.has_signal("daily_task_reward_granted"):
 		SignalBus.daily_task_reward_granted.emit(task)
 		# v26.6 批4b: 死信号审计 B 类补反馈链——领奖 toast（task 字典无 title，按类型描述）
-		SignalBus.show_toast.emit("📋 日常任务完成：%s（奖励已发放）" % get_task_type_name(task.get("type", -1)))
+		if announce:
+			SignalBus.show_toast.emit("📋 日常任务完成：%s（奖励已发放）" % get_task_type_name(task.get("type", -1)))
 
 ## 给予稀有度碎片
 func _grant_rarity_fragment(reward_type: String, amount: int) -> void:
@@ -387,7 +400,7 @@ static func get_difficulty_color(difficulty: TaskDifficulty) -> Color:
 		TaskDifficulty.EASY: return Color(0.6, 0.9, 0.6, 1.0)
 		TaskDifficulty.NORMAL: return Color(0.6, 0.8, 1.0, 1.0)
 		TaskDifficulty.HARD: return Color(1.0, 0.7, 0.3, 1.0)
-		TaskDifficulty.EXPERT: return Color(1.0, 0.3, 0.3, 1.0)
+		TaskDifficulty.EXPERT: return Color(0.937, 0.267, 0.267, 1.0)
 		_: return Color.WHITE
 
 ## 保存状态（给SaveManager用）

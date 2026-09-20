@@ -8,6 +8,34 @@
 - **Entry scene**: `res://scenes/title_screen.tscn`
 - **Main game scene**: `res://scenes/main.tscn`
 
+## 发行宪法（红线，任何功能设计前先过）
+
+**`docs/发行宪法.md`（2026-09-19 起）四条红线：C1 商业化只买便利/外观、绝不碰内容可及性与概率暗箱；C2 核心玩法 100% 离线可玩、联网只做增量；C3 一切概率/保底口径玩家可见（UI 文案数值从常量读，禁止硬编码）；C4 对外路线图 ≥3 版本 + 发版必打 tag。** 改经济数值/概率/商业化/联网相关代码前先读该文档；冲突即违宪。
+
+## v6.19 竞品反思修订批：概率可见化 + 埋点 + 发行宪法（2026-09-19~20，详见 CHANGELOG）
+
+**改制造面板/情报舱/黑门弹窗/game_manager 遭遇链/埋点消费前必读本节。**
+
+- **保底口径文案唯一源**：`ManufacturePools.describe_card_pity(pity)` / `ModManufacture.describe_box_pity(pity)`（数值读常量自动跟随；软保底 ×2 语义，**严禁"必出"字样**——宪法 C3）。UI 落点=制造舱**中栏"品质概率池"可见区顶**金色行（卡牌 `_rebuild_pool_bars` / 随机箱 `_update_mod_box_detail`）。
+- **制造舱右栏已复活（v6.19.4，反转 v6.19.2"维持现状"拍板——用户实机反馈"预览不到要制造的战斗卡"）**：TargetNamePanel/InfoPanel/RequirementsPanel/StatsPanel/ResourcePanel 五分节 + 新增 PreviewPanel 卡面预览（150px，`UiAssetLoader.card_icon_for_list` 全回退链）现按分支显隐，玩家可见。**显隐唯一口=`evolution_panel._set_detail_sections_visible`**；纪律：任何写右栏内容的分支必须显式亮起要展示的分节（无选择态整组隐藏=tscn 默认；不可制造兜底分支只亮名/情报；mod 模式亮四块、预览与统计九格隐藏）。右栏结构：DetailInner→**DetailVBox**→[DetailScroll(滚动内容) + ButtonArea(钉底恒显)]，**制造按钮永远在折叠线以下不可见是红线**；ButtonArea 内是 ButtonHBox（v6.19.4 修掉存量叠盖 bug：PanelContainer 多子控件同矩形互叠，曾把「开一次箱」盖死）。⚠️ evolution_panel.tscn 的 `parent` 属性是场景根起算全路径——挪动 DetailScroll 层级时必须同步全部子孙节点路径（29 处，漏改=%unique 名静默失踪）。回归锁 `tests/unit/ui/test_evolution_detail_revival.gd`（3 用例）+ 视觉探针 `tests/_tmp_evo_detail_probe.tscn`。
+- **相位师遭遇规则**：查询口=`GameManager.get_phase_master_encounter_status()`（情报舱敌方情报 Tab「相位师情报」分区消费）；递增参数具名化 `PHASE_MASTER_DROUGHT_TRIGGER/STEP/ENCOUNTER_CAP`（与 check 同源，改一处两边跟随）；UI 分区文案含字面 % 时记得 `%%` 转义（运行期 formatting error 静默吞行）。
+- **埋点**：`PerformanceMetricsManager.record_milestone`（**跨会话持久** `user://milestones.cfg`，时间戳 `total_ms`=累计游戏内时长；事件：combo_active_first/combo_full_first/first_mythic_mod/**first_mythic_card**/first_garrison_clear/first_phase_master_encounter，判据见 `docs/试玩验收_长线节点.md`）+ `mark_battle_flag`（场次聚合 battles_total/spedup/skipped/**sped_or_skipped 联合计数**，使用率=sped_or_skipped/total，"倍速+跳过>70% ⇒ 回炉"判据）。**RefCounted/静态上下文取 autoload 必须走 `Engine.get_main_loop() as SceneTree → root.get_node_or_null()`**（combo_engine 教训：直接写 get_node_or_null = 编译错级联、--script 冒烟零输出卡死）。
+- **晶体垫封顶（v6.19.1 核验落地）**：`advance_mod_box_pity_with_crystals` 以 `ModManufacture.PITY_THRESHOLD-1` 封顶——已到激活线前拒绝垫付，未到线按剩余额度部分成交（`capped` 键标记）。改随机箱 pity 阈值时封顶自动跟随。
+- **黑门购次二次确认（v6.19.1 核验落地）**：`world_map._enter_blackgate` 免费用尽时先弹 `_confirm_blackgate_purchase` 确认框再扣 60 能量块（原为静默扣费）；确认后走 `_enter_blackgate_confirmed` 同一进入链。
+- 首遇引导：`FeatureUnlockPopup.show_once("phase_master_intel_guide"/"grace_end_notice")`——前者三步链文案（遭遇→档案区「情报舱」工位→战前建议预配克制），后者经 `GameManager._show_notice_when_popup_free` 错峰（**L10 是驻守关，通关时两弹窗同帧，直接 show_once 会叠层互盖**）；保护期计入递增计数的口径已写进情报舱分区与预告文案（机制红线不动，文案如实）。build_advisor 相位师条目照旧：驻守关必提示 / 野外递增≥1.5×基础提示。
+- 黑门弹窗规则数值走 `EndlessBlackgateRef.FREE_ENTRIES_PER_DAY/ENERGY_PER_EXTRA_ENTRY/WEEKLY_MARROW_CAP` 静态常量（勿再硬编码 3/60/400）。
+
+## v6.20 开场设定修正 + 教程聚光指向批（2026-09-20，详见 CHANGELOG）
+
+**改苏醒演出/教程覆盖层/教程步骤数据前必读本节。** 用户拍板：①主角是穿越回来的相位师、本来就认识战斗卡，「发现卡」式叙事违设定；②教程是对玩家的，不能只有文字——指向按钮要有光点，悬停要有介绍。
+
+- **苏醒演出「三拍教学」已删**（truck_base E 段）：`_wakeup_teach_beat` 整删，`wakeup_wrist/backpack.png` 与枕下纸条退出开场链（资产留档）。现为「装备自检两拍」纯字幕（~8.6s）。「卡在哪/怎么装」引导归教程覆盖层，勿再往开场演出里塞系统教学。
+- **教程聚光唯一真身 `scripts/ui/tutorial_spotlight.gd`**：`attach(host, target, tip)`=暗幕挖孔+金色脉冲环+悬浮提示条；全 IGNORE 纯视觉、每帧跟随目标。⚠️ 宿主必须是独立覆盖层根——与游戏 UI 同宿主会被 `move_child(0)` 压到底下画不出（探针实踩）。motion_reduce 自动恒亮。
+- **教程步骤数据三键**：`spotlight_key`/`spotlight_tip`/`spotlight_press_advances`（现挂第 2/3 步→基地卡牌墙热区）。消费口=tutorial_overlay `_update_spotlight`：chain_paused（点播段面板已开）与 gate_locked（锁定工位）不聚光；`spotlight_press_advances` 步骤**点真实入口按钮=等效点动作键**（`_advance(true)` 跳过动作信号防 toggle 二次关门——`_on_next_pressed` 已重构为 `_advance(skip_action)`）。
+- **入口按钮查询**：truck_base `get_hotspot_button_for_key(key)` / bottom_function_bar `get_button_for_key(key)`（growth 在底栏键名=progression，别名换算在 overlay 侧）。加新教程步聚光先确认目标键两条链都能解析。
+- **基地 close-wait 断链已根修**（存量 bug）：truck_base 关面板两路（面板 closed 信号/ESC）都通知 `_notify_surface_closed` → TPM——此前只有 main._close_overlay 通知，教程第 2/3 步在基地关卡仓后永停摆。**新嵌入面板的关闭路径必须接 `_notify_surface_closed`**，否则教程挂起链再断。
+- 验证件：`tests/_tmp_v620_smoke.gd`（编译+数据）+ `tests/_tmp_v620_flow_smoke.tscn`（真基地端到端 10 断言，跑前备份 user://）+ `tests/_tmp_spotlight_probe.tscn`（视觉像素断言）。
+
 ## Godot CLI Commands
 
 Godot not on PATH. **本项目跨两台机器开发，Godot 可执行文件位置不同——按下表选当前机器可用的那个**
@@ -681,6 +709,18 @@ IntelEvolutionManager → IntelManual, IntelEvolutionBranches
 - **掉落语义 = 击毁炸出、散放地上（v38.2 用户澄清）**：`ground_loot_layer._play_toss` 每件随机方向（全周角）+ 随机距离（18-64px）甩出、小跳 ≤12px、落定**本体**随机倾角 ±14°（倾角只转 _body：光柱/名条/柔光保持竖直）；同次多点各异 = 散放感。**反例：垂直下落/整齐排布**（均被用户否决）。低档落地小尘环、高级件音效在落地瞬间保留。改掉落视觉先看本条再动手。
 - **冒烟纪律补充（--script 模式）**：`_initialize()` 阶段 `add_child` **不派发 _ready**（等首帧）——实例化场景做断言须手动 `panel._ready()`；勿用 await process_frame（会挂死）。范本 `tests/_tmp_v38_smoke.gd`。
 - **留观**：gdunit 错误监视器上下文报 `unit_stats_table.gd:651 ModBreakpoints not declared`——该文件与 modification_registry.gd 带分支在途未提交改动（+18/+56 行），全 autoload 上下文编译无错，非 v38 引入，待在途改动收口时处理。
+
+## v6.19.3 实机验收修复批6：结算底栏四键重叠 + 战斗「菜单」按钮失效（2026-09-20，详见 CHANGELOG）
+
+**改结算底栏布局 / 按路径查找 BottomFunctionBar 前必读本节。**
+
+- **结算底栏四键坐标契约（mvp_panel `_render_close_button_anchored`）**：`x0` 是「返回整备」自己的起点**不是行起点**——基地键 24..204 / 整备 216..384（`x0=216 if has_home else 100`）/ 再战 396..584 / 主键 596..896，间距 12。写错成 24 = 整备键整键叠死基地键（用户报"按钮重叠、看不到下一关"根因）。回归锁 `test_settlement_next_level.gd::test_bottom_row_four_buttons_no_overlap`；视觉探针 `tests/_tmp_settle_row_probe.tscn`（BunkerManager 懒加载需 `ensure_loaded("bunker")`+等一帧）。
+- **BottomFunctionBar 路径查找纪律**：v38.2 起抽屉被 reparent 到 `HudLayer/BottomFunctionBar`（直下），旧嵌套路径 `HudLayer/BattleBottomBar/BottomFunctionBar` 仅在测试/裸实例化成立——**按路径查找它的新代码必须双路径容错**（新路径优先）。v6.19.3 修了三处 reparent 后落空的查找：相位仪栏菜单按钮（`../../BottomFunctionBar`，用户报"菜单按钮按了没反应"根因——旧路径恒 null 静默 return）、`_get_top_controls`（`../TopHudBar`）、battle_manager 开战帧 set_start_battle_text。路径冒烟 `tests/_tmp_v382_paths_smoke.gd`（V382_PATHS_OK）。
+- **全 UI 体检探针 `tests/_tmp_ui_audit_probe.tscn`**（2026-09-20 全量过一遍，结论存 CHANGELOG v6.19.3 附录）：窗口化自跑 45 面板+main 合成态，A 同尺度覆盖/B 出界/C 零尺寸三类检测+逐屏截图；ScrollContainer/SubViewport 子树与双全屏层叠豁免。**跑前必须备份 `user://` 目录（`%APPDATA%/Godot/app_userdata/phase-war`）并在跑完还原**——面板 _ready 会触发 show_once/自动存档写盘。新面板入库想兜底体检就复跑它。
+
+## v6.19.5 开场链宽窗适配（2026-09-20，详见 CHANGELOG）
+
+**改 comic_intro / dream_battle 前必读。** stretch aspect=expand 下窗口宽于 16:9 时设计坐标变宽——开场链原全部按 1280×720 钉死（舞台左贴、跳过键悬半空、幕布盖不满），用户实机报"开始剧情，右上角"。现：comic_intro 舞台水平居中 + 跳过键挂根节点 TOP_RIGHT 锚；dream_battle 的 CanvasLayer chrome（跳过/幕布/红晕/白闪/选卡框/标题副标）全改视口锚点自适应。**红线：dream_battle 的 _world/_battlefield/相机坐标未动也不要动**——单位 global_position 生成 + spatial_grid 参与，居中会错位战斗模拟；宽窗下战场左贴是接受的演出观感。验证探针 `tests/_tmp_comic_probe.tscn`（三组 SKIP_AT_CORNER_OK 断言；intro 场景有自播时间轴，不在 ui_audit 探针名单，改后用它验）。
 
 ## v6.16 改造爽感批次：D2 门槛装备五层（断点/门槛件/反制配波/槽位预算/数值帽分档）（2026-09-17，详见 CHANGELOG）
 

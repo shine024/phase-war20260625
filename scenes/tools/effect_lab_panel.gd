@@ -623,7 +623,7 @@ func _process(_delta: float) -> void:
 		return
 	if _player_status == null: return
 	_player_status.text = _fmt_status(_player_unit(), "我方", Color(0.3, 0.9, 0.4))
-	_enemy_status.text = _fmt_status(_enemy_unit(), "敌方", Color(0.95, 0.4, 0.4))
+	_enemy_status.text = _fmt_status(_enemy_unit(), "敌方", Color(0.937, 0.267, 0.267))
 	if _check_info != null:
 		_check_info.text = "检查时间：%s\n我方：%s\n敌方：%s\n已注入：%d项" % [
 			Time.get_time_string_from_system(), _unit_short(_player_unit()), _unit_short(_enemy_unit()), _injected_log.size()]

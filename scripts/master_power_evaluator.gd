@@ -34,14 +34,19 @@ const _LevelEras = preload("res://data/level_eras.gd")
 #   - 5★ 宗师：现代/近未来弱（7000-11000）
 #   - 6★ 传说：近未来强师/玩家中配（11000-16000）
 #   - 7★ 神话：近未来 boss/玩家满配（16000+）
+# R-D1 裁决：原七档全纯饱和 hex（#88CCFF/#44FF88/#FFCC00/#FF8800/#FF4466/#CC44FF/#FFD700，
+# 含违禁纯金 #FFD700）刺眼。改走 DT 低饱和 token 同值 hex（faction_row 纯金修法同款），
+# 段位区分靠明度阶梯不靠饱和度；star_color 现无 UI 渲染端，替换零观感风险。
+# 映射：新锐=COLOR_TEXT_MID(#abb8d1)/精英=COLOR_ICE_TEXT(#99d9ff)/高手=COLOR_GOLD_SOFT(#ffe699)/
+# 大师=COLOR_GOLD(#ffd959)/宗师=COLOR_AMBER(#f59e0b)/传说=COLOR_VIOLET(#a78bfa)/神话=COLOR_RED_DOWN(#ef4444)
 const STAR_TIERS: Array[Dictionary] = [
-	{"stars": 1, "name": "新锐",   "min_score": 0,     "max_score": 800,     "color": "#88CCFF"},
-	{"stars": 2, "name": "精英",   "min_score": 800,   "max_score": 2000,    "color": "#44FF88"},
-	{"stars": 3, "name": "高手",   "min_score": 2000,  "max_score": 4000,    "color": "#FFCC00"},
-	{"stars": 4, "name": "大师",   "min_score": 4000,  "max_score": 7000,    "color": "#FF8800"},
-	{"stars": 5, "name": "宗师",   "min_score": 7000,  "max_score": 11000,   "color": "#FF4466"},
-	{"stars": 6, "name": "传说",   "min_score": 11000, "max_score": 16000,   "color": "#CC44FF"},
-	{"stars": 7, "name": "神话",   "min_score": 16000, "max_score": 9999999, "color": "#FFD700"},
+	{"stars": 1, "name": "新锐",   "min_score": 0,     "max_score": 800,     "color": "#abb8d1"},
+	{"stars": 2, "name": "精英",   "min_score": 800,   "max_score": 2000,    "color": "#99d9ff"},
+	{"stars": 3, "name": "高手",   "min_score": 2000,  "max_score": 4000,    "color": "#ffe699"},
+	{"stars": 4, "name": "大师",   "min_score": 4000,  "max_score": 7000,    "color": "#ffd959"},
+	{"stars": 5, "name": "宗师",   "min_score": 7000,  "max_score": 11000,   "color": "#f59e0b"},
+	{"stars": 6, "name": "传说",   "min_score": 11000, "max_score": 16000,   "color": "#a78bfa"},
+	{"stars": 7, "name": "神话",   "min_score": 16000, "max_score": 9999999, "color": "#ef4444"},
 ]
 
 ## 敌方 UI/排行榜默认 tier（满配威胁评估）

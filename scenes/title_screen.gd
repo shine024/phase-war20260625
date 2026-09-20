@@ -10,7 +10,7 @@ func _play_sfx(name: String) -> void:
 const PanelStyles = preload("res://scripts/ui/panel_styles.gd")
 
 # 颜色常量
-const COLOR_CYAN := Color(0, 0.941, 1)
+const COLOR_CYAN := Color(0, 0.94, 1)
 const COLOR_PURPLE := Color(0.545, 0.361, 0.965)
 # 与 DT.COLOR_BG 保持一致（v25 UI 统一底色；本常量当前无消费方，保留防外部引用）
 const COLOR_BG := DesignTokens.COLOR_BG
@@ -228,15 +228,37 @@ func _update_continue_button(btn: Button) -> void:
 func _on_new_game() -> void:
 	_play_sfx("button")
 	if SaveManager:
-		SaveManager.start_new_game()
-		# R1-9（设计审查 F-12，2026-09-13）：新游戏统一走序章链——原直进 main.tscn
-		# 会跳过 12 格开场漫画与基地醒来演出（教学拍点也在此链上），同一新玩家
-		# 走"新游戏/移动基地"两个入口得到不同序章。与 _on_enter_truck_base
-		# 新档分支同构：comic pending → truck_base 醒来演出 → 教程链。
-		Engine.set_meta("bunker_intro_comic_pending", true)
-		SceneTransition.change(get_tree(), "res://scenes/intro/comic_intro.tscn")
+		# v38.5 修复（实机评估 P1）：新游戏是标题第一颗按钮且无覆盖确认，误点即毁档
+		# （仅 .prior 单层轮转兜底）。当前槽位有存档时先弹确认——与 _on_quit 同款
+		# ConfirmationDialog（全项目此前只有「退出」有确认）。
+		if SaveManager.has_save_slot(SaveManager.get_slot()):
+			_show_new_game_confirm_dialog()
+			return
+		_start_new_game_flow()
 		return
 	SceneTransition.change(get_tree(), "res://scenes/main.tscn")
+
+## v38.5：新游戏确认弹窗 + 实际开新档流程（自 _on_new_game 抽出）
+func _start_new_game_flow() -> void:
+	SaveManager.start_new_game()
+	# R1-9（设计审查 F-12，2026-09-13）：新游戏统一走序章链——原直进 main.tscn
+	# 会跳过 12 格开场漫画与基地醒来演出（教学拍点也在此链上），同一新玩家
+	# 走"新游戏/移动基地"两个入口得到不同序章。与 _on_enter_truck_base
+	# 新档分支同构：comic pending → truck_base 醒来演出 → 教程链。
+	Engine.set_meta("bunker_intro_comic_pending", true)
+	SceneTransition.change(get_tree(), "res://scenes/intro/comic_intro.tscn")
+
+func _show_new_game_confirm_dialog() -> void:
+	var dialog := ConfirmationDialog.new()
+	dialog.title = "开始新游戏"
+	dialog.dialog_text = "当前槽位已有存档，开始新游戏将覆盖该进度。\n确定继续吗？"
+	dialog.ok_button_text = "覆盖并开始"
+	dialog.cancel_button_text = "取消"
+	add_child(dialog)
+	dialog.confirmed.connect(func() -> void: _start_new_game_flow())
+	dialog.confirmed.connect(dialog.queue_free)
+	dialog.canceled.connect(dialog.queue_free)
+	dialog.popup_centered()
 
 func _on_continue() -> void:
 	_play_sfx("button")
@@ -247,6 +269,11 @@ func _on_continue() -> void:
 			SignalBus.save_restored_from_backup.connect(_on_save_restored_from_backup, CONNECT_ONE_SHOT)
 		var load_success = SaveManager.load_game()
 		if load_success:
+			# v38.5 修复（实机评估 P2）：「继续」是全项目唯一不设自动开战的入战路径——
+			# 此前 main 落地后战斗冻在 00:00，顶栏仅图标式开始键（tooltip 文案），
+			# 新玩家不知道点哪。与世界地图「进入该关」同款 meta；教程未完成/已在战斗中
+			# 由 main.auto_start_battle_from_world_map 自身守卫让路，不抢教学节奏。
+			Engine.set_meta("level_auto_start_pending", true)
 			SceneTransition.change(get_tree(), "res://scenes/main.tscn")
 		else:
 			var toast_mgr = get_node_or_null("/root/ToastManager")
@@ -359,9 +386,11 @@ func _add_replay_intro_button(style_source: Button) -> void:
 		var sb: StyleBox = style_source.get_theme_stylebox(style_key)
 		if sb:
 			btn.add_theme_stylebox_override(style_key, sb)
-	btn.add_theme_font_size_override("font_size",
-		style_source.get_theme_font_size("font_size"))
-	btn.custom_minimum_size = style_source.custom_minimum_size
+	# v38.5（实机评估 P3 裁切收敛）：开发按钮原先复制主按钮规格（300×54/字号20），
+	# 与 SwitchSlot/CombatCheck 的弱化档(26)不一致，是 debug 布局撑爆 720 视口的
+	# 大头之一。降为 (300,40)/字号14。
+	btn.add_theme_font_size_override("font_size", 14)
+	btn.custom_minimum_size = Vector2(300, 40)
 	btn.pressed.connect(_on_replay_intro)
 	vbox.add_child(btn)
 
@@ -434,17 +463,24 @@ func _on_switch_slot() -> void:
 
 
 ## 更新存档位显示
+## v38.5（实机评估 P3 裁切收敛）：多行槽位清单（3 槽=3 行 63px）单行化——
+## 主列省 ~42px 高度；全量清单保留在 tooltip 悬浮可见。
 func _update_slot_display() -> void:
 	var slot_label: Label = get_node_or_null("CenterContainer/MainVBox/ButtonsVBox/SlotLabel")
 	if slot_label:
 		var info: Array = SaveManager.get_slot_info() if SaveManager else []
 		var parts: Array = []
+		var cur_level := 0
 		for s in info:
 			# 行首补一空格：SlotLabel 无内边距，贴 VBox 左缘视觉上似裁切（与其他按钮文字留边对齐）
 			var marker := " ▸ " if int(s.get("slot", 0)) == SaveManager.get_slot() else "   "
 			var level_str := "第 %d 关" % int(s.get("level", 0)) if int(s.get("level", 0)) > 0 else "空"
+			if int(s.get("slot", 0)) == SaveManager.get_slot():
+				cur_level = int(s.get("level", 0))
 			parts.append("%s%d: %s" % [marker, int(s.get("slot", 0)), level_str])
-		slot_label.text = "\n".join(parts)
+		var cur_str := "第 %d 关" % cur_level if cur_level > 0 else "空"
+		slot_label.text = " 存档槽 %d/%d · %s" % [SaveManager.get_slot(), info.size(), cur_str]
+		slot_label.tooltip_text = "\n".join(parts)
 
 
 ## 进入战斗效果检查场（独立测试场景，复用项目真实战斗效果）
@@ -483,7 +519,7 @@ func _draw() -> void:
 		draw_circle(Vector2(s["x"], s["y"]), s["size"], Color(0.7, 0.9, 1.0, a))
 
 	# 绘制水平扫描线（半透明细线）
-	var scan_color := Color(0, 0.941, 1, 0.04)
+	var scan_color := Color(0, 0.94, 1, 0.04)
 	var scan_step := 40.0
 	var offset := fmod(_scan_line_y, scan_step)
 	var y := offset
@@ -493,4 +529,4 @@ func _draw() -> void:
 
 	# 绘制底部渐变线（装饰用）
 	draw_line(Vector2(0, vp_size.y - 2), Vector2(vp_size.x, vp_size.y - 2),
-		Color(0, 0.941, 1, 0.3), 2.0)
+		Color(0, 0.94, 1, 0.3), 2.0)

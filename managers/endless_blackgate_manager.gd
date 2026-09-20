@@ -214,10 +214,8 @@ func buy_extra_entry_with_energy(times: int = 1) -> Dictionary:
 		return {ok = false, reason = "资源管理器未就绪"}
 	if not brm.can_afford(BasicResourcesData.ID_ENERGY_BLOCK, price):
 		return {ok = false, reason = "能量块不足（需 %d）" % price}
-	if brm.has_method("spend_resource"):
-		brm.spend_resource(BasicResourcesData.ID_ENERGY_BLOCK, price)
-	else:
-		brm.add_resource(BasicResourcesData.ID_ENERGY_BLOCK, -price)
+	# 2026-09-19：spend_resource 方法不存在（原靠 has_method 兜底），统一走 consume
+	brm.consume(BasicResourcesData.ID_ENERGY_BLOCK, price)
 	_extra_entries += n
 	return {ok = true, bought = n, energy_spent = price, extra_left = _extra_entries}
 

@@ -10,9 +10,11 @@ func test_placeholder_formula_base_levels() -> void:
 	var r1: Dictionary = FCR.get_first_clear_reward(1)
 	assert_int(int(r1["crystal"])).is_equal(22)
 	assert_int(int(r1["nano_materials"])).is_equal(230)
+	assert_int(int(r1["alloy"])).is_equal(17)
 	assert_int(int(r1["energy_block"])).is_equal(5)
 	var r10: Dictionary = FCR.get_first_clear_reward(10)
 	assert_int(int(r10["crystal"])).is_equal(40)
+	assert_int(int(r10["alloy"])).is_equal(35)
 	assert_int(int(r10["energy_block"])).is_equal(10)
 
 
@@ -33,6 +35,7 @@ func test_monotonic_non_decreasing() -> void:
 		assert_int(int(r["crystal"])).is_greater_equal(20 + level * 2)
 		assert_int(int(r["crystal"])).is_greater_equal(prev_crystal if level % 20 != 1 else 0)
 		assert_int(int(r["nano_materials"])).is_equal(200 + level * 30)
+		assert_int(int(r["alloy"])).is_equal(15 + level * 2)
 		prev_crystal = int(r["crystal"])
 		prev_nano = int(r["nano_materials"])
 

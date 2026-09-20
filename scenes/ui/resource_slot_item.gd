@@ -637,7 +637,7 @@ func _apply_mod_prototype(prototype: String) -> void:
 		label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 		label.vertical_alignment = VERTICAL_ALIGNMENT_BOTTOM
 		label.add_theme_font_size_override("font_size", DesignTokens.FONT_SIZE_SMALL)
-		label.add_theme_color_override("font_color", Color(0.27, 0.31, 0.39, 0.7))  # 暗灰次要信息
+		label.add_theme_color_override("font_color", Color(0.47, 0.52, 0.60, 0.7))  # 暗灰次要信息（R-C3 随 COLOR_TEXT_FAINT 提亮一档）
 		label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		layer.add_child(label)
 	label.text = prototype

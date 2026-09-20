@@ -57,7 +57,7 @@ static func get_faction_store_items(faction_id: String, level: int) -> Array[Sto
 			items.append(create_store_item("weapon_ww2_mg", StoreItemType.CARD, "MG42机枪", 200, level))
 			items.append(create_store_item("weapon_cold_lmg", StoreItemType.CARD, "M60通用机枪", 250, level))
 			items.append(create_store_item("weapon_modern_minigun", StoreItemType.CARD, "M134加特林", 300, level))
-			items.append(create_store_item("alloy", StoreItemType.MATERIAL, "合金x50", 150, level))
+			items.append(create_store_item("alloy", StoreItemType.MATERIAL, "合金x80", 80, level))
 
 		"nova_arms":
 			items.append(create_store_item("weapon_ww2_at", StoreItemType.CARD, "巴祖卡火箭筒", 250, level))
@@ -68,7 +68,7 @@ static func get_faction_store_items(faction_id: String, level: int) -> Array[Sto
 			items.append(create_store_item("weapon_future_plasma", StoreItemType.CARD, "等离子枪", 450, level))
 			items.append(create_store_item("platform_ww2_medium", StoreItemType.CARD, "谢尔曼坦克", 300, level))
 			items.append(create_store_item("platform_future_medium", StoreItemType.CARD, "悬浮坦克", 400, level))
-			items.append(create_store_item("nano_materials", StoreItemType.MATERIAL, "纳米材料x50", 180, level))
+			items.append(create_store_item("nano_materials", StoreItemType.MATERIAL, "纳米材料x100", 100, level))
 
 		"aether_dynamics":
 			items.append(create_store_item("platform_ww1_medium", StoreItemType.CARD, "马克V型坦克", 250, level))
@@ -86,9 +86,9 @@ static func get_faction_store_items(faction_id: String, level: int) -> Array[Sto
 			items.append(create_store_item("weapon_ww1_rifle", StoreItemType.CARD, "李-恩菲尔德步枪", 150, level))
 			items.append(create_store_item("weapon_cold_assault", StoreItemType.CARD, "AK-47突击步枪", 200, level))
 			items.append(create_store_item("weapon_modern_carbine", StoreItemType.CARD, "M4卡宾枪", 250, level))
-			items.append(create_store_item("nano_materials", StoreItemType.MATERIAL, "纳米材料x100", 200, level))
-			items.append(create_store_item("alloy", StoreItemType.MATERIAL, "合金x50", 150, level))
-			items.append(create_store_item("alloy", StoreItemType.MATERIAL, "合金x100", 280, level))
+			items.append(create_store_item("nano_materials", StoreItemType.MATERIAL, "纳米材料x100", 100, level))
+			items.append(create_store_item("alloy", StoreItemType.MATERIAL, "合金x80", 80, level))
+			items.append(create_store_item("alloy", StoreItemType.MATERIAL, "合金x160", 160, level))
 			items.append(create_store_item("bp_ww2_016", StoreItemType.CARD, "缴获卡·精选", 300, level))
 			items.append(create_store_item("stat_boost_hp", StoreItemType.MATERIAL, "生命强化", 400, level))
 
@@ -125,8 +125,8 @@ static func get_faction_store_items(faction_id: String, level: int) -> Array[Sto
 			items.append(create_store_item("weapon_modern_carbine", StoreItemType.CARD, "M4卡宾枪", 280, level))
 			items.append(create_store_item("weapon_modern_dmr", StoreItemType.CARD, "MK14射手步枪", 320, level))
 			items.append(create_store_item("weapon_future_laser", StoreItemType.CARD, "光束步枪", 380, level))
-			items.append(create_store_item("nano_materials", StoreItemType.MATERIAL, "纳米材料x50", 170, level))
-			items.append(create_store_item("alloy", StoreItemType.MATERIAL, "合金x50", 140, level))
+			items.append(create_store_item("nano_materials", StoreItemType.MATERIAL, "纳米材料x100", 100, level))
+			items.append(create_store_item("alloy", StoreItemType.MATERIAL, "合金x80", 80, level))
 			items.append(create_store_item("bp_ww2_009", StoreItemType.CARD, "缴获卡", 210, level))
 
 	# v6.2: 未知势力警告（防御性检查）
@@ -302,17 +302,11 @@ static func deliver_item(item: StoreItem) -> bool:
 			var brm := _get_autoload("/root/BasicResourceManager")
 			if brm and brm.has_method("add_resource"):
 				match item.item_id:
-					"nano_materials":
-						# v6.4: 按声望成本阶梯发纳米（高成本=大量），回退 50
-						var nano_amt: int = 50 if item.reputation_cost < 300 else 100
-						brm.add_resource("nano_materials", nano_amt)
-						return true
-					"alloy":
-						var alloy_amt: int = 20 if item.reputation_cost < 300 else 50
-						brm.add_resource("alloy", alloy_amt)
-						return true
-					"crystal", "energy_block":
-						brm.add_resource(item.item_id, 10)
+					"nano_materials", "alloy":
+						# 2026-09-19 经济修复：1 功勋 = 1 材料（原按价格阶梯猜测发放量，
+						# "合金x50" 实发 20 品名错位，且功勋材料包定价是 trap choice）。
+						# 商品定义三方自洽：品名数量 = 功勋价 = 发放量，永不漂移。
+						brm.add_resource(item.item_id, maxi(1, item.reputation_cost))
 						return true
 					# v6.4: stat_boost 走 StatBoostManager
 					"stat_boost_hp", "stat_boost_atk", "stat_boost_damage":

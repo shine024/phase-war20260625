@@ -21,27 +21,15 @@ var pending_drops: Array = []  # 待处理的掉落物
 ## 三条路径消费。条目按 (drop_type, item_id) 聚合，量级只随物品种类增长（有界）。
 ## 池容量天然受精神值约束（挂机每场胜 -10，归零即停机收工），不设硬上限。
 var _escrow: Dictionary = {}  # key "type:item_id" -> {"item_id": String, "type": int, "count": int, "source": String}
-# v6.6(剧情): 剧情奖励倍率（补剧情.txt L123 海伦宣告倒计时×3）
-# 默认 1.0，由 city_map 在 city_emergency 信号触发时调用 set_multiplier 设置
-# 仅作用于基础素材产出（_add_material），不影响卡牌掉落和能量蓝图
-var _story_reward_multiplier: float = 1.0
+# 2026-09-19 死机制清理：v6.6 剧情倒计时×3 奖励倍率（set_multiplier/reset_multiplier/
+# _story_reward_multiplier）全项目零触发方（city_map 的 city_emergency 挂接从未实装），
+# 恒 1.0 死乘区，连同 save_manager 新周目 reset 调用一并删除。
+var _context_level: int = -1  # 最近一次 generate_battle_drops 的关卡（era 解析上下文；-1=未知）
 
 func _ready():
 	drop_tables = DropTables.new()
 
-## v6.6(剧情): 设置剧情奖励倍率（补剧情.txt 第340天倒计时奖励×3）
-## multiplier <= 0 时重置为 1.0（防御性）
-func set_multiplier(multiplier: float) -> void:
-	_story_reward_multiplier = maxf(0.0, multiplier)
-	if _story_reward_multiplier == 0.0:
-		_story_reward_multiplier = 1.0
-
-## v6.6(剧情): 重置剧情奖励倍率为 1.0（新周目/正常时段）
-func reset_multiplier() -> void:
-	_story_reward_multiplier = 1.0
-
 ## v6.6 修复: 新游戏重置。清空未领取掉落（避免新游戏继承上一局 pending_drops）。
-## 注意：刻意不清 _story_reward_multiplier —— 倒计时×3 剧情倍率设计为跨周目持续生效。
 func reset_to_defaults() -> void:
 	pending_drops.clear()
 	_escrow.clear()
@@ -162,6 +150,7 @@ func collect_escrow(categories: Array = []) -> Array:
 ## 生成战斗掉落
 func generate_battle_drops(era: int, level: int, player_won: bool, victory_stars: int = 0) -> Array:
 	_auto_claim_pending_if_any()
+	_context_level = level  # 2026-09-19：本批掉落的关卡上下文（_add_blueprint_copy era 解析用）
 	var drops = drop_tables.generate_drops(era, level, player_won, victory_stars)
 	pending_drops = drops
 	drops_generated.emit(drops)
@@ -226,8 +215,8 @@ func _process_single_drop(drop: DropTables.DropResult) -> void:
 
 ## 添加基础素材
 func _add_material(material_id: String, count: int) -> void:
-	# v6.2: 符文之语资源产出加成 × v6.6(剧情): 剧情奖励倍率（倒计时×3）
-	var yield_mult: float = (1.0 + _get_rune_resource_yield_bonus()) * _story_reward_multiplier
+	# v6.2: 符文之语资源产出加成（v6.6 剧情×3 死乘区已随 2026-09-19 清理删除）
+	var yield_mult: float = (1.0 + _get_rune_resource_yield_bonus())
 	var final_count: int = int(float(count) * yield_mult)
 	match material_id:
 		"nano_materials":
@@ -258,13 +247,16 @@ func _get_rune_resource_yield_bonus() -> float:
 	return total
 
 ## 敌方/时代随机卡 id：解析后发放为背包「成品掉落卡」（不再只加蓝图副本）
+## 2026-09-19 修复：era 优先用本批掉落的上下文关卡（generate_battle_drops 写入）——
+## 离线挂机补发/跨场残留 claim 时 GameManager.current_level 已漂移到别的关，解析会错时代
 func _add_blueprint_copy(item_id: String, count: int) -> void:
 	if not BlueprintManager:
 		return
 	var era: int = 0
-	if "current_level" in GameManager:
-		if GameConstants:
-			era = GameConstants.get_era_for_level(int(GameManager.current_level))
+	if _context_level >= 1 and GameConstants:
+		era = GameConstants.get_era_for_level(_context_level)
+	elif "current_level" in GameManager and GameConstants:
+		era = GameConstants.get_era_for_level(int(GameManager.current_level))
 	var resolved_id: String = drop_tables.resolve_blueprint_id(item_id, era)
 	CardDropGrants.grant_enemy_style_card(BlueprintManager, resolved_id, era, maxi(1, count))
 
@@ -430,16 +422,11 @@ func save_state() -> Dictionary:
 			"source": String(entry["source"]),
 		})
 	state["escrow_drops"] = escrow_data
-	# v6.6(剧情): 持久化剧情奖励倍率（倒计时×3 在新周目前持续生效）
-	state["story_reward_multiplier"] = _story_reward_multiplier
+	# v6.6 剧情倍率持久化已随 2026-09-19 死机制清理删除（旧档多余键 load 时忽略）
 	return state
 
 ## 加载掉落状态
 func load_state(state: Dictionary) -> void:
-	# v6.6(剧情): 恢复剧情奖励倍率（旧存档无此字段时兜底为 1.0）
-	_story_reward_multiplier = float(state.get("story_reward_multiplier", 1.0))
-	if _story_reward_multiplier <= 0.0:
-		_story_reward_multiplier = 1.0
 	# v23.6(归仓)：恢复暂存池（旧档无此 key → 空池，行为同旧版）
 	_escrow.clear()
 	for entry_data in state.get("escrow_drops", []):

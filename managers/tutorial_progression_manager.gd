@@ -172,7 +172,11 @@ func _initialize_tutorial_data() -> void:
 			"highlights": ["战斗卡：部署到战场作战", "同名战斗卡各自独立养成", "符文/资源在对应标签页；卡牌墙工位即卡仓"],
 			"action_text": "打开卡仓",
 			"action_target": "open_backpack",
-			"highlight_elements": ["backpack_button"]
+			"highlight_elements": ["backpack_button"],
+			# v6.20 教程指向可视化：聚光圈住真实入口按钮（点真按钮=等效点本步动作键）
+			"spotlight_key": "backpack",
+			"spotlight_tip": "发光的工位就是卡仓，点它",
+			"spotlight_press_advances": true,
 		},
 		TutorialStep.PHASE_INSTRUMENT: {
 			"title": "装载战斗卡",
@@ -180,7 +184,10 @@ func _initialize_tutorial_data() -> void:
 			"highlights": ["绿色槽：战斗卡", "初始三张基础卡已预装备", "新卡从卡仓拖到底部槽位"],
 			"action_text": "查看装配",
 			"action_target": "open_backpack",
-			"highlight_elements": ["phase_instrument_button"]
+			"highlight_elements": ["phase_instrument_button"],
+			"spotlight_key": "backpack",
+			"spotlight_tip": "相位仪装配槽就在卡仓底部",
+			"spotlight_press_advances": true,
 		},
 		TutorialStep.ENHANCEMENT: {
 			# v37（用户拍板）：成长入口直进技能树——本步从"打开整备舱"改为技能树导览；
@@ -284,6 +291,17 @@ func should_show_tutorial() -> bool:
 ## LevelProgressManager.is_feature_unlocked 消费——教程已完成的存档全系统开放（老档兜底）。
 func is_tutorial_completed() -> bool:
 	return current_step == TutorialStep.FREEDOM_MODE
+
+## 2026-09-19 教程×门控解卡：教程进行中，该 key 是否为教程步目标面板（含链上未来步）。
+## 教程步 MODIFICATION/FACTION_REP/SHOP 要求首触对应面板才续链，而这些面板 L6/L10 才
+## 解锁——门控不豁免时新档教程链实质停滞（chain_paused）。main._open_overlay 守卫豁免。
+func is_tutorial_surface(key: String) -> bool:
+	if not should_show_tutorial():
+		return false
+	for step_key in SURFACE_FOR_STEP.values():
+		if String(step_key) == String(key):
+			return true
+	return false
 
 ## 获取当前教程内容（副作用：NONE 时推进到首步）
 func get_tutorial_content() -> Dictionary:

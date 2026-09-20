@@ -1,20 +1,17 @@
 extends RefCounted
 ## v7.0: 蓝图道具系统
-## 蓝图是战斗掉落和商店可购买的**永久解锁凭证**（非消耗品）。
-## 每个改造模块和进化路径都有对应的蓝图，获得后永久持有。
-##
-## v6.6 设计澄清：早期设计文档（DEEPV.md 等）曾将蓝图描述为"6种消耗品"，
-## 但实际实现采用永久持有模式——玩家收集蓝图作为能力解锁凭证，
-## 改造/进化时检查 has_item 但不消耗。此设计更符合"收集成长"玩法，
-## consume_item 方法保留但当前无调用方（预留未来消耗型道具扩展）。
+## ⚠️ 2026-09-19 头注勘误：v26.10 改造消耗品化后，改造蓝图是**消耗品**（库存货币）——
+## 安装消耗 1 张（consume_item），"得到过"记录在 IntelItemBag._seen 见过集合（永久），
+## 制造门槛/改造列表数据源 = 见过集合，不是库存。下文 v7.0"永久解锁凭证"描述已过时，
+## 仅 blueprint_evol_ 进化蓝图走"退役图纸"兼容（blueprint_roll_random 体系零调用）。
 ##
 ## 蓝图类型：
-##   - 改造蓝图：blueprint_<mod_id> — 允许安装对应改造模块
-##   - 进化蓝图：blueprint_evol_<from>_<to> — 允许对应进化操作
+##   - 改造蓝图：blueprint_<mod_id> — 安装对应改造模块（消耗 1 张/次）
+##   - 进化蓝图：blueprint_evol_<from>_<to> — 进化体系退役残留（兼容读）
 ##
 ## 获取方式：
-##   - 战斗掉落（基于敌人类型）
-##   - 商店购买
+##   - 战斗掉落（击杀主腿 12% + 星级腿 + 缴获/发现 75/25 分流，era 过滤）
+##   - 制造舱定向兑换（common/uncommon/rare）/ 随机箱 / 晶体补缺
 
 const BlueprintDefinitions = preload("res://data/blueprint_definitions.gd")
 const ModificationRegistry = preload("res://scripts/systems/modification_registry.gd")

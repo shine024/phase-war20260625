@@ -6,6 +6,7 @@ extends SceneTree
 
 const PhaseInstruments = preload("res://data/phase_instruments.gd")
 const EnemyPhaseEquipment = preload("res://data/enemy_phase_equipment.gd")
+const GMRef = preload("res://managers/game_manager.gd")  # 掉率真身常量（勿在测试复制公式）
 
 func _init():
 	print("═══════════════════════════════════════════")
@@ -99,19 +100,21 @@ func _test_enemy_instruments_have_ability() -> bool:
 	print("  结果: %d/%d PASS" % [pass_count, ids.size()])
 	return pass_count == ids.size()
 
-## 测试 5：掉落概率梯度逻辑（6★=20%, 7★=40%, 5★及以下=0%）
+## 测试 5：掉落概率梯度逻辑（读 game_manager 真身常量；5★及以下=0%）
 func _test_drop_chance_logic() -> bool:
 	print("\n[测试 5] 掉落概率梯度逻辑")
-	# 模拟 _maybe_roll_special_instrument_drop 的核心逻辑
+	# 模拟 _maybe_roll_special_instrument_drop 的核心逻辑——梯度值读常量真身，
+	# v6.19.2 用户拍板 20%/40% → 12%/24%，此处断言跟随常量，改值自动同步
 	var test_cases: Array = [
 		{"stars": 5, "expected_max_chance": 0.0, "desc": "5★不该掉"},
-		{"stars": 6, "expected_max_chance": 0.20, "desc": "6★ 20%概率"},
-		{"stars": 7, "expected_max_chance": 0.40, "desc": "7★ 40%概率"},
+		{"stars": 6, "expected_max_chance": GMRef.SPECIAL_INST_DROP_CHANCE_6STAR, "desc": "6★ 掉率"},
+		{"stars": 7, "expected_max_chance": GMRef.SPECIAL_INST_DROP_CHANCE_7STAR, "desc": "7★ 掉率"},
 	]
 	var pass_count: int = 0
 	for tc in test_cases:
 		var stars: int = int(tc["stars"])
-		var drop_chance: float = 0.40 if stars >= 7 else (0.20 if stars >= 6 else 0.0)
+		var drop_chance: float = GMRef.SPECIAL_INST_DROP_CHANCE_7STAR if stars >= 7 \
+			else (GMRef.SPECIAL_INST_DROP_CHANCE_6STAR if stars >= 6 else 0.0)
 		var expected: float = float(tc["expected_max_chance"])
 		if absf(drop_chance - expected) < 0.001:
 			print("  ✅ %d★: 掉落概率=%.0f%%（%s）" % [stars, drop_chance * 100, tc["desc"]])

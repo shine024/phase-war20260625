@@ -3,11 +3,18 @@ extends Control
 ## 消费 TutorialProgressionManager（A 系统 autoload）的当前步骤数据，
 ## 在 tscn 预建的 TitleLabel/ContentLabel/SkipButton/NextButton 上渲染。
 ## 推进靠"下一步"按钮（complete_current_step → 显示下一步或 queue_free）。
+## v6.20 教程指向可视化：步骤带 "spotlight_key" 时，聚光圈住真实入口按钮
+##（scripts/ui/tutorial_spotlight.gd：暗幕挖孔+金色脉冲环+悬浮提示），玩家点
+## 真按钮（spotlight_press_advances）等效点本步动作键——"哪里不会点哪里"。
 # 注：历史版本（B 系统 managers/tutorial_manager.gd + interactive_tutorial）已弃用，
 # A 系统是唯一在跑的高亮教程入口。quest tutorial 任务（C 系统）继续负责进阶系统教学。
 
+const TutorialSpotlight = preload("res://scripts/ui/tutorial_spotlight.gd")
+
 var _tutorial_manager: Node
 var _current_content: Dictionary = {}
+var _spotlight: Control = null
+var _spot_target_btn: BaseButton = null
 
 signal tutorial_action_executed(action_target: String)
 
@@ -77,6 +84,67 @@ func _show_current_step() -> void:
 		# action_text 作为下一步按钮文案
 		_next_button.text = str(_current_content.get("action_text", "下一步"))
 	_apply_box_pos()
+	_update_spotlight()
+
+
+## ── v6.20 教程聚光指向 ──────────────────────────────────────────
+## 步骤带 "spotlight_key" 且能解析到真实按钮时：暗幕挖孔圈住按钮 + 金色脉冲环 +
+## 悬浮提示（点读机）。点播段（chain_paused=面板已开盖住入口）不聚光；
+## 聚光按钮本身可点击——带 "spotlight_press_advances" 的步骤点真按钮直接推进。
+func _update_spotlight() -> void:
+	_dismiss_spotlight()
+	var key := str(_current_content.get("spotlight_key", ""))
+	if key.is_empty():
+		return
+	if bool(_tutorial_manager.get("chain_paused")):
+		return   # 点播段：面板开着盖住入口，聚光指向被盖住的按钮只会误导
+	var target := _resolve_spotlight_target(key)
+	if target == null or not target.is_visible_in_tree():
+		return   # 找不到入口（如门控未解锁/场景不对）：纯文字兜底，不聚光
+	if bool(target.get_meta("gate_locked", false)):
+		return   # 锁定工位点了只会弹解锁 toast，聚光指它=误导（backpack 等常开工位不受影响）
+	_spotlight = TutorialSpotlight.attach(self, target, str(_current_content.get("spotlight_tip", "")))
+	if bool(_current_content.get("spotlight_press_advances", false)) and target is BaseButton:
+		_spot_target_btn = target as BaseButton
+		_spot_target_btn.pressed.connect(_on_spot_target_pressed)
+
+
+func _dismiss_spotlight() -> void:
+	if _spot_target_btn != null and is_instance_valid(_spot_target_btn):
+		if _spot_target_btn.pressed.is_connected(_on_spot_target_pressed):
+			_spot_target_btn.pressed.disconnect(_on_spot_target_pressed)
+	_spot_target_btn = null
+	if _spotlight != null and is_instance_valid(_spotlight):
+		_spotlight.queue_free()
+	_spotlight = null
+
+
+## 解析聚光目标：基地链=truck_base 热区（get_hotspot_button_for_key）；
+## 主场景链=底栏抽屉（get_button_for_key，growth 工位在底栏键名=progression）。
+func _resolve_spotlight_target(key: String) -> Control:
+	var host := get_parent()
+	while host != null:
+		if host.has_method("get_hotspot_button_for_key"):
+			var hb: Button = host.get_hotspot_button_for_key(key)
+			if hb != null:
+				return hb
+		host = host.get_parent()
+	var bar_key := "progression" if key == "growth" else key
+	for n in get_tree().root.find_children("BottomFunctionBar", "Control", true, false):
+		if n.has_method("get_button_for_key"):
+			var bb: BaseButton = n.get_button_for_key(bar_key)
+			if bb != null:
+				return bb
+	return null
+
+
+## 点真实入口按钮 = 等效点本步动作键（面板由真按钮自己的链路打开，跳过动作信号防重复 toggle）
+func _on_spot_target_pressed() -> void:
+	_advance(true)
+
+
+func _exit_tree() -> void:
+	_dismiss_spotlight()
 
 
 ## 批次③ Task 5：导航框锚定（left=屏幕左侧竖带；center=居中默认）
@@ -112,12 +180,18 @@ func _apply_box_pos() -> void:
 
 
 func _on_next_pressed() -> void:
+	_advance(false)
+
+
+## 推进本步。skip_action=true 时不再发动作信号（真实入口按钮已被玩家点开，
+## 重复 toggle 会把刚打开的面板又关上——v6.20 聚光按钮推进路径）。
+func _advance(skip_action: bool) -> void:
 	if _tutorial_manager == null:
 		queue_free()
 		return
 	# 执行 action_target（打开对应面板/进首关）
 	var action_target: String = str(_current_content.get("action_target", ""))
-	if not action_target.is_empty():
+	if not skip_action and not action_target.is_empty():
 		tutorial_action_executed.emit(action_target)
 		if _tutorial_manager.has_method("execute_tutorial_action"):
 			_tutorial_manager.execute_tutorial_action(action_target)

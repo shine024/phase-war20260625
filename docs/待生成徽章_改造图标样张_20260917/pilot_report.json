@@ -1,0 +1,474 @@
+{
+ "INF_02_ASSAULT_RIFLE": {
+  "name": "突击步枪化",
+  "rarity": "rare",
+  "line": "橄榄绿色",
+  "subject": "一支突击步枪的侧面剪影徽记",
+  "rolls": [
+   {
+    "extent": 0.86,
+    "area": 0.6,
+    "center_off": 0.02,
+    "comp2_ratio": 0.0,
+    "c26": 127,
+    "sym_rmse": 22,
+    "hue_err": 24,
+    "fails": [],
+    "pass": true,
+    "roll": 1
+   },
+   {
+    "extent": 0.87,
+    "area": 0.42,
+    "center_off": 0.02,
+    "comp2_ratio": 0.0,
+    "c26": 127,
+    "sym_rmse": 24,
+    "hue_err": 35,
+    "fails": [],
+    "pass": true,
+    "roll": 3
+   },
+   {
+    "extent": 0.78,
+    "area": 0.44,
+    "center_off": 0.02,
+    "comp2_ratio": 0.0,
+    "c26": 115,
+    "sym_rmse": 21,
+    "hue_err": 24,
+    "fails": [],
+    "pass": true,
+    "roll": 2
+   }
+  ],
+  "best_roll": 1,
+  "best": {
+   "extent": 0.86,
+   "area": 0.6,
+   "center_off": 0.02,
+   "comp2_ratio": 0.0,
+   "c26": 127,
+   "sym_rmse": 22,
+   "hue_err": 24,
+   "fails": [],
+   "pass": true,
+   "roll": 1
+  }
+ },
+ "ARM_03_REACTIVE_ARMOR": {
+  "name": "爆反装甲",
+  "rarity": "epic",
+  "line": "钢青色",
+  "subject": "斜置的爆炸反应装甲块与起爆火光组成的徽记",
+  "rolls": [
+   {
+    "extent": 0.92,
+    "area": 0.55,
+    "center_off": 0.07,
+    "comp2_ratio": 0.0,
+    "c26": 163,
+    "sym_rmse": 37,
+    "hue_err": 19,
+    "fails": [
+     "R4对称"
+    ],
+    "pass": false,
+    "roll": 3
+   },
+   {
+    "extent": 0.84,
+    "area": 0.54,
+    "center_off": 0.1,
+    "comp2_ratio": 0.0,
+    "c26": 161,
+    "sym_rmse": 35,
+    "hue_err": 15,
+    "fails": [
+     "R4对称"
+    ],
+    "pass": false,
+    "roll": 1
+   },
+   {
+    "extent": 0.89,
+    "area": 0.59,
+    "center_off": 0.03,
+    "comp2_ratio": 0.0,
+    "c26": 155,
+    "sym_rmse": 39,
+    "hue_err": 8,
+    "fails": [
+     "R4对称"
+    ],
+    "pass": false,
+    "roll": 2
+   }
+  ],
+  "best_roll": 3,
+  "best": {
+   "extent": 0.92,
+   "area": 0.55,
+   "center_off": 0.07,
+   "comp2_ratio": 0.0,
+   "c26": 163,
+   "sym_rmse": 37,
+   "hue_err": 19,
+   "fails": [
+    "R4对称"
+   ],
+   "pass": false,
+   "roll": 3
+  }
+ },
+ "ART_02_EXTENDED_RANGE": {
+  "name": "增程弹",
+  "rarity": "rare",
+  "line": "琥珀金色",
+  "subject": "一枚带尾部助推焰的增程炮弹与抛物弹道弧线组成的徽记",
+  "rolls": [
+   {
+    "extent": 0.89,
+    "area": 0.48,
+    "center_off": 0.05,
+    "comp2_ratio": 0.0,
+    "c26": 153,
+    "sym_rmse": 36,
+    "hue_err": 2,
+    "fails": [
+     "R4对称"
+    ],
+    "pass": false,
+    "roll": 3
+   },
+   {
+    "extent": 0.91,
+    "area": 0.51,
+    "center_off": 0.03,
+    "comp2_ratio": 0.0,
+    "c26": 146,
+    "sym_rmse": 37,
+    "hue_err": 0,
+    "fails": [
+     "R4对称"
+    ],
+    "pass": false,
+    "roll": 2
+   },
+   {
+    "extent": 0.88,
+    "area": 0.49,
+    "center_off": 0.06,
+    "comp2_ratio": 0.0,
+    "c26": 141,
+    "sym_rmse": 35,
+    "hue_err": 1,
+    "fails": [
+     "R4对称"
+    ],
+    "pass": false,
+    "roll": 1
+   }
+  ],
+  "best_roll": 3,
+  "best": {
+   "extent": 0.89,
+   "area": 0.48,
+   "center_off": 0.05,
+   "comp2_ratio": 0.0,
+   "c26": 153,
+   "sym_rmse": 36,
+   "hue_err": 2,
+   "fails": [
+    "R4对称"
+   ],
+   "pass": false,
+   "roll": 3
+  }
+ },
+ "AA_06_LASER": {
+  "name": "激光近防系统",
+  "rarity": "legendary",
+  "line": "钴蓝色",
+  "subject": "一座近防炮塔向上射出一道弧形激光束的徽记",
+  "rolls": [
+   {
+    "extent": 0.84,
+    "area": 0.46,
+    "center_off": 0.01,
+    "comp2_ratio": 0.0,
+    "c26": 119,
+    "sym_rmse": 31,
+    "hue_err": 7,
+    "fails": [],
+    "pass": true,
+    "roll": 3
+   },
+   {
+    "extent": 0.85,
+    "area": 0.5,
+    "center_off": 0.06,
+    "comp2_ratio": 0.0,
+    "c26": 118,
+    "sym_rmse": 27,
+    "hue_err": 6,
+    "fails": [],
+    "pass": true,
+    "roll": 2
+   },
+   {
+    "extent": 0.81,
+    "area": 0.47,
+    "center_off": 0.03,
+    "comp2_ratio": 0.0,
+    "c26": 117,
+    "sym_rmse": 28,
+    "hue_err": 6,
+    "fails": [],
+    "pass": true,
+    "roll": 1
+   }
+  ],
+  "best_roll": 3,
+  "best": {
+   "extent": 0.84,
+   "area": 0.46,
+   "center_off": 0.01,
+   "comp2_ratio": 0.0,
+   "c26": 119,
+   "sym_rmse": 31,
+   "hue_err": 7,
+   "fails": [],
+   "pass": true,
+   "roll": 3
+  }
+ },
+ "AIR_06_BVR_MISSILE": {
+  "name": "超视距导弹",
+  "rarity": "epic",
+  "line": "冰青色",
+  "subject": "一枚翼下挂架上的空对空导弹侧影徽记",
+  "rolls": [
+   {
+    "extent": 0.9,
+    "area": 0.52,
+    "center_off": 0.06,
+    "comp2_ratio": 0.0,
+    "c26": 184,
+    "sym_rmse": 30,
+    "hue_err": 4,
+    "fails": [],
+    "pass": true,
+    "roll": 1
+   },
+   {
+    "extent": 0.9,
+    "area": 0.55,
+    "center_off": 0.02,
+    "comp2_ratio": 0.0,
+    "c26": 182,
+    "sym_rmse": 31,
+    "hue_err": 6,
+    "fails": [],
+    "pass": true,
+    "roll": 2
+   },
+   {
+    "extent": 0.88,
+    "area": 0.52,
+    "center_off": 0.05,
+    "comp2_ratio": 0.0,
+    "c26": 177,
+    "sym_rmse": 30,
+    "hue_err": 3,
+    "fails": [],
+    "pass": true,
+    "roll": 3
+   }
+  ],
+  "best_roll": 1,
+  "best": {
+   "extent": 0.9,
+   "area": 0.52,
+   "center_off": 0.06,
+   "comp2_ratio": 0.0,
+   "c26": 184,
+   "sym_rmse": 30,
+   "hue_err": 4,
+   "fails": [],
+   "pass": true,
+   "roll": 1
+  }
+ },
+ "FOR_03_AUTO_TURRET": {
+  "name": "自动炮塔",
+  "rarity": "epic",
+  "line": "珊瑚橙色",
+  "subject": "一座双管自动炮塔的正面徽记",
+  "rolls": [
+   {
+    "extent": 0.81,
+    "area": 0.5,
+    "center_off": 0.07,
+    "comp2_ratio": 0.0,
+    "c26": 134,
+    "sym_rmse": 18,
+    "hue_err": 35,
+    "fails": [],
+    "pass": true,
+    "roll": 3
+   },
+   {
+    "extent": 0.81,
+    "area": 0.47,
+    "center_off": 0.07,
+    "comp2_ratio": 0.0,
+    "c26": 127,
+    "sym_rmse": 16,
+    "hue_err": 18,
+    "fails": [],
+    "pass": true,
+    "roll": 2
+   },
+   {
+    "extent": 0.93,
+    "area": 0.53,
+    "center_off": 0.08,
+    "comp2_ratio": 0.0,
+    "c26": 120,
+    "sym_rmse": 18,
+    "hue_err": 23,
+    "fails": [],
+    "pass": true,
+    "roll": 1
+   }
+  ],
+  "best_roll": 3,
+  "best": {
+   "extent": 0.81,
+   "area": 0.5,
+   "center_off": 0.07,
+   "comp2_ratio": 0.0,
+   "c26": 134,
+   "sym_rmse": 18,
+   "hue_err": 35,
+   "fails": [],
+   "pass": true,
+   "roll": 3
+  }
+ },
+ "REC_04_HIGH_POWER_SCOPE": {
+  "name": "高倍瞄准镜",
+  "rarity": "epic",
+  "line": "紫罗兰色",
+  "subject": "一枚高倍率圆形瞄准镜镜片与测距刻线组成的徽记",
+  "rolls": [
+   {
+    "extent": 0.9,
+    "area": 0.57,
+    "center_off": 0.03,
+    "comp2_ratio": 0.0,
+    "c26": 120,
+    "sym_rmse": 21,
+    "hue_err": 20,
+    "fails": [],
+    "pass": true,
+    "roll": 2
+   },
+   {
+    "extent": 0.94,
+    "area": 0.58,
+    "center_off": 0.02,
+    "comp2_ratio": 0.0,
+    "c26": 107,
+    "sym_rmse": 21,
+    "hue_err": 16,
+    "fails": [],
+    "pass": true,
+    "roll": 1
+   },
+   {
+    "extent": 0.87,
+    "area": 0.48,
+    "center_off": 0.06,
+    "comp2_ratio": 0.0,
+    "c26": 107,
+    "sym_rmse": 16,
+    "hue_err": 22,
+    "fails": [],
+    "pass": true,
+    "roll": 3
+   }
+  ],
+  "best_roll": 2,
+  "best": {
+   "extent": 0.9,
+   "area": 0.57,
+   "center_off": 0.03,
+   "comp2_ratio": 0.0,
+   "c26": 120,
+   "sym_rmse": 21,
+   "hue_err": 20,
+   "fails": [],
+   "pass": true,
+   "roll": 2
+  }
+ },
+ "enh_dmg_up": {
+  "name": "火力训练",
+  "rarity": "uncommon",
+  "line": "品红色",
+  "subject": "一枚菱形能量晶体与交叉双炮管剪影组成的徽记",
+  "rolls": [
+   {
+    "extent": 0.95,
+    "area": 0.59,
+    "center_off": 0.02,
+    "comp2_ratio": 0.0,
+    "c26": 129,
+    "sym_rmse": 12,
+    "hue_err": 21,
+    "fails": [],
+    "pass": true,
+    "roll": 1
+   },
+   {
+    "extent": 0.87,
+    "area": 0.48,
+    "center_off": 0.06,
+    "comp2_ratio": 0.0,
+    "c26": 119,
+    "sym_rmse": 14,
+    "hue_err": 23,
+    "fails": [],
+    "pass": true,
+    "roll": 2
+   },
+   {
+    "extent": 0.93,
+    "area": 0.57,
+    "center_off": 0.01,
+    "comp2_ratio": 0.0,
+    "c26": 115,
+    "sym_rmse": 9,
+    "hue_err": 32,
+    "fails": [],
+    "pass": true,
+    "roll": 3
+   }
+  ],
+  "best_roll": 1,
+  "best": {
+   "extent": 0.95,
+   "area": 0.59,
+   "center_off": 0.02,
+   "comp2_ratio": 0.0,
+   "c26": 129,
+   "sym_rmse": 12,
+   "hue_err": 21,
+   "fails": [],
+   "pass": true,
+   "roll": 1
+  }
+ }
+}

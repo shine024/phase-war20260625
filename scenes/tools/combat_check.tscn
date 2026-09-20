@@ -20,7 +20,7 @@ color = Color(0.03, 0.045, 0.075, 1)
 [node name="GroundLine" type="Line2D" parent="."]
 points = PackedVector2Array(40, 420, 1240, 420)
 width = 2.0
-default_color = Color(0, 0.941, 1, 0.15)
+default_color = Color(0, 0.94, 1, 0.15)
 
 [node name="CenterMark" type="Line2D" parent="."]
 points = PackedVector2Array(640, 360, 640, 480)
@@ -36,7 +36,7 @@ offset_left = 0.0
 offset_top = 4.0
 offset_right = 1280.0
 offset_bottom = 36.0
-theme_override_colors/font_color = Color(0, 0.941, 1, 1)
+theme_override_colors/font_color = Color(0, 0.94, 1, 1)
 theme_override_font_sizes/font_size = 22
 text = "🔧 战斗效果检查场  —  选定我方/敌方后自动对射；可分别开关 / 暂停单帧 / 单发 / 调速"
 horizontal_alignment = 1
@@ -89,7 +89,7 @@ offset_left = 8.0
 offset_top = 6.0
 offset_right = 120.0
 offset_bottom = 28.0
-theme_override_colors/font_color = Color(0.95, 0.4, 0.4, 1)
+theme_override_colors/font_color = Color(0.937, 0.267, 0.267, 1)
 theme_override_font_sizes/font_size = 14
 text = "敌方单位"
 
@@ -250,7 +250,7 @@ offset_left = 448.0
 offset_top = 46.0
 offset_right = 600.0
 offset_bottom = 80.0
-theme_override_colors/font_color = Color(0.85, 0.75, 0.35, 1)
+theme_override_colors/font_color = Color(1, 0.85, 0.35, 1)
 theme_override_font_sizes/font_size = 13
 text = "🧪 效果实验"
 
@@ -279,7 +279,7 @@ offset_left = 8.0
 offset_top = 4.0
 offset_right = 404.0
 offset_bottom = 26.0
-theme_override_colors/font_color = Color(0.9, 0.7, 0.3, 1)
+theme_override_colors/font_color = Color(1, 0.85, 0.35, 1)
 theme_override_font_sizes/font_size = 13
 text = "⚡ 独立特效测试（每层单独触发）"
 
@@ -289,7 +289,7 @@ offset_left = 412.0
 offset_top = 4.0
 offset_right = 488.0
 offset_bottom = 28.0
-theme_override_colors/font_color = Color(0.85, 0.75, 0.35, 1)
+theme_override_colors/font_color = Color(1, 0.85, 0.35, 1)
 theme_override_font_sizes/font_size = 12
 text = "收起 ✕"
 

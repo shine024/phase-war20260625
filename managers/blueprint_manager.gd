@@ -586,6 +586,11 @@ func install_modification(card: CardResource, mod_id: String, slot: int = -1) ->
 	result.success = true
 	result.cost = nano_cost
 	result.message = "改造安装成功：%s" % mod_data.get("name", mod_id)
+	# v6.19 P2-T2.2 流派成型埋点：首次装上神话档改造（一次性，重放安全）
+	if String(mod_data.get("rarity", "")) == "mythic":
+		var _pm_mythic: Node = get_node_or_null("/root/PerformanceMetricsManager")
+		if _pm_mythic != null and _pm_mythic.has_method("record_milestone"):
+			_pm_mythic.record_milestone("first_mythic_mod")
 
 	# 更新blueprint_mods缓存
 	# v7.0: 用 instance_id 做 key（实例化养成），直接存实例的 mods（不再查模板）
@@ -691,10 +696,8 @@ func exchange_crystals_for_upgrade_blueprint(card: CardResource, mod_index: int)
 	var price := missing * CRYSTAL_PER_BLUEPRINT
 	if BasicResourceManager == null or not BasicResourceManager.can_afford("crystal", price):
 		return {ok = false, reason = "晶体不足（需 %d）" % price, missing = missing, price = price}
-	if BasicResourceManager.has_method("spend_resource"):
-		BasicResourceManager.spend_resource("crystal", price)
-	else:
-		BasicResourceManager.add_resource("crystal", -price)
+	# 2026-09-19：spend_resource 方法不存在（原靠 has_method 兜底），统一走 consume
+	BasicResourceManager.consume("crystal", price)
 	bag.add_item(bp_id, missing)
 	return {ok = true, exchanged = missing, crystal_spent = price, blueprint_id = bp_id}
 
@@ -822,66 +825,12 @@ func _get_card_for_mods(id_str: String) -> CardResource:
 			return inst
 	return _get_card_from_library(id_str)
 
-## 替换改造（新接口）
-## ⚠️ v26.x 改造消耗品化后本函数仍是零调用死代码；若将来启用注意语义：
-## 内部走 install_modification 会消耗 1 张新图纸，旧图纸（已随原安装沉没）不返还——
-## 下方 50% 返还仅指纳米（paid_cost 口径），与图纸无关。
-func replace_modification(card: CardResource, old_mod_id: String, new_mod_id: String) -> Dictionary:
-	var result = {success = false, refund = 0, cost = 0, message = ""}
-
-	# v9.5: 养成隔离守卫——严禁直接改 DefaultCards 共享模板
-	if card == null or card.instance_id.is_empty():
-		result.message = "卡牌未实例化，无法替换改造（拒绝操作共享模板）"
-		push_warning("[BlueprintManager] replace_modification 拒绝模板: instance_id 为空")
-		return result
-
-	# 查找旧改造位置
-	var old_index = -1
-	var old_paid: int = 0
-	for i in range(card.mods.size()):
-		var mod_entry = card.mods[i]
-		var entry_id = mod_entry.get("id", "") if mod_entry is Dictionary else ""
-		if entry_id == old_mod_id:
-			old_index = i
-			if mod_entry is Dictionary:
-				old_paid = int(mod_entry.get("paid_cost", 0))
-			break
-
-	if old_index < 0:
-		result.message = "找不到要替换的改造：%s" % old_mod_id
-		return result
-
-	# 移除旧改造
-	card.mods.remove_at(old_index)
-
-	# 安装新改造
-	var install_result = install_modification(card, new_mod_id, old_index)
-
-	if install_result.success:
-		# 计算返还（2026-08-16 经济审查修复：返还与扣费同币种——原扣纳米返研究点属货币错配；
-		# 按实付 paid_cost 50% 返纳米，旧存档条目无 paid_cost 时回退模块表 cost_install 口径）
-		var refund: int = 0
-		if old_paid > 0:
-			refund = int(old_paid * 0.5)
-		else:
-			var old_mod_data = _get_mod_data_from_registry(old_mod_id)
-			refund = int(old_mod_data.get("cost_install", 0) * 0.5)
-		BasicResourceManager.add_resource("nano", refund)
-
-		result.success = true
-		result.refund = refund
-		result.cost = install_result.cost
-		result.message = "改造替换成功"
-	else:
-		# 失败，恢复旧改造
-		card.mods.insert(old_index, {id = old_mod_id, installed_at = 0})
-		result.message = install_result.message
-
-	return result
+## replace_modification 死函数已随 2026-09-19 清理删除（v26.x 消耗品化后零调用；
+## 替换语义由 uninstall_modification + install_modification 覆盖，避免"替换再吞一张图纸"陷阱）。
 
 ## 卸下改造（v6.14.6 用户拍板方案 A：图纸返还）
 ## 模块回库存（IntelItemBag +1，可再装到别的卡——图纸=库存货币语义）+ 纳米按实付
-## paid_cost 50% 返还（与 replace_modification 同口径，旧存档条目无 paid_cost 时回退
+## paid_cost 50% 返还（旧存档条目无 paid_cost 时回退
 ## 模块表 cost_install 50%）。出厂赠品（gift=true / paid_cost=0）：纳米 0 返、其图纸
 ## 从未消耗过不返还——件随卸下消失。mod_consumable_enabled=false（旧永久解锁行为）
 ## 时安装本就不耗图纸，同样不返还。

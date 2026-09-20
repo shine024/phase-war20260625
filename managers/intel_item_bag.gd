@@ -102,6 +102,14 @@ func get_total_count() -> int:
 		total += int(v)
 	return total
 
+## 统计以指定前缀开头的道具库存总张数（2026-09-19：改造解锁衔接提示"已攒 N 张图纸"用）
+func count_by_prefix(prefix: String) -> int:
+	var total: int = 0
+	for item_type in _inventory:
+		if String(item_type).begins_with(prefix):
+			total += int(_inventory[item_type])
+	return total
+
 # ── 见过集合（v26.x 改造消耗品化） ─────────────────────────
 
 ## 是否得到过该道具（与当前库存无关，消耗光也算）

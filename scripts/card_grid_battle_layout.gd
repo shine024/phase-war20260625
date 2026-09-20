@@ -16,6 +16,26 @@ class_name CardGridBattleLayout
 
 const BATTLE_X0: float = 40.0
 const BATTLE_X1: float = 1240.0
+## UI 四级标准修复 R-C1：阵型带视口自适应——1280 画布返回 40..1240（历史值，
+## 16:9 布局逐像素不变红线）；画布更宽（stretch=expand 下 21:9/32:9）时带整体
+## 平移居中（带宽恒 1200 不变——单位尺寸/列宽不动，只是不再挤在左侧）；
+## 窄于 1280 不收缩（维持 40..1240，防负带）。消费方一律走 band_x0()/band_x1()，
+## BATTLE_X0/X1 常量保留为 1280 基准值。
+static func band_x0() -> float:
+	return _viewport_band().x
+
+static func band_x1() -> float:
+	return _viewport_band().y
+
+static func _viewport_band() -> Vector2:
+	var vw := 1280.0
+	var tree := Engine.get_main_loop() as SceneTree
+	if tree != null and tree.root != null:
+		vw = tree.root.get_visible_rect().size.x
+	if vw <= 1280.0:
+		return Vector2(BATTLE_X0, BATTLE_X1)
+	var x0: float = (vw - (BATTLE_X1 - BATTLE_X0)) * 0.5
+	return Vector2(x0, x0 + (BATTLE_X1 - BATTLE_X0))
 const SLOTS_PER_SIDE: int = 3    ## 默认每行每侧 3 格（历史兼容常量；运行时读 active_player_cols/enemy_cols）
 const NUM_ROWS: int = 3          ## 默认垂直方向 3 行（历史兼容常量；运行时读 active_rows()）
 const MIDDLE_EMPTY_COLUMNS: int = 1
@@ -117,9 +137,10 @@ static func is_slot_excluded(slot_index: int, side: String = "player") -> bool:
 
 ## 单位列宽——默认布局 (X1-X0)/7 = 171.43 与历史一致；宽阵关按总列数收窄。
 ## （中间空带为独立 MIDDLE_GAP_PX；除数 max(7, cols_p+cols_e+1) 保证 3×3 逐像素不变。）
+## R-C1：带宽走 band_x0/band_x1（视口自适应，带宽恒 1200 → 列宽与 1280 画布恒等）。
 static func column_width_px() -> float:
 	var divisor: float = maxf(7.0, float(_active_player_cols + _active_enemy_cols + 1))
-	return (BATTLE_X1 - BATTLE_X0) / divisor
+	return (band_x1() - band_x0()) / divisor
 
 
 static func card_gap_px() -> float:
@@ -254,8 +275,9 @@ static func total_grid_width_px() -> float:
 	return side_band_width_px(false) + side_band_width_px(true) + MIDDLE_GAP_PX
 
 ## 我方带左缘：整体居中（左右等量边距），两侧阵型同步内收、中间收紧
+## R-C1：基准带走 band_x0/band_x1（超宽画布整体平移居中）
 static func player_band_start_x() -> float:
-	return BATTLE_X0 + ((BATTLE_X1 - BATTLE_X0) - total_grid_width_px()) * 0.5
+	return band_x0() + ((band_x1() - band_x0()) - total_grid_width_px()) * 0.5
 
 ## 敌方带左缘：我方带右缘 + 中间空带
 static func enemy_band_start_x() -> float:

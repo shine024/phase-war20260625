@@ -16,6 +16,10 @@ class_name PanelAnim
 const DT = preload("res://resources/design_tokens.gd")
 
 const CLOSE_TWEEN_META := "close_tween"
+# 重复 open 守卫（UI 四级标准修复 R-A2：card_info_panel 隐藏→快速重开场景）——
+# 杀掉上一轮未完成的淡入/弹出 tween，防双 tween 同帧竞写 modulate/scale。
+const OPEN_TWEEN_META := "open_tween"
+const OPEN_TWEEN_POP_META := "open_tween_pop"
 
 ## 内容缩放子节点命名兼容：main 系 overlay=CenterContainer；truck_base 嵌入链=EmbedCenter
 static func _content_of(overlay: Control) -> Control:
@@ -28,12 +32,14 @@ static func _content_of(overlay: Control) -> Control:
 ## 打开动画：overlay 需已 visible=true（与 main._open_overlay 先显示再动画同序）。
 static func open(overlay: Control) -> void:
 	_kill_pending_close(overlay)
+	_kill_pending_open(overlay)
 	if DT.is_motion_reduce():
 		overlay.modulate.a = 1.0
 		return
 	var cc := _content_of(overlay)
 	overlay.modulate.a = 0.0
 	var tw := overlay.create_tween()
+	overlay.set_meta(OPEN_TWEEN_META, tw)
 	tw.tween_property(overlay, "modulate:a", 1.0, DT.MOTION_FADE_IN) \
 		.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 	if cc == null:
@@ -41,6 +47,7 @@ static func open(overlay: Control) -> void:
 	# 旧版此处 await 一帧取布局后真实 size 作缩放枢轴；tween callback 首帧执行
 	# 天然等价（tween 下帧才开始推进），且无协程 GC 风险
 	var tw2 := overlay.create_tween()
+	overlay.set_meta(OPEN_TWEEN_POP_META, tw2)
 	tw2.tween_callback(func() -> void:
 		if not is_instance_valid(overlay) or not overlay.visible:
 			tw2.kill()
@@ -50,6 +57,16 @@ static func open(overlay: Control) -> void:
 	)
 	tw2.tween_property(cc, "scale", Vector2.ONE, DT.MOTION_POP) \
 		.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+
+
+static func _kill_pending_open(overlay: Control) -> void:
+	for meta_name in [OPEN_TWEEN_META, OPEN_TWEEN_POP_META]:
+		if not overlay.has_meta(meta_name):
+			continue
+		var pending: Variant = overlay.get_meta(meta_name)
+		if pending is Tween and (pending as Tween).is_valid():
+			(pending as Tween).kill()
+		overlay.remove_meta(meta_name)
 
 
 ## 关闭动画：淡出 0.15s 后 visible=false 并复位 modulate/scale。

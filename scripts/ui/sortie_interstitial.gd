@@ -161,7 +161,7 @@ func _build_ui() -> void:
 	dest.name = "DestLine"
 	dest.text = _dest_text
 	dest.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	dest.add_theme_font_size_override("font_size", 26)
+	dest.add_theme_font_size_override("font_size", 24)
 	dest.add_theme_color_override("font_color", DesignTokens.COLOR_TEXT_BRIGHT)
 	_text_box.add_child(dest)
 

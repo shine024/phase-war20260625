@@ -485,7 +485,7 @@ func _create_master_header(basic_info: Dictionary) -> Control:
 
 	var name_label = Label.new()
 	name_label.text = basic_info.get("name", "未知")
-	name_label.add_theme_font_size_override("font_size", 18)
+	name_label.add_theme_font_size_override("font_size", 16)
 	name_label.add_theme_color_override("font_color", Color.WHITE)
 	name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	name_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART

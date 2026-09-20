@@ -15,6 +15,21 @@ const CHANGED_SCRIPTS: Array[String] = [
 	"res://scripts/ui/panel_styles.gd",
 	"res://scripts/ui/mod_icon_tile.gd",  # v37.1 改造图标座（稀有度发光底座统一收口）
 	"res://scripts/ui/blueprint_grid.gd",  # v6.14.8 改造视图蓝图网格（C 版方向装饰）
+	"res://scripts/ui/keycap_badge.gd",  # UI 四级标准修复 R-B2 快捷键角标
+	"res://scripts/ui/panel_anim.gd",  # R-A2 开板动画幂等守卫
+	"res://scenes/ui/growth_panel.gd",  # R-D3 子批1 标题栏 PanelChrome
+	"res://scenes/ui/modification_panel.gd",  # R-D3 子批2
+	"res://scenes/ui/evolution_panel.gd",  # R-D3 子批3
+	"res://scripts/card_grid_battle_layout.gd",  # R-C1 阵型带视口自适应
+	"res://scripts/battle/battlefield_ambience.gd",  # R-C1
+	"res://scenes/battlefield/battlefield.gd",  # R-C1 背景铺满
+	"res://scenes/units/unit_hp_bar.gd",  # R-C2/R-C4
+	"res://scripts/ui/geo_shapes.gd",  # R-C4
+	"res://managers/daily_task_manager.gd",  # R-B1 一键领取
+	"res://scenes/ui/quest_panel.gd",  # R-B1
+	"res://scripts/battle/combo_engine.gd",  # R-B3
+	"res://resources/design_tokens.gd",  # R-C3/R-D1/R-D3 裁决
+	"res://scripts/master_power_evaluator.gd",  # R-D1 段位色
 	"res://scenes/main.gd",
 	"res://scenes/ui/bottom_instrument_bar.gd",
 	"res://scenes/ui/backpack_card_item.gd",

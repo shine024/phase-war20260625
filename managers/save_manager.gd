@@ -1256,11 +1256,7 @@ func start_ng_plus() -> void:
 	var dc: Node = get_node_or_null("/root/DayClock")
 	if dc and dc.has_method("reset_for_new_loop"):
 		dc.reset_for_new_loop()
-	# v6.6(剧情): 新周目重置剧情奖励倍率（倒计时×3 不应跨周目继承）
-	ManagerLazyLoader.ensure_loaded("drop")  # DropManager 为 autoload+别名双层（ensure_loaded 幂等）
-	var dm: Node = get_node_or_null("/root/DropManager")
-	if dm and dm.has_method("reset_multiplier"):
-		dm.reset_multiplier()
+	# v6.6 剧情倍率 reset 调用已随 2026-09-19 死机制清理删除（set_multiplier 全项目零触发方）
 	# v6.6(剧情): 激活二周目模式（补剧情.txt 第十二幕：敌人属性×1.2）
 	var gm_ng: Node = get_node_or_null("/root/GameManager")
 	if gm_ng and "ng_plus_active" in gm_ng:

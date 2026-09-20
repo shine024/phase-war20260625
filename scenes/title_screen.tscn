@@ -23,36 +23,36 @@ border_width_left = 2
 border_width_top = 2
 border_width_right = 2
 border_width_bottom = 2
-border_color = Color(0, 0.941, 1, 0.6)
+border_color = Color(0, 0.94, 1, 0.6)
 corner_radius_top_left = 4
 corner_radius_top_right = 4
 corner_radius_bottom_right = 4
 corner_radius_bottom_left = 4
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_btn_pressed"]
-bg_color = Color(0, 0.941, 1, 0.25)
+bg_color = Color(0, 0.94, 1, 0.25)
 border_width_left = 2
 border_width_top = 2
 border_width_right = 2
 border_width_bottom = 2
-border_color = Color(0, 0.941, 1, 1)
+border_color = Color(0, 0.94, 1, 1)
 corner_radius_top_left = 4
 corner_radius_top_right = 4
 corner_radius_bottom_right = 4
 corner_radius_bottom_left = 4
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_btn_hover"]
-bg_color = Color(0, 0.941, 1, 0.15)
+bg_color = Color(0, 0.94, 1, 0.15)
 border_width_left = 2
 border_width_top = 2
 border_width_right = 2
 border_width_bottom = 2
-border_color = Color(0, 0.941, 1, 1)
+border_color = Color(0, 0.94, 1, 1)
 corner_radius_top_left = 4
 corner_radius_top_right = 4
 corner_radius_bottom_right = 4
 corner_radius_bottom_left = 4
-shadow_color = Color(0, 0.941, 1, 0.4)
+shadow_color = Color(0, 0.94, 1, 0.4)
 shadow_size = 8
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_btn_disabled"]
@@ -119,7 +119,7 @@ offset_left = -500.0
 offset_top = -500.0
 offset_right = 3000.0
 offset_bottom = 2500.0
-color = Color(0, 0.941, 1, 0.03)
+color = Color(0, 0.94, 1, 0.03)
 
 [node name="CenterContainer" type="CenterContainer" parent="."]
 layout_mode = 1
@@ -130,11 +130,11 @@ grow_vertical = 2
 
 [node name="MainVBox" type="VBoxContainer" parent="CenterContainer"]
 layout_mode = 2
-theme_override_constants/separation = 32
+theme_override_constants/separation = 26
 
 [node name="TitleContainer" type="VBoxContainer" parent="CenterContainer/MainVBox"]
 layout_mode = 2
-theme_override_constants/separation = 8
+theme_override_constants/separation = 6
 
 [node name="TitleLabel" type="Label" parent="CenterContainer/MainVBox/TitleContainer"]
 layout_mode = 2
@@ -161,17 +161,17 @@ vertical_alignment = 1
 custom_minimum_size = Vector2(320, 2)
 layout_mode = 2
 size_flags_horizontal = 0
-color = Color(0, 0.941, 1, 0.45)
+color = Color(0, 0.94, 1, 0.45)
 
 [node name="ButtonsVBox" type="VBoxContainer" parent="CenterContainer/MainVBox"]
 layout_mode = 2
-theme_override_constants/separation = 10
+theme_override_constants/separation = 8
 
 [node name="NewGameButton" type="Button" parent="CenterContainer/MainVBox/ButtonsVBox"]
-custom_minimum_size = Vector2(300, 54)
+custom_minimum_size = Vector2(300, 50)
 layout_mode = 2
 theme_override_colors/font_color = Color(1, 1, 1, 1)
-theme_override_colors/font_hover_color = Color(0, 0.941, 1, 1)
+theme_override_colors/font_hover_color = Color(0, 0.94, 1, 1)
 theme_override_font_sizes/font_size = 20
 theme_override_styles/normal = SubResource("StyleBoxFlat_btn_normal")
 theme_override_styles/pressed = SubResource("StyleBoxFlat_btn_pressed")
@@ -180,10 +180,10 @@ theme_override_styles/disabled = SubResource("StyleBoxFlat_btn_disabled")
 text = "新游戏 NEW GAME"
 
 [node name="ContinueButton" type="Button" parent="CenterContainer/MainVBox/ButtonsVBox"]
-custom_minimum_size = Vector2(300, 54)
+custom_minimum_size = Vector2(300, 50)
 layout_mode = 2
 theme_override_colors/font_color = Color(1, 1, 1, 1)
-theme_override_colors/font_hover_color = Color(0, 0.941, 1, 1)
+theme_override_colors/font_hover_color = Color(0, 0.94, 1, 1)
 theme_override_font_sizes/font_size = 20
 theme_override_styles/normal = SubResource("StyleBoxFlat_btn_normal")
 theme_override_styles/pressed = SubResource("StyleBoxFlat_btn_pressed")
@@ -192,15 +192,15 @@ theme_override_styles/disabled = SubResource("StyleBoxFlat_btn_disabled")
 text = "继续 CONTINUE"
 
 [node name="GapMain" type="Control" parent="CenterContainer/MainVBox/ButtonsVBox"]
-custom_minimum_size = Vector2(0, 12)
+custom_minimum_size = Vector2(0, 8)
 layout_mode = 2
 
 [node name="SettingsButton" type="Button" parent="CenterContainer/MainVBox/ButtonsVBox"]
-custom_minimum_size = Vector2(300, 44)
+custom_minimum_size = Vector2(300, 42)
 layout_mode = 2
 theme_override_colors/font_color = Color(1, 1, 1, 1)
 theme_override_colors/font_hover_color = Color(0.545, 0.361, 0.965, 1)
-theme_override_font_sizes/font_size = 18
+theme_override_font_sizes/font_size = 16
 theme_override_styles/normal = SubResource("StyleBoxFlat_btn_normal")
 theme_override_styles/pressed = SubResource("StyleBoxFlat_btn_pressed")
 theme_override_styles/hover = SubResource("StyleBoxFlat_btn_hover")
@@ -208,11 +208,11 @@ theme_override_styles/disabled = SubResource("StyleBoxFlat_btn_disabled")
 text = "设置 SETTINGS"
 
 [node name="QuitButton" type="Button" parent="CenterContainer/MainVBox/ButtonsVBox"]
-custom_minimum_size = Vector2(300, 44)
+custom_minimum_size = Vector2(300, 42)
 layout_mode = 2
 theme_override_colors/font_color = Color(1, 1, 1, 0.7)
-theme_override_colors/font_hover_color = Color(1, 0.3, 0.3, 1)
-theme_override_font_sizes/font_size = 18
+theme_override_colors/font_hover_color = Color(0.937, 0.267, 0.267, 1)
+theme_override_font_sizes/font_size = 16
 theme_override_styles/normal = SubResource("StyleBoxFlat_btn_normal")
 theme_override_styles/pressed = SubResource("StyleBoxFlat_btn_pressed")
 theme_override_styles/hover = SubResource("StyleBoxFlat_btn_hover")
@@ -220,7 +220,7 @@ theme_override_styles/disabled = SubResource("StyleBoxFlat_btn_disabled")
 text = "退出 QUIT"
 
 [node name="GapDev" type="Control" parent="CenterContainer/MainVBox/ButtonsVBox"]
-custom_minimum_size = Vector2(0, 10)
+custom_minimum_size = Vector2(0, 8)
 layout_mode = 2
 
 [node name="SwitchSlotButton" type="Button" parent="CenterContainer/MainVBox/ButtonsVBox"]
@@ -238,7 +238,7 @@ text = "切换存档 SAVE SLOT"
 [node name="CombatCheckButton" type="Button" parent="CenterContainer/MainVBox/ButtonsVBox"]
 custom_minimum_size = Vector2(300, 26)
 layout_mode = 2
-theme_override_colors/font_color = Color(0.9, 0.7, 0.3, 1)
+theme_override_colors/font_color = Color(1, 0.85, 0.35, 1)
 theme_override_colors/font_hover_color = Color(1, 0.85, 0.4, 1)
 theme_override_font_sizes/font_size = 13
 theme_override_styles/normal = SubResource("StyleBoxFlat_btn_normal")

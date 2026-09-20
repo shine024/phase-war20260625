@@ -39,6 +39,46 @@ func test_level_progress_out_of_range_entries_dropped() -> void:
 	assert_bool(lpm.is_era_unlocked(9)).is_false()
 
 
+## v38.4 P0 回归锁（2026-09-19 实机试玩发现）：
+## Godot JSON 把裸整数解析成 float，load_state 曾用 `is int` 过滤把 unlocked_levels
+## 元素全拒、max_unlocked_level 落回 1——随后存档 current_level←max 同步把玩家进度
+## 拖回第 1 关。v26.6 的上面的测试只锁了字典三件（星数/首通/时代），数组与 max
+## 此前无断言覆盖，P0 因此存活至项目初始化以来的每一次读档。
+func test_level_progress_unlocked_levels_survive_json_float_roundtrip() -> void:
+	var lpm = auto_free(load("res://managers/level_progress_manager.gd").new())
+	var raw := {
+		"unlocked_levels": [1, 2, 3, 7, 15],
+		"max_unlocked_level": 15,
+		"level_stars": {"15": 2},
+	}
+	var parsed: Variant = JSON.parse_string(JSON.stringify(raw))
+	# 前置断言：引擎 JSON 确实把整数读成 float（若引擎行为变更致此断言失败，
+	# 本测试的 float 语义前提需要重审，而非 load_state 出错）
+	assert_bool(parsed["unlocked_levels"][4] is int).is_false()
+	assert_float(parsed["unlocked_levels"][4]).is_equal(15.0)
+	lpm.load_state(parsed)
+	assert_int(lpm.get_max_unlocked_level()).is_equal(15)
+	var unlocked: Array = lpm.get_unlocked_levels()
+	assert_int(unlocked.size()).is_equal(5)
+	assert_int(unlocked[4]).is_equal(15)
+	assert_bool(unlocked[4] is int).is_true()
+	assert_int(lpm.get_level_stars(15)).is_equal(2)
+
+
+## v38.4 配套：max_unlocked_level 缺失/越界时的回退链——max 缺失取 unlocked 最大值，
+## 非法值不中断加载（与 v26.6 ④"手改档不得中断"同族）。
+func test_level_progress_max_level_fallback_chain() -> void:
+	var lpm = auto_free(load("res://managers/level_progress_manager.gd").new())
+	lpm.load_state({"unlocked_levels": [1, 4, 9]})
+	assert_int(lpm.get_max_unlocked_level()).is_equal(9)  # max 缺失 → unlocked 最大值
+	lpm = auto_free(load("res://managers/level_progress_manager.gd").new())
+	lpm.load_state({"unlocked_levels": [1, 4], "max_unlocked_level": 9999})
+	assert_int(lpm.get_max_unlocked_level()).is_equal(4)  # 越界 max → 钳回 unlocked 最大值
+	lpm = auto_free(load("res://managers/level_progress_manager.gd").new())
+	lpm.load_state({"unlocked_levels": "garbage", "max_unlocked_level": "x"})
+	assert_int(lpm.get_max_unlocked_level()).is_equal(1)  # 全垃圾 → 初始态，不崩
+
+
 func test_day_clock_empty_load_resets_to_defaults() -> void:
 	var dc = auto_free(load("res://managers/day_clock.gd").new())
 	dc.current_day = 200

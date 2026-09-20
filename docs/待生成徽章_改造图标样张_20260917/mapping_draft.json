@@ -1,0 +1,2490 @@
+{
+ "total": 249,
+ "auto_mapped": 248,
+ "need_manual": 1,
+ "entries": [
+  {
+   "id": "air_01_turbofan",
+   "name": "涡扇发动机",
+   "rarity": "epic",
+   "family": "air",
+   "line": "冰青色",
+   "hue": 195,
+   "subject": "一台涡扇发动机进气道正面徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "air_02_vector_thrust",
+   "name": "矢量推力",
+   "rarity": "epic",
+   "family": "air",
+   "line": "冰青色",
+   "hue": 195,
+   "subject": "一个偏转喷口与两道偏流焰组成的徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "air_03_stealth_coating",
+   "name": "隐身涂层",
+   "rarity": "epic",
+   "family": "air",
+   "line": "冰青色",
+   "hue": 195,
+   "subject": "一架菱形隐身飞行器剪影与波纹消散线的徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "air_04_aesa",
+   "name": "有源相控阵雷达",
+   "rarity": "legendary",
+   "family": "air",
+   "line": "冰青色",
+   "hue": 195,
+   "subject": "一面旋转抛物面雷达天线与电波弧组成的徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "air_05_helmet_sight",
+   "name": "头盔瞄准具",
+   "rarity": "epic",
+   "family": "air",
+   "line": "冰青色",
+   "hue": 195,
+   "subject": "一顶飞行头盔与护目镜正面徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "air_06_bvr_missile",
+   "name": "超视距导弹",
+   "rarity": "epic",
+   "family": "air",
+   "line": "冰青色",
+   "hue": 195,
+   "subject": "一枚带十字翼的导弹侧影徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "air_07_dogfight_missile",
+   "name": "格斗弹舱",
+   "rarity": "epic",
+   "family": "air",
+   "line": "冰青色",
+   "hue": 195,
+   "subject": "一个热源轮廓被波纹抑制的徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "air_08_ecm",
+   "name": "电子对抗系统",
+   "rarity": "epic",
+   "family": "air",
+   "line": "冰青色",
+   "hue": 195,
+   "subject": "一个热源轮廓被波纹抑制的徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "air_09_air_refuel",
+   "name": "空中加油口",
+   "rarity": "rare",
+   "family": "air",
+   "line": "冰青色",
+   "hue": 195,
+   "subject": "一个热源轮廓被波纹抑制的徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "air_10_drop_tank",
+   "name": "副油箱",
+   "rarity": "uncommon",
+   "family": "air",
+   "line": "冰青色",
+   "hue": 195,
+   "subject": "一个热源轮廓被波纹抑制的徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "air_11_weapon_rack",
+   "name": "外挂武器架",
+   "rarity": "rare",
+   "family": "air",
+   "line": "冰青色",
+   "hue": 195,
+   "subject": "一枚翼下挂架上的导弹侧影徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "air_12_data_link",
+   "name": "数据链系统",
+   "rarity": "epic",
+   "family": "air",
+   "line": "冰青色",
+   "hue": 195,
+   "subject": "一个热源轮廓被波纹抑制的徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "air_13_ejection_seat",
+   "name": "钛合金浴缸座舱",
+   "rarity": "uncommon",
+   "family": "air",
+   "line": "冰青色",
+   "hue": 195,
+   "subject": "一个热源轮廓被波纹抑制的徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "air_14_swing_wing",
+   "name": "可变后掠翼",
+   "rarity": "epic",
+   "family": "air",
+   "line": "冰青色",
+   "hue": 195,
+   "subject": "一个热源轮廓被波纹抑制的徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "air_15_afterburner",
+   "name": "加力燃烧室",
+   "rarity": "legendary",
+   "family": "air",
+   "line": "冰青色",
+   "hue": 195,
+   "subject": "一个热源轮廓被波纹抑制的徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "air_thermolite_bomb",
+   "name": "温压弹",
+   "rarity": "legendary",
+   "family": "air",
+   "line": "冰青色",
+   "hue": 195,
+   "subject": "一个热源轮廓被波纹抑制的徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "air_antiradiation_missile",
+   "name": "反辐射导弹",
+   "rarity": "legendary",
+   "family": "air",
+   "line": "冰青色",
+   "hue": 195,
+   "subject": "一枚带十字翼的导弹侧影徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "air_targeting_laser",
+   "name": "瞄准激光",
+   "rarity": "epic",
+   "family": "air",
+   "line": "冰青色",
+   "hue": 195,
+   "subject": "一座近防炮塔射出弧形激光束的徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "air_16_phase_shift",
+   "name": "相位偏移",
+   "rarity": "legendary",
+   "family": "air",
+   "line": "冰青色",
+   "hue": 195,
+   "subject": "一个热源轮廓被波纹抑制的徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "air_17_bombsight",
+   "name": "轰炸瞄准具",
+   "rarity": "uncommon",
+   "family": "air",
+   "line": "冰青色",
+   "hue": 195,
+   "subject": "一个热源轮廓被波纹抑制的徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "air_18_heavy_rack",
+   "name": "重载挂架",
+   "rarity": "uncommon",
+   "family": "air",
+   "line": "冰青色",
+   "hue": 195,
+   "subject": "一枚翼下挂架上的导弹侧影徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "air_19_cluster_dispenser",
+   "name": "集束布撒器",
+   "rarity": "rare",
+   "family": "air",
+   "line": "冰青色",
+   "hue": 195,
+   "subject": "一枚母弹开仓释放多枚子弹药的徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "air_20_standoff_missile",
+   "name": "防区外导弹",
+   "rarity": "epic",
+   "family": "air",
+   "line": "冰青色",
+   "hue": 195,
+   "subject": "一枚带十字翼的导弹侧影徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "air_21_terrain_radar",
+   "name": "地形跟随雷达",
+   "rarity": "uncommon",
+   "family": "air",
+   "line": "冰青色",
+   "hue": 195,
+   "subject": "一面旋转抛物面雷达天线与电波弧组成的徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "air_22_countermeasure",
+   "name": "干扰弹布撒器",
+   "rarity": "rare",
+   "family": "air",
+   "line": "冰青色",
+   "hue": 195,
+   "subject": "一个热源轮廓被波纹抑制的徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "air_23_cockpit_armor",
+   "name": "座舱装甲",
+   "rarity": "common",
+   "family": "air",
+   "line": "冰青色",
+   "hue": 195,
+   "subject": "一个热源轮廓被波纹抑制的徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "air_24_canard",
+   "name": "鸭翼前置",
+   "rarity": "uncommon",
+   "family": "air",
+   "line": "冰青色",
+   "hue": 195,
+   "subject": "一个热源轮廓被波纹抑制的徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "air_25_dual_mode_seeker",
+   "name": "双模导引头",
+   "rarity": "rare",
+   "family": "air",
+   "line": "冰青色",
+   "hue": 195,
+   "subject": "一个热源轮廓被波纹抑制的徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "air_26_drone_wingman",
+   "name": "蜂群僚机",
+   "rarity": "epic",
+   "family": "air",
+   "line": "冰青色",
+   "hue": 195,
+   "subject": "一个热源轮廓被波纹抑制的徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "aa_01_radar",
+   "name": "炮瞄雷达",
+   "rarity": "rare",
+   "family": "anti_air",
+   "line": "钴蓝色",
+   "hue": 220,
+   "subject": "一面旋转抛物面雷达天线与电波弧组成的徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "aa_02_iff",
+   "name": "敌我识别器",
+   "rarity": "uncommon",
+   "family": "anti_air",
+   "line": "钴蓝色",
+   "hue": 220,
+   "subject": "一副天线环与问号化双箭头组成的徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "aa_03_missile_rail",
+   "name": "防空导弹挂架",
+   "rarity": "epic",
+   "family": "anti_air",
+   "line": "钴蓝色",
+   "hue": 220,
+   "subject": "一枚带十字翼的导弹侧影徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "aa_04_quad_mount",
+   "name": "双联/四联装",
+   "rarity": "rare",
+   "family": "anti_air",
+   "line": "钴蓝色",
+   "hue": 220,
+   "subject": "一座多联装高炮座的正面徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "aa_05_proximity_fuze",
+   "name": "近炸引信",
+   "rarity": "epic",
+   "family": "anti_air",
+   "line": "钴蓝色",
+   "hue": 220,
+   "subject": "一枚引信头部与扩散感应波环组成的徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "aa_06_laser",
+   "name": "激光近防系统",
+   "rarity": "legendary",
+   "family": "anti_air",
+   "line": "钴蓝色",
+   "hue": 220,
+   "subject": "一座近防炮塔射出弧形激光束的徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "aa_07_aesa",
+   "name": "相控阵雷达",
+   "rarity": "legendary",
+   "family": "anti_air",
+   "line": "钴蓝色",
+   "hue": 220,
+   "subject": "一面旋转抛物面雷达天线与电波弧组成的徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "aa_08_power_gen",
+   "name": "车载发电机组",
+   "rarity": "uncommon",
+   "family": "anti_air",
+   "line": "钴蓝色",
+   "hue": 220,
+   "subject": "一台野战发电机与电流弧组成的徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "aa_09_smoke_launcher",
+   "name": "烟幕弹发射器",
+   "rarity": "rare",
+   "family": "anti_air",
+   "line": "钴蓝色",
+   "hue": 220,
+   "subject": "一具烟幕弹发射器与烟云弧组成的徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "aa_10_camouflage",
+   "name": "伪装网",
+   "rarity": "uncommon",
+   "family": "anti_air",
+   "line": "钴蓝色",
+   "hue": 220,
+   "subject": "一张伪装网与树叶剪影组成的徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "aa_11_auto_fc",
+   "name": "自动化火控",
+   "rarity": "epic",
+   "family": "anti_air",
+   "line": "钴蓝色",
+   "hue": 220,
+   "subject": "一台火控计算机与弹道解算线组成的徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "aa_12_fire_on_move",
+   "name": "行进间射击",
+   "rarity": "epic",
+   "family": "anti_air",
+   "line": "钴蓝色",
+   "hue": 220,
+   "subject": "一个热源轮廓被波纹抑制的徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "aa_13_radar_lock",
+   "name": "雷达锁定",
+   "rarity": "legendary",
+   "family": "anti_air",
+   "line": "钴蓝色",
+   "hue": 220,
+   "subject": "一面旋转抛物面雷达天线与电波弧组成的徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "aa_emp_warhead",
+   "name": "电磁战斗部",
+   "rarity": "legendary",
+   "family": "anti_air",
+   "line": "钴蓝色",
+   "hue": 220,
+   "subject": "一枚电磁弹头与环形电弧组成的徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "aa_acid_warhead",
+   "name": "酸液战斗部",
+   "rarity": "epic",
+   "family": "anti_air",
+   "line": "钴蓝色",
+   "hue": 220,
+   "subject": "一枚滴蚀酸液的弹头与腐蚀斑组成的徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "aa_14_searchlight",
+   "name": "探照灯组",
+   "rarity": "uncommon",
+   "family": "anti_air",
+   "line": "钴蓝色",
+   "hue": 220,
+   "subject": "一具探照灯与光锥组成的徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "aa_15_flak_burst",
+   "name": "定时引信防空弹",
+   "rarity": "rare",
+   "family": "anti_air",
+   "line": "钴蓝色",
+   "hue": 220,
+   "subject": "一枚防空弹与定时刻度环组成的徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "aa_16_ammo_cache",
+   "name": "备弹库",
+   "rarity": "common",
+   "family": "anti_air",
+   "line": "钴蓝色",
+   "hue": 220,
+   "subject": "一排堆叠弹药架与储备箱组成的徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "aa_17_altimeter",
+   "name": "测高仪",
+   "rarity": "uncommon",
+   "family": "anti_air",
+   "line": "钴蓝色",
+   "hue": 220,
+   "subject": "一台测高仪与高度刻度线组成的徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "aa_18_twin_mount",
+   "name": "双联装改装",
+   "rarity": "rare",
+   "family": "anti_air",
+   "line": "钴蓝色",
+   "hue": 220,
+   "subject": "一座多联装高炮座的正面徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "aa_19_barrage_computer",
+   "name": "弹幕计算机",
+   "rarity": "epic",
+   "family": "anti_air",
+   "line": "钴蓝色",
+   "hue": 220,
+   "subject": "一台弹幕计算机与多道弹道弧组成的徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "arm_01_sloped_armor",
+   "name": "倾斜装甲",
+   "rarity": "rare",
+   "family": "armor",
+   "line": "钢青色",
+   "hue": 187,
+   "subject": "一块倾斜放置的轧制钢板剖面徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "arm_02_composite_armor",
+   "name": "复合装甲",
+   "rarity": "epic",
+   "family": "armor",
+   "line": "钢青色",
+   "hue": 187,
+   "subject": "多层复合装甲板叠层剖面的徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "arm_03_reactive_armor",
+   "name": "爆反装甲",
+   "rarity": "epic",
+   "family": "armor",
+   "line": "钢青色",
+   "hue": 187,
+   "subject": "六边形爆炸反应装甲砖块阵列为主体、其中一块迸发小火光的徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "arm_04_aps",
+   "name": "主动防护",
+   "rarity": "legendary",
+   "family": "armor",
+   "line": "钢青色",
+   "hue": 187,
+   "subject": "一座车载相控阵天线拦截来袭弹的徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "arm_05_smoothbore",
+   "name": "滑膛炮",
+   "rarity": "epic",
+   "family": "armor",
+   "line": "钢青色",
+   "hue": 187,
+   "subject": "一门坦克滑膛炮管与炮塔正面剪影徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "arm_06_apfsds",
+   "name": "尾翼稳定脱壳穿甲弹",
+   "rarity": "epic",
+   "family": "armor",
+   "line": "钢青色",
+   "hue": 187,
+   "subject": "一枚长杆尾翼稳定穿甲弹的飞行体徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "arm_07_gun_missile",
+   "name": "炮射导弹",
+   "rarity": "legendary",
+   "family": "armor",
+   "line": "钢青色",
+   "hue": 187,
+   "subject": "一枚带十字翼的导弹侧影徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "arm_08_autoloader",
+   "name": "自动装弹机",
+   "rarity": "epic",
+   "family": "armor",
+   "line": "钢青色",
+   "hue": 187,
+   "subject": "一台自动装弹机机械臂与弹链组成的徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "arm_09_turbine",
+   "name": "燃气轮机",
+   "rarity": "epic",
+   "family": "armor",
+   "line": "钢青色",
+   "hue": 187,
+   "subject": "一台燃气轮机叶轮与气流线组成的徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "arm_10_diesel_turbo",
+   "name": "柴油增压引擎",
+   "rarity": "epic",
+   "family": "armor",
+   "line": "钢青色",
+   "hue": 187,
+   "subject": "一台涡轮增压柴油机与排气线组成的徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "arm_11_fire_control",
+   "name": "猎歼火控",
+   "rarity": "epic",
+   "family": "armor",
+   "line": "钢青色",
+   "hue": 187,
+   "subject": "一个热源轮廓被波纹抑制的徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "arm_12_thermal_sight",
+   "name": "热成像瞄准镜",
+   "rarity": "epic",
+   "family": "armor",
+   "line": "钢青色",
+   "hue": 187,
+   "subject": "一个热源轮廓被波纹抑制的徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "arm_13_deep_wading",
+   "name": "火控计算机",
+   "rarity": "uncommon",
+   "family": "armor",
+   "line": "钢青色",
+   "hue": 187,
+   "subject": "一台火控计算机与弹道解算线组成的徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "arm_14_mine_plow",
+   "name": "扫雷滚/犁",
+   "rarity": "rare",
+   "family": "armor",
+   "line": "钢青色",
+   "hue": 187,
+   "subject": "一块车前扫雷滚与翻土线组成的徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "arm_15_data_link",
+   "name": "战术数据链",
+   "rarity": "epic",
+   "family": "armor",
+   "line": "钢青色",
+   "hue": 187,
+   "subject": "一台数据链终端与三条链路弧组成的徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "arm_16_battle_frenzy",
+   "name": "战斗狂热",
+   "rarity": "legendary",
+   "family": "armor",
+   "line": "钢青色",
+   "hue": 187,
+   "subject": "一枚燃烧徽记与升腾火纹组成的徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "arm_17_spacer_armor",
+   "name": "附加钢板",
+   "rarity": "uncommon",
+   "family": "armor",
+   "line": "钢青色",
+   "hue": 187,
+   "subject": "一组螺栓固定的附加钢板徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "arm_18_gun_mantlet",
+   "name": "厚重炮盾",
+   "rarity": "uncommon",
+   "family": "armor",
+   "line": "钢青色",
+   "hue": 187,
+   "subject": "一块厚重炮盾的正面徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "arm_19_track_guards",
+   "name": "履带护板",
+   "rarity": "common",
+   "family": "armor",
+   "line": "钢青色",
+   "hue": 187,
+   "subject": "一枚翼下挂架上的导弹侧影徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "arm_20_commander_sight",
+   "name": "车长周视镜",
+   "rarity": "uncommon",
+   "family": "armor",
+   "line": "钢青色",
+   "hue": 187,
+   "subject": "一座车长周视镜镜塔的徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "arm_21_turret_stabilizer",
+   "name": "炮塔稳定器",
+   "rarity": "rare",
+   "family": "armor",
+   "line": "钢青色",
+   "hue": 187,
+   "subject": "一座双管自动炮塔的正面徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "arm_22_counter_pulse",
+   "name": "受击反击脉冲",
+   "rarity": "epic",
+   "family": "armor",
+   "line": "钢青色",
+   "hue": 187,
+   "subject": "一圈受击反弹脉冲与反弹箭头组成的徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "arm_23_platoon_datalink",
+   "name": "装甲连数据链",
+   "rarity": "epic",
+   "family": "armor",
+   "line": "钢青色",
+   "hue": 187,
+   "subject": "一台数据链终端与三条链路弧组成的徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "art_01_rifling",
+   "name": "膛线强化",
+   "rarity": "rare",
+   "family": "artillery",
+   "line": "琥珀金色",
+   "hue": 38,
+   "subject": "一段炮膛剖面与螺旋膛线纹样组成的徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "art_02_extended_range",
+   "name": "增程弹",
+   "rarity": "rare",
+   "family": "artillery",
+   "line": "琥珀金色",
+   "hue": 38,
+   "subject": "一枚带尾部助推焰的增程炮弹与抛物弹道弧线组成的徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "art_03_guided_shell",
+   "name": "精确制导炮弹",
+   "rarity": "legendary",
+   "family": "artillery",
+   "line": "琥珀金色",
+   "hue": 38,
+   "subject": "一枚带折叠翼的制导炮弹与锁定框组成的徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "art_04_cluster_munition",
+   "name": "子母弹",
+   "rarity": "epic",
+   "family": "artillery",
+   "line": "琥珀金色",
+   "hue": 38,
+   "subject": "一枚母弹开仓释放多枚子弹药的徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "art_05_counter_battery_radar",
+   "name": "反炮兵雷达",
+   "rarity": "epic",
+   "family": "artillery",
+   "line": "琥珀金色",
+   "hue": 38,
+   "subject": "一面旋转抛物面雷达天线与电波弧组成的徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "art_06_fire_computer",
+   "name": "射击计算机",
+   "rarity": "epic",
+   "family": "artillery",
+   "line": "琥珀金色",
+   "hue": 38,
+   "subject": "一个热源轮廓被波纹抑制的徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "art_07_ammo_supply",
+   "name": "弹药运输车",
+   "rarity": "rare",
+   "family": "artillery",
+   "line": "琥珀金色",
+   "hue": 38,
+   "subject": "一辆弹药补给卡车的侧影徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "art_08_uav",
+   "name": "炮兵侦察无人机",
+   "rarity": "epic",
+   "family": "artillery",
+   "line": "琥珀金色",
+   "hue": 38,
+   "subject": "一架侦察无人机俯视剪影徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "art_09_rapid_fire",
+   "name": "急速射系统",
+   "rarity": "rare",
+   "family": "artillery",
+   "line": "琥珀金色",
+   "hue": 38,
+   "subject": "一个热源轮廓被波纹抑制的徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "art_10_auto_nav",
+   "name": "自动导航系统",
+   "rarity": "uncommon",
+   "family": "artillery",
+   "line": "琥珀金色",
+   "hue": 38,
+   "subject": "一台导航仪与规划航线组成的徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "art_11_thermobaric",
+   "name": "温压弹",
+   "rarity": "legendary",
+   "family": "artillery",
+   "line": "琥珀金色",
+   "hue": 38,
+   "subject": "一枚温压弹与扩散爆燃云组成的徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "art_12_fortification",
+   "name": "火炮掩体",
+   "rarity": "uncommon",
+   "family": "artillery",
+   "line": "琥珀金色",
+   "hue": 38,
+   "subject": "一段火炮掩体弧墙与炮位的徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "art_13_apfsds_sabot",
+   "name": "尾翼稳定脱壳穿甲",
+   "rarity": "legendary",
+   "family": "artillery",
+   "line": "琥珀金色",
+   "hue": 38,
+   "subject": "一枚长杆尾翼稳定穿甲弹的飞行体徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "art_14_counter_battery",
+   "name": "反击炮击",
+   "rarity": "legendary",
+   "family": "artillery",
+   "line": "琥珀金色",
+   "hue": 38,
+   "subject": "一圈受击反弹脉冲与反弹箭头组成的徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "art_15_emp_round",
+   "name": "电磁脉冲弹",
+   "rarity": "epic",
+   "family": "artillery",
+   "line": "琥珀金色",
+   "hue": 38,
+   "subject": "一枚电磁弹头与环形电弧组成的徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "art_16_nano_virus",
+   "name": "纳米病毒弹",
+   "rarity": "legendary",
+   "family": "artillery",
+   "line": "琥珀金色",
+   "hue": 38,
+   "subject": "一个热源轮廓被波纹抑制的徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "art_incendiary_mix",
+   "name": "助燃剂弹",
+   "rarity": "epic",
+   "family": "artillery",
+   "line": "琥珀金色",
+   "hue": 38,
+   "subject": "一罐助燃剂与腾起的火苗组成的徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "art_white_phosphorus",
+   "name": "白磷弹",
+   "rarity": "epic",
+   "family": "artillery",
+   "line": "琥珀金色",
+   "hue": 38,
+   "subject": "一枚白磷弹头与迸散白烟点组成的徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "art_graphite_fiber",
+   "name": "石墨纤维弹",
+   "rarity": "epic",
+   "family": "artillery",
+   "line": "琥珀金色",
+   "hue": 38,
+   "subject": "一枚弹头与石墨纤维丝束组成的徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "art_nano_amp",
+   "name": "纳米放大器",
+   "rarity": "legendary",
+   "family": "artillery",
+   "line": "琥珀金色",
+   "hue": 38,
+   "subject": "一台纳米晶体放大器与增益波组成的徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "art_chem_cluster",
+   "name": "化学集束弹",
+   "rarity": "epic",
+   "family": "artillery",
+   "line": "琥珀金色",
+   "hue": 38,
+   "subject": "一枚母弹开仓释放多枚子弹药的徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "sup_nano_seeder",
+   "name": "纳米播种机",
+   "rarity": "epic",
+   "family": "artillery",
+   "line": "琥珀金色",
+   "hue": 38,
+   "subject": "一台播撒纳米晶种的装置与散落晶粒组成的徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "sup_targeting_drone",
+   "name": "目标指示无人机",
+   "rarity": "legendary",
+   "family": "artillery",
+   "line": "琥珀金色",
+   "hue": 38,
+   "subject": "一架侦察无人机俯视剪影徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "art_17_barrel_maintenance",
+   "name": "身管维护",
+   "rarity": "common",
+   "family": "artillery",
+   "line": "琥珀金色",
+   "hue": 38,
+   "subject": "一段炮管与维护扳手工具组成的徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "art_18_rapid_loader",
+   "name": "快速装填机构",
+   "rarity": "uncommon",
+   "family": "artillery",
+   "line": "琥珀金色",
+   "hue": 38,
+   "subject": "一台自动装弹机机械臂与弹链组成的徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "art_19_met_datalink",
+   "name": "气象数据链",
+   "rarity": "rare",
+   "family": "artillery",
+   "line": "琥珀金色",
+   "hue": 38,
+   "subject": "一台数据链终端与三条链路弧组成的徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "art_20_last_stand",
+   "name": "濒死爆发",
+   "rarity": "epic",
+   "family": "artillery",
+   "line": "琥珀金色",
+   "hue": 38,
+   "subject": "一枚濒死爆发火光与坚守壁垒组成的徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "art_21_saturation_director",
+   "name": "饱和射击校射机",
+   "rarity": "legendary",
+   "family": "artillery",
+   "line": "琥珀金色",
+   "hue": 38,
+   "subject": "一个热源轮廓被波纹抑制的徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "eng_01_mine_sweeper",
+   "name": "反应装甲",
+   "rarity": "rare",
+   "family": "engineer",
+   "line": "工程橙色",
+   "hue": 25,
+   "subject": "一块车前扫雷滚与翻土线组成的徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "eng_02_explosives",
+   "name": "爆破装置",
+   "rarity": "epic",
+   "family": "engineer",
+   "line": "工程橙色",
+   "hue": 25,
+   "subject": "一具破门锤与爆破装药组成的徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "eng_03_welding",
+   "name": "焊接设备",
+   "rarity": "rare",
+   "family": "engineer",
+   "line": "工程橙色",
+   "hue": 25,
+   "subject": "一把焊枪与飞溅焊花组成的徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "eng_04_bridge",
+   "name": "架桥设备",
+   "rarity": "epic",
+   "family": "engineer",
+   "line": "工程橙色",
+   "hue": 25,
+   "subject": "一段桥梁架设的工程剪影徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "eng_05_shovel",
+   "name": "工程铲",
+   "rarity": "uncommon",
+   "family": "engineer",
+   "line": "工程橙色",
+   "hue": 25,
+   "subject": "一把工兵铲与镐组成的套装徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "eng_06_crane",
+   "name": "间隙装甲",
+   "rarity": "rare",
+   "family": "engineer",
+   "line": "工程橙色",
+   "hue": 25,
+   "subject": "一台抢修起重机的剪影徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "eng_07_generator",
+   "name": "发电机",
+   "rarity": "rare",
+   "family": "engineer",
+   "line": "工程橙色",
+   "hue": 25,
+   "subject": "一台野战发电机与电流弧组成的徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "eng_08_medical",
+   "name": "战场急救站",
+   "rarity": "epic",
+   "family": "engineer",
+   "line": "工程橙色",
+   "hue": 25,
+   "subject": "一只急救包与医疗十字组成的徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "eng_09_supply",
+   "name": "弹药补给车",
+   "rarity": "rare",
+   "family": "engineer",
+   "line": "工程橙色",
+   "hue": 25,
+   "subject": "一辆弹药补给卡车的侧影徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "eng_10_camouflage",
+   "name": "伪装网系统",
+   "rarity": "epic",
+   "family": "engineer",
+   "line": "工程橙色",
+   "hue": 25,
+   "subject": "一张伪装网与树叶剪影组成的徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "eng_11_breaching_charge",
+   "name": "爆破装药",
+   "rarity": "epic",
+   "family": "engineer",
+   "line": "工程橙色",
+   "hue": 25,
+   "subject": "一具破门锤与爆破装药组成的徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "eng_12_reactive_engineering",
+   "name": "爆反工程装甲",
+   "rarity": "legendary",
+   "family": "engineer",
+   "line": "工程橙色",
+   "hue": 25,
+   "subject": "六边形爆炸反应装甲砖块阵列为主体、其中一块迸发小火光的徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "eng_13_supply_cache",
+   "name": "补给遗物",
+   "rarity": "epic",
+   "family": "engineer",
+   "line": "工程橙色",
+   "hue": 25,
+   "subject": "一辆弹药补给卡车的侧影徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "eng_optical_fiber",
+   "name": "光纤链路",
+   "rarity": "epic",
+   "family": "engineer",
+   "line": "工程橙色",
+   "hue": 25,
+   "subject": "一束光纤线缆与流光点组成的徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "eng_chem_sprayer",
+   "name": "化学喷洒器",
+   "rarity": "epic",
+   "family": "engineer",
+   "line": "工程橙色",
+   "hue": 25,
+   "subject": "一具化学喷嘴与雾滴组成的徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "eng_14_salvage_drone",
+   "name": "回收无人机",
+   "rarity": "epic",
+   "family": "engineer",
+   "line": "工程橙色",
+   "hue": 25,
+   "subject": "一架侦察无人机俯视剪影徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "eng_15_entrenching_kit",
+   "name": "工兵铲套装",
+   "rarity": "common",
+   "family": "engineer",
+   "line": "工程橙色",
+   "hue": 25,
+   "subject": "一把工兵铲与镐组成的套装徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "eng_16_field_generator",
+   "name": "野战发电机",
+   "rarity": "uncommon",
+   "family": "engineer",
+   "line": "工程橙色",
+   "hue": 25,
+   "subject": "一台野战发电机与电流弧组成的徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "eng_17_recovery_crane",
+   "name": "抢修起重机",
+   "rarity": "rare",
+   "family": "engineer",
+   "line": "工程橙色",
+   "hue": 25,
+   "subject": "一台抢修起重机的剪影徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "eng_18_defense_blueprints",
+   "name": "防线工程蓝图",
+   "rarity": "rare",
+   "family": "engineer",
+   "line": "工程橙色",
+   "hue": 25,
+   "subject": "一枚菱形能量晶体与盾形轮廓组成的徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "enh_hp_up",
+   "name": "体质训练",
+   "rarity": "uncommon",
+   "family": "enhancement",
+   "line": "品红色",
+   "hue": 310,
+   "subject": "一枚菱形能量晶体与上升双箭头组成的徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "enh_dmg_up",
+   "name": "火力训练",
+   "rarity": "uncommon",
+   "family": "enhancement",
+   "line": "品红色",
+   "hue": 310,
+   "subject": "一枚菱形能量晶体与交叉双炮管剪影组成的徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "enh_def_up",
+   "name": "防护训练",
+   "rarity": "uncommon",
+   "family": "enhancement",
+   "line": "品红色",
+   "hue": 310,
+   "subject": "一枚菱形能量晶体与盾形轮廓组成的徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "enh_def_flat",
+   "name": "坚壁训练",
+   "rarity": "uncommon",
+   "family": "enhancement",
+   "line": "品红色",
+   "hue": 310,
+   "subject": "一枚菱形能量晶体与盾形轮廓组成的徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "enh_speed_up",
+   "name": "机动训练",
+   "rarity": "uncommon",
+   "family": "enhancement",
+   "line": "品红色",
+   "hue": 310,
+   "subject": "一枚菱形能量晶体与三道疾速线组成的徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "enh_range_up",
+   "name": "索敌训练",
+   "rarity": "uncommon",
+   "family": "enhancement",
+   "line": "品红色",
+   "hue": 310,
+   "subject": "一枚菱形能量晶体与瞄准环组成的徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "enh_atkspd_up",
+   "name": "反应训练",
+   "rarity": "uncommon",
+   "family": "enhancement",
+   "line": "品红色",
+   "hue": 310,
+   "subject": "一枚菱形能量晶体与闪电组成的徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "enh_crit",
+   "name": "弱点洞察",
+   "rarity": "rare",
+   "family": "enhancement",
+   "line": "品红色",
+   "hue": 310,
+   "subject": "一枚菱形能量晶体与靶环准星组成的徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "enh_lifesteal",
+   "name": "战场回收",
+   "rarity": "rare",
+   "family": "enhancement",
+   "line": "品红色",
+   "hue": 310,
+   "subject": "一枚菱形能量晶体与回收钩爪组成的徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "enh_splash",
+   "name": "爆破战技",
+   "rarity": "rare",
+   "family": "enhancement",
+   "line": "品红色",
+   "hue": 310,
+   "subject": "一具破门锤与爆破装药组成的徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "enh_penetration",
+   "name": "破甲专精",
+   "rarity": "rare",
+   "family": "enhancement",
+   "line": "品红色",
+   "hue": 310,
+   "subject": "一枚菱形能量晶体与破甲锥组成的徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "enh_regen",
+   "name": "野战急救",
+   "rarity": "rare",
+   "family": "enhancement",
+   "line": "品红色",
+   "hue": 310,
+   "subject": "一只急救包与医疗十字组成的徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "enh_chain",
+   "name": "连锁战术",
+   "rarity": "rare",
+   "family": "enhancement",
+   "line": "品红色",
+   "hue": 310,
+   "subject": "一枚菱形能量晶体与连锁环组成的徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "enh_shield_kill",
+   "name": "收割本能",
+   "rarity": "epic",
+   "family": "enhancement",
+   "line": "品红色",
+   "hue": 310,
+   "subject": "一面防弹盾牌正面徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "enh_dodge",
+   "name": "本能闪避",
+   "rarity": "epic",
+   "family": "enhancement",
+   "line": "品红色",
+   "hue": 310,
+   "subject": "一枚菱形能量晶体与残影弧线组成的徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "enh_crit_dmg",
+   "name": "致命精通",
+   "rarity": "epic",
+   "family": "enhancement",
+   "line": "品红色",
+   "hue": 310,
+   "subject": "一枚菱形能量晶体与交叉双炮管剪影组成的徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "enh_crit_up",
+   "name": "精准训练",
+   "rarity": "common",
+   "family": "enhancement",
+   "line": "品红色",
+   "hue": 310,
+   "subject": "一枚菱形能量晶体与靶环准星组成的徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "enh_dodge_up",
+   "name": "回避训练",
+   "rarity": "uncommon",
+   "family": "enhancement",
+   "line": "品红色",
+   "hue": 310,
+   "subject": "一枚菱形能量晶体与残影弧线组成的徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "enh_regen_up",
+   "name": "休整训练",
+   "rarity": "uncommon",
+   "family": "enhancement",
+   "line": "品红色",
+   "hue": 310,
+   "subject": "一枚菱形能量晶体与休整帐篷组成的徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "for_01_concrete",
+   "name": "钢筋混凝土装甲",
+   "rarity": "rare",
+   "family": "fort",
+   "line": "珊瑚橙色",
+   "hue": 15,
+   "subject": "钢筋混凝土块垒砌截面的徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "for_02_tunnel",
+   "name": "地下坑道",
+   "rarity": "epic",
+   "family": "fort",
+   "line": "珊瑚橙色",
+   "hue": 15,
+   "subject": "一段地下坑道拱形入口的徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "for_03_auto_turret",
+   "name": "自动炮塔",
+   "rarity": "epic",
+   "family": "fort",
+   "line": "珊瑚橙色",
+   "hue": 15,
+   "subject": "一座双管自动炮塔的正面徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "for_04_filtration",
+   "name": "通风过滤系统",
+   "rarity": "epic",
+   "family": "fort",
+   "line": "珊瑚橙色",
+   "hue": 15,
+   "subject": "一台通风过滤装置与气流线组成的徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "for_05_ammo_dump",
+   "name": "弹药库",
+   "rarity": "rare",
+   "family": "fort",
+   "line": "珊瑚橙色",
+   "hue": 15,
+   "subject": "叠放的弹药箱与警告条纹组成的徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "for_06_radar",
+   "name": "雷达天线",
+   "rarity": "epic",
+   "family": "fort",
+   "line": "珊瑚橙色",
+   "hue": 15,
+   "subject": "一面旋转抛物面雷达天线与电波弧组成的徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "for_07_camouflage",
+   "name": "伪装系统",
+   "rarity": "rare",
+   "family": "fort",
+   "line": "珊瑚橙色",
+   "hue": 15,
+   "subject": "一张伪装网与树叶剪影组成的徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "for_08_trench",
+   "name": "反坦克壕",
+   "rarity": "rare",
+   "family": "fort",
+   "line": "珊瑚橙色",
+   "hue": 15,
+   "subject": "一段反坦克壕沟的剖面徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "for_09_minefield",
+   "name": "雷场",
+   "rarity": "epic",
+   "family": "fort",
+   "line": "珊瑚橙色",
+   "hue": 15,
+   "subject": "一片布设地雷阵与警示旗组成的徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "for_10_command",
+   "name": "指挥塔",
+   "rarity": "epic",
+   "family": "fort",
+   "line": "珊瑚橙色",
+   "hue": 15,
+   "subject": "一座指挥塔的剪影徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "for_11_advanced_minefield",
+   "name": "强化雷场",
+   "rarity": "legendary",
+   "family": "fort",
+   "line": "珊瑚橙色",
+   "hue": 15,
+   "subject": "一片布设地雷阵与警示旗组成的徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "for_12_anti_tank_trench",
+   "name": "反坦克壕",
+   "rarity": "epic",
+   "family": "fort",
+   "line": "珊瑚橙色",
+   "hue": 15,
+   "subject": "一段反坦克壕沟的剖面徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "for_13_command_bunker",
+   "name": "指挥地堡",
+   "rarity": "epic",
+   "family": "fort",
+   "line": "珊瑚橙色",
+   "hue": 15,
+   "subject": "一座指挥塔的剪影徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "for_14_bomb_shelter",
+   "name": "防空洞加固",
+   "rarity": "uncommon",
+   "family": "fort",
+   "line": "珊瑚橙色",
+   "hue": 15,
+   "subject": "一扇加固防空洞门的徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "for_15_sandbag",
+   "name": "沙袋工事",
+   "rarity": "common",
+   "family": "fort",
+   "line": "珊瑚橙色",
+   "hue": 15,
+   "subject": "一层沙袋垒砌工事的徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "for_16_drainage",
+   "name": "排水系统",
+   "rarity": "uncommon",
+   "family": "fort",
+   "line": "珊瑚橙色",
+   "hue": 15,
+   "subject": "一台排水泵与水流线组成的徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "for_17_hardened_bunker",
+   "name": "永备工事",
+   "rarity": "rare",
+   "family": "fort",
+   "line": "珊瑚橙色",
+   "hue": 15,
+   "subject": "一座指挥地堡的剪影徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "for_18_demolition_cache",
+   "name": "殉爆预案",
+   "rarity": "epic",
+   "family": "fort",
+   "line": "珊瑚橙色",
+   "hue": 15,
+   "subject": "两座隔离防爆墙与弹药箱组成的徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "inf_01_submachine_gun",
+   "name": "冲锋枪改装",
+   "rarity": "rare",
+   "family": "infantry",
+   "line": "橄榄绿色",
+   "hue": 80,
+   "subject": "一支冲锋枪的侧面剪影徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "inf_02_assault_rifle",
+   "name": "突击步枪化",
+   "rarity": "rare",
+   "family": "infantry",
+   "line": "橄榄绿色",
+   "hue": 80,
+   "subject": "一支突击步枪的侧面剪影徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "inf_03_small_caliber",
+   "name": "小口径化",
+   "rarity": "rare",
+   "family": "infantry",
+   "line": "橄榄绿色",
+   "hue": 80,
+   "subject": "一枚细口径弹头与三道速度线组成的徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "inf_04_bullpup",
+   "name": "无托结构",
+   "rarity": "rare",
+   "family": "infantry",
+   "line": "橄榄绿色",
+   "hue": 80,
+   "subject": "一支无托结构步枪的紧凑侧影徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "inf_05_ap_ammo",
+   "name": "穿甲弹",
+   "rarity": "epic",
+   "family": "infantry",
+   "line": "橄榄绿色",
+   "hue": 80,
+   "subject": "一枚长杆尾翼稳定穿甲弹的飞行体徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "inf_06_hp_ammo",
+   "name": "空尖弹",
+   "rarity": "epic",
+   "family": "infantry",
+   "line": "橄榄绿色",
+   "hue": 80,
+   "subject": "一枚菱形能量晶体与上升双箭头组成的徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "inf_07_optical_scope",
+   "name": "光学瞄准镜",
+   "rarity": "rare",
+   "family": "infantry",
+   "line": "橄榄绿色",
+   "hue": 80,
+   "subject": "一枚高倍率圆形瞄准镜镜片与测距刻线组成的徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "inf_08_holographic",
+   "name": "全息瞄准镜",
+   "rarity": "rare",
+   "family": "infantry",
+   "line": "橄榄绿色",
+   "hue": 80,
+   "subject": "一枚高倍率圆形瞄准镜镜片与测距刻线组成的徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "inf_09_dual_mag",
+   "name": "双弹匣并联",
+   "rarity": "uncommon",
+   "family": "infantry",
+   "line": "橄榄绿色",
+   "hue": 80,
+   "subject": "一副并联双弹匣的徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "inf_10_saw",
+   "name": "班用机枪化",
+   "rarity": "epic",
+   "family": "infantry",
+   "line": "橄榄绿色",
+   "hue": 80,
+   "subject": "一挺弹链供弹机枪的侧面剪影徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "inf_11_armor_insert",
+   "name": "防弹插板",
+   "rarity": "rare",
+   "family": "infantry",
+   "line": "橄榄绿色",
+   "hue": 80,
+   "subject": "一块防弹插板与纤维纹组成的徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "inf_12_body_armor",
+   "name": "防弹背心",
+   "rarity": "rare",
+   "family": "infantry",
+   "line": "橄榄绿色",
+   "hue": 80,
+   "subject": "一件战术背心正面徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "inf_13_helmet_upgrade",
+   "name": "头盔升级",
+   "rarity": "uncommon",
+   "family": "infantry",
+   "line": "橄榄绿色",
+   "hue": 80,
+   "subject": "一顶飞行头盔与护目镜正面徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "inf_14_knee_pads",
+   "name": "护膝护肘",
+   "rarity": "common",
+   "family": "infantry",
+   "line": "橄榄绿色",
+   "hue": 80,
+   "subject": "一副护膝护肘的徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "inf_15_riot_shield",
+   "name": "防弹盾牌",
+   "rarity": "epic",
+   "family": "infantry",
+   "line": "橄榄绿色",
+   "hue": 80,
+   "subject": "一面防弹盾牌正面徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "inf_16_exoskeleton",
+   "name": "外骨骼原型",
+   "rarity": "epic",
+   "family": "infantry",
+   "line": "橄榄绿色",
+   "hue": 80,
+   "subject": "一具外骨骼腿部支架的徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "inf_17_tourniquet",
+   "name": "止血带",
+   "rarity": "uncommon",
+   "family": "infantry",
+   "line": "橄榄绿色",
+   "hue": 80,
+   "subject": "一只急救包与医疗十字组成的徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "inf_18_ifak",
+   "name": "战场急救包",
+   "rarity": "rare",
+   "family": "infantry",
+   "line": "橄榄绿色",
+   "hue": 80,
+   "subject": "一只急救包与医疗十字组成的徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "inf_19_radio",
+   "name": "单兵电台",
+   "rarity": "rare",
+   "family": "infantry",
+   "line": "橄榄绿色",
+   "hue": 80,
+   "subject": "一台战术电台与信号波弧组成的徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "inf_20_night_vision",
+   "name": "夜视仪",
+   "rarity": "rare",
+   "family": "infantry",
+   "line": "橄榄绿色",
+   "hue": 80,
+   "subject": "一副夜视仪与绿色夜光视野组成的徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "inf_21_thermal",
+   "name": "热成像",
+   "rarity": "epic",
+   "family": "infantry",
+   "line": "橄榄绿色",
+   "hue": 80,
+   "subject": "一个热源轮廓被波纹抑制的徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "inf_22_breaching",
+   "name": "破门工具",
+   "rarity": "uncommon",
+   "family": "infantry",
+   "line": "橄榄绿色",
+   "hue": 80,
+   "subject": "一具破门锤与爆破装药组成的徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "inf_23_combat_stimulant",
+   "name": "战斗兴奋剂",
+   "rarity": "epic",
+   "family": "infantry",
+   "line": "橄榄绿色",
+   "hue": 80,
+   "subject": "一枚燃烧徽记与升腾火纹组成的徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "inf_25_medic_sacrifice",
+   "name": "医疗兵牺牲",
+   "rarity": "legendary",
+   "family": "infantry",
+   "line": "橄榄绿色",
+   "hue": 80,
+   "subject": "一只急救包与医疗十字组成的徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "inf_26_chemical_warhead",
+   "name": "化学弹头",
+   "rarity": "epic",
+   "family": "infantry",
+   "line": "橄榄绿色",
+   "hue": 80,
+   "subject": "一具化学喷嘴与雾滴组成的徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "inf_27_napalm",
+   "name": "凝固汽油弹",
+   "rarity": "epic",
+   "family": "infantry",
+   "line": "橄榄绿色",
+   "hue": 80,
+   "subject": "一枚凝固汽油弹与胶状火团组成的徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "inf_28_combat_boots",
+   "name": "战斗靴",
+   "rarity": "common",
+   "family": "infantry",
+   "line": "橄榄绿色",
+   "hue": 80,
+   "subject": "一双战斗靴的正面徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "inf_29_iron_sights",
+   "name": "机械瞄具",
+   "rarity": "common",
+   "family": "infantry",
+   "line": "橄榄绿色",
+   "hue": 80,
+   "subject": "一个热源轮廓被波纹抑制的徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "inf_30_load_vest",
+   "name": "负重背心",
+   "rarity": "uncommon",
+   "family": "infantry",
+   "line": "橄榄绿色",
+   "hue": 80,
+   "subject": "一件战术背心正面徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "inf_31_flash_suppressor",
+   "name": "消焰器",
+   "rarity": "uncommon",
+   "family": "infantry",
+   "line": "橄榄绿色",
+   "hue": 80,
+   "subject": "一支消音器剖面与消音隔板的徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "inf_32_heavy_barrel",
+   "name": "重型枪管",
+   "rarity": "rare",
+   "family": "infantry",
+   "line": "橄榄绿色",
+   "hue": 80,
+   "subject": "一段炮管与维护扳手工具组成的徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "inf_33_ammo_belt",
+   "name": "弹链供弹",
+   "rarity": "rare",
+   "family": "infantry",
+   "line": "橄榄绿色",
+   "hue": 80,
+   "subject": "一条弯曲弹链与枪身组成的徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "inf_34_kill_field_dressing",
+   "name": "击杀战地敷料",
+   "rarity": "epic",
+   "family": "infantry",
+   "line": "橄榄绿色",
+   "hue": 80,
+   "subject": "一只急救包与医疗十字组成的徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "inf_35_field_hospital",
+   "name": "野战医院",
+   "rarity": "epic",
+   "family": "infantry",
+   "line": "橄榄绿色",
+   "hue": 80,
+   "subject": "一顶野战医院帐篷与十字组成的徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "rec_01_optical_camouflage",
+   "name": "光学伪装",
+   "rarity": "rare",
+   "family": "recon",
+   "line": "紫罗兰色",
+   "hue": 275,
+   "subject": "一张伪装网与树叶剪影组成的徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "rec_02_ir_suppression",
+   "name": "红外抑制",
+   "rarity": "epic",
+   "family": "recon",
+   "line": "紫罗兰色",
+   "hue": 275,
+   "subject": "一个热源轮廓被波纹抑制的徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "rec_03_suppressor",
+   "name": "消音器",
+   "rarity": "rare",
+   "family": "recon",
+   "line": "紫罗兰色",
+   "hue": 275,
+   "subject": "一支消音器剖面与消音隔板的徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "rec_04_high_power_scope",
+   "name": "高倍瞄准镜",
+   "rarity": "epic",
+   "family": "recon",
+   "line": "紫罗兰色",
+   "hue": 275,
+   "subject": "一枚高倍率圆形瞄准镜镜片与测距刻线组成的徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "rec_05_uav",
+   "name": "无人侦察机",
+   "rarity": "epic",
+   "family": "recon",
+   "line": "紫罗兰色",
+   "hue": 275,
+   "subject": "一架侦察无人机俯视剪影徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "rec_06_tactical_radio",
+   "name": "战术电台",
+   "rarity": "uncommon",
+   "family": "recon",
+   "line": "紫罗兰色",
+   "hue": 275,
+   "subject": "一台战术电台与信号波弧组成的徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "rec_07_gps",
+   "name": "GPS定位仪",
+   "rarity": "uncommon",
+   "family": "recon",
+   "line": "紫罗兰色",
+   "hue": 275,
+   "subject": "一颗定位卫星与地面定位环组成的徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "rec_08_nvg",
+   "name": "夜视仪",
+   "rarity": "rare",
+   "family": "recon",
+   "line": "紫罗兰色",
+   "hue": 275,
+   "subject": "一副夜视仪与绿色夜光视野组成的徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "rec_09_breaching",
+   "name": "破门工具",
+   "rarity": "uncommon",
+   "family": "recon",
+   "line": "紫罗兰色",
+   "hue": 275,
+   "subject": "一具破门锤与爆破装药组成的徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "rec_10_medkit",
+   "name": "急救包",
+   "rarity": "rare",
+   "family": "recon",
+   "line": "紫罗兰色",
+   "hue": 275,
+   "subject": "一只急救包与医疗十字组成的徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "rec_11_decoy",
+   "name": "假目标",
+   "rarity": "rare",
+   "family": "recon",
+   "line": "紫罗兰色",
+   "hue": 275,
+   "subject": "一个角反射器诱饵与虚影组成的徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "rec_12_atv",
+   "name": "越野摩托",
+   "rarity": "uncommon",
+   "family": "recon",
+   "line": "紫罗兰色",
+   "hue": 275,
+   "subject": "一辆越野摩托的侧影徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "rec_13_target_designator",
+   "name": "目标指示器",
+   "rarity": "epic",
+   "family": "recon",
+   "line": "紫罗兰色",
+   "hue": 275,
+   "subject": "一台激光指示器与光束标记点组成的徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "rec_14_crit_designator",
+   "name": "暴击指示器",
+   "rarity": "epic",
+   "family": "recon",
+   "line": "紫罗兰色",
+   "hue": 275,
+   "subject": "一台激光指示器与光束标记点组成的徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "rec_phased_radar",
+   "name": "相控阵雷达",
+   "rarity": "legendary",
+   "family": "recon",
+   "line": "紫罗兰色",
+   "hue": 275,
+   "subject": "一面旋转抛物面雷达天线与电波弧组成的徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "rec_15_field_binoculars",
+   "name": "野战双筒镜",
+   "rarity": "common",
+   "family": "recon",
+   "line": "紫罗兰色",
+   "hue": 275,
+   "subject": "一副野战双筒望远镜的正面徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "rec_16_silent_boots",
+   "name": "静音靴",
+   "rarity": "uncommon",
+   "family": "recon",
+   "line": "紫罗兰色",
+   "hue": 275,
+   "subject": "一双战斗靴的正面徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "rec_17_multiband_sensor",
+   "name": "多光谱传感",
+   "rarity": "rare",
+   "family": "recon",
+   "line": "紫罗兰色",
+   "hue": 275,
+   "subject": "一枚多光谱传感器镜头与波段环组成的徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "rec_18_target_database",
+   "name": "目标数据库",
+   "rarity": "epic",
+   "family": "recon",
+   "line": "紫罗兰色",
+   "hue": 275,
+   "subject": "一枚目标数据芯片与列表线组成的徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "gen_01_comms",
+   "name": "战场通讯",
+   "rarity": "uncommon",
+   "family": "universal",
+   "line": "银白色",
+   "hue": 210,
+   "subject": "一对通讯天线与电波弧组成的徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "gen_02_digital",
+   "name": "数字化单兵",
+   "rarity": "rare",
+   "family": "universal",
+   "line": "银白色",
+   "hue": 210,
+   "subject": "一个士兵剪影与数据流线组成的徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "gen_03_camouflage",
+   "name": "伪装迷彩",
+   "rarity": "uncommon",
+   "family": "universal",
+   "line": "银白色",
+   "hue": 210,
+   "subject": "一张伪装网与树叶剪影组成的徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "gen_04_vest",
+   "name": "战术背心",
+   "rarity": "uncommon",
+   "family": "universal",
+   "line": "银白色",
+   "hue": 210,
+   "subject": "一件战术背心正面徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "gen_05_shield",
+   "name": "防弹盾牌",
+   "rarity": "rare",
+   "family": "universal",
+   "line": "银白色",
+   "hue": 210,
+   "subject": "一面防弹盾牌正面徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "gen_06_laser_designator",
+   "name": "激光指示器",
+   "rarity": "rare",
+   "family": "universal",
+   "line": "银白色",
+   "hue": 210,
+   "subject": "一座近防炮塔射出弧形激光束的徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "gen_07_mine_resistant",
+   "name": "防雷座椅",
+   "rarity": "epic",
+   "family": "universal",
+   "line": "银白色",
+   "hue": 210,
+   "subject": "一张防雷座椅的侧影徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "gen_08_nbc_protection",
+   "name": "三防系统",
+   "rarity": "epic",
+   "family": "universal",
+   "line": "银白色",
+   "hue": 210,
+   "subject": "一副三防面具的正面徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "gen_09_ir_jammer",
+   "name": "红外干扰机",
+   "rarity": "epic",
+   "family": "universal",
+   "line": "银白色",
+   "hue": 210,
+   "subject": "一个热源轮廓被波纹抑制的徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "gen_10_ammo_rack",
+   "name": "备用弹药架",
+   "rarity": "uncommon",
+   "family": "universal",
+   "line": "银白色",
+   "hue": 210,
+   "subject": "一枚翼下挂架上的导弹侧影徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "gen_11_phase_resonance",
+   "name": "相位共鸣",
+   "rarity": "legendary",
+   "family": "universal",
+   "line": "银白色",
+   "hue": 210,
+   "subject": "一圈相位共鸣波环与谐振纹组成的徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "gen_12_phase_shielding",
+   "name": "相位护盾",
+   "rarity": "legendary",
+   "family": "universal",
+   "line": "银白色",
+   "hue": 210,
+   "subject": "一面防弹盾牌正面徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "gen_13_phase_overdrive",
+   "name": "相位过载",
+   "rarity": "legendary",
+   "family": "universal",
+   "line": "银白色",
+   "hue": 210,
+   "subject": "一圈过载相位波环与闪电组成的徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "gen_14_phase_shield_gen",
+   "name": "相位护盾发生器",
+   "rarity": "legendary",
+   "family": "universal",
+   "line": "银白色",
+   "hue": 210,
+   "subject": "一面防弹盾牌正面徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "gen_15_laser_marker",
+   "name": "激光指示器",
+   "rarity": "epic",
+   "family": "universal",
+   "line": "银白色",
+   "hue": 210,
+   "subject": "一座近防炮塔射出弧形激光束的徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "gen_16_emp_pulse",
+   "name": "电磁脉冲装置",
+   "rarity": "epic",
+   "family": "universal",
+   "line": "银白色",
+   "hue": 210,
+   "subject": "一枚电磁弹头与环形电弧组成的徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "gen_17_electronic_hijack",
+   "name": "电子劫持",
+   "rarity": "legendary",
+   "family": "universal",
+   "line": "银白色",
+   "hue": 210,
+   "subject": "一道劫持电波与断裂锁链组成的徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "gen_combustion_catalyst",
+   "name": "燃烧催化剂",
+   "rarity": "epic",
+   "family": "universal",
+   "line": "银白色",
+   "hue": 210,
+   "subject": "一簇催化火焰与剂罐组成的徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "gen_overload_capacitor",
+   "name": "过载电容",
+   "rarity": "legendary",
+   "family": "universal",
+   "line": "银白色",
+   "hue": 210,
+   "subject": "一台过载电容与迸发电弧组成的徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "gen_nano_catalyst",
+   "name": "纳米催化剂",
+   "rarity": "legendary",
+   "family": "universal",
+   "line": "银白色",
+   "hue": 210,
+   "subject": "一枚纳米催化晶体与反应泡组成的徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "gen_beam_splitter",
+   "name": "光束分裂器",
+   "rarity": "legendary",
+   "family": "universal",
+   "line": "银白色",
+   "hue": 210,
+   "subject": "一束光分成三束的分光光路徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "gen_reflector_array",
+   "name": "反射阵列",
+   "rarity": "epic",
+   "family": "universal",
+   "line": "银白色",
+   "hue": 210,
+   "subject": "一组反射镜阵列与折返光路组成的徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "gen_weakpoint_analyzer",
+   "name": "弱点分析仪",
+   "rarity": "legendary",
+   "family": "universal",
+   "line": "银白色",
+   "hue": 210,
+   "subject": "一枚菱形能量晶体与靶环准星组成的徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "gen_pollution_accumulator",
+   "name": "污染蓄能器",
+   "rarity": "epic",
+   "family": "universal",
+   "line": "银白色",
+   "hue": 210,
+   "subject": "一只污染蓄能罐与荧光液组成的徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "gen_converted_munitions",
+   "name": "弹道重赋",
+   "rarity": "legendary",
+   "family": "universal",
+   "line": "银白色",
+   "hue": 210,
+   "subject": "一道被重定的弹道弧与转折点组成的徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "gen_expansion_chamber",
+   "name": "扩容弹舱",
+   "rarity": "legendary",
+   "family": "universal",
+   "line": "银白色",
+   "hue": 210,
+   "subject": "一个扩容弹舱与并列弹药组成的徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "gen_overflow_shield",
+   "name": "溢流护盾",
+   "rarity": "legendary",
+   "family": "universal",
+   "line": "银白色",
+   "hue": 210,
+   "subject": "一面防弹盾牌正面徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "gen_truestrike_pinpoint",
+   "name": "精确制导针",
+   "rarity": "legendary",
+   "family": "universal",
+   "line": "银白色",
+   "hue": 210,
+   "subject": "一枚带折叠翼的制导炮弹与锁定框组成的徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "gen_relay_antenna",
+   "name": "中继天线",
+   "rarity": "legendary",
+   "family": "universal",
+   "line": "银白色",
+   "hue": 210,
+   "subject": "一座中继天线塔与电波弧组成的徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "gen_unified_splash",
+   "name": "统一装药",
+   "rarity": "legendary",
+   "family": "universal",
+   "line": "银白色",
+   "hue": 210,
+   "subject": "一枚菱形能量晶体与迸裂爆芒组成的徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "gen_stealth_coating",
+   "name": "雷达吸波涂层",
+   "rarity": "rare",
+   "family": "universal",
+   "line": "银白色",
+   "hue": 210,
+   "subject": "一面旋转抛物面雷达天线与电波弧组成的徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "gen_18_pain_conductor",
+   "name": "痛苦传导",
+   "rarity": "uncommon",
+   "family": "universal",
+   "line": "银白色",
+   "hue": 210,
+   "subject": "一条传导锁链与能量流组成的徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "gen_19_wave_surge",
+   "name": "波次动员",
+   "rarity": "rare",
+   "family": "universal",
+   "line": "银白色",
+   "hue": 210,
+   "subject": "一面动员旗帜与三道波纹组成的徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "gen_20_squad_tablet",
+   "name": "班组战术平板",
+   "rarity": "rare",
+   "family": "universal",
+   "line": "银白色",
+   "hue": 210,
+   "subject": "一座多联装高炮座的正面徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "gen_21_vanguard_repair",
+   "name": "先锋维修矩阵",
+   "rarity": "mythic",
+   "family": "universal",
+   "line": "银白色",
+   "hue": 210,
+   "subject": "一个热源轮廓被波纹抑制的徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "gen_22_aegis_protocol",
+   "name": "神盾协议",
+   "rarity": "mythic",
+   "family": "universal",
+   "line": "银白色",
+   "hue": 210,
+   "subject": "一面六边形神盾与能量护环组成的徽记",
+   "subject_source": "keyword"
+  },
+  {
+   "id": "gen_23_singularity_core",
+   "name": "奇点核心",
+   "rarity": "mythic",
+   "family": "universal",
+   "line": "银白色",
+   "hue": 210,
+   "subject": "一枚奇点核心与吸聚漩涡组成的徽记",
+   "subject_source": "keyword"
+  }
+ ],
+ "need_manual_ids": [
+  "inf_24_urban_warfare 巷战教范"
+ ]
+}

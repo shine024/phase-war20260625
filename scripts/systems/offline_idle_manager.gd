@@ -25,8 +25,9 @@ const _AFKModeManager = preload("res://scripts/systems/afk_mode_manager.gd")
 
 ## 离线时长封顶（8 小时）
 const MAX_OFFLINE_SECONDS: int = 8 * 3600
-## 离线不足此阈值不弹窗（5 分钟）
-const MIN_OFFLINE_THRESHOLD: int = 5 * 60
+## 离线不足此阈值不弹窗（v38.5 实机评估 P2：5 分钟太激进——离开 10 分钟也吃一次
+## 全屏「欢迎回来」而奖励几乎为零；30 分钟为挂机品类常见下限。改为改这一个常量即可回调）
+const MIN_OFFLINE_THRESHOLD: int = 30 * 60
 ## 单场战斗固定开销（部署+结算，秒）
 const BATTLE_OVERHEAD_SEC: float = 20.0
 ## 掉落模拟的战斗次数上限（超过则抽样放大，避免性能问题）

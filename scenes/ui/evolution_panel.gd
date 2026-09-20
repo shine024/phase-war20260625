@@ -14,6 +14,7 @@ signal closed
 
 const DefaultCards = preload("res://data/default_cards.gd")
 const ManufacturePools = preload("res://data/manufacture_pools.gd")
+const ModManufactureRef = preload("res://data/mod_manufacture.gd")
 const GC = preload("res://resources/game_constants.gd")
 # v7.x UI 重设计基建
 const DT = preload("res://resources/design_tokens.gd")
@@ -63,6 +64,15 @@ var info_details: Label = null
 var req_list: VBoxContainer = null
 var resource_details: Label = null
 var evolve_button: Button = null               # 制造按钮（节点名保留）
+# v6.19.4 右栏死区复活：五分节 + 卡面预览的显隐统一口管理
+# （tscn 默认隐藏=无选择初态；写入内容后按分支亮起，见 _set_detail_sections_visible）
+var target_name_panel: PanelContainer = null
+var info_panel: PanelContainer = null
+var requirements_panel: PanelContainer = null
+var stats_panel: PanelContainer = null
+var resource_panel: PanelContainer = null
+var preview_panel: PanelContainer = null
+var preview_texture: TextureRect = null
 
 # 资源栏
 var power_label: Label = null
@@ -112,6 +122,16 @@ func _ready() -> void:
 	if bg_panel is Control:
 		(bg_panel as Control).add_theme_stylebox_override("panel",
 			PanelStyles.make_panel_frame_textured(DT.COLOR_VIOLET))
+	# UI 四级标准修复 R-D3 子批3：标题栏归一 PanelChrome（进化·紫）——旧手写
+	# TitleRow 隐藏留档（%MetaLabel/%CloseButton 引用保活），✕ 关闭走 chrome.closed
+	# → 既有 _on_close → closed 信号（main._on_panel_closed 接线不变）。
+	var old_title_row := get_node_or_null("VBoxContainer/TitleRow")
+	if old_title_row is Control:
+		(old_title_row as Control).visible = false
+	var content_vbox := get_node_or_null("VBoxContainer") as BoxContainer
+	if content_vbox != null:
+		var chrome := PanelChrome.attach_to(content_vbox, "制造舱", DT.COLOR_VIOLET, "EVOLUTION FORGE")
+		chrome.closed.connect(_on_close)
 	# 节点绑定（% unique_name；中/左栏标题为普通路径节点）
 	evolution_tree = get_node_or_null("%EvolutionTree")
 	detail_content = get_node_or_null("%DetailContent")
@@ -122,6 +142,13 @@ func _ready() -> void:
 	req_list = get_node_or_null("%ReqList")
 	resource_details = get_node_or_null("%ResourceDetails")
 	evolve_button = get_node_or_null("%EvolveButton")
+	target_name_panel = get_node_or_null("%TargetNamePanel")
+	info_panel = get_node_or_null("%InfoPanel")
+	requirements_panel = get_node_or_null("%RequirementsPanel")
+	stats_panel = get_node_or_null("%StatsPanel")
+	resource_panel = get_node_or_null("%ResourcePanel")
+	preview_panel = get_node_or_null("%PreviewPanel")
+	preview_texture = get_node_or_null("%PreviewTexture")
 
 	stat_hp = get_node_or_null("%StatHP")
 	stat_attack_light = get_node_or_null("%StatAttackLight")
@@ -320,6 +347,24 @@ func _mgr() -> Node:
 
 func _era_name(era: int) -> String:
 	return ERA_NAMES[clampi(era, 0, ERA_NAMES.size() - 1)]
+
+## v6.19.4 复活右栏死区：五分节 + 卡面预览的显隐唯一口。
+## 纪律：任何写入右栏内容的分支必须显式亮起要展示的分节；
+## 无选择/无内容分支保持隐藏（tscn 默认隐藏=无选择初态）。
+func _set_detail_sections_visible(v: bool) -> void:
+	for p in [target_name_panel, info_panel, requirements_panel, stats_panel,
+			resource_panel, preview_panel]:
+		if p:
+			p.visible = v
+
+## 卡面预览：UiAssetLoader 全回退链（缩略 384 档足够 ~150px 预览）；无图整块隐藏
+func _refresh_card_preview(card: CardResource) -> void:
+	if preview_panel == null:
+		return
+	var tex: Texture2D = UiAssetLoader.card_icon_for_list(card) if card != null else null
+	if preview_texture:
+		preview_texture.texture = tex
+	preview_panel.visible = tex != null
 
 func _apply_title_fonts() -> void:
 	var title_label = get_node_or_null("%TitleLabel")
@@ -750,6 +795,11 @@ func _on_mod_selected(mod_id: String) -> void:
 func _update_mod_detail(mgr: Node) -> void:
 	if mgr == null:
 		return
+	# 图纸无卡面/无单位属性：亮名/情报/条件/消耗四块，卡面预览与统计九格保持隐藏
+	_set_detail_sections_visible(false)
+	for p in [target_name_panel, info_panel, requirements_panel, resource_panel]:
+		if p:
+			p.visible = true
 	if _selected_mod_id == MOD_BOX_SEL:
 		_update_mod_box_detail(mgr)
 	else:
@@ -797,13 +847,21 @@ func _update_mod_box_detail(mgr: Node) -> void:
 	if info_details:
 		var pool_size: int = mgr.get_mod_box_pool().size()
 		var desc := "图鉴 %d 种可补给——掉落负责发现，制造负责补给" % pool_size
-		if pity > 0:
-			desc += "\n暗保底：连续 %d 次未出传说+（下次概率提升）" % pity
+		# v6.19 P1-T1.1 概率可见化：保底口径唯一文案源在 ModManufacture（数值读常量）
+		desc += "\n%s" % ModManufactureRef.describe_box_pity(pity)
 		info_details.text = desc
 	_render_mod_conditions(mgr.can_craft_mod_random())
 	# 中栏：稀有度出率池条
 	_clear_pool_bars()
 	if evolution_tree:
+		# v6.19 P1-T1.1 概率可见化：随机箱保底进度行放中栏可见区顶（右栏 InfoPanel 死隐藏，同卡牌模式）
+		var box_pity_lbl := Label.new()
+		box_pity_lbl.text = ModManufactureRef.describe_box_pity(pity)
+		box_pity_lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
+		box_pity_lbl.add_theme_color_override("font_color", DT.COLOR_GOLD)
+		box_pity_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		box_pity_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		evolution_tree.add_child(box_pity_lbl)
 		var odds: Array = mgr.get_mod_box_odds()
 		if path_head_count:
 			path_head_count.text = "%d 档" % odds.size()
@@ -830,7 +888,10 @@ func _update_mod_box_detail(mgr: Node) -> void:
 			pity_btn.name = "PityAdvanceBtn"
 			pity_btn.text = "晶体垫保底（%d/次）" % mgr.CRYSTAL_PER_PITY
 			pity_btn.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
-			pity_btn.tooltip_text = "花晶体推进暗保底计数（连续未出传说+ 次数，下次开箱概率提升）" + String.chr(10) + "占位价待数值轮校准；不直接给保底"
+			# v6.19 P1-T1.1 概率可见化：tooltip 数值读常量 + 保底口径同源（宪法 C3）；
+			# v6.19.1 封顶后补"垫至激活线前"语义
+			pity_btn.tooltip_text = "每 %d 晶体推进保底计数 1 次（垫至激活线前封顶，不直接给保底）%s%s" % [
+				mgr.CRYSTAL_PER_PITY, String.chr(10), ModManufactureRef.describe_box_pity(pity)]
 			pity_btn.pressed.connect(func():
 				var r: Dictionary = mgr.advance_mod_box_pity_with_crystals(1)
 				if bool(r.get("ok", false)):
@@ -878,6 +939,7 @@ func _update_recipe_detail() -> void:
 		return
 	# 无选择 / 面板未就绪
 	if mgr == null or selected_recipe_id.is_empty():
+		_set_detail_sections_visible(false)
 		if no_selection_label:
 			no_selection_label.visible = true
 		if target_name_label:
@@ -892,6 +954,8 @@ func _update_recipe_detail() -> void:
 		return
 	if no_selection_label:
 		no_selection_label.visible = false
+	# 正常路径：右栏五分节 + 卡面预览全部亮起（v6.19.4 复活死区）
+	_set_detail_sections_visible(true)
 
 	var card_id := selected_recipe_id
 	var card: CardResource = DefaultCards.get_card_by_id(card_id)
@@ -900,6 +964,13 @@ func _update_recipe_detail() -> void:
 
 	# 嵌入模式注入的卡若不可制造（selected_card 与配方不一致时兜底）
 	if not mgr.is_manufacturable(card_id):
+		# 本分支只写名/情报两块：条件行已清空、属性/消耗是陈旧内容，保持隐藏
+		_set_detail_sections_visible(false)
+		if target_name_panel:
+			target_name_panel.visible = true
+		if info_panel:
+			info_panel.visible = true
+		_refresh_card_preview(card)
 		if target_name_label:
 			target_name_label.text = card.display_name
 		if info_details:
@@ -924,8 +995,8 @@ func _update_recipe_detail() -> void:
 			desc = "直接入目录（免情报门，白板品质起步）"
 		else:
 			desc = "情报 %d%%（击败敌形 / 分析仪烧缴获卡 / 获取缴获卡积累）" % base_pct
-		if pity > 0:
-			desc += "\n暗保底：连续 %d 次未出稀有+（下次必出概率提升）" % pity
+		# v6.19 P1-T1.1 概率可见化：保底口径唯一文案源在 ManufacturePools（数值读常量）
+		desc += "\n%s" % ManufacturePools.describe_card_pity(pity)
 		info_details.text = desc
 
 	# 条件行
@@ -950,6 +1021,9 @@ func _update_recipe_detail() -> void:
 					text = "资源（需 %s）：%s" % [cond.get("required_text", "?"), cond.get("current_text", "?")]
 			req_list.add_child(_make_cond_row("✔" if met else "✘",
 				DT.COLOR_GREEN_UP if met else DT.COLOR_RED_DOWN, text))
+
+	# 卡面预览（复活右栏后新增：制造前看得到要造的卡）
+	_refresh_card_preview(card)
 
 	# 模板属性（制造出的新卡以此为基础）
 	_fill_template_stats(card)
@@ -1025,6 +1099,15 @@ func _rebuild_pool_bars(mgr: Node, card_id: String) -> void:
 	_clear_pool_bars()
 	if evolution_tree == null:
 		return
+	# v6.19 P1-T1.1 概率可见化：保底进度行放中栏可见区顶——右栏 InfoPanel 在 tscn 里
+	# 默认隐藏且无显示路径（v6.19 探针实证死区），保底文案必须落在可见容器
+	var pity_lbl := Label.new()
+	pity_lbl.text = ManufacturePools.describe_card_pity(mgr.get_pity(card_id))
+	pity_lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
+	pity_lbl.add_theme_color_override("font_color", DT.COLOR_GOLD)
+	pity_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	pity_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	evolution_tree.add_child(pity_lbl)
 	var pool: Array = mgr.get_effective_pool(card_id)
 	if path_head_count:
 		path_head_count.text = "%d 档" % pool.size()
