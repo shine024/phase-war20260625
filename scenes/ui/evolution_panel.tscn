@@ -15,7 +15,7 @@ corner_radius_top_right = 10
 corner_radius_bottom_right = 10
 corner_radius_bottom_left = 10
 shadow_color = Color(0.653, 0.546, 0.98, 0.2)
-shadow_size = 14
+shadow_size = 10
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_2"]
 bg_color = Color(0.075, 0.102, 0.165, 0.4)
 border_width_top = 2
@@ -167,7 +167,7 @@ layout_mode = 2
 text = "← 成长首页"
 custom_minimum_size = Vector2(108, 32)
 theme_override_font_sizes/font_size = 14
-theme_override_colors/font_color = Color(1, 0.92, 0.55, 0.9)
+theme_override_colors/font_color = Color(1, 0.9, 0.6, 0.9)
 theme_override_colors/font_hover_color = Color(1, 0.85, 0.3, 1)
 theme_override_styles/normal = SubResource("StyleBoxFlat_7")
 theme_override_styles/hover = SubResource("StyleBoxFlat_8")
@@ -177,9 +177,9 @@ unique_name_in_owner = true
 layout_mode = 2
 text = "×"
 custom_minimum_size = Vector2(32, 32)
-theme_override_font_sizes/font_size = 18
+theme_override_font_sizes/font_size = 16
 theme_override_colors/font_color = Color(0.6, 0.65, 0.75, 1)
-theme_override_colors/font_hover_color = Color(0.94, 0.27, 0.27, 1)
+theme_override_colors/font_hover_color = Color(0.937, 0.267, 0.267, 1)
 theme_override_styles/normal = SubResource("StyleBoxFlat_7")
 theme_override_styles/hover = SubResource("StyleBoxFlat_8")
 [node name="ResourceBar" type="PanelContainer" parent="VBoxContainer"]
@@ -228,7 +228,7 @@ layout_mode = 2
 custom_minimum_size = Vector2(0, 24)
 text = ""
 theme_override_font_sizes/font_size = 12
-theme_override_colors/font_color = Color(0.2, 0.9, 0.4, 1)
+theme_override_colors/font_color = Color(0.2, 0.75, 0.35, 1)
 autowrap_mode = 3
 [node name="BodyHBox" type="HBoxContainer" parent="VBoxContainer"]
 layout_mode = 2
@@ -387,19 +387,24 @@ theme_override_constants/margin_left = 8
 theme_override_constants/margin_top = 8
 theme_override_constants/margin_right = 8
 theme_override_constants/margin_bottom = 8
-[node name="DetailScroll" type="ScrollContainer" parent="VBoxContainer/BodyHBox/DetailPanel/DetailInner"]
+[node name="DetailVBox" type="VBoxContainer" parent="VBoxContainer/BodyHBox/DetailPanel/DetailInner"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 8
+[node name="DetailScroll" type="ScrollContainer" parent="VBoxContainer/BodyHBox/DetailPanel/DetailInner/DetailVBox"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 horizontal_scroll_mode = 0
-[node name="DetailContent" type="VBoxContainer" parent="VBoxContainer/BodyHBox/DetailPanel/DetailInner/DetailScroll"]
+[node name="DetailContent" type="VBoxContainer" parent="VBoxContainer/BodyHBox/DetailPanel/DetailInner/DetailVBox/DetailScroll"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 theme_override_constants/separation = 10
-[node name="NoSelectionLabel" type="Label" parent="VBoxContainer/BodyHBox/DetailPanel/DetailInner/DetailScroll/DetailContent"]
+[node name="NoSelectionLabel" type="Label" parent="VBoxContainer/BodyHBox/DetailPanel/DetailInner/DetailVBox/DetailScroll/DetailContent"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
@@ -409,13 +414,25 @@ theme_override_font_sizes/font_size = 16
 theme_override_colors/font_color = Color(0.4, 0.5, 0.65, 1)
 horizontal_alignment = 1
 vertical_alignment = 1
-[node name="TargetNamePanel" type="PanelContainer" parent="VBoxContainer/BodyHBox/DetailPanel/DetailInner/DetailScroll/DetailContent"]
+[node name="PreviewPanel" type="PanelContainer" parent="VBoxContainer/BodyHBox/DetailPanel/DetailInner/DetailVBox/DetailScroll/DetailContent"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+custom_minimum_size = Vector2(0, 150)
+theme_override_styles/panel = SubResource("StyleBoxFlat_6")
+[node name="PreviewTexture" type="TextureRect" parent="VBoxContainer/BodyHBox/DetailPanel/DetailInner/DetailVBox/DetailScroll/DetailContent/PreviewPanel"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+expand_mode = 1
+stretch_mode = 5
+[node name="TargetNamePanel" type="PanelContainer" parent="VBoxContainer/BodyHBox/DetailPanel/DetailInner/DetailVBox/DetailScroll/DetailContent"]
 unique_name_in_owner = true
 visible = false
 layout_mode = 2
 custom_minimum_size = Vector2(0, 50)
 theme_override_styles/panel = SubResource("StyleBoxFlat_6")
-[node name="TargetNameLabel" type="Label" parent="VBoxContainer/BodyHBox/DetailPanel/DetailInner/DetailScroll/DetailContent/TargetNamePanel"]
+[node name="TargetNameLabel" type="Label" parent="VBoxContainer/BodyHBox/DetailPanel/DetailInner/DetailVBox/DetailScroll/DetailContent/TargetNamePanel"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
@@ -423,12 +440,12 @@ text = "配方目标"
 theme_override_font_sizes/font_size = 20
 theme_override_colors/font_color = Color(0.769, 0.71, 0.992, 1)
 horizontal_alignment = 1
-[node name="InfoPanel" type="PanelContainer" parent="VBoxContainer/BodyHBox/DetailPanel/DetailInner/DetailScroll/DetailContent"]
+[node name="InfoPanel" type="PanelContainer" parent="VBoxContainer/BodyHBox/DetailPanel/DetailInner/DetailVBox/DetailScroll/DetailContent"]
 unique_name_in_owner = true
 visible = false
 layout_mode = 2
 theme_override_styles/panel = SubResource("StyleBoxFlat_6")
-[node name="InfoContent" type="VBoxContainer" parent="VBoxContainer/BodyHBox/DetailPanel/DetailInner/DetailScroll/DetailContent/InfoPanel"]
+[node name="InfoContent" type="VBoxContainer" parent="VBoxContainer/BodyHBox/DetailPanel/DetailInner/DetailVBox/DetailScroll/DetailContent/InfoPanel"]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_constants/separation = 4
@@ -436,23 +453,23 @@ theme_override_constants/margin_left = 12
 theme_override_constants/margin_top = 8
 theme_override_constants/margin_right = 12
 theme_override_constants/margin_bottom = 8
-[node name="InfoTitle" type="Label" parent="VBoxContainer/BodyHBox/DetailPanel/DetailInner/DetailScroll/DetailContent/InfoPanel/InfoContent"]
+[node name="InfoTitle" type="Label" parent="VBoxContainer/BodyHBox/DetailPanel/DetailInner/DetailVBox/DetailScroll/DetailContent/InfoPanel/InfoContent"]
 layout_mode = 2
 text = "基础信息"
 theme_override_font_sizes/font_size = 12
 theme_override_colors/font_color = Color(0.55, 0.65, 0.8, 0.85)
-[node name="InfoDetails" type="Label" parent="VBoxContainer/BodyHBox/DetailPanel/DetailInner/DetailScroll/DetailContent/InfoPanel/InfoContent"]
+[node name="InfoDetails" type="Label" parent="VBoxContainer/BodyHBox/DetailPanel/DetailInner/DetailVBox/DetailScroll/DetailContent/InfoPanel/InfoContent"]
 unique_name_in_owner = true
 layout_mode = 2
 text = ""
 theme_override_font_sizes/font_size = 12
 autowrap_mode = 3
-[node name="RequirementsPanel" type="PanelContainer" parent="VBoxContainer/BodyHBox/DetailPanel/DetailInner/DetailScroll/DetailContent"]
+[node name="RequirementsPanel" type="PanelContainer" parent="VBoxContainer/BodyHBox/DetailPanel/DetailInner/DetailVBox/DetailScroll/DetailContent"]
 unique_name_in_owner = true
 visible = false
 layout_mode = 2
 theme_override_styles/panel = SubResource("StyleBoxFlat_6")
-[node name="ReqContent" type="VBoxContainer" parent="VBoxContainer/BodyHBox/DetailPanel/DetailInner/DetailScroll/DetailContent/RequirementsPanel"]
+[node name="ReqContent" type="VBoxContainer" parent="VBoxContainer/BodyHBox/DetailPanel/DetailInner/DetailVBox/DetailScroll/DetailContent/RequirementsPanel"]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_constants/separation = 4
@@ -460,21 +477,21 @@ theme_override_constants/margin_left = 12
 theme_override_constants/margin_top = 8
 theme_override_constants/margin_right = 12
 theme_override_constants/margin_bottom = 8
-[node name="ReqTitle" type="Label" parent="VBoxContainer/BodyHBox/DetailPanel/DetailInner/DetailScroll/DetailContent/RequirementsPanel/ReqContent"]
+[node name="ReqTitle" type="Label" parent="VBoxContainer/BodyHBox/DetailPanel/DetailInner/DetailVBox/DetailScroll/DetailContent/RequirementsPanel/ReqContent"]
 layout_mode = 2
 text = "制造条件"
 theme_override_font_sizes/font_size = 12
 theme_override_colors/font_color = Color(0.55, 0.65, 0.8, 0.85)
-[node name="ReqList" type="VBoxContainer" parent="VBoxContainer/BodyHBox/DetailPanel/DetailInner/DetailScroll/DetailContent/RequirementsPanel/ReqContent"]
+[node name="ReqList" type="VBoxContainer" parent="VBoxContainer/BodyHBox/DetailPanel/DetailInner/DetailVBox/DetailScroll/DetailContent/RequirementsPanel/ReqContent"]
 unique_name_in_owner = true
 layout_mode = 2
 theme_override_constants/separation = 2
-[node name="StatsPanel" type="PanelContainer" parent="VBoxContainer/BodyHBox/DetailPanel/DetailInner/DetailScroll/DetailContent"]
+[node name="StatsPanel" type="PanelContainer" parent="VBoxContainer/BodyHBox/DetailPanel/DetailInner/DetailVBox/DetailScroll/DetailContent"]
 unique_name_in_owner = true
 visible = false
 layout_mode = 2
 theme_override_styles/panel = SubResource("StyleBoxFlat_6")
-[node name="StatsContent" type="VBoxContainer" parent="VBoxContainer/BodyHBox/DetailPanel/DetailInner/DetailScroll/DetailContent/StatsPanel"]
+[node name="StatsContent" type="VBoxContainer" parent="VBoxContainer/BodyHBox/DetailPanel/DetailInner/DetailVBox/DetailScroll/DetailContent/StatsPanel"]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_constants/separation = 3
@@ -482,62 +499,62 @@ theme_override_constants/margin_left = 12
 theme_override_constants/margin_top = 8
 theme_override_constants/margin_right = 12
 theme_override_constants/margin_bottom = 8
-[node name="StatsTitle" type="Label" parent="VBoxContainer/BodyHBox/DetailPanel/DetailInner/DetailScroll/DetailContent/StatsPanel/StatsContent"]
+[node name="StatsTitle" type="Label" parent="VBoxContainer/BodyHBox/DetailPanel/DetailInner/DetailVBox/DetailScroll/DetailContent/StatsPanel/StatsContent"]
 layout_mode = 2
 text = "制成卡牌属性"
 theme_override_font_sizes/font_size = 12
 theme_override_colors/font_color = Color(0.55, 0.65, 0.8, 0.85)
-[node name="StatHP" type="Label" parent="VBoxContainer/BodyHBox/DetailPanel/DetailInner/DetailScroll/DetailContent/StatsPanel/StatsContent"]
+[node name="StatHP" type="Label" parent="VBoxContainer/BodyHBox/DetailPanel/DetailInner/DetailVBox/DetailScroll/DetailContent/StatsPanel/StatsContent"]
 unique_name_in_owner = true
 layout_mode = 2
 text = "生命值：0"
 theme_override_font_sizes/font_size = 12
-[node name="StatAttackLight" type="Label" parent="VBoxContainer/BodyHBox/DetailPanel/DetailInner/DetailScroll/DetailContent/StatsPanel/StatsContent"]
+[node name="StatAttackLight" type="Label" parent="VBoxContainer/BodyHBox/DetailPanel/DetailInner/DetailVBox/DetailScroll/DetailContent/StatsPanel/StatsContent"]
 unique_name_in_owner = true
 layout_mode = 2
 text = "轻装攻击：0"
 theme_override_font_sizes/font_size = 12
-[node name="StatAttackArmor" type="Label" parent="VBoxContainer/BodyHBox/DetailPanel/DetailInner/DetailScroll/DetailContent/StatsPanel/StatsContent"]
+[node name="StatAttackArmor" type="Label" parent="VBoxContainer/BodyHBox/DetailPanel/DetailInner/DetailVBox/DetailScroll/DetailContent/StatsPanel/StatsContent"]
 unique_name_in_owner = true
 layout_mode = 2
 text = "装甲攻击：0"
 theme_override_font_sizes/font_size = 12
-[node name="StatAttackAir" type="Label" parent="VBoxContainer/BodyHBox/DetailPanel/DetailInner/DetailScroll/DetailContent/StatsPanel/StatsContent"]
+[node name="StatAttackAir" type="Label" parent="VBoxContainer/BodyHBox/DetailPanel/DetailInner/DetailVBox/DetailScroll/DetailContent/StatsPanel/StatsContent"]
 unique_name_in_owner = true
 layout_mode = 2
 text = "对空攻击：0"
 theme_override_font_sizes/font_size = 12
-[node name="StatDefenseLight" type="Label" parent="VBoxContainer/BodyHBox/DetailPanel/DetailInner/DetailScroll/DetailContent/StatsPanel/StatsContent"]
+[node name="StatDefenseLight" type="Label" parent="VBoxContainer/BodyHBox/DetailPanel/DetailInner/DetailVBox/DetailScroll/DetailContent/StatsPanel/StatsContent"]
 unique_name_in_owner = true
 layout_mode = 2
 text = "轻装防御：0"
 theme_override_font_sizes/font_size = 12
-[node name="StatDefenseArmor" type="Label" parent="VBoxContainer/BodyHBox/DetailPanel/DetailInner/DetailScroll/DetailContent/StatsPanel/StatsContent"]
+[node name="StatDefenseArmor" type="Label" parent="VBoxContainer/BodyHBox/DetailPanel/DetailInner/DetailVBox/DetailScroll/DetailContent/StatsPanel/StatsContent"]
 unique_name_in_owner = true
 layout_mode = 2
 text = "装甲防御：0"
 theme_override_font_sizes/font_size = 12
-[node name="StatDefenseAir" type="Label" parent="VBoxContainer/BodyHBox/DetailPanel/DetailInner/DetailScroll/DetailContent/StatsPanel/StatsContent"]
+[node name="StatDefenseAir" type="Label" parent="VBoxContainer/BodyHBox/DetailPanel/DetailInner/DetailVBox/DetailScroll/DetailContent/StatsPanel/StatsContent"]
 unique_name_in_owner = true
 layout_mode = 2
 text = "对空防御：0"
 theme_override_font_sizes/font_size = 12
-[node name="StatRange" type="Label" parent="VBoxContainer/BodyHBox/DetailPanel/DetailInner/DetailScroll/DetailContent/StatsPanel/StatsContent"]
+[node name="StatRange" type="Label" parent="VBoxContainer/BodyHBox/DetailPanel/DetailInner/DetailVBox/DetailScroll/DetailContent/StatsPanel/StatsContent"]
 unique_name_in_owner = true
 layout_mode = 2
 text = "射程：0"
 theme_override_font_sizes/font_size = 12
-[node name="StatSpeed" type="Label" parent="VBoxContainer/BodyHBox/DetailPanel/DetailInner/DetailScroll/DetailContent/StatsPanel/StatsContent"]
+[node name="StatSpeed" type="Label" parent="VBoxContainer/BodyHBox/DetailPanel/DetailInner/DetailVBox/DetailScroll/DetailContent/StatsPanel/StatsContent"]
 unique_name_in_owner = true
 layout_mode = 2
 text = "移速：0"
 theme_override_font_sizes/font_size = 12
-[node name="ResourcePanel" type="PanelContainer" parent="VBoxContainer/BodyHBox/DetailPanel/DetailInner/DetailScroll/DetailContent"]
+[node name="ResourcePanel" type="PanelContainer" parent="VBoxContainer/BodyHBox/DetailPanel/DetailInner/DetailVBox/DetailScroll/DetailContent"]
 unique_name_in_owner = true
 visible = false
 layout_mode = 2
 theme_override_styles/panel = SubResource("StyleBoxFlat_6")
-[node name="ResourceContent" type="VBoxContainer" parent="VBoxContainer/BodyHBox/DetailPanel/DetailInner/DetailScroll/DetailContent/ResourcePanel"]
+[node name="ResourceContent" type="VBoxContainer" parent="VBoxContainer/BodyHBox/DetailPanel/DetailInner/DetailVBox/DetailScroll/DetailContent/ResourcePanel"]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_constants/separation = 4
@@ -545,23 +562,26 @@ theme_override_constants/margin_left = 12
 theme_override_constants/margin_top = 8
 theme_override_constants/margin_right = 12
 theme_override_constants/margin_bottom = 8
-[node name="ResourceTitle" type="Label" parent="VBoxContainer/BodyHBox/DetailPanel/DetailInner/DetailScroll/DetailContent/ResourcePanel/ResourceContent"]
+[node name="ResourceTitle" type="Label" parent="VBoxContainer/BodyHBox/DetailPanel/DetailInner/DetailVBox/DetailScroll/DetailContent/ResourcePanel/ResourceContent"]
 layout_mode = 2
 text = "资源 / 图纸"
 theme_override_font_sizes/font_size = 12
 theme_override_colors/font_color = Color(0.55, 0.65, 0.8, 0.85)
-[node name="ResourceDetails" type="Label" parent="VBoxContainer/BodyHBox/DetailPanel/DetailInner/DetailScroll/DetailContent/ResourcePanel/ResourceContent"]
+[node name="ResourceDetails" type="Label" parent="VBoxContainer/BodyHBox/DetailPanel/DetailInner/DetailVBox/DetailScroll/DetailContent/ResourcePanel/ResourceContent"]
 unique_name_in_owner = true
 layout_mode = 2
 text = ""
 theme_override_font_sizes/font_size = 12
 autowrap_mode = 3
-[node name="ButtonArea" type="PanelContainer" parent="VBoxContainer/BodyHBox/DetailPanel/DetailInner/DetailScroll/DetailContent"]
+[node name="ButtonArea" type="PanelContainer" parent="VBoxContainer/BodyHBox/DetailPanel/DetailInner/DetailVBox"]
 unique_name_in_owner = true
 layout_mode = 2
 custom_minimum_size = Vector2(0, 50)
 theme_override_styles/panel = SubResource("StyleBoxFlat_6")
-[node name="EvolveButton" type="Button" parent="VBoxContainer/BodyHBox/DetailPanel/DetailInner/DetailScroll/DetailContent/ButtonArea"]
+[node name="ButtonHBox" type="HBoxContainer" parent="VBoxContainer/BodyHBox/DetailPanel/DetailInner/DetailVBox/ButtonArea"]
+layout_mode = 2
+theme_override_constants/separation = 8
+[node name="EvolveButton" type="Button" parent="VBoxContainer/BodyHBox/DetailPanel/DetailInner/DetailVBox/ButtonArea/ButtonHBox"]
 unique_name_in_owner = true
 layout_mode = 2
 custom_minimum_size = Vector2(0, 40)

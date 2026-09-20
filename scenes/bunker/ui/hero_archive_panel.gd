@@ -81,7 +81,7 @@ func _build() -> void:
 	outer.add_child(title_row)
 	var title := Label.new()
 	title.text = "同伴档案"
-	title.add_theme_font_size_override("font_size", DT.FONT_SIZE_TITLE - 8)
+	title.add_theme_font_size_override("font_size", DT.FONT_SIZE_XLARGE)
 	title.add_theme_color_override("font_color", DT.COLOR_TEXT_BRIGHT)
 	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	title_row.add_child(title)
@@ -150,7 +150,7 @@ func _build() -> void:
 	_detail_words = RichTextLabel.new()
 	_detail_words.bbcode_enabled = false
 	_detail_words.fit_content = true
-	_detail_words.add_theme_font_size_override("normal_font_size", DT.FONT_SIZE_LARGE - 2)
+	_detail_words.add_theme_font_size_override("normal_font_size", DT.FONT_SIZE_MEDIUM)
 	_detail_words.add_theme_color_override("default_color", Color(0.85, 0.78, 0.6))
 	dv.add_child(_detail_words)
 	# v6.14：空态文案（未选中时详情区不再整块空白）

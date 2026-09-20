@@ -150,9 +150,9 @@
 
 | # | 用途 | 规格要求 | 存放路径 | 状态 |
 |---|------|---------|---------|------|
-| 1 | 标题字体 | 厚重/科技感，中文+英文 | `assets/fonts/title_font.ttf` | 文件可已有；**全局 Theme/UI 引用待统一** |
+| 1 | 标题字体 | 厚重/科技感，中文+英文 | `assets/fonts/title_font.ttf` | **已删（R-D2 死字体清理 2026-09-20）**：零 UI 引用，标题走 Rajdhani-SemiBold + NotoSansSC-Medium |
 | 2 | 正文字体 | 清晰可读，中文+数字+英文混排 | `assets/fonts/body_font.otf` | **已用作** `project.godot` → `theme/custom_font` |
-| 3 | 数据字体 | 等宽/数字友好（伤害、资源数） | `assets/fonts/data_font.ttf` | 文件可已有；**全局 UI 引用待统一** |
+| 3 | 数据字体 | 等宽/数字友好（伤害、资源数） | `assets/fonts/data_font.ttf` | **已删（R-D2 死字体清理 2026-09-20）**：零 UI 引用，数字走 Rajdhani-Regular |
 
 建议来源：思源黑体(Noto Sans SC) + 1款特色标题字体
 

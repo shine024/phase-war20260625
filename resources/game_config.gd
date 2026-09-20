@@ -75,9 +75,9 @@ class_name GameConfig
 ## 星冥卡星髓计费不变）；false=纯纳米（旧行为）。晶体此前仅改造升级/era4 制造两处薄 sink。
 ## 消费点 affix_manager.can_pay_reroll/_pay_reroll
 @export var affix_reroll_crystal_enabled: bool = true
-## v30 R2b: 黑门进入能量块门票（0=免费旧行为；>0=每次踏入黑门消耗，"锚定裂隙坐标"）。
-## 能量块确定性 sink（制造/燃料充能之外的第三去向）。消费点 world_map._enter_blackgate
-@export var blackgate_energy_cost: int = 50
+## v30 R2b 黑门 50 能量块/次硬门票已随 2026-09-19 双轨修复退役（blackgate_energy_cost 删除）：
+## 门票统一走 endless_blackgate_manager 软门（3 免费/日 + 60 能量块购次，v32.0 B3-S3 用户拍板）。
+## 消费点 world_map._enter_blackgate / endless_blackgate_manager.ENERGY_PER_EXTRA_ENTRY
 
 ## v29 R2a: 离线边际递减分段参数（offline_reward_factor 用）
 const DECAY_FULL_RATE_HOURS: float = 2.0
@@ -136,6 +136,5 @@ func reset_to_defaults() -> void:
 	offline_idle_decay_enabled = true
 	offline_push_levels_enabled = false
 	affix_reroll_crystal_enabled = true
-	blackgate_energy_cost = 50
 	debug_no_deploy_limits = false  # P0-5 修复：测试开关此前漏重置
 	debug_grant_all_blueprints = false

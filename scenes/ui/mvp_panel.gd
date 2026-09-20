@@ -158,7 +158,7 @@ func _build() -> void:
 			Color(0.0, 0.9, 0.7), Color(0.04, 0.12, 0.10, 0.98))
 	else:
 		style = PanelStyles.make_result_frame(
-			Color(0.9, 0.2, 0.2), Color(0.14, 0.04, 0.04, 0.98))
+			Color(0.937, 0.267, 0.267), Color(0.14, 0.04, 0.04, 0.98))
 	panel.add_theme_stylebox_override("panel", style)
 
 	# ═══ v30.1 R3（设计审查 F-13）：三页签内容区——战报/缴获/养成 ═══
@@ -423,7 +423,7 @@ func _render_victory_banner(vbox: VBoxContainer) -> void:
 		last_banner_title = "撤退"
 	else:
 		title.text = "✗ 失  败"
-		title_ls.font_color = Color(1, 0.3, 0.3, 1)
+		title_ls.font_color = Color(0.937, 0.267, 0.267, 1)
 		title_ls.font_size = DT.FONT_SIZE_TITLE
 		last_banner_title = "失败"
 	title_ls.outline_color = Color(0, 0, 0, 0.85)
@@ -570,7 +570,7 @@ func _render_first_clear(vbox: VBoxContainer) -> void:
 	title.add_theme_font_size_override("font_size", 14)
 	title.add_theme_color_override("font_color", DT.COLOR_GOLD)
 	vbox.add_child(title)
-	var res_names := {"crystal": "晶体", "nano_materials": "纳米材料", "energy_block": "能量块"}
+	var res_names := {"crystal": "晶体", "nano_materials": "纳米材料", "alloy": "合金", "energy_block": "能量块"}
 	var list := VBoxContainer.new()
 	list.add_theme_constant_override("separation", 3)
 	var delay := 0.0
@@ -707,6 +707,8 @@ func _render_intel_harvest(vbox: VBoxContainer) -> void:
 	if not reveal_events.is_empty():
 		_defer_settlement_popup(func() -> Node: return IntelRevealPopup.spawn_on_current_tree(reveal_events))
 	# 改造解锁：结算时批量展示（避免战斗中多次弹窗）——同入弹窗链
+	# 2026-09-19 文案勘误：mod_unlocked 是情报手册"可研读"通知（不解锁安装、不发图纸），
+	# 原文案"解锁 N 项改造模块"易误导为已获得改造
 	var mod_unlocks: Array = intel_harvest.get("mod_unlock_events", [])
 	if not mod_unlocks.is_empty():
 		var lines: Array[String] = []
@@ -715,8 +717,8 @@ func _render_intel_harvest(vbox: VBoxContainer) -> void:
 				var card: String = String(entry.get("card_name", ""))
 				var mod: String = String(entry.get("mod_name", ""))
 				lines.append("「%s」→ %s" % [card, mod])
-		var title := "改造情报解锁"
-		var desc := "本关共解锁 %d 项改造模块：\n%s" % [lines.size(), "\n".join(lines)]
+		var title := "改造情报解明"
+		var desc := "情报手册新解明 %d 项改造模块的详情（图纸需另行获取）：\n%s" % [lines.size(), "\n".join(lines)]
 		_defer_settlement_popup(func() -> Node: return FeatureUnlockPopup.show_now(title, desc))
 
 
@@ -1162,11 +1164,12 @@ func _render_close_button_anchored(panel: Control) -> void:
 		home_btn.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 		home_btn.pressed.connect(_on_return_bunker_pressed)
 		panel.add_child(home_btn)
-	# 直通键布局：面板宽 920。有基地键时四键 24起每键间隔12（180/168/188/300），
-	# 无基地键时三键 100 起（180/188/主键收尾）
+	# 直通键布局：面板宽 920。有基地键时四键每键间隔12——基地键 24..204（宽180），
+	# 返回整备起点 216（=204+12）；无基地键时三键 100 起（168/188/主键收尾）。
+	# ⚠️ x0 是「返回整备」自己的起点，不是行起点——写成 24 会整键叠在基地键上。
 	if next_mode or replay_primary:
 		var has_home: bool = _bunker_return_available
-		var x0: float = 24.0 if has_home else 100.0
+		var x0: float = 216.0 if has_home else 100.0
 		# 「返回整备」次键（灰，旧继续路径：接收掉落 + 回整备）
 		var prep_btn := Button.new()
 		prep_btn.text = "返回整备"

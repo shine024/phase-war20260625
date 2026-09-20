@@ -133,8 +133,9 @@ static func make_panel_frame(accent: Color) -> StyleBoxFlat:
 	# 顶边饰条：accent 粗顶边表达"面板顶部有标题栏"的层次（几何切割语言）
 	sb.border_width_top = 3
 	# 外发光：accent 色低强度光晕（design_06 光效规范：普通态低强度）
+	# R-D3：阴影档位取 DT.SHADOW_SIZE_PANEL（面板阴影两档之一；浮层档=SHADOW_SIZE_FLOAT）
 	sb.shadow_color = Color(accent.r, accent.g, accent.b, 0.22)
-	sb.shadow_size = 10
+	sb.shadow_size = DT.SHADOW_SIZE_PANEL
 	return sb
 
 

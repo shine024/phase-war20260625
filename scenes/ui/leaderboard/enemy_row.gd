@@ -21,11 +21,20 @@ signal row_pressed(master_id: String)
 
 const EnemyPhaseLeaderboard = preload("res://data/enemy_phase_leaderboard.gd")
 const DT = preload("res://resources/design_tokens.gd")
+const PanelStyles = preload("res://scripts/ui/panel_styles.gd")
 
 var _master_id: String = ""
 
 func _ready() -> void:
 	_button.pressed.connect(func(): row_pressed.emit(_master_id))
+	# UI 四级标准修复 R-A1：行整列死交互（tscn 里 mouse_filter=2 已删，事件链本就完好）。
+	# 现补 hover/pressed 视觉反馈——normal 透明（底色由根 PanelContainer 承担，flat 按钮
+	# 不画 normal 底），hover 亮一档底、pressed 青边框确认。样式走 PanelStyles/DT token。
+	var hover := PanelStyles.make_panel_style(DT.COLOR_CARD_HI, DT.COLOR_BORDER, 1, 4)
+	var pressed := PanelStyles.make_panel_style(DT.COLOR_CARD_HI, DT.COLOR_ACCENT_CYAN, 2, 4)
+	_button.add_theme_stylebox_override("hover", hover)
+	_button.add_theme_stylebox_override("pressed", pressed)
+	_button.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
 
 func setup(entry: LeaderboardEntry) -> void:
 	_master_id = entry.master_id

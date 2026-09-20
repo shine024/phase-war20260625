@@ -8,33 +8,33 @@ border_width_left = 1
 border_width_top = 1
 border_width_right = 1
 border_width_bottom = 1
-border_color = Color(0, 0.941, 1, 0.25)
+border_color = Color(0, 0.94, 1, 0.25)
 corner_radius_top_left = 4
 corner_radius_top_right = 4
 corner_radius_bottom_right = 4
 corner_radius_bottom_left = 4
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_slot_filled"]
-bg_color = Color(0, 0.941, 1, 0.08)
+bg_color = Color(0, 0.94, 1, 0.08)
 border_width_left = 2
 border_width_top = 2
 border_width_right = 2
 border_width_bottom = 2
-border_color = Color(0, 0.941, 1, 0.5)
+border_color = Color(0, 0.94, 1, 0.5)
 corner_radius_top_left = 4
 corner_radius_top_right = 4
 corner_radius_bottom_right = 4
 corner_radius_bottom_left = 4
-shadow_color = Color(0, 0.941, 1, 0.25)
+shadow_color = Color(0, 0.94, 1, 0.25)
 shadow_size = 6
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_slot_hover"]
-bg_color = Color(0, 0.941, 1, 0.12)
+bg_color = Color(0, 0.94, 1, 0.12)
 border_width_left = 2
 border_width_top = 2
 border_width_right = 2
 border_width_bottom = 2
-border_color = Color(0, 0.941, 1, 0.7)
+border_color = Color(0, 0.94, 1, 0.7)
 corner_radius_top_left = 4
 corner_radius_top_right = 4
 corner_radius_bottom_right = 4

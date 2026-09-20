@@ -18,7 +18,7 @@ const _TIER_LIT: Array[Color] = [
 	Color(1.0, 1.0, 1.0, 1.0),
 	Color(1.0, 0.95, 0.82, 1.0),
 	Color(1.0, 0.88, 0.72, 1.0),
-	Color(1.0, 0.92, 0.55, 1.0),
+	Color(1.0, 0.9, 0.6, 1.0)  # R-D1：淡金并入 COLOR_GOLD_SOFT 同值,
 ]
 const _TIER_DIM: Color = Color(0.55, 0.56, 0.6, 0.42)
 

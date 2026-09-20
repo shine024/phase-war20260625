@@ -50,6 +50,22 @@ const FILES: Array[String] = [
 	"res://scenes/ui/leaderboard/leaderboard_presenter.gd",
 	"res://scenes/ui/leaderboard/leaderboard_detail_builders.gd",
 	"res://scenes/ui/leaderboard/faction_row.gd",
+	# UI 四级标准修复批（R-A~R-D，2026-09-20）
+	"res://scripts/ui/keycap_badge.gd",
+	"res://scripts/ui/panel_anim.gd",
+	"res://scripts/ui/panel_styles.gd",
+	"res://scenes/ui/quest_panel.gd",
+	"res://managers/daily_task_manager.gd",
+	"res://scripts/battle/combo_engine.gd",
+	"res://scenes/units/unit_hp_bar.gd",
+	"res://scripts/ui/geo_shapes.gd",
+	"res://scripts/card_grid_battle_layout.gd",
+	"res://scenes/battlefield/battlefield.gd",
+	"res://scripts/battle/battlefield_ambience.gd",
+	"res://scenes/world_map.gd",
+	"res://scripts/master_power_evaluator.gd",
+	"res://scripts/battle/unit_status_collector.gd",
+	"res://scenes/ui/resource_slot_item.gd",
 ]
 
 const AUTOLOAD_NAMES: Array[String] = [
@@ -67,6 +83,7 @@ func _init() -> void:
 	_check_a_assertions()
 	_check_c_assertions()
 	_check_d_assertions()
+	_check_rd1_forbidden_colors()
 	_report()
 	quit(0 if _fails.is_empty() else 1)
 
@@ -189,7 +206,9 @@ func _check_c_assertions() -> void:
 			_fails.append("C4: %s 仍有 #FFD700 纯金" % f)
 	# C3: 字号扫描（11px 归零），纯 GDScript 计数（bash 输出在 Windows 有编码问题）
 	var scan_targets: Array[String] = []
-	for dir in ["res://scenes/ui/", "res://scenes/", "res://scripts/"]:
+	# UI 四级标准修复 R-D2：扫描范围补 scenes/tools（计划勘误项——原断言扫不到，
+	# card_ui_preview 等工具面板游离在 11px 归零检查之外）
+	for dir in ["res://scenes/ui/", "res://scenes/", "res://scenes/tools/", "res://scripts/"]:
 		var dir_access := DirAccess.open(dir)
 		if dir_access == null:
 			continue
@@ -281,9 +300,11 @@ func _check_d_assertions() -> void:
 	var bar_src := _src("res://scenes/ui/bottom_function_bar.gd")
 	# v25.3 系统收敛（功能栏 14→6）后：成就/帮助入口移至基地 EMBEDDED_PANELS。
 	# 断言改容错式——功能栏或基地二者其一提供入口即可，双缺才算断链。
+	# UI 四级标准修复批勘误：v32.5b 固定基地已删，入口真身=truck_base（原断言读
+	# 已删除的 bunker_main.gd 恒空串 → 存量误报"断链"）。
 	if not bar_src.contains('"成就"') and not bar_src.contains('"achievement",'):
-		var bunker_src := _src("res://scenes/bunker/bunker_main.gd")
-		if not (bunker_src.contains('"achievement"') and bunker_src.contains('"help"')):
+		var base_src := _src("res://scenes/bunker/truck_base.gd")
+		if not (base_src.contains('"achievement"') and base_src.contains('"help"')):
 			_fails.append("D3: 成就/帮助入口断链（功能栏与基地 EMBEDDED_PANELS 均无）")
 	var tscn_src := _src("res://scenes/main.tscn")
 	if tscn_src.contains("EnhancementOverlay") or tscn_src.contains("DropsInventoryOverlay"):
@@ -294,6 +315,69 @@ func _check_d_assertions() -> void:
 		_fails.append("D3: instrument_bar_drag 死 DnD 残留")
 	if not _src("res://scenes/ui/bottom_instrument_bar.gd").contains("_slot_to_flat_index"):
 		_fails.append("D3: 误删活代码 _slot_to_flat_index")
+
+
+## UI 四级标准修复 R-D1：违禁/已收敛色值回流断言。
+## 违禁清单 = 纯饱和 hex（#FFD700 等）+ R-D1 裁决表已消灭的旧档字面量。
+## 扫 scenes/scripts/resources/managers/data 的 .gd/.tscn/.tres；
+## .gd 跳过整行注释（faction_row/design_tokens 的"修法注释"合法提及旧值）。
+## 新色一律走 DT token；.tscn 不可引用 token，用与 token 同值的字面量（写法进注释报备）。
+func _check_rd1_forbidden_colors() -> void:
+	var banned: Array = [
+		["#ffd700", "纯金 #FFD700（→ DT.COLOR_GOLD）"],
+		["#ff4466", "纯红 #FF4466（→ COLOR_RED_DOWN）"],
+		["#ff7b72", "纯红 #ff7b72（→ COLOR_RED_DOWN #ef4444）"],
+		["#88ccff", "段位旧色（master_power R-D1 七档已换 DT 低饱和）"],
+		["#44ff88", "段位旧色"],
+		["#ffcc00", "段位旧色"],
+		["#ff8800", "段位旧色"],
+		["#cc44ff", "段位旧色"],
+		["0.941, 0.706, 0.161", "金旧档（→ 1, 0.85, 0.35）"],
+		["0.85, 0.75, 0.35, 1", "金旧档"],
+		["Color(0.9, 0.7, 0.3", "金旧档"],
+		["Color(1, 0.92, 0.55", "淡金旧档（→ COLOR_GOLD_SOFT 1, 0.9, 0.6）"],
+		["0.992, 0.902, 0.541", "淡金旧档"],
+		["Color(0.2, 0.9, 0.4", "血条绿旧档（→ 0.2, 0.75, 0.35）"],
+		["0.247, 0.902, 0.427", "血条绿旧档"],
+		["Color(0.9, 0.2, 0.2", "危险红旧档（→ 0.937, 0.267, 0.267）"],
+		["Color(1, 0.3, 0.3", "危险红旧档"],
+		["Color(0.94, 0.27, 0.27", "危险红旧档"],
+		["Color(0.95, 0.4, 0.4", "危险红弱档旧值"],
+		["Color(0, 0.941, 1", "青双写法（→ 0, 0.94, 1 = COLOR_ACCENT_CYAN）"],
+		["0.0, 0.941, 1.0", "青双写法 .0 变体"],
+		["1.0, 0.3, 0.3", "危险红旧档 .0 变体（→ 0.937, 0.267, 0.267）"],
+		["1.0, 0.92, 0.55", "淡金旧档 .0 变体（→ COLOR_GOLD_SOFT 1, 0.9, 0.6）"],
+	]
+	var dirs: Array[String] = ["res://scenes", "res://scripts", "res://resources", "res://managers", "res://data"]
+	for dir in dirs:
+		_scan_banned_recursive(dir, banned)
+
+func _scan_banned_recursive(dir: String, banned: Array) -> void:
+	var da := DirAccess.open(dir)
+	if da == null:
+		return
+	da.list_dir_begin()
+	var name := da.get_next()
+	while name != "":
+		var path := dir + "/" + name
+		if da.current_is_dir():
+			if not name.begins_with("."):
+				_scan_banned_recursive(path, banned)
+		elif name.ends_with(".gd") or name.ends_with(".tscn") or name.ends_with(".tres"):
+			var is_gd := name.ends_with(".gd")
+			var fa := FileAccess.open(path, FileAccess.READ)
+			if fa != null:
+				var lineno := 0
+				while not fa.eof_reached():
+					lineno += 1
+					var line := fa.get_line()
+					if is_gd and line.strip_edges().begins_with("#"):
+						continue
+					for b in banned:
+						if line.to_lower().contains(String(b[0])):
+							_fails.append("R-D1 违禁色回流 %s：%s:%d" % [String(b[1]), path, lineno])
+		name = da.get_next()
+	da.list_dir_end()
 
 
 func _report() -> void:

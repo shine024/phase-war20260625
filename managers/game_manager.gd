@@ -40,6 +40,10 @@ var _is_phase_master_battle: bool = false   # 是否在与相位师战斗
 var _phase_master_drought_count: int = 0
 # v7.1 新手保护期：前 10 关不触发随机相位师遭遇
 const PHASE_MASTER_GRACE_LEVELS: int = 10
+# v6.19 P1-T1.3 概率可见化：递增保底参数具名化（行为与旧内联值一致；情报舱 UI 读同一常量——宪法 C3）
+const PHASE_MASTER_DROUGHT_TRIGGER: int = 5     ## 连续未触发达到该值后开始递增
+const PHASE_MASTER_DROUGHT_STEP: float = 0.10   ## 每多连续未触发 1 关，概率增量
+const PHASE_MASTER_ENCOUNTER_CAP: float = 0.5   ## 递增上限
 
 var game_mode: GameMode = GameMode.FREE
 
@@ -61,7 +65,8 @@ var _is_final_battle: bool = false          ## 当前战斗是否为最终战（
 ## 驻守相位师：20个关卡100%遭遇固定相位师（PhaseMasterGarrison 表，含原第49关硬编码，已驻守化）。
 ## 非驻守关：基础15%概率 + v7.1 软兜底
 ##           ①前 PHASE_MASTER_GRACE_LEVELS(10) 关新手保护期不触发；
-##           ②连续 5 关未触发后概率递增（0.15→0.25→0.4），避免长期不遇。
+##           ②连续 5 关未触发后概率递增（0.15→0.25→0.35→0.45，上限 0.5），
+##             避免长期不遇（v6.19.1 勘误：旧注释"0.15→0.25→0.4"与常量不符）。
 ## 逻辑：优先遭遇当前关卡所属势力的相位师（用于防守任务）
 func check_phase_master_encounter() -> Dictionary:
 	# v7.x 驻守相位师：20个关卡100%遭遇固定相位师（绕过随机机制）
@@ -72,6 +77,7 @@ func check_phase_master_encounter() -> Dictionary:
 			_current_phase_master = garrison_config
 			_is_phase_master_battle = true
 			_phase_master_drought_count = 0
+			_record_phase_master_encounter_milestone()
 			return _current_phase_master
 	# 非驻守关走概率门（第49关已并入驻守表，不再需要硬编码 force 分支）
 	# v7.1 新手保护期：前 N 关不触发随机遭遇
@@ -83,9 +89,10 @@ func check_phase_master_encounter() -> Dictionary:
 		return {}
 	# v7.1 递增保底：连续未触发次数越多，遭遇概率越高
 	var cur_chance: float = GC.PHASE_MASTER_ENCOUNTER_CHANCE
-	if _phase_master_drought_count >= 5:
-		# 每多连续未触发 1 次，概率 +0.10，上限 0.5
-		cur_chance = minf(0.5, GC.PHASE_MASTER_ENCOUNTER_CHANCE + (_phase_master_drought_count - 4) * 0.10)
+	if _phase_master_drought_count >= PHASE_MASTER_DROUGHT_TRIGGER:
+		# 每多连续未触发 1 次，概率 +PHASE_MASTER_DROUGHT_STEP，上限 PHASE_MASTER_ENCOUNTER_CAP
+		cur_chance = minf(PHASE_MASTER_ENCOUNTER_CAP, GC.PHASE_MASTER_ENCOUNTER_CHANCE \
+			+ (_phase_master_drought_count - PHASE_MASTER_DROUGHT_TRIGGER + 1) * PHASE_MASTER_DROUGHT_STEP)
 	if randf() > cur_chance:
 		_is_phase_master_battle = false
 		_current_phase_master = {}
@@ -130,11 +137,50 @@ func check_phase_master_encounter() -> Dictionary:
 		_is_phase_master_battle = true
 		# v7.1: 成功触发，重置连续未触发计数
 		_phase_master_drought_count = 0
+		_record_phase_master_encounter_milestone()
 		return _current_phase_master
 
 	_is_phase_master_battle = false
 	_current_phase_master = {}
 	return {}
+
+## v6.19 P1-T1.3: 相位师遭遇规则查询（情报舱"相位师情报"分区显示用）。
+## 数值与 check_phase_master_encounter 同一常量源——概率口径改这里，UI 自动跟随（宪法 C3）。
+func get_phase_master_encounter_status() -> Dictionary:
+	var next_chance: float = GC.PHASE_MASTER_ENCOUNTER_CHANCE
+	if _phase_master_drought_count >= PHASE_MASTER_DROUGHT_TRIGGER:
+		next_chance = minf(PHASE_MASTER_ENCOUNTER_CAP, GC.PHASE_MASTER_ENCOUNTER_CHANCE \
+			+ (_phase_master_drought_count - PHASE_MASTER_DROUGHT_TRIGGER + 1) * PHASE_MASTER_DROUGHT_STEP)
+	return {
+		base_chance = GC.PHASE_MASTER_ENCOUNTER_CHANCE,
+		grace_levels = PHASE_MASTER_GRACE_LEVELS,
+		drought_count = _phase_master_drought_count,
+		drought_trigger = PHASE_MASTER_DROUGHT_TRIGGER,
+		drought_step = PHASE_MASTER_DROUGHT_STEP,
+		chance_cap = PHASE_MASTER_ENCOUNTER_CAP,
+		next_chance = next_chance,
+	}
+
+## v6.19 P2-T2.1/T2.2: 首次相位师遭遇埋点（驻守/随机两路共用；情报引导触达判据的数据面）
+func _record_phase_master_encounter_milestone() -> void:
+	var pm: Node = get_node_or_null("/root/PerformanceMetricsManager")
+	if pm != null and pm.has_method("record_milestone"):
+		pm.record_milestone("first_phase_master_encounter")
+
+## v6.19.1 核验清单#1: 同帧多弹窗错峰——等当前 FeatureUnlockPopup（CanvasLayer 250）关闭后再弹。
+## 场景：L10 是驻守关，通关时"首遇情报引导"与"保护期结束预告"同帧触发，两层叠放互相盖住。
+## 最多等 ~6s 防悬挂；等待期玩家关掉前一个弹窗即放行。
+func _show_notice_when_popup_free(key: String, title: String, desc: String) -> void:
+	for i in 60:
+		var busy := false
+		for ch in get_tree().root.get_children():
+			if ch is FeatureUnlockPopup:
+				busy = true
+				break
+		if not busy:
+			break
+		await get_tree().create_timer(0.1).timeout
+	FeatureUnlockPopup.show_once(key, title, desc)
 
 ## v7.x: 构建驻守相位师配置（直接从 EnemyPhaseMasters 取完整数据，绕过 _enrich_master_config 随机选择）
 ## 驻守关100%遭遇指定相位师，机配卡(platforms)+相位仪(phase_instrument)已在数据中配好。
@@ -492,6 +538,14 @@ func _on_battle_ended(player_won: bool) -> void:
 		_settle_endless_battle()
 		return
 
+	# v6.19 P2-T2.1: 首次相位师遭遇后的情报引导（胜败皆弹——败给相位师正是最需要情报的时刻；
+	# 弹窗挂 CanvasLayer 250 高于结算面板，时序安全；show_once 随档只弹一次）。
+	# v6.19.1：文案升级为"遭遇→打开情报→使用对策"三步链（核验清单#1），数值读常量（宪法 C3）。
+	if _is_phase_master_battle:
+		FeatureUnlockPopup.show_once("phase_master_intel_guide", "遭遇相位师——随机可情报化",
+			"① 遭遇：驻守关 100%% 固定遭遇；野外关基础 %d%%，连续未遭遇会逐关递增（上限 %d%%）——概率全部公开。\n② 打开情报：回基地点档案区「情报舱」工位 →「敌方情报」页顶部「相位师情报」分区，实时显示遭遇率与递增进度。\n③ 使用对策：下次出击前看世界地图战前建议，按情报预配克制阵容——随机可准备，不再靠运气。" % [
+				int(GC.PHASE_MASTER_ENCOUNTER_CHANCE * 100.0), int(PHASE_MASTER_ENCOUNTER_CAP * 100.0)])
+
 	# v6.11: sync_battle_stars_to_cards 调用已移除（战力星级系统②已删）
 
 	# 获取战斗结果数据
@@ -587,6 +641,16 @@ func _on_battle_ended(player_won: bool) -> void:
 		var level_progress: Node = get_node_or_null("/root/LevelProgressManager")
 		if level_progress and level_progress.has_method("complete_level"):
 			level_progress.complete_level(current_level, victory_stars)
+			# v6.19 P2-T2.2 流派成型埋点：首次通关相位师驻守关
+			if PhaseMasterGarrison.is_garrison_level(current_level):
+				var _pm_gar: Node = get_node_or_null("/root/PerformanceMetricsManager")
+				if _pm_gar != null and _pm_gar.has_method("record_milestone"):
+					_pm_gar.record_milestone("first_garrison_clear")
+			# v6.19 P2-T2.1: 新手保护期结束预告（前 N 关无随机相位师；通关第 N 关时一次性提示）。
+			# v6.19.1 核验清单#1/#6：走错峰助手（L10 驻守关首遇引导同帧双弹）+ 说明保护期计入递增计数。
+			if current_level == PHASE_MASTER_GRACE_LEVELS:
+				_show_notice_when_popup_free("grace_end_notice", "新手保护期结束",
+					"下一关起，野外关卡可能遭遇敌方相位师。\n• 基础遭遇率 %d%%；新手保护期也计入连续未遭遇计数——初期实际概率会高于基础值，情报舱「相位师情报」可查当前确切概率。\n• 出击前看世界地图战前建议，按情报预配克制阵容。" % int(GC.PHASE_MASTER_ENCOUNTER_CHANCE * 100.0))
 			if DEBUG_GAME_LOG:
 				pass  # LOG: 关卡进度已更新
 			# v7.x 修复 B3：记录关卡进度成就统计（progress 类成就，如 max_level/perfect_levels）
@@ -1091,19 +1155,20 @@ func _grant_phase_master_victory_reward(master_name: String) -> void:
 			collect_battle_mod_blueprint(String(_mod_drop2.get("item_type", "")), String(_mod_drop2.get("name", "")), String(_mod_drop2.get("rarity", "")), "相位师战利品")
 
 	# v7.x: 特殊相位仪掉落（仅相位师掉落，不在商店出售）
-	# 6★相位师 20% 掉对应特殊仪 / 7★相位师 40% 掉对应特殊仪
 	# 低星级（5★及以下）不掉特殊相位仪（保留追求感）
-		var _special_drop_id: String = _maybe_roll_special_instrument_drop(_stars, _pm_faction)
-		if not _special_drop_id.is_empty() and PhaseInstrumentManager and PhaseInstrumentManager.has_method("unlock_instrument"):
-			if not PhaseInstrumentManager.has_method("has_unlocked_instrument") or not PhaseInstrumentManager.has_unlocked_instrument(_special_drop_id):
-				PhaseInstrumentManager.unlock_instrument(_special_drop_id)
-				last_battle_reward_summary["special_instrument"] = _special_drop_id
-				# v7.x 胜利面板漏显修复：特殊相位仪记入本局收集器（显示名从 PhaseInstruments 数据表取）
-				var _spec_inst_cfg: Dictionary = PhaseInstrumentsData.get_by_id(_special_drop_id)
-				var _spec_inst_name: String = String(_spec_inst_cfg.get("name", _special_drop_id))
-				collect_battle_instrument(_special_drop_id, _spec_inst_name, _stars, "相位师掉落")
-				if DEBUG_GAME_LOG:
-					push_warning("[v7.x] 特殊相位仪掉落: %s" % _special_drop_id)
+	# 2026-09-19 修复：此块原本缩进嵌进上方 `if randf() < 0.30:` 块，设计值被再乘 0.30（实际 6%/12%）
+	# 2026-09-20 用户拍板"掉落再低点"：设计值 20%/40% 下调为 12%/24%（保持 6★:7★ = 1:2 梯度）
+	var _special_drop_id: String = _maybe_roll_special_instrument_drop(_stars, _pm_faction)
+	if not _special_drop_id.is_empty() and PhaseInstrumentManager and PhaseInstrumentManager.has_method("unlock_instrument"):
+		if not PhaseInstrumentManager.has_method("has_unlocked_instrument") or not PhaseInstrumentManager.has_unlocked_instrument(_special_drop_id):
+			PhaseInstrumentManager.unlock_instrument(_special_drop_id)
+			last_battle_reward_summary["special_instrument"] = _special_drop_id
+			# v7.x 胜利面板漏显修复：特殊相位仪记入本局收集器（显示名从 PhaseInstruments 数据表取）
+			var _spec_inst_cfg: Dictionary = PhaseInstrumentsData.get_by_id(_special_drop_id)
+			var _spec_inst_name: String = String(_spec_inst_cfg.get("name", _special_drop_id))
+			collect_battle_instrument(_special_drop_id, _spec_inst_name, _stars, "相位师掉落")
+			if DEBUG_GAME_LOG:
+				push_warning("[v7.x] 特殊相位仪掉落: %s" % _special_drop_id)
 
 	# 5. 势力声望提升（战胜相位师，该势力获得声望）
 	var faction_id: String = ""
@@ -1163,10 +1228,14 @@ func _pick_rune_from_pool_or_generic(master_runes_pool: Array, rune_defs, target
 ## [param stars] 相位师星级（1-7）
 ## [param faction] 相位师势力 id（决定掉哪个特殊仪）
 ## [return] 特殊相位仪 id，未命中返回 ""
+# 特殊相位仪掉率（v6.19.2 用户拍板 2026-09-20：设计值 20%/40% 下调至此；6★:7★ 恒 1:2）
+const SPECIAL_INST_DROP_CHANCE_6STAR: float = 0.12
+const SPECIAL_INST_DROP_CHANCE_7STAR: float = 0.24
+
 func _maybe_roll_special_instrument_drop(stars: int, faction: String) -> String:
 	if stars < 6:
 		return ""
-	var drop_chance: float = 0.40 if stars >= 7 else 0.20
+	var drop_chance: float = SPECIAL_INST_DROP_CHANCE_7STAR if stars >= 7 else SPECIAL_INST_DROP_CHANCE_6STAR
 	if randf() >= drop_chance:
 		return ""
 	# 按势力映射特殊相位仪（势力-相位仪对应表）

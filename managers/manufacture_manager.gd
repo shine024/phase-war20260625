@@ -317,6 +317,11 @@ func manufacture(card_id: String) -> Dictionary:
 		_pity[card_id] = 0
 	else:
 		_pity[card_id] = get_pity(card_id) + 1
+	# v6.19.1 核验清单#3 补遗：首次制造出神话卡（mythic 卡为制造满池专属，此前只有 mythic 改造有埋点）
+	if rarity == "mythic":
+		var _pm_mc: Node = get_node_or_null("/root/PerformanceMetricsManager")
+		if _pm_mc != null and _pm_mc.has_method("record_milestone"):
+			_pm_mc.record_milestone("first_mythic_card")
 
 	# 入包广播（收集计数/背包实时刷新）+ 制造信号
 	SignalBus.card_added_to_backpack.emit(inst)
@@ -394,24 +399,27 @@ func get_mod_blueprint_stock(mod_id: String) -> int:
 func get_mod_box_pity() -> int:
 	return _mod_box_pity
 
-## v32.0 B3-S2: 晶体 sink 管线①——晶体垫改造随机箱 pity（结构层，占位价）
-## TODO(B3数值轮)：占位 80 晶体/+1，试玩数据校准；并在暴露阈值常量后加
-## "pity ≤ 阈值-1"封顶（不卖免费保底）。UI 接线随数值轮一起上。
+## v32.0 B3-S2: 晶体 sink 管线①——晶体垫改造随机箱 pity（结构层，占位价 80/+1）
+## v6.19.1 核验清单#4 落地原 TODO：pity ≤ 阈值-1 封顶（不卖免费保底）——
+## 已到激活线前拒绝垫付；未到线按剩余额度部分成交（请求 3 只剩 1 额度 → 只扣 1 份晶体）。
 const CRYSTAL_PER_PITY := 80
 
 func advance_mod_box_pity_with_crystals(times: int = 1) -> Dictionary:
-	var n := clampi(times, 1, 3)
-	var price := n * CRYSTAL_PER_PITY
 	if BasicResourceManager == null:
 		return {ok = false, reason = "资源管理器未就绪"}
+	var cap: int = ModManufacture.PITY_THRESHOLD - 1
+	if _mod_box_pity >= cap:
+		return {ok = false, reason = "保底已就绪（下次开箱传说+ 概率已提升），无需垫付", pity = _mod_box_pity}
+	var requested := clampi(times, 1, 3)
+	var n := mini(requested, cap - _mod_box_pity)
+	var price := n * CRYSTAL_PER_PITY
 	if not BasicResourceManager.can_afford("crystal", price):
 		return {ok = false, reason = "晶体不足（需 %d）" % price}
-	if BasicResourceManager.has_method("spend_resource"):
-		BasicResourceManager.spend_resource("crystal", price)
-	else:
-		BasicResourceManager.add_resource("crystal", -price)
+	# 2026-09-19：spend_resource 方法不存在（原靠 has_method 兜底），统一走 consume
+	BasicResourceManager.consume("crystal", price)
 	_mod_box_pity += n
-	return {ok = true, advanced = n, crystal_spent = price, pity = _mod_box_pity}
+	return {ok = true, advanced = n, crystal_spent = price, pity = _mod_box_pity,
+		capped = n < requested}
 
 
 ## 随机箱各稀有度出率（池内数量 × 稀有度权重归一；供 UI 预览池条）。
@@ -536,6 +544,11 @@ func craft_mod_blueprint_random() -> Dictionary:
 		_mod_box_pity = 0
 	else:
 		_mod_box_pity += 1
+	# v6.19 P2-T2.2 流派成型埋点：首次开出神话档改造
+	if rolled_rarity == "mythic":
+		var _pm_mythic: Node = get_node_or_null("/root/PerformanceMetricsManager")
+		if _pm_mythic != null and _pm_mythic.has_method("record_milestone"):
+			_pm_mythic.record_milestone("first_mythic_mod")
 	return {"ok": true, "reason_zh": "制造成功", "mod_id": mod_id, "rarity": rolled_rarity}
 
 ## 图纸入包 + toast（失败路径由调用方退款）

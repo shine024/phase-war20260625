@@ -1013,7 +1013,7 @@ func _exec_aoe_damage(dmg_mult: float, name_text: String, delay: float = 0.4) ->
 			continue
 		var epos: Vector2 = (e as Node2D).global_position
 		# 标记（红圈预警）
-		VfxImpactFactory.spawn_shockwave(_battlefield, epos, 50.0, Color(1.0, 0.3, 0.3, 0.6))
+		VfxImpactFactory.spawn_shockwave(_battlefield, epos, 50.0, Color(0.937, 0.267, 0.267, 0.6))
 		# 延迟爆炸 + 伤害（tween，仿 nuclear_bombardment）
 		# v26.11(D2): weakref 捕获——延迟窗口内玩家单位可能死亡被 free（消除
 		# "Lambda capture was freed" 错误类别，逻辑守卫已有 is_instance_valid）
@@ -1165,7 +1165,7 @@ func _exec_single_target(dmg_mult: float, name_text: String, delay: float = 0.4)
 	var tpos: Vector2 = (best as Node2D).global_position if best is Node2D else _get_driver_pos()
 	# VFX：红色锁定 + 命中冲击波
 	if _battlefield != null and is_instance_valid(_battlefield):
-		VfxImpactFactory.spawn_shockwave(_battlefield, tpos, 60.0, Color(1.0, 0.3, 0.3, 0.9))
+		VfxImpactFactory.spawn_shockwave(_battlefield, tpos, 60.0, Color(0.937, 0.267, 0.267, 0.9))
 		VfxImpactFactory.spawn_laser_beam(_battlefield, _get_driver_pos(), tpos, Color(1.0, 0.5, 0.3, 1.0))
 	# v17f: 延迟结算与光矛落地同帧（锁定环/激光预览立即，伤害随光效到达）
 	# v20.15: 快照战斗状态——延迟窗口内战斗结束则作废（防对已结算单位补刀）

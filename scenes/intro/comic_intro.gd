@@ -53,7 +53,11 @@ func _ready() -> void:
 	backdrop.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(backdrop)
 	_stage = Control.new()
-	_stage.position = Vector2(0, maxf(0.0, (get_viewport_rect().size.y - STAGE_SIZE.y) * 0.5))
+	# v6.19.5：expand 拉伸下宽于 16:9 的窗口设计坐标会变宽——舞台原钉 x=0 整体左贴、
+	# 右侧留大片黑底（用户报"开始剧情，右上角"）。水平居中与既有垂直居中对称。
+	_stage.position = Vector2(
+		maxf(0.0, (get_viewport_rect().size.x - STAGE_SIZE.x) * 0.5),
+		maxf(0.0, (get_viewport_rect().size.y - STAGE_SIZE.y) * 0.5))
 	_stage.size = STAGE_SIZE
 	_stage.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_stage)
@@ -130,11 +134,11 @@ func _build_chrome() -> void:
 
 	# 跳过按钮（右上）——v36 重设计 ghost 玻璃 pill 后用户仍觉突兀（v37 二次收敛）：
 	# 缩到 92×26、文案短化「跳过 ›」、小字号+低对比常态（hover 才升白），退为"知道在哪就行"。
+	# v6.19.5：挂根节点锚真实屏幕右上角——原钉在 stage 内 (1172,14)，宽窗下舞台居中后
+	# 会悬在半空不跟屏幕角。
 	var skip := Button.new()
 	skip.text = "跳过 ›"
 	skip.tooltip_text = "点击或按 Esc 跳过开场演出"
-	skip.position = Vector2(STAGE_SIZE.x - 16 - 92, 14)
-	skip.size = Vector2(92, 26)
 	skip.focus_mode = Control.FOCUS_NONE
 	skip.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 	var styles: Dictionary = PanelStyles.make_button_styles(DT.COLOR_TEXT_DIM, "ghost")
@@ -145,7 +149,12 @@ func _build_chrome() -> void:
 	skip.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
 	skip.modulate.a = 0.8
 	skip.pressed.connect(func(): _finish(true))
-	_stage.add_child(skip)
+	add_child(skip)
+	skip.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+	skip.offset_left = -108.0
+	skip.offset_top = 14.0
+	skip.offset_right = -16.0
+	skip.offset_bottom = 40.0
 
 	# 收尾黑幕上的点睛句
 	_end_label = Label.new()

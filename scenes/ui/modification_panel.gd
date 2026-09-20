@@ -115,6 +115,16 @@ func _ready() -> void:
 	# 连接关闭按钮
 	if close_button:
 		close_button.pressed.connect(_on_close)
+	# UI 四级标准修复 R-D3 子批2：标题栏归一 PanelChrome（改造·青）——旧手写
+	# TitleRow 隐藏留档（%MetaLabel/%CloseButton 引用保活），✕ 关闭走 chrome.closed
+	# → 既有 _on_close → closed 信号（main._on_panel_closed 接线不变）。
+	var old_title_row := get_node_or_null("VBoxContainer/TitleRow")
+	if old_title_row is Control:
+		(old_title_row as Control).visible = false
+	var content_vbox := get_node_or_null("VBoxContainer") as BoxContainer
+	if content_vbox != null:
+		var chrome := PanelChrome.attach_to(content_vbox, "改造舱", DT.get_system_color("modify"), "MODULAR REFIT")
+		chrome.closed.connect(_on_close)
 	# v9.x: 连接"返回成长首页"按钮
 	var back_btn: Button = get_node_or_null("%BackToGrowthButton")
 	if back_btn:
@@ -782,10 +792,16 @@ func _refresh_mod_list() -> void:
 
 	if applicable_mod_ids.is_empty():
 		var empty_label = Label.new()
-		empty_label.text = "无匹配改造\n（换个关键词，或点 ✕ 清空搜索）" if not _mod_search_text.is_empty() \
-			else "暂无可用改造\n（当前单位兵种不适用任何已解锁改造，或尚未获得图纸）"
+		if not _mod_search_text.is_empty():
+			empty_label.text = "无匹配改造\n（换个关键词，或点 ✕ 清空搜索）"
+		elif total_owned > 0:
+			# 2026-09-19 缓解"图纸明明掉过却看不到"误判：明示其余件数与去向
+			empty_label.text = "当前这张卡不适用任何已解锁改造\n（已有 %d 件其他兵种的图纸——换对应兵种的卡即可安装）" % total_owned
+		else:
+			empty_label.text = "暂无可用改造\n（尚未获得任何改造图纸——战斗掉落/制造舱补给）"
 		empty_label.add_theme_font_size_override("font_size", 13)
 		empty_label.add_theme_color_override("font_color", DT.COLOR_SLATE_A80)
+		empty_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		mod_list_container.add_child(empty_label)
 		if mod_list_head_count:
 			mod_list_head_count.text = "可用 0 · 已解锁 %d" % total_owned
@@ -1269,8 +1285,8 @@ func _build_tier_progress(current_tier: int) -> Control:
 		sb.content_margin_left = 2; sb.content_margin_top = 3
 		sb.content_margin_right = 2; sb.content_margin_bottom = 3
 		if i < current_tier:
-			sb.bg_color = Color(0.2, 0.9, 0.4, 0.04)
-			sb.border_color = Color(0.2, 0.9, 0.4, 0.2)
+			sb.bg_color = Color(0.2, 0.75, 0.35, 0.04)
+			sb.border_color = Color(0.2, 0.75, 0.35, 0.2)
 		elif i == current_tier:
 			sb.bg_color = Color(0.024, 0.714, 0.831, 0.12)
 			sb.border_color = DT.COLOR_CYAN_TECH
@@ -1527,21 +1543,9 @@ func _refresh_installed_list(installed_list: Control) -> void:
 			maxed_lbl.custom_minimum_size = Vector2(36, 0)
 			hbox.add_child(maxed_lbl)
 
-		# v1.5：对所有已装项追加"替换"按钮（卸载 API 未实装，语义对齐 replace_modification）
-		# 点击后收起右栏详情、引导玩家从改造库选新模块；新模块若同冲突组会触发替换。
-		var replace_btn := Button.new()
-		replace_btn.text = "替换"
-		replace_btn.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
-		replace_btn.custom_minimum_size = Vector2(44, 0)
-		replace_btn.tooltip_text = "替换为同槽位新模块（从改造库另选一个）。注意：原改造的安装消耗不返还。"
-		replace_btn.add_theme_color_override("font_color", DT.COLOR_SLATE_A70)
-		replace_btn.add_theme_color_override("font_hover_color", DT.COLOR_AMBER)
-		replace_btn.pressed.connect(func():
-			# 引导玩家去改造库选新模块（选中后若同冲突组，install_modification 内部走 replace）
-			_show_deck_empty()
-			_show_result("从左侧改造库选择新模块以替换「%s」（原消耗不返还）" % String(mod_data.get("name", mod_id)))
-		)
-		hbox.add_child(replace_btn)
+		# v1.5「替换」按钮已随 2026-09-19 修复删除：原为 no-op 引导（只弹提示不执行，
+		# 且会把玩家引向同冲突组"✗冲突"死胡同），tooltip"原消耗不返还"与 v6.14.6
+		# 卸下返还语义矛盾。替换语义由「卸下」+ 改造库重装完整覆盖。
 
 		# v6.14.6：对所有已装项追加"卸下"按钮（图纸返还方案 A）——
 		# 件回库存可转装别的卡，纳米返还实付 50%；出厂赠品（gift）无返还、件消失。
@@ -1888,7 +1892,15 @@ func _show_mod_details(mod_data: Dictionary) -> void:
 		elif is_installed:
 			deck_install_button.text = "已安装" if int(up_info.get("level", 0)) < 3 else "已满级"
 			deck_install_button.disabled = true
-			deck_install_button.tooltip_text = "该模块已安装在当前这张卡上（升级入口在右侧已装列表）"
+			# 2026-09-19 修复：按不可升档原因区分文案——无 level_effects 的件（缴获主力 46/85）
+			# 原文案"升级入口在右侧已装列表"是假指引（右侧也没有升级按钮）
+			var _no_up_reason: String = String(up_info.get("reason", ""))
+			if _no_up_reason.find("无升级档位") >= 0:
+				deck_install_button.tooltip_text = "该模块已安装在当前这张卡上（此模块无升级档位——只有带 level_effects 的模块可升）"
+			elif _no_up_reason.find("已满级") >= 0:
+				deck_install_button.tooltip_text = "该模块已安装在当前这张卡上，且已升至满级 Lv3"
+			else:
+				deck_install_button.tooltip_text = "该模块已安装在当前这张卡上（升级入口在右侧已装列表）"
 		elif not has_blueprint2:
 			deck_install_button.text = "缺图纸"
 			deck_install_button.disabled = true

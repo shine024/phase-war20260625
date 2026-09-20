@@ -106,7 +106,7 @@ func _build() -> void:
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	label.add_theme_font_override("font", DesignTokens.get_title_font_bold())
-	label.add_theme_font_size_override("font_size", 30)
+	label.add_theme_font_size_override("font_size", 24)
 	label.add_theme_color_override("font_color", DesignTokens.COLOR_TEXT_BRIGHT)
 	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_root.add_child(label)

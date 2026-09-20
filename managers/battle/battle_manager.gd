@@ -754,7 +754,10 @@ func begin_card_grid_combat(gen: int = -1) -> void:
 	if _is_phase_master_battle and _enemy_phase_driver != null and is_instance_valid(_enemy_phase_driver) and _enemy_phase_driver.has_method("start_production"):
 		_enemy_phase_driver.start_production()
 	if GameManager and GameManager.main_scene:
-		var bfb: Node = GameManager.main_scene.get_node_or_null("HudLayer/BattleBottomBar/BottomFunctionBar")
+		# v38.2 后 BottomFunctionBar 被 reparent 到 HudLayer 直下，旧嵌套路径仅兜底
+		var bfb: Node = GameManager.main_scene.get_node_or_null("HudLayer/BottomFunctionBar")
+		if bfb == null:
+			bfb = GameManager.main_scene.get_node_or_null("HudLayer/BattleBottomBar/BottomFunctionBar")
 		if bfb and bfb.has_method("set_start_battle_text"):
 			bfb.set_start_battle_text("战斗中")
 	call_deferred("_deferred_refresh_card_grid_hud")

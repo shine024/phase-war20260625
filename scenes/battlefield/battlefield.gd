@@ -411,7 +411,7 @@ func _apply_final_battle_visuals() -> void:
 func _show_final_battle_subtitle() -> void:
 	var label := Label.new()
 	label.text = "第100关 · 最终试炼\n「这里的每一寸土地，都是你的记忆。」"
-	label.add_theme_font_size_override("font_size", 18)
+	label.add_theme_font_size_override("font_size", 16)
 	label.add_theme_color_override("font_color", Color(0.88, 0.92, 0.98, 0.95))
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	# 字幕包进半透明背景面板（v7.x 界面一致性修复：原裸 Label 浮在记忆场景灰白背景上几乎不可读）
@@ -504,12 +504,24 @@ func _apply_background_texture(tex: Texture2D) -> void:
 	var era: int = _bg_pending_era
 	level10_bg.texture = tex
 	level10_bg.centered = false
+	# UI 四级标准修复 R-C1：超宽屏（stretch=expand 下画布宽于 1280）背景等比放大
+	# 铺满画布宽并水平居中——此前 1280 宽锚 x=0 不拉伸，21:9/32:9 右侧裸屏。
+	# 1280 画布 scale 恒 1.0、x 恒 0（16:9 像素级不变红线）；车道几何同步用缩放后
+	# 高度（scale=1 时与旧 tex_h 数值完全一致）。
+	var tex_w: float = float(tex.get_width())
 	var tex_h: float = float(tex.get_height())
-	var bg_top_y: float = battle_bottom_y - tex_h
-	level10_bg.position = Vector2(0.0, bg_top_y)
+	var canvas_w: float = 1280.0
+	var vp_bg := get_viewport()
+	if vp_bg != null:
+		canvas_w = maxf(1280.0, vp_bg.get_visible_rect().size.x)
+	var bg_scale: float = maxf(1.0, canvas_w / tex_w)
+	level10_bg.scale = Vector2(bg_scale, bg_scale)
+	var bg_h: float = tex_h * bg_scale
+	var bg_top_y: float = battle_bottom_y - bg_h
+	level10_bg.position = Vector2((canvas_w - tex_w * bg_scale) * 0.5, bg_top_y)
 	level10_bg.modulate = era_bg_modulate(era)  # v6.17: tint 降饱和 × BG_DIM 唯一口径
-	var lane_center_y: float = bg_top_y + tex_h * BATTLE_LANE_CENTER_RATIO
-	var lane_h: float = tex_h * BATTLE_LANE_HEIGHT_RATIO
+	var lane_center_y: float = bg_top_y + bg_h * BATTLE_LANE_CENTER_RATIO
+	var lane_h: float = bg_h * BATTLE_LANE_HEIGHT_RATIO
 	var lane_half_h: float = lane_h * 0.5
 	var lane_top_y: float = lane_center_y - lane_half_h
 	var lane_bottom_y: float = lane_center_y + lane_half_h
@@ -704,6 +716,7 @@ func _switch_endless_tier(tier: int) -> void:
 	var mc := level10_bg.modulate
 	_endless_bg_b.texture = new_tex
 	_endless_bg_b.position = level10_bg.position
+	_endless_bg_b.scale = level10_bg.scale  # R-C1：宽屏铺满缩放同步（防交叉淡入两图错位）
 	_endless_bg_b.modulate = Color(mc.r, mc.g, mc.b, 0.0)
 	_endless_fading = true
 	var tw := create_tween()

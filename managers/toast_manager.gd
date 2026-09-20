@@ -129,7 +129,7 @@ func show_success(message: String, parent: Control = null) -> void:
 	show_toast(message, 2.0, Color(0.2, 0.8, 0.3), parent)
 
 func show_error(message: String, parent: Control = null) -> void:
-	show_toast(message, 2.5, Color(0.9, 0.2, 0.2), parent)
+	show_toast(message, 2.5, Color(0.937, 0.267, 0.267), parent)
 
 func show_warning(message: String, parent: Control = null) -> void:
 	show_toast(message, 2.0, Color(0.9, 0.6, 0.2), parent)

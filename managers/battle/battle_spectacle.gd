@@ -76,10 +76,12 @@ func set_fast_forward(on: bool) -> void:
 	var am := get_node_or_null("/root/AudioManager")
 	if on:
 		BattleTimeState.enter_fast_forward()
-		# v32.0 埋点：跳过（极速推演）激活次数
+		# v32.0 埋点：跳过（极速推演）激活次数；v6.19 P2-T2.3 场次旗标（battle_ended 聚合使用率）
 		var pm := get_node_or_null("/root/PerformanceMetricsManager")
 		if pm != null and pm.has_method("count_event"):
 			pm.count_event("skip_activated")
+			if pm.has_method("mark_battle_flag"):
+				pm.mark_battle_flag("skipped")
 	else:
 		BattleTimeState.exit_fast_forward(_user_time_scale)
 	if am != null and am.has_method("set_battle_sfx_suppressed"):
@@ -842,7 +844,7 @@ func _on_mechanism_sniper_fired(from_pos: Vector2, to_pos: Vector2) -> void:
 	var parent: Node2D = _get_vfx_parent()
 	if parent == null:
 		return
-	VfxImpactFactory.spawn_laser_beam(parent, from_pos, to_pos, Color(1.0, 0.3, 0.3, 1.0))
+	VfxImpactFactory.spawn_laser_beam(parent, from_pos, to_pos, Color(0.937, 0.267, 0.267, 1.0))
 	VfxImpactFactory.spawn_crit_aura(parent, to_pos)
 
 ## 闪电穿插开火：from→to 贯穿光线（青色，体现穿透）
@@ -1106,4 +1108,4 @@ func _on_mechanism_drone_marked(_from_pos: Vector2, target_positions: Array) -> 
 		return
 	for tp in target_positions:
 		if tp is Vector2:
-			VfxImpactFactory.spawn_shockwave(parent, tp, 45.0, Color(1.0, 0.3, 0.3, 0.85))
+			VfxImpactFactory.spawn_shockwave(parent, tp, 45.0, Color(0.937, 0.267, 0.267, 0.85))

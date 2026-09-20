@@ -265,7 +265,7 @@ static func format_status_line(entry: Dictionary, unit: Node) -> String:
 	var kind: int = int(entry.get("kind", -1))
 	var stacks: int = int(entry.get("stacks", 0))
 	var is_buff: bool = bool(entry.get("is_buff", false))
-	var tag: String = "[color=#7ee787][正面][/color]" if is_buff else "[color=#ff7b72][负面][/color]"
+	var tag: String = "[color=#7ee787][正面][/color]" if is_buff else "[color=#ef4444][负面][/color]"
 	var n: String = STATUS_NAMES.get(kind, "未知状态")
 	if stacks > 1:
 		n = "%s ×%d" % [n, stacks]

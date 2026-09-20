@@ -114,17 +114,18 @@ func open() -> void:
 	# v1.5 修复：原 after = before × power_mult 严重虚高（power_mult 是稀有度/成本权重，非战力增益倍率，
 	# 1.35 会对 3000 战力卡显示 +1050）。改为克隆实例卡 + 追加候选改造，走与真实安装完全相同的
 	# build_stats→combat_power 路径，预览值与右栏/intel 面板实际安装后显示的战力一致。
-	# 槽位占用
+	# 槽位占用（v6.16 起预算=品质+兵种 5-12，2026-09-19 修复硬编码 9）
 	var mod_count: int = panel.selected_card.mods.size() if (panel.selected_card and "mods" in panel.selected_card) else 0
+	var _max_slots: int = ModManager.get_max_mod_slots_for_card(panel.selected_card) if panel.selected_card != null else 9
 	if already_installed:
-		col3.add_child(_make_sim_kv("槽位", "%d/9" % mod_count, DT.COLOR_CYAN_TECH_SOFT))
+		col3.add_child(_make_sim_kv("槽位", "%d/%d" % [mod_count, _max_slots], DT.COLOR_CYAN_TECH_SOFT))
 	else:
 		var after_power: float = EvolutionHelpers.estimate_power_with_extra_mod(panel.selected_card, panel.selected_mod_id, BlueprintManager) if (panel.selected_card != null and BlueprintManager != null) else before_power
 		col3.add_child(_make_sim_kv("当前战力", str(int(before_power)) if before_power > 0 else "—", Color(0.55, 0.6, 0.7, 0.8)))
 		col3.add_child(_make_sim_kv("装上后", str(int(after_power)), DT.COLOR_GREEN_UP))
 		var delta: int = int(after_power - before_power)
 		col3.add_child(_make_sim_kv("变化", ("+" if delta >= 0 else "") + str(delta), DT.COLOR_GREEN_UP if delta >= 0 else DT.COLOR_RED_DOWN))
-		col3.add_child(_make_sim_kv("槽位", "%d/9 → %d/9" % [mod_count, mod_count + 1], DT.COLOR_CYAN_TECH_SOFT))
+		col3.add_child(_make_sim_kv("槽位", "%d/%d → %d/%d" % [mod_count, _max_slots, mod_count + 1, _max_slots], DT.COLOR_CYAN_TECH_SOFT))
 	hbox.add_child(col3)
 	panel.sim_drawer.add_child(hbox)
 	panel.sim_drawer.visible = true

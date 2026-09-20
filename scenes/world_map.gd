@@ -78,6 +78,7 @@ const DropTablesPreview = preload("res://resources/drop_tables.gd")
 const FactionConquestBuffs = preload("res://data/faction_conquest_buffs.gd")  # v6.9: 占领势力加成描述
 const CompanyDefs = preload("res://data/company_definitions.gd")  # v6.14: 统一阵营色来源
 const PhaseMasterGarrison = preload("res://data/phase_master_garrison.gd")  # v7.x: Boss相位师驻守关判定
+const EndlessBlackgateRef = preload("res://managers/endless_blackgate_manager.gd")  # v6.19 P1-T1.2: 黑门规则文案读常量
 const TacticalThemes = preload("res://data/level_tactical_themes.gd")  # v10: 关卡战术主题（敌情简报）
 const BattleEnvEffectsRef = preload("res://data/battle_env_effects.gd")  # v26.2: 环境效果摘要（战前）
 # v32.0 B2-2: 战前构筑建议（特殊规则+环境乘区→克制提示）
@@ -292,6 +293,7 @@ func _ready() -> void:
 		tbs.corner_radius_top_left = 5; tbs.corner_radius_top_right = 5
 		tbs.corner_radius_bottom_right = 5; tbs.corner_radius_bottom_left = 5
 		territory_btn.add_theme_stylebox_override("normal", tbs)
+		_apply_map_btn_states(territory_btn, tbs)
 		territory_btn.add_theme_color_override("font_color", DesignTokens.COLOR_ACCENT_CYAN)
 		territory_btn.add_theme_font_size_override("font_size", 13)
 		territory_btn.pressed.connect(_on_territory_map_button)
@@ -389,8 +391,8 @@ func _on_visibility_changed() -> void:
 func _style_title() -> void:
 	var title_l: Label = get_node_or_null("Margin/VBox/TitleLabel")
 	if title_l:
-		title_l.add_theme_font_size_override("font_size", 26)
-		title_l.add_theme_color_override("font_color", Color(0, 0.941, 1, 1))
+		title_l.add_theme_font_size_override("font_size", 24)
+		title_l.add_theme_color_override("font_color", Color(0, 0.94, 1, 1))
 		# 标题随 MAP_SCHEME 切换（6=百灯群岛 / 8=沙漏双界 / 11=黑日战线）
 		match MAP_SCHEME:
 			8:
@@ -409,8 +411,22 @@ func _style_back_button(btn: Button) -> void:
 	s.corner_radius_top_left = 5; s.corner_radius_top_right = 5
 	s.corner_radius_bottom_right = 5; s.corner_radius_bottom_left = 5
 	btn.add_theme_stylebox_override("normal", s)
+	_apply_map_btn_states(btn, s)
 	btn.add_theme_color_override("font_color", DesignTokens.COLOR_ACCENT_CYAN)
 	btn.add_theme_font_size_override("font_size", 14)
+
+## UI 四级标准修复 R-A4：地图自建按钮此前只覆 normal，hover 回退全局主题青色样式
+## 观感跳变。统一补 hover=亮 14% / pressed=暗 10% 两档（duplicate 基样式改色）+ 焦点透明。
+func _apply_map_btn_states(btn: Button, base: StyleBoxFlat) -> void:
+	var hover: StyleBoxFlat = base.duplicate()
+	hover.bg_color = base.bg_color.lightened(0.14)
+	var bc := base.border_color
+	hover.border_color = Color(bc.r, bc.g, bc.b, minf(bc.a + 0.2, 1.0))
+	var pressed: StyleBoxFlat = base.duplicate()
+	pressed.bg_color = base.bg_color.darkened(0.10)
+	btn.add_theme_stylebox_override("hover", hover)
+	btn.add_theme_stylebox_override("pressed", pressed)
+	btn.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
 
 func _build_level_map() -> void:
 	# 缓存检查：如果地图已构建，跳过
@@ -496,7 +512,7 @@ func _build_level_map() -> void:
 		canvas.add_child(lower_tint)
 		var seam_lbl := Label.new()
 		seam_lbl.text = "── 相位缝 ──"
-		seam_lbl.add_theme_font_size_override("font_size", 15)
+		seam_lbl.add_theme_font_size_override("font_size", 14)
 		seam_lbl.add_theme_color_override("font_color", Color(0.0, 0.9, 1.0, 0.85))
 		seam_lbl.position = Vector2(60, SEAM_Y_S8 - 24)
 		seam_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -531,7 +547,7 @@ func _build_level_map() -> void:
 		canvas.add_child(marker)
 		var home_lbl := Label.new()
 		home_lbl.text = "移动基地"
-		home_lbl.add_theme_font_size_override("font_size", 26)
+		home_lbl.add_theme_font_size_override("font_size", 24)
 		home_lbl.add_theme_color_override("font_color", Color(1.0, 0.71, 0.37, 0.95))
 		home_lbl.add_theme_color_override("font_outline_color", DesignTokens.COLOR_BACKDROP_DEEP)
 		home_lbl.add_theme_constant_override("outline_size", 3)
@@ -614,7 +630,7 @@ func _build_level_map() -> void:
 			continue
 		var zone_lbl := Label.new()
 		zone_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		zone_lbl.add_theme_font_size_override("font_size", 17 if MAP_SCHEME == 6 else 15)
+		zone_lbl.add_theme_font_size_override("font_size", 16 if MAP_SCHEME == 6 else 14)
 		zone_lbl.add_theme_color_override("font_color", era_info["title"])
 		zone_lbl.modulate.a = 0.85
 		if MAP_SCHEME == 6:
@@ -1071,7 +1087,10 @@ func _make_level_node(level_index: int, era_idx: int, point: Vector2, _current_l
 	var sb_hover: StyleBoxFlat = sb.duplicate()
 	sb_hover.bg_color = sb.bg_color.lightened(0.14)
 	btn.add_theme_stylebox_override("hover", sb_hover)
-	btn.add_theme_stylebox_override("pressed", sb)
+	# UI 四级标准修复 R-A4：pressed 原直接复用 normal，按下无视觉确认
+	var sb_pressed: StyleBoxFlat = sb.duplicate()
+	sb_pressed.bg_color = sb.bg_color.darkened(0.12)
+	btn.add_theme_stylebox_override("pressed", sb_pressed)
 	btn.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
 	btn.custom_minimum_size = Vector2(size_px, size_px)
 	btn.size = Vector2(size_px, size_px)
@@ -1821,7 +1840,8 @@ func _show_blackgate_popup() -> void:
 		"每 5 波精英 / 每 10 波首领；每 10 波渗度 +1（敌人更强、缴获品质更好）。",
 		"星冥单位只可通过缴获获取（黑门内击杀掉落），品质随渗度提升。",
 		"每场随机 1 条裂隙环境（灵能风暴/低重力/裂隙潮汐/晶脉浮陆），敌我双向生效。",
-		"星髓按渗度里程碑发放，每周获取有上限。",
+		# v6.19 P1-T1.2 概率可见化：上限/重置口径读常量（宪法 C3）
+		"星髓按渗度里程碑发放，每周上限 %d（每周一重置）。" % EndlessBlackgateRef.WEEKLY_MARROW_CAP,
 	]
 	for line in lines:
 		var lbl := Label.new()
@@ -1848,6 +1868,24 @@ func _show_blackgate_popup() -> void:
 		best_lbl.add_theme_font_size_override("font_size", 14)
 		best_lbl.add_theme_color_override("font_color", Color(0.62, 0.85, 1.0))
 		vb.add_child(best_lbl)
+
+	# 入场软门状态（v32.0 B3-S3；v6.19 P1-T1.2 规则数值读常量，禁硬编码——宪法 C3）
+	if ebm != null and ebm.has_method("get_entry_status"):
+		var st: Dictionary = ebm.get_entry_status()
+		var gate_line: String = "今日免费入场：剩余 %d/%d（每日刷新）" % [
+			int(st.get("free_left", 0)), EndlessBlackgateRef.FREE_ENTRIES_PER_DAY]
+		var extra_left: int = int(st.get("extra_left", 0))
+		if extra_left > 0:
+			gate_line += " · 已购次数 %d" % extra_left
+		else:
+			gate_line += " · 次数用尽可花 %d 能量块购 1 次" % EndlessBlackgateRef.ENERGY_PER_EXTRA_ENTRY
+		var gate_lbl := Label.new()
+		gate_lbl.text = gate_line
+		gate_lbl.add_theme_font_size_override("font_size", 14)
+		gate_lbl.add_theme_color_override("font_color", Color(1.0, 0.82, 0.45))
+		gate_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		gate_lbl.custom_minimum_size = Vector2(480, 0)
+		vb.add_child(gate_lbl)
 
 	var hb := HBoxContainer.new()
 	hb.alignment = BoxContainer.ALIGNMENT_CENTER
@@ -1877,17 +1915,57 @@ func _enter_blackgate(popup: Window) -> void:
 		_toast_gate("黑门静止不动——需将移动基地停靠至第 100 关（当前第 %d 关）" % int(bm.get_parked_level()))
 		_close_popup_safe(popup)
 		return
-	# v30 R2b：黑门能量块门票（"锚定裂隙坐标"）——能量块确定性 sink，
-	# 关闭=GameConfig.blackgate_energy_cost 置 0
-	var _ticket: int = _GameConfigRef.get_default().blackgate_energy_cost
-	if _ticket > 0:
-		var _eb_now: int = int(BasicResourceManager.get_total(BasicResources.ID_ENERGY_BLOCK))
-		if _eb_now < _ticket:
-			_toast_gate("能量块不足——锚定裂隙坐标需要 %d（当前 %d）；可用能量块给燃料充能的同款渠道补充" % [_ticket, _eb_now])
+	# v32.0 B3-S3 软门（2026-09-19 双轨修复）：3 免费/日 + 60 能量块购次——
+	# 取代旧 v30 R2b 的 50 能量块/次无限硬门票（GameConfig.blackgate_energy_cost 已删）。
+	# begin_run→consume_entry_for_begin 是唯一记账口：免费有余直接进；
+	# v6.19.1 核验清单#5：需购次时先二次确认（原实现静默扣 60 能量块）。
+	var gate_ebm := _blackgate_mgr()
+	if gate_ebm == null or not gate_ebm.has_method("get_entry_status"):
+		_toast_gate("黑门尚未就绪，稍后再试")
+		return
+	var gate_st: Dictionary = gate_ebm.get_entry_status()
+	if not bool(gate_st.get("can_enter", false)):
+		_confirm_blackgate_purchase(popup)
+		return
+	_enter_blackgate_confirmed(popup)
+
+## 黑门管理器懒取（ensure_loaded + /root 查找，进入链与规则弹窗共用）
+func _blackgate_mgr() -> Node:
+	ManagerLazyLoader.ensure_loaded("endless")
+	return get_node_or_null("/root/EndlessBlackgateManager")
+
+## 购次二次确认（核验清单#5：透明扣费——确认后才花能量块）
+func _confirm_blackgate_purchase(popup: Window) -> void:
+	var confirm := ConfirmationDialog.new()
+	confirm.title = "购买入场次数"
+	confirm.dialog_text = "今日免费次数已用完。\n本次进入将花费 %d 能量块购买入场 1 次（购买次数永久有效直到使用）。" \
+		% EndlessBlackgateRef.ENERGY_PER_EXTRA_ENTRY
+	confirm.ok_button_text = "确认购买并进入"
+	confirm.cancel_button_text = "再想想"
+	add_child(confirm)
+	confirm.confirmed.connect(func() -> void:
+		confirm.queue_free()
+		_enter_blackgate_confirmed(popup)
+	)
+	confirm.canceled.connect(func() -> void:
+		confirm.queue_free()
+	)
+	confirm.popup_centered()
+
+## 确认后的实际进入链（免费路径直达此处；购买路径经 _confirm_blackgate_purchase）
+func _enter_blackgate_confirmed(popup: Window) -> void:
+	var gate_ebm := _blackgate_mgr()
+	if gate_ebm == null or not gate_ebm.has_method("get_entry_status"):
+		_toast_gate("黑门尚未就绪，稍后再试")
+		return
+	var gate_st: Dictionary = gate_ebm.get_entry_status()
+	if not bool(gate_st.get("can_enter", false)):
+		var bought: Dictionary = gate_ebm.buy_extra_entry_with_energy(1)
+		if not bool(bought.get("ok", false)):
+			_toast_gate(String(bought.get("reason", "今日免费次数已用完（3/3）")))
 			return
-		BasicResourceManager.add_resource(BasicResources.ID_ENERGY_BLOCK, -_ticket)
 		if SignalBus.has_signal("show_toast"):
-			SignalBus.show_toast.emit("裂隙坐标已锚定（能量块 -%d）" % _ticket)
+			SignalBus.show_toast.emit("今日免费次数已用完——能量块 -%d 购入场 1 次" % int(bought.get("energy_spent", 0)))
 	_close_popup_safe(popup)
 	if GameManager != null:
 		if GameManager.has_method("set_current_level"):

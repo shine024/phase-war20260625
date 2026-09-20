@@ -175,20 +175,27 @@ func _build_embers() -> void:
 	_ui_layer.layer = 10
 	add_child(_ui_layer)
 
+	# v6.19.5：CanvasLayer 顶层控件的锚点以视口为参照——全屏层改锚点自适应
+	#（expand 宽窗下原固定 1280×720 盖不满屏），跳过键随真实屏幕右上角。
 	_vignette = ColorRect.new()
 	_vignette.color = Color(0.7, 0.06, 0.04, 0.0)
-	_vignette.size = Vector2(1280, 720)
+	_vignette.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_vignette.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_ui_layer.add_child(_vignette)
 	_flash = ColorRect.new()
 	_flash.color = Color(1, 1, 1, 0)
-	_flash.size = Vector2(1280, 720)
+	_flash.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_flash.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_ui_layer.add_child(_flash)
 
 	_title_label = Label.new()
 	_title_label.position = Vector2(140, 96)
 	_title_label.size = Vector2(1000, 56)
+	_title_label.set_anchors_preset(Control.PRESET_TOP_WIDE)
+	_title_label.offset_left = 140.0
+	_title_label.offset_right = -140.0
+	_title_label.offset_top = 96.0
+	_title_label.offset_bottom = 152.0
 	_title_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_title_label.add_theme_font_size_override("font_size", DT.FONT_SIZE_TITLE)
 	_title_label.add_theme_color_override("font_color", Color(0.95, 0.55, 0.35))
@@ -198,6 +205,11 @@ func _build_embers() -> void:
 	_sub_label = Label.new()
 	_sub_label.position = Vector2(140, 160)
 	_sub_label.size = Vector2(1000, 44)
+	_sub_label.set_anchors_preset(Control.PRESET_TOP_WIDE)
+	_sub_label.offset_left = 140.0
+	_sub_label.offset_right = -140.0
+	_sub_label.offset_top = 160.0
+	_sub_label.offset_bottom = 204.0
 	_sub_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_sub_label.add_theme_font_size_override("font_size", DT.FONT_SIZE_LARGE)
 	_sub_label.add_theme_color_override("font_color", Color(0.85, 0.82, 0.78, 0.9))
@@ -210,10 +222,9 @@ func _build_embers() -> void:
 
 	_skip_btn = Button.new()
 	# v37：与 comic_intro 跳过键同口径收敛——ghost 小 pill、短文案、低对比常态
+	# v6.19.5：锚真实屏幕右上角（CanvasLayer 顶层控件锚点以视口为参照）
 	_skip_btn.text = "跳过 ›"
 	_skip_btn.tooltip_text = "点击或按 Esc 跳过序章"
-	_skip_btn.position = Vector2(1280 - 16 - 92, 14)
-	_skip_btn.size = Vector2(92, 26)
 	_skip_btn.focus_mode = Control.FOCUS_NONE
 	_skip_btn.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 	var styles: Dictionary = preload("res://scripts/ui/panel_styles.gd").make_button_styles(Color(0.45, 0.48, 0.55), "ghost")
@@ -224,10 +235,15 @@ func _build_embers() -> void:
 	_skip_btn.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
 	_skip_btn.modulate.a = 0.8
 	_ui_layer.add_child(_skip_btn)
+	_skip_btn.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+	_skip_btn.offset_left = -108.0
+	_skip_btn.offset_top = 14.0
+	_skip_btn.offset_right = -16.0
+	_skip_btn.offset_bottom = 40.0
 
 	_curtain = ColorRect.new()
 	_curtain.color = Color(0, 0, 0, 1)
-	_curtain.size = Vector2(1280, 720)
+	_curtain.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_curtain.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_ui_layer.add_child(_curtain)
 	var tw := create_tween()
@@ -235,8 +251,12 @@ func _build_embers() -> void:
 
 func _build_offer_card() -> PanelContainer:
 	var box := PanelContainer.new()
-	box.position = Vector2(490, 240)
-	box.size = Vector2(300, 220)
+	# v6.19.5：选卡框锚视口居中（原钉 490,240 宽窗下偏左）
+	box.set_anchors_preset(Control.PRESET_CENTER)
+	box.offset_left = -150.0
+	box.offset_top = -120.0
+	box.offset_right = 150.0
+	box.offset_bottom = 100.0
 	box.visible = false
 	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var sb := StyleBoxFlat.new()

@@ -495,10 +495,12 @@ func _on_speed_pressed() -> void:
 		bs.set_user_time_scale(_speed_scale)
 	else:
 		Engine.time_scale = _speed_scale
-	# v32.0 埋点：倍速档位使用（speed_x2/x3/x4）
+	# v32.0 埋点：倍速档位使用（speed_x2/x3/x4）；v6.19 P2-T2.3 场次旗标（>1 记入场次使用率）
 	var pm := get_node_or_null("/root/PerformanceMetricsManager")
 	if pm != null and pm.has_method("count_event"):
 		pm.count_event("speed_x%d" % int(_speed_scale))
+		if _speed_scale > 1 and pm.has_method("mark_battle_flag"):
+			pm.mark_battle_flag("spedup")
 
 
 ## v32.0 B1-1: 倍速按钮文案/激活态统一同步（_ready 读档与点击切档共用）

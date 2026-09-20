@@ -9,12 +9,12 @@ border_width_left = 2
 border_width_top = 2
 border_width_right = 2
 border_width_bottom = 2
-border_color = Color(0, 0.941, 1, 0.5)
+border_color = Color(0, 0.94, 1, 0.5)
 corner_radius_top_left = 8
 corner_radius_top_right = 8
 corner_radius_bottom_right = 8
 corner_radius_bottom_left = 8
-shadow_color = Color(0, 0.941, 1, 0.2)
+shadow_color = Color(0, 0.94, 1, 0.2)
 shadow_size = 10
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_slot"]
@@ -30,12 +30,12 @@ corner_radius_bottom_right = 4
 corner_radius_bottom_left = 4
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_slot_hover"]
-bg_color = Color(0, 0.941, 1, 0.1)
+bg_color = Color(0, 0.94, 1, 0.1)
 border_width_left = 2
 border_width_top = 2
 border_width_right = 2
 border_width_bottom = 2
-border_color = Color(0, 0.941, 1, 0.6)
+border_color = Color(0, 0.94, 1, 0.6)
 corner_radius_top_left = 4
 corner_radius_top_right = 4
 corner_radius_bottom_right = 4
@@ -54,7 +54,7 @@ corner_radius_bottom_right = 4
 corner_radius_bottom_left = 4
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_title_sep"]
-bg_color = Color(0, 0.941, 1, 0.15)
+bg_color = Color(0, 0.94, 1, 0.15)
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_popup"]
 bg_color = Color(0.04, 0.07, 0.12, 0.98)
@@ -66,8 +66,8 @@ corner_radius_top_left = 6
 corner_radius_top_right = 6
 corner_radius_bottom_right = 6
 corner_radius_bottom_left = 6
-shadow_color = Color(0, 0.941, 1, 0.2)
-shadow_size = 8
+shadow_color = Color(0, 0.94, 1, 0.2)
+shadow_size = 14
 
 [node name="BackpackPanel" type="PanelContainer"]
 custom_minimum_size = Vector2(1180, 560)
@@ -101,7 +101,7 @@ mouse_filter = 2
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_colors/font_color = Color(0.95, 0.94, 0.98, 1)
-theme_override_font_sizes/font_size = 18
+theme_override_font_sizes/font_size = 16
 text = "卡仓 · COMBAT ROSTER"
 
 [node name="MetaInfoLabel" type="Label" parent="VBoxOuter/TitleRow"]
@@ -353,7 +353,7 @@ theme_override_constants/separation = 6
 
 [node name="CardDetailPopup" type="PopupPanel" parent="."]
 size = Vector2i(560, 720)
-theme_override_colors/title_color = Color(0, 0.941, 1, 1)
+theme_override_colors/title_color = Color(0, 0.94, 1, 1)
 theme_override_styles/panel = SubResource("StyleBoxFlat_popup")
 
 [node name="Margin" type="MarginContainer" parent="CardDetailPopup"]

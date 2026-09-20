@@ -5,6 +5,8 @@ extends PanelContainer
 
 const DT = preload("res://resources/design_tokens.gd")
 const PanelStyles = preload("res://scripts/ui/panel_styles.gd")
+# R-B2 键位角标（preload 纪律同上：headless 无全局类缓存）
+const KeycapBadge = preload("res://scripts/ui/keycap_badge.gd")
 
 ## 播放音效（Autoload AudioManager；get_node_or_null 兜底）
 func _play_sfx(name: String) -> void:
@@ -115,6 +117,15 @@ const BATTLE_BTN_CONFIGS: Array = [
 # key → Button 节点的映射
 var _btn_map: Dictionary = {}
 
+# UI 四级标准修复 R-B2：功能键 → KeyBinds 动作映射（角标显示主绑定键；
+# pw_open_backpack 是 1/B 双键，角标只示首选 1，完整键位仍在 tooltip）
+const KEYCAP_ACTION_BY_KEY: Dictionary = {
+	"progression": "pw_open_growth",
+	"backpack": "pw_open_backpack",
+	"map": "pw_open_map",
+	"settings": "pw_open_settings",
+}
+
 ## v38.2（用户反馈"一会儿横的一会儿竖的"）：抽屉**恒为右侧竖排**——基地/备战/战斗
 ## 三态同一布局（右缘悬浮竖列），不再随 battle_started 横竖切换；战斗态仅过滤键集
 ## （技能/改造/制造为独立解锁功能，战斗中不出现）。
@@ -129,7 +140,8 @@ func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	_build_left_buttons()
 	_build_right_buttons()
-	# v34 渐进解锁：改造(L3)/制造(L5)/挂机(L5) 按节奏表灰显；跨级解锁信号实时刷新
+	# v34 渐进解锁：改造(L6)/制造(L2)/挂机(L5) 按节奏表灰显（真身 feature_unlock_schedule.gd，
+	# 2026-09-19 修正过期注释 L3/L5）；跨级解锁信号实时刷新
 	_refresh_feature_gates()
 	if not SignalBus.feature_unlocked.is_connected(_on_feature_unlocked):
 		SignalBus.feature_unlocked.connect(_on_feature_unlocked)
@@ -148,7 +160,11 @@ func _ready() -> void:
 	# BU-1：抽屉化——默认收起 + 悬浮卡片样式（与相位仪栏同一 PanelStyles 语言）
 	_apply_float_frame_style()
 	visible = false
-	_become_right_side_column()
+	# v38.5 修复（实机评估 P2）：_ready 内 reparent 报 "Parent node is busy" +
+	# "already has a parent" 错误对（run_P1.log 实录），v38.2 右缘抽屉形态因此从未
+	# 生效。场景实例化期间父链仍在布置子节点，reparent 必须推迟到 _ready 完成后
+	#（truck_base._maybe_show_truck_intro 的 "Parent node is busy" 同款踩坑，见其注释）。
+	_become_right_side_column.call_deferred()
 
 ## v38.2：一次性立形——按钮挪入竖排列 + 整条抽屉挂到 HudLayer 右缘锚定（点锚 +
 ## grow 向上向左，内容自适应宽高）。仅主场景（BattleBottomBar 父链）执行，测试/
@@ -207,6 +223,20 @@ func _set_battle_keys_visibility(in_battle: bool) -> void:
 func is_drawer_open() -> bool:
 	return _drawer_open
 
+## v6.20 教程聚光：按面板键取底栏按钮（tutorial_overlay 消费；无此键回 null）。
+## 抽屉收起时按钮仍在树上（不可见），调用侧自行判定可见性。
+func get_button_for_key(key: String) -> BaseButton:
+	return _btn_map.get(key)
+
+## UI 四级标准修复 R-B2：批量刷新键位角标文本
+func _refresh_keycap_badges() -> void:
+	for key in KEYCAP_ACTION_BY_KEY:
+		if not _btn_map.has(key):
+			continue
+		var badge := _btn_map[key].get_node_or_null("KeycapBadge") as Label
+		if badge != null:
+			KeycapBadge.refresh(badge)
+
 func toggle_drawer() -> void:
 	set_drawer_open(not _drawer_open)
 
@@ -221,6 +251,9 @@ func set_drawer_open(open: bool, animated: bool = true) -> void:
 		_drawer_tween = null
 	if open:
 		visible = true
+		# UI 四级标准修复 R-B2：KeyBinds 无变更信号（静态类），抽屉每次展开重读绑定
+		# 刷新键位角标（设置里重绑后，下次展开抽屉即生效）
+		_refresh_keycap_badges()
 		if not animated or DT.is_motion_reduce():
 			modulate.a = 1.0
 			scale = Vector2.ONE
@@ -290,6 +323,10 @@ func _build_left_buttons() -> void:
 		# （学《朝露》：按两次就记住；键位与 main.gd _input 战前 match 一一对应）
 		var tip: String = String(SHORTCUT_TOOLTIPS.get(key, ""))
 		btn.tooltip_text = tip if not tip.is_empty() else label_text
+		# UI 四级标准修复 R-B2：快捷键可见角标（tooltip 宣传之外，键位直接标在按钮上）
+		var kb_action: String = String(KEYCAP_ACTION_BY_KEY.get(key, ""))
+		if not kb_action.is_empty():
+			KeycapBadge.bind_to_action(btn, kb_action)
 		if DEBUG_HIDE_BOTTOM_BAR_TEXT:
 			btn.text = ""
 		_apply_bar_icon(btn, BTN_ICON_BY_KEY.get(key, ""))
@@ -518,9 +555,12 @@ func notify_panel_closed(key: String) -> void:
 ## v7.x: 战斗控制按钮已整合进 TopHudBar。
 ## 本方法保留为转发门面，让 main_battle_setup.gd 等旧调用点零改动。
 func _get_top_controls() -> Node:
-	# bottom_function_bar 在 HudLayer/BattleBottomBar/BottomFunctionBar
-	# 向上 2 层到 HudLayer，再下到 TopHudBar
-	return get_node_or_null("../../TopHudBar")
+	# v38.2 后本条被 reparent 到 HudLayer 直下（../TopHudBar）；
+	# 旧嵌套结构（BattleBottomBar 下，测试/裸实例化）走 ../../TopHudBar。
+	var tc: Node = get_node_or_null("../TopHudBar")
+	if tc == null:
+		tc = get_node_or_null("../../TopHudBar")
+	return tc
 
 ## 外部更新开始战斗状态（转发到 TopBattleControls）
 func set_start_battle_text(text: String) -> void:

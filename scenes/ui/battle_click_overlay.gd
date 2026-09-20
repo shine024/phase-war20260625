@@ -494,7 +494,7 @@ func _show_focus_pick_banner(unit: Node2D) -> void:
 	_cancel_focus_pick_banner()
 	_focus_pick_banner = Label.new()
 	_focus_pick_banner.text = "🎯 点击敌方单位指定集火目标（右键取消）"
-	_focus_pick_banner.add_theme_font_size_override("font_size", 15)
+	_focus_pick_banner.add_theme_font_size_override("font_size", 14)
 	_focus_pick_banner.add_theme_color_override("font_color", Color(1, 0.9, 0.5))
 	_focus_pick_banner.set_anchors_preset(Control.PRESET_CENTER_TOP)
 	_focus_pick_banner.position = Vector2(-170, 60)

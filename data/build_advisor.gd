@@ -10,6 +10,7 @@ extends RefCounted
 
 const LevelInformation = preload("res://data/level_information.gd")
 const BattleEnvEffects = preload("res://data/battle_env_effects.gd")
+const PhaseMasterGarrison = preload("res://data/phase_master_garrison.gd")  # v6.19 P2-T2.1: 驻守关判定
 
 
 static func get_build_tips(level: int) -> Array[String]:
@@ -37,6 +38,15 @@ static func get_build_tips(level: int) -> Array[String]:
 		elif cbt.has("infantry") or cbt.has("fast"):
 			tips.append("敌方步兵海冲锋：溅射与范围武器高效")
 
+	# ── 相位师遭遇场景（v6.19 P2-T2.1：随机可情报化——驻守=确定事件必提示；
+	#    野外递增保底升高时提示备战，平时不占建议位防噪音）──
+	if PhaseMasterGarrison.is_garrison_level(level):
+		tips.append("驻守相位师关：100% 遭遇——按情报预配克制阵容，防空别裸")
+	else:
+		var elevated := _get_elevated_phase_chance()
+		if elevated >= 0.0:
+			tips.append("相位师遭遇率已升至 %d%%（递增保底生效）：克制阵容备好再出击" % int(round(elevated * 100.0)))
+
 	# ── 环境乘区（敌我同源，阈值 0.9/1.1 之外才提示）──
 	var m: Dictionary = BattleEnvEffects.get_level_env_mults(level)
 	var indirect: float = float(m.get("indirect_dmg", 1.0))
@@ -62,3 +72,22 @@ static func get_build_tips(level: int) -> Array[String]:
 	while tips.size() > 3:
 		tips.pop_back()
 	return tips
+
+## v6.19 P2-T2.1: 野外相位师递增保底是否值得备战——只在升高（≥基础 1.5 倍）时返回概率，
+## 其余（未启动/GameManager 不可达）返回 -1 表示"无需提示"。只读运行态，无副作用。
+static func _get_elevated_phase_chance() -> float:
+	var tree := Engine.get_main_loop() as SceneTree
+	if tree == null or tree.root == null:
+		return -1.0
+	var gm: Node = tree.root.get_node_or_null("/root/GameManager")
+	if gm == null or not gm.has_method("get_phase_master_encounter_status"):
+		return -1.0
+	var st: Dictionary = gm.get_phase_master_encounter_status()
+	var next_chance: float = float(st.get("next_chance", 0.0))
+	var base: float = float(st.get("base_chance", 0.15))
+	# 保护期内（下一关仍在保护带）或未升高到基础 1.5 倍：不打扰
+	if int(st.get("drought_count", 0)) < int(st.get("grace_levels", 10)) - 1:
+		return -1.0
+	if next_chance < base * 1.5:
+		return -1.0
+	return next_chance

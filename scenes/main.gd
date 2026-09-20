@@ -217,7 +217,7 @@ func _setup_menu_grid_pattern() -> void:
 		return
 	var img := Image.create_empty(32, 32, false, Image.FORMAT_RGBA8)
 	img.fill(DT.COLOR_TRANSPARENT)
-	var line := Color(0.0, 0.941, 1.0, 0.05)
+	var line := Color(0.0, 0.94, 1.0, 0.05)
 	for y in range(32):
 		img.set_pixel(0, y, line)
 	for x in range(32):
@@ -470,8 +470,15 @@ func _open_overlay(overlay: Control, panel_key: String = "") -> void:
 		print("[Main] _open_overlay: overlay is null for key=", panel_key)
 		return
 	# v34 渐进解锁守卫：门控面板未解锁 → toast 拒开（覆盖快捷键/抽屉/教程 toggle_* 旁路）
+	# 2026-09-19 教程解卡：教程进行中，教程步目标面板（modification/faction/store/evolution 等）
+	# 豁免门控——教程要求首触面板续链，不豁免则新档教程链卡死到 L6/L10
 	var gate_key: String = String(_GATE_KEY_ALIAS.get(panel_key, panel_key))
-	if not gate_key.is_empty() and LevelProgressManager != null \
+	var _tpm_gate := get_node_or_null("/root/TutorialProgressionManager")
+	var _tutorial_surface_ok: bool = _tpm_gate != null \
+		and _tpm_gate.has_method("is_tutorial_surface") \
+		and bool(_tpm_gate.is_tutorial_surface(gate_key))
+	if not gate_key.is_empty() and not _tutorial_surface_ok \
+			and LevelProgressManager != null \
 			and LevelProgressManager.has_method("is_feature_unlocked") \
 			and not LevelProgressManager.is_feature_unlocked(gate_key):
 		_play_sfx("error")

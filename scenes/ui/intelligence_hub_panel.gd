@@ -16,6 +16,7 @@ const DT = preload("res://resources/design_tokens.gd")
 const PanelStyles = preload("res://scripts/ui/panel_styles.gd")
 const PanelChrome = preload("res://scenes/ui/components/panel_chrome.gd")
 const IntelUIKit = preload("res://scenes/ui/components/intel_ui_kit.gd")
+const PhaseMasterGarrison = preload("res://data/phase_master_garrison.gd")  # v6.19 P1-T1.3: 驻守关计数
 
 @onready var _tab_container: TabContainer = $Margin/VBox/TabContainer
 @onready var _lore_grid: GridContainer = $Margin/VBox/TabContainer/LoreTab/LoreScroll/LoreGrid
@@ -389,6 +390,7 @@ func _rune_category_name(category: String) -> String:
 # ═══════════════════════════════════════════════════════════════════
 
 var _intel_content: VBoxContainer = null
+var _phase_master_status_lbl: Label = null  # v6.19 P1-T1.3: 相位师遭遇动态状态行（refresh 时更新）
 
 func _setup_intel_tab() -> void:
 	if _tab_container == null:
@@ -407,6 +409,7 @@ func _setup_intel_tab() -> void:
 		"部署 +4% 固定不衰减；击败/部署附带改造情报点数，点数达标解锁该形态专属改造",
 		DT.FONT_SIZE_SMALL, DT.COLOR_TEXT_DIM))
 	tab.add_child(ladder)
+	tab.add_child(_build_phase_master_section())  # v6.19 P1-T1.3: 相位师遭遇规则分区
 	var scroll := ScrollContainer.new()
 	scroll.name = "IntelScroll"
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -416,6 +419,58 @@ func _setup_intel_tab() -> void:
 	_intel_content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_intel_content.add_theme_constant_override("separation", 4)
 	scroll.add_child(_intel_content)
+
+
+## v6.19 P1-T1.3 相位师遭遇规则分区（宪法 C3 概率透明）：机制全貌一屏可见 + 动态保底状态行。
+## 数值全部读常量（GameManager.get_phase_master_encounter_status / PhaseMasterGarrison），
+## 改口径此处自动跟随，禁止在本函数写死数字。
+func _build_phase_master_section() -> Control:
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", 4)
+	box.add_child(IntelUIKit.section_header("相位师情报", DT.COLOR_GOLD,
+		"随机可准备——遭遇规则全部公开"))
+	var gm := get_node_or_null("/root/GameManager")
+	if gm == null or not gm.has_method("get_phase_master_encounter_status"):
+		box.add_child(IntelUIKit.label(
+			"相位师遭遇规则（GameManager 未就绪，稍后重开面板）",
+			DT.FONT_SIZE_SMALL, DT.COLOR_TEXT_DIM))
+		return box
+	var st: Dictionary = gm.get_phase_master_encounter_status()
+	var garrison_count: int = PhaseMasterGarrison.get_all_garrison_levels().size()
+	var lines := [
+		"驻守关 %d 处：100%% 固定遭遇相位师（世界地图关防详情可查）" % garrison_count,
+		"非驻守关：基础遭遇率 %.0f%%；前 %d 关为新手保护期不触发（保护期计入递增计数，出保护后实际概率可能已高于基础值——见下方实时状态）" % [
+			float(st.get("base_chance", 0.15)) * 100.0, int(st.get("grace_levels", 10))],
+		"递增保底：连续 %d 关未遭遇后，每多 1 关概率 +%.0f%%，上限 %.0f%%——越久不遇，遇的概率越高" % [
+			int(st.get("drought_trigger", 5)), float(st.get("drought_step", 0.10)) * 100.0,
+			float(st.get("chance_cap", 0.5)) * 100.0],
+		"遭遇前情报可备战：克制兵种 / 防空 / 反制改造按提示预配，见战前建议",
+	]
+	for line in lines:
+		box.add_child(IntelUIKit.label(line, DT.FONT_SIZE_SMALL, DT.COLOR_TEXT_MID))
+	_phase_master_status_lbl = IntelUIKit.label("", DT.FONT_SIZE_SMALL, DT.COLOR_GOLD)
+	box.add_child(_phase_master_status_lbl)
+	_refresh_phase_master_status()
+	return box
+
+
+## 动态状态行（唯一在 _refresh_intel_tab 与本函数里更新的活文本）
+func _refresh_phase_master_status() -> void:
+	if _phase_master_status_lbl == null or not is_instance_valid(_phase_master_status_lbl):
+		return
+	var gm := get_node_or_null("/root/GameManager")
+	if gm == null or not gm.has_method("get_phase_master_encounter_status"):
+		return
+	var st: Dictionary = gm.get_phase_master_encounter_status()
+	var drought: int = int(st.get("drought_count", 0))
+	var trigger: int = int(st.get("drought_trigger", 5))
+	var txt := "当前状态：连续 %d 关未遭遇 · 下次非驻守关遭遇概率 %.0f%%" % [
+		drought, float(st.get("next_chance", 0.0)) * 100.0]
+	if drought < trigger:
+		txt += "（再未遭遇 %d 关启动递增）" % (trigger - drought)
+	else:
+		txt += "（递增保底已启动）"
+	_phase_master_status_lbl.text = txt
 
 
 ## v26 UI：4 档里程碑横条（25/50/75/100），色阶 中灰→青→紫→金 与行档位色同源
@@ -444,6 +499,7 @@ func _build_intel_milestone_strip() -> HBoxContainer:
 	return strip
 
 func _refresh_intel_tab() -> void:
+	_refresh_phase_master_status()  # v6.19 P1-T1.3: 相位师状态行随刷新更新
 	if _intel_content == null:
 		return
 	for child in _intel_content.get_children():

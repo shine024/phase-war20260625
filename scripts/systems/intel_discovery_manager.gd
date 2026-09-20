@@ -624,8 +624,13 @@ func _roll_item_for_defeated(enemy_info: Dictionary, cur_level: int, occupation_
 			rank_tier = 4
 		"elite":
 			rank_tier = 3
-	var kit: Array = EnemyFixedLoadouts.get_mods_for_tier(
-		String(enemy_info.get("archetype_id", "")).trim_prefix("foe_"), rank_tier)
+	# 2026-09-19 修复：配装表键双形态（经典敌裸 id / 34 个生成敌带 foe_ 前缀）——
+	# 原先恒 trim_prefix("foe_") 导致 foe_* 键恒 miss、缴获腿对生成敌全灭（挂载侧
+	# enemy_unit._apply_loadout_modifications 用原 id 不 trim）。现原 id 优先、trim 兜底。
+	var _kit_aid: String = String(enemy_info.get("archetype_id", ""))
+	var kit: Array = EnemyFixedLoadouts.get_mods_for_tier(_kit_aid, rank_tier)
+	if kit.is_empty():
+		kit = EnemyFixedLoadouts.get_mods_for_tier(_kit_aid.trim_prefix("foe_"), rank_tier)
 	# v6.14.4（用户拍板 75/25 分流）：缴获腿 vs 发现腿——75% 掉它携带的件（缴获语义
 	# 主导），25% 走全注册表按稀有度比例 roll（发现语义：优先未见过的模块，保证
 	# 全图鉴 249 件保持战斗可发现 → 见过集合 → 随机箱池/定向列表不断链）。

@@ -143,3 +143,42 @@ func _count_gold_rows(node: Node) -> int:
 			count += 1
 		count += _count_gold_rows(c)
 	return count
+
+
+func test_bottom_row_four_buttons_no_overlap() -> void:
+	## v6.19.3 回归锁（用户实机反馈"按钮重叠、看不到下一关"）：v38.1 四键行里
+	## 「返回整备」的起点曾误用行起点 24，整键叠在「返回移动基地」(24..204) 上。
+	## 契约：基地键 24..204 / 整备 216..384 / 再战 396..584 / 下一关 596..896
+	## （面板坐标，间距 12）——矩形两两求交必须全空，且主键（▶ 出击下一关）最后加入。
+	var gm: Node = get_node_or_null("/root/GameManager")
+	var lpm: Node = get_node_or_null("/root/LevelProgressManager")
+	var tm: Node = get_node_or_null("/root/TutorialProgressionManager")
+	if gm == null or lpm == null or tm == null:
+		print("  autoload 不全，跳过")
+		return
+	var bak := _setup_states()
+	gm._pending_battle_level = 5
+	var host := Panel.new()
+	host.size = Vector2(920, 600)
+	add_child(host)
+	var panel: Node = _make_panel(true, false)
+	panel._bunker_return_available = true
+	panel._render_close_button_anchored(host)
+	await get_tree().process_frame
+	await get_tree().process_frame
+	var rects: Array[Rect2] = []
+	var texts: Array[String] = []
+	for c in host.get_children():
+		if c is Button and (c as Button).text != "":
+			rects.append((c as Button).get_global_rect())
+			texts.append((c as Button).text)
+	assert_int(rects.size()).is_equal(4)
+	for i in range(rects.size()):
+		for j in range(i + 1, rects.size()):
+			var inter := rects[i].intersection(rects[j])
+			assert_bool(inter.size.x > 1.0 and inter.size.y > 1.0).is_false()
+	# 主键最后 add_child（绘制在最上）且文本是「▶ 出击下一关」
+	assert_bool(texts[texts.size() - 1].begins_with("▶")).is_true()
+	_restore_states(bak)
+	host.queue_free()
+	panel.queue_free()

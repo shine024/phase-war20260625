@@ -247,7 +247,8 @@ var _hero_toast_timer: Timer = null
 
 # ── v27.13 开场链移植（自废弃 bunker_main.gd 879-1141 平移，深航计划版醒来演出）──
 ## 漫画开场（comic_intro.tscn）收尾携 META_WAKEUP 切入本场景：
-## 黑幕梦呓 → 睁眼见雪原（回眨）→ 三拍闪回 → 画外音 → 钻进基地车 → 相位仪教学三拍。
+## 黑幕梦呓 → 睁眼见雪原（回眨）→ 三拍闪回 → 画外音 → 钻进基地车 → 装备自检两拍
+##（v6.20 设定修正：原"相位仪教学三拍"删——主角是穿越来的相位师，本来就认识战斗卡）。
 ## 无标记（续档/直进）= 零感知直进基地。
 const META_WAKEUP := "bunker_intro_wakeup_pending"
 const SNOW_BG_PATH := "res://assets/intro/wakeup_snowfield.png"   # 雪原+基地车+远处黑门（缺图退化）
@@ -1178,6 +1179,16 @@ func _glow_hotspot(key: String) -> void:
 		tw.tween_property(b, "modulate", Color.WHITE, 0.35)
 		return
 
+## v6.20 教程聚光：按工位键取热区按钮（tutorial_overlay 聚光指向消费；无此键回 null）。
+## 锁定工位（gate_locked）也返回——调用侧按步骤语境决定是否跳过聚光。
+func get_hotspot_button_for_key(key: String) -> Button:
+	if _hot_layer == null or key == "":
+		return null
+	for c in _hot_layer.get_children():
+		if c is Button and String((c as Button).get_meta("panel_key", "")) == key:
+			return c as Button
+	return null
+
 ## 回基地补播离场期间的解锁仪式（战斗结算中跨级 → LPM 待播队列 → 此处批量弹窗）
 func _consume_pending_unlock_ceremonies() -> void:
 	if LevelProgressManager == null \
@@ -1284,7 +1295,7 @@ func _open_sortie() -> void:
 	root.add_child(top)
 	var h3 := Label.new()
 	h3.text = "▍作战简报 · 第 %d 关「%s」 · %s · 第 %d 天" % [level, lname, String(e["label"]), day]
-	h3.add_theme_font_size_override("font_size", 18)
+	h3.add_theme_font_size_override("font_size", 16)
 	h3.add_theme_color_override("font_color", _era_accent().lerp(Color.WHITE, 0.25))
 	top.add_child(h3)
 	var tsp := Control.new()
@@ -1682,14 +1693,25 @@ func _unhandled_input(event: InputEvent) -> void:
 ## v26.13(ui-review)：ESC 关闭最上层可见的内嵌面板；有则 true
 func _close_top_embed_panel() -> bool:
 	var top: Control = null
+	var top_key := ""
 	for key in _embed_wrappers:
 		var wr: Control = _embed_wrappers[key]["wrapper"]
 		if wr.visible:
 			top = wr  # 字典按插入序，最后一个可见的即最上层
+			top_key = String(key)
 	if top != null:
 		top.visible = false
+		_notify_surface_closed(top_key)
 		return true
 	return false
+
+## v6.20：内嵌面板关闭 → 通知教程管理器（v38.3 close-wait 链此前只有 main._close_overlay
+## 一处通知，而教程起点自 v32.3 前移到基地——第 2/3 步「打开卡仓」在基地关面板后
+## 教程永停摆。面板自身关闭钮与 ESC 两路都收口到这里）。非挂起态时管理器内部自忽略。
+func _notify_surface_closed(panel_id: String) -> void:
+	var t := get_node_or_null("/root/TutorialProgressionManager")
+	if t != null and t.has_method("notify_surface_closed"):
+		t.notify_surface_closed(panel_id)
 
 # ── 样式小件 ──
 func _make_chip(text: String) -> Label:
@@ -1912,7 +1934,7 @@ func _ensure_panel_wrapper(panel_id: String) -> Control:
 			PanelAnim.close(wrapper)
 			if SignalBus and SignalBus.has_signal("play_sound"):
 				SignalBus.play_sound.emit("panel_close")
-		)
+			_notify_surface_closed(panel_id))
 	_embed_layer.add_child(wrapper)
 	_embed_wrappers[panel_id] = {"wrapper": wrapper, "panel": panel}
 	# 背包内嵌随行相位仪栏（bunker_main 619 的简化版：固定内容带 -86，无动态重排）
@@ -2426,6 +2448,11 @@ func _maybe_play_wakeup() -> void:
 		var bm := _bunker_mgr()
 		if bm != null and bm.has_method("mark_comic_seen"):
 			bm.mark_comic_seen()   # 开场已完整播放（或跳过），落档防重播
+			# v38.5 修复（实机评估 P3）：mark_comic_seen 原先只在内存生效，玩家在
+			# 下一个存档点前退出/崩溃则整段 12 格漫画 + 醒来演出重播（旧档无 comic_seen
+			# 键的补播同款）。此处即进程内最早、也是唯一必经的存档点。
+			if SaveManager and SaveManager.has_method("save_game"):
+				SaveManager.save_game.call_deferred()
 	if not pending:
 		_maybe_show_truck_intro()
 		_maybe_show_offline_rewards_home()  # v32.3 A5：非首启路径回基地即查离线奖励
@@ -2440,7 +2467,7 @@ func _play_wakeup_cinematic() -> void:
 	root.size = Vector2(1280, 720)
 	root.mouse_filter = Control.MOUSE_FILTER_STOP   # 演出期间挡住工位点击
 	# v38（用户反馈"进基地那段很快没看清"）：撤掉任意点击整段跳过——误点一次就
-	# 把 32s 演出连同相位仪教学三拍全部跳没。改为显式「跳过 ›」按钮（v37 同款 ghost pill）。
+	# 把整段演出全部跳没。改为显式「跳过 ›」按钮（v37 同款 ghost pill）。
 	add_child(root)
 	_wakeup_root = root
 
@@ -2585,94 +2612,21 @@ func _play_wakeup_cinematic() -> void:
 	tw.tween_property(sub, "modulate:a", 0.0, 0.5)
 	if snow_bg != null:
 		tw.parallel().tween_property(snow_bg, "modulate:a", 0.0, 1.1)
-	# E 相位仪三拍教学（手腕相位仪 → 纸条 → 床下背包；图缺失时仅字幕兜底）
-	# v38（用户反馈基础说明没看清）：三拍节奏 3.2/4.2/3.2 → 5.0/6.0/5.0——
-	# 这是全游戏唯一一次讲"相位仪是什么/卡在哪/怎么装"，宁慢勿快。
-	tw.tween_callback(func(): _wakeup_teach_beat(root, sub, 0))
-	tw.tween_interval(5.0)
-	tw.tween_callback(func(): _wakeup_teach_beat(root, sub, 1))
-	tw.tween_interval(6.0)
-	tw.tween_callback(func(): _wakeup_teach_beat(root, sub, 2))
-	tw.tween_interval(5.0)
+	# E 装备自检两拍（v6.20 设定修正：主角=深航计划相位师，穿越前就熟用相位仪与战斗卡——
+	# 旧三拍"教学"【手腕相位仪图 → 枕下纸条 → 床下发现卡图】把主角演成初见卡牌的局外人，
+	# 与设定矛盾，用户拍板删除。「卡在哪/怎么装」的引导职责移交教程覆盖层
+	# （tutorial_spotlight 聚光指向真按钮 + 卡仓/装配步说明），演出只留叙事。
+	tw.tween_callback(func(): sub.text = "腕上的相位仪挺过了乱流，仍在低鸣——断续的信号里，同伴们散落在时代各处。")
+	tw.tween_property(sub, "modulate:a", 1.0, 0.5)
+	tw.tween_interval(3.8)
+	tw.tween_property(sub, "modulate:a", 0.0, 0.5)
+	tw.tween_callback(func(): sub.text = "随行军备完好：起始卡组、纳米制造机，还有这辆车。深航计划，就此启程。")
+	tw.tween_property(sub, "modulate:a", 1.0, 0.5)
+	tw.tween_interval(3.8)
+	tw.tween_property(sub, "modulate:a", 0.0, 0.5)
 	# F 收场 → 移动基地指南
 	tw.tween_property(root, "modulate:a", 0.0, 0.9)
 	tw.tween_callback(_finish_wakeup)
-
-## 醒来演出教学三拍：0=手腕相位仪图 1=纸条（相位仪装卡+找同伴）2=床下背包图（起始卡）
-func _wakeup_teach_beat(root: Control, sub: Label, beat: int) -> void:
-	if not _wakeup_active:
-		return
-	var vp := Vector2(1280, 720)
-	var img_path := ""
-	var caption := ""
-	if beat == 0:
-		img_path = "res://assets/intro/wakeup_wrist.png"
-		caption = "腕上的相位仪微微发亮——它在感应同伴的位置。"
-	elif beat == 1:
-		caption = ""
-	else:
-		img_path = "res://assets/intro/wakeup_backpack.png"
-		caption = "床下的背包里，静静躺着几张卡。"
-	# 图（有图才铺满）
-	var tex: TextureRect = null
-	if img_path != "" and ResourceLoader.exists(img_path):
-		tex = TextureRect.new()
-		tex.name = "TeachImg"
-		tex.texture = load(img_path)
-		tex.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-		tex.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
-		tex.size = vp
-		tex.modulate.a = 0.0
-		tex.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		root.add_child(tex)
-	# 纸条（beat 1：浅纸面板 + 手写字感的说明）
-	var note: PanelContainer = null
-	if beat == 1:
-		note = PanelContainer.new()
-		note.name = "TeachNote"
-		var sb := StyleBoxFlat.new()
-		sb.bg_color = Color(0.87, 0.82, 0.68, 0.96)
-		sb.border_color = Color(0.55, 0.45, 0.3, 0.9)
-		sb.set_border_width_all(2)
-		sb.set_corner_radius_all(4)
-		sb.set_content_margin_all(20.0)
-		note.add_theme_stylebox_override("panel", sb)
-		note.position = Vector2(390, 220)
-		note.custom_minimum_size = Vector2(500, 0)
-		note.rotation_degrees = -1.5
-		note.modulate.a = 0.0
-		note.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		var nv := VBoxContainer.new()
-		note.add_child(nv)
-		var nt := Label.new()
-		nt.text = "（一张压在枕头下的纸条）"
-		nt.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
-		nt.add_theme_color_override("font_color", Color(0.4, 0.35, 0.28))
-		nv.add_child(nt)
-		var nb := Label.new()
-		nb.text = "相位仪装载卡片，卡片便能随你出战。\n它会指引同伴的位置——迷失者被战胜后，其力量将随你同行。\n　把卡装进相位仪：打开「卡仓」，把战斗卡拖进底部的绿槽即可。\n　　　　　　　　　　　　——深航计划"
-		nb.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		nb.add_theme_font_size_override("font_size", DT.FONT_SIZE_BODY)
-		nb.add_theme_color_override("font_color", Color(0.22, 0.19, 0.14))
-		nv.add_child(nb)
-		root.add_child(note)
-	# 淡出上一拍内容与旧字幕
-	var ft := create_tween()
-	for old_name in ["TeachImg", "TeachNote"]:
-		var old = root.get_node_or_null(NodePath(old_name))
-		if old != null and is_instance_valid(old):
-			ft.parallel().tween_property(old, "modulate:a", 0.0, 0.35)
-	ft.parallel().tween_property(sub, "modulate:a", 0.0, 0.3)
-	# 淡入本拍
-	ft.tween_interval(0.35)
-	ft.tween_callback(func(): sub.text = caption)
-	ft.set_parallel(true)
-	if tex != null:
-		ft.tween_property(tex, "modulate:a", 1.0, 0.5)
-	if note != null:
-		ft.tween_property(note, "modulate:a", 1.0, 0.45)
-	if caption != "":
-		ft.tween_property(sub, "modulate:a", 1.0, 0.45)
 
 ## 跳过 / 收场共用：清演出 → 补弹移动基地首次指南（show_once 随档持久化）
 func _finish_wakeup() -> void:
@@ -2745,6 +2699,12 @@ var _offline_idle: OfflineIdleManager = null
 
 func _maybe_show_offline_rewards_home() -> void:
 	if _offline_checked:
+		return
+	# v38.5 修复（实机评估 P2/P3）：教学进行中不查不弹——实测「欢迎回来」奖励弹窗
+	# 与教学第一步同帧双弹互相遮挡（_maybe_show_truck_intro 的 v32.3 B1 同款门）。
+	# 此分支不置 static 守卫：教学完成后的下次回基地仍按原逻辑补查补弹。
+	var _tm_off := get_node_or_null("/root/TutorialProgressionManager")
+	if _tm_off != null and _tm_off.has_method("should_show_tutorial") and _tm_off.should_show_tutorial():
 		return
 	_offline_checked = true
 	if SaveManager == null or not SaveManager.has_method("get_last_active_at"):

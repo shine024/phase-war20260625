@@ -9,6 +9,9 @@ const DefaultCardsData = preload("res://data/default_cards.gd")
 const LevelInformation = preload("res://data/level_information.gd")
 const NodeFinder = preload("res://scripts/node_finder.gd")
 const CardInfoPanel = preload("res://scenes/ui/card_info_panel.gd")
+# R-B2 键位角标：新类消费必须 preload 而非依赖 class_name 全局缓存
+# （headless/gdunit 运行期无编辑器扫描，v6.16 ModBreakpoints 同款教训）
+const KeycapBadge = preload("res://scripts/ui/keycap_badge.gd")
 const BackpackCombatPreview = preload("res://scenes/ui/backpack_combat_preview.gd")
 const RankDisplayUi = preload("res://scripts/rank_display_ui.gd")
 const CardFrameUi = preload("res://scripts/card_frame_ui.gd")
@@ -510,7 +513,12 @@ func _setup_menu_button() -> void:
 func _on_menu_btn_pressed() -> void:
 	if SignalBus and SignalBus.has_signal("play_sound"):
 		SignalBus.play_sound.emit("button")
-	var fb: Node = get_node_or_null("../BottomFunctionBar")
+	# v38.2 后抽屉被 _become_right_side_column reparent 到 HudLayer 直下
+	#（HudLayer/BottomFunctionBar），旧兄弟路径只在测试/裸实例化结构里成立——
+	# 两路都试（_notify_menu_badge 同款兜底纪律）。
+	var fb: Node = get_node_or_null("../../BottomFunctionBar")
+	if fb == null:
+		fb = get_node_or_null("../BottomFunctionBar")
 	if fb == null or not fb.has_method("toggle_drawer"):
 		return
 	fb.toggle_drawer()
@@ -846,6 +854,18 @@ func _refresh_synergy_label() -> void:
 				var rank: int = 1 if String(tiers[cid]) == ComboTactics.TIER_FULL else 0
 				if rank > int(agg.get(cid, -1)):
 					agg[cid] = rank
+		# v6.19 P2-T2.2 流派成型埋点：备战态首次激活套装 / 首次满档（构筑即成型时刻）
+		if not agg.is_empty():
+			var pm: Node = get_node_or_null("/root/PerformanceMetricsManager")
+			if pm != null and pm.has_method("record_milestone"):
+				pm.record_milestone("combo_active_first")
+				var has_full := false
+				for cid in agg:
+					if int(agg[cid]) == 1:
+						has_full = true
+						break
+				if has_full:
+					pm.record_milestone("combo_full_first")
 	if agg.is_empty():
 		_synergy_label.visible = false
 		return
@@ -938,6 +958,7 @@ func _refresh_slot_layout() -> void:
 		var entry: Dictionary = layout[i]
 		_update_slot_panel(_slot_panels[i], entry)
 	_refresh_slot_affordability()
+	_refresh_deploy_keycaps()
 
 func _rebuild_all_slot_panels(layout: Array) -> void:
 	for old in _slot_panels:
@@ -952,7 +973,24 @@ func _rebuild_all_slot_panels(layout: Array) -> void:
 		# BU-1：重建路径也走增量更新，补 energy_cost/restricted meta + 压暗罩
 		_update_slot_panel(panel, entry)
 	_refresh_slot_affordability()
+	_refresh_deploy_keycaps()
 	call_deferred("_fit_slots_to_bar")
+
+## UI 四级标准修复 R-B2：部署槽 1-9 数字角标——键盘部署真身
+## begin_deploy_from_slot_index(n) 的 n=第 n 个可部署绿槽（有战斗卡的非空绿槽），
+## 角标序号必须与它同口径；布局/换卡变化后重算（增量与全量两条路径都挂）。
+## >9 无键位不显示；空绿槽隐藏角标（与键盘行为一致：跳过空槽继续数）。
+func _refresh_deploy_keycaps() -> void:
+	var n := 0
+	for panel in _slot_panels:
+		if panel == null or not is_instance_valid(panel):
+			continue
+		var deployable: bool = String(panel.get_meta("slot_color", "")) == "green" \
+			and not String(panel.get_meta("card_id", "")).is_empty() \
+			and int(panel.get_meta("card_type", -1)) == GC.CardType.COMBAT_UNIT
+		if deployable:
+			n += 1
+		KeycapBadge.bind_to_digit(panel, n if deployable else 0)
 
 ## 增量更新单个格子的内容和样式（避免每次重建所有格子）
 func _update_slot_panel(panel: Control, entry: Dictionary) -> void:
@@ -1285,7 +1323,7 @@ func _add_empty_slot_hint(panel: Control) -> void:
 	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	hint.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	hint.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	hint.add_theme_font_size_override("font_size", 22)
+	hint.add_theme_font_size_override("font_size", 20)
 	hint.add_theme_color_override("font_color", Color(bc.r, bc.g, bc.b, 0.55))
 	hint.add_theme_color_override("font_outline_color", Color(0.0, 0.0, 0.0, 0.4))
 	hint.add_theme_constant_override("outline_size", 2)
