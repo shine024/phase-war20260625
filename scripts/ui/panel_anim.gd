@@ -194,6 +194,32 @@ static func fade_content_in(ctrl: Control) -> void:
 		.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 
 
+## S4 手柄菜单导航：把焦点落到面板内第一个可聚焦控件（十字键/摇杆即可移动）。
+## 仅在检测到手柄连接时生效——纯键鼠用户不吞焦点环；延迟一帧调用由调用方
+## call_deferred 负责（等面板布局落定再 grab）。
+static func focus_first(root: Node) -> void:
+	if root == null or not is_instance_valid(root):
+		return
+	if Input.get_connected_joypads().is_empty():
+		return
+	var first := _first_focusable(root)
+	if first != null:
+		first.grab_focus()
+
+
+static func _first_focusable(node: Node) -> Control:
+	var c := node as Control
+	if c != null and c.focus_mode != Control.FOCUS_NONE and c.is_visible_in_tree():
+		var b := c as BaseButton
+		if b == null or not b.disabled:
+			return c
+	for child in node.get_children():
+		var found := _first_focusable(child)
+		if found != null:
+			return found
+	return null
+
+
 static func _kill_meta_tween(host: Node, meta_name: String) -> void:
 	if not host.has_meta(meta_name):
 		return

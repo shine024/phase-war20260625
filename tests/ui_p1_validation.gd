@@ -97,6 +97,11 @@ const CHANGED_SCRIPTS: Array[String] = [
 	"res://scenes/ui/collection_panel.gd",
 	# v32.5 固定基地删除批：要塞房间表重构归属为移动基地设施数据
 	"res://data/mobile_base_facilities.gd",
+	# v6.20.2 标准集合修复批：手柄支持 + 键位 v2 + credits 页 + 帮助无障碍 Tab
+	"res://scripts/systems/keybinds.gd",
+	"res://scripts/ui/credits_panel.gd",
+	"res://scenes/ui/settings_panel.gd",
+	"res://scenes/ui/help_panel.gd",
 ]
 
 var _fails: Array[String] = []

@@ -49,14 +49,9 @@ static func refresh(badge: Label) -> void:
 
 
 ## 动作主绑定键名（取第一个按键事件；pw_open_backpack 这类多键动作只示首选，
-## 完整键位仍在 tooltip 文案里）。
+## 完整键位仍在 tooltip 文案里）。真身在 KeyBinds（S4 批起支持手柄键回退显示）。
 static func primary_binding_text(action_id: String) -> String:
-	if not InputMap.has_action(action_id):
-		return ""
-	for ev in InputMap.action_get_events(action_id):
-		if ev is InputEventKey:
-			return OS.get_keycode_string((ev as InputEventKey).keycode)
-	return ""
+	return KeyBinds.primary_binding_text(action_id)
 
 
 static func _ensure_badge(host: Control) -> Label:

@@ -36,6 +36,19 @@
 - **基地 close-wait 断链已根修**（存量 bug）：truck_base 关面板两路（面板 closed 信号/ESC）都通知 `_notify_surface_closed` → TPM——此前只有 main._close_overlay 通知，教程第 2/3 步在基地关卡仓后永停摆。**新嵌入面板的关闭路径必须接 `_notify_surface_closed`**，否则教程挂起链再断。
 - 验证件：`tests/_tmp_v620_smoke.gd`（编译+数据）+ `tests/_tmp_v620_flow_smoke.tscn`（真基地端到端 10 断言，跑前备份 user://）+ `tests/_tmp_spotlight_probe.tscn`（视觉像素断言）。
 
+## v6.20.2 标准集合修复批：手柄支持 + 键位 v2 + 授权链 + 对比度探针（2026-09-20，详见 CHANGELOG）
+
+**改 keybinds/设置面板键位段/导出排除/credits/帮助面板前必读本节。** 背景=`docs/标准集合_2026-09-20.md`（S1~S18 对外标准对照）缺口批清，商店填报工序见 `docs/商店提交清单_2026-09-20.md`。
+
+- **KeyBinds v2 双设备绑定**：ACTIONS 每条加 `joy` 键（Godot JOY_BUTTON 枚举；默认布局 Ⓐ=开战/MENU=暂停/SELECT=地图/LB=背包/RB=技能/Ⓧ=设置）。键盘 keys 与手柄 joy **独立重绑互不覆盖**（`set_binding` / `set_binding_joy`）。settings.cfg keybinds 段值升级 v2 格式 `{"keys":[...],"joy":[...]}`——**旧格式（int Array）按"仅键盘"兼容读取，手柄回落默认，零迁移**（回归锁 `test_keybinds_legacy_array_override_still_works`）。消费侧：main._input 放行 InputEventJoypadButton（1-9 部署槽仍键盘专属）；truck_base._unhandled_input 改 `KeyBinds.is_back_event`（ESC 或手柄 Ⓑ）；world_map 的 `is_action("ui_cancel")` 天然含手柄 B 勿再包键盘过滤。
+- **手柄菜单焦点链**：`PanelAnim.focus_first(root)`——接手柄时（`Input.get_connected_joypads` 非空）把焦点落面板内首个可聚焦控件（跳过 disabled）；main._open_overlay 与 truck_base._open_panel 都在 PanelAnim.open 后 `call_deferred` 调用。纯键鼠不吞焦点环。
+- **设置面板键位段**：捕捉流程双设备（键盘键/手柄键按即绑，ESC/Ⓑ 取消）；键位标签 `get_binding_label` 现为"键盘键 ｜ 手柄键"双段（键帽角标走 `KeyBinds.primary_binding_text` 键盘优先）。
+- **credits 页**：`scripts/ui/credits_panel.gd`（引擎/字体/音乐/美术四段 const 内联）+ title_screen「制 作 人 员」按钮（代码构建插 QuitButton 上方 ghost 档）。**消费方 preload 纪律第三次命中**——CreditsPanel 首版走 class_name 全局引用（v6.20.1 缓存坑），已改 preload + /root 节点名幂等。
+- **导出排除补全（S17）**：exclude_filter 补 agent_tools 编辑器侧（headless/tools/server/registry/plugin）+ godot_ai 编辑器侧（clients/debugger/dock_panels/export/handlers/testing + 顶层 8 脚本）+ addons/opencode.json。**runtime/ 两桥必须保留**——_MCPGameBridge/_mcp_game_helper 是 project.godot autoload（均有 OS.is_debug_build 自守卫 release 零行为），且 godot_ai runtime 链 preload utils/ 三文件故 utils/ 整目录保留。回归锁 `test_export_excludes_dev_addons_but_keeps_runtime_bridges`；**插件更新加新目录要补排除清单**（工序在 商店提交清单 S13#3）。
+- **对比度全量探针**：`tools/contrast_probe.gd`（--script 直跑，文本 token 20×底色 7 全矩阵 WCAG 比值）。结论：唯一 FAIL=死 token `COLOR_AMBER_DEEP`（零消费，design_tokens 已注记"禁止作深底文本色"）；16 处"仅大字号"档（FAINT/RED_DOWN/ACCENT_PURPLE 对较浅面板底）为层次/语义色有意取舍，留观。
+- **帮助面板第 8 Tab「无障碍」**：滤镜/高对比/大字号/减动效/分轨音量/键位重绑/手柄全清单 + 反馈渠道占位（S2 GAG 三条 ⚠ 的游戏内侧收口）。
+- **BGM 授权（S17，未完——用户侧动作）**：`assets/sfx/CREDITS.md` 建档——7 首 OGG Vorbis 注释实测全被 ffmpeg 转码覆写，**文件层追溯已断，全部 UNVERIFIED**；商店提交前必须清零（追溯或替换，行动清单在 CREDITS.md 文内）。游戏内 credits 页 MUSIC 行已留待定稿占位。
+
 ## Godot CLI Commands
 
 Godot not on PATH. **本项目跨两台机器开发，Godot 可执行文件位置不同——按下表选当前机器可用的那个**

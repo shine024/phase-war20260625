@@ -1678,7 +1678,8 @@ func _close_modal() -> void:
 		_modal_card = null
 
 func _unhandled_input(event: InputEvent) -> void:
-	if event is InputEventKey and event.pressed and event.keycode == KEY_ESCAPE:
+	# S4：ESC 或手柄 Ⓑ 同为返回键（KeyBinds.is_back_event 统一判定）
+	if KeyBinds.is_back_event(event):
 		# v26.13(ui-review)：ESC 关最上层弹层——模态卡 > 简报 > 内嵌面板
 		#（不能默认玩家知道要去找 X，包容性铁律）
 		if _modal_layer != null:
@@ -1856,6 +1857,8 @@ func _open_panel(panel_id: String) -> void:
 	# 批次1：收口统一开合（原 visible 硬切无声）——wrapper 结构与 main overlay 同构
 	#（全屏 wrapper + EmbedCenter 内容层），PanelAnim 直接适用；开合音对齐 main。
 	PanelAnim.open(wrapper)
+	# S4 手柄菜单导航：接手柄时焦点落首个可聚焦控件（与 main._open_overlay 同钩子）
+	PanelAnim.focus_first.call_deferred(wrapper)
 	if SignalBus and SignalBus.has_signal("play_sound"):
 		SignalBus.play_sound.emit("panel_open")
 	# v30 R3：零引导面板首开一次性气泡（show_once 按 key 去重，不打扰二次进入）
