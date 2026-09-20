@@ -8973,3 +8973,15 @@ MVP 协同小结、8 面板首开气泡。**R3 余项**：结算面板三页签�
 ① QC 必须在**抠图后**——白底原图审白残留必挂（v1 全批误杀回退）；② `alpha_mask_small` 的坐标是 128 网格，除以原图尺寸=差 8 倍（v2 全批误挂 content_frac 0.12）；③ 低姿态单位（卧姿 0.27/跪姿）内容占比下限必须按目标高放宽（0.22），0.45 会误杀卧姿 MG42；④ "全幅未抠净"判定用**任一维 ≥0.97**（AND 会漏掉"高 0.99×宽 0.85"的灰带连体案例——v4 五连挂根因）；⑤ 纸纹灰白底（亮度渐变 170-255）白阈值族抠不动 → 亮度+低饱和键控（lum>150/sat<40）+ **边缘连通**判定（scipy.ndimage.label：内部白布章不连边幸存）+ 保留最大连通域（清斑点/漂浮速度线）。另：PIL floodfill 的 thresh 是与**种子点**的差，渐变底要给足容差。
 
 **验证**：审计复跑 0 双主体/0 空帧/0 白底（姿态目录专项违规 0）；白域全域扫描仅余 fe_aether 已知误报；成品拼图 `.godot/audit_sheets/regen_final_check.png`（16 姿态+engineer+nova 全目检）与前后对比 `regen_before_after.png`；资产已 `--headless --editor --quit` 重导入。
+
+## v6.15b 战斗单位视觉抖动三修批：步枪班帧动画挂载 + 受击弹跳收敛 + 攻击姿态归一（2026-09-20）
+
+用户实机反馈三症状一轮清：①敌方步枪班没有分帧动画；②敌方救护车受击后"跳起来"；③敌方很多单位攻击时"一会大一会小、一会左一会右"。附步枪/机枪枪口火花敌我双侧视觉检查。
+
+1. **敌方步枪班分帧动画挂载（资产部署链修复）**：`ww1_inf_rifle` 经 `EnemyCardModMap` 映射到玩家卡 `ww1_mauser`，但 `unit_anims/ww1_mauser/` 目录从未部署——v24 动画批从源目录 `005_ww1_rifle_步兵班步枪` 部署时 key 取了 `ww1_rifle`（源目录名口径），与卡 id 不一致导致解析链全 miss，步枪班一直静态卡图（v24.2 起 8 个多月）。修复：把 `ww1_rifle/`（idle 8+attack 12，带烘焙描边，与 vis_enemy_037 同源艺术）迁挂到 `ww1_mauser/`——敌方步枪班经映射链命中、玩家起始卡毛瑟步枪班直连命中，双侧同享。孤儿 `ww1_rifle/` 备份 `.godot/art_backup_rifle_anim_20260920/`。同族勘误注：`ww1_mp18/ww2_garand/ww2_mg42/ww1_storm` 等"源名 key"目录是 mp18/garand 等卡动画的合法消费路径（EnemyCardModMap 指向它们），非垃圾。回归探针 `tests/anim_key_resolve_probe.gd`（resolve/帧数/烘焙描边 8 断言，RIFLE_ANIM_PROBE_OK；2026-09-20 自 _tmp 名下正名）。
+2. **受击弹跳收敛（`unit_shared_helpers.gd`）**：根因=受击抖动以单位原点（地面脚点）为轴整节点缩放，`HIT_SHAKE_KEYS [0.78,1.12,0.92,1.0]` 的 34% 摆幅对大体型单位（救护车/卡车/火炮）=身位 30-50px 垂直抛跳，读成"受击跳起来"。收敛为 `[0.90,1.06,0.97,1.0]`（下沉 10%→过冲 6%→归位），大车摆幅 ≈15px，步兵抖动仍可读；时长 4×0.035s、闪白主反馈、击退、血溅全不动。
+3. **攻击姿态归一（16 单位 attack_f0）**：根因=`AttackPoseAnim` 裸换 texture（零补偿），16 个有姿态的敌方单位中 15 个 `attack_f0.png` 与卡图内容占比/位置不一致（宽比 0.63~1.84、高比至 1.45、矩形中心横移至 29% 画布宽），且 **6 个姿态朝向镜像错误**（cold_inf_ak/cold_inf_m60/fut_inf_cyborg/fut_inf_spectre_e/mod_inf_delta_e/mod_inf_marine 朝右，卡图朝左）——换姿态瞬间=大小跳变+左右横跳+180° 翻脸，即症状③全部来源。修复：归一器 `tools/normalize_attack_f0.py`（2026-09-20 自 _tmp 正名；等比缩放姿态内容高=卡图内容高 + 矩形中心 x 对齐 + 底边对齐脚线，幂等可重跑；需要 `tests/attack_f0_map_export.gd` 导出映射）+ 6 张横向翻转。原图备份 `.godot/art_backup_attack_f0_20260920/`。回归锁升级 gdunit `tests/unit/data/test_attack_f0_consistency.gd`（2026-09-20 自 _tmp 审计脚本正名入门禁常跑）硬指标口径（rh∈[0.94,1.06] + |矩形中心差|≤0.04；rw/质心为软记录——攻击姿态动势属合法形变），16/16。
+4. **枪口火花视觉检查（无改动）**：审计矩阵 72 格实测——轻动能族（冲锋枪/步枪/机枪）敌我双侧枪口火花均在（白热闪核+橙色火星锥，v17c/v18/v26.15f 历轮标定参数），我方向右/敌方向左镜像正确；曲射火炮族双侧大喷流正常。链路确认：敌 `_do_attack` 与我 `do_attack` 均走 `ConstructUnitAI._play_muzzle_feedback` 单一真身，无需修。
+5. **审计收口（2026-09-20 补修复）**：图片/动画全树审计（unit_anims 160 目录静态校验 0 错误；覆盖度 sheet 164/姿势 6/静态兜底 90——90 个战斗单位无动画资产属美术欠账非 bug）确认三修未复发。工具链自 `_tmp` 名下正名（见上），回归锁入 gdunit 门禁。v27 星冥帧动画冒烟"attack 播完未回 idle"定性**断言自败非运行时回归**：`play_attack` 按攻击间隔动态定 fps，断言等待窗 (n+2)/fps 恒大于攻击间隔 n/fps → 活战场 AI 窗内必然再开火重播 attack（设计行为），断言前拉大 `attack_interval` 隔离后 PASS。
+
+**验证**：RIFLE_ANIM_PROBE_OK（8/8）；attack_f0 一致性锁 16/16（gdunit 门禁）；`weapon_visual_profiles_smoke` 138 PASS / 0 FAIL；v27 冒烟 PASS；gdunit 全量 424/424；视觉验收对比图（.godot/_tmp_attack_f0_fixed.png 等）目视过——6 翻转单位全数朝左、姿态与卡图脚线/中心对齐。

@@ -18,7 +18,10 @@ const UnitOutline = preload("res://scripts/battle/unit_outline.gd")  # v26.9: �
 
 const HIT_SHAKE_DURATION: float = 0.14  # v8.3: 0.12→0.14（4×0.035s）
 # v27.12: 受击抖动关键帧常量（原每次受击在 update_hit_animations 内分配同值数组）
-const HIT_SHAKE_KEYS: Array[float] = [0.78, 1.12, 0.92, 1.0]
+# v6.15b: 0.78→1.12 摆幅对大体型单位（救护车/卡车/火炮）读成"受击跳起来"——抖动以
+# 单位原点（地面脚点）为轴缩放，身体锚点偏移随 scale 上下抛；收敛到 0.90→1.06 后
+# 大车垂直摆幅 ≈15px（原 ~50px），步兵抖动仍可读（闪白主反馈不受影响）。
+const HIT_SHAKE_KEYS: Array[float] = [0.90, 1.06, 0.97, 1.0]
 
 # ─────────────────────────────────────────────
 #  资源/节点引用缓存

@@ -638,6 +638,15 @@ IntelEvolutionManager → IntelManual, IntelEvolutionBranches
 - **有意偏离 D3 项（用户裁决保留）**：伤害数字用阵营双色 + 相对量级金色大字（D3 是小数字）；机制弹字保留。
 - **验证**：回归冒烟 `tests/weapon_visual_profiles_smoke.gd` 124 PASS；48 格标准帧 `docs/vfx_audit_shots/`（审查页 tools/vfx_audit_review.html）。**教训沉淀**：①子块编辑缩进错一层=孤儿 else（本轮 bullet.gd 实踩，gdparse+HEAD 对照可抓——gdparse 报错先 git show HEAD 对照再定性）；②审计矩阵抓帧计时比标签晚，亚 0.2s 特效逐帧 zoom 看，勿只信像素阈值；③工具视口截图有 0.803 缩放（坐标换算后再断言）。
 
+## v6.15b 单位视觉抖动三修批：步枪班帧动画 + 受击弹跳收敛 + 攻击姿态归一（2026-09-20，详见 CHANGELOG）
+
+**改单位动画部署/受击抖动/attack_f0 姿态资产前必读本节。** 用户实机三症状：敌方步枪班无分帧动画、救护车受击"跳起来"、敌方很多单位攻击时"一会大一会小一会左一会右"。
+
+- **动画部署 key 纪律**：`unit_anims/<key>` 的 key 必须能被 `UnitFrameAnim._resolve_key` 解析链命中——卡 id 直查 → `foe_` 剥前缀 → `EnemyCardModMap.player_card_id` → manifest visual_id。v24 批曾按**源目录名**部署（`ww1_rifle`），卡 id 是 `ww1_inf_rifle` 且映射指向 `ww1_mauser` → 全 miss 静默回退静态卡图。现步枪班动画挂 `ww1_mauser/`（敌经映射链+玩家起始卡直连双收益）。⚠️ `ww1_mp18/ww2_garand/ww2_mg42/ww1_storm` 等源名 key 目录是映射链合法落点**勿当孤儿清理**；真孤儿判定=上述解析链四步全 miss。探针 `tests/anim_key_resolve_probe.gd`。
+- **受击抖动幅度**：`HIT_SHAKE_KEYS [0.90,1.06,0.97,1.0]`（原 0.78→1.12 对大体型单位以地面脚点为轴放大=30-50px 垂直抛跳"受击跳起来"）。调受击手感只动这组常量与时长，闪白/击退/血溅通道各归各。
+- **attack_f0 归一契约（新增回归锁）**：`AttackPoseAnim` 换 texture 零补偿——`attack_f0.png` 的内容**高比必须=卡图内容高比（±6%）且矩形中心 x 对齐（±4%）**，朝向必须与卡图同侧（敌左），否则每次开火大小跳/横跳/180°翻脸。归一器 `tools/normalize_attack_f0.py`（幂等；映射导出 `tests/attack_f0_map_export.gd`）+ 回归锁 `tests/unit/data/test_attack_f0_consistency.gd`（gdunit 门禁常跑，2026-09-20 自 _tmp 名下正名；硬指标 rh∈[0.94,1.06]+|dRectCx|≤0.04 出带即 FAIL；rw 宽比与质心差是软记录——攻击姿态动势属合法形变勿当缺陷）。v6.15b 已修 6 张镜像错误（ak/m60/cyborg/spectre/delta/marine）+16 张全量归一；原图备份 `.godot/art_backup_attack_f0_20260920/`。**新做攻击姿态资产先过审计锁再入库**。
+- **枪口火花现状（勿重复排查）**：敌我双侧共用 `ConstructUnitAI._play_muzzle_feedback` 单一真身（敌方 `_do_attack:1532` / 我方 `do_attack:740`），轻动能族火花参数经 v17c/v18/v26.15f 三轮标定（白热闪核+细火星锥，刻意低调防"橙色糊团"回潮）。审计矩阵 72 格实测双侧镜像正确。
+
 ## v37.1 改造图标座统一批：稀有度发光底座收口（2026-09-17）
 
 **改改造图标显示点/稀有度视觉/ModIconTile 前必读本节。** 用户实机反馈"改造图标没有眼前一亮"——根因：约 98 张青橙扁平图标裸贴深底（暗、同质），稀有度在图标层完全不可见（common 与 mythic 可共用同图同貌），详情操作台只显示字母框不显示真图。
