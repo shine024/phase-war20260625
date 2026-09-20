@@ -9122,3 +9122,32 @@ MVP 协同小结、8 面板首开气泡。**R3 余项**：结算面板三页签�
 ### v6.20.1 二次复核补尾（同日，用户逐条对照触发）
 - **R-D3 阴影两档补齐**（前置裁决后半句初轮漏做）：DT 新增 `SHADOW_SIZE_PANEL=10`/`SHADOW_SIZE_FLOAT=14`；`make_panel_frame` 改引常量；五处 tscn 面板根框 shadow_size 对齐两档（growth/modification/evolution 14→10、card_info_panel 8→10、backpack_panel popup 8→14——这些根框运行时已被 textured 工厂覆盖，属防复活口径卫生）。组件级 glow（按钮 hover 6/关闭钮 8/标题饰条 6/卡牌悬停）不属面板阴影两档，边界写入 DT 注释。
 - **R-D2 扫描范围补齐**：ui_batch2 C3 的 11px 归零断言补扫 `res://scenes/tools/`（card_ui_preview 等工具面板此前游离在检查外），复跑 ALL PASS。
+
+## v6.20.2 标准集合修复批：手柄支持 + 键位 v2 双设备 + 授权链 + 对比度探针 + 商店提交清单（2026-09-20，详见 docs/标准集合_2026-09-20.md）
+
+**改 keybinds/设置面板键位段/导出排除/credits/帮助面板前必读本节与 AGENTS.md v6.20.2 节。** 背景=标准集合缺口清单全量批清（S2/S3/S4/S5/S9/S13/S17/S18），商店填报工序落成 `docs/商店提交清单_2026-09-20.md`。
+
+### S4/S2 手柄支持（GAG 两❌ + 四大抱怨① 清零）
+- **KeyBinds v2 双设备绑定**（`scripts/systems/keybinds.gd` 重写）：ACTIONS 每条加 `joy` 默认键（Ⓐ=pw_start_battle/MENU=pw_pause/SELECT=pw_open_map/LB=背包/RB=技能/Ⓧ=设置）；键盘与手柄**独立重绑互不覆盖**（`set_binding` 键盘 / `set_binding_joy` 手柄，内部统一 `_apply_binding`）。settings.cfg keybinds 段 v2 格式 `{"keys":[...],"joy":[...]}`，旧 int Array 按"仅键盘"兼容（手柄回落默认，零迁移）。`get_binding_label` 双段显示（"Space ｜ MENU"），`primary_binding_text` 收口 KeyBinds（键帽角标键盘优先、无键盘绑定回退手柄键名），新增 `is_back_event`（ESC 或手柄 Ⓑ，自带 pressed 判定）与 `JOY_BUTTON_LABELS` 可读名表。
+- **main._input 放行手柄**：`InputEventKey or InputEventJoypadButton` 双收——pw_* 动作经 InputMap 手柄事件走同一消费链；数字 1-9 部署槽加 `is InputEventKey` 守卫保持键盘专属（joypad 事件无 keycode，原写法手柄按下会炸 Invalid get index）。
+- **ESC/返回全链**：truck_base._unhandled_input 改 `KeyBinds.is_back_event`（手柄 Ⓑ 在基地也能关模态卡/简报/嵌入面板）；world_map 原本就走 `is_action("ui_cancel")`（Godot 默认含手柄 B）无需动。
+- **菜单焦点链**：`PanelAnim.focus_first(root)` 新 API——接手柄时（`Input.get_connected_joypads()` 非空才动作，纯键鼠不吞焦点环）找首个可聚焦控件（跳 disabled/不可见）grab_focus；main._open_overlay 与 truck_base._open_panel 在 PanelAnim.open 后 `call_deferred` 调用——十字键/左摇杆（Godot 默认 ui_* 已含）即可移动菜单。
+- **设置面板键位段双设备捕捉**：`_input` 收键盘+手柄两类事件，键盘键→`set_binding`、手柄键→`set_binding_joy`，ESC/Ⓑ 取消；捕捉提示与键位段标题同步双设备口径（手柄导航说明）。
+
+### S17 授权链（credits 页 + 导出排除 + BGM 凭据建档）
+- **游戏内「制作人员与许可」页**：`scripts/ui/credits_panel.gd`（引擎 MIT/字体 OFL/音乐美术声明四段 const 内联；PanelChrome+PanelAnim 统一规格，ESC/Ⓑ/✕ 同关）+ title_screen「制 作 人 员」按钮（代码构建插 QuitButton 上方 ghost 档，`_apply_button_tiers` ghost 名单同步）。**消费方 preload 纪律第三次命中**：CreditsPanel 首版走 class_name 全局引用+静态工厂，已改 title_screen 侧 preload + /root 子节点名幂等（v6.20.1 类缓存坑，headless/gdunit 恒断）。
+- **导出排除补全**（`export_presets.cfg` exclude_filter）：原清单漏两个开发桥插件——补 agent_tools 编辑器侧（headless/tools/server.gd/registry.gd/plugin.gd/plugin.cfg）+ godot_ai 编辑器侧（clients/debugger/dock_panels/export/handlers/testing 七目录 + 顶层 8 脚本）+ addons/opencode.json。**runtime/ 目录与 utils/ 整体保留**：两桥是 project.godot autoload（均有 `OS.is_debug_build` release 自守卫），godot_ai runtime 链 parse 期 preload utils/ 三文件（log_backtrace/error_codes/screenshot_encode），整目录排除=导出包 autoload 编译炸。回归锁 `test_export_excludes_dev_addons_but_keeps_runtime_bridges`（关键模式在清单 + runtime 不在清单双向断言）。
+- **BGM 凭据建档**（`assets/sfx/CREDITS.md`）：对 7 首 OGG 逐个解析 Ogg Vorbis comment header 实测——元数据在 ffmpeg(Lavf62) 转码时已被覆写（title=内部文件名），**文件层追溯已断，7 首全部标 UNVERIFIED**；README 的"CC0/无版权"声明降级为假设。行动二选一（用户侧）：浏览器历史追溯回写 / 明确商业授权替换（凭证入 _steam_assets/licenses/）——**商店提交前必须清零，这是硬门槛**。credits 页 MUSIC 行留待定稿占位不写假署名。
+- **SFX 口径**：36 SFX+环境风=项目内自合成，无外部授权义务；若未来换外部素材必须回写 CREDITS.md 并核对 S10 披露范围。
+
+### S3 对比度全量探针 + 帮助无障碍 Tab（S2 三 ⚠ 收口）
+- **探针** `tools/contrast_probe.gd`（--script 直跑一次性工具）：文本 token 20 × 底色 7 全矩阵 WCAG 比值（4.5 正文 / 3.0 大字号双线判定）。结论：**唯一 FAIL=死 token `COLOR_AMBER_DEEP`**（#b45309 对深底 2.8~4.0，当前全项目零消费——design_tokens 注记"禁止作深底文本色"防未来误用，不删）；16 处"仅大字号"档（COLOR_TEXT_FAINT/RED_DOWN/ACCENT_PURPLE 对较浅 PANEL/CARD_HI 底）为层次与语义色有意取舍，使用位均大字号/粗体场景，留观不修。
+- **帮助面板第 8 Tab「无障碍」**（`_get_accessibility_content`）：视觉四开关（色盲三档/高对比/大字号/减动效）+ 听觉分轨 + 操作节奏（重绑/手柄/倍速/挂机）全清单 + 反馈渠道占位（发行后商店页/社群置顶帖兑现）。头注 Tab 数 7→8。
+
+### 商店提交工序文档（S10/S11/S13/S18）
+- `docs/商店提交清单_2026-09-20.md`：AI 披露填报口径（Pre-generated 勾选+范围文案，纯离线无 Live-generated）/ IARC 问卷预期 / Win 自检八项（64 位✅ 零运行库✅ 桥排除✅ 已核；签名/杀软/Proton 待办）/ Steam 后台六项（云存档只挂存档配置勿挂 logs、IAP 不勾等）。**前置硬门槛=BGM 凭据清零**。
+- 标准集合总览表与缺口优先级表同步 v6.20.2 后状态（S2 0❌/S3 探针已跑/S4 剩 Deck 实测/S5 capsules 已产合规/S9 主项受控/S13/S17/S18 清单已建）。
+
+### 验证
+- gdparse 改动 .gd 零报错；master_power_smoke 8/8 PASS；**ui_p1_validation ALL PASS（CHANGED_SCRIPTS 补录 4 文件，84 编译+4 运行时）**；gdunit 全量 433/433（R6 新增手柄四用例：joy 默认注册/joy 重绑不波及键盘/旧 Array 兼容/is_back_event；覆盖格式断言升 v2 字典——初轮 `contains("SPACE")` 笔误实为 "Space"，已修正重跑）。
+- 待实机/用户侧：手柄接真机过一遍（焦点环观感/B 键全链）；BGM 追溯或替换；Deck 实测（S4 剩余域）+ Steam Input 模板上传。

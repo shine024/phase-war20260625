@@ -51,11 +51,12 @@ func test_keybinds_rebind_roundtrip_and_persist() -> void:
 	var old_ev := InputEventKey.new()
 	old_ev.keycode = KEY_M
 	assert_bool(InputMap.action_has_event("pw_open_map", old_ev)).is_false()
-	# 覆盖持久化到 settings.cfg keybinds 段
+	# 覆盖持久化到 settings.cfg keybinds 段（v6.20.2 起 v2 格式：{"keys": [...], "joy": [...]}）
 	var cfg := ConfigFile.new()
 	assert_int(cfg.load(_CFG)).is_equal(OK)
-	var saved: Array = cfg.get_value("keybinds", "pw_open_map", [])
-	assert_array(saved).contains([KEY_P])
+	var saved: Dictionary = cfg.get_value("keybinds", "pw_open_map", {})
+	assert_dict(saved).is_not_empty()
+	assert_array(saved.get("keys", [])).contains([KEY_P])
 	# 恢复默认后回到 M
 	KeyBindsScript.reset_all()
 	assert_str(KeyBindsScript.get_binding_label("pw_open_map")).contains("M")
@@ -69,6 +70,75 @@ func test_keybinds_override_applied_on_register() -> void:
 	var ev := InputEventKey.new()
 	ev.keycode = KEY_G
 	assert_bool(InputMap.action_has_event("pw_open_growth", ev)).is_true()
+
+
+## S4/S2 手柄支持批（v6.20.2）：双设备绑定回归锁
+func test_keybinds_joy_defaults_registered() -> void:
+	KeyBindsScript.reset_all()
+	var joy_ev := InputEventJoypadButton.new()
+	joy_ev.button_index = JOY_BUTTON_START
+	assert_bool(InputMap.action_has_event("pw_pause", joy_ev)).is_true()
+	var joy_a := InputEventJoypadButton.new()
+	joy_a.button_index = JOY_BUTTON_A
+	assert_bool(InputMap.action_has_event("pw_start_battle", joy_a)).is_true()
+	# 双设备并存：键盘默认键不因手柄注册而丢（OS.get_keycode_string(KEY_SPACE)="Space"）
+	assert_str(KeyBindsScript.get_binding_label("pw_pause")).contains("Space")
+	assert_str(KeyBindsScript.get_binding_label("pw_pause")).contains("MENU")
+
+
+func test_keybinds_joy_rebind_keeps_keyboard() -> void:
+	KeyBindsScript.reset_all()
+	KeyBindsScript.set_binding_joy("pw_open_map", JOY_BUTTON_Y)
+	var joy_ev := InputEventJoypadButton.new()
+	joy_ev.button_index = JOY_BUTTON_Y
+	assert_bool(InputMap.action_has_event("pw_open_map", joy_ev)).is_true()
+	var old_joy := InputEventJoypadButton.new()
+	old_joy.button_index = JOY_BUTTON_BACK
+	assert_bool(InputMap.action_has_event("pw_open_map", old_joy)).is_false()
+	# 手柄重绑不波及键盘绑定
+	var key_ev := InputEventKey.new()
+	key_ev.keycode = KEY_M
+	assert_bool(InputMap.action_has_event("pw_open_map", key_ev)).is_true()
+	# 落盘为 v2 字典且 joy 键持久化（ensure_registered 重读存档仍生效）
+	var cfg := ConfigFile.new()
+	assert_int(cfg.load(_CFG)).is_equal(OK)
+	var saved: Dictionary = cfg.get_value("keybinds", "pw_open_map", {})
+	assert_array(saved.get("joy", [])).contains([JOY_BUTTON_Y])
+	KeyBindsScript.ensure_registered()
+	assert_bool(InputMap.action_has_event("pw_open_map", joy_ev)).is_true()
+
+
+func test_keybinds_legacy_array_override_still_works() -> void:
+	# 旧格式（纯 int Array）= 仅键盘覆盖，手柄回落默认值（零迁移成本回归锁）
+	var cfg := ConfigFile.new()
+	cfg.set_value("keybinds", "pw_open_map", [KEY_P])
+	cfg.save(_CFG)
+	KeyBindsScript.ensure_registered()
+	var key_ev := InputEventKey.new()
+	key_ev.keycode = KEY_P
+	assert_bool(InputMap.action_has_event("pw_open_map", key_ev)).is_true()
+	var joy_ev := InputEventJoypadButton.new()
+	joy_ev.button_index = JOY_BUTTON_BACK
+	assert_bool(InputMap.action_has_event("pw_open_map", joy_ev)).is_true()
+
+
+func test_keybinds_back_event_helper() -> void:
+	# is_back_event：ESC 键与手柄 Ⓑ 均为返回；Ⓐ 不是
+	var esc := InputEventKey.new()
+	esc.keycode = KEY_ESCAPE
+	esc.pressed = true
+	assert_bool(KeyBindsScript.is_back_event(esc)).is_true()
+	var joy_b := InputEventJoypadButton.new()
+	joy_b.button_index = JOY_BUTTON_B
+	joy_b.pressed = true
+	assert_bool(KeyBindsScript.is_back_event(joy_b)).is_true()
+	var joy_a := InputEventJoypadButton.new()
+	joy_a.button_index = JOY_BUTTON_A
+	joy_a.pressed = true
+	assert_bool(KeyBindsScript.is_back_event(joy_a)).is_false()
+	# 未按下不触发
+	joy_b.pressed = false
+	assert_bool(KeyBindsScript.is_back_event(joy_b)).is_false()
 
 
 func test_settings_save_preserves_keybinds_section() -> void:
@@ -107,3 +177,24 @@ func test_leaderboard_dead_board_not_resurrected() -> void:
 	var cmap: Dictionary = (_LB_DEFS as Script).get_script_constant_map()
 	assert_bool(cmap.has("LEADERBOARD_CATEGORIES")).is_false()
 	assert_dict(_LB_DEFS.get_leaderboard("time_attack_best")).is_empty()
+
+
+## S17/S13（v6.20.2）：发行导出必须排除两个开发桥插件的编辑器侧文件——
+## 但 runtime/ 的 autoload 桥脚本要保留（有 OS.is_debug_build 自守卫，release 零行为），
+## 整目录排除 runtime = 导出包 autoload 断链启动炸。
+func test_export_excludes_dev_addons_but_keeps_runtime_bridges() -> void:
+	var f := FileAccess.open("res://export_presets.cfg", FileAccess.READ)
+	assert_object(f).is_not_null()
+	var text := f.get_as_text()
+	f.close()
+	var excludes := ""
+	for line in text.split("\n"):
+		if line.begins_with("exclude_filter="):
+			excludes = line
+			break
+	assert_str(excludes).is_not_empty()
+	for must in ["addons/agent_tools/tools/*", "addons/agent_tools/server.gd*",
+			"addons/godot_ai/clients/*", "addons/godot_ai/plugin.gd*", "addons/opencode.json"]:
+		assert_str(excludes).contains(must)
+	assert_bool(excludes.contains("addons/agent_tools/runtime")).is_false()
+	assert_bool(excludes.contains("addons/godot_ai/runtime")).is_false()

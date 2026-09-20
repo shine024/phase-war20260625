@@ -194,7 +194,7 @@ static func current_font_size(base_size: int) -> int:
 # —— 四系统签名色 ——
 const COLOR_AMBER := Color(0.961, 0.620, 0.043, 1)          # #f59e0b 强化 · 提升
 const COLOR_AMBER_SOFT := Color(0.984, 0.749, 0.141, 1)     # #fbbf24
-const COLOR_AMBER_DEEP := Color(0.706, 0.325, 0.035, 1)     # #b45309
+const COLOR_AMBER_DEEP := Color(0.706, 0.325, 0.035, 1)     # #b45309 ⚠对比度探针 S3 FAIL：对深底 2.8~4.0:1 不达标（当前零消费），仅限浅底描边、禁止作深底文本色
 const COLOR_CYAN_TECH := Color(0.024, 0.714, 0.831, 1)      # #06b6d4 改造 · 科技
 const COLOR_CYAN_TECH_SOFT := Color(0.133, 0.827, 0.933, 1) # #22d3ee
 const COLOR_VIOLET := Color(0.653, 0.546, 0.980, 1)         # #a78bfa 进化 · 蜕变

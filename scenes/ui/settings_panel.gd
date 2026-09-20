@@ -126,7 +126,7 @@ func _build_r6_sections() -> void:
 	# ── 键位段：可重绑动作行 + 恢复默认 ──
 	var kb_title := Label.new()
 	kb_title.name = "KeybindsTitle"
-	kb_title.text = "键位设置（ESC 固定为关闭面板，数字 1-9 固定为部署槽位）"
+	kb_title.text = "键位设置（ESC/手柄Ⓑ固定关闭面板，数字 1-9 固定部署槽位；\n手柄导航：十字键/左摇杆移动、Ⓐ 确认。键盘与手柄键分开重绑，互不覆盖）"
 	kb_title.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
 	kb_title.add_theme_color_override("font_color", DT.COLOR_CYAN_TECH)
 	scroll_vbox.add_child(kb_title)
@@ -161,7 +161,7 @@ func _refresh_keybind_labels() -> void:
 		if btn == null:
 			continue
 		if _capturing_action == a.id:
-			btn.text = "按任意键…（ESC 取消）"
+			btn.text = "按键盘键 / 手柄键…（ESC 或 Ⓑ 取消）"
 		else:
 			btn.text = KeyBinds.get_binding_label(a.id)
 
@@ -181,15 +181,34 @@ func _on_keybinds_reset_pressed() -> void:
 
 
 func _input(event: InputEvent) -> void:
-	# R6-1：键位重绑捕捉（按键即绑定；ESC 取消；结束后统一延迟收尾防止本帧键事件漏进 main）
-	if _capturing_action.is_empty() or not (event is InputEventKey):
+	# R6-1：键位重绑捕捉（键盘键/手柄键按即绑定，双设备各自独立保存；ESC 或手柄 Ⓑ 取消；
+	# 结束后统一延迟收尾防止本帧事件漏进 main）
+	if _capturing_action.is_empty():
+		return
+	var is_key := event is InputEventKey
+	var is_joy := event is InputEventJoypadButton
+	if not is_key and not is_joy:
 		return
 	if not event.is_pressed() or event.is_echo():
 		return
 	get_viewport().set_input_as_handled()
-	var keycode: int = (event as InputEventKey).keycode
-	if keycode != KEY_ESCAPE:
+	if is_key:
+		var keycode: int = (event as InputEventKey).keycode
+		if keycode == KEY_ESCAPE:
+			_cancel_capture()
+			return
 		KeyBinds.set_binding(_capturing_action, keycode)
+	else:
+		var jb: int = (event as InputEventJoypadButton).button_index
+		if jb == JOY_BUTTON_B:
+			_cancel_capture()
+			return
+		KeyBinds.set_binding_joy(_capturing_action, jb)
+	_capturing_action = ""
+	call_deferred("_end_capture")
+
+
+func _cancel_capture() -> void:
 	_capturing_action = ""
 	call_deferred("_end_capture")
 

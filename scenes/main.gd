@@ -379,8 +379,9 @@ func _on_current_level_changed(_level: int) -> void:
 func _input(event: InputEvent) -> void:
 	if not is_inside_tree():
 		return
-	# 只处理键盘事件
-	if not event is InputEventKey:
+	# 键盘 + 手柄按键（S4：pw_* 动作经 KeyBinds 注册的 joypad 绑定走同一消费链；
+	# 数字 1-9 部署槽保持键盘专属）
+	if not (event is InputEventKey or event is InputEventJoypadButton):
 		return
 
 	if not event.is_pressed():
@@ -413,8 +414,8 @@ func _input(event: InputEvent) -> void:
 			_on_pause_pressed()
 			return
 		# P2-14: 数字键 1-9 快捷进入部署模式（第 N 个有战斗卡的绿槽，与点击槽位同链路；
-		# 固定数字键，不进重绑表）
-		if event.keycode >= KEY_1 and event.keycode <= KEY_9:
+		# 固定数字键，不进重绑表；手柄事件无 keycode，保持键盘专属）
+		if event is InputEventKey and event.keycode >= KEY_1 and event.keycode <= KEY_9:
 			var slot_no: int = event.keycode - KEY_1 + 1
 			if bottom_instrument_bar and bottom_instrument_bar.has_method("begin_deploy_from_slot_index"):
 				bottom_instrument_bar.begin_deploy_from_slot_index(slot_no)
@@ -495,6 +496,8 @@ func _open_overlay(overlay: Control, panel_key: String = "") -> void:
 	# 先显示，再fade in（v25 UI：开合过渡统一走 PanelAnim，尊重减少动效）
 	overlay.visible = true
 	PanelAnim.open(overlay)
+	# S4 手柄菜单导航：接手柄时焦点落首个可聚焦控件（十字键即可移动；纯键鼠不吞焦点环）
+	PanelAnim.focus_first.call_deferred(overlay)
 	# v25.2 面板开合音（此前仅基地 bunker_main 播，主场景 17 个 overlay 全哑）
 	if SignalBus and SignalBus.has_signal("play_sound"):
 		SignalBus.play_sound.emit("panel_open")

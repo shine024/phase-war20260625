@@ -66,6 +66,8 @@ func _ready() -> void:
 				dev_btn.visible = false
 	# v21 余烬要塞：基地主枢纽入口（程序化创建，样式复刻继续按钮，插在其下方）
 	_add_bunker_button()
+	# S17：制作人员/许可页入口（v6.20.2，代码构建不碰 tscn；须在 _apply_button_tiers 前建好）
+	_add_credits_button()
 	# v26.9: 按钮层级（主操作实心/次操作描边/开发按钮弱化）——统一走 PanelStyles 工厂
 	_apply_button_tiers()
 	# v28 T2: 主标题落地影——从背景画里托出来（深影 + 微弱青辉双层）
@@ -104,11 +106,36 @@ func _apply_button_tiers() -> void:
 	for bn in ["NewGameButton", "ContinueButton", "EnterBunkerButton", "EnterTruckBaseButton"]:
 		_style_tier_btn(vbox, bn, solid, 20, Color(0.03, 0.10, 0.14), Color(0.03, 0.10, 0.14))
 	# 次操作：描边 ghost + 白字/青悬停
-	for bn in ["SettingsButton", "QuitButton"]:
+	for bn in ["SettingsButton", "CreditsButton", "QuitButton"]:
 		_style_tier_btn(vbox, bn, ghost, 18, Color(1, 1, 1, 0.92), accent)
 	# 开发按钮：灰 ghost 弱化（debug 构建才可见）
 	for bn in ["SwitchSlotButton", "CombatCheckButton", "ReplayIntroButton"]:
 		_style_tier_btn(vbox, bn, dev_ghost, 13, Color(0.62, 0.65, 0.72), Color(0.8, 0.84, 0.9))
+
+
+## S17：制作人员/许可页入口按钮（代码构建插在「退出」上方，ghost 层级随 _apply_button_tiers）
+func _add_credits_button() -> void:
+	var vbox := get_node_or_null("CenterContainer/MainVBox/ButtonsVBox")
+	if vbox == null or vbox.get_node_or_null("CreditsButton") != null:
+		return
+	var btn := Button.new()
+	btn.name = "CreditsButton"
+	btn.text = "制 作 人 员"
+	vbox.add_child(btn)
+	var quit_btn := vbox.get_node_or_null("QuitButton")
+	if quit_btn != null:
+		vbox.move_child(btn, quit_btn.get_index())
+	btn.pressed.connect(_on_credits)
+
+
+func _on_credits() -> void:
+	# v6.20.1 踩坑纪律：新脚本消费方一律 preload，不走全局 class_name（headless/gdunit
+	# 类缓存未登记会解析失败）；幂等防重开按 /root 子节点名判
+	if get_node_or_null("/root/CreditsPanel") != null:
+		return
+	var panel: Control = preload("res://scripts/ui/credits_panel.gd").new()
+	panel.name = "CreditsPanel"
+	get_tree().root.add_child(panel)
 
 
 func _style_tier_btn(vbox: Node, btn_name: String, styles: Dictionary, font_size: int,
