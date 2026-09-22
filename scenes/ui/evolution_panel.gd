@@ -1128,7 +1128,10 @@ func _rebuild_pool_bars(mgr: Node, card_id: String) -> void:
 
 func _make_pool_bar(rarity: String, pct: float) -> Control:
 	var wrap := VBoxContainer.new()
-	wrap.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	# v38.x N 条: 品质概率条限宽 320 + 居中——原 EXPAND_FILL 吃满中栏剩余宽（~660px），
+	# "中间品质概率池太宽"主诉（实机验收⑨）。不挪 tscn 节点层级（宪法红线）。
+	wrap.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	wrap.custom_minimum_size = Vector2(320.0, 0.0)
 	var head := HBoxContainer.new()
 	var name_lbl := Label.new()
 	name_lbl.text = GC.get_rarity_name(rarity)

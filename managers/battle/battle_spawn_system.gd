@@ -789,6 +789,11 @@ func request_player_deploy(platform_card_id: String, world_pos: Vector2, battle_
 			player_unit_count = live_count  # 同步缓存，保持后续逻辑一致
 		if live_count >= max_units:
 			_emit_deploy_failed("max_units", "我方单位数量已达上限（%d/%d）。" % [live_count, max_units])
+			# v38.x B 条: 首次触顶弹一次性提示——上限=绿槽装备的战斗卡数（关卡 6 上限同理），
+			# 想多上就多装战斗卡（相位仪绿槽）
+			FeatureUnlockPopup.show_once("deploy_cap_hint",
+				"上场数量已达上限 %d/%d" % [live_count, max_units],
+				"上限 = 相位仪绿槽装备的战斗卡数，多装战斗卡即可多上场")
 			return false
 	# v7.x 修复（同名卡部署属性相同）：调用方现在可能传 instance_id（cold_t72#1）或裸 card_id。
 	# "同卡上限"检查需要裸 card_id（统计同名卡装备数/存活数），故先剥离 #序号 得到 base_card_id。

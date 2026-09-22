@@ -198,6 +198,7 @@ func _ready() -> void:
 	_update_energy_display()
 	_build_synergy_label()
 	_build_preset_ui()
+	_build_deploy_count_label()
 	_refresh_all()
 	# 布局完成后，让格子高度精确填满条的可用空间
 	call_deferred("_fit_slots_to_bar")
@@ -494,6 +495,44 @@ func _update_energy_display() -> void:
 
 ## BU-1：底栏右端「菜单」按钮——展开/收起功能按钮抽屉（BottomFunctionBar），
 ## 把 15 个功能入口从战场视觉里收起来；红点聚合角标由 set_menu_badge 驱动。
+## v38.x B 条: NameSection 常显"在场 n/上限 m"——第6关"只能上场6个哪里有说"主诉。
+## 上限口径与 BattleSpawnSystem 一致（PhaseInstrumentManager 绿槽战斗卡数）；
+## 在场数走战场实时 recount；刷新挂 unit_spawned/unit_died 信号。
+var _deploy_count_label: Label = null
+
+func _build_deploy_count_label() -> void:
+	if name_section == null or not is_instance_valid(name_section):
+		return
+	_deploy_count_label = Label.new()
+	_deploy_count_label.name = "DeployCountLabel"
+	_deploy_count_label.add_theme_font_size_override("font_size", 11)
+	_deploy_count_label.add_theme_color_override("font_color", Color(0.65, 0.85, 1.0, 0.95))
+	_deploy_count_label.tooltip_text = "在场单位数 / 可上场上限\n上限 = 绿槽装备的战斗卡数，场上另受 3×3 格子截断"
+	name_section.add_child(_deploy_count_label)
+	if SignalBus.has_signal("unit_spawned"):
+		SignalBus.unit_spawned.connect(_on_deploy_count_dirty)
+	if SignalBus.has_signal("unit_died"):
+		SignalBus.unit_died.connect(_on_deploy_count_dirty)
+	_refresh_deploy_count()
+
+
+func _on_deploy_count_dirty(_unit: Node, _is_player: bool) -> void:
+	_refresh_deploy_count()
+
+
+func _refresh_deploy_count() -> void:
+	if _deploy_count_label == null or not is_instance_valid(_deploy_count_label):
+		return
+	var max_units: int = 0
+	if PhaseInstrumentManager != null:
+		max_units = PhaseInstrumentManager.get_max_deployable_units()
+	var live: int = 0
+	if BattleManager != null and is_instance_valid(BattleManager) \
+			and BattleManager.has_method("recount_player_units_on_field"):
+		live = BattleManager.recount_player_units_on_field()
+	_deploy_count_label.text = "在场 %d / 上限 %d" % [live, max_units]
+
+
 func _setup_menu_button() -> void:
 	var hbox: HBoxContainer = get_node_or_null("Margin/HBox") as HBoxContainer
 	if hbox == null:
@@ -990,6 +1029,11 @@ func _refresh_deploy_keycaps() -> void:
 			and int(panel.get_meta("card_type", -1)) == GC.CardType.COMBAT_UNIT
 		if deployable:
 			n += 1
+		# v38.x I 条: tooltip 补键位语义——数字角标被误读成"关1 2 3"，点明"按 N 键部署"
+		if deployable:
+			var base_tip: String = String(panel.get_meta("deploy_tooltip_base", panel.tooltip_text))
+			panel.set_meta("deploy_tooltip_base", base_tip)
+			panel.tooltip_text = base_tip + "\n\n按 %d 键直接部署该单位" % n
 		KeycapBadge.bind_to_digit(panel, n if deployable else 0)
 
 ## 增量更新单个格子的内容和样式（避免每次重建所有格子）
@@ -1161,28 +1205,72 @@ func _is_card_platform_restricted(card: CardResource) -> bool:
 
 ## 让格子高度精确填满条的可用高度（抵消 PanelContainer content_margin 等开销）
 ## v21.x: 槽位宽度固定为 13 格（green9+rune4，最大槽数）布局的宽度——槽少也不放大，
-## 所有相位仪格子同宽。不依赖 slot_section.size.x（布局未稳定时为0不可靠），直接按视口宽扣除固定元素计算。
+## 所有相位仪格子同宽。
+## v38.x H 条: 弃纯视口反推，改布局后实测——HBox 实宽减可见兄弟实测宽（菜单钮隐藏
+## 不计，truck 内嵌实例不再被幽灵 48px 预算吃掉半格）+「阵」按钮实测计入 slot 内开销。
+## 布局未稳定（首帧 size≈0）回退旧视口估算。
 func _fit_slots_to_bar() -> void:
 	if not is_instance_valid(slot_section):
 		return
 	var available_h: float = slot_section.size.y
 	if available_h < 1.0:
 		available_h = BAR_FIXED_HEIGHT
-	# 按视口宽度计算槽位可用宽度，扣除固定元素（v26.x 按真实最小宽估算，消除运行时溢出）：
-	# margin(16) + 自动按钮(48) + 图标(48) + 名称区(120，相位场容器 120×28 实际下限，
-	# 旧按 100 估导致 ~20px 缺口全部转嫁给槽位区) + InstrumentSection间距(12) + 分隔线(2)
-	# + HBox间距(6) + BU-1 菜单按钮(48+间距6) + 外层悬浮边距(32) + 20px 安全余量
 	var viewport_width: float = get_viewport_rect().size.x
 	if viewport_width <= 1.0:
 		viewport_width = 1280.0
-	var reserved_w: float = 16.0 + 48.0 + 48.0 + 120.0 + 12.0 + 2.0 + 6.0 + 48.0 + 6.0 + 32.0 + 20.0  # ≈ 358px
-	var slot_available_w: float = maxf(200.0, viewport_width - reserved_w)
+	var slot_available_w: float = -1.0
+	var hbox: Container = null
+	if instrument_section != null and is_instance_valid(instrument_section) \
+			and instrument_section.get_parent() is Container:
+		hbox = instrument_section.get_parent() as Container
+	if hbox != null and hbox.size.x > 1.0:
+		# ── 实测路径 ──
+		var overhead: float = 0.0
+		var visible_n: int = 0
+		for child in hbox.get_children():
+			var c: Control = child as Control
+			if c == null or not c.visible:
+				continue
+			visible_n += 1
+			if c == instrument_section:
+				continue
+			overhead += maxf(c.size.x, c.get_combined_minimum_size().x)
+		overhead += float(hbox.get_theme_constant("separation")) * float(maxi(0, visible_n - 1))
+		# InstrumentSection 内非槽位开销：图标 / 名称区 / 自动按钮 + 区内间距
+		var section_inner: float = 0.0
+		var sec_visible_n: int = 0
+		for child in instrument_section.get_children():
+			var c2: Control = child as Control
+			if c2 == null or not c2.visible:
+				continue
+			sec_visible_n += 1
+			if c2 == slot_section:
+				continue
+			section_inner += maxf(c2.size.x, c2.get_combined_minimum_size().x)
+		section_inner += float(instrument_section.get_theme_constant("separation")) * float(maxi(0, sec_visible_n - 1))
+		# MarginContainer 左右 content margin（16）+ 少量安全余量（分隔线/圆角裁切）
+		slot_available_w = maxf(200.0, hbox.size.x - overhead - section_inner - 16.0 - 4.0)
+	if slot_available_w < 0.0:
+		# ── fallback：布局未稳定，按视口反推（v26.x 估算保留）──
+		var reserved_w: float = 16.0 + 48.0 + 48.0 + 120.0 + 12.0 + 2.0 + 6.0 + 48.0 + 6.0 + 32.0 + 20.0  # ≈ 358px
+		slot_available_w = maxf(200.0, viewport_width - reserved_w)
 	var separation: float = 6.0
+	# v38.x H 条: slot_section 内非槽位可见子（「阵」按钮 34px 等）实测计入开销
+	var slot_overhead: float = 0.0
+	var slot_panels_set: Dictionary = {}
+	for p in _slot_panels:
+		if p and is_instance_valid(p):
+			slot_panels_set[p] = true
+	for child in slot_section.get_children():
+		var c3: Control = child as Control
+		if c3 == null or not c3.visible or slot_panels_set.has(c3):
+			continue
+		slot_overhead += maxf(c3.size.x, c3.get_combined_minimum_size().x) + separation
 	# v21.x: 固定宽度——恒按最大槽数 _FIXED_WIDTH_SLOT_REF(13) 格计算（12 个间距），
 	# 无论当前实际几格（3/5/8/10/13），所有相位仪格子同宽，切相位仪时格子大小不变。
 	# 上限90px（宽屏不放大），下限40px（窄屏再窄看不清）。
 	var full_total_sep: float = separation * float(_FIXED_WIDTH_SLOT_REF - 1)
-	var full_dynamic_w: float = maxf(40.0, (slot_available_w - full_total_sep) / float(_FIXED_WIDTH_SLOT_REF))
+	var full_dynamic_w: float = maxf(40.0, (slot_available_w - full_total_sep - slot_overhead) / float(_FIXED_WIDTH_SLOT_REF))
 	_slot_width = minf(full_dynamic_w, SLOT_FIXED_SIZE.x)
 	for p in _slot_panels:
 		if p and is_instance_valid(p):

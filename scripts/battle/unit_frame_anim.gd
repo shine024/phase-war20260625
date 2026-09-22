@@ -72,7 +72,45 @@ static func _resolve_key_impl(anim_id: String) -> String:
 		if ResourceLoader.exists(ANIM_ROOT + vis_fb + "/sheet_idle.png") \
 				and ResourceLoader.exists(ANIM_ROOT + vis_fb + "/anim.json"):
 			return vis_fb
+	## v6.21: 视觉别名兜底（纯动画层，勿动 EnemyCardModMap 的情报/进化语义）。
+	## 背景（实机反馈"相位师敌方卡有些单位分帧动画错误/站桩"）：
+	##   a) C 段卡动画素材已做但目录名与卡 id 错位（ww1_mgnest↔ww1_sup_mg_nest 等）；
+	##   b) 相位师战争平台直以平台 id 出生（steel_fortress_basic 等），无 UCT 条目。
+	## 落点均为完备 sheet 型目录（sheet_idle+sheet_attack+anim.json）。
+	var alias: String = String(ANIM_ALIAS.get(String(anim_id), ""))
+	if not alias.is_empty() \
+			and ResourceLoader.exists(ANIM_ROOT + alias + "/sheet_idle.png") \
+			and ResourceLoader.exists(ANIM_ROOT + alias + "/anim.json"):
+		return alias
 	return ""
+
+
+## v6.21 动画别名表（id → 动画目录）。仅 UnitFrameAnim 解析链尾兜底消费；
+## cold_boss_mig / fut_boss_nexus 走 BossIdleAnim 单帧系统，不在此列。
+const ANIM_ALIAS := {
+	# C 段敌方卡：目录命名与卡 id 错位（素材已在库）
+	"ww1_sup_mg_nest": "ww1_mgnest",
+	"ww2_boss_kingtiger": "ww2_kingtiger",
+	"ww2_inf_panzerschreck_e": "ww2_pschreck",
+	"cold_arm_btr_e": "cold_btr",
+	"cold_air_m113_e": "cold_m113",
+	"cold_inf_ak": "cold_ak",
+	"mod_inf_delta_e": "mod_delta",
+	"mod_boss_command": "mod_command",
+	"mod_air_apache_e": "mod_apache_e",
+	"fut_air_drone": "fut_drone",
+	"fut_arm_mech_e": "fut_mech",
+	"fut_boss_nexus": "fut_nexus",
+	# 相位师战争平台（enemy_phase_platforms.json，直以平台 id 出生）
+	"steel_fortress_basic": "ww1_fort_pillbox",
+	"steel_titan_basic": "ww1_av7",
+	"flame_raider_basic": "ww1_storm",
+	"flame_siege_basic": "ww1_arty_77mm",
+	"thunter_striker_basic": "ww1_storm",
+	"thunter_sniper_basic": "ww2_inf_kar98k",
+	"void_stealth_basic": "fut_inf_x9",
+	"void_mage_basic": "vis_xeno_adept",
+}
 
 
 static func _load_json(path: String) -> Dictionary:

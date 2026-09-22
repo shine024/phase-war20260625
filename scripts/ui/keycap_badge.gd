@@ -68,10 +68,13 @@ static func _ensure_badge(host: Control) -> Label:
 	badge.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
 	badge.add_theme_constant_override("outline_size", 3)
 	var sb := StyleBoxFlat.new()
-	sb.bg_color = Color(DT.COLOR_PANEL_DEEP.r, DT.COLOR_PANEL_DEEP.g, DT.COLOR_PANEL_DEEP.b, 0.92)
+	# v38.x I 条: 底框改键帽造型——圆角 6 + 底部 2px 深色厚边（键盘键帽侧壁的立体读感）
+	# + bg 提亮（原 COLOR_PANEL_DEEP 暗底与面板同色系融底，角标"隐形"被误读成卡名"关1 2 3"）。
+	sb.bg_color = Color(DT.COLOR_PANEL_DEEP.r + 0.16, DT.COLOR_PANEL_DEEP.g + 0.16, DT.COLOR_PANEL_DEEP.b + 0.18, 0.95)
 	sb.border_color = Color(0, 0, 0, 0.65)
 	sb.set_border_width_all(1)
-	sb.set_corner_radius_all(3)
+	sb.border_width_bottom = 2
+	sb.set_corner_radius_all(6)
 	sb.content_margin_left = 3.0
 	sb.content_margin_right = 3.0
 	sb.content_margin_top = 0.0

@@ -297,7 +297,8 @@ func _play_card_hit_recoil() -> void:
 		_card_tween.kill()
 	const RECOIL_MAX_RAD: float = 0.22
 	var rest_r: float = 0.0
-	position = _rest_position
+	# v38.x D 条: 删 position = _rest_position 硬复位——recoil 只独占 rotation；
+	# 此前瞬间拉回部署点会打断进行中的 knockback 位移（实机验收⑬"一会左一会右"）。
 	rotation = rest_r
 	_card_tween = create_tween()
 	var peak_r: float = rest_r + RECOIL_MAX_RAD
@@ -1097,9 +1098,9 @@ func _should_retain_current_target() -> bool:
 	var acq: float = _enemy_acquisition_range()
 	if global_position.distance_squared_to(target.global_position) > acq * acq:
 		return false
-	# v36 实机验收（直射前排优先）：同排更靠前玩家单位出现 → 放弃锁定重选（与玩家侧对称）
+	# v36 实机验收（直射前排优先）→ v38.x 扩为跨排：更靠前玩家单位出现 → 放弃锁定重选（与玩家侧对称）
 	var wt_now: int = _get_weapon_type_for_targeting()
-	if not GC.is_indirect_weapon_type(wt_now) and ConstructUnitAI.has_more_forward_same_row_target(
+	if not GC.is_indirect_weapon_type(wt_now) and ConstructUnitAI.has_more_forward_target(
 			self, minf(acq, ConstructUnitAI.FRONT_SWITCH_CHECK_RANGE)):
 		return false
 	return true
@@ -1128,23 +1129,23 @@ func _find_target(_delta: float) -> void:
 		if BattleManager and BattleManager.spatial_grid:
 			var spatial_grid = BattleManager.spatial_grid
 			if spatial_grid:
-				# 使用空间网格查询最近目标（O(1)复杂度）
-				var nearest_target = spatial_grid.query_nearest_target(
-					global_position,
-					false,  # 敌方单位
-					acq
-				)
-				# v9.2: 分行索敌——同行优先，最近目标不同行时尝试找同行最近；无同行则接受原目标（跨行回退）
-				if nearest_target != null and not CardGridBattleLayout.units_in_same_row(self, nearest_target):
-					var same_row_t: Node2D = _query_nearest_same_row_player(spatial_grid, acq)
-					if same_row_t != null:
-						nearest_target = same_row_t
-				# v20.15: 真隐身过滤——最近目标隐身且敌方无侦测源时放弃，落到下方传统扫描重选
-				if nearest_target != null and not CardAbilityManager.is_unit_targetable(nearest_target, self):
-					nearest_target = null
-				if nearest_target != null:
-					target = nearest_target
-					return
+				# v38.x 直射前排优先：盒扫候选统一交给 select_target_direct 三键选优
+				# （前向 x → 同带内同排 → 距离/HP），与玩家侧同构——取代 v9.2
+				# "最近+同行覆盖"两步（同行优先压过前排，跨排更前的玩家单位被无视）。
+				var e_cands: Array = spatial_grid.query_enemies(global_position, acq, false)
+				var e_cand_nodes: Array = []
+				for c in e_cands:
+					if c == null or not is_instance_valid(c) or not (c is Node2D):
+						continue
+					# v20.15: 真隐身过滤——隐身且敌方无侦测源时跳过
+					if not CardAbilityManager.is_unit_targetable(c, self):
+						continue
+					e_cand_nodes.append(c)
+				if not e_cand_nodes.is_empty():
+					var sel_t: Node2D = TargetSelection.select_target_direct(self, e_cand_nodes)
+					if sel_t != null:
+						target = sel_t
+						return
 
 		# 回退到传统方法（如果空间网格不可用）
 		var tree = get_tree()
@@ -1155,13 +1156,10 @@ func _find_target(_delta: float) -> void:
 		var attack_range_sq := acq * acq
 		var gr: Array = BattleManager.get_cached_nodes_in_group("player_units") if BattleManager else get_tree().get_nodes_in_group("player_units")
 		var found_alive: bool = false
-		# v9.2: 分行索敌——两遍扫描：先找同行射程内目标，无则跨行（避免单位空转）
-		# v10(H8): fallback 与 spatial_grid 路径口径对齐——取"最近"而非"组顺序第一个"
-		# （原两套规则使同单位的目标选择依赖网格可用性）
-		var same_row_hit: Node2D = null
-		var same_row_best_d2: float = INF
-		var any_row_hit: Node2D = null
-		var any_row_best_d2: float = INF
+		# v38.x 直射前排优先：射程内候选收集后统一走 select_target_direct 三键排序
+		# （前向 x → 同带内同排 → 距离/HP），取代 v9.2 same_row/any_row 两遍扫描——
+		# 旧口径同行优先压过前排，跨排更前的目标被无视。
+		var scan_cands: Array = []
 		for n in gr:
 			if not CombatTargeting.is_attackable_combat_unit(n):
 				continue
@@ -1173,20 +1171,11 @@ func _find_target(_delta: float) -> void:
 			# 隐身单位在场不算"场上无单位"，不触发转打相位场）
 			if not CardAbilityManager.is_unit_targetable(n2d, self):
 				continue
-			var dist_sq := global_position.distance_squared_to(n2d.global_position)
-			if dist_sq > attack_range_sq:
+			if global_position.distance_squared_to(n2d.global_position) > attack_range_sq:
 				continue
-			if dist_sq < any_row_best_d2:
-				any_row_best_d2 = dist_sq
-				any_row_hit = n2d
-			if CardGridBattleLayout.units_in_same_row(self, n2d) and dist_sq < same_row_best_d2:
-				same_row_best_d2 = dist_sq
-				same_row_hit = n2d
-		if same_row_hit != null:
-			target = same_row_hit
-			return
-		if any_row_hit != null:
-			target = any_row_hit
+			scan_cands.append(n2d)
+		if not scan_cands.is_empty():
+			target = TargetSelection.select_target_direct(self, scan_cands)
 			return
 
 		# 我方场上无单位时，攻击我方相位场
@@ -1259,28 +1248,7 @@ func _collect_player_candidates(acq: float) -> Array:
 	return result
 
 
-## v9.2: spatial_grid 行过滤辅助——敌方直射索敌时，在射程内找同行最近的玩家单位。
-## 复用 spatial_grid.query_enemies 拿半径内所有玩家方单位（敌方视角 is_player=false 查玩家），
-## 按同行过滤后取最近；无同行返回 null。
-func _query_nearest_same_row_player(spatial_grid: Node, max_range: float) -> Node2D:
-	# query_enemies(position, radius, is_player) 中 is_player 是"中心方是否为玩家"，
-	# 敌方单位查玩家方目标时 is_player=false（敌方不是玩家），返回玩家方单位。
-	var players: Array = spatial_grid.query_enemies(global_position, max_range, false)
-	if players.is_empty():
-		return null
-	var best: Node2D = null
-	var best_d2: float = INF
-	for p in players:
-		if p == null or not is_instance_valid(p) or not (p is Node2D):
-			continue
-		if not CardGridBattleLayout.units_in_same_row(self, p):
-			continue
-		var d2: float = global_position.distance_squared_to((p as Node2D).global_position)
-		if d2 < best_d2:
-			best_d2 = d2
-			best = p
-	return best
-
+## （v38.x 删除 _query_nearest_same_row_player——v9.2 同行覆盖步随直射三键排序退役）
 
 ## v8: stealth 单位优先级索敌——优先打指挥单位(platform_type==12)，其次光环单位。
 ## 与 ConstructUnitAI._scan_slot_targets 的 L1/L2 口径对齐（AURA=[3,4,5,8,9,10,12]）。
@@ -1941,6 +1909,12 @@ func _enforce_card_grid_lane_alignment() -> void:
 		return
 	if not _cached_is_card_grid:
 		return
+	# v38.x D 条: 受击动画活跃期跳过格吸附——knockback 位移/受击缩放/受击后仰进行中
+	# 逐帧瞬移回锚点会把演出打断成"一会左一会右"抖动（实机验收⑬）。
+	if _hit_shake_t >= 0.0 \
+			or (_knockback_tween != null and _knockback_tween.is_valid()) \
+			or (_card_tween != null and _card_tween.is_valid()):
+		return
 	var esi: int = int(get_meta("card_grid_enemy_slot", -1))
 	if esi < 0:
 		return
@@ -2096,14 +2070,17 @@ func _update_psi_shield_ring() -> void:
 		return
 	if _psi_ring == null:
 		_psi_ring = Line2D.new()
-		_psi_ring.width = 2.0
+		_psi_ring.width = 3.0
 		_psi_ring.default_color = Color(0.45, 0.85, 1.0, 0.85)
 		_psi_ring.z_index = 8
 		add_child(_psi_ring)
-	var radius: float = 30.0 + 12.0 * ratio
+	var radius: float = 34.0 + 12.0 * ratio
+	# v38.x G 条: 全圆环 → 上半穹顶弧（与我方护盾罩同视觉语言，两侧下垂 ~20°）
 	var pts: PackedVector2Array = PackedVector2Array()
+	var dome_a0: float = PI - 0.35
+	var dome_a1: float = TAU + 0.35
 	for i in range(25):
-		var ang: float = TAU * float(i) / 24.0
+		var ang: float = lerpf(dome_a0, dome_a1, float(i) / 24.0)
 		pts.append(Vector2(cos(ang), sin(ang)) * radius)
 	_psi_ring.points = pts
 	_psi_ring.visible = true

@@ -2,19 +2,29 @@ extends RefCounted
 class_name TargetSelection
 ## v5.0: 三种选敌逻辑
 
+const CardGridLayout = preload("res://scripts/card_grid_battle_layout.gd")  # v38.x: 直射三键②同排 tiebreak
+
 enum TargetMode { DIRECT, INDIRECT, AERIAL }
 
 ## v8.x: 远程单位阈值——attack_range >= 此值视为远程，参与暴击标注集火优先
 const REMOTE_RANGE_THRESHOLD: float = 250.0
 
-## 直射: 距离最近 → 同距最低HP → 同距同HP最早部署
-## 超出射程时向敌方基地方向移动（由调用方处理，此处只选目标）
+## v38.x 直射前排优先：同 x 容差（px）——与 ConstructUnitAI.FRONT_SWITCH_TOL_PX 同口径
+const DIRECT_FRONT_TOL_PX: float = 12.0
+
+## 直射三键排序（v38.x 实机验收"直射前排优先"）：
+##   ① 前向进度（朝敌方方向 x 极值，容差 DIRECT_FRONT_TOL_PX）——跨排更前的目标压过同排靠后目标；
+##   ② 同前进带内同排优先（保住 v9.2 分行索敌的道纪律作 tiebreak）；
+##   ③ 距离最近 → 同距（容差内）最低 HP。
+## 超出射程时向敌方基地方向移动（由调用方处理，此处只选目标；射程过滤由调用方完成）
 ## P1 性能优化：单遍手写循环找最优，避免 sort/filter/lambda 分配
 static func select_target_direct(attacker: Node2D, enemies: Array) -> Node2D:
 	if enemies.is_empty():
 		return null
 	var origin = attacker.global_position
 	var best: Node2D = null
+	var best_fwd: float = -INF
+	var best_same_row: bool = false
 	var best_dist_sq: float = INF
 	var best_hp: float = INF
 	const SAME_DIST_TOL_SQ: float = 100.0  # 10^2
@@ -22,7 +32,10 @@ static func select_target_direct(attacker: Node2D, enemies: Array) -> Node2D:
 	# 空中目标——伤害侧已禁止对空回退，索敌侧同步过滤，避免锁定飞机后干站。
 	var stats = attacker.get("stats") as UnitStats
 	var can_hit_air: bool = stats != null and stats.attack_air > 0.0
-	# 单遍：找距离最近，同距（容差内）取最低 HP
+	# 前向口径与 has_more_forward_target 一致：我方 x 减小为前，敌方 x 增大为前
+	var is_p: bool = bool(attacker.get("is_player")) if attacker.get("is_player") != null else true
+	var forward_sign: float = -1.0 if is_p else 1.0
+	# 单遍三键比较
 	for e in enemies:
 		if e == null or not is_instance_valid(e):
 			continue
@@ -35,20 +48,43 @@ static func select_target_direct(attacker: Node2D, enemies: Array) -> Node2D:
 			var es = e.get("stats") as UnitStats
 			if es != null and es.combat_kind == GameConstants.CombatKind.AIR:
 				continue
-		var d_sq: float = origin.distance_squared_to(e.global_position)
-		if d_sq < best_dist_sq - SAME_DIST_TOL_SQ:
-			# 明显更近，直接选
+		var e_fwd: float = forward_sign * (e as Node2D).global_position.x
+		var d_sq: float = origin.distance_squared_to((e as Node2D).global_position)
+		var e_same_row: bool = CardGridLayout.units_in_same_row(attacker, e)
+		if best == null:
 			best = e
+			best_fwd = e_fwd
+			best_same_row = e_same_row
 			best_dist_sq = d_sq
 			best_hp = float(e.hp) if "hp" in e else INF
-		elif absf(d_sq - best_dist_sq) <= SAME_DIST_TOL_SQ:
-			# 同距（容差内），取最低 HP
-			var e_hp: float = float(e.hp) if "hp" in e else INF
-			if e_hp < best_hp:
+			continue
+		if e_fwd > best_fwd + DIRECT_FRONT_TOL_PX:
+			# ① 严格更靠前，直接压过（跨排也生效）
+			best = e
+			best_fwd = e_fwd
+			best_same_row = e_same_row
+			best_dist_sq = d_sq
+			best_hp = float(e.hp) if "hp" in e else INF
+		elif best_fwd > e_fwd + DIRECT_FRONT_TOL_PX:
+			# ① 当前 best 明显更靠前，保留
+			continue
+		else:
+			# 同前进带：② 同排优先 → ③ 距离/HP
+			var take: bool = false
+			if e_same_row != best_same_row:
+				take = e_same_row
+			elif d_sq < best_dist_sq - SAME_DIST_TOL_SQ:
+				take = true
+			elif d_sq <= best_dist_sq + SAME_DIST_TOL_SQ:
+				var e_hp: float = float(e.hp) if "hp" in e else INF
+				if e_hp < best_hp:
+					take = true
+			if take:
 				best = e
-				best_hp = e_hp
-				if d_sq < best_dist_sq:
-					best_dist_sq = d_sq
+				best_fwd = e_fwd
+				best_same_row = e_same_row
+				best_dist_sq = minf(d_sq, best_dist_sq)
+				best_hp = float(e.hp) if "hp" in e else INF
 	return best
 
 ## 曲射: 优先被克制类型 → 无克制则最近 → 同距最低HP

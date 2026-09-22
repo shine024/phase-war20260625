@@ -1982,18 +1982,56 @@ func _on_territory_map_button() -> void:
 	# OccupationPanel 已静态实例化于 main.tscn（PopupLayer/OccupationOverlay/CenterContainer），
 	# 旧的 UILazyLoader.ensure_loaded("occupation") 守卫恒真（UILazyLoader 无此方法），导致按钮永远早退——已删。
 	var overlay = get_node_or_null("/root/Main/PopupLayer/OccupationOverlay")
-	if overlay == null:
-		return
-	# v6.14: 走 main 统一开关（开面板淡入动效，与其它 16 入口同路径）；
-	# 直接 visible=true 时 ESC/关闭链仍正常（close_top 按 visible 找），仅无动效。
 	var main = get_node_or_null("/root/Main")
-	if main != null and main.has_method("_open_overlay"):
+	# v6.21 K 条：独立/内嵌模式（从移动基地进图）main.tscn 不在场 → 本场景自持懒实例化，
+	# 与 main.tscn 的 overlay 同构（Backdrop+CenterContainer+OccupationPanel）。
+	if overlay == null:
+		overlay = _ensure_local_occupation_overlay()
+		if overlay == null:
+			return
+		overlay.visible = true
+	elif main != null and main.has_method("_open_overlay"):
+		# v6.14: 走 main 统一开关（开面板淡入动效，与其它 16 入口同路径）；
+		# 直接 visible=true 时 ESC/关闭链仍正常（close_top 按 visible 找），仅无动效。
 		main._open_overlay(overlay, "occupation")
 	else:
 		overlay.visible = true
 	var panel = overlay.get_node_or_null("CenterContainer/OccupationPanel")
 	if panel and panel.has_method("_refresh_all"):
 		panel._refresh_all()
+
+var _local_occupation_overlay: Control = null
+
+## v6.21 K 条：懒建势力领面板弹层（仅 main 不在场时使用）。panel 的 closed 信号自己收层。
+func _ensure_local_occupation_overlay() -> Control:
+	if _local_occupation_overlay != null and is_instance_valid(_local_occupation_overlay):
+		return _local_occupation_overlay
+	var panel_scene: PackedScene = load("res://scenes/ui/occupation_panel.tscn")
+	if panel_scene == null:
+		return null
+	var overlay := Control.new()
+	overlay.name = "OccupationOverlay"
+	overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	overlay.visible = false
+	overlay.mouse_filter = Control.MOUSE_FILTER_STOP
+	var backdrop := ColorRect.new()
+	backdrop.name = "Backdrop"
+	backdrop.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	backdrop.color = Color(0, 0, 0, 0.55)
+	backdrop.mouse_filter = Control.MOUSE_FILTER_STOP
+	overlay.add_child(backdrop)
+	var center := CenterContainer.new()
+	center.name = "CenterContainer"
+	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	overlay.add_child(center)
+	var panel: Control = panel_scene.instantiate()
+	panel.name = "OccupationPanel"
+	center.add_child(panel)
+	if panel.has_signal("closed"):
+		panel.closed.connect(func(): overlay.visible = false)
+	add_child(overlay)
+	_local_occupation_overlay = overlay
+	return overlay
 
 func _on_level_selected(level_index: int) -> void:
 	# v26.26 一点即发：停靠关=战前准备（关卡情报/出击），其余节点=直接启程（连线+光点即走）

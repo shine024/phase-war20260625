@@ -91,6 +91,7 @@ var _fort_aura_hit_boost: float = 0.0
 ## 巨型能量罩(20000)/符文护盾/法则护盾等所有护盾源都走此路径，让"有护盾"可见化。
 var _shield_aura: Node2D = null
 var _shield_aura_hit_boost: float = 0.0  # 护盾吸收伤害时的承压闪光
+var _shield_aura_prev: float = 0.0       # v38.x G 条: 上帧盾值（盾破检测 → 击碎态触发）
 # v7.3 性能优化：光环降频 redraw + 仅变化时 set_meta。
 # 原实现每帧 set_meta×2 + queue_redraw（_draw 分配40段PackedVector2Array），20个护盾单位=20次重绘/帧。
 # 改为：hit_boost>0（承压闪光）时每帧 redraw；正常态每4帧 redraw 一次（呼吸2s周期，肉眼无感）。
@@ -1307,14 +1308,16 @@ func _ensure_fort_shield_aura() -> void:
 	_fort_shield_aura = aura
 
 ## v7.2: 创建护盾状态光环（shield>0 时懒创建）
+## v38.x G 条：穹顶罩画在立绘上方/血条（z=20）之下（z=5）；spawn_msec 驱动获得态动画
 func _ensure_shield_aura() -> void:
 	if _shield_aura != null and is_instance_valid(_shield_aura):
 		return
 	var aura: Node2D = Node2D.new()
 	aura.set_script(FortShieldAuraScript)
 	aura.name = "ShieldAura"
-	aura.z_index = -2  # 护盾环画在堡垒环之外（更外层"罩"）
+	aura.z_index = 5  # 穹顶罩在立绘上（立绘 z=0）、血条下（OVERHEAD_UI_Z=20）
 	aura.set_meta(&"mode", "shield")
+	aura.set_meta(&"spawn_msec", Time.get_ticks_msec())
 	aura.visible = false  # 默认隐藏，shield>0 时才显示
 	add_child(aura)
 	_shield_aura = aura
@@ -1368,8 +1371,18 @@ func _update_fort_shield_aura(delta: float) -> void:
 			# v7.3: 承压闪光或比例变化时每帧 redraw，正常态每4帧一次
 			if _shield_aura_hit_boost > 0.0 or (_aura_low_freq_frame % 4) == 0:
 				_shield_aura.queue_redraw()
-	elif _shield_aura != null and is_instance_valid(_shield_aura):
-		_shield_aura.visible = false  # 护盾耗尽，隐藏（节点保留，下次获得护盾复用）
+			# v38.x G 条: 击碎态自隐藏兜底清除（动画早已结束的残留 breaking meta）
+			if _shield_aura.has_meta(&"breaking_msec"):
+				_shield_aura.remove_meta(&"breaking_msec")
+		elif _shield_aura != null and is_instance_valid(_shield_aura):
+			# v38.x G 条: 盾破瞬间进击碎态（0.3s 扩张淡出，aura 自隐藏），动画期不强制 visible=false
+			if _shield_aura_prev > 0.0 and not _shield_aura.has_meta(&"breaking_msec"):
+				_shield_aura.set_meta(&"breaking_msec", Time.get_ticks_msec())
+				_shield_aura.visible = true
+				_shield_aura.queue_redraw()
+			elif not _shield_aura.has_meta(&"breaking_msec"):
+				_shield_aura.visible = false  # 护盾耗尽，隐藏（节点保留，下次获得护盾复用）
+		_shield_aura_prev = shield
 	# v7.3: 帧计数推进（用于降频 redraw）
 	_aura_low_freq_frame += 1
 
@@ -1753,6 +1766,12 @@ func _clamp_inside_battlefield() -> void:
 
 func _enforce_card_grid_lane_alignment() -> void:
 	if not _cached_is_card_grid:
+		return
+	# v38.x D 条对称: 受击动画活跃期跳过格吸附（与 enemy_unit 同病同修）——
+	# knockback 位移/受击缩放/受击后仰进行中逐帧瞬移回锚点 = 抖动源。
+	if _hit_shake_t >= 0.0 \
+			or (_knockback_tween != null and _knockback_tween.is_valid()) \
+			or (_card_tween != null and _card_tween.is_valid()):
 		return
 	var bf: Node = BattleManager.battlefield if BattleManager else null
 	if bf == null:

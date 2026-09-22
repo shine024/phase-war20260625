@@ -2843,6 +2843,48 @@ static func spawn_variant_overlay(parent: Node2D, world_pos: Vector2, weapon_typ
 			_spawn_gun_missile_trail(parent, world_pos, is_player)
 
 
+## ======================================================================
+## v38.x: 巡航导弹（发射井 cold_fort_missile"反舰巡航导弹"）专属命中签名层
+## 叠加在通用三层之上（gun_missile 变体同款叠加模式，不 return 不替换）：
+## 冷白重爆炸 = 大白闪 + 双冲击环 + 双烟团 + 贴地扬尘。
+## 刻意不做全屏震/镜头推近——与 45s 核打击演出分层；震屏走 bullet 既有
+## explosion_radius 线性通道（v38.x F 条红线：勿直写相机，v32.0 B1-2）。
+## ======================================================================
+static func spawn_cruise_impact(parent: Node2D, world_pos: Vector2) -> void:
+	if BattleTimeState.ff_active:
+		return
+	if parent == null or not is_instance_valid(parent):
+		return
+	if DT.is_motion_reduce():
+		return
+	# ① 冷白光学大闪（通用爆炸族 flash 是 130px 暖橙——巡航导弹用更大更冷的读感锚）
+	OPTICS.flash(parent, world_pos, Color(0.85, 0.95, 1.0), 170.0, 1.6, 0.35)
+	# ② 主冲击环（冷白 110px）+ 0.12s 余波环（150px 半透明，重弹双波次）
+	var cold: Color = Color(0.88, 0.95, 1.0, 0.85)
+	spawn_shockwave(parent, world_pos, 110.0, cold)
+	var tree: SceneTree = Engine.get_main_loop() as SceneTree
+	if tree != null:
+		var weak_parent: WeakRef = weakref(parent)
+		var captured_pos: Vector2 = world_pos  # 值类型，lambda 直接捕获安全
+		tree.create_timer(0.12).timeout.connect(func():
+			var wp: Node2D = weak_parent.get_ref() as Node2D
+			if wp == null or not is_instance_valid(wp):
+				return
+			spawn_shockwave(wp, captured_pos, 150.0, Color(cold.r, cold.g, cold.b, 0.4)))
+	# ③ 双烟团（左右错开，走 debris 池；烟色冷灰白呼应弹体 tint）
+	var smoke_cold: Color = Color(0.78, 0.84, 0.92)
+	_spawn_smoke_puff_layer(parent, world_pos + Vector2(-26, -8), smoke_cold, 9,
+		{"amount": 5, "life": 0.9, "smin": 2.4, "smax": 3.8, "color": smoke_cold})
+	_spawn_smoke_puff_layer(parent, world_pos + Vector2(26, -14), smoke_cold, 9,
+		{"amount": 4, "life": 0.8, "smin": 2.0, "smax": 3.2, "color": smoke_cold})
+	# ④ 贴地扬尘（low_dust 横向低矮宽扇——重弹着地的推土尘幕，v8.x 曲射落地先例）
+	_spawn_debris(parent, world_pos + Vector2(0, 6), {
+		"amount": 10, "life": 0.7, "vmin": 70.0, "vmax": 150.0,
+		"smin": 2.6, "smax": 4.2, "is_smoke": true, "low_dust": true,
+		"smoke_color": Color(0.62, 0.58, 0.50, 0.45),
+	}, Color.WHITE, 9)
+
+
 ## 子母弹：主爆炸周围撒布 6 个小溅射点（子弹药分离）
 static func _spawn_cluster_burst(parent: Node2D, pos: Vector2, is_player: bool) -> void:
 	if DT.is_motion_reduce():

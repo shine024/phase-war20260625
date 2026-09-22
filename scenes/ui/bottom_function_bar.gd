@@ -130,6 +130,10 @@ const KEYCAP_ACTION_BY_KEY: Dictionary = {
 ## 三态同一布局（右缘悬浮竖列），不再随 battle_started 横竖切换；战斗态仅过滤键集
 ## （技能/改造/制造为独立解锁功能，战斗中不出现）。
 const BATTLE_HIDDEN_KEYS: Array = ["progression", "modification", "evolution"]
+## v38.x J 条（用户拍板）：技能/改造/制造仅在移动基地（truck_base 工位）操作——
+## 整备主场景底栏抽屉三键常隐（本栏只挂在 main.tscn）。按钮/信号保留：
+## get_button_for_key（v6.20 教程聚光口）与各 pressed 信号仍可解析/连接。
+const MAIN_HIDDEN_KEYS: Array = ["progression", "modification", "evolution"]
 ## 战斗态（仅影响键可见性，不影响布局）
 var _battle_mode: bool = false
 
@@ -140,6 +144,10 @@ func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	_build_left_buttons()
 	_build_right_buttons()
+	# v38.x J 条: 三键常隐（仅在移动基地操作）；节点保留供教程聚光解析
+	for mk in MAIN_HIDDEN_KEYS:
+		if _btn_map.has(mk):
+			_btn_map[mk].visible = false
 	# v34 渐进解锁：改造(L6)/制造(L2)/挂机(L5) 按节奏表灰显（真身 feature_unlock_schedule.gd，
 	# 2026-09-19 修正过期注释 L3/L5）；跨级解锁信号实时刷新
 	_refresh_feature_gates()
@@ -216,6 +224,9 @@ func _set_battle_keys_visibility(in_battle: bool) -> void:
 	set_drawer_open(false, false)
 	for key in BATTLE_HIDDEN_KEYS:
 		if _btn_map.has(key):
+			# v38.x J 条: 三键整备场景常隐，战斗态可见性切换不再染指
+			if key in MAIN_HIDDEN_KEYS:
+				continue
 			_btn_map[key].visible = not in_battle
 
 ## BU-1：抽屉开合。展开 = 淡入 + 自底生长（0.2s SINE OUT），收起反向 0.15s。
