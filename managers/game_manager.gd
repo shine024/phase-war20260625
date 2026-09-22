@@ -1168,11 +1168,7 @@ func _grant_phase_master_victory_reward(master_name: String) -> void:
 		if not faction_id.is_empty():
 			fsm.add_faction_reputation(faction_id, 30)
 
-	# 6. 检查并完成任务委托（进攻/防守任务）
-	ManagerLazyLoader.ensure_loaded("quest")
-	var qm: Node = get_node_or_null("/root/QuestManager")
-	if qm and qm.has_method("notify_phase_master_defeated"):
-		qm.notify_phase_master_defeated(master_name)
+	# v6.22: 任务委托 attack/defend 战争框架已退役（原 notify_phase_master_defeated 挂钩删除）
 
 	if not faction_id.is_empty() and DEBUG_GAME_LOG:
 		pass  # LOG: 势力声望 +30

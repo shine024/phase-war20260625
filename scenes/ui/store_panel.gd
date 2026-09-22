@@ -37,7 +37,7 @@ var _items_dirty: bool = false
 var _row_style_normal: StyleBox
 var _row_style_locked: StyleBoxFlat
 
-## 全局访问声望阈值（8级 = 6200声望）
+## 全局访问贡献阈值（8级 = 6200贡献）
 const GLOBAL_ACCESS_THRESHOLD: int = 6200
 
 func _ready() -> void:
@@ -51,7 +51,7 @@ func _ready() -> void:
 	_build_company_tabs()
 	_refresh_balance()
 	# 批次三 B2b：余额行就地解释"全域访问"的解锁条件
-	balance_label.tooltip_text = "任一势力声望达到 6200（8 级）后激活全域访问：可在所有公司购物，不再受当前公司限制"
+	balance_label.tooltip_text = "任一势力贡献达到 6200（8 级）后激活全域访问：可在所有公司购物，不再受当前公司限制"
 	# _ready 只做轻量初始化（余额 + 公司 tab），商品列表重建交给 on_overlay_opened 拆帧，
 	# 避免首次实例化时 40+ 节点全挤一帧（LazyLoader 实例化即 visible 时由 _run_open_refresh_pipeline 兜底）。
 	# 监听资源变动，实时刷新余额和购买按钮状态
@@ -172,7 +172,7 @@ func _get_company_name(cid: String) -> String:
 	var cfg: Dictionary = CompanyDefs.get_by_id(cid)
 	return cfg.get("name", cid)
 
-## 检查是否启用全局访问（任一势力声望达到阈值）
+## 检查是否启用全局访问（任一势力贡献达到阈值）
 
 func _has_global_access() -> bool:
 	var fsm: Node = get_node_or_null("/root/FactionSystemManager")
@@ -188,7 +188,7 @@ func _has_global_access() -> bool:
 
 	return false
 
-## 获取玩家最高势力声望
+## 获取玩家最高势力贡献
 
 func _get_max_faction_reputation() -> int:
 	var fsm: Node = get_node_or_null("/root/FactionSystemManager")
@@ -215,7 +215,7 @@ func _refresh_balance() -> void:
 	# 显示全局访问状态
 	if _has_global_access():
 		var max_rep = _get_max_faction_reputation()
-		balance_label.text = "%s　　全域访问已激活（最高声望：%d）" % [base_text, max_rep]
+		balance_label.text = "%s　　全域访问已激活（最高贡献：%d）" % [base_text, max_rep]
 	else:
 		balance_label.text = base_text
 
@@ -274,7 +274,7 @@ func _build_rune_items_section(current_rep: int) -> void:
 	item_list.add_child(title)
 	# 渲染每个符文商品
 	var current_nano: int = BasicResourceManager.get_total(BasicResources.ID_NANO_MATERIALS)
-	# v30 R2b：符文消费货币=功勋（不再扣声望等级）
+	# v30 R2b：符文消费货币=功勋（不占用贡献等级）
 	var merit_now: int = int(fsm.get_merit_points()) if fsm.has_method("get_merit_points") else 0
 	var RuneDefsForStore = preload("res://data/runes.gd")
 	for it in rune_items:
@@ -361,7 +361,7 @@ func _build_rune_items_section(current_rep: int) -> void:
 		if not eff_line.is_empty():
 			rune_tip.append(eff_line)
 		rune_tip.append("价格：%d 功勋（当前 %d）" % [rep_cost, merit_now])
-		rune_tip.append("功勋由战斗胜利/攻克关卡/任务获得，不占用声望等级")
+		rune_tip.append("功勋由战斗胜利/攻克关卡/任务获得，消费不占用贡献等级")
 		if already_owned:
 			rune_tip.append("✓ 已拥有")
 		elif merit_now < rep_cost:
@@ -371,7 +371,7 @@ func _build_rune_items_section(current_rep: int) -> void:
 		item_list.add_child(row)
 
 
-## v26.11(A1.2): 势力补给 · 声望特购区。
+## v26.11(A1.2): 势力补给 · 功勋特购区。
 ## FactionShop.get_faction_store_items 的商品分四类，此前只有 RUNE 进了符文区，
 ## 其余被静默丢弃（TODO_BACKLOG 高价值#2："势力装备/卡牌商品全部不可见"）。本区补齐：
 ## - MATERIAL（type 1）：纳米/合金包、stat_boost 永久强化、lore_page 资料包
@@ -383,7 +383,7 @@ func _build_faction_shop_extras_section(_current_rep: int) -> void:
 	var fsm: Node = get_node_or_null("/root/FactionSystemManager")
 	if fsm == null or not fsm.has_method("get_faction_store_items"):
 		return
-	# v30 R2b：特购区消费货币=功勋（声望等级不再因购买下跌）
+	# v30 R2b：特购区消费货币=功勋（贡献等级不因消费下跌）
 	var merit_now: int = int(fsm.get_merit_points()) if fsm.has_method("get_merit_points") else 0
 	var all_items: Array = fsm.get_faction_store_items(_current_company_id)
 	var extras: Array = []
@@ -407,7 +407,7 @@ func _build_faction_shop_extras_section(_current_rep: int) -> void:
 	title.add_theme_color_override("font_color", DT.COLOR_GOLD)
 	item_list.add_child(title)
 	var merit_note := Label.new()
-	merit_note.text = "功勋由战斗胜利/攻克关卡/任务/势力事件获得——消费不占用声望等级"
+	merit_note.text = "功勋由战斗胜利/攻克关卡/任务/势力事件获得——消费不占用贡献等级"
 	merit_note.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
 	merit_note.add_theme_color_override("font_color", DT.COLOR_TEXT_DIM)
 	item_list.add_child(merit_note)
@@ -516,7 +516,7 @@ func _describe_faction_extra_item(item_id: String, is_card: bool, rep_cost: int)
 			return "随机解锁一页势力背景档案"
 	return "势力补给品"
 
-## v26.11(A1.2): 购买势力补给/声望特购商品（走 fsm.purchase_item 正规链：验声望→扣→发放→失败回退）
+## v26.11(A1.2): 购买势力补给/功勋特购商品（走 fsm.purchase_item 正规链：验功勋与贡献等级→扣→发放→失败回退）
 func _on_buy_faction_extra(it, row_node: Control) -> void:
 	var fsm: Node = get_node_or_null("/root/FactionSystemManager")
 	if fsm == null or not fsm.has_method("purchase_item"):
@@ -539,7 +539,7 @@ func _on_buy_faction_extra(it, row_node: Control) -> void:
 	_refresh_items()
 
 
-## v6.2: 购买符文（v30 R2b：消费货币从声望改为功勋，不再拉低声望等级）
+## v6.2: 购买符文（v30 R2b：消费货币=功勋，不拉低贡献等级）
 func _on_buy_rune(rune_id: String, rep_cost: int, row_node: Control) -> void:
 	var fsm: Node = get_node_or_null("/root/FactionSystemManager")
 	if fsm == null:

@@ -2,7 +2,7 @@ extends Node
 ## 势力系统管理器（委托层）：管理7个组织的贡献、商品库存、技能树、事件等
 ##
 ## 本文件作为 Autoload 入口，保持对外公共 API 不变。
-## 声望计算逻辑已拆分到 managers/faction/faction_reputation.gd
+## 声望计算逻辑已拆分到 managers/faction/faction_reputation.gd（v6.22 起 UI 口径=贡献，轴与阈值不变）
 ## 商店逻辑已拆分到 managers/faction/faction_shop.gd
 ##
 ## v6.22 贡献驱动改版：背景设定改为"集体穿越、人皆迷失"——
@@ -32,7 +32,7 @@ signal active_faction_changed(faction_id: String)
 signal faction_skill_unlocked(faction_id: String, skill_id: String)
 signal faction_event_generated(event: Dictionary)
 
-## 全局声望数据：faction_id -> 声望值（0-10000）
+## 全局贡献数据：faction_id -> 贡献值（0-10000；存档键/内部字段名沿用 reputation 不改）
 var faction_reputation: Dictionary = {}
 
 ## 势力等级：faction_id -> 等级（1-10）
@@ -48,8 +48,8 @@ var active_faction: String = ""
 var exclusive_cards_granted: Array = []
 
 ## v30 R2b（设计审查 F-04 根治，2026-09-13）：功勋——势力商店/符文的消费货币。
-## 语义分离：声望=等级进度轴（只反映立场变化，不再被消费拉低）；功勋=全局可花货币，
-## 与正声望增量 1:1 镜像获取（相位师战/关卡反应/任务/事件）。购买扣功勋不扣声望。
+## 语义分离：贡献=等级进度轴（只升不降，不再被消费拉低）；功勋=全局可花货币，
+## 与正贡献增量 1:1 镜像获取（任务/事件/相位师战）。购买扣功勋不扣贡献。
 const DEFAULT_STARTING_MERIT := 500
 var merit_points: int = DEFAULT_STARTING_MERIT
 
@@ -107,15 +107,15 @@ func _init_faction_data() -> void:
 		_all_faction_ids.append(faction_id)
 
 # ─────────────────────────────────────────────
-#  声望操作（委托给 FactionReputation）
+#  贡献操作（委托给 FactionReputation；UI 口径=贡献）
 # ─────────────────────────────────────────────
 
-## 增加或减少某个势力的声望
+## 增加或减少某个势力的贡献
 func add_faction_reputation(faction_id: String, delta: int) -> int:
 	if not faction_reputation.has(faction_id):
 		return 0
 
-	# v26.15b: 声望获取加成消费（resource 桶 reputation_bonus 此前零消费）。
+	# v26.15b: 贡献获取加成消费（resource 桶 reputation_bonus 此前零消费）。
 	# 只对正增益生效（购买扣减不走加成）；按该势力自己的技能状态计。
 	if delta > 0 and faction_skill_states.has(faction_id):
 		var rep_bonus: float = FactionSkillManager.get_resource_value(faction_skill_states[faction_id], faction_id, "reputation_bonus")
@@ -126,29 +126,29 @@ func add_faction_reputation(faction_id: String, delta: int) -> int:
 	var result: Dictionary = FactionReputation.apply_delta(old_rep, delta)
 	faction_reputation[faction_id] = result["new_rep"]
 
-	# v30 R2b：正声望增量 1:1 镜像为功勋（含 reputation_bonus 加成后的最终值）。
+	# v30 R2b：正贡献增量 1:1 镜像为功勋（含 reputation_bonus 加成后的最终值）。
 	# 购买扣减（delta<0）不镜像——功勋只赚不亏，消费走 merit_points 直扣。
 	if delta > 0:
 		merit_points += delta
 		FeatureUnlockPopup.show_once("merit_intro", "获得功勋",
-			"战斗胜利、攻克关卡与完成任务都会积累功勋——势力补给与符文现在用功勋支付，不再占用声望等级。")
+			"完成任务与事件会同时积累贡献与功勋——势力补给与符文用功勋支付，不占用贡献等级。")
 
 	if result["leveled_up"]:
 		faction_level[faction_id] = result["new_level"]
 		_update_faction_store_for_level_up(faction_id)
-		# v6.2: 声望升级奖励 — 每3级赠送1个该势力专属符文
+		# v6.2: 贡献升级奖励 — 每3级赠送1个该势力专属符文
 		_grant_reputation_level_reward(faction_id, result["new_level"])
 		# v6.6: 检查并发放达到等级门槛的势力独占卡
 		_grant_exclusive_cards_on_level_up(faction_id, result["new_rep"])
 		emit_signal("faction_level_up", faction_id, result["new_level"])
-		# 批次三 B4：首次声望升级一句话说明（之后升级靠面板自身反馈）
-		FeatureUnlockPopup.show_once("faction_level_up", "势力声望提升",
-			"%s 声望达到 %d 级——更高声望解锁更多商店商品与专属奖励；达到 6200（8级）可激活商店全域访问。" % [get_faction_display_name(faction_id), int(result["new_level"])])
+		# 批次三 B4：首次贡献升级一句话说明（之后升级靠面板自身反馈）
+		FeatureUnlockPopup.show_once("faction_level_up", "势力贡献提升",
+			"%s 贡献达到 %d 级——更高贡献解锁更多商店商品与专属奖励；达到 6200（8级）可激活商店全域访问。" % [get_faction_display_name(faction_id), int(result["new_level"])])
 
 	emit_signal("faction_reputation_changed", faction_id, delta, result["new_rep"])
 	return result["new_rep"]
 
-## v6.2: 声望等级奖励 — 每3级（Lv3/6/9）赠送1个该势力专属符文
+## v6.2: 贡献等级奖励 — 每3级（Lv3/6/9）赠送1个该势力专属符文
 func _grant_reputation_level_reward(faction_id: String, new_level: int) -> void:
 	if new_level % 3 != 0:
 		return  # 仅在 Lv3/6/9 触发
@@ -187,7 +187,7 @@ func _grant_exclusive_cards_on_level_up(faction_id: String, new_rep: int) -> voi
 		var min_rep: int = int(cfg.get("min_reputation", 99999))
 		if card_id.is_empty():
 			continue
-		# 声望达标且未发放过
+		# 贡献达标且未发放过
 		if new_rep >= min_rep and not exclusive_cards_granted.has(card_id):
 			# 注册到 DefaultCards 动态缓存（使 get_card_by_id 可用）
 			var DefaultCards = preload("res://data/default_cards.gd")
@@ -208,7 +208,7 @@ func _grant_exclusive_cards_on_level_up(faction_id: String, new_rep: int) -> voi
 			exclusive_cards_granted.append(card_id)
 			# v7.x 战报一致性修复：势力专属卡实际已入包，但原路径不调 collect_battle_card，
 			# 导致战报"本局缴获"区不显示这些卡（玩家得到了但战报没写）。
-			# 时序安全：声望升级由任务/事件/相位师战奖励触发（同步链），面板弹出在 call_deferred
+			# 时序安全：贡献升级由任务/事件/相位师战奖励触发（同步链），面板弹出在 call_deferred
 			#（下一帧），本局收集器此时仍存活，补记的条目会被面板读到。
 			var _gm_collector: Node = get_node_or_null("/root/GameManager")
 			if _gm_collector != null and _gm_collector.has_method("collect_battle_card"):
@@ -268,7 +268,7 @@ func get_faction_store_items(faction_id: String) -> Array[FactionShop.StoreItem]
 	var level: int = get_faction_level(faction_id)
 	return FactionShop.get_faction_store_items(faction_id, level)
 
-## 检查是否可以购买（v30 R2b：货币轴=功勋；等级门沿用声望等级）
+## 检查是否可以购买（v30 R2b：货币轴=功勋；等级门沿用贡献等级）
 func can_purchase_item(faction_id: String, item: FactionShop.StoreItem) -> Dictionary:
 	return FactionShop.can_purchase_item(merit_points, get_faction_level(faction_id), item)
 
@@ -292,7 +292,7 @@ func add_merit(amount: int) -> void:
 	merit_points += amount
 
 ## 购买物品
-## v30 R2b：消费货币从声望改为功勋（声望等级不再因购买下跌）；等级门与库存检查不变。
+## v30 R2b：消费货币=功勋（贡献等级不因消费下跌）；等级门与库存检查不变。
 func purchase_item(faction_id: String, item: FactionShop.StoreItem) -> Dictionary:
 	var can: Dictionary = can_purchase_item(faction_id, item)
 	if not can.get("ok", false):
@@ -430,7 +430,7 @@ func load_state(data: Dictionary) -> void:
 	# 原实现仅非空档路径初始化 → 新游戏（空字典）整局 _event_manager==null，
 	# 势力事件系统静默失效；且读档后再开新档会残留上一局事件/忠诚度状态。
 	_init_event_manager()
-	# 新游戏：SaveManager 传入空字典，必须整表重置（否则仍保留上一局的声望）
+	# 新游戏：SaveManager 传入空字典，必须整表重置（否则仍保留上一局的贡献）
 	if data.is_empty():
 		_init_faction_data()
 		merit_points = DEFAULT_STARTING_MERIT  # v30 R2b：功勋重置

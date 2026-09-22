@@ -214,6 +214,13 @@ func _victory_sweep() -> void:
 	_collect_all_staggered(reduce)
 
 
+## v6.22: 回收计数上报（培养性委托 salvage_items；QuestManager 不在场静默跳过）
+func _notify_salvage(count: int) -> void:
+	var qm: Node = get_node_or_null("/root/QuestManager")
+	if qm != null and qm.has_method("notify_items_salvaged"):
+		qm.notify_items_salvaged(count)
+
+
 func _collect_all_staggered(reduce: bool) -> void:
 	var all_items: Array = []
 	for child in get_children():
@@ -221,6 +228,8 @@ func _collect_all_staggered(reduce: bool) -> void:
 			all_items.append(child)
 	# 收拢节拍：总量越多步距越密，总时长钳在 ~0.9s + 单件 0.4s
 	var step: float = clampf(0.9 / maxf(1.0, float(all_items.size())), 0.02, 0.06)
+	if not all_items.is_empty():
+		_notify_salvage(all_items.size())
 	for i in all_items.size():
 		var item: LootItem = all_items[i]
 		if item != null and is_instance_valid(item):
@@ -544,6 +553,9 @@ class LootItem extends Node2D:
 		if collected or not is_inside_tree():
 			return
 		collected = true
+		var layer := get_parent()
+		if layer != null and layer.has_method("_notify_salvage"):
+			layer._notify_salvage(1)
 		var color := DT.COLOR_RES_NANO if ltype == GroundLootLayer.TYPE_NANO else DT.COLOR_RES_ENERGY
 		show_gain_float("+%d" % int(amount), color)
 		_vanish(0.22)

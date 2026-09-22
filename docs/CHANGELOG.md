@@ -9183,3 +9183,14 @@ MVP 协同小结、8 面板首开气泡。**R3 余项**：结算面板三页签�
 - **双轨商店收口**：`data/company_store.gd` + `data/json/company_store.json` 删除；store_panel 删 CompanyStore 纳米主卡列表（四区→三区：符文功勋轨/功勋特购/情报道具纳米轨），`_build_store_item_row`/`_on_buy_pressed` 整删 + 五个孤儿 preload 清理；特购区 CARD 全量渲染（去重对象已亡）；默认页签走 CompanyDefs 首个 id。perf_smoke ITEMS 段同步删。
 - **文案口径**（批2a 前置小步）：faction_panel 消费键 `historical_levels` + 「历史辖区：N 关」。
 - **验证**：gdparse 27 改动 .gd 零报错；残留符号 grep 全项目清零（豁免 _archived/docs/证据存档）；`tests/_tmp_faction_b1_smoke.gd` 43 断言全过；gdunit 全量 **459/459**（77 套件，含改写成就锁 3 用例）；master_power_smoke 8/8；--check-only 590s 超时未跑完全量预热但零 SCRIPT/Parse 错（AGENTS.md 已知限制，gdunit+smoke 为实际门禁）。
+
+## v6.22.1 势力贡献驱动改版批2：贡献语义换轴 + 任务改版 + 事件重写（2026-09-22，详见 docs/势力重构_贡献驱动改版_2026-09-22.md §5）
+
+**改任务系统/势力事件/教程势力步骤文案前必读本节。** 信号名/函数名/存档键全部不改（reputation 内部字段名保留，UI 口径=贡献）。
+
+- **2a 文案换轴（声望→贡献）全落点**：faction_panel（贡献：%d/贡献+%d/事件区）、quest_panel（贡献：%d、贡献 N/M）、store_panel（最高贡献/全域访问 tooltip/符文与特购区功勋说明）、faction_system_manager（merit_intro/faction_level_up 两弹窗文案 + 注释口径）、教程 FACTION_REP 步（"完成委托与事件提升 7 大组织的贡献"）、help_panel 势力条目整段重写（去同盟/竞争/敌对旧关系矩阵描述，改贡献/功勋双轴口径）。
+- **2b 新目标类型**（quest_manager）：`reach_intel`（目标 {archetype_id, target}，实时查 IntelManual.get_intel_progress ×100 取整，零信号照 reach_reputation 模式，助手 `_get_archetype_intel_percent`）+ `salvage_items`（内部计数 salvaged，`notify_items_salvaged(count)` 挂 ground_loot_layer `_quick_collect`/`_collect_all_staggered` 两收集汇总口经 `_notify_salvage` 上报）；get_target_for_display/is_quest_done/进度三分支同步；quest_panel 显示分支（情报 %d%%/%d%%、回收 N/M，顺手清 research_law 死分支）。
+- **2c 动态委托重写**（faction_quest_generator.gd 整文件重写）：FACTION_THEMES 补齐 7 家（+iron_wall_corp[21-60]/frontier_union[21-100]，level_range=历史辖区触发区段）；去 enemy_faction/master_name 战争框架；模板池三类九型=流程性（win_battles/kill_enemies）+培养性（collect_cards/enhance/buy_items/reach_intel/salvage_items）+目的性（clear_level/clear_boss_count），奖励键统一 faction_rep 只发正贡献；outcome_table 保留改协作文案。reach_intel 采样按时代前缀（ww1/ww2/cold/mod/fut）映射辖区区段。
+- **2c attack_faction/defend_faction 退役**：quest_manager 分支删（notify_phase_master_defeated 函数+进度/完成分支+get_quest_progress_for_mission 整函数+头注）+ game_manager 相位师战挂钩删；quest_definitions.json 57 条改版（6 条进攻/防守任务重定目标为 clear_boss_count/kill_enemies/win_battles 新口径；8 条 reach_reputation 僵尸任务重定新轴里程碑 1200/1500/2000/6200——旧目标 10/20/50 是旧 0-100 轴、真轴起始即达成=僵尸根因；全部奖励键统一 faction_rep、负贡献扣减清零、声望措辞清零）；data/quest_definitions.gd LEGACY_QUESTS + 头注同步。
+- **2d 势力事件重写**（faction_war_events.gd 整文件重写）：6 模板换新背景（遇险信号救援/遗迹物资分配/相位潮汐异常/留守设施抉择/车队维护轮值/情报共享协议），faction_a/b 两难抉择结构保留，奖励=贡献+物资；BONUS_EVENTS 死数据池删除（v6.22 批1 已随加成链删消费端）；faction_event_manager 改协作口径（贡献 toast、_apply_reputation_changes 只对被支持方发正贡献、对方势力扣减退役）；faction_panel 事件区图标 ⚔→✦。
+- **验证**：gdparse 全部改动文件零报错；--script 冒烟扩至 **56 断言全过**（+生成器 7 家/无 enemy_faction/master_name/attack_faction、qm 有 salvage 通知与情报助手、事件池 6 模板无 faction_bonus_duration）；gdunit 全量 **459/459**（77 套件）；quest json 类型分布核验（attack/defend 归零、无负贡献、无声望措辞）。

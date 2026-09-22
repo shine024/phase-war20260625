@@ -3,11 +3,11 @@ class_name FactionPanel
 ## 势力系统UI面板
 ## 
 ## 功能：
-## - 显示7个势力的信息（名称、描述、声望等级）
+## - 显示7个势力的信息（名称、描述、贡献等级）
 ## - 显示势力升级进度
 ## - 显示势力控制的关卡数量
 ## - 显示势力商店库存预览
-## - 实时更新势力声望变化
+## - 实时更新势力贡献变化
 
 const GC = preload("res://resources/game_constants.gd")
 const FactionSkillTree = preload("res://data/faction_skill_tree.gd")
@@ -188,7 +188,7 @@ func _update_faction_detail() -> void:
 	desc_label.custom_minimum_size = Vector2(0, 60)
 	faction_detail.add_child(desc_label)
 	
-	# 势力等级和声望
+	# 势力等级和贡献
 	var reputation = faction_info.get("reputation", 0)
 	var level = faction_info.get("level", 1)
 	var level_progress = faction_info.get("level_progress", {})
@@ -198,7 +198,7 @@ func _update_faction_detail() -> void:
 	faction_detail.add_child(level_label)
 	
 	var rep_label = Label.new()
-	rep_label.text = "声望：%d" % reputation
+	rep_label.text = "贡献：%d" % reputation
 	faction_detail.add_child(rep_label)
 	
 	# 升级进度条
@@ -256,7 +256,7 @@ func _update_faction_detail() -> void:
 	_append_faction_skill_tree(faction_mgr, selected_faction_id, level)
 
 # ═══ v26.11(A1.3): 势力事件决策区 ═══
-# 事件每 5 场战斗生成一次（toast 播报），此前玩家无处做选择、奖励只发声望。
+# 事件每 5 场战斗生成一次（toast 播报），此前玩家无处做选择、奖励只发贡献。
 # 本区块补齐决策 UI + 生效加成可见性。
 
 ## 事件决策区 + 生效加成显示（挂在详情区顶部）
@@ -285,7 +285,7 @@ func _append_active_faction_event(faction_mgr: Node) -> void:
 	var vb := VBoxContainer.new()
 	panel.add_child(vb)
 	var title_lbl := Label.new()
-	title_lbl.text = "⚔ 势力事件（等待你的抉择）"
+	title_lbl.text = "✦ 势力事件（等待你的抉择）"
 	title_lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_MEDIUM)
 	title_lbl.add_theme_color_override("font_color", DT.COLOR_GOLD)
 	vb.add_child(title_lbl)
@@ -327,7 +327,7 @@ func _append_active_faction_event(faction_mgr: Node) -> void:
 func _event_choice_button_text(choice_key: String, rw: Dictionary, evt: Dictionary, faction_mgr: Node) -> String:
 	var parts := PackedStringArray()
 	if rw.has("reputation"):
-		parts.append("声望+%d" % int(rw["reputation"]))
+		parts.append("贡献+%d" % int(rw["reputation"]))
 	if rw.has("skill_points"):
 		parts.append("技能点+%d" % int(rw["skill_points"]))
 	var nano: int = int(rw.get("nano", rw.get("nanomaterial", 0)))
@@ -343,7 +343,7 @@ func _event_choice_button_text(choice_key: String, rw: Dictionary, evt: Dictiona
 			return "支持 %s\n%s" % [fname, summary]
 	return "保持中立\n%s" % summary
 
-## 事件选择回调（走 fsm.resolve_faction_event 正规链：声望/忠诚度/奖励全字段结算）
+## 事件选择回调（走 fsm.resolve_faction_event 正规链：贡献/奖励全字段结算；忠诚度已随 v6.22 退役）
 func _on_event_choice_pressed(choice: String) -> void:
 	var faction_mgr = get_node_or_null("/root/FactionSystemManager")
 	if faction_mgr == null or not faction_mgr.has_method("resolve_faction_event"):
@@ -539,7 +539,7 @@ func _on_activate_faction_pressed(faction_id: String) -> void:
 	_update_faction_detail()
 
 func _on_faction_reputation_changed(faction_id: String, delta: int, new_value: int) -> void:
-	"""势力声望变化回调"""
+	"""势力贡献变化回调"""
 	# v9 perf：面板隐藏时置脏跳过（每过关最多 7 势力反应触发详情区重建）；
 	# 重新显示时 _on_visibility_refresh 补刷
 	if not is_visible_in_tree():

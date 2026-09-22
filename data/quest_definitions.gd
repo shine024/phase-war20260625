@@ -38,16 +38,13 @@ static func _load_json_array(path: String, fallback: Array) -> Array:
 ##
 ## objective_type:
 ##   - win_battles / kill_enemies / collect_fragments / clear_level: 通用任务
-##   - attack_faction: 进攻任务，击败某势力的相位师
-##   - defend_faction: 防守任务，保护某势力免受相位师进攻
+##   - （v6.22: attack_faction/defend_faction 战争框架已退役，委托改贡献驱动三类模板）
 ## target:
 ##   - win_battles→int场次
 ##   - kill_enemies→int数量
 ##   - collect_fragments：已废弃（v3），新任务用 collect_cards
-##   - attack_faction→{target_faction: 势力ID, target_master: 相位师名}
-##   - defend_faction→{defend_faction: 势力ID, attacker_master: 相位师名}
 ## rewards: { nano_materials; unlock_blueprint; ... }
-## company_rep 与 FactionSystemManager 声望同源（任务奖励仍可用 company_rep 键名）
+## faction_rep 与 FactionSystemManager 贡献轴同源（读侧保留 company_rep 旧键兼容；v6.22 新写统一 faction_rep）
 ##
 ## v6.9(势力占领): 动态任务与随机结果字段（向后兼容，缺省值不影响旧任务）
 ##   is_dynamic: 是否运行时生成的动态任务（由 FactionQuestGenerator 生成，QuestManager 注册）
@@ -68,7 +65,7 @@ const LEGACY_QUESTS: Array[Dictionary] = [
 		"company_id": "iron_wall_corp",
 		"rewards": {
 			"nano_materials": 30,
-			"company_rep": {"iron_wall_corp": 10},
+			"faction_rep": {"iron_wall_corp": 10},
 		},
 	},
 	{
@@ -80,7 +77,7 @@ const LEGACY_QUESTS: Array[Dictionary] = [
 		"company_id": "iron_wall_corp",
 		"rewards": {
 			"nano_materials": 75,
-			"company_rep": {"iron_wall_corp": 20},
+			"faction_rep": {"iron_wall_corp": 20},
 		},
 	},
 	{
@@ -92,7 +89,7 @@ const LEGACY_QUESTS: Array[Dictionary] = [
 		"company_id": "nova_arms",
 		"rewards": {
 			"nano_materials": 45,
-			"company_rep": {"nova_arms": 12},
+			"faction_rep": {"nova_arms": 12},
 		},
 	},
 	{
@@ -104,7 +101,7 @@ const LEGACY_QUESTS: Array[Dictionary] = [
 		"company_id": "nova_arms",
 		"rewards": {
 			"nano_materials": 120,
-			"company_rep": {"nova_arms": 20},
+			"faction_rep": {"nova_arms": 20},
 		},
 	},
 	{
@@ -116,7 +113,7 @@ const LEGACY_QUESTS: Array[Dictionary] = [
 		"company_id": "void_research",
 		"rewards": {
 			"nano_materials": 60,
-			"company_rep": {"void_research": 15},
+			"faction_rep": {"void_research": 15},
 		},
 	},
 	{
@@ -128,7 +125,7 @@ const LEGACY_QUESTS: Array[Dictionary] = [
 		"company_id": "frontier_union",
 		"rewards": {
 			"nano_materials": 45,
-			"company_rep": {"frontier_union": 12},
+			"faction_rep": {"frontier_union": 12},
 		},
 	},
 	{
@@ -140,7 +137,7 @@ const LEGACY_QUESTS: Array[Dictionary] = [
 		"company_id": "frontier_union",
 		"rewards": {
 			"nano_materials": 90,
-			"company_rep": {"frontier_union": 20},
+			"faction_rep": {"frontier_union": 20},
 		},
 	},
 	{
@@ -152,7 +149,7 @@ const LEGACY_QUESTS: Array[Dictionary] = [
 		"company_id": "quantum_logistics",
 		"rewards": {
 			"nano_materials": 36,
-			"company_rep": {"quantum_logistics": 10},
+			"faction_rep": {"quantum_logistics": 10},
 		},
 	},
 	{
@@ -164,7 +161,7 @@ const LEGACY_QUESTS: Array[Dictionary] = [
 		"company_id": "iron_wall_corp",
 		"rewards": {
 			"nano_materials": 150,
-			"company_rep": {"iron_wall_corp": 35},
+			"faction_rep": {"iron_wall_corp": 35},
 		},
 	},
 	{
@@ -176,7 +173,7 @@ const LEGACY_QUESTS: Array[Dictionary] = [
 		"company_id": "nova_arms",
 		"rewards": {
 			"nano_materials": 180,
-			"company_rep": {"nova_arms": 40},
+			"faction_rep": {"nova_arms": 40},
 		},
 	},
 	{
@@ -188,7 +185,7 @@ const LEGACY_QUESTS: Array[Dictionary] = [
 		"company_id": "frontier_union",
 		"rewards": {
 			"nano_materials": 135,
-			"company_rep": {"frontier_union": 30},
+			"faction_rep": {"frontier_union": 30},
 		},
 	},
 
@@ -196,46 +193,46 @@ const LEGACY_QUESTS: Array[Dictionary] = [
 
 	{
 		"id": "q_attack_void",
-		"title": "进攻：虚空相位",
-		"description": "击败虚空相位的驻守相位师「终焉之镰」，夺取其领地。",
-		"objective_type": "attack_faction",
-		"target": {"target_faction": "void_research", "target_master": "终焉之镰"},
+		"title": "铲除相位威胁",
+		"description": "击败 2 个相位师盘踞的首领关卡（每时代终点关），为新星兵工肃清前进通道。",
+		"objective_type": "clear_boss_count",
+		"target": 2,
 		"company_id": "nova_arms",
 		"rewards": {
-			"nano_materials": 240,
-			"faction_rep": {"nova_arms": 25, "void_research": -20},
+			"nano_materials": 300,
+			"faction_rep": {"nova_arms": 25},
 		},
 	},
 	{
 		"id": "q_attack_nova",
-		"title": "进攻：新星兵工",
-		"description": "击败新星兵工的驻守相位师「炽焰星痕」，夺取其领地。",
-		"objective_type": "attack_faction",
-		"target": {"target_faction": "nova_arms", "target_master": "炽焰星痕"},
+		"title": "火力破袭",
+		"description": "累计击毁 60 个敌方单位，为钢壁防务检验新一批装甲装备。",
+		"objective_type": "kill_enemies",
+		"target": 60,
 		"company_id": "iron_wall_corp",
 		"rewards": {
-			"nano_materials": 240,
-			"faction_rep": {"iron_wall_corp": 25, "nova_arms": -20},
+			"nano_materials": 300,
+			"faction_rep": {"iron_wall_corp": 25},
 		},
 	},
 	{
 		"id": "q_attack_aether",
-		"title": "进攻：以太动力",
-		"description": "击败以太动力的驻守相位师「雷霆判官」，瓦解其防御体系。",
-		"objective_type": "attack_faction",
-		"target": {"target_faction": "aether_dynamics", "target_master": "雷霆判官"},
+		"title": "协同演练",
+		"description": "胜利完成 5 场战斗，与以太动力校准后勤护送节奏。",
+		"objective_type": "win_battles",
+		"target": 5,
 		"company_id": "quantum_logistics",
 		"rewards": {
-			"nano_materials": 240,
-			"faction_rep": {"quantum_logistics": 25, "aether_dynamics": -20},
+			"nano_materials": 300,
+			"faction_rep": {"quantum_logistics": 25},
 		},
 	},
 	{
 		"id": "q_defend_iron",
-		"title": "防守：钢壁防务",
-		"description": "守住钢壁防务领地，击退来犯的敌方相位师。",
-		"objective_type": "defend_faction",
-		"target": {"defend_faction": "iron_wall_corp"},
+		"title": "关隘肃清",
+		"description": "攻克 1 个相位师盘踞的首领关卡，帮钢壁防务回收废弃装备。",
+		"objective_type": "clear_boss_count",
+		"target": 1,
 		"company_id": "iron_wall_corp",
 		"rewards": {
 			"nano_materials": 180,
@@ -244,10 +241,10 @@ const LEGACY_QUESTS: Array[Dictionary] = [
 	},
 	{
 		"id": "q_defend_frontier",
-		"title": "防守：边境联合",
-		"description": "守住边境联合领地，击退敌方相位师的进攻。",
-		"objective_type": "defend_faction",
-		"target": {"defend_faction": "frontier_union"},
+		"title": "商路护航",
+		"description": "累计击毁 50 个敌方单位，为边境联合的运输队打开安全通道。",
+		"objective_type": "kill_enemies",
+		"target": 50,
 		"company_id": "frontier_union",
 		"rewards": {
 			"nano_materials": 180,
@@ -256,10 +253,10 @@ const LEGACY_QUESTS: Array[Dictionary] = [
 	},
 	{
 		"id": "q_defend_helix",
-		"title": "防守：螺旋侦察",
-		"description": "守住螺旋侦察的侦察网络，击退来犯之敌。",
-		"objective_type": "defend_faction",
-		"target": {"defend_faction": "helix_recon"},
+		"title": "纵深侦察",
+		"description": "胜利完成 6 场战斗，为螺旋侦察带回纵深情报。",
+		"objective_type": "win_battles",
+		"target": 6,
 		"company_id": "helix_recon",
 		"rewards": {
 			"nano_materials": 180,
@@ -278,7 +275,7 @@ const LEGACY_QUESTS: Array[Dictionary] = [
 		"company_id": "iron_wall_corp",
 		"rewards": {
 			"nano_materials": 15,
-			"company_rep": {"iron_wall_corp": 5},
+			"faction_rep": {"iron_wall_corp": 5},
 		},
 	},
 	{
@@ -290,7 +287,7 @@ const LEGACY_QUESTS: Array[Dictionary] = [
 		"company_id": "void_research",
 		"rewards": {
 			"nano_materials": 45,
-			"company_rep": {"void_research": 10},
+			"faction_rep": {"void_research": 10},
 		},
 	},
 	{
@@ -302,7 +299,7 @@ const LEGACY_QUESTS: Array[Dictionary] = [
 		"company_id": "frontier_union",
 		"rewards": {
 			"nano_materials": 24,
-			"company_rep": {"frontier_union": 8},
+			"faction_rep": {"frontier_union": 8},
 		},
 	},
 	{
@@ -314,7 +311,7 @@ const LEGACY_QUESTS: Array[Dictionary] = [
 		"company_id": "quantum_logistics",
 		"rewards": {
 			"nano_materials": 30,
-			"company_rep": {"quantum_logistics": 8},
+			"faction_rep": {"quantum_logistics": 8},
 		},
 	},
 	# v20.31: q_tutorial_law（法则初探，objective_type=research_law）已删除——法则系统
@@ -322,14 +319,14 @@ const LEGACY_QUESTS: Array[Dictionary] = [
 	# 旧存档 accepted 列表里的残留 id 由 QuestManager 的 def.is_empty() 守卫安全跳过。
 	{
 		"id": "q_tutorial_faction",
-		"title": "势力接触",
-		"description": "与任意势力建立关系（声望达到 10）。",
+		"title": "组织联络",
+		"description": "任一组织对你的贡献达到 1200。",
 		"objective_type": "reach_reputation",
-		"target": 10,
+		"target": 1200,
 		"company_id": "helix_recon",
 		"rewards": {
 			"nano_materials": 30,
-			"company_rep": {"helix_recon": 10},
+			"faction_rep": {"helix_recon": 10},
 		},
 	},
 
@@ -344,7 +341,7 @@ const LEGACY_QUESTS: Array[Dictionary] = [
 		"company_id": "iron_wall_corp",
 		"rewards": {
 			"nano_materials": 210,
-			"company_rep": {"iron_wall_corp": 40},
+			"faction_rep": {"iron_wall_corp": 40},
 		},
 	},
 	{
@@ -356,7 +353,7 @@ const LEGACY_QUESTS: Array[Dictionary] = [
 		"company_id": "iron_wall_corp",
 		"rewards": {
 			"nano_materials": 300,
-			"company_rep": {"iron_wall_corp": 60},
+			"faction_rep": {"iron_wall_corp": 60},
 		},
 	},
 	{
@@ -368,7 +365,7 @@ const LEGACY_QUESTS: Array[Dictionary] = [
 		"company_id": "nova_arms",
 		"rewards": {
 			"nano_materials": 240,
-			"company_rep": {"nova_arms": 50},
+			"faction_rep": {"nova_arms": 50},
 		},
 	},
 	{
@@ -380,7 +377,7 @@ const LEGACY_QUESTS: Array[Dictionary] = [
 		"company_id": "nova_arms",
 		"rewards": {
 			"nano_materials": 360,
-			"company_rep": {"nova_arms": 70},
+			"faction_rep": {"nova_arms": 70},
 		},
 	},
 	{
@@ -392,7 +389,7 @@ const LEGACY_QUESTS: Array[Dictionary] = [
 		"company_id": "frontier_union",
 		"rewards": {
 			"nano_materials": 165,
-			"company_rep": {"frontier_union": 35},
+			"faction_rep": {"frontier_union": 35},
 		},
 	},
 	{
@@ -404,7 +401,7 @@ const LEGACY_QUESTS: Array[Dictionary] = [
 		"company_id": "frontier_union",
 		"rewards": {
 			"nano_materials": 195,
-			"company_rep": {"frontier_union": 40},
+			"faction_rep": {"frontier_union": 40},
 		},
 	},
 	{
@@ -416,7 +413,7 @@ const LEGACY_QUESTS: Array[Dictionary] = [
 		"company_id": "frontier_union",
 		"rewards": {
 			"nano_materials": 225,
-			"company_rep": {"frontier_union": 45},
+			"faction_rep": {"frontier_union": 45},
 		},
 	},
 	{
@@ -428,7 +425,7 @@ const LEGACY_QUESTS: Array[Dictionary] = [
 		"company_id": "frontier_union",
 		"rewards": {
 			"nano_materials": 600,
-			"company_rep": {"frontier_union": 100},
+			"faction_rep": {"frontier_union": 100},
 		},
 	},
 	{
@@ -440,7 +437,7 @@ const LEGACY_QUESTS: Array[Dictionary] = [
 		"company_id": "frontier_union",
 		"rewards": {
 			"nano_materials": 225,
-			"company_rep": {"frontier_union": 45},
+			"faction_rep": {"frontier_union": 45},
 		},
 	},
 	{
@@ -452,7 +449,7 @@ const LEGACY_QUESTS: Array[Dictionary] = [
 		"company_id": "void_research",
 		"rewards": {
 			"nano_materials": 270,
-			"company_rep": {"void_research": 50},
+			"faction_rep": {"void_research": 50},
 		},
 	},
 	{
@@ -464,7 +461,7 @@ const LEGACY_QUESTS: Array[Dictionary] = [
 		"company_id": "nova_arms",
 		"rewards": {
 			"nano_materials": 120,
-			"company_rep": {"nova_arms": 25},
+			"faction_rep": {"nova_arms": 25},
 		},
 	},
 
@@ -479,7 +476,7 @@ const LEGACY_QUESTS: Array[Dictionary] = [
 		"company_id": "quantum_logistics",
 		"rewards": {
 			"nano_materials": 60,
-			"company_rep": {"quantum_logistics": 15},
+			"faction_rep": {"quantum_logistics": 15},
 		},
 	},
 	{
@@ -492,7 +489,7 @@ const LEGACY_QUESTS: Array[Dictionary] = [
 		"company_id": "void_research",
 		"rewards": {
 			"nano_materials": 90,
-			"company_rep": {"void_research": 20},
+			"faction_rep": {"void_research": 20},
 		},
 	},
 	{
@@ -504,7 +501,7 @@ const LEGACY_QUESTS: Array[Dictionary] = [
 		"company_id": "void_research",
 		"rewards": {
 			"nano_materials": 150,
-			"company_rep": {"void_research": 35},
+			"faction_rep": {"void_research": 35},
 		},
 	},
 	{
@@ -516,7 +513,7 @@ const LEGACY_QUESTS: Array[Dictionary] = [
 		"company_id": "void_research",
 		"rewards": {
 			"nano_materials": 105,
-			"company_rep": {"void_research": 25},
+			"faction_rep": {"void_research": 25},
 		},
 	},
 	{
@@ -528,7 +525,7 @@ const LEGACY_QUESTS: Array[Dictionary] = [
 		"company_id": "iron_wall_corp",
 		"rewards": {
 			"nano_materials": 66,
-			"company_rep": {"iron_wall_corp": 16},
+			"faction_rep": {"iron_wall_corp": 16},
 		},
 	},
 	{
@@ -541,7 +538,7 @@ const LEGACY_QUESTS: Array[Dictionary] = [
 		"company_id": "aether_dynamics",
 		"rewards": {
 			"nano_materials": 84,
-			"company_rep": {"aether_dynamics": 20},
+			"faction_rep": {"aether_dynamics": 20},
 		},
 	},
 	{
@@ -553,7 +550,7 @@ const LEGACY_QUESTS: Array[Dictionary] = [
 		"company_id": "void_research",
 		"rewards": {
 			"nano_materials": 96,
-			"company_rep": {"void_research": 22},
+			"faction_rep": {"void_research": 22},
 		},
 	},
 
@@ -562,73 +559,73 @@ const LEGACY_QUESTS: Array[Dictionary] = [
 	{
 		"id": "q_faction_iron_30",
 		"title": "钢壁盟友",
-		"description": "与钢壁防务的声望达到 30。",
+		"description": "任一组织贡献达到 2000（钢壁防务同贺）。",
 		"objective_type": "reach_reputation",
-		"target": 30,
+		"target": 2000,
 		"company_id": "iron_wall_corp",
 		"rewards": {
 			"nano_materials": 105,
-			"company_rep": {"iron_wall_corp": 20},
+			"faction_rep": {"iron_wall_corp": 20},
 		},
 	},
 	{
 		"id": "q_faction_nova_30",
 		"title": "新星同路人",
-		"description": "与新星兵工的声望达到 30。",
+		"description": "任一组织贡献达到 2000（新星兵工同贺）。",
 		"objective_type": "reach_reputation",
-		"target": 30,
+		"target": 2000,
 		"company_id": "nova_arms",
 		"rewards": {
 			"nano_materials": 105,
-			"company_rep": {"nova_arms": 20},
+			"faction_rep": {"nova_arms": 20},
 		},
 	},
 	{
 		"id": "q_faction_aether_30",
 		"title": "以太之友",
-		"description": "与以太动力的声望达到 30。",
+		"description": "任一组织贡献达到 2000（以太动力同贺）。",
 		"objective_type": "reach_reputation",
-		"target": 30,
+		"target": 2000,
 		"company_id": "aether_dynamics",
 		"rewards": {
 			"nano_materials": 105,
-			"company_rep": {"aether_dynamics": 20},
+			"faction_rep": {"aether_dynamics": 20},
 		},
 	},
 	{
 		"id": "q_faction_void_30",
 		"title": "虚空探索者",
-		"description": "与虚空相位的声望达到 30。",
+		"description": "任一组织贡献达到 2000（虚空相位同贺）。",
 		"objective_type": "reach_reputation",
-		"target": 30,
+		"target": 2000,
 		"company_id": "void_research",
 		"rewards": {
 			"nano_materials": 105,
-			"company_rep": {"void_research": 20},
+			"faction_rep": {"void_research": 20},
 		},
 	},
 	{
 		"id": "q_faction_all_20",
-		"title": "各方势力",
-		"description": "与全部 7 个势力的声望都达到 20。",
+		"title": "多方认可",
+		"description": "任一组织贡献达到 1500，赢得多方协作认可。",
 		"objective_type": "reach_reputation",
-		"target": 20,
+		"target": 1500,
 		"company_id": "frontier_union",
 		"rewards": {
 			"nano_materials": 240,
-			"company_rep": {"frontier_union": 50, "iron_wall_corp": 15, "nova_arms": 15, "aether_dynamics": 15, "void_research": 15, "quantum_logistics": 15, "helix_recon": 15},
+			"faction_rep": {"frontier_union": 50, "iron_wall_corp": 15, "nova_arms": 15, "aether_dynamics": 15, "void_research": 15, "quantum_logistics": 15, "helix_recon": 15},
 		},
 	},
 	{
 		"id": "q_faction_max_50",
-		"title": "势力领袖",
-		"description": "与任意一个势力的声望达到 50。",
+		"title": "全域信赖",
+		"description": "任一组织贡献达到 6200（激活商店全域访问）。",
 		"objective_type": "reach_reputation",
-		"target": 50,
+		"target": 6200,
 		"company_id": "quantum_logistics",
 		"rewards": {
 			"nano_materials": 180,
-			"company_rep": {"quantum_logistics": 35},
+			"faction_rep": {"quantum_logistics": 35},
 		},
 	},
 	{
@@ -640,7 +637,7 @@ const LEGACY_QUESTS: Array[Dictionary] = [
 		"company_id": "quantum_logistics",
 		"rewards": {
 			"nano_materials": 75,
-			"company_rep": {"quantum_logistics": 18},
+			"faction_rep": {"quantum_logistics": 18},
 		},
 	},
 
@@ -655,7 +652,7 @@ const LEGACY_QUESTS: Array[Dictionary] = [
 		"company_id": "frontier_union",
 		"rewards": {
 			"nano_materials": 450,
-			"company_rep": {"frontier_union": 80},
+			"faction_rep": {"frontier_union": 80},
 		},
 	},
 	{
@@ -667,7 +664,7 @@ const LEGACY_QUESTS: Array[Dictionary] = [
 		"company_id": "iron_wall_corp",
 		"rewards": {
 			"nano_materials": 180,
-			"company_rep": {"iron_wall_corp": 40},
+			"faction_rep": {"iron_wall_corp": 40},
 		},
 	},
 	{
@@ -679,7 +676,7 @@ const LEGACY_QUESTS: Array[Dictionary] = [
 		"company_id": "aether_dynamics",
 		"rewards": {
 			"nano_materials": 195,
-			"company_rep": {"aether_dynamics": 42},
+			"faction_rep": {"aether_dynamics": 42},
 		},
 	},
 	{
@@ -691,7 +688,7 @@ const LEGACY_QUESTS: Array[Dictionary] = [
 		"company_id": "iron_wall_corp",
 		"rewards": {
 			"nano_materials": 210,
-			"company_rep": {"iron_wall_corp": 45},
+			"faction_rep": {"iron_wall_corp": 45},
 		},
 	},
 
@@ -699,14 +696,14 @@ const LEGACY_QUESTS: Array[Dictionary] = [
 
 	{
 		"id": "q_faction_helix_30",
-		"title": "螺旋声望：信赖",
-		"description": "与螺旋侦察系统建立信赖关系（声望达到 30）。",
+		"title": "螺旋同路：信赖",
+		"description": "任一组织贡献达到 2000（螺旋侦察同贺）。",
 		"objective_type": "reach_reputation",
-		"target": 30,
+		"target": 2000,
 		"company_id": "helix_recon",
 		"rewards": {
 			"nano_materials": 75,
-			"company_rep": {"helix_recon": 30},
+			"faction_rep": {"helix_recon": 30},
 		},
 	},
 	{
@@ -718,7 +715,7 @@ const LEGACY_QUESTS: Array[Dictionary] = [
 		"company_id": "helix_recon",
 		"rewards": {
 			"nano_materials": 120,
-			"company_rep": {"helix_recon": 25},
+			"faction_rep": {"helix_recon": 25},
 		},
 	},
 	{
@@ -730,7 +727,7 @@ const LEGACY_QUESTS: Array[Dictionary] = [
 		"company_id": "helix_recon",
 		"rewards": {
 			"nano_materials": 105,
-			"company_rep": {"helix_recon": 20},
+			"faction_rep": {"helix_recon": 20},
 		},
 	},
 	{
@@ -742,7 +739,7 @@ const LEGACY_QUESTS: Array[Dictionary] = [
 		"company_id": "helix_recon",
 		"rewards": {
 			"nano_materials": 180,
-			"company_rep": {"helix_recon": 40},
+			"faction_rep": {"helix_recon": 40},
 		},
 	},
 	{
@@ -755,7 +752,7 @@ const LEGACY_QUESTS: Array[Dictionary] = [
 		"company_id": "helix_recon",
 		"rewards": {
 			"nano_materials": 150,
-			"company_rep": {"helix_recon": 35},
+			"faction_rep": {"helix_recon": 35},
 		},
 	},
 	{
@@ -768,7 +765,7 @@ const LEGACY_QUESTS: Array[Dictionary] = [
 		"company_id": "helix_recon",
 		"rewards": {
 			"nano_materials": 135,
-			"company_rep": {"helix_recon": 30},
+			"faction_rep": {"helix_recon": 30},
 		},
 	},
 ]

@@ -28,8 +28,8 @@ enum TutorialStep {
 	FIRST_BATTLE = 7,         # 首战：进入第1关
 	TRUCK_BASE = 14,          # v4：移动基地 · 你的家（工位/睡觉存档/行军入口）
 	EVOLUTION = 8,            # v9.x：制造（兵种制造线）
-	FACTION_REP = 9,          # v9.x：势力声望
-	SHOP = 10,                # v9.x：商店（声望购物）
+	FACTION_REP = 9,          # v9.x：势力贡献（UI 口径 v6.22）
+	SHOP = 10,                # v9.x：商店（功勋购物）
 	WORLD_MAP = 11,           # v9.x：世界地图选关
 	PHASE_FIELD_POINTS = 12,  # v9.x：相位场加点
 	FREEDOM_MODE = 13,        # 自由模式（教程结束）——v1 枚举此值为 8，旧档兼容见 load_state
@@ -244,8 +244,8 @@ func _initialize_tutorial_data() -> void:
 			"highlight_elements": []
 		},
 		TutorialStep.FACTION_REP: {
-			"title": "势力声望",
-			"description": "战斗与委托提升 7 大势力的声望。声望等级解锁势力专属卡牌、相位仪与技能。",
+			"title": "势力贡献",
+			"description": "完成委托与事件提升 7 大组织的贡献。贡献等级解锁势力专属卡牌、相位仪与技能。",
 			"highlights": ["7 大势力各有声望等级", "声望解锁专属卡牌与相位仪", "势力技能树全局生效"],
 			"action_text": "打开联络台",
 			"action_target": "open_faction",

@@ -165,7 +165,7 @@ func _refresh_company_summary() -> void:
 		name_label.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
 		name_label.add_theme_color_override("font_color", DT.COLOR_TEXT_BRIGHT)
 		var rep_label := Label.new()
-		rep_label.text = "声望：%d" % rep_value
+		rep_label.text = "贡献：%d" % rep_value
 		rep_label.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
 		rep_label.add_theme_color_override("font_color",
 			DT.COLOR_GREEN_BRIGHT if rep_value > 0 else Color(DT.COLOR_TEXT_DIM.r, DT.COLOR_TEXT_DIM.g, DT.COLOR_TEXT_DIM.b, 0.7))
@@ -390,10 +390,12 @@ func _format_progress(quest_id: String, def: Dictionary) -> String:
 			return "强化 %d / %d" % [cur, int(target)]
 		"collect_cards":
 			return "卡片 %d / %d" % [cur, int(target)]
-		"research_law":
-			return "研究 %d / %d" % [cur, int(target)]
+		"reach_intel":
+			return "情报 %d%% / %d%%" % [cur, int(target)]
+		"salvage_items":
+			return "回收 %d / %d" % [cur, int(target)]
 		"reach_reputation":
-			return "声望 %d / %d" % [cur, int(target)]
+			return "贡献 %d / %d" % [cur, int(target)]
 		"buy_items":
 			return "购买 %d / %d" % [cur, int(target)]
 		"quick_win":

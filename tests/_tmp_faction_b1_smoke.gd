@@ -90,6 +90,26 @@ func _initialize() -> void:
 	_check(not _code(wm).contains("territory_btn"), "wm_no_territory_btn")
 	_check(not _code(wm).contains("_occupation_dirty"), "wm_no_dirty")
 
+	# 7b. 批2 断言：生成器 7 家/新目标类型/事件池无战争字段
+	var gen: Script = load("res://data/faction_quest_generator.gd")
+	_check(gen != null, "gen_load")
+	_check(gen.FACTION_THEMES.size() == 7, "gen_themes_7")
+	var gen_code: String = _code(gen)
+	_check(not gen_code.contains("enemy_faction"), "gen_no_enemy_faction")
+	_check(not gen_code.contains("master_name"), "gen_no_master_name")
+	_check(not gen_code.contains("attack_faction"), "gen_no_attack")
+	_check(_has_method_of(qm, "notify_items_salvaged"), "qm_has_salvage_notify")
+	_check(_has_method_of(qm, "_get_archetype_intel_percent"), "qm_has_intel_helper")
+	var qm_code: String = _code(qm)
+	_check(not qm_code.contains("attack_faction"), "qm_no_attack_code")
+	_check(not qm_code.contains("notify_phase_master_defeated"), "qm_no_pm_notify")
+	var qdefs: Script = load("res://data/quest_definitions.gd")
+	_check(qdefs != null, "qdefs_load")
+	var fwe: Script = load("res://data/faction_war_events.gd")
+	_check(fwe != null, "fwe_load")
+	_check(fwe.EVENT_TEMPLATES.size() == 6, "fwe_6_templates")
+	_check(not _code(fwe).contains("faction_bonus_duration"), "fwe_no_bonus_duration")
+
 	# 8. 已删文件确认不存在
 	for gone in ["res://data/faction_conquest_buffs.gd", "res://data/company_store.gd", "res://data/faction_status.gd", "res://managers/faction/faction_card_generator.gd", "res://data/faction_card_bonuses.gd", "res://scenes/ui/occupation_panel.gd"]:
 		_check(not ResourceLoader.exists(gone), "gone:" + gone)

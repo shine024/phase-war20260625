@@ -122,14 +122,14 @@ func _instantiate_event(template: Dictionary) -> void:
 	var _rewards: Dictionary = template.get("rewards", {}).get("support_a", {})
 	var _parts: Array[String] = []
 	if _rewards.has("reputation"):
-		_parts.append("声望+%d" % int(_rewards["reputation"]))
+		_parts.append("贡献+%d" % int(_rewards["reputation"]))
 	if _rewards.has("skill_points"):
 		_parts.append("技能点+%d" % int(_rewards["skill_points"]))
 	if _rewards.has("nano") or _rewards.has("nanomaterial"):
 		_parts.append("纳米+%d" % int(_rewards.get("nano", _rewards.get("nanomaterial", 0))))
 	if _rewards.has("exclusive_card"):
 		_parts.append("专属卡")
-	var _summary: String = "，".join(_parts) if not _parts.is_empty() else "做出选择获取声望"
+	var _summary: String = "，".join(_parts) if not _parts.is_empty() else "做出选择获取贡献"
 	SignalBus.show_toast.emit("⚔ 势力事件：%s（%s）" % [name_str, _summary])
 
 ## 玩家做出选择
@@ -138,7 +138,7 @@ func resolve_event(choice: String) -> Dictionary:
 		return {}
 	var rewards: Dictionary = _calculate_rewards(choice)
 	_apply_reputation_changes(choice)
-	# v26.11(A1.3): 结算补全——声望走 _apply_reputation_changes（含对方势力 -15），
+	# v26.11(A1.3): 结算补全——贡献走 _apply_reputation_changes（v6.22 协作口径只发正贡献），
 	# 其余字段（nano/skill_points/exclusive_card）在此发放。
 	# v6.22: faction_bonus_duration 临时加成链已随加成体系退役删除。
 	_grant_event_rewards(choice, rewards)
@@ -147,7 +147,7 @@ func resolve_event(choice: String) -> Dictionary:
 	active_event = {}
 	return result
 
-## v26.11(A1.3): 发放事件奖励（声望已在主链应用，此处发其余字段并 toast 汇总）
+## v26.11(A1.3): 发放事件奖励（贡献已在主链应用，此处发其余字段并 toast 汇总）
 func _grant_event_rewards(choice: String, rewards: Dictionary) -> void:
 	var granted: Array[String] = []
 	# 纳米材料（模板字段 nano / nanomaterial 两种拼写并存）
@@ -195,28 +195,18 @@ func _calculate_rewards(choice: String) -> Dictionary:
 	var tmpl_rewards: Dictionary = active_event.get("template", {}).get("rewards", {})
 	return tmpl_rewards.get(choice, {}).duplicate(true)
 
-## 应用声望变化
+## 应用贡献变化（v6.22 协作口径：只对被支持方发正贡献，中立不发；原"对方势力扣减"随战争叙事退役）
 func _apply_reputation_changes(choice: String) -> void:
+	if choice != "support_a" and choice != "support_b":
+		return
 	var fsm: Node = get_node_or_null("/root/FactionSystemManager")
-	if fsm == null:
+	if fsm == null or not fsm.has_method("add_faction_reputation"):
 		return
 	var rewards: Dictionary = _calculate_rewards(choice)
-	var fid_a: String = active_event.get("faction_a", "")
-	var fid_b: String = active_event.get("faction_b", "")
-	var rep_amount: int = int(rewards.get("reputation", 20))
-	if choice == "support_a":
-		if fsm.has_method("add_faction_reputation"):
-			fsm.add_faction_reputation(fid_a, rep_amount)
-			fsm.add_faction_reputation(fid_b, -15)
-	elif choice == "support_b":
-		if fsm.has_method("add_faction_reputation"):
-			fsm.add_faction_reputation(fid_b, rep_amount)
-			fsm.add_faction_reputation(fid_a, -15)
-	else:
-		# neutral
-		if fsm.has_method("add_faction_reputation"):
-			fsm.add_faction_reputation(fid_a, -5)
-			fsm.add_faction_reputation(fid_b, -5)
+	var fid: String = String(active_event.get("faction_a" if choice == "support_a" else "faction_b", ""))
+	if fid.is_empty():
+		return
+	fsm.add_faction_reputation(fid, int(rewards.get("reputation", 20)))
 
 ## 保存状态（v6.22: loyalty/event_history/active_bonus_events 退役不再写；读档侧静默忽略旧键）
 func save_state() -> Dictionary:
