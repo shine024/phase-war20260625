@@ -1,0 +1,73 @@
+{
+  "date": "2026-09-22",
+  "defined_instruments": 68,
+  "main_png_count": 94,
+  "thumb_png_count": 68,
+  "missing_main": [],
+  "missing_thumb": [],
+  "orphan_main": [
+    "pi_atk",
+    "pi_attack_speed",
+    "pi_crit",
+    "pi_crit_dmg",
+    "pi_def",
+    "pi_deploy_range",
+    "pi_drop",
+    "pi_energy_cost",
+    "pi_energy_out",
+    "pi_energy_rec",
+    "pi_hp",
+    "pi_move_speed",
+    "pi_r_cascade",
+    "pi_r_dmg_reflect",
+    "pi_r_energy_burst",
+    "pi_r_energy_fountain",
+    "pi_r_first_deploy",
+    "pi_r_free_deploy",
+    "pi_r_kill_energy",
+    "pi_r_last_stand",
+    "pi_r_law_boost",
+    "pi_r_overload",
+    "pi_r_respawn",
+    "pi_r_scale",
+    "pi_r_shield",
+    "pi_xp"
+  ],
+  "orphan_thumb": [],
+  "pending_gaps_status": {
+    "pi_r_free_deploy": {
+      "in_definitions": false,
+      "main_png": true,
+      "thumb_png": false
+    },
+    "pi_umbra_01": {
+      "in_definitions": true,
+      "main_png": true,
+      "thumb_png": true
+    },
+    "pi_umbra_02": {
+      "in_definitions": true,
+      "main_png": true,
+      "thumb_png": true
+    },
+    "pi_umbra_03": {
+      "in_definitions": true,
+      "main_png": true,
+      "thumb_png": true
+    }
+  },
+  "corrected_verdict": {
+    "note": "初判孤儿 26 张经代码核对全部为假孤儿；权威 id 源= get_all() 68 台 + STANDARD_PROPERTY_POOL 12 词条 + RARE_PROPERTY_POOL 13 词条（同文件第二三张表）",
+    "closure": "68 定义仪器主图+缩略图双向齐；12+13 词条同 id 主图在位（无缩略图，instrument_icon_small 回退链覆盖）；pi_drop.png 唯一真孤儿（无定义无引用，疑似旧掉落率词条遗留）",
+    "true_orphans": [
+      "pi_drop.png"
+    ],
+    "pending_gaps_final": {
+      "pi_umbra_01": "核销：定义+主图+缩略图齐",
+      "pi_umbra_02": "核销：定义+主图+缩略图齐",
+      "pi_umbra_03": "核销：定义+主图+缩略图齐",
+      "pi_r_free_deploy": "核销：定义在 RARE_PROPERTY_POOL + 主图在；缺缩略图（回退链覆盖，可选补齐）"
+    },
+    "thumb_missing_for_property_icons": 25
+  }
+}
