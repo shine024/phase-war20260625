@@ -26,6 +26,9 @@ var _detail_title: Label
 var _detail_meta: Label
 var _detail_deed: RichTextLabel
 var _detail_words: RichTextLabel
+# P2-2A（2026-09-22）：相位师立绘——agnes 批量生成（assets/enemies/phase_masters/
+# <master_id>.png，512×512），缺席时优雅降级为纯文字详情
+var _portrait: TextureRect
 var _masters: Array = []       # [{id,name,title,faction,level}]
 var _selected_id := ""
 
@@ -129,14 +132,29 @@ func _build() -> void:
 	var dv := VBoxContainer.new()
 	dv.add_theme_constant_override("separation", 8)
 	detail.add_child(dv)
+	# P2-2A：立绘 + 标题/系别并排（立绘缺席时 TextureRect 隐藏，布局自动回退纯文字）
+	var head_row := HBoxContainer.new()
+	head_row.add_theme_constant_override("separation", 12)
+	dv.add_child(head_row)
+	_portrait = TextureRect.new()
+	_portrait.custom_minimum_size = Vector2(132, 132)
+	_portrait.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	_portrait.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+	_portrait.visible = false
+	head_row.add_child(_portrait)
+	var head_vb := VBoxContainer.new()
+	head_vb.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	head_vb.add_theme_constant_override("separation", 4)
+	head_row.add_child(head_vb)
 	_detail_title = Label.new()
 	_detail_title.add_theme_font_size_override("font_size", DT.FONT_SIZE_LARGE)
 	_detail_title.add_theme_color_override("font_color", DT.COLOR_TEXT_BRIGHT)
-	dv.add_child(_detail_title)
+	head_vb.add_child(_detail_title)
 	_detail_meta = Label.new()
 	_detail_meta.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
 	_detail_meta.add_theme_color_override("font_color", DT.COLOR_TEXT_DIM)
-	dv.add_child(_detail_meta)
+	_detail_meta.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	head_vb.add_child(_detail_meta)
 	_detail_deed = RichTextLabel.new()
 	_detail_deed.bbcode_enabled = false
 	_detail_deed.fit_content = true
@@ -211,9 +229,22 @@ func _select(master_id: String) -> void:
 	if mgr and not mgr.has_hero_fragment(master_id):
 		return
 	var texts: Dictionary = HeroArchiveTexts.get_texts(master_id, m["faction"])
+	_update_portrait(master_id)
 	_detail_title.text = "%s" % m["name"]
 	_detail_meta.text = "%s · %s · %s · Lv%d" % [
 		m["title"], HeroArchiveTexts.faction_display(m["faction"]),
 		HeroArchiveTexts.era_display(master_id), m["level"]]
 	_detail_deed.text = texts["deed"]
 	_detail_words.text = "\n" + texts["last_words"]
+
+
+## P2-2A：按 master_id 加载立绘（缺席隐藏，不占位不报错——贴图按 *.png 政策
+## 不入 git，机器间同步缺文件属常态）
+func _update_portrait(master_id: String) -> void:
+	var path := "res://assets/enemies/phase_masters/%s.png" % master_id
+	if ResourceLoader.exists(path):
+		_portrait.texture = load(path)
+		_portrait.visible = true
+	else:
+		_portrait.texture = null
+		_portrait.visible = false

@@ -397,4 +397,37 @@ static func get_scenario(name: String) -> Dictionary:
 					{"t": "quit_ok"},
 				],
 			}
+		"r_p22_portrait":
+			# P2-2A 验收：同伴档案立绘接入——内存放宽解锁→注入 005/030 遗物→
+			# 开档案→点霍北望→截图（hero_archive 门控 L15，需 load_state 放宽）
+			var lv22: Array = []
+			for i in range(1, 31):
+				lv22.append(i)
+			return {
+				"start": "res://scenes/title_screen.tscn",
+				"steps": [
+					{"t": "frames", "n": 90},
+					{"t": "call", "path": "/root/SaveManager", "method": "set_slot", "args": [2]},
+					{"t": "frames", "n": 15},
+					{"t": "click_text", "text": "继续"},
+					{"t": "wait_scene", "match": "scenes/main", "timeout": 2400},
+					{"t": "frames", "n": 60},
+					{"t": "click_text", "text": "返"},
+					{"t": "wait_scene", "match": "truck_base", "timeout": 2400},
+					{"t": "frames", "n": 60},
+					{"t": "call", "path": "/root/LevelProgressManager", "method": "load_state", "args": [{"unlocked_levels": lv22}]},
+					{"t": "frames", "n": 15},
+					{"t": "call", "path": "/root/BunkerManager", "method": "record_hero_fragment", "args": ["enemy_master_005"]},
+					{"t": "call", "path": "/root/BunkerManager", "method": "record_hero_fragment", "args": ["enemy_master_030"]},
+					{"t": "frames", "n": 15},
+					{"t": "call", "path": ".", "method": "_open_panel", "args": ["hero_archive"]},
+					{"t": "frames", "n": 70},
+					{"t": "click_text", "text": "霍北望", "soft": true},
+					{"t": "frames", "n": 30},
+					{"t": "shot", "path": "res://.godot/agent_tools/pr_p22_archive_portrait.png"},
+					{"t": "call", "path": ".", "method": "_close_top_embed_panel"},
+					{"t": "frames", "n": 25},
+					{"t": "quit_ok"},
+				],
+			}
 	return {}
