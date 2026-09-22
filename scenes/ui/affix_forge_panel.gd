@@ -182,9 +182,11 @@ func _refresh_detail() -> void:
 	var card = null
 	if ir and ir.has_method("get_instance"):
 		card = ir.get_instance(_current_identity)
-	var name_line: String = _current_identity
+	# 头部只显示卡名——原始实例 ID（ww1_arm_ft17#1）是技术标识，玩家不可读
+	# （2026-09-20 全矩阵报告 P3 核销）；与左侧列表同口径。
+	var name_line: String = "未知卡牌"
 	if card != null:
-		name_line = "%s（%s）" % [String(card.display_name), _current_identity]
+		name_line = String(card.display_name)
 	var header := Label.new()
 	header.text = name_line
 	header.add_theme_font_size_override("font_size", DT.FONT_SIZE_LARGE)

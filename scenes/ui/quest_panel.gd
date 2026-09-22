@@ -41,6 +41,14 @@ func _ready() -> void:
 	# 批次2：tab 切换当前页淡入（原瞬跳）
 	if tab_container and not tab_container.tab_changed.is_connected(_on_tab_changed_fade):
 		tab_container.tab_changed.connect(_on_tab_changed_fade)
+	# 页签标题本地化（TabContainer 默认吃节点名 CommissionTab/DailyTab，
+	# 2026-09-20 全矩阵报告 P3 核销）
+	for i in tab_container.get_tab_count():
+		var page := tab_container.get_tab_control(i)
+		if page != null and page.name == "CommissionTab":
+			tab_container.set_tab_title(i, "委托")
+		elif page != null and page.name == "DailyTab":
+			tab_container.set_tab_title(i, "日常")
 	# v8.x 性能：_ready 只连信号，列表刷新交给 on_overlay_opened 拆帧。
 	# QuestManager 信号 handler (_on_quest_changed/_on_quest_completed) 自身就是完整刷新流程，
 	# 不依赖 _ready 设置任何状态，故窗口期安全。

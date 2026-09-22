@@ -1,11 +1,13 @@
 # 相位师技能树 · 电路板主板 smoke test（v22 方案3）
-# 验证：面板/主板构建、74 芯片摆位、81 条走线、三态换装、
-#       选中探针栏、解锁链路（真管理器）、点数不足失败路径、总览弹层
+# 验证：面板/主板构建、芯片摆位（数量=数据节点）、走线（数量=数据 requires 链）、
+#       三态换装、选中探针栏、解锁链路（真管理器）、点数不足失败路径、总览弹层
 #
-# 注：--script 模式下本项目 autoload 实际可用（2026-08-27 实测，
+# 注1：--script 模式下本项目 autoload 实际可用（2026-08-27 实测，
 #     master_power_smoke 旧注释"不初始化"已过时）——直接驱动真
 #     PhaseMasterSkillManager：reset_to_defaults() 清态 + level 6（10 点预算）。
 #     本测试全程内存态，不落档。
+# 注2：2026-09-21 勘误——节点/走线快照（74/81）随 v8 扩展树过期（实际 83/90），
+#     改为数据推导期望：芯片数=三分支节点和、走线数=全部 requires 链数。
 #
 # Usage: godot --headless --rendering-driver opengl3 --path . --script tests/phase_master_skill_board_smoke.gd
 extends SceneTree
@@ -29,14 +31,18 @@ func _initialize() -> void:
 	print("  相位师技能树 · 电路板主板 smoke（v22 方案3）")
 	print("═══════════════════════════════════════════════════════════")
 
-	# ══ 1. 数据拓扑基线 ══
+	# ══ 1. 数据拓扑基线（数据推导，勿硬编码快照）══
 	print("\n=== 1. 数据拓扑基线 ===")
 	var total := 0
+	var expect_edges := 0
 	for b in ["command", "intelligence", "firepower"]:
-		var n: int = SkillTree.get_skills_for_branch(b).size()
-		total += n
-		print("  %s: %d 节点" % [b, n])
-	ok.call(total == 74, "全树 74 节点（实际 %d）" % total)
+		var skills: Array = SkillTree.get_skills_for_branch(b)
+		total += skills.size()
+		print("  %s: %d 节点" % [b, skills.size()])
+		for s in skills:
+			expect_edges += (s.get("requires", []) as Array).size()
+	ok.call(total >= 80, "全树节点量级合理（>=80，实际 %d）" % total)
+	ok.call(expect_edges >= total, "走线期望自洽：requires 链 %d 条 >= 节点 %d" % [expect_edges, total])
 
 	# ══ 2. 真管理器清态 + 面板构建 ══
 	print("\n=== 2. 面板构建 ===")
@@ -59,8 +65,8 @@ func _initialize() -> void:
 	await process_frame
 
 	var board: Node = panel.get_node("MainVBox/BoardScroll").get_child(0)
-	ok.call(board != null and board.get_chip_count() == 74, "主板 74 芯片（实际 %s）" % [str(board.get_chip_count()) if board else "无板"])
-	ok.call(board.get_edge_count() == 81, "走线 81 条（实际 %s）" % str(board.get_edge_count()))
+	ok.call(board != null and board.get_chip_count() == total, "主板芯片数=数据节点数 %d（实际 %s）" % [total, str(board.get_chip_count()) if board else "无板"])
+	ok.call(board.get_edge_count() == expect_edges, "走线数=数据 requires 链 %d 条（实际 %s）" % [expect_edges, str(board.get_edge_count())])
 
 	# 芯片均在画布内
 	var in_bounds := true
@@ -72,17 +78,18 @@ func _initialize() -> void:
 			print("    越界: ", nid, " @", g["x"], ",", g["y"])
 	ok.call(in_bounds, "全部芯片在画布内")
 
-	# 三轨 t0 起点（单节点行槽位居中 → slot 1，x = lane_x + SLOT_PITCH）
-	ok.call(int(geo["pms_cmd_0"]["x"]) == Board.lane_x(0) + Board.SLOT_PITCH, "指挥轨 t0 居中 x=%d" % (Board.lane_x(0) + Board.SLOT_PITCH))
-	ok.call(int(geo["pms_int_0"]["x"]) == Board.lane_x(1) + Board.SLOT_PITCH, "智能轨 t0 居中 x=%d" % (Board.lane_x(1) + Board.SLOT_PITCH))
-	ok.call(int(geo["pms_fp_0"]["x"]) == Board.lane_x(2) + Board.SLOT_PITCH, "火力轨 t0 居中 x=%d" % (Board.lane_x(2) + Board.SLOT_PITCH))
+	# 三轨 t0 起点（单节点行槽位居中：slot = int((LANE_SLOTS-1)/2)，随容量推导勿硬编码）
+	var t0_slot: int = int((Board.LANE_SLOTS - 1) * 0.5)
+	ok.call(int(geo["pms_cmd_0"]["x"]) == Board.lane_x(0) + t0_slot * Board.SLOT_PITCH, "指挥轨 t0 居中 x=%d" % (Board.lane_x(0) + t0_slot * Board.SLOT_PITCH))
+	ok.call(int(geo["pms_int_0"]["x"]) == Board.lane_x(1) + t0_slot * Board.SLOT_PITCH, "智能轨 t0 居中 x=%d" % (Board.lane_x(1) + t0_slot * Board.SLOT_PITCH))
+	ok.call(int(geo["pms_fp_0"]["x"]) == Board.lane_x(2) + t0_slot * Board.SLOT_PITCH, "火力轨 t0 居中 x=%d" % (Board.lane_x(2) + t0_slot * Board.SLOT_PITCH))
 	ok.call(int(geo["pms_cw_0"]["lane"]) == 1, "奇点解算在智能轨（星型汇聚中心）")
-	# 4 芯片最宽行不越轨（火力 t7）
+	# 最宽行不越轨（火力 t7 现挂 5 芯片，2026-09-21 LANE_SLOTS 4→5 收口）
 	var t7_max_x := 0
 	for nid in geo:
 		if geo[nid]["lane"] == 2 and int(geo[nid]["tier"]) == 7:
 			t7_max_x = maxi(t7_max_x, int(geo[nid]["x"]))
-	ok.call(t7_max_x + Board.CHIP <= Board.lane_x(2) + Board.LANE_W, "火力 t7 四芯片行在轨内（最右 x=%d）" % t7_max_x)
+	ok.call(t7_max_x + Board.CHIP <= Board.lane_x(2) + Board.LANE_W, "火力 t7 五芯片行在轨内（最右 x=%d）" % t7_max_x)
 	# 器件封装风格 = 解锁内容类型（差异化轴）
 	ok.call(geo["pms_cmd_1a"]["chip"].get("chip_style") == Board.ChipStyle.QFN, "数值节点=QFN 方片")
 	ok.call(geo["pms_fp_1a"]["chip"].get("chip_style") == Board.ChipStyle.MODULE, "兵种能力节点=MODULE 八角")

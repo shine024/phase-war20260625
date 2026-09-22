@@ -254,7 +254,7 @@ theme_override_font_sizes/font_size = 12
 
 [node name="VersionLabel" type="Label" parent="CenterContainer/MainVBox"]
 layout_mode = 2
-theme_override_colors/font_color = Color(0.5, 0.5, 0.6, 0.5)
+theme_override_colors/font_color = Color(0.62, 0.66, 0.74, 0.85)
 theme_override_font_sizes/font_size = 12
 text = "v0.1.0 | Construct Era"
 horizontal_alignment = 1
