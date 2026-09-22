@@ -133,8 +133,10 @@
 - [ ] **P3-5 第三方许可留档**（S）
   - 已妥：代码 MIT（LICENSE）、字体 OFL（Rajdhani）+ `assets/fonts/LICENSE`、addons 各带 LICENSE。
   - 待办：43 SFX + 7 BGM 来源凭证（AI 生成记录或采购许可）留档，供披露与争议自查。
-- [ ] **P3-6 手柄 / Steam Deck 核对**（S~M，未审计）
-  - 若上 Steam：至少核对键位提示；Deck 兼容（gl_compatibility 对 Deck 友好）。当前无手柄输入映射（input_map 仅键鼠）则标注"仅键鼠"。
+- [x] **P3-6 手柄 / Steam Deck 核对**（S~M，2026-09-21 核对更新——大部分已由 v6.20.2 完成）
+  - ✅ 手柄输入映射已实装（v6.20.2 KeyBinds v2 双设备绑定：Ⓐ开战/MENU暂停/SELECT地图/LB背包/RB技能/Ⓧ设置；键盘/手柄独立重绑互不覆盖）；
+  - ✅ 手柄菜单焦点链（PanelAnim.focus_first：接手柄时焦点落面板首个可聚焦控件）；设置面板键位段双设备捕捉、标签"键盘键｜手柄键"双段；truck_base 返回走 is_back_event（ESC 或 Ⓑ）。
+  - 剩余（挂商店提交前核对清单）：①真机手柄全流程实机走查（菜单导航/战斗 1-9 部署槽仍键盘专属的提示是否清晰）；②Deck 实机兼容确认（gl_compatibility 理论友好）。
 - [ ] **P3-7 CI 门禁转正**（S）
   - `.github/workflows/tests.yml` 已存在；P1-1 清零后将 gdunit 全量设为合并/发布门禁（`tests/gdunit4_runner.gd` 已核验可跑，AGENTS 相关旧说法过时）。
 
