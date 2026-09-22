@@ -2075,7 +2075,7 @@ const _TABLE: Array = [
 	 "w_light":"粒子炮","w_armor":"","w_air":""},
 
 	# ══════════ v8 批次5: 时代守护者独占卡系列 ══════════
-	# 仅通过成就/挑战获得，不可商店购买（achievement_exclusive=true，get_player_card_entries 包含但 company_store 不收录）
+	# 仅通过成就/挑战获得，不可商店购买（achievement_exclusive=true，get_player_card_entries 包含但商店不收录）
 	# 每张对应一个时代 Boss，击败该时代 Boss 的成就奖励发放
 	{"card_id":"guardian_ww1_ironclad","display_name":"铁壁守护者·一战","era":0,"combat_kind":1,"tier":Tier.ULTIMATE,
 	 "base_hp":2400,"range_value":4,"deploy_speed":2,"base_speed":40,"power":1200,"weapon_type":0,

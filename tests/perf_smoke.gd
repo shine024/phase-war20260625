@@ -14,7 +14,6 @@ extends SceneTree
 
 const SpatialGrid = preload("res://scripts/spatial_grid.gd")
 const QuestDefinitions = preload("res://data/quest_definitions.gd")
-const CompanyStore = preload("res://data/company_store.gd")
 const EnemyArchetypes = preload("res://data/enemy_archetypes.gd")
 
 
@@ -131,13 +130,7 @@ func _initialize() -> void:
 		# 可能在 --script 无 autoload 模式下 JSON 读不到回退空，但 _inited 应已置位
 		print("  注：QUESTS 为空（可能 JSON 在 --script 模式读不到，回退 LEGACY 也空）——非致命")
 
-	# CompanyStore.ITEMS 同样验证
-	var c_inited_before := CompanyStore._items_inited
-	var items_data := CompanyStore.ITEMS
-	var c_inited_after := CompanyStore._items_inited
-	print("  ITEMS 访问前 _inited: ", c_inited_before, " → 访问后: ", c_inited_after, " / 数据量: ", items_data.size())
-	if not c_inited_after:
-		fail.call("ITEMS 访问后 _inited 应为 true")
+	# v6.22: CompanyStore.ITEMS 验证段已随双轨商店收口删除。
 
 	# EnemyArchetypes.ARCHETYPES
 	var a_inited_before := EnemyArchetypes._archetypes_inited

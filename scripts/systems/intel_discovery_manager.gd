@@ -90,7 +90,6 @@ func _on_battle_started_clear_prerolls() -> void:
 const SaveUtils = preload("res://scripts/save_utils.gd")
 const STATE_SAVE_NAME: String = "intel_discovery_state"
 const PowerTiers = preload("res://data/power_tiers.gd")
-const FactionConquestBuffs = preload("res://data/faction_conquest_buffs.gd")
 
 ## v6.6: 统一存档接口（供 SaveManager 调用，无视脏标记——SaveManager 调用即权威保存点）
 func save_state() -> Dictionary:
@@ -514,10 +513,9 @@ func _roll_intel_item_drops(
 		return []   # 相位师战防双爆口径与旧版一致；万一有残留 pending 一并清空不发
 	drops.append_array(prerolled)
 	## 星级腿：主腿未中的敌人按条件概率补掷（同 rank 概率一致，按 rank 缓存）
-	var occ := _occupation_drop_context()
-	var occ_mul := float(occ.get("mul", 1.0))
-	var occ_bias: Array = occ.get("bias", [])
-	var cur_level := int(occ.get("level", 1))
+	# v6.22: 占领掉落 buff 已退役——mul 恒 1.0，关卡号直读 GameManager
+	var gm_lvl: Node = get_node_or_null("/root/GameManager")
+	var cur_level: int = int(gm_lvl.get("current_level")) if gm_lvl != null and "current_level" in gm_lvl else 1
 	var star_p_by_rank := {}
 	for enemy_info in defeated_enemies:
 		if not enemy_info is Dictionary:
@@ -526,10 +524,10 @@ func _roll_intel_item_drops(
 			continue   # 主腿已出实物，不重复掷
 		var rank := String(enemy_info.get("rank", "normal"))
 		if not star_p_by_rank.has(rank):
-			star_p_by_rank[rank] = intel_star_leg_chance(victory_stars, rank, occ_mul)
+			star_p_by_rank[rank] = intel_star_leg_chance(victory_stars, rank, 1.0)
 		if randf() > float(star_p_by_rank[rank]):
 			continue
-		var item := _roll_item_for_defeated(enemy_info, cur_level, occ_bias)
+		var item := _roll_item_for_defeated(enemy_info, cur_level)
 		if not item.is_empty():
 			drops.append(item)
 
@@ -573,11 +571,13 @@ static func intel_star_leg_chance(victory_stars: int, rank: String, occupation_d
 ## 返回掉落字典供地面战利品展示；未命中返回 {}。主腿 RNG 只此一处，勿在别处复掷。
 func roll_kill_intel_drop(enemy_info: Dictionary) -> Dictionary:
 	var rank := String(enemy_info.get("rank", "normal"))
-	var occ := _occupation_drop_context()
-	var p1 := intel_main_leg_chance(rank, float(occ.get("mul", 1.0)))
+	# v6.22: 占领掉落 buff 退役——主腿概率走 1.0 基准，关卡号直读 GameManager
+	var p1 := intel_main_leg_chance(rank, 1.0)
 	if randf() > p1:
 		return {}
-	var item := _roll_item_for_defeated(enemy_info, int(occ.get("level", 1)), occ.get("bias", []))
+	var gm_kill: Node = get_node_or_null("/root/GameManager")
+	var kill_level: int = int(gm_kill.get("current_level")) if gm_kill != null and "current_level" in gm_kill else 1
+	var item := _roll_item_for_defeated(enemy_info, kill_level)
 	if item.is_empty():
 		return {}
 	enemy_info["intel_main_hit"] = true
@@ -585,28 +585,11 @@ func roll_kill_intel_drop(enemy_info: Dictionary) -> Dictionary:
 	return item
 
 
-## v6.14 占领势力掉落 buff（drop_mul + mod_pool_bias）——击杀预掷/战后补掷共用
-func _occupation_drop_context() -> Dictionary:
-	var out := {"mul": 1.0, "bias": [], "level": 1}
-	var cur_level: int = 1
-	var fsm: Node = get_node_or_null("/root/FactionSystemManager")
-	var gm: Node = get_node_or_null("/root/GameManager")
-	if gm != null:
-		cur_level = int(gm.get("current_level")) if "current_level" in gm else 1
-		out["level"] = cur_level
-	if fsm != null and fsm.has_method("get_level_occupation") and gm != null:
-		var occ_fid: String = String(fsm.get_level_occupation(cur_level))
-		if not occ_fid.is_empty() and fsm.has_method("get_faction_level"):
-			var flvl: int = int(fsm.get_faction_level(occ_fid))
-			var buff: Dictionary = FactionConquestBuffs.get_buff(occ_fid, flvl)
-			out["mul"] = float(buff.get("drop_mul", 1.0))
-			out["bias"] = buff.get("mod_pool_bias", [])
-	return out
-
+## v6.22: 原 _occupation_drop_context 已随占领掉落 buff 退役删除（mul 恒 1.0、关卡直读 GameManager）。
 
 ## 单敌人情报道具 roll（v6.14.4 缴获/发现 75/25 分流 + 时代过滤 + 兜底兵种池）
 ## ——击杀预掷/战后补掷共用，防双实现漂移
-func _roll_item_for_defeated(enemy_info: Dictionary, cur_level: int, occupation_mod_bias: Array) -> Dictionary:
+func _roll_item_for_defeated(enemy_info: Dictionary, cur_level: int) -> Dictionary:
 	var rank := String(enemy_info.get("rank", "normal"))
 	var enemy_type: String = String(enemy_info.get("enemy_type", _guess_enemy_type(enemy_info.get("archetype_id", ""))))
 	# v7.x: power_tier 改用 rank+level 混合档位，让高关杂兵也能掉更高稀有度改造
@@ -647,7 +630,8 @@ func _roll_item_for_defeated(enemy_info: Dictionary, cur_level: int, occupation_
 	var discovered: Dictionary = IntelManualItems.roll_discovery_mod_blueprint(rank, power_tier, max_era, is_seen)
 	if not discovered.is_empty():
 		return discovered
-	return IntelManualItems.roll_random_mod_blueprint(enemy_type, rank, power_tier, occupation_mod_bias, max_era)
+	# v6.22: bias 形参已删（占领 bias 退役）；roll_random_mod_blueprint 的 bias 形参保留，此处传空
+	return IntelManualItems.roll_random_mod_blueprint(enemy_type, rank, power_tier, [], max_era)
 
 # ── v21.0: base 进度 / mod 解锁通知 ──────────────────────────────
 

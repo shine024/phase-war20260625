@@ -219,10 +219,10 @@ func _update_faction_detail() -> void:
 		max_label.text = "[color=yellow]已达最高等级[/color]"
 		faction_detail.add_child(max_label)
 	
-	# 控制的关卡数量
-	var controlled_levels = faction_info.get("controlled_levels", [])
+	# 历史辖区（v6.22 定案5：纯风味统计，原"控制关卡数"）
+	var historical_levels = faction_info.get("historical_levels", [])
 	var levels_label = Label.new()
-	levels_label.text = "控制关卡数：%d" % int(controlled_levels.size())
+	levels_label.text = "历史辖区：%d 关" % int(historical_levels.size())
 	faction_detail.add_child(levels_label)
 	
 	# 显示商店库存预览
@@ -261,17 +261,7 @@ func _update_faction_detail() -> void:
 
 ## 事件决策区 + 生效加成显示（挂在详情区顶部）
 func _append_active_faction_event(faction_mgr: Node) -> void:
-	# —— 生效中的势力加成（事件奖励激活，按战斗场次递减）——
-	var active_fid: String = String(faction_mgr.get("active_faction")) if "active_faction" in faction_mgr else ""
-	if not active_fid.is_empty() and faction_mgr.has_method("get_active_faction_bonus_state"):
-		var st: Dictionary = faction_mgr.get_active_faction_bonus_state(active_fid)
-		if not st.is_empty():
-			var bonus: Dictionary = st.get("bonus", {})
-			var bonus_lbl := Label.new()
-			bonus_lbl.text = "⚡ 生效加成：%s（剩 %d 场）" % [String(bonus.get("name", "?")), int(st.get("remaining", 0))]
-			bonus_lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
-			bonus_lbl.add_theme_color_override("font_color", DT.COLOR_GOLD)
-			faction_detail.add_child(bonus_lbl)
+	# v6.22: 生效加成显示块已随势力临时加成体系退役删除。
 	# —— 待决策事件 ——
 	if not faction_mgr.has_method("get_active_event"):
 		return
@@ -345,8 +335,6 @@ func _event_choice_button_text(choice_key: String, rw: Dictionary, evt: Dictiona
 		parts.append("纳米+%d" % nano)
 	if rw.has("exclusive_card"):
 		parts.append("专属卡")
-	if rw.has("faction_bonus_duration"):
-		parts.append("加成%d场" % int(rw["faction_bonus_duration"]))
 	var summary: String = "，".join(parts) if not parts.is_empty() else "无直接奖励"
 	var fid: String = String(evt.get("faction_a" if choice_key == "support_a" else "faction_b", ""))
 	var fname: String = faction_mgr.get_faction_display_name(fid) if faction_mgr.has_method("get_faction_display_name") else fid

@@ -21,7 +21,7 @@ static func _get_autoload(root_path: String) -> Node:
 ## @param reward: 成就定义中的 reward 字典
 ##   新格式（推荐）: { type, amount, card_id?, mod_blueprint_id? }
 ##     type: "basic_nano" / "energy_block" / "phase_xp" / "card" / "mod_blueprint"
-##   旧格式（兼容）: { nano_materials: N, energy_block: N, company_rep: {fid: N}, rare_card: N, mythic_card: N }
+##   旧格式（兼容）: { nano_materials: N, energy_block: N, merit: N, rare_card: N, mythic_card: N }（v6.22: company_rep 声望奖励已退役改发功勋 merit）
 ##     v8 批次5: 兼容旧格式——无 type 字段时按资源键直填发放
 ## @param resource_managers: 资源管理器字典，可选键：
 ##   "BasicResourceManager" -> Node
@@ -96,7 +96,7 @@ static func grant(reward: Dictionary, resource_managers: Dictionary = {}) -> boo
 
 
 ## v8 批次5: 旧格式兼容发放（无 type 字段的 reward 字典）
-## 处理 {nano_materials: N, energy_block: N, company_rep: {fid: N}, rare_card: N, mythic_card: N}
+## 处理 {nano_materials: N, energy_block: N, merit: N, rare_card: N, mythic_card: N}
 ## 此前因 grant 只读 type 导致所有旧格式成就奖励空转——本方法修复该 bug
 static func _grant_legacy_format(reward: Dictionary, resource_managers: Dictionary) -> bool:
 	var brm: Node = resource_managers.get("BasicResourceManager")
@@ -113,13 +113,12 @@ static func _grant_legacy_format(reward: Dictionary, resource_managers: Dictiona
 	if eblock > 0 and brm != null and brm.has_method("add_resource"):
 		brm.add_resource("energy_block", eblock)
 		granted = true
-	# 势力声望
-	var rep: Dictionary = reward.get("company_rep", {})
-	if not rep.is_empty():
+	# v6.22: 功勋（原 company_rep 声望分支——声望轴改贡献语义后，成就改直发功勋）
+	var merit_amt: int = int(reward.get("merit", 0))
+	if merit_amt > 0:
 		var fsm: Node = _get_autoload("/root/FactionSystemManager")
-		if fsm != null and fsm.has_method("add_faction_reputation"):  # v26.6: 修复——正确方法名为 add_faction_reputation，此前恒 has_method 失败致声望奖励空转
-			for fid in rep:
-				fsm.add_faction_reputation(String(fid), int(rep[fid]))
+		if fsm != null and fsm.has_method("add_merit"):
+			fsm.add_merit(merit_amt)
 			granted = true
 	# 稀有/神话卡（rare_card/mythic_card/legendary_card → 从对应池抽卡发放）
 	ManagerLazyLoader.ensure_loaded("drop")  # DropManager 为 autoload+别名双层（ensure_loaded 幂等）
@@ -170,4 +169,4 @@ static func has_reward(reward: Dictionary) -> bool:
 	if not reward_type.is_empty():
 		return reward_type in ["basic_nano", "energy_block", "phase_xp", "phase_field_xp", "card", "mod_blueprint"]
 	# v8 批次5: 旧格式兼容——有任意资源键即视为有奖励
-	return reward.has("nano_materials") or reward.has("energy_block") or reward.has("company_rep") or reward.has("rare_card") or reward.has("rare_cards") or reward.has("mythic_card") or reward.has("legendary_card")
+	return reward.has("nano_materials") or reward.has("energy_block") or reward.has("merit") or reward.has("rare_card") or reward.has("rare_cards") or reward.has("mythic_card") or reward.has("legendary_card")

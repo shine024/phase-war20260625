@@ -102,9 +102,9 @@ func _initialize_faction_data() -> void:
 			var fid: String = fi.get("id", "")
 			if fid.is_empty():
 				continue
-			var controlled: Array = fi.get("controlled_levels", [])
+			var controlled: Array = fi.get("historical_levels", [])
 			var total: int = controlled.size()
-			# 计算玩家已通过该公司领地内的关卡数
+			# 计算玩家已通过该公司历史辖区内的关卡数
 			var cleared: int = 0
 			for lv in controlled:
 				if int(lv) <= cleared_max:
@@ -194,9 +194,9 @@ func _initialize_player_data() -> void:
 			var fid: String = fi.get("id", "")
 			if fid.is_empty() or fid == player_faction_id:
 				continue
-			var controlled: Array = fi.get("controlled_levels", [])
+			var controlled: Array = fi.get("historical_levels", [])
 			var territory: int = controlled.size()
-			# 挑战者进度 = 占领的最高关卡（真实领地）
+			# 挑战者进度 = 历史辖区最高关卡（v6.22: 纯风味排序键）
 			var challenger_level: int = 1
 			if not controlled.is_empty():
 				challenger_level = int(controlled.max())

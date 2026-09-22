@@ -8,7 +8,6 @@
 [ext_resource type="PackedScene" path="res://scenes/ui/quest_panel.tscn" id="13_quest_panel"]
 [ext_resource type="PackedScene" path="res://scenes/ui/store_panel.tscn" id="17_store_panel"]
 [ext_resource type="PackedScene" uid="uid://d0ekxsdbvfjpy" path="res://scenes/ui/faction_panel.tscn" id="21_faction_panel"]
-[ext_resource type="PackedScene" path="res://scenes/ui/occupation_panel.tscn" id="22_occupation_panel"]
 [ext_resource type="Script" path="res://scenes/ui/world_map_panel.gd" id="30_world_map_panel"]
 [ext_resource type="Script" path="res://scenes/ui/settings_panel_popup.gd" id="31_settings_panel"]
 [ext_resource type="PackedScene" path="res://scenes/ui/leaderboard_panel.tscn" id="23_leaderboard"]
@@ -387,35 +386,6 @@ grow_horizontal = 2
 grow_vertical = 2
 
 [node name="FactionPanel" parent="PopupLayer/FactionOverlay/CenterContainer" instance=ExtResource("21_faction_panel")]
-
-[node name="OccupationOverlay" type="Control" parent="PopupLayer"]
-visible = false
-layout_mode = 3
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-[node name="Backdrop" type="ColorRect" parent="PopupLayer/OccupationOverlay"]
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-color = Color(0, 0, 0, 0.55)
-mouse_filter = 0
-
-
-[node name="CenterContainer" type="CenterContainer" parent="PopupLayer/OccupationOverlay"]
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-
-[node name="OccupationPanel" parent="PopupLayer/OccupationOverlay/CenterContainer" instance=ExtResource("22_occupation_panel")]
 
 [node name="MapOverlay" type="Control" parent="PopupLayer"]
 visible = false

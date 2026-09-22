@@ -5,7 +5,7 @@
 #
 # 目标：回答"同一张卡在最后广场（第100关）三种情境下的战力数值"
 #   ① 我方满配战力（fut_colossus 满强化+满改造+满进化+元帅）
-#   ② 敌方非相位师满配（fut_arm_colossus_e，第100关普通敌兵，wave×level×faction_buff 满链）
+#   ② 敌方非相位师满配（fut_arm_colossus_e，第100关普通敌兵，wave×level 满链）
 #   ③ 敌方相位师满配（master_030，第100关 boss，3 分量总分 + 产兵属性）
 #
 # 基准卡：巨神机甲（近未来 era=4，与第100关同时代）
@@ -26,7 +26,6 @@ const EnemyStatContext = preload("res://data/enemy_stat_context.gd")
 const EnemyArchetypes = preload("res://data/enemy_archetypes.gd")
 const EnemyLoadoutTiers = preload("res://data/enemy_loadout_tiers.gd")
 const _ArchFuture = preload("res://data/enemy_archetypes_future.gd")
-const FactionConquestBuffs = preload("res://data/faction_conquest_buffs.gd")
 const EnemyPhaseMasters = preload("res://data/enemy_phase_masters.gd")
 const MasterPowerEvaluator = preload("res://scripts/master_power_evaluator.gd")
 const PowerTiers = preload("res://data/power_tiers.gd")
@@ -178,18 +177,15 @@ func _mul_attack(stats, factor: float) -> void:
 func _section2_enemy_non_master() -> void:
 	print("┌────────────────────────────────────────────────────────────┐")
 	print("│ ② 敌方非相位师 fut_arm_colossus_e（普通敌兵，第100关满配） │")
-	print("│    走 resolve_classic_enemy（wave×level×faction_buff 链）  │")
+	print("│    走 resolve_classic_enemy（wave×level 链，v6.22 势力链退役）│")
 	print("└────────────────────────────────────────────────────────────┘")
 
 	# 手动构造 EnemyStatContext（不依赖 autoload，纯函数）
-	# 第100关：era=4（近未来），faction=void_research（虚空相位）满级 Lv10
+	# 第100关：era=4（近未来）。v6.22 起势力占领加成链退役，ctx 无 faction 字段。
 	# 坚守 15 波，取末波 wave=15（最难的最后一波）
 	var ctx := EnemyStatContext.new(100, 15)
 	ctx.master_stats = {}  # 非相位师战，master_stats 空 → m_atk/m_hp = 1.0
-	ctx.faction_buff = FactionConquestBuffs.get_buff("void_research", 10)
 	ctx.difficulty_multiplier = 1.0  # 普通难度
-	ctx.faction_id = "void_research"
-	ctx.faction_level = 10
 
 	# 调真实公式（注：--script 模式下 EnemyArchetypes.get_config 走 JSON 合并路径可能返回空，
 	# 此时 resolve_classic_enemy 走 fallback 公式 (60+wave×15) 而非真实 archetype 数据。
@@ -210,9 +206,9 @@ func _section2_enemy_non_master() -> void:
 	var w_hp := 1.0 + 0.12 * (15 - 1)    # = 2.68
 	var w_dmg := 1.0 + 0.08 * (15 - 1)   # = 2.12
 	var lvl := 0.8 + 100 * 0.014         # = 2.2
-	var f_hp := float(ctx.faction_buff.get("hp_mul", 1.0))   # void_research Lv10 = 1.16
-	var f_atk := float(ctx.faction_buff.get("attack_mul", 1.0))  # = 1.40
-	var f_spd := float(ctx.faction_buff.get("speed_mul", 1.0))   # = 1.08
+	var f_hp := 1.0   # v6.22: 势力加成链退役，恒 1.0（原 void_research Lv10 = 1.16）
+	var f_atk := 1.0
+	var f_spd := 1.0
 
 	# 手动复现真实公式（cfg 有真实数据时为准；resolve_classic_enemy 走 fallback 时用此结果）
 	var hp_mul_chain := w_hp * lvl * f_hp  # ×1.0（master/difficulty 都为 1）
@@ -254,7 +250,7 @@ func _section2_enemy_non_master() -> void:
 		[base_hp, base_atk, float(cfg.get("attack_range", 0.0)), absf(float(cfg.get("speed", 0.0)))])
 	print("    wave 末波(15) HP×ATK        : ×%.2f / ×%.2f" % [w_hp, w_dmg])
 	print("    level(100)                  : ×%.2f" % lvl)
-	print("    void_research Lv10 HP×ATK   : ×%.2f / ×%.2f（spd ×%.2f）" % [f_hp, f_atk, f_spd])
+	print("    势力加成（v6.22 已退役）    : ×%.2f / ×%.2f（spd ×%.2f）" % [f_hp, f_atk, f_spd])
 	print("    difficulty(普通)            : ×1.00")
 	print("    master_stats（非相位师战）  : ×1.00 / ×1.00（空，无加成）")
 	print("    综合 HP×ATK 乘区链(resolver): ×%.2f / ×%.2f" % [hp_mul_chain, dmg_mul_chain])

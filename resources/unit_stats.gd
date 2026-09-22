@@ -393,7 +393,7 @@ var phase_shield_regen: float = 0.0
 var laser_mark_on_hit: bool = false
 
 # ─────────────────────────────────────────────
-#  势力变体特殊属性（由 FactionCardGenerator 注入）
+#  势力变体特殊属性（v6.22: FactionCardGenerator 已退役，字段保留供旧档兼容读取）
 # ─────────────────────────────────────────────
 
 ## 势力命中精度加成（0.0~0.50，降低敌方闪避效果）

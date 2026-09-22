@@ -98,7 +98,7 @@ func _add_ww1_levels() -> void:
 	for i in range(1, 21):
 		var level_num = i
 		# v6.9: 前20关（一战教学时代）为无主之地，无势力占领/势力加成/势力相位师
-		# 21关起启用势力占领机制（见 faction_conquest_buffs.gd + enemy_stat_resolver.gd）
+		# 21关起为各组织历史辖区（v6.22: 占领机制已退役，归属=纯风味静态表）
 		var faction_id = ""
 		# 从描述中提取短名称作为关卡名
 		var desc = descriptions[i - 1]

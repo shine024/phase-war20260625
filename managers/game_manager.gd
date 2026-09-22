@@ -584,8 +584,7 @@ func _on_battle_ended(player_won: bool) -> void:
 		_grant_first_clear_if_eligible()
 		_grant_basic_resources_for_current_level()
 		_grant_phase_field_xp_for_victory()
-		# 攻克关卡后触发势力反应
-		_apply_faction_reaction_for_conquest()
+		# v6.22: 攻克关卡势力反应链已删——势力不再占领领地，贡献只由任务/事件/相位师战驱动
 		# v27.15（TODO#10 复活，用户裁决）：普通战斗相位仪掉落链——"战场缴获"通道。
 		# 通用系列开局全解锁（_init_unlocked_instruments 白送）、特殊仪走相位师战利品，
 		# 故掉落池 = 未解锁的势力专属仪（常态渠道=商店声望/势力技能，掉落是幸运捷径，
@@ -976,7 +975,7 @@ func set_current_level(level: int) -> void:
 	# v6.9: 进入势力领地关卡时，刷新该势力的动态委托
 	_maybe_refresh_faction_quests_for_level(current_level)
 
-## v6.9: 若当前关卡属于某势力领地（21关起），刷新该势力的动态委托
+## v6.9: 若当前关卡属于某组织历史辖区（21关起），刷新该组织的动态委托
 func _maybe_refresh_faction_quests_for_level(level: int) -> void:
 	var qm: Node = get_node_or_null("/root/QuestManager")
 	if qm == null or not qm.has_method("refresh_faction_quests"):
@@ -986,15 +985,6 @@ func _maybe_refresh_faction_quests_for_level(level: int) -> void:
 	if faction_id.is_empty():
 		return  # 1-20关无主之地，不生成动态任务
 	qm.refresh_faction_quests(faction_id)
-
-## 攻克关卡后触发势力反应
-func _apply_faction_reaction_for_conquest() -> void:
-	ManagerLazyLoader.ensure_loaded("faction")
-	var fsm: Node = get_node_or_null("/root/FactionSystemManager")
-	if fsm and fsm.has_method("on_level_conquered"):
-		var faction_result: Dictionary = fsm.on_level_conquered(current_level)
-		if DEBUG_GAME_LOG:
-			pass  # LOG: 势力反应完成
 
 ## 相位师战胜奖励
 func _grant_phase_master_victory_reward(master_name: String) -> void:
@@ -1117,15 +1107,16 @@ func _grant_phase_master_victory_reward(master_name: String) -> void:
 	var IntelManualItems = preload("res://data/intel_manual_items.gd")
 	var _MPE = preload("res://scripts/master_power_evaluator.gd")
 	var _PT = preload("res://data/power_tiers.gd")
-	var _FCB = preload("res://data/faction_conquest_buffs.gd")
+	var _CompanyDefs = preload("res://data/company_definitions.gd")
 	var _stars: int = int(_MPE.evaluate(_current_phase_master).get("stars", 3))
 	var _drop_bag: Node = get_node_or_null("/root/IntelItemBag")
 	# enemy_type 按相位师所属势力的改造偏好派生；势力无偏好/查不到时回退 infantry
 	# v8.2 B1修复：敌方 faction(steel/flame/...) 需映射到玩家势力 ID 才能匹配 FACTION_MOD_BIAS
+	# v6.22: 表已搬家至 CompanyDefinitions.FACTION_MOD_BIAS（faction_conquest_buffs.gd 已删）
 	var _pm_faction: String = String(_current_phase_master.get("faction", ""))
 	var _pm_player_faction: String = _enemy_faction_to_player_faction(_pm_faction)
 	var _pm_enemy_type: String = "infantry"
-	var _bias: Array = _FCB.FACTION_MOD_BIAS.get(_pm_player_faction, [])
+	var _bias: Array = _CompanyDefs.FACTION_MOD_BIAS.get(_pm_player_faction, [])
 	if not _bias.is_empty():
 		_pm_enemy_type = String(_bias[0])
 	var _pm_power_tier: int = _PT.get_tier_by_stars(_stars)

@@ -1,10 +1,11 @@
 extends RefCounted
-## 势力声望子系统：管理声望值、等级计算、关卡攻克反应
+## 势力声望子系统：管理声望值、等级计算、等级进度查询
 ##
 ## 从 faction_system_manager.gd 拆分的职责：
 ## - 声望增减与等级晋升
-## - 关卡攻克后的势力反应公式（慕强心理 + 关系系数）
 ## - 等级进度查询
+## v6.22：关卡攻克势力反应公式（慕强心理+关系系数）已随占领状态机删除——
+## 势力不再互相进攻，声望（贡献）只由任务/事件/相位师战驱动。
 
 class_name FactionReputation
 
@@ -20,14 +21,6 @@ const LEVEL_THRESHOLDS: Array = [0, 500, 1200, 2000, 2900, 3900, 5000, 6200, 750
 
 ## 全局访问的等级阈值（8级 = 6200+）
 const GLOBAL_ACCESS_THRESHOLD: int = 6200
-
-## 各关系类型对应的声望系数
-const RELATIONSHIP_EFFECT: Dictionary = {
-	"allied": -15,
-	"rival": 10,
-	"enemy": 20,
-	"neutral": 0,
-}
 
 ## 根据声望值计算势力等级（1-10）
 ## @param rep: int 当前声望值
@@ -73,29 +66,6 @@ static func get_progress_to_next_level(current_rep: int, current_level: int) -> 
 		"current": current_rep - current_threshold,
 		"needed": next_threshold - current_threshold,
 	}
-
-## 计算关卡攻克后的势力声望反应
-## @param conquered_faction: String 被攻占势力ID
-## @param faction_relations: Dictionary 势力关系矩阵
-## @param all_faction_ids: Array[String] 所有势力ID
-## @return Dictionary { faction_id: delta } 每个势力的声望变化量
-static func calculate_conquest_reaction(conquered_faction: String, faction_relations: Dictionary, all_faction_ids: Array) -> Dictionary:
-	var reactions: Dictionary = {}
-
-	# 被攻占势力：-10（领地失守）
-	reactions[conquered_faction] = -10
-
-	# 其他势力根据关系反应
-	var relations: Dictionary = faction_relations.get(conquered_faction, {})
-	for other_fid in all_faction_ids:
-		if other_fid == conquered_faction:
-			continue
-		var rel_type: String = relations.get(other_fid, "neutral")
-		var delta: int = RELATIONSHIP_EFFECT.get(rel_type, 5)
-		if delta != 0:
-			reactions[other_fid] = delta
-
-	return reactions
 
 ## 检查是否拥有全局访问（任一势力声望达到阈值）
 ## @param faction_reputation: Dictionary { faction_id: rep_value }

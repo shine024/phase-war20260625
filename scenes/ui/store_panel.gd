@@ -2,17 +2,11 @@ extends PanelContainer
 ## 公司商店面板：选择公司 → 直接购买卡牌（加入背包）
 
 const CompanyDefs = preload("res://data/company_definitions.gd")
-const CompanyStore = preload("res://data/company_store.gd")
 const BasicResources = preload("res://data/basic_resources.gd")
 const DefaultCards = preload("res://data/default_cards.gd")
-const GC = preload("res://resources/game_constants.gd")
 const IntelManualItems = preload("res://data/intel_manual_items.gd")
-const UnitStatsTable = preload("res://resources/unit_stats_table.gd")
 const ModRegistry = preload("res://scripts/systems/modification_registry.gd")
-const StoreItemRowScene = preload("res://scenes/ui/store_item_row.tscn")
 const FormatUtil = preload("res://scripts/ui/format_util.gd")
-const UiAssetLoader = preload("res://scripts/ui_asset_loader.gd")
-const UnifiedCardTable = preload("res://data/unified_card_table.gd")  # v20.13c: 商店预览每卡部署次数
 const DT = preload("res://resources/design_tokens.gd")
 const PanelStyles = preload("res://scripts/ui/panel_styles.gd")
 const PanelChrome = preload("res://scenes/ui/components/panel_chrome.gd")
@@ -31,7 +25,6 @@ signal closed
 var _current_company_id: String = ""
 var _feedback_tween: Tween
 ## 购买防抖锁：购买流程（含 0.4s 反馈动画）期间禁止重复触发，避免快速连点导致多次 emit 多发卡。
-var _buy_in_progress: bool = false
 ## 打开分帧单飞守卫：避免打开刷新管线重入（仿 backpack_presenter 模式）
 var _open_refresh_inflight: bool = false
 ## 资源变动信号去重：购买流程自身会刷新 items，期间跳过 resources_changed 回弹触发的全量重建
@@ -128,7 +121,7 @@ func _build_company_tabs() -> void:
 	if companies.is_empty():
 		return
 	if _current_company_id.is_empty():
-		_current_company_id = CompanyStore.get_default_company_id()
+		_current_company_id = String(companies[0].get("id", ""))
 	for cfg in companies:
 		if not cfg is Dictionary:
 			continue
@@ -237,84 +230,18 @@ func _refresh_items() -> void:
 		c.queue_free()
 	if _current_company_id.is_empty():
 		return
-	var items: Array[Dictionary] = CompanyStore.get_items_for_company(_current_company_id)
-	if items.is_empty():
-		var empty_l := Label.new()
-		empty_l.text = "该公司暂未开放商品。"
-		empty_l.add_theme_color_override("font_color", DT.COLOR_TEXT_DIM)
-		empty_l.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
-		empty_l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		item_list.add_child(empty_l)
-		return
-
-	var current_nano: int = BasicResourceManager.get_total(BasicResources.ID_NANO_MATERIALS)
-
 	var fsm: Node = get_node_or_null("/root/FactionSystemManager")
 	var current_rep: int = 0
 	if fsm != null and fsm.has_method("get_faction_reputation"):
 		current_rep = int(fsm.get_faction_reputation(_current_company_id))
-	# R1-3（设计审查 F-04，2026-09-13）：声望门槛复活——company_store.json 的
-	# required_rep 是 0-100 旧轴口径（旧代码 tier=rep/10），而运行时声望真轴是
-	# 0-10000（起始 5000，faction_reputation.gd），直接比较恒为"已满足"，
-	# 打码/锁定逻辑从未触发。此处统一按 ×100 边界换算到真轴；
-	# 档位（梯度差/打码）改按声望等级（1-10）计算，与势力面板同口径。
-	var current_tier: int = FactionReputation.get_level_from_reputation(current_rep) - 1
-
-	# 检查是否启用全局访问
-	var global_access: bool = _has_global_access()
-
-	for it in items:
-		if not it is Dictionary:
-			continue
-		var card_id: String = it.get("card_id", "")
-		var frag_amount: int = int(it.get("fragment_amount", 1))
-		var price_nano: int = int(it.get("price_nano_materials", 0))
-		# R1-3：JSON 旧轴 0-100 → 声望真轴 0-10000（×100 边界换算，显示与判定同源）
-		var required_rep: int = int(it.get("required_rep", 0)) * 100
-		var item_tier: int = FactionReputation.get_level_from_reputation(required_rep) - 1
-		var card_name: String = card_id
-		var card = null
-
-		# v9.x 复查清理：原"先从敌方蓝图表查找"块删除——enemy_bp 恒 null（自 5 月起死代码），
-		# 两个 elif 条件重复且永不可达；商品名直接走 DefaultCards 解析
-		var enemy_bp = null
-		card = DefaultCards.get_card_by_id(card_id)
-		if card:
-			card_name = card.display_name
-		elif card_id.begins_with("permit_card_"):
-			var target_id: String = card_id.trim_prefix("permit_card_")
-			var target_card: CardResource = DefaultCards.get_card_by_id(target_id)
-			var target_name: String = target_card.display_name if target_card != null else target_id
-			card_name = "改造许可函·%s专属" % target_name
-		elif LEGACY_BLUEPRINT_DISPLAY_NAMES.has(card_id):
-			card_name = String(LEGACY_BLUEPRINT_DISPLAY_NAMES[card_id])
-		# v3 后所有战斗卡都是 COMBAT_UNIT，可以正常在商店售卖
-		# 原错误代码过滤了 COMBAT_UNIT 导致所有战斗卡被隐藏，现已移除
-		# var inspect_card = enemy_bp if enemy_bp != null else card
-		# if inspect_card != null and int(inspect_card.card_type) == GC.CardType.COMBAT_UNIT:
-		# 	continue
-
-		# 高等级商品名称打码（梯度差 > 1 视为超出当前进度）
-		var masked: bool = item_tier > current_tier + 1
-		if masked:
-			card_name = "？？ 未知卡牌 ？？"
-
-		var locked: bool = current_rep < required_rep and not global_access
-		var afford: bool = current_nano >= price_nano
-
-		var row_panel: PanelContainer = _build_store_item_row(
-			card_id, card_name, frag_amount, price_nano, required_rep, current_rep,
-			locked, afford, enemy_bp, card, masked, item_tier - current_tier
-		)
-		item_list.add_child(row_panel)
+	# v6.22: CompanyStore 纳米主卡列表已随双轨商店收口整删——四区结构收敛为三区
+	# （符文功勋轨 / 势力补给功勋特购 / 情报道具纳米轨），卡片获取改走制造/掉落/任务。
 
 	# ═══ v6.2: 符文售卖区 ═══
 	_build_rune_items_section(current_rep)
 
-	# ═══ v26.11(A1.2): 势力补给 · 声望特购区 ═══
-	# FactionShop 返回四类商品，此前 UI 只渲染 RUNE——MATERIAL（纳米/合金/属性强化/
-	# 情报资料包）与不在公司目录 JSON 里的 CARD（缴获卡/终赢单位）全部不可见
-	_build_faction_shop_extras_section(current_rep, items)
+	# ═══ v26.11(A1.2): 势力补给 · 功勋特购区 ═══
+	_build_faction_shop_extras_section(current_rep)
 
 	# ═══ v6.0: 情报道具售卖区 ═══
 	_build_intel_items_section()
@@ -448,23 +375,17 @@ func _build_rune_items_section(current_rep: int) -> void:
 ## FactionShop.get_faction_store_items 的商品分四类，此前只有 RUNE 进了符文区，
 ## 其余被静默丢弃（TODO_BACKLOG 高价值#2："势力装备/卡牌商品全部不可见"）。本区补齐：
 ## - MATERIAL（type 1）：纳米/合金包、stat_boost 永久强化、lore_page 资料包
-## - CARD（type 0）：与公司目录 JSON（上方纳米购买区）按 card_id 去重，只渲染差额
-##   特购（bp_ 缴获卡、omega_cannon 等），扣声望+发独立养成实例
+## - CARD（type 0）：全量渲染（v6.22: 公司目录 JSON 已删，无去重对象）
 ## - 有限库存商品显示"剩余N"，归零禁购——can_purchase_item 的 out_of_stock
 ##   分支首次有了 UI 呈现（库存侧的上下架消费端即此；add/remove_item_to_store
 ##   保留为预留接口）
-func _build_faction_shop_extras_section(_current_rep: int, company_items: Array) -> void:
+func _build_faction_shop_extras_section(_current_rep: int) -> void:
 	var fsm: Node = get_node_or_null("/root/FactionSystemManager")
 	if fsm == null or not fsm.has_method("get_faction_store_items"):
 		return
 	# v30 R2b：特购区消费货币=功勋（声望等级不再因购买下跌）
 	var merit_now: int = int(fsm.get_merit_points()) if fsm.has_method("get_merit_points") else 0
 	var all_items: Array = fsm.get_faction_store_items(_current_company_id)
-	# 公司目录已上架的卡（纳米价，上方主列表）——特购区跳过，避免同卡双轨重复售卖
-	var listed_cards: Dictionary = {}
-	for it in company_items:
-		if it is Dictionary:
-			listed_cards[String(it.get("card_id", ""))] = true
 	var extras: Array = []
 	for it in all_items:
 		if it == null:
@@ -472,7 +393,7 @@ func _build_faction_shop_extras_section(_current_rep: int, company_items: Array)
 		var t: int = int(it.item_type)
 		if t == 1:  # StoreItemType.MATERIAL
 			extras.append(it)
-		elif t == 0 and not listed_cards.has(String(it.item_id)):  # CARD 且不在主目录
+		elif t == 0:  # StoreItemType.CARD（v6.22: 主目录已删，CARD 全量渲染）
 			extras.append(it)
 		# RUNE(3) 已由符文区渲染；CARD_BUNDLE(2) 数据层无上架实例，跳过
 	if extras.is_empty():
@@ -764,254 +685,6 @@ func _on_buy_intel_item(item_type: String, price: int, row_node: Control) -> voi
 	_refresh_items()
 
 
-func _build_store_item_row(
-	card_id: String, card_name: String, frag_amount: int,
-	price_nano: int, required_rep: int, current_rep: int,
-	locked: bool, afford: bool, enemy_bp, card,
-	masked: bool = false, tier_gap: int = 0
-) -> PanelContainer:
-	var row_panel: PanelContainer = StoreItemRowScene.instantiate()
-
-	# 样式
-	row_panel.add_theme_stylebox_override("panel", _row_style_locked if locked else _row_style_normal)
-
-	# v28 T4: 商品行卡面缩略图（卖坦克见坦克；声望锁行也显示——锁交易不锁认知）
-	var icon_rect: TextureRect = row_panel.get_node_or_null("RowMargin/RowHBox/IconRect") as TextureRect
-	if icon_rect != null:
-		var icon_tex: Texture2D = null
-		if card != null:
-			var icon_path: String = UiAssetLoader.card_icon_path_for_list(card)
-			if icon_path != "":
-				icon_tex = UiAssetLoader.load_tex(icon_path)
-		icon_rect.texture = icon_tex
-		icon_rect.visible = icon_tex != null
-
-	# 名称
-	var name_label: Label = row_panel.get_node("RowMargin/RowHBox/InfoVBox/NameLabel")
-	name_label.text = "%s  × %d 卡牌" % [card_name, frag_amount]
-	if locked:
-		name_label.add_theme_color_override("font_color", Color(DT.COLOR_TEXT_DIM.r, DT.COLOR_TEXT_DIM.g, DT.COLOR_TEXT_DIM.b, 0.7))
-	else:
-		name_label.add_theme_color_override("font_color", DT.COLOR_GOLD)
-
-	# 卡牌信息
-	var info_card = null
-	if enemy_bp:
-		info_card = enemy_bp
-	elif card != null:
-		info_card = card
-
-	if masked:
-		# 等级打码商品：只透露类型与梯度提示——情报可见性独立于购买能力，
-		# 跨梯度商品保持神秘维持探索驱动（符合 IntelManual 揭示精神）
-		var info_label_m: Label = row_panel.get_node("RowMargin/RowHBox/InfoVBox/InfoLabel")
-		var m_parts: Array[String] = []
-		if info_card != null:
-			match info_card.card_type:
-				GC.CardType.COMBAT_UNIT: m_parts.append("战斗卡")
-				GC.CardType.ENERGY:      m_parts.append("充能槽")
-		m_parts.append("超出当前进度的储备（梯度 +%d）" % maxi(tier_gap, 1))
-		info_label_m.text = "  |  ".join(m_parts)
-		info_label_m.visible = true
-	elif info_card != null:
-		# 声望锁不遮蔽情报：声望只锁交易不锁认知（玩家看得到目标才会规划声望投入）
-		# 类型/稀有度/能量消耗行
-		var info_label: Label = row_panel.get_node("RowMargin/RowHBox/InfoVBox/InfoLabel")
-		var info_parts: Array[String] = []
-		match info_card.card_type:
-			GC.CardType.COMBAT_UNIT: info_parts.append("战斗卡")
-			GC.CardType.ENERGY:      info_parts.append("充能槽")
-		var rarity_text := ""
-		match info_card.rarity:
-			"uncommon":  rarity_text = "优秀"
-			"rare":      rarity_text = "稀有"
-			"epic":      rarity_text = "史诗"
-			"legendary": rarity_text = "传说"
-			"mythic":    rarity_text = "神话"
-		if not rarity_text.is_empty():
-			info_parts.append(rarity_text)
-		if info_card.energy_cost > 0:
-			info_parts.append("消耗 %d⚡" % info_card.energy_cost)
-		if info_parts.size() > 0:
-			info_label.text = "  |  ".join(info_parts)
-			info_label.visible = true
-
-		# 基础数值属性行
-		# 攻/防/血必须走 UnitStatsTable 口径：防御由兵种派生（derive_defense_by_unit_type），
-		# 模板 defense_* 是 v6.2 前旧语义字段，直读会显示错值；与 card_info_panel/背包预览同源
-		var base_attrs_label: Label = row_panel.get_node("RowMargin/RowHBox/InfoVBox/BaseAttrsLabel")
-		var base_attrs_parts: Array[String] = []
-		match info_card.card_type:
-			GC.CardType.COMBAT_UNIT:
-				var stats := UnitStatsTable.build_stats_from_card(info_card)
-				base_attrs_parts.append("生命 %d" % int(stats.max_hp))
-				base_attrs_parts.append("攻 轻%d·甲%d·空%d" % [
-					int(stats.attack_light), int(stats.attack_armor), int(stats.attack_air)])
-				base_attrs_parts.append("防 轻%d·甲%d·空%d" % [
-					int(stats.defense_light), int(stats.defense_armor), int(stats.defense_air)])
-				if info_card.weight_capacity > 0:
-					base_attrs_parts.append("承载 %d 重量" % info_card.weight_capacity)
-				if info_card.max_weapons > 0:
-					base_attrs_parts.append("武器槽 %d" % info_card.max_weapons)
-				if info_card.weight > 0:
-					base_attrs_parts.append("重量 %d" % info_card.weight)
-				# v20.13c: 每卡部署次数（与战场底栏 ×N 角标同源口径；商店为模板卡，按稀有度修正）
-				var du_entry: Dictionary = UnifiedCardTable.get_entry(info_card.card_id)
-				if not du_entry.is_empty():
-					var du_uses: int = UnifiedCardTable.get_deploy_uses(du_entry, info_card)
-					if du_uses < 99:
-						base_attrs_parts.append("部署×%d/场" % du_uses)
-			GC.CardType.ENERGY:
-				if info_card.energy_cost > 0:
-					base_attrs_parts.append("能量消耗 %d⚡" % info_card.energy_cost)
-				if info_card.energy_grant > 0:
-					base_attrs_parts.append("能量提供 %d⚡" % int(info_card.energy_grant))
-		if base_attrs_parts.size() > 0:
-			base_attrs_label.text = "  |  ".join(base_attrs_parts)
-			base_attrs_label.visible = true
-
-		# 战斗属性行
-		var combat_label: Label = row_panel.get_node("RowMargin/RowHBox/InfoVBox/CombatLabel")
-		if not info_card.summary_line.is_empty():
-			combat_label.text = String(info_card.summary_line)
-			combat_label.custom_minimum_size = Vector2(400, 0)
-			combat_label.visible = true
-
-		# 描述行
-		var desc_label: Label = row_panel.get_node("RowMargin/RowHBox/InfoVBox/DescLabel")
-		if not info_card.description.is_empty():
-			desc_label.text = String(info_card.description)
-			desc_label.custom_minimum_size = Vector2(400, 0)
-			desc_label.visible = true
-
-	# 价格
-	var price_label: Label = row_panel.get_node("RowMargin/RowHBox/InfoVBox/PriceLabel")
-	var req_text := "" if required_rep <= 0 else "（需声望 %d，当前 %d）" % [required_rep, current_rep]
-	price_label.text = "花费 %d 纳米材料 %s" % [price_nano, req_text]
-	if afford:
-		price_label.add_theme_color_override("font_color", Color(DT.COLOR_TEXT_MID.r, DT.COLOR_TEXT_MID.g, DT.COLOR_TEXT_MID.b, 0.85))
-	else:
-		price_label.add_theme_color_override("font_color", Color(DT.COLOR_DANGER.r, DT.COLOR_DANGER.g, DT.COLOR_DANGER.b, 0.85))
-
-	# 购买按钮
-	var buy_btn: Button = row_panel.get_node("RowMargin/RowHBox/BuyBtn")
-	# v28 T2: 渐变面材版购买按钮（ghost 金——整列购买键不抢行内信息）
-	var buy_styles := PanelStyles.make_button_styles_graded(DT.COLOR_GOLD)
-	buy_btn.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
-	buy_btn.add_theme_stylebox_override("normal", buy_styles["normal"])
-	buy_btn.add_theme_stylebox_override("hover", buy_styles["hover"])
-	buy_btn.add_theme_stylebox_override("pressed", buy_styles["pressed"])
-	buy_btn.add_theme_stylebox_override("disabled", buy_styles["disabled"])
-	buy_btn.add_theme_stylebox_override("focus", buy_styles["focus"])
-	if locked:
-		buy_btn.disabled = true
-		buy_btn.text = "未解锁"
-		buy_btn.add_theme_color_override("font_color", Color(DT.COLOR_TEXT_DIM.r, DT.COLOR_TEXT_DIM.g, DT.COLOR_TEXT_DIM.b, 0.6))
-	elif not afford:
-		buy_btn.disabled = true
-		buy_btn.add_theme_color_override("font_color", Color(DT.COLOR_DANGER.r, DT.COLOR_DANGER.g, DT.COLOR_DANGER.b, 0.8))
-	else:
-		buy_btn.add_theme_color_override("font_color", DT.COLOR_TEXT_BRIGHT)
-		buy_btn.add_theme_color_override("font_hover_color", DT.COLOR_HOVER_WHITE)
-
-	var cid_copy: String = card_id
-	var frag_copy: int = frag_amount
-	var price_copy: int = price_nano
-	buy_btn.pressed.connect(func() -> void:
-		_on_buy_pressed(cid_copy, frag_copy, price_copy, row_panel)
-	)
-
-	# 悬浮情报：行内文案之外的简明参考（价格/声望门槛/锁定原因一目了然）
-	var tip := PackedStringArray()
-	if masked:
-		tip.append("？？ 未知商品 ？？")
-		tip.append("超出当前进度的储备，推进关卡后揭示")
-	else:
-		tip.append("%s × %d" % [card_name, frag_amount])
-		if info_card != null:
-			if not String(info_card.summary_line).is_empty():
-				tip.append(String(info_card.summary_line))
-			if not String(info_card.description).is_empty():
-				tip.append(String(info_card.description))
-	tip.append("价格：%d 纳米材料" % price_nano)
-	if required_rep > 0:
-		tip.append("声望需求：%d（当前 %d）" % [required_rep, current_rep])
-		if locked:
-			tip.append("⚠ 声望不足，暂无法购买")
-	row_panel.tooltip_text = "\n".join(tip)
-
-	return row_panel
-
-
-
-func _on_buy_pressed(card_id: String, card_count: int, price_nano: int, row_node: Control) -> void:
-	# 防抖：购买流程（含反馈动画）期间禁止重复触发，避免快速连点多次 emit 导致多发卡。
-	if _buy_in_progress:
-		return
-	if not BasicResourceManager:
-		return
-	if not BasicResourceManager.has_method("get_total") or not BasicResourceManager.has_method("add_resource"):
-		return
-	var current_nano: int = BasicResourceManager.get_total(BasicResources.ID_NANO_MATERIALS)
-	if current_nano < price_nano:
-		# 余额不足闪烁提示 + toast（原来只有闪烁，玩家可能没注意到）
-		_flash_row(row_node, Color(DT.COLOR_DANGER.r, DT.COLOR_DANGER.g, DT.COLOR_DANGER.b, 0.6))
-		SignalBus.show_toast.emit("纳米材料不足（还需 %d）" % (price_nano - current_nano))
-		SignalBus.play_sound.emit("error")
-		return
-	_buy_in_progress = true
-	# 屏蔽 add_resource 触发的 resources_changed 回弹（购买流程末尾统一刷一次）
-	_suppress_resources_refresh = true
-	# 扣除资源并直接发放卡牌到背包
-	BasicResourceManager.add_resource(BasicResources.ID_NANO_MATERIALS, -price_nano)
-	if card_id.begins_with("permit_"):
-		BasicResourceManager.add_resource(card_id, maxi(1, card_count))
-	_suppress_resources_refresh = false
-	if not card_id.begins_with("permit_"):
-		var template_card: CardResource = DefaultCards.get_card_by_id(card_id)
-		if template_card == null:
-			template_card = null
-		# [LOG-v5.1] print("[StorePanel] _on_buy_pressed: Buying card_id=%s template_card=%s" % [card_id, template_card != null])
-		# v7.0: 商店购买的卡牌实例化（独立养成身份）
-		var ir: Node = get_node_or_null("/root/InstanceRegistry")
-		for i in range(maxi(1, card_count)):
-			if template_card != null and SignalBus:
-				var out_card: CardResource = null
-				if ir != null and ir.has_method("create_instance"):
-					out_card = ir.create_instance(card_id)
-				else:
-					out_card = template_card.clone() if template_card.has_method("clone") else template_card
-				# v26 批次3：缴获卡购买时滚动稀有度（非 captured_ 卡不动）
-				ManufacturePools.apply_captured_quality(out_card)
-				# [LOG-v5.1] print("[StorePanel] _on_buy_pressed: Emitting card_added_to_backpack for card_id=%s (i=%d)" % [out_card.card_id, i])
-				SignalBus.card_added_to_backpack.emit(out_card)
-				# [LOG-v5.1] print("[StorePanel] _on_buy_pressed: Signal emitted")
-	# 通知任务系统
-	var qm = get_node_or_null("/root/QuestManager")
-	if qm and qm.has_method("notify_item_bought"):
-		qm.notify_item_bought()
-	# v26.13(gameplay)：商店购买成就统计接线（此前 record_system_operation 零调用）
-	var _am: Node = get_node_or_null("/root/AchievementManager")
-	if _am == null:
-		ManagerLazyLoader.ensure_loaded("achievement")
-		_am = get_node_or_null("/root/AchievementManager")
-	if _am and _am.has_method("record_system_operation"):
-		_am.record_system_operation("shop_purchase")
-	# P1-6: 购买成功反馈——此前只有行内绿闪，无 toast/音效（买了卡感知弱）
-	if card_id.begins_with("permit_"):
-		SignalBus.show_toast.emit("已购入：许可函 ×%d" % maxi(1, card_count))
-	else:
-		var bought_name: String = DefaultCards.get_safe_display_name(card_id)
-		SignalBus.show_toast.emit("已购入：%s%s" % [bought_name, (" ×%d" % maxi(1, card_count)) if card_count > 1 else ""])
-	SignalBus.play_sound.emit("card_place")
-	# 购买成功闪烁绿色
-	_flash_row(row_node, Color(DT.COLOR_GREEN_BRIGHT.r, DT.COLOR_GREEN_BRIGHT.g, DT.COLOR_GREEN_BRIGHT.b, 0.6))
-	_refresh_balance()
-	# 延迟刷新，让购买反馈动画先完成（call_deferred 避免挤在反馈动画同帧）
-	await get_tree().create_timer(0.4).timeout
-	_buy_in_progress = false
-	if is_instance_valid(row_node):
-		call_deferred("_refresh_items")
 
 ## 批次三 B3：购买失败反馈（ToastManager 红/橙；lazy 未加载时退化为 SignalBus 绿条）
 func _show_buy_error(msg: String) -> void:

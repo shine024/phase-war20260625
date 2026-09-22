@@ -9166,3 +9166,20 @@ MVP 协同小结、8 面板首开气泡。**R3 余项**：结算面板三页签�
 - **PLAYER_ICON_OVERRIDE 4 条语义对齐**（`scripts/ui_asset_loader.gd`，美术质检报告发现 #3）：`cold_sam7` 017→**090**（萨姆-7 防空组=便携防空导弹组，原图 ZSU-23 自行高炮车类型错位；090 既有毒刺导弹兵图同类）；`fut_aa_hover` 060→**025**（悬浮底盘对齐；原 060 履带火箭炮车错位；`fut_howitzer` 保留 060 火炮角色匹配登记接受）；新增 `captured_cold_inf_m60`→**045**、`captured_cold_air_m113_e`→**016**（缴获版对齐原型家族图，消除 M60 缴获显 M14 图/M113 缴获显布雷德利图错位）。`mod_ranger`=三角洲同图登记接受（无更优现代特种兵图）。复跑 task11：OVERRIDE 76→78、总组 68→67。
 - **6 张无专属图玩家卡补图**（质检报告发现 #2 遗留，agnes-image-2.1-flash 管线）：storm_rider/bulwark/titan_mk2/abrams_mk2/heavy_carrier/regen_frame 各 1 掷通过（填充 0.41-0.67），白底 flood 转透明+内容 bbox 裁方+512×512 落盘 `assets/card_icons/{card_id}.png`（第 0 级专属链自动命中，DEDICATED 17→23、ERA_FALLBACK 54→48）；regen_frame 白口袋（吊臂封闭区）二次清除后复验通过。视觉验收拼图 `tests/evidence/art_audit_2026-09-22/task13_six_icons_verify.png`。管线脚本 `tools/_tmp_gen_six_card_icons.py`（curl 子进程+临时文件传体——Windows stdin 传体会被服务端截断报 unexpected end of JSON input；传输重试不占 3 掷质量预算）。重导入已跑。
 - 门禁：override 批 gdunit 458/458；补图为纯新增资产（无逻辑改动）。
+
+## v6.22.0 势力贡献驱动改版批1：占领/关系/征服链退役 + 双轨商店收口（2026-09-22，详见 docs/势力重构_贡献驱动改版_2026-09-22.md）
+
+**改势力/商店/榜单/成就/任务系统前必读本节。** 背景=「集体穿越、人皆迷失」设定定稿：7 组织不再占领领地/互相进攻，改贡献驱动协作方（定案 8 条见计划文档 §1）。
+
+- **敌方数值与势力彻底脱钩**：`enemy_stat_context.gd` 删 `faction_buff/faction_id/faction_level` 三字段；`FACTION_MOD_BIAS` 偏好表（7 条）整体搬家至 `CompanyDefinitions`（语义归属地），game_manager 相位师蓝图掉落链改读新表；**`data/faction_conquest_buffs.gd` 删除**。经典敌公式收敛为 档位×波数×难度。
+- **情报掉落链去占领 buff**：intel_discovery_manager 删 `_occupation_drop_context()` 与 FactionConquestBuffs preload；`_roll_item_for_defeated` 删 bias 形参（内部传空数组）；关卡号改直读 GameManager。
+- **世界地图领地图退役**：TerritoryMapButton/`_on_territory_map_button`/本地 overlay 懒建全删；`occupation_changed` 信号（SignalBus+连接+置脏链 `_occupation_dirty` 四处）全删；`_get_level_occupation_safe` 改名 `_get_level_faction_safe` 直读静态表；色环=历史辖区、tooltip「曾属于」、战前摘要驻防段「%s（曾属）/无主之地」（buff 恒空）。
+- **领地图面板删除**：occupation_panel.gd/.tscn 删；main.gd 六处装配 + main.tscn OccupationOverlay 子树与 ExtResource 删；feature_unlock_popup/truck_base 无涉（已核）。
+- **faction_event_manager 死字段清理**（343→239 行）：loyalty/_init_loyalty/_apply_loyalty_changes/get_loyalty、event_history/get_event_history、bonus_event_active 信号 + active_bonus_events 全链（_tick_bonus_events/apply_bonus_event/get_active_bonus_for_faction/get_bonus_state_for_faction/_activate_random_timed_bonus/faction_bonus_duration 分支）全删；save_state 只留 battle_count_since_last+active_event，旧档死键静默忽略。faction_panel 生效加成显示块同步删。
+- **榜单口径**：leaderboard_data/panel 四处 `controlled_levels` → `historical_levels`；faction_panel 侧同步。
+- **删文件三件**：faction_status.gd / faction_card_generator.gd / faction_card_bonuses.gd（+.uid）；unit_stats.gd 注释改写。
+- **成就奖励改功勋**：achievement_rewards.gd company_rep 分支 → merit 分支（`fsm.add_merit`，批1前半已加）；achievement_definitions.gd 5 处 `{fid:N}` → `merit: N`（10/15/18/20 档，匹配功勋经济）。回归锁 `test_achievement_company_rep.gd` 改锁新契约（+1 用例锁 company_rep 清零）。
+- **quest_manager 死代码**：notify_law_researched + research_law 两进度分支（法则系统退役）+ is_mission_quest/get_quest_target_faction/is_mission_quest_done（零调用方）删除。
+- **双轨商店收口**：`data/company_store.gd` + `data/json/company_store.json` 删除；store_panel 删 CompanyStore 纳米主卡列表（四区→三区：符文功勋轨/功勋特购/情报道具纳米轨），`_build_store_item_row`/`_on_buy_pressed` 整删 + 五个孤儿 preload 清理；特购区 CARD 全量渲染（去重对象已亡）；默认页签走 CompanyDefs 首个 id。perf_smoke ITEMS 段同步删。
+- **文案口径**（批2a 前置小步）：faction_panel 消费键 `historical_levels` + 「历史辖区：N 关」。
+- **验证**：gdparse 27 改动 .gd 零报错；残留符号 grep 全项目清零（豁免 _archived/docs/证据存档）；`tests/_tmp_faction_b1_smoke.gd` 43 断言全过；gdunit 全量 **459/459**（77 套件，含改写成就锁 3 用例）；master_power_smoke 8/8；--check-only 590s 超时未跑完全量预热但零 SCRIPT/Parse 错（AGENTS.md 已知限制，gdunit+smoke 为实际门禁）。

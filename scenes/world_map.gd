@@ -3,8 +3,6 @@ extends Control
 ## 按时代分组显示，当前关卡高亮
 
 var _map_built: bool = false  # 地图是否已构建（缓存）
-# v9 perf：隐藏期间的占领变化置脏，重新打开时补刷（见 _on_occupation_changed_refresh）
-var _occupation_dirty: bool = false
 static var _cached_level_map_template: Control = null  # 跨场景复用模板，避免每次重建100按钮
 # v27.12: _process 每帧用的节点引用缓存（原每帧两次字符串 get_node_or_null 查找），
 # 重建会换实例（旧画布 queue_free 后失效），每帧开头 is_instance_valid 校验，失效才重查
@@ -75,7 +73,6 @@ const _GameConfigRef = preload("res://resources/game_config.gd")  # v30 R2b: 黑
 const EnemyArchetypesData = preload("res://data/enemy_archetypes.gd")
 const DefaultCardsData = preload("res://data/default_cards.gd")
 const DropTablesPreview = preload("res://resources/drop_tables.gd")
-const FactionConquestBuffs = preload("res://data/faction_conquest_buffs.gd")  # v6.9: 占领势力加成描述
 const CompanyDefs = preload("res://data/company_definitions.gd")  # v6.14: 统一阵营色来源
 const PhaseMasterGarrison = preload("res://data/phase_master_garrison.gd")  # v7.x: Boss相位师驻守关判定
 const EndlessBlackgateRef = preload("res://managers/endless_blackgate_manager.gd")  # v6.19 P1-T1.2: 黑门规则文案读常量
@@ -277,28 +274,8 @@ func _ready() -> void:
 	var scroll_ready := get_node_or_null("Margin/VBox/ScrollContainer") as ScrollContainer
 	if scroll_ready != null and not scroll_ready.gui_input.is_connected(_on_map_gui_input):
 		scroll_ready.gui_input.connect(_on_map_gui_input)
-	# v22: 势力领地图入口改挂标题栏（旧实现位于滚动内容里，随网格布局退役）
+	# v6.22: 势力领地图入口已随占领状态机退役删除（领地概念不再存在）
 	var vbox_r := get_node_or_null("Margin/VBox")
-	if vbox_r != null and vbox_r.get_node_or_null("TerritoryMapButton") == null:
-		var territory_btn := Button.new()
-		territory_btn.name = "TerritoryMapButton"
-		territory_btn.text = "◆ 势力领地图"
-		territory_btn.tooltip_text = "查看100关当前占领状态（势力领地分布）"
-		territory_btn.custom_minimum_size = Vector2(0, 30)
-		var tbs := StyleBoxFlat.new()
-		tbs.bg_color = Color(0.06, 0.1, 0.17, 0.9)
-		tbs.border_width_left = 1; tbs.border_width_top = 1
-		tbs.border_width_right = 1; tbs.border_width_bottom = 1
-		tbs.border_color = Color(0.0, 0.75, 0.85, 0.6)
-		tbs.corner_radius_top_left = 5; tbs.corner_radius_top_right = 5
-		tbs.corner_radius_bottom_right = 5; tbs.corner_radius_bottom_left = 5
-		territory_btn.add_theme_stylebox_override("normal", tbs)
-		_apply_map_btn_states(territory_btn, tbs)
-		territory_btn.add_theme_color_override("font_color", DesignTokens.COLOR_ACCENT_CYAN)
-		territory_btn.add_theme_font_size_override("font_size", 13)
-		territory_btn.pressed.connect(_on_territory_map_button)
-		vbox_r.add_child(territory_btn)
-		vbox_r.move_child(territory_btn, 1)  # 标题之后、地图画布之前
 	# v26.19：顶栏燃料/停靠 chip（行军状态一变即刷）
 	if vbox_r != null:
 		_fuel_chip = Label.new()
@@ -320,8 +297,6 @@ func _ready() -> void:
 	if not GameManager.current_level_changed.is_connected(_on_truck_level_changed):
 		GameManager.current_level_changed.connect(_on_truck_level_changed)
 	# v6.10: 监听占领变化，刷新关卡按钮色标（攻克易主后实时更新）
-	if SignalBus and SignalBus.has_signal("occupation_changed"):
-		SignalBus.occupation_changed.connect(_on_occupation_changed_refresh)
 
 	# 多种方式尝试找到返回按钮
 	var back_btn: Button = get_node_or_null("Margin/VBox/BackToTitleButton")
@@ -380,11 +355,6 @@ func _on_visibility_changed() -> void:
 	_runtime_active = is_visible_in_tree()
 	# v23.2：方案 11 单屏需要逐帧自校验缩放（防"打开后尺寸变化没人重算→放大"）
 	set_process(_runtime_active and MAP_SCHEME == 11)
-	# v27.12: 隐藏期间占领变化过 → 变可见时补一次全量重建（覆盖不经过 refresh_for_open
-	# 的显隐路径；refresh_for_open 已先行清脏标记，不会在这里二次重建）
-	if _runtime_active and _occupation_dirty:
-		_occupation_dirty = false
-		refresh_levels()
 	if _runtime_active:
 		queue_redraw()
 
@@ -820,11 +790,11 @@ static func _layout_scheme6() -> void:
 			_s_bridges.append({"a": pts[j], "b": pts[j + 1], "era": era_idx})
 	_s_bridges.append({"a": _s_level_points[LEVEL_COUNT], "b": _gate_pos(), "era": 4})
 
-## 每次构建/刷新时重读动态状态：占领色环集合 + 巨环三态
+## 每次构建/刷新时重读：历史辖区色环集合（v6.22 定案5：纯风味，数据源=静态表）+ 巨环三态
 func _refresh_static_state(current_level: int) -> void:
 	_s_occ_colors.clear()
 	for lv in range(1, LEVEL_COUNT + 1):
-		var fid := _get_level_occupation_safe(lv)
+		var fid := _get_level_faction_safe(lv)
 		if not fid.is_empty():
 			var c := CompanyDefs.get_faction_color(fid)
 			c.a = 0.85
@@ -1024,15 +994,6 @@ func refresh_levels() -> void:
 	_cached_level_map_template = null
 	_build_level_map()
 
-## v6.10: 占领变化时刷新地图（让关卡按钮的占领色标实时更新）
-## v9 perf：地图隐藏时置脏跳过——world_map 随 WorldMapPanel 常驻主场景但默认不可见，
-## 每次过关都触发 100 按钮全量重建是纯浪费；重新打开时 refresh_for_open 补刷
-func _on_occupation_changed_refresh(_level: int, _old_f: String, _new_f: String) -> void:
-	if not is_visible_in_tree():
-		_occupation_dirty = true
-		return
-	refresh_levels()
-
 ## v22: 相位泡关卡节点（TextureButton）——贴图=时代泡/通关残壳/相位师泡，
 ## 占领色标=占领环（overlay 绘制）+ boss 泡染势力色 + tooltip（沿用旧按钮逻辑）
 ## v23 圈中加点节点：纯程序绘制（方案11 不再使用气泡贴图）。
@@ -1149,17 +1110,17 @@ func _make_level_node(level_index: int, era_idx: int, point: Vector2, _current_l
 			num.add_theme_constant_override("outline_size", 2)
 			btn.tooltip_text = "⚔ 相位师首领：%s" % boss_master_name
 
-	# v6.10: 占领 tooltip（色环由 overlay 绘制，节点不再染膜）
-	var occupation_fid: String = _get_level_occupation_safe(level_index)
+	# v6.22: 历史辖区 tooltip（色环语义=曾属于，定案5 纯风味）
+	var occupation_fid: String = _get_level_faction_safe(level_index)
 	if not occupation_fid.is_empty():
 		var occ_name: String = occupation_fid
 		var fsm = get_node_or_null("/root/FactionSystemManager")
 		if fsm and fsm.has_method("get_faction_info"):
 			occ_name = String(fsm.get_faction_info(occupation_fid).get("name", occupation_fid))
 		if btn.tooltip_text.is_empty():
-			btn.tooltip_text = "占领：%s" % occ_name
+			btn.tooltip_text = "曾属于：%s" % occ_name
 		else:
-			btn.tooltip_text += "\n占领：%s" % occ_name
+			btn.tooltip_text += "\n曾属于：%s" % occ_name
 
 	# v32.3 D2：行军预提示——非停靠关的节点 hover 明示"点击=行军"（此前点击直接启程
 	# 只有事后的 toast，玩家以为点错/在驾驶）
@@ -1227,13 +1188,10 @@ func _draw_era_sigil(btn: Control, era_idx: int, size_px: float, strong: bool) -
 			btn.draw_colored_polygon(pts4, c)
 
 
-func _get_level_occupation_safe(level: int) -> String:
-	var fsm = get_node_or_null("/root/FactionSystemManager")
-	if fsm and fsm.has_method("get_level_occupation"):
-		return String(fsm.get_level_occupation(level))
-	# 回退静态（v7.x 性能：用全局单例）
+## v6.22: 动态占领查询已退役——关卡势力归属=纯风味静态表（定案5）
+func _get_level_faction_safe(level: int) -> String:
 	var li = LevelInformation.get_shared()
-	return li.get_level_faction(level)
+	return String(li.get_level_faction(level))
 
 func _process(_delta: float) -> void:
 	# v23.2 单屏自校验：每帧比对 ScrollContainer 实际尺寸与当前缩放，
@@ -1977,61 +1935,7 @@ func _enter_blackgate_confirmed(popup: Window) -> void:
 		return
 	SceneTransition.change(get_tree(), "res://scenes/main.tscn")
 
-## v6.10: 打开势力领地图面板
-func _on_territory_map_button() -> void:
-	# OccupationPanel 已静态实例化于 main.tscn（PopupLayer/OccupationOverlay/CenterContainer），
-	# 旧的 UILazyLoader.ensure_loaded("occupation") 守卫恒真（UILazyLoader 无此方法），导致按钮永远早退——已删。
-	var overlay = get_node_or_null("/root/Main/PopupLayer/OccupationOverlay")
-	var main = get_node_or_null("/root/Main")
-	# v6.21 K 条：独立/内嵌模式（从移动基地进图）main.tscn 不在场 → 本场景自持懒实例化，
-	# 与 main.tscn 的 overlay 同构（Backdrop+CenterContainer+OccupationPanel）。
-	if overlay == null:
-		overlay = _ensure_local_occupation_overlay()
-		if overlay == null:
-			return
-		overlay.visible = true
-	elif main != null and main.has_method("_open_overlay"):
-		# v6.14: 走 main 统一开关（开面板淡入动效，与其它 16 入口同路径）；
-		# 直接 visible=true 时 ESC/关闭链仍正常（close_top 按 visible 找），仅无动效。
-		main._open_overlay(overlay, "occupation")
-	else:
-		overlay.visible = true
-	var panel = overlay.get_node_or_null("CenterContainer/OccupationPanel")
-	if panel and panel.has_method("_refresh_all"):
-		panel._refresh_all()
-
-var _local_occupation_overlay: Control = null
-
-## v6.21 K 条：懒建势力领面板弹层（仅 main 不在场时使用）。panel 的 closed 信号自己收层。
-func _ensure_local_occupation_overlay() -> Control:
-	if _local_occupation_overlay != null and is_instance_valid(_local_occupation_overlay):
-		return _local_occupation_overlay
-	var panel_scene: PackedScene = load("res://scenes/ui/occupation_panel.tscn")
-	if panel_scene == null:
-		return null
-	var overlay := Control.new()
-	overlay.name = "OccupationOverlay"
-	overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	overlay.visible = false
-	overlay.mouse_filter = Control.MOUSE_FILTER_STOP
-	var backdrop := ColorRect.new()
-	backdrop.name = "Backdrop"
-	backdrop.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	backdrop.color = Color(0, 0, 0, 0.55)
-	backdrop.mouse_filter = Control.MOUSE_FILTER_STOP
-	overlay.add_child(backdrop)
-	var center := CenterContainer.new()
-	center.name = "CenterContainer"
-	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	overlay.add_child(center)
-	var panel: Control = panel_scene.instantiate()
-	panel.name = "OccupationPanel"
-	center.add_child(panel)
-	if panel.has_signal("closed"):
-		panel.closed.connect(func(): overlay.visible = false)
-	add_child(overlay)
-	_local_occupation_overlay = overlay
-	return overlay
+## v6.22: 原 _on_territory_map_button/_ensure_local_occupation_overlay 已随领地图面板退役删除。
 
 func _on_level_selected(level_index: int) -> void:
 	# v26.26 一点即发：停靠关=战前准备（关卡情报/出击），其余节点=直接启程（连线+光点即走）
@@ -2745,10 +2649,9 @@ func _collect_level_info(level_index: int) -> Dictionary:
 				drop_preview_text = "%s（每场战功卡随机）" % sample_txt
 			else:
 				drop_preview_text = "%s · 战功卡池示例: %s" % [drop_preview_text, sample_txt]
-	# v6.9/v6.10: 查询关卡驻防势力（动态占领优先，回退静态）
-	# v6.10: 玩家攻克易主后，驻防显示跟随动态占领状态
-	var garrison_faction_id: String = _get_level_occupation_safe(level_index)
-	var garrison_text: String = "无主之地（无占领势力，无敌方加成）"
+	# v6.22: 驻防信息=历史辖区（纯风味）——占领/敌方加成链已退役，buff 恒空
+	var garrison_faction_id: String = _get_level_faction_safe(level_index)
+	var garrison_text: String = "无主之地"
 	var garrison_buff_text: String = ""
 	var garrison_color: Color = Color(0.7, 0.75, 0.8, 0.9)
 	if not garrison_faction_id.is_empty():
@@ -2756,12 +2659,8 @@ func _collect_level_info(level_index: int) -> Dictionary:
 		if fsm and fsm.has_method("get_faction_info"):
 			var finfo: Dictionary = fsm.get_faction_info(garrison_faction_id)
 			var fname: String = String(finfo.get("name", garrison_faction_id))
-			var flevel: int = int(finfo.get("level", 1))
-			garrison_text = "%s（Lv.%d）" % [fname, flevel]
-			# 显示该势力对该关敌人的加成（来自 faction_conquest_buffs.gd）
-			if FactionConquestBuffs != null:
-				garrison_buff_text = FactionConquestBuffs.describe_buff(garrison_faction_id, flevel)
-				garrison_color = Color(1.0, 0.7, 0.4, 1.0)  # 橙红：占领势力，威胁提示
+			garrison_text = "%s（曾属）" % fname
+			garrison_color = CompanyDefs.get_faction_color(garrison_faction_id)
 	# v7.x: 查询驻守相位师（固定驻守关，复用顶部 const）
 	var garrison_master_name: String = ""
 	var _garrison_mid: String = PhaseMasterGarrison.get_garrison_master_id(level_index)
@@ -2816,10 +2715,6 @@ func _pick_level_enemy_ids(level_index: int, era_enemy_ids: Array) -> Array:
 
 ## 仅在地图打开时执行的轻量刷新（避免每次重建100个按钮）
 func refresh_for_open() -> void:
-	# v9 perf：隐藏期间占领变化过 → 补一次全量重建（占领色标已变）
-	if _occupation_dirty:
-		_occupation_dirty = false
-		refresh_levels()
 	_on_visibility_changed()
 	if not _map_built:
 		_build_level_map()

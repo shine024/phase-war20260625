@@ -87,3 +87,17 @@ static func get_by_id(company_id: String) -> Dictionary:
 		if String(c.get("id", "")) == company_id:
 			return c.duplicate(true)
 	return {}
+
+
+## v6.22 势力改版：各组织的改造类型偏好（原 faction_conquest_buffs.FACTION_MOD_BIAS 搬家至此）。
+## 消费方：game_manager 相位师蓝图掉落链（enemy_type 按 _pm_player_faction 偏好派生）、
+## intel_discovery_manager 掉落 bias 形参（现传空数组，bias 语义仅此处保留数据源）。
+const FACTION_MOD_BIAS: Dictionary = {
+	"iron_wall_corp": ["armor", "fort"],       # 钢壁→装甲/堡垒改造
+	"nova_arms": ["infantry", "anti_air"],     # 新星→步兵/防空改造（火力支援）
+	"aether_dynamics": ["air", "recon"],       # 以太→空军/侦察改造（机动）
+	"quantum_logistics": ["artillery", "engineer"],  # 量子→炮兵/工兵改造（后勤）
+	"helix_recon": ["recon", "air"],           # 螺旋→侦察/空军改造（情报）
+	"void_research": ["universal", "artillery"],  # 虚空→通用/炮兵改造（神秘）
+	"frontier_union": [],                      # 边境→无偏好
+}

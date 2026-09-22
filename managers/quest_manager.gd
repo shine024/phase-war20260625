@@ -10,7 +10,6 @@ extends Node
 ##   defend_faction   — 在指定势力关卡击败相位师（内部追踪）
 ##   enhance           — 完成N次强化（内部追踪）
 ##   collect_cards     — 拥有N张卡片（实时查询背包）
-##   research_law      — 研究N个法则（内部追踪）
 ##   reach_reputation  — 声望达到N（实时查询 FactionSystemManager）
 ##   buy_items         — 购买N次物品（内部追踪）
 ##   quick_win         — N秒内胜利（内部追踪最快记录）
@@ -124,14 +123,6 @@ func _on_enhancement_completed(success: bool, _card_id: String, _action: String,
 			_try_complete(qid)
 
 # ──────────────── 外部通知接口 ────────────────
-
-## 研究法则后调用
-func notify_law_researched(_law_id: String) -> void:
-	for qid in _accepted.keys():
-		var def: Dictionary = QuestDefs.get_by_id(qid)
-		if def.get("objective_type", "") == "research_law":
-			_inc_progress(qid, "research_count")
-			_try_complete(qid)
 
 ## 商店购买后调用
 func notify_item_bought() -> void:
@@ -379,8 +370,6 @@ func get_current_progress_for_quest(quest_id: String) -> int:
 		return int(progress.get("enhance_count", 0))
 	if otype == "collect_cards":
 		return _count_player_cards(int(def.get("card_era", -1)), String(def.get("card_min_rarity", "")))
-	if otype == "research_law":
-		return int(progress.get("research_count", 0))
 	if otype == "reach_reputation":
 		return _get_max_reputation()
 	if otype == "buy_items":
@@ -477,8 +466,6 @@ func is_quest_done(quest_id: String) -> bool:
 		return int(progress.get("enhance_count", 0)) >= int(target_val)
 	if otype == "collect_cards":
 		return _count_player_cards(int(def.get("card_era", -1)), String(def.get("card_min_rarity", ""))) >= int(target_val)
-	if otype == "research_law":
-		return int(progress.get("research_count", 0)) >= int(target_val)
 	if otype == "reach_reputation":
 		return _get_max_reputation() >= int(target_val)
 	if otype == "buy_items":
@@ -683,27 +670,8 @@ func get_quest_progress_for_mission(quest_id: String) -> int:
 
 	return 0
 
-func is_mission_quest(quest_id: String) -> bool:
-	var def: Dictionary = QuestDefs.get_by_id(quest_id)
-	if def.is_empty():
-		return false
-	var otype: String = def.get("objective_type", "")
-	return otype == "attack_faction" or otype == "defend_faction"
-
-func get_quest_target_faction(quest_id: String) -> String:
-	var def: Dictionary = QuestDefs.get_by_id(quest_id)
-	if def.is_empty():
-		return ""
-	var otype: String = def.get("objective_type", "")
-	var target: Dictionary = def.get("target", {})
-	if otype == "attack_faction":
-		return target.get("target_faction", "")
-	if otype == "defend_faction":
-		return target.get("defend_faction", "")
-	return ""
-
-func is_mission_quest_done(quest_id: String) -> bool:
-	return get_quest_progress_for_mission(quest_id) >= 1
+## v6.22: is_mission_quest/get_quest_target_faction/is_mission_quest_done 三查询已删
+## （零调用方；attack_faction/defend_faction 类型退役留批 2c）。
 
 # ──────────────── v6.9: 势力动态任务系统 ────────────────
 

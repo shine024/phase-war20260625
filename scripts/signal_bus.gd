@@ -167,9 +167,6 @@ signal faction_store_updated(faction_id: String)
 signal active_faction_changed(faction_id: String)
 signal faction_skill_unlocked(faction_id: String, skill_id: String)
 signal faction_event_generated(event: Dictionary)
-# v6.10: 占领状态机——关卡领地易主（攻克后玩家激活势力接管）
-signal occupation_changed(level: int, old_faction: String, new_faction: String)
-
 # 合成系统
 # v9.x（P2-7范围C）：synthesis_completed/synthesis_failed 已随合成系统删除移除
 

@@ -326,7 +326,6 @@ func _preload_common_panels() -> void:
 		"res://scenes/ui/collection_panel.tscn",
 		# 战略面板（中频）
 		"res://scenes/ui/faction_panel.tscn",
-		"res://scenes/ui/occupation_panel.tscn",
 		"res://scenes/ui/leaderboard_panel.tscn",
 		"res://scenes/ui/intelligence_hub_panel.tscn",
 	]
@@ -448,7 +447,6 @@ func _connect_panel_closed_signals() -> void:
 		"backpack":           get_node_or_null("PopupLayer/BackpackOverlay/BackpackVBox/CenterRow/BackpackCenter/BackpackPanel"),
 		"settings":           $PopupLayer/SettingsOverlay/CenterContainer/SettingsPanel,
 		"info":               $PopupLayer/IntelligenceOverlay/CenterContainer/IntelligenceHubPanel,
-		"occupation":         get_node_or_null("PopupLayer/OccupationOverlay/CenterContainer/OccupationPanel"),
 		"growth":             get_node_or_null("PopupLayer/GrowthOverlay/CenterContainer/GrowthPanel"),
 		"collection":         get_node_or_null("PopupLayer/CollectionOverlay/CenterContainer/CollectionPanel"),
 		"afk":                get_node_or_null("PopupLayer/AFKOverlay/CenterContainer/AFKPanel"),
@@ -551,7 +549,7 @@ func _open_overlay(overlay: Control, panel_key: String = "") -> void:
 
 ## v7.x 面板统一：通用打开通知。
 ## 按 on_overlay_opened → refresh → show_panel(null) → _refresh_all 顺序尝试，
-## 覆盖 store/quest/faction/info/modification/evolution/collection/leaderboard/occupation 等
+## 覆盖 store/quest/faction/info/modification/evolution/collection/leaderboard 等
 ## 常规面板的打开契约，新面板无需再往 _open_overlay 加分支。
 const _PANEL_NODE_NAMES := {
 	"store": "StorePanel",
@@ -566,7 +564,6 @@ const _PANEL_NODE_NAMES := {
 	"evolution": "EvolutionPanel",
 	"collection": "CollectionPanel",
 	"leaderboard": "LeaderboardPanel",
-	"occupation": "OccupationPanel",
 	# v9.x 修复：v7.x 面板统一重构时漏登——help 懒加载实例化后 _notify 查名
 	# 落空早退，show_panel 永不被调，面板永远隐藏（空遮罩挡全屏无法关闭）
 	"help": "HelpPanel",
@@ -795,7 +792,6 @@ func _on_panel_closed(key: String) -> void:
 		"growth":             _close_overlay(growth_overlay, "growth")
 		"collection":         _close_overlay(collection_overlay, "collection")
 		"info":               _close_overlay(intelligence_overlay, "info")
-		"occupation":         _close_overlay(get_node_or_null("PopupLayer/OccupationOverlay"), "occupation")
 		"modification":       _close_overlay(modification_overlay, "modification")
 		"evolution":          _close_overlay(evolution_overlay, "evolution")
 		"afk":                _close_overlay(afk_overlay, "afk")
@@ -1573,7 +1569,7 @@ func _on_world_map() -> void:
 
 # ── 关闭所有弹出面板 ─────────────────────────────────────────
 ## P1-8: 全量 overlay 注册表（原 _close_all_overlays 清单缺
-## collection/occupation/enhancement/modification/evolution/player_master，
+## collection/enhancement/modification/evolution/player_master，
 ## 这些面板开着时按 ESC 关不掉）
 func _all_overlays() -> Array:
 	return [
@@ -1588,7 +1584,6 @@ func _all_overlays() -> Array:
 		{"overlay": afk_overlay, "key": "afk"},
 		{"overlay": leaderboard_overlay, "key": "leaderboard"},
 		{"overlay": collection_overlay, "key": "collection"},
-		{"overlay": get_node_or_null("PopupLayer/OccupationOverlay"), "key": "occupation"},
 		{"overlay": achievement_overlay, "key": "achievement"},
 		{"overlay": help_overlay, "key": "help"},
 		{"overlay": modification_overlay, "key": "modification"},

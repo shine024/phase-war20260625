@@ -417,7 +417,7 @@ static func _enemy_type_to_unit_type(enemy_type: String) -> int:
 		"fort", "boss_nano", "boss_phase": return 4  # FORT（堡垒/Boss 归堡垒）
 		_: return 0  # 默认 LIGHT
 
-## v6.14: 改造类型名（faction_conquest_buffs.FACTION_MOD_BIAS 用的 key）→ unit_type int。
+## v6.14: 改造类型名（FACTION_MOD_BIAS 偏好表用的 key，v6.22 起真身=CompanyDefinitions）→ unit_type int。
 ## 与 _enemy_type_to_unit_type 的 CombatKind 取值对齐（0/1/2/3/4）。
 ## universal 表示通用池（返回 -1 触发回退逻辑），unknown 返回 -1。
 static func _unit_type_name_to_int(type_name: String) -> int:
