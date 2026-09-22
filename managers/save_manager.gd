@@ -625,7 +625,9 @@ func _collect_noncritical_save_data(data: Dictionary, now_ms: int) -> void:
 		_collect_manager_state(fresh, "/root/AchievementManager", SK_ACHIEVEMENT)
 		_collect_manager_state(fresh, "/root/DailyTaskManager", SK_DAILY_TASK)
 		_collect_manager_state(fresh, "/root/CardEnhancementManager", SK_CARD_ENHANCEMENT)
-		_collect_manager_state(fresh, "/root/TutorialProgressionManager", SK_TUTORIAL_PROGRESS)
+		# v6.22.4 修复：tutorial_progress 不吃节流缓存——缓存窗内保存会把推进前的
+		# 教程步写回盘（实测：完成教程步后 10s 内存档/退出 → 步数回退，2026-09-20
+		# 用户报"教程回退"的根因）。TPM.save_state 是微秒级小 dict，直采无性能面。
 		_collect_manager_state(fresh, "/root/DayClock", SK_DAY_CLOCK)
 		# v9.x 清理：CharacterManager/ChallengeModeManager 已删（零消费僵尸管理器）；
 		# 旧档 characters/challenge_records key 读档时静默跳过，新档不再写出
@@ -642,6 +644,8 @@ func _collect_noncritical_save_data(data: Dictionary, now_ms: int) -> void:
 		_last_noncritical_save_ms = now_ms
 	for key in _noncritical_save_cache.keys():
 		data[key] = _noncritical_save_cache[key]
+	# v6.22.4: tutorial_progress 每次保存都现场采集（见上方注释；置于缓存段之后防覆盖）
+	_collect_manager_state(data, "/root/TutorialProgressionManager", SK_TUTORIAL_PROGRESS)
 
 ## 按名称重置管理器（新游戏用）。
 ## 设计说明（P1-1 复审结论）：此处与 _collect_manager_state 不同，**不**经 ManagerLazyLoader

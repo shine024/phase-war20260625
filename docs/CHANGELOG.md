@@ -9216,3 +9216,15 @@ MVP 协同小结、8 面板首开气泡。**R3 余项**：结算面板三页签�
 - **B2**：P2-9 经济离线模拟（tools/_archived/_tmp_p29_economy_sim.py，N=2000 线蒙特卡洛）→ docs/P2-9经济模拟_p29_economy_sim.md：B1 现行档 L60 真卡 +61%、材料流零扰动；推荐维持 B1、强感知升 B2 不升 B3（待 M4 拍板）。
 - **B3**：5 张词条小图标程序化重绘（深底徽章语言、WCAG 双底 10/10 PASS、task21 复跑 TASK21_OK、备份 .godot/art_backup_pir_20260922/、前后拼图 task32b_pir_before_after.png，审美终裁归 M1）→ 孤儿收尾：31 张归档定案回写 orphan_disposition.json；black_sun/mountain_bunker_marker 接线方案 docs/P3-3孤儿接线方案_p33_wire_plan.md（推荐只接 black_sun，待 M3-尾 拍板）。
 - **B4**：任务全程 todo 跟踪；流程踩坑沉淀：①re.subn 的 repl 含 `\r?` 会被转义为 CR+`?` 字节（跨行正则补丁慎用，行级插入更稳）；②GdUnit 本机 assert_str 无 does_not_contain，用 assert_bool(contains).is_false()；③驱动器场景名解析先用 trim_prefix 链再 is_valid_int。
+
+## v6.22.4 修复：教程进度保存回退（非关键段节流缓存根因）+ completed_steps 膨胀（2026-09-23，M6-残 收口）
+
+**改 SaveManager 非关键段缓存 / 教程存档前必读本节。** 2026-09-22 晚 B1.1d 复现的"教程回退"根因定位与修复（打点实证链见 tests/evidence/playability_2026-09-22/tut_save*.log）。
+
+- **根因①（回退主因）**：`SaveManager._collect_noncritical_save_data` 的 10s 节流缓存（`_noncritical_save_cache`）罩住了 tutorial_progress——缓存刷新（读档后自动存档）采到旧步值后，**10 秒窗内任何保存整段复用缓存**，把推进前的教程步写回盘。实证：同进程 TPM 内存 step=7、`save_state()` 直调返回 7，落盘却是缓存里的 step=1（打点 tut_save7.log：collect@25354ms step=1 vs 直调@27945ms step=7，同一节点 id）。玩家命中面：完成教程步后 10s 内手动存档/过关自动存档再退出即回退。
+- **修复①**：TPM 采集移出节流缓存——`_collect_noncritical_save_data` 主缓存流剔除 TPM，在缓存段合入后**每次现场采集** tutorial 段（save_state 为微秒级小 dict，无性能面；缓存本体不再含该键）。
+- **根因②（次生膨胀）**：completed_steps 经 JSON 往返 int→float（GDScript `JSON.parse` 数字全 float），而 `Array.has()` 跨数值类型严格比较（实测 `[1.0,2.0].has(1)` = **false**）→ `complete_current_step` 的去重每次保存失配 +3 项（实测 6→9→12→15→21 项膨胀）。
+- **修复②**：`load_state` 对 completed_steps 规范化为 int **并去重**——旧脏档一次读档即收敛（实测 21 项 → [1,2,3]），此后不再膨胀。
+- **端到端验证**：驱动场景 r_tut_save（set 步+完成 3 步+save_game）修复前落盘 step=1，修复后 **step=7 + completed [1,2,3]**（tut_save_fixed2.log）；gdunit 全量 **467/467**（465+2 新锁，fix_gdunit2.log）；回归锁 `tests/unit/systems/test_tutorial_save_fresh.gd`（规范化+缓存旁路两用例，真 autoload 环境测后还原 TPM）。
+- **顺手修**：批4 回归锁 `test_generator_covers_all_factions_with_new_templates` 的 reach_intel 24 抽断言是 ~4% flaky（权重 11/89），改直调 `_build_quest_def("reach_intel")` 确定性断言。
+- 槽 2 测试档全程备份/还原纪律执行；TUT 场景诊断探针已清（tests/_playtest_scenarios_curve.gd 保持可复跑干净版）。

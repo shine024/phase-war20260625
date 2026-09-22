@@ -450,7 +450,14 @@ func load_state(data: Dictionary) -> void:
 		current_step = TutorialStep.NONE
 	else:
 		current_step = saved_step as TutorialStep
-	completed_steps = data.get("completed_steps", [])
+	# v6.22.4: 规范化为 int——JSON 往返把步数值 float 化（1→1.0），此后 complete_current_step
+	# 的 has() 去重对 int 失配，每轮保存 completed_steps 膨胀 +3（实测 9→12→15 项）。
+	var raw_steps: Array = data.get("completed_steps", [])
+	completed_steps = []
+	for st in raw_steps:
+		var iv: int = int(st)
+		if not completed_steps.has(iv):
+			completed_steps.append(iv)
 	chain_paused = bool(data.get("chain_paused", false))
 	# v38.3: 面板体验步挂起态（旧档无此键 → 空串 = 无挂起，行为不变）
 	pending_close_surface = String(data.get("pending_close_surface", ""))

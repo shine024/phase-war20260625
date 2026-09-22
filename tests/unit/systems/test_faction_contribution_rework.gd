@@ -87,7 +87,6 @@ func test_generator_covers_all_factions_with_new_templates() -> void:
 		"reach_intel", "salvage_items", "clear_level", "clear_boss_count",
 	]
 	for fid in themes:
-		var got_reach_intel := false
 		# 每家多掷若干次，覆盖类型池并校验产出契约
 		for i in 24:
 			var def: Dictionary = FactionQuestGeneratorScript.generate_quest(String(fid), 5)
@@ -97,12 +96,12 @@ func test_generator_covers_all_factions_with_new_templates() -> void:
 			var frep: Dictionary = def.get("rewards", {}).get("faction_rep", {})
 			for k in frep:
 				assert_int(int(frep[k])).is_greater(0)
-			if otype == "reach_intel":
-				got_reach_intel = true
-				var t: Dictionary = def.get("target", {})
-				assert_str(String(t.get("archetype_id", ""))).is_not_empty()
-				assert_int(int(t.get("target", 0))).is_greater(0)
-		assert_bool(got_reach_intel).is_true()
+		# v6.22.4: reach_intel 断言改确定性直调（原 24 抽撞 11/89 权重是 ~4% flaky，曾偶发误报）
+		var rid: Dictionary = FactionQuestGeneratorScript._build_quest_def("reach_intel", String(fid), 5, themes[fid], 1)
+		assert_int(rid.size()).is_greater(0)
+		var rt: Dictionary = rid.get("target", {})
+		assert_str(String(rt.get("archetype_id", ""))).is_not_empty()
+		assert_int(int(rt.get("target", 0))).is_greater(0)
 
 
 func test_event_manager_load_ignores_legacy_dead_keys() -> void:

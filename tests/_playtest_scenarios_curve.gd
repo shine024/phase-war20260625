@@ -106,6 +106,9 @@ static func _tutorial_scenario(kill_before_save: bool) -> Dictionary:
 	]
 	if not kill_before_save:
 		steps.append({"t": "call", "path": "/root/SaveManager", "method": "save_game"})
+		steps.append({"t": "frames", "n": 10})
+		# 保存后同进程复查（区分"保存侧写旧值" vs "保存后内存被改"）
+		steps.append({"t": "probe", "label": "tutorial_step_after_save", "path": "/root/TutorialProgressionManager", "prop": "current_step"})
 	steps.append({"t": "frames", "n": 30})
 	steps.append({"t": "shot", "path": "res://.godot/agent_tools/pr_tut_rollback.png"})
 	steps.append({"t": "quit_ok"})
