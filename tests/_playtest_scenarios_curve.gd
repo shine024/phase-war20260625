@@ -83,6 +83,24 @@ static func get_scenario(name: String) -> Dictionary:
 		return _tutorial_scenario(true)
 	if name == "r_tut_probe":
 		return _tutorial_probe_scenario()
+	# M3-尾 black_sun 接线视觉验证：开世界地图截图（黑门图腾落点）
+	if name == "r_gate_visual":
+		return {"start": "res://scenes/title_screen.tscn", "steps": [
+			{"t": "frames", "n": 90},
+			{"t": "call", "path": "/root/SaveManager", "method": "set_slot", "args": [2]},
+			{"t": "frames", "n": 15},
+			{"t": "click_text", "text": "继续"},
+			{"t": "wait_scene", "match": "scenes/main", "timeout": 2400},
+			{"t": "frames", "n": 50},
+			{"t": "click_text", "text": "返"},
+			{"t": "wait_scene", "match": "truck_base", "timeout": 2400},
+			{"t": "frames", "n": 40},
+			{"t": "click_text", "text": "战区地图"},
+			{"t": "wait_scene", "match": "world_map", "timeout": 2400},
+			{"t": "frames", "n": 90},
+			{"t": "shot", "path": "res://.godot/agent_tools/pr_gate_visual.png"},
+			{"t": "quit_ok"},
+		]}
 	return {}
 
 

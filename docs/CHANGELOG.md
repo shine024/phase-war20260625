@@ -9228,3 +9228,10 @@ MVP 协同小结、8 面板首开气泡。**R3 余项**：结算面板三页签�
 - **端到端验证**：驱动场景 r_tut_save（set 步+完成 3 步+save_game）修复前落盘 step=1，修复后 **step=7 + completed [1,2,3]**（tut_save_fixed2.log）；gdunit 全量 **467/467**（465+2 新锁，fix_gdunit2.log）；回归锁 `tests/unit/systems/test_tutorial_save_fresh.gd`（规范化+缓存旁路两用例，真 autoload 环境测后还原 TPM）。
 - **顺手修**：批4 回归锁 `test_generator_covers_all_factions_with_new_templates` 的 reach_intel 24 抽断言是 ~4% flaky（权重 11/89），改直调 `_build_quest_def("reach_intel")` 确定性断言。
 - 槽 2 测试档全程备份/还原纪律执行；TUT 场景诊断探针已清（tests/_playtest_scenarios_curve.gd 保持可复跑干净版）。
+
+## v6.22.5 四项拍板执行：M1 采纳 / M2 选A / M4 维持现行档 / M3-尾 只接 black_sun（2026-09-23）
+
+- **M1 词条图标**：5 张程序化重绘采纳（无代码动作，资产已在前批落盘）。
+- **M2 难度断崖**：选 A 判定符合预期、零改动（诊断 docs/P2-11断崖诊断_M2材料.md；可选后续"行军跳关软提示"未排期）。P2-11 关闭。
+- **M4 击杀掉真卡**：维持现行档（v27.18 通用缴获 2%/15%/场限2），不开更高档位。P2-9 关闭。
+- **M3-尾 黑门图腾**：`scenes/world_map.gd` 黑门入口接入 `black_sun.png`（TextureRect 64px 居中、IGNORE 鼠标、作 gate_entry 子节点随 modulate 联动锁定明暗 0.35/1.0）；mountain_bunker_marker.png 留档定案不接线。视觉验收截图 `tests/evidence/playability_2026-09-22/task33_gate_black_sun.png`（锁定态正确调暗、位置居中）。孤儿登记表已回写。

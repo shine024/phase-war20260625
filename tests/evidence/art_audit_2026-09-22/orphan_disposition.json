@@ -43,6 +43,7 @@
   },
   "total_moved": 27,
   "notes": [
-    "2026-09-22 v3 计划 Task 3.3：人工核注证实 pi_drop/bubble_boss/bubble_cleared/大地图.png 的'引用'均为注释或同名局部变量（非贴图加载），实为真孤儿——4 张已移入 .godot/art_backup_orphan_20260922/，27+4=31 张归档定案。"
+    "2026-09-22 v3 计划 Task 3.3：人工核注证实 pi_drop/bubble_boss/bubble_cleared/大地图.png 的'引用'均为注释或同名局部变量（非贴图加载），实为真孤儿——4 张已移入 .godot/art_backup_orphan_20260922/，27+4=31 张归档定案。",
+    "2026-09-23 M3-尾 拍板'只接 black_sun'：black_sun.png 已接入 world_map 黑门入口（TextureRect 64px 随按钮 modulate 联动，commit 见 v6.22.5）；mountain_bunker_marker.png 留档定案不接线（与既有金点指示器职责重叠）。"
   ]
 }

@@ -538,6 +538,16 @@ func _build_level_map() -> void:
 			else "黑门（通关第 100 关后开启）"
 		gate_entry.modulate = Color(1, 1, 1, 1.0) if gate_unlocked else Color(1, 1, 1, 0.35)
 		gate_entry.gui_input.connect(_on_blackgate_gui_input)
+		# v6.22.5: 黑门图腾（P3-3 接线方案 M3-尾 拍板"只接 black_sun"）——黑日图挂入口中心
+		# 64px（对齐节点盘径 1.7~2 倍口径）；作按钮子节点自动随 modulate 联动锁定明暗
+		var gate_icon := TextureRect.new()
+		gate_icon.texture = load("res://assets/map/black_sun.png")
+		gate_icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		gate_icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		gate_icon.size = Vector2(64, 64)
+		gate_icon.position = (gate_entry.size - gate_icon.size) * 0.5
+		gate_icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		gate_entry.add_child(gate_icon)
 		canvas.add_child(gate_entry)
 		var gate_lbl := Label.new()
 		# v28：未解锁时可见文案直接带解锁条件（原"黑门（未启）"玩家不知道怎么开）
