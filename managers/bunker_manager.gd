@@ -408,6 +408,16 @@ func _on_battle_ended(player_won: bool) -> void:
 		var master_id := str(master.get("id", ""))
 		if not master_id.is_empty():
 			record_hero_fragment(master_id)
+	# v38.x 胜绩随行棘轮：胜利且打的关比停靠更靠前时，卡车停靠关跟进（只升不降）。
+	# 修复"结算『出击下一关』直通链连续推进后回基地出击仍是旧关"——直通链
+	# （main.launch_next_level_from_settlement）只推 current_level 不移卡车，此前
+	# parked 恒停在旧关。行军中不棘轮（到站以物理位置覆写，_check_travel_arrival）；
+	# 黑门无尽 run 不参与（fought 抓的是对齐后的 100）。回低关刷素材不受影响。
+	if player_won and fought > 0 and not was_endless and not is_traveling():
+		var parked := get_parked_level()
+		if fought > parked:
+			_parked_level = clampi(fought, 1, 100)
+			_emit_travel_changed()
 	# v26.19：current_level 回归停靠关（GameManager 的胜利推进在其自身 handler 里已落定）
 	call_deferred("_sync_current_level_to_park")
 

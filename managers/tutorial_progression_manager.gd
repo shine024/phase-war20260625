@@ -200,11 +200,12 @@ func _initialize_tutorial_data() -> void:
 			"highlight_elements": []
 		},
 		TutorialStep.MODIFICATION: {
+			# v38.x J 条: 改造归移动基地工位（底栏三键已移除）——指引玩家去车厢操作
 			"title": "安装改造",
-			"description": "为战斗卡安装改造模块（穿甲、装甲、火力等），定向强化其战斗方式。安装一条改造 = 消耗 1 张对应图纸 + 纳米材料；图纸三路补给：战斗掉落 / 制造舱制造 / 补给舱采购。车厢「改造·词条」工位即改造舱。",
-			"highlights": ["安装消耗图纸 + 纳米材料", "图纸三路补给：掉落 / 制造 / 补给舱", "改造不失败，稳定提升；同名战斗卡互不影响"],
-			"action_text": "打开改造舱",
-			"action_target": "open_modification",
+			"description": "为战斗卡安装改造模块（穿甲、装甲、火力等），定向强化其战斗方式。安装一条改造 = 消耗 1 张对应图纸 + 纳米材料；图纸三路补给：战斗掉落 / 制造舱制造 / 补给舱采购。\n打开移动基地，点车厢「改造·词条」工作台工位即可安装。",
+			"highlights": ["安装消耗图纸 + 纳米材料", "图纸三路补给：掉落 / 制造 / 补给舱", "入口：移动基地「改造·词条」工位"],
+			"action_text": "知道了",
+			"action_target": "next",
 			"highlight_elements": []
 		},
 		TutorialStep.RUNES: {
@@ -234,11 +235,12 @@ func _initialize_tutorial_data() -> void:
 			"highlight_elements": []
 		},
 		TutorialStep.EVOLUTION: {
+			# v38.x J 条: 制造归移动基地工位（底栏三键已移除）——指引玩家去车厢操作
 			"title": "兵种制造",
-			"description": "在制造舱用情报与资源直接生产卡牌：击败敌形积累情报，25% 解锁配方，品质随档位提升。入口在底栏「制造」键，移动基地的「3D 打印机」工位同款；工坊可降制造消耗。新档已附起始卡同族的情报，现在就能造。",
-			"highlights": ["底栏「制造」/ 移动基地 3D 打印机", "情报解锁配方与品质", "资源制造，品质有下限"],
-			"action_text": "打开制造舱",
-			"action_target": "open_evolution",
+			"description": "在制造舱用情报与资源直接生产卡牌：击败敌形积累情报，25% 解锁配方，品质随档位提升。入口在移动基地的「3D 打印机」工位；工坊可降制造消耗。新档已附起始卡同族的情报，现在就能造。",
+			"highlights": ["入口：移动基地 3D 打印机工位", "情报解锁配方与品质", "资源制造，品质有下限"],
+			"action_text": "知道了",
+			"action_target": "next",
 			"highlight_elements": []
 		},
 		TutorialStep.FACTION_REP: {

@@ -91,26 +91,24 @@ static func find_target(u: CharacterBody2D, _delta: float) -> void:
 		var spatial_grid = BattleManager.spatial_grid
 		if spatial_grid:
 			var max_range: float = mini(acquisition_range(u), 250.0)
-			# v9.2: 分行索敌——先查同行最近目标，无则回退全行最近。
-			# spatial_grid.query_nearest_target_with_mode 不支持行过滤，故采用两步：
-			# ① 查射程内最近（同行/跨行都有）；② 若该目标与攻击者不同行，再查一次"最近同行目标"优先。
-			var nearest_target = spatial_grid.query_nearest_target_with_mode(
-				u.global_position,
-				u.is_player,
-				max_range,
-				targeting_mode
-			)
-			# v9.2: 若最近目标不在同行，尝试在同行找一个；同行无则接受原最近目标（跨行回退）。
-			if nearest_target != null and not CardGridLayout.units_in_same_row(u, nearest_target):
-				var same_row_target: Node2D = _query_nearest_same_row_spatial(u, spatial_grid, max_range, targeting_mode)
-				if same_row_target != null:
-					nearest_target = same_row_target
-			# v20.15: 真隐身过滤——最近目标隐身且我方无侦测源时放弃，落到后续路径重选
-			if nearest_target != null and not CardAbilityManager.is_unit_targetable(nearest_target, u):
-				nearest_target = null
-			if nearest_target != null:
-				u.target = nearest_target
-				return
+			# v38.x 直射前排优先：盒扫候选统一交给 select_target_direct 三键选优
+			# （前向 x → 同带内同排 → 距离/HP），取代 v9.2 两步"最近+同行覆盖"——
+			# 旧两步让同行优先压过前排，跨排更前目标被无视（实机"前排两敌仍打后排"）。
+			# 250px 上限沿用 v7.3 性能口径（原 query_nearest 同半径）。
+			var spatial_cands: Array = spatial_grid.query_enemies(u.global_position, max_range, u.is_player)
+			var cand_nodes: Array = []
+			for c in spatial_cands:
+				if c == null or not is_instance_valid(c) or not (c is Node2D):
+					continue
+				# v20.15: 真隐身过滤——隐身且我方无侦测源时跳过
+				if not CardAbilityManager.is_unit_targetable(c, u):
+					continue
+				cand_nodes.append(c)
+			if not cand_nodes.is_empty():
+				var sel_target: Node2D = TargetSelection.select_target_direct(u, cand_nodes)
+				if sel_target != null:
+					u.target = sel_target
+					return
 
 	# 曲射/空射单位，或 spatial_grid 未命中时：用卡牌网格槽位系统
 	if is_card_grid_battle():
@@ -150,10 +148,8 @@ static func find_target(u: CharacterBody2D, _delta: float) -> void:
 	if not candidates.is_empty():
 		var candidate_nodes: Array = []
 		var final_candidates: Array = []
-		# v9.2: 分行索敌——候选按"同行优先"筛选（空则跨行回退）
-		# v9.x: 仅直射单位收敛同行；曲射/空射全场选目标
-		if not is_indirect_unit:
-			candidates = _prefer_same_row(u, candidates)
+		# v38.x：直射前排优先由 select_target_direct 三键内部处理（同排作 tiebreak），
+		# 候选集层不再做同行硬过滤（v9.2 _prefer_same_row 已删）；曲射/空射不受影响
 		# 限制候选数量到最多10个
 		var limit: int = mini(candidates.size(), 10)
 		for i in range(limit):
@@ -236,8 +232,8 @@ static func _find_target_by_card_grid(u: CharacterBody2D, targeting_mode: int = 
 			candidates.append(n)
 	if candidates.is_empty():
 		return null
-	# v9.2: 分行索敌——同行优先，空则跨行回退（在 select_target 前过滤候选集）
-	candidates = _prefer_same_row(u, candidates)
+	# v38.x：直射前排优先由 select_target_direct 三键内部处理（同排作 tiebreak），
+	# 不再在候选集层做同行硬过滤（v9.2 _prefer_same_row 已删）
 	if u.stats != null:
 		return TargetSelection.select_target(u, candidates, u.stats.weapon_type)
 	# 回退：取距离最近
@@ -259,24 +255,8 @@ static func _get_unit_slot_index(n: Node) -> int:
 	return int(n.get_meta("card_grid_enemy_slot", -1))
 
 
-## v9.2: 分行索敌——同行优先，空则跨行回退。
-## candidates 为已收集的候选数组，返回按"同行优先"筛过的数组：
-## 若同行候选非空则只返回同行候选；否则原样返回全候选（避免单位空转）。
-## 攻击者无 slot meta（异常情况）时原样返回，不参与行过滤。
-static func _prefer_same_row(attacker: Node, candidates: Array) -> Array:
-	if candidates.is_empty():
-		return candidates
-	if attacker == null or not is_instance_valid(attacker):
-		return candidates
-	if not attacker.has_meta("card_grid_slot") and not attacker.has_meta("card_grid_enemy_slot"):
-		return candidates  # 无 slot meta，不参与行过滤
-	var same_row: Array = []
-	for c in candidates:
-		if c == null or not is_instance_valid(c):
-			continue
-		if CardGridLayout.units_in_same_row(attacker, c):
-			same_row.append(c)
-	return same_row if not same_row.is_empty() else candidates
+## （v38.x 删除 _prefer_same_row——同行硬过滤被 select_target_direct 三键排序
+## 内部化：前向 x 为主键、同排降为同前进带内 tiebreak，实机验收"直射前排优先"）
 
 
 ## v9.x: 单位是否曲射/空射（主武器或任一启用槽位，含 legacy 曲射值 MISSILE/ROCKET/FLAK）。
@@ -292,26 +272,7 @@ static func _fires_indirect(u: CharacterBody2D) -> bool:
 	return false
 
 
-## v9.2: spatial_grid 行过滤辅助——在射程内找同行最近敌方目标。
-## 复用 spatial_grid.query_enemies 拿到半径内所有敌方，按同行过滤后取最近；无同行则返回 null。
-static func _query_nearest_same_row_spatial(u: CharacterBody2D, spatial_grid: Node, max_range: float, _targeting_mode: int) -> Node2D:
-	var enemies: Array = spatial_grid.query_enemies(u.global_position, max_range, u.is_player)
-	if enemies.is_empty():
-		return null
-	var origin: Vector2 = u.global_position
-	var best: Node2D = null
-	var best_d2: float = INF
-	for e in enemies:
-		if e == null or not is_instance_valid(e) or not (e is Node2D):
-			continue
-		if not CardGridLayout.units_in_same_row(u, e):
-			continue
-		var d2: float = origin.distance_squared_to((e as Node2D).global_position)
-		if d2 < best_d2:
-			best_d2 = d2
-			best = e
-	return best
-
+## （v38.x 删除 _query_nearest_same_row_spatial——v9.2 同行覆盖步随直射三键排序退役）
 
 ## v8: 防空单位优先索敌——射程内优先打 AIR 类目标（空域封锁语义）。
 ## 命中则返回最近的空中目标；射程内无空中目标时返回 null（回退常规直射）。
@@ -1214,9 +1175,9 @@ static func should_retain_current_target(u: CharacterBody2D) -> bool:
 	var d: float = u.global_position.distance_to(u.target.global_position)
 	if d > acquisition_range(u):
 		return false
-	# v36 实机验收（直射前排优先）：同排出现严格更靠前的可攻击目标 → 放弃锁定重选。
-	# 最近口径下同排最近=同排最前，重选自然切到前排新敌；曲射/空射/守住指令不受影响。
-	if not _fires_indirect(u) and has_more_forward_same_row_target(
+	# v36 实机验收（直射前排优先）→ v38.x 扩为跨排：存在严格更靠前的可攻击目标
+	# → 放弃锁定重选（与 select_target_direct 三键主键一致）。曲射/空射/守住指令不受影响。
+	if not _fires_indirect(u) and has_more_forward_target(
 			u, minf(acquisition_range(u), FRONT_SWITCH_CHECK_RANGE)):
 		return false
 	return true
@@ -1228,11 +1189,12 @@ const FRONT_SWITCH_CHECK_RANGE: float = 300.0
 ## 同 x 容差（px）：防同列目标间抖动
 const FRONT_SWITCH_TOL_PX: float = 12.0
 
-## v36 实机验收：直射单位"前排优先"保持性检查——同排存在严格更靠前（朝敌方方向）
-## 的可攻击目标时返回 true（调用方据此放弃现目标，本轮索敌重选）。
+## v38.x（原 v36 同排版扩为跨排）：直射单位"前排优先"保持性检查——存在严格更靠前
+## （朝敌方方向）的可攻击目标时返回 true（调用方据此放弃现目标，本轮索敌重选）。
 ## "靠前"口径 = 朝敌方方向 x 极值：我方 x 减小为前，敌方 x 增大为前（与站位/弹道一致）。
-## 只查同排：保住 v9.2 分行索敌的道纪律，跨排目标不触发切换。仅直射单位调用。
-static func has_more_forward_same_row_target(u: Node2D, check_range: float) -> bool:
+## v38.x 去掉同排过滤（units_in_same_row）——跨排更前目标同样触发切换，否则
+## 同排优先架空前排优先（实机"前排两敌仍打后排"的另一半成因）。仅直射单位调用。
+static func has_more_forward_target(u: Node2D, check_range: float) -> bool:
 	var cur = u.get("target")
 	if cur == null or not is_instance_valid(cur):
 		return false
@@ -1249,8 +1211,6 @@ static func has_more_forward_same_row_target(u: Node2D, check_range: float) -> b
 		if c2d == null:
 			continue
 		if not CardAbilityManager.is_unit_targetable(c2d, u):
-			continue
-		if not CardGridLayout.units_in_same_row(u, c2d):
 			continue
 		if forward_sign * c2d.global_position.x > cur_fwd + FRONT_SWITCH_TOL_PX:
 			return true

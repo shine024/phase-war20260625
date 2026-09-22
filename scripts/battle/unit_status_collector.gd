@@ -42,6 +42,7 @@ enum StatusKind {
 	MOD_AURA,      # 改造光环
 	FORT_SHELTER,  # 堡垒庇护（减伤）
 	FACTION_INVULN,# 势力周期无敌
+	SHIELD,        # v38.x G 条: 能量护盾（shield>0，含巨型能量罩；穹顶罩+盾条已在场，图标补情报可见性）
 }
 
 ## 颜色字典：debuff 红/紫/橙/绿毒，buff 暖/绿/蓝/金
@@ -67,6 +68,7 @@ const STATUS_COLORS: Dictionary = {
 	StatusKind.MOD_AURA:      Color(0.85, 0.55, 1.00),
 	StatusKind.FORT_SHELTER:  Color(0.50, 0.85, 1.00),  # 庇护-蓝
 	StatusKind.FACTION_INVULN:Color(1.00, 0.85, 0.40),  # 无敌-金
+	StatusKind.SHIELD:        Color(0.30, 1.00, 0.95),  # v38.x: 护盾-青（与穹顶罩 SHIELD_COLOR 同色）
 }
 
 ## 状态中文名（情报卡"当前状态"区用）
@@ -92,6 +94,7 @@ const STATUS_NAMES: Dictionary = {
 	StatusKind.MOD_AURA:      "改造光环",
 	StatusKind.FORT_SHELTER:  "堡垒庇护",
 	StatusKind.FACTION_INVULN:"周期无敌",
+	StatusKind.SHIELD:        "能量护盾",
 }
 
 ## 可叠加状态（右下角显示层数数字）
@@ -181,6 +184,12 @@ static func collect(unit: Node) -> Array:
 			entries.append(_entry(StatusKind.FORT_SHELTER, 0))
 	if bool(unit.get_meta("_faction_invuln_active", false)):
 		entries.append(_entry(StatusKind.FACTION_INVULN, 0))
+	# v38.x G 条: 能量护盾——shield 字段直读（我方 construct_unit / 敌方通用护盾源）
+	# 敌方灵能盾（_psi_shield）走独立字段，同图标补可见性
+	if unit.get("shield") != null and float(unit.get("shield")) > 0.0:
+		entries.append(_entry(StatusKind.SHIELD, 0))
+	elif unit.get("_psi_shield") != null and float(unit.get("_psi_shield")) > 0.0:
+		entries.append(_entry(StatusKind.SHIELD, 0))
 	return entries
 
 
@@ -257,6 +266,15 @@ static func describe(kind: int, stacks: int, unit: Node) -> String:
 			return "受到伤害降低 %.0f%%" % (_fv(unit, "_fort_shelter_bonus", 0.0) * 100.0)
 		StatusKind.FACTION_INVULN:
 			return "周期性免疫伤害"
+		StatusKind.SHIELD:
+			var sv: float = 0.0
+			if unit != null and is_instance_valid(unit):
+				sv = _fv(unit, "shield", 0.0)
+				if sv <= 0.0:
+					sv = _fv(unit, "_psi_shield", 0.0)
+			if sv > 0.0:
+				return "先于生命吸收 %d 点伤害" % int(ceil(sv))
+			return "先于生命吸收伤害"
 	return ""
 
 

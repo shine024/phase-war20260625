@@ -433,10 +433,11 @@ enum IndirectFlavor {
 	HOWITZER = 1,   # 榴弹炮/野战炮/要塞炮——中弧标准节奏重弹
 	ROCKET = 2,     # 火箭炮/火箭弹——低平弧快弹橙红
 	MISSILE = 3,    # 导弹——低弧俯冲微加速
+	CRUISE = 4,     # v38.x 巡航导弹（发射井 cold_fort_missile 专属）——垂直发射陡升重弹冷白
 }
 static var _indirect_flavor_cache: Dictionary = {}
 
-## 按武器名分类曲射亚类（优先级：迫击炮 > 火箭 > 榴弹族 > 导弹）。
+## 按武器名分类曲射亚类（优先级：迫击炮 > 火箭 > 榴弹族 > 巡航导弹 > 导弹）。
 ## 只对走曲射路由（wt 1/2/3/7/9）的弹道有意义；直射名（坦克炮/步枪等）不路由到曲射，无影响。
 static func classify_indirect(weapon_name: String) -> int:
 	if weapon_name.is_empty():
@@ -454,6 +455,10 @@ static func classify_indirect(weapon_name: String) -> int:
 			or weapon_name.find("要塞炮") >= 0 or weapon_name.find("加农炮") >= 0 \
 			or weapon_name.find("火炮") >= 0 or weapon_name.find("步兵炮") >= 0:
 		f = IndirectFlavor.HOWITZER
+	elif weapon_name.find("巡航导弹") >= 0:
+		# v38.x 实机验收"发射井没特色"：巡航导弹在通用"导弹"前匹配——
+		# cold_fort_missile（w_armor="反舰巡航导弹"）专属弹道/命中签名
+		f = IndirectFlavor.CRUISE
 	elif weapon_name.find("导弹") >= 0:
 		f = IndirectFlavor.MISSILE
 	_indirect_flavor_cache[weapon_name] = f
@@ -471,6 +476,7 @@ static func indirect_apex_mul(flavor: int) -> float:
 		IndirectFlavor.HOWITZER: return 1.0
 		IndirectFlavor.ROCKET: return 0.7
 		IndirectFlavor.MISSILE: return 1.2
+		IndirectFlavor.CRUISE: return 1.5   # v38.x 垂直发射陡升感（高于普通导弹 1.2）
 		_: return 1.0
 
 ## 亚类飞行时长系数（乘在槽位时长上；>1 更慢）。迫击炮 1.30（炮弹慢飘读"迫击炮"）/
@@ -481,6 +487,7 @@ static func indirect_duration_mul(flavor: int) -> float:
 		IndirectFlavor.HOWITZER: return 1.0
 		IndirectFlavor.ROCKET: return 0.72
 		IndirectFlavor.MISSILE: return 0.88
+		IndirectFlavor.CRUISE: return 1.15  # v38.x 慢一拍——重弹巡航节奏与导弹俯冲分流
 		_: return 1.0
 
 ## 亚类弹体尺寸系数（per-instance scale）。迫击炮 0.78（小弹）/ 榴弹 1.0（v38 随
@@ -492,6 +499,7 @@ static func indirect_body_scale(flavor: int) -> float:
 		IndirectFlavor.HOWITZER: return 1.0
 		IndirectFlavor.ROCKET: return 0.85
 		IndirectFlavor.MISSILE: return 1.0
+		IndirectFlavor.CRUISE: return 1.3   # v38.x 反舰重弹——弹体显著大于普通导弹
 		_: return 1.0
 
 ## 亚类弹体染色（阵营无关覆盖，同 flavor_tint 语言）。火箭橙红（尾焰语义）/
@@ -500,6 +508,7 @@ static func indirect_tint(flavor: int, base: Color) -> Color:
 	match flavor:
 		IndirectFlavor.ROCKET: return Color(1.0, 0.62, 0.30)
 		IndirectFlavor.MISSILE: return Color(1.0, 0.85, 0.65)
+		IndirectFlavor.CRUISE: return Color(0.88, 0.95, 1.0)  # v38.x 冷白——反舰巡航导弹的海色签名
 		_: return base
 
 ## 返回弹头多边形顶点（7 点，顺时针，原点居中，指向 +X）。
@@ -558,10 +567,12 @@ static func build_bullet_points(weapon_type: int, size_scale: float = 1.0, flavo
 				half_h = 1.8 * s
 				neck = 0.3
 			DirectWeaponFlavor.Flavor.MG:
-				# 机枪——短钝弹丸（弹幕流亮点；钝头+矮胖与步枪细长反差）
-				body_len = 5.0 * s
-				nose_len = 2.0 * s
-				half_h = 2.6 * s
+				# 机枪——短钝弹丸（弹幕流亮点；钝头+矮胖与步枪细长反差）。
+				# v38.x 实机验收"机枪弹头太大"：整体缩一档（视觉宽 ≈12×4.7px），
+				# 仍保钝头+矮胖与步枪细长反差，不退回 v17k-R2"弹道隐形"线以下。
+				body_len = 3.4 * s
+				nose_len = 1.4 * s
+				half_h = 1.8 * s
 				neck = 0.5
 			DirectWeaponFlavor.Flavor.TANK_GUN:
 				# 直射坦克炮——修长炮弹剪影。v26.15d: 旧"大号钝头"（10/4/4.6/0.55）
@@ -794,6 +805,11 @@ static func spawn_impact_with_kind(parent: Node2D, world_pos: Vector2, weapon_ty
 	if XenoWeaponFlavor.enabled() and XenoWeaponFlavor.is_xeno_weapon(weapon_name):
 		VfxFactory.spawn_xeno_impact(parent, world_pos, XenoWeaponFlavor.classify(weapon_name), is_player_shot, atk_d, opts)
 		return
+	# v38.x F 条: 巡航导弹（发射井 cold_fort_missile"反舰巡航导弹"）专属命中签名层——
+	# 叠加在通用三层之上（冷白大闪+双冲击环+双烟团+贴地扬尘），不 return 不替换通用层。
+	# 弹道端 CRUISE 陡升 + 震屏走 bullet 既有半径通道，与 45s 核打击演出分层。
+	if classify_indirect(weapon_name) == IndirectFlavor.CRUISE:
+		VfxFactory.spawn_cruise_impact(parent, world_pos)
 	# v18: 命中贴图层 scale 重标定（AI 审计 4.2/10 基线的主病根，像素级实测确认）。
 	# 病根：weapon_impact_*.png 画布实为 1536px（内容 1062-1410px），旧 scale 按"512px
 	# 基准 ×2 显示"标定（0.26-0.51×2）→ 实渲染 550-1300px，比 64px 参考单位大 8-18 倍；

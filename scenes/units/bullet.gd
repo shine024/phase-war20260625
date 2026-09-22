@@ -339,7 +339,7 @@ func _apply_visual() -> void:
 			size_scale = 1.0   # v6.1: 0.8→1.0，v18-R11d 我方1.3实验回退（影响敌muzzle）
 		1, 2:
 			bullet_color = Color(0.6, 0.95, 1.0) if is_player else Color(0.9, 0.5, 0.3)
-			size_scale = 1.15  # v6.1: 1.0→1.15，legacy 步枪/机枪 + 新枚举曲射/空射 共用粒弹风格（弧线时造型略违和，仅单发兜底路径）
+			size_scale = 1.0  # v6.1: 0.8→1.15；v38.x 实机验收"机枪弹头太大"回 1.0（legacy 步枪/机枪 + 新枚举曲射/空射 共用粒弹风格，仅单发兜底路径）
 		5:
 			bullet_color = Color(1.0, 0.95, 0.2) if is_player else Color(1, 0.5, 0.2)
 			size_scale = 1.2

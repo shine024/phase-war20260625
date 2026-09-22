@@ -431,7 +431,9 @@ func _input(event: InputEvent) -> void:
 		elif event.is_action("pw_open_backpack"):
 			_on_backpack_pressed()
 		elif event.is_action("pw_open_growth"):
-			_on_progression_pressed()
+			# v38.x J 条: 技能/改造/制造归移动基地——整备场景快捷键改 toast 指路
+			if SignalBus and SignalBus.has_signal("show_toast"):
+				SignalBus.show_toast.emit("技能树请在移动基地（驾驶室工位）操作")
 		elif event.is_action("pw_open_settings"):
 			_on_settings_pressed()
 		elif event.is_action("pw_open_map"):

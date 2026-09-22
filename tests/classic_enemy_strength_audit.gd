@@ -129,7 +129,7 @@ func _initialize() -> void:
 		var ratio: float = pL / pp if pp > 0.0 else 0.0
 
 		print("%-4d %-4s %-3s %-4d | hp %.0f→%.0f 势力%+4.0f%% | %-12s 战力 %6.1f→%6.1f | %6.1f(Lv%d) | %.2f" % [
-			lv, era_names[era], ["低", "中", "高"][tier - 1], waves,
+			lv, era_names[era], ["低", "中", "高", "传奇"][clampi(tier - 1, 0, 3)], waves,
 			float(r1.get("hp", 0)), float(rL.get("hp", 0)),
 			(float(ctxL.faction_buff.get("hp_mul", 1.0)) - 1.0) * 100.0,
 			aid, p1, pL, pp, plv, ratio])

@@ -54,13 +54,13 @@ const HOTSPOTS := {
 		{"r": [0.255, 0.393, 0.139, 0.208], "name": "指挥电脑桌", "hint": "战术统计终端", "kind": "terminal", "rooms": "war_room + entry_hall"},
 		{"r": [0.282, 0.254, 0.107, 0.138], "name": "世界地图墙", "hint": "情报舱", "kind": "panel", "key": "intelligence", "rooms": "archive"},
 		{"r": [0.398, 0.312, 0.067, 0.323], "name": "补给售货机", "hint": "补给舱·联络台", "kind": "panel", "key": "store", "rooms": "comms"},
-		{"r": [0.470, 0.277, 0.103, 0.185], "name": "卡牌展示墙", "hint": "卡仓", "kind": "panel", "key": "backpack", "rooms": "dormitory（挂靠）"},
-		{"r": [0.506, 0.277, 0.138, 0.323], "name": "工具工作台", "hint": "改造·词条", "kind": "panel", "key": "modification", "rooms": "workshop"},
+		{"r": [0.470, 0.277, 0.068, 0.185], "name": "卡牌展示墙", "hint": "卡仓", "kind": "panel", "key": "backpack", "rooms": "dormitory（挂靠）"},
+		{"r": [0.545, 0.277, 0.130, 0.323], "name": "工具工作台", "hint": "改造·词条", "kind": "panel", "key": "modification", "rooms": "workshop"},
 		{"r": [0.680, 0.335, 0.040, 0.260], "name": "3D 打印机", "hint": "制造舱·卡仓", "kind": "panel", "key": "evolution", "rooms": "depot"},
 		{"r": [0.450, 0.650, 0.040, 0.100], "name": "医疗柜", "hint": "医疗·配给", "kind": "info", "rooms": "medical + mess_hall"},
 		{"r": [0.925, 0.660, 0.055, 0.170], "name": "发电机", "hint": "全车电力·配给", "kind": "info", "rooms": "reactor + mess_hall"},
-		{"r": [0.792, 0.462, 0.152, 0.140], "name": "铺位", "hint": "睡眠·存档", "kind": "sleep", "rooms": "dormitory"},
-		{"r": [0.940, 0.327, 0.055, 0.400], "name": "尾门跳板", "hint": "行军选关", "kind": "march"},
+		{"r": [0.792, 0.462, 0.146, 0.140], "name": "铺位", "hint": "睡眠·存档", "kind": "sleep", "rooms": "dormitory"},
+		{"r": [0.948, 0.327, 0.047, 0.328], "name": "尾门跳板", "hint": "行军选关", "kind": "march"},
 		{"r": [0.255, 0.610, 0.139, 0.080], "name": "通讯架", "hint": "技能树", "kind": "panel", "key": "growth"},
 		{"r": [0.506, 0.610, 0.138, 0.080], "name": "词缀工具车", "hint": "词缀·洗练", "kind": "panel", "key": "affix"},
 		{"r": [0.470, 0.180, 0.174, 0.090], "name": "资料柜", "hint": "图鉴·收藏档案", "kind": "panel", "key": "collection"},
@@ -74,12 +74,12 @@ const HOTSPOTS := {
 		{"r": [0.284, 0.232, 0.106, 0.139], "name": "世界地图墙", "hint": "情报舱", "kind": "panel", "key": "intelligence", "rooms": "archive"},
 		{"r": [0.394, 0.267, 0.066, 0.348], "name": "补给售货机", "hint": "补给舱·联络台", "kind": "panel", "key": "store", "rooms": "comms"},
 		{"r": [0.465, 0.244, 0.106, 0.220], "name": "卡牌展示墙", "hint": "卡仓", "kind": "panel", "key": "backpack", "rooms": "dormitory（挂靠）"},
-		{"r": [0.580, 0.452, 0.128, 0.160], "name": "工具工作台", "hint": "改造·词条", "kind": "panel", "key": "modification", "rooms": "workshop"},
+		{"r": [0.580, 0.452, 0.116, 0.160], "name": "工具工作台", "hint": "改造·词条", "kind": "panel", "key": "modification", "rooms": "workshop"},
 		{"r": [0.700, 0.278, 0.040, 0.325], "name": "3D 打印机", "hint": "制造舱·卡仓", "kind": "panel", "key": "evolution", "rooms": "depot"},
 		{"r": [0.447, 0.661, 0.036, 0.104], "name": "医疗柜", "hint": "医疗·配给", "kind": "info", "rooms": "medical + mess_hall"},
 		{"r": [0.918, 0.661, 0.070, 0.174], "name": "发电机", "hint": "全车电力·配给", "kind": "info", "rooms": "reactor + mess_hall"},
 		{"r": [0.780, 0.452, 0.141, 0.139], "name": "铺位", "hint": "睡眠·存档", "kind": "sleep", "rooms": "dormitory"},
-		{"r": [0.922, 0.220, 0.060, 0.452], "name": "尾门跳板", "hint": "行军选关", "kind": "march"},
+		{"r": [0.922, 0.220, 0.060, 0.436], "name": "尾门跳板", "hint": "行军选关", "kind": "march"},
 		{"r": [0.244, 0.590, 0.146, 0.080], "name": "通讯架", "hint": "技能树", "kind": "panel", "key": "growth"},
 		{"r": [0.580, 0.620, 0.128, 0.080], "name": "词缀工具车", "hint": "词缀·洗练", "kind": "panel", "key": "affix"},
 		{"r": [0.465, 0.150, 0.275, 0.085], "name": "资料柜", "hint": "图鉴·收藏档案", "kind": "panel", "key": "collection"},
@@ -88,16 +88,16 @@ const HOTSPOTS := {
 		{"r": [0.830, 0.300, 0.085, 0.090], "name": "告示板", "hint": "车长手册", "kind": "panel", "key": "help"},
 	],
 	"era3": [
-		{"r": [0.009, 0.357, 0.260, 0.430], "name": "驾驶室", "hint": "出击简报", "kind": "sortie"},
+		{"r": [0.009, 0.357, 0.251, 0.430], "name": "驾驶室", "hint": "出击简报", "kind": "sortie"},
 		{"r": [0.264, 0.513, 0.123, 0.120], "name": "指挥雷达台", "hint": "战术统计终端", "kind": "terminal", "rooms": "war_room + entry_hall"},
 		{"r": [0.272, 0.403, 0.101, 0.110], "name": "世界地图屏", "hint": "情报舱", "kind": "panel", "key": "intelligence", "rooms": "archive"},
 		{"r": [0.431, 0.394, 0.044, 0.211], "name": "补给售货机", "hint": "补给舱·联络台", "kind": "panel", "key": "store", "rooms": "comms"},
-		{"r": [0.584, 0.394, 0.097, 0.240], "name": "物资货架", "hint": "卡仓", "kind": "panel", "key": "backpack", "rooms": "dormitory（挂靠）"},
+		{"r": [0.584, 0.394, 0.091, 0.236], "name": "物资货架", "hint": "卡仓", "kind": "panel", "key": "backpack", "rooms": "dormitory（挂靠）"},
 		{"r": [0.606, 0.632, 0.062, 0.100], "name": "工坊工具台", "hint": "改造·词条", "kind": "panel", "key": "modification", "rooms": "workshop"},
 		{"r": [0.677, 0.485, 0.053, 0.147], "name": "钻床打印机", "hint": "制造舱·卡仓", "kind": "panel", "key": "evolution", "rooms": "depot"},
 		{"r": [0.479, 0.733, 0.048, 0.092], "name": "医疗柜", "hint": "医疗·配给", "kind": "info", "rooms": "medical + mess_hall"},
 		{"r": [0.844, 0.420, 0.060, 0.240], "name": "配电柜", "hint": "全车电力·配给", "kind": "info", "rooms": "reactor + mess_hall"},
-		{"r": [0.751, 0.550, 0.124, 0.100], "name": "铺位", "hint": "睡眠·存档", "kind": "sleep", "rooms": "dormitory"},
+		{"r": [0.751, 0.550, 0.089, 0.100], "name": "铺位", "hint": "睡眠·存档", "kind": "sleep", "rooms": "dormitory"},
 		{"r": [0.920, 0.450, 0.065, 0.350], "name": "尾门跳板", "hint": "行军选关", "kind": "march"},
 		{"r": [0.272, 0.645, 0.115, 0.070], "name": "通讯台", "hint": "技能树", "kind": "panel", "key": "growth"},
 		{"r": [0.676, 0.640, 0.062, 0.092], "name": "词缀工具台", "hint": "词缀·洗练", "kind": "panel", "key": "affix"},
@@ -109,10 +109,10 @@ const HOTSPOTS := {
 	"era4": [
 		{"r": [0.009, 0.374, 0.200, 0.490], "name": "驾驶室", "hint": "出击简报", "kind": "sortie"},
 		{"r": [0.250, 0.545, 0.123, 0.160], "name": "全息指挥台", "hint": "战术统计终端", "kind": "terminal", "rooms": "war_room + entry_hall"},
-		{"r": [0.254, 0.417, 0.088, 0.139], "name": "全息地图墙", "hint": "情报舱", "kind": "panel", "key": "intelligence", "rooms": "archive"},
+		{"r": [0.254, 0.417, 0.088, 0.124], "name": "全息地图墙", "hint": "情报舱", "kind": "panel", "key": "intelligence", "rooms": "archive"},
 		{"r": [0.818, 0.417, 0.050, 0.374], "name": "补给货架", "hint": "补给舱·联络台", "kind": "panel", "key": "store", "rooms": "comms"},
-		{"r": [0.412, 0.449, 0.079, 0.257], "name": "卡牌展示墙", "hint": "卡仓", "kind": "panel", "key": "backpack", "rooms": "dormitory（挂靠）"},
-		{"r": [0.710, 0.587, 0.096, 0.180], "name": "机械臂工位", "hint": "改造·词条", "kind": "panel", "key": "modification", "rooms": "workshop"},
+		{"r": [0.412, 0.449, 0.079, 0.254], "name": "卡牌展示墙", "hint": "卡仓", "kind": "panel", "key": "backpack", "rooms": "dormitory（挂靠）"},
+		{"r": [0.710, 0.587, 0.096, 0.115], "name": "机械臂工位", "hint": "改造·词条", "kind": "panel", "key": "modification", "rooms": "workshop"},
 		{"r": [0.727, 0.705, 0.066, 0.075], "name": "3D 打印机", "hint": "制造舱·卡仓", "kind": "panel", "key": "evolution", "rooms": "depot"},
 		{"r": [0.438, 0.705, 0.053, 0.182], "name": "医疗冰箱", "hint": "医疗·配给", "kind": "info", "rooms": "medical + mess_hall"},
 		{"r": [0.692, 0.812, 0.190, 0.145], "name": "聚变缆线", "hint": "全车电力·配给", "kind": "info", "rooms": "reactor + mess_hall"},
@@ -127,15 +127,15 @@ const HOTSPOTS := {
 	],
 	"era5": [
 		{"r": [0.017, 0.393, 0.190, 0.488], "name": "驾驶室", "hint": "出击简报", "kind": "sortie"},
-		{"r": [0.224, 0.552, 0.170, 0.170], "name": "全息指挥台", "hint": "战术统计终端", "kind": "terminal", "rooms": "war_room + entry_hall"},
+		{"r": [0.224, 0.552, 0.164, 0.139], "name": "全息指挥台", "hint": "战术统计终端", "kind": "terminal", "rooms": "war_room + entry_hall"},
 		{"r": [0.250, 0.435, 0.060, 0.117], "name": "全息地图投影", "hint": "情报舱", "kind": "panel", "key": "intelligence", "rooms": "archive"},
 		{"r": [0.392, 0.414, 0.047, 0.265], "name": "补给售货机", "hint": "补给舱·联络台", "kind": "panel", "key": "store", "rooms": "comms"},
 		{"r": [0.444, 0.414, 0.112, 0.202], "name": "卡牌展示墙", "hint": "卡仓", "kind": "panel", "key": "backpack", "rooms": "dormitory（挂靠）"},
-		{"r": [0.565, 0.488, 0.108, 0.190], "name": "相位机械臂", "hint": "改造·词条", "kind": "panel", "key": "modification", "rooms": "workshop"},
+		{"r": [0.565, 0.488, 0.108, 0.124], "name": "相位机械臂", "hint": "改造·词条", "kind": "panel", "key": "modification", "rooms": "workshop"},
 		{"r": [0.596, 0.616, 0.060, 0.117], "name": "相位打印机", "hint": "制造舱·卡仓", "kind": "panel", "key": "evolution", "rooms": "depot"},
 		{"r": [0.255, 0.695, 0.040, 0.090], "name": "医疗柜", "hint": "医疗·配给", "kind": "info", "rooms": "medical + mess_hall"},
 		{"r": [0.695, 0.775, 0.115, 0.200], "name": "相位能源盘", "hint": "全车电力·配给", "kind": "info", "rooms": "reactor + mess_hall"},
-		{"r": [0.752, 0.672, 0.135, 0.165], "name": "铺位", "hint": "睡眠·存档", "kind": "sleep", "rooms": "dormitory"},
+		{"r": [0.752, 0.672, 0.135, 0.098], "name": "铺位", "hint": "睡眠·存档", "kind": "sleep", "rooms": "dormitory"},
 		{"r": [0.900, 0.420, 0.085, 0.340], "name": "尾门跳板", "hint": "行军选关", "kind": "march"},
 		{"r": [0.300, 0.735, 0.094, 0.070], "name": "相位通讯塔", "hint": "技能树", "kind": "panel", "key": "growth"},
 		{"r": [0.565, 0.745, 0.108, 0.070], "name": "词缀相位台", "hint": "词缀·洗练", "kind": "panel", "key": "affix"},
@@ -450,7 +450,7 @@ func _build_topbar() -> void:
 	sortie.add_theme_font_size_override("font_size", 14)
 	sortie.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 	# v26.30 出击=进战场：顶栏出击直达战斗（战前简报在驾驶室工位，选关在战区地图）
-	sortie.tooltip_text = "直接出击当前停靠关；行驶中会提示。战前简报：驾驶室工位"
+	sortie.tooltip_text = "直接出击当前停靠关（胜利后停靠关随战线推进）；行驶中会提示。战前简报：驾驶室工位"
 	_style_btn(sortie, COLOR_CYAN)
 	sortie.pressed.connect(_launch_battle)
 	_topbar.add_child(sortie)
@@ -1470,7 +1470,9 @@ func _open_sortie() -> void:
 	root.add_child(bottom)
 	var cfg := Label.new()
 	var cfg_cards := "，".join(card_names) if not card_names.is_empty() else "（空——先去背包装备平台卡）"
-	cfg.text = "出击配置 %d/%d：%s" % [my_cards, my_slots, cfg_cards]
+	# v38.x：上场上限口径常显（上限=相位仪绿槽装备的战斗卡数，与关卡号无关）
+	cfg.text = "出击配置 %d/%d：%s\n→ 可同时上场 %d 个单位（上限 = 绿槽装备的战斗卡数，场上另受 3×3 格子截断）" % [
+		my_cards, my_slots, cfg_cards, _loadouts.size()]
 	cfg.add_theme_font_size_override("font_size", 13)
 	cfg.add_theme_color_override("font_color", Color(0.85, 0.82, 0.72))
 	bottom.add_child(cfg)
