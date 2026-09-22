@@ -1,7 +1,2223 @@
 {
- "generated": "2026-08-28 08:14:17",
- "avg": 4.0,
+ "generated": "2026-09-22 11:08:31",
+ "avg": 4.305555555555555,
  "cells": [
+  {
+   "family": 0,
+   "family_label": "轻动能（冲锋枪/步枪/机枪/坦克炮）",
+   "file": "f00_player_muzzle.png",
+   "impact_class": "kinetic",
+   "is_player": true,
+   "kind": "muzzle",
+   "muzzle_class": "light",
+   "power_tier": 0,
+   "spec": "枪口=细碎橙火星(~5-9px)一闪即逝；命中=放射状黄白小火花+微量烟，无火球帧无震屏；亚类(机枪弹幕/坦克炮重环)由 DirectWeaponFlavor 按武器名细分",
+   "result": {
+    "realism_score": 5,
+    "verdict": "枪口火特效误用为命中式火花表现，缺乏瞬发光焰特征",
+    "spec_match": "不符合，枪口应呈细碎橙火星一闪即逝，当前呈现为命中放射火花形态",
+    "problems": [
+     "枪口火位置偏离枪口末端，粒子群集中在单位中部而非枪管出口处",
+     "粒子形态过于集中呈团状，缺少细碎分散的火星特征(~5-9px)",
+     "颜色以橙黄为主，缺少白色核心到橙色边缘的渐变层次",
+     "没有瞬时高亮帧，粒子持续时间过长失去'一闪即逝'感",
+     "缺少枪口燃气膨胀的半透明光晕层"
+    ],
+    "suggestions": [
+     {
+      "type": "new_layer",
+      "detail": "添加枪口燃气层：在枪口位置补充1-2帧半透明白色到橙色的径向渐变光晕，持续时间0.05-0.1秒后立即消失",
+      "priority": "high"
+     },
+     {
+      "type": "param",
+      "detail": "修改枪口火粒子初始速度分布：将速度改为高发散角(60-90度)+短距离(20-40px)，数量增加至15-25个，寿命0.1-0.15秒",
+      "priority": "high"
+     },
+     {
+      "type": "texture",
+      "detail": "更换枪口火粒子贴图：使用4-8px大小的软边圆形贴图，中心白色/黄色边缘橙色，避免硬边方形粒子",
+      "priority": "med"
+     },
+     {
+      "type": "param",
+      "detail": "调整粒子出生点偏移：将发射位置从单位中心前移至枪口末端(x轴+32px以上)，确保火光从枪管位置喷出",
+      "priority": "high"
+     }
+    ],
+    "mode": null
+   }
+  },
+  {
+   "family": 0,
+   "family_label": "轻动能（冲锋枪/步枪/机枪/坦克炮）",
+   "file": "f00_player_trajectory.png",
+   "impact_class": "kinetic",
+   "is_player": true,
+   "kind": "trajectory",
+   "muzzle_class": "light",
+   "power_tier": 0,
+   "spec": "枪口=细碎橙火星(~5-9px)一闪即逝；命中=放射状黄白小火花+微量烟，无火球帧无震屏；亚类(机枪弹幕/坦克炮重环)由 DirectWeaponFlavor 按武器名细分",
+   "result": {
+    "realism_score": 3,
+    "verdict": "弹体消失、拖尾断裂成孤立线段、命中火花完全缺失，视觉信息严重不足。",
+    "spec_match": "未呈现规格要求的弹体可见性及命中放射状黄白火花，弹道形态也无连续拖尾。",
+    "problems": [
+     "弹体本身不可见——画面中没有弹丸粒子，只有几段白色短线，无法判断弹种",
+     "拖尾是离散线段而非连续轨迹——每段之间有明显间隙，像停顿而非高速运动残留",
+     "命中火花缺失——右侧目标框旁无任何放射状黄白火花，验收规格明确要求'命中=放射状黄白小火花'",
+     "曳光效若存在则过度简化——白色短线没有颜色渐变（橙→黄→白核心），缺乏高速金属的亮度层次"
+    ],
+    "suggestions": [
+     {
+      "type": "param",
+      "detail": "弹体粒子：新增独立弹体Sprite（2×2px白色核心+淡蓝边缘光晕），Lifetime设为0.05-0.08s，Size随Speed缩放(高速更大)，确保在暗色审计背景下可见",
+      "priority": "high"
+     },
+     {
+      "type": "texture",
+      "detail": "重制拖尾贴图：用Gradient Texture替代纯色线段，从弹头(白/亮黄)到尾部(橙→透明)线性渐变，Width 8-12px，Length随Velocity动态拉伸(最高40px)",
+      "priority": "high"
+     },
+     {
+      "type": "new_layer",
+      "detail": "命中层补放射火花：TargetHit事件触发时发射12-16个黄白粒子(半径3-5px)，初始Speed 80-150px/s，径向分布，Alpha从1线性降至0，Lifetime 0.1-0.15s",
+      "priority": "high"
+     },
+     {
+      "type": "param",
+      "detail": "曳光粒子Color渐变：启用Color over Lifetime曲线，第0帧白色核心(#FFFFFF)，第0.3帧亮黄(#FFDD44)，第0.6帧橙(#FF8800)，第1帧透明(#00000000)，消除当前纯色白线段的廉价感",
+      "priority": "med"
+     }
+    ],
+    "mode": null
+   }
+  },
+  {
+   "family": 0,
+   "family_label": "轻动能（冲锋枪/步枪/机枪/坦克炮）",
+   "file": "f00_player_impact.png",
+   "impact_class": "kinetic",
+   "is_player": true,
+   "kind": "impact",
+   "muzzle_class": "light",
+   "power_tier": 0,
+   "spec": "枪口=细碎橙火星(~5-9px)一闪即逝；命中=放射状黄白小火花+微量烟，无火球帧无震屏；亚类(机枪弹幕/坦克炮重环)由 DirectWeaponFlavor 按武器名细分",
+   "result": {
+    "realism_score": 5,
+    "verdict": "命中特效雏形具备但粒子设计与烟雾缺失明显，未达高水准军事2D游戏的精致程度。",
+    "spec_match": "命中格有放射状黄白小火花，无火球帧无震屏，但火花形态过于规整均质，缺少真实命中应有的方向性喷溅与烟雾层次。",
+    "problems": [
+     "火花呈均匀环状分布，缺乏入射方向性——真实命中火花应沿弹道切线+法线方向有集中喷溅，而非对称放射",
+     "火花粒子尺寸偏大且缺乏变化，部分接近10-15px，超出~5-9px规格范围，视觉上过于'胖'",
+     "完全缺失烟雾层——命中应有微量灰白色烟团伴随火花出现，这是动能命中的关键质感指标",
+     "火花形状过于单一（基本为星形/十字形），缺少碎屑状、拉丝状等多样性形态",
+     "底部中央存在一个白色圆形发光体，可能是渲染残留或flare层错误，看起来不像真实命中应有的内容"
+    ],
+    "suggestions": [
+     {
+      "type": "texture",
+      "detail": "新增火花贴图库：用程序化生成或手绘补充3种形态——①碎屑状小方块（2-4px，模拟金属剥落）②拉丝状长条（4-8px，高速剪切效应）③星芒状（保留现有但缩小至5-7px），按弹速和材质各加权分配",
+      "priority": "high"
+     },
+     {
+      "type": "param",
+      "detail": "调整火花发射方向分布：改为以命中点为中心，沿弹道来向的切线方向集中喷射70%+火花（速度50-150px/s），法线方向30%（速度20-60px/s），打破当前对称环状布局",
+      "priority": "high"
+     },
+     {
+      "type": "new_layer",
+      "detail": "新增烟雾层：在命中瞬间生成3-5个半透明灰白烟团粒子（贴图用软边缘径向渐变圆，初始半径6-10px，扩散至25-35px，寿命800-1200ms），跟随火花同时出现但持续更久，opacity从0.5渐隐至0",
+      "priority": "high"
+     },
+     {
+      "type": "param",
+      "detail": "检查并移除命中点正下方白色圆形发光体——可能是emissive材质穿透或unlit sprite错误叠加，确认DirectWeaponFlavor子分类中机枪/坦克炮是否继承了不该有的光晕参数",
+      "priority": "med"
+     },
+     {
+      "type": "param",
+      "detail": "火花单帧数量从当前估算8-12个提升至15-25个，按power_tier=0标准分布：前5帧密集爆发（每帧10-15个），后3帧余烬衰减（每帧3-5个），每个火花寿命控制在150-300ms",
+      "priority": "med"
+     }
+    ],
+    "mode": null
+   }
+  },
+  {
+   "family": 0,
+   "family_label": "轻动能（冲锋枪/步枪/机枪/坦克炮）",
+   "file": "f00_enemy_muzzle.png",
+   "impact_class": "kinetic",
+   "is_player": false,
+   "kind": "muzzle",
+   "muzzle_class": "light",
+   "power_tier": 0,
+   "spec": "枪口=细碎橙火星(~5-9px)一闪即逝；命中=放射状黄白小火花+微量烟，无火球帧无震屏；亚类(机枪弹幕/坦克炮重环)由 DirectWeaponFlavor 按武器名细分",
+   "result": {
+    "realism_score": 4,
+    "verdict": "位置与形态双重重重违规，当前特效更像命中溅射而非枪口火。",
+    "spec_match": "未达标：枪口火出现在我方单位（青色框）旁而非敌方炮口方向，且形态为放射状长线火花而非细碎短促火星。",
+    "problems": [
+     "位置完全错误：枪口火特效出现在青色参考框（我方单位）左侧，但本截图标注为敌方开火，应出现在右侧橙框附近炮口指向方向",
+     "粒子形态不符：当前为长线条放射状火花，类似命中溅射效果，非规格要求的5-9px细碎橙火星一闪即逝形态",
+     "缺少枪口火核心特征——瞬时高亮闪光层，整体亮度平淡无爆发感",
+     "缺少微量烟雾跟随层，真实枪口火后会有一小团硝烟快速消散"
+    ],
+    "suggestions": [
+     {
+      "type": "param",
+      "detail": "将枪口火粒子生命周期缩短至0.05-0.1秒，初帧倍率×3快速衰减，模拟一闪即逝效果",
+      "priority": "high"
+     },
+     {
+      "type": "new_layer",
+      "detail": "添加闪光帧层：第1帧生成一个半径约15px的高亮黄白色圆形光斑，alpha从1.0瞬间衰减至0，持续1-2帧",
+      "priority": "high"
+     },
+     {
+      "type": "param",
+      "detail": "修改粒子发射角度分布：从全向放射改为锥形发射（朝向炮口方向±30度），速度集中在200-400px/s范围内，限制横向散射",
+      "priority": "high"
+     },
+     {
+      "type": "param",
+      "detail": "将主粒子尺寸从当前状态压缩至5-9px范围，使用小型圆形/十字形贴图替代当前长条形火花贴图",
+      "priority": "med"
+     },
+     {
+      "type": "new_layer",
+      "detail": "添加微量烟雾跟随层：在主粒子结束后0.02秒延迟生成3-5个灰棕色粒子，尺寸8-12px，慢速扩散（50-80px/s），生命周期0.3-0.5秒后消散",
+      "priority": "med"
+     },
+     {
+      "type": "param",
+      "detail": "修正特效 Spawn 位置：将枪口火原点移至右侧敌方单位炮口坐标，而非当前错误的左侧位置",
+      "priority": "high"
+     }
+    ],
+    "mode": null
+   }
+  },
+  {
+   "family": 0,
+   "family_label": "轻动能（冲锋枪/步枪/机枪/坦克炮）",
+   "file": "f00_enemy_trajectory.png",
+   "impact_class": "kinetic",
+   "is_player": false,
+   "kind": "trajectory",
+   "muzzle_class": "light",
+   "power_tier": 0,
+   "spec": "枪口=细碎橙火星(~5-9px)一闪即逝；命中=放射状黄白小火花+微量烟，无火球帧无震屏；亚类(机枪弹幕/坦克炮重环)由 DirectWeaponFlavor 按武器名细分",
+   "result": {
+    "realism_score": 2,
+    "verdict": "严重缺失弹道表现，仅显示地面碎片化痕迹，飞行中的弹体与曳光完全不可见。",
+    "spec_match": "验收规格要求评估飞行中的弹（弹体形状/可见性、曳光线、拖尾），本帧画面中无任何弹体或曳光飞行轨迹，无法验证规格要求。",
+    "problems": [
+     "画面中央无任何弹体/曳光/拖尾粒子，子弹从发射到命中完全隐形，违反'弹体形状/可见性'核心要求",
+     "橙色短线散落在地面仅为命中后的残余火花或弹着痕迹，而非飞行中的弹丸表现",
+     "缺少弹道运动感——从左侧我方单位到右侧目标单位之间没有任何速度线、轨迹或运动模糊",
+     "无曳光弹区分——即使普通弹也应有微弱尾部辉光或热扭曲迹象，而非直接消失"
+    ],
+    "suggestions": [
+     {
+      "type": "new_layer",
+      "detail": "在弹道格（从左侧单位枪口到右侧目标区域之间）添加高速运动粒子层：每发子弹生成一条长度约32-48px的暖橙色/白色细线，使用 additive 混合模式，lifetime 0.08-0.12s，速度随距离衰减，让飞行轨迹清晰可见",
+      "priority": "high"
+     },
+     {
+      "type": "param",
+      "detail": "为弹体粒子启用 trail（拖尾）功能，拖尾长度=当前速度×0.15，颜色从弹头白色(#FFEEDD)渐变到弹尾暗橙色(#CC6622)，末端 alpha 归零，消除'凭空出现/消失'的突兀感",
+      "priority": "high"
+     },
+     {
+      "type": "texture",
+      "detail": "替换或新增弹体贴图：使用径向渐变圆形（核心亮白#FFF8EE，外围橙色光晕#FF9944，alpha羽化），直径约4-6px，避免纯矩形或无辉光的简单像素点，模拟高速金属弹头的真实发光特征",
+      "priority": "med"
+     },
+     {
+      "type": "param",
+      "detail": "在弹体粒子上添加 Motion Blur（运动模糊）层，方向沿弹道切线，拉伸长度=速度×0.2，强度随距离枪口远近递减，增强高速飞行的视觉可信度",
+      "priority": "med"
+     }
+    ],
+    "mode": null
+   }
+  },
+  {
+   "family": 0,
+   "family_label": "轻动能（冲锋枪/步枪/机枪/坦克炮）",
+   "file": "f00_enemy_impact.png",
+   "impact_class": "kinetic",
+   "is_player": false,
+   "kind": "impact",
+   "muzzle_class": "light",
+   "power_tier": 0,
+   "spec": "枪口=细碎橙火星(~5-9px)一闪即逝；命中=放射状黄白小火花+微量烟，无火球帧无震屏；亚类(机枪弹幕/坦克炮重环)由 DirectWeaponFlavor 按武器名细分",
+   "result": {
+    "realism_score": 5,
+    "verdict": "火花形态基本到位，但白光大球违规且缺烟雾层，颗粒度也不够细致",
+    "spec_match": "有放射状黄白小火花，但违规出现了火球帧（中央白色光球），且缺少规格要求的微量烟",
+    "problems": [
+     "中央出现明显的白色光球/圆环，规格明确要求'无火球帧'，这是硬伤",
+     "完全缺失烟雾层，命中金属目标应有微量飞溅烟尘",
+     "火花粒子数量偏少（目测约8-10颗），且大小/亮度差异不够，缺少细碎火星的层次感",
+     "火花缺少速度衰减过渡，视觉上像瞬间消失而非减速散落"
+    ],
+    "suggestions": [
+     {
+      "type": "param",
+      "detail": "删除或隐藏中央白色光球粒子（当前存活帧/生命周期>0即为违规），命中特效不允许出现持续性光球",
+      "priority": "high"
+     },
+     {
+      "type": "new_layer",
+      "detail": "在火花系统下方叠加一层烟雾粒子，初始位置锚定命中点，用灰色/深棕色噪声贴图，寿命0.3-0.5s，膨胀率0.5-0.8，初始大小4-6px，快速衰减不遮挡后续射击",
+      "priority": "high"
+     },
+     {
+      "type": "param",
+      "detail": "将火花初始数量提升至15-20颗，分两组：第一组8-10颗主火花（大小3-5px，黄白色，初速快衰减快），第二组5-8颗碎火星（大小1-2px，橙黄色，初速慢），形成主次层次",
+      "priority": "med"
+     },
+     {
+      "type": "texture",
+      "detail": "换用边缘硬、中心亮的十字星形火花贴图（而非圆形），模拟金属弹片飞溅的真实形态，当前贴图过于圆润像魔法粒子",
+      "priority": "med"
+     }
+    ],
+    "mode": null
+   }
+  },
+  {
+   "family": 1,
+   "family_label": "曲射火炮（迫击炮/榴弹炮）",
+   "file": "f01_player_muzzle.png",
+   "impact_class": "explosive",
+   "is_player": true,
+   "kind": "muzzle",
+   "muzzle_class": "heavy",
+   "power_tier": 1,
+   "spec": "枪口=大爆发火球+发射药烟团；弹道=高抛物线炮弹；命中=火球帧动画+冲击波环+焦痕弹坑(50%概率)",
+   "result": {
+    "realism_score": 5,
+    "verdict": "火球形态基本成立，但严重缺少发射药烟团的第二层体积，整体偏薄。",
+    "spec_match": "仅呈现了火球部分，未体现验收规格要求的'大爆发火球+发射药烟团'双层结构。",
+    "problems": [
+     "火球过于扁平且向四周扩散，缺少炮口朝向上方的喷射压缩感，像爆炸而非开火瞬时",
+     "完全没有发射药烟团的独立层——炮口应先喷出一团低速膨胀的灰色/棕色发烟剂云，与高温火球分离",
+     "火焰尖刺过多且均匀分布，真实火炮开火的火球应呈不对称喷射状，受身管长度和膛压影响有方向性拖尾"
+    ],
+    "suggestions": [
+     {
+      "type": "new_layer",
+      "detail": "新增发射药烟团粒子层，初始scale约48-64px，color用深灰褐(#3d3530)，velocity向下偏外扩散(重力0.3，life 0.8s)，在火球诞生后0.05s延迟spawn，形成前后两层分离效果",
+      "priority": "high"
+     },
+     {
+      "type": "param",
+      "detail": "火球粒子改为沿炮口朝向(右上方)喷射：主粒子shape用椭圆形压扁为横向2:1，velocity方向限制在±30°锥形内，speed 120-180px/s，并添加后向拖尾secondary particle",
+      "priority": "high"
+     },
+     {
+      "type": "texture",
+      "detail": "替换火球core贴图，改用从中心白色→橙黄→暗红的径向渐变+边缘锐利星芒叠加的三层blend，减少尖刺数量至3-5根长刺+底部浓密烟云遮挡边缘",
+      "priority": "med"
+     }
+    ],
+    "mode": null
+   }
+  },
+  {
+   "family": 1,
+   "family_label": "曲射火炮（迫击炮/榴弹炮）",
+   "file": "f01_player_trajectory.png",
+   "impact_class": "explosive",
+   "is_player": true,
+   "kind": "trajectory",
+   "muzzle_class": "heavy",
+   "power_tier": 1,
+   "spec": "枪口=大爆发火球+发射药烟团；弹道=高抛物线炮弹；命中=火球帧动画+冲击波环+焦痕弹坑(50%概率)",
+   "result": {
+    "realism_score": 4,
+    "verdict": "弹体轮廓与拖尾基本可用，但弹道呈直线无抛物线特征，且缺乏曲射火炮应有的曳光表现，整体视觉暗示的是直射而非曲射火力。",
+    "spec_match": "弹体可见、拖尾存在，但轨迹为近似直线未呈现规格要求的'高抛物线炮弹'形态，曳光特征也未明确体现。",
+    "problems": [
+     "弹道无抛物线弧度：三个弹体沿近乎水平直线排列，迫击炮/榴弹炮应呈现明显的拱形弹道弧线，当前视觉上更像直射武器。",
+     "曳光线缺失或过弱：power_tier=1中程火炮应带有明显曳光（bright tip + particle trail），当前黄色拖尾过于暗淡且短，无法在深色背景上清晰识别。",
+     "弹体形状扁平且缺乏细节：弹体为简单暗色球体，无炮弹常见的尖头/流线型轮廓，也无引信或弹带刻线等可辨识特征。",
+     "无速度感/运动模糊：弹体周围缺少速度线或运动拖影，飞行中状态静止感过强。"
+    ],
+    "suggestions": [
+     {
+      "type": "param",
+      "detail": "为弹道粒子系统添加二次曲线位置修正：每帧将弹体Y轴偏移按 y = a·t² + b·t 计算，以t=发射时刻起算，a由目标高度与射程决定，确保抛物线弧度符合30-60°射角视觉效果。",
+      "priority": "high"
+     },
+     {
+      "type": "new_layer",
+      "detail": "在弹体前方叠加曳光层：使用高亮黄色-to-橙色渐变贴图（宽度4-8px，长度弹体长度的1.5-2倍），沿飞行切线方向绘制，alpha从1.0渐变为0.0，配合小型发光粒子（size=2-4px，lifetime=0.2s）增强可见度。",
+      "priority": "high"
+     },
+     {
+      "type": "texture",
+      "detail": "替换弹体贴图：当前为均质暗球，改为带尖头轮廓的炮弹剪影贴图（长度约为宽度的3-4倍），表面增加2-3条环形弹带高光刻线，颜色从深灰渐变到暖铜色，提升辨识度。",
+      "priority": "med"
+     },
+     {
+      "type": "param",
+      "detail": "弹体尾部追加运动拖尾粒子：在弹体后方spawn 3-5个快速衰减的半透明烟粒（color=#3a3020→#1a1510，size=6-10px，lifetime=0.4s，velocity=(-3,-1)~(-3,1)），模拟高速飞行时的空气扰动痕迹。",
+      "priority": "med"
+     }
+    ],
+    "mode": null
+   }
+  },
+  {
+   "family": 1,
+   "family_label": "曲射火炮（迫击炮/榴弹炮）",
+   "file": "f01_player_impact.png",
+   "impact_class": "explosive",
+   "is_player": true,
+   "kind": "impact",
+   "muzzle_class": "heavy",
+   "power_tier": 1,
+   "spec": "枪口=大爆发火球+发射药烟团；弹道=高抛物线炮弹；命中=火球帧动画+冲击波环+焦痕弹坑(50%概率)",
+   "result": {
+    "realism_score": 5,
+    "verdict": "火球表现合格但规格关键要素严重缺失，冲击波环完全缺席，弹坑未触发。",
+    "spec_match": "仅呈现了火球帧动画部分，冲击波环完全缺失，焦痕弹坑未出现（概率问题或未实现）。",
+    "problems": [
+     "验收规格明确要求'冲击波环'，但画面中完全看不到任何环形波纹或膨胀圈效果，这是曲射火炮命中的核心视觉特征之一",
+     "火球整体偏软，缺乏爆炸瞬间内核的高亮爆发感，看起来更像烟雾团而非炮弹命中炸裂的火球",
+     "地面没有任何弹坑或焦痕痕迹，虽然标注50%概率，但作为验收截图应至少展示一次完整命中形态",
+     "炮弹命中地面应有扬尘/泥土飞溅效果，目前地面对爆炸完全没有响应",
+     "火球缺少层次感，没有明确的内核-火焰-烟雾三层结构，视觉上过于扁平"
+    ],
+    "suggestions": [
+     {
+      "type": "new_layer",
+      "detail": "在火球帧动画之后立即添加一个冲击波环图层：使用Ring/Annulus粒子或遮罩动画，从命中点向外快速膨胀（寿命0.15-0.3s），初始半径约32px，最大半径约64px，带fade out，颜色用半透明白色或淡黄色，叠加模式additive",
+      "priority": "high"
+     },
+     {
+      "type": "param",
+      "detail": "火球内核粒子：将中心高亮粒子的initial size设置为8-12px，color gradient的第一段设为纯白(#ffffff)过渡到橙黄，emission强度调高，用hard-edge贴图替代soft smoke贴图，制造爆炸瞬间的硬芯感",
+      "priority": "high"
+     },
+     {
+      "type": "new_layer",
+      "detail": "在地面层添加弹坑特效：50%概率触发，使用圆形遮罩或翻转的锥形粒子向下凹陷，颜色用深褐色/黑色，边缘带焦痕黄色，并配合地面纹理偏移或遮罩溶解效果",
+      "priority": "med"
+     },
+     {
+      "type": "param",
+      "detail": "添加地面扬尘层：在爆炸点下方0-16px范围内发射棕色/灰色粒子，gravity设正值(向下)，initial velocity设为向外扩散，size 4-8px，寿命0.4-0.8s，模拟炮弹砸地激起的泥土尘土",
+      "priority": "med"
+     },
+     {
+      "type": "texture",
+      "detail": "火球贴图需补充三层：core层用硬边白色核心贴图(size 8px)，flame层用橙色不规则火焰贴图(size 24px)，smoke层用暗红/棕色烟雾贴图(size 40px)，分别设置不同生命周期和blend mode(core用additive, smoke用screen)",
+      "priority": "low"
+     }
+    ],
+    "mode": null
+   }
+  },
+  {
+   "family": 1,
+   "family_label": "曲射火炮（迫击炮/榴弹炮）",
+   "file": "f01_enemy_muzzle.png",
+   "impact_class": "explosive",
+   "is_player": false,
+   "kind": "muzzle",
+   "muzzle_class": "heavy",
+   "power_tier": 1,
+   "spec": "枪口=大爆发火球+发射药烟团；弹道=高抛物线炮弹；命中=火球帧动画+冲击波环+焦痕弹坑(50%概率)",
+   "result": {
+    "realism_score": 4,
+    "verdict": "枪口火形态偏向前冲喷焰而非大爆发火球，缺少发射药烟团的体积感。",
+    "spec_match": "未呈现规格要求的大爆发火球形态；弹道与命中特效本张截图未展示，无法评估。",
+    "problems": [
+     "枪口火整体呈长条形喷焰状（类似直射枪械/激光效果），而非迫击炮/榴弹炮开火时应有的近球形大爆发火球，缺乏爆炸向四周膨胀的视觉重心。",
+     "发射药烟团缺失或极弱：未见围绕火球外围的灰褐色烟雾晕染层，火球边缘过于干净锐利，缺少推进剂燃烧后的浑浊烟云质感。",
+     "火球内部缺乏明暗层次：中心应为极高亮白/淡黄核，向外渐变为橙色、褐红、灰棕的烟层，当前画面基本只有橙黄色单色调，缺少高温核心与低温烟云的对比。",
+     "粒子总量偏少：整团特效粒子数量稀疏，无'轰鸣大口径火炮'应带来的厚重感和颗粒密度，视觉上偏轻（更像步枪而非榴弹炮）。"
+    ],
+    "suggestions": [
+     {
+      "type": "param",
+      "detail": "在枪口火主粒子模块中，将burst/shot模式的初始速度分布从定向锥形（cone angle < 30°）改为近乎各向同性（cone angle 120°–180°），使粒子首先向外炸开形成球状火球，再让尾部残留少量向后喷射的羽流；同时缩短火球粒子寿命至0.3–0.5s，加速膨胀后消散，模拟爆炸快速膨胀后降温的过程。",
+      "priority": "high"
+     },
+     {
+      "type": "new_layer",
+      "detail": "新增独立发射药烟团层（propellant_smoke），在火球爆发后0.05–0.1s延迟重生，使用灰褐/深棕色烟雾贴图（alpha衰减边缘柔和），粒子速度低（0–50px/s），尺寸从16px膨胀至48–64px，寿命2–3s，叠加在火球层上方以半透明混合模式渲染，形成浑浊的烟晕轮廓。",
+      "priority": "high"
+     },
+     {
+      "type": "texture",
+      "detail": "为火球核心层替换为径向渐变球状贴图（中心纯白→淡黄→橙→透明），而非当前可能的星芒/尖刺状火焰贴图；同时在火球外层叠加一张边缘羽化的烟团贴图（soft edge smoke），使火球外缘呈现柔和扩散的烟云过渡，消除当前过于锐利的星形轮廓。",
+      "priority": "med"
+     },
+     {
+      "type": "param",
+      "detail": "提高火球主粒子数量至当前3–5倍，初始尺寸设为8–16px，速度范围拉宽至200–400px/s（各向），在0.1s内完成球状膨胀，随后减速并缩小至初始尺寸的50%时开始fade out，以模拟爆炸冲击波带动火焰快速膨胀后收缩的物理过程。",
+      "priority": "med"
+     }
+    ],
+    "mode": null
+   }
+  },
+  {
+   "family": 1,
+   "family_label": "曲射火炮（迫击炮/榴弹炮）",
+   "file": "f01_enemy_trajectory.png",
+   "impact_class": "explosive",
+   "is_player": false,
+   "kind": "trajectory",
+   "muzzle_class": "heavy",
+   "power_tier": 1,
+   "spec": "枪口=大爆发火球+发射药烟团；弹道=高抛物线炮弹；命中=火球帧动画+冲击波环+焦痕弹坑(50%概率)",
+   "result": {
+    "realism_score": 4,
+    "verdict": "弹道完全直线化，缺乏曲射火炮应有的高抛物线特征，曳光/拖尾效果单薄到像霰弹枪而非榴弹炮。",
+    "spec_match": "未呈现验收规格要求的'高抛物线炮弹'形态，弹体飞行轨迹为直线，不符合迫击炮/榴弹炮的曲射弹道特征。",
+    "problems": [
+     "弹道呈水平直线排列，无任何抛物线弧度，曲射炮弹应呈现明显的高抛弧线轨迹",
+     "曳光/拖尾过于短促且粗细一致，缺乏高速炮弹应有的长尾迹和速度感",
+     "弹体仅为模糊橙红色圆点，没有炮弹的典型外形（卵形弹头+圆柱弹体+尾翼）",
+     "多帧弹体位置间隔均匀，无重力减速视觉暗示（近端快、远端慢的时序感缺失）"
+    ],
+    "suggestions": [
+     {
+      "type": "param",
+      "detail": "弹道路径改用bezier曲线或物理模拟抛物线，顶点高度至少达到发射点与落点水平距离的30%-40%，强制呈现高抛弧线",
+      "priority": "high"
+     },
+     {
+      "type": "param",
+      "detail": "曳光拖尾改为渐变长度+渐变透明度，尾迹长度随速度衰减，近发射点处拖尾最长最亮，远端逐渐缩短消散",
+      "priority": "high"
+     },
+     {
+      "type": "texture",
+      "detail": "更换弹体贴图：使用侧面视角的炮弹剪影（卵形弹头+细长弹体+尾翼轮廓），颜色为黄铜色/暗金属色而非纯橙红",
+      "priority": "med"
+     },
+     {
+      "type": "param",
+      "detail": "弹道运动加keyframe timing：抛物线顶点附近帧间隔拉长（模拟重力减速），两端帧间隔加密，制造真实的弹道节奏感",
+      "priority": "med"
+     }
+    ],
+    "mode": null
+   }
+  },
+  {
+   "family": 1,
+   "family_label": "曲射火炮（迫击炮/榴弹炮）",
+   "file": "f01_enemy_impact.png",
+   "impact_class": "explosive",
+   "is_player": false,
+   "kind": "impact",
+   "muzzle_class": "heavy",
+   "power_tier": 1,
+   "spec": "枪口=大爆发火球+发射药烟团；弹道=高抛物线炮弹；命中=火球帧动画+冲击波环+焦痕弹坑(50%概率)",
+   "result": {
+    "realism_score": 5,
+    "verdict": "火球主体到位但缺少规格强制要求的冲击波环和弹坑，整体偏单薄。",
+    "spec_match": "呈现了火球帧动画，但未显现冲击波环，焦痕弹坑也未可见，未完整命中验收规格。",
+    "problems": [
+     "冲击波环完全缺失：命中爆炸应有一个向外扩散的透明/半透明环形波前，现图中无任何此类结构",
+     "焦痕弹坑不可见：暗色地面上爆炸着地点没有颜色变化和凹坑轮廓，地面反馈为空",
+     "火球边缘过软：粒子晕染过于均匀，缺乏金属破片和高温核心明暗层次，像一团雾而非固体弹体冲击",
+     "无冲击飞溅颗粒：缺少被炸起的土块/碎石向外抛射的短轨迹粒子，降低力量感"
+    ],
+    "suggestions": [
+     {
+      "type": "new_layer",
+      "detail": "在火球帧动画外侧叠加一层冲击波环粒子，使用放射状椭圆贴图，颜色从浅白到透明梯度，生命周期2-4帧，半径初始约30px迅速膨胀至120px后淡出",
+      "priority": "high"
+     },
+     {
+      "type": "texture",
+      "detail": "在目标单位正下方地面添加焦痕弹坑贴图（80px直径，中心深黑褐→外围橙红→边缘浅灰土色环带），50%概率随命中特效同时出现，命中后立即以静态sprite形式叠加在地面层",
+      "priority": "high"
+     },
+     {
+      "type": "param",
+      "detail": "为火球主粒子重新分配贴图：中心50%粒子使用白色-亮黄核心贴图（低分辨率噪点模拟高温），外围50%改用带硬边缘的深色金属碎片贴图，life_end时alpha快速降至0制造收缩爆发感",
+      "priority": "med"
+     },
+     {
+      "type": "param",
+      "detail": "新增10-15颗飞溅碎片粒子，贴图使用不规则土块/碎石形状，速度径向分布（300-600px/s），生命周期0.5-1s，重力设为-800px/s²模拟抛射弧线回落地面",
+      "priority": "med"
+     }
+    ],
+    "mode": null
+   }
+  },
+  {
+   "family": 2,
+   "family_label": "空射武器",
+   "file": "f02_player_muzzle.png",
+   "impact_class": "explosive",
+   "is_player": true,
+   "kind": "muzzle",
+   "muzzle_class": "heavy",
+   "power_tier": 1,
+   "spec": "空射导弹俯冲弹道；命中=通用爆炸贴图+火球帧",
+   "result": {
+    "realism_score": 4,
+    "verdict": "误将爆炸贴图用于枪口火，形态、位置、物理逻辑全错。",
+    "spec_match": "完全未呈现枪口火应有的特征，视觉表现更接近命中爆炸或燃料爆炸，而非武器发射瞬间的短暂火焰。",
+    "problems": [
+     "枪口火位置错误：特效主体位于我方单位正上方/侧面，应紧贴武器发射口（炮管/发射轨）朝飞行方向喷射",
+     "形态错误：呈现为一个蓬松的火球，无方向性火焰舌和喷流；空射导弹点火应为一道强烈的方向性尾焰喷注+瞬时枪口爆闪光",
+     "尺寸错误：火球范围超过64px参考框，而枪口火爆发瞬间通常不超过发射口尺寸的3-4倍即迅速消散",
+     "生命周期错误：火球有完整燃烧体积感，但真实枪口火在几帧内就应衰减为尾焰粒子，不会形成独立燃烧的球形火团",
+     "颜色错误：整体呈橙黄燃烧色调，但导弹发动机点火初期火焰中心应为白热（接近纯白），外层才过渡到橙黄",
+     "缺少尾焰层：空射武器发射后应有持续追踪的火箭发动机尾焰轨迹，当前画面中完全缺失"
+    ],
+    "suggestions": [
+     {
+      "type": "texture",
+      "detail": "替换枪口火主贴图：新增一张火箭发动机点火瞬间专用的径向对称火焰舌贴图（中心白热→外缘橙黄→边缘淡黄透明羽化），取消当前火球球形贴图",
+      "priority": "high"
+     },
+     {
+      "type": "param",
+      "detail": "调整发射器粒子发射方向：将初始粒子速度矢量从各向同性改为沿武器飞行方向（右）的定向喷射，初始速度设为参考单位高度的1.5-2倍，模拟导弹点火推力",
+      "priority": "high"
+     },
+     {
+      "type": "param",
+      "detail": "缩短枪口火主flash生命周期至3-5帧（约0.1秒），同时为同粒子发射器增设尾部尾焰持续层，尾焰层生命周期延长至15-20帧，形成'闪光→尾焰'的两段式生命周期",
+      "priority": "high"
+     },
+     {
+      "type": "new_layer",
+      "detail": "补充火箭尾焰轨迹层：使用长条形拉伸矩形粒子（或分段直线sprite），从发射口沿弹道路径（向右）持续发射，颜色梯度白→黄→橙→透明，长度随距离衰减，宽度约2-4px",
+      "priority": "high"
+     },
+     {
+      "type": "param",
+      "detail": "在枪口火粒子系统开头插入1-2帧的白色高亮闪光帧（亮度boost 200%），模拟导弹点火瞬间的白热核心，随后快速过渡到橙黄",
+      "priority": "med"
+     },
+     {
+      "type": "param",
+      "detail": "缩小初始发射口粒子半径：限制在发射口周围8-12px范围内生成，当前火球超出64px参考框严重失准",
+      "priority": "med"
+     }
+    ],
+    "mode": null
+   }
+  },
+  {
+   "family": 2,
+   "family_label": "空射武器",
+   "file": "f02_player_trajectory.png",
+   "impact_class": "explosive",
+   "is_player": true,
+   "kind": "trajectory",
+   "muzzle_class": "heavy",
+   "power_tier": 1,
+   "spec": "空射导弹俯冲弹道；命中=通用爆炸贴图+火球帧",
+   "result": {
+    "realism_score": 4,
+    "verdict": "弹体可见但缺乏俯冲特征，轨迹平直且拖尾严重不足，未体现空射导弹的核心视觉语言。",
+    "spec_match": "验收规格要求'空射导弹俯冲弹道'，但当前飞行帧呈水平直线飞行，无下坠弧线、无俯冲姿态，与规格不符。",
+    "problems": [
+     "弹道无俯冲弧线：三枚弹体呈完全水平直线排列，空射导弹应有明显下坠/俯冲轨迹曲线",
+     "拖尾几乎不可见：仅能看到弹体后方少量灰色球状烟雾，缺少高速运动中应有的长条排气尾迹和热效应拖尾",
+     "弹体比例偏小：相对于64px参考框，弹体高度不足参考框的1/3，视觉上显得过于轻量",
+     "缺少发动机羽流：真实导弹飞行有可见的火箭尾焰（尤其在暗色背景上），当前弹体后方无对应光效",
+     "飞行速度感不足：没有速度线、空气扰动或动态模糊暗示高速飞行状态"
+    ],
+    "suggestions": [
+     {
+      "type": "param",
+      "detail": "为弹道添加抛物线或递减弧线路径（curved trajectory），让弹体位置沿'先平后向下弯曲'的轨迹分布，而非当前直线排列",
+      "priority": "high"
+     },
+     {
+      "type": "new_layer",
+      "detail": "新增一层引擎尾焰粒子（engine plume），使用白黄渐变至橙红的长条软粒子，沿弹体尾迹方向延伸，长度约为弹体的3-5倍，lifetime设为0.15-0.3s，opacity从0.9衰减至0",
+      "priority": "high"
+     },
+     {
+      "type": "param",
+      "detail": "增加拖尾长度：在现有烟雾粒子上加一层长尾迹（streak/tail particle），使用宽度1-2px、长度20-40px的细线贴图，alpha从0.7渐变到0，模拟高速运动的气流尾迹",
+      "priority": "high"
+     },
+     {
+      "type": "texture",
+      "detail": "重制弹体贴图为带翼面细节的空射导弹剪影（可见翼面+弹体+尾喷口），尺寸放大至参考框高度的60-80%，方向随俯冲轨迹旋转15-30度朝下",
+      "priority": "med"
+     },
+     {
+      "type": "param",
+      "detail": "为弹体前方添加速度虚影（motion trail ghost）：在弹体前进方向前方叠加2-3个半透明淡化的弹体副本，间距5-10px，alpha依次递减，营造高速感",
+      "priority": "med"
+     }
+    ],
+    "mode": null
+   }
+  },
+  {
+   "family": 2,
+   "family_label": "空射武器",
+   "file": "f02_player_impact.png",
+   "impact_class": "explosive",
+   "is_player": true,
+   "kind": "impact",
+   "muzzle_class": "heavy",
+   "power_tier": 1,
+   "spec": "空射导弹俯冲弹道；命中=通用爆炸贴图+火球帧",
+   "result": {
+    "realism_score": 4,
+    "verdict": "规格达标但特效过于通用，缺乏空射导弹命中应有的冲击层次与物理辨识度。",
+    "spec_match": "呈现了火球帧+火焰粒子形态，符合验收规格，但未体现空射导弹俯冲命中的独特视觉特征。",
+    "problems": [
+     "火球中心区域完全过曝（纯白），缺少从亮核到边缘的温度梯度过渡，视觉上像是简单叠加的模糊圆贴图而非有结构的火球",
+     "红色粒子分布过于均匀呈环状散开，没有俯冲命中的方向性——导弹从空中高速俯冲命中时应有明显上抛+侧向溅射的粒子动量轨迹",
+     "缺少爆炸冲击波层（shockwave ring），命中瞬间应有1-2帧向外扩散的压缩空气环",
+     "无任何烟雾/热气层叠加，火球外围应有一圈棕灰色升腾烟羽，表现高温燃气膨胀后的冷却效果",
+     "地面接触线处完全没有扬尘或地暴溅射效果，导弹命中地面时应有明显的尘土扇形溅射",
+     "火球边缘缺乏湍流细节，整体轮廓过于平滑，像静态贴图而非动态翻滚火焰"
+    ],
+    "suggestions": [
+     {
+      "type": "param",
+      "detail": "火球核心改用径向渐变贴图替换纯色白球：中心(1.0,0.95,0.8)→中部(1.0,0.6,0.1)→边缘(0.8,0.2,0.0)，控制alpha从中心0.95线性衰减到边缘0.0，半径约32px，持续0.4s后切换至火球外层",
+      "priority": "high"
+     },
+     {
+      "type": "new_layer",
+      "detail": "新增冲击波层：命中帧0触发一个半径从0扩展到120px的环状精灵，alpha从0.6衰减到0，持续时间0.15s，叠加在火球之前显示，表现空气压缩效应",
+      "priority": "high"
+     },
+     {
+      "type": "param",
+      "detail": "红色粒子系统重构：初始速度改为圆锥分布（锥角45°，方向与俯冲轨迹一致），顶部粒子速度上限提高至底部粒子的2倍，模拟重力与动量；生命周期0.3-0.8s，速度衰减系数设0.9",
+      "priority": "high"
+     },
+     {
+      "type": "texture",
+      "detail": "替换/新增烟雾层贴图：使用燃烧烟羽边缘破碎的序列帧（棕灰#3a3020至半透明），叠加在火球后方，初始scale=0.6，随生命周期膨胀至1.8，opacity从0.5降至0，持续0.8s",
+      "priority": "med"
+     },
+     {
+      "type": "new_layer",
+      "detail": "新增地面溅射层：命中点下方生成扇形（角度60°）抛射粒子群，材质为土黄色碎石#8b7355，初始Y速度为正（向上），模拟地被冲击波掀起的尘土扇面，持续时间0.3s",
+      "priority": "med"
+     },
+     {
+      "type": "param",
+      "detail": "火球外层粒子：添加12-16个小型火焰舌（flame舌形alpha贴图），从火球边缘随机位置向外伸展，速度200-400px/s，生命周期0.2-0.4s，模拟翻滚火焰边缘的湍流感",
+      "priority": "low"
+     }
+    ],
+    "mode": null
+   }
+  },
+  {
+   "family": 2,
+   "family_label": "空射武器",
+   "file": "f02_enemy_muzzle.png",
+   "impact_class": "explosive",
+   "is_player": false,
+   "kind": "muzzle",
+   "muzzle_class": "heavy",
+   "power_tier": 1,
+   "spec": "空射导弹俯冲弹道；命中=通用爆炸贴图+火球帧",
+   "result": {
+    "realism_score": 5,
+    "verdict": "枪口火形态呈放射状星形爆发，缺乏空射导弹发动机点火应有的定向喷射特征与速度感。",
+    "spec_match": "未呈现空射武器特有的火箭发动机点火火焰，形态偏向通用爆炸而非定向喷射。",
+    "problems": [
+     "枪口火呈均匀放射状星形，没有沿武器指向的定向喷射轨迹",
+     "火焰颜色均匀偏橙，缺少火箭发动机核心高温区应有的白/浅蓝色核心",
+     "粒子运动方向混乱，无明显的尾流方向性，无法体现高速燃气喷射的速度感",
+     "缺乏持续喷射的长尾焰层，仅表现为瞬间爆发形态"
+    ],
+    "suggestions": [
+     {
+      "type": "param",
+      "detail": "为枪口火添加方向性速度场，初始化速度矢量沿武器指向（右方），magnitude设为800-1200px/s，使粒子形成明显的尾流轨迹而非均匀扩散",
+      "priority": "high"
+     },
+     {
+      "type": "new_layer",
+      "detail": "叠加第二层核心高温粒子，使用白到浅蓝渐变的细长火焰贴图（长约32px宽约4px），初始尺寸3-5px，lifetime 0.15-0.25s，沿武器轴线方向发射，模拟火箭发动机核心喷射区",
+      "priority": "high"
+     },
+     {
+      "type": "param",
+      "detail": "将主火焰层的emission color从均匀橙调整为梯度：core用#FFF8E1，mid用#FFB300，edge用#E65100，模拟真实火焰温度梯度",
+      "priority": "med"
+     },
+     {
+      "type": "texture",
+      "detail": "替换当前星形火焰贴图，改用沿运动方向拉长的羽翼状火焰sprite（参考real rocket exhaust nozzle flame shape），宽度8-12px，长度24-40px，alpha通道做羽化边缘处理",
+      "priority": "med"
+     }
+    ],
+    "mode": null
+   }
+  },
+  {
+   "family": 2,
+   "family_label": "空射武器",
+   "file": "f02_enemy_trajectory.png",
+   "impact_class": "explosive",
+   "is_player": false,
+   "kind": "trajectory",
+   "muzzle_class": "heavy",
+   "power_tier": 1,
+   "spec": "空射导弹俯冲弹道；命中=通用爆炸贴图+火球帧",
+   "result": {
+    "realism_score": 2,
+    "verdict": "弹体识别度极低，拖尾呈现为静态烟雾团而非高速运动的尾迹，且完全缺失规格要求的俯冲弧线弹道。",
+    "spec_match": "未呈现空射导弹俯冲弹道特征，弹体形态模糊，拖尾效果更像命中爆炸烟雾而非飞行尾迹。",
+    "problems": [
+     "弹体形状为十字加号形，无导弹流线型轮廓、翼面或尾翼结构，辨识度极低",
+     "拖尾为多个分离的圆形橙红色烟雾团，缺乏高速运动应有的拉长感和方向性",
+     "弹道完全水平直线飞行，无任何俯冲弧线，不符合空射导弹俯冲特性",
+     "弹体尺寸相对于参考框过小，视觉权重严重失衡，几乎被拖尾烟雾淹没"
+    ],
+    "suggestions": [
+     {
+      "type": "texture",
+      "detail": "重绘弹体贴图：采用流线型圆柱弹体+十字翼面+锥形尾翼的侧面剪影，主色调深灰/黑色，翼尖加橙红色高亮标记",
+      "priority": "high"
+     },
+     {
+      "type": "param",
+      "detail": "修改拖尾粒子发射器：将圆形sprite替换为水平拉伸的羽状/条状sprite，增加X轴方向的速度偏移量(velocity.y += speed*0.9)，使拖尾呈现从前指向后的拉长形态",
+      "priority": "high"
+     },
+     {
+      "type": "new_layer",
+      "detail": "新增弹道弧线轨迹层：使用贝塞尔曲线生成从发射点到命中点的下凹弧线，用半透明橙黄色短线段沿弧线分布作为航迹预览，体现俯冲弹道特征",
+      "priority": "high"
+     },
+     {
+      "type": "param",
+      "detail": "增大弹体scale至约2倍，并添加动态模糊效果：根据速度矢量方向拉伸弹体sprite，速度越快拉伸倍数越大",
+      "priority": "med"
+     }
+    ],
+    "mode": null
+   }
+  },
+  {
+   "family": 2,
+   "family_label": "空射武器",
+   "file": "f02_enemy_impact.png",
+   "impact_class": "explosive",
+   "is_player": false,
+   "kind": "impact",
+   "muzzle_class": "heavy",
+   "power_tier": 1,
+   "spec": "空射导弹俯冲弹道；命中=通用爆炸贴图+火球帧",
+   "result": {
+    "realism_score": 5,
+    "verdict": "火球结构偏软、弹片缺乏动量方向性，整体像通用火光而非导弹命中破片效应。",
+    "problems": [],
+    "suggestions": [],
+    "mode": "json_partial_fallback"
+   }
+  },
+  {
+   "family": 3,
+   "family_label": "火箭弹（火箭炮/火箭巢）",
+   "file": "f03_player_muzzle.png",
+   "impact_class": "explosive",
+   "is_player": true,
+   "kind": "muzzle",
+   "muzzle_class": "heavy",
+   "power_tier": 1,
+   "spec": "枪口=窄锥(32°)定向喷射+尾焰烟；弹道=低平弧火箭弹带尾焰；命中=火球帧+碎片烟尘",
+   "result": {
+    "realism_score": 4,
+    "verdict": "枪口火形态完全偏离窄锥定向喷射规格，呈现为放射状星形爆炸而非32°锥形燃气喷射，且缺少尾焰烟层。",
+    "spec_match": "未达标：当前特效为对称星形爆发，验收规格要求32°窄锥定向喷射+尾焰烟，两者形态不符。",
+    "problems": [
+     "枪口火呈放射状星形，无明确方向性，火箭炮喷射应有强烈向右锥形指向",
+     "缺少尾焰烟层，真实火箭炮点火瞬间有持续燃气尾迹和高温烟尘",
+     "光强分布过于均匀，真实喷焰应有明亮核心（白热）+橙色中间层+暗红边缘的渐变结构",
+     "粒子边缘过于锐利，燃气喷射应有柔和过渡和拖尾延伸"
+    ],
+    "suggestions": [
+     {
+      "type": "param",
+      "detail": "将枪口火粒子的角度分布从360°圆形改为锥形方向发射器，初始速度方向全部向右，角度范围控制在±16°（总宽32°），速度梯度内快外慢（核心500px/s边缘200px/s）",
+      "priority": "high"
+     },
+     {
+      "type": "new_layer",
+      "detail": "在枪口火下方叠加尾焰烟粒子层，使用灰色-深灰噪点贴图，寿命2-4帧，速度略低于主喷焰（约300px/s），尺寸从16px渐变至32px，产生连续拖尾效果",
+      "priority": "high"
+     },
+     {
+      "type": "texture",
+      "detail": "替换中心喷焰贴图：使用径向渐变圆形贴图（中心白→橙黄→透明），而非当前尖刺星形贴图；同时在32°锥形区域内叠加3-4层不同尺寸的喷焰贴图，由内向外尺寸递增但透明度递减",
+      "priority": "high"
+     },
+     {
+      "type": "param",
+      "detail": "调整颜色曲线：核心粒子色值设为接近白色(#FFF8E0)占比30%，中间橙黄色(#FF8C00)占比50%，边缘暗红色(#8B0000)占比20%，当前特效缺乏这种温度梯度",
+      "priority": "med"
+     },
+     {
+      "type": "param",
+      "detail": "喷焰长度拉长：将粒子生命周期末端的size scale从当前约1.0调整为0.3，配合speed衰减，形成锥形喷流延伸感，当前特效过于短粗呈团块状",
+      "priority": "med"
+     }
+    ],
+    "mode": null
+   }
+  },
+  {
+   "family": 3,
+   "family_label": "火箭弹（火箭炮/火箭巢）",
+   "file": "f03_player_trajectory.png",
+   "impact_class": "explosive",
+   "is_player": true,
+   "kind": "trajectory",
+   "muzzle_class": "heavy",
+   "power_tier": 1,
+   "spec": "枪口=窄锥(32°)定向喷射+尾焰烟；弹道=低平弧火箭弹带尾焰；命中=火球帧+碎片烟尘",
+   "result": {
+    "realism_score": 5,
+    "verdict": "弹体可见、火焰在位，但锥形尾焰过窄且缺少烟层，轨迹无弧线感。",
+    "spec_match": "弹体形状和位置正确，但尾焰锥角偏窄（视觉约15°左右，低于规格32°），缺少定向喷射烟雾层，弹道呈直线而非低平弧。",
+    "problems": [
+     "尾焰锥形张角不足，视觉上远未达到32°窄锥喷射特征，火焰过聚拢",
+     "缺乏烟雾层，目前仅有黄色火焰粒子和若干棕色球体，棕色球体更像是碎片而非尾焰烟羽",
+     "弹道为水平直线飞行，火箭弹应有可见的低平抛物弧线",
+     "火焰内部缺少分层结构，无明亮核心+外围扩散焰的层次感",
+     "拖尾长度不足，高功率火箭弹拖尾应延伸较长距离"
+    ],
+    "suggestions": [
+     {
+      "type": "param",
+      "detail": "火焰发射器改为锥形发射，cone_angle设为32°，内焰core_size缩小至0.3保留高亮核心，外焰shell_size扩大到1.2形成扩散锥",
+      "priority": "high"
+     },
+     {
+      "type": "new_layer",
+      "detail": "新增烟雾粒子层：使用soft_circle_grey.png贴图，life=1.5s，size起始8px增长至40px，alpha从0.5渐变到0，position_offset在喷嘴后方20px处生成，数量30~50粒/s，颜色偏向深灰棕#3D2B1F",
+      "priority": "high"
+     },
+     {
+      "type": "texture",
+      "detail": "现有棕色球体替换为径向渐变软边贴图（center_opaque到edge_transparent），消除硬边轮廓感，使其更像高温燃气而非固体碎片",
+      "priority": "med"
+     },
+     {
+      "type": "param",
+      "detail": "在飞行路径编辑器中将弹道由直线改为 quadratic bezier，control_point_y下移约弹体高度的1/3，形成明显的低平弧线",
+      "priority": "med"
+     }
+    ],
+    "mode": null
+   }
+  },
+  {
+   "family": 3,
+   "family_label": "火箭弹（火箭炮/火箭巢）",
+   "file": "f03_player_impact.png",
+   "impact_class": "explosive",
+   "is_player": true,
+   "kind": "impact",
+   "muzzle_class": "heavy",
+   "power_tier": 1,
+   "spec": "枪口=窄锥(32°)定向喷射+尾焰烟；弹道=低平弧火箭弹带尾焰；命中=火球帧+碎片烟尘",
+   "result": {
+    "realism_score": 5,
+    "verdict": "基础火球存在但缺少火箭弹命中应有的碎片、烟尘与尘土多层次效果，形态过于规则。",
+    "spec_match": "呈现了火球帧，但碎片烟尘层缺失，形态偏圆形sprite而非物理爆炸。",
+    "problems": [
+     "火焰边缘呈规则锯齿状，像手绘sprite而非粒子爆炸",
+     "缺少高速金属碎片/破片粒子层",
+     "无爆炸后悬浮烟尘层",
+     "缺乏地面尘土扬起效果",
+     "爆炸规模偏小，对64px单位框比例不协调"
+    ],
+    "suggestions": [
+     {
+      "type": "new_layer",
+      "detail": "添加碎片粒子层：发射10-15个高速金属破片，初始速度300-500px/s，寿命0.15-0.3s，使用不规则碎片贴图，受重力影响坠落",
+      "priority": "high"
+     },
+     {
+      "type": "new_layer",
+      "detail": "添加烟尘层：在火球消退后重生烟尘粒子，使用灰色/棕色调烟团贴图，初始大小1.5x火球尺寸，缓慢上升并扩散，寿命1.5-2s",
+      "priority": "high"
+     },
+     {
+      "type": "param",
+      "detail": "增大火球初始规模至80-100px直径（当前约64px），火焰边缘改为噪波驱动的不规则形状，避免规则锯齿",
+      "priority": "med"
+     },
+     {
+      "type": "new_layer",
+      "detail": "添加地面尘土：爆炸接触点上方产生扇形尘土粒子，向右扩散，褐色/土黄色，初始速度200px/s，寿命0.5-0.8s",
+      "priority": "med"
+     }
+    ],
+    "mode": null
+   }
+  },
+  {
+   "family": 3,
+   "family_label": "火箭弹（火箭炮/火箭巢）",
+   "file": "f03_enemy_muzzle.png",
+   "impact_class": "explosive",
+   "is_player": false,
+   "kind": "muzzle",
+   "muzzle_class": "heavy",
+   "power_tier": 1,
+   "spec": "枪口=窄锥(32°)定向喷射+尾焰烟；弹道=低平弧火箭弹带尾焰；命中=火球帧+碎片烟尘",
+   "result": {
+    "realism_score": 3,
+    "verdict": "枪口火形态严重偏离火箭炮规范，呈爆炸状而非定向锥形喷射，方向性混乱。",
+    "spec_match": "未呈现32°窄锥定向喷射特征，焰形呈无序爆炸星芒状，缺少明确的喷射轴向与尾焰烟分层。",
+    "problems": [
+     "焰形呈360°放射状爆炸星芒，违反32°窄锥定向喷射规格；实际火箭炮枪口火应集中在发射轴向约30-35°锥角内向前喷射",
+     "火焰方向判定混乱——尖锐凸起同时指向后方和侧方，而非单一指向发射方向（朝向目标单位）",
+     "完全缺少尾焰烟粒子层，只有燃烧火焰，没有高温废气膨胀后的灰白色烟迹拖尾",
+     "枪口闪光亮度衰减过快，中心过曝但向外扩散的辐射光晕不足，不符合火箭发动机点火瞬间的强光特征"
+    ],
+    "suggestions": [
+     {
+      "type": "texture",
+      "detail": "替换枪口火主粒子贴图：改用径向渐变扇形贴图（中心白→橙→透明边缘），宽度对应32°锥角，替代当前的星芒爆炸形贴图",
+      "priority": "high"
+     },
+     {
+      "type": "param",
+      "detail": "重设初始速度分布：将burst初始速度从各向同性改为圆锥分布，spread_angle设为16°（总锥角32°），velocity_min=800, velocity_max=1400，方向朝向目标单位",
+      "priority": "high"
+     },
+     {
+      "type": "new_layer",
+      "detail": "新增尾焰烟粒子层：在主火焰后方叠加2-3层Smoke粒子，使用灰褐色烟雾贴图，生命周期2-4帧，速度反向（远离目标），sizeGrow=1.5-3.0，模拟火箭发动机高温废气膨胀后的烟迹",
+      "priority": "high"
+     },
+     {
+      "type": "param",
+      "detail": "增加枪口闪光光晕层：在火焰外层添加一个低频率、长寿命（1-2帧）的径向光晕粒子，color=#FFE8B0，blend=additive，scale从2.0渐缩至0，模拟火箭点火瞬间的强辐射光晕",
+      "priority": "med"
+     }
+    ],
+    "mode": null
+   }
+  },
+  {
+   "family": 3,
+   "family_label": "火箭弹（火箭炮/火箭巢）",
+   "file": "f03_enemy_trajectory.png",
+   "impact_class": "explosive",
+   "is_player": false,
+   "kind": "trajectory",
+   "muzzle_class": "heavy",
+   "power_tier": 1,
+   "spec": "枪口=窄锥(32°)定向喷射+尾焰烟；弹道=低平弧火箭弹带尾焰；命中=火球帧+碎片烟尘",
+   "result": {
+    "realism_score": 4,
+    "verdict": "弹体形状模糊、拖尾粒子缺乏层次，完全没有火箭发动机喷流应有的锥形尾焰结构。",
+    "spec_match": "规格要求火箭弹带尾焰的低平弧弹道，但截图中的弹体是一条扁平橙色拖痕，尾焰仅有零星褐色烟团，无锥向定向喷射特征。",
+    "problems": [
+     "弹体无明确火箭外形，呈现为模糊的橙色拉长色块，缺乏弹体头部/弹尾的轮廓识别",
+     "拖尾仅有重复的褐色圆形烟团，没有锥形火焰喷嘴、明亮等离子核心或湍流烟羽层次",
+     "完全缺失火箭发动机喷射的窄锥（约30-45°）火焰特征，无任何方向性喷射感",
+     "烟团排列间距均匀、大小雷同，像是同帧复制而非逐帧衰减的烟雾演化",
+     "无弹道弧线体现，弹体与参考框呈水平直线排列，未能表现火箭弹抛物线飞行特征",
+     "整体亮度偏低，尾焰部分对比度不足，在暗色审计台上几乎与背景融合"
+    ],
+    "suggestions": [
+     {
+      "type": "texture",
+      "detail": "替换弹体贴图：使用分层结构，头部为尖锥金属色（带高光点），中部为弹体主体（灰色/橄榄绿圆柱），尾部为发动机喷口（深黑+橙红边缘）。当前扁平色块改为至少3段拼接的像素画。",
+      "priority": "high"
+     },
+     {
+      "type": "param",
+      "detail": "重建尾焰粒子系统：新增锥状火焰层，发射角度范围设为-15°~+15°（相对弹体速度反方向），粒子life=6-10帧，startScale=8px→endScale=24px，opacity从1.0→0线性衰减，颜色渐变white→yellow→orange→red→grey。当前褐色圆形烟团保留为次级烟雾层但降低优先级。",
+      "priority": "high"
+     },
+     {
+      "type": "new_layer",
+      "detail": "在尾焰粒子下方叠加一层'等离子辉光'图层，使用径向渐变贴图（中心亮白，边缘暖黄透明），模拟火箭发动机高温喷流的辐射发光效果，scale约32px×16px椭圆，blend mode为Additive，持续存在于弹体后方约16px范围。",
+      "priority": "high"
+     },
+     {
+      "type": "param",
+      "detail": "为拖尾烟团添加per-particle随机性：startScale加入±30%变异，opacity加入±20%变异，rotation随机0-360°，life在4-8帧间波动，避免当前所有烟团完全相同的'复制粘贴'观感。",
+      "priority": "med"
+     },
+     {
+      "type": "param",
+      "detail": "弹道弧线实现：检查运动逻辑，火箭弹应施加微小重力加速度（约0.5-1.5px/frame²向下偏转），使飞行轨迹呈现明显低平抛物线，而非当前截图中的水平直线。可在飞行中段增加弹体向下倾斜的角度变化。",
+      "priority": "med"
+     }
+    ],
+    "mode": null
+   }
+  },
+  {
+   "family": 3,
+   "family_label": "火箭弹（火箭炮/火箭巢）",
+   "file": "f03_enemy_impact.png",
+   "impact_class": "explosive",
+   "is_player": false,
+   "kind": "impact",
+   "muzzle_class": "heavy",
+   "power_tier": 1,
+   "spec": "枪口=窄锥(32°)定向喷射+尾焰烟；弹道=低平弧火箭弹带尾焰；命中=火球帧+碎片烟尘",
+   "result": {
+    "realism_score": 5,
+    "verdict": "火球形态过于均匀对称且缺少烟尘层，整体更像通用爆炸而非火箭弹命中特效。",
+    "spec_match": "仅呈现了火球帧+碎片的要素，但缺少规格要求的烟尘层，且火球形态与碎片密度不符合中型火箭弹hit的真实特征。",
+    "problems": [
+     "火焰块分布过于均匀对称，缺乏高速命中时的冲击方向性撕裂感",
+     "完全没有烟尘/烟雾粒子层，命中后应有大量灰黑烟尘向上翻涌",
+     "爆炸底部无地面冲击扬尘，火箭弹命中地表或装甲会产生明显冲击波和尘土",
+     "火球整体尺寸偏大，相对于64px参考框约占据2-3倍宽度，medium威力应更紧凑",
+     "碎片数量过少且形状偏几何化，缺少弹体金属破片的不规则感",
+     "火焰核心亮度不够，缺少白色高温区与外围深红/暗橙的清晰温度梯度"
+    ],
+    "suggestions": [
+     {
+      "type": "new_layer",
+      "detail": "在火焰层下方新增烟尘粒子系统：使用灰黑色噪点贴图，初始大小设为火球的1.5-2倍，速度向外扩散较慢（0.5-1px/f），寿命2-3秒，逐渐淡出，模拟火箭弹命中后的浓烟翻涌",
+      "priority": "high"
+     },
+     {
+      "type": "param",
+      "detail": "缩小火球整体缩放比例至当前约70%，同时提升中心白色核心的亮度(1.5x)并压缩其大小，形成更紧凑的高温核心+外层火焰结构",
+      "priority": "high"
+     },
+     {
+      "type": "texture",
+      "detail": "替换现有火焰边缘贴图，使用更不规则、带撕裂感的边缘轮廓，避免当前圆形/椭圆状的均匀火焰块；可参考真实火箭弹命中测试视频的火焰形态，增加速度方向上的拉长变形",
+      "priority": "high"
+     },
+     {
+      "type": "new_layer",
+      "detail": "在爆炸接触面（底部）添加地面冲击扬尘层：使用浅棕色/灰色微粒贴图，初始位置紧贴目标单位底边，向上方和两侧扩散，模拟冲击波掀起的尘土",
+      "priority": "med"
+     },
+     {
+      "type": "param",
+      "detail": "碎片数量从当前约8-10块提升至20-30块，使用不规则多边形/锐利边缘的弹体破片贴图，赋予更强的初速度和方向性（沿弹道方向为主），部分碎片添加旋转运动",
+      "priority": "med"
+     }
+    ],
+    "mode": null
+   }
+  },
+  {
+   "family": 4,
+   "family_label": "手枪/卡宾（最轻档）",
+   "file": "f04_player_muzzle.png",
+   "impact_class": "kinetic",
+   "is_player": true,
+   "kind": "muzzle",
+   "muzzle_class": "light",
+   "power_tier": 0,
+   "spec": "比步枪更弱一档：极短弹头(近光点)+最小火花；密集射击不连成长条",
+   "result": {
+    "realism_score": 5,
+    "verdict": "枪口火整体形态过猛，弹头过长且火花扩散超出最轻档武器应有的克制范围。",
+    "spec_match": "违反'极短弹头+最小火花'规格——弹头呈长条状而非近光点，火花向下/向后扩散过多且密度偏大。",
+    "problems": [
+     "枪口火主闪光持续时间过长，多个帧叠加形成横向拉伸感，违背'密集射击不连成长条'",
+     "火花粒子大量向下和向后喷射，真实手枪枪口火应主要向前偏上45度扇形内",
+     "弹头光点过于明显且拖尾较长，power_tier=0应接近瞬态亮点而非持续可见弹道",
+     "枪口火整体亮度与单位参考框相比偏大，最轻档武器枪口火应控制在约32px以内"
+    ],
+    "suggestions": [
+     {
+      "type": "param",
+      "detail": "将枪口火主粒子寿命从当前值压缩至1-2帧(约30-60ms)，scale设为参考框高度的30%-40%(约20-25px)",
+      "priority": "high"
+     },
+     {
+      "type": "param",
+      "detail": "火花粒子初始速度方向改为仅向前偏上60度锥形(±30度),删除向下和向后发射的粒子",
+      "priority": "high"
+     },
+     {
+      "type": "param",
+      "detail": "弹头光点粒子寿命设为1帧(max=2帧),scale不超过16px,添加快速fade-out曲线",
+      "priority": "med"
+     },
+     {
+      "type": "texture",
+      "detail": "重新绘制枪口火贴图:改用中心高亮边缘软消散的圆形/椭圆形径向渐变,避免长条形或星芒状硬边贴图",
+      "priority": "med"
+     }
+    ],
+    "mode": null
+   }
+  },
+  {
+   "family": 4,
+   "family_label": "手枪/卡宾（最轻档）",
+   "file": "f04_player_trajectory.png",
+   "impact_class": "kinetic",
+   "is_player": true,
+   "kind": "trajectory",
+   "muzzle_class": "light",
+   "power_tier": 0,
+   "spec": "比步枪更弱一档：极短弹头(近光点)+最小火花；密集射击不连成长条",
+   "result": {
+    "realism_score": 3,
+    "verdict": "弹体缺乏基本动态特征，像静止碎片而非高速飞行弹",
+    "spec_match": "未满足规格：弹头应呈近光点状且有运动感，当前仅为零散白线，无弹体形态、无火花、无速度暗示",
+    "problems": [
+     "弹体形状缺失：只有无方向的白色短线，无弹头（光点）形态，无法识别为'弹'",
+     "无速度感：弹道粒子没有拉长的motion trail或拖尾，静止感明显，不符合高速弹丸特征",
+     "火花为零：手枪/卡宾命中时应有'最小火花'，图中完全缺失撞击微粒",
+     "弹道连续性差：多条短线分散排列像静态落点而非飞行路径，无方向一致性",
+     "颜色单调：全白/浅黄，缺乏弹头热光（枪弹弹头有黄铜色/橙色余温）"
+    ],
+    "suggestions": [
+     {
+      "type": "param",
+      "detail": "弹头粒子改为'圆形点+径向渐变'贴图，尺寸压到4-6px，中心亮度最高呈光点，边缘快速衰减",
+      "priority": "high"
+     },
+     {
+      "type": "param",
+      "detail": "给弹道粒子添加Speed Trail（速度拖尾）：每帧记录上一帧位置，用渐变拉伸纹理连接当前帧与上一帧，长度=速度×衰减速率，形成'点+短线'形态",
+      "priority": "high"
+     },
+     {
+      "type": "param",
+      "detail": "命中瞬间补充spark粒子：8-12颗金色/橙色微小粒子，初始速度150-250px/s，生命周期0.1-0.2s，大小1-2px",
+      "priority": "high"
+     },
+     {
+      "type": "texture",
+      "detail": "更换弹头贴图为'黄铜色圆形'+橙心渐变，替代当前纯白方形笔触",
+      "priority": "med"
+     },
+     {
+      "type": "param",
+      "detail": "弹道粒子初始颜色改为黄铜橙(#D4943A)→淡黄(#FFF4C2)渐变，模拟弹头摩擦热光",
+      "priority": "low"
+     }
+    ],
+    "mode": null
+   }
+  },
+  {
+   "family": 4,
+   "family_label": "手枪/卡宾（最轻档）",
+   "file": "f04_player_impact.png",
+   "impact_class": "kinetic",
+   "is_player": true,
+   "kind": "impact",
+   "muzzle_class": "light",
+   "power_tier": 0,
+   "spec": "比步枪更弱一档：极短弹头(近光点)+最小火花；密集射击不连成长条",
+   "result": {
+    "realism_score": 7,
+    "verdict": "基本符合手枪命中规格，但火花过于分散且弹着点不够锐利。",
+    "spec_match": "有弹头光点和火花，强度低于步枪，但火花扩散范围偏大、不够集中。",
+    "problems": [
+     "命中火花呈星形散开范围过大，接近步枪命中特效的规模",
+     "白色弹头光点边缘过软，缺少高亮光晕的锐利核心",
+     "火花粒子数量约8-10个，偏多，密集射击时易视觉嘈杂",
+     "缺少命中瞬间的短暂冲击波/震纹表现"
+    ],
+    "suggestions": [
+     {
+      "type": "param",
+      "detail": "减小命中火花发射半径至当前50%，将火花粒子速度上限从默认值降至0.6倍，限制扩散范围",
+      "priority": "high"
+     },
+     {
+      "type": "texture",
+      "detail": "替换弹头光点贴图：改用中心极小（2px硬白点）+外层柔光晕（8px径向渐变）的组合贴图，增强锐利感",
+      "priority": "high"
+     },
+     {
+      "type": "param",
+      "detail": "命中火花粒子数量从当前约10个减至5-6个，仅保留4个主要方向喷射",
+      "priority": "med"
+     },
+     {
+      "type": "new_layer",
+      "detail": "添加一层0.1秒持续的单帧冲击波圆环，半径8px，白色半透明，命中瞬间闪现后快速消失",
+      "priority": "med"
+     }
+    ],
+    "mode": null
+   }
+  },
+  {
+   "family": 4,
+   "family_label": "手枪/卡宾（最轻档）",
+   "file": "f04_enemy_muzzle.png",
+   "impact_class": "kinetic",
+   "is_player": false,
+   "kind": "muzzle",
+   "muzzle_class": "light",
+   "power_tier": 0,
+   "spec": "比步枪更弱一档：极短弹头(近光点)+最小火花；密集射击不连成长条",
+   "result": {
+    "realism_score": 4,
+    "verdict": "枪口火规模明显过载，更像是卡宾或中等威力武器而非最轻档手枪/卡宾的视觉效果。",
+    "spec_match": "未通过验收规格：枪口火尺寸过大、火花数量过多，不符合'极短弹头+最小火花'的最轻档要求。",
+    "problems": [
+     "枪口火主体火焰延伸过长，视觉宽度约2-3个64px单位格，远超真实9mm手枪枪口火的实际比例",
+     "火花粒子数量过多且扩散范围过大，形成密集放射状图案，违反'最小火花'规格",
+     "火焰中心高亮区域面积偏大，缺乏真实枪口火'中心亮、边缘渐隐'的紧凑形态",
+     "整体特效在帧内持续时间过长（视觉上），应更短促以体现轻武器的快速开火节奏"
+    ],
+    "suggestions": [
+     {
+      "type": "param",
+      "detail": "将枪口火主粒子(火焰层)的初始大小从当前约16-20px缩小至6-8px，生命周期缩短至0.05-0.08秒，使其在单帧内仅占据约1个64px格的宽度",
+      "priority": "high"
+     },
+     {
+      "type": "param",
+      "detail": "火花粒子数量从当前约12-16个减少至4-6个，初始速度上限从150px/s降至60px/s，生命周期限制在0.1秒内，确保火花仅在枪口附近短暂闪现",
+      "priority": "high"
+     },
+     {
+      "type": "texture",
+      "detail": "替换火焰层贴图：当前贴图过于饱满/发光，改用边缘锐利、中心低亮度的紧凑型火焰贴图（参考真实M1911慢动作枪口火照片），避免使用过亮的白色核心",
+      "priority": "med"
+     },
+     {
+      "type": "param",
+      "detail": "添加子弹轨迹光点层：在枪口前方约32-48px处生成一个极小(2-3px)的白色/淡黄色光点，生命周期0.03秒，体现'极短弹头'视觉特征",
+      "priority": "med"
+     },
+     {
+      "type": "param",
+      "detail": "将枪口火特效的触发时机提前至开火动作帧的第1-2帧即开始衰减，而非现在可能存在的延迟增长模式，使整体特效呈现'瞬间爆发-快速消退'的轻武器特征",
+      "priority": "low"
+     }
+    ],
+    "mode": null
+   }
+  },
+  {
+   "family": 4,
+   "family_label": "手枪/卡宾（最轻档）",
+   "file": "f04_enemy_trajectory.png",
+   "impact_class": "kinetic",
+   "is_player": false,
+   "kind": "trajectory",
+   "muzzle_class": "light",
+   "power_tier": 0,
+   "spec": "比步枪更弱一档：极短弹头(近光点)+最小火花；密集射击不连成长条",
+   "result": {
+    "realism_score": 3,
+    "verdict": "弹道形态基本符合轻武器短促感，但颜色错误、弹体缺失、无火花反馈，整体更像能量束而非实弹曳光。",
+    "spec_match": "长度和稀疏度符合'极短+不连长条'规格，但缺少'近光点'弹头、无火花、颜色偏能量束而非实弹。",
+    "problems": [
+     "颜色整体偏红橙色，像激光/能量束，而非手枪弹接近暖白或极浅黄色的曳光色",
+     "弹体只有扁平橘色短条，完全没有前导'光点'（近光点），视觉上无法区分弹头和弹尾",
+     "厚度偏大，细看像小线段而非高速弹丸拖影",
+     "无任何火花粒子，规格明确要求'最小火花'，目前为零",
+     "弹体间间距过均匀，有规律感，不符合随机散布的自然射击感"
+    ],
+    "suggestions": [
+     {
+      "type": "param",
+      "detail": "将弹体主色从当前红橙(hsl≈15-20°)调整为暖白/极浅黄(hsl≈40-50°, sat<30%, val>85%)，符合轻武器曳光的真实色温",
+      "priority": "high"
+     },
+     {
+      "type": "new_layer",
+      "detail": "在弹体前端叠加一个半径约2px的圆形亮斑(白色, alpha 0.9)，作为'近光点'，让弹头可见性明确",
+      "priority": "high"
+     },
+     {
+      "type": "param",
+      "detail": "将弹体长度压缩至当前60%，最大不超过8px；厚度压缩至当前50%，整体更扁更短，体现轻武器弹的高速短瞬感",
+      "priority": "high"
+     },
+     {
+      "type": "param",
+      "detail": "在弹头位置添加3-5个半径1px的黄白色火花粒子，life<0.1s，速度径向扩散20-40px/s，模拟最小火花",
+      "priority": "med"
+     },
+     {
+      "type": "param",
+      "detail": "调整弹体出现间距，改为随机化(±30%偏移)，避免目前均匀分布的人工感",
+      "priority": "low"
+     }
+    ],
+    "mode": null
+   }
+  },
+  {
+   "family": 4,
+   "family_label": "手枪/卡宾（最轻档）",
+   "file": "f04_enemy_impact.png",
+   "impact_class": "kinetic",
+   "is_player": false,
+   "kind": "impact",
+   "muzzle_class": "light",
+   "power_tier": 0,
+   "spec": "比步枪更弱一档：极短弹头(近光点)+最小火花；密集射击不连成长条",
+   "result": {
+    "realism_score": 6,
+    "verdict": "基本达标但缺乏层次，火花分布过于规整。",
+    "spec_match": "特效呈现了紧凑的命中形态，未连成长条，符合最轻档规格。",
+    "problems": [
+     "中央白色闪光强度过高，对于最轻档应更克制",
+     "火花分布呈对称放射状，缺乏真实撞击的不规则性",
+     "粒子尺寸 variation 不足，大小几乎一致",
+     "颜色层次单一，缺少暗红/橙黄的过渡变化"
+    ],
+    "suggestions": [
+     {
+      "type": "param",
+      "detail": "降低中心闪光intensity至当前60%，最轻档应更接近'暗红'而非白热",
+      "priority": "high"
+     },
+     {
+      "type": "texture",
+      "detail": "添加2-3种不同尺寸的火花粒子(2px/4px/6px)，打破当前均匀感",
+      "priority": "high"
+     },
+     {
+      "type": "new_layer",
+      "detail": "在火花外层添加一层暗红色烟雾碎片(3-5个，lifetime=8帧)，增加撞击深度感",
+      "priority": "med"
+     }
+    ],
+    "mode": null
+   }
+  },
+  {
+   "family": 5,
+   "family_label": "霰弹",
+   "file": "f05_player_muzzle.png",
+   "impact_class": "scatter",
+   "is_player": true,
+   "kind": "muzzle",
+   "muzzle_class": "light",
+   "power_tier": 0,
+   "spec": "6 发 18° 散射弹丸；命中=散射状小贴图+宽散火花",
+   "result": {
+    "realism_score": 6,
+    "verdict": "枪口火焰主体存在但过于扁平单薄，缺少霰弹散射弹丸轨迹和足够宽散的火花层。",
+    "problems": [],
+    "suggestions": [],
+    "mode": "json_partial_fallback"
+   }
+  },
+  {
+   "family": 5,
+   "family_label": "霰弹",
+   "file": "f05_player_trajectory.png",
+   "impact_class": "scatter",
+   "is_player": true,
+   "kind": "trajectory",
+   "muzzle_class": "light",
+   "power_tier": 0,
+   "spec": "6 发 18° 散射弹丸；命中=散射状小贴图+宽散火花",
+   "result": {
+    "realism_score": 4,
+    "verdict": "弹丸个体形态缺失，拖尾呈单一密集束流而非6发独立散射弹道，不符合霰弹飞行物理特征。",
+    "spec_match": "未呈现验收规格要求的'6发散射弹丸'飞行形态——看不到6个独立弹体，仅有一条横向延展的粒子流束。",
+    "problems": [
+     "所有弹丸粒子挤成一条密集横向条带，完全没有18°散射的角度分离感，应为扇形发散轨迹而非平行排列",
+     "缺乏弹体本身：只看到拖尾粒子，没有每个弹丸的独立可见弹头形状或核心亮点",
+     "6发弹丸速度差异极小，拖尾长度过于均匀，真实霰弹各弹丸初速略有不同应有明显长短差异",
+     "拖尾宽度一致且偏窄，霰弹弹丸质量小、受空气阻力大，拖尾应呈不规则颗粒状扩散而非规则细线",
+     "无曳光弹特征——霰弹通常含曳光弹以指示弹道，当前只有普通白黄色拖尾无颜色区分"
+    ],
+    "suggestions": [
+     {
+      "type": "param",
+      "detail": "将6发弹丸的初始角度参数从当前近似0°改为-9°至+9°的随机扇形分布，确保左右各有约9°的垂直散射角，弹丸在飞行30-50px后应能看到明显的上下分离",
+      "priority": "high"
+     },
+     {
+      "type": "texture",
+      "detail": "为每个弹丸添加独立的弹体核心贴图（白色/淡黄色高亮小圆点或短椭圆，尺寸约4×6px），叠加在拖尾前方，使弹丸即使在小尺寸下也能被识别为独立个体而非粒子簇",
+      "priority": "high"
+     },
+     {
+      "type": "param",
+      "detail": "为6发弹丸设置不同的初速度参数（±15%范围），使拖尾长度呈现明显差异——快的弹丸拖尾长且亮，慢的短且暗，模拟真实霰弹装药不均匀导致的初速离散",
+      "priority": "med"
+     },
+     {
+      "type": "new_layer",
+      "detail": "增加一层低速漂浮的碎屑粒子（半径1-2px，寿命0.15-0.3s，黄色→橙色渐变），沿弹道两侧不规则散布，模拟霰弹飞行时药筒碎片和空气扰动效果",
+      "priority": "med"
+     },
+     {
+      "type": "param",
+      "detail": "拖尾粒子改用不规则星形/十字形贴图替代圆形点粒子，大小在2-5px间随机，增强金属火花颗粒感；同时降低拖尾密度使单个粒子更易分辨",
+      "priority": "low"
+     }
+    ],
+    "mode": null
+   }
+  },
+  {
+   "family": 5,
+   "family_label": "霰弹",
+   "file": "f05_player_impact.png",
+   "impact_class": "scatter",
+   "is_player": true,
+   "kind": "impact",
+   "muzzle_class": "light",
+   "power_tier": 0,
+   "spec": "6 发 18° 散射弹丸；命中=散射状小贴图+宽散火花",
+   "result": {
+    "realism_score": 5,
+    "verdict": "有火花基础但完全缺失霰弹核心的6发散射形态，像单点爆炸而非霰弹命中。",
+    "spec_match": "规格要求6发18°散射弹丸形成散射状小贴图+宽散火花，当前特效呈现为集中团状爆炸，散射分布与个体弹丸命中痕迹均不明显。",
+    "problems": [
+     "弹丸命中点未呈扇形散射分布，所有粒子集中在单一中心区域，看不出6发独立散射轨迹",
+     "缺少代表单个弹丸命中的小贴图层，只有大团烟尘/火花，无法分辨霰弹散布特征",
+     "火花发散范围过窄且密度不均，未体现'宽散'规格，整体更像RPG或手雷爆点而非霰弹",
+     "粒子大小差异不足，缺乏远近弹丸的速度/大小层次（近大远小、速度差）"
+    ],
+    "suggestions": [
+     {
+      "type": "param",
+      "detail": "将命中粒子 Spawn Area 的角度分布从当前约±10°改为±9°锥形（总18°），并确保至少分6个独立spawn cluster，每个cluster在扇区内随机偏移±2°，使弹丸落点呈清晰扇形散布",
+      "priority": "high"
+     },
+     {
+      "type": "new_layer",
+      "detail": "新增'弹丸命中贴图'层，使用6~9张不同大小的圆形/星形小贴图（8~16px基础尺寸），按距离参考框近/中/远三分层：近层尺寸12-16px且alpha快衰，远层8-10px持久稍长，模拟霰弹距离衰减的视觉层次",
+      "priority": "high"
+     },
+     {
+      "type": "param",
+      "detail": "火花粒子的初始velocity Spread改为横向优先：X轴±150px/s，Y轴±80px/s，寿命0.3~0.6s，确保火花向外扩散范围覆盖至少80px宽度，而非目前紧凑的团状分布",
+      "priority": "med"
+     }
+    ],
+    "mode": null
+   }
+  },
+  {
+   "family": 5,
+   "family_label": "霰弹",
+   "file": "f05_enemy_muzzle.png",
+   "impact_class": "scatter",
+   "is_player": false,
+   "kind": "muzzle",
+   "muzzle_class": "light",
+   "power_tier": 0,
+   "spec": "6 发 18° 散射弹丸；命中=散射状小贴图+宽散火花",
+   "result": {
+    "realism_score": 4,
+    "verdict": "枪口火形态过于集中呈喷射状，缺乏霰弹应有的放射散射特征，未体现6发弹丸的物理散射逻辑。",
+    "spec_match": "未符合规格：缺少18°扇形散射形态，火花呈单方向聚集而非宽散分布，6发弹丸的散射感缺失。",
+    "problems": [
+     "枪口火呈单一方向喷射状，霰弹应有6发弹丸同时离膛形成的放射状扇形火舌",
+     "火花过于集中且体积小，未体现'宽散火花'的视觉规模",
+     "颜色偏黄橙，缺乏高温白色核心区域，真实枪口焰核心应接近白热",
+     "无枪口燃气/烟雾层，开火瞬间应有伴随弹丸出膛的烟雾膨胀",
+     "6发弹丸应有6条清晰可辨的散射轨迹方向，当前仅1-2个主要方向"
+    ],
+    "suggestions": [
+     {
+      "type": "param",
+      "detail": "将初始速度发射角度从单轴向-9°至+9°（共18°扇形）分布，6个子发射器各分配±3°偏移，模拟6发弹丸各自轨迹",
+      "priority": "high"
+     },
+     {
+      "type": "texture",
+      "detail": "新增一层高温白色核心贴图，使用白色→淡黄渐变软边圆形，叠加在现有橙色火花底层，尺寸设为16px并快速衰减",
+      "priority": "high"
+     },
+     {
+      "type": "new_layer",
+      "detail": "添加枪口烟雾粒子层，使用灰色半透明圆形贴图，初始尺寸8px、生命周期15帧、膨胀至24px后淡出，模拟燃气释放",
+      "priority": "med"
+     },
+     {
+      "type": "param",
+      "detail": "火花粒子数量从当前约8个增至20-24个，初始速度设为40-120px/s向18°扇形内随机分布，寿命8-12帧",
+      "priority": "med"
+     },
+     {
+      "type": "texture",
+      "detail": "替换火花贴图为拉长水滴形（3×8px），方向沿各自发射角度旋转，而非当前方形颗粒，增强弹道速度感",
+      "priority": "low"
+     }
+    ],
+    "mode": null
+   }
+  },
+  {
+   "family": 5,
+   "family_label": "霰弹",
+   "file": "f05_enemy_trajectory.png",
+   "impact_class": "scatter",
+   "is_player": false,
+   "kind": "trajectory",
+   "muzzle_class": "light",
+   "power_tier": 0,
+   "spec": "6 发 18° 散射弹丸；命中=散射状小贴图+宽散火花",
+   "result": {
+    "realism_score": 4,
+    "verdict": "散射形态有基本方向感，但弹体与拖尾混为一谈，18°散射锥体和独立弹丸的核心辨识度严重不足。",
+    "spec_match": "基本呈现了散布方向，但无法明确分辨出6发独立弹丸和18°散射锥，弹体形态与拖尾混叠成一条连续的光带。",
+    "problems": [
+     "弹体核心不清晰：每发弹丸应有一个明亮的小核心粒子（白色或亮黄色弹头高光），目前弹丸主体完全被拖尾亮度吞没",
+     "18°散射锥未体现：弹道应呈现从枪口发散的锥形扇面，目前弹丸几乎沿直线排列，散射角度极窄",
+     "曳光与拖尾无分层：曳光线（细高光）应区别于拖尾（扩散粒子云），目前两者合并为同一种橙色粒子群，缺少粗细/亮度/大小对比",
+     "弹丸密度异常：6发弹丸在飞行中段应有明确的数量可数感，目前粒子团过于密集像连续光线而非离散弹丸"
+    ],
+    "suggestions": [
+     {
+      "type": "param",
+      "detail": "弹体层新增独立粒子通道：每发弹丸 spawn 1个 Core 粒子（size=4px, lifetime=0.05s, 亮白色/淡黄色, additive混合模式），置于所有拖尾粒子之上渲染",
+      "priority": "high"
+     },
+     {
+      "type": "param",
+      "detail": "散射角度强制限制在初始6帧内展开至18°锥：设置 initial_velocity spread = 18°（±9°），并在出生时给每发弹丸随机分配一个在锥体内的初速度向量，不要线性插值过渡",
+      "priority": "high"
+     },
+     {
+      "type": "new_layer",
+      "detail": "新增曳光线层（TracerLine）：spawn于弹体后1-2px处，使用细长线形贴图（8px长×1px宽），color从弹体亮白渐变至橙黄，lifetime=0.1s，与拖尾粒子的尺寸和亮度形成明确对比",
+      "priority": "high"
+     },
+     {
+      "type": "param",
+      "detail": "拖尾粒子（Trail）改为稀疏分布：每发弹丸仅 spawn 2-3个拖尾粒子，使用扩散型贴图（圆形毛边），size=6-10px，避免粒子数量过多导致粘连成带状",
+      "priority": "med"
+     },
+     {
+      "type": "param",
+      "detail": "弹丸间距随时间递增：在弹丸生命周期内用 scale 或 spawn position offset 拉开相邻弹丸的物理间距，让每发弹在视觉上独立可数，避免聚集成一团",
+      "priority": "med"
+     }
+    ],
+    "mode": null
+   }
+  },
+  {
+   "family": 5,
+   "family_label": "霰弹",
+   "file": "f05_enemy_impact.png",
+   "impact_class": "scatter",
+   "is_player": false,
+   "kind": "impact",
+   "muzzle_class": "light",
+   "power_tier": 0,
+   "spec": "6 发 18° 散射弹丸；命中=散射状小贴图+宽散火花",
+   "result": {
+    "realism_score": 5,
+    "verdict": "有基础火花烟雾效果，但完全缺失霰弹散射特征，像单发高爆弹命中而非散弹",
+    "spec_match": "规格要求6发18°散射弹丸+散射状小贴图+宽散火花；当前特效呈单一集中冲击形态，无散射弹丸分布",
+    "problems": [
+     "缺少散射弹丸命中点——应看到6个分散命中位置，而非单一中心爆炸",
+     "火花过于集中，未呈现霰弹'宽散'特征",
+     "无弹丸穿入/命中材质的小贴图（如金属片、破片痕迹）",
+     "烟雾团中心与火花重叠，掩盖了散射层次"
+    ],
+    "suggestions": [
+     {
+      "type": "new_layer",
+      "detail": "添加散射弹丸层：在橙框参考范围内，沿18°锥形区域放置6个独立命中贴图，每个贴图大小约16-24px，表现弹丸击中目标的痕迹（如破片嵌入、金属崩裂小点）",
+      "priority": "high"
+     },
+     {
+      "type": "param",
+      "detail": "火花粒子数量增至30-40个，速度范围0.5-3m/s，lifetime 0.2-0.5s，spread angle调至180°+，使火花从中心向四周扇形扩散",
+      "priority": "high"
+     },
+     {
+      "type": "texture",
+      "detail": "补充弹丸命中贴图集：准备6张16x16或24x24的散射状小贴图，表现不同弹丸击中装甲/肉体的痕迹（金属屑飞溅、血雾小喷点）",
+      "priority": "med"
+     },
+     {
+      "type": "param",
+      "detail": "烟雾层降低alpha至0.4，radius压缩至48px，让散射弹丸和火花层从烟雾中透出",
+      "priority": "low"
+     }
+    ],
+    "mode": null
+   }
+  },
+  {
+   "family": 6,
+   "family_label": "狙击/光束武器",
+   "file": "f06_player_muzzle.png",
+   "impact_class": "beam_hit",
+   "is_player": true,
+   "kind": "muzzle",
+   "muzzle_class": "energy",
+   "power_tier": 0,
+   "spec": "枪口=白青喷射流；弹道=Line2D 直线光束；命中=精确药剂感小爆点（非激光烧灼——激光武器单独归 LASER 族）",
+   "result": {
+    "realism_score": 4,
+    "verdict": "枪口火形态错误且弹道、命中两层完全缺失，严重偏离验收规格",
+    "spec_match": "枪口部分颜色接近白青但形态呈弥散闪光而非喷射流；弹道与命中两层均未呈现，不达标",
+    "problems": [
+     "枪口特效呈弥散爆炸状，缺乏定向喷射流的动态感和细长效尾",
+     "中间黄色能量轨迹颜色错误（应为白青系），且形态不清晰，疑似错误残留或弹道表现不完整",
+     "完全缺失弹道层（Line2D直线光束）：从枪口到目标之间无任何直线光束呈现",
+     "完全缺失命中层：右侧目标位置无任何'精确药剂感小爆点'"
+    ],
+    "suggestions": [
+     {
+      "type": "param",
+      "detail": "枪口火粒子改为高速度初速（约800-1200px/s）+ 强方向性（angle偏向右侧15°±5°扩散），寿命缩短至0.15-0.2s，配合stretch粒子沿速度方向拉长，形成喷射流形态",
+      "priority": "high"
+     },
+     {
+      "type": "param",
+      "detail": "枪口火光晕颜色从当前偏白/淡黄调整为青白色（#E0F4FF到#80D8FF渐变），alpha从1.0快速衰减至0，增强喷射冷光感",
+      "priority": "high"
+     },
+     {
+      "type": "new_layer",
+      "detail": "新增弹道层：在枪口命中点之间插入Line2D直线光束，宽度2-3px，颜色白青（#C8F0FF），生命周期0.1-0.15s后淡出，带轻微闪烁噪波增加能量感",
+      "priority": "high"
+     },
+     {
+      "type": "new_layer",
+      "detail": "新增命中层：在目标位置生成小型药剂感爆点——中心高亮白点（半径3-4px）+ 周围青蓝色放射状碎片（4-6片，长度8-12px，速度200px/s向外扩散），整体寿命0.2-0.3s",
+      "priority": "high"
+     },
+     {
+      "type": "texture",
+      "detail": "为枪口火重新绘制喷射流贴图：长条形渐隐羽流，中心白青、边缘淡青透明，避免使用圆形光晕或爆炸花瓣贴图",
+      "priority": "med"
+     }
+    ],
+    "mode": null
+   }
+  },
+  {
+   "family": 6,
+   "family_label": "狙击/光束武器",
+   "file": "f06_player_trajectory.png",
+   "impact_class": "beam_hit",
+   "is_player": true,
+   "kind": "trajectory",
+   "muzzle_class": "energy",
+   "power_tier": 0,
+   "spec": "枪口=白青喷射流；弹道=Line2D 直线光束；命中=精确药剂感小爆点（非激光烧灼——激光武器单独归 LASER 族）",
+   "result": {
+    "realism_score": 7,
+    "verdict": "基本符合验收规格的能量光束弹道，但缺乏辉光层次和尾部动态细节。",
+    "spec_match": "弹道呈现为白色直线光束形态，符合狙击/光束武器族的Line2D直线要求。",
+    "problems": [
+     "弹体过于单薄，无辉光扩散感，能量束应有多层亮度和色偏",
+     "尾部拖尾几乎不可见，缺乏速度感和粒子残留效果",
+     "未体现青蓝色喷射流的枪口色彩过渡"
+    ],
+    "suggestions": [
+     {
+      "type": "param",
+      "detail": "给弹体Line2D添加glow效果，中心白色+边缘青色，宽度3-4px并带衰减",
+      "priority": "high"
+     },
+     {
+      "type": "new_layer",
+      "detail": "在弹体后方叠加1-2帧拖尾粒子，使用渐变青色圆形贴图，沿运动方向做alpha fade-out",
+      "priority": "med"
+     },
+     {
+      "type": "texture",
+      "detail": "替换弹体纹理为从亮白到青蓝的径向渐变，模拟能量核心与外层等离子体的视觉层次",
+      "priority": "low"
+     }
+    ],
+    "mode": null
+   }
+  },
+  {
+   "family": 6,
+   "family_label": "狙击/光束武器",
+   "file": "f06_player_impact.png",
+   "impact_class": "beam_hit",
+   "is_player": true,
+   "kind": "impact",
+   "muzzle_class": "energy",
+   "power_tier": 0,
+   "spec": "枪口=白青喷射流；弹道=Line2D 直线光束；命中=精确药剂感小爆点（非激光烧灼——激光武器单独归 LASER 族）",
+   "result": {
+    "realism_score": 4,
+    "verdict": "命中点被做成了大尺度青蓝能量环加暖色烧灼雾的激光/冲击波感，与本族'精确药剂感小爆点'的规格明显背道而驰，需整体压缩尺度并改向紧凑动能飞溅。",
+    "spec_match": "未达标——画面呈现的是接近参考框尺度的空心青蓝环配米白暖雾，属激光烧灼语汇，而非规格要求的短促、紧凑、带亮芯的药引式小爆点。",
+    "problems": [
+     "命中核心为空心青蓝环，外径接近甚至超过64px参考单位，缺乏针尖级爆心，读起来像能量冲击波/激光环而非弹着点",
+     "环外圈的米白-浅橙雾团扩散过大且色相偏暖，形成持续烧灼烟雾感，违反'非激光烧灼'的族规",
+     "缺少命中瞬间的高亮微核心闪（hot core），没有'药引引爆'的那一帧精确亮点",
+     "中部向下拖得极长的橙红余烬轨迹，初速Y过大、寿命过长，像慢速飘落火星而非被击飞的瞬时碎屑，拖垮了'精确'感"
+    ],
+    "suggestions": [
+     {
+      "type": "param",
+      "detail": "将命中环的最大半径压缩到约24-32px（≈参考框0.4x），并给alpha加一条前20%寿命占约80%峰值亮度的快速衰减曲线，寿命总长砍到≤0.25s，消除持续烧灼观感",
+      "priority": "high"
+     },
+     {
+      "type": "texture",
+      "detail": "替换米白暖雾贴图为一张紧凑的4方向短射流/液滴飞溅贴图（星芒状，带边缘衰减），色相从中性白-淡黄（动能/药剂击感）替代现在的暖橙烟雾色，贴图尺寸控制在32px内",
+      "priority": "high"
+     },
+     {
+      "type": "new_layer",
+      "detail": "在命中点正中心补一层针尖级核心闪：2-4px纯白圆点+轻微径向过曝，寿命极短（4-6帧），首帧最强随后急衰减，提供'药引点燃'的精确爆心",
+      "priority": "high"
+     },
+     {
+      "type": "param",
+      "detail": "把中部橙红余烬颗粒的初速度Y分量下调、发射角度收紧为朝命中方向的水平±20°扇形，单颗粒寿命限到≤0.3s、数量减半，使其读作被击飞的短促碎屑而非向下慢飘的火星",
+      "priority": "med"
+     }
+    ],
+    "mode": null
+   }
+  },
+  {
+   "family": 6,
+   "family_label": "狙击/光束武器",
+   "file": "f06_enemy_muzzle.png",
+   "impact_class": "beam_hit",
+   "is_player": false,
+   "kind": "muzzle",
+   "muzzle_class": "energy",
+   "power_tier": 0,
+   "spec": "枪口=白青喷射流；弹道=Line2D 直线光束；命中=精确药剂感小爆点（非激光烧灼——激光武器单独归 LASER 族）",
+   "result": {
+    "realism_score": 5,
+    "verdict": "枪口火形态偏散乱、颜色偏暖，不符合狙击/光束武器白青喷射流的验收规格。",
+    "spec_match": "弹道有直线光束感，但枪口火形态和颜色偏离规格——应为白青向前喷射流，现为橙黄散射火花。",
+    "problems": [
+     "枪口火颜色偏橙黄，规格要求白青喷射流",
+     "枪口火呈散射状而非向前锥形喷射，更像命中爆点而非开火",
+     "power_tier=0（轻）不应有如此大面积火焰，能量武器开火应更精准克制"
+    ],
+    "suggestions": [
+     {
+      "type": "param",
+      "detail": "枪口火颜色改为白青(#E0F7FA或#80DEEA)，降低橙黄色粒子占比至10%以下",
+      "priority": "high"
+     },
+     {
+      "type": "texture",
+      "detail": "替换枪口火贴图：用细长的锥形光柱替代当前散射火花，宽度从上到下递减，模拟光束枪口特征",
+      "priority": "high"
+     },
+     {
+      "type": "param",
+      "detail": "降低power_tier=0时的枪口火强度（alpha或scale）至50%，狙击枪开火应克制精准而非张扬",
+      "priority": "med"
+     }
+    ],
+    "mode": null
+   }
+  },
+  {
+   "family": 6,
+   "family_label": "狙击/光束武器",
+   "file": "f06_enemy_trajectory.png",
+   "impact_class": "beam_hit",
+   "is_player": false,
+   "kind": "trajectory",
+   "muzzle_class": "energy",
+   "power_tier": 0,
+   "spec": "枪口=白青喷射流；弹道=Line2D 直线光束；命中=精确药剂感小爆点（非激光烧灼——激光武器单独归 LASER 族）",
+   "result": {
+    "realism_score": 3,
+    "verdict": "弹道过于单薄，缺少狙击/光束武器应有的能量感和速度张力，曳光与拖尾几乎不可见。",
+    "spec_match": "规格要求弹道为Line2D直线光束，当前呈现为一条细白线，形态上符合'直线光束'但能量感和体积感严重不足，未体现'光束'特征。",
+    "problems": [
+     "弹体仅是一条1-2px宽的纯白Line2D，无任何核心发光或体积感，视觉上更像参考网格线而非能量弹道",
+     "完全缺失曳光线（tracer）效果——狙击弹/光束弹在空气中高速飞行时应有明显尾迹余辉",
+     "无拖尾粒子层，弹道后方空空如也，缺乏速度感",
+     "弹体颜色单一（纯白），未按'白青喷射流'的色相倾向设计，与枪口规格脱节",
+     "弹体比例过小（相对64px单位框），在远距离飞行时几乎不可见"
+    ],
+    "suggestions": [
+     {
+      "type": "param",
+      "detail": "将弹道Line2D的线宽从当前约1px提升至4-6px，并叠加一条2px宽的纯白核心高光线叠加在青色主线上，模拟光束的热核效果",
+      "priority": "high"
+     },
+     {
+      "type": "new_layer",
+      "detail": "在弹道主Line2D下方新建一层半透明青色光晕层（宽度12-16px，alpha 0.15-0.25），使用径向渐变贴图从中心向边缘衰减，模拟光束在空气中的电离散射效果",
+      "priority": "high"
+     },
+     {
+      "type": "new_layer",
+      "detail": "在弹体后方追加曳光粒子层：沿弹道路径每帧生成2-3个小型矩形粒子，颜色由弹体前方的亮白过渡到后方的橙黄（#FFAA33），长度8-12px，寿命0.1-0.15s，alpha从0.8衰减到0",
+      "priority": "high"
+     },
+     {
+      "type": "param",
+      "detail": "将弹体主色从纯白（#FFFFFF）调整为偏青的白色（#C8F0FF或#B8E8F8），与枪口白青喷射流的色相保持一致，增强武器族的视觉统一性",
+      "priority": "med"
+     },
+     {
+      "type": "new_layer",
+      "detail": "在弹体最前方添加一个小型圆形 glow 点（半径6-8px，color=#E8FFFF，alpha 0.9），模拟弹头激波和空气压缩产生的前端辉光，强化'光束'的高能感",
+      "priority": "med"
+     }
+    ],
+    "mode": null
+   }
+  },
+  {
+   "family": 6,
+   "family_label": "狙击/光束武器",
+   "file": "f06_enemy_impact.png",
+   "impact_class": "beam_hit",
+   "is_player": false,
+   "kind": "impact",
+   "muzzle_class": "energy",
+   "power_tier": 0,
+   "spec": "枪口=白青喷射流；弹道=Line2D 直线光束；命中=精确药剂感小爆点（非激光烧灼——激光武器单独归 LASER 族）",
+   "result": {
+    "realism_score": 7,
+    "verdict": "命中特效存在但偏粗糙，缺乏'药剂感'和色彩层次，尺寸也略大。",
+    "spec_match": "呈现了小爆点形态，但未体现'精确药剂感'，颜色和结构偏向普通火花而非化学/能源命中效果。",
+    "problems": [
+     "hit特效粒子爆发半径过大，约48px+，power_tier=0应更紧凑精准",
+     "缺少冷色调中心光晕，全为暖色金橙粒子，与枪口白青喷射流缺乏色彩呼应",
+     "无分层结构——只有火花散落，缺少中心闪光、外晕扩散、微量烟雾等层次",
+     "'药剂感'未体现——应为能量/化学注入的视觉语言，而非实弹破片溅射"
+    ],
+    "suggestions": [
+     {
+      "type": "param",
+      "detail": "将hit特效的粒子出生半径从当前约24px压缩至8px内，初始速度上限从300降至120，让爆点更'精确收束'而非四散飞溅",
+      "priority": "high"
+     },
+     {
+      "type": "new_layer",
+      "detail": "在火花层之下添加'中心闪光'子发射器：单帧白色圆形粒子，初始scale 0.6倍命中框（约38px），立即fade out，模拟能量命中瞬间的闪光",
+      "priority": "high"
+     },
+     {
+      "type": "texture",
+      "detail": "替换火花粒子贴图：改用带羽化边缘的青白/浅蓝椭圆形笔触（而非实心圆点），并在UV上叠加轻微拉丝纹理，模拟能量注入的药剂质感",
+      "priority": "med"
+     },
+     {
+      "type": "param",
+      "detail": "在hit特效最外层添加半透明烟雾层（颜色#4488aa，opacity 0.25，scale 40-60px，lifetime 0.6s），提供'药剂扩散'的环境感，与中心火花形成前后景深",
+      "priority": "med"
+     }
+    ],
+    "mode": null
+   }
+  },
+  {
+   "family": 7,
+   "family_label": "高炮/防空速射炮",
+   "file": "f07_player_muzzle.png",
+   "impact_class": "explosive",
+   "is_player": true,
+   "kind": "muzzle",
+   "muzzle_class": "heavy",
+   "power_tier": 1,
+   "spec": "短粗高炮弹连发；命中=空爆贴图+小火球帧",
+   "result": {
+    "realism_score": 4,
+    "verdict": "枪口火形态严重偏离高炮物理特征，呈现为径向爆炸而非方向性喷发。",
+    "spec_match": "未正确呈现短粗高炮弹开火时应有的方向性枪口火焰特征。",
+    "problems": [
+     "枪口火呈现为向四周均匀辐射的星形爆炸状，缺少明确的向前喷射方向性——高炮枪口火应集中在炮口朝向，呈扇形/锥形向前喷射",
+     "粒子形状过于尖锐分散，类似烟花爆炸而非金属大口径火炮产生的密集高温燃气喷流",
+     "亮度过高且缺乏层次感，核心白光区过大，没有体现枪口火外层橙红内层近白的典型温度梯度",
+     "缺少炮口冲击波的视觉表现——速射炮连发时炮口前应有短暂的空气压缩扰动效果"
+    ],
+    "suggestions": [
+     {
+      "type": "param",
+      "detail": "修改初始粒子速度向量，将径向发射改为扇形定向发射：角度范围限制在炮口朝向±30°内，初始速度集中在主方向，避免向后方/侧方溢出",
+      "priority": "high"
+     },
+     {
+      "type": "texture",
+      "detail": "更换枪口火核心粒子贴图：用拉长的椭圆形/泪滴形贴图替代当前尖刺放射状贴图，模拟高温燃气的高速喷射形态",
+      "priority": "high"
+     },
+     {
+      "type": "new_layer",
+      "detail": "新增一层低速膨胀的半透明冲击波环，初始出现在炮口前方10-15px处，淡入后快速扩大至30px直径并淡出，表现火炮发射时的空气压缩效应",
+      "priority": "med"
+     },
+     {
+      "type": "param",
+      "detail": "调整颜色梯度：核心从纯白(100% alpha)→亮黄(80% alpha)→橙红(50% alpha)分段衰减，当前整体偏橙黄且缺乏纯白核心",
+      "priority": "med"
+     }
+    ],
+    "mode": null
+   }
+  },
+  {
+   "family": 7,
+   "family_label": "高炮/防空速射炮",
+   "file": "f07_player_trajectory.png",
+   "impact_class": "explosive",
+   "is_player": true,
+   "kind": "trajectory",
+   "muzzle_class": "heavy",
+   "power_tier": 1,
+   "spec": "短粗高炮弹连发；命中=空爆贴图+小火球帧",
+   "result": {
+    "realism_score": 4,
+    "verdict": "弹道弧线基本正确但弹体过细小、拖尾过于圆润，缺乏高炮弹应有的短粗厚重感。",
+    "spec_match": "有连发和弧线弹道，但弹体形态不符'短粗高炮弹'规格，拖尾更像火星而非炮弹尾焰。",
+    "problems": [
+     "弹体贴图过于细长线状，高炮弹应短粗圆柱形，当前在64px参考格下几乎不可辨",
+     "曳光线过细且断断续续，速射炮曳光应连续明显",
+     "拖尾粒子是均匀圆形橙点，像冒烟火星而非炮弹高速飞行时的燃烧拖尾",
+     "弹体缺少金属反光/高光层次，显得扁平"
+    ],
+    "suggestions": [
+     {
+      "type": "texture",
+      "detail": "重绘弹体贴图：改为短粗圆柱形（长约8-10px，宽约3-4px），前端带尖锥，中部有弹带凹槽细节，颜色为深灰/钢蓝金属色",
+      "priority": "high"
+     },
+     {
+      "type": "param",
+      "detail": "曳光线改用宽粒子带而非细线：发射YIELD=4的拖尾粒子，size=2px到1px渐变，alpha=0.6衰减，lifetime=0.4s，密度提升至每帧3-4个",
+      "priority": "high"
+     },
+     {
+      "type": "texture",
+      "detail": "替换拖尾粒子贴图：用拉长的火焰/烟雾羽毛形（12x4px），非圆形，颜色从亮黄到橙红到暗灰渐变",
+      "priority": "med"
+     },
+     {
+      "type": "new_layer",
+      "detail": "弹体上层叠加高光粒子：在弹体前方添加2-3px亮的白色/淡黄色小点模拟弹头空气压缩发光，speed=1.5倍弹体速度",
+      "priority": "med"
+     }
+    ],
+    "mode": null
+   }
+  },
+  {
+   "family": 7,
+   "family_label": "高炮/防空速射炮",
+   "file": "f07_player_impact.png",
+   "impact_class": "explosive",
+   "is_player": true,
+   "kind": "impact",
+   "muzzle_class": "heavy",
+   "power_tier": 1,
+   "spec": "短粗高炮弹连发；命中=空爆贴图+小火球帧",
+   "result": {
+    "realism_score": 6,
+    "verdict": "爆炸形态偏球形且尺寸过大，缺少空爆特征的扁平化表现和'小火球帧'的核心限制。",
+    "spec_match": "未完全匹配验收规格——特效呈现为较大球形爆炸，缺少空爆贴图的扁平辐射形态，中心火球帧也偏大而非小火球。",
+    "problems": [
+     "爆炸形态偏球形饱满，防空高炮空爆应呈更扁平的伞状/环形破片扩散形态",
+     "中心火球帧过大过亮，验收规格要求'小火球帧'，当前火球直径接近整个爆炸体的1/3",
+     "缺少空爆特有的环状破片层——应该是内圈小火球+外圈稀疏金属破片碎片",
+     "爆炸下沿有明显拖尾/重力沉降颗粒，防空空爆在空中发生，不应有坠地向下的重颗粒"
+    ],
+    "suggestions": [
+     {
+      "type": "texture",
+      "detail": "替换中心火球贴图：用直径约16-20px的硬边圆形火球帧替换当前32px以上的大火球，颜色偏白热而非橙红",
+      "priority": "high"
+     },
+     {
+      "type": "new_layer",
+      "detail": "在火球外层叠加一层稀疏的环形破片粒子，使用金属/弹片剪影贴图，径向速度较高但寿命短(0.15-0.25s)，形成空爆特有的扁平辐射环",
+      "priority": "high"
+     },
+     {
+      "type": "param",
+      "detail": "调整爆炸整体缩放参数，使总爆炸直径控制在约48-56px(约等于1个参考单位框宽度)，当前约72px偏大",
+      "priority": "med"
+     },
+     {
+      "type": "param",
+      "detail": "移除或大幅减少向下运动的颗粒层，防空空爆发生在目标高度上方，破片应主要向外径向扩散而非向下沉降",
+      "priority": "med"
+     }
+    ],
+    "mode": null
+   }
+  },
+  {
+   "family": 7,
+   "family_label": "高炮/防空速射炮",
+   "file": "f07_enemy_muzzle.png",
+   "impact_class": "explosive",
+   "is_player": false,
+   "kind": "muzzle",
+   "muzzle_class": "heavy",
+   "power_tier": 1,
+   "spec": "短粗高炮弹连发；命中=空爆贴图+小火球帧",
+   "result": {
+    "realism_score": 4,
+    "verdict": "枪口火形态过于单薄，缺少速射炮应有多重爆发现象的层次感与体积感。",
+    "spec_match": "有枪口火光但形态偏星芒放射，未体现速射炮短粗弹连发特有的密集爆发特征，无弹道与多层火舌叠加。",
+    "problems": [
+     "枪口火呈单一星芒放射状，缺少速射炮应有的多层重复爆发光晕（快射应有多重火焰层叠）",
+     "火焰整体太小，相对于64px参考单位框比例失调，高炮开火火光应有更大覆盖范围",
+     "无明显的方向性主火焰锥，速射炮枪口火应沿弹道方向有明显的拉长火舌",
+     "枪口后方无烟雾/废气残留层，防空炮连发时炮管周围应有高温气体扰动",
+     "无弹道实体（白色亮光点或短粗弹形）在枪口与目标之间，仅靠火光暗示发射不够明确",
+     "枪口火光颜色过于均一纯白，缺少从橙红核心到黄色边缘再到白色尖端的温度梯度",
+     "无动态模糊或运动拖尾，速射炮开火应有方向性运动残影"
+    ],
+    "suggestions": [
+     {
+      "type": "param",
+      "detail": "增加火焰粒子数量至8-12个/帧，每帧延迟3-5ms错开生成，模拟速射炮多管交替发射的多重爆发现象",
+      "priority": "high"
+     },
+     {
+      "type": "texture",
+      "detail": "使用径向渐变纹理替代纯色星芒，中心橙色(#FF6600)→中层黄色(#FFCC00)→外层半透明白色(#FFFFFF 60% alpha)，模拟真实枪口火温度梯度",
+      "priority": "high"
+     },
+     {
+      "type": "new_layer",
+      "detail": "在主火焰层后方添加一层横向拉长的橙色/红色烟雾粒子（沿弹道方向0-30px拖尾），寿命150-200ms，表现高炮弹药室燃气残留",
+      "priority": "high"
+     },
+     {
+      "type": "param",
+      "detail": "将枪口火整体尺寸放大至约80-100px宽×50-60px高，约占参考单位框高度的1.5倍，符合高炮开火的视觉冲击力",
+      "priority": "med"
+     },
+     {
+      "type": "texture",
+      "detail": "添加弹道光效层：在枪口与目标单位之间放置一条明亮的短粗弹道光轨（白色核心+橙色外晕，长度约120-160px，宽度8-12px），表现'短粗高炮弹'的规格",
+      "priority": "med"
+     },
+     {
+      "type": "param",
+      "detail": "火焰边缘添加2-3个快速消散的碎片粒子（橙红色，尺寸4-8px，速度向右50-80px/s），模拟弹壳/燃气向外喷射的随机感",
+      "priority": "low"
+     }
+    ],
+    "mode": null
+   }
+  },
+  {
+   "family": 7,
+   "family_label": "高炮/防空速射炮",
+   "file": "f07_enemy_trajectory.png",
+   "impact_class": "explosive",
+   "is_player": false,
+   "kind": "trajectory",
+   "muzzle_class": "heavy",
+   "power_tier": 1,
+   "spec": "短粗高炮弹连发；命中=空爆贴图+小火球帧",
+   "result": {
+    "realism_score": 4,
+    "verdict": "弹体形态和弹道弧度与高炮规格严重不符，速射武器的压迫感和密度也明显不足。",
+    "spec_match": "验收规格要求'短粗高炮弹连发'，但当前弹体呈细长条状且弹道为直线，未呈现短粗炮弹的视觉特征和曲射弹道。",
+    "problems": [
+     "弹体形状错误：高炮弹应为短粗圆柱形（类似炮弹），当前贴图是细长条状，更像步枪弹或穿甲弹",
+     "弹道无弧线：高炮/防空炮是曲射武器，弹道应有明显抛物线，但图中弹道近乎直线斜向上飞行",
+     "密度不足：速射炮应有密集弹幕感，但画面中弹体数量稀少且间距过大，缺乏连发压迫感",
+     "曳光不够锐利：高炮曳光应更明亮集中，当前橙红曳光过于弥散，像燃烧弹而非高炮曳光",
+     "拖尾烟雾偏少：短粗高炮弹飞行时应带更浓密的尾部烟雾，当前拖尾粒子稀疏且颜色偏暗红"
+    ],
+    "suggestions": [
+     {
+      "type": "texture",
+      "detail": "替换弹体贴图：从细长条状改为扁圆柱形短粗弹体，宽高比调整为约3:1或更短，头部加钝圆造型",
+      "priority": "high"
+     },
+     {
+      "type": "param",
+      "detail": "在弹道运动曲线上增加重力参数（gravity_Y约-9.8的1/10缩放值），使弹道从直线改为可见弧度的抛物线",
+      "priority": "high"
+     },
+     {
+      "type": "param",
+      "detail": "缩短发射间隔至0.15-0.2秒，同时增加活跃弹体数量上限至6-8个，营造速射密集感",
+      "priority": "high"
+     },
+     {
+      "type": "texture",
+      "detail": "曳光贴图改用中心高亮白/亮黄核心+外围橙色光晕的径向渐变贴图，提升曳光锐度和亮度",
+      "priority": "med"
+     },
+     {
+      "type": "param",
+      "detail": "拖尾烟雾粒子改用更浓密的深灰/棕红色烟雾贴图，增加粒子生成率至每帧2-3个，并添加轻微扰动(random_offset)使烟柱有自然扩散感",
+      "priority": "med"
+     }
+    ],
+    "mode": null
+   }
+  },
+  {
+   "family": 7,
+   "family_label": "高炮/防空速射炮",
+   "file": "f07_enemy_impact.png",
+   "impact_class": "explosive",
+   "is_player": false,
+   "kind": "impact",
+   "muzzle_class": "heavy",
+   "power_tier": 1,
+   "spec": "短粗高炮弹连发；命中=空爆贴图+小火球帧",
+   "result": {
+    "realism_score": 5,
+    "verdict": "特效呈现了火焰爆炸的基本形态，但缺乏防空高炮弹空爆特有的球形破片散布特征，整体更像通用命中火球而非空爆。",
+    "spec_match": "验收规格要求'空爆贴图+小火球帧'，当前特效仅呈现出中心火球和向外飘散的火焰粒子，缺少空爆应有的球形放射状破片/火花层，形态偏向地面冲击爆炸而非空中定点起爆。",
+    "problems": [
+     "爆炸整体呈向上生长的不规则火焰柱形态，防空弹空爆应更接近以落点为中心的球对称扩散，而非单向上冲",
+     "无明显破片/火花径向喷射层，高炮弹空爆在击中目标区域时应产生从中心向四周快速飞散的金属破片痕迹",
+     "中心高光区域偏大且亮度集中在顶部，空爆的闪光应更紧凑、中心更亮、边缘迅速衰减",
+     "缺少空爆后烟雾残留层，高炮弹空爆后通常会留下短暂的灰色/黑色硝烟团"
+    ],
+    "suggestions": [
+     {
+      "type": "new_layer",
+      "detail": "在现有火焰粒子下层叠加一层径向破片粒子：以命中点为中心，发射约30-40个细小矩形/十字形黄色-橙色碎片，速度范围0.8-2.5像素/帧，生命周期4-8帧，初始大小1-2px，快速衰减至透明，模拟高炮弹空爆产生的金属破片放射效应",
+      "priority": "high"
+     },
+     {
+      "type": "texture",
+      "detail": "替换空爆核心贴图：当前火球贴图顶部过亮且形态上冲，改用中心白亮（半径约16px）向外渐变为橙黄再至暗红的不规则球形渐变贴图，尺寸限制在参考框直径以内（≤64px），避免超出单位范围",
+      "priority": "high"
+     },
+     {
+      "type": "param",
+      "detail": "调整火焰粒子上限速度参数：当前火焰粒子上扬速度过快导致形态拉长，将垂直方向初始速度上限从当前值降低约30%，增加水平扩散比例，使整体形态更接近球状膨胀而非烟囱状",
+      "priority": "med"
+     },
+     {
+      "type": "new_layer",
+      "detail": "在火焰消退阶段（第8帧之后）叠加一层深灰/黑灰色烟雾粒子，数量约15个，速度极低（0.2-0.5px/帧），生命周期12-20帧，尺寸8-16px，模拟高炮弹空爆后残留的硝烟效果",
+      "priority": "low"
+     }
+    ],
+    "mode": null
+   }
+  },
   {
    "family": 8,
    "family_label": "激光（烧灼签名）",
@@ -13,41 +2229,41 @@
    "power_tier": 0,
    "spec": "命中=来弹光束+白热聚焦光斑+焦痕+上升热火花+熔融火星（表面能量沉积，区别于动能穿透）",
    "result": {
-    "realism_score": 5,
-    "verdict": "基本形态存在但缺乏激光武器开火应有的能量聚焦感和高温白热特征，粒子分布过于松散且颜色偏移。",
-    "spec_match": "验收规格要求白热聚焦光斑，当前特效中心偏蓝而非白热；存在枪口闪光雏形但能量沉积特征不足。",
+    "realism_score": 6,
+    "verdict": "光束造型尚可但枪口起燃端缺少激光开火应有的热膨胀爆炸特征，整体更像命中反馈而非枪口火。",
+    "spec_match": "规格要求枪口火表现激光发射瞬间的热效应，但当前特效主要表现为一条长光束加不规则散射火花，枪口起燃端的热膨胀闪光层几乎缺失，未呈现激光武器开火时空气被瞬间加热膨胀的典型视觉签名。",
     "problems": [
-     "枪口火核心颜色偏青蓝，激光烧灼应呈现极高温度白热中心（#FFFFFF到淡黄过渡）",
-     "粒子呈水平散射状，缺乏激光束固有的高度定向性和准直特征",
-     "没有体现枪口周围空气受热畸变的热浪效果",
-     "枪口闪光持续时间过长，高功率激光开火瞬间应极快衰减",
-     "缺少枪管/发射口处的光晕溢出（lens flare bloom）层次"
+     "枪口起燃端（我方单位枪口位置）缺少一圈快速膨胀的热气透镜/空气扰动光圈，激光发射时周围空气被瞬间加热应产生类似透视扭曲的环形光晕",
+     "火花粒子缺乏明显的向上热对流轨迹，激光烧灼空气产生的高温颗粒应呈明显的上升趋势而非水平飞散",
+     "枪口核心缺少白光到橙红的颜色过渡层，真正的高能激光发射在枪口处会产生可见的等离子体辉光（白→黄→橙），目前只有蓝白冷色",
+     "光束尾部有锯齿状不规则边缘，激光光束本身应更加均匀笔挺，锯齿感更像是命中时的表面碎裂而非开火过程",
+     "光柱长度明显超出单位宽度太多，轻档位（power_tier=0）激光不应打出如此长的光束段，光束应更接近枪口、尾段衰减更快"
     ],
     "suggestions": [
      {
-      "type": "param",
-      "detail": "枪口核心粒子初始颜色从(0.4,0.7,1.0)改为(1.0,0.95,0.85)，生命周期前10%保持白色峰值，之后渐变到浅蓝边缘",
-      "priority": "high"
-     },
-     {
-      "type": "param",
-      "detail": "将枪口火粒子发射角度从±30°锥形收窄至±8°，模拟激光准直特性；粒子初始速度提高3倍以更快穿出画面",
-      "priority": "high"
-     },
-     {
       "type": "new_layer",
-      "detail": "添加热浪扰动层：在枪口前方16-32px区域叠加低透明度 sine wave 位移贴图，alpha从0.3快速衰减到0",
-      "priority": "med"
+      "detail": "在枪口位置（我方单位右侧边缘）叠加一个快速膨胀后消散的圆形热气透镜层：使用径向渐变贴图（中心白色→边缘透明），初始scale=16px，膨胀至64px，生命周期0.08s，blend=additive，opacity从1.0衰减到0",
+      "priority": "high"
      },
      {
       "type": "param",
-      "detail": "枪口闪光总时长压缩到0.08秒，使用ease-out曲线，前5帧保持最大亮度后迅速衰减到0",
+      "detail": "调整火花粒子的gravity参数为-150~200（向上为正），velocity.y初始值设为+100~300，使火花呈现明显的上升轨迹；同时减少火花粒子的数量，将现有火花数量减至40%，因为激光枪口火火花少而集中",
       "priority": "high"
      },
      {
       "type": "texture",
-      "detail": "枪口核心光斑改用径向渐变贴图（中心白→外圈淡黄→边缘透明），替换当前方形/圆形软粒子贴图",
+      "detail": "替换枪口核心火焰贴图，使用中心白热（#ffffff）、外围暖橙（#ff9933）的径向渐变球体贴图，替换当前不均匀的散射形状，使枪口起燃端有明确的等离子体辉光球心",
       "priority": "med"
+     },
+     {
+      "type": "param",
+      "detail": "将光束粒子的length属性缩短至单位宽度约1.5倍（约96px），并修改alpha衰减曲线：前20%长度保持full opacity，之后指数衰减至0，避免当前过长的均匀光柱",
+      "priority": "med"
+     },
+     {
+      "type": "param",
+      "detail": "在光束主体上叠加一条极细的纯白高光层（width=2px，center-stroke），使用linear gradient衰减两端的亮度，强化激光'笔直、凝聚'的光学特征，区别于当前锯齿状边缘",
+      "priority": "low"
      }
     ],
     "mode": null
@@ -65,40 +2281,40 @@
    "spec": "命中=来弹光束+白热聚焦光斑+焦痕+上升热火花+熔融火星（表面能量沉积，区别于动能穿透）",
    "result": {
     "realism_score": 3,
-    "verdict": "光束形态严重偏离激光应具的连续能量束特征，呈现为离散矩形碎片拼贴，缺乏固体光束的视觉连贯性。",
-    "spec_match": "未达标——激光族验收要求连续光束形态，当前特效以离散分段的块状粒子模拟弹体，与'光束'概念相悖。",
+    "verdict": "视觉效果像是低分辨率荧光色线段，完全缺乏激光束应有的能量感、热发光和聚焦特征。",
+    "spec_match": "未呈现激光族飞行特效应具有的连续光束形态，仅有粗糙矩形光带，无任何光束体积感或核心聚焦特征。",
     "problems": [
-     "光束由离散矩形碎片拼接而成，呈现'子弹串'视觉效果，而非连续光束",
-     "碎片间有明显间隙，破坏了激光应有的光学连续性",
-     "光束边缘锐利如像素块，缺乏激光能量束应有的光晕与柔和衰减",
-     "无大气散射/能量衰减效果，激光在空气中应有轻微亮度渐变",
-     "无微脉冲/闪烁扰动，真实激光存在能量不稳定性产生的高频光强波动"
+     "光束整体呈均匀矩形，无径向渐变或宽度收敛，没有激光束'中心极亮边缘迅速衰减'的光学特征",
+     "颜色单一扁平的青蓝色，缺乏从枪口（白热）到远端（能量衰减）的颜色渐变过渡",
+     "无辉光/Bloom层，视觉上像是像素条而非高能光束",
+     "截面纹理呈块状锯齿，缺少平滑的体积感，在64px参考单位旁显得比例也偏短偏粗",
+     "无任何热扭曲或空气扰动效果，激光穿过大气应有微弱的热膨胀折射视觉提示"
     ],
     "suggestions": [
      {
-      "type": "param",
-      "detail": "将粒子发射模式从'Spawn per Hit'改为'Continuous Beam'模式，启用Beam/Trail渲染器替代分段Sprite，使激光以连续带状几何体生成而非离散粒子",
+      "type": "texture",
+      "detail": "用径向渐变贴图替换当前矩形截面：中心白色100% alpha→半径60%处浅青蓝80% alpha→边缘淡青色20% alpha，让光束有体积光感",
       "priority": "high"
      },
      {
-      "type": "texture",
-      "detail": "替换粒子Alpha贴图：使用高斯渐变软边缘圆形贴图（中心白色100%不透明→边缘线性衰减至0），替换当前的硬边矩形贴图，模拟光束核心向边缘的能量扩散",
+      "type": "param",
+      "detail": "给光束添加颜色渐变蒙版，从发射端（左侧）白色（#FFFFFF 80% alpha）逐渐过渡到远端（右侧）青蓝色（#00FFFF 40% alpha），模拟能量沿程衰减",
       "priority": "high"
      },
      {
       "type": "new_layer",
-      "detail": "添加第二层光晕粒子（Glow Layer）：宽度为主光束的2-3倍，颜色用青色半透明，Blend Mode设为Additive，起始Alpha 0.4随距离指数衰减，模拟光束的大气散射光晕",
-      "priority": "med"
+      "detail": "叠加一层全屏Bloom/Glow粒子（高斯模糊混合模式Additive），强度0.4-0.6，颜色与光束一致，使光束边缘产生能量晕染效果",
+      "priority": "high"
      },
      {
       "type": "param",
-      "detail": "在主光束粒子上添加Time-based Alpha Oscillation：用sin(时间×频率)调制Alpha，频率设为8-12Hz，振幅±15%，模拟激光能量脉冲波动",
+      "detail": "将光束宽度从当前固定值改为锥形：枪口端略窄（约8-10px），中段最宽（约12-14px），远端微收（约6-8px），模拟光束聚焦传播的透视感",
       "priority": "med"
      },
      {
-      "type": "param",
-      "detail": "为光束添加Distance-Based Fade：从发射点起算，前1/3段保持100%亮度，中间1/3段从100%线性降至70%，后1/3段从70%指数衰减至0%，模拟能量在传播中的散射损耗",
-      "priority": "low"
+      "type": "new_layer",
+      "detail": "在光束上方叠加一层极低alpha（5-10%）的热浪扰动贴图，用正弦波微扰UV坐标，模拟大气受热折射效果，让光束看起来'烫'而非'贴纸上屏幕'",
+      "priority": "med"
      }
     ],
     "mode": null
@@ -116,40 +2332,45 @@
    "spec": "命中=来弹光束+白热聚焦光斑+焦痕+上升热火花+熔融火星（表面能量沉积，区别于动能穿透）",
    "result": {
     "realism_score": 4,
-    "verdict": "光束和聚焦光斑及格，但缺少激光命中特有的表面烧灼痕迹和熔融能量沉积表现，整体更像爆炸命中而非激光灼烧。",
-    "spec_match": "呈现了来弹光束和白热聚焦光斑，但焦痕、上升热火花、熔融火星三层均未体现，命中特效被单一径向爆破状粒子替代。",
+    "verdict": "特效呈现为蓝色星形爆炸而非激光烧灼特征，颜色、形态均偏离验收规格",
+    "spec_match": "仅呈现了来弹光束，白热聚焦光斑过于扩散且偏蓝，焦痕、上升热火花、熔融火星均未体现",
     "problems": [
-     "缺少焦痕层：命中点没有残留的烧伤/碳化痕迹贴图，激光灼烧后的地表或装甲表面应留下缓慢消退的暗色焦斑",
-     "粒子形态错误：当前爆炸为蓝白色径向爆发，呈现动能穿透/爆炸特征，而非激光表面能量沉积应有的熔融滴落/向上飘散形态",
-     "缺少熔融火星层：没有橙红/暗黄色的熔融液滴粒子从命中点溅出并缓慢下落",
-     "缺少上升热火花层：光束命中后应有沿光束轴线方向上升的热气流/微火花粒子，体现高温加热空气的效果",
-     "光斑后扩散不足：聚焦光斑过于聚拢，激光高功率命中时应有余辉光晕在命中点持续扩散2-3帧"
+     "命中点为蓝色星芒爆炸状，完全不像激光烧灼；激光烧灼应呈白热点状并有焦黑边缘，而非爆炸飞溅",
+     "整体色调偏青蓝，激光烧灼命中点应为白热/亮黄/橙色调，蓝色系是能量武器但非烧灼感",
+     "没有任何焦痕表现——被击中位置应有炭化/熔化的暗色印记",
+     "缺少上升热气流/热扭曲效果，激光烧灼会使空气受热上升产生热霾",
+     "完全没有熔融火星/熔融金属飞溅粒子的视觉表现"
     ],
     "suggestions": [
      {
-      "type": "new_layer",
-      "detail": "添加焦痕图层：在命中点放置一个固定贴图（半径约32px的暗褐色/黑色圆形晕染，边缘羽化），生命周期与命中伤害值挂钩，持续2-3秒后逐渐淡出，强度由透明渐变控制",
-      "priority": "high"
-     },
-     {
-      "type": "param",
-      "detail": "重构命中粒子系统：移除当前径向爆炸粒子发射器，改为2个子发射器——A组5-8个橙红色大尺寸圆形粒子从命中点向外缓慢扩散后消失（代表熔融溅射），B组10-15个黄色小粒子沿垂直向上方向发射带轻微随机水平偏移（代表热火花上升）",
-      "priority": "high"
-     },
-     {
       "type": "texture",
-      "detail": "新增熔融火星贴图：使用径向渐变的橙黄色圆形alpha贴图，中心不透明白/黄色，边缘渐变为半透明橙红，尺寸为16x16px，用于替换当前爆炸星形粒子贴图",
-      "priority": "med"
+      "detail": "重制命中中心贴图：用硬边白热核心+橙黄晕染+焦黑外环替换当前蓝白星芒贴图；核心区域应小而亮(3-5px)，焦痕边缘用不规则烧蚀形状",
+      "priority": "high"
+     },
+     {
+      "type": "param",
+      "detail": "调整粒子系统颜色曲线：入射阶段白热(FFF5E0)→聚焦点橙黄(FFA040)→焦痕暗褐(3D2010)，移除当前青色/蓝色粒子",
+      "priority": "high"
      },
      {
       "type": "new_layer",
-      "detail": "添加热透镜扰动层：在命中点叠加一层轻微扭曲的屏幕后处理效果（或动态噪波粒子），模拟激光加热空气产生的折射畸变，范围约48px，持续时间0.5-1秒",
+      "detail": "新增焦痕静态层：在命中位置叠加一张半透明的焦黑烧蚀贴图，边缘呈熔融流淌的不规则形状，随时间缓慢扩散暗化",
+      "priority": "high"
+     },
+     {
+      "type": "new_layer",
+      "detail": "新增上升热火花层：从命中点发射3-6个垂直向上的小粒子，颜色橙红→暗红→消散，生命周期1.5-2秒，模拟热气流带动的火星上升",
+      "priority": "high"
+     },
+     {
+      "type": "new_layer",
+      "detail": "新增熔融火星层：命中瞬间喷射8-12个熔融态小颗粒，初始亮黄白，快速冷却为暗红/黑色，轨迹短促(约2-3帧)，体现表面能量沉积而非动能穿透",
       "priority": "med"
      },
      {
       "type": "param",
-      "detail": "调整光束末端光斑参数：在光束接触命中点的最后一帧追加一个半径约16px的白热光晕精灵，采用additive混合，生命周期1-2帧即快速衰减，形成'白热聚焦'视觉锚点",
-      "priority": "low"
+      "detail": "来弹光束末端添加聚焦光斑层：光束到达命中点时，在接触面叠加一个10-15px的圆形光斑，白热中心+橙黄光晕，停留0.1秒后渐变为焦痕",
+      "priority": "med"
      }
     ],
     "mode": null
@@ -166,34 +2387,46 @@
    "power_tier": 0,
    "spec": "命中=来弹光束+白热聚焦光斑+焦痕+上升热火花+熔融火星（表面能量沉积，区别于动能穿透）",
    "result": {
-    "realism_score": 5,
-    "verdict": "能量感方向正确但混入了动能武器特征，激光开火缺少光束本体且火花成分错误。",
-    "spec_match": "呈现了部分能量沉积的青蓝色辉光，但缺失激光束形态，且出现了不属于激光武器族的火药/金属火花元素。",
+    "realism_score": 4,
+    "verdict": "枪口火形态与'烧灼签名'定位严重不符，缺少光束传输层和热沉积特征，整体偏向动能枪械而非激光武器。",
+    "spec_match": "未呈现验收规格要求的光束传输和命中后白热聚焦效果，仅展示了模糊的喷溅状枪口爆光，与'烧灼签名'的激光特性不匹配。",
     "problems": [
-     "存在橙黄色/褐色火花粒子，这是化学推进/动能武器特征，激光武器开火不应产生此类火花",
-     "缺少从枪口向前射出的可见激光束层，无法辨识为激光武器开火",
-     "枪口焦点亮度不足，power_tier=0轻档也应有一个明确的白热核心热点",
-     "粒子飞散方向呈向后喷射状，激光开火的等离子体应更偏向径向扩散而非抛物线抛射"
+     "枪口火形态呈锯齿喷溅状，更接近动能步枪的燃气爆炸，而非激光武器的热辐射/等离子羽流特征",
+     "画面中完全缺失从枪口飞向目标的能量光束层，激光武器应有的传输轨迹为零",
+     "颜色偏冷青蓝白，缺乏激光烧灼应有的白热核心区及暖色外围辉光过渡",
+     "特效尺度偏小，64px参考框旁的光晕范围仅约30-40px，高功率激光开火的视觉体量明显不足",
+     "缺少枪口热扭曲/大气扰动效果，真实激光开火会在空气中产生折射热浪",
+     "画面同时展示了射击和命中两个状态但效果割裂——右侧目标处无任何光斑/焦痕反馈"
     ],
     "suggestions": [
      {
+      "type": "new_layer",
+      "detail": "在枪口与弹道方向上增加一条细长的光柱粒子层：中心使用白色圆形叠加贴图(alpha=0.9, radius=4px)，外层用径向渐变辉光贴图(alpha=0.3→0, radius=16px)，速度设为0.8倍弹道速度，持续时间0.12s，模拟激光传输中的空气辉光散射",
+      "priority": "high"
+     },
+     {
+      "type": "texture",
+      "detail": "替换枪口火的主发射贴图：将当前锯齿喷溅贴图替换为径向渐变软毛边圆形(中心白色→过渡区暖橙→外围淡蓝紫)，叠加一层高温等离子羽流贴图(半透明橙红色，带上升漂移动画)，模拟激光开火的热辐射特征",
+      "priority": "high"
+     },
+     {
       "type": "param",
-      "detail": "删除所有橙黄色/褐色系火花粒子，将剩余粒子的颜色过渡改为纯白→浅青蓝→透明，模拟高温等离子体衰减",
+      "detail": "增加枪口热扭曲层：在枪口位置叠加一个全屏宽高约64px的屏幕后处理扰动贴图，用正弦波纹贴图以2帧/秒速度循环播放，强度0.15，模拟热浪折射效果",
+      "priority": "med"
+     },
+     {
+      "type": "param",
+      "detail": "调整粒子温度配色曲线：将当前枪口火的color gradient从蓝白系改为白→亮黄→橙红→暗红的外暖内冷结构，core_temperature设为2.0(过曝白核)，outer_glow设为0.6橙红色晕圈",
       "priority": "high"
      },
      {
       "type": "new_layer",
-      "detail": "在枪口位置添加一条短命（0.05-0.1秒）的激光束精灵，使用径向渐变贴图（中心白热、边缘青蓝透明），长度覆盖约2-3格距离，alpha叠加模式",
-      "priority": "high"
-     },
-     {
-      "type": "param",
-      "detail": "在枪口焦点处增加一个独立的核心光点精灵，尺寸约16px，使用白色到淡蓝的径向发光贴图，lifetime 0.08秒，initial scale 0.6，acceleration设为轻微向外扩散（-y轴偏转+20px/s²）以区分于重力抛射",
+      "detail": "增加枪口后向喷流层：在枪口后方(-X方向)添加5-8个暖橙色长条形粒子，速度0.3→0.5，life=0.08s，scale 4×12px，模拟激光充能排气/反冲等离子尾迹",
       "priority": "med"
      },
      {
-      "type": "texture",
-      "detail": "补一张枪口辉光贴图：中心纯白硬边、外圈青蓝色软渐变、直径约48px，用于替代当前模糊的能量球贴图，使光效边界更清晰锐利",
+      "type": "param",
+      "detail": "扩大枪口火光晕尺度：将现有辉光粒子的maxScale从当前约32px提升至64px×48px椭圆(沿弹道方向拉长)，lifetime延长至0.18s，模拟高功率激光枪口的大范围热辐射光晕",
       "priority": "med"
      }
     ],
@@ -211,34 +2444,40 @@
    "power_tier": 0,
    "spec": "命中=来弹光束+白热聚焦光斑+焦痕+上升热火花+熔融火星（表面能量沉积，区别于动能穿透）",
    "result": {
-    "realism_score": 3,
-    "verdict": "完全未呈现激光特征，形态更接近分段式实体曳光弹而非光束。",
-    "spec_match": "激光族验收规格要求飞行弹体为连续光束形态，当前特效为一段段分离的矩形块，与'光束'定义严重不符。",
+    "realism_score": 4,
+    "verdict": "激光飞行弹体形态偏固体矩形块而非能量光束，缺少烧灼族应有的高亮发光感。",
+    "spec_match": "有基本弹道轨迹和色温方向，但未呈现激光族应有的高能光束形态与可见性。",
     "problems": [
-     "弹道由多个独立矩形分段组成，无连续感，不是激光应有的连续光束形态",
-     "颜色整体偏橙红饱和色，缺乏激光白热核心（中心应为接近白色的亮核）",
-     "光束无宽度渐变/辉光衰减，边缘生硬如像素块，无能量束的光晕扩散感",
-     "未见任何中心高亮细线或能量聚焦效果，激光束应有的'核心+辉光'双层结构缺失"
+     "弹体呈扁平分段矩形条带，视觉上是固体弹块而非凝聚光束，激光能量沉积感的'聚焦'特征缺失",
+     "中心亮度/辉光不足，白色核心条纹不够强烈，无法传达高能烧灼弹的视觉冲击",
+     "曳光线几乎不可见，激光弹飞行时应有明显的光晕扩散和周围空间微亮",
+     "拖尾形态是等宽矩形色带，没有锥形衰减或能量消散感，激光束飞行应有前亮后渐隐的能量释放轨迹",
+     "整体边缘过于硬切，缺乏光束应有的半透明叠加与空间融合感"
     ],
     "suggestions": [
      {
       "type": "param",
-      "detail": "将弹道粒子的'Spawn Count'改为单条长粒子或改用Trail Renderer组件，替代当前分段矩形粒子群；若用粒子系统，需将粒子长度拉长至覆盖全程，并开启'Extend Trail'实现连续感",
+      "detail": "弹体改为锥形渐变（前端宽亮→后端窄暗），alpha值从前到后0.9→0.3，形成立体推进的烧灼光束感",
       "priority": "high"
      },
      {
       "type": "texture",
-      "detail": "重新制作光束贴图：中心为极细白色/淡蓝白色核心（宽度约2-3px），外围包裹橙黄到橙红的渐晕光层，使用Additive混合模式，当前纯色矩形贴图需替换",
+      "detail": "弹体中心叠加一条高亮白色核心光带（硬度高、宽度约弹体1/4），模拟激光能量最集中的轴线",
       "priority": "high"
      },
      {
       "type": "new_layer",
-      "detail": "叠加一层细线状的高亮核心粒子（白色，Additive，低粒子数长寿命），沿光束路径居中显示，模拟激光能量聚集的中心轴",
+      "detail": "在弹体周围增加一层径向光晕（橙色→淡黄透明叠加），半径约弹体高度的3倍，表现激光对周围空气的热扰动照明",
+      "priority": "high"
+     },
+     {
+      "type": "param",
+      "detail": "曳光线：弹体后方追加1~2条细弱的光丝拖线，长度80~120px，颜色从橙白渐变为透明，模拟光束在空气中的残留热效应",
       "priority": "med"
      },
      {
       "type": "param",
-      "detail": "调整颜色曲线：核心粒子色调移向冷白/淡青白（#FFF8E1或更冷），辉光外层保持橙黄过渡，避免整体偏红的单调饱和色",
+      "detail": "弹体整体透明度调低（0.7~0.8），改用additive混合模式渲染，强化高亮区域的发光溢出感",
       "priority": "med"
      }
     ],
@@ -257,40 +2496,923 @@
    "spec": "命中=来弹光束+白热聚焦光斑+焦痕+上升热火花+熔融火星（表面能量沉积，区别于动能穿透）",
    "result": {
     "realism_score": 4,
-    "verdict": "特效呈现的是动能冲击/等离子爆炸风格，与激光烧灼武器的验收规格严重错位，缺少烧灼签名的核心视觉要素。",
-    "spec_match": "仅呈现了光斑和放射火花，但完全缺失来弹光束、焦痕和熔融火星，上升热火花以蓝色电浆形式呈现而非热灼烧方向。",
+    "verdict": "光斑形态误用为动能冲击风格，缺少烧灼签名武器核心特征层",
+    "spec_match": "仅呈现来弹光束与粗略聚焦光斑，缺失焦痕、上升热火花、熔融火星三层关键元素",
     "problems": [
-     "来弹光束几乎不可见，仅为极细淡线，缺乏激光束的高亮度和可见轨迹",
-     "命中点无焦痕效果，未见表面烧蚀/碳化/熔融凹陷的视觉反馈",
-     "熔融火星完全缺失，粒子以蓝色电浆放射为主，呈现的是动能冲击感而非表面能量沉积的烧灼感",
-     "上升热火花方向偏向外散射而非向上热气流升腾，颜色为蓝白色系而非橙红热色系",
-     "整体色彩语言错误：应以橙白热色为主调，现为蓝青电浆色",
-     "光束与命中特效之间缺少视觉连续性，看起来像两个独立事件而非同一激光贯穿命中"
+     "光斑呈星芒爆炸状向外散射，更像动能穿甲冲击而非激光烧灼的集中能量沉积形态",
+     "光斑色相偏青蓝，白热聚焦中心应有纯白高温核，边缘应过渡为橙红/黄色热辐射晕",
+     "命中点无任何焦痕贴图或粒子残留，烧灼签名武器必须有熔蚀凹陷或碳化痕迹",
+     "缺少上升热气流扭曲效果（热透镜畸变），高能量沉积会加热空气产生折射闪烁",
+     "无任何熔融金属飞溅粒子，表面能量沉积应产生向下滴落或向外抛射的高亮熔融颗粒"
     ],
     "suggestions": [
      {
       "type": "texture",
-      "detail": "为命中点增加焦痕贴图层：在目标单位表面叠加一层暗橙/黑色烧蚀纹理贴图，边缘带熔融流动感，随命中时长从中心向外扩散生长",
-      "priority": "high"
-     },
-     {
-      "type": "param",
-      "detail": "来弹光束参数调整：宽度增至3-5px，亮度+200%，颜色从当前淡橙色改为高亮白热芯+橙色外晕，叠加发光(bloom)效果，使其在背景中清晰可辨",
+      "detail": "替换命中光斑贴图：改用径向渐变圆斑而非星芒爆炸形，中心纯白(FFFEF5)→橙黄(FFB347)→暗红(8B2500)三层叠合，边缘羽化而非锯齿放射",
       "priority": "high"
      },
      {
       "type": "new_layer",
-      "detail": "新增熔融火星粒子层：替换当前蓝色外散粒子，改用橙红色小粒子，速度向上偏置(velocity_y负值)，life短(0.2-0.4s)，形状为液态熔滴状，模拟金属表面熔融飞溅",
+      "detail": "新增焦痕层：在命中点贴一张半透明暗红/炭黑径向污迹贴图，叠加在单位贴图之上，随命中时长缓慢扩散模拟熔蚀扩大",
       "priority": "high"
      },
      {
       "type": "param",
-      "detail": "热火花层重构：保留现有火花造型但全部改色为橙白热色渐变，speed和direction参数调整为偏向上方(fan angle向上30-45度)，模拟热气流升腾形态",
+      "detail": "新增上升热火花粒子系统：SpawnRate=15/s，Velocity Y=40~80px/s，Life=0.6s，Size=2~4px，Color=亮黄→橙→透明，Shader加径向扰动模拟热气流上升",
+      "priority": "high"
+     },
+     {
+      "type": "param",
+      "detail": "新增熔融火星层：SpawnRate=8/s，Velocity 360°随机但偏向下坠(Gravity=200px/s²)，Life=0.4~0.8s，Size=1~3px，Color=白热→亮橙→暗红，材质设为Additive混合模拟熔融金属高光",
+      "priority": "high"
+     },
+     {
+      "type": "new_layer",
+      "detail": "新增热透镜畸变层：在命中区域叠加一个0.15s持续的低频正弦波动全屏Shader偏移，模拟热空气折射造成的视觉扭曲",
+      "priority": "med"
+     }
+    ],
+    "mode": null
+   }
+  },
+  {
+   "family": 9,
+   "family_label": "导弹",
+   "file": "f09_player_muzzle.png",
+   "impact_class": "explosive",
+   "is_player": true,
+   "kind": "muzzle",
+   "muzzle_class": "heavy",
+   "power_tier": 1,
+   "spec": "大型导弹弹体+中弧弹道+专属命中贴图（按名查表，含通用爆炸兜底）",
+   "result": {
+    "realism_score": 4,
+    "verdict": "枪口火呈现为通用火焰爆炸而非导弹推进器喷射特征，形态与导弹武器族规格不符",
+    "spec_match": "未体现导弹'大型弹体'开火应有的推进器尾焰形态，效果更接近小口径枪械爆闪或通用爆炸",
+    "problems": [
+     "枪口火呈放射状爆炸形态，缺少导弹推进器应有的定向喷射尾焰特征",
+     "特效尺寸相对于64px单位框过大，缺乏推进剂喷射的拉长感",
+     "无导弹特有的烟迹/凝结尾气层次，只有单层火焰粒子",
+     "颜色过于均匀暖色调，缺少喷口高温白热核心区域"
+    ],
+    "suggestions": [
+     {
+      "type": "param",
+      "detail": "将枪口火粒子发射方向改为严格沿导弹发射轴向前（X轴正向），LifeTime缩短至0.15s，Speed提升至800-1200px/s，LengthMultiplier设为3-5倍",
+      "priority": "high"
+     },
+     {
+      "type": "texture",
+      "detail": "替换火焰贴图：新增'喷口核心'白色高亮圆形贴图叠加在中心，尾焰层改用细长锥形纹理替代现有放射状星形，增加2-3个透明度渐变的烟雾拖尾贴图",
+      "priority": "high"
+     },
+     {
+      "type": "new_layer",
+      "detail": "添加独立'热扰动'层：在喷口前方30-60px处叠加1-2帧模糊扭曲遮罩，模拟高温燃气对空气的折射效果",
+      "priority": "med"
+     }
+    ],
+    "mode": null
+   }
+  },
+  {
+   "family": 9,
+   "family_label": "导弹",
+   "file": "f09_player_trajectory.png",
+   "impact_class": "explosive",
+   "is_player": true,
+   "kind": "trajectory",
+   "muzzle_class": "heavy",
+   "power_tier": 1,
+   "spec": "大型导弹弹体+中弧弹道+专属命中贴图（按名查表，含通用爆炸兜底）",
+   "result": {
+    "realism_score": 4,
+    "verdict": "弹体形态勉强可辨，但拖尾过于简化且弹道弧线缺乏视觉呈现，整体飞行感不足。",
+    "spec_match": "基本呈现了导弹弹体和少量烟雾效果，但中弧弹道未可视化体现，大型导弹的体量感也不足。",
+    "problems": [
+     "弹道弧线不可见：从左侧单位飞向右侧区域的轨迹呈近乎直线排列，未能体现规格要求的'中弧弹道'特征，观众无法判断这是直冲还是曲射。",
+     "拖尾特效过于简陋：仅有4-5个离散的棕色球形粒子，缺乏连续烟迹、尾焰和速度感，无法传达导弹推进中的视觉张力。",
+     "弹体体量偏小：参照64px单位框，导弹弹体显得过于细长单薄，与'大型导弹'的定位不符，缺乏应有的重量感和体积感。",
+     "弹体可见性弱：弹体颜色（黄绿色）与背景对比度不够，且缺乏轮廓强化，飞行中容易被忽略。",
+     "曳光/尾焰缺失：无任何火焰喷射或高温尾迹表现，导弹仿佛无声滑行，缺少推进器工作的物理暗示。"
+    ],
+    "suggestions": [
+     {
+      "type": "param",
+      "detail": "在弹道粒子系统增加垂直方向的速度偏移曲线：起飞阶段向上初始速度逐渐衰减为负值，在弹道中点附近达到最大高度偏差，形成肉眼可见的抛物线轨迹弧度（建议峰值偏移量约为水平飞行距离的15%-20%）。",
+      "priority": "high"
+     },
+     {
+      "type": "texture",
+      "detail": "重制拖尾贴图：用横向拉伸的烟雾纹理替换当前球形粒子，增加2-3层不同透明度的烟迹叠加（核心高温白黄→中层橙红→外层灰褐），并使用alpha fade-out从头部到尾部的渐变以模拟推进消耗。",
+      "priority": "high"
+     },
+     {
+      "type": "param",
+      "detail": "弹体缩放：将导弹弹体模型/贴图的长宽比调整为更粗壮的比例（长约80-100px，直径约12-16px），并在弹头、弹身中段和尾翼处增加体积层次，使其在64px参考框旁明显大于当前纤细造型。",
+      "priority": "med"
+     },
+     {
+      "type": "new_layer",
+      "detail": "新增尾焰层：在导弹尾部添加一个动态燃烧粒子系统，包含橙色核心火焰（短生命周期高亮度）和外围红色/黄色扩展火焰，帧率与导弹速度同步变化（高速时拉长相位，低速时收束），增强推进中的视觉说服力。",
       "priority": "med"
      },
      {
       "type": "param",
-      "detail": "命中光斑分层：中心核心改为纯白(最高温度)，外圈过渡为橙黄，最外层淡橙晕，制造真实激光聚焦的白热效果，当前光斑过于均匀蓝白色",
+      "detail": "弹体边缘增强：为导弹贴图添加描边或rim lighting效果（可用简单的外发光遮罩），色调建议为深灰/金属质感，使其在任何背景下都有清晰的剪影辨识度，尤其改善当前黄绿色与暗背景的融合问题。",
+      "priority": "low"
+     }
+    ],
+    "mode": null
+   }
+  },
+  {
+   "family": 9,
+   "family_label": "导弹",
+   "file": "f09_player_impact.png",
+   "impact_class": "explosive",
+   "is_player": true,
+   "kind": "impact",
+   "muzzle_class": "heavy",
+   "power_tier": 1,
+   "spec": "大型导弹弹体+中弧弹道+专属命中贴图（按名查表，含通用爆炸兜底）",
+   "result": {
+    "realism_score": 5,
+    "verdict": "基本可用的通用爆炸效果，但缺乏导弹命中的方向性和规模感，像是中等威力的通用爆炸而非大型导弹专属命中特效。",
+    "spec_match": "特效呈现了爆炸形态，但视觉上偏球形居中扩散，未体现大型导弹（visual_wt=9）命中时应有的弹道方向性和弹体规模感，疑似使用了通用爆炸兜底贴图而非专属命中贴图。",
+    "problems": [
+     "碎片抛射无弹道方向性：导弹从左侧飞来命中，红色碎片应主要沿飞行方向（向右）偏置扩散，而非均匀球形对称",
+     "爆炸规模偏小：visual_wt=9的大型导弹命中，爆炸直径仅约1个参考单位（64px），明显偏小，应达到2-3倍单位宽度",
+     "缺少弹体残骸/破片：大型导弹含战斗部，命中后应出现弹体金属破片、尾翼残骸等硬质碎片，当前只有软性火焰粒子",
+     "核心热区不够强烈：缺少持续1-2帧的高亮闪光内核（flash frame），爆炸刚形成时应有短暂过曝白光",
+     "底部烟雾太薄：爆炸底部应有多层烟尘堆叠，当前仅一层灰色模糊纹理，缺少体积感"
+    ],
+    "suggestions": [
+     {
+      "type": "param",
+      "detail": "碎片粒子发射角度改为锥形定向发射：初始速度分布限制在±60°扇形内，方向对准弹道入射角（向右），数量占比提升至总碎片60%",
+      "priority": "high"
+     },
+     {
+      "type": "param",
+      "detail": "扩大爆炸主粒子初始半径至120-160px（约2-2.5倍参考单位），并增加2-3个延迟触发的次级膨胀环粒子，模拟战斗部冲击波扩散",
+      "priority": "high"
+     },
+     {
+      "type": "texture",
+      "detail": "替换爆炸内核贴图为带十字/星芒光晕的高能闪光版本，首帧叠加纯白矩形闪烁0.05秒（flash frame）增强威力感知",
+      "priority": "high"
+     },
+     {
+      "type": "new_layer",
+      "detail": "新增弹体破片层：命中瞬间 Spawn 4-6 块小型不规则硬碎片（灰色/黑色金属质感贴图），初始速度高、生命周期短（0.3-0.5s），沿弹道方向高速飞出并快速衰减",
+      "priority": "med"
+     },
+     {
+      "type": "param",
+      "detail": "底部烟尘粒子分3层叠加：底层大尺寸慢速灰烟（生命周期1.5s+）+中层中速棕烟+顶层快速白烟，每层独立贴图，增强爆炸体积纵深感",
+      "priority": "med"
+     }
+    ],
+    "mode": null
+   }
+  },
+  {
+   "family": 9,
+   "family_label": "导弹",
+   "file": "f09_enemy_muzzle.png",
+   "impact_class": "explosive",
+   "is_player": false,
+   "kind": "muzzle",
+   "muzzle_class": "heavy",
+   "power_tier": 1,
+   "spec": "大型导弹弹体+中弧弹道+专属命中贴图（按名查表，含通用爆炸兜底）",
+   "result": {
+    "realism_score": 4,
+    "verdict": "枪口火缺乏方向性与物理形态，误用通用爆炸特效替代导弹发射特征",
+    "spec_match": "未呈现导弹开火应有的后向锥形尾焰结构，视觉表现为对称星芒爆发，偏离武器族形态规范",
+    "problems": [
+     "枪口火呈放射状星芒而非高速喷射的锥形尾流，无方向性暗示",
+     "颜色层次过少，缺少高温白核心-橙色过渡-烟灰边缘的真实热辐射梯度",
+     "缺乏推进剂冷凝云/废气体积层，与导弹类武器的质量感脱节",
+     "光晕扩散均匀无拉伸，未模拟喷射粒子的高速方向性拖尾"
+    ],
+    "suggestions": [
+     {
+      "type": "param",
+      "detail": "将粒子发射器旋转至与导弹飞行方向相反（约180度偏移），添加速度场矢量[0,-800,0]实现后向喷射形态",
+      "priority": "high"
+     },
+     {
+      "type": "texture",
+      "detail": "替换核心粒子贴图：使用径向渐变硬边圆形（白→橙→暗红三层同心环），边缘添加噪波撕裂贴图增强高温火焰不规则感",
+      "priority": "high"
+     },
+     {
+      "type": "new_layer",
+      "detail": "新增烟雾粒子层：使用深灰蓝色半透明圆形贴图，初始尺寸设为枪口直径的2倍，生命周期0.8秒内膨胀至4倍并透明度降至30%，模拟推进剂冷凝云",
+      "priority": "med"
+     },
+     {
+      "type": "param",
+      "detail": "启用粒子的速度驱动缩放（Velocity-Driven Scale），让沿喷射方向的粒子被拉长为椭圆（长宽比3:1），增强高速流动视觉",
+      "priority": "med"
+     }
+    ],
+    "mode": null
+   }
+  },
+  {
+   "family": 9,
+   "family_label": "导弹",
+   "file": "f09_enemy_trajectory.png",
+   "impact_class": "explosive",
+   "is_player": false,
+   "kind": "trajectory",
+   "muzzle_class": "heavy",
+   "power_tier": 1,
+   "spec": "大型导弹弹体+中弧弹道+专属命中贴图（按名查表，含通用爆炸兜底）",
+   "result": {
+    "realism_score": 3,
+    "verdict": "弹道直线且无弧线，曳光粒子呈静止圆形而非运动拖曳形态，不符合中弧弹道导弹族的飞行视觉规范。",
+    "spec_match": "验收规格要求'大型导弹弹体+中弧弹道'，当前弹道为完全直线、弹体偏小、无连续烟雾轨迹，未达成中弧弹道要求。",
+    "problems": [
+     "弹道完全水平直线，无任何弧线仰角，'中弧弹道'规格未体现",
+     "曳光/爆炸 puff 粒子为静止均匀圆形，缺乏高速运动时的拉伸形变和速度模糊拖影",
+     "两枚弹体 sprite 偏小（目测约30-40px），与visual_wt=9（大型导弹）不符，应更长更粗壮",
+     "弹体之间无连续烟雾拖尾线，仅有离散孤立的圆形 puff，缺乏推进器尾焰连续性",
+     "红色 puff 大小过于均一，缺少由近及远或速度衰减的大小/透明度渐变",
+     "弹体 sprite 无尾翼/进气口细节刻画，视觉上接近简化火柴棍造型"
+    ],
+    "suggestions": [
+     {
+      "type": "param",
+      "detail": "将弹道轨迹从起点到终点添加 30-50px 的抛物线偏移，使飞行路径呈现可见的弧形上升再下降，对应'中弧弹道'视觉特征",
+      "priority": "high"
+     },
+     {
+      "type": "param",
+      "detail": "曳光 puff 粒子改为沿速度方向拉伸（如 scale Y 压缩至 0.3，scale X 延伸至 2.0），并叠加 motion blur shader 或逐帧位移残影，模拟高速直线运动拖尾",
+      "priority": "high"
+     },
+     {
+      "type": "texture",
+      "detail": "更换弹体 sprite：增加翼展长度（全长建议≥80px），添加尾翼十字形结构和锥形弹头，贴图为侧视完整导弹剪影而非简单细长条",
+      "priority": "high"
+     },
+     {
+      "type": "new_layer",
+      "detail": "在弹体后方添加烟雾拖尾 layer：使用半透明灰色噪点贴图，以 10-15ms 间隔重生，尺寸从弹尾处 8px 渐增至尾部 30px，Alpha 从 0.6 衰减至 0，形成连续喷烟轨迹",
+      "priority": "med"
+     },
+     {
+      "type": "param",
+      "detail": "puff 粒子改用椭圆/泪滴形贴图（前端尖后端宽），并按距离发射点越远则越小越淡的顺序排列，打破当前完全均匀的圆形布局",
+      "priority": "med"
+     }
+    ],
+    "mode": null
+   }
+  },
+  {
+   "family": 9,
+   "family_label": "导弹",
+   "file": "f09_enemy_impact.png",
+   "impact_class": "explosive",
+   "is_player": false,
+   "kind": "impact",
+   "muzzle_class": "heavy",
+   "power_tier": 1,
+   "spec": "大型导弹弹体+中弧弹道+专属命中贴图（按名查表，含通用爆炸兜底）",
+   "result": {
+    "realism_score": 4,
+    "verdict": "基础爆炸形态尚可，但缺乏层次感、破片和烟雾表现，视觉效果偏薄偏软。",
+    "spec_match": "命中贴图可见，但核心爆炸过于规则圆形，碎片数量与导弹体型不匹配，缺少大型导弹命中应有的烟尘与冲击波层次。",
+    "problems": [
+     "核心白光团过于规则圆润，像气球光晕而非金属结构炸裂",
+     "碎片仅有约15个均匀散落的橙色点，无大小变化、无轨迹拉伸，像是静态贴图而非高速破片",
+     "完全没有烟层：没有上升的烟柱、没有向四周扩散的浓烟云团、没有底部扬尘",
+     "缺少冲击波环/热浪扭曲层，大型导弹命中应有明显的环形膨胀光层",
+     "中心黄色轮廓线突兀，像是描边而非热量辐射，与整体爆炸逻辑冲突"
+    ],
+    "suggestions": [
+     {
+      "type": "param",
+      "detail": "核心光球改用噪声遮罩贴图（perlin noise或fractal brownian motion生成的不规则边缘），初始尺寸设为128-144px（约2-2.5个参考框宽），寿命0.15s内快速膨胀到1.5倍再骤缩，模拟高温火球爆发感",
+      "priority": "high"
+     },
+     {
+      "type": "texture",
+      "detail": "替换碎片贴图为长条形羽状碎片贴图（aspect ratio约3:1或4:1），分3个尺寸档（小/中/大），共发射80-120片，大碎片集中在弹体轴线两侧45度扇形区域（破片效应），中碎随机散布，小碎作为远景散射",
+      "priority": "high"
+     },
+     {
+      "type": "new_layer",
+      "detail": "新增烟层：在命中瞬间生成8-12个大尺寸半透明灰黑色烟球贴图（billboard sprite），初始尺寸为64-96px，向上漂移速度2-4px/frame，膨胀率0.5%/frame，寿命1.5-2s；同时在底部生成扁平扬尘层（宽椭圆，贴近地面Y轴），寿命1s",
+      "priority": "high"
+     },
+     {
+      "type": "new_layer",
+      "detail": "新增冲击波环层：在0-0.08s窗口内生成1-2个淡蓝色/淡橙色环形贴图（ring/torus shape），初始半径8px，膨胀速度40-60px/frame，alpha从0.6快速衰减到0，模拟高压冲击波向外扩散",
+      "priority": "med"
+     },
+     {
+      "type": "param",
+      "detail": "移除中心黄色描边轮廓，替换为热量辐射层：在命中0-0.1s内叠加一个径向渐变光晕（中心白色→边缘橙黄→极外侧淡蓝），尺寸160-200px，alpha起始0.8后快速衰减到0，模拟核爆/高爆弹的热辐射闪光",
+      "priority": "med"
+     },
+     {
+      "type": "texture",
+      "detail": "为碎片添加运动模糊拖尾贴图（motion trail），方向沿各自速度矢量，长度根据碎片速度动态调整（高速碎片拖尾长，低速短），用additive混合模式叠加在碎片层下方",
+      "priority": "low"
+     }
+    ],
+    "mode": null
+   }
+  },
+  {
+   "family": 10,
+   "family_label": "欧米茄粒子炮（径向放电签名）",
+   "file": "f10_player_muzzle.png",
+   "impact_class": "discharge",
+   "is_player": true,
+   "kind": "muzzle",
+   "muzzle_class": "energy",
+   "power_tier": 2,
+   "spec": "命中=来弹粒子流+大能量核+7条星芒射线+外向电火花+持续辉光环（四面八方炸开）",
+   "result": {
+    "realism_score": 3,
+    "verdict": "枪口火仅有基础白色亮斑+少量星芒状边缘，未呈现欧米茄粒子炮径向放电签名应有的多层次能量形态，且完全缺失验收规格要求的命中特效结构。",
+    "spec_match": "未达标——枪口火阶段仅需体现开火瞬间的能量释放特征，但当前特效仅呈现单片白亮爆裂，未见径向放电签名应有的核心亮度衰减梯度、电火花层次及辉光残留。",
+    "problems": [
+     "枪口火中心过曝为纯白矩形块，无核-晕-边缘的亮度分层，无法区分能量密度分布",
+     "星芒射线仅3~4条且分布不均（集中在底部和右下），不满足7条规范星芒射线的对称发散特征",
+     "完全缺失外向电火花层，放电特征无从体现",
+     "无持续辉光环（后燃余晖），能量释放瞬间消失不符合重功率级武器的热惯性视觉逻辑",
+     "整体色相偏冷蓝白，但未叠加少量暖色核心（如黄白过渡区），径向放电应呈现核心极高亮+外围冷光晕的结构",
+     "枪口位置与单位框重叠严重，缺乏从炮口前端向外喷射的方向性引导，看起来像原地爆炸而非定向释放"
+    ],
+    "suggestions": [
+     {
+      "type": "texture",
+      "detail": "替换枪口火中心贴图：改用径向渐变圆形核（黄白RGB[1.0,0.95,0.8]）+ 蓝色光晕环（RGB[0.4,0.7,1.0]，半径约40px）双层叠加，替代当前纯白方块。",
+      "priority": "high"
+     },
+     {
+      "type": "param",
+      "detail": "在现有粒子系统中新增'电火花层'子发射器，朝向炮口法线方向±60°扇形喷出，数量设为12~16个，lifetime=0.15s，初始速度300~600px/s，使用细长闪电形贴图（如16x64px白色细条，alpha衰减从1到0）。",
+      "priority": "high"
+     },
+     {
+      "type": "param",
+      "detail": "调整现有星芒射线的旋转分布：将射线片（sprite）设置为7张不同角度排列，每张旋转角度为0/51.4/102.9/154.3/205.7/257.1/308.6度（360/7均分），确保径向对称发散，当前明显缺失顶部和左侧的射线。",
+      "priority": "high"
+     },
+     {
+      "type": "new_layer",
+      "detail": "新增'持续辉光环'层：枪口火触发后立即生成一个从炮口中心向外扩张的淡蓝色圆形光晕（initial_radius=8px, final_radius=80px, lifetime=0.6s），使用soft additive混合模式，模拟重功率能量武器开火后的热辐射残留。",
+      "priority": "med"
+     },
+     {
+      "type": "param",
+      "detail": "修正枪口火整体朝向：当前特效以我方单位为中心向四周扩散，应改为从炮口前端（单位右侧约10px处）向右水平喷射，设置主粒子运动方向为(1, 0)并加入±15°随机角度扰动，体现定向能量束的喷射感。",
+      "priority": "med"
+     },
+     {
+      "type": "param",
+      "detail": "为枪口火核心添加'过曝溢出层'：在中心最亮点（坐标约单位框右侧边缘）叠加一个快速衰减的白色光斑（lifetime=0.08s, scale从2.0降到0），模拟CCD/相机传感器对高亮度能量的饱和溢出效果。",
+      "priority": "low"
+     }
+    ],
+    "mode": null
+   }
+  },
+  {
+   "family": 10,
+   "family_label": "欧米茄粒子炮（径向放电签名）",
+   "file": "f10_player_trajectory.png",
+   "impact_class": "discharge",
+   "is_player": true,
+   "kind": "trajectory",
+   "muzzle_class": "energy",
+   "power_tier": 2,
+   "spec": "命中=来弹粒子流+大能量核+7条星芒射线+外向电火花+持续辉光环（四面八方炸开）",
+   "result": {
+    "realism_score": 4,
+    "verdict": "弹体存在感过弱，拖尾和曳光几乎缺失，径向放电签名仅表现为环绕装饰而非弹道本身的核心特征。",
+    "spec_match": "飞行中弹未体现'来弹粒子流'概念，弹体过于细小，缺乏重型武器的质量感与高速粒子流的视觉张力。",
+    "problems": [
+     "弹体仅占参考框约1/4宽度，作为power_tier=2重型武器缺乏视觉分量",
+     "无可见曳光轨迹，弹道飞行路径不可辨识",
+     "拖尾效果几近为零，仅有极淡的发光残影",
+     "蓝色放电纹样是环绕弹体的静态装饰，而非沿飞行方向拉伸的高速粒子流签名",
+     "弹体颜色偏白/淡黄，与武器族的'径向放电'青蓝签名脱节"
+    ],
+    "suggestions": [
+     {
+      "type": "texture",
+      "detail": "替换弹体贴图：使用径向渐变圆形贴图，中心白色高亮核+外围青蓝色晕染，直径提升至约16-20px（参考框1/3宽度），增强重型弹体存在感",
+      "priority": "high"
+     },
+     {
+      "type": "param",
+      "detail": "添加曳光粒子层：在弹体后方沿飞行轨迹生成连续细线粒子，长度约80-120px，使用Cyan(#00FFFF)至深蓝渐变，粒子大小0.5-1px，life=0.3s，rate=30/sec",
+      "priority": "high"
+     },
+     {
+      "type": "param",
+      "detail": "增强拖尾效果：弹体后生成羽流状粒子簇，宽度30-50px，使用半透明青蓝粒子，scale从1.5递减到0.2，life=0.5s，rate=50/sec，使高速感可视化",
+      "priority": "high"
+     },
+     {
+      "type": "new_layer",
+      "detail": "添加'来弹粒子流'层：在弹体前方20-40px范围生成汇聚式粒子束，模拟弹头压缩前方空气/能量场的视觉效果，使用白色核心+青色外缘的细粒流线，数量约15-20个/帧",
+      "priority": "med"
+     },
+     {
+      "type": "param",
+      "detail": "调整放电纹样参数：将当前环绕装饰改为沿飞行方向的拉伸放电纹，用噪波+方向扭曲模拟等离子尾迹，使径向放电签名真正融入弹体动态而非静态装饰",
+      "priority": "med"
+     }
+    ],
+    "mode": null
+   }
+  },
+  {
+   "family": 10,
+   "family_label": "欧米茄粒子炮（径向放电签名）",
+   "file": "f10_player_impact.png",
+   "impact_class": "discharge",
+   "is_player": true,
+   "kind": "impact",
+   "muzzle_class": "energy",
+   "power_tier": 2,
+   "spec": "命中=来弹粒子流+大能量核+7条星芒射线+外向电火花+持续辉光环（四面八方炸开）",
+   "result": {
+    "realism_score": 5,
+    "verdict": "主爆炸形态符合径向放电的视觉方向，但验收规格中5项要求仅呈现了3项，缺少来弹流与外放电火花的层次。",
+    "spec_match": "大能量核与星芒射线可见，但来弹粒子流、外向电火花、持续辉光环三项缺失或未区分。",
+    "problems": [
+     "无来弹粒子流：弹道格显示弹从左侧飞向右侧，但命中特效中心无任何残留粒子轨迹或冲入动态，应有一个短尾迹粒子组模拟弹体动能注入效果。",
+     "无7条独立星芒射线分层：当前星芒呈均匀放射状，视觉上像单一贴图爆炸，缺少7条宽度/亮度各异、独立运动的外排射线层（建议用7条带alpha fade的Ray Burst粒子，每条角度偏移±5°并给不同速度）。",
+     "无外向电火花：径向放电签名必须在外围有电弧跳向四面八方的细节火花，目前边缘只有光晕没有独立电弧粒子。",
+     "无持续辉光环：规格要求四面八方炸开的持续光环，当前只有径向爆发无环状残留，需加一个expand radius 0→80px的ring粒子层，lifetime延长至0.4s以上。"
+    ],
+    "suggestions": [
+     {
+      "type": "new_layer",
+      "detail": "添加IncomingTrail粒子层：在命中点叠加5-8个短尾迹粒子，方向来自左侧弹道轨迹，lifetime 0.1-0.15s，size 4-6px，opacity从高到低fade，模拟弹体动能注入瞬间的粒子残留。",
+      "priority": "high"
+     },
+     {
+      "type": "param",
+      "detail": "将星芒射线拆分为7条独立Ray Burst粒子，角度均匀分布（每51.4°一条），给每条射线不同的起始角度偏移（±3°随机）和独立speed（300-500px/s），同时给alpha curve添加中间峰值让射线先亮后暗形成'刺出'感。",
+      "priority": "high"
+     },
+     {
+      "type": "new_layer",
+      "detail": "添加SparkArc粒子层：在爆炸半径40-70px区间内spawn 12-16个电弧火花，使用z型折线贴图，lifetime 0.2s，velocity向外随机且带轻微加速度（gravity=-200），颜色从亮白渐变为青蓝。",
+      "priority": "high"
+     },
+     {
+      "type": "new_layer",
+      "detail": "添加GlowRing粒子层：center expand ring，起始radius 0px，目标radius 90px，lifetime 0.35-0.5s，width 8-12px，使用径向gradient贴图（中心透明边缘亮），blend mode additive，实现'四面八方炸开'的环状持续辉光。",
+      "priority": "med"
+     }
+    ],
+    "mode": null
+   }
+  },
+  {
+   "family": 10,
+   "family_label": "欧米茄粒子炮（径向放电签名）",
+   "file": "f10_enemy_muzzle.png",
+   "impact_class": "discharge",
+   "is_player": false,
+   "kind": "muzzle",
+   "muzzle_class": "energy",
+   "power_tier": 2,
+   "spec": "命中=来弹粒子流+大能量核+7条星芒射线+外向电火花+持续辉光环（四面八方炸开）",
+   "result": {
+    "realism_score": 2,
+    "verdict": "特效形态严重错误，呈现为爆炸云团而非从枪口向前喷射的枪口火焰。",
+    "spec_match": "完全不符：缺乏定向拉伸形态、无来弹粒子流、无清晰星芒射线、无电火花、无辉光环。",
+    "problems": [
+     "特效呈圆形爆炸状而非沿射击方向的喷射状，违背'枪口火'定义",
+     "缺失'来弹粒子流'，未见从枪口向外延伸的高能粒子轨迹",
+     "中心亮度均匀扩散，缺少致密高亮的大能量核",
+     "边缘锯齿状高光非7条明确星芒射线，缺乏结构感",
+     "无外向飞溅的电火花粒子层",
+     "枪口后方缺失持续辉光环"
+    ],
+    "suggestions": [
+     {
+      "type": "param",
+      "detail": "将主发射器改为沿射击方向（右向）的锥形/管状喷射，延长特效在X轴上的拉伸比例至约3-4倍宽度",
+      "priority": "high"
+     },
+     {
+      "type": "new_layer",
+      "detail": "添加'来弹粒子流'层：使用细长的发光条带粒子（宽度2-4px），沿弹道方向高速运动，叠加在枪口前方",
+      "priority": "high"
+     },
+     {
+      "type": "texture",
+      "detail": "制作'7条星芒射线'贴图：中心亮白核心+7条放射状长条形辉光纹理，作为特效主图层叠加在粒子流之上",
+      "priority": "high"
+     },
+     {
+      "type": "param",
+      "detail": "在枪口正前方32-48px处添加'大能量核'：高密度点光源粒子，初始尺寸大但快速收缩，颜色#FFFFFF渐变为#00FFFF",
+      "priority": "high"
+     },
+     {
+      "type": "new_layer",
+      "detail": "添加'外向电火花'层：使用闪电状贴图的独立火花粒子，从枪口位置向四周（特别是前方和侧方）随机飞溅，寿命0.1-0.2s",
+      "priority": "med"
+     },
+     {
+      "type": "new_layer",
+      "detail": "添加'持续辉光环'层：枪口后方放置一个半透明的发光圆环，半径约24px，颜色与枪口火一致，在开火瞬间出现并缓慢消散",
+      "priority": "med"
+     }
+    ],
+    "mode": null
+   }
+  },
+  {
+   "family": 10,
+   "family_label": "欧米茄粒子炮（径向放电签名）",
+   "file": "f10_enemy_trajectory.png",
+   "impact_class": "discharge",
+   "is_player": false,
+   "kind": "trajectory",
+   "muzzle_class": "energy",
+   "power_tier": 2,
+   "spec": "命中=来弹粒子流+大能量核+7条星芒射线+外向电火花+持续辉光环（四面八方炸开）",
+   "result": {
+    "realism_score": 5,
+    "verdict": "放电感存在但弹体缺失、拖尾零散，不像一个完整的弹道飞行特效",
+    "spec_match": "仅有放电粒子的碎片感，缺少弹体明确形状与连贯拖尾，未体现粒子炮应有的弹道形态",
+    "problems": [
+     "弹体几乎不可见——没有清晰的弹头或弹丸轮廓，只有几团离散的电弧火花",
+     "拖尾严重不足——没有连贯的轨迹线或渐隐的尾迹，像是原地放电而非高速飞行",
+     "速度感弱——粒子分布过于均匀且无方向性拖拽变形，缺乏高速运动的动态模糊或拉伸",
+     "缺乏束状结构——作为粒子炮应有一定光束或粒子流的聚集感，目前过于松散"
+    ],
+    "suggestions": [
+     {
+      "type": "param",
+      "detail": "弹体核心层：增加一个高亮弹头粒子，使用径向渐变白色到橙黄圆形贴图，沿飞行方向做3-4倍拉伸（aspect ratio 3:1），尺寸约16px长×5px宽，作为视觉锚点",
+      "priority": "high"
+     },
+     {
+      "type": "param",
+      "detail": "拖尾系统：新增一条拖尾粒子轨道，使用衰减条纹贴图（前端亮后端透明），沿弹道路径每帧生成，lifetime设为弹道飞行时间的60%，size从8px衰减到0，opacity从0.9衰减到0",
+      "priority": "high"
+     },
+     {
+      "type": "texture",
+      "detail": "曳光粒子改用拉长火焰形贴图而非圆形火花，长宽比建议4:1，方向始终对齐速度向量，颜色从弹头橙黄渐变到尾部暗红",
+      "priority": "med"
+     },
+     {
+      "type": "param",
+      "detail": "放电支线粒子增加速度继承——每个支线火花有10-15%的初始速度沿主弹道方向，lifetime 0.1-0.2s，size 4-8px，让放电看起来是被弹体带动而非原地炸裂",
+      "priority": "med"
+     }
+    ],
+    "mode": null
+   }
+  },
+  {
+   "family": 10,
+   "family_label": "欧米茄粒子炮（径向放电签名）",
+   "file": "f10_enemy_impact.png",
+   "impact_class": "discharge",
+   "is_player": false,
+   "kind": "impact",
+   "muzzle_class": "energy",
+   "power_tier": 2,
+   "spec": "命中=来弹粒子流+大能量核+7条星芒射线+外向电火花+持续辉光环（四面八方炸开）",
+   "result": {
+    "realism_score": 4,
+    "verdict": "命中爆炸基础轮廓正确，但缺失武器族最关键的电浆放电语言特征，整体偏通用火焰爆炸而非粒子炮径向放电。",
+    "problems": [],
+    "suggestions": [],
+    "mode": "json_partial_fallback"
+   }
+  },
+  {
+   "family": 11,
+   "family_label": "磁轨炮（动能穿透签名）",
+   "file": "f11_player_muzzle.png",
+   "impact_class": "pierce",
+   "is_player": true,
+   "kind": "muzzle",
+   "muzzle_class": "energy",
+   "power_tier": 2,
+   "spec": "命中=入口过曝白闪+白热穿透光迹贯穿目标+出口spall碎片锥+回溅火花+速度线（超高初速动能穿甲，非激光）",
+   "result": {
+    "realism_score": 4,
+    "verdict": "枪口火形态严重偏离动能武器特征，呈现出高亮等离子喷发而非电磁加速产生的瞬时冲击效果。",
+    "spec_match": "未体现磁轨炮应有的高能电弧、压缩气体瞬发和超音速激波特征，反而呈现类等离子/能量武器的尖刺爆发形态。",
+    "problems": [
+     "枪口火整体呈放射性尖刺爆发状，视觉语言接近激光/等离子武器，而非磁轨炮应有的短促、线性、横向拉伸的冲击效果",
+     "白色过曝区域过大且过于规则，缺少真实枪口火的不规则湍流边缘和渐隐尾迹",
+     "缺少超音速弹丸应有的锥形激波云（shock cone）和后方稀疏电离尾迹",
+     "枪口特效没有表现出磁轨炮特有的蓝紫色电弧飞溅和强方向性（沿轨道轴线向前喷射而非四面八方扩散）",
+     "开火特效中没有体现power_tier=2应有的规模压制感，视觉上偏弱且缺乏层次感"
+    ],
+    "suggestions": [
+     {
+      "type": "param",
+      "detail": "将枪口火发射器的emit shape改为水平锥形（0-30°左右夹角），强制火焰向前喷射方向，消除径向对称感",
+      "priority": "high"
+     },
+     {
+      "type": "new_layer",
+      "detail": "在枪口火主粒子层上方叠加一层快速衰减的蓝紫色电弧残影粒子，使用低分辨率噪点贴图，life=0.1s，模拟电磁轨道放电的瞬时arc",
+      "priority": "high"
+     },
+     {
+      "type": "texture",
+      "detail": "替换当前枪口火sprite为横向拉伸的湍流边缘贴图（参考火箭发动机喷流或高压气体释放实拍），而非当前星爆/尖刺形状",
+      "priority": "high"
+     },
+     {
+      "type": "param",
+      "detail": "核心白色过曝区域限制为枪口前方1-2个64px单位框的宽度，使用additive混合+center glow贴图，而非当前全屏式爆发",
+      "priority": "med"
+     },
+     {
+      "type": "new_layer",
+      "detail": "添加弹丸射出后的超音速激波环：一个从枪口快速向前推进的淡蓝色锥形/半透明圆环粒子，size从大渐小到消失，模拟muzzle shockwave",
+      "priority": "med"
+     },
+     {
+      "type": "param",
+      "detail": "主枪口火粒子scale随时间快速衰减（initial scale 1.0 → final 0.2 in 0.15s），制造'一现即散'的瞬态冲击感，而非当前持续膨胀的形态",
+      "priority": "med"
+     }
+    ],
+    "mode": null
+   }
+  },
+  {
+   "family": 11,
+   "family_label": "磁轨炮（动能穿透签名）",
+   "file": "f11_player_trajectory.png",
+   "impact_class": "pierce",
+   "is_player": true,
+   "kind": "trajectory",
+   "muzzle_class": "energy",
+   "power_tier": 2,
+   "spec": "命中=入口过曝白闪+白热穿透光迹贯穿目标+出口spall碎片锥+回溅火花+速度线（超高初速动能穿甲，非激光）",
+   "result": {
+    "realism_score": 4,
+    "verdict": "弹体几乎不可见，拖尾和速度感严重不足，缺乏磁轨炮应有的高初速动能视觉冲击。",
+    "spec_match": "弹道为直线符合预期，但弹体visibility过低、曳光/拖尾层次缺失，未呈现磁轨炮弹丸应有的锐利速度感。",
+    "problems": [
+     "弹体过于微小模糊，在64px单位旁几乎不可辨认",
+     "拖尾粒子过短且亮度不足，缺乏超音速穿透的空气撕裂感",
+     "缺少独立的曳光粒子层（如离子化空气发光或推进剂尾焰）",
+     "整体对比度太低，青色/白色粒子在暗色审计台上混成一片",
+     "没有速度线或motion blur层来传达超高初速"
+    ],
+    "suggestions": [
+     {
+      "type": "param",
+      "detail": "弹体sprite增大至16x4px，材质改为emissive + additive blend，核心亮度push到90%以上",
+      "priority": "high"
+     },
+     {
+      "type": "texture",
+      "detail": "新增一层长拖尾texture（256x4px渐隐条带），使用blue-white-hotcore渐变贴图，length stretch随速度动态拉长至最长128px",
+      "priority": "high"
+     },
+     {
+      "type": "new_layer",
+      "detail": "添加ion trail粒子层：沿弹道路径随机spawn小尺寸cyan/white sparkles，lifetime 0.1-0.3s，模拟空气电离余迹",
+      "priority": "med"
+     },
+     {
+      "type": "param",
+      "detail": "增加horizontal motion blur post-process（仅针对弹体及其拖尾，intensity与velocity成正比），强化速度感",
+      "priority": "med"
+     },
+     {
+      "type": "texture",
+      "detail": "弹体头部添加小型halo glow sprite（64x64 radial gradient, white->cyan fade），增强起点可见性",
+      "priority": "low"
+     }
+    ],
+    "mode": null
+   }
+  },
+  {
+   "family": 11,
+   "family_label": "磁轨炮（动能穿透签名）",
+   "file": "f11_player_impact.png",
+   "impact_class": "pierce",
+   "is_player": true,
+   "kind": "impact",
+   "muzzle_class": "energy",
+   "power_tier": 2,
+   "spec": "命中=入口过曝白闪+白热穿透光迹贯穿目标+出口spall碎片锥+回溅火花+速度线（超高初速动能穿甲，非激光）",
+   "result": {
+    "realism_score": 4,
+    "verdict": "冲击波环和火花存在，但完全缺失磁轨炮动能穿透签名的核心特征——入口白闪与贯穿光迹。",
+    "spec_match": "有环状冲击波和回溅火花，但缺少入口过曝白闪、白热穿透光迹、出口spall锥和速度线。",
+    "problems": [
+     "入口无过曝白闪，目标命中点无高亮爆发",
+     "无白热穿透光迹贯穿目标单位，视觉上无法识别为动能穿甲而非爆炸伤害",
+     "出口侧无spall碎片锥形态，火花散布无方向性锥角",
+     "无速度线体现超高初速特征，特效缺乏纵向拉伸感",
+     "整体效果偏向'命中爆炸'而非'高速弹丸穿透'的视觉签名"
+    ],
+    "suggestions": [
+     {
+      "type": "new_layer",
+      "detail": "在命中帧插入入口白闪层：纯白（#FFFFFF）径向渐变圆形精灵，半径约32px，持续1帧，叠加加色混合（Additive），强度100%，模拟金属表面瞬间过曝蒸发",
+      "priority": "high"
+     },
+     {
+      "type": "param",
+      "detail": "添加穿透光迹粒子层：从入口坐标延伸至出口坐标的细长线形粒子（宽度2px，长度随目标厚度变化），核心白色核心#FFFDD0边缘#FFAA00，lifetime=0.15s，emission rate按弹道速度动态调整，确保光迹紧贴目标轮廓贯穿而出",
+      "priority": "high"
+     },
+     {
+      "type": "new_layer",
+      "detail": "出口侧添加spall碎片锥层：以出口点为顶点，朝向弹道反方向展开约30°锥形区域，发射不规则金属碎屑粒子（尺寸2-6px，颜色从白热#FFEEDD渐变至暗红#883311），初始速度沿锥面法线向外，gravity=0（真空感），lifetime=0.4s",
+      "priority": "high"
+     },
+     {
+      "type": "param",
+      "detail": "现有火花粒子设置速度向量，使其沿弹道延长线方向（向右）优先喷射，添加velocity bias参数：vx=正方向+150~300px/s范围随机，vy=±50px/s，制造后坐回溅而非球形扩散的形态",
+      "priority": "med"
+     },
+     {
+      "type": "param",
+      "detail": "在弹道路径上添加速度线层：沿弹道方向（水平右向）发射多条半透明白色细线（长度64-128px，宽度1px），从目标前方2-3px处起始，alpha=0.6→0，lifetime=0.08s，数量12-20条，纵向分布覆盖目标高度范围",
+      "priority": "med"
+     }
+    ],
+    "mode": null
+   }
+  },
+  {
+   "family": 11,
+   "family_label": "磁轨炮（动能穿透签名）",
+   "file": "f11_enemy_muzzle.png",
+   "impact_class": "pierce",
+   "is_player": false,
+   "kind": "muzzle",
+   "muzzle_class": "energy",
+   "power_tier": 2,
+   "spec": "命中=入口过曝白闪+白热穿透光迹贯穿目标+出口spall碎片锥+回溅火花+速度线（超高初速动能穿甲，非激光）",
+   "result": {
+    "realism_score": 4,
+    "verdict": "枪口火形态基本正确但缺少贯穿目标的白热弹道与命中端爆点反馈，整体偏能量束而非动能穿甲。",
+    "spec_match": "仅呈现枪口爆发与少量漂浮余烬，未呈现入口过曝白闪、白热穿透光迹、出口spall碎片锥等关键命中形态。",
+    "problems": [
+     "枪口火边缘呈蓝白色锯齿放射状，过曝中心缺失，白色核心面积不足；动能弹枪口应有一圈强烈白热爆点而非冷色边缘主导",
+     "弹道路径仅有一条极淡的蓝灰色拖尾，无白热贯穿光迹，视觉上更像能量激光而非超高速动能弹",
+     "目标单位（橙框）处完全无任何入口爆闪、穿透痕迹或出口spall碎片锥，命中端反馈为零",
+     "漂浮火花颗粒稀疏且大小均匀，缺乏近距离回溅火花的高密度聚集区",
+     "缺少速度线元素，无法传达'超高初速'的感知"
+    ],
+    "suggestions": [
+     {
+      "type": "new_layer",
+      "detail": "在弹道路径叠加一层白热穿透光迹：使用白色到淡蓝的径向渐变长条贴图，混合模式Additive，alpha从弹体头部90%渐变到尾端20%，宽度约8-12px，随距离递减不透明度",
+      "priority": "high"
+     },
+     {
+      "type": "texture",
+      "detail": "替换枪口火中心贴图：当前边缘尖锐锯齿状偏能量感，改用高斯柔化边缘+中心极小白热圆形爆发贴图，用Additive混合，尺寸64px内，覆盖原蓝白色锯齿的过曝不足区域",
+      "priority": "high"
+     },
+     {
+      "type": "param",
+      "detail": "命中端入口处添加入口爆闪粒子：初始化50-80个白色高亮粒子，尺寸2-6px随机，速度向外扩散800-1200px/s，life0.15s，blend Additive，位置对齐橙框左边缘",
+      "priority": "high"
+     },
+     {
+      "type": "new_layer",
+      "detail": "在目标单位出口侧（橙框右侧）添加spall碎片锥层：使用不规则金属碎片贴图（棕色/橙色/白色高光混合），以锥形角度向右外散射，数量30-50个，初始尺寸2-4px，速度600-1000px/s，gravity略向下，life 0.3-0.5s",
+      "priority": "high"
+     },
+     {
+      "type": "param",
+      "detail": "枪口回溅火花增加密度与近距聚集：在原火花粒子系统基础上新增birth rate为当前3倍，speed范围设为500-1500px/s（当前偏均匀），life缩短至0.2-0.4s，size范围2-8px，使近机匣处火花更密集爆发",
+      "priority": "med"
+     },
+     {
+      "type": "new_layer",
+      "detail": "补充速度线层：在弹道路径周围添加3-5条长条状白色细线（长度80-150px，宽度1-2px），以Additive混合，从弹体头部向尾部方向延伸，life 0.08s，强化超高速动能穿甲的视觉感受",
+      "priority": "med"
+     }
+    ],
+    "mode": null
+   }
+  },
+  {
+   "family": 11,
+   "family_label": "磁轨炮（动能穿透签名）",
+   "file": "f11_enemy_trajectory.png",
+   "impact_class": "pierce",
+   "is_player": false,
+   "kind": "trajectory",
+   "muzzle_class": "energy",
+   "power_tier": 2,
+   "spec": "命中=入口过曝白闪+白热穿透光迹贯穿目标+出口spall碎片锥+回溅火花+速度线（超高初速动能穿甲，非激光）",
+   "result": {
+    "realism_score": 4,
+    "verdict": "弹体过于扁平失重，缺少磁轨炮弹丸应有的动能穿透质感和速度感。",
+    "spec_match": "未体现超高初速动能穿甲弹的物理形态，弹体呈扁平光条状，无厚度与弹头特征，拖尾松散，几乎无速度线表现。",
+    "problems": [
+     "弹体呈现为2D扁平光条，完全没有三维弹丸的厚度和弹头锥度，动能弹的特征缺失",
+     "拖尾过于分散，像烟花轨迹而非高速弹丸的空气动力拖尾，缺少方向性约束",
+     "未体现速度线（speed lines）或运动模糊带，无法传达磁轨炮超高初速的视觉冲击",
+     "弹体颜色偏橙红，接近激光/能量束色调，而非高速金属弹丸应有的白热核心+冷色外层鞘",
+     "弹体无明显尾焰压缩区或激波锥表现，动能弹高速飞行应有空气压缩发光"
+    ],
+    "suggestions": [
+     {
+      "type": "param",
+      "detail": "弹体粒子改用矩形或锥形mesh（长宽比至少8:1），Z轴scale设为0.3-0.5px增加厚度感，头部叠加一个小尺寸白色高光精灵模拟弹头白热",
+      "priority": "high"
+     },
+     {
+      "type": "param",
+      "detail": "拖尾粒子lifetime缩短至0.15s，spawn region width收窄至弹体宽度的1.2倍，velocity falloff设为线性衰减而非指数，使拖尾更紧实集中在弹体后方",
+      "priority": "high"
+     },
+     {
+      "type": "new_layer",
+      "detail": "添加独立的运动模糊速度线层：沿弹道方向生成6-8条半透明白/浅蓝直线，长度随弹体速度动态缩放（速度越高线条越长越密集），使用additive混合模式叠加在弹体下方",
+      "priority": "high"
+     },
+     {
+      "type": "texture",
+      "detail": "弹体纹理改用径向渐变：中心纯白（#FFFFFF）→ 内圈亮黄（#FFD700）→ 外层淡蓝（#87CEEB）→ 边缘透明，模拟金属弹丸被空气摩擦加热的温度梯度",
+      "priority": "med"
+     },
+     {
+      "type": "param",
+      "detail": "弹体自发光emissive强度提高至3.0-4.0，同时降低拖尾亮度至0.6，形成'核心过曝亮+拖尾次之'的层次，避免整体糊成一团",
+      "priority": "med"
+     }
+    ],
+    "mode": null
+   }
+  },
+  {
+   "family": 11,
+   "family_label": "磁轨炮（动能穿透签名）",
+   "file": "f11_enemy_impact.png",
+   "impact_class": "pierce",
+   "is_player": false,
+   "kind": "impact",
+   "muzzle_class": "energy",
+   "power_tier": 2,
+   "spec": "命中=入口过曝白闪+白热穿透光迹贯穿目标+出口spall碎片锥+回溅火花+速度线（超高初速动能穿甲，非激光）",
+   "result": {
+    "realism_score": 4,
+    "verdict": "基础元素存在但严重低估了磁轨炮动能穿透的能量等级，入口/出口特征缺失，光迹太弱。",
+    "spec_match": "仅呈现了速度线和零星火花，入口过曝白闪、白热贯穿光迹、出口spall碎片锥均缺失或极弱，未达标。",
+    "problems": [
+     "入口点无过曝白闪——弹道与目标接触处无任何高强度白光爆发，视觉上像是普通弹丸擦过而非超高速穿甲",
+     "穿透光迹极弱——白色速度线是一条均匀细线，没有沿弹道的高温等离子轨迹感，也没有贯穿目标后的暗色穿孔痕迹",
+     "出口spall碎片锥缺失——右侧只有零散火花，没有呈扇形/锥形喷射的金属碎片云",
+     "火花总量严重不足——power_tier=2的命中应该有密集的亮色回溅，当前数量级更像轻火力",
+     "速度线质感像激光——均匀亮白细线缺乏动能弹丸应有的粗糙感（应有时断时续、边缘毛刺、伴生热畸变）"
+    ],
+    "suggestions": [
+     {
+      "type": "param",
+      "detail": "入口粒子:新增白热爆发层，radius=8-12px，lifetime=0.05-0.08s，fade=0.1s，overbright=300%，颜色#FFFFFF到#FFF5E0渐变，模拟接触瞬间的过曝闪光",
+      "priority": "high"
+     },
+     {
+      "type": "new_layer",
+      "detail": "穿透轨迹:在弹道路径上叠加一条高温等离子光迹层，使用径向渐变贴图（中心白热#FFFFFF→边缘蓝白#B0D0FF→透明），width=4-6px，沿弹道拖尾30-50px，添加glow模糊+heat_haze扭曲 shader 增强超高速感",
+      "priority": "high"
+     },
+     {
+      "type": "param",
+      "detail": "出口spall锥:新增锥形碎片粒子群，count=25-40个，origin=出口点，spread_angle=45-60°朝弹道前进方向前方喷射，velocity=150-300px/s，color=铁锈橙#C06020到亮黄#FFD080，size=2-4px，lifetime=0.3-0.6s，模拟金属装甲被击穿后飞溅的碎片",
+      "priority": "high"
+     },
+     {
+      "type": "param",
+      "detail": "火花增强:回溅火花从当前约5-8个增加到25-40个，velocity范围拉大（50-400px/s随机），添加部分火花弹道曲线（gravity=-200px/s²）模拟真实重力下坠，color从#FF8020到#FFE0A0，size=1-3px，lifetime=0.4-1.0s",
+      "priority": "med"
+     },
+     {
+      "type": "texture",
+      "detail": "速度线贴图替换:当前均匀白线换成沿长度方向不均匀的亮斑+拖尾贴图，中心白热高亮段与半透明尾迹交替，边缘添加微弱的蓝紫色色差(aberration)模拟极端速度下的光学畸变",
       "priority": "med"
      }
     ],
