@@ -37,8 +37,10 @@ enum ChipStyle { QFN, MODULE, DIP, CAN, QFP }
 # ── 几何常量（面板据此对齐轨道标题行）──
 const CHIP := 66                 # 芯片边长
 const SLOT_PITCH := 72           # 槽间距 = 66 + 6
-const LANE_SLOTS := 4            # 每轨槽位（智能 t9 / 火力 t7 各 4 芯片为最宽行）
-const LANE_W := LANE_SLOTS * CHIP + (LANE_SLOTS - 1) * (SLOT_PITCH - CHIP)  # 282
+const LANE_SLOTS := 5            # 每轨槽位（火力 t7 现挂 5 芯片为最宽行——v8 扩展树
+	# 把 4 槽画布撑出界（最右 x=906 > BOARD_W 916），2026-09-21 扩 1 槽收口；
+	# 板宽增长由 BoardScroll 滚动消化）
+const LANE_W := LANE_SLOTS * CHIP + (LANE_SLOTS - 1) * (SLOT_PITCH - CHIP)  # 354
 const LANE_GAP := 14             # 轨间通道宽
 const RULER_W := 20              # 左侧 tier 标尺列
 const MARGIN_L := 6
