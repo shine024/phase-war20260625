@@ -1376,3 +1376,15 @@ GdUnit 对 batch 内部行为覆盖薄——合并的回归风险 > 重复代码
 - **pi_special_nova 已换深底板**（对齐 aegis 家族）；相位仪徽章底板必须深色径向渐变，白底徽章在任何深色 HUD 上都是"白贴纸"。
 - **设计脉动帧勿当缺陷清**：ww1_sup_vickers f4-5 金色发热、vis_xeno_dark_templar f4-5 变白闪烁、ww2_fort_bunker f3/f7 灯组变化——逐帧亮度指纹为平滑周期，保留。
 - **体检工具**：`tools/_tmp_visual_audit.py`（白底三指标+散帧+姿态分支）与 `tools/_tmp_frame_strips.py`（全帧条带目视）可复用；生图 QC 五连环踩坑见 CHANGELOG v6.17.1（抠图后审计/128 网格坐标/低姿态下限/任一维顶满判定/亮度饱和键控+边缘连通）。
+
+## v6.22 势力贡献驱动改版：占领链退役 + 任务/事件/商店重排（2026-09-22，详见 CHANGELOG v6.22.0~v6.22.2 与 docs/势力重构_贡献驱动改版_2026-09-22.md）
+
+**改势力/任务/事件/商店/敌方数值链前必读本节。** 背景设定定稿「集体穿越、人皆迷失」：7 组织=贡献驱动的协作方，不再占领领地/互相进攻。
+
+- **敌方数值与势力彻底脱钩**：经典敌公式=档位×波数×难度；`EnemyStatContext` 无 faction 字段；`FactionConquestBuffs`/`faction_status.gd`/`faction_card_generator.gd`/`faction_card_bonuses.gd`/`CompanyStore`+json/`occupation_panel` 均已删除——**新代码不要再引用**。`FACTION_MOD_BIAS`（7 组织改造偏好）真身=`CompanyDefinitions.FACTION_MOD_BIAS`（相位师蓝图掉落链 + 商店特供图纸包发放共用）。
+- **关卡势力归属=纯风味静态表**（定案5）：查询口 `LevelInformation.get_shared().get_level_faction(level)`；world_map 色环/tooltip（"曾属于"）/战前摘要（"%s（曾属）"，buff 恒空）都是历史辖区口径。`get_faction_info` 返回键=`historical_levels`（旧 `controlled_levels` 已死）。
+- **贡献轴（原声望，语义换轴）**：内部 0-10000 轴/`LEVEL_THRESHOLDS`/存档键/信号名**全不动**；UI 文案一律写「贡献」。写入点=任务奖励（`faction_rep` 新键，读侧兼容 `company_rep`）、事件抉择、相位师战胜 +30、贡献升级镜像功勋。成就奖励发 `merit`（功勋），不发 company_rep。
+- **任务系统**：新目标类型 `reach_intel`（{archetype_id,target}，IntelManual 实时查 %）与 `salvage_items`（salvaged 计数，`notify_items_salvaged` 由 ground_loot_layer 两收集汇总口上报）；`attack_faction`/`defend_faction`/`research_law` 类型已退役（quest_manager 分支与 notify_phase_master_defeated 挂钩全删）。动态委托生成器 7 家三类九型（流程/培养/目的），`FACTION_THEMES.level_range`=历史辖区触发区段。reach_reputation 任务目标一律 ≥1200（真轴口径；旧 0-100 轴目标=接取即完成的僵尸任务）。
+- **势力事件**：6 模板=协作两难抉择（救援/遗迹/潮汐/设施/维护/情报共享），奖励=贡献+物资；`_apply_reputation_changes` 只对被支持方发正贡献。BONUS_EVENTS/loyalty/event_history/faction_bonus_duration 全链已删，save/load 对旧档死键静默忽略。
+- **商店**：双轨已收口（CompanyStore 纳米主卡列表删，store_panel 三区=符文功勋轨/功勋特购/情报道具纳米轨）；新增组织特供图纸包 `mod_blueprint_pack_<fid>`（功勋定价，发放按 FACTION_MOD_BIAS 出对口图纸入 IntelItemBag）。
+- **回归锁**：`tests/unit/systems/test_faction_contribution_rework.gd`（死符号清零/新目标接线/僵尸任务清零/生成器契约/旧档死键读档）+ `tests/unit/managers/test_achievement_company_rep.gd`（已改锁 merit 契约）+ `tests/_tmp_faction_b1_smoke.gd`（--script 冒烟 56 断言）。

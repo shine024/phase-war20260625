@@ -9200,3 +9200,11 @@ MVP 协同小结、8 面板首开气泡。**R3 余项**：结算面板三页签�
 - **组织特供图纸包**（7 家各一档，功勋定价 260~450）：`mod_blueprint_pack_<fid>` MATERIAL 商品——发放走新函数 `_deliver_mod_blueprint_pack`，按 `CompanyDefinitions.FACTION_MOD_BIAS` 出该组织对口改造图纸（钢壁=装甲/堡垒、新星=步兵/防空、以太=空军/侦察、量子=炮兵/工兵、螺旋=侦察/空军、虚空=通用/炮兵、边境=通用），稀有度 elite/档3、时代通道 `max_era` 随当前关卡（`LevelEras.get_era` 钳 0-4），落 IntelItemBag 库存与制造定向列表同源。`_filter_invalid_card_items` 兜底与既有卡牌/材料/符文货单不动。
 - store_panel 特购区描述分支补图纸包文案（"按该组织专长随机获得一张图纸"）。
 - **验证**：gdparse 零报错 + 冒烟 56/56 + gdunit 全量 459/459（b3_gdunit_raw.log）。
+
+## v6.22.3 势力贡献驱动改版批4：回归锁 + 验证收尾（2026-09-22，详见 docs/势力重构_贡献驱动改版_2026-09-22.md §7）
+
+- **新增回归锁 `tests/unit/systems/test_faction_contribution_rework.gd`（6 用例）**：①核心八脚本剥注释后占领/战争死符号清零断言（attack_faction/defend_faction/get_level_occupation/transfer_occupation/FactionConquestBuffs/CompanyStore/occupation_changed/FACTION_RELATIONS/calculate_conquest_reaction/faction_bonus_duration/get_quest_progress_for_mission）；②新目标类型接线（notify_items_salvaged/_get_archetype_intel_percent/ground_loot_layer._notify_salvage）；③僵尸任务清零（json 无 attack/defend、reach_reputation ≥1200、无 company_rep/负贡献）；④生成器契约（7 家全覆盖、三类九型、faction_rep 正贡献、reach_intel 目标结构）；⑤旧档死键读档不炸（fem.load_state 静默忽略 loyalty/history/bonus、活键恢复、已删方法不存在）；⑥事件模板协作文案（无进攻/防守/领地措辞）。⚠️ 本机 GdUnit 的 assert_str 无 does_not_contain——用 assert_bool(contains).is_false()（回归锁写作纪律）。
+- 冒烟 `tests/_tmp_faction_b1_smoke.gd` 56 断言（批1 43 + 批2 13）承担 `tests/_tmp_faction_rework_smoke.gd` 计划项（同名异体，不重复建两份）。
+- UI 体检探针 `tests/_tmp_ui_audit_probe.tscn` 复跑（user:// 先备份后还原纪律已执行，log 落 `tests/evidence/playability_2026-09-22/b4_ui_audit.log`）。
+- AGENTS.md 新增 v6.22 段（敌方数值脱钩/贡献轴口径/任务/事件/商店五域纪律 + 回归锁清单）。
+- 门禁：gdunit 全量 **465/465**（459+6，77+1 套件；b4_gdunit_raw3.log）；gdparse 改动文件零报错。
