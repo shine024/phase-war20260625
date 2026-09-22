@@ -536,10 +536,11 @@ static func build_bullet_points(weapon_type: int, size_scale: float = 1.0, flavo
 			body_len = 6.0 * s
 			nose_len = 3.0 * s
 			half_h = 2.8 * s
-		5:  # SHOTGUN — 圆胖霰弹丸
-			body_len = 6.0 * s
+		5:  # SHOTGUN — 细长散布弹丸（P2-5 f05，2026-09-22：圆胖点读不出"六发散射"，
+			# 改细长弹丸与曳光配套；散射角与发数在 bullet.gd 飞行层）
+			body_len = 10.0 * s
 			nose_len = 3.0 * s
-			half_h = 4.0 * s
+			half_h = 1.8 * s
 		3, 9:  # ROCKET / MISSILE — 长粗导弹
 			body_len = 9.0 * s
 			nose_len = 4.0 * s
