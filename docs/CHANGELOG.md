@@ -9194,3 +9194,9 @@ MVP 协同小结、8 面板首开气泡。**R3 余项**：结算面板三页签�
 - **2c attack_faction/defend_faction 退役**：quest_manager 分支删（notify_phase_master_defeated 函数+进度/完成分支+get_quest_progress_for_mission 整函数+头注）+ game_manager 相位师战挂钩删；quest_definitions.json 57 条改版（6 条进攻/防守任务重定目标为 clear_boss_count/kill_enemies/win_battles 新口径；8 条 reach_reputation 僵尸任务重定新轴里程碑 1200/1500/2000/6200——旧目标 10/20/50 是旧 0-100 轴、真轴起始即达成=僵尸根因；全部奖励键统一 faction_rep、负贡献扣减清零、声望措辞清零）；data/quest_definitions.gd LEGACY_QUESTS + 头注同步。
 - **2d 势力事件重写**（faction_war_events.gd 整文件重写）：6 模板换新背景（遇险信号救援/遗迹物资分配/相位潮汐异常/留守设施抉择/车队维护轮值/情报共享协议），faction_a/b 两难抉择结构保留，奖励=贡献+物资；BONUS_EVENTS 死数据池删除（v6.22 批1 已随加成链删消费端）；faction_event_manager 改协作口径（贡献 toast、_apply_reputation_changes 只对被支持方发正贡献、对方势力扣减退役）；faction_panel 事件区图标 ⚔→✦。
 - **验证**：gdparse 全部改动文件零报错；--script 冒烟扩至 **56 断言全过**（+生成器 7 家/无 enemy_faction/master_name/attack_faction、qm 有 salvage 通知与情报助手、事件池 6 模板无 faction_bonus_duration）；gdunit 全量 **459/459**（77 套件）；quest json 类型分布核验（attack/defend 归零、无负贡献、无声望措辞）。
+
+## v6.22.2 势力贡献驱动改版批3：FactionShop 货单更新（2026-09-22，详见 docs/势力重构_贡献驱动改版_2026-09-22.md §6）
+
+- **组织特供图纸包**（7 家各一档，功勋定价 260~450）：`mod_blueprint_pack_<fid>` MATERIAL 商品——发放走新函数 `_deliver_mod_blueprint_pack`，按 `CompanyDefinitions.FACTION_MOD_BIAS` 出该组织对口改造图纸（钢壁=装甲/堡垒、新星=步兵/防空、以太=空军/侦察、量子=炮兵/工兵、螺旋=侦察/空军、虚空=通用/炮兵、边境=通用），稀有度 elite/档3、时代通道 `max_era` 随当前关卡（`LevelEras.get_era` 钳 0-4），落 IntelItemBag 库存与制造定向列表同源。`_filter_invalid_card_items` 兜底与既有卡牌/材料/符文货单不动。
+- store_panel 特购区描述分支补图纸包文案（"按该组织专长随机获得一张图纸"）。
+- **验证**：gdparse 零报错 + 冒烟 56/56 + gdunit 全量 459/459（b3_gdunit_raw.log）。

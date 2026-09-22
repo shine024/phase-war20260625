@@ -499,6 +499,8 @@ func _build_faction_extra_row(it, merit_now: int) -> void:
 func _describe_faction_extra_item(item_id: String, is_card: bool, rep_cost: int) -> String:
 	if is_card:
 		return "功勋特购卡 · 获得独立养成实例"
+	if item_id.begins_with("mod_blueprint_pack_"):
+		return "组织特供改造图纸包 · 按该组织专长随机获得一张图纸（对应当前时代）"
 	match item_id:
 		"nano_materials":
 			return "纳米材料 ×%d" % (50 if rep_cost < 300 else 100)

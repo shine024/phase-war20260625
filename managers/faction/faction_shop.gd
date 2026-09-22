@@ -1,5 +1,7 @@
 extends RefCounted
 ## 势力商店子系统：管理商店库存、商品定义、购买流程
+## v6.22 批3: 货单按贡献驱动背景重排——每组织增设「特供改造图纸包」（功勋定价，
+## 发放按 CompanyDefinitions.FACTION_MOD_BIAS 出该组织对口改造图纸，时代随当前关卡）；
 ##
 ## 从 faction_system_manager.gd 拆分的职责：
 ## - 商店物品定义（StoreItem 内部类）
@@ -58,6 +60,7 @@ static func get_faction_store_items(faction_id: String, level: int) -> Array[Sto
 			items.append(create_store_item("weapon_cold_lmg", StoreItemType.CARD, "M60通用机枪", 250, level))
 			items.append(create_store_item("weapon_modern_minigun", StoreItemType.CARD, "M134加特林", 300, level))
 			items.append(create_store_item("alloy", StoreItemType.MATERIAL, "合金x80", 80, level))
+			items.append(create_store_item("mod_blueprint_pack_iron_wall_corp", StoreItemType.MATERIAL, "特供图纸包·装甲堡垒", 350, level))
 
 		"nova_arms":
 			items.append(create_store_item("weapon_ww2_at", StoreItemType.CARD, "巴祖卡火箭筒", 250, level))
@@ -68,6 +71,7 @@ static func get_faction_store_items(faction_id: String, level: int) -> Array[Sto
 			items.append(create_store_item("weapon_future_plasma", StoreItemType.CARD, "等离子枪", 450, level))
 			items.append(create_store_item("platform_ww2_medium", StoreItemType.CARD, "谢尔曼坦克", 300, level))
 			items.append(create_store_item("platform_future_medium", StoreItemType.CARD, "悬浮坦克", 400, level))
+			items.append(create_store_item("mod_blueprint_pack_nova_arms", StoreItemType.MATERIAL, "特供图纸包·火力支援", 300, level))
 			items.append(create_store_item("nano_materials", StoreItemType.MATERIAL, "纳米材料x100", 100, level))
 
 		"aether_dynamics":
@@ -79,6 +83,7 @@ static func get_faction_store_items(faction_id: String, level: int) -> Array[Sto
 			items.append(create_store_item("weapon_modern_dmr", StoreItemType.CARD, "MK14射手步枪", 300, level))
 			items.append(create_store_item("weapon_future_pulse", StoreItemType.CARD, "脉冲步枪", 350, level))
 			items.append(create_store_item("bp_ww1_012", StoreItemType.CARD, "缴获卡", 250, level))
+			items.append(create_store_item("mod_blueprint_pack_aether_dynamics", StoreItemType.MATERIAL, "特供图纸包·机动协同", 320, level))
 
 		"quantum_logistics":
 			items.append(create_store_item("platform_cold_ifv", StoreItemType.CARD, "布雷德利步战车", 300, level))
@@ -91,6 +96,7 @@ static func get_faction_store_items(faction_id: String, level: int) -> Array[Sto
 			items.append(create_store_item("alloy", StoreItemType.MATERIAL, "合金x160", 160, level))
 			items.append(create_store_item("bp_ww2_016", StoreItemType.CARD, "缴获卡·精选", 300, level))
 			items.append(create_store_item("stat_boost_hp", StoreItemType.MATERIAL, "生命强化", 400, level))
+			items.append(create_store_item("mod_blueprint_pack_quantum_logistics", StoreItemType.MATERIAL, "特供图纸包·工程后勤", 280, level))
 
 		"helix_recon":
 			items.append(create_store_item("platform_ww1_light", StoreItemType.CARD, "威克斯侦察车", 180, level))
@@ -105,6 +111,7 @@ static func get_faction_store_items(faction_id: String, level: int) -> Array[Sto
 			items.append(create_store_item("lore_page", StoreItemType.MATERIAL, "情报资料包x1", 200, level))
 			items.append(create_store_item("lore_page", StoreItemType.MATERIAL, "情报资料包x3", 500, level))
 			items.append(create_store_item("bp_ww1_018", StoreItemType.CARD, "缴获卡", 220, level))
+			items.append(create_store_item("mod_blueprint_pack_helix_recon", StoreItemType.MATERIAL, "特供图纸包·侦察情报", 300, level))
 
 		"void_research":
 			items.append(create_store_item("platform_future_heavy", StoreItemType.CARD, "机甲步行者", 550, level))
@@ -114,6 +121,7 @@ static func get_faction_store_items(faction_id: String, level: int) -> Array[Sto
 			items.append(create_store_item("omega_cannon", StoreItemType.CARD, "米加粒子炮", 900, level))
 			items.append(create_store_item("stat_boost_hp", StoreItemType.MATERIAL, "生命强化", 450, level))
 			items.append(create_store_item("stat_boost_atk", StoreItemType.MATERIAL, "攻击强化", 450, level))
+			items.append(create_store_item("mod_blueprint_pack_void_research", StoreItemType.MATERIAL, "特供图纸包·相位通用", 450, level))
 
 		"frontier_union":
 			items.append(create_store_item("platform_ww2_light", StoreItemType.CARD, "M8灰狗装甲车", 200, level))
@@ -128,6 +136,7 @@ static func get_faction_store_items(faction_id: String, level: int) -> Array[Sto
 			items.append(create_store_item("nano_materials", StoreItemType.MATERIAL, "纳米材料x100", 100, level))
 			items.append(create_store_item("alloy", StoreItemType.MATERIAL, "合金x80", 80, level))
 			items.append(create_store_item("bp_ww2_009", StoreItemType.CARD, "缴获卡", 210, level))
+			items.append(create_store_item("mod_blueprint_pack_frontier_union", StoreItemType.MATERIAL, "特供图纸包·护路维稳", 260, level))
 
 	# v6.2: 未知势力警告（防御性检查）
 	const _VALID_FACTION_IDS: Array[String] = [
@@ -299,6 +308,9 @@ static func deliver_item(item: StoreItem) -> bool:
 				push_error("[FactionShop] 商店找不到卡牌: " + cid)
 				return false
 		StoreItemType.MATERIAL:
+			# v6.22 批3: 组织特供改造图纸包——按 FACTION_MOD_BIAS 出对口图纸（时代随当前关卡）
+			if String(item.item_id).begins_with("mod_blueprint_pack_"):
+				return _deliver_mod_blueprint_pack(item)
 			var brm := _get_autoload("/root/BasicResourceManager")
 			if brm and brm.has_method("add_resource"):
 				match item.item_id:
@@ -336,6 +348,30 @@ static func deliver_item(item: StoreItem) -> bool:
 				return true
 			return false
 	return false
+
+## v6.22 批3: 组织特供图纸包发放——roll 一张对口改造图纸入 IntelItemBag
+static func _deliver_mod_blueprint_pack(item: StoreItem) -> bool:
+	const IntelManualItemsRef = preload("res://data/intel_manual_items.gd")
+	const CompanyDefsRef = preload("res://data/company_definitions.gd")
+	const LevelErasRef = preload("res://data/level_eras.gd")
+	var bag := _get_autoload("/root/IntelItemBag")
+	if bag == null or not bag.has_method("add_item"):
+		return false
+	var fid: String = String(item.item_id).trim_prefix("mod_blueprint_pack_")
+	var bias: Array = CompanyDefsRef.FACTION_MOD_BIAS.get(fid, [])
+	var enemy_type: String = "infantry"
+	if not bias.is_empty():
+		enemy_type = String(bias[0])
+	var cur_level: int = 1
+	var gm := _get_autoload("/root/GameManager")
+	if gm != null and "current_level" in gm:
+		cur_level = int(gm.get("current_level"))
+	var max_era: int = clampi(LevelErasRef.get_era(cur_level), 0, 4)
+	var drop: Dictionary = IntelManualItemsRef.roll_random_mod_blueprint(enemy_type, "elite", 3, bias, max_era)
+	if drop.is_empty():
+		return false
+	bag.add_item(String(drop.get("item_type", "")), 1)
+	return true
 
 ## 获取默认商店库存（卡牌ID列表）
 ## @param faction_id: String
