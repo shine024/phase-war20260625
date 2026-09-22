@@ -40,32 +40,36 @@ func _initialize() -> void:
 		if String(AffixDefinitions.get_mutation_description(String(sid))).is_empty():
 			fail.call("%s 缺 MUTATION_TABLE 条目" % sid)
 	ok.call("5 个 sm_* 词条定义 + affix_type + 变异条目齐全")
-	# wired 旗标：前 2 条已接执行，后 3 条待接（不进 roll 池）
+	# wired 旗标不变式（数据驱动，勿硬编码接线进度——v25 写死 3 条待接，
+	# 数据接线后即过期误报 2026-09-21；只锁两条不变式：执行链消费的两条恒已接、
+	# roll 池永不返回未接线词条）
 	if bool(AffixDefinitions.get_definition("sm_kill_triage").get("wired", false)) \
 			and bool(AffixDefinitions.get_definition("sm_intercept_guard").get("wired", false)):
 		ok.call("sm_kill_triage / sm_intercept_guard wired=true")
 	else:
 		fail.call("已接线条目 wired 应为 true")
-	for sid in ["sm_crit_ensure_hit", "sm_fullhp_onslaught", "sm_double_tap"]:
-		if bool(AffixDefinitions.get_definition(String(sid)).get("wired", true)):
-			fail.call("%s 应为 wired=false（挂点待接）" % sid)
-	ok.call("3 条待接词条 wired=false")
+	# 未接线集合从数据源推导
+	var unwired_ids: Array = []
+	for aid in AffixDefinitions.get_all_ids():
+		if not bool(AffixDefinitions.get_definition(String(aid)).get("wired", true)):
+			unwired_ids.append(String(aid))
+	ok.call("当前未接线词条 %d 条（数据源推导，非硬编码）" % unwired_ids.size())
 	if AffixDefinitions.is_affix_wired("crit_chance"):
 		ok.call("历史词条 wired 缺省视为 true（is_affix_wired 兼容）")
 	else:
 		fail.call("历史词条 wired 缺省应为 true")
-	# roll 池排除 wired=false（反复抽 400 次两类型池）
+	# roll 池排除 wired=false（反复抽 400 次两类型池，对照动态未接线集合）
 	var unwired_leak := false
 	for i in range(400):
 		for ct in [0, 1]:
 			var rid := String(AffixDefinitions.roll_random_affix_id(ct))
-			if rid in ["sm_crit_ensure_hit", "sm_fullhp_onslaught", "sm_double_tap"]:
+			if rid in unwired_ids:
 				unwired_leak = true
 			var rid2 := String(AffixDefinitions.roll_unlocked_affix_id(ct, "legendary", []))
-			if rid2 in ["sm_crit_ensure_hit", "sm_fullhp_onslaught", "sm_double_tap"]:
+			if rid2 in unwired_ids:
 				unwired_leak = true
 	if not unwired_leak:
-		ok.call("roll 池 400×2 次抽样无 wired=false 泄漏")
+		ok.call("roll 池 400×2 次抽样无未接线词条泄漏")
 	else:
 		fail.call("roll 池泄漏了未接线词条")
 	# kill_repair / intercept_chance 执行链：affix_manager 有 apply 分支（文本断言，参照 _tmp_lifesteal 风格）

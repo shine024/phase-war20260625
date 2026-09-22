@@ -366,7 +366,10 @@ func _compute_meta_info(tab_index: int) -> String:
 			var kind_count: int = _count_distinct_kinds_in_backpack()
 			var era_count: int = _count_distinct_eras_in_backpack()
 			var max_stars: int = _count_max_stars_in_backpack()
-			return "共 %d · 兵种 %d · 时代 %d · 满级 %d" % [total, kind_count, era_count, max_stars]
+			# 口径注明（2026-09-20 全矩阵报告 review 核销）：本面板计数=背包内卡
+			#（互斥不变式：卡要么在相位仪要么在背包，上阵卡不计入）——
+			# 旧文案"共 N"被读成全拥有量，与上阵数打架。
+			return "背包 %d 张 · 兵种 %d · 时代 %d · 满级 %d" % [total, kind_count, era_count, max_stars]
 		TabIndex.INTEL:
 			var installed: int = _count_installed_mods()
 			var total_mods: int = _count_owned_mods()
@@ -744,7 +747,8 @@ func _refresh_capacity_label() -> void:
 				for iid in ir.get_all_instance_ids():
 					seen[String(iid).split("#")[0]] = true
 				kinds = seen.size()
-			_capacity_label.text = "卡牌 %d 张 · 卡种 %d" % [total, kinds]
+			# 卡种=全拥有口径（含上阵），背包张数=背包内口径——两词分开写避免误读
+			_capacity_label.text = "背包 %d 张 · 拥有卡种 %d" % [total, kinds]
 		TabIndex.INTEL:
 			_capacity_label.text = "改造 %d" % _count_owned_mods()
 		TabIndex.RUNES:

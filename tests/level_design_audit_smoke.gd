@@ -55,13 +55,15 @@ func _init() -> void:
 		_ok(not e2.has("difficulty_modifier"), "关卡 %d 残留 difficulty_modifier 死键" % lv)
 
 	# ── H1/H2: 特殊规则挂载点 + 值域 ────────────────────────────
-	var expect_rule_levels: Array = [5, 15, 25, 30, 50, 55, 65, 80, 85, 90, 100]
+	# 2026-09-21 勘误：v26~v32 特殊规则扩到全战线（首批 11 关 → 53 关），
+	# 快照等值断言改为结构断言——挂载集非空 + 机制锚点关在位 + 每条规则值域合法。
 	var actual_rule_levels: Array = []
 	for lv in range(1, 101):
 		if not li.get_special_rules(lv).is_empty():
 			actual_rule_levels.append(lv)
-	_ok(actual_rule_levels == expect_rule_levels,
-		"特殊规则挂载关应为 %s，实际 %s" % [str(expect_rule_levels), str(actual_rule_levels)])
+	_ok(not actual_rule_levels.is_empty(), "特殊规则挂载关为空（数据异常）")
+	_ok(actual_rule_levels.has(5) and actual_rule_levels.has(85) and actual_rule_levels.has(100),
+		"机制锚点关（5/85/100）应挂特殊规则，实际挂载 %d 关" % actual_rule_levels.size())
 	for lv in actual_rule_levels:
 		var r: Dictionary = li.get_special_rules(lv)
 		_ok(not r.has("win_type"), "关卡 %d 仍挂 win_type（驻守关死规则）" % lv)
@@ -70,12 +72,18 @@ func _init() -> void:
 			_ok(int(pt) >= 0 and int(pt) <= 4, "关卡 %d restrict 值 %s 超出 CombatKind(0-4)" % [lv, str(pt)])
 	_ok(li.get_special_rules(85).get("restrict_platforms", []) == [2], "第85关 restrict 应为 [2]（SUPPORT）")
 
-	# ── B5: _set_rules 守卫——驻守关拒绝 win_type，普通规则不受影响 ──
-	li._set_rules(20, {"win_type": "survive_waves", "win_param": 5})
-	_ok(li.get_special_rules(20).is_empty(), "守卫失效：第20关（驻守）不应挂上 win_type")
-	li._set_rules(20, {"energy_mult": 0.5})
-	_ok(absf(float(li.get_special_rules(20).get("energy_mult", 1.0)) - 0.5) < 0.001,
-		"守卫过严：第20关合法规则（能量惩罚）应可挂载")
+	# ── B5: _set_rules 守卫——驻守关拒绝 win_type，合法规则不受影响 ──
+	# 2026-09-21 勘误：驻守关现已合法挂载非 win_type 规则（如 L20 boss_enrage_half），
+	# 守卫断言改为"win_type 被拒 + 既有合法规则原样保留"（旧断言 rules 应为空已过期）。
+	var garrison_probe: int = int(Garrison.get_all_garrison_levels()[0])
+	var rules_before: Dictionary = li.get_special_rules(garrison_probe).duplicate()
+	li._set_rules(garrison_probe, {"win_type": "survive_waves", "win_param": 5})
+	var rules_after: Dictionary = li.get_special_rules(garrison_probe)
+	_ok(not rules_after.has("win_type"), "守卫失效：第%d关（驻守）挂上了 win_type" % garrison_probe)
+	_ok(rules_after == rules_before, "守卫误伤：第%d关既有合法规则被改动" % garrison_probe)
+	li._set_rules(garrison_probe, {"energy_mult": 0.5})
+	_ok(absf(float(li.get_special_rules(garrison_probe).get("energy_mult", 1.0)) - 0.5) < 0.001,
+		"守卫过严：第%d关合法规则（能量惩罚）应可挂载" % garrison_probe)
 
 	# ── A2: 驻守相位师 id 全部存在于 masters JSON ────────────────
 	var json_text: String = FileAccess.get_file_as_string("res://data/json/enemy_phase_masters.json")
@@ -96,12 +104,13 @@ func _init() -> void:
 		_ok(master_ids.has(mid), "驻守关 %d 的相位师 %s 不在 masters JSON" % [int(glv), mid])
 
 	# ── A2: 势力 id / 法则家族值域 ──────────────────────────────
+	# 2026-09-21 勘误：法则系统已随 P2-7 退役，available_law_families 全 100 关清空——
+	# "每关至少1个"断言过期删除；保留"若字段存在则值必须合法"的防御性校验。
 	var legal_factions: Array = ["", "nova_arms", "aether_dynamics", "quantum_logistics", "helix_recon", "void_research"]
 	var legal_families: Array = ["STEEL", "FLAME", "THUNDER", "VOID"]
 	for lv in range(1, 101):
 		_ok(String(db[lv].get("faction_id", "?")) in legal_factions, "关卡 %d 势力 id 非法: %s" % [lv, db[lv].get("faction_id")])
 		var fams: Array = db[lv].get("available_law_families", [])
-		_ok(not fams.is_empty(), "关卡 %d 法则家族为空（每关至少1个）" % lv)
 		for f in fams:
 			_ok(String(f) in legal_families, "关卡 %d 法则家族非法: %s" % [lv, str(f)])
 

@@ -50,6 +50,9 @@ func _ready() -> void:
 		# 2026-08-22：原 blueprint_unlocked 信号已移除，入包信号即收集刷新源
 		if not SignalBus.card_added_to_backpack.is_connected(_on_collection_changed):
 			SignalBus.card_added_to_backpack.connect(_on_collection_changed)
+	# v38.x O 条: 容器宽度变化（面板缩放/分辨率切换）防抖重排卡格列数
+	if not _card_list.resized.is_connected(_on_card_list_resized):
+		_card_list.resized.connect(_on_card_list_resized)
 	var ccm := get_node_or_null("/root/CardCollectionManager")
 	if ccm != null:
 		if not ccm.card_obtained.is_connected(_on_collection_changed):
@@ -142,19 +145,32 @@ func _refresh_header() -> void:
 	if _progress_bar:
 		_progress_bar.max_value = max(1, total)
 		_progress_bar.value = owned_count
-	# 稀有度色块
+	# 稀有度色块——口径与头部"已收集"同源（_is_owned 重算）。此前读 CardCollectionManager
+	# 的 _collection_data，新档已拥有但未触发解锁信号的卡不计 → 页签恒 0/N 与头部 3/332 打架
+	# （2026-09-20 全矩阵报告 review 项核销）。分组映射与 card_collection_manager 同表。
 	if _rarity_row:
 		for child in _rarity_row.get_children():
 			child.queue_free()
-		if ccm != null and ccm.has_method("get_rarity_collection_stats"):
-			var stats: Dictionary = ccm.get_rarity_collection_stats()
-			for rarity in ["普通", "稀有", "史诗", "传说", "神话"]:
-				var s: Dictionary = stats.get(rarity, {"total": 0, "owned": 0, "rate": 0.0})
-				var lbl := Label.new()
-				lbl.text = "%s %d/%d" % [rarity, int(s.get("owned", 0)), int(s.get("total", 0))]
-				lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
-				lbl.add_theme_color_override("font_color", _rarity_color(rarity))
-				_rarity_row.add_child(lbl)
+		var en_to_cn := {
+			"common": "普通", "uncommon": "普通", "rare": "稀有",
+			"epic": "史诗", "legendary": "传说", "mythic": "神话",
+		}
+		var rarity_groups := {}
+		for cid in all_ids:
+			var card = DefaultCards.get_card_by_id(String(cid))
+			var group: String = en_to_cn.get(String(card.rarity), "普通") if card != null else "普通"
+			if not rarity_groups.has(group):
+				rarity_groups[group] = {"total": 0, "owned": 0}
+			rarity_groups[group]["total"] += 1
+			if _is_owned(String(cid)):
+				rarity_groups[group]["owned"] += 1
+		for rarity in ["普通", "稀有", "史诗", "传说", "神话"]:
+			var s: Dictionary = rarity_groups.get(rarity, {"total": 0, "owned": 0})
+			var lbl := Label.new()
+			lbl.text = "%s %d/%d" % [rarity, int(s.get("owned", 0)), int(s.get("total", 0))]
+			lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
+			lbl.add_theme_color_override("font_color", _rarity_color(rarity))
+			_rarity_row.add_child(lbl)
 
 
 func _refresh_card_list() -> void:
@@ -175,9 +191,15 @@ func _refresh_card_list() -> void:
 		if not groups.has(rarity):
 			groups[rarity] = []
 		groups[rarity].append(cid)
-	# v32.3 E3：卡图网格化（原单列 220×34 纯文字按钮流无收集欲）——每组标题+5 列卡格；
+	# v32.3 E3：卡图网格化（原单列 220×34 纯文字按钮流无收集欲）——每组标题+自适应列卡格；
 	# 拥有=真彩卡图+稀有度描边，未获得=黑影+？？？（收集目标感）
-	const GRID_COLS := 5
+	# v38.x O 条: 列数按容器实宽自适应（原固定 5 列×118px 在窄容器溢出横滚条，实机验收⑮）。
+	var avail_w: float = maxf(_card_list.size.x, 320.0)
+	_card_cell_width = 118.0
+	var cols: int = _card_grid_cols(avail_w)
+	if cols < 4:
+		_card_cell_width = 106.0
+		cols = _card_grid_cols(avail_w)
 	for rarity in ["mythic", "legendary", "epic", "rare", "uncommon", "common", "普通", "稀有", "史诗", "传说", "神话"]:
 		if not groups.has(rarity):
 			continue
@@ -191,7 +213,7 @@ func _refresh_card_list() -> void:
 		header.add_theme_color_override("font_color", _rarity_color(rarity))
 		_card_list.add_child(header)
 		var grid := GridContainer.new()
-		grid.columns = GRID_COLS
+		grid.columns = cols
 		grid.add_theme_constant_override("h_separation", 6)
 		grid.add_theme_constant_override("v_separation", 6)
 		_card_list.add_child(grid)
@@ -203,10 +225,30 @@ func _refresh_card_list() -> void:
 	_update_cell_selection()
 
 
-## v32.3 E3：单卡格（118×132：72px 卡图 + 名字行）——拥有亮卡图，未获得黑影+问号
+## v38.x O 条: 卡格列数/格宽自适应成员与公式（cols=clampi(floor((avail+6)/(cell+6)),3,6)；
+## cols<4 时格宽降 106 再算一次；resized 防抖重排）
+var _card_cell_width: float = 118.0
+var _card_list_resize_pending: bool = false
+
+func _card_grid_cols(avail: float) -> int:
+	return clampi(int(floor((avail + 6.0) / (_card_cell_width + 6.0))), 3, 6)
+
+
+func _on_card_list_resized() -> void:
+	if _card_list_resize_pending:
+		return
+	_card_list_resize_pending = true
+	var timer := get_tree().create_timer(0.3)
+	timer.timeout.connect(func():
+		_card_list_resize_pending = false
+		if _card_list != null and is_instance_valid(_card_list):
+			_refresh_card_list())
+
+
+## v32.3 E3：单卡格（118×132：72px 卡图 + 名字行，v38.x O 条格宽自适应）——拥有亮卡图，未获得黑影+问号
 func _make_card_cell(card_id: String) -> Button:
 	var btn := Button.new()
-	btn.custom_minimum_size = Vector2(118, 132)
+	btn.custom_minimum_size = Vector2(_card_cell_width, 132)
 	btn.set_meta("cell_card_id", card_id)
 	var card = DefaultCards.get_card_by_id(card_id) if DefaultCards else null
 	var owned := _is_owned(card_id)

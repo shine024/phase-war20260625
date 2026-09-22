@@ -515,7 +515,10 @@ func _render_battle_stats(vbox: VBoxContainer) -> void:
 	if not mvp.is_empty():
 		vbox.add_child(_make_separator())
 		var mvp_title := Label.new()
-		mvp_title.text = "本场最佳"
+		# 口径提示：本区块数字=减免前进账量（battle_unit_record 头注契约），
+		# 与上方"造成伤害/承受伤害"（减免后）同屏并列，不注明会被读成数据打架
+		# （2026-09-20 全矩阵报告 P3 口径项）。
+		mvp_title.text = "本场最佳（伤害为减免前口径）"
 		mvp_title.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
 		mvp_title.add_theme_color_override("font_color", DT.COLOR_TEXT_DIM)
 		vbox.add_child(mvp_title)
