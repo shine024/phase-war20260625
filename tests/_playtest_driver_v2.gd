@@ -25,6 +25,10 @@ func _ready() -> void:
 			scenario = a.get_slice("=", 1)
 	var Scenarios = load("res://tests/_playtest_scenarios_v2.gd")
 	_cfg = Scenarios.get_scenario(scenario)
+	if _cfg.is_empty():
+		# v3 P2-11: 曲线场景独立文件（Task 1.1c），主表查不到时回退
+		var CurveScenarios = load("res://tests/_playtest_scenarios_curve.gd")
+		_cfg = CurveScenarios.get_scenario(scenario)
 	_steps = _cfg.get("steps", [])
 	if _steps.is_empty():
 		print("[pt] FAIL no scenario '%s'" % scenario)

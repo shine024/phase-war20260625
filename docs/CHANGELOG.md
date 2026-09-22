@@ -9208,3 +9208,11 @@ MVP 协同小结、8 面板首开气泡。**R3 余项**：结算面板三页签�
 - UI 体检探针 `tests/_tmp_ui_audit_probe.tscn` 复跑（user:// 先备份后还原纪律已执行，log 落 `tests/evidence/playability_2026-09-22/b4_ui_audit.log`）。
 - AGENTS.md 新增 v6.22 段（敌方数值脱钩/贡献轴口径/任务/事件/商店五域纪律 + 回归锁清单）。
 - 门禁：gdunit 全量 **465/465**（459+6，77+1 套件；b4_gdunit_raw3.log）；gdparse 改动文件零报错。
+
+## 2026-09-22 晚：未完成项执行计划 B0~B4 执行记录（详见 docs/未完成项执行计划_2026-09-22.md 与 tests/evidence/playability_2026-09-22/）
+
+- **B0**：门禁复核（gdunit 458/458 + smoke 8/8，b0_gates.log）→ 8 临时脚本归档 → 三段预批提交（0fd1780b / adf8e3dd / 04ad2634）。提交隔离修正：8 个 M 文件实跨两条工作流，美术 4 文件入 fix(v6.21.3)，势力 4 文件留待 feat(v6.22.0)（势力计划 §9 纪律）。
+- **B1**：槽 2 三件套备份 → era 图标抽验三件套（task11 复跑 67 组=15 时代内聚+52 设计内零 MISSING；era 分栏拼图 task11_bp_era_sheet.png；bp 卡实机截图 task11_bp_ingame.png 探针 tests/_tmp_bp_era_probe.tscn）→ **P2-11 曲线采集 18 轮（L43/50/60 × A/B 组 × 3 轮，独立进程）全败：L43≈16s、L50≈12s、L60≈9-11s 战败，相位场满级注入无改观——断崖实证，level_curve.json + b1_error_scan.md（SCRIPT ERROR 0）** → 教程回退复现实锤（正常保存路径：内存 step=7 → 落盘 current_step:1 + completed_steps 重复 [1,2,3,1,2,3]，重载 step=1；修复方案归 M6-残 拍板）→ 槽 2 还原原状 → 路线图 P2-5/9/11+P3-1~6 注记刷新（M6① 口径）。
+- **B2**：P2-9 经济离线模拟（tools/_archived/_tmp_p29_economy_sim.py，N=2000 线蒙特卡洛）→ docs/P2-9经济模拟_p29_economy_sim.md：B1 现行档 L60 真卡 +61%、材料流零扰动；推荐维持 B1、强感知升 B2 不升 B3（待 M4 拍板）。
+- **B3**：5 张词条小图标程序化重绘（深底徽章语言、WCAG 双底 10/10 PASS、task21 复跑 TASK21_OK、备份 .godot/art_backup_pir_20260922/、前后拼图 task32b_pir_before_after.png，审美终裁归 M1）→ 孤儿收尾：31 张归档定案回写 orphan_disposition.json；black_sun/mountain_bunker_marker 接线方案 docs/P3-3孤儿接线方案_p33_wire_plan.md（推荐只接 black_sun，待 M3-尾 拍板）。
+- **B4**：任务全程 todo 跟踪；流程踩坑沉淀：①re.subn 的 repl 含 `\r?` 会被转义为 CR+`?` 字节（跨行正则补丁慎用，行级插入更稳）；②GdUnit 本机 assert_str 无 does_not_contain，用 assert_bool(contains).is_false()；③驱动器场景名解析先用 trim_prefix 链再 is_valid_int。

@@ -29,38 +29,7 @@
     "assets/ui/truck_base/truck_sprite_era4.png",
     "assets/ui/truck_base/truck_sprite_era5.png"
   ],
-  "kept": [
-    [
-      "assets/ui/instruments/pi_drop.png",
-      "存在运行期引用，取消移动",
-      [
-        "./managers/phase_instrument_manager.gd",
-        "./scenes/ui/mvp_panel.gd"
-      ]
-    ],
-    [
-      "assets/map/bubble_boss.png",
-      "存在运行期引用，取消移动",
-      [
-        "./scenes/world_map.gd"
-      ]
-    ],
-    [
-      "assets/map/bubble_cleared.png",
-      "存在运行期引用，取消移动",
-      [
-        "./scenes/world_map.gd"
-      ]
-    ],
-    [
-      "assets/map/大地图.png",
-      "存在运行期引用，取消移动",
-      [
-        "./managers/bunker_manager.gd",
-        "./managers/game_manager.gd"
-      ]
-    ]
-  ],
+  "kept": [],
   "kept_in_place_by_design": [
     "assets/map/gate_near.png（注记保留终局演出）",
     "assets/map/black_sun.png（接线候选）",
@@ -72,5 +41,8 @@
     "assets/map/bubble_cleared.png": "world_map:150 v23 退役注释文本",
     "assets/map/大地图.png": "bunker_manager/game_manager 中文注释散文，非文件引用"
   },
-  "total_moved": 27
+  "total_moved": 27,
+  "notes": [
+    "2026-09-22 v3 计划 Task 3.3：人工核注证实 pi_drop/bubble_boss/bubble_cleared/大地图.png 的'引用'均为注释或同名局部变量（非贴图加载），实为真孤儿——4 张已移入 .godot/art_backup_orphan_20260922/，27+4=31 张归档定案。"
+  ]
 }
