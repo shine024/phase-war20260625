@@ -9151,3 +9151,18 @@ MVP 协同小结、8 面板首开气泡。**R3 余项**：结算面板三页签�
 ### 验证
 - gdparse 改动 .gd 零报错；master_power_smoke 8/8 PASS；**ui_p1_validation ALL PASS（CHANGED_SCRIPTS 补录 4 文件，84 编译+4 运行时）**；gdunit 全量 433/433（R6 新增手柄四用例：joy 默认注册/joy 重绑不波及键盘/旧 Array 兼容/is_back_event；覆盖格式断言升 v2 字典——初轮 `contains("SPACE")` 笔误实为 "Space"，已修正重跑）。
 - 待实机/用户侧：手柄接真机过一遍（焦点环观感/B 键全链）；BGM 追溯或替换；Deck 实测（S4 剩余域）+ Steam Input 模板上传。
+
+## v6.21.3 美术质检修复批：生成器水印清理 15 张 + 蓝图 era 根因修复 + gem_debug 导出排除（2026-09-22，详见 docs/美术资产质检报告_2026-09-22.md）
+
+**改 enemy_blueprints / 星级·势力·纳米图标资产前必读本节。** 背景=2026-09-22 美术资产全量质检（计划 `.hermes/plans/2026-09-22_art-quality-audit.md`，四块全量零抽样，证据 `tests/evidence/art_audit_2026-09-22/`）。
+
+- **蓝图 era 根因修复**（`data/enemy_blueprints.gd`）：`_p` 工厂 `c.era = 1` 硬编码 → 默认参数 `era: int = 1`，仅 `_create_generated_blueprints` 生成循环传入真实时代。修复前 54 张 bp_* 图标兜底坍缩进 `ERA_KIND_FALLBACK_ICON` 二战行 4 桶（同脸+类型错位：防空塔→迫击炮图、警戒塔→无人机图、图标时代与 id 前缀脱节）；修复后散开为 **15 组时代内聚小桶**（每组 4-10 张同族，剩余同脸=兜底表设计粒度非 bug）。6 张手写特殊卡（bulwark/titan_mk2/storm_rider/heavy_carrier/regen_frame/abrams_mk2）era=1 原值不变。era 影响面（掉落时代通道/制造门/克制建议）经 gdunit 全量 458/458（基线 455+新增 3）+ master_power_smoke 8/8 验证零回归。回归锁 `tests/unit/data/test_enemy_blueprint_era.gd`（前缀↔era 48 张全查/特殊卡锁 1/二战行只余 bp_ww2_*）。
+- **生成器水印清理（15 张在用图）**：`stars/star_1~5+8`（6 张）、`factions/*_128`（8 张）、`basic_nano`（1 张）右下角"图片由AI生成"水印——星级=矩形行插值+轻模糊、势力旗=行内插值、basic_nano=透明区 alpha 清零。**star_6/7 定量核查无水印**（初判 17 张系拼图压缩误读，修正为 15）。bak 快照 `.godot/art_backup_watermark_20260922/`；复验拼图 `tests/evidence/art_audit_2026-09-22/watermark_cleanup_verify*.png`；`--headless --editor --quit` 重导入已跑。清理工具 `tools/_tmp_watermark_cleanup.py` 可复跑。
+- **gem_debug.png 入导出排除**（export_presets.cfg exclude_filter）：掉落贴图生成器的调试遗留，零运行时消费方，不入发行包。
+- **遗留待裁决**（质检报告第四节）：补图批（6 张无专属图玩家卡 + 5 张词条小图标重掷，走 agnes 管线、审美终裁归用户）、override 微调批（5 组语义错位映射）、孤儿图 31 张三分法处置。
+
+### v6.21.3 追加（同日第二批）：缴获图标 override 对齐 + 6 张无专属图卡补图
+
+- **PLAYER_ICON_OVERRIDE 4 条语义对齐**（`scripts/ui_asset_loader.gd`，美术质检报告发现 #3）：`cold_sam7` 017→**090**（萨姆-7 防空组=便携防空导弹组，原图 ZSU-23 自行高炮车类型错位；090 既有毒刺导弹兵图同类）；`fut_aa_hover` 060→**025**（悬浮底盘对齐；原 060 履带火箭炮车错位；`fut_howitzer` 保留 060 火炮角色匹配登记接受）；新增 `captured_cold_inf_m60`→**045**、`captured_cold_air_m113_e`→**016**（缴获版对齐原型家族图，消除 M60 缴获显 M14 图/M113 缴获显布雷德利图错位）。`mod_ranger`=三角洲同图登记接受（无更优现代特种兵图）。复跑 task11：OVERRIDE 76→78、总组 68→67。
+- **6 张无专属图玩家卡补图**（质检报告发现 #2 遗留，agnes-image-2.1-flash 管线）：storm_rider/bulwark/titan_mk2/abrams_mk2/heavy_carrier/regen_frame 各 1 掷通过（填充 0.41-0.67），白底 flood 转透明+内容 bbox 裁方+512×512 落盘 `assets/card_icons/{card_id}.png`（第 0 级专属链自动命中，DEDICATED 17→23、ERA_FALLBACK 54→48）；regen_frame 白口袋（吊臂封闭区）二次清除后复验通过。视觉验收拼图 `tests/evidence/art_audit_2026-09-22/task13_six_icons_verify.png`。管线脚本 `tools/_tmp_gen_six_card_icons.py`（curl 子进程+临时文件传体——Windows stdin 传体会被服务端截断报 unexpected end of JSON input；传输重试不占 3 掷质量预算）。重导入已跑。
+- 门禁：override 批 gdunit 458/458；补图为纯新增资产（无逻辑改动）。

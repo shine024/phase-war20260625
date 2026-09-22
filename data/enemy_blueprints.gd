@@ -201,7 +201,7 @@ static func _create_generated_blueprints() -> Array:
 				"平台 — %s／战场缴获" % label,
 				"移速 %d｜耐久 %d" % [55 + (i % 6) * 6, 90 + (i % 7) * 10],
 				"由%s时代敌军装备逆向解析而来的平台图纸。" % label,
-				"“改造后可直接投入战区。”"))
+				"“改造后可直接投入战区。”", era))
 	return list
 
 static func _generated_display_name(label: String, era: int, idx: int) -> String:
@@ -347,7 +347,7 @@ const _PLATFORM_DEFAULT_WEAPON_LABEL: Dictionary = {
 static func _default_weapon_for_platform(pt: int) -> int:
 	return int(_PLATFORM_DEFAULT_WEAPON.get(pt, 1))  # 默认 RIFLE
 
-static func _p(id: String, name: String, cost: float, pt: int, rarity: String, type_line: String, summary: String, desc: String, flavor: String) -> CardResource:
+static func _p(id: String, name: String, cost: float, pt: int, rarity: String, type_line: String, summary: String, desc: String, flavor: String, era: int = 1) -> CardResource:
 	var c = CardResource.new()
 	c.card_id = id
 	c.display_name = name
@@ -358,7 +358,10 @@ static func _p(id: String, name: String, cost: float, pt: int, rarity: String, t
 	# 旧档残留 bp_* 实例仍经此模板 clone，保持全战斗卡模板字段完备）
 	c.platform_type = c.combat_kind
 	c.weapon_label = str(_PLATFORM_DEFAULT_WEAPON_LABEL.get(pt, "步枪"))
-	c.era = 1
+	# v6.21.3 修复：era 硬编码 1 使 5 时代生成的蓝图图标兜底全部坍缩进二战行
+	# （ERA_KIND_FALLBACK_ICON 25 桶→4 桶，同脸+类型错位）。默认 1 保持 6 张
+	# 手写特殊卡原值不变，仅生成循环传入真实时代。
+	c.era = era
 	c.base_hp = 100.0
 	c.range_value = 3
 	c.attack_speed = 1.0

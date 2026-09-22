@@ -140,7 +140,7 @@ const PLAYER_ICON_OVERRIDE: Dictionary = {
 	"ww2_panther": "vis_player_048",    # 黑豹坦克 → 黑豹坦克 ★完美同名
 	"ww2_kingtiger": "vis_player_049",  # 虎王坦克 → 虎王坦克 ★完美同名
 	# 冷战
-	"cold_sam7": "vis_player_017",      # 萨姆-7防空组 → ZSU-23-4自行高炮（防空）
+	"cold_sam7": "vis_player_090",      # 萨姆-7防空组 → 毒刺导弹兵（便携防空导弹步兵，v6.21.3：原 017 自行高炮车与步兵班组类型错位）
 	"cold_rpg": "vis_player_046",       # RPG火箭筒组 → 反坦克组
 	"cold_m60": "vis_player_045",       # M60机枪班 → MG42机枪组（机枪通用）
 	"cold_rpk": "vis_player_045",       # RPK机枪班 → MG42机枪组
@@ -151,6 +151,9 @@ const PLAYER_ICON_OVERRIDE: Dictionary = {
 		"cold_m60t": "vis_player_055",      # M60坦克 → T-72坦克（主战坦克，v7.x修正：原误用052 BTR装甲车）
 		"cold_bradley": "vis_player_053",   # M2布雷德利 → M113装甲车（步战车）
 	"cold_spetsnaz": "vis_player_054",  # 阿尔法特种部队 → 特种部队 ★完美同名
+	# v6.21.3 缴获变体对齐（美术质检报告发现 #3：缴获版图标与原型家族一致）
+	"captured_cold_inf_m60": "vis_player_045",      # M60机枪班(缴获) → 机枪族图（对齐 cold_m60=045；原 051 M14 步兵图错位）
+	"captured_cold_air_m113_e": "vis_player_016",   # M113(缴获) → M113装甲车（对齐 cold_sup_m113=016；原 053 布雷德利图错位）
 	"cold_chieftain": "vis_player_055", # 酋长坦克 → T-72坦克（重型坦克）
 	"cold_t62": "vis_player_055",       # T-62坦克 → T-72坦克（苏系坦克）
 	"cold_t72": "vis_player_055",       # T-72坦克 → T-72坦克 ★完美同名
@@ -163,8 +166,8 @@ const PLAYER_ICON_OVERRIDE: Dictionary = {
 	"mod_hummer_tow": "vis_player_058", # 悍马·陶式 → 皮卡武装
 	"mod_stryker_m2": "vis_player_059", # 斯特赖克M2 → 斯特赖克装甲车 ★完美同名
 	"mod_stryker_mgs": "vis_player_059",# 斯特赖克MGS → 斯特赖克装甲车
-	"fut_aa_hover": "vis_player_060",   # 防空悬浮车 → 火箭炮车（自行火炮）
-	"fut_howitzer": "vis_player_060",   # 悬浮自行火炮 → 火箭炮车
+	"fut_aa_hover": "vis_player_025",   # 防空悬浮车 → 悬浮坦克（悬浮底盘，v6.21.3：原 060 履带火箭炮车类型错位）
+	"fut_howitzer": "vis_player_060",   # 悬浮自行火炮 → 火箭炮车（火炮角色匹配保留；悬浮细节丢失登记接受）
 	"mod_ranger": "vis_player_061",     # 游骑兵 → 三角洲部队（精锐步兵）
 	"mod_challenger2": "vis_player_062",# 挑战者2 → M1A2坦克（西方主战坦克）
 	"mod_leo2a6": "vis_player_062",     # 豹2A6 → M1A2坦克
