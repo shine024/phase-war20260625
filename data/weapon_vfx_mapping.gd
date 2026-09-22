@@ -66,13 +66,13 @@ const WEAPON_ID_MAP: Dictionary = {
 	"空空导弹": "24b45a0c",           # 复用「空空导弹/20mm机炮」（cold_boss_mig / mod_air_apache_e 等）
 	"萨姆-7防空导弹": "70912efd",     # 复用「萨姆-7导弹/防空导弹」（cold_sam7，含装 aa_05 场景）
 	"防空导弹": "e676771a",           # 复用「便携式防空导弹」（mod_inf_patriot / mod_boss_command 等）
-	"毒刺防空导弹": "f1a2b3c4",  # v8.4 B-class impact texture
-	"幽灵空空导弹": "c3d4e5f6",  # v8.4 B-class impact texture
-	"终焉防空": "d4e5f6a7",  # v8.4 B-class impact texture
+	"毒刺防空导弹": "97c4c076",  # v8.4 B-class（2026-09-21 按命名规范重排：md5(名)[:8]，原顺序占位 f1a2b3c4）
+	"幽灵空空导弹": "b5e6b849",  # v8.4 B-class（重排，原 c3d4e5f6）
+	"终焉防空": "72e6f1b9",  # v8.4 B-class（重排，原 d4e5f6a7）
 	# Retry batch (503 failures from first run):
-	"炮射导弹": "9c8d7e6f",      # v8.4 B-class — arm_07 改造
-	"守护者防空": "a1b2c3d4",    # v8.4 B-class — guardian_ww1 Boss slot2
-	"闪电防空": "b2c3d4e5",      # v8.4 B-class — guardian_ww2 Boss slot2
+	"炮射导弹": "edb9f949",      # v8.4 B-class — arm_07 改造（重排，原 9c8d7e6f）
+	"守护者防空": "174a0f6f",    # v8.4 B-class — guardian_ww1 Boss slot2（重排，原 a1b2c3d4）
+	"闪电防空": "a452063e",      # v8.4 B-class — guardian_ww2 Boss slot2（重排，原 b2c3d4e5）
 }
 
 ## 安全ID -> 弹道贴图

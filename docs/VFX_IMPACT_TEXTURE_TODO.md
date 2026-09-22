@@ -1,12 +1,25 @@
 # VFX_IMPACT_TEXTURE_TODO — 按名专属贴图死链看护
 
-> **状态**: 活跃看护（2026-09-19 重建本文件；原文件在 v8.x 期间遗失，CHANGELOG v38.5/v38.6 引用曾断链）
+> **状态**: ✅ **死链已清零（2026-09-21 晚间批收编）**——61 个 distinct safe_id ×
+> proj/impact 双侧共 122 张全部生成入位（agnes-image-2.1-flash 批量管线
+> `tools/_tmp_gen_weapons_realistic.py`，白底生成→泛洪抠透明→内容裁切→族宽归一；
+> 分族 prompt：动能弹/机枪/步枪/高炮/榴弹迫击/火箭导弹/能量七族）。B 类 6 条占位 id
+> 已按命名规范重排为 md5(武器名)[:8] 并同步 `WEAPON_ID_MAP`。棘轮基线 64→**0** 收死
+> （`tests/weapon_visual_profiles_smoke.gd` [15]，138 PASS / 0 FAIL）。
+> **导入**: `--headless --editor --quit` 已跑，122 份 .import/.ctex 全生成。
+> **实机**: 第 2 关实测弹体（步枪曳光/迫击炮弹/坦克炮弹）换装正常，尺寸守弹体尺寸律
+> （0.03 恒定系数 × 族内容宽 600-1300px → 显示 18-39px < 58.9px 基准）。
+> **审美终裁**: 归用户——细审走 `tests/tools/vfx_audit_matrix.gd` 审计矩阵 +
+> `docs/vfx_audit_shots/`（v6.15 惯例），不满意的单条用 `--only <武器名>` 重掷即可。
+> ---
+> 以下为收编前的历史看护记录（存档）：
+
 > **背景**: v8.x 的"按名专属贴图层"整体停摆——`data/weapon_vfx_mapping.gd` 的
 > `WEAPON_ID_MAP` 64 条指向的 `<safe_id>_proj.png` / `<safe_id>_impact.png`
 > （`res://assets/effects/projectiles/weapons_realistic/`）**一张都不存在**
 >（proj 侧 v26.x 勘误在案；impact 侧至今静默走通用炮弹爆炸兜底，无报错）。
 > **棘轮语义**: 只许减少不许增加——按 VFX 工作流生成贴图收编条目后，
-> 把 `tests/weapon_visual_profiles_smoke.gd` [15] 节的基线 **64** 同步调小即可收紧；
+> 把 `tests/weapon_visual_profiles_smoke.gd` [15] 节的基线同步调小即可收紧；
 > **新增 WEAPON_ID_MAP 映射前必须先落贴图文件**。
 
 ## 巡检入口
