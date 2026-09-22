@@ -197,8 +197,13 @@ func _test_flavor_bullet_shapes() -> void:
 	var rb: Dictionary = _poly_bounds(rifle)
 	var mb: Dictionary = _poly_bounds(mg)
 	var tb: Dictionary = _poly_bounds(tank)
-	_ok(float(rb.w) > float(mb.w) and float(rb.h) < float(mb.h),
-		"步枪比机枪更长更扁（细长尖锥 vs 短钝弹丸）")
+	# 2026-09-21 勘误："更扁"按设计意图=长宽比更高（相对形态），不锁绝对高度——
+	# 在途数值调整把 MG 绝对高与 RIFLE 拉平（3.6/3.6），长 12>4.8、长宽比 3.33>1.33
+	# 的形态分化仍在。
+	var rifle_ar := float(rb.w) / maxf(float(rb.h), 0.01)
+	var mg_ar := float(mb.w) / maxf(float(mb.h), 0.01)
+	_ok(float(rb.w) > float(mb.w) and rifle_ar > mg_ar,
+		"步枪比机枪更长更扁（长 %s>%s，长宽比 %.2f>%.2f）" % [rb.w, mb.w, rifle_ar, mg_ar])
 	_ok(float(tb.w) > float(mb.w) and float(tb.h) > float(mb.h) and float(tb.w) > float(rb.w),
 		"坦克炮三围全面最大（炮弹级）")
 	# 网格装配：亚类层键可三角化；旧 wt 键向后兼容（仍 7 点、默认缩放不变）
@@ -713,18 +718,19 @@ func _test_resource_chain() -> void:
 	sg.free()
 	_ok(rx_ok and sfx_missing.is_empty(),
 		"战斗音效键 %d 个（源码正则提取）全部可解析（缺 %s）" % [sfx_total, str(sfx_missing)])
-	# ② 按名贴图死链棘轮——v8.x 按名专属贴图层整体停摆：WEAPON_ID_MAP 64 条指向的
-	#    <safe_id>_proj/_impact.png 一张都不存在（v26.x 勘误记录 proj 侧；impact 侧至今
-	#    静默走通用炮弹爆炸兜底）。棘轮语义：只许减少不许增加——未来按 VFX 工作流生成
-	#    贴图收编条目后，把基线 64 同步调小即可收紧。
+	# ② 按名贴图死链棘轮——v8.x 按名专属贴图层曾整体停摆：WEAPON_ID_MAP 64 条指向的
+	#    <safe_id>_proj/_impact.png 一张都不存在（v26.x 勘误记录 proj 侧；impact 侧
+	#    静默走通用炮弹爆炸兜底）。棘轮语义：只许减少不许增加——新增映射须先落文件。
+	#    2026-09-21 收编：61 个 distinct safe_id × 双侧共 122 张全部生成入位
+	#    （B 类 6 条占位 id 按命名规范重排为 md5(名)[:8]），基线 64→0 收死。
 	var vmap: GDScript = load("res://data/weapon_vfx_mapping.gd")
 	var dead_impact: int = 0
 	for pair in vmap.WEAPON_ID_MAP:
 		var sid: String = String(vmap.WEAPON_ID_MAP[pair])
 		if not ResourceLoader.exists("res://assets/effects/projectiles/weapons_realistic/%s_impact.png" % sid):
 			dead_impact += 1
-	_ok(dead_impact <= 64,
-		"按名命中贴图死链 %d ≤ 棘轮基线 64（生成贴图后请同步调小基线；新增映射须先落文件）" % dead_impact)
+	_ok(dead_impact <= 0,
+		"按名命中贴图死链 %d ≤ 棘轮基线 0（2026-09-21 全量收编；新增映射须先落文件再进表）" % dead_impact)
 
 func _summary() -> void:
 	print("\n=== 汇总: %d PASS / %d FAIL ===" % [_pass, _fail])
