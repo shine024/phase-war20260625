@@ -26,6 +26,8 @@ const DamageAttenuation = preload("res://scripts/battle/damage_attenuation.gd")
 const AttackCalculator = preload("res://scripts/battle/attack_calculator.gd")
 const FortShieldAuraScript = preload("res://scripts/battle/fort_shield_aura.gd")
 const ConstructUnitDeploy = preload("res://scripts/battle/construct_unit_deploy.gd")
+const CardFootAnchors = preload("res://data/card_foot_anchors.gd")  # v6.23: 部署条头顶锚定
+const DeployProgressBarScene = preload("res://scenes/units/deploy_progress_bar.tscn")  # v6.23: 敌方部署进度条
 const ConstructUnitAI = preload("res://scripts/battle/construct_unit_ai.gd")
 const UnitStatsTable = preload("res://resources/unit_stats_table.gd")
 const ModRegistry = preload("res://scripts/systems/modification_registry.gd")  # v26: 敌方固定配装（无 class_name，--script 编译安全）
@@ -146,6 +148,8 @@ func _cached_load(path: String, type_hint: int = -1) -> Resource:
 var _presentation_card_grid: bool = false
 var _hp_status_refresh_accum: float = 0.0   ## v9.x 血条状态图标低频刷新累加器（不 gate 模式，两种战斗都刷新）
 var _hpbar_ref: Node = null  ## v9.x（3c）：HpBar 节点引用缓存（原每 0.3s 字符串路径查找）
+var _ghost_total_time: float = 0.0  ## v6.23: 部署虚影总时长（进度分母，对齐我方 construct_unit_deploy）
+var _deploy_bar: Node2D = null  ## v6.23: 敌方部署进度条（运行期实例化，实体化时释放）
 var _idle_spr: Sprite2D = null  ## v9.x（3d）：待机浮动手写推进用的立绘引用缓存
 
 ## v9.x（3c 性能批次）：HpBar 引用缓存（逻辑在 UnitSharedHelpers.hpbar_cached）
@@ -923,7 +927,12 @@ func _apply_visual_from_archetype(cfg: Dictionary) -> void:
 			else:
 				spr.texture = tex
 				spr.visible = true
-				spr.offset = Vector2.ZERO
+				# v6.23: setup 期立即同源归一——原走 scale=1.0 裸卡图（512×512 全尺寸），
+				# add_child 到 apply_card_grid_enemy_presentation 之间的渲染帧露"半战场"大图
+				# （实机验收③：第 4 关敌方卡有一帧大图且方向错，大图帧读感即"方向错"）。
+				# apply_uniform_card_sprite 幂等（同图同 scale 同脚部 offset），presentation
+				# 期再调一次零变化；UnitOutline 此时尚未挂，无描边契约冲突。
+				CardGridUnitVisuals.apply_uniform_card_sprite(spr, tex)
 				sprite_ok = true
 
 	if poly != null:
@@ -1971,6 +1980,25 @@ func start_as_deploy_ghost() -> void:
 	# 星冥虚影染蓝青色（与常规敌兵半透明白区分，读得出"这不是常规敌人"）
 	# v36 实机验收：常规虚影 a 0.42→0.62（与我方同批）——揭幕后敌我不见的空白感来自虚影太淡
 	modulate = Color(0.62, 0.82, 1.0, 0.5) if _is_xeno else Color(1.0, 1.0, 1.0, 0.62)
+	# v6.23: 部署进度条——敌方有部署时间（4.5~10.5s）但此前零显示，被误读为"敌方不攻击
+	# 直接站着"（用户实机批）。挂 ⏱ 进度条与我方对称；血条占位让给进度条（满血虚影血条无信息量）
+	_ghost_total_time = _ghost_materialize_time_left
+	_ensure_deploy_bar()
+
+## v6.23: 确保部署进度条在位（幂等——start_as_deploy_ghost 有 4 个触发点防重复挂）
+func _ensure_deploy_bar() -> void:
+	if _deploy_bar == null or not is_instance_valid(_deploy_bar):
+		_deploy_bar = DeployProgressBarScene.instantiate()
+		add_child(_deploy_bar)
+	# 虚影期隐藏血条（满血无信息量），进度条占血条位（与我方 construct_unit_deploy 同式）
+	var hb := _get_hpbar_cached() as CanvasItem
+	if hb != null:
+		hb.visible = false
+	var spr := get_node_or_null("Sprite2D") as Sprite2D
+	var top_y: float = CardFootAnchors.entity_top_y_for_sprite(spr) if spr != null else -50.0
+	_deploy_bar.position = Vector2(0.0, top_y - 14.0)
+	_deploy_bar.z_index = CardGridUnitVisuals.OVERHEAD_UI_Z  # 与血条同带（立绘 z=10 之上）
+	_deploy_bar.set_progress(0.0)
 
 ## 部署虚影每帧更新（由 _physics_process 调用，返回 true 表示本帧已实体化）
 func _update_enemy_deploy_ghost(delta: float) -> bool:
@@ -1979,6 +2007,9 @@ func _update_enemy_deploy_ghost(delta: float) -> bool:
 	target = null
 	move_and_slide()
 	_clamp_inside_battlefield()
+	# v6.23: 进度更新（同我方 update_deploy_ghost 公式）
+	if _deploy_bar != null and is_instance_valid(_deploy_bar) and _ghost_total_time > 0.0:
+		_deploy_bar.set_progress(1.0 - (_ghost_materialize_time_left / _ghost_total_time))
 	if _ghost_materialize_time_left <= 0.0:
 		_materialize_enemy_deploy_ghost()
 		return true
@@ -1989,6 +2020,13 @@ func _materialize_enemy_deploy_ghost() -> void:
 	is_deploy_ghost = false
 	_ghost_materialize_time_left = 0.0
 	modulate = Color.WHITE
+	# v6.23: 进度条退役、血条回归（虚影期被击杀时整单位 queue_free 带走子节点，无泄漏）
+	if _deploy_bar != null and is_instance_valid(_deploy_bar):
+		_deploy_bar.queue_free()
+	_deploy_bar = null
+	var hb := _get_hpbar_cached() as CanvasItem
+	if hb != null:
+		hb.visible = true
 	# v25.2 敌方实体化落地涟漪（橙红）——此前敌方实体化零特效，与玩家侧青蓝涟漪
 	# （construct_unit._play_materialize_fx）不对称，敌兵"啪"地出现无降临感。
 	# 只做涟漪不做火花：敌兵数量多，反馈预算收紧。走工厂对象池。

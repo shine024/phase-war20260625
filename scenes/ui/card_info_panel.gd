@@ -148,7 +148,6 @@ func _ready() -> void:
 	add_theme_stylebox_override("panel",
 		PanelStyles.make_panel_frame_textured(DesignTokens.get_panel_accent("backpack")))
 	_resolve_nodes()
-	_setup_section_headers()
 	_setup_tab_titles()
 	_setup_action_buttons_container()
 	if close_button:
@@ -394,10 +393,40 @@ func _position_at(at_position: Vector2) -> void:
 	if viewport:
 		screen_w = float(viewport.get_visible_rect().size.x)
 		screen_h = float(viewport.get_visible_rect().size.y)
-	position = Vector2(
+	var pos := Vector2(
 		clampf(at_position.x, 8.0, maxf(8.0, screen_w - panel_w - 8.0)),
 		clampf(at_position.y, 8.0, maxf(8.0, screen_h - panel_h - 8.0))
 	)
+	# v6.23: 避让右上角 toast 堆叠区（ToastManager layer=200 恒在信息框 layer=90 之上，
+	# 部署失败等 toast 会直接盖住单位信息框内容——用户实机批"信息框压在敌方信息框上面"）
+	pos = _avoid_toast_zone(pos, panel_w, panel_h, screen_h)
+	position = pos
+
+## v6.23: 与 ToastManager 右上角堆叠容器求交，相交则优先左移到其左侧，
+## 左侧放不下则下移到堆叠区底部。ToastManager 未加载（极早期/测试环境）时跳过。
+func _avoid_toast_zone(pos: Vector2, panel_w: float, panel_h: float, screen_h: float) -> Vector2:
+	var loop_obj: Variant = Engine.get_main_loop()
+	if not (loop_obj is SceneTree):
+		return pos
+	var tree: SceneTree = loop_obj as SceneTree
+	if tree == null or tree.root == null:
+		return pos
+	var tm: Node = tree.root.get_node_or_null("/root/ToastManager")
+	if tm == null or not tm.has_method("get_toast_container"):
+		return pos
+	var cont: Control = tm.call("get_toast_container") as Control
+	if cont == null or not cont.is_visible_in_tree() or cont.get_child_count() == 0:
+		return pos
+	var tr: Rect2 = cont.get_global_rect()
+	if not Rect2(pos, Vector2(panel_w, panel_h)).intersects(tr):
+		return pos
+	# 优先左移到 toast 区左侧（保持与单位的纵向关联）
+	var left_x: float = tr.position.x - panel_w - 8.0
+	if left_x >= 8.0:
+		return Vector2(left_x, pos.y)
+	# 左侧放不下：下移到 toast 堆叠区底部（再夹一次底边）
+	var below_y: float = minf(tr.end.y + 8.0, maxf(8.0, screen_h - panel_h - 8.0))
+	return Vector2(pos.x, below_y)
 
 func set_action_buttons_visible(v: bool) -> void:
 	if action_buttons_container:

@@ -1828,8 +1828,12 @@ func _show_mod_details(mod_data: Dictionary) -> void:
 		for ln in effect_texts:
 			if not ln.begins_with("——"):
 				core_lines.append(ln)
+		# v6.23: 逐条换行（原 " · ".join 单行拼接，长模块折行把操作台顶高/顶穿——实机
+		# 验收⑨"改造情报里面内容溢出"）。slice(0,6) 溢出保险：操作台显示前 6 条，
+		# 其余进效果模拟抽屉（DeckSimButton）。
+		core_lines = core_lines.slice(0, 6)
 		if not core_lines.is_empty():
-			deck_core_label.text = " · ".join(core_lines)
+			deck_core_label.text = "\n".join(core_lines)
 		else:
 			deck_core_label.text = String(mod_data.get("description", ""))
 

@@ -1101,13 +1101,20 @@ func _rebuild_pool_bars(mgr: Node, card_id: String) -> void:
 		return
 	# v6.19 P1-T1.1 概率可见化：保底进度行放中栏可见区顶——右栏 InfoPanel 在 tscn 里
 	# 默认隐藏且无显示路径（v6.19 探针实证死区），保底文案必须落在可见容器
+	# v38.x N 条: 保底行套 320 限宽居中容器（与 _make_pool_bar 同式）——原 EXPAND_FILL
+	# 占满中栏 600px，与 320 限宽的概率条形成"上宽下窄"断层（实机验收⑦）。
+	# 文案仍唯一源 ManufacturePools.describe_card_pity（宪法 C3）。
+	var pity_wrap := VBoxContainer.new()
+	pity_wrap.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	pity_wrap.custom_minimum_size = Vector2(320.0, 0.0)
 	var pity_lbl := Label.new()
 	pity_lbl.text = ManufacturePools.describe_card_pity(mgr.get_pity(card_id))
 	pity_lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
 	pity_lbl.add_theme_color_override("font_color", DT.COLOR_GOLD)
 	pity_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	pity_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	evolution_tree.add_child(pity_lbl)
+	pity_wrap.add_child(pity_lbl)
+	evolution_tree.add_child(pity_wrap)
 	var pool: Array = mgr.get_effective_pool(card_id)
 	if path_head_count:
 		path_head_count.text = "%d 档" % pool.size()

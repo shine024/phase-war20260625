@@ -749,14 +749,15 @@ static func do_attack_with_damage(u: CharacterBody2D, damage: float, weapon_type
 	var pellet_dmg := damage / float(pellet_n)
 	var root_2d = u.get_parent().get_parent() if u.get_parent() else u
 	var _fire_spawn_pos = _get_direct_fire_spawn_pos(u)
-	# v20.18: 点射节奏——单发直射路径（射速≤2 不进 batch 的玩家武器）按亚类打 2-3 连发。
+	# v20.18: 点射节奏——单发直射路径（射速≤2 不进 batch 的玩家武器）按亚类打 1-3 连发。
 	# 伤害仅首波结算，后续波为纯视觉弹（burst_delay 错开 0.09s，见 bullet.gd）。
 	# 仅玩家侧：敌方轻武器无条件走 batch，单发路径只剩重型/签名武器（语义单发）。
-	# v38.3: 点射表收紧——机枪 3 / 具名步枪·冲锋枪（RIFLE）2 / 其余（含 GENERIC 兜底）1，
-	# 语义不明武器不再编造连发感（RPG/线膛炮主炮/势力占位名曾误打 2 发视觉弹）。
+	# v38.3: 点射表收紧——语义不明武器（GENERIC 兜底）不再编造连发感。
+	# v6.23: 点射表——机枪 3 / 冲锋枪（名字判定，RIFLE 档内）2 / 步枪·其余 1
+	# （步枪单发：单人逐发瞄准节奏，用户拍板）。
 	var burst_n := 1
 	if wt == GC.WeaponType.DIRECT and pellet_n == 1 and u.is_player:
-		burst_n = WeaponProjectileVfx.burst_count_for(DirectWeaponFlavor.classify(w_name, wt))
+		burst_n = WeaponProjectileVfx.burst_count_for_weapon(w_name, wt)
 	var total_shots: int = pellet_n * burst_n
 
 	for _p in range(total_shots):

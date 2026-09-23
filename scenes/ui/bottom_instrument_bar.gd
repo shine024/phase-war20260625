@@ -845,12 +845,38 @@ func _refresh_slot_indicators() -> void:
 	for panel in _slot_panels:
 		if panel == null or not is_instance_valid(panel):
 			continue
-		var card_id = panel.get_meta("card_id", "")
-		if card_id.is_empty():
+		_apply_deploy_indicator_state(panel)
+
+## 在场标记按"同型卡前 N 个槽"点亮（N = 该卡种当前在场数）。
+## 旧口径按 card_id 成员判断——部署 1 个步枪班，3 个步枪班槽全亮，与「在场 n / 上限 m」
+## 计数当场矛盾（同名卡越多越离谱）。_deployed_card_ids 是进出场维护的多元集合，
+## 某 card_id 的出现次数即该卡种在场数；同型槽按槽位序只点亮前 N 个。
+func _apply_deploy_indicator_state(panel: Control) -> void:
+	var indicator: Polygon2D = panel.get_node_or_null("DeployIndicator") as Polygon2D
+	if indicator == null or not is_instance_valid(indicator):
+		return
+	var card_id := String(panel.get_meta("card_id", ""))
+	if card_id.is_empty():
+		indicator.visible = false
+		return
+	var quota := 0
+	for cid in _deployed_card_ids:
+		if String(cid) == card_id:
+			quota += 1
+	if quota <= 0:
+		indicator.visible = false
+		return
+	var ordinal := 0
+	var found := false
+	for p in _slot_panels:
+		if p == null or not is_instance_valid(p):
 			continue
-		var indicator = panel.get_node_or_null("DeployIndicator")
-		if indicator != null and is_instance_valid(indicator):
-			indicator.visible = card_id in _deployed_card_ids
+		if String(p.get_meta("card_id", "")) == card_id:
+			ordinal += 1
+			if p == panel:
+				found = true
+				break
+	indicator.visible = found and ordinal <= quota
 
 ## 刷新全部显示
 func _refresh_all() -> void:
@@ -1111,8 +1137,8 @@ func _update_slot_panel(panel: Control, entry: Dictionary) -> void:
 		])
 		indicator.color = Color(DT.COLOR_GREEN_BRIGHT.r, DT.COLOR_GREEN_BRIGHT.g, DT.COLOR_GREEN_BRIGHT.b, 0.9)
 		indicator.position = Vector2(_slot_width * 0.5, -2)
-		indicator.visible = String(panel.get_meta("card_id", "")) in _deployed_card_ids
 		panel.add_child(indicator)
+		_apply_deploy_indicator_state(panel)
 	elif not needs_indicator and indicator != null:
 		indicator.queue_free()
 	if has_card:
@@ -1122,7 +1148,7 @@ func _update_slot_panel(panel: Control, entry: Dictionary) -> void:
 		# _apply_slot_bottom_text(panel, "空", "") 把刚设好的卡名覆盖成"空"
 		# （费用角标独立设置不受影响，导致"名字空+费用有"的诡异现象）
 		_sync_slot_icon(panel, card, law_id)
-		_sync_slot_rank_badge(panel, card)
+		_clear_slot_rank_badge(panel)
 		_sync_slot_card_background(panel, card)
 		_sync_slot_card_frame(panel, card)
 		# v8 修复：关卡限定兵种预过滤——战斗卡若被本关 restrict_platforms 排除，灰显提示
@@ -1152,7 +1178,7 @@ func _update_slot_panel(panel: Control, entry: Dictionary) -> void:
 			cost_line
 		)
 		_sync_slot_icon(panel, card, law_id)
-		_sync_slot_rank_badge(panel, card)
+		_clear_slot_rank_badge(panel)
 		_sync_slot_card_background(panel, card)
 		_sync_slot_card_frame(panel, card)
 		return
@@ -1182,7 +1208,7 @@ func _update_slot_panel(panel: Control, entry: Dictionary) -> void:
 	_apply_slot_bottom_text(panel, "空", "")
 	panel.tooltip_text = "%s 槽（空）" % _slot_name(color)
 	_sync_slot_icon(panel, card, law_id)
-	_sync_slot_rank_badge(panel, card)
+	_clear_slot_rank_badge(panel)
 	_sync_slot_card_background(panel, card)
 	_sync_slot_card_frame(panel, card)
 
@@ -1266,11 +1292,18 @@ func _fit_slots_to_bar() -> void:
 		if c3 == null or not c3.visible or slot_panels_set.has(c3):
 			continue
 		slot_overhead += maxf(c3.size.x, c3.get_combined_minimum_size().x) + separation
-	# v21.x: 固定宽度——恒按最大槽数 _FIXED_WIDTH_SLOT_REF(13) 格计算（12 个间距），
-	# 无论当前实际几格（3/5/8/10/13），所有相位仪格子同宽，切相位仪时格子大小不变。
+	# v21.x: 固定宽度——原恒按最大槽数 _FIXED_WIDTH_SLOT_REF(13) 格计算。
+	# v6.23（用户拍板）：改按实际可见槽数（clamp 4..13）——不满配时格子放大吃掉右侧空白
+	# （基地背包装配相位仪"格子太窄+右边还有很多空间"主诉）。13 格满配时与旧公式同值
+	# 零回归；切相位仪槽数变化时格子宽度随之变化（有意打破 v21.x"恒同宽"）。
 	# 上限90px（宽屏不放大），下限40px（窄屏再窄看不清）。
-	var full_total_sep: float = separation * float(_FIXED_WIDTH_SLOT_REF - 1)
-	var full_dynamic_w: float = maxf(40.0, (slot_available_w - full_total_sep - slot_overhead) / float(_FIXED_WIDTH_SLOT_REF))
+	var slot_count: int = 0
+	for p in _slot_panels:
+		if p != null and is_instance_valid(p) and (p as Control).visible:
+			slot_count += 1
+	var width_basis: int = _FIXED_WIDTH_SLOT_REF if slot_count <= 0 else clampi(slot_count, 4, _FIXED_WIDTH_SLOT_REF)
+	var full_total_sep: float = separation * float(width_basis - 1)
+	var full_dynamic_w: float = maxf(40.0, (slot_available_w - full_total_sep - slot_overhead) / float(width_basis))
 	_slot_width = minf(full_dynamic_w, SLOT_FIXED_SIZE.x)
 	for p in _slot_panels:
 		if p and is_instance_valid(p):
@@ -1308,17 +1341,16 @@ func _update_name_section_width() -> void:
 	name_section.custom_minimum_size.x = maxf(60.0, name_w)
 
 
-func _sync_slot_rank_badge(panel: Control, card: CardResource) -> void:
+## v6.22.6: 战斗卡槽不再直显军衔肩章——纯荣誉信息决策价值低，且 Badge 是挂在本
+## PanelContainer 上的 anchor 定位子节点，会被 Container 布局强拉成横贯卡面的灰蓝横条
+## （CHANGELOG「Container 子节点拉伸」坑的第二处实例，backpack_card_item 同款已修）。
+## 军衔信息保留在悬停 tooltip（_format_card_slot_tooltip 的军衔行）。
+func _clear_slot_rank_badge(panel: Control) -> void:
 	if panel == null:
 		return
-	# 段位角标仅对战斗单位卡显示（法则卡/能量卡无军衔段位）
-	if card == null or card.card_type != GC.CardType.COMBAT_UNIT:
-		var old: Node = panel.get_node_or_null("RankCornerBadge")
-		if old != null:
-			old.queue_free()
-		return
-	# v7.x：费用角标在右上角，段位让到左上角避免冲突
-	RankDisplayUi.attach_corner_badge(panel, RankDisplayUi.resolve_from_card_resource(card), 13, false)
+	var old: Node = panel.get_node_or_null("RankCornerBadge")
+	if old != null:
+		old.queue_free()
 
 
 func _slot_name_label(panel: Control) -> Label:
@@ -1487,7 +1519,7 @@ func _build_slot_panel(entry: Dictionary) -> PanelContainer:
 		var art_h: float = maxf(18.0, slot_h - 4.0)
 		var art_w: float = _slot_width - 6.0
 		UiAssetLoader.setup_texrect_icon(rune_tr, rune_tex, Vector2(art_w, art_h))
-		_sync_slot_rank_badge(panel, null)
+		_clear_slot_rank_badge(panel)
 		_sync_slot_card_background(panel, null)
 		_sync_slot_card_frame(panel, null)
 		panel.gui_input.connect(_on_slot_gui_input.bind(panel))
@@ -1576,7 +1608,7 @@ func _build_slot_panel(entry: Dictionary) -> PanelContainer:
 		_apply_slot_bottom_text(panel, "空", "")
 		panel.tooltip_text = "%s 槽（空）" % _slot_name(color)
 	_sync_slot_icon(panel, card, law_id)
-	_sync_slot_rank_badge(panel, card)
+	_clear_slot_rank_badge(panel)
 	_sync_slot_card_background(panel, card)
 	_sync_slot_card_frame(panel, card)
 	# 统一 gui_input 处理：通过 panel meta 读取当前状态

@@ -348,14 +348,20 @@ func _test_burst_and_mg_tempo() -> void:
 	print("\n[12] v20.18 开火节奏（机枪弹幕 + 点射）")
 	var WPV: GDScript = load("res://scripts/weapon_projectile_vfx.gd")
 	var DWF: GDScript = load("res://data/direct_weapon_flavor.gd")
-	# 点射表：机枪 3 / 具名步枪·冲锋枪 2 / 其余（含 GENERIC 兜底）单发
+	# 点射表：机枪 3 / 冲锋枪（名字判定，RIFLE 档内）2 / 步枪·其余（含 GENERIC 兜底）单发
 	# v38.3: GENERIC 撤出点射——语义不明武器（RPG/线膛炮主炮/势力占位名）不编造连发感
+	# v6.23: 步枪撤出点射（单发，用户拍板）；冲锋枪经 burst_count_for_weapon 保留 2 连发
 	_ok(WPV.burst_count_for(DWF.Flavor.MG) == 3, "机枪点射 3 连珠")
-	_ok(WPV.burst_count_for(DWF.Flavor.RIFLE) == 2, "具名步枪/冲锋枪（RIFLE）点射 2 连发")
+	_ok(WPV.burst_count_for(DWF.Flavor.RIFLE) == 1, "RIFLE 档基础单发（v6.23：步枪撤出点射）")
 	_ok(WPV.burst_count_for(DWF.Flavor.GENERIC) == 1, "GENERIC 兜底单发（v38.3：不再自动 2 连发）")
 	_ok(WPV.burst_count_for(DWF.Flavor.SMALL_ARMS) == 1 and WPV.burst_count_for(DWF.Flavor.TANK_GUN) == 1
 		and WPV.burst_count_for(DWF.Flavor.NONE) == 1,
 		"手枪/坦克炮/未分类保持单发（重武器语义单发）")
+	# v6.23: 武器名级点射分化——冲锋枪 2 连发 / 步枪单发 / 机枪 3 连珠
+	_ok(WPV.burst_count_for_weapon("MP18 冲锋枪", 0) == 2, "冲锋枪保留 2 连发点射（v6.23）")
+	_ok(WPV.burst_count_for_weapon("AK-47突击步枪", 0) == 1, "突击步枪单发（名字含步枪非冲锋枪）")
+	_ok(WPV.burst_count_for_weapon("李-恩菲尔德步枪", 0) == 1, "栓动步枪单发")
+	_ok(WPV.burst_count_for_weapon("12.7mm重机枪", 0) == 3, "机枪仍 3 连珠（名字级路由不受影响）")
 	# v38.3: 线膛炮归坦克炮——v26.15e 滑膛炮修正的同族漏网（直射主炮不得吃 GENERIC）
 	_ok(DWF.classify("105mm线膛炮", 0) == DWF.Flavor.TANK_GUN
 		and DWF.classify("120mm线膛炮", 0) == DWF.Flavor.TANK_GUN
@@ -731,34 +737,6 @@ func _test_resource_chain() -> void:
 			dead_impact += 1
 	_ok(dead_impact <= 0,
 		"按名命中贴图死链 %d ≤ 棘轮基线 0（2026-09-21 全量收编；新增映射须先落文件再进表）" % dead_impact)
-
-## [v26.31] 亚类色阵营回混：敌方弹体/曳光回归橙红阵营语言（我方观感不变）
-func _test_camp_blend() -> void:
-	print("
---- v26.31 亚类色阵营回混 ---")
-	var WPV: GDScript = load("res://scripts/weapon_projectile_vfx.gd")
-	var DWF: GDScript = load("res://data/direct_weapon_flavor.gd")
-	var enemy_tint := Color(1.0, 0.55, 0.25)
-	var c_rifle: Color = WPV.flavor_tint(DWF.Flavor.RIFLE)
-	# 我方（默认 blend 0）：亚类色原样（历轮审计观感不动）
-	_ok(WPV.layer_tint(WPV.FLAVOR_LAYER_RIFLE, Color(1.0, 0.95, 0.4)) == c_rifle,
-		"layer_tint 我方默认 0 回混：亚类色原样")
-	# 敌方（blend 0.65）：暖色化——红色分量升、绿色/蓝色分量降（向橙红回混）
-	var e_tint: Color = WPV.layer_tint(WPV.FLAVOR_LAYER_RIFLE, enemy_tint, 0.65)
-	_ok(e_tint.r > c_rifle.r + 0.1 and e_tint.b < c_rifle.b - 0.3,
-		"layer_tint 敌方 0.65 回混：步枪弹体暖橙化（%.2f,%.2f,%.2f）" % [e_tint.r, e_tint.g, e_tint.b])
-	# 敌我同层不同色（阵营可读性）
-	_ok(WPV.layer_tint(WPV.FLAVOR_LAYER_RIFLE, Color(1.0, 0.95, 0.4)) != e_tint,
-		"layer_tint 敌我同层颜色可区分")
-	# 曳光：敌方回混后仍保持 0.82 透明度且暖橙化
-	var tc_enemy := Color(1.0, 0.45, 0.28, 0.78)
-	var t_before: Color = WPV.tracer_color_for(WPV.FLAVOR_LAYER_RIFLE, tc_enemy)
-	var t_after: Color = WPV.tracer_color_for(WPV.FLAVOR_LAYER_RIFLE, tc_enemy, 0.65)
-	_ok(absf(t_after.a - 0.82) < 0.001 and t_after.r > t_before.r and t_after.b < t_before.b,
-		"tracer_color_for 敌方回混：透明度 0.82 保持且暖橙化")
-	# 坦克炮贴图层/星冥层不受回混影响（贴图金属壳/星冥专属辉光语义）
-	var tg: Color = WPV.layer_tint(WPV.FLAVOR_LAYER_TANK_GUN, enemy_tint, 0.65)
-	_ok(tg == Color(1.0, 0.93, 0.82), "layer_tint 坦克炮贴图层不回混（保橄榄绿壳体）")
 
 func _summary() -> void:
 	print("\n=== 汇总: %d PASS / %d FAIL ===" % [_pass, _fail])

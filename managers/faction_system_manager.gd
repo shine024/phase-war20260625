@@ -264,13 +264,13 @@ func has_global_access() -> bool:
 # ─────────────────────────────────────────────
 
 ## 获取势力可购买物品列表
+## v6.23: 去 level 参——required_level 假门槛已删（恒等玩家等级不构成门槛），功勋是唯一门槛
 func get_faction_store_items(faction_id: String) -> Array[FactionShop.StoreItem]:
-	var level: int = get_faction_level(faction_id)
-	return FactionShop.get_faction_store_items(faction_id, level)
+	return FactionShop.get_faction_store_items(faction_id)
 
-## 检查是否可以购买（v30 R2b：货币轴=功勋；等级门沿用贡献等级）
+## 检查是否可以购买（v30 R2b：货币轴=功勋；v6.23: 等级门删除，功勋余额唯一判定）
 func can_purchase_item(faction_id: String, item: FactionShop.StoreItem) -> Dictionary:
-	return FactionShop.can_purchase_item(merit_points, get_faction_level(faction_id), item)
+	return FactionShop.can_purchase_item(merit_points, item)
 
 ## 功勋余额（v30 R2b：商店/符文消费货币，UI 显示用）
 func get_merit_points() -> int:

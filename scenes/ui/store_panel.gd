@@ -4,6 +4,8 @@ extends PanelContainer
 const CompanyDefs = preload("res://data/company_definitions.gd")
 const BasicResources = preload("res://data/basic_resources.gd")
 const DefaultCards = preload("res://data/default_cards.gd")
+const GC = preload("res://resources/game_constants.gd")
+const UiAssetLoader = preload("res://scripts/ui_asset_loader.gd")  # v6.23: 特购卡行缩略图
 const IntelManualItems = preload("res://data/intel_manual_items.gd")
 const ModRegistry = preload("res://scripts/systems/modification_registry.gd")
 const FormatUtil = preload("res://scripts/ui/format_util.gd")
@@ -422,8 +424,9 @@ func _build_faction_extra_row(it, merit_now: int) -> void:
 	var out_of_stock: bool = stock == 0
 	# 名称：卡走 DefaultCards/缴获蓝图表解析真实卡名；材料用 StoreItem.display_name（已含量词）
 	var display_name: String = String(it.display_name)
+	var card: CardResource = null
 	if is_card:
-		var card: CardResource = DefaultCards.get_card_by_id(item_id)
+		card = DefaultCards.get_card_by_id(item_id)
 		if card == null:
 			var EnemyBpForShop = preload("res://data/enemy_blueprints.gd")
 			card = EnemyBpForShop.get_card_by_id(item_id)
@@ -435,19 +438,34 @@ func _build_faction_extra_row(it, merit_now: int) -> void:
 	var rep_locked: bool = merit_now < rep_cost  # v30 R2b：功勋余额判定（变量名沿用旧 UI 链路）
 	# 行容器（复用符文区行范式：金色调面板 + 名称/说明/价格/按钮）
 	var row := PanelContainer.new()
-	row.custom_minimum_size = Vector2(0, 44)
+	# v6.23（用户拍板）：特购卡行加卡片视觉——缩略图 + 品质色左边框 + 行高 64，
+	# 向旧纳米买卡列表观感靠拢（v6.22 列表删除后买卡"没以前好"主诉）。
+	# 材料行保持 44 高原样（卡 vs 材料的有意视觉区分）。只读模板取 rarity/图（铁律2）。
+	row.custom_minimum_size = Vector2(0, 64) if is_card else Vector2(0, 44)
 	var style := PanelStyles.make_panel_style(
 		Color(DT.COLOR_GOLD.r, DT.COLOR_GOLD.g, DT.COLOR_GOLD.b, 0.08),
 		Color(DT.COLOR_GOLD.r, DT.COLOR_GOLD.g, DT.COLOR_GOLD.b, 0.5), 1, 4
 	)
+	if is_card and card != null:
+		style.border_width_left = 3
+		style.border_color = GC.get_rarity_color(String(card.rarity))
 	row.add_theme_stylebox_override("panel", style)
 	var hbox := HBoxContainer.new()
 	hbox.add_theme_constant_override("separation", 10)
 	row.add_child(hbox)
+	if is_card:
+		var thumb := TextureRect.new()
+		thumb.custom_minimum_size = Vector2(48, 56)
+		thumb.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		thumb.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		thumb.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		if card != null:
+			thumb.texture = UiAssetLoader.card_icon_for_list(card)  # 无图回 null 留空位
+		hbox.add_child(thumb)
 	var name_lbl := Label.new()
 	name_lbl.text = display_name if not out_of_stock else "%s（售罄）" % display_name
 	name_lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
-	name_lbl.custom_minimum_size = Vector2(280, 0)
+	name_lbl.custom_minimum_size = Vector2(240, 0)
 	name_lbl.add_theme_color_override("font_color", DT.COLOR_TEXT_BRIGHT if not out_of_stock else DT.COLOR_TEXT_FAINT)
 	hbox.add_child(name_lbl)
 	var desc_lbl := Label.new()

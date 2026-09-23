@@ -71,7 +71,7 @@ func _initialize() -> void:
 
 	# ── P2-8: 功勋材料包三方自洽（品名数量 == 功勋价） ──
 	for fid in ["iron_wall_corp", "nova_arms", "quantum_logistics", "frontier_union"]:
-		var items: Array = FactionShop.get_faction_store_items(fid, 5)
+		var items: Array = FactionShop.get_faction_store_items(fid)
 		for it in items:
 			if it.item_type == 1:  # StoreItemType.MATERIAL
 				var name_str: String = it.display_name if "display_name" in it else str(it.item_id)

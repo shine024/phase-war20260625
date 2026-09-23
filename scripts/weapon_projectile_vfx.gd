@@ -364,15 +364,25 @@ static func tracer_color_for(layer_key: int, base_color: Color, camp_blend: floa
 ## 消费方：construct_unit_ai 单发路径（敌方轻武器无条件走 batch，无需分派）。
 ## v38.3: GENERIC 兜底不再吃点射——语义不明的武器（RPG-7火箭筒/离子炮/势力卡
 ## 占位名"轻装武器"/幽灵狙击组等）编造连发感会读成"单发伤害视觉多发"；
-## 具名步枪/冲锋枪仍走 RIFLE 档拿 2 连发，机网格不受影响。
+## 机枪档不受影响。v6.23: 步枪单发（用户拍板——单人步枪逐发瞄准的节奏），
+## 冲锋枪（近战泼洒）经 burst_count_for_weapon 保留 2 连发。
 const BURST_INTERVAL: float = 0.09  ## 点射间隔（秒）——60fps 下 5-6 帧，读"哒哒哒"
 
-## 亚类点射数。机枪 3 连珠 / 步枪·冲锋枪 2 连发 / 其余（含 GENERIC 兜底）单发。
+## 亚类点射数。机枪 3 连珠 / 其余（含 RIFLE/GENERIC 兜底）单发。
+## v6.23: RIFLE 档 2→1；冲锋枪的点射分化走 burst_count_for_weapon（按武器名）。
 static func burst_count_for(flavor: int) -> int:
 	match flavor:
 		DirectWeaponFlavor.Flavor.MG: return 3
-		DirectWeaponFlavor.Flavor.RIFLE: return 2
-		_: return 1  # SMALL_ARMS/TANK_GUN/GENERIC/NONE——单发（v38.3: GENERIC 撤出点射）
+		_: return 1  # RIFLE/SMALL_ARMS/TANK_GUN/GENERIC/NONE——单发（v38.3: GENERIC 撤出点射；v6.23: 步枪撤出点射）
+
+## v6.23: 按武器名解析点射数。冲锋枪在 classify 里与步枪同归 RIFLE 档（弹道/命中
+## 视觉同语言），仅点射节奏分化：名字含"冲锋枪"且归 RIFLE 档 → 2 连发，
+## 其余（含各型步枪）走 burst_count_for。"步枪"与"冲锋枪"互不为子串，无误伤。
+static func burst_count_for_weapon(weapon_name: String, weapon_type: int) -> int:
+	var flavor := DirectWeaponFlavor.classify(weapon_name, weapon_type)
+	if weapon_name.find("冲锋枪") >= 0 and flavor == DirectWeaponFlavor.Flavor.RIFLE:
+		return 2
+	return burst_count_for(flavor)
 
 ## ── v20.19: 机枪换弹周期（射击-停顿-再射击）──
 ## 病根：机枪匀速连射（2.0/s×3 连珠）无停顿，读感是"永动机"——真实机枪打完弹链

@@ -26,117 +26,116 @@ class StoreItem:
 	var display_name: String
 	var description: String
 	var reputation_cost: int
-	var required_level: int = 1
 	var stock: int = -1  # -1 表示无限库存
 
-	func _init(p_id: String, p_type: StoreItemType, p_name: String, p_cost: int, p_level: int = 1, p_stock: int = -1):
+	func _init(p_id: String, p_type: StoreItemType, p_name: String, p_cost: int, p_stock: int = -1):
 		item_id = p_id
 		item_type = p_type
 		display_name = p_name
 		reputation_cost = p_cost
-		required_level = p_level
 		stock = p_stock
 
 ## 创建商店物品
-static func create_store_item(id: String, type: StoreItemType, name: String, cost: int, level: int, stock: int = -1) -> StoreItem:
-	return StoreItem.new(id, type, name, cost, level, stock)
+static func create_store_item(id: String, type: StoreItemType, name: String, cost: int, stock: int = -1) -> StoreItem:
+	return StoreItem.new(id, type, name, cost, stock)
 
 ## 获取势力可购买物品列表
 ## @param faction_id: String 势力ID
-## @param level: int 当前势力等级（用于筛选可购买物品）
 ## @return Array[StoreItem]
-static func get_faction_store_items(faction_id: String, level: int) -> Array[StoreItem]:
+## v6.23: 删 level 形参与 required_level 门槛——原 level 取调用时玩家当前势力等级，
+## can_purchase_item 同源比对恒真（不构成门槛的假字段）。功勋是唯一购买门槛。
+static func get_faction_store_items(faction_id: String) -> Array[StoreItem]:
 	var items: Array[StoreItem] = []
 
 	match faction_id:
 		"iron_wall_corp":
-			items.append(create_store_item("platform_ww1_fort", StoreItemType.CARD, "要塞固定炮", 300, level))
-			items.append(create_store_item("platform_ww2_heavy", StoreItemType.CARD, "虎式坦克", 400, level))
-			items.append(create_store_item("platform_cold_medium", StoreItemType.CARD, "T-72主战坦克", 350, level))
-			items.append(create_store_item("platform_modern_medium", StoreItemType.CARD, "艾布拉姆斯坦克", 500, level))
-			items.append(create_store_item("platform_future_heavy", StoreItemType.CARD, "机甲步行者", 600, level))
-			items.append(create_store_item("weapon_ww1_mg", StoreItemType.CARD, "马克沁机枪", 150, level))
-			items.append(create_store_item("weapon_ww2_mg", StoreItemType.CARD, "MG42机枪", 200, level))
-			items.append(create_store_item("weapon_cold_lmg", StoreItemType.CARD, "M60通用机枪", 250, level))
-			items.append(create_store_item("weapon_modern_minigun", StoreItemType.CARD, "M134加特林", 300, level))
-			items.append(create_store_item("alloy", StoreItemType.MATERIAL, "合金x80", 80, level))
-			items.append(create_store_item("mod_blueprint_pack_iron_wall_corp", StoreItemType.MATERIAL, "特供图纸包·装甲堡垒", 350, level))
+			items.append(create_store_item("platform_ww1_fort", StoreItemType.CARD, "要塞固定炮", 300))
+			items.append(create_store_item("platform_ww2_heavy", StoreItemType.CARD, "虎式坦克", 400))
+			items.append(create_store_item("platform_cold_medium", StoreItemType.CARD, "T-72主战坦克", 350))
+			items.append(create_store_item("platform_modern_medium", StoreItemType.CARD, "艾布拉姆斯坦克", 500))
+			items.append(create_store_item("platform_future_heavy", StoreItemType.CARD, "机甲步行者", 600))
+			items.append(create_store_item("weapon_ww1_mg", StoreItemType.CARD, "马克沁机枪", 150))
+			items.append(create_store_item("weapon_ww2_mg", StoreItemType.CARD, "MG42机枪", 200))
+			items.append(create_store_item("weapon_cold_lmg", StoreItemType.CARD, "M60通用机枪", 250))
+			items.append(create_store_item("weapon_modern_minigun", StoreItemType.CARD, "M134加特林", 300))
+			items.append(create_store_item("alloy", StoreItemType.MATERIAL, "合金x80", 80))
+			items.append(create_store_item("mod_blueprint_pack_iron_wall_corp", StoreItemType.MATERIAL, "特供图纸包·装甲堡垒", 350))
 
 		"nova_arms":
-			items.append(create_store_item("weapon_ww2_at", StoreItemType.CARD, "巴祖卡火箭筒", 250, level))
-			items.append(create_store_item("weapon_cold_missile", StoreItemType.CARD, "陶式反坦克导弹", 350, level))
-			items.append(create_store_item("weapon_modern_grenade", StoreItemType.CARD, "榴弹发射器", 300, level))
-			items.append(create_store_item("weapon_future_laser", StoreItemType.CARD, "光束步枪", 400, level))
-			items.append(create_store_item("weapon_future_rail", StoreItemType.CARD, "电磁炮", 500, level))
-			items.append(create_store_item("weapon_future_plasma", StoreItemType.CARD, "等离子枪", 450, level))
-			items.append(create_store_item("platform_ww2_medium", StoreItemType.CARD, "谢尔曼坦克", 300, level))
-			items.append(create_store_item("platform_future_medium", StoreItemType.CARD, "悬浮坦克", 400, level))
-			items.append(create_store_item("mod_blueprint_pack_nova_arms", StoreItemType.MATERIAL, "特供图纸包·火力支援", 300, level))
-			items.append(create_store_item("nano_materials", StoreItemType.MATERIAL, "纳米材料x100", 100, level))
+			items.append(create_store_item("weapon_ww2_at", StoreItemType.CARD, "巴祖卡火箭筒", 250))
+			items.append(create_store_item("weapon_cold_missile", StoreItemType.CARD, "陶式反坦克导弹", 350))
+			items.append(create_store_item("weapon_modern_grenade", StoreItemType.CARD, "榴弹发射器", 300))
+			items.append(create_store_item("weapon_future_laser", StoreItemType.CARD, "光束步枪", 400))
+			items.append(create_store_item("weapon_future_rail", StoreItemType.CARD, "电磁炮", 500))
+			items.append(create_store_item("weapon_future_plasma", StoreItemType.CARD, "等离子枪", 450))
+			items.append(create_store_item("platform_ww2_medium", StoreItemType.CARD, "谢尔曼坦克", 300))
+			items.append(create_store_item("platform_future_medium", StoreItemType.CARD, "悬浮坦克", 400))
+			items.append(create_store_item("mod_blueprint_pack_nova_arms", StoreItemType.MATERIAL, "特供图纸包·火力支援", 300))
+			items.append(create_store_item("nano_materials", StoreItemType.MATERIAL, "纳米材料x100", 100))
 
 		"aether_dynamics":
-			items.append(create_store_item("platform_ww1_medium", StoreItemType.CARD, "马克V型坦克", 250, level))
-			items.append(create_store_item("platform_cold_light", StoreItemType.CARD, "悍马侦察车", 200, level))
-			items.append(create_store_item("platform_modern_light", StoreItemType.CARD, "北极星全地形车", 250, level))
-			items.append(create_store_item("platform_future_light", StoreItemType.CARD, "光学侦察车", 300, level))
-			items.append(create_store_item("weapon_cold_sniper", StoreItemType.CARD, "德拉贡诺夫狙击枪", 350, level))
-			items.append(create_store_item("weapon_modern_dmr", StoreItemType.CARD, "MK14射手步枪", 300, level))
-			items.append(create_store_item("weapon_future_pulse", StoreItemType.CARD, "脉冲步枪", 350, level))
-			items.append(create_store_item("bp_ww1_012", StoreItemType.CARD, "缴获卡", 250, level))
-			items.append(create_store_item("mod_blueprint_pack_aether_dynamics", StoreItemType.MATERIAL, "特供图纸包·机动协同", 320, level))
+			items.append(create_store_item("platform_ww1_medium", StoreItemType.CARD, "马克V型坦克", 250))
+			items.append(create_store_item("platform_cold_light", StoreItemType.CARD, "悍马侦察车", 200))
+			items.append(create_store_item("platform_modern_light", StoreItemType.CARD, "北极星全地形车", 250))
+			items.append(create_store_item("platform_future_light", StoreItemType.CARD, "光学侦察车", 300))
+			items.append(create_store_item("weapon_cold_sniper", StoreItemType.CARD, "德拉贡诺夫狙击枪", 350))
+			items.append(create_store_item("weapon_modern_dmr", StoreItemType.CARD, "MK14射手步枪", 300))
+			items.append(create_store_item("weapon_future_pulse", StoreItemType.CARD, "脉冲步枪", 350))
+			items.append(create_store_item("bp_ww1_012", StoreItemType.CARD, "缴获卡", 250))
+			items.append(create_store_item("mod_blueprint_pack_aether_dynamics", StoreItemType.MATERIAL, "特供图纸包·机动协同", 320))
 
 		"quantum_logistics":
-			items.append(create_store_item("platform_cold_ifv", StoreItemType.CARD, "布雷德利步战车", 300, level))
-			items.append(create_store_item("platform_modern_spg", StoreItemType.CARD, "帕拉丁自行火炮", 350, level))
-			items.append(create_store_item("weapon_ww1_rifle", StoreItemType.CARD, "李-恩菲尔德步枪", 150, level))
-			items.append(create_store_item("weapon_cold_assault", StoreItemType.CARD, "AK-47突击步枪", 200, level))
-			items.append(create_store_item("weapon_modern_carbine", StoreItemType.CARD, "M4卡宾枪", 250, level))
-			items.append(create_store_item("nano_materials", StoreItemType.MATERIAL, "纳米材料x100", 100, level))
-			items.append(create_store_item("alloy", StoreItemType.MATERIAL, "合金x80", 80, level))
-			items.append(create_store_item("alloy", StoreItemType.MATERIAL, "合金x160", 160, level))
-			items.append(create_store_item("bp_ww2_016", StoreItemType.CARD, "缴获卡·精选", 300, level))
-			items.append(create_store_item("stat_boost_hp", StoreItemType.MATERIAL, "生命强化", 400, level))
-			items.append(create_store_item("mod_blueprint_pack_quantum_logistics", StoreItemType.MATERIAL, "特供图纸包·工程后勤", 280, level))
+			items.append(create_store_item("platform_cold_ifv", StoreItemType.CARD, "布雷德利步战车", 300))
+			items.append(create_store_item("platform_modern_spg", StoreItemType.CARD, "帕拉丁自行火炮", 350))
+			items.append(create_store_item("weapon_ww1_rifle", StoreItemType.CARD, "李-恩菲尔德步枪", 150))
+			items.append(create_store_item("weapon_cold_assault", StoreItemType.CARD, "AK-47突击步枪", 200))
+			items.append(create_store_item("weapon_modern_carbine", StoreItemType.CARD, "M4卡宾枪", 250))
+			items.append(create_store_item("nano_materials", StoreItemType.MATERIAL, "纳米材料x100", 100))
+			items.append(create_store_item("alloy", StoreItemType.MATERIAL, "合金x80", 80))
+			items.append(create_store_item("alloy", StoreItemType.MATERIAL, "合金x160", 160))
+			items.append(create_store_item("bp_ww2_016", StoreItemType.CARD, "缴获卡·精选", 300))
+			items.append(create_store_item("stat_boost_hp", StoreItemType.MATERIAL, "生命强化", 400))
+			items.append(create_store_item("mod_blueprint_pack_quantum_logistics", StoreItemType.MATERIAL, "特供图纸包·工程后勤", 280))
 
 		"helix_recon":
-			items.append(create_store_item("platform_ww1_light", StoreItemType.CARD, "威克斯侦察车", 180, level))
-			items.append(create_store_item("platform_ww2_light", StoreItemType.CARD, "M8灰狗装甲车", 220, level))
-			items.append(create_store_item("platform_cold_light", StoreItemType.CARD, "悍马侦察车", 250, level))
-			items.append(create_store_item("platform_modern_light", StoreItemType.CARD, "北极星全地形车", 280, level))
-			items.append(create_store_item("platform_future_light", StoreItemType.CARD, "光学侦察车", 350, level))
-			items.append(create_store_item("weapon_ww1_smg", StoreItemType.CARD, "MP18冲锋枪", 150, level))
-			items.append(create_store_item("weapon_ww2_smg", StoreItemType.CARD, "汤普森冲锋枪", 200, level))
-			items.append(create_store_item("weapon_modern_carbine", StoreItemType.CARD, "M4卡宾枪", 250, level))
-			items.append(create_store_item("weapon_future_pulse", StoreItemType.CARD, "脉冲步枪", 300, level))
-			items.append(create_store_item("lore_page", StoreItemType.MATERIAL, "情报资料包x1", 200, level))
-			items.append(create_store_item("lore_page", StoreItemType.MATERIAL, "情报资料包x3", 500, level))
-			items.append(create_store_item("bp_ww1_018", StoreItemType.CARD, "缴获卡", 220, level))
-			items.append(create_store_item("mod_blueprint_pack_helix_recon", StoreItemType.MATERIAL, "特供图纸包·侦察情报", 300, level))
+			items.append(create_store_item("platform_ww1_light", StoreItemType.CARD, "威克斯侦察车", 180))
+			items.append(create_store_item("platform_ww2_light", StoreItemType.CARD, "M8灰狗装甲车", 220))
+			items.append(create_store_item("platform_cold_light", StoreItemType.CARD, "悍马侦察车", 250))
+			items.append(create_store_item("platform_modern_light", StoreItemType.CARD, "北极星全地形车", 280))
+			items.append(create_store_item("platform_future_light", StoreItemType.CARD, "光学侦察车", 350))
+			items.append(create_store_item("weapon_ww1_smg", StoreItemType.CARD, "MP18冲锋枪", 150))
+			items.append(create_store_item("weapon_ww2_smg", StoreItemType.CARD, "汤普森冲锋枪", 200))
+			items.append(create_store_item("weapon_modern_carbine", StoreItemType.CARD, "M4卡宾枪", 250))
+			items.append(create_store_item("weapon_future_pulse", StoreItemType.CARD, "脉冲步枪", 300))
+			items.append(create_store_item("lore_page", StoreItemType.MATERIAL, "情报资料包x1", 200))
+			items.append(create_store_item("lore_page", StoreItemType.MATERIAL, "情报资料包x3", 500))
+			items.append(create_store_item("bp_ww1_018", StoreItemType.CARD, "缴获卡", 220))
+			items.append(create_store_item("mod_blueprint_pack_helix_recon", StoreItemType.MATERIAL, "特供图纸包·侦察情报", 300))
 
 		"void_research":
-			items.append(create_store_item("platform_future_heavy", StoreItemType.CARD, "机甲步行者", 550, level))
-			items.append(create_store_item("weapon_future_rail", StoreItemType.CARD, "电磁炮", 500, level))
-			items.append(create_store_item("weapon_future_plasma", StoreItemType.CARD, "等离子枪", 450, level))
-			items.append(create_store_item("omega_platform", StoreItemType.CARD, "全装型机动舱", 800, level))
-			items.append(create_store_item("omega_cannon", StoreItemType.CARD, "米加粒子炮", 900, level))
-			items.append(create_store_item("stat_boost_hp", StoreItemType.MATERIAL, "生命强化", 450, level))
-			items.append(create_store_item("stat_boost_atk", StoreItemType.MATERIAL, "攻击强化", 450, level))
-			items.append(create_store_item("mod_blueprint_pack_void_research", StoreItemType.MATERIAL, "特供图纸包·相位通用", 450, level))
+			items.append(create_store_item("platform_future_heavy", StoreItemType.CARD, "机甲步行者", 550))
+			items.append(create_store_item("weapon_future_rail", StoreItemType.CARD, "电磁炮", 500))
+			items.append(create_store_item("weapon_future_plasma", StoreItemType.CARD, "等离子枪", 450))
+			items.append(create_store_item("omega_platform", StoreItemType.CARD, "全装型机动舱", 800))
+			items.append(create_store_item("omega_cannon", StoreItemType.CARD, "米加粒子炮", 900))
+			items.append(create_store_item("stat_boost_hp", StoreItemType.MATERIAL, "生命强化", 450))
+			items.append(create_store_item("stat_boost_atk", StoreItemType.MATERIAL, "攻击强化", 450))
+			items.append(create_store_item("mod_blueprint_pack_void_research", StoreItemType.MATERIAL, "特供图纸包·相位通用", 450))
 
 		"frontier_union":
-			items.append(create_store_item("platform_ww2_light", StoreItemType.CARD, "M8灰狗装甲车", 200, level))
-			items.append(create_store_item("platform_ww2_medium", StoreItemType.CARD, "谢尔曼坦克", 280, level))
-			items.append(create_store_item("platform_cold_medium", StoreItemType.CARD, "T-72主战坦克", 320, level))
-			items.append(create_store_item("platform_modern_medium", StoreItemType.CARD, "艾布拉姆斯坦克", 450, level))
-			items.append(create_store_item("weapon_ww2_smg", StoreItemType.CARD, "汤普森冲锋枪", 180, level))
-			items.append(create_store_item("weapon_cold_assault", StoreItemType.CARD, "AK-47突击步枪", 220, level))
-			items.append(create_store_item("weapon_modern_carbine", StoreItemType.CARD, "M4卡宾枪", 280, level))
-			items.append(create_store_item("weapon_modern_dmr", StoreItemType.CARD, "MK14射手步枪", 320, level))
-			items.append(create_store_item("weapon_future_laser", StoreItemType.CARD, "光束步枪", 380, level))
-			items.append(create_store_item("nano_materials", StoreItemType.MATERIAL, "纳米材料x100", 100, level))
-			items.append(create_store_item("alloy", StoreItemType.MATERIAL, "合金x80", 80, level))
-			items.append(create_store_item("bp_ww2_009", StoreItemType.CARD, "缴获卡", 210, level))
-			items.append(create_store_item("mod_blueprint_pack_frontier_union", StoreItemType.MATERIAL, "特供图纸包·护路维稳", 260, level))
+			items.append(create_store_item("platform_ww2_light", StoreItemType.CARD, "M8灰狗装甲车", 200))
+			items.append(create_store_item("platform_ww2_medium", StoreItemType.CARD, "谢尔曼坦克", 280))
+			items.append(create_store_item("platform_cold_medium", StoreItemType.CARD, "T-72主战坦克", 320))
+			items.append(create_store_item("platform_modern_medium", StoreItemType.CARD, "艾布拉姆斯坦克", 450))
+			items.append(create_store_item("weapon_ww2_smg", StoreItemType.CARD, "汤普森冲锋枪", 180))
+			items.append(create_store_item("weapon_cold_assault", StoreItemType.CARD, "AK-47突击步枪", 220))
+			items.append(create_store_item("weapon_modern_carbine", StoreItemType.CARD, "M4卡宾枪", 280))
+			items.append(create_store_item("weapon_modern_dmr", StoreItemType.CARD, "MK14射手步枪", 320))
+			items.append(create_store_item("weapon_future_laser", StoreItemType.CARD, "光束步枪", 380))
+			items.append(create_store_item("nano_materials", StoreItemType.MATERIAL, "纳米材料x100", 100))
+			items.append(create_store_item("alloy", StoreItemType.MATERIAL, "合金x80", 80))
+			items.append(create_store_item("bp_ww2_009", StoreItemType.CARD, "缴获卡", 210))
+			items.append(create_store_item("mod_blueprint_pack_frontier_union", StoreItemType.MATERIAL, "特供图纸包·护路维稳", 260))
 
 	# v6.2: 未知势力警告（防御性检查）
 	const _VALID_FACTION_IDS: Array[String] = [
@@ -147,15 +146,15 @@ static func get_faction_store_items(faction_id: String, level: int) -> Array[Sto
 		push_warning("[FactionShop] 未知势力ID: %s — 商店可能为空" % faction_id)
 
 	# v6.2: 所有势力商店都卖基础通用符文（常见+稀有）
-	_append_basic_rune_items(items, level)
+	_append_basic_rune_items(items)
 	# v6.2: 追加势力专属符文商品（每个势力上架其专属符文）
-	_append_faction_rune_items(items, faction_id, level)
+	_append_faction_rune_items(items, faction_id)
 
 	return _filter_invalid_card_items(items)
 
 ## v6.2: 所有势力商店通用的基础符文商品（常见+稀有，不含史诗/传说）
 ## 价格按稀有度递增：常见100-150，稀有200-350
-static func _append_basic_rune_items(items: Array[StoreItem], level: int) -> void:
+static func _append_basic_rune_items(items: Array[StoreItem]) -> void:
 	const RuneDefs = preload("res://data/runes.gd")
 	# 基础符文价格表（按稀有度）
 	const RUNE_PRICES: Dictionary = {
@@ -176,11 +175,11 @@ static func _append_basic_rune_items(items: Array[StoreItem], level: int) -> voi
 		var rarity_name: String = RuneDefs.RARITY_NAMES.get(rarity, "")
 		if not rarity_name.is_empty():
 			display_name += "(%s)" % rarity_name
-		items.append(create_store_item(rune_id, StoreItemType.RUNE, display_name, price, level))
+		items.append(create_store_item(rune_id, StoreItemType.RUNE, display_name, price))
 
 ## v6.2: 追加势力专属符文到商店商品列表
 ## 符文按 unlock_requirement 中的声望需求定价
-static func _append_faction_rune_items(items: Array[StoreItem], faction_id: String, level: int) -> void:
+static func _append_faction_rune_items(items: Array[StoreItem], faction_id: String) -> void:
 	const RuneDefs = preload("res://data/runes.gd")
 	# 势力ID → 专属符文ID前缀映射
 	const FACTION_RUNE_PREFIX: Dictionary = {
@@ -207,7 +206,7 @@ static func _append_faction_rune_items(items: Array[StoreItem], faction_id: Stri
 		var rarity_name: String = RuneDefs.RARITY_NAMES.get(rune.get("rarity", ""), "")
 		if not rarity_name.is_empty():
 			display_name += "(%s)" % rarity_name
-		items.append(create_store_item(rune_id, StoreItemType.RUNE, display_name, price, level))
+		items.append(create_store_item(rune_id, StoreItemType.RUNE, display_name, price))
 
 static func _filter_invalid_card_items(items: Array[StoreItem]) -> Array[StoreItem]:
 	const DefaultCardsData = preload("res://data/default_cards.gd")
@@ -247,14 +246,11 @@ static func _filter_invalid_card_items(items: Array[StoreItem]) -> Array[StoreIt
 	return filtered
 
 ## 检查是否可以购买
-## @param current_rep: int 当前声望
-## @param current_level: int 当前等级
+## @param current_rep: int 当前功勋余额
 ## @param item: StoreItem
 ## @return Dictionary { "ok": bool, "reason": String }
-static func can_purchase_item(current_rep: int, current_level: int, item: StoreItem) -> Dictionary:
-	if current_level < item.required_level:
-		return {"ok": false, "reason": "level_too_low", "required_level": item.required_level, "current_level": current_level}
-
+## v6.23: 删 current_level 形参与 level_too_low 分支（required_level 是恒真假门槛，已删除）
+static func can_purchase_item(current_rep: int, item: StoreItem) -> Dictionary:
 	if current_rep < item.reputation_cost:
 		return {"ok": false, "reason": "reputation_insufficient", "required_rep": item.reputation_cost, "current_rep": current_rep}
 
