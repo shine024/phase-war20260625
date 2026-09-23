@@ -616,7 +616,7 @@ func _emit_skill_toast(skill: Dictionary, ultimate: bool = true) -> void:
 	var icon: String = String(label.get("icon", "💥"))
 	var toast_msg: String = "%s 触发：%s" % [icon, name]
 	var dur: float = 2.0 if ultimate else 1.2
-	var color: Color = Color(0.9, 0.2, 0.2) if ultimate else Color(0.95, 0.75, 0.2)
+	var color: Color = Color(0.937, 0.267, 0.267) if ultimate else Color(0.95, 0.75, 0.2)
 	# 优先直接调 ToastManager（支持 duration/color 参数）
 	var tree = Engine.get_main_loop() as SceneTree
 	if tree != null and tree.root != null:

@@ -38,6 +38,18 @@ const PITY_THRESHOLD := 3
 const PITY_BOOST := 2.0
 const PITY_FLOOR := "rare"
 
+## 稀有+ 保底口径文案（v6.19 P1-T1.1 概率可见化：UI 唯一文案源，数值全读常量——
+## 宪法 C3 要求改常量文案自动跟随）。机制真身 = get_effective_pool 的软保底
+## （概率 ×2 提升，无"必出"硬阈值），文案严禁写"必出"。
+static func describe_card_pity(pity: int) -> String:
+	if pity >= PITY_THRESHOLD:
+		return "保底已激活：%s+ 概率 ×%.0f（出手即重置）" % [PITY_FLOOR, PITY_BOOST]
+	if pity <= 0:
+		return "保底 0/%d：连续 %d 次未出 %s+ 后，%s+ 概率 ×%.0f" % [
+			PITY_THRESHOLD, PITY_THRESHOLD, PITY_FLOOR, PITY_FLOOR, PITY_BOOST]
+	return "保底 %d/%d（还差 %d 次）：%s+ 概率将 ×%.0f" % [
+		pity, PITY_THRESHOLD, PITY_THRESHOLD - pity, PITY_FLOOR, PITY_BOOST]
+
 ## ── 缴获卡品质滚动（v26 批次3）：获取时 roll，与玩家卡同一稀有度轴 ──
 ## 无神话（神话为制造满池专属）；权重示意，balance-check 可调。
 const CAPTURED_ROLL_WEIGHTS := {

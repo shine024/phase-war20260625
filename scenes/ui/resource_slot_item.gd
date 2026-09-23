@@ -637,7 +637,7 @@ func _apply_mod_prototype(prototype: String) -> void:
 		label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 		label.vertical_alignment = VERTICAL_ALIGNMENT_BOTTOM
 		label.add_theme_font_size_override("font_size", DesignTokens.FONT_SIZE_SMALL)
-		label.add_theme_color_override("font_color", Color(0.27, 0.31, 0.39, 0.7))  # 暗灰次要信息
+		label.add_theme_color_override("font_color", Color(0.47, 0.52, 0.60, 0.7))  # 暗灰次要信息（R-C3 随 COLOR_TEXT_FAINT 提亮一档）
 		label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		layer.add_child(label)
 	label.text = prototype
@@ -719,8 +719,10 @@ func _refresh_rune(rune_id: String, count: int, name_label: Label, amount_label:
 	# v7.x：符文瓷砖应用稀有度底色边框，已装备的用激活态发光（glow_mode=1）
 	add_theme_stylebox_override("panel", CardFrameUi.tile_rarity_style(rune_rarity, 1 if is_equipped else 0))
 	if icon_rect:
-		# 符文用稀有度颜色染色图标，无贴图时仅靠颜色区分
-		icon_rect.modulate = rune_color
+		# v32.3 C3：符文贴图自带配色，图标不再乘稀有度 tint（common 灰 #6b7691 相乘后
+		# 每通道只剩 ~42-57% 亮度，整个符文页发暗）——稀有度已由瓷砖边框/名称色承载；
+		# 无贴图时回退染色兜底（原"无贴图仅靠颜色区分"语义保留）
+		icon_rect.modulate = Color.WHITE
 		# v6.2: 加载符文专属图标贴图（优先用 extra_data 传入的 icon 路径，否则按 rune_id 查找）
 		var rune_tex: Texture2D = null
 		var icon_path: String = String(extra_data.get("icon", ""))
@@ -737,6 +739,8 @@ func _refresh_rune(rune_id: String, count: int, name_label: Label, amount_label:
 			icon_rect.stretch_mode = TextureRect.STRETCH_SCALE
 			icon_rect.custom_minimum_size = Vector2(56, 56)
 			icon_rect.visible = true
+		else:
+			icon_rect.modulate = rune_color
 
 	# v9.0: 注入装饰层
 	# v9.x: 去掉顶部菱形装饰（用户反馈遮挡卡图），仅保留星点要求

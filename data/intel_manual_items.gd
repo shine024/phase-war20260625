@@ -1,20 +1,17 @@
 extends RefCounted
 ## v7.0: 蓝图道具系统
-## 蓝图是战斗掉落和商店可购买的**永久解锁凭证**（非消耗品）。
-## 每个改造模块和进化路径都有对应的蓝图，获得后永久持有。
-##
-## v6.6 设计澄清：早期设计文档（DEEPV.md 等）曾将蓝图描述为"6种消耗品"，
-## 但实际实现采用永久持有模式——玩家收集蓝图作为能力解锁凭证，
-## 改造/进化时检查 has_item 但不消耗。此设计更符合"收集成长"玩法，
-## consume_item 方法保留但当前无调用方（预留未来消耗型道具扩展）。
+## ⚠️ 2026-09-19 头注勘误：v26.10 改造消耗品化后，改造蓝图是**消耗品**（库存货币）——
+## 安装消耗 1 张（consume_item），"得到过"记录在 IntelItemBag._seen 见过集合（永久），
+## 制造门槛/改造列表数据源 = 见过集合，不是库存。下文 v7.0"永久解锁凭证"描述已过时，
+## 仅 blueprint_evol_ 进化蓝图走"退役图纸"兼容（blueprint_roll_random 体系零调用）。
 ##
 ## 蓝图类型：
-##   - 改造蓝图：blueprint_<mod_id> — 允许安装对应改造模块
-##   - 进化蓝图：blueprint_evol_<from>_<to> — 允许对应进化操作
+##   - 改造蓝图：blueprint_<mod_id> — 安装对应改造模块（消耗 1 张/次）
+##   - 进化蓝图：blueprint_evol_<from>_<to> — 进化体系退役残留（兼容读）
 ##
 ## 获取方式：
-##   - 战斗掉落（基于敌人类型）
-##   - 商店购买
+##   - 战斗掉落（击杀主腿 12% + 星级腿 + 缴获/发现 75/25 分流，era 过滤）
+##   - 制造舱定向兑换（common/uncommon/rare）/ 随机箱 / 晶体补缺
 
 const BlueprintDefinitions = preload("res://data/blueprint_definitions.gd")
 const ModificationRegistry = preload("res://scripts/systems/modification_registry.gd")
@@ -102,7 +99,12 @@ static func get_rarity_name(rarity: String) -> String:
 ##             非空时用它决定的稀有度梯度覆盖 rank 的稀有度权重，实现"不同战力敌人掉不同改造"。
 ## bias_unit_types: v6.14 可选，占领势力偏好的改造类型（ModificationRegistry unit_type 字符串数组）。
 ##                  非空时：70% 概率从 bias 类型池抽（势力占领偏好），30% 走原 enemy_type 池（保留多样性）。
-static func roll_random_mod_blueprint(enemy_type: String, rank: String, power_tier: int = -1, bias_unit_types: Array = []) -> Dictionary:
+## max_era: v6.14 可选，玩家当前战役时代（0-4）——掉落侧对齐安装侧的 era_band 硬门：
+##          普通件只掉时代带覆盖当前时代的改造（无 band=全带恒过），前期不再掉"当前装不上"
+##          的期货图纸。v6.14.1（用户拍板）：极特殊件（史诗/传说/神话）允许按关卡所处时代
+##          跨一级（下一时代）前瞻掉落——日常件即时可用，期货只以稀有惊喜形态偶发。
+##          负值=不过滤（旧行为）；过滤后空池回退全量（有掉落总比没有强）。
+static func roll_random_mod_blueprint(enemy_type: String, rank: String, power_tier: int = -1, bias_unit_types: Array = [], max_era: int = -1) -> Dictionary:
 	# ModificationRegistry 已在类顶部 const 声明，无需重复声明
 
 	# v6.14: 占领势力 bias —— 若指定 bias_unit_types，70% 概率改用 bias 池
@@ -123,6 +125,23 @@ static func roll_random_mod_blueprint(enemy_type: String, rank: String, power_ti
 		available_mods = ModificationRegistry.get_for_unit_type(_enemy_type_to_unit_type(enemy_type))
 		if available_mods.is_empty():
 			return {}
+
+	# v6.14: 时代带过滤——与 ModificationRegistry.is_mod_era_compatible（安装门）同一判定。
+	# v6.14.1（用户拍板）：普通件限当前时代；极特殊件（epic/legendary/mythic）允许跨一级
+	# （下一时代）前瞻掉落，era_hi 钳到 4（近未来无下一时代=无前瞻）。
+	if max_era >= 0:
+		var era_hi: int = mini(max_era + 1, 4)
+		var era_filtered: Array = []
+		for mod_id in available_mods:
+			var md: Dictionary = ModificationRegistry.get_data(mod_id)
+			if ModificationRegistry.is_mod_era_compatible(md, max_era):
+				era_filtered.append(mod_id)
+			elif era_hi > max_era \
+					and String(md.get("rarity", "common")) in ["epic", "legendary", "mythic"] \
+					and ModificationRegistry.is_mod_era_compatible(md, era_hi):
+				era_filtered.append(mod_id)
+		if not era_filtered.is_empty():
+			available_mods = era_filtered
 
 	# 根据稀有度权重随机选择
 	var weighted_pool = []
@@ -156,6 +175,99 @@ static func roll_random_mod_blueprint(enemy_type: String, rank: String, power_ti
 				"mod_id": entry.mod_id,
 			}
 
+	return {}
+
+## v6.14.2: 缴获语义——从指定敌人实际携带的模块（配装档位切片）中随机掉一张蓝图。
+## 与 roll_random_mod_blueprint 同返回形；kit 内无效 id / 时代带不符（max_era≥0 时）的
+## 条目剔除，剔完为空返回 {}（调用方回退全池 roll）。不做稀有度加权——敌人带什么掉什么。
+static func roll_mod_blueprint_from_kit(kit_mods: Array, max_era: int = -1) -> Dictionary:
+	var candidates: Array = []
+	for mod_id in kit_mods:
+		var mid := String(mod_id)
+		if mid.is_empty():
+			continue
+		var md: Dictionary = ModificationRegistry.get_data(mid)
+		if md.is_empty():
+			continue
+		if max_era >= 0 and not ModificationRegistry.is_mod_era_compatible(md, max_era):
+			continue
+		candidates.append(mid)
+	if candidates.is_empty():
+		return {}
+	var picked: String = candidates[randi() % candidates.size()]
+	var blueprint_id := BlueprintDefinitions.get_mod_blueprint_id(picked)
+	return {
+		"item_type": blueprint_id,
+		"name": get_blueprint_name(blueprint_id),
+		"rarity": get_blueprint_rarity(blueprint_id),
+		"mod_id": picked,
+	}
+
+## 掉落侧时代口径（v6.14.1，用户拍板）：普通件时代带覆盖 max_era 即可；
+## 极特殊件（epic/legendary/mythic）允许跨一级（下一时代，钳 4）前瞻。
+static func _era_ok_for_drop(md: Dictionary, max_era: int) -> bool:
+	if max_era < 0:
+		return true
+	if ModificationRegistry.is_mod_era_compatible(md, max_era):
+		return true
+	var era_hi: int = mini(max_era + 1, 4)
+	return era_hi > max_era \
+		and String(md.get("rarity", "common")) in ["epic", "legendary", "mythic"] \
+		and ModificationRegistry.is_mod_era_compatible(md, era_hi)
+
+## v6.14.4 比例发现腿（用户拍板 75/25 分流的发现侧）：全注册表按稀有度加权 roll——
+## 保证全图鉴 249 件保持战斗可发现（发现 → 进见过集合 → 进随机箱池/定向列表）。
+## 时代口径与 roll_random_mod_blueprint 一致（_era_ok_for_drop）；候选优先 is_seen
+## 回调判否的"未见模块"（发现语义，直接怼缺口），全见过时退化为普通全池补给；
+## rank/power_tier 沿用现有稀有度权重梯度（精英/Boss 更易出高稀有）。
+static func roll_discovery_mod_blueprint(rank: String, power_tier: int, max_era: int, is_seen: Callable = Callable()) -> Dictionary:
+	var pool: Array = []
+	for ut in range(5):
+		for mod_id in ModificationRegistry.get_for_unit_type(ut):
+			var mid := String(mod_id)
+			if pool.has(mid):
+				continue
+			var md: Dictionary = ModificationRegistry.get_data(mid)
+			if md.is_empty() or not _era_ok_for_drop(md, max_era):
+				continue
+			pool.append(mid)
+	if pool.is_empty():
+		return {}
+	var candidates: Array = pool
+	if is_seen.is_valid():
+		var unseen: Array = []
+		for mid in pool:
+			if not bool(is_seen.call(mid)):
+				unseen.append(mid)
+		if not unseen.is_empty():
+			candidates = unseen
+	var weighted: Array = []
+	for mid in candidates:
+		var md: Dictionary = ModificationRegistry.get_data(mid)
+		var rarity := String(md.get("rarity", "common"))
+		var w := _get_rarity_drop_weight(rarity, rank)
+		if power_tier >= 0:
+			w = _apply_power_tier_to_weight(w, rarity, power_tier)
+		if w > 0:
+			weighted.append({"mod_id": mid, "weight": w})
+	var total_weight := 0
+	for e in weighted:
+		total_weight += int(e.weight)
+	if total_weight == 0:
+		return {}
+	var roll := randi() % total_weight
+	var cumulative := 0
+	for e in weighted:
+		cumulative += int(e.weight)
+		if roll < cumulative:
+			var picked := String(e.mod_id)
+			var blueprint_id := BlueprintDefinitions.get_mod_blueprint_id(picked)
+			return {
+				"item_type": blueprint_id,
+				"name": get_blueprint_name(blueprint_id),
+				"rarity": get_blueprint_rarity(blueprint_id),
+				"mod_id": picked,
+			}
 	return {}
 
 ## 随机掉落一个进化蓝图
@@ -305,7 +417,7 @@ static func _enemy_type_to_unit_type(enemy_type: String) -> int:
 		"fort", "boss_nano", "boss_phase": return 4  # FORT（堡垒/Boss 归堡垒）
 		_: return 0  # 默认 LIGHT
 
-## v6.14: 改造类型名（faction_conquest_buffs.FACTION_MOD_BIAS 用的 key）→ unit_type int。
+## v6.14: 改造类型名（FACTION_MOD_BIAS 偏好表用的 key，v6.22 起真身=CompanyDefinitions）→ unit_type int。
 ## 与 _enemy_type_to_unit_type 的 CombatKind 取值对齐（0/1/2/3/4）。
 ## universal 表示通用池（返回 -1 触发回退逻辑），unknown 返回 -1。
 static func _unit_type_name_to_int(type_name: String) -> int:
@@ -426,18 +538,23 @@ static func _get_mod_blueprint_desc(mod_id: String, rarity: String) -> String:
 	return "允许安装【%s】改造模块（%s）" % [mod_id, rarity_name]
 
 ## 获取商店价格（基于稀有度）
+## R1-4（设计审查 F-10，2026-09-13）：common/uncommon/rare 与制造补给站同价目对齐
+## （制造定向兑换 80/150/280 纳米，mod_manufacture.gd）——原 100/250/600 与制造价差
+## 最高 2.1 倍（rare 600 vs 280），同物双渠道明码冲突，理性玩家永远绕开商店。
+## 现按"制造价 ×1.5 直购便利溢价"定价；epic+ 制造侧只能开随机箱（无定向渠道），
+## 商店高价定位为"跳过随机的奢侈品通道"，无冲突，维持原价。
 static func get_shop_price(blueprint_id: String) -> int:
 	var def = get_def(blueprint_id)
 	if def.is_empty():
 		return 0
 	var rarity = def.get("rarity", "common")
 	match rarity:
-		"common": return 100
-		"uncommon": return 250
-		"rare": return 600
+		"common": return 120
+		"uncommon": return 225
+		"rare": return 420
 		"epic": return 1500
 		"legendary": return 3500
-		_: return 100
+		_: return 120
 
 # v9.x（P1-5 批次4）：get_available_blueprints（声望解锁 TODO 死函数，零调用方）已删除
 # ——蓝图体系 2026-08-22 退役后该入口再无消费方，蓝图解锁逻辑随体系消亡

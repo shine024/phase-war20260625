@@ -29,6 +29,60 @@ static var _unit_type_cache: Dictionary = {}
 # 索引在 register_all 末尾一次性建好，get_data 命中后 O(1) 返回。
 # 注意：返回值仍是 .duplicate(true) 以保持调用方"修改不影响缓存"的既有契约。
 static var _flat_index: Dictionary = {}
+## v6.16 槽位预算：mod_id → 家族注册键（infantry/…/fort/universal/enhancement）。
+## is_family_mod 消费（兵种专属槽只收兵种件——universal/enhancement 走通用预算）。
+static var _family_by_id: Dictionary = {}
+
+## ─────────────────────────────────────────────
+##  v6.16 槽位预算 + 数值帽分档 + 门槛核心件
+## ─────────────────────────────────────────────
+## 通用家族键（非兵种专属——这些件在 can_install_modification 里只占品质基础槽，
+## 兵种专属加成槽不收它们）
+const GENERIC_FAMILY_KEYS: Array = ["universal", "enhancement"]
+
+## pct 数值帽分档（数据级约束，tests/unit/balance/test_economy_balance 消费）：
+## 普通~史诗件单条 pct ≤ 0.60（v6.16 前全档 0.60）；传奇门槛件开 0.80；神话件 1.00。
+## 运行期七通道 pct 仍为乘法叠加（无聚合帽），本表只约束"单条改造数据允许写多大"。
+const STAT_VALUE_CAP_BY_RARITY: Dictionary = {
+	"common": 0.6, "uncommon": 0.6, "rare": 0.6, "epic": 0.6,
+	"legendary": 0.8, "mythic": 1.0,
+}
+
+## v6.16 门槛核心件（keystone）清单——"D2 关键流派装备"：每兵种 1-3 件行为改写型传奇，
+## 围绕它构筑整套打法（详见 AGENTS v6.16 节）。门槛件允许带显式代价（交换比设计）。
+const KEYSTONE_IDS: Array = [
+	"inf_25_medic_sacrifice",          # 步兵：亡语群疗
+	"arm_04_aps",                      # 装甲：主动拦截
+	"arm_07_gun_missile",              # 装甲：炮射导弹（弹道改写）
+	"art_13_apfsds_sabot",             # 炮兵：脱壳穿甲叠层
+	"art_14_counter_battery",          # 炮兵：反炮兵雷达
+	"aa_06_laser",                     # 防空：激光近防
+	"aa_13_radar_lock",                # 防空：标记集火
+	"air_16_phase_shift",              # 空军：相位偏移反击
+	"air_antiradiation_missile",       # 空军：反辐射处决
+	"rec_phased_radar",                # 侦察：相控锁定
+	"eng_12_reactive_engineering",     # 工兵：爆反工程装甲
+	"for_11_advanced_minefield",       # 堡垒：强化雷场
+	"gen_17_electronic_hijack",        # 通用：电子劫持光环
+	"gen_unified_splash",              # 通用：统一装药（溅射）
+	"gen_beam_splitter",               # 通用：光束分裂
+	"gen_truestrike_pinpoint",         # 通用：必中针
+]
+
+## v6.16: 该 mod 是否兵种专属件（非 universal/enhancement 家族）。
+## 未知 id 返回 false（按通用件口径处理，宁紧勿松）。
+static func is_family_mod(mod_id: String) -> bool:
+	_ensure_initialized()
+	var fam: String = String(_family_by_id.get(mod_id, ""))
+	return not fam.is_empty() and not GENERIC_FAMILY_KEYS.has(fam)
+
+## v6.16: 按稀有度查单条 pct 数值帽（数据审计/测试消费）。
+static func get_stat_value_cap(rarity: String) -> float:
+	return float(STAT_VALUE_CAP_BY_RARITY.get(rarity, 0.6))
+
+## v6.16: 该 mod 是否门槛核心件。
+static func is_keystone(mod_id: String) -> bool:
+	return KEYSTONE_IDS.has(mod_id)
 
 ## ─────────────────────────────────────────────
 ##  v10 改造二分法：机制改造 vs 交换比改造
@@ -250,11 +304,35 @@ static func _register_modifications(type_key: String, class_ref: RefCounted) -> 
 ## 同一 mod_id 跨 type_key 重复时取首个（理论上不应发生，duplicate 防御）。
 static func _rebuild_flat_index() -> void:
 	_flat_index.clear()
+	_family_by_id.clear()  # v6.16 槽位预算：家族索引与扁平索引同生命周期重建
 	for type_key in _cache.keys():
 		var type_cache: Dictionary = _cache[type_key]
 		for mod_id in type_cache.keys():
 			if not _flat_index.has(mod_id):
 				_flat_index[mod_id] = type_cache[mod_id]
+				_family_by_id[mod_id] = type_key
+
+## v27.14（改造审查报告 5.5）：conflict_group 完整性校验——组内仅 1 个条目时
+## 冲突检查对该组无家族互斥效果。例外：**自守卫组**（组名 = 条目 id 前缀，如 enh_hp_up
+## 的 "enh_hp"）是有意设计——can_install_modification 无独立防重复安装检查，自命名组
+## 承担"同改造不可装两次"职责，合法。注册期聚合单行警告，不阻断加载。
+static func _validate_conflict_groups() -> void:
+	var group_info: Dictionary = {}
+	for mod_id in _flat_index.keys():
+		var data: Dictionary = _flat_index[mod_id]
+		var group: String = String(data.get("conflict_group", ""))
+		if group.is_empty():
+			continue
+		if not group_info.has(group):
+			group_info[group] = {"count": 0, "example": String(mod_id)}
+		group_info[group]["count"] = int(group_info[group]["count"]) + 1
+	var orphans: Array[String] = []
+	for group in group_info.keys():
+		var entry: Dictionary = group_info[group]
+		if int(entry["count"]) < 2 and not String(entry["example"]).begins_with(group):
+			orphans.append(String(group))
+	if not orphans.is_empty():
+		push_warning("[ModificationRegistry] %d 个 conflict_group 仅 1 个条目、冲突检查对其无效（%s…）——补同组条目或移除该组" % [orphans.size(), ", ".join(orphans.slice(0, 6))])
 
 ## v27.14（改造审查报告 5.5）：conflict_group 完整性校验——组内仅 1 个条目时
 ## 冲突检查对该组无家族互斥效果。例外：**自守卫组**（组名 = 条目 id 前缀，如 enh_hp_up

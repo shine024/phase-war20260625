@@ -3,11 +3,11 @@ class_name FactionPanel
 ## 势力系统UI面板
 ## 
 ## 功能：
-## - 显示7个势力的信息（名称、描述、声望等级）
+## - 显示7个势力的信息（名称、描述、贡献等级）
 ## - 显示势力升级进度
 ## - 显示势力控制的关卡数量
 ## - 显示势力商店库存预览
-## - 实时更新势力声望变化
+## - 实时更新势力贡献变化
 
 const GC = preload("res://resources/game_constants.gd")
 const FactionSkillTree = preload("res://data/faction_skill_tree.gd")
@@ -188,7 +188,7 @@ func _update_faction_detail() -> void:
 	desc_label.custom_minimum_size = Vector2(0, 60)
 	faction_detail.add_child(desc_label)
 	
-	# 势力等级和声望
+	# 势力等级和贡献
 	var reputation = faction_info.get("reputation", 0)
 	var level = faction_info.get("level", 1)
 	var level_progress = faction_info.get("level_progress", {})
@@ -198,7 +198,7 @@ func _update_faction_detail() -> void:
 	faction_detail.add_child(level_label)
 	
 	var rep_label = Label.new()
-	rep_label.text = "声望：%d" % reputation
+	rep_label.text = "贡献：%d" % reputation
 	faction_detail.add_child(rep_label)
 	
 	# 升级进度条
@@ -219,10 +219,10 @@ func _update_faction_detail() -> void:
 		max_label.text = "[color=yellow]已达最高等级[/color]"
 		faction_detail.add_child(max_label)
 	
-	# 控制的关卡数量
-	var controlled_levels = faction_info.get("controlled_levels", [])
+	# 历史辖区（v6.22 定案5：纯风味统计，原"控制关卡数"）
+	var historical_levels = faction_info.get("historical_levels", [])
 	var levels_label = Label.new()
-	levels_label.text = "控制关卡数：%d" % int(controlled_levels.size())
+	levels_label.text = "历史辖区：%d 关" % int(historical_levels.size())
 	faction_detail.add_child(levels_label)
 	
 	# 显示商店库存预览
@@ -256,22 +256,12 @@ func _update_faction_detail() -> void:
 	_append_faction_skill_tree(faction_mgr, selected_faction_id, level)
 
 # ═══ v26.11(A1.3): 势力事件决策区 ═══
-# 事件每 5 场战斗生成一次（toast 播报），此前玩家无处做选择、奖励只发声望。
+# 事件每 5 场战斗生成一次（toast 播报），此前玩家无处做选择、奖励只发贡献。
 # 本区块补齐决策 UI + 生效加成可见性。
 
 ## 事件决策区 + 生效加成显示（挂在详情区顶部）
 func _append_active_faction_event(faction_mgr: Node) -> void:
-	# —— 生效中的势力加成（事件奖励激活，按战斗场次递减）——
-	var active_fid: String = String(faction_mgr.get("active_faction")) if "active_faction" in faction_mgr else ""
-	if not active_fid.is_empty() and faction_mgr.has_method("get_active_faction_bonus_state"):
-		var st: Dictionary = faction_mgr.get_active_faction_bonus_state(active_fid)
-		if not st.is_empty():
-			var bonus: Dictionary = st.get("bonus", {})
-			var bonus_lbl := Label.new()
-			bonus_lbl.text = "⚡ 生效加成：%s（剩 %d 场）" % [String(bonus.get("name", "?")), int(st.get("remaining", 0))]
-			bonus_lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
-			bonus_lbl.add_theme_color_override("font_color", DT.COLOR_GOLD)
-			faction_detail.add_child(bonus_lbl)
+	# v6.22: 生效加成显示块已随势力临时加成体系退役删除。
 	# —— 待决策事件 ——
 	if not faction_mgr.has_method("get_active_event"):
 		return
@@ -295,7 +285,7 @@ func _append_active_faction_event(faction_mgr: Node) -> void:
 	var vb := VBoxContainer.new()
 	panel.add_child(vb)
 	var title_lbl := Label.new()
-	title_lbl.text = "⚔ 势力事件（等待你的抉择）"
+	title_lbl.text = "✦ 势力事件（等待你的抉择）"
 	title_lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_MEDIUM)
 	title_lbl.add_theme_color_override("font_color", DT.COLOR_GOLD)
 	vb.add_child(title_lbl)
@@ -337,7 +327,7 @@ func _append_active_faction_event(faction_mgr: Node) -> void:
 func _event_choice_button_text(choice_key: String, rw: Dictionary, evt: Dictionary, faction_mgr: Node) -> String:
 	var parts := PackedStringArray()
 	if rw.has("reputation"):
-		parts.append("声望+%d" % int(rw["reputation"]))
+		parts.append("贡献+%d" % int(rw["reputation"]))
 	if rw.has("skill_points"):
 		parts.append("技能点+%d" % int(rw["skill_points"]))
 	var nano: int = int(rw.get("nano", rw.get("nanomaterial", 0)))
@@ -345,8 +335,6 @@ func _event_choice_button_text(choice_key: String, rw: Dictionary, evt: Dictiona
 		parts.append("纳米+%d" % nano)
 	if rw.has("exclusive_card"):
 		parts.append("专属卡")
-	if rw.has("faction_bonus_duration"):
-		parts.append("加成%d场" % int(rw["faction_bonus_duration"]))
 	var summary: String = "，".join(parts) if not parts.is_empty() else "无直接奖励"
 	var fid: String = String(evt.get("faction_a" if choice_key == "support_a" else "faction_b", ""))
 	var fname: String = faction_mgr.get_faction_display_name(fid) if faction_mgr.has_method("get_faction_display_name") else fid
@@ -355,7 +343,7 @@ func _event_choice_button_text(choice_key: String, rw: Dictionary, evt: Dictiona
 			return "支持 %s\n%s" % [fname, summary]
 	return "保持中立\n%s" % summary
 
-## 事件选择回调（走 fsm.resolve_faction_event 正规链：声望/忠诚度/奖励全字段结算）
+## 事件选择回调（走 fsm.resolve_faction_event 正规链：贡献/奖励全字段结算；忠诚度已随 v6.22 退役）
 func _on_event_choice_pressed(choice: String) -> void:
 	var faction_mgr = get_node_or_null("/root/FactionSystemManager")
 	if faction_mgr == null or not faction_mgr.has_method("resolve_faction_event"):
@@ -551,7 +539,7 @@ func _on_activate_faction_pressed(faction_id: String) -> void:
 	_update_faction_detail()
 
 func _on_faction_reputation_changed(faction_id: String, delta: int, new_value: int) -> void:
-	"""势力声望变化回调"""
+	"""势力贡献变化回调"""
 	# v9 perf：面板隐藏时置脏跳过（每过关最多 7 势力反应触发详情区重建）；
 	# 重新显示时 _on_visibility_refresh 补刷
 	if not is_visible_in_tree():

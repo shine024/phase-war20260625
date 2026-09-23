@@ -149,11 +149,18 @@ func _draw() -> void:
 	var font := ThemeDB.fallback_font
 	if font != null:
 		var text: String = "%s %d/%d" % [core_label, int(ceil(maxf(_hp_cur, 0.0))), int(_hp_max)]
-		var pos := Vector2(-w * 0.5, bar_y - 8.0)
+		# 我方基地 x=40 / 敌方 x=1240，血条文字按条宽居中会探出屏幕左右缘被裁
+		#（2026-09-20 全矩阵报告 P4 核销）——按画布可视区钳位，窄处整体内移保证可读。
+		var inv: Transform2D = get_global_transform_with_canvas().affine_inverse()
+		var avail_l: float = (inv * Vector2.ZERO).x + 4.0
+		var avail_r: float = (inv * get_viewport_rect().size).x - 4.0
+		var text_w: float = font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, 12).x
+		var center_x: float = clampf(0.0, avail_l + text_w * 0.5, avail_r - text_w * 0.5)
+		var pos := Vector2(center_x - text_w * 0.5, bar_y - 8.0)
 		font.draw_string_outline(get_canvas_item(), pos, text,
-			HORIZONTAL_ALIGNMENT_CENTER, w, 12, 2, Color(0, 0, 0, 0.85))
+			HORIZONTAL_ALIGNMENT_LEFT, -1, 12, 2, Color(0, 0, 0, 0.85))
 		font.draw_string(get_canvas_item(), pos, text,
-			HORIZONTAL_ALIGNMENT_CENTER, w, 12, Color(0.92, 0.95, 0.98, 1.0))
+			HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color(0.92, 0.95, 0.98, 1.0))
 
 static func _ellipse_points(center: Vector2, rx: float, ry: float, segments: int) -> PackedVector2Array:
 	var pts := PackedVector2Array()

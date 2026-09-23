@@ -19,13 +19,16 @@ const SPEED_BASE := 300.0
 const SPEED_PER_LV := 90.0
 const ENGINE_MAX_LV := 5
 ## v26.25 燃料自动回复速率（每分钟；引擎每级再 +1）
-const REGEN_BASE_PER_MIN := 3.0
+## v29 R2a（设计审查 F-15）：3.0→5.0——基础回复 3/min 时回满 100 油罐要 33 分钟，
+## 与精神值双出门税叠加，主动连续推进的节奏税过重；5/min（约 20 分钟回满）缓解，
+## 引擎升级收益不变。数值真身仍只在本文件。
+const REGEN_BASE_PER_MIN := 5.0
 const REGEN_PER_LV_PER_MIN := 1.0
 ## v26.21 实时行军换算：1 天行程 = 12 秒真实时间（出发即走，离线/切场景也计时；
 ## v26.29 由 60 秒提速 5 倍——用户实测原速过慢）
 const SECONDS_PER_DAY := 12.0
 
-## 升级到下一级的资源价（索引=当前等级 1..4）；短名对齐 BunkerRoomDefs.RES
+## 升级到下一级的资源价（索引=当前等级 1..4）；短名对齐 MobileBaseFacilities.RES
 const ENGINE_UPGRADES := [
 	{"nano": 150, "alloy": 80},
 	{"nano": 300, "alloy": 160},

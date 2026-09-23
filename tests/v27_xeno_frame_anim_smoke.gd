@@ -142,8 +142,15 @@ func _run() -> void:
 		else:
 			_ok("渡暮狂战士：UnitFrameAnimDriver（idle %d 帧 ping-pong，attack %d 帧）" % [idle_n, atk_n])
 		# attack 播放：notify_fire → attack → 播完回 idle
+		# 隔离化：play_attack 会按 stats.attack_interval 动态定 fps，而断言等待窗
+		# (atk_n+2)/fps 恒大于攻击间隔 atk_n/fps——活战场上 AI 在窗内必然再次开火
+		# 重播 attack（"attack 期间再次开火则重头播"是设计行为），断言遂确定性失败。
+		# 故断言期间拉大间隔停掉 AI 开火，保证窗口内只有测试自己的一次 notify_fire。
 		if atk_n > 0:
 			var spr: Sprite2D = drv.get_parent() as Sprite2D
+			var st: Variant = zealot.get("stats")
+			if st != null:
+				st.set("attack_interval", 999.0)
 			UnitFrameAnim.notify_fire(spr)
 			await _wait_frames(2)
 			if str(drv.get("_mode")) != "attack":

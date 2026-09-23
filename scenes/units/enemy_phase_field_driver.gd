@@ -1130,7 +1130,9 @@ func _produce_unit_fallback() -> void:
 	var parent = get_parent()
 	if parent == null:
 		return
-	var era_ids: Array = EnemyArchetypes.get_ids_for_era(era)
+	# v30.5 R5：关卡域池（min_level 门）——驻守关兜底产兵不越过等级门
+	# （如 L25/30/35 二战驻守战不抽到 L36+ 的实验性喷气机）
+	var era_ids: Array = EnemyArchetypes.get_ids_for_era_at_level(era, _game_level)
 	if era_ids.is_empty():
 		return
 	var archetype_id: String = String(era_ids[randi() % era_ids.size()])

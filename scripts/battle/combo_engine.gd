@@ -114,6 +114,17 @@ func _refresh_team_mechanisms() -> void:
 	# unit_stats_table._apply_mod_stat_effects 写入），任一卡满档即全队共享该满档机制。
 	# 复用本次全组遍历，无额外扫描；执行端与既有 mechanisms flag 同管道（_active_mechanisms）。
 	_full_tier_combos = _scan_full_tiers(allies)
+	# v6.19 P2-T2.2 流派成型埋点：战斗内首次激活套装 / 首次满档组合（一次性，重放安全）。
+	# 本类是 RefCounted 无树访问——经 Engine.get_main_loop() 取 autoload。
+	var _pm_tree := Engine.get_main_loop() as SceneTree
+	var pm: Node = null
+	if _pm_tree != null and _pm_tree.root != null:
+		pm = _pm_tree.root.get_node_or_null("/root/PerformanceMetricsManager")
+	if pm != null and pm.has_method("record_milestone"):
+		if not team_combos.is_empty():
+			pm.record_milestone("combo_active_first")
+		if not _full_tier_combos.is_empty():
+			pm.record_milestone("combo_full_first")
 	for fm in ComboTactics.get_full_mechanisms(_full_tier_combos):
 		var fms: String = String(fm)
 		if not _active_mechanisms.has(fms):
@@ -152,17 +163,40 @@ func is_combo_full(combo_id: String) -> bool:
 	return _full_tier_combos.has(combo_id)
 
 
-## v9.1 弹全队激活横幅
+## v38.3 激活播报带因果（用户"各种激活跳出字来，但不知道怎么激活的"）——
+## 横幅改为公式样式"支援×1 →「助燃燃烧链」全队激活！"，触发条件直接可见。
+## 兵种中文名与 default_cards.kind_names 同源同序（语言宪法：不造新词）。
+const _KIND_LABELS: Array[String] = ["轻装", "装甲", "支援", "空中", "堡垒"]
+
 func _emit_team_activate_banner(new_combo_ids: Array) -> void:
-	var names: Array = []
+	# UI 四级标准修复 R-B3：连携体系此前零引导来源（不在教程/门控表/show_once 清单），
+	# 玩家首次看到激活横幅不知所以。现首次激活时弹一次带说明的 Modal（show_once
+	# user:// 持久去重——旧档已过时机也会在下一次激活时补弹，二次进游戏不再弹）。
+	FeatureUnlockPopup.show_once("combo_intro", "连携体系激活",
+		"上阵同类兵种达到组合数量即激活全队机制：如 轻装×2 →「助燃燃烧链」全队激活！\n战斗中下方连携状态条悬停任意机制图标，可看效果详情。")
+	if new_combo_ids.is_empty():
+		return
+	var parts: Array = []
 	for cid in new_combo_ids:
 		var def: Dictionary = ComboTactics.get_combo_def(String(cid))
-		if not def.is_empty():
-			names.append(String(def.get("name", cid)))
-	if names.is_empty():
+		if def.is_empty():
+			continue
+		var cn: String = String(def.get("name", String(cid)))
+		var causes: PackedStringArray = PackedStringArray()
+		var kc: Dictionary = def.get("kind_combo", {})
+		for k in kc.keys():
+			var idx := int(k)
+			var lbl: String = _KIND_LABELS[idx] if idx >= 0 and idx < _KIND_LABELS.size() else String(k)
+			causes.append("%s×%d" % [lbl, int(kc[k])])
+		if causes.is_empty():
+			parts.append("「%s」" % cn)
+		else:
+			parts.append("%s →「%s」" % [" + ".join(causes), cn])
+	if parts.is_empty():
 		return
+	# 横幅 400px 宽：单轮最多两条公式防溢出（同批更多条目随下次节流刷新补播）
 	VfxImpactFactory.show_combo_activate_banner(
-		"「%s」全队激活！" % ", ".join(names), 2.0, true
+		"%s 全队激活！" % "；".join(parts.slice(0, 2)), 2.0, true
 	)
 
 ## 获取当前全队激活的新机制 flag 列表（供战斗侧查询）

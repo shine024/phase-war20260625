@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<title>Phase War · 开火点 × 缩放 工作台</title>
+<script src="fire_scale_data.js"></script>
+<style>
+  body { background:#0e1117; color:#e2e8f0; font-family:Consolas,'Microsoft YaHei',sans-serif; font-size:13px; margin:0; display:flex; flex-direction:column; height:100vh; }
+  h1 { font-size:15px; margin:0; padding:10px 14px; color:#58a6ff; }
+  #topbar { display:flex; gap:8px; align-items:center; padding:6px 14px; border-bottom:1px solid #21262d; flex-wrap:wrap; }
+  #topbar select, #topbar input, #topbar button { background:#161b26; color:#e2e8f0; border:1px solid #2a2f3a; border-radius:5px; padding:4px 8px; font:inherit; }
+  #topbar button:hover { border-color:#58a6ff; }
+  #topbar button.primary { background:#1f4fd8; border-color:#1f4fd8; }
+  .stat { color:#8b949e; }
+  #main { flex:1; display:flex; min-height:0; }
+  #list { width:250px; border-right:1px solid #21262d; overflow-y:auto; }
+  .item { display:flex; align-items:center; gap:8px; padding:4px 10px; cursor:pointer; border-bottom:1px solid #161b26; }
+  .item:hover { background:#161b26; }
+  .item.sel { background:#1c2a4a; }
+  .item img { width:32px; height:32px; object-fit:contain; background:#1e2430; border-radius:3px; }
+  .item .nm { flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .badge { font-size:10px; padding:1px 5px; border-radius:8px; }
+  .b-fire { background:#5a1d1d; color:#ff9d9d; }
+  .b-scale { background:#1d3a5a; color:#9dcbff; }
+  .b-miss { background:#3a2a1d; color:#e0b89d; }
+  #editor { flex:1; overflow:auto; padding:12px 16px; }
+  #edname { font-size:16px; color:#58a6ff; margin-bottom:2px; }
+  #edmeta { color:#8b949e; margin-bottom:10px; }
+  .row { display:flex; gap:16px; flex-wrap:wrap; align-items:flex-start; }
+  .panel { background:#161b26; border:1px solid #21262d; border-radius:8px; padding:10px; }
+  .panel h3 { margin:0 0 8px; font-size:12px; color:#8b949e; font-weight:normal; }
+  canvas { background:#0d1117; border-radius:5px; display:block; }
+  .fld { display:flex; align-items:center; gap:6px; margin:4px 0; }
+  .fld label { width:88px; color:#8b949e; }
+  .fld input { width:90px; background:#0d1117; color:#e2e8f0; border:1px solid #2a2f3a; border-radius:4px; padding:3px 6px; font:inherit; }
+  .kv { color:#8b949e; margin:2px 0; }
+  .kv b { color:#e2e8f0; }
+  #exportbox { width:100%; height:150px; background:#0d1117; color:#9dcbff; border:1px solid #2a2f3a; border-radius:5px; font:11px Consolas,monospace; margin-top:6px; }
+  .hint { color:#8b949e; font-size:11px; margin-top:6px; line-height:1.6; }
+</style>
+</head>
+<body>
+<h1>Phase War · 开火点 × 缩放 工作台 <span class="stat" id="verinfo"></span></h1>
+<div id="topbar">
+  <select id="fSide"><option value="">全部侧</option><option value="P">我方</option><option value="E">敌方</option></select>
+  <select id="fEra"><option value="">全部时代</option><option value="0">一战</option><option value="1">二战</option><option value="2">冷战</option><option value="3">现代</option><option value="4">近未来</option></select>
+  <select id="fKind"><option value="">全部兵种</option><option value="0">轻装</option><option value="1">装甲</option><option value="2">支援</option><option value="3">空中</option><option value="4">堡垒</option></select>
+  <input id="fSearch" placeholder="搜索 id…" style="width:130px">
+  <label style="display:flex;align-items:center;gap:4px;color:#8b949e"><input type="checkbox" id="fDirty">只看已改</label>
+  <span class="stat" id="count"></span>
+  <span style="flex:1"></span>
+  <button id="btnCompare">对比 (<span id="cmpN">0</span>)</button>
+  <button class="primary" id="btnGd">导出 .gd 修改行</button>
+  <button id="btnJson">下载 JSON</button>
+</div>
+<div id="cmpPanel" style="display:none">
+  <div style="display:flex; gap:8px; align-items:center; padding:6px 14px; border-bottom:1px solid #21262d;">
+    <b style="color:#58a6ff">多单位大小对比</b>
+    <select id="cmpZoom"><option value="1">1×</option><option value="2">2×</option><option value="3">3×</option><option value="4">4×</option></select>
+    <select id="cmpSort"><option value="list">列表序</option><option value="size">按内容宽排序</option></select>
+    <label style="display:flex;align-items:center;gap:4px;color:#8b949e"><input type="checkbox" id="cmpFire" checked>显示开火点</label>
+    <button id="cmpClear">清空</button>
+    <button id="cmpClose">收起</button>
+    <span class="stat">绿点线=基准步兵；每单位下方=内容屏宽</span>
+  </div>
+  <div style="overflow:auto; max-height:560px; background:#0b0e13;"><canvas id="cC"></canvas></div>
+</div>
+<div id="main">
+  <div id="list"></div>
+  <div id="editor"><div class="hint" style="padding:30px">← 左侧选择单位。拖拽红点调开火点，改 override 调大小，导出后贴回 .gd 表。</div></div>
+</div>
+<script>
+"use strict";
+const D = window.PW_DATA;
+const ERA_NAMES = ["一战","二战","冷战","现代","近未来"];
+const KIND_NAMES = ["轻装","装甲","支援","空中","堡垒"];
+// 工作副本
+const U = D.units.map(u => Object.assign({fx0: u.fx, fy0: u.fy, ov: 1.0, ov0: 1.0}, u));
+const byId = new Map(U.map(u => [u.side + "|" + u.id, u]));
+let sel = null;
+
+function factorOf(u) {
+  const row = D.kind_era[String(u.kind)] || D.kind_era["0"];
+  const era = (u.era >= 0 && u.era <= 4) ? u.era : 2;
+  return row ? row[era] : 1.0;
+}
+function contentW(u, ov) { return D.base_w * factorOf(u) * ov; }
+function isFireDirty(u) { return u.fx !== null && (Math.abs(u.fx - u.fx0) > 1e-4 || Math.abs(u.fy - u.fy0) > 1e-3); }
+function isScaleDirty(u) { return Math.abs(u.ov - 1.0) > 1e-3; }
+function fireChangedCount() { return U.filter(isFireDirty).length; }
+function scaleChangedCount() { return U.filter(isScaleDirty).length; }
+
+// ── 列表
+const cmp = [];  // 对比集（side|id，有序）
+function inCmp(u) { return cmp.includes(u.side + "|" + u.id); }
+function toggleCmp(u) {
+  const k = u.side + "|" + u.id;
+  const i = cmp.indexOf(k);
+  if (i >= 0) cmp.splice(i, 1); else cmp.push(k);
+  document.getElementById("cmpN").textContent = cmp.length;
+  if (cmpPanel.style.display !== "none") drawCompare();
+  renderList();
+}
+function renderList() {
+  const side = fSide.value, era = fEra.value, kind = fKind.value, q = fSearch.value.trim().toLowerCase(), only = fDirty.checked;
+  const box = document.getElementById("list");
+  box.innerHTML = "";
+  let n = 0;
+  for (const u of U) {
+    if (side && u.side !== side) continue;
+    if (era !== "" && String(u.era) !== era) continue;
+    if (kind !== "" && String(u.kind) !== kind) continue;
+    if (q && !u.id.toLowerCase().includes(q)) continue;
+    if (only && !isFireDirty(u) && !isScaleDirty(u)) continue;
+    const div = document.createElement("div");
+    div.className = "item" + (sel === u ? " sel" : "");
+    const cb = document.createElement("input");
+    cb.type = "checkbox"; cb.checked = inCmp(u); cb.title = "加入对比";
+    cb.onclick = e => { e.stopPropagation(); toggleCmp(u); };
+    const img = document.createElement("img");
+    img.src = u.icon; img.loading = "lazy";
+    const nm = document.createElement("div"); nm.className = "nm"; nm.textContent = (u.side === "P" ? "我·" : "敌·") + u.id;
+    div.append(cb, img, nm);
+    if (u.fx === null) { const b = document.createElement("span"); b.className = "badge b-miss"; b.textContent = "无锚"; div.append(b); }
+    if (isFireDirty(u)) { const b = document.createElement("span"); b.className = "badge b-fire"; b.textContent = "火"; div.append(b); }
+    if (isScaleDirty(u)) { const b = document.createElement("span"); b.className = "badge b-scale"; b.textContent = "×" + u.ov.toFixed(2); div.append(b); }
+    div.onclick = () => { sel = u; renderList(); renderEditor(); };
+    box.append(div);
+    n++;
+  }
+  document.getElementById("count").textContent = `显示 ${n} / ${U.length} · 改开火 ${fireChangedCount()} · 改缩放 ${scaleChangedCount()}`;
+}
+[fSide, fEra, fKind, fDirty].forEach(el => el.onchange = renderList);
+fSearch.oninput = renderList;
+
+// ── 编辑器
+const TEX = 300, GY = 190, BW = 760;
+let canvasA, ctxA, canvasB, ctxB, imgCache = new Map(), curImg = null;
+
+function iconImg(u, cb) {
+  if (imgCache.has(u.icon)) { cb(imgCache.get(u.icon)); return; }
+  const im = new Image();
+  im.onload = () => { imgCache.set(u.icon, im); cb(im); };
+  im.onerror = () => { imgCache.set(u.icon, null); cb(null); };
+  im.src = u.icon;
+}
+
+function renderEditor() {
+  const ed = document.getElementById("editor");
+  if (!sel) { ed.innerHTML = '<div class="hint" style="padding:30px">← 左侧选择单位</div>'; return; }
+  const u = sel;
+  const eraN = (u.era >= 0 && u.era <= 4) ? ERA_NAMES[u.era] : "?";
+  const kindN = (u.kind >= 0 && u.kind <= 4) ? KIND_NAMES[u.kind] : "?";
+  ed.innerHTML = `
+    <div id="edname">${u.side === "P" ? "我方" : "敌方"} · ${u.id}</div>
+    <div id="edmeta">${eraN} · ${kindN} · 表键直接可用 · 图 ${u.icon.split("/").pop()}</div>
+    <div class="row">
+      <div class="panel"><h3>标注区（纹理空间，拖红点 = 开火点；10% 网格）</h3><canvas id="cA" width="${TEX}" height="${TEX}"></canvas>
+        <div class="fld"><label>fireX (0~1)</label><input id="inFx" type="number" step="0.001" min="0" max="1"></div>
+        <div class="fld"><label>fireY% (0~100)</label><input id="inFy" type="number" step="0.1" min="0" max="100"></div>
+      </div>
+      <div class="panel"><h3>战场实比预览（内容宽归一 × 档位 × override；黑线=地面，红十字=出膛/枪口）</h3><canvas id="cB" width="${BW}" height="260"></canvas>
+        <div class="fld"><label>缩放 override</label><input id="inOv" type="number" step="0.05" min="0.3" max="3"> <span class="kv">1 = 纯档位模型</span></div>
+        <div class="kv">档位系数 <b id="kvF"></b> · 内容屏宽 <b id="kvW"></b>px · 基准步兵(一战轻装) <b>${(D.base_w * D.kind_era["0"][0]).toFixed(0)}px</b></div>
+        <div class="kv">出膛偏移 <b id="kvOff"></b>px（相对脚点）</div>
+        <div class="fld" style="margin-top:8px"><button id="btnReset">重置本单元</button><button id="btnAddCmp">加入/移出对比</button></div>
+        <div class="hint">绿框=内容 bbox（扫描）；蓝虚线=头/脚锚。fireY 从纹理顶部量，战场端自动扣 ff（脚线原点）。<br>导出我方行含 ff/hf，敌方行为直接键（运行时直查优先，不影响共享平台键）。</div>
+      </div>
+    </div>
+    <div class="panel" style="margin-top:10px"><h3>导出</h3>
+      <button id="btnCopy">复制下方内容</button>
+      <span class="hint">贴回 data/muzzle_anchors.gd（敌方）/ data/player_muzzle_anchors.gd（我方，含 ff/hf 整行替换）/ data/card_foot_anchors.gd 的 VISUAL_SCALE_OVERRIDE</span>
+      <textarea id="exportbox" readonly></textarea>
+    </div>`;
+  canvasA = document.getElementById("cA"); ctxA = canvasA.getContext("2d");
+  canvasB = document.getElementById("cB"); ctxB = canvasB.getContext("2d");
+  document.getElementById("inFx").oninput = e => { const v = parseFloat(e.target.value); if (!isNaN(v)) { sel.fx = Math.min(1, Math.max(0, v)); refresh(); } };
+  document.getElementById("inFy").oninput = e => { const v = parseFloat(e.target.value); if (!isNaN(v)) { sel.fy = Math.min(100, Math.max(0, v)); refresh(); } };
+  document.getElementById("inOv").oninput = e => { const v = parseFloat(e.target.value); sel.ov = isNaN(v) ? 1.0 : Math.min(3, Math.max(0.3, v)); refresh(); };
+  document.getElementById("btnReset").onclick = () => { sel.fx = sel.fx0; sel.fy = sel.fy0; sel.ov = 1.0; refresh(); };
+  document.getElementById("btnAddCmp").onclick = () => toggleCmp(sel);
+  document.getElementById("btnCopy").onclick = copyExport;
+  iconImg(u, im => { curImg = im; refresh(); });
+  refresh();
+  bindDrag();
+}
+
+function refresh() {
+  inFx.value = sel.fx !== null ? sel.fx.toFixed(3) : "";
+  inFy.value = sel.fy !== null ? sel.fy.toFixed(1) : "";
+  inOv.value = sel.ov.toFixed(2);
+  kvF.textContent = factorOf(sel).toFixed(2);
+  kvW.textContent = contentW(sel, sel.ov).toFixed(0);
+  const off = fireOffsetPx(sel, sel.ov);
+  kvOff.textContent = `(${off.x.toFixed(1)}, ${off.y.toFixed(1)})`;
+  drawAll();
+  if (cmpPanel.style.display !== "none") drawCompare();
+  renderList();
+}
+
+function fireOffsetPx(u, ov) {
+  if (u.fx === null || !curImg) return {x: 0, y: 0};
+  const tw = curImg.naturalWidth, th = curImg.naturalHeight;
+  const s = D.base_w / (tw * Math.max(u.wf, 0.01)) * factorOf(u) * ov;
+  return { x: (u.fx - 0.5) * tw * s, y: -(1.0 - u.ff - u.fy / 100.0) * th * s };
+}
+
+function drawAll() {
+  if (!sel) return;
+  drawA();
+  drawB();
+}
+
+function drawA() {
+  const c = ctxA, S = TEX;
+  c.clearRect(0, 0, S, S);
+  c.fillStyle = "#0d1117"; c.fillRect(0, 0, S, S);
+  if (curImg) { c.globalAlpha = 0.92; c.drawImage(curImg, 0, 0, S, S); c.globalAlpha = 1; }
+  for (let i = 0; i <= 10; i++) {
+    c.strokeStyle = i % 5 ? "rgba(255,255,255,.08)" : "rgba(255,255,255,.25)";
+    c.beginPath(); c.moveTo(i / 10 * S, 0); c.lineTo(i / 10 * S, S); c.stroke();
+    c.beginPath(); c.moveTo(0, i / 10 * S); c.lineTo(S, i / 10 * S); c.stroke();
+  }
+  // 内容 bbox（绿）
+  const l = (1 - sel.wf) / 2;
+  c.strokeStyle = "#3fda6f";
+  c.strokeRect(l * S, sel.hf * S, sel.wf * S, (1 - sel.ff - sel.hf) * S);
+  // 头/脚锚（蓝虚线）
+  c.strokeStyle = "#58a6ff"; c.setLineDash([4, 4]);
+  c.beginPath(); c.moveTo(0, sel.hf * S); c.lineTo(S, sel.hf * S); c.stroke();
+  c.beginPath(); c.moveTo(0, (1 - sel.ff) * S); c.lineTo(S, (1 - sel.ff) * S); c.stroke();
+  c.setLineDash([]);
+  // 开火点（红十字）
+  if (sel.fx !== null) {
+    const x = sel.fx * S, y = sel.fy / 100 * S;
+    c.strokeStyle = "#ff4d4d"; c.lineWidth = 2;
+    c.beginPath(); c.moveTo(x - 8, y); c.lineTo(x + 8, y); c.moveTo(x, y - 8); c.lineTo(x, y + 8); c.stroke();
+    c.lineWidth = 1;
+  }
+}
+
+function drawB() {
+  const c = ctxB, W = BW, H = 260;
+  c.clearRect(0, 0, W, H);
+  c.fillStyle = "#0d1117"; c.fillRect(0, 0, W, H);
+  const ground = GY + 30, cx = W / 2;
+  // 地面线
+  c.strokeStyle = "#000"; c.lineWidth = 2;
+  c.beginPath(); c.moveTo(cx - 300, ground); c.lineTo(cx + 300, ground); c.stroke();
+  c.lineWidth = 1;
+  if (!curImg) return;
+  const tw = curImg.naturalWidth, th = curImg.naturalHeight;
+  const drawUnit = (ov, alpha, label) => {
+    const sf = D.base_w / (tw * Math.max(sel.wf, 0.01)) * factorOf(sel) * ov;
+    const w = tw * sf, h = th * sf;
+    const x0 = cx - w / 2, y0 = ground - h + sel.ff * h;
+    c.globalAlpha = alpha;
+    c.drawImage(curImg, x0, y0, w, h);
+    c.globalAlpha = 1;
+    // 内容宽标注
+    const cw = sel.wf * w;
+    c.strokeStyle = "#3fda6f";
+    c.beginPath(); c.moveTo(cx - cw / 2, ground + 8); c.lineTo(cx + cw / 2, ground + 8); c.stroke();
+    if (label) { c.fillStyle = "#3fda6f"; c.fillText(`${label} ${cw.toFixed(0)}px`, cx - 20, ground + 22); }
+    return {x0, y0, sf};
+  };
+  if (isScaleDirty(sel)) drawUnit(1.0, 0.30, null);   // 幽灵=纯模型
+  drawUnit(sel.ov, 1.0, isScaleDirty(sel) ? "override" : "内容宽");
+  // 基准步兵（一战轻装 0.72 档）
+  const ref = D.base_w * D.kind_era["0"][0];
+  c.strokeStyle = "#e0b89d";
+  c.beginPath(); c.moveTo(cx - 300, ground - 2); c.lineTo(cx - 300 + ref, ground - 2); c.stroke();
+  c.fillStyle = "#e0b89d"; c.fillText(`基准步兵 ${ref.toFixed(0)}px`, cx - 300, ground - 6);
+  // 开火点
+  if (sel.fx !== null) {
+    const off = fireOffsetPx(sel, sel.ov);
+    const x = cx + off.x, y = ground + off.y;
+    c.strokeStyle = "#ff4d4d"; c.lineWidth = 2;
+    c.beginPath(); c.moveTo(x - 7, y); c.lineTo(x + 7, y); c.moveTo(x, y - 7); c.lineTo(x, y + 7); c.stroke();
+    c.lineWidth = 1;
+  }
+}
+
+// ── 标注区拖拽
+function bindDrag() {
+  let drag = false;
+  canvasA.onpointerdown = e => {
+    if (sel.fx === null) return;
+    drag = true; canvasA.setPointerCapture(e.pointerId); move(e);
+  };
+  canvasA.onpointermove = e => { if (drag) move(e); };
+  canvasA.onpointerup = () => { drag = false; };
+  function move(e) {
+    const r = canvasA.getBoundingClientRect();
+    const x = Math.min(1, Math.max(0, (e.clientX - r.left) / r.width));
+    const y = Math.min(1, Math.max(0, (e.clientY - r.top) / r.height));
+    sel.fx = Math.round(x * 1000) / 1000;
+    sel.fy = Math.round(y * 1000) / 10;
+    refresh();
+  }
+}
+
+// ── 导出
+function gdLines() {
+  const fire = [], ov = [];
+  for (const u of U) {
+    if (isFireDirty(u)) {
+      const fx = u.fx.toFixed(4).replace(/0+$/, "").replace(/\.$/, "");
+      const fy = u.fy.toFixed(2).replace(/0+$/, "").replace(/\.$/, "");
+      if (u.side === "P")
+        fire.push(`\t"${u.id}": {"fireX": ${fx}, "fireY_pct": ${fy}, "ff": ${u.ff}, "hf": ${u.hf}},`);
+      else
+        fire.push(`\t"${u.id}": {"fireX": ${fx}, "fireY_pct": ${fy}},`);
+    }
+    if (isScaleDirty(u)) ov.push(`\t"${u.id}": ${u.ov.toFixed(2)},`);
+  }
+  let out = "";
+  if (fire.length) out += `// ── 开火点（data/player_muzzle_anchors.gd 我方整行替换 / data/muzzle_anchors.gd 敌方，放 MUZZLE 字典内）\n` + fire.join("\n") + "\n";
+  if (ov.length) out += `\n// ── 缩放 override（data/card_foot_anchors.gd 的 VISUAL_SCALE_OVERRIDE，乘在档位系数上）\n` + ov.join("\n") + "\n";
+  if (!out) out = "（无修改）";
+  return out;
+}
+function exportJson() {
+  const dirty = U.filter(u => isFireDirty(u) || isScaleDirty(u)).map(u => ({
+    id: u.id, side: u.side, fireX: u.fx, fireY_pct: u.fy, scale_override: +u.ov.toFixed(3),
+  }));
+  return JSON.stringify({ver: D.ver, exported: new Date().toISOString(), units: dirty}, null, 2);
+}
+document.getElementById("btnGd").onclick = () => { document.getElementById("exportbox").value = gdLines(); };
+document.getElementById("btnJson").onclick = () => {
+  const blob = new Blob([exportJson()], {type: "application/json"});
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob); a.download = "fire_scale_edits.json"; a.click();
+};
+function copyExport() {
+  const t = document.getElementById("exportbox");
+  t.select();
+  navigator.clipboard.writeText(t.value).then(() => { t.value = t.value + "\n// ✓ 已复制到剪贴板"; },
+    () => document.execCommand("copy"));
+}
+
+// ── 多单位对比
+const cmpPanel = document.getElementById("cmpPanel");
+let cmpGen = 0;
+function drawCompare() {
+  document.getElementById("cmpN").textContent = cmp.length;
+  const gen = ++cmpGen;
+  const z = parseFloat(document.getElementById("cmpZoom").value);
+  let list = cmp.map(k => byId.get(k)).filter(Boolean);
+  if (document.getElementById("cmpSort").value === "size")
+    list = list.slice().sort((a, b) => contentW(a, a.ov) - contentW(b, b.ov));
+  const margin = 50, gap = 34;
+  const slots = list.map(u => {
+    const cw = contentW(u, u.ov) * z;
+    const chF = Math.max(1 - u.ff - u.hf, 0.05);
+    return { u, cw, chH: cw * (chF / Math.max(u.wf, 0.05)) };
+  });
+  const ground = Math.max(250, ...slots.map(s => s.chH + 40));
+  const W = Math.max(900, margin * 2 + slots.reduce((a, s) => a + s.cw, 0) + gap * Math.max(list.length - 1, 0));
+  const H = ground + 80;
+  const c = document.getElementById("cC");
+  c.width = W; c.height = H;
+  c.parentElement.scrollLeft = 0;
+  const g = c.getContext("2d");
+  g.fillStyle = "#0b0e13"; g.fillRect(0, 0, W, H);
+  // 基准步兵竖线对（一战轻装 0.72 档）
+  const ref = D.base_w * D.kind_era["0"][0] * z;
+  g.strokeStyle = "#3fda6f"; g.setLineDash([5, 4]);
+  g.beginPath(); g.moveTo(margin - 8, ground - 170); g.lineTo(margin - 8, ground); g.stroke();
+  g.beginPath(); g.moveTo(margin - 8 + ref, ground - 170); g.lineTo(margin - 8 + ref, ground); g.stroke();
+  g.setLineDash([]);
+  g.fillStyle = "#3fda6f"; g.fillText(`基准步兵 ${ref.toFixed(0)}px`, margin - 8, ground - 175);
+  // 地面线
+  g.strokeStyle = "#000"; g.lineWidth = 2;
+  g.beginPath(); g.moveTo(0, ground); g.lineTo(W, ground); g.stroke();
+  g.lineWidth = 1;
+  // 逐单位绘制（图标异步加载，加载完按代数重绘）
+  let x = margin;
+  for (const s of slots) {
+    const u = s.u;
+    const cx = x + s.cw / 2;
+    const doDraw = im => {
+      if (gen !== cmpGen || !im) return;
+      const tw = im.naturalWidth, th = im.naturalHeight;
+      const sf = s.cw / (tw * Math.max(u.wf, 0.05));
+      const w = tw * sf, h = th * sf;
+      g.globalAlpha = 0.94;
+      g.drawImage(im, cx - w / 2, ground - h + u.ff * h, w, h);
+      g.globalAlpha = 1;
+      if (u.fx !== null && document.getElementById("cmpFire").checked) {
+        const offx = (u.fx - 0.5) * tw * sf;
+        const offy = -(1.0 - u.ff - u.fy / 100.0) * th * sf;
+        const fx0 = cx + offx, fy0 = ground + offy;
+        g.strokeStyle = "#ff4d4d"; g.lineWidth = 2;
+        g.beginPath(); g.moveTo(fx0 - 6, fy0); g.lineTo(fx0 + 6, fy0); g.moveTo(fx0, fy0 - 6); g.lineTo(fx0, fy0 + 6); g.stroke();
+        g.lineWidth = 1;
+      }
+    };
+    iconImg(u, doDraw);
+    // 占位框（图标未到时）
+    g.strokeStyle = "rgba(255,255,255,.15)";
+    g.strokeRect(cx - s.cw / 2, ground - s.chH, s.cw, s.chH);
+    // 内容宽标尺
+    g.strokeStyle = "#3fda6f";
+    g.beginPath(); g.moveTo(cx - s.cw / 2, ground + 8); g.lineTo(cx + s.cw / 2, ground + 8); g.stroke();
+    // 标签
+    g.fillStyle = "#e2e8f0";
+    g.fillText(u.id.length > 16 ? u.id.slice(0, 16) : u.id, cx - s.cw / 2, ground + 26);
+    g.fillStyle = "#8b949e";
+    g.fillText(`${u.side === "P" ? "我" : "敌"} ${s.cw.toFixed(0)}px${Math.abs(u.ov - 1) > 1e-3 ? " ×" + u.ov.toFixed(2) : ""}${u.fx === null ? " 无锚" : ""}`, cx - s.cw / 2, ground + 42);
+    x += s.cw + gap;
+  }
+}
+document.getElementById("btnCompare").onclick = () => {
+  cmpPanel.style.display = cmpPanel.style.display === "none" ? "block" : "none";
+  if (cmpPanel.style.display === "block") drawCompare();
+};
+document.getElementById("cmpClose").onclick = () => { cmpPanel.style.display = "none"; };
+document.getElementById("cmpClear").onclick = () => { cmp.length = 0; document.getElementById("cmpN").textContent = "0"; renderList(); drawCompare(); };
+document.getElementById("cmpZoom").onchange = drawCompare;
+document.getElementById("cmpSort").onchange = drawCompare;
+document.getElementById("cmpFire").onchange = drawCompare;
+
+// ── init
+document.getElementById("verinfo").textContent = `数据版本 ${D.ver} · ${D.units.length} 单位 · 基宽 ${D.base_w}px`;
+renderList();
+</script>
+</body>
+</html>

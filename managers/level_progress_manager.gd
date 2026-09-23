@@ -21,6 +21,17 @@ var first_completion: Dictionary = {}
 ## 当前解锁到的最大关卡
 var max_unlocked_level: int = 1
 
+## v34 渐进解锁仪式待播队列（仅运行期，不入存档）：跨级解锁发生在战斗结算中时，
+## 玩家不在基地收不到即时仪式——由 truck_base._ready / main 返回整备时调
+## consume_pending_feature_unlocks 取走并批量弹 FeatureUnlockPopup。
+var _pending_feature_unlocks: Array = []
+
+## 取走并清空待播解锁仪式（返回 [{key,level,title,desc}]，空数组=无待播）
+func consume_pending_feature_unlocks() -> Array:
+	var out := _pending_feature_unlocks.duplicate()
+	_pending_feature_unlocks.clear()
+	return out
+
 ## 已解锁的时代（era -> bool）
 var unlocked_eras: Dictionary = {
 	1: true  # 默认解锁一战时代
@@ -69,9 +80,9 @@ func complete_level(level: int, stars: int) -> void:
 			pass
 			# [LOG-v5.1] print("[LevelProgress] 关卡 %d 首次通关！" % level)
 
-	# 发放首次通关奖励
-	if is_first:
-		_grant_first_completion_rewards(level)
+	# 2026-09-19 双首通收敛：遗留纳米首通（50+5lv + Boss 500）发放已删——
+	# 首通奖励唯一真身 = GameManager._grant_first_clear_if_eligible（B3 三/四资源套餐），
+	# 此前两套叠加双发。first_completion 记账结构保留（存档兼容 + 首通判定仍用）。
 
 	level_completed.emit(level, stars)
 
@@ -89,9 +100,32 @@ func _unlock_next_level(completed_level: int) -> void:
 		return  # 已是最后一关
 
 	if next_level not in unlocked_levels:
+		var prev_max := max_unlocked_level
 		unlocked_levels.append(next_level)
 		max_unlocked_level = max(max_unlocked_level, next_level)
 		level_unlocked.emit(next_level)
+		# v34 渐进解锁：跨过节奏表阈值 → 广播系统解锁（基地热区开张高亮/底栏刷新/
+		# 教程步重挂）。prev_max 守卫确保只在"首次跨过该阈值"时发（重打旧关不重弹）。
+		# 战斗结算中玩家不在基地 → 同时入待播队列，回基地/返回整备时由场景补播仪式。
+		if GameConfig.get_default().feature_gates_enabled and prev_max < next_level:
+			for key in FeatureUnlockSchedule.keys_unlocked_at(next_level):
+				var info: Dictionary = FeatureUnlockSchedule.SCHEDULE[key]
+				var _desc: String = String(info["desc"])
+				# 2026-09-19 衔接提示：改造解锁时清点情报包库存，明示"已攒图纸"（L1 起掉落
+				# 而 L6 才开装的时序差，此前无任何衔接文案，玩家不知道期货已攒在包里）
+				if key == "modification":
+					var _iib: Node = get_node_or_null("/root/IntelItemBag")
+					if _iib != null and _iib.has_method("count_by_prefix"):
+						var _n: int = int(_iib.count_by_prefix("blueprint_"))
+						if _n > 0:
+							_desc += "\n◆ 情报包已攒 %d 张改造图纸，现在可以安装了" % _n
+				_pending_feature_unlocks.append({
+					"key": key,
+					"level": next_level,
+					"title": String(info["title"]),
+					"desc": _desc,
+				})
+				SignalBus.feature_unlocked.emit(key)
 		if DEBUG_LOG:
 			pass
 			# [LOG-v5.1] print("[LevelProgress] 解锁关卡: %d" % next_level)
@@ -110,35 +144,8 @@ func _check_era_unlock(level: int) -> void:
 				pass
 				# [LOG-v5.1] print("[LevelProgress] 解锁时代: %d" % era)
 
-## 首次通关奖励
-func _grant_first_completion_rewards(level: int) -> void:
-	if DEBUG_LOG:
-		pass
-		# [LOG-v5.1] print("[LevelProgress] 发放关卡 %d 首次通关奖励" % level)
-
-	# 基础奖励：纳米材料
-	var brm = get_node_or_null("/root/BasicResourceManager")
-	if brm and brm.has_method("add_basic_resource"):
-		var base_amount = 50 + (level * 5)
-		brm.add_basic_resource("nano_materials", base_amount)
-		if DEBUG_LOG:
-			pass
-			# [LOG-v5.1] print("[LevelProgress]  + %d 纳米材料" % base_amount)
-
-	# Boss关卡额外奖励
-	if level % 20 == 0:
-		var boss_bonus = 500
-		brm.add_basic_resource("nano_materials", boss_bonus)
-		if DEBUG_LOG:
-			pass
-			# [LOG-v5.1] print("[LevelProgress]  Boss关卡额外 + %d 纳米材料" % boss_bonus)
-
-		# 解锁新时代的消息
-		var era = level / 20
-		if era < 5:
-			if DEBUG_LOG:
-				pass
-				# [LOG-v5.1] print("[LevelProgress]  解锁新时代: %d" % (era + 1))
+## 首次通关奖励已随 2026-09-19 双首通收敛删除（原遗留纳米发放 50+5lv + Boss 500）——
+## 唯一真身 = GameManager._grant_first_clear_if_eligible + data/first_clear_rewards.gd。
 
 ## 获取已解锁关卡列表
 func get_unlocked_levels() -> Array:
@@ -147,6 +154,29 @@ func get_unlocked_levels() -> Array:
 ## 获取最大解锁关卡
 func get_max_unlocked_level() -> int:
 	return max_unlocked_level
+
+# ── v34 渐进解锁门控（真身查询；节奏表 = data/feature_unlock_schedule.gd）──
+## 系统入口是否已解锁。判定链（短路顺序）：
+## 总开关关 = 全开 → 不在节奏表 = 常开不设防 → 教程已完成 = 全开（老档兜底）→ 关卡阈值。
+## 消费方：truck_base 热区/时代chips、bottom_function_bar、main._open_overlay 守卫。
+func is_feature_unlocked(key: String) -> bool:
+	if not GameConfig.get_default().feature_gates_enabled:
+		return true
+	if not FeatureUnlockSchedule.has_key(key):
+		return true
+	var tm := get_node_or_null("/root/TutorialProgressionManager")
+	if tm != null and tm.has_method("is_tutorial_completed") and tm.is_tutorial_completed():
+		return true
+	return max_unlocked_level >= FeatureUnlockSchedule.unlock_level_for(key)
+
+## 未解锁入口的点击提示文案（"通关第 N 关解锁：XX"）
+func feature_gate_hint(key: String) -> String:
+	if not FeatureUnlockSchedule.has_key(key):
+		return ""
+	return "通关第 %d 关解锁：%s" % [
+		FeatureUnlockSchedule.unlock_level_for(key),
+		String(FeatureUnlockSchedule.SCHEDULE[key]["title"]),
+	]
 
 ## 获取时代进度
 func get_era_progress(era: int) -> Dictionary:
@@ -196,8 +226,14 @@ func load_state(state: Dictionary) -> void:
 		var loaded_levels = state["unlocked_levels"]
 		unlocked_levels.clear()
 		for level in loaded_levels:
-			if level is int and level >= 1 and level <= 100:
-				unlocked_levels.append(level)
+			# v38.4 修复：Godot JSON 把裸整数解析成 float，此前 `level is int` 过滤
+			# 会把 JSON 读档的所有元素全拒——unlocked_levels 清零、max 落回 1，
+			# 随后任何存档经 current_level←max 同步把玩家进度拖回第 1 关。
+			# 与下方 v26.6 字典 int(k) 强转对称：接受 int/float，int() 强转 + 值域钳制。
+			if level is int or level is float:
+				var lv := int(level)
+				if lv >= 1 and lv <= 100:
+					unlocked_levels.append(lv)
 	elif state.has("unlocked_levels"):
 		push_warning("[LevelProgress] unlocked_levels 类型错误: %s，已跳过" % type_string(typeof(state["unlocked_levels"])))
 
@@ -228,8 +264,11 @@ func load_state(state: Dictionary) -> void:
 				unlocked_eras[era] = bool(state["unlocked_eras"][k])
 
 	# 确保 max_unlocked_level 与 unlocked_levels 一致
-	if state.has("max_unlocked_level") and state["max_unlocked_level"] is int:
-		max_unlocked_level = int(state["max_unlocked_level"])
+	# v38.4 修复：同上——JSON 读档的整数是 float，`is int` 恒 false，
+	# max 恒落 else 回退 1（再经存档 current_level←max 同步拖垮玩家进度）。
+	var mv: Variant = state.get("max_unlocked_level")
+	if mv is int or mv is float:
+		max_unlocked_level = clampi(int(mv), 1, 100)
 	elif not unlocked_levels.is_empty():
 		max_unlocked_level = unlocked_levels.max()
 	else:
@@ -257,6 +296,8 @@ func reset_progress() -> void:
 	level_stars.clear()
 	first_completion.clear()
 	unlocked_eras = {1: true}
+	# v34：清待播解锁仪式队列——防同会话内"旧档跨级→回标题开新档"时旧仪式弹进新游戏
+	_pending_feature_unlocks.clear()
 	if DEBUG_LOG:
 		pass
 		# [LOG-v5.1] print("[LevelProgress] 进度已重置")

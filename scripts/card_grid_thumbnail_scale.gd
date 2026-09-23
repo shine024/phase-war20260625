@@ -5,6 +5,7 @@ class_name CardGridThumbnailScale
 const RankRules = preload("res://data/rank_rules.gd")
 const _GameConstants = preload("res://resources/game_constants.gd")
 const _CardGridBattleLayout = preload("res://scripts/card_grid_battle_layout.gd")
+const CardFootAnchors = preload("res://data/card_foot_anchors.gd")
 
 ## 各军衔相对「尉档基准」的倍数（士/尉/校各一档基准；将档单独拉高）
 const _TIER_MUL: Dictionary = {
@@ -68,8 +69,15 @@ static func _texture_max_side_px(tex: Texture2D) -> float:
 
 ## 格子战立绘：固定基础卡宽（BASE_CARD_WIDTH_PX=58.9，与旧双行布局一致），再乘以军衔/战力乘数。
 ## 三行布局槽位水平间距变大（列宽171px），但卡图视觉大小保持与旧布局相同，不撑爆格子。
+## v6.14.8 内容感知：按 CONTENT_BBOX 的"非透明内容宽"归一——卡图换血后各图内容
+## 占画布 0.33~0.88 差 2.7 倍，按画布宽归一会把留白大的单位放得过大。
+## 无扫描数据的图回退旧画布口径（frac=1.0 等价）。
 static func compute_battlefield_uniform_width_scale(tex: Texture2D) -> float:
 	if tex == null:
 		return 0.1
 	var tw: float = maxf(float(tex.get_width()), 1.0)
-	return _CardGridBattleLayout.BASE_CARD_WIDTH_PX / tw
+	var content_w: float = tw * CardFootAnchors.get_content_w_frac(
+		CardFootAnchors.file_name_of(tex)
+	)
+	var norm_w: float = content_w if content_w > 1.0 else tw
+	return _CardGridBattleLayout.BASE_CARD_WIDTH_PX / norm_w

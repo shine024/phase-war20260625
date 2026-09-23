@@ -321,10 +321,32 @@ func _fire_from_slot(s: Node2D) -> void:
 	if s.weapon_types.size() > 0:
 		wt = int(s.weapon_types[s._attack_weapon_index % s.weapon_types.size()])
 		s._attack_weapon_index += 1
+	# v35: 撞值消歧义（对齐 enemy_unit._default_enemy_slot_weapon_type 口径）——
+	# slot.weapon_type 可能是新枚举(0-3)或 legacy(0-11)，新枚举 INDIRECT(1)/AERIAL(2)
+	# 与 legacy RIFLE(1)/MG(2) 撞号。靠 combat_kind 消歧义成 canon 新枚举：
+	#   现役 roster（wt 0/1/2=轻步兵、8=激光 drone）全归 0/8，零行为变化；
+	#   未来加入 kind=SUPPORT 的 wt=1（标枪/迫击炮类）或 kind=AIR 的 wt=2
+	#   会正确路由进曲射 batch，而非被 BATCH_FIRE_WEAPON_TYPES 误拦成直线曳光。
+	var _ck: int = s.combat_kind
+	if s.stats != null:
+		_ck = int(s.stats.combat_kind)
+	var wt_canon: int = wt
+	if wt == GC.WeaponType.INDIRECT and _ck != GC.CombatKind.SUPPORT:
+		wt_canon = GC.WeaponType.DIRECT  # legacy RIFLE 语义
+	elif wt == GC.WeaponType.AERIAL and _ck != GC.CombatKind.AIR and _ck != GC.CombatKind.SUPPORT:
+		wt_canon = GC.WeaponType.DIRECT  # legacy MG 语义
 	# v9.x: 直射武器跨行射击减伤（同行全额；曲射/空射不受行约束）
-	dmg_out *= CardGridBattleLayout.cross_row_direct_multiplier(s, s.target, wt)
+	dmg_out *= CardGridBattleLayout.cross_row_direct_multiplier(s, s.target, wt_canon)
 	var spawn_pos := s.global_position + _get_swarm_muzzle_offset(s)
-	if _should_use_projectile_batch(wt):
+	# v35: 曲射/空射前置路由（对齐 enemy_unit:1510——直射 batch 判定前先分流）
+	if GC.is_indirect_weapon_type(wt_canon):
+		if BattleManager != null and is_instance_valid(BattleManager.enemy_indirect_batch) \
+				and BattleManager.enemy_indirect_batch.has_method("fire"):
+			BattleManager.enemy_indirect_batch.fire(spawn_pos, s.target, dmg_out, wt_canon, s, null, miss)
+			return
+		_fallthrough_bullet(s, wt_canon, dmg_out, miss)
+		return
+	if _should_use_projectile_batch(wt_canon):
 		if BattleManager and BattleManager.enemy_projectile_batch:
 			BattleManager.enemy_projectile_batch.fire(
 				spawn_pos, s.target, dmg_out, wt, s, null, miss
@@ -333,6 +355,8 @@ func _fire_from_slot(s: Node2D) -> void:
 	_fallthrough_bullet(s, wt, dmg_out, miss)
 
 func _should_use_projectile_batch(wt: int) -> bool:
+	# v35: 调用方已传 combat_kind 消歧义后的 canon 新枚举——此处列表只可能命中
+	# 0(DIRECT)/4(legacy PISTOL)（1/2 曲射已在前面分流）
 	return wt in GC.BATCH_FIRE_WEAPON_TYPES  # SMG, PISTOL, RIFLE, MG
 
 func _fallthrough_bullet(s: Node2D, wt: int, p_damage: float = -1.0, p_miss: bool = false) -> void:

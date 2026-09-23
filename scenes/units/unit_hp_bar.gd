@@ -30,6 +30,7 @@ var _shield_bg: Polygon2D
 var _shield_fill: Polygon2D
 var _hp_label: Label = null  # HP文本标签（优先使用，自动创建后备）
 var _level_label: Label = null  # v19: 等级文字（血条左侧，底边与血条底边对齐）
+var _shield_label: Label = null  # v38.x G 条: 护盾数值文字（盾条右端，shield>0 才显示）
 var _pending_level_text: String = ""  # v19: 早于 _ready 的 set_level_text 暂存（单位未入树时调用）
 var _damage_flash: float = 0.0
 var _heal_flash: float = 0.0
@@ -80,7 +81,10 @@ var _status_overflow_x: float = 0.0
 # 满血且无护盾时血条视觉层淡到 IDLE_FADE_ALPHA，受击/掉血/挂盾/选中即恢复不透明——
 # 密集战场里前排满血单位的血条不再糊住后排头顶元素；状态图标（_draw 层）、
 # 等级文字与选中框保持不透明（身份与战术信息不降级）。
+# UI 四级标准修复 R-C2：HP 数字不再参与满血淡化（单独地板 0.75）——开局全场满血是
+# 常态，HP 白字黑描是敌我识别兜底通道，0.45 淡化等于常态性低对比。
 const IDLE_FADE_ALPHA: float = 0.45
+const HP_LABEL_FADE_ALPHA: float = 0.75   # HP 数字的地板透明度（比血条图形亮一档防太跳）
 var _idle_alpha: float = 1.0       # 当前淡出系数（平滑过渡）
 var _idle_faded := false           # 目标态：是否处于满血淡出
 var _pulse_acc: float = 0.0        # v27.12: 低血脉动重绘节流累加器
@@ -392,11 +396,18 @@ func _apply_fade_step(delta: float) -> void:
 	_apply_idle_alpha()
 
 
-## 只淡血条视觉层；_level_label / 选中框不淡（身份信息），状态图标在 _draw 层不受影响
+## 只淡血条视觉层；_level_label / 选中框不淡（身份信息），状态图标在 _draw 层不受影响。
+## UI 四级标准修复 R-C2：_hp_label 从淡化名单移出，改单独地板 alpha
+## （maxf(_idle_alpha, 0.75)——满血时数字仍清晰，掉血时随血条一起全亮）。
 func _apply_idle_alpha() -> void:
-	for n: CanvasItem in [_bg, _fill, _glow, _shield_bg, _shield_fill, _hp_label]:
+	for n: CanvasItem in [_bg, _fill, _glow, _shield_bg, _shield_fill]:
 		if n != null and is_instance_valid(n):
 			n.modulate.a = _idle_alpha
+	if _hp_label != null and is_instance_valid(_hp_label):
+		_hp_label.modulate.a = maxf(_idle_alpha, HP_LABEL_FADE_ALPHA)
+	# v38.x G 条: 护盾数值与 hp 数值同待遇（0.75 alpha 地板，保证可读）
+	if _shield_label != null and is_instance_valid(_shield_label):
+		_shield_label.modulate.a = maxf(_idle_alpha, HP_LABEL_FADE_ALPHA)
 	for n: CanvasItem in _elite_frame_nodes:
 		if n != null and is_instance_valid(n):
 			n.modulate.a = _idle_alpha
@@ -412,6 +423,8 @@ func set_shield(shield_value: float, max_hp_val: float) -> void:
 	if shield_ratio <= 0.0:
 		_shield_bg.visible = false
 		_shield_fill.visible = false
+		if _shield_label != null and is_instance_valid(_shield_label):
+			_shield_label.visible = false
 		_update_idle_fade()
 		return
 	_shield_bg.visible = true
@@ -423,26 +436,42 @@ func set_shield(shield_value: float, max_hp_val: float) -> void:
 
 	var sb_pts: PackedVector2Array = _shield_bg_pts
 	# BU-6：护盾条与血条顶边统一 1px 间距（原 0.5px 错位），视觉合成一块整体牌
-	sb_pts.set(0, Vector2(-half_w + 2, -shield_h - 8.5))
-	sb_pts.set(1, Vector2(half_w - 2, -shield_h - 8.5))
-	sb_pts.set(2, Vector2(half_w - 2, -shield_h - 2.5))
-	sb_pts.set(3, Vector2(-half_w + 2, -shield_h - 2.5))
+	# v38.x G 条：盾底牌与血条同宽对齐（原两侧各缩进 2px 读成两截）
+	sb_pts.set(0, Vector2(-half_w, -shield_h - 8.5))
+	sb_pts.set(1, Vector2(half_w, -shield_h - 8.5))
+	sb_pts.set(2, Vector2(half_w, -shield_h - 2.5))
+	sb_pts.set(3, Vector2(-half_w, -shield_h - 2.5))
 	_shield_bg.polygon = sb_pts
 
 	var shield_fill_w: float = BAR_WIDTH * shield_ratio - 4.0
 	if shield_fill_w < 0.0: shield_fill_w = 0.0
 	var sf_pts: PackedVector2Array = _shield_pts
-	sf_pts.set(0, Vector2(-half_w + 3, -shield_h - 7.5))
-	sf_pts.set(1, Vector2(-half_w + 3 + shield_fill_w, -shield_h - 7.5))
-	sf_pts.set(2, Vector2(-half_w + 3 + shield_fill_w, -shield_h - 3.5))
-	sf_pts.set(3, Vector2(-half_w + 3, -shield_h - 3.5))
+	sf_pts.set(0, Vector2(-half_w + 2, -shield_h - 7.5))
+	sf_pts.set(1, Vector2(-half_w + 2 + shield_fill_w, -shield_h - 7.5))
+	sf_pts.set(2, Vector2(-half_w + 2 + shield_fill_w, -shield_h - 3.5))
+	sf_pts.set(3, Vector2(-half_w + 2, -shield_h - 3.5))
 	_shield_fill.polygon = sf_pts
 
 	var shield_color: Color
 	if shield_ratio > 0.6: shield_color = Color(0.2, 0.7, 1.0, 0.95)
 	elif shield_ratio > 0.3: shield_color = Color(0.3, 0.85, 1.0, 0.9)
-	else: shield_color = Color(0.9, 0.7, 0.3, 0.85)
+	else: shield_color = Color(1, 0.85, 0.35, 0.85)
 	_shield_fill.color = shield_color
+
+	# v38.x G 条: 护盾数值标签（条右端，10px，>0 才显示）
+	if _shield_label == null or not is_instance_valid(_shield_label):
+		_shield_label = Label.new()
+		_shield_label.name = "ShieldLabel"
+		add_child(_shield_label)
+		_shield_label.size = Vector2(48.0, 12.0)
+		_shield_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+		_shield_label.add_theme_font_size_override("font_size", 10)
+		_shield_label.add_theme_color_override("font_color", Color(0.55, 0.92, 1.0, 1.0))
+		_shield_label.add_theme_constant_override("outline_size", 3)
+		_shield_label.add_theme_color_override("outline_color", Color(0, 0, 0, 1))
+	_shield_label.text = str(int(ceil(shield_value)))
+	_shield_label.position = Vector2(half_w + 3.0, -shield_h - 9.0)
+	_shield_label.visible = true
 
 func _update_shield_gain_effect() -> void:
 	if _shield_fill == null or _shield_gain <= 0.0: return
@@ -546,10 +575,12 @@ func _draw() -> void:
 		var s: float = minf(r.size.x, r.size.y) * 0.42
 		UnitStatusCollector.draw_status_icon(kind, self, cx, cy, s, col)
 		# 可叠加状态显示层数（右下角小数字，白字 + 黑描边）
+		# UI 四级标准修复 R-C4：6px→8px（720p 基准下 6px 肉眼极限，draw_string
+		# 不吃大字号模式；右下对齐数字加宽后仍在图标矩形内）
 		var stacks: int = int(d.get("stacks", 0))
 		if stacks > 1 and _status_font != null and UnitStatusCollector.is_stackable(kind):
 			var txt: String = str(stacks)
-			var fs: int = 6
+			var fs: int = 8
 			var ts: Vector2 = _status_font.get_string_size(txt, HORIZONTAL_ALIGNMENT_LEFT, -1.0, fs)
 			var pos: Vector2 = Vector2(r.position.x + r.size.x - ts.x, r.position.y + r.size.y - ts.y)
 			var outline := Color(0.0, 0.0, 0.0, 0.95)

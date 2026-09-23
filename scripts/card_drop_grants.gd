@@ -4,13 +4,14 @@ class_name CardDropGrants
 
 const DefaultCards = preload("res://data/default_cards.gd")
 
-## 旧字段 fragment_id：改为随机敌方 bp/精英卡，每次 amount 独立抽取并发背包卡
+## 旧字段 fragment_id：改为随机成品卡，每次 amount 独立抽取并发背包卡
+## 2026-09-19 修复：原池 12 个 id 中 9 个 bp_* 蓝图 id 与 3 个命名敌卡（titan_mk2 等）
+## 均无法经 DefaultCards.get_card_by_id 解析（缩进 bug 修复后暴露），按稀有度档换真卡。
 const LEGACY_FRAGMENT_REWARD_POOLS: Dictionary = {
-	"common_fragment": ["bp_ww1_001", "bp_ww1_011", "bp_ww2_003"],
-	"rare_fragment": ["bp_ww2_004", "bp_cold_002", "bp_modern_006"],
-		# v7.x: 能量卡移除，epic_fragment 池改为现代精英卡
-		"epic_fragment": ["bp_modern_010", "bp_near_005", "bp_modern_011"],
-	"legendary_fragment": ["titan_mk2", "storm_rider", "abrams_mk2"],
+	"common_fragment": ["ww1_mp18", "ww1_mauser", "ww1_enfield"],
+	"rare_fragment": ["ww2_arm_sherman", "cold_arm_t55", "mod_arm_m1a1"],
+	"epic_fragment": ["mod_t90", "mod_arty_m270", "fut_arm_hovertank"],
+	"legendary_fragment": ["fut_arm_omega", "fut_colossus", "fut_stormcore"],
 }
 
 
@@ -91,9 +92,9 @@ static func grant_from_legacy_fragment_reward_pool(fragment_id: String, amount: 
 	var ids: Array = (pool as Array) if pool != null else (LEGACY_FRAGMENT_REWARD_POOLS["common_fragment"] as Array)
 	if ids.is_empty():
 		return
-		var bm: Node = _get_blueprint_manager()
-		var n: int = maxi(1, int(amount))
-		for _i in range(n):
-			var pick: String = String(ids[randi() % ids.size()])
-			grant_enemy_style_card(bm, pick, 0, 1)
+	var bm: Node = _get_blueprint_manager()
+	var n: int = maxi(1, int(amount))
+	for _i in range(n):
+		var pick: String = String(ids[randi() % ids.size()])
+		grant_enemy_style_card(bm, pick, 0, 1)
 

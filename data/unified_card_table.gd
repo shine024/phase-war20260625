@@ -686,6 +686,27 @@ const _TABLE: Array = [
 	 "def_l":45,"def_a":40,"def_air":28,
 	 "w_light":"SC250 炸弹","w_armor":"SD500 穿甲炸弹","w_air":"MG81Z 自卫机枪"},
 
+	# v30.5 R5（设计审查 F-11）：二战尾部"实验性飞行单位"试点——L36-40 限定
+	# （min_level 门在 enemy_unit_manifest._POOL_MIN_LEVEL）。1944 末日科技原型机，
+	# fast 档兑现"空中压制"题面的"高速突袭后排"承诺（B-17/斯图卡是慢速轰炸机）。
+	{"card_id":"ww2_air_me262","display_name":"Me-262 燕子","short_name":"Me-262","era":1,"combat_kind":3,"tier":Tier.ELITE,
+	 "base_hp":210,"range_value":3,"deploy_speed":6,"base_speed":180,"power":260,"weapon_type":2,
+	 "weapon_label":"四联30mm航炮","enemy_only":true,"tags":["jet"],
+	 "atk_l":80,"atk_l_speed":0.7,"atk_l_windup":0.2,"atk_l_active":0.1,
+	 "atk_a":70,"atk_a_speed":0.7,"atk_a_windup":0.25,"atk_a_active":0.12,
+	 "atk_air":60,"atk_air_speed":1.0,"atk_air_windup":0.2,"atk_air_active":0.1,
+	 "def_l":30,"def_a":25,"def_air":35,
+	 "w_light":"R4M 火箭弹","w_armor":"MK108 机炮","w_air":"四联30mm航炮"},
+
+	{"card_id":"ww2_air_meteor_e","display_name":"流星 F.3 特遣机","short_name":"流星F3","era":1,"combat_kind":3,"tier":Tier.ELITE,
+	 "base_hp":260,"range_value":3,"deploy_speed":5,"base_speed":170,"power":280,"weapon_type":2,
+	 "weapon_label":"四联20mm航炮","enemy_only":true,"tags":["jet"],
+	 "atk_l":95,"atk_l_speed":0.7,"atk_l_windup":0.22,"atk_l_active":0.1,
+	 "atk_a":105,"atk_a_speed":0.6,"atk_a_windup":0.28,"atk_a_active":0.12,
+	 "atk_air":70,"atk_air_speed":1.0,"atk_air_windup":0.22,"atk_air_active":0.1,
+	 "def_l":35,"def_a":30,"def_air":38,
+	 "w_light":"RP-3 火箭弹","w_armor":"500磅炸弹","w_air":"四联20mm西斯帕诺"},
+
 	# --- 二战堡垒 ---
 	{"card_id":"ww2_fort_bunker","display_name":"混凝土碉堡","era":1,"combat_kind":4,"tier":Tier.FORT,
 	 "base_hp":990,"range_value":5,"deploy_speed":0,"base_speed":0,"power":200,"weapon_type":0,
@@ -2054,7 +2075,7 @@ const _TABLE: Array = [
 	 "w_light":"粒子炮","w_armor":"","w_air":""},
 
 	# ══════════ v8 批次5: 时代守护者独占卡系列 ══════════
-	# 仅通过成就/挑战获得，不可商店购买（achievement_exclusive=true，get_player_card_entries 包含但 company_store 不收录）
+	# 仅通过成就/挑战获得，不可商店购买（achievement_exclusive=true，get_player_card_entries 包含但商店不收录）
 	# 每张对应一个时代 Boss，击败该时代 Boss 的成就奖励发放
 	{"card_id":"guardian_ww1_ironclad","display_name":"铁壁守护者·一战","era":0,"combat_kind":1,"tier":Tier.ULTIMATE,
 	 "base_hp":2400,"range_value":4,"deploy_speed":2,"base_speed":40,"power":1200,"weapon_type":0,

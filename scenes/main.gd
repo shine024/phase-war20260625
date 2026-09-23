@@ -22,7 +22,6 @@ const PanelStyles = preload("res://scripts/ui/panel_styles.gd")
 # v8.x: CardEnhancementPanelScene 已移除（强化②停用），养成改为自动经验升星 + 技能树
 const AFKModeManagerScript = preload("res://scripts/systems/afk_mode_manager.gd")
 const OfflineIdleManagerScript = preload("res://scripts/systems/offline_idle_manager.gd")
-const OfflineRewardDialogScript = preload("res://scenes/ui/offline_reward_dialog.gd")
 const DEBUG_MAIN_LOG := false
 
 var _blueprints_unlocked_this_battle: Array = []
@@ -103,6 +102,9 @@ func _ready() -> void:
 		bottom_function_bar.btn_collection_pressed.connect(_on_collection_pressed)
 		bottom_function_bar.btn_save_pressed.connect(_on_manual_save_pressed)
 		bottom_function_bar.btn_afk_pressed.connect(_on_afk_pressed)
+		# v32.3 E1：改造/制造提为底栏一级入口（原藏在成长面板详情底部的二级跳转）
+		bottom_function_bar.btn_modification_pressed.connect(_on_toggle_modification_from_tutorial)
+		bottom_function_bar.btn_evolution_pressed.connect(_on_toggle_evolution_from_tutorial)
 	# v7.x: 4 个战斗控制按钮（开始/暂停/撤退/返回）整合进顶部 TopHudBar
 	if top_hud_bar:
 		top_hud_bar.btn_start_battle_pressed.connect(_on_start_battle)
@@ -114,7 +116,8 @@ func _ready() -> void:
 
 	# 连接各面板 closed 信号
 	_connect_panel_closed_signals()
-	_connect_intelligence_hub_signals()
+	# R6-1（F-18）：注册可重绑快捷键动作（InputMap 运行时覆盖层 + settings.cfg 持久化）
+	KeyBinds.ensure_registered()
 
 	# 注册到 GameManager
 	if GameManager:
@@ -130,6 +133,8 @@ func _ready() -> void:
 	if SignalBus:
 		SignalBus.battle_ended.connect(_on_battle_ended_clear_pending)
 		SignalBus.battle_started.connect(_on_battle_started_close_skill_canvas)
+		# v37 实机验收：教程首战开打后指认战斗 HUD 位置（相位仪装配槽/底部功能栏）
+		SignalBus.battle_started.connect(_show_tutorial_battle_hud_hints)
 		# v21.x（FTUE 修复2，2026-08-27）：战斗结束后续播教程（第7步首战后教程收起，战后续播 8-13 步）
 		SignalBus.battle_ended.connect(_on_battle_ended_resume_tutorial)
 		# v6.6 修复: toggle_* 信号原 emit 无 connect，教程引导的"打开面板"动作失效。
@@ -163,6 +168,9 @@ func _ready() -> void:
 		if SignalBus.has_signal("start_level") and not SignalBus.start_level.is_connected(_on_start_level_from_tutorial):
 			SignalBus.start_level.connect(_on_start_level_from_tutorial)
 		SignalBus.player_deploy_failed.connect(_on_player_deploy_failed)
+		# v34 渐进解锁：战斗结算中跨级解锁 → 即时 toast（仪式弹窗延迟到回整备/回基地补播）
+		if SignalBus.has_signal("feature_unlocked") and not SignalBus.feature_unlocked.is_connected(_on_feature_unlocked_toast):
+			SignalBus.feature_unlocked.connect(_on_feature_unlocked_toast)
 
 	# 全局 UI 贴图：关闭按钮等（依赖 PopupLayer 子树已实例化）
 	call_deferred("_apply_global_ui_textures")
@@ -209,7 +217,7 @@ func _setup_menu_grid_pattern() -> void:
 		return
 	var img := Image.create_empty(32, 32, false, Image.FORMAT_RGBA8)
 	img.fill(DT.COLOR_TRANSPARENT)
-	var line := Color(0.0, 0.941, 1.0, 0.05)
+	var line := Color(0.0, 0.94, 1.0, 0.05)
 	for y in range(32):
 		img.set_pixel(0, y, line)
 	for x in range(32):
@@ -268,6 +276,21 @@ func _deferred_non_critical_init() -> void:
 				and TutorialProgressionManager.has_method("should_show_tutorial")
 				and TutorialProgressionManager.should_show_tutorial()):
 		call_deferred("_auto_battle_from_truck_sortie")
+	# v32.3 B3：教学首战步的基地出击落地——教学自举前移到基地后（truck_base B1），
+	# 「开始首战」在基地点击（start_level 由 truck_base 消费转 _launch_battle），此 meta
+	# 让 main 落地即开打首战。教程态下 launch_from_bunker 的自动开战守卫依旧让路
+	# （meta 不消耗，留给"返回标题→回移动基地"链）。
+	if Engine.has_meta("tutorial_first_battle"):
+		Engine.remove_meta("tutorial_first_battle")
+		call_deferred("_auto_battle_from_truck_sortie")
+	# v32.3 A2 进关即开战：世界地图「进入该关」（独立场景链）落地自动开打——黑幕战报
+	# 即关卡进入揭幕（A1）。内嵌链由 world_map 直调 auto_start_battle_from_world_map。
+	if Engine.has_meta("level_auto_start_pending"):
+		Engine.remove_meta("level_auto_start_pending")
+		auto_start_battle_from_world_map()
+	# v32.3 A4：结算路径懒加载 manager 预热（原 BattleManager.start_battle 同步段挪出）——
+	# 落地 1s 空闲期执行，开战帧不再背 7 次 load()+new()+add_child()
+	get_tree().create_timer(1.0).timeout.connect(_warmup_battle_lazy_managers)
 	# v9.x 性能：SubViewportContainer(stretch) 入树时会把子视口强制 UPDATE_ALWAYS，
 	# tscn/战斗结束还原的 UPDATE_ONCE 全被覆盖，非战斗期战场每帧空渲染。
 	# 入树后补设一次即生效（容器不会再次改写）。挂机运行中除外（缩略图需要持续渲染）。
@@ -303,7 +326,6 @@ func _preload_common_panels() -> void:
 		"res://scenes/ui/collection_panel.tscn",
 		# 战略面板（中频）
 		"res://scenes/ui/faction_panel.tscn",
-		"res://scenes/ui/occupation_panel.tscn",
 		"res://scenes/ui/leaderboard_panel.tscn",
 		"res://scenes/ui/intelligence_hub_panel.tscn",
 	]
@@ -356,8 +378,9 @@ func _on_current_level_changed(_level: int) -> void:
 func _input(event: InputEvent) -> void:
 	if not is_inside_tree():
 		return
-	# 只处理键盘事件
-	if not event is InputEventKey:
+	# 键盘 + 手柄按键（S4：pw_* 动作经 KeyBinds 注册的 joypad 绑定走同一消费链；
+	# 数字 1-9 部署槽保持键盘专属）
+	if not (event is InputEventKey or event is InputEventJoypadButton):
 		return
 
 	if not event.is_pressed():
@@ -385,11 +408,13 @@ func _input(event: InputEvent) -> void:
 		# 战斗中的快捷键
 		# v26.11(A2.5): 删除恒 false 的 is_action("ui_pause") 判断（Godot 4 无该默认
 		# action 且项目未注册 InputMap），战斗暂停键唯一入口 = SPACE。
-		if event.keycode == KEY_SPACE:
+		# v6.14 R6：暂停键改走 KeyBinds 可重绑动作（默认仍 SPACE，设置面板可改）
+		if event.is_action("pw_pause"):
 			_on_pause_pressed()
 			return
-		# P2-14: 数字键 1-9 快捷进入部署模式（第 N 个有战斗卡的绿槽，与点击槽位同链路）
-		if event.keycode >= KEY_1 and event.keycode <= KEY_9:
+		# P2-14: 数字键 1-9 快捷进入部署模式（第 N 个有战斗卡的绿槽，与点击槽位同链路；
+		# 固定数字键，不进重绑表；手柄事件无 keycode，保持键盘专属）
+		if event is InputEventKey and event.keycode >= KEY_1 and event.keycode <= KEY_9:
 			var slot_no: int = event.keycode - KEY_1 + 1
 			if bottom_instrument_bar and bottom_instrument_bar.has_method("begin_deploy_from_slot_index"):
 				bottom_instrument_bar.begin_deploy_from_slot_index(slot_no)
@@ -398,21 +423,20 @@ func _input(event: InputEvent) -> void:
 		# 战前准备状态的快捷键
 		# v25.3 系统收敛：随战斗抽屉 14→6 同步裁剪——势力/任务/商店/排行/情报/图鉴/成就/
 		# 帮助的面板入口移回基地（保留 handler，基地链路与 growth 转发仍用）
-		match event.keycode:
-			KEY_1, KEY_B:
-				_on_backpack_pressed()
-			KEY_7:
-				_on_progression_pressed()
-			KEY_9:
-				_on_settings_pressed()
-			KEY_M:
-				_on_map_pressed()
-			KEY_ESCAPE:
-				_close_all_overlays()
-			KEY_ENTER:
-				_on_start_battle()
-			KEY_SPACE:
-				_on_start_battle()
+		# v6.14 R6：键位改走 KeyBinds 可重绑动作（默认值与旧硬编码一致，行为零漂移；
+		# ESC 关闭走顶部 ui_cancel 分支——此处原 KEY_ESCAPE match 分支本就不可达，随改造移除）
+		if event.is_action("pw_start_battle"):
+			_on_start_battle()
+		elif event.is_action("pw_open_backpack"):
+			_on_backpack_pressed()
+		elif event.is_action("pw_open_growth"):
+			# v38.x J 条: 技能/改造/制造归移动基地——整备场景快捷键改 toast 指路
+			if SignalBus and SignalBus.has_signal("show_toast"):
+				SignalBus.show_toast.emit("技能树请在移动基地（驾驶室工位）操作")
+		elif event.is_action("pw_open_settings"):
+			_on_settings_pressed()
+		elif event.is_action("pw_open_map"):
+			_on_map_pressed()
 
 func _connect_panel_closed_signals() -> void:
 	var panels := {
@@ -423,7 +447,6 @@ func _connect_panel_closed_signals() -> void:
 		"backpack":           get_node_or_null("PopupLayer/BackpackOverlay/BackpackVBox/CenterRow/BackpackCenter/BackpackPanel"),
 		"settings":           $PopupLayer/SettingsOverlay/CenterContainer/SettingsPanel,
 		"info":               $PopupLayer/IntelligenceOverlay/CenterContainer/IntelligenceHubPanel,
-		"occupation":         get_node_or_null("PopupLayer/OccupationOverlay/CenterContainer/OccupationPanel"),
 		"growth":             get_node_or_null("PopupLayer/GrowthOverlay/CenterContainer/GrowthPanel"),
 		"collection":         get_node_or_null("PopupLayer/CollectionOverlay/CenterContainer/CollectionPanel"),
 		"afk":                get_node_or_null("PopupLayer/AFKOverlay/CenterContainer/AFKPanel"),
@@ -440,9 +463,28 @@ func _connect_panel_closed_signals() -> void:
 		pm_panel.closed.connect(_on_player_master_panel_closed)
 
 # ── overlay 统一开关 ─────────────────────────────────────────
+## v34 渐进解锁：main 侧 overlay key 与节奏表 key 的差异别名（info 面板=情报舱 intelligence）
+const _GATE_KEY_ALIAS := {"info": "intelligence"}
+
 func _open_overlay(overlay: Control, panel_key: String = "") -> void:
 	if overlay == null:
 		print("[Main] _open_overlay: overlay is null for key=", panel_key)
+		return
+	# v34 渐进解锁守卫：门控面板未解锁 → toast 拒开（覆盖快捷键/抽屉/教程 toggle_* 旁路）
+	# 2026-09-19 教程解卡：教程进行中，教程步目标面板（modification/faction/store/evolution 等）
+	# 豁免门控——教程要求首触面板续链，不豁免则新档教程链卡死到 L6/L10
+	var gate_key: String = String(_GATE_KEY_ALIAS.get(panel_key, panel_key))
+	var _tpm_gate := get_node_or_null("/root/TutorialProgressionManager")
+	var _tutorial_surface_ok: bool = _tpm_gate != null \
+		and _tpm_gate.has_method("is_tutorial_surface") \
+		and bool(_tpm_gate.is_tutorial_surface(gate_key))
+	if not gate_key.is_empty() and not _tutorial_surface_ok \
+			and LevelProgressManager != null \
+			and LevelProgressManager.has_method("is_feature_unlocked") \
+			and not LevelProgressManager.is_feature_unlocked(gate_key):
+		_play_sfx("error")
+		if SignalBus and SignalBus.has_signal("show_toast"):
+			SignalBus.show_toast.emit("🔒 %s" % String(LevelProgressManager.feature_gate_hint(gate_key)))
 		return
 	_ensure_lazy_panel(panel_key)
 	if DEBUG_MAIN_LOG:
@@ -454,6 +496,8 @@ func _open_overlay(overlay: Control, panel_key: String = "") -> void:
 	# 先显示，再fade in（v25 UI：开合过渡统一走 PanelAnim，尊重减少动效）
 	overlay.visible = true
 	PanelAnim.open(overlay)
+	# S4 手柄菜单导航：接手柄时焦点落首个可聚焦控件（十字键即可移动；纯键鼠不吞焦点环）
+	PanelAnim.focus_first.call_deferred(overlay)
 	# v25.2 面板开合音（此前仅基地 bunker_main 播，主场景 17 个 overlay 全哑）
 	if SignalBus and SignalBus.has_signal("play_sound"):
 		SignalBus.play_sound.emit("panel_open")
@@ -505,7 +549,7 @@ func _open_overlay(overlay: Control, panel_key: String = "") -> void:
 
 ## v7.x 面板统一：通用打开通知。
 ## 按 on_overlay_opened → refresh → show_panel(null) → _refresh_all 顺序尝试，
-## 覆盖 store/quest/faction/info/modification/evolution/collection/leaderboard/occupation 等
+## 覆盖 store/quest/faction/info/modification/evolution/collection/leaderboard 等
 ## 常规面板的打开契约，新面板无需再往 _open_overlay 加分支。
 const _PANEL_NODE_NAMES := {
 	"store": "StorePanel",
@@ -520,7 +564,6 @@ const _PANEL_NODE_NAMES := {
 	"evolution": "EvolutionPanel",
 	"collection": "CollectionPanel",
 	"leaderboard": "LeaderboardPanel",
-	"occupation": "OccupationPanel",
 	# v9.x 修复：v7.x 面板统一重构时漏登——help 懒加载实例化后 _notify 查名
 	# 落空早退，show_panel 永不被调，面板永远隐藏（空遮罩挡全屏无法关闭）
 	"help": "HelpPanel",
@@ -579,6 +622,12 @@ func _close_overlay(overlay: Control, panel_key: String = "") -> void:
 	# v7.x 面板统一：全局广播（高亮联动/统计解耦）
 	if not panel_key.is_empty() and SignalBus and SignalBus.has_signal("panel_closed"):
 		SignalBus.panel_closed.emit(panel_key)
+	# v38.3 教程节奏：面板体验步放行——玩家关掉浏览中的面板才弹下一步教程。
+	# 战斗开场 _close_all_overlays / 战斗中开关面板不触发（避免教程框弹进战场）。
+	if not panel_key.is_empty() and not _is_in_battle():
+		var _tpm4 := get_node_or_null("/root/TutorialProgressionManager")
+		if _tpm4 != null and _tpm4.has_method("notify_surface_closed"):
+			_tpm4.notify_surface_closed(panel_key)
 	# 性能优化：面板全部关闭后，若无其他面板打开，恢复 SubViewport 状态
 	_restore_subviewport_if_needed()
 
@@ -743,7 +792,6 @@ func _on_panel_closed(key: String) -> void:
 		"growth":             _close_overlay(growth_overlay, "growth")
 		"collection":         _close_overlay(collection_overlay, "collection")
 		"info":               _close_overlay(intelligence_overlay, "info")
-		"occupation":         _close_overlay(get_node_or_null("PopupLayer/OccupationOverlay"), "occupation")
 		"modification":       _close_overlay(modification_overlay, "modification")
 		"evolution":          _close_overlay(evolution_overlay, "evolution")
 		"afk":                _close_overlay(afk_overlay, "afk")
@@ -864,14 +912,6 @@ func _connect_panel_closed_runtime(panel: Node, panel_key: String) -> void:
 		panel.closed.connect(_on_panel_closed.bind(panel_key))
 
 
-func _connect_intelligence_hub_signals() -> void:
-	var hub: Node = get_node_or_null("PopupLayer/IntelligenceOverlay/CenterContainer/IntelligenceHubPanel")
-	if hub == null:
-		return
-	if hub.has_signal("open_progression_requested") and not hub.open_progression_requested.is_connected(_on_intelligence_open_progression):
-		hub.open_progression_requested.connect(_on_intelligence_open_progression)
-
-
 ## 连接 DailyTaskManager 信号以刷新任务按钮红点角标
 func _connect_quest_badge_signals() -> void:
 	var dtm := get_node_or_null("/root/DailyTaskManager")
@@ -907,16 +947,6 @@ func _refresh_quest_badge(_dummy = null) -> void:
 	bottom_function_bar.set_btn_badge("quest", claimable)
 
 
-func _on_intelligence_open_progression(card_id: String) -> void:
-	_close_overlay(intelligence_overlay, "info")
-	_toggle_overlay(growth_overlay, "growth")
-	var panel: Node = growth_overlay.get_node_or_null("CenterContainer/GrowthPanel")
-	if panel == null:
-		panel = growth_overlay.find_child("GrowthPanel", true, false)
-	if panel and panel.has_method("select_card_by_id") and not card_id.is_empty():
-		panel.select_card_by_id(card_id)
-
-
 # v6.11: _on_blueprint_star_upgraded 回调已移除（战力星级系统②已删）
 
 func _on_faction_pressed() -> void:
@@ -929,8 +959,8 @@ func _on_toggle_phase_instrument_from_tutorial() -> void:
 
 ## v7.x 教程引导：打开强化面板
 ## v8.x: 强化②（CardEnhancementPanel）已停用，养成改为自动经验升星 + 相位师技能树。
-# 教程的"打开强化"重定向到成长中枢（growth_panel），那里展示强化等级/Lv.X/10，
-# 且其"强化"按钮会打开相位师技能树面板——与 v8.x 养成入口一致。
+# v37：教程"打开强化"直进相位师技能树（原中转 growth_panel 已随成长入口改造退役，
+# 见 _on_progression_pressed）。
 # 原 enhancement_overlay 路径已断（UILazyLoader 无 "enhancement" 配置，
 # _ensure_lazy_panel 会 push_error 并返回空 overlay，导致玩家无法关闭→死机）。
 func _on_toggle_enhancement_from_tutorial() -> void:
@@ -981,8 +1011,80 @@ func _auto_battle_from_truck_sortie() -> void:
 	if _battle_setup != null:
 		_battle_setup.on_start_battle()
 
+## v32.3 A2：世界地图「进入该关」自动开战入口（内嵌链 world_map 直调 / 独立场景链经
+## level_auto_start_pending meta 消费）。教程未完成不抢焦点（教程首战有自己的节奏）；
+## 已在战斗中（内嵌模式重复触发）直接忽略。
+func auto_start_battle_from_world_map() -> void:
+	if TutorialProgressionManager != null \
+			and TutorialProgressionManager.has_method("should_show_tutorial") \
+			and TutorialProgressionManager.should_show_tutorial():
+		return
+	if _is_in_battle():
+		return
+	_auto_battle_from_truck_sortie()
+
+## v32.3 A4：预热结算路径懒加载 manager（原 battle_manager.start_battle 同步段）——
+## 挪到主场景落地 1s 空闲期，开战帧零预热开销。战斗持续数分钟级，1s 内必完成。
+func _warmup_battle_lazy_managers() -> void:
+	if not is_inside_tree():
+		return
+	var mll := get_node_or_null("/root/ManagerLazyLoader")
+	if mll != null and mll.has_method("ensure_loaded"):
+		# 注：原 "story" 已移除（StoryManager 删除时的孤儿残留）
+		for pre_id in ["intel_discovery", "quest", "achievement", "level_progress",
+				"leaderboard", "faction", "stat_boost"]:
+			mll.ensure_loaded(pre_id)
+
 ## v27：教程首战部署提醒 Timer（重复 15s；部署成功/战斗结束自动停）
 var _tutorial_deploy_nudge_timer: Timer = null
+
+## v37 实机验收（用户"开战后不知道相位仪/卡仓在哪"）：教程首战开打后在底部两栏
+## 上方各浮一条位置指认，9s 自动淡出，战斗结束即清。仅教程 FIRST_BATTLE(7) 步生效。
+var _tut_hud_hints: Array[Control] = []
+
+func _show_tutorial_battle_hud_hints() -> void:
+	_clear_tutorial_battle_hud_hints()
+	var tpm := get_node_or_null("/root/TutorialProgressionManager")
+	if tpm == null or not tpm.should_show_tutorial():
+		return
+	if int(tpm.current_step) != 7:  # TutorialStep.FIRST_BATTLE
+		return
+	var hud: CanvasLayer = get_node_or_null("HudLayer")
+	if hud == null:
+		return
+	# BattleBottomBar 占 y 588-712（offset -132..-8），指认条贴在其上沿
+	var lines := [
+		{"txt": "▲ 底部左：相位仪装配槽——自动部署默认开启；手动部署点绿槽选单位，再点战场格子",
+			"x": 16.0, "w": 620.0, "align": HORIZONTAL_ALIGNMENT_LEFT},
+		{"txt": "功能栏：卡仓 / 技能 / 改造 / 制造 / 设置 ▲",
+			"x": 1280.0 - 16.0 - 430.0, "w": 430.0, "align": HORIZONTAL_ALIGNMENT_RIGHT},
+	]
+	for cfg in lines:
+		var lbl := Label.new()
+		lbl.text = str(cfg["txt"])
+		lbl.position = Vector2(float(cfg["x"]), 556.0)
+		lbl.size = Vector2(float(cfg["w"]), 26.0)
+		lbl.horizontal_alignment = cfg["align"]
+		lbl.add_theme_font_size_override("font_size", 13)
+		lbl.add_theme_color_override("font_color", Color(0.92, 0.95, 1.0, 0.95))
+		lbl.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.85))
+		lbl.add_theme_constant_override("outline_size", 4)
+		lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		hud.add_child(lbl)
+		_tut_hud_hints.append(lbl)
+		var tw := lbl.create_tween()
+		tw.tween_interval(9.0)
+		tw.tween_property(lbl, "modulate:a", 0.0, 0.8)
+		tw.tween_callback(lbl.queue_free)
+	if not _tut_hud_hints.is_empty() \
+			and not SignalBus.battle_ended.is_connected(_clear_tutorial_battle_hud_hints):
+		SignalBus.battle_ended.connect(_clear_tutorial_battle_hud_hints)
+
+func _clear_tutorial_battle_hud_hints() -> void:
+	for c in _tut_hud_hints:
+		if c != null and is_instance_valid(c):
+			c.queue_free()
+	_tut_hud_hints.clear()
 
 func _start_tutorial_deploy_nudge() -> void:
 	_stop_tutorial_deploy_nudge()
@@ -1002,6 +1104,17 @@ func _on_tutorial_deploy_nudge_tick() -> void:
 	var pu: Node = bf.get_node_or_null("PlayerUnits")
 	if pu != null and pu.get_child_count() > 0:
 		_stop_tutorial_deploy_nudge()  # 已部署：验证通过
+		return
+	# v32.3 A3：自动部署默认开——绿槽有卡时首战自动铺阵，nudge 改提示自动语义（只提示一次）
+	var pim: Node = PhaseInstrumentManager
+	var has_loadout: bool = pim != null and pim.has_method("get_loadouts") \
+			and not (pim.get_loadouts() as Array).is_empty()
+	if has_loadout and bottom_instrument_bar != null \
+			and bottom_instrument_bar.has_method("is_auto_deploy_enabled") \
+			and bottom_instrument_bar.is_auto_deploy_enabled():
+		if SignalBus != null and SignalBus.has_signal("show_toast"):
+			SignalBus.show_toast.emit("自动部署进行中：绿槽卡组将自动上阵")
+		_stop_tutorial_deploy_nudge()
 		return
 	if SignalBus != null and SignalBus.has_signal("show_toast"):
 		SignalBus.show_toast.emit("还没部署单位：点击底部绿槽选择单位，再点击我方战场格子部署")
@@ -1030,9 +1143,14 @@ func _on_store_pressed() -> void:
 
 func _on_progression_pressed() -> void:
 	_play_sfx("button")
-	if DEBUG_MAIN_LOG:
-		print("[Main] _on_progression_pressed called, growth_overlay=", growth_overlay)
-	_toggle_overlay(growth_overlay, "growth")
+	# v37（用户拍板）：成长入口直进相位师技能树——整备舱 growth_panel 退役为中转层
+	#（卡仓/改造/制造已有一级入口；其面板内"改造/制造"跳转按钮在基地场景因
+	# /root/Main 缺失本就失灵）。growth_overlay 机制保留不删（关闭链/全关清单仍引用）。
+	# 教程 ENHANCEMENT 步的触达面键仍叫 "growth"（SURFACE_FOR_STEP 不动），在此补发。
+	PhaseMasterSkillHost.open(get_tree(), true)
+	var _tpm_g := get_node_or_null("/root/TutorialProgressionManager")
+	if _tpm_g != null and _tpm_g.has_method("notify_surface_opened"):
+		_tpm_g.notify_surface_opened("growth")
 
 func _on_map_pressed() -> void:
 	_play_sfx("button")
@@ -1111,46 +1229,15 @@ func get_afk_manager() -> AFKModeManager:
 	return _afk_manager
 
 # ── 离线挂机 ─────────────────────────────────────────────────
-## v6.6(离线挂机): 初始化离线挂机管理器并检查离线奖励（延迟一帧确保 save 已加载）
+## v6.6(挂机): 初始化离线挂机管理器（延迟一帧确保 save 已加载）
+## v32.3 A5：离线奖励弹窗检查已迁到 truck_base（回基地=欢迎回来的自然时机）——
+## main 落地现在即开战（v32.3 A2），在出征节奏里弹结算既打断流程也时机错误
+## （"距上次存档≥5分钟"≠真离线：基地管理超过 5 分钟再出击必误弹）。
 func _init_offline_idle_manager() -> void:
 	_offline_idle_manager = OfflineIdleManagerScript.new()
 	_offline_idle_manager.init(self)
-	# 延迟检查离线奖励：确保 save load（含 deferred）完成后再生效
-	call_deferred("_maybe_show_offline_rewards")
 
-## v6.6(离线挂机): 计算并弹出离线奖励（若离线时长超阈值）
-func _maybe_show_offline_rewards() -> void:
-	if _offline_idle_manager == null or SaveManager == null:
-		return
-	if not SaveManager.has_method("get_last_active_at"):
-		return
-	# 防重入：若已有离线奖励弹窗在显示，不再弹第二个
-	if popup_layer != null:
-		for c in popup_layer.get_children():
-			if c is OfflineRewardDialog:
-				return
-	var last_active: int = SaveManager.get_last_active_at()
-	var now: int = int(Time.get_unix_time_from_system())
-	var result: Dictionary = _offline_idle_manager.compute_offline_rewards(last_active, now)
-	if result.is_empty():
-		return   # 离线不足/无时间戳，不弹
-	_show_offline_reward_dialog(result)
-
-## v6.6(离线挂机): 显示"欢迎回来"弹窗
-## 必须加到 popup_layer（CanvasLayer layer=100）而非 Main 直接子节点，
-## 否则会被 HudLayer(40)/PopupLayer(100) 遮挡导致玩家看不到。
-func _show_offline_reward_dialog(result: Dictionary) -> void:
-	var parent: Node = popup_layer if popup_layer != null else self
-	var dialog := OfflineRewardDialogScript.create(parent, result)
-	if dialog:
-		dialog.claimed.connect(_on_offline_reward_claimed)
-
-## v6.6(离线挂机): 玩家点领取后入账
-func _on_offline_reward_claimed(rewards: Dictionary) -> void:
-	if _offline_idle_manager != null:
-		_offline_idle_manager.grant_rewards(rewards)
-
-## v6.6(离线挂机): 暴露 manager（桥接/测试用）
+## v6.6(离线挂机): 暴露 manager（桥接/测试用）。弹窗链已迁 truck_base（v32.3 A5）。
 func get_offline_idle_manager() -> OfflineIdleManager:
 	return _offline_idle_manager
 
@@ -1482,7 +1569,7 @@ func _on_world_map() -> void:
 
 # ── 关闭所有弹出面板 ─────────────────────────────────────────
 ## P1-8: 全量 overlay 注册表（原 _close_all_overlays 清单缺
-## collection/occupation/enhancement/modification/evolution/player_master，
+## collection/enhancement/modification/evolution/player_master，
 ## 这些面板开着时按 ESC 关不掉）
 func _all_overlays() -> Array:
 	return [
@@ -1497,7 +1584,6 @@ func _all_overlays() -> Array:
 		{"overlay": afk_overlay, "key": "afk"},
 		{"overlay": leaderboard_overlay, "key": "leaderboard"},
 		{"overlay": collection_overlay, "key": "collection"},
-		{"overlay": get_node_or_null("PopupLayer/OccupationOverlay"), "key": "occupation"},
 		{"overlay": achievement_overlay, "key": "achievement"},
 		{"overlay": help_overlay, "key": "help"},
 		{"overlay": modification_overlay, "key": "modification"},
@@ -1684,6 +1770,72 @@ func show_battle_result(player_won: bool) -> void:
 
 func _on_result_confirmed() -> void:
 	_reward.on_result_confirmed()
+	# v38.3 结算弹窗串行化：通关解锁仪式排在链尾——情报揭示 → 改造解锁 → 通关解锁
+	# 依次播放（上一枚关闭才弹下一枚），消灭"结算面板+解锁弹窗上下叠/确认瞬间齐发"。
+	if LevelProgressManager != null and LevelProgressManager.has_method("consume_pending_feature_unlocks"):
+		var pending: Array = LevelProgressManager.consume_pending_feature_unlocks()
+		if not pending.is_empty():
+			enqueue_settlement_popup(func() -> Node: return FeatureUnlockPopup.show_unlock_batch(pending))
+	_settlement_chain_armed = true
+	_advance_settlement_chain()
+
+## ── v38.3 结算弹窗串行链 ────────────────────────────────────────────
+## 结算面板渲染期间 mvp_panel 把仪式弹窗工厂（情报揭示/改造解锁）攒进链里；
+## 玩家点「返回整备」确认后 _settlement_chain_armed=true 开始按序播放，
+## 每枚弹窗关闭（tree_exited，含确认/自动关闭/ESC）才弹下一枚。
+## 直通键（出击下一关/再战本关）不走确认 → 链直接清空丢弃（内容在结算面板已有摘要）。
+var _settlement_popup_chain: Array[Callable] = []
+var _settlement_chain_armed: bool = false
+
+## 入队一枚仪式弹窗工厂（factory: Callable -> Node，调用即创建并展示，返回 null=放弃）
+func enqueue_settlement_popup(popup_factory: Callable) -> void:
+	_settlement_popup_chain.append(popup_factory)
+	_advance_settlement_chain()
+
+func _advance_settlement_chain() -> void:
+	if not _settlement_chain_armed:
+		return
+	while not _settlement_popup_chain.is_empty():
+		var factory: Callable = _settlement_popup_chain.pop_front()
+		var popup: Node = factory.call()
+		if popup == null or not is_instance_valid(popup):
+			continue  # 工厂放弃（无事件等）——直接尝试下一枚
+		popup.tree_exited.connect(_advance_settlement_chain, CONNECT_ONE_SHOT)
+		return
+	_settlement_chain_armed = false
+
+## v34 渐进解锁：结算时刻跨级的即时反馈（轻量 toast；完整仪式弹窗走待播队列）
+func _on_feature_unlocked_toast(feature_key: String) -> void:
+	if not FeatureUnlockSchedule.has_key(feature_key):
+		return
+	if SignalBus and SignalBus.has_signal("show_toast"):
+		SignalBus.show_toast.emit("🔓 通关奖励 · 新系统解锁：%s" % String(FeatureUnlockSchedule.SCHEDULE[feature_key]["title"]))
+
+## v34 再战回路（B1）：结算面板「▶ 出击下一关」直通——复用挂机 enter_next_battle 同款
+## set_current_level + run_start_battle_sequence 管线；写出战报拍点让黑幕战报遮罩开打。
+## 清场与 _on_result_confirmed 同源（但不发"返回整备"横幅——马上要开打）。
+## v38.3 结算弹窗串行链：直通键（出击下一关/再战本关）跳过确认 → 丢弃未播的仪式弹窗
+##（情报/解锁摘要在结算面板内已有呈现，不跨场残留——否则下场打完会冒出上一场的旧弹窗）。
+func launch_next_level_from_settlement(next_level: int) -> void:
+	_settlement_popup_chain.clear()
+	_settlement_chain_armed = false
+	if next_level < 1 or next_level > 100:
+		_on_result_confirmed()
+		return
+	_clear_battlefield_units()
+	if SignalBus:
+		BattleInputState.clear_all_pending()
+	if bottom_function_bar:
+		bottom_function_bar.set_start_battle_text("开始战斗")
+	if GameManager:
+		GameManager.return_to_prep()
+		GameManager.set_current_level(next_level)
+	if bottom_instrument_bar and bottom_instrument_bar.has_method("refresh"):
+		bottom_instrument_bar.refresh()
+	_update_level_display()
+	Engine.set_meta(SortieInterstitial.META_PENDING, true)
+	if _battle_setup != null:
+		_battle_setup.on_start_battle()
 
 func _clear_battlefield_units() -> void:
 	_reward.clear_battlefield_units()
@@ -1705,7 +1857,15 @@ func _open_phase_instrument_selector() -> void:
 		_tpm3.notify_surface_opened("phase_instrument")
 	# 使用普通 Control 全屏遮罩，避免 Window/AcceptDialog 在 CanvasLayer 下无法显示
 	popup_layer.add_child(selector)
-	selector.instrument_selected.connect(_on_phase_selector_selected.bind(selector))
+	# v32.3 C1：统一开合过渡（原 add_child 硬切出现）
+	PanelAnim.open(selector)
+	if SignalBus and SignalBus.has_signal("play_sound"):
+		SignalBus.play_sound.emit("panel_open")
+
+## v32.3 C1：装备成功后选择器保持打开、原地刷新列表（selector 自刷新），可连换多具
+## 相位仪；关闭走面板关闭钮/ESC/背板（PanelAnim 过渡）。底部仪栏自随 phase_slots_changed
+## 重建，不再手动二次 refresh（原"整面板秒关+同帧双刷新"是换装卡顿/跳动的构成）。
+## instrument_selected 信号保留为场景公共 API，当前无消费方。
 
 ## v7.x: 打开玩家相位师详细面板（9维战力分解 + 星级 + Lv + 构成明细）
 ## 批次1：收口到统一开合动画+音效（原 visible 硬切，与 17 个 overlay 行为不一）
@@ -1730,13 +1890,6 @@ func _on_player_master_panel_closed() -> void:
 		PanelAnim.close(player_master_overlay)
 		if SignalBus and SignalBus.has_signal("play_sound"):
 			SignalBus.play_sound.emit("panel_close")
-
-func _on_phase_selector_selected(_instrument_id: String, selector: Node) -> void:
-	if is_instance_valid(selector):
-		selector.queue_free()
-	# 刷新底部仪表栏
-	if bottom_instrument_bar and bottom_instrument_bar.has_method("refresh"):
-		bottom_instrument_bar.refresh()
 
 # ── 新系统管理器集成 ─────────────────────────────────────────────
 

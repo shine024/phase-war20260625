@@ -33,12 +33,16 @@ const _ENEMY_TINT := Color(1.0, 0.55, 0.25)
 var is_player_side: bool = true
 
 ## 武器配置
+## v35 清理：原表还挂着 speed/max_dist 两列——零消费（飞行时长唯一真身是 fire() 里的
+## `0.6 + dist/2000*0.8` 公式 × 亚类 duration_mul），且 420/520 数值与直射 batch 的
+## _speed_for（800/680）形似实非，纯误导调参。只保留实际消费的 explosion_radius
+## （预警圈/威力分级/爆炸半径三处读）。要给曲射加速度轴时另立新键，勿复活死列。
 const _WEAPON_CONFIG: Dictionary = {
-	3: {"speed": 420.0, "max_dist": 2000.0, "explosion_radius": 40.0},  # ROCKET
-	7: {"speed": 520.0, "max_dist": 1500.0, "explosion_radius": 36.0},  # FLAK
-	9: {"speed": 380.0, "max_dist": 2300.0, "explosion_radius": 55.0},  # MISSILE
-	1: {"speed": 420.0, "max_dist": 2000.0, "explosion_radius": 40.0},  # INDIRECT (新枚举)
-	2: {"speed": 520.0, "max_dist": 2000.0, "explosion_radius": 36.0},  # AERIAL (新枚举)
+	3: {"explosion_radius": 40.0},  # ROCKET
+	7: {"explosion_radius": 36.0},  # FLAK
+	9: {"explosion_radius": 55.0},  # MISSILE
+	1: {"explosion_radius": 40.0},  # INDIRECT (新枚举)
+	2: {"explosion_radius": 36.0},  # AERIAL (新枚举)
 }
 
 var _proj: Array = []
@@ -196,7 +200,6 @@ func fire(from: Vector2, tgt: Node2D, dmg: float, wt: int, shooter: Node2D, shoo
 	d["dir"] = Vector2.RIGHT
 	d["prev_pos"] = from
 	d["muzzle_spawned"] = true  # Fix-5: 禁用炮口火焰，标记为已生成
-	d["impact_spawned"] = false
 	d["is_player"] = is_player_side
 	_proj.append(d)
 	_play_fire_sfx(wt)

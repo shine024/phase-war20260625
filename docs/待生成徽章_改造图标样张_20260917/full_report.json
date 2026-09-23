@@ -1,0 +1,5103 @@
+{
+ "air_01_turbofan": {
+  "name": "涡扇发动机",
+  "family": "air",
+  "rarity": "epic",
+  "best_tag": "fix1",
+  "best": {
+   "extent": 0.89,
+   "area": 0.54,
+   "center_off": 0.03,
+   "comp2_ratio": 0.0,
+   "c26": 168,
+   "sym_rmse": 18,
+   "hue_err": 3,
+   "fails": [],
+   "pass": true,
+   "tag": "fix1"
+  },
+  "repaired": true,
+  "fix_rolls": [
+   {
+    "extent": 0.89,
+    "area": 0.54,
+    "center_off": 0.03,
+    "comp2_ratio": 0.0,
+    "c26": 168,
+    "sym_rmse": 18,
+    "hue_err": 3,
+    "fails": [],
+    "pass": true,
+    "tag": "fix1"
+   }
+  ]
+ },
+ "air_02_vector_thrust": {
+  "name": "矢量推力",
+  "family": "air",
+  "rarity": "epic",
+  "best_tag": "fix1",
+  "best": {
+   "extent": 0.84,
+   "area": 0.42,
+   "center_off": 0.02,
+   "comp2_ratio": 0.04,
+   "c26": 180,
+   "sym_rmse": 30,
+   "hue_err": 5,
+   "fails": [],
+   "pass": true,
+   "tag": "fix1"
+  },
+  "repaired": true,
+  "fix_rolls": [
+   {
+    "extent": 0.84,
+    "area": 0.42,
+    "center_off": 0.02,
+    "comp2_ratio": 0.04,
+    "c26": 180,
+    "sym_rmse": 30,
+    "hue_err": 5,
+    "fails": [],
+    "pass": true,
+    "tag": "fix1"
+   }
+  ]
+ },
+ "air_03_stealth_coating": {
+  "name": "隐身涂层",
+  "family": "air",
+  "rarity": "epic",
+  "best_tag": "r2",
+  "best": {
+   "extent": 0.9,
+   "area": 0.57,
+   "center_off": 0.03,
+   "comp2_ratio": 0.0,
+   "c26": 179,
+   "sym_rmse": 14,
+   "hue_err": 5,
+   "fails": [],
+   "pass": true,
+   "tag": "r2"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "air_04_aesa": {
+  "name": "有源相控阵雷达",
+  "family": "air",
+  "rarity": "legendary",
+  "best_tag": "r2",
+  "best": {
+   "extent": 0.92,
+   "area": 0.63,
+   "center_off": 0.03,
+   "comp2_ratio": 0.0,
+   "c26": 192,
+   "sym_rmse": 24,
+   "hue_err": 7,
+   "fails": [],
+   "pass": true,
+   "tag": "r2"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "air_05_helmet_sight": {
+  "name": "头盔瞄准具",
+  "family": "air",
+  "rarity": "epic",
+  "best_tag": "r1",
+  "best": {
+   "extent": 0.83,
+   "area": 0.6,
+   "center_off": 0.03,
+   "comp2_ratio": 0.0,
+   "c26": 190,
+   "sym_rmse": 14,
+   "hue_err": 3,
+   "fails": [],
+   "pass": true,
+   "tag": "r1"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "air_06_bvr_missile": {
+  "name": "超视距导弹",
+  "family": "air",
+  "rarity": "epic",
+  "best_tag": "r1",
+  "best": {
+   "extent": 0.81,
+   "area": 0.51,
+   "center_off": 0.04,
+   "comp2_ratio": 0.0,
+   "c26": 166,
+   "sym_rmse": 21,
+   "hue_err": 7,
+   "fails": [],
+   "pass": true,
+   "tag": "r1"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "air_07_dogfight_missile": {
+  "name": "格斗弹舱",
+  "family": "air",
+  "rarity": "epic",
+  "best_tag": "r2",
+  "best": {
+   "extent": 0.88,
+   "area": 0.56,
+   "center_off": 0.03,
+   "comp2_ratio": 0.0,
+   "c26": 179,
+   "sym_rmse": 12,
+   "hue_err": 7,
+   "fails": [],
+   "pass": true,
+   "tag": "r2"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "air_08_ecm": {
+  "name": "电子对抗系统",
+  "family": "air",
+  "rarity": "epic",
+  "best_tag": "r1",
+  "best": {
+   "extent": 0.95,
+   "area": 0.68,
+   "center_off": 0.02,
+   "comp2_ratio": 0.0,
+   "c26": 180,
+   "sym_rmse": 13,
+   "hue_err": 5,
+   "fails": [],
+   "pass": true,
+   "tag": "r1"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "air_09_air_refuel": {
+  "name": "空中加油口",
+  "family": "air",
+  "rarity": "rare",
+  "best_tag": "r1",
+  "best": {
+   "extent": 0.86,
+   "area": 0.54,
+   "center_off": 0.04,
+   "comp2_ratio": 0.0,
+   "c26": 185,
+   "sym_rmse": 12,
+   "hue_err": 6,
+   "fails": [],
+   "pass": true,
+   "tag": "r1"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "air_10_drop_tank": {
+  "name": "副油箱",
+  "family": "air",
+  "rarity": "uncommon",
+  "best_tag": "r1",
+  "best": {
+   "extent": 0.89,
+   "area": 0.59,
+   "center_off": 0.02,
+   "comp2_ratio": 0.0,
+   "c26": 182,
+   "sym_rmse": 10,
+   "hue_err": 8,
+   "fails": [],
+   "pass": true,
+   "tag": "r1"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "air_11_weapon_rack": {
+  "name": "外挂武器架",
+  "family": "air",
+  "rarity": "rare",
+  "best_tag": "r2",
+  "best": {
+   "extent": 0.97,
+   "area": 0.6,
+   "center_off": 0.06,
+   "comp2_ratio": 0.0,
+   "c26": 177,
+   "sym_rmse": 33,
+   "hue_err": 6,
+   "fails": [],
+   "pass": true,
+   "tag": "r2"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "air_12_data_link": {
+  "name": "数据链系统",
+  "family": "air",
+  "rarity": "epic",
+  "best_tag": "r2",
+  "best": {
+   "extent": 0.91,
+   "area": 0.59,
+   "center_off": 0.14,
+   "comp2_ratio": 0.0,
+   "c26": 185,
+   "sym_rmse": 17,
+   "hue_err": 7,
+   "fails": [],
+   "pass": true,
+   "tag": "r2"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "air_13_ejection_seat": {
+  "name": "钛合金浴缸座舱",
+  "family": "air",
+  "rarity": "uncommon",
+  "best_tag": "r1",
+  "best": {
+   "extent": 0.79,
+   "area": 0.47,
+   "center_off": 0.02,
+   "comp2_ratio": 0.0,
+   "c26": 183,
+   "sym_rmse": 14,
+   "hue_err": 7,
+   "fails": [],
+   "pass": true,
+   "tag": "r1"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "air_14_swing_wing": {
+  "name": "可变后掠翼",
+  "family": "air",
+  "rarity": "epic",
+  "best_tag": "r3",
+  "best": {
+   "extent": 0.97,
+   "area": 0.64,
+   "center_off": 0.09,
+   "comp2_ratio": 0.0,
+   "c26": 190,
+   "sym_rmse": 15,
+   "hue_err": 6,
+   "fails": [],
+   "pass": true,
+   "tag": "r3"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "air_15_afterburner": {
+  "name": "加力燃烧室",
+  "family": "air",
+  "rarity": "legendary",
+  "best_tag": "r1",
+  "best": {
+   "extent": 0.92,
+   "area": 0.61,
+   "center_off": 0.07,
+   "comp2_ratio": 0.0,
+   "c26": 180,
+   "sym_rmse": 18,
+   "hue_err": 5,
+   "fails": [],
+   "pass": true,
+   "tag": "r1"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "air_thermolite_bomb": {
+  "name": "温压弹",
+  "family": "air",
+  "rarity": "legendary",
+  "best_tag": "r2",
+  "best": {
+   "extent": 0.84,
+   "area": 0.55,
+   "center_off": 0.06,
+   "comp2_ratio": 0.0,
+   "c26": 189,
+   "sym_rmse": 12,
+   "hue_err": 7,
+   "fails": [],
+   "pass": true,
+   "tag": "r2"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "air_antiradiation_missile": {
+  "name": "反辐射导弹",
+  "family": "air",
+  "rarity": "legendary",
+  "best_tag": "r2",
+  "best": {
+   "extent": 0.98,
+   "area": 0.65,
+   "center_off": 0.05,
+   "comp2_ratio": 0.0,
+   "c26": 193,
+   "sym_rmse": 30,
+   "hue_err": 6,
+   "fails": [],
+   "pass": true,
+   "tag": "r2"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "air_targeting_laser": {
+  "name": "瞄准激光",
+  "family": "air",
+  "rarity": "epic",
+  "best_tag": "r2",
+  "best": {
+   "extent": 0.95,
+   "area": 0.6,
+   "center_off": 0.0,
+   "comp2_ratio": 0.0,
+   "c26": 179,
+   "sym_rmse": 29,
+   "hue_err": 6,
+   "fails": [],
+   "pass": true,
+   "tag": "r2"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "air_16_phase_shift": {
+  "name": "相位偏移",
+  "family": "air",
+  "rarity": "legendary",
+  "best_tag": "r3",
+  "best": {
+   "extent": 0.9,
+   "area": 0.59,
+   "center_off": 0.02,
+   "comp2_ratio": 0.0,
+   "c26": 186,
+   "sym_rmse": 10,
+   "hue_err": 5,
+   "fails": [],
+   "pass": true,
+   "tag": "r3"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "air_17_bombsight": {
+  "name": "轰炸瞄准具",
+  "family": "air",
+  "rarity": "uncommon",
+  "best_tag": "r1",
+  "best": {
+   "extent": 0.89,
+   "area": 0.6,
+   "center_off": 0.05,
+   "comp2_ratio": 0.0,
+   "c26": 179,
+   "sym_rmse": 17,
+   "hue_err": 5,
+   "fails": [],
+   "pass": true,
+   "tag": "r1"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "air_18_heavy_rack": {
+  "name": "重载挂架",
+  "family": "air",
+  "rarity": "uncommon",
+  "best_tag": "r1",
+  "best": {
+   "extent": 0.88,
+   "area": 0.59,
+   "center_off": 0.02,
+   "comp2_ratio": 0.0,
+   "c26": 182,
+   "sym_rmse": 15,
+   "hue_err": 10,
+   "fails": [],
+   "pass": true,
+   "tag": "r1"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "air_19_cluster_dispenser": {
+  "name": "集束布撒器",
+  "family": "air",
+  "rarity": "rare",
+  "best_tag": "r3",
+  "best": {
+   "extent": 0.88,
+   "area": 0.58,
+   "center_off": 0.02,
+   "comp2_ratio": 0.0,
+   "c26": 171,
+   "sym_rmse": 26,
+   "hue_err": 5,
+   "fails": [],
+   "pass": true,
+   "tag": "r3"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "air_20_standoff_missile": {
+  "name": "防区外导弹",
+  "family": "air",
+  "rarity": "epic",
+  "best_tag": "r2",
+  "best": {
+   "extent": 0.82,
+   "area": 0.51,
+   "center_off": 0.05,
+   "comp2_ratio": 0.0,
+   "c26": 182,
+   "sym_rmse": 19,
+   "hue_err": 7,
+   "fails": [],
+   "pass": true,
+   "tag": "r2"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "air_21_terrain_radar": {
+  "name": "地形跟随雷达",
+  "family": "air",
+  "rarity": "uncommon",
+  "best_tag": "r1",
+  "best": {
+   "extent": 0.91,
+   "area": 0.55,
+   "center_off": 0.05,
+   "comp2_ratio": 0.0,
+   "c26": 168,
+   "sym_rmse": 27,
+   "hue_err": 7,
+   "fails": [],
+   "pass": true,
+   "tag": "r1"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "air_22_countermeasure": {
+  "name": "干扰弹布撒器",
+  "family": "air",
+  "rarity": "rare",
+  "best_tag": "r3",
+  "best": {
+   "extent": 0.88,
+   "area": 0.55,
+   "center_off": 0.03,
+   "comp2_ratio": 0.0,
+   "c26": 183,
+   "sym_rmse": 13,
+   "hue_err": 7,
+   "fails": [],
+   "pass": true,
+   "tag": "r3"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "air_23_cockpit_armor": {
+  "name": "座舱装甲",
+  "family": "air",
+  "rarity": "common",
+  "best_tag": "r1",
+  "best": {
+   "extent": 0.91,
+   "area": 0.6,
+   "center_off": 0.07,
+   "comp2_ratio": 0.0,
+   "c26": 180,
+   "sym_rmse": 15,
+   "hue_err": 5,
+   "fails": [],
+   "pass": true,
+   "tag": "r1"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "air_24_canard": {
+  "name": "鸭翼前置",
+  "family": "air",
+  "rarity": "uncommon",
+  "best_tag": "r1",
+  "best": {
+   "extent": 0.95,
+   "area": 0.53,
+   "center_off": 0.04,
+   "comp2_ratio": 0.0,
+   "c26": 186,
+   "sym_rmse": 11,
+   "hue_err": 8,
+   "fails": [],
+   "pass": true,
+   "tag": "r1"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "air_25_dual_mode_seeker": {
+  "name": "双模导引头",
+  "family": "air",
+  "rarity": "rare",
+  "best_tag": "r3",
+  "best": {
+   "extent": 0.84,
+   "area": 0.54,
+   "center_off": 0.06,
+   "comp2_ratio": 0.0,
+   "c26": 180,
+   "sym_rmse": 12,
+   "hue_err": 7,
+   "fails": [],
+   "pass": true,
+   "tag": "r3"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "air_26_drone_wingman": {
+  "name": "蜂群僚机",
+  "family": "air",
+  "rarity": "epic",
+  "best_tag": "r2",
+  "best": {
+   "extent": 0.92,
+   "area": 0.64,
+   "center_off": 0.04,
+   "comp2_ratio": 0.0,
+   "c26": 184,
+   "sym_rmse": 11,
+   "hue_err": 7,
+   "fails": [],
+   "pass": true,
+   "tag": "r2"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "aa_01_radar": {
+  "name": "炮瞄雷达",
+  "family": "anti_air",
+  "rarity": "rare",
+  "best_tag": "r3",
+  "best": {
+   "extent": 0.84,
+   "area": 0.44,
+   "center_off": 0.04,
+   "comp2_ratio": 0.0,
+   "c26": 123,
+   "sym_rmse": 31,
+   "hue_err": 10,
+   "fails": [],
+   "pass": true,
+   "tag": "r3"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "aa_02_iff": {
+  "name": "敌我识别器",
+  "family": "anti_air",
+  "rarity": "uncommon",
+  "best_tag": "r2",
+  "best": {
+   "extent": 0.91,
+   "area": 0.47,
+   "center_off": 0.11,
+   "comp2_ratio": 0.0,
+   "c26": 128,
+   "sym_rmse": 28,
+   "hue_err": 9,
+   "fails": [],
+   "pass": true,
+   "tag": "r2"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "aa_03_missile_rail": {
+  "name": "防空导弹挂架",
+  "family": "anti_air",
+  "rarity": "epic",
+  "best_tag": "r3",
+  "best": {
+   "extent": 0.92,
+   "area": 0.53,
+   "center_off": 0.07,
+   "comp2_ratio": 0.0,
+   "c26": 124,
+   "sym_rmse": 13,
+   "hue_err": 7,
+   "fails": [],
+   "pass": true,
+   "tag": "r3"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "aa_04_quad_mount": {
+  "name": "双联/四联装",
+  "family": "anti_air",
+  "rarity": "rare",
+  "best_tag": "r1",
+  "best": {
+   "extent": 0.95,
+   "area": 0.46,
+   "center_off": 0.07,
+   "comp2_ratio": 0.0,
+   "c26": 114,
+   "sym_rmse": 23,
+   "hue_err": 9,
+   "fails": [],
+   "pass": true,
+   "tag": "r1"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "aa_05_proximity_fuze": {
+  "name": "近炸引信",
+  "family": "anti_air",
+  "rarity": "epic",
+  "best_tag": "r3",
+  "best": {
+   "extent": 0.84,
+   "area": 0.49,
+   "center_off": 0.02,
+   "comp2_ratio": 0.0,
+   "c26": 121,
+   "sym_rmse": 9,
+   "hue_err": 9,
+   "fails": [],
+   "pass": true,
+   "tag": "r3"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "aa_06_laser": {
+  "name": "激光近防系统",
+  "family": "anti_air",
+  "rarity": "legendary",
+  "best_tag": "r2",
+  "best": {
+   "extent": 0.8,
+   "area": 0.45,
+   "center_off": 0.06,
+   "comp2_ratio": 0.0,
+   "c26": 127,
+   "sym_rmse": 28,
+   "hue_err": 11,
+   "fails": [],
+   "pass": true,
+   "tag": "r2"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "aa_07_aesa": {
+  "name": "相控阵雷达",
+  "family": "anti_air",
+  "rarity": "legendary",
+  "best_tag": "r1",
+  "best": {
+   "extent": 0.97,
+   "area": 0.46,
+   "center_off": 0.04,
+   "comp2_ratio": 0.0,
+   "c26": 131,
+   "sym_rmse": 26,
+   "hue_err": 9,
+   "fails": [],
+   "pass": true,
+   "tag": "r1"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "aa_08_power_gen": {
+  "name": "车载发电机组",
+  "family": "anti_air",
+  "rarity": "uncommon",
+  "best_tag": "r2",
+  "best": {
+   "extent": 0.94,
+   "area": 0.55,
+   "center_off": 0.08,
+   "comp2_ratio": 0.0,
+   "c26": 140,
+   "sym_rmse": 17,
+   "hue_err": 8,
+   "fails": [],
+   "pass": true,
+   "tag": "r2"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "aa_09_smoke_launcher": {
+  "name": "烟幕弹发射器",
+  "family": "anti_air",
+  "rarity": "rare",
+  "best_tag": "r1",
+  "best": {
+   "extent": 0.9,
+   "area": 0.52,
+   "center_off": 0.06,
+   "comp2_ratio": 0.0,
+   "c26": 142,
+   "sym_rmse": 32,
+   "hue_err": 5,
+   "fails": [],
+   "pass": true,
+   "tag": "r1"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "aa_10_camouflage": {
+  "name": "伪装网",
+  "family": "anti_air",
+  "rarity": "uncommon",
+  "best_tag": "r2",
+  "best": {
+   "extent": 0.87,
+   "area": 0.5,
+   "center_off": 0.03,
+   "comp2_ratio": 0.0,
+   "c26": 120,
+   "sym_rmse": 9,
+   "hue_err": 10,
+   "fails": [],
+   "pass": true,
+   "tag": "r2"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "aa_11_auto_fc": {
+  "name": "自动化火控",
+  "family": "anti_air",
+  "rarity": "epic",
+  "best_tag": "r3",
+  "best": {
+   "extent": 0.85,
+   "area": 0.4,
+   "center_off": 0.02,
+   "comp2_ratio": 0.0,
+   "c26": 110,
+   "sym_rmse": 18,
+   "hue_err": 9,
+   "fails": [],
+   "pass": true,
+   "tag": "r3"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "aa_12_fire_on_move": {
+  "name": "行进间射击",
+  "family": "anti_air",
+  "rarity": "epic",
+  "best_tag": "r1",
+  "best": {
+   "extent": 0.96,
+   "area": 0.54,
+   "center_off": 0.04,
+   "comp2_ratio": 0.0,
+   "c26": 133,
+   "sym_rmse": 15,
+   "hue_err": 8,
+   "fails": [],
+   "pass": true,
+   "tag": "r1"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "aa_13_radar_lock": {
+  "name": "雷达锁定",
+  "family": "anti_air",
+  "rarity": "legendary",
+  "best_tag": "r1",
+  "best": {
+   "extent": 0.95,
+   "area": 0.51,
+   "center_off": 0.08,
+   "comp2_ratio": 0.01,
+   "c26": 123,
+   "sym_rmse": 28,
+   "hue_err": 8,
+   "fails": [],
+   "pass": true,
+   "tag": "r1"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "aa_emp_warhead": {
+  "name": "电磁战斗部",
+  "family": "anti_air",
+  "rarity": "legendary",
+  "best_tag": "r3",
+  "best": {
+   "extent": 0.91,
+   "area": 0.57,
+   "center_off": 0.01,
+   "comp2_ratio": 0.0,
+   "c26": 156,
+   "sym_rmse": 14,
+   "hue_err": 9,
+   "fails": [],
+   "pass": true,
+   "tag": "r3"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "aa_acid_warhead": {
+  "name": "酸液战斗部",
+  "family": "anti_air",
+  "rarity": "epic",
+  "best_tag": "r1",
+  "best": {
+   "extent": 0.84,
+   "area": 0.49,
+   "center_off": 0.07,
+   "comp2_ratio": 0.0,
+   "c26": 112,
+   "sym_rmse": 16,
+   "hue_err": 7,
+   "fails": [],
+   "pass": true,
+   "tag": "r1"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "aa_14_searchlight": {
+  "name": "探照灯组",
+  "family": "anti_air",
+  "rarity": "uncommon",
+  "best_tag": "r1",
+  "best": {
+   "extent": 0.97,
+   "area": 0.62,
+   "center_off": 0.02,
+   "comp2_ratio": 0.0,
+   "c26": 131,
+   "sym_rmse": 12,
+   "hue_err": 8,
+   "fails": [],
+   "pass": true,
+   "tag": "r1"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "aa_15_flak_burst": {
+  "name": "定时引信防空弹",
+  "family": "anti_air",
+  "rarity": "rare",
+  "best_tag": "r2",
+  "best": {
+   "extent": 0.86,
+   "area": 0.52,
+   "center_off": 0.05,
+   "comp2_ratio": 0.0,
+   "c26": 119,
+   "sym_rmse": 21,
+   "hue_err": 9,
+   "fails": [],
+   "pass": true,
+   "tag": "r2"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "aa_16_ammo_cache": {
+  "name": "备弹库",
+  "family": "anti_air",
+  "rarity": "common",
+  "best_tag": "r1",
+  "best": {
+   "extent": 0.8,
+   "area": 0.43,
+   "center_off": 0.05,
+   "comp2_ratio": 0.0,
+   "c26": 115,
+   "sym_rmse": 14,
+   "hue_err": 11,
+   "fails": [],
+   "pass": true,
+   "tag": "r1"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "aa_17_altimeter": {
+  "name": "测高仪",
+  "family": "anti_air",
+  "rarity": "uncommon",
+  "best_tag": "r1",
+  "best": {
+   "extent": 0.89,
+   "area": 0.48,
+   "center_off": 0.05,
+   "comp2_ratio": 0.0,
+   "c26": 120,
+   "sym_rmse": 12,
+   "hue_err": 10,
+   "fails": [],
+   "pass": true,
+   "tag": "r1"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "aa_18_twin_mount": {
+  "name": "双联装改装",
+  "family": "anti_air",
+  "rarity": "rare",
+  "best_tag": "r1",
+  "best": {
+   "extent": 0.91,
+   "area": 0.54,
+   "center_off": 0.04,
+   "comp2_ratio": 0.0,
+   "c26": 129,
+   "sym_rmse": 26,
+   "hue_err": 7,
+   "fails": [],
+   "pass": true,
+   "tag": "r1"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "aa_19_barrage_computer": {
+  "name": "弹幕计算机",
+  "family": "anti_air",
+  "rarity": "epic",
+  "best_tag": "r2",
+  "best": {
+   "extent": 0.87,
+   "area": 0.44,
+   "center_off": 0.14,
+   "comp2_ratio": 0.0,
+   "c26": 108,
+   "sym_rmse": 14,
+   "hue_err": 7,
+   "fails": [],
+   "pass": true,
+   "tag": "r2"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "arm_01_sloped_armor": {
+  "name": "倾斜装甲",
+  "family": "armor",
+  "rarity": "rare",
+  "best_tag": "r3",
+  "best": {
+   "extent": 0.88,
+   "area": 0.53,
+   "center_off": 0.04,
+   "comp2_ratio": 0.0,
+   "c26": 147,
+   "sym_rmse": 30,
+   "hue_err": 0,
+   "fails": [],
+   "pass": true,
+   "tag": "r3"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "arm_02_composite_armor": {
+  "name": "复合装甲",
+  "family": "armor",
+  "rarity": "epic",
+  "best_tag": "r3",
+  "best": {
+   "extent": 0.8,
+   "area": 0.43,
+   "center_off": 0.02,
+   "comp2_ratio": 0.0,
+   "c26": 147,
+   "sym_rmse": 20,
+   "hue_err": 0,
+   "fails": [],
+   "pass": true,
+   "tag": "r3"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "arm_03_reactive_armor": {
+  "name": "爆反装甲",
+  "family": "armor",
+  "rarity": "epic",
+  "best_tag": "r1",
+  "best": {
+   "extent": 0.97,
+   "area": 0.62,
+   "center_off": 0.02,
+   "comp2_ratio": 0.0,
+   "c26": 156,
+   "sym_rmse": 19,
+   "hue_err": 3,
+   "fails": [],
+   "pass": true,
+   "tag": "r1"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "arm_04_aps": {
+  "name": "主动防护",
+  "family": "armor",
+  "rarity": "legendary",
+  "best_tag": "r3",
+  "best": {
+   "extent": 0.82,
+   "area": 0.52,
+   "center_off": 0.04,
+   "comp2_ratio": 0.0,
+   "c26": 150,
+   "sym_rmse": 27,
+   "hue_err": 3,
+   "fails": [],
+   "pass": true,
+   "tag": "r3"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "arm_05_smoothbore": {
+  "name": "滑膛炮",
+  "family": "armor",
+  "rarity": "epic",
+  "best_tag": "r3",
+  "best": {
+   "extent": 0.94,
+   "area": 0.53,
+   "center_off": 0.05,
+   "comp2_ratio": 0.0,
+   "c26": 141,
+   "sym_rmse": 24,
+   "hue_err": 2,
+   "fails": [],
+   "pass": true,
+   "tag": "r3"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "arm_06_apfsds": {
+  "name": "尾翼稳定脱壳穿甲弹",
+  "family": "armor",
+  "rarity": "epic",
+  "best_tag": "r1",
+  "best": {
+   "extent": 0.88,
+   "area": 0.49,
+   "center_off": 0.06,
+   "comp2_ratio": 0.0,
+   "c26": 137,
+   "sym_rmse": 32,
+   "hue_err": 0,
+   "fails": [],
+   "pass": true,
+   "tag": "r1"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "arm_07_gun_missile": {
+  "name": "炮射导弹",
+  "family": "armor",
+  "rarity": "legendary",
+  "best_tag": "r2",
+  "best": {
+   "extent": 0.85,
+   "area": 0.48,
+   "center_off": 0.04,
+   "comp2_ratio": 0.0,
+   "c26": 143,
+   "sym_rmse": 10,
+   "hue_err": 0,
+   "fails": [],
+   "pass": true,
+   "tag": "r2"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "arm_08_autoloader": {
+  "name": "自动装弹机",
+  "family": "armor",
+  "rarity": "epic",
+  "best_tag": "r1",
+  "best": {
+   "extent": 0.84,
+   "area": 0.52,
+   "center_off": 0.02,
+   "comp2_ratio": 0.0,
+   "c26": 138,
+   "sym_rmse": 26,
+   "hue_err": 0,
+   "fails": [],
+   "pass": true,
+   "tag": "r1"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "arm_09_turbine": {
+  "name": "燃气轮机",
+  "family": "armor",
+  "rarity": "epic",
+  "best_tag": "r2",
+  "best": {
+   "extent": 0.9,
+   "area": 0.56,
+   "center_off": 0.03,
+   "comp2_ratio": 0.0,
+   "c26": 141,
+   "sym_rmse": 28,
+   "hue_err": 1,
+   "fails": [],
+   "pass": true,
+   "tag": "r2"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "arm_10_diesel_turbo": {
+  "name": "柴油增压引擎",
+  "family": "armor",
+  "rarity": "epic",
+  "best_tag": "r1",
+  "best": {
+   "extent": 0.96,
+   "area": 0.59,
+   "center_off": 0.05,
+   "comp2_ratio": 0.0,
+   "c26": 147,
+   "sym_rmse": 27,
+   "hue_err": 2,
+   "fails": [],
+   "pass": true,
+   "tag": "r1"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "arm_11_fire_control": {
+  "name": "猎歼火控",
+  "family": "armor",
+  "rarity": "epic",
+  "best_tag": "r1",
+  "best": {
+   "extent": 0.77,
+   "area": 0.39,
+   "center_off": 0.03,
+   "comp2_ratio": 0.0,
+   "c26": 142,
+   "sym_rmse": 13,
+   "hue_err": 2,
+   "fails": [],
+   "pass": true,
+   "tag": "r1"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "arm_12_thermal_sight": {
+  "name": "热成像瞄准镜",
+  "family": "armor",
+  "rarity": "epic",
+  "best_tag": "r1",
+  "best": {
+   "extent": 0.97,
+   "area": 0.59,
+   "center_off": 0.04,
+   "comp2_ratio": 0.0,
+   "c26": 147,
+   "sym_rmse": 17,
+   "hue_err": 1,
+   "fails": [],
+   "pass": true,
+   "tag": "r1"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "arm_13_deep_wading": {
+  "name": "火控计算机",
+  "family": "armor",
+  "rarity": "uncommon",
+  "best_tag": "r2",
+  "best": {
+   "extent": 0.97,
+   "area": 0.54,
+   "center_off": 0.05,
+   "comp2_ratio": 0.0,
+   "c26": 130,
+   "sym_rmse": 14,
+   "hue_err": 1,
+   "fails": [],
+   "pass": true,
+   "tag": "r2"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "arm_14_mine_plow": {
+  "name": "扫雷滚/犁",
+  "family": "armor",
+  "rarity": "rare",
+  "best_tag": "r1",
+  "best": {
+   "extent": 0.8,
+   "area": 0.49,
+   "center_off": 0.04,
+   "comp2_ratio": 0.0,
+   "c26": 141,
+   "sym_rmse": 32,
+   "hue_err": 1,
+   "fails": [],
+   "pass": true,
+   "tag": "r1"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "arm_15_data_link": {
+  "name": "战术数据链",
+  "family": "armor",
+  "rarity": "epic",
+  "best_tag": "r2",
+  "best": {
+   "extent": 0.94,
+   "area": 0.6,
+   "center_off": 0.05,
+   "comp2_ratio": 0.0,
+   "c26": 141,
+   "sym_rmse": 11,
+   "hue_err": 3,
+   "fails": [],
+   "pass": true,
+   "tag": "r2"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "arm_16_battle_frenzy": {
+  "name": "战斗狂热",
+  "family": "armor",
+  "rarity": "legendary",
+  "best_tag": "r1",
+  "best": {
+   "extent": 0.95,
+   "area": 0.65,
+   "center_off": 0.02,
+   "comp2_ratio": 0.0,
+   "c26": 162,
+   "sym_rmse": 17,
+   "hue_err": 14,
+   "fails": [],
+   "pass": true,
+   "tag": "r1"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "arm_17_spacer_armor": {
+  "name": "附加钢板",
+  "family": "armor",
+  "rarity": "uncommon",
+  "best_tag": "r2",
+  "best": {
+   "extent": 0.84,
+   "area": 0.5,
+   "center_off": 0.05,
+   "comp2_ratio": 0.0,
+   "c26": 144,
+   "sym_rmse": 13,
+   "hue_err": 1,
+   "fails": [],
+   "pass": true,
+   "tag": "r2"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "arm_18_gun_mantlet": {
+  "name": "厚重炮盾",
+  "family": "armor",
+  "rarity": "uncommon",
+  "best_tag": "r2",
+  "best": {
+   "extent": 0.91,
+   "area": 0.57,
+   "center_off": 0.03,
+   "comp2_ratio": 0.0,
+   "c26": 144,
+   "sym_rmse": 23,
+   "hue_err": 0,
+   "fails": [],
+   "pass": true,
+   "tag": "r2"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "arm_19_track_guards": {
+  "name": "履带护板",
+  "family": "armor",
+  "rarity": "common",
+  "best_tag": "r1",
+  "best": {
+   "extent": 0.86,
+   "area": 0.48,
+   "center_off": 0.07,
+   "comp2_ratio": 0.0,
+   "c26": 150,
+   "sym_rmse": 12,
+   "hue_err": 2,
+   "fails": [],
+   "pass": true,
+   "tag": "r1"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "arm_20_commander_sight": {
+  "name": "车长周视镜",
+  "family": "armor",
+  "rarity": "uncommon",
+  "best_tag": "r1",
+  "best": {
+   "extent": 0.84,
+   "area": 0.54,
+   "center_off": 0.01,
+   "comp2_ratio": 0.0,
+   "c26": 146,
+   "sym_rmse": 11,
+   "hue_err": 3,
+   "fails": [],
+   "pass": true,
+   "tag": "r1"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "arm_21_turret_stabilizer": {
+  "name": "炮塔稳定器",
+  "family": "armor",
+  "rarity": "rare",
+  "best_tag": "r1",
+  "best": {
+   "extent": 0.95,
+   "area": 0.59,
+   "center_off": 0.02,
+   "comp2_ratio": 0.0,
+   "c26": 139,
+   "sym_rmse": 26,
+   "hue_err": 5,
+   "fails": [],
+   "pass": true,
+   "tag": "r1"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "arm_22_counter_pulse": {
+  "name": "受击反击脉冲",
+  "family": "armor",
+  "rarity": "epic",
+  "best_tag": "r1",
+  "best": {
+   "extent": 0.98,
+   "area": 0.6,
+   "center_off": 0.03,
+   "comp2_ratio": 0.0,
+   "c26": 149,
+   "sym_rmse": 13,
+   "hue_err": 1,
+   "fails": [],
+   "pass": true,
+   "tag": "r1"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "arm_23_platoon_datalink": {
+  "name": "装甲连数据链",
+  "family": "armor",
+  "rarity": "epic",
+  "best_tag": "r1",
+  "best": {
+   "extent": 0.9,
+   "area": 0.53,
+   "center_off": 0.01,
+   "comp2_ratio": 0.0,
+   "c26": 134,
+   "sym_rmse": 10,
+   "hue_err": 2,
+   "fails": [],
+   "pass": true,
+   "tag": "r1"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "art_01_rifling": {
+  "name": "膛线强化",
+  "family": "artillery",
+  "rarity": "rare",
+  "best_tag": "r2",
+  "best": {
+   "extent": 0.86,
+   "area": 0.49,
+   "center_off": 0.06,
+   "comp2_ratio": 0.0,
+   "c26": 143,
+   "sym_rmse": 28,
+   "hue_err": 0,
+   "fails": [],
+   "pass": true,
+   "tag": "r2"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "art_02_extended_range": {
+  "name": "增程弹",
+  "family": "artillery",
+  "rarity": "rare",
+  "best_tag": "fix2",
+  "best": {
+   "extent": 0.84,
+   "area": 0.43,
+   "center_off": 0.06,
+   "comp2_ratio": 0.0,
+   "c26": 132,
+   "sym_rmse": 31,
+   "hue_err": 0,
+   "fails": [],
+   "pass": true,
+   "tag": "fix2"
+  },
+  "repaired": true,
+  "fix_rolls": [
+   {
+    "extent": 0.96,
+    "area": 0.46,
+    "center_off": 0.03,
+    "comp2_ratio": 0.0,
+    "c26": 155,
+    "sym_rmse": 36,
+    "hue_err": 2,
+    "fails": [
+     "R4对称"
+    ],
+    "pass": false,
+    "tag": "fix1"
+   },
+   {
+    "extent": 0.84,
+    "area": 0.43,
+    "center_off": 0.06,
+    "comp2_ratio": 0.0,
+    "c26": 132,
+    "sym_rmse": 31,
+    "hue_err": 0,
+    "fails": [],
+    "pass": true,
+    "tag": "fix2"
+   }
+  ]
+ },
+ "art_03_guided_shell": {
+  "name": "精确制导炮弹",
+  "family": "artillery",
+  "rarity": "legendary",
+  "best_tag": "r1",
+  "best": {
+   "extent": 0.87,
+   "area": 0.51,
+   "center_off": 0.05,
+   "comp2_ratio": 0.0,
+   "c26": 156,
+   "sym_rmse": 20,
+   "hue_err": 1,
+   "fails": [],
+   "pass": true,
+   "tag": "r1"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "art_04_cluster_munition": {
+  "name": "子母弹",
+  "family": "artillery",
+  "rarity": "epic",
+  "best_tag": "r2",
+  "best": {
+   "extent": 0.84,
+   "area": 0.51,
+   "center_off": 0.04,
+   "comp2_ratio": 0.0,
+   "c26": 158,
+   "sym_rmse": 28,
+   "hue_err": 2,
+   "fails": [],
+   "pass": true,
+   "tag": "r2"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "art_05_counter_battery_radar": {
+  "name": "反炮兵雷达",
+  "family": "artillery",
+  "rarity": "epic",
+  "best_tag": "r1",
+  "best": {
+   "extent": 0.84,
+   "area": 0.48,
+   "center_off": 0.03,
+   "comp2_ratio": 0.0,
+   "c26": 160,
+   "sym_rmse": 30,
+   "hue_err": 2,
+   "fails": [],
+   "pass": true,
+   "tag": "r1"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "art_06_fire_computer": {
+  "name": "射击计算机",
+  "family": "artillery",
+  "rarity": "epic",
+  "best_tag": "r3",
+  "best": {
+   "extent": 0.9,
+   "area": 0.51,
+   "center_off": 0.13,
+   "comp2_ratio": 0.0,
+   "c26": 164,
+   "sym_rmse": 12,
+   "hue_err": 1,
+   "fails": [],
+   "pass": true,
+   "tag": "r3"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "art_07_ammo_supply": {
+  "name": "弹药运输车",
+  "family": "artillery",
+  "rarity": "rare",
+  "best_tag": "r3",
+  "best": {
+   "extent": 0.92,
+   "area": 0.56,
+   "center_off": 0.04,
+   "comp2_ratio": 0.0,
+   "c26": 164,
+   "sym_rmse": 22,
+   "hue_err": 2,
+   "fails": [],
+   "pass": true,
+   "tag": "r3"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "art_08_uav": {
+  "name": "炮兵侦察无人机",
+  "family": "artillery",
+  "rarity": "epic",
+  "best_tag": "r1",
+  "best": {
+   "extent": 0.83,
+   "area": 0.43,
+   "center_off": 0.04,
+   "comp2_ratio": 0.0,
+   "c26": 140,
+   "sym_rmse": 7,
+   "hue_err": 8,
+   "fails": [],
+   "pass": true,
+   "tag": "r1"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "art_09_rapid_fire": {
+  "name": "急速射系统",
+  "family": "artillery",
+  "rarity": "rare",
+  "best_tag": "r2",
+  "best": {
+   "extent": 0.88,
+   "area": 0.53,
+   "center_off": 0.03,
+   "comp2_ratio": 0.0,
+   "c26": 154,
+   "sym_rmse": 16,
+   "hue_err": 0,
+   "fails": [],
+   "pass": true,
+   "tag": "r2"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "art_10_auto_nav": {
+  "name": "自动导航系统",
+  "family": "artillery",
+  "rarity": "uncommon",
+  "best_tag": "r2",
+  "best": {
+   "extent": 0.94,
+   "area": 0.57,
+   "center_off": 0.03,
+   "comp2_ratio": 0.0,
+   "c26": 140,
+   "sym_rmse": 17,
+   "hue_err": 0,
+   "fails": [],
+   "pass": true,
+   "tag": "r2"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "art_11_thermobaric": {
+  "name": "温压弹",
+  "family": "artillery",
+  "rarity": "legendary",
+  "best_tag": "r2",
+  "best": {
+   "extent": 0.87,
+   "area": 0.52,
+   "center_off": 0.04,
+   "comp2_ratio": 0.0,
+   "c26": 180,
+   "sym_rmse": 14,
+   "hue_err": 0,
+   "fails": [],
+   "pass": true,
+   "tag": "r2"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "art_12_fortification": {
+  "name": "火炮掩体",
+  "family": "artillery",
+  "rarity": "uncommon",
+  "best_tag": "r3",
+  "best": {
+   "extent": 0.88,
+   "area": 0.53,
+   "center_off": 0.06,
+   "comp2_ratio": 0.0,
+   "c26": 145,
+   "sym_rmse": 30,
+   "hue_err": 1,
+   "fails": [],
+   "pass": true,
+   "tag": "r3"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "art_13_apfsds_sabot": {
+  "name": "尾翼稳定脱壳穿甲",
+  "family": "artillery",
+  "rarity": "legendary",
+  "best_tag": "r1",
+  "best": {
+   "extent": 0.9,
+   "area": 0.52,
+   "center_off": 0.1,
+   "comp2_ratio": 0.0,
+   "c26": 148,
+   "sym_rmse": 28,
+   "hue_err": 0,
+   "fails": [],
+   "pass": true,
+   "tag": "r1"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "art_14_counter_battery": {
+  "name": "反击炮击",
+  "family": "artillery",
+  "rarity": "legendary",
+  "best_tag": "r2",
+  "best": {
+   "extent": 0.88,
+   "area": 0.52,
+   "center_off": 0.06,
+   "comp2_ratio": 0.0,
+   "c26": 163,
+   "sym_rmse": 16,
+   "hue_err": 2,
+   "fails": [],
+   "pass": true,
+   "tag": "r2"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "art_15_emp_round": {
+  "name": "电磁脉冲弹",
+  "family": "artillery",
+  "rarity": "epic",
+  "best_tag": "r1",
+  "best": {
+   "extent": 0.88,
+   "area": 0.56,
+   "center_off": 0.01,
+   "comp2_ratio": 0.0,
+   "c26": 177,
+   "sym_rmse": 16,
+   "hue_err": 0,
+   "fails": [],
+   "pass": true,
+   "tag": "r1"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "art_16_nano_virus": {
+  "name": "纳米病毒弹",
+  "family": "artillery",
+  "rarity": "legendary",
+  "best_tag": "r3",
+  "best": {
+   "extent": 0.81,
+   "area": 0.5,
+   "center_off": 0.05,
+   "comp2_ratio": 0.0,
+   "c26": 171,
+   "sym_rmse": 10,
+   "hue_err": 0,
+   "fails": [],
+   "pass": true,
+   "tag": "r3"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "art_incendiary_mix": {
+  "name": "助燃剂弹",
+  "family": "artillery",
+  "rarity": "epic",
+  "best_tag": "r2",
+  "best": {
+   "extent": 0.91,
+   "area": 0.58,
+   "center_off": 0.02,
+   "comp2_ratio": 0.0,
+   "c26": 166,
+   "sym_rmse": 18,
+   "hue_err": 2,
+   "fails": [],
+   "pass": true,
+   "tag": "r2"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "art_white_phosphorus": {
+  "name": "白磷弹",
+  "family": "artillery",
+  "rarity": "epic",
+  "best_tag": "r1",
+  "best": {
+   "extent": 0.91,
+   "area": 0.57,
+   "center_off": 0.02,
+   "comp2_ratio": 0.0,
+   "c26": 199,
+   "sym_rmse": 33,
+   "hue_err": 1,
+   "fails": [],
+   "pass": true,
+   "tag": "r1"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "art_graphite_fiber": {
+  "name": "石墨纤维弹",
+  "family": "artillery",
+  "rarity": "epic",
+  "best_tag": "r1",
+  "best": {
+   "extent": 0.88,
+   "area": 0.53,
+   "center_off": 0.03,
+   "comp2_ratio": 0.0,
+   "c26": 151,
+   "sym_rmse": 21,
+   "hue_err": 2,
+   "fails": [],
+   "pass": true,
+   "tag": "r1"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "art_nano_amp": {
+  "name": "纳米放大器",
+  "family": "artillery",
+  "rarity": "legendary",
+  "best_tag": "r3",
+  "best": {
+   "extent": 0.92,
+   "area": 0.57,
+   "center_off": 0.02,
+   "comp2_ratio": 0.0,
+   "c26": 165,
+   "sym_rmse": 12,
+   "hue_err": 8,
+   "fails": [],
+   "pass": true,
+   "tag": "r3"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "art_chem_cluster": {
+  "name": "化学集束弹",
+  "family": "artillery",
+  "rarity": "epic",
+  "best_tag": "r1",
+  "best": {
+   "extent": 0.89,
+   "area": 0.55,
+   "center_off": 0.03,
+   "comp2_ratio": 0.0,
+   "c26": 160,
+   "sym_rmse": 25,
+   "hue_err": 0,
+   "fails": [],
+   "pass": true,
+   "tag": "r1"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "sup_nano_seeder": {
+  "name": "纳米播种机",
+  "family": "artillery",
+  "rarity": "epic",
+  "best_tag": "r2",
+  "best": {
+   "extent": 0.91,
+   "area": 0.56,
+   "center_off": 0.03,
+   "comp2_ratio": 0.0,
+   "c26": 170,
+   "sym_rmse": 26,
+   "hue_err": 0,
+   "fails": [],
+   "pass": true,
+   "tag": "r2"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "sup_targeting_drone": {
+  "name": "目标指示无人机",
+  "family": "artillery",
+  "rarity": "legendary",
+  "best_tag": "r3",
+  "best": {
+   "extent": 0.85,
+   "area": 0.48,
+   "center_off": 0.03,
+   "comp2_ratio": 0.0,
+   "c26": 155,
+   "sym_rmse": 8,
+   "hue_err": 5,
+   "fails": [],
+   "pass": true,
+   "tag": "r3"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "art_17_barrel_maintenance": {
+  "name": "身管维护",
+  "family": "artillery",
+  "rarity": "common",
+  "best_tag": "r2",
+  "best": {
+   "extent": 0.93,
+   "area": 0.58,
+   "center_off": 0.03,
+   "comp2_ratio": 0.0,
+   "c26": 161,
+   "sym_rmse": 24,
+   "hue_err": 0,
+   "fails": [],
+   "pass": true,
+   "tag": "r2"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "art_18_rapid_loader": {
+  "name": "快速装填机构",
+  "family": "artillery",
+  "rarity": "uncommon",
+  "best_tag": "r1",
+  "best": {
+   "extent": 0.89,
+   "area": 0.54,
+   "center_off": 0.02,
+   "comp2_ratio": 0.0,
+   "c26": 157,
+   "sym_rmse": 20,
+   "hue_err": 2,
+   "fails": [],
+   "pass": true,
+   "tag": "r1"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "art_19_met_datalink": {
+  "name": "气象数据链",
+  "family": "artillery",
+  "rarity": "rare",
+  "best_tag": "r2",
+  "best": {
+   "extent": 0.96,
+   "area": 0.58,
+   "center_off": 0.1,
+   "comp2_ratio": 0.0,
+   "c26": 154,
+   "sym_rmse": 9,
+   "hue_err": 1,
+   "fails": [],
+   "pass": true,
+   "tag": "r2"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "art_20_last_stand": {
+  "name": "濒死爆发",
+  "family": "artillery",
+  "rarity": "epic",
+  "best_tag": "r2",
+  "best": {
+   "extent": 0.87,
+   "area": 0.52,
+   "center_off": 0.05,
+   "comp2_ratio": 0.0,
+   "c26": 168,
+   "sym_rmse": 17,
+   "hue_err": 1,
+   "fails": [],
+   "pass": true,
+   "tag": "r2"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "art_21_saturation_director": {
+  "name": "饱和射击校射机",
+  "family": "artillery",
+  "rarity": "legendary",
+  "best_tag": "r3",
+  "best": {
+   "extent": 0.84,
+   "area": 0.47,
+   "center_off": 0.06,
+   "comp2_ratio": 0.0,
+   "c26": 160,
+   "sym_rmse": 18,
+   "hue_err": 0,
+   "fails": [],
+   "pass": true,
+   "tag": "r3"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "eng_01_mine_sweeper": {
+  "name": "反应装甲",
+  "family": "engineer",
+  "rarity": "rare",
+  "best_tag": "r2",
+  "best": {
+   "extent": 0.95,
+   "area": 0.51,
+   "center_off": 0.05,
+   "comp2_ratio": 0.0,
+   "c26": 137,
+   "sym_rmse": 32,
+   "hue_err": 11,
+   "fails": [],
+   "pass": true,
+   "tag": "r2"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "eng_02_explosives": {
+  "name": "爆破装置",
+  "family": "engineer",
+  "rarity": "epic",
+  "best_tag": "r1",
+  "best": {
+   "extent": 0.88,
+   "area": 0.5,
+   "center_off": 0.14,
+   "comp2_ratio": 0.0,
+   "c26": 130,
+   "sym_rmse": 18,
+   "hue_err": 10,
+   "fails": [],
+   "pass": true,
+   "tag": "r1"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "eng_03_welding": {
+  "name": "焊接设备",
+  "family": "engineer",
+  "rarity": "rare",
+  "best_tag": "r1",
+  "best": {
+   "extent": 0.87,
+   "area": 0.51,
+   "center_off": 0.04,
+   "comp2_ratio": 0.0,
+   "c26": 130,
+   "sym_rmse": 23,
+   "hue_err": 6,
+   "fails": [],
+   "pass": true,
+   "tag": "r1"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "eng_04_bridge": {
+  "name": "架桥设备",
+  "family": "engineer",
+  "rarity": "epic",
+  "best_tag": "r3",
+  "best": {
+   "extent": 0.84,
+   "area": 0.43,
+   "center_off": 0.03,
+   "comp2_ratio": 0.0,
+   "c26": 125,
+   "sym_rmse": 10,
+   "hue_err": 4,
+   "fails": [],
+   "pass": true,
+   "tag": "r3"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "eng_05_shovel": {
+  "name": "工程铲",
+  "family": "engineer",
+  "rarity": "uncommon",
+  "best_tag": "r3",
+  "best": {
+   "extent": 0.89,
+   "area": 0.54,
+   "center_off": 0.04,
+   "comp2_ratio": 0.0,
+   "c26": 129,
+   "sym_rmse": 24,
+   "hue_err": 6,
+   "fails": [],
+   "pass": true,
+   "tag": "r3"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "eng_06_crane": {
+  "name": "间隙装甲",
+  "family": "engineer",
+  "rarity": "rare",
+  "best_tag": "r3",
+  "best": {
+   "extent": 0.87,
+   "area": 0.48,
+   "center_off": 0.03,
+   "comp2_ratio": 0.0,
+   "c26": 135,
+   "sym_rmse": 21,
+   "hue_err": 10,
+   "fails": [],
+   "pass": true,
+   "tag": "r3"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "eng_07_generator": {
+  "name": "发电机",
+  "family": "engineer",
+  "rarity": "rare",
+  "best_tag": "r1",
+  "best": {
+   "extent": 0.91,
+   "area": 0.56,
+   "center_off": 0.02,
+   "comp2_ratio": 0.0,
+   "c26": 149,
+   "sym_rmse": 16,
+   "hue_err": 6,
+   "fails": [],
+   "pass": true,
+   "tag": "r1"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "eng_08_medical": {
+  "name": "战场急救站",
+  "family": "engineer",
+  "rarity": "epic",
+  "best_tag": "r3",
+  "best": {
+   "extent": 0.92,
+   "area": 0.54,
+   "center_off": 0.03,
+   "comp2_ratio": 0.0,
+   "c26": 130,
+   "sym_rmse": 8,
+   "hue_err": 6,
+   "fails": [],
+   "pass": true,
+   "tag": "r3"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "eng_09_supply": {
+  "name": "弹药补给车",
+  "family": "engineer",
+  "rarity": "rare",
+  "best_tag": "r2",
+  "best": {
+   "extent": 0.86,
+   "area": 0.5,
+   "center_off": 0.03,
+   "comp2_ratio": 0.0,
+   "c26": 121,
+   "sym_rmse": 19,
+   "hue_err": 6,
+   "fails": [],
+   "pass": true,
+   "tag": "r2"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "eng_10_camouflage": {
+  "name": "伪装网系统",
+  "family": "engineer",
+  "rarity": "epic",
+  "best_tag": "r1",
+  "best": {
+   "extent": 0.94,
+   "area": 0.57,
+   "center_off": 0.05,
+   "comp2_ratio": 0.0,
+   "c26": 126,
+   "sym_rmse": 14,
+   "hue_err": 11,
+   "fails": [],
+   "pass": true,
+   "tag": "r1"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "eng_11_breaching_charge": {
+  "name": "爆破装药",
+  "family": "engineer",
+  "rarity": "epic",
+  "best_tag": "r1",
+  "best": {
+   "extent": 0.91,
+   "area": 0.54,
+   "center_off": 0.06,
+   "comp2_ratio": 0.0,
+   "c26": 131,
+   "sym_rmse": 25,
+   "hue_err": 6,
+   "fails": [],
+   "pass": true,
+   "tag": "r1"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "eng_12_reactive_engineering": {
+  "name": "爆反工程装甲",
+  "family": "engineer",
+  "rarity": "legendary",
+  "best_tag": "r2",
+  "best": {
+   "extent": 0.84,
+   "area": 0.59,
+   "center_off": 0.02,
+   "comp2_ratio": 0.0,
+   "c26": 137,
+   "sym_rmse": 17,
+   "hue_err": 9,
+   "fails": [],
+   "pass": true,
+   "tag": "r2"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "eng_13_supply_cache": {
+  "name": "补给遗物",
+  "family": "engineer",
+  "rarity": "epic",
+  "best_tag": "r2",
+  "best": {
+   "extent": 0.83,
+   "area": 0.46,
+   "center_off": 0.07,
+   "comp2_ratio": 0.0,
+   "c26": 124,
+   "sym_rmse": 17,
+   "hue_err": 9,
+   "fails": [],
+   "pass": true,
+   "tag": "r2"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "eng_optical_fiber": {
+  "name": "光纤链路",
+  "family": "engineer",
+  "rarity": "epic",
+  "best_tag": "r3",
+  "best": {
+   "extent": 0.96,
+   "area": 0.53,
+   "center_off": 0.03,
+   "comp2_ratio": 0.0,
+   "c26": 152,
+   "sym_rmse": 29,
+   "hue_err": 14,
+   "fails": [],
+   "pass": true,
+   "tag": "r3"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "eng_chem_sprayer": {
+  "name": "化学喷洒器",
+  "family": "engineer",
+  "rarity": "epic",
+  "best_tag": "r3",
+  "best": {
+   "extent": 0.91,
+   "area": 0.55,
+   "center_off": 0.05,
+   "comp2_ratio": 0.0,
+   "c26": 133,
+   "sym_rmse": 21,
+   "hue_err": 6,
+   "fails": [],
+   "pass": true,
+   "tag": "r3"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "eng_14_salvage_drone": {
+  "name": "回收无人机",
+  "family": "engineer",
+  "rarity": "epic",
+  "best_tag": "r3",
+  "best": {
+   "extent": 0.89,
+   "area": 0.47,
+   "center_off": 0.06,
+   "comp2_ratio": 0.0,
+   "c26": 119,
+   "sym_rmse": 8,
+   "hue_err": 8,
+   "fails": [],
+   "pass": true,
+   "tag": "r3"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "eng_15_entrenching_kit": {
+  "name": "工兵铲套装",
+  "family": "engineer",
+  "rarity": "common",
+  "best_tag": "r2",
+  "best": {
+   "extent": 0.87,
+   "area": 0.48,
+   "center_off": 0.03,
+   "comp2_ratio": 0.0,
+   "c26": 130,
+   "sym_rmse": 21,
+   "hue_err": 7,
+   "fails": [],
+   "pass": true,
+   "tag": "r2"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "eng_16_field_generator": {
+  "name": "野战发电机",
+  "family": "engineer",
+  "rarity": "uncommon",
+  "best_tag": "r2",
+  "best": {
+   "extent": 0.91,
+   "area": 0.53,
+   "center_off": 0.06,
+   "comp2_ratio": 0.01,
+   "c26": 155,
+   "sym_rmse": 13,
+   "hue_err": 5,
+   "fails": [],
+   "pass": true,
+   "tag": "r2"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "eng_17_recovery_crane": {
+  "name": "抢修起重机",
+  "family": "engineer",
+  "rarity": "rare",
+  "best_tag": "r3",
+  "best": {
+   "extent": 0.89,
+   "area": 0.53,
+   "center_off": 0.01,
+   "comp2_ratio": 0.0,
+   "c26": 128,
+   "sym_rmse": 19,
+   "hue_err": 13,
+   "fails": [],
+   "pass": true,
+   "tag": "r3"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "eng_18_defense_blueprints": {
+  "name": "防线工程蓝图",
+  "family": "engineer",
+  "rarity": "rare",
+  "best_tag": "r2",
+  "best": {
+   "extent": 0.89,
+   "area": 0.56,
+   "center_off": 0.04,
+   "comp2_ratio": 0.0,
+   "c26": 144,
+   "sym_rmse": 19,
+   "hue_err": 3,
+   "fails": [],
+   "pass": true,
+   "tag": "r2"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "enh_hp_up": {
+  "name": "体质训练",
+  "family": "enhancement",
+  "rarity": "uncommon",
+  "best_tag": "r1",
+  "best": {
+   "extent": 0.93,
+   "area": 0.59,
+   "center_off": 0.08,
+   "comp2_ratio": 0.0,
+   "c26": 134,
+   "sym_rmse": 24,
+   "hue_err": 34,
+   "fails": [],
+   "pass": true,
+   "tag": "r1"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "enh_dmg_up": {
+  "name": "火力训练",
+  "family": "enhancement",
+  "rarity": "uncommon",
+  "best_tag": "r2",
+  "best": {
+   "extent": 0.83,
+   "area": 0.51,
+   "center_off": 0.02,
+   "comp2_ratio": 0.0,
+   "c26": 118,
+   "sym_rmse": 15,
+   "hue_err": 29,
+   "fails": [],
+   "pass": true,
+   "tag": "r2"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "enh_def_up": {
+  "name": "防护训练",
+  "family": "enhancement",
+  "rarity": "uncommon",
+  "best_tag": "r3",
+  "best": {
+   "extent": 0.95,
+   "area": 0.53,
+   "center_off": 0.04,
+   "comp2_ratio": 0.0,
+   "c26": 133,
+   "sym_rmse": 14,
+   "hue_err": 33,
+   "fails": [],
+   "pass": true,
+   "tag": "r3"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "enh_def_flat": {
+  "name": "坚壁训练",
+  "family": "enhancement",
+  "rarity": "uncommon",
+  "best_tag": "r2",
+  "best": {
+   "extent": 0.93,
+   "area": 0.54,
+   "center_off": 0.05,
+   "comp2_ratio": 0.0,
+   "c26": 128,
+   "sym_rmse": 14,
+   "hue_err": 29,
+   "fails": [],
+   "pass": true,
+   "tag": "r2"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "enh_speed_up": {
+  "name": "机动训练",
+  "family": "enhancement",
+  "rarity": "uncommon",
+  "best_tag": "r2",
+  "best": {
+   "extent": 0.86,
+   "area": 0.51,
+   "center_off": 0.05,
+   "comp2_ratio": 0.0,
+   "c26": 135,
+   "sym_rmse": 26,
+   "hue_err": 35,
+   "fails": [],
+   "pass": true,
+   "tag": "r2"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "enh_range_up": {
+  "name": "索敌训练",
+  "family": "enhancement",
+  "rarity": "uncommon",
+  "best_tag": "r3",
+  "best": {
+   "extent": 0.95,
+   "area": 0.52,
+   "center_off": 0.13,
+   "comp2_ratio": 0.1,
+   "c26": 136,
+   "sym_rmse": 11,
+   "hue_err": 37,
+   "fails": [],
+   "pass": true,
+   "tag": "r3"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "enh_atkspd_up": {
+  "name": "反应训练",
+  "family": "enhancement",
+  "rarity": "uncommon",
+  "best_tag": "r2",
+  "best": {
+   "extent": 0.95,
+   "area": 0.61,
+   "center_off": 0.05,
+   "comp2_ratio": 0.0,
+   "c26": 142,
+   "sym_rmse": 22,
+   "hue_err": 36,
+   "fails": [],
+   "pass": true,
+   "tag": "r2"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "enh_crit": {
+  "name": "弱点洞察",
+  "family": "enhancement",
+  "rarity": "rare",
+  "best_tag": "r1",
+  "best": {
+   "extent": 0.89,
+   "area": 0.5,
+   "center_off": 0.03,
+   "comp2_ratio": 0.0,
+   "c26": 128,
+   "sym_rmse": 14,
+   "hue_err": 30,
+   "fails": [],
+   "pass": true,
+   "tag": "r1"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "enh_lifesteal": {
+  "name": "战场回收",
+  "family": "enhancement",
+  "rarity": "rare",
+  "best_tag": "r3",
+  "best": {
+   "extent": 0.96,
+   "area": 0.61,
+   "center_off": 0.05,
+   "comp2_ratio": 0.0,
+   "c26": 130,
+   "sym_rmse": 21,
+   "hue_err": 31,
+   "fails": [],
+   "pass": true,
+   "tag": "r3"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "enh_splash": {
+  "name": "爆破战技",
+  "family": "enhancement",
+  "rarity": "rare",
+  "best_tag": "r2",
+  "best": {
+   "extent": 0.83,
+   "area": 0.51,
+   "center_off": 0.04,
+   "comp2_ratio": 0.0,
+   "c26": 122,
+   "sym_rmse": 16,
+   "hue_err": 29,
+   "fails": [],
+   "pass": true,
+   "tag": "r2"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "enh_penetration": {
+  "name": "破甲专精",
+  "family": "enhancement",
+  "rarity": "rare",
+  "best_tag": "r3",
+  "best": {
+   "extent": 0.97,
+   "area": 0.58,
+   "center_off": 0.04,
+   "comp2_ratio": 0.01,
+   "c26": 148,
+   "sym_rmse": 24,
+   "hue_err": 18,
+   "fails": [],
+   "pass": true,
+   "tag": "r3"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "enh_regen": {
+  "name": "野战急救",
+  "family": "enhancement",
+  "rarity": "rare",
+  "best_tag": "r2",
+  "best": {
+   "extent": 0.88,
+   "area": 0.55,
+   "center_off": 0.07,
+   "comp2_ratio": 0.0,
+   "c26": 129,
+   "sym_rmse": 6,
+   "hue_err": 29,
+   "fails": [],
+   "pass": true,
+   "tag": "r2"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "enh_chain": {
+  "name": "连锁战术",
+  "family": "enhancement",
+  "rarity": "rare",
+  "best_tag": "r1",
+  "best": {
+   "extent": 0.9,
+   "area": 0.57,
+   "center_off": 0.06,
+   "comp2_ratio": 0.0,
+   "c26": 142,
+   "sym_rmse": 11,
+   "hue_err": 28,
+   "fails": [],
+   "pass": true,
+   "tag": "r1"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "enh_shield_kill": {
+  "name": "收割本能",
+  "family": "enhancement",
+  "rarity": "epic",
+  "best_tag": "r1",
+  "best": {
+   "extent": 0.92,
+   "area": 0.55,
+   "center_off": 0.07,
+   "comp2_ratio": 0.0,
+   "c26": 127,
+   "sym_rmse": 21,
+   "hue_err": 33,
+   "fails": [],
+   "pass": true,
+   "tag": "r1"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "enh_dodge": {
+  "name": "本能闪避",
+  "family": "enhancement",
+  "rarity": "epic",
+  "best_tag": "r2",
+  "best": {
+   "extent": 0.85,
+   "area": 0.51,
+   "center_off": 0.05,
+   "comp2_ratio": 0.0,
+   "c26": 128,
+   "sym_rmse": 20,
+   "hue_err": 32,
+   "fails": [],
+   "pass": true,
+   "tag": "r2"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "enh_crit_dmg": {
+  "name": "致命精通",
+  "family": "enhancement",
+  "rarity": "epic",
+  "best_tag": "r1",
+  "best": {
+   "extent": 0.82,
+   "area": 0.51,
+   "center_off": 0.08,
+   "comp2_ratio": 0.0,
+   "c26": 124,
+   "sym_rmse": 12,
+   "hue_err": 32,
+   "fails": [],
+   "pass": true,
+   "tag": "r1"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "enh_crit_up": {
+  "name": "精准训练",
+  "family": "enhancement",
+  "rarity": "common",
+  "best_tag": "r2",
+  "best": {
+   "extent": 0.95,
+   "area": 0.51,
+   "center_off": 0.07,
+   "comp2_ratio": 0.0,
+   "c26": 127,
+   "sym_rmse": 12,
+   "hue_err": 26,
+   "fails": [],
+   "pass": true,
+   "tag": "r2"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "enh_dodge_up": {
+  "name": "回避训练",
+  "family": "enhancement",
+  "rarity": "uncommon",
+  "best_tag": "r1",
+  "best": {
+   "extent": 0.91,
+   "area": 0.52,
+   "center_off": 0.08,
+   "comp2_ratio": 0.01,
+   "c26": 135,
+   "sym_rmse": 23,
+   "hue_err": 34,
+   "fails": [],
+   "pass": true,
+   "tag": "r1"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "enh_regen_up": {
+  "name": "休整训练",
+  "family": "enhancement",
+  "rarity": "uncommon",
+  "best_tag": "r1",
+  "best": {
+   "extent": 0.89,
+   "area": 0.49,
+   "center_off": 0.07,
+   "comp2_ratio": 0.0,
+   "c26": 119,
+   "sym_rmse": 15,
+   "hue_err": 35,
+   "fails": [],
+   "pass": true,
+   "tag": "r1"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "for_01_concrete": {
+  "name": "钢筋混凝土装甲",
+  "family": "fort",
+  "rarity": "rare",
+  "best_tag": "r1",
+  "best": {
+   "extent": 0.91,
+   "area": 0.51,
+   "center_off": 0.06,
+   "comp2_ratio": 0.0,
+   "c26": 156,
+   "sym_rmse": 17,
+   "hue_err": 6,
+   "fails": [],
+   "pass": true,
+   "tag": "r1"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "for_02_tunnel": {
+  "name": "地下坑道",
+  "family": "fort",
+  "rarity": "epic",
+  "best_tag": "r1",
+  "best": {
+   "extent": 0.93,
+   "area": 0.57,
+   "center_off": 0.07,
+   "comp2_ratio": 0.0,
+   "c26": 134,
+   "sym_rmse": 7,
+   "hue_err": 3,
+   "fails": [],
+   "pass": true,
+   "tag": "r1"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "for_03_auto_turret": {
+  "name": "自动炮塔",
+  "family": "fort",
+  "rarity": "epic",
+  "best_tag": "r2",
+  "best": {
+   "extent": 0.96,
+   "area": 0.55,
+   "center_off": 0.06,
+   "comp2_ratio": 0.0,
+   "c26": 130,
+   "sym_rmse": 18,
+   "hue_err": 7,
+   "fails": [],
+   "pass": true,
+   "tag": "r2"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "for_04_filtration": {
+  "name": "通风过滤系统",
+  "family": "fort",
+  "rarity": "epic",
+  "best_tag": "r1",
+  "best": {
+   "extent": 0.89,
+   "area": 0.49,
+   "center_off": 0.05,
+   "comp2_ratio": 0.0,
+   "c26": 138,
+   "sym_rmse": 11,
+   "hue_err": 9,
+   "fails": [],
+   "pass": true,
+   "tag": "r1"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "for_05_ammo_dump": {
+  "name": "弹药库",
+  "family": "fort",
+  "rarity": "rare",
+  "best_tag": "r1",
+  "best": {
+   "extent": 0.83,
+   "area": 0.41,
+   "center_off": 0.18,
+   "comp2_ratio": 0.01,
+   "c26": 125,
+   "sym_rmse": 18,
+   "hue_err": 16,
+   "fails": [],
+   "pass": true,
+   "tag": "r1"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "for_06_radar": {
+  "name": "雷达天线",
+  "family": "fort",
+  "rarity": "epic",
+  "best_tag": "r2",
+  "best": {
+   "extent": 0.95,
+   "area": 0.58,
+   "center_off": 0.08,
+   "comp2_ratio": 0.0,
+   "c26": 144,
+   "sym_rmse": 21,
+   "hue_err": 29,
+   "fails": [],
+   "pass": true,
+   "tag": "r2"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "for_07_camouflage": {
+  "name": "伪装系统",
+  "family": "fort",
+  "rarity": "rare",
+  "best_tag": "r2",
+  "best": {
+   "extent": 0.94,
+   "area": 0.54,
+   "center_off": 0.06,
+   "comp2_ratio": 0.0,
+   "c26": 130,
+   "sym_rmse": 21,
+   "hue_err": 13,
+   "fails": [],
+   "pass": true,
+   "tag": "r2"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "for_08_trench": {
+  "name": "反坦克壕",
+  "family": "fort",
+  "rarity": "rare",
+  "best_tag": "r1",
+  "best": {
+   "extent": 0.89,
+   "area": 0.57,
+   "center_off": 0.05,
+   "comp2_ratio": 0.0,
+   "c26": 133,
+   "sym_rmse": 7,
+   "hue_err": 8,
+   "fails": [],
+   "pass": true,
+   "tag": "r1"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "for_09_minefield": {
+  "name": "雷场",
+  "family": "fort",
+  "rarity": "epic",
+  "best_tag": "r2",
+  "best": {
+   "extent": 0.84,
+   "area": 0.51,
+   "center_off": 0.03,
+   "comp2_ratio": 0.0,
+   "c26": 142,
+   "sym_rmse": 6,
+   "hue_err": 14,
+   "fails": [],
+   "pass": true,
+   "tag": "r2"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "for_10_command": {
+  "name": "指挥塔",
+  "family": "fort",
+  "rarity": "epic",
+  "best_tag": "r3",
+  "best": {
+   "extent": 0.91,
+   "area": 0.48,
+   "center_off": 0.05,
+   "comp2_ratio": 0.0,
+   "c26": 128,
+   "sym_rmse": 6,
+   "hue_err": 18,
+   "fails": [],
+   "pass": true,
+   "tag": "r3"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "for_11_advanced_minefield": {
+  "name": "强化雷场",
+  "family": "fort",
+  "rarity": "legendary",
+  "best_tag": "r1",
+  "best": {
+   "extent": 0.87,
+   "area": 0.54,
+   "center_off": 0.02,
+   "comp2_ratio": 0.0,
+   "c26": 129,
+   "sym_rmse": 6,
+   "hue_err": 21,
+   "fails": [],
+   "pass": true,
+   "tag": "r1"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "for_12_anti_tank_trench": {
+  "name": "反坦克壕",
+  "family": "fort",
+  "rarity": "epic",
+  "best_tag": "r3",
+  "best": {
+   "extent": 0.87,
+   "area": 0.51,
+   "center_off": 0.03,
+   "comp2_ratio": 0.0,
+   "c26": 126,
+   "sym_rmse": 14,
+   "hue_err": 8,
+   "fails": [],
+   "pass": true,
+   "tag": "r3"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "for_13_command_bunker": {
+  "name": "指挥地堡",
+  "family": "fort",
+  "rarity": "epic",
+  "best_tag": "r1",
+  "best": {
+   "extent": 0.84,
+   "area": 0.42,
+   "center_off": 0.04,
+   "comp2_ratio": 0.01,
+   "c26": 130,
+   "sym_rmse": 6,
+   "hue_err": 6,
+   "fails": [],
+   "pass": true,
+   "tag": "r1"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "for_14_bomb_shelter": {
+  "name": "防空洞加固",
+  "family": "fort",
+  "rarity": "uncommon",
+  "best_tag": "r2",
+  "best": {
+   "extent": 0.95,
+   "area": 0.58,
+   "center_off": 0.05,
+   "comp2_ratio": 0.0,
+   "c26": 148,
+   "sym_rmse": 9,
+   "hue_err": 7,
+   "fails": [],
+   "pass": true,
+   "tag": "r2"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "for_15_sandbag": {
+  "name": "沙袋工事",
+  "family": "fort",
+  "rarity": "common",
+  "best_tag": "r3",
+  "best": {
+   "extent": 0.86,
+   "area": 0.55,
+   "center_off": 0.06,
+   "comp2_ratio": 0.0,
+   "c26": 142,
+   "sym_rmse": 9,
+   "hue_err": 12,
+   "fails": [],
+   "pass": true,
+   "tag": "r3"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "for_16_drainage": {
+  "name": "排水系统",
+  "family": "fort",
+  "rarity": "uncommon",
+  "best_tag": "r3",
+  "best": {
+   "extent": 0.86,
+   "area": 0.5,
+   "center_off": 0.05,
+   "comp2_ratio": 0.0,
+   "c26": 132,
+   "sym_rmse": 19,
+   "hue_err": 26,
+   "fails": [],
+   "pass": true,
+   "tag": "r3"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "for_17_hardened_bunker": {
+  "name": "永备工事",
+  "family": "fort",
+  "rarity": "rare",
+  "best_tag": "r3",
+  "best": {
+   "extent": 0.91,
+   "area": 0.48,
+   "center_off": 0.07,
+   "comp2_ratio": 0.0,
+   "c26": 127,
+   "sym_rmse": 7,
+   "hue_err": 10,
+   "fails": [],
+   "pass": true,
+   "tag": "r3"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "for_18_demolition_cache": {
+  "name": "殉爆预案",
+  "family": "fort",
+  "rarity": "epic",
+  "best_tag": "r2",
+  "best": {
+   "extent": 0.92,
+   "area": 0.52,
+   "center_off": 0.04,
+   "comp2_ratio": 0.0,
+   "c26": 132,
+   "sym_rmse": 9,
+   "hue_err": 6,
+   "fails": [],
+   "pass": true,
+   "tag": "r2"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "inf_01_submachine_gun": {
+  "name": "冲锋枪改装",
+  "family": "infantry",
+  "rarity": "rare",
+  "best_tag": "r1",
+  "best": {
+   "extent": 0.83,
+   "area": 0.45,
+   "center_off": 0.02,
+   "comp2_ratio": 0.0,
+   "c26": 124,
+   "sym_rmse": 24,
+   "hue_err": 24,
+   "fails": [],
+   "pass": true,
+   "tag": "r1"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "inf_02_assault_rifle": {
+  "name": "突击步枪化",
+  "family": "infantry",
+  "rarity": "rare",
+  "best_tag": "r1",
+  "best": {
+   "extent": 0.8,
+   "area": 0.42,
+   "center_off": 0.02,
+   "comp2_ratio": 0.0,
+   "c26": 119,
+   "sym_rmse": 24,
+   "hue_err": 11,
+   "fails": [],
+   "pass": true,
+   "tag": "r1"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "inf_03_small_caliber": {
+  "name": "小口径化",
+  "family": "infantry",
+  "rarity": "rare",
+  "best_tag": "r1",
+  "best": {
+   "extent": 0.95,
+   "area": 0.52,
+   "center_off": 0.05,
+   "comp2_ratio": 0.0,
+   "c26": 129,
+   "sym_rmse": 31,
+   "hue_err": 22,
+   "fails": [],
+   "pass": true,
+   "tag": "r1"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "inf_04_bullpup": {
+  "name": "无托结构",
+  "family": "infantry",
+  "rarity": "rare",
+  "best_tag": "r1",
+  "best": {
+   "extent": 0.88,
+   "area": 0.51,
+   "center_off": 0.05,
+   "comp2_ratio": 0.0,
+   "c26": 138,
+   "sym_rmse": 17,
+   "hue_err": 24,
+   "fails": [],
+   "pass": true,
+   "tag": "r1"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "inf_05_ap_ammo": {
+  "name": "穿甲弹",
+  "family": "infantry",
+  "rarity": "epic",
+  "best_tag": "r2",
+  "best": {
+   "extent": 0.72,
+   "area": 0.46,
+   "center_off": 0.02,
+   "comp2_ratio": 0.0,
+   "c26": 132,
+   "sym_rmse": 27,
+   "hue_err": 18,
+   "fails": [],
+   "pass": true,
+   "tag": "r2"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "inf_06_hp_ammo": {
+  "name": "空尖弹",
+  "family": "infantry",
+  "rarity": "epic",
+  "best_tag": "r3",
+  "best": {
+   "extent": 0.82,
+   "area": 0.48,
+   "center_off": 0.05,
+   "comp2_ratio": 0.01,
+   "c26": 139,
+   "sym_rmse": 25,
+   "hue_err": 22,
+   "fails": [],
+   "pass": true,
+   "tag": "r3"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "inf_07_optical_scope": {
+  "name": "光学瞄准镜",
+  "family": "infantry",
+  "rarity": "rare",
+  "best_tag": "r2",
+  "best": {
+   "extent": 0.81,
+   "area": 0.46,
+   "center_off": 0.05,
+   "comp2_ratio": 0.0,
+   "c26": 140,
+   "sym_rmse": 12,
+   "hue_err": 9,
+   "fails": [],
+   "pass": true,
+   "tag": "r2"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "inf_08_holographic": {
+  "name": "全息瞄准镜",
+  "family": "infantry",
+  "rarity": "rare",
+  "best_tag": "r3",
+  "best": {
+   "extent": 0.98,
+   "area": 0.58,
+   "center_off": 0.0,
+   "comp2_ratio": 0.0,
+   "c26": 135,
+   "sym_rmse": 19,
+   "hue_err": 12,
+   "fails": [],
+   "pass": true,
+   "tag": "r3"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "inf_09_dual_mag": {
+  "name": "双弹匣并联",
+  "family": "infantry",
+  "rarity": "uncommon",
+  "best_tag": "r2",
+  "best": {
+   "extent": 0.89,
+   "area": 0.58,
+   "center_off": 0.02,
+   "comp2_ratio": 0.0,
+   "c26": 134,
+   "sym_rmse": 14,
+   "hue_err": 16,
+   "fails": [],
+   "pass": true,
+   "tag": "r2"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "inf_10_saw": {
+  "name": "班用机枪化",
+  "family": "infantry",
+  "rarity": "epic",
+  "best_tag": "r2",
+  "best": {
+   "extent": 0.91,
+   "area": 0.49,
+   "center_off": 0.05,
+   "comp2_ratio": 0.0,
+   "c26": 118,
+   "sym_rmse": 23,
+   "hue_err": 17,
+   "fails": [],
+   "pass": true,
+   "tag": "r2"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "inf_11_armor_insert": {
+  "name": "防弹插板",
+  "family": "infantry",
+  "rarity": "rare",
+  "best_tag": "r3",
+  "best": {
+   "extent": 0.82,
+   "area": 0.44,
+   "center_off": 0.03,
+   "comp2_ratio": 0.0,
+   "c26": 135,
+   "sym_rmse": 8,
+   "hue_err": 7,
+   "fails": [],
+   "pass": true,
+   "tag": "r3"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "inf_12_body_armor": {
+  "name": "防弹背心",
+  "family": "infantry",
+  "rarity": "rare",
+  "best_tag": "r3",
+  "best": {
+   "extent": 0.8,
+   "area": 0.48,
+   "center_off": 0.04,
+   "comp2_ratio": 0.0,
+   "c26": 135,
+   "sym_rmse": 9,
+   "hue_err": 15,
+   "fails": [],
+   "pass": true,
+   "tag": "r3"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "inf_13_helmet_upgrade": {
+  "name": "头盔升级",
+  "family": "infantry",
+  "rarity": "uncommon",
+  "best_tag": "r2",
+  "best": {
+   "extent": 0.88,
+   "area": 0.52,
+   "center_off": 0.04,
+   "comp2_ratio": 0.0,
+   "c26": 130,
+   "sym_rmse": 9,
+   "hue_err": 9,
+   "fails": [],
+   "pass": true,
+   "tag": "r2"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "inf_14_knee_pads": {
+  "name": "护膝护肘",
+  "family": "infantry",
+  "rarity": "common",
+  "best_tag": "r1",
+  "best": {
+   "extent": 0.91,
+   "area": 0.56,
+   "center_off": 0.08,
+   "comp2_ratio": 0.0,
+   "c26": 135,
+   "sym_rmse": 10,
+   "hue_err": 25,
+   "fails": [],
+   "pass": true,
+   "tag": "r1"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "inf_15_riot_shield": {
+  "name": "防弹盾牌",
+  "family": "infantry",
+  "rarity": "epic",
+  "best_tag": "r3",
+  "best": {
+   "extent": 0.96,
+   "area": 0.54,
+   "center_off": 0.11,
+   "comp2_ratio": 0.0,
+   "c26": 136,
+   "sym_rmse": 14,
+   "hue_err": 9,
+   "fails": [],
+   "pass": true,
+   "tag": "r3"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "inf_16_exoskeleton": {
+  "name": "外骨骼原型",
+  "family": "infantry",
+  "rarity": "epic",
+  "best_tag": "r3",
+  "best": {
+   "extent": 0.75,
+   "area": 0.4,
+   "center_off": 0.02,
+   "comp2_ratio": 0.0,
+   "c26": 124,
+   "sym_rmse": 24,
+   "hue_err": 23,
+   "fails": [],
+   "pass": true,
+   "tag": "r3"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "inf_17_tourniquet": {
+  "name": "止血带",
+  "family": "infantry",
+  "rarity": "uncommon",
+  "best_tag": "r1",
+  "best": {
+   "extent": 0.91,
+   "area": 0.54,
+   "center_off": 0.06,
+   "comp2_ratio": 0.0,
+   "c26": 142,
+   "sym_rmse": 9,
+   "hue_err": 16,
+   "fails": [],
+   "pass": true,
+   "tag": "r1"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "inf_18_ifak": {
+  "name": "战场急救包",
+  "family": "infantry",
+  "rarity": "rare",
+  "best_tag": "r1",
+  "best": {
+   "extent": 0.88,
+   "area": 0.46,
+   "center_off": 0.06,
+   "comp2_ratio": 0.0,
+   "c26": 132,
+   "sym_rmse": 9,
+   "hue_err": 23,
+   "fails": [],
+   "pass": true,
+   "tag": "r1"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "inf_19_radio": {
+  "name": "单兵电台",
+  "family": "infantry",
+  "rarity": "rare",
+  "best_tag": "r1",
+  "best": {
+   "extent": 0.92,
+   "area": 0.5,
+   "center_off": 0.02,
+   "comp2_ratio": 0.02,
+   "c26": 123,
+   "sym_rmse": 10,
+   "hue_err": 18,
+   "fails": [],
+   "pass": true,
+   "tag": "r1"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "inf_20_night_vision": {
+  "name": "夜视仪",
+  "family": "infantry",
+  "rarity": "rare",
+  "best_tag": "r2",
+  "best": {
+   "extent": 0.97,
+   "area": 0.61,
+   "center_off": 0.04,
+   "comp2_ratio": 0.0,
+   "c26": 127,
+   "sym_rmse": 9,
+   "hue_err": 13,
+   "fails": [],
+   "pass": true,
+   "tag": "r2"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "inf_21_thermal": {
+  "name": "热成像",
+  "family": "infantry",
+  "rarity": "epic",
+  "best_tag": "r2",
+  "best": {
+   "extent": 0.86,
+   "area": 0.49,
+   "center_off": 0.04,
+   "comp2_ratio": 0.0,
+   "c26": 132,
+   "sym_rmse": 19,
+   "hue_err": 16,
+   "fails": [],
+   "pass": true,
+   "tag": "r2"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "inf_22_breaching": {
+  "name": "破门工具",
+  "family": "infantry",
+  "rarity": "uncommon",
+  "best_tag": "r2",
+  "best": {
+   "extent": 0.9,
+   "area": 0.57,
+   "center_off": 0.02,
+   "comp2_ratio": 0.0,
+   "c26": 138,
+   "sym_rmse": 21,
+   "hue_err": 13,
+   "fails": [],
+   "pass": true,
+   "tag": "r2"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "inf_23_combat_stimulant": {
+  "name": "战斗兴奋剂",
+  "family": "infantry",
+  "rarity": "epic",
+  "best_tag": "r1",
+  "best": {
+   "extent": 0.88,
+   "area": 0.5,
+   "center_off": 0.02,
+   "comp2_ratio": 0.0,
+   "c26": 148,
+   "sym_rmse": 15,
+   "hue_err": 1,
+   "fails": [],
+   "pass": true,
+   "tag": "r1"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "inf_25_medic_sacrifice": {
+  "name": "医疗兵牺牲",
+  "family": "infantry",
+  "rarity": "legendary",
+  "best_tag": "r3",
+  "best": {
+   "extent": 0.91,
+   "area": 0.56,
+   "center_off": 0.03,
+   "comp2_ratio": 0.0,
+   "c26": 135,
+   "sym_rmse": 11,
+   "hue_err": 17,
+   "fails": [],
+   "pass": true,
+   "tag": "r3"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "inf_26_chemical_warhead": {
+  "name": "化学弹头",
+  "family": "infantry",
+  "rarity": "epic",
+  "best_tag": "r2",
+  "best": {
+   "extent": 0.84,
+   "area": 0.51,
+   "center_off": 0.02,
+   "comp2_ratio": 0.0,
+   "c26": 136,
+   "sym_rmse": 30,
+   "hue_err": 11,
+   "fails": [],
+   "pass": true,
+   "tag": "r2"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "inf_27_napalm": {
+  "name": "凝固汽油弹",
+  "family": "infantry",
+  "rarity": "epic",
+  "best_tag": "r1",
+  "best": {
+   "extent": 0.83,
+   "area": 0.49,
+   "center_off": 0.02,
+   "comp2_ratio": 0.0,
+   "c26": 144,
+   "sym_rmse": 24,
+   "hue_err": 9,
+   "fails": [],
+   "pass": true,
+   "tag": "r1"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "inf_28_combat_boots": {
+  "name": "战斗靴",
+  "family": "infantry",
+  "rarity": "common",
+  "best_tag": "r3",
+  "best": {
+   "extent": 0.82,
+   "area": 0.49,
+   "center_off": 0.02,
+   "comp2_ratio": 0.0,
+   "c26": 136,
+   "sym_rmse": 15,
+   "hue_err": 23,
+   "fails": [],
+   "pass": true,
+   "tag": "r3"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "inf_29_iron_sights": {
+  "name": "机械瞄具",
+  "family": "infantry",
+  "rarity": "common",
+  "best_tag": "r3",
+  "best": {
+   "extent": 0.84,
+   "area": 0.53,
+   "center_off": 0.06,
+   "comp2_ratio": 0.0,
+   "c26": 154,
+   "sym_rmse": 16,
+   "hue_err": 28,
+   "fails": [],
+   "pass": true,
+   "tag": "r3"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "inf_30_load_vest": {
+  "name": "负重背心",
+  "family": "infantry",
+  "rarity": "uncommon",
+  "best_tag": "r3",
+  "best": {
+   "extent": 0.82,
+   "area": 0.48,
+   "center_off": 0.05,
+   "comp2_ratio": 0.0,
+   "c26": 124,
+   "sym_rmse": 10,
+   "hue_err": 17,
+   "fails": [],
+   "pass": true,
+   "tag": "r3"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "inf_31_flash_suppressor": {
+  "name": "消焰器",
+  "family": "infantry",
+  "rarity": "uncommon",
+  "best_tag": "r2",
+  "best": {
+   "extent": 0.83,
+   "area": 0.45,
+   "center_off": 0.01,
+   "comp2_ratio": 0.0,
+   "c26": 133,
+   "sym_rmse": 27,
+   "hue_err": 15,
+   "fails": [],
+   "pass": true,
+   "tag": "r2"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "inf_32_heavy_barrel": {
+  "name": "重型枪管",
+  "family": "infantry",
+  "rarity": "rare",
+  "best_tag": "r2",
+  "best": {
+   "extent": 0.88,
+   "area": 0.54,
+   "center_off": 0.01,
+   "comp2_ratio": 0.0,
+   "c26": 130,
+   "sym_rmse": 25,
+   "hue_err": 13,
+   "fails": [],
+   "pass": true,
+   "tag": "r2"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "inf_33_ammo_belt": {
+  "name": "弹链供弹",
+  "family": "infantry",
+  "rarity": "rare",
+  "best_tag": "r2",
+  "best": {
+   "extent": 0.88,
+   "area": 0.54,
+   "center_off": 0.02,
+   "comp2_ratio": 0.0,
+   "c26": 135,
+   "sym_rmse": 29,
+   "hue_err": 20,
+   "fails": [],
+   "pass": true,
+   "tag": "r2"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "inf_34_kill_field_dressing": {
+  "name": "击杀战地敷料",
+  "family": "infantry",
+  "rarity": "epic",
+  "best_tag": "r1",
+  "best": {
+   "extent": 0.81,
+   "area": 0.44,
+   "center_off": 0.02,
+   "comp2_ratio": 0.0,
+   "c26": 126,
+   "sym_rmse": 9,
+   "hue_err": 16,
+   "fails": [],
+   "pass": true,
+   "tag": "r1"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "inf_35_field_hospital": {
+  "name": "野战医院",
+  "family": "infantry",
+  "rarity": "epic",
+  "best_tag": "r1",
+  "best": {
+   "extent": 0.94,
+   "area": 0.58,
+   "center_off": 0.03,
+   "comp2_ratio": 0.0,
+   "c26": 132,
+   "sym_rmse": 13,
+   "hue_err": 18,
+   "fails": [],
+   "pass": true,
+   "tag": "r1"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "rec_01_optical_camouflage": {
+  "name": "光学伪装",
+  "family": "recon",
+  "rarity": "rare",
+  "best_tag": "r2",
+  "best": {
+   "extent": 0.84,
+   "area": 0.48,
+   "center_off": 0.06,
+   "comp2_ratio": 0.0,
+   "c26": 110,
+   "sym_rmse": 9,
+   "hue_err": 19,
+   "fails": [],
+   "pass": true,
+   "tag": "r2"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "rec_02_ir_suppression": {
+  "name": "红外抑制",
+  "family": "recon",
+  "rarity": "epic",
+  "best_tag": "r1",
+  "best": {
+   "extent": 0.87,
+   "area": 0.45,
+   "center_off": 0.09,
+   "comp2_ratio": 0.0,
+   "c26": 103,
+   "sym_rmse": 12,
+   "hue_err": 18,
+   "fails": [],
+   "pass": true,
+   "tag": "r1"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "rec_03_suppressor": {
+  "name": "消音器",
+  "family": "recon",
+  "rarity": "rare",
+  "best_tag": "r1",
+  "best": {
+   "extent": 0.91,
+   "area": 0.49,
+   "center_off": 0.06,
+   "comp2_ratio": 0.0,
+   "c26": 110,
+   "sym_rmse": 20,
+   "hue_err": 21,
+   "fails": [],
+   "pass": true,
+   "tag": "r1"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "rec_04_high_power_scope": {
+  "name": "高倍瞄准镜",
+  "family": "recon",
+  "rarity": "epic",
+  "best_tag": "r1",
+  "best": {
+   "extent": 0.85,
+   "area": 0.46,
+   "center_off": 0.13,
+   "comp2_ratio": 0.0,
+   "c26": 104,
+   "sym_rmse": 12,
+   "hue_err": 20,
+   "fails": [],
+   "pass": true,
+   "tag": "r1"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "rec_05_uav": {
+  "name": "无人侦察机",
+  "family": "recon",
+  "rarity": "epic",
+  "best_tag": "r2",
+  "best": {
+   "extent": 0.84,
+   "area": 0.47,
+   "center_off": 0.03,
+   "comp2_ratio": 0.0,
+   "c26": 111,
+   "sym_rmse": 5,
+   "hue_err": 20,
+   "fails": [],
+   "pass": true,
+   "tag": "r2"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "rec_06_tactical_radio": {
+  "name": "战术电台",
+  "family": "recon",
+  "rarity": "uncommon",
+  "best_tag": "r2",
+  "best": {
+   "extent": 0.9,
+   "area": 0.49,
+   "center_off": 0.05,
+   "comp2_ratio": 0.0,
+   "c26": 118,
+   "sym_rmse": 8,
+   "hue_err": 20,
+   "fails": [],
+   "pass": true,
+   "tag": "r2"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "rec_07_gps": {
+  "name": "GPS定位仪",
+  "family": "recon",
+  "rarity": "uncommon",
+  "best_tag": "r3",
+  "best": {
+   "extent": 0.97,
+   "area": 0.55,
+   "center_off": 0.05,
+   "comp2_ratio": 0.0,
+   "c26": 116,
+   "sym_rmse": 14,
+   "hue_err": 22,
+   "fails": [],
+   "pass": true,
+   "tag": "r3"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "rec_08_nvg": {
+  "name": "夜视仪",
+  "family": "recon",
+  "rarity": "rare",
+  "best_tag": "r3",
+  "best": {
+   "extent": 0.91,
+   "area": 0.51,
+   "center_off": 0.04,
+   "comp2_ratio": 0.0,
+   "c26": 113,
+   "sym_rmse": 11,
+   "hue_err": 18,
+   "fails": [],
+   "pass": true,
+   "tag": "r3"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "rec_09_breaching": {
+  "name": "破门工具",
+  "family": "recon",
+  "rarity": "uncommon",
+  "best_tag": "r1",
+  "best": {
+   "extent": 0.84,
+   "area": 0.49,
+   "center_off": 0.06,
+   "comp2_ratio": 0.0,
+   "c26": 117,
+   "sym_rmse": 23,
+   "hue_err": 13,
+   "fails": [],
+   "pass": true,
+   "tag": "r1"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "rec_10_medkit": {
+  "name": "急救包",
+  "family": "recon",
+  "rarity": "rare",
+  "best_tag": "r2",
+  "best": {
+   "extent": 0.88,
+   "area": 0.5,
+   "center_off": 0.17,
+   "comp2_ratio": 0.0,
+   "c26": 115,
+   "sym_rmse": 9,
+   "hue_err": 14,
+   "fails": [],
+   "pass": true,
+   "tag": "r2"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "rec_11_decoy": {
+  "name": "假目标",
+  "family": "recon",
+  "rarity": "rare",
+  "best_tag": "r3",
+  "best": {
+   "extent": 0.88,
+   "area": 0.63,
+   "center_off": 0.03,
+   "comp2_ratio": 0.0,
+   "c26": 124,
+   "sym_rmse": 24,
+   "hue_err": 18,
+   "fails": [],
+   "pass": true,
+   "tag": "r3"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "rec_12_atv": {
+  "name": "越野摩托",
+  "family": "recon",
+  "rarity": "uncommon",
+  "best_tag": "r3",
+  "best": {
+   "extent": 0.98,
+   "area": 0.49,
+   "center_off": 0.04,
+   "comp2_ratio": 0.0,
+   "c26": 118,
+   "sym_rmse": 26,
+   "hue_err": 22,
+   "fails": [],
+   "pass": true,
+   "tag": "r3"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "rec_13_target_designator": {
+  "name": "目标指示器",
+  "family": "recon",
+  "rarity": "epic",
+  "best_tag": "r1",
+  "best": {
+   "extent": 0.86,
+   "area": 0.52,
+   "center_off": 0.05,
+   "comp2_ratio": 0.0,
+   "c26": 110,
+   "sym_rmse": 16,
+   "hue_err": 20,
+   "fails": [],
+   "pass": true,
+   "tag": "r1"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "rec_14_crit_designator": {
+  "name": "暴击指示器",
+  "family": "recon",
+  "rarity": "epic",
+  "best_tag": "r3",
+  "best": {
+   "extent": 0.89,
+   "area": 0.53,
+   "center_off": 0.02,
+   "comp2_ratio": 0.0,
+   "c26": 115,
+   "sym_rmse": 14,
+   "hue_err": 20,
+   "fails": [],
+   "pass": true,
+   "tag": "r3"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "rec_phased_radar": {
+  "name": "相控阵雷达",
+  "family": "recon",
+  "rarity": "legendary",
+  "best_tag": "r2",
+  "best": {
+   "extent": 0.89,
+   "area": 0.52,
+   "center_off": 0.06,
+   "comp2_ratio": 0.02,
+   "c26": 119,
+   "sym_rmse": 21,
+   "hue_err": 26,
+   "fails": [],
+   "pass": true,
+   "tag": "r2"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "rec_15_field_binoculars": {
+  "name": "野战双筒镜",
+  "family": "recon",
+  "rarity": "common",
+  "best_tag": "r1",
+  "best": {
+   "extent": 0.88,
+   "area": 0.48,
+   "center_off": 0.06,
+   "comp2_ratio": 0.0,
+   "c26": 116,
+   "sym_rmse": 10,
+   "hue_err": 22,
+   "fails": [],
+   "pass": true,
+   "tag": "r1"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "rec_16_silent_boots": {
+  "name": "静音靴",
+  "family": "recon",
+  "rarity": "uncommon",
+  "best_tag": "r3",
+  "best": {
+   "extent": 0.93,
+   "area": 0.52,
+   "center_off": 0.09,
+   "comp2_ratio": 0.0,
+   "c26": 115,
+   "sym_rmse": 9,
+   "hue_err": 19,
+   "fails": [],
+   "pass": true,
+   "tag": "r3"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "rec_17_multiband_sensor": {
+  "name": "多光谱传感",
+  "family": "recon",
+  "rarity": "rare",
+  "best_tag": "r1",
+  "best": {
+   "extent": 0.86,
+   "area": 0.51,
+   "center_off": 0.05,
+   "comp2_ratio": 0.0,
+   "c26": 128,
+   "sym_rmse": 18,
+   "hue_err": 21,
+   "fails": [],
+   "pass": true,
+   "tag": "r1"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "rec_18_target_database": {
+  "name": "目标数据库",
+  "family": "recon",
+  "rarity": "epic",
+  "best_tag": "r1",
+  "best": {
+   "extent": 0.98,
+   "area": 0.58,
+   "center_off": 0.06,
+   "comp2_ratio": 0.0,
+   "c26": 112,
+   "sym_rmse": 7,
+   "hue_err": 12,
+   "fails": [],
+   "pass": true,
+   "tag": "r1"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "gen_01_comms": {
+  "name": "战场通讯",
+  "family": "universal",
+  "rarity": "uncommon",
+  "best_tag": "r3",
+  "best": {
+   "extent": 0.88,
+   "area": 0.57,
+   "center_off": 0.06,
+   "comp2_ratio": 0.0,
+   "c26": 169,
+   "sym_rmse": 8,
+   "hue_err": 2,
+   "fails": [],
+   "pass": true,
+   "tag": "r3"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "gen_02_digital": {
+  "name": "数字化单兵",
+  "family": "universal",
+  "rarity": "rare",
+  "best_tag": "r2",
+  "best": {
+   "extent": 0.83,
+   "area": 0.48,
+   "center_off": 0.04,
+   "comp2_ratio": 0.0,
+   "c26": 161,
+   "sym_rmse": 8,
+   "hue_err": 5,
+   "fails": [],
+   "pass": true,
+   "tag": "r2"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "gen_03_camouflage": {
+  "name": "伪装迷彩",
+  "family": "universal",
+  "rarity": "uncommon",
+  "best_tag": "r1",
+  "best": {
+   "extent": 0.9,
+   "area": 0.52,
+   "center_off": 0.02,
+   "comp2_ratio": 0.0,
+   "c26": 159,
+   "sym_rmse": 12,
+   "hue_err": 5,
+   "fails": [],
+   "pass": true,
+   "tag": "r1"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "gen_04_vest": {
+  "name": "战术背心",
+  "family": "universal",
+  "rarity": "uncommon",
+  "best_tag": "r3",
+  "best": {
+   "extent": 0.91,
+   "area": 0.54,
+   "center_off": 0.02,
+   "comp2_ratio": 0.0,
+   "c26": 165,
+   "sym_rmse": 15,
+   "hue_err": 2,
+   "fails": [],
+   "pass": true,
+   "tag": "r3"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "gen_05_shield": {
+  "name": "防弹盾牌",
+  "family": "universal",
+  "rarity": "rare",
+  "best_tag": "r2",
+  "best": {
+   "extent": 0.88,
+   "area": 0.53,
+   "center_off": 0.06,
+   "comp2_ratio": 0.0,
+   "c26": 186,
+   "sym_rmse": 16,
+   "hue_err": 3,
+   "fails": [],
+   "pass": true,
+   "tag": "r2"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "gen_06_laser_designator": {
+  "name": "激光指示器",
+  "family": "universal",
+  "rarity": "rare",
+  "best_tag": "r3",
+  "best": {
+   "extent": 0.84,
+   "area": 0.49,
+   "center_off": 0.03,
+   "comp2_ratio": 0.0,
+   "c26": 173,
+   "sym_rmse": 32,
+   "hue_err": 4,
+   "fails": [],
+   "pass": true,
+   "tag": "r3"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "gen_07_mine_resistant": {
+  "name": "防雷座椅",
+  "family": "universal",
+  "rarity": "epic",
+  "best_tag": "r2",
+  "best": {
+   "extent": 0.87,
+   "area": 0.56,
+   "center_off": 0.03,
+   "comp2_ratio": 0.0,
+   "c26": 178,
+   "sym_rmse": 29,
+   "hue_err": 3,
+   "fails": [],
+   "pass": true,
+   "tag": "r2"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "gen_08_nbc_protection": {
+  "name": "三防系统",
+  "family": "universal",
+  "rarity": "epic",
+  "best_tag": "r3",
+  "best": {
+   "extent": 0.87,
+   "area": 0.51,
+   "center_off": 0.02,
+   "comp2_ratio": 0.02,
+   "c26": 180,
+   "sym_rmse": 13,
+   "hue_err": 2,
+   "fails": [],
+   "pass": true,
+   "tag": "r3"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "gen_09_ir_jammer": {
+  "name": "红外干扰机",
+  "family": "universal",
+  "rarity": "epic",
+  "best_tag": "r2",
+  "best": {
+   "extent": 0.88,
+   "area": 0.55,
+   "center_off": 0.03,
+   "comp2_ratio": 0.0,
+   "c26": 171,
+   "sym_rmse": 17,
+   "hue_err": 0,
+   "fails": [],
+   "pass": true,
+   "tag": "r2"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "gen_10_ammo_rack": {
+  "name": "备用弹药架",
+  "family": "universal",
+  "rarity": "uncommon",
+  "best_tag": "r2",
+  "best": {
+   "extent": 0.85,
+   "area": 0.55,
+   "center_off": 0.04,
+   "comp2_ratio": 0.0,
+   "c26": 183,
+   "sym_rmse": 28,
+   "hue_err": 3,
+   "fails": [],
+   "pass": true,
+   "tag": "r2"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "gen_11_phase_resonance": {
+  "name": "相位共鸣",
+  "family": "universal",
+  "rarity": "legendary",
+  "best_tag": "r2",
+  "best": {
+   "extent": 0.9,
+   "area": 0.61,
+   "center_off": 0.03,
+   "comp2_ratio": 0.0,
+   "c26": 186,
+   "sym_rmse": 8,
+   "hue_err": 7,
+   "fails": [],
+   "pass": true,
+   "tag": "r2"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "gen_12_phase_shielding": {
+  "name": "相位护盾",
+  "family": "universal",
+  "rarity": "legendary",
+  "best_tag": "r1",
+  "best": {
+   "extent": 0.9,
+   "area": 0.46,
+   "center_off": 0.06,
+   "comp2_ratio": 0.0,
+   "c26": 175,
+   "sym_rmse": 18,
+   "hue_err": 2,
+   "fails": [],
+   "pass": true,
+   "tag": "r1"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "gen_13_phase_overdrive": {
+  "name": "相位过载",
+  "family": "universal",
+  "rarity": "legendary",
+  "best_tag": "r2",
+  "best": {
+   "extent": 0.91,
+   "area": 0.56,
+   "center_off": 0.04,
+   "comp2_ratio": 0.0,
+   "c26": 192,
+   "sym_rmse": 24,
+   "hue_err": 4,
+   "fails": [],
+   "pass": true,
+   "tag": "r2"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "gen_14_phase_shield_gen": {
+  "name": "相位护盾发生器",
+  "family": "universal",
+  "rarity": "legendary",
+  "best_tag": "r1",
+  "best": {
+   "extent": 0.88,
+   "area": 0.52,
+   "center_off": 0.06,
+   "comp2_ratio": 0.0,
+   "c26": 183,
+   "sym_rmse": 21,
+   "hue_err": 3,
+   "fails": [],
+   "pass": true,
+   "tag": "r1"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "gen_15_laser_marker": {
+  "name": "激光指示器",
+  "family": "universal",
+  "rarity": "epic",
+  "best_tag": "r3",
+  "best": {
+   "extent": 0.88,
+   "area": 0.55,
+   "center_off": 0.02,
+   "comp2_ratio": 0.0,
+   "c26": 163,
+   "sym_rmse": 33,
+   "hue_err": 3,
+   "fails": [],
+   "pass": true,
+   "tag": "r3"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "gen_16_emp_pulse": {
+  "name": "电磁脉冲装置",
+  "family": "universal",
+  "rarity": "epic",
+  "best_tag": "r2",
+  "best": {
+   "extent": 0.84,
+   "area": 0.51,
+   "center_off": 0.04,
+   "comp2_ratio": 0.0,
+   "c26": 200,
+   "sym_rmse": 14,
+   "hue_err": 2,
+   "fails": [],
+   "pass": true,
+   "tag": "r2"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "gen_17_electronic_hijack": {
+  "name": "电子劫持",
+  "family": "universal",
+  "rarity": "legendary",
+  "best_tag": "r3",
+  "best": {
+   "extent": 0.86,
+   "area": 0.56,
+   "center_off": 0.03,
+   "comp2_ratio": 0.0,
+   "c26": 174,
+   "sym_rmse": 12,
+   "hue_err": 4,
+   "fails": [],
+   "pass": true,
+   "tag": "r3"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "gen_combustion_catalyst": {
+  "name": "燃烧催化剂",
+  "family": "universal",
+  "rarity": "epic",
+  "best_tag": "r1",
+  "best": {
+   "extent": 0.89,
+   "area": 0.59,
+   "center_off": 0.02,
+   "comp2_ratio": 0.0,
+   "c26": 188,
+   "sym_rmse": 18,
+   "hue_err": 3,
+   "fails": [],
+   "pass": true,
+   "tag": "r1"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "gen_overload_capacitor": {
+  "name": "过载电容",
+  "family": "universal",
+  "rarity": "legendary",
+  "best_tag": "r2",
+  "best": {
+   "extent": 0.84,
+   "area": 0.55,
+   "center_off": 0.06,
+   "comp2_ratio": 0.0,
+   "c26": 162,
+   "sym_rmse": 22,
+   "hue_err": 2,
+   "fails": [],
+   "pass": true,
+   "tag": "r2"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "gen_nano_catalyst": {
+  "name": "纳米催化剂",
+  "family": "universal",
+  "rarity": "legendary",
+  "best_tag": "r3",
+  "best": {
+   "extent": 0.88,
+   "area": 0.55,
+   "center_off": 0.02,
+   "comp2_ratio": 0.0,
+   "c26": 165,
+   "sym_rmse": 20,
+   "hue_err": 2,
+   "fails": [],
+   "pass": true,
+   "tag": "r3"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "gen_beam_splitter": {
+  "name": "光束分裂器",
+  "family": "universal",
+  "rarity": "legendary",
+  "best_tag": "r2",
+  "best": {
+   "extent": 0.83,
+   "area": 0.48,
+   "center_off": 0.05,
+   "comp2_ratio": 0.0,
+   "c26": 185,
+   "sym_rmse": 14,
+   "hue_err": 1,
+   "fails": [],
+   "pass": true,
+   "tag": "r2"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "gen_reflector_array": {
+  "name": "反射阵列",
+  "family": "universal",
+  "rarity": "epic",
+  "best_tag": "r2",
+  "best": {
+   "extent": 0.84,
+   "area": 0.5,
+   "center_off": 0.02,
+   "comp2_ratio": 0.0,
+   "c26": 193,
+   "sym_rmse": 24,
+   "hue_err": 2,
+   "fails": [],
+   "pass": true,
+   "tag": "r2"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "gen_weakpoint_analyzer": {
+  "name": "弱点分析仪",
+  "family": "universal",
+  "rarity": "legendary",
+  "best_tag": "r1",
+  "best": {
+   "extent": 0.87,
+   "area": 0.51,
+   "center_off": 0.06,
+   "comp2_ratio": 0.0,
+   "c26": 171,
+   "sym_rmse": 12,
+   "hue_err": 3,
+   "fails": [],
+   "pass": true,
+   "tag": "r1"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "gen_pollution_accumulator": {
+  "name": "污染蓄能器",
+  "family": "universal",
+  "rarity": "epic",
+  "best_tag": "r2",
+  "best": {
+   "extent": 0.98,
+   "area": 0.65,
+   "center_off": 0.06,
+   "comp2_ratio": 0.0,
+   "c26": 176,
+   "sym_rmse": 19,
+   "hue_err": 21,
+   "fails": [],
+   "pass": true,
+   "tag": "r2"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "gen_converted_munitions": {
+  "name": "弹道重赋",
+  "family": "universal",
+  "rarity": "legendary",
+  "best_tag": "fix3",
+  "best": {
+   "extent": 0.88,
+   "area": 0.52,
+   "center_off": 0.02,
+   "comp2_ratio": 0.0,
+   "c26": 159,
+   "sym_rmse": 31,
+   "hue_err": 0,
+   "fails": [],
+   "pass": true,
+   "tag": "fix3"
+  },
+  "repaired": true,
+  "fix_rolls": [
+   {
+    "extent": 0.91,
+    "area": 0.58,
+    "center_off": 0.05,
+    "comp2_ratio": 0.0,
+    "c26": 174,
+    "sym_rmse": 38,
+    "hue_err": 2,
+    "fails": [
+     "R4对称"
+    ],
+    "pass": false,
+    "tag": "fix1"
+   },
+   {
+    "extent": 0.87,
+    "area": 0.6,
+    "center_off": 0.04,
+    "comp2_ratio": 0.0,
+    "c26": 182,
+    "sym_rmse": 38,
+    "hue_err": 0,
+    "fails": [
+     "R4对称"
+    ],
+    "pass": false,
+    "tag": "fix2"
+   },
+   {
+    "extent": 0.88,
+    "area": 0.52,
+    "center_off": 0.02,
+    "comp2_ratio": 0.0,
+    "c26": 159,
+    "sym_rmse": 31,
+    "hue_err": 0,
+    "fails": [],
+    "pass": true,
+    "tag": "fix3"
+   }
+  ]
+ },
+ "gen_expansion_chamber": {
+  "name": "扩容弹舱",
+  "family": "universal",
+  "rarity": "legendary",
+  "best_tag": "r1",
+  "best": {
+   "extent": 0.89,
+   "area": 0.58,
+   "center_off": 0.04,
+   "comp2_ratio": 0.0,
+   "c26": 177,
+   "sym_rmse": 21,
+   "hue_err": 3,
+   "fails": [],
+   "pass": true,
+   "tag": "r1"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "gen_overflow_shield": {
+  "name": "溢流护盾",
+  "family": "universal",
+  "rarity": "legendary",
+  "best_tag": "r2",
+  "best": {
+   "extent": 0.84,
+   "area": 0.5,
+   "center_off": 0.03,
+   "comp2_ratio": 0.0,
+   "c26": 176,
+   "sym_rmse": 26,
+   "hue_err": 0,
+   "fails": [],
+   "pass": true,
+   "tag": "r2"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "gen_truestrike_pinpoint": {
+  "name": "精确制导针",
+  "family": "universal",
+  "rarity": "legendary",
+  "best_tag": "r2",
+  "best": {
+   "extent": 0.86,
+   "area": 0.51,
+   "center_off": 0.05,
+   "comp2_ratio": 0.0,
+   "c26": 172,
+   "sym_rmse": 29,
+   "hue_err": 1,
+   "fails": [],
+   "pass": true,
+   "tag": "r2"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "gen_relay_antenna": {
+  "name": "中继天线",
+  "family": "universal",
+  "rarity": "legendary",
+  "best_tag": "r1",
+  "best": {
+   "extent": 0.88,
+   "area": 0.51,
+   "center_off": 0.04,
+   "comp2_ratio": 0.0,
+   "c26": 160,
+   "sym_rmse": 26,
+   "hue_err": 2,
+   "fails": [],
+   "pass": true,
+   "tag": "r1"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "gen_unified_splash": {
+  "name": "统一装药",
+  "family": "universal",
+  "rarity": "legendary",
+  "best_tag": "r3",
+  "best": {
+   "extent": 0.93,
+   "area": 0.6,
+   "center_off": 0.04,
+   "comp2_ratio": 0.0,
+   "c26": 188,
+   "sym_rmse": 13,
+   "hue_err": 3,
+   "fails": [],
+   "pass": true,
+   "tag": "r3"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "gen_stealth_coating": {
+  "name": "雷达吸波涂层",
+  "family": "universal",
+  "rarity": "rare",
+  "best_tag": "r2",
+  "best": {
+   "extent": 0.86,
+   "area": 0.55,
+   "center_off": 0.1,
+   "comp2_ratio": 0.0,
+   "c26": 163,
+   "sym_rmse": 29,
+   "hue_err": 6,
+   "fails": [],
+   "pass": true,
+   "tag": "r2"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "gen_18_pain_conductor": {
+  "name": "痛苦传导",
+  "family": "universal",
+  "rarity": "uncommon",
+  "best_tag": "r1",
+  "best": {
+   "extent": 0.92,
+   "area": 0.57,
+   "center_off": 0.1,
+   "comp2_ratio": 0.0,
+   "c26": 179,
+   "sym_rmse": 29,
+   "hue_err": 4,
+   "fails": [],
+   "pass": true,
+   "tag": "r1"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "gen_19_wave_surge": {
+  "name": "波次动员",
+  "family": "universal",
+  "rarity": "rare",
+  "best_tag": "fix2",
+  "best": {
+   "extent": 0.84,
+   "area": 0.5,
+   "center_off": 0.07,
+   "comp2_ratio": 0.0,
+   "c26": 150,
+   "sym_rmse": 33,
+   "hue_err": 0,
+   "fails": [],
+   "pass": true,
+   "tag": "fix2"
+  },
+  "repaired": true,
+  "fix_rolls": [
+   {
+    "extent": 0.91,
+    "area": 0.48,
+    "center_off": 0.02,
+    "comp2_ratio": 0.0,
+    "c26": 162,
+    "sym_rmse": 37,
+    "hue_err": 2,
+    "fails": [
+     "R4对称"
+    ],
+    "pass": false,
+    "tag": "fix1"
+   },
+   {
+    "extent": 0.84,
+    "area": 0.5,
+    "center_off": 0.07,
+    "comp2_ratio": 0.0,
+    "c26": 150,
+    "sym_rmse": 33,
+    "hue_err": 0,
+    "fails": [],
+    "pass": true,
+    "tag": "fix2"
+   }
+  ]
+ },
+ "gen_20_squad_tablet": {
+  "name": "班组战术平板",
+  "family": "universal",
+  "rarity": "rare",
+  "best_tag": "r3",
+  "best": {
+   "extent": 0.8,
+   "area": 0.47,
+   "center_off": 0.02,
+   "comp2_ratio": 0.0,
+   "c26": 158,
+   "sym_rmse": 26,
+   "hue_err": 2,
+   "fails": [],
+   "pass": true,
+   "tag": "r3"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "gen_21_vanguard_repair": {
+  "name": "先锋维修矩阵",
+  "family": "universal",
+  "rarity": "mythic",
+  "best_tag": "r1",
+  "best": {
+   "extent": 0.91,
+   "area": 0.57,
+   "center_off": 0.05,
+   "comp2_ratio": 0.0,
+   "c26": 179,
+   "sym_rmse": 16,
+   "hue_err": 0,
+   "fails": [],
+   "pass": true,
+   "tag": "r1"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "gen_22_aegis_protocol": {
+  "name": "神盾协议",
+  "family": "universal",
+  "rarity": "mythic",
+  "best_tag": "r3",
+  "best": {
+   "extent": 0.91,
+   "area": 0.57,
+   "center_off": 0.04,
+   "comp2_ratio": 0.0,
+   "c26": 188,
+   "sym_rmse": 17,
+   "hue_err": 0,
+   "fails": [],
+   "pass": true,
+   "tag": "r3"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "gen_23_singularity_core": {
+  "name": "奇点核心",
+  "family": "universal",
+  "rarity": "mythic",
+  "best_tag": "r2",
+  "best": {
+   "extent": 0.86,
+   "area": 0.55,
+   "center_off": 0.03,
+   "comp2_ratio": 0.0,
+   "c26": 184,
+   "sym_rmse": 30,
+   "hue_err": 0,
+   "fails": [],
+   "pass": true,
+   "tag": "r2"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ },
+ "inf_24_urban_warfare": {
+  "name": "巷战教范",
+  "family": "infantry",
+  "rarity": "rare",
+  "best_tag": "r3",
+  "best": {
+   "extent": 0.82,
+   "area": 0.48,
+   "center_off": 0.04,
+   "comp2_ratio": 0.0,
+   "c26": 122,
+   "sym_rmse": 19,
+   "hue_err": 7,
+   "fails": [],
+   "pass": true,
+   "tag": "r3"
+  },
+  "repaired": false,
+  "fix_rolls": []
+ }
+}

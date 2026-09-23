@@ -77,7 +77,7 @@ const MASTER_ULTIMATES: Dictionary = {
 	"enemy_master_006": [
 		{
 			"id": "inferno_explosion",
-			"name": "地狱烈焰",
+			"name": "长廊之火",
 			"description": "每20秒引爆全场，对所有玩家单位造成烈焰伤害",
 			"effect": "hellfire_explosion",
 			"cooldown": 20.0,
@@ -122,7 +122,7 @@ const MASTER_ULTIMATES: Dictionary = {
 	"enemy_master_010": [
 		{
 			"id": "prometheus_flame",
-			"name": "普罗米修斯之焰",
+			"name": "最后一根火柴",
 			"description": "每18秒降下天火，对全体玩家单位造成烈焰伤害",
 			"effect": "meteor_flame",
 			"cooldown": 18.0,
@@ -134,7 +134,7 @@ const MASTER_ULTIMATES: Dictionary = {
 	"enemy_master_011": [
 		{
 			"id": "zeus_lightning",
-			"name": "宙斯雷霆",
+			"name": "无声惊雷",
 			"description": "每16秒降下雷霆连锁，跳跃打击多个玩家单位",
 			"effect": "lightning_chain",
 			"cooldown": 16.0,
@@ -144,7 +144,7 @@ const MASTER_ULTIMATES: Dictionary = {
 		},
 		{
 			"id": "olympus_ward",
-			"name": "奥林匹斯之护",
+			"name": "云层之护",
 			"description": "每24秒为自身施加18%最大生命值护盾",
 			"effect": "dome_barrier",
 			"cooldown": 24.0,
@@ -156,7 +156,7 @@ const MASTER_ULTIMATES: Dictionary = {
 	"enemy_master_012": [
 		{
 			"id": "abyss_apocalypse",
-			"name": "深渊降临",
+			"name": "静默降临",
 			"description": "每18秒引发虚空灾变，对全体玩家单位造成范围伤害",
 			"effect": "abyss_apocalypse",
 			"cooldown": 18.0,
@@ -255,7 +255,7 @@ const MASTER_ULTIMATES: Dictionary = {
 	"enemy_master_017": [
 		{
 			"id": "surtr_meteor",
-			"name": "诸神黄昏",
+			"name": "焚桥断后",
 			"description": "每15秒召唤陨石雨，对全体玩家单位造成毁灭伤害",
 			"effect": "meteor_apocalypse",
 			"cooldown": 15.0,
@@ -277,7 +277,7 @@ const MASTER_ULTIMATES: Dictionary = {
 		},
 		{
 			"id": "thunder_lord_judgment",
-			"name": "雷神之裁",
+			"name": "落雷为界",
 			"description": "每16秒对生命最高的玩家单位降下雷罚",
 			"effect": "god_weapon_single",
 			"cooldown": 16.0,
@@ -330,7 +330,7 @@ const MASTER_ULTIMATES: Dictionary = {
 	"enemy_master_021": [
 		{
 			"id": "kargath_inferno",
-			"name": "地狱火",
+			"name": "破晓信号",
 			"description": "每12秒引爆烈焰风暴，对全体玩家单位造成范围伤害",
 			"effect": "hell_inferno",
 			"cooldown": 12.0,
@@ -371,7 +371,7 @@ const MASTER_ULTIMATES: Dictionary = {
 	"enemy_master_023": [
 		{
 			"id": "phoenix_meteor",
-			"name": "凤凰陨落",
+			"name": "灰烬复燃",
 			"description": "每12秒召唤陨石雨，对全体玩家单位造成毁灭伤害",
 			"effect": "meteor_apocalypse",
 			"cooldown": 12.0,
@@ -381,7 +381,7 @@ const MASTER_ULTIMATES: Dictionary = {
 		},
 		{
 			"id": "phoenix_curse",
-			"name": "凤凰灼烧",
+			"name": "余温灼烧",
 			"description": "每14秒灼烧玩家单位，大幅降低攻速",
 			"effect": "emp_debuff",
 			"cooldown": 14.0,
@@ -428,7 +428,7 @@ const MASTER_ULTIMATES: Dictionary = {
 	"enemy_master_025": [
 		{
 			"id": "abyss_void",
-			"name": "深渊降临",
+			"name": "收黑入怀",
 			"description": "每12秒引发虚空灾变，对全体玩家单位造成毁灭范围伤害",
 			"effect": "void_apocalypse",
 			"cooldown": 12.0,
@@ -438,7 +438,7 @@ const MASTER_ULTIMATES: Dictionary = {
 		},
 		{
 			"id": "abyss_devour",
-			"name": "深渊吞噬",
+			"name": "夜幕合拢",
 			"description": "每10秒对生命最高的玩家单位发动吞噬打击",
 			"effect": "devour_single",
 			"cooldown": 10.0,
@@ -450,7 +450,7 @@ const MASTER_ULTIMATES: Dictionary = {
 	"enemy_master_026": [
 		{
 			"id": "hephaestus_aegis",
-			"name": "神之壁垒",
+			"name": "炉栅壁垒",
 			"description": "每12秒为自身施加35%最大生命值护盾",
 			"effect": "ward_bulwark",
 			"cooldown": 12.0,
@@ -460,8 +460,8 @@ const MASTER_ULTIMATES: Dictionary = {
 		},
 		{
 			"id": "hephaestus_forge",
-			"name": "神之熔炉",
-			"description": "每14秒锻造钢铁神兵单位增援战场",
+			"name": "百炼熔炉",
+			"description": "每14秒锻造钢铁重装单位增援战场",
 			"effect": "forge_summon",
 			"cooldown": 14.0
 		}
@@ -469,8 +469,8 @@ const MASTER_ULTIMATES: Dictionary = {
 	"enemy_master_027": [
 		{
 			"id": "hecate_inferno",
-			"name": "魔神地狱火",
-			"description": "每11秒引爆地狱烈焰，对全体玩家单位造成毁灭范围伤害",
+			"name": "三十七度烈焰",
+			"description": "每11秒引燃一片火域，对全体玩家单位造成毁灭范围伤害",
 			"effect": "hell_inferno",
 			"cooldown": 11.0,
 			"params": {
@@ -479,8 +479,8 @@ const MASTER_ULTIMATES: Dictionary = {
 		},
 		{
 			"id": "hecate_apocalypse",
-			"name": "末日审判",
-			"description": "每14秒召唤陨石雨，对全体玩家单位造成末日伤害",
+			"name": "烈焰极刑",
+			"description": "每14秒召唤陨石雨，对全体玩家单位造成毁灭伤害",
 			"effect": "meteor_apocalypse",
 			"cooldown": 14.0,
 			"params": {
@@ -491,7 +491,7 @@ const MASTER_ULTIMATES: Dictionary = {
 	"enemy_master_028": [
 		{
 			"id": "thor_mjolnir",
-			"name": "雷霆之锤",
+			"name": "近身雷雨",
 			"description": "每10秒释放连锁闪电，跳跃打击玩家单位",
 			"effect": "tesla_chain",
 			"cooldown": 10.0,
@@ -501,7 +501,7 @@ const MASTER_ULTIMATES: Dictionary = {
 		},
 		{
 			"id": "thor_judgment",
-			"name": "雷神审判",
+			"name": "自引雷霆",
 			"description": "每12秒对生命最高的玩家单位降下雷罚",
 			"effect": "god_weapon_single",
 			"cooldown": 12.0,
@@ -581,36 +581,36 @@ const MASTER_ULTIMATES: Dictionary = {
 
 ## master_id → 变体元数据（variant 专属仪器 id / base 基础仪器 id / display 展示名）
 const MASTER_VARIANTS: Dictionary = {
-	"enemy_master_001": {"variant": "pi_em_001", "base": "pi_steel_02", "display": "钢铁先锋·马库斯"},
-	"enemy_master_002": {"variant": "pi_em_002", "base": "pi_flame_02", "display": "烈焰使者·伊格尼斯"},
-	"enemy_master_003": {"variant": "pi_em_003", "base": "pi_thunder_02", "display": "雷击者·沃尔特"},
-	"enemy_master_004": {"variant": "pi_em_004", "base": "pi_void_02", "display": "虚空行者·奈克萨斯"},
-	"enemy_master_005": {"variant": "pi_em_005", "base": "pi_steel_03", "display": "钢铁元帅·克劳斯"},
-	"enemy_master_006": {"variant": "pi_em_006", "base": "pi_flame_03", "display": "炎魔女王·赫卡特"},
-	"enemy_master_007": {"variant": "pi_em_007", "base": "pi_thunder_03", "display": "雷神之子·索尔"},
-	"enemy_master_008": {"variant": "pi_em_008", "base": "pi_void_03", "display": "虚空领主·萨洛斯"},
-	"enemy_master_009": {"variant": "pi_em_009", "base": "pi_steel_04", "display": "钢铁军团长·费米"},
-	"enemy_master_010": {"variant": "pi_em_010", "base": "pi_flame_04", "display": "炎帝·普罗米修斯"},
-	"enemy_master_011": {"variant": "pi_em_011", "base": "pi_thunder_04", "display": "雷皇·宙斯"},
-	"enemy_master_012": {"variant": "pi_em_012", "base": "pi_void_04", "display": "虚空虚主·阿扎托斯"},
-	"enemy_master_013": {"variant": "pi_em_013", "base": "pi_steelflame_01", "display": "钢铁烈焰·卡尔"},
-	"enemy_master_014": {"variant": "pi_em_014", "base": "pi_steelthunder_01", "display": "雷霆钢铁·维克多"},
-	"enemy_master_015": {"variant": "pi_em_015", "base": "pi_flamevoid_01", "display": "虚空烈焰·塞拉菲娜"},
-	"enemy_master_016": {"variant": "pi_em_016", "base": "pi_steel_04", "display": "不朽钢铁·阿特拉斯"},
-	"enemy_master_017": {"variant": "pi_em_017", "base": "pi_flame_04", "display": "永恒炎魔·苏尔特"},
-	"enemy_master_018": {"variant": "pi_em_018", "base": "pi_thunder_04", "display": "万雷之主·雷神"},
-	"enemy_master_019": {"variant": "pi_em_019", "base": "pi_void_04", "display": "虚空主宰·尼德霍格"},
-	"enemy_master_020": {"variant": "pi_em_020", "base": "pi_steelthunder_01", "display": "钢铁雷霆·泰尔"},
-	"enemy_master_021": {"variant": "pi_em_021", "base": "pi_flamevoid_01", "display": "烈焰虚空·克尔加"},
-	"enemy_master_022": {"variant": "pi_em_022", "base": "pi_steel_04", "display": "战争机器·铁骑"},
-	"enemy_master_023": {"variant": "pi_em_023", "base": "pi_flame_04", "display": "火术宗师·凤凰"},
-	"enemy_master_024": {"variant": "pi_em_024", "base": "pi_thunder_04", "display": "风暴使者·赛勒斯"},
-	"enemy_master_025": {"variant": "pi_em_025", "base": "pi_void_04", "display": "暗影主宰·深渊"},
-	"enemy_master_026": {"variant": "pi_em_026", "base": "pi_steel_05", "display": "钢铁之神·赫淮斯托斯"},
-	"enemy_master_027": {"variant": "pi_em_027", "base": "pi_flame_05", "display": "炎魔之神·赫卡特"},
-	"enemy_master_028": {"variant": "pi_em_028", "base": "pi_thunder_05", "display": "雷神·托尔"},
-	"enemy_master_029": {"variant": "pi_em_029", "base": "pi_void_05", "display": "虚空女神·尼克斯"},
-	"enemy_master_030": {"variant": "pi_em_030", "base": "pi_omega_01", "display": "全能相位师·奥米伽"},
+	"enemy_master_001": {"variant": "pi_em_001", "base": "pi_steel_02", "display": "沈铸城"},
+	"enemy_master_002": {"variant": "pi_em_002", "base": "pi_flame_02", "display": "祝晚棠"},
+	"enemy_master_003": {"variant": "pi_em_003", "base": "pi_thunder_02", "display": "陆惊鸿"},
+	"enemy_master_004": {"variant": "pi_em_004", "base": "pi_void_02", "display": "裴溯"},
+	"enemy_master_005": {"variant": "pi_em_005", "base": "pi_steel_03", "display": "霍北望"},
+	"enemy_master_006": {"variant": "pi_em_006", "base": "pi_flame_03", "display": "姜拾烬"},
+	"enemy_master_007": {"variant": "pi_em_007", "base": "pi_thunder_03", "display": "秦引路"},
+	"enemy_master_008": {"variant": "pi_em_008", "base": "pi_void_03", "display": "池晏"},
+	"enemy_master_009": {"variant": "pi_em_009", "base": "pi_steel_04", "display": "靳承岗"},
+	"enemy_master_010": {"variant": "pi_em_010", "base": "pi_flame_04", "display": "闻人烬"},
+	"enemy_master_011": {"variant": "pi_em_011", "base": "pi_thunder_04", "display": "程默雷"},
+	"enemy_master_012": {"variant": "pi_em_012", "base": "pi_void_04", "display": "温折野"},
+	"enemy_master_013": {"variant": "pi_em_013", "base": "pi_steelflame_01", "display": "韩铸犁"},
+	"enemy_master_014": {"variant": "pi_em_014", "base": "pi_steelthunder_01", "display": "方镇流"},
+	"enemy_master_015": {"variant": "pi_em_015", "base": "pi_flamevoid_01", "display": "郁向暖"},
+	"enemy_master_016": {"variant": "pi_em_016", "base": "pi_steel_04", "display": "石顶安"},
+	"enemy_master_017": {"variant": "pi_em_017", "base": "pi_flame_04", "display": "江焚渡"},
+	"enemy_master_018": {"variant": "pi_em_018", "base": "pi_thunder_04", "display": "纪回春"},
+	"enemy_master_019": {"variant": "pi_em_019", "base": "pi_void_04", "display": "晏怀空"},
+	"enemy_master_020": {"variant": "pi_em_020", "base": "pi_steelthunder_01", "display": "盛传书"},
+	"enemy_master_021": {"variant": "pi_em_021", "base": "pi_flamevoid_01", "display": "明未晞"},
+	"enemy_master_022": {"variant": "pi_em_022", "base": "pi_steel_04", "display": "宋卸甲"},
+	"enemy_master_023": {"variant": "pi_em_023", "base": "pi_flame_04", "display": "楚再春"},
+	"enemy_master_024": {"variant": "pi_em_024", "base": "pi_thunder_04", "display": "岑风眠"},
+	"enemy_master_025": {"variant": "pi_em_025", "base": "pi_void_04", "display": "宿怀夜"},
+	"enemy_master_026": {"variant": "pi_em_026", "base": "pi_steel_05", "display": "鲁满仓"},
+	"enemy_master_027": {"variant": "pi_em_027", "base": "pi_flame_05", "display": "涂知温"},
+	"enemy_master_028": {"variant": "pi_em_028", "base": "pi_thunder_05", "display": "端木近雨"},
+	"enemy_master_029": {"variant": "pi_em_029", "base": "pi_void_05", "display": "叶掌灯"},
+	"enemy_master_030": {"variant": "pi_em_030", "base": "pi_omega_01", "display": "贺同舟"},
 }
 
 

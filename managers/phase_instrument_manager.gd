@@ -697,6 +697,71 @@ func get_loadouts() -> Array:
 	_loadouts_dirty = false
 	return loadouts
 
+## ── v32.0 B2-1: 阵容预设（5 槽快照存/取）──
+## 预设只快照绿槽战斗卡（slot_index + card_id + instance_id）；应用时按实例精确恢复
+##（铁律3），实例已不存在（拆解/迁移）则跳过该卡不误装模板（铁律1）。
+## 持久化：save_state/load_state 的 loadout_presets 惰性键（旧档缺键=空预设，免迁移）。
+const LOADOUT_PRESET_SLOTS := 5
+var loadout_presets: Array = []   # Array[Array]，每项=槽快照数组；空数组=未保存
+
+func get_loadout_presets() -> Array:
+	while loadout_presets.size() < LOADOUT_PRESET_SLOTS:
+		loadout_presets.append([])
+	return loadout_presets
+
+func get_loadout_preset_summary(idx: int) -> String:
+	if idx < 0 or idx >= LOADOUT_PRESET_SLOTS:
+		return ""
+	var preset: Array = get_loadout_presets()[idx]
+	if preset.is_empty():
+		return "（空）"
+	var names: Array[String] = []
+	for entry in preset:
+		var cid := String(entry.get("card_id", ""))
+		names.append(String(_get_default_cards().get_safe_display_name(cid)) if not cid.is_empty() else "?")
+	return "、".join(names)
+
+## 快照当前绿槽，返回保存的卡数（越界返回 -1）
+func save_loadout_preset(idx: int) -> int:
+	if idx < 0 or idx >= LOADOUT_PRESET_SLOTS:
+		return -1
+	var snap: Array = []
+	var green: Array = instrument_slots.get("green", [])
+	for i in range(green.size()):
+		var c: CardResource = green[i]
+		if c == null or c.card_type != GC.CardType.COMBAT_UNIT:
+			continue
+		snap.append({
+			"slot_index": i,
+			"card_id": String(c.card_id),
+			"instance_id": String(c.instance_id),
+		})
+	get_loadout_presets()[idx] = snap
+	_emit_slots_changed()
+	return snap.size()
+
+## 应用预设：整套切换绿槽，返回实际装备卡数（空预设/越界返回 -1）
+func apply_loadout_preset(idx: int) -> int:
+	if idx < 0 or idx >= LOADOUT_PRESET_SLOTS:
+		return -1
+	var preset: Array = get_loadout_presets()[idx]
+	if preset.is_empty():
+		return -1
+	var ir: Node = get_node_or_null("/root/InstanceRegistry")
+	unequip_all_and_return_to_backpack()
+	var equipped := 0
+	for entry in preset:
+		var iid := String(entry.get("instance_id", ""))
+		var card: CardResource = null
+		if not iid.is_empty() and ir != null:
+			card = ir.get_instance(iid)
+		if card == null:
+			continue
+		if equip_card(int(entry.get("slot_index", 0)), card):
+			equipped += 1
+	_emit_slots_changed()
+	return equipped
+
 ## 按平台卡 id（含合成卡 id）查找完整 loadout；找不到返回空字典
 func get_loadout_by_platform_card_id(platform_card_id: String) -> Dictionary:
 	if platform_card_id.is_empty():
@@ -988,6 +1053,7 @@ func save_state() -> Dictionary:
 		"selected_instrument_id": selected_instrument_id,
 		"unlocked_instrument_ids": unlocked_instrument_ids.duplicate(),
 		"slot_card_ids": get_slot_card_ids(),
+		"loadout_presets": get_loadout_presets().duplicate(true),
 		"runtime_instrument_defs": runtime_defs,
 		"drop_serial_counter": _drop_serial_counter,
 		# v6.2: 符文系统状态
@@ -1008,6 +1074,15 @@ func load_state(data: Dictionary) -> void:
 		for _k in phase_field_allocations.keys():
 			_casted[String(_k)] = int(phase_field_allocations[_k])
 		phase_field_allocations = _casted
+	# v32.0 B2-1: 阵容预设——先重置再覆盖（load_state({}) 必须复位为空预设，不变式①）
+	loadout_presets = []
+	var presets_raw: Array = data.get("loadout_presets", [])
+	if presets_raw is Array:
+		for p in presets_raw:
+			if p is Array:
+				loadout_presets.append(p.duplicate(true))
+	while loadout_presets.size() < LOADOUT_PRESET_SLOTS:
+		loadout_presets.append([])
 	_runtime_instrument_defs.clear()
 	var runtime_defs_raw: Dictionary = data.get("runtime_instrument_defs", {})
 	if runtime_defs_raw is Dictionary:
@@ -1105,6 +1180,12 @@ func equip_instrument(instrument_id: String) -> bool:
 	selected_instrument_id = instrument_id
 	_rebuild_slots()
 	_emit_slots_changed()
+	# v38：换装结果可见化——槽上卡已归还卡仓（玩家常误读为"卡丢了/卡变多"）；
+	# 槽数变化属仪器星级差异（3~9 绿槽），一并说明。
+	var cfg_new: Dictionary = _resolve_instrument_cfg(instrument_id)
+	var counts_new: Dictionary = cfg_new.get("slot_counts", {})
+	SignalBus.show_toast.emit("已装备相位仪（战斗卡槽 %d / 符文槽 %d），原槽上卡已放回卡仓"
+		% [int(counts_new.get("green", 0)), int(counts_new.get("rune", 0))])
 	# v7.x: 换相位仪改变第 5 层加成（pi_atk/pi_def/pi_hp + 星级系数），刷新缓存避免面板陈旧
 	refresh_player_master_eval()
 	return true

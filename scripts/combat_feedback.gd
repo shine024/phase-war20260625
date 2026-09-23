@@ -3,6 +3,8 @@ class_name CombatFeedback
 ## 战斗飘字：伤害 / MISS（格子战无 BattleHud 时由 BattleManager 信号驱动）
 
 const _DmgNum = preload("res://scenes/effects/damage_number_display.gd")
+# v32.0 B1-1: 极速推演旗标源（show_damage 读 ff_active 短路）
+const BattleTimeState = preload("res://scripts/battle/battle_time_state.gd")
 
 ## v6.6: 伤害数字节流——同一单位 80ms 内的伤害合并显示一次（累加伤害值）。
 ## 避免密集交火（弹道批量命中）时同一单位瞬间迸溅大量伤害数字节点和 Tween。
@@ -43,6 +45,14 @@ static func resolve_fx_parent(unit: Node) -> Node:
 static func show_damage(world_pos: Vector2, amount: float, unit: Node = null, is_critical: bool = false, dmg_type: String = "") -> void:
 	if amount <= 0.0:
 		return
+	# v32.0 B1-1: 极速推演期间跳过伤害数字（8x 下不可读且刷屏）
+	if BattleTimeState.ff_active:
+		return
+	# v6.15 打击感(P0)：重击（暴击）微顿帧——击杀顿帧同款时序重量给到暴击命中
+	#（450ms 冷却/motion_reduce/慢动作守卫都在 BattleSpectacle 内；放节流前=
+	# 合并窗口内的暴击也不丢拍）。
+	if is_critical:
+		BattleSpectacle.play_big_hit_hitstop()
 	# v6.6: 节流——同一单位 80ms 内的伤害合并为一个数字。
 	# 暴击/穿甲等高优先级类型不节流（视觉冲击感重要）。
 	var crit_for_type: bool = is_critical
@@ -113,6 +123,17 @@ static func _do_show_damage(world_pos: Vector2, amount: float, unit: Node, is_cr
 	var type_str: String = final_type
 	if type_str.is_empty():
 		type_str = "critical" if crit else "normal"
+	# v6.15 P1: 伤害数字相对分级——单次伤害 ≥15% 受害者 maxHP 即升 big_crit 重击样式
+	#（DR 三级数字=相对量级；绝对 500 阈值在 era 后期数值膨胀下失效，保留为下限不动，
+	# 见 damage_number_display.create_damage_number）。只升 normal/critical 两型，
+	# 特殊语义类型(dot/heal/pierce/shield/salvage/counter_break)不动；big_crit 双侧
+	# 金色不分阵营（与既有 >500 口径一致）。
+	if (type_str == "normal" or type_str == "critical") and unit != null and is_instance_valid(unit):
+		var st = unit.get("stats")
+		var mv = st.get("max_hp") if st != null else null
+		var mx: float = float(mv) if mv != null else 0.0
+		if mx > 0.0 and amount >= mx * 0.15:
+			type_str = "big_crit"
 	_DmgNum.create_damage_number(parent, world_pos, dmg, crit, type_str, side)
 
 
@@ -154,7 +175,24 @@ static func flush_expired_throttle() -> void:
 
 
 static func show_miss(world_pos: Vector2, unit: Node = null) -> void:
+	# v32.0 B1-1 对齐：极速推演期间弹字同样压制（与伤害数字同口径）
+	if BattleTimeState.ff_active:
+		return
 	var parent: Node = resolve_fx_parent(unit)
 	if parent == null:
 		return
-	_DmgNum.create_miss(parent, world_pos)
+	# v6.15 P1: 机制弹出层——闪避从灰 MISS 升格为"闪避"银白大字（DR 招架弹字同语言）
+	_DmgNum.create_callout(parent, world_pos, "闪避", "callout_dodge")
+
+
+## v6.15 P1: 机制弹出层便捷口——按单位定位（自动解析战场父层+全局坐标）
+static func show_callout_at(unit: Node, text: String, kind: String = "callout") -> void:
+	if unit == null or not is_instance_valid(unit):
+		return
+	if BattleTimeState.ff_active:
+		return
+	var parent: Node = resolve_fx_parent(unit)
+	if parent == null:
+		return
+	var pos: Vector2 = (unit as Node2D).global_position + Vector2(0, -34) if unit is Node2D else Vector2.ZERO
+	_DmgNum.create_callout(parent, pos, text, kind)

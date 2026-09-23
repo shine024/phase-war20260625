@@ -40,6 +40,8 @@ static func _load_json_dict(path: String, fallback: Dictionary) -> Dictionary:
 ## - era: 时代 0=一战 1=二战 2=冷战 3=现代 4=近未来（与 LevelEras.Era 一致）
 ## - swarm_unit: 为 true 时使用蜂群轻量路径（无刚体血条、MultiMesh 绘制、死亡粒子）
 ## - card_icon_path（可选）: 战场/卡面用单张 PNG；未填时由 `resolve_card_icon_texture_path` 按 archetype 名推导
+## - min_level（可选，v30.5 R5）: 等级门——仅在 level >= min_level 的关卡出场
+##   （二战尾部飞行试点用；缺省 0 = 全时代关卡可出）
 ## - nano_materials_kill（可选）：击杀经 BasicResourceManager 发放纳米材料。false=关闭默认档；
 ##   int/float=固定数量（几率 1.0）；{ chance, min, max }=先判定 chance 再在 [min,max] 随机（数量可乘关卡掉落倍率上限 1）
 
@@ -126,6 +128,11 @@ const TAG_PATCH: Dictionary = {
 	"mod_sup_m4_carbine": ["fast"],           # M4 卡宾特遣班（spd 105）
 	"foe_fut_inf_scout_mech": ["fast"],       # 侦察机甲
 	"fut_inf_neural": ["fast"],               # 神经接口突击兵（spd 120）
+	# ── v30.5 R5：二战尾部实验性喷气机（spd 170-180，fast 兑现"空中压制"题面的
+	#    "高速突袭后排"承诺——同池 B-17/斯图卡是慢速轰炸机；meteor_e 的 elite 使其
+	#    归精英池（精英波出场），有意的分池） ──
+	"ww2_air_me262": ["fast"],
+	"ww2_air_meteor_e": ["elite", "fast"],
 	# ── stealth（渗透槽位）──
 	"foe_mod_inf_scout_drone": ["stealth"],   # 侦察无人机
 	"ww2_inf_kar98k": ["stealth"],            # 毛瑟狙击组
@@ -144,7 +151,7 @@ const TAG_PATCH: Dictionary = {
 	"ww2_sup_mg42": ["support"],              # MG42 机枪组（支援班组火力）
 	"fut_sup_nrepair": ["support"],           # N-Repair 纳米工程车（支援工程）
 }
-## 战场视觉缩放表已迁移到 data/card_foot_anchors.gd（VISUAL_SCALE，单一真理源）。
+## 战场视觉缩放已迁移到 data/card_foot_anchors.gd（v6.14.8 内容感知模型：档位系数 + override，单一真理源）。
 ## 本文件的 get_visual_scale_for_archetype 转发到 CardFootAnchors。
 ## 若你希望所有敌人都显示完整精灵动画而非蜂群几何体，保持 false。
 ## 需要压测性能时可改回 true（仅对配置了 swarm_unit=true 的敌人生效）。
@@ -527,6 +534,20 @@ static func get_ids_for_era(era: int) -> Array:
 			result.append(id_key)
 	_era_ids_cache[safe_era] = result
 	_era_ids_cache_valid = true
+	return result
+
+## v30.5 R5：min_level 门——带 min_level 的原型只在 level >= min_level 的关卡出场
+## （如二战尾部飞行试点 ww2_air_me262/meteor_e 限 L36-40）。
+## 关卡域查询统一走本函数；get_ids_for_era（无 level）仅供"时代全量"口径
+## （图鉴/审计/时代池校准），不得用于实际出怪。
+static func get_ids_for_era_at_level(era: int, level: int) -> Array:
+	if level <= 0:
+		return get_ids_for_era(era)
+	var result: Array = []
+	for id_key in get_ids_for_era(era):
+		var cfg: Dictionary = get_config(id_key)
+		if int(cfg.get("min_level", 0)) <= level:
+			result.append(id_key)
 	return result
 
 static func get_drop_definitions(id: String) -> Array:

@@ -3,6 +3,7 @@ extends CharacterBody2D
 ## 拆分模块：AI → ConstructUnitAI, 部署 → ConstructUnitDeploy
 
 const GC = preload("res://resources/game_constants.gd")
+const BattleUnitRecord = preload("res://scripts/battle/battle_unit_record.gd")
 const DT = preload("res://resources/design_tokens.gd")
 const AttackPoseAnim = preload("res://scripts/battle/attack_pose_anim.gd")  # v9.x: 按武器分化的攻击姿态/攻击帧
 const BulletScene = preload("res://scenes/units/bullet.tscn")
@@ -16,6 +17,7 @@ const RankRules = preload("res://data/rank_rules.gd")
 const CardGridUnitVisuals = preload("res://scripts/card_grid_unit_visuals.gd")
 const CardGridBuffStrip = preload("res://scripts/card_grid_buff_strip.gd")
 const UnitSharedHelpers = preload("res://scripts/battle/unit_shared_helpers.gd")  # v26.6: 敌我共享逻辑单一真身
+const UnitModDecal = preload("res://scripts/battle/unit_mod_decal.gd")  # v37.3: 战法件贴花挂载
 const CombatFeedback = preload("res://scripts/combat_feedback.gd")
 const CardGridDamage = preload("res://scripts/card_grid_damage.gd")
 const CombatTargeting = preload("res://scripts/combat_targeting.gd")
@@ -57,7 +59,7 @@ const MAX_ENEMY_VISUAL_EXTENT_PX := 220.0
 ## 我方平台类型 -> 用于显示的敌方原型 id
 ## v20.x 重映射：我方卡 stats.platform_type = combat_kind(0-4)（v8 口径），原 0-4 键是
 ## legacy 平台枚举（1=法师/2=泰坦/3=碉堡/4=雷达车），按 CombatKind 查会拿错类别贴图
-## （装甲卡→步兵图）。0-4 改按兵种语义选代表，与 card_foot_anchors.PLAYER_PLATFORM_TO_SCALE_ARCHETYPE 同步。
+## （装甲卡→步兵图）。0-4 改按兵种语义选代表（贴图映射，与缩放无关——缩放走 card_foot_anchors 兵种档位模型）。
 const PLAYER_MIRROR_ARCHETYPE_BY_PLATFORM := {
 	0: "ww1_inf_mp18",
 	1: "cold_arm_btr_e",
@@ -89,6 +91,7 @@ var _fort_aura_hit_boost: float = 0.0
 ## 巨型能量罩(20000)/符文护盾/法则护盾等所有护盾源都走此路径，让"有护盾"可见化。
 var _shield_aura: Node2D = null
 var _shield_aura_hit_boost: float = 0.0  # 护盾吸收伤害时的承压闪光
+var _shield_aura_prev: float = 0.0       # v38.x G 条: 上帧盾值（盾破检测 → 击碎态触发）
 # v7.3 性能优化：光环降频 redraw + 仅变化时 set_meta。
 # 原实现每帧 set_meta×2 + queue_redraw（_draw 分配40段PackedVector2Array），20个护盾单位=20次重绘/帧。
 # 改为：hit_boost>0（承压闪光）时每帧 redraw；正常态每4帧 redraw 一次（呼吸2s周期，肉眼无感）。
@@ -319,6 +322,8 @@ func setup(p_is_player: bool, p_stats: UnitStats, forced_enemy_visual_archetype_
 	_update_visual()
 	_maybe_apply_card_grid_presentation()
 	_update_hp_bar()
+	# v37.3 战法件贴花：形象类/keystone 装备外显（只加兄弟节点，不碰立绘贴图）
+	UnitModDecal.apply(self, stats.get_meta("mod_ids", []) if stats != null else [], not is_player)
 
 	# 性能优化：插入到空间分区网格
 	_register_to_spatial_grid()
@@ -596,18 +601,28 @@ func _trigger_hit_shake() -> void:
 	UnitSharedHelpers.hit_shake(self, is_preview_mode)
 
 
-## v10: 受击闪白——极短(0.08s)过亮 modulate 脉冲,补 v8.x 移除的整体变色(做成轻闪,不糊卡图)。
+## v6.15 打击感: 受击闪白——优先剪影推白（unit_outline shader flash_strength uniform，
+## 全像素向白，深色卡图也读得出；不动 modulate，克隆体青蓝/阵营泛光零冲突，旧
+## "modulate=WHITE 才触发"守卫随之只在兜底路径保留）。无描边材质（预烘焙雪碧图）
+## 回退 v10 的过亮 modulate 脉冲（0.08s 同拍）。
 ## 独立 _hit_flash_tween 句柄,与 faction_glow/phantom/fire_pulse/knockback 各不干扰。
-## 仅正常态(modulate=WHITE)触发:克隆体青蓝/阵营泛光进行中跳过,避免色调冲突。
-## motion_reduce/preview 跳过。玩家侧用 tween(因需守卫 modulate 状态);敌方走 _update_hit_animations 计时。
+## motion_reduce/preview 跳过。玩家侧用 tween;敌方走 unit_shared_helpers.update_hit_animations 计时。
 var _hit_flash_tween: Tween = null
 func _play_hit_flash() -> void:
 	if not is_instance_valid(self) or is_preview_mode or DT.is_motion_reduce():
 		return
-	if modulate != Color.WHITE:
-		return  # 克隆体青蓝/阵营泛光进行中,跳过避免冲突
 	if _hit_flash_tween != null and _hit_flash_tween.is_valid():
 		_hit_flash_tween.kill()
+	if UnitSharedHelpers.hit_flash_apply(self, 1.0):
+		_hit_flash_tween = create_tween()
+		# v6.15 P2: 0.08→0.10s（docs/命中表现夸张规则.md 五律1 主通道强化；敌方侧
+		# update_hit_animations 同步 0.10，两侧同拍）
+		_hit_flash_tween.tween_method(
+			func(v: float): UnitSharedHelpers.hit_flash_apply(self, v),
+			1.0, 0.0, 0.10).set_ease(Tween.EASE_OUT)
+		return
+	if modulate != Color.WHITE:
+		return  # 兜底 modulate 路径保留旧守卫:克隆体青蓝/阵营泛光进行中,跳过避免冲突
 	modulate = Color(1.8, 1.8, 1.8, 1.0)  # 过亮闪(modulate>1 把卡图中色调推白,模拟受击高光)
 	_hit_flash_tween = create_tween()
 	_hit_flash_tween.tween_property(self, "modulate", Color.WHITE, 0.08).set_ease(Tween.EASE_OUT)
@@ -834,14 +849,23 @@ func _update_ecm_debuff_aura() -> void:
 # ═══════════════════════════════════════════════════════════
 
 ## 通用：扫描敌方单位（与自身阵营相反），返回有效 Node 数组
+## v35.x perf: 走 BattleManager 0.28s 节流组缓存（player_units/enemy_units 均在缓存
+## 名单；战斗外/未命中缓存自动回退实时扫描）。消费方全部带 is_instance_valid 守卫
+## （缓存窗口内可能含已释放节点），勿删调用侧守卫。
 func _collect_enemy_units_for_mechanism() -> Array:
 	var enemy_group: String = "enemy_units" if is_player else "player_units"
+	if BattleManager != null and BattleManager.has_method("get_cached_nodes_in_group"):
+		return BattleManager.get_cached_nodes_in_group(enemy_group)
 	return get_tree().get_nodes_in_group(enemy_group)
 
 ## 通用：扫描友方单位（与自身阵营相同，排除自己）
 func _collect_ally_units_for_mechanism() -> Array:
 	var ally_group: String = "player_units" if is_player else "enemy_units"
-	var allies: Array = get_tree().get_nodes_in_group(ally_group)
+	var allies: Array
+	if BattleManager != null and BattleManager.has_method("get_cached_nodes_in_group"):
+		allies = BattleManager.get_cached_nodes_in_group(ally_group)
+	else:
+		allies = get_tree().get_nodes_in_group(ally_group)
 	var filtered: Array = []
 	for a in allies:
 		if a == self:
@@ -1284,14 +1308,16 @@ func _ensure_fort_shield_aura() -> void:
 	_fort_shield_aura = aura
 
 ## v7.2: 创建护盾状态光环（shield>0 时懒创建）
+## v38.x G 条：穹顶罩画在立绘上方/血条（z=20）之下（z=5）；spawn_msec 驱动获得态动画
 func _ensure_shield_aura() -> void:
 	if _shield_aura != null and is_instance_valid(_shield_aura):
 		return
 	var aura: Node2D = Node2D.new()
 	aura.set_script(FortShieldAuraScript)
 	aura.name = "ShieldAura"
-	aura.z_index = -2  # 护盾环画在堡垒环之外（更外层"罩"）
+	aura.z_index = 5  # 穹顶罩在立绘上（立绘 z=0）、血条下（OVERHEAD_UI_Z=20）
 	aura.set_meta(&"mode", "shield")
+	aura.set_meta(&"spawn_msec", Time.get_ticks_msec())
 	aura.visible = false  # 默认隐藏，shield>0 时才显示
 	add_child(aura)
 	_shield_aura = aura
@@ -1345,8 +1371,18 @@ func _update_fort_shield_aura(delta: float) -> void:
 			# v7.3: 承压闪光或比例变化时每帧 redraw，正常态每4帧一次
 			if _shield_aura_hit_boost > 0.0 or (_aura_low_freq_frame % 4) == 0:
 				_shield_aura.queue_redraw()
-	elif _shield_aura != null and is_instance_valid(_shield_aura):
-		_shield_aura.visible = false  # 护盾耗尽，隐藏（节点保留，下次获得护盾复用）
+			# v38.x G 条: 击碎态自隐藏兜底清除（动画早已结束的残留 breaking meta）
+			if _shield_aura.has_meta(&"breaking_msec"):
+				_shield_aura.remove_meta(&"breaking_msec")
+		elif _shield_aura != null and is_instance_valid(_shield_aura):
+			# v38.x G 条: 盾破瞬间进击碎态（0.3s 扩张淡出，aura 自隐藏），动画期不强制 visible=false
+			if _shield_aura_prev > 0.0 and not _shield_aura.has_meta(&"breaking_msec"):
+				_shield_aura.set_meta(&"breaking_msec", Time.get_ticks_msec())
+				_shield_aura.visible = true
+				_shield_aura.queue_redraw()
+			elif not _shield_aura.has_meta(&"breaking_msec"):
+				_shield_aura.visible = false  # 护盾耗尽，隐藏（节点保留，下次获得护盾复用）
+		_shield_aura_prev = shield
 	# v7.3: 帧计数推进（用于降频 redraw）
 	_aura_low_freq_frame += 1
 
@@ -1731,6 +1767,12 @@ func _clamp_inside_battlefield() -> void:
 func _enforce_card_grid_lane_alignment() -> void:
 	if not _cached_is_card_grid:
 		return
+	# v38.x D 条对称: 受击动画活跃期跳过格吸附（与 enemy_unit 同病同修）——
+	# knockback 位移/受击缩放/受击后仰进行中逐帧瞬移回锚点 = 抖动源。
+	if _hit_shake_t >= 0.0 \
+			or (_knockback_tween != null and _knockback_tween.is_valid()) \
+			or (_card_tween != null and _card_tween.is_valid()):
+		return
 	var bf: Node = BattleManager.battlefield if BattleManager else null
 	if bf == null:
 		return
@@ -1822,6 +1864,8 @@ func take_damage(amount: float, attacker: Variant = null) -> void:
 	# 预览模式不会受到伤害
 	if is_preview_mode:
 		return
+	# v32.0 B1-3: 每单位战斗记录挂账（输出/承伤；口径=减免前进账量，跨单位一致）
+	BattleUnitRecord.record_damage(attacker, self, amount)
 	# v20.14: 隐身飞机被命中时退出隐身
 	CardAbilityManager.on_stealth_hit(self)
 	# v8.6: 势力技能 periodic_invuln（周期无敌期间免疫伤害）
@@ -1968,6 +2012,8 @@ func take_damage(amount: float, attacker: Variant = null) -> void:
 			var phase_absorbed: float = min(_phase_shield_current, hp_loss)
 			_phase_shield_current -= phase_absorbed
 			hp_loss -= phase_absorbed
+			if _phase_shield_current <= 0.0:
+				CombatFeedback.show_callout_at(self, "护盾破碎", "callout_shield")  # v6.15 P1 机制弹出层
 	# v6.6: 护盾吸收 — 优先从护盾值扣减，剩余伤害才扣 HP。
 	# 修复前 shield 只增不减（add_shield 被 on_kill/law/rune 调用，但伤害从不走护盾吸收路径），
 	# 导致击杀护盾、法则护盾、符文护盾全部"白给"。现在 take_damage 入口统一扣护盾。
@@ -1978,6 +2024,8 @@ func take_damage(amount: float, attacker: Variant = null) -> void:
 		# v7.2: 护盾承压闪光（护盾环扩张+变亮，让玩家感知"护盾在挡伤害"）
 		_shield_aura_hit_boost = 1.0
 		_update_hp_bar()
+		if shield <= 0.0:
+			CombatFeedback.show_callout_at(self, "护盾破碎", "callout_shield")  # v6.15 P1 机制弹出层
 	# v8.6: 势力技能 conditional.hp_below 已在 setup 时永久注入防御加成（走既有防御结算）
 	hp -= hp_loss
 

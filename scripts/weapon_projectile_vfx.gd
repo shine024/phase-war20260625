@@ -119,7 +119,8 @@ const IMPACT_SHAKE_BY_KIND: Dictionary = {
 const PROJ_TEX_SCALE: Dictionary = {
 	# New enum: 0=DIRECT, 1=INDIRECT, 2=AERIAL
 	0: 0.27,
-	1: 0.70,  # v17m: 曲射炮弹可见性（AI 批'弹道不可见'）。R30 实验放大至 0.95 损害轨迹评分，回退
+	1: 0.45,  # v38（用户拍板"炮弹比兵大"）：0.70→0.45。实测弹体 78.5px > 单位基准 58.9px；
+	         # 缩后基准 ~50px（榴弹拍 ~50px），明确小于一个兵。可见性由拖尾/命中爆炸承担。
 	2: 0.60,  # R30 实验放大至 0.85 损害轨迹评分，回退
 	# v9.2: 拉大轻武器与终极武器的弹体尺寸差异，让"小兵 vs 终极单位"一眼可辨。
 	#   轻武器（SMG/PISTOL）：保持小但可见（显示 ~4-5px 高）
@@ -174,9 +175,12 @@ const IMPACT_TARGET_W_BY_WT: Dictionary = {
 	5: 72.0,    # SHOTGUN — 散射命中
 	8: 96.0,    # LASER（兜底）
 	# v18-R4: 爆炸族目标宽 112→96（见表内注释）
-	1: 96.0,    # INDIRECT — 炮级
-	2: 96.0,    # AERIAL
-	3: 96.0,    # ROCKET — v18-R4: 112→96（同爆炸族）
+	# v6.14: 96→112 恢复炮级量级断层——实测反馈"直射与曲射爆炸雷同"：多轮压缩
+	# （112→96/环时长×0.7）后曲射落点与直射坦克炮命中（52px 环）只差 ~2×。
+	# 112=1.75×单位原值（×1.3 HEAVY 后 146px，规格"火炮级 1-2×单位"上限内）。
+	1: 112.0,   # INDIRECT — 炮级
+	2: 112.0,   # AERIAL
+	3: 112.0,   # ROCKET — v18-R4: 112→96（同爆炸族）；v6.14 随族回 112
 	# v18-R4: 爆炸族(1/2/3/7/9) 112→96px——规格"火炮级爆炸直径≈单位高度1-2倍"，
 	# 96px=1.5×单位取中值；112 叠 HEAVY×1.3 后 146px 仍在 2×上限内。
 	7: 96.0,    # FLAK
@@ -313,14 +317,16 @@ static func layer_tint(layer_key: int, base_tint: Color, camp_blend: float = 0.0
 
 ## 亚类曳光线宽度。机枪基准 / 步枪细 / 坦克炮粗（重弹余辉，非细 streak）/ 手枪窄。
 ## v20.16d: 机枪 2.5→3.0（弹幕流加粗）、步枪 2.0→1.8（细亮快弹）。
+## v6.17: 全档 ×~1.3 加粗（远机位可读性）——2px 级曳光在 720p 实拍里近乎不可见，
+## 加粗后配泛光成"发光弹道"（对照 R.I.P. 粗曳光语言；弹体本体尺寸不动，守弹体尺寸律）。
 static func tracer_width_for(layer_key: int) -> float:
 	match layer_key:
-		FLAVOR_LAYER_MG: return 3.0
-		FLAVOR_LAYER_RIFLE: return 1.8
-		FLAVOR_LAYER_TANK_GUN: return 3.5
-		FLAVOR_LAYER_SMALL_ARMS: return 2.0
-		FLAVOR_LAYER_XENO_MELEE: return 2.2  # v27.x: 刃光细亮快弹
-		_: return 2.5
+		FLAVOR_LAYER_MG: return 3.8
+		FLAVOR_LAYER_RIFLE: return 2.4
+		FLAVOR_LAYER_TANK_GUN: return 4.5
+		FLAVOR_LAYER_SMALL_ARMS: return 2.5
+		FLAVOR_LAYER_XENO_MELEE: return 2.8  # v27.x: 刃光细亮快弹
+		_: return 3.0
 
 ## 亚类曳光线长度。机枪加长（弹幕感）/ 步枪略长（精确轨迹）/ 坦克炮缩短
 ## （重弹本体即视觉主体，曳光只留余辉）。
@@ -337,16 +343,17 @@ static func tracer_len_for(layer_key: int) -> float:
 
 ## 亚类曳光线颜色（同 flavor_tint 语言，曳光透明度 0.82）。基础层返回阵营基准色。
 ## v26.31: camp_blend 同 layer_tint——敌方 batch 传 0.65 让曳光回归橙红阵营语言。
+## v6.17: rgb ×1.5 HDR 化——hdr_2d 视口下 >1 亮度过 bloom 阈值，曳光带光晕
+## （发光弹道的核心来源；alpha 不动，守既有 42% 点射回声口径）。
 static func tracer_color_for(layer_key: int, base_color: Color, camp_blend: float = 0.0) -> Color:
 	if layer_key == FLAVOR_LAYER_XENO_MELEE:
 		var xe := XenoWeaponFlavor.COLOR_EDGE
-		xe.a = 0.82
-		return xe
+		return Color(xe.r * 1.5, xe.g * 1.5, xe.b * 1.5, 0.82)
 	var f := _flavor_for_layer_key(layer_key)
 	if f < 0:
-		return base_color
+		return Color(base_color.r * 1.5, base_color.g * 1.5, base_color.b * 1.5, base_color.a)
 	var c := flavor_tint(f).lerp(Color(base_color.r, base_color.g, base_color.b, 1.0), camp_blend)
-	c.a = 0.82
+	c = Color(minf(c.r * 1.5, 3.0), minf(c.g * 1.5, 3.0), minf(c.b * 1.5, 3.0), 0.82)
 	return c
 
 ## ── v20.18: 单发路径点射节奏（视觉 burst）──
@@ -355,15 +362,17 @@ static func tracer_color_for(layer_key: int, base_color: Color, camp_blend: floa
 ## 射速>2 的机枪进 batch 弹幕路径；≤2 的武器（步枪/手枪/二战重机枪）在单发路径
 ## 用视觉点射补节奏：一次攻击伤害只结算一次，后续发为纯视觉弹（delay 错开）。
 ## 消费方：construct_unit_ai 单发路径（敌方轻武器无条件走 batch，无需分派）。
+## v38.3: GENERIC 兜底不再吃点射——语义不明的武器（RPG-7火箭筒/离子炮/势力卡
+## 占位名"轻装武器"/幽灵狙击组等）编造连发感会读成"单发伤害视觉多发"；
+## 具名步枪/冲锋枪仍走 RIFLE 档拿 2 连发，机网格不受影响。
 const BURST_INTERVAL: float = 0.09  ## 点射间隔（秒）——60fps 下 5-6 帧，读"哒哒哒"
 
-## 亚类点射数。机枪 3 连珠 / 步枪·冲锋枪 2 连发 / 手枪·坦克炮单发（重武器语义单发）。
+## 亚类点射数。机枪 3 连珠 / 步枪·冲锋枪 2 连发 / 其余（含 GENERIC 兜底）单发。
 static func burst_count_for(flavor: int) -> int:
 	match flavor:
 		DirectWeaponFlavor.Flavor.MG: return 3
 		DirectWeaponFlavor.Flavor.RIFLE: return 2
-		DirectWeaponFlavor.Flavor.GENERIC: return 2
-		_: return 1  # SMALL_ARMS/TANK_GUN/NONE——单发
+		_: return 1  # SMALL_ARMS/TANK_GUN/GENERIC/NONE——单发（v38.3: GENERIC 撤出点射）
 
 ## ── v20.19: 机枪换弹周期（射击-停顿-再射击）──
 ## 病根：机枪匀速连射（2.0/s×3 连珠）无停顿，读感是"永动机"——真实机枪打完弹链
@@ -424,10 +433,11 @@ enum IndirectFlavor {
 	HOWITZER = 1,   # 榴弹炮/野战炮/要塞炮——中弧标准节奏重弹
 	ROCKET = 2,     # 火箭炮/火箭弹——低平弧快弹橙红
 	MISSILE = 3,    # 导弹——低弧俯冲微加速
+	CRUISE = 4,     # v38.x 巡航导弹（发射井 cold_fort_missile 专属）——垂直发射陡升重弹冷白
 }
 static var _indirect_flavor_cache: Dictionary = {}
 
-## 按武器名分类曲射亚类（优先级：迫击炮 > 火箭 > 榴弹族 > 导弹）。
+## 按武器名分类曲射亚类（优先级：迫击炮 > 火箭 > 榴弹族 > 巡航导弹 > 导弹）。
 ## 只对走曲射路由（wt 1/2/3/7/9）的弹道有意义；直射名（坦克炮/步枪等）不路由到曲射，无影响。
 static func classify_indirect(weapon_name: String) -> int:
 	if weapon_name.is_empty():
@@ -445,6 +455,10 @@ static func classify_indirect(weapon_name: String) -> int:
 			or weapon_name.find("要塞炮") >= 0 or weapon_name.find("加农炮") >= 0 \
 			or weapon_name.find("火炮") >= 0 or weapon_name.find("步兵炮") >= 0:
 		f = IndirectFlavor.HOWITZER
+	elif weapon_name.find("巡航导弹") >= 0:
+		# v38.x 实机验收"发射井没特色"：巡航导弹在通用"导弹"前匹配——
+		# cold_fort_missile（w_armor="反舰巡航导弹"）专属弹道/命中签名
+		f = IndirectFlavor.CRUISE
 	elif weapon_name.find("导弹") >= 0:
 		f = IndirectFlavor.MISSILE
 	_indirect_flavor_cache[weapon_name] = f
@@ -462,6 +476,7 @@ static func indirect_apex_mul(flavor: int) -> float:
 		IndirectFlavor.HOWITZER: return 1.0
 		IndirectFlavor.ROCKET: return 0.7
 		IndirectFlavor.MISSILE: return 1.2
+		IndirectFlavor.CRUISE: return 1.5   # v38.x 垂直发射陡升感（高于普通导弹 1.2）
 		_: return 1.0
 
 ## 亚类飞行时长系数（乘在槽位时长上；>1 更慢）。迫击炮 1.30（炮弹慢飘读"迫击炮"）/
@@ -472,16 +487,19 @@ static func indirect_duration_mul(flavor: int) -> float:
 		IndirectFlavor.HOWITZER: return 1.0
 		IndirectFlavor.ROCKET: return 0.72
 		IndirectFlavor.MISSILE: return 0.88
+		IndirectFlavor.CRUISE: return 1.15  # v38.x 慢一拍——重弹巡航节奏与导弹俯冲分流
 		_: return 1.0
 
-## 亚类弹体尺寸系数（per-instance scale）。榴弹族 1.2（重炮弹更大）/ 迫击炮 0.78（小弹）/
+## 亚类弹体尺寸系数（per-instance scale）。迫击炮 0.78（小弹）/ 榴弹 1.0（v38 随
+## 基准缩幅取消 1.2 加成——0.45×1.2=54px 仍贴单位宽度，读感"和兵一样大"）/
 ## 火箭 0.85（细长火箭弹）。
 static func indirect_body_scale(flavor: int) -> float:
 	match flavor:
 		IndirectFlavor.MORTAR: return 0.78
-		IndirectFlavor.HOWITZER: return 1.2
+		IndirectFlavor.HOWITZER: return 1.0
 		IndirectFlavor.ROCKET: return 0.85
 		IndirectFlavor.MISSILE: return 1.0
+		IndirectFlavor.CRUISE: return 1.3   # v38.x 反舰重弹——弹体显著大于普通导弹
 		_: return 1.0
 
 ## 亚类弹体染色（阵营无关覆盖，同 flavor_tint 语言）。火箭橙红（尾焰语义）/
@@ -490,6 +508,7 @@ static func indirect_tint(flavor: int, base: Color) -> Color:
 	match flavor:
 		IndirectFlavor.ROCKET: return Color(1.0, 0.62, 0.30)
 		IndirectFlavor.MISSILE: return Color(1.0, 0.85, 0.65)
+		IndirectFlavor.CRUISE: return Color(0.88, 0.95, 1.0)  # v38.x 冷白——反舰巡航导弹的海色签名
 		_: return base
 
 ## 返回弹头多边形顶点（7 点，顺时针，原点居中，指向 +X）。
@@ -517,10 +536,11 @@ static func build_bullet_points(weapon_type: int, size_scale: float = 1.0, flavo
 			body_len = 6.0 * s
 			nose_len = 3.0 * s
 			half_h = 2.8 * s
-		5:  # SHOTGUN — 圆胖霰弹丸
-			body_len = 6.0 * s
+		5:  # SHOTGUN — 细长散布弹丸（P2-5 f05，2026-09-22：圆胖点读不出"六发散射"，
+			# 改细长弹丸与曳光配套；散射角与发数在 bullet.gd 飞行层）
+			body_len = 10.0 * s
 			nose_len = 3.0 * s
-			half_h = 4.0 * s
+			half_h = 1.8 * s
 		3, 9:  # ROCKET / MISSILE — 长粗导弹
 			body_len = 9.0 * s
 			nose_len = 4.0 * s
@@ -548,10 +568,12 @@ static func build_bullet_points(weapon_type: int, size_scale: float = 1.0, flavo
 				half_h = 1.8 * s
 				neck = 0.3
 			DirectWeaponFlavor.Flavor.MG:
-				# 机枪——短钝弹丸（弹幕流亮点；钝头+矮胖与步枪细长反差）
-				body_len = 5.0 * s
-				nose_len = 2.0 * s
-				half_h = 2.6 * s
+				# 机枪——短钝弹丸（弹幕流亮点；钝头+矮胖与步枪细长反差）。
+				# v38.x 实机验收"机枪弹头太大"：整体缩一档（视觉宽 ≈12×4.7px），
+				# 仍保钝头+矮胖与步枪细长反差，不退回 v17k-R2"弹道隐形"线以下。
+				body_len = 3.4 * s
+				nose_len = 1.4 * s
+				half_h = 1.8 * s
 				neck = 0.5
 			DirectWeaponFlavor.Flavor.TANK_GUN:
 				# 直射坦克炮——修长炮弹剪影。v26.15d: 旧"大号钝头"（10/4/4.6/0.55）
@@ -718,26 +740,18 @@ static func proj_quad_size(weapon_type: int) -> Vector2:
 	# quad_h = proj_scale * REF_TEX_PX * (tex_height / REF_TEX_PX)
 	#        = proj_scale * tex_height
 	# 我们已知各武器对应的贴图高度，直接硬编码计算：
+	# v35 收缩：唯一消费方是曲射 batch（simple_indirect_projectile_batch，路由
+	# wt∈{1,2,3,7,9}），死档 0/4、5、6、8、10、11 已删——旧表挂着 PISTOL 567x131、
+	# legacy MG 1349x110 等从未被本函数消费的尺寸（与 PROJ_TEX 档位混杂，误导调参）。
+	# 将来给直射弹体建 MultiMesh 层时按当时贴图另立新表，勿复活本表死档。
 	var s := proj_scale(weapon_type)
 	match weapon_type:
-		0, 4:     # DIRECT/SMG/PISTOL — tex 673x121 / 567x131
-			return Vector2(s * 673, s * 121)
 		1:        # INDIRECT/artillery — tex 1122x184
 			return Vector2(s * 1122, s * 184)
 		2, 9:     # AERIAL/MISSILE — tex 1127x251
 			return Vector2(s * 1127, s * 251)
 		3, 7:     # ROCKET/FLAK — tex 1202x203
 			return Vector2(s * 1202, s * 203)
-		5:        # SHOTGUN — tex 737x472
-			return Vector2(s * 737, s * 472)
-		6:        # SNIPER — tex 629x80
-			return Vector2(s * 629, s * 80)
-		8:        # LASER — tex 365x77
-			return Vector2(s * 365, s * 77)
-		10:       # OMEGA — tex 1071x191
-			return Vector2(s * 1071, s * 191)
-		11:       # RAIL — tex 974x208
-			return Vector2(s * 974, s * 208)
 		_:
 			return Vector2(s * 512, s * 128)
 
@@ -792,6 +806,11 @@ static func spawn_impact_with_kind(parent: Node2D, world_pos: Vector2, weapon_ty
 	if XenoWeaponFlavor.enabled() and XenoWeaponFlavor.is_xeno_weapon(weapon_name):
 		VfxFactory.spawn_xeno_impact(parent, world_pos, XenoWeaponFlavor.classify(weapon_name), is_player_shot, atk_d, opts)
 		return
+	# v38.x F 条: 巡航导弹（发射井 cold_fort_missile"反舰巡航导弹"）专属命中签名层——
+	# 叠加在通用三层之上（冷白大闪+双冲击环+双烟团+贴地扬尘），不 return 不替换通用层。
+	# 弹道端 CRUISE 陡升 + 震屏走 bullet 既有半径通道，与 45s 核打击演出分层。
+	if classify_indirect(weapon_name) == IndirectFlavor.CRUISE:
+		VfxFactory.spawn_cruise_impact(parent, world_pos)
 	# v18: 命中贴图层 scale 重标定（AI 审计 4.2/10 基线的主病根，像素级实测确认）。
 	# 病根：weapon_impact_*.png 画布实为 1536px（内容 1062-1410px），旧 scale 按"512px
 	# 基准 ×2 显示"标定（0.26-0.51×2）→ 实渲染 550-1300px，比 64px 参考单位大 8-18 倍；
@@ -929,11 +948,13 @@ static func compute_power_tier(weapon_type: int, explosion_radius: float, damage
 ## 按 power_tier 返回帧动画 target_width（px）。0=无帧动画。
 ## v18-R4: HEAVY 160→128——规格"火炮级爆炸直径 1-2×单位(64-128px)"，160 已达 2.5×；
 ## v12 报告同向建议"主爆炸尺寸缩小 60%"。MEDIUM 96 保持（1.5×单位中值）。
+## v6.14: MEDIUM 96→112 / HEAVY 128→144——实测反馈"直射与曲射爆炸大小雷同"，
+## 恢复量级断层（直射重炮无火球帧，曲射是唯一尺寸签名；144=2.25×单位，仍在炮级上限内）。
 static func frame_width_for_tier(tier: int) -> float:
 	match tier:
 		0:  return 0.0     # LIGHT 无帧动画
-		1:  return 96.0    # MEDIUM 标准
-		2:  return 128.0   # HEAVY 放大（2×单位上限）
+		1:  return 112.0   # MEDIUM 标准（1.75×单位）
+		2:  return 144.0   # HEAVY 放大（2.25×单位）
 		3:  return 0.0     # NUCLEAR 走 spawn_nuclear_explosion，不播普通帧动画
-		_: return 96.0
+		_: return 112.0
 

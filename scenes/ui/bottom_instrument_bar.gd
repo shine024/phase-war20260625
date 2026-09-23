@@ -9,12 +9,17 @@ const DefaultCardsData = preload("res://data/default_cards.gd")
 const LevelInformation = preload("res://data/level_information.gd")
 const NodeFinder = preload("res://scripts/node_finder.gd")
 const CardInfoPanel = preload("res://scenes/ui/card_info_panel.gd")
+# R-B2 键位角标：新类消费必须 preload 而非依赖 class_name 全局缓存
+# （headless/gdunit 运行期无编辑器扫描，v6.16 ModBreakpoints 同款教训）
+const KeycapBadge = preload("res://scripts/ui/keycap_badge.gd")
 const BackpackCombatPreview = preload("res://scenes/ui/backpack_combat_preview.gd")
 const RankDisplayUi = preload("res://scripts/rank_display_ui.gd")
 const CardFrameUi = preload("res://scripts/card_frame_ui.gd")
 const CardBackgroundUi = preload("res://scripts/card_background_ui.gd")
 const AutoDeployController = preload("res://scenes/ui/auto_deploy_controller.gd")
 const PanelStyles = preload("res://scripts/ui/panel_styles.gd")
+# v32.0 B2-3: 套装体系检测（备战面预示——战斗内实时态见 combo_status_strip）
+const ComboTactics = preload("res://data/combo_tactics.gd")
 const DEBUG_BOTTOM_BAR_LOG := false
 ## ── 子系统：槽位拖放 ──
 const DragSub = preload("res://scenes/ui/instrument_bar_drag.gd")
@@ -23,6 +28,110 @@ var _drag_system: InstrumentBarDrag = null
 ## ── 子系统：战斗内自动部署（从左到右铺满 + 死亡补阵）──
 var _auto_deploy: AutoDeployController = null
 var _auto_deploy_btn: Button = null
+# v32.0 B2-3: 阵容体系预示行（NameSection 第三行）
+var _synergy_label: Label = null
+## ── v32.0 B2-1: 阵容预设 UI（「阵」按钮 + PopupPanel 五槽）──
+var _preset_btn: Button = null
+var _preset_popup: PopupPanel = null
+var _preset_rows: Array = []
+
+func _build_preset_ui() -> void:
+	var slot_section: Node = get_node_or_null("Margin/HBox/InstrumentSection/SlotSection")
+	if slot_section == null:
+		return
+	_preset_btn = Button.new()
+	_preset_btn.text = "阵"
+	_preset_btn.custom_minimum_size = Vector2(34, 0)
+	_preset_btn.tooltip_text = "阵容预设：保存当前战斗卡装载，一键整套切换"
+	_preset_btn.pressed.connect(_toggle_preset_popup)
+	slot_section.add_child(_preset_btn)
+
+func _toggle_preset_popup() -> void:
+	if _preset_popup != null and _preset_popup.visible:
+		_preset_popup.hide()
+		return
+	if _preset_popup == null:
+		_build_preset_popup()
+	_refresh_preset_popup()
+	_preset_popup.reset_size()
+	var btn_rect: Rect2 = _preset_btn.get_global_rect()
+	_preset_popup.position = Vector2(
+		clampf(btn_rect.position.x - 40.0, 4.0, 1276.0 - _preset_popup.size.x),
+		maxf(btn_rect.position.y - _preset_popup.size.y - 6.0, 4.0))
+	_preset_popup.popup()
+
+func _build_preset_popup() -> void:
+	_preset_popup = PopupPanel.new()
+	_preset_popup.exclusive = false
+	add_child(_preset_popup)
+	var v := VBoxContainer.new()
+	v.custom_minimum_size = Vector2(330, 0)
+	v.add_theme_constant_override("separation", 6)
+	_preset_popup.add_child(v)
+	var title := Label.new()
+	title.text = "阵容预设"
+	title.add_theme_font_size_override("font_size", DT.FONT_SIZE_MEDIUM)
+	title.add_theme_color_override("font_color", DT.COLOR_TEXT_BRIGHT)
+	v.add_child(title)
+	var hint := Label.new()
+	hint.text = "应用=整套切换战斗卡；保存=快照当前绿槽"
+	hint.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
+	hint.add_theme_color_override("font_color", DT.COLOR_TEXT_DIM)
+	v.add_child(hint)
+	_preset_rows.clear()
+	for i in range(PhaseInstrumentManager.LOADOUT_PRESET_SLOTS):
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 6)
+		v.add_child(row)
+		var name_lbl := Label.new()
+		name_lbl.text = "阵%d" % (i + 1)
+		name_lbl.custom_minimum_size = Vector2(34, 0)
+		name_lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
+		row.add_child(name_lbl)
+		var apply_btn := Button.new()
+		apply_btn.text = "应用"
+		apply_btn.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
+		apply_btn.pressed.connect(_on_preset_apply.bind(i))
+		row.add_child(apply_btn)
+		var save_btn := Button.new()
+		save_btn.text = "保存"
+		save_btn.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
+		save_btn.pressed.connect(_on_preset_save.bind(i))
+		row.add_child(save_btn)
+		var summary := Label.new()
+		summary.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
+		summary.add_theme_color_override("font_color", DT.COLOR_TEXT_DIM)
+		summary.clip_text = true
+		summary.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		row.add_child(summary)
+		_preset_rows.append({"apply": apply_btn, "summary": summary})
+
+func _refresh_preset_popup() -> void:
+	if _preset_popup == null:
+		return
+	for i in range(_preset_rows.size()):
+		var row: Dictionary = _preset_rows[i]
+		var summary: Label = row["summary"]
+		summary.text = PhaseInstrumentManager.get_loadout_preset_summary(i)
+		row["apply"].disabled = PhaseInstrumentManager.get_loadout_presets()[i].is_empty()
+
+func _on_preset_apply(idx: int) -> void:
+	var n: int = PhaseInstrumentManager.apply_loadout_preset(idx)
+	if n < 0:
+		SignalBus.show_toast.emit("该预设为空：先「保存」当前阵容")
+	else:
+		SignalBus.show_toast.emit("已应用预设「阵%d」：%d 张战斗卡" % [idx + 1, n])
+		_preset_popup.hide()
+
+func _on_preset_save(idx: int) -> void:
+	var n: int = PhaseInstrumentManager.save_loadout_preset(idx)
+	if n < 0:
+		SignalBus.show_toast.emit("预设槽位无效")
+	else:
+		SignalBus.show_toast.emit("已保存「阵%d」：%d 张战斗卡" % [idx + 1, n])
+		_refresh_preset_popup()
+
+
 
 signal instrument_area_clicked
 signal phase_level_label_clicked
@@ -87,6 +196,9 @@ func _ready() -> void:
 	_build_energy_row()
 	_setup_menu_button()
 	_update_energy_display()
+	_build_synergy_label()
+	_build_preset_ui()
+	_build_deploy_count_label()
 	_refresh_all()
 	# 布局完成后，让格子高度精确填满条的可用空间
 	call_deferred("_fit_slots_to_bar")
@@ -110,23 +222,25 @@ func _process(delta: float) -> void:
 
 
 ## v7.x(自动部署)：在 InstrumentSection 最前面创建"自动"toggle 按钮 + 初始化控制器。
-## 按钮仅在战斗中可点击；开启后从左到右自动铺满战斗卡，单位死亡立即补阵。
-## 仅当前战斗生效（battle_ended 自动关闭）。
+## v32.3 A3：默认开（偏好持久化）；战前可预武装（开战后自动铺）；战斗结束不再自动关。
 func _setup_auto_deploy() -> void:
 	# 控制器需要主场景引用（定位 Battlefield）
 	var main_node: Node = _find_main_scene()
 	_auto_deploy = AutoDeployController.new()
-	_auto_deploy.setup(main_node)
+	# 先连 state_changed 再 setup——setup 会按持久化偏好发初始开启态
 	_auto_deploy.state_changed.connect(_on_auto_deploy_state_changed)
+	_auto_deploy.setup(main_node)
 	# 按钮插到 InstrumentSection 最前面（InstrumentIcon 之前）
 	_auto_deploy_btn = Button.new()
 	_auto_deploy_btn.name = "AutoDeployBtn"
 	_auto_deploy_btn.text = "自动"
 	_auto_deploy_btn.custom_minimum_size = Vector2(48, BAR_FIXED_HEIGHT - 4)
 	_auto_deploy_btn.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
-	_auto_deploy_btn.tooltip_text = "自动部署：从左到右铺满战斗卡\n单位死亡后自动补阵\n仅当前战斗生效"
+	_auto_deploy_btn.tooltip_text = "自动部署：开战后卡组自动上阵（绿槽顺序）\n单位死亡后自动补阵\n默认开启，偏好自动记忆"
 	_auto_deploy_btn.toggle_mode = true
-	_apply_auto_deploy_btn_style(false)
+	# v32.3 A3：初始按压态对齐持久化偏好（set_pressed_no_signal 防回环触发 enable/disable）
+	_auto_deploy_btn.set_pressed_no_signal(_auto_deploy != null and _auto_deploy.is_enabled())
+	_apply_auto_deploy_btn_style(_auto_deploy != null and _auto_deploy.is_enabled())
 	_auto_deploy_btn.pressed.connect(_on_auto_deploy_btn_pressed)
 	instrument_section.add_child(_auto_deploy_btn)
 	instrument_section.move_child(_auto_deploy_btn, 0)  # 移到最前面
@@ -153,18 +267,17 @@ func _on_auto_deploy_btn_pressed() -> void:
 		SignalBus.play_sound.emit("button")
 	if _auto_deploy == null:
 		return
-	# 战斗中才允许开启；非战斗态点击强制弹回关闭
-	var in_battle: bool = BattleManager != null and "battle_active" in BattleManager and BattleManager.battle_active
-	if not in_battle:
-		_auto_deploy_btn.set_pressed_no_signal(false)
-		_apply_auto_deploy_btn_style(false)
-		if _auto_deploy.is_enabled():
-			_auto_deploy.disable()
-		return
+	# v32.3 A3：解除"战斗中才能开"门控——战前可预武装（battle_started 后自动铺，
+	# 控制器 _on_battle_started 原生支持）；开关即偏好，持久化在控制器侧
 	if _auto_deploy_btn.is_pressed():
 		_auto_deploy.enable()
 	else:
 		_auto_deploy.disable()
+
+
+## v32.3 A3：外部查询自动部署偏好（教程首战 nudge 区分自动/手动语义用）
+func is_auto_deploy_enabled() -> bool:
+	return _auto_deploy != null and _auto_deploy.is_enabled()
 
 
 func _on_auto_deploy_state_changed(enabled: bool) -> void:
@@ -382,6 +495,44 @@ func _update_energy_display() -> void:
 
 ## BU-1：底栏右端「菜单」按钮——展开/收起功能按钮抽屉（BottomFunctionBar），
 ## 把 15 个功能入口从战场视觉里收起来；红点聚合角标由 set_menu_badge 驱动。
+## v38.x B 条: NameSection 常显"在场 n/上限 m"——第6关"只能上场6个哪里有说"主诉。
+## 上限口径与 BattleSpawnSystem 一致（PhaseInstrumentManager 绿槽战斗卡数）；
+## 在场数走战场实时 recount；刷新挂 unit_spawned/unit_died 信号。
+var _deploy_count_label: Label = null
+
+func _build_deploy_count_label() -> void:
+	if name_section == null or not is_instance_valid(name_section):
+		return
+	_deploy_count_label = Label.new()
+	_deploy_count_label.name = "DeployCountLabel"
+	_deploy_count_label.add_theme_font_size_override("font_size", 11)
+	_deploy_count_label.add_theme_color_override("font_color", Color(0.65, 0.85, 1.0, 0.95))
+	_deploy_count_label.tooltip_text = "在场单位数 / 可上场上限\n上限 = 绿槽装备的战斗卡数，场上另受 3×3 格子截断"
+	name_section.add_child(_deploy_count_label)
+	if SignalBus.has_signal("unit_spawned"):
+		SignalBus.unit_spawned.connect(_on_deploy_count_dirty)
+	if SignalBus.has_signal("unit_died"):
+		SignalBus.unit_died.connect(_on_deploy_count_dirty)
+	_refresh_deploy_count()
+
+
+func _on_deploy_count_dirty(_unit: Node, _is_player: bool) -> void:
+	_refresh_deploy_count()
+
+
+func _refresh_deploy_count() -> void:
+	if _deploy_count_label == null or not is_instance_valid(_deploy_count_label):
+		return
+	var max_units: int = 0
+	if PhaseInstrumentManager != null:
+		max_units = PhaseInstrumentManager.get_max_deployable_units()
+	var live: int = 0
+	if BattleManager != null and is_instance_valid(BattleManager) \
+			and BattleManager.has_method("recount_player_units_on_field"):
+		live = BattleManager.recount_player_units_on_field()
+	_deploy_count_label.text = "在场 %d / 上限 %d" % [live, max_units]
+
+
 func _setup_menu_button() -> void:
 	var hbox: HBoxContainer = get_node_or_null("Margin/HBox") as HBoxContainer
 	if hbox == null:
@@ -401,7 +552,12 @@ func _setup_menu_button() -> void:
 func _on_menu_btn_pressed() -> void:
 	if SignalBus and SignalBus.has_signal("play_sound"):
 		SignalBus.play_sound.emit("button")
-	var fb: Node = get_node_or_null("../BottomFunctionBar")
+	# v38.2 后抽屉被 _become_right_side_column reparent 到 HudLayer 直下
+	#（HudLayer/BottomFunctionBar），旧兄弟路径只在测试/裸实例化结构里成立——
+	# 两路都试（_notify_menu_badge 同款兜底纪律）。
+	var fb: Node = get_node_or_null("../../BottomFunctionBar")
+	if fb == null:
+		fb = get_node_or_null("../BottomFunctionBar")
 	if fb == null or not fb.has_method("toggle_drawer"):
 		return
 	fb.toggle_drawer()
@@ -700,6 +856,71 @@ func _refresh_slot_indicators() -> void:
 func _refresh_all() -> void:
 	_refresh_slot_layout()
 	_refresh_phase_level()
+	_refresh_synergy_label()
+
+## v32.0 B2-3: 备战面体系预示——NameSection 第三行。
+## 战斗内实时激活态由 combo_status_strip 轮询场上单位（v9.1/v21）；
+## 本行消费同一 detect API 但读**装载槽卡的已装改造**，在基地调整卡时即时预览
+## "这套阵容将激活什么体系"，闭合构筑决策回路。
+func _build_synergy_label() -> void:
+	var name_section: Node = get_node_or_null("Margin/HBox/InstrumentSection/NameSection")
+	if name_section == null:
+		return
+	_synergy_label = Label.new()
+	_synergy_label.custom_minimum_size = Vector2(0, 16)
+	_synergy_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_synergy_label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	_synergy_label.add_theme_font_size_override("font_size", 12)
+	_synergy_label.add_theme_color_override("font_color", DT.COLOR_GOLD)
+	_synergy_label.clip_text = true
+	_synergy_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_synergy_label.visible = false
+	name_section.add_child(_synergy_label)
+
+
+func _refresh_synergy_label() -> void:
+	if _synergy_label == null or not is_instance_valid(_synergy_label):
+		return
+	# combo_id -> 档位rank（0=基础 1=满档），多卡同类取最高
+	var agg: Dictionary = {}
+	if PhaseInstrumentManager != null:
+		for loadout in PhaseInstrumentManager.get_loadouts():
+			var card: CardResource = loadout.get("platform")
+			if card == null or card.mods.is_empty():
+				continue
+			var tiers: Dictionary = ComboTactics.detect_card_combo_tiers(card.mods)
+			for cid in tiers:
+				var rank: int = 1 if String(tiers[cid]) == ComboTactics.TIER_FULL else 0
+				if rank > int(agg.get(cid, -1)):
+					agg[cid] = rank
+		# v6.19 P2-T2.2 流派成型埋点：备战态首次激活套装 / 首次满档（构筑即成型时刻）
+		if not agg.is_empty():
+			var pm: Node = get_node_or_null("/root/PerformanceMetricsManager")
+			if pm != null and pm.has_method("record_milestone"):
+				pm.record_milestone("combo_active_first")
+				var has_full := false
+				for cid in agg:
+					if int(agg[cid]) == 1:
+						has_full = true
+						break
+				if has_full:
+					pm.record_milestone("combo_full_first")
+	if agg.is_empty():
+		_synergy_label.visible = false
+		return
+	var parts: Array[String] = []
+	var tips: Array[String] = []
+	for cid in agg:
+		var def: Dictionary = ComboTactics.COMBOS.get(cid, {})
+		var cname: String = String(def.get("name", String(cid)))
+		var is_full: bool = int(agg[cid]) == 1
+		parts.append("%s·%s" % [cname, "满" if is_full else "基"])
+		tips.append("%s（%s）" % [cname, "满档" if is_full else "基础档"])
+	_synergy_label.visible = true
+	_synergy_label.text = "体系：" + "、".join(parts)
+	var nl_sep := String.chr(10)
+	_synergy_label.tooltip_text = "当前阵容体系预览（按已装改造，满档需集齐满档件）：" + nl_sep + nl_sep.join(tips)
+
 
 
 func _format_card_slot_tooltip(color: String, card: CardResource) -> String:
@@ -760,6 +981,7 @@ func _flush_pending_slots_refresh() -> void:
 	_refresh_slot_layout()
 	_refresh_phase_level()
 	_refresh_slot_indicators()
+	_refresh_synergy_label()
 
 
 func _refresh_slot_layout() -> void:
@@ -775,6 +997,7 @@ func _refresh_slot_layout() -> void:
 		var entry: Dictionary = layout[i]
 		_update_slot_panel(_slot_panels[i], entry)
 	_refresh_slot_affordability()
+	_refresh_deploy_keycaps()
 
 func _rebuild_all_slot_panels(layout: Array) -> void:
 	for old in _slot_panels:
@@ -789,7 +1012,29 @@ func _rebuild_all_slot_panels(layout: Array) -> void:
 		# BU-1：重建路径也走增量更新，补 energy_cost/restricted meta + 压暗罩
 		_update_slot_panel(panel, entry)
 	_refresh_slot_affordability()
+	_refresh_deploy_keycaps()
 	call_deferred("_fit_slots_to_bar")
+
+## UI 四级标准修复 R-B2：部署槽 1-9 数字角标——键盘部署真身
+## begin_deploy_from_slot_index(n) 的 n=第 n 个可部署绿槽（有战斗卡的非空绿槽），
+## 角标序号必须与它同口径；布局/换卡变化后重算（增量与全量两条路径都挂）。
+## >9 无键位不显示；空绿槽隐藏角标（与键盘行为一致：跳过空槽继续数）。
+func _refresh_deploy_keycaps() -> void:
+	var n := 0
+	for panel in _slot_panels:
+		if panel == null or not is_instance_valid(panel):
+			continue
+		var deployable: bool = String(panel.get_meta("slot_color", "")) == "green" \
+			and not String(panel.get_meta("card_id", "")).is_empty() \
+			and int(panel.get_meta("card_type", -1)) == GC.CardType.COMBAT_UNIT
+		if deployable:
+			n += 1
+		# v38.x I 条: tooltip 补键位语义——数字角标被误读成"关1 2 3"，点明"按 N 键部署"
+		if deployable:
+			var base_tip: String = String(panel.get_meta("deploy_tooltip_base", panel.tooltip_text))
+			panel.set_meta("deploy_tooltip_base", base_tip)
+			panel.tooltip_text = base_tip + "\n\n按 %d 键直接部署该单位" % n
+		KeycapBadge.bind_to_digit(panel, n if deployable else 0)
 
 ## 增量更新单个格子的内容和样式（避免每次重建所有格子）
 func _update_slot_panel(panel: Control, entry: Dictionary) -> void:
@@ -960,28 +1205,72 @@ func _is_card_platform_restricted(card: CardResource) -> bool:
 
 ## 让格子高度精确填满条的可用高度（抵消 PanelContainer content_margin 等开销）
 ## v21.x: 槽位宽度固定为 13 格（green9+rune4，最大槽数）布局的宽度——槽少也不放大，
-## 所有相位仪格子同宽。不依赖 slot_section.size.x（布局未稳定时为0不可靠），直接按视口宽扣除固定元素计算。
+## 所有相位仪格子同宽。
+## v38.x H 条: 弃纯视口反推，改布局后实测——HBox 实宽减可见兄弟实测宽（菜单钮隐藏
+## 不计，truck 内嵌实例不再被幽灵 48px 预算吃掉半格）+「阵」按钮实测计入 slot 内开销。
+## 布局未稳定（首帧 size≈0）回退旧视口估算。
 func _fit_slots_to_bar() -> void:
 	if not is_instance_valid(slot_section):
 		return
 	var available_h: float = slot_section.size.y
 	if available_h < 1.0:
 		available_h = BAR_FIXED_HEIGHT
-	# 按视口宽度计算槽位可用宽度，扣除固定元素（v26.x 按真实最小宽估算，消除运行时溢出）：
-	# margin(16) + 自动按钮(48) + 图标(48) + 名称区(120，相位场容器 120×28 实际下限，
-	# 旧按 100 估导致 ~20px 缺口全部转嫁给槽位区) + InstrumentSection间距(12) + 分隔线(2)
-	# + HBox间距(6) + BU-1 菜单按钮(48+间距6) + 外层悬浮边距(32) + 20px 安全余量
 	var viewport_width: float = get_viewport_rect().size.x
 	if viewport_width <= 1.0:
 		viewport_width = 1280.0
-	var reserved_w: float = 16.0 + 48.0 + 48.0 + 120.0 + 12.0 + 2.0 + 6.0 + 48.0 + 6.0 + 32.0 + 20.0  # ≈ 358px
-	var slot_available_w: float = maxf(200.0, viewport_width - reserved_w)
+	var slot_available_w: float = -1.0
+	var hbox: Container = null
+	if instrument_section != null and is_instance_valid(instrument_section) \
+			and instrument_section.get_parent() is Container:
+		hbox = instrument_section.get_parent() as Container
+	if hbox != null and hbox.size.x > 1.0:
+		# ── 实测路径 ──
+		var overhead: float = 0.0
+		var visible_n: int = 0
+		for child in hbox.get_children():
+			var c: Control = child as Control
+			if c == null or not c.visible:
+				continue
+			visible_n += 1
+			if c == instrument_section:
+				continue
+			overhead += maxf(c.size.x, c.get_combined_minimum_size().x)
+		overhead += float(hbox.get_theme_constant("separation")) * float(maxi(0, visible_n - 1))
+		# InstrumentSection 内非槽位开销：图标 / 名称区 / 自动按钮 + 区内间距
+		var section_inner: float = 0.0
+		var sec_visible_n: int = 0
+		for child in instrument_section.get_children():
+			var c2: Control = child as Control
+			if c2 == null or not c2.visible:
+				continue
+			sec_visible_n += 1
+			if c2 == slot_section:
+				continue
+			section_inner += maxf(c2.size.x, c2.get_combined_minimum_size().x)
+		section_inner += float(instrument_section.get_theme_constant("separation")) * float(maxi(0, sec_visible_n - 1))
+		# MarginContainer 左右 content margin（16）+ 少量安全余量（分隔线/圆角裁切）
+		slot_available_w = maxf(200.0, hbox.size.x - overhead - section_inner - 16.0 - 4.0)
+	if slot_available_w < 0.0:
+		# ── fallback：布局未稳定，按视口反推（v26.x 估算保留）──
+		var reserved_w: float = 16.0 + 48.0 + 48.0 + 120.0 + 12.0 + 2.0 + 6.0 + 48.0 + 6.0 + 32.0 + 20.0  # ≈ 358px
+		slot_available_w = maxf(200.0, viewport_width - reserved_w)
 	var separation: float = 6.0
+	# v38.x H 条: slot_section 内非槽位可见子（「阵」按钮 34px 等）实测计入开销
+	var slot_overhead: float = 0.0
+	var slot_panels_set: Dictionary = {}
+	for p in _slot_panels:
+		if p and is_instance_valid(p):
+			slot_panels_set[p] = true
+	for child in slot_section.get_children():
+		var c3: Control = child as Control
+		if c3 == null or not c3.visible or slot_panels_set.has(c3):
+			continue
+		slot_overhead += maxf(c3.size.x, c3.get_combined_minimum_size().x) + separation
 	# v21.x: 固定宽度——恒按最大槽数 _FIXED_WIDTH_SLOT_REF(13) 格计算（12 个间距），
 	# 无论当前实际几格（3/5/8/10/13），所有相位仪格子同宽，切相位仪时格子大小不变。
 	# 上限90px（宽屏不放大），下限40px（窄屏再窄看不清）。
 	var full_total_sep: float = separation * float(_FIXED_WIDTH_SLOT_REF - 1)
-	var full_dynamic_w: float = maxf(40.0, (slot_available_w - full_total_sep) / float(_FIXED_WIDTH_SLOT_REF))
+	var full_dynamic_w: float = maxf(40.0, (slot_available_w - full_total_sep - slot_overhead) / float(_FIXED_WIDTH_SLOT_REF))
 	_slot_width = minf(full_dynamic_w, SLOT_FIXED_SIZE.x)
 	for p in _slot_panels:
 		if p and is_instance_valid(p):
@@ -1122,7 +1411,7 @@ func _add_empty_slot_hint(panel: Control) -> void:
 	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	hint.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	hint.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	hint.add_theme_font_size_override("font_size", 22)
+	hint.add_theme_font_size_override("font_size", 20)
 	hint.add_theme_color_override("font_color", Color(bc.r, bc.g, bc.b, 0.55))
 	hint.add_theme_color_override("font_outline_color", Color(0.0, 0.0, 0.0, 0.4))
 	hint.add_theme_constant_override("outline_size", 2)

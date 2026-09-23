@@ -190,7 +190,7 @@ const MASTER_PATTERN_MAP: Dictionary = {
 	"enemy_master_020": PATTERN_SYNERGY_HYBRID, # 泰尔 steel_thunder
 	"enemy_master_021": PATTERN_SYNERGY_HYBRID, # 克尔加 flame_void
 	# 终焉全能（1）
-	"enemy_master_030": PATTERN_OMNI_ULTIMATE, # 奥米伽
+	"enemy_master_030": PATTERN_OMNI_ULTIMATE, # 贺同舟
 }
 
 # ─────────────────────────────────────────────

@@ -2,6 +2,7 @@ extends CharacterBody2D
 ## 敌方单位：卡图立绘（Sprite2D）+ 自动向左移动并攻击；已弃用 SpriteFrames 序列帧
 
 const BulletScene = preload("res://scenes/units/bullet.tscn")
+const BattleUnitRecord = preload("res://scripts/battle/battle_unit_record.gd")
 const EnemyArchetypes = preload("res://data/enemy_archetypes.gd")
 const EnemyStatResolver = preload("res://data/enemy_stat_resolver.gd")
 const MuzzleAnchors = preload("res://data/muzzle_anchors.gd")
@@ -13,6 +14,7 @@ const CardGridUnitVisuals = preload("res://scripts/card_grid_unit_visuals.gd")
 const CardGridBattleLayout = preload("res://scripts/card_grid_battle_layout.gd")
 const CardGridBuffStrip = preload("res://scripts/card_grid_buff_strip.gd")
 const UnitSharedHelpers = preload("res://scripts/battle/unit_shared_helpers.gd")  # v26.6: 敌我共享逻辑单一真身
+const UnitModDecal = preload("res://scripts/battle/unit_mod_decal.gd")  # v37.3: 战法件贴花挂载
 const CombatFeedback = preload("res://scripts/combat_feedback.gd")
 const CardGridDamage = preload("res://scripts/card_grid_damage.gd")
 const CombatTargeting = preload("res://scripts/combat_targeting.gd")
@@ -94,6 +96,9 @@ var _cached_timing: Dictionary = {}
 var _cached_fire_range: float = -1.0
 var _cached_weapon_type: int = -1
 var _cached_target_ref: Node2D = null
+## v35 perf: 攻速变化巡检节流累积器（原每帧 get("stats")+武器查询，0.5s 一次足够——
+## 攻速改写源 ECM/光环/搭档协同都是秒级节奏）
+var _timing_chk_accum: float = 0.0
 # P0 性能优化：缓存战斗模式判定，避免每帧 has_method + is_card_grid_battle 反射调用链
 var _cached_is_card_grid: bool = true
 var _cached_combat_started: bool = false
@@ -194,6 +199,9 @@ func setup(_is_player: bool, p_wave: int, p_archetype_id: String = "basic_infant
 	_register_to_spatial_grid()
 	# 无有效 archetype 时不会进入 _apply_visual_from_archetype，须仍关掉场景里遗留的编辑器占位。
 	_suppress_stray_editor_visual_nodes()
+	# v37.3b 战法件贴花不在此处挂：_apply_archetype_stats 里 _apply_visual_from_archetype
+	# 塞进来的是 tscn scale=1.0 的裸卡图，此时挂贴花会按裸图内容宽计量出"半个战场"级尺寸；
+	# 改到 apply_card_grid_enemy_presentation 演出归一后再挂（helper 幂等）。
 
 func _suppress_stray_editor_visual_nodes() -> void:
 	# 关闭场景中遗留的编辑器占位节点（原 AnimatedSprite2D2 / PreviewBackground）。
@@ -268,6 +276,9 @@ func apply_card_grid_enemy_presentation() -> void:
 		aura_ring.visible = false
 	if rank_badge != null:
 		rank_badge.visible = false
+	# v37.3b 战法件贴花：演出归一后重挂——此时立绘 texture/scale 已定格，贴花按最终
+	# 可见内容宽计量（helper 自带镜像与幂等重建）；setup 期裸卡图态不再产生错误尺寸。
+	UnitModDecal.apply(self, UnitModDecal.mods_to_ids(get_meta("loadout_mods", [])), true)
 
 
 ## 格子战术卡面攻击姿态（v9.x 由 AttackPoseAnim 取代——按武器类型分化前冲/后坐/上扬 + 攻击帧）
@@ -286,7 +297,8 @@ func _play_card_hit_recoil() -> void:
 		_card_tween.kill()
 	const RECOIL_MAX_RAD: float = 0.22
 	var rest_r: float = 0.0
-	position = _rest_position
+	# v38.x D 条: 删 position = _rest_position 硬复位——recoil 只独占 rotation；
+	# 此前瞬间拉回部署点会打断进行中的 knockback 位移（实机验收⑬"一会左一会右"）。
 	rotation = rest_r
 	_card_tween = create_tween()
 	var peak_r: float = rest_r + RECOIL_MAX_RAD
@@ -817,8 +829,11 @@ func _ensure_enemy_weapon_slots(s: UnitStats) -> void:
 		#    磁轨狙击炮→SNIPER(6) 光束（此前统一落进光束关键词→SNIPER，RAIL/OMEGA 签名特效丢失）；
 		# ② 光束关键词 → SNIPER(6)（v9.x 扩展到曲射槽位，敌方曲射单位的光束武器与玩家一致）；
 		# ③ 曲射弹药形态（仅 INDIRECT 单位：机枪/近防炮点防直射、火箭低平弧、导弹中弧）。
-		if (w.weapon_type == GC2.WeaponType.DIRECT or w.weapon_type == GC2.WeaponType.INDIRECT) \
-				and not str(s.weapon_label).is_empty():
+		# v38.3: 覆盖门放宽到全部槽位——原门只放行 wt∈{0,1}，对空槽(MISSILE 9)/空射槽(AERIAL 2)
+		# 被跳过，敌方"激光武器/粒子炮/磁轨狙击炮/棱光束"对空时发射导弹弹道，而玩家侧同名单
+		# 槽位是无条件覆盖（fut_aa_hover[点防御激光]→6）——敌我不对称。解析器自守（无匹配 -1
+		# 不改值），非光束名的 9/2 槽保持原弹道，放宽门零副作用。
+		if not str(s.weapon_label).is_empty():
 			var _traj: int = CardResource.trajectory_override_for_weapon_name(str(s.weapon_label), s.weapon_type)
 			if _traj >= 0:
 				w.weapon_type = _traj
@@ -1081,7 +1096,14 @@ func _should_retain_current_target() -> bool:
 		return false
 	# v10(L3): 平方比较（避免每周期 sqrt）
 	var acq: float = _enemy_acquisition_range()
-	return global_position.distance_squared_to(target.global_position) <= acq * acq
+	if global_position.distance_squared_to(target.global_position) > acq * acq:
+		return false
+	# v36 实机验收（直射前排优先）→ v38.x 扩为跨排：更靠前玩家单位出现 → 放弃锁定重选（与玩家侧对称）
+	var wt_now: int = _get_weapon_type_for_targeting()
+	if not GC.is_indirect_weapon_type(wt_now) and ConstructUnitAI.has_more_forward_target(
+			self, minf(acq, ConstructUnitAI.FRONT_SWITCH_CHECK_RANGE)):
+		return false
+	return true
 
 
 func _find_target(_delta: float) -> void:
@@ -1107,23 +1129,23 @@ func _find_target(_delta: float) -> void:
 		if BattleManager and BattleManager.spatial_grid:
 			var spatial_grid = BattleManager.spatial_grid
 			if spatial_grid:
-				# 使用空间网格查询最近目标（O(1)复杂度）
-				var nearest_target = spatial_grid.query_nearest_target(
-					global_position,
-					false,  # 敌方单位
-					acq
-				)
-				# v9.2: 分行索敌——同行优先，最近目标不同行时尝试找同行最近；无同行则接受原目标（跨行回退）
-				if nearest_target != null and not CardGridBattleLayout.units_in_same_row(self, nearest_target):
-					var same_row_t: Node2D = _query_nearest_same_row_player(spatial_grid, acq)
-					if same_row_t != null:
-						nearest_target = same_row_t
-				# v20.15: 真隐身过滤——最近目标隐身且敌方无侦测源时放弃，落到下方传统扫描重选
-				if nearest_target != null and not CardAbilityManager.is_unit_targetable(nearest_target, self):
-					nearest_target = null
-				if nearest_target != null:
-					target = nearest_target
-					return
+				# v38.x 直射前排优先：盒扫候选统一交给 select_target_direct 三键选优
+				# （前向 x → 同带内同排 → 距离/HP），与玩家侧同构——取代 v9.2
+				# "最近+同行覆盖"两步（同行优先压过前排，跨排更前的玩家单位被无视）。
+				var e_cands: Array = spatial_grid.query_enemies(global_position, acq, false)
+				var e_cand_nodes: Array = []
+				for c in e_cands:
+					if c == null or not is_instance_valid(c) or not (c is Node2D):
+						continue
+					# v20.15: 真隐身过滤——隐身且敌方无侦测源时跳过
+					if not CardAbilityManager.is_unit_targetable(c, self):
+						continue
+					e_cand_nodes.append(c)
+				if not e_cand_nodes.is_empty():
+					var sel_t: Node2D = TargetSelection.select_target_direct(self, e_cand_nodes)
+					if sel_t != null:
+						target = sel_t
+						return
 
 		# 回退到传统方法（如果空间网格不可用）
 		var tree = get_tree()
@@ -1134,13 +1156,10 @@ func _find_target(_delta: float) -> void:
 		var attack_range_sq := acq * acq
 		var gr: Array = BattleManager.get_cached_nodes_in_group("player_units") if BattleManager else get_tree().get_nodes_in_group("player_units")
 		var found_alive: bool = false
-		# v9.2: 分行索敌——两遍扫描：先找同行射程内目标，无则跨行（避免单位空转）
-		# v10(H8): fallback 与 spatial_grid 路径口径对齐——取"最近"而非"组顺序第一个"
-		# （原两套规则使同单位的目标选择依赖网格可用性）
-		var same_row_hit: Node2D = null
-		var same_row_best_d2: float = INF
-		var any_row_hit: Node2D = null
-		var any_row_best_d2: float = INF
+		# v38.x 直射前排优先：射程内候选收集后统一走 select_target_direct 三键排序
+		# （前向 x → 同带内同排 → 距离/HP），取代 v9.2 same_row/any_row 两遍扫描——
+		# 旧口径同行优先压过前排，跨排更前的目标被无视。
+		var scan_cands: Array = []
 		for n in gr:
 			if not CombatTargeting.is_attackable_combat_unit(n):
 				continue
@@ -1152,20 +1171,11 @@ func _find_target(_delta: float) -> void:
 			# 隐身单位在场不算"场上无单位"，不触发转打相位场）
 			if not CardAbilityManager.is_unit_targetable(n2d, self):
 				continue
-			var dist_sq := global_position.distance_squared_to(n2d.global_position)
-			if dist_sq > attack_range_sq:
+			if global_position.distance_squared_to(n2d.global_position) > attack_range_sq:
 				continue
-			if dist_sq < any_row_best_d2:
-				any_row_best_d2 = dist_sq
-				any_row_hit = n2d
-			if CardGridBattleLayout.units_in_same_row(self, n2d) and dist_sq < same_row_best_d2:
-				same_row_best_d2 = dist_sq
-				same_row_hit = n2d
-		if same_row_hit != null:
-			target = same_row_hit
-			return
-		if any_row_hit != null:
-			target = any_row_hit
+			scan_cands.append(n2d)
+		if not scan_cands.is_empty():
+			target = TargetSelection.select_target_direct(self, scan_cands)
 			return
 
 		# 我方场上无单位时，攻击我方相位场
@@ -1238,28 +1248,7 @@ func _collect_player_candidates(acq: float) -> Array:
 	return result
 
 
-## v9.2: spatial_grid 行过滤辅助——敌方直射索敌时，在射程内找同行最近的玩家单位。
-## 复用 spatial_grid.query_enemies 拿半径内所有玩家方单位（敌方视角 is_player=false 查玩家），
-## 按同行过滤后取最近；无同行返回 null。
-func _query_nearest_same_row_player(spatial_grid: Node, max_range: float) -> Node2D:
-	# query_enemies(position, radius, is_player) 中 is_player 是"中心方是否为玩家"，
-	# 敌方单位查玩家方目标时 is_player=false（敌方不是玩家），返回玩家方单位。
-	var players: Array = spatial_grid.query_enemies(global_position, max_range, false)
-	if players.is_empty():
-		return null
-	var best: Node2D = null
-	var best_d2: float = INF
-	for p in players:
-		if p == null or not is_instance_valid(p) or not (p is Node2D):
-			continue
-		if not CardGridBattleLayout.units_in_same_row(self, p):
-			continue
-		var d2: float = global_position.distance_squared_to((p as Node2D).global_position)
-		if d2 < best_d2:
-			best_d2 = d2
-			best = p
-	return best
-
+## （v38.x 删除 _query_nearest_same_row_player——v9.2 同行覆盖步随直射三键排序退役）
 
 ## v8: stealth 单位优先级索敌——优先打指挥单位(platform_type==12)，其次光环单位。
 ## 与 ConstructUnitAI._scan_slot_targets 的 L1/L2 口径对齐（AURA=[3,4,5,8,9,10,12]）。
@@ -1350,6 +1339,7 @@ func _process_attack_timing(delta: float) -> void:
 	# v10(C4/H1): 攻速类 debuff 统一 delta 通道——ECM/EMP/势力攻速/周期技能攻速惩罚/减速光环。
 	# 与玩家侧同源（ConstructUnitAI.get_attack_delta_scale，秒制时间戳 + 过期顺带清理），
 	# 替换原硬编码 0.75（boss 削弱 30% 此前被硬编码吞成 25%）。
+	var _raw_delta: float = delta  # v35 perf: 攻速巡检用未缩放 delta
 	var _atk_delta_mult: float = ConstructUnitAI.get_attack_delta_scale(self)
 	# v26.13(B2): 先手突袭（本关前 3 秒敌方开火积累 ×1.6，等效攻击间隔 ×0.62）
 	if BattleManager != null and BattleManager.has_method("has_special_rule") \
@@ -1367,14 +1357,19 @@ func _process_attack_timing(delta: float) -> void:
 	var wt: int
 	# v10(M5): 缓存失效条件扩展——目标变化 或 当前武器攻速变化（攻速类效果改写
 	# weapon.attack_speed 后原缓存永不重算）。武器查询是索引级开销，不进反射。
+	# v35 perf: 攻速巡检从每帧降频到 0.5s（原每帧 target.get("stats") 反射 +
+	# get_weapon_for_target；0.5s 窗口内的生效延迟对秒级 debuff 不可感）
 	var _timing_stale: bool = target != _cached_target_ref
 	if not _timing_stale and stats != null and _cached_timing.has("speed"):
-		var _ts_chk = target.get("stats") as UnitStats
-		var _tk_chk: int = _ts_chk.combat_kind if _ts_chk != null else 0
-		var _w_chk: WeaponResource = AttackCalculator.get_weapon_for_target(stats, _tk_chk)
-		if _w_chk != null and _w_chk.enabled \
-				and absf(float(_cached_timing.get("speed", 1.0)) - float(_w_chk.attack_speed)) > 0.0001:
-			_timing_stale = true
+		_timing_chk_accum += _raw_delta
+		if _timing_chk_accum >= 0.5:
+			_timing_chk_accum = 0.0
+			var _ts_chk = target.get("stats") as UnitStats
+			var _tk_chk: int = _ts_chk.combat_kind if _ts_chk != null else 0
+			var _w_chk: WeaponResource = AttackCalculator.get_weapon_for_target(stats, _tk_chk)
+			if _w_chk != null and _w_chk.enabled \
+					and absf(float(_cached_timing.get("speed", 1.0)) - float(_w_chk.attack_speed)) > 0.0001:
+				_timing_stale = true
 	if _timing_stale:
 		_cached_target_ref = target
 		if stats != null:
@@ -1614,6 +1609,8 @@ func _update_card_grid_buff_strip(force: bool = false) -> void:
 	UnitSharedHelpers.update_card_grid_buff_strip(self, force, false, "Sprite2D")  # 敌方无 preview 虚影，守卫恒 false
 
 func take_damage(amount: float, attacker: Variant = null) -> void:
+	# v32.0 B1-3: 每单位战斗记录挂账（输出/承伤）
+	BattleUnitRecord.record_damage(attacker, self, amount)
 	# v26.13(B2): boss 半血狂暴——首次跌破 50% 置旗标（攻速通道在 _process_attack_timing）
 	if not has_meta("_enrage_active") and has_meta("_is_boss_unit") and stats != null \
 			and float(stats.max_hp) > 0.0 and hp <= float(stats.max_hp) * 0.5:
@@ -1765,6 +1762,8 @@ func take_damage(amount: float, attacker: Variant = null) -> void:
 		final_loss -= absorbed
 		if absorbed > 0.0 and final_loss <= 0.0:
 			_update_hp_bar()  # 盾全吸收也刷一次条（盾环显示走 _update_psi_shield_ring）
+		if absorbed > 0.0 and _psi_shield <= 0.0:
+			CombatFeedback.show_callout_at(self, "护盾破碎", "callout_shield")  # v6.15 P1 机制弹出层
 	hp -= final_loss
 	# v8 批次2: 反伤词缀（armor_reflect）——受到伤害时反弹给攻击者
 	# 标记 _vfx_is_reflect 防止递归（反伤伤害不再触发对方的反伤）
@@ -1910,6 +1909,12 @@ func _enforce_card_grid_lane_alignment() -> void:
 		return
 	if not _cached_is_card_grid:
 		return
+	# v38.x D 条: 受击动画活跃期跳过格吸附——knockback 位移/受击缩放/受击后仰进行中
+	# 逐帧瞬移回锚点会把演出打断成"一会左一会右"抖动（实机验收⑬）。
+	if _hit_shake_t >= 0.0 \
+			or (_knockback_tween != null and _knockback_tween.is_valid()) \
+			or (_card_tween != null and _card_tween.is_valid()):
+		return
 	var esi: int = int(get_meta("card_grid_enemy_slot", -1))
 	if esi < 0:
 		return
@@ -1964,7 +1969,8 @@ func start_as_deploy_ghost() -> void:
 		actual_delay *= 0.5
 	_ghost_materialize_time_left = maxf(0.05, actual_delay)
 	# 星冥虚影染蓝青色（与常规敌兵半透明白区分，读得出"这不是常规敌人"）
-	modulate = Color(0.62, 0.82, 1.0, 0.5) if _is_xeno else Color(1.0, 1.0, 1.0, 0.42)
+	# v36 实机验收：常规虚影 a 0.42→0.62（与我方同批）——揭幕后敌我不见的空白感来自虚影太淡
+	modulate = Color(0.62, 0.82, 1.0, 0.5) if _is_xeno else Color(1.0, 1.0, 1.0, 0.62)
 
 ## 部署虚影每帧更新（由 _physics_process 调用，返回 true 表示本帧已实体化）
 func _update_enemy_deploy_ghost(delta: float) -> bool:
@@ -2064,14 +2070,17 @@ func _update_psi_shield_ring() -> void:
 		return
 	if _psi_ring == null:
 		_psi_ring = Line2D.new()
-		_psi_ring.width = 2.0
+		_psi_ring.width = 3.0
 		_psi_ring.default_color = Color(0.45, 0.85, 1.0, 0.85)
 		_psi_ring.z_index = 8
 		add_child(_psi_ring)
-	var radius: float = 30.0 + 12.0 * ratio
+	var radius: float = 34.0 + 12.0 * ratio
+	# v38.x G 条: 全圆环 → 上半穹顶弧（与我方护盾罩同视觉语言，两侧下垂 ~20°）
 	var pts: PackedVector2Array = PackedVector2Array()
+	var dome_a0: float = PI - 0.35
+	var dome_a1: float = TAU + 0.35
 	for i in range(25):
-		var ang: float = TAU * float(i) / 24.0
+		var ang: float = lerpf(dome_a0, dome_a1, float(i) / 24.0)
 		pts.append(Vector2(cos(ang), sin(ang)) * radius)
 	_psi_ring.points = pts
 	_psi_ring.visible = true

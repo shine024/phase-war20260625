@@ -45,10 +45,15 @@ static func classify(weapon_name: String, weapon_type: int = 0) -> int:
 		return Flavor.NONE
 	# 按优先级匹配关键词（先匹配的特征性更强的类）
 	# 坦克炮/主炮/滑膛炮/反坦克炮 —— 口径 + "炮"且非高炮/防空炮/迫击炮
+	# v38.6: 直装炮族（步兵炮/野战炮/要塞炮/肩炮/相位炮/裸口径"73mm炮"）先行收编
 	if _is_tank_gun(weapon_name):
 		return Flavor.TANK_GUN
 	# 机枪/重机枪/高机枪/车载机枪 —— "机枪"关键词
-	if weapon_name.find("机枪") >= 0 or weapon_name.find("MG") >= 0:
+	# v38.6: 速射机炮族（近防炮/航炮/机炮/链炮/高射炮/防空炮/高炮）并入 MG——
+	# 与机枪同享 3 连珠点射 + 换弹周期（CIWS/防空速射的"哒哒哒-停顿"节奏），
+	# 彻底退出 GENERIC 步枪级配方。纯能量炮（离子炮/湮灭光炮）不在此列（backlog）。
+	if weapon_name.find("机枪") >= 0 or weapon_name.find("MG") >= 0 \
+			or _is_rapid_cannon(weapon_name):
 		return Flavor.MG
 	# 手枪/卡宾/马刀 —— 轻武器
 	if weapon_name.find("手枪") >= 0 or weapon_name.find("卡宾") >= 0 or weapon_name.find("马刀") >= 0:
@@ -65,20 +70,49 @@ static func classify(weapon_name: String, weapon_type: int = 0) -> int:
 
 ## 坦克炮判定：含"主炮/滑膛炮/反坦克炮/坦克炮"，但排除"高炮/防空炮/迫击炮/榴弹炮/要塞炮"
 ## （后者属于曲射或防空，不走直射亚类）
+## v38.6: 直装炮族先行判定（置于排除表之前）——组合名以最强火力词为准：
+## "迫击炮/野战炮"（ZSU-23-4 数据债）按野战炮收 TANK_GUN，"150mm要塞炮/88mm防空炮"
+## （近防炮系统/要塞炮台）按要塞炮收 TANK_GUN——这些直射槽重炮此前吃 GENERIC 步枪级
+## 曳光配方（审计 R2 45 条的主体）。新增：步兵炮/野战炮/要塞炮/肩炮/相位炮 +
+## 裸口径签名"mm炮"（"73mm炮"这类口径紧邻炮字、无中缀的组合，不误伤"mm防空炮"）。
 static func _is_tank_gun(weapon_name: String) -> bool:
+	# ── v38.6 直装炮族：出现即坦克炮级（优先于下方排除表）──
+	if weapon_name.find("步兵炮") >= 0 or weapon_name.find("野战炮") >= 0 \
+			or weapon_name.find("要塞炮") >= 0 or weapon_name.find("肩炮") >= 0 \
+			or weapon_name.find("相位炮") >= 0:
+		return true
+	# 裸口径炮：口径数字紧邻"炮"（"73mm炮"）；"88mm防空炮"/"122mm火箭炮"等
+	# 中缀组合不匹配（mm 后跟的是防/火等字），不与下方排除表冲突
+	if weapon_name.find("mm炮") >= 0 or weapon_name.find("MM炮") >= 0:
+		return true
 	# 先排除曲射/防空类炮（它们不该被归为直射坦克炮）
 	if weapon_name.find("高炮") >= 0 or weapon_name.find("防空炮") >= 0 \
 		or weapon_name.find("高射炮") >= 0 or weapon_name.find("近防炮") >= 0 \
 		or weapon_name.find("迫击炮") >= 0 or weapon_name.find("榴弹炮") >= 0 \
-		or weapon_name.find("要塞炮") >= 0 or weapon_name.find("野战炮") >= 0 \
 		or weapon_name.find("舰炮") >= 0:
 		return false
 	# 再匹配直射坦克炮特征
 	# v17: 补"火炮/加农炮"——直射槽的 81/105mm 炮（如"81mm/105mm火炮"，UCT 出现 18+ 次）
 	# 原归 GENERIC 通用直射，与步枪同观感；直射 HE 炮应有坦克炮级重环+加粗弹体。
 	# 曲射/防空炮已在前排排除；"自行火炮"由 WeaponVisualProfiles 归曲射族不经本函数。
+	# v38.3: 补"线膛炮"——v26.15e 修 FT-17 时收了"滑膛炮"漏了同族的"线膛炮"
+	# （T-55/M60/M1/豹1/酋长/挑战者2/斯特赖克MGS 的 100-120mm 线膛炮主炮），
+	# 落 GENERIC 兜底被 v20.18 点射误打 2 发视觉弹（单发语义主炮一次飞两发）。
 	if weapon_name.find("主炮") >= 0 or weapon_name.find("滑膛炮") >= 0 \
+		or weapon_name.find("线膛炮") >= 0 \
 		or weapon_name.find("反坦克炮") >= 0 or weapon_name.find("坦克炮") >= 0 \
 		or weapon_name.find("火炮") >= 0 or weapon_name.find("加农炮") >= 0:
+		return true
+	return false
+
+
+## v38.6: 速射机炮族判定——自动炮/防空速射/近防系统，与机枪同观感节奏（MG 档）。
+## 与 TANK_GUN 的分工：本族是"速射小口径"（20-40mm 级 + 多管速射），吃 3 连珠点射 +
+## 换弹周期；单发重炮（73mm+ 步兵炮/野战炮/要塞炮）走 TANK_GUN 单发大弹。
+static func _is_rapid_cannon(weapon_name: String) -> bool:
+	if weapon_name.find("近防炮") >= 0 or weapon_name.find("航炮") >= 0 \
+		or weapon_name.find("机炮") >= 0 or weapon_name.find("链炮") >= 0 \
+		or weapon_name.find("高射炮") >= 0 or weapon_name.find("防空炮") >= 0 \
+		or weapon_name.find("高炮") >= 0:
 		return true
 	return false

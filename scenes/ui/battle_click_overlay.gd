@@ -21,7 +21,10 @@ const _HOVER_CHECK_INTERVAL_SEC: float = 0.1
 # v26.13(D-2): 指令轮盘——长按我方单位弹出（集火/守住/自由）
 const CommandWheelScript = preload("res://scenes/ui/deploy_command_wheel.gd")
 const _LONG_PRESS_SEC := 0.35
-const _MAX_ACTIVE_COMMANDS := 2  # 单场同时生效指令上限（防微操过载）
+## v30 R3（设计审查 F-06）：2→4——战中干预空间翻倍（布阵后 60-90s 的决策空洞主因之一
+## 是额度封顶；DESIGN_COMBAT_DECISION_B0 的"挂机零损失底座不动"约束不变，手动仍为纯增益）。
+## 击杀回点（击杀敌方单位返还 1 指令额度）为下一步候选，待本轮实测后决定。
+const _MAX_ACTIVE_COMMANDS := 4  # 单场同时生效指令上限（防微操过载）
 var _wheel: Control = null
 var _lp_unit: Node2D = null      # 长按中的单位（弱引用语义由调用方 is_instance_valid 保证）
 var _lp_pos: Vector2 = Vector2.ZERO
@@ -491,7 +494,7 @@ func _show_focus_pick_banner(unit: Node2D) -> void:
 	_cancel_focus_pick_banner()
 	_focus_pick_banner = Label.new()
 	_focus_pick_banner.text = "🎯 点击敌方单位指定集火目标（右键取消）"
-	_focus_pick_banner.add_theme_font_size_override("font_size", 15)
+	_focus_pick_banner.add_theme_font_size_override("font_size", 14)
 	_focus_pick_banner.add_theme_color_override("font_color", Color(1, 0.9, 0.5))
 	_focus_pick_banner.set_anchors_preset(Control.PRESET_CENTER_TOP)
 	_focus_pick_banner.position = Vector2(-170, 60)

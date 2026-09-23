@@ -24,8 +24,8 @@ const PLAYER_MUZZLE: Dictionary = {
 	"ww1_arty_m81": {"fireX": 0.8867, "fireY_pct": 38.27, "ff": 0.364, "hf": 0.364},
 	"ww1_enfield": {"fireX": 0.851, "fireY_pct": 45.87, "ff": 0.3147, "hf": 0.3147},
 	"ww1_flame": {"fireX": 0.7967, "fireY_pct": 45.2, "ff": 0.2813, "hf": 0.2987},
-	"ww1_fort_artillery": {"fireX": 0.8823, "fireY_pct": 45.6, "ff": 0.384, "hf": 0.384},
-	"ww1_fort_pillbox": {"fireX": 0.8946, "fireY_pct": 44.93, "ff": 0.3573, "hf": 0.3573},
+	"ww1_fort_artillery": {"fireX": 0.8818, "fireY_pct": 36.23, "ff": 0.384, "hf": 0.384},
+	"ww1_fort_pillbox": {"fireX": 0.8721, "fireY_pct": 49.71, "ff": 0.3573, "hf": 0.3573},
 	"ww1_inf_cavalry": {"fireX": 0.77, "fireY_pct": 37.07, "ff": 0.316, "hf": 0.316},
 	"ww1_lanchest": {"fireX": 0.6823, "fireY_pct": 43.73, "ff": 0.4027, "hf": 0.4027},
 	"ww1_m76": {"fireX": 0.8677, "fireY_pct": 39.73, "ff": 0.3627, "hf": 0.3627},
@@ -42,8 +42,8 @@ const PLAYER_MUZZLE: Dictionary = {
 	"ww2_arm_tiger": {"fireX": 0.9279, "fireY_pct": 47.2, "ff": 0.4013, "hf": 0.4013},
 	"ww2_arty_m81": {"fireX": 0.92, "fireY_pct": 39.33, "ff": 0.38, "hf": 0.38},
 	"ww2_browning": {"fireX": 0.9177, "fireY_pct": 44, "ff": 0.4133, "hf": 0.4133},
-	"ww2_fort_bunker": {"fireX": 0.8323, "fireY_pct": 45.33, "ff": 0.38, "hf": 0.38},
-	"ww2_fort_flak": {"fireX": 0.8779, "fireY_pct": 46.67, "ff": 0.34, "hf": 0.34},
+	"ww2_fort_bunker": {"fireX": 0.833, "fireY_pct": 45.41, "ff": 0.38, "hf": 0.38},
+	"ww2_fort_flak": {"fireX": 0.835, "fireY_pct": 30.96, "ff": 0.34, "hf": 0.34},
 	"ww2_garand": {"fireX": 0.8221, "fireY_pct": 36.67, "ff": 0.32, "hf": 0.32},
 	"ww2_inf_bazooka": {"fireX": 0.7367, "fireY_pct": 43.47, "ff": 0.3787, "hf": 0.3787},
 	"ww2_inf_hellcat": {"fireX": 0.849, "fireY_pct": 45.47, "ff": 0.3787, "hf": 0.3787},
@@ -65,8 +65,8 @@ const PLAYER_MUZZLE: Dictionary = {
 	"cold_bradley": {"fireX": 0.751, "fireY_pct": 43.2, "ff": 0.408, "hf": 0.408},
 	"cold_chieftain": {"fireX": 0.9677, "fireY_pct": 48.13, "ff": 0.432, "hf": 0.432},
 	"cold_f4": {"fireX": 0.68, "fireY_pct": 54.4, "ff": 0.436, "hf": 0.436},
-	"cold_fort_missile": {"fireX": 0.4823, "fireY_pct": 30.53, "ff": 0.3213, "hf": 0.3213},
-	"cold_fort_radar": {"fireX": 0.9279, "fireY_pct": 48.53, "ff": 0.328, "hf": 0.328},
+	"cold_fort_missile": {"fireX": 0.4814, "fireY_pct": 30.57, "ff": 0.3213, "hf": 0.3213},
+	"cold_fort_radar": {"fireX": 0.8291, "fireY_pct": 48.54, "ff": 0.328, "hf": 0.328},
 	"cold_inf_bmp1": {"fireX": 0.7033, "fireY_pct": 44.67, "ff": 0.4, "hf": 0.4},
 	"cold_inf_btr60": {"fireX": 0.6323, "fireY_pct": 42, "ff": 0.4, "hf": 0.4},
 	"cold_leo1": {"fireX": 0.9677, "fireY_pct": 48.13, "ff": 0.432, "hf": 0.432},
@@ -91,8 +91,8 @@ const PLAYER_MUZZLE: Dictionary = {
 	"mod_arm_m1a2sep": {"fireX": 0.8946, "fireY_pct": 44.93, "ff": 0.4107, "hf": 0.4107},
 	"mod_arty_m270": {"fireX": 0.72, "fireY_pct": 42.4, "ff": 0.3893, "hf": 0.3893},
 	"mod_challenger2": {"fireX": 0.8888, "fireY_pct": 49.47, "ff": 0.4053, "hf": 0.428},
-	"mod_fort_citadel": {"fireX": 0.899, "fireY_pct": 48.4, "ff": 0.3627, "hf": 0.3627},
-	"mod_fort_phalanx": {"fireX": 0.9279, "fireY_pct": 48.4, "ff": 0.3493, "hf": 0.3493},
+	"mod_fort_citadel": {"fireX": 0.8232, "fireY_pct": 51.07, "ff": 0.3627, "hf": 0.3627},
+	"mod_fort_phalanx": {"fireX": 0.9287, "fireY_pct": 47.36, "ff": 0.3493, "hf": 0.3493},
 	"mod_hummer_m2": {"fireX": 0.651, "fireY_pct": 44.4, "ff": 0.4227, "hf": 0.4227},
 	"mod_hummer_tow": {"fireX": 0.651, "fireY_pct": 44.4, "ff": 0.4227, "hf": 0.4227},
 	"mod_inf_scout_drone": {"fireX": 0.5033, "fireY_pct": 55.2, "ff": 0.368, "hf": 0.368},
@@ -115,22 +115,36 @@ const PLAYER_MUZZLE: Dictionary = {
 	"fut_arm_omega": {"fireX": 0.8967, "fireY_pct": 44, "ff": 0.3067, "hf": 0.3067},
 	"fut_arm_prism": {"fireX": 0.9279, "fireY_pct": 48.8, "ff": 0.372, "hf": 0.372},
 	"fut_assault_mech": {"fireX": 0.93, "fireY_pct": 44.4, "ff": 0.4093, "hf": 0.4093},
-	"fut_attack_drone": {"fireX": 0.7367, "fireY_pct": 54.93, "ff": 0.424, "hf": 0.424},
+	"fut_attack_drone": {"fireX": 0.7373, "fireY_pct": 54.98, "ff": 0.424, "hf": 0.424},
 	"fut_colossus": {"fireX": 0.8967, "fireY_pct": 44, "ff": 0.3067, "hf": 0.3067},
 	"fut_cyborg": {"fireX": 0.8467, "fireY_pct": 40.8, "ff": 0.312, "hf": 0.312},
-	"fut_fort_ion": {"fireX": 0.949, "fireY_pct": 50.93, "ff": 0.3307, "hf": 0.3307},
-	"fut_fort_shield": {"fireX": 0.5112, "fireY_pct": 36.93, "ff": 0.3173, "hf": 0.3173},
+	"fut_fort_ion": {"fireX": 0.9346, "fireY_pct": 50.88, "ff": 0.3307, "hf": 0.3307},
+	"fut_fort_shield": {"fireX": 0.5107, "fireY_pct": 37.01, "ff": 0.3173, "hf": 0.3173},
 	"fut_heavy_trooper": {"fireX": 0.8467, "fireY_pct": 40.8, "ff": 0.312, "hf": 0.312},
 	"fut_howitzer": {"fireX": 0.5721, "fireY_pct": 40.93, "ff": 0.3973, "hf": 0.3973},
 	"fut_inf_scout_mech": {"fireX": 0.7367, "fireY_pct": 46.4, "ff": 0.3227, "hf": 0.3227},
-	"fut_nano_drone": {"fireX": 0.9323, "fireY_pct": 45.73, "ff": 0.3427, "hf": 0.3307},
+	"fut_nano_drone": {"fireX": 0.7178, "fireY_pct": 43.26, "ff": 0.3427, "hf": 0.3307},
 	"fut_shield": {"fireX": 0.5112, "fireY_pct": 35.73, "ff": 0.316, "hf": 0.316},
 	"fut_space_fighter": {"fireX": 0.62, "fireY_pct": 54.4, "ff": 0.4093, "hf": 0.4093},
 	"fut_spectre": {"fireX": 0.8844, "fireY_pct": 46.8, "ff": 0.3053, "hf": 0.3053},
 	"fut_stealth_bomber": {"fireX": 0.6323, "fireY_pct": 54.4, "ff": 0.4227, "hf": 0.4227},
 	"fut_stormcore": {"fireX": 0.6467, "fireY_pct": 38.8, "ff": 0.3053, "hf": 0.3053},
-	"fut_swarm": {"fireX": 0.9344, "fireY_pct": 43.07, "ff": 0.3427, "hf": 0.3307},
+	"fut_swarm": {"fireX": 0.8467, "fireY_pct": 46.78, "ff": 0.3427, "hf": 0.3307},
 	"guardian_future_omega": {"fireX": 0.7279, "fireY_pct": 41.73, "ff": 0.3093, "hf": 0.3093},
+	"fe_iron_wall_bastion": {"fireX": 0.8994, "fireY_pct": 52.05, "ff": 0.111, "hf": 0.111},
+	"fe_iron_wall_juggernaut": {"fireX": 0.7861, "fireY_pct": 65.14, "ff": 0.059, "hf": 0.061},
+	"fe_nova_devastator": {"fireX": 0.9038, "fireY_pct": 33.35, "ff": 0.218, "hf": 0.192},
+	"fe_nova_ghost_sniper": {"fireX": 0.87, "fireY_pct": 36, "ff": 0.059, "hf": 0.061},
+	"fe_aether_hover_cavalry": {"fireX": 0.72, "fireY_pct": 46, "ff": 0.188, "hf": 0.253},
+	"fe_aether_swarm_queen": {"fireX": 0.8213, "fireY_pct": 46.97, "ff": 0.287, "hf": 0.289},
+	"fe_quantum_mobile_base": {"fireX": 0.8076, "fireY_pct": 48.54, "ff": 0.154, "hf": 0.156},
+	"fe_quantum_repair_drone": {"fireX": 0.6377, "fireY_pct": 32.32, "ff": 0.299, "hf": 0.254},
+	"fe_helix_phantom": {"fireX": 0.6802, "fireY_pct": 61.38, "ff": 0.024, "hf": 0.14},
+	"fe_helix_orbital_strike": {"fireX": 0.8447, "fireY_pct": 37.6, "ff": 0.244, "hf": 0.246},
+	"fe_void_phase_cannon": {"fireX": 0.8994, "fireY_pct": 37.99, "ff": 0.23, "hf": 0.223},
+	"fe_void_dimensional_soldier": {"fireX": 0.6963, "fireY_pct": 59.28, "ff": 0.059, "hf": 0.061},
+	"fe_frontier_veteran": {"fireX": 0.7197, "fireY_pct": 36.82, "ff": 0.059, "hf": 0.061},
+	"fe_frontier_mixed_company": {"fireX": 0.874, "fireY_pct": 49.71, "ff": 0.168, "hf": 0.17},
 }
 
 ## 取锚点字典（空=未标注，调用方走回退）
@@ -159,7 +173,11 @@ static func get_fire_offset(card_id: String, sprite) -> Vector2:
 	var fire_x_pct: float = float(anchor.get("fireX", 0.5))
 	var fire_y_pct: float = float(anchor.get("fireY_pct", 50.0))
 	var px_x: float = (fire_x_pct - 0.5) * tex_w * s
-	var px_y: float = -(1.0 - fire_y_pct / 100.0) * tex_h * s
+	# Y 原点是脚线（apply_uniform_card_sprite 的 foot offset 对齐）不是纹理底边：
+	# fireY_pct 从纹理顶部量，纹理底边在脚线下方 ff×图高处，须先扣 ff 再换算。
+	# 漏 ff = 出膛点/枪口火浮空 ff×图高（典型 0.3~0.42 图高，比头顶还高）。
+	var ff: float = float(anchor.get("ff", 0.15))
+	var px_y: float = -(1.0 - ff - fire_y_pct / 100.0) * tex_h * s
 	return Vector2(px_x, px_y)
 
 ## 脚部锚点比例（距纹理底部）

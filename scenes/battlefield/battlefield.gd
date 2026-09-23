@@ -13,15 +13,46 @@ extends Node2D
 
 const PhaseDriverScene = preload("res://scenes/units/phase_field_driver.tscn")
 const EnemyPhaseDriverScene = preload("res://scenes/units/enemy_phase_field_driver.tscn")
+## v28 T3: 地面 dressing（弹坑/碎石/履带印/枯草撒点，纯视觉）
+const _GroundDressingScript = preload("res://scripts/battle/ground_dressing.gd")
+var _dressing: Node2D = null
+## v33: 地面战利品层（击杀掉落实体：纳米颗粒/电池/情报碎片/符文/缴获卡）
+const _GroundLootLayerScript = preload("res://scripts/battle/ground_loot_layer.gd")
+var _ground_loot: Node2D = null
 const COMMON_BATTLE_BG_PATH := "res://assets/backgrounds/bg_level_01.png"
 const LEVEL_BG_PATH_FMT := "res://assets/backgrounds/bg_level_%02d.png"
 ## v26.9: 背景整体压暗一档（叠乘在时代 tint 上，略偏冷）——"背景永远比单位暗"，
 ## 让单位深色描边/投影把轮廓从亮底（沙漠/雪原）里衬出来，弹道特效也更跳。
-const BG_DIM := Color(0.80, 0.80, 0.87)
+## v6.17: 再压一档（0.80→0.72）——暗底高对比参照 R.I.P. 拆解：亮度让位给发光特效。
+const BG_DIM := Color(0.72, 0.72, 0.81)
+## v6.17: 时代 tint 降饱和保留比——饱和度是特效专属词汇（D3 五律3 颜色即语义），
+## 背景只留 82%，让弹道/爆炸的色相独占注意力。消费点 era_bg_modulate（唯一口径）。
+const BG_SAT_KEEP := 0.82
+## v33: 时代背景 tint（自 _apply_background_texture 局部数组提出——出征战报背景共用同色）
+const ERA_BG_TINTS := [
+	Color(1.0, 0.95, 0.85),
+	Color(0.9, 0.95, 0.85),
+	Color(0.85, 0.9, 1.0),
+	Color(0.95, 0.95, 0.95),
+	Color(0.85, 0.95, 1.0),
+	Color(0.92, 0.94, 1.0),  # v27 era=5 星冥（近中性冷白，星空底图自带色调）
+]
 ## 缺省 PNG 时生成的战场背景尺寸（与常见关卡图比例接近）
 const _PROCEDURAL_BG_WIDTH: int = 1280
 const _PROCEDURAL_BG_HEIGHT: int = 720
 const _BattlePerfMonScript: Script = preload("res://scripts/battle_performance_monitor.gd")
+## v6.17: 命中光学层（泛光 env + 动态光闪池）
+const _BattleOpticsScript = preload("res://scripts/battle/battle_optics.gd")
+
+
+## v6.17: era 底图 modulate 唯一口径 = 时代 tint 降饱和（BG_SAT_KEEP）× 压暗（BG_DIM）。
+## 出征战报背景（sortie_interstitial）同源消费，改背景观感只动 BG_DIM/BG_SAT_KEEP 两个常量。
+static func era_bg_modulate(era: int) -> Color:
+	var tints: Array = ERA_BG_TINTS
+	var tint: Color = tints[era % tints.size()]
+	var gray: float = tint.get_luminance()
+	tint = tint.lerp(Color(gray, gray, gray), 1.0 - BG_SAT_KEEP)
+	return tint * BG_DIM
 ## 道路带位置（基于背景纹理比例）：用于敌我刷新与部署区
 const BATTLE_LANE_CENTER_RATIO := 0.80
 ## 三行布局：车道带需覆盖上行(center - 30)到下行(center + 60)全程，故从 0.14 提到 0.28。
@@ -49,6 +80,8 @@ const PERSISTENT_CHILD_NAMES: Dictionary = {
 	"EnemySpawn": true,
 	"BattlePerformanceMonitor": true,
 	"BattleCamera": true,  # v6.4: 屏幕震动相机，清场时保留
+	"GroundDressing": true,  # v33 复检修复：贴花不在名单→首战结算被 prune 回收且 _ready 不重跑，第二场起永久消失（v28 存量 bug；setup 按 key 幂等，保留后每场照常重撒）
+	"GroundLoot": true,    # v33: 地面战利品层跨场常驻（内容自管，battle_started/battle_ended 清理）
 }
 
 # 性能优化：调试日志文件句柄缓存
@@ -85,7 +118,24 @@ func _ready() -> void:
 		var sg: Node2D = _BattleSlotGridScript.new() as Node2D
 		sg.name = "BattleSlotGrid"
 		add_child(sg)
+	# v28 T3: 地面 dressing 节点——树序钉在 Ground 之上（贴片压背景、被 Ambience/单位压）
+	# 注意必须先于 _update_background() 创建：_apply_background_texture 尾部会对它 setup
+	if _dressing == null:
+		_dressing = _GroundDressingScript.new()
+		_dressing.name = "GroundDressing"
+		add_child(_dressing)
+		var ground_node := get_node_or_null("Ground")
+		move_child(_dressing, (ground_node.get_index() + 1) if ground_node != null else get_child_count() - 1)
+	# v33: 地面战利品层——z=-3（战场焦痕 -4 之上/槽位高亮 -2 之下/单位 0 之下）；
+	# 跨场常驻（进 PERSISTENT_CHILD_NAMES），内容自管：battle_started 清空/battle_ended 收拢
+	if _ground_loot == null or not is_instance_valid(_ground_loot):
+		_ground_loot = _GroundLootLayerScript.new()
+		_ground_loot.name = "GroundLoot"
+		_ground_loot.z_index = -3
+		add_child(_ground_loot)
 	_update_background()
+	# v6.17 光学层: 战场泛光 env（幂等，GameConfig.vfx_glow_enabled / PW_GLOW_OFF 门控）
+	_BattleOpticsScript.ensure_glow(self)
 	call_deferred("_sync_battle_slot_grid_lane")
 	# v6.4: 把震动相机对齐到视口中心，使其严格等价于无相机渲染（世界原点在视口左上）
 	call_deferred("_align_battle_camera")
@@ -361,7 +411,7 @@ func _apply_final_battle_visuals() -> void:
 func _show_final_battle_subtitle() -> void:
 	var label := Label.new()
 	label.text = "第100关 · 最终试炼\n「这里的每一寸土地，都是你的记忆。」"
-	label.add_theme_font_size_override("font_size", 18)
+	label.add_theme_font_size_override("font_size", 16)
 	label.add_theme_color_override("font_color", Color(0.88, 0.92, 0.98, 0.95))
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	# 字幕包进半透明背景面板（v7.x 界面一致性修复：原裸 Label 浮在记忆场景灰白背景上几乎不可读）
@@ -454,20 +504,24 @@ func _apply_background_texture(tex: Texture2D) -> void:
 	var era: int = _bg_pending_era
 	level10_bg.texture = tex
 	level10_bg.centered = false
+	# UI 四级标准修复 R-C1：超宽屏（stretch=expand 下画布宽于 1280）背景等比放大
+	# 铺满画布宽并水平居中——此前 1280 宽锚 x=0 不拉伸，21:9/32:9 右侧裸屏。
+	# 1280 画布 scale 恒 1.0、x 恒 0（16:9 像素级不变红线）；车道几何同步用缩放后
+	# 高度（scale=1 时与旧 tex_h 数值完全一致）。
+	var tex_w: float = float(tex.get_width())
 	var tex_h: float = float(tex.get_height())
-	var bg_top_y: float = battle_bottom_y - tex_h
-	level10_bg.position = Vector2(0.0, bg_top_y)
-	var era_tints: Array[Color] = [
-		Color(1.0, 0.95, 0.85),
-		Color(0.9, 0.95, 0.85),
-		Color(0.85, 0.9, 1.0),
-		Color(0.95, 0.95, 0.95),
-		Color(0.85, 0.95, 1.0),
-		Color(0.92, 0.94, 1.0),  # v27 era=5 星冥（近中性冷白，星空底图自带色调）
-	]
-	level10_bg.modulate = era_tints[era % era_tints.size()] * BG_DIM  # v26.9: 压暗一档
-	var lane_center_y: float = bg_top_y + tex_h * BATTLE_LANE_CENTER_RATIO
-	var lane_h: float = tex_h * BATTLE_LANE_HEIGHT_RATIO
+	var canvas_w: float = 1280.0
+	var vp_bg := get_viewport()
+	if vp_bg != null:
+		canvas_w = maxf(1280.0, vp_bg.get_visible_rect().size.x)
+	var bg_scale: float = maxf(1.0, canvas_w / tex_w)
+	level10_bg.scale = Vector2(bg_scale, bg_scale)
+	var bg_h: float = tex_h * bg_scale
+	var bg_top_y: float = battle_bottom_y - bg_h
+	level10_bg.position = Vector2((canvas_w - tex_w * bg_scale) * 0.5, bg_top_y)
+	level10_bg.modulate = era_bg_modulate(era)  # v6.17: tint 降饱和 × BG_DIM 唯一口径
+	var lane_center_y: float = bg_top_y + bg_h * BATTLE_LANE_CENTER_RATIO
+	var lane_h: float = bg_h * BATTLE_LANE_HEIGHT_RATIO
 	var lane_half_h: float = lane_h * 0.5
 	var lane_top_y: float = lane_center_y - lane_half_h
 	var lane_bottom_y: float = lane_center_y + lane_half_h
@@ -499,6 +553,13 @@ func _apply_background_texture(tex: Texture2D) -> void:
 		_ensure_endless_rift_fx()
 	else:
 		_clear_endless_rift_fx()
+	# v28 T3: 地面 dressing——tint 对齐背景，撒点参数随关复现（setup 内部按 key 幂等）
+	if _dressing != null and is_instance_valid(_dressing):
+		_dressing.modulate = level10_bg.modulate
+		var endless_for_dressing: bool = GameManager != null \
+			and GameManager.has_method("is_endless_battle") and GameManager.is_endless_battle()
+		_dressing.setup(GameManager.current_level if GameManager != null else 1,
+			lane_top_y, lane_bottom_y, endless_for_dressing)
 
 
 # ═══════════════════════════════════════════════════════════════════
@@ -655,6 +716,7 @@ func _switch_endless_tier(tier: int) -> void:
 	var mc := level10_bg.modulate
 	_endless_bg_b.texture = new_tex
 	_endless_bg_b.position = level10_bg.position
+	_endless_bg_b.scale = level10_bg.scale  # R-C1：宽屏铺满缩放同步（防交叉淡入两图错位）
 	_endless_bg_b.modulate = Color(mc.r, mc.g, mc.b, 0.0)
 	_endless_fading = true
 	var tw := create_tween()

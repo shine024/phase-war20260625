@@ -102,9 +102,9 @@ func _initialize_faction_data() -> void:
 			var fid: String = fi.get("id", "")
 			if fid.is_empty():
 				continue
-			var controlled: Array = fi.get("controlled_levels", [])
+			var controlled: Array = fi.get("historical_levels", [])
 			var total: int = controlled.size()
-			# 计算玩家已通过该公司领地内的关卡数
+			# 计算玩家已通过该公司历史辖区内的关卡数
 			var cleared: int = 0
 			for lv in controlled:
 				if int(lv) <= cleared_max:
@@ -194,9 +194,9 @@ func _initialize_player_data() -> void:
 			var fid: String = fi.get("id", "")
 			if fid.is_empty() or fid == player_faction_id:
 				continue
-			var controlled: Array = fi.get("controlled_levels", [])
+			var controlled: Array = fi.get("historical_levels", [])
 			var territory: int = controlled.size()
-			# 挑战者进度 = 占领的最高关卡（真实领地）
+			# 挑战者进度 = 历史辖区最高关卡（v6.22: 纯风味排序键）
 			var challenger_level: int = 1
 			if not controlled.is_empty():
 				challenger_level = int(controlled.max())
@@ -485,7 +485,7 @@ func _create_master_header(basic_info: Dictionary) -> Control:
 
 	var name_label = Label.new()
 	name_label.text = basic_info.get("name", "未知")
-	name_label.add_theme_font_size_override("font_size", 18)
+	name_label.add_theme_font_size_override("font_size", 16)
 	name_label.add_theme_color_override("font_color", Color.WHITE)
 	name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	name_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART

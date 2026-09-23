@@ -39,6 +39,28 @@ static func post(text: String) -> void:
 	_active = inst
 
 
+## v30.2 R4：演出串入口——按序逐条播完（[时代独白…, 驻守台词…, 交战开始]）。
+## 与单条 post 的分工：post=交互节拍（立即让位插队）；post_queue=叙事演出（严格串行，
+## 每条走完完整淡入-驻留-淡出生命周期才轮下一条）。空闲时立即起泵；占用中入队等续。
+static var _queue: Array[String] = []
+
+static func post_queue(lines: Array) -> void:
+	for line in lines:
+		var text := String(line)
+		if not text.is_empty():
+			_queue.append(text)
+	_pump()
+
+
+## 泵：仅在空闲（无活动横幅）时取队首播一条；占用中由 _finish/_exit_tree 续泵。
+static func _pump() -> void:
+	if _active != null and is_instance_valid(_active):
+		return
+	if _queue.is_empty():
+		return
+	post(_queue.pop_front())
+
+
 func _ready() -> void:
 	layer = LAYER_ORDER
 	_build()
@@ -84,7 +106,7 @@ func _build() -> void:
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	label.add_theme_font_override("font", DesignTokens.get_title_font_bold())
-	label.add_theme_font_size_override("font_size", 30)
+	label.add_theme_font_size_override("font_size", 24)
 	label.add_theme_color_override("font_color", DesignTokens.COLOR_TEXT_BRIGHT)
 	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_root.add_child(label)
@@ -109,4 +131,9 @@ func _finish() -> void:
 	_done = true
 	if _tween != null and _tween.is_valid():
 		_tween.kill()
+	# v30.2 R4：先让位再续泵（tween 回调=正常处理阶段，add_child 安全）。不在
+	# _exit_tree 泵——删除阶段里 add_child 的横幅其 tween 不再推进（实测第三条饿死）。
+	if _active == self:
+		_active = null
 	queue_free()
+	_pump()

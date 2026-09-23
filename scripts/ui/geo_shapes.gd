@@ -184,10 +184,11 @@ class TierLadder extends Control:
 				draw_rect(gold_rect, DT.COLOR_GOLD, false, 1.5)
 
 			# 档位中文名（缩写，避免窄段溢出）
+			# UI 四级标准修复 R-C4：9px→11px（配合 COLOR_TEXT_FAINT 提亮，720p 可读）
 			var name_str: String = String(PowerTiers.TIER_NAMES.get(tier, "?"))
 			var short_name: String = name_str.substr(0, 1) if name_str.length() > 0 else "?"
 			draw_string(_font(), rect.position + Vector2(rect.size.x * 0.5, bar_h + 14), short_name,
-				HORIZONTAL_ALIGNMENT_CENTER, -1, 9,
+				HORIZONTAL_ALIGNMENT_CENTER, -1, 11,
 				DT.COLOR_AMBER_SOFT if tier == _current else DT.COLOR_TEXT_FAINT)
 
 			x += seg_w + gap
@@ -195,7 +196,7 @@ class TierLadder extends Control:
 		# 战力数值（右上角）
 		var power_text: String = "战力 %d" % _power
 		draw_string(_font(), Vector2(size_v.x, 2.0), power_text,
-			HORIZONTAL_ALIGNMENT_RIGHT, -1, 9, DT.COLOR_TEXT_FAINT)
+			HORIZONTAL_ALIGNMENT_RIGHT, -1, 11, DT.COLOR_TEXT_FAINT)
 
 	func _font() -> Font:
 		return DT.get_body_font()

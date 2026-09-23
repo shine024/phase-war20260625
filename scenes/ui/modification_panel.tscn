@@ -1,6 +1,7 @@
-[gd_scene load_steps=15 format=3 uid="uid://xfff2bifmi26"]
+[gd_scene load_steps=16 format=3 uid="uid://xfff2bifmi26"]
 
 [ext_resource type="Script" uid="uid://gbaqq0364jg5b" path="res://scenes/ui/modification_panel.gd" id="1_script"]
+[ext_resource type="Script" path="res://scripts/ui/blueprint_grid.gd" id="2_bpgrid"]
 [ext_resource type="Texture2D" path="res://assets/ui/icons/icon_modification.svg" id="2_title_icon"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_1"]
@@ -15,7 +16,7 @@ corner_radius_top_right = 10
 corner_radius_bottom_right = 10
 corner_radius_bottom_left = 10
 shadow_color = Color(0.024, 0.714, 0.831, 0.2)
-shadow_size = 14
+shadow_size = 10
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_2"]
 bg_color = Color(0.075, 0.102, 0.165, 0.4)
 border_width_top = 2
@@ -143,6 +144,11 @@ anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 theme_override_styles/panel = SubResource("StyleBoxFlat_1")
+[node name="BlueprintGrid" type="Control" parent="BgPanel"]
+layout_mode = 2
+mouse_filter = 2
+script = ExtResource("2_bpgrid")
+
 [node name="VBoxContainer" type="VBoxContainer" parent="."]
 layout_mode = 1
 anchors_preset = 15
@@ -182,7 +188,7 @@ theme_override_font_sizes/font_size = 20
 theme_override_colors/font_color = Color(0.95, 0.96, 0.98, 1)
 [node name="TitleSub" type="Label" parent="VBoxContainer/TitleRow/TitleHBox"]
 layout_mode = 2
-text = ""
+text = "MODULAR REFIT"
 theme_override_font_sizes/font_size = 12
 theme_override_colors/font_color = Color(0.533, 0.6, 0.678, 0.7)
 [node name="Spacer" type="Control" parent="VBoxContainer/TitleRow/TitleHBox"]
@@ -200,7 +206,7 @@ layout_mode = 2
 text = "← 成长首页"
 custom_minimum_size = Vector2(108, 32)
 theme_override_font_sizes/font_size = 14
-theme_override_colors/font_color = Color(1, 0.92, 0.55, 0.9)
+theme_override_colors/font_color = Color(1, 0.9, 0.6, 0.9)
 theme_override_colors/font_hover_color = Color(1, 0.85, 0.3, 1)
 theme_override_styles/normal = SubResource("StyleBoxFlat_7")
 theme_override_styles/hover = SubResource("StyleBoxFlat_8")
@@ -210,9 +216,9 @@ unique_name_in_owner = true
 layout_mode = 2
 text = "×"
 custom_minimum_size = Vector2(32, 32)
-theme_override_font_sizes/font_size = 18
+theme_override_font_sizes/font_size = 16
 theme_override_colors/font_color = Color(0.6, 0.65, 0.75, 1)
-theme_override_colors/font_hover_color = Color(0.94, 0.27, 0.27, 1)
+theme_override_colors/font_hover_color = Color(0.937, 0.267, 0.267, 1)
 theme_override_styles/normal = SubResource("StyleBoxFlat_7")
 theme_override_styles/hover = SubResource("StyleBoxFlat_8")
 [node name="ResourceBar" type="PanelContainer" parent="VBoxContainer"]
@@ -255,7 +261,7 @@ layout_mode = 2
 custom_minimum_size = Vector2(0, 24)
 text = ""
 theme_override_font_sizes/font_size = 12
-theme_override_colors/font_color = Color(0.2, 0.9, 0.4, 1)
+theme_override_colors/font_color = Color(0.2, 0.75, 0.35, 1)
 autowrap_mode = 3
 [node name="HBoxContainer" type="HBoxContainer" parent="VBoxContainer"]
 layout_mode = 2
@@ -408,7 +414,7 @@ unique_name_in_owner = true
 visible = false
 layout_mode = 2
 size_flags_horizontal = 3
-size_flags_vertical = 0
+size_flags_vertical = 3
 theme_override_styles/panel = SubResource("StyleBoxFlat_12")
 [node name="DeckMargin" type="MarginContainer" parent="VBoxContainer/HBoxContainer/MiddlePanel/MiddleVBox/ActionDeck"]
 layout_mode = 2
@@ -446,7 +452,7 @@ unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 text = ""
-clip_text = true
+autowrap_mode = 3
 theme_override_font_sizes/font_size = 16
 theme_override_colors/font_color = Color(0.95, 0.96, 0.98, 1)
 [node name="DeckCoreLabel" type="Label" parent="VBoxContainer/HBoxContainer/MiddlePanel/MiddleVBox/ActionDeck/DeckMargin/DeckHBox/DeckInfo"]
@@ -454,16 +460,15 @@ unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 text = ""
-clip_text = true
 autowrap_mode = 3
 theme_override_font_sizes/font_size = 12
-theme_override_colors/font_color = Color(0.2, 0.9, 0.4, 1)
+theme_override_colors/font_color = Color(0.2, 0.75, 0.35, 1)
 [node name="DeckReqLabel" type="Label" parent="VBoxContainer/HBoxContainer/MiddlePanel/MiddleVBox/ActionDeck/DeckMargin/DeckHBox/DeckInfo"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 text = ""
-clip_text = true
+autowrap_mode = 3
 theme_override_font_sizes/font_size = 12
 theme_override_colors/font_color = Color(0.55, 0.6, 0.7, 0.85)
 [node name="DeckInstallButton" type="Button" parent="VBoxContainer/HBoxContainer/MiddlePanel/MiddleVBox/ActionDeck/DeckMargin/DeckHBox"]

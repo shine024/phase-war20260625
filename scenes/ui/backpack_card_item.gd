@@ -653,7 +653,7 @@ func _ensure_compact_slot_structure(icon_row: Control, name_label: Label) -> voi
 	placeholder.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	placeholder.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	placeholder.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	placeholder.add_theme_font_size_override("font_size", 34)
+	placeholder.add_theme_font_size_override("font_size", 32)
 	placeholder.add_theme_color_override("font_color", Color(0.30, 0.50, 0.90, 0.22))
 	placeholder.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	placeholder.visible = false

@@ -22,9 +22,13 @@ func _ready() -> void:
 	_build_ambience_particles()
 
 func _build_ground_tint() -> void:
-	var mid_x: float = (Layout.BATTLE_X0 + Layout.BATTLE_X1) * 0.5  # = 640，空带正中
-	var half_w: float = mid_x - Layout.BATTLE_X0
-	var player_tint := _make_tint("PlayerGroundTint", Layout.BATTLE_X0, half_w, PLAYER_TINT, false)
+	# UI 四级标准修复 R-C1：半场着色/前线走自适应带（超宽画布随阵型带居中；
+	# 1280 画布数值与旧 BATTLE_X0/X1 常量完全一致，16:9 零变化）
+	var bx0: float = Layout.band_x0()
+	var bx1: float = Layout.band_x1()
+	var mid_x: float = (bx0 + bx1) * 0.5  # 空带正中（1280 画布 = 640）
+	var half_w: float = mid_x - bx0
+	var player_tint := _make_tint("PlayerGroundTint", bx0, half_w, PLAYER_TINT, false)
 	var enemy_tint := _make_tint("EnemyGroundTint", mid_x, half_w, ENEMY_TINT, true)
 	if player_tint != null:
 		add_child(player_tint)

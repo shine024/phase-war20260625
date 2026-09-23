@@ -8,9 +8,9 @@ const COLOR_PANEL := Color(0.15, 0.17, 0.25, 1.0)       # Opaque panel
 const COLOR_TEXT := Color(0.95, 0.95, 0.98, 1)            # Off-white text
 const COLOR_ACCENT_CYAN := Color(0, 0.94, 1, 1)           # Neon cyan
 const COLOR_ACCENT_PURPLE := Color(0.55, 0.35, 0.96, 1)   # Neon purple
-const COLOR_HEALTH := Color(0.2, 0.9, 0.4, 1)            # Green health
+const COLOR_HEALTH := Color(0.2, 0.75, 0.35, 1)          # Green health（R-D1 裁决：对齐战场血条大面积填充实际值 0.2/0.75/0.35，大面积宜低饱和）
 const COLOR_ENERGY := Color(0.9, 0.6, 0.1, 1)            # Orange energy
-const COLOR_DANGER := Color(0.9, 0.2, 0.2, 1)            # Red danger
+const COLOR_DANGER := Color(0.937, 0.267, 0.267, 1)      # Red danger（R-D1 裁决：并入 COLOR_RED_DOWN 主档，消灭 (0.9,0.2,0.2) 旧档）
 
 # 补充语义色（v6.10 审核：收敛 3 兄妹面板的重复 THEME_ 常量，为后续新代码提供唯一归宿）
 # 数值取自 card_enhancement/evolution/reinforcement 三面板事实标准，避免"绿色3套值、暗文本灰7套值"的发散
@@ -23,17 +23,25 @@ const COLOR_BORDER := Color(0.25, 0.35, 0.42, 0.7)       # 暗边框（槽位/�
 # Typography sizes (base)
 # v7.x 面板统一：字号收敛到 7 档（XS/S/BODY/M/L/TITLE/HUGE），
 # 迁移映射规则：7-11→XS、12/13→S、14/15→BODY、16/17→M、18/20/22→L、24/32→TITLE。
+# UI 四级标准修复 R-D2：实测扩为 8 档 10/12/13/14/16/20/24/32——补 13（小字档，
+# 文章规范保留）与 24（弹窗大标题档，26/28/30 收敛目标）；HUGE 48 零使用留档。
 const FONT_SIZE_XSMALL := 10
 const FONT_SIZE_SMALL := 12
+const FONT_SIZE_CAPTION := 13
 const FONT_SIZE_BODY := 14
 const FONT_SIZE_MEDIUM := 16
 const FONT_SIZE_LARGE := 20
+const FONT_SIZE_XLARGE := 24
 const FONT_SIZE_TITLE := 32
 const FONT_SIZE_HUGE := 48
 
 # Spacing and sizing
-const CORNER_RADIUS := 6
-const BORDER_WIDTH := 2
+# UI 四级标准修复 R-D3 前置裁决：token 矛盾定真值——default_theme.tres 33 个 stylebox
+# 实际全为圆角 8/边框 1，token 原(6/2)与场景手写众数(4/5)三层各说各话。现对齐主题现状
+# (8/1)（改动面最小；零 .gd 消费者，纯口径声明）。弹窗骨架归一以 PanelChrome/PanelStyles
+# 工厂为唯一真身，勿再手写第三套。
+const CORNER_RADIUS := 8
+const BORDER_WIDTH := 1
 const PADDING_SMALL := 8
 const PADDING_MEDIUM := 16
 const PADDING_LARGE := 24
@@ -48,6 +56,12 @@ const PANEL_SIZE_SMALL := Vector2(840, 580)
 const GLOW_ENABLED := true
 const GLOW_STRENGTH := 0.8
 const GLOW_BLUR := 8
+
+# ===== 面板阴影两档（UI 四级标准修复 R-D3 前置裁决：实测 7 种 shadow_size 收敛为 2 档）=====
+# 只管"面板框/浮层"级阴影；按钮 hover 光晕(6)/关闭钮红晕(8)/标题饰条(6)/卡牌悬停等
+# 组件级 glow 是微交互语言，不属此两档（真身在 PanelStyles 各工厂内）。
+const SHADOW_SIZE_PANEL := 10   # 常驻面板框（make_panel_frame 同档）
+const SHADOW_SIZE_FLOAT := 14   # 浮层/仪式弹窗（结算/大事记档）
 
 # Accessibility presets
 # v7.x(A3): 由 const 改为 static var，使高对比度/大字号可由设置面板运行时切换。
@@ -180,7 +194,7 @@ static func current_font_size(base_size: int) -> int:
 # —— 四系统签名色 ——
 const COLOR_AMBER := Color(0.961, 0.620, 0.043, 1)          # #f59e0b 强化 · 提升
 const COLOR_AMBER_SOFT := Color(0.984, 0.749, 0.141, 1)     # #fbbf24
-const COLOR_AMBER_DEEP := Color(0.706, 0.325, 0.035, 1)     # #b45309
+const COLOR_AMBER_DEEP := Color(0.706, 0.325, 0.035, 1)     # #b45309 ⚠对比度探针 S3 FAIL：对深底 2.8~4.0:1 不达标（当前零消费），仅限浅底描边、禁止作深底文本色
 const COLOR_CYAN_TECH := Color(0.024, 0.714, 0.831, 1)      # #06b6d4 改造 · 科技
 const COLOR_CYAN_TECH_SOFT := Color(0.133, 0.827, 0.933, 1) # #22d3ee
 const COLOR_VIOLET := Color(0.653, 0.546, 0.980, 1)         # #a78bfa 进化 · 蜕变
@@ -201,7 +215,10 @@ const COLOR_SLOT_LOCKED := Color(0.039, 0.059, 0.110, 1)   # #0a0f1c
 const COLOR_BG_CARD := Color(0.075, 0.102, 0.165, 1)        # 同 COLOR_CARD
 const COLOR_BG_SLOT := Color(0.039, 0.059, 0.110, 1)        # 同 COLOR_SLOT_LOCKED
 const COLOR_BORDER_DIM := Color(0.25, 0.35, 0.42, 0.14)     # 极暗边框
-const COLOR_TEXT_FAINT := Color(0.27, 0.31, 0.39, 1)        # 极暗文本（标签/角标）
+# UI 四级标准修复 R-C3：0.27/0.31/0.39 → 0.47/0.52/0.60——原值对卡底 #131a2a 仅 ~2.1:1
+# （WCAG 文本 4.5:1），却承载功能信息 22 处（商店售罄名/情报未拥有项/卡牌次要字段）。
+# 新值 ~4.6:1 达标，仍显著暗于 COLOR_TEXT_MID（~8.7:1）保住"弱于正文"的层次。
+const COLOR_TEXT_FAINT := Color(0.47, 0.52, 0.60, 1)        # 极暗文本（标签/角标）
 const COLOR_TEXT_MID := Color(0.67, 0.72, 0.82, 1)          # 中等文本（次要信息）
 # 注：COLOR_AMBER_DEEP 已在上方签名色段定义（#b45309）
 
@@ -278,7 +295,7 @@ static func get_kind_glyph(combat_kind: int) -> String:
 const FONT_PATH_TITLE := "res://assets/fonts/Rajdhani-SemiBold.ttf"  # 标题/数字
 const FONT_PATH_TITLE_BOLD := "res://assets/fonts/Rajdhani-Bold.ttf"
 const FONT_PATH_BODY := "res://assets/fonts/Rajdhani-Regular.ttf"     # 正文
-# 注：data_font.ttf（Barlow）保留用于纯数字场景；中文走 Godot fallback（Noto Sans CJK）
+# 注：data_font.ttf（Barlow）/ title_font.ttf 死字体已随 R-D2 删除（git 历史留档）；中文走 Noto Sans SC 子集兜底
 
 # 字体缓存（避免每面板重复 load）
 static var _title_font: FontFile = null
@@ -333,14 +350,14 @@ static func ensure_cjk_fallback() -> void:
 	if title_cjk == null:
 		title_cjk = load(CJK_BUNDLED_BODY)
 	var body_cjk: Font = load(CJK_BUNDLED_BODY)
-	for path in [FONT_PATH_TITLE, FONT_PATH_TITLE_BOLD, FONT_PATH_BODY,
-			"res://assets/fonts/data_font.ttf", "res://assets/fonts/title_font.ttf"]:
+	# R-D2：data_font.ttf / title_font.ttf 死字体已删（uid 零引用、git 历史留档），
+	# 兜底循环同步收窄到三个现役 Rajdhani。
+	for path in [FONT_PATH_TITLE, FONT_PATH_TITLE_BOLD, FONT_PATH_BODY]:
 		var f: Font = load(path) as Font
 		if f == null:
 			continue
 		var fbs: Array[Font] = f.fallbacks
-		var is_title: bool = path == FONT_PATH_TITLE or path == FONT_PATH_TITLE_BOLD \
-				or path == "res://assets/fonts/title_font.ttf"
+		var is_title: bool = path == FONT_PATH_TITLE or path == FONT_PATH_TITLE_BOLD
 		var primary: Font = title_cjk if is_title else body_cjk
 		if primary != null and not fbs.has(primary):
 			fbs.append(primary)

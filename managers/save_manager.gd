@@ -129,7 +129,6 @@ const SK_SCHEMA_VERSION: String = SaveConstants.SK_SCHEMA_VERSION
 const SK_INSTANCES: String = SaveConstants.SK_INSTANCES
 const SK_BLUEPRINT: String = SaveConstants.SK_BLUEPRINT
 const SK_BASIC_RESOURCES: String = SaveConstants.SK_BASIC_RESOURCES
-const SK_PHASE_LAW: String = SaveConstants.SK_PHASE_LAW
 const SK_QUEST: String = SaveConstants.SK_QUEST
 const SK_FACTION_SYSTEM: String = SaveConstants.SK_FACTION_SYSTEM
 const SK_AFFIX_DATA: String = SaveConstants.SK_AFFIX_DATA
@@ -155,9 +154,9 @@ const SK_DAY_CLOCK: String = SaveConstants.SK_DAY_CLOCK
 const SK_STATISTICS: String = "statistics"  # v7.x: 常量源已删，保留字面量兼容旧存档读取
 const SK_CARD_ENHANCEMENT: String = SaveConstants.SK_CARD_ENHANCEMENT
 # v7.x: SK_LAW_SHARDS 别名已删除（SaveConstants 常量本身已删，全项目零引用）
+# v35: SK_CHARACTERS/SK_CHALLENGE_RECORDS 别名已删（CharacterManager/ChallengeMode
+# 2026-08-22 退役，别名零消费；SaveConstants 本体保留供迁移链映射）
 const SK_TUTORIAL_PROGRESS: String = SaveConstants.SK_TUTORIAL_PROGRESS
-const SK_CHARACTERS: String = SaveConstants.SK_CHARACTERS
-const SK_CHALLENGE_RECORDS: String = SaveConstants.SK_CHALLENGE_RECORDS
 const SK_CARD_COLLECTION: String = SaveConstants.SK_CARD_COLLECTION
 const SK_LEADERBOARD: String = SaveConstants.SK_LEADERBOARD
 const SK_LEGACY_COMPANY_REP: String = SaveConstants.SK_LEGACY_COMPANY_REP
@@ -315,8 +314,13 @@ func _on_card_swapped_fallback(_slot_index: int, old_card: CardResource, new_car
 			enqueue_backpack_card_id(cid)
 
 ## 背包懒加载兜底：在未实例化背包面板时，也可先把新增卡加入 pending 队列。
+## v38（用户反馈"换相位仪 3 卡变 6 卡"复发）：入队去重——互斥不变式下（一张卡
+## 要么在相位仪槽位、要么在背包）同一 instance_id 二次入队必为重复记账，会在
+## load_pending_cards 差值兑现时物化成重复卡。历史 v7.x 读档注入 bug 同族，此处收口。
 func enqueue_backpack_card_id(card_id: String) -> void:
 	if card_id.is_empty():
+		return
+	if _pending_backpack_ids.has(card_id) or _last_known_extra_ids.has(card_id):
 		return
 	_pending_backpack_ids.append(card_id)
 	_last_known_extra_ids.append(card_id)
@@ -621,7 +625,9 @@ func _collect_noncritical_save_data(data: Dictionary, now_ms: int) -> void:
 		_collect_manager_state(fresh, "/root/AchievementManager", SK_ACHIEVEMENT)
 		_collect_manager_state(fresh, "/root/DailyTaskManager", SK_DAILY_TASK)
 		_collect_manager_state(fresh, "/root/CardEnhancementManager", SK_CARD_ENHANCEMENT)
-		_collect_manager_state(fresh, "/root/TutorialProgressionManager", SK_TUTORIAL_PROGRESS)
+		# v6.22.4 修复：tutorial_progress 不吃节流缓存——缓存窗内保存会把推进前的
+		# 教程步写回盘（实测：完成教程步后 10s 内存档/退出 → 步数回退，2026-09-20
+		# 用户报"教程回退"的根因）。TPM.save_state 是微秒级小 dict，直采无性能面。
 		_collect_manager_state(fresh, "/root/DayClock", SK_DAY_CLOCK)
 		# v9.x 清理：CharacterManager/ChallengeModeManager 已删（零消费僵尸管理器）；
 		# 旧档 characters/challenge_records key 读档时静默跳过，新档不再写出
@@ -638,6 +644,8 @@ func _collect_noncritical_save_data(data: Dictionary, now_ms: int) -> void:
 		_last_noncritical_save_ms = now_ms
 	for key in _noncritical_save_cache.keys():
 		data[key] = _noncritical_save_cache[key]
+	# v6.22.4: tutorial_progress 每次保存都现场采集（见上方注释；置于缓存段之后防覆盖）
+	_collect_manager_state(data, "/root/TutorialProgressionManager", SK_TUTORIAL_PROGRESS)
 
 ## 按名称重置管理器（新游戏用）。
 ## 设计说明（P1-1 复审结论）：此处与 _collect_manager_state 不同，**不**经 ManagerLazyLoader
@@ -864,10 +872,9 @@ func save_game() -> bool:
 		return false
 	if DEBUG_SAVE_LOG:
 		pass  # LOG: 已保存到
-	# 显示成功Toast
-	var toast_mgr = get_node_or_null("/root/ToastManager")
-	if not _is_exiting and toast_mgr and toast_mgr.has_method("show_success"):
-		toast_mgr.show_success("游戏已保存")
+	# v36 实机验收：自动存档成功不再弹"游戏已保存"toast——战斗中/开场剧情中途弹出
+	# 打断沉浸（存档状态在存档面板/标题屏仍可见）；失败提示保留（上方 err 分支）；
+	# 手动存档的反馈由 main._show_save_result_toast 承担。
 	_last_save_ms = Time.get_ticks_msec()
 	_slot_info_cache_valid = false
 	_is_saving = false
@@ -920,6 +927,23 @@ func _enqueue_starter_backpack_cards() -> void:
 	if pim_starter != null and pim_starter.has_method("equip_starter_card_for_new_game"):
 		for cid in starter_cards:
 			pim_starter.equip_starter_card_for_new_game(cid)
+	# v37 节奏轮（用户拍板）：新档赠起始三卡的敌形情报地板（抬到制造配方门 25%）——
+	# 制造中心已提前到通关第 1 关解锁，首战打完即可立刻制造起始卡同族补战力；
+	# 直入卡（无敌形原型）天然免情报，空列表自然跳过。制造管理器不可达时静默跳过
+	#（宁缺不挡开档）。get_archetypes_of 记在原型域（foe_ww1_*），与情报手册同键。
+	var _ml := get_node_or_null("/root/ManagerLazyLoader")
+	if _ml != null and _ml.has_method("ensure_loaded"):
+		_ml.ensure_loaded("manufacture")
+	var manufacture: Node = null
+	if _ml != null and _ml.has_method("get_manager"):
+		manufacture = _ml.get_manager("manufacture")
+	if manufacture != null and manufacture.has_method("get_archetypes_of"):
+		var im := get_node_or_null("/root/IntelManual")
+		if im != null and im.has_method("grant_intel_floor"):
+			var gate: float = float(load("res://data/manufacture_pools.gd").GATE_RECIPE)
+			for cid in starter_cards:
+				for arch in manufacture.get_archetypes_of(cid):
+					im.grant_intel_floor(String(arch), gate)
 	# v21.x（FTUE 审计 S4 / P0-1 放行，2026-08-27）：起步量恢复正式值（原测试模式各 10 万已移除），
 	# 测试用 +100 相位师技能点发放同步移除（新档回 0 基线）。
 	# 单次强化约 ~100-500 纳米，起步量让玩家初期体验几张卡强化、靠战斗积累。
@@ -1236,11 +1260,7 @@ func start_ng_plus() -> void:
 	var dc: Node = get_node_or_null("/root/DayClock")
 	if dc and dc.has_method("reset_for_new_loop"):
 		dc.reset_for_new_loop()
-	# v6.6(剧情): 新周目重置剧情奖励倍率（倒计时×3 不应跨周目继承）
-	ManagerLazyLoader.ensure_loaded("drop")  # DropManager 为 autoload+别名双层（ensure_loaded 幂等）
-	var dm: Node = get_node_or_null("/root/DropManager")
-	if dm and dm.has_method("reset_multiplier"):
-		dm.reset_multiplier()
+	# v6.6 剧情倍率 reset 调用已随 2026-09-19 死机制清理删除（set_multiplier 全项目零触发方）
 	# v6.6(剧情): 激活二周目模式（补剧情.txt 第十二幕：敌人属性×1.2）
 	var gm_ng: Node = get_node_or_null("/root/GameManager")
 	if gm_ng and "ng_plus_active" in gm_ng:

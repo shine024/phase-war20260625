@@ -6,12 +6,12 @@ extends Node
 ##   kill_enemies     — 击毁N个敌人（内部追踪）
 ##   clear_level      — 通过第N关（内部追踪）
 ##   collect_fragments — 已废弃，等同 collect_cards（兼容旧存档任务）
-##   attack_faction   — 击败指定相位师（内部追踪）
-##   defend_faction   — 在指定势力关卡击败相位师（内部追踪）
+##   （v6.22: attack_faction/defend_faction 战争框架已退役）
 ##   enhance           — 完成N次强化（内部追踪）
 ##   collect_cards     — 拥有N张卡片（实时查询背包）
-##   research_law      — 研究N个法则（内部追踪）
-##   reach_reputation  — 声望达到N（实时查询 FactionSystemManager）
+##   reach_reputation  — 贡献达到N（实时查询 FactionSystemManager；UI 口径=贡献，v6.22）
+##   reach_intel      — 某敌形情报研究%达到N（实时查询 IntelManual，零信号；v6.22 新增）
+##   salvage_items    — 回收N件战利品（内部计数 salvaged，ground_loot_layer 收集链上报；v6.22 新增）
 ##   buy_items         — 购买N次物品（内部追踪）
 ##   quick_win         — N秒内胜利（内部追踪最快记录）
 ##   perfect_battle    — 获得N次三星胜利（内部追踪）
@@ -125,20 +125,23 @@ func _on_enhancement_completed(success: bool, _card_id: String, _action: String,
 
 # ──────────────── 外部通知接口 ────────────────
 
-## 研究法则后调用
-func notify_law_researched(_law_id: String) -> void:
-	for qid in _accepted.keys():
-		var def: Dictionary = QuestDefs.get_by_id(qid)
-		if def.get("objective_type", "") == "research_law":
-			_inc_progress(qid, "research_count")
-			_try_complete(qid)
-
 ## 商店购买后调用
 func notify_item_bought() -> void:
 	for qid in _accepted.keys():
 		var def: Dictionary = QuestDefs.get_by_id(qid)
 		if def.get("objective_type", "") == "buy_items":
 			_inc_progress(qid, "buy_count")
+			_try_complete(qid)
+
+## v6.22: 战利品回收上报（ground_loot_layer _quick_collect/_collect_all_staggered 汇总口调用；
+## 培养性委托 salvage_items 计数，参考 notify_item_bought 先例）
+func notify_items_salvaged(count: int = 1) -> void:
+	if count <= 0:
+		return
+	for qid in _accepted.keys():
+		var def: Dictionary = QuestDefs.get_by_id(qid)
+		if def.get("objective_type", "") == "salvage_items":
+			_inc_progress(qid, "salvaged", count)
 			_try_complete(qid)
 
 ## 战斗结束时由 battle_manager 调用，传入战斗时长和星级
@@ -178,46 +181,6 @@ func notify_fragments_changed() -> void:
 		if not _accepted.has(qid):
 			quest_progress_changed.emit(qid)
 
-## 通知任务系统：击败了相位师
-func notify_phase_master_defeated(master_name: String) -> void:
-	for qid in _accepted.keys():
-		var data: Dictionary = _accepted[qid]
-		var def: Dictionary = QuestDefs.get_by_id(qid)
-		if def.is_empty():
-			continue
-		var otype: String = def.get("objective_type", "")
-
-		if otype == "attack_faction":
-			var target_attack: Dictionary = def.get("target", {})
-			var target_master: String = target_attack.get("target_master", "")
-			if target_master == master_name:
-				if not data.has("defeated_masters"):
-					data["defeated_masters"] = []
-				if master_name not in data["defeated_masters"]:
-					data["defeated_masters"].append(master_name)
-				quest_progress_changed.emit(qid)
-				_try_complete(qid)
-				quest_phase_master_defeated.emit(qid, master_name)
-
-		elif otype == "defend_faction":
-			var target_defend: Dictionary = def.get("target", {})
-			var defend_faction: String = target_defend.get("defend_faction", "")
-
-			var LevelInfo = LevelInfoClass.new()
-			var gm = get_node_or_null("/root/GameManager")
-			var current_level: int = gm.get("current_level") if gm else 1
-			var current_faction: String = LevelInfo.get_level_faction(current_level)
-
-			if current_faction == defend_faction:
-				if not data.has("defeated_masters"):
-					data["defeated_masters"] = []
-				if master_name not in data["defeated_masters"]:
-					data["defeated_masters"].append(master_name)
-				quest_progress_changed.emit(qid)
-				_try_complete(qid)
-				quest_phase_master_defeated.emit(qid, master_name)
-
-# ──────────────── 内部进度追踪 ────────────────
 
 func _notify_battle_won(level: int) -> void:
 	for qid in _accepted.keys():
@@ -379,10 +342,12 @@ func get_current_progress_for_quest(quest_id: String) -> int:
 		return int(progress.get("enhance_count", 0))
 	if otype == "collect_cards":
 		return _count_player_cards(int(def.get("card_era", -1)), String(def.get("card_min_rarity", "")))
-	if otype == "research_law":
-		return int(progress.get("research_count", 0))
 	if otype == "reach_reputation":
 		return _get_max_reputation()
+	if otype == "reach_intel":
+		return _get_archetype_intel_percent(String(def.get("target", {}).get("archetype_id", "")))
+	if otype == "salvage_items":
+		return int(progress.get("salvaged", 0))
 	if otype == "buy_items":
 		return int(progress.get("buy_count", 0))
 	if otype == "quick_win":
@@ -394,8 +359,6 @@ func get_current_progress_for_quest(quest_id: String) -> int:
 		return int(progress.get("perfect_count", 0))
 	if otype == "survive_waves":
 		return int(progress.get("max_waves", 0))
-	if otype in ["attack_faction", "defend_faction"]:
-		return get_quest_progress_for_mission(quest_id)
 	return 0
 
 ## 获取目标值（用于UI显示）
@@ -405,6 +368,8 @@ func get_target_for_display(quest_id: String) -> int:
 		return 0
 	var otype: String = def.get("objective_type", "")
 	var target: Variant = def.get("target", 0)
+	if otype == "reach_intel":
+		return int(def.get("target", {}).get("target", 0))
 
 	if otype == "collect_cards" or otype == "reach_reputation" \
 		or otype == "quick_win" or otype == "survive_waves":
@@ -451,19 +416,6 @@ func is_quest_done(quest_id: String) -> bool:
 			if int(ep) in cleared2:
 				era_count += 1
 		return era_count >= int(target_val)
-	if otype == "attack_faction":
-		var t: Dictionary = def.get("target", {})
-		return t.get("target_master", "") in data.get("defeated_masters", [])
-	if otype == "defend_faction":
-		var t: Dictionary = def.get("target", {})
-		var defend_faction: String = t.get("defend_faction", "")
-		var LevelInfo = LevelInfoClass.new()
-		var gm = get_node_or_null("/root/GameManager")
-		var current_level: int = gm.get("current_level") if gm else 1
-		var current_faction: String = LevelInfo.get_level_faction(current_level)
-		if current_faction != defend_faction:
-			return false
-		return data.get("defeated_masters", []).size() > 0
 	if otype == "collect_fragments":
 		# v7.3 修复 BUG-8: target 可能是 int 或 {total: N}（q_collect_fragments_50 用了 dict）。
 		# 原 bug: target_val is int else 1 → dict 时 need 恒=1，接取即完成。
@@ -477,10 +429,12 @@ func is_quest_done(quest_id: String) -> bool:
 		return int(progress.get("enhance_count", 0)) >= int(target_val)
 	if otype == "collect_cards":
 		return _count_player_cards(int(def.get("card_era", -1)), String(def.get("card_min_rarity", ""))) >= int(target_val)
-	if otype == "research_law":
-		return int(progress.get("research_count", 0)) >= int(target_val)
 	if otype == "reach_reputation":
 		return _get_max_reputation() >= int(target_val)
+	if otype == "reach_intel":
+		return _get_archetype_intel_percent(String(def.get("target", {}).get("archetype_id", ""))) >= int(target_val)
+	if otype == "salvage_items":
+		return int(progress.get("salvaged", 0)) >= int(target_val)
 	if otype == "buy_items":
 		return int(progress.get("buy_count", 0)) >= int(target_val)
 	if otype == "quick_win":
@@ -517,6 +471,16 @@ func _count_player_cards(era_filter: int = -1, min_rarity: String = "") -> int:
 			species[base_id] = true
 		return species.size()
 	return 0
+
+## v6.22: 敌形情报 % 整数口径（0-100；实时查 IntelManual，零信号照 reach_reputation 模式）
+func _get_archetype_intel_percent(archetype_id: String) -> int:
+	if archetype_id.is_empty():
+		return 0
+	var im: Node = get_node_or_null("/root/IntelManual")
+	if im == null or not im.has_method("get_intel_progress"):
+		return 0
+	return clampi(int(round(float(im.get_intel_progress(archetype_id)) * 100.0)), 0, 100)
+
 
 func _get_max_reputation() -> int:
 	var fsm = get_node_or_null("/root/FactionSystemManager")
@@ -654,63 +618,6 @@ func load_state(data: Dictionary) -> void:
 	for sid in stale_dynamic:
 		QuestDefs.unregister_dynamic_quest(sid)
 
-# ──────────────── 进攻/防守任务辅助 ────────────────
-
-func get_quest_progress_for_mission(quest_id: String) -> int:
-	var def: Dictionary = QuestDefs.get_by_id(quest_id)
-	if def.is_empty():
-		return 0
-	var data: Dictionary = _accepted.get(quest_id, {})
-	var otype: String = def.get("objective_type", "")
-
-	if otype == "attack_faction":
-		var t: Dictionary = def.get("target", {})
-		var target_master: String = t.get("target_master", "")
-		var defeated: Array = data.get("defeated_masters", [])
-		return 1 if target_master in defeated else 0
-
-	if otype == "defend_faction":
-		var t: Dictionary = def.get("target", {})
-		var defend_faction: String = t.get("defend_faction", "")
-		var LevelInfo = LevelInfoClass.new()
-		var gm = get_node_or_null("/root/GameManager")
-		var current_level: int = gm.get("current_level") if gm else 1
-		var current_faction: String = LevelInfo.get_level_faction(current_level)
-		if current_faction != defend_faction:
-			return false
-		var defeated: Array = data.get("defeated_masters", [])
-		return defeated.size() > 0
-
-	return 0
-
-func is_mission_quest(quest_id: String) -> bool:
-	var def: Dictionary = QuestDefs.get_by_id(quest_id)
-	if def.is_empty():
-		return false
-	var otype: String = def.get("objective_type", "")
-	return otype == "attack_faction" or otype == "defend_faction"
-
-func get_quest_target_faction(quest_id: String) -> String:
-	var def: Dictionary = QuestDefs.get_by_id(quest_id)
-	if def.is_empty():
-		return ""
-	var otype: String = def.get("objective_type", "")
-	var target: Dictionary = def.get("target", {})
-	if otype == "attack_faction":
-		return target.get("target_faction", "")
-	if otype == "defend_faction":
-		return target.get("defend_faction", "")
-	return ""
-
-func is_mission_quest_done(quest_id: String) -> bool:
-	return get_quest_progress_for_mission(quest_id) >= 1
-
-# ──────────────── v6.9: 势力动态任务系统 ────────────────
-
-## 刷新某势力的动态任务（进入势力领地/声望升级时由 GameManager 调用）
-## 生成1个新动态任务并注册到 QuestDefs，同时揭示让玩家可见可接
-## [param faction_id] 势力ID（空或未知则不生成）
-## [param max_active_per_faction] 同势力同时存在的动态任务上限，避免堆积
 func refresh_faction_quests(faction_id: String, max_active_per_faction: int = 2) -> String:
 	if faction_id.is_empty():
 		return ""

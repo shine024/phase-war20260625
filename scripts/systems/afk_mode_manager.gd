@@ -1,16 +1,21 @@
 extends RefCounted
 class_name AFKModeManager
-## 挂机模式管理器 — 自动重复战斗（循环 / 推图）
+## 挂机模式管理器 — 自动重复战斗（本关循环 / 向前推进）
 ## 核心思路：通过 MainBattleSetup 启动战斗，拦截 SignalBus.battle_ended 信号实现自动推进
 ## 卡牌从 PhaseInstrumentManager 读取已装备卡牌
+## v36 实机验收改版：选关槽位退役——CYCLE=本关（停靠关）循环；PUSH=从停靠关向前
+## 逐关推进，关间插行进节拍（StageBanner + TRAVEL_SECONDS）。
+
+const DT = preload("res://resources/design_tokens.gd")
+const StageBanner = preload("res://scripts/ui/stage_banner.gd")
 
 
 # ── 枚举 ──
 
 ## 挂机模式
 enum Mode {
-	CYCLE,    ## 循环模式：按slot顺序循环
-	PUSH      ## 推图模式：逐关推进直到失败
+	CYCLE,    ## 循环模式：本关循环（v36：恒刷卡车停靠关，选关槽位已退役）
+	PUSH      ## 推图模式：从停靠关向前逐关推进直到失败
 }
 
 ## 挂机状态
@@ -18,10 +23,17 @@ enum State {
 	IDLE,     ## 待机
 	RUNNING,  ## 运行中
 	FAILED,   ## 失败停止
+	TRAVELING,  ## v36：两关之间行进中（战斗间隙的赶路节拍）
 }
 
 
 # ── 配置 ──
+
+## v36 实机验收：关间行进时间——胜利后向下一关"驾驶赶路"的体感节拍（用户拍板：
+## 不必十分严格，有感觉就好）。轻横幅播报 + 固定秒数；动效减弱档缩短。
+const TRAVEL_SECONDS: float = 4.0
+const TRAVEL_SECONDS_REDUCED: float = 1.2
+const LEVEL_CAP: int = 100
 
 var mode: Mode = Mode.CYCLE
 var slots: Array[int] = [0, 0, 0, 0]  # 4个slot关联的关卡号，0=未关联
@@ -81,6 +93,10 @@ const PUSH_MAX_RETRIES: int = 3
 ## 当前推图关已重试次数（start_afk 时清零，_afk_failed 时清零）
 var push_retry_count: int = 0
 
+# ── v36 行进节拍 ──
+## 行进代际号：stop/start 时 +1，使在途 timer 回调作废（防停止后仍进战斗）
+var _travel_gen: int = 0
+
 
 # ── 初始化 ──
 
@@ -114,12 +130,13 @@ func start_afk() -> bool:
 		return false
 
 	var lp = get_node_or_null("/root/LevelProgressManager")
-	var valid = _get_valid_slots()
-	# 循环模式必须有已关联 slot；推图模式以 GameManager.current_level 为起始关，
-	# 不依赖 slot 关联。
-	if mode == Mode.CYCLE and valid.is_empty():
-		prints("[AFK-DIAG] start_afk FAIL: 循环模式无关联 slot (slots=%s)" % str(slots))
-		return false
+	# v36：循环模式改为"本关循环"——不再要求选关槽位（UI 已退役），恒刷卡车停靠关
+	if mode == Mode.CYCLE:
+		var parked: int = _resolve_parked_level()
+		if parked < 1:
+			prints("[AFK-DIAG] start_afk FAIL: 循环模式无法解析停靠关 (current_level=%s)" %
+				str(get_node_or_null("/root/GameManager") != null))
+			return false
 
 	# 推图模式：起始关 = push_level（持久化进度），覆盖三种续推场景：
 	#   - 首次挂机：push_level=默认1 或读档恢复值
@@ -155,15 +172,8 @@ func start_afk() -> bool:
 			start_lvl = clampi(int(tb.get_parked_level()), 1, 100)
 		push_level = start_lvl
 	else:
-		# 循环模式：剔除未解锁的 slot 关卡，避免挂机进入未解锁关。
-		# 注意：仅在启动时校验，运行中新解锁的关不会自动加入（停止重启后生效）。
-		var unlocked_slots := _get_unlocked_valid_slots(lp)
-		if unlocked_slots.is_empty():
-			var _mu := -1
-			if lp != null and lp.has_method("get_max_unlocked_level"):
-				_mu = lp.get_max_unlocked_level()
-			prints("[AFK-DIAG] start_afk FAIL: 循环模式关联关全未解锁 (slots=%s max_unlocked=%d)" % [str(slots), _mu])
-			return false
+		# v36：本关循环——slot 解锁校验退役（不再用 slots 起动）
+		pass
 
 	state = State.RUNNING
 	is_running = true
@@ -181,11 +191,10 @@ func start_afk() -> bool:
 	if mode == Mode.PUSH:
 		_pending_level = push_level
 	else:
-		# 循环模式：从已解锁的 slot 集合取首关，current_slot_index 对齐到该集合
-		current_slot_index = 0
-		var unlocked := _get_unlocked_valid_slots(lp)
-		_pending_level = unlocked[0] if not unlocked.is_empty() else 0
+		# v36：本关循环——恒从停靠关起步
+		_pending_level = _resolve_parked_level()
 
+	_travel_gen += 1   # 新一轮作废在途行进回调
 	afk_started.emit()
 	state_changed.emit(state)
 	prints("[AFK-DIAG] start_afk OK: mode=%d _pending_level=%d" % [int(mode), _pending_level])
@@ -197,6 +206,7 @@ func stop_afk() -> void:
 	if not is_running:
 		return
 
+	_travel_gen += 1   # v36：作废在途行进回调（TRAVELING 态停止即断）
 	# 保存进度
 	if mode == Mode.PUSH:
 		push_level = _pending_level
@@ -419,36 +429,53 @@ func _bunker_sanity_exhausted() -> bool:
 
 
 ## 推进到下一关（仅在胜利时调用）。失败处理见 _on_battle_ended_from_bus。
+## v36 实机验收改版：PUSH=向前推进（去掉 v26.19 钳制，胜利 +1，关间有行进节拍）；
+## CYCLE=本关循环（_pending_level 不动）。
 func _advance_to_next_level() -> void:
 	# v7.x(防崩溃丢奖励): 此刻位于两场战斗之间（上一场 battle_ended 已发出，
 	# 下一场尚未 start），battle_active=false，天然通过 SaveManager 的战斗守卫。
 	# 触发存档把累计奖励/统计/进度落盘，避免崩溃丢失本轮挂机全部收益。
 	_trigger_afk_save()
 	if mode == Mode.PUSH:
-		# v26.19 停靠门控：不再逐关推进——反复刷停靠关（搬家/推进靠玩家手动行车）
-		var tb := get_node_or_null("/root/BunkerManager")
-		if tb != null and tb.has_method("get_parked_level"):
-			_pending_level = clampi(int(tb.get_parked_level()), 1, 100)
-		else:
-			_pending_level += 1
-			if _pending_level > 100:
-				stop_afk()
-				return
-	else:
-		# 循环模式：用已解锁 slot 集合推进，避免进入未解锁关
-		var lp = get_node_or_null("/root/LevelProgressManager")
-		var valid = _get_unlocked_valid_slots(lp)
-		if valid.is_empty():
+		_pending_level += 1
+		if _pending_level > LEVEL_CAP:
 			stop_afk()
 			return
-		current_slot_index += 1
-		if current_slot_index >= valid.size():
-			current_slot_index = 0
-		_pending_level = valid[current_slot_index]
-
-	# 延迟一帧进入下一关，确保当前战斗完全清理
-	# 使用 call_deferred 确保 battle_ended 信号完全处理后再启动下一场
+		# v36：关间行进节拍（横幅 + 赶路秒数），到点再进下一场
+		_travel_then_enter()
+		return
+	# 循环模式：本关循环——直接进下一场（原 slot 轮换退役）
 	call_deferred("_delayed_enter_battle")
+
+
+## v36：关间行进——StageBanner 轻横幅（不挡操作，AFK 豁免体系不受影响）+ 固定秒数。
+## TRAVELING 态可被 stop_afk/new game 打断（_travel_gen 代际守卫，过期回调静默作废）。
+func _travel_then_enter() -> void:
+	_travel_gen += 1
+	var gen := _travel_gen
+	state = State.TRAVELING
+	state_changed.emit(state)
+	StageBanner.post("车队向第 %d 关行进…" % _pending_level)
+	var secs: float = TRAVEL_SECONDS_REDUCED if DT.is_motion_reduce() else TRAVEL_SECONDS
+	var tree := Engine.get_main_loop() as SceneTree
+	if tree == null:
+		_delayed_enter_battle()
+		return
+	tree.create_timer(secs).timeout.connect(func() -> void:
+		if gen != _travel_gen or not is_running:
+			return
+		_delayed_enter_battle())
+
+
+## v36：解析卡车停靠关（BunkerManager 缺失时回退 GameManager.current_level）
+func _resolve_parked_level() -> int:
+	var tb := get_node_or_null("/root/BunkerManager")
+	if tb != null and tb.has_method("get_parked_level"):
+		return clampi(int(tb.get_parked_level()), 1, LEVEL_CAP)
+	var gm := get_node_or_null("/root/GameManager")
+	if gm != null and "current_level" in gm:
+		return clampi(int(gm.get("current_level")), 1, LEVEL_CAP)
+	return 0
 
 
 func _delayed_enter_battle() -> void:

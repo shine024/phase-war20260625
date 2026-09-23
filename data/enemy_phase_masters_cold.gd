@@ -8,8 +8,8 @@ class_name EnemyPhaseMastersCOLDWAR
 const ERA_MASTERS: Array = [
 	{
 		"id": "enemy_master_013",
-		"name": "钢铁烈焰·卡尔",
-		"title": "熔铸大师",
+		"name": "韩铸犁",
+		"title": "熔剑为犁",
 		"level": 18,
 		"faction": "steel_flame",
 		"difficulty": "hard",
@@ -30,8 +30,8 @@ const ERA_MASTERS: Array = [
 	},
 	{
 		"id": "enemy_master_014",
-		"name": "雷霆钢铁·维克多",
-		"title": "电磁装甲师",
+		"name": "方镇流",
+		"title": "吞雷的装甲",
 		"level": 19,
 		"faction": "thunder_steel",
 		"difficulty": "hard",
@@ -52,8 +52,8 @@ const ERA_MASTERS: Array = [
 	},
 	{
 		"id": "enemy_master_015",
-		"name": "虚空烈焰·塞拉菲娜",
-		"title": "熵增炎魔",
+		"name": "郁向暖",
+		"title": "熵减之焰",
 		"level": 20,
 		"faction": "void_flame",
 		"difficulty": "expert",
@@ -76,8 +76,8 @@ const ERA_MASTERS: Array = [
 	# ==================== Tier 4 - 专家级相位师 (Lv22-25) ====================
 	{
 		"id": "enemy_master_016",
-		"name": "不朽钢铁·阿特拉斯",
-		"title": "世界承载者",
+		"name": "石顶安",
+		"title": "顶住塌方的人",
 		"level": 22,
 		"faction": "steel",
 		"difficulty": "expert",
@@ -98,8 +98,8 @@ const ERA_MASTERS: Array = [
 	},
 	{
 		"id": "enemy_master_017",
-		"name": "永恒炎魔·苏尔特",
-		"title": "诸神黄昏",
+		"name": "江焚渡",
+		"title": "烧桥的人",
 		"level": 23,
 		"faction": "flame",
 		"difficulty": "expert",
@@ -120,8 +120,8 @@ const ERA_MASTERS: Array = [
 	},
 	{
 		"id": "enemy_master_018",
-		"name": "万雷之主·雷神",
-		"title": "雷霆化身",
+		"name": "纪回春",
+		"title": "圈外的雷",
 		"level": 24,
 		"faction": "thunder",
 		"difficulty": "expert",

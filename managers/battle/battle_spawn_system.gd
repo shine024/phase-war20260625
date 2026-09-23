@@ -262,6 +262,8 @@ func get_next_wave_preview() -> Dictionary:
 	elif gm and gm.has_method("get_enemy_spawn_count_for_wave"):
 		to_spawn = gm.get_enemy_spawn_count_for_wave(level, next_wave)
 	var bias_tags: Array = spec.get("archetype_bias_tags", [])
+	# v6.16 反制配波：与 spawn_card_grid_enemy_wave 同口径并入关卡反制偏好
+	bias_tags = _merged_wave_bias_tags(level, bias_tags)
 	var comp: Dictionary = spec.get("composition", {})
 	var is_boss_wave: bool = (_enemy_wave_total > 0 and next_wave == _enemy_wave_total)
 	# v23.2 预警诚实化：bias tag 在本时代池零匹配时降级显示"混合"，
@@ -283,11 +285,12 @@ func get_next_wave_preview() -> Dictionary:
 
 ## v23.2: 检查 bias tags 是否在本关卡时代的 archetype 池中有任一匹配（预警诚实化用）。
 ## 与 _pick_archetype_with_bias 的匹配语义一致（任一 tag 命中即算）。
+## v30.5 R5：改关卡域池（min_level 门）——二战尾部关的 aircraft 槽在预警里才算活。
 func _bias_tags_match_era_pool(level: int, bias_tags: Array) -> bool:
 	if bias_tags.is_empty():
 		return true
 	var era: int = _current_battle_era(level)
-	for aid in EnemyArchetypes.get_ids_for_era(era):
+	for aid in EnemyArchetypes.get_ids_for_era_at_level(era, level):
 		var tags: Array = EnemyArchetypes.get_config(String(aid)).get("tags", [])
 		for bt in bias_tags:
 			if tags.has(bt):
@@ -396,7 +399,8 @@ func spawn_card_grid_enemy_wave(current_level: int) -> bool:
 		_signal_bus.wave_spawned.emit(enemy_wave_index)
 
 	var era: int = _current_battle_era(current_level)
-	var era_archetypes: Array = EnemyArchetypes.get_ids_for_era(era)
+	# v30.5 R5：关卡域取池（min_level 等级门，二战尾部飞行试点限 L36-40）
+	var era_archetypes: Array = EnemyArchetypes.get_ids_for_era_at_level(era, current_level)
 	var basic_ids: Array = []
 	var elite_ids: Array = []
 	var boss_ids: Array = []
@@ -423,6 +427,9 @@ func spawn_card_grid_enemy_wave(current_level: int) -> bool:
 
 	# bias_tags：本波偏好的 archetype tag（如 ["infantry"]），空=不限
 	var bias_tags: Array = wave_spec.get("archetype_bias_tags", []) if use_sequence else []
+	# v6.16 反制配波：关卡 special_rules 的 counter_bias_tags 并入本波偏好
+	# （与 get_next_wave_preview 同口径，预警题面必真）
+	bias_tags = _merged_wave_bias_tags(current_level, bias_tags)
 
 	for _i in range(to_spawn):
 		if enemy_unit_count >= _enemy_field_unit_cap():
@@ -782,6 +789,11 @@ func request_player_deploy(platform_card_id: String, world_pos: Vector2, battle_
 			player_unit_count = live_count  # 同步缓存，保持后续逻辑一致
 		if live_count >= max_units:
 			_emit_deploy_failed("max_units", "我方单位数量已达上限（%d/%d）。" % [live_count, max_units])
+			# v38.x B 条: 首次触顶弹一次性提示——上限=绿槽装备的战斗卡数（关卡 6 上限同理），
+			# 想多上就多装战斗卡（相位仪绿槽）
+			FeatureUnlockPopup.show_once("deploy_cap_hint",
+				"上场数量已达上限 %d/%d" % [live_count, max_units],
+				"上限 = 相位仪绿槽装备的战斗卡数，多装战斗卡即可多上场")
 			return false
 	# v7.x 修复（同名卡部署属性相同）：调用方现在可能传 instance_id（cold_t72#1）或裸 card_id。
 	# "同卡上限"检查需要裸 card_id（统计同名卡装备数/存活数），故先剥离 #序号 得到 base_card_id。
@@ -807,6 +819,20 @@ func request_player_deploy(platform_card_id: String, world_pos: Vector2, battle_
 	if platform_card == null:
 		_emit_deploy_failed("invalid_loadout", "未找到有效战斗卡配置，请检查绿槽。")
 		return false
+	# v36 精神同调战力门：卡牌 power 超出相位师可运用上限 → 拒绝部署
+	# （豁免：debug_no_deploy_limits / 战力门总开关关 / 教学进行中；教学首战必须畅通）
+	if not _no_limits and bool(GameConfig.get_default().power_cap_enabled):
+		var _pms: Node = _get_cached_autoload("PhaseMasterSkillManager")
+		var _tutorial_active: bool = false
+		if TutorialProgressionManager != null and TutorialProgressionManager.has_method("should_show_tutorial"):
+			_tutorial_active = TutorialProgressionManager.should_show_tutorial()
+		if _pms != null and not _tutorial_active:
+			var cap: int = _pms.get_power_cap()
+			var card_power: int = int(platform_card.power)
+			if card_power > cap:
+				_emit_deploy_failed("power_cap",
+					"该卡战力 %d 超出相位师可运用的上限 %d——在相位师技能树点亮「精神同调」提升上限。" % [card_power, cap])
+				return false
 	# v20.16 次数池键 = 部署身份（实例卡用 instance_id，旧卡/模板回退裸 card_id）——
 	# 同名卡两实例各有一份独立次数，与 v20.11 存活上限"每装备槽各 1"语义对齐。
 	var du_key: String = platform_card.instance_id if not platform_card.instance_id.is_empty() else platform_card.card_id
@@ -1332,6 +1358,20 @@ func _emit_deploy_failed(reason_code: String, message: String) -> void:
 		_signal_bus.player_deploy_failed.emit(reason_code, message)
 
 
+## v6.16 反制配波（D2 免疫式平衡）：关卡 special_rules.counter_bias_tags 并入
+## 波次 bias tags——该关敌方构成系统性偏向某兵种（装甲洪流/空域压制/步兵海），
+## 单一维度构筑在本关会被克制，多元构筑反而获得碾压窗口。
+## spawn 与预警（get_next_wave_preview）都走本函数，题面必真。
+func _merged_wave_bias_tags(level: int, base_tags: Array) -> Array:
+	var merged: Array = base_tags.duplicate()
+	var li = LevelInformation.get_shared()
+	var rules: Dictionary = li.get_special_rules(level) if li != null else {}
+	for t in rules.get("counter_bias_tags", []):
+		if not merged.has(t):
+			merged.append(t)
+	return merged
+
+
 ## v8 批次3: 获取当前关卡的 special_rules（读 GameManager.current_level → LevelInformation）
 ## 用于 restrict_platforms 等关卡限定（deploy_limit 已移除，不再在此读）。
 func _get_current_level_rules() -> Dictionary:
@@ -1779,6 +1819,21 @@ func _count_alive_enemy_by_archetype(archetype_id: String) -> int:
 ## 战斗开始时初始化所有装备槽卡的部署次数
 ## v20.16：键 = 部署身份（实例卡 instance_id / 旧卡裸 card_id）——同名卡多实例各自独立一份，
 ## 修复共享池导致"两张同名卡一起被锁"的 v20.13 缺陷。
+## v6.14.7：部署次数条目解析。UCT 直查落空的卡（captured_*/foe_* 缴获卡、fe_* 势力卡）
+## 不再跳过——旧逻辑跳过=池无键=部署门按"次数耗尽"硬拒，缴获卡从此永远上不了场。
+## 先剥缴获前缀回表重查（与 captured_unit_cards.gd 的 arch_id 口径一致），
+## 仍无则按卡自身 combat_kind 构造基线条目（走兵种基线次数），保证任何绿槽卡可部署。
+func _resolve_deploy_uses_entry(card: CardResource) -> Dictionary:
+	var entry: Dictionary = UnifiedCardTable.get_entry(card.card_id)
+	if not entry.is_empty():
+		return entry
+	var bare_id: String = card.card_id.trim_prefix("captured_").trim_prefix("foe_")
+	entry = UnifiedCardTable.get_entry(bare_id)
+	if not entry.is_empty():
+		return entry
+	return {"combat_kind": int(card.combat_kind)}
+
+
 func _reset_deploy_uses() -> void:
 	_deploy_uses_remaining.clear()
 	if _phase_instrument == null:
@@ -1791,10 +1846,7 @@ func _reset_deploy_uses() -> void:
 		if card == null:
 			continue
 		var key: String = card.instance_id if not card.instance_id.is_empty() else card.card_id
-		var entry: Dictionary = UnifiedCardTable.get_entry(card.card_id)
-		if entry.is_empty():
-			continue
-		var uses: int = UnifiedCardTable.get_deploy_uses(entry, card)
+		var uses: int = UnifiedCardTable.get_deploy_uses(_resolve_deploy_uses_entry(card), card)
 		_deploy_uses_remaining[key] = uses
 		# v20.13b：reset 也广播——底栏部署次数角标的初始显示由信号驱动（bar 在 _ready 已连接）
 		# v20.16：信号携带部署身份键（底栏按 instance_id 优先匹配槽位）
@@ -1803,7 +1855,28 @@ func _reset_deploy_uses() -> void:
 
 ## 检查某卡是否还有剩余部署次数（key = 部署身份：instance_id 或裸 card_id）
 func _has_deploy_uses(key: String) -> bool:
+	if not _deploy_uses_remaining.has(key):
+		# v6.14.7：战斗中途换装进绿槽的卡不在开战快照池里——懒建键自愈，
+		# 防止缺键被当"次数耗尽"误拒（与 _reset_deploy_uses 兑底同一缺陷类）。
+		_seed_deploy_use_key(key)
 	return int(_deploy_uses_remaining.get(key, 0)) > 0
+
+## 按部署身份键在绿槽里找对应卡并补建次数；找不到不建（保持缺键拒绝语义）。
+func _seed_deploy_use_key(key: String) -> void:
+	if _phase_instrument == null or not _phase_instrument.has_method("get_loadouts"):
+		return
+	for lo in _phase_instrument.get_loadouts():
+		var card: CardResource = lo.get("platform", null)
+		if card == null:
+			continue
+		var k: String = card.instance_id if not card.instance_id.is_empty() else card.card_id
+		if k != key:
+			continue
+		var uses: int = UnifiedCardTable.get_deploy_uses(_resolve_deploy_uses_entry(card), card)
+		_deploy_uses_remaining[key] = uses
+		if _signal_bus:
+			_signal_bus.deploy_uses_changed.emit(key, uses, uses)
+		return
 
 ## 部署时扣减次数
 func _consume_deploy_use(key: String) -> void:
@@ -1835,9 +1908,7 @@ func _get_deploy_uses_total(key: String) -> int:
 			continue
 		var k: String = card.instance_id if not card.instance_id.is_empty() else card.card_id
 		if k == key:
-			var entry: Dictionary = UnifiedCardTable.get_entry(card.card_id)
-			if not entry.is_empty():
-				return UnifiedCardTable.get_deploy_uses(entry, card)
+			return UnifiedCardTable.get_deploy_uses(_resolve_deploy_uses_entry(card), card)
 	return 0
 
 ## 查询剩余次数（HUD 显示用）。key = 部署身份；

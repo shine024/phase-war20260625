@@ -1,7 +1,7 @@
 # 无 GdUnit 依赖的快速校验：v20.x 限定兵种关修复回归
 #   - restrict_platforms 白名单 × combat_kind 放行/拦截语义（用 DefaultCards 真实卡对象）
 #   - CardResource.platform_type == combat_kind 不变量（UCT 模板 + clone 实例两路径）
-#   - 战场缩放兜底 0-4 键按兵种语义重映射（装甲>1.2/空中>1.0，防 legacy 撞值回退）
+#   - 战场缩放模型档位系数（装甲>1.2/空中>1.0）+ by-id/card 双路径解析（v6.14.8 内容感知重构）
 # 背景：v8.0 UCT 切数据源漏设 platform_type + clone() 漏拷，全卡恒 -1，
 #   第 15/30/55/85 关 restrict_platforms 白名单判定全拦（"本关限定兵种"误伤全部兵种）。
 # Usage: godot --headless --rendering-driver opengl3 --path . --script tests/restrict_levels_card_kind_smoke.gd
@@ -85,29 +85,38 @@ func _initialize() -> void:
 	else:
 		print("  %d 兵种样例 clone 不变量成立 ✓" % checked)
 
-	# ══════════ 4. 战场缩放兜底 0-4 键语义（v20.x 重映射回归锁） ══════════
-	print("=== 缩放兜底 0-4 键兵种语义 ===")
-	# 期望区间（按兵种体量）：轻装小 / 装甲·堡垒大 / 空中·支援中
-	var scale_range: Dictionary = {0: [0.5, 0.95], 1: [1.2, 1.8], 2: [0.6, 1.05], 3: [1.0, 1.5], 4: [1.2, 1.8]}
+	# ══════════ 4. 战场缩放模型（v6.14.8 内容感知+时代档回归锁） ══════════
+	print("=== 缩放模型：兵种×时代档位 + 双路径解析 ===")
+	# 期望区间（按兵种体量，跨时代全档）：轻装小 / 装甲·堡垒大 / 空中·支援中
+	var scale_range: Dictionary = {0: [0.6, 0.95], 1: [1.0, 1.7], 2: [0.7, 1.05], 3: [0.95, 1.45], 4: [1.3, 1.7]}
+	# 敌形代表 id（硬编码防表漂移）
+	var kind_rep: Dictionary = {0: "ww1_inf_mp18", 1: "cold_arm_btr_e", 2: "ww1_arty_mortar", 3: "fut_air_drone", 4: "ww1_fort_pillbox"}
 	for kind in scale_range.keys():
-		var rep: String = String(CardFootAnchors.PLAYER_PLATFORM_TO_SCALE_ARCHETYPE.get(kind, ""))
-		if rep.is_empty():
-			fail.call("缩放兜底表缺 %d 键" % kind)
-			continue
-		# 代表 id 必须能解析出非默认缩放（防代表 id 拼错静默回退 1.0）
+		var k: int = int(kind)
+		var rng: Array = scale_range[k]
+		for era in [0, 4]:
+			var expected: float = float((CardFootAnchors.KIND_ERA_SCALE[k] as Dictionary)[era])
+			if expected < float(rng[0]) or expected > float(rng[1]):
+				fail.call("kind=%d era=%d 档位 %.2f 超出区间 [%s, %s]" % [k, era, expected, str(rng[0]), str(rng[1])])
+			# card 路径：combat_kind + era 直查档位
+			var fake := CardResource.new()
+			fake.card_id = "plain_player_probe_card"
+			fake.combat_kind = k
+			fake.era = era
+			var vs: float = CardFootAnchors.get_visual_scale(fake)
+			if not is_equal_approx(vs, expected):
+				fail.call("kind=%d era=%d card 路径 %.2f != 档位 %.2f" % [k, era, vs, expected])
+		# by-id 路径：敌形代表经 manifest 兵种/时代解析（防拼错静默回退 1.0）
+		var rep: String = String(kind_rep.get(k, ""))
 		var rep_scale: float = CardFootAnchors.get_visual_scale_by_id(rep)
 		if rep_scale <= 0.0 or is_equal_approx(rep_scale, 1.0):
-			fail.call("kind=%d 代表 %s 未在 VISUAL_SCALE 解析（%.2f）" % [kind, rep, rep_scale])
-			continue
-		# 合成短名我方卡（不在 VISUAL_SCALE 表内）→ 走 platform_type 兜底路径
-		var fake := CardResource.new()
-		fake.card_id = "plain_player_probe_card"
-		fake.platform_type = int(kind)
-		var vs: float = CardFootAnchors.get_visual_scale(fake)
-		var rng: Array = scale_range[kind]
-		if vs < float(rng[0]) or vs > float(rng[1]):
-			fail.call("kind=%d 缩放 %.2f 超出兵种语义区间 [%s, %s]（代表 %s）" % [kind, vs, str(rng[0]), str(rng[1]), rep])
-	print("  5 兵种缩放兜底语义区间 ✓")
+			fail.call("kind=%d 代表 %s 未能按 manifest 解析（%.2f）" % [k, rep, rep_scale])
+	# 时代递进不变式（用户拍板层级）：装甲/空中跨时代单调不降——FT-17 ≠ 未来坦克
+	for kind_key in [1, 3]:
+		var row: Dictionary = CardFootAnchors.KIND_ERA_SCALE[kind_key]
+		if not (float(row[0]) < float(row[2]) and float(row[2]) < float(row[4])):
+			fail.call("kind=%d 档位未随时代递进：%s" % [kind_key, str(row)])
+	print("  5 兵种×时代档位 + by-id/card 双路径解析 ✓")
 
 	# ══════════ 5. 编译验证：本轮改动文件可加载 ══════════
 	# 注：--script 模式下 autoload 全局标识符（如 ModificationRegistry）在部分加载

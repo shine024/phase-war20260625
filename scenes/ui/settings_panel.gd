@@ -1,6 +1,8 @@
 extends PanelContainer
 ## 设置面板 v7.x(A2)：音量分轨 + 难度 + 全屏 + 可访问性（高对比/大字号/减少动效）
 ## 持久化到 user://settings.cfg。向后兼容旧配置（缺省键自动用默认值）。
+## R6-1（F-18 发行三硬选项，2026-09-13）：窗口模式/分辨率 + 色盲辅助三档 + 键位重绑。
+## 新增段全部代码构建（不碰 tscn）；键位覆盖经 KeyBinds（InputMap 运行时层，独立 section）。
 
 signal closed()
 
@@ -16,6 +18,12 @@ const SECTION: String = "settings"
 const _DIFFICULTY_IDS := ["easy", "normal", "hard"]
 const _DEFAULT_DIFFICULTY_IDX := 1
 
+# R6-1（F-18）：显示与可及性新段
+const _WINDOW_MODES := ["窗口", "无边框全屏", "独占全屏"]
+const _RESOLUTIONS := [Vector2i(1280, 720), Vector2i(1366, 768), Vector2i(1600, 900), Vector2i(1920, 1080)]
+const _RESOLUTION_LABELS := ["1280 × 720（推荐）", "1366 × 768", "1600 × 900", "1920 × 1080"]
+const _COLOR_BLIND_LABELS := ["关闭", "红色弱视（protan）", "绿色弱视（deutan）", "蓝黄色弱（tritan）"]
+
 @onready var _master_slider: HSlider = get_node_or_null("Margin/VBoxMain/Scroll/VBox/MasterVolumeRow/MasterSlider")
 @onready var _sfx_slider: HSlider = get_node_or_null("Margin/VBoxMain/Scroll/VBox/SfxVolumeRow/SfxSlider")
 @onready var _bgm_slider: HSlider = get_node_or_null("Margin/VBoxMain/Scroll/VBox/BgmVolumeRow/BgmSlider")
@@ -26,6 +34,12 @@ const _DEFAULT_DIFFICULTY_IDX := 1
 @onready var _mr_check: CheckButton = get_node_or_null("Margin/VBoxMain/Scroll/VBox/MotionReduceRow/MotionReduceCheck")
 @onready var _reset_tutorial_button: Button = get_node_or_null("Margin/VBoxMain/Scroll/VBox/TutorialRow/ResetTutorialButton")
 @onready var _content_vbox: VBoxContainer = get_node_or_null("Margin/VBoxMain")
+
+var _window_mode_option: OptionButton
+var _resolution_option: OptionButton
+var _cb_option: OptionButton
+var _keybind_buttons: Dictionary = {}  # action_id -> Button（键位行）
+var _capturing_action := ""  # 非空 = 正在捕捉该动作的新按键
 
 
 func _ready() -> void:
@@ -59,6 +73,213 @@ func _ready() -> void:
 	# 游戏：教程重置（v26.9 A1.4，接活 TutorialProgressionManager.reset_tutorial）
 	if _reset_tutorial_button:
 		_reset_tutorial_button.pressed.connect(_on_reset_tutorial_pressed)
+	# R6-1（F-18）：窗口模式/分辨率 + 色盲辅助 + 键位重绑（代码构建段）
+	# 先确保 KeyBinds 动作已注册——面板可能先于 main 场景打开（标题屏入口），
+	# 不注册的话键位行会全显"未绑定"
+	KeyBinds.ensure_registered()
+	_build_r6_sections()
+
+
+func _build_r6_sections() -> void:
+	var scroll_vbox: VBoxContainer = get_node_or_null("Margin/VBoxMain/Scroll/VBox")
+	if scroll_vbox == null:
+		return
+	# 旧"全屏"二元勾选由三档窗口模式取代（旧配置 fullscreen=true 迁移为独占全屏）
+	if _fullscreen_check:
+		_fullscreen_check.get_parent().visible = false
+
+	# ── 显示段：窗口模式 + 分辨率 ──
+	var wm_row := HBoxContainer.new()
+	wm_row.name = "WindowModeRow"
+	wm_row.add_child(_make_row_label("窗口模式"))
+	_window_mode_option = OptionButton.new()
+	for t in _WINDOW_MODES:
+		_window_mode_option.add_item(t)
+	_window_mode_option.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_window_mode_option.item_selected.connect(_on_window_mode_selected)
+	wm_row.add_child(_window_mode_option)
+	scroll_vbox.add_child(wm_row)
+
+	var res_row := HBoxContainer.new()
+	res_row.name = "ResolutionRow"
+	res_row.add_child(_make_row_label("分辨率"))
+	_resolution_option = OptionButton.new()
+	for t in _RESOLUTION_LABELS:
+		_resolution_option.add_item(t)
+	_resolution_option.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_resolution_option.item_selected.connect(_on_resolution_selected)
+	res_row.add_child(_resolution_option)
+	scroll_vbox.add_child(res_row)
+
+	# ── 可及性段：色盲辅助 ──
+	var cb_row := HBoxContainer.new()
+	cb_row.name = "ColorBlindRow"
+	cb_row.add_child(_make_row_label("色盲辅助"))
+	_cb_option = OptionButton.new()
+	for t in _COLOR_BLIND_LABELS:
+		_cb_option.add_item(t)
+	_cb_option.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_cb_option.item_selected.connect(_on_color_blind_selected)
+	cb_row.add_child(_cb_option)
+	scroll_vbox.add_child(cb_row)
+
+	# ── 键位段：可重绑动作行 + 恢复默认 ──
+	var kb_title := Label.new()
+	kb_title.name = "KeybindsTitle"
+	kb_title.text = "键位设置（ESC/手柄Ⓑ固定关闭面板，数字 1-9 固定部署槽位；\n手柄导航：十字键/左摇杆移动、Ⓐ 确认。键盘与手柄键分开重绑，互不覆盖）"
+	kb_title.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
+	kb_title.add_theme_color_override("font_color", DT.COLOR_CYAN_TECH)
+	scroll_vbox.add_child(kb_title)
+	for a in KeyBinds.ACTIONS:
+		var row := HBoxContainer.new()
+		var lbl := _make_row_label(a.label)
+		row.add_child(lbl)
+		var btn := Button.new()
+		btn.focus_mode = Control.FOCUS_NONE  # 防止捕捉期间空格/回车触发按钮自身
+		btn.custom_minimum_size = Vector2(180, 0)
+		btn.pressed.connect(_on_keybind_button_pressed.bind(a.id))
+		row.add_child(btn)
+		_keybind_buttons[a.id] = btn
+		scroll_vbox.add_child(row)
+	var reset_kb := Button.new()
+	reset_kb.text = "恢复默认键位"
+	reset_kb.pressed.connect(_on_keybinds_reset_pressed)
+	scroll_vbox.add_child(reset_kb)
+	_refresh_keybind_labels()
+
+
+func _make_row_label(text: String) -> Label:
+	var lbl := Label.new()
+	lbl.text = text
+	lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	return lbl
+
+
+func _refresh_keybind_labels() -> void:
+	for a in KeyBinds.ACTIONS:
+		var btn: Button = _keybind_buttons.get(a.id)
+		if btn == null:
+			continue
+		if _capturing_action == a.id:
+			btn.text = "按键盘键 / 手柄键…（ESC 或 Ⓑ 取消）"
+		else:
+			btn.text = KeyBinds.get_binding_label(a.id)
+
+
+func _on_keybind_button_pressed(action_id: String) -> void:
+	_capturing_action = action_id
+	KeyBinds.capture_active = true
+	_refresh_keybind_labels()
+
+
+func _on_keybinds_reset_pressed() -> void:
+	KeyBinds.reset_all()
+	_capturing_action = ""
+	KeyBinds.capture_active = false
+	_refresh_keybind_labels()
+	SignalBus.show_toast.emit("🎮 键位已恢复默认")
+
+
+func _input(event: InputEvent) -> void:
+	# R6-1：键位重绑捕捉（键盘键/手柄键按即绑定，双设备各自独立保存；ESC 或手柄 Ⓑ 取消；
+	# 结束后统一延迟收尾防止本帧事件漏进 main）
+	if _capturing_action.is_empty():
+		return
+	var is_key := event is InputEventKey
+	var is_joy := event is InputEventJoypadButton
+	if not is_key and not is_joy:
+		return
+	if not event.is_pressed() or event.is_echo():
+		return
+	get_viewport().set_input_as_handled()
+	if is_key:
+		var keycode: int = (event as InputEventKey).keycode
+		if keycode == KEY_ESCAPE:
+			_cancel_capture()
+			return
+		KeyBinds.set_binding(_capturing_action, keycode)
+	else:
+		var jb: int = (event as InputEventJoypadButton).button_index
+		if jb == JOY_BUTTON_B:
+			_cancel_capture()
+			return
+		KeyBinds.set_binding_joy(_capturing_action, jb)
+	_capturing_action = ""
+	call_deferred("_end_capture")
+
+
+func _cancel_capture() -> void:
+	_capturing_action = ""
+	call_deferred("_end_capture")
+
+
+func _end_capture() -> void:
+	KeyBinds.capture_active = false
+	_refresh_keybind_labels()
+
+
+func _on_window_mode_selected(index: int) -> void:
+	_apply_window_mode(index)
+	_save()
+
+
+func _on_resolution_selected(index: int) -> void:
+	_apply_resolution(index)
+	_save()
+
+
+func _on_color_blind_selected(index: int) -> void:
+	var cg: Node = get_node_or_null("/root/ColorGrade")
+	if cg != null and cg.has_method("set_color_blind_mode"):
+		cg.set_color_blind_mode(index)
+	_save()
+
+
+func _apply_window_mode(mode: int) -> void:
+	match clampi(mode, 0, 2):
+		1:
+			DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_FULLSCREEN)  # 无边框
+		2:
+			DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_EXCLUSIVE_FULLSCREEN)
+		_:
+			DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_WINDOWED)
+
+
+func _apply_resolution(idx: int) -> void:
+	var size: Vector2i = _RESOLUTIONS[clampi(idx, 0, _RESOLUTIONS.size() - 1)]
+	if DisplayServer.window_get_mode() != DisplayServer.WINDOW_MODE_WINDOWED:
+		return  # 全屏两档由桌面分辨率决定，分辨率选项仅窗口模式生效
+	DisplayServer.window_set_size(size)
+	var screen := DisplayServer.window_get_current_screen()
+	var screen_pos := DisplayServer.screen_get_position(screen)
+	var screen_size := DisplayServer.screen_get_size(screen)
+	DisplayServer.window_set_position(screen_pos + (screen_size - size) / 2)
+
+
+## R6-1：启动应用窗口模式/分辨率（title_screen._ready 调用；兼容旧 fullscreen=true 配置）
+static func apply_display_at_boot() -> void:
+	var cfg := ConfigFile.new()
+	if cfg.load(SETTINGS_PATH) != OK:
+		return
+	var mode := int(cfg.get_value(SECTION, "window_mode", 0))
+	if not cfg.has_section_key(SECTION, "window_mode") and bool(cfg.get_value(SECTION, "fullscreen", false)):
+		mode = 2  # 旧"全屏"勾选 → 独占全屏
+	match clampi(mode, 0, 2):
+		1:
+			DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_FULLSCREEN)
+		2:
+			DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_EXCLUSIVE_FULLSCREEN)
+		_:
+			DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_WINDOWED)
+	if clampi(mode, 0, 2) != 0:
+		return
+	var ridx := clampi(int(cfg.get_value(SECTION, "resolution_idx", 0)), 0, _RESOLUTIONS.size() - 1)
+	var size: Vector2i = _RESOLUTIONS[ridx]
+	if size != Vector2i(1280, 720):
+		DisplayServer.window_set_size(size)
+		var screen := DisplayServer.window_get_current_screen()
+		DisplayServer.window_set_position(DisplayServer.screen_get_position(screen)
+			+ (DisplayServer.screen_get_size(screen) - size) / 2)
 
 
 func _load_and_apply() -> void:
@@ -83,6 +304,15 @@ func _load_and_apply() -> void:
 		lt = cfg.get_value(SECTION, "large_type", lt)
 		mr = cfg.get_value(SECTION, "motion_reduce", mr)
 	diff_idx = clampi(diff_idx, 0, _DIFFICULTY_IDS.size() - 1)
+	# R6-1 新键（旧配置缺省自动回退）
+	var window_mode: int = int(cfg.get_value(SECTION, "window_mode", 0))
+	if err == OK and not cfg.has_section_key(SECTION, "window_mode") and bool(cfg.get_value(SECTION, "fullscreen", false)):
+		window_mode = 2  # 旧"全屏"勾选迁移
+	var resolution_idx: int = int(cfg.get_value(SECTION, "resolution_idx", 0))
+	var cb_mode: int = int(cfg.get_value(SECTION, "color_blind_mode", 0))
+	window_mode = clampi(window_mode, 0, _WINDOW_MODES.size() - 1)
+	resolution_idx = clampi(resolution_idx, 0, _RESOLUTIONS.size() - 1)
+	cb_mode = clampi(cb_mode, 0, _COLOR_BLIND_LABELS.size() - 1)
 	# 回填控件
 	if _master_slider != null:
 		_master_slider.value = master
@@ -100,12 +330,25 @@ func _load_and_apply() -> void:
 		_lt_check.button_pressed = lt
 	if _mr_check != null:
 		_mr_check.button_pressed = mr
+	if _window_mode_option != null:
+		_window_mode_option.selected = window_mode
+	if _resolution_option != null:
+		_resolution_option.selected = resolution_idx
+		_resolution_option.disabled = window_mode != 0
+	if _cb_option != null:
+		_cb_option.selected = cb_mode
 	# 应用
 	_apply_master(master)
 	_apply_sfx(sfx)
 	_apply_bgm(bgm)
 	_apply_fullscreen(fullscreen)
 	_apply_accessibility(hc, lt, mr)
+	# R6-1：显示应用在 boot 已做（apply_display_at_boot），面板实例只对齐控件状态；
+	# 色盲档 ColorGrade 启动自读 settings.cfg，此处仅对齐控件。
+	if fullscreen and window_mode == 0:
+		window_mode = 2  # 兼容：旧配置只有 fullscreen=true 时，三档下拉对齐为独占全屏
+	if _window_mode_option != null:
+		_window_mode_option.selected = window_mode
 
 
 # ===== 音频 =====
@@ -251,6 +494,8 @@ func _do_reset_tutorial() -> void:
 # ===== 持久化 =====
 func _save() -> void:
 	var cfg := ConfigFile.new()
+	# R6-1 修复：先 load 再写——原实现整文件新建覆写，会抹掉 KeyBinds 写入的 keybinds 段
+	cfg.load(SETTINGS_PATH)
 	cfg.set_value(SECTION, "master_volume", _master_slider.value if _master_slider else 1.0)
 	cfg.set_value(SECTION, "sfx_volume", _sfx_slider.value if _sfx_slider else 1.0)
 	cfg.set_value(SECTION, "bgm_volume", _bgm_slider.value if _bgm_slider else 0.7)
@@ -259,9 +504,21 @@ func _save() -> void:
 	cfg.set_value(SECTION, "high_contrast", _hc_check.button_pressed if _hc_check else false)
 	cfg.set_value(SECTION, "large_type", _lt_check.button_pressed if _lt_check else false)
 	cfg.set_value(SECTION, "motion_reduce", _mr_check.button_pressed if _mr_check else false)
+	# R6-1 新键
+	if _window_mode_option != null:
+		cfg.set_value(SECTION, "window_mode", _window_mode_option.selected)
+	if _resolution_option != null:
+		cfg.set_value(SECTION, "resolution_idx", _resolution_option.selected)
+	if _cb_option != null:
+		cfg.set_value(SECTION, "color_blind_mode", _cb_option.selected)
 	cfg.save(SETTINGS_PATH)
 
 
 func _on_close() -> void:
+	# R6-1：捕捉中途关面板也要收尾（含隐藏面板残留捕捉态）
+	if _capturing_action != "":
+		_capturing_action = ""
+		KeyBinds.capture_active = false
+		_refresh_keybind_labels()
 	visible = false
 	closed.emit()

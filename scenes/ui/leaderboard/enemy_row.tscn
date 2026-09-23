@@ -16,7 +16,6 @@ theme_override_constants/margin_bottom = 0
 layout_mode = 2
 custom_minimum_size = Vector2(0, 40)
 flat = true
-mouse_filter = 2
 size_flags_horizontal = 3
 unique_name_in_owner = true
 

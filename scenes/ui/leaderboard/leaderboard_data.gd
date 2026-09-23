@@ -72,7 +72,7 @@ func _initialize_faction_data() -> void:
 			var fid: String = fi.get("id", "")
 			if fid.is_empty():
 				continue
-			var controlled: Array = fi.get("controlled_levels", [])
+			var controlled: Array = fi.get("historical_levels", [])
 			var total: int = controlled.size()
 			var cleared: int = 0
 			for lv in controlled:
@@ -147,7 +147,7 @@ func _initialize_player_data() -> void:
 			var fid: String = fi.get("id", "")
 			if fid.is_empty() or fid == player_faction_id:
 				continue
-			var controlled: Array = fi.get("controlled_levels", [])
+			var controlled: Array = fi.get("historical_levels", [])
 			var territory: int = controlled.size()
 			var challenger_level: int = 1
 			if not controlled.is_empty():

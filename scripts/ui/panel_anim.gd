@@ -16,6 +16,10 @@ class_name PanelAnim
 const DT = preload("res://resources/design_tokens.gd")
 
 const CLOSE_TWEEN_META := "close_tween"
+# 重复 open 守卫（UI 四级标准修复 R-A2：card_info_panel 隐藏→快速重开场景）——
+# 杀掉上一轮未完成的淡入/弹出 tween，防双 tween 同帧竞写 modulate/scale。
+const OPEN_TWEEN_META := "open_tween"
+const OPEN_TWEEN_POP_META := "open_tween_pop"
 
 ## 内容缩放子节点命名兼容：main 系 overlay=CenterContainer；truck_base 嵌入链=EmbedCenter
 static func _content_of(overlay: Control) -> Control:
@@ -28,12 +32,14 @@ static func _content_of(overlay: Control) -> Control:
 ## 打开动画：overlay 需已 visible=true（与 main._open_overlay 先显示再动画同序）。
 static func open(overlay: Control) -> void:
 	_kill_pending_close(overlay)
+	_kill_pending_open(overlay)
 	if DT.is_motion_reduce():
 		overlay.modulate.a = 1.0
 		return
 	var cc := _content_of(overlay)
 	overlay.modulate.a = 0.0
 	var tw := overlay.create_tween()
+	overlay.set_meta(OPEN_TWEEN_META, tw)
 	tw.tween_property(overlay, "modulate:a", 1.0, DT.MOTION_FADE_IN) \
 		.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 	if cc == null:
@@ -41,6 +47,7 @@ static func open(overlay: Control) -> void:
 	# 旧版此处 await 一帧取布局后真实 size 作缩放枢轴；tween callback 首帧执行
 	# 天然等价（tween 下帧才开始推进），且无协程 GC 风险
 	var tw2 := overlay.create_tween()
+	overlay.set_meta(OPEN_TWEEN_POP_META, tw2)
 	tw2.tween_callback(func() -> void:
 		if not is_instance_valid(overlay) or not overlay.visible:
 			tw2.kill()
@@ -50,6 +57,16 @@ static func open(overlay: Control) -> void:
 	)
 	tw2.tween_property(cc, "scale", Vector2.ONE, DT.MOTION_POP) \
 		.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+
+
+static func _kill_pending_open(overlay: Control) -> void:
+	for meta_name in [OPEN_TWEEN_META, OPEN_TWEEN_POP_META]:
+		if not overlay.has_meta(meta_name):
+			continue
+		var pending: Variant = overlay.get_meta(meta_name)
+		if pending is Tween and (pending as Tween).is_valid():
+			(pending as Tween).kill()
+		overlay.remove_meta(meta_name)
 
 
 ## 关闭动画：淡出 0.15s 后 visible=false 并复位 modulate/scale。
@@ -175,6 +192,32 @@ static func fade_content_in(ctrl: Control) -> void:
 	ctrl.set_meta(CONTENT_TWEEN_META, tw)
 	tw.tween_property(ctrl, "modulate:a", 1.0, CONTENT_FADE_SEC) \
 		.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+
+
+## S4 手柄菜单导航：把焦点落到面板内第一个可聚焦控件（十字键/摇杆即可移动）。
+## 仅在检测到手柄连接时生效——纯键鼠用户不吞焦点环；延迟一帧调用由调用方
+## call_deferred 负责（等面板布局落定再 grab）。
+static func focus_first(root: Node) -> void:
+	if root == null or not is_instance_valid(root):
+		return
+	if Input.get_connected_joypads().is_empty():
+		return
+	var first := _first_focusable(root)
+	if first != null:
+		first.grab_focus()
+
+
+static func _first_focusable(node: Node) -> Control:
+	var c := node as Control
+	if c != null and c.focus_mode != Control.FOCUS_NONE and c.is_visible_in_tree():
+		var b := c as BaseButton
+		if b == null or not b.disabled:
+			return c
+	for child in node.get_children():
+		var found := _first_focusable(child)
+		if found != null:
+			return found
+	return null
 
 
 static func _kill_meta_tween(host: Node, meta_name: String) -> void:

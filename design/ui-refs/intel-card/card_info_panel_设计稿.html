@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>情报卡 card_info_panel · 4 版设计稿</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:#0a0e13; color:#cfd8dc; font-family:"Microsoft YaHei",sans-serif; padding:28px; }
+  h1 { font-size:20px; color:#58d5f7; margin-bottom:4px; }
+  p.sub { color:#78909c; font-size:13px; margin-bottom:24px; }
+  .row { display:flex; gap:26px; flex-wrap:wrap; align-items:flex-start; }
+  .col { display:flex; flex-direction:column; gap:10px; }
+  .tag { font-size:13px; line-height:1.7; color:#90a4ae; max-width:540px; }
+  .tag b { color:#58d5f7; font-size:14px; display:block; }
+  .tag span { color:#c9a227; }
+
+  /* ========= 公共：540x680 面板 ========= */
+  .panel { width:540px; height:680px; border-radius:6px; overflow:hidden; position:relative;
+           box-shadow:0 8px 30px rgba(0,0,0,.5); display:flex; flex-direction:column; }
+
+  /* ========== 版本 A · 军事档案（战争雷霆系） ========== */
+  .a { background:linear-gradient(175deg,#2b3138 0%,#22272d 60%,#1b2025 100%); color:#e8e6e0; font-family:Georgia,"Times New Roman","Microsoft YaHei",serif; }
+  .a .crew { text-align:center; padding:14px 0 6px; font-size:13px; color:#c5c2ba; letter-spacing:1px; }
+  .a .name { text-align:center; font-size:24px; letter-spacing:2px; color:#f5f2ea; }
+  .a .typebar { text-align:center; margin:6px 0 10px; font-size:12px; }
+  .a .typebar .cls { color:#e06c55; letter-spacing:3px; }
+  .a .typebar .rk { margin-left:18px; color:#bdb9ae; }
+  .a .typebar .rk b { color:#f5f2ea; }
+  .a .photo { margin:0 46px; height:170px; border:6px solid #d8d2c4; outline:1px solid #6b6558;
+              background:repeating-linear-gradient(45deg,#8a8271 0 12px,#7d7666 12px 24px); position:relative; filter:sepia(.5) contrast(.95); }
+  .a .photo::after { content:"立绘 / 历史照片位"; position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+              color:#4a453b; font-size:13px; letter-spacing:4px; filter:none; }
+  .a .weapons { padding:14px 40px 4px; font-size:13.5px; color:#e8e6e0; }
+  .a .weapons div { margin:3px 0; }
+  .a .weapons em { font-style:normal; color:#a8a49a; }
+  .a .stats { flex:1; padding:10px 40px; font-size:13.5px; }
+  .a .stats .r { display:flex; justify-content:space-between; padding:3.5px 0; }
+  .a .stats .r .k { color:#b5b1a6; }
+  .a .stats .r .v { color:#f0ede5; }
+  .a .stats .gap { height:12px; }
+  .a .stats .r.sec .k { color:#8f8b80; font-size:12px; }
+  .a .foot { padding:10px 40px 14px; font-size:12.5px; color:#9d998e; border-top:1px solid #3a4046; display:flex; justify-content:space-between; }
+
+  /* ========== 版本 B · 战术矩阵（大战略系 + 现有青蓝风） ========== */
+  .b { background:#101820; color:#cfe3ee; border:2px solid #2ba7c9; font-family:"Microsoft YaHei",sans-serif; }
+  .b .hd { display:flex; align-items:center; gap:10px; padding:10px 14px; background:#0b1218; border-bottom:1px solid #1e3c4a; }
+  .b .hd .num { font-family:Consolas,monospace; background:#152a35; border:1px solid #2ba7c9; padding:2px 8px; font-size:14px; color:#7fe0f7; }
+  .b .hd .nm { font-size:19px; color:#e8f6fc; flex:1; }
+  .b .hd .face { width:46px; height:46px; background:repeating-linear-gradient(45deg,#24343d 0 8px,#1d2b33 8px 16px); border:1px solid #2ba7c9; }
+  .b .idrow { display:flex; gap:10px; padding:10px 14px; align-items:stretch; }
+  .b .sil { width:86px; border:1px solid #24444f; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px; color:#5f8fa0; font-size:11px; }
+  .b .sil .ic { font-size:26px; color:#7fe0f7; }
+  .b .mid { flex:1; display:flex; flex-direction:column; gap:8px; }
+  .b .badge2 { display:flex; gap:8px; }
+  .b .badge2 .bg { flex:1; border:1px solid #24444f; padding:6px 10px; font-size:12px; color:#8fb6c4; }
+  .b .badge2 .bg b { display:block; color:#e8f6fc; font-size:14px; margin-top:2px; }
+  .b .tri { display:flex; gap:8px; }
+  .b .tri .t { flex:1; text-align:center; background:#0d161d; border:1px solid #24444f; padding:6px 0; }
+  .b .tri .t i { font-style:normal; display:block; font-size:11px; color:#5f8fa0; }
+  .b .tri .t b { font-size:20px; color:#7fe0f7; font-family:Consolas,monospace; }
+  .b .slots { display:flex; gap:8px; padding:0 14px; align-items:center; }
+  .b .slots .lb { font-size:12px; color:#5f8fa0; }
+  .b .slots .s { width:34px; height:40px; border:1px solid #24444f; display:flex; align-items:center; justify-content:center; color:#4f7c8c; font-family:Consolas,monospace; }
+  .b .slots .s.on { border-color:#f0b429; color:#f0b429; background:#1a2028; box-shadow:0 0 8px rgba(240,180,41,.25); }
+  .b .matrix { margin:10px 14px; border:1px solid #24444f; font-size:12.5px; }
+  .b .matrix table { width:100%; border-collapse:collapse; }
+  .b .matrix th { background:#0d1a22; color:#5f8fa0; font-weight:normal; padding:6px 4px; border-bottom:1px solid #24444f; }
+  .b .matrix td { text-align:center; padding:7px 4px; border-bottom:1px solid #16242c; color:#e8f6fc; font-family:Consolas,monospace; }
+  .b .matrix td:first-child, .b .matrix th:first-child { text-align:left; padding-left:10px; font-family:"Microsoft YaHei"; color:#8fb6c4; }
+  .b .matrix td.na { color:#3d5866; }
+  .b .skills { margin:auto 14px 12px; font-size:12.5px; color:#9fc3d2; line-height:1.7; }
+  .b .skills b { color:#f0b429; font-weight:normal; }
+
+  /* ========== 版本 C · 兵工厂（钢铁雄心系 / 蓝图） ========== */
+  .c { background:#14202e; color:#c9d6e2; font-family:"Microsoft YaHei",sans-serif; border:1px solid #2c3e50; }
+  .c .hd { display:flex; justify-content:space-between; align-items:center; padding:10px 14px; background:#0f1824; border-bottom:1px solid #26374a; }
+  .c .hd .t { font-size:18px; color:#dceafc; }
+  .c .hd .t i { font-style:normal; color:#5d8bd0; font-size:12px; margin-right:8px; letter-spacing:2px; }
+  .c .mods { display:flex; gap:8px; padding:10px 14px; }
+  .c .mods .m { flex:1; border:1px solid #2c4258; background:#0f1a26; text-align:center; padding:6px 0 4px; font-size:11px; color:#7d9bb8; }
+  .c .mods .m .ic { font-size:18px; display:block; color:#a8c6e8; margin-bottom:2px; }
+  .c .mods .m.on { border-color:#5d8bd0; color:#bcd4f0; box-shadow:inset 0 0 12px rgba(93,139,208,.15); }
+  .c .bp { margin:0 14px; height:190px; background:linear-gradient(160deg,#1b3a5c,#16304c); border:1px solid #2c4258; position:relative; overflow:hidden; }
+  .c .bp svg { position:absolute; inset:0; width:100%; height:100%; }
+  .c .bp .cap { position:absolute; left:10px; bottom:6px; font-size:11px; color:#7d9bb8; letter-spacing:2px; }
+  .c .cols { display:flex; gap:10px; padding:12px 14px; flex:1; }
+  .c .grp { flex:1; border:1px solid #26374a; background:#101b28; }
+  .c .grp h4 { font-size:12px; color:#5d8bd0; padding:6px 10px; border-bottom:1px solid #26374a; letter-spacing:2px; }
+  .c .grp .r { display:flex; justify-content:space-between; padding:4px 10px; font-size:12px; }
+  .c .grp .r .k { color:#7d9bb8; }
+  .c .grp .r .v { color:#dceafc; font-family:Consolas,monospace; }
+  .c .grp .r .v.hl { color:#f0b429; }
+  .c .foot { display:flex; justify-content:space-between; padding:10px 14px; border-top:1px solid #26374a; background:#0f1824; font-size:12.5px; }
+  .c .foot .p i { font-style:normal; color:#5d8bd0; }
+  .c .foot .p b { color:#f0b429; font-family:Consolas,monospace; margin-left:4px; }
+
+  /* ========== 版本 D · 战场速览（战舰世界 HUD 系 / 黑金） ========== */
+  .d { background:radial-gradient(120% 90% at 50% 0%,#1a222c 0%,#0d1218 70%); color:#d5dde5; font-family:"Microsoft YaHei",sans-serif; border:1px solid #333d47; }
+  .d .hd { display:flex; align-items:baseline; gap:12px; padding:14px 18px 6px; }
+  .d .hd .nm { font-size:22px; color:#f2f6f9; }
+  .d .hd .hp { flex:1; height:14px; background:#232c35; border:1px solid #3a4753; position:relative; }
+  .d .hd .hp i { position:absolute; inset:1px; width:80%; background:linear-gradient(90deg,#3fae6a,#7fd49b); }
+  .d .hd .hpv { font-family:Consolas,monospace; color:#9fe3b8; font-size:13px; }
+  .d .duel { display:flex; gap:14px; padding:8px 18px; align-items:center; }
+  .d .duel .big { text-align:center; background:#151d26; border:1px solid #3a4753; padding:8px 18px; }
+  .d .duel .big i { font-style:normal; display:block; font-size:11px; color:#7a8896; }
+  .d .duel .big b { font-size:34px; color:#f0b429; font-family:Consolas,monospace; }
+  .d .bars { flex:1; display:flex; flex-direction:column; gap:7px; }
+  .d .bar .t { display:flex; justify-content:space-between; font-size:11.5px; color:#8a97a5; }
+  .d .bar .tr { display:flex; gap:6px; align-items:center; }
+  .d .bar .tr .me, .d .bar .tr .fo { height:9px; flex:1; background:#232c35; position:relative; }
+  .d .bar .tr .me i { position:absolute; inset:0; background:#3fa0c9; }
+  .d .bar .tr .fo i { position:absolute; right:0; inset:0; background:#c9564a; }
+  .d .bar .tr .lb { width:34px; text-align:center; color:#5f6c7a; }
+  .d .cons { display:flex; gap:10px; padding:10px 18px; }
+  .d .cons .q { width:64px; height:64px; border:1px solid #3a4753; background:#151d26; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px; position:relative; }
+  .d .cons .q .ic { font-size:20px; }
+  .d .cons .q .cd { font-family:Consolas,monospace; color:#f0b429; font-size:13px; }
+  .d .cons .q .key { position:absolute; right:3px; bottom:2px; font-size:10px; color:#7a8896; border:1px solid #3a4753; padding:0 3px; }
+  .d .intel { margin:2px 18px; border:1px dashed #3a4753; padding:8px 12px; font-size:12.5px; color:#9fb0bf; line-height:1.7; flex:1; }
+  .d .intel b { color:#f0b429; font-weight:normal; }
+  .d .foot { padding:10px 18px; border-top:1px solid #2a333d; display:flex; justify-content:space-between; font-size:12px; color:#7a8896; }
+</style>
+</head>
+<body>
+<h1>情报卡 card_info_panel · 4 版设计稿</h1>
+<p class="sub">统一 540×680 · 同一套示例数据（M4A1 谢尔曼 / 中型坦克）· 参考来源：战争雷霆 15 / 大战略 16 / 钢铁雄心 17 / 战舰世界 13</p>
+
+<div class="row">
+
+  <!-- ============ 版本 A ============ -->
+  <div class="col">
+    <div class="panel a">
+      <div class="crew">第 4 装甲连 · 老兵级 ◆ 乘员等级 140 · 资质 ★ 王牌</div>
+      <div class="name">M4A1 谢尔曼</div>
+      <div class="typebar"><span class="cls">中 型 坦 克</span><span class="rk">时代 <b>Ⅳ</b> ｜ 稀有度 <b>★★★★</b> ｜ 权重 <b>5.0</b></span></div>
+      <div class="photo"></div>
+      <div class="weapons">
+        <div>76 mm M1 主炮 <em>(弹药: 71)</em></div>
+        <div>12.7 mm M2HB 高射机枪 <em>(弹药: 600)</em></div>
+        <div>7.62 mm M1919A4 航向机枪 <em>(弹药: 3000)</em></div>
+      </div>
+      <div class="stats">
+        <div class="r"><span class="k">战力</span><span class="v">100</span></div>
+        <div class="r"><span class="k">轻攻 / 重攻 / 装甲</span><span class="v">30 / 30 / 15</span></div>
+        <div class="r"><span class="k">对轻甲 / 对重甲 / 对建筑</span><span class="v">30 / 15 / --</span></div>
+        <div class="r"><span class="k">车体装甲（前/侧/后）</span><span class="v">63 / 38 / 38 mm</span></div>
+        <div class="r"><span class="k">穿深（100/500/1000m）</span><span class="v">125 / 116 / 106 mm</span></div>
+        <div class="gap"></div>
+        <div class="r"><span class="k">视野</span><span class="v">2</span></div>
+        <div class="r"><span class="k">隐蔽</span><span class="v">121 %</span></div>
+        <div class="r"><span class="k">巷战修正</span><span class="v">+25 %</span></div>
+        <div class="r"><span class="k">移动力</span><span class="v">4</span></div>
+        <div class="r"><span class="k">最大速度</span><span class="v">42 km/h</span></div>
+      </div>
+      <div class="foot"><span>改装花费 <b style="color:#e8e6e0">9.43</b></span><span>生产花费 <b style="color:#e8e6e0">10.87</b></span><span>免费维修 <b style="color:#e8e6e0">16h</b></span></div>
+    </div>
+    <div class="tag"><b>版本 A · 军事档案（战争雷霆系）</b>纯"标签: 数值"两列排版，斜杠组表达三维攻防，sepia 照片区营造档案感。<span>适合：背包默认视图，信息密度最高、最"军"</span></div>
+  </div>
+
+  <!-- ============ 版本 B ============ -->
+  <div class="col">
+    <div class="panel b">
+      <div class="hd"><span class="num">Do-217M</span><span class="nm">谢尔曼 M4A1</span><div class="face"></div></div>
+      <div class="idrow">
+        <div class="sil"><span class="ic">⚔</span><span>单位剪影</span><span>携带 -5</span></div>
+        <div class="mid">
+          <div class="badge2">
+            <div class="bg">兵器类型<b>中型坦克</b></div>
+            <div class="bg">移动类型<b>履带型</b></div>
+          </div>
+          <div class="tri">
+            <div class="t"><i>移动力</i><b>4</b></div>
+            <div class="t"><i>视野</i><b>1</b></div>
+            <div class="t"><i>战力 FPW</i><b>100</b></div>
+          </div>
+        </div>
+      </div>
+      <div class="slots"><span class="lb">武装变更</span>
+        <div class="s on">Ⅰ</div><div class="s">Ⅱ</div><div class="s">Ⅲ</div><div class="s">Ⅳ</div>
+        <span class="lb" style="margin-left:8px">当前：武装 Ⅰ · 76mm 主炮</span>
+      </div>
+      <div class="matrix">
+        <table>
+          <tr><th>命中率</th><th>对轻甲</th><th>对重甲</th><th>对建筑</th><th>对步兵</th></tr>
+          <tr><td>武装 Ⅰ · 主炮</td><td>30</td><td>15</td><td class="na">--</td><td>70</td></tr>
+          <tr><td>武装 Ⅱ · 机枪</td><td>50</td><td class="na">--</td><td class="na">--</td><td>40</td></tr>
+          <tr><th>防御力</th><td>15</td><td>25</td><td>20</td><td>--</td></tr>
+        </table>
+      </div>
+      <div class="skills">
+        <b>◆ 稳定炮架</b> 巷战地形命中 +25%<br>
+        <b>◆ 老练乘员</b> 遭受首击伤害 -1<br>
+        <b>◆ 湿式弹仓</b> 弹药架殉爆判定失效
+      </div>
+    </div>
+    <div class="tag"><b>版本 B · 战术矩阵（大战略系）</b>命中率×目标类型交叉表是主角，"--"直接表达不可攻击；保留现有深蓝+青边框语言。<span>适合：背包默认视图 · 克制关系一目了然</span></div>
+  </div>
+
+  <!-- ============ 版本 C ============ -->
+  <div class="col">
+    <div class="panel c">
+      <div class="hd"><span class="t"><i>TANK DESIGN</i>坦克设计 · T-34</span><span style="color:#5d8bd0">✕</span></div>
+      <div class="mods">
+        <div class="m on"><span class="ic">▭</span>底盘</div>
+        <div class="m"><span class="ic">⊚</span>炮塔</div>
+        <div class="m"><span class="ic">⌐</span>主炮</div>
+        <div class="m"><span class="ic">◉</span>电台</div>
+        <div class="m"><span class="ic">⚙</span>引擎</div>
+      </div>
+      <div class="bp">
+        <svg viewBox="0 0 512 190">
+          <g stroke="#9fc3e8" stroke-width="1.4" fill="none" opacity=".9">
+            <path d="M60 130 L110 96 L330 96 L395 118 L420 130 Z"/>
+            <path d="M160 96 L170 62 L290 62 L305 96"/>
+            <path d="M230 62 L360 62"/>
+            <circle cx="120" cy="138" r="17"/><circle cx="170" cy="142" r="13"/><circle cx="215" cy="142" r="13"/>
+            <circle cx="260" cy="142" r="13"/><circle cx="305" cy="142" r="13"/><circle cx="350" cy="142" r="13"/>
+            <path d="M60 130 L420 130"/>
+            <path d="M100 150 L400 150" stroke-dasharray="4 5" opacity=".5"/>
+            <path d="M355 70 L470 70" /><path d="M470 64 L470 76"/>
+          </g>
+          <g stroke="#5d8bd0" stroke-width=".6" opacity=".35">
+            <path d="M0 30 H512 M0 60 H512 M0 90 H512 M0 120 H512 M0 150 H512 M0 180 H512"/>
+            <path d="M60 0 V190 M140 0 V190 M220 0 V190 M300 0 V190 M380 0 V190 M460 0 V190"/>
+          </g>
+        </svg>
+        <span class="cap">改造型中型坦克底盘 · T-34</span>
+      </div>
+      <div class="cols">
+        <div class="grp">
+          <h4>基础数据</h4>
+          <div class="r"><span class="k">最大速度</span><span class="v">6.1 km/h</span></div>
+          <div class="r"><span class="k">可靠性</span><span class="v">84.6 %</span></div>
+          <div class="r"><span class="k">补给使用</span><span class="v">0.25</span></div>
+          <div class="r"><span class="k">燃油容量</span><span class="v">0.0</span></div>
+        </div>
+        <div class="grp">
+          <h4>战斗数据</h4>
+          <div class="r"><span class="k">人员杀伤</span><span class="v">43.0</span></div>
+          <div class="r"><span class="k">装甲杀伤</span><span class="v">1.0</span></div>
+          <div class="r"><span class="k">穿甲率</span><span class="v hl">85.0 %</span></div>
+          <div class="r"><span class="k">装甲度</span><span class="v">52.5</span></div>
+          <div class="r"><span class="k">防御</span><span class="v">27.1</span></div>
+          <div class="r"><span class="k">突破</span><span class="v">0.0</span></div>
+          <div class="r"><span class="k">对空攻击</span><span class="v">0.0</span></div>
+        </div>
+        <div class="grp">
+          <h4>其他数据</h4>
+          <div class="r"><span class="k">耗油量</span><span class="v">2.00</span></div>
+          <div class="r"><span class="k">战略速度</span><span class="v">2.5</span></div>
+          <div class="r"><span class="k">地形修正</span><span class="v">巷战 +25%</span></div>
+          <div class="r"><span class="k">隐蔽</span><span class="v">121 %</span></div>
+        </div>
+      </div>
+      <div class="foot"><span class="p">经验 <b>392</b></span><span class="p">改装花费 <b>9.43</b></span><span class="p">生产花费 <b>10.87</b></span></div>
+    </div>
+    <div class="tag"><b>版本 C · 兵工厂（钢铁雄心系）</b>模块槽 + 白线蓝图立绘区 + 三列分组数据，改造系统为核心。<span>适合：改造/装配模式的情报面板，或作为 B 版的"改造"页签</span></div>
+  </div>
+
+  <!-- ============ 版本 D ============ -->
+  <div class="col">
+    <div class="panel d">
+      <div class="hd">
+        <span class="nm">M4A1 谢尔曼</span>
+        <div class="hp"><i></i></div>
+        <span class="hpv">42 / 52</span>
+      </div>
+      <div class="duel">
+        <div class="big"><i>战力 FPW</i><b>100</b></div>
+        <div class="bars">
+          <div class="bar"><div class="t"><span>对轻甲</span><span>我 30 ｜ 敌 22</span></div>
+            <div class="tr"><div class="me"><i style="width:75%"></i></div><span class="lb">VS</span><div class="fo"><i style="width:55%"></i></div></div></div>
+          <div class="bar"><div class="t"><span>对重甲</span><span>我 15 ｜ 敌 31</span></div>
+            <div class="tr"><div class="me"><i style="width:37%"></i></div><span class="lb">VS</span><div class="fo"><i style="width:78%"></i></div></div></div>
+          <div class="bar"><div class="t"><span>防御</span><span>我 20 ｜ 敌 18</span></div>
+            <div class="tr"><div class="me"><i style="width:50%"></i></div><span class="lb">VS</span><div class="fo"><i style="width:45%"></i></div></div></div>
+        </div>
+      </div>
+      <div class="cons">
+        <div class="q"><span class="ic">💨</span><span class="cd">28s</span><span class="key">1</span></div>
+        <div class="q"><span class="ic">🔧</span><span class="cd">1:13</span><span class="key">R</span></div>
+        <div class="q"><span class="ic">📡</span><span class="cd">27</span><span class="key">T</span></div>
+        <div class="q" style="opacity:.45"><span class="ic">✈</span><span class="cd">--</span><span class="key">4</span></div>
+      </div>
+      <div class="intel">
+        <b>当前地形：城市街区</b> —— 巷战命中 +25%，敌方视野 -1。<br>
+        <b>威胁提示：</b>右翼虎式（对重甲 31）本回合可触及你方；建议转入<img src="" style="display:none">废墟规避。<br>
+        <b>弹库：</b>主炮 38/71 · 恐惧回合计 2。
+      </div>
+      <div class="foot"><span>回合 6/15</span><span>控制区 A:B:C = 1:0:2</span><span>增援 -2 回合</span></div>
+    </div>
+    <div class="tag"><b>版本 D · 战场速览（战舰世界 HUD 系）</b>为战场模式设计的紧凑 HUD：敌我并排条形对比（装甲军团12号精髓）、消耗品方块、威胁提示。<span>适合：战场模式点选单位时的浮动情报</span></div>
+  </div>
+
+</div>
+</body>
+</html>

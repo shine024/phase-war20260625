@@ -30,7 +30,7 @@ const ACHIEVEMENTS: Dictionary = {
 		},
 		"reward": {
 			"nano_materials": 50,
-			"company_rep": {"iron_wall_corp": 20}
+			"merit": 10
 		},
 		"icon": "⚔️",
 		"hidden": false
@@ -121,7 +121,7 @@ const ACHIEVEMENTS: Dictionary = {
 		},
 		"reward": {
 			"nano_materials": 120,
-			"company_rep": {"aether_dynamics": 30}
+			"merit": 15
 		},
 		"icon": "⚡",
 		"hidden": false
@@ -214,7 +214,7 @@ const ACHIEVEMENTS: Dictionary = {
 		},
 		"reward": {
 			"nano_materials": 180,
-			"company_rep": {"void_research": 40}
+			"merit": 20
 		},
 		"icon": "✨",
 		"hidden": false
@@ -377,7 +377,7 @@ const ACHIEVEMENTS: Dictionary = {
 		},
 		"reward": {
 			"nano_materials": 150,
-			"company_rep": {"void_research": 30}
+			"merit": 15
 		},
 		"icon": "📈",
 		"hidden": false
@@ -440,7 +440,7 @@ const ACHIEVEMENTS: Dictionary = {
 		},
 		"reward": {
 			"nano_materials": 180,
-			"company_rep": {"nova_arms": 35}
+			"merit": 18
 		},
 		"icon": "⏱️",
 		"hidden": false

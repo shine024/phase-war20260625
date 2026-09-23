@@ -42,6 +42,17 @@ const PITY_THRESHOLD := 3
 const PITY_BOOST := 2.0
 const PITY_FLOOR_RANK := 4  # legendary 的 RARITY_RANK
 
+## 随机箱保底口径文案（v6.19 P1-T1.1 概率可见化：UI 唯一文案源，数值全读常量——
+## 宪法 C3）。软保底概率提升、无"必出"，文案严禁写"必出"。
+static func describe_box_pity(pity: int) -> String:
+	if pity >= PITY_THRESHOLD:
+		return "保底已激活：传说+ 概率 ×%.0f（开箱即重置）" % PITY_BOOST
+	if pity <= 0:
+		return "保底 0/%d：连续 %d 次未出传说+ 后，传说+ 概率 ×%.0f" % [
+			PITY_THRESHOLD, PITY_THRESHOLD, PITY_BOOST]
+	return "保底 %d/%d（还差 %d 次）：传说+ 概率将 ×%.0f" % [
+		pity, PITY_THRESHOLD, PITY_THRESHOLD - pity, PITY_BOOST]
+
 ## 稀有度是否属定向区
 static func is_direct_rarity(rarity: String) -> bool:
 	return DIRECT_RARITIES.has(rarity)

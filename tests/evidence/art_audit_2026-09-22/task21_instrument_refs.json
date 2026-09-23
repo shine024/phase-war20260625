@@ -1,0 +1,58 @@
+{
+  "date": "2026-09-22",
+  "defined_instruments": 68,
+  "main_png_count": 93,
+  "thumb_png_count": 68,
+  "missing_main": [],
+  "missing_thumb": [],
+  "orphan_main": [
+    "pi_atk",
+    "pi_attack_speed",
+    "pi_crit",
+    "pi_crit_dmg",
+    "pi_def",
+    "pi_deploy_range",
+    "pi_energy_cost",
+    "pi_energy_out",
+    "pi_energy_rec",
+    "pi_hp",
+    "pi_move_speed",
+    "pi_r_cascade",
+    "pi_r_dmg_reflect",
+    "pi_r_energy_burst",
+    "pi_r_energy_fountain",
+    "pi_r_first_deploy",
+    "pi_r_free_deploy",
+    "pi_r_kill_energy",
+    "pi_r_last_stand",
+    "pi_r_law_boost",
+    "pi_r_overload",
+    "pi_r_respawn",
+    "pi_r_scale",
+    "pi_r_shield",
+    "pi_xp"
+  ],
+  "orphan_thumb": [],
+  "pending_gaps_status": {
+    "pi_r_free_deploy": {
+      "in_definitions": false,
+      "main_png": true,
+      "thumb_png": false
+    },
+    "pi_umbra_01": {
+      "in_definitions": true,
+      "main_png": true,
+      "thumb_png": true
+    },
+    "pi_umbra_02": {
+      "in_definitions": true,
+      "main_png": true,
+      "thumb_png": true
+    },
+    "pi_umbra_03": {
+      "in_definitions": true,
+      "main_png": true,
+      "thumb_png": true
+    }
+  }
+}

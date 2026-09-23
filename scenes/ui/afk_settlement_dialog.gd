@@ -54,11 +54,8 @@ func _build_ui() -> void:
 	# 而非让 VBox 内容把 Panel 撑到超出屏幕。
 	var panel := Panel.new()
 	panel.custom_minimum_size = Vector2(480, 580)
-	var style := StyleBoxFlat.new()
-	style.bg_color = _BG_PANEL
-	style.border_color = _BORDER
-	style.set_border_width_all(2)
-	style.set_corner_radius_all(12)
+	# v28b: 面材化——SDF 圆角渐变底 + 烘焙边框（与 mvp 结算同族），保留原内容边距
+	var style: StyleBox = _PanelStyles.make_result_frame(_BORDER, _BG_PANEL)
 	style.content_margin_left = 22
 	style.content_margin_right = 22
 	style.content_margin_top = 20
@@ -67,8 +64,15 @@ func _build_ui() -> void:
 	center.add_child(panel)
 
 	# 根 VBox：铺满 Panel，标题/战绩（顶部）→ 缴获列表（中间弹性+滚动）→ 合计/按钮（底部）
+	# v28 修复：普通 Panel 不执行 stylebox content_margin 布局（只有 PanelContainer 会），
+	# v23.6 起内容一直贴边、缴获数值被右边框裁切——v28b 换面材时"保留边距"注释实际未生效。
+	# 这里手动给偏移，数值与 make_result_frame 调用方的 content_margin 保持一致。
 	var vbox := VBoxContainer.new()
 	vbox.set_anchors_preset(Control.PRESET_FULL_RECT)
+	vbox.offset_left = 22.0
+	vbox.offset_top = 20.0
+	vbox.offset_right = -22.0
+	vbox.offset_bottom = -20.0
 	vbox.add_theme_constant_override("separation", 10)
 	panel.add_child(vbox)
 

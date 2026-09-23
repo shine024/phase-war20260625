@@ -37,11 +37,14 @@
 - 方案文档：`docs/PHASE_MASTER_ART_PLAN.md`（含代码级现状核实与升级路径）。
 
 ### 2. 8 张新飞机卡图待 AI 生图
-- [ ] v26 敌方 era1-4 轰炸机/多用途（D 段池）：数据已上线、卡图缺失。
-- 生成后必跑 `tools/generate_card_foot_anchors.py` + 美术打包铁律（AGENTS.md）。
+- [x] ~~v26 敌方 era1-4 轰炸机/多用途（D 段池）：数据已上线、卡图缺失。~~
+  **2026-09-13 核验收口**：八机图已在盘且运行时全部解析到专属 PNG（boot 冒烟
+  `_tmp_r5_content_boot.tscn` 断言），脚部锚点齐全——本条为滞后记载，无需执行。
 
 ### 3. combo_icons 6 张 PNG 缺失
-- [ ] `data/combo_tactics.gd` 引用的 chem/emp/incendiary/laser/nano/recon 6 张缺失（AGENTS.md 已知断链资产）。
+- [x] ~~`data/combo_tactics.gd` 引用的 chem/emp/incendiary/laser/nano/recon 6 张缺失~~
+  **已收口**：v9.x（P2-1）`icon_tex` 字段已删（全项目零读取方，strip UI 用文字 icon
+  emoji 即设计定稿）——死引用清除，无需补图。
 - 附：`assets/card_icons/law.png` 缺失——法则卡已退役，大概率无需再补。
 
 ---

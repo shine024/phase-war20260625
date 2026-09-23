@@ -516,7 +516,7 @@ func _section(text: String) -> Label:
 func _small_label(text: String) -> Label:
 	var l := Label.new()
 	l.text = text
-	l.add_theme_font_size_override("font_size", 10)
+	l.add_theme_font_size_override("font_size", 10)  # R-D2 豁免：装饰性丝印（纯英文小标）
 	l.add_theme_color_override("font_color", Color(0.5, 0.55, 0.65))
 	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	l.clip_text = true
@@ -555,7 +555,7 @@ func _add_slider(parent: Control, label: String, prop: String, min_val: int, max
 	var val_lbl := Label.new()
 	val_lbl.text = "%d" % int(get(prop))
 	val_lbl.custom_minimum_size.x = 32
-	val_lbl.add_theme_font_size_override("font_size", 11)
+	val_lbl.add_theme_font_size_override("font_size", 12)
 	val_lbl.add_theme_color_override("font_color", Color(1.0, 0.9, 0.4))
 	val_lbl.name = "ValLabel_%s" % prop
 	hbox.add_child(val_lbl)
@@ -664,11 +664,11 @@ static func _r_cn(r: String) -> String:
 
 func _filled_slot_sb() -> StyleBoxFlat:
 	var sb := StyleBoxFlat.new()
-	sb.bg_color = Color(0, 0.941, 1, 0.08)
+	sb.bg_color = Color(0, 0.94, 1, 0.08)
 	sb.border_width_left = 2; sb.border_width_top = 2
 	sb.border_width_right = 2; sb.border_width_bottom = 2
-	sb.border_color = Color(0, 0.941, 1, 0.5)
+	sb.border_color = Color(0, 0.94, 1, 0.5)
 	sb.set_corner_radius_all(4)
-	sb.shadow_color = Color(0, 0.941, 1, 0.25)
+	sb.shadow_color = Color(0, 0.94, 1, 0.25)
 	sb.shadow_size = 6
 	return sb

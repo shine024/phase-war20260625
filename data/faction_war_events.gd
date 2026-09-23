@@ -1,13 +1,15 @@
 extends RefCounted
 class_name FactionWarEvents
 
-## 事件模板池
+## v6.22 贡献驱动改版：事件模板池（原战争叙事 6 模板整体重写）
+## 背景=「集体穿越、人皆迷失」：事件=穿越者车队与各组织协作中的两难抉择，
+## 奖励=贡献+物资；faction_a/b 结构保留（新事件=资源/人手分配两难），无战争叙事。
 const EVENT_TEMPLATES: Array[Dictionary] = [
-	# ─── 领土争夺 ───
+	# ─── 遇险信号救援 ───
 	{
-		"type": "territory",
-		"name": "领土争夺：{faction_a} vs {faction_b}",
-		"desc": "{faction_a}与{faction_b}在第{level}关发生激烈冲突。",
+		"type": "distress",
+		"name": "遇险信号：{faction_a}与{faction_b}同时求救",
+		"desc": "相位风暴过境，{faction_a}的联络队与{faction_b}的采样组同时发来遇险信号，车队只能先驰援一方。支援哪一方？",
 		"duration_minutes": 30,
 		"weight": 30,
 		"conditions": {},
@@ -17,11 +19,11 @@ const EVENT_TEMPLATES: Array[Dictionary] = [
 			"neutral": {"nano": 100},
 		},
 	},
-	# ─── 资源争夺 ───
+	# ─── 遗迹物资分配 ───
 	{
-		"type": "resource",
-		"name": "资源争夺：{faction_a}的补给线",
-		"desc": "{faction_a}的补给线遭到{faction_b}的袭击。支持哪一方？",
+		"type": "relic",
+		"name": "遗迹物资：{faction_a}与{faction_b}的分配争议",
+		"desc": "一处相位遗迹开仓，{faction_a}想要设备原型，{faction_b}想要整批物资。由车队裁断，支持哪一方？",
 		"duration_minutes": 20,
 		"weight": 20,
 		"conditions": {"min_level": 10},
@@ -31,53 +33,55 @@ const EVENT_TEMPLATES: Array[Dictionary] = [
 			"neutral": {},
 		},
 	},
-	# ─── 间谍事件 ───
+	# ─── 相位潮汐异常 ───
 	{
-		"type": "spy",
-		"name": "间谍暴露：{faction_a}的秘密行动",
-		"desc": "{faction_a}被发现试图在{faction_b}内部安插间谍。",
+		"type": "tide",
+		"name": "相位潮汐：异常采样窗口",
+		"desc": "潮汐异常带来短暂采样窗口，{faction_a}请求优先占用仪器，{faction_b}请求车队护航采样。优先满足谁？",
 		"duration_minutes": 15,
-		"weight": 10,
+		"weight": 12,
 		"conditions": {"min_faction_level": 3},
 		"rewards": {
-			"support_a": {"reputation": 10, "energy_block": 2},
-			"support_b": {"reputation": 15, "intel": 2},
+			"support_a": {"reputation": 12, "intel": 3},
+			"support_b": {"reputation": 15, "energy_block": 2},
 			"neutral": {"intel": 1},
 		},
 	},
-	# ─── 联盟邀请 ───
+	# ─── 留守设施抉择 ───
 	{
-		"type": "alliance",
-		"name": "联盟邀请：{faction_a}的邀请",
-		"desc": "{faction_a}希望与你建立更紧密的合作关系。",
+		"type": "facility",
+		"name": "留守设施：{faction_a}的启用申请",
+		"desc": "车队前方发现一座可修复的留守设施。{faction_a}申请启用为补给站，{faction_b}申请改为研究中继。支持哪种用法？",
 		"duration_minutes": 60,
 		"weight": 15,
-		"conditions": {"min_reputation": 3000, "target_faction": "any"},
+		"conditions": {"min_reputation": 3000},
 		"rewards": {
 			"support_a": {"reputation": 30, "skill_points": 2, "exclusive_card": "random"},
+			"support_b": {"reputation": 30, "intel": 3},
 			"neutral": {"nano": 200},
 		},
 	},
-	# ─── 内部危机 ───
+	# ─── 车队维护轮值 ───
 	{
-		"type": "crisis",
-		"name": "内部危机：{faction_a}的困境",
-		"desc": "{faction_a}遭遇内部问题，需要你的帮助。",
+		"type": "convoy",
+		"name": "车队维护：{faction_a}的人手请求",
+		"desc": "主车队进入例行大修，{faction_a}与{faction_b}各派了轮值方案，只能采纳一家的排程。采纳谁？",
 		"duration_minutes": 45,
-		"weight": 10,
+		"weight": 13,
 		"conditions": {"min_faction_level": 5},
 		"rewards": {
-			"support_a": {"reputation": 35, "skill_points": 2, "faction_bonus_duration": 3},
-			"neutral": {},
+			"support_a": {"reputation": 25, "skill_points": 2},
+			"support_b": {"reputation": 25, "nanomaterial": 500},
+			"neutral": {"nanomaterial": 100},
 		},
 	},
-	# ─── 对外扩张 ───
+	# ─── 情报共享协议 ───
 	{
-		"type": "expansion",
-		"name": "扩张行动：{faction_a}的进攻",
-		"desc": "{faction_a}正发起大规模进攻，{faction_b}请求支援。",
+		"type": "intel_share",
+		"name": "情报共享：{faction_a}的协议提议",
+		"desc": "{faction_a}提议与车队建立情报共享协议，{faction_b}则希望保持独立核算。签字还是搁置？",
 		"duration_minutes": 40,
-		"weight": 15,
+		"weight": 10,
 		"conditions": {"min_level": 20},
 		"rewards": {
 			"support_a": {"reputation": 25, "exclusive_card": "random"},
@@ -87,19 +91,6 @@ const EVENT_TEMPLATES: Array[Dictionary] = [
 	},
 ]
 
-## 势力临时加成事件
-const BONUS_EVENTS: Array[Dictionary] = [
-	{"name": "军工增产", "faction_bonus_mult": 1.10, "duration_battles": 3},
-	{"name": "全民动员", "faction_bonus_mult": 1.15, "duration_battles": 5},
-	{"name": "研究突破", "skill_point_reward": 1, "one_time": true},
-	{"name": "资源富余", "energy_cost_reduce": 0.10, "duration_battles": 3},
-	{"name": "士气高涨", "deploy_speed_bonus": 1, "duration_battles": 4},
-]
-
 ## 获取所有事件模板
 static func get_event_templates() -> Array:
 	return EVENT_TEMPLATES.duplicate(true)
-
-## 获取加成事件列表
-static func get_bonus_events() -> Array:
-	return BONUS_EVENTS.duplicate(true)

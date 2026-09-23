@@ -1,0 +1,49 @@
+{
+  "date": "2026-09-22",
+  "moved": [
+    "assets/intro/comic/b3_future_self.png",
+    "assets/intro/comic/b4_overlap.png",
+    "assets/intro/comic/b8_timeline.png",
+    "assets/map/bubble_boss.png",
+    "assets/map/bubble_cleared.png",
+    "assets/map/bubble_era_cold.png",
+    "assets/map/bubble_era_future.png",
+    "assets/map/bubble_era_modern.png",
+    "assets/map/bubble_era_ww1.png",
+    "assets/map/bubble_era_ww2.png",
+    "assets/map/大地图.png",
+    "assets/ui/factions/aether_dynamics_32.png",
+    "assets/ui/factions/frontier_union_32.png",
+    "assets/ui/factions/helix_recon_32.png",
+    "assets/ui/factions/iron_wall_corp_32.png",
+    "assets/ui/factions/neutral_32.png",
+    "assets/ui/factions/nova_arms_32.png",
+    "assets/ui/factions/quantum_logistics_32.png",
+    "assets/ui/factions/void_research_32.png",
+    "assets/ui/icons/res_permit.png",
+    "assets/ui/icons/res_research.png",
+    "assets/ui/instruments/pi_drop.png",
+    "assets/ui/truck_base/truck_sprite_era1.png",
+    "assets/ui/truck_base/truck_sprite_era2.png",
+    "assets/ui/truck_base/truck_sprite_era3.png",
+    "assets/ui/truck_base/truck_sprite_era4.png",
+    "assets/ui/truck_base/truck_sprite_era5.png"
+  ],
+  "kept": [],
+  "kept_in_place_by_design": [
+    "assets/map/gate_near.png（注记保留终局演出）",
+    "assets/map/black_sun.png（接线候选）",
+    "assets/map/mountain_bunker_marker.png（接线候选）"
+  ],
+  "manual_adjudication": {
+    "assets/ui/instruments/pi_drop.png": "manager:1361 组合id + mvp_panel:816 同名局部变量，非文件引用",
+    "assets/map/bubble_boss.png": "world_map:150 v23 退役注释文本",
+    "assets/map/bubble_cleared.png": "world_map:150 v23 退役注释文本",
+    "assets/map/大地图.png": "bunker_manager/game_manager 中文注释散文，非文件引用"
+  },
+  "total_moved": 27,
+  "notes": [
+    "2026-09-22 v3 计划 Task 3.3：人工核注证实 pi_drop/bubble_boss/bubble_cleared/大地图.png 的'引用'均为注释或同名局部变量（非贴图加载），实为真孤儿——4 张已移入 .godot/art_backup_orphan_20260922/，27+4=31 张归档定案。",
+    "2026-09-23 M3-尾 拍板'只接 black_sun'：black_sun.png 已接入 world_map 黑门入口（TextureRect 64px 随按钮 modulate 联动，commit 见 v6.22.5）；mountain_bunker_marker.png 留档定案不接线（与既有金点指示器职责重叠）。"
+  ]
+}

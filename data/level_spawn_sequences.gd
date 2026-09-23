@@ -75,7 +75,7 @@ static func _generate_sequence(level: int) -> Array:
 
 	var seq: Array = []
 	for w in range(1, wave_total + 1):
-		var spec: Dictionary = _make_wave_spec(w, wave_total, is_tutorial, progress, era, rng, theme_id)
+		var spec: Dictionary = _make_wave_spec(w, wave_total, is_tutorial, progress, era, rng, theme_id, level)
 		seq.append(spec)
 	return seq
 
@@ -84,7 +84,7 @@ static func _generate_sequence(level: int) -> Array:
 ## v10: theme_id 参数驱动 bias_tags（战术主题加权抽取）与 composition 修正（elite_delta）。
 ##      关卡级"战斗配制" = 战术主题（确定倾向）；波次内保留序列扰动（具体单位仍随机）。
 ##      主题查询失败/为空时回退原随机 roll 逻辑（防御性，不破坏旧行为）。
-static func _make_wave_spec(wave_index: int, wave_total: int, is_tutorial: bool, progress: float, era: int, rng: RandomNumberGenerator, theme_id: String = "") -> Dictionary:
+static func _make_wave_spec(wave_index: int, wave_total: int, is_tutorial: bool, progress: float, era: int, rng: RandomNumberGenerator, theme_id: String = "", level: int = -1) -> Dictionary:
 	var is_last_wave: bool = (wave_index >= wave_total)
 	var is_elite_wave: bool = (wave_index > 1 and wave_index % 3 == 0)
 
@@ -129,7 +129,8 @@ static func _make_wave_spec(wave_index: int, wave_total: int, is_tutorial: bool,
 	elif not theme_id.is_empty():
 		# v10: 主题加权抽取（主战波/护卫波/混合波），rng 保证同关序列可复现
 		# v23.4: 传 era 做时代感知过滤——零匹配 tag 的波型槽剔除（题面必真）
-		bias_tags = TacticalThemes.roll_wave_bias(theme_id, rng, era)
+		# v30.5 R5: 再传 level 关卡域池（min_level 门，二战尾部飞行试点）
+		bias_tags = TacticalThemes.roll_wave_bias(theme_id, rng, era, level)
 	else:
 		# 回退：主题缺失时保留原随机 roll（防御性，正常不触达）
 		var roll: int = rng.randi_range(0, 3)

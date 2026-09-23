@@ -41,6 +41,14 @@ func _ready() -> void:
 	# 批次2：tab 切换当前页淡入（原瞬跳）
 	if tab_container and not tab_container.tab_changed.is_connected(_on_tab_changed_fade):
 		tab_container.tab_changed.connect(_on_tab_changed_fade)
+	# 页签标题本地化（TabContainer 默认吃节点名 CommissionTab/DailyTab，
+	# 2026-09-20 全矩阵报告 P3 核销）
+	for i in tab_container.get_tab_count():
+		var page := tab_container.get_tab_control(i)
+		if page != null and page.name == "CommissionTab":
+			tab_container.set_tab_title(i, "委托")
+		elif page != null and page.name == "DailyTab":
+			tab_container.set_tab_title(i, "日常")
 	# v8.x 性能：_ready 只连信号，列表刷新交给 on_overlay_opened 拆帧。
 	# QuestManager 信号 handler (_on_quest_changed/_on_quest_completed) 自身就是完整刷新流程，
 	# 不依赖 _ready 设置任何状态，故窗口期安全。
@@ -157,7 +165,7 @@ func _refresh_company_summary() -> void:
 		name_label.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
 		name_label.add_theme_color_override("font_color", DT.COLOR_TEXT_BRIGHT)
 		var rep_label := Label.new()
-		rep_label.text = "声望：%d" % rep_value
+		rep_label.text = "贡献：%d" % rep_value
 		rep_label.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
 		rep_label.add_theme_color_override("font_color",
 			DT.COLOR_GREEN_BRIGHT if rep_value > 0 else Color(DT.COLOR_TEXT_DIM.r, DT.COLOR_TEXT_DIM.g, DT.COLOR_TEXT_DIM.b, 0.7))
@@ -382,10 +390,12 @@ func _format_progress(quest_id: String, def: Dictionary) -> String:
 			return "强化 %d / %d" % [cur, int(target)]
 		"collect_cards":
 			return "卡片 %d / %d" % [cur, int(target)]
-		"research_law":
-			return "研究 %d / %d" % [cur, int(target)]
+		"reach_intel":
+			return "情报 %d%% / %d%%" % [cur, int(target)]
+		"salvage_items":
+			return "回收 %d / %d" % [cur, int(target)]
 		"reach_reputation":
-			return "声望 %d / %d" % [cur, int(target)]
+			return "贡献 %d / %d" % [cur, int(target)]
 		"buy_items":
 			return "购买 %d / %d" % [cur, int(target)]
 		"quick_win":
@@ -427,20 +437,62 @@ func _on_abandon(quest_id: String) -> void:
 
 # ══════════════════ v22.4：每日挑战（DailyTaskManager） ══════════════════
 
-## 每日挑战块：标题（含刷新倒计时）+ 7 任务行（进度/领取）。构建进 daily_list 顶部。
+## 每日挑战块：标题（含刷新倒计时）+ 一键领取 + 7 任务行（进度/领取）。构建进 daily_list 顶部。
 func _refresh_daily_tasks() -> void:
 	var dtm := _get_daily_task_manager()
 	if dtm == null or not dtm.has_method("get_daily_tasks"):
 		return
-	var header := Label.new()
 	var countdown: int = dtm.get_refresh_countdown() if dtm.has_method("get_refresh_countdown") else 0
+	# UI 四级标准修复 R-B1：标题行右侧加"一键领取(N)"——此前 7 个任务最多 7 次逐个点击，
+	# 违背"能一次不分两次"（对照 achievement_panel 的 ClaimAllButton）。
+	var header_row := HBoxContainer.new()
+	header_row.add_theme_constant_override("separation", 8)
+	var header := Label.new()
 	header.text = "── 每日挑战 · %02d:%02d 后刷新 ──" % [countdown / 3600, (countdown % 3600) / 60]
 	header.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
 	header.add_theme_color_override("font_color", DT.COLOR_GOLD)
 	header.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	daily_list.add_child(header)
+	header.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	header_row.add_child(header)
+	header_row.add_child(_make_claim_all_daily_button(dtm))
+	daily_list.add_child(header_row)
 	for task in dtm.get_daily_tasks():
 		daily_list.add_child(_make_daily_task_row(task, dtm))
+
+func _make_claim_all_daily_button(dtm: Node) -> Button:
+	var btn := Button.new()
+	var claimable := 0
+	if dtm.has_method("get_daily_tasks"):
+		for task in dtm.get_daily_tasks():
+			if bool(task.get("completed", false)) and not bool(task.get("claimed", false)):
+				claimable += 1
+	btn.text = "一键领取(%d)" % claimable
+	btn.tooltip_text = "领取全部已完成未领取的每日挑战奖励"
+	btn.custom_minimum_size = Vector2(104, 26)
+	btn.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
+	var styles := PanelStyles.make_button_styles(DT.COLOR_GOLD)
+	btn.add_theme_color_override("font_color", DT.COLOR_TEXT_BRIGHT)
+	btn.add_theme_color_override("font_hover_color", DT.COLOR_HOVER_WHITE)
+	btn.add_theme_stylebox_override("normal", styles["normal"])
+	btn.add_theme_stylebox_override("hover", styles["hover"])
+	btn.add_theme_stylebox_override("pressed", styles["pressed"])
+	btn.add_theme_stylebox_override("disabled", styles["disabled"])
+	btn.disabled = claimable == 0
+	if claimable > 0:
+		btn.pressed.connect(_on_claim_all_daily_tasks.bind(dtm))
+	return btn
+
+func _on_claim_all_daily_tasks(dtm: Node) -> void:
+	if dtm == null or not dtm.has_method("claim_all_completed"):
+		return
+	var n: int = dtm.claim_all_completed()
+	if n > 0:
+		SignalBus.play_sound.emit("quest_complete")
+		if SignalBus.has_signal("show_toast"):
+			SignalBus.show_toast.emit("领取了 %d 个每日挑战奖励" % n)
+		if SaveManager and SaveManager.has_method("save_game"):
+			SaveManager.save_game()
+	_refresh_list()
 
 func _make_daily_task_row(task: Dictionary, dtm: Node) -> Control:
 	var panel := PanelContainer.new()

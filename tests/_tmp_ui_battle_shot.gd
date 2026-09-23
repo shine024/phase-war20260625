@@ -104,6 +104,15 @@ func _run() -> void:
 		btn.pressed.emit()
 	print("[UiBattleShot] battle L", _level, " endless=", _endless,
 		" active=", bm != null and bool(bm.get("battle_active")), " auto-deploy ON")
+	# QA: 冻结教程链 + 纯视觉隐藏引导覆盖层（不推进步骤、不写档；v28 实测替点"启程"
+	# 会被步骤门拦住，且教程链可能在下一 run 接管战斗重开 L1 首战，都比弹窗更糟）
+	var tpm: Node = get_node_or_null("/root/TutorialProgressionManager")
+	if tpm != null:
+		tpm.set("chain_paused", true)
+	var t_ov: Node = main.get_node_or_null("HudLayer/TutorialOverlay") if main != null else null
+	if t_ov != null and bool(t_ov.get("visible")):
+		t_ov.set("visible", false)
+		print("[UiBattleShot] tutorial overlay hidden")
 	# 渗度锁定（视觉对比用）：跳过缓动即时生效，并不再随波次变化
 	if _endless and _depth >= 0:
 		var bf: Node = gm.get("battle_scene")
@@ -128,6 +137,8 @@ func _run() -> void:
 		frames_left -= step
 		if bf_root == null or not is_instance_valid(bf_root):
 			break
+		if t_ov != null and is_instance_valid(t_ov) and bool(t_ov.get("visible")):
+			t_ov.set("visible", false)
 		# 驱动器是开战链延迟 spawn 的：tick 里发现即补血池（含首补）
 		var drv := bf_root.get_node_or_null("PhaseFieldDriver")
 		if drv != null and is_instance_valid(drv) and "hp" in drv:

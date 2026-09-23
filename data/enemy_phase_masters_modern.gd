@@ -8,7 +8,7 @@ class_name EnemyPhaseMastersMODERN
 const ERA_MASTERS: Array = [
 	{
 		"id": "enemy_master_019",
-		"name": "虚空主宰·尼德霍格",
+		"name": "晏怀空",
 		"title": "世界吞噬者",
 		"level": 25,
 		"faction": "void",
@@ -32,8 +32,8 @@ const ERA_MASTERS: Array = [
 	# ==================== Tier 4 - 混合专家 (Lv24-25) ====================
 	{
 		"id": "enemy_master_020",
-		"name": "钢铁雷霆·泰尔",
-		"title": "电磁战神",
+		"name": "盛传书",
+		"title": "七岛的天线",
 		"level": 24,
 		"faction": "steel_thunder",
 		"difficulty": "expert",
@@ -54,8 +54,8 @@ const ERA_MASTERS: Array = [
 	},
 	{
 		"id": "enemy_master_021",
-		"name": "烈焰虚空·克尔加",
-		"title": "混沌炎魔",
+		"name": "明未晞",
+		"title": "混沌之焰",
 		"level": 25,
 		"faction": "flame_void",
 		"difficulty": "legendary",
@@ -78,8 +78,8 @@ const ERA_MASTERS: Array = [
 	# ==================== Tier 5 - 传说级相位师 (Lv26-29) ====================
 	{
 		"id": "enemy_master_022",
-		"name": "战争机器·铁骑",
-		"title": "钢铁风暴",
+		"name": "宋卸甲",
+		"title": "只缴不歼",
 		"level": 26,
 		"faction": "steel",
 		"difficulty": "legendary",
@@ -100,8 +100,8 @@ const ERA_MASTERS: Array = [
 	},
 	{
 		"id": "enemy_master_023",
-		"name": "火术宗师·凤凰",
-		"title": "不死鸟",
+		"name": "楚再春",
+		"title": "灰烬里回来的人",
 		"level": 27,
 		"faction": "flame",
 		"difficulty": "legendary",
@@ -122,8 +122,8 @@ const ERA_MASTERS: Array = [
 	},
 	{
 		"id": "enemy_master_024",
-		"name": "风暴使者·赛勒斯",
-		"title": "疾风迅雷",
+		"name": "岑风眠",
+		"title": "让路的雷暴",
 		"level": 27,
 		"faction": "thunder",
 		"difficulty": "legendary",

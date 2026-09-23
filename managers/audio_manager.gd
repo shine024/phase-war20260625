@@ -56,6 +56,13 @@ var sfx_volume: float = 1.0
 var music_volume: float = 0.7
 var master_volume: float = 1.0
 
+# ── v32.0 B1-1: 极速推演期间的战斗音效压制（UI 白名单外静默，防 8x 下音效堆积）──
+var battle_sfx_suppressed: bool = false
+const _FF_SFX_ALLOWLIST: Array[String] = ["button", "button_hover", "panel_open", "panel_close", "error", "cancel"]
+
+func set_battle_sfx_suppressed(on: bool) -> void:
+	battle_sfx_suppressed = on
+
 func _ready() -> void:
 	if Engine.is_editor_hint():
 		return
@@ -206,6 +213,10 @@ func play_sfx(name: String, volume: float = 1.0, pitch: float = 1.0) -> void:
 	if name.is_empty():
 		return
 
+	# v32.0 B1-1: 极速推演期间战斗音效静默（UI 白名单放行；结算音在推演结束后才触发）
+	if battle_sfx_suppressed and not (name in _FF_SFX_ALLOWLIST):
+		return
+
 	# 批次1: "button" 点击音 50ms 去重——全局钩子与 ~65 处手写调用并存，
 	# 同一次点击（含 50ms 内的极快连点）只响一次，防双响/机关枪
 	if name == "button":
@@ -327,6 +338,8 @@ func _on_battle_started_bgm() -> void:
 		GameConstants.Era.MODERN: bgm_key = "battle_modern"
 		GameConstants.Era.NEAR_FUTURE: bgm_key = "battle_future"
 	play_music(bgm_key)
+	# v32.0 演出层：战场环境音起
+	play_ambient("battle_wind")
 
 ## BOSS 登场：切 BOSS BGM
 func _on_phase_master_appeared_bgm(_master_config: Dictionary) -> void:
@@ -393,6 +406,50 @@ func _on_battle_ended_bgm(player_won: bool) -> void:
 	# 延迟一小段时间再切 BGM，让 win/lose SFX 先播放
 	await get_tree().create_timer(0.5).timeout
 	play_music("hub")
+	# v32.0 演出层：战场环境音收（延迟同 BGM，让胜负音先出）
+	stop_ambient(1.5)
+
+# ── v32.0 演出层：战场环境音（持续氛围底噪，独立于 BGM/事件 SFX 层）──
+## battle_started 起 battle_wind 风声循环（含远炮闷响），battle_ended 淡出。
+## 音量独立线性参数；极速推演期间不停（底噪无事件堆积问题）。
+var _ambient_player: AudioStreamPlayer = null
+const AMBIENT_MAP: Dictionary = {"battle_wind": "ambient_battle_wind"}
+const AMBIENT_DEFAULT_LINEAR: float = 0.22
+
+func play_ambient(key: String, linear_volume: float = AMBIENT_DEFAULT_LINEAR) -> void:
+	var file_name: String = String(AMBIENT_MAP.get(key, ""))
+	if file_name.is_empty():
+		return
+	if _ambient_player == null:
+		_ambient_player = AudioStreamPlayer.new()
+		add_child(_ambient_player)
+	if _ambient_player.get_meta("ambient_key", "") == key and _ambient_player.playing:
+		return
+	var stream: AudioStream = load("res://assets/sfx/%s.wav" % file_name)
+	if stream == null:
+		return
+	if stream is AudioStreamWAV:
+		var wav := stream as AudioStreamWAV
+		wav.loop_mode = AudioStreamWAV.LOOP_FORWARD
+		wav.loop_begin = 0
+		wav.loop_end = wav.data.size() / 2  # 16-bit 单声道帧数
+	_ambient_player.set_meta("ambient_key", key)
+	_ambient_player.stream = stream
+	_ambient_player.volume_db = linear_to_db(clampf(linear_volume, 0.0, 1.0))
+	_ambient_player.play()
+
+func stop_ambient(fade_sec: float = 1.0) -> void:
+	if _ambient_player == null or not _ambient_player.playing:
+		return
+	if fade_sec <= 0.0:
+		_ambient_player.stop()
+		return
+	var base_db: float = linear_to_db(AMBIENT_DEFAULT_LINEAR)
+	var tw := create_tween()
+	tw.tween_property(_ambient_player, "volume_db", -60.0, fade_sec)
+	tw.tween_callback(func():
+		_ambient_player.stop()
+		_ambient_player.volume_db = base_db)
 
 ## T1 性能优化：命中音效最小间隔节流——原每次命中无条件重启同一 AudioStreamPlayer，
 ## 密集交火 + DOT tick 时每秒几十次音频重启（声音上也糊成一片）。

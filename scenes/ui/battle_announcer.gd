@@ -117,8 +117,17 @@ func _on_phase_master_appeared(master_config: Dictionary) -> void:
 
 func _on_runeword_triggered(rw_id: String, _unit: Node) -> void:
 	# v9.5: 符文之语激活——NORMAL 优先级（注释里明确"波次/符文"档），金色（稀有成就感）
+	# v38.3 播报带因果（用户"不知道怎么激活的"）：公式样式"力量+锐锋 → 符文之语「锐利」"
 	var display_name: String = String(RunewordDefinitions.RUNEWORD_NAMES.get(rw_id, rw_id))
-	_enqueue("✦ 符文之语 · %s" % display_name, DT.COLOR_GOLD, DT.FONT_SIZE_MEDIUM, _NORMAL_DURATION, Priority.NORMAL)
+	var recipe := ""
+	var rw_def: Dictionary = RunewordDefinitions.get_runeword(rw_id)
+	var required: Array = rw_def.get("required_runes", [])
+	if not required.is_empty():
+		var rune_names: PackedStringArray = PackedStringArray()
+		for rid in required:
+			rune_names.append(RuneDefinitions.get_rune_name(String(rid)))
+		recipe = "%s → " % " + ".join(rune_names)
+	_enqueue("✦ %s符文之语「%s」" % [recipe, display_name], DT.COLOR_GOLD, DT.FONT_SIZE_MEDIUM, _NORMAL_DURATION, Priority.NORMAL)
 
 # =========================================================================
 #  队列与显示

@@ -356,6 +356,19 @@ func _is_xeno_affix_key(affix_key: String) -> bool:
 func get_reroll_currency_label(affix_key: String) -> String:
 	return "星髓" if _is_xeno_affix_key(affix_key) else "纳米材料"
 
+## v30 R2b（设计审查 F-03 延伸）：普通卡洗练的晶体分量（纳米费用 ×2% 向上取整）。
+## 晶体此前仅改造升级 Lv2/3 与 era4 制造两处薄 sink，中后期无限囤积；洗练是
+## 可重复、有追逐价值的确定性去向。星冥卡（星髓计费）与开关关闭时返回 0。
+const REROLL_CRYSTAL_RATIO := 0.02
+const _GameConfigForReroll = preload("res://resources/game_config.gd")
+
+func get_reroll_crystal_cost(affix_key: String, slot_index: int) -> int:
+	if _is_xeno_affix_key(affix_key):
+		return 0
+	if not _GameConfigForReroll.get_default().affix_reroll_crystal_enabled:
+		return 0
+	return int(ceil(float(get_reroll_cost_for(affix_key, slot_index)) * REROLL_CRYSTAL_RATIO))
+
 ## 按词条 key 取洗练费用（星冥卡星髓曲线 / 普通卡纳米曲线）
 func get_reroll_cost_for(affix_key: String, slot_index: int) -> int:
 	if _is_xeno_affix_key(affix_key):
@@ -363,7 +376,8 @@ func get_reroll_cost_for(affix_key: String, slot_index: int) -> int:
 	return get_reroll_cost(slot_index)
 
 ## 余额是否够付洗练费（不扣款；UI 按钮置灰判定也走这里）
-func can_pay_reroll(affix_key: String, amount: int) -> bool:
+## v30 R2b：普通卡在纳米之外追加晶体余额校验（crystal_cost 由调用方按口径传入）
+func can_pay_reroll(affix_key: String, amount: int, crystal_cost: int = 0) -> bool:
 	if amount <= 0:
 		return true
 	if _is_xeno_affix_key(affix_key):
@@ -371,10 +385,19 @@ func can_pay_reroll(affix_key: String, amount: int) -> bool:
 		return brm != null and brm.has_method("can_afford") \
 				and bool(brm.can_afford(BasicResources.ID_STAR_MARROW, amount))
 	var bm: Node = _get_root_node_or_null("BlueprintManager")
-	return bm != null and bm.has_method("get_nano_materials") and int(bm.get_nano_materials()) >= amount
+	var nano_ok: bool = bm != null and bm.has_method("get_nano_materials") and int(bm.get_nano_materials()) >= amount
+	if not nano_ok:
+		return false
+	if crystal_cost > 0:
+		var brm_c: Node = _get_root_node_or_null("BasicResourceManager")
+		if brm_c == null or not brm_c.has_method("can_afford") \
+				or not bool(brm_c.can_afford(BasicResources.ID_CRYSTAL, crystal_cost)):
+			return false
+	return true
 
 ## 扣款（调用前须 can_pay_reroll 通过）
-func _pay_reroll(affix_key: String, amount: int) -> bool:
+## v30 R2b：普通卡同步扣晶体分量
+func _pay_reroll(affix_key: String, amount: int, crystal_cost: int = 0) -> bool:
 	if _is_xeno_affix_key(affix_key):
 		var brm: Node = _get_root_node_or_null("BasicResourceManager")
 		if brm == null or not brm.has_method("add_resource"):
@@ -385,6 +408,11 @@ func _pay_reroll(affix_key: String, amount: int) -> bool:
 	if bm == null or not bm.has_method("add_nano_materials"):
 		return false
 	bm.add_nano_materials(-amount)
+	if crystal_cost > 0:
+		var brm_c: Node = _get_root_node_or_null("BasicResourceManager")
+		if brm_c == null or not brm_c.has_method("add_resource"):
+			return false
+		brm_c.add_resource(BasicResources.ID_CRYSTAL, -crystal_cost)
 	return true
 
 ## 重随指定槽位的词条
@@ -405,9 +433,9 @@ func reroll_affix(affix_key: String, slot_index: int) -> bool:
 	var affix_type: int = int(affix_key.substr(sep_idx + 1))
 	# 旧实现会基于等级重新 roll 稀有度；新方案为“同层池”，保持该词条当前稀有度不变
 
-	# 消耗洗练货币（v27.2: 星冥卡扣星髓，普通卡扣纳米）
+	# 消耗洗练货币（v27.2: 星冥卡扣星髓，普通卡扣纳米；v30 R2b: 普通卡加晶体分量）
 	var cost: int = get_reroll_cost_for(affix_key, slot_index)
-	if not _pay_reroll(affix_key, cost):
+	if not _pay_reroll(affix_key, cost, get_reroll_crystal_cost(affix_key, slot_index)):
 		return false
 
 	# 重新随机词条
@@ -458,8 +486,9 @@ func can_reroll_affix(affix_key: String, slot_index: int) -> bool:
 	if affix.is_locked:
 		return false
 
-	# v27.2: 计费路由统一（星冥卡星髓 / 普通卡纳米）
-	return can_pay_reroll(affix_key, get_reroll_cost_for(affix_key, slot_index))
+	# v27.2: 计费路由统一（星冥卡星髓 / 普通卡纳米）；v30 R2b: 普通卡加晶体校验
+	return can_pay_reroll(affix_key, get_reroll_cost_for(affix_key, slot_index),
+		get_reroll_crystal_cost(affix_key, slot_index))
 
 ## 批量重随费用计算
 ## locked_count: 本次锁定的词条数量（按 is_locked=true 统计）
@@ -488,7 +517,21 @@ func get_batch_reroll_cost(affix_key: String) -> Dictionary:
 		"total_cost": base_cost + extra,
 		"locked_count": locked_count,
 		"reroll_count": maxi(0, affixes.size() - locked_count),
+		# v30 R2b：批量重随的晶体分量（逐槽取整求和，锁定槽不计）
+		"crystal_cost": get_batch_crystal_cost(affix_key),
 	}
+
+## v30 R2b：批量重随晶体分量（未锁定槽位的 get_reroll_crystal_cost 之和）
+func get_batch_crystal_cost(affix_key: String) -> int:
+	if _is_xeno_affix_key(affix_key):
+		return 0
+	var affixes: Array = _get_affix_array(affix_key)
+	var total: int = 0
+	for i in range(affixes.size()):
+		var a: AffixResource = affixes[i] as AffixResource
+		if not a.is_locked:
+			total += get_reroll_crystal_cost(affix_key, i)
+	return total
 
 ## 批量重随：重随所有未锁定词条（同层池：保持原词条 rarity 不变）
 func batch_reroll_affixes(affix_key: String) -> bool:
@@ -502,8 +545,11 @@ func batch_reroll_affixes(affix_key: String) -> bool:
 	if reroll_count <= 0 or total_cost <= 0:
 		return false
 
-	# v27.2: 扣洗练货币（星冥卡星髓 / 普通卡纳米），can_pay 已在 UI 侧前置判定
-	if not _pay_reroll(affix_key, total_cost):
+	# v27.2: 扣洗练货币（星冥卡星髓 / 普通卡纳米）；v30 R2b: 普通卡加晶体分量与前置校验
+	var crystal_total: int = int(cost_info.get("crystal_cost", 0))
+	if not can_pay_reroll(affix_key, total_cost, crystal_total):
+		return false
+	if not _pay_reroll(affix_key, total_cost, crystal_total):
 		return false
 
 	# 从 affix_key 解析 affix_type（0=机体, 1=武器）。identity 可能含 _，故用 rfind

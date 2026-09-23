@@ -1,10 +1,11 @@
 extends PanelContainer
 class_name IntelligenceHubPanel
 
-## 情报中心：V1 世界观情报 · V3 单位进化总图 + 详情 · v6.2 符文图鉴
+## 情报中心：世界观情报 · 符文图鉴 · 敌方情报手册
+## v6.14 R6（F-16 死数据清点）：「单位谱系图谱」Tab 已移除——谱系信息与制造中心
+## "来源"展示重叠，lineage 数据本体保留（制造中心消费）。
 
 signal closed
-signal open_progression_requested(card_id: String)
 
 const RuneDefs = preload("res://data/runes.gd")
 const RunewordDefs = preload("res://data/runewords.gd")
@@ -15,14 +16,11 @@ const DT = preload("res://resources/design_tokens.gd")
 const PanelStyles = preload("res://scripts/ui/panel_styles.gd")
 const PanelChrome = preload("res://scenes/ui/components/panel_chrome.gd")
 const IntelUIKit = preload("res://scenes/ui/components/intel_ui_kit.gd")
+const PhaseMasterGarrison = preload("res://data/phase_master_garrison.gd")  # v6.19 P1-T1.3: 驻守关计数
 
 @onready var _tab_container: TabContainer = $Margin/VBox/TabContainer
 @onready var _lore_grid: GridContainer = $Margin/VBox/TabContainer/LoreTab/LoreScroll/LoreGrid
-@onready var _evolution_host: Control = $Margin/VBox/TabContainer/EvolutionTab/EvolutionHost
 @onready var _rune_content: VBoxContainer = $Margin/VBox/TabContainer/RuneTab/RuneScroll/RuneContent
-
-var _atlas: EvolutionAtlasView
-var _detail: UnitProgressionDetailView
 
 
 func _ready() -> void:
@@ -32,9 +30,8 @@ func _ready() -> void:
 	add_theme_stylebox_override("panel", PanelStyles.make_panel_frame_textured(accent))
 	var chrome = PanelChrome.attach_to($Margin/VBox, "情报舱", accent, "情报中枢")
 	chrome.closed.connect(_on_close)
-	# v9.x 性能：同步路径只保留样式/标题/骨架。atlas 条目与 lore 卡全部入队分帧
-	# （首开同步冻结 1.2~3s 的热点即 _setup_evolution_tab 全量构建 + _refresh_lore 整表重建）。
-	_setup_evolution_tab()
+	# v9.x 性能：同步路径只保留样式/标题/骨架。lore 卡入队分帧
+	# （首开同步冻结 1.2~3s 的热点即 _refresh_lore 整表重建）。
 	_refresh_lore()
 	_lore_dirty = false
 	_refresh_runes_tab()
@@ -43,9 +40,8 @@ func _ready() -> void:
 	_setup_intel_tab()
 	if _tab_container:
 		_tab_container.set_tab_title(0, "世界观情报")
-		_tab_container.set_tab_title(1, "单位谱系图谱")
-		_tab_container.set_tab_title(2, "符文图鉴")
-		_tab_container.set_tab_title(3, "敌方情报")
+		_tab_container.set_tab_title(1, "符文图鉴")
+		_tab_container.set_tab_title(2, "敌方情报")
 		_tab_container.tab_changed.connect(_on_tab_changed)
 	# v9.x 性能：监听 lore 解锁置脏，refresh() 未脏时跳过 lore 整表重建
 	var lm: Node = get_node_or_null("/root/LoreManager")
@@ -64,41 +60,14 @@ func refresh() -> void:
 		_refresh_lore()
 		_lore_dirty = false
 	_refresh_runes_tab()
-	if _atlas:
-		_atlas.refresh()
-	if _detail and _detail.visible and not _detail.get_card_id().is_empty():
-		_detail.show_card(_detail.get_card_id())
-	if _tab_container and _tab_container.current_tab == 3:
+	if _tab_container and _tab_container.current_tab == 2:
 		_refresh_intel_tab()
 
 
-func _setup_evolution_tab() -> void:
-	if _evolution_host == null:
-		return
-	for child in _evolution_host.get_children():
-		child.queue_free()
-
-	_atlas = EvolutionAtlasView.new()
-	_atlas.name = "EvolutionAtlas"
-	_atlas.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	_atlas.card_selected.connect(_on_atlas_card_selected)
-	_evolution_host.add_child(_atlas)
-
-	_detail = UnitProgressionDetailView.new()
-	_detail.name = "UnitDetail"
-	_detail.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	_detail.back_pressed.connect(_on_detail_back)
-	_detail.open_progression_requested.connect(_on_detail_open_progression)
-	_evolution_host.add_child(_detail)
-	_detail.hide_detail()
-
-
 func _on_tab_changed(tab: int) -> void:
-	if tab == 1 and _atlas:
-		_atlas.refresh()
-	if tab == 2:
+	if tab == 1:
 		_refresh_runes_tab()
-	if tab == 3:
+	if tab == 2:
 		_refresh_intel_tab()
 	# 批次2：tab 切换当前页淡入（原瞬跳）
 	var page := _tab_container.get_current_tab_control() if _tab_container else null
@@ -202,27 +171,6 @@ func _add_lore_card(lore_data: Dictionary) -> void:
 	panel.tooltip_text = "%s\n%s" % [name_text, desc_text]
 
 	_lore_grid.add_child(panel)
-
-
-func _on_atlas_card_selected(card_id: String) -> void:
-	if _detail == null or _atlas == null:
-		return
-	_detail.show_card(card_id)
-	_atlas.visible = false
-
-
-func _on_detail_back() -> void:
-	var focus_id: String = _detail.get_card_id() if _detail else ""
-	if _detail:
-		_detail.hide_detail()
-	if _atlas:
-		_atlas.visible = true
-		if not focus_id.is_empty():
-			_atlas.focus_card(focus_id)
-
-
-func _on_detail_open_progression(card_id: String) -> void:
-	open_progression_requested.emit(card_id)
 
 
 # ═══════════════════════════════════════════════════════════════════
@@ -442,6 +390,7 @@ func _rune_category_name(category: String) -> String:
 # ═══════════════════════════════════════════════════════════════════
 
 var _intel_content: VBoxContainer = null
+var _phase_master_status_lbl: Label = null  # v6.19 P1-T1.3: 相位师遭遇动态状态行（refresh 时更新）
 
 func _setup_intel_tab() -> void:
 	if _tab_container == null:
@@ -460,6 +409,7 @@ func _setup_intel_tab() -> void:
 		"部署 +4% 固定不衰减；击败/部署附带改造情报点数，点数达标解锁该形态专属改造",
 		DT.FONT_SIZE_SMALL, DT.COLOR_TEXT_DIM))
 	tab.add_child(ladder)
+	tab.add_child(_build_phase_master_section())  # v6.19 P1-T1.3: 相位师遭遇规则分区
 	var scroll := ScrollContainer.new()
 	scroll.name = "IntelScroll"
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -469,6 +419,58 @@ func _setup_intel_tab() -> void:
 	_intel_content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_intel_content.add_theme_constant_override("separation", 4)
 	scroll.add_child(_intel_content)
+
+
+## v6.19 P1-T1.3 相位师遭遇规则分区（宪法 C3 概率透明）：机制全貌一屏可见 + 动态保底状态行。
+## 数值全部读常量（GameManager.get_phase_master_encounter_status / PhaseMasterGarrison），
+## 改口径此处自动跟随，禁止在本函数写死数字。
+func _build_phase_master_section() -> Control:
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", 4)
+	box.add_child(IntelUIKit.section_header("相位师情报", DT.COLOR_GOLD,
+		"随机可准备——遭遇规则全部公开"))
+	var gm := get_node_or_null("/root/GameManager")
+	if gm == null or not gm.has_method("get_phase_master_encounter_status"):
+		box.add_child(IntelUIKit.label(
+			"相位师遭遇规则（GameManager 未就绪，稍后重开面板）",
+			DT.FONT_SIZE_SMALL, DT.COLOR_TEXT_DIM))
+		return box
+	var st: Dictionary = gm.get_phase_master_encounter_status()
+	var garrison_count: int = PhaseMasterGarrison.get_all_garrison_levels().size()
+	var lines := [
+		"驻守关 %d 处：100%% 固定遭遇相位师（世界地图关防详情可查）" % garrison_count,
+		"非驻守关：基础遭遇率 %.0f%%；前 %d 关为新手保护期不触发（保护期计入递增计数，出保护后实际概率可能已高于基础值——见下方实时状态）" % [
+			float(st.get("base_chance", 0.15)) * 100.0, int(st.get("grace_levels", 10))],
+		"递增保底：连续 %d 关未遭遇后，每多 1 关概率 +%.0f%%，上限 %.0f%%——越久不遇，遇的概率越高" % [
+			int(st.get("drought_trigger", 5)), float(st.get("drought_step", 0.10)) * 100.0,
+			float(st.get("chance_cap", 0.5)) * 100.0],
+		"遭遇前情报可备战：克制兵种 / 防空 / 反制改造按提示预配，见战前建议",
+	]
+	for line in lines:
+		box.add_child(IntelUIKit.label(line, DT.FONT_SIZE_SMALL, DT.COLOR_TEXT_MID))
+	_phase_master_status_lbl = IntelUIKit.label("", DT.FONT_SIZE_SMALL, DT.COLOR_GOLD)
+	box.add_child(_phase_master_status_lbl)
+	_refresh_phase_master_status()
+	return box
+
+
+## 动态状态行（唯一在 _refresh_intel_tab 与本函数里更新的活文本）
+func _refresh_phase_master_status() -> void:
+	if _phase_master_status_lbl == null or not is_instance_valid(_phase_master_status_lbl):
+		return
+	var gm := get_node_or_null("/root/GameManager")
+	if gm == null or not gm.has_method("get_phase_master_encounter_status"):
+		return
+	var st: Dictionary = gm.get_phase_master_encounter_status()
+	var drought: int = int(st.get("drought_count", 0))
+	var trigger: int = int(st.get("drought_trigger", 5))
+	var txt := "当前状态：连续 %d 关未遭遇 · 下次非驻守关遭遇概率 %.0f%%" % [
+		drought, float(st.get("next_chance", 0.0)) * 100.0]
+	if drought < trigger:
+		txt += "（再未遭遇 %d 关启动递增）" % (trigger - drought)
+	else:
+		txt += "（递增保底已启动）"
+	_phase_master_status_lbl.text = txt
 
 
 ## v26 UI：4 档里程碑横条（25/50/75/100），色阶 中灰→青→紫→金 与行档位色同源
@@ -497,6 +499,7 @@ func _build_intel_milestone_strip() -> HBoxContainer:
 	return strip
 
 func _refresh_intel_tab() -> void:
+	_refresh_phase_master_status()  # v6.19 P1-T1.3: 相位师状态行随刷新更新
 	if _intel_content == null:
 		return
 	for child in _intel_content.get_children():
@@ -647,5 +650,4 @@ func _add_mod_intel_rows(card_id: String, im: Node) -> void:
 
 
 func _on_close() -> void:
-	_on_detail_back()
 	closed.emit()

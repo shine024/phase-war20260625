@@ -13,130 +13,130 @@ th{color:#9fd0ff;background:#171b22}.warn{color:#f0883e}
 details{margin-top:16px}
 </style></head><body>
 <h1>VFX 全矩阵视觉审计</h1>
-<p>生成时间：2026-09-12T00:20:13 ｜ 72 格截图（12 武器族 × 敌我 × 开火/命中）｜ 枪口火在参考单位旁、命中在目标单位旁，对照 100px 标尺与验收规格逐格检查。</p>
-<p>武器名解析覆盖：208/208（100%）有明确视觉信号；<span class="warn">wt_fallback 0 个</span>：无</p>
+<p>生成时间：2026-09-22T10:04:41 ｜ 72 格截图（12 武器族 × 敌我 × 开火/命中）｜ 枪口火在参考单位旁、命中在目标单位旁，对照 100px 标尺与验收规格逐格检查。</p>
+<p>武器名解析覆盖：212/213（100%）有明确视觉信号；<span class="warn">wt_fallback 1 个</span>：四联20mm西斯帕诺</p>
 <div class="fam">
 <h2>轻动能（冲锋枪/步枪/机枪/坦克炮） <small>visual_wt=0</small></h2>
 <div class="meta">枪口火：light ｜ 命中：kinetic ｜ 弹体：poly_bullet ｜ 震屏：none（仅 HEAVY 伤害档震屏）</div>
 <div class="spec"><b>验收规格：</b>枪口=细碎橙火星(~5-9px)一闪即逝；命中=放射状黄白小火花+微量烟，无火球帧无震屏；亚类(机枪弹幕/坦克炮重环)由 DirectWeaponFlavor 按武器名细分</div>
 <div class="grid">
-<figure><img src="../docs/vfx_audit_shots/f00_player_muzzle.png" loading="lazy"><figcaption>我方·开火</figcaption></figure>
-<figure><img src="../docs/vfx_audit_shots/f00_enemy_muzzle.png" loading="lazy"><figcaption>敌方·开火</figcaption></figure>
-<figure><img src="../docs/vfx_audit_shots/f00_player_impact.png" loading="lazy"><figcaption>我方·命中</figcaption></figure>
-<figure><img src="../docs/vfx_audit_shots/f00_enemy_impact.png" loading="lazy"><figcaption>敌方·命中</figcaption></figure>
+<figure><img src="../docs/vfx_audit_shots/f00_player_muzzle.png" loading="lazy"><figcaption><span style="color:#f0d878;font-weight:bold">AI 5/10</span> ｜ 我方·开火</figcaption></figure>
+<figure><img src="../docs/vfx_audit_shots/f00_enemy_muzzle.png" loading="lazy"><figcaption><span style="color:#ff7b72;font-weight:bold">AI 4/10</span> ｜ 敌方·开火</figcaption></figure>
+<figure><img src="../docs/vfx_audit_shots/f00_player_impact.png" loading="lazy"><figcaption><span style="color:#f0d878;font-weight:bold">AI 5/10</span> ｜ 我方·命中</figcaption></figure>
+<figure><img src="../docs/vfx_audit_shots/f00_enemy_impact.png" loading="lazy"><figcaption><span style="color:#f0d878;font-weight:bold">AI 5/10</span> ｜ 敌方·命中</figcaption></figure>
 </div></div>
 <div class="fam">
 <h2>曲射火炮（迫击炮/榴弹炮） <small>visual_wt=1</small></h2>
 <div class="meta">枪口火：heavy ｜ 命中：explosive ｜ 弹体：poly_bullet ｜ 震屏：medium</div>
 <div class="spec"><b>验收规格：</b>枪口=大爆发火球+发射药烟团；弹道=高抛物线炮弹；命中=火球帧动画+冲击波环+焦痕弹坑(50%概率)</div>
 <div class="grid">
-<figure><img src="../docs/vfx_audit_shots/f01_player_muzzle.png" loading="lazy"><figcaption>我方·开火</figcaption></figure>
-<figure><img src="../docs/vfx_audit_shots/f01_enemy_muzzle.png" loading="lazy"><figcaption>敌方·开火</figcaption></figure>
-<figure><img src="../docs/vfx_audit_shots/f01_player_impact.png" loading="lazy"><figcaption>我方·命中</figcaption></figure>
-<figure><img src="../docs/vfx_audit_shots/f01_enemy_impact.png" loading="lazy"><figcaption>敌方·命中</figcaption></figure>
+<figure><img src="../docs/vfx_audit_shots/f01_player_muzzle.png" loading="lazy"><figcaption><span style="color:#f0d878;font-weight:bold">AI 5/10</span> ｜ 我方·开火</figcaption></figure>
+<figure><img src="../docs/vfx_audit_shots/f01_enemy_muzzle.png" loading="lazy"><figcaption><span style="color:#ff7b72;font-weight:bold">AI 4/10</span> ｜ 敌方·开火</figcaption></figure>
+<figure><img src="../docs/vfx_audit_shots/f01_player_impact.png" loading="lazy"><figcaption><span style="color:#f0d878;font-weight:bold">AI 5/10</span> ｜ 我方·命中</figcaption></figure>
+<figure><img src="../docs/vfx_audit_shots/f01_enemy_impact.png" loading="lazy"><figcaption><span style="color:#f0d878;font-weight:bold">AI 5/10</span> ｜ 敌方·命中</figcaption></figure>
 </div></div>
 <div class="fam">
 <h2>空射武器 <small>visual_wt=2</small></h2>
 <div class="meta">枪口火：heavy ｜ 命中：explosive ｜ 弹体：missile_body ｜ 震屏：medium</div>
 <div class="spec"><b>验收规格：</b>空射导弹俯冲弹道；命中=通用爆炸贴图+火球帧</div>
 <div class="grid">
-<figure><img src="../docs/vfx_audit_shots/f02_player_muzzle.png" loading="lazy"><figcaption>我方·开火</figcaption></figure>
-<figure><img src="../docs/vfx_audit_shots/f02_enemy_muzzle.png" loading="lazy"><figcaption>敌方·开火</figcaption></figure>
-<figure><img src="../docs/vfx_audit_shots/f02_player_impact.png" loading="lazy"><figcaption>我方·命中</figcaption></figure>
-<figure><img src="../docs/vfx_audit_shots/f02_enemy_impact.png" loading="lazy"><figcaption>敌方·命中</figcaption></figure>
+<figure><img src="../docs/vfx_audit_shots/f02_player_muzzle.png" loading="lazy"><figcaption><span style="color:#ff7b72;font-weight:bold">AI 4/10</span> ｜ 我方·开火</figcaption></figure>
+<figure><img src="../docs/vfx_audit_shots/f02_enemy_muzzle.png" loading="lazy"><figcaption><span style="color:#f0d878;font-weight:bold">AI 5/10</span> ｜ 敌方·开火</figcaption></figure>
+<figure><img src="../docs/vfx_audit_shots/f02_player_impact.png" loading="lazy"><figcaption><span style="color:#ff7b72;font-weight:bold">AI 4/10</span> ｜ 我方·命中</figcaption></figure>
+<figure><img src="../docs/vfx_audit_shots/f02_enemy_impact.png" loading="lazy"><figcaption><span style="color:#f0d878;font-weight:bold">AI 5/10</span> ｜ 敌方·命中</figcaption></figure>
 </div></div>
 <div class="fam">
 <h2>火箭弹（火箭炮/火箭巢） <small>visual_wt=3</small></h2>
 <div class="meta">枪口火：heavy ｜ 命中：explosive ｜ 弹体：rocket_body ｜ 震屏：medium</div>
 <div class="spec"><b>验收规格：</b>枪口=窄锥(32°)定向喷射+尾焰烟；弹道=低平弧火箭弹带尾焰；命中=火球帧+碎片烟尘</div>
 <div class="grid">
-<figure><img src="../docs/vfx_audit_shots/f03_player_muzzle.png" loading="lazy"><figcaption>我方·开火</figcaption></figure>
-<figure><img src="../docs/vfx_audit_shots/f03_enemy_muzzle.png" loading="lazy"><figcaption>敌方·开火</figcaption></figure>
-<figure><img src="../docs/vfx_audit_shots/f03_player_impact.png" loading="lazy"><figcaption>我方·命中</figcaption></figure>
-<figure><img src="../docs/vfx_audit_shots/f03_enemy_impact.png" loading="lazy"><figcaption>敌方·命中</figcaption></figure>
+<figure><img src="../docs/vfx_audit_shots/f03_player_muzzle.png" loading="lazy"><figcaption><span style="color:#ff7b72;font-weight:bold">AI 4/10</span> ｜ 我方·开火</figcaption></figure>
+<figure><img src="../docs/vfx_audit_shots/f03_enemy_muzzle.png" loading="lazy"><figcaption><span style="color:#ff7b72;font-weight:bold">AI 3/10</span> ｜ 敌方·开火</figcaption></figure>
+<figure><img src="../docs/vfx_audit_shots/f03_player_impact.png" loading="lazy"><figcaption><span style="color:#f0d878;font-weight:bold">AI 5/10</span> ｜ 我方·命中</figcaption></figure>
+<figure><img src="../docs/vfx_audit_shots/f03_enemy_impact.png" loading="lazy"><figcaption><span style="color:#f0d878;font-weight:bold">AI 5/10</span> ｜ 敌方·命中</figcaption></figure>
 </div></div>
 <div class="fam">
 <h2>手枪/卡宾（最轻档） <small>visual_wt=4</small></h2>
 <div class="meta">枪口火：light ｜ 命中：kinetic ｜ 弹体：poly_bullet ｜ 震屏：none</div>
 <div class="spec"><b>验收规格：</b>比步枪更弱一档：极短弹头(近光点)+最小火花；密集射击不连成长条</div>
 <div class="grid">
-<figure><img src="../docs/vfx_audit_shots/f04_player_muzzle.png" loading="lazy"><figcaption>我方·开火</figcaption></figure>
-<figure><img src="../docs/vfx_audit_shots/f04_enemy_muzzle.png" loading="lazy"><figcaption>敌方·开火</figcaption></figure>
-<figure><img src="../docs/vfx_audit_shots/f04_player_impact.png" loading="lazy"><figcaption>我方·命中</figcaption></figure>
-<figure><img src="../docs/vfx_audit_shots/f04_enemy_impact.png" loading="lazy"><figcaption>敌方·命中</figcaption></figure>
+<figure><img src="../docs/vfx_audit_shots/f04_player_muzzle.png" loading="lazy"><figcaption><span style="color:#f0d878;font-weight:bold">AI 5/10</span> ｜ 我方·开火</figcaption></figure>
+<figure><img src="../docs/vfx_audit_shots/f04_enemy_muzzle.png" loading="lazy"><figcaption><span style="color:#ff7b72;font-weight:bold">AI 4/10</span> ｜ 敌方·开火</figcaption></figure>
+<figure><img src="../docs/vfx_audit_shots/f04_player_impact.png" loading="lazy"><figcaption><span style="color:#7ee787;font-weight:bold">AI 7/10</span> ｜ 我方·命中</figcaption></figure>
+<figure><img src="../docs/vfx_audit_shots/f04_enemy_impact.png" loading="lazy"><figcaption><span style="color:#f0d878;font-weight:bold">AI 6/10</span> ｜ 敌方·命中</figcaption></figure>
 </div></div>
 <div class="fam">
 <h2>霰弹 <small>visual_wt=5</small></h2>
 <div class="meta">枪口火：light ｜ 命中：scatter ｜ 弹体：poly_bullet ｜ 震屏：none</div>
 <div class="spec"><b>验收规格：</b>6 发 18° 散射弹丸；命中=散射状小贴图+宽散火花</div>
 <div class="grid">
-<figure><img src="../docs/vfx_audit_shots/f05_player_muzzle.png" loading="lazy"><figcaption>我方·开火</figcaption></figure>
-<figure><img src="../docs/vfx_audit_shots/f05_enemy_muzzle.png" loading="lazy"><figcaption>敌方·开火</figcaption></figure>
-<figure><img src="../docs/vfx_audit_shots/f05_player_impact.png" loading="lazy"><figcaption>我方·命中</figcaption></figure>
-<figure><img src="../docs/vfx_audit_shots/f05_enemy_impact.png" loading="lazy"><figcaption>敌方·命中</figcaption></figure>
+<figure><img src="../docs/vfx_audit_shots/f05_player_muzzle.png" loading="lazy"><figcaption><span style="color:#f0d878;font-weight:bold">AI 6/10</span> ｜ 我方·开火</figcaption></figure>
+<figure><img src="../docs/vfx_audit_shots/f05_enemy_muzzle.png" loading="lazy"><figcaption><span style="color:#ff7b72;font-weight:bold">AI 4/10</span> ｜ 敌方·开火</figcaption></figure>
+<figure><img src="../docs/vfx_audit_shots/f05_player_impact.png" loading="lazy"><figcaption><span style="color:#f0d878;font-weight:bold">AI 5/10</span> ｜ 我方·命中</figcaption></figure>
+<figure><img src="../docs/vfx_audit_shots/f05_enemy_impact.png" loading="lazy"><figcaption><span style="color:#f0d878;font-weight:bold">AI 5/10</span> ｜ 敌方·命中</figcaption></figure>
 </div></div>
 <div class="fam">
 <h2>狙击/光束武器 <small>visual_wt=6</small></h2>
 <div class="meta">枪口火：energy ｜ 命中：beam_hit ｜ 弹体：beam_line ｜ 震屏：light</div>
 <div class="spec"><b>验收规格：</b>枪口=白青喷射流；弹道=Line2D 直线光束；命中=精确药剂感小爆点（非激光烧灼——激光武器单独归 LASER 族）</div>
 <div class="grid">
-<figure><img src="../docs/vfx_audit_shots/f06_player_muzzle.png" loading="lazy"><figcaption>我方·开火</figcaption></figure>
-<figure><img src="../docs/vfx_audit_shots/f06_enemy_muzzle.png" loading="lazy"><figcaption>敌方·开火</figcaption></figure>
-<figure><img src="../docs/vfx_audit_shots/f06_player_impact.png" loading="lazy"><figcaption>我方·命中</figcaption></figure>
-<figure><img src="../docs/vfx_audit_shots/f06_enemy_impact.png" loading="lazy"><figcaption>敌方·命中</figcaption></figure>
+<figure><img src="../docs/vfx_audit_shots/f06_player_muzzle.png" loading="lazy"><figcaption><span style="color:#ff7b72;font-weight:bold">AI 4/10</span> ｜ 我方·开火</figcaption></figure>
+<figure><img src="../docs/vfx_audit_shots/f06_enemy_muzzle.png" loading="lazy"><figcaption><span style="color:#f0d878;font-weight:bold">AI 5/10</span> ｜ 敌方·开火</figcaption></figure>
+<figure><img src="../docs/vfx_audit_shots/f06_player_impact.png" loading="lazy"><figcaption><span style="color:#ff7b72;font-weight:bold">AI 4/10</span> ｜ 我方·命中</figcaption></figure>
+<figure><img src="../docs/vfx_audit_shots/f06_enemy_impact.png" loading="lazy"><figcaption><span style="color:#7ee787;font-weight:bold">AI 7/10</span> ｜ 敌方·命中</figcaption></figure>
 </div></div>
 <div class="fam">
 <h2>高炮/防空速射炮 <small>visual_wt=7</small></h2>
 <div class="meta">枪口火：heavy ｜ 命中：explosive ｜ 弹体：poly_bullet ｜ 震屏：medium</div>
 <div class="spec"><b>验收规格：</b>短粗高炮弹连发；命中=空爆贴图+小火球帧</div>
 <div class="grid">
-<figure><img src="../docs/vfx_audit_shots/f07_player_muzzle.png" loading="lazy"><figcaption>我方·开火</figcaption></figure>
-<figure><img src="../docs/vfx_audit_shots/f07_enemy_muzzle.png" loading="lazy"><figcaption>敌方·开火</figcaption></figure>
-<figure><img src="../docs/vfx_audit_shots/f07_player_impact.png" loading="lazy"><figcaption>我方·命中</figcaption></figure>
-<figure><img src="../docs/vfx_audit_shots/f07_enemy_impact.png" loading="lazy"><figcaption>敌方·命中</figcaption></figure>
+<figure><img src="../docs/vfx_audit_shots/f07_player_muzzle.png" loading="lazy"><figcaption><span style="color:#ff7b72;font-weight:bold">AI 4/10</span> ｜ 我方·开火</figcaption></figure>
+<figure><img src="../docs/vfx_audit_shots/f07_enemy_muzzle.png" loading="lazy"><figcaption><span style="color:#ff7b72;font-weight:bold">AI 4/10</span> ｜ 敌方·开火</figcaption></figure>
+<figure><img src="../docs/vfx_audit_shots/f07_player_impact.png" loading="lazy"><figcaption><span style="color:#f0d878;font-weight:bold">AI 6/10</span> ｜ 我方·命中</figcaption></figure>
+<figure><img src="../docs/vfx_audit_shots/f07_enemy_impact.png" loading="lazy"><figcaption><span style="color:#f0d878;font-weight:bold">AI 5/10</span> ｜ 敌方·命中</figcaption></figure>
 </div></div>
 <div class="fam">
 <h2>激光（烧灼签名） <small>visual_wt=8</small></h2>
 <div class="meta">枪口火：energy ｜ 命中：burn ｜ 弹体：beam_line ｜ 震屏：light</div>
 <div class="spec"><b>验收规格：</b>命中=来弹光束+白热聚焦光斑+焦痕+上升热火花+熔融火星（表面能量沉积，区别于动能穿透）</div>
 <div class="grid">
-<figure><img src="../docs/vfx_audit_shots/f08_player_muzzle.png" loading="lazy"><figcaption>我方·开火</figcaption></figure>
-<figure><img src="../docs/vfx_audit_shots/f08_enemy_muzzle.png" loading="lazy"><figcaption>敌方·开火</figcaption></figure>
-<figure><img src="../docs/vfx_audit_shots/f08_player_impact.png" loading="lazy"><figcaption>我方·命中</figcaption></figure>
-<figure><img src="../docs/vfx_audit_shots/f08_enemy_impact.png" loading="lazy"><figcaption>敌方·命中</figcaption></figure>
+<figure><img src="../docs/vfx_audit_shots/f08_player_muzzle.png" loading="lazy"><figcaption><span style="color:#f0d878;font-weight:bold">AI 6/10</span> ｜ 我方·开火</figcaption></figure>
+<figure><img src="../docs/vfx_audit_shots/f08_enemy_muzzle.png" loading="lazy"><figcaption><span style="color:#ff7b72;font-weight:bold">AI 4/10</span> ｜ 敌方·开火</figcaption></figure>
+<figure><img src="../docs/vfx_audit_shots/f08_player_impact.png" loading="lazy"><figcaption><span style="color:#ff7b72;font-weight:bold">AI 4/10</span> ｜ 我方·命中</figcaption></figure>
+<figure><img src="../docs/vfx_audit_shots/f08_enemy_impact.png" loading="lazy"><figcaption><span style="color:#ff7b72;font-weight:bold">AI 4/10</span> ｜ 敌方·命中</figcaption></figure>
 </div></div>
 <div class="fam">
 <h2>导弹 <small>visual_wt=9</small></h2>
 <div class="meta">枪口火：heavy ｜ 命中：explosive ｜ 弹体：missile_body ｜ 震屏：medium</div>
 <div class="spec"><b>验收规格：</b>大型导弹弹体+中弧弹道+专属命中贴图（按名查表，含通用爆炸兜底）</div>
 <div class="grid">
-<figure><img src="../docs/vfx_audit_shots/f09_player_muzzle.png" loading="lazy"><figcaption>我方·开火</figcaption></figure>
-<figure><img src="../docs/vfx_audit_shots/f09_enemy_muzzle.png" loading="lazy"><figcaption>敌方·开火</figcaption></figure>
-<figure><img src="../docs/vfx_audit_shots/f09_player_impact.png" loading="lazy"><figcaption>我方·命中</figcaption></figure>
-<figure><img src="../docs/vfx_audit_shots/f09_enemy_impact.png" loading="lazy"><figcaption>敌方·命中</figcaption></figure>
+<figure><img src="../docs/vfx_audit_shots/f09_player_muzzle.png" loading="lazy"><figcaption><span style="color:#ff7b72;font-weight:bold">AI 4/10</span> ｜ 我方·开火</figcaption></figure>
+<figure><img src="../docs/vfx_audit_shots/f09_enemy_muzzle.png" loading="lazy"><figcaption><span style="color:#ff7b72;font-weight:bold">AI 4/10</span> ｜ 敌方·开火</figcaption></figure>
+<figure><img src="../docs/vfx_audit_shots/f09_player_impact.png" loading="lazy"><figcaption><span style="color:#f0d878;font-weight:bold">AI 5/10</span> ｜ 我方·命中</figcaption></figure>
+<figure><img src="../docs/vfx_audit_shots/f09_enemy_impact.png" loading="lazy"><figcaption><span style="color:#ff7b72;font-weight:bold">AI 4/10</span> ｜ 敌方·命中</figcaption></figure>
 </div></div>
 <div class="fam">
 <h2>欧米茄粒子炮（径向放电签名） <small>visual_wt=10</small></h2>
 <div class="meta">枪口火：energy ｜ 命中：discharge ｜ 弹体：poly_bullet ｜ 震屏：heavy</div>
 <div class="spec"><b>验收规格：</b>命中=来弹粒子流+大能量核+7条星芒射线+外向电火花+持续辉光环（四面八方炸开）</div>
 <div class="grid">
-<figure><img src="../docs/vfx_audit_shots/f10_player_muzzle.png" loading="lazy"><figcaption>我方·开火</figcaption></figure>
-<figure><img src="../docs/vfx_audit_shots/f10_enemy_muzzle.png" loading="lazy"><figcaption>敌方·开火</figcaption></figure>
-<figure><img src="../docs/vfx_audit_shots/f10_player_impact.png" loading="lazy"><figcaption>我方·命中</figcaption></figure>
-<figure><img src="../docs/vfx_audit_shots/f10_enemy_impact.png" loading="lazy"><figcaption>敌方·命中</figcaption></figure>
+<figure><img src="../docs/vfx_audit_shots/f10_player_muzzle.png" loading="lazy"><figcaption><span style="color:#ff7b72;font-weight:bold">AI 3/10</span> ｜ 我方·开火</figcaption></figure>
+<figure><img src="../docs/vfx_audit_shots/f10_enemy_muzzle.png" loading="lazy"><figcaption><span style="color:#ff7b72;font-weight:bold">AI 2/10</span> ｜ 敌方·开火</figcaption></figure>
+<figure><img src="../docs/vfx_audit_shots/f10_player_impact.png" loading="lazy"><figcaption><span style="color:#f0d878;font-weight:bold">AI 5/10</span> ｜ 我方·命中</figcaption></figure>
+<figure><img src="../docs/vfx_audit_shots/f10_enemy_impact.png" loading="lazy"><figcaption><span style="color:#ff7b72;font-weight:bold">AI 4/10</span> ｜ 敌方·命中</figcaption></figure>
 </div></div>
 <div class="fam">
 <h2>磁轨炮（动能穿透签名） <small>visual_wt=11</small></h2>
 <div class="meta">枪口火：energy ｜ 命中：pierce ｜ 弹体：poly_bullet ｜ 震屏：heavy</div>
 <div class="spec"><b>验收规格：</b>命中=入口过曝白闪+白热穿透光迹贯穿目标+出口spall碎片锥+回溅火花+速度线（超高初速动能穿甲，非激光）</div>
 <div class="grid">
-<figure><img src="../docs/vfx_audit_shots/f11_player_muzzle.png" loading="lazy"><figcaption>我方·开火</figcaption></figure>
-<figure><img src="../docs/vfx_audit_shots/f11_enemy_muzzle.png" loading="lazy"><figcaption>敌方·开火</figcaption></figure>
-<figure><img src="../docs/vfx_audit_shots/f11_player_impact.png" loading="lazy"><figcaption>我方·命中</figcaption></figure>
-<figure><img src="../docs/vfx_audit_shots/f11_enemy_impact.png" loading="lazy"><figcaption>敌方·命中</figcaption></figure>
+<figure><img src="../docs/vfx_audit_shots/f11_player_muzzle.png" loading="lazy"><figcaption><span style="color:#ff7b72;font-weight:bold">AI 4/10</span> ｜ 我方·开火</figcaption></figure>
+<figure><img src="../docs/vfx_audit_shots/f11_enemy_muzzle.png" loading="lazy"><figcaption><span style="color:#ff7b72;font-weight:bold">AI 4/10</span> ｜ 敌方·开火</figcaption></figure>
+<figure><img src="../docs/vfx_audit_shots/f11_player_impact.png" loading="lazy"><figcaption><span style="color:#ff7b72;font-weight:bold">AI 4/10</span> ｜ 我方·命中</figcaption></figure>
+<figure><img src="../docs/vfx_audit_shots/f11_enemy_impact.png" loading="lazy"><figcaption><span style="color:#ff7b72;font-weight:bold">AI 4/10</span> ｜ 敌方·命中</figcaption></figure>
 </div></div>
 
-<details><summary>全部武器名解析表（208 行）</summary><table>
+<details><summary>全部武器名解析表（213 行）</summary><table>
 <tr><th>武器名</th><th>解析途径</th><th>视觉族</th></tr>
 <tr><td>MP18冲锋枪</td><td><span style="color:#7ee787">keyword</span></td><td>轻动能（冲锋枪/步枪/机枪/坦克炮）</td></tr>
 <tr><td>毛瑟G98步枪</td><td><span style="color:#7ee787">keyword</span></td><td>轻动能（冲锋枪/步枪/机枪/坦克炮）</td></tr>
@@ -191,6 +191,11 @@ details{margin-top:16px}
 <tr><td>SC250 炸弹</td><td><span style="color:#7ee787">keyword</span></td><td>空射武器</td></tr>
 <tr><td>SD500 穿甲炸弹</td><td><span style="color:#7ee787">keyword</span></td><td>空射武器</td></tr>
 <tr><td>MG81Z 自卫机枪</td><td><span style="color:#7ee787">keyword</span></td><td>轻动能（冲锋枪/步枪/机枪/坦克炮）</td></tr>
+<tr><td>R4M 火箭弹</td><td><span style="color:#7ee787">keyword</span></td><td>火箭弹（火箭炮/火箭巢）</td></tr>
+<tr><td>MK108 机炮</td><td><span style="color:#7ee787">keyword</span></td><td>轻动能（冲锋枪/步枪/机枪/坦克炮）</td></tr>
+<tr><td>四联30mm航炮</td><td><span style="color:#7ee787">keyword</span></td><td>轻动能（冲锋枪/步枪/机枪/坦克炮）</td></tr>
+<tr><td>RP-3 火箭弹</td><td><span style="color:#7ee787">keyword</span></td><td>火箭弹（火箭炮/火箭巢）</td></tr>
+<tr><td>四联20mm西斯帕诺</td><td><span style="color:#f0883e">wt_fallback</span></td><td>轻动能（冲锋枪/步枪/机枪/坦克炮）</td></tr>
 <tr><td>MG42火力点</td><td><span style="color:#7ee787">keyword</span></td><td>轻动能（冲锋枪/步枪/机枪/坦克炮）</td></tr>
 <tr><td>机枪对空射击</td><td><span style="color:#7ee787">keyword</span></td><td>轻动能（冲锋枪/步枪/机枪/坦克炮）</td></tr>
 <tr><td>MG42/双联防空炮</td><td><span style="color:#7ee787">keyword</span></td><td>高炮/防空速射炮</td></tr>

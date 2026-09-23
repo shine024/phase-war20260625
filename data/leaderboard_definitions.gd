@@ -4,7 +4,7 @@ class_name LeaderboardDefinitions
 
 ## 排行榜类型
 enum LeaderboardType {
-	CHALLENGE_HIGHSCORE,    # 挑战模式高分榜
+	CHALLENGE_HIGHSCORE,    # 挑战轴高分（黑门无限周榜 survival_highscore 复用）
 	FASTEST_CLEAR_TIME,     # 最快通关时间
 	MOST_DAMAGE,            # 最高伤害
 	MOST_WINS,              # 最多胜场
@@ -15,7 +15,7 @@ enum LeaderboardType {
 
 ## 排行榜定义
 const LEADERBOARDS: Dictionary = {
-	# ==================== 挑战模式排行 ====================
+	# ==================== 黑门无限周榜（挑战轴复用，唯一提交方 endless_blackgate_manager） ====================
 	"survival_highscore": {
 		"id": "survival_highscore",
 		"name": "生存挑战排行榜",
@@ -26,17 +26,6 @@ const LEADERBOARDS: Dictionary = {
 		"update_frequency": "realtime",
 		"max_entries": 100,
 		"reset_period": "weekly"
-	},
-	"time_attack_best": {
-		"id": "time_attack_best",
-		"name": "限时挑战排行榜",
-		"description": "限时挑战中的最高击杀数",
-		"type": LeaderboardType.CHALLENGE_HIGHSCORE,
-		"category": "time_attack",
-		"score_format": "kills",
-		"update_frequency": "realtime",
-		"max_entries": 50,
-		"reset_period": "daily"
 	},
 
 	# ==================== 速度排行 ====================
@@ -170,49 +159,11 @@ const LEADERBOARD_ENTRY: Dictionary = {
 	"additional_data": {}     # 额外数据
 }
 
-## 排行榜分类
-const LEADERBOARD_CATEGORIES: Dictionary = {
-	"challenge": {
-		"name": "挑战排行",
-		"leaderboards": ["survival_highscore", "time_attack_best"]
-	},
-	"speed": {
-		"name": "速度排行",
-		"leaderboards": ["fastest_clear_all", "fastest_level_clear"]
-	},
-	"damage": {
-		"name": "伤害排行",
-		"leaderboards": ["highest_single_damage", "total_damage_dealt"]
-	},
-	"wins": {
-		"name": "胜场排行",
-		"leaderboards": ["total_wins", "win_rate"]
-	},
-	"collection": {
-		"name": "收集排行",
-		"leaderboards": ["collection_completion", "blueprint_unlocked"]
-	},
-	"progress": {
-		"name": "进度排行",
-		"leaderboards": ["highest_level", "all_stars"]
-	}
-}
-
 ## 获取排行榜定义
 static func get_leaderboard(leaderboard_id: String) -> Dictionary:
 	if LEADERBOARDS.has(leaderboard_id):
 		return LEADERBOARDS[leaderboard_id]
 	return {}
-
-## 获取分类下的所有排行榜
-static func get_leaderboards_by_category(category: String) -> Array:
-	if LEADERBOARD_CATEGORIES.has(category):
-		var category_data = LEADERBOARD_CATEGORIES[category]
-		var leaderboards = []
-		for lb_id in category_data.leaderboards:
-			leaderboards.append(get_leaderboard(lb_id))
-		return leaderboards
-	return []
 
 ## 格式化分数显示
 static func format_score(score: float, format_type: String) -> String:

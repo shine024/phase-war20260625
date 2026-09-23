@@ -45,7 +45,6 @@ func _run() -> void:
 		"res://scenes/ui/help_panel.gd",
 		"res://scenes/ui/player_master_panel.gd",
 		"res://scenes/ui/store_panel.gd",
-		"res://scenes/ui/occupation_panel.gd",
 		"res://scenes/ui/settings_panel.gd",
 		"res://scenes/ui/quest_panel.gd",
 		"res://scenes/ui/leaderboard/leaderboard_panel.gd",

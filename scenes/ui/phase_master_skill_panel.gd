@@ -184,7 +184,12 @@ func _build_ui() -> void:
 		# v6.14：去掉英文道标 COMMAND/INTEL/FIRE（用户报技能树残留英文）——
 		# 分支中文名已由 get_branch_display_name 给出，英文后缀纯装饰径删
 		lane_title.text = "▎%s" % SkillTree.get_branch_display_name(branch)
-		lane_title.custom_minimum_size = Vector2(SkillBoard.LANE_W, 0)
+		# 2026-09-22 勘误：LANE_SLOTS 4→5 后 LANE_W 354×3 的固定 min 宽把面板撑出
+		# 视口（右上"下一个/总览"按钮出界 27-32%，UI 体检 B 类实测）。吸顶标题本就
+		# 只在 scroll=0 时与板面对齐（板体横向滚动后必然错位），改弹性均分——
+		# 不再撑面板最小宽，视觉近似对齐。
+		lane_title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		lane_title.custom_minimum_size = Vector2(0, 0)
 		lane_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		lane_title.add_theme_font_size_override("font_size", DT.FONT_SIZE_BODY)
 		lane_title.add_theme_color_override("font_color", SkillTree.get_branch_color(branch))
@@ -194,12 +199,15 @@ func _build_ui() -> void:
 			gap_spacer.custom_minimum_size = Vector2(SkillBoard.LANE_GAP, 0)
 			lane_bar.add_child(gap_spacer)
 
-	# —— 主板（纵向滚动）——
+	# —— 主板（纵向滚动 + 横向自适应滚动）——
+	# 2026-09-22 勘误：横向滚动禁用时板体 min 宽（BOARD_W 1128）直接传导面板，
+	# 把面板撑出视口、右上按钮出界（UI 体检 B 类）。改 AUTO：窄视口出横向滚动条，
+	# 面板最小宽回归 chrome 契约。
 	var scroll := ScrollContainer.new()
 	scroll.name = "BoardScroll"
 	scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
 	main_vb.add_child(scroll)
 	_board_scroll = scroll
 	_board = SkillBoard.new()
@@ -724,7 +732,12 @@ func _update_points_label() -> void:
 		return
 	var avail: int = mgr.get_available_points()
 	var spent: int = mgr.get_spent_points()
-	_points_label.text = "  可用技能点：%d（已用 %d）" % [avail, spent]
+	# v36：状态行并显可运用战力上限（精神同调链）——玩家在树内即可看到"能用多强的卡"
+	var cap: int = mgr.get_power_cap() if mgr.has_method("get_power_cap") else -1
+	if cap > 0:
+		_points_label.text = "  可用技能点：%d（已用 %d）　·　可运用战力上限：%d" % [avail, spent, cap]
+	else:
+		_points_label.text = "  可用技能点：%d（已用 %d）" % [avail, spent]
 
 
 func _refresh() -> void:

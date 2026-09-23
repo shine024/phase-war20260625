@@ -2,9 +2,14 @@ name: Automated Tests
 
 on:
   push:
-    branches: [main, master]
+    branches:
+      - main
+      - master
+      - 'feat/**'   # P3-7：现役集成分支（feat/v6.14-system-integration 等）也常跑门禁
   pull_request:
-    branches: [main, master]
+    branches:
+      - main
+      - master
 
 jobs:
   test:

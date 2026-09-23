@@ -1,68 +1,132 @@
-[gd_scene load_steps=10 format=3 uid="uid://b8xk3l2m5n6o"]
+[gd_scene load_steps=18 format=3 uid="uid://b8xk3l2m5n6o"]
 
 [ext_resource type="Script" uid="uid://y1ndf5171i4b" path="res://scenes/ui/card_info_panel.gd" id="1_abcde"]
+[ext_resource type="FontFile" path="res://assets/fonts/Rajdhani-SemiBold.ttf" id="2_numfont"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_bar_bg"]
+bg_color = Color(0.08, 0.11, 0.14, 1)
+border_width_left = 0
+border_width_top = 0
+border_width_right = 0
+border_width_bottom = 0
+corner_radius_top_left = 0
+corner_radius_top_right = 0
+corner_radius_bottom_right = 0
+corner_radius_bottom_left = 0
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_bar_fill_my"]
+bg_color = Color(0.325, 0.61, 0.73, 1)
+corner_radius_top_left = 0
+corner_radius_top_right = 0
+corner_radius_bottom_right = 0
+corner_radius_bottom_left = 0
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_hpbar_bg"]
+bg_color = Color(0.137, 0.173, 0.208, 1)
+corner_radius_top_left = 0
+corner_radius_top_right = 0
+corner_radius_bottom_right = 0
+corner_radius_bottom_left = 0
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_hpbar_fill"]
+bg_color = Color(0.2, 0.75, 0.35, 1)
+corner_radius_top_left = 0
+corner_radius_top_right = 0
+corner_radius_bottom_right = 0
+corner_radius_bottom_left = 0
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_bar_fill_it"]
+bg_color = Color(0.698, 0.36, 0.325, 1)
+corner_radius_top_left = 0
+corner_radius_top_right = 0
+corner_radius_bottom_right = 0
+corner_radius_bottom_left = 0
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_panel"]
-bg_color = Color(0.05, 0.08, 0.14, 0.97)
-border_width_left = 2
-border_width_top = 2
-border_width_right = 2
-border_width_bottom = 2
-border_color = Color(0, 0.75, 0.9, 0.7)
-corner_radius_top_left = 10
-corner_radius_top_right = 10
-corner_radius_bottom_right = 10
-corner_radius_bottom_left = 10
-shadow_color = Color(0, 0.5, 0.8, 0.35)
-shadow_size = 6
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_header"]
-bg_color = Color(0.1, 0.14, 0.22, 0.9)
-border_width_left = 4
-border_width_top = 0
-border_width_right = 0
-border_width_bottom = 0
-border_color = Color(0.4, 0.7, 1, 1)
+bg_color = Color(0.071, 0.114, 0.153, 0.98)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.169, 0.655, 0.788, 0.8)
 corner_radius_top_left = 6
 corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
+shadow_color = Color(0, 0, 0, 0.45)
+shadow_size = 10
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_cell"]
+bg_color = Color(0.051, 0.086, 0.114, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.141, 0.267, 0.31, 1)
+corner_radius_top_left = 0
+corner_radius_top_right = 0
+corner_radius_bottom_right = 0
+corner_radius_bottom_left = 0
+content_margin_left = 8.0
+content_margin_right = 8.0
+content_margin_top = 3.0
+content_margin_bottom = 3.0
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_portrait"]
+bg_color = Color(0.051, 0.086, 0.114, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.141, 0.267, 0.31, 1)
+corner_radius_top_left = 0
+corner_radius_top_right = 0
+corner_radius_bottom_right = 0
+corner_radius_bottom_left = 0
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_badge"]
+bg_color = Color(0.345, 0.835, 0.969, 0.08)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.345, 0.835, 0.969, 0.6)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
 corner_radius_bottom_right = 4
 corner_radius_bottom_left = 4
+content_margin_left = 8.0
+content_margin_right = 8.0
+content_margin_top = 2.0
+content_margin_bottom = 2.0
 
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_section"]
-bg_color = Color(0.08, 0.11, 0.18, 0.75)
-border_width_left = 3
-border_width_top = 0
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_bottom"]
+bg_color = Color(0, 0, 0, 0)
+border_width_left = 0
+border_width_top = 2
 border_width_right = 0
 border_width_bottom = 0
-border_color = Color(0.25, 0.35, 0.5, 0.6)
-corner_radius_top_left = 3
-corner_radius_top_right = 3
-corner_radius_bottom_right = 3
-corner_radius_bottom_left = 3
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_stat_card"]
-bg_color = Color(0.1, 0.14, 0.2, 0.8)
-border_width_left = 1
-border_width_top = 1
-border_width_right = 1
-border_width_bottom = 1
-border_color = Color(0.3, 0.4, 0.55, 0.5)
-corner_radius_top_left = 6
-corner_radius_top_right = 6
-corner_radius_bottom_right = 6
-corner_radius_bottom_left = 6
+border_color = Color(0.118, 0.235, 0.29, 1)
+corner_radius_top_left = 0
+corner_radius_top_right = 0
+corner_radius_bottom_right = 0
+corner_radius_bottom_left = 0
+content_margin_left = 2.0
+content_margin_right = 2.0
+content_margin_top = 8.0
+content_margin_bottom = 2.0
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_close_btn"]
-bg_color = Color(0.15, 0.18, 0.28, 0.95)
+bg_color = Color(0.06, 0.09, 0.13, 0.6)
 border_width_left = 1
 border_width_top = 1
 border_width_right = 1
 border_width_bottom = 1
-border_color = Color(0.35, 0.45, 0.65, 0.8)
-corner_radius_top_left = 6
-corner_radius_top_right = 6
-corner_radius_bottom_right = 6
-corner_radius_bottom_left = 6
+border_color = Color(0.141, 0.267, 0.31, 0.8)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_tab_bg"]
 bg_color = Color(0.07, 0.1, 0.16, 0.9)
@@ -107,71 +171,100 @@ script = ExtResource("1_abcde")
 
 [node name="Margin" type="MarginContainer" parent="."]
 layout_mode = 2
-theme_override_constants/margin_left = 12
-theme_override_constants/margin_top = 10
-theme_override_constants/margin_right = 12
-theme_override_constants/margin_bottom = 10
+theme_override_constants/margin_left = 20
+theme_override_constants/margin_top = 12
+theme_override_constants/margin_right = 20
+theme_override_constants/margin_bottom = 12
 
 [node name="VBox" type="VBoxContainer" parent="Margin"]
 layout_mode = 2
-theme_override_constants/separation = 6
+theme_override_constants/separation = 8
 
-[node name="HeaderPanel" type="PanelContainer" parent="Margin/VBox"]
+[node name="TitleRow" type="VBoxContainer" parent="Margin/VBox"]
 layout_mode = 2
-theme_override_styles/panel = SubResource("StyleBoxFlat_header")
+theme_override_constants/separation = 2
 
-[node name="HeaderVBox" type="VBoxContainer" parent="Margin/VBox/HeaderPanel"]
-layout_mode = 2
-theme_override_constants/separation = 4
-theme_override_constants/margin_left = 10
-theme_override_constants/margin_top = 8
-theme_override_constants/margin_right = 10
-theme_override_constants/margin_bottom = 8
-
-[node name="NameStarRow" type="HBoxContainer" parent="Margin/VBox/HeaderPanel/HeaderVBox"]
+[node name="NameRow" type="HBoxContainer" parent="Margin/VBox/TitleRow"]
 layout_mode = 2
 theme_override_constants/separation = 8
 
-[node name="NameLabel" type="Label" parent="Margin/VBox/HeaderPanel/HeaderVBox/NameStarRow"]
+[node name="NameLabel" type="Label" parent="Margin/VBox/TitleRow/NameRow"]
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_colors/font_color = Color(0.95, 0.97, 1, 1)
-theme_override_font_sizes/font_size = 20
+theme_override_colors/font_color = Color(0.949, 0.973, 0.984, 1)
+theme_override_font_sizes/font_size = 24
 text = "卡片名称"
+text_overrun_behavior = 3
 
-[node name="StarLabel" type="Label" parent="Margin/VBox/HeaderPanel/HeaderVBox/NameStarRow"]
+[node name="StarLabel" type="Label" parent="Margin/VBox/TitleRow/NameRow"]
 layout_mode = 2
-theme_override_colors/font_color = Color(1, 0.82, 0.35, 1)
-theme_override_font_sizes/font_size = 16
+theme_override_colors/font_color = Color(1, 0.85, 0.35, 1)
+theme_override_font_sizes/font_size = 14
 text = ""
+vertical_alignment = 1
 
-[node name="RarityCostRow" type="HBoxContainer" parent="Margin/VBox/HeaderPanel/HeaderVBox"]
+[node name="TypeBadge" type="PanelContainer" parent="Margin/VBox/TitleRow/NameRow"]
 layout_mode = 2
-theme_override_constants/separation = 8
+theme_override_styles/panel = SubResource("StyleBoxFlat_badge")
 
-[node name="RarityLabel" type="Label" parent="Margin/VBox/HeaderPanel/HeaderVBox/RarityCostRow"]
+[node name="TypeBadgeLabel" type="Label" parent="Margin/VBox/TitleRow/NameRow/TypeBadge"]
 layout_mode = 2
-size_flags_horizontal = 3
-theme_override_colors/font_color = Color(0.75, 0.78, 0.85, 1)
+theme_override_colors/font_color = Color(0.345, 0.835, 0.969, 1)
 theme_override_font_sizes/font_size = 12
 text = ""
+horizontal_alignment = 1
 
-[node name="CostLabel" type="Label" parent="Margin/VBox/HeaderPanel/HeaderVBox/RarityCostRow"]
+[node name="CloseButton" type="Button" parent="Margin/VBox/TitleRow/NameRow"]
+custom_minimum_size = Vector2(30, 30)
 layout_mode = 2
-theme_override_colors/font_color = Color(0.95, 0.7, 0.25, 1)
+theme_override_colors/font_color = Color(0.75, 0.8, 0.85, 1)
+theme_override_colors/font_hover_color = Color(1, 1, 1, 1)
+theme_override_colors/font_pressed_color = Color(1, 1, 1, 1)
+theme_override_font_sizes/font_size = 14
+theme_override_styles/normal = SubResource("StyleBoxFlat_close_btn")
+theme_override_styles/hover = SubResource("StyleBoxFlat_close_btn")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_close_btn")
+text = "✕"
+
+[node name="UnitHpBar" type="ProgressBar" parent="Margin/VBox/TitleRow"]
+visible = false
+custom_minimum_size = Vector2(0, 6)
+layout_mode = 2
+size_flags_vertical = 4
+theme_override_styles/background = SubResource("StyleBoxFlat_hpbar_bg")
+theme_override_styles/fill = SubResource("StyleBoxFlat_hpbar_fill")
+max_value = 100.0
+value = 100.0
+show_percentage = false
+
+[node name="RarityRow" type="HBoxContainer" parent="Margin/VBox/TitleRow"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="RarityLabel" type="Label" parent="Margin/VBox/TitleRow/RarityRow"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.812, 0.89, 0.933, 1)
 theme_override_font_sizes/font_size = 13
 text = ""
 
-[node name="TypeLabel" type="Label" parent="Margin/VBox"]
+[node name="TierLabel" type="Label" parent="Margin/VBox/TitleRow/RarityRow"]
+visible = false
 layout_mode = 2
-theme_override_colors/font_color = Color(0.8, 0.74, 0.55, 1)
+theme_override_colors/font_color = Color(1, 0.85, 0.35, 1)
 theme_override_font_sizes/font_size = 12
-horizontal_alignment = 1
+text = ""
+
+[node name="CostLabel" type="Label" parent="Margin/VBox/TitleRow/RarityRow"]
+layout_mode = 2
+size_flags_horizontal = 8
+theme_override_colors/font_color = Color(1, 0.85, 0.35, 1)
+theme_override_font_sizes/font_size = 13
+text = ""
 
 [node name="EvolutionMark" type="PanelContainer" parent="Margin/VBox"]
 visible = false
 layout_mode = 2
-alignment = 1
+size_flags_horizontal = 8
 theme_override_styles/panel = SubResource("StyleBoxFlat_evolution_mark")
 
 [node name="EvolutionMarkLabel" type="Label" parent="Margin/VBox/EvolutionMark"]
@@ -179,13 +272,6 @@ layout_mode = 2
 theme_override_colors/font_color = Color(0.85, 0.70, 1.0, 1)
 theme_override_font_sizes/font_size = 12
 text = "✦ 继承加成"
-horizontal_alignment = 1
-
-[node name="TierLabel" type="Label" parent="Margin/VBox"]
-visible = false
-layout_mode = 2
-theme_override_colors/font_color = Color(0.95, 0.75, 0.2, 1)
-theme_override_font_sizes/font_size = 12
 horizontal_alignment = 1
 
 [node name="RankBadgeHost" type="HBoxContainer" parent="Margin/VBox"]
@@ -202,308 +288,519 @@ theme_override_styles/panel = SubResource("StyleBoxFlat_tab_bg")
 theme_override_styles/tab_selected = SubResource("StyleBoxFlat_tab_selected")
 theme_override_styles/tab_unselected = SubResource("StyleBoxFlat_tab_unselected")
 
-[node name="TabInfo" type="ScrollContainer" parent="Margin/VBox/TabBar"]
+[node name="TabInfo" type="VBoxContainer" parent="Margin/VBox/TabBar"]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
-horizontal_scroll_mode = 0
+theme_override_constants/separation = 12
 metadata/_tab_index = 0
 
-[node name="InfoVBox" type="VBoxContainer" parent="Margin/VBox/TabBar/TabInfo"]
+[node name="TabDetail" type="VBoxContainer" parent="Margin/VBox/TabBar"]
+visible = false
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
+metadata/_tab_index = 1
+
+[node name="PortraitPanel" type="PanelContainer" parent="Margin/VBox/TabBar/TabInfo"]
+custom_minimum_size = Vector2(0, 190)
+size_flags_vertical = 3
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_portrait")
+
+[node name="PortraitRect" type="TextureRect" parent="Margin/VBox/TabBar/TabInfo/PortraitPanel"]
+layout_mode = 2
+expand_mode = 1
+stretch_mode = 5
+
+[node name="PortraitPlaceholder" type="Label" parent="Margin/VBox/TabBar/TabInfo/PortraitPanel"]
+visible = false
+layout_mode = 2
+theme_override_colors/font_color = Color(0.47, 0.52, 0.60, 1)
+theme_override_font_sizes/font_size = 40
+text = "？"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="CoreRow" type="HBoxContainer" parent="Margin/VBox/TabBar/TabInfo"]
+custom_minimum_size = Vector2(0, 84)
+layout_mode = 2
 theme_override_constants/separation = 8
 
-[node name="StatsSection" type="PanelContainer" parent="Margin/VBox/TabBar/TabInfo/InfoVBox"]
-layout_mode = 2
-theme_override_styles/panel = SubResource("StyleBoxFlat_section")
-
-[node name="StatsVBox" type="VBoxContainer" parent="Margin/VBox/TabBar/TabInfo/InfoVBox/StatsSection"]
-layout_mode = 2
-theme_override_constants/separation = 6
-theme_override_constants/margin_left = 10
-theme_override_constants/margin_top = 6
-theme_override_constants/margin_right = 10
-theme_override_constants/margin_bottom = 6
-
-[node name="StatsTitle" type="Label" parent="Margin/VBox/TabBar/TabInfo/InfoVBox/StatsSection/StatsVBox"]
-layout_mode = 2
-theme_override_colors/font_color = Color(0.4, 0.9, 0.5, 1)
-theme_override_font_sizes/font_size = 13
-text = "三维攻防"
-
-[node name="StatCardsRow" type="HBoxContainer" parent="Margin/VBox/TabBar/TabInfo/InfoVBox/StatsSection/StatsVBox"]
-layout_mode = 2
-theme_override_constants/separation = 8
-
-[node name="HpCard" type="PanelContainer" parent="Margin/VBox/TabBar/TabInfo/InfoVBox/StatsSection/StatsVBox/StatCardsRow"]
+[node name="PowerCell" type="PanelContainer" parent="Margin/VBox/TabBar/TabInfo/CoreRow"]
 layout_mode = 2
 size_flags_horizontal = 3
-custom_minimum_size = Vector2(0, 78)
-theme_override_styles/panel = SubResource("StyleBoxFlat_stat_card")
+size_flags_stretch_ratio = 1.4
+theme_override_styles/panel = SubResource("StyleBoxFlat_cell")
 
-[node name="HpVBox" type="VBoxContainer" parent="Margin/VBox/TabBar/TabInfo/InfoVBox/StatsSection/StatsVBox/StatCardsRow/HpCard"]
+[node name="PowerVBox" type="VBoxContainer" parent="Margin/VBox/TabBar/TabInfo/CoreRow/PowerCell"]
 layout_mode = 2
-theme_override_constants/separation = 2
-theme_override_constants/margin_left = 8
-theme_override_constants/margin_top = 8
-theme_override_constants/margin_right = 8
-theme_override_constants/margin_bottom = 8
+alignment = 1
+theme_override_constants/separation = 0
 
-[node name="HpTitle" type="Label" parent="Margin/VBox/TabBar/TabInfo/InfoVBox/StatsSection/StatsVBox/StatCardsRow/HpCard/HpVBox"]
+[node name="PowerName" type="Label" parent="Margin/VBox/TabBar/TabInfo/CoreRow/PowerCell/PowerVBox"]
 layout_mode = 2
-theme_override_colors/font_color = Color(0.5, 0.85, 0.55, 0.8)
+theme_override_colors/font_color = Color(0.373, 0.561, 0.627, 1)
+theme_override_font_sizes/font_size = 12
+text = "战力"
+horizontal_alignment = 1
+
+[node name="PowerValue" type="Label" parent="Margin/VBox/TabBar/TabInfo/CoreRow/PowerCell/PowerVBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.85, 0.35, 1)
+theme_override_fonts/font = ExtResource("2_numfont")
+theme_override_font_sizes/font_size = 40
+text = "0"
+horizontal_alignment = 1
+
+[node name="SideCells" type="VBoxContainer" parent="Margin/VBox/TabBar/TabInfo/CoreRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_stretch_ratio = 1.0
+theme_override_constants/separation = 4
+
+[node name="HpCell" type="PanelContainer" parent="Margin/VBox/TabBar/TabInfo/CoreRow/SideCells"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_styles/panel = SubResource("StyleBoxFlat_cell")
+
+[node name="HpHBox" type="HBoxContainer" parent="Margin/VBox/TabBar/TabInfo/CoreRow/SideCells/HpCell"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="HpName" type="Label" parent="Margin/VBox/TabBar/TabInfo/CoreRow/SideCells/HpCell/HpHBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.373, 0.561, 0.627, 1)
 theme_override_font_sizes/font_size = 12
 text = "耐久"
+vertical_alignment = 1
+
+[node name="HpValue" type="Label" parent="Margin/VBox/TabBar/TabInfo/CoreRow/SideCells/HpCell/HpHBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.949, 0.973, 0.984, 1)
+theme_override_fonts/font = ExtResource("2_numfont")
+theme_override_font_sizes/font_size = 20
+text = "0"
+horizontal_alignment = 2
+vertical_alignment = 1
+
+[node name="RangeCell" type="PanelContainer" parent="Margin/VBox/TabBar/TabInfo/CoreRow/SideCells"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_styles/panel = SubResource("StyleBoxFlat_cell")
+
+[node name="RangeHBox" type="HBoxContainer" parent="Margin/VBox/TabBar/TabInfo/CoreRow/SideCells/RangeCell"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="RangeName" type="Label" parent="Margin/VBox/TabBar/TabInfo/CoreRow/SideCells/RangeCell/RangeHBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.373, 0.561, 0.627, 1)
+theme_override_font_sizes/font_size = 12
+text = "射程"
+vertical_alignment = 1
+
+[node name="RangeValue" type="Label" parent="Margin/VBox/TabBar/TabInfo/CoreRow/SideCells/RangeCell/RangeHBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.949, 0.973, 0.984, 1)
+theme_override_fonts/font = ExtResource("2_numfont")
+theme_override_font_sizes/font_size = 20
+text = "0"
+horizontal_alignment = 2
+vertical_alignment = 1
+
+[node name="MoveCell" type="PanelContainer" parent="Margin/VBox/TabBar/TabInfo/CoreRow/SideCells"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_styles/panel = SubResource("StyleBoxFlat_cell")
+
+[node name="MoveHBox" type="HBoxContainer" parent="Margin/VBox/TabBar/TabInfo/CoreRow/SideCells/MoveCell"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="MoveName" type="Label" parent="Margin/VBox/TabBar/TabInfo/CoreRow/SideCells/MoveCell/MoveHBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.373, 0.561, 0.627, 1)
+theme_override_font_sizes/font_size = 12
+text = "移速"
+vertical_alignment = 1
+
+[node name="MoveValue" type="Label" parent="Margin/VBox/TabBar/TabInfo/CoreRow/SideCells/MoveCell/MoveHBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.949, 0.973, 0.984, 1)
+theme_override_fonts/font = ExtResource("2_numfont")
+theme_override_font_sizes/font_size = 20
+text = "0"
+horizontal_alignment = 2
+vertical_alignment = 1
+
+[node name="MatrixRow" type="HBoxContainer" parent="Margin/VBox/TabBar/TabInfo"]
+custom_minimum_size = Vector2(0, 60)
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="MatrixCellL" type="PanelContainer" parent="Margin/VBox/TabBar/TabInfo/MatrixRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_styles/panel = SubResource("StyleBoxFlat_cell")
+
+[node name="MatrixVBoxL" type="VBoxContainer" parent="Margin/VBox/TabBar/TabInfo/MatrixRow/MatrixCellL"]
+layout_mode = 2
+alignment = 1
+theme_override_constants/separation = 0
+
+[node name="MNameL" type="Label" parent="Margin/VBox/TabBar/TabInfo/MatrixRow/MatrixCellL/MatrixVBoxL"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.373, 0.561, 0.627, 1)
+theme_override_font_sizes/font_size = 12
+text = "对轻装"
 horizontal_alignment = 1
 
-[node name="HpValue" type="Label" parent="Margin/VBox/TabBar/TabInfo/InfoVBox/StatsSection/StatsVBox/StatCardsRow/HpCard/HpVBox"]
+[node name="MValueL" type="Label" parent="Margin/VBox/TabBar/TabInfo/MatrixRow/MatrixCellL/MatrixVBoxL"]
 layout_mode = 2
-theme_override_colors/font_color = Color(0.3, 0.95, 0.45, 1)
-theme_override_font_sizes/font_size = 22
+theme_override_colors/font_color = Color(0.949, 0.973, 0.984, 1)
+theme_override_fonts/font = ExtResource("2_numfont")
+theme_override_font_sizes/font_size = 20
 text = "0"
 horizontal_alignment = 1
 
-[node name="HpSub" type="Label" parent="Margin/VBox/TabBar/TabInfo/InfoVBox/StatsSection/StatsVBox/StatCardsRow/HpCard/HpVBox"]
-layout_mode = 2
-theme_override_colors/font_color = Color(0.55, 0.75, 0.6, 0.85)
-theme_override_font_sizes/font_size = 12
-text = ""
-horizontal_alignment = 1
-
-[node name="AtkCard" type="PanelContainer" parent="Margin/VBox/TabBar/TabInfo/InfoVBox/StatsSection/StatsVBox/StatCardsRow"]
+[node name="MatrixCellA" type="PanelContainer" parent="Margin/VBox/TabBar/TabInfo/MatrixRow"]
 layout_mode = 2
 size_flags_horizontal = 3
-custom_minimum_size = Vector2(0, 78)
-theme_override_styles/panel = SubResource("StyleBoxFlat_stat_card")
+theme_override_styles/panel = SubResource("StyleBoxFlat_cell")
 
-[node name="AtkVBox" type="VBoxContainer" parent="Margin/VBox/TabBar/TabInfo/InfoVBox/StatsSection/StatsVBox/StatCardsRow/AtkCard"]
+[node name="MatrixVBoxA" type="VBoxContainer" parent="Margin/VBox/TabBar/TabInfo/MatrixRow/MatrixCellA"]
 layout_mode = 2
-theme_override_constants/separation = 2
-theme_override_constants/margin_left = 8
-theme_override_constants/margin_top = 8
-theme_override_constants/margin_right = 8
-theme_override_constants/margin_bottom = 8
+alignment = 1
+theme_override_constants/separation = 0
 
-[node name="AtkTitle" type="Label" parent="Margin/VBox/TabBar/TabInfo/InfoVBox/StatsSection/StatsVBox/StatCardsRow/AtkCard/AtkVBox"]
+[node name="MNameA" type="Label" parent="Margin/VBox/TabBar/TabInfo/MatrixRow/MatrixCellA/MatrixVBoxA"]
 layout_mode = 2
-theme_override_colors/font_color = Color(0.5, 0.85, 0.9, 0.8)
+theme_override_colors/font_color = Color(0.373, 0.561, 0.627, 1)
 theme_override_font_sizes/font_size = 12
-text = "攻击"
+text = "对装甲"
 horizontal_alignment = 1
 
-[node name="AtkValue" type="Label" parent="Margin/VBox/TabBar/TabInfo/InfoVBox/StatsSection/StatsVBox/StatCardsRow/AtkCard/AtkVBox"]
+[node name="MValueA" type="Label" parent="Margin/VBox/TabBar/TabInfo/MatrixRow/MatrixCellA/MatrixVBoxA"]
 layout_mode = 2
-theme_override_colors/font_color = Color(0, 0.94, 1, 1)
-theme_override_font_sizes/font_size = 22
+theme_override_colors/font_color = Color(0.949, 0.973, 0.984, 1)
+theme_override_fonts/font = ExtResource("2_numfont")
+theme_override_font_sizes/font_size = 20
 text = "0"
 horizontal_alignment = 1
 
-[node name="AtkSub" type="Label" parent="Margin/VBox/TabBar/TabInfo/InfoVBox/StatsSection/StatsVBox/StatCardsRow/AtkCard/AtkVBox"]
-layout_mode = 2
-theme_override_colors/font_color = Color(0.5, 0.75, 0.85, 0.85)
-theme_override_font_sizes/font_size = 12
-text = ""
-autowrap_mode = 2
-horizontal_alignment = 1
-
-[node name="DefCard" type="PanelContainer" parent="Margin/VBox/TabBar/TabInfo/InfoVBox/StatsSection/StatsVBox/StatCardsRow"]
+[node name="MatrixCellAir" type="PanelContainer" parent="Margin/VBox/TabBar/TabInfo/MatrixRow"]
 layout_mode = 2
 size_flags_horizontal = 3
-custom_minimum_size = Vector2(0, 78)
-theme_override_styles/panel = SubResource("StyleBoxFlat_stat_card")
+theme_override_styles/panel = SubResource("StyleBoxFlat_cell")
 
-[node name="DefVBox" type="VBoxContainer" parent="Margin/VBox/TabBar/TabInfo/InfoVBox/StatsSection/StatsVBox/StatCardsRow/DefCard"]
+[node name="MatrixVBoxAir" type="VBoxContainer" parent="Margin/VBox/TabBar/TabInfo/MatrixRow/MatrixCellAir"]
 layout_mode = 2
-theme_override_constants/separation = 2
-theme_override_constants/margin_left = 8
-theme_override_constants/margin_top = 8
-theme_override_constants/margin_right = 8
-theme_override_constants/margin_bottom = 8
+alignment = 1
+theme_override_constants/separation = 0
 
-[node name="DefTitle" type="Label" parent="Margin/VBox/TabBar/TabInfo/InfoVBox/StatsSection/StatsVBox/StatCardsRow/DefCard/DefVBox"]
+[node name="MNameAir" type="Label" parent="Margin/VBox/TabBar/TabInfo/MatrixRow/MatrixCellAir/MatrixVBoxAir"]
 layout_mode = 2
-theme_override_colors/font_color = Color(0.6, 0.7, 0.95, 0.8)
+theme_override_colors/font_color = Color(0.373, 0.561, 0.627, 1)
+theme_override_font_sizes/font_size = 12
+text = "对空中"
+horizontal_alignment = 1
+
+[node name="MValueAir" type="Label" parent="Margin/VBox/TabBar/TabInfo/MatrixRow/MatrixCellAir/MatrixVBoxAir"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.949, 0.973, 0.984, 1)
+theme_override_fonts/font = ExtResource("2_numfont")
+theme_override_font_sizes/font_size = 20
+text = "0"
+horizontal_alignment = 1
+
+[node name="MatrixCellDef" type="PanelContainer" parent="Margin/VBox/TabBar/TabInfo/MatrixRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_styles/panel = SubResource("StyleBoxFlat_cell")
+
+[node name="MatrixVBoxDef" type="VBoxContainer" parent="Margin/VBox/TabBar/TabInfo/MatrixRow/MatrixCellDef"]
+layout_mode = 2
+alignment = 1
+theme_override_constants/separation = 0
+
+[node name="MNameDef" type="Label" parent="Margin/VBox/TabBar/TabInfo/MatrixRow/MatrixCellDef/MatrixVBoxDef"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.373, 0.561, 0.627, 1)
 theme_override_font_sizes/font_size = 12
 text = "防御"
 horizontal_alignment = 1
 
-[node name="DefValue" type="Label" parent="Margin/VBox/TabBar/TabInfo/InfoVBox/StatsSection/StatsVBox/StatCardsRow/DefCard/DefVBox"]
+[node name="MValueDef" type="Label" parent="Margin/VBox/TabBar/TabInfo/MatrixRow/MatrixCellDef/MatrixVBoxDef"]
 layout_mode = 2
-theme_override_colors/font_color = Color(0.5, 0.7, 1, 1)
-theme_override_font_sizes/font_size = 22
+theme_override_colors/font_color = Color(0.949, 0.973, 0.984, 1)
+theme_override_fonts/font = ExtResource("2_numfont")
+theme_override_font_sizes/font_size = 20
 text = "0"
 horizontal_alignment = 1
 
-[node name="DefSub" type="Label" parent="Margin/VBox/TabBar/TabInfo/InfoVBox/StatsSection/StatsVBox/StatCardsRow/DefCard/DefVBox"]
+[node name="SlashLabel" type="Label" parent="Margin/VBox/TabBar/TabInfo"]
 layout_mode = 2
-theme_override_colors/font_color = Color(0.55, 0.65, 0.85, 0.85)
-theme_override_font_sizes/font_size = 12
+theme_override_colors/font_color = Color(0.67, 0.72, 0.82, 1)
+theme_override_font_sizes/font_size = 13
 text = ""
-autowrap_mode = 2
-horizontal_alignment = 1
 
-[node name="ExtraStatLabel" type="Label" parent="Margin/VBox/TabBar/TabInfo/InfoVBox/StatsSection/StatsVBox"]
+[node name="AffixScroll" type="ScrollContainer" parent="Margin/VBox/TabBar/TabDetail"]
 layout_mode = 2
-theme_override_colors/font_color = Color(0.65, 0.75, 0.8, 0.85)
-theme_override_font_sizes/font_size = 12
-text = ""
-autowrap_mode = 2
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
 
-[node name="SummaryLabel" type="Label" parent="Margin/VBox/TabBar/TabInfo/InfoVBox/StatsSection/StatsVBox"]
+[node name="AffixList" type="VBoxContainer" parent="Margin/VBox/TabBar/TabDetail/AffixScroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 8
+
+[node name="TargetCompareBlock" type="VBoxContainer" parent="Margin/VBox/TabBar/TabDetail/AffixScroll/AffixList"]
 visible = false
 layout_mode = 2
-theme_override_colors/font_color = Color(0.65, 0.85, 0.65, 1)
-theme_override_font_sizes/font_size = 12
-autowrap_mode = 2
-
-[node name="AffixSection" type="PanelContainer" parent="Margin/VBox/TabBar/TabInfo/InfoVBox"]
-layout_mode = 2
-theme_override_styles/panel = SubResource("StyleBoxFlat_section")
-
-[node name="AffixVBox" type="VBoxContainer" parent="Margin/VBox/TabBar/TabInfo/InfoVBox/AffixSection"]
-layout_mode = 2
 theme_override_constants/separation = 4
-theme_override_constants/margin_left = 10
-theme_override_constants/margin_top = 6
-theme_override_constants/margin_right = 10
-theme_override_constants/margin_bottom = 6
 
-[node name="AffixTitle" type="Label" parent="Margin/VBox/TabBar/TabInfo/InfoVBox/AffixSection/AffixVBox"]
+[node name="TargetCompareCaption" type="Label" parent="Margin/VBox/TabBar/TabDetail/AffixScroll/AffixList/TargetCompareBlock"]
 layout_mode = 2
-theme_override_colors/font_color = Color(0.75, 0.55, 1, 1)
-theme_override_font_sizes/font_size = 13
-text = "词条属性"
+theme_override_colors/font_color = Color(0.373, 0.561, 0.627, 1)
+theme_override_font_sizes/font_size = 12
+text = "目标对比"
 
-[node name="AffixFlow" type="VBoxContainer" parent="Margin/VBox/TabBar/TabInfo/InfoVBox/AffixSection/AffixVBox"]
+[node name="CompareRowL" type="HBoxContainer" parent="Margin/VBox/TabBar/TabDetail/AffixScroll/AffixList/TargetCompareBlock"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="CmpNameL" type="Label" parent="Margin/VBox/TabBar/TabDetail/AffixScroll/AffixList/TargetCompareBlock/CompareRowL"]
+custom_minimum_size = Vector2(50, 0)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.373, 0.561, 0.627, 1)
+theme_override_font_sizes/font_size = 12
+text = "对轻装"
+vertical_alignment = 1
+
+[node name="CmpMyBarL" type="ProgressBar" parent="Margin/VBox/TabBar/TabDetail/AffixScroll/AffixList/TargetCompareBlock/CompareRowL"]
+custom_minimum_size = Vector2(0, 10)
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 4
+theme_override_styles/background = SubResource("StyleBoxFlat_bar_bg")
+theme_override_styles/fill = SubResource("StyleBoxFlat_bar_fill_my")
+max_value = 100.0
+value = 0.0
+show_percentage = false
+
+[node name="CmpMyValL" type="Label" parent="Margin/VBox/TabBar/TabDetail/AffixScroll/AffixList/TargetCompareBlock/CompareRowL"]
+custom_minimum_size = Vector2(36, 0)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.949, 0.973, 0.984, 1)
+theme_override_fonts/font = ExtResource("2_numfont")
+theme_override_font_sizes/font_size = 14
+text = "0"
+horizontal_alignment = 2
+vertical_alignment = 1
+
+[node name="CmpItBarL" type="ProgressBar" parent="Margin/VBox/TabBar/TabDetail/AffixScroll/AffixList/TargetCompareBlock/CompareRowL"]
+custom_minimum_size = Vector2(0, 10)
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 4
+theme_override_styles/background = SubResource("StyleBoxFlat_bar_bg")
+theme_override_styles/fill = SubResource("StyleBoxFlat_bar_fill_it")
+max_value = 100.0
+value = 0.0
+show_percentage = false
+
+[node name="CmpItValL" type="Label" parent="Margin/VBox/TabBar/TabDetail/AffixScroll/AffixList/TargetCompareBlock/CompareRowL"]
+custom_minimum_size = Vector2(36, 0)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.949, 0.973, 0.984, 1)
+theme_override_fonts/font = ExtResource("2_numfont")
+theme_override_font_sizes/font_size = 14
+text = "0"
+horizontal_alignment = 2
+vertical_alignment = 1
+
+[node name="CompareRowA" type="HBoxContainer" parent="Margin/VBox/TabBar/TabDetail/AffixScroll/AffixList/TargetCompareBlock"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="CmpNameA" type="Label" parent="Margin/VBox/TabBar/TabDetail/AffixScroll/AffixList/TargetCompareBlock/CompareRowA"]
+custom_minimum_size = Vector2(50, 0)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.373, 0.561, 0.627, 1)
+theme_override_font_sizes/font_size = 12
+text = "对装甲"
+vertical_alignment = 1
+
+[node name="CmpMyBarA" type="ProgressBar" parent="Margin/VBox/TabBar/TabDetail/AffixScroll/AffixList/TargetCompareBlock/CompareRowA"]
+custom_minimum_size = Vector2(0, 10)
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 4
+theme_override_styles/background = SubResource("StyleBoxFlat_bar_bg")
+theme_override_styles/fill = SubResource("StyleBoxFlat_bar_fill_my")
+max_value = 100.0
+value = 0.0
+show_percentage = false
+
+[node name="CmpMyValA" type="Label" parent="Margin/VBox/TabBar/TabDetail/AffixScroll/AffixList/TargetCompareBlock/CompareRowA"]
+custom_minimum_size = Vector2(36, 0)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.949, 0.973, 0.984, 1)
+theme_override_fonts/font = ExtResource("2_numfont")
+theme_override_font_sizes/font_size = 14
+text = "0"
+horizontal_alignment = 2
+vertical_alignment = 1
+
+[node name="CmpItBarA" type="ProgressBar" parent="Margin/VBox/TabBar/TabDetail/AffixScroll/AffixList/TargetCompareBlock/CompareRowA"]
+custom_minimum_size = Vector2(0, 10)
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 4
+theme_override_styles/background = SubResource("StyleBoxFlat_bar_bg")
+theme_override_styles/fill = SubResource("StyleBoxFlat_bar_fill_it")
+max_value = 100.0
+value = 0.0
+show_percentage = false
+
+[node name="CmpItValA" type="Label" parent="Margin/VBox/TabBar/TabDetail/AffixScroll/AffixList/TargetCompareBlock/CompareRowA"]
+custom_minimum_size = Vector2(36, 0)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.949, 0.973, 0.984, 1)
+theme_override_fonts/font = ExtResource("2_numfont")
+theme_override_font_sizes/font_size = 14
+text = "0"
+horizontal_alignment = 2
+vertical_alignment = 1
+
+[node name="CompareRowAir" type="HBoxContainer" parent="Margin/VBox/TabBar/TabDetail/AffixScroll/AffixList/TargetCompareBlock"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="CmpNameAir" type="Label" parent="Margin/VBox/TabBar/TabDetail/AffixScroll/AffixList/TargetCompareBlock/CompareRowAir"]
+custom_minimum_size = Vector2(50, 0)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.373, 0.561, 0.627, 1)
+theme_override_font_sizes/font_size = 12
+text = "对空中"
+vertical_alignment = 1
+
+[node name="CmpMyBarAir" type="ProgressBar" parent="Margin/VBox/TabBar/TabDetail/AffixScroll/AffixList/TargetCompareBlock/CompareRowAir"]
+custom_minimum_size = Vector2(0, 10)
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 4
+theme_override_styles/background = SubResource("StyleBoxFlat_bar_bg")
+theme_override_styles/fill = SubResource("StyleBoxFlat_bar_fill_my")
+max_value = 100.0
+value = 0.0
+show_percentage = false
+
+[node name="CmpMyValAir" type="Label" parent="Margin/VBox/TabBar/TabDetail/AffixScroll/AffixList/TargetCompareBlock/CompareRowAir"]
+custom_minimum_size = Vector2(36, 0)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.949, 0.973, 0.984, 1)
+theme_override_fonts/font = ExtResource("2_numfont")
+theme_override_font_sizes/font_size = 14
+text = "0"
+horizontal_alignment = 2
+vertical_alignment = 1
+
+[node name="CmpItBarAir" type="ProgressBar" parent="Margin/VBox/TabBar/TabDetail/AffixScroll/AffixList/TargetCompareBlock/CompareRowAir"]
+custom_minimum_size = Vector2(0, 10)
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 4
+theme_override_styles/background = SubResource("StyleBoxFlat_bar_bg")
+theme_override_styles/fill = SubResource("StyleBoxFlat_bar_fill_it")
+max_value = 100.0
+value = 0.0
+show_percentage = false
+
+[node name="CmpItValAir" type="Label" parent="Margin/VBox/TabBar/TabDetail/AffixScroll/AffixList/TargetCompareBlock/CompareRowAir"]
+custom_minimum_size = Vector2(36, 0)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.949, 0.973, 0.984, 1)
+theme_override_fonts/font = ExtResource("2_numfont")
+theme_override_font_sizes/font_size = 14
+text = "0"
+horizontal_alignment = 2
+vertical_alignment = 1
+
+[node name="CompareRowDef" type="HBoxContainer" parent="Margin/VBox/TabBar/TabDetail/AffixScroll/AffixList/TargetCompareBlock"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="CmpNameDef" type="Label" parent="Margin/VBox/TabBar/TabDetail/AffixScroll/AffixList/TargetCompareBlock/CompareRowDef"]
+custom_minimum_size = Vector2(50, 0)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.373, 0.561, 0.627, 1)
+theme_override_font_sizes/font_size = 12
+text = "防御"
+vertical_alignment = 1
+
+[node name="CmpMyBarDef" type="ProgressBar" parent="Margin/VBox/TabBar/TabDetail/AffixScroll/AffixList/TargetCompareBlock/CompareRowDef"]
+custom_minimum_size = Vector2(0, 10)
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 4
+theme_override_styles/background = SubResource("StyleBoxFlat_bar_bg")
+theme_override_styles/fill = SubResource("StyleBoxFlat_bar_fill_my")
+max_value = 100.0
+value = 0.0
+show_percentage = false
+
+[node name="CmpMyValDef" type="Label" parent="Margin/VBox/TabBar/TabDetail/AffixScroll/AffixList/TargetCompareBlock/CompareRowDef"]
+custom_minimum_size = Vector2(36, 0)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.949, 0.973, 0.984, 1)
+theme_override_fonts/font = ExtResource("2_numfont")
+theme_override_font_sizes/font_size = 14
+text = "0"
+horizontal_alignment = 2
+vertical_alignment = 1
+
+[node name="CmpItBarDef" type="ProgressBar" parent="Margin/VBox/TabBar/TabDetail/AffixScroll/AffixList/TargetCompareBlock/CompareRowDef"]
+custom_minimum_size = Vector2(0, 10)
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 4
+theme_override_styles/background = SubResource("StyleBoxFlat_bar_bg")
+theme_override_styles/fill = SubResource("StyleBoxFlat_bar_fill_it")
+max_value = 100.0
+value = 0.0
+show_percentage = false
+
+[node name="CmpItValDef" type="Label" parent="Margin/VBox/TabBar/TabDetail/AffixScroll/AffixList/TargetCompareBlock/CompareRowDef"]
+custom_minimum_size = Vector2(36, 0)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.949, 0.973, 0.984, 1)
+theme_override_fonts/font = ExtResource("2_numfont")
+theme_override_font_sizes/font_size = 14
+text = "0"
+horizontal_alignment = 2
+vertical_alignment = 1
+
+[node name="StatusBlock" type="VBoxContainer" parent="Margin/VBox/TabBar/TabDetail/AffixScroll/AffixList"]
+visible = false
 layout_mode = 2
 theme_override_constants/separation = 3
 
-[node name="AffixLabel" type="Label" parent="Margin/VBox/TabBar/TabInfo/InfoVBox/AffixSection/AffixVBox"]
-visible = false
+[node name="StatusCaption" type="Label" parent="Margin/VBox/TabBar/TabDetail/AffixScroll/AffixList/StatusBlock"]
 layout_mode = 2
-theme_override_colors/font_color = Color(0.8, 0.8, 0.9, 1)
+theme_override_colors/font_color = Color(0.373, 0.561, 0.627, 1)
 theme_override_font_sizes/font_size = 12
-autowrap_mode = 2
-
-[node name="StarSection" type="PanelContainer" parent="Margin/VBox/TabBar/TabInfo/InfoVBox"]
-layout_mode = 2
-theme_override_styles/panel = SubResource("StyleBoxFlat_section")
-
-[node name="StarVBox" type="VBoxContainer" parent="Margin/VBox/TabBar/TabInfo/InfoVBox/StarSection"]
-layout_mode = 2
-theme_override_constants/separation = 4
-theme_override_constants/margin_left = 10
-theme_override_constants/margin_top = 6
-theme_override_constants/margin_right = 10
-theme_override_constants/margin_bottom = 6
-
-[node name="StarTitle" type="Label" parent="Margin/VBox/TabBar/TabInfo/InfoVBox/StarSection/StarVBox"]
-layout_mode = 2
-theme_override_colors/font_color = Color(1, 0.82, 0.35, 1)
-theme_override_font_sizes/font_size = 13
-text = "星级强化"
-
-[node name="StarLabel" type="Label" parent="Margin/VBox/TabBar/TabInfo/InfoVBox/StarSection/StarVBox"]
-layout_mode = 2
-theme_override_colors/font_color = Color(0.88, 0.82, 0.65, 1)
-theme_override_font_sizes/font_size = 12
-autowrap_mode = 2
-
-[node name="NurtureSection" type="PanelContainer" parent="Margin/VBox/TabBar/TabInfo/InfoVBox"]
-layout_mode = 2
-theme_override_styles/panel = SubResource("StyleBoxFlat_section")
-
-[node name="NurtureVBox" type="VBoxContainer" parent="Margin/VBox/TabBar/TabInfo/InfoVBox/NurtureSection"]
-layout_mode = 2
-theme_override_constants/separation = 4
-theme_override_constants/margin_left = 10
-theme_override_constants/margin_top = 6
-theme_override_constants/margin_right = 10
-theme_override_constants/margin_bottom = 6
-
-[node name="NurtureTitle" type="Label" parent="Margin/VBox/TabBar/TabInfo/InfoVBox/NurtureSection/NurtureVBox"]
-layout_mode = 2
-theme_override_colors/font_color = Color(1, 0.6, 0.9, 1)
-theme_override_font_sizes/font_size = 13
-text = "养成摘要"
-
-[node name="NurtureLabel" type="Label" parent="Margin/VBox/TabBar/TabInfo/InfoVBox/NurtureSection/NurtureVBox"]
-layout_mode = 2
-theme_override_colors/font_color = Color(0.85, 0.75, 0.85, 1)
-theme_override_font_sizes/font_size = 12
-autowrap_mode = 2
-
-[node name="CardSkillSection" type="PanelContainer" parent="Margin/VBox/TabBar/TabInfo/InfoVBox"]
-layout_mode = 2
-theme_override_styles/panel = SubResource("StyleBoxFlat_section")
-
-[node name="CardSkillVBox" type="VBoxContainer" parent="Margin/VBox/TabBar/TabInfo/InfoVBox/CardSkillSection"]
-layout_mode = 2
-theme_override_constants/separation = 4
-theme_override_constants/margin_left = 10
-theme_override_constants/margin_top = 6
-theme_override_constants/margin_right = 10
-theme_override_constants/margin_bottom = 6
-
-[node name="CardSkillTitle" type="Label" parent="Margin/VBox/TabBar/TabInfo/InfoVBox/CardSkillSection/CardSkillVBox"]
-layout_mode = 2
-theme_override_colors/font_color = Color(0.4, 0.9, 1.0, 1)
-theme_override_font_sizes/font_size = 13
-text = "关联卡片技能"
-
-[node name="CardSkillLabel" type="Label" parent="Margin/VBox/TabBar/TabInfo/InfoVBox/CardSkillSection/CardSkillVBox"]
-layout_mode = 2
-theme_override_colors/font_color = Color(0.82, 0.82, 0.75, 1)
-theme_override_font_sizes/font_size = 12
-autowrap_mode = 2
-
-[node name="BonusSection" type="PanelContainer" parent="Margin/VBox/TabBar/TabInfo/InfoVBox"]
-visible = false
-layout_mode = 2
-theme_override_styles/panel = SubResource("StyleBoxFlat_section")
-
-[node name="BonusVBox" type="VBoxContainer" parent="Margin/VBox/TabBar/TabInfo/InfoVBox/BonusSection"]
-layout_mode = 2
-theme_override_constants/separation = 4
-theme_override_constants/margin_left = 10
-theme_override_constants/margin_top = 6
-theme_override_constants/margin_right = 10
-theme_override_constants/margin_bottom = 6
-
-[node name="BonusTitle" type="Label" parent="Margin/VBox/TabBar/TabInfo/InfoVBox/BonusSection/BonusVBox"]
-layout_mode = 2
-theme_override_colors/font_color = Color(0.95, 0.78, 0.45, 1)
-theme_override_font_sizes/font_size = 13
-text = "加成来源"
-
-[node name="BonusLabel" type="Label" parent="Margin/VBox/TabBar/TabInfo/InfoVBox/BonusSection/BonusVBox"]
-layout_mode = 2
-theme_override_colors/font_color = Color(0.82, 0.82, 0.7, 1)
-theme_override_font_sizes/font_size = 12
-autowrap_mode = 2
-
-[node name="StatusSection" type="PanelContainer" parent="Margin/VBox/TabBar/TabInfo/InfoVBox"]
-visible = false
-layout_mode = 2
-theme_override_styles/panel = SubResource("StyleBoxFlat_section")
-
-[node name="StatusVBox" type="VBoxContainer" parent="Margin/VBox/TabBar/TabInfo/InfoVBox/StatusSection"]
-layout_mode = 2
-theme_override_constants/separation = 4
-theme_override_constants/margin_left = 10
-theme_override_constants/margin_top = 6
-theme_override_constants/margin_right = 10
-theme_override_constants/margin_bottom = 6
-
-[node name="StatusTitle" type="Label" parent="Margin/VBox/TabBar/TabInfo/InfoVBox/StatusSection/StatusVBox"]
-layout_mode = 2
-theme_override_colors/font_color = Color(0.9, 0.5, 0.5, 1)
-theme_override_font_sizes/font_size = 13
 text = "当前状态"
 
-[node name="StatusLabel" type="RichTextLabel" parent="Margin/VBox/TabBar/TabInfo/InfoVBox/StatusSection/StatusVBox"]
+[node name="StatusLabel" type="RichTextLabel" parent="Margin/VBox/TabBar/TabDetail/AffixScroll/AffixList/StatusBlock"]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.95, 0.75, 0.75, 1)
 theme_override_font_sizes/font_size = 12
@@ -511,43 +808,185 @@ bbcode_enabled = true
 autowrap_mode = 3
 fit_content = true
 
-[node name="DescSection" type="PanelContainer" parent="Margin/VBox/TabBar/TabInfo/InfoVBox"]
+[node name="ThreatBlock" type="VBoxContainer" parent="Margin/VBox/TabBar/TabDetail/AffixScroll/AffixList"]
+visible = false
 layout_mode = 2
-theme_override_styles/panel = SubResource("StyleBoxFlat_section")
+theme_override_constants/separation = 3
 
-[node name="DescVBox" type="VBoxContainer" parent="Margin/VBox/TabBar/TabInfo/InfoVBox/DescSection"]
+[node name="ThreatCaption" type="Label" parent="Margin/VBox/TabBar/TabDetail/AffixScroll/AffixList/ThreatBlock"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.373, 0.561, 0.627, 1)
+theme_override_font_sizes/font_size = 12
+text = "威胁提示"
+
+[node name="ThreatLines" type="VBoxContainer" parent="Margin/VBox/TabBar/TabDetail/AffixScroll/AffixList/ThreatBlock"]
+layout_mode = 2
+theme_override_constants/separation = 2
+
+[node name="BonusBlock" type="VBoxContainer" parent="Margin/VBox/TabBar/TabDetail/AffixScroll/AffixList"]
+visible = false
+layout_mode = 2
+theme_override_constants/separation = 3
+
+[node name="BonusCaption" type="Label" parent="Margin/VBox/TabBar/TabDetail/AffixScroll/AffixList/BonusBlock"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.373, 0.561, 0.627, 1)
+theme_override_font_sizes/font_size = 12
+text = "加成来源"
+
+[node name="BonusLabel" type="Label" parent="Margin/VBox/TabBar/TabDetail/AffixScroll/AffixList/BonusBlock"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.812, 0.89, 0.933, 1)
+theme_override_font_sizes/font_size = 12
+autowrap_mode = 2
+
+[node name="AffixBlock" type="VBoxContainer" parent="Margin/VBox/TabBar/TabDetail/AffixScroll/AffixList"]
+layout_mode = 2
+theme_override_constants/separation = 3
+
+[node name="AffixCaption" type="Label" parent="Margin/VBox/TabBar/TabDetail/AffixScroll/AffixList/AffixBlock"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.373, 0.561, 0.627, 1)
+theme_override_font_sizes/font_size = 12
+text = "词条"
+
+[node name="AffixFlow" type="VBoxContainer" parent="Margin/VBox/TabBar/TabDetail/AffixScroll/AffixList/AffixBlock"]
+layout_mode = 2
+theme_override_constants/separation = 3
+
+[node name="AffixLabel" type="Label" parent="Margin/VBox/TabBar/TabDetail/AffixScroll/AffixList/AffixBlock"]
+visible = false
+layout_mode = 2
+theme_override_colors/font_color = Color(0.812, 0.89, 0.933, 1)
+theme_override_font_sizes/font_size = 12
+autowrap_mode = 2
+
+[node name="ModsBlock" type="VBoxContainer" parent="Margin/VBox/TabBar/TabDetail/AffixScroll/AffixList"]
+visible = false
 layout_mode = 2
 theme_override_constants/separation = 4
-theme_override_constants/margin_left = 10
-theme_override_constants/margin_top = 6
-theme_override_constants/margin_right = 10
-theme_override_constants/margin_bottom = 6
 
-[node name="DescTitle" type="Label" parent="Margin/VBox/TabBar/TabInfo/InfoVBox/DescSection/DescVBox"]
+[node name="ModsCaption" type="Label" parent="Margin/VBox/TabBar/TabDetail/AffixScroll/AffixList/ModsBlock"]
 layout_mode = 2
-theme_override_colors/font_color = Color(0.78, 0.8, 0.88, 1)
+theme_override_colors/font_color = Color(0.373, 0.561, 0.627, 1)
+theme_override_font_sizes/font_size = 12
+text = "改造 0/9"
+
+[node name="ModsTiles" type="HBoxContainer" parent="Margin/VBox/TabBar/TabDetail/AffixScroll/AffixList/ModsBlock"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="StarBlock" type="VBoxContainer" parent="Margin/VBox/TabBar/TabDetail/AffixScroll/AffixList"]
+layout_mode = 2
+theme_override_constants/separation = 3
+
+[node name="StarCaption" type="Label" parent="Margin/VBox/TabBar/TabDetail/AffixScroll/AffixList/StarBlock"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.373, 0.561, 0.627, 1)
+theme_override_font_sizes/font_size = 12
+text = "等级"
+
+[node name="StarLabel" type="Label" parent="Margin/VBox/TabBar/TabDetail/AffixScroll/AffixList/StarBlock"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.812, 0.89, 0.933, 1)
+theme_override_font_sizes/font_size = 12
+autowrap_mode = 2
+
+[node name="NurtureBlock" type="VBoxContainer" parent="Margin/VBox/TabBar/TabDetail/AffixScroll/AffixList"]
+layout_mode = 2
+theme_override_constants/separation = 3
+
+[node name="NurtureCaption" type="Label" parent="Margin/VBox/TabBar/TabDetail/AffixScroll/AffixList/NurtureBlock"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.373, 0.561, 0.627, 1)
+theme_override_font_sizes/font_size = 12
+text = "养成"
+
+[node name="NurtureLabel" type="Label" parent="Margin/VBox/TabBar/TabDetail/AffixScroll/AffixList/NurtureBlock"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.812, 0.89, 0.933, 1)
+theme_override_font_sizes/font_size = 12
+autowrap_mode = 2
+
+[node name="CardSkillBlock" type="VBoxContainer" parent="Margin/VBox/TabBar/TabDetail/AffixScroll/AffixList"]
+layout_mode = 2
+theme_override_constants/separation = 3
+
+[node name="CardSkillCaption" type="Label" parent="Margin/VBox/TabBar/TabDetail/AffixScroll/AffixList/CardSkillBlock"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.373, 0.561, 0.627, 1)
+theme_override_font_sizes/font_size = 12
+text = "关联技能"
+
+[node name="CardSkillLabel" type="Label" parent="Margin/VBox/TabBar/TabDetail/AffixScroll/AffixList/CardSkillBlock"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.812, 0.89, 0.933, 1)
+theme_override_font_sizes/font_size = 12
+autowrap_mode = 2
+
+[node name="SummaryLabel" type="Label" parent="Margin/VBox/TabBar/TabDetail/AffixScroll/AffixList"]
+visible = false
+layout_mode = 2
+theme_override_colors/font_color = Color(0.812, 0.89, 0.933, 1)
 theme_override_font_sizes/font_size = 13
+autowrap_mode = 2
+
+[node name="DescBlock" type="VBoxContainer" parent="Margin/VBox/TabBar/TabDetail/AffixScroll/AffixList"]
+layout_mode = 2
+theme_override_constants/separation = 3
+
+[node name="DescCaption" type="Label" parent="Margin/VBox/TabBar/TabDetail/AffixScroll/AffixList/DescBlock"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.373, 0.561, 0.627, 1)
+theme_override_font_sizes/font_size = 12
 text = "描述"
 
-[node name="DescLabel" type="RichTextLabel" parent="Margin/VBox/TabBar/TabInfo/InfoVBox/DescSection/DescVBox"]
+[node name="DescLabel" type="RichTextLabel" parent="Margin/VBox/TabBar/TabDetail/AffixScroll/AffixList/DescBlock"]
 layout_mode = 2
-theme_override_colors/default_color = Color(0.82, 0.82, 0.9, 1)
+theme_override_colors/default_color = Color(0.812, 0.89, 0.933, 1)
 theme_override_font_sizes/normal_font_size = 12
 bbcode_enabled = true
 fit_content = true
 scroll_active = false
 
-[node name="FlavorLabel" type="Label" parent="Margin/VBox/TabBar/TabInfo/InfoVBox"]
+[node name="FlavorLabel" type="Label" parent="Margin/VBox/TabBar/TabDetail/AffixScroll/AffixList"]
 layout_mode = 2
-theme_override_colors/font_color = Color(0.6, 0.55, 0.75, 0.85)
+theme_override_colors/font_color = Color(0.55, 0.6, 0.7, 0.85)
 theme_override_font_sizes/font_size = 12
 horizontal_alignment = 2
 autowrap_mode = 2
 
-[node name="TabReinforce" type="Control" parent="Margin/VBox/TabBar"]
-visible = false
+[node name="BottomRow" type="PanelContainer" parent="Margin/VBox/TabBar/TabInfo"]
+custom_minimum_size = Vector2(0, 34)
 layout_mode = 2
-metadata/_tab_index = 1
+theme_override_styles/panel = SubResource("StyleBoxFlat_bottom")
+
+[node name="BottomHBox" type="HBoxContainer" parent="Margin/VBox/TabBar/TabInfo/BottomRow"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="EraLabel" type="Label" parent="Margin/VBox/TabBar/TabInfo/BottomRow/BottomHBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.373, 0.561, 0.627, 1)
+theme_override_font_sizes/font_size = 12
+text = "—"
+
+[node name="WeightLabel" type="Label" parent="Margin/VBox/TabBar/TabInfo/BottomRow/BottomHBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.67, 0.72, 0.82, 1)
+theme_override_font_sizes/font_size = 12
+horizontal_alignment = 1
+text = "—"
+
+[node name="TerrainLabel" type="Label" parent="Margin/VBox/TabBar/TabInfo/BottomRow/BottomHBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.373, 0.561, 0.627, 1)
+theme_override_font_sizes/font_size = 12
+horizontal_alignment = 2
+text = "—"
 
 [node name="TabModify" type="Control" parent="Margin/VBox/TabBar"]
 visible = false
@@ -564,12 +1003,3 @@ visible = false
 layout_mode = 2
 theme_override_constants/separation = 8
 alignment = 1
-
-[node name="CloseButton" type="Button" parent="Margin/VBox"]
-visible = false
-layout_mode = 2
-theme_override_colors/font_color = Color(1, 1, 1, 1)
-theme_override_colors/font_hover_color = Color(0.545, 0.361, 0.965, 1)
-theme_override_font_sizes/font_size = 14
-theme_override_styles/normal = SubResource("StyleBoxFlat_close_btn")
-text = "关闭"

@@ -18,6 +18,7 @@ const DefaultCards = preload("res://data/default_cards.gd")
 const ModManufacture = preload("res://data/mod_manufacture.gd")
 const BlueprintDefinitions = preload("res://data/blueprint_definitions.gd")
 const IntelManualItems = preload("res://data/intel_manual_items.gd")
+const GC = preload("res://resources/game_constants.gd")   # v30.5 R5: CardType 过滤
 
 ## 存档键（SaveManager 段 "manufacture_state"）
 const SAVE_KEY_PITY := "pity"
@@ -56,6 +57,21 @@ func _ensure_recipes() -> void:
 			_arch_index[pid] = []
 			_recipe_cache.append(pid)
 		_arch_index[pid].append(String(arch))
+	# v30.5 R5（设计审查 F-11）：era0/1 直接入池——前期（新手留存敏感期）卡池更新率
+	# 最低，放宽"须有敌形原型"口径：WW1/WW2 玩家战斗卡无原型也进配方目录。
+	# 无原型卡情报轴恒 0 → 恒 tier1 白板池（与"配方解锁=白板起步"语义一致；
+	# era2+ 维持原型口径，情报驱动解锁的中后期节奏不变）。
+	for pid_v in valid_ids:
+		var pid2 := String(pid_v)
+		if _arch_index.has(pid2) or pid2.begins_with("captured_"):
+			continue
+		var card = DefaultCards.get_card_by_id(pid2)
+		if card == null or not (card is CardResource):
+			continue
+		var cres := card as CardResource
+		if cres.era <= 1 and cres.card_type == GC.CardType.COMBAT_UNIT:
+			_arch_index[pid2] = []
+			_recipe_cache.append(pid2)
 
 func is_manufacturable(card_id: String) -> bool:
 	_ensure_recipes()
@@ -79,8 +95,17 @@ func get_intel_base(card_id: String) -> float:
 	return best
 
 ## 品质档位（0=未解锁配方 … 4=满池）
+## v30.5 R5：era0/1 直入卡无原型 → 情报恒 0，特判为白板档 1（否则恒 0=“未解锁”
+## 被配方门挡死，扩容失效）。白板档=普通 100%，与“配方解锁=白板起步”语义一致。
 func get_pool_tier(card_id: String) -> int:
-	return ManufacturePools.get_pool_tier(get_intel_base(card_id))
+	var tier := ManufacturePools.get_pool_tier(get_intel_base(card_id))
+	if tier == 0 and _arch_index.has(card_id) and (_arch_index[card_id] as Array).is_empty():
+		return 1
+	return tier
+
+## v30.5 R5：era0/1 直入卡判定（在目录且无敌形原型）
+func is_direct_pool_card(card_id: String) -> bool:
+	return _arch_index.has(card_id) and (_arch_index[card_id] as Array).is_empty()
 
 ## 档案室 Lv3 高品权重（epic+ ×1.5；BunkerManager 缺省=无加成）
 func get_pool_high_boost() -> float:
@@ -89,9 +114,17 @@ func get_pool_high_boost() -> float:
 		return float(bunker.get_pool_high_boost())
 	return 1.0
 
+## v30.5 R5：直入卡（era0/1 无原型）按白板档口径取池——intel 0 视作刚过配方门
+## （GATE_RECIPE 0.25 → tier1），否则 roll 空 pool。
+func _pool_base(card_id: String) -> float:
+	var base := get_intel_base(card_id)
+	if base < ManufacturePools.GATE_RECIPE and is_direct_pool_card(card_id):
+		return ManufacturePools.GATE_RECIPE
+	return base
+
 ## 有效概率池（含暗保底 + 档案室 Lv3 高品权重；UI 预览与 roll 同源）
 func get_effective_pool(card_id: String) -> Array:
-	return ManufacturePools.get_effective_pool(get_intel_base(card_id), get_pity(card_id), get_pool_high_boost())
+	return ManufacturePools.get_effective_pool(_pool_base(card_id), get_pity(card_id), get_pool_high_boost())
 
 ## 基础消耗（按卡时代；未乘折扣）
 func get_base_cost(card_id: String) -> Dictionary:
@@ -132,20 +165,23 @@ func can_manufacture(card_id: String) -> Dictionary:
 	var conditions: Array = []
 	if not is_manufacturable(card_id):
 		return {"ok": false,
-			"reason_zh": "该卡种无法制造（无敌形原型，仅可经掉落/势力渠道获取）",
+			"reason_zh": "该卡种无法制造（不在配方目录）",
 			"conditions": conditions}
 	var card: CardResource = DefaultCards.get_card_by_id(card_id)
 	if card == null:
 		return {"ok": false, "reason_zh": "卡牌数据缺失：%s" % card_id, "conditions": conditions}
 
-	# 1. 情报档（≥25% 解锁配方）
+	# 1. 情报档（≥25% 解锁配方；v30.5 R5：era0/1 直入卡免情报门，tier 特判白板档）
 	var base := get_intel_base(card_id)
-	var tier := ManufacturePools.get_pool_tier(base)
+	var direct := is_direct_pool_card(card_id)
+	var tier := get_pool_tier(card_id)
 	var intel_ok := tier >= 1
 	conditions.append({
 		"key": "intel", "met": intel_ok,
-		"current_text": "%d%%" % int(round(base * 100.0)), "required_text": "25%",
-		"detail": "击败该敌形、分析仪烧缴获卡、获取缴获卡都会累积情报",
+		"current_text": ("直接入目录" if direct else "%d%%" % int(round(base * 100.0))),
+		"required_text": "—" if direct else "25%",
+		"detail": "一战/二战卡种直接入目录（白板起步）" if direct
+			else "击败该敌形、分析仪烧缴获卡、获取缴获卡都会累积情报",
 	})
 
 	# 2. 时代授权（技能树指挥系节点，era0 一战豁免——开局唯一自造渠道，不得锁死）
@@ -195,7 +231,49 @@ func _first_unmet_reason(conditions: Array) -> String:
 
 ## ───────────────────────── 执行制造 ─────────────────────────
 
-## 制造一张卡。返回 {"ok", "reason_zh", "instance_id", "rarity", "card_id"}。
+## v6.14.5（用户拍板）：品质 → 出厂附送改造条数（白板 0 起步，神话 5）。
+## 数值轮可调常量——改这里即可整体调出厂强度。
+const STARTUP_MOD_COUNT := {
+	"common": 0, "uncommon": 1, "rare": 2, "epic": 3, "legendary": 4, "mythic": 5,
+}
+
+## 纯选取：按品质档从该卡可用改造（兵种+时代带口径 get_installable_mods_for_card）
+## 随机选 N 条；改造稀有度上限 = 本卡品质档；conflict_group 去重。返回 mod_id 数组。
+static func pick_startup_mods(card_id: String, card_era: int, rarity: String) -> Array:
+	var n := int(STARTUP_MOD_COUNT.get(rarity, 0))
+	if n <= 0:
+		return []
+	var quality_rank: int = ModManufacture.rank_of(rarity)
+	var pool: Array = []
+	for mid in ModificationRegistry.get_installable_mods_for_card(card_id, card_era):
+		var mid_s := String(mid)
+		var md: Dictionary = ModificationRegistry.get_data(mid_s)
+		if md.is_empty():
+			continue
+		if ModManufacture.rank_of(String(md.get("rarity", "common"))) > quality_rank:
+			continue
+		pool.append(mid_s)
+	var granted: Array = []
+	var used_groups: Dictionary = {}
+	for _i in range(n):
+		var candidates: Array = []
+		for mid_s in pool:
+			if granted.has(mid_s):
+				continue
+			var g := String(ModificationRegistry.get_data(mid_s).get("conflict_group", ""))
+			if not g.is_empty() and used_groups.has(g):
+				continue
+			candidates.append(mid_s)
+		if candidates.is_empty():
+			break
+		var pick: String = candidates[randi() % candidates.size()]
+		var pg := String(ModificationRegistry.get_data(pick).get("conflict_group", ""))
+		if not pg.is_empty():
+			used_groups[pg] = true
+		granted.append(pick)
+	return granted
+
+## 制造一张卡。返回 {"ok", "reason_zh", "instance_id", "rarity", "card_id", "startup_mods"}。
 func manufacture(card_id: String) -> Dictionary:
 	var check := can_manufacture(card_id)
 	if not check.get("ok", false):
@@ -206,7 +284,10 @@ func manufacture(card_id: String) -> Dictionary:
 		BasicResourceManager.consume(String(rid), int(cost[rid]))
 
 	# 失败退款防御：掷品质/建实例任何一步失败，资源原路退回
-	var rarity := ManufacturePools.roll_rarity(get_intel_base(card_id), get_pity(card_id), get_pool_high_boost())
+	# v6.14.7：roll 口径对齐 UI（_pool_base）——era0/1 直入卡 get_intel_base 恒 0，
+	# 直查 roll 恒空池必失败"品质池异常"；_pool_base 的直入特判（白板档）才是
+	# can_manufacture/get_effective_pool 同源口径，UI 预览与实际 roll 不得分叉。
+	var rarity := ManufacturePools.roll_rarity(_pool_base(card_id), get_pity(card_id), get_pool_high_boost())
 	if rarity.is_empty():
 		_refund(cost)
 		return {"ok": false, "reason_zh": "品质池异常（进度未达门槛）"}
@@ -217,21 +298,43 @@ func manufacture(card_id: String) -> Dictionary:
 		return {"ok": false, "reason_zh": "卡牌模板缺失：%s" % card_id}
 	inst.rarity = rarity
 
+	# v6.14.5（用户拍板）：出厂随机改造——按品质档附送 N 条（白板 0 → 神话 5）。
+	# 选取口径与安装同源（兵种+时代带），改造稀有度 ≤ 本卡品质档，冲突组去重；
+	# 赠品免费（paid_cost=0，不耗图纸/纳米），等级档位门对出厂赠品豁免
+	#（品质 roll 本身就是稀有度回报，稀有品质的卡理应带得起稀有件）。
+	var startup_mods: Array = pick_startup_mods(card_id, int(inst.era), rarity)
+	for mid_s in startup_mods:
+		inst.mods.append({
+			id = mid_s,
+			installed_at = Time.get_unix_time_from_system(),
+			enabled = true,
+			paid_cost = 0,
+			gift = true,   # v6.14.6 卸下判定：赠品无纳米返还、其图纸从未存在亦不返还
+		})
+
 	# 暗保底记账：出 rare+ 清零，否则 +1
 	if ManufacturePools.is_high_rarity(rarity):
 		_pity[card_id] = 0
 	else:
 		_pity[card_id] = get_pity(card_id) + 1
+	# v6.19.1 核验清单#3 补遗：首次制造出神话卡（mythic 卡为制造满池专属，此前只有 mythic 改造有埋点）
+	if rarity == "mythic":
+		var _pm_mc: Node = get_node_or_null("/root/PerformanceMetricsManager")
+		if _pm_mc != null and _pm_mc.has_method("record_milestone"):
+			_pm_mc.record_milestone("first_mythic_card")
 
 	# 入包广播（收集计数/背包实时刷新）+ 制造信号
 	SignalBus.card_added_to_backpack.emit(inst)
 	SignalBus.card_manufactured.emit(card_id, rarity)
 	# v26.6 批4b: 死信号审计 B 类补反馈链——制造成功 toast（原信号无人监听）
 	const IntelItems := preload("res://data/intel_manual_items.gd")
-	SignalBus.show_toast.emit("✦ 制造成功：%s（%s）" % [inst.display_name, IntelItems.get_rarity_name(rarity)])
+	var toast_text := "✦ 制造成功：%s（%s）" % [inst.display_name, IntelItems.get_rarity_name(rarity)]
+	if not startup_mods.is_empty():
+		toast_text += "·随附改造×%d" % startup_mods.size()
+	SignalBus.show_toast.emit(toast_text)
 
 	return {"ok": true, "reason_zh": "制造成功", "instance_id": String(inst.instance_id),
-		"rarity": rarity, "card_id": card_id}
+		"rarity": rarity, "card_id": card_id, "startup_mods": startup_mods}
 
 func _refund(cost: Dictionary) -> void:
 	for rid in cost:
@@ -295,6 +398,29 @@ func get_mod_blueprint_stock(mod_id: String) -> int:
 ## 随机箱暗保底计数（与卡牌制造 get_pity 同暴露口径，供 UI 显示"连续未出"提示）
 func get_mod_box_pity() -> int:
 	return _mod_box_pity
+
+## v32.0 B3-S2: 晶体 sink 管线①——晶体垫改造随机箱 pity（结构层，占位价 80/+1）
+## v6.19.1 核验清单#4 落地原 TODO：pity ≤ 阈值-1 封顶（不卖免费保底）——
+## 已到激活线前拒绝垫付；未到线按剩余额度部分成交（请求 3 只剩 1 额度 → 只扣 1 份晶体）。
+const CRYSTAL_PER_PITY := 80
+
+func advance_mod_box_pity_with_crystals(times: int = 1) -> Dictionary:
+	if BasicResourceManager == null:
+		return {ok = false, reason = "资源管理器未就绪"}
+	var cap: int = ModManufacture.PITY_THRESHOLD - 1
+	if _mod_box_pity >= cap:
+		return {ok = false, reason = "保底已就绪（下次开箱传说+ 概率已提升），无需垫付", pity = _mod_box_pity}
+	var requested := clampi(times, 1, 3)
+	var n := mini(requested, cap - _mod_box_pity)
+	var price := n * CRYSTAL_PER_PITY
+	if not BasicResourceManager.can_afford("crystal", price):
+		return {ok = false, reason = "晶体不足（需 %d）" % price}
+	# 2026-09-19：spend_resource 方法不存在（原靠 has_method 兜底），统一走 consume
+	BasicResourceManager.consume("crystal", price)
+	_mod_box_pity += n
+	return {ok = true, advanced = n, crystal_spent = price, pity = _mod_box_pity,
+		capped = n < requested}
+
 
 ## 随机箱各稀有度出率（池内数量 × 稀有度权重归一；供 UI 预览池条）。
 ## 返回 [{r: String, w: float, pct: float}]，空池返回 []。
@@ -418,6 +544,11 @@ func craft_mod_blueprint_random() -> Dictionary:
 		_mod_box_pity = 0
 	else:
 		_mod_box_pity += 1
+	# v6.19 P2-T2.2 流派成型埋点：首次开出神话档改造
+	if rolled_rarity == "mythic":
+		var _pm_mythic: Node = get_node_or_null("/root/PerformanceMetricsManager")
+		if _pm_mythic != null and _pm_mythic.has_method("record_milestone"):
+			_pm_mythic.record_milestone("first_mythic_mod")
 	return {"ok": true, "reason_zh": "制造成功", "mod_id": mod_id, "rarity": rolled_rarity}
 
 ## 图纸入包 + toast（失败路径由调用方退款）

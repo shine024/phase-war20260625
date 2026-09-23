@@ -1,0 +1,181 @@
+{
+    "generated_at":  "2026-09-19 19:48",
+    "sample":  {
+                   "schinese":  608,
+                   "positive":  1386,
+                   "negative":  294,
+                   "total":  1680,
+                   "pos_pct":  82.5
+               },
+    "by_game":  [
+                    {
+                        "game":  "afk_journey",
+                        "total":  156,
+                        "positive":  116,
+                        "negative":  40,
+                        "pos_pct":  74.4,
+                        "schinese":  2,
+                        "avg_hours_neg":  71,
+                        "avg_hours_pos":  59
+                    },
+                    {
+                        "game":  "backpack_battles",
+                        "total":  257,
+                        "positive":  213,
+                        "negative":  44,
+                        "pos_pct":  82.9,
+                        "schinese":  108,
+                        "avg_hours_neg":  267,
+                        "avg_hours_pos":  113
+                    },
+                    {
+                        "game":  "dota_underlords",
+                        "total":  300,
+                        "positive":  241,
+                        "negative":  59,
+                        "pos_pct":  80.3,
+                        "schinese":  23,
+                        "avg_hours_neg":  85,
+                        "avg_hours_pos":  249
+                    },
+                    {
+                        "game":  "mechabellum",
+                        "total":  250,
+                        "positive":  205,
+                        "negative":  45,
+                        "pos_pct":  82,
+                        "schinese":  77,
+                        "avg_hours_neg":  238,
+                        "avg_hours_pos":  235
+                    },
+                    {
+                        "game":  "melvor_idle",
+                        "total":  250,
+                        "positive":  205,
+                        "negative":  45,
+                        "pos_pct":  82,
+                        "schinese":  120,
+                        "avg_hours_neg":  268,
+                        "avg_hours_pos":  597
+                    },
+                    {
+                        "game":  "slay_the_spire",
+                        "total":  200,
+                        "positive":  183,
+                        "negative":  17,
+                        "pos_pct":  91.5,
+                        "schinese":  200,
+                        "avg_hours_neg":  87,
+                        "avg_hours_pos":  100
+                    },
+                    {
+                        "game":  "super_auto_pets",
+                        "total":  267,
+                        "positive":  223,
+                        "negative":  44,
+                        "pos_pct":  83.5,
+                        "schinese":  78,
+                        "avg_hours_neg":  53,
+                        "avg_hours_pos":  45
+                    }
+                ],
+    "themes":  {
+                   "sample_total":  1680,
+                   "negative":  {
+                                    "N平衡/数值":  {
+                                                   "hits":  25,
+                                                   "pct":  8.5
+                                               },
+                                    "N随机/运气":  {
+                                                   "hits":  26,
+                                                   "pct":  8.8
+                                               },
+                                    "N商业化/氪金":  {
+                                                    "hits":  21,
+                                                    "pct":  7.1
+                                                },
+                                    "N内容量/更新":  {
+                                                    "hits":  0,
+                                                    "pct":  0
+                                                },
+                                    "N技术质量":  {
+                                                  "hits":  19,
+                                                  "pct":  6.5
+                                              },
+                                    "N乏味/重复":  {
+                                                   "hits":  18,
+                                                   "pct":  6.1
+                                               },
+                                    "N上手门槛":  {
+                                                  "hits":  3,
+                                                  "pct":  1
+                                              },
+                                    "NPVP/外挂":  {
+                                                    "hits":  15,
+                                                    "pct":  5.1
+                                                },
+                                    "N本地化":  {
+                                                 "hits":  0,
+                                                 "pct":  0
+                                             },
+                                    "N2停更/弃坑":  {
+                                                    "hits":  12,
+                                                    "pct":  4.1
+                                                },
+                                    "N2重复/腻宽":  {
+                                                    "hits":  9,
+                                                    "pct":  3.1
+                                                },
+                                    "N2平衡宽":  {
+                                                  "hits":  20,
+                                                  "pct":  6.8
+                                              },
+                                    "N2数值膨胀":  {
+                                                   "hits":  1,
+                                                   "pct":  0.3
+                                               },
+                                    "N2UI/可读性":  {
+                                                     "hits":  3,
+                                                     "pct":  1
+                                                 },
+                                    "N2难度曲线":  {
+                                                   "hits":  6,
+                                                   "pct":  2
+                                               }
+                                },
+                   "positive":  {
+                                    "P上瘾/停不下":  {
+                                                    "hits":  64,
+                                                    "pct":  4.6
+                                                },
+                                    "P构筑/流派":  {
+                                                   "hits":  73,
+                                                   "pct":  5.3
+                                               },
+                                    "P策略/战术":  {
+                                                   "hits":  96,
+                                                   "pct":  6.9
+                                               },
+                                    "P性价比":  {
+                                                 "hits":  36,
+                                                 "pct":  2.6
+                                             },
+                                    "P视听表现":  {
+                                                  "hits":  91,
+                                                  "pct":  6.6
+                                              },
+                                    "P放置/挂机":  {
+                                                   "hits":  97,
+                                                   "pct":  7
+                                               },
+                                    "P更新/开发者":  {
+                                                    "hits":  16,
+                                                    "pct":  1.2
+                                                },
+                                    "P泛好评":  {
+                                                 "hits":  486,
+                                                 "pct":  35.1
+                                             }
+                                }
+               }
+}

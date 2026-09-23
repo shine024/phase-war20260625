@@ -6,8 +6,6 @@ class_name LevelInformation
 ## - display_name: 关卡显示名称
 ## - description: 关卡背景故事简介
 ## - faction_id: 控制该关卡的势力ID
-## - available_law_families: 该关卡允许的法则家族列表（空=全部可用）
-##   家族: "STEEL"|"FLAME"|"THUNDER"|"VOID"
 ## - special_rules: v8 批次3 特殊规则（见 _apply_special_rules，仅部分关卡挂载）
 ##
 ## 2026-08-16 关卡设计审查（单源真理收敛）：
@@ -73,7 +71,7 @@ func _add_ww1_levels() -> void:
 	"""一战（1-20关）：无主之地教学时代
 	v6.9: 前 20 关 faction_id 为空——无势力占领/势力加成/势力相位师（21 关起启用）。
 	注：旧文档"钢壁防务为主/法则家族限制"已随 v6.9 无主之地改造与 P2-7 法则退役失效，
-	下方 families 数组仅为兼容保留的死数据。"""
+	available_law_families 死数据已随 v6.14 R6 清点移除。"""
 	var descriptions = [
 		"晨曦中的索姆河，第一阶段突破作战",
 		"泥泞的堡垒区，持续的炮火覆盖",
@@ -100,18 +98,8 @@ func _add_ww1_levels() -> void:
 	for i in range(1, 21):
 		var level_num = i
 		# v6.9: 前20关（一战教学时代）为无主之地，无势力占领/势力加成/势力相位师
-		# 21关起启用势力占领机制（见 faction_conquest_buffs.gd + enemy_stat_resolver.gd）
+		# 21关起为各组织历史辖区（v6.22: 占领机制已退役，归属=纯风味静态表）
 		var faction_id = ""
-		# 一战法则限制：逐步开放家族
-		var families: Array = []
-		if i <= 5:
-			families = ["STEEL"]
-		elif i <= 14:
-			families = ["STEEL", "FLAME"]
-		elif i <= 19:
-			families = ["STEEL", "FLAME", "THUNDER"]
-		else:  # Boss关
-			families = ["STEEL", "FLAME", "THUNDER", "VOID"]
 		# 从描述中提取短名称作为关卡名
 		var desc = descriptions[i - 1]
 		var short_name = desc.split("，")[0].split(" ")[0]  # 取逗号前的第一个短语
@@ -119,7 +107,6 @@ func _add_ww1_levels() -> void:
 			"display_name": "一战·%s" % short_name,
 			"description": descriptions[i - 1],
 			"faction_id": faction_id,
-			"available_law_families": families,
 		}
 
 func _add_ww2_levels() -> void:
@@ -154,23 +141,12 @@ func _add_ww2_levels() -> void:
 	for i in range(1, 21):
 		var level_num = 20 + i
 		var faction_id = "nova_arms"
-		# 二战法则限制：以FLAME为核心逐步开放
-		var families: Array = []
-		if i <= 5:
-			families = ["FLAME"]
-		elif i <= 14:
-			families = ["FLAME", "STEEL"]
-		elif i <= 19:
-			families = ["FLAME", "STEEL", "THUNDER"]
-		else:  # Boss关
-			families = ["STEEL", "FLAME", "THUNDER", "VOID"]
 		var desc = descriptions[i - 1]
 		var short_name = desc.split("，")[0].split(" ")[0]
 		_level_db[level_num] = {
 			"display_name": "二战·%s" % short_name,
 			"description": descriptions[i - 1],
 			"faction_id": faction_id,
-			"available_law_families": families,
 		}
 
 func _add_cold_war_levels() -> void:
@@ -205,23 +181,12 @@ func _add_cold_war_levels() -> void:
 	for i in range(1, 21):
 		var level_num = 40 + i
 		var faction_id = "aether_dynamics"
-		# 冷战法则限制：以THUNDER+STEEL为起点逐步开放
-		var families: Array = []
-		if i <= 5:
-			families = ["THUNDER", "STEEL"]
-		elif i <= 14:
-			families = ["THUNDER", "STEEL", "FLAME"]
-		elif i <= 19:
-			families = ["THUNDER", "STEEL", "FLAME", "VOID"]
-		else:  # Boss关
-			families = ["STEEL", "FLAME", "THUNDER", "VOID"]
 		var desc = descriptions[i - 1]
 		var short_name = desc.split("，")[0].split(" ")[0]
 		_level_db[level_num] = {
 			"display_name": "冷战·%s" % short_name,
 			"description": descriptions[i - 1],
 			"faction_id": faction_id,
-			"available_law_families": families,
 		}
 
 func _add_modern_levels() -> void:
@@ -256,21 +221,12 @@ func _add_modern_levels() -> void:
 	for i in range(1, 21):
 		var level_num = 60 + i
 		var faction_id = "quantum_logistics"
-		# 现代法则限制：STEEL+FLAME起步，快速开放全部
-		var families: Array = []
-		if i <= 5:
-			families = ["STEEL", "FLAME"]
-		elif i <= 14:
-			families = ["STEEL", "FLAME", "THUNDER", "VOID"]
-		else:  # Boss关及后期
-			families = ["STEEL", "FLAME", "THUNDER", "VOID"]
 		var desc = descriptions[i - 1]
 		var short_name = desc.split("，")[0].split(" ")[0]
 		_level_db[level_num] = {
 			"display_name": "现代·%s" % short_name,
 			"description": descriptions[i - 1],
 			"faction_id": faction_id,
-			"available_law_families": families,
 		}
 
 func _add_future_levels() -> void:
@@ -307,23 +263,12 @@ func _add_future_levels() -> void:
 		var level_num = 80 + i
 		# 81-90关螺旋侦察，91-100关虚空相位
 		var faction_id = "helix_recon" if i <= 10 else "void_research"
-		# 近未来法则限制：大部分关卡开放全部家族
-		var families: Array = []
-		if i <= 5:
-			families = ["THUNDER", "VOID", "FLAME"]
-		elif i <= 10:
-			families = ["THUNDER", "VOID", "FLAME", "STEEL"]
-		elif i <= 15:
-			families = ["VOID", "FLAME", "STEEL", "THUNDER"]
-		else:
-			families = ["STEEL", "FLAME", "THUNDER", "VOID"]
 		var desc = descriptions[i - 1]
 		var short_name = desc.split("，")[0].split(" ")[0]
 		_level_db[level_num] = {
 			"display_name": "近未来·%s" % short_name,
 			"description": descriptions[i - 1],
 			"faction_id": faction_id,
-			"available_law_families": families,
 		}
 
 func get_level_info(level: int) -> Dictionary:
@@ -346,6 +291,49 @@ func get_special_rules(level: int) -> Dictionary:
 		return {}
 	var info = _level_db.get(level, {})
 	return info.get("special_rules", {})
+
+# ── v34 C2：首机制关预告（开战 StageBanner 播一句，main_battle_setup 消费）──
+## 机制 → 一句话文案（首现关播报用；新机制键记得同步补文案，缺文案静默跳过）
+const MECHANIC_BANNER_TEXT := {
+	"time_limit_sec": "限时作战：在时限内结束战斗",
+	"energy_regen_mult": "能量枯竭：能量回复减半",
+	"energy_mult": "能量匮乏：能量池减半",
+	"restrict_platforms": "兵种限制：仅特定兵种可部署",
+	"first_strike": "先手突袭：敌方抢先进场",
+	"no_heal": "无疗伤：战斗中无法回复生命",
+	"energy_starvation": "能量饥荒：能量获取大幅受限",
+	"elite_wave_bonus": "精英云集：精英波威胁增强",
+	"boss_enrage_half": "狂暴预警：首领半血后狂暴",
+	"no_mods": "干扰场：改造模块失效",
+	"counter_bias_tags": "反制预警：本关敌方构成克制单一兵种构筑",
+}
+
+## 机制键 → 首现关卡缓存（{key: min_level}；首次调用时扫 1-100 关构建）
+static var _first_seen_mechanic_cache: Dictionary = {}
+
+## 本关 special_rules 中"全战役首次出现"的机制键（首现关才有提示，重遇见不播）
+func get_first_seen_mechanic_keys(level: int) -> Array:
+	if _first_seen_mechanic_cache.is_empty():
+		var min_lv: Dictionary = {}
+		for lv in range(1, LEVEL_COUNT + 1):
+			for key in get_special_rules(lv):
+				if not min_lv.has(key):
+					min_lv[key] = lv
+		_first_seen_mechanic_cache = min_lv
+	var out: Array = []
+	for key in _first_seen_mechanic_cache:
+		if int(_first_seen_mechanic_cache[key]) == level:
+			out.append(key)
+	return out
+
+## 首现机制的播报行（"⚑ 新战术条件 · …"；无首现机制返回空数组）
+func get_first_seen_mechanic_banner_lines(level: int) -> Array[String]:
+	var out: Array[String] = []
+	for key in get_first_seen_mechanic_keys(level):
+		var text: String = String(MECHANIC_BANNER_TEXT.get(key, ""))
+		if not text.is_empty():
+			out.append("⚑ 新战术条件 · %s" % text)
+	return out
 
 ## v8 批次3: 集中挂载关卡特殊规则。
 ## 给关键关（每时代 Boss 关 + 时代首关 + 中段关卡）挂规则。
@@ -389,7 +377,7 @@ func _apply_special_rules() -> void:
 	_set_rules(85, {"restrict_platforms": [2]})
 	# 第90关：能量减半
 	_set_rules(90, {"energy_mult": 0.5})
-	# 第100关 终局：能量减半（胜负=摧毁奥米伽基地）
+	# 第100关 终局：能量减半（胜负=摧毁贺同舟基地）
 	_set_rules(100, {"energy_mult": 0.5})
 
 	# ═══ v26.13(B1): 关卡机制多样性扩充（B0 设计稿，docs/DESIGN_LEVEL_VARIETY_B0.md）═══
@@ -433,6 +421,25 @@ func _apply_special_rules() -> void:
 	_set_rules(95, {"no_mods": true, "elite_wave_bonus": true})
 	_set_rules(100, {"boss_enrage_half": true})
 
+	# ═══ v6.16 反制配波（D2 免疫式平衡）═══
+	# 每关敌方构成系统性偏向某兵种——单一维度构筑被克制、多元构筑获得碾压窗口。
+	# 消费点：battle_spawn_system._merged_wave_bias_tags（spawn+预警同口径）；
+	# 首现 L33（二战）教学，冷战起每时代一轮四类反制循环加深。
+	# tag 词汇表对齐 enemy_archetypes（armored/tank/aircraft/infantry/fast/artillery/backline）。
+	_set_rules(33, {"counter_bias_tags": ["armored", "tank"]})       # 二战教学：装甲反制
+	_set_rules(43, {"counter_bias_tags": ["armored", "tank"]})       # 冷战：装甲洪流
+	_set_rules(48, {"counter_bias_tags": ["aircraft"]})              # 冷战：空域压制
+	_set_rules(53, {"counter_bias_tags": ["artillery"]})             # 冷战：炮兵阵地（backline 在冷战池零匹配，勿加——题面必真）
+	_set_rules(58, {"counter_bias_tags": ["infantry", "fast"]})      # 冷战：机械化步兵海
+	_set_rules(63, {"counter_bias_tags": ["aircraft"]})              # 现代：空域压制
+	_set_rules(68, {"counter_bias_tags": ["armored", "tank"]})       # 现代：装甲洪流
+	_set_rules(73, {"counter_bias_tags": ["artillery"]})             # 现代：炮兵阵地
+	_set_rules(78, {"counter_bias_tags": ["infantry", "fast"]})      # 现代：步兵海
+	_set_rules(83, {"counter_bias_tags": ["armored", "tank"]})       # 近未来：装甲洪流
+	_set_rules(89, {"counter_bias_tags": ["aircraft", "fast"]})      # 近未来：空域压制
+	_set_rules(93, {"counter_bias_tags": ["infantry", "armored"]})   # 近未来：混合装甲
+	_set_rules(97, {"counter_bias_tags": ["tank", "artillery"]})     # 近未来：装甲炮兵
+
 
 ## v8 批次3: 给指定关卡挂 special_rules（内部辅助，合并到已有字典）。
 ## 2026-08-16 守卫：win_type 类特殊胜利依赖 battle_manager._check_win_lose 的普通关路径；
@@ -466,23 +473,6 @@ func get_level_faction(level: int) -> String:
 	"""获取控制该关卡的势力ID"""
 	var info = get_level_info(level)
 	return info.get("faction_id", "")
-
-func get_available_law_families_for_level(level: int) -> Array:
-	"""获取该关卡允许的法则家族列表（空数组表示全部可用）"""
-	var info = get_level_info(level)
-	var families = info.get("available_law_families", [])
-	return families if not families.is_empty() else []
-
-func is_law_family_available_for_level(family: String, level: int) -> bool:
-	"""检查某个法则家族在该关卡是否可用"""
-	var allowed = get_available_law_families_for_level(level)
-	if allowed.is_empty():
-		return true  # 空限制 = 全部可用
-	return allowed.has(family)
-
-## 已弃用：请使用 get_available_law_families_for_level
-func get_available_laws_for_level(level: int) -> Array:
-	return get_available_law_families_for_level(level)
 
 func get_levels_for_faction(faction_id: String) -> Array:
 	"""获取某个势力控制的所有关卡"""

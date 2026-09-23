@@ -13,47 +13,50 @@ class_name CompanyDefinitions
 ## 所有引用阵营色的面板（occupation/world_map/leaderboard/battle）均从此表读取，
 ## 不再在各自文件里维护本地 FACTION_COLORS 副本。
 
+## v36 实机验收（用户设定落档）：势力 = 未来的公司/军队/学校/科技机构——它们的成员
+## 也参与了深航计划（千名车队之中），玩家经「时空交换机」与后方各组织联络；
+## 完成组织任务即赢得其支持（声望/商店/技能既有系统承载，文案层只立口径）。
 const COMPANIES: Array[Dictionary] = [
 	{
 		"id": "iron_wall_corp",
 		"name": "钢壁防务公司",
-		"desc": "老牌防务承包商，偏好稳扎稳打的装甲与防线。",
+		"desc": "军方背景的防务巨头，装甲与防线是穿越行动的钢铁后盾。经时空交换机联络，完成任务即可赢得他们的支持。",
 		"color": Color(0.7, 0.85, 1.0, 1.0),  # 钢蓝
 	},
 	{
 		"id": "nova_arms",
 		"name": "新星兵工制造",
-		"desc": "主攻火力与射速的武器研发公司。",
+		"desc": "深航计划的军火供应商，炮火与射速是他们的名片。成员随队穿越——完成任务，军械支援从不缺席。",
 		"color": Color(1.0, 0.4, 0.2, 1.0),   # 火焰橙
 	},
 	{
 		"id": "aether_dynamics",
 		"name": "以太动力重工",
-		"desc": "提供机动载具与相位推进技术。",
+		"desc": "基地车引擎与相位推进技术的缔造者，派驻工程师随行。帮他们完成任务，载具科技倾囊相授。",
 		"color": Color(0.2, 0.8, 1.0, 1.0),   # 青色
 	},
 	{
 		"id": "quantum_logistics",
 		"name": "量子后勤集团",
-		"desc": "掌管补给线与资源调配的幕后巨头。",
+		"desc": "掌管时空交换机补给线的幕后巨头，各时代的物资都经他们中转。支持他们的任务，补给准时到达。",
 		"color": Color(1.0, 0.843, 0.0, 1.0), # 金色
 	},
 	{
 		"id": "helix_recon",
 		"name": "螺旋侦察系统",
-		"desc": "专精侦察与情报收集的科技公司。",
+		"desc": "深空扫描仪的制造商，专精追踪散落各地的同伴踪迹。完成任务，他们的情报网络向你敞开。",
 		"color": Color(0.5, 1.0, 0.2, 1.0),   # 绿色
 	},
 	{
 		"id": "void_research",
 		"name": "虚空相位研究所",
-		"desc": "研究相位场与战争魔法的半官方机构。",
+		"desc": "培养相位师的半官方学府，研究相位场与暗能的边界。完成他们布置的课题，深层的潜能随之解锁。",
 		"color": Color(0.7, 0.3, 1.0, 1.0),   # 紫色
 	},
 	{
 		"id": "frontier_union",
 		"name": "边境联合公司",
-		"desc": "活跃在前线与灰色地带的多元承包商。",
+		"desc": "活跃在前线与灰色地带的多元承包商，成员遍布整支车队。生意归生意——完成任务，一切好谈。",
 		"color": Color(1.0, 0.2, 0.8, 1.0),   # 品红
 	},
 ]
@@ -84,3 +87,17 @@ static func get_by_id(company_id: String) -> Dictionary:
 		if String(c.get("id", "")) == company_id:
 			return c.duplicate(true)
 	return {}
+
+
+## v6.22 势力改版：各组织的改造类型偏好（原 faction_conquest_buffs.FACTION_MOD_BIAS 搬家至此）。
+## 消费方：game_manager 相位师蓝图掉落链（enemy_type 按 _pm_player_faction 偏好派生）、
+## intel_discovery_manager 掉落 bias 形参（现传空数组，bias 语义仅此处保留数据源）。
+const FACTION_MOD_BIAS: Dictionary = {
+	"iron_wall_corp": ["armor", "fort"],       # 钢壁→装甲/堡垒改造
+	"nova_arms": ["infantry", "anti_air"],     # 新星→步兵/防空改造（火力支援）
+	"aether_dynamics": ["air", "recon"],       # 以太→空军/侦察改造（机动）
+	"quantum_logistics": ["artillery", "engineer"],  # 量子→炮兵/工兵改造（后勤）
+	"helix_recon": ["recon", "air"],           # 螺旋→侦察/空军改造（情报）
+	"void_research": ["universal", "artillery"],  # 虚空→通用/炮兵改造（神秘）
+	"frontier_union": [],                      # 边境→无偏好
+}

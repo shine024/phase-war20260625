@@ -3,8 +3,6 @@ extends Control
 ## 按时代分组显示，当前关卡高亮
 
 var _map_built: bool = false  # 地图是否已构建（缓存）
-# v9 perf：隐藏期间的占领变化置脏，重新打开时补刷（见 _on_occupation_changed_refresh）
-var _occupation_dirty: bool = false
 static var _cached_level_map_template: Control = null  # 跨场景复用模板，避免每次重建100按钮
 # v27.12: _process 每帧用的节点引用缓存（原每帧两次字符串 get_node_or_null 查找），
 # 重建会换实例（旧画布 queue_free 后失效），每帧开头 is_instance_valid 校验，失效才重查
@@ -71,17 +69,21 @@ func _safe_set_input_handled() -> void:
 const LevelEras = preload("res://data/level_eras.gd")
 const LevelInformation = preload("res://data/level_information.gd")
 const BasicResourcesData = preload("res://data/basic_resources.gd")
+const _GameConfigRef = preload("res://resources/game_config.gd")  # v30 R2b: 黑门能量门票开关
 const EnemyArchetypesData = preload("res://data/enemy_archetypes.gd")
 const DefaultCardsData = preload("res://data/default_cards.gd")
-const PhaseLawsData = preload("res://data/phase_laws.gd")
 const DropTablesPreview = preload("res://resources/drop_tables.gd")
-const FactionConquestBuffs = preload("res://data/faction_conquest_buffs.gd")  # v6.9: 占领势力加成描述
 const CompanyDefs = preload("res://data/company_definitions.gd")  # v6.14: 统一阵营色来源
 const PhaseMasterGarrison = preload("res://data/phase_master_garrison.gd")  # v7.x: Boss相位师驻守关判定
+const EndlessBlackgateRef = preload("res://managers/endless_blackgate_manager.gd")  # v6.19 P1-T1.2: 黑门规则文案读常量
 const TacticalThemes = preload("res://data/level_tactical_themes.gd")  # v10: 关卡战术主题（敌情简报）
 const BattleEnvEffectsRef = preload("res://data/battle_env_effects.gd")  # v26.2: 环境效果摘要（战前）
+# v32.0 B2-2: 战前构筑建议（特殊规则+环境乘区→克制提示）
+const BuildAdvisor = preload("res://data/build_advisor.gd")
 const LevelBattleLayoutsRef = preload("res://data/level_battle_layouts.gd")  # v26.2: 本场布阵题面
 const EnemyPhaseMasters = preload("res://data/enemy_phase_masters.gd")  # v7.x: 相位师详情查询
+# R3-lite（设计审查 F-07，2026-09-13）：相位师套路查询——战前简报展示补兵套路题面
+const EnemyPhaseMasterPatterns = preload("res://data/enemy_phase_master_patterns.gd")
 const BattleEnvironments = preload("res://data/battle_environments.gd")  # 2026-08-16: 环境单一真源（与 phase_law_manager/battle_damage_system 同源）
 const EnemyLoadoutTiers = preload("res://data/enemy_loadout_tiers.gd")  # 2026-08-16: 难度显示单一真源（战斗链真实档位乘区）
 const LayoutS11 := preload("res://data/world_map_layout_s11.gd")  # v23: 方案11 内容锚定布点（原型管线导出，勿手改）
@@ -180,6 +182,13 @@ const BOSS_RING_COLOR := Color(1.0, 0.85, 0.15)
 # v28 局部缩放上限：2.8× 时 40px 节点盘径屏显约 34px、数字约 17px，够读；再大地图纹理开始糊
 const ZOOM_MAX: float = 2.8
 
+## v36 实机验收：地图关卡窗口——只显示停靠关 ±MAP_WINDOW_RADIUS 的节点，
+## 100 关全铺是选择过载（用户反馈）；远端随行军逐渐揭示，与挂机"向前推进"节奏互配。
+## 底图手绘（黑日战线整图）保留不动，只收拢节点盘/桥线/占领环。
+const MAP_WINDOW_RADIUS: int = 10
+static var _built_window_anchor: int = -1   # 本次画布构建时的窗口锚点（变则禁模板复用全量重建）
+var _window_hint_label: Label = null        # 屏幕空间窗口提示（chrome 层）
+
 # 静态布局/状态（模板跨实例复用时布局一致；动态状态在每次重建时刷新）
 static var _s_level_points: Dictionary = {}  # level(int) -> Vector2 画布坐标
 static var _s_bridges: Array = []  # [{a: Vector2, b: Vector2, era: int}]
@@ -216,6 +225,28 @@ func _truck_anchor_level() -> int:
 		return clampi(int(bm.get_parked_level()), 1, 100)
 	return clampi(GameManager.current_level if GameManager else 1, 1, 100)
 
+
+## v36 窗口：关卡是否在锚点 ±MAP_WINDOW_RADIUS 视野内
+func _in_map_window(level_index: int, anchor: int) -> bool:
+	return absi(level_index - anchor) <= MAP_WINDOW_RADIUS
+
+
+## v36 窗口提示（屏幕空间 chrome）：当前视野范围 + 前方剩余关数
+func _refresh_window_hint() -> void:
+	if _window_hint_label == null or not is_instance_valid(_window_hint_label):
+		return
+	if MAP_SCHEME != 11:
+		_window_hint_label.visible = false
+		return
+	_window_hint_label.visible = true
+	var anchor: int = _built_window_anchor if _built_window_anchor > 0 else _truck_anchor_level()
+	var lo: int = maxi(1, anchor - MAP_WINDOW_RADIUS)
+	var hi: int = mini(LEVEL_COUNT, anchor + MAP_WINDOW_RADIUS)
+	if hi >= LEVEL_COUNT:
+		_window_hint_label.text = "战线视野 第 %d–%d 关 · 终点「终局」已在视野内" % [lo, hi]
+	else:
+		_window_hint_label.text = "战线视野 第 %d–%d 关 · 前方还有 %d 关，随行军揭示" % [lo, hi, LEVEL_COUNT - hi]
+
 func _toast_gate(msg: String) -> void:
 	if SignalBus and SignalBus.has_signal("show_toast"):
 		SignalBus.show_toast.emit(msg)
@@ -235,31 +266,16 @@ func _ready() -> void:
 	var _tpm := get_node_or_null("/root/TutorialProgressionManager")
 	if _tpm != null and _tpm.has_method("notify_surface_opened"):
 		_tpm.notify_surface_opened("world_map")
+	# R1-7（设计审查 F-17，2026-09-13）：地图 BGM——不显式切歌会沿用上一场景曲目
+	# （战后经基地进图仍是基地曲，从标题直进则是标题曲）；与 v22.4 基地同款处理。
+	if AudioManager != null and AudioManager.has_method("play_music"):
+		AudioManager.play_music("hub")
 	# v22 百灯群岛：旧网格地图的星空/扫描线绘制退役，由 map_void_base 底图承担
 	var scroll_ready := get_node_or_null("Margin/VBox/ScrollContainer") as ScrollContainer
 	if scroll_ready != null and not scroll_ready.gui_input.is_connected(_on_map_gui_input):
 		scroll_ready.gui_input.connect(_on_map_gui_input)
-	# v22: 势力领地图入口改挂标题栏（旧实现位于滚动内容里，随网格布局退役）
+	# v6.22: 势力领地图入口已随占领状态机退役删除（领地概念不再存在）
 	var vbox_r := get_node_or_null("Margin/VBox")
-	if vbox_r != null and vbox_r.get_node_or_null("TerritoryMapButton") == null:
-		var territory_btn := Button.new()
-		territory_btn.name = "TerritoryMapButton"
-		territory_btn.text = "◆ 势力领地图"
-		territory_btn.tooltip_text = "查看100关当前占领状态（势力领地分布）"
-		territory_btn.custom_minimum_size = Vector2(0, 30)
-		var tbs := StyleBoxFlat.new()
-		tbs.bg_color = Color(0.06, 0.1, 0.17, 0.9)
-		tbs.border_width_left = 1; tbs.border_width_top = 1
-		tbs.border_width_right = 1; tbs.border_width_bottom = 1
-		tbs.border_color = Color(0.0, 0.75, 0.85, 0.6)
-		tbs.corner_radius_top_left = 5; tbs.corner_radius_top_right = 5
-		tbs.corner_radius_bottom_right = 5; tbs.corner_radius_bottom_left = 5
-		territory_btn.add_theme_stylebox_override("normal", tbs)
-		territory_btn.add_theme_color_override("font_color", DesignTokens.COLOR_ACCENT_CYAN)
-		territory_btn.add_theme_font_size_override("font_size", 13)
-		territory_btn.pressed.connect(_on_territory_map_button)
-		vbox_r.add_child(territory_btn)
-		vbox_r.move_child(territory_btn, 1)  # 标题之后、地图画布之前
 	# v26.19：顶栏燃料/停靠 chip（行军状态一变即刷）
 	if vbox_r != null:
 		_fuel_chip = Label.new()
@@ -281,8 +297,6 @@ func _ready() -> void:
 	if not GameManager.current_level_changed.is_connected(_on_truck_level_changed):
 		GameManager.current_level_changed.connect(_on_truck_level_changed)
 	# v6.10: 监听占领变化，刷新关卡按钮色标（攻克易主后实时更新）
-	if SignalBus and SignalBus.has_signal("occupation_changed"):
-		SignalBus.occupation_changed.connect(_on_occupation_changed_refresh)
 
 	# 多种方式尝试找到返回按钮
 	var back_btn: Button = get_node_or_null("Margin/VBox/BackToTitleButton")
@@ -352,8 +366,8 @@ func _on_visibility_changed() -> void:
 func _style_title() -> void:
 	var title_l: Label = get_node_or_null("Margin/VBox/TitleLabel")
 	if title_l:
-		title_l.add_theme_font_size_override("font_size", 26)
-		title_l.add_theme_color_override("font_color", Color(0, 0.941, 1, 1))
+		title_l.add_theme_font_size_override("font_size", 24)
+		title_l.add_theme_color_override("font_color", Color(0, 0.94, 1, 1))
 		# 标题随 MAP_SCHEME 切换（6=百灯群岛 / 8=沙漏双界 / 11=黑日战线）
 		match MAP_SCHEME:
 			8:
@@ -372,8 +386,22 @@ func _style_back_button(btn: Button) -> void:
 	s.corner_radius_top_left = 5; s.corner_radius_top_right = 5
 	s.corner_radius_bottom_right = 5; s.corner_radius_bottom_left = 5
 	btn.add_theme_stylebox_override("normal", s)
+	_apply_map_btn_states(btn, s)
 	btn.add_theme_color_override("font_color", DesignTokens.COLOR_ACCENT_CYAN)
 	btn.add_theme_font_size_override("font_size", 14)
+
+## UI 四级标准修复 R-A4：地图自建按钮此前只覆 normal，hover 回退全局主题青色样式
+## 观感跳变。统一补 hover=亮 14% / pressed=暗 10% 两档（duplicate 基样式改色）+ 焦点透明。
+func _apply_map_btn_states(btn: Button, base: StyleBoxFlat) -> void:
+	var hover: StyleBoxFlat = base.duplicate()
+	hover.bg_color = base.bg_color.lightened(0.14)
+	var bc := base.border_color
+	hover.border_color = Color(bc.r, bc.g, bc.b, minf(bc.a + 0.2, 1.0))
+	var pressed: StyleBoxFlat = base.duplicate()
+	pressed.bg_color = base.bg_color.darkened(0.10)
+	btn.add_theme_stylebox_override("hover", hover)
+	btn.add_theme_stylebox_override("pressed", pressed)
+	btn.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
 
 func _build_level_map() -> void:
 	# 缓存检查：如果地图已构建，跳过
@@ -389,6 +417,11 @@ func _build_level_map() -> void:
 	var current_level: int = GameManager.current_level if GameManager else 1
 	_refresh_static_state(current_level)
 	_ensure_layout()
+	# v36 窗口锚点（在途=目的地，否则停靠关）：锚点变了禁用跨实例模板复用，强制全量重建
+	var window_anchor: int = _truck_anchor_level() if MAP_SCHEME == 11 else current_level
+	if MAP_SCHEME == 11 and _built_window_anchor != window_anchor:
+		_cached_level_map_template = null
+	_built_window_anchor = window_anchor
 
 	# v23.1 单屏模式：方案 11 整图等比缩放进可视区，无滚动/拖拽
 	if MAP_SCHEME == 11:
@@ -454,7 +487,7 @@ func _build_level_map() -> void:
 		canvas.add_child(lower_tint)
 		var seam_lbl := Label.new()
 		seam_lbl.text = "── 相位缝 ──"
-		seam_lbl.add_theme_font_size_override("font_size", 15)
+		seam_lbl.add_theme_font_size_override("font_size", 14)
 		seam_lbl.add_theme_color_override("font_color", Color(0.0, 0.9, 1.0, 0.85))
 		seam_lbl.position = Vector2(60, SEAM_Y_S8 - 24)
 		seam_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -489,7 +522,7 @@ func _build_level_map() -> void:
 		canvas.add_child(marker)
 		var home_lbl := Label.new()
 		home_lbl.text = "移动基地"
-		home_lbl.add_theme_font_size_override("font_size", 26)
+		home_lbl.add_theme_font_size_override("font_size", 24)
 		home_lbl.add_theme_color_override("font_color", Color(1.0, 0.71, 0.37, 0.95))
 		home_lbl.add_theme_color_override("font_outline_color", DesignTokens.COLOR_BACKDROP_DEEP)
 		home_lbl.add_theme_constant_override("outline_size", 3)
@@ -510,6 +543,16 @@ func _build_level_map() -> void:
 			else "黑门（通关第 100 关后开启）"
 		gate_entry.modulate = Color(1, 1, 1, 1.0) if gate_unlocked else Color(1, 1, 1, 0.35)
 		gate_entry.gui_input.connect(_on_blackgate_gui_input)
+		# v6.22.5: 黑门图腾（P3-3 接线方案 M3-尾 拍板"只接 black_sun"）——黑日图挂入口中心
+		# 64px（对齐节点盘径 1.7~2 倍口径）；作按钮子节点自动随 modulate 联动锁定明暗
+		var gate_icon := TextureRect.new()
+		gate_icon.texture = load("res://assets/map/black_sun.png")
+		gate_icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		gate_icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		gate_icon.size = Vector2(64, 64)
+		gate_icon.position = (gate_entry.size - gate_icon.size) * 0.5
+		gate_icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		gate_entry.add_child(gate_icon)
 		canvas.add_child(gate_entry)
 		var gate_lbl := Label.new()
 		# v28：未解锁时可见文案直接带解锁条件（原"黑门（未启）"玩家不知道怎么开）
@@ -572,7 +615,7 @@ func _build_level_map() -> void:
 			continue
 		var zone_lbl := Label.new()
 		zone_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		zone_lbl.add_theme_font_size_override("font_size", 17 if MAP_SCHEME == 6 else 15)
+		zone_lbl.add_theme_font_size_override("font_size", 16 if MAP_SCHEME == 6 else 14)
 		zone_lbl.add_theme_color_override("font_color", era_info["title"])
 		zone_lbl.modulate.a = 0.85
 		if MAP_SCHEME == 6:
@@ -599,10 +642,19 @@ func _build_level_map() -> void:
 				canvas.add_child(_make_level_node(level_index_s6, era_idx, pts[j], current_level))
 	for lv_s8 in range(1, LEVEL_COUNT + 1):
 		if MAP_SCHEME == 8 or MAP_SCHEME == 11:
+			# v36 窗口：窗外关卡不建节点（底图手绘仍在，桥线由 overlay 同口径过滤）
+			if MAP_SCHEME == 11 and not _in_map_window(lv_s8, window_anchor):
+				continue
 			var era_idx_s8: int = floori((lv_s8 - 1) / 20.0)
 			canvas.add_child(_make_level_node(lv_s8, era_idx_s8,
 				_s_level_points.get(lv_s8, Vector2.ZERO), current_level))
 	_overlay_layer.queue_redraw()
+	_refresh_window_hint()
+
+	# 4c) v26.12c：移动基地卡车标记——v26.28 放到节点层之后创建（压在节点盘/关卡名
+	# 之上，到站不被节点盖上）；路线层随之同层（线端画进节点盘，衔接可读）
+	if MAP_SCHEME == 11:
+		_add_truck_marker(canvas)
 
 	# 4c) v26.12c：移动基地卡车标记——v26.28 放到节点层之后创建（压在节点盘/关卡名
 	# 之上，到站不被节点盖上）；路线层随之同层（线端画进节点盘，衔接可读）
@@ -722,6 +774,10 @@ static func _layout_scheme8() -> void:
 ## - 30 关原点 (1074,1352) 吊在南部海面孤点 → 挪到 29(1065,1103) 西侧 70px
 ## - 末段 95-100 聚拢成黑门前最后一段路：98→97 左下、99→97 右下、100 压到岩岬下缘
 ##   （98 原 (2162,724) / 99 原 (2207,688) 与 100(2209,938) 松散；黑门在 (2272,774)）
+## v6.14 全量体检（2026-09-14）：100 节点逐点目检——中段"落海"疑点（L23-L51 等 17 个）
+## 实为压在冰穹冰川/冰晶构造/岩柱等内容锚点上，布点无需修；真正待裁决的是美术可读性：
+## 冰穹纯白无墨线描边，玩家会读成"海面"（自动海色掩膜同样误判）。改图需用户批准
+## （手绘定稿），备选：a) 冰穹加淡墨线描边/冷色晕 b) 外海加蓝饱和对比。
 const S11_POINT_OVERRIDES: Dictionary = {
 	30: Vector2(1010, 1060),
 	98: Vector2(2096, 997),
@@ -754,11 +810,11 @@ static func _layout_scheme6() -> void:
 			_s_bridges.append({"a": pts[j], "b": pts[j + 1], "era": era_idx})
 	_s_bridges.append({"a": _s_level_points[LEVEL_COUNT], "b": _gate_pos(), "era": 4})
 
-## 每次构建/刷新时重读动态状态：占领色环集合 + 巨环三态
+## 每次构建/刷新时重读：历史辖区色环集合（v6.22 定案5：纯风味，数据源=静态表）+ 巨环三态
 func _refresh_static_state(current_level: int) -> void:
 	_s_occ_colors.clear()
 	for lv in range(1, LEVEL_COUNT + 1):
-		var fid := _get_level_occupation_safe(lv)
+		var fid := _get_level_faction_safe(lv)
 		if not fid.is_empty():
 			var c := CompanyDefs.get_faction_color(fid)
 			c.a = 0.85
@@ -835,7 +891,17 @@ func _draw_map_overlay() -> void:
 	var layer := _overlay_layer
 	if layer == null or not is_instance_valid(layer):
 		return
+	# v36 窗口：只画窗内可见点集合（桥线两端都可见才画，防悬空线）
+	var visible_pts: Dictionary = {}
+	if MAP_SCHEME == 11 and _built_window_anchor > 0:
+		for lv in range(maxi(1, _built_window_anchor - MAP_WINDOW_RADIUS),
+				mini(LEVEL_COUNT, _built_window_anchor + MAP_WINDOW_RADIUS) + 1):
+			var vp: Vector2 = _s_level_points.get(lv, Vector2.ZERO)
+			if vp != Vector2.ZERO:
+				visible_pts[vp] = true
 	for br in _s_bridges:
+		if not visible_pts.is_empty() and not (visible_pts.has(br["a"]) and visible_pts.has(br["b"])):
+			continue
 		var col: Color = ERA_COLORS[br["era"]]["border"]
 		col.a = 0.32
 		var lw: float = 3.0 if MAP_SCHEME == 11 else 1.5   # 单屏缩放显示，线宽加倍
@@ -851,6 +917,11 @@ func _draw_map_overlay() -> void:
 		layer.draw_line(seam_a, seam_b, Color(0.0, 0.9, 1.0, 0.14), 6.0)
 		layer.draw_line(seam_a, seam_b, Color(0.55, 0.95, 1.0, 0.55), 2.0)
 	for lv in _s_occ_colors:
+		# v36 窗口：窗外占领环不画（节点都没了，环成空标记）
+		if not visible_pts.is_empty():
+			var op: Vector2 = _s_level_points.get(lv, Vector2.ZERO)
+			if op == Vector2.ZERO or not visible_pts.has(op):
+				continue
 		var p: Vector2 = _s_level_points.get(lv, Vector2.ZERO)
 		if p != Vector2.ZERO:
 			layer.draw_arc(p, 30.0 if MAP_SCHEME == 11 else 46.0, 0.0, TAU, 40,
@@ -943,15 +1014,6 @@ func refresh_levels() -> void:
 	_cached_level_map_template = null
 	_build_level_map()
 
-## v6.10: 占领变化时刷新地图（让关卡按钮的占领色标实时更新）
-## v9 perf：地图隐藏时置脏跳过——world_map 随 WorldMapPanel 常驻主场景但默认不可见，
-## 每次过关都触发 100 按钮全量重建是纯浪费；重新打开时 refresh_for_open 补刷
-func _on_occupation_changed_refresh(_level: int, _old_f: String, _new_f: String) -> void:
-	if not is_visible_in_tree():
-		_occupation_dirty = true
-		return
-	refresh_levels()
-
 ## v22: 相位泡关卡节点（TextureButton）——贴图=时代泡/通关残壳/相位师泡，
 ## 占领色标=占领环（overlay 绘制）+ boss 泡染势力色 + tooltip（沿用旧按钮逻辑）
 ## v23 圈中加点节点：纯程序绘制（方案11 不再使用气泡贴图）。
@@ -987,6 +1049,10 @@ func _make_level_node(level_index: int, era_idx: int, point: Vector2, _current_l
 	if cleared or is_cur:
 		ring_col = era_col
 		num_col = Color(0.10, 0.11, 0.13)
+	# v28b：时代身份——盘面淡染时代色（100 个同款白盘的"数据表"感主因；
+	# 6-10% 掺量不动数字对比度），徽记在盘角（见下方 draw 绑定）
+	disc = disc.lerp(Color(era_col.r, era_col.g, era_col.b),
+		0.10 if (cleared or is_cur) else 0.055)
 	if is_boss:
 		ring_col = BOSS_RING_COLOR
 		bw = 4
@@ -1002,13 +1068,18 @@ func _make_level_node(level_index: int, era_idx: int, point: Vector2, _current_l
 	var sb_hover: StyleBoxFlat = sb.duplicate()
 	sb_hover.bg_color = sb.bg_color.lightened(0.14)
 	btn.add_theme_stylebox_override("hover", sb_hover)
-	btn.add_theme_stylebox_override("pressed", sb)
+	# UI 四级标准修复 R-A4：pressed 原直接复用 normal，按下无视觉确认
+	var sb_pressed: StyleBoxFlat = sb.duplicate()
+	sb_pressed.bg_color = sb.bg_color.darkened(0.12)
+	btn.add_theme_stylebox_override("pressed", sb_pressed)
 	btn.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
 	btn.custom_minimum_size = Vector2(size_px, size_px)
 	btn.size = Vector2(size_px, size_px)
 	btn.position = point - Vector2(size_px, size_px) * 0.5
 	btn.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-	btn.tooltip_text = "第 %d 关" % level_index
+	btn.tooltip_text = "第 %d 关 · %s" % [level_index, ERA_COLORS[era_idx]["name"]]
+	# v28b：盘角时代徽记——挂在 Button 自身 draw 上（画在白盘之上、数字 Label 之下）
+	btn.draw.connect(_draw_era_sigil.bind(btn, era_idx, size_px, cleared or is_cur))
 
 	var num := Label.new()
 	num.name = "LevelNum"
@@ -1059,29 +1130,88 @@ func _make_level_node(level_index: int, era_idx: int, point: Vector2, _current_l
 			num.add_theme_constant_override("outline_size", 2)
 			btn.tooltip_text = "⚔ 相位师首领：%s" % boss_master_name
 
-	# v6.10: 占领 tooltip（色环由 overlay 绘制，节点不再染膜）
-	var occupation_fid: String = _get_level_occupation_safe(level_index)
+	# v6.22: 历史辖区 tooltip（色环语义=曾属于，定案5 纯风味）
+	var occupation_fid: String = _get_level_faction_safe(level_index)
 	if not occupation_fid.is_empty():
 		var occ_name: String = occupation_fid
 		var fsm = get_node_or_null("/root/FactionSystemManager")
 		if fsm and fsm.has_method("get_faction_info"):
 			occ_name = String(fsm.get_faction_info(occupation_fid).get("name", occupation_fid))
 		if btn.tooltip_text.is_empty():
-			btn.tooltip_text = "占领：%s" % occ_name
+			btn.tooltip_text = "曾属于：%s" % occ_name
 		else:
-			btn.tooltip_text += "\n占领：%s" % occ_name
+			btn.tooltip_text += "\n曾属于：%s" % occ_name
+
+	# v32.3 D2：行军预提示——非停靠关的节点 hover 明示"点击=行军"（此前点击直接启程
+	# 只有事后的 toast，玩家以为点错/在驾驶）
+	var _wm_bm := _truck_mgr()
+	var _is_parked: bool = _wm_bm != null and int(level_index) == int(_wm_bm.get_parked_level())
+	if _wm_bm != null and not _is_parked and not bool(_wm_bm.is_traveling()):
+		if btn.tooltip_text.is_empty():
+			btn.tooltip_text = "行军至第 %d 关" % level_index
+		else:
+			btn.tooltip_text += "\n点击 = 行军至该关（耗燃料，到站停靠）"
 
 	btn.pressed.connect(func() -> void: _on_level_selected(level_index))
 	return btn
 
 ## v6.10: 安全查询关卡占领势力（FSM 优先动态，未加载/无方法时回退静态 level_information）
-func _get_level_occupation_safe(level: int) -> String:
-	var fsm = get_node_or_null("/root/FactionSystemManager")
-	if fsm and fsm.has_method("get_level_occupation"):
-		return String(fsm.get_level_occupation(level))
-	# 回退静态（v7.x 性能：用全局单例）
+## v28b：节点盘右下角时代徽记（程序化线稿，免 emoji 字体依赖/染色不可控）。
+## 五时代语汇：一战=交叉刺刀 / 二战=双翼机 / 冷战=辐射三叶 / 现代=火箭 / 近未来=闪电。
+## 画在 Button 自身 draw 里 → 层序天然为 白盘 < 徽记 < 数字 Label。
+func _draw_era_sigil(btn: Control, era_idx: int, size_px: float, strong: bool) -> void:
+	var c: Color = ERA_COLORS[era_idx]["title"]
+	# v28c：实拍校准——0.55 在实机 40px 盘上偏隐，提到 0.68（通关/当前关 0.85 保持强调）
+	c.a = 0.85 if strong else 0.68
+	var s := size_px * 0.29
+	var ctr := Vector2(size_px * 0.70, size_px * 0.72)
+	match era_idx:
+		0:  # 一战：交叉刺刀（X 双线 + 下端短护手）
+			for d: Vector2 in [Vector2(1, 1), Vector2(1, -1)]:
+				var u := d.normalized()
+				btn.draw_line(ctr - u * s, ctr + u * s, c, maxf(1.5, s * 0.16))
+				btn.draw_line(ctr + u * s * 0.42 - u.orthogonal() * s * 0.30,
+					ctr + u * s * 0.42 + u.orthogonal() * s * 0.30, c, maxf(1.5, s * 0.16))
+		1:  # 二战：双翼机剪影（三角翼 + 机身）
+			var pts := PackedVector2Array([
+				ctr + Vector2(-1.0, -0.15) * s, ctr + Vector2(0.1, -0.42) * s,
+				ctr + Vector2(1.0, -0.05) * s, ctr + Vector2(0.28, 0.05) * s,
+				ctr + Vector2(0.55, 0.55) * s, ctr + Vector2(0.12, 0.16) * s,
+				ctr + Vector2(-0.55, 0.42) * s, ctr + Vector2(0.05, 0.02) * s,
+			])
+			btn.draw_colored_polygon(pts, c)
+		2:  # 冷战：辐射三叶（三枚扇叶 + 中心点）
+			for i in 3:
+				var a0: float = -PI / 2.0 + i * TAU / 3.0 - 0.42
+				var a1: float = a0 + 0.84
+				var wedge := PackedVector2Array([ctr])
+				var steps := 6
+				for k in steps + 1:
+					wedge.append(ctr + Vector2(cos(a0 + (a1 - a0) * k / steps), sin(a0 + (a1 - a0) * k / steps)) * s)
+				btn.draw_colored_polygon(wedge, c)
+			btn.draw_circle(ctr, s * 0.22, c)
+		3:  # 现代：火箭（竖置，鼻锥+身+双侧尾翼）
+			var pts3 := PackedVector2Array([
+				ctr + Vector2(0.0, -1.05) * s, ctr + Vector2(0.34, -0.3) * s,
+				ctr + Vector2(0.34, 0.45) * s, ctr + Vector2(0.78, 0.95) * s,
+				ctr + Vector2(0.3, 0.72) * s, ctr + Vector2(-0.3, 0.72) * s,
+				ctr + Vector2(-0.78, 0.95) * s, ctr + Vector2(-0.34, 0.45) * s,
+				ctr + Vector2(-0.34, -0.3) * s,
+			])
+			btn.draw_colored_polygon(pts3, c)
+		4:  # 近未来：闪电（六点折线面）
+			var pts4 := PackedVector2Array([
+				ctr + Vector2(0.28, -1.0) * s, ctr + Vector2(-0.5, 0.1) * s,
+				ctr + Vector2(-0.02, 0.1) * s, ctr + Vector2(-0.28, 1.0) * s,
+				ctr + Vector2(0.5, -0.15) * s, ctr + Vector2(0.02, -0.15) * s,
+			])
+			btn.draw_colored_polygon(pts4, c)
+
+
+## v6.22: 动态占领查询已退役——关卡势力归属=纯风味静态表（定案5）
+func _get_level_faction_safe(level: int) -> String:
 	var li = LevelInformation.get_shared()
-	return li.get_level_faction(level)
+	return String(li.get_level_faction(level))
 
 func _process(_delta: float) -> void:
 	# v23.2 单屏自校验：每帧比对 ScrollContainer 实际尺寸与当前缩放，
@@ -1165,35 +1295,66 @@ func _build_map_screen_chrome() -> void:
 			chrome_parent = ancestor
 			break
 		ancestor = ancestor.get_parent()
-	var panel := PanelContainer.new()
-	panel.name = "MapLegend"
-	var psb := StyleBoxFlat.new()
-	psb.bg_color = Color(0.05, 0.08, 0.14, 0.82)
-	psb.set_border_width_all(1)
-	psb.border_color = Color(0, 0.75, 0.85, 0.45)
-	psb.set_corner_radius_all(6)
-	psb.content_margin_left = 10
-	psb.content_margin_right = 10
-	psb.content_margin_top = 8
-	psb.content_margin_bottom = 8
-	panel.add_theme_stylebox_override("panel", psb)
+	# v38.1（用户反馈"文字就在按钮底下，设计不合理"）：动作键与图例文字彻底分离——
+	# 左下角改为竖向堆栈：独立**动作面板**（出击/定位键，视觉强化）在上，
+	# 纯文字**图例面板**（弱化样式）在下；按钮按停靠关通关态区分文案。
+	var stack := VBoxContainer.new()
+	stack.name = "MapChromeStack"
+	stack.add_theme_constant_override("separation", 8)
 	# 显式底部左锚 + 生长方向（右/上）：preset 在子内容未填充、size=0 时调用会让
-	# PanelContainer 向下生长出屏，grow 方向显式声明后才与填充时序无关
-	panel.anchor_left = 0.0
-	panel.anchor_top = 1.0
-	panel.anchor_right = 0.0
-	panel.anchor_bottom = 1.0
-	panel.offset_left = 12.0
-	panel.offset_top = -12.0
-	panel.offset_right = 12.0
-	panel.offset_bottom = -12.0
-	panel.grow_horizontal = Control.GROW_DIRECTION_END
-	panel.grow_vertical = Control.GROW_DIRECTION_BEGIN
-	chrome_parent.add_child(panel)
+	# 面板向下生长出屏，grow 方向显式声明后才与填充时序无关
+	stack.anchor_left = 0.0
+	stack.anchor_top = 1.0
+	stack.anchor_right = 0.0
+	stack.anchor_bottom = 1.0
+	stack.offset_left = 12.0
+	stack.offset_top = -12.0
+	stack.offset_right = 12.0
+	stack.offset_bottom = -12.0
+	stack.grow_horizontal = Control.GROW_DIRECTION_END
+	stack.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	chrome_parent.add_child(stack)
 
-	var vb := VBoxContainer.new()
-	vb.add_theme_constant_override("separation", 6)
-	panel.add_child(vb)
+	# ── 动作面板：出击键（主，绿实底）+ 定位键（辅，幽灵样式）——色相/底感双区分 ──
+	var actions := PanelContainer.new()
+	actions.name = "MapActions"
+	var asb := StyleBoxFlat.new()
+	asb.bg_color = Color(0.05, 0.11, 0.10, 0.94)
+	asb.set_border_width_all(1)
+	asb.border_color = Color(0.2, 0.85, 0.5, 0.62)
+	asb.set_corner_radius_all(6)
+	asb.content_margin_left = 8
+	asb.content_margin_right = 8
+	asb.content_margin_top = 6
+	asb.content_margin_bottom = 6
+	actions.add_theme_stylebox_override("panel", asb)
+	stack.add_child(actions)
+	var action_row := HBoxContainer.new()
+	action_row.add_theme_constant_override("separation", 8)
+	actions.add_child(action_row)
+
+	# v38（用户反馈"进入按钮在关卡点上才知道"）：常驻出击入口——直接进入停靠关，
+	# 与"点关卡锚点 → 关卡情报弹窗 → 进入该关"等价（锚点路径保留不变）。
+	# v38.1：按通关态区分文案——已通关=「↻ 再战本关」（重复挑战语义），未通关=「▶ 进入本关」。
+	var bm_enter := _truck_mgr()
+	var parked_lv: int = int(bm_enter.get_parked_level()) if bm_enter != null and bm_enter.has_method("get_parked_level") else 1
+	var lpm_node: Node = get_node_or_null("/root/LevelProgressManager")
+	var parked_cleared: bool = lpm_node != null and lpm_node.has_method("get_level_stars") \
+		and int(lpm_node.get_level_stars(parked_lv)) > 0
+	var enter_btn := Button.new()
+	enter_btn.name = "EnterParkedLevelBtn"
+	enter_btn.text = ("↻ 再战本关（第 %d 关）" % parked_lv) if parked_cleared else ("▶ 进入本关（第 %d 关）" % parked_lv)
+	enter_btn.tooltip_text = ("重打第 %d 关：掉落与情报照常结算（重复挑战）" % parked_lv) if parked_cleared \
+		else ("直接进入第 %d 关（出击即开战）\n也可点击地图上的关卡点查看关卡情报后再进入" % parked_lv)
+	enter_btn.focus_mode = Control.FOCUS_NONE
+	enter_btn.add_theme_font_size_override("font_size", 14)
+	var enter_styles := PanelStyles.make_button_styles(DesignTokens.COLOR_HEALTH, "solid")
+	for key in ["normal", "hover", "pressed", "disabled", "focus"]:
+		enter_btn.add_theme_stylebox_override(key, enter_styles[key])
+	enter_btn.add_theme_color_override("font_color", Color(0.03, 0.10, 0.06))
+	enter_btn.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	enter_btn.pressed.connect(_on_enter_parked_level_pressed)
+	action_row.add_child(enter_btn)
 
 	var locate_btn := Button.new()
 	locate_btn.text = "◎ 回到当前关"
@@ -1205,7 +1366,26 @@ func _build_map_screen_chrome() -> void:
 	for key in ["normal", "hover", "pressed", "disabled", "focus"]:
 		locate_btn.add_theme_stylebox_override(key, styles[key])
 	locate_btn.pressed.connect(_on_locate_current_pressed)
-	vb.add_child(locate_btn)
+	action_row.add_child(locate_btn)
+
+	# ── 图例面板：纯文字说明（与动作面板分离，弱化底色）──
+	var panel := PanelContainer.new()
+	panel.name = "MapLegend"
+	var psb := StyleBoxFlat.new()
+	psb.bg_color = Color(0.04, 0.06, 0.10, 0.72)
+	psb.set_border_width_all(1)
+	psb.border_color = Color(0, 0.75, 0.85, 0.28)
+	psb.set_corner_radius_all(6)
+	psb.content_margin_left = 10
+	psb.content_margin_right = 10
+	psb.content_margin_top = 6
+	psb.content_margin_bottom = 6
+	panel.add_theme_stylebox_override("panel", psb)
+	stack.add_child(panel)
+
+	var vb := VBoxContainer.new()
+	vb.add_theme_constant_override("separation", 6)
+	panel.add_child(vb)
 
 	vb.add_child(_make_legend_row(Color(0.0, 0.9, 1.0), "当前关（青色双环）"))
 	vb.add_child(_make_legend_row(BOSS_RING_COLOR, "相位师首领关（金环加大）"))
@@ -1247,6 +1427,27 @@ func _build_map_screen_chrome() -> void:
 	_next_marker.visible = false
 	chrome_parent.add_child(_next_marker)
 
+	# v36 窗口提示：右下角常驻小字（视野范围/前方剩余）
+	_window_hint_label = Label.new()
+	_window_hint_label.name = "MapWindowHint"
+	_window_hint_label.add_theme_font_size_override("font_size", 13)
+	_window_hint_label.add_theme_color_override("font_color", Color(0.62, 0.68, 0.76, 0.9))
+	_window_hint_label.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.7))
+	_window_hint_label.add_theme_constant_override("outline_size", 3)
+	_window_hint_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_window_hint_label.anchor_left = 1.0
+	_window_hint_label.anchor_right = 1.0
+	_window_hint_label.anchor_top = 1.0
+	_window_hint_label.anchor_bottom = 1.0
+	_window_hint_label.offset_left = -520.0
+	_window_hint_label.offset_right = -14.0
+	_window_hint_label.offset_top = -34.0
+	_window_hint_label.offset_bottom = -12.0
+	_window_hint_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	_window_hint_label.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	_window_hint_label.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	chrome_parent.add_child(_window_hint_label)
+
 ## v28 图例行：迷你节点样例（白盘彩环，与真实节点同构）+ 说明文字
 func _make_legend_row(ring: Color, text: String) -> Control:
 	var row := HBoxContainer.new()
@@ -1273,6 +1474,14 @@ func _make_legend_row(ring: Color, text: String) -> Control:
 func _on_locate_current_pressed() -> void:
 	SignalBus.play_sound.emit("button")
 	_center_view_on_level(clampi(GameManager.current_level if GameManager else 1, 1, LEVEL_COUNT), 2.0)
+
+## v38：常驻出击入口——直接进入卡车停靠关（与锚点弹窗「进入该关」同一条执行链，
+## 含停靠门控 toast / 内嵌模式直调 / 独立模式 meta 链）。锚点交互保持不变。
+func _on_enter_parked_level_pressed() -> void:
+	SignalBus.play_sound.emit("button")
+	var bm := _truck_mgr()
+	var parked: int = int(bm.get_parked_level()) if bm != null and bm.has_method("get_parked_level") else 1
+	_enter_level_from_popup(clampi(parked, 1, LEVEL_COUNT), null)
 
 ## v28：“下一关”引导标跟随——画布坐标→屏幕坐标，节点拖出视口时贴边指示方位
 func _update_next_marker(canvas: Control, scroll: ScrollContainer) -> void:
@@ -1503,6 +1712,9 @@ func _truck_marker_pos(lvl: int, sz: Vector2) -> Vector2:
 ## 进度变化：直接对位（小光点瞬移可读；行驶中的走位由 _on_truck_travel_changed 动画承担）
 func _on_truck_level_changed(_level: int) -> void:
 	_update_truck_marker_snap()
+	# v36 窗口：锚点（在途=目的地/停靠关）变了 → 窗口随行军迁移，全量重建节点
+	if MAP_SCHEME == 11 and _built_window_anchor > 0 and _built_window_anchor != _truck_anchor_level():
+		refresh_levels()
 
 ## 面板打开/状态回稳时无动画对位（含缩放布局变化后的重排）
 func _update_truck_marker_snap() -> void:
@@ -1606,7 +1818,8 @@ func _show_blackgate_popup() -> void:
 		"每 5 波精英 / 每 10 波首领；每 10 波渗度 +1（敌人更强、缴获品质更好）。",
 		"星冥单位只可通过缴获获取（黑门内击杀掉落），品质随渗度提升。",
 		"每场随机 1 条裂隙环境（灵能风暴/低重力/裂隙潮汐/晶脉浮陆），敌我双向生效。",
-		"星髓按渗度里程碑发放，每周获取有上限。",
+		# v6.19 P1-T1.2 概率可见化：上限/重置口径读常量（宪法 C3）
+		"星髓按渗度里程碑发放，每周上限 %d（每周一重置）。" % EndlessBlackgateRef.WEEKLY_MARROW_CAP,
 	]
 	for line in lines:
 		var lbl := Label.new()
@@ -1633,6 +1846,24 @@ func _show_blackgate_popup() -> void:
 		best_lbl.add_theme_font_size_override("font_size", 14)
 		best_lbl.add_theme_color_override("font_color", Color(0.62, 0.85, 1.0))
 		vb.add_child(best_lbl)
+
+	# 入场软门状态（v32.0 B3-S3；v6.19 P1-T1.2 规则数值读常量，禁硬编码——宪法 C3）
+	if ebm != null and ebm.has_method("get_entry_status"):
+		var st: Dictionary = ebm.get_entry_status()
+		var gate_line: String = "今日免费入场：剩余 %d/%d（每日刷新）" % [
+			int(st.get("free_left", 0)), EndlessBlackgateRef.FREE_ENTRIES_PER_DAY]
+		var extra_left: int = int(st.get("extra_left", 0))
+		if extra_left > 0:
+			gate_line += " · 已购次数 %d" % extra_left
+		else:
+			gate_line += " · 次数用尽可花 %d 能量块购 1 次" % EndlessBlackgateRef.ENERGY_PER_EXTRA_ENTRY
+		var gate_lbl := Label.new()
+		gate_lbl.text = gate_line
+		gate_lbl.add_theme_font_size_override("font_size", 14)
+		gate_lbl.add_theme_color_override("font_color", Color(1.0, 0.82, 0.45))
+		gate_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		gate_lbl.custom_minimum_size = Vector2(480, 0)
+		vb.add_child(gate_lbl)
 
 	var hb := HBoxContainer.new()
 	hb.alignment = BoxContainer.ALIGNMENT_CENTER
@@ -1662,6 +1893,57 @@ func _enter_blackgate(popup: Window) -> void:
 		_toast_gate("黑门静止不动——需将移动基地停靠至第 100 关（当前第 %d 关）" % int(bm.get_parked_level()))
 		_close_popup_safe(popup)
 		return
+	# v32.0 B3-S3 软门（2026-09-19 双轨修复）：3 免费/日 + 60 能量块购次——
+	# 取代旧 v30 R2b 的 50 能量块/次无限硬门票（GameConfig.blackgate_energy_cost 已删）。
+	# begin_run→consume_entry_for_begin 是唯一记账口：免费有余直接进；
+	# v6.19.1 核验清单#5：需购次时先二次确认（原实现静默扣 60 能量块）。
+	var gate_ebm := _blackgate_mgr()
+	if gate_ebm == null or not gate_ebm.has_method("get_entry_status"):
+		_toast_gate("黑门尚未就绪，稍后再试")
+		return
+	var gate_st: Dictionary = gate_ebm.get_entry_status()
+	if not bool(gate_st.get("can_enter", false)):
+		_confirm_blackgate_purchase(popup)
+		return
+	_enter_blackgate_confirmed(popup)
+
+## 黑门管理器懒取（ensure_loaded + /root 查找，进入链与规则弹窗共用）
+func _blackgate_mgr() -> Node:
+	ManagerLazyLoader.ensure_loaded("endless")
+	return get_node_or_null("/root/EndlessBlackgateManager")
+
+## 购次二次确认（核验清单#5：透明扣费——确认后才花能量块）
+func _confirm_blackgate_purchase(popup: Window) -> void:
+	var confirm := ConfirmationDialog.new()
+	confirm.title = "购买入场次数"
+	confirm.dialog_text = "今日免费次数已用完。\n本次进入将花费 %d 能量块购买入场 1 次（购买次数永久有效直到使用）。" \
+		% EndlessBlackgateRef.ENERGY_PER_EXTRA_ENTRY
+	confirm.ok_button_text = "确认购买并进入"
+	confirm.cancel_button_text = "再想想"
+	add_child(confirm)
+	confirm.confirmed.connect(func() -> void:
+		confirm.queue_free()
+		_enter_blackgate_confirmed(popup)
+	)
+	confirm.canceled.connect(func() -> void:
+		confirm.queue_free()
+	)
+	confirm.popup_centered()
+
+## 确认后的实际进入链（免费路径直达此处；购买路径经 _confirm_blackgate_purchase）
+func _enter_blackgate_confirmed(popup: Window) -> void:
+	var gate_ebm := _blackgate_mgr()
+	if gate_ebm == null or not gate_ebm.has_method("get_entry_status"):
+		_toast_gate("黑门尚未就绪，稍后再试")
+		return
+	var gate_st: Dictionary = gate_ebm.get_entry_status()
+	if not bool(gate_st.get("can_enter", false)):
+		var bought: Dictionary = gate_ebm.buy_extra_entry_with_energy(1)
+		if not bool(bought.get("ok", false)):
+			_toast_gate(String(bought.get("reason", "今日免费次数已用完（3/3）")))
+			return
+		if SignalBus.has_signal("show_toast"):
+			SignalBus.show_toast.emit("今日免费次数已用完——能量块 -%d 购入场 1 次" % int(bought.get("energy_spent", 0)))
 	_close_popup_safe(popup)
 	if GameManager != null:
 		if GameManager.has_method("set_current_level"):
@@ -1673,23 +1955,7 @@ func _enter_blackgate(popup: Window) -> void:
 		return
 	SceneTransition.change(get_tree(), "res://scenes/main.tscn")
 
-## v6.10: 打开势力领地图面板
-func _on_territory_map_button() -> void:
-	# OccupationPanel 已静态实例化于 main.tscn（PopupLayer/OccupationOverlay/CenterContainer），
-	# 旧的 UILazyLoader.ensure_loaded("occupation") 守卫恒真（UILazyLoader 无此方法），导致按钮永远早退——已删。
-	var overlay = get_node_or_null("/root/Main/PopupLayer/OccupationOverlay")
-	if overlay == null:
-		return
-	# v6.14: 走 main 统一开关（开面板淡入动效，与其它 16 入口同路径）；
-	# 直接 visible=true 时 ESC/关闭链仍正常（close_top 按 visible 找），仅无动效。
-	var main = get_node_or_null("/root/Main")
-	if main != null and main.has_method("_open_overlay"):
-		main._open_overlay(overlay, "occupation")
-	else:
-		overlay.visible = true
-	var panel = overlay.get_node_or_null("CenterContainer/OccupationPanel")
-	if panel and panel.has_method("_refresh_all"):
-		panel._refresh_all()
+## v6.22: 原 _on_territory_map_button/_ensure_local_occupation_overlay 已随领地图面板退役删除。
 
 func _on_level_selected(level_index: int) -> void:
 	# v26.26 一点即发：停靠关=战前准备（关卡情报/出击），其余节点=直接启程（连线+光点即走）
@@ -1892,6 +2158,20 @@ func _show_level_info_popup(level_index: int) -> void:
 	var garrison_master_name: String = String(info.get("garrison_master_name", ""))
 	if not garrison_master_name.is_empty():
 		body.add_child(_make_detail_row("驻守相位师", garrison_master_name, Color(1.0, 0.55, 0.3, 1.0)))
+		# R3-lite（设计审查 F-07）：相位师套路战前可见——套路数据自 v9.0 起就是敌方核心
+		# 行为（补兵策略+动态补兵延迟），但全项目零展示，玩家读不到题面。与战术主题的
+		# 威胁/建议同格式呈现，速杀压制/对空针对等构筑决策有依据。
+		var _pat_id: String = EnemyPhaseMasterPatterns.get_pattern(
+			EnemyPhaseMasters.get_master_by_id(PhaseMasterGarrison.get_garrison_master_id(level_index)))
+		if _pat_id != EnemyPhaseMasterPatterns.PATTERN_NONE:
+			var _pat: Dictionary = EnemyPhaseMasterPatterns.get_pattern_config(_pat_id)
+			if not _pat.is_empty():
+				body.add_child(_make_detail_row("相位师套路",
+					"%s %s" % [String(_pat.get("icon", "")), String(_pat.get("name", ""))],
+					Color(1.0, 0.55, 0.3, 1.0)))
+				body.add_child(_make_detail_desc(
+					"· %s（阵亡单位按套路补位；速杀可拉长补兵间隔，扩大压制窗口）" % String(_pat.get("description", "")),
+					Color(0.85, 0.7, 0.6, 0.95)))
 
 	# v10: 敌情简报——关卡战术主题（题面）。威胁=敌方在做什么，建议=可用解法提示
 	var theme_info: Dictionary = TacticalThemes.get_theme_display(level_index)
@@ -1927,6 +2207,10 @@ func _show_level_info_popup(level_index: int) -> void:
 	var _layout_note: String = LevelBattleLayoutsRef.get_note(level_index)
 	if not _layout_note.is_empty():
 		body.add_child(_make_detail_desc("本场布阵：" + _layout_note, Color(0.75, 0.9, 1.0, 0.95)))
+	# v32.0 B2-2: 战前构筑建议（规则/环境→克制提示；主题 threat/advice 已在上文题面展示）
+	var _build_tips: Array = BuildAdvisor.get_build_tips(level_index)
+	if not _build_tips.is_empty():
+		body.add_child(_make_detail_desc("构筑建议：" + "；".join(_build_tips), Color(0.72, 1.0, 0.8, 0.95)))
 
 	# ▸ 敌情预览（敌方单位 + 可能掉落 + 资源掉落）
 	body.add_child(_make_detail_section_title("敌情预览"))
@@ -1944,6 +2228,10 @@ func _show_level_info_popup(level_index: int) -> void:
 	# ▸ 关卡描述
 	body.add_child(_make_detail_section_title("关卡描述"))
 	body.add_child(_make_detail_desc(String(info.get("description", "（无描述）"))))
+	# v30.2 R4（设计审查 F-08）：主线呼应副句（陈末视角，第二人称；未注入的关静默跳过）
+	var level_echo := CampaignNarrative.get_level_echo(level_index)
+	if not level_echo.is_empty():
+		body.add_child(_make_detail_desc(level_echo, Color(1.0, 0.72, 0.32, 0.92)))
 
 	# ── ActionRow：进入该关 + 自动部署 ──
 	var action_row := HBoxContainer.new()
@@ -2135,8 +2423,29 @@ func _format_special_rules(rules: Dictionary) -> String:
 		parts.append("能量枯竭：回能-50%")
 	if bool(rules.get("boss_enrage_half", false)):
 		parts.append("头目半血狂暴")
+	# v6.16 反制配波：敌方构成偏向（克制单一兵种构筑）
+	var cbt: Array = rules.get("counter_bias_tags", [])
+	if not cbt.is_empty():
+		parts.append("反制构成: " + _counter_bias_display(cbt))
 	# 注：deploy_limit 已移除——可上场单位数现由相位仪实际装备的战斗卡数决定，不再作为关卡修饰显示。
 	return "  ·  ".join(parts) if not parts.is_empty() else ""
+
+
+## v6.16: 反制配波 tag → 中文摘要（armored/tank=装甲洪流 等组合词）
+func _counter_bias_display(tags: Array) -> String:
+	var names: Array = []
+	for t in tags:
+		names.append({
+			"armored": "装甲", "tank": "装甲", "aircraft": "飞行单位",
+			"infantry": "步兵海", "fast": "高速冲锋", "artillery": "远程炮兵",
+			"backline": "纵深阵地",
+		}.get(String(t), String(t)))
+	# 去重保序（armored+tank 同为"装甲"）
+	var uniq: Array = []
+	for n in names:
+		if not uniq.has(n):
+			uniq.append(n)
+	return "+".join(uniq) + "为主"
 
 
 ## v8 批次3: platform_type 枚举值转中文名（供限定兵种提示）
@@ -2194,12 +2503,30 @@ func _enter_level_from_popup(level_index: int, popup: Window) -> void:
 	_close_popup_safe(popup)
 	# 批次③ Task 1：出击确认 → 出征过场拍点（main 侧 run_start_battle_sequence 消费，一次性）
 	Engine.set_meta(SortieInterstitial.META_PENDING, true)
+	# v32.5 复审修复：地图进关意图覆盖过期的基地出击标记——launch_from_bunker 是
+	# "写过不消费"的（教程期被守卫跳过后残留），不清掉会与 level_auto_start_pending
+	# 双触发、同帧开两次战斗
+	Engine.remove_meta("launch_from_bunker")
 	if has_meta("embedded_mode") and bool(get_meta("embedded_mode")):
 		back_to_main.emit()
+		# v32.3 A2 进关即开战：内嵌模式下主场景已加载（deferred init 不会再跑），直调
+		_trigger_main_auto_start()
 		return
 	# 独立场景模式：切回主场景
 	# 同步切场景会在按键输入分发中途释放本 Window 视口，易触发 Viewport::_push_unhandled_input_internal
+	# v32.3 A2 进关即开战：main 落地后消费此 meta 自动开打（黑幕战报即关卡进入揭幕）
+	Engine.set_meta("level_auto_start_pending", true)
 	SceneTransition.change(get_tree(), "res://scenes/main.tscn")
+
+## v32.3 A2：内嵌模式直调主场景自动开战入口（独立场景链走 level_auto_start_pending meta）
+func _trigger_main_auto_start() -> void:
+	var tree := get_tree()
+	if tree == null or tree.root == null:
+		return
+	for c in tree.root.get_children():
+		if c.has_method("auto_start_battle_from_world_map"):
+			c.call_deferred("auto_start_battle_from_world_map")
+			return
 
 func _collect_level_info(level_index: int) -> Dictionary:
 	var info_db = LevelInformation.get_shared()
@@ -2209,7 +2536,8 @@ func _collect_level_info(level_index: int) -> Dictionary:
 	var env: Dictionary = BattleEnvironments.get_for_level(level_index)
 	var drops: Dictionary = BasicResourcesData.get_drops_for_level(level_index)
 	var era: int = LevelEras.get_era(level_index)
-	var enemy_ids: Array = EnemyArchetypesData.get_ids_for_era(era)
+	# v30.5 R5：关卡域池（min_level 门）——情报弹窗"本关敌人"与实战出怪同口径
+	var enemy_ids: Array = EnemyArchetypesData.get_ids_for_era_at_level(era, level_index)
 	enemy_ids.sort()
 	var level_enemy_ids: Array = _pick_level_enemy_ids(level_index, enemy_ids)
 	var enemy_names: Array = []
@@ -2341,10 +2669,9 @@ func _collect_level_info(level_index: int) -> Dictionary:
 				drop_preview_text = "%s（每场战功卡随机）" % sample_txt
 			else:
 				drop_preview_text = "%s · 战功卡池示例: %s" % [drop_preview_text, sample_txt]
-	# v6.9/v6.10: 查询关卡驻防势力（动态占领优先，回退静态）
-	# v6.10: 玩家攻克易主后，驻防显示跟随动态占领状态
-	var garrison_faction_id: String = _get_level_occupation_safe(level_index)
-	var garrison_text: String = "无主之地（无占领势力，无敌方加成）"
+	# v6.22: 驻防信息=历史辖区（纯风味）——占领/敌方加成链已退役，buff 恒空
+	var garrison_faction_id: String = _get_level_faction_safe(level_index)
+	var garrison_text: String = "无主之地"
 	var garrison_buff_text: String = ""
 	var garrison_color: Color = Color(0.7, 0.75, 0.8, 0.9)
 	if not garrison_faction_id.is_empty():
@@ -2352,12 +2679,8 @@ func _collect_level_info(level_index: int) -> Dictionary:
 		if fsm and fsm.has_method("get_faction_info"):
 			var finfo: Dictionary = fsm.get_faction_info(garrison_faction_id)
 			var fname: String = String(finfo.get("name", garrison_faction_id))
-			var flevel: int = int(finfo.get("level", 1))
-			garrison_text = "%s（Lv.%d）" % [fname, flevel]
-			# 显示该势力对该关敌人的加成（来自 faction_conquest_buffs.gd）
-			if FactionConquestBuffs != null:
-				garrison_buff_text = FactionConquestBuffs.describe_buff(garrison_faction_id, flevel)
-				garrison_color = Color(1.0, 0.7, 0.4, 1.0)  # 橙红：占领势力，威胁提示
+			garrison_text = "%s（曾属）" % fname
+			garrison_color = CompanyDefs.get_faction_color(garrison_faction_id)
 	# v7.x: 查询驻守相位师（固定驻守关，复用顶部 const）
 	var garrison_master_name: String = ""
 	var _garrison_mid: String = PhaseMasterGarrison.get_garrison_master_id(level_index)
@@ -2412,10 +2735,6 @@ func _pick_level_enemy_ids(level_index: int, era_enemy_ids: Array) -> Array:
 
 ## 仅在地图打开时执行的轻量刷新（避免每次重建100个按钮）
 func refresh_for_open() -> void:
-	# v9 perf：隐藏期间占领变化过 → 补一次全量重建（占领色标已变）
-	if _occupation_dirty:
-		_occupation_dirty = false
-		refresh_levels()
 	_on_visibility_changed()
 	if not _map_built:
 		_build_level_map()

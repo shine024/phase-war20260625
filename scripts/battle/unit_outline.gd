@@ -15,8 +15,10 @@ const SHADER := preload("res://shaders/unit_outline.gdshader")
 const OUTLINE_PX := 1.6  # 目标描边宽（屏幕像素），全单位一致
 
 ## 单位呈现时挂材质（幂等：重复呈现复用已有材质，只刷 uniform）
-static func apply(spr: Sprite2D) -> void:
-	if spr == null:
+## v6.15: skip_pre_baked=true 时直接跳过——该单位雪碧图已在发布管线预烘焙描边
+##（deploy_unit_anims.py → anim.json outline.baked），再挂 shader 会二次外扩（描边翻倍）。
+static func apply(spr: Sprite2D, skip_pre_baked := false) -> void:
+	if spr == null or skip_pre_baked:
 		return
 	var mat := spr.material as ShaderMaterial
 	if mat == null or mat.shader != SHADER:
@@ -62,3 +64,23 @@ static func refresh(spr: Sprite2D) -> void:
 		mat.set_meta("_outline_edge", edge)
 		mat.set_meta("_outline_uv", uv)
 		mat.set_meta("_outline_clean", true)
+
+## 是否挂着本描边 shader（v6.15 受击剪影推白的材质判定——预烘焙/未挂链单位返回 false，
+## 调用方走 modulate 兜底）
+static func has_outline_shader(spr: Sprite2D) -> bool:
+	if spr == null:
+		return false
+	var mat := spr.material as ShaderMaterial
+	return mat != null and mat.shader == SHADER
+
+## v6.15 打击感：受击剪影推白驱动（0=常态 1=全白）。材质为每 sprite 独立实例
+## （apply 里 ShaderMaterial.new()），写 uniform 不串单位。帧动画换帧只刷
+## edge_texels/region_uv 两项（refresh 的 meta 缓存白名单），flash_strength 不受影响；
+## 反之闪白中换帧也不会清掉 flash（衰减由驱动方计时收尾）。
+static func set_flash(spr: Sprite2D, amount: float) -> void:
+	if spr == null or not is_instance_valid(spr):
+		return
+	var mat := spr.material as ShaderMaterial
+	if mat == null or mat.shader != SHADER:
+		return
+	mat.set_shader_parameter("flash_strength", clampf(amount, 0.0, 1.0))

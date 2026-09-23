@@ -106,8 +106,13 @@ func _refresh_nano() -> void:
 	var bm: Node = get_node_or_null("/root/BlueprintManager")
 	if bm and bm.has_method("get_nano_materials"):
 		nano = int(bm.get_nano_materials())
+	# v30 R2b：晶体余额同显（普通卡洗练 = 纳米 + 晶体双计费）
+	var crystal: int = 0
+	var brm_c: Node = get_node_or_null("/root/BasicResourceManager")
+	if brm_c and brm_c.has_method("get_total"):
+		crystal = int(brm_c.get_total(BasicResources.ID_CRYSTAL))
 	if _nano_label:
-		_nano_label.text = "纳米材料：%d（洗练消耗，锁定词条会抬高批量费用）" % nano
+		_nano_label.text = "纳米材料：%d ｜ 晶体：%d（洗练双计费，锁定词条会抬高批量费用）" % [nano, crystal]
 
 # ── 卡列表（铁律#2：InstanceRegistry 实例全集）─────────────────
 func _refresh_card_list() -> void:
@@ -177,9 +182,11 @@ func _refresh_detail() -> void:
 	var card = null
 	if ir and ir.has_method("get_instance"):
 		card = ir.get_instance(_current_identity)
-	var name_line: String = _current_identity
+	# 头部只显示卡名——原始实例 ID（ww1_arm_ft17#1）是技术标识，玩家不可读
+	# （2026-09-20 全矩阵报告 P3 核销）；与左侧列表同口径。
+	var name_line: String = "未知卡牌"
 	if card != null:
-		name_line = "%s（%s）" % [String(card.display_name), _current_identity]
+		name_line = String(card.display_name)
 	var header := Label.new()
 	header.text = name_line
 	header.add_theme_font_size_override("font_size", DT.FONT_SIZE_LARGE)
@@ -268,14 +275,18 @@ func _build_affix_row(am: Node, key: String, a, idx: int) -> PanelContainer:
 	if not detailed.is_empty():
 		desc_lbl.tooltip_text = detailed
 	hbox.add_child(desc_lbl)
-	# 单条重随（v27.2: 计费货币按卡身份路由——星冥卡星髓 / 普通卡纳米）
+	# 单条重随（v27.2: 计费货币按卡身份路由——星冥卡星髓 / 普通卡纳米；
+	# v30 R2b: 普通卡纳米+晶体双计费）
 	var cost: int = int(am.get_reroll_cost_for(key, idx)) if am.has_method("get_reroll_cost_for") else int(am.get_reroll_cost(idx))
+	var crystal_cost: int = int(am.get_reroll_crystal_cost(key, idx)) if am.has_method("get_reroll_crystal_cost") else 0
 	var cur_label: String = String(am.get_reroll_currency_label(key)) if am.has_method("get_reroll_currency_label") else "纳米材料"
+	if crystal_cost > 0:
+		cur_label = "%d纳米+%d晶体" % [cost, crystal_cost]
 	var reroll_btn := Button.new()
 	reroll_btn.text = "重随 %d" % cost
 	reroll_btn.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
 	reroll_btn.custom_minimum_size = Vector2(90, 30)
-	reroll_btn.disabled = bool(a.is_locked) or not _can_pay_for(key, cost)
+	reroll_btn.disabled = bool(a.is_locked) or not _can_pay_for(key, cost, crystal_cost)
 	var r_styles := PanelStyles.make_button_styles(DT.COLOR_VIOLET)
 	reroll_btn.add_theme_color_override("font_color", DT.COLOR_TEXT_BRIGHT)
 	reroll_btn.add_theme_color_override("font_hover_color", DT.COLOR_HOVER_WHITE)
@@ -284,11 +295,12 @@ func _build_affix_row(am: Node, key: String, a, idx: int) -> PanelContainer:
 	for state in ["normal", "hover", "pressed", "disabled", "focus"]:
 		if r_styles.has(state):
 			reroll_btn.add_theme_stylebox_override(state, r_styles[state])
-	reroll_btn.tooltip_text = "同稀有度重随此词条（等级重置为 1）\n消耗：%s" % cur_label
+	reroll_btn.tooltip_text = "同稀有度重随此词条（等级重置为 1）\n消耗：%s%s" % [cur_label,
+		"\n晶体由战斗掉落积累——洗练是晶体的主要去向" if crystal_cost > 0 else ""]
 	reroll_btn.pressed.connect(func() -> void:
 		if am.has_method("reroll_affix") and am.reroll_affix(key, idx):
 			if SignalBus.has_signal("show_toast"):
-				SignalBus.show_toast.emit("词条已重随（-%d %s）" % [cost, cur_label])
+				SignalBus.show_toast.emit("词条已重随（-%s）" % cur_label)
 		else:
 			if SignalBus.has_signal("show_toast"):
 				SignalBus.show_toast.emit("⚠ 重随失败：%s不足或词条已锁定" % cur_label)
@@ -309,13 +321,14 @@ func _build_batch_bar(am: Node, key: String) -> Control:
 	var info := Label.new()
 	var lock_n: int = int(cost_info.get("locked_count", 0))
 	var extra: int = int(cost_info.get("extra_lock_cost", 0))
-	# v27.2: 货币文案按卡身份（星冥卡星髓 / 普通卡纳米）
+	# v27.2: 货币文案按卡身份（星冥卡星髓 / 普通卡纳米）；v30 R2b: 普通卡加晶体分量
 	var cur_label: String = String(am.get_reroll_currency_label(key)) if am != null and am.has_method("get_reroll_currency_label") else "纳米材料"
-	info.text = "批量重随未锁定 %d 条%s：共 %d %s" % [
+	var crystal_total: int = int(cost_info.get("crystal_cost", 0))
+	var cur_full: String = cur_label if crystal_total <= 0 else "%d%s+%d晶体" % [total, cur_label, crystal_total]
+	info.text = "批量重随未锁定 %d 条%s：共 %s" % [
 		reroll_n,
 		("（已锁定 %d 条，附加 +%d）" % [lock_n, extra]) if lock_n > 0 else "",
-		total,
-		cur_label,
+		cur_full,
 	]
 	info.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
 	info.add_theme_color_override("font_color", DT.COLOR_TEXT_SOFT)
@@ -325,7 +338,7 @@ func _build_batch_bar(am: Node, key: String) -> Control:
 	btn.text = "批量重随"
 	btn.custom_minimum_size = Vector2(110, 32)
 	btn.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
-	btn.disabled = not _can_pay_for(key, total)
+	btn.disabled = not _can_pay_for(key, total, crystal_total)
 	var b_styles := PanelStyles.make_button_styles(DT.COLOR_VIOLET)
 	btn.add_theme_color_override("font_color", DT.COLOR_TEXT_BRIGHT)
 	btn.add_theme_color_override("font_hover_color", DT.COLOR_HOVER_WHITE)
@@ -337,7 +350,7 @@ func _build_batch_bar(am: Node, key: String) -> Control:
 	btn.pressed.connect(func() -> void:
 		if am.has_method("batch_reroll_affixes") and am.batch_reroll_affixes(key):
 			if SignalBus.has_signal("show_toast"):
-				SignalBus.show_toast.emit("批量重随完成（-%d %s）" % [total, cur_label])
+				SignalBus.show_toast.emit("批量重随完成（-%s）" % cur_full)
 		else:
 			if SignalBus.has_signal("show_toast"):
 				SignalBus.show_toast.emit("⚠ 批量重随失败：%s不足" % cur_label)
@@ -354,10 +367,10 @@ func _can_afford(cost: int) -> bool:
 	return false
 
 ## v27.2: 按词条 key 判定余额（星冥卡查星髓 / 普通卡查纳米），管理器路由判定优先
-func _can_pay_for(key: String, cost: int) -> bool:
+func _can_pay_for(key: String, cost: int, crystal_cost: int = 0) -> bool:
 	var am: Node = get_node_or_null("/root/AffixManager")
 	if am and am.has_method("can_pay_reroll"):
-		return bool(am.can_pay_reroll(key, cost))
+		return bool(am.can_pay_reroll(key, cost, crystal_cost))
 	return _can_afford(cost)
 
 # ── Boss 词条池（只读展示；解锁在战斗结算侧渐进触发）────────────

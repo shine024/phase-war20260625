@@ -112,7 +112,7 @@ func _initialize() -> void:
 			print("%-4d %s  无 archetype，跳过" % [lv, era_names[era]])
 			continue
 		# 波1 与 末波解析（直接构造 ctx：headless 无 GameManager autoload；
-		# faction_buff 留空 = 无主之地基线，难度 normal 1.0）
+		# v6.22 势力加成链已退役，难度 normal 1.0）
 		var ctx1 = EnemyStatContext.new(lv, 1)
 		ctx1.tier = tier
 		var r1: Dictionary = EnemyStatResolver.resolve_classic_enemy(aid, ctx1)
@@ -128,9 +128,8 @@ func _initialize() -> void:
 		var pp: float = _player_power(cards, mirror_enh, plv)
 		var ratio: float = pL / pp if pp > 0.0 else 0.0
 
-		print("%-4d %-4s %-3s %-4d | hp %.0f→%.0f 势力%+4.0f%% | %-12s 战力 %6.1f→%6.1f | %6.1f(Lv%d) | %.2f" % [
-			lv, era_names[era], ["低", "中", "高"][tier - 1], waves,
+		print("%-4d %-4s %-3s %-4d | hp %.0f→%.0f | %-12s 战力 %6.1f→%6.1f | %6.1f(Lv%d) | %.2f" % [
+			lv, era_names[era], ["低", "中", "高", "传奇"][clampi(tier - 1, 0, 3)], waves,
 			float(r1.get("hp", 0)), float(rL.get("hp", 0)),
-			(float(ctxL.faction_buff.get("hp_mul", 1.0)) - 1.0) * 100.0,
 			aid, p1, pL, pp, plv, ratio])
 	quit(0)

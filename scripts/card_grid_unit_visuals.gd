@@ -69,6 +69,14 @@ static func synthetic_card_for_archetype(archetype_id: String, cfg: Dictionary) 
 	c.display_name = String(cfg.get("display_name", DefaultCards.get_safe_display_name(archetype_id)))
 	c.rarity = "common"
 	c.card_type = GC.CardType.COMBAT_UNIT
+	# v6.14.8: 兵种/时代写实——缩放模型（KIND_ERA_SCALE）按 combat_kind×era 查档位，
+	# synthetic 卡缺兵种会全体跌进轻装档、缺时代会全体跌进一战档。manifest 未收录时保持缺省。
+	var mk: int = EnemyUnitManifest.combat_kind_for(archetype_id)
+	if mk >= 0:
+		c.combat_kind = mk
+	var me: int = EnemyUnitManifest.era_for(archetype_id)
+	if me >= 0:
+		c.era = me
 	return c
 
 
@@ -111,10 +119,26 @@ static func apply_battle_unit_presentation(
 		var vs: float = CardFootAnchors.get_visual_scale(card)
 		if vs > 0.0 and vs != 1.0:
 			unit_spr.scale *= vs
+	# v6.14.8: 精英/首领威压乘区——接替旧 VISUAL_SCALE boss≈2.0 语义（档位系数之上）。
+	# 必须在 UnitOutline.apply 前定格（edge_texels 依赖最终 scale.x）。
+	var _boost_st: String = ""
+	if unit != null and unit.has_method("get_elite_spawn_type"):
+		_boost_st = String(unit.call("get_elite_spawn_type"))
+	elif unit != null and unit.has_meta("elite_spawn_type"):
+		_boost_st = String(unit.get_meta("elite_spawn_type", ""))
+	if _boost_st == "boss":
+		unit_spr.scale *= 1.6
+	elif _boost_st == "elite":
+		unit_spr.scale *= 1.2
 	# v26.9: 深色描边（alpha 膨胀 shader）——沙漠亮底上我方灰褐卡图与背景同明度融底的修复。
 	# 必须在 visual scale 定格后挂：edge_texels = 目标屏宽 / scale.x（帧动画 attach 的
 	# scale×2 补偿由 FrameDriver 内 refresh 兜住）。
-	UnitOutline.apply(unit_spr)
+	# v6.15: 发布管线已把描边烘焙进雪碧图的单位（anim.json outline.baked）跳过 shader——
+	# 否则烘焙描边再被 shader 二次外扩。anim_id 推导与下方 attach 段同口径（提前到此处算）。
+	var anim_id: String = card.card_id if card != null else ""
+	if anim_id.is_empty() and unit != null and "_visual_archetype_id" in unit:
+		anim_id = String(unit.get("_visual_archetype_id"))
+	UnitOutline.apply(unit_spr, UnitFrameAnim.is_outline_baked(anim_id))
 	# v27.x: 无尽暗底可读性——黑门战场是暗紫星空底,深紫/深青单位本体与背景明度差
 	# 不足（v26.9 深色描边为亮底设计,暗底下失效）。单位 sprite 自身提亮 +16% 并偏冷
 	# +30% 蓝通道,与暗底拉开对比;普通关零影响。⚠️ 用 self_modulate（modulate 在上方
@@ -176,9 +200,7 @@ static func apply_battle_unit_presentation(
 	sync_buff_labels(host, unit_spr, unit)
 	_apply_idle_motion(unit_spr, card)
 	# v14/P2: boss/相位师专属待机——有帧资产走帧动画,无则 boss 级程序化待机(威压摇摆)
-	var anim_id: String = card.card_id if card != null else ""
-	if anim_id.is_empty() and unit != null and "_visual_archetype_id" in unit:
-		anim_id = String(unit.get("_visual_archetype_id"))
+	# （v6.15: anim_id 已在描边挂载点前推导, 此处直接复用）
 	var is_boss_tier: bool = anim_id.begins_with("enemy_master") or anim_id.begins_with("boss_")
 	if unit != null and unit.has_method("get_elite_spawn_type"):
 		var st: String = String(unit.call("get_elite_spawn_type"))
@@ -330,13 +352,25 @@ static func advance_idle_motion(spr: Sprite2D, delta: float) -> void:
 ## host 仍钉在槽位地面）。非空中/无 meta 原样返回 global_position。
 ## v25: 跟随目标实时高度（起飞爬升/俯冲投弹/坠落中的空中单位，弹道瞄其当前视觉位）。
 ## 调用方：bullet.gd（直射/光束/曲射落点）、三个 projectile batch（方向/命中圈/弧线终点）。
+## v35 perf: sprite 引用缓存进目标 meta（直射弹每帧最多 3 次调用本函数，原每次
+## get_node_or_null×2；sprite 节点随单位终身存活，换建时旧引用失效自动重解析）。
 static func aim_pos_for(target: Node2D) -> Vector2:
 	if target == null or not is_instance_valid(target):
 		return Vector2.ZERO
 	if target.has_meta("air_lift_y"):
-		var tspr := target.get_node_or_null("Sprite2D") as Sprite2D
+		var tspr: Sprite2D = null
+		if target.has_meta("_aim_spr_ref"):
+			var cached: Object = target.get_meta("_aim_spr_ref")
+			# v35.b: is_instance_valid 前置——对已释放对象先做 `is` 类型检查在部分构建
+			# 会触发 "previously freed" 解引用告警（sprite 换建窗口期的防御）
+			if cached != null and is_instance_valid(cached) and cached is Sprite2D:
+				tspr = cached
 		if tspr == null:
-			tspr = target.get_node_or_null("Sprite") as Sprite2D
+			tspr = target.get_node_or_null("Sprite2D") as Sprite2D
+			if tspr == null:
+				tspr = target.get_node_or_null("Sprite") as Sprite2D
+			if tspr != null:
+				target.set_meta("_aim_spr_ref", tspr)
 		if tspr != null:
 			return target.global_position + Vector2(0.0, tspr.position.y)
 		return target.global_position + Vector2(0.0, -float(target.get_meta("air_lift_y")))

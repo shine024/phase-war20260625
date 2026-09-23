@@ -5,6 +5,8 @@ extends PanelContainer
 
 const DT = preload("res://resources/design_tokens.gd")
 const PanelStyles = preload("res://scripts/ui/panel_styles.gd")
+# R-B2 键位角标（preload 纪律同上：headless 无全局类缓存）
+const KeycapBadge = preload("res://scripts/ui/keycap_badge.gd")
 
 ## 播放音效（Autoload AudioManager；get_node_or_null 兜底）
 func _play_sfx(name: String) -> void:
@@ -19,6 +21,8 @@ signal btn_achievement_pressed
 signal btn_help_pressed
 signal btn_store_pressed
 signal btn_progression_pressed
+signal btn_modification_pressed
+signal btn_evolution_pressed
 signal btn_leaderboard_pressed
 signal btn_info_pressed
 signal btn_map_pressed
@@ -50,6 +54,8 @@ const DEBUG_HIDE_BOTTOM_BAR_TEXT := false
 const BTN_ICON_BY_KEY: Dictionary = {
 	"backpack": "icon_backpack",
 	"progression": "icon_upgrade",
+	"modification": "icon_modification",
+	"evolution": "icon_blueprint",
 	"faction": "icon_blueprint",
 	"quest": "icon_quest",
 	"store": "icon_shop",
@@ -70,14 +76,18 @@ const BATTLE_BTN_ICON_BY_KEY: Dictionary = {
 }
 
 # 按钮配置：[key, 显示文字, 信号名]
-# v25.3 系统收敛（14→6）：战斗场景只保留战斗即时需要的功能——卡仓（换装）/整备（战前查养成）/
-# 地图（选关主链路）/设置/存档/挂机。其余 8 个纯养成查册面板（势力/任务/商店/排行/情报/
-# 图鉴/成就/帮助）只留基地入口（bunker EMBEDDED_PANELS 全有同款），战斗屏不再为 15 个系统
-# 打广告。main.gd 的面板 handler/overlay 机制保留不动（整备舱转发 modification/evolution
+# v25.3 系统收敛（14→6）：战斗场景只保留战斗即时需要的功能。其余纯养成查册面板
+#（势力/任务/商店/排行/情报/图鉴/成就/帮助）只留基地入口（bunker EMBEDDED_PANELS 全有
+# 同款）。main.gd 的面板 handler/overlay 机制保留不动（整备舱转发 modification/evolution
 # 仍依赖），仅移除按钮与热键两个入口。
+# v32.3 E1：8 键重排——成长（原「整备」）提为首位+amber 加权；改造/制造从成长面板
+# 详情底部的二级跳转提为一级按钮（实机验收：入口太深）
+# v37（用户拍板）：成长键改标「技能」并直进相位师技能树（原整备舱中转层退役）
 const BTN_CONFIGS: Array = [
+	["progression",  "技能",   "btn_progression_pressed"],
 	["backpack",     "卡仓",   "btn_backpack_pressed"],
-	["progression",  "整备",   "btn_progression_pressed"],
+	["modification", "改造",   "btn_modification_pressed"],
+	["evolution",    "制造",   "btn_evolution_pressed"],
 	["map",          "地图",   "btn_map_pressed"],
 	["settings",     "设置",   "btn_settings_pressed"],
 	["save",         "存档",   "btn_save_pressed"],
@@ -86,8 +96,10 @@ const BTN_CONFIGS: Array = [
 
 # 批次三 B8：左排面板按钮 tooltip 文案（含快捷键宣传；键位以 main.gd _input 为准）
 const SHORTCUT_TOOLTIPS: Dictionary = {
+	"progression":  "技能树：相位师技能成长——技能点解锁全局强化；战斗卡靠经验自动升级（快捷键 7）",
 	"backpack":     "卡仓：查看拥有的卡牌与实例（快捷键 1 / B）",
-	"progression":  "整备舱：等级 / 改造 / 制造 / 技能树（快捷键 7）",
+	"modification": "改造：给战斗卡安装/升级改造模块（消耗图纸+纳米）",
+	"evolution":    "制造：用情报与资源生产新卡牌",
 	"map":          "世界地图：选择关卡推进（快捷键 M）",
 	"settings":     "设置（快捷键 9）",
 	"save":         "手动存档",
@@ -105,6 +117,26 @@ const BATTLE_BTN_CONFIGS: Array = [
 # key → Button 节点的映射
 var _btn_map: Dictionary = {}
 
+# UI 四级标准修复 R-B2：功能键 → KeyBinds 动作映射（角标显示主绑定键；
+# pw_open_backpack 是 1/B 双键，角标只示首选 1，完整键位仍在 tooltip）
+const KEYCAP_ACTION_BY_KEY: Dictionary = {
+	"progression": "pw_open_growth",
+	"backpack": "pw_open_backpack",
+	"map": "pw_open_map",
+	"settings": "pw_open_settings",
+}
+
+## v38.2（用户反馈"一会儿横的一会儿竖的"）：抽屉**恒为右侧竖排**——基地/备战/战斗
+## 三态同一布局（右缘悬浮竖列），不再随 battle_started 横竖切换；战斗态仅过滤键集
+## （技能/改造/制造为独立解锁功能，战斗中不出现）。
+const BATTLE_HIDDEN_KEYS: Array = ["progression", "modification", "evolution"]
+## v38.x J 条（用户拍板）：技能/改造/制造仅在移动基地（truck_base 工位）操作——
+## 整备主场景底栏抽屉三键常隐（本栏只挂在 main.tscn）。按钮/信号保留：
+## get_button_for_key（v6.20 教程聚光口）与各 pressed 信号仍可解析/连接。
+const MAIN_HIDDEN_KEYS: Array = ["progression", "modification", "evolution"]
+## 战斗态（仅影响键可见性，不影响布局）
+var _battle_mode: bool = false
+
 @onready var left_section: HBoxContainer = $Margin/HBox/LeftSection
 @onready var right_section: HBoxContainer = $Margin/HBox/RightSection
 
@@ -112,6 +144,20 @@ func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	_build_left_buttons()
 	_build_right_buttons()
+	# v38.x J 条: 三键常隐（仅在移动基地操作）；节点保留供教程聚光解析
+	for mk in MAIN_HIDDEN_KEYS:
+		if _btn_map.has(mk):
+			_btn_map[mk].visible = false
+	# v34 渐进解锁：改造(L6)/制造(L2)/挂机(L5) 按节奏表灰显（真身 feature_unlock_schedule.gd，
+	# 2026-09-19 修正过期注释 L3/L5）；跨级解锁信号实时刷新
+	_refresh_feature_gates()
+	if not SignalBus.feature_unlocked.is_connected(_on_feature_unlocked):
+		SignalBus.feature_unlocked.connect(_on_feature_unlocked)
+	# v38.2：战斗态只过滤键集（布局恒竖排，无横竖切换）
+	if SignalBus.has_signal("battle_started") and not SignalBus.battle_started.is_connected(_on_battle_started_layout):
+		SignalBus.battle_started.connect(_on_battle_started_layout)
+	if SignalBus.has_signal("battle_ended") and not SignalBus.battle_ended.is_connected(_on_battle_ended_layout):
+		SignalBus.battle_ended.connect(_on_battle_ended_layout)
 	# v7.x: 战斗控制按钮已迁移到 TopBattleControls，隐藏底部 RightSection + Divider
 	# 仍保留 _build_right_buttons 创建按钮到 _btn_map（set_pause_text 回退路径依赖）
 	if right_section:
@@ -122,11 +168,85 @@ func _ready() -> void:
 	# BU-1：抽屉化——默认收起 + 悬浮卡片样式（与相位仪栏同一 PanelStyles 语言）
 	_apply_float_frame_style()
 	visible = false
+	# v38.5 修复（实机评估 P2）：_ready 内 reparent 报 "Parent node is busy" +
+	# "already has a parent" 错误对（run_P1.log 实录），v38.2 右缘抽屉形态因此从未
+	# 生效。场景实例化期间父链仍在布置子节点，reparent 必须推迟到 _ready 完成后
+	#（truck_base._maybe_show_truck_intro 的 "Parent node is busy" 同款踩坑，见其注释）。
+	_become_right_side_column.call_deferred()
+
+## v38.2：一次性立形——按钮挪入竖排列 + 整条抽屉挂到 HudLayer 右缘锚定（点锚 +
+## grow 向上向左，内容自适应宽高）。仅主场景（BattleBottomBar 父链）执行，测试/
+## 工具直接实例化时保持原地结构。
+func _become_right_side_column() -> void:
+	var margin_host: Node = get_node_or_null("Margin")
+	var hbox: Node = get_node_or_null("Margin/HBox")
+	if margin_host == null or hbox == null:
+		return
+	var column := VBoxContainer.new()
+	column.name = "Column"
+	column.add_theme_constant_override("separation", 6)
+	margin_host.add_child(column)
+	hbox.visible = false
+	for cfg in BTN_CONFIGS:
+		var key: String = cfg[0]
+		if _btn_map.has(key):
+			_btn_map[key].reparent(column)
+	# 主场景链：BattleBottomBar(父) 的父 = HudLayer → 挂上去做右缘悬浮
+	var home: Node = get_parent()
+	var hud: Node = home.get_parent() if home != null else null
+	if hud != null and hud is CanvasLayer:
+		reparent(hud, false)
+		# 点锚（右下角）+ 退化矩形 + grow(BEGIN/BEGIN) = 内容自适应、自锚点向上生长
+		anchor_left = 1.0
+		anchor_top = 1.0
+		anchor_right = 1.0
+		anchor_bottom = 1.0
+		offset_left = -90.0
+		offset_right = -14.0
+		offset_top = -14.0
+		offset_bottom = -140.0   # 底边抬离底部相位仪栏/大招条
+		grow_horizontal = Control.GROW_DIRECTION_BEGIN
+		grow_vertical = Control.GROW_DIRECTION_BEGIN
+		size_flags_horizontal = Control.SIZE_SHRINK_END
+		size_flags_vertical = Control.SIZE_SHRINK_END
+
+func _on_battle_started_layout() -> void:
+	_set_battle_keys_visibility(true)
+
+func _on_battle_ended_layout(_player_won: bool) -> void:
+	_set_battle_keys_visibility(false)
+
+func _set_battle_keys_visibility(in_battle: bool) -> void:
+	if in_battle == _battle_mode:
+		return
+	_battle_mode = in_battle
+	# 开战瞬间收起抽屉（战斗中从菜单点开的另算）
+	set_drawer_open(false, false)
+	for key in BATTLE_HIDDEN_KEYS:
+		if _btn_map.has(key):
+			# v38.x J 条: 三键整备场景常隐，战斗态可见性切换不再染指
+			if key in MAIN_HIDDEN_KEYS:
+				continue
+			_btn_map[key].visible = not in_battle
 
 ## BU-1：抽屉开合。展开 = 淡入 + 自底生长（0.2s SINE OUT），收起反向 0.15s。
 ## scale 以底边为支点（容器只管布局不改 scale，安全）；尊重 DT.is_motion_reduce() 直接切换。
 func is_drawer_open() -> bool:
 	return _drawer_open
+
+## v6.20 教程聚光：按面板键取底栏按钮（tutorial_overlay 消费；无此键回 null）。
+## 抽屉收起时按钮仍在树上（不可见），调用侧自行判定可见性。
+func get_button_for_key(key: String) -> BaseButton:
+	return _btn_map.get(key)
+
+## UI 四级标准修复 R-B2：批量刷新键位角标文本
+func _refresh_keycap_badges() -> void:
+	for key in KEYCAP_ACTION_BY_KEY:
+		if not _btn_map.has(key):
+			continue
+		var badge := _btn_map[key].get_node_or_null("KeycapBadge") as Label
+		if badge != null:
+			KeycapBadge.refresh(badge)
 
 func toggle_drawer() -> void:
 	set_drawer_open(not _drawer_open)
@@ -142,6 +262,9 @@ func set_drawer_open(open: bool, animated: bool = true) -> void:
 		_drawer_tween = null
 	if open:
 		visible = true
+		# UI 四级标准修复 R-B2：KeyBinds 无变更信号（静态类），抽屉每次展开重读绑定
+		# 刷新键位角标（设置里重绑后，下次展开抽屉即生效）
+		_refresh_keycap_badges()
 		if not animated or DT.is_motion_reduce():
 			modulate.a = 1.0
 			scale = Vector2.ONE
@@ -189,11 +312,14 @@ func _apply_float_frame_style() -> void:
 	add_theme_stylebox_override("panel", sb)
 
 ## BU-1：把红点总数透传给相位仪栏「菜单」按钮（同 BattleBottomBar 下的兄弟节点）。
+## v38：战斗态抽屉 reparent 到 HudLayer 后兄弟路径变化，补第二路径兜底。
 func _notify_menu_badge() -> void:
 	var total: int = 0
 	for v in _badge_counts.values():
 		total += maxi(int(v), 0)
 	var ib: Node = get_node_or_null("../BottomInstrumentBar")
+	if ib == null:
+		ib = get_node_or_null("../../BattleBottomBar/BottomInstrumentBar")
 	if ib != null and ib.has_method("set_menu_badge"):
 		ib.set_menu_badge(total)
 
@@ -208,10 +334,19 @@ func _build_left_buttons() -> void:
 		# （学《朝露》：按两次就记住；键位与 main.gd _input 战前 match 一一对应）
 		var tip: String = String(SHORTCUT_TOOLTIPS.get(key, ""))
 		btn.tooltip_text = tip if not tip.is_empty() else label_text
+		# UI 四级标准修复 R-B2：快捷键可见角标（tooltip 宣传之外，键位直接标在按钮上）
+		var kb_action: String = String(KEYCAP_ACTION_BY_KEY.get(key, ""))
+		if not kb_action.is_empty():
+			KeycapBadge.bind_to_action(btn, kb_action)
 		if DEBUG_HIDE_BOTTOM_BAR_TEXT:
 			btn.text = ""
 		_apply_bar_icon(btn, BTN_ICON_BY_KEY.get(key, ""))
 		btn.add_theme_constant_override("icon_max_width", 30)
+		# v32.3 E1：成长按钮视觉加权（amber 主张——养成主链路不与工具键同权）
+		if key == "progression":
+			var gold := PanelStyles.make_button_styles(DT.COLOR_AMBER)
+			btn.add_theme_stylebox_override("normal", gold["normal"])
+			btn.add_theme_color_override("font_color", Color(0.99, 0.86, 0.60))
 		if key == "save":
 			btn.pressed.connect(func():
 				_set_active_btn("")
@@ -356,6 +491,12 @@ func _style_battle_button(btn: Button, font_color: Color, bg_color: Color) -> vo
 
 ## 功能按钮点击：高亮状态 + 发出信号
 func _on_func_btn_pressed(key: String, signal_name: String) -> void:
+	# v34 渐进解锁：锁定键点击 → toast 提示解锁关，不发开面板信号
+	if _btn_map.has(key) and _btn_map[key].has_meta("gate_locked") \
+			and bool(_btn_map[key].get_meta("gate_locked")):
+		_play_sfx("error")
+		SignalBus.show_toast.emit("🔒 %s" % _gate_hint(key))
+		return
 	_play_sfx("button")
 	# 切换高亮：再次点击已高亮的按钮则取消高亮（面板关闭由外部处理）
 	if _active_btn_key == key:
@@ -367,20 +508,55 @@ func _on_func_btn_pressed(key: String, signal_name: String) -> void:
 	if _drawer_open:
 		set_drawer_open(false)
 
+# ── v34 渐进解锁：底栏门控（key 与 data/feature_unlock_schedule.gd 对齐）──
+const GATED_KEYS: Array = ["modification", "evolution", "afk"]
+
+func _gate_hint(key: String) -> String:
+	var lpm := get_node_or_null("/root/LevelProgressManager")
+	if lpm != null and lpm.has_method("feature_gate_hint"):
+		return String(lpm.feature_gate_hint(key))
+	return ""
+
+func _refresh_feature_gates() -> void:
+	var lpm := get_node_or_null("/root/LevelProgressManager")
+	for key in GATED_KEYS:
+		if not _btn_map.has(key):
+			continue
+		var btn: Button = _btn_map[key]
+		var unlocked := true
+		if lpm != null and lpm.has_method("is_feature_unlocked"):
+			unlocked = bool(lpm.is_feature_unlocked(key))
+		if unlocked:
+			btn.modulate = Color.WHITE
+			btn.set_meta("gate_locked", false)
+			var tip: String = String(SHORTCUT_TOOLTIPS.get(key, ""))
+			btn.tooltip_text = tip if not tip.is_empty() else String(btn.text)
+		else:
+			btn.modulate = Color(0.55, 0.55, 0.55, 0.8)
+			btn.set_meta("gate_locked", true)
+			btn.tooltip_text = "🔒 %s" % _gate_hint(key)
+
+func _on_feature_unlocked(_key: String) -> void:
+	_refresh_feature_gates()
+
 ## 设置高亮按钮（传入 "" 清除所有高亮）
 func _set_active_btn(key: String) -> void:
 	_active_btn_key = key
 	# C6: 手写高亮/默认样式 → PanelStyles 工厂（active 复用 pressed 态视觉）
+	# v32.3 E1：成长按钮用 amber 档（高亮/恢复都保持与其它键的视觉区分）
 	var styles := PanelStyles.make_button_styles(DT.COLOR_ACCENT_CYAN)
+	var gold := PanelStyles.make_button_styles(DT.COLOR_AMBER)
 	for k in _btn_map:
 		var btn: Button = _btn_map[k]
+		var st: Dictionary = gold if k == "progression" else styles
+		var base_color: Color = Color(0.99, 0.86, 0.60) if k == "progression" else Color(0.75, 0.85, 1.0, 0.9)
 		if k == key:
-			btn.add_theme_stylebox_override("normal", styles["pressed"])
-			btn.add_theme_color_override("font_color", DT.COLOR_ACCENT_CYAN)
+			btn.add_theme_stylebox_override("normal", st["pressed"])
+			btn.add_theme_color_override("font_color", base_color)
 		elif k not in ["start_battle", "back", "pause", "retreat", "save"]:
 			# 恢复默认样式
-			btn.add_theme_stylebox_override("normal", styles["normal"])
-			btn.add_theme_color_override("font_color", Color(0.75, 0.85, 1.0, 0.9))
+			btn.add_theme_stylebox_override("normal", st["normal"])
+			btn.add_theme_color_override("font_color", base_color)
 
 ## 外部通知：某个面板已关闭，清除对应高亮
 func notify_panel_closed(key: String) -> void:
@@ -390,9 +566,12 @@ func notify_panel_closed(key: String) -> void:
 ## v7.x: 战斗控制按钮已整合进 TopHudBar。
 ## 本方法保留为转发门面，让 main_battle_setup.gd 等旧调用点零改动。
 func _get_top_controls() -> Node:
-	# bottom_function_bar 在 HudLayer/BattleBottomBar/BottomFunctionBar
-	# 向上 2 层到 HudLayer，再下到 TopHudBar
-	return get_node_or_null("../../TopHudBar")
+	# v38.2 后本条被 reparent 到 HudLayer 直下（../TopHudBar）；
+	# 旧嵌套结构（BattleBottomBar 下，测试/裸实例化）走 ../../TopHudBar。
+	var tc: Node = get_node_or_null("../TopHudBar")
+	if tc == null:
+		tc = get_node_or_null("../../TopHudBar")
+	return tc
 
 ## 外部更新开始战斗状态（转发到 TopBattleControls）
 func set_start_battle_text(text: String) -> void:

@@ -59,6 +59,15 @@ const FORT_ENEMY_IDS: Array[String] = [
 	"fut_fort_ion", "fut_fort_shield",
 ]
 
+## v36 实机验收：堡垒等级门（机制同 POOL_MIN_LEVEL，get_ids_for_era_at_level 统一消费，
+## 出怪/30% 全池随机/波次槽过滤三处同链生效）。ww1 碉堡/要塞炮 646HP 带堡垒护盾，
+## 从 L1 混入新档教学期打不动——L1-3 无堡垒，L4 起照常出。其余时代堡垒受时代门天然
+## 限制（ww2 堡垒最早 L21），无需另设门。
+const FORT_MIN_LEVEL: Dictionary = {
+	"ww1_fort_pillbox": 4,
+	"ww1_fort_artillery": 4,
+}
+
 ## C 段：固定敌人（与 enemy_archetypes.json 一致，36张）
 ## 前14张（索引0-13）缴获卡面 → vis_player_036~049（C'段已接入）
 ## 后22张（索引14-35）缴获卡面 → vis_player_050~071（需生成素材后接入）
@@ -86,6 +95,8 @@ const POOL_ENEMY_IDS: Array[String] = [
 	# v26 新飞机（轰炸机/多用途，era1-4 各一组）
 	"ww2_air_bomber", "ww2_air_dive_bomber", "cold_air_strike_fighter", "cold_air_bomber",
 	"mod_air_multirole", "mod_air_bomber", "fut_air_stealth_multirole", "fut_air_stealth_bomber",
+	# v30.5 R5：二战尾部实验性喷气机（L36-40 试点，等级门见 _POOL_MIN_LEVEL）
+	"ww2_air_me262", "ww2_air_meteor_e",
 ]
 
 ## D段显示名
@@ -98,7 +109,16 @@ const POOL_DISPLAY_NAMES: Array[String] = [
 	"毛瑟 C96 征召兵排", "Sd.Kfz.251/1 半履带车", "SS-C-1 岸防导弹组", "PS-9 相位中继站",
 	"B-17 空中堡垒", "Ju 87 斯图卡", "F-111 土豚", "图-95 熊式",
 	"F-15E 攻击鹰", "B-52 同温层堡垒", "六代机制空型", "B-21 突袭者",
+	"Me-262 燕子", "流星 F.3 特遣机",
 ]
+
+## v30.5 R5（设计审查 F-11）：D 段等级门——带 min_level 的原型只在 level >= min_level
+## 的关卡出场（二战尾部飞行试点限定 L36-40；缺省 0 = 全程可出）。
+## 出怪/波次槽过滤/关卡情报三处消费点统一走 EnemyArchetypes.get_ids_for_era_at_level。
+const POOL_MIN_LEVEL: Dictionary = {
+	"ww2_air_me262": 36,
+	"ww2_air_meteor_e": 36,
+}
 
 static var _entries_cache: Array = []
 static var _unit_icon_by_archetype: Dictionary = {}
@@ -170,6 +190,36 @@ static func platform_visual_id_for(card_id: String) -> String:
 static func visual_id_for_archetype(archetype_id: String) -> String:
 	_ensure_unit_icon_map()
 	return String(_unit_icon_by_archetype.get(String(archetype_id).strip_edges(), ""))
+
+
+## archetype → combat_kind（0-4；manifest 未收录返回 -1）。
+## 供 CardFootAnchors 缩放模型按兵种查档位系数。先用图标映射做收录门
+## （防未收录 id 触发兜底警告）；行内 archetype_config.combat_kind 全段直通
+## （foe/fixed/pool/fort/xeno，v23.3 起统一表口径），缺字段再落 _get_foe_stats。
+static func combat_kind_for(archetype_id: String) -> int:
+	var key := String(archetype_id).strip_edges()
+	if key.is_empty():
+		return -1
+	if visual_id_for_archetype(key).is_empty() and platform_visual_id_for(key).is_empty():
+		return -1
+	for row in get_entries():
+		if String(row.get("archetype_id", "")) == key:
+			var cfg: Dictionary = row.get("archetype_config", {})
+			if not cfg.is_empty() and cfg.has("combat_kind"):
+				return int(cfg.get("combat_kind", -1))
+			break
+	return int(_get_foe_stats(key).get("kind", -1))
+
+
+## archetype → era（0-4；manifest 未收录返回 -1）。供 CardFootAnchors 缩放模型查时代档。
+static func era_for(archetype_id: String) -> int:
+	var key := String(archetype_id).strip_edges()
+	if key.is_empty():
+		return -1
+	for row in get_entries():
+		if String(row.get("archetype_id", "")) == key:
+			return int(row.get("era", -1))
+	return -1
 
 ## v8.0: 统一表条目（玩家口径）→ foe_stats 口径转换。
 ## 字段映射：base_hp→hp, range_value格→rng像素(×100), atk_l_speed次/秒→ivl秒(1/speed),
@@ -470,6 +520,8 @@ static func _make_pool_row(index: int) -> Dictionary:
 			"defense_air": s.defense_air,
 			"tags": _tags_for_kind(kind),
 			"swarm_unit": (kind == 0),
+			# v30.5 R5：D 段等级门（实验性单位限定时代尾部关卡）
+			"min_level": int(POOL_MIN_LEVEL.get(aid, 0)),
 			"drops": [{"card_id": captured_card_id_for(aid), "chance": 0.08}],
 		},
 	}
@@ -513,6 +565,8 @@ static func _make_fort_row(fort_id: String) -> Dictionary:
 			"defense_air": float(s.get("defense_air", 0.0)),
 			"tags": ["fortress", "immobile"],
 			"swarm_unit": false,
+			# v36：堡垒等级门（ww1 教学期保护，见 FORT_MIN_LEVEL）
+			"min_level": int(FORT_MIN_LEVEL.get(fort_id, 0)),
 			"drops": [{"card_id": captured_card_id_for(fort_id), "chance": 0.12}],
 		},
 	}

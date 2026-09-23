@@ -29,6 +29,17 @@ func _sortie_report_lines() -> Array[String]:
 		instrument_count = pim.unlocked_instrument_ids.size()
 	if card_count > 0 and instrument_count > 0:
 		lines.append("携行 %d 张卡牌 · 相位仪 %d 具。" % [card_count, instrument_count])
+	# v32.3 A1 关卡进入揭幕：战报补战区环境行（BattleEnvEffects 同源描述，与
+	# TopHudBar"环境"chip 同一口径；无效果行时静默跳过，最多带 2 条防版面溢出）
+	var env_level: int = int(GameManager.current_level) if GameManager != null else 1
+	var env_descs: Array = BattleEnvEffects.describe_level_env(env_level)
+	if not env_descs.is_empty():
+		var env_parts: Array[String] = []
+		for d in env_descs:
+			env_parts.append(String(d))
+			if env_parts.size() >= 2:
+				break
+		lines.append("战区环境：%s" % " · ".join(env_parts))
 	# v27.15（TODO#8 用户裁决 G1）：相位师关战报加驻守者情报行——名号+威胁度+驻防平台。
 	# 取不到数据即静默降级为普通战报（与上文"禁止虚构"口径一致），AFK/教程不带 meta 不受影响。
 	var boss_level: int = 1
@@ -59,19 +70,25 @@ func run_start_battle_sequence() -> void:
 	# 影响它自己那场的结算面板）
 	Engine.remove_meta("battle_retreated")
 	# 批次③ Task 1：出征过场拍点（裁决 A2 黑屏战报）。meta 由出征入口写入
-	# （truck_base._launch_battle / world_map._enter_level_from_popup），此处一次性消费——
-	# 挂机推图（afk_mode_manager 复用本函数）与教程首战不带 meta，不触发。过场只是
-	# 黑屏上的 UI 层：不切场景、不碰 battle_ended 信号协议。
+	# （truck_base._launch_battle / world_map._enter_level_from_popup），此处一次性消费
+	# （v32.5：教程态也消费 meta 只是不播——防残留串场到下一场）；挂机推图（afk_mode_manager
+	# 复用本函数）不带 meta，不触发。过场只是黑屏上的 UI 层：不切场景、不碰 battle_ended
+	# 信号协议。
 	var tutorial_active: bool = (
 		TutorialProgressionManager != null
 		and TutorialProgressionManager.has_method("should_show_tutorial")
 		and TutorialProgressionManager.should_show_tutorial()
 	)
 	var interstitial_played := false
-	if not tutorial_active and Engine.has_meta(SortieInterstitial.META_PENDING):
+	if Engine.has_meta(SortieInterstitial.META_PENDING):
 		Engine.remove_meta(SortieInterstitial.META_PENDING)
-		await SortieInterstitial.present(_sortie_dest_text(), _sortie_report_lines())
-		interstitial_played = true
+		# v32.5 复审修复：教程态也要消费 meta——原守卫只跳过不清除，教程首战
+		# （truck_base 出击链写入）残留到下一场非教程战斗会误播一次战报
+		if not tutorial_active:
+			# v32.3 A4：战报与战备并行——不在这里 await，黑幕战报当遮罩，战场在幕后完成
+			# show_battle/go_to_battle（见函数尾等待段）。玩家点击战报可随时跳过。
+			SortieInterstitial.present(_sortie_dest_text(), _sortie_report_lines())
+			interstitial_played = true
 	# 批次3（流程缝合）：直开链入战揭幕——主界面"开始战斗"此前零过渡（面板一关
 	# 战场同帧从静到动）。出击链已有 1.5s 战报不叠双层；挂机豁免（缩略图预览不受
 	# 打扰）；教程有自己的引导节奏。压暗→亮起 + 「交战开始」横幅，波次刷在亮度
@@ -103,6 +120,14 @@ func run_start_battle_sequence() -> void:
 	show_battle()
 	if unveil:
 		_unveil_battlefield()
+	# v34 C2：首机制关预告——本关首次出现的战术机制（L3 限时/L5 能量枯竭/L8 先手突袭等）
+	# 开战节拍里插一句 StageBanner（数据驱动：level_information 首现关推导；重遇见不播）。
+	# 教程（自有节奏）与挂机（横幅刷屏）豁免。
+	if not tutorial_active and not (main._afk_manager != null and main._afk_manager.is_running):
+		var mech_lvl := int(GameManager.current_level) if GameManager != null else 1
+		var mech_lines: Array[String] = LevelInformation.get_shared().get_first_seen_mechanic_banner_lines(mech_lvl)
+		if not mech_lines.is_empty():
+			StageBanner.post_queue(mech_lines)
 	var battlefield: Node2D = main._get_battlefield()
 	if not battlefield:
 		if main.bottom_function_bar:
@@ -118,6 +143,14 @@ func run_start_battle_sequence() -> void:
 	if GameManager:
 		GameManager.set_battle_scene(battlefield)
 		main.call_deferred("_deferred_go_to_battle")
+	# v32.3 A4：战报与战备并行——战场已在黑幕后开打，这里只等战报收尾再退出协程
+	# （玩家点击/ESC 立即放行）。防挂起：主场景被切走即退出。
+	if interstitial_played:
+		var tree_ref := main.get_tree()
+		while tree_ref != null and SortieInterstitial.is_showing():
+			if main == null or not is_instance_valid(main) or not main.is_inside_tree():
+				return
+			await tree_ref.process_frame
 
 ## 延迟进入战斗（由 call_deferred 调用）
 func deferred_go_to_battle() -> void:
@@ -144,7 +177,16 @@ func _dip_battlefield() -> void:
 
 
 func _unveil_battlefield() -> void:
-	StageBanner.post("交战开始")
+	# v30.2 R4（设计审查 F-08）：入战揭幕串——[时代仪式(首关·每会话一次)] →
+	# [驻守相位师战前台词] → 交战开始。缺数据项静默跳过，普通关仍只播"交战开始"。
+	var unveil_seq: Array[String] = []
+	var lvl := 1
+	if GameManager != null:
+		lvl = int(GameManager.current_level)
+	unveil_seq.append_array(CampaignNarrative.get_era_rite_lines(lvl))
+	unveil_seq.append_array(CampaignNarrative.get_pre_battle_lines(lvl))
+	unveil_seq.append("交战开始")
+	StageBanner.post_queue(unveil_seq)
 	if main.battle_container == null or not (main.battle_container is CanvasItem):
 		return
 	var container: CanvasItem = main.battle_container

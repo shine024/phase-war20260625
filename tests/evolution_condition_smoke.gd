@@ -33,6 +33,7 @@ func _initialize() -> void:
 	_test_condition_snapshot()
 	_test_panel_scene()
 	_test_power_calibration()
+	_test_intel_branch_display()
 
 	if _fails == 0:
 		print("evolution_condition_smoke: ALL PASS")
@@ -108,8 +109,6 @@ func _test_condition_snapshot() -> void:
 	if bpm == null or not bpm.has_method("can_evolve_blueprint"):
 		_fail("BlueprintManager 未加载，无法测试 conditions 快照")
 		return
-	if bpm.has_method("unlock_blueprint"):
-		bpm.unlock_blueprint("ww1_mp18")
 
 	# 全新状态：强化 0 / 改造 0 / 无图纸 → 失败但快照必须带全部条件与数字
 	var can: Dictionary = bpm.can_evolve_blueprint("ww1_mp18", "ww2_thompson")
@@ -157,13 +156,14 @@ func _test_panel_scene() -> void:
 		return
 	var inst: Node = pk.instantiate()
 	var req_list: Node = inst.get_node_or_null(
-		"VBoxContainer/BodyHBox/DetailPanel/DetailInner/DetailScroll/DetailContent/RequirementsPanel/ReqContent/ReqList")
+		"VBoxContainer/BodyHBox/DetailPanel/DetailInner/DetailVBox/DetailScroll/DetailContent/RequirementsPanel/ReqContent/ReqList")
 	if req_list == null or not (req_list is VBoxContainer):
 		_fail("ReqList VBoxContainer 节点缺失（tscn 结构回归）")
 	inst.free()
 	print("D. panel_scene: ReqList OK")
 
-## ─── E. v9.x 战力口径重设锁定：阈值表（战斗标尺）+ 进化门槛（目标白板×0.70） ───
+## ─── E. 战力阈值表锁定（军衔标尺，POWER_THRESHOLDS 仍被军衔系统消费）+ 进化门槛锚点 ───
+## （0.70 白板门槛函数 v25.3 起无生产消费方，仅一致性留档；进化资格现行轴=等级+改造数）
 const PT = preload("res://data/power_tiers.gd")
 
 func _test_power_calibration() -> void:
@@ -183,28 +183,61 @@ func _test_power_calibration() -> void:
 	if EH.get_target_power_bar("ww2_pz3") != int(float(white) * 0.70):
 		_fail("get_target_power_bar 与白板×0.70 不一致")
 
-	# 门槛语义锚点：白板步兵差 2 点不过线（需 E1 级投入）；投入后的初始坦克轻松过线
+	# 门槛语义锚点（v6.19.4 改写到现行资格轴）：战力门槛 v25.3 已拆、enhance_level v20.12
+	# 已退出进化条件——旧"白板不过战力线/投入过线"锚点随机制退役。此前本块因
+	# unlock_blueprint 死调用（蓝图体系删除批次）脚本错误中止而假绿多轮，_fails 无感知。
+	# 现行实质量轴 = 等级（InstanceRegistry card_level）+ 改造数：达标后 level/mods 条件翻绿。
 	var bpm: Node = root.get_node_or_null("BlueprintManager")
 	var ir: Node = root.get_node_or_null("InstanceRegistry")
 	if bpm == null or ir == null:
 		_fail("managers 未加载，跳过门槛语义锚点")
 		return
-	bpm.unlock_blueprint("ww1_mp18")
-	var fresh: Dictionary = bpm.can_evolve_blueprint("ww1_mp18", "ww2_thompson")
-	var fresh_power: Dictionary = _cond_by_key(fresh, "power")
-	if fresh_power.is_empty() or bool(fresh_power.get("met", true)):
-		_fail("白板 mp18 应不过战力线（253 < 0.70×365=255）——步兵首进化需 E1 级投入的定标被破坏")
-	bpm.unlock_blueprint("ww1_arm_ft17")
+	var stage: String = UnitLineageConfig.get_stage("ww1_arm_ft17", "ww2_pz3")
+	var lv_req: int = UnitLineageConfig.get_card_level_requirement(stage)
+	var mod_req: int = UnitLineageConfig.get_mod_requirement(stage)
+	if lv_req <= 0 or mod_req <= 0:
+		_fail("ft17→pz3 stage '%s' 等级/改造要求异常：%d/%d" % [stage, lv_req, mod_req])
+		return
 	var iid: String = ir.create_instance("ww1_arm_ft17").instance_id
+	ir.add_experience(iid, int(BattleExperienceConfig.LEVEL_EXP_THRESHOLDS[
+		mini(lv_req, BattleExperienceConfig.LEVEL_EXP_THRESHOLDS.size() - 1)]))
 	var inst_card = ir.get_instance(iid)
-	inst_card.enhance_level = 5
-	inst_card.mods = [{"id": "arm_01_reactive_armor", "enabled": true}, {"id": "arm_02_smoothbore", "enabled": true}]
+	var mods_arr: Array = []
+	for i in range(mod_req):
+		mods_arr.append({"id": "arm_probe_mod_%d" % i, "enabled": true})
+	inst_card.mods = mods_arr
 	var invested: Dictionary = bpm.can_evolve_blueprint(iid, "ww2_pz3")
-	var inv_power: Dictionary = _cond_by_key(invested, "power")
-	if inv_power.is_empty() or not bool(inv_power.get("met", false)):
-		_fail("强化5+2改的 ft17（≈697）应过战力线（0.70×715=500）")
+	var lv_c: Dictionary = _cond_by_key(invested, "level")
+	var mod_c: Dictionary = _cond_by_key(invested, "mods")
+	if lv_c.is_empty() or not bool(lv_c.get("met", false)):
+		_fail("等级 Lv%d 的 ft17 实例 level 条件应翻绿（stage=%s，现报 %s）" % [
+			lv_req, stage, str(lv_c.get("current_text", "<缺失>"))])
+	if mod_c.is_empty() or not bool(mod_c.get("met", false)):
+		_fail("改造 %d 件的 ft17 实例 mods 条件应翻绿（stage=%s，现报 %s）" % [
+			mod_req, stage, str(mod_c.get("current_text", "<缺失>"))])
 	ir.dispose_instance(iid)
-	print("E. power_calibration: thresholds + 0.70 bar OK")
+	print("E. thresholds + 0.70 bar + level/mods 门槛锚点 OK")
+
+## ─── F. 情报进化分支显示层：enemy_type 中文映射全覆盖 + 源卡→跨系分支查询锚点 ───
+## v6.19.4 自 evolution_intel_smoke 迁移收编（该脚本面板侧断言随 v26 制造重写失效退役，
+## 仅这两条数据层检查仍活，归入本冒烟）。死键防回归：v7.x heavy_armor_mat 事故
+## （需求键无中文显示名=进度永远凑不齐且玩家不可读）。
+func _test_intel_branch_display() -> void:
+	for bid in IntelBranches.get_all_branch_ids():
+		var reqs: Dictionary = IntelBranches.get_intel_requirements(String(bid))
+		for et in reqs.keys():
+			var display: String = IntelBranches.get_enemy_type_display(String(et))
+			if display == String(et):
+				_fail("情报分支 %s 的需求键 %s 无中文显示名（ENEMY_TYPE_DISPLAY 缺键）" % [String(bid), String(et)])
+	if IntelBranches.get_enemy_type_display("infantry") != "步兵系":
+		_fail("get_enemy_type_display(infantry) 应为 步兵系")
+	var has_cross := false
+	for b in IntelBranches.get_branches_for_card("fut_howitzer"):
+		if String(b.get("branch_id", "")) == "IB_CROSS_ARTILLERY_AIR":
+			has_cross = true
+	if not has_cross:
+		_fail("fut_howitzer 的分支列表缺少 IB_CROSS_ARTILLERY_AIR（跨系分支查询断裂）")
+	print("F. intel_branch_display: enemy_type 映射 + 跨系锚点 OK")
 
 func _cond_by_key(check: Dictionary, key: String) -> Dictionary:
 	for c in check.get("conditions", []):

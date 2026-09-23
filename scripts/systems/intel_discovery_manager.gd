@@ -19,6 +19,8 @@ const IntelRevealEvents = preload("res://data/intel_reveal_events.gd")
 const DefaultCards = preload("res://data/default_cards.gd")
 const IntelManualScript = preload("res://scripts/systems/intel_manual.gd")
 const ModRegistry = preload("res://scripts/systems/modification_registry.gd")
+const LevelEras = preload("res://data/level_eras.gd")   # v6.14: 改造图纸掉落的时代过滤
+const EnemyFixedLoadouts = preload("res://data/enemy_fixed_loadouts.gd")   # v6.14.2: 缴获语义
 
 # ── 信号 ──────────────────────────────────────────────────────────
 
@@ -47,6 +49,11 @@ var _unlocked_lore_pages: Dictionary = {}
 ## v21.0: 战斗中收集的改造解锁列表（结算时统一展示）
 var _pending_mod_unlocks: Array = []
 
+## v33: 击杀瞬间主腿已掷出的情报道具掉落（战后 generate_battle_intel_harvest 收编发放）。
+## 只挪掷骰时机不改为账条件：相位师战击杀不预掷（战后 disable 口径不变），
+## 败北未消费的 pending 由 battle_started 清空（发放链只在胜利帧 B' 跑，语义与旧版一致）。
+var _kill_prerolled_drops: Array = []
+
 ## v6.6: 脏标记，避免结算帧内同步写磁盘
 var _state_dirty: bool = false
 var _save_pending: bool = false
@@ -55,6 +62,9 @@ var _save_pending: bool = false
 
 func _ready() -> void:
 	# v6.6: 移除自加载，由 SaveManager 统一加载
+	## v33: 击杀预掷池按场清空（败北未消费的 pending 不带到下一场）
+	if SignalBus != null and SignalBus.has_signal("battle_started"):
+		SignalBus.battle_started.connect(_on_battle_started_clear_prerolls)
 	## 连接IntelManual信号
 	var im: Node = get_node_or_null("/root/IntelManual")
 	if im:
@@ -71,12 +81,15 @@ func _notification(what: int) -> void:
 		_state_dirty = true  ## 确保退出时强制保存
 		_save_state()
 
+
+func _on_battle_started_clear_prerolls() -> void:
+	_kill_prerolled_drops.clear()
+
 # ── 存档 ───────────────────────────────────────────────────────────
 
 const SaveUtils = preload("res://scripts/save_utils.gd")
 const STATE_SAVE_NAME: String = "intel_discovery_state"
 const PowerTiers = preload("res://data/power_tiers.gd")
-const FactionConquestBuffs = preload("res://data/faction_conquest_buffs.gd")
 
 ## v6.6: 统一存档接口（供 SaveManager 调用，无视脏标记——SaveManager 调用即权威保存点）
 func save_state() -> Dictionary:
@@ -322,6 +335,8 @@ func _process_reveal_rewards(event_data: Dictionary, enemy_type: String) -> void
 					_stat_visibility[enemy_type] = vis
 			"intel_branch_unlock":
 				# 直接解锁进化分支（标记为已发现）
+				# R1-5（2026-09-13）：reveal 表已无该类型奖励（进化系统退役，tier-3 改 hint），
+				# 分支保留为防御性消费——若将来恢复分支玩法，数据侧加回 unlock 奖励即通。
 				var branch_id: String = reward.get("branch_id", "")
 				if not branch_id.is_empty():
 					var iem: Node = get_node_or_null("/root/IntelEvolutionManager")
@@ -476,8 +491,14 @@ func _harvest_recon(harvests: Array, card_id: String, deltas: Dictionary) -> voi
 const IntelManualItems = preload("res://data/intel_manual_items.gd")
 
 ## 根据击败敌人和星级，随机掉落蓝图
-## 改造蓝图（基于敌人类型）/ 进化蓝图（精英/Boss）
+## 改造蓝图（基于敌人类型）
 ## v6.14: 注入占领势力掉落维度——当前关占领势力的 drop_mul 调整掉率，mod_pool_bias 调整改造类型偏好
+## v33: 掷骰拆两腿（击杀预掷主腿 + 战后星级腿），合成分布与旧版单掷精确等价：
+##   旧：P(掉) = base(stars) × rank_mult × occupation，base = 0.12/0.17/0.22（0/2/3 星档）
+##   新：主腿（击杀瞬间，roll_kill_intel_drop）p1 = 0.12×rank×occ——命中当场见实物（开箱时刻）
+##       星级腿（本函数，仅主腿未中者）p2 = (pt−p1)/(1−p1)，pt = base(stars)×rank×occ
+##   合成：p1 + (1−p1)×p2 = pt ✔（1 星以下 p2=0 纯主腿；回归锁
+##       tests/unit/battle/test_ground_loot_intel_preroll.gd）
 func _roll_intel_item_drops(
 	defeated_enemies: Array,
 	victory_stars: int,
@@ -485,66 +506,132 @@ func _roll_intel_item_drops(
 	disable_mod_blueprint: bool = false
 ) -> Array:
 	var drops: Array = []
-	## 基础掉落率：每个敌人独立判定
-	var base_chance: float = 0.12  ## 12%
-	if victory_stars >= 3:
-		base_chance = 0.22
-	elif victory_stars >= 2:
-		base_chance = 0.17
-
-	# v6.14: 查当前关占领势力掉落 buff（drop_mul + mod_pool_bias）
-	var occupation_drop_mul: float = 1.0
-	var occupation_mod_bias: Array = []
-	var cur_level: int = 1
-	var fsm: Node = get_node_or_null("/root/FactionSystemManager")
-	var gm: Node = get_node_or_null("/root/GameManager")
-	if gm != null:
-		cur_level = int(gm.get("current_level")) if "current_level" in gm else 1
-	if fsm != null and fsm.has_method("get_level_occupation") and gm != null:
-		var occ_fid: String = String(fsm.get_level_occupation(cur_level))
-		if not occ_fid.is_empty() and fsm.has_method("get_faction_level"):
-			var flvl: int = int(fsm.get_faction_level(occ_fid))
-			var buff: Dictionary = FactionConquestBuffs.get_buff(occ_fid, flvl)
-			occupation_drop_mul = float(buff.get("drop_mul", 1.0))
-			occupation_mod_bias = buff.get("mod_pool_bias", [])
-
+	## v33 主腿收编：击杀时存 pending 的实物并入本批发放（相位师战击杀不预掷，pending 恒空）
+	var prerolled: Array = _kill_prerolled_drops.duplicate()
+	_kill_prerolled_drops.clear()
+	if disable_mod_blueprint:
+		return []   # 相位师战防双爆口径与旧版一致；万一有残留 pending 一并清空不发
+	drops.append_array(prerolled)
+	## 星级腿：主腿未中的敌人按条件概率补掷（同 rank 概率一致，按 rank 缓存）
+	# v6.22: 占领掉落 buff 已退役——mul 恒 1.0，关卡号直读 GameManager
+	var gm_lvl: Node = get_node_or_null("/root/GameManager")
+	var cur_level: int = int(gm_lvl.get("current_level")) if gm_lvl != null and "current_level" in gm_lvl else 1
+	var star_p_by_rank := {}
 	for enemy_info in defeated_enemies:
 		if not enemy_info is Dictionary:
 			continue
-		var rank: String = enemy_info.get("rank", "normal")
-		var enemy_type: String = enemy_info.get("enemy_type", _guess_enemy_type(enemy_info.get("archetype_id", "")))
-
-		var rank_mult: float = 1.0
-		match rank:
-			"boss":
-				rank_mult = 2.5
-			"elite":
-				rank_mult = 1.8
-			_:
-				rank_mult = 1.0
-
-		# v6.14: 占领势力 drop_mul 乘进掉率（≤1.5，与星级/势力等级共同作用）
-		var effective_chance: float = base_chance * rank_mult * occupation_drop_mul
-		if randf() > effective_chance:
+		if enemy_info.get("intel_main_hit", false):
+			continue   # 主腿已出实物，不重复掷
+		var rank := String(enemy_info.get("rank", "normal"))
+		if not star_p_by_rank.has(rank):
+			star_p_by_rank[rank] = intel_star_leg_chance(victory_stars, rank, 1.0)
+		if randf() > float(star_p_by_rank[rank]):
 			continue
-
-		## v26 制造退役：进化图纸（blueprint_evol_）整体退役——原 20% 精英/Boss
-		## 进化图纸份额改道为「高稀有度改造图纸」（power_tier +1 档）。
-		## 设计文档：docs/design_manufacture_system.md §2.6（改造图纸 blueprint_ 前缀不动）
-		var item: Dictionary = {}
-		if disable_mod_blueprint:
-			continue
-		# v7.x: power_tier 改用 rank+level 混合档位，让高关杂兵也能掉更高稀有度改造
-		# （原 get_tier_by_rank 只看 rank，导致第1关和第100关改造蓝图稀有度完全相同）
-		var power_tier: int = PowerTiers.get_tier_by_rank_and_level(rank, cur_level)
-		if rank != "normal":
-			power_tier += 1   # 精英/Boss：原进化图纸份额并入此处（档位越界由 clamp 兜底）
-		item = IntelManualItems.roll_random_mod_blueprint(enemy_type, rank, power_tier, occupation_mod_bias)
-
+		var item := _roll_item_for_defeated(enemy_info, cur_level)
 		if not item.is_empty():
 			drops.append(item)
 
 	return drops
+
+
+# ── v33 掷骰拆腿：击杀预掷 + 战后补掷 ────────────────────────────────
+
+const INTEL_MAIN_BASE_CHANCE := 0.12
+
+static func intel_star_base_chance(victory_stars: int) -> float:
+	if victory_stars >= 3:
+		return 0.22
+	elif victory_stars >= 2:
+		return 0.17
+	return INTEL_MAIN_BASE_CHANCE
+
+static func intel_rank_mult(rank: String) -> float:
+	match rank:
+		"boss":
+			return 2.5
+		"elite":
+			return 1.8
+	return 1.0
+
+## 主腿命中概率（击杀瞬间全部因子已知）
+static func intel_main_leg_chance(rank: String, occupation_drop_mul: float = 1.0) -> float:
+	return INTEL_MAIN_BASE_CHANCE * intel_rank_mult(rank) * occupation_drop_mul
+
+## 星级腿条件概率（战后补掷；主腿已中者不进此腿）
+static func intel_star_leg_chance(victory_stars: int, rank: String, occupation_drop_mul: float = 1.0) -> float:
+	var p1 := intel_main_leg_chance(rank, occupation_drop_mul)
+	var pt := intel_star_base_chance(victory_stars) * intel_rank_mult(rank) * occupation_drop_mul
+	if p1 >= 1.0:
+		return 0.0
+	return clampf((pt - p1) / (1.0 - p1), 0.0, 1.0)
+
+
+## v33 击杀瞬间主腿掷骰（battle_damage_system.roll_kill_intel_drop 调用）。
+## 命中：当场 roll 物件存 pending、enemy_info 打 intel_main_hit 标记（战后跳过星级腿），
+## 返回掉落字典供地面战利品展示；未命中返回 {}。主腿 RNG 只此一处，勿在别处复掷。
+func roll_kill_intel_drop(enemy_info: Dictionary) -> Dictionary:
+	var rank := String(enemy_info.get("rank", "normal"))
+	# v6.22: 占领掉落 buff 退役——主腿概率走 1.0 基准，关卡号直读 GameManager
+	var p1 := intel_main_leg_chance(rank, 1.0)
+	if randf() > p1:
+		return {}
+	var gm_kill: Node = get_node_or_null("/root/GameManager")
+	var kill_level: int = int(gm_kill.get("current_level")) if gm_kill != null and "current_level" in gm_kill else 1
+	var item := _roll_item_for_defeated(enemy_info, kill_level)
+	if item.is_empty():
+		return {}
+	enemy_info["intel_main_hit"] = true
+	_kill_prerolled_drops.append(item)
+	return item
+
+
+## v6.22: 原 _occupation_drop_context 已随占领掉落 buff 退役删除（mul 恒 1.0、关卡直读 GameManager）。
+
+## 单敌人情报道具 roll（v6.14.4 缴获/发现 75/25 分流 + 时代过滤 + 兜底兵种池）
+## ——击杀预掷/战后补掷共用，防双实现漂移
+func _roll_item_for_defeated(enemy_info: Dictionary, cur_level: int) -> Dictionary:
+	var rank := String(enemy_info.get("rank", "normal"))
+	var enemy_type: String = String(enemy_info.get("enemy_type", _guess_enemy_type(enemy_info.get("archetype_id", ""))))
+	# v7.x: power_tier 改用 rank+level 混合档位，让高关杂兵也能掉更高稀有度改造
+	var power_tier: int = PowerTiers.get_tier_by_rank_and_level(rank, cur_level)
+	if rank != "normal":
+		power_tier += 1   # 精英/Boss：原进化图纸份额并入此处（档位越界由 clamp 兜底）
+	# v6.14: 掉落时代过滤——对齐安装侧 era_band 硬门，前期不再掉当前时代装不上的图纸
+	var max_era: int = clampi(LevelEras.get_era(cur_level), 0, 4)
+	# v6.14.2（用户拍板）：缴获语义——有配装的敌人只从它实际携带的模块中掉
+	# （按档位切片：normal=新兵前 5 条 / elite=精英 9 条 / boss=传奇 9 条，与挂载同源）；
+	# 无配装的敌人（缴获/星冥/未配卡）回退全池 roll（含时代过滤 + 史诗+跨一级前瞻）。
+	var rank_tier: int = 1
+	match rank:
+		"boss":
+			rank_tier = 4
+		"elite":
+			rank_tier = 3
+	# 2026-09-19 修复：配装表键双形态（经典敌裸 id / 34 个生成敌带 foe_ 前缀）——
+	# 原先恒 trim_prefix("foe_") 导致 foe_* 键恒 miss、缴获腿对生成敌全灭（挂载侧
+	# enemy_unit._apply_loadout_modifications 用原 id 不 trim）。现原 id 优先、trim 兜底。
+	var _kit_aid: String = String(enemy_info.get("archetype_id", ""))
+	var kit: Array = EnemyFixedLoadouts.get_mods_for_tier(_kit_aid, rank_tier)
+	if kit.is_empty():
+		kit = EnemyFixedLoadouts.get_mods_for_tier(_kit_aid.trim_prefix("foe_"), rank_tier)
+	# v6.14.4（用户拍板 75/25 分流）：缴获腿 vs 发现腿——75% 掉它携带的件（缴获语义
+	# 主导），25% 走全注册表按稀有度比例 roll（发现语义：优先未见过的模块，保证
+	# 全图鉴 249 件保持战斗可发现 → 见过集合 → 随机箱池/定向列表不断链）。
+	# 无配装敌人直接走发现腿；两腿皆空时回退原兵种池 roll。两腿时代口径一致。
+	var bag: Node = get_node_or_null("/root/IntelItemBag")
+	var is_seen: Callable = func(mid: String) -> bool:
+		return bag != null and bag.has_method("has_seen") \
+			and bool(bag.has_seen("blueprint_" + mid))
+	var use_kit: bool = not kit.is_empty() and randf() < 0.75
+	if use_kit:
+		var from_kit: Dictionary = IntelManualItems.roll_mod_blueprint_from_kit(kit, max_era)
+		if not from_kit.is_empty():
+			return from_kit
+	var discovered: Dictionary = IntelManualItems.roll_discovery_mod_blueprint(rank, power_tier, max_era, is_seen)
+	if not discovered.is_empty():
+		return discovered
+	# v6.22: bias 形参已删（占领 bias 退役）；roll_random_mod_blueprint 的 bias 形参保留，此处传空
+	return IntelManualItems.roll_random_mod_blueprint(enemy_type, rank, power_tier, [], max_era)
 
 # ── v21.0: base 进度 / mod 解锁通知 ──────────────────────────────
 

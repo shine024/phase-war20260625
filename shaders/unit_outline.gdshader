@@ -13,6 +13,10 @@ shader_type canvas_item;
 uniform vec4 outline_color : source_color = vec4(0.05, 0.07, 0.11, 0.85);
 uniform float edge_texels = 10.0; // 描边半径（当前纹理纹素数）= 目标屏幕像素宽 / spr.scale.x
 uniform vec4 region_uv = vec4(0.0, 0.0, 1.0, 1.0);
+// v6.15 打击感：受击剪影推白（0=常态 1=全白）。驱动方=UnitOutline.set_flash（材质为每
+// sprite 独立实例，写 uniform 不串单位）。旧 modulate 1.8 乘法增亮推不白深色卡图
+// （军绿/沙褐像素 0.3×1.8 仍是暗色），此 uniform 直接把剪影全像素向白 mix。
+uniform float flash_strength : hint_range(0.0, 1.0) = 0.0;
 
 // ⚠️ Godot 4 canvas_item 语义：fragment() 入口的 COLOR 已 = 顶点色×纹理色
 // （官方文档："COLOR from the vertex() function multiplied by the TEXTURE color"）。
@@ -45,5 +49,8 @@ void fragment() {
 	float added = oa * outline_color.a * (1.0 - keep);
 	float out_a = max(ca, added);
 	vec3 rgb = mix(outline_color.rgb, col.rgb, smoothstep(0.0, 0.5, ca));
+	// v6.15：按最终剪影 alpha（本体+描边带）向白 mix——整个剪影含描边一起推白，
+	// 命中读"白剪影一闪"（DR/Metal Slug 同款打击语言）
+	rgb = mix(rgb, vec3(1.0), flash_strength * smoothstep(0.01, 0.2, out_a));
 	COLOR = vec4(rgb, out_a) * v_modulate; // v_modulate=vertex() 捕获的纯 modulate（受击闪白/死亡淡出同步作用于描边）
 }

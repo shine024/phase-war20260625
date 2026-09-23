@@ -1,0 +1,33 @@
+﻿file,ref_status,score,note
+black_sun.png,孤儿,8,黑日徽记，质量好但零引用
+bubble_boss.png,孤儿(退役),8,v23 注记：气泡贴图全部退役改程序绘制
+bubble_cleared.png,孤儿(退役),8,同上
+bubble_era_cold.png,孤儿(退役),9,雪地雷达站，质量好可惜退役
+bubble_era_future.png,孤儿(退役),8,
+bubble_era_modern.png,孤儿(退役),8,
+bubble_era_ww1.png,孤儿(退役),9,
+bubble_era_ww2.png,孤儿(退役),8,
+dawn_dusk_continent.png,在用(scheme11底图),9,手绘群岛+黑门
+debris_1.png,在用,8,
+debris_2.png,在用,8,
+debris_3.png,在用,8,
+debris_4.png,在用,9,流泪石像
+debris_5.png,在用,8,
+debris_6.png,在用,8,
+debris_7.png,在用,8,宇航头盔
+debris_8.png,在用,8,破旗
+gate_far.png,在用,9,
+gate_mid.png,在用,9,
+gate_near.png,孤儿(注记保留),8,注释'保留给终局近接演出'，当前零加载行
+lighthouse_fortress.png,在用,9,灯塔浮岛
+map_void_base.png,在用(默认底图),8,深蓝黑底
+mountain_bunker_marker.png,孤儿,9,山体碉堡浮岩，质量好但零引用
+wreck_1.png,在用(scheme11),8,
+wreck_2.png,在用(scheme11),8,
+wreck_3.png,在用(scheme11),8,
+wreck_4.png,在用(scheme11),7,右下缘混入白色小三角瑕疵物
+wreck_5.png,在用(scheme11),8,
+wreck_6.png,在用(scheme11),8,
+wreck_7.png,在用(scheme11),8,
+wreck_8.png,在用(scheme11),8,
+大地图.png,孤儿(重复),7,与 dawn_dusk_continent 同画异尺寸(2752×1536 vs 2560×1440)，零实际加载行

@@ -10,9 +10,13 @@ class_name VfxImpactFactory
 ## 所有特效走对象池（参考 weapon_projectile_vfx 的 one_shot + SceneTreeTimer 回收模式）。
 ## 可访问性：DT.is_motion_reduce() 时只保留第2层主火花（减层）。
 
+# v32.0 B1-1: 极速推演旗标源（高频生成入口读 ff_active 短路，跳过特效生成保物理步进产能）
+const BattleTimeState = preload("res://scripts/battle/battle_time_state.gd")
 const DT = preload("res://resources/design_tokens.gd")
 const GC = preload("res://resources/game_constants.gd")  # v13: 时代化能量配色(era→关卡)
 const DirectWeaponFlavor = preload("res://data/direct_weapon_flavor.gd")
+## v6.17: 命中光学层（战场泛光 + 动态光闪池统一入口；开关/守卫在 OPTICS 内部）
+const OPTICS = preload("res://scripts/battle/battle_optics.gd")
 ## v9.2: 粒子贴图——CPUParticles2D 赋 texture 告别方形小方块。
 ## 按武器类型分流：动能武器（金属火花/灰烟）vs 能量武器（蓝色电弧/蓝烟）。
 ## 池复用继续（性能优先），texture 在 spawn 时按 weapon_type 重新赋值。
@@ -61,6 +65,7 @@ const PARTICLE_TEX_EMBER         := preload("res://assets/effects/particle_textu
 const PARTICLE_TEX_IMPACT_METAL  := preload("res://assets/effects/particle_textures/impact_metal.png")   # 动能命中放射火花
 const PARTICLE_TEX_IMPACT_ENERGY := preload("res://assets/effects/particle_textures/impact_energy.png") # 能量命中放射爆裂
 const PARTICLE_TEX_IMPACT_SCORCH := preload("res://assets/effects/particle_textures/impact_scorch.png")  # v11 弹痕锚点(暗凹陷+刮擦线,持久贴命中点)
+const PARTICLE_TEX_IMPACT_POOF := preload("res://assets/effects/particle_textures/impact_poof_white.png")  # v6.15 打击感: 白色冲击云(软圆白团,轻动能命中第一读感层,DR 对照)
 
 # ── 池化上限 ──
 const MAX_RINGS: int = 80
@@ -213,6 +218,9 @@ static var _fx_grad_cache: Dictionary = {}
 ##   "element_affinity": int — v18 元素亲和（0无/1火/2雷/3虚），≠0 时基色向元素色 lerp 45%
 ## [param p_weapon_name] 武器名（v8.x：直射系亚类分流用，区分机枪/步枪/坦克炮等）
 static func spawn_layered_impact(parent: Node2D, world_pos: Vector2, weapon_type: int, is_player: bool, combat_kind: int = -1, opts: Dictionary = {}, p_weapon_name: String = "") -> void:
+	# v32.0 B1-1: 极速推演期间跳过生成（ff_active 时战斗反馈全压制）
+	if BattleTimeState.ff_active:
+		return
 	if parent == null or not is_instance_valid(parent):
 		return
 	var motion_reduce: bool = DT.is_motion_reduce()
@@ -250,11 +258,11 @@ static func spawn_layered_impact(parent: Node2D, world_pos: Vector2, weapon_type
 		var ring_dur: float = float(recipe.get("ring_dur", 0.2))
 		if weapon_type in [1, 2, 3, 7, 9]:
 			ring_r = minf(ring_r * 1.6, 96.0)
-			# v20.23: dur ×0.7 压缩（替换 v20.21 的 +0.1s）——审计亮度取帧偏向闪光时刻
-			#（0.05-0.12s），环须在该窗内展开过半才可读：0.36s→0.25s 时 0.12s 已展开
-			# 48%（46px 半径 ≈ 火球面宽），冲击波"快速掠过"的感知也更正确。慢环 ×1.6
-			# 仍保留余波层次。
-			ring_dur *= 0.7
+			# v20.23: dur ×0.7 压缩——审计亮度取帧偏向闪光时刻（0.05-0.12s）。
+			# v6.14: 恢复 ×1.0——实测反馈"直射与曲射节奏雷同"：×0.7 后曲射快环 0.336s
+			# 比直射坦克炮环（0.40s）还短，冲击波层次读不出。审计亮度窗口由 ×1.6 放大的
+			# 环径（0.12s 已展开 46px+）保证，不依赖时长压缩。
+			ring_dur *= 1.0
 		_spawn_ring(parent, world_pos, ring_r, ring_dur, ring_color)
 		# v17k: 第二慢环（快环收束动量 + 慢环拉开扩散层次）——boss 轮 v17j 同款模式，
 		# AI 高频批"冲击波单层无落差"。慢环半径 ×1.4、alpha 减半、时长 +60%。
@@ -263,6 +271,20 @@ static func spawn_layered_impact(parent: Node2D, world_pos: Vector2, weapon_type
 			_spawn_ring(parent, world_pos, ring_r * 1.4,
 				ring_dur * 1.6, Color(ring_color.r, ring_color.g, ring_color.b, ring_color.a * 0.5))
 		_spawn_impact_decal(parent, world_pos, weapon_type)  # v11 弹痕锚点(在火花之下,火花从弹痕溅起)
+	# v6.15 P2（docs/命中表现夸张规则.md 表 #0 裁决定稿）：白团按 power_tier 分档——
+	#   HEAVY(2) 坦克炮级直射：38-46px 大团（"闪"的强化档，规则表 0H）；
+	#   MEDIUM(1)：28-34px；轻武器（LIGHT/缺省）：14-18px tick 闪（D3 律：常规命中
+	#   无"云"只有闪+火花，主反馈在受击白闪）。
+	# 爆炸族已有 115px+ flash 核心不叠此层（防 v18 修掉的"白屏爆"回归）；霰弹(5)
+	# 有散射签名同理不加。
+	if is_light_kinetic and not motion_reduce:
+		var poof_tier: int = int(opts.get("power_tier", -1))
+		var poof_px: float
+		match poof_tier:
+			2: poof_px = randf_range(38.0, 46.0)
+			1: poof_px = randf_range(28.0, 34.0)
+			_: poof_px = randf_range(14.0, 18.0)
+		_spawn_impact_poof(parent, world_pos, poof_px)
 	# 第2层：主火花（始终生成）
 	# v20.9-R2: 霰弹(5)散射签名——单点火花+中央大闪光读成"单弹头命中"（AI 双侧一致
 	# 批"缺散射图案/规则饱满白色光斑"）。改 6 弹丸簇沿来向垂直轴扇开（6 发 18° 散射
@@ -293,15 +315,16 @@ static func spawn_layered_impact(parent: Node2D, world_pos: Vector2, weapon_type
 				else:
 					_spawn_smoke_puff_layer(parent, world_pos, base_color, weapon_type, {})
 			_spawn_shrapnel_layer(parent, world_pos, base_color, weapon_type, {})
-		elif not recipe.has("debris"):
-			# v18-R9b: 微烟 3→5 粒（R9 后 AI 批"烟雾层完全缺失"——3 粒在簇滴命中里
-			# 读不出）。smin/smax 经 DSCALE 0.5 × 128px 贴图 → 51-90px 软散烟仍"微量"档。
-			_spawn_smoke_puff_layer(parent, world_pos, base_color, weapon_type,
-				{"amount": 5, "life": 0.45, "smin": 1.0, "smax": 1.6})
+		# v6.15 P2（docs/命中表现夸张规则.md 五律2 裁决定稿）：轻动能命中微烟层彻底移除
+		# ——非爆炸零烟，烟是爆炸族(1/3/9)专属词汇。历史值 v18-R9b 5 粒 → P1-R2 2 粒 → 现清零。
 	# v13: 战场痕迹——重型爆炸武器命中留下焦痕弹坑(概率 50%,免刷屏;幂次越小越稀)
+	# v6.17: 概率 0.5→0.65、半径 8-18→10-20——暗底+泛光下焦痕是地面积累主词汇，略抬密度；
+	# 环缓冲 MAX_TRACES=48 上限不变，防刷屏约束仍在。
 	if not motion_reduce and (weapon_type in [1, 2, 3, 7, 9] or int(opts.get("power_tier", -1)) == 2):
-		if randf() < 0.5:
-			var tr_r: float = clampf(float(recipe.get("ring_r", 24.0)) * 0.5, 8.0, 18.0)
+		# v6.17 光学层: 爆炸动态光闪（每爆必闪，短寿命；开关/上限守卫在 OPTICS 内部）
+		OPTICS.flash(parent, world_pos, Color(1.0, 0.62, 0.30), 130.0, 1.3, 0.30)
+		if randf() < 0.65:
+			var tr_r: float = clampf(float(recipe.get("ring_r", 24.0)) * 0.5, 10.0, 20.0)
 			spawn_battle_trace(parent, world_pos, tr_r)
 	# 特殊伤害叠加
 	if opts.get("is_crit", false) and not motion_reduce:
@@ -378,10 +401,12 @@ const MAX_DECALS: int = 48
 static func _acquire_decal(parent: Node2D, pos: Vector2, scl: float) -> Sprite2D:
 	var s: Sprite2D = null
 	while not _decal_pool.is_empty():
-		s = _decal_pool.pop_back()
-		if is_instance_valid(s):
+		# 候选局部必须未类型化：池内可能残留已 free 的实例（清场/超上限路径），
+		# 赋给 Sprite2D 类型化局部会先报运行时错并中止本函数→调用方拿到 null
+		var cand = _decal_pool.pop_back()
+		if is_instance_valid(cand):
+			s = cand
 			break
-		s = null
 	if s == null:
 		s = Sprite2D.new()
 		s.texture = PARTICLE_TEX_IMPACT_SCORCH
@@ -438,6 +463,8 @@ static func _spawn_pellet_mark(parent: Node2D, pos: Vector2) -> void:
 
 ## 暴击金色脉动光环（v8.2：加长到可清晰感知）
 static func spawn_crit_aura(parent: Node2D, world_pos: Vector2) -> void:
+	if BattleTimeState.ff_active:
+		return
 	# v17e: 侧视椭圆冲击波（aspect_ratio=1.6）
 	# 第一层：快速扩张大光环
 	var ring1 := _acquire_ring()
@@ -466,6 +493,8 @@ static func spawn_crit_aura(parent: Node2D, world_pos: Vector2) -> void:
 ## v7.4: 暴击辐射火花（复用 spark 池，替代 damage_number_display 每次 new CPUParticles2D+Gradient）。
 ## 参数对齐原 damage_number_display._spawn_crit_sparks 的配置。
 static func spawn_crit_sparks(parent: Node2D, world_pos: Vector2, is_full_crit: bool) -> void:
+	if BattleTimeState.ff_active:
+		return
 	if parent == null or not is_instance_valid(parent):
 		return
 	if _active_sparks >= MAX_SPARKS:
@@ -504,6 +533,8 @@ static func spawn_crit_sparks(parent: Node2D, world_pos: Vector2, is_full_crit: 
 ## direction：弹道反方向（attacker→unit 反向），强度越大粒子越多越远。
 static var _spark_blood_ramp: Gradient = null
 static func spawn_hit_blood(parent: Node2D, world_pos: Vector2, direction: Vector2, strength: float, is_player: bool) -> void:
+	if BattleTimeState.ff_active:
+		return
 	if parent == null or not is_instance_valid(parent):
 		return
 	if DT.is_motion_reduce():
@@ -578,6 +609,8 @@ static func spawn_hit_blood(parent: Node2D, world_pos: Vector2, direction: Vecto
 ## 在单位 _play_death_fadeout 开头调用一次，让"死亡"与"受击"产生明确的视觉差。
 ## 走对象池 + motion_reduce 短路，零额外 GC。
 static func spawn_death_burst(parent: Node2D, world_pos: Vector2, is_player: bool) -> void:
+	if BattleTimeState.ff_active:
+		return
 	if parent == null or not is_instance_valid(parent):
 		return
 	if DT.is_motion_reduce():
@@ -655,16 +688,14 @@ static func _get_blood_spark_ramp() -> Gradient:
 ## 注：SNIPER(6) 保持轻型（族内多为动能狙击枪，非能量武器）。
 const HEAVY_MUZZLE_WT: Array = [1, 2, 3, 7, 8, 9, 10, 11]
 
-## v16: legacy 轻武器域归一——调用方持有的 wt 若是 legacy 值（敌方 archetype/直射 batch 的
-## BATCH_FIRE_WEAPON_TYPES=[0,4,1,2]），其中 1/2 是 RIFLE/MG，会被上面"新枚举优先"约定
-## 读成 INDIRECT/AERIAL（重型枪口火/爆炸贴图/火球帧），步枪机枪被渲染成火炮。
-## legacy 域调用方（敌方枪口火、直射 batch 命中）传参前先经本函数归一为 0(SMG 档轻武器)。
-static func normalize_light_kinetic_wt(wt: int) -> int:
-	return 0 if wt == 1 or wt == 2 else wt
-
+## v16: legacy 轻武器域归一（normalize_light_kinetic_wt 已随 v35 死代码清理删除——
+## 零调用方，实际归一由 WeaponVisualProfiles.resolve_visual_wt 承担：legacy 1/2=RIFLE/MG
+## 在 VFX 入参前已归一为 0，"新枚举优先"约定因此恒成立）。
 ## v7.4: 炮口火焰（复用 spark 池，替代 bullet.gd 每次 new CPUParticles2D+Gradient）。
 ## 参数对齐原 bullet._spawn_muzzle_effect 的配置。
 static func spawn_muzzle_flash(parent: Node2D, local_pos: Vector2, facing_right: bool, weapon_type: int = 0) -> void:
+	if BattleTimeState.ff_active:
+		return
 	if parent == null or not is_instance_valid(parent):
 		return
 	if _active_sparks >= MAX_SPARKS:
@@ -678,6 +709,12 @@ static func spawn_muzzle_flash(parent: Node2D, local_pos: Vector2, facing_right:
 	var is_light_wt: bool = not (weapon_type in HEAVY_MUZZLE_WT)
 	# v6.1: 能量武器（LASER/OMEGA/RAIL）使用方向性长条纹理 + 更窄锥角 + 更高速度，呈现喷射流形态
 	var is_energy_wt: bool = not is_light_wt and weapon_type in [6, 8, 10, 11]
+	# v6.17 光学层: 枪口动态光闪（轻=小暖闪 / 能量=冷闪 / 重化学=大暖闪；随武器族换色）
+	OPTICS.flash(parent, local_pos,
+		Color(0.62, 0.82, 1.0) if is_energy_wt else (Color(1.0, 0.80, 0.48) if is_light_wt else Color(1.0, 0.62, 0.30)),
+		64.0 if is_light_wt else 92.0,
+		0.8 if is_light_wt else 1.1,
+		0.10 if is_light_wt else 0.16)
 	if is_light_wt:  # 轻型动能武器
 		p.texture = PARTICLE_TEX_MUZZLE_JET  # v17e: 前向喷流（侧视），替代四向星芒
 	elif is_energy_wt:  # 能量武器：喷射流
@@ -977,6 +1014,8 @@ static func _get_tinted_ramp(base_col: Color) -> Gradient:
 ## 补足"谁在打谁"的方向感。窄线+短淡出（0.16s），不与子弹弹道（自带 tracer）叠加。
 ## 复用 _spawn_beam_glow 池；距离过近（<40px，近战/同位）不画。
 static func spawn_attack_tracer(parent: Node2D, from_pos: Vector2, to_pos: Vector2, is_player: bool) -> void:
+	if BattleTimeState.ff_active:
+		return
 	if parent == null or not is_instance_valid(parent):
 		return
 	if DT.is_motion_reduce():
@@ -1011,6 +1050,8 @@ static func _spawn_beam_glow(parent: Node2D, from_pos: Vector2, to_pos: Vector2,
 ##   让"技能级穿透"区别于"普通穿甲"（宽 5→8，长 60→100，淡出 0.35→0.45）。
 ## length_scale: 长度倍率（默认1.0=60px；敌方 single_target 传更大值让下劈激光更长）
 static func spawn_pierce_beam(parent: Node2D, world_pos: Vector2, direction: Vector2, color: Color = Color(0.85, 0.55, 1.0, 1.0), enhanced: bool = false, length_scale: float = 1.0) -> void:
+	if BattleTimeState.ff_active:
+		return
 	if parent == null or not is_instance_valid(parent):
 		return
 	var beam := _acquire_beam()
@@ -1048,6 +1089,8 @@ static func spawn_pierce_beam(parent: Node2D, world_pos: Vector2, direction: Vec
 ##   ④ 入口少量白火花(动能,非蓝色能量粒子)
 ## [param dir] 穿透方向(默认右);[param penetrate_dist] 贯穿距离(目标宽+余量)
 static func spawn_railgun_penetration(parent: Node2D, pos: Vector2, dir: Vector2 = Vector2.RIGHT, penetrate_dist: float = 170.0) -> void:
+	if BattleTimeState.ff_active:
+		return
 	if parent == null or not is_instance_valid(parent):
 		return
 	var motion_reduce: bool = DT.is_motion_reduce()
@@ -1227,6 +1270,8 @@ static func spawn_railgun_penetration(parent: Node2D, pos: Vector2, dir: Vector2
 ##   is_player: 玩家方=青白冷光;敌方=红橙热光——战术可读性(一眼分清谁的激光)。
 ##   dir: 攻击方向(来弹方向,v12d 加)——激光是从射手射来的相干光束,命中点画一段指向来源的来弹光束。
 static func spawn_laser_burn(parent: Node2D, pos: Vector2, is_player: bool = true, dir: Vector2 = Vector2.RIGHT) -> void:
+	if BattleTimeState.ff_active:
+		return
 	if parent == null or not is_instance_valid(parent):
 		return
 	var motion_reduce: bool = DT.is_motion_reduce()
@@ -1370,6 +1415,8 @@ static func spawn_laser_burn(parent: Node2D, pos: Vector2, is_player: bool = tru
 ##   阵营语言/欧米茄家族色均不接，与枪口侧同步改橙红）——战术可读性。
 ##   dir: 攻击方向(来弹方向,v12d 加)——粒子炮从射手射来一束粒子流,命中点画指向来源的入射流。
 static func spawn_omega_discharge(parent: Node2D, pos: Vector2, is_player: bool = true, dir: Vector2 = Vector2.RIGHT) -> void:
+	if BattleTimeState.ff_active:
+		return
 	if parent == null or not is_instance_valid(parent):
 		return
 	var motion_reduce: bool = DT.is_motion_reduce()
@@ -1505,6 +1552,8 @@ const XENO_EXPLOSION_FRAMES := [
 ##   PLASMA_LOB  —— 能量爆炸帧（蓝白帧紫青 tint）+ 放电层 —— 曲射能量弹落点
 ##   其余远程    —— 灵能放电（来弹流 + 能量核 + 星芒 + 径向火花 + 辉光环，欧米茄同构紫青版）
 static func spawn_xeno_impact(parent: Node2D, pos: Vector2, flavor: int, _is_player: bool, dir: Vector2 = Vector2.RIGHT, _opts: Dictionary = {}) -> void:
+	if BattleTimeState.ff_active:
+		return
 	if parent == null or not is_instance_valid(parent):
 		return
 	var motion_reduce: bool = DT.is_motion_reduce()
@@ -1695,6 +1744,8 @@ static func _spawn_xeno_claw_burst(parent: Node2D, pos: Vector2, pcol: Color, d:
 ## 半环 Line2D（前向 -64°..+64°，半径 ~30px），白热亮芯速淡（0.14s），同步
 ## AttackPoseAnim 前冲姿态。unit 本地空间（add_child(unit)，随单位翻转/浮动）。
 static func spawn_melee_slash(unit: Node2D, local_pos: Vector2, facing_right: bool, _weapon_name: String = "") -> void:
+	if BattleTimeState.ff_active:
+		return
 	if unit == null or not is_instance_valid(unit):
 		return
 	if DT.is_motion_reduce():
@@ -1745,6 +1796,8 @@ static func spawn_melee_slash(unit: Node2D, local_pos: Vector2, facing_right: bo
 
 ## 溅射冲击波环（v8.2：加长到可看清）
 static func spawn_shockwave(parent: Node2D, world_pos: Vector2, radius: float, color: Color = Color(1.0, 0.6, 0.2, 0.8), aspect_ratio: float = 2.0) -> void:
+	if BattleTimeState.ff_active:
+		return
 	# v17e: 侧视游戏冲击波压扁为椭圆（aspect_ratio > 1 = 横向拉伸）。
 	# aspect_ratio=2.0 → 宽度 2× 高度，侧视视角下冲击波明显扁椭圆（非正圆"气球"感）。
 	if parent == null or not is_instance_valid(parent):
@@ -1772,6 +1825,8 @@ static func spawn_shockwave(parent: Node2D, world_pos: Vector2, radius: float, c
 
 ## 闪电链电弧（锯齿线段，主目标→次目标）。v7.4: 改用 beam 池
 static func spawn_lightning_arc(parent: Node2D, from_pos: Vector2, to_pos: Vector2, color: Color = Color(0.5, 0.7, 1.0, 1.0)) -> void:
+	if BattleTimeState.ff_active:
+		return
 	if parent == null or not is_instance_valid(parent):
 		return
 	var arc := _acquire_beam()
@@ -1807,6 +1862,8 @@ static func spawn_lightning_arc(parent: Node2D, from_pos: Vector2, to_pos: Vecto
 
 ## v8.1: 激光命中光束余晖（v8.2：加长淡出到可看清）。v7.4: 改用 beam 池
 static func spawn_laser_beam(parent: Node2D, from_pos: Vector2, to_pos: Vector2, color: Color = Color(0.3, 0.8, 1.0, 0.95)) -> void:
+	if BattleTimeState.ff_active:
+		return
 	if parent == null or not is_instance_valid(parent):
 		return
 	var beam := _acquire_beam()
@@ -1834,6 +1891,8 @@ static func spawn_laser_beam(parent: Node2D, from_pos: Vector2, to_pos: Vector2,
 ## v9.2: ADD 发光混合（爆炸火光感）+ 两层叠加（外层光晕 + 内层主体），真实感对标核武 fireball。
 ## life: 总生命周期秒（默认 0.45）；scale_peak: 峰值缩放（默认 1.0，调用方按贴图基准像素调整）
 static func spawn_impact_sprite(parent: Node2D, world_pos: Vector2, texture: Texture2D, scale_peak: float = 1.0, life: float = 0.45) -> void:
+	if BattleTimeState.ff_active:
+		return
 	if parent == null or not is_instance_valid(parent) or texture == null:
 		return
 	if DT.is_motion_reduce():
@@ -1884,6 +1943,48 @@ static func spawn_impact_sprite(parent: Node2D, world_pos: Vector2, texture: Tex
 	tween.tween_callback(func(): _release_impact_sprite(sprite))
 
 
+## v6.15 打击感(P0/R2)：白色冲击斑/云——命中点第一读感层（DR 对照，design/ux/hit-feedback-plan.md）。
+## 单层软圆白斑（复用 impact_sprite 池，ADD），纯白不染色。尺寸与包络按量级双档：
+##   大团(≥36px，HEAVY 直射)：膨胀 0.06s → 保持 0.04s → 淡出 0.12s（总 0.22s）；
+##   小斑(<36px，轻武器快闪)：膨胀 0.04s → 保持 0.02s → 淡出 0.08s（总 0.14s，干脆不过烟）。
+## 首读层必须"先立得住再散"——旧版膨胀/淡出并行 EASE_IN 亮度立不住（v17 残烟教训同款：
+## 包络与采样窗口联动标定）。
+## 显示宽由调用方目标 px 反算 scale：贴图实寸 116px 为 PIL bbox 标定（skill 第2步铁律，
+## 勿按 128 画布假设）。仅轻动能(0/4)命中调用；motion_reduce/极速推演不生成。
+const POOF_TEX_CONTENT_W: float = 116.0  # impact_poof_white.png 内容实寸（128 画布，v4 实测 bbox 116×117）
+
+static func _spawn_impact_poof(parent: Node2D, world_pos: Vector2, target_px: float) -> void:
+	if BattleTimeState.ff_active:
+		return
+	if parent == null or not is_instance_valid(parent):
+		return
+	if DT.is_motion_reduce():
+		return
+	var pk: float = target_px / POOF_TEX_CONTENT_W
+	var is_big: bool = target_px >= 36.0
+	var sprite := _acquire_impact_sprite()
+	if sprite == null:
+		return  # 池满，静默丢弃（节流）
+	sprite.texture = PARTICLE_TEX_IMPACT_POOF
+	sprite.position = world_pos
+	sprite.rotation = randf() * TAU
+	sprite.scale = Vector2(pk * 0.55, pk * 0.55)
+	# v6.17: modulate HDR 化（rgb>1 过 bloom 阈值，白斑读"闪"而非"棉团"；alpha 包络不动）
+	sprite.modulate = Color(1.45, 1.42, 1.30, 0.92 if is_big else 0.85)
+	sprite.visible = true
+	sprite.material = _get_add_mat()
+	parent.add_child(sprite)
+	sprite.add_to_group("battle_vfx")  # v9.4: 战斗结束兜底清理（tween 中断时不残留）
+	var expand_s: float = 0.06 if is_big else 0.03
+	var hold_s: float = 0.04 if is_big else 0.02
+	var fade_s: float = 0.12 if is_big else 0.06
+	var tw := sprite.create_tween()
+	tw.tween_property(sprite, "scale", Vector2(pk, pk), expand_s).set_ease(Tween.EASE_OUT)
+	tw.tween_interval(hold_s)  # 满亮保持（大团总 0.10s 立得住，覆盖审计 0.05s 采样帧+肉眼前 6 帧）
+	tw.tween_property(sprite, "modulate:a", 0.0, fade_s).set_ease(Tween.EASE_IN)
+	tw.tween_callback(func(): _release_impact_sprite(sprite))
+
+
 ## v9.3c: 大招专属贴图爆炸（敌我双方大招命中演出，对齐核子轰炸表现力）。
 ## 与 spawn_impact_sprite 的区别：
 ##   ① 配色染色（tint 参数 lerp 贴图原色，让每类大招有专属色调）
@@ -1895,6 +1996,8 @@ static func spawn_impact_sprite(parent: Node2D, world_pos: Vector2, texture: Tex
 ## target_width: 主体贴图峰值显示宽度（像素，如护盾 260 / 大招 360）。按贴图分辨率反算 scale，
 ##   避免 1024px 贴图被当绝对乘数导致溢屏（与 spawn_rising_sprite:737/spawn_ground_burn:687 同范式）。
 static func spawn_spell_burst(parent: Node2D, world_pos: Vector2, texture: Texture2D, tint: Color = Color.WHITE, target_width: float = 320.0, life: float = 0.8) -> void:
+	if BattleTimeState.ff_active:
+		return
 	if parent == null or not is_instance_valid(parent) or texture == null:
 		return
 	if DT.is_motion_reduce():
@@ -1943,6 +2046,9 @@ static func spawn_spell_burst(parent: Node2D, world_pos: Vector2, texture: Textu
 			return
 		# v13 第0层: 白闪核(大招过曝闪)——先于主体 0.08s，制造"大招级"峰值帧。
 		# 小技能不叠(is_ult_scale 门槛)，与普通命中拉开档次。
+		# v6.17 光学层: 大招级动态光闪同拍点亮（白闪核 sprite 池满也不丢光闪）
+		if is_ult_scale:
+			OPTICS.flash(p, captured_pos, Color(1.0, 0.80, 0.50), 210.0, 1.6, 0.5)
 		if is_ult_scale and _active_impact_sprites < MAX_IMPACT_SPRITES:
 			var flash := _acquire_impact_sprite()
 			if flash != null:
@@ -2047,6 +2153,8 @@ static func spawn_spell_burst(parent: Node2D, world_pos: Vector2, texture: Textu
 ## CPUParticles2D 向上发射 + ADD 混合 + 底浓顶淡渐变，2.5s 后停发并回收。
 ## tint 由调用方传入（玩家绿 / 敌方暗红橙 / 中性灰）。
 static func spawn_smoke_column(parent: Node2D, pos: Vector2, tint: Color = Color(0.5, 0.5, 0.5, 0.5)) -> void:
+	if BattleTimeState.ff_active:
+		return
 	if parent == null or not is_instance_valid(parent):
 		return
 	var p := CPUParticles2D.new()
@@ -2099,6 +2207,8 @@ static func spawn_smoke_column(parent: Node2D, pos: Vector2, tint: Color = Color
 ## radius: 焦痕半径；fade_in: 初始淡入到目标 alpha 的时间（默认 0.3s，模拟焦痕"烧出来"）。
 ## texture: 可选焦痕贴图（有则用贴图更逼真，无则回退纯色多边形）。贴图按 radius 缩放到目标尺寸。
 static func spawn_ground_burn(parent: Node2D, pos: Vector2, radius: float, fade_in: float = 0.3, texture: Texture2D = null) -> void:
+	if BattleTimeState.ff_active:
+		return
 	if parent == null or not is_instance_valid(parent):
 		return
 	if DT.is_motion_reduce():
@@ -2156,6 +2266,8 @@ const TRACE_TEX_BASE_R: float = 32.0  # impact_scorch 贴图基准半径(64px/2)
 
 ## kind: "scorch"(重型命中弹坑焦痕) / "wreck"(单位阵亡残骸印记,更大更暗)
 static func spawn_battle_trace(parent: Node2D, world_pos: Vector2, radius: float) -> void:
+	if BattleTimeState.ff_active:
+		return
 	if parent == null or not is_instance_valid(parent):
 		return
 	if DT.is_motion_reduce():
@@ -2200,7 +2312,7 @@ static func spawn_battle_trace(parent: Node2D, world_pos: Vector2, radius: float
 	node.visible = true
 	# v26.x: 原 "wreck" 残骸分支（更深 0.55/独立色）随死亡印记退役，仅剩武器焦痕
 	node.modulate = Color(0.16, 0.12, 0.08, 0.0)
-	var peak_a: float = 0.42
+	var peak_a: float = 0.50  # v6.17: 0.42→0.50（暗底一档后保可读）
 	var tw := node.create_tween()
 	tw.tween_property(node, "modulate:a", peak_a, 0.18)
 	tw.tween_interval(14.0)
@@ -2264,6 +2376,8 @@ static func _era_tint_energy(c: Color) -> Color:
 ## rise: 上飘距离（像素）；life: 总生命周期。
 ## 普通混合（非 ADD）——蘑菇云是烟尘实体不是发光体，ADD 会让它过曝失去形状。
 static func spawn_rising_sprite(parent: Node2D, pos: Vector2, texture: Texture2D, target_width: float = 320.0, rise: float = 120.0, life: float = 1.4) -> void:
+	if BattleTimeState.ff_active:
+		return
 	if parent == null or not is_instance_valid(parent) or texture == null:
 		return
 	if DT.is_motion_reduce():
@@ -2298,6 +2412,8 @@ static func spawn_rising_sprite(parent: Node2D, pos: Vector2, texture: Texture2D
 ## target_width: 峰值宽度（像素）；rise: 上飘距离；fps: 帧率（8fps × 9帧 ≈ 1.1s）。
 ## 成功创建 AnimatedSprite2D 返回 true；帧贴图不足返回 false（调用方回退 spawn_rising_sprite）。
 static func spawn_animated_nuclear(parent: Node2D, pos: Vector2, frame_textures: Array, target_width: float = 320.0, rise: float = 120.0, fps: float = 8.0) -> bool:
+	if BattleTimeState.ff_active:
+		return false
 	if parent == null or not is_instance_valid(parent):
 		return false
 	if frame_textures == null or frame_textures.size() < 2:
@@ -2355,6 +2471,8 @@ static func spawn_animated_nuclear(parent: Node2D, pos: Vector2, frame_textures:
 ## 与 spawn_rising_sprite（蘑菇云向上）方向相反——能量武器=从天而降，核武器=地面升腾。
 ## 实现一条从高空降落到命中点的 Line2D 光束 + ADD 混合发光 + 快速收缩消散。
 static func spawn_energy_pillar(parent: Node2D, pos: Vector2, color: Color = Color(0.5, 0.6, 1.0, 0.7), height: float = 400.0, life: float = 0.6) -> void:
+	if BattleTimeState.ff_active:
+		return
 	if parent == null or not is_instance_valid(parent):
 		return
 	if DT.is_motion_reduce():
@@ -2631,6 +2749,8 @@ static func spawn_ultimate_projectile(parent: Node2D, from: Vector2, target: Vec
 ## size_scale: 整体尺寸缩放（1.0=战术核武完整尺寸；核子轰炸多点用 0.6 缩小，避免半径覆盖到己方）
 ## 全屏闪白/震屏/标题等全局效果不在此方法——由调用方按需触发（多点时只触发一次）。
 static func spawn_nuclear_explosion(parent: Node2D, pos: Vector2, textures: Dictionary, colors: Dictionary, size_scale: float = 1.0) -> void:
+	if BattleTimeState.ff_active:
+		return
 	if parent == null or not is_instance_valid(parent):
 		return
 	var shock_color: Color = colors.get("shock", Color(1.0, 0.85, 0.5, 0.9))
@@ -2706,6 +2826,8 @@ static func spawn_nuclear_explosion(parent: Node2D, pos: Vector2, textures: Dict
 ## 所有变体复用现有 ring/spark 池，motion_reduce 时只保留最简特征。
 ## ======================================================================
 static func spawn_variant_overlay(parent: Node2D, world_pos: Vector2, weapon_type: int, variant: String, is_player: bool) -> void:
+	if BattleTimeState.ff_active:
+		return
 	if parent == null or not is_instance_valid(parent):
 		return
 	match variant:
@@ -2719,6 +2841,48 @@ static func spawn_variant_overlay(parent: Node2D, world_pos: Vector2, weapon_typ
 			_spawn_guided_indicator(parent, world_pos, is_player)
 		"gun_missile":
 			_spawn_gun_missile_trail(parent, world_pos, is_player)
+
+
+## ======================================================================
+## v38.x: 巡航导弹（发射井 cold_fort_missile"反舰巡航导弹"）专属命中签名层
+## 叠加在通用三层之上（gun_missile 变体同款叠加模式，不 return 不替换）：
+## 冷白重爆炸 = 大白闪 + 双冲击环 + 双烟团 + 贴地扬尘。
+## 刻意不做全屏震/镜头推近——与 45s 核打击演出分层；震屏走 bullet 既有
+## explosion_radius 线性通道（v38.x F 条红线：勿直写相机，v32.0 B1-2）。
+## ======================================================================
+static func spawn_cruise_impact(parent: Node2D, world_pos: Vector2) -> void:
+	if BattleTimeState.ff_active:
+		return
+	if parent == null or not is_instance_valid(parent):
+		return
+	if DT.is_motion_reduce():
+		return
+	# ① 冷白光学大闪（通用爆炸族 flash 是 130px 暖橙——巡航导弹用更大更冷的读感锚）
+	OPTICS.flash(parent, world_pos, Color(0.85, 0.95, 1.0), 170.0, 1.6, 0.35)
+	# ② 主冲击环（冷白 110px）+ 0.12s 余波环（150px 半透明，重弹双波次）
+	var cold: Color = Color(0.88, 0.95, 1.0, 0.85)
+	spawn_shockwave(parent, world_pos, 110.0, cold)
+	var tree: SceneTree = Engine.get_main_loop() as SceneTree
+	if tree != null:
+		var weak_parent: WeakRef = weakref(parent)
+		var captured_pos: Vector2 = world_pos  # 值类型，lambda 直接捕获安全
+		tree.create_timer(0.12).timeout.connect(func():
+			var wp: Node2D = weak_parent.get_ref() as Node2D
+			if wp == null or not is_instance_valid(wp):
+				return
+			spawn_shockwave(wp, captured_pos, 150.0, Color(cold.r, cold.g, cold.b, 0.4)))
+	# ③ 双烟团（左右错开，走 debris 池；烟色冷灰白呼应弹体 tint）
+	var smoke_cold: Color = Color(0.78, 0.84, 0.92)
+	_spawn_smoke_puff_layer(parent, world_pos + Vector2(-26, -8), smoke_cold, 9,
+		{"amount": 5, "life": 0.9, "smin": 2.4, "smax": 3.8, "color": smoke_cold})
+	_spawn_smoke_puff_layer(parent, world_pos + Vector2(26, -14), smoke_cold, 9,
+		{"amount": 4, "life": 0.8, "smin": 2.0, "smax": 3.2, "color": smoke_cold})
+	# ④ 贴地扬尘（low_dust 横向低矮宽扇——重弹着地的推土尘幕，v8.x 曲射落地先例）
+	_spawn_debris(parent, world_pos + Vector2(0, 6), {
+		"amount": 10, "life": 0.7, "vmin": 70.0, "vmax": 150.0,
+		"smin": 2.6, "smax": 4.2, "is_smoke": true, "low_dust": true,
+		"smoke_color": Color(0.62, 0.58, 0.50, 0.45),
+	}, Color.WHITE, 9)
 
 
 ## 子母弹：主爆炸周围撒布 6 个小溅射点（子弹药分离）
@@ -2974,6 +3138,8 @@ static func _spawn_sparks(parent: Node2D, pos: Vector2, recipe: Dictionary, base
 ## v16.2: 独立火花层测试入口——仅触发第2层主火花，不生成环/碎片/闪光等其他层。
 ## 直接用真实 _impact_recipe 参数，保证与实战完全一致。
 static func spawn_sparks_only(parent: Node2D, pos: Vector2, weapon_type: int, is_player: bool = true) -> void:
+	if BattleTimeState.ff_active:
+		return
 	if parent == null or not is_instance_valid(parent):
 		return
 	var recipe: Dictionary = _impact_recipe(weapon_type, "")
@@ -2983,6 +3149,8 @@ static func spawn_sparks_only(parent: Node2D, pos: Vector2, weapon_type: int, is
 
 ## v16.2: 独立冲击波环测试入口——仅触发第1层环，不含火花/碎片/闪光。
 static func spawn_ring_only(parent: Node2D, pos: Vector2, weapon_type: int, is_player: bool = true) -> void:
+	if BattleTimeState.ff_active:
+		return
 	if parent == null or not is_instance_valid(parent):
 		return
 	var recipe: Dictionary = _impact_recipe(weapon_type, "")
@@ -3121,7 +3289,9 @@ static var _spark_ramp_cache: Dictionary = {}
 # 能量武器(激光/欧米茄/电磁)保留蓝青但加白热核心。报告:原"白→武器色→淡出"颜色单一缺高温梯度。
 static func _get_spark_ramp(base_color: Color, weapon_type: int = -1) -> Gradient:
 	var family: String = "energy" if weapon_type in [8, 10, 11] else "thermal"
-	var key: String = family + "_%02x%02x%02x" % [int(base_color.r*255), int(base_color.g*255), int(base_color.b*255)]
+	# v35 perf: 缓存键改 int 打包（salt+RGB，免每命中 % 格式化拼串分配）
+	var key: int = ((1 if family == "energy" else 0) << 24) \
+		| (int(base_color.r * 255) << 16) | (int(base_color.g * 255) << 8) | int(base_color.b * 255)
 	if _spark_ramp_cache.has(key):
 		return _spark_ramp_cache[key]
 	var g := Gradient.new()
@@ -3242,8 +3412,8 @@ static func _spawn_flash_layer(parent: Node2D, pos: Vector2, base_color: Color, 
 	p.scale_amount_max = float(cfg.get("smax", _flash_smax)) * FSCALE
 	var flash_col: Color = Color(1.0, 1.0, 0.96, 1.0) if not is_energy else Color(0.85, 0.95, 1.0, 1.0)
 	p.color = flash_col
-	# v26.x: Gradient 按色缓存（原每次命中 new）
-	var _fkey: String = "flash_%02x%02x%02x" % [int(flash_col.r * 255), int(flash_col.g * 255), int(flash_col.b * 255)]
+	# v26.x: Gradient 按色缓存（原每次命中 new）；v35 perf: 键改 int 打包
+	var _fkey: int = (1 << 24) | (int(flash_col.r * 255) << 16) | (int(flash_col.g * 255) << 8) | int(flash_col.b * 255)
 	p.color_ramp = _get_cached_gradient(_fkey, [
 		[0.0, flash_col],
 		[0.5, Color(flash_col.r, flash_col.g * 0.9, flash_col.b * 0.6, 0.6)],
@@ -3270,7 +3440,10 @@ static func _spawn_smoke_puff_layer(parent: Node2D, pos: Vector2, base_color: Co
 	# v26.11: 非能量烟换浅灰白枪烟贴图——smoke_generic 均值 0.40 乘任何 tint 都是暗团
 	# （轻武器命中"黑球"的残源），light 贴图 0.8 亮度下中性暖灰才成立。
 	p.texture = PARTICLE_TEX_SMOKE_ENERGY if is_energy else PARTICLE_TEX_SMOKE_PUFF_LIGHT
-	var light_factor: float = 0.85 if weapon_type in [0, 1, 2, 4] else 1.0  # v11b: 0.5→0.85 轻武器烟量恢复可见(报告:完全无烟)
+	# v35 修正: 轻武器域 [0,1,2,4]→[0,4]——本工厂"新枚举优先"约定下碰撞值 1/2 恒是
+	# 曲射/空射（重型），此前会被 0.85 轻档压烟量；legacy RIFLE/MG 在上游 resolve_visual_wt
+	# 已归一为 0，[1,2] 条目是双枚举撞值期的残留。
+	var light_factor: float = 0.85 if weapon_type in [0, 4] else 1.0  # v11b: 0.5→0.85 轻武器烟量恢复可见(报告:完全无烟)
 	p.amount = int(float(cfg.get("amount", 5)) * light_factor)
 	p.lifetime = float(cfg.get("life", 0.7))
 	p.initial_velocity_min = float(cfg.get("vmin", 20.0))
@@ -3378,7 +3551,7 @@ static func _spawn_shrapnel_layer(parent: Node2D, pos: Vector2, base_color: Colo
 		# 渐变只控 alpha 渐隐（末尾整体变透明而非变色）。
 		p.color = Color.WHITE
 		# v26.x: Gradient 缓存（原每次命中 new；渐变只控 alpha 渐隐，恒白不随色变）
-		p.color_ramp = _get_cached_gradient("metal_chunk_alpha", [
+		p.color_ramp = _get_cached_gradient(3, [  # 3 = metal_chunk_alpha 固定档（v35 int 键）
 			[0.0, Color(1, 1, 1, 1.0)], [0.6, Color(1, 1, 1, 0.9)], [1.0, Color(1, 1, 1, 0.0)]])
 		parent.add_child(p)
 		var tree_e := p.get_tree()
@@ -3398,8 +3571,8 @@ static func _spawn_shrapnel_layer(parent: Node2D, pos: Vector2, base_color: Colo
 	p.gravity = Vector2(0, 260.0)  # 重力下落(破片抛物线)
 	var shrap_col: Color = cfg.get("color", (Color(0.85, 0.78, 0.55, 1.0) if weapon_type not in [8, 10, 11] else Color(0.6, 0.75, 1.0, 1.0)))
 	p.color = shrap_col
-	# v26.x: Gradient 按色缓存（原每次命中 new）
-	var _skey: String = "shrap_%02x%02x%02x" % [int(shrap_col.r * 255), int(shrap_col.g * 255), int(shrap_col.b * 255)]
+	# v26.x: Gradient 按色缓存（原每次命中 new）；v35 perf: 键改 int 打包
+	var _skey: int = (2 << 24) | (int(shrap_col.r * 255) << 16) | (int(shrap_col.g * 255) << 8) | int(shrap_col.b * 255)
 	p.color_ramp = _get_cached_gradient(_skey, [
 		[0.0, shrap_col],
 		[0.6, Color(shrap_col.r * 0.6, shrap_col.g * 0.5, shrap_col.b * 0.4, 0.9)],
@@ -3421,6 +3594,8 @@ static func _spawn_impact_decal(parent: Node2D, pos: Vector2, weapon_type: int) 
 	if parent == null or not is_instance_valid(parent):
 		return
 	var decal := _acquire_decal(parent, pos, 0.6)  # v27.12: 走弹痕池（acquire 复位 transform/modulate）
+	if decal == null:
+		return   # 兜底：acquire 异常中断时不再拿 null 触发二次报错
 	var tree := decal.get_tree()
 	if tree != null:
 		# bind_node:节点被清场 group-free 时自动 kill tween,避免操作已释放节点
@@ -3670,7 +3845,8 @@ static func _get_smoke_grad(tint: Color) -> Gradient:
 
 
 ## v26.x: 通用按色 Gradient 缓存（命中闪光/金属破片层）。points = [[offset, Color], ...]。
-static func _get_cached_gradient(key: String, points: Array) -> Gradient:
+## v35 perf: key 改 int（调用方 salt+RGB 打包；金属破片固定档传 3）
+static func _get_cached_gradient(key: int, points: Array) -> Gradient:
 	if _fx_grad_cache.has(key):
 		return _fx_grad_cache[key]
 	var grad := Gradient.new()

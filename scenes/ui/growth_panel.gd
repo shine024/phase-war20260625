@@ -74,10 +74,26 @@ func _ready() -> void:
 	_init_cached_styleboxes()
 	_bind_nodes()
 	_connect_signals()
+	_apply_panel_chrome()
 	_apply_visual_styles()
 	# v27.12 性能：隐藏期间置脏的列表在恢复可见时统一补刷
 	if not visibility_changed.is_connected(_on_visibility_refresh):
 		visibility_changed.connect(_on_visibility_refresh)
+
+
+## UI 四级标准修复 R-D3 子批1：标题栏归一 PanelChrome（16 家同款：accent 发光竖条 +
+## Rajdhani 加粗标题 + 副标 + 右上 ✕ hover 红）。旧手写 TitleBar 隐藏留档——
+## %MetaLabel/%CloseBtn 引用链保活（close_btn 不可见不再触发），✕ 统一走
+## chrome.closed → 既有 _on_close_pressed。
+func _apply_panel_chrome() -> void:
+	var old_bar := get_node_or_null("RootVBox/TitleBar")
+	if old_bar is Control:
+		(old_bar as Control).visible = false
+	var root_vbox := get_node_or_null("RootVBox") as BoxContainer
+	if root_vbox == null:
+		return
+	var chrome := PanelChrome.attach_to(root_vbox, "整备舱", DT.get_system_color("growth"), "GROWTH COMMANDO")
+	chrome.closed.connect(_on_close_pressed)
 
 
 func _bind_nodes() -> void:
@@ -540,7 +556,9 @@ func _create_card_list_item(card: CardResource, instance_id_raw: Variant) -> Con
 	if "mods" in card:
 		var mods_arr = card.mods
 		mod_count = mods_arr.size() if mods_arr is Array else 0
-	meta_label.text = "Lv.%d  ·  改%d/9" % [_card_level_of(card), mod_count]
+	# v6.16 起槽位预算=品质+兵种（5-12），2026-09-19 修复硬编码 9
+	var _max_slots: int = ModManager.get_max_mod_slots_for_card(card) if card != null else 9
+	meta_label.text = "Lv.%d  ·  改%d/%d" % [_card_level_of(card), mod_count, _max_slots]
 	meta_label.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
 	meta_label.add_theme_color_override("font_color", DT.COLOR_SLATE_DIM_A85)
 	meta_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
