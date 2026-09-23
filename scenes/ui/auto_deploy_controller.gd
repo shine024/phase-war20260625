@@ -31,6 +31,8 @@ const DEPLOY_INTERVAL: float = 0.4
 const INITIAL_DELAY: float = 0.1
 ## 单张连续失败次数上限：超过则放弃该张（防死循环，如该卡能量永远不够）
 const FAIL_GIVEUP: int = 20
+## v6.23b: 单条目失败上限——同一条目连败 N 次直接出队（不再整轮无限重试弹 toast）
+const _ENTRY_FAIL_GIVEUP: int = 3
 ## 绿槽索引 → 战场位的偏移量（单行 3×3 布局：绿槽0→战场位0，无偏移）
 const SLOT_INDEX_OFFSET: int = 0
 
@@ -381,11 +383,19 @@ func _deploy_next() -> void:
 			deployed_index = i
 			break
 		var ok: bool = false
-		if bm.has_method("request_player_deploy_at"):
-			ok = bm.request_player_deploy_at(card_id, pos)
+		# v6.23b: 走静默版——重试期间失败不弹 toast（主诉⑦"一直跳弹窗"）
+		if bm.has_method("request_player_deploy_at_silent"):
+			ok = bm.request_player_deploy_at_silent(card_id, pos)
 		if ok:
 			deployed_index = i
 			break
+		# v6.23b: 每条目独立失败计数——同一条目连败超限直接出队（原来失败条目永不出队，
+		# 每 0.4s 整轮重试一遍、每轮弹一次失败 toast；仅整轮连败 FAIL_GIVEUP 才弃队首）
+		var entry_fails: int = int(entry.get("_fail_count", 0)) + 1
+		entry["_fail_count"] = entry_fails
+		if entry_fails >= _ENTRY_FAIL_GIVEUP:
+			_deploy_queue.remove_at(i)
+			continue
 		# 部署失败（能量不足等）→ 继续尝试下一个条目
 	if deployed_index >= 0:
 		var dep_entry: Dictionary = _deploy_queue[deployed_index]

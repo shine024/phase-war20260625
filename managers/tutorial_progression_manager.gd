@@ -135,6 +135,10 @@ func begin_close_wait_for_action(action_target: String) -> bool:
 	if surface.is_empty():
 		return false
 	pending_close_surface = surface
+	# v6.23b: 主诉①"打开背包后没有后续指示"——挂起期间教程框自毁、屏幕零提示，
+	# 玩家不知道要关背包才继续。补一条明确指示（toast 常规时长，不遮挡面板）。
+	if SignalBus and SignalBus.has_signal("show_toast"):
+		SignalBus.show_toast.emit("◀ 浏览完毕后关闭背包，继续新手引导")
 	return true
 
 

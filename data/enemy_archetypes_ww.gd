@@ -59,9 +59,11 @@ const DATA := {
 	},
 
 	# 精英敌人（2种）
+	# v6.23b: display_name 加"·精锐"后缀与 UCT 条目对齐——原"暴风突击队"与玩家卡
+	# ww1_storm、缴获卡三卡同名撞车，卡面读成重复/错卡（主诉⑤）。
 	"ww1_inf_storm_e": {
 		"era": 0,
-		"display_name": "暴风突击队",
+		"display_name": "暴风突击队·精锐",
 		"hp": 70.0,
 		"speed": -100.0,
 		"attack_damage": 12.0,

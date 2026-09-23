@@ -760,6 +760,17 @@ func _register_enemy_form_deploy_intel(captured_card_id: String) -> void:
 	if im != null and im.has_method("register_deploy"):
 		im.register_deploy(arch)
 
+## v6.23b: 自动部署静默开关——auto 管线重试期间失败不弹 toast（主诉⑦"一个卡布置
+## 不成就一直跳弹窗"）。request_player_deploy 原签名不动，auto 管线走 _silent 版。
+var _silent_deploy_failed: bool = false
+
+## 自动部署专用入口：失败不 emit player_deploy_failed（不弹错误 toast），返回值判断成败。
+func request_player_deploy_silent(platform_card_id: String, world_pos: Vector2, battle_era: int) -> bool:
+	_silent_deploy_failed = true
+	var ok: bool = request_player_deploy(platform_card_id, world_pos, battle_era)
+	_silent_deploy_failed = false
+	return ok
+
 func request_player_deploy(platform_card_id: String, world_pos: Vector2, battle_era: int) -> bool:
 	var bm: Node = _get_cached_autoload("BattleManager")
 	if bm != null and "battle_active" in bm and not bool(bm.battle_active):
@@ -1348,6 +1359,9 @@ func _ensure_swarm_controller() -> Node:
 	return ctl
 
 func _emit_deploy_failed(reason_code: String, message: String) -> void:
+	# v6.23b: 自动部署静默通道——重试期间不广播失败信号（不弹 toast）
+	if _silent_deploy_failed:
+		return
 	var now_ms: int = Time.get_ticks_msec()
 	var key: String = "%s|%s" % [reason_code, message]
 	if key != _last_deploy_fail_key or (now_ms - _last_deploy_fail_ts_ms) >= DEPLOY_FAIL_LOG_THROTTLE_MS:

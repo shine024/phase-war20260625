@@ -734,14 +734,19 @@ static func do_attack_with_damage(u: CharacterBody2D, damage: float, weapon_type
 	# v26.15e: 坦克炮是单发语义武器——不进 batch 曳光弹幕。高速数据层的坦克炮
 	# 此前也吃机枪式曳光连发（实机截图 FT-17 案例：一屏多条黄色曳光）。
 	# 走单发 bullet 路径：burst_count_for 对 TANK_GUN 恒 1，弹体为写实炮弹贴图。
-	if wt == GC.WeaponType.DIRECT and weapon_speed > 2.0 			and DirectWeaponFlavor.classify(w_name, wt) != DirectWeaponFlavor.Flavor.TANK_GUN:
-		var _fire_spawn_pos = _get_direct_fire_spawn_pos(u)
-		var batch = BattleManager.player_projectile_batch if u.is_player else BattleManager.enemy_projectile_batch
-		if batch and is_instance_valid(batch) and batch.has_method("fire"):
-			# v16: 透传 weapon_name/vfx_variant——高速直射路径此前丢失武器名亚类命中配方
-			# （机枪/坦克炮/步枪）与武器类改造专属视觉（集束/温压等）
-			batch.fire(_fire_spawn_pos, u.target, damage, wt, u, u.stats, miss, w_name, _vfx_variant)
-			return
+	# v6.23b: RIFLE 档同样不进 batch——步枪是单发语义武器（主诉②"还是多发射击"），
+	# 攻速被强化/武备抬过 2.0 后会落到 batch 吃机枪式曳光弹幕；排除后无论攻速
+	# 多少都走独立 bullet 路径，点射表（burst_count_for_weapon）恒生效。
+	if wt == GC.WeaponType.DIRECT and weapon_speed > 2.0:
+		var _flavor: int = DirectWeaponFlavor.classify(w_name, wt)
+		if _flavor != DirectWeaponFlavor.Flavor.TANK_GUN and _flavor != DirectWeaponFlavor.Flavor.RIFLE:
+			var _fire_spawn_pos = _get_direct_fire_spawn_pos(u)
+			var batch = BattleManager.player_projectile_batch if u.is_player else BattleManager.enemy_projectile_batch
+			if batch and is_instance_valid(batch) and batch.has_method("fire"):
+				# v16: 透传 weapon_name/vfx_variant——高速直射路径此前丢失武器名亚类命中配方
+				# （机枪/坦克炮/步枪）与武器类改造专属视觉（集束/温压等）
+				batch.fire(_fire_spawn_pos, u.target, damage, wt, u, u.stats, miss, w_name, _vfx_variant)
+				return
 
 	# 低速直射 或 曲射/空射回退 → 独立子弹节点（对象池）
 	# 霰弹（weapon_type 5）：创建多枚子弹，每枚均分伤害并独立散布

@@ -10,6 +10,8 @@ var _time_label: Label = null
 var _unit_label: Label = null
 var _kill_label: Label = null
 var _dmg_label: Label = null
+## v6.23b: 挂机标注行（主诉⑥"挂机自动推关/循环战斗界面上没有标注"）
+var _afk_label: Label = null
 # v9.x: 单位数走信号即时刷新；时间/击杀/伤害保留低频轮询（放宽到 1s）
 var _refresh_accum: float = 0.0
 var _bid_cache: Node = null  ## v9.x（3c）：BattleInfoDisplay 引用缓存
@@ -41,6 +43,16 @@ func _ready() -> void:
 	title.add_theme_constant_override("outline_size", 2)
 	title.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	vbox.add_child(title)
+	# v6.23b: 挂机标注行——标题正下方，挂机运行时常显（模式：循环/推图），停挂机时隐藏
+	_afk_label = Label.new()
+	_afk_label.add_theme_font_size_override("font_size", DesignTokens.FONT_SIZE_SMALL)
+	_afk_label.add_theme_color_override("font_color", Color(0.55, 0.9, 0.5))
+	_afk_label.add_theme_color_override("font_outline_color", DesignTokens.COLOR_BACKDROP_DEEP)
+	_afk_label.add_theme_constant_override("outline_size", 1)
+	_afk_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_afk_label.visible = false
+	vbox.add_child(_afk_label)
+	_refresh_afk()
 	# 4 行数据
 	_time_label = _make_row_label()
 	_unit_label = _make_row_label()
@@ -74,6 +86,31 @@ func _process(delta: float) -> void:
 	if _refresh_accum >= _REFRESH_SEC:
 		_refresh_accum = 0.0
 		_refresh()
+		_refresh_afk()
+
+
+## v6.23b: 挂机标注刷新——从 main._afk_manager 读运行态/模式（1s 轮询，与既有刷新同节拍；
+## 不连信号：AFKModeManager 是 RefCounted 非常驻节点，跨场景重建信号连线易漏断）
+func _refresh_afk() -> void:
+	if _afk_label == null:
+		return
+	var main := get_node_or_null("/root/Main")
+	var am: Variant = main.get("_afk_manager") if main != null else null
+	if am == null or not bool(am.get("is_running")):
+		if _afk_label.visible:
+			_afk_label.visible = false
+		return
+	var mode_val: int = int(am.get("mode"))
+	var mode_txt := "循环" if mode_val == 0 else "推图"
+	var txt := "⚙ 挂机%s中" % mode_txt
+	var lvl: int = 0
+	if am.get("push_level") != null:
+		lvl = int(am.get("push_level"))
+	if lvl > 0:
+		txt += " · 第%d关" % lvl
+	_afk_label.text = txt
+	if not _afk_label.visible:
+		_afk_label.visible = true
 
 
 ## v9.x: 单位数变化信号回调（即时刷新单位行，无需等轮询）

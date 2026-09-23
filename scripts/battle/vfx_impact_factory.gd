@@ -744,8 +744,9 @@ static func spawn_muzzle_flash(parent: Node2D, local_pos: Vector2, facing_right:
 		p.spread = 22.0
 		p.initial_velocity_min = 340.0
 		p.initial_velocity_max = 560.0
-		p.scale_amount_min = 0.11    # v26.15f: 0.09-0.18→0.11-0.22（配合清重力直线喷）
-		p.scale_amount_max = 0.22
+		# v6.23b: 主诉④"组成的火花太大"——单粒火星减半贴现实枪口火星（6-12px/粒）
+		p.scale_amount_min = 0.06    # v26.15f 曾 0.11-0.22（11-22px/粒偏大）
+		p.scale_amount_max = 0.12
 	elif is_energy_wt:
 		# v26.11: 新能量喷流贴图（白热核心+电弧丝，内容~1000×180 薄带）下的连贯化——
 		# 36 粒散开读成"碎屑带"（f08/f10 枪口主诉），收成 20 粒×窄锥×长条重叠喷流。
@@ -755,8 +756,8 @@ static func spawn_muzzle_flash(parent: Node2D, local_pos: Vector2, facing_right:
 		p.spread = 5.0               # 窄喷流
 		p.initial_velocity_min = 640.0
 		p.initial_velocity_max = 1050.0
-		p.scale_amount_min = 0.07    # ~70px 条状
-		p.scale_amount_max = 0.14    # ~140px（与旧 974px 内容 48-116px 量级衔接）
+		p.scale_amount_min = 0.05    # v6.23b: 主诉④ 收小（50px 条状）
+		p.scale_amount_max = 0.10    # ~100px
 	else:  # 重型化学（曲射/空射/火箭/高炮/导弹）
 		p.lifetime = 0.22            # 大闪光但短促（原 0.40）
 		# v20.21 批次C: 定向爆喷收拢——42 粒 × 67-109px 火舌在 24° 锥内 ADD 叠加成
@@ -772,8 +773,10 @@ static func spawn_muzzle_flash(parent: Node2D, local_pos: Vector2, facing_right:
 		# 旧 0.20-0.38 按画布宽标定 → 火舌仅 32-61px 宽 × 7-13px 高薄片，AI 批
 		# "分散破碎/缺集中爆发"（与轻武器黑名单#1 同源：scale 基准混用画布与内容带）。
 		# 按带高实寸重标定：0.42-0.68 → 67-109px 宽 × 15-24px 高火舌。
-		p.scale_amount_min = 0.42
-		p.scale_amount_max = 0.68
+		# v6.23b: 主诉④ 炮口火舌收敛——0.42-0.68(67-109px)→0.28-0.45(45-72px)，
+		# 保留炮级质量感、贴现实炮口焰比例
+		p.scale_amount_min = 0.28
+		p.scale_amount_max = 0.45
 	p.direction = Vector2(1, 0) if facing_right else Vector2(-1, 0)
 	p.color_ramp = _get_muzzle_ramp() if not is_energy_wt else _get_energy_muzzle_ramp()
 	parent.add_child(p)
@@ -792,15 +795,15 @@ static func spawn_muzzle_flash(parent: Node2D, local_pos: Vector2, facing_right:
 			lcore.texture = PARTICLE_TEX_IMPACT_METAL     # 放射圆爆纹（等比，无长条）
 			lcore.position = local_pos
 			lcore.rotation = randf() * TAU
-			# v26.11: 0.45→0.58 起、0.65→0.82 峰（~74-105px 白闪核；旧 58-83px 实拍偏弱）
-			lcore.scale = Vector2(0.70, 0.70)
+			# v6.23b: 主诉④ 闪核减半——0.70-0.95(90-122px)→0.40-0.55(52-70px)，现实枪口白闪比例
+			lcore.scale = Vector2(0.40, 0.40)
 			lcore.modulate = Color(1.0, 0.98, 0.90, 1.0)  # 近纯白
 			lcore.visible = true
 			lcore.material = _get_add_mat()
 			parent.add_child(lcore)
 			lcore.add_to_group("battle_vfx")
 			var tw_core := lcore.create_tween()
-			tw_core.tween_property(lcore, "scale", Vector2(0.95, 0.95), 0.05).set_ease(Tween.EASE_OUT)
+			tw_core.tween_property(lcore, "scale", Vector2(0.55, 0.55), 0.05).set_ease(Tween.EASE_OUT)
 			tw_core.parallel().tween_property(lcore, "modulate:a", 0.0, 0.16).set_ease(Tween.EASE_IN)
 			tw_core.tween_callback(func(): _release_impact_sprite(lcore))
 		# 第 2 层：宽幅低透暖光晕（R36: 同样改放射纹避免长条）
@@ -810,15 +813,15 @@ static func spawn_muzzle_flash(parent: Node2D, local_pos: Vector2, facing_right:
 				lglow.texture = PARTICLE_TEX_IMPACT_METAL   # R36: 横条→放射圆纹
 				lglow.position = local_pos
 				lglow.rotation = randf() * TAU
-				# v26.11: 0.60→0.72 起、alpha 0.40→0.55（实拍光晕几乎不可读）
-				lglow.scale = Vector2(0.72, 0.72)             # ~92px 光晕
+				# v6.23b: 主诉④ 光晕收敛——0.72-0.95(92-122px)→0.45-0.60(58-77px)
+				lglow.scale = Vector2(0.45, 0.45)             # ~58px 光晕
 				lglow.modulate = Color(1.0, 0.82, 0.55, 0.55)  # 暖橙光晕
 				lglow.visible = true
 				lglow.material = _get_add_mat()
 				parent.add_child(lglow)
 				lglow.add_to_group("battle_vfx")
 				var tw_glow := lglow.create_tween()
-				tw_glow.tween_property(lglow, "scale", Vector2(0.95, 0.95), 0.07).set_ease(Tween.EASE_OUT)
+				tw_glow.tween_property(lglow, "scale", Vector2(0.60, 0.60), 0.07).set_ease(Tween.EASE_OUT)
 				tw_glow.parallel().tween_property(lglow, "modulate:a", 0.0, 0.15).set_ease(Tween.EASE_IN)
 				tw_glow.tween_callback(func(): _release_impact_sprite(lglow))
 	# v19-R31: 磁轨炮(wt11)白热爆闪核——R30 AI 复审批 f11 双方枪口"仅几粒散蓝点，
@@ -833,14 +836,14 @@ static func spawn_muzzle_flash(parent: Node2D, local_pos: Vector2, facing_right:
 				rcore.texture = PARTICLE_TEX_IMPACT_METAL    # 放射金属爆纹（动能撞击签名）
 				rcore.position = local_pos
 				rcore.rotation = randf() * TAU
-				rcore.scale = Vector2(2.5, 2.5)              # ~320px 爆闪（重炮级）
+				rcore.scale = Vector2(1.8, 1.8)              # v6.23b: 主诉④ ~230px（原2.5-3.5=320-448px 偏大）
 				rcore.modulate = Color(1.0, 0.98, 0.92, 1.0)  # 白热
 				rcore.visible = true
 				rcore.material = _get_add_mat()
 				parent.add_child(rcore)
 				rcore.add_to_group("battle_vfx")
 				var tw_rc := rcore.create_tween()
-				tw_rc.tween_property(rcore, "scale", Vector2(3.5, 3.5), 0.06).set_ease(Tween.EASE_OUT)
+				tw_rc.tween_property(rcore, "scale", Vector2(2.5, 2.5), 0.06).set_ease(Tween.EASE_OUT)
 				tw_rc.parallel().tween_property(rcore, "modulate:a", 0.0, 0.12).set_ease(Tween.EASE_IN)
 				tw_rc.tween_callback(func(): _release_impact_sprite(rcore))
 		# 第 2 层：青色电磁辉光（宽幅低透，电磁场爆发感）
@@ -850,14 +853,14 @@ static func spawn_muzzle_flash(parent: Node2D, local_pos: Vector2, facing_right:
 				rglow.texture = PARTICLE_TEX_MUZZLE_ENERGY   # 能量贴图（青色辉光）
 				rglow.position = local_pos
 				rglow.rotation = randf() * TAU
-				rglow.scale = Vector2(0.45, 0.45)            # ~460px 炮级电磁辉光（v19-R32 超屏修复：原1.8/2.6→1843/2662px，2倍屏宽全屏洗礼）
+				rglow.scale = Vector2(0.32, 0.32)            # v6.23b: 主诉④ ~330px（原0.45-0.65=460-665px 偏大）
 				rglow.modulate = Color(0.5, 0.85, 1.0, 0.5)   # 青色电磁辉光
 				rglow.visible = true
 				rglow.material = _get_add_mat()
 				parent.add_child(rglow)
 				rglow.add_to_group("battle_vfx")
 				var tw_rg := rglow.create_tween()
-				tw_rg.tween_property(rglow, "scale", Vector2(0.65, 0.65), 0.08).set_ease(Tween.EASE_OUT)
+				tw_rg.tween_property(rglow, "scale", Vector2(0.46, 0.46), 0.08).set_ease(Tween.EASE_OUT)
 				tw_rg.parallel().tween_property(rglow, "modulate:a", 0.0, 0.16).set_ease(Tween.EASE_IN)
 				tw_rg.tween_callback(func(): _release_impact_sprite(rglow))
 	# v13: 重型发射烟团——火箭/导弹发射的发射药烟，喷射后的低速扩散烟（短寿命不糊屏）

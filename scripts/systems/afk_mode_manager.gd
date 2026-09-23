@@ -82,6 +82,8 @@ var _auto_deploy_interval: float = 0.5  # 每0.5秒部署一张（设计文档5.
 const _AUTO_DEPLOY_INITIAL_DELAY: float = 0.3  # 战斗开始后延迟0.3秒再开始部署
 const _AUTO_DEPLOY_FAIL_GIVEUP: int = 20       # 单张连续失败次数上限，超过则放弃该张避免死循环
 var _deploy_fail_streak: int = 0
+## v6.23b: 每卡独立失败计数（card_id → 次数）——配合队列轮转，超限丢卡不丢队列
+var _deploy_fail_counts: Dictionary = {}
 ## 玩家可用部署槽位范围：3行×3列 = 9 格全部可用（无边缘禁放，slot 0~8）
 ## 运行时读 BattleSlotGrid.SLOT_COUNT（避免 const 求值时全局类加载顺序问题）
 const _PLAYER_SLOT_RANGE_START: int = 0
@@ -182,6 +184,7 @@ func start_afk() -> bool:
 	accumulated_rewards.clear()
 	_auto_deploy_pending.clear()
 	_deploy_fail_streak = 0
+	_deploy_fail_counts.clear()
 	# 重置战斗等待标志：上一轮挂机若 battle_ended 未正常到达（战斗异常/手动中断），
 	# _waiting_for_battle_end 残留 true 会让本次 enter_next_battle 被守卫 skip → 挂机不启动。
 	_waiting_for_battle_end = false
@@ -216,6 +219,7 @@ func stop_afk() -> void:
 	# 清理自动部署
 	_auto_deploy_pending.clear()
 	_deploy_fail_streak = 0
+	_deploy_fail_counts.clear()
 
 	# 先结算上一场尚未 claim 的掉落到累计池（若战斗刚结束）
 	accumulate_pending_drops()
@@ -486,6 +490,7 @@ func _afk_failed() -> void:
 	# 清理自动部署
 	_auto_deploy_pending.clear()
 	_deploy_fail_streak = 0
+	_deploy_fail_counts.clear()
 	# v6.6: 推图模式失败时保存已通关最高关（= 失败关 - 1），修复"失败丢弃全部进度"bug。
 	# 下次 start_afk 从该进度续推，而非从会话开始时的 push_level 重来。
 	if mode == Mode.PUSH and _pending_level > 1:
@@ -532,6 +537,7 @@ func _on_battle_started_from_bus() -> void:
 		return
 	_auto_deploy_pending.clear()
 	_deploy_fail_streak = 0
+	_deploy_fail_counts.clear()
 	var pim: Node = get_node_or_null("/root/PhaseInstrumentManager")
 	if pim and pim.has_method("get_loadouts"):
 		var _ld: Array = pim.get_loadouts()
@@ -598,17 +604,25 @@ func _deploy_next_from_queue() -> void:
 		_deploy_fail_streak = 0
 		return
 	var ok: bool = false
-	if bm.has_method("request_player_deploy_at"):
-		ok = bm.request_player_deploy_at(card_id, pos)
+	# v6.23b: 走静默版——重试期间失败不弹 toast（主诉⑦"一直跳弹窗"）
+	if bm.has_method("request_player_deploy_at_silent"):
+		ok = bm.request_player_deploy_at_silent(card_id, pos)
 	if ok:
 		_auto_deploy_pending.pop_front()
 		_deploy_fail_streak = 0
+		_deploy_fail_counts.erase(card_id)
 	else:
-		# 部署失败（多为能量不足）—— 队列不清空，下一帧再试
+		# v6.23b: 部署失败改为**轮转**——队首卡挪到队尾试下一张，不再原地死磕
+		#（原逻辑每 0.5s 重试同一张直到连败 20 次才放弃，期间每帧触发失败链）。
+		# 每卡独立失败计数，超限（giveup 上限）直接丢弃该卡。
+		var fails: int = int(_deploy_fail_counts.get(card_id, 0)) + 1
+		_deploy_fail_counts[card_id] = fails
 		_deploy_fail_streak += 1
-		if _deploy_fail_streak > _AUTO_DEPLOY_FAIL_GIVEUP:
-			_auto_deploy_pending.pop_front()
-			_deploy_fail_streak = 0
+		_auto_deploy_pending.pop_front()
+		if fails > _AUTO_DEPLOY_FAIL_GIVEUP:
+			_deploy_fail_counts.erase(card_id)  # 彻底放弃该卡
+		else:
+			_auto_deploy_pending.push_back(platform)  # 挪队尾，先试别的卡
 
 
 ## 返回玩家可用槽位末端索引（延迟初始化，避免 const 求值时全局类加载顺序问题）

@@ -183,6 +183,15 @@ func _on_next_pressed() -> void:
 	_advance(false)
 
 
+## v6.23b: 背包是否已打开（Main/PopupLayer/BackpackOverlay 可见性）
+func _is_backpack_open() -> bool:
+	var main := get_node_or_null("/root/Main")
+	if main == null:
+		return false
+	var bp := main.get_node_or_null("PopupLayer/BackpackOverlay")
+	return bp != null and bp.visible
+
+
 ## 推进本步。skip_action=true 时不再发动作信号（真实入口按钮已被玩家点开，
 ## 重复 toggle 会把刚打开的面板又关上——v6.20 聚光按钮推进路径）。
 func _advance(skip_action: bool) -> void:
@@ -191,6 +200,11 @@ func _advance(skip_action: bool) -> void:
 		return
 	# 执行 action_target（打开对应面板/进首关）
 	var action_target: String = str(_current_content.get("action_target", ""))
+	# v6.23b: 面板体验步防反向关闭——动作是"打开背包"但背包已开着时，toggle 会把它
+	# 关掉：关闭通知先于 pending 挂起发出 → 挂起永远等不到（教程死链）。此时视为
+	# 面板已就位，跳过 toggle，直接进入"关背包继续"节奏。
+	if not skip_action and action_target == "open_backpack" and _is_backpack_open():
+		skip_action = true
 	if not skip_action and not action_target.is_empty():
 		tutorial_action_executed.emit(action_target)
 		if _tutorial_manager.has_method("execute_tutorial_action"):

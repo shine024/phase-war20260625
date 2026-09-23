@@ -733,6 +733,12 @@ func request_player_deploy_at(platform_card_id: String, world_pos: Vector2) -> b
 	return _spawn_system.request_player_deploy(platform_card_id, world_pos, _current_battle_era())
 
 
+## v6.23b: 自动部署静默版——失败不广播 player_deploy_failed（不弹错误 toast）。
+## 主诉⑦：一个卡布置不成，auto 管线重试期间一直跳弹窗。
+func request_player_deploy_at_silent(platform_card_id: String, world_pos: Vector2) -> bool:
+	return _spawn_system.request_player_deploy_silent(platform_card_id, world_pos, _current_battle_era())
+
+
 func begin_card_grid_combat(gen: int = -1) -> void:
 	# 批次9：世代号护栏——gen>=0 时校验（旧世代的延迟调用直接丢弃）
 	if gen >= 0 and gen != _battle_gen:
