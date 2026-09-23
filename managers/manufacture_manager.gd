@@ -19,6 +19,15 @@ const ModManufacture = preload("res://data/mod_manufacture.gd")
 const BlueprintDefinitions = preload("res://data/blueprint_definitions.gd")
 const IntelManualItems = preload("res://data/intel_manual_items.gd")
 const GC = preload("res://resources/game_constants.gd")   # v30.5 R5: CardType 过滤
+# v6.23c: 时代授权点名（主诉⑭）——复用 card_evolution_manager 的数据驱动 hint
+# （扫描技能树 unlocks 含 evolution 且 era 匹配的节点，与 is_evolution_era_unlocked 同门）
+const CardEvolutionManager = preload("res://managers/evolution/card_evolution_manager.gd")
+
+## v6.23c: 时代中文名（主诉⑭文案点名用；与 evolution_panel.ERA_NAMES 同表）
+const ERA_NAMES := ["一战", "二战", "冷战", "现代", "近未来"]
+
+static func _era_name(era: int) -> String:
+	return ERA_NAMES[clampi(era, 0, ERA_NAMES.size() - 1)]
 
 ## 存档键（SaveManager 段 "manufacture_state"）
 const SAVE_KEY_PITY := "pity"
@@ -185,14 +194,19 @@ func can_manufacture(card_id: String) -> Dictionary:
 	})
 
 	# 2. 时代授权（技能树指挥系节点，era0 一战豁免——开局唯一自造渠道，不得锁死）
+	# v6.23c: 未解锁文案点名时代+技能树节点（主诉⑭"提示技能树没解锁但没说哪个"）
 	var era := int(card.era)
 	var era_ok := true
 	if era > 0:
 		era_ok = bool(PhaseMasterSkillManager.is_evolution_era_unlocked(era))
+	var era_detail := "在相位师技能树（指挥系）解锁对应时代的制造授权"
+	if not era_ok and era > 0:
+		era_detail = "%s（%s卡）" % [CardEvolutionManager._skill_tree_era_hint(era), _era_name(era)]
 	conditions.append({
 		"key": "skill_tree_era", "met": era_ok,
-		"current_text": "已解锁" if era_ok else "未解锁", "required_text": "已解锁",
-		"detail": "在相位师技能树（指挥系）解锁对应时代的制造授权",
+		"current_text": "已解锁" if era_ok else "未解锁（%s）" % _era_name(era),
+		"required_text": "已解锁",
+		"detail": era_detail,
 	})
 
 	# 3. 资源
@@ -222,7 +236,10 @@ func _first_unmet_reason(conditions: Array) -> String:
 		if c is Dictionary and not bool(c.get("met", true)):
 			match String(c.get("key", "")):
 				"intel": return "情报不足（需 25% 以上）"
-				"skill_tree_era": return "该时代的制造授权未在技能树解锁"
+				# v6.23c: 点名时代（主诉⑭）——原"该时代的制造授权未在技能树解锁"没说哪个时代
+				"skill_tree_era":
+					var era_hint: String = String(c.get("detail", ""))
+					return era_hint if not era_hint.is_empty() else "该时代的制造授权未在技能树解锁"
 				"resources": return "资源不足（需 %s）" % str(c.get("required_text", ""))
 				"seen": return "尚未获得过该图纸（先经战斗掉落解锁制造资格）"
 				"zone": return "史诗及以上改造只能通过随机箱补给"

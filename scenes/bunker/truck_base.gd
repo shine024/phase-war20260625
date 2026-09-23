@@ -377,13 +377,15 @@ func _build_topbar() -> void:
 	plate.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(plate)
 	_topbar = HBoxContainer.new()
-	_topbar.add_theme_constant_override("separation", 8)
+	# v6.23c: separation 8→5 + 按钮边距收缩（_style_btn/_style_chip）——顶栏 13 控件
+	# min 总宽逼近屏宽，窄窗下右端"成就"钮被切（主诉㉑）
+	_topbar.add_theme_constant_override("separation", 5)
 	plate.add_child(_topbar)
 
 	var title := Label.new()
 	# R1-1：顶栏新增委托台/成就两钮后收紧标题防溢出（1280px 顶栏预算，纯显示层）
 	title.text = "移动基地"
-	title.add_theme_font_size_override("font_size", 16)
+	title.add_theme_font_size_override("font_size", 14)
 	title.add_theme_color_override("font_color", Color(0.91, 0.86, 0.75))
 	_topbar.add_child(title)
 
@@ -1317,8 +1319,9 @@ func _open_sortie() -> void:
 	root.add_child(mid)
 
 	# 左栏：任务目标 + 环境四维 + 战术主题
+	# v6.23c: min 320→260——窄窗（<1280）下三栏总 min 超内容带宽，右栏被推出屏（主诉⑱）
 	var left := VBoxContainer.new()
-	left.custom_minimum_size = Vector2(320, 0)
+	left.custom_minimum_size = Vector2(260, 0)
 	left.add_theme_constant_override("separation", 6)
 	mid.add_child(left)
 	left.add_child(_brief_section("任务目标"))
@@ -1422,8 +1425,9 @@ func _open_sortie() -> void:
 	mid.add_child(VSeparator.new())
 
 	# 右栏：敌情预告 + 兵力对比
+	# v6.23c: min 300→240——同主诉⑱窄窗溢出收缩
 	var right := VBoxContainer.new()
-	right.custom_minimum_size = Vector2(300, 0)
+	right.custom_minimum_size = Vector2(240, 0)
 	right.add_theme_constant_override("separation", 6)
 	mid.add_child(right)
 	right.add_child(_brief_section("敌情预告"))
@@ -1763,8 +1767,9 @@ func _style_btn(b: Button, accent: Color) -> void:
 	sb_n.border_color = accent
 	sb_n.set_border_width_all(1)
 	sb_n.set_corner_radius_all(6)
-	sb_n.content_margin_left = 12
-	sb_n.content_margin_right = 12
+	# v6.23c: 左右 12→9——顶栏 7 钮共省 ~42px（主诉㉑右端溢屏）；对话框内按钮同步变紧凑
+	sb_n.content_margin_left = 9
+	sb_n.content_margin_right = 9
 	sb_n.content_margin_top = 5
 	sb_n.content_margin_bottom = 5
 	b.add_theme_stylebox_override("normal", sb_n)
@@ -1782,8 +1787,9 @@ func _style_chip(b: Button) -> void:
 	sb_n.border_color = COLOR_LINE
 	sb_n.set_border_width_all(1)
 	sb_n.set_corner_radius_all(5)
-	sb_n.content_margin_left = 9
-	sb_n.content_margin_right = 9
+	# v6.23c: 左右 9→7——顶栏 7 chip 共省 ~28px（主诉㉑）
+	sb_n.content_margin_left = 7
+	sb_n.content_margin_right = 7
 	sb_n.content_margin_top = 3
 	sb_n.content_margin_bottom = 3
 	b.add_theme_stylebox_override("normal", sb_n)
@@ -1990,6 +1996,10 @@ func _layout_embed_instrument_bar(bar: Control, wrapper: Control) -> void:
 	var center: Control = wrapper.get_node_or_null("EmbedCenter")
 	if center != null:
 		center.offset_bottom = -band
+	# v6.23c: 布局后强制重算槽宽（主诉③"背包里格子窄、战斗时合适"）——内嵌 bar 实例化
+	# 早于 wrapper 定尺寸，RESIZED 链可能在 hbox 实测宽就绪前跑完，格子停在窄态；
+	# 延迟一帧补重算（_fit_slots_to_bar 幂等，重复调用无害）。
+	bar.call_deferred("_fit_slots_to_bar")
 
 # ───────────────────── v26.12b 接线：统计终端（真数据） ─────────────────────
 

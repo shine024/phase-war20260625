@@ -355,11 +355,6 @@ func _on_visibility_changed() -> void:
 	_runtime_active = is_visible_in_tree()
 	# v23.2：方案 11 单屏需要逐帧自校验缩放（防"打开后尺寸变化没人重算→放大"）
 	set_process(_runtime_active and MAP_SCHEME == 11)
-	# v27.12: 隐藏期间占领变化过 → 变可见时补一次全量重建（覆盖不经过 refresh_for_open
-	# 的显隐路径；refresh_for_open 已先行清脏标记，不会在这里二次重建）
-	if _runtime_active and _occupation_dirty:
-		_occupation_dirty = false
-		refresh_levels()
 	if _runtime_active:
 		queue_redraw()
 
@@ -1086,6 +1081,10 @@ func _make_level_node(level_index: int, era_idx: int, point: Vector2, _current_l
 	num.text = "%d" % level_index
 	num.set_anchors_preset(Control.PRESET_FULL_RECT)
 	num.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	# v6.23c: 数字上移（锚定上半）——时代徽记从盘角移到中轴下方（主诉⑪"剑交叉图标
+	# 不在关卡图标中心"），数字与徽记上下分层共存，各自居中。
+	num.anchor_top = 0.0
+	num.anchor_bottom = 0.62
 	num.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	# 字号 ≈ 盘径 50%：数字不顶圈边；三位数自动缩 25%
 	var num_size := (27 if is_cur else (24 if is_boss else 20))
@@ -1163,8 +1162,10 @@ func _draw_era_sigil(btn: Control, era_idx: int, size_px: float, strong: bool) -
 	var c: Color = ERA_COLORS[era_idx]["title"]
 	# v28c：实拍校准——0.55 在实机 40px 盘上偏隐，提到 0.68（通关/当前关 0.85 保持强调）
 	c.a = 0.85 if strong else 0.68
-	var s := size_px * 0.29
-	var ctr := Vector2(size_px * 0.70, size_px * 0.72)
+	var s := size_px * 0.26
+	# v6.23c: 徽记从盘角 (0.70, 0.72) 移到中轴下方 (0.50, 0.66)——主诉⑪"剑交叉图标
+	# 没有在关卡图标中心"；数字 Label 同步锚上半（见 _make_level_node），上下分层。
+	var ctr := Vector2(size_px * 0.50, size_px * 0.66)
 	match era_idx:
 		0:  # 一战：交叉刺刀（X 双线 + 下端短护手）
 			for d: Vector2 in [Vector2(1, 1), Vector2(1, -1)]:

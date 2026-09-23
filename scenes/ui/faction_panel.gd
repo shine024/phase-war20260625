@@ -199,7 +199,20 @@ func _update_faction_detail() -> void:
 	
 	var rep_label = Label.new()
 	rep_label.text = "贡献：%d" % reputation
+	# v6.23c: 口径说明（主诉⑬"势力积累是声望还是功勋"）——贡献=等级轴（只升不降），
+	# 功勋=消费货币（商店花销），两轴独立；代码内部旧名"声望"不再出现在 UI
+	rep_label.tooltip_text = "贡献是本势力的等级轴（只升不降，驱动等级与权限）；\n功勋是消费货币（商店花销），两轴独立互不占用"
 	faction_detail.add_child(rep_label)
+
+	# v6.23c: 功勋余额常显（主诉⑬"商店和势力表看不到自己数值"）——全局货币，非本势力专属
+	var merit_label = Label.new()
+	var merit_now: int = 0
+	var fsm_node: Node = get_node_or_null("/root/FactionSystemManager")
+	if fsm_node != null and fsm_node.has_method("get_merit_points"):
+		merit_now = int(fsm_node.get_merit_points())
+	merit_label.text = "功勋余额：%d" % merit_now
+	merit_label.tooltip_text = "功勋由战斗胜利/攻克关卡/任务/势力事件获得，商店消费用它"
+	faction_detail.add_child(merit_label)
 	
 	# 升级进度条
 	if level < 10:

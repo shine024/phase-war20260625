@@ -103,9 +103,12 @@ func _refresh_afk() -> void:
 	var mode_val: int = int(am.get("mode"))
 	var mode_txt := "循环" if mode_val == 0 else "推图"
 	var txt := "⚙ 挂机%s中" % mode_txt
+	# v6.23c: 关卡号改读 GameManager.current_level——push_level 只在 start/stop/fail 回写，
+	# 推图到第 9 关仍显示"第6关"（主诉⑨）；current_level 恒等于正在打的关，两种模式都准。
 	var lvl: int = 0
-	if am.get("push_level") != null:
-		lvl = int(am.get("push_level"))
+	var gm := get_node_or_null("/root/GameManager")
+	if gm != null and "current_level" in gm:
+		lvl = int(gm.get("current_level"))
 	if lvl > 0:
 		txt += " · 第%d关" % lvl
 	_afk_label.text = txt

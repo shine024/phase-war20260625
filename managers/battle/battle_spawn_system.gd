@@ -764,6 +764,10 @@ func _register_enemy_form_deploy_intel(captured_card_id: String) -> void:
 ## 不成就一直跳弹窗"）。request_player_deploy 原签名不动，auto 管线走 _silent 版。
 var _silent_deploy_failed: bool = false
 
+## v6.23c: 最近一次部署失败原因（reason_code）——静默通道也写入，
+## auto_deploy_controller 据此区分暂时态（insufficient_energy）与持久态失败。
+var last_deploy_fail_reason: String = ""
+
 ## 自动部署专用入口：失败不 emit player_deploy_failed（不弹错误 toast），返回值判断成败。
 func request_player_deploy_silent(platform_card_id: String, world_pos: Vector2, battle_era: int) -> bool:
 	_silent_deploy_failed = true
@@ -1359,6 +1363,9 @@ func _ensure_swarm_controller() -> Node:
 	return ctl
 
 func _emit_deploy_failed(reason_code: String, message: String) -> void:
+	# v6.23c: 失败原因留存——静默通道也记录，自动部署控制器据此分类
+	#（insufficient_energy=暂时态等回能重试，不计条目出队；其余=持久态快速出队）
+	last_deploy_fail_reason = reason_code
 	# v6.23b: 自动部署静默通道——重试期间不广播失败信号（不弹 toast）
 	if _silent_deploy_failed:
 		return

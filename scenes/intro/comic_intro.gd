@@ -151,10 +151,12 @@ func _build_chrome() -> void:
 	skip.pressed.connect(func(): _finish(true))
 	add_child(skip)
 	skip.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+	# v6.23c: 上移到画格顶空隙——图区右缘 x=1190、顶 y=30（PANEL_RECT），原 (14..40)
+	# 左上角压入图内 18px（主诉①"跳过框与图片重叠"）。26px 高恰好放进顶部 30px 空隙。
 	skip.offset_left = -108.0
-	skip.offset_top = 14.0
+	skip.offset_top = 2.0
 	skip.offset_right = -16.0
-	skip.offset_bottom = 40.0
+	skip.offset_bottom = 28.0
 
 	# 收尾黑幕上的点睛句
 	_end_label = Label.new()

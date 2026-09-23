@@ -521,7 +521,12 @@ func _refresh_recipe_list() -> void:
 			continue
 		# v32.3 E2：0 情报行不再隐藏——改为锁定行"？？？+情报数"（实机验收：玩家要
 		# 看得到目标与差距；解锁后行内显示战力/属性）
+		# v6.23c: 收敛（主诉⑯"没对战过的卡不该出现在制造目录"）——情报恰好 0%
+		# （从未击败/分析过该敌形）的行整行隐藏；>0% 保留锁定行（见过，看得到差距）
 		var tier: int = mgr.get_pool_tier(String(rid))
+		if not mgr.is_direct_pool_card(String(rid)) \
+				and mgr.get_intel_base(String(rid)) <= 0.0:
+			continue
 		if _filter_mode == FILTER_OK and not bool(mgr.can_manufacture(String(rid)).get("ok", false)):
 			continue
 		if _filter_mode == FILTER_LOCKED and tier >= 1:
@@ -1197,7 +1202,9 @@ func _on_manufacture_pressed() -> void:
 	var result: Dictionary = mgr.manufacture(selected_recipe_id)
 	if bool(result.get("ok", false)):
 		var rarity := String(result.get("rarity", ""))
-		_show_result("✔ 制造成功：%s（%s）" % [card.display_name if card else selected_recipe_id, GC.get_rarity_name(rarity)], true)
+		# v6.23c: 成功反馈去重（主诉⑮"跳出两条提示重复"）——面板✔行与 toast 同文案双显，
+		# 保留全局 toast（入包是全局事件），面板行不再复读
+		_show_result("", true)
 		# v26.16 反馈链：新卡入包=全局事件，toast 播报 + card_place 音（原为 button）
 		if SignalBus and SignalBus.has_signal("play_sound"):
 			SignalBus.play_sound.emit("card_place")
@@ -1223,9 +1230,8 @@ func _on_mod_craft_pressed(mgr: Node) -> void:
 	if bool(result.get("ok", false)):
 		var mod_data: Dictionary = ModificationRegistry.get_data(String(result.get("mod_id", "")))
 		var rarity := String(result.get("rarity", mod_data.get("rarity", "")))
-		var ok_msg := "✔ 补给成功：%s 改造图纸（%s）" % [
-			String(mod_data.get("name", result.get("mod_id", "?"))), GC.get_rarity_name(rarity)]
-		_show_result(ok_msg, true)
+		# v6.23c: 同主诉⑮——成功反馈 toast 单通道，面板行不再复读
+		_show_result("", true)
 		# v26.16 反馈链：图纸入包=card_place 音 + toast（原为 button）
 		if SignalBus and SignalBus.has_signal("play_sound"):
 			SignalBus.play_sound.emit("card_place")

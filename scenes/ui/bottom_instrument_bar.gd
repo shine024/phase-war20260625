@@ -20,6 +20,9 @@ const AutoDeployController = preload("res://scenes/ui/auto_deploy_controller.gd"
 const PanelStyles = preload("res://scripts/ui/panel_styles.gd")
 # v32.0 B2-3: 套装体系检测（备战面预示——战斗内实时态见 combo_status_strip）
 const ComboTactics = preload("res://data/combo_tactics.gd")
+# v6.23c: 部署次数静态兜底（主诉④⑤）——背包内嵌 bar 无战斗信号，_deploy_uses_map 恒空，
+# 角标/tooltip 从 UnifiedCardTable 基线直算总次数（与 BSS._resolve_deploy_uses_entry 同口径）
+const UnifiedCardTable = preload("res://data/unified_card_table.gd")
 const DEBUG_BOTTOM_BAR_LOG := false
 ## ── 子系统：槽位拖放 ──
 const DragSub = preload("res://scenes/ui/instrument_bar_drag.gd")
@@ -202,6 +205,15 @@ func _ready() -> void:
 	_refresh_all()
 	# 布局完成后，让格子高度精确填满条的可用空间
 	call_deferred("_fit_slots_to_bar")
+	# v6.23c: 延迟二次兜底（主诉③"背包内嵌格子窄、战斗时合适"）——内嵌宿主实例化早于
+	# 容器定尺寸，首次 fit 可能吃到未就绪的实测宽；0.5s 后布局已稳定，补一次重算。
+	var _fit_timer := get_tree().create_timer(0.5)
+	_fit_timer.timeout.connect(_deferred_refit_slots)
+
+
+func _deferred_refit_slots() -> void:
+	if is_instance_valid(self) and is_inside_tree():
+		_fit_slots_to_bar()
 
 
 ## 每帧驱动自动部署控制器（RefCounted 无 _process，由本 Control 节点转发）
@@ -400,21 +412,35 @@ func _card_deploy_key(card: CardResource) -> String:
 	return String(card.card_id)
 
 ## v20.13b：槽位左上部署次数角标 ×N（右上已被费用角标占用）。
-## 仅绿槽战斗卡且有信号数据时显示；耗尽转红（压暗由 _apply_slot_affordability 统一处理）。
+## 仅绿槽战斗卡显示；战斗内有信号数据显剩余，无信号（背包内嵌）静态显总次数（v6.23c 主诉④）。
+## 耗尽转红、剩 1 次转橙（主诉⑫"次数不够时加提示"）；压暗由 _apply_slot_affordability 统一处理。
 func _refresh_deploy_uses_badge(panel: Control) -> void:
 	if panel == null or not is_instance_valid(panel):
 		return
 	var color: String = String(panel.get_meta("slot_color", ""))
 	var du_key: String = _panel_deploy_key(panel)
-	var badge: Label = panel.get_node_or_null("DeployUsesBadge") as Label
-	var has_data: bool = color == "green" and not du_key.is_empty() and _deploy_uses_map.has(du_key)
-	if not has_data:
+	# 挂 SlotIconClip（普通 Control，不做 Container 布局）——直接挂 PanelContainer 会被
+	# fit_child_in_rect 强拉成整卡横条（横带 bug 的第二层，与 KeycapBadge 同款）。
+	# 旧版直接挂在 panel 下的残留角标顺手清掉。
+	var clip: Control = panel.get_node_or_null("SlotVBox/SlotIconClip") as Control
+	var legacy: Node = panel.get_node_or_null("DeployUsesBadge")
+	if legacy != null and is_instance_valid(legacy):
+		legacy.queue_free()
+	var badge: Label = panel.get_node_or_null("SlotVBox/SlotIconClip/DeployUsesBadge") as Label
+	# v6.23c: 数据源两级——战斗中信号缓存（剩余/总量）优先；背包内嵌无信号，静态基线总次数兜底
+	var remaining: int = -1
+	var is_total_only: bool = false
+	if color == "green" and not du_key.is_empty() and _deploy_uses_map.has(du_key):
+		remaining = int(_deploy_uses_map[du_key][0])
+	elif color == "green":
+		var card_v: Variant = panel.get_meta("card", null) if panel.has_meta("card") else null
+		if card_v is CardResource and is_instance_valid(card_v):
+			remaining = _static_deploy_uses_total(card_v)
+			is_total_only = true
+	if remaining < 0 or remaining > 99:
 		if badge != null:
 			badge.queue_free()
-		return
-	var remaining: int = int(_deploy_uses_map[du_key][0])
-	if remaining > 99:
-		return  # 次数充裕（≥100）不占角标注意力
+		return  # 非战斗卡或次数充裕（≥100）不占角标注意力
 	if badge == null:
 		badge = Label.new()
 		badge.name = "DeployUsesBadge"
@@ -426,10 +452,30 @@ func _refresh_deploy_uses_badge(panel: Control) -> void:
 		badge.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.85))
 		badge.add_theme_constant_override("outline_size", 3)
 		badge.z_index = 3
-		panel.add_child(badge)
+		if clip != null:
+			clip.add_child(badge)
 	badge.text = "×%d" % remaining
-	badge.add_theme_color_override("font_color",
-		Color(1.0, 0.35, 0.3, 0.95) if remaining <= 0 else Color(1, 1, 1, 0.92))
+	# v6.23c: 三态色——耗尽红 / 剩 1 橙 / 充裕白；静态总次数半透明白（区分战斗内实时剩余）
+	if remaining <= 0:
+		badge.add_theme_color_override("font_color", Color(1.0, 0.35, 0.3, 0.95))
+	elif remaining == 1 and not is_total_only:
+		badge.add_theme_color_override("font_color", Color(1.0, 0.72, 0.25, 0.98))
+	elif is_total_only:
+		badge.add_theme_color_override("font_color", Color(1, 1, 1, 0.8))
+	else:
+		badge.add_theme_color_override("font_color", Color(1, 1, 1, 0.92))
+
+
+## v6.23c: 静态部署总次数（无战斗信号时的兜底，主诉④⑤）——缴获前缀剥离口径同
+## BSS._resolve_deploy_uses_entry；entry 落空走 combat_kind 构造，保证绿槽卡恒有值。
+func _static_deploy_uses_total(card: CardResource) -> int:
+	var entry: Dictionary = UnifiedCardTable.get_entry(card.card_id)
+	if entry.is_empty():
+		var bare_id: String = card.card_id.trim_prefix("captured_").trim_prefix("foe_")
+		entry = UnifiedCardTable.get_entry(bare_id)
+	if entry.is_empty():
+		entry = {"combat_kind": int(card.combat_kind)}
+	return UnifiedCardTable.get_deploy_uses(entry, card)
 
 ## BU-1：底栏悬浮卡片化——弃用 tscn 直角通栏样式，走 PanelStyles 面板语言
 ## （12 圆角 + accent 边框 + 外发光）；底色 alpha 0.92 让战场从卡片下微透。
@@ -858,6 +904,7 @@ func _apply_deploy_indicator_state(panel: Control) -> void:
 	var card_id := String(panel.get_meta("card_id", ""))
 	if card_id.is_empty():
 		indicator.visible = false
+		_set_deployed_badge(panel, false)
 		return
 	var quota := 0
 	for cid in _deployed_card_ids:
@@ -865,6 +912,7 @@ func _apply_deploy_indicator_state(panel: Control) -> void:
 			quota += 1
 	if quota <= 0:
 		indicator.visible = false
+		_set_deployed_badge(panel, false)
 		return
 	var ordinal := 0
 	var found := false
@@ -877,6 +925,38 @@ func _apply_deploy_indicator_state(panel: Control) -> void:
 				found = true
 				break
 	indicator.visible = found and ordinal <= quota
+	# v6.23c: 右下"▸在场"文字徽章与三角同亮——顶部 10px 三角太隐蔽，
+	# 用户反馈相位仪看不出哪些卡已部署（补充主诉）。四角布局：左上×N / 右上费用 / 右下在场。
+	_set_deployed_badge(panel, indicator.visible)
+
+
+func _set_deployed_badge(panel: Control, on: bool) -> void:
+	var clip: Control = panel.get_node_or_null("SlotVBox/SlotIconClip") as Control
+	if clip == null:
+		return
+	var b: Label = clip.get_node_or_null("DeployedBadge") as Label
+	if not on:
+		if b != null:
+			b.visible = false
+		return
+	if b == null:
+		b = Label.new()
+		b.name = "DeployedBadge"
+		b.text = "在场"
+		b.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_RIGHT)
+		b.offset_left = -30.0
+		b.offset_top = -14.0
+		b.offset_right = -2.0
+		b.offset_bottom = -1.0
+		b.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+		b.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		b.add_theme_font_size_override("font_size", DT.FONT_SIZE_XSMALL)
+		b.add_theme_color_override("font_color", Color(DT.COLOR_GREEN_BRIGHT.r, DT.COLOR_GREEN_BRIGHT.g, DT.COLOR_GREEN_BRIGHT.b, 0.95))
+		b.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.85))
+		b.add_theme_constant_override("outline_size", 3)
+		b.z_index = 3
+		clip.add_child(b)
+	b.visible = true
 
 ## 刷新全部显示
 func _refresh_all() -> void:
@@ -968,9 +1048,14 @@ func _format_card_slot_tooltip(color: String, card: CardResource) -> String:
 			_lv_val = clampi(maxi(int(_ir_lv.get_card_level(_ident)), 1), 1, 30)
 		detail_lines.append("等级：Lv.%d" % _lv_val)
 	# v20.13b：每卡部署次数（本场剩余/总量；战斗中由 deploy_uses_changed 信号维护；v20.16 实例键）
-	if card.card_type == GC.CardType.COMBAT_UNIT and _deploy_uses_map.has(_card_deploy_key(card)):
-		var du: Array = _deploy_uses_map[_card_deploy_key(card)]
-		detail_lines.append("部署次数：%d / %d" % [int(du[0]), int(du[1])])
+	# v6.23c: 无信号数据（背包内嵌 bar）时静态显示总次数——主诉④"相位仪中战斗卡面没显示可战斗几次"
+	if card.card_type == GC.CardType.COMBAT_UNIT:
+		var du_key: String = _card_deploy_key(card)
+		if _deploy_uses_map.has(du_key):
+			var du: Array = _deploy_uses_map[du_key]
+			detail_lines.append("部署次数：%d / %d" % [int(du[0]), int(du[1])])
+		else:
+			detail_lines.append("可部署次数：×%d（每场重置）" % _static_deploy_uses_total(card))
 	# v20.15: 固定机制文案（雷达/指挥/医疗等 tag 机制）
 	for mech_line in CardMechanismDesc.get_mechanism_lines(card.tags):
 		detail_lines.append(mech_line)
@@ -1060,7 +1145,16 @@ func _refresh_deploy_keycaps() -> void:
 			var base_tip: String = String(panel.get_meta("deploy_tooltip_base", panel.tooltip_text))
 			panel.set_meta("deploy_tooltip_base", base_tip)
 			panel.tooltip_text = base_tip + "\n\n按 %d 键直接部署该单位" % n
-		KeycapBadge.bind_to_digit(panel, n if deployable else 0)
+		# v6.22.6: 键位角标挂 SlotIconClip（普通 Control）——原挂 PanelContainer 会被
+		# Container 布局强拉成贯穿卡面的键帽底框横条（用户实机确认的第二层横带）。
+		# 面板直挂的旧角标清残留；clip 缺失时回退旧宿主保底。
+		var keycap_host: Control = panel.get_node_or_null("SlotVBox/SlotIconClip") as Control
+		if keycap_host == null:
+			keycap_host = panel
+		var legacy_keycap: Node = panel.get_node_or_null("KeycapBadge")
+		if legacy_keycap != null and is_instance_valid(legacy_keycap):
+			legacy_keycap.queue_free()
+		KeycapBadge.bind_to_digit(keycap_host, n if deployable else 0)
 
 ## 增量更新单个格子的内容和样式（避免每次重建所有格子）
 func _update_slot_panel(panel: Control, entry: Dictionary) -> void:
@@ -1082,6 +1176,11 @@ func _update_slot_panel(panel: Control, entry: Dictionary) -> void:
 	var law_id: String = String(entry.get("law_id", ""))
 	var law_kind: String = String(entry.get("law_kind", ""))
 	panel.set_meta("slot_color", color)
+	# v6.23c: 卡对象引用随增量同步（badge 静态兜底直读）；非卡槽清引用防悬挂
+	if has_card:
+		panel.set_meta("card", card)
+	elif panel.has_meta("card"):
+		panel.remove_meta("card")
 	panel.set_meta("card_id", card.card_id if has_card else "")
 	# v7.x 修复（情报面板看不到强化/改造）：额外存 instance_id，显示路径用它精确实例取回（带养成数据）。
 	# card_id meta 不变（部署指示器 L109/L247 比对 _deployed_card_ids 仍用裸 card_id）。
@@ -1526,6 +1625,8 @@ func _build_slot_panel(entry: Dictionary) -> PanelContainer:
 		return panel
 	if has_card:
 		panel.set_meta("card_id", card.card_id)
+		# v6.23c: 存卡对象引用——badge 静态兜底（_refresh_deploy_uses_badge）直读，免二次查表
+		panel.set_meta("card", card)
 		# v7.x 修复：同步存 instance_id（与 _update_slot_panel L207 一致），显示路径用它精确实例取回
 		panel.set_meta("instance_id", card.instance_id if (card.instance_id != null and not card.instance_id.is_empty()) else "")
 		panel.set_meta("card_type", int(card.card_type))

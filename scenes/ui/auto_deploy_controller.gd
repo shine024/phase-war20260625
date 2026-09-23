@@ -389,6 +389,17 @@ func _deploy_next() -> void:
 		if ok:
 			deployed_index = i
 			break
+		# v6.23c: 失败分类（主诉⑳回归修复）——能量不足是暂时态（等回能可自愈），
+		# 不计条目失败、保留队列直接结束本轮（能量是全局的，逐条试也必败）；
+		# 其余（次数尽/位置占用/上限/限定兵种等）为持久态，按条目计数快速出队。
+		var bss2: Node = _get_node("/root/BattleSpawnSystem")
+		var fail_reason: String = String(bss2.get("last_deploy_fail_reason")) if bss2 != null else ""
+		if fail_reason == "insufficient_energy":
+			_fail_streak += 1
+			if _fail_streak > FAIL_GIVEUP:
+				_fail_streak = 0
+				_deploy_queue.clear()
+			return
 		# v6.23b: 每条目独立失败计数——同一条目连败超限直接出队（原来失败条目永不出队，
 		# 每 0.4s 整轮重试一遍、每轮弹一次失败 toast；仅整轮连败 FAIL_GIVEUP 才弃队首）
 		var entry_fails: int = int(entry.get("_fail_count", 0)) + 1
@@ -396,7 +407,7 @@ func _deploy_next() -> void:
 		if entry_fails >= _ENTRY_FAIL_GIVEUP:
 			_deploy_queue.remove_at(i)
 			continue
-		# 部署失败（能量不足等）→ 继续尝试下一个条目
+		# 部署失败（持久态）→ 继续尝试下一个条目
 	if deployed_index >= 0:
 		var dep_entry: Dictionary = _deploy_queue[deployed_index]
 		# v9.4: 用 battlefield_slot 做冷却 key（循环复用时同卡映射到多个战场位，各自独立冷却）

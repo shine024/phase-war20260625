@@ -394,6 +394,7 @@ func _set_empty_style(name_label, lv_label, icon_rect) -> void:
 	_hide_decoration("EquippedMark")
 	_hide_decoration("InstanceNo")
 	_hide_decoration("EvolutionMark")
+	_hide_decoration("DeployUsesMark")  # v6.23c: 部署次数角标同清（主诉⑤池化防残留）
 
 func _sync_card_background_overlay(c: CardResource) -> void:
 	if c == null:
@@ -910,6 +911,16 @@ func _set_compact_slot_view(c: CardResource, name_label, lv_label, icon_rect) ->
 		var du_uses: int = UnifiedCardTable.get_deploy_uses(du_entry, c)
 		if du_uses < 99:
 			du_tip.append("部署×%d/场" % du_uses)
+	# v6.23c: 卡面可见 ×N 角标（主诉⑤"背包直接看到的卡图也没显示可战斗次数"）——
+	# 原 v20.13c 只有悬停 tooltip，不可见；战斗卡才有（非战斗卡无部署概念）
+	if c.card_type == GC.CardType.COMBAT_UNIT and not du_entry.is_empty():
+		var du_uses2: int = UnifiedCardTable.get_deploy_uses(du_entry, c)
+		if du_uses2 < 99:
+			_ensure_deploy_uses_mark(du_uses2)
+		else:
+			_hide_decoration("DeployUsesMark")
+	else:
+		_hide_decoration("DeployUsesMark")
 	# v20.15: 固定机制文案（高价值单位机制提示）
 	for mech_line in CardMechanismDesc.get_mechanism_lines(c.tags):
 		du_tip.append(mech_line)
@@ -984,6 +995,34 @@ func _apply_v9_decorations(c: CardResource) -> void:
 
 
 
+
+
+## v6.23c: 卡面 ×N 部署次数角标（主诉⑤）——右上方、费用角标正下方；池化复用同款
+## 创建/显隐模式（EquippedMark）。装饰层 Control 非 Container，不被 PanelContainer 强拉。
+func _ensure_deploy_uses_mark(uses: int) -> void:
+	var layer: Control = _ensure_decoration_layer()
+	var mark: Label = layer.get_node_or_null("DeployUsesMark") as Label
+	if mark == null:
+		mark = Label.new()
+		mark.name = "DeployUsesMark"
+		mark.anchor_left = 1.0
+		mark.anchor_right = 1.0
+		mark.anchor_top = 0.0
+		mark.anchor_bottom = 0.0
+		mark.offset_left = -26.0
+		mark.offset_right = -3.0
+		mark.offset_top = 22.0
+		mark.offset_bottom = 36.0
+		mark.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+		mark.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		mark.add_theme_font_size_override("font_size", 11)
+		mark.add_theme_color_override("font_color", Color(0.75, 0.92, 1.0, 0.95))
+		mark.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
+		mark.add_theme_constant_override("outline_size", 3)
+		mark.z_index = 5
+		layer.add_child(mark)
+	mark.text = "×%d" % uses
+	mark.visible = true
 
 
 ## v9.0: 顶部稀有度色条

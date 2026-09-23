@@ -212,7 +212,12 @@ func _refresh_balance() -> void:
 	var nano: int = int(totals.get(BasicResources.ID_NANO_MATERIALS, 0))
 	var energy: int = int(totals.get(BasicResources.ID_ENERGY_BLOCK, 0))
 
-	var base_text = "纳米材料：%s　　能量块：%s" % [FormatUtil.format_number(nano), FormatUtil.format_number(energy)]
+	# v6.23c: 余额行补功勋（主诉⑬"商店看不到自己数值"）——特购区/符文区消费货币
+	var merit: int = 0
+	var fsm_bal: Node = get_node_or_null("/root/FactionSystemManager")
+	if fsm_bal != null and fsm_bal.has_method("get_merit_points"):
+		merit = int(fsm_bal.get_merit_points())
+	var base_text = "纳米材料：%s　　能量块：%s　　功勋：%d" % [FormatUtil.format_number(nano), FormatUtil.format_number(energy), merit]
 
 	# 显示全局访问状态
 	if _has_global_access():

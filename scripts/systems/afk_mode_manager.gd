@@ -445,6 +445,9 @@ func _advance_to_next_level() -> void:
 		if _pending_level > LEVEL_CAP:
 			stop_afk()
 			return
+		# v6.23c: 推进即回写 push_level——原只在 start/stop/fail 时同步，挂机推到第 9 关
+		# 战况卡仍显示"推图中 第6关"（主诉⑨）；顺带修复中途崩溃存档 push_level 落后。
+		push_level = _pending_level
 		# v36：关间行进节拍（横幅 + 赶路秒数），到点再进下一场
 		_travel_then_enter()
 		return
