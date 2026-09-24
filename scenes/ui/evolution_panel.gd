@@ -1201,15 +1201,13 @@ func _on_manufacture_pressed() -> void:
 	var card: CardResource = DefaultCards.get_card_by_id(selected_recipe_id)
 	var result: Dictionary = mgr.manufacture(selected_recipe_id)
 	if bool(result.get("ok", false)):
-		var rarity := String(result.get("rarity", ""))
-		# v6.23c: 成功反馈去重（主诉⑮"跳出两条提示重复"）——面板✔行与 toast 同文案双显，
-		# 保留全局 toast（入包是全局事件），面板行不再复读
-		_show_result("", true)
-		# v26.16 反馈链：新卡入包=全局事件，toast 播报 + card_place 音（原为 button）
+		# v6.23d 记录6#3: manager 层 manufacture() 已发全局 toast（含随附改造信息），
+		# 此处 UI 层再发一条构成双提示——删除，成功反馈全局仅 manager 一条；
+		# 面板内保留一行简短确认文字（非 toast）供当前面板即时反馈
+		_show_result("✔ 已制造：%s" % (card.display_name if card else selected_recipe_id), true)
+		# v26.16 反馈链：新卡入包音效（原为 button）
 		if SignalBus and SignalBus.has_signal("play_sound"):
 			SignalBus.play_sound.emit("card_place")
-		if SignalBus and SignalBus.has_signal("show_toast"):
-			SignalBus.show_toast.emit("制造成功：%s（%s）" % [card.display_name if card else selected_recipe_id, GC.get_rarity_name(rarity)])
 	else:
 		_show_result("✘ 制造失败：%s" % String(result.get("reason_zh", "条件未满足")), false)
 		if SignalBus and SignalBus.has_signal("play_sound"):
@@ -1229,15 +1227,12 @@ func _on_mod_craft_pressed(mgr: Node) -> void:
 		result = mgr.craft_mod_blueprint_direct(_selected_mod_id)
 	if bool(result.get("ok", false)):
 		var mod_data: Dictionary = ModificationRegistry.get_data(String(result.get("mod_id", "")))
-		var rarity := String(result.get("rarity", mod_data.get("rarity", "")))
-		# v6.23c: 同主诉⑮——成功反馈 toast 单通道，面板行不再复读
-		_show_result("", true)
-		# v26.16 反馈链：图纸入包=card_place 音 + toast（原为 button）
+		# v6.23d 记录6#3: 同上——manager 层 craft_mod_blueprint_* 已发全局 toast，
+		# UI 层删除重复 toast，面板行保留简短确认
+		_show_result("✔ 补给成功：%s" % String(mod_data.get("name", result.get("mod_id", "?"))), true)
+		# v26.16 反馈链：图纸入包音效（原为 button）
 		if SignalBus and SignalBus.has_signal("play_sound"):
 			SignalBus.play_sound.emit("card_place")
-		if SignalBus and SignalBus.has_signal("show_toast"):
-			SignalBus.show_toast.emit("补给成功：%s 改造图纸（%s）" % [
-				String(mod_data.get("name", result.get("mod_id", "?"))), GC.get_rarity_name(rarity)])
 	else:
 		_show_result("✘ 补给失败：%s" % String(result.get("reason_zh", "条件未满足")), false)
 		if SignalBus and SignalBus.has_signal("play_sound"):

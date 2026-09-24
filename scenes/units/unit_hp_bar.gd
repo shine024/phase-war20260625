@@ -207,7 +207,11 @@ func _sync_process_state() -> void:
 func _process(delta: float) -> void:
 	if abs(_ratio - _target_ratio) > 0.001:
 		var lerp_speed = 5.0
-		_ratio = lerp(_ratio, _target_ratio, lerp_speed * delta)
+		# v6.23d 记录6#8: 4倍速(Engine.time_scale=4)叠加掉帧时 delta 可达 0.2s+，
+		# lerp 权重>1 变外插——_ratio 冲过目标甚至越界，fill 反向超宽成"超长横条"。
+		# 权重与结果双重钳制 [0,1]
+		var weight: float = clampf(lerp_speed * delta, 0.0, 1.0)
+		_ratio = clampf(lerp(_ratio, _target_ratio, weight), 0.0, 1.0)
 		_update_fill_only()
 	if _damage_flash > 0:
 		_damage_flash -= delta * 3.0

@@ -85,6 +85,18 @@ func _build_ui() -> void:
 	title.add_theme_color_override("font_color", _WARN if failed else _ACCENT)
 	vbox.add_child(title)
 
+	# v6.23d 记录6#7: 停止原因人话化——修"挂一关就结算，胜利也如此"实为精神抽干收工，
+	# 玩家此前完全不知情（toast 一闪而过，弹窗不说明原因）
+	var reason_txt := _reason_to_text(String(_result.get("reason", "manual")))
+	if not reason_txt.is_empty():
+		var reason_lbl := Label.new()
+		reason_lbl.text = reason_txt
+		reason_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		reason_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		reason_lbl.add_theme_color_override("font_color", _WARN if String(_result.get("reason", "")) == "sanity" or failed else _TEXT_DIM)
+		reason_lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
+		vbox.add_child(reason_lbl)
+
 	# 战绩行
 	var wins: int = int(_result.get("wins", 0))
 	var losses: int = int(_result.get("losses", 0))
@@ -249,6 +261,19 @@ func _input(event: InputEvent) -> void:
 
 
 # ── UI 辅助 ──
+
+## v6.23d 记录6#7: afk_settled reason → 人话说明
+func _reason_to_text(reason: String) -> String:
+	match reason:
+		"sanity":
+			return "陈末的精神已耗尽，车队自动收工——回基地睡一觉恢复精神（睡觉自动存档）"
+		"failed":
+			return "战斗失败，哨戒终止（已通关进度已保存，下次从该关续推）"
+		"cap":
+			return "已推到关卡上限，哨戒圆满收工"
+		_:
+			return ""  # manual 手动停止不额外说明
+
 
 func _make_separator() -> HSeparator:
 	var sep := HSeparator.new()

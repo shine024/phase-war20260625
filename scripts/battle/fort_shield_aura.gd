@@ -44,6 +44,16 @@ const FORT_COLOR_HIT_ENEMY := Color(1.0, 0.75, 0.6, 0.9)
 const SHIELD_COLOR := Color(0.3, 1.0, 0.95, 0.75)   # v7.x: 提高透明度0.6→0.75
 const SHIELD_COLOR_HIT := Color(0.8, 1.0, 1.0, 1.0)  # v7.x: 受击时更亮
 
+## v6.23d 记录6#10: 护盾状态罩改用与巨型能量罩(mega_shield)同款效果贴图——
+## 用户主诉"敌方护盾是满意的效果贴图，我方护盾也要像敌方一样"。
+## 敌方相位师施放的 mega_shield 走 player_shield.png 贴图罩（爆发+呼吸），
+## 而持续盾状态一直是青色矢量穹顶，观感割裂。现盾状态主体改同一张贴图
+## （我方蓝青 tint），三态动画（获得/持续/击碎/受击）参数全部复用；
+## 贴图缺失时回退原矢量穹顶（美术资产本地不入库的惯例兜底）
+const SHIELD_TEX_PATH := "res://assets/effects/spell_burst/player_shield.png"
+static var _shield_tex: Texture2D = null
+static var _shield_tex_checked: bool = false
+
 
 func _draw() -> void:
 	var mode: String = String(get_meta(&"mode", MODE_FORT))
@@ -125,6 +135,20 @@ func _draw_shield() -> void:
 	var ring_color := Color(SHIELD_COLOR.r, SHIELD_COLOR.g, SHIELD_COLOR.b, base_alpha)
 	ring_color = ring_color.lerp(SHIELD_COLOR_HIT, maxf(hit_boost, spawn_flash * 0.8))
 
+	# v6.23d 记录6#10: 贴图罩主体（与 mega_shield 同款 player_shield.png，青色 tint）
+	var tex := _get_shield_texture()
+	if tex != null:
+		var tex_tint := Color(0.55, 0.9, 1.0, base_alpha)  # 蓝青 tint，同 mega_shield 玩家配色系
+		tex_tint = tex_tint.lerp(Color(SHIELD_COLOR_HIT.r, SHIELD_COLOR_HIT.g, SHIELD_COLOR_HIT.b, maxf(base_alpha, hit_boost)),
+			maxf(hit_boost, spawn_flash * 0.8))
+		# 直径 2×radius，中心在单位原点（与 mega_shield dome 同位：罩顶盖住立绘上半）
+		var sz: float = radius * 2.0
+		draw_texture_rect(tex, Rect2(-radius, -radius * 1.05, sz, sz * 1.05), false, tex_tint)
+		# 保留主描边弧做受击/科技感反馈，贴图作填充主体
+		draw_arc(Vector2.ZERO, radius, PI - DOME_OVERHANG_RAD, TAU + DOME_OVERHANG_RAD, SEGMENTS + 1, ring_color, SHIELD_RING_WIDTH * 0.8, true)
+		return
+
+	# ── 矢量穹顶兜底（贴图缺失时）──
 	# 穹顶弧角域：上半圆 + 两侧下垂（PI-oh → TAU+oh，y 负为上）
 	var a0: float = PI - DOME_OVERHANG_RAD
 	var a1: float = TAU + DOME_OVERHANG_RAD
@@ -168,3 +192,12 @@ func _draw_shield() -> void:
 ## 等价（SEGMENTS+1 点 = SEGMENTS 段、end=TAU 闭合、antialiased 对齐），零 GDScript 分配。
 func _draw_ring(radius: float, color: Color, width: float) -> void:
 	draw_arc(Vector2.ZERO, radius, 0.0, TAU, SEGMENTS + 1, color, width, true)
+
+
+## v6.23d 记录6#10: 护盾贴图懒加载（缺失返回 null → 矢量穹顶兜底）
+static func _get_shield_texture() -> Texture2D:
+	if not _shield_tex_checked:
+		_shield_tex_checked = true
+		if ResourceLoader.exists(SHIELD_TEX_PATH):
+			_shield_tex = load(SHIELD_TEX_PATH)
+	return _shield_tex

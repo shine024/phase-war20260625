@@ -938,7 +938,8 @@ func _on_tab_changed(tab_index: int) -> void:
 			refresh_runes_tab()
 		TabIndex.PHASE_INSTRUMENTS:
 			# v8.0: 相位仪标签页刷新（已获得列表 + 装备切换）
-			refresh_phase_instruments_tab()
+			# v6.23d 记录6#1: 同打开路径——重建期间透明，布局收敛后显形
+			_refresh_phase_inst_stable()
 		TabIndex.STAT_BOOST:
 			# v26.11(A1.5e): 全局强化标签页刷新——战斗掉落的 stat_boost 此前玩家拿到无处查看
 			refresh_stat_boost_tab()
@@ -1892,7 +1893,7 @@ func refresh_phase_instruments_tab() -> void:
 	_clear_phase_inst_list()
 
 	if unlocked_ids.is_empty():
-		_add_phase_inst_placeholder("暂无已解锁的相位仪\n通过商店购买、战斗掉落或势力声望获取")
+		_add_phase_inst_placeholder("暂无已解锁的相位仪\n通过商店购买、战斗掉落或势力贡献获取")
 		return
 
 	# 按星级降序排列（统一走 manager 接口，含运行时掉落定义）
@@ -2140,29 +2141,41 @@ func _create_phase_inst_item(cfg: Dictionary, is_equipped: bool) -> Control:
 			rune_row.add_child(cell)
 		mid_col.add_child(rune_row)
 
-	# 关键属性行（能量恢复 + 卡伤/防御等；v21.x: 部署范围移除）
+	# v6.23d 记录6#2: 信息密度收敛——格内只放高频 3 项（能量恢复/卡伤/防御），
+	# 次要属性（经验/能耗）与全部特性改入悬浮 tooltip，特性行单行截断防溢出格子
+	var tooltip_lines := PackedStringArray()
 	var stats_row := HBoxContainer.new()
 	stats_row.add_theme_constant_override("separation", 16)
 	mid_col.add_child(stats_row)
+	tooltip_lines.append("能量恢复 %.1f/s" % actual_recovery)
 	_add_phase_stat_mini(stats_row, "能量恢复", "%.1f/s" % actual_recovery, false)
 	if cfg.has("card_damage_bonus") and float(cfg.card_damage_bonus) > 0:
-		_add_phase_stat_mini(stats_row, "卡伤", "+%.0f%%" % (float(cfg.card_damage_bonus) * 100), true)
+		var cd_txt := "+%.0f%%" % (float(cfg.card_damage_bonus) * 100)
+		tooltip_lines.append("卡伤 %s" % cd_txt)
+		_add_phase_stat_mini(stats_row, "卡伤", cd_txt, true)
 	if cfg.has("defense_bonus") and float(cfg.defense_bonus) > 0:
-		_add_phase_stat_mini(stats_row, "防御", "+%.0f%%" % (float(cfg.defense_bonus) * 100), true)
+		var df_txt := "+%.0f%%" % (float(cfg.defense_bonus) * 100)
+		tooltip_lines.append("防御 %s" % df_txt)
+		_add_phase_stat_mini(stats_row, "防御", df_txt, true)
 	if cfg.has("xp_bonus") and float(cfg.xp_bonus) > 0:
-		_add_phase_stat_mini(stats_row, "经验", "+%.0f%%" % (float(cfg.xp_bonus) * 100), true)
+		tooltip_lines.append("经验 +%.0f%%" % (float(cfg.xp_bonus) * 100))
 	if cfg.has("energy_cost_reduction") and int(cfg.energy_cost_reduction) > 0:
-		_add_phase_stat_mini(stats_row, "能耗", "-%d" % int(cfg.energy_cost_reduction), true)
+		tooltip_lines.append("能耗 -%d" % int(cfg.energy_cost_reduction))
 
-	# 特性文字行（如有）
+	# 特性文字行（如有）——单行省略号截断，全文入 tooltip
 	var traits: Array = cfg.get("special_traits", [])
 	if traits is Array and not traits.is_empty():
 		var trait_label := Label.new()
 		trait_label.text = "✦ " + "  |  ".join(PackedStringArray(traits))
 		trait_label.add_theme_font_size_override("font_size", DesignTokens.FONT_SIZE_SMALL)
 		trait_label.add_theme_color_override("font_color", Color(0.8, 0.95, 1.0, 0.85))
-		trait_label.autowrap_mode = TextServer.AUTOWRAP_WORD
+		# v6.23d 记录6#2: 原 autowarp 全展开把卡片竖向撑爆——单行 + 省略号，全文 tooltip
+		trait_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+		trait_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		trait_label.tooltip_text = trait_label.text
 		mid_col.add_child(trait_label)
+		for t in traits:
+			tooltip_lines.append("✦ " + String(t))
 
 	# === 右列：主动能力 chip + 装备按钮 ===
 	var right_col := VBoxContainer.new()
@@ -2234,6 +2247,9 @@ func _create_phase_inst_item(cfg: Dictionary, is_equipped: bool) -> Control:
 		var iid_copy: String = String(cfg.get("id", ""))
 		equip_btn.pressed.connect(_on_phase_inst_equip_pressed.bind(iid_copy))
 
+	# v6.23d 记录6#2: 完整属性汇总入 tooltip（悬停卡片任意处可见全部数值+特性）
+	container.tooltip_text = "\n".join(tooltip_lines)
+
 	return container
 
 
@@ -2264,7 +2280,7 @@ func _on_phase_inst_equip_pressed(instrument_id: String) -> void:
 		return
 	var success: bool = pim.equip_instrument(instrument_id)
 	if success:
-		refresh_phase_instruments_tab()
+		_refresh_phase_inst_stable()  # v6.23d 记录6#1: 同防跳变
 		if SignalBus.has_signal("show_toast"):
 			SignalBus.show_toast.emit("已装备相位仪")
 
@@ -2625,7 +2641,22 @@ func _refresh_aux_sections_after_open() -> void:
 	# v9.0: 砍掉 RESOURCES + STAT_BOOSTS Tab，只刷新剩下的 3 个非战斗卡 tab
 	refresh_intel_tab()
 	refresh_runes_tab()  # v6.2: 刷新符文标签页
-	refresh_phase_instruments_tab()  # v8.0: 刷新相位仪标签页
+	_refresh_phase_inst_stable()  # v8.0: 相位仪（v6.23d 记录6#1 防布局跳变版）
+
+## v6.23d 记录6#1: 相位仪列表重建后 Container 布局要下一帧才收敛，
+## 面板打开瞬间可见"窄格 → 卡一下弹宽"跳变。重建期间把列表整列临时透明，
+## 等 2 帧布局稳定后显形——用户看到的格子始终是最终宽度。
+func _refresh_phase_inst_stable() -> void:
+	var list: VBoxContainer = _phase_inst_list
+	if list == null or not is_instance_valid(list):
+		refresh_phase_instruments_tab()
+		return
+	list.modulate.a = 0.0
+	refresh_phase_instruments_tab()
+	await get_tree().process_frame
+	await get_tree().process_frame
+	if is_instance_valid(list):
+		list.modulate.a = 1.0
 
 ## ============================================================
 ## 内部 UI 方法

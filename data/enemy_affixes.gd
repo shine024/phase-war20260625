@@ -380,7 +380,9 @@ static func apply_to_stats(stats: UnitStats, affixes: Array) -> void:
 			"crit_chance":
 				stats.crit_chance = minf(0.60, stats.crit_chance + val)
 			"hp_regen":
-				stats.hp_regen += val
+				# v6.23d 记录6#13: 词缀+档位词条+配装改造多层叠加无钳制，14关堡垒实测 3%/s+
+				# 打不动——封顶 2%/s（词缀单条 1.5%/s，仍允许双回血来源到达上限）
+				stats.hp_regen = minf(0.02, stats.hp_regen + val)
 			"kill_repair":
 				stats.kill_repair = minf(0.50, stats.kill_repair + val)
 			"chain_chance":
@@ -398,8 +400,10 @@ static func apply_to_stats(stats: UnitStats, affixes: Array) -> void:
 				# v19 兵种专属（轻装·疾风突袭）：乘区，下限防归零
 				stats.move_speed = maxf(5.0, stats.move_speed * (1.0 + val))
 			"damage_reduction":
-				# v19 兵种专属（装甲·复合装甲）：加法，封顶对齐玩家侧 0.75
-				stats.damage_reduction = minf(0.75, stats.damage_reduction + val)
+				# v19 兵种专属（装甲·复合装甲）：加法。
+				# v6.23d 记录6#13: 封顶 0.75→0.60——fort 基础 0.30 + 复合装甲 + 档位词条
+				# 轻松顶满 0.75，玩家火力减四分之三体感"打不动"；收紧后破防/穿甲有意义
+				stats.damage_reduction = minf(0.60, stats.damage_reduction + val)
 			"attack_range":
 				# v19 兵种专属（支援·超远程炮击）：乘区，下限 50px 防异常
 				stats.attack_range = maxf(50.0, stats.attack_range * (1.0 + val))

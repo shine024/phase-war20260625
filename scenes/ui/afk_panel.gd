@@ -386,6 +386,9 @@ func _on_stop() -> void:
 # ── 信号回调 ──
 
 func _on_afk_state_changed(new_state: int) -> void:
+	# v6.23d 记录6#7: 运行/行进态附上精神余量——"挂一关就结算"多为精神抽干收工，
+	# 让玩家在面板上直接看到还剩几点（胜-10/败-20，睡觉恢复）
+	var sanity_txt := _get_sanity_status_text()
 	match new_state:
 		AFKModeManager.State.IDLE:
 			start_btn.visible = true
@@ -394,7 +397,7 @@ func _on_afk_state_changed(new_state: int) -> void:
 		AFKModeManager.State.RUNNING:
 			start_btn.visible = false
 			stop_btn.visible = true
-			status_label.text = "状态: 运行中"
+			status_label.text = "状态: 运行中" + sanity_txt
 		AFKModeManager.State.FAILED:
 			start_btn.visible = true
 			stop_btn.visible = false
@@ -404,9 +407,17 @@ func _on_afk_state_changed(new_state: int) -> void:
 			start_btn.visible = false
 			stop_btn.visible = true
 			if _afk_manager:
-				status_label.text = "状态: 行进中——驶向第 %d 关" % int(_afk_manager._pending_level)
+				status_label.text = "状态: 行进中——驶向第 %d 关" % int(_afk_manager._pending_level) + sanity_txt
 			else:
-				status_label.text = "状态: 行进中"
+				status_label.text = "状态: 行进中" + sanity_txt
+
+
+## v6.23d 记录6#7: 精神余量后缀（BunkerManager 不存在则空串，行为不变）
+func _get_sanity_status_text() -> String:
+	var bunker: Node = get_node_or_null("/root/BunkerManager")
+	if bunker == null or not bunker.has_method("get_sanity"):
+		return ""
+	return " ｜ 精神 %d" % int(bunker.get_sanity())
 	# v6.6(挂机缩略图): 状态切换时刷新缩略图可见性
 	_refresh_battle_preview()
 
@@ -420,6 +431,8 @@ func _on_level_completed(level: int, won: bool) -> void:
 
 ## v32.3 A5：战斗中暂存的结算（战斗结束再弹，防"进关瞬间蹦结算"）
 var _pending_settlement: Dictionary = {}
+## v6.23d 记录6#7: 暂存结算的停止原因（sanity/failed/cap/manual），战斗结束补弹时还原
+var _pending_settlement_reason: String = "manual"
 var _pending_settlement_connected: bool = false
 
 ## 战斗占位判定：交战中或出征战报黑幕还在屏上
@@ -431,7 +444,8 @@ func _is_battle_busy() -> bool:
 
 
 ## v6.6(挂机): 挂机结束（停止/失败）时收到累计奖励总账
-func _on_afk_settled(rewards: Dictionary) -> void:
+## v6.23d 记录6#7: reason 透传（sanity=精神耗尽/failed=战败/cap=满级/manual=手动）
+func _on_afk_settled(rewards: Dictionary, reason: String = "manual") -> void:
 	_update_stats_display()
 	# v6.6(挂机缩略图): 停止后恢复占位文字（is_running 已为 false，_refresh 会切回 PreviewLabel）
 	_refresh_battle_preview()
@@ -447,6 +461,7 @@ func _on_afk_settled(rewards: Dictionary) -> void:
 	# 的路上不再蹦结算窗
 	if _is_battle_busy():
 		_pending_settlement = rewards
+		_pending_settlement_reason = reason
 		if not _pending_settlement_connected:
 			_pending_settlement_connected = true
 			var sb: Node = get_node_or_null("/root/SignalBus")
@@ -454,7 +469,7 @@ func _on_afk_settled(rewards: Dictionary) -> void:
 				sb.battle_ended.connect(_on_battle_ended_flush_settlement)
 		return
 	# 弹出结算汇总弹窗（显示完整掉落明细 + 战绩）
-	_show_settlement_dialog(rewards)
+	_show_settlement_dialog(rewards, reason)
 
 
 ## v32.3 A5：战斗结束后补弹暂存的挂机结算
@@ -462,12 +477,14 @@ func _on_battle_ended_flush_settlement(_won: bool) -> void:
 	if _pending_settlement.is_empty():
 		return
 	var rewards := _pending_settlement
+	var reason := _pending_settlement_reason
 	_pending_settlement = {}
-	_show_settlement_dialog.call_deferred(rewards)
+	_pending_settlement_reason = "manual"
+	_show_settlement_dialog.call_deferred(rewards, reason)
 
 
 ## 弹出挂机结算弹窗。挂到 PopupLayer（layer=100），确保覆盖所有 UI。
-func _show_settlement_dialog(rewards: Dictionary) -> void:
+func _show_settlement_dialog(rewards: Dictionary, reason: String = "manual") -> void:
 	# 判定是否为失败结束：当前状态为 FAILED
 	var failed: bool = _afk_manager != null and _afk_manager.state == AFKModeManager.State.FAILED
 	var wins: int = _afk_manager.total_wins if _afk_manager != null else 0
@@ -477,6 +494,7 @@ func _show_settlement_dialog(rewards: Dictionary) -> void:
 		"losses": losses,
 		"rewards": rewards,
 		"failed": failed,
+		"reason": reason,  # v6.23d 记录6#7: 停止原因，弹窗转人话
 	}
 	# 定位 PopupLayer：优先 _main_scene，回退遍历场景树根
 	var popup: Node = null

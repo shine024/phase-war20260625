@@ -61,8 +61,12 @@ signal afk_stopped
 signal afk_failed
 signal level_completed(level: int, won: bool)
 signal state_changed(new_state: State)
-## 挂机结束（停止/失败）时 emit 累计奖励总账
-signal afk_settled(rewards: Dictionary)
+## 挂机结束（停止/失败）时 emit 累计奖励总账。
+## v6.23d 记录6#7: 加 reason 透传停止原因——"sanity"=精神耗尽收工 / "failed"=战斗失败 /
+## "cap"=推到关卡上限 / "manual"=手动停止。结算弹窗据此显示人话原因，
+## 修"挂一关就结算，胜利也如此"（实为精神抽干，玩家不知情）。
+## 注意：GDScript signal 声明不支持默认参数值，emit 处必须显式传 reason
+signal afk_settled(rewards: Dictionary, reason: String)
 
 
 # ── 内部引用 ──
@@ -204,8 +208,8 @@ func start_afk() -> bool:
 	return true
 
 
-## 停止挂机
-func stop_afk() -> void:
+## 停止挂机（reason 透传给 afk_settled，见信号注释）
+func stop_afk(reason: String = "manual") -> void:
 	if not is_running:
 		return
 
@@ -230,7 +234,7 @@ func stop_afk() -> void:
 	_waiting_for_battle_end = false
 
 	afk_stopped.emit()
-	afk_settled.emit(accumulated_rewards.duplicate(true))
+	afk_settled.emit(accumulated_rewards.duplicate(true), reason)
 	state_changed.emit(state)
 
 ## v26.6：宿主场景销毁时调用——停机并断开 SignalBus 连接。
@@ -400,7 +404,7 @@ func _on_battle_ended_from_bus(player_won: bool) -> void:
 	# 挂机连打会无声抽干精神且 main 侧无任何感知。此处归零即停机并提示回基地
 	# 睡觉（睡觉 +20 且推进天数）；从未进过基地的玩家不受影响（manager 不存在）。
 	if _bunker_sanity_exhausted():
-		stop_afk()
+		stop_afk("sanity")  # v6.23d 记录6#7: 原因透传，结算弹窗显示"精神耗尽收工"
 		if SignalBus != null and SignalBus.has_signal("show_toast"):
 			SignalBus.show_toast.emit("陈末的精神已经耗尽——挂机收工，回基地睡一觉（睡觉自动存档），顺手收一下房间里的战利品气泡")
 		return
@@ -443,7 +447,7 @@ func _advance_to_next_level() -> void:
 	if mode == Mode.PUSH:
 		_pending_level += 1
 		if _pending_level > LEVEL_CAP:
-			stop_afk()
+			stop_afk("cap")  # v6.23d 记录6#7: 到达关卡上限
 			return
 		# v6.23c: 推进即回写 push_level——原只在 start/stop/fail 时同步，挂机推到第 9 关
 		# 战况卡仍显示"推图中 第6关"（主诉⑨）；顺带修复中途崩溃存档 push_level 落后。
@@ -508,7 +512,7 @@ func _afk_failed() -> void:
 	state = State.FAILED
 	is_running = false
 	afk_failed.emit()
-	afk_settled.emit(accumulated_rewards.duplicate(true))
+	afk_settled.emit(accumulated_rewards.duplicate(true), "failed")
 	state_changed.emit(state)
 
 
