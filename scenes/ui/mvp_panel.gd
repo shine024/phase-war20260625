@@ -703,12 +703,8 @@ func _render_intel_harvest(vbox: VBoxContainer) -> void:
 	var harvest_ui = IHD.new()
 	harvest_ui.set_data(intel_harvest)
 	vbox.add_child(harvest_ui)
-	# v38.3: 揭示/解锁仪式弹窗不再与结算面板同屏叠弹——入 main 结算弹窗链，
-	# 玩家确认结算（返回整备）后按序播放。工厂用静态调用（不捕 self）：
-	# 结算面板释放后链里剩余工厂仍可安全执行。
-	var reveal_events: Array = intel_harvest.get("reveal_events", [])
-	if not reveal_events.is_empty():
-		_defer_settlement_popup(func() -> Node: return IntelRevealPopup.spawn_on_current_tree(reveal_events))
+	# 记录3#13（用户拍板）：情报揭示不再逐条弹窗（"新卡能制造了总要跳出来信息"主诉）
+	# ——揭示/跨档/新卡可制造全部收进上方情报收获事件行常显，信息零丢失。
 	# 改造解锁：结算时批量展示（避免战斗中多次弹窗）——同入弹窗链
 	# 2026-09-19 文案勘误：mod_unlocked 是情报手册"可研读"通知（不解锁安装、不发图纸），
 	# 原文案"解锁 N 项改造模块"易误导为已获得改造
@@ -1146,9 +1142,13 @@ func _render_close_button_anchored(panel: Control) -> void:
 	btn.offset_right = -100.0
 	btn.offset_top = -60.0   # 按钮 top 距面板底 60px（按钮高 44 + 16px 底边距）
 	btn.offset_bottom = -16.0
-	# 记录4 视觉体检修复：主键先添加。宽主键态（教程首战胜利/第100关等 next/replay 均为 0 时
-	# 主键保持 BOTTOM_WIDE 100..820）此前最后 add_child 会盖住左侧「返回移动基地」（裁得只剩
-	# "← 返回"）；侧键后添加=永远画在主键上层，四键态几何本就不相交，层序收敛一处。
+	# 记录4 视觉体检修复：主键先添加。侧键后添加=永远画在主键上层，四键态几何本就不相交，
+	# 层序收敛一处。
+	# 记录3#2：宽主键态若存在「← 返回移动基地」（24..204），主键 100..820 会与其叠盖
+	# 100..204（此前靠绘制顺序兜底，用户实测读作"按钮重叠、大的缺一块"）——基地键存在时
+	# 主键让位到 216 起步，与四键契约同一间距；无基地键才保持 100 居中宽。
+	if _bunker_return_available and not next_mode and not replay_primary:
+		btn.offset_left = 216.0
 	panel.add_child(btn)
 	# v22.4（P0-2）：从基地出击时，左下角加"返回基地"直达按钮，主按钮让位右移
 	if _bunker_return_available:

@@ -536,13 +536,22 @@ static func _fire_nuclear_bombardment(owner: Owner, params: Dictionary) -> void:
 	var burst_tint: Color = Color(0.7, 0.55, 1.0) if owner == Owner.PLAYER else Color(1.0, 0.45, 0.3)
 	# v6.28（记录2#5a）：枚举索引替代 targets.find(e)（原 O(N²)，20+ 目标齐射时
 	# find 线性扫描叠加）；i≥CAP 的目标跳过演出、走同延迟纯结算分支。
+	# 记录3#11：4 倍速时间轴塌缩——tween_interval 吃 scaled delta，0.54s 错峰在 4x 下
+	# 压到 0.135s，齐射几乎同帧起爆（10 发×光柱/爆闪/冲击环/飘字同帧负载饱和，是
+	# "4 倍速核子轰炸死机"的剩余头号嫌疑）。Engine.time_scale ≥3 时演出封顶再收一档：
+	# 伤害与结算节奏不变，仅演出收敛（与极速推演的 VFX 压制同哲学）。
+	var vfx_cap: int = NUKE_VFX_TARGET_CAP
+	if Engine.time_scale >= 3.0:
+		vfx_cap = 4
+		if targets.size() > vfx_cap:
+			TraceLog.mark("nuke_cap", "cap=%d targets=%d ts=%.1f" % [vfx_cap, targets.size(), Engine.time_scale])
 	for ti in range(targets.size()):
 		var e = targets[ti]
 		if e == null or not is_instance_valid(e):
 			continue
 		var epos: Vector2 = (e as Node2D).global_position if e is Node2D else Vector2.ZERO
 		# 第一阶段：标记（立即出现，提示轰炸即将命中）
-		if ti < NUKE_VFX_TARGET_CAP:
+		if ti < vfx_cap:
 			PhaseLawCastEffect.create_phase_law_effect(_battlefield, epos, mark_color)
 		# v9.5: 发射核导弹弹道（arc 抛物线，飞行 mark_delay 秒），到达时触发核爆 + 伤害
 		# v26.11(D2): weakref 捕获（同 captured_target——延迟落点内敌人可能已被 free）
@@ -558,7 +567,7 @@ static func _fire_nuclear_bombardment(owner: Owner, params: Dictionary) -> void:
 		var launch_delay: float = float(ti) * 0.06
 		# v6.28（记录2#5a）：超出演出封顶的目标——同延迟纯结算（无弹道/无落点 VFX/
 		# 无飘字），伤害与结算节奏与原版一致
-		if ti >= NUKE_VFX_TARGET_CAP:
+		if ti >= vfx_cap:
 			var cap_enemy: WeakRef = weakref(e)
 			var cap_dmg: float = base_dmg
 			var cap_was_live: bool = was_live

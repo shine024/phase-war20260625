@@ -259,4 +259,14 @@ static func get_unlocked_summary(unlocked_nodes: Array) -> Array:
 					"icon": "🌟",
 					"node_name": String(node.get("name", "")),
 				})
+			elif u_type == "power_cap":
+				# 记录3#8：精神同调节点此前被静默跳过（总览缺条目+面板裸显 "power_cap[]"）
+				summary.append({
+					"type": u_type,
+					"id": "power_cap_%d" % int(u.get("value", 0)),
+					"name": "可运用战力上限 %d" % int(u.get("value", 0)),
+					"desc": "精神同调加深——部署链可上阵的战斗卡战力上限提升",
+					"icon": "🌀",
+					"node_name": String(node.get("name", "")),
+				})
 	return summary

@@ -2322,11 +2322,13 @@ static func spawn_battle_trace(parent: Node2D, world_pos: Vector2, radius: float
 	node.visible = true
 	# v26.x: 原 "wreck" 残骸分支（更深 0.55/独立色）随死亡印记退役，仅剩武器焦痕
 	node.modulate = Color(0.16, 0.12, 0.08, 0.0)
-	var peak_a: float = 0.50  # v6.17: 0.42→0.50（暗底一档后保可读）
+	# 记录3#16b（用户裁决"击毁留小黑圆圈不好"）：焦痕大幅减淡缩短——alpha 0.50→0.28、
+	# 保持 14s→4s、淡出 4s→3s；保留命中痕迹语义但不再像"尸体标记"钉在地上
+	var peak_a: float = 0.28
 	var tw := node.create_tween()
 	tw.tween_property(node, "modulate:a", peak_a, 0.18)
-	tw.tween_interval(14.0)
-	tw.tween_property(node, "modulate:a", 0.0, 4.0)
+	tw.tween_interval(4.0)
+	tw.tween_property(node, "modulate:a", 0.0, 3.0)
 	tw.tween_callback(func():
 		if is_instance_valid(node):
 			node.visible = false)
@@ -2763,6 +2765,8 @@ static func spawn_nuclear_explosion(parent: Node2D, pos: Vector2, textures: Dict
 		return
 	if parent == null or not is_instance_valid(parent):
 		return
+	# 记录3#11：核爆 VFX 生成面包屑（定位 4x 冻住区间用；每次齐射 ≤cap 条，低频）
+	TraceLog.mark("nuke_explosion", "ts=%.1f" % Engine.time_scale)
 	var shock_color: Color = colors.get("shock", Color(1.0, 0.85, 0.5, 0.9))
 	var aftershock_color: Color = colors.get("aftershock", Color(0.9, 0.5, 0.2, 0.5))
 	var smoke_tint: Color = colors.get("smoke", Color(0.35, 0.32, 0.30, 0.6))

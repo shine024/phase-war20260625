@@ -1058,9 +1058,15 @@ func _warmup_battle_lazy_managers() -> void:
 	var mll := get_node_or_null("/root/ManagerLazyLoader")
 	if mll != null and mll.has_method("ensure_loaded"):
 		# 注：原 "story" 已移除（StoryManager 删除时的孤儿残留）
+		# 记录3#2："bunker" 加入结算预热——结算面板的「返回移动基地」键与基地状态区
+		# 依赖 /root/BunkerManager 存在，懒加载未命中时整键消失（间歇性按键布局跳变根因）。
 		for pre_id in ["intel_discovery", "quest", "achievement", "level_progress",
-				"leaderboard", "faction", "stat_boost"]:
+				"leaderboard", "faction", "stat_boost", "bunker"]:
 			mll.ensure_loaded(pre_id)
+	# 记录3#3：卡仓首开卡顿——战斗菜单里开背包时才懒加载面板（实例化 + _ready 全量建格
+	# 同帧同步），落地空闲期提前把面板实例建好（隐藏常驻），战斗中首开零尖峰。
+	if not backpack_overlay.visible:
+		_ensure_lazy_panel("backpack")
 
 ## v27：教程首战部署提醒 Timer（重复 15s；部署成功/战斗结束自动停）
 var _tutorial_deploy_nudge_timer: Timer = null

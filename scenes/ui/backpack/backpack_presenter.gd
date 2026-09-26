@@ -101,6 +101,12 @@ func _connect_global_signals() -> void:
 			if SignalBus.instance_disposed.is_connected(_on_instance_disposed):
 				SignalBus.instance_disposed.disconnect(_on_instance_disposed)
 			SignalBus.instance_disposed.connect(_on_instance_disposed)
+		# 记录3#1：换相位仪整链兜底——equip/unequip 路径虽逐卡发 card_added_to_backpack，
+		# 但槽位增减/清空等不还卡的路径只发 phase_slots_changed；此前无人监听，战斗卡
+		# 列表可能停留在旧快照（"点战斗卡 tab 是空的，切走再切回才出现"）。
+		if SignalBus.phase_slots_changed.is_connected(_on_phase_slots_changed):
+			SignalBus.phase_slots_changed.disconnect(_on_phase_slots_changed)
+		SignalBus.phase_slots_changed.connect(_on_phase_slots_changed)
 
 	var brm: Node = _get_autoload_node("BasicResourceManager")
 	if brm != null and brm.has_signal("resources_changed"):
@@ -134,6 +140,8 @@ func _disconnect_global_signals() -> void:
 			SignalBus.backpack_changed.disconnect(_on_backpack_changed)
 		if SignalBus.has_signal("instance_disposed") and SignalBus.instance_disposed.is_connected(_on_instance_disposed):
 			SignalBus.instance_disposed.disconnect(_on_instance_disposed)
+		if SignalBus.phase_slots_changed.is_connected(_on_phase_slots_changed):
+			SignalBus.phase_slots_changed.disconnect(_on_phase_slots_changed)
 
 # 注意：不主动断开 Manager 信号，因为 Presenter 生命周期通常与场景一致。
 # 如果需要完全清理，可以在 cleanup 中实现。
@@ -569,6 +577,26 @@ func flush_if_dirty() -> void:
 		return
 	_grid_dirty_while_hidden = false
 	_refresh_card_grid()
+
+
+## 记录3#1：切到战斗卡 tab 时的内容签名兜底——置脏标记可能被打开管线/双面板实例
+## 等路径提前消费掉（flush_if_dirty 变 no-op），此处按实时数据签名比对，不符即重建。
+func ensure_combat_grid_fresh() -> void:
+	if not _is_view_visible() or not _is_combat_tab_active() or _data == null:
+		return
+	if _compute_grid_signature(_data.get_filtered_sorted_cards(), _data.get_extra_card_ids()) != _last_grid_signature:
+		_refresh_card_grid()
+
+
+## 记录3#1：相位仪槽位变化兜底——不还卡的换装路径（槽数增减/清空）也要让战斗卡
+## 列表知道"该刷了"；还卡路径双保险（card_added_to_backpack 已逐卡置脏）。
+func _on_phase_slots_changed(_slots: Array) -> void:
+	if _data == null:
+		return
+	if not _is_view_visible() or not _is_combat_tab_active():
+		_grid_dirty_while_hidden = true
+	else:
+		_queue_grid_refresh()
 
 func on_overlay_opened() -> void:
 	# 打开背包时将重刷新拆帧，先保证可交互，再补齐网格与附属区域，降低首开尖峰。

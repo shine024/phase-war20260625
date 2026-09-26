@@ -12,6 +12,20 @@
 
 **`docs/发行宪法.md`（2026-09-19 起）四条红线：C1 商业化只买便利/外观、绝不碰内容可及性与概率暗箱；C2 核心玩法 100% 离线可玩、联网只做增量；C3 一切概率/保底口径玩家可见（UI 文案数值从常量读，禁止硬编码）；C4 对外路线图 ≥3 版本 + 发版必打 tag。** 改经济数值/概率/商业化/联网相关代码前先读该文档；冲突即违宪。
 
+## v6.30 记录3实机验收18条批：卡格整行制 + 挂机补位 + 胜负判定回填 + 分帧振铃（2026-09-26，详见 CHANGELOG）
+
+**改背包网格/挂机部署/胜负判定/结算底栏/分帧动画资产前必读本节。**
+
+- **背包卡格整行制（用户拍板"按行显示、行满再换行"）**：`backpack_panel._ensure_min_card_slots` 补位基准=`grid.columns`（`_apply_backpack_grid_layout` 先设好的实际列数 6~14 随宽度自适应）——`ceil(卡数/列数)×列数+一整行`，上限 50 内也取整行。**勿回退常数 `BACKPACK_GRID_COLUMNS` 基准**（与实际列数取模对不齐=残行"一行+2格"根因）。
+- **换相位仪信号链双保险**：presenter 补连 `phase_slots_changed`（不还卡的换装路径置脏）+ `ensure_combat_grid_fresh()`（切战斗卡 tab 按实时数据签名比对重建）——`_on_tab_changed` COMBAT 分支现为 `flush_if_dirty → ensure_combat_grid_fresh → filters → 视口重扫` 四步，动 tab 刷新链时保持顺序。
+- **挂机部署三纪律**：①`afk_mode_manager` 已连 `unit_died` 死亡补位（阵亡卡实例查重后重新入队走 0.5s 轮转链；uses 池/能量门/单卡限 1 由引擎拦，**补位侧不做二次判断**防口径漂移）；②`_find_free_slot_world_pos` 必须跳 `is_slot_excluded(si,"player")` 废墟格与 `>= player_slots_total()` 越界槽（与 auto_deploy_controller 同律——is_player_slot_occupied 只认单位，禁放空格入队=吸附撞车白耗轮转）；③**新挂机状态分支记得 `process_auto_deploy` 早退链与 `_on_afk_state_changed` 两处同步**。
+- **胜负判定缓存回填**：`battle_manager._check_win_lose` 波次刷完后对 `enemy_unit_count` 缓存 0.5s 节流强制 `recount_enemy_units_on_field()` 回填（唯一同步点在波次生成函数开头，波次耗尽后死亡信号丢失=计数永久虚高死区：敌灭不刷波不判胜挂机停摆）。`spawn_card_grid_enemy_wave` 头有 `wave_spawn` TraceLog 面包屑，查"不刷新"先看它。
+- **结算底栏坐标契约追加**：宽主键态（next/replay 均 0）若「← 返回移动基地」存在，主键 `offset_left=216` 让位（原 100..820 与基地键 24..204 叠盖）。四键/三键/宽主键三态都受 `_bunker_return_available` 影响——它依赖 `/root/BunkerManager`（懒加载），**预热点见 `main._warmup_battle_lazy_managers` 名单（含 bunker+backpack 面板实例）**，新结算侧键先查名单。回归锁 `test_bottom_row_wide_main_key_yields_to_home`。
+- **disabled Button 吞点击纪律**：禁用行（改造模块行等）勿再置 `btn.disabled`——吞 pressed 且零反馈（实机"点了没反应"主诉×2），改视觉置灰（`modulate.a 0.55`）+ 点击走反馈函数展开原因。
+- **商店情报入口范式**：卡行缩略图 `mouse_filter=STOP` + `gui_input` → `NodeFinder.get_card_info_panel().show_card_info(模板卡)`（未拥有卡传模板即可）；购买后 `_refresh_items` 走 `call_deferred`（同帧重建=冻结+新旧行并存闪烁）。
+- **分帧动画帧缘振铃（新资产入库前检查）**：LANCZOS 512→256 缩放在硬边外侧 ~3px 产生 α 1~15 振铃，deploy 管线描边预烘焙的 `cv2.dilate` 把任何非零 alpha 当内容——振铃把膨胀区拽到画布边缘=描边被帧界裁切（77mm"火光裁半"根因）。**入库校验=逐帧断言实心（α≥128）零触边**（`tools/_tmp_fix77_anim.py` 可复用：备份→位移→缩放后帧缘 12px 内 α<16 清理→烘焙→断言；淡尾 α<128 触边可豁免）。
+- **技能树文案纪律**：面向用户文本禁英文代号（ARMOR/FORT/FAST/SNIPER/ECM 等→中文兵种名，译名对齐 `unlock_labels.gd` CARD_TAG_LABELS）；新增 unlocks type 必须同步 `phase_master_skill_panel._format_unlocks` 翻译分支 + `unlock_labels.get_unlocked_summary`（power_cap 曾双双缺=裸显英文键名+总览缺条目）；desc 声明的兵种限定必须与 `stat_bonus` 实际作用面一致（无分流键勿写"装甲单位"）。
+
 ## v6.19 竞品反思修订批：概率可见化 + 埋点 + 发行宪法（2026-09-19~20，详见 CHANGELOG）
 
 **改制造面板/情报舱/黑门弹窗/game_manager 遭遇链/埋点消费前必读本节。**

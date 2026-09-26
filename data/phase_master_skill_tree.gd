@@ -148,7 +148,7 @@ const SKILL_TREE: Dictionary = {
 		 "branch": BRANCH_INTELLIGENCE, "tier": 1, "cost": 1, "requires": ["pms_int_0"],
 		 "unlocks": [], "effects": {"stat_bonus": {"dodge_chance": 0.08}}},
 		# tier 2：解锁 affix 词条赋予（替代随机 roll）
-		{"id": "pms_int_2", "name": "模块化武装", "desc": "解锁 affix 词条系统：所有卡获得基础 affix 槽",
+		{"id": "pms_int_2", "name": "模块化武装", "desc": "解锁词条系统：所有战斗卡获得基础词条槽（词条经情报手册研读与制造获取）",
 		 "branch": BRANCH_INTELLIGENCE, "tier": 2, "cost": 2, "requires": ["pms_int_1a"],
 		 "unlocks": [{"type": "affix", "pool": ["weapon_dmg_up", "platform_def_up", "platform_hp_up"]}],
 		 "effects": {}},
@@ -187,11 +187,11 @@ const SKILL_TREE: Dictionary = {
 		 "branch": BRANCH_FIREPOWER, "tier": 0, "cost": 1, "requires": [],
 		 "unlocks": [], "effects": {"stat_bonus": {"atk_light": 0.08, "atk_armor": 0.08, "atk_air": 0.08}}},
 		# tier 1：穿甲 / 暴击二选一（兵种特殊能力解锁）
-		{"id": "pms_fp_1a", "name": "穿甲弹道", "desc": "解锁穿甲能力：装甲单位对装甲目标穿透 +20%",
+		{"id": "pms_fp_1a", "name": "穿甲弹道", "desc": "解锁穿甲能力：所有单位攻击穿透 +20%（无视部分目标防御）",
 		 "branch": BRANCH_FIREPOWER, "tier": 1, "cost": 1, "requires": ["pms_fp_0"],
 		 "unlocks": [{"type": "unit_ability", "id": "armor_pen"}],
 		 "effects": {"stat_bonus": {"armor_penetration": 0.20}}},
-		{"id": "pms_fp_1b", "name": "精确射击", "desc": "解锁暴击能力：步兵单位暴击率 +15%",
+		{"id": "pms_fp_1b", "name": "精确射击", "desc": "解锁暴击能力：全体单位暴击率 +15%",
 		 "branch": BRANCH_FIREPOWER, "tier": 1, "cost": 1, "requires": ["pms_fp_0"],
 		 "unlocks": [{"type": "unit_ability", "id": "light_crit"}],
 		 "effects": {"stat_bonus": {"crit_chance": 0.15}}},

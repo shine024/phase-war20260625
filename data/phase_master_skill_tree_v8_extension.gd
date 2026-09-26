@@ -80,17 +80,17 @@ const EXTENSION_NODES: Dictionary = {
 		 "branch": BRANCH_COMMAND, "tier": 6, "cost": 1, "requires": ["pms_cmd_5"],
 		 "unlocks": [], "effects": {"stat_bonus": {"def_light": 0.10, "def_armor": 0.10, "def_air": 0.10, "crit_resist": 0.10}}},
 		# tier 7a：钳形攻势（战法）
-		{"id": "pms_cmd_7a", "name": "钳形攻势", "desc": "解锁战法「钳形攻势」：≥2 ARMOR + ≥1 FAST 时 ARMOR 对最高威胁+25% 伤害",
+		{"id": "pms_cmd_7a", "name": "钳形攻势", "desc": "解锁战法「钳形攻势」：≥2 装甲 + ≥1 快攻 时装甲单位对最高威胁目标伤害+25%",
 		 "branch": BRANCH_COMMAND, "tier": 7, "cost": 2, "requires": ["pms_cmd_6"],
 		 "unlocks": [{"type": "tactic", "id": "tactic_pincer"}],
 		 "effects": {}},
 		# tier 7b：刺猬防御（战法）
-		{"id": "pms_cmd_7b", "name": "刺猬防御", "desc": "解锁战法「刺猬防御」：≥3 FORT + ≥1 ENGINEER 时全体 -25% 受伤",
+		{"id": "pms_cmd_7b", "name": "刺猬防御", "desc": "解锁战法「刺猬防御」：≥3 堡垒 + ≥1 工兵 时全体受伤-25%",
 		 "branch": BRANCH_COMMAND, "tier": 7, "cost": 2, "requires": ["pms_cmd_6"],
 		 "unlocks": [{"type": "tactic", "id": "tactic_hedgehog"}],
 		 "effects": {}},
 		# tier 8：军团方阵
-		{"id": "pms_cmd_8", "name": "军团方阵", "desc": "解锁战法「堡垒防线」：≥4 FORT 时全体 -35% 受伤；FORT +15% HP",
+		{"id": "pms_cmd_8", "name": "军团方阵", "desc": "解锁战法「堡垒防线」：≥4 堡垒 时全体受伤-35%；堡垒单位生命+15%",
 		 "branch": BRANCH_COMMAND, "tier": 8, "cost": 2, "requires": ["pms_cmd_7a"],
 		 "unlocks": [{"type": "tactic", "id": "tactic_fortress_line"}],
 		 "effects": {"stat_bonus": {"max_hp_fort": 0.15}}},
@@ -99,7 +99,7 @@ const EXTENSION_NODES: Dictionary = {
 		 "branch": BRANCH_COMMAND, "tier": 8, "cost": 2, "requires": ["pms_cmd_8"],
 		 "unlocks": [], "effects": {"stat_bonus": {"hp": 0.30}}},
 		# tier 9a：围点打援
-		{"id": "pms_cmd_9a", "name": "围点打援", "desc": "解锁战法「围点打援」：FORT 受伤 -20%，ARMOR 对新进入敌方+50%",
+		{"id": "pms_cmd_9a", "name": "围点打援", "desc": "解锁战法「围点打援」：堡垒单位受伤-20%，装甲单位对新增敌方伤害+50%",
 		 "branch": BRANCH_COMMAND, "tier": 9, "cost": 2, "requires": ["pms_cmd_8"],
 		 "unlocks": [{"type": "tactic", "id": "tactic_siege_intercept"}],
 		 "effects": {}},
@@ -120,7 +120,7 @@ const EXTENSION_NODES: Dictionary = {
 		              {"type": "evolution", "era": -1}],
 		 "effects": {}, "capstone": true},
 		# tier 11：闪电穿插（高级战法）
-		{"id": "pms_cmd_11", "name": "闪电穿插", "desc": "解锁高级战法「闪电穿插」：≥3 FAST 时 FAST 攻速+40%、伤害+30%",
+		{"id": "pms_cmd_11", "name": "闪电穿插", "desc": "解锁高级战法「闪电穿插」：≥3 快攻 时快攻单位攻速+40%、伤害+30%",
 		 "branch": BRANCH_COMMAND, "tier": 11, "cost": 2, "requires": ["pms_cmd_10"],
 		 "unlocks": [{"type": "tactic", "id": "tactic_blitz"}],
 		 "effects": {}},
@@ -130,7 +130,7 @@ const EXTENSION_NODES: Dictionary = {
 		 "unlocks": [{"type": "card_skill", "id": "cps_time_rewind"}],
 		 "effects": {}, "capstone": true},
 		# tier 12：天罗地网（高级战法）
-		{"id": "pms_cmd_12", "name": "天罗地网", "desc": "解锁高级战法「天罗地网」：STEEL+THUNDER 时全体敌方攻速-30%、移速-30%",
+		{"id": "pms_cmd_12", "name": "天罗地网", "desc": "解锁高级战法「天罗地网」：钢铁+雷霆组合时全体敌方攻速-30%、移速-30%",
 		 "branch": BRANCH_COMMAND, "tier": 12, "cost": 3, "requires": ["pms_cmd_11"],
 		 "unlocks": [{"type": "tactic", "id": "tactic_sky_net"}],
 		 "effects": {}},
@@ -175,12 +175,12 @@ const EXTENSION_NODES: Dictionary = {
 		 "unlocks": [{"type": "card_skill", "id": "cps_artillery_coord"}],
 		 "effects": {}},
 		# tier 7a：交叉火力（战法）
-		{"id": "pms_fp_7a", "name": "交叉火力", "desc": "解锁战法「交叉火力」：≥3 SNIPER 时 SNIPER 射程+30%、伤害+25%、必命中",
+		{"id": "pms_fp_7a", "name": "交叉火力", "desc": "解锁战法「交叉火力」：≥3 狙击 时狙击单位射程+30%、伤害+25%、必命中",
 		 "branch": BRANCH_FIREPOWER, "tier": 7, "cost": 2, "requires": ["pms_fp_6"],
 		 "unlocks": [{"type": "tactic", "id": "tactic_crossfire"}],
 		 "effects": {}},
 		# tier 7b：饱和打击（战法）
-		{"id": "pms_fp_7b", "name": "饱和打击", "desc": "解锁战法「饱和打击」：≥2 ARTILLERY + ≥1 ECM 时火炮伤害+50%、射程+20%",
+		{"id": "pms_fp_7b", "name": "饱和打击", "desc": "解锁战法「饱和打击」：≥2 火炮 + ≥1 电子战 时火炮伤害+50%、射程+20%",
 		 "branch": BRANCH_FIREPOWER, "tier": 7, "cost": 2, "requires": ["pms_fp_6"],
 		 "unlocks": [{"type": "tactic", "id": "tactic_saturation"}],
 		 "effects": {}},
@@ -194,7 +194,7 @@ const EXTENSION_NODES: Dictionary = {
 		 "unlocks": [{"type": "tactic", "id": "tactic_scorched_line"}],
 		 "effects": {}},
 		# tier 8：斩首行动（战法）
-		{"id": "pms_fp_8", "name": "斩首行动", "desc": "解锁战法「斩首行动」：SNIPER+STALKER+VOID 时对 Boss/相位师伤害×2",
+		{"id": "pms_fp_8", "name": "斩首行动", "desc": "解锁战法「斩首行动」：狙击+渗透+虚空组合时对首领/相位师伤害×2",
 		 "branch": BRANCH_FIREPOWER, "tier": 8, "cost": 2, "requires": ["pms_fp_7a"],
 		 "unlocks": [{"type": "tactic", "id": "tactic_decapitation"}],
 		 "effects": {}},
@@ -214,12 +214,12 @@ const EXTENSION_NODES: Dictionary = {
 		 "unlocks": [{"type": "unit_mechanism", "id": "chemical_weapon"}],
 		 "effects": {}},
 		# tier 10：火力精通
-		{"id": "pms_fp_10", "name": "火力精通", "desc": "全体三维攻击+10%；SNIPER 伤害+25%",
+		{"id": "pms_fp_10", "name": "火力精通", "desc": "全体三维攻击+10%；狙击单位伤害+25%",
 		 "branch": BRANCH_FIREPOWER, "tier": 10, "cost": 2, "requires": ["pms_fp_9a", "pms_fp_9b"],
 		 "unlocks": [],
 		 "effects": {"stat_bonus": {"atk_light": 0.10, "atk_armor": 0.10, "atk_air": 0.10, "sniper_damage_bonus": 0.25}}},
 		# tier 11：纵火反击（高级战法）
-		{"id": "pms_fp_11", "name": "纵火反击", "desc": "解锁高级战法「纵火反击」：FLAME 时全体 HP+20%，死亡 20% 复活",
+		{"id": "pms_fp_11", "name": "纵火反击", "desc": "解锁高级战法「纵火反击」：火焰组合时全体生命+20%，死亡 20% 复活",
 		 "branch": BRANCH_FIREPOWER, "tier": 11, "cost": 2, "requires": ["pms_fp_10"],
 		 "unlocks": [{"type": "tactic", "id": "tactic_inferno_counter"}],
 		 "effects": {}},
@@ -243,8 +243,8 @@ const EXTENSION_NODES: Dictionary = {
 		 "branch": BRANCH_FIREPOWER, "tier": 13, "cost": 3, "requires": ["pms_cw_6"],
 		 "unlocks": [{"type": "card_skill", "id": "cps_scorched_earth"}],
 		 "effects": {}, "capstone": true},
-		# tier 13b：湮灭之光（v9 奇点归位火力系；额外跨系前置智能「AI 指挥」——锁定系统支撑全图打击）
-		{"id": "pms_cw_7b", "name": "湮灭之光", "desc": "◈奇点 解锁卡片技能「全图虚空伤害」：3s 蓄力后全图 300% ATK，HP<30% 斩杀",
+		# tier 13b：湮灭之光（v9 奇点归位火力系；额外跨系前置智能「智能指挥」——锁定系统支撑全图打击）
+		{"id": "pms_cw_7b", "name": "湮灭之光", "desc": "◈奇点 解锁卡片技能「全图虚空伤害」：3s 蓄力后全图 300% 攻击力伤害，生命低于 30% 斩杀",
 		 "branch": BRANCH_FIREPOWER, "tier": 13, "cost": 2, "requires": ["pms_cw_6", "pms_int_10"],
 		 "unlocks": [{"type": "card_skill", "id": "cps_annihilate"}],
 		 "effects": {}, "capstone": true},
@@ -277,18 +277,18 @@ const EXTENSION_NODES: Dictionary = {
 		 "branch": BRANCH_INTELLIGENCE, "tier": 5, "cost": 1, "requires": ["pms_int_4"],
 		 "unlocks": [{"type": "unit_mechanism", "id": "demolition"}],
 		 "effects": {}},
-		# tier 6：EMP 战术（卡片技能）
-		{"id": "pms_int_6", "name": "EMP 战术", "desc": "解锁卡片技能「EMP 打击」：每 12s 对最高威胁敌方攻速-60%",
+		# tier 6：电磁脉冲战术（卡片技能）
+		{"id": "pms_int_6", "name": "电磁脉冲战术", "desc": "解锁卡片技能「电磁脉冲打击」：每 12s 对最高威胁敌方攻速-60%",
 		 "branch": BRANCH_INTELLIGENCE, "tier": 6, "cost": 1, "requires": ["pms_int_5"],
 		 "unlocks": [{"type": "card_skill", "id": "cps_emp_strike"}],
 		 "effects": {}},
 		# tier 7a：声东击西（战法）
-		{"id": "pms_int_7a", "name": "声东击西", "desc": "解锁战法「声东击西」：ECM+2 FAST 时 FAST 暴击+25%，ECM 受伤-25%",
+		{"id": "pms_int_7a", "name": "声东击西", "desc": "解锁战法「声东击西」：电子战+2 快攻 时快攻暴击+25%，电子战受伤-25%",
 		 "branch": BRANCH_INTELLIGENCE, "tier": 7, "cost": 2, "requires": ["pms_int_6"],
 		 "unlocks": [{"type": "tactic", "id": "tactic_feint"}],
 		 "effects": {}},
 		# tier 7b：两翼包抄（战法）
-		{"id": "pms_int_7b", "name": "两翼包抄", "desc": "解锁战法「两翼包抄」：2 FAST 两侧分布时 FAST 伤害+30%，中央防御+30%",
+		{"id": "pms_int_7b", "name": "两翼包抄", "desc": "解锁战法「两翼包抄」：2 快攻 两侧分布时快攻伤害+30%，中央防御+30%",
 		 "branch": BRANCH_INTELLIGENCE, "tier": 7, "cost": 2, "requires": ["pms_int_6"],
 		 "unlocks": [{"type": "tactic", "id": "tactic_flank_pincer"}],
 		 "effects": {}},
@@ -322,18 +322,18 @@ const EXTENSION_NODES: Dictionary = {
 		 "branch": BRANCH_INTELLIGENCE, "tier": 9, "cost": 2, "requires": ["pms_int_8", "pms_cw_0"],
 		 "unlocks": [{"type": "unit_mechanism", "id": "drone_mark"}],
 		 "effects": {}, "capstone": true},
-		# tier 10：AI 指挥
-		{"id": "pms_int_10", "name": "AI 指挥", "desc": "全体友军攻速+15%、暴击+10%",
+		# tier 10：智能指挥
+		{"id": "pms_int_10", "name": "智能指挥", "desc": "全体友军攻速+15%、暴击+10%",
 		 "branch": BRANCH_INTELLIGENCE, "tier": 10, "cost": 2, "requires": ["pms_int_9a", "pms_int_9b"],
 		 "unlocks": [],
 		 "effects": {"stat_bonus": {"attack_speed": 0.15, "crit_chance": 0.10}}},
-		# tier 11：时间迟缓（v9 奇点归位智能系——时空控制链链首；需 AI 指挥+奇点解算门关）
+		# tier 11：时间迟缓（v9 奇点归位智能系——时空控制链链首；需 智能指挥+奇点解算门关）
 		{"id": "pms_cw_8", "name": "时间迟缓", "desc": "◈奇点 解锁卡片技能「全场减速」：每 30s 全体敌方移速-50%、攻速-50%（4s）",
 		 "branch": BRANCH_INTELLIGENCE, "tier": 11, "cost": 2, "requires": ["pms_int_10", "pms_cw_0"],
 		 "unlocks": [{"type": "card_skill", "id": "cps_time_slow"}],
 		 "effects": {}, "capstone": true},
 		# tier 11：诸神黄昏节点已删除（原虚空降临，奇幻概念过重，用户要求移除）
-		# tier 12：全面战争（高级战法）—— requires 直接接 pms_int_10（AI 指挥）
+		# tier 12：全面战争（高级战法）—— requires 直接接 pms_int_10（智能指挥）
 		{"id": "pms_int_12", "name": "全面战争", "desc": "解锁高级战法「全面战争」：4 终极技能时全体 +40% 全属性，敌方每秒-1% HP",
 		 "branch": BRANCH_INTELLIGENCE, "tier": 12, "cost": 3, "requires": ["pms_int_10"],
 		 "unlocks": [{"type": "tactic", "id": "tactic_total_war"}],

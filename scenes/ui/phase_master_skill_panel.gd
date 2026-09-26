@@ -530,6 +530,9 @@ func _format_unlocks(unlocks: Array) -> String:
 					var era_label: String = era_names[clampi(era, 0, 4)] if era >= 0 and era < 5 else "全时代"
 					parts.append("制造解锁[%s]" % era_label)
 				"affix": parts.append("词条赋予")
+				# 记录3#8：power_cap 此前落默认分支裸显 "power_cap[]"（每局必现于精神同调节点）
+				"power_cap":
+					parts.append("可运用战力上限→%d（部署链全体战斗卡）" % int(u.get("value", 0)))
 				_: parts.append("%s[%s]" % [u_type, u_id])
 	return "、".join(parts)
 

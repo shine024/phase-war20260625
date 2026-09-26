@@ -988,13 +988,28 @@ func _create_mod_item(mod_id: String, mod_data: Dictionary) -> Control:
 	hbox.add_child(status_label)
 
 	btn.add_child(hbox)
-	# 禁用规则：已安装、不适用、被 block（冲突/槽满/情报不足/时代不符）、或战力档位不足时禁用点击
-	btn.disabled = is_installed or not is_applicable or not block_reason.is_empty() or tier_blocked
+	# 记录3#10：不再置 disabled——disabled Button 吞掉 pressed 且零反馈（状态只有行尾
+	# 12px 小字，用户实测"点改造模块没反应"主诉即图纸不足时全列 disabled）。改为
+	# 视觉置灰 + 点击时在结果区给具体原因；按钮保持可点、可聚焦、可解释。
+	var row_blocked: bool = is_installed or not is_applicable or not block_reason.is_empty() or tier_blocked
+	if row_blocked:
+		btn.modulate = Color(1, 1, 1, 0.55)
 	# v22: tooltip 附时代带（谱系改造如"光学瞄准镜 限一战~现代"，玩家可预判能否装）
 	btn.tooltip_text = "%s\n稀有度：%s\n时代带：%s" % [
 		String(mod_data.get("description", "")), rarity_cn, ModEraBands.format_band(mod_data)]
-	btn.pressed.connect(func(): _on_mod_selected(mod_id, mod_data))
+	btn.pressed.connect(func():
+		if row_blocked:
+			_show_mod_blocked_feedback(status_text)
+			return
+		_on_mod_selected(mod_id, mod_data))
 	return btn
+
+## 记录3#10：禁用行点击反馈——把行尾状态缩写展开成一句话放进结果区
+func _show_mod_blocked_feedback(reason_text: String) -> void:
+	if reason_text.begins_with("✓"):
+		_show_result("该模块已安装在此卡上——如需更换请先在下方操作台卸下")
+	else:
+		_show_result("该模块不可安装：%s（鼠标悬停模块行可查看说明与时代带）" % reason_text.trim_prefix("✗").trim_prefix("⊘"))
 
 ## 判断改造是否适用于选中卡的兵种。
 ## v7.x：数据源切到 IntelItemBag 后，列表会显示所有已解锁改造（不限兵种），
@@ -1818,6 +1833,10 @@ func _show_mod_details(mod_data: Dictionary) -> void:
 		if not slot_type.is_empty():
 			meta_parts.append(_translate_slot_type(slot_type))
 		meta_parts.append(rarity_names.get(mod_rarity, mod_rarity))
+		# 记录3#18：机制型徽章——机制类改造装上战力不变（效果键不进战力折算），
+		# 此前无任何提示，用户实测"神话模块加上后战力没变"误读为失效
+		if ModificationRegistry.get_mod_class(selected_mod_id) == "mechanic":
+			meta_parts.append("机制型")
 		deck_name_label.text = "%s  [%s]" % [mod_data.get("name", ""), " · ".join(meta_parts)]
 
 	# 核心属性（取改造效果首行 + 属性预览）
@@ -1833,6 +1852,10 @@ func _show_mod_details(mod_data: Dictionary) -> void:
 		# 其余进效果模拟抽屉（DeckSimButton）。
 		core_lines = core_lines.slice(0, 6)
 		if not core_lines.is_empty():
+			# 记录3#18：机制型口径明示（宪法 C3：口径玩家可见）——效果在战斗中触发，
+			# 不直接计入战力面板数值
+			if ModificationRegistry.get_mod_class(selected_mod_id) == "mechanic":
+				core_lines.push_front("⚙ 机制型：效果在战斗中自动触发（不直接计入战力面板）")
 			deck_core_label.text = "\n".join(core_lines)
 		else:
 			deck_core_label.text = String(mod_data.get("description", ""))

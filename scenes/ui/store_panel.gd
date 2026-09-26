@@ -12,6 +12,7 @@ const FormatUtil = preload("res://scripts/ui/format_util.gd")
 const DT = preload("res://resources/design_tokens.gd")
 const PanelStyles = preload("res://scripts/ui/panel_styles.gd")
 const PanelChrome = preload("res://scenes/ui/components/panel_chrome.gd")
+const NodeFinder = preload("res://scripts/node_finder.gd")  # 记录3#9: 商店卡情报面板定位
 const LEGACY_BLUEPRINT_DISPLAY_NAMES: Dictionary = {
 	"mini_rocket": "轻型斯托克斯迫击炮",
 	"emp_pulse": "干扰手枪",
@@ -72,6 +73,13 @@ func _ready() -> void:
 	# v27.12 性能：隐藏期间置脏的商品行在恢复可见时统一补刷
 	if not visibility_changed.is_connected(_on_visibility_refresh):
 		visibility_changed.connect(_on_visibility_refresh)
+	# 记录3#7：首次购卡会在发放链内同步拉起 card_collection/achievement/daily_task 三个
+	# 懒加载 manager（new_systems_integration 记录链），是"新买的卡进卡包卡一会"尖峰之一
+	# ——开店时提前预热（分帧），购卡帧只剩轻活。
+	var mll := get_node_or_null("/root/ManagerLazyLoader")
+	if mll != null and mll.has_method("ensure_loaded"):
+		for mid in ["card_collection", "achievement", "daily_task"]:
+			mll.call_deferred("ensure_loaded", mid)
 
 ## 外部打开商店面板时调用：将刷新拆帧，先保证余额可见，再补齐商品列表（仿 backpack_presenter 模式）
 func on_overlay_opened() -> void:
@@ -485,11 +493,18 @@ func _build_faction_extra_row(it, merit_now: int) -> void:
 		thumb.custom_minimum_size = Vector2(48, 56)
 		thumb.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		thumb.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-		thumb.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		# 记录3#9：缩略图可点击查看情报面板（此前商店卡行没有任何情报入口）
+		thumb.mouse_filter = Control.MOUSE_FILTER_STOP
+		thumb.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 		# 记录5#13：未拥有的战斗卡以剪影展示（压暗），已拥有的全彩——
 		# owned 判定与图鉴同源（CardCollectionManager 状态 + InstanceRegistry 兜底）
 		if card != null:
 			thumb.texture = UiAssetLoader.card_icon_for_list(card)  # 无图回 null 留空位
+			thumb.tooltip_text = "点击查看卡牌情报"
+			thumb.gui_input.connect(func(ev: InputEvent) -> void:
+				if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT:
+					_show_shop_card_info(card)
+			)
 			var card_owned: bool = false
 			var ccm: Node = get_node_or_null("/root/CardCollectionManager")
 			if ccm != null and ccm.has_method("get_card_status") and ccm.get_card_status(item_id) >= 1:
@@ -581,6 +596,14 @@ func _describe_faction_extra_item(item_id: String, is_card: bool, rep_cost: int)
 			return "随机解锁一页势力背景档案"
 	return "势力补给品"
 
+## 记录3#9：商店战斗卡查看情报——复用主场景全局 CardInfoPanel（未拥有卡传只读模板即可，
+## 与背包详情同口径；不 set_panel_mode，走默认卡牌模式）
+func _show_shop_card_info(card: CardResource) -> void:
+	var info_panel: Control = NodeFinder.get_card_info_panel() as Control
+	if info_panel == null or not info_panel.has_method("show_card_info"):
+		return
+	info_panel.show_card_info(card)
+
 ## v26.11(A1.2): 购买势力补给/功勋特购商品（走 fsm.purchase_item 正规链：验功勋与贡献等级→扣→发放→失败回退）
 func _on_buy_faction_extra(it, row_node: Control) -> void:
 	if not _buy_debounced():
@@ -607,7 +630,9 @@ func _on_buy_faction_extra(it, row_node: Control) -> void:
 	_flash_row(row_node, Color(DT.COLOR_GREEN_BRIGHT.r, DT.COLOR_GREEN_BRIGHT.g, DT.COLOR_GREEN_BRIGHT.b, 0.3))
 	if SignalBus != null and SignalBus.has_signal("show_toast"):
 		SignalBus.show_toast.emit("已购买：%s" % String(it.display_name))
-	_refresh_items()
+	# 记录3#7：全量行重建（40+ 行 + 逐行图标）延后一帧——点击反馈/提示先出，购买帧不再
+	# 冻住；旧行 queue_free 帧末生效，延后重建同时消掉记录1#9 的"同帧新旧行并存"闪烁。
+	_refresh_items.call_deferred()
 
 
 ## v6.2: 购买符文（v30 R2b：消费货币=功勋，不拉低贡献等级）
@@ -637,8 +662,9 @@ func _on_buy_rune(rune_id: String, rep_cost: int, row_node: Control) -> void:
 	if fsm.has_method("spend_merit"):
 		fsm.spend_merit(rep_cost, _current_company_id)
 	# 刷新（功勋变化不触发 resources_changed，无需 suppress 守卫）
+	# 记录3#7：同购卡路径——重建延后一帧，先出反馈
 	_flash_row(row_node, Color(DT.COLOR_GREEN_BRIGHT.r, DT.COLOR_GREEN_BRIGHT.g, DT.COLOR_GREEN_BRIGHT.b, 0.3))
-	_refresh_items()
+	_refresh_items.call_deferred()
 
 
 func _build_intel_items_section() -> void:

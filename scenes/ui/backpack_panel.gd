@@ -930,7 +930,10 @@ func _on_tab_changed(tab_index: int) -> void:
 			# v6.28（记录2#2）：隐藏期间置脏的网格在此补刷——否则换相位仪等
 			# 触发的全量重建一直没跑，切过来是空 tab；补刷后需重扫视口可见性
 			#（重建时子项 rect 在刚显形的 tab 上不可靠，图标停留"？"占位）。
+			# 记录3#1：flush 后再按内容签名兜底一次——置脏标记若被打开管线提前
+			# 消费，签名比对仍能抓住数据与网格不一致，杜绝"切过来是空 tab"。
 			_presenter.flush_if_dirty()
+			_presenter.ensure_combat_grid_fresh()
 			_apply_combat_view_filters()
 			call_deferred("_apply_viewport_visibility_scan")
 		TabIndex.INTEL:
@@ -2802,12 +2805,16 @@ func _ensure_min_card_slots(grid: GridContainer) -> void:
 			empty_slots.append(child)
 			continue
 		card_count += 1
-	# 不再强制补满固定格数：按「至少一行 + 多一行余量」扩展，上限 MAX_CARD_SLOTS；
-	# v32.3 C2：目标随真实卡数双向收敛——空槽多了回池，少了补位
-	var target_total: int = mini(
-		MAX_CARD_SLOTS,
-		maxi(BACKPACK_GRID_COLUMNS, card_count + BACKPACK_GRID_COLUMNS)
-	)
+	# 不再强制补满固定格数；v32.3 C2：目标随真实卡数双向收敛——空槽多了回池，少了补位
+	# 记录3#1/#3（用户拍板）：卡格按**整行**显示——已占格所在行补满空格，行满再换行；
+	# 不再出现「一行 + 零散几格」的残行。补位基准用 grid.columns（_apply_backpack_grid_layout
+	# 已先设好的实际列数，6~14 随宽度自适应），常数 6 与实际列数取模对不齐正是残行根因。
+	var cols: int = grid.columns if grid.columns > 0 else BACKPACK_GRID_COLUMNS
+	var full_rows: int = ceili(float(card_count) / float(cols))
+	var target_total: int = (full_rows + 1) * cols  # 整行 + 多一整行余量
+	if target_total > MAX_CARD_SLOTS:
+		# 上限内也尽量给整行（如 50 槽上限、7 列时 45 卡 → 补到 49 而非 51）
+		target_total = mini(MAX_CARD_SLOTS, maxi(cols, full_rows * cols))
 	while empty_slots.size() + card_count < target_total:
 		# 空槽用轻量 Panel 占位，避免实例化完整 backpack_card_item
 		var placeholder: Panel

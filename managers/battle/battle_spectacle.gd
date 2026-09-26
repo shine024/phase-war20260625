@@ -324,6 +324,7 @@ func _on_ability_triggered(ability_id: String, stage: String, params: Dictionary
 
 ## 核子轰炸预警：全屏红色暗化 + 标题
 func _play_nuclear_warning(_params: Dictionary) -> void:
+	TraceLog.mark("nuke_warning", "ts=%.1f" % Engine.time_scale)
 	_ensure_overlay()
 	_ensure_title_label()
 	# 全屏红色暗化 0→0.5→0.3（0.3s 预警脉冲）
@@ -353,8 +354,10 @@ func _play_nuclear_impact(params: Dictionary) -> void:
 	# 两组 tween 交错写 _overlay.color（ freed 判定勿用 `is Tween`，用 is_valid）。
 	var now_ms: int = Time.get_ticks_msec()
 	if now_ms - _nuke_impact_last_ms < NUKE_IMPACT_COOLDOWN_MS:
+		TraceLog.mark("nuke_impact_skip", "cooldown")
 		return
 	_nuke_impact_last_ms = now_ms
+	TraceLog.mark("nuke_impact", "ts=%.1f" % Engine.time_scale)
 	# v26.6: 核爆命中音（合成爆炸声；武器级爆炸音在弹道 batch 层，此处是大招级）
 	SignalBus.play_sound.emit("explosion")
 	_ensure_overlay()

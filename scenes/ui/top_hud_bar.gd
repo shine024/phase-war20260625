@@ -36,6 +36,9 @@ var _base_pulse_tween: Tween = null
 # ── v26.2: 环境效果 chip（战内常显本场生效条目，与 world_map 战前摘要同一数据源） ──
 var _env_chip: HBoxContainer = null
 var _env_label: Label = null
+# ── 记录3#12: 部署兵力 chip（我方还能上几张 + 敌方在场/总槽位）──
+var _deploy_chip: HBoxContainer = null
+var _deploy_label: Label = null
 
 # ── 计时（本地自增，搬自 battle_info_display.gd）──
 var _battle_time: float = 0.0
@@ -69,6 +72,7 @@ func _ready() -> void:
 	_ensure_wave_progress_style()
 	_build_base_chip()
 	_build_env_chip()
+	_build_deploy_chip()
 	# v32.0 B1-1: 倍速档位跨会话记忆（读 battle_speed.cfg 就近吸附；实际应用在 battle_started）
 	_speed_scale = BTS.load_pref()
 	if _speed_btn:
@@ -116,6 +120,11 @@ func _connect_signals() -> void:
 		# v9.x: 波次推进信号驱动刷新（替代每 0.25s 轮询 BattleManager）
 		if sb.has_signal("wave_spawned"):
 			sb.wave_spawned.connect(_on_wave_changed)
+		# 记录3#12: 部署兵力 chip 刷新源——部署次数消耗 / 单位阵亡（我方在场数与敌方在场数都变）
+		if sb.has_signal("deploy_uses_changed"):
+			sb.deploy_uses_changed.connect(_on_deploy_uses_changed)
+		if sb.has_signal("unit_died"):
+			sb.unit_died.connect(_on_unit_died_refresh_deploy)
 		# v27: 基地完整度（相位场驱动器 HP）
 		if sb.has_signal("phase_driver_hp_changed"):
 			sb.phase_driver_hp_changed.connect(_on_phase_driver_hp_changed)
@@ -342,6 +351,10 @@ func _on_battle_started() -> void:
 		_base_chip.visible = true
 	# v26.2: 刷新环境效果 chip（按当前关卡环境）
 	_refresh_env_chip()
+	# 记录3#12: 部署兵力 chip 随战斗启停
+	if _deploy_chip != null:
+		_deploy_chip.visible = true
+	_refresh_deploy_chip()
 
 func _on_battle_ended(_won) -> void:
 	_in_battle = false
@@ -351,10 +364,15 @@ func _on_battle_ended(_won) -> void:
 	if _base_chip != null:
 		_base_chip.visible = false
 	_stop_base_pulse()
+	# 记录3#12: 部署兵力 chip 随战斗结束隐藏
+	if _deploy_chip != null:
+		_deploy_chip.visible = false
 
 ## v9.x: 波次推进时刷新 dots 显示（替代每 0.25s 轮询）
 func _on_wave_changed(_wave_index: int) -> void:
 	_refresh_wave()
+	# 记录3#12: 敌方在场数随波次变化，部署兵力 chip 顺路刷新
+	_refresh_deploy_chip()
 
 
 # ========== 基地完整度 chip（v27 / FTUE S3）==========
@@ -460,6 +478,44 @@ func _refresh_env_chip() -> void:
 	if not note.is_empty():
 		tip_lines.append("本场布阵：" + note)
 	_env_label.tooltip_text = "\n".join(tip_lines)
+
+
+# ========== 部署兵力 chip（记录3#12，老问题收口）==========
+## 「可部署 N ｜ 敌方 E/M」——N=我方还能上几张（总名额∩每卡部署次数∩单卡在场限），
+## E/M=敌方在场数/总槽位（含废墟格的粗口径）。数据源=battle_spawn_system
+## get_player_deployable_summary() 单一查询口；刷新挂 wave_spawned / deploy_uses_changed /
+## unit_died / battle_started 四路信号。
+func _build_deploy_chip() -> void:
+	var info_row: Node = get_node_or_null("Capsule/CenterSection/InfoRow")
+	if info_row == null:
+		return
+	_deploy_chip = HBoxContainer.new()
+	_deploy_chip.add_theme_constant_override("separation", 4)
+	_deploy_chip.visible = false
+	_deploy_label = Label.new()
+	_deploy_label.text = "可部署 0"
+	_deploy_label.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
+	_deploy_label.add_theme_color_override("font_color", DT.COLOR_TEXT_DIM)
+	_deploy_label.tooltip_text = "我方可部署数 = 还能上的战斗卡张数（受总名额、每卡部署次数、单卡限 1 在场约束）。\n敌方显示「在场/总槽位」——波次会持续把敌人补进空槽。"
+	_deploy_chip.add_child(_deploy_label)
+	info_row.add_child(_deploy_chip)
+
+func _refresh_deploy_chip() -> void:
+	if _deploy_chip == null or not _in_battle:
+		return
+	var bss: Node = get_node_or_null("/root/BattleSpawnSystem")
+	if bss == null or not bss.has_method("get_player_deployable_summary"):
+		return
+	var s: Dictionary = bss.get_player_deployable_summary()
+	_deploy_label.text = "可部署 %d ｜ 敌方 %d/%d" % [
+		int(s.get("deployable", 0)), int(s.get("enemy_on_field", 0)), int(s.get("enemy_slots", 0))]
+
+func _on_deploy_uses_changed(_base_card_id: String, _remaining: int, _total: int) -> void:
+	_refresh_deploy_chip()
+
+func _on_unit_died_refresh_deploy(_unit: Node, _is_player: bool) -> void:
+	# 延迟一帧：死亡淡出/计数回填多在信号后同帧收尾，直读会拿到旧数
+	_refresh_deploy_chip.call_deferred()
 
 
 # ========== 暂停态切换 ==========

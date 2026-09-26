@@ -9410,6 +9410,30 @@ MVP 协同小结、8 面板首开气泡。**R3 余项**：结算面板三页签�
 - **文档同步**：根 README 新增「素材授权」节（原零授权声明）；`_steam_assets/licenses/README.md` 索引建档（含新素材录入规矩）；标准集合 S17 总表行/详节/优先级表三处标 ✅ 闭环。
 - **验证**：`tests/_tmp_v628_bgm_smoke.gd` 重跑 V628_BGM_SMOKE_OK（credits_panel SECTIONS 断言随文案更新仍过）。
 
+## v6.30 记录3实机验收18条处置（2026-09-26）——16修+2答（1条要求全批生效）
+
+- **背景**：`build/记录3.txt` 第三轮实机验收 18 条。用户拍板：明确列出的问题一次性解决不留后面；卡格按整行显示（行满再换行，不要"一行+零散几格"）。
+- **背包/卡仓（#1/#3）**：
+  - **卡格整行制**：`_ensure_min_card_slots` 补位基准从常数 6 改 `grid.columns`（实际列数 6~14 随宽度自适应）——`目标 = ceil(卡数/列数)×列数 + 一整行`，残行（"一行+2格"）根因即常数 6 与实际列数取模永远对不齐；50 槽上限内也尽量整行。
+  - **换相位仪空 tab 双保险**：presenter 补连 `phase_slots_changed`（不还卡的换装路径此前无人置脏）+ 新增 `ensure_combat_grid_fresh()`（切战斗卡 tab 时按实时数据签名比对，置脏标记被打开管线提前消费也能抓住不一致）。
+  - **战斗开卡仓首开卡顿**：`main._warmup_battle_lazy_managers` 落地 1s 后提前 `_ensure_lazy_panel("backpack")`（面板实例常驻隐藏），战斗中首开零实例化尖峰。
+- **结算底栏（#2）**：①宽主键态叠盖根修——`next/replay` 均 0 时主键原保持 100..820 与「← 返回移动基地」(24..204) 几何叠盖 100..204（靠绘制顺序兜底被读作"按钮重叠缺一块"），基地键存在时主键让位 216 起步；②BunkerManager 懒加载未命中=基地键整键消失（"有时正常有时不正常"的间歇根因），`_warmup_battle_lazy_managers` 预热名单补 `bunker`。回归锁 `test_bottom_row_wide_main_key_yields_to_home` 新增。
+- **商店（#7/#9）**：①购买卡顿两根因——首购帧同步拉起 card_collection/achievement/daily_task 三懒加载 manager（开店时 deferred 预热）+ `_refresh_items()` 全量行重建同帧执行（改 `call_deferred`，顺带消掉记录1#9 的同帧新旧行并存闪烁）；②战斗卡行缩略图可点击开情报面板（`NodeFinder.get_card_info_panel` + `show_card_info` 模板卡口径，此前商店零情报入口、缩略图连鼠标都不收）。
+- **改造舱 #10**：模块行不再置 `disabled`（disabled Button 吞 pressed 且零反馈——图纸库存 0 时全列禁点="点改造模块没反应"主诉），改视觉置灰 + 点击在结果区展开具体原因（`_show_mod_blocked_feedback`）；操作台元信息行加「机制型」徽章 + 核心行首行「⚙ 机制型：效果在战斗中自动触发（不直接计入战力面板）」——机制类效果键不进战力折算此前零提示（#18 神话模块"加上战力没变"误读即此）。
+- **挂机（#5/#6）**：
+  - **死亡补位**：AFK 队列开战铺完即空 + AutoDeployController 补阵被 `_afk_owning_deploy` 全线静默 = 阵亡后战场只减不增（"有的关只刷一个位置"）。`afk_mode_manager` 补连 `unit_died`，阵亡卡装备实例查重后重新入队走既有轮转链（uses 池/能量门/单卡限 1 由引擎正常拦截）。
+  - **槽位扫描**：`_find_free_slot_world_pos` 补 `is_slot_excluded`/`player_slots_total` 过滤（废墟格 L10=[2,6] 等挂机部署请求被 find_nearest 吸附撞车白耗轮转；窄阵越界槽坐标折算成网格原点必败）——与 auto_deploy_controller 同律。
+  - **胜负判定死区**：`_check_win_lose` 唯一同步点在波次生成函数开头，波次刷完后 `enemy_unit_count` 缓存失去再同步——任一死亡信号丢失（蜂群 slot 直 free 等）计数永久虚高：敌人死光不刷波（波次已尽）也不判胜（缓存>0 直接 return），挂机整线停摆（"第10关敌人没了不刷新不判胜"根因）。0.5s 节流强制 `recount_enemy_units_on_field()` 回填。
+- **战斗 #11（4 倍速核子轰炸续作）**：tween_interval 吃 scaled delta——4x 下 0.54s 齐射错峰塌缩到 0.135s，10 发几乎同帧起爆（v6.29 封顶解决"每敌一演"未解决"同帧密度"）。`Engine.time_scale ≥3` 时演出封顶再收一档（10→4）；TraceLog 补面包屑 `nuke_warning/nuke_impact(_skip)/nuke_cap/nuke_explosion/wave_spawn/win_resync/win_check_end`——复现时看 `user://trace.log` 尾行可区分负载型与流程型。**答**：复现后请把导出版数据目录 `trace.log` 尾部发来定位冻住区间。
+- **战斗视觉（#14/#16）**：
+  - **护盾罩**：`player_shield.png` 贴图罩抬升到底边贴脚线（原 Sprite 居中在原点=脚线，满幅圆下半沉进地里读作"贴图中心在脚下"）；六边形花层同步抬至罩体中部；受击脉冲 0.18→0.06（脚下整圈扩散近 20% 被读成"不明受击效果"——敌人没有是因为敌方无持续盾状态罩，非漏应用）。
+  - **击毁焦痕**：alpha 0.50→0.28、保持 14s→4s、淡出 4s→3s——保留命中痕迹语义但不再像"尸体黑圆圈"钉在地上。
+- **战况 HUD #12**（老问题收口）：TopHudBar 新增部署兵力 chip「可部署 N ｜ 敌方 E/M」——N=我方还能上几张（总名额∩每卡部署次数∩单卡在场限，新增统一查询口 `battle_spawn_system.get_player_deployable_summary()`），E/M=敌方在场/总槽位（`CardGridBattleLayout.enemy_slots_total`）；刷新挂 battle_started/wave_spawned/deploy_uses_changed/unit_died 四路信号。
+- **胜利情报 #13**（用户拍板）：结算揭示弹窗（IntelRevealPopup 逐条队列）删除——情报收获事件行已有同信息（首次遭遇/新揭示/跨档 chip）；跨配方门（25% 档）行加「★ 新卡可制造」金 chip（新增 `_crossed_recipe_gate`：从 <25% 直跨 ≥25% 即算，与制造门同源）；改造解锁批量弹窗保留（用户抱怨的是"总要跳"的揭示类）。
+- **技能树 #8/#15**：16 处英文残留全清（v8 扩展 15 条 desc 的 ARMOR/FORT/FAST/SNIPER/ECM/STEEL/THUNDER/VOID/ATK/HP 代号→中文；EMP 战术→电磁脉冲战术、AI 指挥→智能指挥改名，名字无外部引用已核）；`power_cap` 解锁类型补翻译分支（`_format_unlocks` 裸显 "power_cap[]" + `get_unlocked_summary` 静默跳过=精神同调节点总览缺条目）；作用域失真 desc 订正——穿甲弹道/精确射击实为全体单位生效（`stat_bonus` 无兵种分流，"装甲单位/步兵单位"与实际不符），模块化武装说明实装。lifesteal_unlock 消费链核实存在（unit_stats_table:215），纵深打击 desc 未改。
+- **资产 #4（77mm 火光裁半）**：根因=源帧 f01/f02 内容左边距仅 8px(512)，缩 256 后余 4px 恰被描边预烘焙吃光贴左缘；且 f02 烟宽 486px 双侧描边在 256 画布怎么位移都有一侧贴边，LANCZOS 缩放硬边振铃（α 1~15）还会把膨胀区拽到 x=0。修法=源帧 f01 +12 / f02 +6 位移 + 重建时帧缘 12px 内 α<16 振铃清理（引擎 keep 语义边界=16 不可见像素），`tools/_tmp_fix77_anim.py` 同 deploy 管线重建双 sheet+anim.json，逐帧断言实心（α≥128）零触边（idle 帧族存量淡尾贴边顺带清零）。原图备份 `.godot/art_backup_77mm_fix_20260926/`。
+- **验证**：gdparse 全部改动文件过（两处单行 lambda 报错为 gdtoolkit 对 HEAD 同样误报的存量）；`test_settlement_next_level.gd` 4/4 PASSED（含新回归锁）；全量 GdUnit 486 用例——仅余 2 处存量失败（`mod_value_channels_test::test_installable_mods_era_filter` / `test_mod_drop_era_filter::test_negative_era_keeps_legacy_behavior`，基线即有与本批无关）；`test_backpack_slot_ratchet.gd` 按整行制契约更新（4 用例改断言+新增 `test_full_row_boundary` 边界用例）5/5 PASSED；Godot `--headless --editor --quit` 重导入动画资产完成。
+
 ## v6.29 记录2实机验收9条处置（2026-09-26）——6修+1答+1埋点+1审计
 
 - **背景**：`build/记录2.txt` 第二轮实机验收 9 条。用户拍板：卡死=画面冻住进程还在（非闪退）；挂机停机=精神耗尽；灰影=部分卡灰色人形残影（bug）；休息语义=歇 60s 精神回满。

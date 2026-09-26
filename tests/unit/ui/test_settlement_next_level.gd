@@ -187,3 +187,46 @@ func test_bottom_row_four_buttons_no_overlap() -> void:
 	_restore_states(bak)
 	host.queue_free()
 	panel.queue_free()
+
+
+func test_bottom_row_wide_main_key_yields_to_home() -> void:
+	## 记录3#2 回归锁：宽主键态（next=0 且 replay=0，如首胜后教程停在「移动基地」步、
+	## 打完当前最高解锁关）主键曾保持 100..820，与「← 返回移动基地」(24..204) 几何叠盖
+	## 100..204——用户实测读作"按钮大小不对、重叠、有的看不到"。契约：基地键存在时
+	## 宽主键 offset_left ≥ 216（与四键契约同一间距），矩形互不相交。
+	var gm: Node = get_node_or_null("/root/GameManager")
+	var tm: Node = get_node_or_null("/root/TutorialProgressionManager")
+	if gm == null or tm == null:
+		print("  autoload 不全，跳过")
+		return
+	var bak := _setup_states()
+	gm._pending_battle_level = 5
+	tm.current_step = 2  # 首战步之前 → next=0 且 replay=0（宽主键态）
+	var host := Panel.new()
+	host.size = Vector2(920, 600)
+	add_child(host)
+	var panel: Node = _make_panel(true, false)
+	panel._bunker_return_available = true
+	panel._render_close_button_anchored(host)
+	await get_tree().process_frame
+	await get_tree().process_frame
+	var main_btn: Button = null
+	var home_btn: Button = null
+	var btn_count := 0
+	for c in host.get_children():
+		if c is Button and (c as Button).text != "":
+			btn_count += 1
+			if String((c as Button).text).begins_with("←"):
+				home_btn = c
+			else:
+				main_btn = c
+	assert_int(btn_count).is_equal(2)
+	assert_bool(main_btn != null).is_true()
+	assert_bool(home_btn != null).is_true()
+	if main_btn != null and home_btn != null:
+		var inter: Rect2 = main_btn.get_global_rect().intersection(home_btn.get_global_rect())
+		assert_bool(inter.size.x > 1.0 and inter.size.y > 1.0).is_false()
+		assert_int(int(main_btn.offset_left)).is_greater_equal(216)
+	_restore_states(bak)
+	host.queue_free()
+	panel.queue_free()

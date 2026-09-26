@@ -156,7 +156,9 @@ func _draw_shield() -> void:
 
 	# 呼吸（护盾是稳定状态，轻微）+ 受击扩张 + 获得态从 0.35 倍撑开 + 击碎态再扩 20%
 	var breath: float = 1.0 + (BREATH_AMP * 0.6) * (0.5 + 0.5 * sin(t * TAU / (BREATH_PERIOD * 1.5)))
-	var hit_scale: float = 1.0 + hit_boost * 0.18
+	# 记录3#16a（用户裁决）：受击脉冲 0.18→0.06——此前护盾承压时脚下整圈扩散近 20%，
+	# 被读成"不明受击效果"（敌人没有是因为敌方无持续盾状态罩，非漏应用）；收敛为轻微涨缩
+	var hit_scale: float = 1.0 + hit_boost * 0.06
 	var radius: float = SHIELD_RADIUS * breath * hit_scale * lerpf(0.35, 1.0, ease_in_k)
 	if break_k >= 0.0:
 		radius *= 1.0 + 0.2 * break_k
@@ -232,6 +234,9 @@ func _sync_shield_fx(radius: float, alpha_k: float, ring_color: Color, spawn_fla
 	var breathe: float = 1.0 + 0.04 * sin(Time.get_ticks_msec() / 1000.0 * TAU / 1.8)
 	_hex_layer.visible = break_k < 0.0
 	_hex_layer.scale = Vector2.ONE * (radius / 52.0 * breathe)
+	# 记录3#14：六边形花层原点在单位脚线（y=0），整层压在地面读作"脚下花纹"——
+	# 抬升到罩体中部，与穹顶弧（底边 y=0 向上）同一视觉语言
+	_hex_layer.position = Vector2(0, -radius * 0.45)
 	var hex_a: float = clampf((0.20 + 0.26 * alpha_k + spawn_flash * 0.45) * (1.0 - maxf(break_k, 0.0)), 0.0, 0.85)
 	for h in _hex_layer.get_children():
 		if h is Polygon2D:
@@ -246,6 +251,10 @@ func _sync_shield_fx(radius: float, alpha_k: float, ring_color: Color, spawn_fla
 	if _tex_dome != null:
 		var dsz: float = radius * 2.35 * breathe
 		_tex_dome.scale = Vector2(dsz / SHIELD_TEX_CONTENT_W, dsz / SHIELD_TEX_CONTENT_W)
+		# 记录3#14（用户主诉"护盾贴图中心在战斗卡脚下"）：贴图近乎满幅圆，
+		# Sprite 居中在脚线原点=下半个气泡沉进地里。抬升到底边贴脚线，
+		# 气泡包住立绘（与敌方巨型能量罩同观感——那张图够大不显缺陷，此罩小必须抬）
+		_tex_dome.position = Vector2(0, -dsz * 0.5)
 		var dome_a: float = clampf((0.26 + 0.22 * alpha_k + spawn_flash * 0.35) * (1.0 - maxf(break_k, 0.0)), 0.0, 0.7)
 		_tex_dome.modulate = Color(ring_color.r, ring_color.g, ring_color.b, dome_a)
 		_tex_dome.visible = dome_a > 0.01

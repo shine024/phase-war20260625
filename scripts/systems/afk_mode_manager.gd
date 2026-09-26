@@ -8,6 +8,8 @@ class_name AFKModeManager
 
 const DT = preload("res://resources/design_tokens.gd")
 const StageBanner = preload("res://scripts/ui/stage_banner.gd")
+## 记录3#5：部署槽位扫描要跳废墟禁放格/窄阵越界槽（与 auto_deploy_controller 同律）
+const BattleLayout = preload("res://scripts/card_grid_battle_layout.gd")
 
 
 # ── 枚举 ──
@@ -138,6 +140,9 @@ func init(main_node: Node, battle_setup: MainBattleSetup) -> void:
 	# 连接 battle_started 信号（C2：战斗开始后排入自动部署队列）
 	if not _signal_bus.battle_started.is_connected(_on_battle_started_from_bus):
 		_signal_bus.battle_started.connect(_on_battle_started_from_bus)
+	# 记录3#5：连接 unit_died（挂机死亡补位——阵亡卡的装备实例重新入队）
+	if not _signal_bus.unit_died.is_connected(_on_unit_died_from_bus):
+		_signal_bus.unit_died.connect(_on_unit_died_from_bus)
 
 
 func _notification(what: int) -> void:
@@ -636,6 +641,50 @@ func _on_battle_started_from_bus() -> void:
 	_auto_deploy_timer = _AUTO_DEPLOY_INITIAL_DELAY
 
 
+## 记录3#5：挂机死亡补位——AFK 队列开战铺完即空，AutoDeployController 的死亡补阵被
+## _afk_owning_deploy 全线静默（挂机自管），单位阵亡后战场只减不增（"有的关只刷一个
+## 位置"主诉：拖到后期只剩 1 个单位在打）。阵亡卡的装备实例重新入队，走既有 0.5s
+## 轮转部署链补位；部署 uses 池/能量门/单卡限 1 由 request_player_deploy 正常拦截，
+## 此处不做二次判断（防与引擎口径漂移）。
+func _on_unit_died_from_bus(unit: Node, is_player: bool) -> void:
+	if not is_running or not is_player or unit == null:
+		return
+	var dead_key: String = String(unit.get_meta("source_instance_id", ""))
+	if dead_key.is_empty():
+		dead_key = String(unit.get_meta("source_card_id", ""))
+	if dead_key.is_empty():
+		return
+	# 防重：同一实例已在待部署队列就不重复入队
+	for queued in _auto_deploy_pending:
+		if queued == null:
+			continue
+		var qkey: String = ""
+		if "instance_id" in queued and not String(queued.instance_id).is_empty():
+			qkey = String(queued.instance_id)
+		elif "card_id" in queued:
+			qkey = String(queued.card_id)
+		if qkey == dead_key:
+			return
+	# 找回阵亡卡对应的装备实例（绿槽 platform），仍装备才补位
+	var pim: Node = get_node_or_null("/root/PhaseInstrumentManager")
+	if pim == null or not pim.has_method("get_loadouts"):
+		return
+	for loadout in pim.get_loadouts():
+		var platform = loadout.get("platform")
+		if platform == null:
+			continue
+		var pkey: String = ""
+		if "instance_id" in platform and not String(platform.instance_id).is_empty():
+			pkey = String(platform.instance_id)
+		elif "card_id" in platform:
+			pkey = String(platform.card_id)
+		if pkey != dead_key:
+			continue
+		_deploy_fail_counts.erase(dead_key)  # 重新给满失败额度（换槽位再试）
+		_auto_deploy_pending.append(platform)
+		break
+
+
 ## 每帧推进自动部署（由 main.gd 的 _process 转发调用）
 ## RefCounted 无 _process 自动回调，故由外部驱动
 func process_auto_deploy(delta: float) -> void:
@@ -732,6 +781,14 @@ func _find_free_slot_world_pos(bf: Node2D) -> Vector2:
 	if player_units == null:
 		player_units = bf.get_node_or_null("PlayerUnits")
 	for si in range(_PLAYER_SLOT_RANGE_START, _get_player_slot_range_end() + 1):
+		# 记录3#5：废墟禁放格与窄阵越界槽显式跳过——is_player_slot_occupied 只认单位占用，
+		# 禁放空格会被当空闲 → 部署请求被 find_nearest 吸附邻格撞车（slot_busy 白耗轮转，
+		# L10 player_excluded=[2,6] 等废墟关挂机部署成功率骤降）；窄阵（cols=2 → 6 槽）
+		# 越界槽坐标折算成网格原点，同样必败。与 auto_deploy_controller 同律。
+		if BattleLayout.is_slot_excluded(si, "player"):
+			continue
+		if si >= BattleLayout.player_slots_total():
+			continue
 		var occupied: bool = false
 		if grid.has_method("is_player_slot_occupied") and player_units != null:
 			occupied = grid.is_player_slot_occupied(si, player_units)

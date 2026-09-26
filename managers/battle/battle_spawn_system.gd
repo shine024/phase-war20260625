@@ -369,6 +369,8 @@ func spawn_card_grid_enemy_wave(current_level: int) -> bool:
 	# v27 黑门无限模式：星冥族专用波次构成（每 5 波精英 / 每 10 波首领，设计 §5.2）
 	if _endless_mode:
 		return _spawn_endless_xeno_wave(current_level)
+	# 记录3#6/#11：波次推进面包屑——"敌人没了也不刷新不判胜"与核爆冻住都靠它定界
+	TraceLog.mark("wave_spawn", "lvl=%d idx=%d" % [current_level, enemy_wave_index])
 	sync_enemy_unit_count_from_field()
 	if enemy_unit_count >= _enemy_field_unit_cap():
 		return false
@@ -1144,6 +1146,35 @@ func get_remaining_deployable_count() -> int:
 		live_count = BattleManager.recount_player_units_on_field()
 		player_unit_count = live_count  # 同步缓存
 	return max(0, max_units - live_count)
+
+
+## 记录3#12：战况 HUD「敌我各可上多少单位」统一查询口（TopHudBar 部署 chip 消费）。
+## deployable=我方还能上几张（总名额 ∩ 每卡部署次数 ∩ 单卡在场限，与 request_player_deploy
+## 判定同口径）；enemy_on_field/enemy_slots=敌方在场数/总槽位（含废墟格的粗口径，仅观感参考）。
+func get_player_deployable_summary() -> Dictionary:
+	var deployable := 0
+	if _phase_instrument != null and _phase_instrument.has_method("get_loadouts"):
+		for lo in _phase_instrument.get_loadouts():
+			if not (lo is Dictionary):
+				continue
+			var card: CardResource = lo.get("platform", null)
+			if card == null or String(card.card_id).is_empty():
+				continue
+			var key: String = card.instance_id if not card.instance_id.is_empty() else card.card_id
+			if int(get_deploy_uses_remaining(key)) <= 0:
+				continue  # 该卡部署次数耗尽
+			var equipped: int = _count_equipped_loadouts_from_card(card.card_id)
+			if equipped <= 0:
+				continue
+			# 单卡限 1（装备槽数×幻影倍率，与 _reach_alive_limit_for_card 同口径）
+			if _count_alive_player_units_from_card(card.card_id) >= equipped * _get_phantom_deploy_multiplier():
+				continue  # 该卡已有存活单位在场
+			deployable += 1
+	return {
+		"deployable": mini(deployable, get_remaining_deployable_count()),
+		"enemy_on_field": enemy_unit_count,
+		"enemy_slots": _GridLayout.enemy_slots_total(),
+	}
 
 
 func _count_alive_player_units_from_card(card_id: String) -> int:

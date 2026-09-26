@@ -842,6 +842,8 @@ func _on_unit_died(unit: Node, is_player: bool) -> void:
 ## 原实现每帧 Dictionary.get + 两次默认值空字典分配（小额常驻垃圾）
 var _cached_special_rules: Dictionary = {}
 var _cached_special_rules_level: int = -1
+## 记录3#6：胜负判定缓存回填节流（ms 时间戳）
+var _wincheck_resync_cd_ms: int = 0
 
 ## v26.2: 当前关卡号（战场布局/环境效果取值用）。GameManager 不可达（headless 测试）时
 ## 返回 0——LevelBattleLayouts 无 0 号条目=默认 3×3，环境 get_for_level 会钳到 1
@@ -919,11 +921,28 @@ func _check_win_lose() -> void:
 	if live_enemies <= 0:
 		live_enemies = recount_enemy_units_on_field()
 		_spawn_system.enemy_unit_count = live_enemies
+	else:
+		# 记录3#6：波次刷完后 spawn_card_grid_enemy_wave 不再进入，缓存计数失去唯一
+		# 同步点（sync_enemy_unit_count_from_field 只在两个波次生成函数开头被调）——
+		# 任一次死亡信号丢失（蜂群 slot 直 free 未经 _die 等路径）计数即永久虚高：
+		# 敌人死光却不刷新（波次已尽）也不判胜，本函数每帧在这里 return，挂机整条
+		# 流水线随之停摆（"第10关敌人没了也不刷新也不判胜"主诉）。0.5s 节流强制从
+		# 战场实数回填缓存，消除"缓存虚高死区"。
+		var now_ms := Time.get_ticks_msec()
+		if now_ms >= _wincheck_resync_cd_ms:
+			_wincheck_resync_cd_ms = now_ms + 500
+			var field_count: int = recount_enemy_units_on_field()
+			if field_count != live_enemies:
+				# 缓存与战场实数偏离才落面包屑（异常路径，低频）——数值回填无分歧不打点
+				TraceLog.mark("win_resync", "cache=%d field=%d" % [live_enemies, field_count])
+			live_enemies = field_count
+			_spawn_system.enemy_unit_count = live_enemies
 	if live_enemies > 0:
 		return
 	if DEBUG_BATTLE_LOG:
 		pass
 		# [LOG-v5.1] print("[BattleManager] 普通战斗胜利！波次=%d/%d，剩余敌人=%d" % [_spawn_system.get_enemy_wave_index(), _spawn_system.get_enemy_wave_total(), live_enemies])
+	TraceLog.mark("win_check_end", "wave=%d live=%d" % [_spawn_system.get_enemy_wave_index(), live_enemies])
 	end_battle(true)
 
 

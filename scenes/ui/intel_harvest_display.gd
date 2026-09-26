@@ -192,6 +192,19 @@ func _crossed_tier_mark(entry: Dictionary) -> float:
 			best = maxf(best, m)
 	return best
 
+
+## 记录3#13：本次是否跨过制造配方门（25% 档）——跨过即该敌形战斗卡"新卡可制造"。
+## 与 _crossed_tier_mark 的"最高跨档"不同：从 10% 直跨到 60% 也算跨过配方门。
+func _crossed_recipe_gate(entry: Dictionary) -> bool:
+	var delta := _entry_delta(entry)
+	if delta <= 0.0001:
+		return false
+	var new_pct := _new_pct(entry)
+	if new_pct < 0.0:
+		return false
+	var old_pct := new_pct - delta * 100.0
+	return old_pct < 25.0 and new_pct >= 25.0
+
 func _has_reveal(entry: Dictionary) -> bool:
 	var card_id := String(entry.get("card_id", ""))
 	for rev in _reveal_events:
@@ -220,6 +233,10 @@ func _create_event_row(entry: Dictionary, crossed: float) -> HBoxContainer:
 	if crossed >= 0.0:
 		row.add_child(IntelUIKit.status_chip("跨 %d%% 档" % roundi(crossed * 100.0),
 			DT.COLOR_GREEN_UP))
+	# 记录3#13：跨配方门（25%）= 该敌形的战斗卡进入制造目录——原只显"跨 25% 档"
+	# 玩家读不懂，用户拍板加明示 chip（原揭示弹窗已并入本行显示）
+	if _crossed_recipe_gate(entry):
+		row.add_child(IntelUIKit.status_chip("★ 新卡可制造", DT.COLOR_GOLD))
 
 	# 增量（绿）+ 战后新值（右对齐定宽；旧值不可得时省略箭头段）
 	row.add_child(IntelUIKit.label("+%d%%" % roundi(_entry_delta(entry) * 100.0),
