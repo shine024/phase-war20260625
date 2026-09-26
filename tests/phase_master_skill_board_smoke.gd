@@ -174,10 +174,11 @@ func _initialize() -> void:
 	# ══ 7. 跳转下一节点 ══
 	print("\n=== 7. 跳转下一节点 ===")
 	# 当前态：unlocked={cmd_0,1a,2,fp_0,1a,1b,2}，spent=9 avail=1
-	# standby 候选：cmd_1b(t1)/int_0(t0) → tier 深者优先 = cmd_1b
+	# standby 候选：cw_2(t3，记录4#2 浅化后前置 cmd_2 已解锁)/cmd_1b(t1)/int_0(t0)
+	# → tier 深者优先 = cw_2（制造授权·一战，契合早点制造方向）
 	var nxt: Dictionary = board.find_next(mgr)
-	ok.call(String(nxt.get("id", "")) == "pms_cmd_1b" and String(nxt.get("kind", "")) == "standby",
-			"下一节点=集结号令 pms_cmd_1b（standby，同类 tier 最深）（实际 %s/%s）" % [nxt.get("id", ""), nxt.get("kind", "")])
+	ok.call(String(nxt.get("id", "")) == "pms_cw_2" and String(nxt.get("kind", "")) == "standby",
+			"下一节点=制造授权 pms_cw_2（standby，同类 tier 最深）（实际 %s/%s）" % [nxt.get("id", ""), nxt.get("kind", "")])
 	# 花掉最后 1 点 → 无 standby，回落 no_points：cmd_3(t3,lane0) 胜过 fp_3(t3,lane2)/int_0(t0)
 	mgr.unlock_node("pms_cmd_1b")
 	var nxt2: Dictionary = board.find_next(mgr)

@@ -276,11 +276,17 @@ func _refresh_lore(lore_id: String, count: int, name_label: Label, amount_label:
 		# 改造瓷砖名字限制更短（避免和左侧色条/右侧计数冲突）
 		var max_name_len := 7 if not mod_rarity.is_empty() else 12
 		name_label.text = _truncate_with_ellipsis(display_name, max_name_len)
+		# 记录7#2: 大字号(csf1.25)下文本折行撑爆 96×108 固定瓷砖、底部被 clip 裁掉——
+		# 名字/效果行一律单行 + 省略号（tscn 旧 autowrap 已废）。
+		name_label.autowrap_mode = TextServer.AUTOWRAP_OFF
+		name_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 		# v9.x: 改造名居中显示
 		name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	if amount_label:
 		# v9.x: 效果行居中显示
 		amount_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		amount_label.autowrap_mode = TextServer.AUTOWRAP_OFF
+		amount_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 		# v9.0: 改造瓷砖用 amount_label 显示效果行（青色 monospace 风格）
 		if not effect_text.is_empty():
 			amount_label.text = effect_text
@@ -549,17 +555,30 @@ func _apply_mod_slot_type_label(slot_type: String) -> void:
 		label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		layer.add_child(label)
 	label.text = cn
-	label.set_anchors_and_offsets_preset(Control.PRESET_TOP_LEFT)
-	label.offset_left = 28.0
-	label.offset_top = 4.0
+	# 记录7#2: 原顶部左侧(x28)横跨图标区（图标 56px 居中占 x20..76）文字压图——
+	# 挪到底部右侧（与底部左侧原型名对称），右对齐单行省略。
+	label.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_RIGHT)
+	label.offset_left = -96.0
+	label.offset_right = -6.0
+	label.offset_top = -17.0
+	label.offset_bottom = -4.0
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	label.autowrap_mode = TextServer.AUTOWRAP_OFF
+	label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	label.visible = true
 
 
 ## v9.2: 装配状态点（顶部行右侧，绿色=已装配，灰色=未装配）
 ## v9.x 修复：PanelContainer → Control+ColorRect，挂到 DecorationLayer 下
+## 记录1#4: 未装配的灰点被用户读作"图标上的灰色小方块/分类背景错位"——灰态无信息量，
+## 改为只在已装配时显示绿点，未装配隐藏（池化复用旧点也一并藏）。
 func _apply_mod_status_dot(is_installed: bool) -> void:
 	var layer: Control = _ensure_decoration_layer()
 	var dot: Control = layer.get_node_or_null("ModStatusDot") as Control
+	if not is_installed:
+		if dot != null:
+			dot.visible = false
+		return
 	var bg: ColorRect = null
 	if dot == null:
 		dot = Control.new()
@@ -575,13 +594,12 @@ func _apply_mod_status_dot(is_installed: bool) -> void:
 	else:
 		bg = dot.get_node_or_null("Bg") as ColorRect
 	if bg:
-		if is_installed:
-			bg.color = DesignTokens.COLOR_GREEN_UP  # green_up
-		else:
-			bg.color = Color(0.27, 0.31, 0.39, 0.6)  # dark gray
+		bg.color = DesignTokens.COLOR_GREEN_UP  # green_up
+	# 记录7#2: 原右上角(-16..-4)与"N 卡"装配徽章(-34..-4)同角互叠（绿点压字）——
+	# 左移到徽章左侧一线。
 	dot.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
-	dot.offset_left = -16.0
-	dot.offset_right = -4.0
+	dot.offset_left = -46.0
+	dot.offset_right = -34.0
 	dot.offset_top = 4.0
 	dot.offset_bottom = 16.0
 	dot.visible = true
@@ -641,10 +659,14 @@ func _apply_mod_prototype(prototype: String) -> void:
 		label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		layer.add_child(label)
 	label.text = prototype
-	# 底部左侧（与底部右侧的稀有度文字对称）
+	# 底部左侧（与底部右侧的槽位类型文字对称）；右缘 -52 给槽位类型让位，超宽省略
 	label.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_LEFT)
 	label.offset_left = 8.0
+	label.offset_right = -52.0
+	label.offset_top = -17.0
 	label.offset_bottom = -4.0
+	label.autowrap_mode = TextServer.AUTOWRAP_OFF
+	label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	label.visible = true
 
 ## v7.x：改造图纸瓷砖应用稀有度底色边框。rarity 从 _tile_rarity（meta）取，

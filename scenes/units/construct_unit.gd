@@ -1226,7 +1226,8 @@ func _apply_card_skill_runtime_bonus() -> void:
 	if sb.has("damage_reduction") and not _card_skill_runtime_bonus.has("damage_reduction"):
 		var bonus: float = float(sb["damage_reduction"])
 		_card_skill_runtime_bonus["damage_reduction"] = bonus
-		stats.damage_reduction = clampf(stats.damage_reduction + bonus, 0.0, 0.95)
+		# 记录7#14: 减伤帽统一 0.60（=实战结算帽，旧 0.95 虚标）
+		stats.damage_reduction = clampf(stats.damage_reduction + bonus, 0.0, 0.6)
 
 
 ## 还原卡片技能 stat_bonus（过期或清除时）

@@ -568,6 +568,19 @@ func _refresh_card_grid() -> void:
 	# [LOG-v5.1] print("[BP] _refresh_grid: cards=%d extra_ids=%s" % [cards.size(), extra])
 	if _view and _view.has_method("rebuild_card_grid"):
 		_view.rebuild_card_grid(cards)
+	_last_grid_signature = _compute_grid_signature(cards, extra)
+
+
+## 记录7#4: 网格内容签名（实例id+强化等级+extra 位）——开面板短路判据
+var _last_grid_signature: String = ""
+
+func _compute_grid_signature(cards: Array, extra_ids: Array) -> String:
+	var parts: Array[String] = []
+	for c in cards:
+		parts.append("%s:%s" % [str(c.get("instance_id")), str(c.get("enhance_level", 0))])
+	for cid in extra_ids:
+		parts.append("x:" + str(cid))
+	return "|".join(parts)
 
 func _can_incremental_update() -> bool:
 	return _is_view_visible() and _data != null and _data.has_method("is_default_view_mode") and _data.is_default_view_mode()
@@ -582,12 +595,15 @@ func _run_open_refresh_pipeline() -> void:
 	var loaded_pending: bool = load_pending_cards(true)
 	# Step 2: 总是刷新网格。dirty flag 或 pending 变化是充分条件，
 	# 但即使两者都为 false，也做一次全量刷新确保 SaveManager 与 _data 一致。
+	# 记录7#4: 改为内容签名短路——签名未变跳过全量重建（打开尖峰主力之一：
+	# 清空+重加全部卡 item + 逐张重跑 tooltip/装饰层）；首开/任何变化照常全量刷。
 	var tree: SceneTree = _get_scene_tree()
 	if tree != null:
 		await tree.process_frame
 		if _is_view_visible():
 			_grid_dirty_while_hidden = false
-			_refresh_card_grid()
+			if _data != null and _compute_grid_signature(_data.get_filtered_sorted_cards(), _data.get_extra_card_ids()) != _last_grid_signature:
+				_refresh_card_grid()
 	# Step 3: 附属区（情报/属性提升/符文）再延后一帧，避开与网格同帧竞争。
 	# 首次打开需要 await 一帧做异步初始化（避免首开卡顿）；后续每次打开也刷新一次，
 	# 否则 _aux_sections_initialized 置位后再次打开背包不会刷新附属区，

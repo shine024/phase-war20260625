@@ -211,9 +211,12 @@ static func apply_battle_unit_presentation(
 		is_boss_tier = is_boss_tier or st_meta == "elite" or st_meta == "boss"
 	if is_boss_tier and not anim_id.is_empty():
 		var boss_frames_hit: bool = BossIdleAnim.attach(unit_spr, anim_id)
-		if not boss_frames_hit and anim_id.trim_prefix("captured_").begins_with("xeno_"):
-			# v27.2: 精英/首领词缀星冥——占位卡是雪碧条资产（无 boss 独立帧），
-			# 走全单位帧动画兜底（idle+attack 都有）；经典词缀怪行为不变（仅威压摇摆）。
+		if not boss_frames_hit:
+			# 记录7#16: 无 boss 独立帧的精英/首领放行全单位帧动画兜底——原仅 xeno 放行，
+			# 经典精英（如 cold_inf_spetsnaz_e / ww2_inf_para_e）被挡在 UnitFrameAnim 外，
+			# 只剩静态卡图 + AttackPoseAnim 裸换 attack_f0（右向 f0 vs 左向卡图=每次开火
+			# 横向翻转、"一会向左一会向右"反复复发的播放链之一）。精英从此与普通单位
+			# 同享朝向一致的帧动画。
 			UnitFrameAnim.attach(unit_spr, anim_id, face_right)
 		_boss_sway_idle(unit_spr)
 	elif not anim_id.is_empty():

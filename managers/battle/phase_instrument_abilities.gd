@@ -514,21 +514,9 @@ static func _fire_nuclear_bombardment(owner: Owner, params: Dictionary) -> void:
 	# v20.15: 快照战斗状态——导弹错峰发射（最长 ~0.54s）+ 飞行 0.35s 期间战斗结束，
 	# 后续发射与落地演出全部作废（核导弹贴图残留在结算/准备背景的直接根因）
 	var was_live: bool = _battle_active_now()
-	# v9.5: 计算发射方阵地位置（导弹从这里飞出）——取 owner 方单位的平均位置
-	# 玩家版=从我方阵地发射导弹飞向敌方；敌方版=从 boss/敌方区发射飞向我方
-	var launch_pos: Vector2 = first_pos  # 默认用首个目标位置兜底
-	var allies: Array = _get_allies(owner)
-	if not allies.is_empty():
-		var sum: Vector2 = Vector2.ZERO
-		var cnt: int = 0
-		for a in allies:
-			if a != null and is_instance_valid(a) and a is Node2D:
-				sum += (a as Node2D).global_position
-				cnt += 1
-		if cnt > 0:
-			launch_pos = sum / float(cnt)
-	# 发射点抬高到阵地上方（导弹从"发射井"升起的感觉）
-	launch_pos = Vector2(launch_pos.x, launch_pos.y - 80.0)
+	# 记录7#13（用户拍板）：核武轰炸=从天而降的大弹——原"owner 方友军均值+80px 发射"
+	# （v9.5 发射井语义）被读成"从我方前排发射出去的"。现改逐目标从其正上方高空垂落
+	# （vertical 档起点=落点正上方，横贴图弹头自动朝下），不再从阵地平射。
 	# v9.5: 飞行弹体贴图（玩家=我方核导弹；敌方复用同一弹体但染红橙）
 	var missile_tex: Texture2D = _load_projectile_texture("ult_nuke_player")
 	var missile_tint: Color = Color(0.7, 0.85, 1.0) if owner == Owner.PLAYER else Color(1.0, 0.4, 0.2)
@@ -556,7 +544,8 @@ static func _fire_nuclear_bombardment(owner: Owner, params: Dictionary) -> void:
 		var captured_burst_tint = burst_tint
 		# 每发导弹错开 0.06s（多点核爆=多枚导弹依次发射，齐射感）
 		var launch_delay: float = float(targets.find(e)) * 0.06
-		var captured_launch = launch_pos
+		# 记录7#13: 天降——每枚从目标正上方 560px 高空垂落
+		var captured_launch: Vector2 = Vector2(epos.x, epos.y - 560.0)
 		var captured_missile_tex = missile_tex
 		var captured_missile_tint = missile_tint
 		var captured_missile_trail = missile_trail
@@ -570,7 +559,8 @@ static func _fire_nuclear_bombardment(owner: Owner, params: Dictionary) -> void:
 				return
 			# v26.31: ult_nuke_player 是横贴图（弹头 +X），nose_offset 传 0——默认 -PI/2
 			# 是竖贴图（弹头 +Y）家族约定，套在横弹体上会全程弹头朝后飞（尾焰朝前）。
-			VfxImpactFactory.spawn_ultimate_projectile(_battlefield, captured_launch, captured_pos, captured_missile_tex, "high_arc", 100.0, captured_missile_tint, captured_missile_trail, mark_delay,
+			# 记录7#13: high_arc→vertical 天降弹道（配合正上方发射点）。
+			VfxImpactFactory.spawn_ultimate_projectile(_battlefield, captured_launch, captured_pos, captured_missile_tex, "vertical", 100.0, captured_missile_tint, captured_missile_trail, mark_delay,
 				func(land_pos: Vector2):
 					if _battlefield == null or not is_instance_valid(_battlefield):
 						return

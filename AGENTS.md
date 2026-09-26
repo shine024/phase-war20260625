@@ -516,6 +516,13 @@ IntelEvolutionManager → IntelManual, IntelEvolutionBranches
   skip_activated、afk_watch）；试玩构建靠 export custom_features="pw_playtest" 解锁
   P0-4 写盘门控并**额外落 exe 旁 playtest_metrics.json**——正式 release（无该 feature）
   仍静音。godot_ai game_helper 已补 release 自守卫；两个调试桥在发行包内零开销。
+- **试玩构建全解锁补库（v6.26.8 扩充）**：pw_playtest 运行期 GameConfig 全解锁档
+  （feature_gates/power_cap 关、debug_no_deploy_limits/debug_grant_all_blueprints 开、
+  mod_consumable 关）之外，`save_manager._grant_debug_test_stock`（新档/读档尾部双路径
+  幂等，正式构建首行早退）补齐：全改造/进化蓝图+全符文（既有）+ 商店保底——FSM
+  `debug_ensure_shop_test_stock` 功勋抬 99999/势力、贡献满 10000（直写字典，不走
+  add_faction_reputation 防 1:1 镜像/升级信号）+ 四资源保底 99999（只抬不降，花掉重进
+  补回）。改商店货币/门槛语义时保持该函数早退链；冒烟 `tests/_tmp_v624_shop_test_smoke.gd`。
 - **演出层（侦察后实做一项）**：战场环境音=AudioManager ambient 通道
   （battle_started 起 `ambient_battle_wind` 30s 无缝循环 / battle_ended 淡出；
   `play_ambient`/`stop_ambient` 独立于 BGM/SFX；FF 推演不停）。相位师战前演出/
@@ -695,7 +702,7 @@ IntelEvolutionManager → IntelManual, IntelEvolutionBranches
 - **唯一收口 `scripts/ui/mod_icon_tile.gd`（`ModIconTile.make(mod_data, size, glow_mode=0, dim=false)`）**：底座样式复用 `CardFrameUi.tile_rarity_style`（符文/卡牌瓷砖同一套稀有度递进发光语言：common 无光中性 → mythic 2px 强光），内嵌真图标（边距 size/8 钳 2-5），无图回退稀有度色首字母。tile 及子控件 mouse_filter 全 IGNORE（嵌行按钮防吃点击，v26.16 同律）。⚠️ 返回值内 StyleBox 是缓存共享体勿就地改，改前 duplicate；**tooltip 别挂 tile（IGNORE 收不到鼠标永不触发），挂宿主行按钮**。
 - **接入点**：改造库列表行 26px（modification_panel）+ 已装列表行 20px（dim=not enabled）+ 详情操作台 %DeckIcon 44px 激活档（DeckIconTex 首显真图标，无图回退原字母框）+ 制造中心图纸行 26px（evolution_panel `_make_mod_thumb` 已收口为一行）+ 卡情报 ModsBlock 九槽已装态（card_info_panel，tile_rarity_style duplicate 直角保留 + btn.icon 18px）。背包图纸格已有 tile_rarity_style chrome（resource_slot_item）未动。
 - **视觉探针** `tests/_tmp_modicon_probe.tscn`（独立窗口跑一次自存图自退出 → `.godot/agent_tools/modicon_probe.png`，SubViewport 直采免 DPI 缩放）。验证：ui_p1_validation ALL PASS（CHANGED_SCRIPTS 已加 mod_icon_tile.gd）。
-- **未动（防重复劳动）**：图标贴图本体零重生成（98 张；若仍不够"亮眼"，后续可选项=传说/神话档走 STYLE_BIBLE 6.4 徽章管线出样张，审美裁决归用户）；tile_rarity_style 共享样式未改（符文/卡面零波及）。
+- **未动（防重复劳动）**：图标贴图本体零重生成（98 张；若仍不够"亮眼"，后续可选项=传说/神话档徽章管线——**v6.24 已试点上线 6 位**（3 传说门槛件+3 神话全量；`tools/_tmp_badge_deploy_lm.py` 反写实 2 掷+六项审计择优+徽章化兜底；原图备份 `F:\godot fair duet\_art_backup\modicon_badge_20260924\`；其余 243 位仍是 v37.2 纹章风格，扩齐与否待用户裁决））；tile_rarity_style 共享样式未改（符文/卡面零波及）。
 
 ## v37.2/v37.3 改造图标全量重生成部署 + 战法件贴花批（2026-09-18）
 
@@ -1388,4 +1395,52 @@ GdUnit 对 batch 内部行为覆盖薄——合并的回归风险 > 重复代码
 - **势力事件**：6 模板=协作两难抉择（救援/遗迹/潮汐/设施/维护/情报共享），奖励=贡献+物资；`_apply_reputation_changes` 只对被支持方发正贡献。BONUS_EVENTS/loyalty/event_history/faction_bonus_duration 全链已删，save/load 对旧档死键静默忽略。
 - **商店**：双轨已收口（CompanyStore 纳米主卡列表删，store_panel 三区=符文功勋轨/功勋特购/情报道具纳米轨）；新增组织特供图纸包 `mod_blueprint_pack_<fid>`（功勋定价，发放按 FACTION_MOD_BIAS 出对口图纸入 IntelItemBag）。
 - **回归锁**：`tests/unit/systems/test_faction_contribution_rework.gd`（死符号清零/新目标接线/僵尸任务清零/生成器契约/旧档死键读档）+ `tests/unit/managers/test_achievement_company_rep.gd`（已改锁 merit 契约）+ `tests/unit/systems/test_tutorial_save_fresh.gd`（教程保存保真）+ `tests/_tmp_faction_b1_smoke.gd`（--script 冒烟 56 断言）。
-- **⚠️ v6.22.4 保存系统两坑（2026-09-23 实证）**：①`SaveManager._collect_noncritical_save_data` 有 **10s 节流缓存**（`_noncritical_save_cache`）——缓存窗内的保存整段复用旧值；"进度型小状态"（如教程步）进这个缓存会回退玩家进度（已把 TPM 移出缓存直采）。**新加非关键段存档段前先想清楚它是不是进度型**。②GDScript `Array.has()` 跨数值类型**严格比较**（`[1.0].has(1)`=false）——JSON 往返把存档数字全 float 化，int 去重/查含必失配；读档侧一律 `int()` 规范化+去重。另：跨行正则补丁里 repl 含 `?` 会被 re 转义成 CR+`?` 字节——多处代码手术用行级插入更稳。
+- **⚠️ v6.22.4 保存系统两坑（2026-09-23 实证）**：①`SaveManager._collect_noncritical_save_data` 有 **10s 节流缓存**（`_noncritical_save_cache`）——缓存窗内的保存整段复用旧值；"进度型小状态"（如教程步）进这个缓存会回退玩家进度（已把 TPM 移出缓存直采）。**新加非关键段存档段前先想清楚它是不是进度型**。②GDScript `Array.has()` 跨数值类型**严格比较**（`[1.0].has(1)`=false）——JSON 往返把存档数字全 float 化，int 去重/查含必失配；读档侧一律 `int()` 规范化+去重。另：跨行正则补丁里 repl 含 `
+?` 会被 re 转义成 CR+`?` 字节——多处代码手术用行级插入更稳。
+
+## v6.24 记录4五条批：功勋分账 + 制造授权逐时代链 + 底栏硬约束 + 卡槽信息条（2026-09-23，详见 CHANGELOG v6.24）
+
+**改功勋/制造授权/相位仪栏宽度/卡槽渲染前必读本节。** 背景=build/记录4.txt 五条实机反馈。
+
+- **功勋按势力分账（推翻 v30 R2b 全局单池）**：真身=`FactionSystemManager.merit_by_faction`（faction_id→int）。镜像/消费/显示全走分账：贡献镜像只进本势力账；商店购买与符文直购查扣**本势力**账（跨势力不可花）；成就 `add_merit(amt)` 无上下文=**均摊全部势力（总量守恒）**。API 全部带可选 `faction_id:=""`（空=合计/兼容旧调用）；`merit_points` 变量已删（外部勿再引用）。存档新键 `faction_merit_by_faction`（旧单值键 `faction_merit` 读档均分迁移、写侧兼容保留）。商店余额行随公司 tab 切换刷新（`_refresh_balance` 在 pressed 链上）。
+- **制造授权逐时代链**：一战 `pms_cw_2` 已浅化（tier3/前置 cmd_2，链 5 点）；二战~近未来=`pms_evo_era1..4`（指挥系 tier 5/7/9/11，累计 6/7/9/11 点）；`pms_cw_4` 全时代兜底不变。**新增时代先在这条链上加授权节点**（unlocks type="evolution" era=N）；`is_evolution_era_unlocked` 消费零改动。manufacture_manager 的 era0 豁免（开局唯一自造渠道）是红线勿动。
+- **相位仪栏宽度硬约束（超屏已复现根修）**：「大字号」csf=1.25 使逻辑视口缩到 1024，`_fit_slots_to_bar` 按 hbox 实测宽算格子存在**收缩方向棘轮**（栏体被旧 min 撑宽→hbox 虚大→格子永不回落），实测栏体 1226 出屏 218px——现 fit 尾部以 **viewport−32 真值**钳制槽宽打破循环；改宽度逻辑必须保留该钳制与 `NOTIFICATION_VISIBILITY_CHANGED` 显示重算钩子，勿回退"只信 hbox 实测"。复现/回归探针=`tests/_tmp_bar4_probe.tscn`（含大字号档）。主场景背包态 chrome 隐藏路径教训：v38.2 reparent 后旧路径恒 null，`_BACKPACK_CHROME_PATHS` 已用成员引用兜底（新加 chrome 隐藏项优先成员引用）。
+- **卡槽信息条**：槽位底部「Lv.N 名称」条（`_sync_slot_info_strip`，SlotIconClip 内 BOTTOM_WIDE+四边内缩 左右6/底8/高16）——换卡面 chrome 时注意 chrome 描边带会盖住贴边 UI（探针实测三轮教训）；非卡槽入口 `_clear_slot_info_strip` 清理勿删。
+- **美术审计结论（2026-09-23 全量）**
+- **美术缺口盘点（2026-09-24 追加）**：运行时资产零缺口复核同前；真缺口=①仪表盘 `_thumb128` 曾缺 25 张（已补齐导入）；②**分帧动画已全量补齐（2026-09-24）**：终版口径 233 战斗可视 id（UCT 全卡∪manifest 六段）233/233 覆盖，`tools/_tmp_anim_fill_80.py` 程序化合成（v5 范式）80 个 + `--bake-existing` 描边批烘焙；cold_boss_mig/fut_boss_nexus 走 BossIdleAnim 单帧系统不算缺。覆盖口径审计工具=`tests/_tmp_anim_coverage.gd`（必须走 UnitFrameAnim._resolve_key 真身四步链，按目录名直比会严重低估）。ui_asset_loader 6 处 v7.x"待生成"标记过时已改写勿再当缺口排查。
+：185/185 卡专属图、160 动画零缺陷、符文 54/54、mod 图标 249/249——**无待补资产**；`fe_aether_*` 白底告警=白色机体本体误报勿再查。审计口=`tools/_tmp_visual_audit.py`（质量）+`tests/_tmp_art_coverage_audit.gd`（覆盖）+`tests/_tmp_bar4_probe.tscn`/`_tmp_bar4_main_probe.tscn`（底栏几何）。
+- **全量 UI 视觉体检（追加）**：几何体检= `tests/_tmp_ui_audit_probe.tscn`（跑前已加窗口/缩放归一，勿删）；动态态巡检= `tests/_tmp_ui_states_probe.tscn`（main 16 overlay/战斗两态/胜败结算/基地 14 工位/地图弹窗/标题制作人员，40 屏截图 `.godot/agent_tools/ui_states/`）。**新面板/新状态入库复跑这两件+目检截图**。真修复：结算底栏主键最先 add_child（宽主键态曾盖住「返回移动基地」），回归锁层序断言已同步。续修：player_master tscn 虚构占位文本已删 + refresh 相位场行重复 append 缩进 bug 已修 + 三处装饰控件（intel_ui_kit rule/TitleSep/GridPattern）STOP→IGNORE，复跑 ui_audit **total=0 fail=0**；player_master 空态实为巡检走了通用 _open_overlay 未调 open_panel 的伪影（真实入口始终先 refresh），巡检此类面板必须走专用入口。
+- **跑法勘误**：`tests/manufacture_smoke.gd` 是 `extends Node` 场景脚本，须跑 `res://tests/manufacture_smoke.tscn`；`--script` 直跑 .gd 会因直引 autoload 标识符编译失败（非缺陷）。
+
+## v6.25 记录5二十条批：贡献统一命名 + 时代装配单边化 + 世界观情报链（2026-09-24，详见 CHANGELOG v6.25）
+
+**改势力 UI 文案/改造时代判定/lore 解锁/情报舱分区/底栏揭示门前必读本节。** 背景=build/记录5.txt 二十条实机反馈（16 修+2 答复+2 挂起）。
+
+- **「声望」是废词，一律写「贡献」**：贡献=只升不降的等级进度轴，功勋=可消费货币（v6.24 已分账）。玩家可见文案两层语义不得再混用/回退；新 UI 文案出现"声望"=bug。涉及 leaderboard 三件/faction_row/achievement/backpack 系（记录5#6 全量替换）。
+- **改造时代判定是单边**：`ModificationRegistry.is_mod_era_compatible` 只拒「band 上限 < 卡时代」的旧改造；未来改造装旧卡**允许**（用户拍板：给一战士兵配未来瞄准镜可以）。勿回退对称区间判定；card_resource 守卫文案与该语义绑定。
+- **lore 页面解锁三链**（缺一=世界观情报恒空）：①intel_reveal_events tier-3 rewards 的 `lore_page` 类型 ②faction_shop 购买调 `lore_manager.grant_random_lore()`（方法勿删）③后续新情报事件记得可挂 lore_page 奖励。
+- **Dictionary.get 键存在但值 null 返回 null 非 default**：符文 `<null>` 根因（记录5#9）。读字典字符串字段用 `is String` 判型兜底，勿裸 `str(dict.get(k, ""))`。
+- **底栏揭示门**：内嵌仪表栏 `slot_reveal_gate` meta → slot_section 起隐 0.5s（等 `_fit_slots_to_bar` 落位）→ 0.12s 淡入。修宽度 fit 逻辑时保留该门，删掉=回退"格子先窄后跳变"。
+- **情报舱分区折叠**：`intelligence_hub_panel._attach_section_fold(header, bodies)` 通用 helper，新增常驻分区接入它，勿让说明性内容重新变成不可折叠常驻。
+- **挂起待实机**：记录5#15（卡仓能量/次数/等级——代码层 v6.24#4 已全有，疑旧版观感）、#16（改造格子视觉逐格目验）。下轮实机验收优先核这两条。
+
+## v6.26 记录7二十四条批：格子拟合/情报面板链/动画朝向断根（2026-09-24，详见 CHANGELOG v6.26）
+
+**改底栏格子拟合/情报面板打开链/toast 锚点/单位动画资产/减伤帽前必读本节。**
+
+- **相位仪格子拟合链**：`bottom_instrument_bar` hbox `resized`→`_deferred_refit_slots` 直连（宽度一变立即补拟合）；揭示门=`_fit_count>=2`（首次 fit 必吃暂定窄宽，`hbox.size.x>1` 恒真防不住）；硬钳只在 `size.x >= viewport-64` 时生效（宿主未定宽不钳，防 40px 地板）。truck_base 内嵌 bar 的贴底全宽锚定在 `add_child` **之前**设（首帧 fit 吃全宽）。
+- **基地情报面板**：独立场景没有 `/root/Main/InfoPanelLayer/CardInfoPanel`——`NodeFinder.get_card_info_panel` 有 `"card_info_panel"` 分组兜底，`truck_base._ensure_base_card_info_panel` 自挂实例入组。绿槽 tooltip 的 `deploy_tooltip_base` meta 在 `_update_slot_panel` 重设 tooltip 时必须 remove_meta 失效（否则换卡后悬浮恒旧卡）。
+- **真实秒计时器倍速铁律**：`_process(delta)` 的 delta 随 `Engine.time_scale` 放大——一切"真实秒"语义计时（长按 0.35s、冷却、悬浮延迟）必须 `delta / maxf(Engine.time_scale, 0.001)` 归一，否则倍速下语义失真（记录7#22 倍速点不开情报卡根因）。
+- **toast 战斗态锚点**：`toast_manager` 按 battle_started/ended 切换——战斗中顶中 y150，非战斗右上 208。改 toast 位置勿回底部居中旧坐标，也别拆锚点切换。
+- **敌方情报掩码双消费方**：`card_info_panel` 与 `unit_hover_info`（悬浮窗）同走 v27.15 三档可见性——新增悬浮类 UI 显示敌数值必须过 `_enemy_stat_visibility_level` 掩码，防"卡片???"悬浮泄密。
+- **单位动画朝向双锁（历次"一会左一会右"断根）**：根因是资产不是代码——朝向完全隐含在卡图/雪碧图帧/attack_f0 三套独立资产里。纪律：①`test_attack_f0_consistency.gd` 现有**朝向断言**（左右质量偏侧死区 8%，与卡图反号 FAIL）+ 原有指标断言，新姿态资产先过双锁；②`tools/_tmp_record7_facing_fix.py` 翻正工具（幂等备份）+ `normalize_attack_f0.py` 重对齐；③精英/首领 BossIdleAnim 失败一律放行 UnitFrameAnim 兜底（`card_grid_unit_visuals`，勿再限 xeno）；④雪碧图拼条前逐帧朝向校验尚未入 `deploy_unit_anims.py`（挂起），新批次生成后先跑朝向锁。
+- **地图已揭示集**：`world_map._s_revealed_levels`（static，进程内）——建节点/overlay 可见集=窗口 ∪ 已揭示。新图层过滤照此口径，勿只按 MAP_WINDOW_RADIUS。
+- **减伤帽 0.60**：`damage_reduction` 全部写入点（8 处，原 0.75/0.8/0.95 混杂）统一 =实战结算帽 `card_grid_damage.DAMAGE_REDUCTION_CAP=0.60`。新增减伤来源写帽一律 0.60，防面板虚标。
+- **自动部署周期重收**：`auto_deploy_controller.process()` 队列空时每 2.5s（`IDLE_RECOLLECT_SEC`）重收一轮——队列清空不再是终态（能量放弃/补阵冷却后自愈，勿再靠"单位死亡才重收"）。
+- **核武轰炸=天降**：`_fire_nuclear_bombardment` 走 `spawn_ultimate_projectile` "vertical" 档+目标正上方 560px 起点（用户拍板），勿改回友军均值发射井。
+- **挂起待裁决（v6.26.1 已落地三项，见下）**：④房间升级孤儿数据链（工位升级入口 or 清死代码）仍待拍板。
+- **护盾视觉统一真身（v6.26.1 用户裁决）**：常驻护盾（FortShieldAura shield 模式）=**矢量穹顶弧基座+六边形阵列（ADD 子节点 ShieldHexes）+player_shield.png 贴图呼吸罩（ShieldTexDome）复合语言**——即敌方灵能盾（矢量弧）与巨型能量罩（六边形+爆罩）的组合；mega_shield 与敌方灵能盾本体不动。改护盾视觉只动 `fort_shield_aura._draw_shield/_sync_shield_fx`，勿再分叉出第四套。
+- **堡垒环已贴图化（v6.26.1 用户裁决）**：`assets/effects/aura/fort_aura_ring.png`（`tools/_tmp_record7_gen_aura_ring.py` 可重跑，中性冷白 modulate 染阵营色），`_draw_fort` 贴图主体 3.05×radius+受击内环；缺失回退旧矢量环。
+- **卡图朝向离群已翻正（v6.26.1 目检裁决）**：15 族中真错 9 族 18 张已镜像（工具 `tools/_tmp_record7_cardflip.py`，备份 `.godot/art_backup_cardflip_20260924/`）；假阳性 6 族（骑兵/雷达车/xeno×4）不动——质量判据对骑乘/正面构图不灵敏，卡图朝向审计结论必须目检复核后再动。
+- **缩略图刷新铁律（v6.26.2）**：assets/card_icons 任何原图改动（翻正/agnes 重生成/抠底/白底修复）之后，必须刷新缩略图两棵树——`python tools/gen_ui_thumbs.py --force --only cards`（_thumb256，战场/战场单位链）+ 384 树重采样（_thumb384，**背包列表链**，暂无工具用 PIL LANCZOS 循环）——否则界面永远显示旧图（"卡图半截/白底/朝向没变"类反馈先查缩略图，512 原图常常早是对的）。
+- **资产审计沉淀**：`tools/_tmp_record7_card_audit.py`（卡图白底/截断/朝向离群三检）；白底泛洪清除工艺见 CHANGELOG（相位师立绘 4 张已清，备份 `.godot/art_backup_whitebg_20260924/`）。相位师立绘是满幅胸像设计（自带背景），勿当"未抠图"再报。

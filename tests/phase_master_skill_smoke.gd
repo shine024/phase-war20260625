@@ -14,6 +14,7 @@ func _init() -> void:
 	all_pass = _test_capstone_layer() and all_pass
 	all_pass = _test_experience_config() and all_pass
 	all_pass = _test_skill_manager_api() and all_pass
+	all_pass = _test_era_authorization_chain() and all_pass
 	print("\n=== 结果: %s ===" % ("ALL PASS" if all_pass else "FAILED"))
 	quit(0 if all_pass else 1)
 
@@ -145,6 +146,50 @@ func _test_skill_manager_api() -> bool:
 	var fx: Dictionary = fp4.get("effects", {})
 	ok = ok and _assert_true(fx.has("stat_bonus"), "fp_4 有 stat_bonus")
 	ok = ok and _assert_true(float(fx.stat_bonus.get("atk_light", 0)) > 0, "fp_4 atk_light>0")
+	return ok
+
+## 记录4#2：逐时代制造授权链——era0-4 各有专属节点 + cw_4 全时代兜底，
+## 一战授权浅化（tier3 / 前置 cmd_2），链累计点数在相位场早期可达。
+func _test_era_authorization_chain() -> bool:
+	print("\n[5] 逐时代制造授权链（记录4#2）")
+	var ok: bool = true
+	# era0-4 每个时代恰有一个专属授权节点
+	var era_nodes: Dictionary = {}
+	for b in SkillTree.get_all_branches():
+		for s in SkillTree.get_skills_for_branch(b):
+			for u in s.get("unlocks", []):
+				if u is Dictionary and u.get("type", "") == "evolution":
+					var e: int = int(u.get("era", -99))
+					if e >= 0:
+						era_nodes[e] = String(s.get("id", ""))
+	for e in range(5):
+		var nid: String = era_nodes.get(e, "")
+		ok = ok and _assert_false(nid.is_empty(), "era%d 有专属授权节点" % e)
+	var expected: Array = ["pms_cw_2", "pms_evo_era1", "pms_evo_era2", "pms_evo_era3", "pms_evo_era4"]
+	for e in range(5):
+		ok = ok and _assert_eq(era_nodes.get(e, ""), expected[e], "era%d 授权节点=%s" % [e, expected[e]])
+	# 一战授权浅化：tier3 / 前置 cmd_2（原 tier5 / cmd_4）
+	var cw2: Dictionary = SkillTree.get_skill("pms_cw_2")
+	ok = ok and _assert_eq(int(cw2.get("tier", -1)), 3, "cw_2 tier=3")
+	ok = ok and _assert_true("pms_cmd_2" in cw2.get("requires", []), "cw_2 前置含 cmd_2")
+	# 链式前置：era N 节点要求 era N-1 节点
+	for i in range(1, 5):
+		var node: Dictionary = SkillTree.get_skill(expected[i])
+		ok = ok and _assert_true(expected[i - 1] in node.get("requires", []), "%s 前置含 %s" % [expected[i], expected[i - 1]])
+	# 全时代兜底仍在：cw_4 era=-1
+	var all_era_found: bool = false
+	for u in SkillTree.get_skill("pms_cw_4").get("unlocks", []):
+		if u is Dictionary and u.get("type", "") == "evolution" and int(u.get("era", -99)) == -1:
+			all_era_found = true
+	ok = ok and _assert_true(all_era_found, "cw_4 保留全时代授权")
+	# 可达性：最短链（cmd_0→cmd_1a→cmd_2→cw_2→era1→era2→era3→era4）
+	# 累计 11 点须在相位场 Lv7（12 点）内付得起
+	var chain_cost: int = 0
+	for nid in ["pms_cmd_0", "pms_cmd_1a", "pms_cmd_2", "pms_cw_2", "pms_evo_era1", "pms_evo_era2", "pms_evo_era3", "pms_evo_era4"]:
+		chain_cost += int(SkillTree.get_skill(nid).get("cost", 99))
+	ok = ok and _assert_eq(chain_cost, 11, "授权链最短累计点数=11（实际%d）" % chain_cost)
+	ok = ok and _assert_true(SkillTree.max_skill_points_at_phase_field_level(7) >= chain_cost,
+		"相位场 Lv7 点数付得起全链")
 	return ok
 
 # ─────────────────────────────────────────────

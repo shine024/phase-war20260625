@@ -50,9 +50,30 @@ const EXTENSION_NODES: Dictionary = {
 		 "unlocks": [{"type": "unit_mechanism", "id": "blitz_pierce"}],
 		 "effects": {}},
 		# tier 5 并列：形态进化（v9 归位自概念武器分支；军团养成归指挥系）
-		{"id": "pms_cw_2", "name": "制造授权", "desc": "解锁一战时代的制造配方（情报驱动）",
-		 "branch": BRANCH_COMMAND, "tier": 5, "cost": 1, "requires": ["pms_cmd_4"],
+		# 记录4#2（用户拍板）：一战授权从 tier 5 浅化到 tier 3、前置从 cmd_4 降为 cmd_2
+		# （制造 2 关即解锁，授权不得成为瓶颈）；全链 5 点（相位场 Lv4 可达，原 10 点/Lv6）。
+		{"id": "pms_cw_2", "name": "制造授权·一战", "desc": "解锁一战时代的制造配方（情报驱动）",
+		 "branch": BRANCH_COMMAND, "tier": 3, "cost": 1, "requires": ["pms_cmd_2"],
 		 "unlocks": [{"type": "evolution", "era": 0}],
+		 "effects": {}},
+		# 记录4#2：二战/冷战/现代/近未来逐时代授权链（原仅 cw_4 tier10 全时代一档，
+		# 二战起授权断档）。时代带：二战=通关20/冷战=40/现代=60/近未来=80，
+		# 节点 tier 按 +2 递进，累计点数 6/7/9/11（相位场 Lv5-7 全可达）。
+		{"id": "pms_evo_era1", "name": "制造授权·二战", "desc": "解锁二战时代的制造配方（情报驱动）",
+		 "branch": BRANCH_COMMAND, "tier": 5, "cost": 1, "requires": ["pms_cw_2"],
+		 "unlocks": [{"type": "evolution", "era": 1}],
+		 "effects": {}},
+		{"id": "pms_evo_era2", "name": "制造授权·冷战", "desc": "解锁冷战时代的制造配方（情报驱动）",
+		 "branch": BRANCH_COMMAND, "tier": 7, "cost": 1, "requires": ["pms_evo_era1"],
+		 "unlocks": [{"type": "evolution", "era": 2}],
+		 "effects": {}},
+		{"id": "pms_evo_era3", "name": "制造授权·现代", "desc": "解锁现代时代的制造配方（情报驱动）",
+		 "branch": BRANCH_COMMAND, "tier": 9, "cost": 2, "requires": ["pms_evo_era2"],
+		 "unlocks": [{"type": "evolution", "era": 3}],
+		 "effects": {}},
+		{"id": "pms_evo_era4", "name": "制造授权·近未来", "desc": "解锁近未来时代的制造配方（情报驱动）",
+		 "branch": BRANCH_COMMAND, "tier": 11, "cost": 2, "requires": ["pms_evo_era3"],
+		 "unlocks": [{"type": "evolution", "era": 4}],
 		 "effects": {}},
 		# tier 6：坚壁清野（v8.5：原 engineer_build 空转——维修/布雷/净化均未实装；改数值加成）
 		{"id": "pms_cmd_6", "name": "坚壁清野", "desc": "所有单位三维防御 +10%，暴击抗性 +10%",

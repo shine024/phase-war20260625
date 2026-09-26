@@ -200,19 +200,19 @@ const PLAYER_ICON_OVERRIDE: Dictionary = {
 	"platform_ww1_light": "vis_player_004",     # 一战轻型 → 骑兵斥候（同期轻侦察）
 	"platform_ww1_medium": "vis_player_001",    # 一战中型 → 罗尔斯装甲车（同期轮式装甲）
 	"platform_ww1_fort": "vis_player_003",      # 一战炮台 → 77mm野战炮（火炮阵地）
-	"platform_ww1_radar": "vis_player_082",     # 一战雷达 ★无源ID映射，待生成
+	"platform_ww1_radar": "vis_player_082",     # 一战雷达 （v7.x 标记待生成，后批已生成入库）
 	"platform_ww1_medic": "vis_player_005",     # 一战医疗 → 工兵班/救护车
 	"platform_ww2_light": "vis_player_009",     # 二战轻型 → 巴祖卡组
 	"platform_ww2_medium": "vis_player_007",    # 二战中型 → M4谢尔曼
 	"platform_ww2_heavy": "vis_player_008",     # 二战重型 → 虎式坦克
 	"platform_ww2_raider": "vis_player_006",    # 二战突袭 → M18地狱猫
-	"platform_ww2_radar": "vis_player_083",     # 二战雷达 ★无源ID映射，待生成
-	"platform_ww2_siege": "vis_player_084",     # 二战攻城 ★无源ID映射，待生成
+	"platform_ww2_radar": "vis_player_083",     # 二战雷达 （v7.x 标记待生成，后批已生成入库）
+	"platform_ww2_siege": "vis_player_084",     # 二战攻城 （v7.x 标记待生成，后批已生成入库）
 	"platform_ww2_fortress": "vis_player_011",  # 二战要塞 → 81mm迫击炮（工事）
-	"platform_cold_light": "vis_player_085",    # 冷战轻型 ★无源ID映射，待生成
+	"platform_cold_light": "vis_player_085",    # 冷战轻型 （v7.x 标记待生成，后批已生成入库）
 	"platform_cold_medium": "vis_player_014",   # 冷战中型 → T-55坦克
 	"platform_cold_ifv": "vis_player_013",      # 冷战步战车 → BTR-60
-	"platform_cold_scout": "vis_player_086",    # 冷战侦察 ★无源ID映射，待生成
+	"platform_cold_scout": "vis_player_086",    # 冷战侦察 （v7.x 标记待生成，后批已生成入库）
 	"platform_cold_radar": "vis_player_017",    # 冷战雷达 → ZSU-23-4（电子设备）
 	"platform_cold_carrier": "vis_player_016",  # 冷战运输 → M113装甲车
 	"platform_modern_light": "vis_player_018",  # 现代轻型 → 皮卡武装
@@ -223,9 +223,9 @@ const PLAYER_ICON_OVERRIDE: Dictionary = {
 	"platform_modern_guard_heavy": "vis_player_023", # 现代重型卫戍 → M1A2 SEP
 	"platform_future_light": "vis_player_024",  # 近未来轻型 → 侦察机甲
 	"platform_future_medium": "vis_player_025", # 近未来中型 → 悬浮坦克
-	"platform_future_radar": "vis_player_087",  # 近未来雷达 ★无源ID映射，待生成
+	"platform_future_radar": "vis_player_087",  # 近未来雷达 （v7.x 标记待生成，后批已生成入库）
 	"platform_future_heavy": "vis_player_026",  # 近未来重型 → 光棱坦克
-	# ── v7.x 守护者成就卡 110~114（5张，achievement_exclusive 玩家终极奖励，全部待生成）
+	# ── v7.x 守护者成就卡 110~114（5张，achievement_exclusive 玩家终极奖励；v7.x 标记待生成，后批已生成入库）
 	"guardian_ww1_ironclad": "vis_player_110",     # 铁壁守护者·一战
 	"guardian_ww2_blitzkrieg": "vis_player_111",   # 闪电守护者·二战
 	"guardian_cold_thunder": "vis_player_112",     # 雷霆守护者·冷战

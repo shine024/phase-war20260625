@@ -204,14 +204,15 @@ func _update_faction_detail() -> void:
 	rep_label.tooltip_text = "贡献是本势力的等级轴（只升不降，驱动等级与权限）；\n功勋是消费货币（商店花销），两轴独立互不占用"
 	faction_detail.add_child(rep_label)
 
-	# v6.23c: 功勋余额常显（主诉⑬"商店和势力表看不到自己数值"）——全局货币，非本势力专属
+	# v6.23c: 功勋余额常显（主诉⑬"商店和势力表看不到自己数值"）
+	# 记录4#3：功勋按势力分账——此处显示当前查看势力的功勋账。
 	var merit_label = Label.new()
 	var merit_now: int = 0
 	var fsm_node: Node = get_node_or_null("/root/FactionSystemManager")
 	if fsm_node != null and fsm_node.has_method("get_merit_points"):
-		merit_now = int(fsm_node.get_merit_points())
-	merit_label.text = "功勋余额：%d" % merit_now
-	merit_label.tooltip_text = "功勋由战斗胜利/攻克关卡/任务/势力事件获得，商店消费用它"
+		merit_now = int(fsm_node.get_merit_points(String(selected_faction_id)))
+	merit_label.text = "本势力功勋：%d" % merit_now
+	merit_label.tooltip_text = "功勋按势力分账：本势力任务/事件获得的功勋只在本势力商店与符文区花用，不占用贡献等级"
 	faction_detail.add_child(merit_label)
 	
 	# 升级进度条
@@ -232,11 +233,27 @@ func _update_faction_detail() -> void:
 		max_label.text = "[color=yellow]已达最高等级[/color]"
 		faction_detail.add_child(max_label)
 	
-	# 历史辖区（v6.22 定案5：纯风味统计，原"控制关卡数"）
-	var historical_levels = faction_info.get("historical_levels", [])
-	var levels_label = Label.new()
-	levels_label.text = "历史辖区：%d 关" % int(historical_levels.size())
-	faction_detail.add_child(levels_label)
+	# 记录5#12：原"历史辖区：N 关"（纯风味统计，用户实机反馈"和现在版本没意思"）——
+	# 改为技术特长速览：从势力技能树取 tier 最低的 3 条，展示该公司的看家科技能力。
+	# （这里是公司介绍向速览，与玩家侧技能解锁面板分工不同，不判断解锁态）
+	var tech_box = VBoxContainer.new()
+	tech_box.add_theme_constant_override("separation", 2)
+	var tech_title = Label.new()
+	tech_title.text = "技术特长"
+	tech_title.add_theme_font_size_override("font_size", DT.FONT_SIZE_BODY)
+	tech_title.add_theme_color_override("font_color", DT.COLOR_VIOLET)
+	tech_box.add_child(tech_title)
+	var faction_skills = FactionSkillTree.get_skills_for_faction(String(selected_faction_id))
+	faction_skills.sort_custom(func(a, b): return int(a.get("tier", 9)) < int(b.get("tier", 9)))
+	for _si in range(mini(3, faction_skills.size())):
+		var sk: Dictionary = faction_skills[_si]
+		var tech_label = Label.new()
+		tech_label.text = "· %s：%s" % [sk.get("name", ""), sk.get("desc", "")]
+		tech_label.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
+		tech_label.add_theme_color_override("font_color", DT.COLOR_TEXT_DIM)
+		tech_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		tech_box.add_child(tech_label)
+	faction_detail.add_child(tech_box)
 	
 	# 显示商店库存预览
 	var store_label = Label.new()
@@ -298,7 +315,8 @@ func _append_active_faction_event(faction_mgr: Node) -> void:
 	var vb := VBoxContainer.new()
 	panel.add_child(vb)
 	var title_lbl := Label.new()
-	title_lbl.text = "✦ 势力事件（等待你的抉择）"
+	# 记录5#11：原"等待你的抉择"被误读为不可做的任务挂件——把操作方式直接写进标题
+	title_lbl.text = "✦ 势力事件（点击下方按钮支援一方，立即结算）"
 	title_lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_MEDIUM)
 	title_lbl.add_theme_color_override("font_color", DT.COLOR_GOLD)
 	vb.add_child(title_lbl)

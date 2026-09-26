@@ -41,5 +41,5 @@ func setup(rank: int, data: Dictionary) -> void:
 		_ter_label.text = "- / -"
 		_ter_label.add_theme_color_override("font_color", Color(0.5, 0.5, 0.5, 1))
 
-	# 声望
+	# 贡献（记录5#6：旧词「声望」统一为「贡献」——功勋是货币轴，不在此列）
 	_rep_label.text = str(data.get("reputation", 0))

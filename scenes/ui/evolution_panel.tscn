@@ -332,9 +332,9 @@ size_flags_horizontal = 3
 size_flags_vertical = 3
 theme_override_constants/separation = 0
 [node name="PathHead" type="PanelContainer" parent="VBoxContainer/BodyHBox/MiddlePanel/MiddleVBox"]
-custom_minimum_size = Vector2(0, 32)
+custom_minimum_size = Vector2(320, 32)
 layout_mode = 2
-size_flags_horizontal = 3
+size_flags_horizontal = 4
 theme_override_styles/panel = SubResource("StyleBoxFlat_4")
 [node name="PathHeadHBox" type="HBoxContainer" parent="VBoxContainer/BodyHBox/MiddlePanel/MiddleVBox/PathHead"]
 layout_mode = 2

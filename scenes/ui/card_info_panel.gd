@@ -2569,6 +2569,22 @@ func _show_player_phase_driver(unit: Node) -> void:
 				lines.append("已解锁卡片技能：")
 				for sl in skill_lines:
 					lines.append(sl)
+		# ── 记录7#24: 相位师遭遇情报（与情报舱「相位师情报」分区同源数据）──
+		var gm: Node = get_node_or_null("/root/GameManager")
+		if gm != null and gm.has_method("get_phase_master_encounter_status"):
+			var enc: Dictionary = gm.get_phase_master_encounter_status()
+			var enc_line := "相位师遭遇：下次非驻守关约 %d%%" % roundi(float(enc.get("next_chance", 0.0)) * 100.0)
+			var drought: int = int(enc.get("drought_count", 0))
+			if int(enc.get("grace_levels", 0)) > 0 and drought < int(enc.get("grace_levels", 0)):
+				enc_line += "（保护期：前 %d 关必不遭遇）" % int(enc.get("grace_levels", 0))
+			elif int(enc.get("drought_trigger", 0)) > 0 and drought >= int(enc.get("drought_trigger", 0)):
+				enc_line += "（连续 %d 关未遭遇，递增保底进行中）" % drought
+			lines.append(enc_line)
+			var cur_master: Variant = gm.get("_current_phase_master")
+			if cur_master is Dictionary:
+				var mn: String = str((cur_master as Dictionary).get("name", ""))
+				if not mn.is_empty():
+					lines.append("本战敌方相位师：%s" % mn)
 	if desc_label: desc_label.text = _apply_desc_highlight("\n".join(lines))
 	if flavor_label: flavor_label.text = "“守护这片相位场，即是守护军团存续。”"
 	_clear_non_summary_info_sections()

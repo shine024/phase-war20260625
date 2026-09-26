@@ -177,8 +177,13 @@ func test_bottom_row_four_buttons_no_overlap() -> void:
 		for j in range(i + 1, rects.size()):
 			var inter := rects[i].intersection(rects[j])
 			assert_bool(inter.size.x > 1.0 and inter.size.y > 1.0).is_false()
-	# 主键最后 add_child（绘制在最上）且文本是「▶ 出击下一关」
-	assert_bool(texts[texts.size() - 1].begins_with("▶")).is_true()
+	# 记录4 视觉体检：主键改为最先 add_child（宽主键态下侧键必须画在主键上层）——
+	# 层序断言从"主键最后"改为"主键存在且文本是 ▶ 出击下一关"；几何不相交断言不变。
+	var has_next_key: bool = false
+	for t in texts:
+		if String(t).begins_with("▶"):
+			has_next_key = true
+	assert_bool(has_next_key).is_true()
 	_restore_states(bak)
 	host.queue_free()
 	panel.queue_free()

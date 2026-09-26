@@ -750,21 +750,28 @@ static func spawn_muzzle_flash(parent: Node2D, local_pos: Vector2, facing_right:
 	elif is_energy_wt:
 		# v26.11: 新能量喷流贴图（白热核心+电弧丝，内容~1000×180 薄带）下的连贯化——
 		# 36 粒散开读成"碎屑带"（f08/f10 枪口主诉），收成 20 粒×窄锥×长条重叠喷流。
+		# v6.26.5: 同类排查（堡垒枪口火同诉）——f10 等离子枪口星爆实测 ~150px
+		# ≈2.3×单位，与旧重型族同病。20→14 粒、0.05-0.10(50-100px)→
+		# 0.035-0.065(35-65px 条)，叠 OPTICS 92px 闪后整团 ≈100-120px。
 		p.lifetime = 0.20
-		p.amount = 20
+		p.amount = 14
 		p.emission_sphere_radius = 1.5
 		p.spread = 5.0               # 窄喷流
 		p.initial_velocity_min = 640.0
 		p.initial_velocity_max = 1050.0
-		p.scale_amount_min = 0.05    # v6.23b: 主诉④ 收小（50px 条状）
-		p.scale_amount_max = 0.10    # ~100px
+		p.scale_amount_min = 0.035
+		p.scale_amount_max = 0.065
 	else:  # 重型化学（曲射/空射/火箭/高炮/导弹）
 		p.lifetime = 0.22            # 大闪光但短促（原 0.40）
 		# v20.21 批次C: 定向爆喷收拢——42 粒 × 67-109px 火舌在 24° 锥内 ADD 叠加成
 		# "弥散爆炸球"（AI 批 f02/f03/f07/f09 muzzle"像爆炸不像定向喷射"）。22 粒 +
 		# 16° 窄锥保留炮级质量感，火舌间露出背景缝隙读"喷射"。v17l 曾 30→42 治
 		# "像枪不像炮"，若复现回调 30。
-		p.amount = 22
+		# v6.26.5: 记录7 追诉"堡垒开火火花太大不真实"——审计格 f01 实测星爆团
+		# ~250px，把 64px 单位整个吞掉（22 粒 × 45-72px ADD 叠加=多角星爆）。
+		# 收敛到读"大口径炮口焰"而非"爆炸"：22→12 粒、0.28-0.45(45-72px)→
+		# 0.14-0.22(22-35px/粒)，整团 ~60-90px ≈ 1.5×单位高。
+		p.amount = 12
 		p.emission_sphere_radius = 3.0
 		p.spread = 16.0
 		p.initial_velocity_min = 420.0
@@ -773,10 +780,10 @@ static func spawn_muzzle_flash(parent: Node2D, local_pos: Vector2, facing_right:
 		# 旧 0.20-0.38 按画布宽标定 → 火舌仅 32-61px 宽 × 7-13px 高薄片，AI 批
 		# "分散破碎/缺集中爆发"（与轻武器黑名单#1 同源：scale 基准混用画布与内容带）。
 		# 按带高实寸重标定：0.42-0.68 → 67-109px 宽 × 15-24px 高火舌。
-		# v6.23b: 主诉④ 炮口火舌收敛——0.42-0.68(67-109px)→0.28-0.45(45-72px)，
-		# 保留炮级质量感、贴现实炮口焰比例
-		p.scale_amount_min = 0.28
-		p.scale_amount_max = 0.45
+		# v6.23b: 主诉④ 炮口火舌收敛——0.42-0.68(67-109px)→0.28-0.45(45-72px)。
+		# v6.26.5: 再收敛 0.14-0.22（22-35px/粒，见上）
+		p.scale_amount_min = 0.14
+		p.scale_amount_max = 0.22
 	p.direction = Vector2(1, 0) if facing_right else Vector2(-1, 0)
 	p.color_ramp = _get_muzzle_ramp() if not is_energy_wt else _get_energy_muzzle_ramp()
 	parent.add_child(p)

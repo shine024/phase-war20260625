@@ -229,6 +229,19 @@ func unlock_lore(lore_id: String) -> void:
 func is_lore_unlocked(lore_id: String) -> bool:
 	return unlocked_lore_ids.has(lore_id)
 
+## 记录5#10：随机解锁一条未获得的世界观页（势力商店"情报资料包"发货口——
+## faction_shop L326 起按 has_method("grant_random_lore") 探测发货，此前方法缺失
+## 导致购买恒返回失败、世界观情报 Tab 永远空）。全解锁时返回 false。
+func grant_random_lore() -> bool:
+	var locked_ids: Array = []
+	for lore_id in LORE_DATABASE:
+		if not unlocked_lore_ids.has(str(lore_id)):
+			locked_ids.append(str(lore_id))
+	if locked_ids.is_empty():
+		return false
+	unlock_lore(locked_ids[randi() % locked_ids.size()])
+	return true
+
 ## 获取情报数据
 func get_lore_data(lore_id: String) -> Dictionary:
 	return LORE_DATABASE.get(lore_id, {})

@@ -542,11 +542,11 @@ func can_install_modification(mod_id: String) -> Dictionary:
 			result.reason = "通用槽位已满（%d/%d）——剩余空位为兵种专属槽" % [_generic_used, _base_budget]
 			return result
 
-	# v22: 时代带守卫——改造 era_band 超出本卡时代则不可装（主题代差硬门，
-	# 如"光学瞄准镜"限一战~现代，未来激光卡自带先进火控装不了）
+	# v22: 时代带守卫（记录5#17 改单边）——只拒"低于本卡时代"的旧改造（era_band 上限
+	# < 卡时代）；高于本卡时代的改造允许装配（给一战士兵配未来瞄准镜是合法操作）。
 	if mod_reg.has_method("is_mod_era_compatible") and not mod_reg.is_mod_era_compatible(mod_data, int(era)):
 		result.can_install = false
-		result.reason = "时代不符：该改造限 %s 时代使用" % ModEraBands.format_band(mod_data)
+		result.reason = "时代不符：该改造为 %s 时代产物，无法装配到更先进的战斗卡上" % ModEraBands.format_band(mod_data)
 		return result
 
 	# 检查冲突组

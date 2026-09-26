@@ -1003,31 +1003,11 @@ func _enqueue_starter_backpack_cards() -> void:
 				if not bag.has_item(blueprint_id):
 					bag.add_item(blueprint_id, 1)
 
-			# ⚠️ 测试模式：开局发放全部改造蓝图 + 全部进化蓝图。
-			# v26.11(A3)：由 GameConfig.debug_grant_all_blueprints 门控（默认 false = 正式行为，
-			# 仅起步图纸+掉落解锁；开发/测试想全开时置 true），替代原"上线前需改回"的裸代码块。
-			# 正式设计：改造/进化蓝图应靠战斗掉落（精英/Boss）逐步解锁，不开局全送。
-			# 改造蓝图口径：ModificationRegistry 全集，排除 enhancement（强化词条，非改造模块）。
-			#   → 与 modification_panel/_refresh_mod_list 同口径（blueprint_ 前缀，排除 blueprint_evol_）
-			# 进化蓝图口径：IntelManualItems._collect_all_evolution_steps()（lineage 权威口径，
-			#   与 UnitLineageConfig 判定对齐，避免 evolution_paths 的 15 个幽灵卡）。
-			if GameConfig.get_default().debug_grant_all_blueprints:
-				const ModificationRegistry = preload("res://scripts/systems/modification_registry.gd")
-				const BlueprintDefinitions = preload("res://data/blueprint_definitions.gd")
-				# ① 全部改造蓝图
-				for mod_id in ModificationRegistry.get_all_ids():
-					# 排除强化词条（source=enhancement，非可安装改造模块，有独立系统）
-					if String(ModificationRegistry.get_data(mod_id).get("source", "")) == "enhancement":
-						continue
-					var mod_bp: String = BlueprintDefinitions.get_mod_blueprint_id(mod_id)
-					if not mod_bp.is_empty() and not bag.has_item(mod_bp):
-						bag.add_item(mod_bp, 1)
-				# ② 全部进化蓝图（复用 lineage 口径的进化跳收集器）
-				for step in IntelManualItems._collect_all_evolution_steps():
-					var evo_bp: String = BlueprintDefinitions.get_evolution_blueprint_id(
-						String(step.from), String(step.to))
-					if not evo_bp.is_empty() and not bag.has_item(evo_bp):
-						bag.add_item(evo_bp, 1)
+			# ⚠️ 测试模式：开局发放全部改造蓝图 + 全部进化蓝图 + 全符文。
+			# v26.11(A3)：由 GameConfig.debug_grant_all_blueprints 门控（@export 默认 false =
+			# 正式行为，仅起步图纸+掉落解锁）。pw_playtest 构建在 game_config.get_default()
+			# 运行时置 true——新档与读档两条路径都补齐（幂等），已有存档读入后同样全量可测。
+			_grant_debug_test_stock()
 
 	# v7.1: 移除 _grant_all_evolution_blueprints() 调用。
 	# 进化蓝图现应通过战斗掉落（精英/Boss，20%概率）逐步解锁，不再开局全送。
@@ -1060,6 +1040,57 @@ func _enqueue_starter_backpack_cards() -> void:
 		for rune_id in ["attack_01", "defense_01"]:
 			if pim.has_method("has_rune") and not pim.has_rune(rune_id):
 				pim.add_owned_rune(rune_id)
+
+## v6.24 测试补库：debug_grant_all_blueprints=true 时补齐全改造蓝图 + 全进化蓝图 + 全符文。
+## 幂等（has_item / add_owned_rune 自带去重）；新档（_enqueue_starter_backpack_cards）与
+## 读档（_load_from_path 尾部）两条路径都调用——已有存档读入后同样全量可测。
+## 正式构建（flag=false，@export 默认）首行早退零影响。
+func _grant_debug_test_stock() -> void:
+	if not GameConfig.get_default().debug_grant_all_blueprints:
+		return
+	const ModificationRegistry = preload("res://scripts/systems/modification_registry.gd")
+	const BlueprintDefinitions = preload("res://data/blueprint_definitions.gd")
+	const IntelManualItemsAll = preload("res://data/intel_manual_items.gd")
+	const RuneDefs = preload("res://data/runes.gd")
+	const ShopResIds = preload("res://data/basic_resources.gd")
+	const TEST_RESOURCE_FLOOR := 99999
+	var bag: Node = get_node_or_null("/root/IntelItemBag")
+	if bag != null and bag.has_method("add_item"):
+		# ① 起步改造图纸（正式新档也发的 7 张基础图纸，读档路径兜底补齐）
+		for blueprint_id in IntelManualItemsAll.ALL_TYPES:
+			if not bag.has_item(blueprint_id):
+				bag.add_item(blueprint_id, 1)
+		# ② 全部改造蓝图（排除 enhancement 强化词条族——非可安装改造模块，有独立系统）
+		for mod_id in ModificationRegistry.get_all_ids():
+			if String(ModificationRegistry.get_data(mod_id).get("source", "")) == "enhancement":
+				continue
+			var mod_bp: String = BlueprintDefinitions.get_mod_blueprint_id(mod_id)
+			if not mod_bp.is_empty() and not bag.has_item(mod_bp):
+				bag.add_item(mod_bp, 1)
+		# ③ 全部进化蓝图（lineage 权威口径，与 UnitLineageConfig 判定对齐）
+		for step in IntelManualItemsAll._collect_all_evolution_steps():
+			var evo_bp: String = BlueprintDefinitions.get_evolution_blueprint_id(
+				String(step.from), String(step.to))
+			if not evo_bp.is_empty() and not bag.has_item(evo_bp):
+				bag.add_item(evo_bp, 1)
+	# ④ 全符文（RuneDefinitions.ALL_RUNES 全集）
+	var pim: Node = get_node_or_null("/root/PhaseInstrumentManager")
+	if pim != null and pim.has_method("add_owned_rune"):
+		for rune in RuneDefs.ALL_RUNES:
+			pim.add_owned_rune(String(rune.get("id", "")))
+	# ⑤ 商店测试补给：功勋/贡献保底（势力商店与补给舱特购·符文区全可买——功勋是唯一
+	# 消费货币、贡献是全域访问+势力等级轴）+ 基础资源保底（纳米=情报道具区货币）。
+	# 只抬不降幂等，花掉后下次读档/新档自动补回；正式构建随 ①~④ 一起早退。
+	var fsm: Node = get_node_or_null("/root/FactionSystemManager")
+	if fsm != null and fsm.has_method("debug_ensure_shop_test_stock"):
+		fsm.debug_ensure_shop_test_stock()
+	var brm: Node = get_node_or_null("/root/BasicResourceManager")
+	if brm != null and brm.has_method("add_resource") and brm.has_method("get_total"):
+		for rid in [ShopResIds.ID_NANO_MATERIALS, ShopResIds.ID_ALLOY,
+				ShopResIds.ID_CRYSTAL, ShopResIds.ID_ENERGY_BLOCK]:
+			var cur: int = int(brm.get_total(rid))
+			if cur < TEST_RESOURCE_FLOOR:
+				brm.add_resource(rid, TEST_RESOURCE_FLOOR - cur)
 
 ## 辅助函数：为单个进化路径生成蓝图
 func _process_evolution_blueprint_path(path_data: Dictionary) -> void:
@@ -1490,6 +1521,8 @@ func _load_from_path(path: String) -> bool:
 	# 这两个方法会在每次读档后无条件全解锁所有进化分支和敌源MOD，破坏情报系统的逐步发现机制。
 	# 进化分支和敌源MOD应由 IntelEvolutionManager.check_and_discover_branches() 和
 	#
+	# v6.24 测试构建（pw_playtest）：读档后补齐全蓝图+全符文（幂等；正式构建首行早退零影响）
+	_grant_debug_test_stock()
 	if DEBUG_SAVE_LOG:
 		pass  # LOG: 已加载存档
 	return true

@@ -18,16 +18,26 @@ var _toast_layer: CanvasLayer = null
 var _toast_container: VBoxContainer = null
 
 # toast 锚点：v36 实机验收——原"底部居中抬高"实际坐标落在屏幕中部（y≈200-280），
-# 开场剧情/战斗中被读成居中弹窗很出戏；移右上角小堆叠（顶部 HUD 条之下、向下展开）。
-const _TOAST_MARGIN_TOP: float = 64.0        # 距顶部（避开战斗顶栏 chips）
+# 开场剧情/战斗中被读成居中弹窗很出戏；移右上角小堆叠。
+# 记录5#7：原 margin_top=64 会与战况条（battle_status_strip，右上 y∈[72,200]）矩形重叠、
+# layer 200 恒压 40 盖死敌方战况——现整体下移到战况条之下（bottom 200 + 8 间距）。
+const _TOAST_MARGIN_TOP: float = 208.0       # 距顶部（避开战斗顶栏 chips + 右上战况条）
 const _TOAST_MARGIN_RIGHT: float = 24.0
 const _TOAST_WIDTH: float = 300.0
+# 记录7#5: 战斗中的"战斗信息提示"两轮实机反馈"还是在右上角"——战斗态挪到顶中
+# （战报播报带之下、战况条同高但水平错开），非战斗态维持右上角小堆叠。
+const _TOAST_BATTLE_TOP: float = 150.0
 
 
 func _ready() -> void:
 	# v6.6: 连接 SignalBus.show_toast，使全局 toast 提示（战斗/城市/背包等）能到达 ToastManager
 	# 之前此信号全程无连接，导致所有 SignalBus.show_toast.emit(...) 静默失效
 	SignalBus.show_toast.connect(show_toast)
+	# 记录7#5: 战斗态锚点切换（battle_ended 带 player_won 参数，单独Handler吃掉）
+	if SignalBus.has_signal("battle_started") and not SignalBus.battle_started.is_connected(_on_battle_started_anchor):
+		SignalBus.battle_started.connect(_on_battle_started_anchor)
+	if SignalBus.has_signal("battle_ended") and not SignalBus.battle_ended.is_connected(_on_battle_ended_anchor):
+		SignalBus.battle_ended.connect(_on_battle_ended_anchor)
 	# P1-6: 成就解锁此前只有音效无任何视觉提示，这里补一条 toast
 	if SignalBus.has_signal("achievement_unlocked") and not SignalBus.achievement_unlocked.is_connected(_on_achievement_unlocked):
 		SignalBus.achievement_unlocked.connect(_on_achievement_unlocked)
@@ -36,6 +46,39 @@ func _ready() -> void:
 
 func _on_achievement_unlocked(_achievement_id: String, achievement_name: String) -> void:
 	show_success("🏆 成就解锁：%s" % achievement_name)
+
+
+## 记录7#5: 战斗中顶中 / 战斗外右上 的容器锚点切换。
+## card_info_panel._avoid_toast_zone 读容器实时 rect 求交避让，容器搬家自动跟随。
+func _on_battle_started_anchor() -> void:
+	_apply_toast_anchor(true)
+
+
+func _on_battle_ended_anchor(_player_won: bool) -> void:
+	_apply_toast_anchor(false)
+
+
+func _apply_toast_anchor(in_battle: bool) -> void:
+	if _toast_container == null or not is_instance_valid(_toast_container):
+		return
+	if in_battle:
+		_toast_container.anchor_left = 0.5
+		_toast_container.anchor_right = 0.5
+		_toast_container.anchor_top = 0.0
+		_toast_container.anchor_bottom = 0.0
+		_toast_container.offset_left = -_TOAST_WIDTH / 2.0
+		_toast_container.offset_right = _TOAST_WIDTH / 2.0
+		_toast_container.offset_top = _TOAST_BATTLE_TOP
+		_toast_container.offset_bottom = _TOAST_BATTLE_TOP
+	else:
+		_toast_container.anchor_left = 1.0
+		_toast_container.anchor_right = 1.0
+		_toast_container.anchor_top = 0.0
+		_toast_container.anchor_bottom = 0.0
+		_toast_container.offset_left = -_TOAST_MARGIN_RIGHT - _TOAST_WIDTH
+		_toast_container.offset_right = -_TOAST_MARGIN_RIGHT
+		_toast_container.offset_top = _TOAST_MARGIN_TOP
+		_toast_container.offset_bottom = _TOAST_MARGIN_TOP
 
 
 ## 构建独立 CanvasLayer（layer=200）+ 底部居中抬高的 VBox 堆叠容器。

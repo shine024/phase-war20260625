@@ -461,7 +461,7 @@ func _format_rewards(rewards: Dictionary) -> String:
 	if rewards.has("company_rep"):
 		var rep = rewards["company_rep"]
 		for company_id in rep:
-			parts.append("%s声望+%d" % [company_id, rep[company_id]])
+			parts.append("%s贡献+%d" % [company_id, rep[company_id]])
 
 	# 将Array转换为PackedStringArray后使用join
 	var parts_array = PackedStringArray(parts)

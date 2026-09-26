@@ -57,6 +57,8 @@ const REVEAL_EVENTS: Dictionary = {
 		"desc": "步兵相关情报全部破译！发现隐藏研究线索【特种作战路线】。",
 		"rewards": [
 			{"type": "intel_branch_hint", "text": "特种作战路线的完整研究线索已归档。"},
+			# 记录5#10：世界观情报解锁链回填——tier-3 满档附赠一条世界观页
+			{"type": "lore_page", "page_id": "lore_ww1_trench"},
 		],
 		"icon": "🏆",
 	},
@@ -97,6 +99,7 @@ const REVEAL_EVENTS: Dictionary = {
 		"desc": "火焰相关机密全部破译！发现隐藏研究线索【自适应装甲路线】。",
 		"rewards": [
 			{"type": "intel_branch_hint", "text": "自适应装甲路线的完整研究线索已归档。"},
+			{"type": "lore_page", "page_id": "lore_ww1_gas"},
 		],
 		"icon": "🏆",
 	},
@@ -137,6 +140,7 @@ const REVEAL_EVENTS: Dictionary = {
 		"desc": "重装甲相关机密全部破译！发现隐藏研究线索【破甲猎手路线】。",
 		"rewards": [
 			{"type": "intel_branch_hint", "text": "破甲猎手路线的完整研究线索已归档。"},
+			{"type": "lore_page", "page_id": "lore_ww2_blitzkrieg"},
 		],
 		"icon": "🏆",
 	},
@@ -176,6 +180,7 @@ const REVEAL_EVENTS: Dictionary = {
 		"desc": "火炮相关机密全部破译！解锁隐藏情报分支【空中炮艇路线】的部分条件。",
 		"rewards": [
 			{"type": "intel_branch_hint", "text": "空中炮艇路线还需要更多空中单位和隐匿单位的情报来完全解锁。"},
+			{"type": "lore_page", "page_id": "lore_ww2_enigma"},
 		],
 		"icon": "🏆",
 	},
@@ -215,6 +220,7 @@ const REVEAL_EVENTS: Dictionary = {
 		"desc": "隐匿相关机密全部破译！空中炮艇路线的隐匿战术条件已满足。",
 		"rewards": [
 			{"type": "intel_branch_hint", "text": "空中炮艇路线已接近完成！"},
+			{"type": "lore_page", "page_id": "lore_cold_kgb"},
 		],
 		"icon": "🏆",
 	},
@@ -254,6 +260,7 @@ const REVEAL_EVENTS: Dictionary = {
 		"desc": "纳米核心相关机密全部破译！自适应装甲路线的纳米条件已满足。",
 		"rewards": [
 			{"type": "intel_branch_hint", "text": "纳米机密完全掌握——与火焰技术结合即可开启自适应装甲！"},
+			{"type": "lore_page", "page_id": "lore_future_phase"},
 		],
 		"icon": "🏆",
 	},
@@ -293,6 +300,7 @@ const REVEAL_EVENTS: Dictionary = {
 		"desc": "空中相关机密全部破译！空中炮艇路线的航空条件已满足。",
 		"rewards": [
 			{"type": "intel_branch_hint", "text": "空中炮艇路线已接近完成！"},
+			{"type": "lore_page", "page_id": "lore_modern_drone"},
 		],
 		"icon": "🏆",
 	},

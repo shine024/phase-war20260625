@@ -83,7 +83,7 @@ func build_faction_header() -> Control:
 	container.add_child(h_name)
 
 	container.add_child(_make_header_label("已攻克/总关", 100, HORIZONTAL_ALIGNMENT_CENTER))
-	container.add_child(_make_header_label("声望", 70, HORIZONTAL_ALIGNMENT_RIGHT))
+	container.add_child(_make_header_label("贡献", 70, HORIZONTAL_ALIGNMENT_RIGHT))
 
 	return container
 

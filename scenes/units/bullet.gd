@@ -553,6 +553,8 @@ func _apply_trail() -> void:
 	# v8.3 视觉增强：粒子拖尾按 weapon_type 6 档分级（原 _is_heavy 二分太粗，轻武器几乎无轨迹）
 	if _trail_particles != null:
 		_trail_particles.material = _get_add_blend_mat()
+		# 记录7#9: 粒子拖尾恒垫弹头之下（树序在 Sprite 弹头之后，ADD 亮粒会糊住弹头）
+		_trail_particles.z_index = -1
 		if DT.is_motion_reduce():
 			# 减少动效模式：禁用粒子拖尾
 			_trail_particles.emitting = false

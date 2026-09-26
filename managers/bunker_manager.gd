@@ -544,11 +544,18 @@ func start_upgrade(room_id: String) -> Dictionary:
 
 ## ───────────────────── 升级效果查询（等级驱动，UI/各系统消费） ─────────────────────
 
-## 精神值上限：入口大厅 Lv3 → 110
+## 记录1#5: 精神值上限改为相位师（相位场）等级驱动——等级即"今天可连战场数"：
+## 每场胜 -10（兵棋室 Lv2 -8），cap = 100 + 等级×10 → 10+level 场
+## （Lv1≈"0级"10 场档、Lv10=20 场、Lv20=30 场，Lv30=40 场封顶）。
+## 旧"入口大厅 Lv3→110"加成被新公式吸收（Lv1 起即 110）。
 func get_sanity_cap() -> float:
-	return 110.0 if get_room_level("entry_hall") >= 3 else 100.0
+	var lvl := 1
+	if PhaseInstrumentManager != null and PhaseInstrumentManager.has_method("get_phase_field_level"):
+		lvl = maxi(1, int(PhaseInstrumentManager.get_phase_field_level()))
+	return 100.0 + float(lvl) * 10.0
 
 ## 睡觉回精神量：宿舍 Lv1/2/3 → 20/30/40
+## （记录1#5 后 sleep() 直接回满，本函数仅存档兼容/档案查询保留）
 func get_sleep_recovery() -> float:
 	return [20.0, 30.0, 40.0][clampi(get_room_level("dormitory") - 1, 0, 2)]
 
@@ -887,12 +894,13 @@ func notify_respec_done(cost_paid: int) -> void:
 
 ## ───────────────────────── 日循环 / 精神值 ─────────────────────────
 
-## 睡觉：天数 +1，精神值恢复（随宿舍等级 20/30/40），推进情感阶段，产出日结算数据。
+## 睡觉：天数 +1，精神回满（记录1#5：睡觉 1 天恢复满精神，场次预算由相位师等级决定），
+## 推进情感阶段，产出日结算数据。
 ## 返回 {"day", "sanity_before", "sanity_after", "completed_today", "stage"}。
 func sleep() -> Dictionary:
 	_day += 1
 	var before: float = _sanity
-	adjust_sanity(get_sleep_recovery())
+	_sanity = get_sanity_cap()
 	var new_stage: int = MobileBaseFacilities.narrative_stage_for_day(_day)
 	if new_stage != _narrative_stage:
 		_narrative_stage = new_stage

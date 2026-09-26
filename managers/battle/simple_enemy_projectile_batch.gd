@@ -70,6 +70,9 @@ func _update_tracers() -> void:
 		t.material = _tracer_mat
 		t.joint_mode = Line2D.LINE_JOINT_ROUND
 		t.end_cap_mode = Line2D.LINE_CAP_ROUND
+		# 记录7#9: 懒建追加在弹头 MultiMesh 层之后=树序压弹头，ADD 亮曳光糊在暗弹头上
+		# 读成"弹头陷在弹道后面"——z-1 恒垫弹头层之下（z_as_relative，根 z=3）。
+		t.z_index = -1
 		add_child(t)
 		_tracer_lines.append(t)
 	for i in range(_tracer_lines.size()):

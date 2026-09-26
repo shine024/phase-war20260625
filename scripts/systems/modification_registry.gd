@@ -187,11 +187,14 @@ const ERA_FLAT_SCALE_ATK: Dictionary = {0: 1.0, 1: 1.8, 2: 2.7, 3: 5.3, 4: 6.0}
 const ERA_FLAT_SCALE_HP: Dictionary = {0: 1.0, 1: 2.3, 2: 3.3, 3: 5.1, 4: 6.3}
 
 ## 改造与宿主卡时代是否兼容（无 era_band 视为全带 [0,4] 兼容）
+## 记录5#17（用户拍板）：改单边判定——只拒"低于卡时代"的旧改造（band 上限 < 卡时代），
+## "高于卡时代"的改造可装（给一战士兵配未来瞄准镜是允许的）；band 下限不再拦截，
+## 数值仍按 get_mod_reference_era（band 下限）声明、经 ERA 缩放表折算到宿主时代。
 static func is_mod_era_compatible(mod_data: Dictionary, card_era: int) -> bool:
 	var band = mod_data.get("era_band", null)
 	if not (band is Array) or band.size() < 2:
 		return true
-	return card_era >= int(band[0]) and card_era <= int(band[1])
+	return card_era <= int(band[1])
 
 ## 改造数值的声明基准时代（era_band 下限；无 band = 0 基准）
 ## flat/set 攻击/HP 值以此时代为基准声明，应用时缩放到宿主时代

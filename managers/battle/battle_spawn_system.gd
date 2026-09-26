@@ -1689,7 +1689,8 @@ func _apply_rune_bonus_to_stats(stats: UnitStats, bonus: Dictionary) -> void:
 		stats.hp_regen = stats.hp_regen + float(stat_map["hp_regen"])
 	# 伤害减免加成
 	if stat_map.has("damage_reduction") and float(stat_map["damage_reduction"]) != 0.0:
-		stats.damage_reduction = clampf(stats.damage_reduction + float(stat_map["damage_reduction"]), 0.0, 0.8)
+		# 记录7#14: 减伤帽统一 0.60（=实战结算帽，旧 0.8 虚标）
+		stats.damage_reduction = clampf(stats.damage_reduction + float(stat_map["damage_reduction"]), 0.0, 0.6)
 	# v7.x 修复 W1：穿甲加成（原符文 attack_penetration 副效果无消费分支，"破甲"符文完全不生效）
 	if stat_map.has("attack_penetration") and float(stat_map["attack_penetration"]) != 0.0:
 		stats.armor_penetration = clampf(stats.armor_penetration + float(stat_map["attack_penetration"]), 0.0, 1.0)

@@ -232,7 +232,9 @@ static func _apply_enhance_fixed(stats: UnitStats, lvl_f: float, hp_pct: float, 
 		"dodge":
 			stats.dodge_chance = minf(0.75, stats.dodge_chance + extra_val)
 		"damage_reduction":
-			stats.damage_reduction = minf(0.75, stats.damage_reduction + extra_val)
+			# 记录7#14: 减伤帽统一 0.60（=实战结算帽 card_grid_damage.DAMAGE_REDUCTION_CAP，
+			# 多源叠加面板不再显示超过实战生效值）
+			stats.damage_reduction = minf(0.60, stats.damage_reduction + extra_val)
 		"hp_regen":
 			# v7.x: 加上限保护，与 _apply_ability_list 的 hp_regen 分支一致
 			stats.hp_regen = minf(0.20, stats.hp_regen + extra_val)

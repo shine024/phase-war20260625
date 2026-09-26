@@ -118,6 +118,7 @@ text = "✕"
 
 [node name="TitleSep" type="PanelContainer" parent="VBoxOuter"]
 layout_mode = 2
+mouse_filter = 2
 custom_minimum_size = Vector2(0, 1)
 theme_override_styles/panel = SubResource("StyleBoxFlat_title_sep")
 

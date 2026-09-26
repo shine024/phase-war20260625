@@ -410,6 +410,9 @@ func _on_afk_state_changed(new_state: int) -> void:
 				status_label.text = "状态: 行进中——驶向第 %d 关" % int(_afk_manager._pending_level) + sanity_txt
 			else:
 				status_label.text = "状态: 行进中" + sanity_txt
+	# v6.6(挂机缩略图): 状态切换时刷新缩略图可见性
+	# （原挂在 _get_sanity_status_text 的 return 之后，从未执行过）
+	_refresh_battle_preview()
 
 
 ## v6.23d 记录6#7: 精神余量后缀（BunkerManager 不存在则空串，行为不变）
@@ -417,9 +420,10 @@ func _get_sanity_status_text() -> String:
 	var bunker: Node = get_node_or_null("/root/BunkerManager")
 	if bunker == null or not bunker.has_method("get_sanity"):
 		return ""
-	return " ｜ 精神 %d" % int(bunker.get_sanity())
-	# v6.6(挂机缩略图): 状态切换时刷新缩略图可见性
-	_refresh_battle_preview()
+	# 记录7#3: 精神=挂机"弹药"（胜-10/败-20，睡觉恢复）——直说还够打几场
+	var sanity: int = int(bunker.get_sanity())
+	var rounds := int(ceil(maxf(0.0, float(sanity)) / 10.0))
+	return " ｜ 精神 %d（约可再挂 %d 场）" % [sanity, rounds]
 
 
 func _on_level_completed(level: int, won: bool) -> void:

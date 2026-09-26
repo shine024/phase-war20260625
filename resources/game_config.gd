@@ -112,6 +112,15 @@ static func get_default() -> GameConfig:
 	if _default_config == null:
 		# 默认值以 @export 初始值为单一来源（v26.4 起不再在此重复抄写）
 		_default_config = GameConfig.new()
+		# 试玩/测试构建（export custom_features="pw_playtest"）运行时全解锁档：
+		# 功能门全开 + 免战力门/部署限制 + 开局补齐全蓝图全符文 + 蓝图只验不消耗。
+		# 正式 release（无该 feature）与编辑器调试跑均零影响。
+		if OS.has_feature("pw_playtest"):
+			_default_config.feature_gates_enabled = false
+			_default_config.power_cap_enabled = false
+			_default_config.debug_no_deploy_limits = true
+			_default_config.debug_grant_all_blueprints = true
+			_default_config.mod_consumable_enabled = false
 	return _default_config
 
 ## 重置为默认值

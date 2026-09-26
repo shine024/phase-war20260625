@@ -108,8 +108,9 @@ func _append_instrument_lines(lines: Array, pm: Node) -> void:
 			var pct := int(round(float(pf_bonus[key]) * 100.0))
 			if pct != 0:
 				pf_parts.append("%s:+%d%%" % [key, pct])
-			if not pf_parts.is_empty():
-				lines.append("  相位场：" + " ".join(pf_parts))
+		# 记录4 视觉体检修复：append 原先缩进在 for 循环内，按属性点条数重复输出"相位场："行
+		if not pf_parts.is_empty():
+			lines.append("  相位场：" + " ".join(pf_parts))
 
 func _append_rune_lines(lines: Array, pm: Node) -> void:
 	var rune_slots: Array = pm.get_rune_slots() if pm.has_method("get_rune_slots") else []

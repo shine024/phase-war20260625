@@ -185,9 +185,9 @@ func _ready() -> void:
 	if _combat_cards_grid:
 		_apply_backpack_grid_layout(_combat_cards_grid)
 	if _intel_grid:
-		_apply_backpack_grid_layout(_intel_grid)
+		_apply_backpack_grid_layout(_intel_grid, ResourceSlotItem.SLOT_SIZE_MOD.x)
 	if _runes_grid:
-		_apply_backpack_grid_layout(_runes_grid)
+		_apply_backpack_grid_layout(_runes_grid, ResourceSlotItem.SLOT_SIZE_RUNE.x)
 
 	# 初始化 MVP
 	_data = BackpackData.new()
@@ -391,15 +391,13 @@ func _compute_meta_info(tab_index: int) -> String:
 					slot_total = pim.get_rune_slot_count()
 			return "已激活符文之语 %d · 槽位 %d/%d" % [active_rw, slot_used, slot_total]
 		TabIndex.PHASE_INSTRUMENTS:
+			# 记录1#3: 移除"当前装备 N★"段（记录1#3主诉：装7星显示1星误导）——星级以
+			# 相位仪列表内各仪自己的星标为准；装备 id 静默回退问题另案观察
 			var pim: Node = get_node_or_null("/root/PhaseInstrumentManager")
 			var unlocked: int = 0
-			var cur_star: int = 0
 			if pim and pim.has_method("get_unlocked_instrument_ids"):
 				unlocked = pim.get_unlocked_instrument_ids().size()
-			if pim and pim.has_method("get_current_instrument"):
-				var cur: Dictionary = pim.get_current_instrument()
-				cur_star = int(cur.get("star", 0))
-			return "解锁 %d/%d · 当前装备 %d★" % [unlocked, _PHASE_INSTRUMENT_TOTAL, cur_star]
+			return "解锁 %d/%d" % [unlocked, _PHASE_INSTRUMENT_TOTAL]
 	return ""
 
 
@@ -1310,7 +1308,7 @@ func reset_visibility() -> void:
 func refresh_intel_tab() -> void:
 	if _intel_grid == null:
 		return
-	_apply_backpack_grid_layout(_intel_grid)
+	_apply_backpack_grid_layout(_intel_grid, ResourceSlotItem.SLOT_SIZE_MOD.x)
 	var bag = get_node_or_null("/root/IntelItemBag")
 	# 收集所有已装配在战斗卡上的 mod_id（用于标注装配状态 + 装配计数）
 	var installed_mod_ids: Dictionary = {}
@@ -2867,7 +2865,7 @@ func _sync_card_grid_scroll_size_for_grid(grid: GridContainer) -> void:
 
 ## 固定列数 + 横向最小宽度（避免列数被意外改写）
 ## v9.0: 改造/符文瓷砖（resource_slot_item 64×96）比战斗卡（96×138）小，列数独立计算
-func _apply_backpack_grid_layout(grid: GridContainer) -> void:
+func _apply_backpack_grid_layout(grid: GridContainer, fallback_w: float = 0.0) -> void:
 	if grid == null or not is_instance_valid(grid):
 		return
 	var sep_h: int = grid.get_theme_constant("h_separation", "GridContainer")
@@ -2876,7 +2874,9 @@ func _apply_backpack_grid_layout(grid: GridContainer) -> void:
 	var min_cols: int = BACKPACK_GRID_COLUMNS
 	var max_cols: int = 14
 	if grid != _combat_cards_grid:
-		slot_min_w = _TILE_SLOT_MIN.x
+		# 记录7#2: 空网格首开时 _effective_slot_width 无子可测，回退 _TILE_SLOT_MIN(64)
+		# 而改造瓷砖实宽 96/符文 86 → 列数虚多约 1.5 倍、右缘瓷砖溢出裁切。按真值兜底。
+		slot_min_w = fallback_w if fallback_w > 0.0 else _TILE_SLOT_MIN.x
 		min_cols = 4
 		max_cols = 20
 	# 实际子节点宽（瓷砖含边框可能 > slot_min）——用实际宽避免按 slot_min 算多列、排开超 viewport 溢出

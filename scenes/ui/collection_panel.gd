@@ -338,13 +338,17 @@ func _refresh_detail() -> void:
 		_update_detail_icon(null, false)
 		return
 	var card = DefaultCards.get_card_by_id(_selected_card_id) if DefaultCards else null
+	# 记录5#5/#14：未获得的卡按情报度遮蔽——此前详情面板无条件给真名+全属性，
+	# 与列表格（？？？+剪影）不一致。现未获得 = 名字？？？+数值属性遮蔽，
+	# 仅保留类型/兵种/时代等图鉴分类学信息；获得后逐项解锁。
+	var owned := _is_owned(_selected_card_id)
 	if _detail_name:
-		_detail_name.text = _card_display_name(_selected_card_id)
+		_detail_name.text = _card_display_name(_selected_card_id) if owned else "？？？"
 	# 状态
 	var status_text: String = ""
-	if _is_max_level(_selected_card_id):
+	if owned and _is_max_level(_selected_card_id):
 		status_text = "★ 已满级"
-	elif _is_owned(_selected_card_id):
+	elif owned:
 		status_text = "✓ 已拥有"
 	else:
 		status_text = "✗ 未获得"
@@ -359,21 +363,24 @@ func _refresh_detail() -> void:
 		lines.append("卡牌类型：%s" % GameConstants.get_card_type_name(card.card_type))
 		lines.append("兵种：%s" % CardResource.get_combat_kind_name(card.combat_kind))
 		lines.append("时代：%s" % GameConstants.get_era_name(card.era))
-		lines.append("战力：%d" % int(card.power))
-		# 三维攻防（若存在）
-		if card.attack_light > 0.0:
-			lines.append("轻装攻击：%s" % str(card.attack_light))
-		if card.attack_armor > 0.0:
-			lines.append("装甲攻击：%s" % str(card.attack_armor))
-		if card.attack_air > 0.0:
-			lines.append("空中攻击：%s" % str(card.attack_air))
-		if card.base_hp > 0.0:
-			lines.append("生命值：%s" % str(card.base_hp))
+		if owned:
+			lines.append("战力：%d" % int(card.power))
+			# 三维攻防（若存在）
+			if card.attack_light > 0.0:
+				lines.append("轻装攻击：%s" % str(card.attack_light))
+			if card.attack_armor > 0.0:
+				lines.append("装甲攻击：%s" % str(card.attack_armor))
+			if card.attack_air > 0.0:
+				lines.append("空中攻击：%s" % str(card.attack_air))
+			if card.base_hp > 0.0:
+				lines.append("生命值：%s" % str(card.base_hp))
+		else:
+			lines.append("战力：？？？（获得后解锁）")
+			lines.append("详细属性：？？？（获得后解锁）")
 		info = "\n".join(lines)
 	if _detail_info:
 		_detail_info.text = info
 	# v32.3 E3：详情大卡图（未获得显示剪影）
-	var owned := _is_owned(_selected_card_id)
 	var tex: Texture2D = UiAssetLoader.card_icon_for_list(card) if card != null else null
 	_update_detail_icon(tex, owned)
 

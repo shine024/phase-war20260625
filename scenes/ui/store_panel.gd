@@ -31,6 +31,16 @@ var _feedback_tween: Tween
 var _open_refresh_inflight: bool = false
 ## 资源变动信号去重：购买流程自身会刷新 items，期间跳过 resources_changed 回弹触发的全量重建
 var _suppress_resources_refresh: bool = false
+# 记录1#9: 购买防抖——购买无 in-flight 拦截，连点即多次扣功勋多次发放（"买1出3"主诉）。
+# 400ms 时间窗内只认第一次点击；窗口过后自动放行（无卡死风险）。
+var _buy_debounce_until_ms: int = 0
+
+func _buy_debounced() -> bool:
+	var now := Time.get_ticks_msec()
+	if now < _buy_debounce_until_ms:
+		return false
+	_buy_debounce_until_ms = now + 400
+	return true
 ## v27.12 性能：面板不可见期间的商品行重建请求只置脏不重建（resources_changed 战斗中高频），
 ## 恢复可见时由 _on_visibility_refresh 统一补刷
 var _items_dirty: bool = false
@@ -158,6 +168,8 @@ func _build_company_tabs() -> void:
 			_current_company_id = cid
 			_update_tab_states()
 			_refresh_items()
+			# 记录4#3：功勋按势力分账，余额行的功勋数随公司切换刷新
+			_refresh_balance()
 			# 批次2：tab 切换内容淡入（原瞬跳白板）
 			PanelAnim.fade_content_in(item_list)
 		)
@@ -213,11 +225,12 @@ func _refresh_balance() -> void:
 	var energy: int = int(totals.get(BasicResources.ID_ENERGY_BLOCK, 0))
 
 	# v6.23c: 余额行补功勋（主诉⑬"商店看不到自己数值"）——特购区/符文区消费货币
+	# 记录4#3：功勋按势力分账——余额行显示当前选中势力的功勋账。
 	var merit: int = 0
 	var fsm_bal: Node = get_node_or_null("/root/FactionSystemManager")
 	if fsm_bal != null and fsm_bal.has_method("get_merit_points"):
-		merit = int(fsm_bal.get_merit_points())
-	var base_text = "纳米材料：%s　　能量块：%s　　功勋：%d" % [FormatUtil.format_number(nano), FormatUtil.format_number(energy), merit]
+		merit = int(fsm_bal.get_merit_points(_current_company_id))
+	var base_text = "纳米材料：%s　　能量块：%s　　功勋（%s）：%d" % [FormatUtil.format_number(nano), FormatUtil.format_number(energy), _get_company_name(_current_company_id), merit]
 
 	# 显示全局访问状态
 	if _has_global_access():
@@ -281,8 +294,8 @@ func _build_rune_items_section(current_rep: int) -> void:
 	item_list.add_child(title)
 	# 渲染每个符文商品
 	var current_nano: int = BasicResourceManager.get_total(BasicResources.ID_NANO_MATERIALS)
-	# v30 R2b：符文消费货币=功勋（不占用贡献等级）
-	var merit_now: int = int(fsm.get_merit_points()) if fsm.has_method("get_merit_points") else 0
+	# v30 R2b：符文消费货币=功勋（不占用贡献等级）；记录4#3：取本势力分账余额
+	var merit_now: int = int(fsm.get_merit_points(_current_company_id)) if fsm.has_method("get_merit_points") else 0
 	var RuneDefsForStore = preload("res://data/runes.gd")
 	for it in rune_items:
 		var rune_id: String = it.item_id
@@ -310,6 +323,15 @@ func _build_rune_items_section(current_rep: int) -> void:
 		var hbox := HBoxContainer.new()
 		hbox.add_theme_constant_override("separation", 10)
 		row.add_child(hbox)
+		# 记录5#13：符文商品行补专属图标（与情报舱符文图鉴同链 UiAssetLoader.rune_icon，
+		# 54/54 全覆盖，无回退风险）
+		var rune_icon_rect := TextureRect.new()
+		rune_icon_rect.custom_minimum_size = Vector2(32, 32)
+		rune_icon_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		rune_icon_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		rune_icon_rect.texture = UiAssetLoader.rune_icon(rune_id)
+		rune_icon_rect.tooltip_text = display_name
+		hbox.add_child(rune_icon_rect)
 		# 名称
 		var name_lbl := Label.new()
 		name_lbl.text = display_name
@@ -390,8 +412,8 @@ func _build_faction_shop_extras_section(_current_rep: int) -> void:
 	var fsm: Node = get_node_or_null("/root/FactionSystemManager")
 	if fsm == null or not fsm.has_method("get_faction_store_items"):
 		return
-	# v30 R2b：特购区消费货币=功勋（贡献等级不因消费下跌）
-	var merit_now: int = int(fsm.get_merit_points()) if fsm.has_method("get_merit_points") else 0
+	# v30 R2b：特购区消费货币=功勋（贡献等级不因消费下跌）；记录4#3：取本势力分账余额
+	var merit_now: int = int(fsm.get_merit_points(_current_company_id)) if fsm.has_method("get_merit_points") else 0
 	var all_items: Array = fsm.get_faction_store_items(_current_company_id)
 	var extras: Array = []
 	for it in all_items:
@@ -464,8 +486,21 @@ func _build_faction_extra_row(it, merit_now: int) -> void:
 		thumb.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		thumb.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 		thumb.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		# 记录5#13：未拥有的战斗卡以剪影展示（压暗），已拥有的全彩——
+		# owned 判定与图鉴同源（CardCollectionManager 状态 + InstanceRegistry 兜底）
 		if card != null:
 			thumb.texture = UiAssetLoader.card_icon_for_list(card)  # 无图回 null 留空位
+			var card_owned: bool = false
+			var ccm: Node = get_node_or_null("/root/CardCollectionManager")
+			if ccm != null and ccm.has_method("get_card_status") and ccm.get_card_status(item_id) >= 1:
+				card_owned = true
+			else:
+				var ir: Node = get_node_or_null("/root/InstanceRegistry")
+				if ir != null and ir.has_method("get_instances_by_card_id"):
+					card_owned = ir.get_instances_by_card_id(item_id).size() > 0
+			thumb.modulate = Color.WHITE if card_owned else Color(0.05, 0.07, 0.10, 0.92)
+			if not card_owned:
+				desc_line += "\n未解锁：战力 %d · %s" % [int(card.power), GC.get_era_name(card.era)]
 		hbox.add_child(thumb)
 	var name_lbl := Label.new()
 	name_lbl.text = display_name if not out_of_stock else "%s（售罄）" % display_name
@@ -478,6 +513,7 @@ func _build_faction_extra_row(it, merit_now: int) -> void:
 	desc_lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
 	desc_lbl.add_theme_color_override("font_color", DT.COLOR_TEXT_MID)
 	desc_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	desc_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	hbox.add_child(desc_lbl)
 	var price_lbl := Label.new()
 	price_lbl.text = "%d功勋" % rep_cost
@@ -519,6 +555,8 @@ func _build_faction_extra_row(it, merit_now: int) -> void:
 	item_list.add_child(row)
 
 ## 材料商品的购买效果描述（与 FactionShop.deliver_item 的发放口径一致，勿单边改）
+## 记录1#9: 原硬编码阶梯数量与实发（1 功勋=1 材料）不符——"合金×20"实发 rep_cost 个、
+## 晶体/能量块直接裸拼英文 id。统一按实发数=功勋价显示。
 func _describe_faction_extra_item(item_id: String, is_card: bool, rep_cost: int) -> String:
 	if is_card:
 		return "功勋特购卡 · 获得独立养成实例"
@@ -526,11 +564,13 @@ func _describe_faction_extra_item(item_id: String, is_card: bool, rep_cost: int)
 		return "组织特供改造图纸包 · 按该组织专长随机获得一张图纸（对应当前时代）"
 	match item_id:
 		"nano_materials":
-			return "纳米材料 ×%d" % (50 if rep_cost < 300 else 100)
+			return "纳米材料 ×%d" % maxi(1, rep_cost)
 		"alloy":
-			return "合金 ×%d" % (20 if rep_cost < 300 else 50)
-		"crystal", "energy_block":
-			return "%s ×10" % item_id
+			return "合金 ×%d" % maxi(1, rep_cost)
+		"crystal":
+			return "晶体 ×%d" % maxi(1, rep_cost)
+		"energy_block":
+			return "能量块 ×%d" % maxi(1, rep_cost)
 		"stat_boost_hp":
 			return "永久属性强化 · 生命"
 		"stat_boost_atk":
@@ -543,10 +583,16 @@ func _describe_faction_extra_item(item_id: String, is_card: bool, rep_cost: int)
 
 ## v26.11(A1.2): 购买势力补给/功勋特购商品（走 fsm.purchase_item 正规链：验功勋与贡献等级→扣→发放→失败回退）
 func _on_buy_faction_extra(it, row_node: Control) -> void:
+	if not _buy_debounced():
+		return
 	var fsm: Node = get_node_or_null("/root/FactionSystemManager")
 	if fsm == null or not fsm.has_method("purchase_item"):
 		return
+	# 记录1#9: 发放链 add_resource 同帧回弹 resources_changed + 购买尾 _refresh_items
+	# = 同帧双重建（旧行 queue_free 帧末才生效 → 新旧行并存闪烁/看似多件）——抑制回弹
+	_suppress_resources_refresh = true
 	var result: Dictionary = fsm.purchase_item(_current_company_id, it)
+	_suppress_resources_refresh = false
 	if not bool(result.get("ok", false)):
 		var reason := String(result.get("reason", ""))
 		if reason == "reputation_insufficient":
@@ -569,12 +615,12 @@ func _on_buy_rune(rune_id: String, rep_cost: int, row_node: Control) -> void:
 	var fsm: Node = get_node_or_null("/root/FactionSystemManager")
 	if fsm == null:
 		return
-	# 检查功勋是否足够
-	var merit_now: int = int(fsm.get_merit_points()) if fsm.has_method("get_merit_points") else 0
+	# 检查功勋是否足够（记录4#3：查/扣本势力分账）
+	var merit_now: int = int(fsm.get_merit_points(_current_company_id)) if fsm.has_method("get_merit_points") else 0
 	if merit_now < rep_cost:
 		_flash_row(row_node, Color(DT.COLOR_DANGER.r, DT.COLOR_DANGER.g, DT.COLOR_DANGER.b, 0.3))
 		# 批次三 B3：失败给具体原因（原仅红闪，玩家不知道差多少）
-		_show_buy_error("功勋不足：需要 %d（当前 %d）——战斗胜利与任务可获得功勋" % [rep_cost, merit_now])
+		_show_buy_error("功勋不足：需要 %d（当前 %d）——本势力战斗胜利与任务可获得功勋" % [rep_cost, merit_now])
 		return
 	# v6.2 修复 M14：先发放符文并校验返回值，成功才扣款（原顺序是先扣再发，
 	# 若 add_owned_rune 因重复持有返回 false，货币会被误扣不退还）
@@ -589,7 +635,7 @@ func _on_buy_rune(rune_id: String, rep_cost: int, row_node: Control) -> void:
 		return
 	# 扣除功勋（仅在符文发放成功后）
 	if fsm.has_method("spend_merit"):
-		fsm.spend_merit(rep_cost)
+		fsm.spend_merit(rep_cost, _current_company_id)
 	# 刷新（功勋变化不触发 resources_changed，无需 suppress 守卫）
 	_flash_row(row_node, Color(DT.COLOR_GREEN_BRIGHT.r, DT.COLOR_GREEN_BRIGHT.g, DT.COLOR_GREEN_BRIGHT.b, 0.3))
 	_refresh_items()
@@ -691,6 +737,8 @@ func _build_intel_items_section() -> void:
 
 
 func _on_buy_intel_item(item_type: String, price: int, row_node: Control) -> void:
+	if not _buy_debounced():
+		return
 	var bag: Node = get_node_or_null("/root/IntelItemBag")
 	if bag == null or not bag.has_method("add_item"):
 		return

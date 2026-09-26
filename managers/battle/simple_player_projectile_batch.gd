@@ -77,6 +77,8 @@ func _update_tracers() -> void:
 		t.material = _tracer_mat
 		t.joint_mode = Line2D.LINE_JOINT_ROUND
 		t.end_cap_mode = Line2D.LINE_CAP_ROUND
+		# 记录7#9: 曳光恒垫弹头层之下（同 simple_enemy_projectile_batch，防树序压弹头）
+		t.z_index = -1
 		add_child(t)
 		_tracer_lines.append(t)
 	# 更新前 need 条坐标；多余的隐藏

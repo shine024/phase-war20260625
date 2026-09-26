@@ -310,7 +310,9 @@ static func deliver_item(item: StoreItem) -> bool:
 			var brm := _get_autoload("/root/BasicResourceManager")
 			if brm and brm.has_method("add_resource"):
 				match item.item_id:
-					"nano_materials", "alloy":
+					# 记录1#9: 补 crystal/energy_block——原 match 只认 nano/alloy，
+					# 商店上架的晶体/能量块购买时 deliver 落空 return false（不发货）
+					"nano_materials", "alloy", "crystal", "energy_block":
 						# 2026-09-19 经济修复：1 功勋 = 1 材料（原按价格阶梯猜测发放量，
 						# "合金x50" 实发 20 品名错位，且功勋材料包定价是 trap choice）。
 						# 商品定义三方自洽：品名数量 = 功勋价 = 发放量，永不漂移。

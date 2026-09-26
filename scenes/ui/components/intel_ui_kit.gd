@@ -65,6 +65,7 @@ static func section_header(title: String, accent: Color, count_text := "") -> VB
 	var rule := ColorRect.new()
 	rule.color = Color(accent.r, accent.g, accent.b, 0.22)
 	rule.custom_minimum_size = Vector2(0, 1)
+	rule.mouse_filter = Control.MOUSE_FILTER_IGNORE  # 纯装饰分隔线，不吃点击（记录4 视觉体检 C 类误报源）
 	box.add_child(rule)
 	return box
 

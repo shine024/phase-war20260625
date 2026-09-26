@@ -205,10 +205,48 @@ func _ready() -> void:
 	_refresh_all()
 	# 布局完成后，让格子高度精确填满条的可用空间
 	call_deferred("_fit_slots_to_bar")
+	# 记录7#1: hbox 宽度一变立即补拟合——原只有 0.5s 兜底 timer，宿主定宽后的矫正
+	# 要等半秒（用户实机"卡一会才变宽"的本体）。resized 触发的 refit 幂等且收敛
+	# （下方硬钳以 viewport−32 为真值，棘轮有界）。
+	var _hb := _get_instrument_hbox()
+	if _hb != null:
+		_hb.resized.connect(_deferred_refit_slots)
+	# 记录5#2: 内嵌宿主（truck_base 先 set_meta 再 add_child）开启"揭示门"——
+	# 实例化早于 wrapper 定尺寸，首帧 fit 只能吃到窄的暂定宽，直接显示就是用户看到的
+	# "格子先窄、等一会才变正常"闪变。格子行先隐藏，_fit_slots_to_bar 在 hbox 实测宽
+	# 就绪（>1px）的首次 fit 后淡入；0.5s 兜底 timer 超时无条件揭示（防极端布局卡门）。
+	if has_meta("slot_reveal_gate"):
+		_slot_reveal_pending = true
+		if slot_section != null and is_instance_valid(slot_section):
+			slot_section.modulate.a = 0.0
 	# v6.23c: 延迟二次兜底（主诉③"背包内嵌格子窄、战斗时合适"）——内嵌宿主实例化早于
 	# 容器定尺寸，首次 fit 可能吃到未就绪的实测宽；0.5s 后布局已稳定，补一次重算。
 	var _fit_timer := get_tree().create_timer(0.5)
-	_fit_timer.timeout.connect(_deferred_refit_slots)
+	_fit_timer.timeout.connect(func() -> void:
+		_deferred_refit_slots()
+		if _slot_reveal_pending:
+			_reveal_slots_now())
+
+
+## 记录5#2: 揭示门状态——true=格子行隐藏中，等待首个"实测宽可信"的 fit 再显示
+var _slot_reveal_pending: bool = false
+## 记录7#1: 已执行 fit 次数。首次 fit 必然吃到暂定窄宽（宿主未定宽），揭示门须等
+## 第 2 次 fit（hbox resized 补拟合 / 0.5s 兜底 timer）才是矫正值。
+var _fit_count: int = 0
+
+
+func _get_instrument_hbox() -> Container:
+	if instrument_section != null and is_instance_valid(instrument_section) \
+			and instrument_section.get_parent() is Container:
+		return instrument_section.get_parent() as Container
+	return null
+
+
+func _reveal_slots_now() -> void:
+	_slot_reveal_pending = false
+	if slot_section != null and is_instance_valid(slot_section):
+		var tw := create_tween()
+		tw.tween_property(slot_section, "modulate:a", 1.0, 0.12)
 
 
 func _deferred_refit_slots() -> void:
@@ -346,6 +384,11 @@ func _notification(what: int) -> void:
 	if what == NOTIFICATION_RESIZED:
 		_update_name_section_width()
 		_fit_slots_to_bar()
+	elif what == NOTIFICATION_VISIBILITY_CHANGED and visible:
+		# 记录4#1：隐藏期窗口/宿主尺寸变化不会触发本节点 RESIZED，重显示时补一次重算
+		#（基地背包内嵌栏反复开合是常态路径；fit 幂等，重复调用无害）
+		_update_name_section_width()
+		call_deferred("_fit_slots_to_bar")
 
 func _connect_signals() -> void:
 	if SignalBus:
@@ -1173,6 +1216,7 @@ func _update_slot_panel(panel: Control, entry: Dictionary) -> void:
 	# v7.x：非战斗卡（法则/符文/空槽）清除费用角标，避免旧角标残留
 	if not has_card:
 		CardFrameUi.clear_cost_corner_badge(panel)
+		_clear_slot_info_strip(panel)
 	var law_id: String = String(entry.get("law_id", ""))
 	var law_kind: String = String(entry.get("law_kind", ""))
 	panel.set_meta("slot_color", color)
@@ -1243,6 +1287,11 @@ func _update_slot_panel(panel: Control, entry: Dictionary) -> void:
 	if has_card:
 		_apply_slot_card_labels(panel, card)
 		panel.tooltip_text = _format_card_slot_tooltip(color, card)
+		# 记录7#7: 换相位仪/调序后 deploy_tooltip_base 还是首次捕获的旧卡情报，
+		# _refresh_deploy_keycaps 会拿它覆盖刚写入的新 tooltip（"悬浮显示换卡前
+		# 的旧卡"根因）——重设 tooltip 即作废缓存，键帽补写时按当前卡重新捕获。
+		if panel.has_meta("deploy_tooltip_base"):
+			panel.remove_meta("deploy_tooltip_base")
 		# v7.x 修复：has_card 分支必须 return，否则会继续执行到 L314 的
 		# _apply_slot_bottom_text(panel, "空", "") 把刚设好的卡名覆盖成"空"
 		# （费用角标独立设置不受影响，导致"名字空+费用有"的诡异现象）
@@ -1344,6 +1393,7 @@ func _fit_slots_to_bar() -> void:
 	if viewport_width <= 1.0:
 		viewport_width = 1280.0
 	var slot_available_w: float = -1.0
+	var section_inner: float = 0.0
 	var hbox: Container = null
 	if instrument_section != null and is_instance_valid(instrument_section) \
 			and instrument_section.get_parent() is Container:
@@ -1362,7 +1412,6 @@ func _fit_slots_to_bar() -> void:
 			overhead += maxf(c.size.x, c.get_combined_minimum_size().x)
 		overhead += float(hbox.get_theme_constant("separation")) * float(maxi(0, visible_n - 1))
 		# InstrumentSection 内非槽位开销：图标 / 名称区 / 自动按钮 + 区内间距
-		var section_inner: float = 0.0
 		var sec_visible_n: int = 0
 		for child in instrument_section.get_children():
 			var c2: Control = child as Control
@@ -1392,22 +1441,39 @@ func _fit_slots_to_bar() -> void:
 			continue
 		slot_overhead += maxf(c3.size.x, c3.get_combined_minimum_size().x) + separation
 	# v21.x: 固定宽度——原恒按最大槽数 _FIXED_WIDTH_SLOT_REF(13) 格计算。
-	# v6.23（用户拍板）：改按实际可见槽数（clamp 4..13）——不满配时格子放大吃掉右侧空白
-	# （基地背包装配相位仪"格子太窄+右边还有很多空间"主诉）。13 格满配时与旧公式同值
-	# 零回归；切相位仪槽数变化时格子宽度随之变化（有意打破 v21.x"恒同宽"）。
+	# v6.23 曾改按实际可见槽数（clamp 4..13）放大吃右侧空白；记录1#2（用户拍板）推翻：
+	# "1星格子较宽、高星较窄"观感差——恒按 13 格（7星满配）折算，格子大小固定不随
+	# 当前相位仪槽数变化，不满配时右侧留白。
 	# 上限90px（宽屏不放大），下限40px（窄屏再窄看不清）。
 	var slot_count: int = 0
 	for p in _slot_panels:
 		if p != null and is_instance_valid(p) and (p as Control).visible:
 			slot_count += 1
-	var width_basis: int = _FIXED_WIDTH_SLOT_REF if slot_count <= 0 else clampi(slot_count, 4, _FIXED_WIDTH_SLOT_REF)
+	var width_basis: int = _FIXED_WIDTH_SLOT_REF
 	var full_total_sep: float = separation * float(width_basis - 1)
 	var full_dynamic_w: float = maxf(40.0, (slot_available_w - full_total_sep - slot_overhead) / float(width_basis))
 	_slot_width = minf(full_dynamic_w, SLOT_FIXED_SIZE.x)
+	# 记录4#1 硬约束：格子行总宽永不超过"锚定意图宽"。实测路径用的 hbox.size.x 是上次布局值，
+	# 视口缩窄（大字号 csf 1.25 / 窗口切换）时存在棘轮：栏体被旧 min 撑宽 → hbox 跟着虚大 →
+	# fit 按虚大量测守不住，格子行右侧出屏（实测 csf1.25 下栏体 1226 > 视口 1024，出屏 218px）。
+	# 两种宿主（主场景 BattleBottomBar / 基地内嵌 wrapper）的锚定意图宽都是 viewport−32，
+	# 以它为真值钳制可打破循环：slot min 收缩 → 栏体 min 回落到锚定宽内 → 收敛。
+	# 记录7#1: 宿主尚未定宽时 size.x 是暂定小值，硬钳此刻会把格子压到 40px 地板
+	#（首帧窄的第二推手）——只在栏体已到锚定意图宽（≥viewport−64）时才钳；
+	# 棘轮场景（csf1.25 栏体 1226 > 视口 1024）该条件仍成立，钳制照常生效。
+	if size.x >= viewport_width - 64.0 and slot_count > 0:
+		var chrome_w: float = size.x - 16.0 - section_inner - slot_overhead - separation * float(maxi(0, slot_count - 1))
+		var hard_cap: float = maxf(40.0, chrome_w / float(slot_count))
+		_slot_width = minf(_slot_width, hard_cap)
 	for p in _slot_panels:
 		if p and is_instance_valid(p):
 			p.custom_minimum_size = Vector2(_slot_width, available_h)
 			p.size = Vector2(_slot_width, available_h)
+	# 记录5#2/记录7#1: 揭示门——hbox.size.x>1 在首帧恒真（最小内容宽天然几百 px）
+	# 防不住，首次 fit 必然是暂定窄宽；第 2 次 fit（resized 补拟合或 0.5s 兜底）才亮。
+	_fit_count += 1
+	if _slot_reveal_pending and _fit_count >= 2 and hbox != null and hbox.size.x > 1.0:
+		_reveal_slots_now()
 	_resync_slot_icon_min_sizes(available_h)
 
 ## v9.4 修复：槽位收窄后图标右侧被裁。
@@ -1486,6 +1552,61 @@ func _apply_slot_card_labels(panel: Control, card: CardResource) -> void:
 		panel.set_meta("cost_badge_node", cost_badge)
 	# v20.13b：槽位重建后恢复部署次数角标（缓存由信号维护，重布局不丢）
 	_refresh_deploy_uses_badge(panel)
+	# 记录4#4（关键信息定版）：底部信息条「Lv.N 名称」——等级是装配决策核心维度
+	# （v19 起 tooltip 常驻，但无悬停不可见），名称补辨识；其余关键信息分层不变：
+	# 费用/次数角标 + 稀有度描边 + 三态（可部署▲/能量压暗/关卡限制灰显）+ tooltip 全量。
+	_sync_slot_info_strip(panel, card)
+
+
+## 槽位底部信息条：半透明黑底单行「Lv.N 名称」，12px 中文合规，超宽省略。
+## 挂 SlotIconClip（普通 Control 免 Container 拉伸，同 DeployUsesBadge 纪律），
+## mouse_filter=IGNORE 不吃槽位点击；非卡槽由 _update_slot_panel 入口清理。
+func _sync_slot_info_strip(panel: Control, card: CardResource) -> void:
+	var clip: Control = panel.get_node_or_null("SlotVBox/SlotIconClip") as Control
+	if clip == null:
+		return
+	var strip: Label = clip.get_node_or_null("SlotInfoStrip") as Label
+	if strip == null:
+		strip = Label.new()
+		strip.name = "SlotInfoStrip"
+		strip.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		strip.clip_text = true
+		strip.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+		strip.add_theme_font_size_override("font_size", 12)
+		strip.add_theme_color_override("font_color", DT.COLOR_TEXT_BRIGHT)
+		var sb := StyleBoxFlat.new()
+		sb.bg_color = Color(0.0, 0.0, 0.0, 0.6)
+		sb.content_margin_left = 3
+		sb.content_margin_right = 3
+		sb.content_margin_top = 0
+		sb.content_margin_bottom = 1
+		strip.add_theme_stylebox_override("normal", sb)
+		clip.add_child(strip)
+		strip.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
+		# 记录4#4 实测（bar4 探针截图）：贴底 0 会被卡面 chrome 描边带盖住字形下半、
+		# 左缘盖住首字符——四边都收到 chrome 内侧（左右 6 / 底 8 / 高 16）
+		strip.offset_left = 6.0
+		strip.offset_right = -6.0
+		strip.offset_top = -24.0
+		strip.offset_bottom = -8.0
+	var lv_val: int = 1
+	var ir_lv: Node = get_node_or_null("/root/InstanceRegistry")
+	if ir_lv != null and ir_lv.has_method("get_card_level"):
+		var ident: String = String(card.instance_id) if not String(card.instance_id).is_empty() else String(card.card_id)
+		lv_val = clampi(maxi(int(ir_lv.get_card_level(ident)), 1), 1, 30)
+	var display_name: String = DefaultCardsData.get_safe_display_name(card.card_id) + DefaultCardsData.seq_suffix(card)
+	strip.text = "Lv.%d %s" % [lv_val, display_name]
+	strip.visible = true
+
+
+## 清除槽位信息条（非卡槽路径调用；lawn/rune/空槽各有自己的展示，不共用）
+func _clear_slot_info_strip(panel: Control) -> void:
+	var clip: Control = panel.get_node_or_null("SlotVBox/SlotIconClip") as Control
+	if clip == null:
+		return
+	var strip: Node = clip.get_node_or_null("SlotInfoStrip")
+	if strip != null and is_instance_valid(strip):
+		strip.queue_free()
 
 
 func _sync_slot_card_frame(panel: Control, card: CardResource) -> void:

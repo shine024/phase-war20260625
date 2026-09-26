@@ -159,7 +159,20 @@ func _update_unit_count_display() -> void:
 			player_n = int(BattleManager.get_player_unit_count())
 		if BattleManager.has_method("get_enemy_unit_count"):
 			enemy_n = int(BattleManager.get_enemy_unit_count())
-	_units_label.text = "单位 我方:%d 敌方:%d" % [player_n, enemy_n]
+	# 记录1#8: 补"可上多少单位"——我方上限=装配卡数（相位仪绿槽承载的 loadouts），
+	# 敌方上限=按关卡时代的在场帽（普通关 6→9；相位师战由 driver._unit_limit 控制不在此折算）
+	var player_cap: int = 0
+	if PhaseInstrumentManager != null and PhaseInstrumentManager.has_method("get_max_deployable_units"):
+		player_cap = int(PhaseInstrumentManager.get_max_deployable_units())
+	var enemy_cap: int = 0
+	if GameManager != null and "current_level" in GameManager:
+		var lv: int = int(GameManager.current_level)
+		if lv > 0:
+			enemy_cap = LevelEras.get_enemy_field_cap_for_level(lv)
+	if enemy_cap > 0:
+		_units_label.text = "单位 我方:%d/%d 敌方:%d/%d" % [player_n, player_cap, enemy_n, enemy_cap]
+	else:
+		_units_label.text = "单位 我方:%d 敌方:%d" % [player_n, enemy_n]
 
 
 func _update_display() -> void:

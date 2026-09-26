@@ -676,6 +676,12 @@ func _enter_backpack_layout() -> void:
 			continue
 		_backpack_chrome_saved[path] = node.visible
 		node.visible = false
+	# 记录4#1 顺手修：功能抽屉 v38.2 起运行期 reparent 到 HudLayer 直下，上面旧路径
+	# get_node_or_null 恒 null → 背包打开时抽屉不再被隐藏（v6.19.3 双路径纪律的漏网点）。
+	# 成员引用是节点身份（reparent 后仍有效）；仅当旧路径没命中时才走此兜底，防同节点二次隐藏。
+	if bottom_function_bar != null and not _backpack_chrome_saved.has("HudLayer/BattleBottomBar/BottomFunctionBar"):
+		_backpack_chrome_saved["__drawer__"] = bottom_function_bar.visible
+		bottom_function_bar.visible = false
 
 func _exit_backpack_layout() -> void:
 	if not _backpack_chrome_active:
@@ -689,6 +695,8 @@ func _exit_backpack_layout() -> void:
 		var node: Control = get_node_or_null(path) as Control
 		if node != null:
 			node.visible = bool(_backpack_chrome_saved[path])
+	if _backpack_chrome_saved.has("__drawer__") and bottom_function_bar != null:
+		bottom_function_bar.visible = bool(_backpack_chrome_saved["__drawer__"])
 	_backpack_chrome_saved.clear()
 
 ## 面板占满打开态：

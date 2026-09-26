@@ -130,8 +130,15 @@ func _refresh_company_summary() -> void:
 		return
 	for c in company_list.get_children():
 		c.queue_free()
+	# 记录5#20：原 7 个势力各占一整行（~280px 高），委托列表被挤压——
+	# 压成两列紧凑网格（~110px），势力详情仍以势力面板为准，此处只是速查条。
 	var fsm: Node = get_node_or_null("/root/FactionSystemManager")
 	var companies: Array = CompanyDefs.get_all()
+	var grid := GridContainer.new()
+	grid.columns = 2
+	grid.add_theme_constant_override("h_separation", 6)
+	grid.add_theme_constant_override("v_separation", 4)
+	grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	for cfg in companies:
 		if not cfg is Dictionary:
 			continue
@@ -140,8 +147,8 @@ func _refresh_company_summary() -> void:
 		var rep_value: int = 0
 		if fsm != null and fsm.has_method("get_faction_reputation"):
 			rep_value = int(fsm.get_faction_reputation(cid))
-		# PanelContainer 包裹
 		var panel := PanelContainer.new()
+		panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		var ps := StyleBoxFlat.new()
 		ps.bg_color = Color(DT.COLOR_PANEL_DEEP.r, DT.COLOR_PANEL_DEEP.g, DT.COLOR_PANEL_DEEP.b, 0.9)
 		ps.border_color = Color(DT.COLOR_KIND_ARMOR.r, DT.COLOR_KIND_ARMOR.g, DT.COLOR_KIND_ARMOR.b, 0.4)
@@ -151,30 +158,31 @@ func _refresh_company_summary() -> void:
 		ps.border_width_bottom = 0
 		ps.corner_radius_top_left = 3
 		ps.corner_radius_bottom_left = 3
+		ps.content_margin_left = 6.0
+		ps.content_margin_right = 6.0
+		ps.content_margin_top = 2.0
+		ps.content_margin_bottom = 2.0
 		panel.add_theme_stylebox_override("panel", ps)
-		var mg := MarginContainer.new()
-		mg.add_theme_constant_override("margin_left", 8)
-		mg.add_theme_constant_override("margin_right", 8)
-		mg.add_theme_constant_override("margin_top", 4)
-		mg.add_theme_constant_override("margin_bottom", 4)
 		var line := HBoxContainer.new()
-		line.add_theme_constant_override("separation", 8)
+		line.add_theme_constant_override("separation", 6)
 		var name_label := Label.new()
 		name_label.text = cname
 		name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		name_label.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
 		name_label.add_theme_color_override("font_color", DT.COLOR_TEXT_BRIGHT)
+		name_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 		var rep_label := Label.new()
-		rep_label.text = "贡献：%d" % rep_value
+		rep_label.text = "%d" % rep_value
+		rep_label.tooltip_text = "%s 当前贡献（只升不降的等级进度轴）" % cname
 		rep_label.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
 		rep_label.add_theme_color_override("font_color",
 			DT.COLOR_GREEN_BRIGHT if rep_value > 0 else Color(DT.COLOR_TEXT_DIM.r, DT.COLOR_TEXT_DIM.g, DT.COLOR_TEXT_DIM.b, 0.7))
 		rep_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 		line.add_child(name_label)
 		line.add_child(rep_label)
-		mg.add_child(line)
-		panel.add_child(mg)
-		company_list.add_child(panel)
+		panel.add_child(line)
+		grid.add_child(panel)
+	company_list.add_child(grid)
 
 func _refresh_list() -> void:
 	ManagerLazyLoader.ensure_loaded("quest")
@@ -456,6 +464,14 @@ func _refresh_daily_tasks() -> void:
 	header_row.add_child(header)
 	header_row.add_child(_make_claim_all_daily_button(dtm))
 	daily_list.add_child(header_row)
+	# 记录5#19：日常任务无接取按钮被当成缺失——设计即自动记录，把规则写明
+	var rule_hint := Label.new()
+	rule_hint.text = "日常任务无需接取：进度自动记录，达成后点「领取」即可。"
+	rule_hint.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
+	rule_hint.add_theme_color_override("font_color", DT.COLOR_TEXT_FAINT)
+	rule_hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	rule_hint.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	daily_list.add_child(rule_hint)
 	for task in dtm.get_daily_tasks():
 		daily_list.add_child(_make_daily_task_row(task, dtm))
 
@@ -565,10 +581,12 @@ func _make_daily_task_row(task: Dictionary, dtm: Node) -> Control:
 	return panel
 
 func _daily_reward_text(reward: Dictionary) -> String:
+	# 记录5#19：「碎片」名不达义——碎片奖励实际是随机发放一张对应稀有度的卡牌
+	# （card_drop_grants.grant_from_legacy_fragment_reward_pool），显示名随实义改。
 	const NAMES := {
 		"nano_materials": "纳米材料", "energy_blocks": "能量块",
-		"common_fragment": "普通碎片", "rare_fragment": "稀有碎片",
-		"epic_fragment": "史诗碎片", "legendary_fragment": "传说碎片",
+		"common_fragment": "随机普通卡", "rare_fragment": "随机稀有卡",
+		"epic_fragment": "随机史诗卡", "legendary_fragment": "随机传说卡",
 	}
 	var parts: Array[String] = []
 	for key in reward:

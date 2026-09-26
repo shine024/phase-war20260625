@@ -48,10 +48,16 @@ var active_faction: String = ""
 var exclusive_cards_granted: Array = []
 
 ## v30 R2b（设计审查 F-04 根治，2026-09-13）：功勋——势力商店/符文的消费货币。
-## 语义分离：贡献=等级进度轴（只升不降，不再被消费拉低）；功勋=全局可花货币，
+## 语义分离：贡献=等级进度轴（只升不降，不再被消费拉低）；功勋=可花货币，
 ## 与正贡献增量 1:1 镜像获取（任务/事件/相位师战）。购买扣功勋不扣贡献。
+## 记录4#3（用户拍板）：功勋按势力分账——各势力功勋独立攒、独立花，
+## 在 A 势力挣的功勋不能在 B 势力商店花；无势力上下文的获取（成就直发）
+## 均摊到全部势力（总量守恒）。旧档单一数值读档时均分迁移。
 const DEFAULT_STARTING_MERIT := 500
-var merit_points: int = DEFAULT_STARTING_MERIT
+## v6.24 测试补库（pw_playtest 构建专用）：功勋保底值——覆盖全商店最高单价（米加粒子炮 900）
+## 并留足一整轮连买余量；每次读档/新档只抬不降补回此线。
+const SHOP_TEST_MERIT_FLOOR := 99999
+var merit_by_faction: Dictionary = {}   ## faction_id -> int（记录4#3 功勋分账真身）
 
 ## 关卡信息实例
 var level_info: LevelInformation
@@ -127,11 +133,12 @@ func add_faction_reputation(faction_id: String, delta: int) -> int:
 	faction_reputation[faction_id] = result["new_rep"]
 
 	# v30 R2b：正贡献增量 1:1 镜像为功勋（含 reputation_bonus 加成后的最终值）。
-	# 购买扣减（delta<0）不镜像——功勋只赚不亏，消费走 merit_points 直扣。
+	# 购买扣减（delta<0）不镜像——功勋只赚不亏，消费走分账直扣。
+	# 记录4#3：镜像进本势力自己的功勋账（跨势力不可花）。
 	if delta > 0:
-		merit_points += delta
+		merit_by_faction[faction_id] = get_merit_points(faction_id) + delta
 		FeatureUnlockPopup.show_once("merit_intro", "获得功勋",
-			"完成任务与事件会同时积累贡献与功勋——势力补给与符文用功勋支付，不占用贡献等级。")
+			"完成任务与事件会同时积累贡献与功勋——各势力的功勋独立计算，本势力补给与符文用本势力功勋支付，不占用贡献等级。")
 
 	if result["leveled_up"]:
 		faction_level[faction_id] = result["new_level"]
@@ -269,27 +276,82 @@ func get_faction_store_items(faction_id: String) -> Array[FactionShop.StoreItem]
 	return FactionShop.get_faction_store_items(faction_id)
 
 ## 检查是否可以购买（v30 R2b：货币轴=功勋；v6.23: 等级门删除，功勋余额唯一判定）
+## 记录4#3：判定用该势力自己的功勋分账。
 func can_purchase_item(faction_id: String, item: FactionShop.StoreItem) -> Dictionary:
-	return FactionShop.can_purchase_item(merit_points, item)
+	return FactionShop.can_purchase_item(get_merit_points(faction_id), item)
 
 ## 功勋余额（v30 R2b：商店/符文消费货币，UI 显示用）
-func get_merit_points() -> int:
-	return merit_points
+## 记录4#3 分账：传 faction_id=该势力余额；空串=全部势力合计（成就/汇总显示用）。
+func get_merit_points(faction_id: String = "") -> int:
+	if faction_id.is_empty():
+		var total: int = 0
+		for fid in merit_by_faction:
+			total += int(merit_by_faction[fid])
+		return total
+	return int(merit_by_faction.get(faction_id, 0))
 
 ## 扣功勋（v30 R2b：符文直购路径用；返回 false=余额不足，未扣款）
-func spend_merit(amount: int) -> bool:
+## 记录4#3：带 faction_id 从该势力账扣；空串从合计账扣（按势力序依次扣，仅兼容旧调用）。
+func spend_merit(amount: int, faction_id: String = "") -> bool:
 	if amount <= 0:
 		return true
-	if merit_points < amount:
+	if not faction_id.is_empty():
+		var bal: int = get_merit_points(faction_id)
+		if bal < amount:
+			return false
+		merit_by_faction[faction_id] = bal - amount
+		return true
+	if get_merit_points() < amount:
 		return false
-	merit_points -= amount
+	var remain: int = amount
+	for fid in _all_faction_ids:
+		if remain <= 0:
+			break
+		var take: int = mini(int(merit_by_faction.get(fid, 0)), remain)
+		if take > 0:
+			merit_by_faction[fid] = int(merit_by_faction.get(fid, 0)) - take
+			remain -= take
 	return true
 
 ## 加功勋（v6.22：成就奖励等直发路径用，不走声望镜像链）
-func add_merit(amount: int) -> void:
+## 记录4#3：带 faction_id 入该势力账；空串均摊到全部势力（总量守恒，余数给第一个）。
+func add_merit(amount: int, faction_id: String = "") -> void:
 	if amount <= 0:
 		return
-	merit_points += amount
+	if not faction_id.is_empty():
+		merit_by_faction[faction_id] = get_merit_points(faction_id) + amount
+		return
+	var n: int = maxi(1, _all_faction_ids.size())
+	var share: int = amount / n
+	var remainder: int = amount - share * n
+	for i in range(_all_faction_ids.size()):
+		var fid: String = String(_all_faction_ids[i])
+		var extra: int = share + (remainder if i == 0 else 0)
+		if extra > 0 or merit_by_faction.has(fid):
+			merit_by_faction[fid] = get_merit_points(fid) + extra
+
+## 新档/重置：起步功勋均分入各势力账（总量=DEFAULT_STARTING_MERIT，与旧全局口径守恒）
+func _reset_merit_buckets() -> void:
+	merit_by_faction.clear()
+	var n: int = maxi(1, _all_faction_ids.size())
+	var share: int = DEFAULT_STARTING_MERIT / n
+	var remainder: int = DEFAULT_STARTING_MERIT - share * n
+	for i in range(_all_faction_ids.size()):
+		var fid: String = String(_all_faction_ids[i])
+		merit_by_faction[fid] = share + (remainder if i == 0 else 0)
+
+## v6.24 测试补库（pw_playtest 试玩构建专用）：商店全可买保底——功勋补到 SHOP_TEST_MERIT_FLOOR
+## （势力商店/补给舱特购·符文区唯一消费货币，记录4#3 分账），贡献抬满 MAX_REPUTATION
+## （全域访问 6200 门 + 势力等级轴上限）。只抬不降幂等，由 save_manager _grant_debug_test_stock
+## 在新档/读档尾部调用；正式构建（debug_grant_all_blueprints=false）首行早退零影响。
+## 直写字典不走 add_faction_reputation——避开 1:1 功勋镜像与 faction_level_up 信号。
+func debug_ensure_shop_test_stock() -> void:
+	if not GameConfig.get_default().debug_grant_all_blueprints:
+		return
+	for fid in _all_faction_ids:
+		var fid_s: String = String(fid)
+		faction_reputation[fid_s] = maxi(int(faction_reputation.get(fid_s, 0)), FactionReputation.MAX_REPUTATION)
+		merit_by_faction[fid_s] = maxi(int(merit_by_faction.get(fid_s, 0)), SHOP_TEST_MERIT_FLOOR)
 
 ## 购买物品
 ## v30 R2b：消费货币=功勋（贡献等级不因消费下跌）；等级门与库存检查不变。
@@ -304,17 +366,19 @@ func purchase_item(faction_id: String, item: FactionShop.StoreItem) -> Dictionar
 		shop_discount = clampf(FactionSkillManager.get_resource_value(faction_skill_states[faction_id], faction_id, "shop_discount"), 0.0, 0.5)
 	var eff_cost: int = int(ceil(float(item.reputation_cost) * (1.0 - shop_discount)))
 	# 折扣后余额复核（can_purchase_item 用原价预检，可能原价不足而折扣价足够）
-	if merit_points < eff_cost:
-		return {"ok": false, "reason": "reputation_insufficient", "required_rep": eff_cost, "current_rep": merit_points}
+	# 记录4#3：余额=本势力分账，扣的也是本势力账。
+	var own_bal: int = get_merit_points(faction_id)
+	if own_bal < eff_cost:
+		return {"ok": false, "reason": "reputation_insufficient", "required_rep": eff_cost, "current_rep": own_bal}
 
 	# 扣除功勋（折扣价）
-	merit_points -= eff_cost
+	merit_by_faction[faction_id] = own_bal - eff_cost
 
 	# 发放物品
 	var delivered: bool = FactionShop.deliver_item(item)
 	if not delivered:
 		# 回退功勋（按实付折扣价；旧代码按原价回退会白送差价，顺手修正）
-		merit_points += eff_cost
+		merit_by_faction[faction_id] = get_merit_points(faction_id) + eff_cost
 		return {"ok": false, "reason": "delivery_failed"}
 
 	# 更新库存（如果有库存限制）
@@ -416,7 +480,9 @@ func save_state() -> Dictionary:
 		"faction_reputation": faction_reputation.duplicate(true),
 		"faction_level": faction_level.duplicate(true),
 		# v30 R2b：功勋（旧档缺 key = 起步值，免迁移）
-		"faction_merit": merit_points,
+		# 记录4#3：分账真身 faction_merit_by_faction；faction_merit 兼容写合计（回滚保险）。
+		"faction_merit_by_faction": merit_by_faction.duplicate(true),
+		"faction_merit": get_merit_points(),
 		"faction_store_inventory": faction_store_inventory.duplicate(true),
 		"faction_active": active_faction,
 		"faction_skill_states": skill_states,
@@ -433,15 +499,26 @@ func load_state(data: Dictionary) -> void:
 	# 新游戏：SaveManager 传入空字典，必须整表重置（否则仍保留上一局的贡献）
 	if data.is_empty():
 		_init_faction_data()
-		merit_points = DEFAULT_STARTING_MERIT  # v30 R2b：功勋重置
+		_reset_merit_buckets()  # 记录4#3：新档起步值均分入各势力账
 		active_faction = ""
 		exclusive_cards_granted.clear()
 		return
 	if data.has("faction_reputation") and data["faction_reputation"] is Dictionary:
 		faction_reputation = (data["faction_reputation"] as Dictionary).duplicate(true)
 
-	# v30 R2b：功勋（旧档缺 key = 起步值 500，免 schema 迁移）
-	merit_points = int(data.get("faction_merit", DEFAULT_STARTING_MERIT))
+	# 记录4#3：功勋分账（新键优先；旧档单值键按势力数均分迁移，余数给第一个势力）
+	merit_by_faction.clear()
+	if data.has("faction_merit_by_faction") and data["faction_merit_by_faction"] is Dictionary:
+		for fid in (data["faction_merit_by_faction"] as Dictionary):
+			merit_by_faction[String(fid)] = int((data["faction_merit_by_faction"] as Dictionary)[fid])
+	else:
+		var legacy_merit: int = int(data.get("faction_merit", DEFAULT_STARTING_MERIT))
+		var n: int = maxi(1, _all_faction_ids.size())
+		var share: int = legacy_merit / n
+		var remainder: int = legacy_merit - share * n
+		for i in range(_all_faction_ids.size()):
+			var fid: String = String(_all_faction_ids[i])
+			merit_by_faction[fid] = share + (remainder if i == 0 else 0)
 
 	if data.has("faction_level") and data["faction_level"] is Dictionary:
 		faction_level = (data["faction_level"] as Dictionary).duplicate(true)

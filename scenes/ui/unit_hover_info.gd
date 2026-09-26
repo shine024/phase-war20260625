@@ -145,12 +145,22 @@ func _populate(unit: Node) -> void:
 	if card != null:
 		rarity_color = GC.get_rarity_color(card.rarity)
 	_rarity_strip.color = rarity_color
-	# 数值行（HP/攻/防）
+	# 数值行（HP/攻/防）——敌方单位按情报可见性三档掩码（v27.15 同口径）。
+	# 记录7#23: 悬浮窗此前完全不过掩码，情报卡显示"???"而悬浮泄露精确值。
 	if stats != null:
-		var hp_text: String = "生命 %d/%d" % [int(unit.get("hp") if "hp" in unit else 0), int(stats.max_hp)]
+		var vis: int = 2
+		if unit.is_in_group("enemy_units"):
+			vis = _enemy_stat_visibility_level(unit)
+		var cur_hp: int = int(unit.get("hp") if "hp" in unit else 0)
 		var atk_val: float = maxf(stats.attack_light, maxf(stats.attack_armor, stats.attack_air))
 		var def_val: float = maxf(stats.defense_light, maxf(stats.defense_armor, stats.defense_air))
-		_stats_label.text = "%s · 攻 %d · 防 %d" % [hp_text, int(atk_val), int(def_val)]
+		if vis >= 2:
+			_stats_label.text = "生命 %d/%d · 攻 %d · 防 %d" % [
+				cur_hp, int(stats.max_hp), int(atk_val), int(def_val)]
+		else:
+			_stats_label.text = "生命 %s/%s · 攻 %s · 防 %s" % [
+				_mask_stat_value(float(cur_hp), vis), _mask_stat_value(float(stats.max_hp), vis),
+				_mask_stat_value(atk_val, vis), _mask_stat_value(def_val, vis)]
 	else:
 		_stats_label.text = ""
 	# 等级行：只显示战斗等级（光环/buff 移到下方状态效果行，避免重复）
@@ -177,6 +187,38 @@ func _populate(unit: Node) -> void:
 			sl.visible = true
 		else:
 			sl.visible = false
+
+
+## v27.15 同口径：敌详情数值可见性等级 → 2=精确 / 1=区间 / 0=???（记录7#23）。
+## 与 card_info_panel._enemy_stat_visibility_level 同逻辑（fail-open：管理器缺席/无
+## archetype 按精确显示）；仅敌方单位调用（调用侧有 enemy_units 分组门）。
+func _enemy_stat_visibility_level(unit: Node) -> int:
+	var idm: Node = get_node_or_null("/root/IntelDiscoveryManager")
+	if idm == null or not idm.has_method("get_stat_visibility"):
+		return 2
+	var aid: String = String(unit.get("archetype_id")) if "archetype_id" in unit else ""
+	if aid.is_empty():
+		return 2
+	var etype: String = aid
+	if idm.has_method("_guess_enemy_type"):
+		etype = String(idm.call("_guess_enemy_type", aid))
+	var vis: String = String(idm.get_stat_visibility(etype))
+	match vis:
+		"full_stats", "skill_list":
+			return 2
+		"behavior_summary", "equipment_type", "name_and_type":
+			return 1
+		_:
+			return 0  # ""（从未揭示）/ hidden_stats
+
+
+## v27.15 同口径：数值三档掩码——精确原值 / 区间 ±30%（整数取整到 5）/ ???
+func _mask_stat_value(v: float, level: int, step: float = 5.0) -> String:
+	if level >= 2:
+		return str(int(round(v)))
+	if level == 1:
+		return "%d–%d" % [int(floor(v * 0.7 / step) * step), int(ceil(v * 1.3 / step) * step)]
+	return "???"
 
 
 func _resolve_display_name(unit: Node) -> String:

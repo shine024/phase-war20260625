@@ -54,6 +54,18 @@ const SHIELD_TEX_PATH := "res://assets/effects/spell_burst/player_shield.png"
 static var _shield_tex: Texture2D = null
 static var _shield_tex_checked: bool = false
 
+## 记录7#15（用户裁决：堡垒光环贴图化）——柔光刻度环贴图（tools/_tmp_record7_gen_aura_ring.py
+## 生成，中性冷白，运行期 modulate 染阵营色）；缺失回退旧矢量环。
+const AURA_RING_TEX_PATH := "res://assets/effects/aura/fort_aura_ring.png"
+static var _aura_ring_tex: Texture2D = null
+static var _aura_ring_tex_checked: bool = false
+
+## 记录7#8（用户裁决：常驻护盾统一到"矢量弧穹顶+六边形阵列+贴图呼吸罩"——
+## 即敌方灵能盾（矢量弧）与巨型能量罩（六边形+爆罩）的复合语言）。
+## 六边形阵列配色（玩家青蓝；add 混合由 _hex_layer 材质承担）
+const SHIELD_HEX_COLOR := Color(0.3, 0.75, 1.0)
+const SHIELD_TEX_CONTENT_W := 916.0  # player_shield.png 内容实宽（画布 1024，标定见 vfx_impact_factory）
+
 
 func _draw() -> void:
 	var mode: String = String(get_meta(&"mode", MODE_FORT))
@@ -63,7 +75,7 @@ func _draw() -> void:
 		_draw_fort()
 
 
-## 堡垒职业环：呼吸 + 受击扩张闪亮
+## 堡垒职业环：贴图柔光刻度环主体（阵营 modulate 染色）+ 受击内环闪亮
 func _draw_fort() -> void:
 	var is_player: bool = bool(get_meta(&"is_player", true))
 	var hit_boost: float = float(get_meta(&"hit_boost", 0.0))
@@ -77,6 +89,17 @@ func _draw_fort() -> void:
 	var hit_color: Color = FORT_COLOR_HIT_PLAYER if is_player else FORT_COLOR_HIT_ENEMY
 	var ring_color: Color = base_color.lerp(hit_color, hit_boost)
 
+	# 记录7#15: 贴图环主体（贴图内容环径 ≈0.33 画布，扩 3.05×radius 视觉等径）
+	var ring_tex := _get_aura_ring_texture()
+	if ring_tex != null:
+		var sz: float = radius * 3.05
+		draw_texture_rect(ring_tex, Rect2(-sz * 0.5, -sz * 0.5, sz, sz), false, ring_color)
+		# 受击内环（强化反馈）
+		if hit_boost > 0.05:
+			var inner_color := Color(hit_color.r, hit_color.g, hit_color.b, hit_boost * 0.7)
+			_draw_ring(radius * 0.82, inner_color, RING_WIDTH * 0.7)
+		return
+	# ── 旧矢量环兜底（贴图缺失时）──
 	# 外层柔光晕
 	var glow_color := Color(ring_color.r, ring_color.g, ring_color.b, ring_color.a * 0.18)
 	draw_circle(Vector2.ZERO, radius * 1.25, glow_color)
@@ -88,7 +111,17 @@ func _draw_fort() -> void:
 		_draw_ring(radius * 0.82, inner_color, RING_WIDTH * 0.7)
 
 
-## 护盾状态罩（v38.x G 条重设计）：上半穹顶弧 + 渐变填充，罩在立绘上方。
+static func _get_aura_ring_texture() -> Texture2D:
+	if not _aura_ring_tex_checked:
+		_aura_ring_tex_checked = true
+		if ResourceLoader.exists(AURA_RING_TEX_PATH):
+			_aura_ring_tex = load(AURA_RING_TEX_PATH)
+	return _aura_ring_tex
+
+
+## 护盾状态罩（记录7#8 用户裁决：统一到敌方灵能盾+巨型能量罩的复合语言）：
+## 矢量穹顶弧（渐变填充+描边+底线，psi 灵能盾同款）为基座，
+## 上层叠加六边形阵列（ADD，mega_shield 同款）+ player_shield.png 贴图呼吸罩。
 ## 三态：获得（scale-in+亮闪）→ 持续（呼吸 + 比例透明度 + 受击闪亮）→ 击碎（扩张淡出）。
 func _draw_shield() -> void:
 	var shield_ratio: float = clampf(float(get_meta(&"shield_ratio", 0.0)), 0.0, 1.0)
@@ -135,25 +168,10 @@ func _draw_shield() -> void:
 	var ring_color := Color(SHIELD_COLOR.r, SHIELD_COLOR.g, SHIELD_COLOR.b, base_alpha)
 	ring_color = ring_color.lerp(SHIELD_COLOR_HIT, maxf(hit_boost, spawn_flash * 0.8))
 
-	# v6.23d 记录6#10: 贴图罩主体（与 mega_shield 同款 player_shield.png，青色 tint）
-	var tex := _get_shield_texture()
-	if tex != null:
-		var tex_tint := Color(0.55, 0.9, 1.0, base_alpha)  # 蓝青 tint，同 mega_shield 玩家配色系
-		tex_tint = tex_tint.lerp(Color(SHIELD_COLOR_HIT.r, SHIELD_COLOR_HIT.g, SHIELD_COLOR_HIT.b, maxf(base_alpha, hit_boost)),
-			maxf(hit_boost, spawn_flash * 0.8))
-		# 直径 2×radius，中心在单位原点（与 mega_shield dome 同位：罩顶盖住立绘上半）
-		var sz: float = radius * 2.0
-		draw_texture_rect(tex, Rect2(-radius, -radius * 1.05, sz, sz * 1.05), false, tex_tint)
-		# 保留主描边弧做受击/科技感反馈，贴图作填充主体
-		draw_arc(Vector2.ZERO, radius, PI - DOME_OVERHANG_RAD, TAU + DOME_OVERHANG_RAD, SEGMENTS + 1, ring_color, SHIELD_RING_WIDTH * 0.8, true)
-		return
-
-	# ── 矢量穹顶兜底（贴图缺失时）──
+	# ── 基座：矢量穹顶（渐变扇形 + 主描边弧 + 内层细弧 + 底部收口线，psi 灵能盾同款）──
 	# 穹顶弧角域：上半圆 + 两侧下垂（PI-oh → TAU+oh，y 负为上）
 	var a0: float = PI - DOME_OVERHANG_RAD
 	var a1: float = TAU + DOME_OVERHANG_RAD
-
-	# 渐变填充：穹顶扇形多边形，顶点亮、底边淡（draw_polygon 逐顶点色）
 	var fill_pts := PackedVector2Array()
 	var fill_cols := PackedColorArray()
 	var seg_n: int = 16
@@ -168,22 +186,77 @@ func _draw_shield() -> void:
 		fill_cols.append(Color(SHIELD_COLOR.r, SHIELD_COLOR.g, SHIELD_COLOR.b,
 			base_alpha * (0.16 + 0.26 * top_k)))
 	draw_polygon(fill_pts, fill_cols)
-
-	# 主穹顶描边（加粗）
 	draw_arc(Vector2.ZERO, radius, a0, a1, SEGMENTS + 1, ring_color, SHIELD_RING_WIDTH, true)
-	# 内层细弧（层次感）
 	var inner_color := Color(SHIELD_COLOR.r, SHIELD_COLOR.g, SHIELD_COLOR.b, base_alpha * 0.5)
 	draw_arc(Vector2.ZERO, radius * 0.92, a0 + 0.1, a1 - 0.1, SEGMENTS + 1, inner_color, 1.5, true)
-	# 底部收口横线（两垂脚之间，罩"坐"在地面的锚定感）
 	var left_foot := Vector2(cos(a0), sin(a0)) * radius
 	var right_foot := Vector2(cos(a1), sin(a1)) * radius
 	var foot_color := Color(SHIELD_COLOR.r, SHIELD_COLOR.g, SHIELD_COLOR.b, base_alpha * 0.45)
 	draw_line(left_foot.lerp(right_foot, 0.10), left_foot.lerp(right_foot, 0.90), foot_color, 1.5, true)
 
+	# ── 上层：六边形阵列（ADD，mega_shield 同款）+ 贴图呼吸罩（player_shield.png）──
+	_sync_shield_fx(radius, base_alpha, ring_color, spawn_flash, break_k)
+
 	# 护盾承压时（受击）追加更亮的内描边
 	if hit_boost > 0.05 and break_k < 0.0:
 		var stress_color := Color(SHIELD_COLOR_HIT.r, SHIELD_COLOR_HIT.g, SHIELD_COLOR_HIT.b, hit_boost * 0.7)
 		draw_arc(Vector2.ZERO, radius * 0.88, a0 + 0.15, a1 - 0.15, SEGMENTS + 1, stress_color, SHIELD_RING_WIDTH * 0.7, true)
+
+
+## 记录7#8: 护盾上层特效子节点（懒建，随宿主释放）——六边形阵列 + 贴图呼吸罩。
+## 呼吸/微脉动走 _draw 的周期 queue_redraw（父节点常态每 4 帧），无独立 tween。
+var _hex_layer: Node2D = null
+var _tex_dome: Sprite2D = null
+
+func _sync_shield_fx(radius: float, alpha_k: float, ring_color: Color, spawn_flash: float, break_k: float) -> void:
+	# 六边形阵列：中心 + 6 环绕（ADD 混合；首建按 radius=52 基准，后续整层缩放跟随）
+	if _hex_layer == null or not is_instance_valid(_hex_layer):
+		_hex_layer = Node2D.new()
+		_hex_layer.name = "ShieldHexes"
+		var add_mat := CanvasItemMaterial.new()
+		add_mat.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
+		_hex_layer.material = add_mat
+		add_child(_hex_layer)
+		var ring_r: float = 52.0 * 0.52
+		for off: Vector2 in [
+			Vector2.ZERO,
+			Vector2(ring_r, 0), Vector2(-ring_r, 0),
+			Vector2(ring_r * 0.5, ring_r * 0.87), Vector2(-ring_r * 0.5, ring_r * 0.87),
+			Vector2(ring_r * 0.5, -ring_r * 0.87), Vector2(-ring_r * 0.5, -ring_r * 0.87),
+		]:
+			var hex := Polygon2D.new()
+			hex.polygon = _hexagon_points(52.0 * 0.30)
+			hex.position = off
+			hex.color = Color(SHIELD_HEX_COLOR.r, SHIELD_HEX_COLOR.g, SHIELD_HEX_COLOR.b, 0.28)
+			_hex_layer.add_child(hex)
+	var breathe: float = 1.0 + 0.04 * sin(Time.get_ticks_msec() / 1000.0 * TAU / 1.8)
+	_hex_layer.visible = break_k < 0.0
+	_hex_layer.scale = Vector2.ONE * (radius / 52.0 * breathe)
+	var hex_a: float = clampf((0.20 + 0.26 * alpha_k + spawn_flash * 0.45) * (1.0 - maxf(break_k, 0.0)), 0.0, 0.85)
+	for h in _hex_layer.get_children():
+		if h is Polygon2D:
+			var poly := h as Polygon2D
+			poly.color = Color(SHIELD_HEX_COLOR.r, SHIELD_HEX_COLOR.g, SHIELD_HEX_COLOR.b, hex_a)
+	# 贴图呼吸罩（player_shield.png，mega_shield 同款；资产缺失时只有矢量+六边形层）
+	if _tex_dome == null and ResourceLoader.exists(SHIELD_TEX_PATH):
+		_tex_dome = Sprite2D.new()
+		_tex_dome.name = "ShieldTexDome"
+		_tex_dome.texture = load(SHIELD_TEX_PATH)
+		add_child(_tex_dome)
+	if _tex_dome != null:
+		var dsz: float = radius * 2.35 * breathe
+		_tex_dome.scale = Vector2(dsz / SHIELD_TEX_CONTENT_W, dsz / SHIELD_TEX_CONTENT_W)
+		var dome_a: float = clampf((0.26 + 0.22 * alpha_k + spawn_flash * 0.35) * (1.0 - maxf(break_k, 0.0)), 0.0, 0.7)
+		_tex_dome.modulate = Color(ring_color.r, ring_color.g, ring_color.b, dome_a)
+		_tex_dome.visible = dome_a > 0.01
+
+
+func _hexagon_points(r: float) -> PackedVector2Array:
+	var pts := PackedVector2Array()
+	for i in range(6):
+		var a := TAU * float(i) / 6.0
+		pts.append(Vector2(cos(a), sin(a)) * r)
+	return pts
 
 
 ## 绘制一个闭合圆环（描边）

@@ -35,12 +35,14 @@ stretch_mode = 0
 layout_mode = 2
 text = "资源"
 size_flags_horizontal = 3
-autowrap_mode = 2
+autowrap_mode = 0
+text_overrun_behavior = 3
 
 [node name="AmountLabel" type="Label" parent="Margin/VBox"]
 layout_mode = 2
 text = "0 / 10000"
 horizontal_alignment = 2
 size_flags_horizontal = 3
-autowrap_mode = 2
+autowrap_mode = 0
+text_overrun_behavior = 3
 clip_text = true

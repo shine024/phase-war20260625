@@ -1146,6 +1146,10 @@ func _render_close_button_anchored(panel: Control) -> void:
 	btn.offset_right = -100.0
 	btn.offset_top = -60.0   # 按钮 top 距面板底 60px（按钮高 44 + 16px 底边距）
 	btn.offset_bottom = -16.0
+	# 记录4 视觉体检修复：主键先添加。宽主键态（教程首战胜利/第100关等 next/replay 均为 0 时
+	# 主键保持 BOTTOM_WIDE 100..820）此前最后 add_child 会盖住左侧「返回移动基地」（裁得只剩
+	# "← 返回"）；侧键后添加=永远画在主键上层，四键态几何本就不相交，层序收敛一处。
+	panel.add_child(btn)
 	# v22.4（P0-2）：从基地出击时，左下角加"返回基地"直达按钮，主按钮让位右移
 	if _bunker_return_available:
 		var home_btn := Button.new()
@@ -1236,7 +1240,6 @@ func _render_close_button_anchored(panel: Control) -> void:
 		btn.pressed.connect(_on_replay_pressed)
 	else:
 		btn.pressed.connect(_on_continue_pressed)
-	panel.add_child(btn)
 
 ## v34 B1：下一关直通条件——胜利 · 非挂机 · 教程已过首战步 ·
 ## 本战关号+1 在 1-100 且已解锁。下一关取 _pending_battle_level（本战实际打的关），

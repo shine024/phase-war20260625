@@ -48,4 +48,13 @@ static func get_card_info_panel() -> Node:
 		if n != null:
 			return n
 	# fallback: root 下的旧式全局单例
-	return _find("/root/CardInfoPanel")
+	var legacy: Node = _find("/root/CardInfoPanel")
+	if legacy != null:
+		return legacy
+	# 记录7#7: 独立场景（truck_base）没有 /root/Main——基地自挂的实例走分组兜底
+	var tree: SceneTree = Engine.get_main_loop() as SceneTree
+	if tree != null:
+		var by_group: Array = tree.get_nodes_in_group("card_info_panel")
+		if not by_group.is_empty() and by_group[0] is Node:
+			return by_group[0] as Node
+	return null

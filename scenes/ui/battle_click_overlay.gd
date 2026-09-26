@@ -58,7 +58,10 @@ func _process(delta: float) -> void:
 	_process_hover(delta)
 	# === v26.13(D-2): 长按计时（按下中 0.35s → 弹指令轮盘）===
 	if _lp_down and _lp_unit != null and is_instance_valid(_lp_unit):
-		_lp_time += delta
+		# 记录7#22: _process 的 delta 随 Engine.time_scale 放大（倍速 x2-4 由 BattleSpectacle
+		# 直写 time_scale）——0.35s 真实秒阈值在 x4 下缩成 0.0875s，正常点击全被判成长按
+		# 吞掉（"倍速下点不开情报卡"根因）。按 time_scale 归一，恢复真实秒语义。
+		_lp_time += delta / maxf(Engine.time_scale, 0.001)
 		if _lp_time >= _LONG_PRESS_SEC:
 			_open_command_wheel(_lp_unit)
 			_lp_down = false

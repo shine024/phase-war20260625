@@ -48,12 +48,16 @@ var _deploy_queue: Array = []
 var _deploy_timer: float = 0.0
 ## 单卡连续失败计数
 var _fail_streak: int = 0
+## 记录7#10: 队列空重收计时器
+var _idle_recollect_timer: float = 0.0
 ## v8.1c: 槽位补阵冷却——记录每个槽位上次成功部署的时间戳，防止单位秒死后
 ## 陷入"死亡→立即补→又秒死→又补"的死循环（烧能量无意义）。
 ## key=slot_index, value=部署时的 Time.get_ticks_msec()
 var _slot_deploy_time: Dictionary = {}
 ## v8.1c: 补阵冷却秒数：某槽位刚部署的单位若很快死亡，冷却期内不重复补该位
 const REPLOY_COOLDOWN_SEC: float = 3.0
+## 记录7#10: 队列空时的周期重收间隔——能量恢复/冷却到期后自动重新收集部署队列
+const IDLE_RECOLLECT_SEC: float = 2.5
 ## 主场景引用（定位 Battlefield）
 var _main: Node = null
 
@@ -171,6 +175,13 @@ func process(delta: float) -> void:
 	if _afk_owning_deploy():
 		return
 	if _deploy_queue.is_empty():
+		# 记录7#10: 队列空不再是终态——能量放弃/补阵冷却/全败弃队后，原逻辑只在
+		# battle_started/unit_died 重收，中途停摆要等下一个单位死亡才自愈（用户实机
+		# "明明还有能上场的但不布置了"）。只要还有部署余量，周期性重收一轮。
+		_idle_recollect_timer -= delta
+		if _idle_recollect_timer <= 0.0:
+			_idle_recollect_timer = IDLE_RECOLLECT_SEC
+			_start_deploy_round()
 		return
 	_deploy_timer -= delta
 	if _deploy_timer > 0.0:

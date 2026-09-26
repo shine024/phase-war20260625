@@ -449,7 +449,7 @@ func _apply_faction_exclusive_state(c: CardResource) -> void:
 			available = true
 	if not available:
 		modulate = Color(0.5, 0.5, 0.5, 0.7)
-		tooltip_text = "需要激活 %s 势力且声望 >= %d" % [
+		tooltip_text = "需要激活 %s 势力且贡献 >= %d" % [
 			EC.get_exclusive_faction(c.card_id),
 			EC.get_min_reputation(c.card_id)]
 	else:

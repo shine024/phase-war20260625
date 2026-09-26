@@ -225,7 +225,7 @@ const SKILL_TREE: Dictionary = {
 	# 原节点未删除，按主题重新安家（ID 全保留 → 旧档零迁移）：
 	#   pms_cw_0  奇点解算（门关）→ 智能化 tier 3（见上方）
 	#   pms_cw_1  战术核武        → 火力 tier 11（v8_extension）
-	#   pms_cw_2  形态进化        → 指挥 tier 5（v8_extension）
+	#   pms_cw_2  制造授权·一战    → 指挥 tier 3（v8_extension；记录4#2 浅化 + 逐时代授权链）
 	#   pms_cw_3  能量过载        → 火力 tier 7（v8_extension）
 	#   pms_cw_4  护盾投射        → 指挥 tier 10（v8_extension）
 	#   其余 cw 节点（5-13）      → 见 v8_extension 三系深层

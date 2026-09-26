@@ -181,6 +181,20 @@ func _phase_c_gates() -> void:
 			pmsm._unlocked_nodes.append("pms_cw_4")
 			var r3: Dictionary = mgr.can_manufacture(ww2_id)
 			_condition_has(r3, "skill_tree_era", true)
+			# 记录4#2：逐时代链——只解锁 pms_evo_era1（二战授权）也应放行 ww2
+			pmsm._unlocked_nodes.clear()
+			pmsm._unlocked_nodes.append("pms_evo_era1")
+			var r4: Dictionary = mgr.can_manufacture(ww2_id)
+			_condition_has(r4, "skill_tree_era", true)
+			# 近未来卡在只有二战授权时仍应拒绝（分账到逐时代的回归面）
+			var near_id := ""
+			for rid in mgr.get_recipe_ids():
+				if str(rid).begins_with("bp_near_") or str(rid).begins_with("near_"):
+					near_id = str(rid)
+					break
+			if not near_id.is_empty():
+				var r5: Dictionary = mgr.can_manufacture(near_id)
+				_condition_has(r5, "skill_tree_era", false)
 	_ok("资格判定：情报门/era0豁免/时代授权门 全部正确")
 
 func _condition_has(result: Dictionary, key: String, met: bool) -> void:

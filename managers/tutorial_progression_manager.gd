@@ -171,26 +171,29 @@ func _initialize_tutorial_data() -> void:
 			"highlight_elements": []
 		},
 		TutorialStep.CARD_COLLECTION: {
-			"title": "清点卡仓",
-			"description": "卡仓里是你拥有的所有卡牌。战斗卡用于部署作战，符文与资源在对应标签页管理。在移动基地点击「卡牌展示墙」工位也能打开同一个卡仓。",
-			"highlights": ["战斗卡：部署到战场作战", "同名战斗卡各自独立养成", "符文/资源在对应标签页；卡牌墙工位即卡仓"],
+			# 记录5#3：原"清点卡仓"步骤没说清"这步要干嘛"——明确动作=进去看一眼就关，
+			# 实际装配是下一步的事
+			"title": "认识卡仓",
+			"description": "这一步只需要认识入口：点击发光的「卡仓」工位打开背包，看一眼再关掉即可继续。卡仓里是你拥有的所有战斗卡（部署作战用），符文与资源在对应标签页；移动基地的「卡牌展示墙」工位也通向这里。",
+			"highlights": ["本步动作：打开卡仓→看一眼→关闭继续", "战斗卡：部署到战场作战", "同名战斗卡各自独立养成"],
 			"action_text": "打开卡仓",
 			"action_target": "open_backpack",
 			"highlight_elements": ["backpack_button"],
 			# v6.20 教程指向可视化：聚光圈住真实入口按钮（点真按钮=等效点本步动作键）
 			"spotlight_key": "backpack",
-			"spotlight_tip": "发光的工位就是卡仓，点它",
+			"spotlight_tip": "发光的工位就是卡仓——点它进去看一眼",
 			"spotlight_press_advances": true,
 		},
 		TutorialStep.PHASE_INSTRUMENT: {
-			"title": "装载战斗卡",
-			"description": "初始三张卡（毛瑟步枪班/81mm迫击炮组/FT-17坦克）已预装入底部绿色装配槽，首战即可部署。之后获得新卡时，从卡仓拖到底部绿槽装备（战斗中只能部署已装配的战斗卡）。",
-			"highlights": ["绿色槽：战斗卡", "初始三张基础卡已预装备", "新卡从卡仓拖到底部槽位"],
+			# 记录5#3：明确"装配在哪/要看什么/要不要动手"——初始卡已预装，本步是确认不是操作
+			"title": "确认装配",
+			"description": "打开背包，往最底部看：绿色装配槽就是相位仪，初始三张卡（毛瑟步枪班/81mm迫击炮组/FT-17坦克）已预装在里面，首战可直接部署——本步确认它们在绿槽里，然后关闭继续。之后获得新卡时才需要动手：从卡仓把卡拖进底部绿槽换装（战斗中只能部署已装配的战斗卡）。",
+			"highlights": ["本步动作：打开背包→看底部绿槽→关闭继续", "初始三张卡已预装，无需手动操作", "新卡：从卡仓拖到底部绿槽换装"],
 			"action_text": "查看装配",
 			"action_target": "open_backpack",
 			"highlight_elements": ["phase_instrument_button"],
 			"spotlight_key": "backpack",
-			"spotlight_tip": "相位仪装配槽就在卡仓底部",
+			"spotlight_tip": "打开背包后，相位仪装配槽在背包最底部",
 			"spotlight_press_advances": true,
 		},
 		TutorialStep.ENHANCEMENT: {

@@ -1772,7 +1772,9 @@ const _TABLE: Array = [
 	 "def_l":52,"def_a":88,"def_air":15,
 	 "w_light":"相位刃","w_armor":"","w_air":""},
 
-	{"card_id":"fut_inf_c96","display_name":"毛瑟 C96 征召兵排","short_name":"C96征召兵","era":4,"combat_kind":0,"tier":Tier.GRUNT,
+	# （v6.26.3 用户裁决：era4 挂 1896 年"毛瑟 C96"老枪名时代错位，改未来编号 G-96；
+	#   仅改名——卡图本就是未来装甲兵，无需重生成）
+	{"card_id":"fut_inf_c96","display_name":"G-96 征召兵排","short_name":"G96征召兵","era":4,"combat_kind":0,"tier":Tier.GRUNT,
 	 "base_hp":500,"range_value":1,"deploy_speed":4,"base_speed":100,"power":350,"weapon_type":0,
 	 "weapon_label":"冲锋枪","enemy_only":true,
 	 "atk_l":170,"atk_l_speed":1.5,"atk_l_windup":0.133,"atk_l_active":0.067,
@@ -2137,14 +2139,17 @@ const _TABLE: Array = [
 	 "w_light":"MP18-II冲锋枪","w_armor":"","w_air":""},
 
 	# ww2_inf_para_e（伞兵精英）特色掉落 — WW2 轻装 ELITE
-	{"card_id":"drop_phase_lance","display_name":"相位刺刀班","era":1,"combat_kind":0,"tier":Tier.ELITE,
+	# （v6.26.2 用户裁决：原名"相位刺刀班/相位刺刀突击枪"未来风违和；改"白刃先锋班"后
+	#   v6.26.5 用户复验"刺刀突击班就挺好"定名——display_name=刺刀突击班。
+	#   card_id 保持 drop_phase_lance 不动——存档/掉落表/缴获链全按 id 引用）
+	{"card_id":"drop_phase_lance","display_name":"刺刀突击班","era":1,"combat_kind":0,"tier":Tier.ELITE,
 	 "base_hp":200,"range_value":2,"deploy_speed":5,"base_speed":95,"power":155,"weapon_type":0,
-	 "weapon_label":"相位刺刀突击枪","enemy_only":true,
+	 "weapon_label":"白刃突击步枪","enemy_only":true,
 	 "atk_l":56,"atk_l_speed":2,"atk_l_windup":0.133,"atk_l_active":0.067,
 	 "atk_a":24,"atk_a_speed":1.0,"atk_a_windup":0.2,"atk_a_active":0.1,
 	 "atk_air":0,"atk_air_speed":1.0,"atk_air_windup":0.2,"atk_air_active":0.1,
 	 "def_l":14,"def_a":12,"def_air":4,
-	 "w_light":"相位刺刀突击枪","w_armor":"","w_air":""},
+	 "w_light":"白刃突击步枪","w_armor":"","w_air":""},
 
 	# cold_inf_spetsnaz_e（特种部队）特色掉落 — 冷战 轻装 ELITE（狙击特化，射程+atk_l突出）
 	{"card_id":"drop_railgun","display_name":"电磁步枪班","era":4,"combat_kind":0,"tier":Tier.ELITE,

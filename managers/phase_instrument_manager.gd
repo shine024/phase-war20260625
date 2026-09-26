@@ -425,7 +425,8 @@ func apply_phase_field_bonus_to_unit_stats(stats: UnitStats) -> void:
 			stats._sync_weapon_slots_damage(1.0 + total_atk_mult)
 
 	if total_def_mult > 0.0:
-		stats.damage_reduction = clampf(stats.damage_reduction + total_def_mult, 0.0, 0.8)
+		# 记录7#14: 减伤帽统一 0.60（=实战结算帽，旧 0.8 虚标）
+		stats.damage_reduction = clampf(stats.damage_reduction + total_def_mult, 0.0, 0.6)
 
 # ═══════════════════════════════════════════════════════════
 # v6.7: 相位师排名加成 —— 敌方 boss 镜像 + 星级缓存管理
@@ -448,7 +449,8 @@ func _apply_enemy_bonus_legacy_scalar(stats: UnitStats, enemy_stars: int) -> voi
 			var wd: Dictionary = w
 			wd["damage"] = maxf(0.1, float(wd.get("damage", 0.0)) * (1.0 + base_mult))
 			stats.weapons[i] = wd
-	stats.damage_reduction = clampf(stats.damage_reduction + base_mult, 0.0, 0.8)
+	# 记录7#14: 减伤帽统一 0.60（=实战结算帽，旧 0.8 虚标）
+	stats.damage_reduction = clampf(stats.damage_reduction + base_mult, 0.0, 0.6)
 
 ## v7.2: 从 BattleManager 取当前敌方相位师配置
 func _get_current_enemy_master_config() -> Dictionary:

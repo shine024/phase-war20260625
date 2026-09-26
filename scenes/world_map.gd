@@ -187,7 +187,11 @@ const ZOOM_MAX: float = 2.8
 ## 底图手绘（黑日战线整图）保留不动，只收拢节点盘/桥线/占领环。
 const MAP_WINDOW_RADIUS: int = 10
 static var _built_window_anchor: int = -1   # 本次画布构建时的窗口锚点（变则禁模板复用全量重建）
+# 记录7#18: 已揭示关卡集合（进程内 static，跨面板/场景重建存活；游戏重启重新收拢）——
+# 用户原则"只要显示出来过，后面就应该一直能看到"：行军后窗口收拢，已揭示节点不回缩。
+static var _s_revealed_levels: Dictionary = {}  # level(int) -> true
 var _window_hint_label: Label = null        # 屏幕空间窗口提示（chrome 层）
+var _enter_btn: Button = null               # 记录7#21: 出击键成员引用（停靠关变化刷新文案）
 
 # 静态布局/状态（模板跨实例复用时布局一致；动态状态在每次重建时刷新）
 static var _s_level_points: Dictionary = {}  # level(int) -> Vector2 画布坐标
@@ -638,11 +642,15 @@ func _build_level_map() -> void:
 	for lv_s8 in range(1, LEVEL_COUNT + 1):
 		if MAP_SCHEME == 8 or MAP_SCHEME == 11:
 			# v36 窗口：窗外关卡不建节点（底图手绘仍在，桥线由 overlay 同口径过滤）
-			if MAP_SCHEME == 11 and not _in_map_window(lv_s8, window_anchor):
+			# 记录7#18: 窗口 ∪ 已揭示集——显示过的关恒建，不随行军回缩
+			if MAP_SCHEME == 11 and not _in_map_window(lv_s8, window_anchor) \
+					and not _s_revealed_levels.has(lv_s8):
 				continue
 			var era_idx_s8: int = floori((lv_s8 - 1) / 20.0)
 			canvas.add_child(_make_level_node(lv_s8, era_idx_s8,
 				_s_level_points.get(lv_s8, Vector2.ZERO), current_level))
+			if MAP_SCHEME == 11:
+				_s_revealed_levels[lv_s8] = true
 	_overlay_layer.queue_redraw()
 	_refresh_window_hint()
 
@@ -894,6 +902,11 @@ func _draw_map_overlay() -> void:
 			var vp: Vector2 = _s_level_points.get(lv, Vector2.ZERO)
 			if vp != Vector2.ZERO:
 				visible_pts[vp] = true
+	# 记录7#18: 已揭示关卡并入可见集（桥线/占领环跟随恒显）
+	for lv in _s_revealed_levels:
+		var rp: Vector2 = _s_level_points.get(lv, Vector2.ZERO)
+		if rp != Vector2.ZERO:
+			visible_pts[rp] = true
 	for br in _s_bridges:
 		if not visible_pts.is_empty() and not (visible_pts.has(br["a"]) and visible_pts.has(br["b"])):
 			continue
@@ -1337,16 +1350,10 @@ func _build_map_screen_chrome() -> void:
 	# v38（用户反馈"进入按钮在关卡点上才知道"）：常驻出击入口——直接进入停靠关，
 	# 与"点关卡锚点 → 关卡情报弹窗 → 进入该关"等价（锚点路径保留不变）。
 	# v38.1：按通关态区分文案——已通关=「↻ 再战本关」（重复挑战语义），未通关=「▶ 进入本关」。
-	var bm_enter := _truck_mgr()
-	var parked_lv: int = int(bm_enter.get_parked_level()) if bm_enter != null and bm_enter.has_method("get_parked_level") else 1
-	var lpm_node: Node = get_node_or_null("/root/LevelProgressManager")
-	var parked_cleared: bool = lpm_node != null and lpm_node.has_method("get_level_stars") \
-		and int(lpm_node.get_level_stars(parked_lv)) > 0
+	# 记录7#21: 文案计算抽到 _refresh_enter_btn_label——chrome 只建一次，行军到站后
+	# 停靠关变化由信号钩刷新（原文案是过期快照，被读成"打了别的关"）。
 	var enter_btn := Button.new()
 	enter_btn.name = "EnterParkedLevelBtn"
-	enter_btn.text = ("↻ 再战本关（第 %d 关）" % parked_lv) if parked_cleared else ("▶ 进入本关（第 %d 关）" % parked_lv)
-	enter_btn.tooltip_text = ("重打第 %d 关：掉落与情报照常结算（重复挑战）" % parked_lv) if parked_cleared \
-		else ("直接进入第 %d 关（出击即开战）\n也可点击地图上的关卡点查看关卡情报后再进入" % parked_lv)
 	enter_btn.focus_mode = Control.FOCUS_NONE
 	enter_btn.add_theme_font_size_override("font_size", 14)
 	var enter_styles := PanelStyles.make_button_styles(DesignTokens.COLOR_HEALTH, "solid")
@@ -1356,6 +1363,8 @@ func _build_map_screen_chrome() -> void:
 	enter_btn.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 	enter_btn.pressed.connect(_on_enter_parked_level_pressed)
 	action_row.add_child(enter_btn)
+	_enter_btn = enter_btn
+	_refresh_enter_btn_label()
 
 	var locate_btn := Button.new()
 	locate_btn.text = "◎ 回到当前关"
@@ -1440,10 +1449,11 @@ func _build_map_screen_chrome() -> void:
 	_window_hint_label.anchor_right = 1.0
 	_window_hint_label.anchor_top = 1.0
 	_window_hint_label.anchor_bottom = 1.0
+	# 记录7#17: 原下缘 -12 与「返回标题」按钮（右下 -8、高 40）同角叠字——上抬让位
 	_window_hint_label.offset_left = -520.0
 	_window_hint_label.offset_right = -14.0
-	_window_hint_label.offset_top = -34.0
-	_window_hint_label.offset_bottom = -12.0
+	_window_hint_label.offset_top = -74.0
+	_window_hint_label.offset_bottom = -52.0
 	_window_hint_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	_window_hint_label.grow_horizontal = Control.GROW_DIRECTION_BEGIN
 	_window_hint_label.grow_vertical = Control.GROW_DIRECTION_BEGIN
@@ -1713,9 +1723,25 @@ func _truck_marker_pos(lvl: int, sz: Vector2) -> Vector2:
 ## 进度变化：直接对位（小光点瞬移可读；行驶中的走位由 _on_truck_travel_changed 动画承担）
 func _on_truck_level_changed(_level: int) -> void:
 	_update_truck_marker_snap()
+	_refresh_enter_btn_label()
 	# v36 窗口：锚点（在途=目的地/停靠关）变了 → 窗口随行军迁移，全量重建节点
 	if MAP_SCHEME == 11 and _built_window_anchor > 0 and _built_window_anchor != _truck_anchor_level():
 		refresh_levels()
+
+
+## 记录7#21: 出击键文案与实时停靠关同源（按下时 _on_enter_parked_level_pressed 本就
+## 实时读停靠关，此处只修显示脱节）
+func _refresh_enter_btn_label() -> void:
+	if _enter_btn == null or not is_instance_valid(_enter_btn):
+		return
+	var bm := _truck_mgr()
+	var parked_lv: int = int(bm.get_parked_level()) if bm != null and bm.has_method("get_parked_level") else 1
+	var lpm_node: Node = get_node_or_null("/root/LevelProgressManager")
+	var parked_cleared: bool = lpm_node != null and lpm_node.has_method("get_level_stars") \
+		and int(lpm_node.get_level_stars(parked_lv)) > 0
+	_enter_btn.text = ("↻ 再战本关（第 %d 关）" % parked_lv) if parked_cleared else ("▶ 进入本关（第 %d 关）" % parked_lv)
+	_enter_btn.tooltip_text = ("重打第 %d 关：掉落与情报照常结算（重复挑战）" % parked_lv) if parked_cleared \
+		else ("直接进入第 %d 关（出击即开战）\n也可点击地图上的关卡点查看关卡情报后再进入" % parked_lv)
 
 ## 面板打开/状态回稳时无动画对位（含缩放布局变化后的重排）
 func _update_truck_marker_snap() -> void:
@@ -1991,6 +2017,7 @@ func _refresh_fuel_chip(_day: int = 0) -> void:
 func _on_truck_travel_changed() -> void:
 	_refresh_fuel_chip()
 	_refresh_travel_route()
+	_refresh_enter_btn_label()
 	var bm := _truck_mgr()
 	if bm == null:
 		return
@@ -2494,9 +2521,11 @@ func _close_popup_safe(popup: Window) -> void:
 
 func _enter_level_from_popup(level_index: int, popup: Window) -> void:
 	# v26.19 停靠门控（防御层：弹窗只在停靠关给出出击按钮，直达调用同样拦下）
+	# 记录7#21 加固：bm 意外为 null 时旧逻辑直接放行任意关（唯一无门控泄漏路径）
+	# ——确保懒加载兜底后再门控。
 	var bm := _truck_mgr()
-	if bm != null and int(level_index) != int(bm.get_parked_level()):
-		_toast_gate("卡车未停靠第 %d 关（停靠：第 %d 关）——先在地图上规划行军" % [level_index, int(bm.get_parked_level())])
+	if bm == null or int(level_index) != int(bm.get_parked_level()):
+		_toast_gate("卡车未停靠第 %d 关（停靠：第 %d 关）——先在地图上规划行军" % [level_index, int(bm.get_parked_level()) if bm != null else 1])
 		_close_popup_safe(popup)
 		return
 	if GameManager and GameManager.has_method("set_current_level"):
@@ -2740,3 +2769,4 @@ func refresh_for_open() -> void:
 	if not _map_built:
 		_build_level_map()
 	_update_truck_marker_snap()
+	_refresh_enter_btn_label()

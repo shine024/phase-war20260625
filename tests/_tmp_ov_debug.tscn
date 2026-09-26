@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3 uid="uid://ovdebugprb01"]
+
+[ext_resource type="Script" path="res://tests/_tmp_ov_debug.gd" id="1_script"]
+
+[node name="OvDebug" type="Node"]
+script = ExtResource("1_script")

@@ -8,7 +8,7 @@ const VH := 720.0
 const TOL := 8.0
 ## 组件级场景（行/格/条目，独立实例化仅验证不炸，越界无意义）
 const COMPONENTS := [
-	"backpack_card_item", "store_item_row", "store_instrument_row",
+	"backpack_card_item", "store_instrument_row",
 	"resource_slot_item", "phase_slot", "buff_fold_card",
 	"unit_hover_info", "resource_bar",
 ]

@@ -27,7 +27,6 @@ layout_mode = 2
 custom_minimum_size = Vector2(0, 64)
 layout_mode = 2
 theme_override_font_sizes/font_size = 16
-text = "Lv.15 · 3★ 高手\n总战力 0（压缩分 0）"
 
 [node name="HSeparator" type="HSeparator" parent="Margin/VBox"]
 layout_mode = 2

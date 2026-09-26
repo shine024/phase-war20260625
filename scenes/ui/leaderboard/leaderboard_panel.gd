@@ -15,7 +15,7 @@ signal master_selected(master_id: String)  # 相位师选择信号
 ##   各公司固定控制若干关卡（由 LevelInformation.faction_id 决定）
 ##   排行依据 = 玩家已通过该公司领地内的关卡数（score）
 ##   次要指标 = 该公司总领地数（territories_total）
-##   声望（reputation）是玩家对该公司的个人好感度，不参与排名
+##   贡献（reputation，旧 UI 词「声望」）是玩家对该公司的个人好感度，不参与排名
 
 # 势力色统一来源：CompanyDefinitions.get_faction_color()（Palette B 高饱和）
 
@@ -114,7 +114,7 @@ func _initialize_faction_data() -> void:
 				"faction_id": fid,
 				"score": cleared,               # 玩家已攻克的该公司领地数 → 排序依据
 				"territories_total": total,     # 该公司总领地数
-				"reputation": fi.get("reputation", 0),  # 玩家对该公司的声望（独立显示，不排序）
+				"reputation": fi.get("reputation", 0),  # 玩家对该公司的贡献（独立显示，不排序）
 			})
 	else:
 		# Fallback：FactionSystemManager 不可用时用静态领地数据
@@ -352,7 +352,8 @@ func _build_faction_header() -> Control:
 	h_name.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	container.add_child(h_name)
 	container.add_child(_make_header_label("已攻克/总关", 100, HORIZONTAL_ALIGNMENT_CENTER))
-	container.add_child(_make_header_label("声望", 70, HORIZONTAL_ALIGNMENT_RIGHT))
+	# 记录5#6：全 UI 统一口径——等级轴叫「贡献」、货币轴叫「功勋」，旧词「声望」退役
+	container.add_child(_make_header_label("贡献", 70, HORIZONTAL_ALIGNMENT_RIGHT))
 	return container
 
 func _build_player_header() -> Control:

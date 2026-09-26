@@ -162,7 +162,8 @@ static func apply_deploy_stat_modifiers(stats: UnitStats) -> void:
 		return
 	# abrams_mk2：伤害减免+20%
 	if has_platform_card(stats.platform_card_id, "abrams_mk2"):
-		stats.damage_reduction = minf(0.75, stats.damage_reduction + 0.20)
+		# 记录7#14: 减伤帽统一 0.60（=实战结算帽，旧 0.75 虚标）
+		stats.damage_reduction = minf(0.60, stats.damage_reduction + 0.20)
 
 # ── 部署时初始化（单位成型后调用一次）─────────────
 
@@ -504,7 +505,7 @@ static func apply_fortress_defense_aura(unit: Node2D, delta: float, replay := fa
 			ally.set_meta("fortress_def_buffed", true)
 			ally.set_meta("fortress_orig_dr", ally.stats.damage_reduction)
 			ally.set_meta("fortress_orig_def", ally.stats.defense)
-			ally.stats.damage_reduction = min(0.75, ally.stats.damage_reduction + dr_bonus)
+			ally.stats.damage_reduction = min(0.60, ally.stats.damage_reduction + dr_bonus)  # 记录7#14: 帽统一 0.60（=实战结算帽）
 			ally.stats.defense += def_bonus
 
 ## FORTRESS 光环清理

@@ -862,7 +862,9 @@ func _apply_card_affixes(stats: UnitStats, affix_key: String) -> void:
 						w["interval"] = float(w["interval"]) * factor
 						stats.weapons[i] = w
 			"damage_reduction":
-				stats.damage_reduction = minf(0.75, stats.damage_reduction + val)
+				# 记录7#14: 减伤帽统一 0.60（=实战结算帽 card_grid_damage.DAMAGE_REDUCTION_CAP，
+				# 旧 0.75 写入帽高于实战帽 → 面板虚标"80%减伤"实战只生效 60%）
+				stats.damage_reduction = minf(0.60, stats.damage_reduction + val)
 			"crit_chance":
 				stats.crit_chance = minf(0.75, stats.crit_chance + val)
 			"kill_repair":

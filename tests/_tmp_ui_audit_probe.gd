@@ -28,6 +28,14 @@ var fail_count: int = 0
 
 
 func _ready() -> void:
+	# 记录4 视觉体检：先归一化窗口/缩放（本机 DPI 虚拟化会给出 896 高的窗口，
+	# 而出界判定 VP 是 16:9 设计空间 1280×720——不归一会产生测量框错位的假出界）
+	var win0 := get_window()
+	win0.mode = Window.MODE_WINDOWED
+	win0.size = Vector2i(1280, 720)
+	win0.content_scale_factor = 1.0
+	win0.position = Vector2i(60, 60)
+	await _settle(3)
 	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(SHOT_DIR))
 	var scenes: Array[String] = []
 	var dir := DirAccess.open("res://scenes/ui")

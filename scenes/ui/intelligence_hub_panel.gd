@@ -300,9 +300,12 @@ func _add_rune_card(rune_def: Dictionary, is_owned: bool, is_equipped: bool) -> 
 		DT.FONT_SIZE_SMALL, DT.COLOR_TEXT_DIM if is_owned else DT.COLOR_TEXT_FAINT))
 	hbox.add_child(name_box)
 
-	# 效果说明
+	# 效果说明（记录5#9：desc_secondary 在 runes.gd 中 8 处显式 null——Dictionary.get 的
+	# default 只兜"键不存在"，键存在值为 null 时返回 null，str(null)="<null>" 混进效果列。
+	# 与 store_panel 同口径：仅接受 String 且非空）
 	var primary: String = str(rune_def.get("desc_primary", ""))
-	var secondary: String = str(rune_def.get("desc_secondary", ""))
+	var secondary_raw = rune_def.get("desc_secondary", null)
+	var secondary: String = secondary_raw if secondary_raw is String else ""
 	var effect_text: String = primary
 	if not secondary.is_empty():
 		effect_text += " / " + secondary
@@ -400,14 +403,19 @@ func _setup_intel_tab() -> void:
 	_tab_container.add_child(tab)
 	# v26 UI：顶部 4 行机制文字墙 → 「进度阶梯」可视化里程碑 + 一行脚注
 	#（包容性：机制读一次图形就懂，不必啃文字墙）
+	# 记录5#8：阶梯与相位师分区改为可折叠——规则已知后不必每次滚动越过两块常驻墙
 	var ladder := VBoxContainer.new()
 	ladder.add_theme_constant_override("separation", 4)
-	ladder.add_child(IntelUIKit.section_header("情报进度阶梯", DT.COLOR_VIOLET,
-		"击败/部署同一形态累积 · 缴获实物卡直接过半"))
-	ladder.add_child(_build_intel_milestone_strip())
-	ladder.add_child(IntelUIKit.label(
+	var ladder_header := IntelUIKit.section_header("情报进度阶梯", DT.COLOR_VIOLET,
+		"击败/部署同一形态累积 · 缴获实物卡直接过半（点击可折叠）")
+	var ladder_strip := _build_intel_milestone_strip()
+	var ladder_foot := IntelUIKit.label(
 		"部署 +4% 固定不衰减；击败/部署附带改造情报点数，点数达标解锁该形态专属改造",
-		DT.FONT_SIZE_SMALL, DT.COLOR_TEXT_DIM))
+		DT.FONT_SIZE_SMALL, DT.COLOR_TEXT_DIM)
+	ladder.add_child(ladder_header)
+	ladder.add_child(ladder_strip)
+	ladder.add_child(ladder_foot)
+	_attach_section_fold(ladder_header, [ladder_strip, ladder_foot])
 	tab.add_child(ladder)
 	tab.add_child(_build_phase_master_section())  # v6.19 P1-T1.3: 相位师遭遇规则分区
 	var scroll := ScrollContainer.new()
@@ -427,8 +435,9 @@ func _setup_intel_tab() -> void:
 func _build_phase_master_section() -> Control:
 	var box := VBoxContainer.new()
 	box.add_theme_constant_override("separation", 4)
-	box.add_child(IntelUIKit.section_header("相位师情报", DT.COLOR_GOLD,
-		"随机可准备——遭遇规则全部公开"))
+	var header := IntelUIKit.section_header("相位师情报", DT.COLOR_GOLD,
+		"随机可准备——遭遇规则全部公开（点击可折叠）")
+	box.add_child(header)
 	var gm := get_node_or_null("/root/GameManager")
 	if gm == null or not gm.has_method("get_phase_master_encounter_status"):
 		box.add_child(IntelUIKit.label(
@@ -437,6 +446,7 @@ func _build_phase_master_section() -> Control:
 		return box
 	var st: Dictionary = gm.get_phase_master_encounter_status()
 	var garrison_count: int = PhaseMasterGarrison.get_all_garrison_levels().size()
+	var bodies: Array = []
 	var lines := [
 		"驻守关 %d 处：100%% 固定遭遇相位师（世界地图关防详情可查）" % garrison_count,
 		"非驻守关：基础遭遇率 %.0f%%；前 %d 关为新手保护期不触发（保护期计入递增计数，出保护后实际概率可能已高于基础值——见下方实时状态）" % [
@@ -447,11 +457,36 @@ func _build_phase_master_section() -> Control:
 		"遭遇前情报可备战：克制兵种 / 防空 / 反制改造按提示预配，见战前建议",
 	]
 	for line in lines:
-		box.add_child(IntelUIKit.label(line, DT.FONT_SIZE_SMALL, DT.COLOR_TEXT_MID))
+		var ln := IntelUIKit.label(line, DT.FONT_SIZE_SMALL, DT.COLOR_TEXT_MID)
+		box.add_child(ln)
+		bodies.append(ln)
 	_phase_master_status_lbl = IntelUIKit.label("", DT.FONT_SIZE_SMALL, DT.COLOR_GOLD)
 	box.add_child(_phase_master_status_lbl)
+	bodies.append(_phase_master_status_lbl)
 	_refresh_phase_master_status()
+	_attach_section_fold(header, bodies)
 	return box
+
+
+## 记录5#8：常驻说明分区折叠——点标题行收起/展开正文（默认展开，状态存运行期字典，
+## 不持久化：下次打开面板回默认展开，保证新玩家/健忘玩家都能看到规则全貌）。
+func _attach_section_fold(header: Control, bodies: Array) -> void:
+	if header == null or bodies.is_empty():
+		return
+	var arrow := IntelUIKit.label("▾", DT.FONT_SIZE_SMALL, DT.COLOR_TEXT_DIM)
+	header.add_child(arrow)
+	var state := {"folded": false}
+	var toggle := func() -> void:
+		state.folded = not state.folded
+		for b in bodies:
+			if is_instance_valid(b):
+				b.visible = not state.folded
+		arrow.text = "▸" if state.folded else "▾"
+	header.mouse_filter = Control.MOUSE_FILTER_STOP
+	header.tooltip_text = "点击折叠/展开该分区"
+	header.gui_input.connect(func(ev: InputEvent) -> void:
+		if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT:
+			toggle.call())
 
 
 ## 动态状态行（唯一在 _refresh_intel_tab 与本函数里更新的活文本）

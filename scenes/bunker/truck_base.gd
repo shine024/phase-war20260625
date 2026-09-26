@@ -9,6 +9,7 @@ extends Control
 const SCENE_TITLE := "res://scenes/title_screen.tscn"
 const SCENE_MAIN := "res://scenes/main.tscn"
 const INSTRUMENT_BAR_SCENE := "res://scenes/ui/bottom_instrument_bar.tscn"
+const CARD_INFO_PANEL_SCENE := "res://scenes/ui/card_info_panel.tscn"
 const PanelStyles = preload("res://scripts/ui/panel_styles.gd")
 const DT = preload("res://resources/design_tokens.gd")
 const TruckTravel = preload("res://data/truck_travel.gd")          # v26.19: 行军数值真身
@@ -193,7 +194,7 @@ const PANEL_INTROS := {
 	"intelligence": ["情报舱", "敌方情报阶梯：25% 解锁制造配方，50%/75% 扩品质池，100% 含神话品质。"],
 	"collection": ["收藏图鉴", "按时代检阅收藏过的卡种；缴获与制造都会录入。"],
 	"leaderboard": ["战功榜", "三大战绩档案：公司势力排名、相位师排名、敌方相位师图鉴。"],
-	"affix": ["词条工坊", "对卡牌词条洗练/锁定/批量重随——普通卡耗纳米+晶体，星冥卡耗星髓。"],
+	"affix": ["词条工坊", "词条=卡牌升到 Lv5/10/15… 里程碑时自动获得的附加能力（此处也是批量重随/锁定它们的工位——普通卡耗纳米+晶体，星冥卡耗星髓）。"],
 	"hero_archive": ["同伴档案", "30 位牺牲相位师的生平与遗言——击败驻守相位师带回遗物解锁。"],
 	"memorial": ["纪念墙", "30 盏灯对应 30 位牺牲相位师；灯亮可点击读名。"],
 }
@@ -275,9 +276,27 @@ func _caption_status() -> String:
 	if bm.is_traveling():
 		return " ｜ 行驶中 → 第%d关 · 剩%d天 ｜ 燃料 %d/%d" % [
 			int(bm.get_travel_dest()), int(bm.get_travel_days_left()),
-			int(bm.get_fuel()), int(bm.get_fuel_cap())]
+			int(bm.get_fuel()), int(bm.get_fuel_cap())] + _res_brief()
 	return " ｜ 停靠 第%d关 ｜ 燃料 %d/%d" % [
-		int(bm.get_parked_level()), int(bm.get_fuel()), int(bm.get_fuel_cap())]
+		int(bm.get_parked_level()), int(bm.get_fuel()), int(bm.get_fuel_cap())] + _res_brief()
+
+## 记录1#6: 资源家底常驻读数（原只在战术终端"资源库存"一行能看到）——外景/剖面 caption
+## 尾部拼同一段，BasicResourceManager.resources_changed 时同步刷新
+func _res_brief() -> String:
+	if BasicResourceManager == null:
+		return ""
+	return " ｜ 纳米 %d · 合金 %d · 晶体 %d · 能量块 %d · 星髓 %d" % [
+		BasicResourceManager.get_total("nano_materials"),
+		BasicResourceManager.get_total("alloy"),
+		BasicResourceManager.get_total("crystal"),
+		BasicResourceManager.get_total("energy_block"),
+		BasicResourceManager.get_total("star_marrow")]
+
+## 资源变动 → 两个 caption 一起重读（资源段在内）
+func _on_resources_changed() -> void:
+	_refresh_caption()
+	if _ext_caption != null and is_instance_valid(_ext_caption):
+		_refresh_exterior(false)
 
 func _ready() -> void:
 	DesignTokens.ensure_cjk_fallback()
@@ -311,6 +330,9 @@ func _ready() -> void:
 		SignalBus.truck_travel_changed.connect(_refresh_caption)
 	if not SignalBus.bunker_day_ended.is_connected(_refresh_caption):
 		SignalBus.bunker_day_ended.connect(_refresh_caption)
+	# 记录1#6: 资源变动时 caption 资源段实时刷新
+	if BasicResourceManager and not BasicResourceManager.resources_changed.is_connected(_on_resources_changed):
+		BasicResourceManager.resources_changed.connect(_on_resources_changed)
 	# v27.17：归仓池存取即时刷新气泡（DropManager 是 autoload，随时可连；deferred 防重入）
 	var _dm := _drop_manager()
 	if _dm != null and _dm.has_signal("escrow_changed") \
@@ -766,16 +788,16 @@ const HOTSPOT_DESC := {
 	"sortie": "打开出击简报：确认停靠关的敌情、战场环境与出战卡组后一键开战",
 	"march": "打开战区地图：点任意节点出车行军（耗燃料，按地形计价、回程半价），到站停靠后即可出击",
 	"terminal": "打开战术统计终端：战线推进度、资源家底、卡牌收集与作战统计总览",
-	"sleep": "睡觉 = 存档 + 快充燃料 + 恢复精神，推进游戏内一天；离线期间的挂机收益也会一并结算",
+	"sleep": "睡觉 = 存档 + 快充燃料 + 恢复精神（精神决定今天还能挂机多少场，归零自动收工），推进游戏内一天；离线挂机收益在回到基地时结算",
 	"intelligence": "打开情报舱：敌方情报阶梯——25% 解锁制造配方，50%/75% 扩品质池，100% 含神话品质；可按卡种查进度",
-	"store": "打开补给舱：用势力声望采购卡牌、资源与符文；各公司上架物资不同，声望靠作战与任务累积",
+	"store": "打开补给舱：用各公司功勋采购卡牌、资源与符文；各公司上架物资不同，作战与任务同时积累贡献与功勋",
 	"backpack": "打开卡仓：管理战斗卡、符文与装配——卡可拖入底部绿槽出战，同名卡各自独立养成",
 	"modification": "打开改造舱：给战斗卡安装/升级/卸下改造模块——安装消耗对应图纸 + 纳米材料，每卡最多 9 格",
 	"evolution": "打开制造舱：消耗纳米材料直接生产卡牌——情报 25% 解锁配方，品质随情报档提升、暗保底兜底",
 	"growth": "打开相位师技能树：用技能点解锁全局强化；战斗卡靠战斗经验自动升级（Lv1-30），无需手动操作",
-	"affix": "打开词条工坊：对卡牌词条洗练/锁定/批量重随——普通卡耗纳米+晶体，星冥卡耗星髓",
+	"affix": "打开词条工坊：词条=卡牌升级里程碑自动获得的附加能力——此处洗练/锁定/批量重随，普通卡耗纳米+晶体，星冥卡耗星髓",
 	"collection": "打开收藏图鉴：按时代检阅收藏过的卡种与获取进度；缴获与制造都会录入",
-	"faction": "打开势力联络：7 大势力的声望等级、专属卡与势力技能树——声望靠作战与势力事件提升",
+	"faction": "打开势力联络：7 大势力的贡献等级、专属卡与势力技能树——贡献（等级轴）与功勋（消费货币）都靠作战与任务积累",
 	"leaderboard": "打开战功榜：势力排名、相位师排名与敌方相位师图鉴三大战绩档案",
 	"help": "打开车长手册：卡牌成长 / 相位仪 / 势力 / 任务 / 移动基地 / 地图等全部系统的用法说明",
 	"发电机": "燃料与引擎管理：燃料自动回复（离线也涨），或用能量块 1:1 充能；引擎等级决定行军耗时",
@@ -1962,6 +1984,23 @@ func _attach_embed_instrument_bar(wrapper: Control, center: Control, bp: Control
 		return
 	var bar: Control = packed.instantiate()
 	bar.name = "EmbedInstrumentBar"
+	# 记录5#2: 揭示门——先挂 meta 再进树（bar._ready 读它），首帧 fit 未稳前隐藏格子行，
+	# 消除"背包相位仪格子先窄后宽"闪变
+	bar.set_meta("slot_reveal_gate", true)
+	# 记录7#6: 首帧 fit 前先落贴底全宽锚定——原顺序 add_child 在前、锚定 deferred 在后，
+	# bar._ready 的首次 fit 吃到左上角暂定窄宽把格子写死窄态（揭示门只藏不修）。
+	# 这里先给与 _layout_embed_instrument_bar 同构的临时锚定（offset_top 临时 -86，
+	# 精确 band 高度仍由 deferred 布局按实测 min 高修正）。
+	bar.anchor_left = 0.0
+	bar.anchor_right = 1.0
+	bar.anchor_top = 1.0
+	bar.anchor_bottom = 1.0
+	bar.offset_left = 16.0
+	bar.offset_right = -16.0
+	bar.offset_top = -86.0
+	bar.offset_bottom = -22.0
+	# 记录7#7: 基地自挂全局面板，点相位仪卡才有情报面板可弹（NodeFinder 分组兜底）
+	_ensure_base_card_info_panel()
 	wrapper.add_child(bar)
 	var menu_btn: Node = bar.get_node_or_null("Margin/HBox/MenuBtn")
 	if menu_btn != null:
@@ -1979,6 +2018,27 @@ func _attach_embed_instrument_bar(wrapper: Control, center: Control, bp: Control
 
 func _on_embed_bar_min_size_changed(bar: Control, wrapper: Control) -> void:
 	_layout_embed_instrument_bar(bar, wrapper)
+
+
+## 记录7#7: 独立场景没有 /root/Main/InfoPanelLayer/CardInfoPanel，NodeFinder 路径查询
+## 恒 null → 点相位仪中的卡出不来情报面板（背包卡走内嵌 CardDetailPopup 不受影响）。
+## 基地自挂同层（layer=90）实例并进 "card_info_panel" 分组；随基地场景退出自动释放。
+func _ensure_base_card_info_panel() -> void:
+	if has_node("InfoPanelLayer/CardInfoPanel"):
+		return
+	var packed: PackedScene = load(CARD_INFO_PANEL_SCENE)
+	if packed == null:
+		push_error("[TruckBase] 情报面板场景加载失败: " + CARD_INFO_PANEL_SCENE)
+		return
+	var layer := CanvasLayer.new()
+	layer.name = "InfoPanelLayer"
+	layer.layer = 90
+	add_child(layer)
+	var panel: Control = packed.instantiate()
+	panel.name = "CardInfoPanel"
+	panel.add_to_group("card_info_panel")
+	panel.visible = false
+	layer.add_child(panel)
 
 func _layout_embed_instrument_bar(bar: Control, wrapper: Control) -> void:
 	if not is_instance_valid(bar) or not bar.is_inside_tree():
@@ -2313,6 +2373,9 @@ func _on_sleep() -> void:
 		SaveManager.save_game()
 	var txt := "醒来时是第 %d 天。\n精神 %.0f → %.0f（睡觉回复）" % [
 		int(summary.get("day", 0)), float(summary.get("sanity_before", 0)), float(summary.get("sanity_after", 0))]
+	# 记录7#3: 桥接信息——精神是挂机的"弹药"（胜 -10/败 -20），结算卡直说能再挂几场
+	var afk_rounds := int(ceil(maxf(0.0, float(summary.get("sanity_after", 0.0))) / 10.0))
+	txt += "，约可支撑 %d 场挂机" % afk_rounds
 	# v26.21：燃料回充（行程实时推进，睡觉不再到站）
 	txt += "\n燃料回充 → %d/%d" % [int(float(summary.get("fuel", 0.0))), int(summary.get("fuel_cap", 0))]
 	var loot: Dictionary = summary.get("loot_printed", {})
@@ -2426,7 +2489,7 @@ func _refresh_exterior(animate: bool) -> void:
 		_textures[truck_path] = _load_era_texture(truck_path)
 	_ext_truck.texture = _textures[truck_path]
 	var lname := _display_level_name(level)
-	_ext_caption.text = "驻地 · 第 %d 关「%s」 · %s" % [level, lname if lname != "" else String(ERAS[_era_idx]["zone"]), String(ERAS[era - 1]["label"])]
+	_ext_caption.text = "驻地 · 第 %d 关「%s」 · %s" % [level, lname if lname != "" else String(ERAS[_era_idx]["zone"]), String(ERAS[era - 1]["label"])] + _res_brief()
 	if animate:
 		await get_tree().process_frame
 		if _ext_truck == null or not is_instance_valid(_ext_truck):
