@@ -229,8 +229,13 @@ func _update_faction_detail() -> void:
 		progress_bar.custom_minimum_size = Vector2(0, 30)
 		faction_detail.add_child(progress_bar)
 	else:
+		# 记录4 美术复核：原样写入 BBCode 而这里是普通 Label——玩家直读
+		# "[color=yellow]"字面量。改金色文字 + 柔和阴影表达"满级"。
 		var max_label = Label.new()
-		max_label.text = "[color=yellow]已达最高等级[/color]"
+		max_label.text = "★ 已达最高等级"
+		max_label.add_theme_color_override("font_color", Color(1.0, 0.85, 0.35))
+		max_label.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.6))
+		max_label.add_theme_constant_override("shadow_offset_y", 1)
 		faction_detail.add_child(max_label)
 	
 	# 记录5#12：原"历史辖区：N 关"（纯风味统计，用户实机反馈"和现在版本没意思"）——

@@ -253,13 +253,6 @@ layout_mode = 2
 theme_override_colors/font_color = Color(0.45, 0.45, 0.55, 1)
 theme_override_font_sizes/font_size = 12
 
-[node name="VersionLabel" type="Label" parent="CenterContainer/MainVBox"]
-layout_mode = 2
-theme_override_colors/font_color = Color(0.62, 0.66, 0.74, 0.85)
-theme_override_font_sizes/font_size = 12
-text = "v0.1.0 | Construct Era"
-horizontal_alignment = 1
-
 [node name="SettingsOverlay" type="CanvasLayer" parent="."]
 layer = 10
 visible = false
@@ -282,3 +275,18 @@ grow_vertical = 2
 [node name="SettingsPanel" parent="SettingsOverlay/CenterContainer" instance=ExtResource("2_settings")]
 
 [node name="AnimationPlayer" type="AnimationPlayer" parent="."]
+
+[node name="VersionLabel" type="Label" parent="."]
+layout_mode = 1
+anchors_preset = 2
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_left = 14.0
+offset_top = -28.0
+offset_right = 340.0
+offset_bottom = -10.0
+grow_vertical = 0
+theme_override_colors/font_color = Color(0.62, 0.66, 0.74, 0.85)
+theme_override_font_sizes/font_size = 12
+text = "v0.1.0 | Construct Era"
+horizontal_alignment = 0

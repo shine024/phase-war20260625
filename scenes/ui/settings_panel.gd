@@ -110,6 +110,12 @@ func _build_r6_sections() -> void:
 	_resolution_option.item_selected.connect(_on_resolution_selected)
 	res_row.add_child(_resolution_option)
 	scroll_vbox.add_child(res_row)
+	# 归位到「—— 显示 ——」表头下（记录4 美术复核）：tscn 静态表头在滚动列表中部，
+	# add_child 默认追加到尾部会把窗口模式/分辨率甩到键位段后面，表头下空白、行失去归属。
+	var sec_display: Node = scroll_vbox.get_node_or_null("SectionFullscreen")
+	if sec_display != null:
+		scroll_vbox.move_child(wm_row, sec_display.get_index() + 1)
+		scroll_vbox.move_child(res_row, sec_display.get_index() + 2)
 
 	# ── 可及性段：色盲辅助 ──
 	var cb_row := HBoxContainer.new()
@@ -122,6 +128,10 @@ func _build_r6_sections() -> void:
 	_cb_option.item_selected.connect(_on_color_blind_selected)
 	cb_row.add_child(_cb_option)
 	scroll_vbox.add_child(cb_row)
+	# 色盲辅助归位到「—— 可访问性 ——」表头下（高对比度之前）
+	var sec_a11y: Node = scroll_vbox.get_node_or_null("SectionA11y")
+	if sec_a11y != null:
+		scroll_vbox.move_child(cb_row, sec_a11y.get_index() + 1)
 
 	# ── 键位段：可重绑动作行 + 恢复默认 ──
 	var kb_title := Label.new()

@@ -1459,3 +1459,16 @@ GdUnit 对 batch 内部行为覆盖薄——合并的回归风险 > 重复代码
 - **卡图朝向离群已翻正（v6.26.1 目检裁决）**：15 族中真错 9 族 18 张已镜像（工具 `tools/_tmp_record7_cardflip.py`，备份 `.godot/art_backup_cardflip_20260924/`）；假阳性 6 族（骑兵/雷达车/xeno×4）不动——质量判据对骑乘/正面构图不灵敏，卡图朝向审计结论必须目检复核后再动。
 - **缩略图刷新铁律（v6.26.2）**：assets/card_icons 任何原图改动（翻正/agnes 重生成/抠底/白底修复）之后，必须刷新缩略图两棵树——`python tools/gen_ui_thumbs.py --force --only cards`（_thumb256，战场/战场单位链）+ 384 树重采样（_thumb384，**背包列表链**，暂无工具用 PIL LANCZOS 循环）——否则界面永远显示旧图（"卡图半截/白底/朝向没变"类反馈先查缩略图，512 原图常常早是对的）。
 - **资产审计沉淀**：`tools/_tmp_record7_card_audit.py`（卡图白底/截断/朝向离群三检）；白底泛洪清除工艺见 CHANGELOG（相位师立绘 4 张已清，备份 `.godot/art_backup_whitebg_20260924/`）。相位师立绘是满幅胸像设计（自带背景），勿当"未抠图"再报。
+
+
+## v6.30.1 美术复核批纪律（2026-09-26，详见 CHANGELOG v6.30.1）
+
+**改任何美术资产、写 BBCode 到 Label、做战斗/UI 采集前必读本节。**
+
+- **⚠️ `.gitignore:106` 是全局 `*.png`——全部美术资产（雪碧图/卡图/背景/粒子贴图）不受 git 保护，改图不可回滚**。铁律：动任何图前先备份到 `.godot/art_backup_<主题>_<日期>/`（沿用既有惯例）；改 card_icons 后另触发 v6.26.2 缩略图双树刷新。
+- **attack=idle 五单位合法勿修**：cold_fort_radar / ww2_sup_gmc_truck / cold_arm_p18 / cold_arty_brem1 / fut_sup_ps9 的 attack 雪碧图=复制 idle（fix3 用户拍板"不用有开火动作"）。其 anim.json counts.attack 必须与 8 帧复制图一致（gmc_truck 曾 12≠8 越界闪黑已修）；新增"无开火动作"单位照此口径。
+- **受控采集器三件套**（模式文件 `.godot/steam_cap_mode.txt` 驱动，窗口化直跑）：`tests/_tmp_art_cap.tscn`（`art <level> <prefix> [closeup] [delay=N]` 受控战斗连拍/近景/延迟部署）、`_tmp_art_ui_cap.tscn`（`uipanel` 真实存档 12 面板实拍）、`_tmp_art_verify_cap.tscn`（`verify` 修复验证五镜头）。**两大坑已内置防御**：①采集前强制 battle_speed.cfg 1×（存档倍速 3× 会把战斗压到拍不到动作）；②`always_on_top`（窗口被遮挡→Godot 停绘→SubViewport 采样返回陈旧帧假静态）。
+- **Object.get 只收 1 参**：`node_or_resource.get("prop", default)` 两参形式仅 Dictionary 合法——对 CardResource 等资源写两参 get 是运行时报错（背包网格签名实踩）。资源用属性直读，字典才用带默认值 get。
+- **BBCode 落点纪律**：`[color=]`/`[font_size=]` 只能进 RichTextLabel（且 bbcode_enabled）；普通 Label 会按字面直显（faction 满级标签实踩）。新写彩色文字先确认目标类型。
+- **时代染色对比度**：truck_base 双 caption 等直接压在战场美术上的文字，颜色随时代 accent 变化（二战橄榄在浅色地面 2.29:1）——必须带深色柔边阴影（shadow_outline_size≥5）兜底，新加同类悬浮文字照此。
+- **资产缺口清单（挂起）**：cold_inf_ak / cold_inf_spetsnaz_e / mod_inf_delta_e / mod_inf_marine 无帧动画目录（静态卡图回退）；cold_air_strike_fighter 敌我卡图半透明发灰待 agnes 重生成。

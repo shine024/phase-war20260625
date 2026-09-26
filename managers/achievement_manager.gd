@@ -469,6 +469,11 @@ func get_recommended_achievements(count: int = 3) -> Array[Dictionary]:
 			continue
 
 		var progress = get_achievement_progress(ach_id)
+		# 记录4 复核：进度已 ≥100% 的条目是"达标待解锁评估"（解锁只挂在战斗结束
+		# 事件上，老存档累计统计从不触发检查），把它们当"即将完成"会显示
+		# "初露锋芒 6200%"这类荒谬百分比——推荐只收 50%~99% 区间
+		if progress.get("percentage", 0) >= 100:
+			continue
 		if progress.get("percentage", 0) >= 50:
 			recommendations.append(ACHIEVEMENT_DATABASE[ach_id])
 

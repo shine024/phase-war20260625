@@ -606,6 +606,11 @@ func _build_image_area() -> void:
 	_caption.offset_bottom = -10.0
 	_caption.add_theme_font_size_override("font_size", 13)
 	_caption.add_theme_color_override("font_color", Color(1.0, 0.89, 0.69))
+	# 记录4 美术复核：底部状态条直接压在战场美术上，二战等浅色地面时代
+	# （accent 橄榄系）对比度实测 2.29:1——加深色柔边阴影，任何背景下文字都立得住
+	_caption.add_theme_color_override("font_shadow_color", Color(0.02, 0.03, 0.02, 0.85))
+	_caption.add_theme_constant_override("shadow_offset_y", 1)
+	_caption.add_theme_constant_override("shadow_outline_size", 5)
 	_image_holder.add_child(_caption)
 
 	# v26.13(ui-review)：首次进入一句话引导（便捷性：新界面零说明=流失点）
@@ -703,8 +708,9 @@ func _apply_era_theme() -> void:
 		_sortie_btn.add_theme_color_override("font_color", Color(0.06, 0.08, 0.09))
 		_sortie_btn.add_theme_color_override("font_hover_color", Color(0.03, 0.05, 0.06))
 		_sortie_btn.add_theme_color_override("font_pressed_color", Color(0.03, 0.05, 0.06))
-	# 双 caption 染主题色（向白混 30% 保暗底可读）
-	var cap_col := accent.lerp(Color.WHITE, 0.30)
+	# 双 caption 染主题色（向白混 45%——记录4 复核后由 30% 上调，
+	# 二战橄榄 accent 在浅色地面 2.29:1 不可读；深色阴影兜底其余背景）
+	var cap_col := accent.lerp(Color.WHITE, 0.45)
 	_caption.add_theme_color_override("font_color", cap_col)
 	_ext_caption.add_theme_color_override("font_color", cap_col)
 	# 热区呼吸（动效减弱则静态常显）
@@ -2449,6 +2455,10 @@ func _build_exterior_area() -> void:
 	_ext_caption.offset_bottom = -10.0
 	_ext_caption.add_theme_font_size_override("font_size", 13)
 	_ext_caption.add_theme_color_override("font_color", Color(1.0, 0.89, 0.69))
+	# 同剖面 caption：深色柔边阴影保浅色时代背景可读
+	_ext_caption.add_theme_color_override("font_shadow_color", Color(0.02, 0.03, 0.02, 0.85))
+	_ext_caption.add_theme_constant_override("shadow_offset_y", 1)
+	_ext_caption.add_theme_constant_override("shadow_outline_size", 5)
 	_ext_holder.add_child(_ext_caption)
 
 func _on_view_pressed(mode: String) -> void:

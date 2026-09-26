@@ -657,7 +657,7 @@ func _refresh_header() -> void:
 		var id_text := c.card_id
 		if not c.instance_id.is_empty():
 			id_text = c.instance_id
-		hero_name_label.text = "%s   [color=#454f63][font_size=10]%s[/font_size][/color]" % [name_text, id_text]
+		# 记录4 复核：原 BBCode 赋值行本就是死代码（下一行立即覆盖），普通 Label 也不该用 BBCode
 		hero_name_label.text = name_text  # 简化：纯文本，id 显示在 meta
 	# MetaLabel 显示 card_id#instance
 	if meta_label:

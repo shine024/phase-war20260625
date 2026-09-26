@@ -344,7 +344,9 @@ func _set_mode_button_style(btn: Button, active: bool) -> void:
 	style.set_border_width_all(1)
 	style.set_corner_radius_all(8)
 	if active:
-		btn.add_theme_color_override("font_color", _HIGHLIGHT)
+		# 记录4 美术复核：激活态文字原用 _HIGHLIGHT 同色（薄荷绿字配薄荷绿底，
+		# "● 循环"完全不可见）——亮色激活底必须配深色文字
+		btn.add_theme_color_override("font_color", Color(0.04, 0.15, 0.11))
 		style.bg_color = _HIGHLIGHT
 		style.border_color = _HIGHLIGHT
 	else:

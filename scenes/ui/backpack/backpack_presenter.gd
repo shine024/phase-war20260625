@@ -628,7 +628,13 @@ var _last_grid_signature: String = ""
 func _compute_grid_signature(cards: Array, extra_ids: Array) -> String:
 	var parts: Array[String] = []
 	for c in cards:
-		parts.append("%s:%s" % [str(c.get("instance_id")), str(c.get("enhance_level", 0))])
+		# 记录4 修复：CardResource 走属性直读（Object.get 只收 1 参，
+		# c.get("enhance_level", 0) 两参形式在 Resource 上是运行时报错——
+		# 每次背包首开刷一条 SCRIPT ERROR）；字典条目才用带默认值的 get。
+		if c is CardResource:
+			parts.append("%s:%s" % [c.instance_id, str(c.enhance_level)])
+		elif c is Dictionary:
+			parts.append("%s:%s" % [str(c.get("instance_id")), str(c.get("enhance_level", 0))])
 	for cid in extra_ids:
 		parts.append("x:" + str(cid))
 	return "|".join(parts)

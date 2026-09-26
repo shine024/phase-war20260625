@@ -155,7 +155,7 @@ func _style_tier_btn(vbox: Node, btn_name: String, styles: Dictionary, font_size
 
 ## v26.9: 版本号统一从工程设置读（project.godot application/config/version）
 func _update_version_label() -> void:
-	var version_label: Label = get_node_or_null("CenterContainer/MainVBox/VersionLabel")
+	var version_label: Label = get_node_or_null("VersionLabel")
 	if version_label:
 		var ver: String = str(ProjectSettings.get_setting("application/config/version", "26.9"))
 		version_label.text = "v%s · Construct Era" % ver
@@ -189,7 +189,7 @@ func _play_intro_animation() -> void:
 	var title_label = get_node_or_null("CenterContainer/MainVBox/TitleContainer/TitleLabel")
 	var subtitle = get_node_or_null("CenterContainer/MainVBox/TitleContainer/Subtitle")
 	var buttons_vbox = get_node_or_null("CenterContainer/MainVBox/ButtonsVBox")
-	var version_label = get_node_or_null("CenterContainer/MainVBox/VersionLabel")
+	var version_label = get_node_or_null("VersionLabel")
 
 	if title_label:
 		title_label.modulate.a = 0
