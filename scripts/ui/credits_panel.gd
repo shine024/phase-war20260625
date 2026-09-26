@@ -3,7 +3,7 @@ class_name CreditsPanel
 ## 制作人员/许可页（S17 授权链缺口修复，2026-09-20）：引擎/字体/音频授权的玩家可见声明。
 ## 入口 = title_screen「制作人员」按钮 → CreditsPanel.open(get_tree())。
 ## 数据 const 内联——assets/sfx/CREDITS.md 是内部凭据存档（*.md 不进发行包），
-## BGM 授权落定后本页 MUSIC 行与该文件同步更新。
+## MUSIC 行与该文件同步维护（2026-09-26 换曲批已对齐）。
 ## 开合走 PanelAnim 统一规格；ESC/手柄 Ⓑ 与 ✕ 同关；接手柄时焦点落关闭键。
 
 const DT = preload("res://resources/design_tokens.gd")
@@ -16,18 +16,21 @@ const PANEL_MIN := Vector2(620, 520)
 const SECTIONS := [
 	{"title": "引擎", "lines": [
 		"Godot Engine 4.5.1",
-		"MIT License · © Juan Lini and the Godot community",
-		"godotengine.org",
+		"MIT License · © Juan Linietsky, Ariel Manzur 与 Godot Engine 贡献者",
+		"godotengine.org · 完整许可文本随游戏附带（assets/licenses/）",
 	]},
 	{"title": "字体", "lines": [
 		"Rajdhani — Indian Type Foundry · SIL Open Font License 1.1",
-		"Noto Sans SC — Google · SIL Open Font License 1.1",
+		"Noto Sans SC — Adobe / Google · SIL Open Font License 1.1",
 		"OFL 许可全文随游戏文件附带（assets/fonts/）",
 	]},
 	{"title": "音乐与音效", "lines": [
-		"音效：本项目原创合成",
-		"背景音乐：发行版曲目与第三方授权署名将于发行前定稿，",
-		"并在商店页署名区同步公示",
+		"音效：本项目原创合成（波形生成管线）",
+		"背景音乐：Kevin MacLeod (incompetech.com)",
+		"CC BY 4.0 · creativecommons.org/licenses/by/4.0/",
+		"曲目：At Launch / Peaceful Desolation / Devastation and Revenge /",
+		"Five Armies / Crypto / Rock Hybrid / Space Fighter Loop /",
+		"Final Battle of the Dark Wizards（经转码与响度归一处理）",
 	]},
 	{"title": "美术", "lines": [
 		"部分美术资产由 AI 生成，并经人工审核与修改；",

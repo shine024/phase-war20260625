@@ -1255,6 +1255,9 @@ func _compute_next_level() -> int:
 	var tpm: Node = root.get_node_or_null("TutorialProgressionManager")
 	if tpm != null and tpm.has_method("is_past_first_battle") and not tpm.is_past_first_battle():
 		return 0
+	# v6.28（记录2#4）：首胜后教程停在「移动基地」步——隐藏直通键强制回基地看引导
+	if tpm != null and tpm.has_method("is_pending_truck_base_intro") and tpm.is_pending_truck_base_intro():
+		return 0
 	var gm: Node = root.get_node_or_null("GameManager")
 	var lpm: Node = root.get_node_or_null("LevelProgressManager")
 	if gm == null or lpm == null:
@@ -1277,6 +1280,9 @@ func _compute_replay_level() -> int:
 		return 0
 	var tpm: Node = root.get_node_or_null("TutorialProgressionManager")
 	if tpm != null and tpm.has_method("is_past_first_battle") and not tpm.is_past_first_battle():
+		return 0
+	# v6.28（记录2#4）：同下一关门——「移动基地」步未完成不出再战键
+	if tpm != null and tpm.has_method("is_pending_truck_base_intro") and tpm.is_pending_truck_base_intro():
 		return 0
 	var gm: Node = root.get_node_or_null("GameManager")
 	if gm == null:

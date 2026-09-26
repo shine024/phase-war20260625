@@ -131,6 +131,8 @@ func _apply_numeric_pair(pair_id: String, def: Dictionary) -> void:
 		var target_role: int = int(eff["target_role"])
 		var mult: float = float(eff["speed_mult"])
 		for u in _get_player_units():
+			if not is_instance_valid(u):
+				continue  # v6.28：先守卫再 `in`（freed 对象原生崩溃面）
 			var st: Variant = u.get("stats") if "stats" in u else null
 			if st == null or not (st is Resource):
 				continue
@@ -159,6 +161,8 @@ func _apply_numeric_pair(pair_id: String, def: Dictionary) -> void:
 
 func _revoke_numeric_pair(pair_id: String) -> void:
 	for u in _get_player_units():
+		if not is_instance_valid(u):
+			continue  # v6.28：先守卫再 `in`（freed 对象原生崩溃面）
 		var st: Variant = u.get("stats") if "stats" in u else null
 		if st == null or not (st is Resource):
 			continue
@@ -208,12 +212,16 @@ func _apply_onetime_pair(pair_id: String, def: Dictionary) -> void:
 	if target_role < 0 or field.is_empty() or bonus <= 0.0:
 		return
 	for u in _get_player_units():
+		# v6.28：组快照可能含刚 freed 的单位——先守卫再 `in`（对已 freed 对象做
+		# `in` 运算 = 原生报错 "Invalid base object for 'in'"，崩溃日志实证）
+		if not is_instance_valid(u):
+			continue
 		var st: Variant = u.get("stats") if "stats" in u else null
 		if st == null or not (st is Resource):
 			continue
 		var stats := st as Resource
 		# 单位已死跳过（亡者不吃增益）
-		if "hp" in u and is_instance_valid(u) and float(u.get("hp")) <= 0.0:
+		if "hp" in u and float(u.get("hp")) <= 0.0:
 			continue
 		if UnitRolesRef.resolve_role_cached(stats) != target_role:
 			continue

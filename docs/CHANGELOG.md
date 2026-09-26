@@ -9388,3 +9388,41 @@ MVP 协同小结、8 面板首开气泡。**R3 余项**：结算面板三页签�
   - **#1 基地车"纳米制造机"介绍文案**：3 处已定位（`tutorial_progression_manager.gd:162/164` INTRO_WELCOME 剧情与 highlights、`truck_base.gd` 醒来演出字幕"起始卡组、纳米制造机，还有这辆车"）——用户主诉意向（改名/删除/换称谓）不明确，待点名后改。
 - **合并提交**：本次 commit 同时收编工作区在途的记录7 实机验收批次改动（bottom_instrument_bar 揭示门/记录5#2 系列、truck_base 精神挂机桥接/情报面板自挂、backpack_panel 网格兜底、affix_manager+unit_stats_table 减伤帽统一0.60、tutorial CARD_COLLECTION/PHASE_INSTRUMENT 教程文案重写）与 v6.24-v6.26.5 美术/商店/命名批次（CHANGELOG 已有条目），用户裁决"全部一起提交"。
 - **验证**：headless 编译冒烟 8 帧（0 parse/script error）+ `--import` 全量重导入；lance 512/384 双图目检无白块；伤害公式数值复核（防700→3000攻=200）。
+
+## v6.28 BGM 授权换曲批 + 字体许可勘误（2026-09-26，S17 硬门槛清零）
+
+- **背景**：标准集合 S17「素材与开源授权链」挂账——7 首 BGM（YouTube 免费音乐库来源）元数据被 ffmpeg 转码覆写、凭据不可追溯，UNVERIFIED；原计划替换腿走 FreePD（CC0），**抓取时发现 FreePD.com 已于 2025 年永久关站**，改用 incompetech.com（Kevin MacLeod 官方站，免费使用需署名，CC BY 4.0）。另发现 **bgm_battle_cold.ogg（COLD_WAR 战斗曲，2026-08-23 入库）被 9-20 审计漏登记**，同族并入本批。
+- **换曲 8 首**（全 Kevin MacLeod，统一 CC BY 4.0）：title=At Launch / hub=Peaceful Desolation / ww1=Devastation and Revenge / ww2=Five Armies / cold=Crypto / modern=Rock Hybrid / future=Space Fighter Loop / boss=Final Battle of the Dark Wizards。选曲按 incompetech 机器可读目录（feel/genre/description/instruments）对位各时代气质，节奏表零改动。
+- **流水线 `tools/bgm_swap_from_manifest.py`（可复用）**：清单驱动（`_steam_assets/licenses/incompetech_20260926/swap_manifest_20260926.json`）——源 MP3 时长校验（只拒「显著短于目录」=截断；目录时长是取整值，偏长合法，Five Armies 155.8s 即此）→ 响度静态增益归一（目标 -14 LUFS；真峰值超 -1.5 dBTP 按峰值回退，**刻意不加动态压缩防抽吸**——成品跨度 -14.0~-21.0 LUFS，旧曲 -6.1~-18.0 从未归一，标题屏曲原本过响 12dB）→ ffmpeg libvorbis q6 / 44.1kHz / 立体声 → **溯源元数据内嵌**（title/artist/ISRC/license URL，vorbis comment 挂 stream 级——ffprobe 查 OGG 标签要看 stream_tags 不是 format_tags）→ 同名落位。AudioManager 运行时置 loop=true，.import 同为 loop=true，换曲对播放链零代码改动。
+- **凭据链三件套**：①`assets/sfx/CREDITS.md` 重写（现行 8 首 ✅ 表 + 旧 8 首 SHA256 退役记录 + 「换曲复用工序」）；②`_steam_assets/licenses/incompetech_20260926/`（CC-BY 4.0 法务文本快照、incompetech 条款页/FAQ 快照、pieces.json 目录快照 1442 首、逐曲 ISRC+双端 SHA256 `intake_hashes_20260926.json`、面向商店页的署名文本）；③游戏内 `credits_panel.gd`「音乐与音效」段占位文案换正式署名。
+- **字体许可勘误**：`assets/fonts/OFL.txt` 实为**已删除的 Barlow 字体的遗留许可文件**（张冠李戴，design_tokens.gd:298 记载 Barlow 已随 R-D2 删除）——替换为 `Rajdhani-OFL.txt`（Indian Type Foundry 权威文本，jsdelivr 拉 google/fonts 上游）；无署名头的 `LICENSE` 移除；`NotoSansSC-OFL.txt` 与上游逐字节 diff 一致（Adobe 版权行是 Noto CJK 联合开发正统署名，非错挂）**未动**。`.font_src/`（NotoSansSC-VF.ttf 17.7MB 可变字体源）**加入 export_presets exclude_filter**——原会整目录打进发行包。
+- **⚠ 新铁律**：`*.ogg` 在 .gitignore（:122）——**音频资产 git 不保护**，动任何 BGM/SFX 前先外部备份；本批旧 8 首+环境音备份 `F:\godot fair duet\_art_backup\bgm_prelicense_20260926\`，源 MP3 归档同目录 incompetech_sources/。
+- **验证**：`--headless --editor --quit` 重导入 + `tests/_tmp_v628_bgm_smoke.gd`（--script 冒烟：8 曲 AudioStreamOggVorbis 加载/时长对目录/loop 可置位 + credits_panel 编译 + CREDITS.md 台账无未退役 UNVERIFIED 行，V628_BGM_SMOKE_OK）。文档同步：AGENTS.md S17 条目、商店提交清单 0 节两项打勾。
+- **留观**：BGM 实听裁决权在用户——选曲是按目录元数据盲配的，哪首不合意点名即换（工序已沉淀，单首替换几分钟）；响度若要进一步收紧（modern 偏轻）需引限幅器，会引入动态处理伪声，待用户实听拍板。
+
+## v6.28.1 授权链二轮复查补全（2026-09-26，S17 收尾）
+
+- **复查范围**：全项目音频扫描（assets/sfx 外零音频文件，无漏网）、字体 TTF name 表逐件比对、SFX 自合成证据链、credits 页文案、导出包内许可文本。
+- **字体归属实锤**：5 件 .ttf + .font_src VF 解析 name 表——Rajdhani 三字重 copyright=Indian Type Foundry、Noto Sans SC 三件=Adobe（Reserved Font Name 'Source'），与随附 OFL 文本一一对应；usWeightClass 400/500/600/700 与文件名一致（"Noto Sans SC Thin" family 名是 Google 静态件旧式命名怪癖，非错装字体）。
+- **SFX 证据链闭合**：合成波形真身=`managers/sound_generator.gd`（方波+噪声→枪械、扫频→能量武器等原语，至今仍是运行期兜底合成器）——CREDITS.md 已引用，不再只是 README 一句声明。
+- **发行包许可文本补齐（此前是空头承诺）**：`all_resources` 导出模式不导出裸 .txt——OFL 全文实际从未随包，credits 页"OFL 许可全文随游戏文件附带"名不副实。v6.28.1 include_filter 补 `assets/fonts/*.txt, assets/licenses/*.txt`；新增 `assets/licenses/`（godot-engine-LICENSE.txt 拉自 4.5.1-stable tag + godot-thirdparty-COPYRIGHT.txt）。
+- **credits 页订正**：引擎版权人"© Juan Lini and the Godot community"系讹误（正确=Juan Linietsky, Ariel Manzur 与 Godot Engine 贡献者，对齐上游 LICENSE.txt）；音乐段补 CC-BY 要求的修改声明"（经转码与响度归一处理）"；SFX 行标注波形管线。
+- **文档同步**：根 README 新增「素材授权」节（原零授权声明）；`_steam_assets/licenses/README.md` 索引建档（含新素材录入规矩）；标准集合 S17 总表行/详节/优先级表三处标 ✅ 闭环。
+- **验证**：`tests/_tmp_v628_bgm_smoke.gd` 重跑 V628_BGM_SMOKE_OK（credits_panel SECTIONS 断言随文案更新仍过）。
+
+## v6.29 记录2实机验收9条处置（2026-09-26）——6修+1答+1埋点+1审计
+
+- **背景**：`build/记录2.txt` 第二轮实机验收 9 条。用户拍板：卡死=画面冻住进程还在（非闪退）；挂机停机=精神耗尽；灰影=部分卡灰色人形残影（bug）；休息语义=歇 60s 精神回满。
+- **6 修**：
+  - **#1 挂机自动停机**：根因=精神（sanity）耗尽 `stop_afk("sanity")` 直接退挂机。新增 `RESTING` 状态+`_begin_sanity_rest/_finish_sanity_rest`（`afk_mode_manager.gd`）——精神耗尽不退挂机，原地休整 60s（代际守卫 timer，stop 可打断）→ `BunkerManager.rest_recover_full()`（只回满精神，不推天数/不回燃料，与 sleep() 副产物划界）→ 重派 `_on_battle_ended_from_bus(_rest_pending_won)` 保住胜利场推进。AFK 面板加倒计时显示。
+  - **#2 换相位仪卡一下+战斗卡 tab 空白**：根因=presenter `_on_card_added` 不分 tab 全量重建+重建尾视口扫描落在隐藏 tab（rect 失效→图标停"？"）+切 tab 无重扫。改隐藏 tab 置脏+`_on_tab_changed` 战斗卡分支补 `flush_if_dirty()`+deferred 视口重扫；批量高亮走 `_pending_highlight_ids` 队列+`highlight_cards_by_ids` 单次扫描（原 N 次全 grid 扫描）。
+  - **#3 开背包新卡多卡一下**：三缓存——①装备态静态快照（`_flush_rebuild_card_grid` 首尾 set/clear，N 卡 N 次 `get_slot_card_ids()`→1 次；纪律=出函数必清）；②战力分 memo（set_card 内 `_fill_stat_line`+`_build_bottom_info_line` 双估算去重，重建开始清）；③`CardMechanismDesc.get_mechanism_lines` tags 串 memo。
+  - **#4 首胜提示太晚**：根因=胜利后直通键立即开下一场不回基地，TRUCK_BASE 点播步被无限推迟。`tutorial_progression_manager.is_pending_truck_base_intro()` 门控 mvp_panel `_compute_next_level/_compute_replay_level`（门开时返回 0 隐藏两键，底栏只剩返回基地）。
+  - **#7 改造舱安装/模拟按钮高度跳动**：`modification_panel.tscn` 重排——DeckMargin 下新 DeckVBox，按钮行独立 DeckBtnHBox 横排底部，不再随左边模块情报行数变化（9 处 parent 全路径同步，unique_name 全保留零脚本改动）。
+  - **#9+#8+5a/5b 核爆/胜利后冻住（负载侧）**：5a 核爆齐射演出封顶 `NUKE_VFX_TARGET_CAP=10`（前 10 目标完整演出，超出同延迟纯结算，伤害总额与节奏不变；顺手修 `targets.find` O(N²)→枚举索引）；5b `_play_nuclear_impact` 600ms 冷却+overlay tween 引用 kill（防短窗多段核爆叠加写同一 ColorRect）。
+- **#6 挂机放后台卡死（背景负载侧）**：`main.gd` 豁免收紧——挂机视口豁免仅当 AFK 面板在屏（`_is_afk_thumbnail_wanted`），面板隐藏的挂机允许冻结砍掉无人看的每帧空渲染；新增 `_notification` 失焦 `UPDATE_DISABLED`（只停渲染不停模拟，时间基计时器不受影响）/回焦按态恢复。
+- **#5c 挂机循环节流**：CYCLE 场间零间隔→1s 最小间隔（gen 守卫 timer，不置 TRAVELING 防状态行闪烁）；挂机每场胜利同步存档→`_maybe_afk_save` 节流（每 3 场或≥20s；失败/停止/休整后仍必存，崩溃最多丢 2 场）。
+- **#5d freed 对象 `in` 守卫**：`pair_synergy_engine.gd` 四处循环补 `is_instance_valid` 前置（对已 freed 对象做 `in`=原生报错，崩溃日志实证）。mod_aura_handler/combat_targeting/spatial_grid 同族四处已核有守卫未动。
+- **1 埋点交付（#5/6/9 冻住三连）**：新 autoload `TraceLog`（32 个，AGENTS 表已同步）——低频面包屑每行 flush 落盘 `user://trace.log`，埋点：afk start/stop/enter/advance/rest 起止/save 前后、SaveManager save_game 出入口、end_battle 帧链 A/B/B2/C/emit、核爆起止。**冻住不承诺本批根治**——下次复现看 trace.log 尾行定位区间。
+- **1 审计（#8 灰色人形残影）**：机械审计干净——223 个 sheet 型 anim 目录 idle+attack 宽高全整除（帧距错配零）、outline.baked 全 true（无"未烘被 shader 二次外扩"错位）、boss 单帧 2 目录正常豁免。剩余嫌疑=帧边界±2px 烘焙色渗入/渲染侧，**待用户提供卡名或截图样本**后定点重烘焙（`deploy_unit_anims.py --bake-existing` 幂等）。
+- **验证**：gdunit4 全量 83 套件 485 用例（含新增 `test_afk_rest` 4 例+`test_tutorial_truck_gate` 5 例全过）；2 失败（mod_value_channels/installable_mods_era_filter + mod_drop_era_filter/negative_era_keeps_legacy）与 report_1 逐字相同=存量，非本批引入。

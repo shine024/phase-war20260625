@@ -518,6 +518,7 @@ func end_battle(player_won: bool) -> void:
 	if DEBUG_BATTLE_LOG:
 		pass
 		# [LOG-v5.1] print("[BattleManager] end_battle called, player_won: ", player_won)
+	TraceLog.mark("end_battle_A", "won=%s" % str(player_won))
 	var gen := _battle_gen
 	_disconnect_battle_scoped_signals()
 	battle_active = false
@@ -634,6 +635,7 @@ func _deferred_end_battle_finalize(player_won: bool, gen: int = -1) -> void:
 	# 批次9：世代号护栏——新战斗已开打则本链（旧场结算）整体作废
 	if gen >= 0 and gen != _battle_gen:
 		return
+	TraceLog.mark("end_battle_B", "drops")
 	# v26.11(A1.1): 击败相位师 → 渐进解锁 Boss 词条池（boss_1/2/3，第 1/2/3 胜各解锁一档）。
 	# _is_phase_master_battle 此处仍在（C 阶段才清零），可安全读取；unlock_boss 幂等。
 	if player_won and _is_phase_master_battle:
@@ -672,6 +674,7 @@ func _unlock_next_boss_affix_pool() -> void:
 func _deferred_end_battle_intel_harvest(player_won: bool, gen: int = -1) -> void:
 	if gen >= 0 and gen != _battle_gen:
 		return
+	TraceLog.mark("end_battle_B2", "intel")
 	# ①b 情报收获生成（重负载：遍历全部击败敌人做情报掷骰，胜利后单帧最重操作）
 	# has_recon 由 end_battle（Frame A）清场前计算，此处直接传入，避免遍历已清空的单位。
 	if player_won:
@@ -693,6 +696,7 @@ func _deferred_end_battle_intel_harvest(player_won: bool, gen: int = -1) -> void
 func _deferred_end_battle_broadcast(player_won: bool, gen: int = -1) -> void:
 	if gen >= 0 and gen != _battle_gen:
 		return
+	TraceLog.mark("end_battle_C", "broadcast")
 	# ①c 清理 battle_vfx 组所有节点（焦痕/烟柱/核爆动画/浓度场等延迟 spawn 或永久残留的 VFX）。
 	# 放在 battle_ended emit 前：覆盖 prune_transient_children 漏掉的延迟回调 spawn 节点
 	# （核爆余波环 0.08s 延迟、烟柱 2.5s 自毁链等在清场后才生成的漏网之鱼）。
@@ -722,6 +726,7 @@ func _deferred_end_battle_broadcast(player_won: bool, gen: int = -1) -> void:
 	_is_phase_master_battle = false
 	# ④广播战斗结束信号（原 _emit_battle_ended 合并于此，无需再套一层 deferred）
 	if SignalBus:
+		TraceLog.mark("end_battle_emit", "won=%s" % str(player_won))
 		SignalBus.battle_ended.emit(player_won)
 
 

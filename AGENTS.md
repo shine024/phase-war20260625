@@ -47,7 +47,7 @@
 - **导出排除补全（S17）**：exclude_filter 补 agent_tools 编辑器侧（headless/tools/server/registry/plugin）+ godot_ai 编辑器侧（clients/debugger/dock_panels/export/handlers/testing + 顶层 8 脚本）+ addons/opencode.json。**runtime/ 两桥必须保留**——_MCPGameBridge/_mcp_game_helper 是 project.godot autoload（均有 OS.is_debug_build 自守卫 release 零行为），且 godot_ai runtime 链 preload utils/ 三文件故 utils/ 整目录保留。回归锁 `test_export_excludes_dev_addons_but_keeps_runtime_bridges`；**插件更新加新目录要补排除清单**（工序在 商店提交清单 S13#3）。
 - **对比度全量探针**：`tools/contrast_probe.gd`（--script 直跑，文本 token 20×底色 7 全矩阵 WCAG 比值）。结论：唯一 FAIL=死 token `COLOR_AMBER_DEEP`（零消费，design_tokens 已注记"禁止作深底文本色"）；16 处"仅大字号"档（FAINT/RED_DOWN/ACCENT_PURPLE 对较浅面板底）为层次/语义色有意取舍，留观。
 - **帮助面板第 8 Tab「无障碍」**：滤镜/高对比/大字号/减动效/分轨音量/键位重绑/手柄全清单 + 反馈渠道占位（S2 GAG 三条 ⚠ 的游戏内侧收口）。
-- **BGM 授权（S17，未完——用户侧动作）**：`assets/sfx/CREDITS.md` 建档——7 首 OGG Vorbis 注释实测全被 ffmpeg 转码覆写，**文件层追溯已断，全部 UNVERIFIED**；商店提交前必须清零（追溯或替换，行动清单在 CREDITS.md 文内）。游戏内 credits 页 MUSIC 行已留待定稿占位。
+- **BGM 授权（S17，✅ 2026-09-26 换曲批闭环）**：原 7+1 首（**bgm_battle_cold 曾被 9-20 审计漏登记**）YouTube 免费音乐库来源曲凭据不可追溯（ffmpeg 转码覆写元数据），已全量替换为 **incompetech / Kevin MacLeod（CC BY 4.0，署名义务由游戏内 credits 页承载）**。凭据链=`assets/sfx/CREDITS.md`（台账+退役记录）+ `_steam_assets/licenses/incompetech_20260926/`（许可快照/逐曲 ISRC/SHA256/清单）。换曲流水线=`tools/bgm_swap_from_manifest.py`（拒截断+响度归一 -14 LUFS+溯源元数据内嵌，复用工序在 CREDITS.md 文末）。**铁律：`*.ogg` 在 .gitignore，音频资产 git 不保护——动任何 BGM/SFX 前先外部备份**（本批旧曲在 `F:\godot fair duet\_art_backup\bgm_prelicense_20260926\`）。字体许可同步勘误：旧 `assets/fonts/OFL.txt` 是已删字体 Barlow 的遗留文件（张冠李戴），现为 `Rajdhani-OFL.txt`（ITF 权威文本）+ `NotoSansSC-OFL.txt`（与上游逐字节一致）；`.font_src/`（17.7MB VF 源）已加入导出排除。冒烟 `tests/_tmp_v628_bgm_smoke.gd`。
 
 ## Godot CLI Commands
 
@@ -225,7 +225,7 @@ func _redirect_stdout_to_file() -> void:
 
 ## Architecture
 
-### Autoload Singletons（project.godot 实际 31 个，2026-09-12 核对——PhaseLawManager 已随 P2-7 法则退役删除；EvolutionPathRegistry 已随 v26.6 结构收敛删除，autoload 31→30；v28 质感轮 +ColorGrade 30→31，见停用清单）
+### Autoload Singletons（project.godot 实际 32 个，2026-09-26 核对——v6.28 冻住诊断 +TraceLog 31→32；此前 PhaseLawManager 已随 P2-7 法则退役删除；EvolutionPathRegistry 已随 v26.6 结构收敛删除，autoload 31→30；v28 质感轮 +ColorGrade 30→31，见停用清单）
 
 > 双层设计说明：部分 manager **同时**存在于 project.godot [autoload] 与 ManagerLazyLoader 配置——
 > 后者仅作 `ensure_loaded("<id>")` 的统一访问入口，命中 `/root/NodeName` 即复用，不会重复实例化。
@@ -262,7 +262,8 @@ func _redirect_stdout_to_file() -> void:
 | 28 | `TutorialProgressionManager` | `managers/tutorial_progression_manager.gd` | 引导 |
 | 29 | `BattleSpectacle` | `managers/battle/battle_spectacle.gd` | 战斗演出/大招编排 |
 | 30 | `ColorGrade` | `managers/color_grade.gd` | v28 全局调色后期层（时代色温/暗角/抑带；battle_started→时代预设、battle_ended→2s 回 neutral；开关 GameConfig.color_grade_enabled，A/B 环境变量 PW_GRADE_OFF=1） |
-| 31 | `_MCPGameBridge` | `addons/agent_tools/runtime/game_bridge.gd` | agent_tools 编辑器插件运行时桥 |
+| 31 | `TraceLog` | `scripts/systems/trace_log.gd` | v6.28 冻住诊断面包屑（低频埋点每行 flush 落盘 user://trace.log；复现冻住后看尾行定位区间；纪律：只埋低频点，禁逐帧/逐单位） |
+| 32 | `_MCPGameBridge` | `addons/agent_tools/runtime/game_bridge.gd` | agent_tools 编辑器插件运行时桥 |
 
 **Lazy-loaded managers**（`ManagerLazyLoader.ensure_loaded()`，23 个配置项；v9.x 2026-08-22 清理：battle_feedback/character/challenge_mode/version 四项已删，见停用清单；v26.4 核对更新）：
 aura, level_progress, drop, quest, achievement, daily_task,

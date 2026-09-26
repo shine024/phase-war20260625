@@ -344,6 +344,15 @@ func is_past_first_battle() -> bool:
 	var idx: int = STEP_ORDER.find(current_step)
 	return idx > STEP_ORDER.find(TutorialStep.FIRST_BATTLE)
 
+
+## v6.28（记录2#4）：首胜后等玩家回基地看完「移动基地」步——期间结算面板不出
+## 「下一关直通/再战本关」键，强制首胜后回基地看引导（用户"都胜利好几次了才提示
+## 首战打通去做什么"）。步完成或教程结束（跳过/老档 FREEDOM_MODE）即解除。
+func is_pending_truck_base_intro() -> bool:
+	return should_show_tutorial() \
+		and current_step == TutorialStep.TRUCK_BASE \
+		and not completed_steps.has(TutorialStep.TRUCK_BASE)
+
 ## 跳过教程
 func skip_tutorial() -> void:
 	current_step = TutorialStep.FREEDOM_MODE

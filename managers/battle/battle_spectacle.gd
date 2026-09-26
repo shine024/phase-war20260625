@@ -92,6 +92,12 @@ var _overlay: ColorRect = null             # 全屏覆盖层（暗化/闪光）
 var _title_label: Label = null             # 中央大字标签（VICTORY/BOSS名）
 var _combo_label: Label = null             # 右上角连杀标签
 var _nano_rain_layer: CPUParticles2D = null  # v8.1: 纳米虫群全屏降雨粒子层
+# v6.28（记录2#5b）：核爆 impact 演出冷却 + overlay tween 引用——短窗多段核爆
+# （多相位仪同队）叠加 N 组白闪/绿光 tween 同帧写同一 ColorRect。演出只留最新。
+const NUKE_IMPACT_COOLDOWN_MS := 600
+var _nuke_impact_last_ms: int = -1000000
+var _nuke_flash_tween: Tween = null        # 白闪定帧 tween 引用（新建前 kill 旧的）
+var _nuke_green_tween: Tween = null        # 边缘绿光 tween 引用（同上）
 
 func _ready() -> void:
 	# 监听核心战斗事件。process_mode 默认 ALWAYS，但慢动作期间 Engine.time_scale 不影响
@@ -342,13 +348,25 @@ func _play_nuclear_warning(_params: Dictionary) -> void:
 
 ## 核子轰炸命中：白闪定帧 + extreme shake（v8.1a：白闪延长到0.2s，更震撼）
 func _play_nuclear_impact(params: Dictionary) -> void:
+	# v6.28（记录2#5b）：冷却早退——短窗内多段 impact（多相位仪核爆）只演最新一段，
+	# 伤害结算在 abilities 侧不受影响。若上一组 tween 还在跑，先 kill 防同帧
+	# 两组 tween 交错写 _overlay.color（ freed 判定勿用 `is Tween`，用 is_valid）。
+	var now_ms: int = Time.get_ticks_msec()
+	if now_ms - _nuke_impact_last_ms < NUKE_IMPACT_COOLDOWN_MS:
+		return
+	_nuke_impact_last_ms = now_ms
 	# v26.6: 核爆命中音（合成爆炸声；武器级爆炸音在弹道 batch 层，此处是大招级）
 	SignalBus.play_sound.emit("explosion")
 	_ensure_overlay()
 	# 白闪定帧（v8.1a：0.04+0.16=0.2s，比原0.12s更持久震撼）
+	if _nuke_flash_tween != null and _nuke_flash_tween.is_valid():
+		_nuke_flash_tween.kill()
+	if _nuke_green_tween != null and _nuke_green_tween.is_valid():
+		_nuke_green_tween.kill()
 	_overlay.color = Color(1.0, 1.0, 1.0, 0.0)
 	_overlay.visible = true
 	var tw: Tween = create_tween()
+	_nuke_flash_tween = tw
 	tw.tween_property(_overlay, "color:a", 0.95, 0.05)
 	tw.tween_property(_overlay, "color:a", 0.0, 0.15)
 	tw.tween_callback(func(): _overlay.visible = false)
@@ -358,6 +376,7 @@ func _play_nuclear_impact(params: Dictionary) -> void:
 	_play_camera_push(1.22, 0.25, 0.5)
 	# 屏幕边缘绿光衰减（overlay 绿色 0.35→0，1.2s，v8.1a：延长+加亮）
 	var tw3: Tween = create_tween()
+	_nuke_green_tween = tw3
 	tw3.tween_interval(0.12)
 	_ensure_overlay()
 	_overlay.color = Color(0.2, 1.0, 0.3, 0.0)

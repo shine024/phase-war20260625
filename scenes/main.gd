@@ -310,6 +310,25 @@ func _settle_freeze_battle_viewport() -> void:
 	if boot_vp is SubViewport:
 		boot_vp.render_target_update_mode = SubViewport.UPDATE_ONCE
 
+## v6.28（记录2#6）：挂机放后台降频——失焦时停战场视口渲染（UPDATE_DISABLED 只停
+## render target 更新，模拟不受影响：AFK 的时间基计时器/待决结算照常推进）。
+## 回焦按当前态恢复：缩略图在屏→恢复持续渲染；否则走常规冻结判定。
+func _notification(what: int) -> void:
+	match what:
+		NOTIFICATION_APPLICATION_FOCUS_OUT:
+			if _afk_manager == null or not _afk_manager.is_running:
+				return
+			var vp = get_node_or_null("BattleContainer/SubViewportContainer/SubViewport")
+			if vp is SubViewport and (vp as SubViewport).render_target_update_mode != SubViewport.UPDATE_DISABLED:
+				(vp as SubViewport).render_target_update_mode = SubViewport.UPDATE_DISABLED
+		NOTIFICATION_APPLICATION_FOCUS_IN:
+			if _afk_manager != null and _afk_manager.is_running and _is_afk_thumbnail_wanted():
+				var vp2 = get_node_or_null("BattleContainer/SubViewportContainer/SubViewport")
+				if vp2 is SubViewport:
+					(vp2 as SubViewport).render_target_update_mode = SubViewport.UPDATE_ALWAYS
+			else:
+				_freeze_subviewport_if_not_in_battle()
+
 func _preload_common_panels() -> void:
 	# v8.x 性能：后台线程预热高频面板的 .tscn 资源（不实例化、不占主线程）。
 	# UILazyLoader.get_panel 走 load() 时会命中 ResourceLoader 缓存，
@@ -1704,12 +1723,19 @@ func _is_any_overlay_open() -> bool:
 func _is_in_battle() -> bool:
 	return BattleManager != null and BattleManager.battle_active
 
+## v6.28（记录2#6）：挂机缩略图是否真需要持续渲染——AFK 面板打开（在屏）才算。
+## 面板关着时挂机照跑（模拟走时间基计时器，不依赖视口渲染），视口可冻结。
+func _is_afk_thumbnail_wanted() -> bool:
+	return afk_overlay != null and afk_overlay.visible
+
 func _freeze_subviewport_if_not_in_battle() -> void:
 	if _is_in_battle():
 		return
 	# v6.6(挂机缩略图): 挂机运行中保持战斗视口持续渲染（UPDATE_ALWAYS），
 	# 供 AFK 面板的战场缩略图镜像 ViewportTexture。
-	if _afk_manager != null and _afk_manager.is_running:
+	# v6.28（记录2#6）：豁免收紧——仅面板打开（缩略图在屏）才豁免；
+	# 面板隐藏的挂机（放后台/纯挂）允许冻结，砍掉无人观看的每帧空渲染。
+	if _afk_manager != null and _afk_manager.is_running and _is_afk_thumbnail_wanted():
 		return
 	var vp = get_node_or_null("BattleContainer/SubViewportContainer/SubViewport")
 	if vp and vp.render_target_update_mode != SubViewport.UPDATE_DISABLED:

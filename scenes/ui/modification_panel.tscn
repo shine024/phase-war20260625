@@ -422,17 +422,21 @@ theme_override_constants/margin_left = 12
 theme_override_constants/margin_top = 8
 theme_override_constants/margin_right = 12
 theme_override_constants/margin_bottom = 8
-[node name="DeckHBox" type="HBoxContainer" parent="VBoxContainer/HBoxContainer/MiddlePanel/MiddleVBox/ActionDeck/DeckMargin"]
+[node name="DeckVBox" type="VBoxContainer" parent="VBoxContainer/HBoxContainer/MiddlePanel/MiddleVBox/ActionDeck/DeckMargin"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 8
+[node name="DeckHBox" type="HBoxContainer" parent="VBoxContainer/HBoxContainer/MiddlePanel/MiddleVBox/ActionDeck/DeckMargin/DeckVBox"]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 theme_override_constants/separation = 8
-[node name="DeckIcon" type="PanelContainer" parent="VBoxContainer/HBoxContainer/MiddlePanel/MiddleVBox/ActionDeck/DeckMargin/DeckHBox"]
+[node name="DeckIcon" type="PanelContainer" parent="VBoxContainer/HBoxContainer/MiddlePanel/MiddleVBox/ActionDeck/DeckMargin/DeckVBox/DeckHBox"]
 unique_name_in_owner = true
 layout_mode = 2
 custom_minimum_size = Vector2(36, 36)
 size_flags_vertical = 3
-[node name="DeckIconLabel" type="Label" parent="VBoxContainer/HBoxContainer/MiddlePanel/MiddleVBox/ActionDeck/DeckMargin/DeckHBox/DeckIcon"]
+[node name="DeckIconLabel" type="Label" parent="VBoxContainer/HBoxContainer/MiddlePanel/MiddleVBox/ActionDeck/DeckMargin/DeckVBox/DeckHBox/DeckIcon"]
 unique_name_in_owner = true
 layout_mode = 2
 text = "◇"
@@ -440,13 +444,13 @@ horizontal_alignment = 1
 vertical_alignment = 1
 theme_override_font_sizes/font_size = 16
 theme_override_colors/font_color = Color(0.133, 0.827, 0.933, 1)
-[node name="DeckInfo" type="VBoxContainer" parent="VBoxContainer/HBoxContainer/MiddlePanel/MiddleVBox/ActionDeck/DeckMargin/DeckHBox"]
+[node name="DeckInfo" type="VBoxContainer" parent="VBoxContainer/HBoxContainer/MiddlePanel/MiddleVBox/ActionDeck/DeckMargin/DeckVBox/DeckHBox"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 theme_override_constants/separation = 2
-[node name="DeckNameLabel" type="Label" parent="VBoxContainer/HBoxContainer/MiddlePanel/MiddleVBox/ActionDeck/DeckMargin/DeckHBox/DeckInfo"]
+[node name="DeckNameLabel" type="Label" parent="VBoxContainer/HBoxContainer/MiddlePanel/MiddleVBox/ActionDeck/DeckMargin/DeckVBox/DeckHBox/DeckInfo"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
@@ -454,7 +458,7 @@ text = ""
 autowrap_mode = 3
 theme_override_font_sizes/font_size = 16
 theme_override_colors/font_color = Color(0.95, 0.96, 0.98, 1)
-[node name="DeckCoreLabel" type="Label" parent="VBoxContainer/HBoxContainer/MiddlePanel/MiddleVBox/ActionDeck/DeckMargin/DeckHBox/DeckInfo"]
+[node name="DeckCoreLabel" type="Label" parent="VBoxContainer/HBoxContainer/MiddlePanel/MiddleVBox/ActionDeck/DeckMargin/DeckVBox/DeckHBox/DeckInfo"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
@@ -462,7 +466,7 @@ text = ""
 autowrap_mode = 3
 theme_override_font_sizes/font_size = 12
 theme_override_colors/font_color = Color(0.2, 0.75, 0.35, 1)
-[node name="DeckReqLabel" type="Label" parent="VBoxContainer/HBoxContainer/MiddlePanel/MiddleVBox/ActionDeck/DeckMargin/DeckHBox/DeckInfo"]
+[node name="DeckReqLabel" type="Label" parent="VBoxContainer/HBoxContainer/MiddlePanel/MiddleVBox/ActionDeck/DeckMargin/DeckVBox/DeckHBox/DeckInfo"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
@@ -470,22 +474,25 @@ text = ""
 autowrap_mode = 3
 theme_override_font_sizes/font_size = 12
 theme_override_colors/font_color = Color(0.55, 0.6, 0.7, 0.85)
-[node name="DeckInstallButton" type="Button" parent="VBoxContainer/HBoxContainer/MiddlePanel/MiddleVBox/ActionDeck/DeckMargin/DeckHBox"]
+[node name="DeckBtnHBox" type="HBoxContainer" parent="VBoxContainer/HBoxContainer/MiddlePanel/MiddleVBox/ActionDeck/DeckMargin/DeckVBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 8
+[node name="DeckInstallButton" type="Button" parent="VBoxContainer/HBoxContainer/MiddlePanel/MiddleVBox/ActionDeck/DeckMargin/DeckVBox/DeckBtnHBox"]
 unique_name_in_owner = true
 layout_mode = 2
-size_flags_vertical = 3
 custom_minimum_size = Vector2(96, 44)
+size_flags_horizontal = 3
 text = "安装"
 theme_override_colors/font_color = Color(0.95, 0.96, 0.98, 1)
 theme_override_colors/font_hover_color = Color(1, 1, 1, 1)
 theme_override_font_sizes/font_size = 16
 theme_override_styles/normal = SubResource("StyleBoxFlat_9")
 theme_override_styles/hover = SubResource("StyleBoxFlat_10")
-[node name="DeckSimButton" type="Button" parent="VBoxContainer/HBoxContainer/MiddlePanel/MiddleVBox/ActionDeck/DeckMargin/DeckHBox"]
+[node name="DeckSimButton" type="Button" parent="VBoxContainer/HBoxContainer/MiddlePanel/MiddleVBox/ActionDeck/DeckMargin/DeckVBox/DeckBtnHBox"]
 unique_name_in_owner = true
 layout_mode = 2
-size_flags_vertical = 3
-custom_minimum_size = Vector2(0, 22)
+custom_minimum_size = Vector2(0, 44)
 text = "效果模拟 ↓"
 theme_override_colors/font_color = Color(0.5, 0.55, 0.65, 0.8)
 theme_override_font_sizes/font_size = 12

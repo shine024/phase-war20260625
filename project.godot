@@ -48,6 +48,7 @@ PhaseMasterSkillManager="*res://managers/phase_master_skill_manager.gd"
 TutorialProgressionManager="*res://managers/tutorial_progression_manager.gd"
 BattleSpectacle="*res://managers/battle/battle_spectacle.gd"
 ColorGrade="*res://managers/color_grade.gd"
+TraceLog="*res://scripts/systems/trace_log.gd"
 _mcp_game_helper="*res://addons/godot_ai/runtime/game_helper.gd"
 _MCPGameBridge="*res://addons/agent_tools/runtime/game_bridge.gd"
 

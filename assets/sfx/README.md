@@ -52,19 +52,25 @@
 - achievement.ogg - 成就解锁
 - quest_complete.ogg - 任务完成
 
-### BGM 背景音乐（7 首）
+### BGM 背景音乐（8 首）
 
-**全部为真实录制音乐，非合成音！** 从 YouTube 免费音乐库下载，CC0/无版权限制。
+**2026-09-26 全量换曲**：全部为 Kevin MacLeod（incompetech.com）作品，
+CC BY 4.0（署名义务由游戏内 credits 页 + assets/sfx/CREDITS.md 承载）。
+逐曲 ISRC/时长/SHA256/源 URL 见 CREDITS.md 与
+`_steam_assets/licenses/incompetech_20260926/LICENSE_EVIDENCE.md`。
 
-- **bgm_title.ogg** — 史诗管弦乐主题曲 (162秒)
-- **bgm_hub.ogg** — 轻松规划氛围音乐 (121秒)
-- **bgm_battle_ww1.ogg** — 黑暗战争氛围 (282秒)
-- **bgm_battle_ww2.ogg** — 军乐进行曲 (118秒)
-- **bgm_battle_modern.ogg** — 现代战术电子 (101秒)
-- **bgm_battle_future.ogg** — 科幻合成器 (89秒)
-- **bgm_boss.ogg** — BOSS战紧张压迫音乐 (330秒)
+- **bgm_title.ogg** — At Launch（185秒，标题屏）
+- **bgm_hub.ogg** — Peaceful Desolation（91秒，基地）
+- **bgm_battle_ww1.ogg** — Devastation and Revenge（185秒，一战）
+- **bgm_battle_ww2.ogg** — Five Armies（156秒，二战）
+- **bgm_battle_cold.ogg** — Crypto（204秒，冷战）
+- **bgm_battle_modern.ogg** — Rock Hybrid（130秒，现代）
+- **bgm_battle_future.ogg** — Space Fighter Loop（101秒，近未来）
+- **bgm_boss.ogg** — Final Battle of the Dark Wizards（272秒，Boss 战）
 
-> 来源：YouTube Audio Library / 创作者上传的 Royalty Free 音乐
+> 旧 7 首"YouTube 免费音乐库 CC0"来源曲已于 2026-09-26 退役（凭据不可追溯，
+> UNVERIFIED 红线清零批次）；本体备份在项目外 _art_backup 目录。
+> 换 BGM 的标准工序见 CREDITS.md 文末「换曲复用工序」。
 
 ## BGM 自动切换逻辑
 
@@ -80,9 +86,9 @@ AudioManager 已实现完整 BGM 系统：
 
 - 格式：OGG Vorbis
 - 采样率：44.1kHz
-- 比特率：128kbps (SFX) / 192kbps (BGM)
+- 比特率：SFX 128kbps / BGM VBR q6（≈190kbps）
 - 声道：SFX 单声道，BGM 立体声
-- 总大小：约 850KB
+- 响度：BGM 已统一归一（-14 LUFS 目标，峰值保护；tools/bgm_swap_from_manifest.py）
 
 ## 代码集成
 

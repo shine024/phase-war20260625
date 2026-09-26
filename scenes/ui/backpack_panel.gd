@@ -30,6 +30,7 @@ signal closed
 
 const DefaultCardsData = preload("res://data/default_cards.gd")
 const CardItemScene = preload("res://scenes/ui/backpack_card_item.tscn")
+const CardItemScript = preload("res://scenes/ui/backpack_card_item.gd")  # v6.28（记录2#3）：重建期装备态快照/战力 memo 静态接口
 const ResourceSlotScene = preload("res://scenes/ui/resource_slot_item.tscn")
 const GC = preload("res://resources/game_constants.gd")
 const BackpackDataScript = preload("res://scenes/ui/backpack/backpack_data.gd")
@@ -926,7 +927,12 @@ func _on_tab_changed(tab_index: int) -> void:
 	match tab_index:
 		TabIndex.COMBAT_CARDS:
 			# 战斗卡标签页切换时刷新（如有需要）
+			# v6.28（记录2#2）：隐藏期间置脏的网格在此补刷——否则换相位仪等
+			# 触发的全量重建一直没跑，切过来是空 tab；补刷后需重扫视口可见性
+			#（重建时子项 rect 在刚显形的 tab 上不可靠，图标停留"？"占位）。
+			_presenter.flush_if_dirty()
 			_apply_combat_view_filters()
+			call_deferred("_apply_viewport_visibility_scan")
 		TabIndex.INTEL:
 			# v9.3：直接 refresh；首次切 Tab 若 IntelScroll size 未定会回退 4 列，
 			# 但 resized 信号会在布局完成后自动重排到准确列数（见 _connect_grid_scroll_resized）。
@@ -1038,6 +1044,12 @@ func _flush_rebuild_card_grid() -> void:
 	if grid == null:
 		# [LOG-v5.1] print("[BP] _flush_rebuild: SKIP grid null")
 		return
+	# v6.28（记录2#3）：重建期快照——装备态查 1 次 PIM（原 N 卡 N 次）、战力分
+	# memo 去 set_card 内双估算。重建结束后必须清空快照（增量装/卸读实时态）。
+	CardItemScript.clear_power_memo()
+	var pim: Node = get_node_or_null("/root/PhaseInstrumentManager")
+	if pim != null and pim.has_method("get_slot_card_ids"):
+		CardItemScript.set_equipped_ids_snapshot(pim.get_slot_card_ids())
 	_apply_backpack_grid_layout(grid)
 	var to_clear: Array = grid.get_children().duplicate()
 	for child in to_clear:
@@ -1079,6 +1091,9 @@ func _flush_rebuild_card_grid() -> void:
 	_ensure_min_card_slots(grid)
 	_sync_card_grid_scroll_size_for_grid(grid)
 	_hide_loading_indicator()
+	# v6.28（记录2#3）：纪律收尾——快照只覆盖本次重建，出函数前清空，
+	# 否则后续增量装/卸路径（set_card 单卡刷新）读到陈旧装备态。
+	CardItemScript.clear_equipped_ids_snapshot()
 	# v9.4: rebuild 完成后 deferred 扫描视口可见性，触发可见区卡牌的图标懒加载。
 	# 用 call_deferred 确保布局已完成（get_global_rect 可靠）。
 	call_deferred("_apply_viewport_visibility_scan")
@@ -1189,6 +1204,39 @@ func highlight_last_card_by_id(card_id: String) -> void:
 				target = child
 	if target:
 		_highlight_card_item(target)
+
+
+## v6.28（记录2#2）：批量高亮——单次遍历对 ids 各记最后一个匹配项再统一高亮。
+## 原 presenter 每卡调一次 highlight_last_card_by_id（换相位仪 N 卡 = N 次全 grid 扫描）。
+func highlight_cards_by_ids(ids: Array) -> void:
+	var grid = _combat_cards_grid
+	if grid == null or ids.is_empty():
+		return
+	var wanted: Dictionary = {}
+	for id in ids:
+		wanted[String(id)] = true
+	var matched: Dictionary = {}
+	for child in grid.get_children():
+		if child.has_meta("is_resource_slot") and child.get_meta("is_resource_slot"):
+			continue
+		if not child.has_method("set_card"):
+			continue
+		var card: CardResource = child.card if "card" in child else null
+		if card == null:
+			continue
+		# 每个 id 记最后一个匹配项（与 highlight_last_card_by_id 同语义）
+		for id in wanted.keys():
+			if _card_matches_id(card, String(id)):
+				matched[id] = child
+	for id in matched.keys():
+		var item: Control = matched[id]
+		if item != null:
+			_highlight_card_item(item)
+
+
+## v6.28（记录2#2）：战斗卡 tab 是否为当前 tab（presenter 隐藏期置脏判定用）
+func is_combat_tab_active() -> bool:
+	return _tab_container != null and _tab_container.current_tab == TabIndex.COMBAT_CARDS
 
 ## v7.0: 卡牌身份匹配——优先 instance_id 精确匹配，回退 card_id（兼容）
 func _card_matches_id(card: CardResource, id_str: String) -> bool:

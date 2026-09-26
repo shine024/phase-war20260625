@@ -104,6 +104,12 @@ func _ready() -> void:
 	# v32.0 B1-4: 观看战场按钮（定位转向 B1 观战体验批）
 	_build_watch_btn()
 
+	# v6.28（记录2#1）：休整中重开面板能立刻看到倒计时（state_changed 不会再发，visibility 变化时补刷）
+	visibility_changed.connect(func() -> void:
+		if visible and _afk_manager != null and _afk_manager.state == AFKModeManager.State.RESTING:
+			_last_rest_sec = -1
+			_refresh_rest_countdown())
+
 
 func _input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and event.keycode == KEY_ESCAPE:
@@ -385,6 +391,25 @@ func _on_stop() -> void:
 
 # ── 信号回调 ──
 
+# ── v6.28（记录2#1）休整倒计时 ──
+## 上次渲染的整秒数（-1=强制下次刷新；只在整秒变化时写字符串，防每帧分配）
+var _last_rest_sec: int = -1
+
+func _process(_delta: float) -> void:
+	if _afk_manager != null and _afk_manager.state == AFKModeManager.State.RESTING and visible:
+		_refresh_rest_countdown()
+
+## 倒计时刷新（RESTING 态专用；秒数粒度，读 manager 的 get_rest_remaining_seconds）
+func _refresh_rest_countdown() -> void:
+	if _afk_manager == null:
+		return
+	var sec := int(ceil(_afk_manager.get_rest_remaining_seconds()))
+	if sec == _last_rest_sec:
+		return
+	_last_rest_sec = sec
+	status_label.text = "状态: 精神耗尽——原地休整中，%d 秒后继续（精神回满）" % sec
+
+
 func _on_afk_state_changed(new_state: int) -> void:
 	# v6.23d 记录6#7: 运行/行进态附上精神余量——"挂一关就结算"多为精神抽干收工，
 	# 让玩家在面板上直接看到还剩几点（胜-10/败-20，睡觉恢复）
@@ -410,6 +435,12 @@ func _on_afk_state_changed(new_state: int) -> void:
 				status_label.text = "状态: 行进中——驶向第 %d 关" % int(_afk_manager._pending_level) + sanity_txt
 			else:
 				status_label.text = "状态: 行进中" + sanity_txt
+		AFKModeManager.State.RESTING:
+			# v6.28（记录2#1）：精神耗尽原地休整（60s 回满继续，不收工）——倒计时由 _process 刷
+			start_btn.visible = false
+			stop_btn.visible = true  # 休整中仍可手动停止（stop_afk 作废在途回调）
+			_last_rest_sec = -1
+			_refresh_rest_countdown()
 	# v6.6(挂机缩略图): 状态切换时刷新缩略图可见性
 	# （原挂在 _get_sanity_status_text 的 return 之后，从未执行过）
 	_refresh_battle_preview()

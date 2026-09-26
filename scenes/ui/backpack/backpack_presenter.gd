@@ -160,12 +160,16 @@ func _on_card_added(card: CardResource) -> void:
 	# SaveManager 兜底已经 enqueue 一次（pending+last_known 各+1）；若 presenter 再 enqueue，
 	# 会导致 last_known 比真实多记一份，下次 load_pending_cards 的差值补齐会把它兑现成多一张卡。
 	# presenter 存活时只管真实数据 _data，pending 由上面的 consume 消费掉即可。
-	if not _is_view_visible():
+	# v6.28（记录2#2）：面板可见但当前不在战斗卡 tab（如换相位仪时在相位仪 tab）——
+	# 不立刻重建（重建尾的视口扫描在隐藏 tab 上 rect 失效 → 图标停留"？"占位 + 白耗一帧），
+	# 置脏由 _on_tab_changed 战斗卡分支 flush_if_dirty 补刷。
+	if not _is_view_visible() or not _is_combat_tab_active():
 		_grid_dirty_while_hidden = true
 	else:
 		_queue_grid_refresh()
-	if _view and _view.has_method("highlight_last_card_by_id"):
-		_view.highlight_last_card_by_id(inst_id)
+	# v6.28：高亮改批量化——换装一次发 N 张卡，原先每卡一次全 grid 扫描（O(N²)），
+	# 现累积到 _pending_highlight_ids，重建后一次扫描补齐。
+	_pending_highlight_ids.append(inst_id)
 
 
 ## v32.3 C1：同帧多次 card_added（相位仪整套卸下返还 N 张卡）合并为一次全量重建——
@@ -180,10 +184,23 @@ func _queue_grid_refresh() -> void:
 
 func _flush_queued_grid_refresh() -> void:
 	_grid_refresh_queued = false
-	if not _is_view_visible():
+	# v6.28（记录2#2）：视图可见但战斗卡 tab 非当前 → 置脏等 tab 切回时补刷
+	if not _is_view_visible() or not _is_combat_tab_active():
 		_grid_dirty_while_hidden = true
 		return
 	_refresh_card_grid()
+
+# ── v6.28（记录2#2）隐藏 tab 置脏 + 批量高亮 ──
+## 待高亮的卡 id（换装/获得批量入包时累积，_refresh_card_grid 重建后一次性消费）
+var _pending_highlight_ids: Array[String] = []
+
+## 战斗卡 tab 是否为当前 tab（视图缺方法/结构异常时按 true 兜底，保持旧行为）
+func _is_combat_tab_active() -> bool:
+	if _view == null or not is_instance_valid(_view):
+		return true
+	if not _view.has_method("is_combat_tab_active"):
+		return true
+	return bool(_view.call("is_combat_tab_active"))
 
 ## v7.x：实例被销毁时（进化消耗/拆解/相位仪清理），从背包列表移除对应的幽灵 instance_id。
 ## 根因：dispose_instance 只清 InstanceRegistry，不通知背包列表，导致 _extra_card_ids 残留
@@ -239,9 +256,10 @@ func _on_card_swapped(_slot_index: int, old_card: CardResource, new_card_id: Str
 		_data.add_extra_card(old_id, true)
 	# 增量移除新卡的视觉（若可见且支持），旧卡加入由全量刷新覆盖
 	var can_incremental: bool = _view and _view.has_method("remove_last_card_by_id")
-	if can_incremental and removed and _is_view_visible():
+	if can_incremental and removed and _is_view_visible() and _is_combat_tab_active():
 		_view.remove_last_card_by_id(new_card_id)
-	if not _is_view_visible():
+	# v6.28（记录2#2）：视图不可见或战斗卡 tab 隐藏 → 置脏等切回补刷（原在隐藏 tab 上全量重建）
+	if not _is_view_visible() or not _is_combat_tab_active():
 		_grid_dirty_while_hidden = true
 	else:
 		_refresh_card_grid()
@@ -569,6 +587,11 @@ func _refresh_card_grid() -> void:
 	if _view and _view.has_method("rebuild_card_grid"):
 		_view.rebuild_card_grid(cards)
 	_last_grid_signature = _compute_grid_signature(cards, extra)
+	# v6.28（记录2#2）：重建会 free 旧 item，先重建再消费批量高亮（单次扫描）
+	if not _pending_highlight_ids.is_empty() and _view != null and is_instance_valid(_view) \
+			and _view.has_method("highlight_cards_by_ids"):
+		_view.call("highlight_cards_by_ids", _pending_highlight_ids)
+	_pending_highlight_ids.clear()
 
 
 ## 记录7#4: 网格内容签名（实例id+强化等级+extra 位）——开面板短路判据

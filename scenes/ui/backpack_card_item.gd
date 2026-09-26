@@ -54,6 +54,28 @@ var _bound_icon_rect: TextureRect = null
 ## 缓存命中免掉每次 set_card 的递归 find_child 子树扫描；被释放才重查
 var _cached_icon_rect: TextureRect = null
 
+## v6.28（记录2#3）：装备态静态快照——网格全量重建期间，每卡 _ensure_equipped_mark
+## 原本各自调 PIM.get_slot_card_ids()（N 卡 N 次，分配 N 个数组）。重建方
+## （backpack_panel._flush_rebuild_card_grid）在首尾调用 set/clear；快照为空时
+## 回退实时查询（单卡路径/弹窗不受影响）。纪律：重建结束必须清空，否则增量
+## 装/卸路径读到陈旧快照。
+static var _equipped_ids_snapshot: Array = []
+
+static func set_equipped_ids_snapshot(ids: Array) -> void:
+	_equipped_ids_snapshot = ids
+
+static func clear_equipped_ids_snapshot() -> void:
+	_equipped_ids_snapshot = []
+
+## v6.28（记录2#3）：战力分 memo——set_card 内 _fill_stat_line 与
+## _build_bottom_info_line 各调一次 _get_card_power_score，同卡同 id 重复估算；
+## BlueprintManager 估算含养成/改造/进化加成折算，是重建尖峰的可观重复项。
+## 重建开始时 clear（强化/进化必触发重建，重建即清无陈旧）。
+static var _power_memo: Dictionary = {}
+
+static func clear_power_memo() -> void:
+	_power_memo.clear()
+
 # 各卡片类型对应的顶部色条颜色
 const TYPE_BAR_COLORS := {
 	GC.CardType.COMBAT_UNIT: Color(0.1, 0.5, 0.9, 1.0),
@@ -1203,6 +1225,10 @@ func _ensure_instance_no(c: CardResource) -> void:
 func _is_card_equipped_to_phase_instrument(c: CardResource) -> bool:
 	if c == null:
 		return false
+	# v6.28（记录2#3）：重建期快照优先（panel._flush_rebuild_card_grid 首尾设置/清空）
+	if not _equipped_ids_snapshot.is_empty():
+		var id_to_match2: String = c.instance_id if not c.instance_id.is_empty() else c.card_id
+		return _equipped_ids_snapshot.has(id_to_match2)
 	var pim: Node = get_node_or_null("/root/PhaseInstrumentManager")
 	if pim == null or not pim.has_method("get_slot_card_ids"):
 		return false
@@ -1333,9 +1359,14 @@ func _get_card_power_score(c: CardResource) -> float:
 		return 0.0
 	# 优先用实例感知的 estimate_power（含养成/改造/进化加成）
 	var id_for_power: String = c.instance_id if not c.instance_id.is_empty() else c.card_id
+	# v6.28（记录2#3）：同 id 重复估算走 memo（重建开始时清空，无陈旧面）
+	if _power_memo.has(id_for_power):
+		return float(_power_memo[id_for_power])
+	var score := 0.0
 	if BlueprintManager and BlueprintManager.has_method("_estimate_power_score_meta_only"):
-		return BlueprintManager._estimate_power_score_meta_only(id_for_power)
-	return 0.0
+		score = BlueprintManager._estimate_power_score_meta_only(id_for_power)
+	_power_memo[id_for_power] = score
+	return score
 
 
 func _ensure_mtg_preview_structure(icon_row: Control, name_label: Label) -> void:

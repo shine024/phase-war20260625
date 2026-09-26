@@ -485,6 +485,12 @@ static func _tick_nuclear_bombardment(owner: Owner, params: Dictionary, delta: f
 		_ability_charges[pkey] = charges - 1
 		_fire_nuclear_bombardment(owner, params)
 
+## v6.28（记录2#5a）：齐射演出封顶——前 CAP 个目标保留完整演出（标记+导弹弹道+
+## 光柱/爆图/冲击环+暴击飘字），超出的目标走同延迟纯结算（无演出）。
+## 冻住定性：每敌一弹（tween+Sprite+2 Line2D）+落点 3 VFX+全暴击飘字打满池，
+## 大规模敌群同帧负载饱和。伤害总额与结算节奏不变，仅演出收敛。
+const NUKE_VFX_TARGET_CAP := 10
+
 static func _fire_nuclear_bombardment(owner: Owner, params: Dictionary) -> void:
 	if _battlefield == null:
 		return
@@ -501,6 +507,8 @@ static func _fire_nuclear_bombardment(owner: Owner, params: Dictionary) -> void:
 		first_pos = (targets[0] as Node2D).global_position
 	_emit_ability_triggered("nuclear_bombardment", "warning",
 		{"damage": base_dmg, "position": first_pos, "count": targets.size(), "is_enemy": owner == Owner.ENEMY})
+	# v6.28（记录2#5e）：面包屑——核爆是已定性负载峰值点，起止各一条
+	TraceLog.mark("nuke_begin", "targets=%d dmg=%.0f enemy=%s" % [targets.size(), base_dmg, str(owner == Owner.ENEMY)])
 	# owner 选色：玩家=紫青能量调（与战术核武橙白写实核爆互补色，差异最大）；敌方=红橙
 	# v19-R33: 落实本函数原有设计注释"去蘑菇云（核武专属符号），改能量光柱从天而降——
 	# 核子轰炸=科幻能量武器，非核武器"。原实现每发复用完整战术核爆 VFX（火球+冲击波+
@@ -526,12 +534,16 @@ static func _fire_nuclear_bombardment(owner: Owner, params: Dictionary) -> void:
 	# 继续由战术核武独占）。240px 主体/360px 光晕，单点紧凑。
 	var burst_tex: Texture2D = load("res://assets/effects/nuclear/nuke_fireball.png")
 	var burst_tint: Color = Color(0.7, 0.55, 1.0) if owner == Owner.PLAYER else Color(1.0, 0.45, 0.3)
-	for e in targets:
+	# v6.28（记录2#5a）：枚举索引替代 targets.find(e)（原 O(N²)，20+ 目标齐射时
+	# find 线性扫描叠加）；i≥CAP 的目标跳过演出、走同延迟纯结算分支。
+	for ti in range(targets.size()):
+		var e = targets[ti]
 		if e == null or not is_instance_valid(e):
 			continue
 		var epos: Vector2 = (e as Node2D).global_position if e is Node2D else Vector2.ZERO
 		# 第一阶段：标记（立即出现，提示轰炸即将命中）
-		PhaseLawCastEffect.create_phase_law_effect(_battlefield, epos, mark_color)
+		if ti < NUKE_VFX_TARGET_CAP:
+			PhaseLawCastEffect.create_phase_law_effect(_battlefield, epos, mark_color)
 		# v9.5: 发射核导弹弹道（arc 抛物线，飞行 mark_delay 秒），到达时触发核爆 + 伤害
 		# v26.11(D2): weakref 捕获（同 captured_target——延迟落点内敌人可能已被 free）
 		var weak_enemy: WeakRef = weakref(e)
@@ -543,7 +555,24 @@ static func _fire_nuclear_bombardment(owner: Owner, params: Dictionary) -> void:
 		var captured_burst_tex = burst_tex
 		var captured_burst_tint = burst_tint
 		# 每发导弹错开 0.06s（多点核爆=多枚导弹依次发射，齐射感）
-		var launch_delay: float = float(targets.find(e)) * 0.06
+		var launch_delay: float = float(ti) * 0.06
+		# v6.28（记录2#5a）：超出演出封顶的目标——同延迟纯结算（无弹道/无落点 VFX/
+		# 无飘字），伤害与结算节奏与原版一致
+		if ti >= NUKE_VFX_TARGET_CAP:
+			var cap_enemy: WeakRef = weakref(e)
+			var cap_dmg: float = base_dmg
+			var cap_was_live: bool = was_live
+			var tw_settle := _battlefield.create_tween()
+			tw_settle.tween_interval(launch_delay + mark_delay)
+			tw_settle.tween_callback(func():
+				var settled = cap_enemy.get_ref()
+				if not is_instance_valid(settled):
+					return
+				if cap_was_live and not _battle_active_now():
+					return
+				if settled.has_method("take_damage"):
+					settled.take_damage(cap_dmg, null))
+			continue
 		# 记录7#13: 天降——每枚从目标正上方 560px 高空垂落
 		var captured_launch: Vector2 = Vector2(epos.x, epos.y - 560.0)
 		var captured_missile_tex = missile_tex
@@ -626,6 +655,7 @@ static func _fire_nuclear_bombardment(owner: Owner, params: Dictionary) -> void:
 	_show_toast(_owner_msg(owner,
 		"☢ 核子轰炸！敌方全体受到 %.0f 伤害" % base_dmg,
 		"☢ 敌方核子轰炸！我方全体受到 %.0f 伤害" % base_dmg))
+	TraceLog.mark("nuke_end", "vfx_targets<=%d" % NUKE_VFX_TARGET_CAP)
 
 
 # ── v24.1 大招双轨：核子轰炸手动释放入口（ultimate_cast_bar 消费）──

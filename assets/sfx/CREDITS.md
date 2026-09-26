@@ -2,58 +2,98 @@
 
 > 建档：2026-09-20（标准集合 S17 缺口修复）。本文件是发行凭据唯一存档点，
 > 游戏内「制作人员/许可」页的数据源之一。
-> **红线：商店页提交前本表不得留有 UNVERIFIED 状态的条目**（见文末行动清单）。
+> **红线：商店页提交前本表不得留有 UNVERIFIED 状态的条目。**
+> **2026-09-26 更新：BGM 全量换曲完成，红线已清零。** 证据链主文档
+> `_steam_assets/licenses/incompetech_20260926/LICENSE_EVIDENCE.md`。
 
-## 结论速览（2026-09-20 核验）
+## 结论速览（2026-09-26 核验）
 
 | 类别 | 数量 | 凭据状态 | 判定 |
 |---|---|---|---|
 | SFX | 36 个 | ✅ 项目内生成管线产物（自合成，无第三方素材） | 无外部授权义务 |
 | 环境音 | 1 个（ambient_battle_wind.wav） | 同上，自合成 | 无外部授权义务 |
-| **BGM** | **7 首** | ❌ **UNVERIFIED——原始署名/许可凭据丢失** | **必须追溯或替换后方可上架** |
+| **BGM** | **8 首** | ✅ **incompetech（Kevin MacLeod）· CC BY 4.0，逐曲溯源+SHA256 存档** | 署名义务已由游戏内 credits 页+凭据表承载 |
 
-## BGM 凭据丢失经过（技术核验记录，2026-09-20）
+## BGM 逐曲状态表（2026-09-26 换曲后）
 
-- 来源声明：`assets/sfx/README.md`（2026-07-17 建档）自述"YouTube 免费音乐库下载，
-  CC0/无版权限制"。**该声明是假设不是凭据**：YouTube Audio Library 各曲许可混杂
-  （CC0 / CC-BY（要求署名）/ 标准 YouTube 许可（不授权游戏内再分发）），按曲而异。
-- **文件层追溯已断**（2026-09-20 实测）：对 7 首 OGG 逐个解析 Ogg Vorbis comment header，
-  全部只含转码器痕迹 `encoder=Lavc62.11.100 libvorbis`（ffmpeg/Lavf62.3.100 转码），
-  title 字段已被覆写为内部文件名（bgm_title 等）——**原始曲名/创作者/许可链接在转码时即丢失，
-  文件本身无法自证来源**。
-- 结论：走标准集合 S17 的"替换"腿（查不到凭据 = 视同未授权）。
+许可统一 CC BY 4.0（作曲/版权人 Kevin MacLeod）；加工=响度归一（-14 LUFS 目标，
+峰值保护）+ OGG Vorbis q6/44.1kHz 转码 + 溯源元数据内嵌（title/artist/ISRC/license）。
+ISRC/时长/源 URL/SHA256 逐曲全表见 `LICENSE_EVIDENCE.md`。
 
-## BGM 逐曲状态表
-
-| 文件 | 用途 | 时长 | 凭据状态 | 处置 |
+| 文件 | 曲目 | ISRC | 用途 | 凭据状态 |
 |---|---|---|---|---|
-| bgm_title.ogg | 标题屏 | 162s | ❌ UNVERIFIED | 待替换 |
-| bgm_hub.ogg | 基地/整备 | 121s | ❌ UNVERIFIED | 待替换 |
-| bgm_battle_ww1.ogg | WW1 战斗 | 282s | ❌ UNVERIFIED | 待替换 |
-| bgm_battle_ww2.ogg | WW2 战斗 | 118s | ❌ UNVERIFIED | 待替换 |
-| bgm_battle_modern.ogg | MODERN 战斗 | 101s | ❌ UNVERIFIED | 待替换 |
-| bgm_battle_future.ogg | FUTURE 战斗 | 89s | ❌ UNVERIFIED | 待替换 |
-| bgm_boss.ogg | Boss 战 | 330s | ❌ UNVERIFIED | 待替换 |
+| bgm_title.ogg | At Launch | USUAN1100539 | 标题屏 | ✅ |
+| bgm_hub.ogg | Peaceful Desolation | USUAN1200017 | 基地/整备 | ✅ |
+| bgm_battle_ww1.ogg | Devastation and Revenge | USUAN1100694 | WW1 战斗 | ✅ |
+| bgm_battle_ww2.ogg | Five Armies | USUAN1100875 | WW2 战斗 | ✅ |
+| bgm_battle_cold.ogg | Crypto | USUAN1600013 | 冷战战斗 | ✅ |
+| bgm_battle_modern.ogg | Rock Hybrid | USUAN1100094 | 现代（MODERN）战斗 | ✅ |
+| bgm_battle_future.ogg | Space Fighter Loop | USUAN1100672 | 近未来（FUTURE）战斗 | ✅ |
+| bgm_boss.ogg | Final Battle of the Dark Wizards | USUAN1500085 | Boss 战 | ✅ |
 
-## 替换/追溯行动清单（二选一，上架前完成）
+## 旧曲退役记录（2026-09-26 下架，本体已移出项目）
 
-**腿 A 追溯（仅当用户侧仍找得到下载记录）**：浏览器下载历史 → 找到每曲的
-YouTube Audio Library 原页 → 记录 曲名/创作者/许可类型 到本表 → CC-BY 曲目
-把署名写进下方「第三方署名」区；标准 YouTube 许可曲目仍须替换（该许可不覆盖游戏内嵌）。
+原 7 首（bgm_title/hub/battle_ww1/battle_ww2/battle_modern/battle_future/boss）
+2026-09-20 核验为 UNVERIFIED：来源声明"YouTube 免费音乐库 CC0"仅是 README 假设，
+OGG Vorbis comment 已被 ffmpeg 转码覆写（仅存 `encoder=Lavc62.11.100 libvorbis`），
+曲名/创作者/许可链接在文件层不可追溯。另 **bgm_battle_cold.ogg（2026-08-23 入库，
+COLD_WAR 战斗曲）当时被 9-20 审计漏登记**，同族处置。
 
-**腿 B 替换（推荐，凭据确定性最高）**：从明确商业授权渠道取曲
-（如 itch.io 付费音乐包 / Unity Asset Store / Artlist 类订阅，保留发票或许可证 PDF
-入 `_steam_assets/licenses/`），换同名文件重跑 `--headless --editor --quit` 完成重导入，
-然后逐行更新本表状态为 ✅（附许可类型与凭证文件名）。
+| 退役文件 | SHA256（前 16 位） | 状态 |
+|---|---|---|
+| bgm_title.ogg | 50d2e2ace5dcb704 | ❌ UNVERIFIED → 已退役 |
+| bgm_hub.ogg | aa3057633dac51c6 | ❌ UNVERIFIED → 已退役 |
+| bgm_battle_ww1.ogg | 1b59353f63d76deb | ❌ UNVERIFIED → 已退役 |
+| bgm_battle_ww2.ogg | 80133385c2d20820 | ❌ UNVERIFIED → 已退役 |
+| bgm_battle_cold.ogg | c1b4e468040dca34 | ❌ UNVERIFIED（曾漏登记）→ 已退役 |
+| bgm_battle_modern.ogg | bdd7fd2b5eedb12e | ❌ UNVERIFIED → 已退役 |
+| bgm_battle_future.ogg | 1b38d91e12c1869a | ❌ UNVERIFIED → 已退役 |
+| bgm_boss.ogg | 7d873c444579db28 | ❌ UNVERIFIED → 已退役 |
+
+退役本体+换曲批次源 MP3 归档：
+`F:\godot fair duet\_art_backup\bgm_prelicense_20260926\`
+（**`*.ogg` 在 .gitignore——音频资产 git 不保护，换曲/删曲前必须走外部备份**）。
+若后续在旧下载记录中找到原曲凭据，凭据链可从上述指纹比对恢复，但**不再回装**
+（新曲凭据已闭环；回装需重走本表逐曲核验）。
 
 ## 第三方署名区（游戏内 credits 页同步展示）
 
-- 字体：Rajdhani（SIL OFL 1.1）、Noto Sans SC（SIL OFL 1.1）——assets/fonts/ 内含 OFL.txt。
-- 引擎：Godot Engine 4.5.1（MIT License，© Juan Lini and the Godot community）。
-- 待 BGM 凭据落定后在此追加音乐署名（若有 CC-BY 义务）。
+- **音乐**：背景音乐 All by Kevin MacLeod (incompetech.com)，
+  Licensed under Creative Commons: By Attribution 4.0
+  （https://creativecommons.org/licenses/by/4.0/）——游戏内 credits 页
+  「音乐与音效」段已同步（scripts/ui/credits_panel.gd）。
+- **字体**：Rajdhani（Indian Type Foundry · SIL OFL 1.1，`assets/fonts/Rajdhani-OFL.txt`）、
+  Noto Sans SC（Adobe/Google 联合 · SIL OFL 1.1，`assets/fonts/NotoSansSC-OFL.txt`，
+  与 google/fonts 上游逐字节一致）。⚠️ 2026-09-26 勘误：旧 `OFL.txt` 是已删除的
+  Barlow 字体的遗留许可文件（张冠李戴），已替换为 Rajdhani 权威文本；
+  无署名头的 `LICENSE` 一并移除，现在按字族一一对应。
+- 引擎：Godot Engine 4.5.1（MIT License，© Godot Engine contributors、Juan Linietsky
+  与 Ariel Manzur——许可全文随包：assets/licenses/）。
 
 ## SFX 自合成口径说明
 
-36 个 SFX + 环境风声为项目内生成管线产物（2026-07-17 README 记录"全部已生成"），
-无第三方素材引用。若其中任何文件后续被替换为外部素材，**必须**回写本表
-（来源/许可/凭证）——并同步检查商店页 AI 披露表单范围（标准集合 S10）。
+36 个 SFX + 环境风声为项目内生成管线产物：合成波形代码真身 `managers/sound_generator.gd`
+（方波+噪声→枪械、低频扫降→爆炸、正弦扫频→能量武器等原语，16-bit PCM），
+离线渲染转 OGG 落盘（2026-07-17 README 记录"全部已生成"；该脚本至今仍是运行期
+音频缺失时的兜底合成器）。无第三方素材引用。若其中任何文件后续被替换为外部素材，
+**必须**回写本表（来源/许可/凭证）——并同步检查商店页 AI 披露表单范围（标准集合 S10）。
+
+## 许可文本随包发行（v6.28.1 复查补全）
+
+- `export_presets.cfg` include_filter 已补 `assets/fonts/*.txt, assets/licenses/*.txt`
+  ——**此前 OFL 全文（all_resources 模式不导出裸 .txt）实际不随包**，credits 页
+  "OFL 许可全文随游戏文件附带"是空头承诺，现已落实。
+- `assets/licenses/`：`godot-engine-LICENSE.txt`（MIT，© Godot Engine contributors +
+  Juan Linietsky, Ariel Manzur——credits 页旧文案"Juan Lini"系缩写讹误已订正）
+  + `godot-thirdparty-COPYRIGHT.txt`（Godot 仓库 COPYRIGHT.txt，第三方组件穷举许可）。
+- 字体归属已按 TTF name 表逐一比对确认：Rajdhani 三字重 copyright=Indian Type
+  Foundry、Noto Sans SC 三件 copyright=Adobe（Reserved Font Name 'Source'），
+  与随附 OFL 文本一一对应；usWeightClass 400/500/600/700 与文件名一致。
+
+## 换曲复用工序（下次再换 BGM 照此走）
+
+1. 外部备份旧文件（git 不管 .ogg）→ 2. 下载源曲+许可页快照入
+   `_steam_assets/licenses/<source>_<date>/` → 3. 填 `swap_manifest_*.json`
+   （slot/源路径/目录时长/元数据）→ 4. `python tools/bgm_swap_from_manifest.py <manifest>`
+   （自动拒截断、响度归一、内嵌元数据、同名落位）→ 5.
+   `--headless --editor --quit` 重导入 → 6. 更新本表+LICENSE_EVIDENCE+credits 页。

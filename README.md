@@ -36,6 +36,14 @@ Godot_v4.5.1-stable_win64.exe --path .
 - **[docs/CHANGELOG.md](docs/CHANGELOG.md)** — 版本变更记录（v6.1→v20，含 2026-08-16~22 补录节）
 - `docs/engine-reference/` — Godot 4.5 API 笔记
 
+## 素材授权
+
+- **游戏内署名**：标题屏「制 作 人 员」页（`scripts/ui/credits_panel.gd`）
+- **音乐**：Kevin MacLeod (incompetech.com) · CC BY 4.0（v6.28 换曲批，逐曲凭据见 `assets/sfx/CREDITS.md`）
+- **字体**：Rajdhani（Indian Type Foundry）/ Noto Sans SC（Adobe/Google），均 SIL OFL 1.1——许可全文在 `assets/fonts/`
+- **引擎许可**：`assets/licenses/`（Godot MIT LICENSE + 第三方 COPYRIGHT，随构建发行）
+- **发行凭据存档**：`_steam_assets/licenses/`（许可快照/SHA256/清单）
+
 ## 测试
 
 ```bash

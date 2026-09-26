@@ -1,0 +1,93 @@
+{
+  "_comment": "Phase War BGM 换曲清单 2026-09-26。源=incompetech（Kevin MacLeod，CC BY 4.0）。mp3 为项目外原始下载归档（_art_backup/bgm_prelicense_20260926/incompetech_sources/）。want_sec 来自 incompetech pieces.json（snapshot_pieces_catalog.json）。",
+  "manifest": [
+    {
+      "slot": "bgm_title",
+      "mp3": "F:/godot fair duet/_art_backup/bgm_prelicense_20260926/incompetech_sources/bgm_title__At Launch.mp3",
+      "want_sec": 185,
+      "title": "At Launch",
+      "artist": "Kevin MacLeod (incompetech.com)",
+      "isrc": "USUAN1100539",
+      "src_url": "https://incompetech.com/music/royalty-free/mp3-royaltyfree/At%20Launch.mp3",
+      "license": "Licensed under Creative Commons: By Attribution 4.0 https://creativecommons.org/licenses/by/4.0/",
+      "note": "标题屏。铜管+军乐小鼓，'military might and hopeful adventure'"
+    },
+    {
+      "slot": "bgm_hub",
+      "mp3": "F:/godot fair duet/_art_backup/bgm_prelicense_20260926/incompetech_sources/bgm_hub__Peaceful Desolation.mp3",
+      "want_sec": 91,
+      "title": "Peaceful Desolation",
+      "artist": "Kevin MacLeod (incompetech.com)",
+      "isrc": "USUAN1200017",
+      "src_url": "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Peaceful%20Desolation.mp3",
+      "license": "Licensed under Creative Commons: By Attribution 4.0 https://creativecommons.org/licenses/by/4.0/",
+      "note": "基地/整备。平静偏苍凉的管弦"
+    },
+    {
+      "slot": "bgm_battle_ww1",
+      "mp3": "F:/godot fair duet/_art_backup/bgm_prelicense_20260926/incompetech_sources/bgm_battle_ww1__Devastation and Revenge.mp3",
+      "want_sec": 185,
+      "title": "Devastation and Revenge",
+      "artist": "Kevin MacLeod (incompetech.com)",
+      "isrc": "USUAN1100694",
+      "src_url": "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Devastation%20and%20Revenge.mp3",
+      "license": "Licensed under Creative Commons: By Attribution 4.0 https://creativecommons.org/licenses/by/4.0/",
+      "note": "一战战斗。苍凉史诗+哀恸收尾，impending battle + great sadness and loss"
+    },
+    {
+      "slot": "bgm_battle_ww2",
+      "mp3": "F:/godot fair duet/_art_backup/bgm_prelicense_20260926/incompetech_sources/bgm_battle_ww2__Five Armies.mp3",
+      "want_sec": 153,
+      "title": "Five Armies",
+      "artist": "Kevin MacLeod (incompetech.com)",
+      "isrc": "USUAN1100875",
+      "src_url": "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Five%20Armies.mp3",
+      "license": "Licensed under Creative Commons: By Attribution 4.0 https://creativecommons.org/licenses/by/4.0/",
+      "note": "二战战斗。大编制管弦推进，soaring brass"
+    },
+    {
+      "slot": "bgm_battle_cold",
+      "mp3": "F:/godot fair duet/_art_backup/bgm_prelicense_20260926/incompetech_sources/bgm_battle_cold__Crypto.mp3",
+      "want_sec": 204,
+      "title": "Crypto",
+      "artist": "Kevin MacLeod (incompetech.com)",
+      "isrc": "USUAN1600013",
+      "src_url": "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Crypto.mp3",
+      "license": "Licensed under Creative Commons: By Attribution 4.0 https://creativecommons.org/licenses/by/4.0/",
+      "note": "冷战战斗。悬疑等待感，密码战/间谍气质"
+    },
+    {
+      "slot": "bgm_battle_modern",
+      "mp3": "F:/godot fair duet/_art_backup/bgm_prelicense_20260926/incompetech_sources/bgm_battle_modern__rock hybrid.mp3",
+      "want_sec": 130,
+      "title": "Rock Hybrid",
+      "artist": "Kevin MacLeod (incompetech.com)",
+      "isrc": "USUAN1100094",
+      "src_url": "https://incompetech.com/music/royalty-free/mp3-royaltyfree/rock%20hybrid.mp3",
+      "license": "Licensed under Creative Commons: By Attribution 4.0 https://creativecommons.org/licenses/by/4.0/",
+      "note": "现代战斗。摇滚/嘻哈混合+电子元素，官方标注 loopable"
+    },
+    {
+      "slot": "bgm_battle_future",
+      "mp3": "F:/godot fair duet/_art_backup/bgm_prelicense_20260926/incompetech_sources/bgm_battle_future__Space Fighter Loop.mp3",
+      "want_sec": 101,
+      "title": "Space Fighter Loop",
+      "artist": "Kevin MacLeod (incompetech.com)",
+      "isrc": "USUAN1100672",
+      "src_url": "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Space%20Fighter%20Loop.mp3",
+      "license": "Licensed under Creative Commons: By Attribution 4.0 https://creativecommons.org/licenses/by/4.0/",
+      "note": "近未来战斗。为太空战斗游戏写的合成器+铜管战斗循环"
+    },
+    {
+      "slot": "bgm_boss",
+      "mp3": "F:/godot fair duet/_art_backup/bgm_prelicense_20260926/incompetech_sources/bgm_boss__Final Battle of the Dark Wizards.mp3",
+      "want_sec": 272,
+      "title": "Final Battle of the Dark Wizards",
+      "artist": "Kevin MacLeod (incompetech.com)",
+      "isrc": "USUAN1500085",
+      "src_url": "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Final%20Battle%20of%20the%20Dark%20Wizards.mp3",
+      "license": "Licensed under Creative Commons: By Attribution 4.0 https://creativecommons.org/licenses/by/4.0/",
+      "note": "Boss 战。圣咏+管弦史诗，契合相位师 Boss 神秘感"
+    }
+  ]
+}

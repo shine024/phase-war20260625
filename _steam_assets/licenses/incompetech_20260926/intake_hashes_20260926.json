@@ -1,0 +1,82 @@
+[
+ {
+  "slot": "bgm_title",
+  "title": "At Launch",
+  "isrc": "USUAN1100539",
+  "src_sha256": "52215f8ad85bfbced05752052adadd58bffa5caef16696f6cea4d9d49a647a8e",
+  "ogg_sha256": "d7e75eca5acc9181e19c0674c9afc0ca716de131611ab30512609209d290ddc3",
+  "src_url": "https://incompetech.com/music/royalty-free/mp3-royaltyfree/At%20Launch.mp3",
+  "note": "\u6807\u9898\u5c4f\u3002\u94dc\u7ba1+\u519b\u4e50\u5c0f\u9f13\uff0c'military might and hopeful adventure'",
+  "tags_ok": false
+ },
+ {
+  "slot": "bgm_hub",
+  "title": "Peaceful Desolation",
+  "isrc": "USUAN1200017",
+  "src_sha256": "c9a233ef5956e409c433a9e1e0d62ff8c2ed873c7132c54c07067c73f5092ff7",
+  "ogg_sha256": "50d3ae8cf6a8d996bab57d0e7e1849351a71bcd0e361fd8d82e898a8f1bebab0",
+  "src_url": "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Peaceful%20Desolation.mp3",
+  "note": "\u57fa\u5730/\u6574\u5907\u3002\u5e73\u9759\u504f\u82cd\u51c9\u7684\u7ba1\u5f26",
+  "tags_ok": false
+ },
+ {
+  "slot": "bgm_battle_ww1",
+  "title": "Devastation and Revenge",
+  "isrc": "USUAN1100694",
+  "src_sha256": "197e1957faeb64521c43c7ef748fd59bc01f3a3c4ca77d3e6d0eb9f5ae3f2ff8",
+  "ogg_sha256": "2d7770525a726dcda56faebe74458fb54f6752a364c885886e1bb5f8e2be7ccf",
+  "src_url": "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Devastation%20and%20Revenge.mp3",
+  "note": "\u4e00\u6218\u6218\u6597\u3002\u82cd\u51c9\u53f2\u8bd7+\u54c0\u6078\u6536\u5c3e\uff0cimpending battle + great sadness and loss",
+  "tags_ok": false
+ },
+ {
+  "slot": "bgm_battle_ww2",
+  "title": "Five Armies",
+  "isrc": "USUAN1100875",
+  "src_sha256": "f56746c90756db04675a80ebd29e22253177a6fcc16f56602da62af9eae8d733",
+  "ogg_sha256": "6432cd2d2226d7034c7efc896d16bb591862352d94cd89a087dd1525a5c9c250",
+  "src_url": "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Five%20Armies.mp3",
+  "note": "\u4e8c\u6218\u6218\u6597\u3002\u5927\u7f16\u5236\u7ba1\u5f26\u63a8\u8fdb\uff0csoaring brass",
+  "tags_ok": false
+ },
+ {
+  "slot": "bgm_battle_cold",
+  "title": "Crypto",
+  "isrc": "USUAN1600013",
+  "src_sha256": "f09ba8bff00baca85fcdcde3b7f5d6b34a09c2c0b44b007a9123ee42f7d1bcf2",
+  "ogg_sha256": "b9fd065d5fc6349a04c93bdae0bf253e190f45f761c55896e3f30c55b466e389",
+  "src_url": "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Crypto.mp3",
+  "note": "\u51b7\u6218\u6218\u6597\u3002\u60ac\u7591\u7b49\u5f85\u611f\uff0c\u5bc6\u7801\u6218/\u95f4\u8c0d\u6c14\u8d28",
+  "tags_ok": false
+ },
+ {
+  "slot": "bgm_battle_modern",
+  "title": "Rock Hybrid",
+  "isrc": "USUAN1100094",
+  "src_sha256": "a56fe686900e20c75e3ec02c191338a9f4a69f11808677959e687f46b2e32054",
+  "ogg_sha256": "8721aff1bb2bc451661a2f2e0f8315a02d85620d46e120c6f3e3a8a8c2076346",
+  "src_url": "https://incompetech.com/music/royalty-free/mp3-royaltyfree/rock%20hybrid.mp3",
+  "note": "\u73b0\u4ee3\u6218\u6597\u3002\u6447\u6eda/\u563b\u54c8\u6df7\u5408+\u7535\u5b50\u5143\u7d20\uff0c\u5b98\u65b9\u6807\u6ce8 loopable",
+  "tags_ok": false
+ },
+ {
+  "slot": "bgm_battle_future",
+  "title": "Space Fighter Loop",
+  "isrc": "USUAN1100672",
+  "src_sha256": "8089835572af097ddb591db7ff0c7b7dab83f0fabf39eb27af76779a7cb54fa5",
+  "ogg_sha256": "0a6c23909a9e06bd0d7437772302a997708581f4a762394d2ff39ff08c808508",
+  "src_url": "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Space%20Fighter%20Loop.mp3",
+  "note": "\u8fd1\u672a\u6765\u6218\u6597\u3002\u4e3a\u592a\u7a7a\u6218\u6597\u6e38\u620f\u5199\u7684\u5408\u6210\u5668+\u94dc\u7ba1\u6218\u6597\u5faa\u73af",
+  "tags_ok": false
+ },
+ {
+  "slot": "bgm_boss",
+  "title": "Final Battle of the Dark Wizards",
+  "isrc": "USUAN1500085",
+  "src_sha256": "f4b4321aa1e4b7057c4e06e9c67f4f713d42555d9fec9950b07ec305af25f8dc",
+  "ogg_sha256": "3697f3bb4d47eeb2516648f29ca185f3f9a8bef635eaf6e76713c691b1a02dde",
+  "src_url": "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Final%20Battle%20of%20the%20Dark%20Wizards.mp3",
+  "note": "Boss \u6218\u3002\u5723\u548f+\u7ba1\u5f26\u53f2\u8bd7\uff0c\u5951\u5408\u76f8\u4f4d\u5e08 Boss \u795e\u79d8\u611f",
+  "tags_ok": false
+ }
+]

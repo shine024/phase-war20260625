@@ -72,9 +72,17 @@ const TAG_ALIASES := {
 
 
 ## 取卡 tags 的固定机制文案行（返回 ["机制名：描述", ...]；无机制返回空数组）
+## v6.28（记录2#3）：背包全量重建每卡都调——别名归并+去重+TAG_ORDER 渲染为纯
+## 重复计算，按 tags 串 memo；返回 duplicate 防调用方改写缓存。
+static var _lines_memo: Dictionary = {}
+
 static func get_mechanism_lines(tags: Array) -> Array[String]:
 	var lines: Array[String] = []
 	if tags.is_empty():
+		return lines
+	var memo_key: String = ",".join(tags)
+	if _lines_memo.has(memo_key):
+		lines.assign(_lines_memo[memo_key])
 		return lines
 	# 归并别名后去重
 	var normalized: Array = []
@@ -86,6 +94,7 @@ static func get_mechanism_lines(tags: Array) -> Array[String]:
 		if normalized.has(tag) and MECHANISM_DESC.has(tag):
 			var info: Dictionary = MECHANISM_DESC[tag]
 			lines.append("%s：%s" % [String(info.get("name", tag)), String(info.get("desc", ""))])
+	_lines_memo[memo_key] = lines.duplicate()
 	return lines
 
 

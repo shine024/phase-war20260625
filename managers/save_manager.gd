@@ -711,6 +711,7 @@ func save_game() -> bool:
 		_schedule_deferred_save()
 		return true
 	_is_saving = true
+	TraceLog.mark("save_begin", "slot=%d bytes_hint=collect" % current_slot)
 
 	# 先备份当前存档
 	_migrate_old_save_if_needed()
@@ -878,6 +879,7 @@ func save_game() -> bool:
 	_last_save_ms = Time.get_ticks_msec()
 	_slot_info_cache_valid = false
 	_is_saving = false
+	TraceLog.mark("save_end", "slot=%d" % current_slot)
 	return true
 
 ## 获取待处理的背包ID

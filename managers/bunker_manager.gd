@@ -946,6 +946,13 @@ func medical_treatment() -> Dictionary:
 func adjust_sanity(delta: float) -> void:
 	_sanity = clampf(_sanity + delta, 0.0, get_sanity_cap())
 
+
+## v6.28（记录2#1）：挂机精神耗尽的原地休整恢复——只回满精神，不推进天数、
+## 不回燃料、不触发打印/日结算（与 sleep() 的全部副产物划清界限）。
+## 存档由调用方（afk_mode_manager._finish_sanity_rest）走挂机存档链落盘。
+func rest_recover_full() -> void:
+	_sanity = get_sanity_cap()
+
 ## ───────────────────── 食堂：每日配给（v22.3） ─────────────────────
 
 func is_ration_claimed_today() -> bool:

@@ -24,6 +24,7 @@ enum State {
 	RUNNING,  ## 运行中
 	FAILED,   ## 失败停止
 	TRAVELING,  ## v36：两关之间行进中（战斗间隙的赶路节拍）
+	RESTING,  ## v6.28（记录2#1）：精神耗尽原地休整中（60s 后精神回满继续，不退出挂机）
 }
 
 
@@ -34,6 +35,15 @@ enum State {
 const TRAVEL_SECONDS: float = 4.0
 const TRAVEL_SECONDS_REDUCED: float = 1.2
 const LEVEL_CAP: int = 100
+## v6.28（记录2#1，用户拍板）：精神耗尽不收工——原地休整 60s 后精神回满继续挂机
+## （等价自动小睡，但不推进天数/不回燃料）。面板倒计时读 REST_SECONDS 与
+## get_rest_remaining_seconds()；改时长只动这里。
+const REST_SECONDS: float = 60.0
+## v6.28（记录2#5/6）：CYCLE 模式两场之间最小间隔秒（原零间隔，同帧连发负载）
+const CYCLE_INTERBATTLE_SECONDS: float = 1.0
+## v6.28（记录2#5/6）：挂机胜利存档节流——每 N 场或距上次 ≥ MIN_INTERVAL 才落盘
+const AFK_SAVE_EVERY_BATTLES: int = 3
+const AFK_SAVE_MIN_INTERVAL_MS: int = 20000
 
 var mode: Mode = Mode.CYCLE
 var slots: Array[int] = [0, 0, 0, 0]  # 4个slot关联的关卡号，0=未关联
@@ -62,9 +72,10 @@ signal afk_failed
 signal level_completed(level: int, won: bool)
 signal state_changed(new_state: State)
 ## 挂机结束（停止/失败）时 emit 累计奖励总账。
-## v6.23d 记录6#7: 加 reason 透传停止原因——"sanity"=精神耗尽收工 / "failed"=战斗失败 /
-## "cap"=推到关卡上限 / "manual"=手动停止。结算弹窗据此显示人话原因，
-## 修"挂一关就结算，胜利也如此"（实为精神抽干，玩家不知情）。
+## v6.23d 记录6#7: 加 reason 透传停止原因——"failed"=战斗失败 /
+## "cap"=推到关卡上限 / "manual"=手动停止。结算弹窗据此显示人话原因。
+## v6.28（记录2#1）：精神耗尽不再触发停止（原地休整 60s 回满继续），
+## "sanity" reason 已不可达——afk_settlement_dialog 的对应文案留档。
 ## 注意：GDScript signal 声明不支持默认参数值，emit 处必须显式传 reason
 signal afk_settled(rewards: Dictionary, reason: String)
 
@@ -102,6 +113,16 @@ var push_retry_count: int = 0
 # ── v36 行进节拍 ──
 ## 行进代际号：stop/start 时 +1，使在途 timer 回调作废（防停止后仍进战斗）
 var _travel_gen: int = 0
+
+# ── v6.28 精神休整（记录2#1）──
+## 休整起始时刻（Time.get_ticks_msec，驱动面板倒计时）
+var _rest_started_ms: int = 0
+## 休整前那一场的胜负——休整结束重派 _on_battle_ended_from_bus 时还原胜/负分支
+## （胜利场要照常走 _advance_to_next_level 推进 _pending_level）
+var _rest_pending_won: bool = false
+## v6.28 存档节流：上次真存后的累计场数 / 上次真存时刻（msec）
+var _battles_since_save: int = 0
+var _last_afk_save_ms: int = 0
 
 
 # ── 初始化 ──
@@ -205,6 +226,7 @@ func start_afk() -> bool:
 	afk_started.emit()
 	state_changed.emit(state)
 	prints("[AFK-DIAG] start_afk OK: mode=%d _pending_level=%d" % [int(mode), _pending_level])
+	TraceLog.mark("afk_start", "mode=%d lvl=%d" % [int(mode), _pending_level])
 	return true
 
 
@@ -212,6 +234,7 @@ func start_afk() -> bool:
 func stop_afk(reason: String = "manual") -> void:
 	if not is_running:
 		return
+	TraceLog.mark("afk_stop", "reason=%s" % reason)
 
 	_travel_gen += 1   # v36：作废在途行进回调（TRAVELING 态停止即断）
 	# 保存进度
@@ -354,15 +377,16 @@ func enter_next_battle() -> void:
 		return
 
 	_waiting_for_battle_end = true
-	
+
 	# 设置关卡号到 GameManager
 	var gm = get_node_or_null("/root/GameManager")
 	if gm and gm.has_method("set_current_level"):
 		gm.set_current_level(_pending_level)
-	
+
 	# 通过 MainBattleSetup 启动战斗（复用现有管线）
 	if _battle_setup and _battle_setup.has_method("run_start_battle_sequence"):
 		prints("[AFK-DIAG] enter_next_battle RUN: level=%d → run_start_battle_sequence()" % _pending_level)
+		TraceLog.mark("afk_enter", "lvl=%d" % _pending_level)
 		_battle_setup.run_start_battle_sequence()
 	else:
 		prints("[AFK-DIAG] enter_next_battle FAIL: _battle_setup=%s has_method=%s" % [str(_battle_setup != null), str(_battle_setup != null and _battle_setup.has_method("run_start_battle_sequence"))])
@@ -401,12 +425,10 @@ func _on_battle_ended_from_bus(player_won: bool) -> void:
 	_waiting_for_battle_end = false
 
 	# v22.4（P1-4）：精神归零收工——BunkerManager 每场扣精神（胜-10/败-20），
-	# 挂机连打会无声抽干精神且 main 侧无任何感知。此处归零即停机并提示回基地
-	# 睡觉（睡觉 +20 且推进天数）；从未进过基地的玩家不受影响（manager 不存在）。
+	# 挂机连打会无声抽干精神且 main 侧无任何感知。
+	# v6.28（记录2#1，用户拍板）：归零不再退出挂机——原地休整 60s 精神回满继续。
 	if _bunker_sanity_exhausted():
-		stop_afk("sanity")  # v6.23d 记录6#7: 原因透传，结算弹窗显示"精神耗尽收工"
-		if SignalBus != null and SignalBus.has_signal("show_toast"):
-			SignalBus.show_toast.emit("陈末的精神已经耗尽——挂机收工，回基地睡一觉（睡觉自动存档），顺手收一下房间里的战利品气泡")
+		_begin_sanity_rest(player_won)
 		return
 
 	if player_won:
@@ -436,14 +458,59 @@ func _bunker_sanity_exhausted() -> bool:
 	return bunker.get_sanity() <= 0.5
 
 
+## v6.28（记录2#1）：精神耗尽原地休整——不退出挂机。骨架照抄 _travel_then_enter
+## （_travel_gen 代际守卫：stop_afk/新开局自动作废在途回调，休整中手动停止即断）。
+func _begin_sanity_rest(won: bool) -> void:
+	TraceLog.mark("rest_begin", "won=%s" % str(won))
+	_travel_gen += 1
+	var gen := _travel_gen
+	_rest_pending_won = won
+	_rest_started_ms = Time.get_ticks_msec()
+	state = State.RESTING
+	state_changed.emit(state)
+	StageBanner.post("陈末的精神已耗尽——车队原地休整，%d 秒后继续…" % int(REST_SECONDS))
+	var tree := Engine.get_main_loop() as SceneTree
+	if tree == null:
+		_finish_sanity_rest()
+		return
+	tree.create_timer(REST_SECONDS).timeout.connect(func() -> void:
+		if gen != _travel_gen or not is_running:
+			return
+		_finish_sanity_rest())
+
+
+## 休整结束：精神回满 → 存档 → 重派战后分支（胜利场照常推进下一关）。
+## 重派而非直接 enter_next_battle：_on_battle_ended_from_bus 的胜/负分支承担
+## 计胜负/PUSH 推进/CYCLE 续场，此时精神已回满、耗尽检查为 false 不会二次进休整。
+func _finish_sanity_rest() -> void:
+	TraceLog.mark("rest_end", "")
+	var root: Node = Engine.get_main_loop().root if Engine.get_main_loop() != null else null
+	var bunker: Node = root.get_node_or_null("BunkerManager") if root != null else null
+	if bunker != null and bunker.has_method("rest_recover_full"):
+		bunker.rest_recover_full()
+	_trigger_afk_save()  # 休整后落盘（此刻 battle_active=false，天然过战斗守卫）
+	state = State.RUNNING
+	state_changed.emit(state)
+	_on_battle_ended_from_bus(_rest_pending_won)
+
+
+## v6.28：当前休整剩余秒数（面板倒计时；非 RESTING 态恒 0）
+func get_rest_remaining_seconds() -> float:
+	if state != State.RESTING:
+		return 0.0
+	var elapsed := float(Time.get_ticks_msec() - _rest_started_ms) / 1000.0
+	return maxf(0.0, REST_SECONDS - elapsed)
+
+
 ## 推进到下一关（仅在胜利时调用）。失败处理见 _on_battle_ended_from_bus。
 ## v36 实机验收改版：PUSH=向前推进（去掉 v26.19 钳制，胜利 +1，关间有行进节拍）；
 ## CYCLE=本关循环（_pending_level 不动）。
 func _advance_to_next_level() -> void:
 	# v7.x(防崩溃丢奖励): 此刻位于两场战斗之间（上一场 battle_ended 已发出，
 	# 下一场尚未 start），battle_active=false，天然通过 SaveManager 的战斗守卫。
-	# 触发存档把累计奖励/统计/进度落盘，避免崩溃丢失本轮挂机全部收益。
-	_trigger_afk_save()
+	# v6.28（记录2#5/6）：改节流存档（每3场或≥20s 一次），失败/停止/休整后仍必存。
+	_maybe_afk_save()
+	TraceLog.mark("afk_advance", "mode=%d pending=%d" % [int(mode), _pending_level + (1 if mode == Mode.PUSH else 0)])
 	if mode == Mode.PUSH:
 		_pending_level += 1
 		if _pending_level > LEVEL_CAP:
@@ -455,8 +522,18 @@ func _advance_to_next_level() -> void:
 		# v36：关间行进节拍（横幅 + 赶路秒数），到点再进下一场
 		_travel_then_enter()
 		return
-	# 循环模式：本关循环——直接进下一场（原 slot 轮换退役）
-	call_deferred("_delayed_enter_battle")
+	# 循环模式：本关循环。v6.28（记录2#5/6）：加 1s 最小场间隔（原零间隔立即开打——
+	# 同帧重负载连发的背景压力之一）。不置 TRAVELING（微间隙不闪状态行），复用代际守卫。
+	_travel_gen += 1
+	var gen := _travel_gen
+	var tree := Engine.get_main_loop() as SceneTree
+	if tree == null:
+		call_deferred("_delayed_enter_battle")
+		return
+	tree.create_timer(CYCLE_INTERBATTLE_SECONDS).timeout.connect(func() -> void:
+		if gen != _travel_gen or not is_running:
+			return
+		_delayed_enter_battle())
 
 
 ## v36：关间行进——StageBanner 轻横幅（不挡操作，AFK 豁免体系不受影响）+ 固定秒数。
@@ -671,6 +748,23 @@ func _trigger_afk_save() -> void:
 	var sm: Node = get_node_or_null("/root/SaveManager")
 	if sm != null and sm.has_method("save_game"):
 		sm.save_game()
+
+
+## v6.28（记录2#5/6）：挂机每场胜利存档节流——原每场胜利同步落盘一次，
+## CYCLE 快速连打时 IO 尖峰密集（实机冻住背景负载之一）。改为每 AFK_SAVE_EVERY_BATTLES
+## 场或距上次 ≥ AFK_SAVE_MIN_INTERVAL_MS 才真存；崩溃最多丢最近 2 场（20s 时间兜底）。
+## 失败停止/手动停止/推满/休整结束仍走 _trigger_afk_save 无条件存。
+func _maybe_afk_save() -> void:
+	_battles_since_save += 1
+	var now_ms := Time.get_ticks_msec()
+	if _battles_since_save < AFK_SAVE_EVERY_BATTLES \
+			and now_ms - _last_afk_save_ms < AFK_SAVE_MIN_INTERVAL_MS:
+		return
+	_battles_since_save = 0
+	_last_afk_save_ms = now_ms
+	TraceLog.mark("afk_save_begin", "battles=%d" % AFK_SAVE_EVERY_BATTLES)
+	_trigger_afk_save()
+	TraceLog.mark("afk_save_end", "")
 
 
 ## 获取节点辅助
