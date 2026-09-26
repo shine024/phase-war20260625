@@ -9450,3 +9450,48 @@ MVP 协同小结、8 面板首开气泡。**R3 余项**：结算面板三页签�
 - **1 埋点交付（#5/6/9 冻住三连）**：新 autoload `TraceLog`（32 个，AGENTS 表已同步）——低频面包屑每行 flush 落盘 `user://trace.log`，埋点：afk start/stop/enter/advance/rest 起止/save 前后、SaveManager save_game 出入口、end_battle 帧链 A/B/B2/C/emit、核爆起止。**冻住不承诺本批根治**——下次复现看 trace.log 尾行定位区间。
 - **1 审计（#8 灰色人形残影）**：机械审计干净——223 个 sheet 型 anim 目录 idle+attack 宽高全整除（帧距错配零）、outline.baked 全 true（无"未烘被 shader 二次外扩"错位）、boss 单帧 2 目录正常豁免。剩余嫌疑=帧边界±2px 烘焙色渗入/渲染侧，**待用户提供卡名或截图样本**后定点重烘焙（`deploy_unit_anims.py --bake-existing` 幂等）。
 - **验证**：gdunit4 全量 83 套件 485 用例（含新增 `test_afk_rest` 4 例+`test_tutorial_truck_gate` 5 例全过）；2 失败（mod_value_channels/installable_mods_era_filter + mod_drop_era_filter/negative_era_keeps_legacy）与 report_1 逐字相同=存量，非本批引入。
+
+
+## v6.30.1 记录4·美术全面复核批（2026-09-26）——8修+复核结论+结构性发现
+
+**背景**：用户拍板"旧审计工具质量不能完全信任，这次彻底解决不复工"。方法=真实渲染逐屏目视复核（不信阈值指标）：UI 45 面板结构探针 + 真实存档 14 面板实拍 + 受控战斗采集（L5/L28/L40 连拍+近景）+ 240 套动画拼图/360 卡图/256 改造图标全量审计 + attack_f0 双锁。工作区在途的记录3改动（403 行）全部保留并在其上复核。
+
+### 修复（8 项，全部渲染验证通过）
+- **ww2_sup_gmc_truck anim.json attack 12→8**：attack 雪碧图为 fix3 复制的 idle 图（2048=8 帧），声明 12 导致开火第 8-11 帧 AtlasTexture 越界闪黑。⚠️ attack=idle 五单位（cold_fort_radar/ww2_sup_gmc_truck/cold_arm_p18/cold_arty_brem1/fut_sup_ps9）是 fix3 **用户拍板**（"不用有开火动作"），非缺陷勿再修。
+- **77mm 野战炮攻击帧 f01 炮口火光重修（记录3#4 落地）**：原帧火光生成即超出帧左界被切成 C 形残环。暖色体擦除+左缘洪泛清描边+重绘锥形火光（白热核贴炮口+橙焰舌，帧界内）。备份 `.godot/art_backup_77mm_flash2_20260926/`（更早全量备份 art_backup_77mm_fix_20260926/）。
+- **title_screen 版本角标被视口裁切**：VersionLabel 原掛 MainVBox 流式尾部，内容总高超 720 被挤出屏。挪出为根级锚定左下角（两条 get_node_or_null 路径同步）。
+- **settings_panel「—— 显示 ——」表头晾空**：R6 行（窗口模式/分辨率/色盲）代码构建后 add_child 追加到滚动列表尾部，静态表头卡在中部无内容。`move_child` 归位到 SectionFullscreen/SectionA11y 表头之下。
+- **afk_panel 模式胶囊激活态文字不可见**：`_set_mode_button_style` 激活态 font_color=bg_color=_HIGHLIGHT（薄荷绿字配薄荷绿底，"● 循环"完全消失）。改深字（0.04,0.15,0.11）配亮底。
+- **truck_base 双 caption 时代染色对比度**：二战橄榄 accent 在浅色地面实测 2.29:1（一战金 4.65:1）。加深色柔边阴影（shadow_outline_size 5）+ 向白混 0.30→0.45——任意时代皮肤可读。
+- **faction_panel 满级标签裸 BBCode**：普通 Label 写 "[color=yellow]已达最高等级[/color]" 按字面直显。改金字+阴影。growth_panel（孤儿面板）同类一并修；全库扫描其余 BBCode 目标均 RichTextLabel 合法。
+- **backpack_presenter 网格签名运行时报错**：`c.get("enhance_level", 0)` 两参形式对 CardResource（Object.get 只收 1 参）每次首开背包刷一条 SCRIPT ERROR（即采集日志反复出现的 `Invalid call to 'get'`）。类型分流：CardResource 属性直读/Dictionary 才用带默认值 get。
+
+### 复核结论（查过、无需修、防重复排查）
+- UI 45 面板 A/B/C 结构检测 **0 失败**；真实存档 14 面板实拍逐屏通过：制造舱右栏五分节+品质概率池+保底金句、卡仓 10 列网格、结算四键（记录3#2 修复实机有效）、技能树三系已解锁语言、帮助 8 Tab、情报舱、挂机双模式、补给舱符文列表。
+- fe_aether_hover_cavalry"白底残留"=白甲机体误报（alpha 干净、1024 画布未裁切）；空军卡图"占比 4-9%"=薄体型正常（vis_enemy_056 同分正常）。
+- 战斗部署/精英波瞬间的全屏彩纸星点=仪式节拍粒子非泄漏（逐帧彩色像素时序评分：e09-b08 峰值→b16 归零）。
+- cold_inf_ak / cold_inf_spetsnaz_e / mod_inf_delta_e / mod_inf_marine 无帧动画目录（UnitFrameAnim 合法回退静态卡图）——**资产缺口清单**，补齐走 deploy_unit_anims.py 源帧管线。
+
+### 挂起（资产再生候选，待用户裁决）
+- `cold_air_strike_fighter`（敌我两张）卡图半透明发灰：实心覆盖仅 2%（健康轰炸机 6%），参数救不了，需 agnes 重生成（提示词模板在 tools/unit_animations_extra.json 同族条目）。改后过缩略图双树刷新铁律（v6.26.2）。
+
+### 结构性发现（重要）
+- **`.gitignore:106` 全局 `*.png`——全部美术资产不受 git 保护**（雪碧图/卡图/背景全在内），任何改图不可回滚。铁律：动任何图前先外部备份（本次遵守：art_backup_77mm_flash2_20260926）。
+- 受控采集两大坑（新工具已内置防御）：①存档倍速偏好（battle_speed.cfg user_scale=3）会把 35s 战斗压到 ~12s，采集前强制写 1×；②窗口被遮挡后 Godot 停止绘制，SubViewport 采样返回陈旧帧（同 md5 假静态），采集器须 always_on_top。
+
+### 工具沉淀（可复用）
+- `tests/_tmp_art_cap.tscn`：受控战斗采集器，模式 `art <level> <prefix> [closeup] [delay=N]`（delay=先拍敌方单独展开再部署；近景 zoom 2.6 中线；相机 freed 守卫）。
+- `tests/_tmp_art_ui_cap.tscn`：真实存档 12 overlay 面板实拍（`uipanel`）；`tests/_tmp_art_verify_cap.tscn`：修复验证五镜头（`verify`）。
+
+### 验证
+- 全量 gdunit 83 套件 **487 用例 0 错误**：2 失败=登记在案存量（mod_value_channels/installable_mods_era_filter + mod_drop_era_filter/negative_era_keeps_legacy，与 report_1 逐字同）；frame_budget P95 孤立重跑 PASSED（全量跑时采集重负载的环境波动，非代码）。attack_f0 双锁 2/2 PASSED。
+- 五镜头修复验证（v_title/v_settings/v_afk/v_store/v_truck）逐张目视通过。
+- user:// 已按纪律先备份（app_userdata/phase-war_art_review_backup_20260926/）后还原。
+
+
+### 二轮复核增补（同日，用户要求"再检查一次"后）
+- **新修 2 处**：①`growth_panel.gd` 一轮修复自检发现缩进错层（该处 BBCode 行本就是被下一行覆盖的死代码，改为删行+保留纯文本赋值）；②`achievement_manager.get_recommended_achievements` 跳过 ≥100% 已达标条目——战功簿"即将完成"此前显示"初露锋芒 6200%/百战老兵 520%"这类荒谬百分比（达标但解锁评估滞后的成就被当推荐）。
+- **补拍验证**：`art_L6d` closefirst 近景 18/18 唯一帧（机甲开火火光/伤害数字/爆炸焦痕环实机可读）；势力面板"★ 已达最高等级"金字实拍 ✓；77mm 修复版雪碧图重导入确认（.import 19:03 晚于 19:00 改图）。
+- **新增挂起发现**：战功簿"全部"Tab 下有一整块空列表容器（条目在容器外渲染）——需活体探针定位（单截图无法判定是 ScrollContainer 错位还是空条目），未盲改。
+- **终态回归**：全量 gdunit 487 用例 0 错误，仅剩 2 个登记在案存量失败；UI 结构探针终态重跑 45 面板 0 失败；`tests/_tmp_compile_check.gd` load 级编译校验 11/11。
+- **工具备忘**：`_tmp_art_cap.gd` 的 closeup/closefirst 参数若在延迟部署阶段战斗提前结束会因相机 freed 静默跳过（守卫行为正确，选关时留意）；`_tmp_art_ui_cap.gd` 的 world_map 步骤会因技能树未走互斥关闭链而拍到技能树（世界地图实拍请用 steam_cap 的 map 模式）。
