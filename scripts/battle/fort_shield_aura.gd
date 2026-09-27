@@ -66,6 +66,32 @@ static var _aura_ring_tex_checked: bool = false
 const SHIELD_HEX_COLOR := Color(0.3, 0.75, 1.0)
 const SHIELD_TEX_CONTENT_W := 916.0  # player_shield.png 内容实宽（画布 1024，标定见 vfx_impact_factory）
 
+## 记录4#6：贴图罩/六边形层抬升量改按宿主立绘"视觉脚线"自适应——
+## v6.30（记录3#14）固定抬 -dsz*0.5 假设脚线在原点 y=0，但立绘是居中锚定
+## （card_grid_unit_visuals.apply_battle_unit_presentation"立绘居中…不按脚线对齐"），
+## 每张卡脚线高度由 CardFootAnchors.FOOT_FRAC 标定表决定。玩家侧目验样本恰成立，
+## 敌方 mega_shield 罩住的杂兵卡脚线不一 → 罩底不贴脚线被读成"贴图位置错误"。
+const CardFootAnchors = preload("res://data/card_foot_anchors.gd")
+
+## 宿主调用：把整个 aura 节点对齐宿主"视觉脚线"（记录4#6）。
+## 立绘居中锚定于单位原点（apply_battle_unit_presentation"立绘居中…不按脚线对齐"），
+## 各卡脚线高度由 FOOT_FRAC 标定表决定——aura 固定在原点时穹顶底边对脚线偏高的卡
+## （敌方 mega_shield 罩住的杂兵）悬空/沉地，被读成"贴图位置错误"。
+## 无 Sprite/贴图时回退原点（等价旧行为）。
+func sync_foot_anchor() -> void:
+	var host := get_parent()
+	if host == null or not (host is Node2D):
+		return
+	var spr := (host as Node).get_node_or_null("Sprite") as Sprite2D
+	if spr == null or spr.texture == null or not spr.visible:
+		position = Vector2.ZERO
+		return
+	var fn := String(spr.texture.resource_path).get_file().get_basename()
+	var foot_frac: float = CardFootAnchors.get_foot_frac(fn)
+	var tex_h: float = float(spr.texture.get_height()) * absf(spr.scale.y)
+	# spr.position.y 已含悬空抬升合成（advance_idle_motion 每帧写 base_y+_air_dy+浮动）
+	position = Vector2(0, (0.5 - foot_frac) * tex_h + spr.position.y)
+
 
 func _draw() -> void:
 	var mode: String = String(get_meta(&"mode", MODE_FORT))
@@ -235,7 +261,8 @@ func _sync_shield_fx(radius: float, alpha_k: float, ring_color: Color, spawn_fla
 	_hex_layer.visible = break_k < 0.0
 	_hex_layer.scale = Vector2.ONE * (radius / 52.0 * breathe)
 	# 记录3#14：六边形花层原点在单位脚线（y=0），整层压在地面读作"脚下花纹"——
-	# 抬升到罩体中部，与穹顶弧（底边 y=0 向上）同一视觉语言
+	# 抬升到罩体中部，与穹顶弧（底边 y=0 向上）同一视觉语言。
+	# 记录4#6：aura 节点整体由宿主 sync_foot_anchor 对齐脚线，此处保持相对偏移。
 	_hex_layer.position = Vector2(0, -radius * 0.45)
 	var hex_a: float = clampf((0.20 + 0.26 * alpha_k + spawn_flash * 0.45) * (1.0 - maxf(break_k, 0.0)), 0.0, 0.85)
 	for h in _hex_layer.get_children():
@@ -253,7 +280,8 @@ func _sync_shield_fx(radius: float, alpha_k: float, ring_color: Color, spawn_fla
 		_tex_dome.scale = Vector2(dsz / SHIELD_TEX_CONTENT_W, dsz / SHIELD_TEX_CONTENT_W)
 		# 记录3#14（用户主诉"护盾贴图中心在战斗卡脚下"）：贴图近乎满幅圆，
 		# Sprite 居中在脚线原点=下半个气泡沉进地里。抬升到底边贴脚线，
-		# 气泡包住立绘（与敌方巨型能量罩同观感——那张图够大不显缺陷，此罩小必须抬）
+		# 气泡包住立绘（与敌方巨型能量罩同观感——那张图够大不显缺陷，此罩小必须抬）。
+		# 记录4#6：aura 节点整体由宿主 sync_foot_anchor 对齐脚线，此处保持相对偏移。
 		_tex_dome.position = Vector2(0, -dsz * 0.5)
 		var dome_a: float = clampf((0.26 + 0.22 * alpha_k + spawn_flash * 0.35) * (1.0 - maxf(break_k, 0.0)), 0.0, 0.7)
 		_tex_dome.modulate = Color(ring_color.r, ring_color.g, ring_color.b, dome_a)

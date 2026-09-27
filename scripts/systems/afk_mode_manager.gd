@@ -705,6 +705,7 @@ func _deploy_next_from_queue() -> void:
 	var bss: Node = get_node_or_null("/root/BattleSpawnSystem")
 	if bss != null and bss.has_method("get_remaining_deployable_count"):
 		if bss.get_remaining_deployable_count() <= 0:
+			TraceLog.mark("afk_deploy_halt", "quota=0 pending=%d" % _auto_deploy_pending.size())
 			_auto_deploy_pending.clear()
 			_deploy_fail_streak = 0
 			return
@@ -733,6 +734,7 @@ func _deploy_next_from_queue() -> void:
 	var pos: Vector2 = _find_free_slot_world_pos(bf)
 	if pos == Vector2.INF:
 		# 没有空槽了，清空队列
+		TraceLog.mark("afk_deploy_halt", "no_free_slot pending=%d" % _auto_deploy_pending.size())
 		_auto_deploy_pending.clear()
 		_deploy_fail_streak = 0
 		return
@@ -745,6 +747,18 @@ func _deploy_next_from_queue() -> void:
 		_deploy_fail_streak = 0
 		_deploy_fail_counts.erase(card_id)
 	else:
+		# 记录4#7：静默链失败原因落 TraceLog（spawn 系统留存 last_deploy_fail_reason）——
+		# "第10关挂机不部署"类反馈此前无任何观测点，无法区分战力门/能量/次数池。
+		var reason: String = ""
+		if bss != null and "last_deploy_fail_reason" in bss:
+			reason = String(bss.get("last_deploy_fail_reason"))
+		TraceLog.mark("afk_deploy_fail", "card=%s reason=%s" % [card_id, reason])
+		# 记录4#7：战力门是持久态（不回能不恢复），静默轮转=整体不部署且用户不可见。
+		# 首次命中弹一次性提示（show_once 按键节流）；能量不足等暂时态保持静默回能重试。
+		if reason == "power_cap":
+			FeatureUnlockPopup.show_once("afk_power_cap_hint",
+				"部署被拒：卡牌战力超出相位师上限",
+				"在相位师技能树点亮「精神同调」提升战力上限，或换低战力卡")
 		# v6.23b: 部署失败改为**轮转**——队首卡挪到队尾试下一张，不再原地死磕
 		#（原逻辑每 0.5s 重试同一张直到连败 20 次才放弃，期间每帧触发失败链）。
 		# 每卡独立失败计数，超限（giveup 上限）直接丢弃该卡。
@@ -754,6 +768,7 @@ func _deploy_next_from_queue() -> void:
 		_auto_deploy_pending.pop_front()
 		if fails > _AUTO_DEPLOY_FAIL_GIVEUP:
 			_deploy_fail_counts.erase(card_id)  # 彻底放弃该卡
+			TraceLog.mark("afk_deploy_giveup", "card=%s reason=%s" % [card_id, reason])
 		else:
 			_auto_deploy_pending.push_back(platform)  # 挪队尾，先试别的卡
 

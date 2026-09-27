@@ -9516,3 +9516,9 @@ MVP 协同小结、8 面板首开气泡。**R3 余项**：结算面板三页签�
 - **#6/#7 敌方保护罩贴图错误 + 第10关自动出兵**：静态排查结论——近两版动过 `fort_shield_aura.gd`（v6.27 重写 _draw_shield / v6.30 调 position/pulse，玩家·construct 堡垒罩），但均为视觉调优（受击脉冲收敛、贴图穹顶抬升贴脚线）；mega_shield/psi_shield_ring/enemy_unit 护盾链近两版未动，v6.30.1 未动护盾资产。L10 自动出兵候选：战力门（power_cap）拒绝部署有 toast、驻守关波次设计、v6.30 已修废墟格跳过。**无实机截图/复现步骤无法定症，待用户补具体现象**（贴图错误具体表现？L10 是不部署/部署被拒/卡住？）。
 
 **验证**: `tests/_tmp_v631_smoke.gd`（--script 冒烟）——14 改动脚本编译级 load + 19 断言全过（desc 落盘/序号解析/回退链/主场景 layer==110/tscn 间距 8·6/三分区方法）。**V631_SMOKE_OK**。
+
+### v6.31 补：答#6/#7 转（用户补现象"贴图位置错误/不部署"）
+
+- **#6 敌方保护罩贴图位置错误（转修）**：根因=v6.30（记录3#14）把护盾贴图罩/六边形层按**固定原点**抬升，但战斗卡立绘是居中锚定（apply_battle_unit_presentation"立绘居中…不按脚线对齐"），各卡视觉脚线高度由 CardFootAnchors.FOOT_FRAC 标定表决定——玩家侧目验样本恰成立，敌方巨型能量罩罩住的杂兵卡脚线不一 → 罩底沉地/悬空被读成"贴图位置错误"。修：`fort_shield_aura.sync_foot_anchor()`（脚线 y=(0.5-foot_frac)×tex_h×scale+sprite 位移），宿主 `construct_unit` 每帧 shield 段同步 aura 整体对齐脚线；内部贴图罩/六边形层保持相对偏移。无 Sprite 回退原点（等价旧行为）。 FortShieldAura 消费方=construct_unit（敌我战斗卡通用），enemy_unit 堡垒环（fort 模式）与 psi 灵能盾弧（enemy_unit 自绘）无此改动。
+- **#7 第10关自动出兵不部署（转观测+提示）**：静态排查第10关全量规则（no_heal 禁疗+player_excluded=[2,6] 废墟）与部署链（配额/战力门/次数池/能量/限定兵种/槽位占用）无定症——v6.30 已修废墟槽扫描，剩余所有失败门走静默通道（v6.23b 主诉⑦不弹窗），用户侧=纯黑箱。修两手：①AFK 部署链三处 TraceLog 面包屑（`afk_deploy_fail card=X reason=Y`/`afk_deploy_halt quota=0|no_free_slot`/`afk_deploy_giveup`），下轮反馈可直接读日志定症；②power_cap 战力门是持久态（不回能不恢复），静默轮转=整体不部署且不可见——首次命中弹一次性提示（FeatureUnlockPopup.show_once，第10关=技能树未点「精神同调」的典型窗口期）；能量不足等暂时态保持静默回能重试。
+- **验证**: `tests/_tmp_v631b_smoke.gd`——3 脚本编译+sync_foot_anchor 数学断言（无 Sprite 回退原点/表外贴图 foot_y=0.5×tex_h×scale）全过 **V631B_SMOKE_OK**。

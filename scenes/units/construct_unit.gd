@@ -1359,6 +1359,9 @@ func _update_fort_shield_aura(delta: float) -> void:
 			_ensure_shield_aura()
 		if _shield_aura != null and is_instance_valid(_shield_aura):
 			_shield_aura.visible = true
+			# 记录4#6：罩体整体对齐宿主视觉脚线（各卡 FOOT_FRAC 不同，固定原点
+			# 对脚线偏高的卡=穹顶底边沉地/悬空——敌方巨型能量罩贴图错位根因）
+			_shield_aura.sync_foot_anchor()
 			if _shield_aura_hit_boost > 0.0:
 				_shield_aura_hit_boost = maxf(0.0, _shield_aura_hit_boost - delta * 2.0)
 			# 护盾比例（基于 max_hp*2 上限，与 add_shield 的 clamp 一致）
