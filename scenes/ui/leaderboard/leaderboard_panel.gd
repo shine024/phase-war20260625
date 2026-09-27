@@ -599,7 +599,7 @@ func _create_equipment_section(equipment: Dictionary) -> Control:
 
 		for pid in platforms:
 			var pdata: Dictionary = EnemyPhaseEquipment.get_war_platform(pid)
-			var pname: String = pdata.get("name", pid)
+			var pname: String = LeaderboardPresenter.platform_display_name(pid)
 			var ptype: String = pdata.get("type", "")
 			if excluded_types.has(ptype):
 				continue

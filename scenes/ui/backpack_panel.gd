@@ -2949,12 +2949,17 @@ func _apply_backpack_grid_layout(grid: GridContainer, fallback_w: float = 0.0) -
 ## 2026-08-25 改为取"最宽子节点"而非首块：效果文字长度不一会造出宽窄不一的瓷砖，
 ## 按首块窄瓷砖算列数、排开后整行溢出（168 改造档实测：5 列 + 横向滚动条）。
 ## 占位符横幅（_grid_placeholder 标记）不参与采样——其宽度是横幅展示宽，非瓷砖宽。
+## 记录4#1：空状态 hint（min 600 宽）/加载指示 Label 也不参与采样——两者滞留网格时
+## 把列宽基准撑到 600+，列数骤减 1~2 列 =「第一格占一行、第二格换行、格子比背包宽」。
 func _effective_slot_width(grid: GridContainer, fallback: float) -> float:
 	var w: float = 0.0
 	if grid != null and is_instance_valid(grid):
 		for ch in grid.get_children():
-			if ch is Control and not (ch as Control).has_meta("_grid_placeholder"):
-				w = maxf(w, (ch as Control).size.x)
+			if not (ch is Control) or (ch as Control).has_meta("_grid_placeholder"):
+				continue
+			if (ch as Control).has_meta("is_empty_hint") or (ch as Control).has_meta("is_loading_indicator"):
+				continue
+			w = maxf(w, (ch as Control).size.x)
 	return w if w > 1.0 else fallback
 
 
@@ -2997,9 +3002,13 @@ func _connect_grid_scroll_resized() -> void:
 
 
 ## v9.3: 网格父容器尺寸变化时重排该网格列数（确保切 Tab 布局完成后列数按实际尺寸准确）。
+## 记录4#1：重排列数后必须重跑战斗卡整行补位——旧列数补的空槽与新列数取模对不齐
+## 即残行「一行 + 2 格」（列数 6→10 变化后残行根因之二）。
 func _on_grid_scroll_resized(grid: GridContainer) -> void:
 	if grid != null and is_instance_valid(grid):
 		_apply_backpack_grid_layout(grid)
+		if grid == _combat_cards_grid:
+			_ensure_min_card_slots(grid)
 
 
 ## v9.4: 连接战斗卡 ScrollContainer 的滚动条 value_changed + resized 信号。

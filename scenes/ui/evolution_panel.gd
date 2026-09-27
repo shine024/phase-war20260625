@@ -470,6 +470,48 @@ func _update_title_sub() -> void:
 
 ## ───────────────────────── 刷新链 ─────────────────────────
 
+## 记录4#14：右栏「资源 / 图纸」行重排——其他资源靠左（原 ResourceDetails 位），
+## 晶体单独一行右对齐（金色）——用户拍板的视觉分区。with_stock=追加各资源现有存量。
+var _crystal_cost_lbl: Label = null
+
+func _render_resource_cost(cost: Dictionary, with_stock: bool = false) -> void:
+	if resource_details == null:
+		return
+	var others: Dictionary = {}
+	var crystal_n: int = 0
+	for rid in cost:
+		if String(rid) == "crystal":
+			crystal_n = int(cost[rid])
+		else:
+			others[rid] = cost[rid]
+	var lines: PackedStringArray = []
+	for rid in others:
+		var nm: String = String(ManufacturePools.RESOURCE_NAMES.get(String(rid), String(rid)))
+		if with_stock:
+			lines.append("%s ×%d（现有 %d）" % [nm, int(others[rid]), BasicResourceManager.get_total(String(rid))])
+		else:
+			lines.append("%s×%d" % [nm, int(others[rid])])
+	resource_details.text = "\n".join(lines)
+	if crystal_n <= 0:
+		if _crystal_cost_lbl != null and is_instance_valid(_crystal_cost_lbl):
+			_crystal_cost_lbl.visible = false
+		return
+	if _crystal_cost_lbl == null or not is_instance_valid(_crystal_cost_lbl):
+		var host: Node = resource_details.get_parent()
+		if host == null:
+			return
+		_crystal_cost_lbl = Label.new()
+		_crystal_cost_lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
+		_crystal_cost_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+		_crystal_cost_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		host.add_child(_crystal_cost_lbl)
+	_crystal_cost_lbl.visible = true
+	var stock_s := ""
+	if with_stock:
+		stock_s = "（现有 %d）" % BasicResourceManager.get_total("crystal")
+	_crystal_cost_lbl.text = "晶体 ×%d%s" % [crystal_n, stock_s]
+	_crystal_cost_lbl.add_theme_color_override("font_color", DT.COLOR_GOLD)
+
 func _refresh_all() -> void:
 	_refresh_resource_bar()
 	_refresh_recipe_list()
@@ -837,7 +879,7 @@ func _update_mod_direct_detail(mgr: Node, mod_id: String) -> void:
 			path_head_count.text = "改造说明"
 	_clear_template_stats()
 	if resource_details:
-		resource_details.text = ManufacturePools.cost_text(mgr.get_mod_direct_cost(mod_id))
+		_render_resource_cost(mgr.get_mod_direct_cost(mod_id))
 	if evolve_button:
 		evolve_button.text = "补给一张"
 		evolve_button.disabled = not bool(mgr.can_craft_mod_direct(mod_id).get("ok", false))
@@ -881,7 +923,7 @@ func _update_mod_box_detail(mgr: Node) -> void:
 				evolution_tree.add_child(_make_pool_bar(String(e.get("r", "")), float(e.get("pct", 0.0))))
 	_clear_template_stats()
 	if resource_details:
-		resource_details.text = ManufacturePools.cost_text(mgr.get_mod_box_cost())
+		_render_resource_cost(mgr.get_mod_box_cost())
 	if evolve_button:
 		evolve_button.text = "开一次箱"
 		evolve_button.disabled = not bool(mgr.can_craft_mod_random().get("ok", false))
@@ -952,7 +994,7 @@ func _update_recipe_detail() -> void:
 		if info_details:
 			info_details.text = ""
 		if resource_details:
-			resource_details.text = ""
+			_render_resource_cost({})
 		if evolve_button:
 			evolve_button.disabled = true
 		_clear_pool_bars()
@@ -1035,12 +1077,7 @@ func _update_recipe_detail() -> void:
 
 	# 消耗
 	if resource_details:
-		var cost: Dictionary = mgr.get_cost(card_id)
-		var lines: PackedStringArray = []
-		for rid in cost:
-			var nm: String = String(ManufacturePools.RESOURCE_NAMES.get(String(rid), String(rid)))
-			lines.append("%s ×%d（现有 %d）" % [nm, int(cost[rid]), BasicResourceManager.get_total(String(rid))])
-		resource_details.text = "\n".join(lines)
+		_render_resource_cost(mgr.get_cost(card_id), true)
 
 	# 品质池（中栏）
 	_rebuild_pool_bars(mgr, card_id)

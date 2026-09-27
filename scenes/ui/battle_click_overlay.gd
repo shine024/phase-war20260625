@@ -101,6 +101,13 @@ func _process_hover(delta: float) -> void:
 	if _hover_check_acc < _HOVER_CHECK_INTERVAL_SEC:
 		return
 	_hover_check_acc = 0.0
+	# 记录4#3：战斗已结束（结算期）不再悬浮拉起——否则鼠标停在单位上时每 0.1s 续显，
+	# 悬浮情报残留到胜利画面上。命中即藏并早退（下一场 battle_active 复真自动恢复）。
+	var bm: Node = get_node_or_null("/root/BattleManager")
+	if bm == null or not bool(bm.get("battle_active")):
+		if _hover_current_unit != null or (_hover_info != null and _hover_info.visible):
+			_hide_hover()
+		return
 	# 获取鼠标位置对应的战场视口坐标
 	var mouse_global: Vector2 = get_global_mouse_position()
 	var viewport_pos: Variant = _global_to_battle_viewport_pos(mouse_global)

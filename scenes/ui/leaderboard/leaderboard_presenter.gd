@@ -12,6 +12,7 @@ const LeaderboardData = preload("res://scenes/ui/leaderboard/leaderboard_data.gd
 const EnemyPhaseLeaderboard = preload("res://data/enemy_phase_leaderboard.gd")
 const LeaderboardEntry = preload("res://data/leaderboard_entry.gd")
 const EnemyPhaseEquipment = preload("res://data/enemy_phase_equipment.gd")
+const DefaultCards = preload("res://data/default_cards.gd")
 const CompanyDefs = preload("res://data/company_definitions.gd")  # 统一阵营色来源
 
 # 行模板场景
@@ -351,7 +352,7 @@ func _create_equipment_section(equipment: Dictionary) -> Control:
 
 		for pid in platforms:
 			var pdata: Dictionary = EnemyPhaseEquipment.get_war_platform(pid)
-			var pname: String = pdata.get("name", pid)
+			var pname: String = platform_display_name(pid)
 			var ptype: String = pdata.get("type", "")
 			if excluded_types.has(ptype):
 				continue
@@ -415,6 +416,21 @@ func _create_equipment_section(equipment: Dictionary) -> Control:
 			container.add_child(plat_box)
 
 	return container
+
+## 记录4#15：战斗载具显示名。相位师 platforms 填的是敌方蓝图 id（ww2_boss_kingtiger、
+## cold_arm_t72_e 等），不在 WAR_PLATFORMS 平台库（仅 24 条 steel/flame/thunter/void 系），
+## get_war_platform 返回空 {} → 原样回退裸英文 id（"相位师战斗载具都是英文"根因）。
+## 回退链：平台库中文名 → DefaultCards 卡牌中文名 → 裸 id 兜底。
+static func platform_display_name(pid: String) -> String:
+	var pdata: Dictionary = EnemyPhaseEquipment.get_war_platform(pid)
+	var n: String = String(pdata.get("name", ""))
+	if not n.is_empty() and n != pid:
+		return n
+	var dn: String = DefaultCards.get_safe_display_name(pid)
+	if not dn.is_empty() and dn != pid:
+		return dn
+	return pid
+
 
 static func _platform_type_display(type_str: String) -> String:
 	match type_str:

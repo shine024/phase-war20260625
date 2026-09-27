@@ -394,6 +394,12 @@ func _rune_category_name(category: String) -> String:
 
 var _intel_content: VBoxContainer = null
 var _phase_master_status_lbl: Label = null  # v6.19 P1-T1.3: 相位师遭遇动态状态行（refresh 时更新）
+# 记录4#10: 敌方情报三分区切换（敌方单位/改造情报/相位师情报）——原三类内容混在
+# 一条滚动流里，相位师规则墙压在档案前面（"有相位师情报但内容在哪里"主诉）
+var _intel_mode: String = "units"
+var _intel_ladder: Control = null
+var _phase_master_box: Control = null
+var _intel_mode_buttons: Dictionary = {}
 
 func _setup_intel_tab() -> void:
 	if _tab_container == null:
@@ -401,6 +407,18 @@ func _setup_intel_tab() -> void:
 	var tab := VBoxContainer.new()
 	tab.name = "IntelManualTab"
 	_tab_container.add_child(tab)
+	# 记录4#10：三分区切换按钮行
+	var mode_row := HBoxContainer.new()
+	mode_row.add_theme_constant_override("separation", 6)
+	tab.add_child(mode_row)
+	for cfg in [["units", "敌方单位"], ["mods", "改造情报"], ["phase", "相位师情报"]]:
+		var b := Button.new()
+		b.text = String(cfg[1])
+		b.toggle_mode = true
+		b.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
+		b.pressed.connect(_on_intel_mode_pressed.bind(String(cfg[0])))
+		mode_row.add_child(b)
+		_intel_mode_buttons[String(cfg[0])] = b
 	# v26 UI：顶部 4 行机制文字墙 → 「进度阶梯」可视化里程碑 + 一行脚注
 	#（包容性：机制读一次图形就懂，不必啃文字墙）
 	# 记录5#8：阶梯与相位师分区改为可折叠——规则已知后不必每次滚动越过两块常驻墙
@@ -417,7 +435,9 @@ func _setup_intel_tab() -> void:
 	ladder.add_child(ladder_foot)
 	_attach_section_fold(ladder_header, [ladder_strip, ladder_foot])
 	tab.add_child(ladder)
-	tab.add_child(_build_phase_master_section())  # v6.19 P1-T1.3: 相位师遭遇规则分区
+	_intel_ladder = ladder
+	_phase_master_box = _build_phase_master_section()  # v6.19 P1-T1.3: 相位师遭遇规则分区
+	tab.add_child(_phase_master_box)
 	var scroll := ScrollContainer.new()
 	scroll.name = "IntelScroll"
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -427,6 +447,9 @@ func _setup_intel_tab() -> void:
 	_intel_content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_intel_content.add_theme_constant_override("separation", 4)
 	scroll.add_child(_intel_content)
+	# 记录4#10：初始按钮态（默认敌方单位档）
+	if _intel_mode_buttons.has("units"):
+		(_intel_mode_buttons["units"] as Button).set_pressed_no_signal(true)
 
 
 ## v6.19 P1-T1.3 相位师遭遇规则分区（宪法 C3 概率透明）：机制全貌一屏可见 + 动态保底状态行。
@@ -533,8 +556,28 @@ func _build_intel_milestone_strip() -> HBoxContainer:
 		strip.add_child(cell)
 	return strip
 
+## 记录4#10：三分区切换回调——置模式/同步按钮态/重刷内容
+func _on_intel_mode_pressed(mode: String) -> void:
+	_intel_mode = mode
+	for key in _intel_mode_buttons:
+		var b: Button = _intel_mode_buttons[key]
+		b.set_pressed_no_signal(key == mode)
+	_apply_intel_mode_visibility()
+	_refresh_intel_tab()
+
+## 记录4#10：模式可见性——敌方单位=阶梯+档案；改造情报=仅档案滚动区（内容换改造聚合）；
+## 相位师=规则分区独立成页（档案区隐藏）
+func _apply_intel_mode_visibility() -> void:
+	if _intel_ladder != null and is_instance_valid(_intel_ladder):
+		_intel_ladder.visible = (_intel_mode == "units")
+	if _phase_master_box != null and is_instance_valid(_phase_master_box):
+		_phase_master_box.visible = (_intel_mode == "phase")
+	if _intel_content != null and is_instance_valid(_intel_content):
+		_intel_content.visible = (_intel_mode != "phase")
+
 func _refresh_intel_tab() -> void:
 	_refresh_phase_master_status()  # v6.19 P1-T1.3: 相位师状态行随刷新更新
+	_apply_intel_mode_visibility()
 	if _intel_content == null:
 		return
 	for child in _intel_content.get_children():
@@ -554,6 +597,11 @@ func _refresh_intel_tab() -> void:
 		ph.add_theme_color_override("font_color", DT.COLOR_TEXT_DIM)
 		_intel_content.add_child(ph)
 		return
+	# 记录4#10：改造情报模式——按敌方形态聚合改造研究行（原嵌在各单位档案行下，
+	# 单独成区便于整体查看研究/图纸双门槛）
+	if _intel_mode == "mods":
+		_build_mod_intel_content(entries, im)
+		return
 	# 头部区块标题（替代「◆ 已记录…」纯文本）
 	var total_completed: int = 0
 	for card_id in entries:
@@ -570,6 +618,32 @@ func _refresh_intel_tab() -> void:
 	for card_id in sorted_ids:
 		var e: Dictionary = entries[card_id]
 		_add_intel_row(String(card_id), e, im)
+
+## 记录4#10：改造情报聚合视图（「改造情报」分区）——按敌方形态分组列出全部改造
+## 研究行（研究点数 + 图纸双门槛），原信息嵌在各单位档案行下不便整体查看。
+func _build_mod_intel_content(entries: Dictionary, im: Node) -> void:
+	var header := IntelUIKit.section_header("敌方改造情报", DT.COLOR_GOLD,
+		"按敌方形态分组 · 研究点数攒满≠可安装——还需对应图纸（战后掉落）")
+	_intel_content.add_child(header)
+	var sorted_ids: Array = entries.keys()
+	sorted_ids.sort_custom(func(a, b) -> bool:
+		return float((entries[a] as Dictionary).get("base_progress", (entries[a] as Dictionary).get("intel_progress", 0.0))) \
+			> float((entries[b] as Dictionary).get("base_progress", (entries[b] as Dictionary).get("intel_progress", 0.0))))
+	var any := false
+	for card_id in sorted_ids:
+		if not EnemyCardModMap.has_entry(String(card_id)):
+			continue
+		any = true
+		var display_name: String = DefaultCards.get_safe_display_name(String(card_id))
+		_intel_content.add_child(IntelUIKit.label(
+			"◆ %s" % (display_name if not display_name.is_empty() else String(card_id)),
+			DT.FONT_SIZE_BODY, DT.COLOR_VIOLET))
+		_add_mod_intel_rows(String(card_id), im)
+	if not any:
+		_intel_content.add_child(IntelUIKit.label(
+			"尚无带改造池的敌方情报记录\n（击败携带改造池的敌方形态后累积）",
+			DT.FONT_SIZE_SMALL, DT.COLOR_TEXT_DIM))
+
 
 func _add_intel_row(card_id: String, entry: Dictionary, im: Node) -> void:
 	# v21.0: 主进度轴改 base_progress（= max(intel 峰值, 获取下限)，旧档无此键时回退 intel）

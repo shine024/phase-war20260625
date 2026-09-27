@@ -200,7 +200,8 @@ func _refresh_card_list() -> void:
 	if cols < 4:
 		_card_cell_width = 106.0
 		cols = _card_grid_cols(avail_w)
-	for rarity in ["mythic", "legendary", "epic", "rare", "uncommon", "common", "普通", "稀有", "史诗", "传说", "神话"]:
+	# 记录4#8：低级在前、神话垫底（原 mythic-first 与收集预期相反）
+	for rarity in ["common", "uncommon", "rare", "epic", "legendary", "mythic", "普通", "稀有", "史诗", "传说", "神话"]:
 		if not groups.has(rarity):
 			continue
 		var owned_in_group := 0

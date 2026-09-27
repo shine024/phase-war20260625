@@ -45,6 +45,21 @@ func _ready() -> void:
 func refresh() -> void:
 	_refresh_all()
 
+## 实例序号标签（iid 形如 ww1_arm_ft17#2 → " #2"；无 # 段返回空串）
+func _instance_seq_tag(iid: String) -> String:
+	var idx := iid.rfind("#")
+	if idx < 0:
+		return ""
+	var seq := iid.substr(idx + 1)
+	return "" if seq.is_empty() else " #%s" % seq
+
+## 记录4#13：_on_close 自隐藏面板本体后，二次打开 truck_base 只亮 wrapper 不唤醒
+## 本体（遮罩在、面板无）——补 show_panel 零参签名，走 truck_base._open_panel
+## 既有的"自隐藏面板补调"兜底（:1919 守卫 not p.visible 命中即调）。
+func show_panel() -> void:
+	visible = true
+	_refresh_all()
+
 func _on_close() -> void:
 	visible = false
 	closed.emit()
@@ -140,7 +155,8 @@ func _refresh_card_list() -> void:
 			affix_n = int(am.get_affix_count("%s_%d" % [String(iid), 0])) \
 				+ int(am.get_affix_count("%s_%d" % [String(iid), 1]))
 		var btn := Button.new()
-		btn.text = "%s（词条%d）" % [String(card.display_name), affix_n]
+		# 记录4#13：同 ID 多实例靠 #序号 区分（iid 尾段即实例序号）
+		btn.text = "%s%s（词条%d）" % [String(card.display_name), _instance_seq_tag(String(iid)), affix_n]
 		btn.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
 		btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
 		var selected: bool = (String(iid) == _current_identity)
@@ -182,11 +198,11 @@ func _refresh_detail() -> void:
 	var card = null
 	if ir and ir.has_method("get_instance"):
 		card = ir.get_instance(_current_identity)
-	# 头部只显示卡名——原始实例 ID（ww1_arm_ft17#1）是技术标识，玩家不可读
-	# （2026-09-20 全矩阵报告 P3 核销）；与左侧列表同口径。
+	# 头部显示卡名+#序号——实例 ID 主体（ww1_arm_ft17）是技术标识玩家不可读，
+	# 但 #N 序号是同 ID 多实例唯一区分（记录4#13 用户点名要序号），保留显示。
 	var name_line: String = "未知卡牌"
 	if card != null:
-		name_line = String(card.display_name)
+		name_line = String(card.display_name) + _instance_seq_tag(_current_identity)
 	var header := Label.new()
 	header.text = name_line
 	header.add_theme_font_size_override("font_size", DT.FONT_SIZE_LARGE)

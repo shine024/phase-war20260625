@@ -405,8 +405,16 @@ func _append_faction_skill_tree(faction_mgr: Node, faction_id: String, faction_l
 	var avail: int = FactionSkillManager.get_available_points(state, faction_level)
 	var spent: int = FactionSkillManager.get_total_spent(state)
 	var points_label = Label.new()
-	points_label.text = "可用技能点：%d（已用 %d，势力等级 %d）" % [avail, spent, faction_level]
+	# 记录4#11：有可用点时金色高亮+就地指路——入口埋在详情滚动流末尾，
+	# 玩家"有技能点不知在哪加势力技能"（列表按钮即解锁入口，就点下方各技能行的「解锁」）。
+	if avail > 0:
+		points_label.text = "可用技能点：%d（已用 %d，势力等级 %d）——点击下方技能行的「解锁」按钮分配" % [avail, spent, faction_level]
+		points_label.add_theme_color_override("font_color", DT.COLOR_GOLD)
+	else:
+		points_label.text = "可用技能点：%d（已用 %d，势力等级 %d）" % [avail, spent, faction_level]
+		points_label.add_theme_color_override("font_color", DT.COLOR_TEXT_DIM)
 	points_label.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
+	points_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	faction_detail.add_child(points_label)
 
 	# 按节点数判断是否放入 ScrollContainer（12 节点 + 分组标题可能超出高度）

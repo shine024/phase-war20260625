@@ -9495,3 +9495,24 @@ MVP 协同小结、8 面板首开气泡。**R3 余项**：结算面板三页签�
 - **新增挂起发现**：战功簿"全部"Tab 下有一整块空列表容器（条目在容器外渲染）——需活体探针定位（单截图无法判定是 ScrollContainer 错位还是空条目），未盲改。
 - **终态回归**：全量 gdunit 487 用例 0 错误，仅剩 2 个登记在案存量失败；UI 结构探针终态重跑 45 面板 0 失败；`tests/_tmp_compile_check.gd` load 级编译校验 11/11。
 - **工具备忘**：`_tmp_art_cap.gd` 的 closeup/closefirst 参数若在延迟部署阶段战斗提前结束会因相机 freed 静默跳过（守卫行为正确，选关时留意）；`_tmp_art_ui_cap.gd` 的 world_map 步骤会因技能树未走互斥关闭链而拍到技能树（世界地图实拍请用 steam_cap 的 map 模式）。
+
+## v6.31 记录4实机验收15条 (2026-09-27)
+
+**修（13）**:
+1. **卡仓开卡慢/卡格畸形（#1/#4）**：①落地后 0.2s 新增背包面板预热档（`main._warmup_backpack_panel`，1s manager 档追不上落地即整备）；②`backpack_panel._effective_slot_width` 采样排除 `_grid_placeholder`/`is_empty_hint`/`is_loading_indicator` meta 子节点（空背包提示 Label 600 宽把列宽基准撑爆→第一格占整行）；③`_on_grid_scroll_resized` 末尾对战斗卡 grid 补调 `_ensure_min_card_slots`（列数自适应后残行）。
+2. **胜利界面按钮消失（#2）**：`tutorial_progression_manager.is_pending_truck_base_intro` 加老档豁免（`current_level > 3` 直接 false）——TRUCK_BASE 步滞留状态把结算底栏三键归零，移动基地线老档被误伤。
+3. **战斗胜利后悬浮情报残留（#3）**：`battle_click_overlay._process_hover` 加战斗结束早退（battle_active=false 时 `_hide_hover`）。
+4. **精神不可见/挂机停摆误判（#5）**：`top_hud_bar` 新增精神 chip（battle_started 显/battle_ended 隐）：常规显示"精神 %d"（≤10 红/≤25 琥珀），AFK RESTING 态显示"精神休整 %ds"倒计时（琥珀）——挂机停战一眼可辨。
+5. **图鉴排序（#8）**：`collection_panel` 分组遍历序改低级在前（common→…→mythic，原 mythic-first 与收集预期相反）。
+6. **改造情报文案（#9）**：`gen_18_pain_conductor`"受击时向攻击者传导迟滞信号"→"受到攻击时，攻击它的敌人被减速 20%，持续 2 秒（升级后减速更强、持续更久）"；`rec_15_field_binoculars`（侦察兵种）"基础观瞄"→"观瞄升级：射程 +15，暴击率 +2%（升级后…）"——机制型改造 desc 说清触发方式与升级成长。
+7. **情报舱三分区（#10）**：`intelligence_hub_panel` 情报 Tab 顶部加三切换钮[敌方单位|改造情报|相位师情报]：敌方单位=阶梯+档案（原样）；改造情报=滚动区换敌方改造聚合列表（卡名◆头+复用改造行渲染）；相位师情报=规则分区独立显示。敌方情报与相位师情报不再混排。
+8. **势力技能点指引（#11）**：`faction_panel` 技能树可用点>0 时金色高亮+文案"可用技能点：%d（已用 %d，势力等级 %d）——点击下方技能行的「解锁」按钮分配"。
+9. **补给舱卡情报被遮罩压住（#12）**：`main.tscn` InfoPanelLayer layer 90→110（PopupLayer=100 之上）——商店遮罩内点卡牌情报不再被吞。
+10. **词缀面板二次打不开+无序号（#13）**：①补 `show_panel()`（truck_base 嵌入协议对自隐藏面板的兜底重显）；②列表与详情头加实例序号" #N"（`_instance_seq_tag`，取 iid 尾部 #n）。
+11. **制造舱布局（#14）**：①`evolution_panel.tscn` BodyHBox 三栏 separation 0→8（贴死→有间距）、DetailContent 分节 10→6（间距过大→收拢）；②右栏资源行重排：其他资源靠左（原 ResourceDetails 位），晶体单独一行右对齐金色（`_render_resource_cost` helper，直购/图纸盒/卡牌制造三路径统一，含现有存量档）。
+12. **战功榜载具英文（#15）**：`leaderboard_presenter` 加 `platform_display_name` 三级回退（WAR_PLATFORMS.name → DefaultCards.get_safe_display_name → 原样），presenter/panel 两处显示点统一走 helper。
+
+**答（2）**:
+- **#6/#7 敌方保护罩贴图错误 + 第10关自动出兵**：静态排查结论——近两版动过 `fort_shield_aura.gd`（v6.27 重写 _draw_shield / v6.30 调 position/pulse，玩家·construct 堡垒罩），但均为视觉调优（受击脉冲收敛、贴图穹顶抬升贴脚线）；mega_shield/psi_shield_ring/enemy_unit 护盾链近两版未动，v6.30.1 未动护盾资产。L10 自动出兵候选：战力门（power_cap）拒绝部署有 toast、驻守关波次设计、v6.30 已修废墟格跳过。**无实机截图/复现步骤无法定症，待用户补具体现象**（贴图错误具体表现？L10 是不部署/部署被拒/卡住？）。
+
+**验证**: `tests/_tmp_v631_smoke.gd`（--script 冒烟）——14 改动脚本编译级 load + 19 断言全过（desc 落盘/序号解析/回退链/主场景 layer==110/tscn 间距 8·6/三分区方法）。**V631_SMOKE_OK**。

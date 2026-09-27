@@ -348,10 +348,19 @@ func is_past_first_battle() -> bool:
 ## v6.28（记录2#4）：首胜后等玩家回基地看完「移动基地」步——期间结算面板不出
 ## 「下一关直通/再战本关」键，强制首胜后回基地看引导（用户"都胜利好几次了才提示
 ## 首战打通去做什么"）。步完成或教程结束（跳过/老档 FREEDOM_MODE）即解除。
+## 记录4#2：老档豁免——战斗教程被跳过/旧版迁移的档会长期停在 TRUCK_BASE 步，
+## 玩家都推到中后期了每次胜利结算仍被没收直通键（"从移动基地出击后胜利界面没有
+## 重打/下一关按钮"主诉）。玩家推进到第 4 关起视为已会玩，不再强制。
 func is_pending_truck_base_intro() -> bool:
-	return should_show_tutorial() \
-		and current_step == TutorialStep.TRUCK_BASE \
-		and not completed_steps.has(TutorialStep.TRUCK_BASE)
+	if not should_show_tutorial():
+		return false
+	if current_step != TutorialStep.TRUCK_BASE \
+			or completed_steps.has(TutorialStep.TRUCK_BASE):
+		return false
+	var gm: Node = get_node_or_null("/root/GameManager")
+	if gm != null and int(gm.get("current_level")) > 3:
+		return false
+	return true
 
 ## 跳过教程
 func skip_tutorial() -> void:

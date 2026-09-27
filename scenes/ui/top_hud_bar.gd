@@ -9,6 +9,8 @@ const BattleEnvEffects = preload("res://data/battle_env_effects.gd")
 # v32.0 B1-1: 战斗时间状态（倍速档位/极速推演旗标唯一真身）
 const BTS = preload("res://scripts/battle/battle_time_state.gd")
 const LevelBattleLayouts = preload("res://data/level_battle_layouts.gd")
+# 记录4#5: 挂机状态枚举（RESTING 判定用；AFKModeManager 是 RefCounted 无节点路径）
+const AFKM = preload("res://scripts/systems/afk_mode_manager.gd")
 
 signal btn_start_battle_pressed
 signal btn_pause_pressed
@@ -39,6 +41,10 @@ var _env_label: Label = null
 # ── 记录3#12: 部署兵力 chip（我方还能上几张 + 敌方在场/总槽位）──
 var _deploy_chip: HBoxContainer = null
 var _deploy_label: Label = null
+# ── 记录4#5: 精神 chip（战中常显精神值；挂机休整时显示倒计时——
+# "挂机一会儿敌人不刷了"主诉的直接可读化：是精神耗尽休整，不是程序停摆）──
+var _sanity_chip: HBoxContainer = null
+var _sanity_label: Label = null
 
 # ── 计时（本地自增，搬自 battle_info_display.gd）──
 var _battle_time: float = 0.0
@@ -73,6 +79,7 @@ func _ready() -> void:
 	_build_base_chip()
 	_build_env_chip()
 	_build_deploy_chip()
+	_build_sanity_chip()
 	# v32.0 B1-1: 倍速档位跨会话记忆（读 battle_speed.cfg 就近吸附；实际应用在 battle_started）
 	_speed_scale = BTS.load_pref()
 	if _speed_btn:
@@ -252,6 +259,7 @@ func _process(delta: float) -> void:
 	if _time_refresh_accum >= 1.0:
 		_time_refresh_accum = 0.0
 		_refresh_time()
+		_refresh_sanity_chip()  # 记录4#5: 精神/休整倒计时同拍刷新（1s 节流）
 	# v9.x: 波次刷新改由 wave_spawned 信号驱动（_on_wave_changed），不再每 0.25s 轮询
 
 
@@ -355,6 +363,10 @@ func _on_battle_started() -> void:
 	if _deploy_chip != null:
 		_deploy_chip.visible = true
 	_refresh_deploy_chip()
+	# 记录4#5: 精神 chip 随战斗启停
+	if _sanity_chip != null:
+		_sanity_chip.visible = true
+	_refresh_sanity_chip()
 
 func _on_battle_ended(_won) -> void:
 	_in_battle = false
@@ -367,6 +379,9 @@ func _on_battle_ended(_won) -> void:
 	# 记录3#12: 部署兵力 chip 随战斗结束隐藏
 	if _deploy_chip != null:
 		_deploy_chip.visible = false
+	# 记录4#5: 精神 chip 随战斗结束隐藏（结算养成页有精神行）
+	if _sanity_chip != null:
+		_sanity_chip.visible = false
 
 ## v9.x: 波次推进时刷新 dots 显示（替代每 0.25s 轮询）
 func _on_wave_changed(_wave_index: int) -> void:
@@ -516,6 +531,53 @@ func _on_deploy_uses_changed(_base_card_id: String, _remaining: int, _total: int
 func _on_unit_died_refresh_deploy(_unit: Node, _is_player: bool) -> void:
 	# 延迟一帧：死亡淡出/计数回填多在信号后同帧收尾，直读会拿到旧数
 	_refresh_deploy_chip.call_deferred()
+
+
+# ========== 精神 chip（记录4#5，用户"应该在个位置显示现在的精神"）==========
+## 「精神 N」常显；挂机休整（RESTING）时转「精神休整 Xs」倒计时——
+## 挂机停刷敌人时玩家在战场顶栏直接看到原因。数据源 BunkerManager.get_sanity
+## （与结算养成页/挂机面板同源）；休整倒计时读 main._afk_manager.get_rest_remaining_seconds。
+func _build_sanity_chip() -> void:
+	var info_row: Node = get_node_or_null("Capsule/CenterSection/InfoRow")
+	if info_row == null:
+		return
+	_sanity_chip = HBoxContainer.new()
+	_sanity_chip.add_theme_constant_override("separation", 4)
+	_sanity_chip.visible = false
+	_sanity_label = Label.new()
+	_sanity_label.text = "精神 0"
+	_sanity_label.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
+	_sanity_label.add_theme_color_override("font_color", DT.COLOR_TEXT_DIM)
+	_sanity_label.tooltip_text = "精神：每场战斗消耗（胜 8-10 / 败 20），回移动基地睡觉回满。\n精神耗尽时挂机会原地休整 60s（顶栏此处显示倒计时）后继续。"
+	_sanity_chip.add_child(_sanity_label)
+	info_row.add_child(_sanity_chip)
+
+func _refresh_sanity_chip() -> void:
+	if _sanity_chip == null or not _in_battle or _sanity_label == null:
+		return
+	var bunker: Node = get_node_or_null("/root/BunkerManager")
+	if bunker == null or not bunker.has_method("get_sanity"):
+		_sanity_label.text = ""
+		return
+	# 挂机休整中：显示剩余秒数倒计时（主诉"挂机一会不刷敌人"的可读化）
+	var rest_left: float = 0.0
+	var main := get_node_or_null("/root/Main")
+	if main != null:
+		var afk = main.get("_afk_manager")
+		if afk != null and int(afk.get("state")) == AFKM.State.RESTING:
+			rest_left = float(afk.call("get_rest_remaining_seconds")) if afk.has_method("get_rest_remaining_seconds") else 0.0
+	if rest_left > 0.0:
+		_sanity_label.text = "精神休整 %ds" % int(ceili(rest_left))
+		_sanity_label.add_theme_color_override("font_color", DT.COLOR_AMBER)
+		return
+	var sanity: int = int(round(float(bunker.get_sanity())))
+	_sanity_label.text = "精神 %d" % sanity
+	if sanity <= 10:
+		_sanity_label.add_theme_color_override("font_color", DT.COLOR_DANGER)
+	elif sanity <= 25:
+		_sanity_label.add_theme_color_override("font_color", DT.COLOR_AMBER)
+	else:
+		_sanity_label.add_theme_color_override("font_color", DT.COLOR_TEXT_DIM)
 
 
 # ========== 暂停态切换 ==========

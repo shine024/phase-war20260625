@@ -291,6 +291,10 @@ func _deferred_non_critical_init() -> void:
 	# v32.3 A4：结算路径懒加载 manager 预热（原 BattleManager.start_battle 同步段挪出）——
 	# 落地 1s 空闲期执行，开战帧不再背 7 次 load()+new()+add_child()
 	get_tree().create_timer(1.0).timeout.connect(_warmup_battle_lazy_managers)
+	# 记录4#4：卡仓面板预热提前到揭幕期 0.2s——玩家习惯落地即开菜单整备卡仓（部署前），
+	# 1s 预热追不上首开（"卡一会才开"主诉复现路径）；0.2s 尖峰被战报/揭幕吸收。
+	# manager 预热仍留 1s（结算才用）。_ensure_lazy_panel 幂等，1s 全量预热重复调无害。
+	get_tree().create_timer(0.2).timeout.connect(_warmup_backpack_panel)
 	# v9.x 性能：SubViewportContainer(stretch) 入树时会把子视口强制 UPDATE_ALWAYS，
 	# tscn/战斗结束还原的 UPDATE_ONCE 全被覆盖，非战斗期战场每帧空渲染。
 	# 入树后补设一次即生效（容器不会再次改写）。挂机运行中除外（缩略图需要持续渲染）。
@@ -1065,6 +1069,13 @@ func _warmup_battle_lazy_managers() -> void:
 			mll.ensure_loaded(pre_id)
 	# 记录3#3：卡仓首开卡顿——战斗菜单里开背包时才懒加载面板（实例化 + _ready 全量建格
 	# 同帧同步），落地空闲期提前把面板实例建好（隐藏常驻），战斗中首开零尖峰。
+	if not backpack_overlay.visible:
+		_ensure_lazy_panel("backpack")
+
+## 记录4#4：卡仓面板预热（0.2s 揭幕期档）——只热面板实例，不热 manager（结算才用）。
+func _warmup_backpack_panel() -> void:
+	if not is_inside_tree():
+		return
 	if not backpack_overlay.visible:
 		_ensure_lazy_panel("backpack")
 

@@ -240,7 +240,7 @@ grow_horizontal = 2
 layer = 100
 
 [node name="InfoPanelLayer" type="CanvasLayer" parent="."]
-layer = 90
+layer = 110
 
 [node name="CardInfoPanel" parent="InfoPanelLayer" instance=ExtResource("35_card_info_panel")]
 layout_mode = 1
