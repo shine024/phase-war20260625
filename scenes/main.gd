@@ -1060,15 +1060,21 @@ func auto_start_battle_from_world_map() -> void:
 		return
 	_auto_battle_from_truck_sortie()
 
-## v6.35 异族渗透战:消费 world_map 设的 rift_incursion_pending meta → 直接开打。
-## 独立场景链经 _ready 调用、内嵌链由 world_map 直调(call_deferred),幂等。
+## v6.35 异族渗透战:消费 world_map 设的 rift_incursion_pending meta → 备态后走标准
+## 开战管线(与「进关即开战」同款 show_battle/战备收尾)。独立场景链经 _ready 调用、
+## 内嵌链由 world_map 直调(call_deferred),幂等。
 func _consume_incursion_meta() -> void:
 	if not Engine.has_meta("rift_incursion_pending"):
 		return
 	var inc: Dictionary = Engine.get_meta("rift_incursion_pending")
 	Engine.remove_meta("rift_incursion_pending")
-	if GameManager != null and GameManager.has_method("start_incursion_battle"):
-		GameManager.start_incursion_battle(inc)
+	if GameManager == null or not GameManager.has_method("start_incursion_battle"):
+		return
+	GameManager.start_incursion_battle(inc)
+	# 备态成功才开打(start_incursion_battle 内部置 pending loadout;失败静默回整备)
+	if GameManager.pending_incursion_loadout.is_empty():
+		return
+	_auto_battle_from_truck_sortie()
 
 ## v6.30（2026-09-27）：教程拦"落地自动开战"的收窄判定（唯一口，launch_from_bunker
 ## 与 level_auto_start_pending 两链共用）。仅"教程进行中且未过首战步"才让路——教程
@@ -1600,6 +1606,13 @@ func _on_gate_core_destroyed() -> void:
 	call_deferred("_show_gate_core_choice_dialog")
 
 func _show_gate_core_choice_dialog() -> void:
+	# v6.35 复查:同帧竞态守卫——本体击碎瞬间驱动器也被毁时,战斗结束链先行
+	# (battle_active 同步置 false),deferred 弹窗改收口不弹(防叠在结算面板上)
+	if BattleManager == null or not BattleManager.battle_active:
+		var ebm_end := get_node_or_null("/root/EndlessBlackgateManager")
+		if ebm_end != null and ebm_end.has_method("resolve_gate_choice"):
+			ebm_end.resolve_gate_choice()
+		return
 	if _gate_choice_dialog != null and is_instance_valid(_gate_choice_dialog):
 		return
 	var tree := get_tree()
@@ -1904,6 +1917,14 @@ func _on_battle_started_close_skill_canvas() -> void:
 
 func _on_battle_ended_clear_pending(player_won: bool) -> void:
 	_reward.on_battle_ended_clear_pending(player_won)
+	# v6.35 复查修复:通关弹窗开着时战斗结束(护卫残敌打爆驱动器)——弹窗必须让位
+	# 结算面板,并收口 EBM 出兵 gate(防下一段 run 出兵被陈旧 pending 卡住)
+	if _gate_choice_dialog != null and is_instance_valid(_gate_choice_dialog):
+		_gate_choice_dialog.queue_free()
+		_gate_choice_dialog = null
+	var ebm := get_node_or_null("/root/EndlessBlackgateManager")
+	if ebm != null and ebm.has_method("resolve_gate_choice"):
+		ebm.resolve_gate_choice()
 
 func _on_player_deploy_failed(_reason_code: String, message: String) -> void:
 	_show_deploy_failure_toast(message)

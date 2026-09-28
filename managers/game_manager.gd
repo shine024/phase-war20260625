@@ -516,7 +516,10 @@ func start_incursion_battle(inc: Dictionary) -> void:
 	_is_incursion_battle = true
 	if loadout.get("host_level", 0) is int and int(loadout.get("host_level", 0)) > 0:
 		set_current_level(int(loadout.get("host_level")))
-	go_to_battle()
+	# v6.35 复查修复:此处不直接 go_to_battle——渗透战必须走 main 的标准开战管线
+	# (run_start_battle_sequence: show_battle/界面切换/战备收尾),否则战斗在 UI 停留
+	# 整备态时后台开打。调用方(main._consume_incursion_meta)备态后调
+	# _auto_battle_from_truck_sortie() 走与「进关即开战」同一条管线。
 
 ## 渗透战轻结算:胜=小额资源+低概率缴获+节点清除;败=节点消失(异族转移)。
 ## 不弹结算面板(收益很小定位,Toast 承载),直接回整备。

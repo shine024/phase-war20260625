@@ -388,9 +388,13 @@ func _on_battle_ended(player_won: bool) -> void:
 	# .settle_run 自行记账（波数/击杀/星髓/最佳）。
 	var fought := _pending_battle_level
 	var was_endless := _pending_battle_endless
+	# v6.35: 异族渗透战不记日志/不参与棘轮——host 可达 parked+5,赢一场渗透会把卡车
+	# 推到未通关关位(进度泄漏);精神/房间推进照常(任何战斗都消耗)。
+	var was_incursion: bool = GameManager != null \
+		and GameManager.has_method("is_incursion_battle") and GameManager.is_incursion_battle()
 	_pending_battle_level = 0
 	_pending_battle_endless = false
-	if fought > 0 and not was_endless:
+	if fought > 0 and not was_endless and not was_incursion:
 		# v26.13：日志扩展伤害/时长（统计终端曲线数据源）
 		var _bs: Dictionary = _read_battle_stats()
 		_battle_log.append({
@@ -412,8 +416,8 @@ func _on_battle_ended(player_won: bool) -> void:
 	# 修复"结算『出击下一关』直通链连续推进后回基地出击仍是旧关"——直通链
 	# （main.launch_next_level_from_settlement）只推 current_level 不移卡车，此前
 	# parked 恒停在旧关。行军中不棘轮（到站以物理位置覆写，_check_travel_arrival）；
-	# 黑门无尽 run 不参与（fought 抓的是对齐后的 100）。回低关刷素材不受影响。
-	if player_won and fought > 0 and not was_endless and not is_traveling():
+	# 黑门无尽 run 不参与（fought 抓的是对齐后的 100）；渗透战不参与（v6.35 进度泄漏）。回低关刷素材不受影响。
+	if player_won and fought > 0 and not was_endless and not was_incursion and not is_traveling():
 		var parked := get_parked_level()
 		if fought > parked:
 			_parked_level = clampi(fought, 1, 100)

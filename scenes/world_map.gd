@@ -869,6 +869,13 @@ func _gate_state_for_level(cur: int) -> String:
 ## （gate_near.png 整幅图保留给终局近接演出，不直接摆画布）
 func _apply_gate_state(canvas: Control) -> void:
 	var gate := canvas.get_node_or_null("GateMarker") as TextureRect
+	# v6.35 复查:通关态 tooltip 同步(模板复用路径 gate_entry 不重建,首建文案会陈旧)
+	var gate_entry := canvas.get_node_or_null("BlackGateEntry") as Button
+	if gate_entry != null:
+		var _ebm_g := _blackgate_mgr()
+		var cleared_once: bool = _ebm_g != null and bool(_ebm_g.get("gate_cleared_once"))
+		var unlocked: bool = _is_blackgate_unlocked()
+		gate_entry.tooltip_text = ("黑门——已平息，异族不再渗出；深处仍可再战（无限模式）" if cleared_once 			else "黑门——星冥族的裂隙（无限模式）") if unlocked 			else "黑门（通关第 100 关后开启）"
 	if gate == null:
 		return
 	if MAP_SCHEME == 11:

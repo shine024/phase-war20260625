@@ -628,10 +628,10 @@ func _spawn_endless_xeno_wave(current_level: int) -> bool:
 		var archetype_id: String = ""
 		var type_pick: String = "basic"
 		if is_core_wave and not core_spawned:
-			# 本体:场上唯一,吃 CORE 倍率(HP×10/攻×2,黑门 2.0 数值定案)
+			# 本体:场上唯一,吃 CORE 倍率(HP×10/攻×2,黑门 2.0 数值定案);
+			# core_spawned 在放置成功后才置位(见下)——放置失败重臂下一波
 			archetype_id = core_id
 			type_pick = "core"
-			core_spawned = true
 		elif is_core_wave:
 			archetype_id = String(elite_ids[randi() % elite_ids.size()]) if not elite_ids.is_empty() \
 				else String(basic_ids[randi() % basic_ids.size()])
@@ -682,6 +682,12 @@ func _spawn_endless_xeno_wave(current_level: int) -> bool:
 			if is_instance_valid(unit):
 				unit.queue_free()
 			continue
+		if type_pick == "core":
+			core_spawned = true  # v6.35 复查修复:放置成功才算本体已出(失败重臂下一波)
+
+	# v6.35 复查修复:本体波本体未落地(创建/放置失败)→ 重臂到下一波,防 run 永久无本体
+	if is_core_wave and not core_spawned and ebm != null:
+		ebm.set("gate_core_wave", next_wave + 1)
 
 	# v6.35: 信号带 wave_kind——"core"本体波/"boss"首领波全套演出,"elite"精英波轻档
 	if _signal_bus and not _wave_boss_spawns.is_empty():

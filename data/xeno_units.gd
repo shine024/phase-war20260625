@@ -359,7 +359,9 @@ const UNITS: Dictionary = {
 		"tags": ["turret", "sustained", "boss", "communion_node"],
 		"psi_shield_frac": 0.60, "communion": false, "communion_node": true,
 		"visual_fallback": "vis_xeno_mothership", "visual_scale": 2.4,
-		"drop_chance": 1.0, "power": 9999,
+		# power 2400=无垠 power_cap 上限——缴获本体卡必须可部署(mothership 同档;
+		# 9999 会被 request_player_deploy 战力门永久拦截,奖励变废铁)
+		"drop_chance": 1.0, "power": 2400,
 	},
 }
 

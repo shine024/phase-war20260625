@@ -212,3 +212,28 @@ func test_incursion_and_supply_constants() -> void:
 	assert_bool(xu.UNITS.has("xeno_gate_core")).is_true()
 	assert_str(String(xu.UNITS["xeno_gate_core"].get("role", ""))).is_equal("core")
 	assert_array(xu.get_ids_for_role("boss")).not_contains(["xeno_gate_core"])
+	# 缴获本体卡必须可部署:power 不得超 power_cap 上限(2400=无垠档)
+	assert_int(int(xu.UNITS["xeno_gate_core"].get("power", 0))).is_less_equal(2400)
+
+
+## v6.35 复查锁:渗透战备态不直接开打——start_incursion_battle 只置 pending/关卡对齐,
+## go_to_battle 由 main 标准管线(show_battle)触发。回退旧直接开打代码此用例必红。
+func test_start_incursion_battle_preps_only() -> void:
+	var e := _ebm()
+	var gm := _gm()
+	var bak := _ebm_snapshot()
+	var bak_level: int = int(gm.current_level)
+	var bak_phase: int = int(gm.current_phase)
+	e.incursions = [{"host_level": 88, "seed": 42, "spawned_day": 1}]
+	gm.start_incursion_battle(e.incursions[0])
+	assert_array(gm.pending_incursion_loadout).is_not_empty()
+	assert_bool(bool(gm.is_incursion_battle())).is_true()
+	assert_int(int(gm.current_level)).is_equal(88)
+	# 未直接开打:战斗相位不进 BATTLE(留给 main 管线)
+	assert_int(int(gm.current_phase)).is_equal(bak_phase)
+	# 清理渗透态
+	gm.pending_incursion_loadout = []
+	gm.set("_is_incursion_battle", false)
+	gm.set("_pending_incursion", {})
+	gm.set_current_level(bak_level)
+	_ebm_restore(bak)
