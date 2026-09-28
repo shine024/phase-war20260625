@@ -16,6 +16,7 @@ const DT = preload("res://resources/design_tokens.gd")
 const PanelStyles = preload("res://scripts/ui/panel_styles.gd")
 const PanelChrome = preload("res://scenes/ui/components/panel_chrome.gd")
 const SkillBoard = preload("res://scenes/ui/phase_master_skill_board.gd")
+const CardPeriodicSkills = preload("res://data/card_periodic_skills.gd")
 
 signal closed()
 
@@ -360,7 +361,13 @@ func _update_probe() -> void:
 			" · ◈奇点" if is_cap else "",
 			SkillBoard.ChipWidget.type_label_of(node),
 			cost]
-	_probe_desc.text = String(node.get("desc", ""))
+	# 记录5#1：card_skill 类节点 desc 尾部动态附加触发兵种（静态 desc 不写，单一真相源
+	# 在 CardPeriodicSkills.SKILLS.source_tag——玩家主诉"没写清是哪张卡用的"）
+	var desc_text := String(node.get("desc", ""))
+	for u in node.get("unlocks", []):
+		if u is Dictionary and String(u.get("type", "")) == "card_skill":
+			desc_text += "（触发条件：%s）" % CardPeriodicSkills.get_trigger_condition(String(u.get("id", "")))
+	_probe_desc.text = desc_text
 
 	# 解锁内容行
 	var unlocks: Array = node.get("unlocks", [])
@@ -495,7 +502,11 @@ func _emit_unlock_toast(node_id: String) -> void:
 			var u_id: String = str(u.get("id", ""))
 			var label: Dictionary = UnlockLabels.get_unlock_label(u_type, u_id)
 			if not label.is_empty():
-				unlock_descs.append(String(label.get("desc", "")))
+				var line: String = String(label.get("desc", ""))
+				# 记录5#1：卡片技能 Toast 附触发兵种
+				if u_type == "card_skill":
+					line += "（%s）" % CardPeriodicSkills.get_trigger_condition(u_id)
+				unlock_descs.append(line)
 		if not unlock_descs.is_empty():
 			toast_lines.append(String(unlock_descs[0]))
 	if SignalBus and SignalBus.has_signal("show_toast"):
@@ -514,6 +525,9 @@ func _format_unlocks(unlocks: Array) -> String:
 		if not label.is_empty():
 			var icon: String = String(label.get("icon", ""))
 			var name: String = String(label.get("name", u_id))
+			# 记录5#1：卡片技能附触发兵种（同 _probe_desc，单一真相源 CardPeriodicSkills）
+			if u_type == "card_skill":
+				name += "（%s）" % CardPeriodicSkills.get_trigger_condition(u_id)
 			parts.append("%s %s" % [icon, name] if not icon.is_empty() else name)
 		else:
 			match u_type:

@@ -2564,7 +2564,9 @@ func _show_player_phase_driver(unit: Node) -> void:
 				var itv: float = float(sk.get("interval", 0.0))
 				var itv_s: String = ("每%.0fs" % itv) if itv > 0.0 else ""
 				var eff_cn: String = _card_skill_effect_summary(sk.get("effect", {}))
-				skill_lines.append("  · %s%s（%s）：%s" % [nm, ulti, itv_s, eff_cn])
+				# 记录5#1：附触发兵种（玩家主诉"没写清是哪张卡用的"）
+				var trig: String = CardPeriodicSkills.get_trigger_condition(sid)
+				skill_lines.append("  · %s%s（%s，%s）：%s" % [nm, ulti, itv_s, trig, eff_cn])
 			if not skill_lines.is_empty():
 				lines.append("已解锁卡片技能：")
 				for sl in skill_lines:

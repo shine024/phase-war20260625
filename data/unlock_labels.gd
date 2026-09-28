@@ -198,11 +198,15 @@ static func get_unlocked_summary(unlocked_nodes: Array) -> Array:
 			var u_id: String = str(u.get("id", ""))
 			var label: Dictionary = get_unlock_label(u_type, u_id)
 			if not label.is_empty():
+				var item_desc: String = String(label.get("desc", ""))
+				# 记录5#1：卡片技能总览附触发兵种（单一真相源 CardPeriodicSkills.source_tag）
+				if u_type == "card_skill":
+					item_desc += "（%s）" % CardPeriodicSkills.get_trigger_condition(u_id)
 				summary.append({
 					"type": u_type,
 					"id": u_id,
 					"name": String(label.get("name", u_id)),
-					"desc": String(label.get("desc", "")),
+					"desc": item_desc,
 					"icon": String(label.get("icon", "•")),
 					"node_name": String(node.get("name", "")),
 				})

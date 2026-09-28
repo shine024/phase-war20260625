@@ -276,6 +276,30 @@ const SKILLS: Dictionary = {
 	},
 }
 
+## source_tag → 玩家可读触发兵种（口径对齐 compute_source_tags_for_stats 的派生链：
+## flame=火炮兜底/势力、thunder=防空或电子战/势力、void=狙击或渗透/势力）
+const SOURCE_TAG_LABELS := {
+	"artillery": "炮兵",
+	"fort": "堡垒",
+	"engineer": "工兵",
+	"ecm": "电子战",
+	"sniper": "狙击",
+	"flame": "火炮（或激活火焰势力）",
+	"thunder": "防空/电子战（或激活雷霆势力）",
+	"void": "狙击/渗透（或激活虚空势力）",
+}
+
+## 记录5#1：技能触发条件玩家文案（技能树/情报面板消费）。
+## desc 静态文本不写触发兵种（防与 source_tag 双真相漂移），由显示点动态附加本文案。
+static func get_trigger_condition(skill_id: String) -> String:
+	var def: Dictionary = SKILLS.get(skill_id, {})
+	var tag: String = String(def.get("source_tag", ""))
+	var min_count: int = int(def.get("min_source_count", 0))
+	if tag.is_empty() or min_count <= 0:
+		return "无需特定兵种，友军进场即触发"
+	var unit_label: String = String(SOURCE_TAG_LABELS.get(tag, tag))
+	return ("需场上%s≥%d个" % [unit_label, min_count]) if min_count > 1 else ("需场上%s在场" % unit_label)
+
 ## 根据 ID 获取技能定义
 static func get_skill(skill_id: String) -> Dictionary:
 	return SKILLS.get(skill_id, {}).duplicate(true)
