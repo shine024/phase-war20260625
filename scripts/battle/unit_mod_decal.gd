@@ -70,8 +70,17 @@ static func apply(unit: Node2D, mod_ids: Array, is_enemy: bool, _retry := 0) -> 
 		if _retry < 2:
 			var tree := unit.get_tree()
 			if tree != null:
+				# v6.32.3: weakref 捕获——SceneTreeTimer 不随节点释放取消（attack_pose_anim
+				# 批次9 / v26.11(D2) 同款）。0.05s 窗口内单位阵亡或战斗清场 free 后触发，
+				# 直接捕获 unit 会让引擎报 "Lambda capture at index 0 was freed"——挂机
+				# 高伤亡战斗（55 关相位师战三连）单会话 99 条。get_ref() 判活静默作废。
+				var weak_unit: WeakRef = weakref(unit)
 				tree.create_timer(0.05).timeout.connect(
-					func() -> void: apply(unit, mod_ids, is_enemy, _retry + 1))
+					func() -> void:
+						var u: Node2D = weak_unit.get_ref() as Node2D
+						if u == null or not is_instance_valid(u):
+							return
+						apply(u, mod_ids, is_enemy, _retry + 1))
 		return
 	var tex_size := body.get_rect().size
 	var bounds := _content_bounds(body)
@@ -124,6 +133,9 @@ static func clear(unit: Node2D) -> void:
 
 
 static func _resolve_body_sprite(unit: Node2D) -> Sprite2D:
+	# v6.32: freed 守卫（"Invalid base object for 'in'" 同款实证，防御补丁）
+	if unit == null or not is_instance_valid(unit):
+		return null
 	for path in ["Sprite", "Sprite2D"]:
 		var spr := unit.get_node_or_null(path) as Sprite2D
 		if spr != null and spr.texture != null:
