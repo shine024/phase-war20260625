@@ -363,6 +363,11 @@ func _deploy_next() -> void:
 			return
 	var deployed_index: int = -1
 	for i in range(_deploy_queue.size()):
+		# v6.32.3: 循环内连败出队（_ENTRY_FAIL_GIVEUP 分支 remove_at+continue）会缩短队列，
+		# 而 range 上界是进入时快照——队列 8 条、i=3 出队后 i 可走到 7 越界（实机日志实证
+		# "Out of bounds get index '7'"，SCRIPT ERROR 中断部署链，挂机时每帧重试每帧炸）
+		if i >= _deploy_queue.size():
+			break
 		var entry: Dictionary = _deploy_queue[i]
 		var platform = entry.get("platform")
 		# v9.4: 优先用 entry 中记录的 battlefield_slot（循环复用映射），回退到 slot_index+offset

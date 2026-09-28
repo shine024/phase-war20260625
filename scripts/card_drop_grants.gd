@@ -3,6 +3,7 @@ class_name CardDropGrants
 ## 战后/掉落：向背包发放成品掉落卡（蓝图副本回退已移除）
 
 const DefaultCards = preload("res://data/default_cards.gd")
+const EnemyCardModMapRef = preload("res://data/enemy_card_mod_map.gd")
 
 ## 旧字段 fragment_id：改为随机成品卡，每次 amount 独立抽取并发背包卡
 ## 2026-09-19 修复：原池 12 个 id 中 9 个 bp_* 蓝图 id 与 3 个命名敌卡（titan_mk2 等）
@@ -45,7 +46,8 @@ static func grant_enemy_style_card(bm: Node, card_id: String, _era: int, amount:
 	if bm == null or not is_instance_valid(bm):
 		return
 	var n: int = maxi(1, int(amount))
-	var id: String = String(card_id).strip_edges()
+	var orig_id: String = String(card_id).strip_edges()
+	var id: String = orig_id
 	if id.is_empty():
 		return
 	if bm.has_method("should_skip_drop_grant") and bm.should_skip_drop_grant(id):
@@ -54,6 +56,14 @@ static func grant_enemy_style_card(bm: Node, card_id: String, _era: int, amount:
 		id = String(bm.normalize_storage_id(id))
 	if id.is_empty():
 		return
+	# v6.32.3: 敌卡 id 救援——drops 表 14 处引用全是 UCT enemy_only 条目（drop_* / fut_* /
+	# mod_arm_abrams_mk2 等），get_card_by_id 走玩家侧缓存必然 miss，原路径 100% 跳过刷警告
+	# +玩家拿不到掉落（实机日志 2026-09-28 fut_air_regen_frame 实证）。经 EnemyCardModMap
+	# 官方对照表换玩家卡重试；战报/背包记录的也是玩家实际拿到的映射后卡。
+	if DefaultCards.get_card_by_id(id) == null:
+		var mapped: String = EnemyCardModMapRef.get_player_card_id(id)
+		if not mapped.is_empty():
+			id = mapped
 	var dm: Node = _get_drop_manager()
 	if dm != null and dm.has_method("grant_dropped_cards_by_id") and DefaultCards.get_card_by_id(id) != null:
 		dm.grant_dropped_cards_by_id(id, n)
@@ -61,7 +71,21 @@ static func grant_enemy_style_card(bm: Node, card_id: String, _era: int, amount:
 			_record_card_to_collector(id, n, source)
 		return
 	# 2026-08-22：蓝图副本回退已随蓝图体系移除；无法解析为卡牌资源的 id 静默跳过
+	# v6.32.3: 相位师 `*_basic` 缴获平台（fortress/titan/raider/siege 等类型不在
+	# EXCLUDED_WAR_PLATFORM_TYPES，steel/flame 相位师每战 2 条漏到此处）——平台本就非卡牌，
+	# 静默跳过不算掉落失败（对齐 game_manager 缴获循环里 pdata.is_empty() continue 的先例）
+	if not String(orig_id).is_empty() and _is_war_platform_id(orig_id):
+		return
 	push_warning("CardDropGrants: 掉落 id 无法解析为卡牌，跳过: %s" % id)
+
+
+## 是否为敌方相位战平台 id（*_basic 等平台定义在 enemy_phase_platforms，非卡牌）
+## 延迟 load 防循环依赖（default_cards.get_safe_display_name 同款范式）
+static func _is_war_platform_id(card_id: String) -> bool:
+	var eq_epe: GDScript = load("res://data/enemy_phase_equipment.gd")
+	if eq_epe == null:
+		return false
+	return not (eq_epe.get_war_platform(card_id) as Dictionary).is_empty()
 
 
 ## v7.x 胜利面板漏显修复：把卡牌发放记录到 GameManager 本局收集器
