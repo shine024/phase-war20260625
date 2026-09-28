@@ -494,8 +494,8 @@
         "level": 22,
         "platforms": [
           "cold_boss_mig",
-          "cold_arm_t72_e",
-          "cold_arm_t72_e",
+          "cold_inf_ak",
+          "cold_inf_m60",
           "cold_air_m113_e",
           "cold_inf_spetsnaz_e",
           "cold_arm_btr_e"

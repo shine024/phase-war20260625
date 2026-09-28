@@ -410,21 +410,34 @@ static func _era_string_to_int(era_str: String) -> int:
 ## v22.4（P0-1）：遭遇相位师候选两级择优——①碎片未收集者优先（0<已收集 1），
 ## ②同级比 |level - target_level|。collected_ids 为空/候选未命中时退化为例原行为。
 ## 静态纯函数便于冒烟测试直接断言。
+## v6.32.3: 未收集优先加等级容差带（±_PICK_LEVEL_BAND）——原实现任何未收集候选
+## 无条件压倒已收集，高关卡随机遭遇会因低级师碎片未收集而抽到新手档相位师
+## （99 关实证：era4 满级段抽出 Lv5/2900 血相位师，基地被秒 → 98 关"杀4个就过关"
+## 同根源：低配相位师产兵弱+基地脆，玩家杀 3 小兵+拆基地快速判胜）。
+## 带内维持 v22.4 语义（未收集优先→距离）；带外只按距离且只与带外比；
+## 带内无候选时退化全池纯距离（保底不空转）。
+const _PICK_LEVEL_BAND: int = 8
+
 static func _pick_master_candidate(candidates: Array, target_level: int, collected_ids: Array = []) -> Dictionary:
-	var best: Dictionary = {}
-	var best_collected: int = 2   # 哨兵：任何候选的 collected(0/1) 都优于 2
-	var best_diff: int = 999
+	var best_in: Dictionary = {}              # 带内最佳（未收集优先→距离）
+	var best_in_collected: int = 2            # 哨兵：任何带内候选的 collected(0/1) 都优于 2
+	var best_in_diff: int = 999
+	var best_any: Dictionary = {}             # 全池纯距离最佳（带内空时保底）
+	var best_any_diff: int = 999
 	for c in candidates:
 		if not (c is Dictionary):
 			continue
-		var c_level: int = int(c.get("level", 1))
-		var diff: int = absi(c_level - target_level)
+		var diff: int = absi(int(c.get("level", 1)) - target_level)
 		var collected: int = 1 if collected_ids.has(String(c.get("id", ""))) else 0
-		if collected < best_collected or (collected == best_collected and diff < best_diff):
-			best_collected = collected
-			best_diff = diff
-			best = c
-	return best
+		if diff < best_any_diff:
+			best_any_diff = diff
+			best_any = c
+		if diff <= _PICK_LEVEL_BAND:
+			if collected < best_in_collected or (collected == best_in_collected and diff < best_in_diff):
+				best_in_collected = collected
+				best_in_diff = diff
+				best_in = c
+	return best_in if not best_in.is_empty() else best_any
 
 ## v7.x 时代筛选：从相位师池筛出 era ≤ era_ceiling 的子集。
 ## 用于 check_phase_master_encounter——防止低级关抽到高时代相位师导致产兵跨时代
