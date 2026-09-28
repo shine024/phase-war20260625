@@ -117,9 +117,7 @@
 
 ## P3 发行工程与商店（上架前 1~2 周）
 
-- [ ] **P3-1 版本号体系 + 分支整理**（S）
-  - `feat/v6.14-system-integration` 领先 main **122 提交**未合并（2026-09-22 核对；main 零领先）→ 回并 main。
-  - 对外版本统一（CHANGELOG 内部 v6/v9/v17/v20 混用，对外收敛为 0.x → 1.0）。
+- [x] **P3-1 版本号体系 + 分支整理**（S）✅ 2026-09-22 `d91d12a7` P3-1 回并 feat/v6.14-system-integration（128 commits，v26.6→v6.22 全量演进）；对外版本已统一 `project.godot` config/version="1.0.0"（标题屏 v26.9 起从工程设置读）。（v6.35.1 账本回写：本条事实早已完成，勾选滞后）
 - [ ] **P3-2 Steam Direct 流程**（若 D1=Steam；M，含等待审核）——上架期外部动作，保持开（等排期）
   - $100/APP 注册 → 商店页创建 → 内容调查问卷/年龄分级。
   - **AI 生成内容披露（必填）**：美术与音乐大量 AI 生成，如实勾选。
@@ -130,15 +128,12 @@
   - Steam Cloud：存档是小 JSON（每槽 4 文件），勾选路径 `user://` 即用。
 - [ ] **P3-4 商店物料**（M，可与 P2 并行）——上架期外部动作，保持开（等排期）
   - 胶囊图（主/小/竖版等 6 种尺寸）、截图 ≥5（1280x720）、预告片 30s~1min、简短/详细描述（中）。
-- [ ] **P3-5 第三方许可留档**（S）——**排最后（已确认）**；商店提交前必须清零 BGM 追溯（见 v6.20.2 CREDITS.md）
-  - 已妥：代码 MIT（LICENSE）、字体 OFL（Rajdhani）+ `assets/fonts/LICENSE`、addons 各带 LICENSE。
-  - 待办：43 SFX + 7 BGM 来源凭证（AI 生成记录或采购许可）留档，供披露与争议自查。
+- [x] **P3-5 第三方许可留档**（S）✅ 2026-09-26 换曲批闭环——BGM 8 首全量替换为 incompetech（Kevin MacLeod）CC BY 4.0 逐曲溯源+SHA256 存档（`_steam_assets/licenses/incompetech_20260926/LICENSE_EVIDENCE.md`）；SFX 36+环境音 1=项目内自合成零外部义务；CREDITS.md 红线（UNVERIFIED 清零）已达成。代码 MIT/字体 OFL/addons LICENSE 原已妥。（v6.35.1 账本回写）
 - [x] **P3-6 手柄 / Steam Deck 核对**（S~M，2026-09-21 核对更新——大部分已由 v6.20.2 完成）——剩余真机手柄/Deck 走查 → 归执行计划 §六 人工残留项
   - ✅ 手柄输入映射已实装（v6.20.2 KeyBinds v2 双设备绑定：Ⓐ开战/MENU暂停/SELECT地图/LB背包/RB技能/Ⓧ设置；键盘/手柄独立重绑互不覆盖）；
   - ✅ 手柄菜单焦点链（PanelAnim.focus_first：接手柄时焦点落面板首个可聚焦控件）；设置面板键位段双设备捕捉、标签"键盘键｜手柄键"双段；truck_base 返回走 is_back_event（ESC 或 Ⓑ）。
   - 剩余（挂商店提交前核对清单）：①真机手柄全流程实机走查（菜单导航/战斗 1-9 部署槽仍键盘专属的提示是否清晰）；②Deck 实机兼容确认（gl_compatibility 理论友好）。
-- [ ] **P3-7 CI 门禁转正**（S）
-  - `.github/workflows/tests.yml` 已存在；P1-1 清零后将 gdunit 全量设为合并/发布门禁（`tests/gdunit4_runner.gd` 已核验可跑，AGENTS 相关旧说法过时）。
+- [x] **P3-7 CI 门禁转正**（S）✅ gdunit 全量自 2026-09-21 起为 main 的 PR/push 门禁（gdunit4-action 跑 tests/unit + tests/integration），并补 push 触发 `feat/**` 覆盖现役集成分支；P1-1 清零（2026-08-23 批次8）后 tests.yml 即为有效门禁。（v6.35.1 账本回写）
 
 ---
 

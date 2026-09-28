@@ -25,7 +25,9 @@ const IMPACT_TEX_SMALL_ARMS := preload(TEX_DIR + "weapon_impact_small_arms.png")
 const IMPACT_TEX_EXPLOSIVE := preload(TEX_DIR + "weapon_impact_explosive.png")    # 通用爆炸(曲射/空射兜底)
 ## v9.2: 爆炸帧动画序列——下放核武帧动画范式给常规爆炸武器。
 ## 6 帧 512×512（火球膨胀→烟尘弥散），10fps，0.6s 总长。
-## 生成工作流：docs/VFX特效纹理生成工作流.md，当前为占位透明 PNG。
+## 生成工作流：docs/VFX特效纹理生成工作流.md（v6.35 核验勘误：双通道 12 帧均已是
+## 真图——conv=橙红火球弥散 / energy=蓝白能量爆，旧注"占位透明 PNG"过时；拼图存
+## .godot/unit_review/explosion_frames_audit.png）。
 const EXPLOSION_FRAMES_DIR := "res://assets/effects/explosion_frames/"
 const EXPLOSION_CONV_FRAMES := [
 	preload(EXPLOSION_FRAMES_DIR + "explosion_conv_f0.png"),

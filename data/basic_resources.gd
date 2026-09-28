@@ -47,12 +47,13 @@ const DEFINITIONS: Dictionary = {
 		"desc": "在后勤节点转换为战场能源，或兑换其它战地增益。",
 		"icon": "res://assets/resources/energy_block.png",
 	},
-	# v27: 黑门无限模式专属货币（图标沿用晶体占位，美术管线出图后替换 star_marrow.png）
+	# v27: 黑门无限模式专属货币；v6.35: 专属图标落位（紫红晶簇徽章，区别于晶体 teal——
+	# 原"沿用晶体占位"欠账清偿，生成底稿备份 .godot/art_regen/star_marrow_raw/）
 	ID_STAR_MARROW: {
 		"id": ID_STAR_MARROW,
 		"name": "星髓",
 		"desc": "黑门彼岸的灵能结晶。黑门无限模式渗度里程碑产出，每周获取设有上限。",
-		"icon": "res://assets/resources/crystal.png",
+		"icon": "res://assets/resources/star_marrow.png",
 	},
 	# v7.3: 5 种许可证定义已删除（死系统）
 	# 兼容性定义（映射到新ID）
