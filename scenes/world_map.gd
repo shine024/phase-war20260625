@@ -1972,15 +1972,31 @@ func _enter_blackgate_confirmed(popup: Window) -> void:
 		if SignalBus.has_signal("show_toast"):
 			SignalBus.show_toast.emit("今日免费次数已用完——能量块 -%d 购入场 1 次" % int(bought.get("energy_spent", 0)))
 	_close_popup_safe(popup)
+	_arm_endless_battle_state()
+	if has_meta("embedded_mode") and bool(get_meta("embedded_mode")):
+		back_to_main.emit()
+		# v6.33:踏入黑门=落地即开战(内嵌链)。旧代码只关地图层回整备态——零开战
+		# 触发零反馈,实机"33波退出后再点黑门没反应"主诉根因(黑门链停在 v27
+		# "挂标志等玩家手动点开始"老范式,v32.3 A2 普通关"进关即开战"重构没跟上)。
+		var main_node := get_node_or_null("/root/Main")
+		if main_node != null and main_node.has_method("auto_start_battle_from_world_map"):
+			main_node.call_deferred("auto_start_battle_from_world_map")
+		return
+	SceneTransition.change(get_tree(), "res://scenes/main.tscn")
+
+## v6.33:挂起无尽开战态——关卡对齐 100 + 无尽标志置位。独立场景链同时设
+## level_auto_start_pending(main._ready 消费=落地自动开战,与普通关「进入该关」
+## 同款黑幕战报);内嵌链由调用方直调 main.auto_start_battle_from_world_map。
+## 教程态兜底:消费口 auto_start_battle_from_world_map 内置 _tutorial_holds_battle_focus
+## 守卫(黑门需通关 100,教程必已完成,恒放行;meta 被消费后回落手动点开始旧路径)。
+func _arm_endless_battle_state() -> void:
 	if GameManager != null:
 		if GameManager.has_method("set_current_level"):
 			GameManager.set_current_level(100)
 		if GameManager.has_method("start_endless_battle"):
 			GameManager.start_endless_battle()
-	if has_meta("embedded_mode") and bool(get_meta("embedded_mode")):
-		back_to_main.emit()
-		return
-	SceneTransition.change(get_tree(), "res://scenes/main.tscn")
+	if not (has_meta("embedded_mode") and bool(get_meta("embedded_mode"))):
+		Engine.set_meta("level_auto_start_pending", true)
 
 ## v6.22: 原 _on_territory_map_button/_ensure_local_occupation_overlay 已随领地图面板退役删除。
 
