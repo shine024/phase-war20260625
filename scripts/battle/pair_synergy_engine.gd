@@ -289,7 +289,12 @@ static func try_apply_recon_artillery_mark(attacker: Node, target: Node) -> bool
 	if UnitRolesRef.resolve_role_cached(st) != UnitRolesRef.ROLE_RECON:
 		return false
 	# 目标须是敌对单位（防自伤队误标记）——敌我异侧判定
-	if bool(attacker.get("is_player")) == bool(target.get("is_player")):
+	# v6.32.2: bool(null) 运行时报 "Nonexistent 'bool' constructor"（命中相位场驱动器等
+	# 无 is_player 属性的节点即炸，弹丸命中高频路径每次刷错）——补 in 防御，
+	# 与 mod_aura_handler.gd:104 既有范式对齐；缺失按敌侧(false)处理
+	var attacker_is_player: bool = bool(attacker.get("is_player")) if "is_player" in attacker else false
+	var target_is_player: bool = bool(target.get("is_player")) if "is_player" in target else false
+	if attacker_is_player == target_is_player:
 		return false
 	var duration: float = float(ComboTacticsRef.PAIR_SYNERGIES["pair_recon_artillery"]["effect"].get("mark_duration", 5.0))
 	target.set_meta("_pair_art_mark_until", Time.get_ticks_msec() / 1000.0 + duration)
