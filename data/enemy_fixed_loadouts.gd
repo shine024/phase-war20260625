@@ -762,6 +762,12 @@ const LOADOUTS: Dictionary = {
 		mods = ["air_01_turbofan", "air_05_helmet_sight", "air_06_bvr_missile", "enh_dmg_up", "enh_crit", "air_25_dual_mode_seeker", "air_antiradiation_missile", "air_26_drone_wingman", "gen_11_phase_resonance"],
 		cuts = {1: 5, 2: 7, 3: 8, 4: 9},
 	},
+	# v6.35 黑门 2.0: 本体(ultimate 档=最深配装切片,首通勋章战)
+	"xeno_gate_core": {
+		identity = "【本体】黑门本体·门渊意志——湮灭光炮压场，共感网络中枢",
+		mods = ["gen_11_phase_resonance", "gen_12_phase_shielding", "enh_hp_up", "enh_def_up", "enh_regen", "enh_dmg_up", "enh_crit", "air_06_bvr_missile", "air_25_dual_mode_seeker"],
+		cuts = {1: 5, 2: 7, 3: 9, 4: 9},
+	},
 }
 # 【GEN:LOADOUTS:END】
 

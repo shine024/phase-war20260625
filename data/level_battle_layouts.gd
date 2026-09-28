@@ -101,6 +101,32 @@ static func get_for_level(level: int) -> Dictionary:
 	return {}
 
 
+## ── v6.35 黑门 2.0:endless 布局池（脚下位置几种轮换,每 run 随机一张）──
+## 条目结构与 LAYOUT_BY_LEVEL 同构;EBM.begin_run roll layout_variant,
+## battle_manager.start_battle 经 CardGridBattleLayout.apply_for_endless 激活。
+## 加变体=加数组行,零代码。
+const ENDLESS_LAYOUTS: Array = [
+	{"note": "晶脉浮陆·标准阵——3×3 均势对峙"},
+	{"player_cols": 4, "enemy_cols": 4, "note": "晶脉浮陆·宽潮面——4×4 大规模接敌"},
+	{"rows": 2, "player_cols": 3, "enemy_cols": 3, "note": "碎裂陆桥——双行 6v6 速决"},
+	{"enemy_cols": 4, "enemy_excluded": [3, 11], "note": "蚀窟裂谷——敌 4 列两翼塌陷"},
+]
+
+
+static func get_endless_variant_count() -> int:
+	return ENDLESS_LAYOUTS.size()
+
+
+static func get_endless_variant(idx: int) -> Dictionary:
+	if idx < 0 or idx >= ENDLESS_LAYOUTS.size():
+		return {}
+	return (ENDLESS_LAYOUTS[idx] as Dictionary).duplicate(true)
+
+
+static func get_endless_note(idx: int) -> String:
+	return String(get_endless_variant(idx).get("note", ""))
+
+
 static func has_custom_layout(level: int) -> bool:
 	return LAYOUT_BY_LEVEL.has(level)
 

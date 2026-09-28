@@ -515,8 +515,10 @@ func _on_task_completed(_task: Dictionary) -> void:
 # 战斗节奏（每关周期性触发，音色需有辨识度避免腻）
 func _on_wave_spawned(_wave_index: int) -> void:
 	play_sfx("wave_start")
-func _on_boss_wave_started(_boss_ids: Array) -> void:
-	play_sfx("boss_warn")
+func _on_boss_wave_started(wave_kind: String, _boss_ids: Array) -> void:
+	# v6.35: 精英波不吹警笛（每 5 波一响过频），首领/本体波保留 boss_warn
+	if wave_kind != "elite":
+		play_sfx("boss_warn")
 func _on_phase_master_appeared(_config: Dictionary) -> void:
 	play_sfx("master_appear")
 func _on_phase_driver_destroyed() -> void:

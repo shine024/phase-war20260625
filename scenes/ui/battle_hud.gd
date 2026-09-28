@@ -207,7 +207,15 @@ func _update_info_panel(_delta: float) -> void:
 		if total_waves > 0:
 			wave_label.text = "波次: %d/%d | 敌人:%d 我方:%d" % [current_wave, total_waves, enemy_count, player_count]
 		else:
-			wave_label.text = "波次: %d | 敌人:%d 我方:%d" % [current_wave, enemy_count, player_count]
+			# v6.35 黑门 2.0: endless 行带本体深度标记(读 EBM run 态)
+			var core_text: String = ""
+			var ebm := get_node_or_null("/root/EndlessBlackgateManager")
+			if ebm != null and int(ebm.get("gate_core_wave")) > 0:
+				if bool(ebm.get("gate_cleared")):
+					core_text = " | ✦本体已碎"
+				else:
+					core_text = " | 本体 ≈ %d 波" % int(ebm.get("gate_core_wave"))
+			wave_label.text = "波次: %d%s | 敌人:%d 我方:%d" % [current_wave, core_text, enemy_count, player_count]
 
 		# 关闭底部红字“敌人来袭”提示。
 		var warning_label = info_panel.get_node_or_null("Margin/VBox/WaveWarning")

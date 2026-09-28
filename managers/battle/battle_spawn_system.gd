@@ -71,6 +71,9 @@ var _stats_cache: Dictionary = {}
 ## v27 黑门无限模式：无尽出兵开关（BattleManager.start_battle 依 GameManager 标志置位；
 ## reset 时回 false。开启后 can_spawn_more_waves 恒真、波次构成走 _spawn_endless_xeno_wave）
 var _endless_mode: bool = false
+## v6.35 异族渗透编队（非空=渗透模式；单波，敌灭判胜）
+var _incursion_ids: Array = []
+var _incursion_spawned: bool = false
 
 ## 卡牌格子战术
 var _card_grid_active: bool = false
@@ -357,9 +360,47 @@ func is_endless_mode() -> bool:
 func all_enemy_waves_spawned() -> bool:
 	if _endless_mode:
 		return false  # 无尽 run 波次永不耗尽（终局=驱动器被毁）
+	# v6.35 异族渗透：单波编队，刷完即"波次耗尽"（敌灭判胜走既有链）
+	if not _incursion_ids.is_empty():
+		return _incursion_spawned
 	if _enemy_wave_total <= 0:
 		return true
 	return enemy_wave_index >= _enemy_wave_total
+
+
+## v6.35 异族渗透战：非 endless 单波 xeno 编队（收益很小口径），敌灭即判胜。
+func set_incursion_mode(loadout_ids: Array) -> void:
+	_incursion_ids = loadout_ids.duplicate()
+	_incursion_spawned = false
+
+
+func is_incursion_mode() -> bool:
+	return not _incursion_ids.is_empty()
+
+
+## 渗透战波次构成：整编队一波落下；强度锚定 = 宿主关（make_default_context 读 current_level）。
+func _spawn_incursion_wave() -> bool:
+	if _incursion_spawned:
+		return false
+	sync_enemy_unit_count_from_field()
+	if enemy_unit_count >= _enemy_field_unit_cap():
+		return false
+	_incursion_spawned = true
+	enemy_wave_index = 1
+	if _signal_bus:
+		_signal_bus.wave_spawned.emit(1)
+	var elite_pool: Array = XenoUnits.get_ids_for_role("elite") + XenoUnits.get_ids_for_role("ace")
+	for i in range(_incursion_ids.size()):
+		var arch: String = String(_incursion_ids[i])
+		var unit: Node2D = _create_enemy_unit_with_id(arch) as Node2D
+		if unit == null:
+			continue
+		# 末位（精英位）吃精英词缀
+		if i == _incursion_ids.size() - 1 and arch in elite_pool and unit.has_method("apply_elite_affixes"):
+			unit.apply_elite_affixes("elite")
+		if not spawn_enemy_unit_on_card_grid(unit, -1) and is_instance_valid(unit):
+			unit.queue_free()
+	return true
 
 
 ## 格子战术：时间到后本波 `to_spawn` 个单位同时落在空敌槽。敌槽全满时不推进波次、不消耗间隔。
@@ -369,6 +410,9 @@ func spawn_card_grid_enemy_wave(current_level: int) -> bool:
 	# v27 黑门无限模式：星冥族专用波次构成（每 5 波精英 / 每 10 波首领，设计 §5.2）
 	if _endless_mode:
 		return _spawn_endless_xeno_wave(current_level)
+	# v6.35 异族渗透战：单波编队（宿主关强度锚定，敌灭判胜）
+	if not _incursion_ids.is_empty():
+		return _spawn_incursion_wave()
 	# 记录3#6/#11：波次推进面包屑——"敌人没了也不刷新不判胜"与核爆冻住都靠它定界
 	TraceLog.mark("wave_spawn", "lvl=%d idx=%d" % [current_level, enemy_wave_index])
 	sync_enemy_unit_count_from_field()
@@ -523,7 +567,7 @@ func spawn_card_grid_enemy_wave(current_level: int) -> bool:
 
 	# v7.x 战场视觉反馈：本波生成了 boss → 广播 BOSS 波次开始（BattleSpectacle 播放登场特效）
 	if _signal_bus and not _wave_boss_spawns.is_empty():
-		_signal_bus.boss_wave_started.emit(_wave_boss_spawns.duplicate())
+		_signal_bus.boss_wave_started.emit("boss", _wave_boss_spawns.duplicate())
 	_wave_boss_spawns.clear()
 	return true
 
@@ -549,26 +593,50 @@ func _spawn_endless_xeno_wave(current_level: int) -> bool:
 	enemy_wave_index = next_wave
 	if _signal_bus:
 		_signal_bus.wave_spawned.emit(enemy_wave_index)
+	# v6.35 黑门 2.0: EBM run 态(RefCounted 无 get_node_or_null,按本文件惯例走 _get_autoload_node)
+	var ebm: Node = _get_autoload_node("EndlessBlackgateManager")
+	# v6.35: 临近本体预告(距 gate_core_wave ≤10 波,每 5 波一报;C3 如实)
+	if ebm != null and not bool(ebm.get("gate_cleared")):
+		var core_wave: int = int(ebm.get("gate_core_wave"))
+		var dist: int = core_wave - next_wave
+		if core_wave > 0 and dist > 0 and dist <= 10 and next_wave % 5 == 0 and _signal_bus.has_signal("show_toast"):
+			_signal_bus.show_toast.emit("⚠ 黑门本体临近——约第 %d 波" % core_wave)
 
 	var is_boss_wave: bool = next_wave % 10 == 0
 	var is_elite_wave: bool = (not is_boss_wave) and next_wave % 5 == 0
+	# v6.35 黑门 2.0: 本体波——到达随机深度且未通关时,本波替换为本体+护卫
+	var is_core_wave: bool = ebm != null and not bool(ebm.get("gate_cleared")) \
+		and int(ebm.get("gate_core_wave")) > 0 and next_wave == int(ebm.get("gate_core_wave"))
 
-	# 出兵量：2 起步，每 8 波 +1，封顶 4（boss 波 1 首领 + 伴随）
+	# 出兵量：2 起步，每 8 波 +1，封顶 4（boss 波 1 首领 + 伴随；本体波 1 本体 + 2 护卫）
 	var to_spawn: int = 2 + mini(2, int((next_wave - 1) / 8.0))
 	if is_boss_wave:
 		to_spawn = mini(to_spawn, 3)
+	if is_core_wave:
+		to_spawn = 3
 	to_spawn = mini(to_spawn, free_n)
 
 	var basic_ids: Array = XenoUnits.get_ids_for_role("basic")
 	var elite_ids: Array = XenoUnits.get_ids_for_role("elite") + XenoUnits.get_ids_for_role("ace")
 	var boss_ids: Array = XenoUnits.get_ids_for_role("boss")
+	var core_id: String = "xeno_gate_core"
+	var core_spawned: bool = false
 
 	for _i in range(to_spawn):
 		if enemy_unit_count >= _enemy_field_unit_cap():
 			break
 		var archetype_id: String = ""
 		var type_pick: String = "basic"
-		if is_boss_wave:
+		if is_core_wave and not core_spawned:
+			# 本体:场上唯一,吃 CORE 倍率(HP×10/攻×2,黑门 2.0 数值定案)
+			archetype_id = core_id
+			type_pick = "core"
+			core_spawned = true
+		elif is_core_wave:
+			archetype_id = String(elite_ids[randi() % elite_ids.size()]) if not elite_ids.is_empty() \
+				else String(basic_ids[randi() % basic_ids.size()])
+			type_pick = "elite"
+		elif is_boss_wave:
 			# 首波伴随走基础池；首领唯一性命中时降级精英
 			if _i == 0 and not boss_ids.is_empty():
 				var cand: String = boss_ids[(int(next_wave / 10.0) - 1) % boss_ids.size()]
@@ -593,7 +661,7 @@ func _spawn_endless_xeno_wave(current_level: int) -> bool:
 
 		if archetype_id.is_empty():
 			continue
-		if type_pick == "boss" and archetype_id not in _wave_boss_spawns:
+		if (type_pick == "boss" or type_pick == "core") and archetype_id not in _wave_boss_spawns:
 			_wave_boss_spawns.append(archetype_id)
 
 		var unit: Node2D = _create_enemy_unit_with_id(archetype_id) as Node2D
@@ -604,13 +672,27 @@ func _spawn_endless_xeno_wave(current_level: int) -> bool:
 				unit.apply_elite_affixes(type_pick)
 				if type_pick == "boss":
 					unit.set_meta("_is_boss_unit", true)
+		if type_pick == "core":
+			unit.set_meta("_is_boss_unit", true)
+			unit.set_meta("_is_gate_core", true)
+			if unit.has_method("apply_gate_core_scaling"):
+				# 黑门 2.0 数值定案:HP×10/攻×2(乘在波次乘区之后;占位可微调)
+				unit.apply_gate_core_scaling(10.0, 2.0)
 		if not spawn_enemy_unit_on_card_grid(unit, -1):
 			if is_instance_valid(unit):
 				unit.queue_free()
 			continue
 
+	# v6.35: 信号带 wave_kind——"core"本体波/"boss"首领波全套演出,"elite"精英波轻档
 	if _signal_bus and not _wave_boss_spawns.is_empty():
-		_signal_bus.boss_wave_started.emit(_wave_boss_spawns.duplicate())
+		_signal_bus.boss_wave_started.emit("core" if is_core_wave else "boss", _wave_boss_spawns.duplicate())
+	elif _signal_bus and is_elite_wave:
+		_signal_bus.boss_wave_started.emit("elite", [])
+	# v6.35: 中途补给节点(每 25 波自动入账,不打断战斗;Toast 即时反馈)
+	if ebm != null and ebm.has_method("grant_supply_node"):
+		var supply: Dictionary = ebm.call("grant_supply_node", next_wave)
+		if not supply.is_empty() and _signal_bus != null and _signal_bus.has_signal("show_toast"):
+			_signal_bus.show_toast.emit("◈ 补给节点 · 纳米 +%d 能量块 +%d" % [int(supply.get("nano", 0)), int(supply.get("energy", 0))])
 	_wave_boss_spawns.clear()
 	return true
 
@@ -719,6 +801,8 @@ func reset(battle_scene: Node, enemy_wave_interval: float, enemy_wave_total: int
 	_card_grid_enemy_quota = _CardGridSlotsPerSide
 	_reset_deploy_uses()
 	_endless_mode = false  # v27: 每场重置；黑门 run 由 BattleManager.start_battle 显式置位
+	_incursion_ids = []  # v6.35: 渗透编队每场重置（进战链经 GameManager 显式置位）
+	_incursion_spawned = false
 
 # =========================================================================
 #  波次计时（由 BattleManager._process 调用）

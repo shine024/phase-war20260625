@@ -180,30 +180,35 @@ func _build() -> void:
 	var vbox := _make_result_tab("战报", "胜败横幅、核心数据、星级、本局协同与迷失者讯息")
 	if not _is_afk:
 		_render_victory_banner(vbox)
-		_render_battle_stats(vbox)
-		# v30 R3（设计审查 F-07）：本局协同小结——组合/套装/搭档的战斗内贡献在结算收口
-		_render_synergy_summary(vbox)
-		# v30.2 R4（设计审查 F-08）：驻守关战胜后的迷失者遗言——叙事收口
-		if player_won:
-			_render_master_epilogue(vbox)
-		# v27: 败因分析——失败要产出知识（残存敌军构成 + 克制建议 + 情报提示）
-		if not player_won:
-			_render_defeat_analysis(vbox)
-		# v30.2 R4（F-08）：L100 通关结局演出（独白+致谢+黑门钩子；NG+ 入口在养成页）
-		_render_ending(vbox)
+		if _is_endless():
+			# v6.35 黑门 2.0: 黑门战报取代推图战绩(星级/协同/败因对无尽口径错位)
+			_render_endless_report(vbox)
+		else:
+			_render_battle_stats(vbox)
+			# v30 R3（设计审查 F-07）：本局协同小结——组合/套装/搭档的战斗内贡献在结算收口
+			_render_synergy_summary(vbox)
+			# v30.2 R4（设计审查 F-08）：驻守关战胜后的迷失者遗言——叙事收口
+			if player_won:
+				_render_master_epilogue(vbox)
+			# v27: 败因分析——失败要产出知识（残存敌军构成 + 克制建议 + 情报提示）
+			if not player_won:
+				_render_defeat_analysis(vbox)
+			# v30.2 R4（F-08）：L100 通关结局演出（独白+致谢+黑门钩子；NG+ 入口在养成页）
+			_render_ending(vbox)
 
 	# 缴获页
 	var loot_vbox := _make_result_tab("缴获", "首通奖励、本关缴获、战斗卡成长、情报揭示与战利品清单")
 	_render_first_clear(loot_vbox)
 	_render_phase_field_xp(loot_vbox)
 	_render_card_growth(loot_vbox)
-	if player_won:
-		_render_reward_summary(loot_vbox)
 	_render_intel_harvest(loot_vbox)
-	if player_won:
-		_render_drops(loot_vbox)
-		_render_phase_instrument_drop(loot_vbox)
+	if player_won or _is_endless():
+		if not _is_endless():
+			_render_reward_summary(loot_vbox)
+			_render_drops(loot_vbox)
+			_render_phase_instrument_drop(loot_vbox)
 		# v7.x 胜利面板漏显修复：本局缴获与战利品（战中击杀卡/符文/相位师全部缴获）
+		# v6.35 修复：黑门 run 战中缴获照常展示（旧 player_won 门控把无尽缴获整页吞掉）
 		_render_collected_rewards(loot_vbox)
 
 	# 养成页：基地状态（v30.1 默认折叠）+ 二周目入口
@@ -399,9 +404,61 @@ func _render_ending(vbox: VBoxContainer) -> void:
 	wrap.add_child(hook)
 
 
+## v6.35 黑门 2.0: endless run 判定(last_battle_reward_summary 带 endless 键,EBM.settle_run 写入)
+func _is_endless() -> bool:
+	return _reward_summary.has("endless")
+
+
+## v6.35: 黑门战报区块——通关标记/波次/击杀/分数/星髓/新纪录/补给,数据源 summary.endless
+## (EBM.settle_run 摘要,全部数值读真实字段,禁虚构)。
+func _render_endless_report(vbox: VBoxContainer) -> void:
+	var e: Dictionary = _reward_summary.get("endless", {})
+	if e.is_empty():
+		return
+	var block := VBoxContainer.new()
+	block.add_theme_constant_override("separation", 6)
+	vbox.add_child(block)
+	var head := Label.new()
+	head.text = "◈ 黑门战报"
+	head.add_theme_font_size_override("font_size", DT.FONT_SIZE_TITLE)
+	head.add_theme_color_override("font_color", DT.COLOR_ENERGY)
+	block.add_child(head)
+	var banner := Label.new()
+	banner.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	if bool(e.get("gate_cleared", false)):
+		banner.text = "✦ 黑门本体已击碎（目标深度 第 %d 波）" % int(e.get("gate_core_wave", 0))
+		banner.add_theme_color_override("font_color", DT.COLOR_GOLD)
+	else:
+		banner.text = "◈ 黑门征程结束"
+		banner.add_theme_color_override("font_color", DT.COLOR_TEXT_BRIGHT)
+	banner.add_theme_font_size_override("font_size", DT.FONT_SIZE_HUGE)
+	block.add_child(banner)
+	var lines: Array[String] = [
+		"抵达波次：第 %d 波 · 击杀 %d" % [int(e.get("waves", 0)), int(e.get("kills", 0))],
+		"分数：%d%s" % [int(e.get("score", 0)), "  ★ 新纪录！" if bool(e.get("is_best", false)) else ""],
+		"历史最佳：第 %d 波 · %d 分" % [int(e.get("best_waves", 0)), int(e.get("best_score", 0))],
+	]
+	var marrow: int = int(e.get("marrow", 0))
+	if marrow > 0:
+		lines.append("星髓：+%d%s" % [marrow, "（本周封顶）" if bool(e.get("marrow_capped", false)) else ""])
+	if bool(e.get("gate_first_clear", false)):
+		lines.append("★ 首次通关大奖已发放 · 黑门已平息")
+	var supplies: int = int(e.get("supplies_granted", 0))
+	if supplies > 0:
+		lines.append("补给节点 ×%d 已入账" % supplies)
+	for line in lines:
+		var lbl := Label.new()
+		lbl.text = line
+		lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_MEDIUM)
+		block.add_child(lbl)
+
+
 func _render_victory_banner(vbox: VBoxContainer) -> void:
 	# 批次③ Task 2：三态叙事——胜利池 / 撤退池（meta 一次性消费）/ 失败池；
 	# 撤退标题不复用「失败」红字，走中性色，避免"撤退被判失败"的文案打架。
+	# v6.35: 黑门 run 走专用横幅（无尽无败局语义——"失败"红字对黑门是错位文案）。
+	if _is_endless():
+		return
 	var retreated := false
 	if not player_won:
 		retreated = Engine.has_meta(META_RETREATED)
@@ -1246,6 +1303,8 @@ func _render_close_button_anchored(panel: Control) -> void:
 ## 防"重打旧关后 current_level 已被推进到最高解锁关"时按钮指向跳变。
 ## v38（用户反馈学习成本）：门槛从"教程 14 步全完"放宽到"首战步已过"——
 ## 首场胜利即出现直通键，战后续播步（基地/面板类）回基地时照常点播，不因连战丢失。
+## v6.30（用户拍板 2026-09-27）：撤销 v6.28「移动基地」引导门（is_pending_truck_base_intro
+## 已删）——首胜结算同屏出直通键，不再强制回基地后才给。
 func _compute_next_level() -> int:
 	if not player_won or _is_afk:
 		return 0
@@ -1254,9 +1313,6 @@ func _compute_next_level() -> int:
 		return 0
 	var tpm: Node = root.get_node_or_null("TutorialProgressionManager")
 	if tpm != null and tpm.has_method("is_past_first_battle") and not tpm.is_past_first_battle():
-		return 0
-	# v6.28（记录2#4）：首胜后教程停在「移动基地」步——隐藏直通键强制回基地看引导
-	if tpm != null and tpm.has_method("is_pending_truck_base_intro") and tpm.is_pending_truck_base_intro():
 		return 0
 	var gm: Node = root.get_node_or_null("GameManager")
 	var lpm: Node = root.get_node_or_null("LevelProgressManager")
@@ -1272,6 +1328,7 @@ func _compute_next_level() -> int:
 
 ## v38.1：再战本关直通条件——非挂机 · 教程已过首战步（与下一关同门槛）·
 ## 本战关号 1-100。胜/败均可（败局快速重试）；重打关无需解锁检查（打过必解锁过）。
+## v6.30：「移动基地」引导门随 is_pending_truck_base_intro 删除一并撤销。
 func _compute_replay_level() -> int:
 	if _is_afk:
 		return 0
@@ -1280,9 +1337,6 @@ func _compute_replay_level() -> int:
 		return 0
 	var tpm: Node = root.get_node_or_null("TutorialProgressionManager")
 	if tpm != null and tpm.has_method("is_past_first_battle") and not tpm.is_past_first_battle():
-		return 0
-	# v6.28（记录2#4）：同下一关门——「移动基地」步未完成不出再战键
-	if tpm != null and tpm.has_method("is_pending_truck_base_intro") and tpm.is_pending_truck_base_intro():
 		return 0
 	var gm: Node = root.get_node_or_null("GameManager")
 	if gm == null:

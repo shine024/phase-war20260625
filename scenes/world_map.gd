@@ -291,6 +291,27 @@ func _ready() -> void:
 	_refresh_fuel_chip()
 	if not SignalBus.truck_travel_changed.is_connected(_on_truck_travel_changed):
 		SignalBus.truck_travel_changed.connect(_on_truck_travel_changed)
+	# v6.35: 渗透节点变化 → 热区重建(地图已建时)
+	if SignalBus.has_signal("incursions_changed") and not SignalBus.incursions_changed.is_connected(_on_incursions_changed):
+		SignalBus.incursions_changed.connect(_on_incursions_changed)
+
+
+## v6.35: 渗透节点增删 → 对当前画布重建热区(地图未建时跳过,构建链会带上)
+func _on_incursions_changed() -> void:
+	if not _map_built:
+		return
+	var scroll := get_node_or_null("Margin/VBox/ScrollContainer") as ScrollContainer
+	if scroll == null:
+		return
+	var canvas := scroll.get_node_or_null("MapCanvas")
+	if canvas == null:
+		# 模板复用路径下画布是复用副本,按子序取第一个 Control 画布兜底
+		for c in scroll.get_children():
+			if c is Control:
+				canvas = c
+				break
+	if canvas != null:
+		_apply_incursion_markers(canvas)
 	if not SignalBus.bunker_day_ended.is_connected(_refresh_fuel_chip):
 		SignalBus.bunker_day_ended.connect(_refresh_fuel_chip)
 	# 延迟一帧再生成地图，避免启动时卡顿
@@ -444,6 +465,7 @@ func _build_level_map() -> void:
 					stale.queue_free()
 			_add_truck_marker(reused)
 			_apply_gate_state(reused)
+			_apply_incursion_markers(reused)
 			if MAP_SCHEME == 11:
 				_fit_canvas_to_viewport.call_deferred(reused, scroll)
 			_map_built = true
@@ -499,6 +521,7 @@ func _build_level_map() -> void:
 	gate.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	canvas.add_child(gate)
 	_apply_gate_state(canvas)
+	_apply_incursion_markers(canvas)
 
 	# 4) 家（v23）：方案 11 不叠任何贴图——小号程序标记（原图已画山体掩体），点击回基地
 	if MAP_SCHEME == 11:
@@ -534,11 +557,17 @@ func _build_level_map() -> void:
 		gate_entry.name = "BlackGateEntry"
 		gate_entry.flat = true
 		var gate_unlocked: bool = _is_blackgate_unlocked()
+		# v6.35: 通关后世界状态——异族不再渗出,深处挑战保留
+		var gate_cleared_once: bool = false
+		var _gate_ebm0 := _blackgate_mgr()
+		if _gate_ebm0 != null:
+			gate_cleared_once = bool(_gate_ebm0.get("gate_cleared_once"))
 		var gate_p := _gate_pos()
 		gate_entry.size = Vector2(150, 130)
 		gate_entry.position = gate_p - gate_entry.size * 0.5
 		gate_entry.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-		gate_entry.tooltip_text = "黑门——星冥族的裂隙（无限模式）" if gate_unlocked \
+		gate_entry.tooltip_text = ("黑门——已平息，异族不再渗出；深处仍可再战（无限模式）" if gate_cleared_once \
+			else "黑门——星冥族的裂隙（无限模式）") if gate_unlocked \
 			else "黑门（通关第 100 关后开启）"
 		gate_entry.modulate = Color(1, 1, 1, 1.0) if gate_unlocked else Color(1, 1, 1, 0.35)
 		gate_entry.gui_input.connect(_on_blackgate_gui_input)
@@ -1847,6 +1876,10 @@ func _show_blackgate_popup() -> void:
 		"每场随机 1 条裂隙环境（灵能风暴/低重力/裂隙潮汐/晶脉浮陆），敌我双向生效。",
 		# v6.19 P1-T1.2 概率可见化：上限/重置口径读常量（宪法 C3）
 		"星髓按渗度里程碑发放，每周上限 %d（每周一重置）。" % EndlessBlackgateRef.WEEKLY_MARROW_CAP,
+		# v6.35 黑门 2.0: 本体通关 + 撤退口径（数值读常量）
+		"深处潜伏着黑门本体（每场位置随机，约 %d~%d 波）——打爆它即通关，之后可继续深入无限区。" % [
+			EndlessBlackgateRef.GATE_CORE_WAVE_MIN, EndlessBlackgateRef.GATE_CORE_WAVE_MAX],
+		"随时可撤退或返回标题：按当前波次结算，星髓里程碑照发、战利品照常带回；入场次数按进场计，再次进入重新计次。",
 	]
 	for line in lines:
 		var lbl := Label.new()
@@ -1997,6 +2030,94 @@ func _arm_endless_battle_state() -> void:
 			GameManager.start_endless_battle()
 	if not (has_meta("embedded_mode") and bool(get_meta("embedded_mode"))):
 		Engine.set_meta("level_auto_start_pending", true)
+
+## ── v6.35 异族渗透(大地图随机星冥散兵,收益很小) ─────────────────────
+## 黑门未通关期间,宿主关卡旁红色脉点热区;通关(gate_cleared_once)后清场停刷。
+## 热区不进模板缓存——首建与模板复用两路都调本函数,按 EBM.incursions 动态重建。
+func _apply_incursion_markers(canvas: Control) -> void:
+	if canvas == null or not is_instance_valid(canvas):
+		return
+	var old := canvas.get_node_or_null("IncursionMarkers")
+	if old != null:
+		old.queue_free()
+	var ebm := _blackgate_mgr()
+	if ebm == null or bool(ebm.get("gate_cleared_once")):
+		return
+	var list: Array = ebm.get("incursions")
+	if list.is_empty():
+		return
+	var anchor: int = _built_window_anchor if _built_window_anchor > 0 else _truck_anchor_level()
+	var holder := Control.new()
+	holder.name = "IncursionMarkers"
+	holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	canvas.add_child(holder)
+	for inc_var in list:
+		var inc: Dictionary = inc_var if inc_var is Dictionary else {}
+		var host: int = int(inc.get("host_level", 0))
+		if host < 1:
+			continue
+		# v36 窗口纪律:宿主关在视野窗口外不建热区(防窗外元素悬空)
+		if absi(host - anchor) > MAP_WINDOW_RADIUS:
+			continue
+		var btn := Button.new()
+		btn.name = "Incursion_%d_%d" % [host, int(inc.get("seed", 0))]
+		btn.flat = true
+		btn.size = Vector2(34, 34)
+		btn.position = _level_point(host) + Vector2(20, -30)
+		btn.tooltip_text = "异族渗透——星冥散兵(收益微小)\n点击迎战"
+		btn.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+		btn.modulate = Color(1.0, 0.42, 0.36, 0.95)
+		btn.gui_input.connect(_on_incursion_gui_input.bind(inc))
+		var dot := Label.new()
+		dot.text = "◉"
+		dot.add_theme_font_size_override("font_size", 22)
+		dot.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		dot.position = Vector2(6, 2)
+		btn.add_child(dot)
+		holder.add_child(btn)
+
+func _on_incursion_gui_input(event: InputEvent, inc: Dictionary) -> void:
+	if event is InputEventMouseButton and (event as InputEventMouseButton).pressed \
+			and (event as InputEventMouseButton).button_index == MOUSE_BUTTON_LEFT:
+		SignalBus.play_sound.emit("button")
+		_confirm_incursion_battle(inc)
+
+func _confirm_incursion_battle(inc: Dictionary) -> void:
+	var confirm := ConfirmationDialog.new()
+	confirm.title = "异族渗透"
+	var loadout_hint: String = ""
+	var ebm := _blackgate_mgr()
+	if ebm != null and ebm.has_method("get_incursion_loadout"):
+		var ld: Dictionary = ebm.call("get_incursion_loadout", inc)
+		var names: PackedStringArray = []
+		for id in ld.get("ids", []):
+			names.append(XenoUnits.get_display_name(String(id)))
+		loadout_hint = " · ".join(names)
+	confirm.dialog_text = "第 %d 关附近侦测到异族散兵渗透：\n%s\n\n收益微小（少量资源，概率缴获）。迎战？" % [
+		int(inc.get("host_level", 1)), loadout_hint]
+	confirm.ok_button_text = "迎战"
+	confirm.cancel_button_text = "再想想"
+	add_child(confirm)
+	confirm.confirmed.connect(func() -> void:
+		confirm.queue_free()
+		_launch_incursion(inc)
+	)
+	confirm.canceled.connect(func() -> void:
+		confirm.queue_free()
+	)
+	confirm.popup_centered()
+
+## 渗透进战:meta 承载意图——独立场景链 main._ready 消费;内嵌链直调 main 消费函数
+## (场景不重载,_ready 不会跑)。落地即开打,与「进关即开战」同范式。
+func _launch_incursion(inc: Dictionary) -> void:
+	Engine.set_meta("rift_incursion_pending", inc.duplicate(true))
+	var main_node := get_node_or_null("/root/Main")
+	if has_meta("embedded_mode") and bool(get_meta("embedded_mode")):
+		back_to_main.emit()
+		if main_node != null and main_node.has_method("_consume_incursion_meta"):
+			main_node.call_deferred("_consume_incursion_meta")
+		return
+	SceneTransition.change(get_tree(), "res://scenes/main.tscn")
 
 ## v6.22: 原 _on_territory_map_button/_ensure_local_occupation_overlay 已随领地图面板退役删除。
 

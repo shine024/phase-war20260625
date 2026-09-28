@@ -3,6 +3,7 @@ extends Node
 const DEBUG_GAME_LOG := false
 const PhaseMasterGarrison := preload("res://data/phase_master_garrison.gd")  # v7.x 相位师驻守映射
 const NpcPhaseMasters := preload("res://data/npc_phase_masters.gd")  # NPC 相位师单一真理源
+const EndlessBlackgateRef := preload("res://managers/endless_blackgate_manager.gd")  # v6.35 渗透/本体常量
 
 enum GamePhase {
 	PRE_BATTLE,
@@ -491,6 +492,66 @@ func is_endless_battle() -> bool:
 func start_endless_battle() -> void:
 	_is_endless_battle = true
 
+## ── v6.35 异族渗透战（大地图随机星冥散兵,收益很小口径）──────────────
+## 单波 xeno 编队,敌灭判胜,专用轻结算(不推关卡/星级/势力反应/相位师遭遇)。
+var pending_incursion_loadout: Array = []
+var _is_incursion_battle: bool = false
+var _pending_incursion: Dictionary = {}
+
+func is_incursion_battle() -> bool:
+	return _is_incursion_battle
+
+## 由 world_map 热区/进战链调用(inc = EBM.incursions 成员)。强度锚定宿主关
+## (set_current_level → make_default_context 读 current_level 走档位/时代递进)。
+func start_incursion_battle(inc: Dictionary) -> void:
+	var ebm: Node = get_node_or_null("/root/EndlessBlackgateManager")
+	if ebm == null or not ebm.has_method("get_incursion_loadout"):
+		return
+	var loadout: Dictionary = ebm.call("get_incursion_loadout", inc)
+	var ids: Array = loadout.get("ids", [])
+	if ids.is_empty():
+		return
+	pending_incursion_loadout = ids.duplicate()
+	_pending_incursion = inc.duplicate(true)
+	_is_incursion_battle = true
+	if loadout.get("host_level", 0) is int and int(loadout.get("host_level", 0)) > 0:
+		set_current_level(int(loadout.get("host_level")))
+	go_to_battle()
+
+## 渗透战轻结算:胜=小额资源+低概率缴获+节点清除;败=节点消失(异族转移)。
+## 不弹结算面板(收益很小定位,Toast 承载),直接回整备。
+func _settle_incursion_battle(player_won: bool) -> void:
+	_is_incursion_battle = false
+	var inc: Dictionary = _pending_incursion
+	_pending_incursion = {}
+	pending_incursion_loadout = []
+	var ebm: Node = get_node_or_null("/root/EndlessBlackgateManager")
+	if ebm != null and ebm.has_method("erase_incursion"):
+		ebm.erase_incursion(inc)
+	if player_won:
+		if BasicResourceManager != null:
+			BasicResourceManager.add_resource("basic_nano", EndlessBlackgateRef.INCURSION_NANO)
+			BasicResourceManager.add_resource("energy_block", EndlessBlackgateRef.INCURSION_ENERGY)
+		# 低概率缴获:从编队随机一只掉 captured_xeno_*(直接入包;收集器不消费,渗透战不弹面板)
+		var captured_note: String = ""
+		if randf() < EndlessBlackgateRef.INCURSION_CAPTURE_CHANCE:
+			var ebm2: Node = get_node_or_null("/root/EndlessBlackgateManager")
+			var ids: Array = ebm2.call("get_incursion_loadout", inc).get("ids", []) if ebm2 != null else []
+			if not ids.is_empty():
+				var arch: String = String(ids[randi() % ids.size()])
+				var card_id: String = "captured_" + arch
+				var bp := get_node_or_null("/root/SaveManager")
+				if bp != null and bp.has_method("enqueue_backpack_card_id"):
+					bp.enqueue_backpack_card_id(card_id)
+				captured_note = " · 🎖 缴获 %s" % arch
+		if SignalBus != null and SignalBus.has_signal("show_toast"):
+			SignalBus.show_toast.emit("异族渗透已清除 · 纳米 +%d 能量块 +%d%s" % [
+				EndlessBlackgateRef.INCURSION_NANO, EndlessBlackgateRef.INCURSION_ENERGY, captured_note])
+	else:
+		if SignalBus != null and SignalBus.has_signal("show_toast"):
+			SignalBus.show_toast.emit("渗透的异族散兵转移了……")
+	return_to_prep()
+
 func go_to_battle() -> void:
 	if DEBUG_GAME_LOG:
 		pass  # LOG: go_to_battle 被调用
@@ -507,8 +568,8 @@ func go_to_battle() -> void:
 	last_battle_reward_summary = {}
 	clear_battle_reward_collector()  # v7.x 胜利面板漏显修复：战斗开始时清空本局收集器
 	_snapshot_battle_reward_baselines()
-	# 检查是否遭遇相位师（v27 黑门无尽 run 不遭遇相位师）
-	if not _is_endless_battle:
+	# 检查是否遭遇相位师（v27 黑门无尽 run 不遭遇相位师；v6.35 渗透战同样排除）
+	if not _is_endless_battle and not _is_incursion_battle:
 		check_phase_master_encounter()
 	if battle_scene == null:
 		push_error("battle_scene 为空，请检查 Main 是否调用了 GameManager.set_battle_scene")
@@ -549,6 +610,11 @@ func _on_battle_ended(player_won: bool) -> void:
 	# 的"打完一轮"，不是失败语义）。缴获掉落在 BattleManager.end_battle 链已生成。
 	if _is_endless_battle:
 		_settle_endless_battle()
+		return
+
+	# v6.35 异族渗透战:专用轻结算(Toast+回整备,不弹面板不推进度)
+	if _is_incursion_battle:
+		_settle_incursion_battle(player_won)
 		return
 
 	# v6.19 P2-T2.1: 首次相位师遭遇后的情报引导（胜败皆弹——败给相位师正是最需要情报的时刻；
@@ -862,7 +928,13 @@ func _settle_endless_battle() -> void:
 		last_battle_reward_summary["card_growth"] = growth_bak
 
 	# Toast 播报（分层反馈：Toast=即时，面板=明细）
-	var toast_lines: PackedStringArray = ["黑门征程结束：第 %d 波 · 击杀 %d" % [waves, kills]]
+	var toast_lines: PackedStringArray = []
+	# v6.35 黑门 2.0: 通关时刻优先播报
+	if not summary.is_empty() and bool(summary.get("gate_cleared", false)):
+		toast_lines.append("✦ 黑门本体已击碎！")
+		if bool(summary.get("gate_first_clear", false)):
+			toast_lines.append("★ 首次通关 · 黑门已平息")
+	toast_lines.append("黑门征程结束：第 %d 波 · 击杀 %d" % [waves, kills])
 	if not summary.is_empty():
 		toast_lines.append("分数 %d" % int(summary.get("score", 0)))
 		if bool(summary.get("is_best", false)):
@@ -1346,6 +1418,10 @@ func get_enemy_wave_total_for_level(level: int) -> int:
 
 func get_enemy_wave_interval_for_level(level: int) -> float:
 	if _is_endless_battle:
+		# v6.35 黑门 2.0: 通关弹窗待选择期间暂停刷兵(选「继续深入」后恢复)
+		var ebm: Node = get_node_or_null("/root/EndlessBlackgateManager")
+		if ebm != null and bool(ebm.get("gate_choice_pending")):
+			return 3600.0  # 1 小时=事实暂停;不用 tree.paused(会冻住演出/UI 链)
 		return 7.0  # 星冥带节奏（设计 §5.2，与近未来同档）
 	return LevelEras.get_wave_interval_for_level(max(1, level))
 

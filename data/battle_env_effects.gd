@@ -79,6 +79,11 @@ static func clear_rift_override() -> void:
 	_rift_override = ""
 
 
+## v6.35: 本场裂隙环境描述(desc 表内单一真身——开战播报/战报同源,C3)
+static func get_rift_desc(key: String) -> String:
+	return String(RIFT_ENV_EFFECTS.get(key, {}).get("desc", ""))
+
+
 static func get_rift_override() -> String:
 	return _rift_override
 

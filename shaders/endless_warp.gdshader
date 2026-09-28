@@ -6,11 +6,15 @@ shader_type canvas_item;
 uniform float warp_amplitude : hint_range(0.0, 0.02) = 0.0; // UV 振幅（0.003 ≈ 4px @1280 宽）
 uniform float warp_speed : hint_range(0.0, 2.0) = 0.35;
 uniform float time_acc = 0.0;
+// v6.34: 每 run 随机色调滤镜(0=关;battlefield 按 EBM 裂隙环境/roll 注入,同场恒定)
+uniform vec3 run_tint = vec3(1.0); // 乘法色调(每通道 0.75~1.15 微偏)
+uniform float tint_enabled : hint_range(0.0, 1.0) = 0.0;
 
 void fragment() {
 	vec2 uv = UV;
 	float t = time_acc * warp_speed;
 	uv.x += sin(uv.y * 9.0 + t * 2.1) * warp_amplitude;
 	uv.y += sin(uv.x * 6.0 - t * 1.3) * warp_amplitude * 0.6;
-	COLOR = texture(TEXTURE, clamp(uv, vec2(0.0), vec2(1.0)));
+	vec4 tex_color = texture(TEXTURE, clamp(uv, vec2(0.0), vec2(1.0)));
+	COLOR = vec4(tex_color.rgb * mix(vec3(1.0), run_tint, tint_enabled), tex_color.a);
 }

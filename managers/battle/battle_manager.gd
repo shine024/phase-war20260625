@@ -420,6 +420,11 @@ func start_battle(battle_scene: Node) -> void:
 	battle_active = true
 	counter_break_count = 0  # v10: 克制质变计数清零
 	_defeated_enemies.clear()  ## v6.0: reset defeated enemy tracking
+	# v6.32: 开战面包屑——PM 驻守战不走波次/胜负埋点（_process 提前 return），
+	# 此前是 TraceLog 盲区（L10 4x 冻住时 trace 全程只有会话头）
+	TraceLog.mark("battle_start", "lvl=%d pm=%s ts=%.1f" % [
+		int(GameManager.current_level) if "current_level" in GameManager else 1,
+		str(_is_phase_master_battle), Engine.time_scale])
 	_group_target_cache_accum = _GROUP_TARGET_CACHE_INTERVAL_SEC
 
 	# 初始化刷新子系统
@@ -431,6 +436,16 @@ func start_battle(battle_scene: Node) -> void:
 		var _ebm: Node = get_node_or_null("/root/EndlessBlackgateManager")
 		var _rift: String = String(_ebm.get("current_rift_env")) if _ebm != null else ""
 		BattleEnvEffects.set_rift_override(_rift)
+		# v6.35: 本场裂隙环境名播报(desc 表内单一真身,C3)
+		if _rift != "" and SignalBus.has_signal("show_toast"):
+			SignalBus.show_toast.emit("◈ 裂隙环境 · " + BattleEnvEffects.get_rift_desc(_rift))
+		# v6.35 黑门 2.0: 布局池变体(begin_run roll 的脚下位置轮换)——覆写 apply_for_level(100)
+		if _ebm != null and _ebm.has_method("get") and int(_ebm.get("layout_variant")) >= 0:
+			CardGridBattleLayout.apply_for_endless(int(_ebm.get("layout_variant")))
+	# v6.35 异族渗透战：单波 xeno 编队（GameManager.start_incursion_battle 已备好 loadout）
+	if GameManager != null and "pending_incursion_loadout" in GameManager \
+			and not (GameManager.pending_incursion_loadout as Array).is_empty():
+		_spawn_system.set_incursion_mode(GameManager.pending_incursion_loadout)
 	if battlefield != null and battlefield.has_method("ensure_battle_slot_grid_ready"):
 		battlefield.ensure_battle_slot_grid_ready()
 	_spawn_system.configure_card_grid_battle(BattleSlotGrid.SLOT_COUNT)

@@ -89,10 +89,17 @@ func _on_wave_spawned(wave_index: int) -> void:
 		text += " / %d" % total
 	_enqueue(text, DT.COLOR_TEXT_BRIGHT, DT.FONT_SIZE_MEDIUM, _NORMAL_DURATION, Priority.NORMAL)
 
-func _on_boss_wave_started(boss_archetype_ids: Array) -> void:
-	if boss_archetype_ids.is_empty():
+func _on_boss_wave_started(wave_kind: String, boss_archetype_ids: Array) -> void:
+	if wave_kind != "elite" and boss_archetype_ids.is_empty():
 		return
-	_enqueue("⚠ 精英波次来袭", DT.COLOR_DANGER, DT.FONT_SIZE_LARGE, _HIGH_DURATION, Priority.HIGH)
+	# v6.35: 三档文案——本体/boss HIGH 大字,精英 HIGH(5 波一报,打回存在感)
+	match wave_kind:
+		"core":
+			_enqueue("✦ 黑门本体现身", DT.COLOR_DANGER, DT.FONT_SIZE_LARGE, _HIGH_DURATION, Priority.HIGH)
+		"boss":
+			_enqueue("⚠ 首领波次来袭", DT.COLOR_DANGER, DT.FONT_SIZE_LARGE, _HIGH_DURATION, Priority.HIGH)
+		"elite":
+			_enqueue("⚠ 精英波次来袭", DT.COLOR_DANGER, DT.FONT_SIZE_LARGE, _HIGH_DURATION, Priority.HIGH)
 
 ## v10 解题式玩法：克制质变生效播报（LOW 优先级——高频事件不抢 BOSS/法则横幅）。
 ## break_type 对应播报文案：打破的不是血量，是敌方的优势机制。

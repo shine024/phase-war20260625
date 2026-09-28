@@ -20,6 +20,7 @@ extends Node
 
 const DT = preload("res://resources/design_tokens.gd")
 const VfxImpactFactory = preload("res://scripts/battle/vfx_impact_factory.gd")
+const EnemyArchetypes = preload("res://data/enemy_archetypes.gd")
 # v32.0 B1-1: 战斗时间状态（倍速档位/极速推演旗标唯一真身）
 const BattleTimeState = preload("res://scripts/battle/battle_time_state.gd")
 
@@ -58,6 +59,8 @@ func set_user_time_scale(scale: float) -> void:
 	# v32.0 B1-1: 倍速偏好持久化（battle_time_state 持有；top_hud_bar 开战时读档同步 UI）
 	BattleTimeState.user_scale = scale
 	BattleTimeState.save_pref()
+	# v6.32: 冻住诊断面包屑——倍速档位是负载定性的关键维度（4x 冻住主诉，低频点）
+	TraceLog.mark("speed_set", "scale=%.1f ts=%.1f" % [scale, Engine.time_scale])
 	# 慢动作/极速推演进行中不立即覆盖（等各自结束恢复到 _user_time_scale）
 	if not _slowmo_active and not BattleTimeState.ff_active:
 		Engine.time_scale = scale
@@ -109,6 +112,9 @@ func _ready() -> void:
 		SignalBus.boss_wave_started.connect(_on_boss_wave_started)
 		SignalBus.phase_master_appeared.connect(_on_phase_master_appeared)
 		SignalBus.battle_ended.connect(_on_battle_ended)
+		# v6.35 黑门 2.0: 本体击碎演出
+		if SignalBus.has_signal("gate_core_destroyed"):
+			SignalBus.gate_core_destroyed.connect(_on_gate_core_destroyed)
 		# v32.0 B1-1: 开战应用玩家倍速偏好
 		if SignalBus.has_signal("battle_started"):
 			SignalBus.battle_started.connect(_on_battle_started_speed)
@@ -212,15 +218,48 @@ func _play_elite_wave_beat() -> void:
 	if not _slowmo_active:
 		Engine.time_scale = _user_time_scale
 
-func _on_boss_wave_started(boss_archetype_ids: Array) -> void:
-	if boss_archetype_ids.is_empty():
+## v6.35 黑门 2.0: 本体击碎瞬间——慢动作(0.3×0.6s)+镜头推近(通关演出;选择弹窗由 main 负责)。
+## 守卫与精英波定格同门:减动效/慢动作中/顿帧中/极速推演不叠加。
+func _on_gate_core_destroyed() -> void:
+	_play_camera_push(1.25, 0.5, 1.0)
+	if DT.is_motion_reduce() or _slowmo_active or _hitstop_active or BattleTimeState.ff_active:
+		return
+	if Engine.time_scale <= 0.0:
+		return
+	_hitstop_active = true
+	Engine.time_scale = 0.3
+	await get_tree().create_timer(0.6, true, false, true).timeout
+	_hitstop_active = false
+	if not _slowmo_active:
+		Engine.time_scale = _user_time_scale
+
+func _on_boss_wave_started(wave_kind: String, boss_archetype_ids: Array) -> void:
+	if wave_kind != "elite" and boss_archetype_ids.is_empty():
 		return
 	var now_ms: int = Time.get_ticks_msec()
 	if now_ms - _last_boss_fx_ms < _THROTTLE_BOSS_MS:
 		return
 	_last_boss_fx_ms = now_ms
-	_play_boss_appear("精英波次来袭")
-	_play_elite_wave_beat()  # v34 C1：短定格节拍（L1-9 无相位师期的唯一强度高潮）
+	# v6.35: 三档波次演出——core 本体/boss 首领全套(暗化+横幅+震屏+推镜+定格),
+	# elite 精英仅短定格(横幅交 announcer 播报条,防 5 波一暗化过频)
+	match wave_kind:
+		"core":
+			_play_boss_appear("✦ 黑门本体现身")
+			_play_elite_wave_beat()
+		"boss":
+			_play_boss_appear("⚔ %s" % _boss_wave_title(boss_archetype_ids))
+			_play_elite_wave_beat()  # v34 C1：短定格节拍（L1-9 无相位师期的唯一强度高潮）
+		"elite":
+			_play_elite_wave_beat()
+
+## v6.35: 首领波横幅文案——单个首领带名（archetype display_name），取不到回退泛称。
+func _boss_wave_title(boss_archetype_ids: Array) -> String:
+	if boss_archetype_ids.is_empty():
+		return "首领波次来袭"
+	var id: String = String(boss_archetype_ids[0])
+	var cfg: Dictionary = EnemyArchetypes.get_config(id)
+	var name: String = String(cfg.get("display_name", ""))
+	return "首领来袭 · %s" % name if not name.is_empty() else "首领波次来袭"
 
 func _on_phase_master_appeared(master_config: Dictionary) -> void:
 	var now_ms: int = Time.get_ticks_msec()

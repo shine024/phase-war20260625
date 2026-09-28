@@ -341,6 +341,26 @@ const UNITS: Dictionary = {
 		"visual_fallback": "vis_xeno_mothership", "visual_scale": 2.0,
 		"drop_chance": 0.55, "power": 2400,
 	},
+
+	# ── E 段 · 黑门本体（v6.35 通关结构，role=core 不进常规轮换池）──
+	# 专门数值：base 中庸，最终强度 = 波次乘区（gate_core_wave 处已收敛段）×
+	# spawn 侧 CORE_HP_MULT/CORE_ATK_MULT（battle_spawn_system，黑门 2.0 数值定案）。
+	# drop_chance 1.0 = 击碎必掉本体卡（通关勋章缴获）。
+	"xeno_gate_core": {
+		"display_name": "黑门本体",
+		"role": "core",
+		"combat_kind": 2,
+		"hp": 6000.0,
+		"speed": -15.0,
+		"attack_light": 500.0, "attack_armor": 800.0, "attack_air": 500.0,
+		"attack_range": 620.0, "attack_interval": 2.0,
+		"weapon_type": 2, "weapon_label": "门渊吐息",
+		"defense_light": 180.0, "defense_armor": 260.0, "defense_air": 220.0,
+		"tags": ["turret", "sustained", "boss", "communion_node"],
+		"psi_shield_frac": 0.60, "communion": false, "communion_node": true,
+		"visual_fallback": "vis_xeno_mothership", "visual_scale": 2.4,
+		"drop_chance": 1.0, "power": 9999,
+	},
 }
 
 ## 稳定 id 序（A→D 段顺序，名册/缴获图鉴展示用）
@@ -351,11 +371,12 @@ const ID_ORDER: Array[String] = [
 	"xeno_dark_templar", "xeno_reaver",
 	"xeno_interceptor", "xeno_carrier", "xeno_saucer",
 	"xeno_templar", "xeno_thing", "xeno_mothership",
+	"xeno_gate_core",
 ]
 
 ## 角色中文（战前摘要/结算展示用）
 const ROLE_LABELS: Dictionary = {
-	"basic": "基础", "elite": "精英", "ace": "王牌", "boss": "首领",
+	"basic": "基础", "elite": "精英", "ace": "王牌", "boss": "首领", "core": "本体",
 }
 
 

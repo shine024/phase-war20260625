@@ -111,6 +111,9 @@ func _ready() -> void:
 		top_hud_bar.btn_pause_pressed.connect(_on_pause_pressed)
 		top_hud_bar.btn_retreat_pressed.connect(_on_retreat_pressed)
 		top_hud_bar.btn_back_pressed.connect(_on_back_to_base)
+	# v6.35 黑门 2.0: 本体击碎 → 通关选择窗(继续深入/携带奖励离开)
+	if SignalBus.has_signal("gate_core_destroyed") and not SignalBus.gate_core_destroyed.is_connected(_on_gate_core_destroyed):
+		SignalBus.gate_core_destroyed.connect(_on_gate_core_destroyed)
 	# 任务红点角标：连接 DailyTaskManager 信号刷新可领取数量
 	_connect_quest_badge_signals()
 
@@ -269,12 +272,12 @@ func _deferred_non_critical_init() -> void:
 		call_deferred("_auto_start_afk_from_world_map", _auto_lvl)
 	# v26.30 出击=进战场：移动基地出击链（launch_from_bunker）落地即开打当前关——
 	# 替换 v22.3 旧兵棋室"落地自动开战区地图"语义（旧语义曾表现为"基地按出击有时进
-	# 地图、有时进战斗"——分支实际由教程完成状态决定，体感随机）。教程未完成不抢焦点
-	# （教程有自己的节奏）；meta 不在此消耗，留给"返回标题→回移动基地"。
+	# 地图、有时进战斗"——分支实际由教程完成状态决定，体感随机）。
+	# v6.30（用户拍板"移动基地点出击进关没有自动开始战斗"）：让路面收窄到首战步前
+	# （_tutorial_holds_battle_focus）——过了首战步的战后续播段不再拦；首战步前 meta
+	# 不在此消耗，留给"返回标题→回移动基地"。
 	if Engine.has_meta("launch_from_bunker") \
-			and not (TutorialProgressionManager != null
-				and TutorialProgressionManager.has_method("should_show_tutorial")
-				and TutorialProgressionManager.should_show_tutorial()):
+			and not _tutorial_holds_battle_focus():
 		call_deferred("_auto_battle_from_truck_sortie")
 	# v32.3 B3：教学首战步的基地出击落地——教学自举前移到基地后（truck_base B1），
 	# 「开始首战」在基地点击（start_level 由 truck_base 消费转 _launch_battle），此 meta
@@ -288,6 +291,10 @@ func _deferred_non_critical_init() -> void:
 	if Engine.has_meta("level_auto_start_pending"):
 		Engine.remove_meta("level_auto_start_pending")
 		auto_start_battle_from_world_map()
+	# v6.35 异族渗透战:大地图「迎战」确认后落地即开打(独立场景链 _ready 消费/
+	# 内嵌链 world_map 直调 _consume_incursion_meta,函数幂等)
+	if Engine.has_meta("rift_incursion_pending"):
+		call_deferred("_consume_incursion_meta")
 	# v32.3 A4：结算路径懒加载 manager 预热（原 BattleManager.start_battle 同步段挪出）——
 	# 落地 1s 空闲期执行，开战帧不再背 7 次 load()+new()+add_child()
 	get_tree().create_timer(1.0).timeout.connect(_warmup_battle_lazy_managers)
@@ -1043,16 +1050,39 @@ func _auto_battle_from_truck_sortie() -> void:
 		_battle_setup.on_start_battle()
 
 ## v32.3 A2：世界地图「进入该关」自动开战入口（内嵌链 world_map 直调 / 独立场景链经
-## level_auto_start_pending meta 消费）。教程未完成不抢焦点（教程首战有自己的节奏）；
+## level_auto_start_pending meta 消费）。v6.30 让路面收窄到教程首战步前
+## （_tutorial_holds_battle_focus——战后续播段/教程完成/老档均放行，进关即开打）；
 ## 已在战斗中（内嵌模式重复触发）直接忽略。
 func auto_start_battle_from_world_map() -> void:
-	if TutorialProgressionManager != null \
-			and TutorialProgressionManager.has_method("should_show_tutorial") \
-			and TutorialProgressionManager.should_show_tutorial():
+	if _tutorial_holds_battle_focus():
 		return
 	if _is_in_battle():
 		return
 	_auto_battle_from_truck_sortie()
+
+## v6.35 异族渗透战:消费 world_map 设的 rift_incursion_pending meta → 直接开打。
+## 独立场景链经 _ready 调用、内嵌链由 world_map 直调(call_deferred),幂等。
+func _consume_incursion_meta() -> void:
+	if not Engine.has_meta("rift_incursion_pending"):
+		return
+	var inc: Dictionary = Engine.get_meta("rift_incursion_pending")
+	Engine.remove_meta("rift_incursion_pending")
+	if GameManager != null and GameManager.has_method("start_incursion_battle"):
+		GameManager.start_incursion_battle(inc)
+
+## v6.30（2026-09-27）：教程拦"落地自动开战"的收窄判定（唯一口，launch_from_bunker
+## 与 level_auto_start_pending 两链共用）。仅"教程进行中且未过首战步"才让路——教程
+## 首战有自己的开打节奏（tutorial_first_battle meta 自管）；战后续播段（TRUCK_BASE 起）、
+## 教程完成、跳过、老档全放行。旧口径 should_show_tutorial() 全教程期拦，实机主诉
+## "移动基地点出击进关不自动开战"（教程停在战后续播步时每次都要手动点开战）。
+func _tutorial_holds_battle_focus() -> bool:
+	if TutorialProgressionManager == null \
+			or not TutorialProgressionManager.has_method("should_show_tutorial") \
+			or not TutorialProgressionManager.should_show_tutorial():
+		return false
+	if TutorialProgressionManager.has_method("is_past_first_battle"):
+		return not TutorialProgressionManager.is_past_first_battle()
+	return true
 
 ## v32.3 A4：预热结算路径懒加载 manager（原 battle_manager.start_battle 同步段）——
 ## 挪到主场景落地 1s 空闲期，开战帧零预热开销。战斗持续数分钟级，1s 内必完成。
@@ -1562,6 +1592,99 @@ func _build_retreat_confirm_dialog() -> Control:
 	)
 	cancel_btn.pressed.connect(close)
 	return overlay
+
+# ── v6.35 黑门 2.0: 通关选择窗(本体击碎后) ─────────────────────────
+## 出兵已由 game_manager 波间隔 gate 暂停(gate_choice_pending),两键收口:
+## 继续深入=恢复出兵进入无限区(波次/分数延续);携带奖励离开=end_battle(false) 正常无尽结算。
+func _on_gate_core_destroyed() -> void:
+	call_deferred("_show_gate_core_choice_dialog")
+
+func _show_gate_core_choice_dialog() -> void:
+	if _gate_choice_dialog != null and is_instance_valid(_gate_choice_dialog):
+		return
+	var tree := get_tree()
+	if tree and tree.paused:
+		tree.paused = false
+		if top_hud_bar:
+			top_hud_bar.set_pause_text("暂停")
+	var overlay := Control.new()
+	overlay.name = "GateCoreChoiceOverlay"
+	overlay.set_anchors_preset(Control.PRESET_FULL_RECT)
+	overlay.mouse_filter = Control.MOUSE_FILTER_STOP
+	var dim := ColorRect.new()
+	dim.color = DT.COLOR_BACKDROP
+	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
+	dim.mouse_filter = Control.MOUSE_FILTER_STOP
+	overlay.add_child(dim)
+	var center := CenterContainer.new()
+	center.set_anchors_preset(Control.PRESET_FULL_RECT)
+	center.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	overlay.add_child(center)
+	var panel := PanelContainer.new()
+	panel.custom_minimum_size = Vector2(460, 0)
+	var sb := PanelStyles.make_panel_frame_textured(DT.COLOR_ENERGY)
+	sb.content_margin_left = 22
+	sb.content_margin_right = 22
+	sb.content_margin_top = 18
+	sb.content_margin_bottom = 18
+	panel.add_theme_stylebox_override("panel", sb)
+	center.add_child(panel)
+	var vbox := VBoxContainer.new()
+	vbox.add_theme_constant_override("separation", 12)
+	panel.add_child(vbox)
+	var title := Label.new()
+	title.text = "✦ 黑门本体已击碎"
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title.add_theme_font_size_override("font_size", 22)
+	title.add_theme_color_override("font_color", DT.COLOR_ENERGY)
+	vbox.add_child(title)
+	var body := Label.new()
+	body.text = "门后的低语停止了。这是黑门的最深处——\n继续深入将进入无尽区：波次与分数延续，敌人不会停止。"
+	body.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	body.add_theme_font_size_override("font_size", 14)
+	body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	body.custom_minimum_size = Vector2(400, 0)
+	vbox.add_child(body)
+	var btn_row := HBoxContainer.new()
+	btn_row.alignment = BoxContainer.ALIGNMENT_CENTER
+	btn_row.add_theme_constant_override("separation", 16)
+	vbox.add_child(btn_row)
+	var go_btn := Button.new()
+	go_btn.text = "继续深入（无限区）"
+	go_btn.custom_minimum_size = Vector2(170, 40)
+	var g_styles := PanelStyles.make_button_styles(DT.COLOR_ENERGY, "solid")
+	for state in ["normal", "hover", "pressed", "disabled", "focus"]:
+		go_btn.add_theme_stylebox_override(state, g_styles[state])
+	btn_row.add_child(go_btn)
+	var leave_btn := Button.new()
+	leave_btn.text = "携带奖励离开"
+	leave_btn.custom_minimum_size = Vector2(150, 40)
+	var n_styles := PanelStyles.make_button_styles(DT.COLOR_TEXT_DIM)
+	for state in ["normal", "hover", "pressed", "disabled", "focus"]:
+		leave_btn.add_theme_stylebox_override(state, n_styles[state])
+	btn_row.add_child(leave_btn)
+	var close := func() -> void:
+		if _gate_choice_dialog != null and is_instance_valid(_gate_choice_dialog):
+			_gate_choice_dialog.queue_free()
+		_gate_choice_dialog = null
+	go_btn.pressed.connect(func() -> void:
+		close.call()
+		var ebm := get_node_or_null("/root/EndlessBlackgateManager")
+		if ebm != null and ebm.has_method("resolve_gate_choice"):
+			ebm.resolve_gate_choice()
+	)
+	leave_btn.pressed.connect(func() -> void:
+		close.call()
+		var ebm := get_node_or_null("/root/EndlessBlackgateManager")
+		if ebm != null and ebm.has_method("resolve_gate_choice"):
+			ebm.resolve_gate_choice()
+		if BattleManager != null and BattleManager.has_method("end_battle"):
+			BattleManager.end_battle(false)
+	)
+	_gate_choice_dialog = overlay
+	popup_layer.add_child(overlay)
+
+var _gate_choice_dialog: Control = null
 
 var _leaving_scene: bool = false
 

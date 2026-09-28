@@ -488,6 +488,30 @@ func apply_elite_affixes(spawn_type: String) -> void:
 	_sync_bare_fields_from_stats()
 
 
+## v6.35 黑门 2.0: 本体强度倍率(spawn 侧调用)。乘在波次乘区之后的最终放大——
+## HP/防御 ×hp_mult、三维攻击与武器伤害 ×atk_mult;同步裸字段(apply_elite_affixes 同律)。
+func apply_gate_core_scaling(hp_mult: float, atk_mult: float) -> void:
+	if stats == null:
+		return
+	stats.max_hp *= hp_mult
+	stats.defense *= hp_mult
+	stats.defense_light *= hp_mult
+	stats.defense_armor *= hp_mult
+	stats.defense_air *= hp_mult
+	stats.attack_damage *= atk_mult
+	stats.attack_light *= atk_mult
+	stats.attack_armor *= atk_mult
+	stats.attack_air *= atk_mult
+	for i in range(stats.weapons.size()):
+		var w: Variant = stats.weapons[i]
+		if w is Dictionary:
+			var wd: Dictionary = w
+			if wd.has("damage"):
+				wd["damage"] = float(wd["damage"]) * atk_mult
+				stats.weapons[i] = wd
+	_sync_bare_fields_from_stats()
+
+
 ## v19: 查敌方卡在统一卡表的档位（词缀独特档门槛用；查不到回退 0）
 ## archetype_id 可能带 captured_ 前缀或不在 UCT（合成名），get_entry 空字典时自然回退。
 func _lookup_archetype_tier(aid: String) -> int:
@@ -1866,6 +1890,12 @@ func _die() -> void:
 	# v27 星冥死亡爆裂（龙骑式残躯折射/异变体酸血双向）：死亡确认后、清场前结算
 	if _is_xeno and has_meta("xeno_death_burst"):
 		_xeno_execute_death_burst(get_meta("xeno_death_burst", {}) as Dictionary)
+	# v6.35 黑门 2.0: 本体被击碎 → EBM 记通关(gate_core_destroyed 信号驱动演出/弹窗/出兵 gate;
+	# 与驱动器被毁同帧时通关优先,竞态在 game_manager battle_ended 收口)
+	if has_meta("_is_gate_core"):
+		var _ebm: Node = get_node_or_null("/root/EndlessBlackgateManager")
+		if _ebm != null and _ebm.has_method("mark_gate_cleared"):
+			_ebm.mark_gate_cleared()
 	# 性能优化：从空间分区网格移除
 	_unregister_from_spatial_grid()
 

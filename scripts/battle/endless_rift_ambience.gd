@@ -139,7 +139,15 @@ func _announce_seepage(depth: int) -> void:
 		_seepage_label.z_index = 5
 		add_child(_seepage_label)
 	var vp := get_viewport_rect().size
-	_seepage_label.text = "◈ 渗度提升 · %d" % depth
+	# v6.35 黑门 2.0: 跨星髓里程碑波时补一行(数值读 EBM 常量——宪法 C3,禁硬编码)
+	var marrow_line: String = ""
+	var ebm: Node = get_node_or_null("/root/EndlessBlackgateManager")
+	if ebm != null:
+		for m in ebm.MARROW_MILESTONES:
+			if int(m.get("waves", 0)) == int(depth) * 10 and depth > 0:
+				marrow_line = "\n★ 星髓里程碑 +%d（结算发放）" % int(m.get("marrow", 0))
+				break
+	_seepage_label.text = "◈ 渗度提升 · %d%s" % [depth, marrow_line]
 	# 中央偏左真空带：避开波次横幅(中上 y108-152)、boss 大字(y170-215 x680+)、
 	# toast(y258-296)、左侧 BUFF 面板(x<190)——渗度播报恰在波次切换瞬间触发，必须错峰
 	_seepage_label.position = Vector2(280.0, 178.0)

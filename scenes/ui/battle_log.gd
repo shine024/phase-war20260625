@@ -153,8 +153,14 @@ func _on_unit_killed(victim: Node, killer: Node, is_player_victim: bool) -> void
 		var killer_name: String = _unit_name(killer) if killer != null and is_instance_valid(killer) else "我方单位"
 		_add_entry("我方 %s 击毁 %s" % [killer_name, _unit_name(victim)], DT.COLOR_GREEN_BRIGHT)
 
-func _on_boss_wave_started(_ids: Array) -> void:
-	_add_entry("精英波次来袭！", DT.COLOR_ENERGY)
+func _on_boss_wave_started(wave_kind: String, _ids: Array) -> void:
+	match wave_kind:
+		"core":
+			_add_entry("黑门本体现身！", DT.COLOR_DANGER)
+		"boss":
+			_add_entry("首领波次来袭！", DT.COLOR_ENERGY)
+		"elite":
+			_add_entry("精英波次来袭！", DT.COLOR_ENERGY)
 
 func _on_phase_master_appeared(master_config: Dictionary) -> void:
 	var name: String = master_config.get("display_name", master_config.get("name", "相位师"))

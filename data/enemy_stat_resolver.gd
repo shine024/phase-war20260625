@@ -20,19 +20,38 @@ const CardGrowthConfig = preload("res://data/card_growth_config.gd")
 ## 原 0.12 与档位递进（1.3→2.0）在时代末双重堆叠——全程敌方有效 HP 链膨胀 ~17×，
 ## 而玩家中位战力指数（HP×DPS 开方）仅 ~7×，后期 TTK 失配 ~2×。
 ## 0.08 保留"末波 +72% HP"的波内压迫感，砍掉跨关卡端的叠加通胀。
+##
+## v6.35 黑门 2.0 长线收敛（数值定案，可微调）：黑门本体深度 200-320 波，线性 0.08 在
+## 300 波时 HP≈25× 物理不可打。分段：≤60 波现行斜率（近期体验/普通关零变化——普通关
+## 波次恒 <10 永远走第一段）；>60 波斜率衰减为 LATE 档（约为前期 1/5），
+## 300 波 HP≈9.3×/攻≈7.4×（乘传奇档 1.66 后 15.5×/12.3×），毕业卡组+渗度5缴获可打。
+const WAVE_LATE_BREAK: int = 60
+const HP_SLOPE_EARLY: float = 0.08
+const HP_SLOPE_LATE: float = 0.015
+const DMG_SLOPE_EARLY: float = 0.06
+const DMG_SLOPE_LATE: float = 0.012
+const DEF_SLOPE_EARLY: float = 0.04
+const DEF_SLOPE_LATE: float = 0.008
+
+static func _segmented_wave_mult(wave_index: int, early: float, late: float) -> float:
+	var w: float = float(max(0, wave_index - 1))
+	var early_span: float = minf(w, float(WAVE_LATE_BREAK - 1))
+	var late_span: float = maxf(0.0, w - float(WAVE_LATE_BREAK - 1))
+	return 1.0 + early * early_span + late * late_span
+
 static func wave_hp_multiplier(wave_index: int) -> float:
-	return 1.0 + 0.08 * float(max(0, wave_index - 1))
+	return _segmented_wave_mult(wave_index, HP_SLOPE_EARLY, HP_SLOPE_LATE)
 
 ## v9.x 平衡：防御的波次乘区。原 def 只乘 tier_def（1 乘区），HP/ATK 有 4 乘区，
 ## 后期 def 被 hp/atk 严重稀释（终局 hp ×6.65 而 def 仅 ×1.85）。补 wave_def 让 def 跟随波次增长，
 ## 但系数 0.04 < hp 的 0.08，使 def 增长远慢于 hp——保留"破防"机制的意义，高防单位不会变得无法击穿。
 static func wave_def_multiplier(wave_index: int) -> float:
-	return 1.0 + 0.04 * float(max(0, wave_index - 1))
+	return _segmented_wave_mult(wave_index, DEF_SLOPE_EARLY, DEF_SLOPE_LATE)
 
 
 ## 平衡修复（2026-08-16）：伤害斜率 0.08→0.06，与 HP 斜率同比收敛（保持 hp>dmg 增长差）。
 static func wave_damage_multiplier(wave_index: int) -> float:
-	return 1.0 + 0.06 * float(max(0, wave_index - 1))
+	return _segmented_wave_mult(wave_index, DMG_SLOPE_EARLY, DMG_SLOPE_LATE)
 
 
 ## v6.4: 接入关卡难度曲线（原 difficulty_modifier 公式：0.8 + level × 0.014）

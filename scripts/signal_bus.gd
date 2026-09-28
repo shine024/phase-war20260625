@@ -188,8 +188,11 @@ signal accessibility_changed()
 # v7.x 战场视觉反馈（克制版）
 # 击杀事件：含击杀者，供 BattleSpectacle/BattleLog/MVP 使用。killer 可能为 null（环境死/超时死）。
 signal unit_killed(victim: Node, killer: Node, is_player_victim: bool)
-# BOSS 波次开始：本波 boss archetype_id 列表，供 BattleSpectacle 播放 BOSS 登场特效。
-signal boss_wave_started(boss_archetype_ids: Array)
+# BOSS 波次开始：wave_kind="boss"/"elite"（v6.35 精英波也广播）+ 本波 boss archetype_id 列表，
+# 供 BattleSpectacle 播放登场特效（boss 全套/elite 轻档）。
+signal boss_wave_started(wave_kind: String, boss_archetype_ids: Array)
+# v6.35 黑门 2.0：本体被击碎（通关时刻）。main(选择弹窗)/BattleSpectacle(演出)/game_manager(出兵 gate) 消费。
+signal gate_core_destroyed()
 # 相位师登场：相位师战开始时广播 master_config，供 Announcer/Spectacle 播报。
 signal phase_master_appeared(master_config: Dictionary)
 # v7.x 玩家相位师战力变化：战斗开始算出玩家相位师星级/等级后广播，

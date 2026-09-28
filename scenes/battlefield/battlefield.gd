@@ -574,6 +574,7 @@ func _ensure_endless_rift_fx() -> void:
 		var mat := ShaderMaterial.new()
 		mat.shader = _EndlessWarpShader
 		level10_bg.material = mat
+	_apply_endless_run_tint()
 	var amb := get_node_or_null("EndlessRiftAmbience")
 	if amb == null or not is_instance_valid(amb):
 		amb = Node2D.new()
@@ -599,6 +600,26 @@ func _clear_endless_rift_fx() -> void:
 	_endless_bg_b = null
 	_endless_tier_cur = -1
 	_endless_fading = false
+
+## v6.35: 每 run 随机色调滤镜(与裂隙环境联动微偏,同场恒定)——shader run_tint uniform。
+## 色调档 = 本 run 裂隙环境键哈希 → 4 档微偏(乘法,0.85~1.12,压着可读性红线内侧)。
+func _apply_endless_run_tint() -> void:
+	if level10_bg.material == null or not (level10_bg.material is ShaderMaterial):
+		return
+	var ebm := get_node_or_null("/root/EndlessBlackgateManager")
+	if ebm == null:
+		return
+	var env_key: String = String(ebm.get("current_rift_env"))
+	var idx: int = absi(hash("run_tint_" + env_key)) % 4
+	var tints: Array = [
+		Vector3(1.0, 1.0, 1.0),        # 中性
+		Vector3(1.06, 0.96, 1.10),     # 紫偏
+		Vector3(0.92, 1.04, 1.08),     # 青偏
+		Vector3(1.08, 1.0, 0.92),      # 暖偏
+	]
+	var mat := level10_bg.material as ShaderMaterial
+	mat.set_shader_parameter("run_tint", tints[idx])
+	mat.set_shader_parameter("tint_enabled", 0.0 if idx == 0 else 1.0)
 
 ## 当 res://assets/backgrounds/*.png 全部缺失时，用关卡/时代驱动的渐变图代替，避免战场只剩纯色底。
 func _resolve_missing_background(level: int, era: int) -> void:
@@ -651,17 +672,52 @@ func _build_endless_starfield_texture(tier: int = 0) -> Texture2D:
 			img.fill_rect(Rect2i(sx - 2, sy, 5, 1), sc * 0.55)
 			img.fill_rect(Rect2i(sx, sy - 2, 1, 5), sc * 0.55)
 	# 3) 晶脉浮陆地面：暗青岩体 + 发光晶脉纹（青色短线网）；tier 越亮越密
+	#    v6.35: tier2 深渊转红紫调（渗度 4+ 视觉分档，实机可辨）
 	var ground_y: int = int(h * 0.86)
+	var rock_a: Color = Color(0.050, 0.075, 0.095)
+	var rock_b: Color = Color(0.020, 0.032, 0.045)
+	var vein_col: Color = Color(0.25, 0.90, 0.85)
+	if tier >= 2:
+		rock_a = Color(0.075, 0.040, 0.070)
+		rock_b = Color(0.035, 0.018, 0.038)
+		vein_col = Color(0.85, 0.35, 0.55)
 	for y in range(ground_y, h):
 		var gt: float = float(y - ground_y) / float(h - ground_y)
-		var gc: Color = Color(0.050, 0.075, 0.095).lerp(Color(0.020, 0.032, 0.045), gt)
+		var gc: Color = rock_a.lerp(rock_b, gt)
 		img.fill_rect(Rect2i(0, y, w, 1), gc)
 	var vein_count: int = int(260.0 * (1.0 + 0.35 * tier))
 	for i in range(vein_count):
 		var vy: int = rng.randi_range(ground_y + 2, h - 2)
 		var vx: int = rng.randi_range(0, w - 3)
 		var glow: float = rng.randf_range(0.45, 0.95) + 0.08 * tier
-		img.fill_rect(Rect2i(vx, vy, rng.randi_range(2, 5), 1), Color(0.25, 0.90, 0.85) * minf(glow, 1.15))
+		img.fill_rect(Rect2i(vx, vy, rng.randi_range(2, 5), 1), vein_col * minf(glow, 1.15))
+	# ── v6.35 黑门 2.0: 档位可辨识递进（纯 fill_rect 点绘,亮度差 ≥90 红线兼容）──
+	if tier >= 1:
+		# t1 中期+: 彼岸舰队剪影群（地平线上方暗色舰影,越深越多——设计 §5.1 元素）
+		var fleet_count: int = 3 + tier * 3
+		var hull: Color = Color(0.045, 0.038, 0.095)
+		for i in range(fleet_count):
+			var fx: int = rng.randi_range(60, w - 160)
+			var fy: int = rng.randi_range(int(h * 0.50), maxi(int(h * 0.50) + 8, hor_y - 24))
+			var fw: int = rng.randi_range(26, 64)
+			var fh: int = maxi(4, int(fw / 6.0))
+			img.fill_rect(Rect2i(fx, fy, fw, fh), hull)
+			# 舰桥棱线（上层建筑剪影）
+			img.fill_rect(Rect2i(fx + int(fw / 4.0), fy - fh, maxi(3, int(fw / 3.0)), fh), hull)
+	if tier >= 2:
+		# t2 深渊: 天顶黑门残环（巨大暗环剪影,压扁透视,呼应大地图黑门）
+		var ccx: int = int(w / 2.0)
+		var ccy: int = int(h * 0.14)
+		var rr0: int = int(h * 0.12)
+		var ring_col: Color = Color(0.09, 0.05, 0.16)
+		var ring_glow: Color = Color(0.30, 0.16, 0.42)
+		for a in range(0, 360, 2):
+			var rad: float = deg_to_rad(float(a))
+			for rri in range(rr0 - 8, rr0 + 2):
+				var px: int = ccx + int(cos(rad) * float(rri))
+				var py: int = ccy + int(sin(rad) * float(rri) * 0.42)
+				if px >= 0 and px < w and py >= 0 and py < hor_y:
+					img.fill_rect(Rect2i(px, py, 2, 2), ring_col if rri < rr0 - 3 else ring_glow)
 	var tex := ImageTexture.create_from_image(img)
 	return tex
 

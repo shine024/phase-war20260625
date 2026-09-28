@@ -79,13 +79,31 @@ static func apply_for_level(level: int) -> bool:
 	var spec: Dictionary = LevelBattleLayoutsRef.get_for_level(level)
 	if spec.is_empty():
 		return false
+	_apply_spec(spec)
+	return true
+
+
+## v6.35 黑门 2.0:endless 布局池变体激活(LevelBattleLayouts.ENDLESS_LAYOUTS)。
+## battle_manager.start_battle 在 apply_for_level 之后、endless 分支调用;
+## end_battle reset_to_default 复位链共用。
+static func apply_for_endless(variant_idx: int) -> bool:
+	reset_to_default()
+	if not bool(GameCfgLayout.get_default().battle_layouts_enabled):
+		return false
+	var spec: Dictionary = LevelBattleLayoutsRef.get_endless_variant(variant_idx)
+	if spec.is_empty():
+		return false
+	_apply_spec(spec)
+	return true
+
+
+static func _apply_spec(spec: Dictionary) -> void:
 	_active_rows = clampi(int(spec.get("rows", NUM_ROWS)), 2, 3)
 	_active_player_cols = clampi(int(spec.get("player_cols", SLOTS_PER_SIDE)), 2, 4)
 	_active_enemy_cols = clampi(int(spec.get("enemy_cols", SLOTS_PER_SIDE)), 2, 4)
 	_active_player_excluded = _sanitize_excluded(spec.get("player_excluded", []), _active_player_cols * _active_rows)
 	_active_enemy_excluded = _sanitize_excluded(spec.get("enemy_excluded", []), _active_enemy_cols * _active_rows)
 	_layout_customized = true
-	return true
 
 
 static func reset_to_default() -> void:
