@@ -389,17 +389,24 @@ func _spawn_incursion_wave() -> bool:
 	enemy_wave_index = 1
 	if _signal_bus:
 		_signal_bus.wave_spawned.emit(1)
+	TraceLog.mark("incursion_wave", "begin ids=%d" % _incursion_ids.size())
 	var elite_pool: Array = XenoUnits.get_ids_for_role("elite") + XenoUnits.get_ids_for_role("ace")
 	for i in range(_incursion_ids.size()):
 		var arch: String = String(_incursion_ids[i])
 		var unit: Node2D = _create_enemy_unit_with_id(arch) as Node2D
 		if unit == null:
+			TraceLog.mark("incursion_wave", "create_fail i=%d" % i)
 			continue
 		# 末位（精英位）吃精英词缀
 		if i == _incursion_ids.size() - 1 and arch in elite_pool and unit.has_method("apply_elite_affixes"):
 			unit.apply_elite_affixes("elite")
-		if not spawn_enemy_unit_on_card_grid(unit, -1) and is_instance_valid(unit):
+		if not spawn_enemy_unit_on_card_grid(unit, -1):
+			TraceLog.mark("incursion_wave", "place_fail i=%d valid=%s" % [i, str(is_instance_valid(unit))])
+		if is_instance_valid(unit) and not unit.is_queued_for_deletion() 				and unit.get_parent() == _enemy_units_node:
+			continue
+		if is_instance_valid(unit):
 			unit.queue_free()
+	TraceLog.mark("incursion_wave", "done cnt=%d" % enemy_unit_count)
 	return true
 
 

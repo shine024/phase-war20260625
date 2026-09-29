@@ -47,6 +47,7 @@ var _respec_free_day: int = 0         # 洗点免费额度已用天（Lv3 每日
 var _battle_log: Array = []           # v26.12b 战斗日志（最近60条 {day,level,won}）——移动基地统计终端数据源
 var _pending_battle_level: int = 0    # 开打时抓的关卡号（battle_ended 时 current_level 可能已被胜利推进）
 var _pending_battle_endless: bool = false  # 开打时抓的黑门无尽标记（battle_ended 时 GameManager 已复位，事后查不到）
+var _pending_battle_incursion: bool = false  # v6.35: 开打时抓的渗透战标记（同上信号序原因）
 # ── v26.19 卡车行军（停哪打哪：出击=停靠关；行车耗燃料×地形，睡觉推进+回充）──
 var _fuel := -1.0            # 燃料储备；<0=未初始化哨兵（首次读取按满罐结算，旧档免迁移）
 var _engine_level := 1       # 引擎/传动 Lv1-5：速度与罐容随级提升
@@ -111,6 +112,10 @@ func _on_battle_started() -> void:
 		# 并在 _settle_endless_battle 里复位 _is_endless_battle，事后查恒 false
 		_pending_battle_endless = GameManager.has_method("is_endless_battle") \
 			and GameManager.is_endless_battle()
+		# v6.35 复查修：渗透战标记同款开打快照——结算时查 is_incursion_battle() 会被
+		# game_manager 先行的轻结算 handler 清掉（连接序=autoload 序），豁免恒失效
+		_pending_battle_incursion = GameManager.has_method("is_incursion_battle") \
+			and GameManager.is_incursion_battle()
 
 ## ───────────────────── v26.19 卡车行军（停泊/燃料/引擎） ─────────────────────
 ## 数值真身在 data/truck_travel.gd（TruckTravel）；本节只管状态与结算。
@@ -390,10 +395,10 @@ func _on_battle_ended(player_won: bool) -> void:
 	var was_endless := _pending_battle_endless
 	# v6.35: 异族渗透战不记日志/不参与棘轮——host 可达 parked+5,赢一场渗透会把卡车
 	# 推到未通关关位(进度泄漏);精神/房间推进照常(任何战斗都消耗)。
-	var was_incursion: bool = GameManager != null \
-		and GameManager.has_method("is_incursion_battle") and GameManager.is_incursion_battle()
+	var was_incursion := _pending_battle_incursion
 	_pending_battle_level = 0
 	_pending_battle_endless = false
+	_pending_battle_incursion = false
 	if fought > 0 and not was_endless and not was_incursion:
 		# v26.13：日志扩展伤害/时长（统计终端曲线数据源）
 		var _bs: Dictionary = _read_battle_stats()
