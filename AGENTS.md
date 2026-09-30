@@ -12,12 +12,67 @@
 
 **`docs/发行宪法.md`（2026-09-19 起）四条红线：C1 商业化只买便利/外观、绝不碰内容可及性与概率暗箱；C2 核心玩法 100% 离线可玩、联网只做增量；C3 一切概率/保底口径玩家可见（UI 文案数值从常量读，禁止硬编码）；C4 对外路线图 ≥3 版本 + 发版必打 tag。** 改经济数值/概率/商业化/联网相关代码前先读该文档；冲突即违宪。
 
+## 验证纪律（红线，2026-09-28 用户拍板：真实验证后才得结论）
+
+**任何"已修复/已正确/已验证"类结论的硬性前置——违反即无效结论。**
+
+1. **结论只能来自真实验证**：渲染类问题必须真实渲染并目检截图；运行类问题必须真实运行并读日志/转储。静态代码分析、数学推导、桩（stub）测试只能产出"假设"，**不得直接产出"已验证"结论**。
+2. **验证对象 = 用户报告的对象**：先目检渲染/运行的东西就是用户指的那个单位/界面/系统。塞错卡、走错路径、错场景 = 无效验证（实证教训：探针塞错卡把重装机甲渲染成圣沙蒙坦克，"验证通过"无效）。
+3. **验证维度 = 用户主诉的维度**：主诉"看起来错"必须截图目检整体效果（包裹/对齐/构图），数值断言不能替代视觉判断——位置对了不等于尺寸对，尺寸对了不等于构图对。
+4. **用户实机观察是真值**：当验证结论与用户实机观察冲突时，默认验证链有缺口，先自证（渲染对象/维度/会话是否载入新代码）再说话，禁止用自己的结论否定用户的直接观察。
+5. **修组合类系统先交维度清单**：位置/尺寸/层间关系/阵营/体型/状态变化（出生/受击/破碎）一次查全再交付——不挤牙膏式逐轮发现（教训：护盾罩连修四轮：位置→尺寸→构图→敌方同病）。
+6. **客观缺陷与审美取舍先分类**：对齐/一致性/覆盖类有客观正确答案的直接修；只有真正无对错的参数才交用户拍板，且必须附推荐值与对比图。
+7. **每类系统留常驻回归锁**：锁内断言覆盖上述全部维度，修复后回归自动拦截（范例：`tests/unit/combat/test_shield_foot_anchor.gd` 九形态+尺寸断言）。
+
+## v6.34 生视频重做攻击动画批：暂存审阅制 + 三棒接力（2026-09-28，详见 CHANGELOG 与 docs/单位分帧动画生成管线.md §八）
+
+**⚠️ 2026-09-30 起生视频与白底直出生图路线均退役：单位攻击分帧动画一律走 §十 锚定帧先行路线（`tools/img25_anchor_gen.py` + `tools/img25_attack_gen.py`，暂存审阅制不变）。本节保留作暂存审阅制/布置三件套的出处。**
+
+**跑生视频批次/布置动画候选进 assets/审阅页改版前必读本节。** 用户拍板：88 个程序合成特征攻击动画全量用 agnes-video-2.5-flash keyframe 重做（首帧=现役 idle f0 512 data URI，免上传）。
+
+- **暂存审阅制（红线）**：候选只落 `.godot/unit_review/vid_staging/`，管线 `--staging` 硬编码不写 assets/——**用户在 `tools/vid_redo_review.html`（当前版 vs 候选版双条带循环播放+采纳/否决/重做下拉）点名采纳后，才人工布置进 `assets/effects/unit_anims/<key>/sheet_attack.png`**（布置前备份 `.godot/art_backup_anim_regen_20260927/`，布置后查 foot_frac）。勿把暂存候选当现役资产引用。
+- **质量门 v2**（`tools/video_attack_pipeline.py`）：火光峰选帧=橙黄像素最多帧（能量武器走蓝白通道，词表含 相位/等离子/雷达）；门=火光像素≥40 ∩ 有效抠像帧≥6 ∩ register 缩放 0.8~1.25；不过自动重投≤3 次，三次全弱保留最佳标 weak；均匀灰底判无效帧；队满 submit/poll 失败立即 queue_blocked 不烧重试额度。**队列时段规律：清晨/深夜空闲（~160s/单），白天队满**——批量重试挂凌晨定时任务。
+- **程序合成签名判定口**：攻击帧身体与 idle f0 纯平移逐像素相等（±2、滤橙黄、shift ±8）max≥0.95 → 程序合成（`tools/vid_batch_worklist_gen.py` is_prog）。img2img/视频版重绘噪声必低于此阈值。88 单位名单+武器映射在 `.godot/unit_review/vid_batch_worklist.json`（重扫可复跑生成器）。
+- **接力批工具链**：`vid_batch_runner.py`（状态机 `vid_batch_state.json`：pass 跳过/weak 续跑，--budget 时间预算）+ `vid_batch_relay.py`（平台限单会话单定时任务→单任务内置自续：1:00 第1棒→睡到 3:00→5:00 第3棒，已挂 09-29 01:00 定时批）。日志 `vid_batch_cron.log`。
+
+## v6.35 黑门 2.0 批：本体通关结构 + 异族渗透 + 战场轮换（2026-09-28，详见 CHANGELOG）
+
+**改黑门波次构成/本体通关链/异族渗透/敌成长乘区/结算面板前必读本节。** 实机主诉"33 波无提示无终点"全量重构（用户逐项拍板）。
+
+- **本体通关唯一链**：EBM `begin_run` roll `gate_core_wave`（200-320 步进 10）→ spawn endless 分支该波刷 `xeno_gate_core`（role="core" 不进常规池；`apply_gate_core_scaling(10,2)` 最终倍率）→ enemy_unit 死亡查 `_is_gate_core` → `mark_gate_cleared()`（幂等+渗透清场+`gate_core_destroyed` 信号）→ main 选择窗「继续深入/携带奖励离开」→ `resolve_gate_choice()`。**选择期间出兵 gate=`get_enemy_wave_interval_for_level` 返回 3600s（事实暂停，禁 tree.paused）**。击碎与驱动器被毁同帧通关优先。
+- **敌成长分段收敛铁律**：resolver 三乘区走 `_segmented_wave_mult`（≤60 波旧斜率，>60 波 LATE 档 0.015/0.012/0.008）。**普通关波次恒 <10 零影响**——调收敛曲线只改六个常量+回归锁同步（test_gate_core_structure 定案值断言）。
+- **RefCounted autoload 访问再命中**：battle_spawn_system 无 get_node_or_null——endless 分支拿 EBM 必须 `_get_autoload_node("EndlessBlackgateManager")`（本轮实踩编译错级联）。新代码在 RefCounted 子系统取 autoload 一律走该 helper。
+- **异族渗透**：EBM 统一管理（日刷/过期/erase/编队 seed 确定性）；world_map 热区**不进模板缓存**（首建/复用/incursions_changed 三路 `_apply_incursion_markers` 重建，v36 窗口过滤）；进战 meta=`rift_incursion_pending`（独立链 _ready/内嵌链直调 `_consume_incursion_meta`，幂等）；轻结算 `_settle_incursion_battle` 不弹面板不推进度。**通关（gate_cleared_once）后渗透清场停刷=黑门关闭世界状态**。
+- **boss_wave_started 签名已变**（wave_kind: "core"/"boss"/"elite" + ids）：精英波也广播；新增消费方必须带 kind 分支，elite 档只播短定格（禁全套暗化+震屏——5 波一暗化过频）。
+- **补给节点**：每 25 波 `grant_supply_node`（幂等守卫 supplies_granted 计数）；撤退=次数已扣+战利品照常带回（缴获实时入包，无需补发）；首通大奖 `gate_cleared_once` 入档一次性（星髓+200 吃周封顶）。
+- **结算面板 endless 分支**：`_is_endless()`（summary 带 "endless"）→ 黑门战报取代推图战绩；缴获页门控 `player_won or _is_endless()`（旧门控吞无尽缴获是真 bug 勿回退）。
+- **布局池/背景/tint**：`ENDLESS_LAYOUTS` 表驱动加变体零代码；程序化底图三档（t1 舰队剪影/t2 黑门残环+红紫晶脉）；warp shader `run_tint` 按环境键哈希注入。AI 底图（bg_endless_gate_t1/t2.png）落地即自动优先加载（`_get_endless_tier_tex` 既有契约）。
+- 回归锁：`tests/unit/battle/test_gate_core_structure.gd`（9 用例）+ `tests/unit/ui/test_settlement_endless_report.gd`（3 用例）；xeno 数据锁 20→21/配装 137→140（本体入册）已同步。
+
+## v6.33 黑门踏入两链落地自动开战批（2026-09-28，详见 CHANGELOG）
+
+**改黑门进入链/落地自动开战消费口/WorldMapPanel 前必读本节。** 实机主诉"过100关第一次进黑门打33波，退出后再点黑门没反应"。
+
+- **根因=黑门链停在 v27 老范式**（挂 `_is_endless_battle` 标志落地 main 整备态等玩家手动点开始），v32.3 A2 普通关「进关即开战」重构没跟上。**内嵌链致命**：33 波结算走 `main._on_result_confirmed` 玩家留在 main 场景，再点黑门走的是底栏「地图」→ `WorldMapPanel` 懒实例（`embedded_mode=true`）——旧代码 `back_to_main.emit()` 只关地图层，零开战触发零反馈="点了没反应"。**新嵌入面板消费 `back_to_main` 信号时不得只关层**，要给后续动作留触发点。
+- **踏入黑门唯一语义=落地即开战**：`world_map._arm_endless_battle_state()`（对齐 100+置标志；独立链加设 `level_auto_start_pending` meta）+ 内嵌链直调 `main.auto_start_battle_from_world_map`（与普通关同款消费口；教程守卫兜底，黑门需通关 100 恒放行）。`begin_run` 消费入场次数仍在 `go_to_battle` 生效瞬间，记账口径不动。
+- **排查法沉淀**：静态链排不出时读实机存档（`%APPDATA%/Godot/app_userdata/phase-war/save_slot_1.json` 的 parked_level/level_stars/basic_resources.custom_totals.star_marrow 可反推结算链是否跑完）+ headless 探针真实存档全链断言（`tests/_tmp_blackgate_reenter_probe.gd`）——先证明"状态无残留"再收敛到"UI 链缺触发"。
+- 回归锁：`tests/unit/ui/test_blackgate_reenter_auto_start.gd`（4 用例，内嵌链 Main.auto_start 调用为防复活锁）。
+
+## v6.32 教程门撤销批：首胜结算即出直通键 + 过首战步进关即开战（2026-09-27，详见 CHANGELOG）
+
+**改结算直通键/落地自动开战守卫/教程步推进逻辑前必读本节。** 用户实机拍板撤销 v6.28 记录2#4「移动基地」引导门（主诉：教程首战胜利界面没有去下一关；移动基地出击进关不自动开战）。
+
+- **`is_pending_truck_base_intro()` 已删除**（manager 函数 + mvp_panel `_compute_next_level/_compute_replay_level` 两处消费 + 回归锁 test_tutorial_truck_gate.gd 同步退役，勿再引用/复活）。结算直通键唯一教程门槛=`is_past_first_battle()`——首胜结算（教程已推进到 TRUCK_BASE 战后续播步）即出「出击下一关/再战本关」；TRUCK_BASE 点播步回基地时照常首触补播，不因连战丢失。
+- **自动开战让路面收窄，唯一判定口=`main._tutorial_holds_battle_focus()`**（基地出击 `launch_from_bunker` 与地图进关 `level_auto_start_pending`/内嵌直调两链共用）：仅"教程进行中且未过首战步"让路；战后续播段/教程完成/跳过/老档全放行。旧口径裸写 `should_show_tutorial()` 全教程期拦是"基地出击不自动开战"根因——**新加入战链要加教程守卫一律走该函数**。首战步前（NONE/CARD_COLLECTION/PHASE_INSTRUMENT/FIRST_BATTLE）两链仍让路，首战由 `tutorial_first_battle` meta 自管开打，教程首战链不受影响。
+- 回归锁：`tests/unit/managers/test_tutorial_battle_focus.gd`（5 用例，含门删除防复活锁）+ `test_settlement_next_level.gd::test_first_victory_direct_keys_at_truck_base_step`（首胜直通键）。
+
 ## v6.30 记录3实机验收18条批：卡格整行制 + 挂机补位 + 胜负判定回填 + 分帧振铃（2026-09-26，详见 CHANGELOG）
 
 **改背包网格/挂机部署/胜负判定/结算底栏/分帧动画资产前必读本节。**
 
-- **背包卡格整行制（用户拍板"按行显示、行满再换行"）**：`backpack_panel._ensure_min_card_slots` 补位基准=`grid.columns`（`_apply_backpack_grid_layout` 先设好的实际列数 6~14 随宽度自适应）——`ceil(卡数/列数)×列数+一整行`，上限 50 内也取整行。**勿回退常数 `BACKPACK_GRID_COLUMNS` 基准**（与实际列数取模对不齐=残行"一行+2格"根因）。
+- **背包卡格整行制（用户拍板"按行显示、行满再换行"）**：`backpack_panel._ensure_min_card_slots` 补位基准=`grid.columns`（`_apply_backpack_grid_layout` 先设好的实际列数 6~14 随宽度自适应）——`ceil(卡数/列数)×列数+一整行`，上限 50 内也取整行。**勿回退常数 `BACKPACK_GRID_COLUMNS` 基准**（与实际列数取模对不齐=残行"一行+2格"根因）。**v6.32.1 追加：0 卡例外——空背包不铺空槽行**，空态提示是 `CombatCardsTab` 上的居中浮层（`_combat_empty_hint`）；**任何 Label/横幅不得 add_child 进 CardGrid**（600 宽提示曾把第一列撑到 600=新档"空格没对齐"根因，GridContainer 无跨列合并）；补位计数跳 `is_loading_indicator`（重建期滞留网格的加载指示器曾被当 1 张卡=多补一行残槽）。回归锁 `test_backpack_slot_ratchet.gd`（7 用例）+ 复现探针 `tests/_tmp_backpack_align_probe.gd`。
 - **换相位仪信号链双保险**：presenter 补连 `phase_slots_changed`（不还卡的换装路径置脏）+ `ensure_combat_grid_fresh()`（切战斗卡 tab 按实时数据签名比对重建）——`_on_tab_changed` COMBAT 分支现为 `flush_if_dirty → ensure_combat_grid_fresh → filters → 视口重扫` 四步，动 tab 刷新链时保持顺序。
+- **护盾罩脚线唯一真身 + 双重对齐禁令（v6.32.3 勘误，改护盾/单位锚点前必读）**：战场立绘经 `apply_uniform_card_sprite` 的 `spr.offset` **早已把脚线对齐到单位节点原点**（08-01 起；`apply_battle_unit_presentation` 里"立绘居中不按脚线对齐"的注释只描述 `position` 不描述 `offset`——勿再据此推断脚线在 +(0.5-frac)×tex_h）。`fort_shield_aura.sync_foot_anchor()` 脚线公式=`spr.position.y + offset.y×scale + (0.5-f_tex)×canvas_h×scale`，f_tex 优先级=①`UnitFrameAnimDriver.sheet_foot_frac`（anim.json `foot_frac` 字段，部署时实测的 sheet 内容底缘——**帧内容边距≠卡图标定 FOOT_FRAC**，动画单位缺它会残留 ±5~15px）②卡图标定表（静态图标精确）③0（画布底兜底）；spr.position.y 已含待机浮动/悬空抬升，天然跟随。v6.31b 曾按"立绘居中"误判再叠一层 (0.5-frac)×tex_h=双重对齐，敌方 mega_shield 罩底压到履带下 22~31px（第10关"敌方护盾贴图错了"主诉根因；其冒烟用裸 Sprite2D 桩没带 offset 故未抓到——**测试桩必须复刻真实 offset 语义**）。**deploy_unit_anims.py 再生成 sheet 后必须重跑 `tools/_tmp_anim_foot_frac.py` 补 foot_frac 字段**（幂等，223 目录）。**v6.32.4 追加：罩体半径随体型**——半径原为常量 52，L100 大机甲只被罩腰（实机主诉真因，与脚线锚定是两个独立缺陷）；现半径=max(52, 实体高*0.62)（0.7 曾致罩心偏上/罩体偏大，用户实机目检后收敛），实体高经 `CardFootAnchors.entity_height_for_sprite` 由 construct_unit 护盾段写入 aura meta `host_content_h`，四层（矢量弧/六边形/贴图罩/锚点）随 radius 等比嵌套；小单位（h≤74）观感零变化，回归锁含尺寸断言（大单位 r>52 且罩直径≥实体高*1.4）。**探针铁律（用户拍板）：渲染→确认→视觉证实后才能给结论**——①必须先目检渲染 sprite 是否为目标单位（曾塞错卡把机甲渲染成圣沙蒙坦克、验证无效被用户怒斥）；②位置对了不等于尺寸对，护盾/光环类修复必须同时截图目检包裹效果；③所有实机结论以截图+数值转储双证为准。**常驻回归锁 `tests/unit/combat/test_shield_foot_anchor.gd`**（真实 construct_unit 端到端九形态多体型：敌方静态中型/精英×1.2/头目×1.6/帧动画/二战甲/空中boss悬浮/堡垒大底座/现代甲/我方真实挂载链，逐像素 alpha 扫真实脚线断言偏差≤2px——变异验证过旧公式必红且偏差=实机截图量级）+ `tests/_tmp_v631b_smoke.gd`（公式级断言）+ 实机全流程探针 `tests/_tmp_shield_live_probe.gd`（槽1复制到槽3→标题屏「继续」真实路径进战斗→带盾单位逐帧转储，实测我方带盾动画单位 aura/脚线偏差 0.02px；跑完删槽3）。
 - **挂机部署三纪律**：①`afk_mode_manager` 已连 `unit_died` 死亡补位（阵亡卡实例查重后重新入队走 0.5s 轮转链；uses 池/能量门/单卡限 1 由引擎拦，**补位侧不做二次判断**防口径漂移）；②`_find_free_slot_world_pos` 必须跳 `is_slot_excluded(si,"player")` 废墟格与 `>= player_slots_total()` 越界槽（与 auto_deploy_controller 同律——is_player_slot_occupied 只认单位，禁放空格入队=吸附撞车白耗轮转）；③**新挂机状态分支记得 `process_auto_deploy` 早退链与 `_on_afk_state_changed` 两处同步**。
 - **胜负判定缓存回填**：`battle_manager._check_win_lose` 波次刷完后对 `enemy_unit_count` 缓存 0.5s 节流强制 `recount_enemy_units_on_field()` 回填（唯一同步点在波次生成函数开头，波次耗尽后死亡信号丢失=计数永久虚高死区：敌灭不刷波不判胜挂机停摆）。`spawn_card_grid_enemy_wave` 头有 `wave_spawn` TraceLog 面包屑，查"不刷新"先看它。
 - **结算底栏坐标契约追加**：宽主键态（next/replay 均 0）若「← 返回移动基地」存在，主键 `offset_left=216` 让位（原 100..820 与基地键 24..204 叠盖）。四键/三键/宽主键三态都受 `_bunker_return_available` 影响——它依赖 `/root/BunkerManager`（懒加载），**预热点见 `main._warmup_battle_lazy_managers` 名单（含 bunker+backpack 面板实例）**，新结算侧键先查名单。回归锁 `test_bottom_row_wide_main_key_yields_to_home`。
