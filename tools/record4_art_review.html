@@ -1,0 +1,59 @@
+<!DOCTYPE html><html><head><meta charset="UTF-8"><title>记录4 美术复核总览（2026-09-26）</title>
+<style>
+body{font-family:"Microsoft YaHei",sans-serif;background:#15151c;color:#ddd;margin:0;padding:18px}
+h1{color:#4ff;font-size:22px}h2{color:#8cf;font-size:17px;border-bottom:1px solid #345;padding-bottom:6px}
+img{image-rendering:auto}
+.sheet{width:100%;max-width:1400px;border:1px solid #333;background:#1c1c26;margin:6px 0}
+.pairrow{display:flex;gap:14px;margin:10px 0}
+.pairrow img{width:300px;height:300px;object-fit:contain;background:#26262e;border:1px solid #444}
+.cap{font-size:12px;color:#9ab;margin-top:4px}
+.note{background:#20283a;border-left:3px solid #4af;padding:8px 12px;font-size:13px;margin:8px 0;line-height:1.7}
+a{color:#4af}
+.hl{color:#ff5}
+</style></head><body>
+<h1>记录4 美术复核总览（2026-09-26）</h1>
+<div class="note">拼图由 tools/_tmp_visual_sheets.py 于复核终态重新生成（含本轮全部改动）。<br>
+本轮已修并在此可核对：<span class="hl">cold_air_strike_fighter 重生成（敌我两版+动画雪碧图质感）</span>、<span class="hl">drop_railgun 敌我朝向对调</span>、<span class="hl">ww1_arty_77mm 攻击帧 f01 火光重修（见下对照条）</span>。</div>
+
+<h2>一、本轮改动前后对照</h2>
+<div class="pairrow"><div><img src="../.godot/art_backup_csf_regen_20260926/enemy_cold_air_strike_fighter.png"><div class="cap">旧（备份）cold_air_strike_fighter 敌版（agnes 重生成）</div></div><div><img src="../assets/card_icons/enemy/cold_air_strike_fighter.png"><div class="cap">新（现役）cold_air_strike_fighter 敌版（agnes 重生成）</div></div></div>
+<div class="pairrow"><div><img src="../.godot/art_backup_drop_railgun_swap_20260926/enemy.png"><div class="cap">旧（备份）drop_railgun 敌版（对调后=朝左）</div></div><div><img src="../assets/card_icons/enemy/drop_railgun.png"><div class="cap">新（现役）drop_railgun 敌版（对调后=朝左）</div></div></div>
+<div class="pairrow"><div><img src="../.godot/art_backup_drop_railgun_swap_20260926/player.png"><div class="cap">旧（备份）drop_railgun 我版（对调后=朝右）</div></div><div><img src="../assets/card_icons/player/drop_railgun.png"><div class="cap">新（现役）drop_railgun 我版（对调后=朝右）</div></div></div>
+<div class="pairrow">
+<div><img style="width:512px;height:96px" src="../.godot/art_backup_77mm_flash2_20260926/frame1_old.png" onerror="this.parentNode.style.display='none'"><div class="cap">77mm 攻击帧 f01 旧（C 形残环）</div></div>
+<div><img style="width:512px;height:96px" src="../assets/effects/unit_anims/ww1_arty_77mm/f01.png" onerror="this.style.display='none';this.nextElementSibling.style.display='none'"><img src="" style="display:none"><div class="cap">77mm 攻击帧 f01 新（首帧切片见 f01.png，若 404 则看下方动画拼图）</div></div>
+</div>
+
+<h2>二、卡图拼图（360 张：敌/我 12 版）</h2>
+
+<img class="sheet" src="../.godot/audit_sheets/icons_01.png">
+<img class="sheet" src="../.godot/audit_sheets/icons_02.png">
+<img class="sheet" src="../.godot/audit_sheets/icons_03.png">
+<img class="sheet" src="../.godot/audit_sheets/icons_04.png">
+<img class="sheet" src="../.godot/audit_sheets/icons_05.png">
+<img class="sheet" src="../.godot/audit_sheets/icons_06.png">
+<img class="sheet" src="../.godot/audit_sheets/icons_07.png">
+<img class="sheet" src="../.godot/audit_sheets/icons_08.png">
+<img class="sheet" src="../.godot/audit_sheets/icons_09.png">
+<img class="sheet" src="../.godot/audit_sheets/icons_10.png">
+<img class="sheet" src="../.godot/audit_sheets/icons_11.png">
+<img class="sheet" src="../.godot/audit_sheets/icons_12.png">
+<img class="sheet" src="../.godot/audit_sheets/white_offenders.png">
+<h2>三、动画雪碧图拼图（240 套 idle+attack，8 版）</h2>
+<img class="sheet" src="../.godot/audit_sheets/anim_rep_01.png">
+<img class="sheet" src="../.godot/audit_sheets/anim_rep_02.png">
+<img class="sheet" src="../.godot/audit_sheets/anim_rep_03.png">
+<img class="sheet" src="../.godot/audit_sheets/anim_rep_04.png">
+<img class="sheet" src="../.godot/audit_sheets/anim_rep_05.png">
+<img class="sheet" src="../.godot/audit_sheets/anim_rep_06.png">
+<img class="sheet" src="../.godot/audit_sheets/anim_rep_07.png">
+<img class="sheet" src="../.godot/audit_sheets/anim_rep_08.png">
+
+<h2>四、存量审查工具索引</h2>
+<div class="note">
+<li><a href="enemy_card_review（敌方卡）.html">enemy_card_review（敌方卡）.html</a> — 敌方卡/Boss 卡交互审查（数据快照 2026-09-16，早于本轮改动）</li>
+<li><a href="player_card_review_final.html">player_card_review_final.html</a> — 我方卡图映射（快照 2026-07-10 且图片相对路径缺 ../，自 tools/ 打开会碎图，仅存档价值）</li>
+<li><a href="vfx_audit_review.html">vfx_audit_review.html</a> — VFX 48 格标准帧审查（有效）</li>
+<li><a href="intro_shenhua_review.html">intro_shenhua_review.html</a> — 开场演出审查</li>
+</div>
+</body></html>

@@ -1,0 +1,79 @@
+【攻击表·英文结构化定稿版】
+
+Intended use:
+Create a 6-frame 3x2 spritesheet for a side-view 2D game character attack animation.
+
+Input images:
+Image 1 is the identity anchor for 参考图中的这名士兵. Preserve the exact identity, colors, proportions, silhouette, palette, and left-facing direction.
+Image 2 is the 3x2 spritesheet layout guide. Use it only as a layout guide for six equal cells; its repeated pose is not an action reference.
+
+Primary request:
+Generate the same subject using its 步枪, facing LEFT in exact side view for every frame. Any flash is small and brief; the subject stays on a stable ground baseline.
+
+Canvas and layout:
+- wide 16:9 PNG spritesheet
+- 3 columns by 2 rows, six equal cells
+- frame order: left to right across the top row, then left to right across the bottom row
+- subject fully visible in each cell
+- consistent scale, camera, and ground baseline across all frames
+
+Background: pure flat white fills the entire canvas edge to edge, above, below and between all six cells; the six subjects float freely in empty white space with nothing beneath or behind them; the only pixels in the whole image are the six subjects, the one small flash, and white.
+
+Frame sequence:
+Frame 1: neutral ready stance, weapon held as in Image 1, no muzzle flash.
+Frame 2: leans slightly into the weapon, firmer grip, still no flash.
+Frame 3: firing frame - a small orange-yellow muzzle flash at the muzzle tip only.
+Frame 4: follow-through, slight recoil, flash gone, a thin smoke wisp near the muzzle.
+Frame 5: recoil settling, body easing back, no flash, no smoke.
+Frame 6: return to the calm ready stance, identical to Frame 1, no effects.
+
+Style:
+- 2D game sprite, clean volumetric color painting, no black outline, no contour line
+- crisp edges, consistent lighting and palette, readable silhouette
+
+Constraints:
+- no direction change; the subject faces LEFT in every frame, never right, never toward the camera
+- no camera angle change; the exact same pure side view as Image 1 in every frame, never top-down, never 3/4
+- the only content is the six identical subjects, the single flash, and flat white; any other object, texture band, ground, label or border is a defect
+- do not crop any part of the subject
+- do not merge cells or create comic panels
+- do not recenter or rescale the subject differently per frame
+
+============================================================
+
+【待机表·英文结构化定稿版】
+
+f-string body
+Intended use:
+Create a 6-frame 3x2 spritesheet for a side-view 2D game character idle animation.
+
+Input images:
+Image 1 is the identity anchor for 参考图中的这名士兵. Preserve the exact identity, colors, proportions, silhouette, palette, and left-facing direction.
+Image 2 is the 3x2 spritesheet layout guide. Use it only as a layout guide for six equal cells; its repeated pose is not an action reference.
+
+Primary request:
+Generate the same subject standing idle, facing LEFT in exact side view for every frame. The six frames are almost identical, with only a very subtle idle motion (breathing or engine vibration, no larger than two percent of the subject height).
+
+Canvas and layout:
+- wide 16:9 PNG spritesheet
+- 3 columns by 2 rows, six equal cells
+- frame order: left to right across the top row, then left to right across the bottom row
+- subject fully visible in each cell
+- consistent scale, camera, and ground baseline across all frames
+
+Background: pure flat white fills the entire canvas edge to edge, above, below and between all six cells; the six subjects float freely in empty white space with nothing beneath or behind them; the only pixels in the whole image are the six subjects and white.
+
+Frame sequence:
+Frame 1 through Frame 6: the same idle stance with only tiny variations, no weapon fire, no effects, no glow.
+
+Style:
+- 2D game sprite, clean volumetric color painting, no black outline, no contour line
+- crisp edges, consistent lighting and palette, readable silhouette
+
+Constraints:
+- no direction change; the subject faces LEFT in every frame, never right, never toward the camera
+- no camera angle change; the exact same pure side view as Image 1 in every frame, never top-down, never 3/4
+- the only content is the six identical subjects and flat white; any other object, texture band, ground, label or border is a defect
+- do not crop any part of the subject
+- do not merge cells or create comic panels
+- do not recenter or rescale the subject differently per frame

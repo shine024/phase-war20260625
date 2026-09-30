@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3 uid="uid://c632skillfloorflow"]
+
+[ext_resource type="Script" path="res://tests/_tmp_v632_skillfloor_flow.gd" id="1_v632"]
+
+[node name="V632SkillFloorFlow" type="Node"]
+script = ExtResource("1_v632")
