@@ -147,3 +147,4 @@ tests/*.gd.uid
 *.mp4
 # 视频大文件不入库（Steam 素材另存）
 *.avi
+_steam_assets/video/battle_raw.avi
