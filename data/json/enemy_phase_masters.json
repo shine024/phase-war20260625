@@ -5,7 +5,7 @@
   "data": [
     {
       "id": "enemy_master_001",
-      "name": "沈铸城",
+      "name": "埃蒂安·勒梅特",
       "title": "十七天的防线",
       "level": 5,
       "faction": "steel",
@@ -35,7 +35,7 @@
     },
     {
       "id": "enemy_master_002",
-      "name": "祝晚棠",
+      "name": "格蕾特·霍夫曼",
       "title": "过载之火",
       "level": 6,
       "faction": "flame",
@@ -65,7 +65,7 @@
     },
     {
       "id": "enemy_master_003",
-      "name": "陆惊鸿",
+      "name": "尼古拉·沃罗诺夫",
       "title": "七重闪电",
       "level": 7,
       "faction": "thunder",
@@ -95,7 +95,7 @@
     },
     {
       "id": "enemy_master_004",
-      "name": "裴溯",
+      "name": "埃里希·文德勒",
       "title": "四十一秒的裂隙",
       "level": 8,
       "faction": "void",
@@ -125,7 +125,7 @@
     },
     {
       "id": "enemy_master_005",
-      "name": "霍北望",
+      "name": "阿奇博尔德·格雷",
       "title": "不可破之盾",
       "level": 10,
       "faction": "steel",
@@ -157,7 +157,7 @@
     },
     {
       "id": "enemy_master_006",
-      "name": "姜拾烬",
+      "name": "塞尔焦·费拉里",
       "title": "毁灭之焰",
       "level": 12,
       "faction": "flame",
@@ -189,7 +189,7 @@
     },
     {
       "id": "enemy_master_007",
-      "name": "秦引路",
+      "name": "穆斯塔法·德米拉",
       "title": "万钧雷霆",
       "level": 13,
       "faction": "thunder",
@@ -221,7 +221,7 @@
     },
     {
       "id": "enemy_master_008",
-      "name": "池晏",
+      "name": "叶莲娜·索科洛娃",
       "title": "维度撕裂者",
       "level": 14,
       "faction": "void",
@@ -254,7 +254,7 @@
     },
     {
       "id": "enemy_master_009",
-      "name": "靳承岗",
+      "name": "奥托·施泰因贝格",
       "title": "钢铁军团统帅",
       "level": 16,
       "faction": "steel",
@@ -287,7 +287,7 @@
     },
     {
       "id": "enemy_master_010",
-      "name": "闻人烬",
+      "name": "织田炎司",
       "title": "永恒烈焰",
       "level": 17,
       "faction": "flame",
@@ -319,7 +319,7 @@
     },
     {
       "id": "enemy_master_011",
-      "name": "程默雷",
+      "name": "弗兰克·莫里森",
       "title": "一声没响的雷",
       "level": 18,
       "faction": "thunder",
@@ -352,7 +352,7 @@
     },
     {
       "id": "enemy_master_012",
-      "name": "温折野",
+      "name": "亚瑟·惠特克",
       "title": "四十天的夹层",
       "level": 19,
       "faction": "void",
@@ -385,7 +385,7 @@
     },
     {
       "id": "enemy_master_013",
-      "name": "韩铸犁",
+      "name": "沃尔夫冈·布伦纳",
       "title": "熔剑为犁",
       "level": 18,
       "faction": "steel_flame",
@@ -418,7 +418,7 @@
     },
     {
       "id": "enemy_master_014",
-      "name": "方镇流",
+      "name": "德米特里·杜宾",
       "title": "吞雷的装甲",
       "level": 19,
       "faction": "thunder_steel",
@@ -451,7 +451,7 @@
     },
     {
       "id": "enemy_master_015",
-      "name": "郁向暖",
+      "name": "薇拉·科瓦奇",
       "title": "熵减之焰",
       "level": 20,
       "faction": "void_flame",
@@ -484,7 +484,7 @@
     },
     {
       "id": "enemy_master_016",
-      "name": "石顶安",
+      "name": "罗伊·斯坦顿",
       "title": "顶住塌方的人",
       "level": 22,
       "faction": "steel",
@@ -518,7 +518,7 @@
     },
     {
       "id": "enemy_master_017",
-      "name": "江焚渡",
+      "name": "杰克·伯恩斯",
       "title": "烧桥的人",
       "level": 23,
       "faction": "flame",
@@ -550,7 +550,7 @@
     },
     {
       "id": "enemy_master_018",
-      "name": "纪回春",
+      "name": "谢尔盖·沃洛宁",
       "title": "圈外的雷",
       "level": 24,
       "faction": "thunder",
@@ -584,7 +584,7 @@
     },
     {
       "id": "enemy_master_019",
-      "name": "晏怀空",
+      "name": "拉斐尔·埃斯皮诺萨",
       "title": "世界吞噬者",
       "level": 25,
       "faction": "void",
@@ -618,7 +618,7 @@
     },
     {
       "id": "enemy_master_020",
-      "name": "盛传书",
+      "name": "阿米娜·奥科耶",
       "title": "七岛的天线",
       "level": 24,
       "faction": "steel_thunder",
@@ -652,7 +652,7 @@
     },
     {
       "id": "enemy_master_021",
-      "name": "明未晞",
+      "name": "阿琼·梅农",
       "title": "混沌之焰",
       "level": 25,
       "faction": "flame_void",
@@ -684,7 +684,7 @@
     },
     {
       "id": "enemy_master_022",
-      "name": "宋卸甲",
+      "name": "朴成宰",
       "title": "只缴不歼",
       "level": 26,
       "faction": "steel",
@@ -718,7 +718,7 @@
     },
     {
       "id": "enemy_master_023",
-      "name": "楚再春",
+      "name": "奥马尔·哈达德",
       "title": "灰烬里回来的人",
       "level": 27,
       "faction": "flame",
@@ -751,7 +751,7 @@
     },
     {
       "id": "enemy_master_024",
-      "name": "岑风眠",
+      "name": "英格里德·索尔海姆",
       "title": "让路的雷暴",
       "level": 27,
       "faction": "thunder",
@@ -785,7 +785,7 @@
     },
     {
       "id": "enemy_master_025",
-      "name": "宿怀夜",
+      "name": "维克多·内维斯",
       "title": "八小时的影子",
       "level": 28,
       "faction": "void",
@@ -819,7 +819,7 @@
     },
     {
       "id": "enemy_master_026",
-      "name": "鲁满仓",
+      "name": "阿列克谢·莫罗佐夫",
       "title": "两百把锄头",
       "level": 28,
       "faction": "steel",
@@ -853,7 +853,7 @@
     },
     {
       "id": "enemy_master_027",
-      "name": "涂知温",
+      "name": "颂猜·威拉万",
       "title": "三十七度的火",
       "level": 29,
       "faction": "flame",
@@ -886,7 +886,7 @@
     },
     {
       "id": "enemy_master_028",
-      "name": "端木近雨",
+      "name": "玛雅·奥杜亚",
       "title": "很近的雷雨",
       "level": 29,
       "faction": "thunder",

@@ -459,7 +459,11 @@ func _on_battle_ended_bgm(player_won: bool) -> void:
 ## battle_started 起 battle_wind 风声循环（含远炮闷响），battle_ended 淡出。
 ## 音量独立线性参数；极速推演期间不停（底噪无事件堆积问题）。
 var _ambient_player: AudioStreamPlayer = null
-const AMBIENT_MAP: Dictionary = {"battle_wind": "ambient_battle_wind"}
+## v6.42: wakeup_wind=苏醒演出专用柔化雪原风声（与战斗氛围 battle_wind 分离）
+const AMBIENT_MAP: Dictionary = {
+	"battle_wind": "ambient_battle_wind",
+	"wakeup_wind": "ambient_wakeup_wind",
+}
 const AMBIENT_DEFAULT_LINEAR: float = 0.22
 
 func play_ambient(key: String, linear_volume: float = AMBIENT_DEFAULT_LINEAR) -> void:

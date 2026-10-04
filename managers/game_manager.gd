@@ -1415,7 +1415,13 @@ func get_era(level: int) -> int:
 func get_enemy_wave_total_for_level(level: int) -> int:
 	# v27 黑门无尽 run：波次恒"未耗尽"（_check_win_lose 的 endless 分支永不判胜，
 	# 此值仅供 HUD 波次显示兜底；真实出兵由 spawn 系统 endless 分支驱动）
+	# v6.42: 首场黑门试炼=有限波（FIRST_GATE_CORE_WAVE），HUD 显示真实上限
 	if _is_endless_battle:
+		var ebm0: Node = get_node_or_null("/root/EndlessBlackgateManager")
+		if ebm0 != null and ebm0.has_method("get_run_wave_limit"):
+			var limit: int = int(ebm0.call("get_run_wave_limit"))
+			if limit > 0:
+				return limit
 		return 999999
 	return LevelEras.get_wave_total_for_level(max(1, level))
 

@@ -231,14 +231,19 @@ func _play_fire_sfx(wt: int) -> void:
 
 ## v20.25: 落地爆炸音——take_damage→unit_damaged 只驱动通用 "hit" 短音（AudioManager
 ## 节流层），曲射爆炸缺低频轰鸣层。70ms 窗口节流防多炮同帧齐轰爆音。
-func _play_explosion_sfx() -> void:
+## v6.42（记录6，力度分级）：HEAVY/NUCLEAR 档落地换 explosion_big 大当量爆炸
+## （更深 sub+更长尾），MEDIUM 及以下维持原 explosion。
+func _play_explosion_sfx(power_tier: int = 1) -> void:
 	if not (AudioManager and AudioManager.has_method("play_sfx")):
 		return
 	var now := Time.get_ticks_msec()
 	if now - _last_boom_msec < 70:
 		return
 	_last_boom_msec = now
-	AudioManager.play_sfx("explosion", 1.0, randf_range(0.9, 1.1))
+	if power_tier >= 2:
+		AudioManager.play_sfx("explosion_big", 1.0, randf_range(0.88, 1.0))
+	else:
+		AudioManager.play_sfx("explosion", 1.0, randf_range(0.9, 1.1))
 
 func clear_all() -> void:
 	# v9.2: 归还所有活跃弹道字典到池
@@ -372,7 +377,7 @@ func _apply_hit(r: Dictionary) -> void:
 		_dopts["power_tier"] = WeaponProjectileVfx.compute_power_tier(
 			_dt_wt, float(_WEAPON_CONFIG.get(_dt_wt, {}).get("explosion_radius", 0.0)), float(r.get("dmg", 0.0)))
 		_spawn_impact_explosion(_dpos, bool(r.get("is_player", true)), _dt_wt, -1, _dwname, _dopts)
-		_play_explosion_sfx()
+		_play_explosion_sfx(int(_dopts.get("power_tier", 1)))
 		return
 	var tgt: Node2D = raw_tgt
 
@@ -397,7 +402,7 @@ func _apply_hit(r: Dictionary) -> void:
 		var _ind_radius: float = float(_WEAPON_CONFIG.get(wt, {}).get("explosion_radius", 0.0))
 		_opts["power_tier"] = WeaponProjectileVfx.compute_power_tier(wt, _ind_radius, float(r.get("dmg", 0.0)))
 		_spawn_impact_explosion(hit_pos, proj_is_player, wt, _tgt_kind, _wname, _opts)
-		_play_explosion_sfx()
+		_play_explosion_sfx(int(_opts.get("power_tier", 1)))
 		# v6.4: 曲射爆炸触发中等屏幕震动
 		# v7.x: 优先用 combat_kind 的震动参数（对空重震/对装甲中震/对轻装轻震）
 		# v27.12 perf: BattleManager 走成员缓存（原每次命中全树字符串查找）

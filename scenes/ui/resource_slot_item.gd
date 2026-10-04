@@ -54,6 +54,11 @@ func _ready() -> void:
 	# v7.x：hover 动效（仅稀有度瓷砖 LORE/RUNE 在 set_data 后才真正启用）
 	mouse_entered.connect(_on_mouse_entered)
 	mouse_exited.connect(_on_mouse_exited)
+	# v6.42（记录6）：提示改走顶层 HoverTip 层——内建 tooltip 画在 layer 0 默认画布，
+	# 会被 PopupLayer(100) 内本瓷砖的卡框（CardFrameOverlay z=30/hover 抬升）整块盖住。
+	# 引擎 tooltip_text 置空防双弹；内容源仍是 tooltip_text（既有写入方零改动）。
+	HoverTip.bind_control(self)
+	tooltip_text = ""
 	# v9.x 修复：创建装饰中间层（与 BackpackCardItem 同模式）。
 	# ResourceSlotItem 是 PanelContainer，会对所有直接子节点强制 fit_child_in_rect。
 	# 装饰节点（稀有度色条/状态点/数量徽章等）需要按 anchor/offset 局部定位，
@@ -225,11 +230,12 @@ func set_data(id: String, stack_amount: int, type: SlotType = SlotType.RESOURCE,
 			_tile_glow_mode = 1 if bool(extra_data.get("is_equipped", false)) else 0
 			_clear_mod_decorations()  # v9.0: 切到 RUNE 时清掉改造专属装饰
 
-	# 悬浮情报：瓦片名截断 7 字，详细说明走 tooltip（此前 _get_slot_tooltip_text 零调用）
-	tooltip_text = _get_slot_tooltip_text()
+	# 悬浮情报：瓦片名截断 7 字，详细说明走 HoverTip 顶层提示层（v6.42 替代内建 tooltip）
+	var tip_text := _get_slot_tooltip_text()
 	# LORE（改造）的装配状态已并入 _build_mod_tooltip（含"N 张卡"计数），不再追加后缀
 	if _tile_glow_mode == 1 and slot_type == SlotType.RUNE:
-		tooltip_text += "\n（已装备）"
+		tip_text += "\n（已装备）"
+	HoverTip.set_tip(self, tip_text)
 
 ## 刷新资源显示
 func _refresh_resource(id: String, name_label: Label, amount_label: Label, icon_rect: TextureRect) -> void:

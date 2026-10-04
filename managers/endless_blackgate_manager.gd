@@ -41,6 +41,9 @@ const SCORE_PER_KILL: int = 2
 const GATE_CORE_WAVE_MIN: int = 200
 const GATE_CORE_WAVE_MAX: int = 320
 const GATE_CORE_DEPTH_STEP: int = 10
+## v6.42（记录6，用户拍板）：黑门不是无限模式——首场是有限波试炼：第 FIRST_GATE_CORE_WAVE 波
+## 本体现身，击碎即通关黑门；通关（gate_cleared_once）后才开放无限模式（本体每场随机 200-320 波）。
+const FIRST_GATE_CORE_WAVE: int = 30
 ## 击碎本体的首通大奖(一次性;星髓,受既有周封顶 400 约束)
 const GATE_FIRST_CLEAR_MARROW: int = 200
 ## 中途补给节点:每 25 波自动入账(不打断战斗)
@@ -99,6 +102,28 @@ func _ready() -> void:
 	var sb: Node = get_node_or_null("/root/SignalBus")
 	if sb != null and sb.has_signal("bunker_day_ended") and not sb.bunker_day_ended.is_connected(_on_day_ended):
 		sb.bunker_day_ended.connect(_on_day_ended)
+	# v6.42（记录6）：渗透据点隔真实时间刷新——此前唯一驱动是 sleep() 的 bunker_day_ended，
+	# 醒着多久都不刷（实机主诉"地图也应该隔时间刷新星冥敌人据点"）。懒加载管理器常驻后
+	# 挂 5 分钟周期钟；黑门未通关才补刷（通关后停刷口径与 _on_day_ended 一致）。
+	var tick := Timer.new()
+	tick.name = "IncursionRealtimeTick"
+	tick.wait_time = 300.0
+	tick.autostart = true
+	tick.timeout.connect(_realtime_refresh_tick)
+	add_child(tick)
+
+
+## v6.42: 渗透实时心跳（5 分钟/拍）——过期清理 + 未满则 50% 概率补 1 个（上限/停刷同日刷口径）
+func _realtime_refresh_tick() -> void:
+	_expire_incursions()
+	if gate_cleared_once or not is_blackgate_unlocked():
+		return
+	if incursions.size() >= INCURSION_MAX:
+		return
+	if randf() < 0.5:
+		return
+	_spawn_incursion()
+	incursions_changed.emit()
 
 
 ## 黑门是否解锁：第 100 关已通关（星级 > 0；LPM 未加载时按 GameManager 进度兜底）
@@ -119,12 +144,25 @@ func begin_run() -> void:
 	run_active = true
 	current_rift_env = RIFT_ENV_KEYS[randi() % RIFT_ENV_KEYS.size()]
 	# v6.35 黑门 2.0: roll 本体深度(步进取档)+复位通关态+布局池变体
-	var span: int = int((GATE_CORE_WAVE_MAX - GATE_CORE_WAVE_MIN) / float(GATE_CORE_DEPTH_STEP)) + 1
-	gate_core_wave = GATE_CORE_WAVE_MIN + (randi() % span) * GATE_CORE_DEPTH_STEP
+	# v6.42（记录6）：首场（未通关过）=固定第 FIRST_GATE_CORE_WAVE 波的本体试炼；
+	# 通关后才是无限模式（每场随机 200-320 波）。
+	if gate_cleared_once:
+		var span: int = int((GATE_CORE_WAVE_MAX - GATE_CORE_WAVE_MIN) / float(GATE_CORE_DEPTH_STEP)) + 1
+		gate_core_wave = GATE_CORE_WAVE_MIN + (randi() % span) * GATE_CORE_DEPTH_STEP
+	else:
+		gate_core_wave = FIRST_GATE_CORE_WAVE
 	gate_cleared = false
 	gate_choice_pending = false
 	supplies_granted = 0
 	layout_variant = randi() % maxi(1, LevelBattleLayoutsRef.get_endless_variant_count())
+
+
+## v6.42: 当前 run 的波数上限（HUD 波次显示用；0=无限）。
+## 首场试炼=FIRST_GATE_CORE_WAVE；通关后的无限 run=0（HUD 沿用 999999 兜底）。
+func get_run_wave_limit() -> int:
+	if not run_active or gate_cleared_once:
+		return 0
+	return FIRST_GATE_CORE_WAVE
 
 
 ## v6.35: 本体被击碎(battle_spawn_system 击杀链调用)。通关优先于判负——
@@ -169,6 +207,18 @@ func _on_day_ended(_day: int = -1) -> void:
 	_expire_incursions()
 	if gate_cleared_once:
 		return
+	var spawned: int = 0
+	while incursions.size() < INCURSION_MAX and spawned < 2:
+		if randf() < 0.5:
+			break  # 每日 0-2 个(50% 概率提前收手)
+		_spawn_incursion()
+		spawned += 1
+	if spawned > 0:
+		incursions_changed.emit()
+
+
+## v6.42: 追加一个渗透节点（宿主关=停靠关 -15~+5 已通关范围；日刷/实时心跳共用）
+func _spawn_incursion() -> void:
 	var bm: Node = get_node_or_null("/root/BunkerManager")
 	var parked: int = int(bm.get_parked_level()) if bm != null and bm.has_method("get_parked_level") else 1
 	# 宿主候选:停靠关附近已通关范围(打得到的敌人才有意义)
@@ -176,18 +226,34 @@ func _on_day_ended(_day: int = -1) -> void:
 	var hi: int = mini(LevelEras.LEVEL_COUNT, parked + 5)
 	if hi < lo:
 		return
-	var spawned: int = 0
-	while incursions.size() < INCURSION_MAX and spawned < 2:
-		if randf() < 0.5:
-			break  # 每日 0-2 个(50% 概率提前收手)
-		incursions.append({
-			"host_level": randi_range(lo, hi),
-			"seed": randi(),
-			"spawned_day": _current_day(),
-		})
-		spawned += 1
-	if spawned > 0:
-		incursions_changed.emit()
+	incursions.append({
+		"host_level": randi_range(lo, hi),
+		"seed": randi(),
+		"spawned_day": _current_day(),
+	})
+
+
+## v6.42: 渗透剩余过期天数（大地图 tooltip 消费；宪法 C3 口径随 INCURSION_EXPIRE_DAYS 常量走）
+func get_incursion_days_left(inc: Dictionary) -> int:
+	return maxi(0, INCURSION_EXPIRE_DAYS - (_current_day() - int(inc.get("spawned_day", 0))))
+
+
+## v6.42: 行军遭遇——在指定关追加一个渗透节点（宿主=到站关；BunkerManager 到站掷点消费）。
+## 条件不满足（已通关/未解锁/已达上限/非法关卡）返回 false，调用方静默跳过。
+func spawn_incursion_at(host_level: int) -> bool:
+	if gate_cleared_once or not is_blackgate_unlocked():
+		return false
+	if incursions.size() >= INCURSION_MAX:
+		return false
+	if host_level < 1 or host_level > LevelEras.LEVEL_COUNT:
+		return false
+	incursions.append({
+		"host_level": host_level,
+		"seed": randi(),
+		"spawned_day": _current_day(),
+	})
+	incursions_changed.emit()
+	return true
 
 
 func _current_day() -> int:

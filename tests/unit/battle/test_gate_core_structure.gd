@@ -49,17 +49,43 @@ func after_test() -> void:
 	pass
 
 
-## 本体深度随机区间:begin_run 后 gate_core_wave ∈ [200,320] 且为 10 的倍数
+## v6.42 黑门结构改版：首场（未通关过）=固定第 FIRST_GATE_CORE_WAVE 波的有限试炼；
+## 通关（gate_cleared_once=true）后才 roll 200-320 无限档。两种档都为 10 的倍数。
 func test_begin_run_rolls_gate_core_wave_in_range() -> void:
 	var e := _ebm()
 	assert_object(e).is_not_null()
 	var bak := _ebm_snapshot()
-	for _i in range(30):
+	# 首场试炼：恒 FIRST_GATE_CORE_WAVE
+	e.gate_cleared_once = false
+	for _i in range(5):
 		e.begin_run()
 		e.run_active = false  # 防止下一次 begin_run 双扣入场次数
+		assert_int(e.gate_core_wave).is_equal(e.FIRST_GATE_CORE_WAVE)
+		assert_bool(e.gate_cleared).is_false()
+	# 通关后的无限模式：恢复 200-320 随机档
+	e.gate_cleared_once = true
+	for _i in range(30):
+		e.begin_run()
+		e.run_active = false
 		assert_int(e.gate_core_wave).is_between(200, 320)
 		assert_int(e.gate_core_wave % 10).is_equal(0)
 		assert_bool(e.gate_cleared).is_false()
+	_ebm_restore(bak)
+
+
+## v6.42: get_run_wave_limit——首场 run 返回有限波上限，无限 run/非运行态返回 0
+func test_run_wave_limit_first_gate_finite() -> void:
+	var e := _ebm()
+	var bak := _ebm_snapshot()
+	e.gate_cleared_once = false
+	e.begin_run()
+	assert_int(e.get_run_wave_limit()).is_equal(e.FIRST_GATE_CORE_WAVE)
+	e.run_active = false
+	assert_int(e.get_run_wave_limit()).is_equal(0)
+	e.gate_cleared_once = true
+	e.begin_run()
+	assert_int(e.get_run_wave_limit()).is_equal(0)  # 通关后的无限 run 无上限
+	e.run_active = false
 	_ebm_restore(bak)
 
 
@@ -204,6 +230,7 @@ func test_incursion_and_supply_constants() -> void:
 	var e := _ebm()
 	assert_int(e.GATE_CORE_WAVE_MIN).is_equal(200)
 	assert_int(e.GATE_CORE_WAVE_MAX).is_equal(320)
+	assert_int(e.FIRST_GATE_CORE_WAVE).is_equal(30)  # v6.42: 首场试炼有限波
 	assert_int(e.SUPPLY_INTERVAL).is_equal(25)
 	assert_int(e.INCURSION_MAX).is_equal(3)
 	assert_int(e.GATE_FIRST_CLEAR_MARROW).is_equal(200)

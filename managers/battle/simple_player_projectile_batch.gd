@@ -197,7 +197,7 @@ func fire(from: Vector2, tgt: Node2D, dmg: float, wt: int, shooter: Node2D, shoo
 	d["weapon_name"] = weapon_name
 	d["vfx_variant"] = p_vfx_variant
 	_proj.append(d)
-	_play_fire_sfx(wt)
+	_play_fire_sfx(wt, dmg)
 	# v16: 删除原 25% 抽样枪口火——唯一调用方 construct_unit_ai 在 do_attack_with_damage
 	# 顶部已播单位级炮口火（_play_muzzle_feedback，锚点对齐+类别键正确），batch 再播会双重叠加。
 
@@ -205,7 +205,10 @@ func fire(from: Vector2, tgt: Node2D, dmg: float, wt: int, shooter: Node2D, shoo
 ## 兜底路径（_play_attack_sfx），主力弹道全程无声。110ms 窗口节流（≈9 音/s 上限），
 ## 音量取保守低值（0.22-0.3）——多单位混战时是底层枪声床而非主音量，初值听感
 ## 待用户验收后再调。命中音已由 take_damage→unit_damaged→AudioManager 覆盖，不重复。
-func _play_fire_sfx(wt: int) -> void:
+## v6.42（记录6，用户主诉"武器音效没区分力和力度"）：按伤害走 compute_power_tier
+## 分级——轻火力=枪族（原样），重火力/终极=cannon_fire 重炮音+更低沉音高，音量随档放大。
+## （旧实现玩家侧 wt 恒 0 全员落 gun_smg——一挺重机枪和一支手枪同声。）
+func _play_fire_sfx(wt: int, dmg: float = 0.0) -> void:
 	if not (AudioManager and AudioManager.has_method("play_sfx")):
 		return
 	var now := Time.get_ticks_msec()
@@ -213,15 +216,24 @@ func _play_fire_sfx(wt: int) -> void:
 		return
 	_last_fire_sfx_msec = now
 	var pitch := randf_range(0.9, 1.1)
+	var tier := WeaponProjectileVfx.compute_power_tier(wt, 0.0, dmg)
 	match wt:
 		4:
-			AudioManager.play_sfx("gun_pistol", 0.22, pitch * 1.1)
+			AudioManager.play_sfx("gun_pistol", 0.22 + 0.04 * tier, pitch * 1.1)
 		1:
-			AudioManager.play_sfx("gun_rifle", 0.25, pitch)
+			AudioManager.play_sfx("gun_rifle", 0.25 + 0.04 * tier, pitch)
 		2:
-			AudioManager.play_sfx("gun_mg", 0.30, pitch * 0.9)
+			AudioManager.play_sfx("gun_mg", 0.30 + 0.04 * tier, pitch * 0.9)
 		_:
-			AudioManager.play_sfx("gun_smg", 0.25, pitch)
+			match tier:
+				3:
+					AudioManager.play_sfx("cannon_fire", 0.40, pitch * 0.78)
+				2:
+					AudioManager.play_sfx("cannon_fire", 0.33, pitch * 0.88)
+				1:
+					AudioManager.play_sfx("gun_rifle", 0.27, pitch * 0.95)
+				_:
+					AudioManager.play_sfx("gun_smg", 0.25, pitch)
 
 func clear_all() -> void:
 	# v9.2: 归还所有活跃弹道字典到池（战斗结束/拆卸时批量回收，下场战斗复用）

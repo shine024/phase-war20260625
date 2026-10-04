@@ -451,7 +451,8 @@ func _on_afk_state_changed(new_state: int) -> void:
 		AFKModeManager.State.IDLE:
 			start_btn.visible = true
 			stop_btn.visible = false
-			status_label.text = "状态: 待机中"
+			# v6.42（记录6，用户主诉"挂机时不显示精神"）：待机也显示精神余量
+			status_label.text = "状态: 待机中" + sanity_txt
 		AFKModeManager.State.RUNNING:
 			start_btn.visible = false
 			stop_btn.visible = true
@@ -463,7 +464,8 @@ func _on_afk_state_changed(new_state: int) -> void:
 		AFKModeManager.State.FAILED:
 			start_btn.visible = true
 			stop_btn.visible = false
-			status_label.text = "状态: 已失败"
+			# v6.42: 失败态也带精神余量（多因精神抽干连败——直说还剩多少）
+			status_label.text = "状态: 已失败" + sanity_txt
 		AFKModeManager.State.TRAVELING:
 			# v36：关间行进节拍（胜利后赶往下一关）；v6.37 文案对齐用户口径
 			# "正在进发"，秒级倒计时由 _process 渲染（置 -1 强制立即刷一帧）
@@ -486,7 +488,11 @@ func _on_afk_state_changed(new_state: int) -> void:
 
 
 ## v6.23d 记录6#7: 精神余量后缀（BunkerManager 不存在则空串，行为不变）
+## v6.42: 懒加载兜底——从未进过基地时 BunkerManager 未实例化，精神恒不显示
 func _get_sanity_status_text() -> String:
+	var mll: Node = get_node_or_null("/root/ManagerLazyLoader")
+	if mll != null and mll.has_method("ensure_loaded"):
+		mll.ensure_loaded("bunker")
 	var bunker: Node = get_node_or_null("/root/BunkerManager")
 	if bunker == null or not bunker.has_method("get_sanity"):
 		return ""
@@ -612,7 +618,13 @@ func _update_stats_display() -> void:
 		var total_count: int = 0
 		for key in _afk_manager.accumulated_rewards:
 			total_count += int(_afk_manager.accumulated_rewards[key])
-		slots_used_label.text = "累计: %d 件" % total_count
+		# v6.42（记录6，用户主诉"不知道还能挂机几关"）：PUSH 运行中附距终局剩余关数
+		if _afk_manager.mode == AFKModeManager.Mode.PUSH and _afk_manager.get_current_level() > 0:
+			var left := maxi(0, AFKModeManager.LEVEL_CAP - _afk_manager.get_current_level())
+			slots_used_label.text = "累计: %d 件 ｜ 距终局(第%d关)还剩 %d 关" % [
+				total_count, AFKModeManager.LEVEL_CAP, left]
+		else:
+			slots_used_label.text = "累计: %d 件" % total_count
 	elif _afk_manager.mode == AFKModeManager.Mode.PUSH:
 		slots_used_label.text = "推进起点: 第 %d 关" % _push_start_hint()
 		slots_used_label.tooltip_text = "向前推进从当前停靠关开始\n胜利后自动向下一关行进（关间有赶路时间）；失败后可从进度续推"

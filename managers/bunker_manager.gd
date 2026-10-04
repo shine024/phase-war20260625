@@ -56,6 +56,7 @@ var _travel_dest := 0        # 行驶目的地（0=未在途）
 var _travel_days_total := 0  # 行程总天数（大地图路线进度分母；0=未在途）
 var _travel_started_unix := 0.0  # 出发时刻（unix 秒；v26.21 实时行军）
 var _travel_ends_unix := 0.0     # 预计到站时刻（unix 秒）
+var _travel_fuel_spent := 0  # v6.42: 本次启程已扣燃料（取消行军全额返还；读档时按路线估价）
 var _fuel_regen_unix := 0.0      # v26.25 燃料自动回复结算时刻（unix 秒；0=未起算，首读置now——离线补结算走读侧累计）
 
 ## 荣誉陈列室解锁所需碎片数（P3 定 10：让中期玩家够得着；30 全收集是观星台条件）
@@ -203,6 +204,7 @@ func _check_travel_arrival() -> void:
 	if Time.get_unix_time_from_system() < _travel_ends_unix:
 		return
 	var dest := _travel_dest
+	var from := get_parked_level()
 	_parked_level = dest
 	_travel_dest = 0
 	_travel_days_total = 0
@@ -213,6 +215,25 @@ func _check_travel_arrival() -> void:
 		var nm := String(LevelInformationData.get_shared().get_level_display_name(dest))
 		SignalBus.show_toast.emit("移动基地抵达 第%d关「%s」——可在此出击" % [dest, nm if nm != "" else str(dest)])
 	_emit_travel_changed()
+	_maybe_roll_travel_encounter(dest, from)
+
+
+## v6.42（记录6，用户拍板"机率遇到黑门后的敌人"）：行军遭遇——≥3 关的长途行军到站
+## 时 30% 概率被星冥游猎队拦截，在到站关生成渗透据点（复用渗透战链：地图红色脉点
+## 点击迎战；上限/停刷口径全在 EBM.spawn_incursion_at）。短途不掷点防打扰。
+func _maybe_roll_travel_encounter(dest: int, from_level: int) -> void:
+	if absi(dest - from_level) < 3:
+		return
+	if randf() > 0.30:
+		return
+	var mll := get_node_or_null("/root/ManagerLazyLoader")
+	if mll != null and mll.has_method("ensure_loaded"):
+		mll.ensure_loaded("endless")
+	var ebm := get_node_or_null("/root/EndlessBlackgateManager")
+	if ebm == null or not ebm.has_method("spawn_incursion_at"):
+		return
+	if bool(ebm.call("spawn_incursion_at", dest)) and SignalBus and SignalBus.has_signal("show_toast"):
+		SignalBus.show_toast.emit("⚠ 行军途中遭遇星冥游猎队——第%d关附近出现渗透据点，点击红点迎战" % dest)
 
 ## 行军可行性预检（UI 规划弹窗与 start_travel 共用；不改任何状态）
 func plan_travel(dest: int) -> Dictionary:
@@ -239,8 +260,31 @@ func start_travel(dest: int) -> Dictionary:
 	_travel_days_total = maxi(1, int(plan["days"]))
 	_travel_started_unix = Time.get_unix_time_from_system()
 	_travel_ends_unix = _travel_started_unix + float(_travel_days_total) * TruckTravel.SECONDS_PER_DAY
+	_travel_fuel_spent = int(plan["cost"])
 	_emit_travel_changed()
 	return {"ok": true, "cost": int(plan["cost"]), "days": _travel_days_total}
+
+
+## v6.42（记录6，用户主诉"移动过程中无法取消"）：中途取消行军——车队留在出发关，
+## 本次行程已扣燃料全额返还（行程未完成）。实时到站/读档补结算链不受影响。
+func cancel_travel() -> Dictionary:
+	if not is_traveling():
+		return {"ok": false, "reason": "卡车未在行军中"}
+	var dest := _travel_dest
+	var refund := _travel_fuel_spent
+	_travel_dest = 0
+	_travel_days_total = 0
+	_travel_started_unix = 0.0
+	_travel_ends_unix = 0.0
+	_travel_fuel_spent = 0
+	if refund > 0:
+		_fuel = minf(float(get_fuel_cap()), get_fuel() + float(refund))  # get_fuel() 顺带结算自动回复
+	if SignalBus and SignalBus.has_signal("show_toast"):
+		var nm := String(LevelInformationData.get_shared().get_level_display_name(dest))
+		SignalBus.show_toast.emit("行军已取消——车队留在原地（目的地：第%d关%s），燃料 +%d 已返还" % [
+			dest, ("「%s」" % nm) if nm != "" else "", refund])
+	_emit_travel_changed()
+	return {"ok": true, "dest": dest, "refunded_fuel": refund}
 
 ## v26.25 能量块 → 燃料 1:1 充能（补满为止；能量块不足则把余额全部充入）
 func charge_fuel_to_full() -> Dictionary:
@@ -1212,6 +1256,9 @@ func load_state(data: Dictionary) -> void:
 	if _travel_dest > 0 and _travel_ends_unix <= 0.0 and legacy_days_left > 0:
 		_travel_started_unix = Time.get_unix_time_from_system()
 		_travel_ends_unix = _travel_started_unix + float(legacy_days_left) * TruckTravel.SECONDS_PER_DAY
+	# v6.42: 在途档补估已扣燃料（启程时未存该值；取消行军时按路线估价返还）
+	if _travel_dest > 0:
+		_travel_fuel_spent = int(TruckTravel.fuel_cost(maxi(1, _parked_level), _travel_dest))
 	_hero_fragments = []
 	for f in data.get("hero_fragments", []):
 		_hero_fragments.append(str(f))

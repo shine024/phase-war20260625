@@ -8,7 +8,7 @@ class_name EnemyPhaseMastersWW1
 const ERA_MASTERS: Array = [
 	{
 		"id": "enemy_master_001",
-		"name": "沈铸城",
+		"name": "埃蒂安·勒梅特",
 		"title": "十七天的防线",
 		"level": 5,
 		"faction": "steel",
@@ -30,7 +30,7 @@ const ERA_MASTERS: Array = [
 	},
 	{
 		"id": "enemy_master_002",
-		"name": "祝晚棠",
+		"name": "格蕾特·霍夫曼",
 		"title": "过载之火",
 		"level": 6,
 		"faction": "flame",
@@ -52,7 +52,7 @@ const ERA_MASTERS: Array = [
 	},
 	{
 		"id": "enemy_master_003",
-		"name": "陆惊鸿",
+		"name": "尼古拉·沃罗诺夫",
 		"title": "七重闪电",
 		"level": 7,
 		"faction": "thunder",
@@ -74,7 +74,7 @@ const ERA_MASTERS: Array = [
 	},
 	{
 		"id": "enemy_master_004",
-		"name": "裴溯",
+		"name": "埃里希·文德勒",
 		"title": "四十一秒的裂隙",
 		"level": 8,
 		"faction": "void",
@@ -98,7 +98,7 @@ const ERA_MASTERS: Array = [
 	# ==================== Tier 2 - 中级相位师 (Lv10-14) ====================
 	{
 		"id": "enemy_master_005",
-		"name": "霍北望",
+		"name": "阿奇博尔德·格雷",
 		"title": "不可破之盾",
 		"level": 10,
 		"faction": "steel",
@@ -120,7 +120,7 @@ const ERA_MASTERS: Array = [
 	},
 	{
 		"id": "enemy_master_006",
-		"name": "姜拾烬",
+		"name": "塞尔焦·费拉里",
 		"title": "毁灭之焰",
 		"level": 12,
 		"faction": "flame",

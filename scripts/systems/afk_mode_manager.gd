@@ -477,9 +477,16 @@ func _on_battle_ended_from_bus(player_won: bool) -> void:
 			_afk_failed()
 
 ## 基地精神是否已归零（BunkerManager 不存在/未进过基地 → false，行为不变）
+## v6.42: 查询前先 ensure_loaded("bunker")——BunkerManager 是懒加载管理器，
+## 未加载时恒 false 会跳过休整链（面板精神显示同洞，此处一并收口）。
 func _bunker_sanity_exhausted() -> bool:
 	var root: Node = Engine.get_main_loop().root if Engine.get_main_loop() != null else null
-	var bunker: Node = root.get_node_or_null("BunkerManager") if root != null else null
+	if root == null:
+		return false
+	var mll: Node = root.get_node_or_null("ManagerLazyLoader")
+	if mll != null and mll.has_method("ensure_loaded"):
+		mll.ensure_loaded("bunker")
+	var bunker: Node = root.get_node_or_null("BunkerManager")
 	if bunker == null or not bunker.has_method("get_sanity"):
 		return false
 	return bunker.get_sanity() <= 0.5
@@ -487,6 +494,8 @@ func _bunker_sanity_exhausted() -> bool:
 
 ## v6.28（记录2#1）：精神耗尽原地休整——不退出挂机。骨架照抄 _travel_then_enter
 ## （_travel_gen 代际守卫：stop_afk/新开局自动作废在途回调，休整中手动停止即断）。
+## v6.42（记录6，用户主诉"没精神时不自动进入下一关，也没提示"）：休整 60s 期间
+## 原本只有 1s StageBanner、面板关着全程无感知——补右上角 toast 双通道播报。
 func _begin_sanity_rest(won: bool) -> void:
 	TraceLog.mark("rest_begin", "won=%s" % str(won))
 	_travel_gen += 1
@@ -496,6 +505,9 @@ func _begin_sanity_rest(won: bool) -> void:
 	state = State.RESTING
 	state_changed.emit(state)
 	StageBanner.post("陈末的精神已耗尽——车队原地休整，%d 秒后继续…" % int(REST_SECONDS))
+	var sb: Node = Engine.get_main_loop().root.get_node_or_null("SignalBus") if Engine.get_main_loop() != null else null
+	if sb != null and sb.has_signal("show_toast"):
+		sb.show_toast.emit("⚠ 精神已耗尽——挂机暂停，原地休整 %d 秒（精神回满后自动继续）" % int(REST_SECONDS))
 	var tree := Engine.get_main_loop() as SceneTree
 	if tree == null:
 		_finish_sanity_rest()
@@ -518,6 +530,12 @@ func _finish_sanity_rest() -> void:
 	_trigger_afk_save()  # 休整后落盘（此刻 battle_active=false，天然过战斗守卫）
 	state = State.RUNNING
 	state_changed.emit(state)
+	# v6.42: 休整结束也播报（60s 沉默的另一头）
+	if root != null:
+		var sb: Node = root.get_node_or_null("SignalBus")
+		if sb != null and sb.has_signal("show_toast"):
+			sb.show_toast.emit("✓ 休整完毕，精神已回满——挂机继续（%s）" % (
+				"第 %d 关" % _pending_level if _pending_level > 0 else "待命中"))
 	_on_battle_ended_from_bus(_rest_pending_won)
 
 

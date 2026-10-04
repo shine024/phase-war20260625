@@ -189,7 +189,7 @@ func fire(from: Vector2, tgt: Node2D, dmg: float, wt: int, shooter: Node2D, _sho
 	d["weapon_name"] = weapon_name
 	d["vfx_variant"] = p_vfx_variant
 	_proj.append(d)
-	_play_fire_sfx(wt)
+	_play_fire_sfx(wt, dmg)
 	# v9.2/v9.4: 枪口火——batch 路径无 Bullet 节点，敌方小兵射击"看不到攻击"。
 	# v16 去重：完整单位（CharacterBody2D：enemy_unit）在 _do_attack 里已播单位级
 	# 炮口火（_play_muzzle_feedback），batch 再播会双重叠加——仅对无单位级反馈的
@@ -208,7 +208,8 @@ func fire(from: Vector2, tgt: Node2D, dmg: float, wt: int, shooter: Node2D, _sho
 ## v20.25: 直射开火音（节流，同 player batch）——敌方轻武器无条件走本路径，此前
 ## 开火音效只挂在 bullet.gd 兜底路径。110ms 窗口 + 低音量（敌方再降调减音，
 ## 与 bullet.gd 敌我分流规则同源）。命中音由 take_damage→unit_damaged 覆盖。
-func _play_fire_sfx(wt: int) -> void:
+## v6.42: 同玩家 batch 的力度分级——重火力敌方单位播 cannon_fire（伤害定档）。
+func _play_fire_sfx(wt: int, dmg: float = 0.0) -> void:
 	if not (AudioManager and AudioManager.has_method("play_sfx")):
 		return
 	var now := Time.get_ticks_msec()
@@ -216,15 +217,24 @@ func _play_fire_sfx(wt: int) -> void:
 		return
 	_last_fire_sfx_msec = now
 	var pitch := randf_range(0.9, 1.1) * 0.92  # 敌方轻微降调（与 bullet.gd 同规则）
+	var tier := WeaponProjectileVfx.compute_power_tier(wt, 0.0, dmg)
 	match wt:
 		4:
-			AudioManager.play_sfx("gun_pistol", 0.18, pitch * 1.1)
+			AudioManager.play_sfx("gun_pistol", 0.18 + 0.03 * tier, pitch * 1.1)
 		1:
-			AudioManager.play_sfx("gun_rifle", 0.20, pitch)
+			AudioManager.play_sfx("gun_rifle", 0.20 + 0.03 * tier, pitch)
 		2:
-			AudioManager.play_sfx("gun_mg", 0.24, pitch * 0.9)
+			AudioManager.play_sfx("gun_mg", 0.24 + 0.03 * tier, pitch * 0.9)
 		_:
-			AudioManager.play_sfx("gun_smg", 0.20, pitch)
+			match tier:
+				3:
+					AudioManager.play_sfx("cannon_fire", 0.32, pitch * 0.78)
+				2:
+					AudioManager.play_sfx("cannon_fire", 0.26, pitch * 0.88)
+				1:
+					AudioManager.play_sfx("gun_rifle", 0.22, pitch * 0.95)
+				_:
+					AudioManager.play_sfx("gun_smg", 0.20, pitch)
 
 func clear_all() -> void:
 	# v9.2: 归还所有活跃弹道字典到池

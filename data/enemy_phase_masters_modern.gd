@@ -8,7 +8,7 @@ class_name EnemyPhaseMastersMODERN
 const ERA_MASTERS: Array = [
 	{
 		"id": "enemy_master_019",
-		"name": "晏怀空",
+		"name": "拉斐尔·埃斯皮诺萨",
 		"title": "世界吞噬者",
 		"level": 25,
 		"faction": "void",
@@ -32,7 +32,7 @@ const ERA_MASTERS: Array = [
 	# ==================== Tier 4 - 混合专家 (Lv24-25) ====================
 	{
 		"id": "enemy_master_020",
-		"name": "盛传书",
+		"name": "阿米娜·奥科耶",
 		"title": "七岛的天线",
 		"level": 24,
 		"faction": "steel_thunder",
@@ -54,7 +54,7 @@ const ERA_MASTERS: Array = [
 	},
 	{
 		"id": "enemy_master_021",
-		"name": "明未晞",
+		"name": "阿琼·梅农",
 		"title": "混沌之焰",
 		"level": 25,
 		"faction": "flame_void",
@@ -78,7 +78,7 @@ const ERA_MASTERS: Array = [
 	# ==================== Tier 5 - 传说级相位师 (Lv26-29) ====================
 	{
 		"id": "enemy_master_022",
-		"name": "宋卸甲",
+		"name": "朴成宰",
 		"title": "只缴不歼",
 		"level": 26,
 		"faction": "steel",
@@ -100,7 +100,7 @@ const ERA_MASTERS: Array = [
 	},
 	{
 		"id": "enemy_master_023",
-		"name": "楚再春",
+		"name": "奥马尔·哈达德",
 		"title": "灰烬里回来的人",
 		"level": 27,
 		"faction": "flame",
@@ -122,7 +122,7 @@ const ERA_MASTERS: Array = [
 	},
 	{
 		"id": "enemy_master_024",
-		"name": "岑风眠",
+		"name": "英格里德·索尔海姆",
 		"title": "让路的雷暴",
 		"level": 27,
 		"faction": "thunder",

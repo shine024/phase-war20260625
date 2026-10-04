@@ -871,10 +871,8 @@ func _on_phase_level_label_clicked() -> void:
 func _open_backpack_runes_tab() -> void:
 	_play_sfx("button")
 	_open_overlay(backpack_overlay, "backpack")
-	var bp: Node = backpack_overlay.get_node_or_null("BackpackVBox/CenterRow/BackpackCenter/BackpackPanel")
-	if bp == null:
-		bp = backpack_overlay.find_child("BackpackPanel", true, false)
-	if bp and bp.has_method("switch_to_runes_tab"):
+	var bp := _get_backpack_panel()
+	if bp != null and bp.has_method("switch_to_runes_tab"):
 		bp.switch_to_runes_tab()
 
 # v9.x（P2-7范围B）：_on_law_slot_clicked（主动法则选点）已随法则施放链退役移除
@@ -1660,14 +1658,21 @@ func _show_gate_core_choice_dialog() -> void:
 	var vbox := VBoxContainer.new()
 	vbox.add_theme_constant_override("separation", 12)
 	panel.add_child(vbox)
+	# v6.42（记录6，用户拍板）：首场黑门=有限波试炼，击碎本体即"通关黑门"——
+	# 无限模式此刻才解锁，不存在"继续深入"分支；通关后的后续 run 才有两键选择。
+	var ebm_first := get_node_or_null("/root/EndlessBlackgateManager")
+	var first_clear: bool = ebm_first != null \
+		and bool(ebm_first.get("gate_cleared")) and not bool(ebm_first.get("gate_cleared_once"))
 	var title := Label.new()
-	title.text = "✦ 黑门本体已击碎"
+	title.text = "✦ 黑门已通关" if first_clear else "✦ 黑门本体已击碎"
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	title.add_theme_font_size_override("font_size", 22)
 	title.add_theme_color_override("font_color", DT.COLOR_ENERGY)
 	vbox.add_child(title)
 	var body := Label.new()
-	body.text = "门后的低语停止了。这是黑门的最深处——\n继续深入将进入无尽区：波次与分数延续，敌人不会停止。"
+	body.text = ("门后的低语停止了。黑门已平息——\n无限模式已解锁：回大地图再次踏入黑门即可深入无尽区。"
+		if first_clear else
+		"门后的低语停止了。这是黑门的最深处——\n继续深入将进入无尽区：波次与分数延续，敌人不会停止。")
 	body.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	body.add_theme_font_size_override("font_size", 14)
 	body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -1691,6 +1696,13 @@ func _show_gate_core_choice_dialog() -> void:
 	for state in ["normal", "hover", "pressed", "disabled", "focus"]:
 		leave_btn.add_theme_stylebox_override(state, n_styles[state])
 	btn_row.add_child(leave_btn)
+	# 首通=单键收口：隐藏"继续深入"，主视觉移到通关键上
+	go_btn.visible = not first_clear
+	if first_clear:
+		leave_btn.text = "通关黑门（携带奖励离开）"
+		var w_styles := PanelStyles.make_button_styles(DT.COLOR_ENERGY, "solid")
+		for state in ["normal", "hover", "pressed", "disabled", "focus"]:
+			leave_btn.add_theme_stylebox_override(state, w_styles[state])
 	var close := func() -> void:
 		if _gate_choice_dialog != null and is_instance_valid(_gate_choice_dialog):
 			_gate_choice_dialog.queue_free()
@@ -2126,18 +2138,56 @@ func _start_tutorial_if_needed() -> void:
 	_show_tutorial_overlay()
 
 ## v21.x（FTUE 审计 S2，2026-08-27）：实例化教程覆盖层（防重复：已有实例即跳过）
+## v6.41：宿主从 HudLayer(40) 改为专用 TutorialLayer(105)——任何弹层面板
+##（PopupLayer=100）此前都整只压住教程框：卡格切割框内文字、面板 STOP 拦截框内
+## 按钮点击（实机主诉截图复现：符文步提示框被卡仓面板吞掉）。105=面板之上、
+## InfoPanelLayer(110) 点卡详情之下、Toast(200) 之下。
 func _show_tutorial_overlay() -> void:
-	if get_node_or_null("HudLayer/TutorialOverlay") != null:
+	if get_node_or_null("TutorialLayer/TutorialOverlay") != null:
 		return
 	var TutorialOverlayScene := load("res://scenes/ui/tutorial_overlay.tscn") as PackedScene
 	if TutorialOverlayScene == null:
 		return
 	var overlay := TutorialOverlayScene.instantiate()
-	var hud := get_node_or_null("HudLayer")
-	if hud != null:
-		hud.add_child(overlay)
-	else:
-		add_child(overlay)
+	_tutorial_layer().add_child(overlay)
+	# v6.41：点播步在面板已开时弹框（如符文步由玩家先开卡仓触发）——deferred 等面板
+	# visible 落位后对齐：触达面=背包（唯一=符文步）就把已开的背包切到符文页
+	call_deferred("_align_runes_step_with_open_backpack")
+
+
+## v6.41：教程覆盖层专用宿主层（懒建）。层号契约见 test_tutorial_overlay_z_order。
+func _tutorial_layer() -> CanvasLayer:
+	var layer := get_node_or_null("TutorialLayer") as CanvasLayer
+	if layer == null:
+		layer = CanvasLayer.new()
+		layer.name = "TutorialLayer"
+		layer.layer = 105
+		add_child(layer)
+	return layer
+
+
+## v6.41：符文步 × 背包已开 → 切符文页（"提示针对眼前窗口"）。非符文步/背包关着零开销。
+func _align_runes_step_with_open_backpack() -> void:
+	if not is_inside_tree():
+		return  # 拆场守卫（记录5#16 同律）：deferred 回调可能落在已出树场景上
+	var tpm := get_node_or_null("/root/TutorialProgressionManager")
+	if tpm == null or not tpm.is_backpack_surface_step():
+		return
+	if backpack_overlay == null or not backpack_overlay.visible:
+		return
+	var bp := _get_backpack_panel()
+	if bp != null and bp.has_method("switch_to_runes_tab"):
+		bp.switch_to_runes_tab()
+
+
+## v6.41：背包面板实例查询（main 场景路径唯一真身；_open_backpack_runes_tab 与对齐链共用）
+func _get_backpack_panel() -> Node:
+	if backpack_overlay == null:
+		return null
+	var bp: Node = backpack_overlay.get_node_or_null("BackpackVBox/CenterRow/BackpackCenter/BackpackPanel")
+	if bp == null:
+		bp = backpack_overlay.find_child("BackpackPanel", true, false)
+	return bp
 
 
 ## ── v6.39 朝露式指路（点播段挂起等待的「下一步去哪」）──────────────
@@ -2151,8 +2201,8 @@ func _on_tutorial_pointer_requested(show_ptr: bool) -> void:
 
 
 func _tutorial_pointer_host() -> Node:
-	var hud := get_node_or_null("HudLayer")
-	return hud if hud != null else self
+	# v6.41：与教程框同宿主（TutorialLayer 105）——指路标也恒在弹层面板之上
+	return _tutorial_layer()
 
 
 func _maybe_spawn_tutorial_pointer() -> void:

@@ -8,7 +8,7 @@ class_name EnemyPhaseMastersCOLDWAR
 const ERA_MASTERS: Array = [
 	{
 		"id": "enemy_master_013",
-		"name": "韩铸犁",
+		"name": "沃尔夫冈·布伦纳",
 		"title": "熔剑为犁",
 		"level": 18,
 		"faction": "steel_flame",
@@ -30,7 +30,7 @@ const ERA_MASTERS: Array = [
 	},
 	{
 		"id": "enemy_master_014",
-		"name": "方镇流",
+		"name": "德米特里·杜宾",
 		"title": "吞雷的装甲",
 		"level": 19,
 		"faction": "thunder_steel",
@@ -52,7 +52,7 @@ const ERA_MASTERS: Array = [
 	},
 	{
 		"id": "enemy_master_015",
-		"name": "郁向暖",
+		"name": "薇拉·科瓦奇",
 		"title": "熵减之焰",
 		"level": 20,
 		"faction": "void_flame",
@@ -76,7 +76,7 @@ const ERA_MASTERS: Array = [
 	# ==================== Tier 4 - 专家级相位师 (Lv22-25) ====================
 	{
 		"id": "enemy_master_016",
-		"name": "石顶安",
+		"name": "罗伊·斯坦顿",
 		"title": "顶住塌方的人",
 		"level": 22,
 		"faction": "steel",
@@ -98,7 +98,7 @@ const ERA_MASTERS: Array = [
 	},
 	{
 		"id": "enemy_master_017",
-		"name": "江焚渡",
+		"name": "杰克·伯恩斯",
 		"title": "烧桥的人",
 		"level": 23,
 		"faction": "flame",
@@ -120,7 +120,7 @@ const ERA_MASTERS: Array = [
 	},
 	{
 		"id": "enemy_master_018",
-		"name": "纪回春",
+		"name": "谢尔盖·沃洛宁",
 		"title": "圈外的雷",
 		"level": 24,
 		"faction": "thunder",

@@ -23,6 +23,7 @@ signal node_unlocked(node_id: String)
 signal points_changed(available: int)
 
 const SkillTree = preload("res://data/phase_master_skill_tree.gd")
+const GameCfg = preload("res://resources/game_config.gd")
 
 ## 已解锁节点 ID 列表
 var _unlocked_nodes: Array = []
@@ -126,6 +127,9 @@ func can_unlock_node(node_id: String) -> Dictionary:
 		return {"ok": false, "reason": "node_not_found"}
 	if node_id in _unlocked_nodes:
 		return {"ok": false, "reason": "already_unlocked"}
+	# v6.41 测试构建（pw_playtest）全解锁档：免前置免点数，任意节点直接可点
+	if GameCfg.get_default().debug_skill_tree_free:
+		return {"ok": true, "cost": int(node.get("cost", 1))}
 	# 前置节点检查
 	var requires: Array = node.get("requires", [])
 	for req in requires:

@@ -2425,8 +2425,11 @@ func _add_rune_item(grid: GridContainer, rune_id: String, count: int, is_equippe
 	# v9.1: 移除死代码（border_color 计算后未使用），modulate 直接置白；
 	# 已装备状态靠 extra_data.runeword_active 边框 + RuneEquippedDot 区分，不靠整体变暗
 	item.modulate = DesignTokens.COLOR_HOVER_WHITE
-	# 设置 tooltip
-	if "tooltip_text" in item:
+	# 设置提示（v6.42：走 HoverTip 顶层提示层——内建 tooltip 会被 PopupLayer 内的卡框盖住；
+	# ResourceSlotItem 已 bind，写 meta 即生效，悬停时才读取防对象池旧文案残留）
+	if item is ResourceSlotItem:
+		HoverTip.set_tip(item, "【%s】%s\n%s\n（点击装备/卸下）" % [rarity_name, rune_name, desc])
+	elif "tooltip_text" in item:
 		item.tooltip_text = "【%s】%s\n%s\n（点击装备/卸下）" % [rarity_name, rune_name, desc]
 	# v7.x：错峰入场动画（anim_idx < 0 时不动画，兼容其他调用点）
 	if anim_idx >= 0:

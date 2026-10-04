@@ -24,6 +24,11 @@ func on_battle_ended_clear_pending(_player_won: bool) -> void:
 	if main.has_method("_resume_from_pause") and main.get_tree() != null and main.get_tree().paused:
 		main._resume_from_pause()
 	main._close_all_overlays()
+	# v6.42（记录6，用户主诉"第10关撤退后战斗卡还在屏幕上"）：撤退与战败不同——
+	# 玩家单位全部存活。原"战后余烬"定格把满场战斗卡烤进整备背景，玩家读成"没清场"。
+	# 撤退语义=部队撤出战场：1.6s 定格前先清单位（结算面板背后就是空战场）。
+	if Engine.has_meta("battle_retreated"):
+		call_deferred("clear_battlefield_units")
 	# v20.15: 不再立即冻结 SubViewport——战斗结束瞬间半空中的大招弹体/命中贴图
 	# 会被定格成结算/准备界面背景上的"残留贴图"。延迟 1.6s（大招尾链最长 ~1.2s）
 	# 让最后的爆炸/淡出在结算面板后自然播完，再定格"战后余烬"帧。
@@ -114,8 +119,21 @@ func clear_battlefield_units() -> void:
 	# v20.15: prune 后补渲染一帧——视口在战斗结束时已冻结（UPDATE_ONCE 定格帧），
 	# 若不重渲染，准备界面背景仍是结算前的旧定格帧（含半空弹体/阵亡单位/残留贴图）。
 	# 再设一次 UPDATE_ONCE = 以"已清空的战场"重渲一帧并定格。
-	if main != null and is_instance_valid(main) and not main._is_in_battle() \
-			and not (main._afk_manager != null and main._afk_manager.is_running):
+	# v6.42 修两点：①挂机运行中不再跳过（UPDATE_ONCE 是一次性补渲，不破坏挂机持续
+	# 渲染模式；跳过导致"清场后定格帧仍带满场单位"——撤退残留主诉的同根洞）；
+	# ②queue_free 在帧末才真正删节点，首渲可能仍拍到临终单位——0.25s 后补第二帧。
+	if main != null and is_instance_valid(main) and not main._is_in_battle():
 		var vp: Node = main.get_node_or_null("BattleContainer/SubViewportContainer/SubViewport")
 		if vp:
 			vp.render_target_update_mode = SubViewport.UPDATE_ONCE
+			var tree := main.get_tree()
+			if tree != null:
+				tree.create_timer(0.25).timeout.connect(func() -> void:
+					if main == null or not is_instance_valid(main) or not main.is_inside_tree():
+						return
+					if main._is_in_battle():
+						return
+					var vp2: Node = main.get_node_or_null("BattleContainer/SubViewportContainer/SubViewport")
+					if vp2 and vp2.render_target_update_mode != SubViewport.UPDATE_ALWAYS:
+						vp2.render_target_update_mode = SubViewport.UPDATE_ONCE
+				)

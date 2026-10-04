@@ -104,6 +104,12 @@ static func offline_reward_factor(capped_sec: int) -> float:
 ## 裸代码块"上线前需改回"的门控化，开发/测试想全开时手动置 true）；false = 正式行为
 ## （仅 7 张起步图纸，其余靠战斗掉落逐步解锁）。消费点 save_manager 新档初始蓝图发放段
 @export var debug_grant_all_blueprints: bool = false
+## v6.41 测试开关：true = 技能树免前置免点数（所有节点任意顺序直接解锁，面板点击即成功）。
+## 消费点 phase_master_skill_manager.can_unlock_node
+@export var debug_skill_tree_free: bool = false
+## v6.41 测试开关：true = 改造安装忽略战力档门槛（rare/legendary/mythic 件任意卡直接装，
+## 图纸与纳米轴仍走既有链）。消费点 blueprint_manager.install_modification
+@export var debug_mod_ignore_power_tier: bool = false
 
 ## 默认配置实例
 static var _default_config: GameConfig = null
@@ -112,15 +118,19 @@ static func get_default() -> GameConfig:
 	if _default_config == null:
 		# 默认值以 @export 初始值为单一来源（v26.4 起不再在此重复抄写）
 		_default_config = GameConfig.new()
-		# 试玩/测试构建（export custom_features="pw_playtest"）运行时全解锁档：
-		# 功能门全开 + 免战力门/部署限制 + 开局补齐全蓝图全符文 + 蓝图只验不消耗。
-		# 正式 release（无该 feature）与编辑器调试跑均零影响。
+			# 试玩/测试构建（export custom_features="pw_playtest"）运行时全解锁档：
+			# 功能门全开 + 免战力门/部署限制 + 开局补齐全蓝图全符文 + 蓝图只验不消耗
+			# + 技能树免前置免点数 + 改造免战力档 + 全卡 9 槽。
+			# 正式 release（无该 feature）与编辑器调试跑均零影响。
 		if OS.has_feature("pw_playtest"):
 			_default_config.feature_gates_enabled = false
 			_default_config.power_cap_enabled = false
 			_default_config.debug_no_deploy_limits = true
 			_default_config.debug_grant_all_blueprints = true
 			_default_config.mod_consumable_enabled = false
+			_default_config.debug_skill_tree_free = true
+			_default_config.debug_mod_ignore_power_tier = true
+			_default_config.mod_slot_budget_enabled = false
 	return _default_config
 
 ## 重置为默认值
@@ -147,3 +157,5 @@ func reset_to_defaults() -> void:
 	affix_reroll_crystal_enabled = true
 	debug_no_deploy_limits = false  # P0-5 修复：测试开关此前漏重置
 	debug_grant_all_blueprints = false
+	debug_skill_tree_free = false
+	debug_mod_ignore_power_tier = false

@@ -24,6 +24,33 @@
 6. **客观缺陷与审美取舍先分类**：对齐/一致性/覆盖类有客观正确答案的直接修；只有真正无对错的参数才交用户拍板，且必须附推荐值与对比图。
 7. **每类系统留常驻回归锁**：锁内断言覆盖上述全部维度，修复后回归自动拦截（范例：`tests/unit/combat/test_shield_foot_anchor.gd` 九形态+尺寸断言）。
 
+## v6.41 教程框 z 序 × 符文步针对已开窗口批（2026-10-04，详见 CHANGELOG）
+
+**改教程覆盖层宿主/CanvasLayer 层号/教程点播链/背包打开链前必读本节。** 实机主诉（截图）：符文步提示框被卡仓面板吞掉（卡格切割框内文字）+ 提示弹出时背包停在战斗卡页。
+
+- **main CanvasLayer 层号契约（整链）**：HudLayer 40 / PopupLayer 100 / **TutorialLayer 105（v6.41 新增懒建）** / InfoPanelLayer 110 / Toast 200。教程框宿主原为 HudLayer(40)——任何 PopupLayer(100) 弹层面板整只压住框：卡格切割文字、面板全屏 STOP 拦截框内按钮（跳过/下一步点不到）。宿主唯一口=`main._show_tutorial_overlay` + `_tutorial_layer()`；v6.39 指路标宿主 `_tutorial_pointer_host` 同挂 105。**加新层先过 `test_tutorial_overlay_z_order.gd` 层号断言**（100<105<110）。
+- **truck_base 无需 z 改动（树序不变量）**：`_embed_layer` 在 _ready 建、overlay 只在 _ready 后召唤=overlay 恒为其后兄弟=框天然在嵌入面板之上（探针实证 idx 5>4）。**勿给 overlay 挪 `_embed_layer` 之前**。
+- **符文步对齐唯一查询口=`TPM.is_backpack_surface_step()`**（SURFACE_FOR_STEP 唯一 "backpack" 值=符文步；"backpack" 面唯一性有防劫持断言）。两处消费：①`main._show_tutorial_overlay` deferred 调 `_align_runes_step_with_open_backpack`（点播步弹出时背包已开→切符文页再讲解）；②`truck_base._open_panel` 尾部同款。**新增点播步若要求"面板已开+对齐内容"，走同款 surface 驱动，勿再硬编码步号。**
+- **truck_base toggle_phase_instrument=专用 `_on_tutorial_open_runes`**（开背包+切符文页，对齐 main `_open_backpack_runes_tab` 语义）——此前走通用 `_on_tutorial_open_panel` 只开不切页，「查看符文」点完落在战斗卡页。该信号全项目仅教程 handler 消费。
+- **探针教训（本批实踩）**：①探针强设 autoload 状态必须**先于场景 add_child**——基地 `_bootstrap_tutorial_if_needed` 在 _ready 消费 NONE 步拉欢迎框，后设状态=白设+dedupe 挡重拉（表象="框内容与 TPM 步号矛盾"）；②截图协程**内部 await 且调用方未 await**=协程拖到 queue_free 之后才拍，出全灰清屏色图（帧内容已不在）；③探针 trace 打包 `grep` 过滤时注意子行缩进不含关键字会被滤掉，误判"循环没跑"。探针保留：`tests/_tmp_v641_tutorial_z_probe.gd`（双场景真实链）。
+- **v6.41.1 指路标消散链（同帧撞名改名雷）**：`show_step_pointer` 旧版同帧"queue_free 旧宿主+add 同名新宿主"——旧宿主帧末才消失，新宿主撞名被 Godot 静默改名 @Control@N，精确名 dismiss 永远找不到=旧标跨步堆积（实机三标并存）+点目标按钮不消散。现宿主唯一命名 `TutorialStepPointer_<serial>` + dismiss 通配 `"TutorialStepPointer*"`（tutorial_spotlight.gd，调用方零改动）。**凡"按名清理+同帧重建"的节点一律唯一命名**；回归锁 `test_tutorial_pointer_lifecycle.gd`（计数断言必须 await 两帧取稳定态）。
+- **v6.41.2 大地图左下信息框布局**：scheme 11 floating chrome 后 Margin/VBox 只剩 [ScrollContainer, 燃料chip]——chip 顶屏幕底边被图例栈压住+被底边裁半（实机"信息框重叠"）。燃料 chip 已收编 MapChromeStack 栈尾+弱化底条（world_map.gd，`_refresh_fuel_chip` 引用不变）；**改 chrome 布局先过 `test_world_map_chrome_layout.gd`（三框零相交+不出根矩形）**；探针复刻用户状态用 `bm.set("_parked_level"/"_travel_dest"/"_fuel")` 直写（BunkerManager 无 set_current_level）。
+
+## v6.42 记录6实机验收14条批：黑门试炼制 + 行军取消 + 音频四项 + 多国相位师（2026-10-04，详见 CHANGELOG）
+
+**改黑门链/行军链/大地图缩放/悬停提示/武器音效/挂机精神显示/相位师数据前必读本节。** 实机 14 条全处理；存档实证（`travel_dest=12`+`level_stars["100"]=1`）锁死"通关 100 进不了黑门"根因=停靠门控+行军无法取消同根。
+
+- **黑门试炼制（结构定稿）**：首场（`gate_cleared_once=false`）恒 `FIRST_GATE_CORE_WAVE=30` 波本体试炼，击碎即"通关黑门"；通关后才 roll 200-320 无限档。HUD 波次上限唯一口=`EBM.get_run_wave_limit()`（0=无限，勿在 game_manager 旁路再判 gate_cleared_once）；通关选择窗首通单键（无"继续深入"）；文案双档（试炼/无限）读常量。动黑门结构跑 `test_gate_core_structure.gd`。
+- **黑门进驻门已撤销**：`_enter_blackgate` 无 `parked_level==100` 门控（v26.19 门控实机锁死通关玩家）——勿以"风味"名义复活。
+- **行军契约**：取消唯一口=`BunkerManager.cancel_travel()`（清态+留出发关+燃料全额返还；读档在途档按路线估价 `_travel_fuel_spent`）；地图 chrome「✕ 取消行军」键可见性由 `_refresh_fuel_chip` 驱动。行军遭遇=`_check_travel_arrival` 尾部 `_maybe_roll_travel_encounter`（≥3 关长途 30%，生成口=`EBM.spawn_incursion_at`，上限/停刷守卫全在 EBM 侧勿旁路）；渗透刷新双驱动=sleep 日刷 + EBM 5 分钟实时 Timer。
+- **大地图缩放**：`_fit_canvas_to_viewport(keep_zoom)`——可见态锚点迁移重建保 zoom，隐藏期重建/重开面板回整图（v28 拍板）；`_on_fit_scroll_resized` 恒 keep。
+- **悬停提示层（层号契约追加）**：**引擎内建 tooltip 画在 layer 0，被 PopupLayer(100) 内 z≥30 子元素盖住——PopupLayer 内的控件禁用内建 tooltip**，走 `scripts/ui/hover_tip.gd`（HoverTip，CanvasLayer **130**，>InfoPanel 110 <Toast 200）。接入=控件 `_ready` 里 `HoverTip.bind_control(self)` + `tooltip_text=""`，内容 `HoverTip.set_tip(ctrl, text)`（悬停时才读 meta，对象池复用安全）；范例=`resource_slot_item.gd`。层号链：40<100<105(教程)<110<**130(HoverTip)**<200。
+- **撤退清场语义**：撤退（`battle_retreated` meta）=部队撤出战场，`on_battle_ended_clear_pending` 即清单位（原"战后余烬"定格只适配战败）；`clear_battlefield_units` 补渲不跳过挂机态（UPDATE_ONCE 一次性，不破坏持续渲染）+0.25s 第二帧盖 queue_free 窗口。
+- **挂机精神**：面板状态行全态带精神后缀+统计行附"距终局还剩 N 关"（PUSH）；休整开始/结束右上角 toast 双播报；**`_bunker_sanity_exhausted`/面板 `_get_sanity_status_text` 必须前置 `ensure_loaded("bunker")`**（懒加载未就绪=休整链失效/精神恒空双洞）。
+- **武器音效力度分级**：直射 batch（玩家/敌方）`_play_fire_sfx(wt, dmg)` 按 `compute_power_tier` 分档（tier2/3=`cannon_fire` 新音）——**玩家侧 wt 恒 0，match wt 无力度意义，必须走 dmg 分档**；命中 `impact_light/generic/heavy` 三档、曲射 tier≥2 `explosion_big`；bullet 兜底 tier 音量/音高缩放。改音效选择同步 4 处（两 batch+bullet 两函数）。
+- **音频管线**：v6.42 新配方 `tools/_tmp_gen_sfx_v642.py`（button/win/cannon_fire/impact_light/impact_heavy/explosion_big/ambient_wakeup_wind 可重跑）；苏醒演出用 `wakeup_wind` 专用风声（AMBIENT_MAP 新键），战斗氛围 `battle_wind` 不再复用；旧素材备份 `D:/godotplay/_art_backup/sfx_pre_v642_20261004/`。
+- **相位师姓名多国化**：28 位更名+2 中文锚点（029 叶掌灯/030 贺同舟，终局叙事角色勿再改名）；更名工具 `tools/_tmp_v642_master_names.py` 幂等可重跑（JSON+5 legacy 表+instrument+叙事+驻守+测试全覆盖）——**新增相位师引用一律用 id 查 `EnemyPhaseMasters.get_master_by_id`，勿硬编码姓名**。
+
 ## v6.38 记录5实机验收15条批（2026-10-02，详见 CHANGELOG）
 
 **改护盾罩/组合技条/Toast/制造成本/战斗音效/world_map 前必读本节。** 15 条实机反馈 14 修 1 留观。

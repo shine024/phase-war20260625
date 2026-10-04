@@ -8,7 +8,7 @@ class_name EnemyPhaseMastersNEARFUTURE
 const ERA_MASTERS: Array = [
 	{
 		"id": "enemy_master_025",
-		"name": "宿怀夜",
+		"name": "维克多·内维斯",
 		"title": "八小时的影子",
 		"level": 28,
 		"faction": "void",
@@ -32,7 +32,7 @@ const ERA_MASTERS: Array = [
 	# ==================== Tier 6 - 神级相位师 (Lv28-30) ====================
 	{
 		"id": "enemy_master_026",
-		"name": "鲁满仓",
+		"name": "阿列克谢·莫罗佐夫",
 		"title": "两百把锄头",
 		"level": 28,
 		"faction": "steel",
@@ -54,7 +54,7 @@ const ERA_MASTERS: Array = [
 	},
 	{
 		"id": "enemy_master_027",
-		"name": "涂知温",
+		"name": "颂猜·威拉万",
 		"title": "三十七度的火",
 		"level": 29,
 		"faction": "flame",
@@ -76,7 +76,7 @@ const ERA_MASTERS: Array = [
 	},
 	{
 		"id": "enemy_master_028",
-		"name": "端木近雨",
+		"name": "玛雅·奥杜亚",
 		"title": "很近的雷雨",
 		"level": 29,
 		"faction": "thunder",

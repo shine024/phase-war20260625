@@ -399,7 +399,7 @@ static func get_scenario(name: String) -> Dictionary:
 			}
 		"r_p22_portrait":
 			# P2-2A 验收：同伴档案立绘接入——内存放宽解锁→注入 005/030 遗物→
-			# 开档案→点霍北望→截图（hero_archive 门控 L15，需 load_state 放宽）
+			# 开档案→点阿奇博尔德·格雷→截图（hero_archive 门控 L15，需 load_state 放宽）
 			var lv22: Array = []
 			for i in range(1, 31):
 				lv22.append(i)
@@ -422,7 +422,7 @@ static func get_scenario(name: String) -> Dictionary:
 					{"t": "frames", "n": 15},
 					{"t": "call", "path": ".", "method": "_open_panel", "args": ["hero_archive"]},
 					{"t": "frames", "n": 70},
-					{"t": "click_text", "text": "霍北望", "soft": true},
+					{"t": "click_text", "text": "阿奇博尔德·格雷", "soft": true},
 					{"t": "frames", "n": 30},
 					{"t": "shot", "path": "res://.godot/agent_tools/pr_p22_archive_portrait.png"},
 					{"t": "call", "path": ".", "method": "_close_top_embed_panel"},

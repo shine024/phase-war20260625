@@ -50,12 +50,19 @@ static func attach(host: Control, target: Control, tip_text: String, dim_alpha: 
 ## 宿主挂在 root 最后（画在最上），与教程 overlay 平级——overlay 收起后仍驻留，
 ## 由 overlay 重现（_ready）/ TPM tutorial_pointer_requested(false) / 场景退树收编。
 ## 幂等：亮之前先收旧标。解析失败由调用侧保证不调本函数（目标 null/不可见跳过）。
+## v6.41.1 指路标宿主序号（进程内唯一）：旧宿主 queue_free 帧末才消失，若新宿主复用
+## 同名会被 Godot 撞名静默改名（@Control@N），此后按名消散永远找不到它=旧标跨步堆积、
+## 点目标按钮也不消散（实机三标并存根因，tests/_tmp_v642_pointer_probe.gd 实证）。
+static var _pointer_serial: int = 0
+
+
 static func show_step_pointer(root: Node, target: Control, tip_text: String) -> void:
 	if root == null or not root.is_inside_tree():
 		return
 	dismiss_step_pointer(root)
 	var host := Control.new()
-	host.name = "TutorialStepPointer"
+	_pointer_serial += 1
+	host.name = "TutorialStepPointer_%d" % _pointer_serial
 	host.set_anchors_preset(Control.PRESET_FULL_RECT)
 	host.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.add_child(host)
@@ -65,8 +72,10 @@ static func show_step_pointer(root: Node, target: Control, tip_text: String) -> 
 static func dismiss_step_pointer(root: Node) -> void:
 	if root == null or not root.is_inside_tree():
 		return
-	# owned=false：指路标宿主由本工厂代码构建，无场景 owner
-	for n in root.find_children("TutorialStepPointer", "Control", true, false):
+	# owned=false：指路标宿主由本工厂代码构建，无场景 owner。
+	# 通配匹配：兼容 v6.41.1 前的精确名宿主与唯一名后缀宿主（v6.41.1 前同帧撞名
+	# 改名的 @Control@N 宿主救不回，随会话结束自然消亡）。
+	for n in root.find_children("TutorialStepPointer*", "Control", true, false):
 		n.queue_free()
 
 

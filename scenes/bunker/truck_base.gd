@@ -366,8 +366,8 @@ func _ready() -> void:
 	# 是卡仓（符文页在卡仓内）。
 	if SignalBus.has_signal("toggle_backpack") and not SignalBus.toggle_backpack.is_connected(_on_tutorial_open_panel):
 		SignalBus.toggle_backpack.connect(_on_tutorial_open_panel.bind("backpack"))
-	if SignalBus.has_signal("toggle_phase_instrument") and not SignalBus.toggle_phase_instrument.is_connected(_on_tutorial_open_panel):
-		SignalBus.toggle_phase_instrument.connect(_on_tutorial_open_panel.bind("backpack"))
+	if SignalBus.has_signal("toggle_phase_instrument") and not SignalBus.toggle_phase_instrument.is_connected(_on_tutorial_open_runes):
+		SignalBus.toggle_phase_instrument.connect(_on_tutorial_open_runes)
 	if SignalBus.has_signal("toggle_enhancement") and not SignalBus.toggle_enhancement.is_connected(_on_tutorial_open_panel):
 		SignalBus.toggle_enhancement.connect(_on_tutorial_open_panel.bind("growth"))
 	if SignalBus.has_signal("toggle_modification") and not SignalBus.toggle_modification.is_connected(_on_tutorial_open_panel):
@@ -1932,6 +1932,9 @@ func _open_panel(panel_id: String) -> void:
 			else:
 				p.call("show_panel", null)
 			break
+	# v6.41：符文步点播——教程框弹出时已开的背包停在默认页=「提示没有针对眼前窗口」
+	#（实机主诉，探针截图复现 current_tab=0）。触达面=背包（唯一=符文步）→ 对齐符文页。
+	_align_runes_step_with_open_backpack()
 
 func _ensure_panel_wrapper(panel_id: String) -> Control:
 	if _embed_wrappers.has(panel_id):
@@ -2559,10 +2562,12 @@ func _play_wakeup_cinematic() -> void:
 	_wakeup_active = true
 	# v6.38（记录5#4）：苏醒演出换成雪原氛围——淡出标题 BGM，起风声环境音；
 	# 收场（_finish_wakeup）再进基地曲。标题曲配雪原睁眼被实机反馈"不好"。
+	# v6.42（记录6）：战斗风声直接复用被主诉"背景音不好"——改用专用柔化雪原
+	# 风声（低频暖鸣+阵风呼吸+无缝循环），战斗 ambient_battle_wind 不受影响。
 	if AudioManager != null and AudioManager.has_method("stop_music"):
 		AudioManager.stop_music(1.2)
 	if AudioManager != null and AudioManager.has_method("play_ambient"):
-		AudioManager.play_ambient("battle_wind", 0.30)
+		AudioManager.play_ambient("wakeup_wind", 0.45)
 	var root := Control.new()
 	root.name = "WakeupCinematic"
 	root.size = Vector2(1280, 720)
@@ -2823,6 +2828,33 @@ func _on_tutorial_open_panel(panel_id: String) -> void:
 		_open_world_map()
 	else:
 		_open_panel(panel_id)
+
+
+## v6.41：教程 open_runes 动作基地落地——对齐 main.gd _open_backpack_runes_tab 语义
+##（符文管理在背包 RunesTab）：开背包并切符文页。此前 toggle_phase_instrument 走通用
+## _on_tutorial_open_panel 只开面板不切页，「查看符文」点完落在战斗卡页。
+func _on_tutorial_open_runes() -> void:
+	_open_panel("backpack")
+	_switch_embedded_backpack_to_runes_tab()
+
+
+## v6.41：符文步 × 背包嵌入面板已开 → 切符文页（main.gd _align_runes_step_with_open_backpack 基地版）
+func _align_runes_step_with_open_backpack() -> void:
+	if not is_inside_tree():
+		return  # 拆场守卫（记录5#16 同律）
+	var tpm := get_node_or_null("/root/TutorialProgressionManager")
+	if tpm == null or not tpm.has_method("is_backpack_surface_step") \
+			or not tpm.is_backpack_surface_step():
+		return
+	_switch_embedded_backpack_to_runes_tab()
+
+
+## v6.41：把已打开的背包嵌入面板切到符文页（未开/无面板零开销）
+func _switch_embedded_backpack_to_runes_tab() -> void:
+	var entry: Dictionary = _embed_wrappers.get("backpack", {})
+	var p: Control = entry.get("panel")
+	if p != null and p.visible and p.has_method("switch_to_runes_tab"):
+		p.switch_to_runes_tab()
 
 
 # ── v32.3 A5 离线奖励（自 main.gd 迁入）──────────────────────────

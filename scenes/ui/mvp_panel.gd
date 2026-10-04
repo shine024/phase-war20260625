@@ -426,7 +426,11 @@ func _render_endless_report(vbox: VBoxContainer) -> void:
 	var banner := Label.new()
 	banner.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	if bool(e.get("gate_cleared", false)):
-		banner.text = "✦ 黑门本体已击碎（目标深度 第 %d 波）" % int(e.get("gate_core_wave", 0))
+		# v6.42: 首通=通关黑门（试炼）；之后=无限模式再通关
+		if bool(e.get("gate_first_clear", false)):
+			banner.text = "✦ 黑门已通关（首场试炼 · 第 %d 波击碎本体）" % int(e.get("gate_core_wave", 0))
+		else:
+			banner.text = "✦ 黑门本体已击碎（目标深度 第 %d 波）" % int(e.get("gate_core_wave", 0))
 		banner.add_theme_color_override("font_color", DT.COLOR_GOLD)
 	else:
 		banner.text = "◈ 黑门征程结束"
@@ -442,7 +446,7 @@ func _render_endless_report(vbox: VBoxContainer) -> void:
 	if marrow > 0:
 		lines.append("星髓：+%d%s" % [marrow, "（本周封顶）" if bool(e.get("marrow_capped", false)) else ""])
 	if bool(e.get("gate_first_clear", false)):
-		lines.append("★ 首次通关大奖已发放 · 黑门已平息")
+		lines.append("★ 首次通关大奖已发放 · 黑门已平息，无限模式已解锁")
 	var supplies: int = int(e.get("supplies_granted", 0))
 	if supplies > 0:
 		lines.append("补给节点 ×%d 已入账" % supplies)

@@ -321,6 +321,15 @@ func should_show_tutorial() -> bool:
 func is_tutorial_completed() -> bool:
 	return current_step == TutorialStep.FREEDOM_MODE
 
+
+## v6.41：当前步是否为"背包触达面"（SURFACE_FOR_STEP 里唯一值 "backpack" 的步=符文步）。
+## 背包面板打开链据此把已开的背包切到符文页——教程框谈符文，眼前窗口就得是符文页
+##（实机主诉"提示打开时没有针对现在打开的那个窗口"）。UI 对齐在 main/truck_base 场景侧。
+func is_backpack_surface_step() -> bool:
+	if not should_show_tutorial():
+		return false
+	return String(SURFACE_FOR_STEP.get(current_step, "")) == "backpack"
+
 ## 2026-09-19 教程×门控解卡：教程进行中，该 key 是否为教程步目标面板（含链上未来步）。
 ## 教程步 MODIFICATION/FACTION_REP/SHOP 要求首触对应面板才续链，而这些面板 L6/L10 才
 ## 解锁——门控不豁免时新档教程链实质停滞（chain_paused）。main._open_overlay 守卫豁免。

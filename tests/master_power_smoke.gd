@@ -99,7 +99,7 @@ func _initialize() -> void:
 	print("\n=== 3. 敌方侧 platforms 加成链（archetype + master 加成）===")
 	# 手动构造一战 vs 近未来相位师（结构对齐 enemy_phase_masters JSON）
 	var m_ww1 := {
-		"id": "enemy_master_001", "name": "沈铸城", "faction": "steel", "era": 0,
+		"id": "enemy_master_001", "name": "埃蒂安·勒梅特", "faction": "steel", "era": 0,
 		"phase_instrument": "pi_steel_02",
 		"stats": {"max_hp": 1500, "attack_power": 120, "defense": 80, "energy_regen": 2.0, "unit_limit": 5},
 		"equipment": {

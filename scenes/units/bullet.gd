@@ -1133,6 +1133,10 @@ func _play_attack_sfx() -> void:
 	var vol: float = 0.7 if not shooter_is_player else 1.0
 	if not shooter_is_player:
 		pitch *= 0.92  # 敌方轻微降调，潜意识区分敌我
+	# v6.42（记录6，力度分级）：tier 音量放大 + 音高沉降（终极武器更有分量）
+	var tier := WeaponProjectileVfx.compute_power_tier(weapon_type, explosion_radius, damage)
+	vol *= [1.0, 1.12, 1.25, 1.45][clampi(tier, 0, 3)]
+	pitch *= [1.0, 0.95, 0.9, 0.82][clampi(tier, 0, 3)]
 	match weapon_type:
 		0:       AudioManager.play_sfx("gun_smg", vol * 0.6, pitch)
 		1:       AudioManager.play_sfx("gun_rifle", vol * 0.6, pitch)
@@ -1149,6 +1153,8 @@ func _play_attack_sfx() -> void:
 
 
 ## v8.3: 命中音效——按 weapon_type + is_crit 分流（暴击降调加重击感）
+## v6.42: 力度分级——tier0/1=impact_light 轻嗒、tier2=impact_generic、tier3=impact_heavy
+## 深砸（旧实现所有命中共用一个音，轻重火力无区分）。
 func _play_impact_sfx(is_crit: bool) -> void:
 	if not (AudioManager and AudioManager.has_method("play_sfx")):
 		return
@@ -1164,7 +1170,13 @@ func _play_impact_sfx(is_crit: bool) -> void:
 	if is_crit:
 		vol = minf(vol * 1.5, 1.0)
 		pitch *= 0.8
-	AudioManager.play_sfx("impact_generic", vol, pitch)
+	var tier := WeaponProjectileVfx.compute_power_tier(weapon_type, explosion_radius, damage)
+	var impact_name := "impact_generic"
+	match clampi(tier, 0, 3):
+		3: impact_name = "impact_heavy"
+		2: impact_name = "impact_generic"
+		_: impact_name = "impact_light"
+	AudioManager.play_sfx(impact_name, vol, pitch)
 
 
 ## 爆炸/溅射候选：优先空间网格，避免遍历父节点下全部子节点。

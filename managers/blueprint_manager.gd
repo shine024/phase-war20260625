@@ -558,7 +558,9 @@ func install_modification(card: CardResource, mod_id: String, slot: int = -1) ->
 	var _card_power: float = _estimate_power_score(_power_key)
 	var _card_tier: int = PowerTiers.get_tier_by_power(_card_power)
 	var _mod_min_tier: int = ModManager.get_min_power_tier_for_mod(mod_id)
-	if not PowerTiers.meets_requirement(_card_tier, _mod_min_tier):
+	# v6.41 测试构建（pw_playtest）全解锁档：免战力档门槛，稀有件任意卡直接装
+	if not GameCfg.get_default().debug_mod_ignore_power_tier \
+			and not PowerTiers.meets_requirement(_card_tier, _mod_min_tier):
 		result.message = "卡牌战力不足（需%s档，当前%s档）" % [
 			PowerTiers.get_tier_name(_mod_min_tier), PowerTiers.get_tier_name(_card_tier)]
 		return result

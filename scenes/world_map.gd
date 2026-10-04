@@ -203,7 +203,9 @@ static var _s_tex_cache: Dictionary = {}
 var _overlay_layer: Control = null  # v22 overlay 绘制层（微光桥/占领环/当前关光圈）
 var _pan_dragging: bool = false  # v22 拖拽平移状态
 var _zoom_factor: float = 1.0  # v28 方案11 用户缩放（1.0=整图适配，>1 时可拖拽平移）
+var _zoom_keep_pending: bool = false  # v6.42: 下一次 fit 保留用户缩放（可见态锚点迁移重建用）
 var _next_marker: Label = null  # v28 “下一关”屏幕空间引导标（不随地图缩放变小）
+var _cancel_travel_btn: Button = null  # v6.42: 行军取消键（chrome 动作行，行驶中可见）
 
 var _level_info_popup: Window = null
 var _runtime_active: bool = false
@@ -285,6 +287,16 @@ func _ready() -> void:
 		_fuel_chip = Label.new()
 		_fuel_chip.add_theme_font_size_override("font_size", 13)
 		_fuel_chip.add_theme_color_override("font_color", Color(0.95, 0.78, 0.45))
+		# v6.41.1：状态行收编进 chrome 栈（见 _build_map_screen_chrome 尾注）后直接贴地图
+		# 亮色区域——补弱化底条（图例面板同族弱化档）保可读
+		var fcsb := StyleBoxFlat.new()
+		fcsb.bg_color = Color(0.04, 0.06, 0.10, 0.72)
+		fcsb.set_corner_radius_all(6)
+		fcsb.content_margin_left = 10
+		fcsb.content_margin_right = 10
+		fcsb.content_margin_top = 4
+		fcsb.content_margin_bottom = 4
+		_fuel_chip.add_theme_stylebox_override("normal", fcsb)
 		_fuel_chip.tooltip_text = "移动基地燃料：自动回复（离线也涨，速率随引擎等级）；低于安全储备不可出车；可用能量块 1:1 充能（基地发电机工位）"
 		vbox_r.add_child(_fuel_chip)
 		vbox_r.move_child(_fuel_chip, 2)
@@ -573,7 +585,7 @@ func _build_level_map() -> void:
 		gate_entry.position = gate_p - gate_entry.size * 0.5
 		gate_entry.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 		gate_entry.tooltip_text = ("黑门——已平息，异族不再渗出；深处仍可再战（无限模式）" if gate_cleared_once \
-			else "黑门——星冥族的裂隙（无限模式）") if gate_unlocked \
+			else "黑门——星冥族的裂隙（首场试炼：第 %d 波决胜；通关后开放无限模式）" % EndlessBlackgateRef.FIRST_GATE_CORE_WAVE) if gate_unlocked \
 			else "黑门（通关第 100 关后开启）"
 		gate_entry.modulate = Color(1, 1, 1, 1.0) if gate_unlocked else Color(1, 1, 1, 0.35)
 		gate_entry.gui_input.connect(_on_blackgate_gui_input)
@@ -590,7 +602,8 @@ func _build_level_map() -> void:
 		canvas.add_child(gate_entry)
 		var gate_lbl := Label.new()
 		# v28：未解锁时可见文案直接带解锁条件（原"黑门（未启）"玩家不知道怎么开）
-		gate_lbl.text = "黑门·无限" if gate_unlocked else "黑门（通关第 100 关开启）"
+		# v6.42: 首通前显示"试炼"档（通关后切"无限"）
+		gate_lbl.text = ("黑门·试炼" if gate_cleared_once == false else "黑门·无限") if gate_unlocked else "黑门（通关第 100 关开启）"
 		gate_lbl.add_theme_font_size_override("font_size", 20)
 		gate_lbl.add_theme_color_override("font_color", Color(0.62, 0.85, 1.0, 0.95) if gate_unlocked \
 			else Color(0.62, 0.85, 1.0, 0.4))
@@ -702,16 +715,22 @@ func _build_level_map() -> void:
 	# 标记地图已构建（静态模板供跨场景复用）
 	_cached_level_map_template = canvas.duplicate(Node.DUPLICATE_USE_INSTANTIATION) as Control
 	if MAP_SCHEME == 11:
-		_fit_canvas_to_viewport.call_deferred(canvas, scroll)
+		var keep_zoom := _zoom_keep_pending
+		_zoom_keep_pending = false
+		_fit_canvas_to_viewport.call_deferred(canvas, scroll, keep_zoom)
 	_map_built = true
 	_center_on_current_level()
 
 ## v23.1 单屏适配：整图等比缩放进 ScrollContainer 可视区并居中（方案 11 专用）
-func _fit_canvas_to_viewport(canvas: Control, scroll: ScrollContainer) -> void:
+## v6.42: keep_zoom=true 时保留用户缩放（行军到站/战后锚点迁移的全量重建不再把
+## zoom 打回 1.0——实机主诉"到移动关卡时突然变为默认缩放"根因）。重开面板/改窗
+## 仍按 v28 拍板回整图视图（keep_zoom=false 默认）。
+func _fit_canvas_to_viewport(canvas: Control, scroll: ScrollContainer, keep_zoom: bool = false) -> void:
 	await get_tree().process_frame
 	if not is_instance_valid(canvas) or not is_instance_valid(scroll):
 		return
-	_zoom_factor = 1.0  # v28：重适配（重开面板/改窗）一律回整图视图
+	if not keep_zoom:
+		_zoom_factor = 1.0  # v28：重适配（重开面板/改窗）一律回整图视图
 	if not scroll.resized.is_connected(_on_fit_scroll_resized):
 		scroll.resized.connect(_on_fit_scroll_resized)   # 尺寸变化（开面板/改窗）自动重适配
 	var avail: Vector2 = scroll.size
@@ -737,7 +756,9 @@ func _on_fit_scroll_resized() -> void:
 	var scroll := get_node_or_null("Margin/VBox/ScrollContainer") as ScrollContainer
 	var canvas := scroll.get_node_or_null("MapCanvas") if scroll else null
 	if scroll and canvas and _map_built and MAP_SCHEME == 11:
-		_fit_canvas_to_viewport.call_deferred(canvas, scroll)
+		# v6.42: 尺寸变化重算 fit 基准但保留用户缩放（v28 强拉回整图在"放大看行军"场景
+		# 与 _process 自校验互踩——正放大瞬间被弹回 1.0 的体感根因之一）
+		_fit_canvas_to_viewport.call_deferred(canvas, scroll, true)
 
 # === v22 百灯群岛：布局/资产/状态辅助 ===
 
@@ -881,7 +902,7 @@ func _apply_gate_state(canvas: Control) -> void:
 		var _ebm_g := _blackgate_mgr()
 		var cleared_once: bool = _ebm_g != null and bool(_ebm_g.get("gate_cleared_once"))
 		var unlocked: bool = _is_blackgate_unlocked()
-		gate_entry.tooltip_text = ("黑门——已平息，异族不再渗出；深处仍可再战（无限模式）" if cleared_once 			else "黑门——星冥族的裂隙（无限模式）") if unlocked 			else "黑门（通关第 100 关后开启）"
+		gate_entry.tooltip_text = ("黑门——已平息，异族不再渗出；深处仍可再战（无限模式）" if cleared_once 			else "黑门——星冥族的裂隙（首场试炼：第 %d 波决胜；通关后开放无限模式）" % EndlessBlackgateRef.FIRST_GATE_CORE_WAVE) if unlocked 			else "黑门（通关第 100 关后开启）"
 	if gate == null:
 		return
 	if MAP_SCHEME == 11:
@@ -1058,7 +1079,10 @@ func _reconnect_level_buttons(root: Node) -> void:
 				btn.pressed.connect(func() -> void: _on_level_selected(level_index))
 
 ## 刷新地图（清除缓存，强制重新生成）
+## v6.42: 已建过图且面板可见的重建（行军到站/战后锚点迁移）保留用户缩放——
+## 隐藏期重建仍回整图视图（v28 重开面板拍板不变）。
 func refresh_levels() -> void:
+	_zoom_keep_pending = _built_window_anchor > 0 and is_visible_in_tree()
 	_map_built = false
 	# 当前关卡高亮依赖构建时的 current_level；刷新时禁用静态模板复用，避免高亮停留在旧关卡
 	_cached_level_map_template = null
@@ -1191,10 +1215,11 @@ func _make_level_node(level_index: int, era_idx: int, point: Vector2, _current_l
 		var fsm = get_node_or_null("/root/FactionSystemManager")
 		if fsm and fsm.has_method("get_faction_info"):
 			occ_name = String(fsm.get_faction_info(occupation_fid).get("name", occupation_fid))
+		# v6.42（记录6，用户拍板）：口径"曾属于"→"属于"——关卡显示当前辖区归属
 		if btn.tooltip_text.is_empty():
-			btn.tooltip_text = "曾属于：%s" % occ_name
+			btn.tooltip_text = "辖区势力：%s" % occ_name
 		else:
-			btn.tooltip_text += "\n曾属于：%s" % occ_name
+			btn.tooltip_text += "\n辖区势力：%s" % occ_name
 
 	# v32.3 D2：行军预提示——非停靠关的节点 hover 明示"点击=行军"（此前点击直接启程
 	# 只有事后的 toast，玩家以为点错/在驾驶）
@@ -1420,6 +1445,23 @@ func _build_map_screen_chrome() -> void:
 	locate_btn.pressed.connect(_on_locate_current_pressed)
 	action_row.add_child(locate_btn)
 
+	# v6.42（记录6，用户主诉"移动过程中无法取消"）：行军取消键——行驶中可见，一键中止，
+	# 车队留在出发关、燃料全额返还。默认隐藏，由 _on_truck_travel_changed/_refresh_fuel_chip 驱动。
+	var cancel_btn := Button.new()
+	cancel_btn.name = "CancelTravelBtn"
+	cancel_btn.text = "✕ 取消行军"
+	cancel_btn.tooltip_text = "中止当前行军：车队留在出发关，本次燃料全额返还"
+	cancel_btn.focus_mode = Control.FOCUS_NONE
+	cancel_btn.add_theme_font_size_override("font_size", 14)
+	cancel_btn.add_theme_color_override("font_color", Color(1.0, 0.92, 0.9))
+	var cancel_styles := PanelStyles.make_button_styles(DesignTokens.COLOR_RED_DOWN)
+	for key in ["normal", "hover", "pressed", "disabled", "focus"]:
+		cancel_btn.add_theme_stylebox_override(key, cancel_styles[key])
+	cancel_btn.pressed.connect(_on_cancel_travel_pressed)
+	cancel_btn.visible = false
+	action_row.add_child(cancel_btn)
+	_cancel_travel_btn = cancel_btn
+
 	# ── 图例面板：纯文字说明（与动作面板分离，弱化底色）──
 	var panel := PanelContainer.new()
 	panel.name = "MapLegend"
@@ -1448,6 +1490,15 @@ func _build_map_screen_chrome() -> void:
 	vb.add_child(occ_row)
 	# v26.20：移动基地光点
 	vb.add_child(_make_legend_row(Color(0.98, 0.76, 0.28), "移动基地（金点·行驶中闪烁）"))
+
+	# v6.41.1（实机主诉"信息框重叠"截图）：floating chrome 后 Margin/VBox 只剩
+	# [ScrollContainer, 燃料chip]——chip 顶到屏幕底边（margin_bottom=0）被图例栈压住
+	# 上半截、自身被底边裁半。收编进 chrome 栈尾（VBox 布局结构性不互叠，且吃栈的
+	# 12px 底边距）；VBox 只剩 ScrollContainer 满屏。刷新链 _refresh_fuel_chip 引用不变。
+	if _fuel_chip != null and _fuel_chip.get_parent() != null \
+			and _fuel_chip.get_parent() != stack:
+		_fuel_chip.get_parent().remove_child(_fuel_chip)
+		stack.add_child(_fuel_chip)
 
 	# v26.20：行驶徽标（屏幕空间——放画布内会被 0.5× 适配缩放压成 6px 不可读）
 	_truck_badge = Label.new()
@@ -1884,16 +1935,27 @@ func _show_blackgate_popup() -> void:
 	vb.add_theme_constant_override("separation", 8)
 	margin.add_child(vb)
 
+	# v6.42（记录6，用户拍板）：黑门不是无限模式——首场是有限波试炼，通关后才解锁无限模式
+	var gate_ebm0 := _blackgate_mgr()
+	var first_gate: bool = gate_ebm0 != null and not bool(gate_ebm0.get("gate_cleared_once"))
+	popup.title = "黑门 · 首场试炼" if first_gate else "黑门 · 无限模式"
+	var gate_rule_line: String
+	if first_gate:
+		gate_rule_line = "首场试炼：第 %d 波黑门本体现身——波数有限，击碎它即通关黑门，解锁无限模式。" \
+			% EndlessBlackgateRef.FIRST_GATE_CORE_WAVE
+	else:
+		gate_rule_line = "深处潜伏着黑门本体（每场位置随机，约 %d~%d 波）——打爆它即再通关一次。" % [
+			EndlessBlackgateRef.GATE_CORE_WAVE_MIN, EndlessBlackgateRef.GATE_CORE_WAVE_MAX]
 	var lines: PackedStringArray = [
-		"门后是星冥族的晶脉浮陆——波次永不耗尽，撑到驱动器被毁为止。",
+		"门后是星冥族的晶脉浮陆——敌人一波接一波，直到驱动器被毁或你撤离。" if first_gate \
+			else "门后是星冥族的晶脉浮陆——波次永不耗尽，撑到驱动器被毁为止。",
 		"每 5 波精英 / 每 10 波首领；每 10 波渗度 +1（敌人更强、缴获品质更好）。",
 		"星冥单位只可通过缴获获取（黑门内击杀掉落），品质随渗度提升。",
 		"每场随机 1 条裂隙环境（灵能风暴/低重力/裂隙潮汐/晶脉浮陆），敌我双向生效。",
 		# v6.19 P1-T1.2 概率可见化：上限/重置口径读常量（宪法 C3）
 		"星髓按渗度里程碑发放，每周上限 %d（每周一重置）。" % EndlessBlackgateRef.WEEKLY_MARROW_CAP,
-		# v6.35 黑门 2.0: 本体通关 + 撤退口径（数值读常量）
-		"深处潜伏着黑门本体（每场位置随机，约 %d~%d 波）——打爆它即通关，之后可继续深入无限区。" % [
-			EndlessBlackgateRef.GATE_CORE_WAVE_MIN, EndlessBlackgateRef.GATE_CORE_WAVE_MAX],
+		# v6.35 黑门 2.0 本体通关口径；v6.42 首场试炼/无限模式双档（数值读常量）
+		gate_rule_line,
 		"随时可撤退或返回标题：按当前波次结算，星髓里程碑照发、战利品照常带回；入场次数按进场计，再次进入重新计次。",
 	]
 	for line in lines:
@@ -1962,12 +2024,10 @@ func _show_blackgate_popup() -> void:
 ## begin_run 在"开始战斗"的 go_to_battle 链路里才生效——与普通关卡进入同构）。
 ## 先对齐 current_level=100（档位/难度链基准；set_current_level 会清挂起标记，故先关卡后标记）。
 func _enter_blackgate(popup: Window) -> void:
-	# v26.19 停靠门控：黑门在第 100 关节点——车停在这才进无尽
-	var bm := _truck_mgr()
-	if bm != null and int(bm.get_parked_level()) != 100:
-		_toast_gate("黑门静止不动——需将移动基地停靠至第 100 关（当前第 %d 关）" % int(bm.get_parked_level()))
-		_close_popup_safe(popup)
-		return
+	# v6.42（记录6，用户主诉"通关100关后无法进入黑门"）：撤销 v26.19 停靠门控。
+	# 实机存档实证：通关后车队驶离第 100 关（去别的关推进/采集），停靠门控把黑门
+	# 永久锁死（toast"需停靠第 100 关"）且行军期间无法取消——裂隙战不依赖卡车位置，
+	# 解锁（通关第 100 关）即恒放行。
 	# v32.0 B3-S3 软门（2026-09-19 双轨修复）：3 免费/日 + 60 能量块购次——
 	# 取代旧 v30 R2b 的 50 能量块/次无限硬门票（GameConfig.blackgate_energy_cost 已删）。
 	# begin_run→consume_entry_for_begin 是唯一记账口：免费有余直接进；
@@ -2079,7 +2139,11 @@ func _apply_incursion_markers(canvas: Control) -> void:
 		btn.flat = true
 		btn.size = Vector2(34, 34)
 		btn.position = _level_point(host) + Vector2(20, -30)
-		btn.tooltip_text = "异族渗透——星冥散兵(收益微小)\n点击迎战"
+		# v6.42: 过期倒计时（宪法 C3：天数读 EBM 常量口径 get_incursion_days_left）
+		var days_left := 0
+		if ebm != null and ebm.has_method("get_incursion_days_left"):
+			days_left = int(ebm.call("get_incursion_days_left", inc))
+		btn.tooltip_text = "异族渗透——星冥散兵(收益微小)\n%s天后再无踪迹\n点击迎战" % maxi(1, days_left)
 		btn.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 		btn.modulate = Color(1.0, 0.42, 0.36, 0.95)
 		btn.gui_input.connect(_on_incursion_gui_input.bind(inc))
@@ -2141,7 +2205,7 @@ func _on_level_selected(level_index: int) -> void:
 	var bm := _truck_mgr()
 	if bm != null:
 		if bm.is_traveling():
-			_toast_gate("卡车正在行驶中（剩 %d 天，实时行军）——到站后再规划下一段路程" % int(bm.get_travel_days_left()))
+			_toast_gate("卡车正在行驶中（剩 %d 天，实时行军）——到站后再规划，或点左下「✕ 取消行军」中止" % int(bm.get_travel_days_left()))
 			return
 		if level_index == int(bm.get_parked_level()):
 			_show_level_info_popup(level_index)
@@ -2164,6 +2228,20 @@ func _refresh_fuel_chip(_day: int = 0) -> void:
 	else:
 		_fuel_chip.text = "⛽ %d/%d ｜ 停靠 第%d关" % [
 			int(bm.get_fuel()), int(bm.get_fuel_cap()), int(bm.get_parked_level())]
+	# v6.42: 行军取消键可见性随行军态走（本函数由 truck_travel_changed/每秒芯片刷新共同驱动）
+	if _cancel_travel_btn != null and is_instance_valid(_cancel_travel_btn):
+		_cancel_travel_btn.visible = bm.is_traveling()
+
+
+## v6.42: 取消行军（chrome ✕ 键）——BunkerManager.cancel_travel 自带返还+播报
+func _on_cancel_travel_pressed() -> void:
+	var bm := _truck_mgr()
+	if bm == null or not bm.is_traveling():
+		return
+	var res: Dictionary = bm.cancel_travel()
+	if bool(res.get("ok", false)):
+		SignalBus.play_sound.emit("button")
+		_on_truck_travel_changed()
 
 ## v26.19+21：行军状态变化——启程=脉冲+徽标+路线；到站（实时到期）=归位收状态（播报由管理器发）
 func _on_truck_travel_changed() -> void:
@@ -2443,10 +2521,19 @@ func _show_level_info_popup(level_index: int) -> void:
 
 ## 黑门区块（v6.38 恢复 v6.35.2 丢失的弹窗嵌入）：黑门口径置顶 + 踏入按钮。
 ## 规则数值读 EBM 常量（宪法 C3：文案数值禁硬编码）。
+## v6.42: 首场=有限波试炼（第 FIRST_GATE_CORE_WAVE 波决胜），通关后才是无限模式。
 func _append_gate_section(body: VBoxContainer, popup: AcceptDialog) -> void:
-	body.add_child(_make_detail_section_title("黑门 · 无限模式"))
+	var first_gate: bool = false
+	var gate_ebm0 := _blackgate_mgr()
+	if gate_ebm0 != null:
+		first_gate = not bool(gate_ebm0.get("gate_cleared_once"))
+	body.add_child(_make_detail_section_title(
+		"黑门 · 首场试炼（第 %d 波决胜）" % EndlessBlackgateRef.FIRST_GATE_CORE_WAVE
+		if first_gate else "黑门 · 无限模式"))
 	body.add_child(_make_detail_desc(
-		"波数：无限纵深推进——每 10 波强敌、每 25 波补给节点，击碎黑门本体即通关。",
+		"波数：第 %d 波本体现身——击碎即通关黑门，解锁无限模式。" % EndlessBlackgateRef.FIRST_GATE_CORE_WAVE
+		if first_gate else
+		"波数：无限纵深推进——每 10 波强敌、每 25 波补给节点，击碎黑门本体即再通关一次。",
 		Color(0.72, 0.85, 1.0, 0.95)))
 	var ebm := _blackgate_mgr()
 	if ebm != null and ebm.has_method("get_entry_status"):
@@ -2891,7 +2978,8 @@ func _collect_level_info(level_index: int) -> Dictionary:
 		if fsm and fsm.has_method("get_faction_info"):
 			var finfo: Dictionary = fsm.get_faction_info(garrison_faction_id)
 			var fname: String = String(finfo.get("name", garrison_faction_id))
-			garrison_text = "%s（曾属）" % fname
+			# v6.42（记录6，用户拍板）："XX（曾属）"→"XX 势力辖区"（"曾属"语义已被废弃口径）
+			garrison_text = "%s 势力辖区" % fname
 			garrison_color = CompanyDefs.get_faction_color(garrison_faction_id)
 	# v7.x: 查询驻守相位师（固定驻守关，复用顶部 const）
 	var garrison_master_name: String = ""
