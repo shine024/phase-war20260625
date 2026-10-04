@@ -284,7 +284,7 @@ function animBox(rec, kind, cap){
 }
 
 /* ── 审查标注（localStorage v2 + v1 自动迁移）── */
-const P_TYPES=[['face','朝向左右'],['size','忽大忽小'],['bg','背景没抠好'],['diff','与原图不一样'],['clip','开火截断'],['other','其他']];
+const P_TYPES=[['face','朝向左右'],['size','忽大忽小'],['bg','背景没抠好'],['clip','开火截断'],['lum','太黑太亮'],['outl','错误描边'],['diff','与原图不一样'],['other','其他']];
 const SUS_TXT={face:'疑:朝向',size:'疑:大小',bg:'疑:抠图',clip:'疑:截断'};
 const SUS_TIP={face:'自动检测：我方卡图与动画朝向（镜像后）质量质心相反（死区4%外），可能误报，请目验后选按钮',
   size:'自动检测：idle 帧间内容高度抖动超 18%，或动画与卡图大小占比悬殊',

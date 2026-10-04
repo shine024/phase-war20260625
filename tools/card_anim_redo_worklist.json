@@ -30,8 +30,8 @@
    "alt": "",
    "tasks": [
     "fire_anchor",
-    "size_fix",
-    "anim_regen"
+    "anim_regen",
+    "size_fix"
    ]
   },
   "fam|ww1_arm_ft17": {
@@ -67,8 +67,8 @@
    "alt": "",
    "tasks": [
     "fire_anchor",
-    "size_fix",
-    "anim_regen"
+    "anim_regen",
+    "size_fix"
    ]
   },
   "ind|ww1_mark4": {
@@ -82,8 +82,8 @@
     "fire_anchor",
     "idle_regen",
     "attack_regen",
-    "face_fix",
-    "anim_regen"
+    "anim_regen",
+    "face_fix"
    ]
   },
   "fam|ww1_arty_77mm": {
@@ -102,8 +102,8 @@
    ],
    "alt": "",
    "tasks": [
-    "bg_clean",
-    "anim_regen"
+    "anim_regen",
+    "bg_clean"
    ]
   },
   "fam|ww1_inf_mp18": {
@@ -143,8 +143,8 @@
    "alt": "",
    "tasks": [
     "idle_regen",
-    "size_fix",
-    "anim_regen"
+    "anim_regen",
+    "size_fix"
    ]
   },
   "fam|ww2_inf_bazooka": {
@@ -244,8 +244,8 @@
    "tasks": [
     "idle_regen",
     "attack_regen",
-    "face_fix",
     "anim_regen",
+    "face_fix",
     "clip_fix"
    ]
   },
@@ -328,8 +328,8 @@
    "alt": "",
    "tasks": [
     "idle_regen",
-    "bg_clean",
-    "anim_regen"
+    "anim_regen",
+    "bg_clean"
    ]
   },
   "fam|mod_arm_stryker_e": {
@@ -352,8 +352,8 @@
    ],
    "alt": "",
    "tasks": [
-    "bg_clean",
-    "anim_regen"
+    "anim_regen",
+    "bg_clean"
    ]
   },
   "fam|mod_air_technical_e": {
@@ -376,8 +376,8 @@
    "alt": "",
    "tasks": [
     "card_regen",
-    "size_fix",
     "anim_regen",
+    "size_fix",
     "clip_fix"
    ]
   },
@@ -461,8 +461,8 @@
    ],
    "alt": "",
    "tasks": [
-    "size_fix",
     "anim_regen",
+    "size_fix",
     "clip_fix"
    ]
   },
@@ -557,9 +557,9 @@
    ],
    "alt": "",
    "tasks": [
+    "anim_regen",
     "size_fix",
     "face_fix",
-    "anim_regen",
     "clip_fix"
    ]
   },

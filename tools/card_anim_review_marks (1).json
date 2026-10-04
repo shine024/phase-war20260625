@@ -1,0 +1,1354 @@
+{
+ "exported": "2026/10/4 20:53:15",
+ "marked": 206,
+ "marks": {
+  "fam|ww1_sup_mg_nest": {
+   "p": [
+    "size"
+   ],
+   "r": "no",
+   "n": "待机",
+   "a": ""
+  },
+  "fam|ww1_arty_mortar": {
+   "p": [],
+   "r": "no",
+   "n": "",
+   "a": ""
+  },
+  "ind|ww1_lanchest": {
+   "p": [
+    "other",
+    "diff",
+    "size"
+   ],
+   "r": "yes",
+   "n": "",
+   "a": ""
+  },
+  "fam|ww1_arm_ft17": {
+   "p": [
+    "clip"
+   ],
+   "r": "no",
+   "n": "攻击",
+   "a": ""
+  },
+  "fam|ww1_boss_av7": {
+   "p": [],
+   "r": "yes",
+   "n": "开火位置不对",
+   "a": ""
+  },
+  "ind|ww1_a7v": {
+   "p": [
+    "size",
+    "diff"
+   ],
+   "r": "yes",
+   "n": "重生成 开火位置错了",
+   "a": ""
+  },
+  "ind|ww1_mark4": {
+   "p": [
+    "diff"
+   ],
+   "r": "yes",
+   "n": "",
+   "a": ""
+  },
+  "fam|ww1_arty_77mm": {
+   "p": [],
+   "r": "no",
+   "n": "重做，没正侧面",
+   "a": ""
+  },
+  "ind|ww1_105mm": {
+   "p": [
+    "diff",
+    "bg"
+   ],
+   "r": "yes",
+   "n": "",
+   "a": ""
+  },
+  "ind|ww1_37mm": {
+   "p": [
+    "diff"
+   ],
+   "r": "no",
+   "n": "",
+   "a": ""
+  },
+  "fam|ww1_inf_mp18": {
+   "p": [
+    "diff"
+   ],
+   "r": "no",
+   "n": "",
+   "a": ""
+  },
+  "fam|ww1_fort_pillbox": {
+   "p": [
+    "clip"
+   ],
+   "r": "yes",
+   "n": "",
+   "a": ""
+  },
+  "fam|ww1_fort_artillery": {
+   "p": [
+    "clip"
+   ],
+   "r": "yes",
+   "n": "",
+   "a": ""
+  },
+  "fam|ww2_sup_mg42": {
+   "p": [
+    "size"
+   ],
+   "r": "no",
+   "n": "待机",
+   "a": ""
+  },
+  "fam|ww2_inf_bazooka": {
+   "p": [
+    "other"
+   ],
+   "r": "yes",
+   "n": "开火位置",
+   "a": ""
+  },
+  "fam|ww2_arty_m81": {
+   "p": [
+    "clip"
+   ],
+   "r": "yes",
+   "n": "开火位置",
+   "a": ""
+  },
+  "fam|ww2_arm_panther_e": {
+   "p": [],
+   "r": "no",
+   "n": "",
+   "a": ""
+  },
+  "fam|ww2_boss_kingtiger": {
+   "p": [],
+   "r": "no",
+   "n": "都重做",
+   "a": ""
+  },
+  "fam|ww2_arm_sherman": {
+   "p": [],
+   "r": "no",
+   "n": "",
+   "a": ""
+  },
+  "fam|ww2_inf_hellcat": {
+   "p": [
+    "outl"
+   ],
+   "r": "yes",
+   "n": "攻击",
+   "a": ""
+  },
+  "fam|ww2_fort_bunker": {
+   "p": [],
+   "r": "yes",
+   "n": "",
+   "a": ""
+  },
+  "fam|ww2_fort_flak": {
+   "p": [
+    "clip"
+   ],
+   "r": "yes",
+   "n": "开火位置错了",
+   "a": ""
+  },
+  "fam|ww2_inf_panzerschreck_e": {
+   "p": [],
+   "r": "no",
+   "n": "待机",
+   "a": ""
+  },
+  "fam|cold_inf_ak": {
+   "p": [],
+   "r": "no",
+   "n": "",
+   "a": ""
+  },
+  "fam|cold_inf_m60": {
+   "p": [],
+   "r": "no",
+   "n": "",
+   "a": ""
+  },
+  "fam|cold_air_m113_e": {
+   "p": [
+    "diff",
+    "clip"
+   ],
+   "r": "yes",
+   "n": "",
+   "a": ""
+  },
+  "fam|cold_arm_t55": {
+   "p": [],
+   "r": "yes",
+   "n": "开火位置",
+   "a": ""
+  },
+  "fam|cold_arm_t72_e": {
+   "p": [],
+   "r": "yes",
+   "n": "没开火",
+   "a": ""
+  },
+  "fam|cold_sup_zsu23": {
+   "p": [
+    "outl"
+   ],
+   "r": "yes",
+   "n": "开火位置",
+   "a": ""
+  },
+  "ind|cold_sam7": {
+   "p": [
+    "clip"
+   ],
+   "r": "no",
+   "n": "",
+   "a": ""
+  },
+  "fam|mod_inf_marine": {
+   "p": [
+    "bg"
+   ],
+   "r": "no",
+   "n": "地面",
+   "a": ""
+  },
+  "ind|mod_javelin": {
+   "p": [
+    "bg",
+    "diff"
+   ],
+   "r": "no",
+   "n": "待机",
+   "a": ""
+  },
+  "fam|mod_arm_stryker_e": {
+   "p": [
+    "diff",
+    "clip"
+   ],
+   "r": "yes",
+   "n": "",
+   "a": ""
+  },
+  "ind|mod_stryker_m2": {
+   "p": [
+    "diff",
+    "clip"
+   ],
+   "r": "yes",
+   "n": "开火位置错了",
+   "a": ""
+  },
+  "fam|mod_air_technical_e": {
+   "p": [],
+   "r": "no",
+   "n": "",
+   "a": ""
+  },
+  "fam|mod_arm_abrams_e": {
+   "p": [],
+   "r": "no",
+   "n": "。",
+   "a": ""
+  },
+  "fam|mod_arm_m1a2sep": {
+   "p": [
+    "diff"
+   ],
+   "r": "yes",
+   "n": "不是正侧面",
+   "a": ""
+  },
+  "fam|mod_air_apache_e": {
+   "p": [],
+   "r": "yes",
+   "n": "待机摆动太大",
+   "a": ""
+  },
+  "fam|mod_sup_m6": {
+   "p": [
+    "clip"
+   ],
+   "r": "yes",
+   "n": "",
+   "a": ""
+  },
+  "fam|mod_fort_citadel": {
+   "p": [
+    "clip"
+   ],
+   "r": "no",
+   "n": "开火位置错了",
+   "a": ""
+  },
+  "fam|mod_fort_phalanx": {
+   "p": [
+    "clip"
+   ],
+   "r": "yes",
+   "n": "",
+   "a": ""
+  },
+  "ind|fut_swarm": {
+   "p": [
+    "clip"
+   ],
+   "r": "no",
+   "n": "",
+   "a": ""
+  },
+  "fam|fut_arm_mech_e": {
+   "p": [],
+   "r": "no",
+   "n": "待机",
+   "a": ""
+  },
+  "fam|fut_arm_hovertank": {
+   "p": [
+    "outl",
+    "clip"
+   ],
+   "r": "yes",
+   "n": "",
+   "a": ""
+  },
+  "fam|mod_arty_mlrs_e": {
+   "p": [],
+   "r": "yes",
+   "n": "卡图换成和动画一样的。",
+   "a": ""
+  },
+  "fam|fut_arm_prism": {
+   "p": [
+    "clip"
+   ],
+   "r": "yes",
+   "n": "卡图没正侧面",
+   "a": ""
+  },
+  "ind|fut_space_fighter": {
+   "p": [
+    "diff",
+    "bg"
+   ],
+   "r": "yes",
+   "n": "都错了",
+   "a": ""
+  },
+  "ind|fut_nano_drone": {
+   "p": [
+    "diff"
+   ],
+   "r": "yes",
+   "n": "开火位置错了",
+   "a": ""
+  },
+  "fam|fut_boss_nexus": {
+   "p": [],
+   "r": "no",
+   "n": "待机",
+   "a": "main"
+  },
+  "fam|fut_arm_colossus_e": {
+   "p": [
+    "bg",
+    "clip"
+   ],
+   "r": "yes",
+   "n": "",
+   "a": ""
+  },
+  "ind|guardian_ww1_ironclad": {
+   "p": [
+    "clip",
+    "diff"
+   ],
+   "r": "yes",
+   "n": "",
+   "a": ""
+  },
+  "ind|guardian_cold_thunder": {
+   "p": [
+    "size"
+   ],
+   "r": "no",
+   "n": "待机",
+   "a": ""
+  },
+  "ind|guardian_future_omega": {
+   "p": [
+    "clip",
+    "diff",
+    "size",
+    "face"
+   ],
+   "r": "no",
+   "n": "",
+   "a": ""
+  },
+  "ind|fe_iron_wall_bastion": {
+   "p": [],
+   "r": "no",
+   "n": "",
+   "a": ""
+  },
+  "ind|fe_iron_wall_juggernaut": {
+   "p": [],
+   "r": "yes",
+   "n": "要做抬枪",
+   "a": ""
+  },
+  "ind|fe_nova_devastator": {
+   "p": [],
+   "r": "no",
+   "n": "",
+   "a": ""
+  },
+  "ind|fe_nova_ghost_sniper": {
+   "p": [],
+   "r": "no",
+   "n": "",
+   "a": ""
+  },
+  "ind|fe_aether_hover_cavalry": {
+   "p": [],
+   "r": "yes",
+   "n": "开火位置不对",
+   "a": ""
+  },
+  "ind|fe_aether_swarm_queen": {
+   "p": [],
+   "r": "yes",
+   "n": "开火位置不对",
+   "a": ""
+  },
+  "ind|fe_quantum_mobile_base": {
+   "p": [],
+   "r": "yes",
+   "n": "开火位置不对",
+   "a": ""
+  },
+  "ind|fe_quantum_repair_drone": {
+   "p": [],
+   "r": "no",
+   "n": "",
+   "a": ""
+  },
+  "ind|fe_helix_phantom": {
+   "p": [],
+   "r": "yes",
+   "n": "要用生图",
+   "a": ""
+  },
+  "ind|fe_helix_orbital_strike": {
+   "p": [],
+   "r": "no",
+   "n": "",
+   "a": ""
+  },
+  "ind|fe_void_phase_cannon": {
+   "p": [],
+   "r": "no",
+   "n": "",
+   "a": ""
+  },
+  "ind|fe_void_dimensional_soldier": {
+   "p": [],
+   "r": "yes",
+   "n": "要先变攻击姿势",
+   "a": ""
+  },
+  "ind|fe_frontier_veteran": {
+   "p": [],
+   "r": "yes",
+   "n": "要先变攻击姿势",
+   "a": ""
+  },
+  "ind|fe_frontier_mixed_company": {
+   "p": [],
+   "r": "yes",
+   "n": "开火位置不对",
+   "a": ""
+  },
+  "fam|ww1_arm_rolls": {
+   "p": [
+    "diff"
+   ],
+   "r": "yes",
+   "n": "",
+   "a": ""
+  },
+  "fam|ww1_inf_cavalry": {
+   "p": [],
+   "r": "yes",
+   "n": "攻击没开火",
+   "a": ""
+  },
+  "fam|ww1_arty_m81": {
+   "p": [
+    "outl"
+   ],
+   "r": "yes",
+   "n": "开火位置",
+   "a": ""
+  },
+  "fam|cold_inf_btr60": {
+   "p": [
+    "outl"
+   ],
+   "r": "yes",
+   "n": "开火位置",
+   "a": ""
+  },
+  "fam|mod_inf_scout_drone": {
+   "p": [],
+   "r": "no",
+   "n": "",
+   "a": ""
+  },
+  "fam|ww1_arm_rolls_e": {
+   "p": [],
+   "r": "yes",
+   "n": "开火位置不对",
+   "a": ""
+  },
+  "fam|ww2_inf_thompson": {
+   "p": [
+    "outl"
+   ],
+   "r": "yes",
+   "n": "",
+   "a": ""
+  },
+  "fam|ww2_inf_garand": {
+   "p": [],
+   "r": "no",
+   "n": "开火没火光",
+   "a": ""
+  },
+  "fam|ww2_inf_para_e": {
+   "p": [],
+   "r": "yes",
+   "n": "开火位置",
+   "a": ""
+  },
+  "fam|cold_arm_btr_e": {
+   "p": [
+    "clip"
+   ],
+   "r": "yes",
+   "n": "",
+   "a": ""
+  },
+  "fam|cold_inf_spetsnaz_e": {
+   "p": [],
+   "r": "yes",
+   "n": "待机摆动太大",
+   "a": ""
+  },
+  "fam|mod_inf_delta_e": {
+   "p": [],
+   "r": "yes",
+   "n": "卡图换动画一样的。",
+   "a": ""
+  },
+  "fam|fut_air_drone": {
+   "p": [],
+   "r": "yes",
+   "n": "卡图重新生成",
+   "a": ""
+  },
+  "fam|fut_arm_hovertank_e": {
+   "p": [
+    "clip"
+   ],
+   "r": "no",
+   "n": "",
+   "a": ""
+  },
+  "fam|ww1_inf_mp18_x": {
+   "p": [],
+   "r": "yes",
+   "n": "卡图没抠好，待机与攻击是半身的",
+   "a": ""
+  },
+  "fam|ww2_arm_garand_para": {
+   "p": [],
+   "r": "yes",
+   "n": "将卡图变成动画一样的",
+   "a": ""
+  },
+  "fam|ww2_arty_hummel": {
+   "p": [],
+   "r": "yes",
+   "n": "开火位置不对",
+   "a": ""
+  },
+  "fam|ww2_sup_gmc_truck": {
+   "p": [],
+   "r": "yes",
+   "n": "攻击重做，不用开火，用待的就好",
+   "a": ""
+  },
+  "fam|cold_sup_bmp1_x": {
+   "p": [
+    "outl"
+   ],
+   "r": "yes",
+   "n": "开火位置不对",
+   "a": "main"
+  },
+  "fam|cold_inf_metis": {
+   "p": [],
+   "r": "no",
+   "n": "",
+   "a": "main"
+  },
+  "fam|cold_arm_p18": {
+   "p": [],
+   "r": "no",
+   "n": "",
+   "a": "main"
+  },
+  "fam|mod_sup_m4_carbine": {
+   "p": [],
+   "r": "yes",
+   "n": "全是半身的",
+   "a": ""
+  },
+  "fam|mod_arm_himars": {
+   "p": [
+    "clip",
+    "outl",
+    "diff"
+   ],
+   "r": "yes",
+   "n": "火光抠错了",
+   "a": "main"
+  },
+  "fam|mod_arty_rq7": {
+   "p": [],
+   "r": "no",
+   "n": "",
+   "a": ""
+  },
+  "fam|mod_sup_growler": {
+   "p": [],
+   "r": "no",
+   "n": "",
+   "a": "alt:fut_attack_drone"
+  },
+  "fam|fut_inf_neural": {
+   "p": [],
+   "r": "no",
+   "n": "",
+   "a": ""
+  },
+  "fam|fut_sup_ps9": {
+   "p": [],
+   "r": "no",
+   "n": "",
+   "a": ""
+  },
+  "fam|ww2_air_bomber": {
+   "p": [],
+   "r": "no",
+   "n": "",
+   "a": ""
+  },
+  "fam|ww2_air_dive_bomber": {
+   "p": [],
+   "r": "yes",
+   "n": "开火方向错了",
+   "a": ""
+  },
+  "fam|cold_air_strike_fighter": {
+   "p": [],
+   "r": "no",
+   "n": "",
+   "a": ""
+  },
+  "fam|mod_air_bomber": {
+   "p": [],
+   "r": "no",
+   "n": "",
+   "a": ""
+  },
+  "fam|fut_air_stealth_multirole": {
+   "p": [],
+   "r": "no",
+   "n": "",
+   "a": ""
+  },
+  "fam|ww2_air_meteor_e": {
+   "p": [],
+   "r": "no",
+   "n": "",
+   "a": ""
+  },
+  "fam|ww2_air_me262": {
+   "p": [],
+   "r": "no",
+   "n": "",
+   "a": ""
+  },
+  "fam|fut_fort_ion": {
+   "p": [],
+   "r": "no",
+   "n": "",
+   "a": ""
+  },
+  "fam|xeno_stalker": {
+   "p": [
+    "clip"
+   ],
+   "r": "no",
+   "n": "",
+   "a": ""
+  },
+  "fam|xeno_dark_templar": {
+   "p": [],
+   "r": "no",
+   "n": "以待机图做卡图",
+   "a": ""
+  },
+  "plat|steel_fortress_basic": {
+   "p": [],
+   "r": "yes",
+   "n": "补卡图",
+   "a": ""
+  },
+  "plat|steel_titan_basic": {
+   "p": [],
+   "r": "yes",
+   "n": "补卡图",
+   "a": ""
+  },
+  "plat|steel_fortress_advanced": {
+   "p": [],
+   "r": "yes",
+   "n": "补卡图",
+   "a": ""
+  },
+  "plat|steel_titan_advanced": {
+   "p": [],
+   "r": "yes",
+   "n": "补卡图",
+   "a": ""
+  },
+  "plat|steel_fortress_expert": {
+   "p": [],
+   "r": "yes",
+   "n": "补卡图",
+   "a": ""
+  },
+  "plat|steel_titan_expert": {
+   "p": [],
+   "r": "yes",
+   "n": "补卡图",
+   "a": ""
+  },
+  "plat|flame_raider_basic": {
+   "p": [],
+   "r": "yes",
+   "n": "补卡图",
+   "a": ""
+  },
+  "plat|flame_siege_basic": {
+   "p": [],
+   "r": "yes",
+   "n": "补卡图",
+   "a": ""
+  },
+  "plat|flame_raider_advanced": {
+   "p": [],
+   "r": "yes",
+   "n": "补卡图",
+   "a": ""
+  },
+  "plat|flame_siege_advanced": {
+   "p": [],
+   "r": "yes",
+   "n": "补卡图",
+   "a": ""
+  },
+  "plat|thunter_striker_basic": {
+   "p": [],
+   "r": "yes",
+   "n": "补卡图",
+   "a": ""
+  },
+  "plat|thunter_sniper_basic": {
+   "p": [],
+   "r": "yes",
+   "n": "补卡图",
+   "a": ""
+  },
+  "plat|void_stealth_basic": {
+   "p": [],
+   "r": "yes",
+   "n": "补卡图",
+   "a": ""
+  },
+  "plat|void_mage_basic": {
+   "p": [],
+   "r": "yes",
+   "n": "补卡图",
+   "a": ""
+  },
+  "plat|flame_raider_expert": {
+   "p": [],
+   "r": "yes",
+   "n": "补卡图",
+   "a": ""
+  },
+  "plat|flame_siege_expert": {
+   "p": [],
+   "r": "yes",
+   "n": "补卡图",
+   "a": ""
+  },
+  "plat|thunter_striker_advanced": {
+   "p": [],
+   "r": "yes",
+   "n": "补卡图",
+   "a": ""
+  },
+  "plat|thunter_sniper_advanced": {
+   "p": [],
+   "r": "yes",
+   "n": "补卡图",
+   "a": ""
+  },
+  "plat|thunter_striker_expert": {
+   "p": [],
+   "r": "yes",
+   "n": "补卡图",
+   "a": ""
+  },
+  "plat|thunter_sniper_expert": {
+   "p": [],
+   "r": "yes",
+   "n": "补卡图",
+   "a": ""
+  },
+  "plat|void_stealth_advanced": {
+   "p": [],
+   "r": "yes",
+   "n": "补卡图",
+   "a": ""
+  },
+  "plat|void_mage_advanced": {
+   "p": [],
+   "r": "yes",
+   "n": "补卡图",
+   "a": ""
+  },
+  "plat|void_stealth_expert": {
+   "p": [],
+   "r": "yes",
+   "n": "补卡图",
+   "a": ""
+  },
+  "plat|void_mage_expert": {
+   "p": [],
+   "r": "yes",
+   "n": "补卡图",
+   "a": ""
+  },
+  "fam|ww1_sup_engineer": {
+   "p": [],
+   "r": "no",
+   "n": "",
+   "a": ""
+  },
+  "fam|ww2_arm_tiger": {
+   "p": [],
+   "r": "no",
+   "n": "",
+   "a": ""
+  },
+  "fam|ww2_inf_panzerschrek": {
+   "p": [],
+   "r": "no",
+   "n": "",
+   "a": ""
+  },
+  "fam|cold_inf_bmp1": {
+   "p": [],
+   "r": "no",
+   "n": "",
+   "a": ""
+  },
+  "fam|cold_sup_m113": {
+   "p": [],
+   "r": "no",
+   "n": "",
+   "a": ""
+  },
+  "fam|mod_inf_technical": {
+   "p": [],
+   "r": "no",
+   "n": "",
+   "a": ""
+  },
+  "fam|mod_arm_m1a1": {
+   "p": [],
+   "r": "no",
+   "n": "",
+   "a": ""
+  },
+  "fam|mod_arty_m270": {
+   "p": [],
+   "r": "no",
+   "n": "",
+   "a": ""
+  },
+  "fam|fut_inf_scout_mech": {
+   "p": [],
+   "r": "no",
+   "n": "",
+   "a": ""
+  },
+  "fam|fut_arm_heavy_mech": {
+   "p": [],
+   "r": "no",
+   "n": "",
+   "a": ""
+  },
+  "fam|fut_arm_nexus": {
+   "p": [],
+   "r": "no",
+   "n": "",
+   "a": ""
+  },
+  "fam|fut_sup_bulwark": {
+   "p": [],
+   "r": "no",
+   "n": "",
+   "a": ""
+  },
+  "fam|fut_arm_titan_mk2": {
+   "p": [],
+   "r": "no",
+   "n": "",
+   "a": ""
+  },
+  "fam|fut_inf_storm_rider": {
+   "p": [],
+   "r": "no",
+   "n": "",
+   "a": ""
+  },
+  "fam|fut_air_heavy_carrier": {
+   "p": [],
+   "r": "no",
+   "n": "",
+   "a": ""
+  },
+  "fam|fut_air_regen_frame": {
+   "p": [],
+   "r": "no",
+   "n": "",
+   "a": ""
+  },
+  "fam|mod_arm_abrams_mk2": {
+   "p": [],
+   "r": "no",
+   "n": "",
+   "a": ""
+  },
+  "fam|ww1_inf_rifle": {
+   "p": [],
+   "r": "no",
+   "n": "",
+   "a": ""
+  },
+  "fam|ww1_inf_storm_e": {
+   "p": [],
+   "r": "no",
+   "n": "",
+   "a": ""
+  },
+  "fam|cold_boss_mig": {
+   "p": [],
+   "r": "no",
+   "n": "",
+   "a": "main"
+  },
+  "fam|fut_inf_spectre_e": {
+   "p": [],
+   "r": "no",
+   "n": "",
+   "a": ""
+  },
+  "fam|ww1_inf_enfield": {
+   "p": [],
+   "r": "no",
+   "n": "",
+   "a": ""
+  },
+  "fam|ww1_arm_rolls_mk2": {
+   "p": [],
+   "r": "no",
+   "n": "",
+   "a": ""
+  },
+  "fam|ww1_sup_vickers": {
+   "p": [],
+   "r": "no",
+   "n": "",
+   "a": ""
+  },
+  "fam|ww1_sup_ford_ambulance": {
+   "p": [],
+   "r": "no",
+   "n": "",
+   "a": ""
+  },
+  "fam|ww2_arty_pak40": {
+   "p": [],
+   "r": "no",
+   "n": "",
+   "a": ""
+  },
+  "fam|cold_arty_bmd1": {
+   "p": [],
+   "r": "no",
+   "n": "",
+   "a": ""
+  },
+  "fam|cold_arty_brem1": {
+   "p": [],
+   "r": "yes",
+   "n": "",
+   "a": ""
+  },
+  "fam|mod_inf_patriot": {
+   "p": [],
+   "r": "no",
+   "n": "",
+   "a": ""
+  },
+  "fam|fut_arm_hk07": {
+   "p": [],
+   "r": "no",
+   "n": "",
+   "a": ""
+  },
+  "fam|fut_arty_hel30": {
+   "p": [],
+   "r": "no",
+   "n": "",
+   "a": ""
+  },
+  "fam|fut_sup_nrepair": {
+   "p": [],
+   "r": "no",
+   "n": "",
+   "a": ""
+  },
+  "fam|fut_inf_x9": {
+   "p": [],
+   "r": "no",
+   "n": "",
+   "a": ""
+  },
+  "fam|fut_inf_c96": {
+   "p": [],
+   "r": "no",
+   "n": "",
+   "a": ""
+  },
+  "fam|fut_arm_sdkfz": {
+   "p": [],
+   "r": "no",
+   "n": "",
+   "a": ""
+  },
+  "fam|fut_arty_ssc1": {
+   "p": [],
+   "r": "no",
+   "n": "",
+   "a": ""
+  },
+  "fam|cold_air_bomber": {
+   "p": [],
+   "r": "no",
+   "n": "",
+   "a": ""
+  },
+  "fam|mod_air_multirole": {
+   "p": [
+    "clip",
+    "outl"
+   ],
+   "r": "yes",
+   "n": "",
+   "a": ""
+  },
+  "fam|fut_air_stealth_bomber": {
+   "p": [
+    "clip"
+   ],
+   "r": "yes",
+   "n": "",
+   "a": ""
+  },
+  "fam|cold_fort_missile": {
+   "p": [],
+   "r": "no",
+   "n": "",
+   "a": ""
+  },
+  "fam|cold_fort_radar": {
+   "p": [],
+   "r": "no",
+   "n": "",
+   "a": ""
+  },
+  "fam|fut_fort_shield": {
+   "p": [],
+   "r": "no",
+   "n": "",
+   "a": ""
+  },
+  "fam|xeno_swarmling": {
+   "p": [],
+   "r": "no",
+   "n": "",
+   "a": ""
+  },
+  "fam|xeno_probe": {
+   "p": [],
+   "r": "no",
+   "n": "",
+   "a": ""
+  },
+  "fam|xeno_zealot": {
+   "p": [],
+   "r": "no",
+   "n": "",
+   "a": ""
+  },
+  "fam|xeno_adept": {
+   "p": [],
+   "r": "no",
+   "n": "",
+   "a": ""
+  },
+  "fam|xeno_sentinel": {
+   "p": [],
+   "r": "no",
+   "n": "",
+   "a": ""
+  },
+  "fam|xeno_dragoon": {
+   "p": [],
+   "r": "no",
+   "n": "",
+   "a": ""
+  },
+  "fam|xeno_plasma_bug": {
+   "p": [],
+   "r": "no",
+   "n": "",
+   "a": ""
+  },
+  "fam|xeno_tripod": {
+   "p": [],
+   "r": "no",
+   "n": "",
+   "a": ""
+  },
+  "fam|xeno_hunter": {
+   "p": [],
+   "r": "no",
+   "n": "",
+   "a": ""
+  },
+  "fam|xeno_mimic": {
+   "p": [],
+   "r": "no",
+   "n": "",
+   "a": ""
+  },
+  "fam|xeno_biomorph": {
+   "p": [],
+   "r": "no",
+   "n": "",
+   "a": ""
+  },
+  "fam|xeno_interceptor": {
+   "p": [],
+   "r": "no",
+   "n": "",
+   "a": ""
+  },
+  "fam|xeno_reaver": {
+   "p": [],
+   "r": "no",
+   "n": "",
+   "a": ""
+  },
+  "fam|xeno_carrier": {
+   "p": [],
+   "r": "no",
+   "n": "",
+   "a": ""
+  },
+  "fam|xeno_saucer": {
+   "p": [],
+   "r": "no",
+   "n": "",
+   "a": ""
+  },
+  "fam|xeno_templar": {
+   "p": [],
+   "r": "no",
+   "n": "",
+   "a": ""
+  },
+  "fam|xeno_thing": {
+   "p": [],
+   "r": "no",
+   "n": "",
+   "a": ""
+  },
+  "fam|xeno_mothership": {
+   "p": [],
+   "r": "no",
+   "n": "",
+   "a": ""
+  },
+  "fam|xeno_gate_core": {
+   "p": [],
+   "r": "no",
+   "n": "",
+   "a": ""
+  },
+  "ind|mod_stinger": {
+   "p": [],
+   "r": "no",
+   "n": "",
+   "a": ""
+  },
+  "ind|fut_attack_drone": {
+   "p": [],
+   "r": "no",
+   "n": "",
+   "a": ""
+  },
+  "ind|fut_stealth_bomber": {
+   "p": [],
+   "r": "no",
+   "n": "",
+   "a": ""
+  },
+  "ind|guardian_ww2_blitzkrieg": {
+   "p": [],
+   "r": "no",
+   "n": "",
+   "a": ""
+  },
+  "ind|guardian_modern_stealth": {
+   "p": [],
+   "r": "no",
+   "n": "",
+   "a": ""
+  },
+  "drop|drop_mega_beam_cannon": {
+   "p": [],
+   "r": "no",
+   "n": "",
+   "a": ""
+  },
+  "drop|drop_mega_particle_cannon": {
+   "p": [],
+   "r": "no",
+   "n": "",
+   "a": ""
+  },
+  "drop|drop_overclock_matrix": {
+   "p": [],
+   "r": "no",
+   "n": "",
+   "a": ""
+  },
+  "drop|drop_phase_lance": {
+   "p": [
+    "diff"
+   ],
+   "r": "yes",
+   "n": "待机",
+   "a": ""
+  },
+  "drop|drop_railgun": {
+   "p": [],
+   "r": "no",
+   "n": "",
+   "a": ""
+  },
+  "drop|drop_smg_mk2": {
+   "p": [],
+   "r": "yes",
+   "n": "开火位置不对",
+   "a": ""
+  },
+  "drop|drop_thunder_field": {
+   "p": [],
+   "r": "yes",
+   "n": "开火位置不对",
+   "a": ""
+  },
+  "drop|fut_air_heavy_carrier": {
+   "p": [],
+   "r": "no",
+   "n": "",
+   "a": ""
+  },
+  "drop|fut_air_regen_frame": {
+   "p": [],
+   "r": "no",
+   "n": "",
+   "a": ""
+  },
+  "drop|fut_arm_titan_mk2": {
+   "p": [],
+   "r": "no",
+   "n": "",
+   "a": ""
+  },
+  "drop|fut_inf_storm_rider": {
+   "p": [],
+   "r": "no",
+   "n": "",
+   "a": ""
+  },
+  "drop|mod_arm_abrams_mk2": {
+   "p": [],
+   "r": "no",
+   "n": "",
+   "a": ""
+  }
+ }
+}

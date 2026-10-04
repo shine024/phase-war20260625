@@ -9642,3 +9642,63 @@ MVP 协同小结、8 面板首开气泡。**R3 余项**：结算面板三页签�
 - **agnes 生图提示词 R2 实证入册（24 案）**：①英文提示词出图更准（用户拍板）；②视角写横纵轴描述不写术语（`orthographic side view` 控不准，"camera exactly at the subject's own side + long axis stretches horizontally"最灵，载具加重叠句）；③**禁负面词**（写了=召唤：严禁战场→战场、禁剪影→剪影，全部改写正向）；④单一主体必须显式 `exactly ONE subject`（漏写 16/30 案背景混车）；⑤星战先验塌缩→写正向时代装具锚（modern modular tactical gear 等）；⑥贴边→zoomed-out wide framing 后缀；⑦暗图回收=gain 收敛循环，**双图 relight 会注入参考内容禁用**。工具链 `_b4_*`（gen/review_page/regen_r2/deploy/gain_loop）入库，审阅页支持中文名+四类快标+重掷清单导出。
 - **安全**：`tools/_agnes_image_api.md`（含 3 个 Agnes API key）**移出 git 跟踪**并入 .gitignore（规则本为"永不入库"）；⚠️ 该文件曾在历史与 origin/main 中（982ba3a2 等）——**key 已暴露远端，建议轮换**。
 - **验证**：41 目标部署规格门全过；060/065 md5 还原核对字节一致；Godot 冒烟 `--headless --quit` 干净（仅良性"2 resources still in use"）；审阅页 dump 326 名 30/30 段覆盖；文档/清单与 dump 同源。
+
+## v6.41 教程框 z 序 × 符文步针对已开窗口批（2026-10-04）
+
+**改教程覆盖层宿主/CanvasLayer 层号/教程点播链/背包打开链前必读本节；契约沉淀见 AGENTS.md v6.41 节。** 实机主诉（截图）：符文步提示框被卡仓面板吞掉（卡格切割框内文字、框内按钮点不到），且提示弹出时背包停在战斗卡页——"提示打开时没有针对现在打开的那个窗口"。
+
+- **main 教程框宿主层**：`_show_tutorial_overlay` 宿主从 HudLayer(40) 改为懒建专用 `TutorialLayer(105)`——PopupLayer(100) 的任何弹层面板此前都整只压住框；105=面板之上、InfoPanelLayer(110) 点卡详情之下、Toast(200) 之下。v6.39 指路标宿主 `_tutorial_pointer_host` 同步改挂。
+- **truck_base z 序实证无需改**：探针证明 `_embed_layer` 在 _ready 建好、overlay 只在 _ready 后召唤=overlay 恒为其后兄弟，框天然在嵌入面板之上（idx 5>4）。
+- **符文步对齐（唯一查询口 `TPM.is_backpack_surface_step()`）**：SURFACE_FOR_STEP 唯一 "backpack" 值=符文步。消费两处——①`main._show_tutorial_overlay` deferred 调 `_align_runes_step_with_open_backpack`（点播弹出时背包已开→切符文页）；②`truck_base._open_panel` 尾部同款（卡牌展示墙路径）。背包面板实例查询抽 `_get_backpack_panel()`（与 `_open_backpack_runes_tab` 共用）。
+- **truck_base `toggle_phase_instrument` 专用 handler**：`_on_tutorial_open_runes`（开背包+切符文页）替换通用 `_on_tutorial_open_panel.bind("backpack")`——对齐 main 语义；该信号全项目仅教程 handler 消费，改语义安全。
+- **回归锁**：`tests/unit/ui/test_tutorial_overlay_z_order.gd` 6 用例（层号 100<105<110 / overlay 落位+防重复挂 / is_backpack_surface_step 步级断言 / SURFACE_FOR_STEP "backpack" 唯一性防劫持 / main+truck 对齐 helper 出树守卫与未开不切）。
+- **验证（真机窗口化探针 `tests/_tmp_v641_tutorial_z_probe.gd`，双场景真实链，修复前后双跑）**：修复前 main 框宿主 40<100 被面板整吞（截图=主诉逐像素复现）+背包 current_tab=0；修复后两场景框浮于面板上、内容=符文系统·第 8/14 步、背包 current_tab=2（RUNES），截图目检过（`.godot/v641_probe_{truck,main}.png`）。定向 gdunit 23/23 PASSED（新锁 6 + pointer_flow + battle_focus）。
+- **探针教训**：①强设 autoload 状态必须先于场景 add_child（基地自举会在 _ready 消费 NONE 步先拉欢迎框，后设=白设+dedupe 挡重拉）；②截图协程内部 await 且调用方未 await=拍到 queue_free 后的清屏灰。
+
+## v6.41.1 指路标消散链修复：跨步堆积多条「下一步」并存（2026-10-04）
+
+**改 tutorial_spotlight.gd 指路标宿主/消散链前必读本节。** 实机主诉（截图）：基地同屏 3 条「下一步」指路标（符文/制造/势力），且点了指向的工位按钮提示也不自动关。
+
+- **根因（探针转储实锤）**：`TutorialSpotlight.show_step_pointer` 同帧"queue_free 旧宿主（帧末才真消失）→ add_child 同名新宿主"，新宿主撞名被 Godot **静默改名为 @Control@N**——此后精确名 `dismiss_step_pointer`（find_children "TutorialStepPointer"）永远找不到它（found=0）。交替模式下每两次亮标漏一只：旧标跨步堆积（3 标并存）+ `notify_surface_opened` 的消散 emit(false) 同样找不到=点目标按钮不消散。v6.39 上线即有此雷，单步单会话测试暴露不了。
+- **修复（tutorial_spotlight.gd 两处，调用方零改动）**：①宿主唯一命名 `TutorialStepPointer_<serial>`（static 序号）——同帧 add_child 永不撞名；②消散改通配 `find_children("TutorialStepPointer*")`——兼容唯一名与 v6.41.1 前旧精确名宿主（撞名产生的 @Control@N 救不回，随会话结束自然消亡）。
+- **回归锁**：`tests/unit/ui/test_tutorial_pointer_lifecycle.gd` 3 用例（跨帧稳定态连续亮标恒 1 宿主 / 宿主名恒可追踪不撞名 / 消散清唯一名+旧精确名宿主）。⚠️ 计数断言必须 await 两帧取稳定态——queue_free 帧末才摘除，同帧计数把已判死未摘除的宿主也数进去（本锁首版即踩，4 用例假红）。
+- **验证**：真机探针 `tests/_tmp_v642_pointer_probe.tscn`（truck_base 真链 RUNES→EVOLUTION→FACTION_REP 连续亮标→notify 点按钮）修复前 0/1/0 交替漏标（宿主名 @Control@82 实锤）、修复后 1/1/1→0；S3 单标+金环、S4 点按钮标消散教程框接管，截图目检过（`.godot/v642_probe_pointer{,_s4}.png`）。定向 gdunit 3+11+7 全绿零孤儿。
+- **探针教训**：`GameConfig.get_default().feature_gates_enabled=false` 要在场景 add_child **之前**设（热点 gate_locked meta 建时烘焙，后设不清既有 meta）；`%q` 不是 GDScript 格式符（Python 习惯遗留，print 原样吐格式串）。
+
+## v6.42 记录6实机验收14条批：黑门试炼制 + 行军可取消 + 音频四项重制 + 多国相位师（2026-10-04）
+
+**改黑门链/行军链/大地图缩放/悬停提示/武器音效选择/挂机精神显示前必读本节。** 实机 14 条主诉全处理；实机存档实证（save_slot_1：`travel_dest=12` + `level_stars["100"]=1`）锁死"通关 100 后进不了黑门"根因=车队驶离第 100 关被停靠门控挡死 + 行军无法取消，两主诉同根。
+
+- **黑门试炼制（用户拍板：黑门不是无限模式）**：`EBM.FIRST_GATE_CORE_WAVE=30`——首场（`gate_cleared_once=false`）`begin_run` 恒 30 波本体试炼，击碎即"通关黑门"；通关后才 roll 200-320 无限档。`get_run_wave_limit()`（0=无限）供 HUD 波次显示；通关选择窗首通单键收口（"继续深入"隐藏，主键"通关黑门（携带奖励离开）"，无限模式解锁文案）；黑门弹窗/关卡弹窗黑门区块/地图热区 tooltip+标签（"黑门·试炼"→"黑门·无限"）/结算战报 banner 全部双档化，数值读常量（宪法 C3）。回归锁 `test_gate_core_structure.gd` 重写（首场恒 30 + 通关后 200-320）。
+- **进驻门撤销**：`world_map._enter_blackgate` 删除 v26.19 停靠门控（`parked_level!=100` 即拒）——裂隙战不依赖卡车位置，解锁（通关第 100 关）即恒放行。实机存档实证被门控挡死的完整故事线后拍板撤销。
+- **行军可取消**：`BunkerManager.cancel_travel()`（在途态清空+车队留出发关+本次燃料全额返还+toast；读档在途档按路线估价 `_travel_fuel_spent`）+ 大地图 chrome 动作行「✕ 取消行军」键（`_refresh_fuel_chip` 驱动可见性）+ 行军中点节点 toast 补取消指引。回归锁 `tests/unit/systems/test_travel_cancel.gd`（5 用例：未在途拒绝/清态+返还/二次取消不双返/渗透口停刷守卫）。
+- **行军遭遇黑门敌人（新功能，用户拍板"机率遇到"）**：`BunkerManager._check_travel_arrival` 尾部 `_maybe_roll_travel_encounter`——≥3 关长途到站 30% 概率在到站关生成渗透据点（`EBM.spawn_incursion_at`，上限/停刷/解锁守卫全在 EBM 侧）+ toast 播报。渗透据点 tooltip 增"剩 N 天过期"。
+- **渗透隔时刷新**：此前唯一驱动=sleep 的 `bunker_day_ended`，醒着多久都不刷——EBM `_ready` 挂 5 分钟周期 Timer `_realtime_refresh_tick`（过期清理+未满 50% 补 1，上限/停刷口径同日刷）。
+- **大地图缩放保 zoom**：`_fit_canvas_to_viewport(keep_zoom)`——可见态锚点迁移重建（行军到站/战后同步）保留用户缩放；隐藏期重建与重开面板仍按 v28 拍板回整图；`_on_fit_scroll_resized` 改 keep（v28 强拉回整图与 _process 自校验互踩是"正放大瞬间弹回"根因之一）。"行军中有时不能放大"=重建窗口期滚轮落空，随重建频次下降自然缓解。
+- **撤退清场（第 10 关主诉）**：撤退语义=部队撤出战场——`main_reward.on_battle_ended_clear_pending` 见 `battle_retreated` meta 即 `clear_battlefield_units`（原"战后余烬"定格把满场存活战斗卡烤进整备背景）；`clear_battlefield_units` 补渲不再跳过挂机运行态（UPDATE_ONCE 一次性补渲不破坏持续渲染模式）+ 0.25s 后第二帧补渲盖 queue_free 帧末窗口。
+- **符文悬停提示顶层化**：引擎内建 tooltip 画在 layer 0 默认画布，被 PopupLayer(100) 内符文瓷砖的卡框（CardFrameOverlay z=30）整块盖住——新 `scripts/ui/hover_tip.gd`（HoverTip，CanvasLayer 130）替代；`ResourceSlotItem._ready` bind + `tooltip_text` 置空防双弹，内容写 meta 悬停时才读（对象池复用防旧文案残留）；backpack 符文瓷砖写入点同步迁移。与 v6.41 教程框层（105）互补：40<100<105<130<200。
+- **挂机精神可见化**：afk_panel IDLE/FAILED 态也带精神后缀；统计行 PUSH 运行中附"距终局(第100关)还剩 N 关"；休整开始/结束补右上角 toast 双通道播报（原 60s 休整只有 1s 横幅，面板关着全程无感知=用户主诉"没精神时不自动进下一关也没提示"真身）；`_bunker_sanity_exhausted` 与面板 `_get_sanity_status_text` 前置 `ensure_loaded("bunker")`（懒加载未就绪时休整链失效/精神恒不显示双洞）。
+- **音频四项重制**（`tools/_tmp_gen_sfx_v642.py` 可重跑；旧素材备份 `D:/godotplay/_art_backup/sfx_pre_v642_20261004/`）：①button=柔和短嗒（1450Hz 软正弦+高通噪声，peak 0.42 不刺耳）；②win=1.8s 凯旋琶音（C 大调上行+终止和弦+暖 pad，替换 0.5s 扫频单音）；③苏醒演出专用 `ambient_wakeup_wind`（柔化风+阵风呼吸+极低暖鸣+0.8s 交叉淡化无缝循环），战斗 `ambient_battle_wind` 分离不受影响；④武器力度分级：直射 batch（玩家/敌方）按伤害走 `compute_power_tier`——tier2/3 播新增 `cannon_fire` 重炮音、tier1 gun_rifle、tier0 gun_smg（旧实现玩家侧 wt 恒 0 全员 gun_smg）；命中按 tier 分 `impact_light`/`impact_generic`/`impact_heavy` 三档；曲射落地 tier≥2 换 `explosion_big`；bullet 兜底路径 tier 音量放大+音高沉降。新资产 7 个经 headless 编辑器导入。
+- **关卡势力文案（用户拍板）**："曾属于：X"→"辖区势力：X"、"%s（曾属）"→"%s 势力辖区"。⚠️ 敌方属性加成链 v6.22 已退役（`garrison_buff_text` 恒空），若需"属性加成"实显需先复活占领链（未做，待拍板）。
+- **相位师多国化（用户拍板"不能只是中国名"）**：28 位更名（时代贴合：WW1 欧陆/WW2 苏德日美英/冷战美苏英匈/现代国际/未来国际），保留 029 叶掌灯、030 贺同舟中文锚点（终局叙事）；`tools/_tmp_v642_master_names.py` 幂等可重跑，覆盖 JSON+5 时代 legacy 表+instrument+叙事+驻守表+测试引用，活跃代码旧名零残留（`_archived` 历史脚本不动）。
+- **回归锁**：`test_gate_core_structure.gd`（首场有限波+常量）+ `test_travel_cancel.gd`（5 用例）定向全绿；`test_afk_travel_and_deploy_hint.gd` 6 用例回归绿；`tests/v27_world_map_blackgate_smoke.tscn` PASS。全项目 `--check-only` 过。
+
+## v6.41.2 大地图左下信息框重叠修复（2026-10-04）
+
+**改 world_map 屏幕空间 chrome/燃料 chip 布局前必读本节。** 实机主诉（截图）：大地图图例框与底部燃料/行驶状态行互叠，状态行被屏幕底边裁半。
+
+- **根因（真机探针复刻实锤）**：scheme 11 floating chrome 把 Margin 四边归零后，Margin/VBox 只剩 [ScrollContainer, 燃料chip]——chip 落到屏幕最底行（margin_bottom=0），被 chrome 栈 MapChromeStack（底边距 12px，含动作面板+图例）压住上半截，自身字形被屏幕底边裁半。
+- **修复（world_map.gd）**：①燃料 chip 收编进 MapChromeStack 栈尾（动作面板/图例/状态行同一 VBox，结构性不互叠，吃栈 12px 底边距）；②chip 补弱化底条（图例面板同族 StyleBox 档，琥珀字贴地图亮区可读）。
+- **回归锁**：`tests/unit/ui/test_world_map_chrome_layout.gd` 3 用例（chip 在栈内 / 动作面板·图例·chip 两两矩形零相交 / 三框都在 world_map 根矩形内——相对根判定屏蔽测试挂载偏移）。嵌入模式 chrome 挂 MapOverlay，几何契约相同。
+- **验证**：真机探针 `tests/_tmp_v642_wm_overlap_probe.gd`（复刻用户状态：停靠 13 关已通关·行驶中→23·燃料 90/100）修复前后全屏截图+矩形转储：修复前 legend 底边 708 压 chip 行（chip 顶到 720 被裁），修复后 chip (12,680,313×28) 栈内完整、左下角放大目检过（`.godot/v642_wm_overlap{,_bl}.png`）。
+
+## v6.43 卡图动画总审 206 标记处置批：MK8 重生部署 + 火光手术 5 单位 + 卡图重掷 2（2026-10-05）
+
+**复核 tools/card_anim_review_marks (1).json 全部 206 标记（86 r=yes / 120 r=no）后的一批次性处置；审阅页 card_anim_review.html / card_anim_redo.html 已按新 dump 重建（209 家族）。**
+
+- **MK8 重生部署 5 项**：fe_frontier_veteran 抬枪攻击条（12f，描边继承）；mod_sup_m4_carbine 敌我卡图重出+攻击 6f 重剪（翻转朝左与 idle 一致）；fe_helix_phantom 玩家专属卡图；fe_void_dimensional_soldier / fe_iron_wall_juggernaut 锚定路线 idle 8f（γ 曝光对齐+粉渍/灰楔清洗）+ attack 6f 归一条（counts 已同步 anim.json）。
+- **火光特效手术 5 单位部署**（staging 目验后覆写 sheet_attack，anim.json 不动）：mod_arm_himars / cold_sup_bmp1_x 空中碎屑云清除；ww1_arty_m81 错位火光组全清（箭头/星形/亮黄碎片按连通域 minx≥60 判别+轮廓线上方全清，炮身锈色与橄榄高光零误伤）；ww2_inf_hellcat 火光搬回炮口；ww2_arty_m81 无火帧合成衰减火光。
+- **卡图重掷 2 枚**（img2img+orthographic 硬锁，白底 keying+512 fit+敌我镜像+thumb 256/384）：mod_arm_m1a2sep 纯侧视沙黄涂装（原 3/4 视角，地面阴影后处理清除）；fut_space_fighter 水平平飞侧视（原机鼻上仰）。
+- **fut_air_drone 挂起待裁定**：4 掷皆不合——img2img 继承参考俯视几何（2 掷），文生图保侧视但丢四旋翼身份变共轴/直升机构型（2 掷）；且现役动画 sprite 本身即 3/4 俯视，图标与动画视角实为一致。选项：动画连带重做 / 接受现配对 / 专出"双桅侧视"定制稿。
+- **复核过期/属实清单**：~39 家族标记过期（动画早于标记已修复或属感知误报，含 apache/spetsnaz 待机摆动实测 0.5/1.0px 远低于参考 2.3-2.6px）；24 平台图标全部实存；3 掉落标记（phase_lance/smg_mk2/thunder_field）全对；ww1_arm_rolls 家族图标（轮式劳斯莱斯车）vs 动画（履带坦克）主体不符待裁定；ww1_arty_77mm 与 ww2_boss_kingtiger 两处矛盾标记（同条目"重做，没正侧面"+r=no）待裁定。
+- **门禁**：foot_frac 工具 246 文件幂等补丁；Godot --import 两轮（FX 部署后+图标部署后）均 EXIT=0 零错误；部署前备份 .godot/art_backup_mk8_20261005/ 与 art_backup_mk9_20261005/（if-not-exists）。PNG 不入 git（.gitignore *.png），资产以本地盘为准。

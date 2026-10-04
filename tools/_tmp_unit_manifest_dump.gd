@@ -148,6 +148,8 @@ func _platform_recs() -> Array:
 		data = parsed.get("data", {})
 	for pid in data.keys():
 		var cfg: Dictionary = data.get(pid, {})
+		# 平台卡 card_id = 平台 id，与游戏内 card_icon_path_for 第 0 步专属图同约定
+		var icon_p := "res://assets/card_icons/%s.png" % String(pid)
 		var rec := {
 			"id": String(pid),
 			"name": String(cfg.get("name", "")),
@@ -155,7 +157,7 @@ func _platform_recs() -> Array:
 			"kind": -1,
 			"ctype": -1,
 			"faction": String(cfg.get("faction", "")),
-			"icon": "",
+			"icon": icon_p if ResourceLoader.exists(icon_p) else "",
 		}
 		_fill_anim(rec, _probe_ids(String(pid)))
 		out.append(rec)

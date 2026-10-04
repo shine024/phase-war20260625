@@ -132,6 +132,7 @@ def probe_side(icon_rel, anim, boss):
 
 
 def main():
+    global OUT  # redo 分支会重定向输出页
     d = json.load(open(DUMP, encoding="utf-8"))
     enemies, players, captured, platforms = d["enemies"], d["players"], d["captured"], d["platforms"]
 
@@ -335,15 +336,27 @@ def main():
     # ── 标注过滤：默认只留「有备注 或 选定重做」的行（用户规则：无备注且未选重做=接受）；
     #    --full 出全量页。种子标注并入页面：本机 localStorage 已有则不覆盖。
     marks_seed = {}
-    if os.path.isfile(MARKS_FILE):
+    # --redo-page [json路径]: 出「问题工作台」页——只含有内容的标注行，输出 card_anim_redo.html
+    redo_mode = "--redo-page" in sys.argv
+    if redo_mode:
+        i = sys.argv.index("--redo-page")
+        mf = sys.argv[i + 1] if i + 1 < len(sys.argv) and not sys.argv[i + 1].startswith("--") else MARKS_FILE
+        OUT = os.path.join(ROOT, "tools", "card_anim_redo.html")
+        try:
+            marks_seed = json.load(open(mf, encoding="utf-8")).get("marks", {})
+        except Exception as e:
+            print("redo marks 载入失败:", e)
+            return
+    elif os.path.isfile(MARKS_FILE):
         try:
             marks_seed = json.load(open(MARKS_FILE, encoding="utf-8")).get("marks", {})
         except Exception as e:
             print("marks 载入失败（跳过过滤）:", e)
-    only_marked = "--full" not in sys.argv
+    only_marked = redo_mode or ("--marked" in sys.argv)  # 默认全量；redo 页/ --marked 才过滤
     missing = []
     if only_marked and marks_seed:
-        want = {k for k, m in marks_seed.items() if (m.get("n") or "").strip() or m.get("r") == "yes"}
+        want = {k for k, m in marks_seed.items()
+                if (m.get("n") or "").strip() or m.get("r") == "yes" or m.get("p")}
         missing = []
         for sec in sections:
             keep = []
@@ -376,14 +389,20 @@ def main():
     tpl = open(os.path.join(ROOT, "tools", "_card_anim_review_template.html"), encoding="utf-8").read()
     payload = json.dumps(data, ensure_ascii=True, separators=(",", ":")).replace("</", "<\\/")
     html = tpl.replace("__DATA__", payload)
+    if redo_mode:
+        # redo 页页首横幅（body 后注入，不依赖模板结构）
+        banner = ('<div style="position:sticky;top:0;z-index:99;background:#7a1f1f;color:#fff;'
+                  'padding:6px 14px;font:600 14px/1.4 system-ui">问题工作台 — 标注导出回执：'
+                  '只列有标注的行（%d 张）。备注原文在卡上；改完一批后用总审页核对。</div>' % total)
+        html = html.replace("<body>", "<body>" + banner, 1)
     with open(OUT, "w", encoding="utf-8") as f:
         f.write(html)
-    print("BUILD_OK total=%d (fam=%d ind=%d drop=%d plat=%d) -> tools/card_anim_review.html (%.1f KB)" % (
+    print("BUILD_OK total=%d (fam=%d ind=%d drop=%d plat=%d) -> %s (%.1f KB)" % (
         total, sum(len(s["rows"]) for s in sections if s["key"] == "fam"),
         sum(len(s["rows"]) for s in sections if s["key"] == "ind"),
         sum(len(s["rows"]) for s in sections if s["key"] == "drop"),
         sum(len(s["rows"]) for s in sections if s["key"] == "plat"),
-        os.path.getsize(OUT) / 1024))
+        os.path.relpath(OUT, ROOT), os.path.getsize(OUT) / 1024))
     if only_marked:
         print("  标注过滤开：只显示「有备注或选重做」的行；--full 出全量")
     if missing:
