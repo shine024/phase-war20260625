@@ -1347,6 +1347,9 @@ func _update_fort_shield_aura(delta: float) -> void:
 		if not _fort_shield_aura.has_meta(&"hit_boost") \
 				or float(_fort_shield_aura.get_meta(&"hit_boost")) != _fort_aura_hit_boost:
 			_fort_shield_aura.set_meta(&"hit_boost", _fort_aura_hit_boost)
+		# v6.32.4：实体高→host_content_h/last_fort_base_radius（半径随体型，低频拍）
+		if (_aura_low_freq_frame % 4) == 0:
+			_fort_shield_aura.update_host_metrics()
 		# v7.3: 承压闪光时每帧 redraw，正常态每4帧一次（呼吸动画降频）
 		if _fort_aura_hit_boost > 0.0 or (_aura_low_freq_frame % 4) == 0:
 			_fort_shield_aura.queue_redraw()
@@ -1362,6 +1365,9 @@ func _update_fort_shield_aura(delta: float) -> void:
 			# 记录4#6：罩体整体对齐宿主视觉脚线（各卡 FOOT_FRAC 不同，固定原点
 			# 对脚线偏高的卡=穹顶底边沉地/悬空——敌方巨型能量罩贴图错位根因）
 			_shield_aura.sync_foot_anchor()
+			# v6.32.4：实体高→host_content_h（罩体半径随体型，低频拍）
+			if (_aura_low_freq_frame % 4) == 0:
+				_shield_aura.update_host_metrics()
 			if _shield_aura_hit_boost > 0.0:
 				_shield_aura_hit_boost = maxf(0.0, _shield_aura_hit_boost - delta * 2.0)
 			# 护盾比例（基于 max_hp*2 上限，与 add_shield 的 clamp 一致）
@@ -2131,11 +2137,15 @@ func _die() -> void:
 	_is_dying = true
 	# v6.2: 符文之语特殊效果 — 死亡复活检查（复活成功则中止死亡流程）
 	if RuneSpecialHandler.on_death(self):
+		# v6.38.3：复活成功必须撤销濒死标志——_is_dying 残留会让 recount/锁定排除该单位
+		# 且下次 _die() 在此早退（永生僵尸），队友看着 9 个 HUD 数 6 个的差额即此类。
+		_is_dying = false
 		return
 	# v7.x 第二批：改造濒死复活（IFAK/急救包）+ 亡语治疗
 	# on_death 返回 true 表示复活成功，中止死亡流程（亡语治疗不触发）
 	var _killer_for_death: Variant = _fresh_last_attacker()
 	if ModuleEffectHandler.on_death(self, _killer_for_death):
+		_is_dying = false  # v6.38.3：同上（_revive_unit 复活成功路径）
 		return  # 复活成功
 	# v7.x: 触发击杀型改造效果（击杀护盾 shield_on_kill 等）
 	# 注：此前 on_kill 全项目零调用方，shield_on_kill 改造空转；此处接通断链

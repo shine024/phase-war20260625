@@ -751,8 +751,11 @@ const _RECON_PREFIXES: Array = _UnitRolesRef.RECON_PREFIXES
 static func _is_recon_card(card_id: String) -> bool:
 	if card_id.is_empty():
 		return false
+	# v6.38.1: 缴获/敌方前缀归一——captured_foe_ww1_inf_cavalry → ww1_inf_cavalry，
+	# 否则缴获的侦察卡全部丢失潜入开局/定向爆破身份
+	var cid := String(card_id).trim_prefix("captured_").trim_prefix("foe_")
 	for prefix in _RECON_PREFIXES:
-		if card_id.begins_with(prefix):
+		if cid.begins_with(prefix):
 			return true
 	return false
 

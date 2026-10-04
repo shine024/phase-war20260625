@@ -111,3 +111,35 @@ func test_full_row_boundary() -> void:
 	_panel._ensure_min_card_slots(_grid)
 	assert_int(_total_children()).is_equal(18)
 	extra.free()
+
+
+## ── 记录5#1：0 卡例外（空背包不铺空槽行）──
+
+func test_zero_cards_no_empty_slots() -> void:
+	# 全空网格：不补任何空槽（v6.32.1 拍板复核；旧逻辑铺满一整行，
+	# 与 600 宽空态提示叠加 → 第一列被撑大 + 整行溢出背包）
+	_panel._ensure_min_card_slots(_grid)
+	assert_int(_count("is_empty_slot")).is_equal(0)
+	assert_int(_total_children()).is_equal(0)
+
+
+func test_zero_cards_recycles_residual_empty_slots() -> void:
+	# 移除最后一张卡后的增量路径：残留空槽必须全部回池
+	for i in 8:
+		var ph := Panel.new()
+		ph.set_meta("is_empty_slot", true)
+		_grid.add_child(ph)
+	_panel._ensure_min_card_slots(_grid)
+	assert_int(_count("is_empty_slot")).is_equal(0)
+	assert_int(_total_children()).is_equal(0)
+
+
+func test_empty_hint_does_not_force_column_width() -> void:
+	# 空态提示 min 宽必须为 0（600 固定 min 曾把第一列撑到 600）
+	_panel._show_backpack_empty_hint(_grid)
+	var found := false
+	for child in _grid.get_children():
+		if child.has_meta("is_empty_hint"):
+			found = true
+			assert_float((child as Control).custom_minimum_size.x).is_equal(0.0)
+	assert_bool(found).is_true()

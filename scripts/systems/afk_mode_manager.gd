@@ -80,6 +80,9 @@ signal state_changed(new_state: State)
 ## "sanity" reason 已不可达——afk_settlement_dialog 的对应文案留档。
 ## 注意：GDScript signal 声明不支持默认参数值，emit 处必须显式传 reason
 signal afk_settled(rewards: Dictionary, reason: String)
+## v6.37：部署受阻人话提示（挂机面板状态行显示）——"精神不够/其他无法前进"类
+## 主诉的显示出口。持久态拒绝（战力门/次数尽/兵种限定等）或单卡放弃时 emit 一次。
+signal deploy_hint(text: String)
 
 
 # ── 内部引用 ──
@@ -98,6 +101,21 @@ var _auto_deploy_timer: float = 0.0
 var _auto_deploy_interval: float = 0.5  # 每0.5秒部署一张（设计文档5.2节）
 const _AUTO_DEPLOY_INITIAL_DELAY: float = 0.3  # 战斗开始后延迟0.3秒再开始部署
 const _AUTO_DEPLOY_FAIL_GIVEUP: int = 20       # 单张连续失败次数上限，超过则放弃该张避免死循环
+## v6.37：持久态拒绝原因——本场战斗内不会自愈，轮转重试纯烧时间（实机第10关
+## 单卡连败 20 次共 58s 的死磕），命中即弃卡并 emit deploy_hint 让玩家看得见原因。
+## insufficient_energy/slot_busy/unit_on_field 等暂时态不在此列，照旧轮转等自愈。
+const _PERSISTENT_DEPLOY_FAIL_REASONS: Array[String] = [
+	"power_cap", "restricted_unit", "deploy_uses_exhausted", "max_units", "invalid_loadout",
+]
+## 持久态原因 → 人话（deploy_hint 文案）
+const _DEPLOY_FAIL_HINTS: Dictionary = {
+	"power_cap": "部署被拒：卡牌战力超出相位师上限——在技能树点亮「精神同调」提升上限，或换低战力卡",
+	"restricted_unit": "部署被拒：本关限定兵种，该卡不可部署",
+	"deploy_uses_exhausted": "部署被拒：该卡本战部署次数已耗尽",
+	"max_units": "部署被拒：上场数量已达上限（等于绿槽战斗卡数）",
+	"invalid_loadout": "部署被拒：绿槽配置失效，该卡不可部署",
+	"insufficient_energy": "部署受阻：能量不足，已暂缓该卡（回能后自动恢复部署）",
+}
 var _deploy_fail_streak: int = 0
 ## v6.23b: 每卡独立失败计数（card_id → 次数）——配合队列轮转，超限丢卡不丢队列
 var _deploy_fail_counts: Dictionary = {}
@@ -115,6 +133,9 @@ var push_retry_count: int = 0
 # ── v36 行进节拍 ──
 ## 行进代际号：stop/start 时 +1，使在途 timer 回调作废（防停止后仍进战斗）
 var _travel_gen: int = 0
+## v6.37：行进起始时刻与总时长（面板"正在进发"倒计时驱动）
+var _travel_started_ms: int = 0
+var _travel_total_sec: float = 0.0
 
 # ── v6.28 精神休整（记录2#1）──
 ## 休整起始时刻（Time.get_ticks_msec，驱动面板倒计时）
@@ -424,10 +445,11 @@ func _get_unlocked_valid_slots(lp: Node) -> Array[int]:
 
 ## 战斗结束信号回调 — 挂机核心循环
 func _on_battle_ended_from_bus(player_won: bool) -> void:
+	# v6.38：先清在场标志再查 is_running——战斗中途 stop_afk（可退回基地）后残留
+	# true，会让下次启动的首个 enter_next_battle 被守卫 SKIP（记录5#12 挂机假死链）。
+	_waiting_for_battle_end = false
 	if not is_running:
 		return
-
-	_waiting_for_battle_end = false
 
 	# v22.4（P1-4）：精神归零收工——BunkerManager 每场扣精神（胜-10/败-20），
 	# 挂机连打会无声抽干精神且 main 侧无任何感知。
@@ -507,6 +529,21 @@ func get_rest_remaining_seconds() -> float:
 	return maxf(0.0, REST_SECONDS - elapsed)
 
 
+## v6.37：当前行进剩余秒数（面板"正在进发"倒计时；非 TRAVELING 态恒 0）。
+## 与休整倒计时同款口径：整秒粒度由面板侧节流，这里只给剩余浮点秒。
+func get_travel_remaining_seconds() -> float:
+	if state != State.TRAVELING:
+		return 0.0
+	var elapsed := float(Time.get_ticks_msec() - _travel_started_ms) / 1000.0
+	return maxf(0.0, _travel_total_sec - elapsed)
+
+
+## v6.37：挂机当前指向关（运行中=交战关，行进中=目的关，待机=0）。
+## 面板状态行显示用——此前面板直接读私有 `_pending_level`，收口成公开方法。
+func get_current_level() -> int:
+	return _pending_level
+
+
 ## 推进到下一关（仅在胜利时调用）。失败处理见 _on_battle_ended_from_bus。
 ## v36 实机验收改版：PUSH=向前推进（去掉 v26.19 钳制，胜利 +1，关间有行进节拍）；
 ## CYCLE=本关循环（_pending_level 不动）。
@@ -550,6 +587,8 @@ func _travel_then_enter() -> void:
 	state_changed.emit(state)
 	StageBanner.post("车队向第 %d 关行进…" % _pending_level)
 	var secs: float = TRAVEL_SECONDS_REDUCED if DT.is_motion_reduce() else TRAVEL_SECONDS
+	_travel_started_ms = Time.get_ticks_msec()
+	_travel_total_sec = secs
 	var tree := Engine.get_main_loop() as SceneTree
 	if tree == null:
 		_delayed_enter_battle()
@@ -624,6 +663,11 @@ func accumulate_pending_drops() -> void:
 func _on_battle_started_from_bus() -> void:
 	if not is_running:
 		return
+	# v6.37：行进态复位——原状态机进战斗后一直停留在 TRAVELING（无任何回 RUNNING
+	# 的转换），面板整场显示"行进中"且关卡号停滞。战斗真开始了就回到运行中。
+	if state == State.TRAVELING:
+		state = State.RUNNING
+		state_changed.emit(state)
 	_auto_deploy_pending.clear()
 	_deploy_fail_streak = 0
 	_deploy_fail_counts.clear()
@@ -749,8 +793,12 @@ func _deploy_next_from_queue() -> void:
 	else:
 		# 记录4#7：静默链失败原因落 TraceLog（spawn 系统留存 last_deploy_fail_reason）——
 		# "第10关挂机不部署"类反馈此前无任何观测点，无法区分战力门/能量/次数池。
+		# v6.37 修复读取路径：经 BattleManager 访问器取真身（原 /root/BattleSpawnSystem
+		# 是不存在的 autoload 路径，reason 恒空串）。
 		var reason: String = ""
-		if bss != null and "last_deploy_fail_reason" in bss:
+		if bm.has_method("get_last_deploy_fail_reason"):
+			reason = String(bm.get_last_deploy_fail_reason())
+		elif bss != null and "last_deploy_fail_reason" in bss:
 			reason = String(bss.get("last_deploy_fail_reason"))
 		TraceLog.mark("afk_deploy_fail", "card=%s reason=%s" % [card_id, reason])
 		# 记录4#7：战力门是持久态（不回能不恢复），静默轮转=整体不部署且用户不可见。
@@ -759,6 +807,15 @@ func _deploy_next_from_queue() -> void:
 			FeatureUnlockPopup.show_once("afk_power_cap_hint",
 				"部署被拒：卡牌战力超出相位师上限",
 				"在相位师技能树点亮「精神同调」提升战力上限，或换低战力卡")
+		# v6.37：持久态拒绝本场内不会自愈——立即弃卡（不再 20 次轮转死磕），并 emit
+		# 人话提示让面板看得见"为什么不动了"。
+		if reason in _PERSISTENT_DEPLOY_FAIL_REASONS:
+			_auto_deploy_pending.pop_front()
+			_deploy_fail_counts.erase(card_id)
+			_deploy_fail_streak = 0
+			if _DEPLOY_FAIL_HINTS.has(reason):
+				deploy_hint.emit(String(_DEPLOY_FAIL_HINTS[reason]))
+			return
 		# v6.23b: 部署失败改为**轮转**——队首卡挪到队尾试下一张，不再原地死磕
 		#（原逻辑每 0.5s 重试同一张直到连败 20 次才放弃，期间每帧触发失败链）。
 		# 每卡独立失败计数，超限（giveup 上限）直接丢弃该卡。
@@ -769,6 +826,11 @@ func _deploy_next_from_queue() -> void:
 		if fails > _AUTO_DEPLOY_FAIL_GIVEUP:
 			_deploy_fail_counts.erase(card_id)  # 彻底放弃该卡
 			TraceLog.mark("afk_deploy_giveup", "card=%s reason=%s" % [card_id, reason])
+			# v6.37：放弃也要让人看见——能量不足等暂时态长时间自愈不了（如环境回能
+			# 惩罚关），玩家只看到"挂机不动了"。给一条面板提示。
+			if reason == "insufficient_energy" or reason.is_empty():
+				deploy_hint.emit(String(_DEPLOY_FAIL_HINTS.get(reason,
+					"部署受阻：%s 暂缓部署（持续失败已放弃该卡）" % (reason if not reason.is_empty() else "未知原因"))))
 		else:
 			_auto_deploy_pending.push_back(platform)  # 挪队尾，先试别的卡
 

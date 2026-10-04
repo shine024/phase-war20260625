@@ -178,6 +178,9 @@ static func attach(unit_spr: Sprite2D, anim_id: String, face_right: bool = false
 	driver.idle_frames = idle
 	driver.attack_frames = _load_seq(key, "attack", int(counts.get("attack", 0)), fs)
 	driver.fps = fps
+	# v6.32.3：anim.json foot_frac（sheet 实测内容底缘余量占比）——护盾罩脚线锚定
+	# ① 级数据源（fort_shield_aura.sync_foot_anchor 消费）。旧资产缺字段=-1（落标定表/0 兜底）。
+	driver.sheet_foot_frac = float(meta_d.get("foot_frac", -1.0))
 	# 我方镜像: sheet 全部朝左(敌方原图), flip_h 翻成朝右。
 	# offset.x 恒为 0(apply_uniform_card_sprite), flip 无需补偿; 失败路径不会走到这里。
 	unit_spr.flip_h = face_right
@@ -227,6 +230,9 @@ class FrameDriver extends Node:
 	var idle_frames: Array = []
 	var attack_frames: Array = []
 	var fps: float = 8.0
+	## v6.32.3：anim.json foot_frac（sheet 内容底缘余量占比，内容贴底=0）——
+	## 护盾罩脚线锚定 ① 级数据源；-1=资产未回填（同步链落 ②卡图标定表 ③0 兜底）。
+	var sheet_foot_frac: float = -1.0
 	var _t: float = 0.0
 	var _idx: int = 0
 	var _dir: int = 1  ## idle ping-pong 方向(1=正放,-1=倒放); attack 恒正向

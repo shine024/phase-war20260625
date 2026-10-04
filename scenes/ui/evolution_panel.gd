@@ -618,10 +618,34 @@ func _create_recipe_row(card_id: String, card: CardResource) -> Button:
 		row.tooltip_text = "情报不足 25%：击败该敌形提升情报，解锁配方与属性查看"
 	else:
 		name_lbl.text = card.display_name
+		# 记录5#8：拥有同名实例时按最强实例显示（含养成，与背包同口径）——
+		# 模板白板值与背包同一张卡的战力不一致是主诉根因；未拥有回退白板基准。
+		var disp: CardResource = card
+		var owned_note := ""
+		var ir: Node = get_node_or_null("/root/InstanceRegistry")
+		if ir != null and ir.has_method("get_instances_by_card_id"):
+			var best: CardResource = null
+			var best_p := -1
+			for iid_v in ir.get_instances_by_card_id(card_id):
+				var inst: CardResource = ir.get_instance(String(iid_v))
+				if inst == null:
+					continue
+				var p := int(inst.get_current_power()) if inst.has_method("get_current_power") else int(inst.power)
+				if p > best_p:
+					best_p = p
+					best = inst
+			if best != null:
+				disp = best
+				owned_note = "战力/属性为你拥有的同名片中最强一张（含养成）"
+		var shown_power := int(disp.get_current_power()) if disp.has_method("get_current_power") else int(disp.power)
 		meta_lbl.text = "战力 %d · HP %d · 攻 %d/%d/%d" % [
-			int(card.power), int(card.base_hp),
-			int(card.attack_light), int(card.attack_armor), int(card.attack_air)]
-		row.tooltip_text = "战力为白板基准（不含养成）；点击查看配方详情与品质概率"
+			shown_power, int(disp.base_hp),
+			int(disp.attack_light), int(disp.attack_armor), int(disp.attack_air)]
+		row.tooltip_text = ("战力为白板基准（不含养成）" if owned_note == "" else owned_note) \
+			+ "；点击查看配方详情与品质概率"
+		# v6.38（记录5#7，C3）：成本随战力缩放——系数从 ManufacturePools 同源读取
+		row.tooltip_text += "\n制造成本 ×%.2f（随卡战力缩放，√战力/200，0.75~3.0 倍）" \
+			% ManufacturePools.power_cost_mult(float(card.power))
 		if mgr_ref != null and mgr_ref.is_direct_pool_card(card_id):
 			row.tooltip_text = "直入目录卡：无需情报门，制造即得白板\n" + row.tooltip_text
 	name_lbl.add_theme_font_override("font", DT.get_title_font())

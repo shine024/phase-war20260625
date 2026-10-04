@@ -145,6 +145,9 @@ func _ready() -> void:
 
 ## v9.1 订阅 combo_field_state 的 field_changed 信号以驱动浓度场 VFX
 func _subscribe_combo_field_state() -> void:
+	# v6.38.1 树守卫：延迟订阅在节点被摘树后 flush 时不再树外打绝对路径报错
+	if not is_inside_tree():
+		return
 	var bm: Node = get_node_or_null("/root/BattleManager")
 	if bm == null:
 		bm = get_node_or_null("/root/Main/BattleManager")

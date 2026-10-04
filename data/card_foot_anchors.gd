@@ -20,13 +20,13 @@ class_name CardFootAnchors
 
 const FOOT_FRAC: Dictionary = {
 	"cold_air_bomber": 0.383,
-	"cold_air_strike_fighter": 0.416,
+	"cold_air_strike_fighter": 0.402,
 	"cold_arm_p18": 0.242,
 	"cold_arty_bmd1": 0.324,
 	"cold_arty_brem1": 0.312,
 	"cold_inf_metis": 0.248,
 	"cold_sup_bmp1_x": 0.312,
-	"drop_phase_lance": 0.117,
+	"drop_phase_lance": 0.059,
 	"drop_railgun": 0.090,
 	"drop_smg_mk2": 0.094,
 	"drop_thunder_field": 0.123,
@@ -55,7 +55,7 @@ const FOOT_FRAC: Dictionary = {
 	"fut_inf_c96": 0.080,
 	"fut_inf_neural": 0.059,
 	"fut_inf_x9": 0.092,
-	"fut_nano_drone": 0.281,
+	"fut_nano_drone": 0.291,
 	"fut_sup_nrepair": 0.258,
 	"fut_sup_ps9": 0.234,
 	"fut_swarm": 0.283,
@@ -64,8 +64,11 @@ const FOOT_FRAC: Dictionary = {
 	"mod_arm_himars": 0.268,
 	"mod_arty_rq7": 0.359,
 	"mod_inf_patriot": 0.268,
+	"mod_stinger": 0.059,
+	"mod_stryker_m2": 0.328,
 	"mod_sup_growler": 0.381,
 	"mod_sup_m4_carbine": 0.139,
+	"platform_modern_stealth": 0.350,
 	"vis_enemy_001": 0.213,
 	"vis_enemy_002": 0.240,
 	"vis_enemy_003": 0.244,
@@ -83,7 +86,7 @@ const FOOT_FRAC: Dictionary = {
 	"vis_enemy_015": 0.303,
 	"vis_enemy_016": 0.215,
 	"vis_enemy_017": 0.133,
-	"vis_enemy_018": 0.207,
+	"vis_enemy_018": 0.283,
 	"vis_enemy_019": 0.248,
 	"vis_enemy_020": 0.223,
 	"vis_enemy_021": 0.262,
@@ -91,7 +94,7 @@ const FOOT_FRAC: Dictionary = {
 	"vis_enemy_023": 0.248,
 	"vis_enemy_024": 0.160,
 	"vis_enemy_025": 0.336,
-	"vis_enemy_026": 0.293,
+	"vis_enemy_026": 0.213,
 	"vis_enemy_027": 0.086,
 	"vis_enemy_028": 0.270,
 	"vis_enemy_029": 0.242,
@@ -100,7 +103,7 @@ const FOOT_FRAC: Dictionary = {
 	"vis_enemy_032": 0.127,
 	"vis_enemy_033": 0.180,
 	"vis_enemy_034": 0.268,
-	"vis_enemy_035": 0.227,
+	"vis_enemy_035": 0.240,
 	"vis_enemy_036": 0.059,
 	"vis_enemy_037": 0.143,
 	"vis_enemy_038": 0.182,
@@ -127,7 +130,7 @@ const FOOT_FRAC: Dictionary = {
 	"vis_enemy_059": 0.236,
 	"vis_enemy_060": 0.217,
 	"vis_enemy_061": 0.123,
-	"vis_enemy_062": 0.215,
+	"vis_enemy_062": 0.064,
 	"vis_enemy_063": 0.357,
 	"vis_enemy_064": 0.320,
 	"vis_enemy_065": 0.295,
@@ -158,7 +161,7 @@ const FOOT_FRAC: Dictionary = {
 	"vis_enemy_090": 0.059,
 	"vis_enemy_091": 0.377,
 	"vis_enemy_092": 0.221,
-	"vis_enemy_093": 0.340,
+	"vis_enemy_093": 0.328,
 	"vis_enemy_094": 0.346,
 	"vis_enemy_110": 0.219,
 	"vis_enemy_111": 0.240,
@@ -182,7 +185,7 @@ const FOOT_FRAC: Dictionary = {
 	"vis_player_015": 0.303,
 	"vis_player_016": 0.215,
 	"vis_player_017": 0.133,
-	"vis_player_018": 0.207,
+	"vis_player_018": 0.283,
 	"vis_player_019": 0.248,
 	"vis_player_020": 0.223,
 	"vis_player_021": 0.262,
@@ -190,7 +193,7 @@ const FOOT_FRAC: Dictionary = {
 	"vis_player_023": 0.248,
 	"vis_player_024": 0.160,
 	"vis_player_025": 0.336,
-	"vis_player_026": 0.293,
+	"vis_player_026": 0.213,
 	"vis_player_027": 0.086,
 	"vis_player_028": 0.270,
 	"vis_player_029": 0.242,
@@ -199,7 +202,7 @@ const FOOT_FRAC: Dictionary = {
 	"vis_player_032": 0.127,
 	"vis_player_033": 0.180,
 	"vis_player_034": 0.268,
-	"vis_player_035": 0.227,
+	"vis_player_035": 0.240,
 	"vis_player_036": 0.059,
 	"vis_player_037": 0.143,
 	"vis_player_038": 0.182,
@@ -220,13 +223,13 @@ const FOOT_FRAC: Dictionary = {
 	"vis_player_053": 0.285,
 	"vis_player_054": 0.059,
 	"vis_player_055": 0.346,
-	"vis_player_056": 0.396,
+	"vis_player_056": 0.404,
 	"vis_player_057": 0.174,
 	"vis_player_058": 0.264,
 	"vis_player_059": 0.236,
 	"vis_player_060": 0.217,
 	"vis_player_061": 0.123,
-	"vis_player_062": 0.215,
+	"vis_player_062": 0.064,
 	"vis_player_063": 0.357,
 	"vis_player_064": 0.320,
 	"vis_player_065": 0.295,
@@ -251,7 +254,7 @@ const FOOT_FRAC: Dictionary = {
 	"vis_player_084": 0.205,
 	"vis_player_085": 0.213,
 	"vis_player_086": 0.254,
-	"vis_player_087": 0.180,
+	"vis_player_087": 0.168,
 	"vis_player_088": 0.070,
 	"vis_player_089": 0.088,
 	"vis_player_090": 0.059,
@@ -284,9 +287,13 @@ const FOOT_FRAC: Dictionary = {
 	"vis_xeno_thing": 0.061,
 	"vis_xeno_tripod": 0.232,
 	"vis_xeno_zealot": 0.059,
+	"ww1_105mm": 0.250,
+	"ww1_a7v": 0.344,
 	"ww1_arm_rolls_mk2": 0.250,
 	"ww1_inf_enfield": 0.059,
 	"ww1_inf_mp18_x": 0.197,
+	"ww1_lanchest": 0.244,
+	"ww1_mark4": 0.340,
 	"ww1_sup_ford_ambulance": 0.234,
 	"ww1_sup_vickers": 0.139,
 	"ww2_air_bomber": 0.273,
@@ -302,13 +309,13 @@ const FOOT_FRAC: Dictionary = {
 
 const HEAD_FRAC: Dictionary = {
 	"cold_air_bomber": 0.385,
-	"cold_air_strike_fighter": 0.418,
+	"cold_air_strike_fighter": 0.400,
 	"cold_arm_p18": 0.242,
 	"cold_arty_bmd1": 0.326,
 	"cold_arty_brem1": 0.314,
 	"cold_inf_metis": 0.250,
 	"cold_sup_bmp1_x": 0.312,
-	"drop_phase_lance": 0.117,
+	"drop_phase_lance": 0.080,
 	"drop_railgun": 0.090,
 	"drop_smg_mk2": 0.094,
 	"drop_thunder_field": 0.105,
@@ -337,7 +344,7 @@ const HEAD_FRAC: Dictionary = {
 	"fut_inf_c96": 0.182,
 	"fut_inf_neural": 0.061,
 	"fut_inf_x9": 0.105,
-	"fut_nano_drone": 0.240,
+	"fut_nano_drone": 0.291,
 	"fut_sup_nrepair": 0.260,
 	"fut_sup_ps9": 0.234,
 	"fut_swarm": 0.283,
@@ -346,8 +353,11 @@ const HEAD_FRAC: Dictionary = {
 	"mod_arm_himars": 0.270,
 	"mod_arty_rq7": 0.361,
 	"mod_inf_patriot": 0.268,
+	"mod_stinger": 0.061,
+	"mod_stryker_m2": 0.330,
 	"mod_sup_growler": 0.383,
 	"mod_sup_m4_carbine": 0.139,
+	"platform_modern_stealth": 0.350,
 	"vis_enemy_001": 0.213,
 	"vis_enemy_002": 0.240,
 	"vis_enemy_003": 0.242,
@@ -365,7 +375,7 @@ const HEAD_FRAC: Dictionary = {
 	"vis_enemy_015": 0.303,
 	"vis_enemy_016": 0.217,
 	"vis_enemy_017": 0.133,
-	"vis_enemy_018": 0.195,
+	"vis_enemy_018": 0.285,
 	"vis_enemy_019": 0.246,
 	"vis_enemy_020": 0.225,
 	"vis_enemy_021": 0.262,
@@ -373,7 +383,7 @@ const HEAD_FRAC: Dictionary = {
 	"vis_enemy_023": 0.250,
 	"vis_enemy_024": 0.205,
 	"vis_enemy_025": 0.336,
-	"vis_enemy_026": 0.234,
+	"vis_enemy_026": 0.215,
 	"vis_enemy_027": 0.086,
 	"vis_enemy_028": 0.270,
 	"vis_enemy_029": 0.240,
@@ -382,7 +392,7 @@ const HEAD_FRAC: Dictionary = {
 	"vis_enemy_032": 0.129,
 	"vis_enemy_033": 0.182,
 	"vis_enemy_034": 0.270,
-	"vis_enemy_035": 0.229,
+	"vis_enemy_035": 0.242,
 	"vis_enemy_036": 0.061,
 	"vis_enemy_037": 0.127,
 	"vis_enemy_038": 0.182,
@@ -409,7 +419,7 @@ const HEAD_FRAC: Dictionary = {
 	"vis_enemy_059": 0.230,
 	"vis_enemy_060": 0.287,
 	"vis_enemy_061": 0.125,
-	"vis_enemy_062": 0.217,
+	"vis_enemy_062": 0.527,
 	"vis_enemy_063": 0.357,
 	"vis_enemy_064": 0.320,
 	"vis_enemy_065": 0.295,
@@ -440,7 +450,7 @@ const HEAD_FRAC: Dictionary = {
 	"vis_enemy_090": 0.061,
 	"vis_enemy_091": 0.379,
 	"vis_enemy_092": 0.125,
-	"vis_enemy_093": 0.340,
+	"vis_enemy_093": 0.330,
 	"vis_enemy_094": 0.348,
 	"vis_enemy_110": 0.221,
 	"vis_enemy_111": 0.236,
@@ -464,7 +474,7 @@ const HEAD_FRAC: Dictionary = {
 	"vis_player_015": 0.303,
 	"vis_player_016": 0.217,
 	"vis_player_017": 0.133,
-	"vis_player_018": 0.195,
+	"vis_player_018": 0.285,
 	"vis_player_019": 0.246,
 	"vis_player_020": 0.225,
 	"vis_player_021": 0.262,
@@ -472,7 +482,7 @@ const HEAD_FRAC: Dictionary = {
 	"vis_player_023": 0.250,
 	"vis_player_024": 0.205,
 	"vis_player_025": 0.336,
-	"vis_player_026": 0.234,
+	"vis_player_026": 0.215,
 	"vis_player_027": 0.086,
 	"vis_player_028": 0.270,
 	"vis_player_029": 0.240,
@@ -481,7 +491,7 @@ const HEAD_FRAC: Dictionary = {
 	"vis_player_032": 0.129,
 	"vis_player_033": 0.182,
 	"vis_player_034": 0.270,
-	"vis_player_035": 0.229,
+	"vis_player_035": 0.242,
 	"vis_player_036": 0.061,
 	"vis_player_037": 0.127,
 	"vis_player_038": 0.182,
@@ -502,13 +512,13 @@ const HEAD_FRAC: Dictionary = {
 	"vis_player_053": 0.285,
 	"vis_player_054": 0.061,
 	"vis_player_055": 0.348,
-	"vis_player_056": 0.398,
+	"vis_player_056": 0.404,
 	"vis_player_057": 0.223,
 	"vis_player_058": 0.246,
 	"vis_player_059": 0.230,
 	"vis_player_060": 0.287,
 	"vis_player_061": 0.125,
-	"vis_player_062": 0.217,
+	"vis_player_062": 0.527,
 	"vis_player_063": 0.357,
 	"vis_player_064": 0.320,
 	"vis_player_065": 0.295,
@@ -533,7 +543,7 @@ const HEAD_FRAC: Dictionary = {
 	"vis_player_084": 0.205,
 	"vis_player_085": 0.213,
 	"vis_player_086": 0.254,
-	"vis_player_087": 0.109,
+	"vis_player_087": 0.168,
 	"vis_player_088": 0.070,
 	"vis_player_089": 0.090,
 	"vis_player_090": 0.061,
@@ -566,9 +576,13 @@ const HEAD_FRAC: Dictionary = {
 	"vis_xeno_thing": 0.061,
 	"vis_xeno_tripod": 0.268,
 	"vis_xeno_zealot": 0.061,
+	"ww1_105mm": 0.250,
+	"ww1_a7v": 0.344,
 	"ww1_arm_rolls_mk2": 0.252,
 	"ww1_inf_enfield": 0.061,
 	"ww1_inf_mp18_x": 0.199,
+	"ww1_lanchest": 0.246,
+	"ww1_mark4": 0.340,
 	"ww1_sup_ford_ambulance": 0.234,
 	"ww1_sup_vickers": 0.141,
 	"ww2_air_bomber": 0.396,
@@ -584,17 +598,17 @@ const HEAD_FRAC: Dictionary = {
 
 const CONTENT_BBOX: Dictionary = {
 	"cold_air_bomber": [0.879, 0.230],
-	"cold_air_strike_fighter": [0.816, 0.164],
+	"cold_air_strike_fighter": [0.840, 0.195],
 	"cold_arm_p18": [0.879, 0.514],
 	"cold_arty_bmd1": [0.879, 0.348],
 	"cold_arty_brem1": [0.879, 0.371],
 	"cold_inf_metis": [0.879, 0.500],
 	"cold_sup_bmp1_x": [0.879, 0.373],
-	"drop_phase_lance": [0.873, 0.764],
+	"drop_phase_lance": [0.898, 0.859],
 	"drop_railgun": [0.695, 0.818],
 	"drop_smg_mk2": [0.717, 0.811],
 	"drop_thunder_field": [0.740, 0.770],
-	"fe_aether_hover_cavalry": [0.828, 0.559],
+	"fe_aether_hover_cavalry": [0.827, 0.558],
 	"fe_aether_swarm_queen": [0.879, 0.422],
 	"fe_frontier_mixed_company": [0.879, 0.660],
 	"fe_frontier_veteran": [0.455, 0.879],
@@ -602,7 +616,7 @@ const CONTENT_BBOX: Dictionary = {
 	"fe_helix_phantom": [0.389, 0.835],
 	"fe_iron_wall_bastion": [0.879, 0.775],
 	"fe_iron_wall_juggernaut": [0.592, 0.879],
-	"fe_nova_devastator": [0.858, 0.589],
+	"fe_nova_devastator": [0.857, 0.589],
 	"fe_nova_ghost_sniper": [0.803, 0.879],
 	"fe_quantum_mobile_base": [0.875, 0.688],
 	"fe_quantum_repair_drone": [0.734, 0.445],
@@ -619,7 +633,7 @@ const CONTENT_BBOX: Dictionary = {
 	"fut_inf_c96": [0.404, 0.736],
 	"fut_inf_neural": [0.580, 0.879],
 	"fut_inf_x9": [0.432, 0.801],
-	"fut_nano_drone": [0.879, 0.477],
+	"fut_nano_drone": [0.701, 0.416],
 	"fut_sup_nrepair": [0.879, 0.480],
 	"fut_sup_ps9": [0.879, 0.529],
 	"fut_swarm": [0.818, 0.432],
@@ -628,8 +642,11 @@ const CONTENT_BBOX: Dictionary = {
 	"mod_arm_himars": [0.879, 0.461],
 	"mod_arty_rq7": [0.879, 0.277],
 	"mod_inf_patriot": [0.818, 0.463],
+	"mod_stinger": [0.619, 0.879],
+	"mod_stryker_m2": [0.879, 0.340],
 	"mod_sup_growler": [0.814, 0.234],
 	"mod_sup_m4_carbine": [0.879, 0.721],
+	"platform_modern_stealth": [0.879, 0.299],
 	"vis_enemy_001": [0.865, 0.572],
 	"vis_enemy_002": [0.879, 0.518],
 	"vis_enemy_003": [0.879, 0.512],
@@ -647,7 +664,7 @@ const CONTENT_BBOX: Dictionary = {
 	"vis_enemy_015": [0.879, 0.393],
 	"vis_enemy_016": [0.877, 0.566],
 	"vis_enemy_017": [0.877, 0.732],
-	"vis_enemy_018": [0.873, 0.596],
+	"vis_enemy_018": [0.879, 0.430],
 	"vis_enemy_019": [0.855, 0.504],
 	"vis_enemy_020": [0.879, 0.551],
 	"vis_enemy_021": [0.879, 0.475],
@@ -655,7 +672,7 @@ const CONTENT_BBOX: Dictionary = {
 	"vis_enemy_023": [0.871, 0.500],
 	"vis_enemy_024": [0.488, 0.633],
 	"vis_enemy_025": [0.879, 0.326],
-	"vis_enemy_026": [0.775, 0.471],
+	"vis_enemy_026": [0.879, 0.570],
 	"vis_enemy_027": [0.879, 0.826],
 	"vis_enemy_028": [0.879, 0.459],
 	"vis_enemy_029": [0.857, 0.516],
@@ -664,7 +681,7 @@ const CONTENT_BBOX: Dictionary = {
 	"vis_enemy_032": [0.879, 0.742],
 	"vis_enemy_033": [0.879, 0.637],
 	"vis_enemy_034": [0.848, 0.461],
-	"vis_enemy_035": [0.879, 0.543],
+	"vis_enemy_035": [0.879, 0.516],
 	"vis_enemy_036": [0.613, 0.879],
 	"vis_enemy_037": [0.854, 0.729],
 	"vis_enemy_038": [0.879, 0.635],
@@ -691,7 +708,7 @@ const CONTENT_BBOX: Dictionary = {
 	"vis_enemy_059": [0.873, 0.531],
 	"vis_enemy_060": [0.807, 0.494],
 	"vis_enemy_061": [0.879, 0.750],
-	"vis_enemy_062": [0.871, 0.566],
+	"vis_enemy_062": [0.984, 0.406],
 	"vis_enemy_063": [0.879, 0.283],
 	"vis_enemy_064": [0.879, 0.357],
 	"vis_enemy_065": [0.879, 0.408],
@@ -722,7 +739,7 @@ const CONTENT_BBOX: Dictionary = {
 	"vis_enemy_090": [0.570, 0.879],
 	"vis_enemy_091": [0.879, 0.242],
 	"vis_enemy_092": [0.879, 0.652],
-	"vis_enemy_093": [0.811, 0.318],
+	"vis_enemy_093": [0.873, 0.340],
 	"vis_enemy_094": [0.879, 0.305],
 	"vis_enemy_110": [0.879, 0.559],
 	"vis_enemy_111": [0.875, 0.521],
@@ -746,7 +763,7 @@ const CONTENT_BBOX: Dictionary = {
 	"vis_player_015": [0.879, 0.393],
 	"vis_player_016": [0.877, 0.566],
 	"vis_player_017": [0.877, 0.732],
-	"vis_player_018": [0.873, 0.596],
+	"vis_player_018": [0.879, 0.430],
 	"vis_player_019": [0.855, 0.504],
 	"vis_player_020": [0.879, 0.551],
 	"vis_player_021": [0.879, 0.475],
@@ -754,7 +771,7 @@ const CONTENT_BBOX: Dictionary = {
 	"vis_player_023": [0.871, 0.500],
 	"vis_player_024": [0.488, 0.633],
 	"vis_player_025": [0.879, 0.326],
-	"vis_player_026": [0.775, 0.471],
+	"vis_player_026": [0.879, 0.570],
 	"vis_player_027": [0.879, 0.826],
 	"vis_player_028": [0.879, 0.459],
 	"vis_player_029": [0.857, 0.516],
@@ -763,7 +780,7 @@ const CONTENT_BBOX: Dictionary = {
 	"vis_player_032": [0.879, 0.742],
 	"vis_player_033": [0.879, 0.637],
 	"vis_player_034": [0.848, 0.461],
-	"vis_player_035": [0.879, 0.543],
+	"vis_player_035": [0.879, 0.516],
 	"vis_player_036": [0.613, 0.879],
 	"vis_player_037": [0.854, 0.729],
 	"vis_player_038": [0.879, 0.635],
@@ -784,13 +801,13 @@ const CONTENT_BBOX: Dictionary = {
 	"vis_player_053": [0.879, 0.428],
 	"vis_player_054": [0.611, 0.879],
 	"vis_player_055": [0.879, 0.305],
-	"vis_player_056": [0.879, 0.203],
+	"vis_player_056": [0.811, 0.189],
 	"vis_player_057": [0.434, 0.602],
 	"vis_player_058": [0.879, 0.488],
 	"vis_player_059": [0.873, 0.531],
 	"vis_player_060": [0.807, 0.494],
 	"vis_player_061": [0.879, 0.750],
-	"vis_player_062": [0.871, 0.566],
+	"vis_player_062": [0.984, 0.406],
 	"vis_player_063": [0.879, 0.283],
 	"vis_player_064": [0.879, 0.357],
 	"vis_player_065": [0.879, 0.408],
@@ -815,7 +832,7 @@ const CONTENT_BBOX: Dictionary = {
 	"vis_player_084": [0.879, 0.588],
 	"vis_player_085": [0.879, 0.572],
 	"vis_player_086": [0.879, 0.490],
-	"vis_player_087": [0.879, 0.709],
+	"vis_player_087": [0.879, 0.662],
 	"vis_player_088": [0.875, 0.857],
 	"vis_player_089": [0.879, 0.820],
 	"vis_player_090": [0.570, 0.879],
@@ -848,9 +865,13 @@ const CONTENT_BBOX: Dictionary = {
 	"vis_xeno_thing": [0.809, 0.877],
 	"vis_xeno_tripod": [0.652, 0.498],
 	"vis_xeno_zealot": [0.854, 0.879],
+	"ww1_105mm": [0.879, 0.498],
+	"ww1_a7v": [0.879, 0.311],
 	"ww1_arm_rolls_mk2": [0.879, 0.496],
 	"ww1_inf_enfield": [0.836, 0.879],
 	"ww1_inf_mp18_x": [0.879, 0.602],
+	"ww1_lanchest": [0.879, 0.508],
+	"ww1_mark4": [0.879, 0.318],
 	"ww1_sup_ford_ambulance": [0.879, 0.529],
 	"ww1_sup_vickers": [0.879, 0.719],
 	"ww2_air_bomber": [0.822, 0.328],
@@ -895,6 +916,53 @@ static func entity_top_y_for_sprite(unit_spr: Sprite2D) -> float:
 	# 仅 ±1.2px 待机浮动噪声，可忽略。注意：悬空抬升在 apply_battle_unit_presentation
 	# 里设置 position.y 后才调用各 sync_*，故 UI 首次定位即含抬升。
 	return -disp_entity_h + unit_spr.position.y
+
+
+## v6.32.4：实体内容高（宿主坐标系，含缩放）——护盾罩/堡垒环半径随体型的数据源
+## （fort_shield_aura.update_host_metrics 消费，写 aura meta host_content_h）。
+## 静态卡图走 FOOT_FRAC/HEAD_FRAC 标定表（与 entity_top_y 同源，零像素扫描）；
+## 帧动画（AtlasTexture，无标定键）按当前纹理 alpha 内容 bbox 实测并按纹理键缓存。
+static func entity_height_for_sprite(unit_spr: Sprite2D) -> float:
+	if unit_spr == null or unit_spr.texture == null:
+		return 0.0
+	var tex: Texture2D = unit_spr.texture
+	var fn := _file_name_of(tex)
+	var s: float = absf(unit_spr.scale.y)
+	if fn != "" and (FOOT_FRAC.has(fn) or HEAD_FRAC.has(fn)):
+		var tex_h: float = maxf(float(tex.get_height()), 1.0)
+		var frac: float = maxf(1.0 - get_head_frac(fn) - get_foot_frac(fn), 0.1)
+		return frac * tex_h * s
+	var content_px: float = _content_height_px(tex)
+	if content_px <= 0.0:
+		return 0.0
+	return content_px * s
+
+
+static var _content_h_cache: Dictionary = {}
+
+
+static func _content_height_px(tex: Texture2D) -> float:
+	var key := _file_name_of(tex)
+	if key.is_empty() and tex is AtlasTexture:
+		var at := tex as AtlasTexture
+		key = "%s#%d,%d,%dx%d" % [
+			_file_name_of(at.atlas), int(at.region.position.x), int(at.region.position.y),
+			int(at.region.size.x), int(at.region.size.y)]
+	if key.is_empty():
+		return 0.0
+	if _content_h_cache.has(key):
+		return float(_content_h_cache[key])
+	var h := 0.0
+	var img: Image = tex.get_image()
+	if img != null:
+		if img.is_compressed():
+			img.decompress()
+		var rect := img.get_used_rect()
+		if rect.size.y > 0:
+			h = float(rect.size.y)
+	_content_h_cache[key] = h
+	return h
+
 
 # ─────────────────────────────────────────────────────────────────────────────
 #  战场缩放模型（v6.14.8 内容感知重构，推翻旧手填 VISUAL_SCALE 全量表）

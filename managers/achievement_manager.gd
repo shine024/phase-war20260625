@@ -235,9 +235,9 @@ func unlock_achievement(achievement_id: String) -> void:
 	achievement_unlocked.emit(achievement_id, ach_data.get("name", achievement_id))
 	# v6.6: 镜像到 SignalBus（audio_manager 订阅此版本以播音效）
 	SignalBus.achievement_unlocked.emit(achievement_id, ach_data.get("name", achievement_id))
-	# v26.6 补缺：解锁 toast——此前仅音效无文字，玩家不知道解锁了哪个成就
-	if SignalBus.has_signal("show_toast"):
-		SignalBus.show_toast.emit("🏆 成就解锁：%s" % String(ach_data.get("name", achievement_id)))
+	# v26.6 补缺：解锁提示——v6.38（记录5#10）走左下 feed 通道（解锁类不进右上角）
+	if SignalBus.has_signal("feed_message"):
+		SignalBus.feed_message.emit("🏆 成就解锁：%s" % String(ach_data.get("name", achievement_id)))
 	if DEBUG_LOG:
 		pass
 		# [LOG-v5.1] print("[AchievementManager] 解锁成就: ", ach_data.get("name", achievement_id))

@@ -15,6 +15,7 @@
 """
 import argparse
 import hashlib
+import json
 import math
 import os
 import random
@@ -92,6 +93,13 @@ UNITS.update({
                             flash_scale=1.3, flash_angle=-2, smoke_n=5),
     "mod_air_bomber": dict(mode="bomb", muzzle=(505, 612), cat="air", recoil=0, smoke_n=0, bob=0,
                            bomb_scale=1.9),  # 256 实机首测弹体近隐形，放大保攻击可读（10-01）
+    # 豁免户补攻击帧（10-02 用户令：没攻击帧的单位生成攻击帧）：补给车车尾吊放补给箱。
+    # 锚=现役 idle f0 品红底 1024 放大（自带 4px 描边，部署端 outline=False 免二次烘焙）；
+    # muzzle=货台尾挡板顶角（_gmc_anchor_probe.png 实测）；无火光（bomb 族默认），
+    # 朝左车 drift 向后=箱落车尾 ✓ 补给车动作语（attack-anim-pose-rule：动作要有想像力）
+    "ww2_sup_gmc_truck": dict(mode="bomb", muzzle=(965, 575), cat="ground", src="staging",
+                              crate=True, bomb_scale=2.4, recoil=0, smoke_n=0, bob=2,
+                              outline=False),
     "fut_stealth_bomber": dict(mode="laser", muzzle=(95, 554), cat="air", flash_angle=0,
                                flash_color=(140, 235, 255),
                                beam_lens={1: 300, 2: 700, 3: 700, 4: 450},
@@ -103,21 +111,94 @@ UNITS.update({
 RAISE_TL = {0: 0.0, 1: 0.5, 2: 1.0, 3: 1.0, 4: 1.0, 5: 0.7, 6: 0.4, 7: 0.15, 8: 0.0, 9: 0.0}
 # burst 点射节奏（帧号->焰强度）
 BURST_TL = {1: 1.0, 2: 0.45, 3: 0.85, 5: 0.5, 6: 0.35}
+ROT_TL = {0: 0.0, 1: 7.0, 2: 14.0, 3: 21.0, 4: 26.0, 5: 21.0, 6: 14.0, 7: 7.0,
+          8: 0.0, 9: 0.0}  # 雷达摆扫（°），f9==f0 闭环
+
+# 火光贴图库（img25_vfx_harvest 收割的生图焰心，_index.json 带质心）
+_TEX_CACHE = {}
+
+
+def load_tex(name):
+    """返回 (RGBA 贴图, 焰心质心)。质心优先取 _index.json 实测，缺省几何中心。"""
+    if name not in _TEX_CACHE:
+        p = name if os.path.isabs(name) else os.path.join(
+            ROOT, ".godot", "unit_review", "img25_vfx", name)
+        tex = Image.open(p).convert("RGBA")
+        cent = (tex.width / 2.0, tex.height / 2.0)
+        try:
+            idx = json.load(open(os.path.join(ROOT, ".godot", "unit_review",
+                                              "img25_vfx", "_index.json"),
+                                 encoding="utf-8"))
+            for e in idx:
+                if e.get("png") == os.path.basename(name) and e.get("centroid_in_tex"):
+                    cent = (float(e["centroid_in_tex"][0]), float(e["centroid_in_tex"][1]))
+                    break
+        except Exception:
+            pass
+        _TEX_CACHE[name] = (tex, cent)
+    return _TEX_CACHE[name]
+
+
+def _pink_scrub(a, cfg):
+    """接地面品红渍块清除（原地）：底区粉族签 alpha 清零。s 对等比缩放不变、
+    r-g/b-g 随缩放增减 → gain>1 会把原不过线的深渍块推过阈值（10-02 stryker/
+    carrier 实测），故 gain 前后各跑一遍。返回 a。"""
+    import numpy as np
+    rgb = a[..., :3].astype(int)
+    ys, xs = np.where(a[..., 3] > 16)
+    z0 = ys.min() + int((ys.max() - ys.min()) * (cfg or {}).get("scrub_zone", 0.82))  # 本体 bbox 底段
+    rr, gg, bb = rgb[..., 0], rgb[..., 1], rgb[..., 2]
+    mx = rgb.max(axis=2)
+    s = (mx - rgb.min(axis=2)) / np.maximum(mx, 1)
+    m = (rr > gg + 40) & (bb > gg + 10) & (s > 0.5) & (mx > 70)
+    if (cfg or {}).get("scrub_soft"):  # 低饱和紫渍二档（10-02 vickers 族脚架渍实测 s≈0.46-0.49
+        m |= (rr > gg + 16) & (bb > gg + 5) & (s > 0.35) & (mx > 38)  # 不过 s>0.5 主线）
+    m[:z0] = False
+    a[:, :, 3][m & (a[:, :, 3] > 0)] = 0
+    return a
 
 
 def load_anchor(key, cfg=None):
-    src_dir = STAGING if (cfg or {}).get("src") == "staging" else SRC
+    src = (cfg or {}).get("src")
+    src_dir = STAGING if src == "staging" else (src if src else SRC)  # src 可为目录直指
     im = Image.open(os.path.join(src_dir, "%s_anchor_raw.png" % key))
     bg = detect_bg_color(im)
     rgba = chroma_key(im, bg)
     # 封闭粉区补刀（必须在 depink 之前：depink 会把亮粉转灰，转灰后按背景距离抓不到，
     # 09-30 lance 腿间灰块实测）——近背景玫红不问连通全删；近白不在此删（防误删白色高光）。
+    # scrub_radius（10-01 lance r2 锚定实测四档对比 _probe_lance_radius.png）：暗品红背景
+    # (193,73,128) 与皮肤阴影色距仅 102-143，默认 100 会吃出脸洞/切离大衣阴影岛；40-55 档本体完好。
+    # 默认 100=旧行为（冻结单位 md5 不变）。
     import numpy as np
     a = np.asarray(rgba).copy()
     dist = np.sqrt(((a[:, :, :3].astype(int) - bg) ** 2).sum(axis=2))
-    a[:, :, 3][dist < 100] = 0
+    a[:, :, 3][dist < (cfg or {}).get("scrub_radius", 100)] = 0
     rgba = Image.fromarray(a)
-    return depink(rgba)
+    rgba = depink(rgba)
+    if (cfg or {}).get("pink_scrub"):  # 接地面暗品红阴影残留（10-01 bradley/rpk/坦克族实测）
+        rgba = Image.fromarray(_pink_scrub(np.asarray(rgba).copy(), cfg))
+    # 品红族硬清 + 透明区 RGB 邻色回填（10-02 v4 换装批实测）：
+    # 键控/scrub 只清 alpha，透明像素 RGB 仍是品红；后续 normalize_frames 的 LANCZOS
+    # 缩放 / cutoutR 旋转按未预乘 alpha 混合，把透明品红 RGB 渗回不透明边缘
+    # （35 单位 0.1-0.4% 残留）。dist<60 硬清安全：本体最近色距背景 >=102
+    # （10-01 lance 皮肤阴影实测 102-143）。回填后重采样混合的是本体邻色，零渗色。
+    a = np.asarray(rgba).copy()
+    dist = np.sqrt(((a[:, :, :3].astype(int) - bg) ** 2).sum(axis=2))
+    a[:, :, 3][dist < 60] = 0
+    if (a[:, :, 3] == 0).any() and (a[:, :, 3] > 0).any():
+        from scipy import ndimage as _ndi
+        _, (_iy, _ix) = _ndi.distance_transform_edt(a[:, :, 3] == 0, return_indices=True)
+        a[..., :3] = a[_iy, _ix, :3]
+    g = (cfg or {}).get("gain")
+    if g and g != 1.0:  # 本体亮度对齐卡图（10-02 换装批 26 暗 3 亮实测 _luma_gain.json）
+        a[..., :3] = np.clip(a[..., :3].astype(np.float32) * g, 0, 255).astype(np.uint8)
+        if (cfg or {}).get("pink_scrub"):  # gain 后补刀：深渍块被放大才过签名线（见 _pink_scrub docstring）
+            a = _pink_scrub(a, cfg)
+    if (cfg or {}).get("flip"):  # clean1st 重掷枪朝右族 → 翻成 sheet 契约朝左
+        # （unit_frame_anim.gd：敌方原图朝左直接用，我方 flip_h 镜像；muzzle x 须同步 1023-x）
+        rgba = Image.fromarray(a).transpose(Image.FLIP_LEFT_RIGHT)
+        return rgba
+    return Image.fromarray(a)
 
 
 def barrel_axis(cfg):
@@ -258,6 +339,28 @@ def draw_bomb(layer, x, y, rng, scale=1.0, ang=None):
               fill=(70, 74, 54, 255))
     bomb = bomb.rotate(ang, resample=Image.BICUBIC)
     layer.alpha_composite(bomb, (int(x - cx), int(y - cy)))
+
+
+def draw_crate(layer, x, y, rng, scale=1.0, ang=None):
+    """补给箱：橄榄木箱+板条线（10-02 gmc 补给车吊放用）；ang=慢速翻滚（弱于弹体）。"""
+    s = int(30 * scale)
+    box = Image.new("RGBA", (s * 3, s * 3), (0, 0, 0, 0))
+    d = ImageDraw.Draw(box)
+    cx, cy = box.width // 2, box.height // 2
+    if ang is None:
+        ang = 0
+    ang = ang * 0.3 + rng.uniform(-6, 6)  # 箱子不弹头朝前，慢翻滚
+    x0, y0, x1, y1 = cx - s // 2, cy - s // 2, cx + s // 2, cy + s // 2
+    d.rectangle((x0, y0, x1, y1), fill=(96, 88, 58, 255))
+    d.rectangle((x0, y0, x1, y1), outline=(58, 52, 34, 255), width=max(2, s // 16))
+    d.line((x0, (y0 + y1) // 2, x1, (y0 + y1) // 2), fill=(118, 108, 72, 255),
+           width=max(2, s // 18))
+    d.line(((x0 + s // 4), y0, (x0 + s // 4), y1), fill=(78, 70, 46, 255),
+           width=max(2, s // 20))
+    d.line(((x1 - s // 4), y0, (x1 - s // 4), y1), fill=(78, 70, 46, 255),
+           width=max(2, s // 20))
+    box = box.rotate(ang, resample=Image.BICUBIC)
+    layer.alpha_composite(box, (int(x - cx), int(y - cy)))
 
 
 def draw_rocket_proj(layer, x, y, angle, rng, alpha=255):
@@ -413,7 +516,9 @@ def compose_frame(rgba, cfg, f, rng, ctx=None):
     facing = cfg.get("facing", 1)
     mode = cfg["mode"]
     bdx, tdx, bob, flash_s = frame_pose(f, cfg)
-    mx, my = cfg["muzzle"]
+    if mode == "rotate":
+        flash_s, bob = 0.0, 0  # 雷达扫描无焰无震
+    mx, my = cfg.get("muzzle", (512, 512))
     canvas = Image.new("RGBA", rgba.size, (0, 0, 0, 0))
     tip = (mx, my + bob)
     ax, ay = barrel_axis(cfg)
@@ -430,6 +535,34 @@ def compose_frame(rgba, cfg, f, rng, ctx=None):
         canvas.alpha_composite(rifle, off)
         tip = ctx["raised_muzzle"]
         tip = (tip[0] + off[0], tip[1] + off[1])
+    elif mode == "rotate":  # 雷达扫描：band 内容绕 pivot 摆扫，本体其余静止（f9==f0）
+        canvas.alpha_composite(rgba, (0, 0))
+        x0, y0, x1, y1 = cfg["band"]
+        import numpy as _np
+        arr = _np.asarray(canvas).copy()
+        arr[y0:y1, x0:x1, 3] = 0  # 擦原位防重影，再贴旋转后内容
+        canvas = Image.fromarray(arr)
+        band = rgba.crop((x0, y0, x1, y1))
+        amp = cfg.get("rot_amp", 1.0)  # 摆幅系数（1=26° 满幅；碟面贴塔/贴墙者调小）
+        rot = band.rotate(ROT_TL.get(f, 0.0) * amp,
+                          center=(cfg["pivot"][0] - x0, cfg["pivot"][1] - y0),
+                          resample=Image.BICUBIC)
+        canvas.alpha_composite(rot, (x0, y0))
+        wave = cfg.get("wave")  # 雷达电波：馈源 born 两道外扩环（fort_radar"发波不开火"）
+        if wave:
+            wc = tuple(wave.get("center", cfg["pivot"]))
+            th = math.radians(ROT_TL.get(f, 0.0) * amp)  # 环心随 band 同角绕 pivot（碟动环随）
+            dx, dy = wc[0] - cfg["pivot"][0], wc[1] - cfg["pivot"][1]
+            wc = (cfg["pivot"][0] + dx * math.cos(th) + dy * math.sin(th),
+                  cfg["pivot"][1] - dx * math.sin(th) + dy * math.cos(th))
+            wr0, wr1 = wave.get("r0", 18), wave.get("r1", 80)
+            wcol = tuple(wave.get("color", (185, 235, 255)))
+            for born in wave.get("born", (1, 3)):
+                age = f - born
+                if 0 <= age <= 3:
+                    draw_ring(canvas, wc, wr0 + age * (wr1 - wr0) / 3.0, wcol,
+                              width=4 if born == 1 else 3,
+                              alpha=int(235 * (1 - age / 3.8)))
     elif mode in ("vfx", "tesla", "laser", "bomb", "rocket", "burst"):
         wdx = _recoil_wdx(cfg, f)
         canvas.alpha_composite(rgba, (int(-ax * wdx), int(-ay * wdx) + bob))  # 后坐沿管轴后退
@@ -455,10 +588,11 @@ def compose_frame(rgba, cfg, f, rng, ctx=None):
             for (a_, b_) in sp:
                 draw_lightning(canvas, a_, b_, rng, color,
                                width=2 + int(2 * glow), branches=1 if glow > 0.5 else 0)
-        for born in (1, 3):  # 两道波纹环：4 帧生命，半径封顶防出框
+        rb = cfg.get("ring_r", (16, 30))  # 波纹基础半径/每龄增幅（ps9"电波大点"旋钮）
+        for born in cfg.get("ring_born", (1, 3)):  # 4 帧生命；born 列表可加密度
             age = f - born
             if 0 <= age <= 3:
-                draw_ring(canvas, tip, 16 + age * 30, color,
+                draw_ring(canvas, tip, rb[0] + age * rb[1], color,
                           width=3 if born == 1 else 2,
                           alpha=int(200 * (1 - age / 3.5)))
     if mode == "laser":  # 光束：f1 展开，f2-f3 全束，f4 残辉（远端渐隐防 bbox 硬切）
@@ -482,14 +616,18 @@ def compose_frame(rgba, cfg, f, rng, ctx=None):
             fade = max(0.0, 1.0 - max(0, ft - 2.8) / 1.0)
             if fade <= 0:
                 continue
-            # 弹道：屏幕系里机身随镜头锁定，弹体相对机体只能向后飘（阻力滞后）——
-            # 左向机（facing=1）弹尾向右漂；前漂=物理穿帮（10-01 实测翻向纠错）
-            bx = tip[0] + facing * ft * 22
+            # 弹道：屏幕系里机身随镜头锁定，弹体默认向后飘（阻力滞后）——
+            # 左向机（facing=1）弹尾向右漂；bomb_forward=投弹/前射（10-01 用户令，覆盖物理纠错）
+            drift = (-facing if cfg.get("bomb_forward") else facing) * ft * 22
+            bx = tip[0] + drift
             by = tip[1] + 6 + ft * ft * 30
-            # 弹体顺速度向：弹头朝下略偏后（屏幕系 CCW 角，左向弹头基准）
-            bang = 90 + math.degrees(math.atan2(facing * 22, max(60 * ft, 1.0)))
+            # 弹体顺速度向（屏幕系 CCW 角，左向弹头基准）
+            bang = 90 + math.degrees(math.atan2(drift, max(60 * ft, 1.0)))
             pre = Image.new("RGBA", canvas.size, (0, 0, 0, 0))
-            draw_bomb(pre, bx, by, rng, scale=cfg.get("bomb_scale", 1.0), ang=bang)
+            if cfg.get("crate"):  # 补给箱变体（10-02 gmc）：无尾翼木箱慢翻滚
+                draw_crate(pre, bx, by, rng, scale=cfg.get("bomb_scale", 1.0), ang=bang)
+            else:
+                draw_bomb(pre, bx, by, rng, scale=cfg.get("bomb_scale", 1.0), ang=bang)
             if fade < 1.0:
                 pa = _np.asarray(pre).copy()
                 pa[:, :, 3] = (pa[:, :, 3] * fade).astype("uint8")
@@ -533,15 +671,32 @@ def compose_frame(rgba, cfg, f, rng, ctx=None):
             puffs = [(vx + 30, vy + 18, 22, 190), (vx + 90, vy + 30, 30, 150)]
             draw_smoke(canvas, puffs)
     if mode in ("vfx", "burst", "cutoutR", "cutout3", "cutout2") and flash_s > 0:
-        fl = draw_flash(flash_s * cfg.get("flash_scale", 1.0), rng, color,
-                        cfg.get("flash_angle", 0.0))
-        if fl:
-            off = (int(tip[0] - fl.width // 2), int(tip[1] - fl.height // 2))
-            if facing < 0:  # 朝右单位：前向锥形瓣镜像到 +x
-                fl = fl.transpose(Image.FLIP_LEFT_RIGHT)
-            canvas.alpha_composite(fl, off)
+        ox, oy = cfg.get("flash_off", (0, 0))  # 焰心屏幕系偏移（机鼻贴画布左缘的空中单位防裁半）
+        tex_name = cfg.get("flash_tex")  # 生图火光贴图复用（img25_vfx 库，质心对齐=贴枪口）
+        tex_pair = load_tex(tex_name) if tex_name else None
+        if tex_pair is not None:
+            tex, cen = tex_pair
+            s = cfg.get("flash_tex_scale", 1.0) * (0.7 + 0.3 * flash_s)
+            tex = tex.resize((max(1, int(tex.width * s)), max(1, int(tex.height * s))),
+                             Image.LANCZOS)
+            cx_, cy_ = cen[0] * s, cen[1] * s
+            if facing < 0:
+                tex = tex.transpose(Image.FLIP_LEFT_RIGHT)
+                cx_ = tex.width - cx_
+            tex = tex.copy()
+            a = tex.getchannel("A").point(lambda v: int(v * min(1.0, flash_s + 0.25)))
+            tex.putalpha(a)
+            canvas.alpha_composite(tex, (int(tip[0] - cx_ + ox), int(tip[1] - cy_ + oy)))
+        else:
+            fl = draw_flash(flash_s * cfg.get("flash_scale", 1.0), rng, color,
+                            cfg.get("flash_angle", 0.0))
+            if fl:
+                off = (int(tip[0] - fl.width // 2 + ox), int(tip[1] - fl.height // 2 + oy))
+                if facing < 0:  # 朝右单位：前向锥形瓣镜像到 +x
+                    fl = fl.transpose(Image.FLIP_LEFT_RIGHT)
+                canvas.alpha_composite(fl, off)
     t = f - cfg.get("flash_frame", FLASH_FRAME)
-    smoke_n = cfg.get("smoke_n", SMOKE_N)
+    smoke_n = 0 if mode == "rotate" else cfg.get("smoke_n", SMOKE_N)  # 雷达摆扫无炮烟
     if 1 <= t and smoke_n:
         puffs = []
         for i in range(smoke_n):
@@ -600,14 +755,20 @@ def gen_unit(key, cfg):
         d.ellipse((rmx - 12, rmy - 12, rmx + 12, rmy + 12),
                   outline=(255, 120, 255, 255), width=4)
     elif cfg["mode"] != "vfx":
+        if cfg["mode"] == "rotate":
+            x0, y0, x1, y1 = cfg["band"]
+            d.rectangle((x0, y0, x1, y1), outline=(80, 200, 255, 255), width=3)
+            px, py = cfg["pivot"]
+            d.ellipse((px - 10, py - 10, px + 10, py + 10), outline=(0, 255, 120, 255), width=4)
         if cfg.get("split_y"):
             d.line((0, cfg["split_y"], 1024, cfg["split_y"]), fill=(255, 60, 60, 255), width=3)
         if cfg.get("barrel"):
             y0, y1, xmax = cfg["barrel"]
             d.rectangle((0, y0, xmax, y1), outline=(80, 200, 255, 255), width=3)
-    d.ellipse((cfg["muzzle"][0] - 12, cfg["muzzle"][1] - 12,
-               cfg["muzzle"][0] + 12, cfg["muzzle"][1] + 12),
-              outline=(255, 255, 0, 255), width=4)
+    if "muzzle" in cfg:
+        d.ellipse((cfg["muzzle"][0] - 12, cfg["muzzle"][1] - 12,
+                   cfg["muzzle"][0] + 12, cfg["muzzle"][1] + 12),
+                  outline=(255, 255, 0, 255), width=4)
     layers_dbg.alpha_composite(marks)
     layers_dbg.convert("RGB").save(os.path.join(OUT, "%s_codeanim_layers.png" % key))
 
@@ -630,21 +791,41 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("key", nargs="?")
     ap.add_argument("--all", action="store_true")
+    ap.add_argument("--configs", help="逗号分隔的配置 JSON 路径（合并进 UNITS，外部优先）")
     args = ap.parse_args()
+    units = dict(UNITS)
+    if args.configs:
+        for p in args.configs.split(","):
+            p = p.strip().strip('"')
+            ext = json.load(open(p, encoding="utf-8"))
+            n_add = 0
+            for k, cfg in ext.items():
+                cfg.pop("why", None)
+                cfg.pop("confidence", None)
+                cfg.pop("_override", None)
+                if isinstance(cfg.get("flash_color"), list):
+                    cfg["flash_color"] = tuple(cfg["flash_color"])  # JSON 数组→tuple（防 list+tuple 崩）
+                if isinstance(cfg.get("beam_lens"), dict):  # JSON 键恒为字符串，帧号需 int
+                    cfg["beam_lens"] = {int(k2): v for k2, v in cfg["beam_lens"].items()}
+                if UNITS.get(k, {}).get("need_anchor"):
+                    print("[警告] %s 标记 need_anchor（锚定帧可能缺失/需补）" % k, flush=True)
+                units[k] = cfg
+                n_add += 1
+            print("configs: %s +%d 单位" % (p, n_add), flush=True)
     os.makedirs(OUT, exist_ok=True)
-    keys = list(UNITS) if args.all else [args.key]
-    if not args.all and args.key not in UNITS:
-        sys.exit("未知 key（或用 --all）： %s" % args.key)
+    keys = sorted(units) if args.all else [args.key]
+    if not args.all and args.key not in units:
+        sys.exit("未知 key（或用 --all/--configs）： %s" % args.key)
     report = []
     for key in keys:
-        h1 = gen_unit(key, UNITS[key])
-        h2 = gen_unit(key, UNITS[key])  # 铁律推论：复跑逐字节一致
+        h1 = gen_unit(key, units[key])
+        h2 = gen_unit(key, units[key])  # 铁律推论：复跑逐字节一致
         ok = "OK" if h1 == h2 else "MD5-DIFF!"
         print("%-26s %s %s" % (key, ok, h1[:8]), flush=True)
         report.append("| %s | %s | ☐LAYERS ☐SHEET ☐闭环 ☐尺寸 |" % (key, ok))
     if args.all:
         with open(os.path.join(OUT, "_batch_report.md"), "w", encoding="utf-8") as f:
-            f.write("# codeanim 首批（10 最难）生成报告\n\n| 单位 | md5 复跑 | 验收勾选 |\n|---|---|---|\n")
+            f.write("# codeanim 批生成报告\n\n| 单位 | md5 复跑 | 验收勾选 |\n|---|---|---|\n")
             f.write("\n".join(report) + "\n")
 
 

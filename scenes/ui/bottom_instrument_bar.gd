@@ -1386,6 +1386,9 @@ func _is_card_platform_restricted(card: CardResource) -> bool:
 func _fit_slots_to_bar() -> void:
 	if not is_instance_valid(slot_section):
 		return
+	# v6.38.1 树守卫：布局回调在节点被摘树后 flush 时 get_viewport_rect 报错——让位
+	if not is_inside_tree():
+		return
 	var available_h: float = slot_section.size.y
 	if available_h < 1.0:
 		available_h = BAR_FIXED_HEIGHT

@@ -16,6 +16,7 @@ const MAX_ACTIVE_TOASTS: int = 5
 # 独立 toast 画布层 + 堆叠容器（_ready 时构建）
 var _toast_layer: CanvasLayer = null
 var _toast_container: VBoxContainer = null
+var _feed_container: VBoxContainer = null   # 记录5#10: 左下 feed 通道（获得/解锁）
 
 # toast 锚点：v36 实机验收——原"底部居中抬高"实际坐标落在屏幕中部（y≈200-280），
 # 开场剧情/战斗中被读成居中弹窗很出戏；移右上角小堆叠。
@@ -28,24 +29,34 @@ const _TOAST_WIDTH: float = 300.0
 # （战报播报带之下、战况条同高但水平错开），非战斗态维持右上角小堆叠。
 const _TOAST_BATTLE_TOP: float = 150.0
 
+# 记录5#10: 左下 feed 通道（获得/解锁类低优先级提示）——底缘抬高避开战斗日志折叠态
+# 与基地底栏，向上堆叠。
+const _FEED_MARGIN_LEFT: float = 16.0
+const _FEED_MARGIN_BOTTOM: float = 150.0
+const _FEED_WIDTH: float = 340.0
+
 
 func _ready() -> void:
 	# v6.6: 连接 SignalBus.show_toast，使全局 toast 提示（战斗/城市/背包等）能到达 ToastManager
 	# 之前此信号全程无连接，导致所有 SignalBus.show_toast.emit(...) 静默失效
 	SignalBus.show_toast.connect(show_toast)
+	# 记录5#10：获得/解锁类提示走左下 feed 通道（右上角留操作反馈）
+	if SignalBus.has_signal("feed_message") and not SignalBus.feed_message.is_connected(show_feed):
+		SignalBus.feed_message.connect(show_feed)
 	# 记录7#5: 战斗态锚点切换（battle_ended 带 player_won 参数，单独Handler吃掉）
 	if SignalBus.has_signal("battle_started") and not SignalBus.battle_started.is_connected(_on_battle_started_anchor):
 		SignalBus.battle_started.connect(_on_battle_started_anchor)
 	if SignalBus.has_signal("battle_ended") and not SignalBus.battle_ended.is_connected(_on_battle_ended_anchor):
 		SignalBus.battle_ended.connect(_on_battle_ended_anchor)
-	# P1-6: 成就解锁此前只有音效无任何视觉提示，这里补一条 toast
-	if SignalBus.has_signal("achievement_unlocked") and not SignalBus.achievement_unlocked.is_connected(_on_achievement_unlocked):
-		SignalBus.achievement_unlocked.connect(_on_achievement_unlocked)
+	# P1-6: 成就解锁视觉提示——v6.38 起由 achievement_manager 显式 emit feed_message
+	# （左下 feed 通道），本钩子移除（原钩子+manager 显式 toast = 同一条成就弹两次）。
 	_build_toast_layer()
 
 
 func _on_achievement_unlocked(_achievement_id: String, achievement_name: String) -> void:
-	show_success("🏆 成就解锁：%s" % achievement_name)
+	# v6.38：保留函数防外部 connect 断链——视觉提示统一走 achievement_manager 的
+	# feed_message（左下 feed），此处不再重复弹 toast。
+	pass
 
 
 ## 记录7#5: 战斗中顶中 / 战斗外右上 的容器锚点切换。
@@ -81,9 +92,13 @@ func _apply_toast_anchor(in_battle: bool) -> void:
 		_toast_container.offset_bottom = _TOAST_MARGIN_TOP
 
 
-## 构建独立 CanvasLayer（layer=200）+ 底部居中抬高的 VBox 堆叠容器。
-## toast 加到 VBox 下自动垂直排列，不会全叠在 (0,0)。
+## 构建独立 CanvasLayer（layer=200）+ 右上角 VBox 堆叠容器 + 左下 feed 容器。
+## toast 加到 VBox 下自动垂直排列，不会全叠在 (0,0)。v6.38：幂等（容器存活时不重建）。
 func _build_toast_layer() -> void:
+	if is_instance_valid(_toast_layer) and is_instance_valid(_toast_container):
+		return
+	if is_instance_valid(_toast_layer):
+		_toast_layer.queue_free()
 	_toast_layer = CanvasLayer.new()
 	_toast_layer.layer = 200   # 高于 PopupLayer(100)，永远在最上层
 	_toast_layer.name = "ToastLayer"
@@ -106,6 +121,23 @@ func _build_toast_layer() -> void:
 	_toast_container.alignment = BoxContainer.ALIGNMENT_BEGIN
 
 	_toast_layer.add_child(_toast_container)
+	# 记录5#10：左下 feed 堆叠容器（获得/解锁类；grow BEGIN=向上生长）
+	_feed_container = VBoxContainer.new()
+	_feed_container.name = "FeedContainer"
+	_feed_container.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_feed_container.anchor_left = 0.0
+	_feed_container.anchor_right = 0.0
+	_feed_container.anchor_top = 1.0
+	_feed_container.anchor_bottom = 1.0
+	_feed_container.offset_left = _FEED_MARGIN_LEFT
+	_feed_container.offset_right = _FEED_MARGIN_LEFT + _FEED_WIDTH
+	_feed_container.offset_top = -_FEED_MARGIN_BOTTOM
+	_feed_container.offset_bottom = -_FEED_MARGIN_BOTTOM
+	_feed_container.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	_feed_container.grow_horizontal = Control.GROW_DIRECTION_END
+	_feed_container.add_theme_constant_override("separation", 6)
+	_feed_container.alignment = BoxContainer.ALIGNMENT_END
+	_toast_layer.add_child(_feed_container)
 	add_child(_toast_layer)
 
 
@@ -120,16 +152,14 @@ func get_toast_container() -> VBoxContainer:
 
 
 func show_toast(message: String, duration: float = 2.0, color: Color = Color(0.2, 0.8, 0.3), parent: Control = null) -> void:
-	# 优先使用自建堆叠容器；调用方主动传 parent 时回退兼容（不影响已有调用方）
+	# v6.38（记录5#14）：容器失效一律重建独立层——旧的"回退 root 第一个 Control"会把
+	# toast 落进主画布与 PopupLayer(100)/拖拽预览按树序混排（提示盖卡图/卡框盖提示交替
+	# 出现的根因）。CanvasLayer(200) 恒在所有面板之上，不存在中间态。
 	var target: Control = parent
 	if target == null:
-		if is_instance_valid(_toast_container):
-			target = _toast_container
-		else:
-			# 容器未就绪（_ready 未跑或被释放）：回退到 root 的直接子 Control
-			var tree := get_tree()
-			if tree != null:
-				target = _find_first_control_child(tree.root)
+		if not is_instance_valid(_toast_container):
+			_build_toast_layer()
+		target = _toast_container
 	if target == null:
 		return
 	# P1-7: 同文案合并——存活期内重复消息只刷新计数与时长，不重复堆叠
@@ -176,6 +206,44 @@ func show_error(message: String, parent: Control = null) -> void:
 
 func show_warning(message: String, parent: Control = null) -> void:
 	show_toast(message, 2.0, Color(0.9, 0.6, 0.2), parent)
+
+
+## 记录5#10：左下 feed 通道——获得/解锁类低优先级提示（用户拍板不进右上角）。
+## 同 left-bottom 容器堆叠、向上生长；颜色偏柔和（信息属性非告警）。
+func show_feed(message: String, duration: float = 2.6, color: Color = Color(0.30, 0.62, 0.42)) -> void:
+	if not is_instance_valid(_feed_container):
+		_build_toast_layer()
+	if not is_instance_valid(_feed_container):
+		return
+	# P1-7 同款同文案合并（feed 更易连发：批量掉落/多系统解锁）
+	if _merge_map.has(message):
+		var m: Dictionary = _merge_map[message]
+		var panel: PanelContainer = m.get("panel")
+		if panel != null and is_instance_valid(panel):
+			m["count"] = int(m.get("count", 1)) + 1
+			var lbl: Label = m.get("label")
+			if lbl != null and is_instance_valid(lbl):
+				lbl.text = "%s ×%d" % [message, int(m["count"])]
+			var old_tw: Tween = m.get("tween")
+			if old_tw != null and old_tw is Tween and (old_tw as Tween).is_valid():
+				(old_tw as Tween).kill()
+			panel.modulate.a = 1.0
+			var tw = create_tween()
+			m["tween"] = tw
+			tw.tween_interval(duration)
+			tw.tween_property(panel, "modulate:a", 0.0, 0.35)
+			tw.finished.connect(_on_toast_finished.bind(panel))
+			return
+		_merge_map.erase(message)
+	while active_toasts.size() >= MAX_ACTIVE_TOASTS:
+		_evict_oldest_toast()
+	var panel = _create_toast_panel(message, color, _feed_container)
+	_feed_container.add_child(panel)
+	active_toasts.append(panel)
+	var lbl: Label = panel.get_meta("toast_label", null)
+	var tw2 = create_tween()
+	_merge_map[message] = {"panel": panel, "label": lbl, "count": 1, "tween": tw2}
+	_animate_toast(panel, duration, tw2)
 
 
 func _create_toast_panel(message: String, color: Color, _parent: Control) -> PanelContainer:
@@ -257,9 +325,5 @@ func _evict_oldest_toast() -> void:
 		tw2.tween_callback(victim.queue_free)
 
 
-## 在 root 的子节点中找第一个 Control（兼容 fallback 路径）。
-func _find_first_control_child(root_node: Node) -> Control:
-	for c in root_node.get_children():
-		if c is Control:
-			return c
-	return null
+## （v6.38 已删：旧的"回退 root 第一个 Control"路径会把 toast 落进主画布造成层级混排，
+## 容器失效一律经 _build_toast_layer 重建独立层。）

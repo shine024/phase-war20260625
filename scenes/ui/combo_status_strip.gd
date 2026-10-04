@@ -4,6 +4,10 @@ extends PanelContainer
 ## 每秒轮询 combo_engine + 场上单位 mods（节流，非每帧）
 ## v21 P2: 追加"搭档协同"指示区——单按钮 🤝n/5，tooltip 列出 5 对搭档激活态
 ## （宽度敏感：本面板顶部预算 472px，6 套路图标已占 348px，搭档区只加 56px 保持 404px 内）
+## v6.35.2（用户拍板）：🤝n/5 与 🛡n/6 两个聚合钮移除（顶部预算被撑爆压住关卡信息
+## Capsule）——条上恒 6 个套路图标（回归锁 test_combo_strip_layout）。
+## 记录5#9（用户拍板）：图标改 GridContainer 两行排布（一行 5 个），图标 mouse_filter
+## 打开悬停提示（此前 IGNORE=悬浮零提示）；主场景 rect 同步收窄加高。
 
 const DT = preload("res://resources/design_tokens.gd")
 # 批次三 B10：字号 token 引入（10px 白名单/中文升 12）
@@ -20,28 +24,10 @@ const _COMBO_ORDER: Array[String] = [
 	ComboTactics.COMBO_CHEM,
 ]
 
-## v21 P2: 搭档协同显示顺序
-const _PAIR_ORDER: Array[String] = [
-	"pair_recon_artillery", "pair_engineer_infantry", "pair_aa_air",
-	"pair_armor_infantry", "pair_fort_support",
-]
-
-## R1-8（设计审查 F-07，2026-09-13）：v27 新六套装显示顺序。
-## 12 套全铺图标需 +252px 超顶部 472px 预算——采用搭档区同款聚合按钮（🛡n/6 + tooltip），
-## 激活态/名称/说明仍在 tooltip 完整可查（修复"新六套零 UI"的可见性缺口）。
-const _SUIT_ORDER: Array[String] = [
-	ComboTactics.COMBO_ARMOR_PHALANX,
-	ComboTactics.COMBO_FLAK_CURTAIN,
-	ComboTactics.COMBO_MEDIC_CHAIN,
-	ComboTactics.COMBO_SATURATION,
-	ComboTactics.COMBO_ENGINEER_LINE,
-	ComboTactics.COMBO_FORTRESS_HOLD,
-]
+## 记录5#9：一行图标数（第 6 个换行）
+const ICONS_PER_ROW: int = 5
 
 var _icon_buttons: Array = []  # [{btn:Button, combo_id:String, prev:int}]
-var _pair_btn: Button = null   # v21 P2: 搭档协同指示按钮
-var _suit_btn: Button = null   # R1-8: 新六套装（v27 改造2.0 套装）指示按钮
-var _suit_prev := 0            # v30 R3: 套装聚合钮上一激活档（弹跳触发用）
 var _refresh_acc: float = 0.0
 const REFRESH_SEC: float = 0.6
 var _dt_accum: float = 0.0  # 用于 tooltip 更新
@@ -52,9 +38,6 @@ var _cache_card_combos: Array = []
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
-	# v9.1 修复重叠：内容仅 348px（标题60 + 6×42按钮 + 间隔），原 520 会强制撑宽顶到 TopHudBar 居中区。
-	# 收到 360 让 PanelContainer 贴合实际内容，main.tscn 定位 (8,8,480,48) 给足 472px 余量。
-	custom_minimum_size = Vector2(360, 40)
 	# v25 HUD 家族底板（对齐资源栏/战斗日志同语言）
 	var bg := PanelStyles.make_hud_panel(0.4)
 	bg.set_content_margin_all(4)
@@ -67,7 +50,7 @@ func _ready() -> void:
 	margin.add_theme_constant_override("margin_bottom", 2)
 	margin.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(margin)
-	# HBox：标题 + 6 图标
+	# HBox：标题 + 两行网格
 	var hbox := HBoxContainer.new()
 	hbox.add_theme_constant_override("separation", 4)
 	hbox.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -82,85 +65,30 @@ func _ready() -> void:
 	title.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	title.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	hbox.add_child(title)
-	# 6 个套路图标
+	# 记录5#9：两行网格——一行 5 个，第 6 个换行（含 🤝🛡 聚合钮已随 v6.35.2 移除）
+	var grid := GridContainer.new()
+	grid.columns = ICONS_PER_ROW
+	grid.add_theme_constant_override("h_separation", 4)
+	grid.add_theme_constant_override("v_separation", 4)
+	grid.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	hbox.add_child(grid)
 	for combo_id in _COMBO_ORDER:
 		var def := ComboTactics.get_combo_def(combo_id)
 		if def.is_empty():
 			continue
 		var btn := _make_combo_icon_button(def, combo_id)
-		hbox.add_child(btn)
+		grid.add_child(btn)
 		_icon_buttons.append({"btn": btn, "combo_id": combo_id, "prev": 0})
-	# v21 P2: 搭档协同指示按钮（🤝 n/5，tooltip 列出全部搭档）
-	_pair_btn = _make_pair_button()
-	hbox.add_child(_pair_btn)
-	# R1-8: 新六套装聚合指示按钮（🛡 n/6，tooltip 列出套装与激活态）
-	_suit_btn = _make_suit_button()
-	hbox.add_child(_suit_btn)
-	# 宽度预算：原 408 + 4(间隔) + 56(套装钮) = 468 ≤ 472 顶部预算
-	custom_minimum_size = Vector2(468, 40)
-
-
-## v21 P2: 创建搭档协同指示按钮
-func _make_pair_button() -> Button:
-	var btn := Button.new()
-	btn.custom_minimum_size = Vector2(52, 30)
-	btn.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	btn.text = "0/5"
-	btn.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
-	btn.add_theme_color_override("font_color", Color(0.6, 0.6, 0.6, 1))
-	btn.add_theme_color_override("font_outline_color", DT.COLOR_BACKDROP_DEEP)
-	btn.add_theme_constant_override("outline_size", 1)
-	_set_combo_style(btn, 0)
-	btn.tooltip_text = _build_pair_tooltip(0)
-	return btn
-
-
-## v21 P2: 搭档协同 tooltip（列出 5 对搭档与激活态）
-func _build_pair_tooltip(active_count: int) -> String:
-	var lines: Array[String] = ["搭档协同（%d/5 激活）" % active_count]
-	var eng: RefCounted = _get_combo_engine()
-	for pid in _PAIR_ORDER:
-		var def: Dictionary = ComboTactics.PAIR_SYNERGIES.get(pid, {})
-		if def.is_empty():
-			continue
-		var active: bool = eng != null and eng.has_method("is_pair_active") and bool(eng.is_pair_active(pid))
-		lines.append("%s %s — %s" % ["✓" if active else "○", String(def.get("name", pid)), String(def.get("desc", ""))])
-	return "\n".join(lines)
-
-
-## R1-8: 创建新六套装聚合指示按钮（🛡 n/6）
-func _make_suit_button() -> Button:
-	var btn := Button.new()
-	btn.custom_minimum_size = Vector2(56, 30)
-	btn.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	btn.text = "🛡0/6"
-	btn.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
-	btn.add_theme_color_override("font_color", Color(0.6, 0.6, 0.6, 1))
-	btn.add_theme_color_override("font_outline_color", DT.COLOR_BACKDROP_DEEP)
-	btn.add_theme_constant_override("outline_size", 1)
-	_set_combo_style(btn, 0)
-	btn.tooltip_text = _build_suit_tooltip([])
-	return btn
-
-
-## R1-8: 新六套装 tooltip（列出 6 套 v27 改造2.0 套装与激活态）
-func _build_suit_tooltip(active_ids: Array) -> String:
-	var active_count: int = active_ids.size()
-	var lines: Array[String] = ["改造套装（%d/6 激活）" % active_count]
-	for combo_id in _SUIT_ORDER:
-		var def: Dictionary = ComboTactics.get_combo_def(combo_id)
-		if def.is_empty():
-			continue
-		var mark := "✓" if active_ids.has(combo_id) else "○"
-		lines.append("%s %s — %s" % [mark, String(def.get("name", combo_id)), String(def.get("desc", ""))])
-	lines.append("单卡装 ≥2 配套改造即激活（单卡增益）；凑齐兵种组合升满档")
-	return "\n".join(lines)
+	# 宽度预算：标题~58 + 5×42+4×4=226 + 边距 ≈308 ≤430（Capsule 左缘 435 契约）；
+	# 高：2×30+4 行距 + 边距 ≈76（main.tscn offset_bottom 同步 48→84，BuffFoldCard 下移）
+	custom_minimum_size = Vector2(308, 76)
 
 
 func _make_combo_icon_button(def: Dictionary, combo_id: String) -> Button:
 	var btn := Button.new()
 	btn.custom_minimum_size = Vector2(42, 30)
-	btn.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	# 记录5#9：STOP——图标可悬停弹 tooltip（原 IGNORE=悬浮零提示零反馈）
+	btn.mouse_filter = Control.MOUSE_FILTER_STOP
 	btn.text = String(def.get("icon", "?"))
 	btn.add_theme_font_size_override("font_size", DT.FONT_SIZE_BODY)
 	btn.add_theme_color_override("font_color", Color(0.6, 0.6, 0.6, 1))
@@ -237,15 +165,6 @@ func _refresh() -> void:
 			_set_combo_style(btn, 0)
 			btn.tooltip_text = _build_tooltip(entry["combo_id"], 0)
 			entry["prev"] = 0
-		if _pair_btn != null:
-			_set_combo_style(_pair_btn, 0)
-			_pair_btn.text = "0/5"
-			_pair_btn.tooltip_text = _build_pair_tooltip(0)
-		if _suit_btn != null:
-			_set_combo_style(_suit_btn, 0)
-			_suit_btn.text = "🛡0/6"
-			_suit_btn.tooltip_text = _build_suit_tooltip([])
-		_suit_prev = 0
 		return
 	# 全队激活 combo_id（通过 mechanisms 反推）
 	var team_mechs: Array = eng.get_active_mechanisms()
@@ -269,35 +188,6 @@ func _refresh() -> void:
 		if level > int(entry.get("prev", 0)):
 			_pop_button(btn)
 		entry["prev"] = level
-	# v21 P2: 搭档协同指示刷新
-	if _pair_btn != null:
-		var pair_active: int = 0
-		if eng.has_method("is_pair_active"):
-			for pid in _PAIR_ORDER:
-				if bool(eng.is_pair_active(pid)):
-					pair_active += 1
-		_set_combo_style(_pair_btn, 2 if pair_active > 0 else 0)
-		_pair_btn.text = "%d/5" % pair_active
-		_pair_btn.tooltip_text = _build_pair_tooltip(pair_active)
-	# R1-8: 新六套装指示刷新（全队满档=绿 / 单卡激活=橙，聚合为计数）
-	if _suit_btn != null:
-		var suit_active: Array = []
-		for combo_id in _SUIT_ORDER:
-			if team_combos.has(combo_id) or card_combos.has(combo_id):
-				suit_active.append(combo_id)
-		var suit_level := 0
-		for combo_id in suit_active:
-			if team_combos.has(combo_id):
-				suit_level = 2
-				break
-		if suit_level == 0 and not suit_active.is_empty():
-			suit_level = 1
-		_set_combo_style(_suit_btn, suit_level)
-		_suit_btn.text = "%d/6" % suit_active.size()
-		_suit_btn.tooltip_text = _build_suit_tooltip(suit_active)
-		if suit_level > _suit_prev:
-			_pop_button(_suit_btn)
-		_suit_prev = suit_level
 
 
 ## v30 R3：按钮激活弹跳（一次性 scale 脉冲；减少动效开关旁路）
@@ -318,11 +208,11 @@ func _pop_button(btn: Button) -> void:
 	)
 
 ## 从 active mechanisms 反推 combo_id（机制名→套路映射）
-## R1-8：遍历范围扩到 12 套（旧 6 + v27 新 6）——图标按钮只查询各自 id，
-## 返回集扩大对旧 6 钮无行为影响；新六套装经聚合按钮消费。
+## v6.35.2：聚合钮移除后只服务 6 个常驻图标（v27 新六套装的实时态经
+## 底栏 NameSection 备战预示 + combo_engine 机制消费，不在本条显示）。
 func _mechs_to_combo_ids(mechs: Array) -> Array:
 	var result: Array = []
-	for combo_id in (_COMBO_ORDER + _SUIT_ORDER):
+	for combo_id in _COMBO_ORDER:
 		var def := ComboTactics.get_combo_def(combo_id)
 		var combo_mechs: Array = def.get("mechanisms", [])
 		var hit: bool = false

@@ -20,6 +20,8 @@ const CombatFeedback = preload("res://scripts/combat_feedback.gd")
 const VfxImpactFactory = preload("res://scripts/battle/vfx_impact_factory.gd")
 const PhaseLawCastEffect = preload("res://scenes/effects/phase_law_cast_effect.gd")
 const ScreenShakeScript = preload("res://scenes/effects/screen_shake.gd")
+## v6.38.2（记录5#11 实机截图）：mega_shield 装饰层随体型/脚线锚定需要的实体高查询
+const CardFootAnchors = preload("res://data/card_foot_anchors.gd")
 ## v6.6: 超级火炮连击复用正式火炮曲射弹道
 const BulletScene = preload("res://scenes/units/bullet.tscn")
 ## 曲射炮击起点偏移：目标正上方 + 左右随机，保证从屏幕外抛物线飞入
@@ -793,20 +795,25 @@ static func _apply_mega_shield(owner: Owner, params: Dictionary) -> void:
 		if u.has_method("add_shield"):
 			u.add_shield(shield_amount)
 		if u is Node2D:
-			_create_shield_dome((u as Node2D).global_position, owner)
+			_create_shield_dome(u as Node2D, owner)
 	# v9.3c: 战场中央专属护盾贴图（owner 配色：玩家蓝青/敌方红橙）
 	var shield_tex: Texture2D = _load_spell_texture("player_shield")
 	if shield_tex != null and _battlefield is Node2D and not allies.is_empty():
 		var center: Vector2 = (allies[0] as Node2D).global_position if allies[0] is Node2D else (_battlefield as Node2D).global_position
+		# v6.38.2（记录5#11 实机截图）：施放闪爆与呼吸泡改锚定宿主躯体——原 300px 固定
+		# 尺寸且以脚线为泡心，半截入地、小单位被泡淹没（截图顶部巨型青泡的真身）。
+		var h0: float = _unit_content_height(allies[0] as Node2D)
+		var body_center: Vector2 = center + Vector2(0, -h0 * 0.45)
 		var shield_tint: Color = Color(0.3, 0.7, 1.0) if owner == Owner.PLAYER else Color(1.0, 0.35, 0.2)
-		VfxImpactFactory.spawn_spell_burst(_battlefield, center, shield_tex, shield_tint, 260.0, 1.2)
+		VfxImpactFactory.spawn_spell_burst(_battlefield, body_center, shield_tex, shield_tint, 260.0, 1.2)
 		# v14: 读图 6/10"缺呼吸脉动"——爆发后留 2.5s 呼吸能量罩,补"护盾持续存在"语义
 		var dome := Sprite2D.new()
 		dome.texture = shield_tex
-		# v20.29: 缩放改按内容实宽（SPELL_BURST_CONTENT_W）——原用画布宽(1024)而内容 916，
-		# 罩子比标称 300px 小 ~10%，与 spawn_spell_burst 的内容宽标定口径对齐。
-		var dome_scale: float = 300.0 / maxf(VfxImpactFactory.spell_content_width(shield_tex), 1.0)
-		dome.position = center
+		# v20.29: 缩放按内容实宽（SPELL_BURST_CONTENT_W）标定；v6.38.2 尺寸随宿主实体高
+		# （与 fort_shield_aura 贴图罩同式 max(122, h×1.46)），底缘贴脚线（泡心=脚线-dsz/2）。
+		var dome_dsz: float = maxf(122.0, h0 * 1.46)
+		var dome_scale: float = dome_dsz / maxf(VfxImpactFactory.spell_content_width(shield_tex), 1.0)
+		dome.position = center + Vector2(0, -dome_dsz * 0.5)
 		dome.scale = Vector2(dome_scale, dome_scale)
 		dome.modulate = Color(shield_tint.r, shield_tint.g, shield_tint.b, 0.0)
 		dome.z_index = 6
@@ -1173,11 +1180,15 @@ static func _create_nano_swarm_hit(pos: Vector2, owner: Owner) -> void:
 
 ## 能量罩：六边形能量网格（v8.1 重设计——7 个六边形阵列波纹展开）
 ## PLAYER=蓝色 / ENEMY=暗红色
-static func _create_shield_dome(pos: Vector2, owner: Owner) -> void:
+static func _create_shield_dome(unit: Node2D, owner: Owner) -> void:
 	if _battlefield == null or not (_battlefield is Node2D):
 		return
+	# v6.38.2（记录5#11 实机截图）：波纹簇随体型 + 居中于躯体中段——原实现以单位脚线
+	# 为原点展开，下半截压进地里读成"脚下花纹"，且固定尺寸在小单位上巨大失真。
+	var h: float = _unit_content_height(unit)
 	var dome := Node2D.new()
-	dome.position = pos
+	dome.position = unit.global_position + Vector2(0, -h * 0.45)
+	dome.scale = Vector2.ONE * clampf(h / 74.0, 0.8, 2.6)
 	_battlefield.add_child(dome)
 	# 六边形阵列坐标：中心 + 6 环绕（v8.1a：半径22→28，加大能量罩范围）
 	var hex_positions: Array[Vector2] = [
@@ -1234,6 +1245,18 @@ static func _make_hexagon_points(size: float) -> PackedVector2Array:
 		var ang := (TAU * i) / 6.0
 		pts.append(Vector2(cos(ang), sin(ang)) * size)
 	return pts
+
+
+## v6.38.2：宿主实体内容高（像素，含缩放）——mega_shield 装饰层随体型的数据源。
+## 经 CardFootAnchors（标定表优先/AtlasTexture 实测+缓存）；缺 Sprite 回退 60px 小单位基准。
+static func _unit_content_height(unit: Node2D) -> float:
+	if unit == null or not is_instance_valid(unit):
+		return 60.0
+	var spr := unit.get_node_or_null("Sprite") as Sprite2D
+	if spr == null or spr.texture == null:
+		return 60.0
+	var h: float = CardFootAnchors.entity_height_for_sprite(spr)
+	return h if h > 10.0 else 60.0
 
 ## v8.1: 上升烟柱粒子（核爆蘑菇云效果）。
 ## v8.5+: 实现已迁移到 VfxImpactFactory.spawn_smoke_column（公共化），本方法转发调用，

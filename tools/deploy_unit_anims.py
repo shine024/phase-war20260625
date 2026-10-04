@@ -158,60 +158,66 @@ if '--bake-existing' in sys.argv:
     print('baked units: %d  skipped(幂等): %d  backup -> %s' % (n_done, n_skip, bak_root))
     sys.exit(0)
 
-keys = []
-import importlib.util
-spec = importlib.util.spec_from_file_location('gua', 'tools/generate_unit_animations.py')
-gua = importlib.util.module_from_spec(spec)
-sys.modules['gua'] = gua
-spec.loader.exec_module(gua)
-keys.extend(gua.UNITS.keys())
-extra = json.load(open('tools/unit_animations_extra.json', encoding='utf-8'))
-keys.extend(k for k in extra.keys() if k not in keys)
-keys.sort(key=len, reverse=True)
-print('known keys:', len(keys))
+# v6.37 修复(2026-10-01): 本文件此前在模块层裸跑整套重发布管线——任何
+# `import deploy_unit_anims`(如 img25_route_apply 取 bake_outline_body_only)
+# 都会触发 101 个资料目录全量重发布 + anim.json 重写(10-01 实测把
+# cold_arty_brem1 的 route3 10帧版打回 8帧, 波及 97 单位 mtime)。
+# 管线只在直接运行本脚本时执行; import 仅取函数。
+if __name__ == '__main__':
+    keys = []
+    import importlib.util
+    spec = importlib.util.spec_from_file_location('gua', 'tools/generate_unit_animations.py')
+    gua = importlib.util.module_from_spec(spec)
+    sys.modules['gua'] = gua
+    spec.loader.exec_module(gua)
+    keys.extend(gua.UNITS.keys())
+    extra = json.load(open('tools/unit_animations_extra.json', encoding='utf-8'))
+    keys.extend(k for k in extra.keys() if k not in keys)
+    keys.sort(key=len, reverse=True)
+    print('known keys:', len(keys))
 
-os.makedirs(DST, exist_ok=True)
-n_units = n_sheets = n_png = 0
-for d in sorted(os.listdir(SRC)):
-    dp = os.path.join(SRC, d)
-    if not os.path.isdir(dp) or d.startswith('_'):
-        continue
-    if d.startswith('enemy_master') or d.startswith('boss_'):
-        continue
-    key = next((k for k in keys if d == k or d.startswith(k + '_')), None)
-    if key is None:
-        # fix5: 目录带 NNN_ 序号前缀, 剥离后再匹配
-        stripped = re.sub(r'^\d{3}_', '', d)
-        key = next((k for k in keys if stripped == k or stripped.startswith(k + '_')), None)
-    if key is None:
-        print('!! no key match for', d)
-        continue
-    out_dir = os.path.join(DST, key)
-    os.makedirs(out_dir, exist_ok=True)
-    counts = {}
-    for anim in ('idle', 'attack'):
-        frames = sorted(glob.glob(os.path.join(dp, anim, 'f*.png')))
-        if len(frames) < 4:
-            print('!! skip %s/%s only %d frames' % (d, anim, len(frames)))
+    os.makedirs(DST, exist_ok=True)
+    n_units = n_sheets = n_png = 0
+    for d in sorted(os.listdir(SRC)):
+        dp = os.path.join(SRC, d)
+        if not os.path.isdir(dp) or d.startswith('_'):
             continue
-        sheet = Image.new('RGBA', (FRAME * len(frames), FRAME), (0, 0, 0, 0))
-        for i, f in enumerate(frames):
-            im = Image.open(f).convert('RGBA')
-            if im.size != (FRAME, FRAME):
-                im = im.resize((FRAME, FRAME), Image.LANCZOS)
-            sheet.paste(im, (i * FRAME, 0))
-        if OUTLINE_BAKE:
-            sheet = bake_outline_on_sheet(sheet)
-        sheet.save(os.path.join(out_dir, 'sheet_%s.png' % anim))
-        counts[anim] = len(frames)
-        n_sheets += 1
-    # 清理 v1 逐帧副本
-    for old in glob.glob(os.path.join(out_dir, 'idle_f*.png')) + glob.glob(os.path.join(out_dir, 'attack_f*.png')):
-        os.remove(old)
-        n_png += 1
-    meta = {'fps': FPS, 'frame_size': FRAME, 'counts': counts}
-    if OUTLINE_BAKE and counts:
-        meta['outline'] = outline_meta()
-    json.dump(meta, open(os.path.join(out_dir, 'anim.json'), 'w', encoding='utf-8'))
-    n_units += 1
-print('deployed units: %d  sheets: %d  removed v1 pngs: %d' % (n_units, n_sheets, n_png))
+        if d.startswith('enemy_master') or d.startswith('boss_'):
+            continue
+        key = next((k for k in keys if d == k or d.startswith(k + '_')), None)
+        if key is None:
+            # fix5: 目录带 NNN_ 序号前缀, 剥离后再匹配
+            stripped = re.sub(r'^\d{3}_', '', d)
+            key = next((k for k in keys if stripped == k or stripped.startswith(k + '_')), None)
+        if key is None:
+            print('!! no key match for', d)
+            continue
+        out_dir = os.path.join(DST, key)
+        os.makedirs(out_dir, exist_ok=True)
+        counts = {}
+        for anim in ('idle', 'attack'):
+            frames = sorted(glob.glob(os.path.join(dp, anim, 'f*.png')))
+            if len(frames) < 4:
+                print('!! skip %s/%s only %d frames' % (d, anim, len(frames)))
+                continue
+            sheet = Image.new('RGBA', (FRAME * len(frames), FRAME), (0, 0, 0, 0))
+            for i, f in enumerate(frames):
+                im = Image.open(f).convert('RGBA')
+                if im.size != (FRAME, FRAME):
+                    im = im.resize((FRAME, FRAME), Image.LANCZOS)
+                sheet.paste(im, (i * FRAME, 0))
+            if OUTLINE_BAKE:
+                sheet = bake_outline_on_sheet(sheet)
+            sheet.save(os.path.join(out_dir, 'sheet_%s.png' % anim))
+            counts[anim] = len(frames)
+            n_sheets += 1
+        # 清理 v1 逐帧副本
+        for old in glob.glob(os.path.join(out_dir, 'idle_f*.png')) + glob.glob(os.path.join(out_dir, 'attack_f*.png')):
+            os.remove(old)
+            n_png += 1
+        meta = {'fps': FPS, 'frame_size': FRAME, 'counts': counts}
+        if OUTLINE_BAKE and counts:
+            meta['outline'] = outline_meta()
+        json.dump(meta, open(os.path.join(out_dir, 'anim.json'), 'w', encoding='utf-8'))
+        n_units += 1
+    print('deployed units: %d  sheets: %d  removed v1 pngs: %d' % (n_units, n_sheets, n_png))

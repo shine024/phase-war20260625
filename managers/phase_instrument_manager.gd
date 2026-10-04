@@ -592,6 +592,28 @@ func equip_card(slot_index: int, card: CardResource, _energy_manager: Node = nul
 
 	var arr: Array = instrument_slots.get(color, [])
 	var old_card: CardResource = arr[color_index]
+	# v6.36 防重装备闸①：同槽重装同一实例（装备按钮双击/拖拽竞态触发 swap-to-self）
+	# 幂等成功、不发电信号——否则 card_swapped(旧卡=自己) 会让 presenter 把槽上这张卡
+	# 再加回背包，卡同时存在于槽位+背包，换位仪归还后背包出现两张。
+	if old_card == card or (old_card != null and not card.instance_id.is_empty()
+			and old_card.instance_id == card.instance_id):
+		return true
+	# v6.36 防重装备闸②：同一实例已在其它槽（双击装备把已装卡又装进下一个空槽）
+	# 按"移动"语义先静默清源槽（不发归还信号——卡没离开相位仪），保证槽间互斥不破；
+	# 源头堵死"同一实例双槽"状态，否则 unequip_all 逐槽归还=背包两张。
+	if not card.instance_id.is_empty():
+		for color_other in SLOT_COLOR_ORDER:
+			var arr_o: Array = instrument_slots.get(color_other, [])
+			var moved := false
+			for i_o in range(arr_o.size()):
+				if color_other == color and i_o == color_index:
+					continue
+				var oc = arr_o[i_o]
+				if oc is CardResource and oc != null and oc.instance_id == card.instance_id:
+					arr_o[i_o] = null
+					moved = true
+			if moved:
+				instrument_slots[color_other] = arr_o
 	arr[color_index] = card
 	instrument_slots[color] = arr
 
@@ -645,6 +667,9 @@ func unequip_card(slot_index: int) -> void:
 ## 战斗结束后：清空所有槽位并将卡片逐一放回背包的第一个空位
 func unequip_all_and_return_to_backpack() -> void:
 	var cards_to_return: Array[CardResource] = []
+	# v6.36 归还去重：同一实例只归还一次（历史双持档/竞态残留兜底——
+	# equip_card 闸②已从源头堵死双槽，此处防御旧档与其它未收口路径）
+	var returned_keys: Dictionary = {}
 	for color in CARD_SLOTS:
 		var arr: Array = instrument_slots.get(color, [])
 		for i in range(arr.size()):
@@ -655,6 +680,11 @@ func unequip_all_and_return_to_backpack() -> void:
 				continue
 			var c: CardResource = c_raw
 			if c != null:
+				var rk: String = c.instance_id if not c.instance_id.is_empty() else "%s@%d" % [c.card_id, c.get_instance_id()]
+				if returned_keys.has(rk):
+					arr[i] = null
+					continue
+				returned_keys[rk] = true
 				cards_to_return.append(c)
 				arr[i] = null
 		instrument_slots[color] = arr

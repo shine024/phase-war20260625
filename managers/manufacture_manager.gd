@@ -135,13 +135,24 @@ func _pool_base(card_id: String) -> float:
 func get_effective_pool(card_id: String) -> Array:
 	return ManufacturePools.get_effective_pool(_pool_base(card_id), get_pity(card_id), get_pool_high_boost())
 
-## 基础消耗（按卡时代；未乘折扣）
+## 基础消耗（按卡时代 × 战力缩放；未乘折扣）
+## v6.38（记录5#7）：高战力卡成本随 √战力 上浮（0.75~3.0×）——此前纯时代表，
+## 同时代内高战力卡与杂兵同价（用户主诉"高战力要的资源太少"）。
 func get_base_cost(card_id: String) -> Dictionary:
 	var card: CardResource = DefaultCards.get_card_by_id(card_id)
 	var era := 0
+	var power := 100.0
 	if card != null:
 		era = int(card.era)
-	return ManufacturePools.get_cost_for_era(era)
+		power = float(card.power)
+	var mult := ManufacturePools.power_cost_mult(power)
+	if absf(mult - 1.0) < 0.001:
+		return ManufacturePools.get_cost_for_era(era)
+	var base := ManufacturePools.get_cost_for_era(era)
+	var out := {}
+	for rid in base:
+		out[rid] = maxi(1, int(ceil(float(base[rid]) * mult)))
+	return out
 
 ## 实际消耗（×工坊等级折扣，逐项向上取整、至少 1）
 func get_cost(card_id: String) -> Dictionary:

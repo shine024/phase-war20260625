@@ -139,8 +139,14 @@ func get_all_card_ids() -> Array:
 
 ## 添加一张额外卡（合成卡、掉落卡等）
 ## silent：为 true 时不发 cards_changed（由调用方自己做增量 UI，避免先全量重建再 add_card 导致双倍开销甚至卡死）
+## v6.36 去重：同一 instance_id 只保留一条——signal 链（card_added_to_backpack /
+## card_swapped 旧卡归还）对同一实例的第二次入包永远是 bug（历史双持卡归还/竞态），
+## 两行同 id 在 get_all_cards 里解析为同一个实例对象，玩家看到的就是"卡变两张"。
+## 注意：读档路径 restore_extra_cards/append_extra_cards 保留重复条目不动（旧档兼容）。
 func add_extra_card(card_id: String, silent: bool = false) -> void:
 	if card_id.is_empty():
+		return
+	if _extra_card_ids.has(card_id):
 		return
 	_extra_card_ids.append(card_id)
 	_invalidate_cards_cache()

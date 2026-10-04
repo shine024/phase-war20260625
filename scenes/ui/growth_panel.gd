@@ -948,11 +948,17 @@ func _open_phase_master_skill_panel() -> void:
 
 ## v8.x: 技能树面板关闭回调（关闭按钮 / backdrop 点击 / 外部调用）
 func _on_phase_master_skill_closed() -> void:
+	# v6.38：host 挂 /root 下，场景切换时存活——closed 信号可在本面板出树后到达
+	# （记录5#16 root null 报错源之一）。
+	if not is_inside_tree():
+		return
 	_close_phase_master_skill_panel()
 	_update_skill_tree_badge()
 
 ## 隐藏技能面板（连 CanvasLayer 一起隐藏，彻底释放点击拦截）
 func _close_phase_master_skill_panel() -> void:
+	if not is_inside_tree():
+		return
 	var canvas: CanvasLayer = get_tree().root.get_node_or_null("PhaseMasterSkillCanvas")
 	if canvas != null:
 		canvas.visible = false

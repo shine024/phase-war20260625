@@ -1,8 +1,15 @@
 # Tutorial System
 
-> **Status**: Designed
+> **Status**: Implemented（本文档描述的 v1 八步制已过时，仅存历史参考）
 > **Source**: `managers/tutorial_progression_manager.gd`
 > **Last Updated**: 2026-04-24
+>
+> **⚠️ 现状注记（v6.39，2026-10-03）**：实际实现为 **14 步制**（首战提前至第 4 位、
+> 战后续播 10 步"按需点播" chain_paused——玩家首次触达对应面板才播当前步）。
+> v6.39 起点播段挂起等待期在目标工位常驻**指路标**（柔和聚光+「下一步」提示条，
+> TPM `tutorial_pointer_requested` 驱动，参考《朝露：境界旅程》路线指引模式），
+> overlay 带**进度标签**（第 X/14 步）与**跳过确认框**，正文关键名词琥珀色强调。
+> 权威实现以源码与 `docs/CHANGELOG.md` v6.36/v6.38/v6.39 各节为准。
 
 ## Overview
 

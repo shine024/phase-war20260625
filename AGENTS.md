@@ -24,6 +24,31 @@
 6. **客观缺陷与审美取舍先分类**：对齐/一致性/覆盖类有客观正确答案的直接修；只有真正无对错的参数才交用户拍板，且必须附推荐值与对比图。
 7. **每类系统留常驻回归锁**：锁内断言覆盖上述全部维度，修复后回归自动拦截（范例：`tests/unit/combat/test_shield_foot_anchor.gd` 九形态+尺寸断言）。
 
+## v6.38 记录5实机验收15条批（2026-10-02，详见 CHANGELOG）
+
+**改护盾罩/组合技条/Toast/制造成本/战斗音效/world_map 前必读本节。** 15 条实机反馈 14 修 1 留观。
+
+- **⚠️ 回归锁在库 ≠ 实现在库（本批头号教训）**：v6.32.3/v6.32.4 护盾修复与 v6.35.2 组合技聚合钮移除**代码从未进提交历史**（pickaxe 实证），只有测试/文档入库——库内回归锁断言的是一套从未存在的实现，"修复丢失"实为从未存在。**发批时必须 `git diff --stat` 核对实现文件确在改动集，不能只看测试绿。**
+- **护盾罩三件套（重写定稿）**：脚线公式=`spr.position.y + offset.y×|s| + (0.5-f_tex)×canvas_h×|s|`（offset 已把卡图脚线对到原点，缺 offset 项=双重对齐下沉）；f_tex 三级优先=①`UnitFrameAnimDriver.sheet_foot_frac`（anim.json `foot_frac` 字段=内容底缘余量占比，**tools/_tmp_anim_foot_frac.py 已回填 222 目录，再生成 sheet 后必须重跑**）②CardFootAnchors ③0；半径=`base_radius_for(max(52, h×0.62))`（堡垒环 max(38,h×0.62)），实体高经 `CardFootAnchors.entity_height_for_sprite` 由 construct_unit 低频拍写 aura meta `host_content_h`。动四者任一跑 `test_shield_foot_anchor.gd`。
+- **护盾特效三条渲染链同语言（v6.38.2 定稿，实机截图复检拍板）**：fort_shield_aura 持续罩 / mega_shield 波纹簇（`_create_shield_dome`，随体型 h/74 钳 0.8~2.6、簇心=feet-h×0.45）/ mega_shield 呼吸泡（max(122,h×1.46)、底缘贴脚线）——**新加任何护盾类特效禁止固定尺寸、禁止以脚线为泡心**（半截入地+小单位被泡淹没=记录5#11 截图两处主诉真身）；实体高统一走 `CardFootAnchors.entity_height_for_sprite`。
+- **world_map 契约（v6.38.1 定稿）**：①`incursions_changed` 唯一真身=EndlessBlackgateManager 自有信号——**SignalBus 无此信号**，连 SignalBus 的 `has_signal` 守卫恒 false=链从未接线；②`_show_level_info_popup` 门开启态（`level_index>=100 and _is_blackgate_unlocked()`）置顶嵌黑门区块（`_append_gate_section`：波数口径+入场规则读 EndlessBlackgateRef 常量+踏入黑门按钮）；③**新增函数一律放 `_ready()` 之后**（v6.35 曾把 `_on_incursions_changed` 插进 `_ready` 函数体中间吞掉建图链=基地进图全黑）。回归锁 `test_world_map_ready_builds_canvas.gd` 6 用例全绿。
+- **组合技条契约**：恒 6 图标无聚合钮（v6.35.2）+ GridContainer 两行（一行 5 个，记录5#9）+ 图标 mouse_filter=STOP（IGNORE=悬浮零提示）。条 min 宽 ≤430（关卡信息 Capsule 左缘 435）；主场景 rect (8,8,320,84)、BuffFoldCard top=92 同步。
+- **提示双通道**：`SignalBus.feed_message` = 左下 feed 通道（获得/解锁类低优先级提示，ToastManager `_feed_container` 左下向上堆叠、同文案合并）；右上角 toast 留给操作反馈。**toast 容器失效一律 `_build_toast_layer()` 重建（幂等），禁止回退主画布**——旧 `_find_first_control_child` 回退把 toast 落进 base canvas 与 PopupLayer/拖拽预览树序混排（"提示盖卡图/卡框盖提示交替"根因，函数已删防复活）。
+- **制造成本战力缩放**：`ManufacturePools.power_cost_mult = clamp(√(power/200), 0.75, 3.0)`，`get_base_cost` 同源缩放（扣费/UI/tooltip 全走它）——调参考值/上下限同步 `test_manufacture_power_cost.gd` 与 tooltip 文案。
+- **音效**：战斗音效已重制为程序合成素材（`tools/_tmp_gen_combat_sfx.py` 可重跑；旧 blip 备份 `D:/godotplay/_art_backup/sfx_toy_blips_20261002/`）；audio_manager 播放器=**每名 3 池轮转**（`_players[name]` 是 Array，勿改回单播放器——同名连发截断=核爆齐射没声根因）；回基地转场=`return_base` 专用音；苏醒演出=风声环境音+收场进 hub（`stop_music` API）。
+- **拆场守卫补漏**（记录5#16 六处）：afk_panel 结算弹窗回退与 battle_ended flush、growth_panel 技能画布关闭链、main `_on_battle_started_close_skill_canvas`、backpack 拖拽 preview/overlay 工具链、tutorial 聚光目标解析、settings UI scale——新加 autoload 信号消费方/延迟回调一律头部 `is_inside_tree()` 早退。
+- **挂机在场标志**：`_waiting_for_battle_end` 清零必须在 `is_running` 判定**之前**（stop_afk 后残留 true=挂机假死）。
+- **场上单位计数口径（v6.38.3 定稿）**：HUD/产兵帽一律走 `get_player_unit_count()`/`get_enemy_unit_count()`（实时 recount+回写缓存）——**缓存计数器只覆盖部署链，僚机/召唤类不经 `request_player_deploy` 入场=缓存恒少计**（"场上9个写6个"根因）；`construct_unit._die()` 的两条复活返回点必须 `_is_dying=false`（残留=计数排除+下次死亡早退永生僵尸）。新加玩家单位入场路径时不要绕开部署链计数假设，显示口径以 recount 为准。
+
+## v6.36 换装防重装备三闸批（2026-10-02，详见 CHANGELOG）
+
+**改 equip_card/unequip_all/背包入包链（add_extra_card）、加新装备入口前必读本节。** 用户主诉"装配/换位仪时有的卡退回背包变成2张"根修。
+
+- **互斥不变式（铁律）**：一张卡实例要么在相位仪槽、要么在背包 `_data`，永不两处。破坏它的三个已知口已全部收口：①`equip_card` 同槽重装同一实例=幂等成功**零信号**（发 `card_swapped(旧卡=自己)` 会让 presenter 把槽上卡加回背包）；②`equip_card` 同实例已在其它槽=**移动语义**（静默清源槽，不还卡）；③`unequip_all_and_return_to_backpack` 按 instance_id 去重归还（历史双持旧档兜底）。**新加任何装备路径（脚本/编辑器/AI 调用）必须走这三个语义，禁止绕过 equip_card 直写 instrument_slots 后再发归还信号。**
+- **`BackpackData.add_extra_card` 同 instance_id 去重**——signal 入包链（card_added_to_backpack / card_swapped 旧卡归还）对同一实例的第二次入包永远是 bug。**读档路径 `restore_extra_cards`/`append_extra_cards` 保留重复条目不动**（旧档兼容），勿"顺手"统一。
+- v38 的 `enqueue_backpack_card_id` 入队去重只堵存档队列侧（pending/last_known），堵不住面板 `_data` 侧——排查"卡变两张"先分清重复活在哪一层：`_data`（面板 get_extra_card_ids 计数）vs 队列（SaveManager）vs 槽位双持。
+- 实机复现探针 `tests/_tmp_swap_dup_probe.tscn`（真 autoload+真背包面板，T1-T9）；回归锁 `tests/unit/systems/test_instrument_no_dup_return.gd`（6 用例）。⚠️ gdunit 里 PIM 实例必须 `get_tree().root.add_child` 挂树内再覆盖槽位（树外实例 `get_node_or_null` 刷报错噪音）；⚠️ `--script`/`_ready` 里调含 await 的探针函数必须 `await`（协程孤儿回收=探针静默空跑，本轮实踩）。
+
 ## v6.34 生视频重做攻击动画批：暂存审阅制 + 三棒接力（2026-09-28，详见 CHANGELOG 与 docs/单位分帧动画生成管线.md §八）
 
 **⚠️ 2026-09-30 起生视频与白底直出生图路线均退役：单位攻击分帧动画一律走 §十 锚定帧先行路线（`tools/img25_anchor_gen.py` + `tools/img25_attack_gen.py`，暂存审阅制不变）。本节保留作暂存审阅制/布置三件套的出处。**
@@ -48,6 +73,17 @@
 - **结算面板 endless 分支**：`_is_endless()`（summary 带 "endless"）→ 黑门战报取代推图战绩；缴获页门控 `player_won or _is_endless()`（旧门控吞无尽缴获是真 bug 勿回退）。
 - **布局池/背景/tint**：`ENDLESS_LAYOUTS` 表驱动加变体零代码；程序化底图三档（t1 舰队剪影/t2 黑门残环+红紫晶脉）；warp shader `run_tint` 按环境键哈希注入。AI 底图（bg_endless_gate_t1/t2.png）落地即自动优先加载（`_get_endless_tier_tex` 既有契约）。
 - 回归锁：`tests/unit/battle/test_gate_core_structure.gd`（9 用例）+ `tests/unit/ui/test_settlement_endless_report.gd`（3 用例）；xeno 数据锁 20→21/配装 137→140（本体入册）已同步。
+
+## v6.37 挂机进发可见化 + PM 战僵持兜底复活批（2026-10-02，详见 CHANGELOG）
+
+**改 battle_manager._process / 挂机状态机 / 部署失败消费 / afk_panel 前必读本节。** 用户实机三连主诉："挂机进发应显示正在进发"、"精神不够等无法前进应有提示"、"第10关打完卡在那里"（实机 trace.log：PM 战第二场 9 秒部署 halt 后 **20 分钟零动作**，deploy fail reason 恒空串）。
+
+- **PM 战 `_process` 早退铁律**：`battle_manager._process` 头部 `if _is_phase_master_battle:` 分支内只做僵持累加 + `_check_pm_stalemate_timeout()` 再 return——**任何"PM 战也要跑"的每帧逻辑必须写进这个分支，写在本行之后=死代码**（P2-8 僵持判负曾因此失效一年：敌方产兵疲劳枯竭 + 玩家全 `base_speed=0` 定点单位够不着基地 → 零敌人零伤害无限挂起）。僵持清零钩子=`unit_damaged`/`enemy_phase_driver_hp_changed`（有战斗活动不误判）。
+- **部署失败原因唯一读取口=`BattleManager.get_last_deploy_fail_reason()`**：BattleSpawnSystem 是 BattleManager 的 RefCounted 子系统**不是 autoload**，`get_node("/root/BattleSpawnSystem")` 恒 null（记录4#7 的 reason 埋点因此从未工作过、`afk_power_cap_hint` 弹窗从未触发过）。afk_mode_manager 与 auto_deploy_controller 两处消费已改访问器，新增消费方勿再走节点路径。
+- **挂机部署失败两分类**：持久态（`_PERSISTENT_DEPLOY_FAIL_REASONS`：power_cap/restricted_unit/deploy_uses_exhausted/max_units/invalid_loadout——本场内不自愈）**立即弃卡**并 `deploy_hint.emit` 人话提示；暂时态（insufficient_energy/slot_busy 等）照旧 0.5s 轮转，连败 20 次放弃时也 emit。面板经 `deploy_hint` 信号在状态行显示"⚠ …"。
+- **TRAVELING 态有复位**：`_on_battle_started_from_bus` 里 TRAVELING→RUNNING 并广播——状态机进战斗后不再停留行进态。面板行进倒计时数据源=`get_travel_remaining_seconds()`/`get_current_level()`（勿再读私有 `_pending_level`）。
+- **面板拆场守卫**：afk_panel 的 `_on_afk_settled`/`_on_afk_state_changed` 头部 `is_inside_tree()` 早退——main._exit_tree→stop_afk 链会在已出树面板上打 get_node 绝对路径 ERROR 且弹窗无处挂载。
+- 回归锁：`tests/unit/systems/test_afk_travel_and_deploy_hint.gd`（6 用例，含 PM `_process` 僵持累加行为断言与真实 BattleManager 换 stub spawn 的 power_cap 拒绝链）。
 
 ## v6.33 黑门踏入两链落地自动开战批（2026-09-28，详见 CHANGELOG）
 
@@ -732,7 +768,7 @@ IntelEvolutionManager → IntelManual, IntelEvolutionBranches
 
 **改节奏表/成长入口/掉落视觉/教程战斗步/雪原开场图前必读本节。** 七项用户实机反馈一轮清。
 
-- **节奏表 v37 档（用户拍板，`data/feature_unlock_schedule.gd`）**：evolution(制造)=intelligence(情报舱)=**2**、modification(改造)=**6**（原 5/7/3）。解锁语义不变式：节奏表 level=N = 通关第 N-1 关后解锁（`complete_level(k)` 发 `keys_unlocked_at(k+1)`）——制造/情报实际在首战通关后即刻开，改造在通关第 5 关后开。afk=5、faction/store=10、affix=12、旁路六件=15 全不动。**改动门槛必同步 `tests/unit/systems/test_feature_unlock_schedule.gd`**（阈值/开集/跨级信号三用例 + 头注契约）。
+- **节奏表 v37 档 + v6.38.4 调改（用户拍板，`data/feature_unlock_schedule.gd`）**：evolution(制造)=intelligence(情报舱)=**2**、modification(改造)=**6**（原 5/7/3）；**旁路六件（quest 委托台/achievement/collection/leaderboard/hero_archive/memorial）=4（v6.38.4 记录5追加：原 15 太晚，用户主诉"任务及相关提前"）**。解锁语义不变式：节奏表 level=N = 通关第 N-1 关后解锁（`complete_level(k)` 发 `keys_unlocked_at(k+1)`）——制造/情报实际在首战通关后即刻开，改造在通关第 5 关后开，旁路六件在通关第 3 关后开。afk=5、faction/store=10、affix=12 不动。**改动门槛必同步 `tests/unit/systems/test_feature_unlock_schedule.gd`**（阈值/开集/跨级信号用例 + 头注契约；信号链用例在 complete_level(3) 断言恰发六件）。
 - **开局情报地板（用户拍板"早点制造"）**：`IntelManual.grant_intel_floor(archetype_id, floor)`（只抬不降，走 `_add_intel` 正门）；`save_manager._enqueue_starter_backpack_cards` 末段给起始三卡（ww1_mauser/ww1_arty_m81/ww1_arm_ft17）的敌形原型抬到 `ManufacturePools.GATE_RECIPE`(0.25)——制造一解锁配方即可造。经 ManufactureManager `get_archetypes_of` 查原型域，直入卡空列表自然跳过；管理器不可达静默跳过不挡开档。回归锁 `tests/unit/systems/test_starter_intel_floor.gd`（5 用例，独立实例无需存档）。
 - **WW1 掉落收口**：`LevelEras.ERA_DROP_MULTIPLIER[WW1]` 0.85→**0.70**（用户"首关掉卡偏多"；同乘纳米/符文击杀路径——前期经济大头在首通奖励与 1500 起步纳米，可承受）。要再调掉卡量优先动这个单变量，勿去拆 manifest 里多处 0.08 字面量。
 - **成长入口直进技能树（用户拍板砍中转层）**：底栏「成长」键改标**「技能」**（main `_on_progression_pressed`）、基地「通讯架」工位（`truck_base._open_panel("growth")` 分支）、F 键 pw_open_growth、教程 ENHANCEMENT 步——全部直开 `PhaseMasterSkillHost.open(tree, true)`。根因：growth_panel 的改造/制造跳转按钮走 `main._toggle_overlay`，在基地场景 `/root/Main` 不存在 → **点了没反应**（本批实测根因）。**整备舱 growth_panel 退役为无入口孤儿**（场景/懒加载配置保留不删，关闭链仍引用）；教程触达面键仍叫 "growth"（`SURFACE_FOR_STEP` 不动，入口点手工补 `notify_surface_opened("growth")`）。教程 ENHANCEMENT/TRUCK_BASE/EVOLUTION 步文案已同步改口径（入口=底栏「制造」/「技能」），help_panel 卡牌成长页加技能树条目。

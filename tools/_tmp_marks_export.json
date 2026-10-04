@@ -1,0 +1,42 @@
+{
+ "exported": "2026/10/3 18:43:09",
+ "marked": 5,
+ "marks": {
+  "fam|ww1_arm_rolls": {
+   "p": [
+    "face"
+   ],
+   "r": "yes",
+   "n": "旧敌标注"
+  },
+  "fam|ww2_arm_sherman": {
+   "p": [
+    "bg"
+   ],
+   "r": "",
+   "n": "t34身份疑点"
+  },
+  "plat|void_mage_basic": {
+   "p": [
+    "other"
+   ],
+   "r": "no",
+   "n": ""
+  },
+  "drop|drop_smg_mk2": {
+   "p": [
+    "clip"
+   ],
+   "r": "",
+   "n": "旧缴获标注"
+  },
+  "ind|ww1_lanchest": {
+   "p": [
+    "size"
+   ],
+   "r": "yes",
+   "n": "",
+   "a": ""
+  }
+ }
+}

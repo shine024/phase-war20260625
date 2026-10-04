@@ -2,15 +2,18 @@ class_name FeatureUnlockScheduleTest
 extends GdUnitTestSuite
 ## v34 渐进解锁回归锁（data/feature_unlock_schedule.gd + LevelProgressManager 门控链）
 ## 契约：
-## - 节奏表（v37 实机验收轮调改）：evolution=intelligence=2（制造+情报提前，配新档
-##   起始卡同族 25% 情报地板）/ afk=5 / modification=6（改造推后）/ faction=store=10 /
-##   affix=12 / 旁路六件（quest/achievement/collection/leaderboard/hero_archive/memorial）=15
+## - 节奏表（v37 调改；v6.38.4 记录5追加：旁路六件 L15→L4，用户主诉"任务及相关太晚"）：
+##   evolution=intelligence=2（制造+情报提前，配新档起始卡同族 25% 情报地板）/
+##   旁路六件（quest/achievement/collection/leaderboard/hero_archive/memorial）=4 /
+##   afk=5 / modification=6（改造推后）/ faction=store=10 / affix=12
 ## - is_feature_unlocked：总开关关=全开；教程已完成=全开（老档兜底）；否则按
 ##   max_unlocked_level 阈值；未知键不设防
 ## - 跨级信号：complete_level 触达节奏表关卡 → SignalBus.feature_unlocked 恰发该批键
 ##   且入 LPM 待播队列；重打旧关不重弹（prev_max 守卫）
 
 const FUS = preload("res://data/feature_unlock_schedule.gd")
+
+const _SIDE_SIX: Array[String] = ["quest", "achievement", "collection", "leaderboard", "hero_archive", "memorial"]
 
 
 func test_schedule_levels_mild_curve() -> void:
@@ -21,8 +24,8 @@ func test_schedule_levels_mild_curve() -> void:
 	assert_int(FUS.unlock_level_for("faction")).is_equal(10)
 	assert_int(FUS.unlock_level_for("store")).is_equal(10)
 	assert_int(FUS.unlock_level_for("affix")).is_equal(12)
-	for key in ["quest", "achievement", "collection", "leaderboard", "hero_archive", "memorial"]:
-		assert_int(FUS.unlock_level_for(key)).is_equal(15)
+	for key in _SIDE_SIX:
+		assert_int(FUS.unlock_level_for(key)).is_equal(4)
 	# 未知键 = 常开不设防
 	assert_int(FUS.unlock_level_for("backpack")).is_equal(0)
 	assert_bool(FUS.has_key("backpack")).is_false()
@@ -36,16 +39,23 @@ func test_open_set_by_max_level() -> void:
 	assert_int(at2.size()).is_equal(2)
 	assert_bool(at2.has("evolution")).is_true()
 	assert_bool(at2.has("intelligence")).is_true()
-	# L5：制造+情报+挂机（改造已推后到 L6）
+	# L4：+旁路六件（v6.38.4 提前——任务/成就前期给方向感）
+	var at4: Array = FUS.unlocked_keys_at_max_level(4)
+	assert_int(at4.size()).is_equal(8)
+	for key in _SIDE_SIX:
+		assert_bool(at4.has(key)).is_true()
+	# L5：再+挂机（改造已推后到 L6）
 	var at5: Array = FUS.unlocked_keys_at_max_level(5)
-	assert_int(at5.size()).is_equal(3)
+	assert_int(at5.size()).is_equal(9)
 	assert_bool(at5.has("modification")).is_false()
 	assert_bool(at5.has("afk")).is_true()
 	# L15：全部 13 键开放
 	assert_int(FUS.unlocked_keys_at_max_level(15).size()).is_equal(FUS.SCHEDULE.size())
-	# keys_unlocked_at：L2 恰好新开 evolution+intelligence；L6 恰好新开 modification
+	# keys_unlocked_at：L2 恰好新开 evolution+intelligence；L4 恰好新开旁路六件；L6 恰好新开 modification
 	var fresh2: Array = FUS.keys_unlocked_at(2)
 	assert_int(fresh2.size()).is_equal(2)
+	var fresh4: Array = FUS.keys_unlocked_at(4)
+	assert_int(fresh4.size()).is_equal(6)
 	var fresh6: Array = FUS.keys_unlocked_at(6)
 	assert_int(fresh6.size()).is_equal(1)
 	assert_bool(fresh6.has("modification")).is_true()
@@ -131,10 +141,15 @@ func test_unlock_signal_and_pending_queue_on_level_cross() -> void:
 	lpm.complete_level(1, 3)
 	assert_int(fired.size()).is_equal(2)
 	assert_array(_lpm_consume(lpm)).is_empty()
-	# 通关第 4 关（解锁第 5 关）：恰发挂机；第 5 关（解锁第 6 关）：恰发改造（v37 推后）
+	# 通关第 3 关（解锁第 4 关）：恰发旁路六件（v6.38.4 提前批，批量合并单弹窗）
+	fired.clear()
 	lpm.complete_level(2, 3)
 	lpm.complete_level(3, 3)
+	assert_int(fired.size()).is_equal(6)
+	for key in _SIDE_SIX:
+		assert_bool(fired.has(key)).is_true()
 	fired.clear()
+	# 通关第 4 关（解锁第 5 关）：恰发挂机；第 5 关（解锁第 6 关）：恰发改造（v37 推后）
 	lpm.complete_level(4, 3)
 	assert_array(fired).is_equal(["afk"])
 	fired.clear()

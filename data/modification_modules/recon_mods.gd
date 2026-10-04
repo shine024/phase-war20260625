@@ -311,10 +311,13 @@ static func get_for_card(card_id: String) -> Array:
 	return []
 
 static func _matches_card(card_id: String) -> bool:
+	# v6.38.1: 缴获/敌方前缀归一——captured_ww1_inf_cavalry 也要能装侦察改造
+	var cid := String(card_id).trim_prefix("captured_").trim_prefix("foe_")
 	for prefix in _CARD_PREFIXES:
-		if card_id.begins_with(prefix):
+		if cid.begins_with(prefix):
 			return true
 	return false
 
 # v7.x: ww1_cavalry→ww1_inf_cavalry, fut_scout_mech→fut_inf_scout_mech, fut_scout_drone→mod_inf_scout_drone
-const _CARD_PREFIXES: Array = ["ww1_inf_cavalry", "cold_spetsnaz", "mod_ranger", "fut_spectre", "fut_inf_scout_mech", "mod_inf_scout_drone"]
+# v6.38.1: 补 platform_cold_scout（与 UnitRoles.RECON_PREFIXES 同步，名字即侦察的漏标卡）
+const _CARD_PREFIXES: Array = ["ww1_inf_cavalry", "cold_spetsnaz", "mod_ranger", "fut_spectre", "fut_inf_scout_mech", "mod_inf_scout_drone", "platform_cold_scout"]

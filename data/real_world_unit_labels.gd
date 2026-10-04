@@ -86,7 +86,11 @@ static func weapon_kind_short(weapon_type: int) -> String:
 static func platform_chassis_long(platform_type: int) -> String:
 	match platform_type:
 		0:
-			return "轻装步兵 / 侦察单位"
+			# v6.38.1：LIGHT 主类统一叫"轻装步兵"——旧文案"轻装步兵 / 侦察单位"让
+			# 全部轻装卡（暴风突击队等普通步兵）都顶着"侦察"字样，与真实侦察判定
+			# （UnitRoles.RECON_PREFIXES 前缀表，命中才有潜入开局/定向爆破）错位。
+			# 侦察身份由机制行表达（侦察：潜入开局 / 定向爆破），底盘行不再冒充。
+			return "轻装步兵"
 		1:
 			return "装甲战斗车辆"
 		2:

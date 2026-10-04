@@ -201,6 +201,9 @@ func _on_bonus_slots_changed(_slots: Variant = null) -> void:
 func _refresh_bonus_display() -> void:
 	if _bonus_label == null or not is_instance_valid(_bonus_label):
 		return
+	# v6.38.1 树守卫：延迟刷新在节点被摘树后 flush 时不再树外打绝对路径报错
+	if not is_inside_tree():
+		return
 	var pim: Node = get_node_or_null("/root/PhaseInstrumentManager")
 	if pim == null or not pim.has_method("get_all_bonus_summary"):
 		_bonus_label.visible = false

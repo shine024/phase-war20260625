@@ -253,8 +253,15 @@ func _process(delta: float) -> void:
 	if _combo_engine != null:
 		_combo_engine.update(delta)
 
-	# 相位师战斗：不执行波次逻辑
+	# 相位师战斗：不执行波次逻辑。
+	# v6.37 修复：PM 战僵持计时与判负原本写在 _process 尾部（本 early return 之后），
+	# 永不可达=死代码——敌方产兵疲劳枯竭 + 玩家全员定速 0 够不着基地时，全场零伤害
+	# 也无任何兜底，战斗永久挂起（实机"第10关挂机 20 分钟无胜负"主诉根因）。
+	# 累加与 _check_pm_stalemate_timeout 必须在本分支内推进；有战斗活动时
+	# _on_unit_damaged_stalemate_reset/_on_driver_hp_changed_stalemate_reset 照常清零。
 	if _is_phase_master_battle:
+		_pm_stalemate_sec += delta
+		_check_pm_stalemate_timeout()
 		return
 
 	_battle_elapsed_time += delta
@@ -290,10 +297,8 @@ func _process(delta: float) -> void:
 		if do_consume:
 			_spawn_system.consume_wave_timer()
 
-	# P2-8：PM 战僵持计时（_process 在 paused 时 return，暂停不计入）
-	if _is_phase_master_battle:
-		_pm_stalemate_sec += delta
-
+	# v6.37：PM 战僵持计时已上移到 _process 头部 PM 分支内（原位置在 PM early return
+	# 之后，永不可达——见上方分支注释）。此分支只服务普通关胜负判定。
 	_check_win_lose()
 	# v9.x（3c 性能批次）：每帧 has_method 反射 → 首帧判定一次缓存
 	if not _pmm_checked:
@@ -682,7 +687,8 @@ func _unlock_next_boss_affix_pool() -> void:
 			if am.has_method("unlock_boss"):
 				am.unlock_boss(tier)
 				var labels := {"boss_1": "Ⅰ", "boss_2": "Ⅱ", "boss_3": "Ⅲ"}
-				SignalBus.show_toast.emit("★ 击败相位师——Boss 词条池%s解锁（词条工坊可查）" % String(labels.get(tier, tier)))
+				# v6.38（记录5#10）：解锁类走左下 feed 通道
+				SignalBus.feed_message.emit("★ 击败相位师——Boss 词条池%s解锁（词条工坊可查）" % String(labels.get(tier, tier)))
 			return
 
 
@@ -757,6 +763,17 @@ func request_player_deploy_at(platform_card_id: String, world_pos: Vector2) -> b
 ## 主诉⑦：一个卡布置不成，auto 管线重试期间一直跳弹窗。
 func request_player_deploy_at_silent(platform_card_id: String, world_pos: Vector2) -> bool:
 	return _spawn_system.request_player_deploy_silent(platform_card_id, world_pos, _current_battle_era())
+
+
+## v6.37: 最近一次部署失败原因（reason_code）唯一读取口。
+## 此前挂机/自动部署控制器走 get_node("/root/BattleSpawnSystem") 取——该系统是本
+## manager 的 RefCounted 子系统而非 autoload，路径恒 null → reason 恒空串：
+## TraceLog afk_deploy_fail reason= 空、power_cap 一次性提示永不触发、
+## 暂时态/持久态分类失效（能量不足被当持久态快速弃卡）。
+func get_last_deploy_fail_reason() -> String:
+	if _spawn_system != null:
+		return String(_spawn_system.last_deploy_fail_reason)
+	return ""
 
 
 func begin_card_grid_combat(gen: int = -1) -> void:
@@ -1189,10 +1206,14 @@ func get_player_spawn_interval() -> float:
 func get_player_unit_count() -> int:
 	if not battle_active:
 		return 0
-	# v6.5: HUD 高频读取走缓存计数器（O(1)），避免每帧 O(N) 递归遍历。
-	# 缓存由部署(+1)/死亡(-1)维护，且 _is_active_combat_unit 已排除 deploy ghost，
-	# 计数器与 recount 结果一致。部署检查仍直接调 recount_player_units_on_field() 保证准确。
-	return _spawn_system.player_unit_count
+	# v6.38.3（记录5"场上9个写6个"）：缓存计数只覆盖部署/阵亡链（request_player_deploy
+	# +1 / on_player_unit_died −1），僚机（card_ability_manager._spawn_wingman）等不经
+	# 部署链入场的附带单位缓存恒少计——HUD 显 6 而场上实有 9。改实时 recount（与部署门
+	# get_remaining_deployable_count 同源口径，O(场上单位数)，消费方均信号驱动低频），
+	# 并回写缓存保持一致性。_is_active_combat_unit 已排除 deploy ghost / 濒死淡出单位。
+	var live := recount_player_units_on_field()
+	_spawn_system.player_unit_count = live
+	return live
 
 func get_enemy_wave_time_remaining() -> float:
 	return _spawn_system.get_enemy_wave_time_remaining() if battle_active else -1.0
@@ -1206,8 +1227,12 @@ func get_enemy_wave_index() -> int:
 func get_enemy_unit_count() -> int:
 	if not battle_active:
 		return 0
-	# v6.5: 同上，读缓存计数器避免每帧 O(N) 遍历
-	return _spawn_system.enemy_unit_count
+	# v6.38.3：与 get_player_unit_count 同律——boss 大招召唤（spawn_summon_portal）等
+	# 非波次链入场不经缓存 +1，实时 recount 保 HUD/产兵帽口径准确（v6.30 的 0.5s 回填
+	# 保留作 win-lose 侧兜底）。
+	var live := recount_enemy_units_on_field()
+	_spawn_system.enemy_unit_count = live
+	return live
 
 
 func recount_player_units_on_field() -> int:

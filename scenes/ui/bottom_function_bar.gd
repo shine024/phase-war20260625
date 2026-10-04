@@ -178,6 +178,9 @@ func _ready() -> void:
 ## grow 向上向左，内容自适应宽高）。仅主场景（BattleBottomBar 父链）执行，测试/
 ## 工具直接实例化时保持原地结构。
 func _become_right_side_column() -> void:
+	# v6.38.1 树守卫：右缘立形含 reparent 挂 HudLayer，树外执行只会报 owner/树错——让位
+	if not is_inside_tree():
+		return
 	var margin_host: Node = get_node_or_null("Margin")
 	var hbox: Node = get_node_or_null("Margin/HBox")
 	if margin_host == null or hbox == null:

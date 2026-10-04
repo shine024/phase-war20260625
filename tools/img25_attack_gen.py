@@ -62,27 +62,45 @@ def sheet_guide(anchor):
     return im
 
 
-def build_prompt(subject):
+# 默认动作脚本（机炮开火，历史默认）。10-01 想像力批起可被 --cells-json 逐格覆盖。
+DEFAULT_SEQ = "机炮开火"
+DEFAULT_CELLS = {
+    2: "预备，机身微微下沉蓄力，炮口出现很小的橙色火点；",
+    3: "开火！炮口焰在炮口位置爆发，明亮但不遮掩机身；",
+    4: "火光衰减，炮口只剩一小簇短火舌；",
+    5: "后坐，机身微微后缩，炮口挂着少量余烟；",
+    6: "回到与格 1 完全一致的中性待机，余烟散尽（首尾闭合）。",
+}
+DEFAULT_FX = ("没有弹道、没有弹丸、没有飞行物、没有光束——只有炮口火光和烟；"
+              "火光和烟只贴在炮口位置且完整位于本格内部，绝不触碰格子边缘，绝不画在机尾或其他部位；除炮口焰与烟外无任何特效。")
+
+
+def build_prompt(subject, small_motion=False, cells=None, fx=None, seq=None, extra=None):
+    cells = {int(k): v for k, v in (cells or {}).items()}
+    small = ""
+    if small_motion:
+        small = (
+            "【硬性·动作幅度最小化】人形主体的动作必须极小：六格保持同一种站姿（或同一种跪姿），"
+            "双脚位置、身体朝向、躯干姿态与格 1 待机完全一致，绝不换姿势、绝不站立与跪姿混排；"
+            "开火只表现为炮口火光、少量烟和武器极轻微后坐。\n"
+        )
     return (
         "第二张图是成品布局示例：它展示的就是最终要交付的雪碧图版式——同一主体在 2 行 3 列共六个格子里各出现一次，"
         "格与格之间是很宽的纯白间隔带。成品必须完全照搬这个版式：六格的位置、间隔带宽度、主体的大小和底缘位置都与示例一致。\n"
         "第一张图是主体的身份锚定帧。六格画的都是同一个主体：与锚定帧完全同身份、同体型、同比例、同配色、同武器、"
         "同朝向（面朝画面正左方），以及与示例一致的纯色背景底色。\n"
-        "任务：保持版式与主体大小不变，把六个格子画成" + subject + "面朝正左方的机炮开火动作序列，每格一个独立完整姿态，"
+        + small +
+        "任务：保持版式与主体大小不变，把六个格子画成" + subject + "面朝正左方的" + (seq or DEFAULT_SEQ) + "动作序列，每格一个独立完整姿态，"
         "绝不把相邻几格画成连在一起的漫画分镜。\n"
         "格 1：中性悬停待机，与锚定帧完全一致，无任何特效；\n"
-        "格 2：预备，机身微微下沉蓄力，炮口出现很小的橙色火点；\n"
-        "格 3：开火！炮口焰在炮口位置爆发，明亮但不遮掩机身；\n"
-        "格 4：火光衰减，炮口只剩一小簇短火舌；\n"
-        "格 5：后坐，机身微微后缩，炮口挂着少量余烟；\n"
-        "格 6：回到与格 1 完全一致的中性待机，余烟散尽（首尾闭合）。\n"
+        + "".join("格 %d：%s\n" % (n, cells.get(n) or DEFAULT_CELLS[n]) for n in range(2, 7)) +
         "【硬性·大小】六格主体大小完全相同，如同同一张图复制粘贴 6 次，每格主体完整不出本格、不触碰画面四边。\n"
         "【硬性·站位】每格主体位于格子内偏右的位置（主体中心约在本格横向右侧 40% 处），格子左侧留出空间给火光。\n"
         "【硬性·朝向】六格全部面朝画面正左方，机炮指向画面左侧，绝不朝右，绝不允许正脸对镜头，绝不允许俯视或 3/4 视角。\n"
         "【硬性·分格】六格必须是六个相互独立、完整的姿态，任何炮管、火光、烟都不得伸进隔壁格子。\n"
-        "【硬性·特效】没有弹道、没有弹丸、没有飞行物、没有光束——只有炮口火光和烟；"
-        "火光和烟只贴在炮口位置且完整位于本格内部，绝不触碰格子边缘，绝不画在机尾或其他部位；除炮口焰与烟外无任何特效。\n"
+        "【硬性·特效】" + (fx or DEFAULT_FX) + "\n"
         "【硬性·无地面】画面是悬在纯色背景前的空中小精灵：没有地面、没有地板、没有影子；炮口焰绝不在下方产生任何反光、光斑或倒影。\n"
+        + ((extra or "") + "\n" if extra else "") +
         "不要数字、序号、文字、格子编号、边框线、地面、阴影、水印。"
     )
 
@@ -135,13 +153,18 @@ def detect_bg_color(im):
 
 
 def chroma_key(im, bg, tol=85):
-    """v2：背景候选 = 近背景色 | 近纯白（格间白带残留；边缘连通 BFS 保证机身内部
-    白色高光不连通格缘、不会被误删。09-30 fut_nano_drone V2 白带 L 边实测）。"""
+    """v3：背景候选 = (近背景色 & 品红色相) | 近纯白（边缘连通 BFS）。
+    v3 增补（10-01 cold_ak47 c2-c6 脸被抠没案例）：近背景色候选额外要求品红色相双特征
+    （r-g>60 且 b-g>25）——粉烟把背景"桥"进身体后，tol=85 球内的暗红调面部阴影
+    （b-g≈0）被 BFS 顺手吃掉整块脸；加色相约束后皮肤/军绿/暗红一律不够格，
+    烟桥再也进不了身体内部。品红背景本体 r-g≈144 / b-g≈69 双高，不受影响。"""
     import numpy as np
     from collections import deque
     a = np.asarray(im.convert("RGB")).astype(int)
     dist = np.sqrt(((a - bg) ** 2).sum(axis=2))
-    near = dist < tol
+    rg = a[:, :, 0] - a[:, :, 1]
+    bgm = a[:, :, 2] - a[:, :, 1]
+    near = (dist < tol) & (rg > 60) & (bgm > 25)
     dw = np.abs(a - 255).max(axis=2)
     near = near | (dw < 30)
     h, w = near.shape
@@ -439,11 +462,25 @@ def main():
     ap.add_argument("--rolls", type=int, default=1, help="连掷 N 版（单掷波动大，多掷选优 09-30）")
     ap.add_argument("--card-align", action="store_true",
                     help="装甲色对齐卡图（Reinhard 迁移只动蓝系装甲，09-30 fut_nano_drone 实测）")
+    ap.add_argument("--card", default=None,
+                    help="卡图路径覆盖（共享/代理卡图单位必传；默认 assets/card_icons/player/<key>.png）")
     ap.add_argument("--direct", action="store_true", default=True,
                     help="原样直出 832 雪碧图（09-30 用户拍板默认；--legacy-256 走旧重排路）")
     ap.add_argument("--legacy-256", dest="direct", action="store_false",
                     help="旧路：256 画布重排贴回（保留作拼格兜底）")
+    ap.add_argument("--small-motion", action="store_true",
+                    help="人型小动作条款（10-01 用户拍板：人型难控制，姿态不换、只加火光后坐）")
+    ap.add_argument("--cells-json", default=None,
+                    help="逐格动作脚本 JSON（10-01 想像力批）：{\"2\"..\"6\" 逐格动作, \"seq\" 动作名, "
+                         "\"fx\" 特效条款, \"extra\" 追加硬性条款}；缺项回退默认机炮脚本")
     args = ap.parse_args()
+
+    spec_cells, spec_fx, spec_seq, spec_extra = None, None, None, None
+    if args.cells_json:
+        with open(args.cells_json, encoding="utf-8") as f:
+            _j = json.load(f)
+        spec_cells = {k: v for k, v in _j.items() if k.isdigit()}
+        spec_fx, spec_seq, spec_extra = _j.get("fx"), _j.get("seq"), _j.get("extra")
 
     anchor_path = os.path.join(OUT, args.key + "_anchor_raw.png")
     if not os.path.exists(anchor_path):
@@ -457,7 +494,8 @@ def main():
     payload = os.path.join(OUT, "_attack_payload.json")
     with open(payload, "w", encoding="utf-8") as f:
         f.write(json.dumps({"model": "agnes-image-2.5-flash",
-                            "prompt": build_prompt(args.subject),
+                            "prompt": build_prompt(args.subject, args.small_motion,
+                                                   spec_cells, spec_fx, spec_seq, spec_extra),
                             "size": "2K", "ratio": "3:2",  # 2K=2496x1664；3:2÷3x2网格=正方格832²，切格零裁损（09-30 文档对照）
                             "extra_body": {"image": [uri_anchor, uri_guide],
                                            "response_format": "b64_json"}},
@@ -475,7 +513,7 @@ def main():
         with open(raw_path, "wb") as f:
             f.write(raw)
         print("OK %s (%.0fs)" % (raw_path, time.time() - t0), flush=True)
-        card = os.path.join(ROOT, "assets", "card_icons", "player", args.key + ".png") \
+        card = args.card or os.path.join(ROOT, "assets", "card_icons", "player", args.key + ".png") \
             if args.card_align else None
         if args.direct:
             sheet_direct(raw_path, args.key + suffix, card=card)

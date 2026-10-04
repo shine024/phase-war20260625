@@ -292,26 +292,11 @@ func _ready() -> void:
 	if not SignalBus.truck_travel_changed.is_connected(_on_truck_travel_changed):
 		SignalBus.truck_travel_changed.connect(_on_truck_travel_changed)
 	# v6.35: 渗透节点变化 → 热区重建(地图已建时)
-	if SignalBus.has_signal("incursions_changed") and not SignalBus.incursions_changed.is_connected(_on_incursions_changed):
-		SignalBus.incursions_changed.connect(_on_incursions_changed)
-
-
-## v6.35: 渗透节点增删 → 对当前画布重建热区(地图未建时跳过,构建链会带上)
-func _on_incursions_changed() -> void:
-	if not _map_built:
-		return
-	var scroll := get_node_or_null("Margin/VBox/ScrollContainer") as ScrollContainer
-	if scroll == null:
-		return
-	var canvas := scroll.get_node_or_null("MapCanvas")
-	if canvas == null:
-		# 模板复用路径下画布是复用副本,按子序取第一个 Control 画布兜底
-		for c in scroll.get_children():
-			if c is Control:
-				canvas = c
-				break
-	if canvas != null:
-		_apply_incursion_markers(canvas)
+	# v6.38 恢复 v6.35.2 修正：信号真身=EBM 自有 incursions_changed（SignalBus 无此信号，
+	# 旧 has_signal("incursions_changed") 守卫恒 false → 该链从未接线，渗透变化不重建热区）
+	var ebm_ready := get_node_or_null("/root/EndlessBlackgateManager")
+	if ebm_ready != null and not ebm_ready.incursions_changed.is_connected(_on_incursions_changed):
+		ebm_ready.incursions_changed.connect(_on_incursions_changed)
 	if not SignalBus.bunker_day_ended.is_connected(_refresh_fuel_chip):
 		SignalBus.bunker_day_ended.connect(_refresh_fuel_chip)
 	# 延迟一帧再生成地图，避免启动时卡顿
@@ -347,6 +332,27 @@ func _on_incursions_changed() -> void:
 		_apply_floating_chrome()
 		# v28：图例 + “回到当前关”按钮（屏幕空间，不随地图画布缩放）
 		_build_map_screen_chrome()
+
+
+## v6.35: 渗透节点增删 → 对当前画布重建热区(地图未建时跳过,构建链会带上)
+## ⚠️ v6.38 回归修复：此函数曾误插进 _ready() 函数体中间（缺 func 头），把 _ready 尾部的
+## 建图/返回键接线整段吞成不可达死代码——独立场景（基地→大地图）落地全黑。勿再挪回 _ready 前面。
+func _on_incursions_changed() -> void:
+	if not _map_built:
+		return
+	var scroll := get_node_or_null("Margin/VBox/ScrollContainer") as ScrollContainer
+	if scroll == null:
+		return
+	var canvas := scroll.get_node_or_null("MapCanvas")
+	if canvas == null:
+		# 模板复用路径下画布是复用副本,按子序取第一个 Control 画布兜底
+		for c in scroll.get_children():
+			if c is Control:
+				canvas = c
+				break
+	if canvas != null:
+		_apply_incursion_markers(canvas)
+
 
 ## 单屏浮层：Margin 归零，标题/势力领地图/返回从 VBox 摘出浮在地图上（地图占满面板）
 func _apply_floating_chrome() -> void:
@@ -1648,7 +1654,8 @@ func _on_back_to_title() -> void:
 		Engine.set_meta("truck_base_view", "interior")
 		if SaveManager and SaveManager.has_method("save_game"):
 			SaveManager.save_game()
-		SignalBus.play_sound.emit("button")
+		# v6.38（记录5#5）：回基地转场音——专用 return_base（柔和 whoosh+着陆），替代生硬 button 短促音
+		SignalBus.play_sound.emit("return_base")
 		SceneTransition.change(get_tree(), "res://scenes/bunker/truck_base.tscn")
 		return
 	# 嵌入到 Main 的 MapOverlay 时，不切场景，改为通知父层关闭。
@@ -1666,7 +1673,8 @@ func _on_home_gui_input(event: InputEvent) -> void:
 		if Engine.has_meta("launch_from_bunker"):
 			Engine.remove_meta("launch_from_bunker")
 		Engine.set_meta("truck_base_view", "exterior")
-		SignalBus.play_sound.emit("button")
+		# v6.38（记录5#5）：回基地转场音同款
+		SignalBus.play_sound.emit("return_base")
 		SceneTransition.change(get_tree(), "res://scenes/bunker/truck_base.tscn")
 
 
@@ -2296,6 +2304,11 @@ func _show_level_info_popup(level_index: int) -> void:
 	body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	scroll.add_child(body)
 
+	# ▸ 黑门区块（v6.38 恢复 v6.35.2 拍板：通关 100 后点 100 关节点=黑门口径与入口，置顶展示——
+	# 实机主诉"进入黑门显示的还是100关的信息/没显示多少波通关/掉落是关外的"）
+	if level_index >= 100 and _is_blackgate_unlocked():
+		_append_gate_section(body, popup)
+
 	# ▸ 基本信息
 	body.add_child(_make_detail_section_title("基本信息"))
 	var in_era_pos: int = ((level_index - 1) % ERA_SIZE) + 1
@@ -2426,6 +2439,31 @@ func _show_level_info_popup(level_index: int) -> void:
 	action_row.add_child(auto_btn)
 
 	popup.popup_centered(Vector2i(540, 520))
+
+
+## 黑门区块（v6.38 恢复 v6.35.2 丢失的弹窗嵌入）：黑门口径置顶 + 踏入按钮。
+## 规则数值读 EBM 常量（宪法 C3：文案数值禁硬编码）。
+func _append_gate_section(body: VBoxContainer, popup: AcceptDialog) -> void:
+	body.add_child(_make_detail_section_title("黑门 · 无限模式"))
+	body.add_child(_make_detail_desc(
+		"波数：无限纵深推进——每 10 波强敌、每 25 波补给节点，击碎黑门本体即通关。",
+		Color(0.72, 0.85, 1.0, 0.95)))
+	var ebm := _blackgate_mgr()
+	if ebm != null and ebm.has_method("get_entry_status"):
+		var st: Dictionary = ebm.get_entry_status()
+		var gate_line: String = "今日免费入场：剩余 %d/%d · 用尽可花 %d 能量块购 1 次 · 星髓每周上限 %d" % [
+			int(st.get("free_left", 0)), EndlessBlackgateRef.FREE_ENTRIES_PER_DAY,
+			EndlessBlackgateRef.ENERGY_PER_EXTRA_ENTRY, EndlessBlackgateRef.WEEKLY_MARROW_CAP]
+		body.add_child(_make_detail_desc(gate_line, Color(1.0, 0.82, 0.45, 0.95)))
+	var gate_row := HBoxContainer.new()
+	gate_row.add_theme_constant_override("separation", 10)
+	var gate_btn := Button.new()
+	gate_btn.text = "踏入黑门"
+	gate_btn.custom_minimum_size = Vector2(160, 36)
+	gate_btn.add_theme_font_size_override("font_size", 13)
+	gate_btn.pressed.connect(_enter_blackgate.bind(popup))
+	gate_row.add_child(gate_btn)
+	body.add_child(gate_row)
 
 
 # === 关卡详情面板辅助函数（原型 level_select_v3.html 分区样式）===

@@ -110,8 +110,8 @@ const ERA_KIND_FALLBACK_ICON: Dictionary = {
 ## ERA_KIND 回退前生效。已 manifest 命中的 38 张卡不受影响。
 const PLAYER_ICON_OVERRIDE: Dictionary = {
 	# 一战
-	"ww1_lanchest": "vis_player_001",   # 兰彻斯特装甲车 → 罗尔斯装甲车（同期轮式装甲车）
-	"ww1_105mm": "vis_player_003",      # 105mm榴弹炮 → 77mm野战炮（重型火炮）
+	"ww1_lanchest": "ww1_lanchest",     # 兰彻斯特装甲车 ★专属卡图（10-01 重生成；hound/rolls/medium 仍用 001）
+	"ww1_105mm": "ww1_105mm",           # 105mm榴弹炮 ★专属卡图（10-01 重生成；fort/77mm 仍用 003）
 	"ww1_37mm": "vis_player_088",       # 37mm高射炮 ★专属卡图（v8.x生成）
 	"ww1_mp18": "vis_player_036",       # MP18突击班 → 步兵班·MP18 ★完美同名
 	"ww1_mauser": "vis_player_037",     # 毛瑟步枪班 → 步兵班·步枪
@@ -121,8 +121,8 @@ const PLAYER_ICON_OVERRIDE: Dictionary = {
 	"ww1_m76": "vis_player_039",        # 76mm迫击炮组 → 迫击炮组 ★完美同名
 		"ww1_storm": "vis_player_040",      # 暴风突击队 → 暴风突击队 ★完美同名
 		"ww1_flame": "vis_player_036",      # 火焰喷射兵 → 步兵班·MP18（步兵通用）
-		"ww1_mark4": "vis_player_042",      # 马克IV型坦克 → 圣沙蒙坦克（同期重坦，v7.x修正：原误用041装甲车）
-		"ww1_a7v": "vis_player_042",        # A7V重型坦克 → 圣沙蒙坦克（同期重坦）
+		"ww1_mark4": "ww1_mark4",           # 马克IV型坦克 ★专属卡图（10-01 重生成；圣沙蒙仍用 042）
+		"ww1_a7v": "ww1_a7v",               # A7V重型坦克 ★专属卡图（10-01 重生成；圣沙蒙仍用 042）
 	"ww1_saint": "vis_player_042",      # 圣沙蒙坦克 → 圣沙蒙坦克 ★完美同名
 	# 二战
 	"ww2_pz3": "vis_player_007",        # 三号坦克 → M4谢尔曼（中型坦克通用）
@@ -164,17 +164,18 @@ const PLAYER_ICON_OVERRIDE: Dictionary = {
 	"mod_marine": "vis_player_057",     # 海军陆战队 → 海军陆战队 ★完美同名
 	"mod_hummer_m2": "vis_player_058",  # 悍马·M2 → 皮卡武装（轮式车辆）
 	"mod_hummer_tow": "vis_player_058", # 悍马·陶式 → 皮卡武装
-	"mod_stryker_m2": "vis_player_059", # 斯特赖克M2 → 斯特赖克装甲车 ★完美同名
+	"mod_stryker_m2": "mod_stryker_m2", # 斯特赖克M2 ★专属卡图（10-01 重生成；MGS 仍用 059）
 	"mod_stryker_mgs": "vis_player_059",# 斯特赖克MGS → 斯特赖克装甲车
 	"fut_aa_hover": "vis_player_025",   # 防空悬浮车 → 悬浮坦克（悬浮底盘，v6.21.3：原 060 履带火箭炮车类型错位）
 	"fut_howitzer": "vis_player_060",   # 悬浮自行火炮 → 火箭炮车（火炮角色匹配保留；悬浮细节丢失登记接受）
 	"mod_ranger": "vis_player_061",     # 游骑兵 → 三角洲部队（精锐步兵）
+	"mod_sup_m4_carbine": "mod_sup_m4_carbine",  # M4卡宾枪班 ★专属卡图（10-01 重生成，接线补漏——文件已落盘但此前缺行不生效）
 	"mod_challenger2": "vis_player_062",# 挑战者2 → M1A2坦克（西方主战坦克）
 	"mod_leo2a6": "vis_player_062",     # 豹2A6 → M1A2坦克
 	"mod_m1a2": "vis_player_062",       # M1A2艾布拉姆斯 → M1A2坦克 ★完美同名
 	"mod_ah1": "vis_player_063",        # AH-1眼镜蛇 → 阿帕奇直升机（武装直升机）
 	"mod_ah64": "vis_player_063",       # AH-64阿帕奇 → 阿帕奇直升机 ★完美同名
-		"mod_stinger": "vis_player_090",    # 毒刺导弹兵 ★专属卡图（v8.x生成）
+		"mod_stinger": "mod_stinger",       # 毒刺导弹兵 ★专属卡图（10-01 重生成；cold_sam7 仍用 090）
 	"mod_uh60": "vis_player_063",       # UH-60黑鹰 → 阿帕奇直升机（直升机通用）
 	"mod_javelin": "vis_player_089",    # 标枪导弹兵 ★专属卡图（v8.x生成）
 	# 近未来
@@ -182,6 +183,7 @@ const PLAYER_ICON_OVERRIDE: Dictionary = {
 	"fut_nano_drone": "fut_nano_drone",        # 纳米修复机 ★专属卡图（2026-08-17 重生成，落盘 player/{card_id}.png）
 	"fut_space_fighter": "vis_player_093",  # 空天战斗机 ★专属卡图（v8.x生成）
 	"fut_stealth_bomber": "vis_player_094", # 隐形轰炸机 ★专属卡图（v8.x生成）
+	"ww2_air_dive_bomber": "ww2_air_dive_bomber",  # 俯冲轰炸机 ★专属卡图（10-01 重生成，接线补漏）
 	"fut_swarm": "fut_swarm",                  # 蜂群无人机 ★专属卡图（2026-08-17 重生成，落盘 player/{card_id}.png）
 	# v9.x: 4 张缴获卡专属卡图（2026-08-18 生成，落盘 player/{card_id}.png，敌方原图在 enemy/ 与根目录）
 	"drop_smg_mk2": "drop_smg_mk2",            # MP18-II 冲锋班 ★专属卡图
@@ -219,7 +221,7 @@ const PLAYER_ICON_OVERRIDE: Dictionary = {
 	"platform_modern_medium": "vis_player_019", # 现代中型 → M1A1坦克
 	"platform_modern_radar": "vis_player_020",  # 现代雷达 → 自行高炮M6
 	"platform_modern_spg": "vis_player_021",    # 现代自行火炮 → M270火箭炮
-	"platform_modern_stealth": "vis_player_022",# 现代隐形 → 侦察无人机
+	"platform_modern_stealth": "platform_modern_stealth",  # 现代隐形 ★专属卡图（10-01 重生成；scout_drone 等仍用 022）
 	"platform_modern_guard_heavy": "vis_player_023", # 现代重型卫戍 → M1A2 SEP
 	"platform_future_light": "vis_player_024",  # 近未来轻型 → 侦察机甲
 	"platform_future_medium": "vis_player_025", # 近未来中型 → 悬浮坦克

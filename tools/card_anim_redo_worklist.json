@@ -1,0 +1,1224 @@
+{
+ "source": "2026/10/3 19:30:08",
+ "redo": {
+  "fam|ww1_sup_mg_nest": {
+   "note": "待机",
+   "tags": [
+    "size"
+   ],
+   "alt": "",
+   "tasks": [
+    "idle_regen",
+    "size_fix"
+   ]
+  },
+  "fam|ww1_arty_mortar": {
+   "note": "攻击要调整大小",
+   "tags": [],
+   "alt": "",
+   "tasks": [
+    "attack_regen",
+    "size_fix"
+   ]
+  },
+  "ind|ww1_lanchest": {
+   "note": "重生成 开火位置错了",
+   "tags": [
+    "other",
+    "size"
+   ],
+   "alt": "",
+   "tasks": [
+    "fire_anchor",
+    "size_fix",
+    "anim_regen"
+   ]
+  },
+  "fam|ww1_arm_ft17": {
+   "note": "攻击",
+   "tags": [
+    "clip"
+   ],
+   "alt": "",
+   "tasks": [
+    "attack_regen",
+    "clip_fix"
+   ]
+  },
+  "fam|ww1_boss_av7": {
+   "note": "开火位置不对",
+   "tags": [
+    "clip",
+    "face"
+   ],
+   "alt": "",
+   "tasks": [
+    "fire_anchor",
+    "face_fix",
+    "clip_fix"
+   ]
+  },
+  "ind|ww1_a7v": {
+   "note": "重生成 开火位置错了",
+   "tags": [
+    "diff",
+    "size"
+   ],
+   "alt": "",
+   "tasks": [
+    "fire_anchor",
+    "size_fix",
+    "anim_regen"
+   ]
+  },
+  "ind|ww1_mark4": {
+   "note": "都重做重生成 开火位置错了",
+   "tags": [
+    "diff",
+    "face"
+   ],
+   "alt": "",
+   "tasks": [
+    "fire_anchor",
+    "idle_regen",
+    "attack_regen",
+    "face_fix",
+    "anim_regen"
+   ]
+  },
+  "fam|ww1_arty_77mm": {
+   "note": "重做，没正侧面",
+   "tags": [],
+   "alt": "",
+   "tasks": [
+    "side_view_fix"
+   ]
+  },
+  "ind|ww1_105mm": {
+   "note": "",
+   "tags": [
+    "bg",
+    "diff"
+   ],
+   "alt": "",
+   "tasks": [
+    "bg_clean",
+    "anim_regen"
+   ]
+  },
+  "fam|ww1_inf_mp18": {
+   "note": "",
+   "tags": [
+    "diff"
+   ],
+   "alt": "",
+   "tasks": [
+    "anim_regen"
+   ]
+  },
+  "fam|ww1_fort_pillbox": {
+   "note": "",
+   "tags": [
+    "clip"
+   ],
+   "alt": "",
+   "tasks": [
+    "clip_fix"
+   ]
+  },
+  "fam|ww1_fort_artillery": {
+   "note": "待机不要有灯",
+   "tags": [],
+   "alt": "",
+   "tasks": [
+    "idle_regen"
+   ]
+  },
+  "fam|ww2_sup_mg42": {
+   "note": "待机",
+   "tags": [
+    "diff",
+    "size"
+   ],
+   "alt": "",
+   "tasks": [
+    "idle_regen",
+    "size_fix",
+    "anim_regen"
+   ]
+  },
+  "fam|ww2_inf_bazooka": {
+   "note": "待机重做",
+   "tags": [
+    "diff"
+   ],
+   "alt": "",
+   "tasks": [
+    "idle_regen",
+    "anim_regen"
+   ]
+  },
+  "fam|ww2_arty_m81": {
+   "note": "攻击重做",
+   "tags": [],
+   "alt": "",
+   "tasks": [
+    "attack_regen"
+   ]
+  },
+  "fam|ww2_arm_panther_e": {
+   "note": "攻击截断，待机 也要重做",
+   "tags": [
+    "clip"
+   ],
+   "alt": "",
+   "tasks": [
+    "idle_regen",
+    "attack_regen",
+    "clip_fix"
+   ]
+  },
+  "fam|ww2_boss_kingtiger": {
+   "note": "都重做",
+   "tags": [],
+   "alt": "",
+   "tasks": [
+    "idle_regen",
+    "attack_regen"
+   ]
+  },
+  "fam|ww2_arm_sherman": {
+   "note": "开火，火光位置错",
+   "tags": [],
+   "alt": "",
+   "tasks": [
+    "attack_fire"
+   ]
+  },
+  "fam|ww2_inf_hellcat": {
+   "note": "开火没火光",
+   "tags": [],
+   "alt": "",
+   "tasks": [
+    "attack_fire"
+   ]
+  },
+  "fam|ww2_fort_bunker": {
+   "note": "待机不要有灯光",
+   "tags": [],
+   "alt": "",
+   "tasks": [
+    "idle_regen"
+   ]
+  },
+  "fam|ww2_fort_flak": {
+   "note": "开火位置错了",
+   "tags": [
+    "clip"
+   ],
+   "alt": "",
+   "tasks": [
+    "fire_anchor",
+    "clip_fix"
+   ]
+  },
+  "fam|ww2_inf_panzerschreck_e": {
+   "note": "待机",
+   "tags": [
+    "diff"
+   ],
+   "alt": "",
+   "tasks": [
+    "idle_regen",
+    "anim_regen"
+   ]
+  },
+  "fam|cold_inf_ak": {
+   "note": "待机与攻击都要重作",
+   "tags": [
+    "clip",
+    "diff",
+    "face"
+   ],
+   "alt": "",
+   "tasks": [
+    "idle_regen",
+    "attack_regen",
+    "face_fix",
+    "anim_regen",
+    "clip_fix"
+   ]
+  },
+  "fam|cold_inf_m60": {
+   "note": "待机开火了",
+   "tags": [
+    "face"
+   ],
+   "alt": "",
+   "tasks": [
+    "idle_regen",
+    "face_fix"
+   ]
+  },
+  "fam|cold_air_m113_e": {
+   "note": "待机",
+   "tags": [
+    "diff"
+   ],
+   "alt": "",
+   "tasks": [
+    "idle_regen",
+    "anim_regen"
+   ]
+  },
+  "fam|cold_arm_t55": {
+   "note": "",
+   "tags": [
+    "clip"
+   ],
+   "alt": "",
+   "tasks": [
+    "clip_fix"
+   ]
+  },
+  "fam|cold_arm_t72_e": {
+   "note": "没开火",
+   "tags": [],
+   "alt": "",
+   "tasks": [
+    "attack_fire"
+   ]
+  },
+  "fam|cold_sup_zsu23": {
+   "note": "",
+   "tags": [
+    "clip"
+   ],
+   "alt": "",
+   "tasks": [
+    "clip_fix"
+   ]
+  },
+  "ind|cold_sam7": {
+   "note": "",
+   "tags": [
+    "clip"
+   ],
+   "alt": "",
+   "tasks": [
+    "clip_fix"
+   ]
+  },
+  "fam|mod_inf_marine": {
+   "note": "地面",
+   "tags": [
+    "bg"
+   ],
+   "alt": "",
+   "tasks": [
+    "bg_clean"
+   ]
+  },
+  "ind|mod_javelin": {
+   "note": "待机",
+   "tags": [
+    "bg",
+    "diff"
+   ],
+   "alt": "",
+   "tasks": [
+    "idle_regen",
+    "bg_clean",
+    "anim_regen"
+   ]
+  },
+  "fam|mod_arm_stryker_e": {
+   "note": "卡图换正侧方的",
+   "tags": [
+    "diff"
+   ],
+   "alt": "",
+   "tasks": [
+    "card_regen",
+    "side_view_fix",
+    "anim_regen"
+   ]
+  },
+  "ind|mod_stryker_m2": {
+   "note": "",
+   "tags": [
+    "bg",
+    "diff"
+   ],
+   "alt": "",
+   "tasks": [
+    "bg_clean",
+    "anim_regen"
+   ]
+  },
+  "fam|mod_air_technical_e": {
+   "note": "重生成枪指向前方的",
+   "tags": [
+    "diff"
+   ],
+   "alt": "",
+   "tasks": [
+    "anim_regen"
+   ]
+  },
+  "fam|mod_arm_abrams_e": {
+   "note": "卡图换动画一样的。",
+   "tags": [
+    "clip",
+    "diff",
+    "size"
+   ],
+   "alt": "",
+   "tasks": [
+    "card_regen",
+    "size_fix",
+    "anim_regen",
+    "clip_fix"
+   ]
+  },
+  "fam|mod_arm_m1a2sep": {
+   "note": "不是正侧面",
+   "tags": [
+    "clip",
+    "diff"
+   ],
+   "alt": "",
+   "tasks": [
+    "side_view_fix",
+    "anim_regen",
+    "clip_fix"
+   ]
+  },
+  "fam|mod_air_apache_e": {
+   "note": "待机摆动太大",
+   "tags": [],
+   "alt": "",
+   "tasks": [
+    "idle_regen",
+    "idle_amplitude"
+   ]
+  },
+  "fam|mod_sup_m6": {
+   "note": "",
+   "tags": [
+    "clip"
+   ],
+   "alt": "",
+   "tasks": [
+    "clip_fix"
+   ]
+  },
+  "fam|mod_fort_citadel": {
+   "note": "开火位置错了",
+   "tags": [
+    "clip"
+   ],
+   "alt": "",
+   "tasks": [
+    "fire_anchor",
+    "clip_fix"
+   ]
+  },
+  "fam|mod_fort_phalanx": {
+   "note": "",
+   "tags": [
+    "clip"
+   ],
+   "alt": "",
+   "tasks": [
+    "clip_fix"
+   ]
+  },
+  "ind|fut_swarm": {
+   "note": "",
+   "tags": [
+    "clip"
+   ],
+   "alt": "",
+   "tasks": [
+    "clip_fix"
+   ]
+  },
+  "fam|fut_arm_mech_e": {
+   "note": "待机",
+   "tags": [],
+   "alt": "",
+   "tasks": [
+    "idle_regen"
+   ]
+  },
+  "fam|fut_arm_hovertank": {
+   "note": "",
+   "tags": [
+    "clip",
+    "diff",
+    "size"
+   ],
+   "alt": "",
+   "tasks": [
+    "size_fix",
+    "anim_regen",
+    "clip_fix"
+   ]
+  },
+  "fam|mod_arty_mlrs_e": {
+   "note": "卡图换成和动画一样的。",
+   "tags": [],
+   "alt": "",
+   "tasks": [
+    "card_regen"
+   ]
+  },
+  "fam|fut_arm_prism": {
+   "note": "卡图没正侧面",
+   "tags": [
+    "clip"
+   ],
+   "alt": "",
+   "tasks": [
+    "card_regen",
+    "side_view_fix",
+    "clip_fix"
+   ]
+  },
+  "ind|fut_space_fighter": {
+   "note": "待机",
+   "tags": [
+    "diff"
+   ],
+   "alt": "",
+   "tasks": [
+    "idle_regen",
+    "anim_regen"
+   ]
+  },
+  "ind|fut_nano_drone": {
+   "note": "都要重做",
+   "tags": [
+    "diff"
+   ],
+   "alt": "",
+   "tasks": [
+    "idle_regen",
+    "attack_regen",
+    "anim_regen"
+   ]
+  },
+  "fam|fut_boss_nexus": {
+   "note": "待机",
+   "tags": [],
+   "alt": "",
+   "tasks": [
+    "idle_regen"
+   ]
+  },
+  "fam|fut_arm_colossus_e": {
+   "note": "",
+   "tags": [],
+   "alt": "",
+   "tasks": [
+    "idle_regen",
+    "attack_regen"
+   ]
+  },
+  "ind|guardian_ww1_ironclad": {
+   "note": "",
+   "tags": [
+    "clip"
+   ],
+   "alt": "",
+   "tasks": [
+    "clip_fix"
+   ]
+  },
+  "ind|guardian_cold_thunder": {
+   "note": "待机",
+   "tags": [
+    "size"
+   ],
+   "alt": "",
+   "tasks": [
+    "idle_regen",
+    "size_fix"
+   ]
+  },
+  "ind|guardian_future_omega": {
+   "note": "",
+   "tags": [
+    "clip",
+    "diff",
+    "face",
+    "size"
+   ],
+   "alt": "",
+   "tasks": [
+    "size_fix",
+    "face_fix",
+    "anim_regen",
+    "clip_fix"
+   ]
+  },
+  "ind|fe_iron_wall_bastion": {
+   "note": "",
+   "tags": [],
+   "alt": "",
+   "tasks": [
+    "idle_regen",
+    "attack_regen"
+   ]
+  },
+  "ind|fe_iron_wall_juggernaut": {
+   "note": "要做抬枪",
+   "tags": [],
+   "alt": "",
+   "tasks": [
+    "codeanim_pose"
+   ]
+  },
+  "ind|fe_nova_devastator": {
+   "note": "",
+   "tags": [],
+   "alt": "",
+   "tasks": [
+    "idle_regen",
+    "attack_regen"
+   ]
+  },
+  "ind|fe_nova_ghost_sniper": {
+   "note": "",
+   "tags": [],
+   "alt": "",
+   "tasks": [
+    "idle_regen",
+    "attack_regen"
+   ]
+  },
+  "ind|fe_aether_hover_cavalry": {
+   "note": "",
+   "tags": [],
+   "alt": "",
+   "tasks": [
+    "idle_regen",
+    "attack_regen"
+   ]
+  },
+  "ind|fe_aether_swarm_queen": {
+   "note": "",
+   "tags": [],
+   "alt": "",
+   "tasks": [
+    "idle_regen",
+    "attack_regen"
+   ]
+  },
+  "ind|fe_quantum_mobile_base": {
+   "note": "",
+   "tags": [],
+   "alt": "",
+   "tasks": [
+    "idle_regen",
+    "attack_regen"
+   ]
+  },
+  "ind|fe_quantum_repair_drone": {
+   "note": "",
+   "tags": [],
+   "alt": "",
+   "tasks": [
+    "idle_regen",
+    "attack_regen"
+   ]
+  },
+  "ind|fe_helix_phantom": {
+   "note": "要用生图",
+   "tags": [],
+   "alt": "",
+   "tasks": [
+    "card_regen"
+   ]
+  },
+  "ind|fe_helix_orbital_strike": {
+   "note": "",
+   "tags": [],
+   "alt": "",
+   "tasks": [
+    "idle_regen",
+    "attack_regen"
+   ]
+  },
+  "ind|fe_void_phase_cannon": {
+   "note": "",
+   "tags": [],
+   "alt": "",
+   "tasks": [
+    "idle_regen",
+    "attack_regen"
+   ]
+  },
+  "ind|fe_void_dimensional_soldier": {
+   "note": "要先变攻击姿势",
+   "tags": [],
+   "alt": "",
+   "tasks": [
+    "attack_regen",
+    "codeanim_pose"
+   ]
+  },
+  "ind|fe_frontier_veteran": {
+   "note": "要先变攻击姿势",
+   "tags": [],
+   "alt": "",
+   "tasks": [
+    "attack_regen",
+    "codeanim_pose"
+   ]
+  },
+  "ind|fe_frontier_mixed_company": {
+   "note": "",
+   "tags": [],
+   "alt": "",
+   "tasks": [
+    "idle_regen",
+    "attack_regen"
+   ]
+  },
+  "fam|ww1_arm_rolls": {
+   "note": "图片没正侧面，开火位置错误",
+   "tags": [],
+   "alt": "",
+   "tasks": [
+    "card_regen",
+    "side_view_fix",
+    "fire_anchor"
+   ]
+  },
+  "fam|ww1_inf_cavalry": {
+   "note": "攻击没开火",
+   "tags": [],
+   "alt": "",
+   "tasks": [
+    "attack_fire",
+    "attack_regen"
+   ]
+  },
+  "fam|ww1_arty_m81": {
+   "note": "没火光",
+   "tags": [],
+   "alt": "",
+   "tasks": [
+    "attack_fire"
+   ]
+  },
+  "fam|cold_inf_btr60": {
+   "note": "没火光",
+   "tags": [],
+   "alt": "",
+   "tasks": [
+    "attack_fire"
+   ]
+  },
+  "fam|mod_inf_scout_drone": {
+   "note": "卡图不是正侧面，重新生成过，没更新出来",
+   "tags": [],
+   "alt": "",
+   "tasks": [
+    "card_regen",
+    "side_view_fix"
+   ]
+  },
+  "fam|ww1_arm_rolls_e": {
+   "note": "开火位置不对",
+   "tags": [],
+   "alt": "",
+   "tasks": [
+    "fire_anchor"
+   ]
+  },
+  "fam|ww2_inf_thompson": {
+   "note": "开火没火光",
+   "tags": [],
+   "alt": "",
+   "tasks": [
+    "attack_fire"
+   ]
+  },
+  "fam|ww2_inf_garand": {
+   "note": "开火没火光",
+   "tags": [],
+   "alt": "",
+   "tasks": [
+    "attack_fire"
+   ]
+  },
+  "fam|ww2_inf_para_e": {
+   "note": "开火没火光",
+   "tags": [],
+   "alt": "",
+   "tasks": [
+    "attack_fire"
+   ]
+  },
+  "fam|cold_arm_btr_e": {
+   "note": "待机",
+   "tags": [
+    "diff"
+   ],
+   "alt": "",
+   "tasks": [
+    "idle_regen",
+    "anim_regen"
+   ]
+  },
+  "fam|cold_inf_spetsnaz_e": {
+   "note": "待机摆动太大",
+   "tags": [],
+   "alt": "",
+   "tasks": [
+    "idle_regen",
+    "idle_amplitude"
+   ]
+  },
+  "fam|mod_inf_delta_e": {
+   "note": "卡图换动画一样的。",
+   "tags": [],
+   "alt": "",
+   "tasks": [
+    "card_regen"
+   ]
+  },
+  "fam|fut_air_drone": {
+   "note": "卡图重新生成",
+   "tags": [],
+   "alt": "",
+   "tasks": [
+    "card_regen"
+   ]
+  },
+  "fam|fut_arm_hovertank_e": {
+   "note": "",
+   "tags": [
+    "clip"
+   ],
+   "alt": "",
+   "tasks": [
+    "clip_fix"
+   ]
+  },
+  "fam|ww1_inf_mp18_x": {
+   "note": "包括卡图都不是全身",
+   "tags": [],
+   "alt": "",
+   "tasks": [
+    "card_regen",
+    "framing_fix"
+   ]
+  },
+  "fam|ww2_arm_garand_para": {
+   "note": "将卡图变成动画一样的",
+   "tags": [],
+   "alt": "",
+   "tasks": [
+    "card_regen"
+   ]
+  },
+  "fam|ww2_arty_hummel": {
+   "note": "没开火",
+   "tags": [],
+   "alt": "",
+   "tasks": [
+    "attack_fire"
+   ]
+  },
+  "fam|ww2_sup_gmc_truck": {
+   "note": "攻击重做，不用开火，用待的就好",
+   "tags": [],
+   "alt": "",
+   "tasks": [
+    "attack_regen"
+   ]
+  },
+  "fam|cold_sup_bmp1_x": {
+   "note": "没开火",
+   "tags": [],
+   "alt": "main",
+   "tasks": [
+    "attack_fire"
+   ]
+  },
+  "fam|mod_sup_m4_carbine": {
+   "note": "全是半身的",
+   "tags": [],
+   "alt": "",
+   "tasks": [
+    "framing_fix"
+   ]
+  },
+  "fam|mod_arm_himars": {
+   "note": "火光抠错了",
+   "tags": [
+    "clip"
+   ],
+   "alt": "main",
+   "tasks": [
+    "attack_fire",
+    "clip_fix"
+   ]
+  },
+  "fam|mod_arty_rq7": {
+   "note": "待机抠错了",
+   "tags": [],
+   "alt": "",
+   "tasks": [
+    "idle_regen",
+    "clip_fix"
+   ]
+  },
+  "fam|fut_inf_neural": {
+   "note": "待机太摆了",
+   "tags": [],
+   "alt": "",
+   "tasks": [
+    "idle_regen",
+    "idle_amplitude"
+   ]
+  },
+  "fam|fut_sup_ps9": {
+   "note": "待机重做",
+   "tags": [],
+   "alt": "",
+   "tasks": [
+    "idle_regen"
+   ]
+  },
+  "fam|ww2_air_bomber": {
+   "note": "开火重生成方向反了",
+   "tags": [],
+   "alt": "",
+   "tasks": [
+    "attack_regen"
+   ]
+  },
+  "fam|ww2_air_dive_bomber": {
+   "note": "待机与攻击都重生成",
+   "tags": [],
+   "alt": "",
+   "tasks": [
+    "idle_regen",
+    "attack_regen"
+   ]
+  },
+  "fam|cold_air_strike_fighter": {
+   "note": "没火光 抠花了，全重做",
+   "tags": [],
+   "alt": "",
+   "tasks": [
+    "attack_fire",
+    "idle_regen",
+    "attack_regen",
+    "clip_fix"
+   ]
+  },
+  "fam|mod_air_bomber": {
+   "note": "全重做",
+   "tags": [],
+   "alt": "",
+   "tasks": [
+    "idle_regen",
+    "attack_regen"
+   ]
+  },
+  "fam|fut_air_stealth_multirole": {
+   "note": "全重做",
+   "tags": [],
+   "alt": "",
+   "tasks": [
+    "idle_regen",
+    "attack_regen"
+   ]
+  },
+  "fam|ww2_air_meteor_e": {
+   "note": "全重做",
+   "tags": [],
+   "alt": "",
+   "tasks": [
+    "idle_regen",
+    "attack_regen"
+   ]
+  },
+  "fam|ww2_air_me262": {
+   "note": "",
+   "tags": [],
+   "alt": "",
+   "tasks": [
+    "idle_regen",
+    "attack_regen"
+   ]
+  },
+  "fam|fut_fort_ion": {
+   "note": "",
+   "tags": [],
+   "alt": "",
+   "tasks": [
+    "idle_regen",
+    "attack_regen"
+   ]
+  },
+  "fam|xeno_stalker": {
+   "note": "",
+   "tags": [
+    "clip"
+   ],
+   "alt": "",
+   "tasks": [
+    "clip_fix"
+   ]
+  },
+  "fam|xeno_dark_templar": {
+   "note": "以攻击动画，出卡图，和待机图，卡图待机图都画错了画成双刀",
+   "tags": [],
+   "alt": "",
+   "tasks": [
+    "card_regen",
+    "idle_regen",
+    "attack_regen"
+   ]
+  },
+  "plat|steel_fortress_basic": {
+   "note": "补卡图",
+   "tags": [],
+   "alt": "",
+   "tasks": [
+    "card_create",
+    "card_regen"
+   ]
+  },
+  "plat|steel_titan_basic": {
+   "note": "补卡图",
+   "tags": [],
+   "alt": "",
+   "tasks": [
+    "card_create",
+    "card_regen"
+   ]
+  },
+  "plat|steel_fortress_advanced": {
+   "note": "补卡图",
+   "tags": [],
+   "alt": "",
+   "tasks": [
+    "card_create",
+    "card_regen"
+   ]
+  },
+  "plat|steel_titan_advanced": {
+   "note": "补卡图",
+   "tags": [],
+   "alt": "",
+   "tasks": [
+    "card_create",
+    "card_regen"
+   ]
+  },
+  "plat|steel_fortress_expert": {
+   "note": "补卡图",
+   "tags": [],
+   "alt": "",
+   "tasks": [
+    "card_create",
+    "card_regen"
+   ]
+  },
+  "plat|steel_titan_expert": {
+   "note": "补卡图",
+   "tags": [],
+   "alt": "",
+   "tasks": [
+    "card_create",
+    "card_regen"
+   ]
+  },
+  "plat|flame_raider_basic": {
+   "note": "补卡图",
+   "tags": [],
+   "alt": "",
+   "tasks": [
+    "card_create",
+    "card_regen"
+   ]
+  },
+  "plat|flame_siege_basic": {
+   "note": "补卡图",
+   "tags": [],
+   "alt": "",
+   "tasks": [
+    "card_create",
+    "card_regen"
+   ]
+  },
+  "plat|flame_raider_advanced": {
+   "note": "补卡图",
+   "tags": [],
+   "alt": "",
+   "tasks": [
+    "card_create",
+    "card_regen"
+   ]
+  },
+  "plat|flame_siege_advanced": {
+   "note": "补卡图",
+   "tags": [],
+   "alt": "",
+   "tasks": [
+    "card_create",
+    "card_regen"
+   ]
+  },
+  "plat|thunter_striker_basic": {
+   "note": "补卡图",
+   "tags": [],
+   "alt": "",
+   "tasks": [
+    "card_create",
+    "card_regen"
+   ]
+  },
+  "plat|thunter_sniper_basic": {
+   "note": "补卡图",
+   "tags": [],
+   "alt": "",
+   "tasks": [
+    "card_create",
+    "card_regen"
+   ]
+  },
+  "plat|void_stealth_basic": {
+   "note": "补卡图",
+   "tags": [],
+   "alt": "",
+   "tasks": [
+    "card_create",
+    "card_regen"
+   ]
+  },
+  "plat|void_mage_basic": {
+   "note": "补卡图",
+   "tags": [],
+   "alt": "",
+   "tasks": [
+    "card_create",
+    "card_regen"
+   ]
+  },
+  "plat|flame_raider_expert": {
+   "note": "补卡图",
+   "tags": [],
+   "alt": "",
+   "tasks": [
+    "card_create",
+    "card_regen"
+   ]
+  },
+  "plat|flame_siege_expert": {
+   "note": "补卡图",
+   "tags": [],
+   "alt": "",
+   "tasks": [
+    "card_create",
+    "card_regen"
+   ]
+  },
+  "plat|thunter_striker_advanced": {
+   "note": "补卡图",
+   "tags": [],
+   "alt": "",
+   "tasks": [
+    "card_create",
+    "card_regen"
+   ]
+  },
+  "plat|thunter_sniper_advanced": {
+   "note": "补卡图",
+   "tags": [],
+   "alt": "",
+   "tasks": [
+    "card_create",
+    "card_regen"
+   ]
+  },
+  "plat|thunter_striker_expert": {
+   "note": "补卡图",
+   "tags": [],
+   "alt": "",
+   "tasks": [
+    "card_create",
+    "card_regen"
+   ]
+  },
+  "plat|thunter_sniper_expert": {
+   "note": "补卡图",
+   "tags": [],
+   "alt": "",
+   "tasks": [
+    "card_create",
+    "card_regen"
+   ]
+  },
+  "plat|void_stealth_advanced": {
+   "note": "补卡图",
+   "tags": [],
+   "alt": "",
+   "tasks": [
+    "card_create",
+    "card_regen"
+   ]
+  },
+  "plat|void_mage_advanced": {
+   "note": "补卡图",
+   "tags": [],
+   "alt": "",
+   "tasks": [
+    "card_create",
+    "card_regen"
+   ]
+  },
+  "plat|void_stealth_expert": {
+   "note": "补卡图",
+   "tags": [],
+   "alt": "",
+   "tasks": [
+    "card_create",
+    "card_regen"
+   ]
+  },
+  "plat|void_mage_expert": {
+   "note": "补卡图",
+   "tags": [],
+   "alt": "",
+   "tasks": [
+    "card_create",
+    "card_regen"
+   ]
+  }
+ },
+ "accept": {
+  "ind|ww1_37mm": {
+   "r": "no"
+  },
+  "fam|cold_inf_metis": {
+   "r": ""
+  },
+  "fam|cold_arm_p18": {
+   "r": ""
+  }
+ },
+ "wire": {
+  "fam|mod_sup_growler": {
+   "alt": "fut_attack_drone"
+  }
+ }
+}

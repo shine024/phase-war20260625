@@ -116,9 +116,10 @@ func _initialize() -> void:
 		_check(body_sep == 8, "BodyHBox separation==8 (got %d)" % body_sep)
 		_check(detail_sep == 6, "DetailContent separation==6 (got %d)" % detail_sep)
 
-	# ── 10) 记录4#2：教程门老档豁免（方法存在；实调依赖 autoload 仅验签名） ──
+	# ── 10) v6.32 拍板：教程门已撤销——is_pending_truck_base_intro 应已删除
+	#（v6.39 补完未落地的删除；此前本探针断言"方法存在"，与 v6.32 决策相反，已翻转）
 	var tpm: Script = load("res://managers/tutorial_progression_manager.gd")
-	_check(tpm.new().has_method("is_pending_truck_base_intro"), "TPM gate method exists")
+	_check(not tpm.new().has_method("is_pending_truck_base_intro"), "TPM gate method deleted")
 
 	print("V631_SMOKE_OK" if _fail == 0 else "V631_SMOKE_FAIL(%d)" % _fail)
 	quit(1 if _fail > 0 else 0)

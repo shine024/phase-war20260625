@@ -143,7 +143,9 @@ static func start_drag(item: PanelContainer) -> void:
 	var preview_parent: Node = get_drag_preview_parent(item)
 	if preview_parent != null:
 		preview_parent.add_child(item._drag_preview)
-	else:
+	elif item.get_tree() != null:
+		# v6.38：get_drag_preview_parent 返回 null 的唯一路径就是 get_tree()==null
+		# （出树/拆场窗口），此时裸 root.add_child 必炸（记录5#16）。
 		item.get_tree().root.add_child(item._drag_preview)
 
 	# 半透明显示原始卡牌
@@ -398,7 +400,7 @@ static func calculate_flat_index(_item: PanelContainer, slot_color: String, slot
 ## 隐藏 BackpackOverlay
 static func hide_backpack_overlay(item: PanelContainer) -> void:
 	var overlay = item.get_node_or_null("/root/Main/PopupLayer/BackpackOverlay")
-	if overlay == null:
+	if overlay == null and item.is_inside_tree():
 		overlay = item.get_tree().root.find_child("BackpackOverlay", true, false)
 	if overlay and overlay is Control:
 		overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -406,7 +408,7 @@ static func hide_backpack_overlay(item: PanelContainer) -> void:
 ## 显示 BackpackOverlay
 static func show_backpack_overlay(item: PanelContainer) -> void:
 	var overlay = item.get_node_or_null("/root/Main/PopupLayer/BackpackOverlay")
-	if overlay == null:
+	if overlay == null and item.is_inside_tree():
 		overlay = item.get_tree().root.find_child("BackpackOverlay", true, false)
 	if overlay and overlay is Control:
 		overlay.mouse_filter = Control.MOUSE_FILTER_STOP

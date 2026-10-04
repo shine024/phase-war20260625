@@ -33,25 +33,36 @@ BACKUP_DIR = r"F:\godot fair duet\_art_backup"
 
 RIM_REAL = "one narrow cool sky-blue rim light along the back edge"
 RIM_SCIFI = "one narrow cyan rim light along the back edge, faint glow limited to emissive parts"
-COMP_REAL = ("WWII single military unit or vehicle, full body, eye-level side view, facing "
-             "right, historically accurate equipment detail, unit fills about three "
-             "quarters of the frame with even white margins")
+# 2026-10-03 回写 STYLE_BIBLE §6.1.3 正侧硬锁：点名 side view 压不住生成器
+# （10-02 侧视重做批实证），构图串一律 flat orthographic + 载具几何硬锁段。
+COMP_REAL = ("WWII single military unit or vehicle, full body, eye-level flat orthographic "
+             "side view, facing right, historically accurate equipment detail, unit fills "
+             "about three quarters of the frame with even white margins")
 COMP_SCIFI = ("near-future single hard-surface sci-fi unit or vehicle, full body, eye-level "
-              "side view, facing right, sleek angular panel lines, unit fills about three "
-              "quarters of the frame with even white margins")
+              "flat orthographic side view, facing right, sleek angular panel lines, unit "
+              "fills about three quarters of the frame with even white margins")
+LOCK_VEHICLE = ("seen exactly from directly beside it in flat orthographic side view, "
+                "the hull stretching horizontally across the whole image, both track runs "
+                "overlapping into one single continuous line seen in profile, "
+                "no front or rear face visible, no perspective foreshortening")
+# 火炮族（§6.1.3）：炮管抬角是兵种语义不做水平锁，只锁轮组重叠单线
+LOCK_GUN = ("seen exactly from directly beside it in flat orthographic side view, "
+            "the two wheels / outriggers overlapping into one single line seen in profile, "
+            "no perspective foreshortening")
 ANCHOR = ("overcast diffused lighting, {rim}, muted cold palette of deep blue-grey steel "
           "and cold grey, thick painterly illustration, clean painterly silhouettes defined "
           "by value contrast and a narrow rim light, smooth blended brushwork, hard-edge "
           "steel surfaces, clean pure white background with NO ground")
-NEGATIVE = "text, perspective view, frame, ground, ceiling"
+NEGATIVE = ("text, perspective view, three-quarter view, front view, angled view, "
+            "frame, ground, ceiling, foreshortening")
 
 TANK = "a single tank with rotating turret and long main gun barrel, layered hull armor, wide track runs, plain unmarked hull"
 FLAK = "a single anti-air gun mount with long barrel angled steeply upward on a cruciform platform, seat shield and ammunition racks"
 INFANTRY_SCIFI = "a single foot soldier with shouldered compact energy SMG, full field pack and helmet, calm ready stance, plain unmarked field armor"
 
 JOBS = [
-    ("vis_player_001", COMP_REAL + ", " + TANK + ", " + ANCHOR.format(rim=RIM_REAL) + ". " + NEGATIVE),
-    ("vis_player_075", COMP_REAL + ", " + FLAK + ", " + ANCHOR.format(rim=RIM_REAL) + ". " + NEGATIVE),
+    ("vis_player_001", COMP_REAL + ", " + TANK + ", " + LOCK_VEHICLE + ", " + ANCHOR.format(rim=RIM_REAL) + ". " + NEGATIVE),
+    ("vis_player_075", COMP_REAL + ", " + FLAK + ", " + LOCK_GUN + ", " + ANCHOR.format(rim=RIM_REAL) + ". " + NEGATIVE),
     ("fut_inf_c96", COMP_SCIFI + ", " + INFANTRY_SCIFI + ", " + ANCHOR.format(rim=RIM_SCIFI) + ". " + NEGATIVE),
 ]
 

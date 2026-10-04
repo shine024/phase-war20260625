@@ -179,10 +179,29 @@ Godot 会为每个 PNG 生成 `.import` 文件。新图放入 `assets/` 后，�
 | `tools/enemy_card_review.html` | 卡图审查清单（浏览器查看全部卡面，支持批量重生） |
 | `tools/_api_key.txt` | API Key（agnes-ai 图片生成） |
 | `tools/regenerate_7_sprites.py` | 旧版生成脚本（prompt 风格参考） |
+| `tools/_b4_card_gen.py` | B4 批生成器：中文 STRICT 串+轴控制四件套+【单一主体·硬性】（正/负例都在 FAM/AXIS/POSE 表） |
+| `tools/_b4_gain_loop.py` | 暗图 gain 收敛循环（raw 上迭代、单轮 ≤1.35、白点吸附、lit_gate 白底门） |
+| `tools/_b4_regen_r2.py` | **R2 参考实现（2026-10-04）**：全英文 STRICT 串（PLAT_EN/CONVERT_EN/FAM_EN/AXIS_EN/POSE_EN 五表）+ 断点续跑 `.r2done` + 旧图转 `_raw_prev` + 审阅页快标清单驱动 |
+| `tools/_b4_deploy.py` | B4 批部署：flood@238 泛洪+fit 512×0.88+player 直出/enemy 翻转+备份+md5 覆盖门 |
+| `tools/_b4_review_page.py` | B4 暂存审阅页（中文名+描线/半身/星战风快标+重掷清单导出 `b4_regen_list.json`） |
 
 ---
 
-## 六、复用 Checklist（新增 N 张卡图）
+## 七、agnes 提示词用法速查（2026-10-04 R2 轮 24 案实证，细则归 STYLE_BIBLE §6.1）
+
+1. **英文提示词**（用户拍板）：同结构下英文出图更准；结构规则 1:1 保留（正交构图/单一主体/白底/厚涂/轴控）。
+2. **视角写横纵轴描述，不写术语**：`orthographic side view` 控不准 → `the camera is exactly at the subject's own side, level with its midline; the subject's long axis stretches horizontally across the whole image, its upright parts stay vertical`；载具再加重叠句（履带/轮 overlap into one single line）——重叠句最灵。
+3. **禁负面词**（写了=召唤）：mp18「严禁战场」三连败、「禁剪影」出剪影、「无描边」有描线风险；全部改写正向——白底=`seamless pure white studio background`、厚涂=`forms shaped by color masses and value transitions`。
+4. **单一主体必须显式**：`exactly ONE subject in the whole frame; the white studio backdrop contains nothing else`，漏写则 16/30 案背景混车。
+5. **星战先验塌缩**：泛化"装甲兵/板甲头盔"→暴风兵脸；写具体装具时代锚（modern modular tactical gear / fire-proximity suit / chitin exoskeleton）。
+6. **贴边/裁切**：追加 `Zoomed-out wide framing: ... fully inside the frame, generous white space on all four sides ... far from the canvas edges.`
+7. **暗图回收**：gain 收敛循环（无注入面）；**双图 relight 会把参考图内容注入，禁用**；单图 relight 仅兜底。
+8. **朝向口径**（宪法版）：生成一律朝右 → player=直出、enemy=FLIP_LEFT_RIGHT（4.3 节为旧口径，新批次勿再按 enemy 直出生成）。
+9. **部署配方**：`flood_white_to_alpha(238)`（边界泛洪，保主体内高光）→ `fit_square(512, 0.88)`（先泛洪后裁切，顺序不可倒）→ `.png.import` 由 `godot --headless --editor --quit` 生成（`--import` 直跑会崩）。
+
+---
+
+## 八、复用 Checklist（新增 N 张卡图）
 
 - [ ] 确认缺图卡列表（对照 `CARD_ICON_AUDIT` 报告）
 - [ ] 检查能否复用已有编号（查 `_FOE_ID_TO_PLATFORM` + `PLAYER_ICON_OVERRIDE`）

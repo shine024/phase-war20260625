@@ -1,9 +1,10 @@
 extends Node
-## v27.2 星冥帧动画继承验证（场景模式）：数据解析 20/20 + 场上驱动真实挂载 + attack 播放
+## v27.2 星冥帧动画继承验证（场景模式）：数据解析全名册 + 场上驱动真实挂载 + attack 播放
 ## 跑法：godot --headless --rendering-driver opengl3 --path . res://tests/v27_xeno_frame_anim_smoke.tscn
 ##
 ## 覆盖：
-##   1. 数据层：20 单位经 visual_id 继承雪碧条（19）或 boss 独立帧（xeno_templar→fut_boss_nexus）；
+##   1. 数据层：ID_ORDER 全名册经 visual_fallback 继承雪碧条（名册数动态断言；
+##      v6.35 新增黑门本体 xeno_gate_core 后曾有硬编码 20 误报的教训，勿再写死）；
 ##      captured_xeno_* 缴获镜像同链解析
 ##   2. 场景层：真实无尽开战后——普通单位 UnitFrameAnimDriver 挂载（idle ping-pong）+
 ##      notify_fire 播 attack 一遍回 idle；boss 词缀单位 BossIdleFrameDriver；
@@ -71,10 +72,11 @@ func _run() -> void:
 				_fail("%s 无任何帧资产可继承（vis=%s）" % [String(xid), vis])
 	_log.append("  雪碧条继承 %d：%s" % [sheet_units.size(), str(sheet_units)])
 	_log.append("  boss 帧继承 %d：%s" % [boss_units.size(), str(boss_units)])
-	if sheet_units.size() + boss_units.size() != 20:
-		_fail("帧资产覆盖 %d/20" % (sheet_units.size() + boss_units.size()))
+	var roster_n: int = XenoUnits.ID_ORDER.size()
+	if sheet_units.size() + boss_units.size() != roster_n:
+		_fail("帧资产覆盖 %d/%d" % [sheet_units.size() + boss_units.size(), roster_n])
 	else:
-		_ok("20/20 单位有帧动画可继承")
+		_ok("%d/%d 单位有帧动画可继承" % [sheet_units.size() + boss_units.size(), roster_n])
 	# 缴获镜像（captured_ 前缀同链）
 	var cap_miss: Array = []
 	for xid in XenoUnits.ID_ORDER:
@@ -84,7 +86,7 @@ func _run() -> void:
 	if not cap_miss.is_empty():
 		_fail("缴获镜像雪碧条解析 miss: %s" % str(cap_miss))
 	else:
-		_ok("captured_xeno_* 镜像雪碧条解析 20/20 全命中")
+		_ok("captured_xeno_* 镜像雪碧条解析 %d/%d 全命中" % [roster_n, roster_n])
 
 	# ── 2. 场景层 ──
 	_log.append("═══ 2. 场景层：无尽开战后驱动真实挂载 ═══")

@@ -105,10 +105,11 @@ func _ready() -> void:
 	_build_watch_btn()
 
 	# v6.28（记录2#1）：休整中重开面板能立刻看到倒计时（state_changed 不会再发，visibility 变化时补刷）
+	# v6.37：扩到全状态——运行/行进态重开面板同样立即按当前状态渲染（原只补 RESTING，
+	# 运行中重开显示的是上一轮残留的旧文案）
 	visibility_changed.connect(func() -> void:
-		if visible and _afk_manager != null and _afk_manager.state == AFKModeManager.State.RESTING:
-			_last_rest_sec = -1
-			_refresh_rest_countdown())
+		if visible and _afk_manager != null and is_inside_tree():
+			_on_afk_state_changed(_afk_manager.state))
 
 
 func _input(event: InputEvent) -> void:
@@ -129,11 +130,23 @@ func set_afk_manager(manager: AFKModeManager) -> void:
 			manager.level_completed.disconnect(_on_level_completed)
 		if manager.afk_settled.is_connected(_on_afk_settled):
 			manager.afk_settled.disconnect(_on_afk_settled)
+		# v6.37：部署受阻提示（战力门/次数尽等持久态拒绝）
+		if manager.deploy_hint.is_connected(_on_afk_deploy_hint):
+			manager.deploy_hint.disconnect(_on_afk_deploy_hint)
 
 		manager.state_changed.connect(_on_afk_state_changed)
 		manager.level_completed.connect(_on_level_completed)
 		manager.afk_settled.connect(_on_afk_settled)
+		manager.deploy_hint.connect(_on_afk_deploy_hint)
 	_update_stats_display()
+
+
+## v6.37：部署受阻人话提示——面板开着就显示在状态行（下一次状态切换自然覆盖）。
+## power_cap 另有 FeatureUnlockPopup 一次性弹窗（manager 侧触发），此处管面板常驻可见性。
+func _on_afk_deploy_hint(text: String) -> void:
+	if not is_inside_tree() or not visible or text.is_empty():
+		return
+	status_label.text = "⚠ %s" % text
 
 
 ## v6.6(挂机缩略图): 注入主场景引用（用于定位 BattleContainer）
@@ -162,7 +175,7 @@ func refresh_after_load() -> void:
 func _cache_battle_viewport() -> void:
 	if _battle_viewport != null and is_instance_valid(_battle_viewport):
 		return
-	var root: Node = get_tree().root if get_tree() != null else null
+	var root: Node = get_tree().root if is_inside_tree() else null
 	if root == null:
 		return
 	# main 场景挂在场景树根下，BattleContainer 是其子节点
@@ -393,13 +406,26 @@ func _on_stop() -> void:
 
 # ── 信号回调 ──
 
-# ── v6.28（记录2#1）休整倒计时 ──
+# ── v6.28（记录2#1）休整倒计时 / v6.37 行进倒计时 ──
 ## 上次渲染的整秒数（-1=强制下次刷新；只在整秒变化时写字符串，防每帧分配）
 var _last_rest_sec: int = -1
 
 func _process(_delta: float) -> void:
-	if _afk_manager != null and _afk_manager.state == AFKModeManager.State.RESTING and visible:
+	if _afk_manager == null or not visible:
+		return
+	# v6.37：TRAVELING 态同样走秒级倒计时——"正在进发（剩余 Xs）"让 4s 赶路窗口
+	# 在面板上持续可见，而不是只有 1s 横幅闪一下。
+	if _afk_manager.state == AFKModeManager.State.TRAVELING:
+		var tsec := int(ceil(_afk_manager.get_travel_remaining_seconds()))
+		if tsec != _last_rest_sec:
+			_last_rest_sec = tsec
+			if tsec <= 0:
+				status_label.text = "状态: 正在进发——即将抵达第 %d 关" % _afk_manager.get_current_level()
+			else:
+				status_label.text = "状态: 正在进发——驶向第 %d 关（剩余 %d 秒）" % [_afk_manager.get_current_level(), tsec]
+	elif _afk_manager.state == AFKModeManager.State.RESTING:
 		_refresh_rest_countdown()
+
 
 ## 倒计时刷新（RESTING 态专用；秒数粒度，读 manager 的 get_rest_remaining_seconds）
 func _refresh_rest_countdown() -> void:
@@ -413,6 +439,11 @@ func _refresh_rest_countdown() -> void:
 
 
 func _on_afk_state_changed(new_state: int) -> void:
+	# v6.37：拆场守卫——main._exit_tree → stop_afk 会沿 settled/state_changed 链打到
+	# 这里，此刻面板已不在场景树，get_node 绝对路径报 ERROR 且状态行写入无意义
+	#（原日志每次回标题刷 5 条 "Can't use get_node() with absolute paths" 的来源）。
+	if not is_inside_tree():
+		return
 	# v6.23d 记录6#7: 运行/行进态附上精神余量——"挂一关就结算"多为精神抽干收工，
 	# 让玩家在面板上直接看到还剩几点（胜-10/败-20，睡觉恢复）
 	var sanity_txt := _get_sanity_status_text()
@@ -424,19 +455,25 @@ func _on_afk_state_changed(new_state: int) -> void:
 		AFKModeManager.State.RUNNING:
 			start_btn.visible = false
 			stop_btn.visible = true
-			status_label.text = "状态: 运行中" + sanity_txt
+			# v6.37：附当前交战关（原只写"运行中"，推进到第几关面板上看不见）
+			if _afk_manager != null and _afk_manager.get_current_level() > 0:
+				status_label.text = "状态: 运行中——第 %d 关交战中" % _afk_manager.get_current_level() + sanity_txt
+			else:
+				status_label.text = "状态: 运行中" + sanity_txt
 		AFKModeManager.State.FAILED:
 			start_btn.visible = true
 			stop_btn.visible = false
 			status_label.text = "状态: 已失败"
 		AFKModeManager.State.TRAVELING:
-			# v36：关间行进节拍（胜利后赶往下一关）
+			# v36：关间行进节拍（胜利后赶往下一关）；v6.37 文案对齐用户口径
+			# "正在进发"，秒级倒计时由 _process 渲染（置 -1 强制立即刷一帧）
 			start_btn.visible = false
 			stop_btn.visible = true
+			_last_rest_sec = -1
 			if _afk_manager:
-				status_label.text = "状态: 行进中——驶向第 %d 关" % int(_afk_manager._pending_level) + sanity_txt
+				status_label.text = "状态: 正在进发——驶向第 %d 关" % _afk_manager.get_current_level() + sanity_txt
 			else:
-				status_label.text = "状态: 行进中" + sanity_txt
+				status_label.text = "状态: 正在进发" + sanity_txt
 		AFKModeManager.State.RESTING:
 			# v6.28（记录2#1）：精神耗尽原地休整（60s 回满继续，不收工）——倒计时由 _process 刷
 			start_btn.visible = false
@@ -483,6 +520,11 @@ func _is_battle_busy() -> bool:
 ## v6.6(挂机): 挂机结束（停止/失败）时收到累计奖励总账
 ## v6.23d 记录6#7: reason 透传（sanity=精神耗尽/failed=战败/cap=满级/manual=手动）
 func _on_afk_settled(rewards: Dictionary, reason: String = "manual") -> void:
+	# v6.37：拆场守卫——回标题/退出时 main._exit_tree → stop_afk 会打到这，面板已
+	# 出树：_parked_hint/_is_battle_busy/结算弹窗的 get_node 绝对路径全数报错，
+	# 弹窗也无处挂载。静默跳过（存档仍由 manager 侧完成，数据不丢）。
+	if not is_inside_tree():
+		return
 	_update_stats_display()
 	# v6.6(挂机缩略图): 停止后恢复占位文字（is_running 已为 false，_refresh 会切回 PreviewLabel）
 	_refresh_battle_preview()
@@ -511,6 +553,12 @@ func _on_afk_settled(rewards: Dictionary, reason: String = "manual") -> void:
 
 ## v32.3 A5：战斗结束后补弹暂存的挂机结算
 func _on_battle_ended_flush_settlement(_won: bool) -> void:
+	# v6.38：拆场守卫——本回调挂在 SignalBus（autoload）上，面板出树后仍会触发，
+	# 还经 call_deferred 再延迟一帧（双倍拆场窗口）。记录5#16 root null 报错源之一。
+	if not is_inside_tree():
+		_pending_settlement = {}
+		_pending_settlement_reason = "manual"
+		return
 	if _pending_settlement.is_empty():
 		return
 	var rewards := _pending_settlement
@@ -538,14 +586,16 @@ func _show_settlement_dialog(rewards: Dictionary, reason: String = "manual") -> 
 	if _main_scene != null:
 		popup = _main_scene.get_node_or_null("PopupLayer")
 	if popup == null:
-		var root: Node = get_tree().root if get_tree() != null else null
+		var root: Node = get_tree().root if is_inside_tree() else null
 		if root != null:
 			for c in root.get_children():
 				if c.has_node("PopupLayer"):
 					popup = c.get_node("PopupLayer")
 					break
 	if popup == null:
-		popup = get_tree().root  # 最终回退
+		popup = get_tree().root if is_inside_tree() else null  # 最终回退（v6.38：防出树 null；v6.38.1 改 is_inside_tree 免 get_tree() 树外报错）
+	if popup == null:
+		return
 	_AFKSettlementDialog.create(popup, result)
 
 
@@ -573,6 +623,9 @@ func _update_stats_display() -> void:
 
 ## v36：循环目标预览（=停靠关，与 start_afk 的 _resolve_parked_level 同口径）
 func _parked_hint() -> int:
+	# v6.38.1 树守卫：树外（摘树竞态）不打 autoload 绝对路径报错，回退 1
+	if not is_inside_tree():
+		return 1
 	var bm := get_node_or_null("/root/BunkerManager")
 	if bm != null and bm.has_method("get_parked_level"):
 		return clampi(int(bm.get_parked_level()), 1, 100)

@@ -8,6 +8,11 @@ const SoundGeneratorScript = preload("res://managers/sound_generator.gd")
 const GameConstants = preload("res://resources/game_constants.gd")
 
 var _players: Dictionary = {}
+## v6.38（记录5#2/#3）：每音效名最多 3 个播放器轮转（round-robin）——旧实现一名一播放器，
+## 同名重触发必截断前一响（核爆齐射 10 连 explosion 只剩最后一响的尾巴、密集枪战
+## hit/shoot 互相吞）。_players[name] = Array[AudioStreamPlayer]。
+const _PLAYERS_PER_NAME: int = 3
+var _player_rr: Dictionary = {}  # name → 下一个使用的池下标
 var _sound_generator: Node = null
 # P0 性能优化：缓存已加载的音频流，避免每次受击都 ResourceLoader.exists + load
 var _audio_cache: Dictionary = {}
@@ -30,6 +35,7 @@ const SFX_NAMES: Array[String] = [
 	"ultimate_ready",   # 大招就绪（手动模式按钮亮起时的轻提示音）
 	"base_alarm",       # 基地低血量告警
 	"unit_death",       # v26.6: 单位阵亡（合成爆炸短音，sound_generator 已生成；接 unit_died 信号）
+	"return_base",      # v6.38 记录5#5: 回基地转场音（世界地图→移动基地）
 ]
 const BUS_NAME: String = "Master"
 const MUSIC_BUS: String = "Music"
@@ -72,10 +78,10 @@ func _ready() -> void:
 		_sound_generator = SoundGeneratorScript.new()
 		add_child(_sound_generator)
 
-	# v7.x 性能优化：启动时只建默认 button 播放器（标题屏立即需要），
-	# 其余 SFX 在首次 play_sfx 时按需 new + add_child（_ensure_player）。
+	# v7.x 性能优化：启动时只建默认 button 播放器池（标题屏立即需要），
+	# 其余 SFX 在首次 play_sfx 时按需 new + add_child（_ensure_player_pool）。
 	# 原 _ready 一次性建 32 个 AudioStreamPlayer，启动期无谓节点创建。
-	_ensure_player("button")
+	_ensure_player_pool("button")
 
 	# 连接信号（is_connected 守卫防止重复注册）
 	if SignalBus:
@@ -202,10 +208,15 @@ func _exit_tree() -> void:
 		cem.enhancement_completed.disconnect(_on_enhancement_completed)
 	# 释放音频播放器
 	for p_name in _players.keys():
-		var p: AudioStreamPlayer = _players.get(p_name)
-		if p is Node and is_instance_valid(p):
-			p.queue_free()
+		var pool: Variant = _players.get(p_name)
+		if pool is Array:
+			for p in pool:
+				if p is Node and is_instance_valid(p):
+					p.queue_free()
+		elif _players.get(p_name) is Node and is_instance_valid(_players.get(p_name)):
+			(_players.get(p_name) as Node).queue_free()
 	_players.clear()
+	_player_rr.clear()
 
 ## 播放音效
 ## v8.3: 增加 volume（0.0~1.0，线性→db）和 pitch（0.5~2.0，音高倍率）参数（默认值保证旧调用零变化）
@@ -225,12 +236,17 @@ func play_sfx(name: String, volume: float = 1.0, pitch: float = 1.0) -> void:
 			return
 		_last_button_sfx_msec = now_msec
 
-	var p: AudioStreamPlayer = _players.get(name)
+	# v6.38：按名取轮转池（无则懒建 3 播放器），同名连发在池内轮转不截断
+	var pool: Array = _players.get(name, [])
+	if pool.is_empty():
+		pool = _ensure_player_pool(name)
+	if pool.is_empty():
+		# 极端兜底：池创建失败则放弃
+		return
+	var idx: int = int(_player_rr.get(name, 0)) % pool.size()
+	_player_rr[name] = idx + 1
+	var p: AudioStreamPlayer = pool[idx]
 	if p == null:
-		# v7.x: 未命中时按需创建（原启动期一次性建 32 个，现懒扩展）
-		p = _ensure_player(name)
-	if p == null:
-		# 极端兜底：仍未取到（如 _ensure_player 内部失败）则放弃
 		return
 
 	# 尝试加载音效文件
@@ -250,18 +266,24 @@ func play_sfx(name: String, volume: float = 1.0, pitch: float = 1.0) -> void:
 		(p as AudioStreamPlayer).pitch_scale = clampf(pitch, 0.2, 3.0)
 	p.play()
 
-## v7.x: 按需创建播放器并加入场景树（懒扩展池）
-## 首次 play_sfx(name) 未命中时调用，创建后存入 _players 字典，后续直接复用。
-func _ensure_player(name: String) -> AudioStreamPlayer:
-	var p: AudioStreamPlayer = _players.get(name)
-	if p != null:
-		return p
-	p = AudioStreamPlayer.new()
-	p.bus = BUS_NAME
-	p.volume_db = linear_to_db(sfx_volume)
-	add_child(p)
-	_players[name] = p
-	return p
+## v7.x: 按需创建播放器池并加入场景树（懒扩展）。
+## v6.38（记录5#2/#3）：一名一播放器改 3 池轮转——同名连发（核爆齐射/密集枪战）
+## 不再截断前一响。返回空数组的唯一情形是极端创建失败。
+func _ensure_player_pool(name: String) -> Array:
+	var pool: Array = _players.get(name, [])
+	if not pool.is_empty():
+		return pool
+	for i in _PLAYERS_PER_NAME:
+		var p := AudioStreamPlayer.new()
+		p.bus = BUS_NAME
+		p.volume_db = linear_to_db(sfx_volume)
+		add_child(p)
+		pool.append(p)
+	if pool.is_empty():
+		return []
+	_players[name] = pool
+	_player_rr[name] = 0
+	return pool
 
 ## 加载音频流
 func _load_audio_stream(name: String) -> AudioStream:
@@ -284,9 +306,13 @@ func _load_audio_stream(name: String) -> AudioStream:
 ## 设置音效音量
 func set_sfx_volume(volume: float) -> void:
 	sfx_volume = clamp(volume, 0.0, 1.0)
-	for p in _players.values():
-		if p is AudioStreamPlayer:
-			p.volume_db = linear_to_db(sfx_volume)
+	for v in _players.values():
+		if v is Array:
+			for p in v:
+				if p is AudioStreamPlayer:
+					(p as AudioStreamPlayer).volume_db = linear_to_db(sfx_volume)
+		elif v is AudioStreamPlayer:
+			(v as AudioStreamPlayer).volume_db = linear_to_db(sfx_volume)
 
 ## 设置主音量
 func set_master_volume(volume: float) -> void:
@@ -394,6 +420,26 @@ func play_music(bgm_key: String, fade_out_duration: float = 1.5) -> void:
 	
 	_music_player.volume_db = linear_to_db(music_volume)
 	_music_player_active = _music_player
+
+## v6.38（记录5#4）：淡出并停掉当前 BGM（记录 _current_bgm_name 复位，下次 play_music 正常起播）。
+## 开场苏醒演出用它让位给雪原风声环境音；演出收场再进基地曲。
+func stop_music(fade_sec: float = 1.2) -> void:
+	_current_bgm_name = ""
+	if _music_player == null or not _music_player.playing:
+		return
+	if _music_player_active == _music_player:
+		_music_player_active = null
+	var player := _music_player
+	if fade_sec <= 0.0:
+		player.stop()
+		player.stream = null
+		return
+	var tw := create_tween()
+	tw.tween_property(player, "volume_db", -60.0, fade_sec)
+	tw.tween_callback(func():
+		player.stop()
+		player.stream = null
+	)
 
 ## 设置音乐音量
 func set_music_volume(volume: float) -> void:

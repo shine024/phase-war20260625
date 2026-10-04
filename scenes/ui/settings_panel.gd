@@ -444,7 +444,7 @@ func _apply_accessibility(hc: bool, lt: bool, mr: bool) -> void:
 # canvas_items 拉伸模式，1.25 = UI 整体放大 25%）。此前 is_large_type 全项目零
 # 消费方、勾选后游戏内纹丝不动，属"承诺未兑现"开关；本修复后即时生效。
 func _apply_ui_scale(large_type: bool) -> void:
-	var vp := get_tree().root
+	var vp := get_tree().root if get_tree() != null else null
 	if vp != null:
 		vp.content_scale_factor = 1.25 if large_type else 1.0
 

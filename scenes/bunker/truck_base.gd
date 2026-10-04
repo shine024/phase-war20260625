@@ -18,6 +18,7 @@ const RewardBubbleScript = preload("res://scenes/bunker/bunker_reward_bubble.gd"
 const EnemyPhaseMasters = preload("res://data/enemy_phase_masters.gd")  # v27.17 碎片解锁 toast 聚合取名
 const OfflineIdleManagerScript = preload("res://scripts/systems/offline_idle_manager.gd")  # v32.3 A5
 const OfflineRewardDialogScript = preload("res://scenes/ui/offline_reward_dialog.gd")      # v32.3 A5
+const TutorialSpotlight = preload("res://scripts/ui/tutorial_spotlight.gd")  # v6.39 点播段指路标
 
 const COLOR_CYAN := Color(0.0, 0.9, 1.0)
 const COLOR_AMBER := Color(1.0, 0.71, 0.37)
@@ -61,7 +62,7 @@ const HOTSPOTS := {
 		{"r": [0.450, 0.650, 0.040, 0.100], "name": "医疗柜", "hint": "医疗·配给", "kind": "info", "rooms": "medical + mess_hall"},
 		{"r": [0.925, 0.660, 0.055, 0.170], "name": "发电机", "hint": "全车电力·配给", "kind": "info", "rooms": "reactor + mess_hall"},
 		{"r": [0.792, 0.462, 0.146, 0.140], "name": "铺位", "hint": "睡眠·存档", "kind": "sleep", "rooms": "dormitory"},
-		{"r": [0.948, 0.327, 0.047, 0.328], "name": "尾门跳板", "hint": "行军选关", "kind": "march"},
+		{"r": [0.948, 0.327, 0.047, 0.328], "name": "尾门跳板", "hint": "行军选关", "kind": "march", "key": "world_map"},
 		{"r": [0.255, 0.610, 0.139, 0.080], "name": "通讯架", "hint": "技能树", "kind": "panel", "key": "growth"},
 		{"r": [0.506, 0.610, 0.138, 0.080], "name": "词缀工具车", "hint": "词缀·洗练", "kind": "panel", "key": "affix"},
 		{"r": [0.470, 0.180, 0.174, 0.090], "name": "资料柜", "hint": "图鉴·收藏档案", "kind": "panel", "key": "collection"},
@@ -80,7 +81,7 @@ const HOTSPOTS := {
 		{"r": [0.447, 0.661, 0.036, 0.104], "name": "医疗柜", "hint": "医疗·配给", "kind": "info", "rooms": "medical + mess_hall"},
 		{"r": [0.918, 0.661, 0.070, 0.174], "name": "发电机", "hint": "全车电力·配给", "kind": "info", "rooms": "reactor + mess_hall"},
 		{"r": [0.780, 0.452, 0.141, 0.139], "name": "铺位", "hint": "睡眠·存档", "kind": "sleep", "rooms": "dormitory"},
-		{"r": [0.922, 0.220, 0.060, 0.436], "name": "尾门跳板", "hint": "行军选关", "kind": "march"},
+		{"r": [0.922, 0.220, 0.060, 0.436], "name": "尾门跳板", "hint": "行军选关", "kind": "march", "key": "world_map"},
 		{"r": [0.244, 0.590, 0.146, 0.080], "name": "通讯架", "hint": "技能树", "kind": "panel", "key": "growth"},
 		{"r": [0.580, 0.620, 0.128, 0.080], "name": "词缀工具车", "hint": "词缀·洗练", "kind": "panel", "key": "affix"},
 		{"r": [0.465, 0.150, 0.275, 0.085], "name": "资料柜", "hint": "图鉴·收藏档案", "kind": "panel", "key": "collection"},
@@ -99,7 +100,7 @@ const HOTSPOTS := {
 		{"r": [0.479, 0.733, 0.048, 0.092], "name": "医疗柜", "hint": "医疗·配给", "kind": "info", "rooms": "medical + mess_hall"},
 		{"r": [0.844, 0.420, 0.060, 0.240], "name": "配电柜", "hint": "全车电力·配给", "kind": "info", "rooms": "reactor + mess_hall"},
 		{"r": [0.751, 0.550, 0.089, 0.100], "name": "铺位", "hint": "睡眠·存档", "kind": "sleep", "rooms": "dormitory"},
-		{"r": [0.920, 0.450, 0.065, 0.350], "name": "尾门跳板", "hint": "行军选关", "kind": "march"},
+		{"r": [0.920, 0.450, 0.065, 0.350], "name": "尾门跳板", "hint": "行军选关", "kind": "march", "key": "world_map"},
 		{"r": [0.272, 0.645, 0.115, 0.070], "name": "通讯台", "hint": "技能树", "kind": "panel", "key": "growth"},
 		{"r": [0.676, 0.640, 0.062, 0.092], "name": "词缀工具台", "hint": "词缀·洗练", "kind": "panel", "key": "affix"},
 		{"r": [0.584, 0.290, 0.097, 0.095], "name": "档案屏", "hint": "图鉴·收藏档案", "kind": "panel", "key": "collection"},
@@ -118,7 +119,7 @@ const HOTSPOTS := {
 		{"r": [0.438, 0.705, 0.053, 0.182], "name": "医疗冰箱", "hint": "医疗·配给", "kind": "info", "rooms": "medical + mess_hall"},
 		{"r": [0.692, 0.812, 0.190, 0.145], "name": "聚变缆线", "hint": "全车电力·配给", "kind": "info", "rooms": "reactor + mess_hall"},
 		{"r": [0.565, 0.652, 0.127, 0.150], "name": "铺位", "hint": "睡眠·存档", "kind": "sleep", "rooms": "dormitory"},
-		{"r": [0.885, 0.380, 0.080, 0.530], "name": "尾门跳板", "hint": "行军选关", "kind": "march"},
+		{"r": [0.885, 0.380, 0.080, 0.530], "name": "尾门跳板", "hint": "行军选关", "kind": "march", "key": "world_map"},
 		{"r": [0.250, 0.715, 0.123, 0.070], "name": "全息通讯塔", "hint": "技能树", "kind": "panel", "key": "growth"},
 		{"r": [0.710, 0.500, 0.096, 0.080], "name": "词缀机械臂", "hint": "词缀·洗练", "kind": "panel", "key": "affix"},
 		{"r": [0.412, 0.330, 0.079, 0.080], "name": "全息档案柜", "hint": "图鉴·收藏档案", "kind": "panel", "key": "collection"},
@@ -137,7 +138,7 @@ const HOTSPOTS := {
 		{"r": [0.255, 0.695, 0.040, 0.090], "name": "医疗柜", "hint": "医疗·配给", "kind": "info", "rooms": "medical + mess_hall"},
 		{"r": [0.695, 0.775, 0.115, 0.200], "name": "相位能源盘", "hint": "全车电力·配给", "kind": "info", "rooms": "reactor + mess_hall"},
 		{"r": [0.752, 0.672, 0.135, 0.098], "name": "铺位", "hint": "睡眠·存档", "kind": "sleep", "rooms": "dormitory"},
-		{"r": [0.900, 0.420, 0.085, 0.340], "name": "尾门跳板", "hint": "行军选关", "kind": "march"},
+		{"r": [0.900, 0.420, 0.085, 0.340], "name": "尾门跳板", "hint": "行军选关", "kind": "march", "key": "world_map"},
 		{"r": [0.300, 0.735, 0.094, 0.070], "name": "相位通讯塔", "hint": "技能树", "kind": "panel", "key": "growth"},
 		{"r": [0.565, 0.745, 0.108, 0.070], "name": "词缀相位台", "hint": "词缀·洗练", "kind": "panel", "key": "affix"},
 		{"r": [0.444, 0.320, 0.112, 0.085], "name": "相位档案柜", "hint": "图鉴·收藏档案", "kind": "panel", "key": "collection"},
@@ -350,6 +351,10 @@ func _ready() -> void:
 	if _tpm != null and _tpm.has_signal("overlay_requested") \
 			and not _tpm.overlay_requested.is_connected(_show_tutorial_overlay_local):
 		_tpm.overlay_requested.connect(_show_tutorial_overlay_local)
+	# v6.39 朝露式指路：点播段挂起等待期间在目标工位上常驻「下一步」聚光标
+	if _tpm != null and _tpm.has_signal("tutorial_pointer_requested") \
+			and not _tpm.tutorial_pointer_requested.is_connected(_on_tutorial_pointer_requested):
+		_tpm.tutorial_pointer_requested.connect(_on_tutorial_pointer_requested)
 	# v32.3 B3：教学首战步的基地出击——start_level 此前只有 main 监听；教学自举前移后
 	# 玩家在基地点「开始首战」时 main 尚未加载，信号会落空。转 _launch_battle 进 main
 	# 开打（tutorial_first_battle meta 由 main 消费，绕过教程态的 launch 自动开战守卫）。
@@ -383,6 +388,8 @@ func _ready() -> void:
 			and not LevelProgressManager.era_unlocked.is_connected(_on_era_unlocked_signal):
 		LevelProgressManager.era_unlocked.connect(_on_era_unlocked_signal)
 	call_deferred("_consume_pending_unlock_ceremonies")
+	# v6.39：读档/切场景落在点播等待中时，进基地即亮指路标（deferred 等热区落位）
+	call_deferred("_maybe_spawn_tutorial_pointer")
 	# v27.13：漫画开场收尾携 wakeup 标记切入 → 播醒来演出（deferred 等全 UI 落位）
 	call_deferred("_maybe_play_wakeup")
 
@@ -648,7 +655,7 @@ func _on_era_pressed(i: int) -> void:
 	# v34 渐进解锁：未解锁时代的驻地观感不可切（防 ButtonGroup 假选中，复位回当前）
 	if not _is_era_viewable(i):
 		_play_sfx("error", 0.7)
-		SignalBus.show_toast.emit("🔒 通关第 %d 关解锁%s驻地观感" % [i * 20, String(ERAS[i]["label"])])
+		SignalBus.feed_message.emit("🔒 通关第 %d 关解锁%s驻地观感" % [i * 20, String(ERAS[i]["label"])])
 		for b_i in _era_buttons.size():
 			_era_buttons[b_i].set_pressed_no_signal(b_i == _era_idx)
 		return
@@ -737,9 +744,9 @@ func _rebuild_hotspots() -> void:
 		b.focus_mode = Control.FOCUS_NONE
 		# v34 渐进解锁：panel 工位按节奏表门控——锁定=灰显+🔒短牌，点击 toast 提示解锁关。
 		# 其余 kind（sortie/march/terminal/sleep/info）恒开（L1 常开集，见节奏表头注）。
-		var panel_key := ""
-		if String(h.get("kind", "")) == "panel":
-			panel_key = String(h.get("key", ""))
+		# v6.39：key 不再限 panel——march（尾门跳板）带 key=world_map 供点播段指路标解析；
+		# world_map 不在节奏表=恒开，门控显示不变。
+		var panel_key := String(h.get("key", ""))
 		b.set_meta("panel_key", panel_key)
 		var gated := not _is_feature_unlocked(panel_key)
 		b.set_meta("gate_locked", gated)
@@ -1076,7 +1083,7 @@ func _flush_hero_toast() -> void:
 	var shown := "、".join(names.slice(0, 3))
 	if names.size() > 3:
 		shown += " 等 %d 位" % names.size()
-	SignalBus.show_toast.emit("同伴档案解锁 ×%d：%s（%d/30）" % [ids.size(), shown, int(bm.get_hero_fragment_count())])
+	SignalBus.feed_message.emit("同伴档案解锁 ×%d：%s（%d/30）" % [ids.size(), shown, int(bm.get_hero_fragment_count())])
 
 # ── v26.13 氛围小件 ──
 
@@ -2550,6 +2557,12 @@ func _maybe_play_wakeup() -> void:
 
 func _play_wakeup_cinematic() -> void:
 	_wakeup_active = true
+	# v6.38（记录5#4）：苏醒演出换成雪原氛围——淡出标题 BGM，起风声环境音；
+	# 收场（_finish_wakeup）再进基地曲。标题曲配雪原睁眼被实机反馈"不好"。
+	if AudioManager != null and AudioManager.has_method("stop_music"):
+		AudioManager.stop_music(1.2)
+	if AudioManager != null and AudioManager.has_method("play_ambient"):
+		AudioManager.play_ambient("battle_wind", 0.30)
 	var root := Control.new()
 	root.name = "WakeupCinematic"
 	root.size = Vector2(1280, 720)
@@ -2721,6 +2734,11 @@ func _finish_wakeup() -> void:
 	if not _wakeup_active:
 		return
 	_wakeup_active = false
+	# v6.38（记录5#4）：风声收、进基地曲（基地此前沿用标题曲无自己的主题）
+	if AudioManager != null and AudioManager.has_method("stop_ambient"):
+		AudioManager.stop_ambient(1.5)
+	if AudioManager != null and AudioManager.has_method("play_music"):
+		AudioManager.play_music("hub")
 	if _wakeup_tween != null and _wakeup_tween.is_valid():
 		_wakeup_tween.kill()
 	if _wakeup_root != null and is_instance_valid(_wakeup_root):
@@ -2758,6 +2776,35 @@ func _show_tutorial_overlay_local() -> void:
 	var overlay := scene.instantiate()
 	overlay.name = "TutorialOverlay"
 	add_child(overlay)
+
+
+## ── v6.39 朝露式指路（点播段挂起等待的「下一步去哪」）──────────────
+## 教程点播段（chain_paused）overlay 已收起、等玩家首次触达目标工位——此前往工位上
+## 放一枚柔和聚光标（暗幕 0.30 + 金环 + 「下一步」提示条，纯视觉 IGNORE 不挡操作），
+## 玩家不再需要在车厢里盲找。TPM tutorial_pointer_requested 驱动；进基地时补亮。
+func _on_tutorial_pointer_requested(show_ptr: bool) -> void:
+	if show_ptr:
+		_maybe_spawn_tutorial_pointer()
+	else:
+		TutorialSpotlight.dismiss_step_pointer(self)
+
+
+func _maybe_spawn_tutorial_pointer() -> void:
+	# 拆场守卫（记录5#16 同律）：deferred 回调可能落在已出树的场景上
+	if not is_inside_tree():
+		return
+	var tpm := get_node_or_null("/root/TutorialProgressionManager")
+	if tpm == null or not tpm.has_method("get_pending_surface"):
+		return
+	var surface := String(tpm.get_pending_surface())
+	if surface.is_empty():
+		return
+	var target: Control = TutorialSpotlight.resolve_target(self, surface)
+	if target == null or not target.is_visible_in_tree():
+		return   # 无对应工位（如 phase_instrument）：纯文字节奏兜底，不亮标
+	if bool(target.get_meta("gate_locked", false)):
+		return   # 锁定工位点了只会弹解锁 toast，指它=误导
+	TutorialSpotlight.show_step_pointer(self, target, String(tpm.get_pointer_tip()))
 
 
 ## 教学首战步的基地出击（镜像 main.gd _on_start_level_from_tutorial + 顶栏出击同链）：

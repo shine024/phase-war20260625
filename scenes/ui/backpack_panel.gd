@@ -1122,7 +1122,9 @@ func _show_backpack_empty_hint(grid: GridContainer) -> void:
 	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	hint.add_theme_color_override("font_color", Color(0.6, 0.65, 0.75, 0.7))
 	hint.add_theme_font_size_override("font_size", DesignTokens.FONT_SIZE_BODY)
-	hint.custom_minimum_size = Vector2(600, 120)
+	# 记录5#1：min 宽给 0——提示经 EXPAND_FILL 占满网格宽（网格 min 宽由列布局给出），
+	# 600 固定 min 曾把 GridContainer 第一列撑到 600 → 全空时格子大小不一且溢出背包。
+	hint.custom_minimum_size = Vector2(0, 120)
 	hint.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	hint.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	hint.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
@@ -2815,6 +2817,16 @@ func _ensure_min_card_slots(grid: GridContainer) -> void:
 	if target_total > MAX_CARD_SLOTS:
 		# 上限内也尽量给整行（如 50 槽上限、7 列时 45 卡 → 补到 49 而非 51）
 		target_total = mini(MAX_CARD_SLOTS, maxi(cols, full_rows * cols))
+	# 记录5#1（v6.32.1 拍板复核）：0 卡例外——空背包不铺空槽行。空态提示独占网格，
+	# 空槽全部回池；否则提示后跟一整行空槽，GridContainer 第一列被提示撑大
+	# （600 vs 108）→「空格大小不固定 + 整行溢出背包」。
+	if card_count == 0:
+		while not empty_slots.is_empty():
+			var excess0: Panel = empty_slots.pop_back() as Panel
+			if is_instance_valid(excess0):
+				grid.remove_child(excess0)
+				_empty_slot_pool.append(excess0)
+		return
 	while empty_slots.size() + card_count < target_total:
 		# 空槽用轻量 Panel 占位，避免实例化完整 backpack_card_item
 		var placeholder: Panel

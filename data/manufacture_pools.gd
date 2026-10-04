@@ -153,6 +153,19 @@ static func get_cost_for_era(era: int) -> Dictionary:
 	var idx := clampi(era, 0, COSTS.size() - 1)
 	return COSTS[idx]
 
+
+## ───────────────────── 战力成本缩放（v6.38 记录5#7，用户主诉"高战力要的资源太少"） ─────────────────────
+## 制造成本 = 时代基础成本 × power_cost_mult(卡模板战力)。
+## √(power/POWER_REF)：era0 廉价步兵（p50≈28）吃 0.75 下限，时代主力（p50≈200）≈1.0，
+## 重型主力（≈800）≈2.0，天花板（≈2200）封顶 3.0——单调、可预期（C3：无随机、UI 同源显示）。
+const POWER_COST_REF: float = 200.0
+const POWER_COST_FLOOR: float = 0.75
+const POWER_COST_CAP: float = 3.0
+
+static func power_cost_mult(power: float) -> float:
+	var raw := sqrt(maxf(power, 1.0) / POWER_COST_REF)
+	return clampf(raw, POWER_COST_FLOOR, POWER_COST_CAP)
+
 ## 消耗 → "纳米×100 · 能量块×20" 文本（面板/条件行共用）
 static func cost_text(cost: Dictionary) -> String:
 	var parts: PackedStringArray = []

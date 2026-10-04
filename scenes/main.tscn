@@ -158,20 +158,21 @@ layout_mode = 1
 layout_mode = 1
 # v9.1 修复重叠：原 (165,8,690,48) 把 TopHudBar 居中区(关卡名/波次/计时，x≥500) 压住。
 # 左移到 (8,8,480,48)，右边界 480 在 CenterSection(500~780) 左侧留 20px 间隙。
-# custom_minimum_size 同步从 520 收到 360（实际内容仅 348px），避免 PanelContainer 被强制撑宽顶回。
+# v6.35.2：聚合钮移除，右边界收到 368（Capsule 左缘 435 契约）。
+# 记录5#9：图标两行制（一行 5 个）——rect 改 (8,8,320,84)，BuffFoldCard 同步下移。
 anchors_preset = 0
 offset_left = 8.0
 offset_top = 8.0
-offset_right = 480.0
-offset_bottom = 48.0
+offset_right = 320.0
+offset_bottom = 84.0
 
 [node name="BuffFoldCard" parent="HudLayer" instance=ExtResource("48_buff_card")]
 layout_mode = 1
 anchors_preset = 0
 offset_left = 8.0
-offset_top = 72.0
+offset_top = 92.0
 offset_right = 180.0
-offset_bottom = 272.0
+offset_bottom = 292.0
 
 [node name="TopCenterAnnouncer" parent="HudLayer" instance=ExtResource("40_battle_announcer")]
 layout_mode = 1

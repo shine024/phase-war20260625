@@ -40,10 +40,13 @@ const BOX_HALF_H_BY_STEP := {
 }
 
 @onready var _title_label: Label = $TutorialBox/Margin/VBox/TitleLabel
+@onready var _step_label: Label = $TutorialBox/Margin/VBox/StepLabel
 @onready var _content_label: RichTextLabel = $TutorialBox/Margin/VBox/ContentLabel
 @onready var _skip_button: Button = $TutorialBox/Margin/VBox/ButtonRow/SkipButton
 @onready var _next_button: Button = $TutorialBox/Margin/VBox/ButtonRow/NextButton
 @onready var _tutorial_box: PanelContainer = $TutorialBox
+
+var _skip_confirm: ConfirmationDialog = null
 
 
 func _ready() -> void:
@@ -58,7 +61,23 @@ func _ready() -> void:
 	if not _tutorial_manager.should_show_tutorial():
 		queue_free()
 		return
+	# v6.39 指路标收编：overlay 重新拉起（点播命中/续播）= 挂起等待结束，
+	# 收掉场景里残留的「下一步」指路标（宿主与 overlay 平级，不会随 overlay 自毁）。
+	TutorialSpotlight.dismiss_step_pointer(get_parent())
+	_build_skip_confirm()
 	_show_current_step()
+
+
+## v6.39 跳过确认（朝露式温婉：误触不再直接弃掉整段教学）
+func _build_skip_confirm() -> void:
+	_skip_confirm = ConfirmationDialog.new()
+	_skip_confirm.name = "SkipConfirmDialog"
+	_skip_confirm.dialog_text = "确定跳过全部新手引导吗？\n之后可随时在「设置 → 重置教程」重新开启。"
+	_skip_confirm.ok_button_text = "跳过教程"
+	_skip_confirm.cancel_button_text = "继续引导"
+	_skip_confirm.title = "跳过新手引导"
+	_skip_confirm.confirmed.connect(_do_skip)
+	add_child(_skip_confirm)
 
 
 func _show_current_step() -> void:
@@ -71,6 +90,16 @@ func _show_current_step() -> void:
 		return
 	if _title_label:
 		_title_label.text = str(_current_content.get("title", "引导"))
+	if _step_label:
+		# v6.39 进度指示（朝露式温婉：玩家可预期教学还剩多长）
+		_step_label.visible = true
+		if _tutorial_manager != null and _tutorial_manager.has_method("get_step_play_position"):
+			var pos: Dictionary = _tutorial_manager.get_step_play_position()
+			var idx := int(pos.get("index", 0))
+			_step_label.visible = idx > 0
+			_step_label.text = "新手引导 · 第 %d / %d 步" % [idx, int(pos.get("total", 0))]
+		else:
+			_step_label.visible = false
 	if _content_label:
 		var text_parts: Array = []
 		text_parts.append(str(_current_content.get("description", "")))
@@ -78,7 +107,8 @@ func _show_current_step() -> void:
 		if highlights.size() > 0:
 			text_parts.append("")
 			for h in highlights:
-				text_parts.append("• " + str(h))
+				# v6.39：要点行琥珀色圆点（朝露"关键信息显眼黄字"模式）
+				text_parts.append("[color=#fbbf24]•[/color] " + str(h))
 		_content_label.text = "\n".join(text_parts)
 	if _next_button:
 		# action_text 作为下一步按钮文案
@@ -119,23 +149,13 @@ func _dismiss_spotlight() -> void:
 	_spotlight = null
 
 
-## 解析聚光目标：基地链=truck_base 热区（get_hotspot_button_for_key）；
-## 主场景链=底栏抽屉（get_button_for_key，growth 工位在底栏键名=progression）。
+## 解析聚光目标：委托 TutorialSpotlight.resolve_target（基地链=truck_base 热区；
+## 主场景链=底栏抽屉，growth 工位在底栏键名=progression）。
 func _resolve_spotlight_target(key: String) -> Control:
-	var host := get_parent()
-	while host != null:
-		if host.has_method("get_hotspot_button_for_key"):
-			var hb: Button = host.get_hotspot_button_for_key(key)
-			if hb != null:
-				return hb
-		host = host.get_parent()
-	var bar_key := "progression" if key == "growth" else key
-	for n in get_tree().root.find_children("BottomFunctionBar", "Control", true, false):
-		if n.has_method("get_button_for_key"):
-			var bb: BaseButton = n.get_button_for_key(bar_key)
-			if bb != null:
-				return bb
-	return null
+	# v6.38：出树/拆场窗口内 get_tree() 为 null（记录5#16）——静态解析口内部含树查询
+	if not is_inside_tree():
+		return null
+	return TutorialSpotlight.resolve_target(self, key)
 
 
 ## 点真实入口按钮 = 等效点本步动作键（面板由真按钮自己的链路打开，跳过动作信号防重复 toggle）
@@ -237,6 +257,14 @@ func _advance(skip_action: bool) -> void:
 
 
 func _on_skip_pressed() -> void:
+	# v6.39：跳过加确认——防误触直接弃掉整段教学（可随时在设置里重置）
+	if _skip_confirm != null:
+		_skip_confirm.popup_centered()
+	else:
+		_do_skip()
+
+
+func _do_skip() -> void:
 	if _tutorial_manager != null and _tutorial_manager.has_method("skip_tutorial"):
 		_tutorial_manager.skip_tutorial()
 	queue_free()

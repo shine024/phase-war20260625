@@ -218,6 +218,7 @@ hard-edge scuffed steel, clean painterly silhouettes defined by value contrast
 ### 卡图立绘（356 张主战场；白底生成 → flood_white_to_alpha → 镜像配对 → 脚锚 → grain 后处理）
 
 - **视平线**：卡图无画面内视平线——无地面无天空（`clean pure white background with NO ground`，结构性白名单词），视角取**平视全身侧面**（eye-level full body side view）；`perspective view` 是结构性排除词。超大型单位（巨舰 / 球舰）允许微仰视——串内写 `slight low angle`，幅度以不触发 perspective view 排除为限（微仰是机位倾斜，不是透视变形）。
+- **正侧硬锁（2026-10-01~02 侧视重做批实证，细则与分族短语见 §6.1.3）**：点名 `side view`/「侧面」压不住生成器——二批 10 张仍漏 5 张 3/4 视角；完全不写视角=3/4 俯视；中文长 prompt 反而整图崩坏。构图串一律写 `flat orthographic side view`，载具/火炮/飞行器再按 §6.1.3 追加几何硬锁段（主轴水平横贯 + 两侧重叠成单线 + edge-on + `no front or rear face visible`）。
 - **朝向**：生图串一律写 `facing right`，**生成即朝右**；enemy 侧由 FLIP_LEFT_RIGHT 镜像产出，player 侧直出——同 ID 配对 player 朝右 / enemy 朝左。构图必须**翻转安全**（画面内禁文字 / 字母 / 带字旗帜徽标 / 单侧不对称符号）。
 - **主体占比**：约 65%~80%；四周留 8%~15% 白边安全距（泛洪 + 裁切适配需要）；脚部完整落在画面内不裁切（白色椭圆脚锚是 `generate_card_foot_anchors.py` 后处理产物，不进生图）。
 - **生成尺寸**：agnes 实测 1152x768（≈3:2）可用；卡图管线终态 512×512 透明底——1152x768 出图 → flood_white_to_alpha → 裁切适配 → 脚部锚 → grain 后处理叠加。
@@ -229,26 +230,27 @@ hard-edge scuffed steel, clean painterly silhouettes defined by value contrast
 〔卡图·历史写实系〕
 
 ```
-WWII single military unit or vehicle, full body, eye-level side view, facing
-right, historically accurate equipment detail, unit fills about three
-quarters of the frame with even white margins, clean pure white background
-with NO ground
+WWII single military unit or vehicle, full body, eye-level flat orthographic
+side view, facing right, historically accurate equipment detail, unit fills
+about three quarters of the frame with even white margins, clean pure white
+background with NO ground
 ```
 
 〔卡图·科幻系〕
 
 ```
-single hard-surface sci-fi unit or vehicle, full body, eye-level side view,
-facing right, sleek angular panel lines, unit fills about three quarters of
-the frame with even white margins, clean pure white background with NO ground
+single hard-surface sci-fi unit or vehicle, full body, eye-level flat
+orthographic side view, facing right, sleek angular panel lines, unit fills
+about three quarters of the frame with even white margins, clean pure white
+background with NO ground
 ```
 
 〔卡图·xeno 系〕
 
 ```
-single alien creature, full body, eye-level side view, facing right, unit
-fills about three quarters of the frame with even white margins, clean pure
-white background with NO ground
+single alien creature, full body, eye-level flat orthographic side view,
+facing right, unit fills about three quarters of the frame with even white
+margins, clean pure white background with NO ground
 ```
 
 （三档变体拼装时，rim 句按第二章条件树取对应档词。）
@@ -282,7 +284,7 @@ with faint violet halo
 **共用管线三铁律**
 
 1. 卡图串 backdrop 只写 `clean pure white background with NO ground`；黑底 / 深底 / studio backdrop 字样不进立绘串——管线是白底生成 + flood_white_to_alpha 转透明，深底字样让泛洪失效、抠图报废。
-2. 负面词栏只写结构性排除 `text / perspective view / frame / ground / ceiling`——agnes 实测负面概念词反激活（"不要大象"效应），写"不要 X"反而把 X 画进画面；铁律 1 的 `NO ground` 与室内图的 `ceiling` 同属结构性白名单，其余概念词（含 `no outlines` 这类风格否定）一律不得入负面栏。
+2. 负面词栏只写结构性排除——卡图 `text / perspective view / three-quarter view / front view / angled view / frame / ground / ceiling / foreshortening`，场景 `text / frame`。agnes 实测负面**概念词**反激活（"不要大象"效应），写"不要 X"反而把 X 画进画面；铁律 1 的 `NO ground` 与室内图的 `ceiling` 同属结构性白名单；视角四词（three-quarter/front/angled/foreshortening）与 `perspective view` 同属视角类结构词，2026-10-02 侧视重做批 11 张实测无反激活（§6.1.3）——除此之外的概念词（含 `no outlines` 这类风格否定）一律不得入负面栏。
 3. enemy 侧由 FLIP_LEFT_RIGHT 镜像产出（生成一律朝右）——画面内禁一切文字 / 字母 / 带字旗帜徽标 / 单侧不对称符号，因为翻转即穿帮（`text` 结构性排除同时服务于此）。
 
 **风格词陷阱（agnes 三轮实测）**
@@ -321,7 +323,7 @@ with faint violet halo
 | 7 | 笔触串 | 第三章〔卡图〕串（固定） |
 | 8 | 暖缀条件句 | 仅单位自带自然暖源时写入对应载体词，无源整句删除（第一章条件句） |
 | 9 | 白底句 | `clean pure white background with NO ground`（固定收尾） |
-| 10 | 负面栏 | `text, perspective view, frame, ground, ceiling`（固定，结构性白名单） |
+| 10 | 负面栏 | `text, perspective view, three-quarter view, front view, angled view, frame, ground, ceiling, foreshortening`（固定，结构性白名单——视角类扩容依据见 §6.1.3） |
 
 **基础锚段**（第 4~7、9 步固定原文，逐字粘贴；rim 句按三档插入主光句之后）：
 
@@ -344,7 +346,8 @@ xeno 系：   one narrow faint violet rim light along the back edge
 负面栏（固定）：
 
 ```
-text, perspective view, frame, ground, ceiling
+text, perspective view, three-quarter view, front view, angled view, frame,
+ground, ceiling, foreshortening
 ```
 
 **三个独立轴**：era（时代装备细节）× 兵种（6.1.2 主体句）× 单位族档（rim 词 + 构图串头）——默认独立、逐轴独立选词（两处显式例外见 6.1.2 表后注：科幻系装备词替换、隐身兵种 era 取值）；族档拿不准走第二章兜底（冰天青 + 登记人工复核清单）。
@@ -371,9 +374,29 @@ text, perspective view, frame, ground, ceiling
 
 （科幻系拼装时，变体句里的时代敏感装备词替换为能量系等价物——rifle→energy rifle 一类——兵种剪形不变；历史写实系禁科幻化改型（禁则 11），判定按第二章优先级①。）
 
+#### 6.1.3 正侧硬锁段（〔卡图〕域新增，2026-10-01~02 侧视重做批实证；活范本 `tools/img25_card_sideview_redo.py` JOBS）
+
+**教训**：点名视角无效——二批写 `eye-level side view` 仍漏 5/10 张 3/4 视角（a7v/mark4/105mm/stealth/dive_bomber）；完全不写视角=3/4 俯视；中文长 prompt（硬性块堆叠）整图崩坏（出过西装人）。**有效写法=把"正侧面"翻译成投影几何描述**：机位贴侧 + 主轴水平横贯画面 + 左右两侧特征重叠成单线 + 薄件 edge-on + 明写禁前后脸/禁透视缩短。
+
+按单位族追加在兵种变体句（第 3 步）之后，prompt-ready：
+
+| 单位族 | 硬锁段（接在 6.1.2 主体句后） |
+|--------|------------------------------|
+| 履带/轮式载具（装甲/支援/侦察/工兵/指挥/医疗） | `seen exactly from directly beside it in flat orthographic side view, the hull stretching horizontally across the whole image, both track runs / all wheels overlapping into one single continuous line seen in profile, no front or rear face visible, no perspective foreshortening` |
+| 火炮（炮兵/防空） | `seen exactly from directly beside it in flat orthographic side view, the two wheels overlapping into one single wheel seen in profile, no perspective foreshortening`——炮管抬角是兵种语义**不做水平锁**（防空上仰管保留；105mm 榴弹炮的 `barrel horizontal and pointing to the right` 按单位实际姿态写） |
+| 飞行器（空军/隐身） | `seen exactly from directly beside it in flat orthographic side view in level flight, wings seen edge-on as a thin dark line crossing the fuselage, no perspective foreshortening`——**已知弱项**：edge-on 句下仍可能带识别性翼平面，按"机身正侧 + 构图可读"放行（Stuka 先例 2026-10-02 用户验收）；螺旋桨=`thin horizontal translucent ellipses` |
+| 人型（步兵等） | 主体句姿态词处写 `standing in strict profile, entire body from helmet to boots fully visible`（不另起段；aiming 姿态加 `rifle raised to his shoulder aiming forward through the sights`） |
+
+出图朝左时 deploy 前镜像（宪法朝右）：菱形坦克/对称件/无字符士兵镜像无损可直接翻；带文字或单侧徽标的单位先修 prompt 重掷、不靠翻转救。
+
 **agnes 行为适配**（源 `tools/_agnes_image_api.md` 三轮实测）：
 
 - **正面意象锁死**：全部描述写"该画什么"（上表主体句均正面表述）；要干净背景就靠白底句本身，绝不写 no trash 类概念否定。
+- **视角靠横纵轴描述，不靠术语句**（2026-10-04 R2 实证）：`orthographic side view` 术语模型不敏感；改写 `the camera is exactly at the subject's own side, level with its midline; the subject's long axis stretches horizontally across the whole image, its upright parts stay vertical`（与 §6.1.3 硬锁段同用；重叠句仍最灵）。
+- **语言用英文**（2026-10-04 用户拍板）：同结构下英文串出图更准。B4 中文 STRICT 串可过门；R2 起 24 案全英文全过，参考实现 `tools/_b4_regen_r2.py`（PLAT_EN/CONVERT_EN/FAM_EN/AXIS_EN/POSE_EN 五表）。
+- **星战先验塌缩**：泛化的"装甲步兵/板甲头盔+冷灰白配色"会被模型塌缩成星战暴风兵形象；写具体装具形态的时代锚——`modern modular tactical gear` / `fire-proximity suit` / `chitin exoskeleton`（写"要什么"，"不要星战"属概念否定必召唤）。
+- **贴边裁切补强后缀**：主体出画/贴边时追加 `Zoomed-out wide framing: the complete figure visible from helmet to boots, generous white space on all four sides, the entire weapon fully inside the frame with the muzzle far from the canvas edges.`（R2 两案实证一发修复）。
+- **风格句正向化**：笔触写 `forms shaped by color masses and value transitions`（色块与明暗交界塑形），不写"无黑色描边"类否定（same 召唤效应）；暗图回收走 gain 收敛循环（`tools/_b4_gain_loop.py`，在 raw 上迭代、单轮 gain ≤1.35、白点吸附），**双图 relight 会把参考图内容注入画面，禁用**，单图 relight 仅兜底。
 - **负面词只留结构性白名单**（第 10 步 5 词）。存量脚本 `tools/generate_missing_card_icons_11.py` 的 NO 词前缀 + 中文负面词堆叠为宪法前写法——复用脚本只保留 API 管线（key/轮换/输出到待生成审核目录），prompt 段一律按本章重拼。
 - **质感词落材质不落破败**：`oil-stained steel` 可，dusty/gritty/grimy/battle-worn 禁（禁则 5）。
 - **屏幕限定句**：装备带屏幕（雷达/指挥车）时加第二章禁则 8 原文整句。
@@ -387,7 +410,7 @@ text, perspective view, frame, ground, ceiling
 
 **合规自检 5 问**：
 
-1. 朝向右？（`facing right` 在构图串头；enemy 由翻转产出，画面无单侧不对称符号）
+1. 朝向右且真 90° 正侧？（`facing right` 在构图串头 + §6.1.3 硬锁段在位；目检履带/轮重叠单线、前后脸不可辨、无 3/4 俯角；enemy 由翻转产出，画面无单侧不对称符号）
 2. 透明底合规？（白底句固定收尾；串内无雾/软烟雾词污染剪影、无泛辉光词——科幻系 rim 句的 emissive 限定辉光除外；主体无贴剪影边缘的大白块）
 3. 色板内？（冷灰蓝基调 + 至多一处自然暖缀（无源删句）；无禁用色；无 hex 进串）
 4. 笔触合规？（厚涂档 4 串原文逐字在位；grain 未进串、只走后处理；无勾边/卡通词）
@@ -605,10 +628,14 @@ C 档处置：按第六章对应域模板重拼串（6.1 卡图 / 6.2 背景 / 6
 正面串：
 
 ```
-WWII single military vehicle, full body, eye-level side view, facing right,
-historically accurate equipment detail, unit fills about three quarters of
-the frame with even white margins, a single tank with rotating turret and
-long main gun barrel, layered hull armor, wide track runs, overcast diffused
+WWII single military vehicle, full body, eye-level flat orthographic side
+view, facing right, historically accurate equipment detail, unit fills about
+three quarters of the frame with even white margins, a single tank with
+rotating turret and long main gun barrel, layered hull armor, wide track
+runs, seen exactly from directly beside it in flat orthographic side view,
+the hull stretching horizontally across the whole image, both track runs
+overlapping into one single continuous line seen in profile, no front or
+rear face visible, no perspective foreshortening, overcast diffused
 lighting, one narrow
 cool sky-blue rim light along the back edge, muted cold palette of deep
 blue-grey steel and cold grey, thick painterly illustration, clean painterly
@@ -620,10 +647,11 @@ headlights, clean pure white background with NO ground
 负面栏（结构性排除白名单）：
 
 ```
-text, perspective view, frame, ground, ceiling
+text, perspective view, three-quarter view, front view, angled view, frame,
+ground, ceiling, foreshortening
 ```
 
-拼装决策记录：era 插槽 = WWII（句首）｜单位族 = 历史写实系 → rim 句取冰天青档（第二章条件树①）｜兵种句 = 装甲系（6.1.2 表，era 无关——即串中 a single tank… 一句原文）｜暖缀 = headlights（坦克待发姿态自带车灯暖源，成立写入；若单位无自然暖源——如纯步枪步兵——暖缀句整句删除）｜朝向 = facing right（player 直出，enemy 由 FLIP 产出）｜出图 1152x768 → flood_white_to_alpha → 裁切 512×512（透明先行才裁得准内容边界，见 6.1 生成后流程）→ 脚部锚 → grain 后处理叠加。
+拼装决策记录：era 插槽 = WWII（句首）｜单位族 = 历史写实系 → rim 句取冰天青档（第二章条件树①）｜兵种句 = 装甲系（6.1.2 表，era 无关——即串中 a single tank… 一句原文）｜**正侧硬锁段 = 载具族（6.1.3，2026-10-03 回写）**｜暖缀 = headlights（坦克待发姿态自带车灯暖源，成立写入；若单位无自然暖源——如纯步枪步兵——暖缀句整句删除）｜朝向 = facing right（player 直出，enemy 由 FLIP 产出）｜出图 1152x768 → flood_white_to_alpha → 裁切 512×512（透明先行才裁得准内容边界，见 6.1 生成后流程）→ 脚部锚 → grain 后处理叠加。
 
 ---
 

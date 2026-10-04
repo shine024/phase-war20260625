@@ -1,0 +1,758 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>卡图 · 待机 · 攻击动画 总审 v2（家族制·统一ID）</title>
+<style>
+:root{--zoom:128px;--bg:#101418;--panel:#1a2027;--panel2:#232b34;--txt:#dbe4ee;--dim:#8b98a8;--line:#2d3742;
+  --ok:#3fb96f;--warn:#e0a93f;--bad:#e05c5c;--accent:#4aa8ff;}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--txt);font:13px/1.5 "Microsoft YaHei",system-ui,sans-serif}
+body.light{--bg:#eef1f5;--panel:#fff;--panel2:#f2f5f9;--txt:#1d2733;--dim:#5d6b7c;--line:#d5dce5}
+header{position:sticky;top:0;z-index:20;background:var(--panel);border-bottom:1px solid var(--line);padding:10px 16px}
+h1{font-size:17px;margin:0 0 6px}
+h1 small{color:var(--dim);font-weight:normal;margin-left:8px;font-size:12px}
+.bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:6px}
+.bar label{color:var(--dim)}
+select,input[type=search],button{background:var(--panel2);color:var(--txt);border:1px solid var(--line);
+  border-radius:6px;padding:4px 8px;font-size:12px}
+button{cursor:pointer}button:hover{border-color:var(--accent)}
+button.on{background:var(--accent);color:#fff;border-color:var(--accent)}
+.stats{font-size:12px;color:var(--dim)}
+.stats b{color:var(--txt)}
+.issues{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.ichip{border:1px solid var(--line);border-radius:12px;padding:2px 10px;font-size:12px;cursor:pointer;background:var(--panel2)}
+.ichip.zero{opacity:.45;cursor:default}
+.ichip .n{font-weight:bold;margin-left:4px}
+main{padding:12px 16px 80px}
+section{margin-bottom:26px}
+section>h2{font-size:15px;border-left:4px solid var(--accent);padding-left:10px;margin:18px 0 4px}
+section>h2 small{color:var(--dim);font-weight:normal;margin-left:8px;font-size:12px}
+.snote{color:var(--dim);font-size:12px;margin:0 0 10px 14px;max-width:1100px}
+.rows{display:flex;flex-direction:column;gap:8px}
+.card{display:flex;gap:12px;align-items:center;
+  background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px;cursor:pointer}
+.card>.info{flex:1;min-width:200px}
+.card:hover{border-color:var(--accent)}
+.icons{display:flex;gap:6px;flex:none}
+.card .icon{width:96px;height:96px;border-radius:8px;background:
+  repeating-conic-gradient(var(--panel2) 0 25%, transparent 0 50%) 0 0/16px 16px;overflow:hidden;flex:none;position:relative}
+.card .icon.sm{width:84px;height:84px}
+.card .icon img{width:100%;height:100%;object-fit:contain}
+.card .icon .tag{position:absolute;z-index:2;left:2px;top:2px;font-size:10px;line-height:1.4;
+  background:rgba(10,14,18,.72);padding:0 4px;border-radius:4px;color:#cfd8e3}
+.card .icon.miss{display:flex;align-items:center;justify-content:center;color:var(--bad);font-size:11px;text-align:center}
+.nm{font-weight:bold;font-size:14px}
+.iid{color:var(--dim);font-size:11px;font-family:Consolas,monospace;word-break:break-all}
+.chips{margin-top:4px;display:flex;flex-wrap:wrap;gap:4px}
+.chip{font-size:11px;border-radius:4px;padding:0 6px;background:var(--panel2);border:1px solid var(--line);color:var(--dim)}
+.chip.era{color:var(--accent);border-color:color-mix(in srgb,var(--accent) 40%,transparent)}
+.chip.seg{color:#b48aff;border-color:color-mix(in srgb,#b48aff 40%,transparent)}
+.chip.cap{color:var(--ok);border-color:color-mix(in srgb,var(--ok) 40%,transparent)}
+.chip.bad{color:var(--bad);border-color:var(--bad)}
+.chip.warn{color:var(--warn);border-color:var(--warn)}
+.chip.sus{color:var(--warn);border-style:dashed;cursor:pointer}
+.chip.sus:hover{background:var(--warn);color:#fff}
+.chip.flipb{cursor:pointer;color:var(--accent);border-color:color-mix(in srgb,var(--accent) 45%,transparent)}
+.chip.flipb:hover{background:var(--accent);color:#fff}
+.rev{flex:none;width:250px;display:flex;flex-direction:column;gap:5px;cursor:default}
+.pbtns{display:flex;flex-wrap:wrap;gap:4px}
+.pb{font-size:11px;padding:2px 8px;border-radius:11px;background:var(--panel2);border:1px solid var(--line);
+  color:var(--dim);cursor:pointer;line-height:1.4}
+.pb:hover{border-color:var(--accent);color:var(--txt)}
+.pb.on{background:var(--bad);color:#fff;border-color:var(--bad)}
+.rrow{display:flex;gap:5px;align-items:center}
+.rrow select{width:104px;font-size:12px;flex:none}
+.rnote{flex:1;min-width:0;font-size:12px;padding:3px 6px}
+.card.r-redo{border-color:var(--bad);box-shadow:0 0 0 1px var(--bad)}
+.card.r-clean{border-color:var(--ok)}
+.card.r-marked{border-left:4px solid var(--warn)}
+.mchip{border:1px solid var(--bad);border-radius:12px;padding:2px 10px;font-size:12px;cursor:pointer;background:var(--panel2);color:var(--bad)}
+.mchip.grn{border-color:var(--ok);color:var(--ok)}
+.mchip.amb{border-color:var(--warn);color:var(--warn)}
+.mchip.zero{opacity:.45;cursor:default}
+.mchip .n{font-weight:bold;margin-left:4px}
+.mapline{font-size:11px;color:var(--dim);margin-top:4px;font-family:Consolas,monospace;word-break:break-all}
+.animbox{position:relative;width:var(--zoom);height:var(--zoom);border-radius:8px;overflow:hidden;
+  background:#0b0e12;border:1px solid var(--line);flex:none}
+body.light .animbox{background:#171b21}
+.animbox canvas{width:100%;height:100%;display:block;image-rendering:pixelated}
+.animbox .lab{position:absolute;left:0;top:0;right:0;font-size:10px;padding:1px 6px;color:#cfd8e3;
+  background:rgba(10,14,18,.62);pointer-events:none}
+.animbox .none{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--dim);font-size:12px}
+.animcol{display:flex;flex-wrap:wrap;gap:8px;align-items:flex-start}
+.asetbtns{flex-basis:100%;display:flex;gap:4px;flex-wrap:wrap;align-items:center}
+.asetbtns .lbl{font-size:10px;color:var(--dim)}
+.aset{font-size:11px;padding:2px 8px;border-radius:11px;background:var(--panel2);border:1px solid var(--line);
+  color:var(--dim);cursor:pointer;line-height:1.4}
+.aset:hover{border-color:var(--accent);color:var(--txt)}
+.aset.on{background:var(--accent);color:#fff;border-color:var(--accent)}
+.posethumbs{display:flex;flex-direction:column;gap:6px}
+.posethumbs img{width:72px;height:72px;object-fit:contain;background:#0b0e12;border:1px solid var(--line);border-radius:6px}
+.posethumbs .cap{font-size:10px;color:var(--dim);text-align:center}
+.compat{font-family:Consolas,monospace;font-size:12px;color:var(--dim);line-height:2;padding:0 14px;word-break:break-all}
+footer{position:fixed;bottom:0;left:0;right:0;background:var(--panel);border-top:1px solid var(--line);
+  padding:6px 16px;font-size:12px;color:var(--dim);z-index:20}
+/* modal */
+#modal{position:fixed;inset:0;background:rgba(5,8,12,.82);display:none;z-index:50;overflow:auto;padding:24px}
+#modal.open{display:block}
+.mbox{max-width:1100px;margin:0 auto;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:18px}
+.mhead{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+.mhead h3{margin:0;font-size:16px}
+.mgrid{display:grid;grid-template-columns:230px 1fr 1fr;gap:16px}
+.micons{display:flex;gap:8px}
+.micon{width:108px;height:108px;object-fit:contain;background:
+  repeating-conic-gradient(var(--panel2) 0 25%, transparent 0 50%) 0 0/22px 22px;border:1px solid var(--line);border-radius:10px}
+.micon.wide{width:220px;height:220px}
+.mcap{font-size:11px;color:var(--dim);text-align:center;margin-top:2px}
+.manim{margin-bottom:10px}
+.manim .cap{font-size:12px;color:var(--dim);margin-bottom:4px;display:flex;gap:8px;align-items:center}
+.manim canvas{width:240px;height:240px;background:#0b0e12;border:1px solid var(--line);border-radius:8px;image-rendering:pixelated;display:block}
+.manim .st{display:flex;gap:6px;margin-top:6px;align-items:center}
+.manim .idx{font-size:12px;color:var(--dim);font-family:Consolas,monospace}
+.meta{width:100%;border-collapse:collapse;font-size:12px;margin-top:8px}
+.meta td{border:1px solid var(--line);padding:3px 8px}
+.meta td:first-child{color:var(--dim);white-space:nowrap;width:110px}
+.sheetview{margin-top:10px}
+.sheetview img{max-width:100%;background:#0b0e12;border:1px solid var(--line);border-radius:6px;display:block;margin-top:4px}
+.hidden{display:none!important}
+@media(max-width:1000px){.card{flex-wrap:wrap}.animbox{width:110px;height:110px}}
+</style>
+</head>
+<body>
+<header>
+  <h1>卡图 · 待机 · 攻击动画 总审 v2 <small id="gen"></small></h1>
+  <div class="stats" id="stats"></div>
+  <div class="issues" id="issues"></div>
+  <div class="issues" id="markIssues"></div>
+  <div class="bar">
+    <button id="btnPlay" class="on">⏸ 暂停</button>
+    <label>速度 <select id="selSpeed"><option value="0.5">0.5×</option><option value="1" selected>1×</option><option value="2">2×</option></select></label>
+    <label>尺寸 <select id="selZoom"><option value="96">96</option><option value="128" selected>128</option><option value="160">160</option><option value="220">220</option></select></label>
+    <label>底色 <select id="selBg"><option value="dark" selected>深色</option><option value="light">浅色</option></select></label>
+    <label>分区 <select id="selSec"><option value="">全部</option></select></label>
+    <label>时代 <select id="selEra"><option value="">全部</option></select></label>
+    <input type="search" id="q" placeholder="搜索 统一ID / 名称 / 挂接卡 / 动画目录…" style="width:210px">
+    <label><input type="checkbox" id="onlyBad"> 只看问题</label>
+    <label>我的标注 <select id="selMark"><option value="">全部</option><option value="marked">已标记任何项</option>
+      <option value="redo">需重做</option><option value="clean">已审·不重做</option>
+      <option value="p:face">问题:朝向左右</option><option value="p:size">问题:忽大忽小</option>
+      <option value="p:bg">问题:背景没抠好</option><option value="p:diff">问题:与原图不一样</option>
+      <option value="p:clip">问题:开火截断</option><option value="p:other">问题:其他</option></select></label>
+    <button id="btnExport" title="把全部标注导出为 JSON 文件（交付重做批次用）">⬇ 导出标注</button>
+    <button id="btnImport">⬆ 导入标注</button>
+    <input type="file" id="fileImport" accept=".json,application/json" class="hidden">
+    <button id="btnClear" title="清空全部本地标注（不可恢复）">🗑 清空</button>
+    <span class="stats" id="shown"></span>
+  </div>
+</header>
+<main id="app"></main>
+<footer>家族制 v2：一个统一ID一张卡（敌图+我图并列，动画默认我方视角=实机镜像，卡上「视角」按钮可切敌方原图朝向）。数据源与《单位统一清单》同一条 dump。点击卡片看大图；右侧审查列标问题/选重做/填备注，自动保存在本浏览器（旧版标注自动迁移），顶栏可导出/导入 JSON；“疑:”虚线 chip 是自动检测，点击即预填对应问题按钮。多套候选动画的行有「选用动画」按钮：切换即预览该套，拍板随标注导出（选了≠游戏内生效，需另行接线）。</footer>
+
+<div id="modal"><div class="mbox" id="mbox"></div></div>
+
+<script>
+const DATA = __DATA__;
+const $=s=>document.querySelector(s);
+const REC={}; DATA.sections.forEach(s=>s.rows.forEach(r=>REC[s.key+"|"+r.id]=r));
+
+/* ── 播放引擎 ─────────────────────────────── */
+const players=[];
+let playing=true, speed=1;
+
+function makePlayer(cv, spec){
+  const p={cv, ctx:cv.getContext('2d'), spec, idx:0, dir:1, t:0, hold:0,
+           img:null, frames:[], ready:false, visible:false, onframe:null};
+  players.push(p);
+  return p;
+}
+function loadPlayer(p){
+  if(p.loading||p.ready) return; p.loading=true;
+  if(p.spec.mode==='sheet'){
+    const im=new Image(); im.src=p.spec.sheet;
+    im.onload=()=>{p.img=im;p.ready=true;p.idx=0;drawP(p);};
+  }else{
+    let left=p.spec.paths.length;
+    p.spec.paths.forEach((u,i)=>{const im=new Image();im.src=u;
+      im.onload=()=>{p.frames[i]=im;if(--left===0){p.ready=true;drawP(p);}};
+      im.onerror=()=>{if(--left===0){p.ready=true;drawP(p);}};});
+  }
+}
+function drawP(p){
+  const ctx=p.ctx, W=p.cv.width, H=p.cv.height;
+  ctx.clearRect(0,0,W,H);
+  let src, sx=0, sy=0, sw=0, sh=0;
+  if(p.spec.mode==='sheet'){
+    if(!p.img||!p.img.complete||!p.img.naturalWidth) return;
+    const fs=p.spec.fs; src=p.img; sw=sh=fs; sx=p.idx*fs;
+    if(sx+fs>src.naturalWidth) return;
+  }else{
+    src=p.frames[p.idx]; if(!src||!src.complete||!src.naturalWidth) return;
+    sw=src.naturalWidth; sh=src.naturalHeight;
+  }
+  ctx.save();
+  if(p.spec.flip){ctx.translate(W,0);ctx.scale(-1,1);}
+  ctx.drawImage(src,sx,sy,sw,sh,0,0,W,H);
+  ctx.restore();
+}
+function stepP(p,dt){
+  if(!p.ready) return;
+  const sp=p.spec;
+  if(sp.anim==='step'){ drawP(p); return; }
+  p.t+=dt*speed;
+  const fp=Math.max(sp.fps,0.1), inv=1/fp;
+  let guard=0;
+  while(p.t>=inv && guard<4){
+    p.t-=inv; guard++;
+    const n=sp.n;
+    if(sp.anim==='idle'){ // ping-pong 0..n-1..0，端点不重复（对齐 FrameDriver）
+      p.idx+=p.dir;
+      if(p.idx>=n-1){p.idx=n-1;p.dir=-1;} else if(p.idx<=0){p.idx=0;p.dir=1;}
+    }else if(sp.anim==='attack'){ // 正向播完停 1s 再循环
+      if(p.hold>0){p.hold-=inv; if(p.hold<=0)p.idx=0;}
+      else{ p.idx++;
+        if(p.idx>=n-0){p.idx=n-1;p.hold=1.0;} }
+    }else{ // boss 正向循环
+      p.idx=(p.idx+1)%n;
+    }
+  }
+  drawP(p);
+  if(p.onframe) p.onframe(p.idx);
+}
+let lastTs=0;
+function raf(ts){
+  const dt=Math.min((ts-lastTs)/1000,0.1); lastTs=ts;
+  if(playing) for(const p of players) if(p.visible&&p.ready) stepP(p,dt);
+  requestAnimationFrame(raf);
+}
+requestAnimationFrame(raf);
+
+const io=new IntersectionObserver(es=>{
+  es.forEach(e=>{
+    const pl=e.target._players||[]; const vis=e.isIntersecting;
+    pl.forEach(p=>{p.visible=vis; if(vis) loadPlayer(p);});
+  });
+},{rootMargin:'300px'});
+
+/* 动画系统解析：kind → 播放规格（与 card_grid_unit_visuals 挂载链一致） */
+function resolveAnim(rec,kind){
+  const hasSheetIdle=rec.anim&&rec.anim.idle>=2, hasBoss=!!rec.boss;
+  switch(kind){
+    case 'idle':
+      if(hasSheetIdle)return{mode:'sheet',sheet:rec.anim.sheet_idle,n:rec.anim.idle,fs:rec.anim.fs,fps:rec.anim.fps,anim:'idle'};
+      if(hasBoss)return{mode:'frames',paths:rec.boss.paths,n:rec.boss.n,fps:6,anim:'boss'};
+      return null;
+    case 'idle_boss': return hasBoss?{mode:'frames',paths:rec.boss.paths,n:rec.boss.n,fps:6,anim:'boss'}:null;
+    case 'idle_sheet': return hasSheetIdle?{mode:'sheet',sheet:rec.anim.sheet_idle,n:rec.anim.idle,fs:rec.anim.fs,fps:rec.anim.fps,anim:'idle'}:null;
+    case 'attack':
+      if(rec.anim&&rec.anim.attack>0)return{mode:'sheet',sheet:rec.anim.sheet_attack,n:rec.anim.attack,fs:rec.anim.fs,fps:rec.anim.fps,anim:'attack'};
+      if(rec.pose)return{mode:'frames',paths:rec.pose.paths,n:rec.pose.n,fps:6,anim:'boss'};
+      return null;
+    case 'attack_sheet': return (rec.anim&&rec.anim.attack>0)?{mode:'sheet',sheet:rec.anim.sheet_attack,n:rec.anim.attack,fs:rec.anim.fs,fps:rec.anim.fps,anim:'attack'}:null;
+  }
+  return null;
+}
+function isDual(rec){return !!rec.boss&&!!(rec.anim&&rec.anim.idle>=2);}
+/* 同系统多套候选动画：现行(解析命中) + 被遮蔽候选(alt_anims) + 挂接我方卡(extra_anims) */
+function animSets(r){
+  const sets=[];
+  if(r.anim)sets.push({id:'main',label:'现行'+(r.anim_key?'·'+r.anim_key:''),anim:r.anim});
+  (r.alt_anims||[]).forEach(x=>sets.push({id:'alt:'+x.key,label:'候选·'+x.key,anim:x.anim}));
+  (r.extra_anims||[]).forEach(x=>sets.push({id:'x:'+x.key,label:'挂接·'+x.key,anim:x.anim}));
+  return sets;
+}
+
+function animBox(rec, kind, cap){
+  const box=document.createElement('div'); box.className='animbox';
+  const cv=document.createElement('canvas'); cv.width=256; cv.height=256; box.appendChild(cv);
+  const lab=document.createElement('div'); lab.className='lab'; box.appendChild(lab);
+  const spec=resolveAnim(rec,kind);
+  let pl=null;
+  if(spec){
+    spec.flip=rec.flip;
+    pl=makePlayer(cv,spec);
+    lab.textContent=cap;
+  }else{
+    const d=document.createElement('div');d.className='none';
+    d.textContent=(kind==='idle'||kind==='idle_boss'||kind==='idle_sheet')?'无待机动画':'无攻击帧';
+    box.appendChild(d); box.classList.add('miss');
+    lab.textContent=(kind==='idle'||kind==='idle_boss'||kind==='idle_sheet')?'静态':'攻击 · 无';
+  }
+  if(pl){ box._players=[pl]; io.observe(box); }
+  return box;
+}
+
+/* ── 审查标注（localStorage v2 + v1 自动迁移）── */
+const P_TYPES=[['face','朝向左右'],['size','忽大忽小'],['bg','背景没抠好'],['diff','与原图不一样'],['clip','开火截断'],['other','其他']];
+const SUS_TXT={face:'疑:朝向',size:'疑:大小',bg:'疑:抠图',clip:'疑:截断'};
+const SUS_TIP={face:'自动检测：我方卡图与动画朝向（镜像后）质量质心相反（死区4%外），可能误报，请目验后选按钮',
+  size:'自动检测：idle 帧间内容高度抖动超 18%，或动画与卡图大小占比悬殊',
+  bg:'自动检测：检出近白/品红残留像素（疑似背景没抠干净）',
+  clip:'自动检测：攻击帧内容贴到画框边，而 idle 同侧有富余 → 疑似开火截断'};
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+const LSKEY='card_anim_review_marks_v2', LSOLD='card_anim_review_marks_v1';
+let marks={},lsOK=true,MIG_N=0;
+try{marks=JSON.parse(localStorage.getItem(LSKEY)||'{}')||{};}catch(e){marks={};}
+if(!Object.keys(marks).length){
+  let old=null;try{old=JSON.parse(localStorage.getItem(LSOLD)||'null');}catch(e){}
+  if(old&&DATA.mig){
+    Object.keys(old).forEach(k=>{
+      const nk=DATA.mig[k],m=old[k];
+      if(nk&&m&&(m.p||'').length!==undefined&&Array.isArray(m.p)&&(m.p.length||m.r||m.n)){marks[nk]={p:m.p.map(String),r:String(m.r||''),n:String(m.n||'')};MIG_N++;}});
+    if(MIG_N){try{localStorage.setItem(LSKEY,JSON.stringify(marks));}catch(e){}}
+  }
+}
+try{localStorage.setItem('_cr_t','1');localStorage.removeItem('_cr_t');}catch(e){lsOK=false;}
+/* 页内种子标注（生成器嵌入的导出标注）：本机已有的键不覆盖，缺的补上——换浏览器打开也不丢标注显示 */
+Object.keys(DATA.marks_seed||{}).forEach(k=>{if(!marks[k]){const m=DATA.marks_seed[k];
+  marks[k]={p:(m.p||[]).map(String),r:String(m.r||''),n:String(m.n||''),a:String(m.a||'')};}});
+function saveMarks(){if(!lsOK)return;try{localStorage.setItem(LSKEY,JSON.stringify(marks));}catch(e){}}
+function mkey(sec,id){return sec+'|'+id;}
+function getM(sec,id){let m=marks[mkey(sec,id)];if(!m){m={p:[],r:'',n:'',a:''};marks[mkey(sec,id)]=m;}return m;}
+function emptyM(){return {p:[],r:'',n:'',a:''};}
+function applyMarkToCard(el,m){
+  el.querySelectorAll('.pb').forEach(b=>b.classList.toggle('on',m.p.includes(b.dataset.p)));
+  const sel=el.querySelector('.rsel');if(sel&&sel.value!==(m.r||''))sel.value=m.r||'';
+  const nt=el.querySelector('.rnote');if(nt&&nt.value!==(m.n||''))nt.value=m.n||'';
+  el.dataset.marked=(m.p.length||m.r||m.n||m.a)?'1':'';
+  el.dataset.redo=m.r||'';
+  el.dataset.p=m.p.join(' ');
+  el.classList.toggle('r-redo',m.r==='yes');
+  el.classList.toggle('r-marked',!!m.p.length);
+  el.classList.toggle('r-clean',m.r==='no'&&!m.p.length);
+}
+function applyAllMarks(){
+  document.querySelectorAll('.card').forEach(el=>applyMarkToCard(el,marks[el.dataset.key]||emptyM()));
+}
+function markCounts(){
+  const c={face:0,size:0,bg:0,diff:0,clip:0,other:0};let redo=0,clean=0,total=0;
+  Object.values(marks).forEach(m=>{
+    if(!m)return;
+    if(m.p.length||m.r||m.n||m.a)total++;
+    if(m.r==='yes')redo++;
+    if(m.r==='no'&&!m.p.length)clean++;
+    m.p.forEach(p=>{if(c[p]!==undefined)c[p]++;});
+  });
+  return {c,redo,clean,total};
+}
+let chipsT=null;
+function updateMarkChips(){clearTimeout(chipsT);chipsT=setTimeout(()=>{
+  const {c,redo,clean,total}=markCounts();
+  const box=$('#markIssues');box.innerHTML='<span style="color:var(--dim);font-size:12px;align-self:center">我的标注'+(lsOK?'':'（⚠ 本地存储不可用，务必导出保存）')+'：</span>';
+  const mk=(label,cls,val,n)=>{const s=document.createElement('span');
+    s.className=(n?'mchip '+cls:'mchip zero');s.innerHTML=label+'<span class="n">'+n+'</span>';
+    if(n)s.onclick=()=>{$('#selMark').value=val;applyFilters();};box.appendChild(s);};
+  mk('已标记','amb','marked',total);
+  mk('需重做','','redo',redo);
+  mk('不重做','grn','clean',clean);
+  P_TYPES.forEach(([k,t])=>mk(t,'','p:'+k,c[k]));
+},120);}
+function toggleProb(sec,id,p){
+  const m=getM(sec,id);const i=m.p.indexOf(p);
+  if(i>=0)m.p.splice(i,1);else m.p.push(p);
+  const el=document.querySelector('.card[data-key="'+mkey(sec,id)+'"]');
+  if(el)applyMarkToCard(el,m);
+  saveMarks();updateMarkChips();
+}
+$('#btnExport').onclick=()=>{
+  const blob=new Blob([JSON.stringify({exported:new Date().toLocaleString(),marked:markCounts().total,marks},null,1)],{type:'application/json'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);
+  a.download='card_anim_review_marks.json';a.click();
+  setTimeout(()=>URL.revokeObjectURL(a.href),2000);
+};
+$('#btnImport').onclick=()=>$('#fileImport').click();
+$('#fileImport').onchange=e=>{
+  const f=e.target.files[0];if(!f)return;
+  const rd=new FileReader();
+  rd.onload=()=>{try{
+    const j=JSON.parse(rd.result);const inc=j.marks||j;let n=0;
+    Object.keys(inc).forEach(k=>{const m=inc[k];
+      if(m&&Array.isArray(m.p)){marks[k]={p:m.p.map(String),r:String(m.r||''),n:String(m.n||''),a:String(m.a||'')};n++;}});
+    saveMarks();applyAllMarks();updateMarkChips();
+    alert('导入完成：'+n+' 条标注');
+  }catch(err){alert('导入失败：'+err.message);}};
+  rd.readAsText(f,'utf-8');e.target.value='';
+};
+$('#btnClear').onclick=()=>{if(!confirm('确定清空全部审查标注？此操作不可恢复（建议先导出）。'))return;
+  marks={};saveMarks();applyAllMarks();updateMarkChips();};
+
+function eraName(e){return DATA.era_names[e]!==undefined?DATA.era_names[e]:'时代'+e;}
+function kindName(k){return DATA.kind_names[k]!==undefined?DATA.kind_names[k]:'兵种'+k;}
+const FLAG_TXT={no_anim:'无动画(静态)',idle_lt2:'idle帧<2',no_attack:'无攻击帧',anim_split:'同图多套动画',
+  anim_alt:'多套候选动画',
+  no_icon_enemy:'缺敌图',no_icon_player:'缺我方图',icon_missing_enemy:'敌图文件缺失',icon_missing_player:'我方图文件缺失'};
+
+/* ── 渲染 ─────────────────────────────────── */
+const app=$('#app');
+
+function iconEl(rel,tag,sm){
+  const d=document.createElement('div');d.className='icon'+(sm?' sm':'');
+  if(rel){
+    const im=document.createElement('img');im.loading='lazy';im.src=rel;
+    im.onerror=()=>{d.classList.add('miss');im.remove();d.textContent='图丢失';};
+    d.appendChild(im);
+  }else{d.classList.add('miss');d.textContent='缺图';}
+  if(tag){const t=document.createElement('span');t.className='tag';t.textContent=tag;d.appendChild(t);}
+  return d;
+}
+
+function buildCard(sec,r){
+  const el=document.createElement('div'); el.className='card';
+  el.dataset.sec=sec.key; el.dataset.era=r.era; el.dataset.bad=r.flags.join(' ');
+  el.dataset.key=mkey(sec.key,r.id);
+  let q=r.id+' '+r.name+' '+r.anim_key;
+  if(r.joined)q+=' '+r.joined.join(' ');
+  if(r.extra_anims)q+=' '+r.extra_anims.map(x=>x.key).join(' ');
+  if(r.alt_anims)q+=' '+r.alt_anims.map(x=>x.key).join(' ');
+  if(r.specials)q+=' '+r.specials.join(' ');
+  if(r.drop_card_id)q+=' '+r.drop_card_id;
+  if(r.faction)q+=' '+r.faction;
+  if(r.bound)q+=' '+r.bound.join(' ');
+  el.dataset.q=q.toLowerCase();
+  el._players=[];
+
+  // ── 图区：家族=敌我双图，其余单图，平台无图 ──
+  if(r.sec==='fam'){
+    const box=document.createElement('div');box.className='icons';
+    box.appendChild(iconEl(r.icon_e,'敌',true));
+    box.appendChild(iconEl(r.icon_p,'我',true));
+    el.appendChild(box);
+  }else if(r.icon){
+    el.appendChild(iconEl(r.icon,'我',false));
+  }else{
+    const d=document.createElement('div');d.className='icon miss';d.style.width='84px';
+    d.textContent='无卡图（动画单位）';el.appendChild(d);
+  }
+
+  // ── 信息区 ──
+  const info=document.createElement('div');info.className='info';
+  const chips=['<span class="chip era">'+eraName(r.era)+'</span>'];
+  if(r.kind>=0)chips.push('<span class="chip">'+kindName(r.kind)+'</span>');
+  if(r.seg)chips.push('<span class="chip seg" title="EnemyUnitManifest 段位">'+(DATA.seg_names[r.seg]||r.seg)+'</span>');
+  if(r.role)chips.push('<span class="chip">'+((DATA.role_names||{})[r.role]||r.role)+(r.power?' · power '+r.power:'')+'</span>');
+  if(r.faction)chips.push('<span class="chip">'+r.faction+'</span>');
+  if(r.tier)chips.push('<span class="chip">'+r.tier+'</span>');
+  if(r.sec==='fam'&&r.drop_card_id)chips.push('<span class="chip cap" title="击杀掉落的缴获卡（运行时 captured_*）">掉 '+r.drop_card_id+' '+(r.drop*100).toFixed(0)+'%</span>');
+  if(r.sec==='fam')chips.push('<span class="chip'+(r.uct?' cap':'')+'" title="统一表 enemy_only 是否有同名卡（81 家族命中）">'+(r.uct?'同名卡✓':'同名卡✗')+'</span>');
+  (r.specials||[]).forEach(s=>chips.push('<span class="chip warn" title="击败此敌人可掉的特色卡">特色:'+s+'</span>'));
+  r.flags.forEach(f=>{
+    let tt='';
+    if(f==='anim_split')tt=' title="同图多单位各自解析到不同动画目录，可用「选用动画」按钮切换查看"';
+    if(f==='anim_alt')tt=' title="解析链上有其他可用动画目录（游戏内被遮蔽），可用「选用动画」按钮对比并拍板"';
+    if(f==='no_anim')tt=' title="无雪碧图且无 boss 帧：战场为静态卡图"';
+    chips.push('<span class="chip '+(f==='no_anim'||f.indexOf('no_icon')===0||f.indexOf('icon_missing')===0||f==='idle_lt2'?'bad':'warn')+'" data-flag="'+f+'"'+tt+'>'+(FLAG_TXT[f]||f)+'</span>');
+  });
+  (r.sus||[]).forEach(s=>{
+    if(!SUS_TXT[s])return;
+    const tips=[SUS_TIP[s]||''];
+    const sd=(r.sus_sides&&r.sus_sides[s])||[];
+    if(sd.length)tips.unshift('检出侧:'+sd.join('+'));
+    if(s==='size'&&r.met&&r.met.jh)tips.push('帧高抖动×'+r.met.jh);
+    if(s==='size'&&r.met&&r.met.sz)tips.push('卡图/动画高占比比 '+r.met.sz);
+    if(s==='clip'&&r.met&&r.met.clip)tips.push('贴边攻击帧 '+r.met.clip);
+    chips.push('<span class="chip sus" data-sus="'+s+'" title="'+esc(tips.filter(Boolean).join('；'))+'">'+SUS_TXT[s]+'</span>');
+  });
+  const sub=(r.fid?'<div class="iid">统一ID '+r.id+'</div>':'<div class="iid">'+r.id+'</div>')+
+    (r.bound?'<div class="iid">绑定: '+r.bound.join('、')+'</div>':'');
+  info.innerHTML='<div class="nm">'+(esc(r.name)||'(无名)')+'</div>'+sub+'<div class="chips">'+chips.join('')+'</div>';
+  if(r.joined&&r.joined.length)info.insertAdjacentHTML('beforeend','<div class="mapline">挂接我方卡: '+r.joined.join('、')+'</div>');
+  if(r.drop_card_id&&r.sec!=='fam')info.insertAdjacentHTML('beforeend','<div class="mapline">掉落: '+r.drop_card_id+'</div>');
+  if(r.anim_key)info.insertAdjacentHTML('beforeend','<div class="mapline">动画 → '+r.anim_key+'/</div>');
+  if(r.note)info.insertAdjacentHTML('beforeend','<div class="mapline">'+r.note+'</div>');
+  el.appendChild(info);
+
+  // ── 动画区（多套候选时带「选用动画」按钮，切换即整列重建）──
+  const sets=animSets(r);
+  const mk0=marks[el.dataset.key]||{};
+  el._curSet=(sets.find(s=>s.id===mk0.a)||sets[0])||null;
+  const self=el;
+  function buildAnimCol(cur){
+    const col=document.createElement('div');col.className='animcol';
+    col._pl=[];
+    const pseud=cur?{anim:cur.anim,boss:r.boss,pose:r.pose,flip:r.flip}:r;
+    if(sets.length>=2){
+      const bar=document.createElement('div');bar.className='asetbtns';
+      bar.innerHTML='<span class="lbl">选用动画:</span>';
+      sets.forEach(s=>{
+        const b=document.createElement('button');b.className='aset'+(s===cur?' on':'');
+        b.dataset.set=s.id;b.textContent=s.label;
+        b.title='预览此套动画并拍板（记录在标注里随导出走），不影响游戏实际解析';
+        bar.appendChild(b);
+      });
+      bar.addEventListener('click',e=>{
+        e.stopPropagation();
+        const b=e.target.closest('.aset');if(!b)return;
+        const set=sets.find(s=>s.id===b.dataset.set);if(!set||set===cur)return;
+        getM(sec.key,r.id).a=set.id;saveMarks();
+        self._curSet=set;
+        self._players=self._players.filter(p=>!col._pl.includes(p));
+        col._pl.forEach(p=>{const i=players.indexOf(p);if(i>=0)players.splice(i,1);});
+        col.replaceWith(buildAnimCol(set));
+        applyMarkToCard(self,marks[self.dataset.key]);updateMarkChips();
+      });
+      col.appendChild(bar);
+    }
+    const add=(rec,kind,cap)=>{
+      const box=animBox(rec,kind,cap);
+      col.appendChild(box);
+      (box._players||[]).forEach(p=>{self._players.push(p);col._pl.push(p);});
+    };
+    if(isDual(r)){
+      add(r,'idle_boss','待机 boss帧·'+r.boss.n+'帧·6fps');
+      add(pseud,'idle_sheet','待机 sheet·普通出战');
+      add(pseud,'attack_sheet','攻击 sheet·普通出战');
+    }else{
+      add(pseud,'idle','待机 idle'+(pseud.anim&&pseud.anim.idle>=2?' · '+pseud.anim.idle+'帧 · '+pseud.anim.fps+'fps':(r.boss?' · boss帧'+r.boss.n+'帧':'')));
+      const atkCap=pseud.anim&&pseud.anim.attack>0?('攻击 attack · '+pseud.anim.attack+'帧'):(pseud.pose?'攻击 姿态帧 attack_f0':'攻击 · 无');
+      add(pseud,'attack',atkCap);
+    }
+    return col;
+  }
+  el.appendChild(buildAnimCol(el._curSet));
+
+  if(r.pose){
+    const pt=document.createElement('div');pt.className='posethumbs';
+    pt.innerHTML='<div class="cap">攻击姿态帧 attack_f0'+(r.pose.n>1?'+f1':'')+'</div>';
+    r.pose.paths.forEach(u=>{const im=document.createElement('img');im.loading='lazy';im.src=u;pt.appendChild(im);});
+    el.appendChild(pt);
+  }else el.appendChild(document.createElement('div'));
+
+  // ── 审查列 ──
+  const rev=document.createElement('div');rev.className='rev';
+  let revHtml='<div class="pbtns">'+P_TYPES.map(pt=>'<button class="pb" data-p="'+pt[0]+'">'+pt[1]+'</button>').join('')+'</div>'+
+    '<div class="rrow"><select class="rsel"><option value="">重做:待定</option><option value="yes">重做:需要</option><option value="no">重做:不用</option></select>'+
+    '<input class="rnote" type="text" placeholder="备注…"></div>';
+  if(r.sec==='fam')revHtml='<div class="rrow"><button class="flipb chip" style="flex:none">视角:我</button>'+
+    '<span style="color:var(--dim);font-size:10px">动画镜像 ⇄ 敌方原图朝向</span></div>'+revHtml;
+  rev.innerHTML=revHtml;
+  el.appendChild(rev);
+  rev.addEventListener('click',e=>{
+    e.stopPropagation();
+    const pb=e.target.closest('.pb');
+    if(pb){toggleProb(sec.key,r.id,pb.dataset.p);return;}
+    const fb=e.target.closest('.flipb');
+    if(fb){
+      const curIsPlayer=fb.textContent.indexOf('视角:我')>=0;
+      const nf=!curIsPlayer;
+      el._players.forEach(p=>{p.spec.flip=nf;drawP(p);});
+      fb.textContent=nf?'视角:我':'视角:敌';
+    }
+  });
+  rev.addEventListener('input',e=>{
+    if(e.target.classList.contains('rnote')){
+      getM(sec.key,r.id).n=e.target.value;
+      applyMarkToCard(el,marks[el.dataset.key]);saveMarks();updateMarkChips();
+    }
+  });
+  rev.addEventListener('change',e=>{
+    if(e.target.classList.contains('rsel')){
+      getM(sec.key,r.id).r=e.target.value;
+      applyMarkToCard(el,marks[el.dataset.key]);saveMarks();updateMarkChips();
+    }
+  });
+  el.addEventListener('click',e=>{
+    const sus=e.target.closest('.chip.sus');
+    if(sus){toggleProb(sec.key,r.id,sus.dataset.sus);return;}
+    openModal(sec.key,r.id,el._curSet?el._curSet.id:'');
+  });
+  return el;
+}
+
+DATA.sections.forEach(sec=>{
+  const h=document.createElement('section'); h.id='sec-'+sec.key;
+  h.innerHTML='<h2>'+sec.title+' <small>'+sec.rows.length+' 张</small></h2><p class="snote">'+sec.srcnote+'</p>';
+  const rows=document.createElement('div'); rows.className='rows'; h.appendChild(rows);
+  sec.rows.forEach(r=>rows.appendChild(buildCard(sec,r)));
+  app.appendChild(h);
+  const opt=document.createElement('option');opt.value=sec.key;opt.textContent=sec.title;$('#selSec').appendChild(opt);
+});
+
+/* ── 附录：统一表 enemy_only 兼容层（非卡片，不参与筛选）── */
+(function(){
+  const st=DATA.uct_stats||{};
+  const h=document.createElement('section');h.className='static-sec';h.id='sec-compat';
+  h.innerHTML='<h2>附录 · 统一表 enemy_only 兼容层 <small>'+(st.family+st.platform+st.drop||0)+' 张</small></h2>'+
+    '<p class="snote">缴获双层口径：运行时 <code>captured_*</code> '+st.runtime+' 张（每敌方一张，动态注册）+ 统一表 enemy_only '+(st.family+st.platform+st.drop)+' 张 = 家族同名 '+st.family+' + 旧平台卡 '+st.platform+' + 特色掉落 '+st.drop+'。'+
+    '家族同名卡与特色掉落卡已在上方家族卡/特色掉落卡区覆盖；旧 platform_* 兼容卡与家族同图同数值，不必单独审查，标注请落在对应家族卡上：</p>'+
+    '<div class="compat">'+DATA.compat.join('、')+'</div>';
+  app.appendChild(h);
+})();
+
+/* ── 统计与问题面板 ───────────────────────── */
+$('#gen').textContent='生成于 '+DATA.generated+' · 共 '+DATA.total+' 审查卡（家族制·统一ID）'+(MIG_N?(' · 已从旧版迁移 '+MIG_N+' 条标注'):'');
+let stHtml='';
+DATA.sections.forEach(s=>stHtml+='<b>'+s.title+'</b> '+s.rows.length+' 张　');
+$('#stats').innerHTML=stHtml;
+const iss=$('#issues');
+Object.keys(FLAG_TXT).forEach(f=>{
+  const ids=(DATA.issues&&DATA.issues[f])||[];
+  const c=document.createElement('span');c.className='ichip'+(ids.length?'':' zero');
+  c.innerHTML=(FLAG_TXT[f]||f)+'<span class="n">'+ids.length+'</span>';
+  if(ids.length)c.onclick=()=>{$('#onlyBad').checked=true;applyFilters();
+    const first=document.querySelector('.card[data-bad~="'+f+'"]');if(first)first.scrollIntoView({behavior:'smooth',block:'center'});};
+  iss.appendChild(c);
+});
+
+/* ── 筛选 ────────────────────────────────── */
+function applyFilters(){
+  const secV=$('#selSec').value, eraV=$('#selEra').value;
+  const q=$('#q').value.trim().toLowerCase(), bad=$('#onlyBad').checked;
+  const mkV=$('#selMark')?$('#selMark').value:'';
+  let shown=0;
+  document.querySelectorAll('.card').forEach(el=>{
+    let ok=true;
+    if(secV&&el.dataset.sec!==secV)ok=false;
+    if(ok&&eraV!==''&&el.dataset.era!==eraV)ok=false;
+    if(ok&&q&&!el.dataset.q.includes(q))ok=false;
+    if(ok&&bad&&!(el.dataset.bad||''))ok=false;
+    if(ok&&mkV){
+      const hasP=(el.dataset.p||'').split(' ').filter(Boolean);
+      if(mkV==='marked'&&!el.dataset.marked)ok=false;
+      else if(mkV==='redo'&&el.dataset.redo!=='yes')ok=false;
+      else if(mkV==='clean'&&el.dataset.redo!=='no')ok=false;
+      else if(mkV.indexOf('p:')===0&&hasP.indexOf(mkV.slice(2))<0)ok=false;
+    }
+    el.classList.toggle('hidden',!ok);
+    if(ok)shown++;
+  });
+  document.querySelectorAll('main section').forEach(s=>{
+    const any=s.querySelector('.card:not(.hidden)');
+    s.classList.toggle('hidden',!any&&!s.classList.contains('static-sec'));
+  });
+  $('#shown').textContent='显示 '+shown+' / '+DATA.total;
+}
+const eras=new Set();Object.keys(REC).forEach(k=>eras.add(REC[k].era));
+[...eras].sort((a,b)=>a-b).forEach(e=>{const o=document.createElement('option');o.value=e;o.textContent=eraName(e);$('#selEra').appendChild(o);});
+$('#selSec').onchange=applyFilters;$('#selEra').onchange=applyFilters;
+$('#q').oninput=applyFilters;$('#onlyBad').onchange=applyFilters;$('#selMark').onchange=applyFilters;
+
+/* ── 全局控件 ─────────────────────────────── */
+$('#btnPlay').onclick=()=>{playing=!playing;$('#btnPlay').textContent=playing?'⏸ 暂停':'▶ 播放';$('#btnPlay').classList.toggle('on',playing);};
+$('#selSpeed').onchange=e=>speed=parseFloat(e.target.value);
+$('#selZoom').onchange=e=>document.documentElement.style.setProperty('--zoom',e.target.value+'px');
+$('#selBg').onchange=e=>document.body.classList.toggle('light',e.target.value==='light');
+document.addEventListener('keydown',e=>{
+  if(e.code==='Space'&&!e.target.matches('input,select,textarea')){e.preventDefault();$('#btnPlay').click();}
+  if(e.key==='Escape')closeModal();
+  if(modalOpen&&e.key==='ArrowLeft')stepModal(-1);
+  if(modalOpen&&e.key==='ArrowRight')stepModal(1);
+});
+
+/* ── 弹窗 ────────────────────────────────── */
+let modalOpen=false, mPlayers=[], mSel=0;
+function openModal(secKey,id,setId){
+  const r=REC[secKey+'|'+id]; if(!r)return;
+  const msets=animSets(r);
+  const mset=msets.find(s=>s.id===setId)||msets[0]||null;
+  const pr=(mset&&mset.anim)?Object.assign({},r,{anim:mset.anim}):r;
+  mPlayers.forEach(p=>{const i=players.indexOf(p);if(i>=0)players.splice(i,1);});mPlayers=[];
+  mSel=0;
+  const mbox=$('#mbox');
+  // 图区：家族=敌我双图
+  let iconHtml;
+  if(r.sec==='fam'){
+    iconHtml='<div class="micons">'+
+      '<div><img class="micon" src="'+(r.icon_e||'')+'" onerror="this.style.opacity=.2"><div class="mcap">敌方原图</div></div>'+
+      '<div><img class="micon" src="'+(r.icon_p||'')+'" onerror="this.style.opacity=.2"><div class="mcap">我方镜像</div></div></div>';
+  }else{
+    iconHtml='<img class="micon wide" src="'+(r.icon||'')+'" onerror="this.style.opacity=.2">';
+  }
+  let meta='<table class="meta">'+
+    '<tr><td>'+(r.sec==='fam'?'统一ID':'卡 id')+'</td><td>'+r.id+'</td></tr>'+
+    (r.seg?'<tr><td>段位</td><td>'+((DATA.seg_names||{})[r.seg]||r.seg)+'</td></tr>':'')+
+    (r.sec==='fam'&&r.drop_card_id?'<tr><td>击杀掉落</td><td>'+r.drop_card_id+'（'+(r.drop*100).toFixed(0)+'%）'+(r.uct?' · 统一表同名卡✓':'')+'</td></tr>':'')+
+    (r.joined&&r.joined.length?'<tr><td>挂接我方卡</td><td>'+r.joined.join('、')+'</td></tr>':'')+
+    (r.specials&&r.specials.length?'<tr><td>特色掉落</td><td>'+r.specials.join('、')+'</td></tr>':'')+
+    (r.bound?'<tr><td>绑定敌人</td><td>'+r.bound.join('、')+'</td></tr>':'')+
+    '<tr><td>动画目录</td><td>'+(r.anim_key||'—（未命中任何动画资产）')+'/</td></tr>'+
+    (mset&&mset.id!=='main'?'<tr><td>预览动画</td><td>'+esc(mset.label)+'（网页预览/拍板，游戏侧解析不变）</td></tr>':'')+
+    '<tr><td>动画系统</td><td>'+(pr.anim?('雪碧图 UnitFrameAnim · fps '+pr.anim.fps+' · 帧距 '+pr.anim.fs):(r.boss?'BossIdleAnim 逐帧':'无'))+'</td></tr>'+
+    (pr.anim?'<tr><td>帧数 idle/attack</td><td>'+pr.anim.idle+' / '+pr.anim.attack+'</td></tr>':'')+
+    (r.boss?'<tr><td>boss 待机帧</td><td>'+r.boss.n+' 帧（unit_anims/'+r.boss.dir+'/）</td></tr>':'')+
+    '<tr><td>时代 / 兵种</td><td>'+eraName(r.era)+' / '+(r.kind>=0?kindName(r.kind):'—')+'</td></tr>';
+  const mk=marks[mkey(r.sec,r.id)];
+  if(mk&&(mk.p.length||mk.r||mk.n||mk.a)){
+    const pt=mk.p.map(p=>{const f=P_TYPES.find(x=>x[0]===p);return f?f[1]:p;}).join('、')||'—';
+    const ml=mk.a?((msets.find(s=>s.id===mk.a)||{}).label||mk.a):'';
+    meta+='<tr><td>审查标注</td><td>问题:'+pt+' ｜ 重做:'+(mk.r==='yes'?'需要':(mk.r==='no'?'不用':'待定'))+
+      (ml?' ｜ 选用动画:'+esc(ml):'')+
+      (mk.n?' ｜ 备注:'+esc(mk.n):'')+'</td></tr>';
+  }
+  meta+='</table>';
+  let sheets='';
+  if(pr.anim){
+    if(pr.anim.idle>=2)sheets+='<div class="sheetview"><div class="cap" style="color:var(--dim);font-size:12px">待机雪碧图 sheet_idle.png</div><img loading="lazy" src="'+pr.anim.sheet_idle+'"></div>';
+    if(pr.anim.attack>0)sheets+='<div class="sheetview"><div class="cap" style="color:var(--dim);font-size:12px">攻击雪碧图 sheet_attack.png</div><img loading="lazy" src="'+pr.anim.sheet_attack+'"></div>';
+  }
+  const dual=isDual(r);
+  const idleCap=dual?'待机 boss帧（boss级出战 · 6fps 正向循环）':'待机（游戏内 ping-pong / boss 循环）';
+  const atkCap=dual?'攻击 sheet（普通出战时才挂驱动）':'攻击（游戏内开火正向播一遍）';
+  mbox.innerHTML=
+    '<div class="mhead"><h3>'+(esc(r.name)||r.id)+' <small style="color:var(--dim)">'+r.id+'</small></h3>'+
+    '<button onclick="closeModal()">关闭 ✕</button></div>'+
+    (msets.length>=2?'<div class="asetbtns" style="margin:0 0 10px"><span class="lbl">选用动画:</span>'+
+      msets.map(s=>'<button class="aset'+(s===mset?' on':'')+'" data-mset="'+esc(s.id)+'">'+esc(s.label)+'</button>').join('')+'</div>':'')+
+    '<div class="mgrid"><div>'+iconHtml+
+    '<div style="color:var(--dim);font-size:11px;margin-top:4px">动画默认我方视角（实机镜像）；可用「镜像」按钮切原始朝向</div>'+
+    '<div style="margin-top:8px">'+meta+'</div></div>'+
+    '<div class="manim" id="mIdle"><div class="cap">'+idleCap+'</div></div>'+
+    '<div class="manim" id="mAtk"><div class="cap">'+atkCap+'</div></div></div>'+
+    (dual?'<div class="manim" id="mIdle2" style="margin-top:10px"><div class="cap">待机 sheet（普通出战时 · ping-pong）</div></div>':'')+
+    sheets;
+  buildModalAnim($('#mIdle'),dual?r:pr,dual?'idle_boss':'idle');
+  buildModalAnim($('#mAtk'),pr,dual?'attack_sheet':'attack');
+  if(dual)buildModalAnim($('#mIdle2'),pr,'idle_sheet');
+  mbox.querySelectorAll('.aset[data-mset]').forEach(b=>{b.onclick=ev=>{
+    ev.stopPropagation();
+    const sid=b.dataset.mset;
+    const card=document.querySelector('.card[data-key="'+mkey(secKey,id)+'"]');
+    const cb=card&&card.querySelector('.aset[data-set="'+CSS.escape(sid)+'"]');
+    if(cb){cb.click();}else{getM(secKey,id).a=sid;saveMarks();updateMarkChips();}
+    openModal(secKey,id,sid);
+  };});
+  $('#modal').classList.add('open');modalOpen=true;
+}
+const LOOP_KIND={idle:'idle',idle_boss:'boss',idle_sheet:'idle',attack:'attack',attack_sheet:'attack',pose:'boss'};
+function buildModalAnim(container,rec,kind){
+  const cv=document.createElement('canvas');cv.width=480;cv.height=480;container.appendChild(cv);
+  const st=document.createElement('div');st.className='st';
+  st.innerHTML='<button data-d="-1">◀</button><span class="idx">–</span><button data-d="1">▶</button>'+
+    '<button class="pp">暂停</button><button class="mb">镜像:开</button>';
+  container.appendChild(st);
+  const spec=resolveAnim(rec,kind);
+  if(!spec){container.insertAdjacentHTML('beforeend','<div style="color:var(--dim)">无此动画</div>');st.remove();return;}
+  spec.flip=rec.flip;
+  const pl=makePlayer(cv,spec);
+  pl.visible=true;mPlayers.push(pl);loadPlayer(pl);
+  const idx=st.querySelector('.idx');
+  const mb=st.querySelector('.mb');
+  mb.onclick=ev=>{ev.stopPropagation();pl.spec.flip=!pl.spec.flip;mb.textContent='镜像:'+(pl.spec.flip?'开':'关');drawP(pl);};
+  pl.onframe=i=>idx.textContent=(i+1)+'/'+pl.spec.n;
+  st.querySelectorAll('button').forEach(b=>{if(b===mb)return;b.onclick=ev=>{
+    ev.stopPropagation();
+    if(b.dataset.d){pl.spec.anim='step';b.closest('.st').querySelector('.pp').textContent='▶ 播放';
+      pl.idx=(pl.idx+parseInt(b.dataset.d)+pl.spec.n)%pl.spec.n;drawP(pl);pl.onframe(pl.idx);}
+    else{
+      if(pl.spec.anim==='step'){pl.spec.anim=LOOP_KIND[kind]||'idle';b.textContent='暂停';}
+      else{pl.spec.anim='step';b.textContent='▶ 播放';}
+    }
+  };});
+  pl.onframe(0);
+}
+function stepModal(d){stepModalBySel(d);}
+function stepModalBySel(d){
+  const pls=mPlayers;if(!pls.length)return;
+  const p=pls[Math.min(mSel,pls.length-1)];
+  p.spec.anim='step';p.idx=(p.idx+d+p.spec.n)%p.spec.n;drawP(p);if(p.onframe)p.onframe(p.idx);
+}
+function closeModal(){$('#modal').classList.remove('open');modalOpen=false;
+  mPlayers.forEach(p=>{const i=players.indexOf(p);if(i>=0)players.splice(i,1);});mPlayers=[];}
+$('#modal').addEventListener('click',e=>{if(e.target.id==='modal')closeModal();});
+
+applyAllMarks();
+updateMarkChips();
+applyFilters();
+</script>
+</body>
+</html>

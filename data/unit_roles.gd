@@ -37,9 +37,12 @@ const SUB_ANTI_AIR  := 4
 
 ## v21 P2: 侦察卡前缀表——从 unit_stats_table._RECON_PREFIXES 升格迁移至此
 ##（单一真身搬到家；原文件改为引用本常量，语义不变）
+## v6.38.1: 补 platform_cold_scout（冷战侦察平台）——名字即侦察的 LIGHT/GRUNT 卡，
+## 此前漏标，拿的是步兵巷战掩蔽而非侦察潜入开局。
 const RECON_PREFIXES := [
 	"ww1_inf_cavalry", "cold_spetsnaz", "mod_ranger",
 	"fut_spectre", "fut_inf_scout_mech", "mod_inf_scout_drone",
+	"platform_cold_scout",
 ]
 
 ## 工程卡硬前缀（支援主类下 ww1_sup_engineer 系）
@@ -47,6 +50,13 @@ const ENGINEER_PREFIX := "ww1_sup_engineer"
 
 ## stats meta 键（角色缓存）
 const META_UNIT_ROLE := "_unit_role"
+
+
+## v6.38.1: 实例卡 id 前缀归一——缴获（captured_）/敌方镜像（foe_）实例保留完整
+## 前缀作为 card_id（存档兼容），角色判定须剥掉后查表，否则缴获的骑兵斥候等
+## 全部丢失侦察身份（同因：搭档协同角色、侦察改造安装门）。
+static func normalize_card_id(card_id: String) -> String:
+	return String(card_id).trim_prefix("captured_").trim_prefix("foe_")
 
 
 ## 归一化规则主体。
@@ -124,8 +134,9 @@ static func resolve_role_cached(stats: Variant) -> int:
 static func _is_recon_card(card_id: String) -> bool:
 	if card_id.is_empty():
 		return false
+	var cid := normalize_card_id(card_id)
 	for p in RECON_PREFIXES:
-		if card_id.begins_with(String(p)):
+		if cid.begins_with(String(p)):
 			return true
 	return false
 
@@ -139,6 +150,6 @@ static func _has_engineer_evidence(card_id: String, opts: Dictionary) -> bool:
 		var ts := String(t).to_lower()
 		if ts == "engineer" or ts == "工程" or ts == "工兵":
 			return true
-	if not card_id.is_empty() and card_id.begins_with(ENGINEER_PREFIX):
+	if not card_id.is_empty() and normalize_card_id(card_id).begins_with(ENGINEER_PREFIX):
 		return true
 	return false

@@ -65,6 +65,11 @@ signal tutorial_step_changed(new_step: TutorialStep)
 ## 批次③ Task 5：按需点播请求——链暂停期间玩家首次触达对应面板时，主场景据此拉起 overlay
 signal overlay_requested
 
+## v6.39 朝露式指路：点播段（chain_paused）挂起等待期间，目标工位上常驻一枚柔和
+## 聚光「下一步」指路标（暗幕挖孔+金环+提示条，纯视觉不挡操作）。true=亮出/刷新，
+## false=收起。场景侧（truck_base/main）消费，解析失败（无目标工位）静默不亮。
+signal tutorial_pointer_requested(show: bool)
+
 ## 批次③ Task 5：首战后 10 屏按需点播开关。true=连讲暂停，玩家首次打开对应面板才
 ## 播当前步（见 notify_surface_opened）；战斗结束续播链（main.gd）据此不再整段倾倒。
 var chain_paused: bool = false
@@ -115,6 +120,9 @@ func _step_gate_blocked(step: TutorialStep) -> bool:
 func notify_surface_opened(surface_key: String) -> void:
 	if not chain_paused or not should_show_tutorial():
 		return
+	# v6.39：点播等待中打开任何面板 → 先收指路标（面板即将占屏，聚光叠在面板上是误导）；
+	# 匹配本步则继续放行 overlay，不匹配则等面板关闭时重亮（notify_surface_closed）。
+	tutorial_pointer_requested.emit(false)
 	if String(SURFACE_FOR_STEP.get(current_step, "")) != surface_key:
 		return
 	chain_paused = false
@@ -145,6 +153,9 @@ func begin_close_wait_for_action(action_target: String) -> bool:
 ## 面板关闭通知（main._close_overlay 对每次面板关闭调用；战斗中由调用方守卫跳过）
 func notify_surface_closed(surface_key: String) -> void:
 	if pending_close_surface.is_empty() or pending_close_surface != surface_key:
+		# v6.39：非 close-wait 的面板关闭 → 点播等待中重亮指路标（打开面板时已收起）
+		if should_show_tutorial() and chain_paused and SURFACE_FOR_STEP.has(current_step):
+			tutorial_pointer_requested.emit(true)
 		return
 	pending_close_surface = ""
 	if not should_show_tutorial():
@@ -159,7 +170,7 @@ func _initialize_tutorial_data() -> void:
 		# 设施剧情别名后括注真实入口名，防"看不懂去哪找"。
 		TutorialStep.INTRO_WELCOME: {
 			"title": "欢迎登车，相位师",
-			"description": "你登上了基地车。穿越前，人类把最后的家当都装了进来——\n纳米制造机，为你维护并制造战斗卡；时空交换机，联络着后方的公司与学院，换取最新的科技；深空扫描仪，探知散落在时代各处的同伴，与他们留存的战力。\n当你足够强大，就驾车向黑门进发——关闭它，完成深航计划的最终使命。愿种族意志庇佑你。",
+			"description": "你登上了基地车。穿越前，人类把最后的家当都装了进来——\n[color=#fbbf24]纳米制造机[/color]，为你维护并制造战斗卡；[color=#fbbf24]时空交换机[/color]，联络着后方的公司与学院，换取最新的科技；[color=#fbbf24]深空扫描仪[/color]，探知散落在时代各处的同伴，与他们留存的战力。\n当你足够强大，就驾车向黑门进发——关闭它，完成深航计划的最终使命。愿种族意志庇佑你。",
 			"highlights": [
 				"纳米制造机 = 制造中心：制造与维护战斗卡",
 				"时空交换机 = 后方联络：商店与各组织支持",
@@ -174,7 +185,7 @@ func _initialize_tutorial_data() -> void:
 			# 记录5#3：原"清点卡仓"步骤没说清"这步要干嘛"——明确动作=进去看一眼就关，
 			# 实际装配是下一步的事
 			"title": "认识卡仓",
-			"description": "这一步只需要认识入口：点击发光的「卡仓」工位打开背包，看一眼再关掉即可继续。卡仓里是你拥有的所有战斗卡（部署作战用），符文与资源在对应标签页；移动基地的「卡牌展示墙」工位也通向这里。",
+			"description": "这一步只需要认识入口：点击发光的「卡仓」工位打开背包，看一眼再关掉即可继续。卡仓里是你拥有的所有[color=#fbbf24]战斗卡[/color]（部署作战用），符文与资源在对应标签页；移动基地的「卡牌展示墙」工位也通向这里。",
 			"highlights": ["本步动作：打开卡仓→看一眼→关闭继续", "战斗卡：部署到战场作战", "同名战斗卡各自独立养成"],
 			"action_text": "打开卡仓",
 			"action_target": "open_backpack",
@@ -187,7 +198,7 @@ func _initialize_tutorial_data() -> void:
 		TutorialStep.PHASE_INSTRUMENT: {
 			# 记录5#3：明确"装配在哪/要看什么/要不要动手"——初始卡已预装，本步是确认不是操作
 			"title": "确认装配",
-			"description": "打开背包，往最底部看：绿色装配槽就是相位仪，初始三张卡（毛瑟步枪班/81mm迫击炮组/FT-17坦克）已预装在里面，首战可直接部署——本步确认它们在绿槽里，然后关闭继续。之后获得新卡时才需要动手：从卡仓把卡拖进底部绿槽换装（战斗中只能部署已装配的战斗卡）。",
+			"description": "打开背包，往最底部看：[color=#fbbf24]绿色装配槽[/color]就是相位仪，初始三张卡（毛瑟步枪班/81mm迫击炮组/FT-17坦克）已预装在里面，首战可直接部署——本步确认它们在绿槽里，然后关闭继续。之后获得新卡时才需要动手：从卡仓把卡拖进底部绿槽换装（战斗中只能部署已装配的战斗卡）。",
 			"highlights": ["本步动作：打开背包→看底部绿槽→关闭继续", "初始三张卡已预装，无需手动操作", "新卡：从卡仓拖到底部绿槽换装"],
 			"action_text": "查看装配",
 			"action_target": "open_backpack",
@@ -204,7 +215,9 @@ func _initialize_tutorial_data() -> void:
 			"highlights": ["战斗经验→等级 Lv1-30（自动）", "关键等级解锁词条节点", "技能树：技能点换全局强化"],
 			"action_text": "打开技能树",
 			"action_target": "open_enhancement",
-			"highlight_elements": []
+			"highlight_elements": [],
+			# v6.39 朝露式指路：本步处于点播等待时，聚光标在基地「通讯架」工位上
+			"pointer_tip": "下一步：去「通讯架」打开技能树"
 		},
 		TutorialStep.MODIFICATION: {
 			# v38.x J 条: 改造归移动基地工位（底栏三键已移除）——指引玩家去车厢操作
@@ -213,21 +226,23 @@ func _initialize_tutorial_data() -> void:
 			"highlights": ["安装消耗图纸 + 纳米材料", "图纸三路补给：掉落 / 制造 / 补给舱", "入口：移动基地「改造·词条」工位"],
 			"action_text": "知道了",
 			"action_target": "next",
-			"highlight_elements": []
+			"highlight_elements": [],
+			"pointer_tip": "下一步：去「工具工作台」认识改造"
 		},
 		TutorialStep.RUNES: {
 			"title": "符文系统",
-			"description": "符文提供全局加成。把符文装进相位仪紫色槽位，满足组合条件即激活符文之语。",
+			"description": "符文提供[color=#fbbf24]全局加成[/color]。把符文装进相位仪紫色槽位，满足组合条件即激活[color=#fbbf24]符文之语[/color]。",
 			"highlights": ["符文提供全局属性加成", "特定组合激活符文之语", "在卡仓符文标签页管理"],
 			"action_text": "查看符文",
 			"action_target": "open_runes",
-			"highlight_elements": []
+			"highlight_elements": [],
+			"pointer_tip": "下一步：卡牌展示墙（卡仓）里有符文页"
 		},
 		TutorialStep.FIRST_BATTLE: {
 			# v37 实机验收（用户"开战后不知道相位仪/卡仓在哪"）：开战描述顺带指认
 			# 战斗 HUD 三块位置；进入战斗后 main 还会弹一次底部两栏的悬浮指认（9s 自散）。
 			"title": "首次战斗",
-			"description": "卡组已装配，出击后自动部署会自动把绿槽卡组摆上战场，单位自动攻击敌人。想手动摆位，点底部绿槽选单位再点战场格子即可。\n战场界面：底部左侧是相位仪装配槽（绿槽），底部右侧「菜单」展开功能栏（卡仓/地图/设置/存档/挂机），顶栏可看战况、环境与倍速。",
+			"description": "卡组已装配，出击后[color=#fbbf24]自动部署[/color]会自动把绿槽卡组摆上战场，单位自动攻击敌人。想手动摆位，点底部绿槽选单位再点战场格子即可。\n战场界面：底部左侧是相位仪装配槽（绿槽），底部右侧「菜单」展开功能栏（卡仓/地图/设置/存档/挂机），顶栏可看战况、环境与倍速。",
 			"highlights": ["自动部署默认开启，自动上阵+阵亡补位", "手动部署：点绿槽选单位→点格子", "底部左=相位仪装配槽 / 底部右=功能栏", "保护相位场驱动器"],
 			"action_text": "开始首战",
 			"action_target": "start_first_battle",
@@ -244,11 +259,12 @@ func _initialize_tutorial_data() -> void:
 		TutorialStep.EVOLUTION: {
 			# v38.x J 条: 制造归移动基地工位（底栏三键已移除）——指引玩家去车厢操作
 			"title": "兵种制造",
-			"description": "在制造舱用情报与资源直接生产卡牌：击败敌形积累情报，25% 解锁配方，品质随档位提升。入口在移动基地的「3D 打印机」工位；工坊可降制造消耗。新档已附起始卡同族的情报，现在就能造。",
+			"description": "在制造舱用情报与资源直接生产卡牌：击败敌形积累情报，[color=#fbbf24]25% 解锁配方[/color]，品质随档位提升。入口在移动基地的「3D 打印机」工位；工坊可降制造消耗。新档已附起始卡同族的情报，现在就能造。",
 			"highlights": ["入口：移动基地 3D 打印机工位", "情报解锁配方与品质", "资源制造，品质有下限"],
 			"action_text": "知道了",
 			"action_target": "next",
-			"highlight_elements": []
+			"highlight_elements": [],
+			"pointer_tip": "下一步：去「3D 打印机」看制造舱"
 		},
 		TutorialStep.FACTION_REP: {
 			"title": "势力贡献",
@@ -256,7 +272,8 @@ func _initialize_tutorial_data() -> void:
 			"highlights": ["7 大势力各有声望等级", "声望解锁专属卡牌与相位仪", "势力技能树全局生效"],
 			"action_text": "打开联络台",
 			"action_target": "open_faction",
-			"highlight_elements": []
+			"highlight_elements": [],
+			"pointer_tip": "下一步：去「电台」联络组织"
 		},
 		TutorialStep.SHOP: {
 			"title": "声望采购",
@@ -264,7 +281,8 @@ func _initialize_tutorial_data() -> void:
 			"highlights": ["声望 = 采购货币", "各公司物资不同", "符文亦可采购"],
 			"action_text": "打开补给舱",
 			"action_target": "open_store",
-			"highlight_elements": []
+			"highlight_elements": [],
+			"pointer_tip": "下一步：去「补给售货机」采购物资"
 		},
 		TutorialStep.WORLD_MAP: {
 			"title": "世界地图 · 行军与出击",
@@ -272,7 +290,8 @@ func _initialize_tutorial_data() -> void:
 			"highlights": ["点任意节点行军，自由停靠", "停靠关 = 战前准备 → 出击", "燃料不足 / 行驶中会被拦截并说明原因"],
 			"action_text": "打开世界地图",
 			"action_target": "open_world_map",
-			"highlight_elements": []
+			"highlight_elements": [],
+			"pointer_tip": "下一步：从「尾门跳板」打开战区地图"
 		},
 		TutorialStep.PHASE_FIELD_POINTS: {
 			"title": "相位场加点",
@@ -280,7 +299,8 @@ func _initialize_tutorial_data() -> void:
 			"highlights": ["相位仪升级→属性点", "自由分配与洗点", "点数全局生效"],
 			"action_text": "打开相位仪面板",
 			"action_target": "open_phase_field",
-			"highlight_elements": []
+			"highlight_elements": [],
+			"pointer_tip": "下一步：在相位仪选择面板分配属性点"
 		},
 		TutorialStep.FREEDOM_MODE: {
 			"title": "自由模式",
@@ -333,11 +353,13 @@ func complete_current_step() -> void:
 		# 批次③ Task 5：首战打完进入战后续播段——连讲暂停，改面板首触时点播
 		chain_paused = SURFACE_FOR_STEP.has(current_step)
 		tutorial_step_changed.emit(current_step)
+		# v6.39：进入点播等待 → 亮指路标；否则确保收起（幂等）
+		tutorial_pointer_requested.emit(chain_paused)
 
 		if current_step == TutorialStep.FREEDOM_MODE:
 			SignalBus.tutorial_completed.emit("")
-			# v26.6 批4b: 死信号审计 B 类补反馈链——教学完成 toast（原信号无人监听）
-			SignalBus.show_toast.emit("🎓 教学完成，自由模式已解锁")
+			# v26.6 批4b: 死信号审计 B 类补反馈链——教学完成提示（v6.38 走左下 feed）
+			SignalBus.feed_message.emit("🎓 教学完成，自由模式已解锁")
 
 ## v3：当前是否已过首战步（战后续播判定用；NONE/首战步本身返回 false）
 func is_past_first_battle() -> bool:
@@ -345,31 +367,15 @@ func is_past_first_battle() -> bool:
 	return idx > STEP_ORDER.find(TutorialStep.FIRST_BATTLE)
 
 
-## v6.28（记录2#4）：首胜后等玩家回基地看完「移动基地」步——期间结算面板不出
-## 「下一关直通/再战本关」键，强制首胜后回基地看引导（用户"都胜利好几次了才提示
-## 首战打通去做什么"）。步完成或教程结束（跳过/老档 FREEDOM_MODE）即解除。
-## 记录4#2：老档豁免——战斗教程被跳过/旧版迁移的档会长期停在 TRUCK_BASE 步，
-## 玩家都推到中后期了每次胜利结算仍被没收直通键（"从移动基地出击后胜利界面没有
-## 重打/下一关按钮"主诉）。玩家推进到第 4 关起视为已会玩，不再强制。
-func is_pending_truck_base_intro() -> bool:
-	if not should_show_tutorial():
-		return false
-	if current_step != TutorialStep.TRUCK_BASE \
-			or completed_steps.has(TutorialStep.TRUCK_BASE):
-		return false
-	var gm: Node = get_node_or_null("/root/GameManager")
-	if gm != null and int(gm.get("current_level")) > 3:
-		return false
-	return true
-
 ## 跳过教程
 func skip_tutorial() -> void:
 	current_step = TutorialStep.FREEDOM_MODE
 	chain_paused = false
 	pending_close_surface = ""
+	tutorial_pointer_requested.emit(false)
 	SignalBus.tutorial_completed.emit("")
-	# v26.6 批4b: 补反馈链（与正常完成路径一致）
-	SignalBus.show_toast.emit("🎓 教学完成，自由模式已解锁")
+	# v26.6 批4b: 补反馈链（与正常完成路径一致；v6.38 走左下 feed）
+	SignalBus.feed_message.emit("🎓 教学完成，自由模式已解锁")
 
 ## 重置教程（设置面板调用）
 func reset_tutorial() -> void:
@@ -377,6 +383,7 @@ func reset_tutorial() -> void:
 	completed_steps.clear()
 	chain_paused = false
 	pending_close_surface = ""
+	tutorial_pointer_requested.emit(false)
 
 ## 获取教程进度
 func get_tutorial_progress() -> Dictionary:
@@ -385,6 +392,33 @@ func get_tutorial_progress() -> Dictionary:
 		"completed_steps": completed_steps.size(),
 		"total_steps": STEP_ORDER.size(),
 		"completion_rate": float(completed_steps.size()) / float(STEP_ORDER.size())
+	}
+
+## ── v6.39 朝露式指路（点播段挂起等待期的「下一步去哪」）──────────────
+## 当前是否处于点播等待，以及等待的是哪个面板（工位键）。空串=不等待（连讲段/
+## close-wait 挂起/教程结束）——close-wait（面板体验步）自有 toast 提示，不走指路标。
+func get_pending_surface() -> String:
+	if not should_show_tutorial() or not chain_paused:
+		return ""
+	if not pending_close_surface.is_empty():
+		return ""
+	return String(SURFACE_FOR_STEP.get(current_step, ""))
+
+## 指路标提示条文案：步骤数据带 "pointer_tip"（指到具体工位名）则用之，
+## 否则回退「下一步：」+ 步骤标题。
+func get_pointer_tip() -> String:
+	var content: Dictionary = tutorial_data.get(current_step, {})
+	var tip := String(content.get("pointer_tip", ""))
+	if not tip.is_empty():
+		return tip
+	return "下一步：" + String(content.get("title", "继续引导"))
+
+## 播放序位置（overlay 进度标签用）：index 从 1 起，NONE=0（未开讲不显示）。
+func get_step_play_position() -> Dictionary:
+	var idx := STEP_ORDER.find(current_step)
+	return {
+		"index": idx + 1 if idx >= 0 else 0,
+		"total": STEP_ORDER.size(),
 	}
 
 ## 执行教程动作（打开对应面板/进首关/纯推进）

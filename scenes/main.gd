@@ -22,6 +22,7 @@ const PanelStyles = preload("res://scripts/ui/panel_styles.gd")
 # v8.x: CardEnhancementPanelScene 已移除（强化②停用），养成改为自动经验升星 + 技能树
 const AFKModeManagerScript = preload("res://scripts/systems/afk_mode_manager.gd")
 const OfflineIdleManagerScript = preload("res://scripts/systems/offline_idle_manager.gd")
+const TutorialSpotlight = preload("res://scripts/ui/tutorial_spotlight.gd")  # v6.39 点播段指路标收编
 const DEBUG_MAIN_LOG := false
 
 var _blueprints_unlocked_this_battle: Array = []
@@ -164,6 +165,11 @@ func _ready() -> void:
 		if _tpm != null and _tpm.has_signal("overlay_requested") \
 				and not _tpm.overlay_requested.is_connected(_show_tutorial_overlay):
 			_tpm.overlay_requested.connect(_show_tutorial_overlay)
+		# v6.39 朝露式指路：点播段挂起等待的收编/兜底亮标（主场景目标多在底栏抽屉，
+		# 抽屉收起时解析到不可见按钮 → 自然不亮；核心亮标场景在 truck_base）
+		if _tpm != null and _tpm.has_signal("tutorial_pointer_requested") \
+				and not _tpm.tutorial_pointer_requested.is_connected(_on_tutorial_pointer_requested):
+			_tpm.tutorial_pointer_requested.connect(_on_tutorial_pointer_requested)
 		if SignalBus.has_signal("open_phase_field_points") and not SignalBus.open_phase_field_points.is_connected(_on_open_phase_field_from_tutorial):
 			SignalBus.open_phase_field_points.connect(_on_open_phase_field_from_tutorial)
 		# v20.31: start_level（教程第 7 步"开始首战"）此前零消费方——按钮点击后无任何
@@ -250,6 +256,13 @@ func _process(delta: float) -> void:
 
 
 func _deferred_non_critical_init() -> void:
+	# v6.38.1 树守卫（2026-10-02 实机风暴）：本函数由 _ready 经 call_deferred 排队，
+	# 若 main 在排队与 flush 之间被摘树（场景切换竞态），树外跑启动链只会留下半残实例
+	# 且整链 get_node/get_tree 报错——整链让位，TraceLog 面包屑留证。
+	if not is_inside_tree():
+		TraceLog.mark("main_deferred_init_oob_skip", "startup chain abandoned out-of-tree")
+		return
+	TraceLog.mark("main_deferred_init_enter", "")
 	# v9.x 清理：_setup_new_managers 为 no-op 检查（已删）
 	# 集成新系统
 	_integrate_new_systems()
@@ -259,6 +272,8 @@ func _deferred_non_critical_init() -> void:
 	_init_offline_idle_manager()
 	# 启动新手教程（如果是新游戏）
 	_start_tutorial_if_needed()
+	# v6.39：读档落在点播等待中时进主场景先试亮指路标（目标不可见则自然不亮）
+	call_deferred("_maybe_spawn_tutorial_pointer")
 	# 初始化日常任务
 	_init_daily_tasks()
 	# 空闲期预加载高频弹窗，降低首次打开卡顿
@@ -1908,6 +1923,9 @@ func _on_battle_started_close_skill_canvas() -> void:
 	# v25.x 修复：PhaseMasterSkillCanvas（layer=110）在战斗开始时未被关闭，
 	# 导致其 backdrop 持续拦截底栏所有点击，包括大招手动/自动切换按钮。
 	# 统一在此处处理，覆盖所有战斗启动路径（含教程）。
+	# v6.38：本回调挂在 SignalBus 上，拆场窗口内出树后 get_tree() 可为 null（记录5#16）。
+	if not is_inside_tree():
+		return
 	var skill_canvas := get_tree().root.get_node_or_null("PhaseMasterSkillCanvas") as CanvasLayer
 	if skill_canvas != null and skill_canvas.visible:
 		skill_canvas.visible = false
@@ -2003,8 +2021,9 @@ func _advance_settlement_chain() -> void:
 func _on_feature_unlocked_toast(feature_key: String) -> void:
 	if not FeatureUnlockSchedule.has_key(feature_key):
 		return
-	if SignalBus and SignalBus.has_signal("show_toast"):
-		SignalBus.show_toast.emit("🔓 通关奖励 · 新系统解锁：%s" % String(FeatureUnlockSchedule.SCHEDULE[feature_key]["title"]))
+	if SignalBus and SignalBus.has_signal("feed_message"):
+		# v6.38（记录5#10）：解锁类走左下 feed 通道（用户拍板不进右上角）
+		SignalBus.feed_message.emit("🔓 通关奖励 · 新系统解锁：%s" % String(FeatureUnlockSchedule.SCHEDULE[feature_key]["title"]))
 
 ## v34 再战回路（B1）：结算面板「▶ 出击下一关」直通——复用挂机 enter_next_battle 同款
 ## set_current_level + run_start_battle_sequence 管线；写出战报拍点让黑幕战报遮罩开打。
@@ -2119,6 +2138,39 @@ func _show_tutorial_overlay() -> void:
 		hud.add_child(overlay)
 	else:
 		add_child(overlay)
+
+
+## ── v6.39 朝露式指路（点播段挂起等待的「下一步去哪」）──────────────
+## 与 truck_base._maybe_spawn_tutorial_pointer 同律：解析不到可见目标就不亮。
+## 指路标宿主=教程 overlay 的宿主（HudLayer，兜底场景根），收编口径一致。
+func _on_tutorial_pointer_requested(show_ptr: bool) -> void:
+	if show_ptr:
+		_maybe_spawn_tutorial_pointer()
+	else:
+		TutorialSpotlight.dismiss_step_pointer(_tutorial_pointer_host())
+
+
+func _tutorial_pointer_host() -> Node:
+	var hud := get_node_or_null("HudLayer")
+	return hud if hud != null else self
+
+
+func _maybe_spawn_tutorial_pointer() -> void:
+	# 拆场守卫（记录5#16 同律）：deferred 回调可能落在已出树的场景上
+	if not is_inside_tree():
+		return
+	var tpm := get_node_or_null("/root/TutorialProgressionManager")
+	if tpm == null or not tpm.has_method("get_pending_surface"):
+		return
+	var surface := String(tpm.get_pending_surface())
+	if surface.is_empty():
+		return
+	var target: Control = TutorialSpotlight.resolve_target(self, surface)
+	if target == null or not target.is_visible_in_tree():
+		return
+	if bool(target.get_meta("gate_locked", false)):
+		return
+	TutorialSpotlight.show_step_pointer(_tutorial_pointer_host(), target, String(tpm.get_pointer_tip()))
 
 ## v21.x（FTUE 审计 S2，2026-08-27）：战斗结束续播教程。
 ## 第7步（FIRST_BATTLE）点"开始首战"后 overlay 收起（见 tutorial_overlay.gd），

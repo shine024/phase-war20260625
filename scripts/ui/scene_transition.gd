@@ -29,6 +29,10 @@ static func is_busy() -> bool:
 static func change(tree: SceneTree, scene_path: String) -> void:
 	if tree == null or tree.root == null:
 		return
+	# v6.38.1 面包屑：切换请求留痕（低频，符合 TraceLog 纪律）——排查摘树竞态用
+	var tl_req: Node = tree.root.get_node_or_null("TraceLog")
+	if tl_req != null and tl_req.has_method("mark"):
+		tl_req.mark("scene_change_req", "%s busy=%s" % [scene_path.get_file(), str(_busy)])
 	if _busy:
 		# 防重入兜底：正在转场时的导航请求直接裸切，不吞
 		tree.change_scene_to_file(scene_path)
@@ -68,6 +72,10 @@ func _switch_and_fade_out() -> void:
 	if tree == null:
 		_cleanup()
 		return
+	# v6.38.1 面包屑：实际换场景留痕
+	var tl_swap: Node = tree.root.get_node_or_null("TraceLog")
+	if tl_swap != null and tl_swap.has_method("mark"):
+		tl_swap.mark("scene_swap", _scene_path.get_file())
 	tree.change_scene_to_file(_scene_path)
 	# 等一帧让新场景进树再淡出，避免旧帧闪回
 	await tree.process_frame

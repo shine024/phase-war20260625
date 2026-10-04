@@ -73,10 +73,15 @@ const SHIELD_TEX_CONTENT_W := 916.0  # player_shield.png 内容实宽（画布 1
 ## 敌方 mega_shield 罩住的杂兵卡脚线不一 → 罩底不贴脚线被读成"贴图位置错误"。
 const CardFootAnchors = preload("res://data/card_foot_anchors.gd")
 
-## 宿主调用：把整个 aura 节点对齐宿主"视觉脚线"（记录4#6）。
-## 立绘居中锚定于单位原点（apply_battle_unit_presentation"立绘居中…不按脚线对齐"），
-## 各卡脚线高度由 FOOT_FRAC 标定表决定——aura 固定在原点时穹顶底边对脚线偏高的卡
-## （敌方 mega_shield 罩住的杂兵）悬空/沉地，被读成"贴图位置错误"。
+## 宿主调用：把整个 aura 节点对齐宿主"视觉脚线"（v6.32.3 定稿公式，v6.38 重写——
+## v6.31b 版漏了 offset.y×scale 项：apply_uniform_card_sprite 已用
+## spr.offset.y = -(0.5-f0)×h0 把卡图脚线对到节点原点，旧式再叠 (0.5-f)×h×scale
+## =双重对齐，罩底下沉 (0.5-f)×h×scale px（敌方罩底压进履带 22~31px 的根因）。
+##
+## f_tex 三级优先（脚线在当前纹理画布内的"底缘余量占比"，内容贴底=0）：
+##   ① UnitFrameAnimDriver.sheet_foot_frac（anim.json foot_frac，tools/_tmp_anim_foot_frac.py）
+##   ② CardFootAnchors 卡图标定表（静态图标定精确）
+##   ③ 0（画布底兜底）
 ## 无 Sprite/贴图时回退原点（等价旧行为）。
 func sync_foot_anchor() -> void:
 	var host := get_parent()
@@ -86,11 +91,47 @@ func sync_foot_anchor() -> void:
 	if spr == null or spr.texture == null or not spr.visible:
 		position = Vector2.ZERO
 		return
-	var fn := String(spr.texture.resource_path).get_file().get_basename()
-	var foot_frac: float = CardFootAnchors.get_foot_frac(fn)
-	var tex_h: float = float(spr.texture.get_height()) * absf(spr.scale.y)
-	# spr.position.y 已含悬空抬升合成（advance_idle_motion 每帧写 base_y+_air_dy+浮动）
-	position = Vector2(0, (0.5 - foot_frac) * tex_h + spr.position.y)
+	var f_tex := -1.0
+	var driver := spr.get_node_or_null("UnitFrameAnimDriver")
+	if driver != null:
+		var sff: Variant = driver.get("sheet_foot_frac")
+		if sff != null and float(sff) >= 0.0:
+			f_tex = float(sff)
+	if f_tex < 0.0:
+		var fn := String(spr.texture.resource_path).get_file().get_basename()
+		if fn != "" and CardFootAnchors.FOOT_FRAC.has(fn):
+			f_tex = CardFootAnchors.get_foot_frac(fn)
+	if f_tex < 0.0:
+		f_tex = 0.0
+	var canvas_h: float = maxf(float(spr.texture.get_height()), 1.0)
+	var s: float = absf(spr.scale.y)
+	# spr.position.y 已含悬空抬升/待机浮动（advance_idle_motion 每帧写）；
+	# offset.y×s 把"当前纹理脚线"归到节点原点，(0.5-f)×canvas_h×s 只补标定差。
+	position = Vector2(0, spr.position.y + spr.offset.y * s + (0.5 - f_tex) * canvas_h * s)
+
+
+## v6.32.4：堡垒环/护盾罩半径基准缓存（test_shield_foot_anchor 断言消费）。
+var last_fort_base_radius: float = 0.0
+
+
+## v6.32.4：按宿主立绘实体高刷新半径基准与 host_content_h meta——罩体随体型
+## （base=max(52, h×0.62)，小单位 h≤74 观感零变化；0.7 曾致罩心偏上，用户实机收敛 0.62）。
+## 宿主在光环低频拍调用；entity 高度有纹理级缓存，代价可忽略。
+func update_host_metrics() -> void:
+	var host := get_parent()
+	if host == null or not (host is Node2D):
+		return
+	var spr := (host as Node).get_node_or_null("Sprite") as Sprite2D
+	var h: float = CardFootAnchors.entity_height_for_sprite(spr)
+	if h > 0.0:
+		set_meta(&"host_content_h", h)
+	last_fort_base_radius = base_radius_for(h, MODE_FORT)
+
+
+## 罩/环半径基准：盾 max(52, h×0.62)；堡垒环 max(38, h×0.62)（旧常量 38 对要塞级是杯垫）。
+static func base_radius_for(host_h: float, mode: String) -> float:
+	var base: float = SHIELD_RADIUS if mode == MODE_SHIELD else AURA_RADIUS
+	return maxf(base, host_h * 0.62)
 
 
 func _draw() -> void:
@@ -109,7 +150,10 @@ func _draw_fort() -> void:
 	var t: float = Time.get_ticks_msec() / 1000.0
 	var breath: float = 1.0 + BREATH_AMP * (0.5 + 0.5 * sin(t * TAU / BREATH_PERIOD))
 	var hit_scale: float = 1.0 + hit_boost * 0.20
-	var radius: float = AURA_RADIUS * breath * hit_scale
+	# v6.32.4：堡垒环半径随体型（大体型 FORT 单位旧常量 38=杯垫）
+	var base_r: float = base_radius_for(float(get_meta(&"host_content_h", 0.0)), MODE_FORT)
+	last_fort_base_radius = base_r
+	var radius: float = base_r * breath * hit_scale
 
 	var base_color: Color = FORT_COLOR_PLAYER if is_player else FORT_COLOR_ENEMY
 	var hit_color: Color = FORT_COLOR_HIT_PLAYER if is_player else FORT_COLOR_HIT_ENEMY
@@ -185,7 +229,9 @@ func _draw_shield() -> void:
 	# 记录3#16a（用户裁决）：受击脉冲 0.18→0.06——此前护盾承压时脚下整圈扩散近 20%，
 	# 被读成"不明受击效果"（敌人没有是因为敌方无持续盾状态罩，非漏应用）；收敛为轻微涨缩
 	var hit_scale: float = 1.0 + hit_boost * 0.06
-	var radius: float = SHIELD_RADIUS * breath * hit_scale * lerpf(0.35, 1.0, ease_in_k)
+	# v6.32.4：罩体半径随体型——max(52, 实体高×0.62)（L100 大机甲只被罩腰的根因）
+	var base_r: float = base_radius_for(float(get_meta(&"host_content_h", 0.0)), MODE_SHIELD)
+	var radius: float = base_r * breath * hit_scale * lerpf(0.35, 1.0, ease_in_k)
 	if break_k >= 0.0:
 		radius *= 1.0 + 0.2 * break_k
 

@@ -408,8 +408,12 @@ func _deploy_next() -> void:
 		# v6.23c: 失败分类（主诉⑳回归修复）——能量不足是暂时态（等回能可自愈），
 		# 不计条目失败、保留队列直接结束本轮（能量是全局的，逐条试也必败）；
 		# 其余（次数尽/位置占用/上限/限定兵种等）为持久态，按条目计数快速出队。
-		var bss2: Node = _get_node("/root/BattleSpawnSystem")
-		var fail_reason: String = String(bss2.get("last_deploy_fail_reason")) if bss2 != null else ""
+		# v6.37 修复读取路径：经 BattleManager 访问器取真身（原 /root/BattleSpawnSystem
+		# 是不存在的 autoload 路径，bss2 恒 null → reason 恒空 → 能量不足被当持久态
+		# 快速弃卡、暂时态/持久态分类整体失效）。
+		var fail_reason: String = ""
+		if bm.has_method("get_last_deploy_fail_reason"):
+			fail_reason = String(bm.get_last_deploy_fail_reason())
 		if fail_reason == "insufficient_energy":
 			_fail_streak += 1
 			if _fail_streak > FAIL_GIVEUP:

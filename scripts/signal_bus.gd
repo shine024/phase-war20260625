@@ -136,6 +136,10 @@ signal start_level(level: int)
 # 通用 UI 反馈
 signal show_toast(message: String)
 
+## 记录5#10（用户拍板）：获得/解锁类提示走左下信息通道（ToastManager 左下 feed 条），
+## 不再进右上角 toast 堆叠——奖励/解锁是低优先级信息，右上角留给操作反馈。
+signal feed_message(message: String)
+
 # v7.x 面板统一：main.gd overlay 开关的全局广播（高亮联动/统计解耦用）
 signal panel_opened(panel_id: String)
 signal panel_closed(panel_id: String)

@@ -6,9 +6,13 @@
 ## 注：用 _initialize()（autoload 就绪后）而非 _init()——依赖 autoload 的脚本在 _init() 时编译失败。
 extends SceneTree
 
-const XenoWeaponFlavor = preload("res://data/xeno_weapon_flavor.gd")
-const WeaponVisuals = preload("res://data/weapon_visual_profiles.gd")
-const WPV = preload("res://scripts/weapon_projectile_vfx.gd")
+## v6.38 修复：const preload 会在 autoload 注册前编译依赖链——vfx_impact_factory
+## （WPV 的依赖）自 v6.28 起引用 TraceLog autoload 标识符，--script 模式下
+## "Identifier not found: TraceLog" 编译失败=本冒烟长期跑不起来。改 _initialize 内
+## 延迟 load（此时 autoload 已就绪），语义不变。
+var XenoWeaponFlavor: GDScript = null
+var WeaponVisuals: GDScript = null
+var WPV: GDScript = null
 
 ## 20 武器名权威名单（与 data/xeno_units.gd UNITS 的 weapon_label 一一对应）
 const ALL_20 := [
@@ -22,6 +26,9 @@ var _pass: int = 0
 var _fail: int = 0
 
 func _initialize() -> void:
+	XenoWeaponFlavor = load("res://data/xeno_weapon_flavor.gd")
+	WeaponVisuals = load("res://data/weapon_visual_profiles.gd")
+	WPV = load("res://scripts/weapon_projectile_vfx.gd")
 	print("=== v27.x 星冥武器 flavor smoke test ===")
 	_test_full_coverage()
 	_test_group_counts()
