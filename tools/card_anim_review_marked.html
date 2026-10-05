@@ -62,6 +62,9 @@ section>h2 small{color:var(--dim);font-weight:normal;margin-left:8px;font-size:1
   color:var(--dim);cursor:pointer;line-height:1.4}
 .pb:hover{border-color:var(--accent);color:var(--txt)}
 .pb.on{background:var(--bad);color:#fff;border-color:var(--bad)}
+.okb{font-size:11px;padding:2px 8px;border-radius:11px;background:var(--panel2);border:1px solid var(--line);color:var(--dim);cursor:pointer;line-height:1.4;flex:none}
+.okb:hover{border-color:var(--ok);color:var(--txt)}
+.okb.on{background:var(--ok);color:#fff;border-color:var(--ok)}
 .rrow{display:flex;gap:5px;align-items:center}
 .rrow select{width:104px;font-size:12px;flex:none}
 .rnote{flex:1;min-width:0;font-size:12px;padding:3px 6px}
@@ -120,7 +123,7 @@ footer{position:fixed;bottom:0;left:0;right:0;background:var(--panel);border-top
 @media(max-width:1000px){.card{flex-wrap:wrap}.animbox{width:110px;height:110px}}
 </style>
 </head>
-<body><div style="position:sticky;top:0;z-index:99;background:#7a1f1f;color:#fff;padding:6px 14px;font:600 14px/1.4 system-ui">标记复查页 — 只列你标记过问题的 86 项（fam 43 + ind 16 + drop 3 + plat 24）。每卡下方备注为标记原文；标签为修复后探针实测，供复核。<span style="float:right;font-weight:400">页面生成于 2026-10-05 15:09:21（数据 dump: 2026-10-05 15:08:01）</span></div>
+<body><div style="position:sticky;top:0;z-index:99;background:#7a1f1f;color:#fff;padding:6px 14px;font:600 14px/1.4 system-ui">标记复查页 — 只列你标记过问题的 86 项（fam 43 + ind 16 + drop 3 + plat 24）。每卡下方备注为标记原文；标签为修复后探针实测，供复核。<span style="float:right;font-weight:400">页面生成于 2026-10-05 15:15:06（数据 dump: 2026-10-05 15:08:01）</span></div>
 <header>
   <h1>卡图 · 待机 · 攻击动画 总审 v2 <small id="gen"></small></h1>
   <div class="stats" id="stats"></div>
@@ -318,6 +321,7 @@ function applyMarkToCard(el,m){
   el.dataset.marked=(m.p.length||m.r||m.n||m.a)?'1':'';
   el.dataset.redo=m.r||'';
   el.dataset.p=m.p.join(' ');
+  const okb=el.querySelector('.okb');if(okb)okb.classList.toggle('on',m.r==='no');
   el.classList.toggle('r-redo',m.r==='yes');
   el.classList.toggle('r-marked',!!m.p.length);
   el.classList.toggle('r-clean',m.r==='no'&&!m.p.length);
@@ -521,7 +525,7 @@ function buildCard(sec,r){
   // ── 审查列 ──
   const rev=document.createElement('div');rev.className='rev';
   let revHtml='<div class="pbtns">'+P_TYPES.map(pt=>'<button class="pb" data-p="'+pt[0]+'">'+pt[1]+'</button>').join('')+'</div>'+
-    '<div class="rrow"><select class="rsel"><option value="">重做:待定</option><option value="yes">重做:需要</option><option value="no">重做:不用</option></select>'+
+    '<div class="rrow"><button class="okb" title="复核通过：标记为可用（等同 重做:不用，随导出交付）">✓ 转可用</button><select class="rsel"><option value="">重做:待定</option><option value="yes">重做:需要</option><option value="no">重做:不用</option></select>'+
     '<input class="rnote" type="text" placeholder="备注…"></div>';
   if(r.sec==='fam')revHtml='<div class="rrow"><button class="flipb chip" style="flex:none">视角:我</button>'+
     '<span style="color:var(--dim);font-size:10px">动画镜像 ⇄ 敌方原图朝向</span></div>'+revHtml;
@@ -531,6 +535,8 @@ function buildCard(sec,r){
     e.stopPropagation();
     const pb=e.target.closest('.pb');
     if(pb){toggleProb(sec.key,r.id,pb.dataset.p);return;}
+    const ob=e.target.closest('.okb');
+    if(ob){const m=getM(sec.key,r.id);m.r=(m.r==='no')?'':'no';applyMarkToCard(el,marks[el.dataset.key]);saveMarks();updateMarkChips();return;}
     const fb=e.target.closest('.flipb');
     if(fb){
       const curIsPlayer=fb.textContent.indexOf('视角:我')>=0;
