@@ -54,8 +54,8 @@
    "alt": "",
    "tasks": [
     "fire_anchor",
-    "face_fix",
-    "clip_fix"
+    "clip_fix",
+    "face_fix"
    ]
   },
   "ind|ww1_a7v": {
@@ -82,8 +82,8 @@
     "fire_anchor",
     "idle_regen",
     "attack_regen",
-    "face_fix",
-    "anim_regen"
+    "anim_regen",
+    "face_fix"
    ]
   },
   "fam|ww1_arty_77mm": {
@@ -244,8 +244,8 @@
    "tasks": [
     "idle_regen",
     "attack_regen",
-    "face_fix",
     "clip_fix",
+    "face_fix",
     "anim_regen"
    ]
   },
@@ -328,8 +328,8 @@
    "alt": "",
    "tasks": [
     "idle_regen",
-    "anim_regen",
-    "bg_clean"
+    "bg_clean",
+    "anim_regen"
    ]
   },
   "fam|mod_arm_stryker_e": {
@@ -352,8 +352,8 @@
    ],
    "alt": "",
    "tasks": [
-    "anim_regen",
-    "bg_clean"
+    "bg_clean",
+    "anim_regen"
    ]
   },
   "fam|mod_air_technical_e": {

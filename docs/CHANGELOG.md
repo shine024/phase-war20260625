@@ -9712,3 +9712,19 @@ MVP 协同小结、8 面板首开气泡。**R3 余项**：结算面板三页签�
 - **rolls 动画走 FX 合成路线**（4 掷生图皆败：火光固执画在引擎盖/车头、乘员频出、炮塔逐格变形，文本锁无效）：idle 基帧 a0 为唯一车体源（身份零漂移）+ 程序合成炮塔机枪口小火光（白芯橙晕椭圆+水平射线，贴 (204,292) 剖面实测枪管尖）+ 两档软硝烟（205 灰 α190/140）+ 1px 后坐微动；6 帧待机→点射→硝烟→再点射→烟散→待机；counts attack 12→6 已同步 anim.json。
 - **门禁**：foot_frac 246 幂等；Godot --import EXIT=0 零错误；审阅页 card_anim_review.html / redo worklist 已按新 dump 重建。
 - **工具沉淀**：tools/_mk10_icon_regen.py（t2i 图标）、_mk10_anim.py（锚定链）、_mk10_surgery.py（scrub/synth/deploy 三阶段：品红杀+翻转拼装+FX 合成+归一化+部署）。
+
+## v6.45（2026-10-05）MK11 收口批——审查页探针残留全清（clip/face/size/bg）
+
+86 个 r=yes 标记终审 **83 清零 + 3 有据裁定**（残项均非缺陷，见下）。全页 sus：face 9→4、size 15→12、bg 7→5，clip 0。
+
+- **clip 贴边修复（28 张攻击 sheet）**：`tools/_mk11_clip_fix.py`（plan/apply/verify/size 四阶段）。整条攻击帧统一缩放（s=按最坏帧清四边至 EDGE+1，cap≥0.80，s=1.0=纯居中重排），地线锚定+内容质心贴位。三轮迭代踩坑两连：①`px=fs/2-nw/2` 在不对称内容上差半格（质心左距应为 `(cx-x0)*s`）；②宽 >fs-2·MARGIN 的刀口帧需受检侧硬钳+整宽约束（双侧受检补 `(fs-2·MARGIN)/w`）。verify 全部清零。
+- **face 朝向批（目验终审 11 案）**：质心启发式在瞄准姿（枪细身重，cx 与朝向反号）与近对称载具上系统性误报，一切以图标 vs 镜像后游戏内画面并排目验为准。
+  - 镜像 6 张玩家图标（违 `vis_player=我方翻转图` 契约，卡图与游戏内朝向相反）：fe_aether_hover_cavalry / fe_aether_swarm_queen / fe_frontier_veteran / fe_quantum_mobile_base / ww2_arm_garand_para / vis_player_061。
+  - 翻转 4 对 sheet（原生朝右违朝左契约，敌方侧实战朝反）：fut_stealth_bomber / fe_iron_wall_juggernaut / fe_void_dimensional_soldier / drop_phase_lance（图标已正确故只翻 sheet；翻后质心对齐探针同清）。
+  - 镜像 1 张：drop_railgun 图标（sheet 本已契约）。
+  - 误报留痕不改：ww1_arty_77mm / fut_arm_mech_e / fut_inf_spectre_e / cold_inf_metis（图标✓sheet✓游戏内✓三重一致）。
+- **size 比例批（3 单位地线+质心锚定缩放）**：fut_arm_colossus_e（含共享 fut_colossus 基础版同病 1.49）→1.0、mod_air_multirole 1.47→0.99、fut_nano_drone 1.51→1.0。未标记同病单位（marine 1.58/scout_mech 1.5/strike_fighter 1.46/stealth_multirole 1.46/77mm 1.91）按裁定边界只报告。
+- **bg 残留批**：fe_helix_orbital_strike idle+attack 装甲板缝亮品红线稿 depink 亮度重着色（1600+812px，目验无伤）。误报留痕：drop_railgun（白甲）、fut_air_regen_frame（白舰体）、fe_void_phase_cannon / fe_void_dimensional_soldier（紫能量主题）、helix 图标（品红能量导管母题）。
+- **裁定残留 3 项**：stealth_bomber 残余 sz1.19（轻微）、mod_arm_himars jit_h1.343=发射架俯仰设计待机（归一化会杀动画）、void_dim bg=主题色误报。
+- **门禁**：clip verify 全清零；foot_frac 246 patched 0 skipped；Godot `--headless --editor --quit` EXIT=0。审阅页+worklist 已重建。备份 `.godot/art_backup_mk11_20261005/`（clip 28 sheets+icon_face+face2+size 6 sheets+helix 2 sheets，if-not-exists）。
+- **工具沉淀**：`tools/_mk11_clip_fix.py`（clip 修复+size 缩放复用同套地线锚定机制）。
