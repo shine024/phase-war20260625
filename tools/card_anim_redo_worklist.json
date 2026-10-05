@@ -82,8 +82,8 @@
     "fire_anchor",
     "idle_regen",
     "attack_regen",
-    "anim_regen",
-    "face_fix"
+    "face_fix",
+    "anim_regen"
    ]
   },
   "fam|ww1_arty_77mm": {
@@ -102,8 +102,8 @@
    ],
    "alt": "",
    "tasks": [
-    "anim_regen",
-    "bg_clean"
+    "bg_clean",
+    "anim_regen"
    ]
   },
   "fam|ww1_inf_mp18": {
@@ -244,9 +244,9 @@
    "tasks": [
     "idle_regen",
     "attack_regen",
-    "anim_regen",
     "face_fix",
-    "clip_fix"
+    "clip_fix",
+    "anim_regen"
    ]
   },
   "fam|cold_inf_m60": {
@@ -376,9 +376,9 @@
    "alt": "",
    "tasks": [
     "card_regen",
+    "clip_fix",
     "anim_regen",
-    "size_fix",
-    "clip_fix"
+    "size_fix"
    ]
   },
   "fam|mod_arm_m1a2sep": {
@@ -390,8 +390,8 @@
    "alt": "",
    "tasks": [
     "side_view_fix",
-    "anim_regen",
-    "clip_fix"
+    "clip_fix",
+    "anim_regen"
    ]
   },
   "fam|mod_air_apache_e": {
@@ -461,9 +461,9 @@
    ],
    "alt": "",
    "tasks": [
+    "clip_fix",
     "anim_regen",
-    "size_fix",
-    "clip_fix"
+    "size_fix"
    ]
   },
   "fam|mod_arty_mlrs_e": {
@@ -557,10 +557,10 @@
    ],
    "alt": "",
    "tasks": [
-    "anim_regen",
-    "size_fix",
     "face_fix",
-    "clip_fix"
+    "clip_fix",
+    "anim_regen",
+    "size_fix"
    ]
   },
   "ind|fe_iron_wall_bastion": {

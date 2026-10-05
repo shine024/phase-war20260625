@@ -9702,3 +9702,13 @@ MVP 协同小结、8 面板首开气泡。**R3 余项**：结算面板三页签�
 - **fut_air_drone 挂起待裁定**：4 掷皆不合——img2img 继承参考俯视几何（2 掷），文生图保侧视但丢四旋翼身份变共轴/直升机构型（2 掷）；且现役动画 sprite 本身即 3/4 俯视，图标与动画视角实为一致。选项：动画连带重做 / 接受现配对 / 专出"双桅侧视"定制稿。
 - **复核过期/属实清单**：~39 家族标记过期（动画早于标记已修复或属感知误报，含 apache/spetsnaz 待机摆动实测 0.5/1.0px 远低于参考 2.3-2.6px）；24 平台图标全部实存；3 掉落标记（phase_lance/smg_mk2/thunder_field）全对；ww1_arm_rolls 家族图标（轮式劳斯莱斯车）vs 动画（履带坦克）主体不符待裁定；ww1_arty_77mm 与 ww2_boss_kingtiger 两处矛盾标记（同条目"重做，没正侧面"+r=no）待裁定。
 - **门禁**：foot_frac 工具 246 文件幂等补丁；Godot --import 两轮（FX 部署后+图标部署后）均 EXIT=0 零错误；部署前备份 .godot/art_backup_mk8_20261005/ 与 art_backup_mk9_20261005/（if-not-exists）。PNG 不入 git（.gitignore *.png），资产以本地盘为准。
+
+## v6.44 MK10 重做批：rolls / 77mm 图标+动画整体重生成，四裁定项全部落地（2026-10-05）
+
+**v6.43 四项"重做"裁定（rolls / rolls_e / 77mm / kingtiger + drone）的执行批。**
+
+- **图标重掷 4 对 + drone 1 对部署**（t2i 直出正侧视朝右+白底 keying+512 fit+敌我镜像+thumb 256/384，备份 .godot/art_backup_mk10_20261005/）：ww1_arm_rolls 轮式劳斯莱斯装甲车（修长引擎盖+球形炮塔+辐条轮，原动画是履带坦克=主体错位源）；ww1_arm_rolls_e 同车精英深钢涂装+天线（原 041 是辆坦克）；ww1_arty_77mm 野战炮正侧剖面（炮管朝右/驻锄左后斜撑，原 3/4 斜视）；ww2_boss_kingtiger 亨舍尔炮塔正侧视（动画共享 tiger sheet 未动，仅图标重掷）；fut_air_drone r1 img2img（3/4 几何与现役动画自洽）。
+- **77mm 动画重生成**（锚定→idle 8f→attack 3×2 掷 2 版→翻转手术拼装）：R1 六格全取，3 格朝右翻转回朝左契约；品红底渍 alpha 杀（r-g>30 & b-g>18，键控半透明阴影病根）；烟底饱和红斑降饱和回灰（限下 40% 带，硬杀会洞穿烟团）；attack 归一化改统一比例+地线/轮心对位（al>150 取地线，烟帧轮心用干净格锚定偏移 x1-215，杜绝逐格缩放 pumping）。
+- **rolls 动画走 FX 合成路线**（4 掷生图皆败：火光固执画在引擎盖/车头、乘员频出、炮塔逐格变形，文本锁无效）：idle 基帧 a0 为唯一车体源（身份零漂移）+ 程序合成炮塔机枪口小火光（白芯橙晕椭圆+水平射线，贴 (204,292) 剖面实测枪管尖）+ 两档软硝烟（205 灰 α190/140）+ 1px 后坐微动；6 帧待机→点射→硝烟→再点射→烟散→待机；counts attack 12→6 已同步 anim.json。
+- **门禁**：foot_frac 246 幂等；Godot --import EXIT=0 零错误；审阅页 card_anim_review.html / redo worklist 已按新 dump 重建。
+- **工具沉淀**：tools/_mk10_icon_regen.py（t2i 图标）、_mk10_anim.py（锚定链）、_mk10_surgery.py（scrub/synth/deploy 三阶段：品红杀+翻转拼装+FX 合成+归一化+部署）。
