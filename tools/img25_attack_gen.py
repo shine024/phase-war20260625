@@ -491,7 +491,7 @@ def main():
     guide = sheet_guide(anchor)
     uri_anchor = data_uri(anchor)
     uri_guide = data_uri(guide)
-    payload = os.path.join(OUT, "_attack_payload.json")
+    payload = os.path.join(OUT, "_attack_payload_%s_%d.json" % (args.key, os.getpid()))  # 12-05 并发生成互踩共享 payload 文件 → R2 读到别的单位的锚定/提示词（MK12 蓝坦克污染根因），改每进程唯一文件名
     with open(payload, "w", encoding="utf-8") as f:
         f.write(json.dumps({"model": "agnes-image-2.5-flash",
                             "prompt": build_prompt(args.subject, args.small_motion,

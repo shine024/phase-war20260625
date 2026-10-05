@@ -47,7 +47,7 @@ def backup_once(path, tag):
 def deploy_sheet(src_path, unit, anim, flip=False, bake=True):
     """src（横条或 3×2 R2）→ 帧列表 → 256 横条 →（烘描边）→ 覆写 assets，更新 counts。"""
     im = Image.open(src_path).convert("RGBA")
-    if im.height == im.width // 3:          # R2 3×2 网格（832 cells）
+    if im.width % 3 == 0 and im.height == 2 * (im.width // 3):   # 3×2 网格（2496×1664 832 cells；原判据 height==width//3 只匹配单行条，真网格全落入横条支=单帧 256 假部署）
         cell = im.width // 3
         frames = [im.crop((c * cell, r * cell, (c + 1) * cell, (r + 1) * cell))
                   for r in range(2) for c in range(3)]

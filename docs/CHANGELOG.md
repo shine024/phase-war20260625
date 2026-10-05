@@ -9728,3 +9728,16 @@ MVP 协同小结、8 面板首开气泡。**R3 余项**：结算面板三页签�
 - **裁定残留 3 项**：stealth_bomber 残余 sz1.19（轻微）、mod_arm_himars jit_h1.343=发射架俯仰设计待机（归一化会杀动画）、void_dim bg=主题色误报。
 - **门禁**：clip verify 全清零；foot_frac 246 patched 0 skipped；Godot `--headless --editor --quit` EXIT=0。审阅页+worklist 已重建。备份 `.godot/art_backup_mk11_20261005/`（clip 28 sheets+icon_face+face2+size 6 sheets+helix 2 sheets，if-not-exists）。
 - **工具沉淀**：`tools/_mk11_clip_fix.py`（clip 修复+size 缩放复用同套地线锚定机制）。
+
+## v6.46（2026-10-05）MK12 攻击动画全线重生成批——56 单位生图重掷 + 逐案视觉裁定 + 54 案部署
+
+用户裁定 86 个 r=yes 标记中的攻击动画"姿势不对、火位置不对"→ 全部走生图重做（锚定帧引导 3×2 六格、双掷对比），每案 `fixbg→audit→目验` 循环裁定，不合格再掷/手术。
+
+- **管线级修复——payload 并发互踩（本次漂移真因）**：`img25_attack_gen.py` 原共享 `_attack_payload.json` 被并发生成进程互相覆盖，roll 2 会读到别的单位的锚定+提示词（此前"蓝坦克/乱入士兵/女法师"式身份漂移全部源于此，非模型固执）。改为 `_attack_payload_<key>_<pid>.json` 每进程唯一；45 个在途单位全部在修复后管线重出。
+- **54 案部署**（mk8.deploy_sheet 备份 if-not-exists → bake_outline → unit_anims，counts attack=6）：每单位 R1/R2 双掷目验择优；拟采用清单见 `.godot/unit_review/mk12_w{f,g,h}.txt` 三组 45 单位 + 第二轮条款重掷 11 单位。
+- **逐案手术 12 次全过目验**：帧复制闭环（brem1 f5/f6←f1 驱逐乱入士兵、x9 f6←f1、mp18 f1/f2←f3 驱逐紫描边、void_soldier f1←f3、space_fighter f5←f4 缩小帧）；簇限严格色相重着色（hovertank f5 酸性黄晕→灰 10424px+粉烟→灰、xeno_adept f5 金身→紫袍 109868px 保明暗、105mm f5 去紫 18212px）；juggernaut R2 品红地影 alpha 杀 55613px（六格全跑）。
+- **第二轮正词条款两案**：mobile_base（原"绝不紫色涂鸦"条款反把量子涂装洗掉→改"涂装全部保留"正词后水晶+紫纹回归）、void_soldier（"绝不兜帽"负词两掷皆画兜帽→改"黑短发整脸露出"正词后兜帽清零，印证 agnes 负面词反噬律同样适用于动画生图）。
+- **deploy 双 bug 修复**：①`_mk12_attack_redo.py` main() 校验在 key:_Rn 切分前整串比对必拒；②`_mk8_deploy.py` 3×2 网格判据 `height==width//3` 只匹配单行条——真网格（2496×1664）全落入横条支=单帧 256 假部署（首轮 54 案全中招，判据改 `height==2*(width//3)` 后重部署全 6 帧）。
+- **裁定留痕（9 单位不再重掷）**：mod_arty_hummel / ww2_thompson / mod_ranger / drop_smg_mk2 / ww2_fort_flak / fut_arm_prism / fut_colossus / mod_fort_phalanx / cold_sup_zsu23——现役攻击条姿势与火位已达标，用户未标记处不动。
+- **门禁**：foot_frac 246 patched / 0 skipped；Godot `--headless --editor --quit` EXIT=0 零错误；总审页 209 行+标记复查页 86 行均按新 dump 重建。
+- **工具沉淀**：`tools/_mk12_attack_redo.py`（gen/fixbg/audit/deploy 四相批处理 + 56 单位条款配置）、`tools/_build_marked_review.py`（r=yes 86 项标记复查页生成器）。
