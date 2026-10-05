@@ -9741,3 +9741,13 @@ MVP 协同小结、8 面板首开气泡。**R3 余项**：结算面板三页签�
 - **裁定留痕（9 单位不再重掷）**：mod_arty_hummel / ww2_thompson / mod_ranger / drop_smg_mk2 / ww2_fort_flak / fut_arm_prism / fut_colossus / mod_fort_phalanx / cold_sup_zsu23——现役攻击条姿势与火位已达标，用户未标记处不动。
 - **门禁**：foot_frac 246 patched / 0 skipped；Godot `--headless --editor --quit` EXIT=0 零错误；总审页 209 行+标记复查页 86 行均按新 dump 重建。
 - **工具沉淀**：`tools/_mk12_attack_redo.py`（gen/fixbg/audit/deploy 四相批处理 + 56 单位条款配置）、`tools/_build_marked_review.py`（r=yes 86 项标记复查页生成器）。
+
+## v6.47（2026-10-05）MK12 后续批——第二遍逐帧手术 11 单位 + 六案重掷终局手术
+
+用户质询"攻击帧是否每张目视检查"→ 对 v6.46 部署稿逐帧放大目验，暴露第一遍手术漏网缺陷与六案重掷废卷，全部二次处置后重部署。
+
+- **第二遍手术 11 单位**（`tools/_mk12_pass2.py`，restore 取 art_backup_mk12_sweep 原始帧）：mixed_company 整卷还原（第一遍方向误判）；77mm 还原误杀地影的 f3+镜像 f6+杀黄绿曳光残条；105mm 还原甜甜圈洞 f2 后按 ORIG 坐标镜像+f4 幻影炮残影双谓词清除（puff 保炮身紫边+any 小框）；蜂后/stryker a>8 阈值鬼影；av7/boss_av7 杀框边界差一线；gmc 黑板；flak 棕卷须涂鸦；mp18_x/storm 品红楔块描边（簇≥6 膨胀 2）。
+- **六案重掷终局手术**（`tools/_mk12_stg_surgery.py`，staging 备份优先幂等重放→逐帧目验→deploy）：bmp1 R1 直取；hovertank f1 镜像+f5 橙焰→紫能量重着色+烟缘羽化；m270 f1 白块+残焰、f2 越界烟、f6 异物炮杆；rolls（第三掷仍 100% 召唤乘员→放弃第四掷改帧贴片：f3 镜像+三帧乘员区取 f6 干净区覆盖+翼子板残片+焰缘羽化）；cavalry 六格簇限灰板杀；dive_bomber f1:=f6 帧复制闭环。
+- **乘员召唤定案**：rolls 连续三掷正词改写（封闭炮塔舱盖合拢）仍出乘员——帧贴片手术是唯一可靠路线，不再重掷。
+- **管线教训入册**：①op_fade 对 xa 左侧像素 t 为负→alpha 乘 >255 溢出回绕（255→75），必须 clamp [0,1]；②3×2 行主序网格 f3=(0,2) 在右上角，手写 `crop((0,832,832,1664))` 读到的是 f4——网格裁切一律走 fr()/render()；③staging 手术 load 必须备份优先才能幂等重放，render 必须直读 STG（备份优先会渲染术前态）；④`python dry | grep -v X && run` 管道吞退出码（grep 恒 0），dry/run 必须分开跑；run 模式加 WARN-0 拒绝落盘；⑤备份时序：backup_once 抓取点必须在 fixbg 之后，术前品红场备份会毒化重放。
+- **门禁**：Godot `--headless --import` EXIT=0，六张 sheet_attack.png ctex 缓存 19:03 全重生成；headless dump 六案 anim.attack=6 全命中；总审页+标记复查页按 19:04:56 新 dump 重建（构建时间戳 19:06:05 双横幅核对）。
