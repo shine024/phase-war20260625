@@ -44,10 +44,14 @@ def main():
                encoding="utf-8").read()
     payload = json.dumps(data, ensure_ascii=True, separators=(",", ":")).replace("</", "<\\/")
     html = tpl.replace("__DATA__", payload)
+    import datetime
+    now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     banner = ('<div style="position:sticky;top:0;z-index:99;background:#7a1f1f;color:#fff;'
               'padding:6px 14px;font:600 14px/1.4 system-ui">标记复查页 — 只列你标记过问题的 '
-              '%d 项（%s）。每卡下方备注为标记原文；标签为修复后探针实测，供复核。</div>' % (
-                  data["total"], " + ".join("%s %d" % (k, n) for k, n in kept)))
+              '%d 项（%s）。每卡下方备注为标记原文；标签为修复后探针实测，供复核。'
+              '<span style="float:right;font-weight:400">页面生成于 %s（数据 dump: %s）</span></div>' % (
+                  data["total"], " + ".join("%s %d" % (k, n) for k, n in kept),
+                  now, data.get("generated") or "未知"))
     html = html.replace("<body>", "<body>" + banner, 1)
     with open(OUT, "w", encoding="utf-8") as f:
         f.write(html)
