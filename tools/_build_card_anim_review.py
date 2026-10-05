@@ -298,14 +298,15 @@ def main():
 
     # ── §4 相位师平台 ──
     sections.append({"key": "plat", "title": "相位师战争平台",
-                     "srcnote": "敌我两侧均可部署（敌 spawn_sequence / 我方相位仪 loadout），无独立卡图、页面按 sheet 原始朝向显示；advanced/expert 16 个为未接线数据变体（ANIM_ALIAS 仅覆盖 *_basic）。",
+                     "srcnote": "敌我两侧均可部署（敌 spawn_sequence / 我方相位仪 loadout），卡图 assets/card_icons/<id>.png（2026-10-04 批生成）；advanced/expert 16 个为未接线数据变体（ANIM_ALIAS 仅覆盖 *_basic）。",
                      "rows": []})
     for p in platforms:
         anim = anim_part(p, flip=False)
         boss = frames_part(p, "boss_frames", "boss_dir")
         pose = frames_part(p, "pose_frames", "pose_dir")
-        flags = base_flags([], anim, boss, pose)
-        sus, met = probe_side(None, anim, boss)
+        icon = res_to_rel(p.get("icon", ""))
+        flags = base_flags([("platform", icon)], anim, boss, pose)
+        sus, met = probe_side(icon, anim, boss)
         sus = [s for s in sus if s not in ("probe_err", "diff")]
         alt_anims = alt_anims_part(p, p.get("anim_key", ""))
         if alt_anims:
@@ -314,7 +315,7 @@ def main():
         rec = {
             "id": p["id"], "name": p.get("name", ""), "era": -2, "kind": -1,
             "faction": p.get("faction", ""), "tier": {"basic": "基础", "advanced": "进阶", "expert": "专家"}[tier],
-            "icon": "", "anim": anim, "anim_key": p.get("anim_key", ""),
+            "icon": icon, "anim": anim, "anim_key": p.get("anim_key", ""),
             "boss": boss, "pose": pose,
             "flags": flags, "flip": False, "sec": "plat",
             "sus": sus, "sus_sides": {s: ["敌"] for s in sus},
