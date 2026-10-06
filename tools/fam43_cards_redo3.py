@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """fam43 卡重生成批 R3·4 张（2026-10-06 用户判定 (3).json）。
 
-  ww2_air_dive_bomber  锚图就错了→卡图也错：移植 v26 已验收 Ju 87 配方（朝右版）
+  ww2_air_dive_bomber  10-06 v3：用户令换美制 SBD 无畏式（v1 Ju 87 配方两掷均在机尾画亚阈值白云，废）
   mod_air_multirole    仍非侧视：移植 v26 已验收 F-15E 配方（朝右版）+ SIDE_RESCUE
   fe_helix_phantom     抬枪要强化：枪托抵肩/贴腮瞄准/枪口水平右指
   flame_raider_expert  平放出枪要强化：喷火管从炮塔笔直水平探出超出车体前缘
@@ -46,13 +46,17 @@ STRICT_PREFIX = (
 )
 
 UNITS = {
-    "ww2_air_dive_bomber": dict(
-        subject=("二战俯冲轰炸机（Ju 87 斯图卡），严格2D正侧视，正交投影，游戏单位立绘/精灵图姿态，"
-                 "军事设定图，以【二战·俯冲轰炸机】倒鸥形机翼双座俯冲轰炸机为主体，机头朝向画面正右方，"
-                 "完整机体居中入镜，倒鸥形弯曲机翼（inverted gull wings 翼根明显下折）、"
-                 "固定主起落架流线整流罩（fixed spatted landing gear）与双座纵向全玻璃座舱轮廓清晰，"
-                 "机腹挂载重型炸弹、发动机整流罩结构明确，深灰绿迷彩涂装，"
-                 "低饱和军绿灰主色，干净棚拍纯白背景，无地面无场景无杂物，高清"),
+    "ww2_air_dive_bomber": dict(  # 10-06 v3：用户令换美制 SBD 无畏式（原 Ju 87 配方两掷均画白云已废）
+        subject=("二战美军舰载俯冲轰炸机（道格拉斯 SBD 无畏式，Douglas SBD Dauntless），严格2D正侧视，"
+                 "正交投影，游戏单位立绘/精灵图姿态，"
+                 "军事设定图，以【二战·俯冲轰炸机】美军海军舰载俯冲轰炸机为主体，机头朝向画面正右方，"
+                 "完整机体居中入镜，大直径星形发动机整流罩（large round radial engine cowling）、"
+                 "平直梯形机翼圆润翼尖（straight tapered wings，绝非鸥形下折）、"
+                 "机翼后缘与翼下多孔式减速板（perforated split dive flaps，翼后缘一排整齐圆孔为标志性特征）、"
+                 "固定式起落架流线整流罩（fixed spatted landing gear）、"
+                 "双座纵列全玻璃座舱（tandem two-seat glazed canopy，后座机枪手位清晰）、"
+                 "机腹挂载重型炸弹、翼下挂架结构明确，美军蓝灰低可视涂装，"
+                 "低饱和军灰蓝主色，干净棚拍纯白背景，无地面无场景无杂物，高清"),
         pose="水平直线平飞姿态，机首朝画面正右方，起落架放下状态。",
         axis=r1.AXIS_AIR, prefix=STRICT_PREFIX),
     "mod_air_multirole": dict(
