@@ -9761,3 +9761,12 @@ MVP 协同小结、8 面板首开气泡。**R3 余项**：结算面板三页签�
 - **重生成重部署**：`tools/_fam43_fringe_regen.py` 4 片并行 57 键全量重生成（双跑 md5 全 OK）→ 重部署 → 门禁：check 56/57 过、部署版边晕≥150px 家数 **25→3**（余 3=void 紫调色板本体非晕）、57 个 imported .md5 边车全刷新（`--headless --editor --quit` 重导入）。
 - **全库扫描挂账**：其余批次 attack 26 家 + idle 4 家同病（ww1_mgnest 1251px 最重），清单 `.godot/unit_review/fam43_deploy_v2/fringe_followup_20261006.json`——分属 route_apply/早批/img25 等不同部署配方，不可 blanket 重部署，待立批按各配方处理。
 - **生图工作流总览导出**：`docs/生图工作流总览_20261006.md` 立项——A 卡图/B 战斗动画/C VFX/D 场景 UI/E 视频五类方式划分总表 + API 通道矩阵（图像 cn 域/视频 com 域 key 分离）+ 路线选择判据 + 公共工序（含本次边晕清除）+ 产物目录契约；各路线细节指路专属文档，不复制。
+
+## v6.49（2026-10-06）全库边晕挂账收口——异配方 30 家部署版逐帧手术
+
+v6.48 挂账的其余批次品红边晕（attack 26 家 + idle 4 家，分属 route_apply/早批/img25/MK 不同部署配方）以部署版直接手术收口，不重生成不重部署（锚定时效门：上游锚定可能已被并行会话重掷，重生成会引入边晕以外的漂移）。
+
+- **手术工具 `tools/followup_fringe_surgery.py`**（备份→逐帧选择性重染→md5 台账）：选择性判据三条——①像素须落在「最近非 pm 实色→纯品红(255,0,255)」线段附近（w*>0.06 且 err<60，暗体低权混合暗梅色 proj 仅 ~20 固定阈值失明，线段拟合与亮度无关）∨ 对非 pm 实色品红投影>60（亮体混合）；②对自身最近任意实色投影>25（品红/紫罗兰涂装 AA 对自身涂装≈0 → 天然豁免——fe_ 族大面涂装保命线）；③烘描边环（anim.json outline.color α≈217）视作透明参与边圈 dilation，否则够不着晕带。回填源=最近非 pm 实色，alpha 不动（AA 平滑保留）。
+- **判据沉淀**：裸「带内 pm 计数 ≥150」是过筛不是定罪——暗体残留多数在暗底合成后不可见（mgnest raw 残 303 但可见仅 7）；终审口径=暗底合成后可见品红晕（pm 于合成色+距最近实色合成色>22）。真相：fe_ 族大半是品红/紫罗兰涂装本体非病（fe_frontier_mixed_company 手术前后 780→780 一像素未动），实修重的属 ww1/ww2 装甲炮族。
+- **30/30 完成+验证**：备份 `_old/followup_fringe_20261006/`；raw f0+f1 典型降幅 mgnest 1251→303、vickers 859→93、pz3 316→64、pz4 407→126、lance 630→84、arty_77mm 464→153；可见口径全面归零或个位（fe_ 涂装家保留本体）；solid 漂移全批仅 2 家各 8/9 px（fut_sup_ps9/ww2_pz3 的 α≥200 染色种子，1px 静态低可见位，实测改善）；重导入 `--headless --editor --quit` 后 30 家 remap ctex 全验（文件名哈希≠内容 md5，验证走 .import remap）。
+- **产物**：报告 `fringe_followup_surgery_report.json` / 可见口径 `fringe_followup_visible.json` / 验收页 `followup_surgery_p1..p4.png`（暗底 B/A 对照+热点放大），均 `.godot/unit_review/fam43_deploy_v2/`；文档同步：codeanim 工作流 10-06 条目收口、生图工作流总览 §四 加「部署版边晕手术」行。
