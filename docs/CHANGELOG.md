@@ -9751,3 +9751,13 @@ MVP 协同小结、8 面板首开气泡。**R3 余项**：结算面板三页签�
 - **乘员召唤定案**：rolls 连续三掷正词改写（封闭炮塔舱盖合拢）仍出乘员——帧贴片手术是唯一可靠路线，不再重掷。
 - **管线教训入册**：①op_fade 对 xa 左侧像素 t 为负→alpha 乘 >255 溢出回绕（255→75），必须 clamp [0,1]；②3×2 行主序网格 f3=(0,2) 在右上角，手写 `crop((0,832,832,1664))` 读到的是 f4——网格裁切一律走 fr()/render()；③staging 手术 load 必须备份优先才能幂等重放，render 必须直读 STG（备份优先会渲染术前态）；④`python dry | grep -v X && run` 管道吞退出码（grep 恒 0），dry/run 必须分开跑；run 模式加 WARN-0 拒绝落盘；⑤备份时序：backup_once 抓取点必须在 fixbg 之后，术前品红场备份会毒化重放。
 - **门禁**：Godot `--headless --import` EXIT=0，六张 sheet_attack.png ctex 缓存 19:03 全重生成；headless dump 六案 anim.attack=6 全命中；总审页+标记复查页按 19:04:56 新 dump 重建（构建时间戳 19:06:05 双横幅核对）。
+
+## v6.48（2026-10-06）fam43 卡图直出动画批部署 + 品红 AA 边晕全批修复 + 生图工作流总览导出
+
+标记复查页 fam 段 57 家攻击动画按 codeanim 卡图直出全量部署（10-05 起），10-06 定位并修复部署版暗底紫晕病根，全量重生成重部署；同日导出生图工作流总览文档（方式划分总表）。
+
+- **fam43 批全链**：`tools/fam43_card_anchors.py`（卡图→1024 锚定+口袋两分法净化）→ `fam43_gen_configs.py`/`fam43_fix_configs*.py`（58 键常数，枪口=探针网格实测）→ `codeanim_gen.py` 逐键 → `tools/fam43_deploy_v2.py` 部署（attack=staged 10 帧×256+描边暗烘，idle 缺目录单位 f0 bob 4 帧，旧件备份 `fam43_deploy_v2/_old/`）→ `tools/fam43_deploy_check.py` 客观审计六项 56/57 过（stealth_bomber foot 差 0.031=air 激光束烘焙羽化容差边缘，air 家走质心注册无实害，先存）。含 ww2_inf_bazooka 身份病修复全链（新卡文生图 3 候选→B4 配方→锚定→attack+idle code-bob，`_bazooka_*.py` 三脚本立档）。
+- **品红 AA 边晕病根修复（`codeanim_gen.load_anchor`）**：chroma_key 只按色距清 alpha，原图抗锯齿边像素 RGB 仍是「本体×品红背景」混合（含近实色段 α≥200，LANCZOS 未预乘缩放后继续向内渗色），暗底上读作紫晕光环。修法=品红签名 ∩（半透明 ∨ 距透明 ≤2px 边圈）像素 RGB 就近回填最近「实色且非品红」源；近透明环（α<16）RGB 整体回填防缩放渗色；`keep_fringe:true` 冻结复现逃生口。紫罗兰本体调色板（void_mage/void_stealth 族）深处实色不受影响（solid 变化 0.035% 目验无差）。
+- **重生成重部署**：`tools/_fam43_fringe_regen.py` 4 片并行 57 键全量重生成（双跑 md5 全 OK）→ 重部署 → 门禁：check 56/57 过、部署版边晕≥150px 家数 **25→3**（余 3=void 紫调色板本体非晕）、57 个 imported .md5 边车全刷新（`--headless --editor --quit` 重导入）。
+- **全库扫描挂账**：其余批次 attack 26 家 + idle 4 家同病（ww1_mgnest 1251px 最重），清单 `.godot/unit_review/fam43_deploy_v2/fringe_followup_20261006.json`——分属 route_apply/早批/img25 等不同部署配方，不可 blanket 重部署，待立批按各配方处理。
+- **生图工作流总览导出**：`docs/生图工作流总览_20261006.md` 立项——A 卡图/B 战斗动画/C VFX/D 场景 UI/E 视频五类方式划分总表 + API 通道矩阵（图像 cn 域/视频 com 域 key 分离）+ 路线选择判据 + 公共工序（含本次边晕清除）+ 产物目录契约；各路线细节指路专属文档，不复制。

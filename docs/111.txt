@@ -1,0 +1,12 @@
+cold_ak47R2
+cold_arty_brem1R1
+cold_mig21R3
+cold_rpgR3
+
+cold_ak47R2
+fut_assault_mechR1
+fut_stealth_bomberR1
+fut_sup_ps9R3
+mod_air_bomberR2
+mod_hummer_m2R2
+mod_stryker_mgsR1

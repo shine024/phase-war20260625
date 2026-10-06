@@ -194,6 +194,29 @@ def load_anchor(key, cfg=None):
         a[..., :3] = np.clip(a[..., :3].astype(np.float32) * g, 0, 255).astype(np.uint8)
         if (cfg or {}).get("pink_scrub"):  # gain 后补刀：深渍块被放大才过签名线（见 _pink_scrub docstring）
             a = _pink_scrub(a, cfg)
+    # 品红 AA 边晕清除（2026-10-06 fam43 部署版紫晕病根）：chroma_key 只按色距清 alpha，
+    # 原图抗锯齿边像素 RGB 仍是「本体×品红背景」混合（r/b 双高于 g）——含**近实色段**
+    # （α≥200，缩放后继续向内渗色）。暗底上读作紫晕光环（描边烘在晕外，晕更醒目）。
+    # 修法：品红签名 ∩（半透明 ∨ 距透明 ≤2px 边圈）→ RGB 就近回填最近「实色且非品红」
+    # 像素（alpha 不动→AA 平滑保留）；近透明环（α<16）RGB 整体回填同源，杜绝
+    # normalize_frames 的 LANCZOS 未预乘缩放把残留品红 RGB 混进实色边。
+    # 深处紫罗兰本体涂装（void_mage 族）不在边圈/半透明带 → 不受影响。
+    if not (cfg or {}).get("keep_fringe"):  # 逃生口：冻结复现旧产物用
+        from scipy import ndimage as _ndi2
+        rgb = a[..., :3].astype(int)
+        rr, gg, bb = rgb[..., 0], rgb[..., 1], rgb[..., 2]
+        mx = rgb.max(axis=2)
+        s = (mx - rgb.min(axis=2)) / np.maximum(mx, 1)
+        pm = (rr > gg + 15) & (bb > gg + 15) & (s > 0.20)
+        solid_ok = (a[..., 3] >= 200) & ~pm            # 回填源：实色且非品红签名
+        edge_zone = _ndi2.binary_dilation(a[..., 3] < 16, iterations=2)
+        recolor = pm & (a[..., 3] >= 16) & (edge_zone | (a[..., 3] < 200))
+        near_trans = a[..., 3] < 16
+        if solid_ok.any() and (recolor.any() or near_trans.any()):
+            _, (_iy, _ix) = _ndi2.distance_transform_edt(~solid_ok, return_indices=True)
+            if recolor.any():
+                a[..., :3][recolor] = a[_iy, _ix, :3][recolor]
+            a[..., :3][near_trans] = a[_iy, _ix, :3][near_trans]
     if (cfg or {}).get("flip"):  # clean1st 重掷枪朝右族 → 翻成 sheet 契约朝左
         # （unit_frame_anim.gd：敌方原图朝左直接用，我方 flip_h 镜像；muzzle x 须同步 1023-x）
         rgba = Image.fromarray(a).transpose(Image.FLIP_LEFT_RIGHT)

@@ -1,0 +1,203 @@
+{
+ "ww2_inf_hellcat": {
+  "status": "可以"
+ },
+ "cold_arm_t55": {
+  "status": "可以"
+ },
+ "mod_arm_m1a2sep": {
+  "status": "可以"
+ },
+ "cold_t72": {
+  "status": "可以"
+ },
+ "ww1_boss_av7": {
+  "status": "可以"
+ },
+ "ww2_arty_hummel": {
+  "status": "可以"
+ },
+ "mod_sup_m6": {
+  "status": "可以"
+ },
+ "fut_arm_hovertank": {
+  "status": "可以"
+ },
+ "ww1_arm_rolls": {
+  "status": "可以"
+ },
+ "cold_inf_btr60": {
+  "status": "可以"
+ },
+ "cold_arm_btr_e": {
+  "status": "可以"
+ },
+ "cold_bradley": {
+  "status": "可以"
+ },
+ "mod_stryker": {
+  "status": "可以"
+ },
+ "cold_sup_bmp1_x": {
+  "status": "可以",
+  "note": "开火位置错了，还是错"
+ },
+ "mod_ranger": {
+  "note": "",
+  "status": "可以"
+ },
+ "cold_arty_brem1": {
+  "status": "可以"
+ },
+ "mod_arty_m270": {
+  "note": "开火位置错了，还是错",
+  "status": "可以"
+ },
+ "mod_arm_himars": {
+  "note": "",
+  "status": "可以"
+ },
+ "ww2_sup_gmc_truck": {
+  "status": "可以",
+  "note": ""
+ },
+ "ww2_air_dive_bomber": {
+  "status": "要修",
+  "note": "重生成攻击帧，加个开火就好，不用投弹了"
+ },
+ "fut_air_stealth_bomber": {
+  "note": "做开火不是投弹",
+  "status": "可以"
+ },
+ "ww1_inf_cavalry": {
+  "status": "可以",
+  "note": ""
+ },
+ "ww2_inf_bazooka": {
+  "status": "可以"
+ },
+ "ww2_arty_m81": {
+  "note": "开火位置错了，还是错",
+  "status": "可以"
+ },
+ "ww1_arty_m81": {
+  "note": "",
+  "status": "可以"
+ },
+ "cold_sup_zsu23": {
+  "note": "开火位置错了",
+  "status": "可以"
+ },
+ "fut_arm_prism": {
+  "status": "可以",
+  "note": ""
+ },
+ "ww2_thompson": {
+  "status": "可以"
+ },
+ "cold_spetsnaz": {
+  "status": "可以"
+ },
+ "ww1_inf_mp18_x": {
+  "note": "",
+  "status": "可以"
+ },
+ "ww2_arm_garand_para": {
+  "note": "",
+  "status": "可以"
+ },
+ "mod_sup_m4_carbine": {
+  "note": "",
+  "status": "可以"
+ },
+ "mod_ah64": {
+  "status": "可以",
+  "note": ""
+ },
+ "fut_air_drone": {
+  "status": "可以"
+ },
+ "mod_air_multirole": {
+  "status": "可以",
+  "note": "重新生图现在不是侧视"
+ },
+ "fut_colossus": {
+  "note": "",
+  "status": "可以"
+ },
+ "ww1_fort_pillbox": {
+  "note": "",
+  "status": "可以"
+ },
+ "ww1_fort_artillery": {
+  "note": "",
+  "status": "可以"
+ },
+ "ww2_fort_bunker": {
+  "status": "可以"
+ },
+ "ww2_fort_flak": {
+  "note": "",
+  "status": "可以"
+ },
+ "mod_fort_phalanx": {
+  "note": "",
+  "status": "可以"
+ },
+ "fe_helix_phantom": {
+  "status": "可以",
+  "note": ""
+ },
+ "steel_fortress_advanced": {
+  "status": "可以"
+ },
+ "steel_titan_advanced": {
+  "status": "可以"
+ },
+ "steel_fortress_expert": {
+  "status": "可以"
+ },
+ "steel_titan_expert": {
+  "status": "可以"
+ },
+ "flame_raider_advanced": {
+  "note": "开火位置不对",
+  "status": "可以"
+ },
+ "flame_siege_advanced": {
+  "status": "可以"
+ },
+ "flame_raider_expert": {
+  "note": "开火位置不对",
+  "status": "要修"
+ },
+ "flame_siege_expert": {
+  "status": "可以"
+ },
+ "thunter_striker_advanced": {
+  "status": "可以"
+ },
+ "thunter_sniper_advanced": {
+  "status": "可以"
+ },
+ "thunter_striker_expert": {
+  "status": "可以"
+ },
+ "thunter_sniper_expert": {
+  "status": "可以"
+ },
+ "void_stealth_advanced": {
+  "status": "可以",
+  "note": "做前冲发出刀光的动作，"
+ },
+ "void_mage_advanced": {
+  "status": "可以"
+ },
+ "void_stealth_expert": {
+  "note": "作前冲发出刀光的动作",
+  "status": "可以"
+ },
+ "void_mage_expert": {
+  "status": "可以"
+ }
+}

@@ -1,0 +1,1698 @@
+{
+ "rows": [
+  {
+   "sec": "fam",
+   "id": "ww1_arm_rolls",
+   "sus": [],
+   "mirror": 0.0,
+   "joined": [
+    "ww1_arm_rolls"
+   ]
+  },
+  {
+   "sec": "fam",
+   "id": "ww1_arm_ft17",
+   "sus": [],
+   "mirror": 0.0,
+   "joined": [
+    "ww1_arm_ft17"
+   ]
+  },
+  {
+   "sec": "fam",
+   "id": "ww1_arty_77mm",
+   "sus": [
+    "clip"
+   ],
+   "mirror": 0.0,
+   "joined": [
+    "ww1_arty_77mm"
+   ]
+  },
+  {
+   "sec": "fam",
+   "id": "ww1_inf_cavalry",
+   "sus": [],
+   "mirror": 0.0,
+   "joined": [
+    "ww1_inf_cavalry"
+   ]
+  },
+  {
+   "sec": "fam",
+   "id": "ww1_sup_engineer",
+   "sus": [],
+   "mirror": 0.0,
+   "joined": [
+    "ww1_sup_engineer"
+   ]
+  },
+  {
+   "sec": "fam",
+   "id": "ww2_inf_hellcat",
+   "sus": [],
+   "mirror": 0.0,
+   "joined": [
+    "ww2_inf_hellcat"
+   ]
+  },
+  {
+   "sec": "fam",
+   "id": "ww2_arm_sherman",
+   "sus": [],
+   "mirror": 0.0,
+   "joined": [
+    "ww2_pz3",
+    "ww2_pz4",
+    "ww2_t34_76",
+    "ww2_t34_85",
+    "ww2_arm_sherman"
+   ]
+  },
+  {
+   "sec": "fam",
+   "id": "ww2_arm_tiger",
+   "sus": [],
+   "mirror": 0.0,
+   "joined": [
+    "ww2_arm_tiger",
+    "ww2_is2"
+   ]
+  },
+  {
+   "sec": "fam",
+   "id": "ww2_inf_bazooka",
+   "sus": [],
+   "mirror": 0.0,
+   "joined": [
+    "ww2_inf_bazooka"
+   ]
+  },
+  {
+   "sec": "fam",
+   "id": "ww2_inf_panzerschrek",
+   "sus": [],
+   "mirror": 0.0,
+   "joined": [
+    "ww2_inf_panzerschrek"
+   ]
+  },
+  {
+   "sec": "fam",
+   "id": "ww2_arty_m81",
+   "sus": [],
+   "mirror": 0.0,
+   "joined": [
+    "ww2_arty_m81",
+    "ww2_m120"
+   ]
+  },
+  {
+   "sec": "fam",
+   "id": "ww1_arty_m81",
+   "sus": [],
+   "mirror": 0.0,
+   "joined": [
+    "ww1_arty_m81"
+   ]
+  },
+  {
+   "sec": "fam",
+   "id": "cold_inf_btr60",
+   "sus": [],
+   "mirror": 0.0,
+   "joined": [
+    "cold_inf_btr60"
+   ]
+  },
+  {
+   "sec": "fam",
+   "id": "cold_arm_t55",
+   "sus": [],
+   "mirror": 0.0,
+   "joined": [
+    "cold_arm_t55"
+   ]
+  },
+  {
+   "sec": "fam",
+   "id": "cold_inf_bmp1",
+   "sus": [],
+   "mirror": 0.0,
+   "joined": [
+    "cold_inf_bmp1"
+   ]
+  },
+  {
+   "sec": "fam",
+   "id": "cold_sup_m113",
+   "sus": [],
+   "mirror": 0.0,
+   "joined": [
+    "cold_sup_m113"
+   ]
+  },
+  {
+   "sec": "fam",
+   "id": "cold_sup_zsu23",
+   "sus": [],
+   "mirror": 0.0,
+   "joined": [
+    "cold_sup_zsu23"
+   ]
+  },
+  {
+   "sec": "fam",
+   "id": "mod_inf_technical",
+   "sus": [],
+   "mirror": 0.0,
+   "joined": [
+    "mod_inf_technical"
+   ]
+  },
+  {
+   "sec": "fam",
+   "id": "mod_arm_m1a1",
+   "sus": [],
+   "mirror": 0.0,
+   "joined": [
+    "mod_arm_m1a1"
+   ]
+  },
+  {
+   "sec": "fam",
+   "id": "mod_sup_m6",
+   "sus": [],
+   "mirror": 0.0,
+   "joined": [
+    "mod_sup_m6"
+   ]
+  },
+  {
+   "sec": "fam",
+   "id": "mod_arty_m270",
+   "sus": [],
+   "mirror": 0.0,
+   "joined": [
+    "mod_arty_m270"
+   ]
+  },
+  {
+   "sec": "fam",
+   "id": "mod_inf_scout_drone",
+   "sus": [],
+   "mirror": 0.0,
+   "joined": [
+    "mod_inf_scout_drone"
+   ]
+  },
+  {
+   "sec": "fam",
+   "id": "mod_arm_m1a2sep",
+   "sus": [],
+   "mirror": 0.0,
+   "joined": [
+    "mod_arm_m1a2sep"
+   ]
+  },
+  {
+   "sec": "fam",
+   "id": "fut_inf_scout_mech",
+   "sus": [
+    "size"
+   ],
+   "mirror": 0.0,
+   "joined": [
+    "fut_inf_scout_mech"
+   ]
+  },
+  {
+   "sec": "fam",
+   "id": "fut_arm_hovertank",
+   "sus": [],
+   "mirror": 0.0,
+   "joined": [
+    "fut_arm_hovertank",
+    "fut_aa_hover"
+   ]
+  },
+  {
+   "sec": "fam",
+   "id": "fut_arm_prism",
+   "sus": [],
+   "mirror": 0.0,
+   "joined": [
+    "fut_arm_prism"
+   ]
+  },
+  {
+   "sec": "fam",
+   "id": "fut_arm_heavy_mech",
+   "sus": [],
+   "mirror": 0.0,
+   "joined": [
+    "fut_arm_heavy_mech"
+   ]
+  },
+  {
+   "sec": "fam",
+   "id": "fut_arm_nexus",
+   "sus": [],
+   "mirror": 0.0,
+   "joined": [
+    "fut_arm_nexus"
+   ]
+  },
+  {
+   "sec": "fam",
+   "id": "fut_sup_bulwark",
+   "sus": [],
+   "mirror": 0.0,
+   "joined": []
+  },
+  {
+   "sec": "fam",
+   "id": "fut_arm_titan_mk2",
+   "sus": [],
+   "mirror": 0.0,
+   "joined": []
+  },
+  {
+   "sec": "fam",
+   "id": "fut_inf_storm_rider",
+   "sus": [],
+   "mirror": 0.0,
+   "joined": []
+  },
+  {
+   "sec": "fam",
+   "id": "fut_air_heavy_carrier",
+   "sus": [],
+   "mirror": 0.0,
+   "joined": []
+  },
+  {
+   "sec": "fam",
+   "id": "fut_air_regen_frame",
+   "sus": [
+    "bg"
+   ],
+   "mirror": 0.0,
+   "joined": []
+  },
+  {
+   "sec": "fam",
+   "id": "mod_arm_abrams_mk2",
+   "sus": [
+    "size"
+   ],
+   "mirror": 0.0,
+   "joined": []
+  },
+  {
+   "sec": "fam",
+   "id": "ww1_inf_mp18",
+   "sus": [],
+   "mirror": 0.0,
+   "joined": [
+    "ww1_mp18",
+    "ww1_flame"
+   ]
+  },
+  {
+   "sec": "fam",
+   "id": "ww1_inf_rifle",
+   "sus": [
+    "clip"
+   ],
+   "mirror": 0.0,
+   "joined": [
+    "ww1_mauser",
+    "ww1_enfield"
+   ]
+  },
+  {
+   "sec": "fam",
+   "id": "ww1_sup_mg_nest",
+   "sus": [],
+   "mirror": 0.0,
+   "joined": [
+    "ww1_mg08",
+    "ww1_vickers"
+   ]
+  },
+  {
+   "sec": "fam",
+   "id": "ww1_arty_mortar",
+   "sus": [],
+   "mirror": 0.0,
+   "joined": [
+    "ww1_m76"
+   ]
+  },
+  {
+   "sec": "fam",
+   "id": "ww1_inf_storm_e",
+   "sus": [],
+   "mirror": 0.0,
+   "joined": [
+    "ww1_storm"
+   ]
+  },
+  {
+   "sec": "fam",
+   "id": "ww1_arm_rolls_e",
+   "sus": [],
+   "mirror": 0.0,
+   "joined": []
+  },
+  {
+   "sec": "fam",
+   "id": "ww1_boss_av7",
+   "sus": [],
+   "mirror": 0.0,
+   "joined": [
+    "ww1_saint"
+   ]
+  },
+  {
+   "sec": "fam",
+   "id": "ww2_inf_thompson",
+   "sus": [],
+   "mirror": 0.0,
+   "joined": [
+    "ww2_thompson",
+    "ww2_mp40",
+    "ww2_ppsh"
+   ]
+  },
+  {
+   "sec": "fam",
+   "id": "ww2_inf_garand",
+   "sus": [],
+   "mirror": 0.0,
+   "joined": [
+    "ww2_garand"
+   ]
+  },
+  {
+   "sec": "fam",
+   "id": "ww2_sup_mg42",
+   "sus": [
+    "size"
+   ],
+   "mirror": 0.0,
+   "joined": [
+    "ww2_mg42",
+    "ww2_browning",
+    "cold_m60",
+    "cold_rpk"
+   ]
+  },
+  {
+   "sec": "fam",
+   "id": "ww2_inf_panzerschreck_e",
+   "sus": [
+    "clip",
+    "size"
+   ],
+   "mirror": 0.0,
+   "joined": [
+    "cold_rpg"
+   ]
+  },
+  {
+   "sec": "fam",
+   "id": "ww2_inf_para_e",
+   "sus": [],
+   "mirror": 0.0,
+   "joined": []
+  },
+  {
+   "sec": "fam",
+   "id": "ww2_arm_panther_e",
+   "sus": [],
+   "mirror": 0.0,
+   "joined": [
+    "ww2_panther"
+   ]
+  },
+  {
+   "sec": "fam",
+   "id": "ww2_boss_kingtiger",
+   "sus": [],
+   "mirror": 0.0,
+   "joined": [
+    "ww2_kingtiger"
+   ]
+  },
+  {
+   "sec": "fam",
+   "id": "cold_inf_ak",
+   "sus": [
+    "clip"
+   ],
+   "mirror": 0.0,
+   "joined": [
+    "cold_ak47"
+   ]
+  },
+  {
+   "sec": "fam",
+   "id": "cold_inf_m60",
+   "sus": [
+    "clip"
+   ],
+   "mirror": 0.0,
+   "joined": [
+    "cold_m14"
+   ]
+  },
+  {
+   "sec": "fam",
+   "id": "cold_arm_btr_e",
+   "sus": [],
+   "mirror": 0.0,
+   "joined": []
+  },
+  {
+   "sec": "fam",
+   "id": "cold_air_m113_e",
+   "sus": [],
+   "mirror": 0.0,
+   "joined": [
+    "cold_bradley"
+   ]
+  },
+  {
+   "sec": "fam",
+   "id": "cold_inf_spetsnaz_e",
+   "sus": [],
+   "mirror": 0.0,
+   "joined": [
+    "cold_spetsnaz"
+   ]
+  },
+  {
+   "sec": "fam",
+   "id": "cold_arm_t72_e",
+   "sus": [],
+   "mirror": 0.0,
+   "joined": [
+    "cold_t62",
+    "cold_t72",
+    "cold_m60t",
+    "cold_m1",
+    "cold_leo1",
+    "cold_chieftain",
+    "mod_t90"
+   ]
+  },
+  {
+   "sec": "fam",
+   "id": "cold_boss_mig",
+   "sus": [
+    "clip"
+   ],
+   "mirror": 0.0,
+   "joined": [
+    "cold_mig21",
+    "cold_f4"
+   ]
+  },
+  {
+   "sec": "fam",
+   "id": "mod_inf_marine",
+   "sus": [
+    "size"
+   ],
+   "mirror": 0.0,
+   "joined": [
+    "mod_marine"
+   ]
+  },
+  {
+   "sec": "fam",
+   "id": "mod_air_technical_e",
+   "sus": [
+    "size"
+   ],
+   "mirror": 0.0,
+   "joined": [
+    "mod_hummer_tow",
+    "mod_hummer_m2"
+   ]
+  },
+  {
+   "sec": "fam",
+   "id": "mod_arm_stryker_e",
+   "sus": [],
+   "mirror": 0.0,
+   "joined": [
+    "mod_stryker_mgs"
+   ]
+  },
+  {
+   "sec": "fam",
+   "id": "mod_arty_mlrs_e",
+   "sus": [],
+   "mirror": 0.0,
+   "joined": [
+    "fut_howitzer"
+   ]
+  },
+  {
+   "sec": "fam",
+   "id": "mod_inf_delta_e",
+   "sus": [
+    "face",
+    "mirror"
+   ],
+   "mirror": 0.296,
+   "joined": [
+    "mod_ranger"
+   ]
+  },
+  {
+   "sec": "fam",
+   "id": "mod_arm_abrams_e",
+   "sus": [],
+   "mirror": 0.0,
+   "joined": [
+    "mod_m1a2",
+    "mod_leo2a6",
+    "mod_challenger2"
+   ]
+  },
+  {
+   "sec": "fam",
+   "id": "mod_air_apache_e",
+   "sus": [
+    "clip"
+   ],
+   "mirror": 0.0,
+   "joined": [
+    "mod_ah64",
+    "mod_ah1",
+    "mod_uh60"
+   ]
+  },
+  {
+   "sec": "fam",
+   "id": "mod_boss_command",
+   "sus": [
+    "size"
+   ],
+   "mirror": 0.0,
+   "joined": []
+  },
+  {
+   "sec": "fam",
+   "id": "fut_air_drone",
+   "sus": [
+    "size"
+   ],
+   "mirror": 0.0,
+   "joined": []
+  },
+  {
+   "sec": "fam",
+   "id": "fut_inf_cyborg",
+   "sus": [],
+   "mirror": 0.0,
+   "joined": [
+    "fut_cyborg",
+    "fut_heavy_trooper"
+   ]
+  },
+  {
+   "sec": "fam",
+   "id": "fut_arm_mech_e",
+   "sus": [
+    "face"
+   ],
+   "mirror": 0.0,
+   "joined": [
+    "fut_assault_mech"
+   ]
+  },
+  {
+   "sec": "fam",
+   "id": "fut_arm_hovertank_e",
+   "sus": [],
+   "mirror": 0.0,
+   "joined": []
+  },
+  {
+   "sec": "fam",
+   "id": "fut_inf_spectre_e",
+   "sus": [
+    "face"
+   ],
+   "mirror": 0.0,
+   "joined": [
+    "fut_spectre"
+   ]
+  },
+  {
+   "sec": "fam",
+   "id": "fut_arm_colossus_e",
+   "sus": [
+    "clip",
+    "size"
+   ],
+   "mirror": 0.0,
+   "joined": [
+    "fut_colossus",
+    "fut_arm_omega"
+   ]
+  },
+  {
+   "sec": "fam",
+   "id": "fut_boss_nexus",
+   "sus": [],
+   "mirror": 0.0,
+   "joined": [
+    "fut_stormcore"
+   ]
+  },
+  {
+   "sec": "fam",
+   "id": "ww1_inf_enfield",
+   "sus": [],
+   "mirror": 0.0,
+   "joined": []
+  },
+  {
+   "sec": "fam",
+   "id": "ww1_arm_rolls_mk2",
+   "sus": [],
+   "mirror": 0.0,
+   "joined": []
+  },
+  {
+   "sec": "fam",
+   "id": "ww1_sup_vickers",
+   "sus": [],
+   "mirror": 0.0,
+   "joined": []
+  },
+  {
+   "sec": "fam",
+   "id": "ww1_sup_ford_ambulance",
+   "sus": [],
+   "mirror": 0.0,
+   "joined": []
+  },
+  {
+   "sec": "fam",
+   "id": "ww1_inf_mp18_x",
+   "sus": [
+    "clip",
+    "size"
+   ],
+   "mirror": 0.0,
+   "joined": []
+  },
+  {
+   "sec": "fam",
+   "id": "ww2_arm_garand_para",
+   "sus": [],
+   "mirror": 0.0,
+   "joined": []
+  },
+  {
+   "sec": "fam",
+   "id": "ww2_arty_hummel",
+   "sus": [],
+   "mirror": 0.0,
+   "joined": []
+  },
+  {
+   "sec": "fam",
+   "id": "ww2_arty_pak40",
+   "sus": [],
+   "mirror": 0.0,
+   "joined": []
+  },
+  {
+   "sec": "fam",
+   "id": "ww2_sup_gmc_truck",
+   "sus": [
+    "clip"
+   ],
+   "mirror": 0.0,
+   "joined": []
+  },
+  {
+   "sec": "fam",
+   "id": "ww2_inf_kar98k",
+   "sus": [],
+   "mirror": 0.0,
+   "joined": []
+  },
+  {
+   "sec": "fam",
+   "id": "cold_arty_bmd1",
+   "sus": [],
+   "mirror": 0.0,
+   "joined": []
+  },
+  {
+   "sec": "fam",
+   "id": "cold_sup_bmp1_x",
+   "sus": [],
+   "mirror": 0.0,
+   "joined": []
+  },
+  {
+   "sec": "fam",
+   "id": "cold_inf_metis",
+   "sus": [
+    "face"
+   ],
+   "mirror": 0.0,
+   "joined": []
+  },
+  {
+   "sec": "fam",
+   "id": "cold_arm_p18",
+   "sus": [],
+   "mirror": 0.0,
+   "joined": []
+  },
+  {
+   "sec": "fam",
+   "id": "cold_arty_brem1",
+   "sus": [],
+   "mirror": 0.0,
+   "joined": []
+  },
+  {
+   "sec": "fam",
+   "id": "mod_sup_m4_carbine",
+   "sus": [
+    "face",
+    "mirror"
+   ],
+   "mirror": 0.3336,
+   "joined": []
+  },
+  {
+   "sec": "fam",
+   "id": "mod_inf_patriot",
+   "sus": [
+    "size"
+   ],
+   "mirror": 0.0,
+   "joined": []
+  },
+  {
+   "sec": "fam",
+   "id": "mod_arm_himars",
+   "sus": [
+    "size"
+   ],
+   "mirror": 0.0,
+   "joined": []
+  },
+  {
+   "sec": "fam",
+   "id": "mod_arty_rq7",
+   "sus": [
+    "clip"
+   ],
+   "mirror": 0.0,
+   "joined": []
+  },
+  {
+   "sec": "fam",
+   "id": "mod_sup_growler",
+   "sus": [],
+   "mirror": 0.0,
+   "joined": []
+  },
+  {
+   "sec": "fam",
+   "id": "fut_inf_neural",
+   "sus": [],
+   "mirror": 0.0,
+   "joined": []
+  },
+  {
+   "sec": "fam",
+   "id": "fut_arm_hk07",
+   "sus": [
+    "clip"
+   ],
+   "mirror": 0.0,
+   "joined": []
+  },
+  {
+   "sec": "fam",
+   "id": "fut_arty_hel30",
+   "sus": [
+    "size"
+   ],
+   "mirror": 0.0,
+   "joined": []
+  },
+  {
+   "sec": "fam",
+   "id": "fut_sup_nrepair",
+   "sus": [],
+   "mirror": 0.0,
+   "joined": []
+  },
+  {
+   "sec": "fam",
+   "id": "fut_inf_x9",
+   "sus": [
+    "clip"
+   ],
+   "mirror": 0.0,
+   "joined": []
+  },
+  {
+   "sec": "fam",
+   "id": "fut_inf_c96",
+   "sus": [],
+   "mirror": 0.0,
+   "joined": []
+  },
+  {
+   "sec": "fam",
+   "id": "fut_arm_sdkfz",
+   "sus": [],
+   "mirror": 0.0,
+   "joined": []
+  },
+  {
+   "sec": "fam",
+   "id": "fut_arty_ssc1",
+   "sus": [
+    "size"
+   ],
+   "mirror": 0.0,
+   "joined": []
+  },
+  {
+   "sec": "fam",
+   "id": "fut_sup_ps9",
+   "sus": [],
+   "mirror": 0.0,
+   "joined": []
+  },
+  {
+   "sec": "fam",
+   "id": "ww2_air_bomber",
+   "sus": [
+    "clip"
+   ],
+   "mirror": 0.0,
+   "joined": []
+  },
+  {
+   "sec": "fam",
+   "id": "ww2_air_dive_bomber",
+   "sus": [
+    "clip",
+    "mirror"
+   ],
+   "mirror": 0.1493,
+   "joined": []
+  },
+  {
+   "sec": "fam",
+   "id": "cold_air_strike_fighter",
+   "sus": [
+    "bg"
+   ],
+   "mirror": 0.0,
+   "joined": []
+  },
+  {
+   "sec": "fam",
+   "id": "cold_air_bomber",
+   "sus": [],
+   "mirror": 0.0,
+   "joined": []
+  },
+  {
+   "sec": "fam",
+   "id": "mod_air_multirole",
+   "sus": [
+    "bg",
+    "size"
+   ],
+   "mirror": 0.0,
+   "joined": []
+  },
+  {
+   "sec": "fam",
+   "id": "mod_air_bomber",
+   "sus": [
+    "size"
+   ],
+   "mirror": 0.0,
+   "joined": []
+  },
+  {
+   "sec": "fam",
+   "id": "fut_air_stealth_multirole",
+   "sus": [
+    "size"
+   ],
+   "mirror": 0.0,
+   "joined": []
+  },
+  {
+   "sec": "fam",
+   "id": "fut_air_stealth_bomber",
+   "sus": [
+    "size"
+   ],
+   "mirror": 0.0,
+   "joined": []
+  },
+  {
+   "sec": "fam",
+   "id": "ww2_air_me262",
+   "sus": [
+    "clip"
+   ],
+   "mirror": 0.0,
+   "joined": []
+  },
+  {
+   "sec": "fam",
+   "id": "ww2_air_meteor_e",
+   "sus": [
+    "bg",
+    "clip"
+   ],
+   "mirror": 0.0,
+   "joined": []
+  },
+  {
+   "sec": "fam",
+   "id": "ww1_fort_pillbox",
+   "sus": [
+    "clip"
+   ],
+   "mirror": 0.0,
+   "joined": [
+    "ww1_fort_pillbox"
+   ]
+  },
+  {
+   "sec": "fam",
+   "id": "ww1_fort_artillery",
+   "sus": [],
+   "mirror": 0.0,
+   "joined": [
+    "ww1_fort_artillery"
+   ]
+  },
+  {
+   "sec": "fam",
+   "id": "ww2_fort_bunker",
+   "sus": [
+    "size"
+   ],
+   "mirror": 0.0,
+   "joined": [
+    "ww2_fort_bunker"
+   ]
+  },
+  {
+   "sec": "fam",
+   "id": "ww2_fort_flak",
+   "sus": [
+    "clip",
+    "size"
+   ],
+   "mirror": 0.0,
+   "joined": [
+    "ww2_fort_flak"
+   ]
+  },
+  {
+   "sec": "fam",
+   "id": "cold_fort_missile",
+   "sus": [],
+   "mirror": 0.0,
+   "joined": [
+    "cold_fort_missile"
+   ]
+  },
+  {
+   "sec": "fam",
+   "id": "cold_fort_radar",
+   "sus": [],
+   "mirror": 0.0,
+   "joined": [
+    "cold_fort_radar"
+   ]
+  },
+  {
+   "sec": "fam",
+   "id": "mod_fort_citadel",
+   "sus": [
+    "size"
+   ],
+   "mirror": 0.0,
+   "joined": [
+    "mod_fort_citadel"
+   ]
+  },
+  {
+   "sec": "fam",
+   "id": "mod_fort_phalanx",
+   "sus": [],
+   "mirror": 0.0,
+   "joined": [
+    "mod_fort_phalanx"
+   ]
+  },
+  {
+   "sec": "fam",
+   "id": "fut_fort_ion",
+   "sus": [
+    "clip"
+   ],
+   "mirror": 0.0,
+   "joined": [
+    "fut_fort_ion"
+   ]
+  },
+  {
+   "sec": "fam",
+   "id": "fut_fort_shield",
+   "sus": [],
+   "mirror": 0.0,
+   "joined": [
+    "fut_shield",
+    "fut_fort_shield"
+   ]
+  },
+  {
+   "sec": "fam",
+   "id": "xeno_swarmling",
+   "sus": [],
+   "mirror": 0.0,
+   "joined": []
+  },
+  {
+   "sec": "fam",
+   "id": "xeno_probe",
+   "sus": [],
+   "mirror": 0.0,
+   "joined": []
+  },
+  {
+   "sec": "fam",
+   "id": "xeno_zealot",
+   "sus": [],
+   "mirror": 0.0,
+   "joined": []
+  },
+  {
+   "sec": "fam",
+   "id": "xeno_stalker",
+   "sus": [],
+   "mirror": 0.0,
+   "joined": []
+  },
+  {
+   "sec": "fam",
+   "id": "xeno_adept",
+   "sus": [],
+   "mirror": 0.0,
+   "joined": []
+  },
+  {
+   "sec": "fam",
+   "id": "xeno_sentinel",
+   "sus": [],
+   "mirror": 0.0,
+   "joined": []
+  },
+  {
+   "sec": "fam",
+   "id": "xeno_dragoon",
+   "sus": [],
+   "mirror": 0.0,
+   "joined": []
+  },
+  {
+   "sec": "fam",
+   "id": "xeno_plasma_bug",
+   "sus": [],
+   "mirror": 0.0,
+   "joined": []
+  },
+  {
+   "sec": "fam",
+   "id": "xeno_tripod",
+   "sus": [],
+   "mirror": 0.0,
+   "joined": []
+  },
+  {
+   "sec": "fam",
+   "id": "xeno_hunter",
+   "sus": [],
+   "mirror": 0.0,
+   "joined": []
+  },
+  {
+   "sec": "fam",
+   "id": "xeno_mimic",
+   "sus": [],
+   "mirror": 0.0,
+   "joined": []
+  },
+  {
+   "sec": "fam",
+   "id": "xeno_biomorph",
+   "sus": [],
+   "mirror": 0.0,
+   "joined": []
+  },
+  {
+   "sec": "fam",
+   "id": "xeno_dark_templar",
+   "sus": [
+    "clip"
+   ],
+   "mirror": 0.0,
+   "joined": []
+  },
+  {
+   "sec": "fam",
+   "id": "xeno_reaver",
+   "sus": [],
+   "mirror": 0.0,
+   "joined": []
+  },
+  {
+   "sec": "fam",
+   "id": "xeno_interceptor",
+   "sus": [],
+   "mirror": 0.0,
+   "joined": []
+  },
+  {
+   "sec": "fam",
+   "id": "xeno_carrier",
+   "sus": [],
+   "mirror": 0.0,
+   "joined": []
+  },
+  {
+   "sec": "fam",
+   "id": "xeno_saucer",
+   "sus": [],
+   "mirror": 0.0,
+   "joined": []
+  },
+  {
+   "sec": "fam",
+   "id": "xeno_templar",
+   "sus": [],
+   "mirror": 0.0,
+   "joined": []
+  },
+  {
+   "sec": "fam",
+   "id": "xeno_thing",
+   "sus": [],
+   "mirror": 0.0,
+   "joined": []
+  },
+  {
+   "sec": "fam",
+   "id": "xeno_mothership",
+   "sus": [],
+   "mirror": 0.0,
+   "joined": []
+  },
+  {
+   "sec": "fam",
+   "id": "xeno_gate_core",
+   "sus": [],
+   "mirror": 0.0,
+   "joined": []
+  },
+  {
+   "sec": "ind",
+   "id": "ww1_lanchest",
+   "sus": [],
+   "mirror": null,
+   "joined": []
+  },
+  {
+   "sec": "ind",
+   "id": "ww1_a7v",
+   "sus": [],
+   "mirror": null,
+   "joined": []
+  },
+  {
+   "sec": "ind",
+   "id": "ww1_mark4",
+   "sus": [],
+   "mirror": null,
+   "joined": []
+  },
+  {
+   "sec": "ind",
+   "id": "ww1_105mm",
+   "sus": [],
+   "mirror": null,
+   "joined": []
+  },
+  {
+   "sec": "ind",
+   "id": "ww1_37mm",
+   "sus": [],
+   "mirror": null,
+   "joined": []
+  },
+  {
+   "sec": "ind",
+   "id": "cold_sam7",
+   "sus": [],
+   "mirror": null,
+   "joined": []
+  },
+  {
+   "sec": "ind",
+   "id": "mod_javelin",
+   "sus": [],
+   "mirror": null,
+   "joined": []
+  },
+  {
+   "sec": "ind",
+   "id": "mod_stinger",
+   "sus": [],
+   "mirror": null,
+   "joined": []
+  },
+  {
+   "sec": "ind",
+   "id": "mod_stryker_m2",
+   "sus": [],
+   "mirror": null,
+   "joined": []
+  },
+  {
+   "sec": "ind",
+   "id": "fut_swarm",
+   "sus": [],
+   "mirror": null,
+   "joined": []
+  },
+  {
+   "sec": "ind",
+   "id": "fut_attack_drone",
+   "sus": [],
+   "mirror": null,
+   "joined": []
+  },
+  {
+   "sec": "ind",
+   "id": "fut_stealth_bomber",
+   "sus": [],
+   "mirror": null,
+   "joined": []
+  },
+  {
+   "sec": "ind",
+   "id": "fut_space_fighter",
+   "sus": [],
+   "mirror": null,
+   "joined": []
+  },
+  {
+   "sec": "ind",
+   "id": "fut_nano_drone",
+   "sus": [],
+   "mirror": null,
+   "joined": []
+  },
+  {
+   "sec": "ind",
+   "id": "guardian_ww1_ironclad",
+   "sus": [],
+   "mirror": null,
+   "joined": []
+  },
+  {
+   "sec": "ind",
+   "id": "guardian_ww2_blitzkrieg",
+   "sus": [],
+   "mirror": null,
+   "joined": []
+  },
+  {
+   "sec": "ind",
+   "id": "guardian_cold_thunder",
+   "sus": [],
+   "mirror": null,
+   "joined": []
+  },
+  {
+   "sec": "ind",
+   "id": "guardian_modern_stealth",
+   "sus": [],
+   "mirror": null,
+   "joined": []
+  },
+  {
+   "sec": "ind",
+   "id": "guardian_future_omega",
+   "sus": [],
+   "mirror": null,
+   "joined": []
+  },
+  {
+   "sec": "ind",
+   "id": "fe_iron_wall_bastion",
+   "sus": [],
+   "mirror": null,
+   "joined": []
+  },
+  {
+   "sec": "ind",
+   "id": "fe_iron_wall_juggernaut",
+   "sus": [],
+   "mirror": null,
+   "joined": []
+  },
+  {
+   "sec": "ind",
+   "id": "fe_nova_devastator",
+   "sus": [],
+   "mirror": null,
+   "joined": []
+  },
+  {
+   "sec": "ind",
+   "id": "fe_nova_ghost_sniper",
+   "sus": [],
+   "mirror": null,
+   "joined": []
+  },
+  {
+   "sec": "ind",
+   "id": "fe_aether_hover_cavalry",
+   "sus": [],
+   "mirror": null,
+   "joined": []
+  },
+  {
+   "sec": "ind",
+   "id": "fe_aether_swarm_queen",
+   "sus": [],
+   "mirror": null,
+   "joined": []
+  },
+  {
+   "sec": "ind",
+   "id": "fe_quantum_mobile_base",
+   "sus": [],
+   "mirror": null,
+   "joined": []
+  },
+  {
+   "sec": "ind",
+   "id": "fe_quantum_repair_drone",
+   "sus": [],
+   "mirror": null,
+   "joined": []
+  },
+  {
+   "sec": "ind",
+   "id": "fe_helix_phantom",
+   "sus": [],
+   "mirror": null,
+   "joined": []
+  },
+  {
+   "sec": "ind",
+   "id": "fe_helix_orbital_strike",
+   "sus": [],
+   "mirror": null,
+   "joined": []
+  },
+  {
+   "sec": "ind",
+   "id": "fe_void_phase_cannon",
+   "sus": [],
+   "mirror": null,
+   "joined": []
+  },
+  {
+   "sec": "ind",
+   "id": "fe_void_dimensional_soldier",
+   "sus": [],
+   "mirror": null,
+   "joined": []
+  },
+  {
+   "sec": "ind",
+   "id": "fe_frontier_veteran",
+   "sus": [],
+   "mirror": null,
+   "joined": []
+  },
+  {
+   "sec": "ind",
+   "id": "fe_frontier_mixed_company",
+   "sus": [],
+   "mirror": null,
+   "joined": []
+  },
+  {
+   "sec": "drop",
+   "id": "drop_mega_beam_cannon",
+   "sus": [],
+   "mirror": null,
+   "joined": []
+  },
+  {
+   "sec": "drop",
+   "id": "drop_mega_particle_cannon",
+   "sus": [],
+   "mirror": null,
+   "joined": []
+  },
+  {
+   "sec": "drop",
+   "id": "drop_overclock_matrix",
+   "sus": [],
+   "mirror": null,
+   "joined": []
+  },
+  {
+   "sec": "drop",
+   "id": "drop_phase_lance",
+   "sus": [],
+   "mirror": null,
+   "joined": []
+  },
+  {
+   "sec": "drop",
+   "id": "drop_railgun",
+   "sus": [],
+   "mirror": null,
+   "joined": []
+  },
+  {
+   "sec": "drop",
+   "id": "drop_smg_mk2",
+   "sus": [],
+   "mirror": null,
+   "joined": []
+  },
+  {
+   "sec": "drop",
+   "id": "drop_thunder_field",
+   "sus": [],
+   "mirror": null,
+   "joined": []
+  },
+  {
+   "sec": "plat",
+   "id": "steel_fortress_basic",
+   "sus": [],
+   "mirror": null,
+   "joined": []
+  },
+  {
+   "sec": "plat",
+   "id": "steel_titan_basic",
+   "sus": [],
+   "mirror": null,
+   "joined": []
+  },
+  {
+   "sec": "plat",
+   "id": "steel_fortress_advanced",
+   "sus": [],
+   "mirror": null,
+   "joined": []
+  },
+  {
+   "sec": "plat",
+   "id": "steel_titan_advanced",
+   "sus": [],
+   "mirror": null,
+   "joined": []
+  },
+  {
+   "sec": "plat",
+   "id": "steel_fortress_expert",
+   "sus": [],
+   "mirror": null,
+   "joined": []
+  },
+  {
+   "sec": "plat",
+   "id": "steel_titan_expert",
+   "sus": [],
+   "mirror": null,
+   "joined": []
+  },
+  {
+   "sec": "plat",
+   "id": "flame_raider_basic",
+   "sus": [],
+   "mirror": null,
+   "joined": []
+  },
+  {
+   "sec": "plat",
+   "id": "flame_siege_basic",
+   "sus": [],
+   "mirror": null,
+   "joined": []
+  },
+  {
+   "sec": "plat",
+   "id": "flame_raider_advanced",
+   "sus": [],
+   "mirror": null,
+   "joined": []
+  },
+  {
+   "sec": "plat",
+   "id": "flame_siege_advanced",
+   "sus": [],
+   "mirror": null,
+   "joined": []
+  },
+  {
+   "sec": "plat",
+   "id": "thunter_striker_basic",
+   "sus": [],
+   "mirror": null,
+   "joined": []
+  },
+  {
+   "sec": "plat",
+   "id": "thunter_sniper_basic",
+   "sus": [],
+   "mirror": null,
+   "joined": []
+  },
+  {
+   "sec": "plat",
+   "id": "void_stealth_basic",
+   "sus": [],
+   "mirror": null,
+   "joined": []
+  },
+  {
+   "sec": "plat",
+   "id": "void_mage_basic",
+   "sus": [],
+   "mirror": null,
+   "joined": []
+  },
+  {
+   "sec": "plat",
+   "id": "flame_raider_expert",
+   "sus": [],
+   "mirror": null,
+   "joined": []
+  },
+  {
+   "sec": "plat",
+   "id": "flame_siege_expert",
+   "sus": [],
+   "mirror": null,
+   "joined": []
+  },
+  {
+   "sec": "plat",
+   "id": "thunter_striker_advanced",
+   "sus": [],
+   "mirror": null,
+   "joined": []
+  },
+  {
+   "sec": "plat",
+   "id": "thunter_sniper_advanced",
+   "sus": [],
+   "mirror": null,
+   "joined": []
+  },
+  {
+   "sec": "plat",
+   "id": "thunter_striker_expert",
+   "sus": [],
+   "mirror": null,
+   "joined": []
+  },
+  {
+   "sec": "plat",
+   "id": "thunter_sniper_expert",
+   "sus": [],
+   "mirror": null,
+   "joined": []
+  },
+  {
+   "sec": "plat",
+   "id": "void_stealth_advanced",
+   "sus": [],
+   "mirror": null,
+   "joined": []
+  },
+  {
+   "sec": "plat",
+   "id": "void_mage_advanced",
+   "sus": [],
+   "mirror": null,
+   "joined": []
+  },
+  {
+   "sec": "plat",
+   "id": "void_stealth_expert",
+   "sus": [],
+   "mirror": null,
+   "joined": []
+  },
+  {
+   "sec": "plat",
+   "id": "void_mage_expert",
+   "sus": [],
+   "mirror": null,
+   "joined": []
+  }
+ ],
+ "sheets": 21
+}

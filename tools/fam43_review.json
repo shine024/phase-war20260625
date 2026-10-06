@@ -1,0 +1,147 @@
+{
+ "ww2_inf_hellcat": {
+  "status": "可以"
+ },
+ "cold_arm_t55": {
+  "status": "可以"
+ },
+ "mod_arm_m1a2sep": {
+  "status": "可以"
+ },
+ "cold_t72": {
+  "status": "可以"
+ },
+ "ww1_boss_av7": {
+  "status": "可以"
+ },
+ "ww2_arty_hummel": {
+  "status": "可以"
+ },
+ "mod_sup_m6": {
+  "status": "可以"
+ },
+ "fut_arm_hovertank": {
+  "status": "可以"
+ },
+ "ww1_arm_rolls": {
+  "status": "可以"
+ },
+ "cold_inf_btr60": {
+  "status": "可以"
+ },
+ "cold_arm_btr_e": {
+  "status": "可以"
+ },
+ "cold_bradley": {
+  "status": "可以"
+ },
+ "mod_stryker": {
+  "status": "可以"
+ },
+ "cold_sup_bmp1_x": {
+  "status": "要修",
+  "note": "开火位置错了"
+ },
+ "mod_ranger": {
+  "note": "开火位置错了，左右反了",
+  "status": "要修"
+ },
+ "cold_arty_brem1": {
+  "status": "可以"
+ },
+ "mod_arty_m270": {
+  "note": "开火位置错了",
+  "status": "要修"
+ },
+ "mod_arm_himars": {
+  "note": "开火位置错了",
+  "status": "要修"
+ },
+ "ww2_sup_gmc_truck": {
+  "status": "要修",
+  "note": "做在移动就好"
+ },
+ "ww2_air_dive_bomber": {
+  "status": "要修",
+  "note": "要重新生图，不是正侧面，做开火不是投弹"
+ },
+ "fut_air_stealth_bomber": {
+  "note": "做开火不是投弹",
+  "status": "要修"
+ },
+ "ww1_inf_cavalry": {
+  "status": "要修",
+  "note": "开火位置错了"
+ },
+ "ww2_inf_bazooka": {
+  "status": "可以"
+ },
+ "ww2_arty_m81": {
+  "note": "开火位置错了",
+  "status": "要修"
+ },
+ "ww1_arty_m81": {
+  "note": "开火位置错了",
+  "status": "要修"
+ },
+ "cold_sup_zsu23": {
+  "note": "开火位置错了",
+  "status": "要修"
+ },
+ "fut_arm_prism": {
+  "status": "要修",
+  "note": "开火位置错了，图不是正侧面图也要重新生成"
+ },
+ "ww2_thompson": {
+  "status": "可以"
+ },
+ "cold_spetsnaz": {
+  "status": "可以"
+ },
+ "ww1_inf_mp18_x": {
+  "note": "开火位置错了，图要重新生成，半身图，过度描边了",
+  "status": "要修"
+ },
+ "ww2_arm_garand_para": {
+  "note": "图要重新生成，过度描边了",
+  "status": "要修"
+ },
+ "mod_sup_m4_carbine": {
+  "note": "图抠错了，抠坏了",
+  "status": "要修"
+ },
+ "mod_ah64": {
+  "status": "要修",
+  "note": "没动，开火位置错了"
+ },
+ "fut_air_drone": {
+  "status": "可以"
+ },
+ "mod_air_multirole": {
+  "status": "要修",
+  "note": "图抠坏了，要动"
+ },
+ "fut_colossus": {
+  "note": "要动，开火位置错了",
+  "status": "要修"
+ },
+ "ww1_fort_pillbox": {
+  "note": "开火位置错了",
+  "status": "要修"
+ },
+ "ww1_fort_artillery": {
+  "note": "开火位置错了",
+  "status": "要修"
+ },
+ "ww2_fort_bunker": {
+  "status": "可以"
+ },
+ "ww2_fort_flak": {
+  "note": "开火位置错了",
+  "status": "要修"
+ },
+ "mod_fort_phalanx": {
+  "note": "开火位置错了",
+  "status": "要修"
+ }
+}
