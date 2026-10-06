@@ -858,6 +858,11 @@ static func _default_drop_chance(tier: String) -> float:
 ## 与 docs/card_icon_manifest_100_agent_prompts.md 编号一致
 static func _visual_id_for_source_id(source_id: String) -> String:
 	var sid: String = source_id.strip_edges()
+	## v6.50：platform 段专属卡面覆盖——已出专属新卡的单位不再借用 vis_player_NNN
+	## 通用图（foe_ww2_inf_bazooka 曾借 vis_player_009 tan 装甲车挂账，已清偿）。
+	## 图名=单位 id（player|enemy/<id>.png，与 POOL 段同款）；新增专属卡在此登记。
+	if sid in ["ww2_inf_bazooka"]:
+		return sid
 	## 堡垒类别 → vis_player_072~081（我方翻转图；敌方经 for_player=false 改写为 vis_enemy_072~081 原图）
 	for i in range(FORT_ENEMY_IDS.size()):
 		if sid == FORT_ENEMY_IDS[i]:
