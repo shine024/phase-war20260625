@@ -9770,3 +9770,12 @@ v6.48 挂账的其余批次品红边晕（attack 26 家 + idle 4 家，分属 ro
 - **判据沉淀**：裸「带内 pm 计数 ≥150」是过筛不是定罪——暗体残留多数在暗底合成后不可见（mgnest raw 残 303 但可见仅 7）；终审口径=暗底合成后可见品红晕（pm 于合成色+距最近实色合成色>22）。真相：fe_ 族大半是品红/紫罗兰涂装本体非病（fe_frontier_mixed_company 手术前后 780→780 一像素未动），实修重的属 ww1/ww2 装甲炮族。
 - **30/30 完成+验证**：备份 `_old/followup_fringe_20261006/`；raw f0+f1 典型降幅 mgnest 1251→303、vickers 859→93、pz3 316→64、pz4 407→126、lance 630→84、arty_77mm 464→153；可见口径全面归零或个位（fe_ 涂装家保留本体）；solid 漂移全批仅 2 家各 8/9 px（fut_sup_ps9/ww2_pz3 的 α≥200 染色种子，1px 静态低可见位，实测改善）；重导入 `--headless --editor --quit` 后 30 家 remap ctex 全验（文件名哈希≠内容 md5，验证走 .import remap）。
 - **产物**：报告 `fringe_followup_surgery_report.json` / 可见口径 `fringe_followup_visible.json` / 验收页 `followup_surgery_p1..p4.png`（暗底 B/A 对照+热点放大），均 `.godot/unit_review/fam43_deploy_v2/`；文档同步：codeanim 工作流 10-06 条目收口、生图工作流总览 §四 加「部署版边晕手术」行。
+
+## v6.50（2026-10-06）dive_bomber 白云卡重掷收口 + agnes 图像域 cn 修复
+
+用户实检 fam43 审查页发现 ww2_air_dive_bomber 部署帧有未键控白块（「有白没抠好」）。定位：enemy 卡上模型画的**亚阈值灰白云雾**（亮度 <238 逃过 `flood_white_to_alpha(238)`，实色不透明非封闭口袋故补刀亦不触），两掷同位同尺寸复现（8563/8537px 同 bbox）=配方级系统病非偶然掷；锚定域分析证其悬空不贴机身（p50 距品红场 35px 孤立块）。顺带两项：①idle 仍是 10-03 旧 3/4 视角机残件（与新 Ju 87 轮廓 IoU 仅 0.542，昨夜重掷链只换了 attack）；②`fam43_cards_redo.py` 走的 agnes **com 域当时 TCP 直连超时**。
+
+- **卡重掷+定点手术**：备份 staging v1（`_old/*_v1white.png`）→ `fam43_cards_redo3.py` 重掷（Ju 87 配方，lit_gate 判 DARK 但与昨夜验收基线结构同型：std 41.8≈42.8 非剪影、宽高比 2.50 一致，深 11 点属涂装正常，接受）→ staged `_512` 上近白 ≥200px 连通域定点清除（8349px→残留 188px 零星，2 圈咬蚀防晕边）→ `fam43_cards_deploy2.py` 全链（卡→enemy 翻转落位、锚定重提 pocket=196、自动枪口 [62,472]）。
+- **动画链**：`fam43_muzzle_apply.py`（calib `fam43_calib_dive_white.json`→config 回填→codeanim 重生成 md5 双跑→deploy_v2→导入→刷页）；**idle 换血**：旧 8 帧 bob（旧机）备份 `_old/sheet_idle_v1old3q.png` 后删去，deploy_v2 按缺目录规则重建 f0 bob 4 帧（与 attack f0 IoU=1.000）。
+- **agnes 图像域修复（`tools/fam43_cards_redo.py`）**：API com→**cn**（key×realm 分离本应 cn，com 边缘当时 TCP 超时不可达；cn 域 Windows schannel 需 `--ssl-no-revoke` 过 `CRYPT_E_REVOCATION_OFFLINE`，gen 与图床下载两处 curl 均加）。探针验证 cn 200 出图。
+- **验证**：attack 10 帧近白 3027px（旧 ≈22000，余=座舱玻璃/贴边高光，锚定域 87% 贴场 AA 特征）；暗底可见品红晕 0/0；anim.json idle=4/attack=10 foot=0.3164；二次部署 md5 一致（c7048a0840）导入状态有效；双 sheet remap ctex 存在。审查页 14:4x 重建待用户重判。

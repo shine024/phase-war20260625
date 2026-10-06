@@ -28,7 +28,7 @@ from PIL import Image
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 KEYS_API = re.findall(r"sk-[A-Za-z0-9]{20,}",
                       open(os.path.join(ROOT, "tools", "_agnes_image_api.md"), encoding="utf-8").read())
-API = "https://apihub.agnes-ai.com/v1/images/generations"
+API = "https://apihub.agnes-ai.cn/v1/images/generations"  # 10-06：com 边缘 TCP 超时，图像域本应=cn（key×realm 分离）；cn 需 --ssl-no-revoke
 STAGE = os.path.join(ROOT, ".godot", "unit_review", "fam43_cards_redo")
 os.makedirs(STAGE, exist_ok=True)
 MODEL = "agnes-image-2.5-flash"
@@ -99,7 +99,7 @@ def gen(payload, tag):
     with open(pp, "w", encoding="utf-8") as f:
         f.write(json.dumps(payload))
     for i in range(3):
-        r = subprocess.run(["curl", "--http1.1", "-s", "-X", "POST", API,
+        r = subprocess.run(["curl", "--http1.1", "--ssl-no-revoke", "-s", "-X", "POST", API,
                             "-H", "Authorization: Bearer " + KEYS_API[i % len(KEYS_API)],
                             "-H", "Content-Type: application/json",
                             "--data-binary", "@" + pp, "--max-time", "360"],
@@ -118,7 +118,7 @@ def gen(payload, tag):
         if item.get("b64_json"):
             return base64.b64decode(item["b64_json"])
         if item.get("url"):
-            dl = subprocess.run(["curl", "--http1.1", "-s", "-L", item["url"], "--max-time", "120"],
+            dl = subprocess.run(["curl", "--http1.1", "--ssl-no-revoke", "-s", "-L", item["url"], "--max-time", "120"],
                                 capture_output=True, timeout=140)
             try:
                 Image.open(io.BytesIO(dl.stdout)).load()
