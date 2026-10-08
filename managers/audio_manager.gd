@@ -46,9 +46,16 @@ var _music_player_active: AudioStreamPlayer = null  # 用于交叉淡出的活�
 var _current_bgm_name: String = ""
 
 ## BGM 映射表
+## v6.52.2（记录1#7 工单案A）：hub 按时代五键——基地/大地图不再全时代共用一首。
+## 文件未落地时 music_key_for_current_era() 回退 "hub"，接线先于资产零行为变化。
 const BGM_MAP: Dictionary = {
 	"title": "bgm_title",
 	"hub": "bgm_hub",
+	"hub_ww1": "bgm_hub_ww1",
+	"hub_ww2": "bgm_hub_ww2",
+	"hub_cold": "bgm_hub_cold",
+	"hub_modern": "bgm_hub_modern",
+	"hub_future": "bgm_hub_future",
 	"battle_ww1": "bgm_battle_ww1",
 	"battle_ww2": "bgm_battle_ww2",
 	"battle_cold": "bgm_battle_cold",
@@ -367,6 +374,25 @@ func _on_battle_started_bgm() -> void:
 	# v32.0 演出层：战场环境音起
 	play_ambient("battle_wind")
 
+## v6.52.2（记录1#7 工单案A）：按当前战线时代取 hub 音乐键——大地图/移动基地
+## 不再全时代共用一首。时代曲文件未落地（资产分批换）时回退 "hub" 单曲，
+## 接线先于资产零行为变化。PlayerA/temp 探针/无 GameManager 场景同样回退。
+func music_key_for_current_era() -> String:
+	var key := "hub"
+	if GameManager:
+		var era: int = GameConstants.get_era_for_level(int(GameManager.current_level))
+		match era:
+			GameConstants.Era.WW1: key = "hub_ww1"
+			GameConstants.Era.WW2: key = "hub_ww2"
+			GameConstants.Era.COLD_WAR: key = "hub_cold"
+			GameConstants.Era.MODERN: key = "hub_modern"
+			GameConstants.Era.NEAR_FUTURE: key = "hub_future"
+	if key != "hub":
+		var fname: String = String(BGM_MAP.get(key, ""))
+		if fname.is_empty() or not ResourceLoader.exists("res://assets/sfx/%s.ogg" % fname):
+			key = "hub"
+	return key
+
 ## BOSS 登场：切 BOSS BGM
 func _on_phase_master_appeared_bgm(_master_config: Dictionary) -> void:
 	play_music("boss")
@@ -507,12 +533,24 @@ func stop_ambient(fade_sec: float = 1.0) -> void:
 var _last_hit_sfx_msec: int = -10000
 const HIT_SFX_MIN_INTERVAL_MSEC: int = 80
 
-func _on_unit_damaged(_unit: Node, _is_player: bool, _amount: float, _at_position: Vector2) -> void:
+## v6.52（记录1#3，用户主诉"发射/击中的音效不好，前边让改过实际根本就没改"）：
+## v6.42 的力度分级只覆盖了开火音与 bullet.gd 兜底命中——batch 主力路径的命中
+## 恒播通用 "hit"（手枪弹与重炮弹同声）。现按本次伤害分三档：
+##   轻击 <60  → impact_light（轻动能）
+##   中击 <150 → hit（通用）
+##   重击 ≥150 → impact_heavy（重炮/爆炸级）
+## 阈值口径：单发直射轻武器几十、重炮对甲 200+（实机自行火炮 20 vs 280 量级差）。
+func _on_unit_damaged(_unit: Node, _is_player: bool, amount: float, _at_position: Vector2) -> void:
 	var now: int = Time.get_ticks_msec()
 	if now - _last_hit_sfx_msec < HIT_SFX_MIN_INTERVAL_MSEC:
 		return
 	_last_hit_sfx_msec = now
-	play_sfx("hit")
+	if amount >= 150.0:
+		play_sfx("impact_heavy")
+	elif amount >= 60.0:
+		play_sfx("hit")
+	else:
+		play_sfx("impact_light")
 
 ## v26.6: 死亡音——此前 unit_died 信号 5 个消费方（battle_manager/new_systems/quest 等）
 ## 无一播报，"unit_death" 合成音效在 sound_generator 已生成却从未播放。120ms 节流

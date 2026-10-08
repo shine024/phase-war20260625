@@ -1476,8 +1476,9 @@ func refresh_intel_tab() -> void:
 					continue
 			filtered.append(bp)
 		acquired_blueprints = filtered
-	# 按稀有度排序（稀有→普通）
-	acquired_blueprints.sort_custom(func(a, b): return _rarity_sort_value(a.rarity) > _rarity_sort_value(b.rarity))
+	# 按稀有度排序（普通→稀有，v6.51 用户拍板"上边先看到低级改造，越下边越高级"；
+	# 同档按 mod_id 稳定，防同档闪序）
+	acquired_blueprints.sort_custom(compare_blueprints_low_first)
 	var _mod_idx := 0
 	for bp in acquired_blueprints:
 		var item = _acquire_slot_from_pool(_resource_slot_pool, ResourceSlotScene, "is_resource_slot")
@@ -1639,14 +1640,27 @@ func _on_sidebar_status_pressed(status: String) -> void:
 
 
 ## 稀有度排序权重（legendary 最大）
-func _rarity_sort_value(rarity: String) -> int:
+## v6.51 批：改 static——排序语义与权重同源，回归锁可直接静态直测；
+## 补 mythic 档（存量缺口：mythic 权重落 0，旧降序排到最底、新升序排到最顶）
+static func _rarity_sort_value(rarity: String) -> int:
 	match rarity:
+		"mythic": return 6
 		"legendary": return 5
 		"epic": return 4
 		"rare": return 3
 		"uncommon": return 2
 		"common": return 1
 		_: return 0
+
+
+## 改造图纸排序比较器：稀有度低→高（v6.51 用户拍板"低级在上"），同档按 mod_id 稳定。
+## static 供回归锁直测。
+static func compare_blueprints_low_first(a, b) -> bool:
+	var ra: int = _rarity_sort_value(String(a.rarity))
+	var rb: int = _rarity_sort_value(String(b.rarity))
+	if ra != rb:
+		return ra < rb
+	return String(a.mod_id) < String(b.mod_id)
 
 
 func _add_intel_placeholder(grid: GridContainer, message: String) -> void:

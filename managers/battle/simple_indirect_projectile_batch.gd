@@ -202,12 +202,16 @@ func fire(from: Vector2, tgt: Node2D, dmg: float, wt: int, shooter: Node2D, shoo
 	d["muzzle_spawned"] = true  # Fix-5: 禁用炮口火焰，标记为已生成
 	d["is_player"] = is_player_side
 	_proj.append(d)
-	_play_fire_sfx(wt)
+	# v6.52（记录1#4 遗留）：曲射开火补伤害力度分级（对齐直射 batch v6.42 口径）——
+	# 此前曲射 _play_fire_sfx(wt) 无 dmg，同一门火箭炮打轻甲与打重甲同声。
+	_play_fire_sfx(wt, dmg)
 
 ## v20.25: 曲射开火音——此前武器开火音效全链路只挂在 bullet.gd 兜底路径（_play_attack_sfx），
 ## 曲射实战 100% 走本 batch → 火炮/火箭/导弹开火全程无声（sound_generator 生成的
 ## rocket_launch/flak_fire/missile_hum 主路径零消费）。音量/降调规则与 bullet 同源。
-func _play_fire_sfx(wt: int) -> void:
+## v6.52: 补 dmg 分级（compute_power_tier 同口）——tier≥2 武器类开火降调加闷（重炮感），
+## 音量随档放大 0.08/档；武器族选择逻辑不变。
+func _play_fire_sfx(wt: int, dmg: float = 0.0) -> void:
 	if not (AudioManager and AudioManager.has_method("play_sfx")):
 		return
 	# v26.x: 110ms 节流（对齐直射 batch 开火音窗口）
@@ -220,6 +224,10 @@ func _play_fire_sfx(wt: int) -> void:
 	if not is_player_side:
 		pitch *= 0.92  # 敌方轻微降调（与 bullet.gd 同规则）
 		vol = 0.8
+	var tier := WeaponProjectileVfx.compute_power_tier(wt, 0.0, dmg)
+	vol *= 1.0 + 0.08 * tier
+	if tier >= 2:
+		pitch *= 0.88  # 重炮齐射更低沉（直射 batch cannon_fire 同语言）
 	match wt:
 		7:
 			AudioManager.play_sfx("flak_fire", vol * 0.9, pitch * 0.9)

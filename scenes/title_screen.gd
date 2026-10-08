@@ -296,12 +296,20 @@ func _on_continue() -> void:
 			SignalBus.save_restored_from_backup.connect(_on_save_restored_from_backup, CONNECT_ONE_SHOT)
 		var load_success = SaveManager.load_game()
 		if load_success:
-			# v38.5 修复（实机评估 P2）：「继续」是全项目唯一不设自动开战的入战路径——
-			# 此前 main 落地后战斗冻在 00:00，顶栏仅图标式开始键（tooltip 文案），
-			# 新玩家不知道点哪。与世界地图「进入该关」同款 meta；教程未完成/已在战斗中
-			# 由 main.auto_start_battle_from_world_map 自身守卫让路，不抢教学节奏。
-			Engine.set_meta("level_auto_start_pending", true)
-			SceneTransition.change(get_tree(), "res://scenes/main.tscn")
+			# v6.52（记录1#21）：读档落点分流——过首战步的档进移动基地（玩家拍板"重读
+			# 记录应该是在大地图，或移动基地中"，此前 v38.5 无条件落地即开战）；教程期
+			# 档仍进 main 并自动开战（保 v38.5 修复：新玩家落地冻在 00:00 不知道点哪）。
+			# TPM 在 SaveManager 延迟加载批里——先同步冲刷再判定，防读到旧档教程态。
+			if SaveManager.has_method("flush_deferred_manager_loads"):
+				SaveManager.flush_deferred_manager_loads()
+			var tpm := get_node_or_null("/root/TutorialProgressionManager")
+			var past_first: bool = tpm != null and tpm.has_method("is_past_first_battle") \
+				and bool(tpm.is_past_first_battle())
+			if past_first:
+				SceneTransition.change(get_tree(), "res://scenes/bunker/truck_base.tscn")
+			else:
+				Engine.set_meta("level_auto_start_pending", true)
+				SceneTransition.change(get_tree(), "res://scenes/main.tscn")
 		else:
 			var toast_mgr = get_node_or_null("/root/ToastManager")
 			if toast_mgr and toast_mgr.has_method("show_error"):

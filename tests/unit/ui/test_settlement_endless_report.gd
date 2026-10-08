@@ -15,6 +15,12 @@ func _make_panel(summary: Dictionary, won: bool) -> Node:
 	return panel
 
 
+func _endless_summary_cleared_again() -> Dictionary:
+	var d: Dictionary = _endless_summary(true)
+	(d["endless"] as Dictionary)["gate_first_clear"] = false
+	return d
+
+
 func _endless_summary(gate_cleared: bool) -> Dictionary:
 	return {
 		"player_won": false,
@@ -57,7 +63,10 @@ func test_endless_report_block_renders() -> void:
 	var texts := PackedStringArray()
 	_collect_labels(vbox, texts)
 	var joined := "\n".join(texts)
-	assert_str(joined).contains("黑门本体已击碎")
+	# v6.51 勘误：v6.42 横幅改双档（首通="黑门已通关（首场试炼…）"/再通="黑门本体已击碎"），
+	# 本夹具 gate_first_clear=true → 锁首通档文案；再通档在下方补充锁。
+	assert_str(joined).contains("黑门已通关")
+	assert_str(joined).contains("击碎本体")
 	assert_str(joined).contains("第 210 波")
 	assert_str(joined).contains("21200")
 	assert_str(joined).contains("新纪录")
@@ -79,6 +88,20 @@ func test_endless_report_block_renders() -> void:
 	assert_str(joined2).not_contains("已击碎")
 	p2.queue_free()
 	vbox2.queue_free()
+
+	# v6.51 补：再通关档（gate_first_clear=false）→ "黑门本体已击碎（目标深度…）"
+	var p3 := _make_panel(_endless_summary_cleared_again(), false)
+	var vbox3 := VBoxContainer.new()
+	add_child(vbox3)
+	p3._render_endless_report(vbox3)
+	var texts3 := PackedStringArray()
+	_collect_labels(vbox3, texts3)
+	var joined3 := "
+".join(texts3)
+	assert_str(joined3).contains("黑门本体已击碎")
+	assert_str(joined3).contains("目标深度 第 210 波")
+	p3.queue_free()
+	vbox3.queue_free()
 
 
 ## 缴获页门控修复的渲染面:_render_collected_rewards 在 endless(player_won=false)下

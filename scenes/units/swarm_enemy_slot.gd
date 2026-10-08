@@ -177,9 +177,11 @@ func take_damage(amount: float, attacker: Variant = null) -> void:
 	if GameManager and GameManager.has_method("is_card_grid_battle") and GameManager.is_card_grid_battle():
 		var pen: float = 0.0
 		var attacker_kind: int = -1
+		var atk_stats_u: UnitStats = null
 		if attacker != null and is_instance_valid(attacker) and "stats" in attacker:
 			var atk_stats: Variant = attacker.get("stats")
 			if atk_stats is UnitStats:
+				atk_stats_u = atk_stats
 				# v6.2: 条件型穿甲（相克 MOD）按目标(自身)类型激活
 				var self_kind: int = combat_kind
 				if (atk_stats as UnitStats).has_method("get_effective_armor_penetration"):
@@ -189,9 +191,19 @@ func take_damage(amount: float, attacker: Variant = null) -> void:
 				attacker_kind = int((atk_stats as UnitStats).combat_kind)
 				# v21 P1: 弹道重赋（gen_converted_munitions）——攻击者对轻轴转对甲轴
 				attacker_kind = AttackCalculator.convert_defense_dimension(self_kind, atk_stats, attacker_kind)
-		# v6.4: 优先用三维防御（按攻击者类型选），回退到旧 defense 单字段
+		# v6.4: 优先用三维防御（按攻击维度选），回退到旧 defense 单字段
+		# v6.52（记录1#37）：攻防同维度配对——第三副本与 construct_unit/enemy_unit 同批
+		# 统一：有攻击者 stats 时按 attack_dim_for_target（攻击维度）配对，无 stats 走兵种兜底。
 		var eff_defense: float = defense
-		if stats != null and attacker_kind >= 0:
+		if stats != null and atk_stats_u != null:
+			match AttackCalculator.attack_dim_for_target(atk_stats_u, combat_kind):
+				GC.CombatKind.ARMOR:
+					eff_defense = stats.defense_armor
+				GC.CombatKind.AIR:
+					eff_defense = stats.defense_air
+				_:
+					eff_defense = stats.defense_light
+		elif stats != null and attacker_kind >= 0:
 			match attacker_kind:
 				GC.CombatKind.LIGHT, GC.CombatKind.SUPPORT:
 					eff_defense = stats.defense_light

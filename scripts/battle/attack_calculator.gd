@@ -40,20 +40,49 @@ static func _has_converted_munitions(attacker_stats: UnitStats) -> bool:
 		return false
 	return bool((attacker_stats.get_meta("mod_special_flags", {}) as Dictionary).get("converted_munitions", false))
 
+## v6.52（记录1#37）：攻击维度判定唯一口——本次攻击实际使用的伤害维度。
+## 与攻击侧取值（get_attack_vs）同轴：目标轻装/支援=LIGHT 轴（弹道重赋转 ARMOR）、
+## 装甲/堡垒=ARMOR 轴、空中=AIR 轴。返回 GC.CombatKind.LIGHT/ARMOR/AIR——
+## 语义是**维度**而非兵种（受击方防御维度按此配对，见 get_defense_vs）。
+## ⚠️ get_attack_vs 的取轴分支与本函数必须同步改（回归锁 test_defense_dim_pairing
+## 断言两函数对全目标类型同轴）。
+static func attack_dim_for_target(attacker_stats: UnitStats, target_combat_kind: int) -> int:
+	match target_combat_kind:
+		GC.CombatKind.LIGHT, GC.CombatKind.SUPPORT:
+			return GC.CombatKind.ARMOR if _has_converted_munitions(attacker_stats) \
+				else GC.CombatKind.LIGHT
+		GC.CombatKind.ARMOR, GC.CombatKind.FORT:
+			return GC.CombatKind.ARMOR
+		GC.CombatKind.AIR:
+			return GC.CombatKind.AIR
+		_:
+			return GC.CombatKind.LIGHT
+
 ## 根据攻击者单位类型获取目标对应防御值（v6.2: 攻防维度对齐）
-## 防御维度与攻击维度对齐——按"攻击者的单位类型"选目标防御值：
 ## defense_light = 防轻装单位(LIGHT/SUPPORT)攻击
 ## defense_armor = 防装甲单位(ARMOR/FORT)攻击
 ## defense_air   = 防空中单位(AIR)攻击
 ## v8.x: 三维攻防系统保持封闭，不新增 ENGINEER/SNIPER 分支
 ## v21 P1: 新增可选 attacker_stats——装了弹道重赋（gen_converted_munitions）且目标为
 ## LIGHT/SUPPORT（对轻轴交战）时，目标按 defense_armor 结算（对轻→对甲）。缺省 null 行为不变。
+## v6.52（记录1#37，实机"自行火炮对轻20多/对甲200多"复查）：口径根修——防御维度
+## 跟随**本次攻击的攻击维度**（attack_dim_for_target 唯一口），不再按攻击者兵种。
+## 旧口径（按攻击者兵种）下 SUPPORT 火炮恒被 defense_light 挡：重炮打坦克只被坦克的
+## 对轻防御抵消（坦克 d_l=60 vs d_a=90——软兵种反比硬目标抗重炮）；数据表语义
+## （unit_stats_table "防轻装/防装甲/防空中"）本就是"对攻击类型的抵御"。
+## attacker_stats=null（DOT 无来源/预览缺省）维持兵种口径兜底，行为不变。
 static func get_defense_vs(target_stats: UnitStats, attacker_combat_kind: int, attacker_stats: UnitStats = null) -> float:
-	# v21 P1: 弹道重赋——对轻轴交战（目标是轻装/支援）时整体转对甲轴
-	if target_stats != null and _has_converted_munitions(attacker_stats):
-		var tk: int = int(target_stats.combat_kind)
-		if tk == GC.CombatKind.LIGHT or tk == GC.CombatKind.SUPPORT:
-			return target_stats.defense_armor
+	if target_stats == null:
+		return 0.0
+	if attacker_stats != null:
+		match attack_dim_for_target(attacker_stats, int(target_stats.combat_kind)):
+			GC.CombatKind.ARMOR:
+				return target_stats.defense_armor
+			GC.CombatKind.AIR:
+				return target_stats.defense_air
+			_:
+				return target_stats.defense_light
+	# 无攻击者 stats（boss driver/环境伤害/DOT 归属缺失）：按攻击者兵种兜底
 	match attacker_combat_kind:
 		GC.CombatKind.LIGHT, GC.CombatKind.SUPPORT: return target_stats.defense_light
 		GC.CombatKind.ARMOR, GC.CombatKind.FORT: return target_stats.defense_armor

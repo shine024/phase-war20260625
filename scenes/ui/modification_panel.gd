@@ -20,6 +20,7 @@ const ModBreakpoints = preload("res://data/mod_breakpoints.gd")
 # v37.1 改造图标座（稀有度发光底座统一收口）+ 底座样式源
 const ModIconTileRef = preload("res://scripts/ui/mod_icon_tile.gd")
 const CardFrameUiRef = preload("res://scripts/card_frame_ui.gd")
+const NodeFinderRef = preload("res://scripts/node_finder.gd")
 
 # v7.x UI 重设计基建
 const DT = preload("res://resources/design_tokens.gd")
@@ -729,16 +730,30 @@ func _create_card_item(card: CardResource, instance_card: CardResource = null) -
 	hbox.add_child(info)
 
 	btn.add_child(hbox)
-	btn.tooltip_text = "改造：%d/%d" % [display_mods.size(), ModManager.get_max_mod_slots_for_card(card)]
+	btn.tooltip_text = "改造：%d/%d\n双击查看卡牌情报" % [display_mods.size(), ModManager.get_max_mod_slots_for_card(card)]
 	# v7.3: 选中绑定用实例对象（含养成）。实例取不到时传 null，
 	# _on_card_selected 会拒绝选中（避免改造写到无养成的模板污染单例）。
 	# display_card 仅用于列表项显示（含回退模板的展示），不参与养成写入。
 	btn.pressed.connect(func(): _on_card_selected(instance_card))
+	# v6.52（记录1#24）：双击卡行弹统一卡情报面板（与商店/背包同范式）——改造舱此前
+	# 点卡只刷右栏改造视角详情，完整卡情报（卡面/词条/属性）无处可看（实机主诉）。
+	var intel_card: CardResource = instance_card if instance_card != null else card
+	btn.gui_input.connect(func(ev: InputEvent) -> void:
+		if ev is InputEventMouseButton and (ev as InputEventMouseButton).pressed \
+				and (ev as InputEventMouseButton).button_index == MOUSE_BUTTON_LEFT \
+				and (ev as InputEventMouseButton).double_click:
+			_show_card_intel(intel_card))
 	# v1.5：右栏收起态下 hover 弹迷你单位浮卡（替代被折叠的右栏单位面板）
 	var captured_card: CardResource = display_card
 	btn.mouse_entered.connect(func(): _maybe_show_hover_card(captured_card, btn))
 	btn.mouse_exited.connect(_hide_hover_card)
 	return btn
+
+## v6.52（记录1#24）：统一卡情报面板（NodeFinder 分组兜底覆盖基地场景）
+func _show_card_intel(card: CardResource) -> void:
+	var info_panel: Node = NodeFinderRef.get_card_info_panel()
+	if info_panel != null and info_panel.has_method("show_card_info"):
+		info_panel.call("show_card_info", card)
 
 ## v7.x 重构：显示所有已解锁（持有图纸）的改造，选了战斗卡时用状态标识区分可用性。
 ## 数据源从 ModificationRegistry.get_mods_for_card（硬编码 card_id 前缀白名单，不全）
@@ -807,10 +822,9 @@ func _refresh_mod_list() -> void:
 			mod_list_head_count.text = "可用 0 · 已解锁 %d" % total_owned
 		return
 
-	## 按稀有度排序（高→低），让玩家先看到珍贵改造
-	applicable_mod_ids.sort_custom(func(a: String, b: String):
-		return _rarity_sort_value(String(ModificationRegistry.get_data(a).get("rarity", "common"))) \
-			> _rarity_sort_value(String(ModificationRegistry.get_data(b).get("rarity", "common"))))
+	## 按稀有度排序（低→高，v6.51 用户拍板"改造模块库上边先看到低级改造，越下边
+	## 才是越高级的改造"）；同档按 id 稳定排序（Godot sort 非稳定，防同档闪序）
+	applicable_mod_ids.sort_custom(compare_mods_low_first)
 
 	# v7.x 性能优化：本次刷新期间缓存选中卡的战力值与档位，避免 _create_mod_item 对每个
 	# 改造条目重复调用 estimate_power_score（O(N) 次完整 build_stats_from_card，会触发大量
@@ -976,7 +990,15 @@ func _create_mod_item(mod_id: String, mod_data: Dictionary) -> Control:
 			var min_tier: int = ModManager.get_min_power_tier_for_mod(mod_id)
 			tier_blocked = true
 			status_col = DT.COLOR_AMBER
-			status_text = "✗需%s" % PowerTiers.get_tier_name(min_tier)
+			# v6.52（记录1#22）：门槛带战力数值——"需霸主"不说多少战力=玩家无从努力
+			# （实机主诉"多少战力是霸主也没提示"）。门槛值读 POWER_THRESHOLDS[min_tier-1]。
+			var gate_power: int = 0
+			if min_tier >= 1 and min_tier <= PowerTiers.POWER_THRESHOLDS.size():
+				gate_power = int(PowerTiers.POWER_THRESHOLDS[min_tier - 1])
+			if gate_power > 0:
+				status_text = "✗需%s 战力≥%d" % [PowerTiers.get_tier_name(min_tier), gate_power]
+			else:
+				status_text = "✗需%s" % PowerTiers.get_tier_name(min_tier)
 	var status_label := Label.new()
 	status_label.text = status_text
 	status_label.add_theme_font_override("font", DT.get_title_font())
@@ -999,17 +1021,22 @@ func _create_mod_item(mod_id: String, mod_data: Dictionary) -> Control:
 		String(mod_data.get("description", "")), rarity_cn, ModEraBands.format_band(mod_data)]
 	btn.pressed.connect(func():
 		if row_blocked:
-			_show_mod_blocked_feedback(status_text)
+			_show_mod_blocked_feedback(status_text, _cached_card_power)
 			return
 		_on_mod_selected(mod_id, mod_data))
 	return btn
 
 ## 记录3#10：禁用行点击反馈——把行尾状态缩写展开成一句话放进结果区
-func _show_mod_blocked_feedback(reason_text: String) -> void:
+## v6.52（记录1#22）：门槛类反馈附当前战力，玩家知道差多少
+func _show_mod_blocked_feedback(reason_text: String, current_power: int = -1) -> void:
 	if reason_text.begins_with("✓"):
 		_show_result("该模块已安装在此卡上——如需更换请先在下方操作台卸下")
-	else:
-		_show_result("该模块不可安装：%s（鼠标悬停模块行可查看说明与时代带）" % reason_text.trim_prefix("✗").trim_prefix("⊘"))
+		return
+	var extra := ""
+	if current_power > 0:
+		extra = "，当前战力 %d" % current_power
+	_show_result("该模块不可安装：%s%s（鼠标悬停模块行可查看说明与时代带）" % [
+		reason_text.trim_prefix("✗").trim_prefix("⊘"), extra])
 
 ## 判断改造是否适用于选中卡的兵种。
 ## v7.x：数据源切到 IntelItemBag 后，列表会显示所有已解锁改造（不限兵种），
@@ -2095,6 +2122,10 @@ func _format_one_effect(key: String, val) -> String:
 		return "锁定扫描 %ds/次" % int(round(absf(float(val))))
 	if key == "radar_lock_duration":
 		return "锁定持续 %ds" % int(round(absf(float(val))))
+	# v6.52（记录1#23）：周期/冷却键带秒单位——"奇点间隔 +8"玩家读不出是 8 秒
+	# （注册表全部 *_cd 键均为周期秒：aegis/counter/gravity/hijack_aura）。
+	if key.ends_with("_cd"):
+		return "%s 每%ds" % [key_display, int(round(absf(float(val))))]
 	return "%s %s" % [key_display, _format_effect_number(val)]
 
 
@@ -2311,8 +2342,9 @@ func _get_kind_color(combat_kind: int) -> Color:
 func _rarity_color(rarity: String) -> Color:
 	return GC.get_rarity_color(rarity)
 
-## 稀有度排序权重（mythic 最大，用于已解锁改造列表按稀有度降序排列）
-func _rarity_sort_value(rarity: String) -> int:
+## 稀有度排序权重（mythic 最大）
+## v6.51 批：改 static——排序语义与权重同源，回归锁可直接静态直测
+static func _rarity_sort_value(rarity: String) -> int:
 	match rarity:
 		"common": return 1
 		"uncommon": return 2
@@ -2321,3 +2353,15 @@ func _rarity_sort_value(rarity: String) -> int:
 		"legendary": return 5
 		"mythic": return 6
 		_: return 0
+
+## 模块库排序比较器：稀有度低→高（v6.51 用户拍板"低级在上，越下边越高级"），
+## 同档按 mod_id 字典序稳定。static 供回归锁直测；走 preload 脚本引用（get_data
+## 本身是 static，不依赖 autoload 实例——静态函数里 autoload 裸名有编译风险）。
+const _ModRegistryRef = preload("res://scripts/systems/modification_registry.gd")
+
+static func compare_mods_low_first(a: String, b: String) -> bool:
+	var ra: int = _rarity_sort_value(String(_ModRegistryRef.get_data(a).get("rarity", "common")))
+	var rb: int = _rarity_sort_value(String(_ModRegistryRef.get_data(b).get("rarity", "common")))
+	if ra != rb:
+		return ra < rb
+	return a < b

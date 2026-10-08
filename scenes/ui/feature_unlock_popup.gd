@@ -18,24 +18,12 @@ static func show_once(feature_key: String, title: String, description: String) -
 	if feature_key.is_empty() or _already_seen(feature_key):
 		return null
 	_mark_seen(feature_key)
-	var tree := Engine.get_main_loop() as SceneTree
-	if tree == null or tree.root == null:
-		return null
-	var popup := FeatureUnlockPopup.new()
-	popup._setup(feature_key, title, description)
-	tree.root.add_child(popup)
-	return popup
+	return _spawn_modal(title, description)
 
 ## 无视持久化，每次都弹（用于战斗中每次改造解锁即时反馈）。
 ## v38.3: 返回弹窗实例（结算弹窗链需要 tree_exited 串行挂钩；调用方忽略返回值无影响）。
 static func show_now(title: String, description: String) -> Node:
-	var tree := Engine.get_main_loop() as SceneTree
-	if tree == null or tree.root == null:
-		return null
-	var popup := FeatureUnlockPopup.new()
-	popup._setup("", title, description)
-	tree.root.add_child(popup)
-	return popup
+	return _spawn_modal(title, description)
 
 ## v34 渐进解锁：跨级解锁仪式（同一关解锁多项时合并为一个弹窗，防连弹多层 Modal）。
 ## infos: [{key,title,desc}]；按 "gate:"+key 逐项去重（与 PANEL_INTROS 的裸 key 命名空间隔离）。
@@ -51,18 +39,29 @@ static func show_unlock_batch(infos: Array) -> Node:
 		fresh.append(info)
 	if fresh.is_empty():
 		return null
+	var lines := ""
+	for info in fresh:
+		lines += "· %s——%s\n" % [String(info.get("title", "")), String(info.get("desc", ""))]
+	return _spawn_modal("通关奖励 · 新系统解锁 ×%d" % fresh.size(), lines.strip_edges(false))
+
+## 统一出生口 v6.52（记录1#18/#19）：教程进行中禁发全屏 STOP 模态——FUP 恒在 250 层、
+## 背板吞掉全部点击，压住教程框(105)后教程按钮点不到（实机"提示让看符文，打开又跳出
+## 符文系统提示，卡死"主诉=符文步激活符文之语弹 FUP 同窗互压）。教程期降级为左下 feed：
+## 信息仍送达（seen 已标记，不战后突袭），教程结束后不再补弹。
+static func _spawn_modal(title: String, description: String) -> Node:
 	var tree := Engine.get_main_loop() as SceneTree
 	if tree == null or tree.root == null:
 		return null
+	var tpm := tree.root.get_node_or_null("TutorialProgressionManager")
+	if tpm != null and tpm.has_method("should_show_tutorial") and bool(tpm.should_show_tutorial()):
+		if SignalBus != null and SignalBus.has_signal("feed_message"):
+			var brief := description.split("\n")[0]
+			if brief.length() > 60:
+				brief = brief.substr(0, 60) + "…"
+			SignalBus.feed_message.emit("✦ %s——%s" % [title, brief])
+		return null
 	var popup := FeatureUnlockPopup.new()
-	if fresh.size() == 1:
-		popup._setup(String(fresh[0].get("key", "")),
-			String(fresh[0].get("title", "")), String(fresh[0].get("desc", "")))
-	else:
-		var lines := ""
-		for info in fresh:
-			lines += "· %s——%s\n" % [String(info.get("title", "")), String(info.get("desc", ""))]
-		popup._setup("", "通关奖励 · 新系统解锁 ×%d" % fresh.size(), lines.strip_edges(false))
+	popup._setup("", title, description)
 	tree.root.add_child(popup)
 	return popup
 

@@ -8,9 +8,11 @@ class_name AffixDisplayFormat
 
 const GC = preload("res://resources/game_constants.gd")
 
-## 玩家真词条 → [{text,color}]（如 "◆ 精准打击 Lv2[变]"，色=稀有度色）
+## 玩家真词条 → [{text,color}]（如 "◆ 精准打击 Lv2 +10%[变]"，色=稀有度色）
 ## identity 为实例身份（instance_id，空回退 card_id）；am 传 AffixManager（测试可传自建实例）。
 ## 符号体系沿用 card_affix_tooltip：◇common/◆rare/★epic/✦legendary。
+## v6.51 批：标签内联当前数值（主诉"词条加什么应该有更详细的情报"）——
+## 数值此前只在悬停 tooltip 里，现在一眼可见。
 static func fmt_player_affix_tags(identity: String, am: Node) -> Array:
 	var tags: Array = []
 	if identity.is_empty() or am == null or not am.has_method("get_card_affixes"):
@@ -30,12 +32,33 @@ static func fmt_player_affix_tags(identity: String, am: Node) -> Array:
 			var mut: String = "[变]" if bool(a.is_mutated) else ""
 			# P0-4: 悬停效果文本——AffixResource.get_detailed_description 此前在 UI 全程零调用
 			var tip: String = String(a.get_detailed_description()) if a.has_method("get_detailed_description") else ""
+			var val: String = fmt_affix_value(a)
 			tags.append({
-				text = "%s %s Lv%d%s" % [sym, String(a.affix_name), int(a.level), mut],
+				text = "%s %s Lv%d%s%s" % [sym, String(a.affix_name), int(a.level), mut,
+					(" " + val) if not val.is_empty() else ""],
 				color = GC.get_rarity_color(String(a.rarity)),
 				tooltip = tip,
 			})
 	return tags
+
+## 词条当前数值短串（"+10%" / "-40%" / "攻击间隔 ×0.85"）——标签内联与工坊详情共用。
+## a 为 AffixResource（鸭子类型，零依赖约束不破坏）。⚠️ Object.get() 只收 1 参
+## （Dictionary.get 才有默认值）——缺属性时 get 返回 null，需自兜底。
+static func fmt_affix_value(a) -> String:
+	if a == null or not (a is Object):
+		return ""
+	var obj: Object = a
+	var v_var: Variant = obj.get("current_value")
+	if v_var == null:
+		return ""
+	var v: float = float(v_var)
+	var ek_var: Variant = obj.get("effect_key")
+	var effect_key: String = String(ek_var) if ek_var != null else ""
+	if effect_key == "attack_interval":
+		return "攻击间隔 ×%.2f" % maxf(0.0, 1.0 - v)
+	if absf(v) < 1.0:
+		return "%+.0f%%" % (v * 100.0)
+	return "%+.1f" % v
 
 ## 敌方词缀 → [{text,color}]（如 "◆ 幽灵步伐｜闪避率+25%"）
 ## affixes 为词缀字典列表（{name, description, rarity}，rarity 是 EnemyAffixes.AffixRarity int）。

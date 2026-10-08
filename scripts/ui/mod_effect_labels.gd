@@ -223,6 +223,13 @@ static func translate(key: String) -> String:
 		"expansion_chamber": return "扩容弹舱"
 		"dodge_ignore": return "无视闪避"
 		"overflow_to_shield": return "溢流护盾"
+		# ── v6.51 补遗（2026-10-07 全注册表审计：_pct/_set 变体此前未命中裸显英文）──
+		"attack_air_pct": return "防空%"
+		"attack_armor_pct": return "重攻%"
+		"attack_armor_set": return "重攻替换"
+		"attack_light_set": return "轻攻替换"
+		"defense_armor_pct": return "重防%"
+		"max_hp_pct": return "生命%"
 		_: return key
 
 

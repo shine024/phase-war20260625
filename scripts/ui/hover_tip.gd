@@ -12,16 +12,30 @@ extends CanvasLayer
 ##   HoverTip.bind_control(ctrl)                       # 接 hover 显示/隐藏
 ##   HoverTip.set_tip(ctrl, "……")                      # 随时更新内容（悬停时才读，防旧文案残留）
 ## 内容在 mouse_entered 时才读取（对象池复用/数据晚写都安全）；鼠标跟随，全 IGNORE 不挡点击。
+##
+## v6.51 批三处行为修正（实机主诉：提示马上弹出太急 / 符文情报跟着鼠标
+## 在相位仪面板与移动基地到处弹）：
+## 1. 延迟显示——悬停 SHOW_DELAY 秒后才弹出（指针停稳才出情报，扫过不弹）；
+##    已有提示在显示时切换控件立即换内容（瓷砖列表扫读不受延迟影响）。
+## 2. 修存量 bug：_tip_owner 只在 _dismiss 置 null、从未赋值 → _hide_for 的
+##    归属校验恒 false，提示一旦弹出永不消失（符文情报"满屏跟鼠标"的真身）。
+##    现 _present 记录归属控件，mouse_exited/离树按归属收起。
+## 3. 待显期间控件被对象池复用/释放、指针已移出 → 待显自动取消；超时展示时
+##    再读一次 meta 取最新文案。
 
 const LAYER_INDEX: int = 130
 const OFFSET := Vector2(16, 20)
 const MAX_WIDTH := 300.0
+## 悬停延迟（秒）：用户拍板"可以稍微慢一点"
+const SHOW_DELAY: float = 0.45
 
 static var _instance: HoverTip = null
 
 var _panel: PanelContainer = null
 var _label: Label = null
 var _tip_owner: Control = null
+var _pending_ctrl: Control = null    # 延迟待显的控件
+var _pending_elapsed: float = 0.0
 
 
 static func instance() -> HoverTip:
@@ -38,7 +52,7 @@ static func instance() -> HoverTip:
 	return _instance
 
 
-## 绑定控件：mouse_entered 显示 set_tip 存的内容，mouse_exited/离树隐藏。
+## 绑定控件：mouse_entered 延迟显示 set_tip 存的内容，mouse_exited/离树按归属隐藏。
 static func bind_control(ctrl: Control) -> void:
 	if ctrl == null or ctrl.has_meta("hover_tip_bound"):
 		return
@@ -56,18 +70,32 @@ static func set_tip(ctrl: Control, text: String) -> void:
 
 
 static func _show_for(ctrl: Control) -> void:
-	var text := String(ctrl.get_meta("hover_tip_text", ""))
-	if text.is_empty():
-		return
 	var inst := instance()
 	if inst == null:
 		return
-	inst._present(text)
+	var text := String(ctrl.get_meta("hover_tip_text", ""))
+	if text.is_empty():
+		# 内容清空（对象池复用给无提示数据）：取消本控件的待显，已显示且归它所有则收起
+		if inst._pending_ctrl == ctrl:
+			inst._pending_ctrl = null
+		if inst._tip_owner == ctrl:
+			inst._dismiss()
+		return
+	# 已有提示在显示：立即切换内容并转移归属（列表扫读零延迟）
+	if inst.visible:
+		inst._present(text, ctrl)
+		return
+	# 否则进入延迟待显；超时展示时再读一次 meta（对象池复用/晚写取最新）
+	if inst._pending_ctrl != ctrl:
+		inst._pending_ctrl = ctrl
+		inst._pending_elapsed = 0.0
 
 
 static func _hide_for(ctrl: Control) -> void:
 	if _instance == null or not is_instance_valid(_instance):
 		return
+	if _instance._pending_ctrl == ctrl:
+		_instance._pending_ctrl = null
 	if _instance._tip_owner == ctrl:
 		_instance._dismiss()
 
@@ -95,12 +123,13 @@ func _build() -> void:
 	visible = false
 
 
-func _present(text: String) -> void:
+func _present(text: String, owner_ctrl: Control) -> void:
 	if _label == null:
 		return
 	_label.text = text
 	_label.custom_minimum_size = Vector2(MAX_WIDTH - 20.0, 0)
 	_panel.reset_size()
+	_tip_owner = owner_ctrl
 	visible = true
 	_follow_mouse()
 
@@ -110,9 +139,22 @@ func _dismiss() -> void:
 	visible = false
 
 
-func _process(_delta: float) -> void:
+func _process(delta: float) -> void:
 	if visible:
 		_follow_mouse()
+	if _pending_ctrl != null:
+		# 待显守卫：控件释放/离树/指针已移出 → 取消（对象池复用与快速扫过不残留）
+		if not is_instance_valid(_pending_ctrl) or not _pending_ctrl.is_visible_in_tree() \
+				or not _pending_ctrl.get_global_rect().has_point(_pending_ctrl.get_global_mouse_position()):
+			_pending_ctrl = null
+			return
+		_pending_elapsed += delta
+		if _pending_elapsed >= SHOW_DELAY:
+			var ctrl := _pending_ctrl
+			_pending_ctrl = null
+			var text := String(ctrl.get_meta("hover_tip_text", ""))
+			if not text.is_empty():
+				_present(text, ctrl)
 
 
 func _follow_mouse() -> void:

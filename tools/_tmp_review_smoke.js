@@ -17,7 +17,9 @@ const path = require('path');
       'enemies|foe_ww1_arm_rolls': { p: ['face'], r: 'yes', n: '旧敌标注' },
       'players|ww2_t34_85': { p: ['bg'], r: '', n: 't34身份疑点' },
       'platforms|void_mage_basic': { p: ['other'], r: 'no', n: '' },
-      'captured|drop_smg_mk2': { p: ['clip'], r: '', n: '旧缴获标注' },
+      'captured|drop_smg_mk2': { p: ['clip'], r: 'yes', n: '旧缴获标注' },
+      'platforms|void_mage_advanced': { p: ['other'], r: 'no', n: '补卡图' },
+      'players|mod_air_apache_e': { p: [], r: 'no', n: '', a: 'alt:mod_arm_m1a1' },
     }));
   });
 
@@ -34,9 +36,16 @@ const path = require('path');
     const n = await page.locator('.card .rev').count();
     if (n !== 209) throw new Error('got ' + n); return n;
   });
-  await t('pb buttons = 1254', async () => {
-    const n = await page.locator('.pb').count();
-    if (n !== 209 * 6) throw new Error('got ' + n); return n;
+  await t('rev column = rsel+rnote only, no pb/okb', async () => {
+    const pb = await page.locator('.pb').count();
+    const okb = await page.locator('.okb').count();
+    const rsel = await page.locator('.rsel').count();
+    const rnote = await page.locator('.rnote').count();
+    if (pb !== 0 || okb !== 0) throw new Error('pb=' + pb + ' okb=' + okb);
+    if (rsel !== 209 || rnote !== 209) throw new Error('rsel=' + rsel + ' rnote=' + rnote);
+    const nopts = await page.locator('#selMark option').count();
+    if (nopts !== 4) throw new Error('selMark options=' + nopts); // 全部/已标记/需重做/不重做
+    return 'ok';
   });
   await t('fam cards = 140 with dual icons', async () => {
     const n = await page.locator('.card[data-sec="fam"]').count();
@@ -47,35 +56,42 @@ const path = require('path');
   });
   await t('migration: enemy key → fam', async () => {
     const c = page.locator('.card[data-key="fam|ww1_arm_rolls"]');
-    const on = (await c.locator('.pb[data-p="face"]').getAttribute('class')).includes('on');
     const r = await c.locator('.rsel').inputValue();
     const n = await c.locator('.rnote').inputValue();
-    if (!on || r !== 'yes' || n !== '旧敌标注') throw new Error('on=' + on + ' r=' + r + ' n=' + n);
+    const marked = await c.getAttribute('data-marked');
+    if (r !== 'yes' || n !== '旧敌标注' || marked !== '1') throw new Error('r=' + r + ' n=' + n + ' marked=' + marked);
     return 'ok';
   });
   await t('migration: player t34_85 → sherman fam', async () => {
-    const c = page.locator('.card[data-key="fam|ww2_arm_sherman"]');
-    const on = (await c.locator('.pb[data-p="bg"]').getAttribute('class')).includes('on');
-    if (!on) throw new Error('bg not on');
+    const marked = await page.locator('.card[data-key="fam|ww2_arm_sherman"]').getAttribute('data-marked');
+    if (marked !== '1') throw new Error('marked=' + marked);
     return 'ok';
   });
   await t('migration: captured drop → drop sec', async () => {
-    const c = page.locator('.card[data-key="drop|drop_smg_mk2"]');
-    const on = (await c.locator('.pb[data-p="clip"]').getAttribute('class')).includes('on');
-    if (!on) throw new Error('clip not on');
+    const marked = await page.locator('.card[data-key="drop|drop_smg_mk2"]').getAttribute('data-marked');
+    if (marked !== '1') throw new Error('marked=' + marked);
     return 'ok';
   });
-  await t('migration: platform key kept', async () => {
-    const c = page.locator('.card[data-key="plat|void_mage_basic"]');
-    const on = (await c.locator('.pb[data-p="other"]').getAttribute('class')).includes('on');
-    if (!on) throw new Error('other not on');
+  await t('migration: r=no 删除、a 拍板壳保留', async () => {
+    const vm = await page.locator('.card[data-key="plat|void_mage_advanced"]').getAttribute('data-marked');
+    if (vm === '1') throw new Error('r=no 未删除 marked=' + vm);
+    const ap = await page.locator('.card[data-key="fam|mod_air_apache_e"]').getAttribute('data-marked');
+    if (ap !== '1') throw new Error('a 壳丢失 marked=' + ap);
+    const stored = await page.evaluate(() => localStorage.getItem('card_anim_review_marks_v3'));
+    if (stored !== null) throw new Error('旧 v2 键未清除');
     return 'ok';
   });
-  await t('mark chips: marked=4 redo=1', async () => {
+  await t('mark chips: 与烘入标注一致', async () => {
     await page.waitForTimeout(300);
+    const seed = require('./card_anim_review_marks (要修改的).json').marks;
+    // v1 夹具迁移键优先于 seed；合并总数 = seed + 迁移存活且 seed 没有的键（r=no 无 a 的被删）
+    const survive = ['fam|ww1_arm_rolls', 'fam|ww2_arm_sherman', 'drop|drop_smg_mk2', 'fam|mod_air_apache_e']; // void_mage_advanced r=no 无 a → 已删
+    const expect = Object.keys(seed).length + survive.filter(k => !seed[k]).length;
     const txt = await page.locator('#markIssues').textContent();
-    if (!/已标记\s*4/.test(txt) || !/需重做\s*1/.test(txt)) throw new Error(txt.slice(0, 120));
-    return 'ok';
+    const m = txt.match(/已标记\s*(\d+)/);
+    if (!m || +m[1] !== expect) throw new Error(txt.slice(0, 160));
+    if (/undefined/.test(txt)) throw new Error('chip 出现 undefined: ' + txt.slice(0, 160));
+    return 'marked=' + expect;
   });
   await t('sus chips present', async () => page.locator('.chip.sus').count());
 
@@ -90,33 +106,50 @@ const path = require('path');
     return after;
   });
 
-  // ── 新标注 + 持久化 ──
-  await t('new mark on ind card persists', async () => {
+  // ── 新标注 + 持久化 ──（烘入标注可能已含该卡状态：先读现值再定向操作，勿盲点）
+  await t('mark on ind card persists', async () => {
     const c = page.locator('.card[data-key="ind|ww1_lanchest"]');
-    await c.locator('.pb[data-p="size"]').click();
-    await c.locator('.rsel').selectOption('yes');
+    const r0 = await c.locator('.rsel').inputValue();
+    if (r0 !== 'yes') await c.locator('.rsel').selectOption('yes');
     await page.reload(); await page.waitForTimeout(900);
     const c2 = page.locator('.card[data-key="ind|ww1_lanchest"]');
-    const on = (await c2.locator('.pb[data-p="size"]').getAttribute('class')).includes('on');
     const r = await c2.locator('.rsel').inputValue();
-    if (!on || r !== 'yes') throw new Error('on=' + on + ' r=' + r);
+    if (r !== 'yes') throw new Error('r=' + r);
     return 'ok';
   });
 
-  // ── 筛选 ──
-  await t('filter redo', async () => {
+  // ── 筛选 ──（预期从顶栏 chips 实读，不写死数字）
+  await t('filter redo matches chip count', async () => {
+    const txt = await page.locator('#markIssues').textContent();
+    const want = +(txt.match(/需重做\s*(\d+)/) || [])[1];
     await page.locator('#selMark').selectOption('redo');
     const n = await page.locator('.card:not(.hidden)').count();
     await page.locator('#selMark').selectOption('');
-    if (n !== 2) throw new Error('redo cards=' + n); // 旧迁移1 + 新标1
+    if (want === undefined || n !== want) throw new Error('chip=' + want + ' cards=' + n);
     return n;
   });
-  await t('filter p:bg', async () => {
-    await page.locator('#selMark').selectOption('p:bg');
+  await t('filter clean matches chip count', async () => {
+    const txt = await page.locator('#markIssues').textContent();
+    const want = +(txt.match(/不重做\s*(\d+)/) || [])[1];
+    await page.locator('#selMark').selectOption('clean');
     const n = await page.locator('.card:not(.hidden)').count();
     await page.locator('#selMark').selectOption('');
-    if (n !== 1) throw new Error('got ' + n);
+    if (want === undefined || n !== want) throw new Error('chip=' + want + ' cards=' + n);
     return n;
+  });
+  await t('sus chip click marks redo', async () => {
+    const c = page.locator('.card:has(.chip.sus)').first();
+    const key = await c.getAttribute('data-key');
+    const r0 = await c.locator('.rsel').inputValue();
+    if (r0 !== 'yes') {
+      await c.locator('.chip.sus').first().click();
+      await page.waitForTimeout(200);
+      const r1 = await c.locator('.rsel').inputValue();
+      if (r1 !== 'yes') throw new Error('r1=' + r1);
+      const stored = await page.evaluate(k => (JSON.parse(localStorage.getItem('card_anim_review_marks_v3'))[k] || {}).r, key);
+      if (stored !== 'yes') throw new Error('stored=' + stored);
+    }
+    return key;
   });
   await t('search by joined card id', async () => {
     await page.locator('#q').fill('ww2_t34_85');
@@ -194,7 +227,7 @@ const path = require('path');
     if (on !== altLabel) throw new Error('on=' + on + ' want ' + altLabel);
     const canv = await c.locator('.animcol canvas').count();
     if (canv < 1) throw new Error('animcol lost canvases');
-    const a = await page.evaluate(k => (JSON.parse(localStorage.getItem('card_anim_review_marks_v2'))[k] || {}).a, key);
+    const a = await page.evaluate(k => (JSON.parse(localStorage.getItem('card_anim_review_marks_v3'))[k] || {}).a, key);
     if (a !== 'alt:mod_arm_m1a1') throw new Error('a=' + a);
     await page.reload(); await page.waitForTimeout(900);
     c = page.locator('.card[data-key="' + key + '"]');
@@ -203,7 +236,7 @@ const path = require('path');
     // 复原回现行（避免污染后续用例）
     await c.locator('.aset').first().click();
     await page.waitForTimeout(300);
-    const a2 = await page.evaluate(k => (JSON.parse(localStorage.getItem('card_anim_review_marks_v2'))[k] || {}).a, key);
+    const a2 = await page.evaluate(k => (JSON.parse(localStorage.getItem('card_anim_review_marks_v3'))[k] || {}).a, key);
     if (a2 !== 'main') throw new Error('restore a=' + a2);
     return altLabel;
   });
@@ -230,7 +263,7 @@ const path = require('path');
     await page.keyboard.press('Escape');
     await page.waitForTimeout(200);
     if (await page.locator('#modal.open').count() !== 0) throw new Error('Escape did not close modal');
-    const a = await page.evaluate(k => (JSON.parse(localStorage.getItem('card_anim_review_marks_v2'))[k] || {}).a, key);
+    const a = await page.evaluate(k => (JSON.parse(localStorage.getItem('card_anim_review_marks_v3'))[k] || {}).a, key);
     if (a !== 'main') throw new Error('modal did not record: ' + a);
     return 'ok';
   });
@@ -243,7 +276,7 @@ const path = require('path');
   // 清理测试标记
   await page.locator('#btnClear').click();
   await page.waitForTimeout(200);
-  const ls = await page.evaluate(() => localStorage.getItem('card_anim_review_marks_v2'));
+  const ls = await page.evaluate(() => localStorage.getItem('card_anim_review_marks_v3'));
   if (ls !== '{}') throw new Error('cleanup failed: ' + ls);
 
   await browser.close();

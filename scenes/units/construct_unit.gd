@@ -1891,9 +1891,11 @@ func take_damage(amount: float, attacker: Variant = null) -> void:
 	if stats != null and _cached_is_card_grid:
 		var pen: float = 0.0
 		var attacker_kind: int = -1
+		var atk_stats_u: UnitStats = null
 		if attacker != null and is_instance_valid(attacker) and "stats" in attacker:
 			var atk_stats: Variant = attacker.get("stats")
 			if atk_stats is UnitStats:
+				atk_stats_u = atk_stats
 				# v6.2: 条件型穿甲（相克 MOD）按目标(自身)类型激活
 				if (atk_stats as UnitStats).has_method("get_effective_armor_penetration"):
 					pen = (atk_stats as UnitStats).get_effective_armor_penetration(stats.combat_kind)
@@ -1908,15 +1910,30 @@ func take_damage(amount: float, attacker: Variant = null) -> void:
 		# 导致玩家被 boss 技能打时按最高防御结算（难度被低估）。boss 是装甲平台，按 ARMOR 结算。
 		if attacker_kind < 0 and attacker != null and is_instance_valid(attacker) and attacker.has_method("get_master_stats"):
 			attacker_kind = GC.CombatKind.ARMOR
-		match attacker_kind:
-			GC.CombatKind.LIGHT, GC.CombatKind.SUPPORT:
-				base_def = stats.defense_light
-			GC.CombatKind.ARMOR, GC.CombatKind.FORT:
-				base_def = stats.defense_armor
-			GC.CombatKind.AIR:
-				base_def = stats.defense_air
-			_:
-				base_def = maxf(stats.defense_light, maxf(stats.defense_armor, stats.defense_air))
+		# v6.52（记录1#37）：攻防同维度配对根修——防御维度跟随本次攻击的攻击维度
+		# （attack_dim_for_target 唯一口，与攻击侧 get_attack_vs 同轴），不再按攻击者兵种。
+		# 旧口径下 SUPPORT 火炮恒被 defense_light 挡：重炮打坦克只被对轻防御抵消
+		# （实机"对轻 20 多/对装甲 200 多"的结算病真身）。v21 弹道重赋补丁只改了
+		# AttackCalculator.get_defense_vs、漏同步这份内联 match——现统一走唯一口。
+		# attacker 无 stats（boss/环境伤害）维持兵种口径兜底（含 get_master_stats→ARMOR）。
+		if atk_stats_u != null:
+			match AttackCalculator.attack_dim_for_target(atk_stats_u, stats.combat_kind):
+				GC.CombatKind.ARMOR:
+					base_def = stats.defense_armor
+				GC.CombatKind.AIR:
+					base_def = stats.defense_air
+				_:
+					base_def = stats.defense_light
+		else:
+			match attacker_kind:
+				GC.CombatKind.LIGHT, GC.CombatKind.SUPPORT:
+					base_def = stats.defense_light
+				GC.CombatKind.ARMOR, GC.CombatKind.FORT:
+					base_def = stats.defense_armor
+				GC.CombatKind.AIR:
+					base_def = stats.defense_air
+				_:
+					base_def = maxf(stats.defense_light, maxf(stats.defense_armor, stats.defense_air))
 		# v7.x: 破甲叠加——读取自身 meta 的破甲层数，降低有效防御
 		# v10(C9): 破甲不再永久——带 _armor_break_until（8s），过期惰性清理并失效
 		if has_meta("_armor_break_stacks"):

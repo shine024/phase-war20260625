@@ -24,6 +24,21 @@
 6. **客观缺陷与审美取舍先分类**：对齐/一致性/覆盖类有客观正确答案的直接修；只有真正无对错的参数才交用户拍板，且必须附推荐值与对比图。
 7. **每类系统留常驻回归锁**：锁内断言覆盖上述全部维度，修复后回归自动拦截（范例：`tests/unit/combat/test_shield_foot_anchor.gd` 九形态+尺寸断言）。
 
+## v6.51 build/记录6.txt 实机 11 条批：悬停提示生命周期 + 大地图三修 + 奖励可见化（2026-10-07，详见 CHANGELOG）
+
+**改 HoverTip/大地图重建链/成就委托奖励显示/改造列表排序前必读本节。** 三个存量根因：HoverTip `_tip_owner` 从未赋值（提示永不消失=「符文情报跟着鼠标满屏弹」）；`_build_level_map` 同帧 queue_free 旧画布+add 同名新画布（Godot 静默改名 @Control@N，MapCanvas 按名查找整链死透=「有时不让缩放」真身）；奖励格式化只认 2 键（发放链在、显示层空）。
+
+- **HoverTip 契约（hover_tip.gd）**：①悬停 `SHOW_DELAY=0.45s` 延迟显示（已有提示切换控件立即换内容）；②`_present(text, owner)` 记归属，`_hide_for` 按归属收起——**给新控件接提示仍只用 `bind_control`+`set_tip` 两步，语义不变**；③对象池复用清空 meta 会自动取消待显/收起旧提示。
+- **world_map 同帧撞名守卫（铁律）**：重建路径清旧节点一律「先 `remove_child` 再 `queue_free`」（`_build_level_map` 画布、`_apply_incursion_markers` holder 两处已改）——凡"按名查找+同帧重建"的节点同律。回归锁断言重建后画布名仍为 MapCanvas。
+- **行军标示链**：`_on_truck_level_changed` 现为 current_level 变化即 `refresh_levels()`（勿改回"仅锚点迁移才刷"——同窗到站青环/▼标/CurDot 残留出发关即此病）；模板复用路径同样消费 `_zoom_keep_pending`。渗透热区常量：`INCURSION_MARKER_RADIUS=16`（EBM 宿主 parked-15..+5，关卡窗口半径 10 会吃掉一段）、锚点=停靠关、偏移 (44,20) 节点右下（**上方被「▼第N关」引导标盖住**——勿挪回上方）、层级=TruckMarker 之下节点之上（`_blackgate_mgr()` 首取补接线是懒加载期信号链的自愈口，勿删）；`refresh_for_open` 尾部重铺红点。
+- **奖励显示唯一口**：成就=`achievement_panel._format_rewards`（全键+新格式 {type,amount}）、委托=`quest_panel._format_quest_rewards`（faction_rep/company_rep 双查）——新增奖励键两处同步；`achievement_rewards._grant_legacy_format` 认 xp（grant_phase_field_xp）与 title（feed 荣誉记录）。C3：展示即发放，勿显不发的键。
+- **改造列表排序=稀有度升序（用户拍板"低级在上"）**：比较器 `modification_panel.compare_mods_low_first` / `backpack_panel.compare_blueprints_low_first` static 直测（回归锁 test_mod_sort_and_incursion_markers.gd）；背包 `_rarity_sort_value` 已补 mythic=6 档（存量缺口勿回退）。truck_base 工位 hint=「改造·模块」（词条是词缀工坊的词）。
+- **词条数值内联**：`AffixDisplayFormat.fmt_affix_value(a)`（⚠️ Object.get() 单参——鸭子对象取属性缺省自兜底，写 `.get(k, default)` 编译错）；卡详情标签与词条工坊详情都走它。
+- **天数真身=BunkerManager.get_day()**（DayClock.current_day 是另一套且从不推进）——大地图 chip 与 truck_base caption 前缀「第N天｜」；**纯文本勿加 emoji**（🗓 CJK 字体无字形渲染豆腐块）。
+- **truck_base 背包预热**：`_ready` 尾 1.0s timer → `_warmup_embedded_backpack()`（幂等建隐藏 wrapper）——教程第 2 步首开卡仓不再同帧背 3136 行脚本编译；勿删（基地场景无 main 的 preload 链）。
+- **探针铁律追加**：懒加载管理器 ensure_loaded 后其 load_state 会**晚到覆盖**探针早设字段——先 `SaveManager.flush_deferred_manager_loads`+等帧，再重新 get 节点直写字段（视觉探针 `tests/_tmp_v651_wm_visual.tscn`，截图落 .godot/v651_shots/；英文审计探针 `tests/_tmp_v651_mod_label_audit.gd` 可重跑双清零）。
+- **存量过期红锁又两把（v6.42 文案双档没跟上锁）**：test_world_map_ready_builds_canvas 黑门弹窗、test_settlement_endless_report 横幅——已更新为双档各锁。全量套件余 7 失败均为存量（enemy_loadouts ×2、era filter ×2、attack_f0 ×2、card_info_toast_avoid 顺序敏感 flaky 单跑复绿），与本批无交集，另案处理。
+
 ## v6.41 教程框 z 序 × 符文步针对已开窗口批（2026-10-04，详见 CHANGELOG）
 
 **改教程覆盖层宿主/CanvasLayer 层号/教程点播链/背包打开链前必读本节。** 实机主诉（截图）：符文步提示框被卡仓面板吞掉（卡格切割框内文字）+ 提示弹出时背包停在战斗卡页。

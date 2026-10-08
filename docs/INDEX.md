@@ -25,6 +25,7 @@
 |---|---|
 | [ART_PIPELINE_AI_ICON_GENERATION.md](ART_PIPELINE_AI_ICON_GENERATION.md) | ✅ 卡面图 AI 生成全流程 |
 | [单位分帧动画生成管线.md](单位分帧动画生成管线.md) | ✅ 单位分帧动画生成/替换（轮次台账+坑表，动笔前必读） |
+| [FLOW_精灵帧生成工作流.md](FLOW_精灵帧生成工作流.md) | ✅ Flow(Nano Banana) 图生图六宫格→本地后期透明帧→部署全流程（脚本 tools/flow_sprite_pipeline/） |
 | [美术资源生成工作流_v3.md](美术资源生成工作流_v3.md) | 📌 美术资源生成总览（细节以卡图/分帧两专项为准） |
 | [PHASE_MASTER_ART_PLAN.md](PHASE_MASTER_ART_PLAN.md) | ✅ 相位师美术现状与 1.0 升级路径（EA 零美术方案） |
 | [ART_PIPELINE_LEVEL_BG_GENERATION.md](ART_PIPELINE_LEVEL_BG_GENERATION.md) | 📌 关卡背景生图流程 |

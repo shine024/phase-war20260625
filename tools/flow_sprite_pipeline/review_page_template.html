@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>ww1_mark4 攻击帧对比 — 原版 vs Flow 新生成</title>
+<style>
+  :root { --frame-o: 256px; --d-idle: 1000ms; --d-attack: 750ms; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #14171c; color: #dfe5ec; font-family: "Microsoft YaHei", system-ui, sans-serif; padding: 28px 32px 60px; }
+  h1 { font-size: 22px; margin-bottom: 4px; }
+  .sub { color: #8b96a5; font-size: 13px; margin-bottom: 24px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(380px, 1fr)); gap: 20px; }
+  .card { background: #1d222b; border: 1px solid #2c3441; border-radius: 12px; padding: 16px 18px 18px; }
+  .card h2 { font-size: 15px; margin-bottom: 2px; }
+  .card .tag { font-size: 11.5px; color: #7f8b9a; margin-bottom: 12px; }
+  .card .tag b { color: #a8b6c6; font-weight: 600; }
+  .stage { background:
+    linear-gradient(45deg, #232a35 25%, transparent 25%, transparent 75%, #232a35 75%),
+    linear-gradient(45deg, #232a35 25%, #1a202a 25%, #1a202a 75%, #232a35 75%);
+    background-size: 24px 24px; background-position: 0 0, 12px 12px;
+    border-radius: 8px; display: flex; align-items: center; justify-content: center; min-height: 300px; padding: 12px; }
+  .sprite { width: 384px; height: 384px; background-repeat: no-repeat; image-rendering: auto; }
+  .sprite.card-img { background-size: contain; background-position: center; }
+  /* 原待机: sheet_idle.png 2048x256 = 8帧 x256 */
+  #old-idle { background-image: url("../../../assets/effects/unit_anims/ww1_mark4/sheet_idle.png");
+    background-size: 3072px 384px; animation: play8 var(--d-idle) steps(8) infinite; }
+  /* 原攻击: sheet_attack.png 1536x256 = 6帧 x256 */
+  #old-attack { background-image: url("../../../assets/effects/unit_anims/ww1_mark4/sheet_attack.png");
+    background-size: 2304px 384px; animation: play6 var(--d-attack) steps(6) infinite; }
+  /* 新攻击: new_attack_row_T.png 2400x448 = 6帧 x400（透明底） */
+  #new-attack { background-image: url("new_attack_row_T.png");
+    background-size: 2304px 430px; animation: play6 var(--d-attack) steps(6) infinite; }
+  @keyframes play8 { from { background-position: 0 0; } to { background-position: -3072px 0; } }
+  @keyframes play6 { from { background-position: 0 0; } to { background-position: -2304px 0; } }
+  .static { width: 384px; height: 430px; background-size: contain; background-repeat: no-repeat; background-position: center; }
+  #new-idle { background-image: url("mcell_T_0.png"); animation: micro 0.9s ease-in-out infinite; }
+  /* 发动机怠速微动：轻微上下浮动 + 极小幅摇摆 */
+  @keyframes micro {
+    0%   { transform: translateY(0)    rotate(0deg); }
+    28%  { transform: translateY(-2.5px) rotate(-0.15deg); }
+    55%  { transform: translateY(1.2px)  rotate(0.12deg); }
+    80%  { transform: translateY(-0.8px) rotate(0deg); }
+    100% { transform: translateY(0)    rotate(0deg); }
+  }
+  .card-ref { margin-top: 10px; display: flex; align-items: center; gap: 10px; font-size: 11.5px; color: #7f8b9a; }
+  .card-ref img { width: 72px; height: 72px; background: #10141a; border-radius: 6px; border: 1px solid #2c3441; }
+  .speed { margin: 18px 0 0; display: flex; gap: 10px; align-items: center; font-size: 13px; color: #8b96a5; }
+  .speed button { background: #2a3340; color: #dfe5ec; border: 1px solid #3a4553; border-radius: 6px; padding: 5px 14px; cursor: pointer; font-size: 13px; }
+  .speed button.on { background: #3b5acc; border-color: #3b5acc; }
+  .note { margin-top: 26px; font-size: 12.5px; color: #77828f; line-height: 1.8; max-width: 1100px; }
+  .note b { color: #a8b6c6; }
+</style>
+</head>
+<body>
+<h1>ww1_mark4（马克IV 雄性坦克）攻击帧对比</h1>
+<div class="sub">左列 = 现役资产 ｜ 右列 = Flow(Nano Banana 2.1) 图生图新生成 ｜ 全部 8fps，与现役 anim.json 一致</div>
+
+<div class="grid">
+  <div class="card">
+    <h2>① 卡图（✅ 已用新待机替代 · 敌我共用同一卡图路径）</h2>
+    <div class="tag">assets/card_icons/player/<b>ww1_mark4.png</b> 512² 透明底 · _thumb384 / _thumb256 已同步重生成</div>
+    <div class="stage"><div class="sprite card-img" style="background-image:url('../../../assets/card_icons/player/ww1_mark4.png')"></div></div>
+    <div class="card-ref"><img src="card_backup/player_512_orig.png" alt="原卡图备份">原卡图（迷彩条纹版，已备份于 .godot/unit_review/flow_mark4/card_backup/）</div>
+  </div>
+
+  <div class="card">
+    <h2>② 原待机动画</h2>
+    <div class="tag">assets/effects/unit_anims/ww1_mark4/<b>sheet_idle.png</b> 2048×256 · 8帧 · 8fps</div>
+    <div class="stage"><div id="old-idle" class="sprite"></div></div>
+  </div>
+
+  <div class="card">
+    <h2>③ 原进攻动画</h2>
+    <div class="tag">assets/effects/unit_anims/ww1_mark4/<b>sheet_attack.png</b> 1536×256 · 6帧 · 8fps（batchA 部署版）</div>
+    <div class="stage"><div id="old-attack" class="sprite"></div></div>
+  </div>
+
+  <div class="card">
+    <h2>④ 新生成待机（Flow · 怠速微动）</h2>
+    <div class="tag">Flow v3 底稿格（已镜像朝左）· 发动机怠速微动（预览用 CSS 模拟；正式资产可烘焙为多帧微动表）</div>
+    <div class="stage"><div id="new-idle" class="static"></div></div>
+  </div>
+
+  <div class="card">
+    <h2>⑤ 新生成进攻动画（Flow）</h2>
+    <div class="tag">Flow 图生图 v3 · 6帧 · 已逐格镜像改为<b>面朝正左</b> · 待机→蓄力→爆发→衰减→余烟→闭合</div>
+    <div class="stage"><div id="new-attack" class="sprite" style="height:430px"></div></div>
+  </div>
+</div>
+
+<div class="speed">播放速度：
+  <button data-m="0.5">0.5×</button>
+  <button data-m="1" class="on">1×（8fps）</button>
+  <button data-m="2">2×</button>
+</div>
+
+<div class="note">
+  <b>来源说明：</b>新生成六格由 Flow（Nano Banana 2.1）图生图产出——以 v1 裁格六宫格为底稿锁定形态一致性，仅按帧序在侧舷炮口加蓄力/爆发/衰减/余烟特效；成品 1200×896（每格 400×448）。因底稿炮口朝右，已<b>逐格水平镜像</b>修正为面朝正左后拼表。<b>透明化：</b>新待机/新攻击已做白底转透明（边界洪泛填充算法：从图像四边洪泛判白底，焰心与烟幕完整保留），与原版资产同为透明底。<b>串格与白边修复：</b>余烟帧的烟尾越界块已按格擦除，边缘半透明像素经白底反预乘去晕，深浅底均无白边。<b>卡图替换：</b>新待机（透明底）已替换 assets/card_icons/player/ww1_mark4.png（512/384/256 三档），敌我双方共用该路径（cardE=cardP），一次性生效；原卡图备份于 .godot/unit_review/flow_mark4/card_backup/。
+</div>
+
+<script>
+  var base = { idle: 1000, attack: 750 }; // ms @8fps
+  function apply(m) {
+    document.documentElement.style.setProperty('--d-idle', (base.idle / m) + 'ms');
+    document.documentElement.style.setProperty('--d-attack', (base.attack / m) + 'ms');
+    document.querySelectorAll('.speed button').forEach(function (b) {
+      b.classList.toggle('on', +b.dataset.m === m);
+    });
+  }
+  document.querySelectorAll('.speed button').forEach(function (b) {
+    b.addEventListener('click', function () { apply(+b.dataset.m); });
+  });
+  apply(1);
+</script>
+</body>
+</html>

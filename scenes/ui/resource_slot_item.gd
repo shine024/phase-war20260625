@@ -544,6 +544,8 @@ const _SLOT_TYPE_CN = {
 	"designator": "指示器", "deception": "欺骗", "exoskeleton": "外骨骼",
 	"ergonomics": "人机工效", "fuze": "引信", "network": "网络",
 	"obstacle": "障碍", "electronics": "电子",
+	# v6.51 补遗（2026-10-07 全注册表审计，此前 tooltip/角标裸显英文键）
+	"camo": "迷彩", "hardpoint": "挂点", "mantlet": "炮盾", "shelter": "掩体",
 }
 func _apply_mod_slot_type_label(slot_type: String) -> void:
 	if slot_type.is_empty():

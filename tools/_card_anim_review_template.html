@@ -57,14 +57,6 @@ section>h2 small{color:var(--dim);font-weight:normal;margin-left:8px;font-size:1
 .chip.flipb{cursor:pointer;color:var(--accent);border-color:color-mix(in srgb,var(--accent) 45%,transparent)}
 .chip.flipb:hover{background:var(--accent);color:#fff}
 .rev{flex:none;width:250px;display:flex;flex-direction:column;gap:5px;cursor:default}
-.pbtns{display:flex;flex-wrap:wrap;gap:4px}
-.pb{font-size:11px;padding:2px 8px;border-radius:11px;background:var(--panel2);border:1px solid var(--line);
-  color:var(--dim);cursor:pointer;line-height:1.4}
-.pb:hover{border-color:var(--accent);color:var(--txt)}
-.pb.on{background:var(--bad);color:#fff;border-color:var(--bad)}
-.okb{font-size:11px;padding:2px 8px;border-radius:11px;background:var(--panel2);border:1px solid var(--line);color:var(--dim);cursor:pointer;line-height:1.4;flex:none}
-.okb:hover{border-color:var(--ok);color:var(--txt)}
-.okb.on{background:var(--ok);color:#fff;border-color:var(--ok)}
 .rrow{display:flex;gap:5px;align-items:center}
 .rrow select{width:104px;font-size:12px;flex:none}
 .rnote{flex:1;min-width:0;font-size:12px;padding:3px 6px}
@@ -139,10 +131,7 @@ footer{position:fixed;bottom:0;left:0;right:0;background:var(--panel);border-top
     <input type="search" id="q" placeholder="搜索 统一ID / 名称 / 挂接卡 / 动画目录…" style="width:210px">
     <label><input type="checkbox" id="onlyBad"> 只看问题</label>
     <label>我的标注 <select id="selMark"><option value="">全部</option><option value="marked">已标记任何项</option>
-      <option value="redo">需重做</option><option value="clean">已审·不重做</option>
-      <option value="p:face">问题:朝向左右</option><option value="p:size">问题:忽大忽小</option>
-      <option value="p:bg">问题:背景没抠好</option><option value="p:diff">问题:与原图不一样</option>
-      <option value="p:clip">问题:开火截断</option><option value="p:other">问题:其他</option></select></label>
+      <option value="redo">需重做</option><option value="clean">已审·不重做</option></select></label>
     <button id="btnExport" title="把全部标注导出为 JSON 文件（交付重做批次用）">⬇ 导出标注</button>
     <button id="btnImport">⬆ 导入标注</button>
     <input type="file" id="fileImport" accept=".json,application/json" class="hidden">
@@ -151,7 +140,7 @@ footer{position:fixed;bottom:0;left:0;right:0;background:var(--panel);border-top
   </div>
 </header>
 <main id="app"></main>
-<footer>家族制 v2：一个统一ID一张卡（敌图+我图并列，动画默认我方视角=实机镜像，卡上「视角」按钮可切敌方原图朝向）。数据源与《单位统一清单》同一条 dump。点击卡片看大图；右侧审查列标问题/选重做/填备注，自动保存在本浏览器（旧版标注自动迁移），顶栏可导出/导入 JSON；“疑:”虚线 chip 是自动检测，点击即预填对应问题按钮。多套候选动画的行有「选用动画」按钮：切换即预览该套，拍板随标注导出（选了≠游戏内生效，需另行接线）。</footer>
+<footer>家族制 v2：一个统一ID一张卡（敌图+我图并列，动画默认我方视角=实机镜像，卡上「视角」按钮可切敌方原图朝向）。数据源与《单位统一清单》同一条 dump。点击卡片看大图；右侧审查列只留「是否重做 + 备注」，自动保存在本浏览器（旧版标注自动迁移），顶栏可导出/导入 JSON；“疑:”虚线 chip 是自动检测，点击即标记需重做。多套候选动画的行有「选用动画」按钮：切换即预览该套，拍板随标注导出（选了≠游戏内生效，需另行接线）。</footer>
 
 <div id="modal"><div class="mbox" id="mbox"></div></div>
 
@@ -289,21 +278,32 @@ function animBox(rec, kind, cap){
 /* ── 审查标注（localStorage v2 + v1 自动迁移）── */
 const P_TYPES=[['face','朝向左右'],['size','忽大忽小'],['bg','背景没抠好'],['clip','开火截断'],['lum','太黑太亮'],['outl','错误描边'],['diff','与原图不一样'],['other','其他']];
 const SUS_TXT={face:'疑:朝向',size:'疑:大小',bg:'疑:抠图',clip:'疑:截断'};
-const SUS_TIP={face:'自动检测：我方卡图与动画朝向（镜像后）质量质心相反（死区4%外），可能误报，请目验后选按钮',
-  size:'自动检测：idle 帧间内容高度抖动超 18%，或动画与卡图大小占比悬殊',
-  bg:'自动检测：检出近白/品红残留像素（疑似背景没抠干净）',
-  clip:'自动检测：攻击帧内容贴到画框边，而 idle 同侧有富余 → 疑似开火截断'};
+const SUS_TIP={face:'自动检测：我方卡图与动画朝向（镜像后）质量质心相反（死区4%外），可能误报；点击此签即标记需重做',
+  size:'自动检测：idle 帧间内容高度抖动超 18%，或动画与卡图大小占比悬殊；点击此签即标记需重做',
+  bg:'自动检测：检出近白/品红残留像素（疑似背景没抠干净）；点击此签即标记需重做',
+  clip:'自动检测：攻击帧内容贴到画框边，而 idle 同侧有富余 → 疑似开火截断；点击此签即标记需重做'};
 function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
-const LSKEY='card_anim_review_marks_v2', LSOLD='card_anim_review_marks_v1';
-let marks={},lsOK=true,MIG_N=0;
+const LSKEY='card_anim_review_marks_v3', LSOLD='card_anim_review_marks_v2', LSV1='card_anim_review_marks_v1';
+let marks={},lsOK=true,MIG_N=0,MIG_DROP=0;
 try{marks=JSON.parse(localStorage.getItem(LSKEY)||'{}')||{};}catch(e){marks={};}
 if(!Object.keys(marks).length){
   let old=null;try{old=JSON.parse(localStorage.getItem(LSOLD)||'null');}catch(e){}
-  if(old&&DATA.mig){
+  if(!old){try{old=JSON.parse(localStorage.getItem(LSV1)||'null');}catch(e){}
+    if(old&&DATA.mig){const nv={};Object.keys(old).forEach(k=>{const nk=DATA.mig[k],m=old[k];
+      if(nk&&m&&Array.isArray(m.p)&&(m.p.length||m.r||m.n))nv[nk]={p:m.p.map(String),r:String(m.r||''),n:String(m.n||'')};});old=nv;}}
+  if(old){
+    /* 2026-10-06 用户令：r=不用 的标注删除；「选用动画」拍板(a)不丢——r=no 仅存 a 的纯拍板壳 */
     Object.keys(old).forEach(k=>{
-      const nk=DATA.mig[k],m=old[k];
-      if(nk&&m&&(m.p||'').length!==undefined&&Array.isArray(m.p)&&(m.p.length||m.r||m.n)){marks[nk]={p:m.p.map(String),r:String(m.r||''),n:String(m.n||'')};MIG_N++;}});
+      const m=old[k];if(!m||!Array.isArray(m.p))return;
+      if(m.r==='no'){
+        if(m.a){marks[k]={p:[],r:'',n:'',a:String(m.a||'')};MIG_N++;}
+        else MIG_DROP++;
+      }else if(m.p.length||m.r||m.n||m.a){
+        marks[k]={p:m.p.map(String),r:String(m.r||''),n:String(m.n||''),a:String(m.a||'')};MIG_N++;
+      }else MIG_DROP++;
+    });
     if(MIG_N){try{localStorage.setItem(LSKEY,JSON.stringify(marks));}catch(e){}}
+    try{localStorage.removeItem(LSOLD);localStorage.removeItem(LSV1);}catch(e){}
   }
 }
 try{localStorage.setItem('_cr_t','1');localStorage.removeItem('_cr_t');}catch(e){lsOK=false;}
@@ -315,34 +315,30 @@ function mkey(sec,id){return sec+'|'+id;}
 function getM(sec,id){let m=marks[mkey(sec,id)];if(!m){m={p:[],r:'',n:'',a:''};marks[mkey(sec,id)]=m;}return m;}
 function emptyM(){return {p:[],r:'',n:'',a:''};}
 function applyMarkToCard(el,m){
-  el.querySelectorAll('.pb').forEach(b=>b.classList.toggle('on',m.p.includes(b.dataset.p)));
   const sel=el.querySelector('.rsel');if(sel&&sel.value!==(m.r||''))sel.value=m.r||'';
   const nt=el.querySelector('.rnote');if(nt&&nt.value!==(m.n||''))nt.value=m.n||'';
   el.dataset.marked=(m.p.length||m.r||m.n||m.a)?'1':'';
   el.dataset.redo=m.r||'';
-  el.dataset.p=m.p.join(' ');
-  const okb=el.querySelector('.okb');if(okb)okb.classList.toggle('on',m.r==='no');
   el.classList.toggle('r-redo',m.r==='yes');
   el.classList.toggle('r-marked',!!m.p.length);
-  el.classList.toggle('r-clean',m.r==='no'&&!m.p.length);
+  el.classList.toggle('r-clean',m.r==='no');
 }
 function applyAllMarks(){
   document.querySelectorAll('.card').forEach(el=>applyMarkToCard(el,marks[el.dataset.key]||emptyM()));
 }
 function markCounts(){
-  const c={face:0,size:0,bg:0,diff:0,clip:0,other:0};let redo=0,clean=0,total=0;
+  let redo=0,clean=0,total=0;
   Object.values(marks).forEach(m=>{
     if(!m)return;
     if(m.p.length||m.r||m.n||m.a)total++;
     if(m.r==='yes')redo++;
-    if(m.r==='no'&&!m.p.length)clean++;
-    m.p.forEach(p=>{if(c[p]!==undefined)c[p]++;});
+    if(m.r==='no')clean++;
   });
-  return {c,redo,clean,total};
+  return {redo,clean,total};
 }
 let chipsT=null;
 function updateMarkChips(){clearTimeout(chipsT);chipsT=setTimeout(()=>{
-  const {c,redo,clean,total}=markCounts();
+  const {redo,clean,total}=markCounts();
   const box=$('#markIssues');box.innerHTML='<span style="color:var(--dim);font-size:12px;align-self:center">我的标注'+(lsOK?'':'（⚠ 本地存储不可用，务必导出保存）')+'：</span>';
   const mk=(label,cls,val,n)=>{const s=document.createElement('span');
     s.className=(n?'mchip '+cls:'mchip zero');s.innerHTML=label+'<span class="n">'+n+'</span>';
@@ -350,15 +346,7 @@ function updateMarkChips(){clearTimeout(chipsT);chipsT=setTimeout(()=>{
   mk('已标记','amb','marked',total);
   mk('需重做','','redo',redo);
   mk('不重做','grn','clean',clean);
-  P_TYPES.forEach(([k,t])=>mk(t,'','p:'+k,c[k]));
 },120);}
-function toggleProb(sec,id,p){
-  const m=getM(sec,id);const i=m.p.indexOf(p);
-  if(i>=0)m.p.splice(i,1);else m.p.push(p);
-  const el=document.querySelector('.card[data-key="'+mkey(sec,id)+'"]');
-  if(el)applyMarkToCard(el,m);
-  saveMarks();updateMarkChips();
-}
 $('#btnExport').onclick=()=>{
   const blob=new Blob([JSON.stringify({exported:new Date().toLocaleString(),marked:markCounts().total,marks},null,1)],{type:'application/json'});
   const a=document.createElement('a');a.href=URL.createObjectURL(blob);
@@ -522,10 +510,9 @@ function buildCard(sec,r){
     el.appendChild(pt);
   }else el.appendChild(document.createElement('div'));
 
-  // ── 审查列 ──
+  // ── 审查列（只留 是否重做 + 备注；疑:签点击即标需重做）──
   const rev=document.createElement('div');rev.className='rev';
-  let revHtml='<div class="pbtns">'+P_TYPES.map(pt=>'<button class="pb" data-p="'+pt[0]+'">'+pt[1]+'</button>').join('')+'</div>'+
-    '<div class="rrow"><button class="okb" title="复核通过：标记为可用（等同 重做:不用，随导出交付）">✓ 转可用</button><select class="rsel"><option value="">重做:待定</option><option value="yes">重做:需要</option><option value="no">重做:不用</option></select>'+
+  let revHtml='<div class="rrow"><select class="rsel" title="是否要重做"><option value="">重做:待定</option><option value="yes">重做:需要</option><option value="no">重做:不用</option></select>'+
     '<input class="rnote" type="text" placeholder="备注…"></div>';
   if(r.sec==='fam')revHtml='<div class="rrow"><button class="flipb chip" style="flex:none">视角:我</button>'+
     '<span style="color:var(--dim);font-size:10px">动画镜像 ⇄ 敌方原图朝向</span></div>'+revHtml;
@@ -533,10 +520,6 @@ function buildCard(sec,r){
   el.appendChild(rev);
   rev.addEventListener('click',e=>{
     e.stopPropagation();
-    const pb=e.target.closest('.pb');
-    if(pb){toggleProb(sec.key,r.id,pb.dataset.p);return;}
-    const ob=e.target.closest('.okb');
-    if(ob){const m=getM(sec.key,r.id);m.r=(m.r==='no')?'':'no';applyMarkToCard(el,marks[el.dataset.key]);saveMarks();updateMarkChips();return;}
     const fb=e.target.closest('.flipb');
     if(fb){
       const curIsPlayer=fb.textContent.indexOf('视角:我')>=0;
@@ -559,7 +542,12 @@ function buildCard(sec,r){
   });
   el.addEventListener('click',e=>{
     const sus=e.target.closest('.chip.sus');
-    if(sus){toggleProb(sec.key,r.id,sus.dataset.sus);return;}
+    if(sus){
+      e.stopPropagation();
+      const m=getM(sec.key,r.id);
+      if(m.r!=='yes'){m.r='yes';applyMarkToCard(el,marks[el.dataset.key]);saveMarks();updateMarkChips();}
+      return;
+    }
     openModal(sec.key,r.id,el._curSet?el._curSet.id:'');
   });
   return el;
@@ -586,7 +574,8 @@ DATA.sections.forEach(sec=>{
 })();
 
 /* ── 统计与问题面板 ───────────────────────── */
-$('#gen').textContent='生成于 '+DATA.generated+' · 共 '+DATA.total+' 审查卡（家族制·统一ID）'+(MIG_N?(' · 已从旧版迁移 '+MIG_N+' 条标注'):'');
+$('#gen').textContent='生成于 '+DATA.generated+' · 共 '+DATA.total+' 审查卡（家族制·统一ID）'
+  +(MIG_N?(' · 已迁移 '+MIG_N+' 条标注'+(MIG_DROP?('，删除「不用」'+MIG_DROP+' 条'):'')):'');
 let stHtml='';
 DATA.sections.forEach(s=>stHtml+='<b>'+s.title+'</b> '+s.rows.length+' 张　');
 $('#stats').innerHTML=stHtml;
@@ -613,11 +602,9 @@ function applyFilters(){
     if(ok&&q&&!el.dataset.q.includes(q))ok=false;
     if(ok&&bad&&!(el.dataset.bad||''))ok=false;
     if(ok&&mkV){
-      const hasP=(el.dataset.p||'').split(' ').filter(Boolean);
       if(mkV==='marked'&&!el.dataset.marked)ok=false;
       else if(mkV==='redo'&&el.dataset.redo!=='yes')ok=false;
       else if(mkV==='clean'&&el.dataset.redo!=='no')ok=false;
-      else if(mkV.indexOf('p:')===0&&hasP.indexOf(mkV.slice(2))<0)ok=false;
     }
     el.classList.toggle('hidden',!ok);
     if(ok)shown++;

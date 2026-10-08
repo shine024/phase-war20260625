@@ -120,6 +120,24 @@ static func _grant_legacy_format(reward: Dictionary, resource_managers: Dictiona
 		if fsm != null and fsm.has_method("add_merit"):
 			fsm.add_merit(merit_amt)
 			granted = true
+	# v6.51 批：相位经验（定义表 achievements_combat 在用；发放口与新格式 phase_xp 同源）
+	var xp_amt: int = int(reward.get("xp", 0))
+	if xp_amt > 0:
+		var pim: Node = _get_autoload("/root/PhaseInstrumentManager")
+		if pim != null:
+			if pim.has_method("grant_phase_field_xp"):
+				pim.grant_phase_field_xp("achievement", xp_amt)
+				granted = true
+			elif pim.has_method("add_phase_xp"):
+				pim.add_phase_xp(xp_amt)
+				granted = true
+	# v6.51 批：称号——荣誉轴暂无佩戴系统，走 feed 荣誉记录（宪法 C3：展示即发放）
+	var title_name: String = String(reward.get("title", ""))
+	if not title_name.is_empty():
+		var bus: Node = _get_autoload("/root/SignalBus")
+		if bus != null and bus.has_signal("feed_message"):
+			bus.feed_message.emit("🏆 获得称号：「%s」" % title_name)
+		granted = true
 	# 稀有/神话卡（rare_card/mythic_card/legendary_card → 从对应池抽卡发放）
 	ManagerLazyLoader.ensure_loaded("drop")  # DropManager 为 autoload+别名双层（ensure_loaded 幂等）
 	var dm: Node = resource_managers.get("DropManager")

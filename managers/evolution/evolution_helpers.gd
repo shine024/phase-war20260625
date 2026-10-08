@@ -151,7 +151,40 @@ static func get_rank_info(card_id: String, bpm_ref: Node) -> Dictionary:
 
 ## 平台/武器/合成卡用 UnitStats 推导；能量/法则用养成向公式
 ## v7.0: card_id 支持 instance_id（实例化养成，实战力估算读到实例养成数据）
+## v6.52（记录1#1/#26）：进程级 memo——背包整格重建对每张卡调本函数（战斗公式
+## build_stats + 武器 DPS 差分双 build），卡多时重建尖峰明显。key=全部输入指纹
+## （id/强化/改造串/继承/时代），数据变 key 变=天然失效，无需主动清。
+static var _power_score_cache: Dictionary = {}
+
 static func estimate_power_score(card_id_or_instance: String, bpm_ref: Node) -> float:
+	var ir_cache: Node = _get_instance_registry()
+	var inst_cache: CardResource = null
+	if ir_cache != null and ir_cache.has_method("get_instance"):
+		inst_cache = ir_cache.get_instance(card_id_or_instance)
+	var cache_key: String
+	if inst_cache != null:
+		var mods_sig := ""
+		var mods_arr: Array = inst_cache.mods if inst_cache.mods != null else []
+		for m in mods_arr:
+			mods_sig += (str(m.get("id", "")) + "|" + str(m.get("level", 0)) + ",") \
+				if (m is Dictionary) else (str(m) + ",")
+		var inherit_sig: float = 0.0
+		if ir_cache.has_method("get_inherit_bonus"):
+			inherit_sig = float(ir_cache.get_inherit_bonus(card_id_or_instance))
+		cache_key = "i|%s|%d|%d|%s|%.4f|%d" % [card_id_or_instance, int(inst_cache.enhance_level),
+			inst_cache.mods.size(), mods_sig, inherit_sig, _preview_battle_era()]
+	else:
+		cache_key = "t|%s|%d" % [card_id_or_instance, _preview_battle_era()]
+	if _power_score_cache.has(cache_key):
+		return float(_power_score_cache[cache_key])
+	var result: float = _estimate_power_score_uncached(card_id_or_instance, bpm_ref)
+	if _power_score_cache.size() > 6000:
+		_power_score_cache.clear()
+	_power_score_cache[cache_key] = result
+	return result
+
+
+static func _estimate_power_score_uncached(card_id_or_instance: String, bpm_ref: Node) -> float:
 	# v7.0: 解析 card_id（instance_id → card_id）
 	var card_id: String = card_id_or_instance
 	var ir: Node = _get_instance_registry()

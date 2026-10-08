@@ -143,8 +143,16 @@ func set_afk_manager(manager: AFKModeManager) -> void:
 
 ## v6.37：部署受阻人话提示——面板开着就显示在状态行（下一次状态切换自然覆盖）。
 ## power_cap 另有 FeatureUnlockPopup 一次性弹窗（manager 侧触发），此处管面板常驻可见性。
+## v6.52（记录1#14）：面板没开时不再静默丢弃——右上 toast 兜底（精神不足/次数尽
+## 停摆时玩家在别处界面也能收到一条提示）。
 func _on_afk_deploy_hint(text: String) -> void:
-	if not is_inside_tree() or not visible or text.is_empty():
+	if not is_inside_tree() or text.is_empty():
+		return
+	if not visible:
+		ManagerLazyLoader.ensure_loaded("toast")
+		var toast_mgr := get_node_or_null("/root/ToastManager")
+		if toast_mgr != null and toast_mgr.has_method("show_warning"):
+			toast_mgr.show_warning("挂机受阻：%s" % text)
 		return
 	status_label.text = "⚠ %s" % text
 

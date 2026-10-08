@@ -1,39 +1,305 @@
 {
- "exported": "2026/10/3 18:43:09",
- "marked": 5,
+ "exported": "2026/10/6 17:35:37",
+ "marked": 44,
  "marks": {
   "fam|ww1_arm_rolls": {
    "p": [
     "face"
    ],
    "r": "yes",
-   "n": "旧敌标注"
+   "n": "旧敌标注",
+   "a": ""
   },
   "fam|ww2_arm_sherman": {
    "p": [
     "bg"
    ],
    "r": "",
-   "n": "t34身份疑点"
-  },
-  "plat|void_mage_basic": {
-   "p": [
-    "other"
-   ],
-   "r": "no",
-   "n": ""
+   "n": "t34身份疑点",
+   "a": ""
   },
   "drop|drop_smg_mk2": {
    "p": [
     "clip"
    ],
+   "r": "yes",
+   "n": "旧缴获标注",
+   "a": ""
+  },
+  "fam|ww1_arm_ft17": {
+   "p": [
+    "clip"
+   ],
+   "r": "yes",
+   "n": "攻击",
+   "a": ""
+  },
+  "ind|ww1_a7v": {
+   "p": [
+    "size",
+    "diff"
+   ],
+   "r": "yes",
+   "n": "重生成 开火位置错了",
+   "a": ""
+  },
+  "ind|ww1_mark4": {
+   "p": [
+    "face",
+    "diff"
+   ],
+   "r": "yes",
+   "n": "都重做重生成 开火位置错了",
+   "a": ""
+  },
+  "fam|ww1_arty_77mm": {
+   "p": [],
+   "r": "yes",
+   "n": "",
+   "a": ""
+  },
+  "ind|ww1_105mm": {
+   "p": [
+    "diff",
+    "bg"
+   ],
+   "r": "yes",
+   "n": "",
+   "a": ""
+  },
+  "fam|mod_arm_stryker_e": {
+   "p": [
+    "diff"
+   ],
+   "r": "yes",
+   "n": "卡图换正侧方的",
+   "a": ""
+  },
+  "ind|mod_stryker_m2": {
+   "p": [
+    "bg",
+    "diff"
+   ],
+   "r": "yes",
+   "n": "",
+   "a": ""
+  },
+  "fam|mod_arm_m1a2sep": {
+   "p": [
+    "diff",
+    "clip"
+   ],
+   "r": "yes",
+   "n": "不是正侧面",
+   "a": ""
+  },
+  "ind|fut_space_fighter": {
+   "p": [
+    "diff"
+   ],
+   "r": "yes",
+   "n": "攻击与待机都重做",
+   "a": ""
+  },
+  "ind|fut_nano_drone": {
+   "p": [
+    "diff"
+   ],
+   "r": "yes",
+   "n": "都要重做",
+   "a": ""
+  },
+  "ind|guardian_ww1_ironclad": {
+   "p": [
+    "clip"
+   ],
+   "r": "yes",
+   "n": "",
+   "a": ""
+  },
+  "ind|guardian_future_omega": {
+   "p": [
+    "clip",
+    "diff",
+    "size",
+    "face"
+   ],
+   "r": "yes",
+   "n": "",
+   "a": ""
+  },
+  "ind|fe_iron_wall_bastion": {
+   "p": [],
+   "r": "yes",
+   "n": "",
+   "a": ""
+  },
+  "ind|fe_iron_wall_juggernaut": {
+   "p": [],
+   "r": "yes",
+   "n": "要做抬枪",
+   "a": ""
+  },
+  "ind|fe_aether_hover_cavalry": {
+   "p": [],
+   "r": "yes",
+   "n": "",
+   "a": ""
+  },
+  "ind|fe_aether_swarm_queen": {
+   "p": [],
+   "r": "yes",
+   "n": "",
+   "a": ""
+  },
+  "ind|fe_quantum_mobile_base": {
+   "p": [],
+   "r": "yes",
+   "n": "卡图和待机 攻击都重做",
+   "a": ""
+  },
+  "ind|fe_quantum_repair_drone": {
+   "p": [],
+   "r": "yes",
+   "n": "卡图和待机 攻击都重做",
+   "a": ""
+  },
+  "ind|fe_void_phase_cannon": {
+   "p": [],
+   "r": "yes",
+   "n": "",
+   "a": ""
+  },
+  "ind|fe_void_dimensional_soldier": {
+   "p": [],
+   "r": "yes",
+   "n": "卡图和待机 攻击都重做",
+   "a": ""
+  },
+  "ind|fe_frontier_veteran": {
+   "p": [],
+   "r": "yes",
+   "n": "要先变攻击姿势",
+   "a": ""
+  },
+  "ind|fe_frontier_mixed_company": {
+   "p": [],
+   "r": "yes",
+   "n": "",
+   "a": ""
+  },
+  "fam|ww2_arm_garand_para": {
+   "p": [],
+   "r": "yes",
+   "n": "将卡图变成动画一样的",
+   "a": ""
+  },
+  "fam|ww2_sup_gmc_truck": {
+   "p": [],
+   "r": "yes",
+   "n": "用待机的做卡图和攻击",
+   "a": ""
+  },
+  "fam|cold_sup_bmp1_x": {
+   "p": [],
    "r": "",
-   "n": "旧缴获标注"
+   "n": "",
+   "a": "main"
+  },
+  "fam|cold_inf_metis": {
+   "p": [],
+   "r": "",
+   "n": "",
+   "a": "main"
+  },
+  "fam|cold_arm_p18": {
+   "p": [],
+   "r": "",
+   "n": "",
+   "a": "main"
+  },
+  "fam|mod_arm_himars": {
+   "p": [],
+   "r": "",
+   "n": "",
+   "a": "main"
+  },
+  "fam|mod_sup_growler": {
+   "p": [],
+   "r": "",
+   "n": "",
+   "a": "alt:fut_attack_drone"
+  },
+  "plat|steel_fortress_basic": {
+   "p": [],
+   "r": "yes",
+   "n": "",
+   "a": ""
+  },
+  "plat|steel_titan_basic": {
+   "p": [],
+   "r": "yes",
+   "n": "",
+   "a": ""
+  },
+  "plat|flame_raider_basic": {
+   "p": [],
+   "r": "yes",
+   "n": "待机 攻击都重做",
+   "a": ""
+  },
+  "plat|flame_siege_basic": {
+   "p": [],
+   "r": "yes",
+   "n": "待机 攻击都重做",
+   "a": ""
+  },
+  "plat|thunter_striker_basic": {
+   "p": [],
+   "r": "yes",
+   "n": "待机 攻击都重做",
+   "a": ""
+  },
+  "plat|thunter_sniper_basic": {
+   "p": [],
+   "r": "yes",
+   "n": "待机 攻击都重做",
+   "a": ""
+  },
+  "plat|void_stealth_basic": {
+   "p": [],
+   "r": "yes",
+   "n": "待机 攻击都重做",
+   "a": ""
+  },
+  "plat|void_mage_basic": {
+   "p": [],
+   "r": "yes",
+   "n": "待机 攻击都重做",
+   "a": ""
+  },
+  "drop|drop_phase_lance": {
+   "p": [
+    "diff"
+   ],
+   "r": "yes",
+   "n": "",
+   "a": ""
+  },
+  "drop|drop_thunder_field": {
+   "p": [],
+   "r": "yes",
+   "n": "",
+   "a": ""
+  },
+  "drop|drop_mega_particle_cannon": {
+   "p": [],
+   "r": "yes",
+   "n": "",
+   "a": ""
   },
   "ind|ww1_lanchest": {
-   "p": [
-    "size"
-   ],
+   "p": [],
    "r": "yes",
    "n": "",
    "a": ""

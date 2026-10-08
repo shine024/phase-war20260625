@@ -1,0 +1,25 @@
+{
+ "fe_quantum_mobile_base": {
+  "status": "可以"
+ },
+ "fe_quantum_repair_drone": {
+  "status": "可以"
+ },
+ "fe_frontier_veteran": {
+  "status": "可以"
+ },
+ "mod_arm_stryker_e": {
+  "status": "可以"
+ },
+ "mod_arm_m1a2sep": {
+  "status": "可以"
+ },
+ "fe_void_dimensional_soldier": {
+  "note": "",
+  "status": "可以"
+ },
+ "fe_iron_wall_juggernaut": {
+  "note": "枪要向前指",
+  "status": "可以"
+ }
+}

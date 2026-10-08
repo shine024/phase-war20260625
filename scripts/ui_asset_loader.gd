@@ -190,6 +190,7 @@ const PLAYER_ICON_OVERRIDE: Dictionary = {
 	"drop_phase_lance": "drop_phase_lance",    # 相位刺刀班 ★专属卡图
 	"drop_thunder_field": "drop_thunder_field",# 雷霆突击班 ★专属卡图
 	"drop_railgun": "drop_railgun",            # 电磁步枪班 ★专属卡图
+	"drop_mega_particle_cannon": "drop_mega_particle_cannon",  # 巨型粒子炮 ★专属卡图（v6.52：动画首帧切图——此前无图回退链撞 vis_player_071，与风暴核心同图实机主诉）
 	"fut_cyborg": "vis_player_066",         # 机械步兵 → 机械步兵 ★完美同名
 	"fut_heavy_trooper": "vis_player_066",  # 重装机兵 → 机械步兵
 	"fut_assault_mech": "vis_player_067",   # 突击机甲 → 机甲步兵

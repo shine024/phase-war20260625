@@ -13,6 +13,14 @@ var _merge_map: Dictionary = {}
 # P1-7: 同屏上限——战斗播报密集时防止 VBox 无限向上堆叠
 const MAX_ACTIVE_TOASTS: int = 5
 
+# v6.52（记录1#16）：战后同帧 burst 滴流——结算帧 10+ 条提示（掉落+成就+委托+首通+解锁）
+# 同帧创建/驱逐 10 个 CJK autowrap 面板 = 实机"多条提示出来就卡死"主诉。池满且本帧已有
+# 直接创建时改入队，0.18s/条放行；单条路径零额外延迟。
+const _BURST_DRAIN_INTERVAL: float = 0.18
+var _pending_queue: Array = []     # [{message, duration, color, feed}]
+var _drain_timer: Timer = null
+var _burst_frame: int = -1         # burst 判定：本帧是否已直接创建过一条
+
 # 独立 toast 画布层 + 堆叠容器（_ready 时构建）
 var _toast_layer: CanvasLayer = null
 var _toast_container: VBoxContainer = null
@@ -183,6 +191,9 @@ func show_toast(message: String, duration: float = 2.0, color: Color = Color(0.2
 			return
 		else:
 			_merge_map.erase(message)
+	# v6.52: 同帧 burst 滴流（战后结算 10+ 条同帧）——池满且本帧已直接创建过则入队
+	if _maybe_enqueue_burst(message, duration, color, false):
+		return
 	# P1-7: 同屏上限——超出时快速淡出最旧一条
 	while active_toasts.size() >= MAX_ACTIVE_TOASTS:
 		_evict_oldest_toast()
@@ -235,6 +246,9 @@ func show_feed(message: String, duration: float = 2.6, color: Color = Color(0.30
 			tw.finished.connect(_on_toast_finished.bind(panel))
 			return
 		_merge_map.erase(message)
+	# v6.52: 同帧 burst 滴流（feed 更易连发：批量掉落/多系统解锁）
+	if _maybe_enqueue_burst(message, duration, color, true):
+		return
 	while active_toasts.size() >= MAX_ACTIVE_TOASTS:
 		_evict_oldest_toast()
 	var panel = _create_toast_panel(message, color, _feed_container)
@@ -327,3 +341,39 @@ func _evict_oldest_toast() -> void:
 
 ## （v6.38 已删：旧的"回退 root 第一个 Control"路径会把 toast 落进主画布造成层级混排，
 ## 容器失效一律经 _build_toast_layer 重建独立层。）
+
+## ═══ v6.52（记录1#16）同帧 burst 滴流 ═══
+
+## 池满且本帧已有直接创建 → 入队返回 true（延迟显示）；否则返回 false 走即时路径。
+func _maybe_enqueue_burst(message: String, duration: float, color: Color, feed: bool) -> bool:
+	if active_toasts.size() < MAX_ACTIVE_TOASTS:
+		return false
+	var frame := Engine.get_process_frames()
+	if _burst_frame != frame:
+		_burst_frame = frame   # 本帧第一条：照旧驱逐最旧并直接显示
+		return false
+	_pending_queue.append({"message": message, "duration": duration, "color": color, "feed": feed})
+	_ensure_drain_timer()
+	return true
+
+func _ensure_drain_timer() -> void:
+	if _drain_timer != null and is_instance_valid(_drain_timer):
+		return
+	_drain_timer = Timer.new()
+	_drain_timer.wait_time = _BURST_DRAIN_INTERVAL
+	_drain_timer.one_shot = false
+	_drain_timer.timeout.connect(_drain_pending_queue)
+	add_child(_drain_timer)
+	_drain_timer.start()
+
+func _drain_pending_queue() -> void:
+	if _pending_queue.is_empty():
+		_drain_timer.stop()
+		return
+	if active_toasts.size() >= MAX_ACTIVE_TOASTS:
+		return
+	var item: Dictionary = _pending_queue.pop_front()
+	if bool(item.get("feed", false)):
+		show_feed(String(item["message"]), float(item["duration"]), item["color"])
+	else:
+		show_toast(String(item["message"]), float(item["duration"]), item["color"])

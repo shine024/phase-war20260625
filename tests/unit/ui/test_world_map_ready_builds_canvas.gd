@@ -39,6 +39,7 @@ func after_test() -> void:
 	# 静态模板/窗口锚点跨测试进程存活，必须复位防污染其他用例
 	WorldMapScript._cached_level_map_template = null
 	WorldMapScript._built_window_anchor = -1
+	WorldMapScript._s_revealed_levels.clear()
 
 
 func _canvas() -> Control:
@@ -96,14 +97,38 @@ func test_level100_popup_embeds_gate_section_and_entry() -> void:
 	assert_object(lpm).is_not_null()
 	var saved_stars: Dictionary = lpm.level_stars.duplicate()
 	lpm.level_stars[100] = 1  # 门开启态（真实档：通关 100 有星）
+	# v6.51 勘误：v6.42 黑门文案改双档（未通关=首场试炼/通关=无限模式）后，本锁的
+	# 无条件"黑门 · 无限模式"断言过期（存量红锁——黑门区块与按钮本身两档都在）。
+	# 改为两档各锁一遍，完测后还原 EBM 通关态。
+	var ebm := get_node_or_null("/root/EndlessBlackgateManager")
+	if ebm == null:
+		var mll := get_node_or_null("/root/ManagerLazyLoader")
+		if mll != null and mll.has_method("ensure_loaded"):
+			mll.ensure_loaded("endless")
+		ebm = get_node_or_null("/root/EndlessBlackgateManager")
+	var saved_cleared: bool = bool(ebm.get("gate_cleared_once")) if ebm != null else false
+	# 未通关档：首场试炼文案（波数口径=FIRST_GATE_CORE_WAVE 试炼）
+	if ebm != null:
+		ebm.set("gate_cleared_once", false)
 	_wm.call("_show_level_info_popup", 100)
 	await get_tree().process_frame
 	var popup: Window = _wm.get("_level_info_popup")
 	assert_object(popup).is_not_null()
 	assert_str(popup.title).is_equal("关卡情报")
 	assert_object(_find_button_by_text(popup, "踏入黑门")).is_not_null()
-	assert_bool(_popup_contains_text(popup, "黑门 · 无限模式")).is_true()
+	assert_bool(_popup_contains_text(popup, "首场试炼")).is_true()
 	assert_bool(_popup_contains_text(popup, "波数")).is_true()
+	# 通关档：无限模式文案
+	if ebm != null:
+		ebm.set("gate_cleared_once", true)
+	_wm.call("_show_level_info_popup", 100)
+	await get_tree().process_frame
+	popup = _wm.get("_level_info_popup")
+	assert_object(popup).is_not_null()
+	assert_object(_find_button_by_text(popup, "踏入黑门")).is_not_null()
+	assert_bool(_popup_contains_text(popup, "黑门 · 无限模式")).is_true()
+	if ebm != null:
+		ebm.set("gate_cleared_once", saved_cleared)
 	lpm.level_stars = saved_stars
 
 
@@ -117,6 +142,48 @@ func test_normal_level_popup_has_no_gate_section() -> void:
 	var popup: Window = _wm.get("_level_info_popup")
 	assert_object(popup).is_not_null()
 	assert_object(_find_button_by_text(popup, "踏入黑门")).is_null()
+	lpm.level_stars = saved_stars
+
+
+## ⑧ v6.52（记录1#13/#30）：模板复用路径家/黑门入口摘旧重建——duplicate 不带
+## gui_input 连接，复用副本此前点击全死（"通关 100 黑门还锁着/点家没反应"）；
+## 解锁态/文案也随重建刷新（解锁后 modulate 1.0 + label 不再是"通关第 100 关开启"）。
+func test_template_reuse_rebuilds_home_and_blackgate() -> void:
+	var canvas := _canvas()
+	assert_object(canvas).is_not_null()
+	var home: Control = canvas.get_node_or_null("Lighthouse")
+	var gate: Button = canvas.get_node_or_null("BlackGateEntry")
+	assert_object(home).is_not_null()
+	assert_object(gate).is_not_null()
+	assert_int(home.gui_input.get_connections().size()).is_greater(0)
+	assert_int(gate.gui_input.get_connections().size()).is_greater(0)
+	# 未解锁档：门暗淡 + 锁定文案
+	var lpm: Node = get_node_or_null("/root/LevelProgressManager")
+	var saved_stars: Dictionary = lpm.level_stars.duplicate()
+	lpm.level_stars.erase(100)
+	# 强制走复用分支：同锚点重建（_map_built 置 false 后 _build_level_map 重入）
+	_wm.set("_map_built", false)
+	_wm.call("_build_level_map")
+	await get_tree().process_frame
+	var canvas2 := _canvas()
+	assert_object(canvas2).is_not_null()
+	var gate2: Button = canvas2.get_node_or_null("BlackGateEntry")
+	var home2: Control = canvas2.get_node_or_null("Lighthouse")
+	assert_object(gate2).is_not_null()
+	assert_object(home2).is_not_null()
+	assert_int(home2.gui_input.get_connections().size()).is_greater(0)
+	assert_int(gate2.gui_input.get_connections().size()).is_greater(0)
+	assert_bool(gate2.modulate.a < 0.6).is_true()
+	assert_str(gate2.tooltip_text).contains("通关第 100 关")
+	# 解锁档：重建后门亮起 + 文案切试炼/无限
+	lpm.level_stars[100] = 1
+	_wm.set("_map_built", false)
+	_wm.call("_build_level_map")
+	await get_tree().process_frame
+	var gate3: Button = _canvas().get_node_or_null("BlackGateEntry")
+	assert_object(gate3).is_not_null()
+	assert_bool(gate3.modulate.a > 0.9).is_true()
+	assert_bool(gate3.tooltip_text.contains("通关第 100 关")).is_false()
 	lpm.level_stars = saved_stars
 
 

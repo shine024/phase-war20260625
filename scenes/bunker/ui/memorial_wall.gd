@@ -9,6 +9,9 @@ signal closed
 const DT = preload("res://resources/design_tokens.gd")
 const PanelStyles = preload("res://scripts/ui/panel_styles.gd")
 const EnemyPhaseMasters = preload("res://data/enemy_phase_masters.gd")
+# v6.52（记录1#31）：纪念墙接同伴档案叙事——此前点亮只显示"名字 —— 称号"一行，
+# deed/last_words 全 30 条 bespoke 在 HeroArchiveTexts 里现成，接上即"纪念里有东西"。
+const HeroTexts = preload("res://data/hero_archive_texts.gd")
 
 const ACCENT := Color(1.0, 0.82, 0.45)          # 烛光琥珀
 const COL_LIT := Color(1.0, 0.84, 0.5)
@@ -37,10 +40,15 @@ func _load_masters() -> void:
 	_lamp_masters.clear()
 	for era in range(5):
 		for m in EnemyPhaseMasters.get_era_masters(era):
+			var mid := str(m.get("id", ""))
+			var faction := str(m.get("faction", ""))
+			var texts: Dictionary = HeroTexts.get_texts(mid, faction)
 			_lamp_masters.append({
-				"id": str(m.get("id", "")),
+				"id": mid,
 				"name": str(m.get("name", "？？？")),
 				"title": str(m.get("title", "")),
+				"deed": str(texts.get("deed", "")),
+				"last_words": str(texts.get("last_words", "")),
 			})
 	_lamp_masters.sort_custom(func(a, b): return a["id"] < b["id"])
 
@@ -165,7 +173,9 @@ func _build() -> void:
 	_name_label.add_theme_font_size_override("font_size", DT.FONT_SIZE_MEDIUM)
 	_name_label.add_theme_color_override("font_color", Color(1.0, 0.9, 0.7))
 	_name_label.text = "（点击亮起的灯，读一个名字）"
-	_name_label.custom_minimum_size = Vector2(0, 26)
+	# v6.52（记录1#31）：三行档案（名字/事迹/遗言）——autowrap + bbcode + 高度放宽
+	_name_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_name_label.custom_minimum_size = Vector2(0, 86)
 	quote.add_child(_name_label)
 
 	_start_pulse()
@@ -212,7 +222,14 @@ func _on_lamp_input(event: InputEvent, idx: int) -> void:
 	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
 		if _is_lit(idx) and idx < _lamp_masters.size():
 			var m: Dictionary = _lamp_masters[idx]
-			_name_label.text = "%s —— %s" % [m["name"], m["title"]]
+			# v6.52（记录1#31）：名字——称号 + 生前事迹 + 遗言（读档案口径）
+			# ⚠️ Label 不吃 bbcode——遗言自带「」引号区分，纯文本拼接
+			var lines := "%s —— %s" % [m["name"], m["title"]]
+			if not String(m.get("deed", "")).is_empty():
+				lines += "\n%s" % m["deed"]
+			if not String(m.get("last_words", "")).is_empty():
+				lines += "\n%s" % m["last_words"]
+			_name_label.text = lines
 		else:
 			_name_label.text = "（尚未点亮）"
 

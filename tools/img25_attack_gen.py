@@ -37,7 +37,8 @@ FS = 256
 
 GUIDE_W, GUIDE_H = 1536, 1024  # 3x2 f0 铺格导图（2K 16:9 同比例；agnes 先验 3x2，5x2 被无视 09-30 实测）
 COLS, ROWS = 3, 2
-GAP = 24                       # 格间白带（模型照抄版式用；白带也是切格参照）
+GAP = 56                       # 格间白带（模型照抄版式用；白带也是切格参照。
+                               # 10-07 v2：24px 太窄，模型内容满格时穿带，切格线无净列可选→56）
 
 
 def data_uri(im):
@@ -63,16 +64,20 @@ def sheet_guide(anchor):
 
 
 # 默认动作脚本（机炮开火，历史默认）。10-01 想像力批起可被 --cells-json 逐格覆盖。
+# 10-07 v2（R14 反推诊断）：删「下沉/后缩」类竖直/纵深动作词（诱发 3/4 视角），
+# 动作只落在画面平面内——炮口火光形态变化 + 车体沿横轴平移；火点写「圆润收敛」防星芒/曳光。
 DEFAULT_SEQ = "机炮开火"
 DEFAULT_CELLS = {
-    2: "预备，机身微微下沉蓄力，炮口出现很小的橙色火点；",
+    2: "预备，炮口出现一个很小的橙色圆形火点；",
     3: "开火！炮口焰在炮口位置爆发，明亮但不遮掩机身；",
-    4: "火光衰减，炮口只剩一小簇短火舌；",
-    5: "后坐，机身微微后缩，炮口挂着少量余烟；",
+    4: "火光衰减成贴在炮口上的一小团收敛圆润的火光；",
+    5: "车体整体沿画面横轴向右（炮口反方向）平移一小段，大小与离地高度完全不变，炮口挂着少量余烟；",
     6: "回到与格 1 完全一致的中性待机，余烟散尽（首尾闭合）。",
 }
 DEFAULT_FX = ("没有弹道、没有弹丸、没有飞行物、没有光束——只有炮口火光和烟；"
-              "火光和烟只贴在炮口位置且完整位于本格内部，绝不触碰格子边缘，绝不画在机尾或其他部位；除炮口焰与烟外无任何特效。")
+              "火光和烟只贴在炮口位置且完整位于本格内部，绝不触碰格子边缘，绝不画在机尾或其他部位；"
+              "烟朝画面左侧（炮口方向）飘散或原地消散，绝不向车尾方向（画面右侧）蔓延成横贯烟带；"
+              "除炮口焰与烟外无任何特效。")
 
 
 def build_prompt(subject, small_motion=False, cells=None, fx=None, seq=None, extra=None):
@@ -88,18 +93,28 @@ def build_prompt(subject, small_motion=False, cells=None, fx=None, seq=None, ext
         "第二张图是成品布局示例：它展示的就是最终要交付的雪碧图版式——同一主体在 2 行 3 列共六个格子里各出现一次，"
         "格与格之间是很宽的纯白间隔带。成品必须完全照搬这个版式：六格的位置、间隔带宽度、主体的大小和底缘位置都与示例一致。\n"
         "第一张图是主体的身份锚定帧。六格画的都是同一个主体：与锚定帧完全同身份、同体型、同比例、同配色、同武器、"
-        "同朝向（面朝画面正左方），以及与示例一致的纯色背景底色。\n"
+        "同朝向（面朝画面正左方）。\n"
+        "【硬性·背景】画面背景是均匀纯白色底（与第二张图版式示例的底色一致），六格完全一致，无渐变无杂物无光效；"
+        "主体涂装配色只以第一张图（身份锚定帧）为准。\n"
         + small +
         "任务：保持版式与主体大小不变，把六个格子画成" + subject + "面朝正左方的" + (seq or DEFAULT_SEQ) + "动作序列，每格一个独立完整姿态，"
         "绝不把相邻几格画成连在一起的漫画分镜。\n"
-        "格 1：中性悬停待机，与锚定帧完全一致，无任何特效；\n"
+        "格 1：%s\n" % (cells.get(1) or "中性悬停待机，与锚定帧完全一致，无任何特效；")
         + "".join("格 %d：%s\n" % (n, cells.get(n) or DEFAULT_CELLS[n]) for n in range(2, 7)) +
-        "【硬性·大小】六格主体大小完全相同，如同同一张图复制粘贴 6 次，每格主体完整不出本格、不触碰画面四边。\n"
+        "【硬性·大小】六格主体大小完全相同，如同同一张图复制粘贴 6 次，每格主体完整不出本格；"
+        "每格内容整体收缩在本格内部，上下左右四边各留出至少本格尺寸 6% 的空白边距，主体与火光都压不到格子边缘。\n"
         "【硬性·站位】每格主体位于格子内偏右的位置（主体中心约在本格横向右侧 40% 处），格子左侧留出空间给火光。\n"
-        "【硬性·朝向】六格全部面朝画面正左方，机炮指向画面左侧，绝不朝右，绝不允许正脸对镜头，绝不允许俯视或 3/4 视角。\n"
+        "【硬性·视角＝严格平面正侧视】六格全部是扁平的正侧面立视图：只看到主体的左侧面，"
+        "主体任何朝上的表面（顶面、顶盖、上表面）一律不可见；车体前后两端是垂直切面，没有可见的斜切面或纵深面；"
+        "轮子/负重轮排成一条水平线且每个轮子都是正圆（不是椭圆）；"
+        "主体头尾长轴与画面横轴完全平行，高度方向与画面纵轴完全平行，相机无俯仰（机械制图左视图、透视深度为零）；"
+        "六格与第一张图同一大小、同一离地高度——相当于把主体原样复制进每个格子，再只改动作部位；"
+        "第一张图只取它的平面轮廓、结构与配色身份，若锚定帧本身带任何透视（可见顶面/斜切面/椭圆轮），"
+        "一律按本条款的平面规则修正输出，不要照抄锚定帧的透视；炮口指向横轴最左端。\n"
         "【硬性·分格】六格必须是六个相互独立、完整的姿态，任何炮管、火光、烟都不得伸进隔壁格子。\n"
         "【硬性·特效】" + (fx or DEFAULT_FX) + "\n"
-        "【硬性·无地面】画面是悬在纯色背景前的空中小精灵：没有地面、没有地板、没有影子；炮口焰绝不在下方产生任何反光、光斑或倒影。\n"
+        "【硬性·无场景】画面是悬在均匀纯色背景前的主体本体：没有地面、没有地平线、没有影子；"
+        "炮口焰绝不在下方产生任何反光、光斑或倒影；除主体和它的火光烟外，画面里没有任何别的东西。\n"
         + ((extra or "") + "\n" if extra else "") +
         "不要数字、序号、文字、格子编号、边框线、地面、阴影、水印。"
     )
@@ -107,7 +122,7 @@ def build_prompt(subject, small_motion=False, cells=None, fx=None, seq=None, ext
 
 def gen_image(payload_path):
     for i in range(3):
-        r = subprocess.run(["curl", "--http1.1", "-s", "-X", "POST", IMG_API,
+        r = subprocess.run(["curl", "--http1.1", "-s", "--ssl-no-revoke", "-X", "POST", IMG_API,
                             "-H", "Authorization: Bearer " + KEYS[i % len(KEYS)],
                             "-H", "Content-Type: application/json",
                             "--data-binary", "@" + payload_path, "--max-time", "360"],
@@ -126,7 +141,7 @@ def gen_image(payload_path):
         if item.get("b64_json"):
             return base64.b64decode(item["b64_json"])
         if item.get("url"):
-            dl = subprocess.run(["curl", "--http1.1", "-s", "-L", item["url"], "--max-time", "120"],
+            dl = subprocess.run(["curl", "--http1.1", "-s", "--ssl-no-revoke", "-L", item["url"], "--max-time", "120"],
                                 capture_output=True, timeout=140)
             try:
                 Image.open(io.BytesIO(dl.stdout)).load()
@@ -329,6 +344,50 @@ def strip_rail_cols(cell, min_len=100, ratio=1.8):
     return Image.fromarray(a)
 
 
+def grid_cuts(sheet, keyed, n_cols=COLS, n_rows=ROWS, band_frac=0.5):
+    """v2 白带感知切格（10-07 mark4/105mm 实测：模型自画格子与 832 等分错位，
+    等分切线把车尾/火光切成竖直硬边——右缘 238px 连续不透明行程）。
+    原生近白带内找键控后内容最少的列/行作切线（火光斜穿白带也躲得开最薄列）；
+    检测不到内部白带时回退等分。返回 (xs, ys, desc)。"""
+    import numpy as np
+    W, H = sheet.size
+    rgb = np.asarray(sheet).astype(int)
+    white = np.abs(rgb - 255).max(axis=2) < 25
+    op = np.asarray(keyed)[:, :, 3] > 8
+
+    def cuts(profile_white, profile_op, n_parts, total):
+        L = len(profile_white)
+        hit = profile_white > band_frac
+        bands, i = [], 0
+        while i < L:
+            if hit[i]:
+                j = i
+                while j < L and hit[j]:
+                    j += 1
+                bands.append((i, j))
+                i = j
+            else:
+                i += 1
+        inner = [b for b in bands
+                 if b[0] > total * 0.08 and b[1] < total * 0.92 and b[1] - b[0] >= 8]
+        inner.sort(key=lambda b: b[1] - b[0], reverse=True)
+        if len(inner) < n_parts - 1:
+            return None
+        out = []
+        for b in sorted(inner[:n_parts - 1]):
+            out.append(b[0] + int(np.argmin(profile_op[b[0]:b[1]])))
+        return [0] + out + [total]
+
+    xs = cuts(white.mean(axis=0), op.sum(axis=0), n_cols, W)
+    ys = cuts(white.mean(axis=1), op.sum(axis=1), n_rows, H)
+    desc = ""
+    if xs is None or ys is None:
+        desc = "（回退等分）"
+        xs = xs or [W // n_cols * i for i in range(n_cols + 1)]
+        ys = ys or [H // n_rows * i for i in range(n_rows + 1)]
+    return xs, ys, desc
+
+
 def sheet_direct(raw_path, key, card=None):
     """原样直出雪碧图（09-30 用户拍板，取代 256 重排贴回）：
     原图去底（键控+depink+主体域+残线列）+ 反格水平翻转修正 + 卡图对齐，
@@ -339,12 +398,13 @@ def sheet_direct(raw_path, key, card=None):
     bg = detect_bg_color(sheet)
     keyed = chroma_key(sheet, bg)
     card_img = Image.open(card).convert("RGB") if card else None
+    xs, ys, cutdesc = grid_cuts(sheet, keyed)
     cw, ch = W // COLS, H // ROWS
     out = Image.new("RGBA", (W, H), (0, 0, 0, 0))
     flips = []
     for r in range(ROWS):
         for c in range(COLS):
-            cell = keyed.crop((c * cw, r * ch, (c + 1) * cw, (r + 1) * ch))
+            cell = keyed.crop((xs[c], ys[r], xs[c + 1], ys[r + 1]))
             cell = keep_main_bodies(cell)
             cell = depink(cell)
             cell = strip_rail_cols(cell)
@@ -353,6 +413,10 @@ def sheet_direct(raw_path, key, card=None):
                 flips.append(r * COLS + c + 1)
             if card_img is not None:
                 cell = fit_armor(cell, card_img)
+            if cell.size[0] > cw or cell.size[1] > ch:
+                sc = min(cw / cell.size[0], ch / cell.size[1])  # 超格统一缩进 832 槽
+                cell = cell.resize((max(1, int(cell.size[0] * sc)), max(1, int(cell.size[1] * sc))),
+                                   Image.LANCZOS)
             out.paste(cell, (c * cw, r * ch), cell)
     out.save(os.path.join(OUT, "%s_attack_sheet_832.png" % key))
     # 256 缩预览（原位等比缩，保高低原样）
@@ -378,7 +442,8 @@ def sheet_direct(raw_path, key, card=None):
         comp2.append(b.convert("RGB"))
     comp2[0].save(os.path.join(OUT, "%s_attack_anim_pal8.gif" % key), save_all=True,
                   append_images=comp2[1:], duration=125, loop=0)
-    print("  [%s] sheet_832 直出 翻转格%s 空格%d" % (key, flips or "无", 0))
+    print("  [%s] sheet_832 直出%s 切线x%s y%s 翻转格%s 空格%d" %
+          (key, cutdesc, xs[1:-1], ys[1:-1], flips or "无", 0))
     return out
 
 
@@ -460,10 +525,14 @@ def main():
     ap.add_argument("key")
     ap.add_argument("--subject", default="这架未来派纳米武装无人机")
     ap.add_argument("--rolls", type=int, default=1, help="连掷 N 版（单掷波动大，多掷选优 09-30）")
+    ap.add_argument("--roll-start", type=int, default=1,
+                    help="掷号起点（默认 1）；加掷不覆盖旧候选时用，如旧到 R2 则 --roll-start 3")
     ap.add_argument("--card-align", action="store_true",
                     help="装甲色对齐卡图（Reinhard 迁移只动蓝系装甲，09-30 fut_nano_drone 实测）")
     ap.add_argument("--card", default=None,
                     help="卡图路径覆盖（共享/代理卡图单位必传；默认 assets/card_icons/player/<key>.png）")
+    ap.add_argument("--anchor", default=None,
+                    help="身份锚覆盖（两段式阶段2：指向过审标准单张 <key>_std_Rn.png；默认 staging/<key>_anchor_raw.png 卡图锚）")
     ap.add_argument("--direct", action="store_true", default=True,
                     help="原样直出 832 雪碧图（09-30 用户拍板默认；--legacy-256 走旧重排路）")
     ap.add_argument("--legacy-256", dest="direct", action="store_false",
@@ -482,7 +551,7 @@ def main():
         spec_cells = {k: v for k, v in _j.items() if k.isdigit()}
         spec_fx, spec_seq, spec_extra = _j.get("fx"), _j.get("seq"), _j.get("extra")
 
-    anchor_path = os.path.join(OUT, args.key + "_anchor_raw.png")
+    anchor_path = args.anchor or os.path.join(OUT, args.key + "_anchor_raw.png")
     if not os.path.exists(anchor_path):
         print("缺锚定帧:", anchor_path, "先跑 img25_anchor_gen.py")
         sys.exit(1)
@@ -502,7 +571,7 @@ def main():
                            ensure_ascii=False))
     print("生成中… 共 %d 掷" % args.rolls, flush=True)
     results = []
-    for roll in range(1, args.rolls + 1):
+    for roll in range(args.roll_start, args.roll_start + args.rolls):
         t0 = time.time()
         raw = gen_image(payload)
         if raw is None:

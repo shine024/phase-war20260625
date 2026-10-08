@@ -1656,9 +1656,11 @@ func take_damage(amount: float, attacker: Variant = null) -> void:
 		var pen: float = 0.0
 		# 攻击者类型（用于选对应维度的防御）
 		var attacker_kind: int = -1
+		var atk_stats_u: UnitStats = null
 		if attacker != null and is_instance_valid(attacker) and "stats" in attacker:
 			var atk_stats: Variant = attacker.get("stats")
 			if atk_stats is UnitStats:
+				atk_stats_u = atk_stats
 				# v6.2: 条件型穿甲（相克 MOD）按目标(自身)类型激活
 				# 敌人无 combat_kind 字段，从 stats 读（敌人 stats 可能为 null，回退到 LIGHT）
 				var self_kind: int = stats.combat_kind if stats != null else 0
@@ -1672,8 +1674,20 @@ func take_damage(amount: float, attacker: Variant = null) -> void:
 		# v6.6 修复：防御按攻击者类型选三维维度，而非用单一 defense 字段。
 		# 修复前用 defense 单字段（多为配置旧值/5.0默认），三维 defense_light/armor/air 形同虚设，
 		# 导致高防敌人被打像没防御。与 swarm_enemy_slot.take_damage 口径对齐。
+		# v6.52（记录1#37）：攻防同维度配对——与 construct_unit.take_damage 同批统一：
+		# 有攻击者 stats 时走 attack_dim_for_target（按攻击维度配对，火炮打坦克不再被
+		# 对轻防御挡）；无 stats 维持兵种口径兜底（convert_defense_dimension 重赋修正保留）。
 		var base_def: float = defense  # 兜底：旧单字段
-		if stats != null and attacker_kind >= 0:
+		if stats != null and atk_stats_u != null:
+			# match 值=攻击维度（LIGHT/ARMOR/AIR 三维，attack_dim_for_target 唯一口）
+			match AttackCalculator.attack_dim_for_target(atk_stats_u, stats.combat_kind):
+				GC.CombatKind.ARMOR:
+					base_def = stats.defense_armor
+				GC.CombatKind.AIR:
+					base_def = stats.defense_air
+				_:
+					base_def = stats.defense_light
+		elif stats != null and attacker_kind >= 0:
 			match attacker_kind:
 				GC.CombatKind.LIGHT, GC.CombatKind.SUPPORT:
 					base_def = stats.defense_light

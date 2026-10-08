@@ -107,6 +107,9 @@ func _ready() -> void:
 	gui_input.connect(_on_gui_input)
 	mouse_entered.connect(_on_mouse_entered)
 	mouse_exited.connect(_on_mouse_exited)
+	# v6.52（记录1#2）：接顶层悬停提示层——内建 tooltip 画在 layer 0 会被 PopupLayer(100)
+	# 内的卡框盖住（v6.42 契约同款；符文瓷砖/资源格同范式），战斗卡提示此前不可见
+	HoverTip.bind_control(self)
 	# P1-5: 可点击卡牌用手型光标（非 Button 控件不在全局 node_added 钩子覆盖范围）
 	mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 	clip_contents = false
@@ -1354,6 +1357,10 @@ func _get_mod_count_for_card(c: CardResource) -> int:
 
 
 ## v8.0: 安全获取战力分（复用 evolution_helpers）
+## v6.52（记录1#26）：口径统一——改走战斗公式 estimate_power_score（与改造舱/军衔/
+## 改造门槛同源，实例养成全量入算）。此前恒走 meta_only 元公式（80+28×强化+22×改数），
+## 与改造舱显示的战斗公式值差数倍（实机主诉"改造里几千战力，背包还是几百"）。
+## ENERGY/LAW 卡在 estimate_power_score 内部自动回退 meta_only。
 func _get_card_power_score(c: CardResource) -> float:
 	if c == null:
 		return 0.0
@@ -1363,7 +1370,9 @@ func _get_card_power_score(c: CardResource) -> float:
 	if _power_memo.has(id_for_power):
 		return float(_power_memo[id_for_power])
 	var score := 0.0
-	if BlueprintManager and BlueprintManager.has_method("_estimate_power_score_meta_only"):
+	if BlueprintManager and BlueprintManager.has_method("_estimate_power_score"):
+		score = BlueprintManager._estimate_power_score(id_for_power)
+	elif BlueprintManager and BlueprintManager.has_method("_estimate_power_score_meta_only"):
 		score = BlueprintManager._estimate_power_score_meta_only(id_for_power)
 	_power_memo[id_for_power] = score
 	return score
@@ -1667,7 +1676,13 @@ func _set_mtg_minimal_card_view(c: CardResource, name_label, lv_label, icon_rect
 		tip_parts.append(combat_tip)
 	elif not c.summary_line.is_empty():
 		tip_parts.append(c.summary_line)
+	# v6.52（记录1#2）：装备交互常驻提示——战斗卡=拖到绿槽 / 符文=点击装备，
+	# 此前只存在于一次性弹窗与教程文案，错过后再无处可看（实机"没有提示"主诉）
+	if c.card_type == GC.CardType.COMBAT_UNIT:
+		tip_parts.append("▸ 装备：按住拖到底部相位仪绿槽")
 	tooltip_text = "\n".join(tip_parts)
+	# v6.52：HoverTip 顶层提示同步（悬停时才读 meta，对象池复用安全）
+	HoverTip.set_tip(self, tooltip_text)
 	_apply_card_chrome(c)
 	if art_clip:
 		call_deferred("_layout_mtg_art_clip", art_clip)

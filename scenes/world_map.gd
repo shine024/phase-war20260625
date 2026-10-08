@@ -12,8 +12,11 @@ var _proc_canvas: Control = null
 func _input(event: InputEvent) -> void:
 	# v28 方案11：滚轮缩放 + 拖拽平移的移动/释放走全局输入——
 	# gui_input 收不到被关卡按钮吞掉的 motion/滚轮事件（指针扫过按钮时拖拽会断）；
-	# 面板隐藏时不得截胡全局滚轮，_runtime_active 守卫必须有
-	if MAP_SCHEME == 11 and _runtime_active and _map_built and not event.is_echo():
+	# 面板隐藏时不得截胡全局滚轮。
+	# v6.51 批：可见守卫从 _runtime_active 改为直接查 is_visible_in_tree()——
+	# _runtime_active 只由 visibility_changed 驱动，嵌入模式存在时序缺口（回调未触发/
+	# 首建期间为假），面板明明可见滚轮却整体失效（主诉"有时不让缩放"根因之一）。
+	if MAP_SCHEME == 11 and is_visible_in_tree() and _map_built and not event.is_echo():
 		if _handle_map_view_input(event):
 			return
 	# ESC键返回主场景
@@ -211,6 +214,7 @@ var _level_info_popup: Window = null
 var _runtime_active: bool = false
 # v26.19 卡车行军 UI 状态
 var _fuel_chip: Label = null          # 顶栏燃料/停靠 chip
+var _fuel_chip_retry_active: bool = false  # v6.52: bunker 懒加载未就位时的一次性延迟重刷旗标
 var _truck_badge: Label = null        # 卡车标记上的"行驶中→"徽标
 
 ## 信号：当用户点击返回主界面时发出
@@ -235,6 +239,20 @@ func _truck_anchor_level() -> int:
 ## v36 窗口：关卡是否在锚点 ±MAP_WINDOW_RADIUS 视野内
 func _in_map_window(level_index: int, anchor: int) -> bool:
 	return absi(level_index - anchor) <= MAP_WINDOW_RADIUS
+
+
+## v6.52（记录1#28）：以存档星标回填揭示集——有星=到过=恒建。静态揭示集只在进程内
+## 存活，重启后停靠 100 的玩家窗口只剩 90..100，走过的 1~89 关节点全部消失。
+func _seed_revealed_from_progress() -> void:
+	var lpm := get_node_or_null("/root/LevelProgressManager")
+	if lpm == null and ManagerLazyLoader != null and ManagerLazyLoader.has_method("ensure_loaded"):
+		ManagerLazyLoader.ensure_loaded("level_progress")
+		lpm = get_node_or_null("/root/LevelProgressManager")
+	if lpm == null or not lpm.has_method("get_level_stars"):
+		return
+	for lv in range(1, LEVEL_COUNT + 1):
+		if int(lpm.get_level_stars(lv)) > 0:
+			_s_revealed_levels[lv] = true
 
 
 ## v36 窗口提示（屏幕空间 chrome）：当前视野范围 + 前方剩余关数
@@ -274,8 +292,9 @@ func _ready() -> void:
 		_tpm.notify_surface_opened("world_map")
 	# R1-7（设计审查 F-17，2026-09-13）：地图 BGM——不显式切歌会沿用上一场景曲目
 	# （战后经基地进图仍是基地曲，从标题直进则是标题曲）；与 v22.4 基地同款处理。
+	# v6.52.2（记录1#7）：按当前战线时代选 hub 曲（时代曲未落地自动回退 hub 单曲）。
 	if AudioManager != null and AudioManager.has_method("play_music"):
-		AudioManager.play_music("hub")
+		AudioManager.play_music(AudioManager.music_key_for_current_era())
 	# v22 百灯群岛：旧网格地图的星空/扫描线绘制退役，由 map_void_base 底图承担
 	var scroll_ready := get_node_or_null("Margin/VBox/ScrollContainer") as ScrollContainer
 	if scroll_ready != null and not scroll_ready.gui_input.is_connected(_on_map_gui_input):
@@ -448,13 +467,20 @@ func _build_level_map() -> void:
 	var scroll: ScrollContainer = get_node_or_null("Margin/VBox/ScrollContainer") as ScrollContainer
 	if scroll == null:
 		return
-	# 清空旧内容
+	# 清空旧内容——先摘树再 queue_free：同帧 queue_free 旧节点+add 同名新节点会被
+	# Godot 静默改名 @Control@N（v6.41.1 同款撞名雷）——重建后 MapCanvas 按名查找
+	# 永久落空 → _process 自校验/滚轮缩放/渗透重建整链死透（"有时不让缩放"根因）
 	for c in scroll.get_children():
+		scroll.remove_child(c)
 		c.queue_free()
 
 	var current_level: int = GameManager.current_level if GameManager else 1
 	_refresh_static_state(current_level)
 	_ensure_layout()
+	# v6.52（记录1#28）：走过/打过的关常显——进程内揭示集重启即清零，通关 100 后
+	# 停靠再进图窗口只剩 90..100，1~89 节点全不建（主诉"前面打开的关都看不到了"）。
+	# 用存档星标回填：有星=到过=恒建（桥线/占领环消费同一集合，自动跟随）。
+	_seed_revealed_from_progress()
 	# v36 窗口锚点（在途=目的地，否则停靠关）：锚点变了禁用跨实例模板复用，强制全量重建
 	var window_anchor: int = _truck_anchor_level() if MAP_SCHEME == 11 else current_level
 	if MAP_SCHEME == 11 and _built_window_anchor != window_anchor:
@@ -476,16 +502,26 @@ func _build_level_map() -> void:
 			# v26.26 修复：模板快照带着死连接的卡车标记/路线副本（duplicate 不复制运行期
 			# draw/gui_input 连接）——二次进图表现为无光点/无路线/徽标不显示，死标记
 			# 还是隐形点击阻塞块。先摘除死副本，再按首建同款重建活的。
-			for stale_name in ["TruckMarker", "TravelRoute"]:
+			for stale_name in ["TruckMarker", "TravelRoute", "Lighthouse", "HomeLabel",
+					"BlackGateEntry", "GateLabel"]:
 				var stale := reused.get_node_or_null(stale_name)
 				if stale != null:
 					reused.remove_child(stale)
 					stale.queue_free()
 			_add_truck_marker(reused)
+			# v6.52（记录1#13/#30）：家/黑门入口同款摘旧重建——duplicate 丢连接+解锁态
+			# 陈旧，复用路径的黑门此前恒显示锁死文案且点击无响应
+			_build_home_marker(reused)
+			if MAP_SCHEME == 11:
+				_build_blackgate_entry(reused)
 			_apply_gate_state(reused)
 			_apply_incursion_markers(reused)
 			if MAP_SCHEME == 11:
-				_fit_canvas_to_viewport.call_deferred(reused, scroll)
+				# v6.51 批：模板复用路径同样消费 keep 旗标——此前只有全量重建路径保留
+				# 用户缩放，复用路径每次把 zoom 拍回 1.0（与 v6.42 keep_zoom 拍板相悖）
+				var keep_reuse := _zoom_keep_pending
+				_zoom_keep_pending = false
+				_fit_canvas_to_viewport.call_deferred(reused, scroll, keep_reuse)
 			_map_built = true
 			_center_on_current_level()
 			return
@@ -539,101 +575,17 @@ func _build_level_map() -> void:
 	gate.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	canvas.add_child(gate)
 	_apply_gate_state(canvas)
-	_apply_incursion_markers(canvas)
+	# v6.51 批：渗透热区挪到建图尾段（卡车标记之后）重建——原在关卡节点之前建 holder，
+	# 节点白盘后画直接压住红点（主诉"看不到红点"根因之一）
 
-	# 4) 家（v23）：方案 11 不叠任何贴图——小号程序标记（原图已画山体掩体），点击回基地
+	# 4) 家（v23）：方案 11 小号程序标记（原图已画山体掩体）/ 方案 6/8 灯塔贴图——点击回基地
+	# 4b) v27 黑门（星冥族入口）：终局巨环上的可点热区（解锁判定见 _is_blackgate_unlocked）
+	# v6.52（记录1#13/#30）：两块抽成独立构建函数+固定命名——跨实例模板复用的 duplicate
+	# 不带信号连接，复用副本的家/黑门点击全死、解锁态/文案陈旧（"通关 100 黑门还锁着"
+	# "点我方基地没反应"同根），复用路径摘旧重建。
+	_build_home_marker(canvas)
 	if MAP_SCHEME == 11:
-		var marker := Panel.new()
-		marker.name = "Lighthouse"
-		var msb := StyleBoxFlat.new()
-		msb.set_corner_radius_all(9)
-		msb.bg_color = Color(0.85, 0.51, 0.24, 0.95)
-		msb.border_width_left = 3
-		msb.border_width_top = 3
-		msb.border_width_right = 3
-		msb.border_width_bottom = 3
-		msb.border_color = Color(1, 1, 1, 0.5)
-		marker.add_theme_stylebox_override("panel", msb)
-		marker.size = Vector2(26, 26)
-		marker.position = _home_pos() - Vector2(13, 13)
-		marker.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-		marker.tooltip_text = "家 · 移动基地——点击进入"
-		marker.gui_input.connect(_on_home_gui_input)
-		canvas.add_child(marker)
-		var home_lbl := Label.new()
-		home_lbl.text = "移动基地"
-		home_lbl.add_theme_font_size_override("font_size", 24)
-		home_lbl.add_theme_color_override("font_color", Color(1.0, 0.71, 0.37, 0.95))
-		home_lbl.add_theme_color_override("font_outline_color", DesignTokens.COLOR_BACKDROP_DEEP)
-		home_lbl.add_theme_constant_override("outline_size", 3)
-		home_lbl.position = _home_pos() + Vector2(20, -16)
-		home_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		canvas.add_child(home_lbl)
-
-		# 4b) v27 黑门（星冥族入口）：终局巨环上的可点热区（解锁判定见 _is_blackgate_unlocked）
-		var gate_entry := Button.new()
-		gate_entry.name = "BlackGateEntry"
-		gate_entry.flat = true
-		var gate_unlocked: bool = _is_blackgate_unlocked()
-		# v6.35: 通关后世界状态——异族不再渗出,深处挑战保留
-		var gate_cleared_once: bool = false
-		var _gate_ebm0 := _blackgate_mgr()
-		if _gate_ebm0 != null:
-			gate_cleared_once = bool(_gate_ebm0.get("gate_cleared_once"))
-		var gate_p := _gate_pos()
-		gate_entry.size = Vector2(150, 130)
-		gate_entry.position = gate_p - gate_entry.size * 0.5
-		gate_entry.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-		gate_entry.tooltip_text = ("黑门——已平息，异族不再渗出；深处仍可再战（无限模式）" if gate_cleared_once \
-			else "黑门——星冥族的裂隙（首场试炼：第 %d 波决胜；通关后开放无限模式）" % EndlessBlackgateRef.FIRST_GATE_CORE_WAVE) if gate_unlocked \
-			else "黑门（通关第 100 关后开启）"
-		gate_entry.modulate = Color(1, 1, 1, 1.0) if gate_unlocked else Color(1, 1, 1, 0.35)
-		gate_entry.gui_input.connect(_on_blackgate_gui_input)
-		# v6.22.5: 黑门图腾（P3-3 接线方案 M3-尾 拍板"只接 black_sun"）——黑日图挂入口中心
-		# 64px（对齐节点盘径 1.7~2 倍口径）；作按钮子节点自动随 modulate 联动锁定明暗
-		var gate_icon := TextureRect.new()
-		gate_icon.texture = load("res://assets/map/black_sun.png")
-		gate_icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-		gate_icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-		gate_icon.size = Vector2(64, 64)
-		gate_icon.position = (gate_entry.size - gate_icon.size) * 0.5
-		gate_icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		gate_entry.add_child(gate_icon)
-		canvas.add_child(gate_entry)
-		var gate_lbl := Label.new()
-		# v28：未解锁时可见文案直接带解锁条件（原"黑门（未启）"玩家不知道怎么开）
-		# v6.42: 首通前显示"试炼"档（通关后切"无限"）
-		gate_lbl.text = ("黑门·试炼" if gate_cleared_once == false else "黑门·无限") if gate_unlocked else "黑门（通关第 100 关开启）"
-		gate_lbl.add_theme_font_size_override("font_size", 20)
-		gate_lbl.add_theme_color_override("font_color", Color(0.62, 0.85, 1.0, 0.95) if gate_unlocked \
-			else Color(0.62, 0.85, 1.0, 0.4))
-		gate_lbl.add_theme_color_override("font_outline_color", DesignTokens.COLOR_BACKDROP_DEEP)
-		gate_lbl.add_theme_constant_override("outline_size", 3)
-		gate_lbl.position = gate_p + Vector2(-34, 64)
-		gate_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		canvas.add_child(gate_lbl)
-	else:
-		# 方案 6/8：灯塔/掩体贴图（可点击回基地）
-		var lh := TextureRect.new()
-		lh.name = "Lighthouse"
-		var lh_tex: Texture2D = null
-		lh_tex = _tex(LIGHTHOUSE_TEX_PATH)
-		lh.texture = lh_tex
-		var lh_scale: float = LIGHTHOUSE_DISPLAY_H / lh_tex.get_height()
-		lh.size = Vector2(lh_tex.get_width() * lh_scale, LIGHTHOUSE_DISPLAY_H)
-		lh.position = _home_pos() - lh.size * 0.5
-		lh.mouse_filter = Control.MOUSE_FILTER_STOP
-		lh.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-		lh.tooltip_text = "移动基地（家）——点击回基地"
-		lh.gui_input.connect(_on_home_gui_input)
-		canvas.add_child(lh)
-		var home_lbl2 := Label.new()
-		home_lbl2.text = "移动基地"
-		home_lbl2.add_theme_font_size_override("font_size", 14)
-		home_lbl2.add_theme_color_override("font_color", Color(1.0, 0.71, 0.37, 0.9))
-		home_lbl2.position = _home_pos() + Vector2(-28, lh.size.y * 0.42)
-		home_lbl2.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		canvas.add_child(home_lbl2)
+		_build_blackgate_entry(canvas)
 
 	# 5) overlay 层：微光桥 / 占领环 / 当前关光圈（draw 信号驱动）
 	_overlay_layer = Control.new()
@@ -707,10 +659,9 @@ func _build_level_map() -> void:
 	if MAP_SCHEME == 11:
 		_add_truck_marker(canvas)
 
-	# 4c) v26.12c：移动基地卡车标记——v26.28 放到节点层之后创建（压在节点盘/关卡名
-	# 之上，到站不被节点盖上）；路线层随之同层（线端画进节点盘，衔接可读）
+	# v6.51 批：渗透热区在节点层与卡车标记都就位后重建（层级插在卡车标记之下）
 	if MAP_SCHEME == 11:
-		_add_truck_marker(canvas)
+		_apply_incursion_markers(canvas)
 
 	# 标记地图已构建（静态模板供跨场景复用）
 	_cached_level_map_template = canvas.duplicate(Node.DUPLICATE_USE_INSTANTIATION) as Control
@@ -720,6 +671,108 @@ func _build_level_map() -> void:
 		_fit_canvas_to_viewport.call_deferred(canvas, scroll, keep_zoom)
 	_map_built = true
 	_center_on_current_level()
+
+## 家标记（v23）：方案 11=小号程序标记（原图已画山体掩体）/ 方案 6/8=灯塔贴图——点击回基地。
+## v6.52（记录1#13/#30）抽函数：跨实例模板复用路径摘旧重建（duplicate 不带信号连接，
+## 复用副本点击全死）；标签固定命名供复用路径按名清理。
+func _build_home_marker(canvas: Control) -> void:
+	if MAP_SCHEME == 11:
+		var marker := Panel.new()
+		marker.name = "Lighthouse"
+		var msb := StyleBoxFlat.new()
+		msb.set_corner_radius_all(9)
+		msb.bg_color = Color(0.85, 0.51, 0.24, 0.95)
+		msb.border_width_left = 3
+		msb.border_width_top = 3
+		msb.border_width_right = 3
+		msb.border_width_bottom = 3
+		msb.border_color = Color(1, 1, 1, 0.5)
+		marker.add_theme_stylebox_override("panel", msb)
+		marker.size = Vector2(26, 26)
+		marker.position = _home_pos() - Vector2(13, 13)
+		marker.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+		marker.tooltip_text = "家 · 移动基地——点击进入"
+		marker.gui_input.connect(_on_home_gui_input)
+		canvas.add_child(marker)
+		var home_lbl := Label.new()
+		home_lbl.name = "HomeLabel"
+		home_lbl.text = "移动基地"
+		home_lbl.add_theme_font_size_override("font_size", 24)
+		home_lbl.add_theme_color_override("font_color", Color(1.0, 0.71, 0.37, 0.95))
+		home_lbl.add_theme_color_override("font_outline_color", DesignTokens.COLOR_BACKDROP_DEEP)
+		home_lbl.add_theme_constant_override("outline_size", 3)
+		home_lbl.position = _home_pos() + Vector2(20, -16)
+		home_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		canvas.add_child(home_lbl)
+	else:
+		# 方案 6/8：灯塔/掩体贴图（可点击回基地）
+		var lh := TextureRect.new()
+		lh.name = "Lighthouse"
+		var lh_tex: Texture2D = null
+		lh_tex = _tex(LIGHTHOUSE_TEX_PATH)
+		lh.texture = lh_tex
+		var lh_scale: float = LIGHTHOUSE_DISPLAY_H / lh_tex.get_height()
+		lh.size = Vector2(lh_tex.get_width() * lh_scale, LIGHTHOUSE_DISPLAY_H)
+		lh.position = _home_pos() - lh.size * 0.5
+		lh.mouse_filter = Control.MOUSE_FILTER_STOP
+		lh.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+		lh.tooltip_text = "移动基地（家）——点击回基地"
+		lh.gui_input.connect(_on_home_gui_input)
+		canvas.add_child(lh)
+		var home_lbl2 := Label.new()
+		home_lbl2.name = "HomeLabel"
+		home_lbl2.text = "移动基地"
+		home_lbl2.add_theme_font_size_override("font_size", 14)
+		home_lbl2.add_theme_color_override("font_color", Color(1.0, 0.71, 0.37, 0.9))
+		home_lbl2.position = _home_pos() + Vector2(-28, lh.size.y * 0.42)
+		home_lbl2.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		canvas.add_child(home_lbl2)
+
+## 黑门入口热区（方案 11 专用）：解锁/试炼态的文案·明暗·点击全在构建时读当前状态——
+## v6.52（记录1#30）模板复用路径改为摘旧重建，通关 100 后再进图黑门即时反映解锁态。
+func _build_blackgate_entry(canvas: Control) -> void:
+	var gate_entry := Button.new()
+	gate_entry.name = "BlackGateEntry"
+	gate_entry.flat = true
+	var gate_unlocked: bool = _is_blackgate_unlocked()
+	# v6.35: 通关后世界状态——异族不再渗出,深处挑战保留
+	var gate_cleared_once: bool = false
+	var _gate_ebm0 := _blackgate_mgr()
+	if _gate_ebm0 != null:
+		gate_cleared_once = bool(_gate_ebm0.get("gate_cleared_once"))
+	var gate_p := _gate_pos()
+	gate_entry.size = Vector2(150, 130)
+	gate_entry.position = gate_p - gate_entry.size * 0.5
+	gate_entry.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	gate_entry.tooltip_text = ("黑门——已平息，异族不再渗出；深处仍可再战（无限模式）" if gate_cleared_once \
+		else "黑门——星冥族的裂隙（首场试炼：第 %d 波决胜；通关后开放无限模式）" % EndlessBlackgateRef.FIRST_GATE_CORE_WAVE) if gate_unlocked \
+		else "黑门（通关第 100 关后开启）"
+	gate_entry.modulate = Color(1, 1, 1, 1.0) if gate_unlocked else Color(1, 1, 1, 0.35)
+	gate_entry.gui_input.connect(_on_blackgate_gui_input)
+	# v6.22.5: 黑门图腾（P3-3 接线方案 M3-尾 拍板"只接 black_sun"）——黑日图挂入口中心
+	# 64px（对齐节点盘径 1.7~2 倍口径）；作按钮子节点自动随 modulate 联动锁定明暗
+	var gate_icon := TextureRect.new()
+	gate_icon.texture = load("res://assets/map/black_sun.png")
+	gate_icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	gate_icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	gate_icon.size = Vector2(64, 64)
+	gate_icon.position = (gate_entry.size - gate_icon.size) * 0.5
+	gate_icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	gate_entry.add_child(gate_icon)
+	canvas.add_child(gate_entry)
+	var gate_lbl := Label.new()
+	gate_lbl.name = "GateLabel"
+	# v28：未解锁时可见文案直接带解锁条件（原"黑门（未启）"玩家不知道怎么开）
+	# v6.42: 首通前显示"试炼"档（通关后切"无限"）
+	gate_lbl.text = ("黑门·试炼" if gate_cleared_once == false else "黑门·无限") if gate_unlocked else "黑门（通关第 100 关开启）"
+	gate_lbl.add_theme_font_size_override("font_size", 20)
+	gate_lbl.add_theme_color_override("font_color", Color(0.62, 0.85, 1.0, 0.95) if gate_unlocked \
+		else Color(0.62, 0.85, 1.0, 0.4))
+	gate_lbl.add_theme_color_override("font_outline_color", DesignTokens.COLOR_BACKDROP_DEEP)
+	gate_lbl.add_theme_constant_override("outline_size", 3)
+	gate_lbl.position = gate_p + Vector2(-34, 64)
+	gate_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	canvas.add_child(gate_lbl)
 
 ## v23.1 单屏适配：整图等比缩放进 ScrollContainer 可视区并居中（方案 11 专用）
 ## v6.42: keep_zoom=true 时保留用户缩放（行军到站/战后锚点迁移的全量重建不再把
@@ -1344,6 +1397,12 @@ func _clamp_canvas_pos(canvas: Control, scroll: ScrollContainer) -> void:
 func _apply_zoom_at(canvas: Control, scroll: ScrollContainer, factor: float, mouse_local: Vector2) -> void:
 	var new_zoom := clampf(_zoom_factor * factor, 1.0, ZOOM_MAX)
 	if is_equal_approx(new_zoom, _zoom_factor):
+		# v6.51 批：边界静默 no-op 被玩家读成"滚轮坏了"（主诉"有时不让缩放"）——
+		# feed 通道提示（同文案自动合并，连滚不刷屏）
+		if SignalBus.has_signal("feed_message"):
+			SignalBus.feed_message.emit("%s（%.1f×），不能再%s了" % [
+				"已放大到上限" if factor > 1.0 else "已是整图视图", _zoom_factor,
+				"放大" if factor > 1.0 else "缩小"])
 		return
 	var f := (_view_fit_scale(scroll) * new_zoom) / canvas.scale.x
 	canvas.position = mouse_local + (canvas.position - mouse_local) * f
@@ -1490,6 +1549,8 @@ func _build_map_screen_chrome() -> void:
 	vb.add_child(occ_row)
 	# v26.20：移动基地光点
 	vb.add_child(_make_legend_row(Color(0.98, 0.76, 0.28), "移动基地（金点·行驶中闪烁）"))
+	# v6.51 批：渗透红点此前无任何图例说明（主诉"说会刷新怪物但看不到"）——补一行
+	vb.add_child(_make_legend_row(Color(1.0, 0.42, 0.36), "异族渗透（红色脉点·点击迎战）"))
 
 	# v6.41.1（实机主诉"信息框重叠"截图）：floating chrome 后 Margin/VBox 只剩
 	# [ScrollContainer, 燃料chip]——chip 顶到屏幕底边（margin_bottom=0）被图例栈压住
@@ -1776,13 +1837,19 @@ func _draw_truck_marker(ctrl: Control) -> void:
 	ctrl.draw_circle(c, 3.0, Color(1.0, 0.98, 0.92))
 
 ## 路线绘制：起点灰点 → 已走亮实线 → 剩余暗虚线 → 终点空心圈
+## v6.52（记录1#41，主诉"99关向100关移动，看到的是98关向100关移动"）：起点取
+## max(停靠关, 当前战线)——卡车 parked 只在物理到站/胜利棘轮时推进（行军中打赢
+## 被 not is_traveling() 挡住），而 ▼标/青环/CurDot 显示的是 current_level；
+## 两套真值分叉=路线起点落后于玩家认知的战线。取 max 对齐显示口径（无星败退/
+## 撤退时 current 被 bunker 拉回 parked，起点回 98 = 真实进度，无双算）。
 func _draw_travel_route() -> void:
 	if _travel_route == null or not is_instance_valid(_travel_route):
 		return
 	var bm := _truck_mgr()
 	if bm == null or not bm.is_traveling():
 		return
-	var from := _level_point(int(bm.get_parked_level()))
+	var cur: int = GameManager.current_level if GameManager else 1
+	var from := _level_point(maxi(int(bm.get_parked_level()), cur))
 	var to := _level_point(int(bm.get_travel_dest()))
 	var done := from.lerp(to, bm.get_travel_progress())
 	var amber := Color(0.98, 0.76, 0.28, 0.85)
@@ -1819,8 +1886,11 @@ func _truck_marker_pos(lvl: int, sz: Vector2) -> Vector2:
 func _on_truck_level_changed(_level: int) -> void:
 	_update_truck_marker_snap()
 	_refresh_enter_btn_label()
-	# v36 窗口：锚点（在途=目的地/停靠关）变了 → 窗口随行军迁移，全量重建节点
-	if MAP_SCHEME == 11 and _built_window_anchor > 0 and _built_window_anchor != _truck_anchor_level():
+	# v6.51 批：current_level 变了就重建——旧条件"仅窗口锚点迁移才刷新"漏掉
+	# 同窗到站（近距行军锚点不变）：青色当前关双环/▼引导标/CurDot 全部残留出发关
+	# （主诉"已经移动了，标示还在原关卡"）。refresh_levels 会丢弃模板快照（旧高亮
+	# 烤死在快照里的问题一并修）并按可见态保留缩放（v6.42 keep_zoom）。
+	if MAP_SCHEME == 11 and _map_built:
 		refresh_levels()
 
 
@@ -2045,7 +2115,12 @@ func _enter_blackgate(popup: Window) -> void:
 ## 黑门管理器懒取（ensure_loaded + /root 查找，进入链与规则弹窗共用）
 func _blackgate_mgr() -> Node:
 	ManagerLazyLoader.ensure_loaded("endless")
-	return get_node_or_null("/root/EndlessBlackgateManager")
+	var ebm := get_node_or_null("/root/EndlessBlackgateManager")
+	# v6.51 批：EBM 是懒加载管理器——_ready 时多半还没建（信号接线窗口期错过），渗透
+	# 增删后热区永远不重建（主诉"看不到红点"根因之一）。首次取到时补接线，幂等。
+	if ebm != null and not ebm.incursions_changed.is_connected(_on_incursions_changed):
+		ebm.incursions_changed.connect(_on_incursions_changed)
+	return ebm
 
 ## 购次二次确认（核验清单#5：透明扣费——确认后才花能量块）
 func _confirm_blackgate_purchase(popup: Window) -> void:
@@ -2109,11 +2184,20 @@ func _arm_endless_battle_state() -> void:
 ## ── v6.35 异族渗透(大地图随机星冥散兵,收益很小) ─────────────────────
 ## 黑门未通关期间,宿主关卡旁红色脉点热区;通关(gate_cleared_once)后清场停刷。
 ## 热区不进模板缓存——首建与模板复用两路都调本函数,按 EBM.incursions 动态重建。
+## v6.51 批可读性三修：①锚点=停靠关+热区半径放宽到 16（EBM 宿主范围
+## parked-15..+5，旧窗口半径 10 把 parked-15..-11 段全部滤掉——主诉"说会刷新
+## 怪物但看不到红点"主因）；②节点更大+呼吸脉动；③层级插到卡车标记之下、
+## 关卡节点之上（首建路径旧层级被节点白盘压住）。
+const INCURSION_MARKER_RADIUS: int = 16
+
 func _apply_incursion_markers(canvas: Control) -> void:
 	if canvas == null or not is_instance_valid(canvas):
 		return
 	var old := canvas.get_node_or_null("IncursionMarkers")
 	if old != null:
+		# 先摘树再 free（同帧撞名雷：queue_free 旧 holder+add 同名新 holder → 新 holder
+		# 被静默改名，下次按名取到的还是旧壳）
+		canvas.remove_child(old)
 		old.queue_free()
 	var ebm := _blackgate_mgr()
 	if ebm == null or bool(ebm.get("gate_cleared_once")):
@@ -2121,24 +2205,30 @@ func _apply_incursion_markers(canvas: Control) -> void:
 	var list: Array = ebm.get("incursions")
 	if list.is_empty():
 		return
-	var anchor: int = _built_window_anchor if _built_window_anchor > 0 else _truck_anchor_level()
+	# 锚点=停靠关（不用在途目的地锚——行军中出发侧渗透不该消失）
+	var bm := _truck_mgr()
+	var anchor: int = clampi(int(bm.get_parked_level()), 1, LEVEL_COUNT) if bm != null \
+		else (_built_window_anchor if _built_window_anchor > 0 else _truck_anchor_level())
 	var holder := Control.new()
 	holder.name = "IncursionMarkers"
 	holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	canvas.add_child(holder)
+	var pulse_on: bool = not DesignTokens.is_motion_reduce()
 	for inc_var in list:
 		var inc: Dictionary = inc_var if inc_var is Dictionary else {}
 		var host: int = int(inc.get("host_level", 0))
 		if host < 1:
 			continue
-		# v36 窗口纪律:宿主关在视野窗口外不建热区(防窗外元素悬空)
-		if absi(host - anchor) > MAP_WINDOW_RADIUS:
+		# v6.51 批：渗透热区半径独立于关卡窗口（宿主范围 parked-15..+5 需 ≥15）
+		if absi(host - anchor) > INCURSION_MARKER_RADIUS:
 			continue
 		var btn := Button.new()
 		btn.name = "Incursion_%d_%d" % [host, int(inc.get("seed", 0))]
 		btn.flat = true
-		btn.size = Vector2(34, 34)
-		btn.position = _level_point(host) + Vector2(20, -30)
+		btn.size = Vector2(38, 38)
+		# 右下偏移：节点上方是屏幕空间"▼ 第N关"引导标（会整块盖住红点——探针实拍），
+		# 中心是卡车金点；右下 (44,20) 与节点盘心距 ~45px，避开两者且不压节点盘
+		btn.position = _level_point(host) + Vector2(44, 20)
 		# v6.42: 过期倒计时（宪法 C3：天数读 EBM 常量口径 get_incursion_days_left）
 		var days_left := 0
 		if ebm != null and ebm.has_method("get_incursion_days_left"):
@@ -2149,11 +2239,22 @@ func _apply_incursion_markers(canvas: Control) -> void:
 		btn.gui_input.connect(_on_incursion_gui_input.bind(inc))
 		var dot := Label.new()
 		dot.text = "◉"
-		dot.add_theme_font_size_override("font_size", 22)
+		dot.add_theme_font_size_override("font_size", 26)
+		# 黑描边：红色脉点在棕褐地形上要有恒定对比（探针实拍低 alpha 段偏隐）
+		dot.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.75))
+		dot.add_theme_constant_override("outline_size", 4)
 		dot.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		dot.position = Vector2(6, 2)
+		dot.position = Vector2(4, 1)
 		btn.add_child(dot)
+		if pulse_on:
+			var tw := btn.create_tween().set_loops()
+			tw.tween_property(btn, "modulate:a", 0.62, 0.6).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+			tw.tween_property(btn, "modulate:a", 1.0, 0.6).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 		holder.add_child(btn)
+	# 层级：插到卡车标记（及其路线层）之下、关卡节点之上——红点不压金光点
+	var tm := canvas.get_node_or_null("TruckMarker")
+	if tm != null:
+		canvas.move_child(holder, tm.get_index())
 
 func _on_incursion_gui_input(event: InputEvent, inc: Dictionary) -> void:
 	if event is InputEventMouseButton and (event as InputEventMouseButton).pressed \
@@ -2198,6 +2299,54 @@ func _launch_incursion(inc: Dictionary) -> void:
 		return
 	SceneTransition.change(get_tree(), "res://scenes/main.tscn")
 
+## v6.52（记录1#29）：该关是否有活跃渗透（供关卡弹窗渗透区块与选关路由消费；
+## 与 _apply_incursion_markers 同源读 EBM.incursions，但不受显示窗口半径过滤——
+## 数据在就是可迎战，窗口只影响红点显示）
+func _find_incursion_for_level(level_index: int) -> Dictionary:
+	var ebm := _blackgate_mgr()
+	if ebm == null or bool(ebm.get("gate_cleared_once")):
+		return {}
+	var list: Array = ebm.get("incursions")
+	if list == null:
+		return {}
+	for inc_var in list:
+		var inc: Dictionary = inc_var if inc_var is Dictionary else {}
+		if int(inc.get("host_level", 0)) == level_index:
+			return inc
+	return {}
+
+## 渗透区块（记录1#29）：镜像黑门区块——置顶说明+迎战按钮，取代"38px 红点是唯一入口"。
+## 规则数值读 EBM 口径（宪法 C3：文案数值禁硬编码）。
+func _append_incursion_section(body: VBoxContainer, popup: AcceptDialog, inc: Dictionary) -> void:
+	var days_left := 0
+	var ebm := _blackgate_mgr()
+	if ebm != null and ebm.has_method("get_incursion_days_left"):
+		days_left = int(ebm.call("get_incursion_days_left", inc))
+	var loadout_hint: String = ""
+	if ebm != null and ebm.has_method("get_incursion_loadout"):
+		var ld: Dictionary = ebm.call("get_incursion_loadout", inc)
+		var names: PackedStringArray = []
+		for id in ld.get("ids", []):
+			names.append(XenoUnits.get_display_name(String(id)))
+		loadout_hint = " · ".join(names)
+	body.add_child(_make_detail_section_title("异族渗透 · 本关"))
+	body.add_child(_make_detail_desc(
+		"侦测到星冥散兵渗透本关：%s\n收益微小（少量资源，概率缴获）——%d 天后再无踪迹。" % [
+			loadout_hint if not loadout_hint.is_empty() else "编队未知", maxi(1, days_left)],
+		Color(1.0, 0.55, 0.45, 0.95)))
+	var inc_row := HBoxContainer.new()
+	inc_row.add_theme_constant_override("separation", 10)
+	var inc_btn := Button.new()
+	inc_btn.text = "迎战渗透（落地即开战）"
+	inc_btn.custom_minimum_size = Vector2(190, 36)
+	inc_btn.add_theme_font_size_override("font_size", 13)
+	inc_btn.pressed.connect(func() -> void:
+		popup.queue_free()
+		_launch_incursion(inc)
+	)
+	inc_row.add_child(inc_btn)
+	body.add_child(inc_row)
+
 ## v6.22: 原 _on_territory_map_button/_ensure_local_occupation_overlay 已随领地图面板退役删除。
 
 func _on_level_selected(level_index: int) -> void:
@@ -2210,27 +2359,61 @@ func _on_level_selected(level_index: int) -> void:
 		if level_index == int(bm.get_parked_level()):
 			_show_level_info_popup(level_index)
 			return
+		# v6.52（记录1#29）：该关有活跃渗透时先弹情报（内含迎战区块）——直接启程会
+		# 错过渗透战（红点热区只有 38px，点节点本体开成普通关）
+		if not _find_incursion_for_level(level_index).is_empty():
+			_show_level_info_popup(level_index)
+			return
 		_try_depart_to(level_index)
 		return
 	_show_level_info_popup(level_index)
 
 ## v26.19：燃料/停靠 chip 刷新（truck_travel_changed / bunker_day_ended / 本文件多处调用）
+## v6.51 批：天数常驻（主诉"应该有时间的概念，比如第多少天，要有显示"）
 func _refresh_fuel_chip(_day: int = 0) -> void:
 	if _fuel_chip == null or not is_instance_valid(_fuel_chip):
 		return
 	var bm := _truck_mgr()
 	if bm == null:
 		_fuel_chip.text = ""
+		# v6.52（记录1#17）：懒加载 bunker 走 call_deferred 挂树，此刻 /root/BunkerManager
+		# 尚不可得——首刷清空后若无后续驱动，左下信息框恒空。排一次延迟重刷兜底。
+		_retry_fuel_chip_when_bunker_ready()
 		return
+	var day_txt: String = ""
+	if bm.has_method("get_day"):
+		# 纯文本前缀——CJK 字体无 🗓 字形，emoji 会渲染成豆腐块（探针实拍）
+		day_txt = "第%d天 ｜ " % int(bm.get_day())
 	if bm.is_traveling():
-		_fuel_chip.text = "⛽ %d/%d ｜ 行驶中 → 第%d关 · 剩%d天" % [
-			int(bm.get_fuel()), int(bm.get_fuel_cap()), int(bm.get_travel_dest()), int(bm.get_travel_days_left())]
+		_fuel_chip.text = "%s⛽ %d/%d ｜ 行驶中 → 第%d关 · 剩%d天" % [
+			day_txt, int(bm.get_fuel()), int(bm.get_fuel_cap()),
+			int(bm.get_travel_dest()), int(bm.get_travel_days_left())]
 	else:
-		_fuel_chip.text = "⛽ %d/%d ｜ 停靠 第%d关" % [
-			int(bm.get_fuel()), int(bm.get_fuel_cap()), int(bm.get_parked_level())]
+		_fuel_chip.text = "%s⛽ %d/%d ｜ 停靠 第%d关" % [
+			day_txt, int(bm.get_fuel()), int(bm.get_fuel_cap()), int(bm.get_parked_level())]
 	# v6.42: 行军取消键可见性随行军态走（本函数由 truck_travel_changed/每秒芯片刷新共同驱动）
 	if _cancel_travel_btn != null and is_instance_valid(_cancel_travel_btn):
 		_cancel_travel_btn.visible = bm.is_traveling()
+
+## v6.52（记录1#17）：bunker 懒加载落树后回填左下信息框（燃料/天数/出击键文案同源依赖）。
+## 逐帧等待至多 120 帧；节点出树即放弃（拆场守卫纪律）。
+func _retry_fuel_chip_when_bunker_ready() -> void:
+	if _fuel_chip_retry_active:
+		return
+	_fuel_chip_retry_active = true
+	for _i in range(120):
+		await get_tree().process_frame
+		if not is_inside_tree():
+			_fuel_chip_retry_active = false
+			return
+		if _truck_mgr() != null:
+			break
+	_fuel_chip_retry_active = false
+	if not is_inside_tree():
+		return
+	_refresh_fuel_chip()
+	if has_method("_refresh_enter_btn_label"):
+		call("_refresh_enter_btn_label")
 
 
 ## v6.42: 取消行军（chrome ✕ 键）——BunkerManager.cancel_travel 自带返还+播报
@@ -2386,6 +2569,12 @@ func _show_level_info_popup(level_index: int) -> void:
 	# 实机主诉"进入黑门显示的还是100关的信息/没显示多少波通关/掉落是关外的"）
 	if level_index >= 100 and _is_blackgate_unlocked():
 		_append_gate_section(body, popup)
+
+	# ▸ 异族渗透区块（v6.52 记录1#29）：该关有活跃渗透时置顶+迎战入口——此前唯一
+	# 入口是节点右下 38px 小热区，点节点本体=行军/普通关（"进了开成普通关"主诉）
+	var _inc_at_level := _find_incursion_for_level(level_index)
+	if not _inc_at_level.is_empty():
+		_append_incursion_section(body, popup, _inc_at_level)
 
 	# ▸ 基本信息
 	body.add_child(_make_detail_section_title("基本信息"))
@@ -3040,3 +3229,6 @@ func refresh_for_open() -> void:
 		_build_level_map()
 	_update_truck_marker_snap()
 	_refresh_enter_btn_label()
+	# v6.51 批：重开面板也按当前数据重铺渗透红点（此前只有首建/信号驱动两条路，
+	# 懒加载期错过的接线+重开不复铺=旧快照一直挂着）
+	_on_incursions_changed()

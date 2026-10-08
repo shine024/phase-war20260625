@@ -447,25 +447,61 @@ func _is_achievement_unlocked(achievement_id: String) -> bool:
 	return false
 
 ## 格式化奖励信息
+## v6.51 批：全键覆盖——旧版只认 nano_materials/company_rep，而定义表 61 纳米/
+## 13 神话卡/9 稀有卡/10 称号/1 经验，其余键全部显示为空（主诉"成就应该给一些奖励"
+## 的显示层根因：领取链一直在，玩家看不见奖励）。口径与发放链 achievement_rewards
+## _grant_legacy_format 对齐（宪法 C3：展示即发放）。
 func _format_rewards(rewards: Dictionary) -> String:
+	if rewards.is_empty():
+		return ""
+	# 新格式（stub 表）：{type, amount}
+	if rewards.has("type"):
+		return "%s ×%d" % [_reward_type_name(String(rewards["type"])), int(rewards.get("amount", 1))]
 	var parts: Array = []
-
 	if rewards.has("nano_materials"):
-		parts.append("%d纳米材料" % rewards["nano_materials"])
+		parts.append("%d纳米材料" % int(rewards["nano_materials"]))
+	if rewards.has("alloy"):
+		parts.append("%d合金" % int(rewards["alloy"]))
+	if rewards.has("crystal"):
+		parts.append("%d晶体" % int(rewards["crystal"]))
+	if rewards.has("energy_block"):
+		parts.append("%d能量块" % int(rewards["energy_block"]))
+	if rewards.has("star_marrow"):
+		parts.append("%d星髓" % int(rewards["star_marrow"]))
+	if rewards.has("merit"):
+		parts.append("%d功勋" % int(rewards["merit"]))
+	if rewards.has("xp"):
+		parts.append("%d相位经验" % int(rewards["xp"]))
+	if rewards.has("rare_card"):
+		parts.append("稀有卡 ×%d" % int(rewards["rare_card"]))
+	if rewards.has("legendary_card"):
+		parts.append("史诗卡 ×%d" % int(rewards["legendary_card"]))
+	if rewards.has("mythic_card"):
+		parts.append("神话卡 ×%d" % int(rewards["mythic_card"]))
+	if rewards.has("title"):
+		parts.append("称号「%s」" % String(rewards["title"]))
+	for rep_key in ["company_rep", "faction_rep"]:
+		if rewards.has(rep_key) and rewards[rep_key] is Dictionary:
+			for fid in rewards[rep_key]:
+				parts.append("%s 贡献+%d" % [_faction_display_name(String(fid)), int(rewards[rep_key][fid])])
 	# DEPRECATED (P0-3c): blueprint_fragments reward display disabled — reward schema migrated away from fragment-based model
-	#if rewards.has("blueprint_fragments"):
-	#	var fragments = rewards["blueprint_fragments"]
-	#	for fragment_id in fragments:
-	#		parts.append("%s蓝图x%d" % [fragment_id, fragments[fragment_id]])
+	return "、".join(PackedStringArray(parts))
 
-	if rewards.has("company_rep"):
-		var rep = rewards["company_rep"]
-		for company_id in rep:
-			parts.append("%s贡献+%d" % [company_id, rep[company_id]])
+## 新格式 type 键 → 中文名（与 achievement_rewards.grant 的 type 分支对齐）
+func _reward_type_name(t: String) -> String:
+	match t:
+		"basic_nano": return "纳米材料"
+		"energy_block": return "能量块"
+		"phase_xp": return "相位经验"
+		"card": return "卡牌"
+		"mod_blueprint": return "改造图纸"
+		_: return t
 
-	# 将Array转换为PackedStringArray后使用join
-	var parts_array = PackedStringArray(parts)
-	return "、".join(parts_array)
+func _faction_display_name(fid: String) -> String:
+	var fsm = get_node_or_null("/root/FactionSystemManager")
+	if fsm != null and fsm.has_method("get_faction_display_name"):
+		return String(fsm.get_faction_display_name(fid))
+	return fid
 
 ## 分类标签改变
 func _on_category_changed(tab_index: int) -> void:

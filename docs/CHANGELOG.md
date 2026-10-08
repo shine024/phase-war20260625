@@ -9782,3 +9782,68 @@ v6.48 挂账的其余批次品红边晕（attack 26 家 + idle 4 家，分属 ro
 - **追加（15:4x）用户令换机**：Ju 87 配方废（两掷白云+用户要美制），redo3 配方改 **SBD 无畏式**（道格拉斯 SBD Dauntless：星形发动机罩/平直梯形翼/翼后缘多孔减速板/纵列双座舱/蓝灰涂装）一掷过 lit_gate（mean 95.2 pass）且**天生无白云**（342px 零星 0 病块——证实白云是 Ju 87 配方癖性）。新工具 `tools/fam43_white_blob_kill.py`（staged 亚阈值白块定点清除/只查两模式）立档。SBD 全链重部署（muzzle 自动 [62,480]，焰质心贴口 <3px；idle bob 再换血 IoU=1.000；暗底晕 0/0；导入时效验过）。
 - **终局收口（v6.50 收束）**：判定合并 `tools/fam43_review (7).json` —— **58/58 全部「可以」，fam43 卡图直出批结**。终验矩阵：deploy_check 57/58（唯 fut_air_stealth_bomber foot 0.293/0.2617=v6.48 已录 air 羽化容差边缘，无害先存）；游戏侧 headless dump 实证玩家/敌对双 id `_resolve_key` 均命中 `ww2_air_dive_bomber` 目录（counts idle=4/attack=10，attack sheet+enemy 卡 load 全真）；敌卡 import（15:40:18）新于 PNG（15:39:26）。审查页重建（可以行隐藏，缓存戳 `?v=43fe5f`）。
 - **挂账清偿（v6.50 尾批，用户令「修复后布置」）**：①fut_air_stealth_bomber anim.json foot_frac 0.293→0.2617（对齐部署条实测口径——deploy_v2 记的是描边前 staged 底缘，部署条含激光束烘焙羽化故偏低；air 单位质心注册该值不参与地面线，纯对账清零）→ **deploy_check 58/58 全过**；②foe_ww2_inf_bazooka 敌侧镜像卡清偿：`_visual_id_for_source_id` 增 platform 段专属卡面覆盖（图名=单位 id，POOL 段同款），新图 `enemy/ww2_inf_bazooka.png`=player 卡水平翻转（我方卡=敌方图反转契约）+thumb256/384 同刷+导入；dump 实证敌侧出 bazooka 卡（原 vis_enemy_009 tan 装甲车退役）、玩家/缴获向出 player 新跪姿卡、三 id（player/foe/captured）动画绑定 counts {idle:4, attack:10} 全真。
+
+## v6.51（2026-10-07）build/记录6.txt 实机验收 11 条批——悬停提示生命周期 + 大地图三修 + 奖励可见化
+
+11 条实机反馈全处理。主诉根因三个：HoverTip `_tip_owner` 从未赋值（提示一旦弹出永不消失，符文情报跟着鼠标走遍相位仪/基地）；`_build_level_map` 同帧 queue_free 旧画布+add 同名新画布（Godot 静默改名 @Control@N，重建后 MapCanvas 按名查找整链死透=「有时不让缩放」根因）；成就要励/委托奖励的格式化函数只认 2 个键（发放链一直在，显示层为空）。
+
+- **HoverTip 生命周期（`scripts/ui/hover_tip.gd` 重写）**：①悬停 0.45s 延迟显示（主诉「马上出情报太急」；已有提示切换控件立即换内容，列表扫读零延迟）；②`_present` 记录归属控件，`_hide_for` 按归属收起——修永不消失 bug；③待显期间控件释放/离树/指针移出自动取消，超时展示时重读 meta（对象池安全）。回归锁 `tests/unit/ui/test_hover_tip_lifecycle.gd`（4 用例）。
+- **大地图同帧撞名雷根修（world_map.gd）**：`_build_level_map` 清空旧画布与 `_apply_incursion_markers` 清旧 holder 改「先 remove_child 再 queue_free」——同帧同名重建被静默改名是「有时不让缩放」（重建后滚轮链按名查找 MapCanvas 落空）+ 渗透热区重建失效的共同根因。回归锁：`_on_truck_level_changed` 重建后断言画布名仍为 MapCanvas。
+- **行军标示残留（主诉#5）**：`_on_truck_level_changed` 改为 current_level 变化即 `refresh_levels()`（旧条件仅窗口锚点迁移才刷新，同窗到站青环/▼标/CurDot 全残留出发关）；模板复用路径补消费 `_zoom_keep_pending`（keep_zoom 之前只在全量重建路径生效）。视觉探针实拍到站后 ▼第32关+青环整体迁移。
+- **渗透红点可见性（主诉#10）**：①热区半径独立放宽到 16（EBM 宿主范围 parked-15..+5，旧窗口半径 10 吃掉 parked-15..-11 段）；②锚点=停靠关（不用在途目的地锚）；③EBM 懒加载晚于 `_ready` 时 `_blackgate_mgr()` 首取补接线（此前信号窗口期错过=渗透变化永不重建）；④建图尾段重建+层级插在 TruckMarker 之下（旧首建路径被节点白盘压住）；⑤`refresh_for_open` 重铺；⑥红点加大+黑描边+呼吸脉动（减动效豁免）+偏移改节点右下（上方被屏幕空间「▼第N关」引导标整块盖住——探针实拍）；⑦图例补渗透红点行。回归锁 `tests/unit/ui/test_mod_sort_and_incursion_markers.gd`（4 用例）+ 视觉探针 `tests/_tmp_v651_wm_visual.tscn`（窗口化截图 .godot/v651_shots/）。
+- **缩放受阻（主诉#4）**：`_input` 可见守卫从 `_runtime_active` 改直接查 `is_visible_in_tree()`（嵌入模式 visibility_changed 时序缺口）；缩放边界静默 no-op 改 feed 提示（「已放大到上限/已是整图视图」，同文案合并防刷屏）。
+- **成就要励可见（主诉#6）**：`achievement_panel._format_rewards` 全键覆盖（旧版只认 nano/company_rep——61 纳米/13 神话卡/9 稀有卡/10 称号/1 经验里后四类全显示为空；补 alloy/crystal/energy_block/star_marrow/merit/xp/三档卡/title/faction_rep + 新格式 {type,amount}）；`achievement_rewards._grant_legacy_format` 补 xp（走 grant_phase_field_xp）与 title（feed 荣誉记录）发放——C3 展示即发放。回归锁 `tests/unit/systems/test_reward_display_format.gd`。
+- **委托奖励行（主诉#9）**：`quest_panel` 每行补「🎁 完成奖励：…」（旧版整行无奖励展示，且只查 company_rep 键——数据用 faction_rep 恒空）；格式化与 `quest_manager._grant_rewards` 发放键对齐。
+- **词条数值详情（主诉#7）**：`AffixDisplayFormat` 新增 `fmt_affix_value`（数值短串），`fmt_player_affix_tags` 标签内联数值（"◆ 名 Lv2 +8%"）、词条工坊详情行数值+描述并显——数值此前只在悬停 tooltip。
+- **改造工坊命名+模块库排序（主诉#8）**：truck_base 五时代工位 hint「改造·词条」→「改造·模块」；改造舱中栏与背包改造模块库两处列表改稀有度**升序**（低级在上，用户拍板）+同档按 id 稳定；顺修背包权重表缺 mythic 档（存量：mythic 权重落 0 被排到错误的端）。比较器抽 static 供回归锁直测。
+- **第N天显示（主诉#11）**：真实天数真身=BunkerManager.get_day()——大地图燃料 chip 前缀「第N天｜」+ truck_base caption 状态段「第N天｜」（结算面板/睡觉播报原有）。纯文本不加 emoji（🗓 CJK 字体无字形，探针实拍豆腐块）。
+- **教程进背包卡顿（主诉#1）**：truck_base 此前零预热——对齐 main 揭幕期预热，落地 1.0s 空闲期 `_ensure_panel_wrapper("backpack")` 建好隐藏实例（首开同帧背 load()+instantiate() 编译 3136 行脚本+首轮全量卡格重建的尖峰移出教程链）。
+- **改造情报英文清零（主诉#2）**：headless 全注册表审计探针（`tests/_tmp_v651_mod_label_audit.gd` 可重跑，175 effect keys+63 slot types）→ 6 个未翻译 `_pct/_set` 变体补进 ModEffectLabels、4 个槽位类型（camo/hardpoint/mantlet/shelter）补进 `_SLOT_TYPE_CN`，复跑双清零。原型型号（F100-PW-220 等）为有意保留的型号名词。
+- **存量过期红锁更新（2 把）**：`test_world_map_ready_builds_canvas` 黑门弹窗无条件断言「无限模式」→ v6.42 双档各锁一遍；`test_settlement_endless_report` 横幅断言 → v6.42 首通/再通双档（再通档补 case）。
+- **验证**：新增回归锁 3 文件 16 用例全绿；全量 gdunit 589 例 0 错误，仅余 7 失败均为存量（enemy_loadouts 表数/conflict_group 重复、era filter ×2、attack_f0 素材 ×2、card_info_toast_avoid 顺序敏感 flaky——单跑复绿，与本批无交集）；视觉探针三 shots 目检通过（红点/天数/图例/到站迁移）。
+- ⚠️ 探针铁律再证：懒加载管理器（BunkerManager/EBM）`ensure_loaded` 后其存档 load_state 会晚到覆盖探针早设的字段——先 `flush_deferred_manager_loads` 再直写，且节点要重新 get（延迟挂树）。
+
+## v6.52（2026-10-08）build/记录1.txt 实机验收 31 条批——大地图复用断链 + 战力三口径统一 + 提示/教程互斥 + 同伴档案更名
+
+31 条实机反馈 26 修 5 列遗留。玩家在 v6.51 构建（10-07 18:33 windows 包）上记录，重合条目全部按「复发/未修到」实查。三个贯穿根因：①**跨实例模板复用丢连接**——world_map 静态模板 `duplicate(DUPLICATE_USE_INSTANTIATION)` 不带运行期连接，重建清单只有 TruckMarker/TravelRoute，家标记与黑门入口的 gui_input 全死+解锁态陈旧（「通关 100 黑门还锁着」「点我方基地没反应」「从战斗进地图左下没信息」三案同根）；②**战力三套公式**——背包=meta 元公式（几百）/改造舱=实例战斗公式（几千）/战斗徽标=裸 id 查不到实例退模板（又一个数），同卡三处三个值；③**提示/教程/弹窗三层无互斥**——FUP(250 层全屏 STOP) 压教程框(105)、指路标不查面板在屏、战后同帧 10+ 条 toast burst。
+
+- **大地图复用断链根修（world_map.gd）**：家标记与黑门入口抽 `_build_home_marker`/`_build_blackgate_entry`（固定命名 HomeLabel/GateLabel），首建与模板复用两路都走「摘旧重建」——复用副本 gui_input 存活、通关 100 后门即时亮起（modulate 0.35→1.0）+ 文案切「黑门·试炼/无限」。
+- **左下信息框空（主诉#17）**：`_refresh_fuel_chip` 在 bunker 懒加载未落树时清空文本后无后续驱动——补 `_retry_fuel_chip_when_bunker_ready` 逐帧等待（≤120 帧）出树早退，就绪后回填 chip+出击键文案。
+- **走过关卡常显（主诉#28）**：揭示集 `_s_revealed_levels` 是进程内 static，重启清零——通关 100 停靠再进图窗口只剩 90..100，1~89 全消失。`_seed_revealed_from_progress` 用存档星标回填（有星=到过=恒建，桥线/占领环同集合自动跟随）。
+- **渗透战入口可见化（主诉#29）**：渗透唯一入口曾是节点右下 38px 红点热区，点节点本体=行军/普通关。现：①关卡弹窗置顶「异族渗透」区块（编队预览+过期天数+迎战钮，镜像黑门区块，数值读 EBM 口径）；②选关路由拦截——该关有活跃渗透时先弹情报不再直接启程。`_find_incursion_for_level` 与红点同源读 EBM 但不受显示窗口半径过滤（数据在=可迎战）。
+- **行军标示对齐（主诉#41）**：路线起点取 max(停靠关, 当前战线)——parked 只在物理到站/胜利棘轮推进（行军中打赢被 not is_traveling() 挡），而 ▼标/青环显示 current_level，两套真值分叉=「99→100 显示 98→100」。
+- **首通奖励换通道（主诉#13）**：`show_toast`（右上）→ `feed_message`（左下 feed）——v6.38 双通道拍板「获得类走左下」，首通是存量漏网。黑门星髓播报仍在 toast（战报属性，有意保留）。
+- **读档落点分流（主诉#21）**：title「继续」v38.5 起无条件落地即开战——现过首战步的档进移动基地（玩家拍板「重读记录应该是在大地图或移动基地中」），教程期档保持 main+自动开战（保 v38.5 新玩家修复）。判定前 `flush_deferred_manager_loads`（TPM 在延迟批，不 flush 读到旧档教程态）。
+- **Toast burst 滴流（主诉#16）**：战后结算帧 10+ 条同帧创建/驱逐 CJK autowrap 面板=「多条提示出来就卡死」。池满且同帧已有直接创建 → 入队 0.18s/条放行（首条零延迟）；战斗播报常态路径不变。
+- **FUP×教程互斥（主诉#18「提示悬浮在改造面板上」+ #19「符文步双弹窗卡死」）**：①`FeatureUnlockPopup._spawn_modal` 统一出生口——教程进行中（should_show_tutorial）禁发 250 层全屏 STOP 模态（压住教程框按钮点不到=卡死真身），降级左下 feed（信息仍送达、seen 已标记不战后突袭）；show_once/show_now/show_unlock_batch 三入口全走。②两处 `_maybe_spawn_tutorial_pointer` 加面板在屏守卫（main=`_is_any_overlay_open()`、truck_base=`_has_open_embed_panel()` 新增）——暗幕聚光不再叠在开着的面板上；面板关闭时 notify_surface_closed 重亮，不丢指路。
+- **挂机面板（主诉#10#14）**：①面板 720→460 高（v36 选关槽退役后内容仅 ~360px，下半截全空）；②状态行 StatusLabel autowrap+EXPAND（长状态文本把 HBox 撑出面板边界=「按钮出面板外面」真身）；③`_on_afk_deploy_hint` 面板不可见时右上 toast 兜底（此前静默丢弃——精神/次数停摆且面板关着=零提示）。
+- **改造舱可读性三修（主诉#22#23#24）**：①门槛带数值——「✗需霸主」→「✗需霸主 战力≥1300」（读 POWER_THRESHOLDS）+点击反馈附「当前战力 N」；②`_format_one_effect` 补 `*_cd` 键分支「每 Ns」（注册表全部 _cd 键=周期秒：aegis/counter/gravity/hijack_aura）——「奇点间隔 +8」此前读不出是 8 秒；③双击卡行弹统一卡情报面板（NodeFinder 分组兜底覆盖基地场景；行 tooltip 注明「双击查看卡牌情报」）——改造舱此前点卡只刷右栏改造视角详情。
+- **战力三口径统一（主诉#26）**：①背包 `_get_card_power_score` 改走 `_estimate_power_score`（战斗公式，与改造舱/军衔/门槛同源；ENERGY/LAW 内部自动回退 meta）；②战斗徽标 `RankDisplayUi.resolve_from_unit` 优先读单位 meta `source_instance_id` 走实例公式（原裸 platform_card_id 查不到实例恒模板值）；③`EvolutionHelpers.estimate_power_score` 加进程级 memo（key=id/强化/改造串/继承/时代全指纹，数据变 key 变=天然失效）——抵消背包改真公式后的重建开销。实时战斗属性行后缀（含 buff/经验成长）语义不同保留。
+- **巨型粒子炮撞图（主诉#39）**：`drop_mega_particle_cannon` 无专属图回退链撞 vis_player_071（与风暴核心同图）。动画 sheet_idle 首帧切图落 `card_icons/player/drop_mega_particle_cannon.png` + PLAYER_ICON_OVERRIDE 接线（drop 族专属图惯例）。
+- **组合技条实有几显几（主诉#15，用户推翻 v6.35.2「恒 6 点亮」拍板）**：未激活图标不占位；零激活显示 ⚔ 总览钮（悬停列全部战法+达成条件）；激活后只显已达成战法彩色图标，条底板随内容收缩（≤430 预算不变）。回归锁同步（6→7 钮 + 可见性规则用例）。
+- **战斗音效（主诉#3#5）**：①命中分档——v6.42 力度分级只覆盖开火音与 bullet 兜底，batch 主力命中恒播通用 hit；`_on_unit_damaged` 按本次伤害三档（<60 impact_light / <150 hit / ≥150 impact_heavy）；②技能学习音 enhance→blueprint_unlock（强化金属音→解锁上扬双音）。
+- **战斗卡拖拽提示（主诉#2）**：战斗卡 item tooltip 补「▸ 装备：按住拖到底部相位仪绿槽」+ 接 HoverTip 顶层提示层（内建 tooltip 画 layer 0 被 PopupLayer(100) 盖住——v6.42 契约，此前战斗卡提示实际不可见）。符文=点击 vs 战斗卡=拖拽的双交互差异常驻可查。
+- **同伴档案图文错配（主诉#31，目检 7 张立绘定案）**：图是真值（美术定稿），名字向图对齐——008 叶莲娜·索科洛娃(俄女)→陆听澜 / 020 阿米娜·奥科耶(非女)→岳千钧 / 023 奥马尔·哈达德(阿男)→林晚炬 / 024 英格里德·索尔海姆(挪女)→程让之 / 027 颂猜·威拉万(泰男)→温灼 / 028 玛雅·奥杜亚(女)→雷既白（deed 代词已跟图一致，改名即理顺）；仅 006（塞尔焦男名+男图）是纯 deed 代词错（她→他）。同步 7 文件（分时代×3/JSON/instruments display/narrative 注释/garrison 注释），工具 `tools/_tmp_v652_master_name_fix.py` 幂等可重跑，全库旧名零残留。**纪念墙接档案**：点亮读「名字——称号+生前事迹+遗言」三行（HeroArchiveTexts 全 30 条 bespoke 现成接入，此前只有名字+称号一行）。
+- **背包逐开卡顿（主诉#1#6）**：①战力 memo（见上）；②truck_base 卡仓预热 1.0s→0.35s（教程快步玩家几秒内就点卡仓，原窗口没盖住首开）。签名守卫/附属 tab 扫描机制保持。
+- **回归锁**：`test_combo_strip_layout` 更新（实有几显几+总览钮）、`test_world_map_ready_builds_canvas` 增用例⑧（复用路径家/黑门连接+解锁态刷新断言）；定向 9 锁 45 用例全绿（combo 6 / world_map 7 / chrome / mod_sort / hover_tip / reward_format / afk_travel / first_clear / tutorial_pointer）。
+- **遗留（5 条，另案）**：①#7 hub/大地图/基地 BGM 不随时代（战斗内已分时代）——换曲工单；②#9「春游 BGM」=battle_future 选曲（Space Fighter Loop 轻快）风格问题——换曲工单；③#4 武器特色音效扩容（batch 现 3 命名+2 档，bullet 兜底已有 12 种）——需新合成音资产；④#37 自行火炮「对轻 20 多/对甲 200 多」——侦察证实是防御按攻击者兵种选取的结算口径（SUPPORT 恒被 defense_light 挡重炮弹，轻甲兵反比坦克抗火炮），动乘区牵一发动全身需拍板口径；⑤#45 小红点「还没走过去就没了」=3 游戏日过期设计（tooltip 有「N天后再无踪迹」）+到站重锚后远处红点出显示窗（数据仍在）——v6.51 已放宽半径 16，如需再放宽等实机复测。
+- ⚠️ 教训沉淀：gdunit 里直调「读 prev/内部状态」的规则函数前必须先模拟状态（_apply_visibility_rule 依赖 _refresh 更新的 prev，直调即 0——首轮红改绿）；duplicate 复用清单这次补全后，**新增画布子节点一律同步进 stale 清单**（TruckMarker/TravelRoute/Lighthouse/HomeLabel/BlackGateEntry/GateLabel 六项）。
+
+## v6.52.1（2026-10-08）遗留清偿批——攻防同维度配对根修（#37）+ 曲射开火力度分级（#4）+ BGM 换曲工单（#7/#9）
+
+用户拍板「按你说的」后对 v6.52 遗留 5 条中的 3 条落地（#45 小红点维持"设计如此+实机复测"不变）：
+
+- **攻防同维度配对根修（#37，实机"自行火炮对轻 20 多/对甲 200 多"结算病）**：攻击侧 `get_attack_vs` 按目标类型选攻击维度（打装甲=attack_armor），受击侧却按**攻击者兵种**选防御——SUPPORT 火炮恒被 defense_light 挡（重炮打坦克只被坦克对轻防御 d_l 抵消，比它的对甲防御 d_a 还少 30，软兵种反比硬目标抗重炮；v21 弹道重赋补丁只改了 `get_defense_vs`、漏同步三份内联 match，双份口径漂移一年）。现抽**攻击维度判定唯一口 `AttackCalculator.attack_dim_for_target`**（与 get_attack_vs 同轴：目标轻装/支援=LIGHT 轴、装甲/堡垒=ARMOR 轴、空中=AIR 轴、重赋转 ARMOR 轴），`get_defense_vs` 与 construct_unit/enemy_unit/swarm_enemy_slot 三份内联 match 全部改为按攻击维度配对；attacker 无 stats（boss/环境伤害/DOT）维持兵种口径兜底（旧调用方零破坏，test_battle_system_diagnostic 缺省路径保持绿）。**影响面收敛**：全部数值变化集中在「SUPPORT/LIGHT 攻击 ARMOR/FORT」场景（坦克等硬目标对软兵种承伤降 15~30%），坦克对轰/打步兵/防空配对完全不变；战力显示公式独立不受影响。回归锁 `tests/unit/battle/test_defense_dim_pairing.gd`（6 用例：维度矩阵/重赋转轴/配对结算/null 兜底/get_attack_vs 同轴/数据表语义）。
+- **曲射开火力度分级（#4 遗留）**：`simple_indirect_projectile_batch._play_fire_sfx(wt)` 补 dmg 参数走 `compute_power_tier`（对齐直射 batch v6.42 口径）——tier≥2 降调 0.88+音量放大（重炮齐射低鸣），武器族选择（flak/missile/rocket）不变；此前曲射开火无分级，同一门火箭炮打轻甲与重甲同声。
+- **BGM 换曲工单立档（#7/#9）**：`docs/BGM换曲工单_20261008.md`——#7 真身=hub 曲（基地/大地图共用一首）不随时代（战斗内五时代分曲本就在库），案 A=hub 五时代轮换（BGM_MAP 加 5 键+两调用点改 `music_key_for_current_era()`，缺文件回退 hub）；#9 真身=battle_future（Space Fighter Loop 轻快循环感）与全曲库风格断层，案 B=换悲怆管弦或挪 hub_future。曲源/授权/工序/铁律（ogg 不入 git、CREDITS.md 台账、incompetech 快照）全写在工单，等选曲落地。
+- **验证**：gdparse 全过；新锁 6 + 诊断锁 4（缺省路径未变）+ 黑门结构 11 全绿；`test_card_grid_damage` 存量伤害锁复跑通过。
+
+## v6.52.2（2026-10-08）BGM 换曲落地批——hub 五时代轮换 + 近未来战斗曲换血（工单 A/B 案全执行，用户「全部同意」授权）
+
+`docs/BGM换曲工单_20261008.md` 两案全落地，BGM 库 8→13 首（incompetech CC BY 4.0 链路沿用）：
+
+- **案A（#7「每一时代都换一下」）**：`AudioManager` 加 `music_key_for_current_era()`——基地/大地图按当前战线时代选曲（hub_ww1/ww2/cold/modern/future 五键），时代曲文件缺失自动回退单曲 hub（接线先于资产零风险）；world_map/truck_base 两调用点改接。BGM_MAP 扩 5 键。
+- **案B（#9「春游 BGM」）**：`battle_future` 由 Space Fighter Loop（官方"为太空战斗游戏而写的循环"，全曲库唯一轻快曲=主诉本体）**换 Hiding Your Reality**（USUAN1700081，官方标注 Action/Driving/Epic，铜管+合成器）；Space Fighter Loop 本体未退役——**挪档 hub_future**（近未来基地氛围，与其"太空游戏"气质正配）。开场梦战（dream_battle 硬编码 battle_future）随新曲变 epic 风，待复听。
+- **新曲五首**（全走 `tools/bgm_swap_from_manifest.py` 归一 -14 LUFS+溯源元数据，源 mp3 归档项目外）：hub_ww1=Man Down（8 把大提琴哀伤弦乐，Somber，语义贴一战纪念）/ hub_ww2=Take the Lead（紧张重吉他）/ hub_cold=Spy Glass（50 年代侦探爵士）/ hub_modern=Bass Walker（Noir 行走贝斯）/ battle_future=Hiding Your Reality。**首选 Long Note Two 因源响度 -25.6 LUFS 静态增益不可救（落盘 -26.9 不可闻）中途换曲**——响度不可救的源直接换，不破峰值纪律。
+- **凭据链**：`_steam_assets/licenses/incompetech_20261008/`（manifest+intake SHA256+CC 法律文本）；`assets/sfx/CREDITS.md` 台账 13 首全表+换曲记录；换下前备份 `D:/godotplay/_art_backup/bgm_v6522_20261008/pre_swap/`。⚠️ battle_future/hub_cold 落盘 -16.4 LUFS（源峰值限制，纪律内极限），复听偏轻则下批 loudnorm 二次归一。
+- **验证**：13 键映射冒烟全绿（含 era 键实调返回 hub_ww1）；六 .import loop=true 对齐；流水线 ALL_OK。人工复听项：五首新曲实机风格验收 + 开场梦战配新 battle_future 效果。

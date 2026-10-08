@@ -2209,6 +2209,10 @@ func _maybe_spawn_tutorial_pointer() -> void:
 	# 拆场守卫（记录5#16 同律）：deferred 回调可能落在已出树的场景上
 	if not is_inside_tree():
 		return
+	# v6.52（记录1#18）：任一 overlay 开着不亮指路标——暗幕+金环叠在面板上是实机
+	# 主诉"下一步提示悬浮在改造面板上"；面板关闭时 notify_surface_closed 会重亮
+	if _is_any_overlay_open():
+		return
 	var tpm := get_node_or_null("/root/TutorialProgressionManager")
 	if tpm == null or not tpm.has_method("get_pending_surface"):
 		return

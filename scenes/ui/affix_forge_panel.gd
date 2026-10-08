@@ -281,8 +281,12 @@ func _build_affix_row(am: Node, key: String, a, idx: int) -> PanelContainer:
 	name_lbl.custom_minimum_size = Vector2(170, 0)
 	hbox.add_child(name_lbl)
 	# 效果描述（悬停详情）
+	# v6.51 批（主诉"词条加什么应该有更详细的情报"）：数值内联进正文——此前只有
+	# 泛泛描述（"平台最大生命值提升"），具体加多少只在悬停 tooltip 里。
 	var desc_lbl := Label.new()
-	desc_lbl.text = String(a.description)
+	var affix_val: String = AffixDisplayFormat.fmt_affix_value(a)
+	desc_lbl.text = ("%s ｜ %s" % [affix_val, String(a.description)]) if not affix_val.is_empty() \
+		else String(a.description)
 	desc_lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
 	desc_lbl.add_theme_color_override("font_color", DT.COLOR_TEXT_MID)
 	desc_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL

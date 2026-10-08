@@ -1,41 +1,14 @@
 {
- "exported": "2026/10/3 19:30:08",
- "marked": 128,
+ "exported": "2026-10-06 marks(3) 减 r=no",
+ "marked": 42,
  "marks": {
-  "fam|ww1_sup_mg_nest": {
-   "p": [
-    "size"
-   ],
-   "r": "yes",
-   "n": "待机"
-  },
-  "fam|ww1_arty_mortar": {
-   "p": [],
-   "r": "",
-   "n": "攻击要调整大小"
-  },
-  "ind|ww1_lanchest": {
-   "p": [
-    "size",
-    "other"
-   ],
-   "r": "yes",
-   "n": "重生成 开火位置错了"
-  },
   "fam|ww1_arm_ft17": {
    "p": [
     "clip"
    ],
    "r": "yes",
-   "n": "攻击"
-  },
-  "fam|ww1_boss_av7": {
-   "p": [
-    "face",
-    "clip"
-   ],
-   "r": "yes",
-   "n": "开火位置不对"
+   "n": "攻击",
+   "a": ""
   },
   "ind|ww1_a7v": {
    "p": [
@@ -43,7 +16,8 @@
     "diff"
    ],
    "r": "yes",
-   "n": "重生成 开火位置错了"
+   "n": "重生成 开火位置错了",
+   "a": ""
   },
   "ind|ww1_mark4": {
    "p": [
@@ -51,12 +25,14 @@
     "diff"
    ],
    "r": "yes",
-   "n": "都重做重生成 开火位置错了"
+   "n": "都重做重生成 开火位置错了",
+   "a": ""
   },
   "fam|ww1_arty_77mm": {
    "p": [],
    "r": "yes",
-   "n": "重做，没正侧面"
+   "n": "",
+   "a": ""
   },
   "ind|ww1_105mm": {
    "p": [
@@ -64,165 +40,16 @@
     "bg"
    ],
    "r": "yes",
-   "n": ""
-  },
-  "ind|ww1_37mm": {
-   "p": [
-    "diff"
-   ],
-   "r": "no",
-   "n": ""
-  },
-  "fam|ww1_inf_mp18": {
-   "p": [
-    "diff"
-   ],
-   "r": "yes",
-   "n": ""
-  },
-  "fam|ww1_fort_pillbox": {
-   "p": [
-    "clip"
-   ],
-   "r": "yes",
-   "n": ""
-  },
-  "fam|ww1_fort_artillery": {
-   "p": [],
-   "r": "yes",
-   "n": "待机不要有灯"
-  },
-  "fam|ww2_sup_mg42": {
-   "p": [
-    "size",
-    "diff"
-   ],
-   "r": "yes",
-   "n": "待机"
-  },
-  "fam|ww2_inf_bazooka": {
-   "p": [
-    "diff"
-   ],
-   "r": "yes",
-   "n": "待机重做"
-  },
-  "fam|ww2_arty_m81": {
-   "p": [],
-   "r": "yes",
-   "n": "攻击重做"
-  },
-  "fam|ww2_arm_panther_e": {
-   "p": [
-    "clip"
-   ],
-   "r": "yes",
-   "n": "攻击截断，待机 也要重做"
-  },
-  "fam|ww2_boss_kingtiger": {
-   "p": [],
-   "r": "yes",
-   "n": "都重做"
-  },
-  "fam|ww2_arm_sherman": {
-   "p": [],
-   "r": "yes",
-   "n": "开火，火光位置错"
-  },
-  "fam|ww2_inf_hellcat": {
-   "p": [],
-   "r": "yes",
-   "n": "开火没火光"
-  },
-  "fam|ww2_fort_bunker": {
-   "p": [],
-   "r": "yes",
-   "n": "待机不要有灯光"
-  },
-  "fam|ww2_fort_flak": {
-   "p": [
-    "clip"
-   ],
-   "r": "yes",
-   "n": "开火位置错了"
-  },
-  "fam|ww2_inf_panzerschreck_e": {
-   "p": [
-    "diff"
-   ],
-   "r": "yes",
-   "n": "待机"
-  },
-  "fam|cold_inf_ak": {
-   "p": [
-    "diff",
-    "face",
-    "clip"
-   ],
-   "r": "yes",
-   "n": "待机与攻击都要重作"
-  },
-  "fam|cold_inf_m60": {
-   "p": [
-    "face"
-   ],
-   "r": "yes",
-   "n": "待机开火了"
-  },
-  "fam|cold_air_m113_e": {
-   "p": [
-    "diff"
-   ],
-   "r": "yes",
-   "n": "待机"
-  },
-  "fam|cold_arm_t55": {
-   "p": [
-    "clip"
-   ],
-   "r": "yes",
-   "n": ""
-  },
-  "fam|cold_arm_t72_e": {
-   "p": [],
-   "r": "yes",
-   "n": "没开火"
-  },
-  "fam|cold_sup_zsu23": {
-   "p": [
-    "clip"
-   ],
-   "r": "yes",
-   "n": ""
-  },
-  "ind|cold_sam7": {
-   "p": [
-    "clip"
-   ],
-   "r": "yes",
-   "n": ""
-  },
-  "fam|mod_inf_marine": {
-   "p": [
-    "bg"
-   ],
-   "r": "yes",
-   "n": "地面"
-  },
-  "ind|mod_javelin": {
-   "p": [
-    "bg",
-    "diff"
-   ],
-   "r": "yes",
-   "n": "待机"
+   "n": "",
+   "a": ""
   },
   "fam|mod_arm_stryker_e": {
    "p": [
     "diff"
    ],
    "r": "yes",
-   "n": "卡图换正侧方的"
+   "n": "卡图换正侧方的",
+   "a": ""
   },
   "ind|mod_stryker_m2": {
    "p": [
@@ -230,23 +57,8 @@
     "diff"
    ],
    "r": "yes",
-   "n": ""
-  },
-  "fam|mod_air_technical_e": {
-   "p": [
-    "diff"
-   ],
-   "r": "yes",
-   "n": "重生成枪指向前方的"
-  },
-  "fam|mod_arm_abrams_e": {
-   "p": [
-    "size",
-    "diff",
-    "clip"
-   ],
-   "r": "yes",
-   "n": "卡图换动画一样的。"
+   "n": "",
+   "a": ""
   },
   "fam|mod_arm_m1a2sep": {
    "p": [
@@ -254,104 +66,32 @@
     "clip"
    ],
    "r": "yes",
-   "n": "不是正侧面"
-  },
-  "fam|mod_air_apache_e": {
-   "p": [],
-   "r": "yes",
-   "n": "待机摆动太大"
-  },
-  "fam|mod_sup_m6": {
-   "p": [
-    "clip"
-   ],
-   "r": "yes",
-   "n": ""
-  },
-  "fam|mod_fort_citadel": {
-   "p": [
-    "clip"
-   ],
-   "r": "yes",
-   "n": "开火位置错了"
-  },
-  "fam|mod_fort_phalanx": {
-   "p": [
-    "clip"
-   ],
-   "r": "yes",
-   "n": ""
-  },
-  "ind|fut_swarm": {
-   "p": [
-    "clip"
-   ],
-   "r": "yes",
-   "n": ""
-  },
-  "fam|fut_arm_mech_e": {
-   "p": [],
-   "r": "no",
-   "n": "待机"
-  },
-  "fam|fut_arm_hovertank": {
-   "p": [
-    "size",
-    "clip",
-    "diff"
-   ],
-   "r": "yes",
-   "n": ""
-  },
-  "fam|mod_arty_mlrs_e": {
-   "p": [],
-   "r": "yes",
-   "n": "卡图换成和动画一样的。"
-  },
-  "fam|fut_arm_prism": {
-   "p": [
-    "clip"
-   ],
-   "r": "yes",
-   "n": "卡图没正侧面"
+   "n": "不是正侧面",
+   "a": ""
   },
   "ind|fut_space_fighter": {
    "p": [
     "diff"
    ],
    "r": "yes",
-   "n": "待机"
+   "n": "攻击与待机都重做",
+   "a": ""
   },
   "ind|fut_nano_drone": {
    "p": [
     "diff"
    ],
    "r": "yes",
-   "n": "都要重做"
-  },
-  "fam|fut_boss_nexus": {
-   "p": [],
-   "r": "yes",
-   "n": "待机"
-  },
-  "fam|fut_arm_colossus_e": {
-   "p": [],
-   "r": "yes",
-   "n": ""
+   "n": "都要重做",
+   "a": ""
   },
   "ind|guardian_ww1_ironclad": {
    "p": [
     "clip"
    ],
    "r": "yes",
-   "n": ""
-  },
-  "ind|guardian_cold_thunder": {
-   "p": [
-    "size"
-   ],
-   "r": "yes",
-   "n": "待机"
+   "n": "",
+   "a": ""
   },
   "ind|guardian_future_omega": {
    "p": [
@@ -361,170 +101,73 @@
     "face"
    ],
    "r": "yes",
-   "n": ""
+   "n": "",
+   "a": ""
   },
   "ind|fe_iron_wall_bastion": {
    "p": [],
    "r": "yes",
-   "n": ""
+   "n": "",
+   "a": ""
   },
   "ind|fe_iron_wall_juggernaut": {
    "p": [],
    "r": "yes",
-   "n": "要做抬枪"
-  },
-  "ind|fe_nova_devastator": {
-   "p": [],
-   "r": "yes",
-   "n": ""
-  },
-  "ind|fe_nova_ghost_sniper": {
-   "p": [],
-   "r": "yes",
-   "n": ""
+   "n": "要做抬枪",
+   "a": ""
   },
   "ind|fe_aether_hover_cavalry": {
    "p": [],
    "r": "yes",
-   "n": ""
+   "n": "",
+   "a": ""
   },
   "ind|fe_aether_swarm_queen": {
    "p": [],
    "r": "yes",
-   "n": ""
+   "n": "",
+   "a": ""
   },
   "ind|fe_quantum_mobile_base": {
    "p": [],
    "r": "yes",
-   "n": ""
+   "n": "卡图和待机 攻击都重做",
+   "a": ""
   },
   "ind|fe_quantum_repair_drone": {
    "p": [],
    "r": "yes",
-   "n": ""
-  },
-  "ind|fe_helix_phantom": {
-   "p": [],
-   "r": "yes",
-   "n": "要用生图"
-  },
-  "ind|fe_helix_orbital_strike": {
-   "p": [],
-   "r": "yes",
-   "n": ""
+   "n": "卡图和待机 攻击都重做",
+   "a": ""
   },
   "ind|fe_void_phase_cannon": {
    "p": [],
    "r": "yes",
-   "n": ""
+   "n": "",
+   "a": ""
   },
   "ind|fe_void_dimensional_soldier": {
    "p": [],
    "r": "yes",
-   "n": "要先变攻击姿势"
+   "n": "卡图和待机 攻击都重做",
+   "a": ""
   },
   "ind|fe_frontier_veteran": {
    "p": [],
    "r": "yes",
-   "n": "要先变攻击姿势"
+   "n": "要先变攻击姿势",
+   "a": ""
   },
   "ind|fe_frontier_mixed_company": {
    "p": [],
    "r": "yes",
-   "n": ""
+   "n": "",
+   "a": ""
   },
   "fam|ww1_arm_rolls": {
    "p": [],
    "r": "yes",
-   "n": "图片没正侧面，开火位置错误",
-   "a": ""
-  },
-  "fam|ww1_inf_cavalry": {
-   "p": [],
-   "r": "yes",
-   "n": "攻击没开火",
-   "a": ""
-  },
-  "fam|ww1_arty_m81": {
-   "p": [],
-   "r": "yes",
-   "n": "没火光",
-   "a": ""
-  },
-  "fam|cold_inf_btr60": {
-   "p": [],
-   "r": "yes",
-   "n": "没火光",
-   "a": ""
-  },
-  "fam|mod_inf_scout_drone": {
-   "p": [],
-   "r": "yes",
-   "n": "卡图不是正侧面，重新生成过，没更新出来",
-   "a": ""
-  },
-  "fam|ww1_arm_rolls_e": {
-   "p": [],
-   "r": "yes",
-   "n": "开火位置不对",
-   "a": ""
-  },
-  "fam|ww2_inf_thompson": {
-   "p": [],
-   "r": "yes",
-   "n": "开火没火光",
-   "a": ""
-  },
-  "fam|ww2_inf_garand": {
-   "p": [],
-   "r": "yes",
-   "n": "开火没火光",
-   "a": ""
-  },
-  "fam|ww2_inf_para_e": {
-   "p": [],
-   "r": "yes",
-   "n": "开火没火光",
-   "a": ""
-  },
-  "fam|cold_arm_btr_e": {
-   "p": [
-    "diff"
-   ],
-   "r": "yes",
-   "n": "待机",
-   "a": ""
-  },
-  "fam|cold_inf_spetsnaz_e": {
-   "p": [],
-   "r": "yes",
-   "n": "待机摆动太大",
-   "a": ""
-  },
-  "fam|mod_inf_delta_e": {
-   "p": [],
-   "r": "yes",
-   "n": "卡图换动画一样的。",
-   "a": ""
-  },
-  "fam|fut_air_drone": {
-   "p": [],
-   "r": "yes",
-   "n": "卡图重新生成",
-   "a": ""
-  },
-  "fam|fut_arm_hovertank_e": {
-   "p": [
-    "clip"
-   ],
-   "r": "yes",
    "n": "",
-   "a": ""
-  },
-  "fam|ww1_inf_mp18_x": {
-   "p": [],
-   "r": "yes",
-   "n": "包括卡图都不是全身",
    "a": ""
   },
   "fam|ww2_arm_garand_para": {
@@ -533,22 +176,16 @@
    "n": "将卡图变成动画一样的",
    "a": ""
   },
-  "fam|ww2_arty_hummel": {
-   "p": [],
-   "r": "yes",
-   "n": "没开火",
-   "a": ""
-  },
   "fam|ww2_sup_gmc_truck": {
    "p": [],
    "r": "yes",
-   "n": "攻击重做，不用开火，用待的就好",
+   "n": "用待机的做卡图和攻击",
    "a": ""
   },
   "fam|cold_sup_bmp1_x": {
    "p": [],
-   "r": "yes",
-   "n": "没开火",
+   "r": "",
+   "n": "",
    "a": "main"
   },
   "fam|cold_inf_metis": {
@@ -563,248 +200,90 @@
    "n": "",
    "a": "main"
   },
-  "fam|mod_sup_m4_carbine": {
-   "p": [],
-   "r": "yes",
-   "n": "全是半身的",
-   "a": ""
-  },
   "fam|mod_arm_himars": {
-   "p": [
-    "clip"
-   ],
-   "r": "yes",
-   "n": "火光抠错了",
-   "a": "main"
-  },
-  "fam|mod_arty_rq7": {
    "p": [],
-   "r": "yes",
-   "n": "待机抠错了",
-   "a": ""
+   "r": "",
+   "n": "",
+   "a": "main"
   },
   "fam|mod_sup_growler": {
    "p": [],
-   "r": "no",
+   "r": "",
    "n": "",
    "a": "alt:fut_attack_drone"
-  },
-  "fam|fut_inf_neural": {
-   "p": [],
-   "r": "yes",
-   "n": "待机太摆了",
-   "a": ""
-  },
-  "fam|fut_sup_ps9": {
-   "p": [],
-   "r": "yes",
-   "n": "待机重做",
-   "a": ""
-  },
-  "fam|ww2_air_bomber": {
-   "p": [],
-   "r": "yes",
-   "n": "开火重生成方向反了",
-   "a": ""
-  },
-  "fam|ww2_air_dive_bomber": {
-   "p": [],
-   "r": "yes",
-   "n": "待机与攻击都重生成",
-   "a": ""
-  },
-  "fam|cold_air_strike_fighter": {
-   "p": [],
-   "r": "yes",
-   "n": "没火光 抠花了，全重做",
-   "a": ""
-  },
-  "fam|mod_air_bomber": {
-   "p": [],
-   "r": "yes",
-   "n": "全重做",
-   "a": ""
-  },
-  "fam|fut_air_stealth_multirole": {
-   "p": [],
-   "r": "yes",
-   "n": "全重做",
-   "a": ""
-  },
-  "fam|ww2_air_meteor_e": {
-   "p": [],
-   "r": "",
-   "n": "全重做",
-   "a": ""
-  },
-  "fam|ww2_air_me262": {
-   "p": [],
-   "r": "yes",
-   "n": "",
-   "a": ""
-  },
-  "fam|fut_fort_ion": {
-   "p": [],
-   "r": "yes",
-   "n": "",
-   "a": ""
-  },
-  "fam|xeno_stalker": {
-   "p": [
-    "clip"
-   ],
-   "r": "yes",
-   "n": "",
-   "a": ""
-  },
-  "fam|xeno_dark_templar": {
-   "p": [],
-   "r": "yes",
-   "n": "以攻击动画，出卡图，和待机图，卡图待机图都画错了画成双刀",
-   "a": ""
   },
   "plat|steel_fortress_basic": {
    "p": [],
    "r": "yes",
-   "n": "补卡图",
+   "n": "",
    "a": ""
   },
   "plat|steel_titan_basic": {
    "p": [],
-   "r": "",
-   "n": "补卡图",
-   "a": ""
-  },
-  "plat|steel_fortress_advanced": {
-   "p": [],
    "r": "yes",
-   "n": "补卡图",
-   "a": ""
-  },
-  "plat|steel_titan_advanced": {
-   "p": [],
-   "r": "yes",
-   "n": "补卡图",
-   "a": ""
-  },
-  "plat|steel_fortress_expert": {
-   "p": [],
-   "r": "yes",
-   "n": "补卡图",
-   "a": ""
-  },
-  "plat|steel_titan_expert": {
-   "p": [],
-   "r": "yes",
-   "n": "补卡图",
+   "n": "",
    "a": ""
   },
   "plat|flame_raider_basic": {
    "p": [],
    "r": "yes",
-   "n": "补卡图",
+   "n": "待机 攻击都重做",
    "a": ""
   },
   "plat|flame_siege_basic": {
    "p": [],
    "r": "yes",
-   "n": "补卡图",
-   "a": ""
-  },
-  "plat|flame_raider_advanced": {
-   "p": [],
-   "r": "yes",
-   "n": "补卡图",
-   "a": ""
-  },
-  "plat|flame_siege_advanced": {
-   "p": [],
-   "r": "yes",
-   "n": "补卡图",
+   "n": "待机 攻击都重做",
    "a": ""
   },
   "plat|thunter_striker_basic": {
    "p": [],
    "r": "yes",
-   "n": "补卡图",
+   "n": "待机 攻击都重做",
    "a": ""
   },
   "plat|thunter_sniper_basic": {
    "p": [],
    "r": "yes",
-   "n": "补卡图",
+   "n": "待机 攻击都重做",
    "a": ""
   },
   "plat|void_stealth_basic": {
    "p": [],
    "r": "yes",
-   "n": "补卡图",
+   "n": "待机 攻击都重做",
    "a": ""
   },
   "plat|void_mage_basic": {
    "p": [],
    "r": "yes",
-   "n": "补卡图",
+   "n": "待机 攻击都重做",
    "a": ""
   },
-  "plat|flame_raider_expert": {
-   "p": [],
+  "drop|drop_phase_lance": {
+   "p": [
+    "diff"
+   ],
    "r": "yes",
-   "n": "补卡图",
+   "n": "",
    "a": ""
   },
-  "plat|flame_siege_expert": {
+  "drop|drop_smg_mk2": {
    "p": [],
    "r": "yes",
-   "n": "补卡图",
+   "n": "开火位置不对",
    "a": ""
   },
-  "plat|thunter_striker_advanced": {
+  "drop|drop_thunder_field": {
    "p": [],
    "r": "yes",
-   "n": "补卡图",
+   "n": "",
    "a": ""
   },
-  "plat|thunter_sniper_advanced": {
+  "drop|drop_mega_particle_cannon": {
    "p": [],
    "r": "yes",
-   "n": "补卡图",
-   "a": ""
-  },
-  "plat|thunter_striker_expert": {
-   "p": [],
-   "r": "yes",
-   "n": "补卡图",
-   "a": ""
-  },
-  "plat|thunter_sniper_expert": {
-   "p": [],
-   "r": "yes",
-   "n": "补卡图",
-   "a": ""
-  },
-  "plat|void_stealth_advanced": {
-   "p": [],
-   "r": "yes",
-   "n": "补卡图",
-   "a": ""
-  },
-  "plat|void_mage_advanced": {
-   "p": [],
-   "r": "yes",
-   "n": "补卡图",
-   "a": ""
-  },
-  "plat|void_stealth_expert": {
-   "p": [],
-   "r": "yes",
-   "n": "补卡图",
-   "a": ""
-  },
-  "plat|void_mage_expert": {
-   "p": [],
-   "r": "yes",
-   "n": "补卡图",
+   "n": "",
    "a": ""
   }
  }

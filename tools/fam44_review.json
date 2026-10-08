@@ -1,0 +1,117 @@
+{
+ "fe_void_phase_cannon": {
+  "status": "可以"
+ },
+ "drop_thunder_field": {
+  "status": "可以"
+ },
+ "steel_titan_basic": {
+  "status": "可以"
+ },
+ "flame_raider_basic": {
+  "status": "可以"
+ },
+ "flame_siege_basic": {
+  "status": "可以"
+ },
+ "thunter_striker_basic": {
+  "status": "可以"
+ },
+ "thunter_sniper_basic": {
+  "status": "可以"
+ },
+ "void_mage_basic": {
+  "status": "可以"
+ },
+ "ww2_sup_gmc_truck": {
+  "status": "可以"
+ },
+ "ww1_arm_ft17": {
+  "status": "可以"
+ },
+ "guardian_ww1_ironclad": {
+  "status": "可以"
+ },
+ "fe_iron_wall_bastion": {
+  "status": "可以"
+ },
+ "fut_space_fighter": {
+  "status": "可以"
+ },
+ "guardian_future_omega": {
+  "status": "可以"
+ },
+ "drop_phase_lance": {
+  "status": "可以"
+ },
+ "A:ww1_a7v": {
+  "status": "可以"
+ },
+ "A:ww1_arty_77mm": {
+  "status": "可以"
+ },
+ "A:mod_arm_m1a2sep": {
+  "status": "可以"
+ },
+ "B:mod_arm_stryker_e": {
+  "status": "可以",
+  "note": "不是正侧 面"
+ },
+ "B:mod_arm_m1a2sep": {
+  "status": "可以",
+  "note": "不是正侧 面"
+ },
+ "B:ww2_arm_garand_para": {
+  "status": "可以",
+  "note": "没抠好图有白"
+ },
+ "B:ww2_sup_gmc_truck": {
+  "status": "可以"
+ },
+ "fe_iron_wall_juggernaut": {
+  "status": "可以"
+ },
+ "fe_aether_hover_cavalry": {
+  "status": "可以"
+ },
+ "fe_aether_swarm_queen": {
+  "status": "可以"
+ },
+ "fe_frontier_mixed_company": {
+  "status": "可以"
+ },
+ "drop_smg_mk2": {
+  "status": "可以"
+ },
+ "drop_mega_particle_cannon": {
+  "status": "可以"
+ },
+ "steel_fortress_basic": {
+  "status": "可以"
+ },
+ "void_stealth_basic": {
+  "note": "增加刀光",
+  "status": "可以"
+ },
+ "mod_stryker_m2": {
+  "status": "可以"
+ },
+ "ww1_arm_rolls": {
+  "status": "可以"
+ },
+ "fut_nano_drone": {
+  "status": "可以"
+ },
+ "fe_quantum_mobile_base": {
+  "status": "可以"
+ },
+ "fe_quantum_repair_drone": {
+  "status": "可以"
+ },
+ "fe_frontier_veteran": {
+  "status": "可以"
+ },
+ "fe_void_dimensional_soldier": {
+  "status": "可以"
+ }
+}

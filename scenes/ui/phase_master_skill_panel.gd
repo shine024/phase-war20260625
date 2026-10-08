@@ -478,8 +478,10 @@ func _on_unlock_pressed(node_id: String) -> void:
 			else:
 				_show_temp_msg("需先解锁：%s" % missing_str)
 	else:
+		# v6.52（记录1#5，用户主诉"技能学习的音效也不好"）：enhance 是卡牌强化音
+		# （金属锉磨短促），学习技能的仪式感换蓝图解锁音（上扬双音）
 		if SignalBus and SignalBus.has_signal("play_sound"):
-			SignalBus.play_sound.emit("enhance")
+			SignalBus.play_sound.emit("blueprint_unlock")
 		_emit_unlock_toast(node_id)
 		_board.play_unlock_effect(node_id)
 	_request_refresh()

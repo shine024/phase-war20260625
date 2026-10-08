@@ -598,8 +598,10 @@ func _grant_first_clear_if_eligible() -> void:
 		return
 	for id in reward:
 		BasicResourceManager.add_resource(String(id), int(reward[id]))
-	SignalBus.show_toast.emit("★ 首通奖励已发放：" + FirstClearRewards.format_reward_text(reward))
-	# v34 B3：首通奖励入结算摘要——缴获页「首次通关奖励」区块消费（Toast 保留双通道）
+	# v6.52（记录1#12）：首通奖励=获得类提示，走左下 feed 通道（v6.38 双通道拍板：
+	# 右上 toast 留给操作反馈）——实机主诉"首通奖励的信息框出现在右上角，设计不好"
+	SignalBus.feed_message.emit("★ 首通奖励已发放：" + FirstClearRewards.format_reward_text(reward))
+	# v34 B3：首通奖励入结算摘要——缴获页「首次通关奖励」区块消费（feed 保留双通道）
 	last_battle_reward_summary["first_clear"] = {"level": lvl, "reward": reward.duplicate()}
 
 func _on_battle_ended(player_won: bool) -> void:

@@ -21,6 +21,7 @@ import hashlib
 import json
 import os
 import subprocess
+import shutil
 import sys
 import time
 import urllib.error
@@ -47,7 +48,7 @@ IMGBB_KEY = "05948b794b00406bb44955b722d15e65"
 BASE_URLS = ["https://api.agnes-ai.cn/v1", "https://apihub.agnes-ai.com/v1"]
 QUERY_URLS = ["https://api.agnes-ai.cn/agnesapi", "https://apihub.agnes-ai.com/agnesapi"]
 MODEL = "agnes-video-2.5-flash"
-FFMPEG = r"C:\ProgramData\chocolatey\bin\ffmpeg.exe"
+FFMPEG = shutil.which("ffmpeg") or r"C:\ProgramData\chocolatey\bin\ffmpeg.exe"
 
 CANVAS = 512
 TARGET_FRAMES = {"idle": 8, "attack": 12}

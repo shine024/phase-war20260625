@@ -57,7 +57,7 @@ const HOTSPOTS := {
 		{"r": [0.282, 0.254, 0.107, 0.138], "name": "世界地图墙", "hint": "情报舱", "kind": "panel", "key": "intelligence", "rooms": "archive"},
 		{"r": [0.398, 0.312, 0.067, 0.323], "name": "补给售货机", "hint": "补给舱·联络台", "kind": "panel", "key": "store", "rooms": "comms"},
 		{"r": [0.470, 0.277, 0.068, 0.185], "name": "卡牌展示墙", "hint": "卡仓", "kind": "panel", "key": "backpack", "rooms": "dormitory（挂靠）"},
-		{"r": [0.545, 0.277, 0.130, 0.323], "name": "工具工作台", "hint": "改造·词条", "kind": "panel", "key": "modification", "rooms": "workshop"},
+		{"r": [0.545, 0.277, 0.130, 0.323], "name": "工具工作台", "hint": "改造·模块", "kind": "panel", "key": "modification", "rooms": "workshop"},
 		{"r": [0.680, 0.335, 0.040, 0.260], "name": "3D 打印机", "hint": "制造舱·卡仓", "kind": "panel", "key": "evolution", "rooms": "depot"},
 		{"r": [0.450, 0.650, 0.040, 0.100], "name": "医疗柜", "hint": "医疗·配给", "kind": "info", "rooms": "medical + mess_hall"},
 		{"r": [0.925, 0.660, 0.055, 0.170], "name": "发电机", "hint": "全车电力·配给", "kind": "info", "rooms": "reactor + mess_hall"},
@@ -76,7 +76,7 @@ const HOTSPOTS := {
 		{"r": [0.284, 0.232, 0.106, 0.139], "name": "世界地图墙", "hint": "情报舱", "kind": "panel", "key": "intelligence", "rooms": "archive"},
 		{"r": [0.394, 0.267, 0.066, 0.348], "name": "补给售货机", "hint": "补给舱·联络台", "kind": "panel", "key": "store", "rooms": "comms"},
 		{"r": [0.465, 0.244, 0.106, 0.220], "name": "卡牌展示墙", "hint": "卡仓", "kind": "panel", "key": "backpack", "rooms": "dormitory（挂靠）"},
-		{"r": [0.580, 0.452, 0.116, 0.160], "name": "工具工作台", "hint": "改造·词条", "kind": "panel", "key": "modification", "rooms": "workshop"},
+		{"r": [0.580, 0.452, 0.116, 0.160], "name": "工具工作台", "hint": "改造·模块", "kind": "panel", "key": "modification", "rooms": "workshop"},
 		{"r": [0.700, 0.278, 0.040, 0.325], "name": "3D 打印机", "hint": "制造舱·卡仓", "kind": "panel", "key": "evolution", "rooms": "depot"},
 		{"r": [0.447, 0.661, 0.036, 0.104], "name": "医疗柜", "hint": "医疗·配给", "kind": "info", "rooms": "medical + mess_hall"},
 		{"r": [0.918, 0.661, 0.070, 0.174], "name": "发电机", "hint": "全车电力·配给", "kind": "info", "rooms": "reactor + mess_hall"},
@@ -95,7 +95,7 @@ const HOTSPOTS := {
 		{"r": [0.272, 0.403, 0.101, 0.110], "name": "世界地图屏", "hint": "情报舱", "kind": "panel", "key": "intelligence", "rooms": "archive"},
 		{"r": [0.431, 0.394, 0.044, 0.211], "name": "补给售货机", "hint": "补给舱·联络台", "kind": "panel", "key": "store", "rooms": "comms"},
 		{"r": [0.584, 0.394, 0.091, 0.236], "name": "物资货架", "hint": "卡仓", "kind": "panel", "key": "backpack", "rooms": "dormitory（挂靠）"},
-		{"r": [0.606, 0.632, 0.062, 0.100], "name": "工坊工具台", "hint": "改造·词条", "kind": "panel", "key": "modification", "rooms": "workshop"},
+		{"r": [0.606, 0.632, 0.062, 0.100], "name": "工坊工具台", "hint": "改造·模块", "kind": "panel", "key": "modification", "rooms": "workshop"},
 		{"r": [0.677, 0.485, 0.053, 0.147], "name": "钻床打印机", "hint": "制造舱·卡仓", "kind": "panel", "key": "evolution", "rooms": "depot"},
 		{"r": [0.479, 0.733, 0.048, 0.092], "name": "医疗柜", "hint": "医疗·配给", "kind": "info", "rooms": "medical + mess_hall"},
 		{"r": [0.844, 0.420, 0.060, 0.240], "name": "配电柜", "hint": "全车电力·配给", "kind": "info", "rooms": "reactor + mess_hall"},
@@ -114,7 +114,7 @@ const HOTSPOTS := {
 		{"r": [0.254, 0.417, 0.088, 0.124], "name": "全息地图墙", "hint": "情报舱", "kind": "panel", "key": "intelligence", "rooms": "archive"},
 		{"r": [0.818, 0.417, 0.050, 0.374], "name": "补给货架", "hint": "补给舱·联络台", "kind": "panel", "key": "store", "rooms": "comms"},
 		{"r": [0.412, 0.449, 0.079, 0.254], "name": "卡牌展示墙", "hint": "卡仓", "kind": "panel", "key": "backpack", "rooms": "dormitory（挂靠）"},
-		{"r": [0.710, 0.587, 0.096, 0.115], "name": "机械臂工位", "hint": "改造·词条", "kind": "panel", "key": "modification", "rooms": "workshop"},
+		{"r": [0.710, 0.587, 0.096, 0.115], "name": "机械臂工位", "hint": "改造·模块", "kind": "panel", "key": "modification", "rooms": "workshop"},
 		{"r": [0.727, 0.705, 0.066, 0.075], "name": "3D 打印机", "hint": "制造舱·卡仓", "kind": "panel", "key": "evolution", "rooms": "depot"},
 		{"r": [0.438, 0.705, 0.053, 0.182], "name": "医疗冰箱", "hint": "医疗·配给", "kind": "info", "rooms": "medical + mess_hall"},
 		{"r": [0.692, 0.812, 0.190, 0.145], "name": "聚变缆线", "hint": "全车电力·配给", "kind": "info", "rooms": "reactor + mess_hall"},
@@ -133,7 +133,7 @@ const HOTSPOTS := {
 		{"r": [0.250, 0.435, 0.060, 0.117], "name": "全息地图投影", "hint": "情报舱", "kind": "panel", "key": "intelligence", "rooms": "archive"},
 		{"r": [0.392, 0.414, 0.047, 0.265], "name": "补给售货机", "hint": "补给舱·联络台", "kind": "panel", "key": "store", "rooms": "comms"},
 		{"r": [0.444, 0.414, 0.112, 0.202], "name": "卡牌展示墙", "hint": "卡仓", "kind": "panel", "key": "backpack", "rooms": "dormitory（挂靠）"},
-		{"r": [0.565, 0.488, 0.108, 0.124], "name": "相位机械臂", "hint": "改造·词条", "kind": "panel", "key": "modification", "rooms": "workshop"},
+		{"r": [0.565, 0.488, 0.108, 0.124], "name": "相位机械臂", "hint": "改造·模块", "kind": "panel", "key": "modification", "rooms": "workshop"},
 		{"r": [0.596, 0.616, 0.060, 0.117], "name": "相位打印机", "hint": "制造舱·卡仓", "kind": "panel", "key": "evolution", "rooms": "depot"},
 		{"r": [0.255, 0.695, 0.040, 0.090], "name": "医疗柜", "hint": "医疗·配给", "kind": "info", "rooms": "medical + mess_hall"},
 		{"r": [0.695, 0.775, 0.115, 0.200], "name": "相位能源盘", "hint": "全车电力·配给", "kind": "info", "rooms": "reactor + mess_hall"},
@@ -269,17 +269,21 @@ func _refresh_caption(_day: int = 0) -> void:
 		return
 	_caption.text = _caption_base + _caption_status()
 
-## caption 行军状态段：停靠点 + 燃料 / 行驶中倒计时
+## caption 行军状态段：天数 + 停靠点 + 燃料 / 行驶中倒计时
+## v6.51 批（主诉"应该有时间的概念，比如第多少天，要有显示"）：天数常驻 caption 首段
 func _caption_status() -> String:
 	var bm := _bunker_mgr()
 	if bm == null:
 		return ""
+	var day_txt: String = ""
+	if bm.has_method("get_day"):
+		day_txt = "第%d天 ｜ " % int(bm.get_day())
 	if bm.is_traveling():
-		return " ｜ 行驶中 → 第%d关 · 剩%d天 ｜ 燃料 %d/%d" % [
-			int(bm.get_travel_dest()), int(bm.get_travel_days_left()),
+		return " ｜ %s行驶中 → 第%d关 · 剩%d天 ｜ 燃料 %d/%d" % [
+			day_txt, int(bm.get_travel_dest()), int(bm.get_travel_days_left()),
 			int(bm.get_fuel()), int(bm.get_fuel_cap())] + _res_brief()
-	return " ｜ 停靠 第%d关 ｜ 燃料 %d/%d" % [
-		int(bm.get_parked_level()), int(bm.get_fuel()), int(bm.get_fuel_cap())] + _res_brief()
+	return " ｜ %s停靠 第%d关 ｜ 燃料 %d/%d" % [
+		day_txt, int(bm.get_parked_level()), int(bm.get_fuel()), int(bm.get_fuel_cap())] + _res_brief()
 
 ## 记录1#6: 资源家底常驻读数（原只在战术终端"资源库存"一行能看到）——外景/剖面 caption
 ## 尾部拼同一段，BasicResourceManager.resources_changed 时同步刷新
@@ -392,6 +396,19 @@ func _ready() -> void:
 	call_deferred("_maybe_spawn_tutorial_pointer")
 	# v27.13：漫画开场收尾携 wakeup 标记切入 → 播醒来演出（deferred 等全 UI 落位）
 	call_deferred("_maybe_play_wakeup")
+	# v6.51 批（主诉"教学进入背包中卡顿严重"）：基地场景此前零预热，教程第 2 步首次
+	# 打开卡仓 = 同帧 load() 编译 3136 行 backpack_panel 脚本 + 首轮全量卡格重建。
+	# 对齐 main 的揭幕期预热：空闲期提前把面板实例建好（隐藏常驻），首开只剩
+	# PanelAnim + 数据刷新。1.0s 让苏醒演出首帧先落稳。
+	# v6.52（记录1#6）：0.35s——教程快步玩家几秒内就点卡仓，1.0s 窗口没盖住首开。
+	get_tree().create_timer(0.35).timeout.connect(_warmup_embedded_backpack)
+
+## v6.51 批：卡仓嵌入面板空闲期预热——_ensure_panel_wrapper 幂等（建好后 wrapper 隐藏
+## 常驻，不拦输入不抢焦点），首次 _open_panel("backpack") 只剩显示+刷新。
+func _warmup_embedded_backpack() -> void:
+	if not is_inside_tree():
+		return
+	_ensure_panel_wrapper("backpack")
 
 # ── 顶栏 ──
 func _build_topbar() -> void:
@@ -2740,10 +2757,11 @@ func _finish_wakeup() -> void:
 		return
 	_wakeup_active = false
 	# v6.38（记录5#4）：风声收、进基地曲（基地此前沿用标题曲无自己的主题）
+	# v6.52.2（记录1#7）：按当前战线时代选 hub 曲（时代曲未落地自动回退 hub 单曲）。
 	if AudioManager != null and AudioManager.has_method("stop_ambient"):
 		AudioManager.stop_ambient(1.5)
 	if AudioManager != null and AudioManager.has_method("play_music"):
-		AudioManager.play_music("hub")
+		AudioManager.play_music(AudioManager.music_key_for_current_era())
 	if _wakeup_tween != null and _wakeup_tween.is_valid():
 		_wakeup_tween.kill()
 	if _wakeup_root != null and is_instance_valid(_wakeup_root):
@@ -2794,9 +2812,22 @@ func _on_tutorial_pointer_requested(show_ptr: bool) -> void:
 		TutorialSpotlight.dismiss_step_pointer(self)
 
 
+## v6.52（记录1#18）：任一嵌入面板在屏判据（指路标防叠守卫消费）
+func _has_open_embed_panel() -> bool:
+	for key in _embed_wrappers:
+		var wr_v: Variant = (_embed_wrappers[key] as Dictionary).get("wrapper")
+		if wr_v is Control and (wr_v as Control).is_visible_in_tree():
+			return true
+	return false
+
+
 func _maybe_spawn_tutorial_pointer() -> void:
 	# 拆场守卫（记录5#16 同律）：deferred 回调可能落在已出树的场景上
 	if not is_inside_tree():
+		return
+	# v6.52（记录1#18）：任一嵌入面板开着不亮指路标——聚光暗幕叠在面板上是实机主诉
+	# "下一步提示悬浮在改造面板上"；面板关闭时 notify_surface_closed 会重亮
+	if _has_open_embed_panel():
 		return
 	var tpm := get_node_or_null("/root/TutorialProgressionManager")
 	if tpm == null or not tpm.has_method("get_pending_surface"):

@@ -47,8 +47,24 @@ static func resolve_from_combat(max_hp: float, attack_damage: float, attack_inte
 static func resolve_from_unit(unit: Node) -> Dictionary:
 	if unit == null or not is_instance_valid(unit):
 		return {}
+	# v6.52（记录1#26）：战力口径统一——有实例的部署单位优先走实例战斗公式（与背包/
+	# 改造舱同源同值）。此前 resolve_from_card(裸 platform_card_id) 查不到实例 → 模板
+	# 公式，同一张卡"背包几百/改造舱几千/战斗徽标又是一个数"（实机三处口径不一致主诉）。
 	if "stats" in unit and unit.stats is UnitStats:
 		var st: UnitStats = unit.stats as UnitStats
+		var iid: String = String(unit.get_meta("source_instance_id", "")) if unit.has_meta("source_instance_id") else ""
+		if not iid.is_empty() and BlueprintManager != null \
+				and BlueprintManager.has_method("_estimate_power_score"):
+			var base_rank_i: String = RankRules.get_base_rank_by_combat_kind(st.platform_type) \
+				if (st.platform_type >= 0 and st.platform_type <= 4) \
+				else RankRules.get_base_rank(st.platform_type)
+			var power_i: float = BlueprintManager._estimate_power_score(iid)
+			var rank_id_i: String = RankRules.get_rank_by_power(base_rank_i, power_i)
+			return {
+				"rank_id": rank_id_i,
+				"rank_name": RankRules.get_rank_display_name(rank_id_i),
+				"power_score": power_i,
+			}
 		if not String(st.platform_card_id).is_empty():
 			var from_card: Dictionary = resolve_from_card(st.platform_card_id)
 			if not from_card.is_empty():

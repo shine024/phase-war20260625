@@ -296,12 +296,14 @@ func _make_quest_row(quest_id: String, def: Dictionary, is_accepted: bool) -> Co
 		var company_name: String = company_cfg.get("name", company_id)
 		var rewards: Dictionary = def.get("rewards", {})
 		var rep_text: String = ""
-		if rewards.has("company_rep") and rewards["company_rep"] is Dictionary:
-			var rep_dict: Dictionary = rewards["company_rep"]
-			if rep_dict.has(company_id):
-				var rv: int = int(rep_dict[company_id])
-				if rv > 0:
-					rep_text = "（完成 +%d 贡献）" % rv
+		# v6.51 批：数据用 faction_rep（company_rep 键现网零使用），两键都查防回归
+		for rep_key in ["faction_rep", "company_rep"]:
+			if rep_text.is_empty() and rewards.has(rep_key) and rewards[rep_key] is Dictionary:
+				var rep_dict: Dictionary = rewards[rep_key]
+				if rep_dict.has(company_id):
+					var rv: int = int(rep_dict[company_id])
+					if rv > 0:
+						rep_text = "（完成 +%d 贡献）" % rv
 		var company_l := Label.new()
 		company_l.text = "▸ %s%s" % [company_name, rep_text]
 		company_l.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
@@ -315,6 +317,14 @@ func _make_quest_row(quest_id: String, def: Dictionary, is_accepted: bool) -> Co
 	desc_l.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
 	desc_l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	v.add_child(desc_l)
+	# v6.51 批（主诉"委托任务没写会获得什么"）：奖励行——此前整个行没有任何奖励展示
+	var reward_text := _format_quest_rewards(def.get("rewards", {}) as Dictionary)
+	if not reward_text.is_empty():
+		var reward_l := Label.new()
+		reward_l.text = "🎁 完成奖励：%s" % reward_text
+		reward_l.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
+		reward_l.add_theme_color_override("font_color", DT.COLOR_GOLD)
+		v.add_child(reward_l)
 	row.add_child(v)
 	# 右侧按钮区
 	var btn_col := VBoxContainer.new()
@@ -371,6 +381,32 @@ func _make_quest_row(quest_id: String, def: Dictionary, is_accepted: bool) -> Co
 	mg.add_child(row)
 	panel.add_child(mg)
 	return panel
+
+## v6.51 批：委托奖励文本（与 quest_manager._grant_rewards 发放键对齐——宪法 C3：
+## 展示即发放；现网数据只有 nano_materials + faction_rep，其余键防御性覆盖）
+func _format_quest_rewards(rewards: Dictionary) -> String:
+	if rewards.is_empty():
+		return ""
+	var parts: Array = []
+	if rewards.has("nano_materials"):
+		parts.append("纳米材料 ×%d" % int(rewards["nano_materials"]))
+	if rewards.has("alloy"):
+		parts.append("合金 ×%d" % int(rewards["alloy"]))
+	if rewards.has("crystal"):
+		parts.append("晶体 ×%d" % int(rewards["crystal"]))
+	if rewards.has("energy_block"):
+		parts.append("能量块 ×%d" % int(rewards["energy_block"]))
+	if rewards.has("star_marrow"):
+		parts.append("星髓 ×%d" % int(rewards["star_marrow"]))
+	for rep_key in ["faction_rep", "company_rep"]:
+		if rewards.has(rep_key) and rewards[rep_key] is Dictionary:
+			var fsm = get_node_or_null("/root/FactionSystemManager")
+			for fid in rewards[rep_key]:
+				var fname: String = String(fid)
+				if fsm != null and fsm.has_method("get_faction_display_name"):
+					fname = String(fsm.get_faction_display_name(String(fid)))
+				parts.append("%s 贡献 +%d" % [fname, int(rewards[rep_key][fid])])
+	return "、".join(PackedStringArray(parts))
 
 func _format_progress(quest_id: String, def: Dictionary) -> String:
 	var quest_mgr = get_node_or_null("/root/QuestManager")

@@ -11,12 +11,16 @@ extends GdUnitTestSuite
 ## 记录5#9（用户拍板）：6 图标改 GridContainer 两行制（一行 5 个）+ 图标悬停可弹
 ## tooltip（mouse_filter STOP）。
 ##
+## v6.52（记录1#15 用户新拍板，推翻 v6.35.2"恒 6 点亮"模式）：**实有几显几**——
+## 未激活图标不占位；零激活显示 ⚔ 总览钮（悬停列全部战法）。条上节点数 6→7。
+##
 ## 契约（scenes/ui/combo_status_strip.gd）：
-## ① 条上恰好 6 个套路图标按钮，无任何聚合计数钮（"1/5"/"2/6"式按钮防复活）；
+## ① 条上恰好 6 个套路图标按钮 + 1 枚零激活总览钮，无任何聚合计数钮（"1/5"/"2/6"式按钮防复活）；
 ## ② custom_minimum_size.x ≤ 430（Capsule 左缘 435 − 8 偏移 = 预算上限）；
 ## ③ 悬停查询仍可用：_build_tooltip 对 6 套 id 均产出非空文本；
 ## ④ 图标 mouse_filter=STOP（悬停提示可达，IGNORE=零提示是记录5#9 主诉根因）；
-## ⑤ 两行制：GridContainer columns=5（第 6 个换行）。
+## ⑤ 两行制：GridContainer columns=5（第 6 个换行）；
+## ⑥ 实有几显几：零激活=只有总览钮可见；有激活=未激活图标隐藏、总览钮隐藏。
 
 const StripScene := preload("res://scenes/ui/combo_status_strip.tscn")
 
@@ -48,10 +52,10 @@ func _hbox_buttons() -> Array:
 	return out
 
 
-## ① 6 个图标按钮、零聚合钮（回退旧代码/复活 🤝🛡 钮此断言必红）
+## ① 6 个套路图标 + 1 总览钮、零聚合钮（回退旧代码/复活 🤝🛡 钮此断言必红）
 func test_six_icon_buttons_no_aggregate_counters() -> void:
 	var btns := _hbox_buttons()
-	assert_int(btns.size()).is_equal(6)
+	assert_int(btns.size()).is_equal(7)
 	for b in btns:
 		var text := String((b as Button).text)
 		assert_bool(text.contains("/5")).is_false()
@@ -84,7 +88,31 @@ func test_two_row_grid_layout() -> void:
 	var grid := _find_grid(_strip)
 	assert_object(grid).is_not_null()
 	assert_int((grid as GridContainer).columns).is_equal(5)
-	assert_int((grid as GridContainer).get_child_count()).is_equal(6)
+	assert_int((grid as GridContainer).get_child_count()).is_equal(7)
+
+
+## ⑥ v6.52（记录1#15）：实有几显几——零激活只有总览钮可见；
+## 有激活时未激活图标隐藏、总览钮隐藏、条底板随内容收缩。
+## ⚠️ 可见性判定读 entry["prev"]（_refresh 更新档位后调规则）——直调规则前先模拟档位。
+func test_visibility_shows_only_actives() -> void:
+	var icons: Array = _strip.get("_icon_buttons")
+	# 零激活（档位全 0，与真实 eng==null 分支同态）
+	_strip.call("_apply_visibility_rule", 0)
+	for entry in icons:
+		assert_bool((entry["btn"] as Button).visible).is_false()
+	var overview: Button = _strip.get("_overview_btn")
+	assert_object(overview).is_not_null()
+	assert_bool(overview.visible).is_true()
+	# 双激活：模拟 _refresh 后两枚 prev>0（一全队一单卡）
+	icons[0]["prev"] = 2
+	icons[1]["prev"] = 1
+	_strip.call("_apply_visibility_rule", 2)
+	assert_bool((icons[0]["btn"] as Button).visible).is_true()
+	assert_bool((icons[1]["btn"] as Button).visible).is_true()
+	for i in range(2, icons.size()):
+		assert_bool((icons[i]["btn"] as Button).visible).is_false()
+	assert_bool(overview.visible).is_false()
+	assert_int(int(_strip.custom_minimum_size.x)).is_less_equal(430)
 
 
 func _find_grid(n: Node) -> GridContainer:

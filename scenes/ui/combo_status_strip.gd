@@ -8,6 +8,9 @@ extends PanelContainer
 ## Capsule）——条上恒 6 个套路图标（回归锁 test_combo_strip_layout）。
 ## 记录5#9（用户拍板）：图标改 GridContainer 两行排布（一行 5 个），图标 mouse_filter
 ## 打开悬停提示（此前 IGNORE=悬浮零提示）；主场景 rect 同步收窄加高。
+## v6.52（记录1#15，用户新拍板推翻"恒 6 点亮"模式）：**实有几显几**——未激活的战法
+## 图标不再占位（灰色图标墙=看不出哪个是哪个）；零激活时显示一枚 ⚔ 总览钮（悬停列
+## 全部战法与达成条件），激活后条上只保留已达成战法的彩色图标。
 
 const DT = preload("res://resources/design_tokens.gd")
 # 批次三 B10：字号 token 引入（10px 白名单/中文升 12）
@@ -28,6 +31,7 @@ const _COMBO_ORDER: Array[String] = [
 const ICONS_PER_ROW: int = 5
 
 var _icon_buttons: Array = []  # [{btn:Button, combo_id:String, prev:int}]
+var _overview_btn: Button = null  # v6.52: 零激活时的战法总览钮
 var _refresh_acc: float = 0.0
 const REFRESH_SEC: float = 0.6
 var _dt_accum: float = 0.0  # 用于 tooltip 更新
@@ -79,6 +83,10 @@ func _ready() -> void:
 		var btn := _make_combo_icon_button(def, combo_id)
 		grid.add_child(btn)
 		_icon_buttons.append({"btn": btn, "combo_id": combo_id, "prev": 0})
+	# v6.52（记录1#15）：零激活总览钮——悬停列全部战法与达成条件（"有什么可攒"的入口）
+	_overview_btn = _make_combo_icon_button({"icon": "⚔"}, "_overview")
+	_overview_btn.tooltip_text = _build_overview_tooltip()
+	grid.add_child(_overview_btn)
 	# 宽度预算：标题~58 + 5×42+4×4=226 + 边距 ≈308 ≤430（Capsule 左缘 435 契约）；
 	# 高：2×30+4 行距 + 边距 ≈76（main.tscn offset_bottom 同步 48→84，BuffFoldCard 下移）
 	custom_minimum_size = Vector2(308, 76)
@@ -109,6 +117,18 @@ func _build_tooltip(combo_id: String, level: int) -> String:
 		1: state_text = "单卡激活（装了≥2配套改造）"
 		2: state_text = "✦全队激活✦（兵种组合满足）"
 	return "%s\n%s\n状态：%s" % [name, desc, state_text]
+
+
+## v6.52（记录1#15）：零激活总览 tooltip——全部战法与达成方向一览
+func _build_overview_tooltip() -> String:
+	var lines := PackedStringArray()
+	lines.append("战法一览（达成组合后图标亮在这里）")
+	for combo_id in _COMBO_ORDER:
+		var def := ComboTactics.get_combo_def(combo_id)
+		if def.is_empty():
+			continue
+		lines.append("· %s：%s" % [String(def.get("name", combo_id)), String(def.get("desc", ""))])
+	return "\n".join(lines)
 
 
 ## level: 0=未激活 1=单卡 2=全队
@@ -159,12 +179,13 @@ func _process(delta: float) -> void:
 func _refresh() -> void:
 	var eng: RefCounted = _get_combo_engine()
 	if eng == null:
-		# 战斗未开始：全部置灰
+		# 战斗未开始：全部置灰+只留总览钮
 		for entry in _icon_buttons:
 			var btn: Button = entry["btn"]
 			_set_combo_style(btn, 0)
 			btn.tooltip_text = _build_tooltip(entry["combo_id"], 0)
 			entry["prev"] = 0
+		_apply_visibility_rule(0)
 		return
 	# 全队激活 combo_id（通过 mechanisms 反推）
 	var team_mechs: Array = eng.get_active_mechanisms()
@@ -173,7 +194,8 @@ func _refresh() -> void:
 	var card_combos: Array = _detect_card_combos_on_field(eng)
 	_cache_team_combos = team_combos
 	_cache_card_combos = card_combos
-	# 更新 6 个按钮
+	# 更新按钮
+	var active_count := 0
 	for entry in _icon_buttons:
 		var combo_id: String = entry["combo_id"]
 		var btn: Button = entry["btn"]
@@ -188,6 +210,25 @@ func _refresh() -> void:
 		if level > int(entry.get("prev", 0)):
 			_pop_button(btn)
 		entry["prev"] = level
+		if level > 0:
+			active_count += 1
+	_apply_visibility_rule(active_count)
+
+
+## v6.52（记录1#15）：实有几显几——未激活图标隐藏，零激活只显总览钮。
+## （用户新拍板推翻 v6.35.2"恒 6 点亮"：灰图标墙读不出战法，占位还挤。）
+## 条底板随内容收缩（主场景 rect (8,8,320,84) 是上限，缩窄不越界）。
+func _apply_visibility_rule(active_count: int) -> void:
+	for entry in _icon_buttons:
+		var btn: Button = entry["btn"]
+		btn.visible = active_count > 0 and int(entry.get("prev", 0)) > 0
+	if _overview_btn != null and is_instance_valid(_overview_btn):
+		_overview_btn.visible = active_count == 0
+	var shown: int = active_count if active_count > 0 else 1
+	var rows: int = 1 if shown <= ICONS_PER_ROW else 2
+	var w: float = 58.0 + 4.0 + float(shown) * 42.0 + float(maxi(shown - 1, 0)) * 4.0 + 16.0
+	var h: float = 8.0 + float(rows) * 30.0 + float(maxi(rows - 1, 0)) * 4.0 + 6.0
+	custom_minimum_size = Vector2(w, h)
 
 
 ## v30 R3：按钮激活弹跳（一次性 scale 脉冲；减少动效开关旁路）
