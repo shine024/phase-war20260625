@@ -9847,3 +9847,21 @@ v6.48 挂账的其余批次品红边晕（attack 26 家 + idle 4 家，分属 ro
 - **新曲五首**（全走 `tools/bgm_swap_from_manifest.py` 归一 -14 LUFS+溯源元数据，源 mp3 归档项目外）：hub_ww1=Man Down（8 把大提琴哀伤弦乐，Somber，语义贴一战纪念）/ hub_ww2=Take the Lead（紧张重吉他）/ hub_cold=Spy Glass（50 年代侦探爵士）/ hub_modern=Bass Walker（Noir 行走贝斯）/ battle_future=Hiding Your Reality。**首选 Long Note Two 因源响度 -25.6 LUFS 静态增益不可救（落盘 -26.9 不可闻）中途换曲**——响度不可救的源直接换，不破峰值纪律。
 - **凭据链**：`_steam_assets/licenses/incompetech_20261008/`（manifest+intake SHA256+CC 法律文本）；`assets/sfx/CREDITS.md` 台账 13 首全表+换曲记录；换下前备份 `D:/godotplay/_art_backup/bgm_v6522_20261008/pre_swap/`。⚠️ battle_future/hub_cold 落盘 -16.4 LUFS（源峰值限制，纪律内极限），复听偏轻则下批 loudnorm 二次归一。
 - **验证**：13 键映射冒烟全绿（含 era 键实调返回 hub_ww1）；六 .import loop=true 对齐；流水线 ALL_OK。人工复听项：五首新曲实机风格验收 + 开场梦战配新 battle_future 效果。
+
+## v6.53（2026-10-08）build/记录1.txt 二轮 16 条批——教程实操化 + 挂账棘轮 + HoverTip 首刷 + 大地图双入口统一
+
+台账=`docs/实机验收_记录1二轮_进度.md`（14/16 修，#5b 卡死与 #16 星冥族待实机）。同日用户覆盖写入的新一轮记录1（旧 31 条=v6.52~v6.52.2 已清）：
+
+- **#1b HoverTip 首刷格式错（A 组 headless 实证）**：`_present` 首刷 autowrap Label 零宽折行算出虚高最小高度（实测面板 300×781，正确值 300×80），Control min 变小永不自动回缩→"第一次巨框、第二次正常"。修=`_label.reset_size()`+`_panel.reset_size()` 同步收敛+帧末 `reset_size.call_deferred()` 兜底；`_follow_mouse` 加 min_size 塌缩兜底。
+- **#2/#3 卡仓首开卡（aux 三 tab 预热）**：v6.52 双预热只盖战斗卡页——backpack_presenter 新增 `warmup_aux_sections()`（幂等，绕可见守卫直刷改造/符文/相位仪三 tab），main 0.6s 链尾+truck_base 嵌入版 1.2s 追加调用。
+- **#2 教程装配实操化**：PHASE_INSTRUMENT 步从"确认预装"（gate=绿槽非空恒真）改实操——文案要求拖进/拖出绿槽各一次；TPM 新旗标 `_assembly_touched`（**starter 预装/读档恢复不置位，仅拖拽/点击装配 UI 成功路径置位**——`equip_starter_card_for_new_game` 内部复用 `equip_card`，旗标不能放 PIM）；gate 追加旗标条件；blocked toast 特化"拖进（或拖出）绿槽试一次"。
+- **#4 组合技情报写明协同单位**：kind_combo/mod_ids 数据在定义表但从未渲染——`_build_tooltip` 重构多行（+协同兵种"轻装×1 + 空中×1"+配套改造中文名截 6）；总览 tooltip 同款；tooltip 迁 HoverTip 层 130（bind 两步契约）。
+- **#5a 挂机进度蒸发（PUSH→PULL 双路）**：SaveManager AFK 段 PUSH 链重试 60 帧超限即 clear 丢弃（main._init_afk_manager 晚于窗口=主诉本体）。修=超限**留存**+push_warning+TraceLog；新领取口 `claim_pending_afk_load()`（一次性取出+清空）；main `_init_afk_manager` 就绪即领取。双路天然互斥防双应用。
+- **#6 技能树教程框被盖（层号倒挂）**：技能树 canvas=110 > 教程层 105（truck_base 教程框更在 layer 0 裸 Control）——框弹出即被全屏 Backdrop(STOP) 压住，关面板才显形。修=canvas 110→**104**（>PopupLayer(100) 保覆盖/ESC，<教程 105；层号契约 40<100<105<110<130<200 补全）；truck_base 懒建 TutorialLayer(105) 宿主（镜像 main `_tutorial_layer`）+指路标 spawn/dismiss 同宿主迁移（overlay 收指路标用 `dismiss(get_parent())`，不同宿主收不掉）。
+- **#7/#9 进度回退（挂账棘轮）**：行军中胜利被 `not is_traveling()` 直接跳过棘轮→parked 停旧关（"打到12关回标题还是8关"）。修=挂账 `_pending_ratchet_level`（maxi 只升不降），到站 `_check_travel_arrival`（在 `_sync_current_level_to_park` 前）与 `cancel_travel` 结清；**随档持久化**（pending_ratchet_level key）。标题槽位 level 改取 max(current_level, level_progress.max_unlocked)。#9 大地图分叉同根治（到站三方一致；行军中卡车物理位语义正确，不做显示源大手术）。
+- **#11 红圈误标（同心化）**：渗透标记定位偏移 74px>邻居关间距 55px→视觉套错关。修=btn 改同心定位（`_level_point(host) - btn.size*0.5`），dot 居中；tooltip 加"第%d关"前缀；图例行样张 18px 红环白盘 Panel→20 号 ◉ 字形（`_make_legend_row` 加 glyph 参数），文案"◉ 套住的关·点击迎战"。
+- **#13 大地图双入口统一**：基地=SceneTransition 独立场景全屏 vs 关卡中=CenterContainer 卡 1264×688 盒。修=main.tscn WorldMapPanel 挪出 CenterContainer 直接挂 MapOverlay（anchors full-rect，删 custom_minimum_size）；CenterContainer 空壳保留（零引用零命中）。zoom 残留=内嵌 `_map_built` 缓存复用跳过 fit——`refresh_for_open` 尾拍回 zoom=1.0 整图（v28"重开面板回整图"拍板语义补触发，keep_zoom=false）。硬编码路径 3 处同步（main.gd:560/探针脚本）。
+- **#14 战力双口径收口**：card_info_panel 战力大格 `card.get_current_power()`→`BlueprintManager._estimate_power_score`（=EvolutionHelpers 纯转发，与 modification_panel 右侧完全同源）；档位徽标模板静态 card.tier→PowerTiers 现算（估算 fail-open 回落）；改造成功 toast 去双前缀+机制型附注（"效果在战斗中自动触发"）；属性区标题口径明示"满血 · 含改造，不含时代/词缀"。
+- **#15 黑门波次暴露**：`get_enemy_wave_total()` endless 分支恒 0→HUD 永不显总波数。修=查 EBM `get_run_wave_limit()`（>0 显 limit+「✦第N波本体」后缀；=0 无限档显「本体第N波」），读 EBM 常量合 C3。
+- **待实机**：#5b L39 卡死（中置信=唯一纯空中题面关+部署空转，不盲修，等 trace.log）；#16 星冥族视觉（系统全链在库默认开，复测表现）。
+- **验证**：gdparse 全过；main.tscn headless 冒烟干净；定向回归锁 25/25 全绿（6 文件）。锁抓到 2 个自身 bug：HoverTip 兜底 reset_size 误调 CanvasLayer（非 Control 运行时炸，改落 _panel）；combo 锁③断言口径随 tooltip 迁 HoverTip 同步更新。

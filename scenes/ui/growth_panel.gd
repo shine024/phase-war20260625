@@ -968,7 +968,8 @@ func _close_phase_master_skill_panel() -> void:
 			p.set("full_bleed", false)
 
 ## P0: 技能树面板打开时 ESC 先关技能面板——原实现 ESC 会关掉成长 overlay 本体，
-## 而技能面板 canvas(layer=110) 仍悬在更高层挡住全场点击。consume 防止穿透。
+## 而技能面板 canvas(layer=104，v6.53 自 110 下调让位教程层 105) 仍悬在更高层挡住
+## 全场点击。consume 防止穿透。
 func _input(ev: InputEvent) -> void:
 	if not (ev is InputEventKey and ev.pressed and ev.keycode == KEY_ESCAPE):
 		return

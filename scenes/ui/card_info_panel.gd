@@ -632,7 +632,14 @@ func _refresh_header(card: CardResource) -> void:
 	# v20: 档位徽标（tier 可见性）——仅战斗卡展示
 	if tier_label != null:
 		if card.card_type == GC.CardType.COMBAT_UNIT:
-			var _t: int = clampi(int(card.tier), 0, 6)
+			# v6.53（记录1二轮#14）：档位现算（与战力大格同源 estimate_power_score →
+			# PowerTiers）——card.tier 是模板静态值，养成/改造后不同步；估算不可用时
+			# 回落模板值（fail-open）
+			var key_ci: String = card.instance_id if not card.instance_id.is_empty() else card.card_id
+			var pw_ci: float = 0.0
+			if BlueprintManager != null and not key_ci.is_empty():
+				pw_ci = BlueprintManager._estimate_power_score(key_ci)
+			var _t: int = PowerTiers.get_tier_by_power(pw_ci) if pw_ci > 0.0 else clampi(int(card.tier), 0, 6)
 			tier_label.text = PowerTiers.get_tier_name(_t)
 			tier_label.visible = _t > 0
 		else:
@@ -674,9 +681,19 @@ func _refresh_info_sections(card: CardResource) -> void:
 	if slash_label: slash_label.visible = is_combat
 	if is_combat:
 		_fill_combat_cells(_cached_display_stats, -1.0, 2)
-		# 战力大格 = 养成口径（get_current_power），与旧养成摘要行同源
+		# 战力大格 = 战斗公式口径（v6.53 记录1二轮#14 统一：与改造舱/军衔/门槛同源
+		# estimate_power_score，实例感知含养成/改造/进化加成；先例=backpack_card_item
+		# _get_card_power_score v6.52 同款）。原 get_current_power 是 meta 元公式
+		# （模板静态 power×强化+改造成 flat 加成），与改造舱右栏 estimate_power_score
+		# （HP/三维DPS/防御战斗公式）差一个量级——实机主诉"战斗卡情报和改装右边显示
+		# 情报不一样，战力不同"真身。
 		if power_value_label:
-			var power: int = card.get_current_power() if card.has_method("get_current_power") else 0
+			var power: int = 0
+			var pid: String = card.instance_id if not card.instance_id.is_empty() else card.card_id
+			if BlueprintManager and BlueprintManager.has_method("_estimate_power_score"):
+				power = int(BlueprintManager._estimate_power_score(pid))
+			elif card.has_method("get_current_power"):
+				power = card.get_current_power()
 			power_value_label.text = str(maxi(power, 0))
 		var cost_txt := "%d⚡" % int(card.energy_cost)
 		_refresh_bottom_row(_cached_display_stats, card.era, cost_txt)

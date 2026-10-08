@@ -364,6 +364,10 @@ static func try_equip_to_slot(item: PanelContainer, slot: Control) -> void:
 		return
 	var ok: bool = bool(PhaseInstrumentManager.equip_card(flat_index, item.card, null))
 	if ok:
+		# v6.53（记录1二轮#2）：拖拽装配置教程实操旗标（starter 预装不经过此处）
+		var _tpm: Node = get_node_or_null("/root/TutorialProgressionManager")
+		if _tpm != null and _tpm.has_method("notify_assembly_touched"):
+			_tpm.notify_assembly_touched()
 		# B2: 装备成功音效（与商店购买 card_place 对齐，此前成功全程静音）
 		if SignalBus.has_signal("play_sound"):
 			SignalBus.play_sound.emit("card_place")

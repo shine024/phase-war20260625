@@ -56,6 +56,16 @@ const STEP_ORDER: Array = [
 var current_step: TutorialStep = TutorialStep.NONE
 var completed_steps: Array = []
 var tutorial_data: Dictionary = {}
+## v6.53（记录1二轮#2）：玩家亲手装配过战斗卡的旗标（PHASE_INSTRUMENT 实操门）。
+## 只由 UI 拖拽/点击装配成功路径置位（notify_assembly_touched）；starter 预装
+## （equip_starter_card_for_new_game）与读档恢复不走 UI 层，不置位。不持久化：
+## 教程中断重启后玩家重拖一次即可，无进度损失。
+var _assembly_touched: bool = false
+
+
+## UI 拖拽/点击装配成功后调用（幂等置位；starter 预装不经过此处）
+func notify_assembly_touched() -> void:
+	_assembly_touched = true
 ## v38.3 教程节奏（用户"打开卡仓还没怎么看，就跳出准备战斗了"）：面板体验步挂起态——
 ## 动作打开面板后非空；玩家关闭该面板（main._close_overlay 通知）才弹下一步。
 var pending_close_surface: String = ""
@@ -100,9 +110,12 @@ func _step_gate_blocked(step: TutorialStep) -> bool:
 		return false
 	match step:
 		TutorialStep.PHASE_INSTRUMENT:
-			# 绿槽至少装备 1 张战斗卡
+			# v6.53（记录1二轮#2）：改实操门——预装后"绿槽非空"恒真（实机主诉：
+			# 教程没教拖拽装配），追加"玩家亲手装配过一次"旗标
 			if pim.has_method("get_loadouts"):
-				return (pim.get_loadouts() as Array).is_empty()
+				if (pim.get_loadouts() as Array).is_empty():
+					return true
+				return not _assembly_touched
 		TutorialStep.RUNES:
 			# 符文槽至少装 1 枚符文（starter 发放后需玩家自行装配）
 			var slots: Array = pim.get("_rune_slots") if "_rune_slots" in pim else []
@@ -196,10 +209,12 @@ func _initialize_tutorial_data() -> void:
 			"spotlight_press_advances": true,
 		},
 		TutorialStep.PHASE_INSTRUMENT: {
-			# 记录5#3：明确"装配在哪/要看什么/要不要动手"——初始卡已预装，本步是确认不是操作
-			"title": "确认装配",
-			"description": "打开背包，往最底部看：[color=#fbbf24]绿色装配槽[/color]就是相位仪，初始三张卡（毛瑟步枪班/81mm迫击炮组/FT-17坦克）已预装在里面，首战可直接部署——本步确认它们在绿槽里，然后关闭继续。之后获得新卡时才需要动手：从卡仓把卡拖进底部绿槽换装（战斗中只能部署已装配的战斗卡）。",
-			"highlights": ["本步动作：打开背包→看底部绿槽→关闭继续", "初始三张卡已预装，无需手动操作", "新卡：从卡仓拖到底部绿槽换装"],
+			# v6.53（记录1二轮#2）：改实操步——原"确认预装"步玩家全程不动手，拖拽装配
+			# 只剩卡片 tooltip 一行被动提示（实机主诉"教程没教拖拽装配"）。本步要求
+			# 真拖一次（拖进或拖出皆可），gate 读 _assembly_touched 旗标把关。
+			"title": "装配战斗卡",
+			"description": "打开背包，往最底部看：[color=#fbbf24]绿色装配槽[/color]就是相位仪，初始三张卡（毛瑟步枪班/81mm迫击炮组/FT-17坦克）已预装在内。[color=#fbbf24]按住任意一张卡，把它拖出绿槽再拖回来[/color]试一次——只有装配进绿槽的战斗卡，才能在战斗中部署上战场。试完关闭背包继续。",
+			"highlights": ["本步动作：按住战斗卡，拖进/拖出底部绿槽各一次", "只有绿槽里的卡能部署作战", "换装：把新卡拖到绿槽，顶掉旧卡"],
 			"action_text": "查看装配",
 			"action_target": "open_backpack",
 			"highlight_elements": ["phase_instrument_button"],
@@ -351,7 +366,11 @@ func get_tutorial_content() -> Dictionary:
 ## 批次③ Task 5 A4：三处实操门（装配/符文/加点）不满足时拒绝推进并 toast 反馈。
 func complete_current_step() -> void:
 	if _step_gate_blocked(current_step):
-		SignalBus.show_toast.emit("先按引导完成这一步的实际操作，再继续")
+		# v6.53（记录1二轮#2）：装配实操步给可操作文案（通用文案玩家不知"实际操作"指什么）
+		var hint := "先按引导完成这一步的实际操作，再继续"
+		if current_step == TutorialStep.PHASE_INSTRUMENT:
+			hint = "按住一张战斗卡，拖进（或拖出）底部绿色装配槽试一次，再继续"
+		SignalBus.show_toast.emit(hint)
 		return
 	if not completed_steps.has(current_step):
 		completed_steps.append(current_step)

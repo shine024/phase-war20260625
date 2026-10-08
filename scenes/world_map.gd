@@ -1550,7 +1550,9 @@ func _build_map_screen_chrome() -> void:
 	# v26.20：移动基地光点
 	vb.add_child(_make_legend_row(Color(0.98, 0.76, 0.28), "移动基地（金点·行驶中闪烁）"))
 	# v6.51 批：渗透红点此前无任何图例说明（主诉"说会刷新怪物但看不到"）——补一行
-	vb.add_child(_make_legend_row(Color(1.0, 0.42, 0.36), "异族渗透（红色脉点·点击迎战）"))
+	# v6.53：样张改 ◉ 字形（与地图实况同形）+文案明示"贴附的那一关"（v6.53 同心化后
+	# 语义即"红点套住的关"）
+	vb.add_child(_make_legend_row(Color(1.0, 0.42, 0.36), "异族渗透（◉ 套住的关·点击迎战）", "◉"))
 
 	# v6.41.1（实机主诉"信息框重叠"截图）：floating chrome 后 Margin/VBox 只剩
 	# [ScrollContainer, 燃料chip]——chip 顶到屏幕底边（margin_bottom=0）被图例栈压住
@@ -1614,9 +1616,30 @@ func _build_map_screen_chrome() -> void:
 	chrome_parent.add_child(_window_hint_label)
 
 ## v28 图例行：迷你节点样例（白盘彩环，与真实节点同构）+ 说明文字
-func _make_legend_row(ring: Color, text: String) -> Control:
+func _make_legend_row(ring: Color, text: String, glyph: String = "") -> Control:
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 7)
+	# v6.53（记录1二轮#11）：glyph 非空时样张用字符（如 "◉"）替代环盘——渗透行原样张
+	# 是"红环白盘"（与关卡节点样张同构），实机被读成"红圈=异族关"而实际地图上是
+	# ◉ 脉点，样张与实况形状错位放大误读。
+	if not glyph.is_empty():
+		var glbl := Label.new()
+		glbl.text = glyph
+		glbl.custom_minimum_size = Vector2(18, 18)
+		glbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		glbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		glbl.add_theme_font_size_override("font_size", 20)
+		glbl.add_theme_color_override("font_color", ring)
+		glbl.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.6))
+		glbl.add_theme_constant_override("outline_size", 3)
+		glbl.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		row.add_child(glbl)
+		var lbl2 := Label.new()
+		lbl2.text = text
+		lbl2.add_theme_font_size_override("font_size", 13)
+		lbl2.add_theme_color_override("font_color", Color(0.88, 0.92, 0.96))
+		row.add_child(lbl2)
+		return row
 	var swatch := Panel.new()
 	swatch.custom_minimum_size = Vector2(18, 18)
 	swatch.size_flags_vertical = Control.SIZE_SHRINK_CENTER
@@ -2226,14 +2249,19 @@ func _apply_incursion_markers(canvas: Control) -> void:
 		btn.name = "Incursion_%d_%d" % [host, int(inc.get("seed", 0))]
 		btn.flat = true
 		btn.size = Vector2(38, 38)
-		# 右下偏移：节点上方是屏幕空间"▼ 第N关"引导标（会整块盖住红点——探针实拍），
-		# 中心是卡车金点；右下 (44,20) 与节点盘心距 ~45px，避开两者且不压节点盘
-		btn.position = _level_point(host) + Vector2(44, 20)
+		# v6.53（记录1二轮#11）：热区+视觉改宿主节点**同心**——原右下偏移 (44,20) 盘心距
+		# 宿主 ~74px，比斜向邻居节点间距（S11 实测最小 54.7px）还远，红点频繁贴/压在
+		# 邻居一般关节点上=实机主诉"红圈标的异族关实际是一般关"（标记归属只能靠猜）。
+		# 同心后红点贴在哪关=哪关有渗透，视觉归属唯一化。点击=迎战（语义与 v6.52 #29
+		# 宿主节点点击先弹渗透情报一致，不冲突）；"▼ 第N关"引导标在节点上方屏幕空间、
+		# 卡车金点在节点盘心——同心后红点环包住金点，◉ 字号 26 偏小不遮挡读数。
+		btn.position = _level_point(host) - btn.size * 0.5
 		# v6.42: 过期倒计时（宪法 C3：天数读 EBM 常量口径 get_incursion_days_left）
 		var days_left := 0
 		if ebm != null and ebm.has_method("get_incursion_days_left"):
 			days_left = int(ebm.call("get_incursion_days_left", inc))
-		btn.tooltip_text = "异族渗透——星冥散兵(收益微小)\n%s天后再无踪迹\n点击迎战" % maxi(1, days_left)
+		btn.tooltip_text = "第%d关 · 异族渗透——星冥散兵(收益微小)\n%s天后再无踪迹\n点击迎战" % [
+			host, maxi(1, days_left)]
 		btn.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 		btn.modulate = Color(1.0, 0.42, 0.36, 0.95)
 		btn.gui_input.connect(_on_incursion_gui_input.bind(inc))
@@ -2244,7 +2272,8 @@ func _apply_incursion_markers(canvas: Control) -> void:
 		dot.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.75))
 		dot.add_theme_constant_override("outline_size", 4)
 		dot.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		dot.position = Vector2(4, 1)
+		# v6.53：◉ 同心居中（38px 盘内 26 号字，目测 (3,2) 起居中）
+		dot.position = Vector2(3, 2)
 		btn.add_child(dot)
 		if pulse_on:
 			var tw := btn.create_tween().set_loops()
@@ -3232,3 +3261,12 @@ func refresh_for_open() -> void:
 	# v6.51 批：重开面板也按当前数据重铺渗透红点（此前只有首建/信号驱动两条路，
 	# 懒加载期错过的接线+重开不复铺=旧快照一直挂着）
 	_on_incursions_changed()
+	# v6.53（记录1二轮#13）：内嵌链重开拍回整图视图——独立场景（基地入口）每次实例化
+	# 重建自然回 zoom=1.0；内嵌链 _map_built 缓存复用跳过 fit → 上一局缩放残留，
+	# 与基地入口观感分叉（"两个大地图不一样"的另一半）。v28 拍板语义本就
+	# "重开面板回整图"，只是此路径从未触发过 fit。
+	if _map_built and MAP_SCHEME == 11:
+		var scroll: ScrollContainer = get_node_or_null("Margin/VBox/ScrollContainer") as ScrollContainer
+		var canvas := scroll.get_node_or_null("MapCanvas") if scroll != null else null
+		if scroll != null and canvas != null:
+			_fit_canvas_to_viewport.call_deferred(canvas, scroll, false)

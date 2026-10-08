@@ -363,8 +363,19 @@ func _try_equip_energy_card(card: CardResource) -> bool:
 			continue
 		if slots[flat_idx] != null:
 			continue
-		return bool(pim.equip_card(flat_idx, card, em))
+		var ok_y: bool = bool(pim.equip_card(flat_idx, card, em))
+		if ok_y:
+			_notify_tutorial_assembly()
+		return ok_y
 	return false
+
+
+## v6.53（记录1二轮#2）：手动装配成功 → 教程装配实操旗标
+## （PHASE_INSTRUMENT 步改实操门；starter 预装/读档恢复不经过 UI 层不置位）
+func _notify_tutorial_assembly() -> void:
+	var tpm: Node = _get_autoload_node("TutorialProgressionManager")
+	if tpm != null and tpm.has_method("notify_assembly_touched"):
+		tpm.notify_assembly_touched()
 
 ## 从背包点击装备任意卡到相位仪对应槽位
 func _try_equip_card(card: CardResource) -> bool:
@@ -397,6 +408,8 @@ func _try_equip_card(card: CardResource) -> bool:
 					break
 				if slots[flat_gi] == null:
 					var ok0: bool = bool(pim.equip_card(flat_gi, card, em))
+					if ok0:
+						_notify_tutorial_assembly()
 					if not ok0:
 						_last_equip_fail_reason = "槽位校验未通过"
 					return ok0
@@ -405,6 +418,8 @@ func _try_equip_card(card: CardResource) -> bool:
 			# 所有绿色槽位已满 → 替换第一个
 			if first_occupied_green >= 0:
 				var ok0: bool = bool(pim.equip_card(first_occupied_green, card, em))
+				if ok0:
+					_notify_tutorial_assembly()
 				if not ok0:
 					_last_equip_fail_reason = "槽位校验未通过"
 				return ok0
@@ -676,6 +691,23 @@ func _run_open_refresh_pipeline() -> void:
 
 func _is_view_visible() -> bool:
 	return _view != null and is_instance_valid(_view) and _view.is_visible_in_tree()
+
+## v6.53（记录1二轮#1a/#3）：附属区三 tab（情报/符文/相位仪）空闲期预热。
+## 面板实例预热（main 0.2s / truck_base 0.35s）只盖住了战斗卡 tab；aux 三 tab
+## 仍在玩家首次打开后第 2-3 帧才刷（_run_open_refresh_pipeline Step3）——首开
+## 「顿一下」的残余尖峰真身。预热后置 _aux_sections_initialized，首开时三 refresh
+## 签名未变全部短路跳过重建，尖峰消失。幂等；绕开 _refresh_aux_sections_after_open
+## 的 is_visible_in_tree 守卫直接调三个 refresh（只操作网格与对象池，不依赖可见性）。
+## 相位仪走原 refresh（非 _refresh_phase_inst_stable），避开隐藏期 modulate 稳定链。
+func warmup_aux_sections() -> void:
+	if _aux_sections_initialized:
+		return
+	if _view == null or not is_instance_valid(_view):
+		return
+	_aux_sections_initialized = true
+	_view.refresh_intel_tab()
+	_view.refresh_runes_tab()
+	_view.refresh_phase_instruments_tab()
 
 func _get_autoload_node(name: String) -> Node:
 	var tree: SceneTree = _get_scene_tree()

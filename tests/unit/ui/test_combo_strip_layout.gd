@@ -69,11 +69,14 @@ func test_strip_width_within_top_budget() -> void:
 	assert_int(int(rect.position.x + rect.size.x)).is_less_equal(435)
 
 
-## ③ tooltip 链路健在
+## ③ tooltip 链路健在（v6.53：迁 HoverTip 层130——内容存 hover_tip_text meta，
+## 悬停时才读；内建 tooltip_text 已废弃恒空，原断言随迁移同步换口径）
 func test_tooltips_still_built() -> void:
 	for entry in _strip.get("_icon_buttons"):
-		var text := String((entry["btn"] as Button).tooltip_text)
-		assert_bool(text.is_empty()).is_false()
+		var btn: Button = entry["btn"] as Button
+		assert_bool(btn.has_meta("hover_tip_bound")).is_true()
+		assert_bool(btn.has_meta("hover_tip_text")).is_true()
+		assert_bool(String(btn.get_meta("hover_tip_text", "")).is_empty()).is_false()
 
 
 ## ④ 记录5#9：图标可悬停（mouse_filter STOP；IGNORE=悬浮零提示主诉根因）

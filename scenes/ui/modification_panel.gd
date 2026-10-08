@@ -1123,7 +1123,9 @@ func _update_card_info() -> void:
 	unit_panel.add_child(_build_tier_progress(current_tier))
 
 	# === 区块4：区段标题「基础属性」 ===
-	unit_panel.add_child(_make_section_header("◆ 基础属性", "满血状态"))
+	# v6.53（记录1二轮#14）：口径明示——get_modified_stats=基础+已装改造预览，
+	# 不含时代/词缀（主诉"改造介绍不清"的一部分：面板数字与战斗实感对不上）
+	unit_panel.add_child(_make_section_header("◆ 基础属性", "满血 · 含改造，不含时代/词缀"))
 
 	# === 区块5：属性 6 格网格 ===
 	unit_panel.add_child(_build_stat_grid(stats))
@@ -1761,7 +1763,16 @@ func _install_modification(mod_id: String) -> void:
 	var result = BlueprintManager.install_modification(selected_card, mod_id)
 
 	if result.success:
-		_show_result("改造安装成功：%s" % result.message)
+		# v6.53（记录1二轮#14）：成功语 UI 层统一拼（manager message 已去前缀，防双前缀）；
+		# 机制型附战斗触发说明+完整行为句（原说明只在选中时操作台出现，安装后不再提示
+		# ——实机主诉"终极模块安装时情报面板说的不清楚"）。
+		var ok_msg := "改造安装成功：%s" % String(result.message)
+		if ModificationRegistry.get_mod_class(mod_id) == "mechanic":
+			var mod_desc := String(ModificationRegistry.get_data(mod_id).get("description", ""))
+			ok_msg += "\n⚙ 机制型：效果在战斗中自动触发（不直接计入战力面板）"
+			if not mod_desc.is_empty():
+				ok_msg += "\n%s" % mod_desc
+		_show_result(ok_msg)
 		# v26.16 反馈链：安装成功=enhance 音 / 失败=error 音（此前安装全程静默）
 		if SignalBus and SignalBus.has_signal("play_sound"):
 			SignalBus.play_sound.emit("enhance")

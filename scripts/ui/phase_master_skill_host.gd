@@ -45,7 +45,12 @@ func _open(full_bleed: bool) -> void:
 	if canvas == null:
 		canvas = CanvasLayer.new()
 		canvas.name = "PhaseMasterSkillCanvas"
-		canvas.layer = 110  # 高于 PopupLayer(100) 与各 overlay 的 Backdrop
+		# v6.53（记录1二轮#6）：110 → 104。层号契约 40<100<105教程<110<130<200——
+		# 原 110 与教程 TutorialLayer(105) 倒挂：技能树步（ENHANCEMENT 点播）教程框
+		# 在 notify_surface_opened 时弹出、随后 host.open 才开技能树，框被全屏
+		# Backdrop(STOP) 压住，关闭技能树才显形（实机主诉）。104=仍高于 PopupLayer(100)
+		# 保住覆盖与 ESC 收层语义，低于教程层 → 框浮于技能树之上。
+		canvas.layer = 104
 		add_child(canvas)
 		# 自带全屏 backdrop：拦截外部点击（点击空白处关闭），把面板与下层面板隔离
 		var backdrop := ColorRect.new()

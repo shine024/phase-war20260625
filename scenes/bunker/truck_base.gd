@@ -409,6 +409,23 @@ func _warmup_embedded_backpack() -> void:
 	if not is_inside_tree():
 		return
 	_ensure_panel_wrapper("backpack")
+	# v6.53（记录1二轮#1a）：aux 三 tab（情报/符文/相位仪）残余尖峰预热——wrapper
+	# 预热只盖战斗卡 tab。1.2s 错峰：苏醒演出首段（~0.4-1.0s）避开，教程玩家点卡仓
+	# 远晚于此（苏醒演出 8.6s 结束后才到教程第 2 步）。
+	get_tree().create_timer(1.2).timeout.connect(_warmup_embedded_backpack_aux)
+
+## v6.53：嵌入卡仓 aux 预热落地（_embed_wrappers 直取 panel 引用，不猜树路径）
+func _warmup_embedded_backpack_aux() -> void:
+	if not is_inside_tree():
+		return
+	if not _embed_wrappers.has("backpack"):
+		return
+	var panel: Control = _embed_wrappers["backpack"]["panel"]
+	if panel == null or not is_instance_valid(panel):
+		return
+	if "_presenter" in panel and panel._presenter != null \
+			and panel._presenter.has_method("warmup_aux_sections"):
+		panel._presenter.warmup_aux_sections()
 
 # ── 顶栏 ──
 func _build_topbar() -> void:
@@ -2790,15 +2807,29 @@ func _bootstrap_tutorial_if_needed() -> void:
 
 
 ## 教学覆盖层基地本地挂载（镜像 main.gd _show_tutorial_overlay；防重复挂）
+## v6.53（记录1二轮#6）：宿主从场景根（layer 0 裸 Control）改专用 TutorialLayer(105)——
+## 本场景教程框此前画在 layer 0，任何弹层 Backdrop（PopupLayer 100+，如技能树
+## canvas）都能整只盖住它。层号契约 40<100<105教程<110<130<200。
 func _show_tutorial_overlay_local() -> void:
-	if get_node_or_null("TutorialOverlay") != null:
+	if get_node_or_null("TutorialLayer/TutorialOverlay") != null:
 		return
 	var scene := load("res://scenes/ui/tutorial_overlay.tscn") as PackedScene
 	if scene == null:
 		return
 	var overlay := scene.instantiate()
 	overlay.name = "TutorialOverlay"
-	add_child(overlay)
+	_tutorial_layer_local().add_child(overlay)
+
+
+## v6.53：基地场景教程宿主层（镜像 main.gd _tutorial_layer；懒建 105 层）
+func _tutorial_layer_local() -> CanvasLayer:
+	var layer := get_node_or_null("TutorialLayer") as CanvasLayer
+	if layer == null:
+		layer = CanvasLayer.new()
+		layer.name = "TutorialLayer"
+		layer.layer = 105
+		add_child(layer)
+	return layer
 
 
 ## ── v6.39 朝露式指路（点播段挂起等待的「下一步去哪」）──────────────
@@ -2809,7 +2840,8 @@ func _on_tutorial_pointer_requested(show_ptr: bool) -> void:
 	if show_ptr:
 		_maybe_spawn_tutorial_pointer()
 	else:
-		TutorialSpotlight.dismiss_step_pointer(self)
+		# v6.53：与 spawn 同宿主（TutorialLayer 105）
+		TutorialSpotlight.dismiss_step_pointer(_tutorial_layer_local())
 
 
 ## v6.52（记录1#18）：任一嵌入面板在屏判据（指路标防叠守卫消费）
@@ -2840,7 +2872,10 @@ func _maybe_spawn_tutorial_pointer() -> void:
 		return   # 无对应工位（如 phase_instrument）：纯文字节奏兜底，不亮标
 	if bool(target.get_meta("gate_locked", false)):
 		return   # 锁定工位点了只会弹解锁 toast，指它=误导
-	TutorialSpotlight.show_step_pointer(self, target, String(tpm.get_pointer_tip()))
+	# v6.53（记录1二轮#6）：指路标宿主与教程框同层（TutorialLayer 105，镜像 main.gd
+	# _tutorial_pointer_host）——tutorial_overlay 收指路标用 dismiss(get_parent())，
+	# overlay 挪进 TutorialLayer 后只有同宿主才收得掉
+	TutorialSpotlight.show_step_pointer(_tutorial_layer_local(), target, String(tpm.get_pointer_tip()))
 
 
 ## 教学首战步的基地出击（镜像 main.gd _on_start_level_from_tutorial + 顶栏出击同链）：

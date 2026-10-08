@@ -128,7 +128,16 @@ func _present(text: String, owner_ctrl: Control) -> void:
 		return
 	_label.text = text
 	_label.custom_minimum_size = Vector2(MAX_WIDTH - 20.0, 0)
+	# v6.53（记录1二轮#1b）：首显格式错修复——首次展示时 autowrap Label 换新长文本，
+	# PanelContainer 的子项排序要等帧末 sort pass，_follow_mouse 同帧读 _panel.size
+	# 会拿到塌缩/陈旧值（贴边翻转判断全错=「第一次格式错、第二次才正常」）。
+	# 先同步收敛 label 自身 min size，再收敛 panel，悬停跟随首帧即用正确尺寸。
+	_label.reset_size()
 	_panel.reset_size()
+	# v6.53 兜底（教程链调查实证：首刷 label 零宽折行会算出虚高最小高度，min 变小
+	# 永不自动回缩）——帧末对 panel 再校平一次，首帧极端布局下一帧归位
+	# （⚠️ 本类是 CanvasLayer 非 Control，reset_size 只能落在 _panel 上）
+	_panel.reset_size.call_deferred()
 	_tip_owner = owner_ctrl
 	visible = true
 	_follow_mouse()
@@ -165,6 +174,10 @@ func _follow_mouse() -> void:
 		return
 	var mouse := vp.get_mouse_position()
 	var sz := _panel.size
+	# v6.53：排序未跑完（size 滞后于 min）时用同步 min size 兜底，防贴边翻转用塌缩值
+	var min_sz := _panel.get_combined_minimum_size()
+	if sz.x < min_sz.x - 0.5 or sz.y < min_sz.y - 0.5:
+		sz = min_sz
 	var pos := mouse + OFFSET
 	var screen := vp.get_visible_rect().size
 	if pos.x + sz.x > screen.x - 4.0:

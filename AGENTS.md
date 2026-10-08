@@ -24,13 +24,25 @@
 6. **客观缺陷与审美取舍先分类**：对齐/一致性/覆盖类有客观正确答案的直接修；只有真正无对错的参数才交用户拍板，且必须附推荐值与对比图。
 7. **每类系统留常驻回归锁**：锁内断言覆盖上述全部维度，修复后回归自动拦截（范例：`tests/unit/combat/test_shield_foot_anchor.gd` 九形态+尺寸断言）。
 
+## v6.53 build/记录1.txt 二轮 16 条批：教程实操化 + 挂账棘轮 + 双入口大地图统一（2026-10-08，详见 CHANGELOG 与 docs/实机验收_记录1二轮_进度.md）
+
+**改教程装配门/行军棘轮/大地图容器/HoverTip 尺寸链前必读本节。** 台账 14/16 修（#5b L39 卡死、#16 星冥族待实机）。
+
+- **教程装配实操门（`_assembly_touched` 旗标）**：PHASE_INSTRUMENT 步要求真拖一次（拖进/拖出绿槽各可）；旗标**只由 UI 层置位**（backpack_card_item_drag / instrument_bar_drag / backpack_presenter 三处成功路径）——`equip_starter_card_for_new_game` 内部复用 `equip_card`，**旗标严禁挪进 PIM**（starter 预装会误置位=门失效）。
+- **行军中胜绩=挂账棘轮**：`BunkerManager._pending_ratchet_level`（maxi 只升不降），到站 `_check_travel_arrival`（`_sync_current_level_to_park` **前**结清）与 `cancel_travel` 结清；随档持久化 key=`pending_ratchet_level`。勿改回"行军中直接跳过"（=标题/大地图进度回退主诉）。
+- **大地图双入口同一观感**：WorldMapPanel 现直接挂 MapOverlay（anchors full-rect）——**勿放回 CenterContainer**（1264×688 盒=两入口面板不一样的根因；CenterContainer 空壳留在 tscn 仅供旧引用兜底）。`refresh_for_open` 尾拍 zoom=1.0（内嵌 `_map_built` 缓存复用不触发 fit，残留上一局缩放）。硬编码路径唯一口=`PopupLayer/MapOverlay/WorldMapPanel`。
+- **技能树层号=104**：`PhaseMasterSkillCanvas` 110→104（>PopupLayer 保覆盖/ESC，<教程 105——教程框弹出即浮于技能树 Backdrop 之上）；truck_base 教程框宿主=本地懒建 `TutorialLayer(105)`（`_tutorial_layer_local`，镜像 main），指路标 spawn/dismiss 同宿主（overlay 收指路标用 `dismiss(get_parent())`，**不同宿主收不掉**）。
+- **SaveManager AFK 段=PUSH+PULL 双路**：PUSH 重试 60 帧超限**留存不 clear**；领取唯一口=`claim_pending_afk_load()`（一次性取出+清空，防双应用）；消费方=main `_init_afk_manager` 就绪即领取。勿在别的时机 clear `_pending_afk_load`。
+- **HoverTip 尺寸链**：`_present` 首刷 `_label.reset_size()`→`_panel.reset_size()` 同步收敛+帧末 `_panel.reset_size.call_deferred()` 兜底——⚠️ **本类是 CanvasLayer 非 Control，reset_size 只能落在 _panel/_label**（裸调=运行时炸，回归锁 hover_tip_lifecycle 实证）。
+- **渗透标记=同心定位**：`_apply_incursion_markers` btn 中心=宿主关节点中心（原偏移 (44,20)=74px>邻居间距 55px，视觉套错关）；图例渗透行样张=◉ 字形（`_make_legend_row` glyph 参数），文案「◉ 套住的关」。
+
 ## v6.51 build/记录6.txt 实机 11 条批：悬停提示生命周期 + 大地图三修 + 奖励可见化（2026-10-07，详见 CHANGELOG）
 
 **改 HoverTip/大地图重建链/成就委托奖励显示/改造列表排序前必读本节。** 三个存量根因：HoverTip `_tip_owner` 从未赋值（提示永不消失=「符文情报跟着鼠标满屏弹」）；`_build_level_map` 同帧 queue_free 旧画布+add 同名新画布（Godot 静默改名 @Control@N，MapCanvas 按名查找整链死透=「有时不让缩放」真身）；奖励格式化只认 2 键（发放链在、显示层空）。
 
 - **HoverTip 契约（hover_tip.gd）**：①悬停 `SHOW_DELAY=0.45s` 延迟显示（已有提示切换控件立即换内容）；②`_present(text, owner)` 记归属，`_hide_for` 按归属收起——**给新控件接提示仍只用 `bind_control`+`set_tip` 两步，语义不变**；③对象池复用清空 meta 会自动取消待显/收起旧提示。
 - **world_map 同帧撞名守卫（铁律）**：重建路径清旧节点一律「先 `remove_child` 再 `queue_free`」（`_build_level_map` 画布、`_apply_incursion_markers` holder 两处已改）——凡"按名查找+同帧重建"的节点同律。回归锁断言重建后画布名仍为 MapCanvas。
-- **行军标示链**：`_on_truck_level_changed` 现为 current_level 变化即 `refresh_levels()`（勿改回"仅锚点迁移才刷"——同窗到站青环/▼标/CurDot 残留出发关即此病）；模板复用路径同样消费 `_zoom_keep_pending`。渗透热区常量：`INCURSION_MARKER_RADIUS=16`（EBM 宿主 parked-15..+5，关卡窗口半径 10 会吃掉一段）、锚点=停靠关、偏移 (44,20) 节点右下（**上方被「▼第N关」引导标盖住**——勿挪回上方）、层级=TruckMarker 之下节点之上（`_blackgate_mgr()` 首取补接线是懒加载期信号链的自愈口，勿删）；`refresh_for_open` 尾部重铺红点。
+- **行军标示链**：`_on_truck_level_changed` 现为 current_level 变化即 `refresh_levels()`（勿改回"仅锚点迁移才刷"——同窗到站青环/▼标/CurDot 残留出发关即此病）；模板复用路径同样消费 `_zoom_keep_pending`。渗透热区常量：`INCURSION_MARKER_RADIUS=16`（EBM 宿主 parked-15..+5，关卡窗口半径 10 会吃掉一段）、锚点=停靠关、定位 v6.53 起改**同心**（btn 中心=宿主关节点中心，原 (44,20) 右下偏移视觉套错关勿回退）、层级=TruckMarker 之下节点之上（`_blackgate_mgr()` 首取补接线是懒加载期信号链的自愈口，勿删）；`refresh_for_open` 尾部重铺红点+拍 zoom=1.0（v6.53）。
 - **奖励显示唯一口**：成就=`achievement_panel._format_rewards`（全键+新格式 {type,amount}）、委托=`quest_panel._format_quest_rewards`（faction_rep/company_rep 双查）——新增奖励键两处同步；`achievement_rewards._grant_legacy_format` 认 xp（grant_phase_field_xp）与 title（feed 荣誉记录）。C3：展示即发放，勿显不发的键。
 - **改造列表排序=稀有度升序（用户拍板"低级在上"）**：比较器 `modification_panel.compare_mods_low_first` / `backpack_panel.compare_blueprints_low_first` static 直测（回归锁 test_mod_sort_and_incursion_markers.gd）；背包 `_rarity_sort_value` 已补 mythic=6 档（存量缺口勿回退）。truck_base 工位 hint=「改造·模块」（词条是词缀工坊的词）。
 - **词条数值内联**：`AffixDisplayFormat.fmt_affix_value(a)`（⚠️ Object.get() 单参——鸭子对象取属性缺省自兜底，写 `.get(k, default)` 编译错）；卡详情标签与词条工坊详情都走它。

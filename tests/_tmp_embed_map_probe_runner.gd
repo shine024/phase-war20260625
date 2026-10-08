@@ -70,7 +70,7 @@ func _run() -> void:
 	# 打开地图 overlay（与玩家点顶栏地图按钮同链路）
 	main.call("_on_world_map")
 	await _wait(60)
-	var wmp: Node = main.get_node_or_null("PopupLayer/MapOverlay/CenterContainer/WorldMapPanel") \
+	var wmp: Node = main.get_node_or_null("PopupLayer/MapOverlay/WorldMapPanel") \
 		if main.has_node("PopupLayer") else null
 	if wmp == null:
 		# 递归找

@@ -56,6 +56,10 @@ var _travel_dest := 0        # 行驶目的地（0=未在途）
 var _travel_days_total := 0  # 行程总天数（大地图路线进度分母；0=未在途）
 var _travel_started_unix := 0.0  # 出发时刻（unix 秒；v26.21 实时行军）
 var _travel_ends_unix := 0.0     # 预计到站时刻（unix 秒）
+## v6.53（记录1二轮#7）：行军中胜利的挂账棘轮——原逻辑行军中直接跳过胜绩棘轮
+## （到站以物理位置覆写），导致"行军途中打赢更靠前的关"回标题/大地图仍显旧进度。
+## 挂账到站（或取消行军）时结清，口径与停泊棘轮一致（只升不降）。
+var _pending_ratchet_level := 0
 var _travel_fuel_spent := 0  # v6.42: 本次启程已扣燃料（取消行军全额返还；读档时按路线估价）
 var _fuel_regen_unix := 0.0      # v26.25 燃料自动回复结算时刻（unix 秒；0=未起算，首读置now——离线补结算走读侧累计）
 
@@ -210,6 +214,14 @@ func _check_travel_arrival() -> void:
 	_travel_days_total = 0
 	_travel_started_unix = 0.0
 	_travel_ends_unix = 0.0
+	# v6.53（记录1二轮#7）：行军中胜利的挂账棘轮在 _sync 落定 current_level 前结清，
+	# 保证到站后 parked/current_level/存档三方一致（如行军去8途中打赢12→停靠跟进12；
+	# 到站关更靠前则账面自然无效，只升不降）
+	if _pending_ratchet_level > 0:
+		var owed := _pending_ratchet_level
+		_pending_ratchet_level = 0
+		if owed > _parked_level:
+			_parked_level = clampi(owed, 1, 100)
 	_sync_current_level_to_park()
 	if SignalBus and SignalBus.has_signal("show_toast"):
 		var nm := String(LevelInformationData.get_shared().get_level_display_name(dest))
@@ -277,6 +289,12 @@ func cancel_travel() -> Dictionary:
 	_travel_started_unix = 0.0
 	_travel_ends_unix = 0.0
 	_travel_fuel_spent = 0
+	# v6.53（记录1二轮#7）：取消行军即结清挂账棘轮——车队留在原地，胜绩前沿立即跟进
+	if _pending_ratchet_level > 0:
+		var owed := _pending_ratchet_level
+		_pending_ratchet_level = 0
+		if owed > _parked_level:
+			_parked_level = clampi(owed, 1, 100)
 	if refund > 0:
 		_fuel = minf(float(get_fuel_cap()), get_fuel() + float(refund))  # get_fuel() 顺带结算自动回复
 	if SignalBus and SignalBus.has_signal("show_toast"):
@@ -464,13 +482,18 @@ func _on_battle_ended(player_won: bool) -> void:
 	# v38.x 胜绩随行棘轮：胜利且打的关比停靠更靠前时，卡车停靠关跟进（只升不降）。
 	# 修复"结算『出击下一关』直通链连续推进后回基地出击仍是旧关"——直通链
 	# （main.launch_next_level_from_settlement）只推 current_level 不移卡车，此前
-	# parked 恒停在旧关。行军中不棘轮（到站以物理位置覆写，_check_travel_arrival）；
-	# 黑门无尽 run 不参与（fought 抓的是对齐后的 100）；渗透战不参与（v6.35 进度泄漏）。回低关刷素材不受影响。
-	if player_won and fought > 0 and not was_endless and not was_incursion and not is_traveling():
-		var parked := get_parked_level()
-		if fought > parked:
-			_parked_level = clampi(fought, 1, 100)
-			_emit_travel_changed()
+	# parked 恒停在旧关。行军中不就地棘轮（v6.53：改挂账 _pending_ratchet_level，
+	# 到站/取消行军时结清——原样跳过会让"行军途中打赢更靠前的关"进度在标题/
+	# 大地图全部丢失）；黑门无尽 run 不参与（fought 抓的是对齐后的 100）；渗透战
+	# 不参与（v6.35 进度泄漏）。回低关刷素材不受影响。
+	if player_won and fought > 0 and not was_endless and not was_incursion:
+		if is_traveling():
+			_pending_ratchet_level = maxi(_pending_ratchet_level, fought)
+		else:
+			var parked := get_parked_level()
+			if fought > parked:
+				_parked_level = clampi(fought, 1, 100)
+				_emit_travel_changed()
 	# v26.19：current_level 回归停靠关（GameManager 的胜利推进在其自身 handler 里已落定）
 	call_deferred("_sync_current_level_to_park")
 
@@ -1187,6 +1210,8 @@ func save_state() -> Dictionary:
 		"travel_days_total": _travel_days_total,
 		"travel_started_unix": _travel_started_unix,
 		"travel_ends_unix": _travel_ends_unix,
+		# v6.53（记录1二轮#7）：行军中胜利挂账随档持久化（行军+中途打赢+退游组合不丢进度）
+		"pending_ratchet_level": _pending_ratchet_level,
 	}
 
 ## SaveManager 应用入口（_safe_load_manager 按此方法名加载）；空字典=新游戏全重置
@@ -1251,6 +1276,8 @@ func load_state(data: Dictionary) -> void:
 	_travel_days_total = maxi(0, int(data.get("travel_days_total", 0)))
 	_travel_started_unix = float(data.get("travel_started_unix", 0.0))
 	_travel_ends_unix = float(data.get("travel_ends_unix", 0.0))
+	# v6.53（记录1二轮#7）：行军中胜利挂账棘轮回读（旧档缺 key=0，无挂账）
+	_pending_ratchet_level = clampi(int(data.get("pending_ratchet_level", 0)), 0, 100)
 	# 兼容当日旧档（v26.19 剩余天数字段）：换算成 unix 到站时刻
 	var legacy_days_left := maxi(0, int(data.get("travel_days_left", 0)))
 	if _travel_dest > 0 and _travel_ends_unix <= 0.0 and legacy_days_left > 0:

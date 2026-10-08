@@ -78,5 +78,9 @@ func try_unequip_card_slot(color: String, color_index: int) -> bool:
 		return false
 	if PhaseInstrumentManager.has_method("unequip_card"):
 		PhaseInstrumentManager.unequip_card(flat_index)
+		# v6.53（记录1二轮#2）：拖出装配置教程实操旗标（拖进/拖出任一即算动手）
+		var _tpm: Node = get_node_or_null("/root/TutorialProgressionManager")
+		if _tpm != null and _tpm.has_method("notify_assembly_touched"):
+			_tpm.notify_assembly_touched()
 		return true
 	return false

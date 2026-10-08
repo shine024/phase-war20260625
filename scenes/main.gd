@@ -557,7 +557,9 @@ func _open_overlay(overlay: Control, panel_key: String = "") -> void:
 	# 仅保留行为特殊的面板特判（map 刷新 / backpack 性能打点 / growth 日志 / afk 显式 _open）。
 	match panel_key:
 		"map":
-			var world_map_panel: Node = overlay.get_node_or_null("CenterContainer/WorldMapPanel")
+			# v6.53（记录1二轮#13）：WorldMapPanel 从 CenterContainer 挪出全屏化
+			# （与基地 SceneTransition 入口同观感），路径同步
+			var world_map_panel: Node = overlay.get_node_or_null("WorldMapPanel")
 			if world_map_panel and world_map_panel.has_method("refresh"):
 				world_map_panel.refresh()
 		"backpack":
@@ -1127,6 +1129,24 @@ func _warmup_backpack_panel() -> void:
 		return
 	if not backpack_overlay.visible:
 		_ensure_lazy_panel("backpack")
+	# v6.53（记录1二轮#1a/#3）：aux 三 tab 残余尖峰预热——0.6s 错峰（揭幕峰后、
+	# 玩家手速前），战斗卡 tab 之外的最重首刷（改造蓝图页 249 项）提前建好。
+	get_tree().create_timer(0.6).timeout.connect(_warmup_backpack_aux_sections)
+
+## v6.53：aux 三 tab 预热落地（presenter.warmup_aux_sections 幂等，面板已开则跳过）
+func _warmup_backpack_aux_sections() -> void:
+	if not is_inside_tree():
+		return
+	if backpack_overlay.visible:
+		return
+	var container: Node = backpack_overlay.get_node_or_null("BackpackVBox/CenterRow/BackpackCenter")
+	if container == null:
+		return
+	for child in container.get_children():
+		if child is Control and "_presenter" in child and child._presenter != null \
+				and child._presenter.has_method("warmup_aux_sections"):
+			child._presenter.warmup_aux_sections()
+			return
 
 ## v27：教程首战部署提醒 Timer（重复 15s；部署成功/战斗结束自动停）
 var _tutorial_deploy_nudge_timer: Timer = null
@@ -1290,6 +1310,16 @@ func _init_afk_manager() -> void:
 		# v6.6(挂机缩略图): 注入主场景引用，供面板定位 BattleContainer 取 ViewportTexture
 		if afk_panel_node.has_method("set_main_scene"):
 			afk_panel_node.set_main_scene(self)
+	# v6.53（记录1二轮#5）：PULL 兜底——读档链（SaveManager PUSH）早于本函数且重试
+	# 超限时 AFK 段留存在 SaveManager，此处领取应用；PUSH 已成功应用则领取到空字典
+	# 自然跳过（claim 一次性取出+清空，双路天然互斥）
+	if SaveManager != null and SaveManager.has_method("claim_pending_afk_load"):
+		var pending_afk: Dictionary = SaveManager.claim_pending_afk_load()
+		if not pending_afk.is_empty() and _afk_manager.has_method("load_state"):
+			_afk_manager.load_state(pending_afk)
+			TraceLog.mark("afk_load_pulled", "keys=%d" % pending_afk.size())
+			if afk_panel_node != null and afk_panel_node.has_method("refresh_after_load"):
+				afk_panel_node.refresh_after_load()
 
 ## v7.x（关卡详情"自动部署"按钮）：world_map 设的 Engine meta 触发，
 ## 进 main 后切 AFK 推图模式 + start_afk，从指定关自动布阵战斗。

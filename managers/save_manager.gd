@@ -450,6 +450,15 @@ func get_slot_info() -> Array:
 						var gd: Dictionary = data[SK_GAME]
 						if gd.has(SK_CURRENT_LEVEL):
 							slot_data["level"] = int(gd[SK_CURRENT_LEVEL])
+						# v6.53（记录1二轮#7）：槽位进度改显战线前沿——current_level 随
+						# 卡车停靠/行军回摆（行军中停旧关），不等于真实最远进度（主诉
+						# "打到12关回标题还是8关"）。取与 LevelProgressManager 段的
+						# max_unlocked_level 的较大者；旧档无该段回落 current_level。
+						if data.has(SK_LEVEL_PROGRESS):
+							var lp_slot: Dictionary = data[SK_LEVEL_PROGRESS]
+							var mx_slot := int(lp_slot.get("max_unlocked_level", 0))
+							if mx_slot > int(slot_data["level"]):
+								slot_data["level"] = mx_slot
 					f.close()
 		info.append(slot_data)
 	_slot_info_cache = info.duplicate(true)
@@ -1593,9 +1602,12 @@ func _load_afk_state() -> void:
 		if _afk_load_retry_count <= _AFK_LOAD_MAX_RETRIES:
 			call_deferred("_load_afk_state")
 		else:
-			# 超时放弃，保持默认（旧档/异常情况）
-			_pending_afk_load.clear()
-			_afk_load_retry_count = 0
+			# v6.53（记录1二轮#5）：超时不再 clear——原 PUSH 链在此丢弃整段挂机存档
+			# （main._init_afk_manager 晚于 60 帧重试窗口=主诉"重进挂机全没保存"）。
+			# 数据留存，manager 就绪方（main._init_afk_manager）经 claim_pending_afk_load
+			# 领取应用。留存不循环重试（零帧耗），纯被动等 PULL。
+			push_warning("[SaveManager] AFK 段推送重试超限（manager 未就绪），转 PULL 留存待领取")
+			TraceLog.mark("afk_load_push_timeout", "retries=%d" % _afk_load_retry_count)
 		return
 	if afk_mgr.has_method("load_state") and _pending_afk_load is Dictionary:
 		afk_mgr.load_state(_pending_afk_load)
@@ -1605,6 +1617,20 @@ func _load_afk_state() -> void:
 		afk_panel.refresh_after_load()
 	_pending_afk_load.clear()
 	_afk_load_retry_count = 0
+
+
+## v6.53（记录1二轮#5）：挂机存档段 PULL 领取口——AFK manager 是 main 场景迟到成员
+## （RefCounted，_ready 链尾创建），PUSH 链（deferred 重试 60 帧）超限时原实现把整段
+## 数据 clear 丢弃。现改留存，manager 就绪方主动领取（一次性取出+清空；已被 PUSH
+## 链成功应用则返回空字典，天然防双应用）。
+func claim_pending_afk_load() -> Dictionary:
+	if _pending_afk_load.is_empty():
+		return {}
+	var claimed: Dictionary = _pending_afk_load.duplicate(true)
+	_pending_afk_load.clear()
+	_afk_load_retry_count = 0
+	return claimed
+
 
 func _process_deferred_manager_loads() -> void:
 	if _deferred_manager_queue.is_empty():
