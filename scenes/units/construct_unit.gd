@@ -1997,10 +1997,9 @@ func take_damage(amount: float, attacker: Variant = null) -> void:
 			if Time.get_ticks_msec() / 1000.0 >= _cm_expire:
 				remove_meta("_crit_marked_until")
 				remove_meta("_crit_mark_bonus")
-		# v7.x: 巷战免伤——受 ARMOR/AIR 攻击时减免（步兵巷战教范）
-		if stats.urban_defense_bonus > 0.0 and attacker_kind >= 0:
-			if attacker_kind == GC.CombatKind.ARMOR or attacker_kind == GC.CombatKind.AIR:
-				hp_loss = hp_loss * (1.0 - stats.urban_defense_bonus)
+		# 巷战免伤已由上方 resolve_hit 的 urban_red 参数统一结算（v25.1 通道）——
+		# 2026-10-08 口径统一：此处旧的内联乘段与 resolve_hit 重复扣两次（实测 1971 应扣
+		# 1420 实扣 1213=×0.85²），已删除。新增减伤一律走 resolve_hit 参数，勿再内联。
 		# v8: 侦察潜入开局——前 15s 受伤 ×0.6（兵种固定机制）
 		if _is_recon_in_grace():
 			hp_loss = hp_loss * RECON_GRACE_DAMAGE_MUL

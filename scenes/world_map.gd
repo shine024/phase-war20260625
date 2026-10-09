@@ -2130,10 +2130,37 @@ func _enter_blackgate(popup: Window) -> void:
 		_toast_gate("黑门尚未就绪，稍后再试")
 		return
 	var gate_st: Dictionary = gate_ebm.get_entry_status()
+	# 2026-10-08 分段推进：有存档进度=续打,免入场次数(免额度也免购次),直接放行
+	if gate_ebm.has_method("has_checkpoint") and bool(gate_ebm.call("has_checkpoint")):
+		_enter_blackgate_confirmed(popup)
+		return
 	if not bool(gate_st.get("can_enter", false)):
 		_confirm_blackgate_purchase(popup)
 		return
 	_enter_blackgate_confirmed(popup)
+
+## 2026-10-09 分段推进:放弃进度二次确认（透明语义——已入袋星髓不追回,未结算差价作废）
+func _confirm_abandon_checkpoint(popup: Window) -> void:
+	var gate_ebm := _blackgate_mgr()
+	if gate_ebm == null or not gate_ebm.has_method("abandon_checkpoint"):
+		return
+	var confirm := ConfirmationDialog.new()
+	confirm.title = "放弃黑门进度"
+	confirm.dialog_text = "放弃当前进度（第 %d 波，本体在第 %d 波）？\n\n下次进入将重新从第 1 波开始（重摇本体深度与裂隙环境，消耗入场次数）。\n已入袋的星髓不受影响；本次征程未结算的里程碑差价将作废。" % [
+		int(gate_ebm.get("cp_wave")), int(gate_ebm.get("cp_core_wave"))]
+	confirm.ok_button_text = "确认放弃"
+	confirm.cancel_button_text = "再想想"
+	add_child(confirm)
+	confirm.confirmed.connect(func() -> void:
+		confirm.queue_free()
+		gate_ebm.abandon_checkpoint()
+		if SignalBus.has_signal("show_toast"):
+			SignalBus.show_toast.emit("黑门进度已放弃——下次进入重新开始")
+		if popup != null and is_instance_valid(popup):
+			popup.hide()
+	)
+	confirm.canceled.connect(func() -> void: confirm.queue_free())
+
 
 ## 黑门管理器懒取（ensure_loaded + /root 查找，进入链与规则弹窗共用）
 func _blackgate_mgr() -> Node:
@@ -2754,6 +2781,12 @@ func _append_gate_section(body: VBoxContainer, popup: AcceptDialog) -> void:
 		"波数：无限纵深推进——每 10 波强敌、每 25 波补给节点，击碎黑门本体即再通关一次。",
 		Color(0.72, 0.85, 1.0, 0.95)))
 	var ebm := _blackgate_mgr()
+	# 2026-10-08 分段推进：有存档进度时亮出断点（玩家据此决定是否进场续打）
+	if ebm != null and ebm.has_method("has_checkpoint") and bool(ebm.call("has_checkpoint")):
+		body.add_child(_make_detail_desc(
+			"▸ 上次推进到第 %d 波（本体在第 %d 波）——下次进场从第 %d 波继续，不扣入场次数" % [
+				int(ebm.get("cp_wave")), int(ebm.get("cp_core_wave")), int(ebm.get("cp_wave")) + 1],
+			Color(0.6, 1.0, 0.75, 0.95)))
 	if ebm != null and ebm.has_method("get_entry_status"):
 		var st: Dictionary = ebm.get_entry_status()
 		var gate_line: String = "今日免费入场：剩余 %d/%d · 用尽可花 %d 能量块购 1 次 · 星髓每周上限 %d" % [
@@ -2768,6 +2801,14 @@ func _append_gate_section(body: VBoxContainer, popup: AcceptDialog) -> void:
 	gate_btn.add_theme_font_size_override("font_size", 13)
 	gate_btn.pressed.connect(_enter_blackgate.bind(popup))
 	gate_row.add_child(gate_btn)
+	# 2026-10-09 分段推进:放弃进度按钮(仅存在进度时显示)——重摇深度/环境,重新从第 1 波开始
+	if ebm != null and ebm.has_method("has_checkpoint") and bool(ebm.call("has_checkpoint")):
+		var abandon_btn := Button.new()
+		abandon_btn.text = "放弃进度"
+		abandon_btn.custom_minimum_size = Vector2(120, 36)
+		abandon_btn.add_theme_font_size_override("font_size", 13)
+		abandon_btn.pressed.connect(_confirm_abandon_checkpoint.bind(popup))
+		gate_row.add_child(abandon_btn)
 	body.add_child(gate_row)
 
 

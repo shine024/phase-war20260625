@@ -79,8 +79,18 @@ func try_unequip_card_slot(color: String, color_index: int) -> bool:
 	if PhaseInstrumentManager.has_method("unequip_card"):
 		PhaseInstrumentManager.unequip_card(flat_index)
 		# v6.53（记录1二轮#2）：拖出装配置教程实操旗标（拖进/拖出任一即算动手）
-		var _tpm: Node = get_node_or_null("/root/TutorialProgressionManager")
+		# ⚠️ 本类 extends RefCounted——取 autoload 走宿主管（裸调 get_node_or_null=
+		# 编译崩，bottom_instrument_bar 整链瘫痪"拖不上去"，v6.53 实机主诉真身）。
+		var _tpm: Node = _host_autoload_node("TutorialProgressionManager")
 		if _tpm != null and _tpm.has_method("notify_assembly_touched"):
 			_tpm.notify_assembly_touched()
 		return true
 	return false
+
+
+## RefCounted 取 autoload 唯一口（同 BackpackCardItemDrag._autoload_node）
+func _host_autoload_node(node_name: String) -> Node:
+	var tree := Engine.get_main_loop() as SceneTree
+	if tree == null or tree.root == null:
+		return null
+	return tree.root.get_node_or_null(NodePath("/root/" + node_name))

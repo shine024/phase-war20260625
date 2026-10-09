@@ -134,7 +134,7 @@
           "sheet_idle": "res://assets/effects/unit_anims/ww1_arty_mortar/sheet_idle.png"
         },
         {
-          "attack": 6,
+          "attack": 10,
           "fps": 8.0,
           "fs": 256,
           "idle": 8,
@@ -189,7 +189,7 @@
     },
     {
       "anim": {
-        "attack": 6,
+        "attack": 10,
         "fps": 8.0,
         "fs": 256,
         "idle": 8,
@@ -198,7 +198,7 @@
       },
       "anim_cands": [
         {
-          "attack": 6,
+          "attack": 10,
           "fps": 8.0,
           "fs": 256,
           "idle": 8,
@@ -221,7 +221,7 @@
     },
     {
       "anim": {
-        "attack": 6,
+        "attack": 10,
         "fps": 8.0,
         "fs": 256,
         "idle": 8,
@@ -230,7 +230,7 @@
       },
       "anim_cands": [
         {
-          "attack": 6,
+          "attack": 10,
           "fps": 8.0,
           "fs": 256,
           "idle": 8,
@@ -239,7 +239,7 @@
           "sheet_idle": "res://assets/effects/unit_anims/ww1_boss_av7/sheet_idle.png"
         },
         {
-          "attack": 12,
+          "attack": 10,
           "fps": 8.0,
           "fs": 256,
           "idle": 8,
@@ -321,7 +321,7 @@
           "sheet_idle": "res://assets/effects/unit_anims/ww1_arm_rolls_mk2/sheet_idle.png"
         },
         {
-          "attack": 6,
+          "attack": 10,
           "fps": 8.0,
           "fs": 256,
           "idle": 8,
@@ -426,19 +426,19 @@
     },
     {
       "anim": {
-        "attack": 6,
+        "attack": 10,
         "fps": 8.0,
         "fs": 256,
-        "idle": 8,
+        "idle": 4,
         "sheet_attack": "res://assets/effects/unit_anims/ww1_inf_mp18_x/sheet_attack.png",
         "sheet_idle": "res://assets/effects/unit_anims/ww1_inf_mp18_x/sheet_idle.png"
       },
       "anim_cands": [
         {
-          "attack": 6,
+          "attack": 10,
           "fps": 8.0,
           "fs": 256,
-          "idle": 8,
+          "idle": 4,
           "key": "ww1_inf_mp18_x",
           "sheet_attack": "res://assets/effects/unit_anims/ww1_inf_mp18_x/sheet_attack.png",
           "sheet_idle": "res://assets/effects/unit_anims/ww1_inf_mp18_x/sheet_idle.png"
@@ -467,7 +467,7 @@
     },
     {
       "anim": {
-        "attack": 12,
+        "attack": 10,
         "fps": 8.0,
         "fs": 256,
         "idle": 8,
@@ -476,7 +476,7 @@
       },
       "anim_cands": [
         {
-          "attack": 12,
+          "attack": 10,
           "fps": 8.0,
           "fs": 256,
           "idle": 8,
@@ -604,7 +604,7 @@
     },
     {
       "anim": {
-        "attack": 12,
+        "attack": 10,
         "fps": 8.0,
         "fs": 256,
         "idle": 8,
@@ -613,7 +613,7 @@
       },
       "anim_cands": [
         {
-          "attack": 12,
+          "attack": 10,
           "fps": 8.0,
           "fs": 256,
           "idle": 8,
@@ -709,25 +709,25 @@
     },
     {
       "anim": {
-        "attack": 6,
+        "attack": 10,
         "fps": 8.0,
         "fs": 256,
-        "idle": 8,
+        "idle": 4,
         "sheet_attack": "res://assets/effects/unit_anims/ww2_arm_garand_para/sheet_attack.png",
         "sheet_idle": "res://assets/effects/unit_anims/ww2_arm_garand_para/sheet_idle.png"
       },
       "anim_cands": [
         {
-          "attack": 6,
+          "attack": 10,
           "fps": 8.0,
           "fs": 256,
-          "idle": 8,
+          "idle": 4,
           "key": "ww2_arm_garand_para",
           "sheet_attack": "res://assets/effects/unit_anims/ww2_arm_garand_para/sheet_attack.png",
           "sheet_idle": "res://assets/effects/unit_anims/ww2_arm_garand_para/sheet_idle.png"
         },
         {
-          "attack": 12,
+          "attack": 10,
           "fps": 8.0,
           "fs": 256,
           "idle": 8,
@@ -750,7 +750,7 @@
     },
     {
       "anim": {
-        "attack": 12,
+        "attack": 10,
         "fps": 8.0,
         "fs": 256,
         "idle": 8,
@@ -759,7 +759,7 @@
       },
       "anim_cands": [
         {
-          "attack": 12,
+          "attack": 10,
           "fps": 8.0,
           "fs": 256,
           "idle": 8,
@@ -768,7 +768,7 @@
           "sheet_idle": "res://assets/effects/unit_anims/ww2_arty_hummel/sheet_idle.png"
         },
         {
-          "attack": 6,
+          "attack": 10,
           "fps": 8.0,
           "fs": 256,
           "idle": 8,
@@ -832,7 +832,7 @@
     },
     {
       "anim": {
-        "attack": 6,
+        "attack": 10,
         "fps": 8.0,
         "fs": 256,
         "idle": 8,
@@ -841,7 +841,7 @@
       },
       "anim_cands": [
         {
-          "attack": 6,
+          "attack": 10,
           "fps": 8.0,
           "fs": 256,
           "idle": 8,
@@ -850,7 +850,7 @@
           "sheet_idle": "res://assets/effects/unit_anims/ww2_sup_gmc_truck/sheet_idle.png"
         },
         {
-          "attack": 12,
+          "attack": 10,
           "fps": 8.0,
           "fs": 256,
           "idle": 8,
@@ -946,19 +946,19 @@
     },
     {
       "anim": {
-        "attack": 6,
+        "attack": 10,
         "fps": 8.0,
         "fs": 256,
-        "idle": 8,
+        "idle": 4,
         "sheet_attack": "res://assets/effects/unit_anims/ww2_air_dive_bomber/sheet_attack.png",
         "sheet_idle": "res://assets/effects/unit_anims/ww2_air_dive_bomber/sheet_idle.png"
       },
       "anim_cands": [
         {
-          "attack": 6,
+          "attack": 10,
           "fps": 8.0,
           "fs": 256,
-          "idle": 8,
+          "idle": 4,
           "key": "ww2_air_dive_bomber",
           "sheet_attack": "res://assets/effects/unit_anims/ww2_air_dive_bomber/sheet_attack.png",
           "sheet_idle": "res://assets/effects/unit_anims/ww2_air_dive_bomber/sheet_idle.png"
@@ -1124,7 +1124,7 @@
     },
     {
       "anim": {
-        "attack": 6,
+        "attack": 10,
         "fps": 8.0,
         "fs": 256,
         "idle": 8,
@@ -1133,7 +1133,7 @@
       },
       "anim_cands": [
         {
-          "attack": 6,
+          "attack": 10,
           "fps": 8.0,
           "fs": 256,
           "idle": 8,
@@ -1142,7 +1142,7 @@
           "sheet_idle": "res://assets/effects/unit_anims/cold_arm_btr_e/sheet_idle.png"
         },
         {
-          "attack": 6,
+          "attack": 10,
           "fps": 8.0,
           "fs": 256,
           "idle": 8,
@@ -1174,7 +1174,7 @@
     },
     {
       "anim": {
-        "attack": 6,
+        "attack": 10,
         "fps": 8.0,
         "fs": 256,
         "idle": 8,
@@ -1183,7 +1183,7 @@
       },
       "anim_cands": [
         {
-          "attack": 6,
+          "attack": 10,
           "fps": 8.0,
           "fs": 256,
           "idle": 8,
@@ -1215,7 +1215,7 @@
     },
     {
       "anim": {
-        "attack": 6,
+        "attack": 10,
         "fps": 8.0,
         "fs": 256,
         "idle": 8,
@@ -1224,7 +1224,7 @@
       },
       "anim_cands": [
         {
-          "attack": 6,
+          "attack": 10,
           "fps": 8.0,
           "fs": 256,
           "idle": 8,
@@ -1247,7 +1247,7 @@
     },
     {
       "anim": {
-        "attack": 6,
+        "attack": 10,
         "fps": 8.0,
         "fs": 256,
         "idle": 6,
@@ -1256,7 +1256,7 @@
       },
       "anim_cands": [
         {
-          "attack": 6,
+          "attack": 10,
           "fps": 8.0,
           "fs": 256,
           "idle": 6,
@@ -1329,7 +1329,7 @@
           "sheet_idle": "res://assets/effects/unit_anims/cold_arty_bmd1/sheet_idle.png"
         },
         {
-          "attack": 6,
+          "attack": 10,
           "fps": 8.0,
           "fs": 256,
           "idle": 8,
@@ -1352,7 +1352,7 @@
     },
     {
       "anim": {
-        "attack": 6,
+        "attack": 10,
         "fps": 8.0,
         "fs": 256,
         "idle": 8,
@@ -1361,7 +1361,7 @@
       },
       "anim_cands": [
         {
-          "attack": 6,
+          "attack": 10,
           "fps": 8.0,
           "fs": 256,
           "idle": 8,
@@ -1370,7 +1370,7 @@
           "sheet_idle": "res://assets/effects/unit_anims/cold_sup_bmp1_x/sheet_idle.png"
         },
         {
-          "attack": 6,
+          "attack": 10,
           "fps": 8.0,
           "fs": 256,
           "idle": 8,
@@ -1475,7 +1475,7 @@
     },
     {
       "anim": {
-        "attack": 6,
+        "attack": 10,
         "fps": 8.0,
         "fs": 256,
         "idle": 8,
@@ -1484,7 +1484,7 @@
       },
       "anim_cands": [
         {
-          "attack": 6,
+          "attack": 10,
           "fps": 8.0,
           "fs": 256,
           "idle": 8,
@@ -1493,7 +1493,7 @@
           "sheet_idle": "res://assets/effects/unit_anims/cold_arty_brem1/sheet_idle.png"
         },
         {
-          "attack": 6,
+          "attack": 10,
           "fps": 8.0,
           "fs": 256,
           "idle": 6,
@@ -1624,7 +1624,7 @@
         "attack": 6,
         "fps": 8.0,
         "fs": 256,
-        "idle": 8,
+        "idle": 4,
         "sheet_attack": "res://assets/effects/unit_anims/mod_air_technical_e/sheet_attack.png",
         "sheet_idle": "res://assets/effects/unit_anims/mod_air_technical_e/sheet_idle.png"
       },
@@ -1633,7 +1633,7 @@
           "attack": 6,
           "fps": 8.0,
           "fs": 256,
-          "idle": 8,
+          "idle": 4,
           "key": "mod_air_technical_e",
           "sheet_attack": "res://assets/effects/unit_anims/mod_air_technical_e/sheet_attack.png",
           "sheet_idle": "res://assets/effects/unit_anims/mod_air_technical_e/sheet_idle.png"
@@ -1662,7 +1662,7 @@
     },
     {
       "anim": {
-        "attack": 6,
+        "attack": 10,
         "fps": 8.0,
         "fs": 256,
         "idle": 8,
@@ -1671,7 +1671,7 @@
       },
       "anim_cands": [
         {
-          "attack": 6,
+          "attack": 10,
           "fps": 8.0,
           "fs": 256,
           "idle": 8,
@@ -1694,7 +1694,7 @@
     },
     {
       "anim": {
-        "attack": 6,
+        "attack": 10,
         "fps": 8.0,
         "fs": 256,
         "idle": 8,
@@ -1703,7 +1703,7 @@
       },
       "anim_cands": [
         {
-          "attack": 6,
+          "attack": 10,
           "fps": 8.0,
           "fs": 256,
           "idle": 8,
@@ -1799,7 +1799,7 @@
     },
     {
       "anim": {
-        "attack": 6,
+        "attack": 10,
         "fps": 8.0,
         "fs": 256,
         "idle": 8,
@@ -1808,7 +1808,7 @@
       },
       "anim_cands": [
         {
-          "attack": 6,
+          "attack": 10,
           "fps": 8.0,
           "fs": 256,
           "idle": 8,
@@ -1881,7 +1881,7 @@
     },
     {
       "anim": {
-        "attack": 6,
+        "attack": 10,
         "fps": 8.0,
         "fs": 256,
         "idle": 8,
@@ -1890,7 +1890,7 @@
       },
       "anim_cands": [
         {
-          "attack": 6,
+          "attack": 10,
           "fps": 8.0,
           "fs": 256,
           "idle": 8,
@@ -1954,7 +1954,7 @@
     },
     {
       "anim": {
-        "attack": 6,
+        "attack": 10,
         "fps": 8.0,
         "fs": 256,
         "idle": 8,
@@ -1963,7 +1963,7 @@
       },
       "anim_cands": [
         {
-          "attack": 6,
+          "attack": 10,
           "fps": 8.0,
           "fs": 256,
           "idle": 8,
@@ -1972,7 +1972,7 @@
           "sheet_idle": "res://assets/effects/unit_anims/mod_arm_himars/sheet_idle.png"
         },
         {
-          "attack": 6,
+          "attack": 10,
           "fps": 8.0,
           "fs": 256,
           "idle": 8,
@@ -2013,7 +2013,7 @@
           "sheet_idle": "res://assets/effects/unit_anims/mod_arty_rq7/sheet_idle.png"
         },
         {
-          "attack": 6,
+          "attack": 10,
           "fps": 8.0,
           "fs": 256,
           "idle": 8,
@@ -2109,7 +2109,7 @@
     },
     {
       "anim": {
-        "attack": 6,
+        "attack": 10,
         "fps": 8.0,
         "fs": 256,
         "idle": 8,
@@ -2118,7 +2118,7 @@
       },
       "anim_cands": [
         {
-          "attack": 6,
+          "attack": 10,
           "fps": 8.0,
           "fs": 256,
           "idle": 8,
@@ -2205,7 +2205,7 @@
     },
     {
       "anim": {
-        "attack": 6,
+        "attack": 10,
         "fps": 8.0,
         "fs": 256,
         "idle": 8,
@@ -2214,7 +2214,7 @@
       },
       "anim_cands": [
         {
-          "attack": 6,
+          "attack": 10,
           "fps": 8.0,
           "fs": 256,
           "idle": 8,
@@ -2305,7 +2305,7 @@
     },
     {
       "anim": {
-        "attack": 6,
+        "attack": 10,
         "fps": 8.0,
         "fs": 256,
         "idle": 8,
@@ -2314,7 +2314,7 @@
       },
       "anim_cands": [
         {
-          "attack": 6,
+          "attack": 10,
           "fps": 8.0,
           "fs": 256,
           "idle": 8,
@@ -2369,7 +2369,7 @@
     },
     {
       "anim": {
-        "attack": 12,
+        "attack": 10,
         "fps": 8.0,
         "fs": 256,
         "idle": 8,
@@ -2378,7 +2378,7 @@
       },
       "anim_cands": [
         {
-          "attack": 12,
+          "attack": 10,
           "fps": 8.0,
           "fs": 256,
           "idle": 8,
@@ -2565,7 +2565,7 @@
           "sheet_idle": "res://assets/effects/unit_anims/fut_air_heavy_carrier/sheet_idle.png"
         },
         {
-          "attack": 6,
+          "attack": 10,
           "fps": 8.0,
           "fs": 256,
           "idle": 8,
@@ -3012,7 +3012,7 @@
     },
     {
       "anim": {
-        "attack": 12,
+        "attack": 10,
         "fps": 8.0,
         "fs": 256,
         "idle": 8,
@@ -3021,7 +3021,7 @@
       },
       "anim_cands": [
         {
-          "attack": 12,
+          "attack": 10,
           "fps": 8.0,
           "fs": 256,
           "idle": 8,
@@ -3076,7 +3076,7 @@
     },
     {
       "anim": {
-        "attack": 6,
+        "attack": 10,
         "fps": 8.0,
         "fs": 256,
         "idle": 8,
@@ -3085,7 +3085,7 @@
       },
       "anim_cands": [
         {
-          "attack": 6,
+          "attack": 10,
           "fps": 8.0,
           "fs": 256,
           "idle": 8,
@@ -3222,7 +3222,7 @@
     },
     {
       "anim": {
-        "attack": 12,
+        "attack": 10,
         "fps": 8.0,
         "fs": 256,
         "idle": 8,
@@ -3231,7 +3231,7 @@
       },
       "anim_cands": [
         {
-          "attack": 12,
+          "attack": 10,
           "fps": 8.0,
           "fs": 256,
           "idle": 8,
@@ -3327,7 +3327,7 @@
     },
     {
       "anim": {
-        "attack": 12,
+        "attack": 10,
         "fps": 8.0,
         "fs": 256,
         "idle": 8,
@@ -3336,7 +3336,7 @@
       },
       "anim_cands": [
         {
-          "attack": 12,
+          "attack": 10,
           "fps": 8.0,
           "fs": 256,
           "idle": 8,
@@ -3359,7 +3359,7 @@
     },
     {
       "anim": {
-        "attack": 12,
+        "attack": 10,
         "fps": 8.0,
         "fs": 256,
         "idle": 8,
@@ -3368,7 +3368,7 @@
       },
       "anim_cands": [
         {
-          "attack": 12,
+          "attack": 10,
           "fps": 8.0,
           "fs": 256,
           "idle": 8,
@@ -3391,7 +3391,7 @@
     },
     {
       "anim": {
-        "attack": 6,
+        "attack": 10,
         "fps": 8.0,
         "fs": 256,
         "idle": 8,
@@ -3400,7 +3400,7 @@
       },
       "anim_cands": [
         {
-          "attack": 6,
+          "attack": 10,
           "fps": 8.0,
           "fs": 256,
           "idle": 8,
@@ -3496,7 +3496,7 @@
     },
     {
       "anim": {
-        "attack": 6,
+        "attack": 10,
         "fps": 8.0,
         "fs": 256,
         "idle": 6,
@@ -3505,7 +3505,7 @@
       },
       "anim_cands": [
         {
-          "attack": 6,
+          "attack": 10,
           "fps": 8.0,
           "fs": 256,
           "idle": 6,
@@ -3546,7 +3546,7 @@
           "sheet_idle": "res://assets/effects/unit_anims/platform_cold_ifv/sheet_idle.png"
         },
         {
-          "attack": 6,
+          "attack": 10,
           "fps": 8.0,
           "fs": 256,
           "idle": 8,
@@ -3788,7 +3788,7 @@
     },
     {
       "anim": {
-        "attack": 6,
+        "attack": 10,
         "fps": 8.0,
         "fs": 256,
         "idle": 8,
@@ -3797,7 +3797,7 @@
       },
       "anim_cands": [
         {
-          "attack": 6,
+          "attack": 10,
           "fps": 8.0,
           "fs": 256,
           "idle": 8,
@@ -3925,7 +3925,7 @@
     },
     {
       "anim": {
-        "attack": 6,
+        "attack": 10,
         "fps": 8.0,
         "fs": 256,
         "idle": 8,
@@ -3934,7 +3934,7 @@
       },
       "anim_cands": [
         {
-          "attack": 6,
+          "attack": 10,
           "fps": 8.0,
           "fs": 256,
           "idle": 8,
@@ -4071,7 +4071,7 @@
     },
     {
       "anim": {
-        "attack": 6,
+        "attack": 10,
         "fps": 8.0,
         "fs": 256,
         "idle": 8,
@@ -4080,7 +4080,7 @@
       },
       "anim_cands": [
         {
-          "attack": 6,
+          "attack": 10,
           "fps": 8.0,
           "fs": 256,
           "idle": 8,
@@ -4089,7 +4089,7 @@
           "sheet_idle": "res://assets/effects/unit_anims/drop_phase_lance/sheet_idle.png"
         },
         {
-          "attack": 12,
+          "attack": 10,
           "fps": 8.0,
           "fs": 256,
           "idle": 8,
@@ -4171,7 +4171,7 @@
           "sheet_idle": "res://assets/effects/unit_anims/drop_mega_beam_cannon/sheet_idle.png"
         },
         {
-          "attack": 6,
+          "attack": 10,
           "fps": 8.0,
           "fs": 256,
           "idle": 8,
@@ -4194,7 +4194,7 @@
     },
     {
       "anim": {
-        "attack": 6,
+        "attack": 10,
         "fps": 8.0,
         "fs": 256,
         "idle": 6,
@@ -4203,7 +4203,7 @@
       },
       "anim_cands": [
         {
-          "attack": 6,
+          "attack": 10,
           "fps": 8.0,
           "fs": 256,
           "idle": 6,
@@ -4235,7 +4235,7 @@
     },
     {
       "anim": {
-        "attack": 6,
+        "attack": 10,
         "fps": 8.0,
         "fs": 256,
         "idle": 8,
@@ -4244,7 +4244,7 @@
       },
       "anim_cands": [
         {
-          "attack": 6,
+          "attack": 10,
           "fps": 8.0,
           "fs": 256,
           "idle": 8,
@@ -4267,7 +4267,7 @@
     },
     {
       "anim": {
-        "attack": 12,
+        "attack": 10,
         "fps": 8.0,
         "fs": 256,
         "idle": 5,
@@ -4276,7 +4276,7 @@
       },
       "anim_cands": [
         {
-          "attack": 12,
+          "attack": 10,
           "fps": 8.0,
           "fs": 256,
           "idle": 5,
@@ -4310,7 +4310,7 @@
   "enemies": [
     {
       "anim": {
-        "attack": 6,
+        "attack": 10,
         "fps": 8.0,
         "fs": 256,
         "idle": 8,
@@ -4319,7 +4319,7 @@
       },
       "anim_cands": [
         {
-          "attack": 6,
+          "attack": 10,
           "fps": 8.0,
           "fs": 256,
           "idle": 8,
@@ -4348,7 +4348,7 @@
     },
     {
       "anim": {
-        "attack": 12,
+        "attack": 10,
         "fps": 8.0,
         "fs": 256,
         "idle": 8,
@@ -4357,7 +4357,7 @@
       },
       "anim_cands": [
         {
-          "attack": 12,
+          "attack": 10,
           "fps": 8.0,
           "fs": 256,
           "idle": 8,
@@ -4386,7 +4386,7 @@
     },
     {
       "anim": {
-        "attack": 6,
+        "attack": 12,
         "fps": 8.0,
         "fs": 256,
         "idle": 8,
@@ -4395,7 +4395,7 @@
       },
       "anim_cands": [
         {
-          "attack": 6,
+          "attack": 12,
           "fps": 8.0,
           "fs": 256,
           "idle": 8,
@@ -4424,7 +4424,7 @@
     },
     {
       "anim": {
-        "attack": 6,
+        "attack": 10,
         "fps": 8.0,
         "fs": 256,
         "idle": 8,
@@ -4433,7 +4433,7 @@
       },
       "anim_cands": [
         {
-          "attack": 6,
+          "attack": 10,
           "fps": 8.0,
           "fs": 256,
           "idle": 8,
@@ -4500,7 +4500,7 @@
     },
     {
       "anim": {
-        "attack": 6,
+        "attack": 10,
         "fps": 8.0,
         "fs": 256,
         "idle": 8,
@@ -4509,7 +4509,7 @@
       },
       "anim_cands": [
         {
-          "attack": 6,
+          "attack": 10,
           "fps": 8.0,
           "fs": 256,
           "idle": 8,
@@ -4614,19 +4614,19 @@
     },
     {
       "anim": {
-        "attack": 6,
+        "attack": 10,
         "fps": 8.0,
         "fs": 256,
-        "idle": 8,
+        "idle": 4,
         "sheet_attack": "res://assets/effects/unit_anims/ww2_inf_bazooka/sheet_attack.png",
         "sheet_idle": "res://assets/effects/unit_anims/ww2_inf_bazooka/sheet_idle.png"
       },
       "anim_cands": [
         {
-          "attack": 6,
+          "attack": 10,
           "fps": 8.0,
           "fs": 256,
-          "idle": 8,
+          "idle": 4,
           "key": "ww2_inf_bazooka",
           "sheet_attack": "res://assets/effects/unit_anims/ww2_inf_bazooka/sheet_attack.png",
           "sheet_idle": "res://assets/effects/unit_anims/ww2_inf_bazooka/sheet_idle.png"
@@ -4638,8 +4638,8 @@
       "drop": 0.08,
       "drop_card_id": "captured_foe_ww2_inf_bazooka",
       "era": 1,
-      "icon": "res://assets/card_icons/enemy/vis_enemy_009.png",
-      "icon_player": "res://assets/card_icons/player/vis_player_009.png",
+      "icon": "res://assets/card_icons/enemy/ww2_inf_bazooka.png",
+      "icon_player": "res://assets/card_icons/player/ww2_inf_bazooka.png",
       "id": "foe_ww2_inf_bazooka",
       "kind": 0,
       "name": "巴祖卡组",
@@ -4648,7 +4648,7 @@
       "power": 0,
       "role": "",
       "seg": "A",
-      "visual_id": "vis_player_009"
+      "visual_id": "ww2_inf_bazooka"
     },
     {
       "anim": {
@@ -4690,7 +4690,7 @@
     },
     {
       "anim": {
-        "attack": 6,
+        "attack": 10,
         "fps": 8.0,
         "fs": 256,
         "idle": 8,
@@ -4699,7 +4699,7 @@
       },
       "anim_cands": [
         {
-          "attack": 6,
+          "attack": 10,
           "fps": 8.0,
           "fs": 256,
           "idle": 8,
@@ -4728,7 +4728,7 @@
     },
     {
       "anim": {
-        "attack": 6,
+        "attack": 10,
         "fps": 8.0,
         "fs": 256,
         "idle": 8,
@@ -4737,7 +4737,7 @@
       },
       "anim_cands": [
         {
-          "attack": 6,
+          "attack": 10,
           "fps": 8.0,
           "fs": 256,
           "idle": 8,
@@ -4766,7 +4766,7 @@
     },
     {
       "anim": {
-        "attack": 6,
+        "attack": 10,
         "fps": 8.0,
         "fs": 256,
         "idle": 8,
@@ -4775,7 +4775,7 @@
       },
       "anim_cands": [
         {
-          "attack": 6,
+          "attack": 10,
           "fps": 8.0,
           "fs": 256,
           "idle": 8,
@@ -4804,7 +4804,7 @@
     },
     {
       "anim": {
-        "attack": 6,
+        "attack": 10,
         "fps": 8.0,
         "fs": 256,
         "idle": 8,
@@ -4813,7 +4813,7 @@
       },
       "anim_cands": [
         {
-          "attack": 6,
+          "attack": 10,
           "fps": 8.0,
           "fs": 256,
           "idle": 8,
@@ -4918,7 +4918,7 @@
     },
     {
       "anim": {
-        "attack": 12,
+        "attack": 10,
         "fps": 8.0,
         "fs": 256,
         "idle": 8,
@@ -4927,7 +4927,7 @@
       },
       "anim_cands": [
         {
-          "attack": 12,
+          "attack": 10,
           "fps": 8.0,
           "fs": 256,
           "idle": 8,
@@ -5032,7 +5032,7 @@
     },
     {
       "anim": {
-        "attack": 6,
+        "attack": 10,
         "fps": 8.0,
         "fs": 256,
         "idle": 8,
@@ -5041,7 +5041,7 @@
       },
       "anim_cands": [
         {
-          "attack": 6,
+          "attack": 10,
           "fps": 8.0,
           "fs": 256,
           "idle": 8,
@@ -5070,7 +5070,7 @@
     },
     {
       "anim": {
-        "attack": 6,
+        "attack": 10,
         "fps": 8.0,
         "fs": 256,
         "idle": 8,
@@ -5079,7 +5079,7 @@
       },
       "anim_cands": [
         {
-          "attack": 6,
+          "attack": 10,
           "fps": 8.0,
           "fs": 256,
           "idle": 8,
@@ -5146,7 +5146,7 @@
     },
     {
       "anim": {
-        "attack": 6,
+        "attack": 12,
         "fps": 8.0,
         "fs": 256,
         "idle": 8,
@@ -5155,7 +5155,7 @@
       },
       "anim_cands": [
         {
-          "attack": 6,
+          "attack": 12,
           "fps": 8.0,
           "fs": 256,
           "idle": 8,
@@ -5222,7 +5222,7 @@
     },
     {
       "anim": {
-        "attack": 6,
+        "attack": 10,
         "fps": 8.0,
         "fs": 256,
         "idle": 8,
@@ -5231,7 +5231,7 @@
       },
       "anim_cands": [
         {
-          "attack": 6,
+          "attack": 10,
           "fps": 8.0,
           "fs": 256,
           "idle": 8,
@@ -5260,19 +5260,19 @@
     },
     {
       "anim": {
-        "attack": 12,
+        "attack": 10,
         "fps": 8.0,
         "fs": 256,
-        "idle": 8,
+        "idle": 4,
         "sheet_attack": "res://assets/effects/unit_anims/fut_arm_prism/sheet_attack.png",
         "sheet_idle": "res://assets/effects/unit_anims/fut_arm_prism/sheet_idle.png"
       },
       "anim_cands": [
         {
-          "attack": 12,
+          "attack": 10,
           "fps": 8.0,
           "fs": 256,
-          "idle": 8,
+          "idle": 4,
           "key": "fut_arm_prism",
           "sheet_attack": "res://assets/effects/unit_anims/fut_arm_prism/sheet_attack.png",
           "sheet_idle": "res://assets/effects/unit_anims/fut_arm_prism/sheet_idle.png"
@@ -5524,7 +5524,7 @@
           "sheet_idle": "res://assets/effects/unit_anims/fut_air_heavy_carrier/sheet_idle.png"
         },
         {
-          "attack": 6,
+          "attack": 10,
           "fps": 8.0,
           "fs": 256,
           "idle": 8,
@@ -5797,7 +5797,7 @@
           "sheet_idle": "res://assets/effects/unit_anims/ww1_arty_mortar/sheet_idle.png"
         },
         {
-          "attack": 6,
+          "attack": 10,
           "fps": 8.0,
           "fs": 256,
           "idle": 8,
@@ -5867,7 +5867,7 @@
     },
     {
       "anim": {
-        "attack": 6,
+        "attack": 10,
         "fps": 8.0,
         "fs": 256,
         "idle": 8,
@@ -5876,7 +5876,7 @@
       },
       "anim_cands": [
         {
-          "attack": 6,
+          "attack": 10,
           "fps": 8.0,
           "fs": 256,
           "idle": 8,
@@ -5905,7 +5905,7 @@
     },
     {
       "anim": {
-        "attack": 6,
+        "attack": 10,
         "fps": 8.0,
         "fs": 256,
         "idle": 8,
@@ -5914,7 +5914,7 @@
       },
       "anim_cands": [
         {
-          "attack": 6,
+          "attack": 10,
           "fps": 8.0,
           "fs": 256,
           "idle": 8,
@@ -5923,7 +5923,7 @@
           "sheet_idle": "res://assets/effects/unit_anims/ww1_boss_av7/sheet_idle.png"
         },
         {
-          "attack": 12,
+          "attack": 10,
           "fps": 8.0,
           "fs": 256,
           "idle": 8,
@@ -5955,7 +5955,7 @@
     },
     {
       "anim": {
-        "attack": 12,
+        "attack": 10,
         "fps": 8.0,
         "fs": 256,
         "idle": 8,
@@ -5964,7 +5964,7 @@
       },
       "anim_cands": [
         {
-          "attack": 12,
+          "attack": 10,
           "fps": 8.0,
           "fs": 256,
           "idle": 8,
@@ -6116,7 +6116,7 @@
     },
     {
       "anim": {
-        "attack": 12,
+        "attack": 10,
         "fps": 8.0,
         "fs": 256,
         "idle": 8,
@@ -6125,7 +6125,7 @@
       },
       "anim_cands": [
         {
-          "attack": 12,
+          "attack": 10,
           "fps": 8.0,
           "fs": 256,
           "idle": 8,
@@ -6342,7 +6342,7 @@
     },
     {
       "anim": {
-        "attack": 6,
+        "attack": 10,
         "fps": 8.0,
         "fs": 256,
         "idle": 8,
@@ -6351,7 +6351,7 @@
       },
       "anim_cands": [
         {
-          "attack": 6,
+          "attack": 10,
           "fps": 8.0,
           "fs": 256,
           "idle": 8,
@@ -6360,7 +6360,7 @@
           "sheet_idle": "res://assets/effects/unit_anims/cold_arm_btr_e/sheet_idle.png"
         },
         {
-          "attack": 6,
+          "attack": 10,
           "fps": 8.0,
           "fs": 256,
           "idle": 8,
@@ -6398,7 +6398,7 @@
     },
     {
       "anim": {
-        "attack": 6,
+        "attack": 10,
         "fps": 8.0,
         "fs": 256,
         "idle": 8,
@@ -6407,7 +6407,7 @@
       },
       "anim_cands": [
         {
-          "attack": 6,
+          "attack": 10,
           "fps": 8.0,
           "fs": 256,
           "idle": 8,
@@ -6445,7 +6445,7 @@
     },
     {
       "anim": {
-        "attack": 6,
+        "attack": 10,
         "fps": 8.0,
         "fs": 256,
         "idle": 8,
@@ -6454,7 +6454,7 @@
       },
       "anim_cands": [
         {
-          "attack": 6,
+          "attack": 10,
           "fps": 8.0,
           "fs": 256,
           "idle": 8,
@@ -6486,7 +6486,7 @@
     },
     {
       "anim": {
-        "attack": 6,
+        "attack": 10,
         "fps": 8.0,
         "fs": 256,
         "idle": 6,
@@ -6495,7 +6495,7 @@
       },
       "anim_cands": [
         {
-          "attack": 6,
+          "attack": 10,
           "fps": 8.0,
           "fs": 256,
           "idle": 6,
@@ -6618,7 +6618,7 @@
         "attack": 6,
         "fps": 8.0,
         "fs": 256,
-        "idle": 8,
+        "idle": 4,
         "sheet_attack": "res://assets/effects/unit_anims/mod_air_technical_e/sheet_attack.png",
         "sheet_idle": "res://assets/effects/unit_anims/mod_air_technical_e/sheet_idle.png"
       },
@@ -6627,7 +6627,7 @@
           "attack": 6,
           "fps": 8.0,
           "fs": 256,
-          "idle": 8,
+          "idle": 4,
           "key": "mod_air_technical_e",
           "sheet_attack": "res://assets/effects/unit_anims/mod_air_technical_e/sheet_attack.png",
           "sheet_idle": "res://assets/effects/unit_anims/mod_air_technical_e/sheet_idle.png"
@@ -6662,7 +6662,7 @@
     },
     {
       "anim": {
-        "attack": 6,
+        "attack": 10,
         "fps": 8.0,
         "fs": 256,
         "idle": 8,
@@ -6671,7 +6671,7 @@
       },
       "anim_cands": [
         {
-          "attack": 6,
+          "attack": 10,
           "fps": 8.0,
           "fs": 256,
           "idle": 8,
@@ -6700,7 +6700,7 @@
     },
     {
       "anim": {
-        "attack": 6,
+        "attack": 10,
         "fps": 8.0,
         "fs": 256,
         "idle": 8,
@@ -6709,7 +6709,7 @@
       },
       "anim_cands": [
         {
-          "attack": 6,
+          "attack": 10,
           "fps": 8.0,
           "fs": 256,
           "idle": 8,
@@ -6829,7 +6829,7 @@
     },
     {
       "anim": {
-        "attack": 6,
+        "attack": 10,
         "fps": 8.0,
         "fs": 256,
         "idle": 8,
@@ -6838,7 +6838,7 @@
       },
       "anim_cands": [
         {
-          "attack": 6,
+          "attack": 10,
           "fps": 8.0,
           "fs": 256,
           "idle": 8,
@@ -6929,7 +6929,7 @@
     },
     {
       "anim": {
-        "attack": 6,
+        "attack": 10,
         "fps": 8.0,
         "fs": 256,
         "idle": 8,
@@ -6938,7 +6938,7 @@
       },
       "anim_cands": [
         {
-          "attack": 6,
+          "attack": 10,
           "fps": 8.0,
           "fs": 256,
           "idle": 8,
@@ -7079,7 +7079,7 @@
     },
     {
       "anim": {
-        "attack": 6,
+        "attack": 10,
         "fps": 8.0,
         "fs": 256,
         "idle": 8,
@@ -7088,7 +7088,7 @@
       },
       "anim_cands": [
         {
-          "attack": 6,
+          "attack": 10,
           "fps": 8.0,
           "fs": 256,
           "idle": 8,
@@ -7158,7 +7158,7 @@
     },
     {
       "anim": {
-        "attack": 12,
+        "attack": 10,
         "fps": 8.0,
         "fs": 256,
         "idle": 8,
@@ -7167,7 +7167,7 @@
       },
       "anim_cands": [
         {
-          "attack": 12,
+          "attack": 10,
           "fps": 8.0,
           "fs": 256,
           "idle": 8,
@@ -7305,7 +7305,7 @@
           "sheet_idle": "res://assets/effects/unit_anims/ww1_arm_rolls_mk2/sheet_idle.png"
         },
         {
-          "attack": 6,
+          "attack": 10,
           "fps": 8.0,
           "fs": 256,
           "idle": 8,
@@ -7428,19 +7428,19 @@
     },
     {
       "anim": {
-        "attack": 6,
+        "attack": 10,
         "fps": 8.0,
         "fs": 256,
-        "idle": 8,
+        "idle": 4,
         "sheet_attack": "res://assets/effects/unit_anims/ww1_inf_mp18_x/sheet_attack.png",
         "sheet_idle": "res://assets/effects/unit_anims/ww1_inf_mp18_x/sheet_idle.png"
       },
       "anim_cands": [
         {
-          "attack": 6,
+          "attack": 10,
           "fps": 8.0,
           "fs": 256,
-          "idle": 8,
+          "idle": 4,
           "key": "ww1_inf_mp18_x",
           "sheet_attack": "res://assets/effects/unit_anims/ww1_inf_mp18_x/sheet_attack.png",
           "sheet_idle": "res://assets/effects/unit_anims/ww1_inf_mp18_x/sheet_idle.png"
@@ -7475,25 +7475,25 @@
     },
     {
       "anim": {
-        "attack": 6,
+        "attack": 10,
         "fps": 8.0,
         "fs": 256,
-        "idle": 8,
+        "idle": 4,
         "sheet_attack": "res://assets/effects/unit_anims/ww2_arm_garand_para/sheet_attack.png",
         "sheet_idle": "res://assets/effects/unit_anims/ww2_arm_garand_para/sheet_idle.png"
       },
       "anim_cands": [
         {
-          "attack": 6,
+          "attack": 10,
           "fps": 8.0,
           "fs": 256,
-          "idle": 8,
+          "idle": 4,
           "key": "ww2_arm_garand_para",
           "sheet_attack": "res://assets/effects/unit_anims/ww2_arm_garand_para/sheet_attack.png",
           "sheet_idle": "res://assets/effects/unit_anims/ww2_arm_garand_para/sheet_idle.png"
         },
         {
-          "attack": 12,
+          "attack": 10,
           "fps": 8.0,
           "fs": 256,
           "idle": 8,
@@ -7522,7 +7522,7 @@
     },
     {
       "anim": {
-        "attack": 12,
+        "attack": 10,
         "fps": 8.0,
         "fs": 256,
         "idle": 8,
@@ -7531,7 +7531,7 @@
       },
       "anim_cands": [
         {
-          "attack": 12,
+          "attack": 10,
           "fps": 8.0,
           "fs": 256,
           "idle": 8,
@@ -7540,7 +7540,7 @@
           "sheet_idle": "res://assets/effects/unit_anims/ww2_arty_hummel/sheet_idle.png"
         },
         {
-          "attack": 6,
+          "attack": 10,
           "fps": 8.0,
           "fs": 256,
           "idle": 8,
@@ -7616,7 +7616,7 @@
     },
     {
       "anim": {
-        "attack": 6,
+        "attack": 10,
         "fps": 8.0,
         "fs": 256,
         "idle": 8,
@@ -7625,7 +7625,7 @@
       },
       "anim_cands": [
         {
-          "attack": 6,
+          "attack": 10,
           "fps": 8.0,
           "fs": 256,
           "idle": 8,
@@ -7634,7 +7634,7 @@
           "sheet_idle": "res://assets/effects/unit_anims/ww2_sup_gmc_truck/sheet_idle.png"
         },
         {
-          "attack": 12,
+          "attack": 10,
           "fps": 8.0,
           "fs": 256,
           "idle": 8,
@@ -7728,7 +7728,7 @@
           "sheet_idle": "res://assets/effects/unit_anims/cold_arty_bmd1/sheet_idle.png"
         },
         {
-          "attack": 6,
+          "attack": 10,
           "fps": 8.0,
           "fs": 256,
           "idle": 8,
@@ -7757,7 +7757,7 @@
     },
     {
       "anim": {
-        "attack": 6,
+        "attack": 10,
         "fps": 8.0,
         "fs": 256,
         "idle": 8,
@@ -7766,7 +7766,7 @@
       },
       "anim_cands": [
         {
-          "attack": 6,
+          "attack": 10,
           "fps": 8.0,
           "fs": 256,
           "idle": 8,
@@ -7775,7 +7775,7 @@
           "sheet_idle": "res://assets/effects/unit_anims/cold_sup_bmp1_x/sheet_idle.png"
         },
         {
-          "attack": 6,
+          "attack": 10,
           "fps": 8.0,
           "fs": 256,
           "idle": 8,
@@ -7898,7 +7898,7 @@
     },
     {
       "anim": {
-        "attack": 6,
+        "attack": 10,
         "fps": 8.0,
         "fs": 256,
         "idle": 8,
@@ -7907,7 +7907,7 @@
       },
       "anim_cands": [
         {
-          "attack": 6,
+          "attack": 10,
           "fps": 8.0,
           "fs": 256,
           "idle": 8,
@@ -7916,7 +7916,7 @@
           "sheet_idle": "res://assets/effects/unit_anims/cold_arty_brem1/sheet_idle.png"
         },
         {
-          "attack": 6,
+          "attack": 10,
           "fps": 8.0,
           "fs": 256,
           "idle": 6,
@@ -7945,7 +7945,7 @@
     },
     {
       "anim": {
-        "attack": 6,
+        "attack": 10,
         "fps": 8.0,
         "fs": 256,
         "idle": 8,
@@ -7954,7 +7954,7 @@
       },
       "anim_cands": [
         {
-          "attack": 6,
+          "attack": 10,
           "fps": 8.0,
           "fs": 256,
           "idle": 8,
@@ -8030,7 +8030,7 @@
     },
     {
       "anim": {
-        "attack": 6,
+        "attack": 10,
         "fps": 8.0,
         "fs": 256,
         "idle": 8,
@@ -8039,7 +8039,7 @@
       },
       "anim_cands": [
         {
-          "attack": 6,
+          "attack": 10,
           "fps": 8.0,
           "fs": 256,
           "idle": 8,
@@ -8048,7 +8048,7 @@
           "sheet_idle": "res://assets/effects/unit_anims/mod_arm_himars/sheet_idle.png"
         },
         {
-          "attack": 6,
+          "attack": 10,
           "fps": 8.0,
           "fs": 256,
           "idle": 8,
@@ -8095,7 +8095,7 @@
           "sheet_idle": "res://assets/effects/unit_anims/mod_arty_rq7/sheet_idle.png"
         },
         {
-          "attack": 6,
+          "attack": 10,
           "fps": 8.0,
           "fs": 256,
           "idle": 8,
@@ -8605,19 +8605,19 @@
     },
     {
       "anim": {
-        "attack": 6,
+        "attack": 10,
         "fps": 8.0,
         "fs": 256,
-        "idle": 8,
+        "idle": 4,
         "sheet_attack": "res://assets/effects/unit_anims/ww2_air_dive_bomber/sheet_attack.png",
         "sheet_idle": "res://assets/effects/unit_anims/ww2_air_dive_bomber/sheet_idle.png"
       },
       "anim_cands": [
         {
-          "attack": 6,
+          "attack": 10,
           "fps": 8.0,
           "fs": 256,
-          "idle": 8,
+          "idle": 4,
           "key": "ww2_air_dive_bomber",
           "sheet_attack": "res://assets/effects/unit_anims/ww2_air_dive_bomber/sheet_attack.png",
           "sheet_idle": "res://assets/effects/unit_anims/ww2_air_dive_bomber/sheet_idle.png"
@@ -8719,7 +8719,7 @@
     },
     {
       "anim": {
-        "attack": 6,
+        "attack": 10,
         "fps": 8.0,
         "fs": 256,
         "idle": 8,
@@ -8728,7 +8728,7 @@
       },
       "anim_cands": [
         {
-          "attack": 6,
+          "attack": 10,
           "fps": 8.0,
           "fs": 256,
           "idle": 8,
@@ -8833,7 +8833,7 @@
     },
     {
       "anim": {
-        "attack": 12,
+        "attack": 10,
         "fps": 8.0,
         "fs": 256,
         "idle": 8,
@@ -8842,7 +8842,7 @@
       },
       "anim_cands": [
         {
-          "attack": 12,
+          "attack": 10,
           "fps": 8.0,
           "fs": 256,
           "idle": 8,
@@ -8947,7 +8947,7 @@
     },
     {
       "anim": {
-        "attack": 6,
+        "attack": 10,
         "fps": 8.0,
         "fs": 256,
         "idle": 8,
@@ -8956,7 +8956,7 @@
       },
       "anim_cands": [
         {
-          "attack": 6,
+          "attack": 10,
           "fps": 8.0,
           "fs": 256,
           "idle": 8,
@@ -8985,7 +8985,7 @@
     },
     {
       "anim": {
-        "attack": 6,
+        "attack": 10,
         "fps": 8.0,
         "fs": 256,
         "idle": 8,
@@ -8994,7 +8994,7 @@
       },
       "anim_cands": [
         {
-          "attack": 6,
+          "attack": 10,
           "fps": 8.0,
           "fs": 256,
           "idle": 8,
@@ -9023,7 +9023,7 @@
     },
     {
       "anim": {
-        "attack": 6,
+        "attack": 10,
         "fps": 8.0,
         "fs": 256,
         "idle": 8,
@@ -9032,7 +9032,7 @@
       },
       "anim_cands": [
         {
-          "attack": 6,
+          "attack": 10,
           "fps": 8.0,
           "fs": 256,
           "idle": 8,
@@ -9061,7 +9061,7 @@
     },
     {
       "anim": {
-        "attack": 12,
+        "attack": 10,
         "fps": 8.0,
         "fs": 256,
         "idle": 8,
@@ -9070,7 +9070,7 @@
       },
       "anim_cands": [
         {
-          "attack": 12,
+          "attack": 10,
           "fps": 8.0,
           "fs": 256,
           "idle": 8,
@@ -9213,7 +9213,7 @@
     },
     {
       "anim": {
-        "attack": 12,
+        "attack": 10,
         "fps": 8.0,
         "fs": 256,
         "idle": 8,
@@ -9222,7 +9222,7 @@
       },
       "anim_cands": [
         {
-          "attack": 12,
+          "attack": 10,
           "fps": 8.0,
           "fs": 256,
           "idle": 8,
@@ -10124,20 +10124,29 @@
       "visual_id": "vis_xeno_mothership"
     }
   ],
-  "generated": "2026-10-05 19:04:56",
+  "generated": "2026-10-06 23:17:54",
   "platforms": [
     {
       "anim": {
-        "attack": 6,
+        "attack": 10,
         "fps": 8.0,
         "fs": 256,
-        "idle": 8,
-        "sheet_attack": "res://assets/effects/unit_anims/ww1_fort_pillbox/sheet_attack.png",
-        "sheet_idle": "res://assets/effects/unit_anims/ww1_fort_pillbox/sheet_idle.png"
+        "idle": 4,
+        "sheet_attack": "res://assets/effects/unit_anims/steel_fortress_basic/sheet_attack.png",
+        "sheet_idle": "res://assets/effects/unit_anims/steel_fortress_basic/sheet_idle.png"
       },
       "anim_cands": [
         {
-          "attack": 6,
+          "attack": 10,
+          "fps": 8.0,
+          "fs": 256,
+          "idle": 4,
+          "key": "steel_fortress_basic",
+          "sheet_attack": "res://assets/effects/unit_anims/steel_fortress_basic/sheet_attack.png",
+          "sheet_idle": "res://assets/effects/unit_anims/steel_fortress_basic/sheet_idle.png"
+        },
+        {
+          "attack": 10,
           "fps": 8.0,
           "fs": 256,
           "idle": 8,
@@ -10146,7 +10155,7 @@
           "sheet_idle": "res://assets/effects/unit_anims/ww1_fort_pillbox/sheet_idle.png"
         }
       ],
-      "anim_key": "ww1_fort_pillbox",
+      "anim_key": "steel_fortress_basic",
       "boss_dir": "",
       "boss_frames": 0,
       "ctype": -1,
@@ -10161,14 +10170,23 @@
     },
     {
       "anim": {
-        "attack": 6,
+        "attack": 10,
         "fps": 8.0,
         "fs": 256,
-        "idle": 8,
-        "sheet_attack": "res://assets/effects/unit_anims/ww1_av7/sheet_attack.png",
-        "sheet_idle": "res://assets/effects/unit_anims/ww1_av7/sheet_idle.png"
+        "idle": 4,
+        "sheet_attack": "res://assets/effects/unit_anims/steel_titan_basic/sheet_attack.png",
+        "sheet_idle": "res://assets/effects/unit_anims/steel_titan_basic/sheet_idle.png"
       },
       "anim_cands": [
+        {
+          "attack": 10,
+          "fps": 8.0,
+          "fs": 256,
+          "idle": 4,
+          "key": "steel_titan_basic",
+          "sheet_attack": "res://assets/effects/unit_anims/steel_titan_basic/sheet_attack.png",
+          "sheet_idle": "res://assets/effects/unit_anims/steel_titan_basic/sheet_idle.png"
+        },
         {
           "attack": 6,
           "fps": 8.0,
@@ -10179,7 +10197,7 @@
           "sheet_idle": "res://assets/effects/unit_anims/ww1_av7/sheet_idle.png"
         }
       ],
-      "anim_key": "ww1_av7",
+      "anim_key": "steel_titan_basic",
       "boss_dir": "",
       "boss_frames": 0,
       "ctype": -1,
@@ -10193,8 +10211,26 @@
       "pose_frames": 0
     },
     {
-      "anim_cands": [],
-      "anim_key": "",
+      "anim": {
+        "attack": 10,
+        "fps": 8.0,
+        "fs": 256,
+        "idle": 4,
+        "sheet_attack": "res://assets/effects/unit_anims/steel_fortress_advanced/sheet_attack.png",
+        "sheet_idle": "res://assets/effects/unit_anims/steel_fortress_advanced/sheet_idle.png"
+      },
+      "anim_cands": [
+        {
+          "attack": 10,
+          "fps": 8.0,
+          "fs": 256,
+          "idle": 4,
+          "key": "steel_fortress_advanced",
+          "sheet_attack": "res://assets/effects/unit_anims/steel_fortress_advanced/sheet_attack.png",
+          "sheet_idle": "res://assets/effects/unit_anims/steel_fortress_advanced/sheet_idle.png"
+        }
+      ],
+      "anim_key": "steel_fortress_advanced",
       "boss_dir": "",
       "boss_frames": 0,
       "ctype": -1,
@@ -10208,8 +10244,26 @@
       "pose_frames": 0
     },
     {
-      "anim_cands": [],
-      "anim_key": "",
+      "anim": {
+        "attack": 10,
+        "fps": 8.0,
+        "fs": 256,
+        "idle": 4,
+        "sheet_attack": "res://assets/effects/unit_anims/steel_titan_advanced/sheet_attack.png",
+        "sheet_idle": "res://assets/effects/unit_anims/steel_titan_advanced/sheet_idle.png"
+      },
+      "anim_cands": [
+        {
+          "attack": 10,
+          "fps": 8.0,
+          "fs": 256,
+          "idle": 4,
+          "key": "steel_titan_advanced",
+          "sheet_attack": "res://assets/effects/unit_anims/steel_titan_advanced/sheet_attack.png",
+          "sheet_idle": "res://assets/effects/unit_anims/steel_titan_advanced/sheet_idle.png"
+        }
+      ],
+      "anim_key": "steel_titan_advanced",
       "boss_dir": "",
       "boss_frames": 0,
       "ctype": -1,
@@ -10223,8 +10277,26 @@
       "pose_frames": 0
     },
     {
-      "anim_cands": [],
-      "anim_key": "",
+      "anim": {
+        "attack": 10,
+        "fps": 8.0,
+        "fs": 256,
+        "idle": 4,
+        "sheet_attack": "res://assets/effects/unit_anims/steel_fortress_expert/sheet_attack.png",
+        "sheet_idle": "res://assets/effects/unit_anims/steel_fortress_expert/sheet_idle.png"
+      },
+      "anim_cands": [
+        {
+          "attack": 10,
+          "fps": 8.0,
+          "fs": 256,
+          "idle": 4,
+          "key": "steel_fortress_expert",
+          "sheet_attack": "res://assets/effects/unit_anims/steel_fortress_expert/sheet_attack.png",
+          "sheet_idle": "res://assets/effects/unit_anims/steel_fortress_expert/sheet_idle.png"
+        }
+      ],
+      "anim_key": "steel_fortress_expert",
       "boss_dir": "",
       "boss_frames": 0,
       "ctype": -1,
@@ -10238,8 +10310,26 @@
       "pose_frames": 0
     },
     {
-      "anim_cands": [],
-      "anim_key": "",
+      "anim": {
+        "attack": 10,
+        "fps": 8.0,
+        "fs": 256,
+        "idle": 4,
+        "sheet_attack": "res://assets/effects/unit_anims/steel_titan_expert/sheet_attack.png",
+        "sheet_idle": "res://assets/effects/unit_anims/steel_titan_expert/sheet_idle.png"
+      },
+      "anim_cands": [
+        {
+          "attack": 10,
+          "fps": 8.0,
+          "fs": 256,
+          "idle": 4,
+          "key": "steel_titan_expert",
+          "sheet_attack": "res://assets/effects/unit_anims/steel_titan_expert/sheet_attack.png",
+          "sheet_idle": "res://assets/effects/unit_anims/steel_titan_expert/sheet_idle.png"
+        }
+      ],
+      "anim_key": "steel_titan_expert",
       "boss_dir": "",
       "boss_frames": 0,
       "ctype": -1,
@@ -10254,14 +10344,23 @@
     },
     {
       "anim": {
-        "attack": 6,
+        "attack": 10,
         "fps": 8.0,
         "fs": 256,
-        "idle": 7,
-        "sheet_attack": "res://assets/effects/unit_anims/ww1_storm/sheet_attack.png",
-        "sheet_idle": "res://assets/effects/unit_anims/ww1_storm/sheet_idle.png"
+        "idle": 4,
+        "sheet_attack": "res://assets/effects/unit_anims/flame_raider_basic/sheet_attack.png",
+        "sheet_idle": "res://assets/effects/unit_anims/flame_raider_basic/sheet_idle.png"
       },
       "anim_cands": [
+        {
+          "attack": 10,
+          "fps": 8.0,
+          "fs": 256,
+          "idle": 4,
+          "key": "flame_raider_basic",
+          "sheet_attack": "res://assets/effects/unit_anims/flame_raider_basic/sheet_attack.png",
+          "sheet_idle": "res://assets/effects/unit_anims/flame_raider_basic/sheet_idle.png"
+        },
         {
           "attack": 6,
           "fps": 8.0,
@@ -10272,7 +10371,7 @@
           "sheet_idle": "res://assets/effects/unit_anims/ww1_storm/sheet_idle.png"
         }
       ],
-      "anim_key": "ww1_storm",
+      "anim_key": "flame_raider_basic",
       "boss_dir": "",
       "boss_frames": 0,
       "ctype": -1,
@@ -10287,16 +10386,25 @@
     },
     {
       "anim": {
-        "attack": 6,
+        "attack": 10,
         "fps": 8.0,
         "fs": 256,
-        "idle": 8,
-        "sheet_attack": "res://assets/effects/unit_anims/ww1_arty_77mm/sheet_attack.png",
-        "sheet_idle": "res://assets/effects/unit_anims/ww1_arty_77mm/sheet_idle.png"
+        "idle": 4,
+        "sheet_attack": "res://assets/effects/unit_anims/flame_siege_basic/sheet_attack.png",
+        "sheet_idle": "res://assets/effects/unit_anims/flame_siege_basic/sheet_idle.png"
       },
       "anim_cands": [
         {
-          "attack": 6,
+          "attack": 10,
+          "fps": 8.0,
+          "fs": 256,
+          "idle": 4,
+          "key": "flame_siege_basic",
+          "sheet_attack": "res://assets/effects/unit_anims/flame_siege_basic/sheet_attack.png",
+          "sheet_idle": "res://assets/effects/unit_anims/flame_siege_basic/sheet_idle.png"
+        },
+        {
+          "attack": 12,
           "fps": 8.0,
           "fs": 256,
           "idle": 8,
@@ -10305,7 +10413,7 @@
           "sheet_idle": "res://assets/effects/unit_anims/ww1_arty_77mm/sheet_idle.png"
         }
       ],
-      "anim_key": "ww1_arty_77mm",
+      "anim_key": "flame_siege_basic",
       "boss_dir": "",
       "boss_frames": 0,
       "ctype": -1,
@@ -10319,8 +10427,26 @@
       "pose_frames": 0
     },
     {
-      "anim_cands": [],
-      "anim_key": "",
+      "anim": {
+        "attack": 10,
+        "fps": 8.0,
+        "fs": 256,
+        "idle": 4,
+        "sheet_attack": "res://assets/effects/unit_anims/flame_raider_advanced/sheet_attack.png",
+        "sheet_idle": "res://assets/effects/unit_anims/flame_raider_advanced/sheet_idle.png"
+      },
+      "anim_cands": [
+        {
+          "attack": 10,
+          "fps": 8.0,
+          "fs": 256,
+          "idle": 4,
+          "key": "flame_raider_advanced",
+          "sheet_attack": "res://assets/effects/unit_anims/flame_raider_advanced/sheet_attack.png",
+          "sheet_idle": "res://assets/effects/unit_anims/flame_raider_advanced/sheet_idle.png"
+        }
+      ],
+      "anim_key": "flame_raider_advanced",
       "boss_dir": "",
       "boss_frames": 0,
       "ctype": -1,
@@ -10334,8 +10460,26 @@
       "pose_frames": 0
     },
     {
-      "anim_cands": [],
-      "anim_key": "",
+      "anim": {
+        "attack": 10,
+        "fps": 8.0,
+        "fs": 256,
+        "idle": 4,
+        "sheet_attack": "res://assets/effects/unit_anims/flame_siege_advanced/sheet_attack.png",
+        "sheet_idle": "res://assets/effects/unit_anims/flame_siege_advanced/sheet_idle.png"
+      },
+      "anim_cands": [
+        {
+          "attack": 10,
+          "fps": 8.0,
+          "fs": 256,
+          "idle": 4,
+          "key": "flame_siege_advanced",
+          "sheet_attack": "res://assets/effects/unit_anims/flame_siege_advanced/sheet_attack.png",
+          "sheet_idle": "res://assets/effects/unit_anims/flame_siege_advanced/sheet_idle.png"
+        }
+      ],
+      "anim_key": "flame_siege_advanced",
       "boss_dir": "",
       "boss_frames": 0,
       "ctype": -1,
@@ -10350,14 +10494,23 @@
     },
     {
       "anim": {
-        "attack": 6,
+        "attack": 10,
         "fps": 8.0,
         "fs": 256,
-        "idle": 7,
-        "sheet_attack": "res://assets/effects/unit_anims/ww1_storm/sheet_attack.png",
-        "sheet_idle": "res://assets/effects/unit_anims/ww1_storm/sheet_idle.png"
+        "idle": 4,
+        "sheet_attack": "res://assets/effects/unit_anims/thunter_striker_basic/sheet_attack.png",
+        "sheet_idle": "res://assets/effects/unit_anims/thunter_striker_basic/sheet_idle.png"
       },
       "anim_cands": [
+        {
+          "attack": 10,
+          "fps": 8.0,
+          "fs": 256,
+          "idle": 4,
+          "key": "thunter_striker_basic",
+          "sheet_attack": "res://assets/effects/unit_anims/thunter_striker_basic/sheet_attack.png",
+          "sheet_idle": "res://assets/effects/unit_anims/thunter_striker_basic/sheet_idle.png"
+        },
         {
           "attack": 6,
           "fps": 8.0,
@@ -10368,7 +10521,7 @@
           "sheet_idle": "res://assets/effects/unit_anims/ww1_storm/sheet_idle.png"
         }
       ],
-      "anim_key": "ww1_storm",
+      "anim_key": "thunter_striker_basic",
       "boss_dir": "",
       "boss_frames": 0,
       "ctype": -1,
@@ -10383,14 +10536,23 @@
     },
     {
       "anim": {
-        "attack": 6,
+        "attack": 10,
         "fps": 8.0,
         "fs": 256,
-        "idle": 8,
-        "sheet_attack": "res://assets/effects/unit_anims/ww2_inf_kar98k/sheet_attack.png",
-        "sheet_idle": "res://assets/effects/unit_anims/ww2_inf_kar98k/sheet_idle.png"
+        "idle": 4,
+        "sheet_attack": "res://assets/effects/unit_anims/thunter_sniper_basic/sheet_attack.png",
+        "sheet_idle": "res://assets/effects/unit_anims/thunter_sniper_basic/sheet_idle.png"
       },
       "anim_cands": [
+        {
+          "attack": 10,
+          "fps": 8.0,
+          "fs": 256,
+          "idle": 4,
+          "key": "thunter_sniper_basic",
+          "sheet_attack": "res://assets/effects/unit_anims/thunter_sniper_basic/sheet_attack.png",
+          "sheet_idle": "res://assets/effects/unit_anims/thunter_sniper_basic/sheet_idle.png"
+        },
         {
           "attack": 6,
           "fps": 8.0,
@@ -10401,7 +10563,7 @@
           "sheet_idle": "res://assets/effects/unit_anims/ww2_inf_kar98k/sheet_idle.png"
         }
       ],
-      "anim_key": "ww2_inf_kar98k",
+      "anim_key": "thunter_sniper_basic",
       "boss_dir": "",
       "boss_frames": 0,
       "ctype": -1,
@@ -10416,14 +10578,23 @@
     },
     {
       "anim": {
-        "attack": 6,
+        "attack": 10,
         "fps": 8.0,
         "fs": 256,
-        "idle": 5,
-        "sheet_attack": "res://assets/effects/unit_anims/fut_inf_x9/sheet_attack.png",
-        "sheet_idle": "res://assets/effects/unit_anims/fut_inf_x9/sheet_idle.png"
+        "idle": 4,
+        "sheet_attack": "res://assets/effects/unit_anims/void_stealth_basic/sheet_attack.png",
+        "sheet_idle": "res://assets/effects/unit_anims/void_stealth_basic/sheet_idle.png"
       },
       "anim_cands": [
+        {
+          "attack": 10,
+          "fps": 8.0,
+          "fs": 256,
+          "idle": 4,
+          "key": "void_stealth_basic",
+          "sheet_attack": "res://assets/effects/unit_anims/void_stealth_basic/sheet_attack.png",
+          "sheet_idle": "res://assets/effects/unit_anims/void_stealth_basic/sheet_idle.png"
+        },
         {
           "attack": 6,
           "fps": 8.0,
@@ -10434,7 +10605,7 @@
           "sheet_idle": "res://assets/effects/unit_anims/fut_inf_x9/sheet_idle.png"
         }
       ],
-      "anim_key": "fut_inf_x9",
+      "anim_key": "void_stealth_basic",
       "boss_dir": "",
       "boss_frames": 0,
       "ctype": -1,
@@ -10449,14 +10620,23 @@
     },
     {
       "anim": {
-        "attack": 12,
+        "attack": 10,
         "fps": 8.0,
         "fs": 256,
-        "idle": 8,
-        "sheet_attack": "res://assets/effects/unit_anims/vis_xeno_adept/sheet_attack.png",
-        "sheet_idle": "res://assets/effects/unit_anims/vis_xeno_adept/sheet_idle.png"
+        "idle": 4,
+        "sheet_attack": "res://assets/effects/unit_anims/void_mage_basic/sheet_attack.png",
+        "sheet_idle": "res://assets/effects/unit_anims/void_mage_basic/sheet_idle.png"
       },
       "anim_cands": [
+        {
+          "attack": 10,
+          "fps": 8.0,
+          "fs": 256,
+          "idle": 4,
+          "key": "void_mage_basic",
+          "sheet_attack": "res://assets/effects/unit_anims/void_mage_basic/sheet_attack.png",
+          "sheet_idle": "res://assets/effects/unit_anims/void_mage_basic/sheet_idle.png"
+        },
         {
           "attack": 12,
           "fps": 8.0,
@@ -10467,7 +10647,7 @@
           "sheet_idle": "res://assets/effects/unit_anims/vis_xeno_adept/sheet_idle.png"
         }
       ],
-      "anim_key": "vis_xeno_adept",
+      "anim_key": "void_mage_basic",
       "boss_dir": "",
       "boss_frames": 0,
       "ctype": -1,
@@ -10481,8 +10661,26 @@
       "pose_frames": 0
     },
     {
-      "anim_cands": [],
-      "anim_key": "",
+      "anim": {
+        "attack": 10,
+        "fps": 8.0,
+        "fs": 256,
+        "idle": 4,
+        "sheet_attack": "res://assets/effects/unit_anims/flame_raider_expert/sheet_attack.png",
+        "sheet_idle": "res://assets/effects/unit_anims/flame_raider_expert/sheet_idle.png"
+      },
+      "anim_cands": [
+        {
+          "attack": 10,
+          "fps": 8.0,
+          "fs": 256,
+          "idle": 4,
+          "key": "flame_raider_expert",
+          "sheet_attack": "res://assets/effects/unit_anims/flame_raider_expert/sheet_attack.png",
+          "sheet_idle": "res://assets/effects/unit_anims/flame_raider_expert/sheet_idle.png"
+        }
+      ],
+      "anim_key": "flame_raider_expert",
       "boss_dir": "",
       "boss_frames": 0,
       "ctype": -1,
@@ -10496,8 +10694,26 @@
       "pose_frames": 0
     },
     {
-      "anim_cands": [],
-      "anim_key": "",
+      "anim": {
+        "attack": 10,
+        "fps": 8.0,
+        "fs": 256,
+        "idle": 4,
+        "sheet_attack": "res://assets/effects/unit_anims/flame_siege_expert/sheet_attack.png",
+        "sheet_idle": "res://assets/effects/unit_anims/flame_siege_expert/sheet_idle.png"
+      },
+      "anim_cands": [
+        {
+          "attack": 10,
+          "fps": 8.0,
+          "fs": 256,
+          "idle": 4,
+          "key": "flame_siege_expert",
+          "sheet_attack": "res://assets/effects/unit_anims/flame_siege_expert/sheet_attack.png",
+          "sheet_idle": "res://assets/effects/unit_anims/flame_siege_expert/sheet_idle.png"
+        }
+      ],
+      "anim_key": "flame_siege_expert",
       "boss_dir": "",
       "boss_frames": 0,
       "ctype": -1,
@@ -10511,8 +10727,26 @@
       "pose_frames": 0
     },
     {
-      "anim_cands": [],
-      "anim_key": "",
+      "anim": {
+        "attack": 10,
+        "fps": 8.0,
+        "fs": 256,
+        "idle": 4,
+        "sheet_attack": "res://assets/effects/unit_anims/thunter_striker_advanced/sheet_attack.png",
+        "sheet_idle": "res://assets/effects/unit_anims/thunter_striker_advanced/sheet_idle.png"
+      },
+      "anim_cands": [
+        {
+          "attack": 10,
+          "fps": 8.0,
+          "fs": 256,
+          "idle": 4,
+          "key": "thunter_striker_advanced",
+          "sheet_attack": "res://assets/effects/unit_anims/thunter_striker_advanced/sheet_attack.png",
+          "sheet_idle": "res://assets/effects/unit_anims/thunter_striker_advanced/sheet_idle.png"
+        }
+      ],
+      "anim_key": "thunter_striker_advanced",
       "boss_dir": "",
       "boss_frames": 0,
       "ctype": -1,
@@ -10526,8 +10760,26 @@
       "pose_frames": 0
     },
     {
-      "anim_cands": [],
-      "anim_key": "",
+      "anim": {
+        "attack": 10,
+        "fps": 8.0,
+        "fs": 256,
+        "idle": 4,
+        "sheet_attack": "res://assets/effects/unit_anims/thunter_sniper_advanced/sheet_attack.png",
+        "sheet_idle": "res://assets/effects/unit_anims/thunter_sniper_advanced/sheet_idle.png"
+      },
+      "anim_cands": [
+        {
+          "attack": 10,
+          "fps": 8.0,
+          "fs": 256,
+          "idle": 4,
+          "key": "thunter_sniper_advanced",
+          "sheet_attack": "res://assets/effects/unit_anims/thunter_sniper_advanced/sheet_attack.png",
+          "sheet_idle": "res://assets/effects/unit_anims/thunter_sniper_advanced/sheet_idle.png"
+        }
+      ],
+      "anim_key": "thunter_sniper_advanced",
       "boss_dir": "",
       "boss_frames": 0,
       "ctype": -1,
@@ -10541,8 +10793,26 @@
       "pose_frames": 0
     },
     {
-      "anim_cands": [],
-      "anim_key": "",
+      "anim": {
+        "attack": 10,
+        "fps": 8.0,
+        "fs": 256,
+        "idle": 4,
+        "sheet_attack": "res://assets/effects/unit_anims/thunter_striker_expert/sheet_attack.png",
+        "sheet_idle": "res://assets/effects/unit_anims/thunter_striker_expert/sheet_idle.png"
+      },
+      "anim_cands": [
+        {
+          "attack": 10,
+          "fps": 8.0,
+          "fs": 256,
+          "idle": 4,
+          "key": "thunter_striker_expert",
+          "sheet_attack": "res://assets/effects/unit_anims/thunter_striker_expert/sheet_attack.png",
+          "sheet_idle": "res://assets/effects/unit_anims/thunter_striker_expert/sheet_idle.png"
+        }
+      ],
+      "anim_key": "thunter_striker_expert",
       "boss_dir": "",
       "boss_frames": 0,
       "ctype": -1,
@@ -10556,8 +10826,26 @@
       "pose_frames": 0
     },
     {
-      "anim_cands": [],
-      "anim_key": "",
+      "anim": {
+        "attack": 10,
+        "fps": 8.0,
+        "fs": 256,
+        "idle": 4,
+        "sheet_attack": "res://assets/effects/unit_anims/thunter_sniper_expert/sheet_attack.png",
+        "sheet_idle": "res://assets/effects/unit_anims/thunter_sniper_expert/sheet_idle.png"
+      },
+      "anim_cands": [
+        {
+          "attack": 10,
+          "fps": 8.0,
+          "fs": 256,
+          "idle": 4,
+          "key": "thunter_sniper_expert",
+          "sheet_attack": "res://assets/effects/unit_anims/thunter_sniper_expert/sheet_attack.png",
+          "sheet_idle": "res://assets/effects/unit_anims/thunter_sniper_expert/sheet_idle.png"
+        }
+      ],
+      "anim_key": "thunter_sniper_expert",
       "boss_dir": "",
       "boss_frames": 0,
       "ctype": -1,
@@ -10571,8 +10859,26 @@
       "pose_frames": 0
     },
     {
-      "anim_cands": [],
-      "anim_key": "",
+      "anim": {
+        "attack": 10,
+        "fps": 8.0,
+        "fs": 256,
+        "idle": 4,
+        "sheet_attack": "res://assets/effects/unit_anims/void_stealth_advanced/sheet_attack.png",
+        "sheet_idle": "res://assets/effects/unit_anims/void_stealth_advanced/sheet_idle.png"
+      },
+      "anim_cands": [
+        {
+          "attack": 10,
+          "fps": 8.0,
+          "fs": 256,
+          "idle": 4,
+          "key": "void_stealth_advanced",
+          "sheet_attack": "res://assets/effects/unit_anims/void_stealth_advanced/sheet_attack.png",
+          "sheet_idle": "res://assets/effects/unit_anims/void_stealth_advanced/sheet_idle.png"
+        }
+      ],
+      "anim_key": "void_stealth_advanced",
       "boss_dir": "",
       "boss_frames": 0,
       "ctype": -1,
@@ -10586,8 +10892,26 @@
       "pose_frames": 0
     },
     {
-      "anim_cands": [],
-      "anim_key": "",
+      "anim": {
+        "attack": 10,
+        "fps": 8.0,
+        "fs": 256,
+        "idle": 4,
+        "sheet_attack": "res://assets/effects/unit_anims/void_mage_advanced/sheet_attack.png",
+        "sheet_idle": "res://assets/effects/unit_anims/void_mage_advanced/sheet_idle.png"
+      },
+      "anim_cands": [
+        {
+          "attack": 10,
+          "fps": 8.0,
+          "fs": 256,
+          "idle": 4,
+          "key": "void_mage_advanced",
+          "sheet_attack": "res://assets/effects/unit_anims/void_mage_advanced/sheet_attack.png",
+          "sheet_idle": "res://assets/effects/unit_anims/void_mage_advanced/sheet_idle.png"
+        }
+      ],
+      "anim_key": "void_mage_advanced",
       "boss_dir": "",
       "boss_frames": 0,
       "ctype": -1,
@@ -10601,8 +10925,26 @@
       "pose_frames": 0
     },
     {
-      "anim_cands": [],
-      "anim_key": "",
+      "anim": {
+        "attack": 10,
+        "fps": 8.0,
+        "fs": 256,
+        "idle": 4,
+        "sheet_attack": "res://assets/effects/unit_anims/void_stealth_expert/sheet_attack.png",
+        "sheet_idle": "res://assets/effects/unit_anims/void_stealth_expert/sheet_idle.png"
+      },
+      "anim_cands": [
+        {
+          "attack": 10,
+          "fps": 8.0,
+          "fs": 256,
+          "idle": 4,
+          "key": "void_stealth_expert",
+          "sheet_attack": "res://assets/effects/unit_anims/void_stealth_expert/sheet_attack.png",
+          "sheet_idle": "res://assets/effects/unit_anims/void_stealth_expert/sheet_idle.png"
+        }
+      ],
+      "anim_key": "void_stealth_expert",
       "boss_dir": "",
       "boss_frames": 0,
       "ctype": -1,
@@ -10616,8 +10958,26 @@
       "pose_frames": 0
     },
     {
-      "anim_cands": [],
-      "anim_key": "",
+      "anim": {
+        "attack": 10,
+        "fps": 8.0,
+        "fs": 256,
+        "idle": 4,
+        "sheet_attack": "res://assets/effects/unit_anims/void_mage_expert/sheet_attack.png",
+        "sheet_idle": "res://assets/effects/unit_anims/void_mage_expert/sheet_idle.png"
+      },
+      "anim_cands": [
+        {
+          "attack": 10,
+          "fps": 8.0,
+          "fs": 256,
+          "idle": 4,
+          "key": "void_mage_expert",
+          "sheet_attack": "res://assets/effects/unit_anims/void_mage_expert/sheet_attack.png",
+          "sheet_idle": "res://assets/effects/unit_anims/void_mage_expert/sheet_idle.png"
+        }
+      ],
+      "anim_key": "void_mage_expert",
       "boss_dir": "",
       "boss_frames": 0,
       "ctype": -1,
@@ -10794,7 +11154,7 @@
     },
     {
       "anim": {
-        "attack": 6,
+        "attack": 10,
         "fps": 8.0,
         "fs": 256,
         "idle": 8,
@@ -10803,7 +11163,7 @@
       },
       "anim_cands": [
         {
-          "attack": 6,
+          "attack": 10,
           "fps": 8.0,
           "fs": 256,
           "idle": 8,
@@ -10890,7 +11250,7 @@
     },
     {
       "anim": {
-        "attack": 6,
+        "attack": 10,
         "fps": 8.0,
         "fs": 256,
         "idle": 8,
@@ -10899,7 +11259,7 @@
       },
       "anim_cands": [
         {
-          "attack": 6,
+          "attack": 10,
           "fps": 8.0,
           "fs": 256,
           "idle": 8,
@@ -10954,7 +11314,7 @@
     },
     {
       "anim": {
-        "attack": 12,
+        "attack": 10,
         "fps": 8.0,
         "fs": 256,
         "idle": 8,
@@ -10963,7 +11323,7 @@
       },
       "anim_cands": [
         {
-          "attack": 12,
+          "attack": 10,
           "fps": 8.0,
           "fs": 256,
           "idle": 8,
@@ -11018,7 +11378,7 @@
     },
     {
       "anim": {
-        "attack": 6,
+        "attack": 12,
         "fps": 8.0,
         "fs": 256,
         "idle": 8,
@@ -11027,7 +11387,7 @@
       },
       "anim_cands": [
         {
-          "attack": 6,
+          "attack": 12,
           "fps": 8.0,
           "fs": 256,
           "idle": 8,
@@ -11082,7 +11442,7 @@
     },
     {
       "anim": {
-        "attack": 6,
+        "attack": 12,
         "fps": 8.0,
         "fs": 256,
         "idle": 8,
@@ -11091,7 +11451,7 @@
       },
       "anim_cands": [
         {
-          "attack": 6,
+          "attack": 12,
           "fps": 8.0,
           "fs": 256,
           "idle": 8,
@@ -11178,7 +11538,7 @@
     },
     {
       "anim": {
-        "attack": 6,
+        "attack": 10,
         "fps": 8.0,
         "fs": 256,
         "idle": 8,
@@ -11187,7 +11547,7 @@
       },
       "anim_cands": [
         {
-          "attack": 6,
+          "attack": 10,
           "fps": 8.0,
           "fs": 256,
           "idle": 8,
@@ -11274,7 +11634,7 @@
     },
     {
       "anim": {
-        "attack": 6,
+        "attack": 10,
         "fps": 8.0,
         "fs": 256,
         "idle": 8,
@@ -11283,7 +11643,7 @@
       },
       "anim_cands": [
         {
-          "attack": 6,
+          "attack": 10,
           "fps": 8.0,
           "fs": 256,
           "idle": 8,
@@ -11306,7 +11666,7 @@
     },
     {
       "anim": {
-        "attack": 6,
+        "attack": 10,
         "fps": 8.0,
         "fs": 256,
         "idle": 8,
@@ -11315,7 +11675,7 @@
       },
       "anim_cands": [
         {
-          "attack": 6,
+          "attack": 10,
           "fps": 8.0,
           "fs": 256,
           "idle": 8,
@@ -11338,7 +11698,7 @@
     },
     {
       "anim": {
-        "attack": 12,
+        "attack": 10,
         "fps": 8.0,
         "fs": 256,
         "idle": 8,
@@ -11347,7 +11707,7 @@
       },
       "anim_cands": [
         {
-          "attack": 12,
+          "attack": 10,
           "fps": 8.0,
           "fs": 256,
           "idle": 8,
@@ -11562,19 +11922,19 @@
     },
     {
       "anim": {
-        "attack": 6,
+        "attack": 10,
         "fps": 8.0,
         "fs": 256,
-        "idle": 8,
+        "idle": 4,
         "sheet_attack": "res://assets/effects/unit_anims/ww2_inf_bazooka/sheet_attack.png",
         "sheet_idle": "res://assets/effects/unit_anims/ww2_inf_bazooka/sheet_idle.png"
       },
       "anim_cands": [
         {
-          "attack": 6,
+          "attack": 10,
           "fps": 8.0,
           "fs": 256,
-          "idle": 8,
+          "idle": 4,
           "key": "ww2_inf_bazooka",
           "sheet_attack": "res://assets/effects/unit_anims/ww2_inf_bazooka/sheet_attack.png",
           "sheet_idle": "res://assets/effects/unit_anims/ww2_inf_bazooka/sheet_idle.png"
@@ -11585,7 +11945,7 @@
       "boss_frames": 0,
       "ctype": 0,
       "era": 1,
-      "icon": "res://assets/card_icons/player/vis_player_009.png",
+      "icon": "res://assets/card_icons/player/ww2_inf_bazooka.png",
       "id": "ww2_inf_bazooka",
       "kind": 0,
       "name": "巴祖卡组",
@@ -11594,7 +11954,7 @@
     },
     {
       "anim": {
-        "attack": 6,
+        "attack": 10,
         "fps": 8.0,
         "fs": 256,
         "idle": 8,
@@ -11603,7 +11963,7 @@
       },
       "anim_cands": [
         {
-          "attack": 6,
+          "attack": 10,
           "fps": 8.0,
           "fs": 256,
           "idle": 8,
@@ -11946,7 +12306,7 @@
     },
     {
       "anim": {
-        "attack": 6,
+        "attack": 10,
         "fps": 8.0,
         "fs": 256,
         "idle": 8,
@@ -11955,7 +12315,7 @@
       },
       "anim_cands": [
         {
-          "attack": 6,
+          "attack": 10,
           "fps": 8.0,
           "fs": 256,
           "idle": 8,
@@ -11978,7 +12338,7 @@
     },
     {
       "anim": {
-        "attack": 6,
+        "attack": 10,
         "fps": 8.0,
         "fs": 256,
         "idle": 8,
@@ -11987,7 +12347,7 @@
       },
       "anim_cands": [
         {
-          "attack": 6,
+          "attack": 10,
           "fps": 8.0,
           "fs": 256,
           "idle": 8,
@@ -12010,7 +12370,7 @@
     },
     {
       "anim": {
-        "attack": 12,
+        "attack": 10,
         "fps": 8.0,
         "fs": 256,
         "idle": 8,
@@ -12019,7 +12379,7 @@
       },
       "anim_cands": [
         {
-          "attack": 12,
+          "attack": 10,
           "fps": 8.0,
           "fs": 256,
           "idle": 8,
@@ -12202,7 +12562,7 @@
     },
     {
       "anim": {
-        "attack": 6,
+        "attack": 10,
         "fps": 8.0,
         "fs": 256,
         "idle": 8,
@@ -12211,7 +12571,7 @@
       },
       "anim_cands": [
         {
-          "attack": 6,
+          "attack": 10,
           "fps": 8.0,
           "fs": 256,
           "idle": 8,
@@ -12298,7 +12658,7 @@
     },
     {
       "anim": {
-        "attack": 6,
+        "attack": 10,
         "fps": 8.0,
         "fs": 256,
         "idle": 8,
@@ -12307,7 +12667,7 @@
       },
       "anim_cands": [
         {
-          "attack": 6,
+          "attack": 10,
           "fps": 8.0,
           "fs": 256,
           "idle": 8,
@@ -12330,7 +12690,7 @@
     },
     {
       "anim": {
-        "attack": 6,
+        "attack": 10,
         "fps": 8.0,
         "fs": 256,
         "idle": 8,
@@ -12339,7 +12699,7 @@
       },
       "anim_cands": [
         {
-          "attack": 6,
+          "attack": 10,
           "fps": 8.0,
           "fs": 256,
           "idle": 8,
@@ -12394,7 +12754,7 @@
     },
     {
       "anim": {
-        "attack": 6,
+        "attack": 10,
         "fps": 8.0,
         "fs": 256,
         "idle": 6,
@@ -12403,7 +12763,7 @@
       },
       "anim_cands": [
         {
-          "attack": 6,
+          "attack": 10,
           "fps": 8.0,
           "fs": 256,
           "idle": 6,
@@ -12554,7 +12914,7 @@
     },
     {
       "anim": {
-        "attack": 12,
+        "attack": 10,
         "fps": 8.0,
         "fs": 256,
         "idle": 8,
@@ -12563,7 +12923,7 @@
       },
       "anim_cands": [
         {
-          "attack": 12,
+          "attack": 10,
           "fps": 8.0,
           "fs": 256,
           "idle": 8,
@@ -12682,7 +13042,7 @@
     },
     {
       "anim": {
-        "attack": 6,
+        "attack": 10,
         "fps": 8.0,
         "fs": 256,
         "idle": 8,
@@ -12691,7 +13051,7 @@
       },
       "anim_cands": [
         {
-          "attack": 6,
+          "attack": 10,
           "fps": 8.0,
           "fs": 256,
           "idle": 8,
@@ -12970,7 +13330,7 @@
     },
     {
       "anim": {
-        "attack": 6,
+        "attack": 10,
         "fps": 8.0,
         "fs": 256,
         "idle": 8,
@@ -12979,7 +13339,7 @@
       },
       "anim_cands": [
         {
-          "attack": 6,
+          "attack": 10,
           "fps": 8.0,
           "fs": 256,
           "idle": 8,
@@ -13130,7 +13490,7 @@
     },
     {
       "anim": {
-        "attack": 6,
+        "attack": 12,
         "fps": 8.0,
         "fs": 256,
         "idle": 8,
@@ -13139,7 +13499,7 @@
       },
       "anim_cands": [
         {
-          "attack": 6,
+          "attack": 12,
           "fps": 8.0,
           "fs": 256,
           "idle": 8,
@@ -13258,7 +13618,7 @@
     },
     {
       "anim": {
-        "attack": 6,
+        "attack": 10,
         "fps": 8.0,
         "fs": 256,
         "idle": 8,
@@ -13267,7 +13627,7 @@
       },
       "anim_cands": [
         {
-          "attack": 6,
+          "attack": 10,
           "fps": 8.0,
           "fs": 256,
           "idle": 8,
@@ -13354,7 +13714,7 @@
     },
     {
       "anim": {
-        "attack": 6,
+        "attack": 10,
         "fps": 8.0,
         "fs": 256,
         "idle": 8,
@@ -13363,7 +13723,7 @@
       },
       "anim_cands": [
         {
-          "attack": 6,
+          "attack": 10,
           "fps": 8.0,
           "fs": 256,
           "idle": 8,
@@ -13386,7 +13746,7 @@
     },
     {
       "anim": {
-        "attack": 6,
+        "attack": 10,
         "fps": 8.0,
         "fs": 256,
         "idle": 8,
@@ -13395,7 +13755,7 @@
       },
       "anim_cands": [
         {
-          "attack": 6,
+          "attack": 10,
           "fps": 8.0,
           "fs": 256,
           "idle": 8,
@@ -13482,7 +13842,7 @@
     },
     {
       "anim": {
-        "attack": 12,
+        "attack": 10,
         "fps": 8.0,
         "fs": 256,
         "idle": 8,
@@ -13491,7 +13851,7 @@
       },
       "anim_cands": [
         {
-          "attack": 12,
+          "attack": 10,
           "fps": 8.0,
           "fs": 256,
           "idle": 8,
@@ -13738,7 +14098,7 @@
     },
     {
       "anim": {
-        "attack": 6,
+        "attack": 10,
         "fps": 8.0,
         "fs": 256,
         "idle": 8,
@@ -13747,7 +14107,7 @@
       },
       "anim_cands": [
         {
-          "attack": 6,
+          "attack": 10,
           "fps": 8.0,
           "fs": 256,
           "idle": 8,
@@ -13802,19 +14162,19 @@
     },
     {
       "anim": {
-        "attack": 12,
+        "attack": 10,
         "fps": 8.0,
         "fs": 256,
-        "idle": 8,
+        "idle": 4,
         "sheet_attack": "res://assets/effects/unit_anims/fut_arm_prism/sheet_attack.png",
         "sheet_idle": "res://assets/effects/unit_anims/fut_arm_prism/sheet_idle.png"
       },
       "anim_cands": [
         {
-          "attack": 12,
+          "attack": 10,
           "fps": 8.0,
           "fs": 256,
-          "idle": 8,
+          "idle": 4,
           "key": "fut_arm_prism",
           "sheet_attack": "res://assets/effects/unit_anims/fut_arm_prism/sheet_attack.png",
           "sheet_idle": "res://assets/effects/unit_anims/fut_arm_prism/sheet_idle.png"
@@ -13898,7 +14258,7 @@
     },
     {
       "anim": {
-        "attack": 6,
+        "attack": 10,
         "fps": 8.0,
         "fs": 256,
         "idle": 8,
@@ -13907,7 +14267,7 @@
       },
       "anim_cands": [
         {
-          "attack": 6,
+          "attack": 10,
           "fps": 8.0,
           "fs": 256,
           "idle": 8,
@@ -13962,7 +14322,7 @@
     },
     {
       "anim": {
-        "attack": 6,
+        "attack": 10,
         "fps": 8.0,
         "fs": 256,
         "idle": 8,
@@ -13971,7 +14331,7 @@
       },
       "anim_cands": [
         {
-          "attack": 6,
+          "attack": 10,
           "fps": 8.0,
           "fs": 256,
           "idle": 8,
@@ -14026,7 +14386,7 @@
     },
     {
       "anim": {
-        "attack": 12,
+        "attack": 10,
         "fps": 8.0,
         "fs": 256,
         "idle": 8,
@@ -14035,7 +14395,7 @@
       },
       "anim_cands": [
         {
-          "attack": 12,
+          "attack": 10,
           "fps": 8.0,
           "fs": 256,
           "idle": 8,
@@ -14218,7 +14578,7 @@
     },
     {
       "anim": {
-        "attack": 6,
+        "attack": 10,
         "fps": 8.0,
         "fs": 256,
         "idle": 8,
@@ -14227,7 +14587,7 @@
       },
       "anim_cands": [
         {
-          "attack": 6,
+          "attack": 10,
           "fps": 8.0,
           "fs": 256,
           "idle": 8,
@@ -14378,7 +14738,7 @@
     },
     {
       "anim": {
-        "attack": 12,
+        "attack": 10,
         "fps": 8.0,
         "fs": 256,
         "idle": 8,
@@ -14387,7 +14747,7 @@
       },
       "anim_cands": [
         {
-          "attack": 12,
+          "attack": 10,
           "fps": 8.0,
           "fs": 256,
           "idle": 8,
@@ -14410,7 +14770,7 @@
     },
     {
       "anim": {
-        "attack": 6,
+        "attack": 10,
         "fps": 8.0,
         "fs": 256,
         "idle": 8,
@@ -14419,7 +14779,7 @@
       },
       "anim_cands": [
         {
-          "attack": 6,
+          "attack": 10,
           "fps": 8.0,
           "fs": 256,
           "idle": 8,
@@ -14506,7 +14866,7 @@
     },
     {
       "anim": {
-        "attack": 6,
+        "attack": 10,
         "fps": 8.0,
         "fs": 256,
         "idle": 8,
@@ -14515,7 +14875,7 @@
       },
       "anim_cands": [
         {
-          "attack": 6,
+          "attack": 10,
           "fps": 8.0,
           "fs": 256,
           "idle": 8,
@@ -14538,7 +14898,7 @@
     },
     {
       "anim": {
-        "attack": 6,
+        "attack": 10,
         "fps": 8.0,
         "fs": 256,
         "idle": 8,
@@ -14547,7 +14907,7 @@
       },
       "anim_cands": [
         {
-          "attack": 6,
+          "attack": 10,
           "fps": 8.0,
           "fs": 256,
           "idle": 8,
@@ -14570,7 +14930,7 @@
     },
     {
       "anim": {
-        "attack": 6,
+        "attack": 10,
         "fps": 8.0,
         "fs": 256,
         "idle": 8,
@@ -14579,7 +14939,7 @@
       },
       "anim_cands": [
         {
-          "attack": 6,
+          "attack": 10,
           "fps": 8.0,
           "fs": 256,
           "idle": 8,
@@ -14602,7 +14962,7 @@
     },
     {
       "anim": {
-        "attack": 12,
+        "attack": 10,
         "fps": 8.0,
         "fs": 256,
         "idle": 8,
@@ -14611,7 +14971,7 @@
       },
       "anim_cands": [
         {
-          "attack": 12,
+          "attack": 10,
           "fps": 8.0,
           "fs": 256,
           "idle": 8,
@@ -14633,8 +14993,26 @@
       "pose_frames": 0
     },
     {
-      "anim_cands": [],
-      "anim_key": "",
+      "anim": {
+        "attack": 10,
+        "fps": 8.0,
+        "fs": 256,
+        "idle": 4,
+        "sheet_attack": "res://assets/effects/unit_anims/fe_helix_phantom/sheet_attack.png",
+        "sheet_idle": "res://assets/effects/unit_anims/fe_helix_phantom/sheet_idle.png"
+      },
+      "anim_cands": [
+        {
+          "attack": 10,
+          "fps": 8.0,
+          "fs": 256,
+          "idle": 4,
+          "key": "fe_helix_phantom",
+          "sheet_attack": "res://assets/effects/unit_anims/fe_helix_phantom/sheet_attack.png",
+          "sheet_idle": "res://assets/effects/unit_anims/fe_helix_phantom/sheet_idle.png"
+        }
+      ],
+      "anim_key": "fe_helix_phantom",
       "boss_dir": "",
       "boss_frames": 0,
       "ctype": 0,
@@ -14680,7 +15058,7 @@
     },
     {
       "anim": {
-        "attack": 12,
+        "attack": 10,
         "fps": 8.0,
         "fs": 256,
         "idle": 8,
@@ -14689,7 +15067,7 @@
       },
       "anim_cands": [
         {
-          "attack": 12,
+          "attack": 10,
           "fps": 8.0,
           "fs": 256,
           "idle": 8,
@@ -14712,7 +15090,7 @@
     },
     {
       "anim": {
-        "attack": 6,
+        "attack": 10,
         "fps": 8.0,
         "fs": 256,
         "idle": 8,
@@ -14721,7 +15099,7 @@
       },
       "anim_cands": [
         {
-          "attack": 6,
+          "attack": 10,
           "fps": 8.0,
           "fs": 256,
           "idle": 8,
@@ -14744,7 +15122,7 @@
     },
     {
       "anim": {
-        "attack": 6,
+        "attack": 10,
         "fps": 8.0,
         "fs": 256,
         "idle": 8,
@@ -14753,7 +15131,7 @@
       },
       "anim_cands": [
         {
-          "attack": 6,
+          "attack": 10,
           "fps": 8.0,
           "fs": 256,
           "idle": 8,
@@ -14776,7 +15154,7 @@
     },
     {
       "anim": {
-        "attack": 6,
+        "attack": 10,
         "fps": 8.0,
         "fs": 256,
         "idle": 8,
@@ -14785,7 +15163,7 @@
       },
       "anim_cands": [
         {
-          "attack": 6,
+          "attack": 10,
           "fps": 8.0,
           "fs": 256,
           "idle": 8,

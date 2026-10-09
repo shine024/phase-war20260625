@@ -55,6 +55,7 @@ _MCPGameBridge="*res://addons/agent_tools/runtime/game_bridge.gd"
 [debug]
 
 file_logging/enable_file_logging=true
+file_logging/enable_file_logging.pw_playtest=false
 
 [display]
 

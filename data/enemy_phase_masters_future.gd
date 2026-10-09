@@ -54,7 +54,7 @@ const ERA_MASTERS: Array = [
 	},
 	{
 		"id": "enemy_master_027",
-		"name": "颂猜·威拉万",
+		"name": "温灼",
 		"title": "三十七度的火",
 		"level": 29,
 		"faction": "flame",
@@ -76,7 +76,7 @@ const ERA_MASTERS: Array = [
 	},
 	{
 		"id": "enemy_master_028",
-		"name": "玛雅·奥杜亚",
+		"name": "雷既白",
 		"title": "很近的雷雨",
 		"level": 29,
 		"faction": "thunder",

@@ -30,6 +30,7 @@ func _endless_summary(gate_cleared: bool) -> Dictionary:
 			"best_waves": 210, "rift_env": "psi_storm",
 			"gate_cleared": gate_cleared, "gate_core_wave": 210,
 			"gate_first_clear": gate_cleared, "supplies_granted": 8,
+			"supply_nano": 60000, "supply_energy": 8000,
 		},
 		"collected_rewards": [
 			{"category": "card", "id": "captured_xeno_zealot", "name": "缴获·渡暮狂战士", "count": 1, "source": "击杀缴获"},
@@ -72,7 +73,8 @@ func test_endless_report_block_renders() -> void:
 	assert_str(joined).contains("新纪录")
 	assert_str(joined).contains("星髓：+350")
 	assert_str(joined).contains("首次通关")
-	assert_str(joined).contains("补给节点 ×8")
+	assert_str(joined).contains("沿途补给 ×8")
+	assert_str(joined).contains("纳米 +60000")
 	p.queue_free()
 	vbox.queue_free()
 

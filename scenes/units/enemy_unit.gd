@@ -1767,10 +1767,10 @@ func take_damage(amount: float, attacker: Variant = null) -> void:
 			if Time.get_ticks_msec() / 1000.0 >= _cm_expire:
 				remove_meta("_crit_marked_until")
 				remove_meta("_crit_mark_bonus")
-		# v7.x: 巷战免伤（敌方也可装备 infantry_mods 改造，若 stats 有 urban_defense_bonus 则生效）
-		if stats != null and stats.urban_defense_bonus > 0.0 and attacker_kind >= 0:
-			if attacker_kind == GC.CombatKind.ARMOR or attacker_kind == GC.CombatKind.AIR:
-				hp_loss = hp_loss * (1.0 - stats.urban_defense_bonus)
+		# 巷战免伤已由上方 resolve_hit 的 urban_red 参数统一结算（v25.1 通道）——
+		# 2026-10-08 口径统一：此处旧的内联乘段与 resolve_hit 重复扣两次（与 construct_unit
+		# 同批双扣 bug，回归锁 test_damage_display_parity 变异验证必红），已删除。
+		# 新增减伤一律走 resolve_hit 参数，勿再内联。
 		if bool(hit.get("apply_recoil", false)) and _presentation_card_grid:
 			_play_card_hit_recoil()
 		if bool(hit.get("apply_stun", false)):

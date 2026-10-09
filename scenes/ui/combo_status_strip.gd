@@ -17,6 +17,9 @@ const DT = preload("res://resources/design_tokens.gd")
 const ComboTactics = preload("res://data/combo_tactics.gd")
 const PanelStyles = preload("res://scripts/ui/panel_styles.gd")
 const ComboEngine = preload("res://scripts/battle/combo_engine.gd")
+# v6.53（记录1二轮#4）：tooltip 迁 HoverTip 顶层提示层——内建 tooltip 画 layer 0，
+# PopupLayer(100) 弹层开着时被盖（v6.42 层号契约；消费方 preload 纪律，不走 class_name）
+const HoverTipScript = preload("res://scripts/ui/hover_tip.gd")
 
 const _COMBO_ORDER: Array[String] = [
 	ComboTactics.COMBO_INCENDIARY,
@@ -85,7 +88,7 @@ func _ready() -> void:
 		_icon_buttons.append({"btn": btn, "combo_id": combo_id, "prev": 0})
 	# v6.52（记录1#15）：零激活总览钮——悬停列全部战法与达成条件（"有什么可攒"的入口）
 	_overview_btn = _make_combo_icon_button({"icon": "⚔"}, "_overview")
-	_overview_btn.tooltip_text = _build_overview_tooltip()
+	_apply_tip(_overview_btn, _build_overview_tooltip())
 	grid.add_child(_overview_btn)
 	# 宽度预算：标题~58 + 5×42+4×4=226 + 边距 ≈308 ≤430（Capsule 左缘 435 契约）；
 	# 高：2×30+4 行距 + 边距 ≈76（main.tscn offset_bottom 同步 48→84，BuffFoldCard 下移）
@@ -103,9 +106,21 @@ func _make_combo_icon_button(def: Dictionary, combo_id: String) -> Button:
 	btn.add_theme_color_override("font_outline_color", DT.COLOR_BACKDROP_DEEP)
 	btn.add_theme_constant_override("outline_size", 1)
 	_set_combo_style(btn, 0)
-	# tooltip 动态生成（每秒刷新）
-	btn.tooltip_text = _build_tooltip(combo_id, 0)
+	# tooltip 动态生成（每秒刷新）；v6.53 迁 HoverTip 顶层提示层（bind 两步契约）
+	btn.tooltip_text = ""
+	HoverTipScript.bind_control(btn)
+	_apply_tip(btn, _build_tooltip(combo_id, 0))
 	return btn
+
+
+## v6.53：提示唯一写入口——HoverTip 可用走 set_tip（悬停时才读 meta），兜底内建 tooltip
+func _apply_tip(ctrl: Control, text: String) -> void:
+	if ctrl == null:
+		return
+	if ctrl.has_meta("hover_tip_bound"):
+		HoverTipScript.set_tip(ctrl, text)
+	else:
+		ctrl.tooltip_text = text
 
 
 func _build_tooltip(combo_id: String, level: int) -> String:
@@ -116,10 +131,56 @@ func _build_tooltip(combo_id: String, level: int) -> String:
 	match level:
 		1: state_text = "单卡激活（装了≥2配套改造）"
 		2: state_text = "✦全队激活✦（兵种组合满足）"
-	return "%s\n%s\n状态：%s" % [name, desc, state_text]
+	# v6.53（记录1二轮#4）：实机主诉"情报框要写明是哪些单位协同产生的组合技"——
+	# kind_combo（兵种组合条件）与 mod_ids（配套改造）数据在定义表里但从未渲染。
+	# 未激活时同样展示（玩家"怎么凑"的唯一指引）。
+	var lines := PackedStringArray()
+	lines.append(name)
+	lines.append(desc)
+	var kind_txt := _format_kind_combo(def)
+	if not kind_txt.is_empty():
+		lines.append("协同兵种：%s" % kind_txt)
+	var mod_txt := _format_mod_ids(def)
+	if not mod_txt.is_empty():
+		lines.append("配套改造（任一卡装≥2件单卡激活）：%s" % mod_txt)
+	lines.append("状态：%s" % state_text)
+	return "\n".join(lines)
+
+
+## v6.53：kind_combo → "轻装×1 + 空中×1" 文案（kind 中文对齐 combo_tactics 注释用语）
+func _format_kind_combo(def: Dictionary) -> String:
+	var kc: Dictionary = def.get("kind_combo", {})
+	if kc.is_empty():
+		return ""
+	var kind_names := {0: "轻装", 1: "装甲", 2: "支援", 3: "空中", 4: "堡垒"}
+	var parts := PackedStringArray()
+	for kind_key in kc.keys():
+		var kname: String = String(kind_names.get(int(kind_key), "未知"))
+		parts.append("%s×%d" % [kname, int(kc[kind_key])])
+	return " + ".join(parts)
+
+
+## v6.53：mod_ids → 配套改造中文名清单（截断 6 个防 tooltip 过长）
+func _format_mod_ids(def: Dictionary) -> String:
+	var ids: Array = def.get("mod_ids", [])
+	if ids.is_empty():
+		return ""
+	var parts := PackedStringArray()
+	for i in range(mini(ids.size(), 6)):
+		var mid := String(ids[i])
+		var mname := mid
+		var mdata: Dictionary = ModificationRegistry.get_data(mid)
+		if not mdata.is_empty():
+			mname = String(mdata.get("name", mid))
+		parts.append(mname)
+	var txt := "、".join(parts)
+	if ids.size() > 6:
+		txt += " 等%d件" % ids.size()
+	return txt
 
 
 ## v6.52（记录1#15）：零激活总览 tooltip——全部战法与达成方向一览
+## v6.53（记录1二轮#4）：每条附协同兵种（零激活态"拿什么单位凑"的指引）
 func _build_overview_tooltip() -> String:
 	var lines := PackedStringArray()
 	lines.append("战法一览（达成组合后图标亮在这里）")
@@ -127,7 +188,11 @@ func _build_overview_tooltip() -> String:
 		var def := ComboTactics.get_combo_def(combo_id)
 		if def.is_empty():
 			continue
-		lines.append("· %s：%s" % [String(def.get("name", combo_id)), String(def.get("desc", ""))])
+		var row := "· %s：%s" % [String(def.get("name", combo_id)), String(def.get("desc", ""))]
+		var kind_txt := _format_kind_combo(def)
+		if not kind_txt.is_empty():
+			row += "\n    协同兵种：%s" % kind_txt
+		lines.append(row)
 	return "\n".join(lines)
 
 
@@ -183,7 +248,7 @@ func _refresh() -> void:
 		for entry in _icon_buttons:
 			var btn: Button = entry["btn"]
 			_set_combo_style(btn, 0)
-			btn.tooltip_text = _build_tooltip(entry["combo_id"], 0)
+			_apply_tip(btn, _build_tooltip(entry["combo_id"], 0))
 			entry["prev"] = 0
 		_apply_visibility_rule(0)
 		return
@@ -205,7 +270,7 @@ func _refresh() -> void:
 		elif card_combos.has(combo_id):
 			level = 1
 		_set_combo_style(btn, level)
-		btn.tooltip_text = _build_tooltip(combo_id, level)
+		_apply_tip(btn, _build_tooltip(combo_id, level))
 		# v30 R3：激活档位跃升瞬间弹跳（协同可见性——"图标亮了"升级为"激活时刻"）
 		if level > int(entry.get("prev", 0)):
 			_pop_button(btn)

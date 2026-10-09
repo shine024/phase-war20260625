@@ -25,6 +25,9 @@ func _ebm_snapshot() -> Dictionary:
 		"supplies_granted": e.supplies_granted, "gate_cleared_once": e.gate_cleared_once,
 		"incursions": e.incursions.duplicate(true), "layout_variant": e.layout_variant,
 		"current_rift_env": e.current_rift_env,
+		# 2026-10-08 分段推进字段(防跨用例泄漏)
+		"cp_wave": e.cp_wave, "cp_core_wave": e.cp_core_wave, "cp_rift_env": e.cp_rift_env,
+		"cp_marrow_paid": e.cp_marrow_paid, "cp_supply_granted": e.cp_supply_granted,
 	}
 
 
@@ -38,6 +41,11 @@ func _ebm_restore(s: Dictionary) -> void:
 	e.gate_cleared_once = s["gate_cleared_once"]
 	e.incursions = s["incursions"]
 	e.layout_variant = s["layout_variant"]
+	e.cp_wave = s["cp_wave"]
+	e.cp_core_wave = s["cp_core_wave"]
+	e.cp_rift_env = s["cp_rift_env"]
+	e.cp_marrow_paid = s["cp_marrow_paid"]
+	e.cp_supply_granted = s["cp_supply_granted"]
 	e.current_rift_env = s["current_rift_env"]
 
 
@@ -84,8 +92,108 @@ func test_run_wave_limit_first_gate_finite() -> void:
 	assert_int(e.get_run_wave_limit()).is_equal(0)
 	e.gate_cleared_once = true
 	e.begin_run()
-	assert_int(e.get_run_wave_limit()).is_equal(0)  # 通关后的无限 run 无上限
+	# 2026-10-08 分段推进:无限 run 返回锁定的本体深度(玩家按它规划分段)
+	assert_int(e.get_run_wave_limit()).is_equal(e.gate_core_wave)
+	assert_int(e.get_run_wave_limit()).is_between(200, 320)
 	e.run_active = false
+	_ebm_restore(bak)
+
+
+## 2026-10-08 分段推进：段结算落进度、星髓差价不重复、续打恢复断点且免入场
+func test_checkpoint_segment_settle_and_resume() -> void:
+	var e := _ebm()
+	var bak := _ebm_snapshot()
+	e.gate_cleared_once = true
+	e.begin_run()
+	var core_wave: int = e.gate_core_wave
+	assert_int(e.cp_core_wave).is_equal(core_wave)  # 新 run 即锁定深度
+	# ── 第一段：推进到 80 波撤退 ──
+	var paid0: int = int(e._weekly_marrow_gained)
+	var s1: Dictionary = e.settle_run(80, 30)
+	assert_bool(s1["checkpoint_saved"]).is_true()
+	assert_int(e.cp_wave).is_equal(80)
+	assert_int(int(s1["checkpoint_core_wave"])).is_equal(core_wave)
+	var marrow_seg1: int = int(s1["marrow"])
+	assert_int(marrow_seg1).is_equal(e.marrow_for_waves(80))  # 首段=里程碑全额(20+30+40+60+80=230)
+	assert_int(e.cp_marrow_paid).is_equal(marrow_seg1)
+	# ── 续打：恢复锁定深度/补给起点，且不扣入场次数 ──
+	var entries_before: int = int(e._entries_used_today)
+	e.begin_run()
+	assert_bool(e.run_active).is_true()
+	assert_int(e.gate_core_wave).is_equal(core_wave)  # 不重摇深度
+	assert_int(e.supplies_granted).is_equal(e.cp_supply_granted)
+	assert_int(int(e._entries_used_today)).is_equal(entries_before)  # 续打免入场
+	# ── 第二段：推进到 160 波撤退——星髓只补差价(160 档总额 − 已付) ──
+	var s2: Dictionary = e.settle_run(160, 60)
+	var expect_delta: int = e.marrow_for_waves(160) - marrow_seg1
+	assert_int(int(s2["marrow"])).is_equal(expect_delta)
+	assert_int(e.cp_marrow_paid).is_equal(marrow_seg1 + expect_delta)
+	assert_int(e.cp_wave).is_equal(160)
+	# ── 通关段：进度清空 ──
+	e.gate_cleared = true
+	var s3: Dictionary = e.settle_run(core_wave, 100)
+	assert_bool(s3["checkpoint_saved"]).is_false()
+	assert_bool(e.has_checkpoint()).is_false()  # 通关清进度
+	assert_int(e.cp_marrow_paid).is_equal(0)
+	_ebm_restore(bak)
+
+
+## 分段推进：存档 roundtrip——cp 五键跨存档保留
+func test_checkpoint_survives_save_load_roundtrip() -> void:
+	var e := _ebm()
+	var bak := _ebm_snapshot()
+	e.gate_cleared_once = true
+	e.begin_run()
+	var saved: Dictionary = e.settle_run(120, 40)
+	assert_bool(bool(saved["checkpoint_saved"])).is_true()
+	var snap: Dictionary = e.save_state()
+	# 模拟重进游戏：新建字段再 load
+	e.cp_wave = 0; e.cp_core_wave = 0; e.cp_rift_env = ""; e.cp_marrow_paid = 0; e.cp_supply_granted = 0
+	e.load_state(snap)
+	assert_bool(e.has_checkpoint()).is_true()
+	assert_int(e.cp_wave).is_equal(120)
+	assert_int(e.cp_core_wave).is_equal(int(snap["cp_core_wave"]))
+	_ebm_restore(bak)
+
+
+## 2026-10-09 分段推进：放弃进度——清档、下次进场走新 run(重摇深度+扣入场)
+func test_abandon_checkpoint_resets_to_fresh_run() -> void:
+	var e := _ebm()
+	var bak := _ebm_snapshot()
+	# entries 是跨用例存活的 autoload 态——本用例重置额度,保证"放弃后新 run 扣次"可断言
+	var orig_entries: int = int(e._entries_used_today)
+	e._entries_used_today = 0
+	e.gate_cleared_once = true
+	e.begin_run()
+	e.settle_run(150, 50)
+	assert_bool(e.has_checkpoint()).is_true()
+	var entries_after_settle: int = int(e._entries_used_today)
+	# 放弃进度
+	e.abandon_checkpoint()
+	assert_bool(e.has_checkpoint()).is_false()
+	assert_int(e.cp_wave).is_equal(0)
+	assert_int(e.cp_core_wave).is_equal(0)
+	assert_int(e.cp_marrow_paid).is_equal(0)
+	# 下次进场=新 run:重摇深度、扣入场次数、里程碑从头累计
+	e.begin_run()
+	assert_bool(e.run_active).is_true()
+	assert_int(e.gate_core_wave).is_between(200, 320)
+	assert_int(int(e._entries_used_today)).is_equal(entries_after_settle + 1)
+	assert_int(e.cp_wave).is_equal(0)
+	_ebm_restore(bak)
+	e._entries_used_today = orig_entries
+
+
+## 分段推进：中途退出 waves=0 不产生假进度；进度号只前进不回退
+func test_checkpoint_never_regresses() -> void:
+	var e := _ebm()
+	var bak := _ebm_snapshot()
+	e.gate_cleared_once = true
+	e.begin_run()
+	e.settle_run(100, 30)
+	e.begin_run()
+	e.settle_run(40, 10)  # 比断点更小的波次(进场即退)
+	assert_int(e.cp_wave).is_equal(100)  # 不回退
 	_ebm_restore(bak)
 
 
@@ -233,7 +341,7 @@ func test_incursion_and_supply_constants() -> void:
 	assert_int(e.FIRST_GATE_CORE_WAVE).is_equal(30)  # v6.42: 首场试炼有限波
 	assert_int(e.SUPPLY_INTERVAL).is_equal(25)
 	assert_int(e.INCURSION_MAX).is_equal(3)
-	assert_int(e.GATE_FIRST_CLEAR_MARROW).is_equal(200)
+	assert_int(e.GATE_FIRST_CLEAR_MARROW).is_equal(300)  # 2026-10-08 收益感批：200→300
 	# xeno 本体条目存在且不在常规轮换池
 	var xu := load("res://data/xeno_units.gd")
 	assert_bool(xu.UNITS.has("xeno_gate_core")).is_true()

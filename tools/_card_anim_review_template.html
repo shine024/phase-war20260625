@@ -395,6 +395,7 @@ function buildCard(sec,r){
   el.dataset.key=mkey(sec.key,r.id);
   let q=r.id+' '+r.name+' '+r.anim_key;
   if(r.joined)q+=' '+r.joined.join(' ');
+  if(r.joined_names)q+=' '+r.joined_names.join(' ');
   if(r.extra_anims)q+=' '+r.extra_anims.map(x=>x.key).join(' ');
   if(r.alt_anims)q+=' '+r.alt_anims.map(x=>x.key).join(' ');
   if(r.specials)q+=' '+r.specials.join(' ');
@@ -448,7 +449,7 @@ function buildCard(sec,r){
   const sub=(r.fid?'<div class="iid">统一ID '+r.id+'</div>':'<div class="iid">'+r.id+'</div>')+
     (r.bound?'<div class="iid">绑定: '+r.bound.join('、')+'</div>':'');
   info.innerHTML='<div class="nm">'+(esc(r.name)||'(无名)')+'</div>'+sub+'<div class="chips">'+chips.join('')+'</div>';
-  if(r.joined&&r.joined.length)info.insertAdjacentHTML('beforeend','<div class="mapline">挂接我方卡: '+r.joined.join('、')+'</div>');
+  if(r.joined&&r.joined.length){const jn=r.joined_names||[];info.insertAdjacentHTML('beforeend','<div class="mapline">挂接我方卡: '+r.joined.map((x,i)=>jn[i]?jn[i]+'('+x+')':x).join('、')+'</div>');}
   if(r.drop_card_id&&r.sec!=='fam')info.insertAdjacentHTML('beforeend','<div class="mapline">掉落: '+r.drop_card_id+'</div>');
   if(r.anim_key)info.insertAdjacentHTML('beforeend','<div class="mapline">动画 → '+r.anim_key+'/</div>');
   if(r.note)info.insertAdjacentHTML('beforeend','<div class="mapline">'+r.note+'</div>');
@@ -655,7 +656,7 @@ function openModal(secKey,id,setId){
     '<tr><td>'+(r.sec==='fam'?'统一ID':'卡 id')+'</td><td>'+r.id+'</td></tr>'+
     (r.seg?'<tr><td>段位</td><td>'+((DATA.seg_names||{})[r.seg]||r.seg)+'</td></tr>':'')+
     (r.sec==='fam'&&r.drop_card_id?'<tr><td>击杀掉落</td><td>'+r.drop_card_id+'（'+(r.drop*100).toFixed(0)+'%）'+(r.uct?' · 统一表同名卡✓':'')+'</td></tr>':'')+
-    (r.joined&&r.joined.length?'<tr><td>挂接我方卡</td><td>'+r.joined.join('、')+'</td></tr>':'')+
+    (r.joined&&r.joined.length?'<tr><td>挂接我方卡</td><td>'+(()=>{const jn=r.joined_names||[];return r.joined.map((x,i)=>jn[i]?jn[i]+'('+x+')':x).join('、')})()+'</td></tr>':'')+
     (r.specials&&r.specials.length?'<tr><td>特色掉落</td><td>'+r.specials.join('、')+'</td></tr>':'')+
     (r.bound?'<tr><td>绑定敌人</td><td>'+r.bound.join('、')+'</td></tr>':'')+
     '<tr><td>动画目录</td><td>'+(r.anim_key||'—（未命中任何动画资产）')+'/</td></tr>'+

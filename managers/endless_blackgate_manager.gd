@@ -44,9 +44,12 @@ const GATE_CORE_DEPTH_STEP: int = 10
 ## v6.42（记录6，用户拍板）：黑门不是无限模式——首场是有限波试炼：第 FIRST_GATE_CORE_WAVE 波
 ## 本体现身，击碎即通关黑门；通关（gate_cleared_once）后才开放无限模式（本体每场随机 200-320 波）。
 const FIRST_GATE_CORE_WAVE: int = 30
-## 击碎本体的首通大奖(一次性;星髓,受既有周封顶 400 约束)
-const GATE_FIRST_CLEAR_MARROW: int = 200
-## 中途补给节点:每 25 波自动入账(不打断战斗)
+## 击碎本体的首通大奖(一次性;星髓,受周封顶约束)。
+## 2026-10-08 收益感批：200→300——旧值+里程碑 90 折算不足 1 小时后期流水，首通无收益感。
+const GATE_FIRST_CLEAR_MARROW: int = 300
+## 中途补给节点:每 25 波自动入账(不打断战斗)。
+## 2026-10-08 收益感批：改为随深度递增（第 N 档 = 基准 × N）——无限深层此前与第 1 波
+## 掉落完全相同（败局收场跳过整条掉落链），深层推进零梯度。
 const SUPPLY_INTERVAL: int = 25
 const SUPPLY_NANO: int = 1500
 const SUPPLY_ENERGY: int = 200
@@ -67,8 +70,10 @@ const MARROW_MILESTONES: Array = [
 	{"waves": 100, "marrow": 120},
 ]
 
-## 星髓每周获取封顶（NOT Infinite Grind 支柱的落地闸门）
-const WEEKLY_MARROW_CAP: int = 400
+## 星髓每周获取封顶（NOT Infinite Grind 支柱的落地闸门）。
+## 2026-10-08 收益感批：400→500——黑门首通 300+L100 铺底 150+里程碑 90 首日可达 540，
+## 封顶跟涨让首通大奖不被钳成"没感觉"（大地图"本周还可获取"文案读本常量自动跟随）。
+const WEEKLY_MARROW_CAP: int = 500
 
 ## 裂隙环境键（BattleEnvEffects.RIFT_ENV_EFFECTS 同键；每场开局随机 1 条）
 const RIFT_ENV_KEYS: Array[String] = ["psi_storm", "low_gravity", "rift_tide", "crystal_vein"]
@@ -79,6 +84,14 @@ var best_waves: int = 0
 var total_runs: int = 0
 var _weekly_week_key: String = ""
 var _weekly_marrow_gained: int = 0
+## 2026-10-08 分段推进（用户拍板"一次打四五百关不太可能,一定的关数可以储存"）：
+## run 进度跨场存档——中途退出/战败不丢进度,下次进场从断点波继续,免入场次数。
+## 波次号全局连续（spawn 从 cp_wave+1 起）,本体波/补给节点/里程碑差价全部天然对齐。
+var cp_wave: int = 0            ## 已推进到的全局波次（0=无存档进度）
+var cp_core_wave: int = 0       ## 本 run 锁定的本体深度（roll 一次,续打不重摇）
+var cp_rift_env: String = ""    ## 裂隙环境（跨段延续）
+var cp_marrow_paid: int = 0     ## 本 run 已发星髓（段结算只补差价,防里程碑重复）
+var cp_supply_granted: int = 0  ## 已发补给档数（恢复 supplies_granted 起点,防重发）
 ## v6.35: 黑门本体已击碎(世界状态,跨 run 持久)——通关后异族渗透停刷+清场
 var gate_cleared_once: bool = false
 
@@ -90,6 +103,9 @@ var gate_core_wave: int = 0
 var gate_cleared: bool = false
 var gate_choice_pending: bool = false
 var supplies_granted: int = 0
+## 2026-10-08 收益感批：本 run 沿途补给累计（结算战报"沿途补给"行消费；begin_run 清零）
+var _run_supply_nano: int = 0
+var _run_supply_energy: int = 0
 ## v6.35: 本 run 布局池变体(LevelBattleLayouts.ENDLESS_LAYOUTS 索引;battle_manager 开战激活)
 var layout_variant: int = 0
 
@@ -137,8 +153,23 @@ func is_blackgate_unlocked() -> bool:
 	return false
 
 
-## 开局：roll 裂隙环境、置运行态（由 GameManager.start_endless_battle 调用）
+## 开局：roll 裂隙环境、置运行态（由 GameManager.start_endless_battle 调用）。
+## 2026-10-08 分段推进：有存档进度（cp_wave>0）时走续打分支——恢复锁定的本体深度/
+## 裂隙环境/补给起点，**不消耗入场次数**（进度只前进，分段不产生额外收益，无滥用面）。
 func begin_run() -> void:
+	_run_supply_nano = 0
+	_run_supply_energy = 0
+	gate_cleared = false
+	gate_choice_pending = false
+	if cp_wave > 0 and cp_core_wave > 0:
+		# ── 续打：从断点波继续 ──
+		run_active = true
+		gate_core_wave = cp_core_wave
+		current_rift_env = cp_rift_env
+		supplies_granted = cp_supply_granted
+		layout_variant = randi() % maxi(1, LevelBattleLayoutsRef.get_endless_variant_count())
+		return
+	# ── 新 run ──
 	# v32.0 B3-S3: 开局消耗一次入场次数（门禁在 GameManager.start_endless_battle）
 	consume_entry_for_begin()
 	run_active = true
@@ -151,17 +182,46 @@ func begin_run() -> void:
 		gate_core_wave = GATE_CORE_WAVE_MIN + (randi() % span) * GATE_CORE_DEPTH_STEP
 	else:
 		gate_core_wave = FIRST_GATE_CORE_WAVE
-	gate_cleared = false
-	gate_choice_pending = false
 	supplies_granted = 0
 	layout_variant = randi() % maxi(1, LevelBattleLayoutsRef.get_endless_variant_count())
+	# 深度/环境锁定进存档进度（settle_run 落账 cp_wave）
+	cp_wave = 0
+	cp_core_wave = gate_core_wave
+	cp_rift_env = current_rift_env
+	cp_marrow_paid = 0
+	cp_supply_granted = 0
+
+
+## 2026-10-08 分段推进：是否存在可续打的存档进度
+func has_checkpoint() -> bool:
+	return cp_wave > 0 and cp_core_wave > 0
+
+
+## 2026-10-09 分段推进：主动放弃进度（大地图"放弃进度"按钮唯一消费口）——
+## 下次 begin_run 走新 run 分支（重摇深度/环境，扣入场次数）。已入袋的星髓不追回，
+## 未结算的本 run 里程碑差价随进度作废（确认框已说明）。
+func abandon_checkpoint() -> void:
+	_clear_checkpoint()
+
+
+## 击碎本体（通关）时清进度；reset_state 同步清
+func _clear_checkpoint() -> void:
+	cp_wave = 0
+	cp_core_wave = 0
+	cp_rift_env = ""
+	cp_marrow_paid = 0
+	cp_supply_granted = 0
 
 
 ## v6.42: 当前 run 的波数上限（HUD 波次显示用；0=无限）。
-## 首场试炼=FIRST_GATE_CORE_WAVE；通关后的无限 run=0（HUD 沿用 999999 兜底）。
+## 首场试炼=FIRST_GATE_CORE_WAVE。
+## 2026-10-08 分段推进：无限 run 也返回锁定的本体深度——玩家要按"打到第几波存档"
+## 规划分段，无上限口径（旧拍板）在分段制下失去意义；首通前该值=30 不受影响。
 func get_run_wave_limit() -> int:
-	if not run_active or gate_cleared_once:
+	if not run_active:
 		return 0
+	if gate_cleared_once:
+		return gate_core_wave if gate_core_wave > 0 else 0
 	return FIRST_GATE_CORE_WAVE
 
 
@@ -186,6 +246,8 @@ func resolve_gate_choice() -> void:
 
 ## v6.35: 中途补给节点(每 SUPPLY_INTERVAL 波,由 battle_spawn_system 波次链调用)。
 ## 返回空字典=非节点波;非空=已入账 {nano, energy, count}。基础资源直入 BasicResourceManager。
+## 2026-10-08 收益感批：数值随深度档递增（第 N 档 = 基准 × N）——无限深层此前与
+## 第 1 波掉落完全相同，深层推进零梯度；现在第 100 波补给 = 4×基准。
 func grant_supply_node(wave_index: int) -> Dictionary:
 	if not run_active or gate_cleared:
 		return {}
@@ -195,11 +257,16 @@ func grant_supply_node(wave_index: int) -> Dictionary:
 	if expected <= supplies_granted:
 		return {}  # 同节点波重复触发守卫(波次重试/信号重入)
 	supplies_granted = expected
+	var tier_mult: float = float(expected)
+	var nano: int = int(SUPPLY_NANO * tier_mult)
+	var energy: int = int(SUPPLY_ENERGY * tier_mult)
+	_run_supply_nano += nano
+	_run_supply_energy += energy
 	var brm: Node = get_node_or_null("/root/BasicResourceManager")
 	if brm != null and brm.has_method("add_resource"):
-		brm.add_resource("basic_nano", SUPPLY_NANO)
-		brm.add_resource("energy_block", SUPPLY_ENERGY)
-	return {"nano": SUPPLY_NANO, "energy": SUPPLY_ENERGY, "count": supplies_granted}
+		brm.add_resource("basic_nano", nano)
+		brm.add_resource("energy_block", energy)
+	return {"nano": nano, "energy": energy, "count": supplies_granted}
 
 
 ## v6.35: 异族渗透——每游戏日刷新/过期(bunker_day_ended)。通关后停刷。
@@ -316,7 +383,9 @@ func settle_run(waves: int, kills: int) -> Dictionary:
 	total_runs += 1
 
 	var score: int = waves * SCORE_PER_WAVE + kills * SCORE_PER_KILL
-	var marrow_full: int = marrow_for_waves(waves)
+	# 2026-10-08 分段推进：星髓按"本 run 累计应得 − 已付"补差价——
+	# 里程碑表按全局波次算，分段多次结算不会重复发同档（cp_marrow_paid 随存档持久化）。
+	var marrow_full: int = maxi(0, marrow_for_waves(waves) - cp_marrow_paid)
 	# v6.35: 击碎本体首通大奖(一次性;与里程碑星髓同吃周封顶)
 	var gate_first_clear: bool = gate_cleared and not gate_cleared_once
 	if gate_first_clear:
@@ -326,6 +395,9 @@ func settle_run(waves: int, kills: int) -> Dictionary:
 	var capped: bool = marrow < marrow_full
 	if marrow > 0:
 		_add_marrow(marrow)
+	if not gate_cleared:
+		# 只把实发数记入已付——被周封顶钳掉的差额保留,后续段/周内补领
+		cp_marrow_paid += marrow
 
 	var is_best: bool = score > best_score
 	if is_best:
@@ -358,7 +430,22 @@ func settle_run(waves: int, kills: int) -> Dictionary:
 		"gate_core_wave": gate_core_wave,
 		"gate_first_clear": gate_first_clear,
 		"supplies_granted": supplies_granted,
+		"supply_nano": _run_supply_nano,
+		"supply_energy": _run_supply_energy,
 	}
+	# 2026-10-08 分段推进：未通关=进度落账(下次进场续打,免入场)；通关=清进度
+	if gate_cleared:
+		_clear_checkpoint()
+		summary["checkpoint_saved"] = false
+	else:
+		if waves > cp_wave:
+			cp_wave = waves
+		cp_core_wave = gate_core_wave
+		cp_rift_env = env
+		cp_supply_granted = supplies_granted
+		summary["checkpoint_saved"] = cp_wave > 0
+		summary["checkpoint_wave"] = cp_wave
+		summary["checkpoint_core_wave"] = cp_core_wave
 	gate_cleared = false
 	gate_choice_pending = false
 	run_ended.emit(summary)
@@ -476,6 +563,12 @@ func save_state() -> Dictionary:
 		# v6.35 黑门 2.0
 		"gate_cleared_once": gate_cleared_once,
 		"incursions": incursions.duplicate(true),
+		# 2026-10-08 分段推进:run 进度存档(旧档缺键=无进度,免迁移)
+		"cp_wave": cp_wave,
+		"cp_core_wave": cp_core_wave,
+		"cp_rift_env": cp_rift_env,
+		"cp_marrow_paid": cp_marrow_paid,
+		"cp_supply_granted": cp_supply_granted,
 	}
 
 
@@ -495,6 +588,12 @@ func load_state(data: Dictionary) -> void:
 	gate_cleared_once = bool(data.get("gate_cleared_once", false))
 	var inc_var: Variant = data.get("incursions", [])
 	incursions = (inc_var as Array).duplicate(true) if inc_var is Array else []
+	# 2026-10-08 分段推进(旧档缺键=无进度,免迁移)
+	cp_wave = int(data.get("cp_wave", 0))
+	cp_core_wave = int(data.get("cp_core_wave", 0))
+	cp_rift_env = String(data.get("cp_rift_env", ""))
+	cp_marrow_paid = int(data.get("cp_marrow_paid", 0))
+	cp_supply_granted = int(data.get("cp_supply_granted", 0))
 
 
 func reset_state() -> void:
@@ -514,3 +613,4 @@ func reset_state() -> void:
 	gate_choice_pending = false
 	supplies_granted = 0
 	incursions = []
+	_clear_checkpoint()

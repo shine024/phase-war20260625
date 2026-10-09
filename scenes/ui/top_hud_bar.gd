@@ -299,9 +299,26 @@ func _refresh_wave() -> void:
 				dots += "◉"
 			else:
 				dots += "○"
-		_wave_label.text = "%s 波次 %d/%d" % [dots, wave_idx, wave_total]
+		# v6.53（记录1二轮#15）：黑门首场试炼追加本体波指引尾缀（读 EBM 常量，勿硬编码
+		# 30——宪法 C3）。通关后无限档 run_active 但 gate_core_wave 滚动在远方波次，
+		# 同样显示"还差 N 波到本体"的锚点。
+		var suffix := ""
+		var ebm: Node = get_node_or_null("/root/EndlessBlackgateManager")
+		if ebm != null and bool(ebm.get("run_active")):
+			var core_wave := int(ebm.get("gate_core_wave"))
+			if core_wave > 0:
+				suffix = "  ✦第%d波本体" % core_wave
+		_wave_label.text = "%s 波次 %d/%d%s" % [dots, wave_idx, wave_total, suffix]
 	else:
-		_wave_label.text = "波次 %d" % wave_idx
+		# v6.53：无限档（通关后 200-320 波滚动）——主 HUD 同样给本体锚点，不再只有
+		# 暂停菜单可见
+		var inf_suffix := ""
+		var ebm2: Node = get_node_or_null("/root/EndlessBlackgateManager")
+		if ebm2 != null and bool(ebm2.get("run_active")):
+			var core_wave2 := int(ebm2.get("gate_core_wave"))
+			if core_wave2 > 0:
+				inf_suffix = "  ✦本体第%d波" % core_wave2
+		_wave_label.text = "波次 %d%s" % [wave_idx, inf_suffix]
 	# BU-3：波次进度条——当前波/总波；>80% 转金色（收尾提示），非战斗/无波次隐藏
 	if _wave_progress != null:
 		if _in_battle and wave_total > 0:

@@ -221,7 +221,7 @@
     },
     {
       "id": "enemy_master_008",
-      "name": "叶莲娜·索科洛娃",
+      "name": "陆听澜",
       "title": "维度撕裂者",
       "level": 14,
       "faction": "void",
@@ -618,7 +618,7 @@
     },
     {
       "id": "enemy_master_020",
-      "name": "阿米娜·奥科耶",
+      "name": "岳千钧",
       "title": "七岛的天线",
       "level": 24,
       "faction": "steel_thunder",
@@ -718,7 +718,7 @@
     },
     {
       "id": "enemy_master_023",
-      "name": "奥马尔·哈达德",
+      "name": "林晚炬",
       "title": "灰烬里回来的人",
       "level": 27,
       "faction": "flame",
@@ -751,7 +751,7 @@
     },
     {
       "id": "enemy_master_024",
-      "name": "英格里德·索尔海姆",
+      "name": "程让之",
       "title": "让路的雷暴",
       "level": 27,
       "faction": "thunder",
@@ -853,7 +853,7 @@
     },
     {
       "id": "enemy_master_027",
-      "name": "颂猜·威拉万",
+      "name": "温灼",
       "title": "三十七度的火",
       "level": 29,
       "faction": "flame",
@@ -886,7 +886,7 @@
     },
     {
       "id": "enemy_master_028",
-      "name": "玛雅·奥杜亚",
+      "name": "雷既白",
       "title": "很近的雷雨",
       "level": 29,
       "faction": "thunder",

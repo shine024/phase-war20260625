@@ -433,7 +433,12 @@ func _render_endless_report(vbox: VBoxContainer) -> void:
 			banner.text = "✦ 黑门本体已击碎（目标深度 第 %d 波）" % int(e.get("gate_core_wave", 0))
 		banner.add_theme_color_override("font_color", DT.COLOR_GOLD)
 	else:
-		banner.text = "◈ 黑门征程结束"
+		# 2026-10-08 分段推进：未通关=进度存档档文案（此前"征程结束"读起来像白打）
+		if bool(e.get("checkpoint_saved", false)):
+			banner.text = "◈ 黑门征程暂停 · 进度已存档（第 %d/%d 波）" % [
+				int(e.get("checkpoint_wave", 0)), int(e.get("checkpoint_core_wave", 0))]
+		else:
+			banner.text = "◈ 黑门征程结束"
 		banner.add_theme_color_override("font_color", DT.COLOR_TEXT_BRIGHT)
 	banner.add_theme_font_size_override("font_size", DT.FONT_SIZE_HUGE)
 	block.add_child(banner)
@@ -445,11 +450,16 @@ func _render_endless_report(vbox: VBoxContainer) -> void:
 	var marrow: int = int(e.get("marrow", 0))
 	if marrow > 0:
 		lines.append("星髓：+%d%s" % [marrow, "（本周封顶）" if bool(e.get("marrow_capped", false)) else ""])
+	# 2026-10-08 分段推进：存档进度提示（下一波继续、免入场）
+	if bool(e.get("checkpoint_saved", false)) and not bool(e.get("gate_cleared", false)):
+		lines.append("▸ 进度已存档：下次进场从第 %d 波继续，不扣入场次数" % (int(e.get("checkpoint_wave", 0)) + 1))
 	if bool(e.get("gate_first_clear", false)):
 		lines.append("★ 首次通关大奖已发放 · 黑门已平息，无限模式已解锁")
 	var supplies: int = int(e.get("supplies_granted", 0))
 	if supplies > 0:
-		lines.append("补给节点 ×%d 已入账" % supplies)
+		# 2026-10-08 收益感批：补给数值随深度递增，战报亮出累计金额（此前只报次数）
+		lines.append("沿途补给 ×%d：纳米 +%d · 能量块 +%d" % [
+			supplies, int(e.get("supply_nano", 0)), int(e.get("supply_energy", 0))])
 	for line in lines:
 		var lbl := Label.new()
 		lbl.text = line
@@ -650,6 +660,33 @@ func _render_first_clear(vbox: VBoxContainer) -> void:
 			tw.tween_interval(delay)
 			tw.tween_property(lbl, "modulate:a", 1.0, 0.25)
 		delay += 0.18
+	# 2026-10-08 收益感批：时代里程碑大奖行（成品卡/高级蓝图/星髓）——
+	# 结构性奖励是收益感的主菜，必须与资源行同区块亮起。
+	var bonus: Dictionary = fc.get("bonus", {}) if fc is Dictionary else {}
+	if not bonus.is_empty():
+		var card_id := String(bonus.get("card_id", ""))
+		if not card_id.is_empty():
+			var card_lbl := Label.new()
+			card_lbl.text = "  ★ 里程碑大奖：成品卡「%s」×1" % DefaultCards.get_safe_display_name(card_id)
+			card_lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
+			card_lbl.add_theme_color_override("font_color", DT.COLOR_GOLD)
+			list.add_child(card_lbl)
+		var bp_id := String(bonus.get("blueprint_id", ""))
+		if not bp_id.is_empty():
+			var bp_lbl := Label.new()
+			var ModificationRegistry = load("res://scripts/systems/modification_registry.gd")
+			var bp_name := String(ModificationRegistry.get_data(bp_id).get("name", bp_id))
+			bp_lbl.text = "  ★ 里程碑大奖：改造蓝图「%s」×1（高级）" % bp_name
+			bp_lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
+			bp_lbl.add_theme_color_override("font_color", DT.COLOR_GOLD)
+			list.add_child(bp_lbl)
+		var marrow := int(bonus.get("star_marrow", 0))
+		if marrow > 0:
+			var m_lbl := Label.new()
+			m_lbl.text = "  ★ 里程碑大奖：星髓 +%d（黑门铺底）" % marrow
+			m_lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
+			m_lbl.add_theme_color_override("font_color", DT.COLOR_GOLD)
+			list.add_child(m_lbl)
 	vbox.add_child(list)
 
 ## v34 B2：战斗卡成长区块——卡牌经验此前静默入账（升级回调零玩家可见反馈），

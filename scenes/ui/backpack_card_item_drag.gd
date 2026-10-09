@@ -10,6 +10,15 @@ const UiAssetLoader = preload("res://scripts/ui_asset_loader.gd")
 const InstrumentBarDrag = preload("res://scenes/ui/instrument_bar_drag.gd")
 const DT = preload("res://resources/design_tokens.gd")
 
+
+## RefCounted 取 autoload 唯一口（本类非 Node，禁止裸调 get_node_or_null——
+## v6.53 曾在 try_equip_to_slot 裸调=脚本编译失败，拖拽装配链全瘫）。
+static func _autoload_node(node_name: String) -> Node:
+	var tree := Engine.get_main_loop() as SceneTree
+	if tree == null or tree.root == null:
+		return null
+	return tree.root.get_node_or_null(NodePath("/root/" + node_name))
+
 ## 拖拽预览外框同槽位；内图标竖向略小于外框
 const DRAG_PREVIEW_ICON_DISPLAY_MIN := Vector2(36, 56)
 
@@ -365,7 +374,9 @@ static func try_equip_to_slot(item: PanelContainer, slot: Control) -> void:
 	var ok: bool = bool(PhaseInstrumentManager.equip_card(flat_index, item.card, null))
 	if ok:
 		# v6.53（记录1二轮#2）：拖拽装配置教程实操旗标（starter 预装不经过此处）
-		var _tpm: Node = get_node_or_null("/root/TutorialProgressionManager")
+		# ⚠️ 本类 extends RefCounted——无 get_node_or_null（v6.53 曾裸调=整链编译崩，
+		# 背包卡格+相位仪栏全瘫痪"拖不上去"真身），RefCounted 取 autoload 走主循环根。
+		var _tpm: Node = _autoload_node("TutorialProgressionManager")
 		if _tpm != null and _tpm.has_method("notify_assembly_touched"):
 			_tpm.notify_assembly_touched()
 		# B2: 装备成功音效（与商店购买 card_place 对齐，此前成功全程静音）

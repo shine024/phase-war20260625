@@ -17,6 +17,19 @@ static func _preview_battle_era() -> int:
 
 
 ## 统一的三维攻防格式：轻甲空攻击/防御，与战场显示一致
+## 2026-10-08 口径统一：攻三维=实战每发基数（weapon_slots[i].damage）。
+## 战斗结算读槽不读 attack_*（AttackCalculator.get_weapon_for_target → weapon.damage），
+## 装甲碾压等加成只同步进槽——读 attack_* 会与实战两套账（面板 470 实战 564）。
+## 槽缺失回退 stats.attack_*。
+static func _slot_dmg_trio(stats: UnitStats) -> Array[float]:
+	var out: Array[float] = [stats.attack_light, stats.attack_armor, stats.attack_air]
+	if stats != null and stats.weapon_slots != null and not stats.weapon_slots.is_empty():
+		for i in range(min(stats.weapon_slots.size(), 3)):
+			var wslot = stats.weapon_slots[i]
+			if wslot != null and "damage" in wslot:
+				out[i] = float(wslot.damage)
+	return out
+
 ## 统一的三维攻防格式：轻甲空攻击/防御，与战场显示一致
 ## v6.0: 增加武器名称显示
 static func _format_combat_stats_summary(stats: UnitStats, cur_hp: float = -1.0) -> String:
@@ -36,11 +49,12 @@ static func _format_combat_stats_summary(stats: UnitStats, cur_hp: float = -1.0)
 			if w is WeaponResource and w.enabled:
 				weapon_names[i] = w.display_name
 	
-	# 三维攻击/防御：轻/甲/空
-	var atk_light: float = stats.attack_light if stats.attack_light > 0.001 else 0.0
-	var atk_armor: float = stats.attack_armor if stats.attack_armor > 0.001 else 0.0
-	var atk_air: float = stats.attack_air if stats.attack_air > 0.001 else 0.0
-	
+	# 三维攻击/防御：轻/甲/空（攻读实战每发基数=槽位伤害）
+	var trio: Array[float] = _slot_dmg_trio(stats)
+	var atk_light: float = trio[0] if trio[0] > 0.001 else 0.0
+	var atk_armor: float = trio[1] if trio[1] > 0.001 else 0.0
+	var atk_air: float = trio[2] if trio[2] > 0.001 else 0.0
+
 	var def_light: float = stats.defense_light if stats.defense_light > 0.001 else 0.0
 	var def_armor: float = stats.defense_armor if stats.defense_armor > 0.001 else 0.0
 	var def_air: float = stats.defense_air if stats.defense_air > 0.001 else 0.0
@@ -84,6 +98,11 @@ static func _format_hp_and_attack_line(stats: UnitStats) -> String:
 	var atk_light: float = stats.attack_light if stats.attack_light > 0.001 else 0.0
 	var atk_armor: float = stats.attack_armor if stats.attack_armor > 0.001 else 0.0
 	var atk_air: float = stats.attack_air if stats.attack_air > 0.001 else 0.0
+	# 口径统一：攻读实战每发基数（槽位伤害），与战场结算同源
+	var trio2: Array[float] = _slot_dmg_trio(stats)
+	atk_light = trio2[0] if trio2[0] > 0.001 else 0.0
+	atk_armor = trio2[1] if trio2[1] > 0.001 else 0.0
+	atk_air = trio2[2] if trio2[2] > 0.001 else 0.0
 	var atk_part: String
 	if weapon_names[0].is_empty() and weapon_names[1].is_empty() and weapon_names[2].is_empty():
 		atk_part = "%d/%d/%d" % [int(atk_light), int(atk_armor), int(atk_air)]

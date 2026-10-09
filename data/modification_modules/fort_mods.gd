@@ -95,9 +95,9 @@ const DATA: Dictionary = {
 		unlock_conditions = {required_level = 2}
 	},
 	"for_08_trench" = {
-		id = FOR_08_TRENCH, name = "反坦克壕", name_en = "Anti-Tank Trench",
+		id = FOR_08_TRENCH, name = "堑壕网", name_en = "Trench Network",
 		icon = "res://assets/ui/icons/mod_icons/for_08_trench.png",
-		prototype = "堑壕系统", description = "反坦克壕阻滞装甲推进。对装甲伤害 +50%。",
+		prototype = "堑壕系统", description = "堑壕网阻滞敌方推进，火力点从容招呼装甲目标。对装甲伤害 +50%。",
 		rarity = "rare",
 	power_mult = 1.3, cost_research = 200, cost_install = 100,
 		slot_type = "obstacle", conflict_group = "obstacle",
@@ -154,6 +154,7 @@ const DATA: Dictionary = {
 		prototype = "壕堑系统",
 		description = "挖掘反坦克壕。200 像素范围内敌方移速降低 40%。",
 		rarity = "epic",
+		era_band = [1, 4],
 		power_mult = 1.6,
 		cost_research = 320,
 		cost_install = 160,
@@ -190,6 +191,7 @@ const DATA: Dictionary = {
 		prototype = "马奇诺/齐格菲地下工事",
 		description = "顶层防爆隔层与地下掩体。减伤与耐久提升，轰炸反制。",
 		rarity = "uncommon",
+		era_band = [1, 4],
 		power_mult = 1.15,
 		cost_research = 110,
 		cost_install = 55,

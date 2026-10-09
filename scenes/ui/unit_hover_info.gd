@@ -145,22 +145,29 @@ func _populate(unit: Node) -> void:
 	if card != null:
 		rarity_color = GC.get_rarity_color(card.rarity)
 	_rarity_strip.color = rarity_color
-	# 数值行（HP/攻/防）——敌方单位按情报可见性三档掩码（v27.15 同口径）。
+	# 数值行（HP/攻三维/防三维）——敌方单位按情报可见性三档掩码（v27.15 同口径）。
 	# 记录7#23: 悬浮窗此前完全不过掩码，情报卡显示"???"而悬浮泄露精确值。
+	# 2026-10-08 口径统一：改三维显示（对轻/对甲/对空）。此前单值 maxf(三维) 是
+	# "标注攻 9000 实扣几百"观感落差的主源——对甲维 7340 的卡对轻维可能只有 1971，
+	# 打什么目标就用那一维。玩家单位攻读各槽 damage（战斗结算的每发基数，已含
+	# 装甲碾压等槽同步加成）；敌方无武器槽，攻三维即实战基数（回退 attack_damage=对轻）。
 	if stats != null:
 		var vis: int = 2
 		if unit.is_in_group("enemy_units"):
 			vis = _enemy_stat_visibility_level(unit)
 		var cur_hp: int = int(unit.get("hp") if "hp" in unit else 0)
-		var atk_val: float = maxf(stats.attack_light, maxf(stats.attack_armor, stats.attack_air))
-		var def_val: float = maxf(stats.defense_light, maxf(stats.defense_armor, stats.defense_air))
+		var atk_vals: Array = _combat_atk_trio(stats)
+		var def_vals: Array = [stats.defense_light, stats.defense_armor, stats.defense_air]
 		if vis >= 2:
-			_stats_label.text = "生命 %d/%d · 攻 %d · 防 %d" % [
-				cur_hp, int(stats.max_hp), int(atk_val), int(def_val)]
+			_stats_label.text = "生命 %d/%d\n攻 %d/%d/%d · 防 %d/%d/%d" % [
+				cur_hp, int(stats.max_hp),
+				int(atk_vals[0]), int(atk_vals[1]), int(atk_vals[2]),
+				int(def_vals[0]), int(def_vals[1]), int(def_vals[2])]
 		else:
-			_stats_label.text = "生命 %s/%s · 攻 %s · 防 %s" % [
+			_stats_label.text = "生命 %s/%s\n攻 %s/%s/%s · 防 %s/%s/%s" % [
 				_mask_stat_value(float(cur_hp), vis), _mask_stat_value(float(stats.max_hp), vis),
-				_mask_stat_value(atk_val, vis), _mask_stat_value(def_val, vis)]
+				_mask_stat_value(atk_vals[0], vis), _mask_stat_value(atk_vals[1], vis), _mask_stat_value(atk_vals[2], vis),
+				_mask_stat_value(def_vals[0], vis), _mask_stat_value(def_vals[1], vis), _mask_stat_value(def_vals[2], vis)]
 	else:
 		_stats_label.text = ""
 	# 等级行：只显示战斗等级（光环/buff 移到下方状态效果行，避免重复）
@@ -187,6 +194,25 @@ func _populate(unit: Node) -> void:
 			sl.visible = true
 		else:
 			sl.visible = false
+
+
+## 2026-10-08 口径统一：攻三维（对轻/对甲/对空）取实战每发基数。
+## 玩家单位战斗结算读 weapon_slots[i].damage（AttackCalculator.get_weapon_for_target），
+## 故显示同源读槽（已含装甲碾压/词条/符文等槽同步加成）；槽缺失回退 stats.attack_*。
+## 敌方 stats 无武器槽，经典路径回退基数=attack_damage（=对轻），三维照显。
+func _combat_atk_trio(stats) -> Array:
+	if stats == null:
+		return [0.0, 0.0, 0.0]
+	var slots = stats.get("weapon_slots") if "weapon_slots" in stats else null
+	if slots != null and not slots.is_empty():
+		var out: Array = []
+		for i in range(3):
+			var v: float = 0.0
+			if i < slots.size() and slots[i] != null and "damage" in slots[i]:
+				v = float(slots[i].damage)
+			out.append(v)
+		return out
+	return [float(stats.attack_light), float(stats.attack_armor), float(stats.attack_air)]
 
 
 ## v27.15 同口径：敌详情数值可见性等级 → 2=精确 / 1=区间 / 0=???（记录7#23）。

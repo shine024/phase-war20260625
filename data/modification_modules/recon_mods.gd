@@ -110,7 +110,7 @@ const DATA: Dictionary = {
 	"rec_09_breaching" = {
 		id = REC_09_BREACHING, name = "破门工具", name_en = "Breaching Tools",
 		icon = "res://assets/ui/icons/mod_icons/rec_09_breaching.png",
-		prototype = "霰弹枪/破门锤", description = "破门器材随行。城市战部署更快。",
+		prototype = "霰弹枪/破门锤", description = "破门器材随行。部署加速 40%，主武器转霰弹弹道。",
 		rarity = "uncommon",
 	power_mult = 1.0, cost_research = 100, cost_install = 50,
 		slot_type = "environment", conflict_group = "environment",
@@ -136,6 +136,7 @@ const DATA: Dictionary = {
 		icon = "res://assets/ui/icons/mod_icons/rec_11_decoy.png",
 		prototype = "充气坦克/假人", description = "充气假目标误导敌方。暴击率 +20%。",
 		rarity = "rare",
+		era_band = [1, 4],
 	power_mult = 1.3, cost_research = 160, cost_install = 80,
 		slot_type = "deception", conflict_group = "stealth",
 		effects = {enemy_confusion = 0.20},
@@ -200,7 +201,7 @@ const DATA: Dictionary = {
 	# 套路5 侦察链式：相控阵雷达（周期性挂 _radar_locked 标记）
 	"rec_phased_radar" = {
 		id = "rec_phased_radar",
-		name = "相控阵雷达",
+		name = "相控阵侦搜雷达",
 		name_en = "Phased Array Radar",
 		icon = "res://assets/ui/icons/mod_icons/rec_phased_radar.png",
 		prototype = "AN/APG-81 相控阵",
@@ -261,6 +262,7 @@ const DATA: Dictionary = {
 		prototype = "多频段传感融合",
 		description = "多光谱穿透遮蔽。暴击率 +6%，无视烟雾。",
 		rarity = "rare",
+		era_band = [3, 4],
 		power_mult = 1.3,
 		cost_research = 160,
 		cost_install = 80,
@@ -278,6 +280,7 @@ const DATA: Dictionary = {
 		prototype = "威胁特征库",
 		description = "特征比对快速标记。命中 30% 概率标记目标，被标记者受伤 +15%。",
 		rarity = "epic",
+		era_band = [2, 4],
 		power_mult = 1.5,
 		cost_research = 300,
 		cost_install = 150,

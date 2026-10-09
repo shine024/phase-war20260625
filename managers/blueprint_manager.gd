@@ -587,7 +587,9 @@ func install_modification(card: CardResource, mod_id: String, slot: int = -1) ->
 
 	result.success = true
 	result.cost = nano_cost
-	result.message = "改造安装成功：%s" % mod_data.get("name", mod_id)
+	# v6.53（记录1二轮#14）：message 只装模块名——前缀由 UI 层统一拼。
+	# 原双前缀实机主诉：面板再包一层 "改造安装成功：" → "改造安装成功：改造安装成功：×××"
+	result.message = String(mod_data.get("name", mod_id))
 	# v6.19 P2-T2.2 流派成型埋点：首次装上神话档改造（一次性，重放安全）
 	if String(mod_data.get("rarity", "")) == "mythic":
 		var _pm_mythic: Node = get_node_or_null("/root/PerformanceMetricsManager")

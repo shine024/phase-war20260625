@@ -20,7 +20,7 @@ const GARRISON_LEVEL_TO_MASTER: Dictionary = {
 	20: "enemy_master_007",  # 穆斯塔法·德米拉 Lv13 thunder（WW1 Boss）
 
 	# ── WW2 时代（关卡 21-40）──
-	25: "enemy_master_008",  # 叶莲娜·索科洛娃 Lv14 void
+	25: "enemy_master_008",  # 陆听澜 Lv14 void
 	30: "enemy_master_009",  # 奥托·施泰因贝格 Lv16 steel
 	35: "enemy_master_011",  # 弗兰克·莫里森 Lv18 thunder
 	40: "enemy_master_012",  # 亚瑟·惠特克 Lv19 void（WW2 Boss）
@@ -34,14 +34,14 @@ const GARRISON_LEVEL_TO_MASTER: Dictionary = {
 
 	# ── MODERN 时代（关卡 61-80）──
 	65: "enemy_master_019",  # 拉斐尔·埃斯皮诺萨 Lv25 void
-	70: "enemy_master_020",  # 阿米娜·奥科耶 Lv24 steel_thunder
+	70: "enemy_master_020",  # 岳千钧 Lv24 steel_thunder
 	75: "enemy_master_022",  # 朴成宰 Lv26 steel
-	80: "enemy_master_024",  # 英格里德·索尔海姆 Lv27 thunder（MODERN Boss）
+	80: "enemy_master_024",  # 程让之 Lv27 thunder（MODERN Boss）
 
 	# ── FUTURE 时代（关卡 81-100）──
 	85: "enemy_master_025",  # 维克多·内维斯 Lv28 void
 	90: "enemy_master_026",  # 阿列克谢·莫罗佐夫 Lv28 steel
-	95: "enemy_master_028",  # 玛雅·奥杜亚 Lv29 thunder
+	95: "enemy_master_028",  # 雷既白 Lv29 thunder
 	100: "enemy_master_030", # 贺同舟 Lv30 all（终极Boss）
 }
 

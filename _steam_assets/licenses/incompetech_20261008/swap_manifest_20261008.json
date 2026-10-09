@@ -1,0 +1,56 @@
+{
+  "_comment": "Phase War BGM 换曲清单 2026-10-08（v6.52.2，记录1#7/#9 工单落地）。源=incompetech（Kevin MacLeod，CC BY 4.0）。mp3 为项目外原始下载归档（D:/godotplay/_art_backup/bgm_v6522_20261008/incompetech_sources/）。want_sec 来自 incompetech pieces 快照（snapshot_pieces_catalog.json，20260926 版）。案B：battle_future 由 Space Fighter Loop（轻快循环感=实机『春游』主诉）换 Hiding Your Reality（官方标注 Action/Driving/Epic，铜管+合成器，与曲库语言一致）；Space Fighter Loop 原文件挪 hub_future（近未来基地氛围，官方『为太空战斗游戏而写的循环』）。案A：hub 按时代五键（hub_ww1/ww2/cold/modern 各下载一曲，hub_future 即挪档曲）。",
+  "manifest": [
+    {
+      "slot": "bgm_battle_future",
+      "mp3": "D:/godotplay/_art_backup/bgm_v6522_20261008/incompetech_sources/bgm_battle_future__Hiding Your Reality.mp3",
+      "want_sec": 193,
+      "title": "Hiding Your Reality",
+      "artist": "Kevin MacLeod",
+      "isrc": "USUAN1700081",
+      "src_url": "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Hiding%20Your%20Reality.mp3",
+      "license": "CC BY 4.0"
+    },
+    {
+      "slot": "bgm_hub_ww1",
+      "mp3": "D:/godotplay/_art_backup/bgm_v6522_20261008/incompetech_sources/bgm_hub_ww1__Man Down.mp3",
+      "want_sec": 199,
+      "title": "Man Down",
+      "artist": "Kevin MacLeod",
+      "isrc": "USUAN1700086",
+      "src_url": "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Man%20Down.mp3",
+      "license": "CC BY 4.0",
+      "_note": "首选 Long Note Two 源响度 -25.6 LUFS（峰值顶死无法正增益，落盘 -26.9 听不见）换本曲——官方标注 Suspenseful/Dark/Somber，8 把真实大提琴的哀伤弦乐，语义（战友倒下）贴一战纪念"
+    },
+    {
+      "slot": "bgm_hub_ww2",
+      "mp3": "D:/godotplay/_art_backup/bgm_v6522_20261008/incompetech_sources/bgm_hub_ww2__Take the Lead.mp3",
+      "want_sec": 225,
+      "title": "Take the Lead",
+      "artist": "Kevin MacLeod",
+      "isrc": "b62f1a8b-907c-4ba2-922b-49f69cca1be1",
+      "src_url": "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Take%20the%20Lead.mp3",
+      "license": "CC BY 4.0"
+    },
+    {
+      "slot": "bgm_hub_cold",
+      "mp3": "D:/godotplay/_art_backup/bgm_v6522_20261008/incompetech_sources/bgm_hub_cold__Spy Glass.mp3",
+      "want_sec": 227,
+      "title": "Spy Glass",
+      "artist": "Kevin MacLeod",
+      "isrc": "USUAN1500058",
+      "src_url": "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Spy%20Glass.mp3",
+      "license": "CC BY 4.0"
+    },
+    {
+      "slot": "bgm_hub_modern",
+      "mp3": "D:/godotplay/_art_backup/bgm_v6522_20261008/incompetech_sources/bgm_hub_modern__Bass Walker.mp3",
+      "want_sec": 161,
+      "title": "Bass Walker",
+      "artist": "Kevin MacLeod",
+      "isrc": "6053b5b8-cfbd-4277-9370-bfd7c9e52a22",
+      "src_url": "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Bass%20Walker.mp3",
+      "license": "CC BY 4.0"
+    }
+  ]
+}

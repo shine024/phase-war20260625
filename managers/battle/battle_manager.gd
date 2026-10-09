@@ -439,6 +439,12 @@ func start_battle(battle_scene: Node) -> void:
 		_spawn_system.set_endless_mode(true)
 		# 裂隙环境 override（须在下方能量初始化前置位——regen 乘区经 get_level_env_mults 读它）
 		var _ebm: Node = get_node_or_null("/root/EndlessBlackgateManager")
+		# 2026-10-08 分段推进：有存档进度时把波次索引拨到断点——下一波 = cp_wave+1，
+		# 本体波/补给节点/里程碑全部按全局波次号对齐（波次号跨段连续）。
+		if _ebm != null and _ebm.has_method("has_checkpoint") and bool(_ebm.call("has_checkpoint")):
+			_spawn_system.enemy_wave_index = int(_ebm.get("cp_wave"))
+			if SignalBus.has_signal("show_toast"):
+				SignalBus.show_toast.emit("◈ 续打：从第 %d 波继续（进度已存档）" % int(_ebm.get("cp_wave")))
 		var _rift: String = String(_ebm.get("current_rift_env")) if _ebm != null else ""
 		BattleEnvEffects.set_rift_override(_rift)
 		# v6.35: 本场裂隙环境名播报(desc 表内单一真身,C3)
@@ -1293,7 +1299,16 @@ func get_enemy_wave_total() -> int:
 		return 0
 	# v27 黑门无尽 run：HUD 口径返回 0（无终波概念）——敌我 HUD 波次标签走
 	# "波次 N" 无进度点分支；内部 _enemy_wave_total(999999) 只作出兵护栏。
+	# v6.53（记录1二轮#15）：v6.42 首场=有限 30 波试炼后此分支没跟——首场玩家在
+	# 主 HUD 看不到「波次 N/30」与收尾进度条（暂停菜单战场情报却显示 N/30，自相矛盾，
+	# 实机主诉"没看到黑门没开无限模式前多少波能通关"）。分档：run 上限 >0（首场
+	# 试炼 FIRST_GATE_CORE_WAVE=30）返回该值；=0（通关后的无限档）维持无终波口径。
 	if _spawn_system.is_endless_mode():
+		var ebm: Node = get_node_or_null("/root/EndlessBlackgateManager")
+		if ebm != null and ebm.has_method("get_run_wave_limit"):
+			var limit := int(ebm.call("get_run_wave_limit"))
+			if limit > 0:
+				return limit
 		return 0
 	return _spawn_system.get_enemy_wave_total()
 

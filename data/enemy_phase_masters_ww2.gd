@@ -30,7 +30,7 @@ const ERA_MASTERS: Array = [
 	},
 	{
 		"id": "enemy_master_008",
-		"name": "叶莲娜·索科洛娃",
+		"name": "陆听澜",
 		"title": "维度撕裂者",
 		"level": 14,
 		"faction": "void",

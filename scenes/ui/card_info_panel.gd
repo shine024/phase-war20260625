@@ -898,11 +898,13 @@ func _fill_combat_cells(stats: UnitStats, cur_hp: float, vis: int) -> void:
 		else:
 			_set_cell_value(move_value_label, "—")
 	# 克制矩阵：对轻装/对装甲/对空中/防御（三维最大值）
+	# 2026-10-08 口径统一：攻读各槽 damage——战斗结算每发基数就是 weapon_slots[i].damage
+	# （attack_* 与槽位会因装甲碾压等"只同步槽"的加成脱节，曾出现面板 470 实战 564 的两套账）。
 	if matrix_row and matrix_value_labels.size() >= 4:
 		var atk_vals: Array[float] = [0.0, 0.0, 0.0]
 		var def_val: float = 0.0
 		if has_stats:
-			atk_vals = [stats.attack_light, stats.attack_armor, stats.attack_air]
+			atk_vals = _display_atk_trio(stats)
 			def_val = maxf(stats.defense_light, maxf(stats.defense_armor, stats.defense_air))
 		for i in 4:
 			var v: float = atk_vals[i] if i < 3 else def_val
@@ -912,16 +914,37 @@ func _fill_combat_cells(stats: UnitStats, cur_hp: float, vis: int) -> void:
 	if slash_label:
 		if has_stats:
 			var spd: float = _best_attack_speed(stats)
-			var dps: float = maxf(stats.attack_light, maxf(stats.attack_armor, stats.attack_air)) * spd
+			var atk_trio: Array[float] = _display_atk_trio(stats)
+			var dps: float = maxf(atk_trio[0], maxf(atk_trio[1], atk_trio[2])) * spd
 			var slash_val := func(v: float) -> String:
 				return "--" if v <= 0.001 else _cell_mask(v, vis)
 			slash_label.text = "攻 %s / %s / %s　　防 %s / %s / %s　　攻速 %.1f/s · 秒伤 %s" % [
-				slash_val.call(stats.attack_light), slash_val.call(stats.attack_armor), slash_val.call(stats.attack_air),
+				slash_val.call(atk_trio[0]), slash_val.call(atk_trio[1]), slash_val.call(atk_trio[2]),
 				slash_val.call(stats.defense_light), slash_val.call(stats.defense_armor), slash_val.call(stats.defense_air),
 				spd, _cell_mask(dps, vis),
 			]
 		else:
 			slash_label.text = ""
+
+## 2026-10-08 口径统一：卡详情攻三维=实战每发基数（weapon_slots[i].damage）。
+## 战斗结算读槽不读 attack_*（AttackCalculator.get_weapon_for_target → weapon.damage），
+## 且装甲碾压(+20% 对轻)等加成只同步进槽——此前读 attack_* 与实战两套账。
+## 槽缺失（异常兜底）回退 stats.attack_*。
+func _display_atk_trio(stats: UnitStats) -> Array[float]:
+	var out: Array[float] = [0.0, 0.0, 0.0]
+	if stats == null:
+		return out
+	if stats.weapon_slots != null and not stats.weapon_slots.is_empty():
+		for i in range(min(stats.weapon_slots.size(), 3)):
+			var w = stats.weapon_slots[i]
+			if w != null and "damage" in w:
+				out[i] = float(w.damage)
+		return out
+	out[0] = stats.attack_light
+	out[1] = stats.attack_armor
+	out[2] = stats.attack_air
+	return out
+
 
 ## 底行：时代 / 部署能耗（权重位）/ 地形修正
 func _refresh_bottom_row(stats: UnitStats, era_idx: int, mid_text: String) -> void:

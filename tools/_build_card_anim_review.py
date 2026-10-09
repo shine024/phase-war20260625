@@ -177,6 +177,7 @@ def main():
                "srcnote": "敌方原型 140 个=统一ID。我方卡图=敌方图水平镜像；同图多卡归并为一张家族卡（挂接卡列出）。缴获双层：运行时 captured_<敌方ID> 140 张 + 统一表 enemy_only（家族同名/旧平台/特色掉落 116 张），标注落在家族即可。",
                "rows": []}
     sections.append(sec_fam)
+    fam_rows = {}                            # fid -> fam 行（供 §1.5 挂接卡引用宿主）
     for e in enemies:
         fid = fam_key(e["id"])
         anim = anim_part(e, flip=True)          # 页面默认我方视角
@@ -211,6 +212,7 @@ def main():
             "uct": fid in captured_ids,
             "specials": e.get("special_drops", []),
             "joined": [p["id"] for p in pcards],
+            "joined_names": [p.get("name", "") for p in pcards],
             "icon_e": icon_e, "icon_p": icon_p,
             "anim": anim, "anim_key": ekey,
             "boss": boss, "pose": pose,
@@ -224,12 +226,56 @@ def main():
         if alt_anims:
             rec["alt_anims"] = alt_anims
         finish(rec, "fam")
+        fam_rows[fid] = rec
         mig["enemies|" + e["id"]] = "fam|" + fid
     for p in players:
         f = icon_player_to_fam.get(p.get("icon") or "")
         if f:
             mig.setdefault("players|" + p["id"], "fam|" + f)
             mig.setdefault("captured|" + p["id"], "fam|" + f)
+
+    # ── §1.5 动画独立挂接卡（游戏内一卡一行：游戏名+卡图+自己动画）──
+    # 同图多卡归并进家族行后，动画与家族宿主不同的卡在这里单独立行，
+    # 按「游戏中的名」逐卡审——避免被家族行的宿主动画遮蔽。
+    sec_split = {"key": "split", "title": "动画独立挂接卡（游戏内一卡一行）",
+                 "srcnote": "与家族卡同图但动画目录不同的游戏内独立卡。行名=游戏内 display_name，卡图=该卡实机图，动画=该卡实机 sheet（与运行时 UnitFrameAnim 解析结果一致）。家族行本身只代表宿主动画。",
+                 "rows": []}
+    sections.append(sec_split)
+    for fid, pcards in fam_players.items():
+        host = fam_rows.get(fid)
+        if not host:
+            continue
+        ekey = host["anim_key"]
+        for p in pcards:
+            pk = p.get("anim_key", "")
+            if not pk or pk == ekey:
+                continue  # 与宿主同动画：家族行预览即它，不重复出行
+            anim = anim_part(p, flip=True)
+            boss = frames_part(p, "boss_frames", "boss_dir")
+            pose = frames_part(p, "pose_frames", "pose_dir")
+            icon = res_to_rel(p.get("icon", ""))
+            need = p.get("ctype", -1) == 0
+            flags = base_flags([("player", icon)], anim, boss, pose, need_anim=need)
+            sus, met = probe_side(icon, anim, boss)
+            sus = [s for s in sus if s not in ("probe_err", "diff")]
+            alt_anims = alt_anims_part(p, pk)
+            if alt_anims:
+                flags.append("anim_alt")
+            rec = {
+                "id": p["id"], "name": p.get("name", ""), "era": p.get("era", -1),
+                "kind": p.get("kind", -1), "ctype": p.get("ctype", -1),
+                "icon": icon, "anim": anim, "anim_key": pk,
+                "boss": boss, "pose": pose,
+                "flags": flags, "flip": True, "sec": "split",
+                "sus": sus, "sus_sides": {s: ["我"] for s in sus},
+                "note": "挂接家族: " + host["name"] + "（同图不同动画）",
+            }
+            if met:
+                rec["met"] = met
+            if alt_anims:
+                rec["alt_anims"] = alt_anims
+            finish(rec, "split")
+            mig["players|" + p["id"]] = "split|" + p["id"]
 
     # ── §2 独立我方卡 ──
     sections.append({"key": "ind", "title": "独立我方卡（不走镜像管线）",
@@ -334,6 +380,15 @@ def main():
     uct_drop = sorted(c for c in captured_ids if c.startswith("drop_"))
     uct_fam = sorted(c for c in captured_ids if c not in compat and c not in uct_drop)
 
+    # ── 全局序号：全部行 NNN·名（跨段连续，批次任务可按号指名）──
+    # 放在标注过滤前：redo 页/过滤页的行保留总审页同号，便于跨页引用。
+    _no = 0
+    for s in sections:
+        for r in s["rows"]:
+            _no += 1
+            if r.get("name"):
+                r["name"] = "%03d·%s" % (_no, r["name"])
+
     # ── 标注过滤：默认只留「有备注 或 选定重做」的行（用户规则：无备注且未选重做=接受）；
     #    --full 出全量页。种子标注并入页面：本机 localStorage 已有则不覆盖。
     marks_seed = {}
@@ -398,8 +453,9 @@ def main():
         html = html.replace("<body>", "<body>" + banner, 1)
     with open(OUT, "w", encoding="utf-8") as f:
         f.write(html)
-    print("BUILD_OK total=%d (fam=%d ind=%d drop=%d plat=%d) -> %s (%.1f KB)" % (
+    print("BUILD_OK total=%d (fam=%d split=%d ind=%d drop=%d plat=%d) -> %s (%.1f KB)" % (
         total, sum(len(s["rows"]) for s in sections if s["key"] == "fam"),
+        sum(len(s["rows"]) for s in sections if s["key"] == "split"),
         sum(len(s["rows"]) for s in sections if s["key"] == "ind"),
         sum(len(s["rows"]) for s in sections if s["key"] == "drop"),
         sum(len(s["rows"]) for s in sections if s["key"] == "plat"),

@@ -598,11 +598,96 @@ func _grant_first_clear_if_eligible() -> void:
 		return
 	for id in reward:
 		BasicResourceManager.add_resource(String(id), int(reward[id]))
+	# 2026-10-08 收益感批：时代里程碑关（20/40/60/80/100）结构性大奖——
+	# 四资源之外给"构筑推进物"（成品卡/高级蓝图/星髓），纯资源堆量撑不起收益感。
+	var bonus: Dictionary = FirstClearRewards.get_milestone_bonus(lvl)
+	var bonus_summary: Dictionary = {}
+	if not bonus.is_empty():
+		var card_id: String = _pick_first_clear_card(int(bonus.get(FirstClearRewards.ID_BONUS_CARD, 0)))
+		var drop_mgr: Node = get_node_or_null("/root/DropManager")
+		if card_id != "" and drop_mgr != null and drop_mgr.has_method("grant_dropped_cards_by_id"):
+			drop_mgr.grant_dropped_cards_by_id(card_id, 1)
+			bonus_summary["card_id"] = card_id
+		var bp_id: String = _pick_epic_plus_blueprint(int(lvl))
+		var bag: Node = get_node_or_null("/root/IntelItemBag")
+		if bp_id != "" and bag != null and bag.has_method("add_item"):
+			bag.add_item(bp_id, 1)
+			bonus_summary["blueprint_id"] = bp_id
+		if bonus.has(FirstClearRewards.ID_STAR_MARROW):
+			# EBM 懒加载：首通 L100 时玩家可能从未进过黑门，先 ensure 再取（探针铁律：懒加载未就绪=发放静默丢失）
+			var mll: Node = get_node_or_null("/root/ManagerLazyLoader")
+			if mll != null and mll.has_method("ensure_loaded"):
+				mll.ensure_loaded("endless")
+			var ebm: Node = get_node_or_null("/root/EndlessBlackgateManager")
+			var marrow: int = int(bonus[FirstClearRewards.ID_STAR_MARROW])
+			if ebm != null and ebm.has_method("_add_marrow"):
+				ebm._add_marrow(marrow)
+				bonus_summary["star_marrow"] = marrow
 	# v6.52（记录1#12）：首通奖励=获得类提示，走左下 feed 通道（v6.38 双通道拍板：
 	# 右上 toast 留给操作反馈）——实机主诉"首通奖励的信息框出现在右上角，设计不好"
 	SignalBus.feed_message.emit("★ 首通奖励已发放：" + FirstClearRewards.format_reward_text(reward))
 	# v34 B3：首通奖励入结算摘要——缴获页「首次通关奖励」区块消费（feed 保留双通道）
-	last_battle_reward_summary["first_clear"] = {"level": lvl, "reward": reward.duplicate()}
+	last_battle_reward_summary["first_clear"] = {"level": lvl, "reward": reward.duplicate(), "bonus": bonus_summary}
+
+
+## 2026-10-08 收益感批：里程碑首通选卡——指定时代玩家卡池（排除 enemy_only），
+## 优先"从未拥有过"的 rare+ 卡（图鉴推进感）；全都拥有过则回退该时代随机。
+## 拥有判定=InstanceRegistry 是否存在该 card_id 实例（卡牌实例唯一真身口径）。
+func _pick_first_clear_card(era: int) -> String:
+	var UCT = load("res://data/unified_card_table.gd")
+	var DefaultCards = load("res://data/default_cards.gd")
+	var pool_unowned_rare: Array = []
+	var pool_unowned: Array = []
+	var pool_all: Array = []
+	var ir: Node = get_node_or_null("/root/InstanceRegistry")
+	for entry in UCT.get_player_card_entries():
+		var cid := String(entry.get("card_id", ""))
+		if cid.is_empty() or bool(entry.get("enemy_only", false)):
+			continue
+		var card = DefaultCards.get_card_by_id(cid)
+		if card == null or int(card.era) != era:
+			continue
+		var owned := false
+		if ir != null and ir.has_method("get_instances_by_card_id"):
+			owned = not (ir.get_instances_by_card_id(cid) as Array).is_empty()
+		var is_rare_plus: bool = card.rarity in ["rare", "epic", "legendary", "mythic"]
+		pool_all.append(cid)
+		if not owned:
+			pool_unowned.append(cid)
+			if is_rare_plus:
+				pool_unowned_rare.append(cid)
+	if not pool_unowned_rare.is_empty():
+		return String(pool_unowned_rare[randi() % pool_unowned_rare.size()])
+	if not pool_unowned.is_empty():
+		return String(pool_unowned[randi() % pool_unowned.size()])
+	if not pool_all.is_empty():
+		return String(pool_all[randi() % pool_all.size()])
+	return ""
+
+
+## 2026-10-08 收益感批：里程碑首通选蓝图——epic+ 保底，时代口径与掉落侧同款
+## （本时代 + epic+/legendary/mythic 跨一级前瞻，era 钳 4）。空池回退全注册表 epic+。
+func _pick_epic_plus_blueprint(level: int) -> String:
+	var ModificationRegistry = load("res://scripts/systems/modification_registry.gd")
+	var era: int = clampi((level - 1) / 20, 0, 4)
+	var era_hi: int = mini(era + 1, 4)
+	var epic_plus: Array = []
+	for ut in range(5):
+		for mod_id in ModificationRegistry.get_for_unit_type(ut):
+			var mid := String(mod_id)
+			if epic_plus.has(mid):
+				continue
+			var md: Dictionary = ModificationRegistry.get_data(mid)
+			if md.is_empty():
+				continue
+			if String(md.get("rarity", "common")) not in ["epic", "legendary", "mythic"]:
+				continue
+			if ModificationRegistry.is_mod_era_compatible(md, era) \
+					or (era_hi > era and ModificationRegistry.is_mod_era_compatible(md, era_hi)):
+				epic_plus.append(mid)
+	if epic_plus.is_empty():
+		return ""
+	return String(epic_plus[randi() % epic_plus.size()])
 
 func _on_battle_ended(player_won: bool) -> void:
 	current_phase = GamePhase.POST_BATTLE
@@ -939,7 +1024,12 @@ func _settle_endless_battle() -> void:
 		toast_lines.append("✦ 黑门本体已击碎！")
 		if bool(summary.get("gate_first_clear", false)):
 			toast_lines.append("★ 首次通关 · 黑门已平息")
-	toast_lines.append("黑门征程结束：第 %d 波 · 击杀 %d" % [waves, kills])
+	# 2026-10-08 分段推进：未通关=进度已存档，明确告知"可续打、不扣次数"
+	if not summary.is_empty() and bool(summary.get("checkpoint_saved", false)):
+		toast_lines.append("黑门征程暂停：第 %d/%d 波 · 进度已存档，下次进场续打（不扣次数）" % [
+			int(summary.get("checkpoint_wave", 0)), int(summary.get("checkpoint_core_wave", 0))])
+	else:
+		toast_lines.append("黑门征程结束：第 %d 波 · 击杀 %d" % [waves, kills])
 	if not summary.is_empty():
 		toast_lines.append("分数 %d" % int(summary.get("score", 0)))
 		if bool(summary.get("is_best", false)):

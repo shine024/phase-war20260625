@@ -1,0 +1,29 @@
+{
+  "_comment": "2026-10-08 v6.52.2 BGM 增补批次入库哈希（SHA256 全文）。源归档 D:/godotplay/_art_backup/bgm_v6522_20261008/。",
+  "files": {
+    "bgm_battle_future.ogg": {
+      "sha256": "d277a8c816859347c495c1cb17aba0ca1eed2dc4c29d90f5ae56aac3af69a813",
+      "bytes": 3942563
+    },
+    "bgm_hub_ww1.ogg": {
+      "sha256": "cf39c96dd6f3daa7310a07f28a74d658b1737886ec4d48bd4e1ce8f763a733a9",
+      "bytes": 3943691
+    },
+    "bgm_hub_ww2.ogg": {
+      "sha256": "c120f8293553966a7296f1c9962a0142295dfaeebfdc0b7b2ed7503724ffe14e",
+      "bytes": 5362501
+    },
+    "bgm_hub_cold.ogg": {
+      "sha256": "97ff648bddabc9af386f0f090b126c184f14c6003f503c5a756a0aa53b2d13e6",
+      "bytes": 4927770
+    },
+    "bgm_hub_modern.ogg": {
+      "sha256": "5b7c477c2ad9bf83bb43ff91ed3bb11f39ad318d7bec6bea0494d16c2ca2d945",
+      "bytes": 3058482
+    },
+    "bgm_hub_future.ogg": {
+      "sha256": "0a6c23909a9e06bd0d7437772302a997708581f4a762394d2ff39ff08c808508",
+      "bytes": 2674184
+    }
+  }
+}

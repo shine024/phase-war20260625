@@ -401,19 +401,20 @@ const DATA: Dictionary = {
 		name = "防弹盾牌",
 		name_en = "Riot Shield",
 		prototype = "防弹盾（凯夫拉）",
-		description = "随行移动掩体。防护力大幅提升。",
+		description = "随行移动掩体。对轻装防御 +40%，部署延迟 +40%。",
 		icon = "res://assets/ui/icons/mod_icons/inf_15_riot_shield.png",
 		rarity = "epic",
+		era_band = [2, 4],
 	power_mult = 1.6,
 		cost_research = 220,
 		cost_install = 110,
 		slot_type = "shield",
 		conflict_group = "shield",
 		effects = {
-			defense_light = 0.40,    # +40%
-			move_speed = -20,        # -20px/s 副作用
+			defense_light_pct = 0.40,    # 对轻装防御 +40%（2026-10-09 键名修正：原 defense_light flat 0.4 点≈无效）
+			move_speed = -20,            # 转写部署延迟 +40%（×0.02）
 		},
-		level_effects = {1: {defense_light = 0.4, move_speed = -20}, 2: {defense_light = 0.52, move_speed = -20}, 3: {defense_light = 0.6, move_speed = -20}},
+		level_effects = {1: {defense_light_pct = 0.4, move_speed = -20}, 2: {defense_light_pct = 0.52, move_speed = -20}, 3: {defense_light_pct = 0.6, move_speed = -20}},
 		unlock_conditions = {
 			required_level = 4,
 		}
@@ -589,6 +590,7 @@ const DATA: Dictionary = {
 		prototype = "肾上腺素自动注射器",
 		description = "连续攻击积累战斗节奏，每 5 次命中触发爆发，额外造成 25% 伤害",
 		rarity = "epic",
+		era_band = [2, 4],
 		power_mult = 1.5,
 		cost_research = 280,
 		cost_install = 140,
@@ -768,7 +770,7 @@ const DATA: Dictionary = {
 		name_en = "Ammo Belt Feed",
 		icon = "res://assets/ui/icons/mod_icons/inf_33_ammo_belt.png",
 		prototype = "散装弹链/帆布弹带",
-		description = "弹链持续供弹。射速 +8%，移动 -5px/s。",
+		description = "弹链持续供弹。射速 +8%，部署延迟 +10%。",
 		rarity = "rare",
 		power_mult = 1.3,
 		cost_research = 150,

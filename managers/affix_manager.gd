@@ -841,6 +841,13 @@ func _apply_card_affixes(stats: UnitStats, affix_key: String) -> void:
 					if w.has("damage"):
 						w["damage"] = float(w["damage"]) * (1.0 + val)
 						stats.weapons[i] = w
+				# 口径统一（2026-10-08）：attack_damage=attack_light 别名只加对轻维，
+				# 而战斗结算读 weapon_slots[0].damage（对轻槽）——不同步=词条实战空转、
+				# 面板与实战两套账。与 stats.attack_damage 同维同步进对轻槽。
+				if not stats.weapon_slots.is_empty():
+					var w0 = stats.weapon_slots[0]
+					if w0 != null and "damage" in w0:
+						w0.damage = maxf(0.1, float(w0.damage) * (1.0 + val))
 			"attack_range":
 				stats.attack_range *= (1.0 + val)
 				for i in range(stats.weapons.size()):
@@ -850,6 +857,12 @@ func _apply_card_affixes(stats: UnitStats, affix_key: String) -> void:
 					if w.has("range"):
 						w["range"] = float(w["range"]) * (1.0 + val)
 						stats.weapons[i] = w
+				# 口径统一（2026-10-08）：结算射程读各槽 range_value（AttackCalculator.get_weapon_range），
+				# 不同步=射程词条实战空转。全槽同比放大。
+				for j in range(stats.weapon_slots.size()):
+					var wr = stats.weapon_slots[j]
+					if wr != null and "range_value" in wr:
+						wr.range_value = maxi(1, int(round(float(wr.range_value) * (1.0 + val))))
 			"attack_interval":
 				# val 表示缩短比例，攻击间隔 * (1 - val)
 				var factor: float = maxf(0.1, 1.0 - val)

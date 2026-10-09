@@ -15,9 +15,9 @@ const ENG_10_CAMOUFLAGE = "eng_10_camouflage"
 
 const DATA: Dictionary = {
 	"eng_01_mine_sweeper" = {
-		id = ENG_01_MINE_SWEEPER, name = "反应装甲", name_en = "Reactive Armor",
+		id = ENG_01_MINE_SWEEPER, name = "工兵防护套件", name_en = "Reactive Armor",
 		icon = "res://assets/ui/icons/mod_icons/eng_01_mine_sweeper.png",
-		prototype = "Kontakt-5爆炸反应装甲", description = "破甲弹命中时爆炸反制。伤害大幅减免。",
+		prototype = "Kontakt-5爆炸反应装甲", description = "扫雷车改装附加防护。对装甲防御 +25，减伤 +10%。",
 		rarity = "rare",
 	power_mult = 1.3, cost_research = 140, cost_install = 70,
 		slot_type = "engineering", conflict_group = "engineering",
@@ -56,6 +56,7 @@ const DATA: Dictionary = {
 		icon = "res://assets/ui/icons/mod_icons/eng_04_bridge.png",
 		prototype = "坦克架桥车", description = "坦克架桥车随行。部署加速 5%。",
 		rarity = "epic",
+		era_band = [1, 4],
 	power_mult = 1.6, cost_research = 300, cost_install = 150,
 		slot_type = "bridge", conflict_group = "engineering_gear",
 		effects = {ally_river_bonus = 1.00},
@@ -74,9 +75,9 @@ const DATA: Dictionary = {
 		unlock_conditions = {required_level = 1}
 	},
 	"eng_06_crane" = {
-		id = ENG_06_CRANE, name = "间隙装甲", name_en = "Spaced Armor",
+		id = ENG_06_CRANE, name = "工程附加装甲", name_en = "Spaced Armor",
 		icon = "res://assets/ui/icons/mod_icons/eng_06_crane.png",
-		prototype = "谢尔曼/四号附加装甲板", description = "外挂间隙装甲板，提前引爆来袭弹丸。",
+		prototype = "工程车辆附加装甲套件", description = "外挂间隙装甲板，提前引爆来袭弹丸。",
 		rarity = "rare",
 	power_mult = 1.3, cost_research = 180, cost_install = 90,
 		slot_type = "recovery", conflict_group = "engineering_gear",
@@ -99,7 +100,7 @@ const DATA: Dictionary = {
 	"eng_08_medical" = {
 		id = ENG_08_MEDICAL, name = "战场急救站", name_en = "Field Medical Station",
 		icon = "res://assets/ui/icons/mod_icons/eng_08_medical.png",
-		prototype = "机动医疗单元", description = "机动医疗单元。每秒回复 0.15% 生命值。",
+		prototype = "机动医疗单元", description = "机动医疗单元。光环友军回复 0.3%/s（自身 0.15%/s）。",
 		rarity = "epic",
 	power_mult = 1.6, cost_research = 280, cost_install = 140,
 		slot_type = "medical", conflict_group = "medical",
@@ -178,6 +179,7 @@ const DATA: Dictionary = {
 		prototype = "自毁式补给投放器",
 		description = "阵亡时遗落补给，治疗周围 180 像素内友军，恢复量为自身 15% 最大生命值。",
 		rarity = "epic",
+		era_band = [2, 4],
 		power_mult = 1.5,
 		cost_research = 300,
 		cost_install = 150,
@@ -287,7 +289,7 @@ const DATA: Dictionary = {
 		name_en = "Recovery Crane",
 		icon = "res://assets/ui/icons/mod_icons/eng_17_recovery_crane.png",
 		prototype = "抢修车起重机",
-		description = "战场抢修作业。周围友军回复 0.4%/s。",
+		description = "战场抢修作业。周围友军回复 0.4%/s（自身 0.2%/s）。",
 		rarity = "rare",
 		power_mult = 1.3,
 		cost_research = 160,

@@ -32,7 +32,7 @@ const ERA_MASTERS: Array = [
 	# ==================== Tier 4 - 混合专家 (Lv24-25) ====================
 	{
 		"id": "enemy_master_020",
-		"name": "阿米娜·奥科耶",
+		"name": "岳千钧",
 		"title": "七岛的天线",
 		"level": 24,
 		"faction": "steel_thunder",
@@ -100,7 +100,7 @@ const ERA_MASTERS: Array = [
 	},
 	{
 		"id": "enemy_master_023",
-		"name": "奥马尔·哈达德",
+		"name": "林晚炬",
 		"title": "灰烬里回来的人",
 		"level": 27,
 		"faction": "flame",
@@ -122,7 +122,7 @@ const ERA_MASTERS: Array = [
 	},
 	{
 		"id": "enemy_master_024",
-		"name": "英格里德·索尔海姆",
+		"name": "程让之",
 		"title": "让路的雷暴",
 		"level": 27,
 		"faction": "thunder",
