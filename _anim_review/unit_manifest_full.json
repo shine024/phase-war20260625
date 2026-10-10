@@ -4299,7 +4299,7 @@
       "boss_frames": 0,
       "ctype": 0,
       "era": 4,
-      "icon": "res://assets/card_icons/player/vis_player_071.png",
+      "icon": "res://assets/card_icons/player/drop_mega_particle_cannon.png",
       "id": "drop_mega_particle_cannon",
       "kind": 1,
       "name": "巨型粒子炮",
@@ -10124,7 +10124,7 @@
       "visual_id": "vis_xeno_mothership"
     }
   ],
-  "generated": "2026-10-06 23:17:54",
+  "generated": "2026-10-09 22:23:27",
   "platforms": [
     {
       "anim": {
@@ -14482,19 +14482,19 @@
     },
     {
       "anim": {
-        "attack": 10,
+        "attack": 6,
         "fps": 8.0,
         "fs": 256,
-        "idle": 8,
+        "idle": 4,
         "sheet_attack": "res://assets/effects/unit_anims/fut_arm_omega/sheet_attack.png",
         "sheet_idle": "res://assets/effects/unit_anims/fut_arm_omega/sheet_idle.png"
       },
       "anim_cands": [
         {
-          "attack": 10,
+          "attack": 6,
           "fps": 8.0,
           "fs": 256,
-          "idle": 8,
+          "idle": 4,
           "key": "fut_arm_omega",
           "sheet_attack": "res://assets/effects/unit_anims/fut_arm_omega/sheet_attack.png",
           "sheet_idle": "res://assets/effects/unit_anims/fut_arm_omega/sheet_idle.png"

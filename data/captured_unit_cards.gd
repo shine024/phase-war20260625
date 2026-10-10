@@ -189,6 +189,13 @@ static func _build_captured_card(
 	var total_defense: float = c.defense_light + c.defense_armor + c.defense_air
 	c.power = int(roundf((c.base_hp * 0.3) + (total_attack * 2.0) + (total_defense * 1.5) + (c.base_speed * 0.1)))
 	c.power = maxi(c.power, 10)  # 最低10点战力
+	# v6.54 记录6#23：表内设计 power 档优先（星冥 20 单位带 140-2400 设计值，经
+	# manifest archetype_config 透传）——原公式只看裸面板：基础单位算出几百与设计档
+	# 不符（实机"战力很低只几百"），本体卡 hp6000+三维攻 1800 算出 ~6391 超「精神同调·
+	# 无垠」上限 2400 → 通关勋章卡被 request_player_deploy 战力门永久拦截（奖励变废铁，
+	# xeno_units 注释自警的坑恰好从 fallback 公式破防）。
+	if cfg.has("power") and float(cfg["power"]) > 0.0:
+		c.power = int(float(cfg["power"]))
 
 	# type_line（v27: era=5 星冥带入标签数组）
 	var era_label: String = _era_label_for(era)

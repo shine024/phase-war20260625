@@ -1,6 +1,6 @@
 extends Control
 ## 余烬要塞 v22 · 纪念墙（纪念碑墙/荣誉陈列室嵌入面板）
-## 30 盏灯 = 30 位牺牲相位师。击败驻守相位师带回遗物 → 灯亮，点击读名。
+## 30 盏灯 = 30 位牺牲相位师。击败驻守相位师 → 残核归返灯亮（安魂），点击读名。
 ## v22：锚点修正（anchors+offsets，修入树后锚点被抵消导致出屏）；
 ##       面板框架/按钮走 PanelStyles 工厂 + 灯阵 GridContainer 化 + 逐灯 tooltip。
 
@@ -119,7 +119,9 @@ func _build() -> void:
 
 	# 引文提示
 	var hint := Label.new()
-	hint.text = "每一盏灯，都是一个名字。——击败驻守的相位师，把他们的遗物带回来。"
+	# v6.55 记录6#15：遗物→残核安魂框架——原「带回遗物」读作从击杀者身上缴获战利品，
+	# 与纪念语义冲突；改为「残核归返=安魂」，纪念墙是安放处不是陈列处。
+	hint.text = "每一盏灯，都是一个名字。——击败驻守的相位师，让残核归返此处。灯亮，不是战功，是安魂。"
 	hint.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
 	hint.add_theme_color_override("font_color", DT.COLOR_TEXT_DIM)
 	vbox.add_child(hint)
@@ -148,7 +150,7 @@ func _build() -> void:
 		var idx := i
 		var m: Dictionary = _lamp_masters[i]
 		lamp.tooltip_text = "第 %02d 位 · %s" % [i + 1, m["name"]] if _is_lit(i) \
-			else "第 %02d 位 · ？？？（带回遗物点亮）" % [i + 1]
+			else "第 %02d 位 · ？？？（残核归返点亮）" % [i + 1]
 		lamp.draw.connect(func(): _draw_lamp(lamp, idx))
 		lamp.gui_input.connect(_on_lamp_input.bind(idx))
 		grid.add_child(lamp)
@@ -242,5 +244,5 @@ func refresh() -> void:
 	for i in range(_lamp_controls.size()):
 		var m: Dictionary = _lamp_masters[i]
 		_lamp_controls[i].tooltip_text = ("第 %02d 位 · %s" % [i + 1, m["name"]]) if _is_lit(i) \
-			else "第 %02d 位 · ？？？（带回遗物点亮）" % [i + 1]
+			else "第 %02d 位 · ？？？（残核归返点亮）" % [i + 1]
 		_lamp_controls[i].queue_redraw()

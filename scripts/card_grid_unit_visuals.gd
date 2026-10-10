@@ -112,24 +112,31 @@ static func apply_battle_unit_presentation(
 		return false
 	unit_spr.visible = true
 	unit_spr.modulate = Color.WHITE
-	# 统一卡图大小：所有单位按纹理宽度归一到固定卡宽（基础尺寸一致），再按缩放表
-	# 乘以各自的视觉倍数（步兵小/坦克大/boss 更大）。缩放查询统一走 CardFootAnchors（单一真理源）。
-	apply_uniform_card_sprite(unit_spr, tex, face_right)
-	if card != null:
-		var vs: float = CardFootAnchors.get_visual_scale(card)
-		if vs > 0.0 and vs != 1.0:
-			unit_spr.scale *= vs
 	# v6.14.8: 精英/首领威压乘区——接替旧 VISUAL_SCALE boss≈2.0 语义（档位系数之上）。
-	# 必须在 UnitOutline.apply 前定格（edge_texels 依赖最终 scale.x）。
+	# v6.55 起乘进目标内容矩形（身高锚定模型，见 CardFootAnchors TARGET_CONTENT_H），
+	# 不再直接乘 sprite scale——静态卡图与帧动画同吃一个矩形（_visual_rect meta）。
 	var _boost_st: String = ""
 	if unit != null and unit.has_method("get_elite_spawn_type"):
 		_boost_st = String(unit.call("get_elite_spawn_type"))
 	elif unit != null and unit.has_meta("elite_spawn_type"):
 		_boost_st = String(unit.get_meta("elite_spawn_type", ""))
-	if _boost_st == "boss":
-		unit_spr.scale *= 1.6
-	elif _boost_st == "elite":
-		unit_spr.scale *= 1.2
+	var boost: float = 1.6 if _boost_st == "boss" else (1.2 if _boost_st == "elite" else 1.0)
+	# 目标内容矩形（px）：override → 卡对象 kind×era → 兜底矩形；威压乘区 + 硬封顶。
+	var _rect: Vector2 = CardFootAnchors.get_target_rect(card)
+	if card == null and unit != null and "_visual_archetype_id" in unit:
+		_rect = CardFootAnchors.get_target_rect_by_id(String(unit.get("_visual_archetype_id")))
+	_rect = (_rect * boost)
+	_rect.x = minf(_rect.x, CardFootAnchors.HARD_CONTENT_W_CAP)
+	# 统一卡图大小：v6.55 身高锚定——按卡图内容 bbox 适配目标矩形（脚部 offset 不变）。
+	apply_uniform_card_sprite(unit_spr, tex, face_right)
+	var _tex_w: float = maxf(float(unit_spr.texture.get_width()), 1.0)
+	var _tex_h: float = maxf(float(unit_spr.texture.get_height()), 1.0)
+	var _fn: String = CardFootAnchors.file_name_of(unit_spr.texture)
+	var content_w: float = CardFootAnchors.get_content_w_frac(_fn) * _tex_w
+	var content_h: float = CardFootAnchors.get_content_h_frac(_fn) * _tex_h
+	var sc: float = CardFootAnchors.scale_for_content_rect(content_w, content_h, _rect)
+	unit_spr.scale = Vector2(sc, sc)
+	unit_spr.set_meta("_visual_rect", _rect)
 	# v26.9: 深色描边（alpha 膨胀 shader）——沙漠亮底上我方灰褐卡图与背景同明度融底的修复。
 	# 必须在 visual scale 定格后挂：edge_texels = 目标屏宽 / scale.x（帧动画 attach 的
 	# scale×2 补偿由 FrameDriver 内 refresh 兜住）。
@@ -183,24 +190,10 @@ static func apply_battle_unit_presentation(
 			if unit_spr.has_meta(m):
 				unit_spr.remove_meta(m)
 	_sync_unit_shadow(host, unit_spr, air_lift)
-	if card != null:
-		apply_battle_card_chrome(host, unit_spr, card)
-	sync_rank_strip(host, rank_level, unit_spr)
-	sync_name_strip(host, unit_spr, card, face_right, unit)
-	# v7.x 战场视觉反馈：单位头顶增强——稀有度角标
-	if card != null:
-		sync_rarity_badge(host, unit_spr, card)
-	# v26.x: 实体左上角 LevelTag 已删除——等级唯一显示位在血条左侧 LvN（unit_hp_bar），
-	# 双套等级显示是头顶拥挤的来源之一。
-	# v7.x 战场视觉反馈：敌方精英金角标（elite/boss 单位，左上角，避开右上的稀有度角标）
-	sync_elite_badge(host, unit_spr, unit)
-	# v7.x HP 数值标签（卡框下方，我方青/敌方红）
-	sync_hp_label(host, unit_spr, unit)
-	# v7.x 战场视觉反馈：漂浮 buff/debuff 标签（卡顶上方，破甲/标记/暴击标注/反炮）
-	sync_buff_labels(host, unit_spr, unit)
-	_apply_idle_motion(unit_spr, card)
 	# v14/P2: boss/相位师专属待机——有帧资产走帧动画,无则 boss 级程序化待机(威压摇摆)
 	# （v6.15: anim_id 已在描边挂载点前推导, 此处直接复用）
+	# v6.55: attach 提前到头顶 UI 同步之前——驱动器 _ready 即写 _anim_entity_top_frac，
+	# 血条/角标首刷就锚动画单位真实实体顶（此前落卡图标定表外的 1.0 frac 兜底）。
 	var is_boss_tier: bool = anim_id.begins_with("enemy_master") or anim_id.begins_with("boss_")
 	if unit != null and unit.has_method("get_elite_spawn_type"):
 		var st: String = String(unit.call("get_elite_spawn_type"))
@@ -223,6 +216,22 @@ static func apply_battle_unit_presentation(
 		# v24.2: 敌我双方普通单位帧动画（敌=朝左原图; 我方=同套 sheet 驱动内 flip_h 镜像;
 		# idle ping-pong 循环; 开火时经 fire_lunge_sprite→notify_fire 播 attack 一遍）
 		UnitFrameAnim.attach(unit_spr, anim_id, face_right)
+	if card != null:
+		apply_battle_card_chrome(host, unit_spr, card)
+	sync_rank_strip(host, rank_level, unit_spr)
+	sync_name_strip(host, unit_spr, card, face_right, unit)
+	# v7.x 战场视觉反馈：单位头顶增强——稀有度角标
+	if card != null:
+		sync_rarity_badge(host, unit_spr, card)
+	# v26.x: 实体左上角 LevelTag 已删除——等级唯一显示位在血条左侧 LvN（unit_hp_bar），
+	# 双套等级显示是头顶拥挤的来源之一。
+	# v7.x 战场视觉反馈：敌方精英金角标（elite/boss 单位，左上角，避开右上的稀有度角标）
+	sync_elite_badge(host, unit_spr, unit)
+	# v7.x HP 数值标签（卡框下方，我方青/敌方红）
+	sync_hp_label(host, unit_spr, unit)
+	# v7.x 战场视觉反馈：漂浮 buff/debuff 标签（卡顶上方，破甲/标记/暴击标注/反炮）
+	sync_buff_labels(host, unit_spr, unit)
+	_apply_idle_motion(unit_spr, card)
 	return true
 
 
@@ -280,8 +289,8 @@ static func _sync_unit_shadow(host: Node2D, unit_spr: Sprite2D, air_lift: float)
 		unit_spr.remove_meta("_air_shadow")  # 换形态从空中落回地面时清浮动联动
 
 
-## v14 按兵种差异化:空中(AIR)大幅浮动±3px / 装甲缓浮(2.2s 周期,厚重) /
-## 步兵轻快浮动±1.2px / 堡垒(FORT)完全不动(稳重感)。
+## v14 按兵种差异化:空中(AIR)大幅浮动±4px / 装甲缓浮(2.2s 周期,厚重) /
+## 步兵浮动±2.5px(v6.56 提可辨性) / 堡垒(FORT)完全不动(稳重感)。
 ## 全部走 position:y——scale 留给开火脉冲,避免两个 tween 同属性打架。
 ## 相位随机错开避免全屏同频;尊重 motion_reduce(无障碍)。
 ## v9.x（3d 性能批次）:常驻循环 Tween（满场 60-110 条）改 meta 参数 + 手写推进，
@@ -302,7 +311,9 @@ static func _apply_idle_motion(unit_spr: Sprite2D, card: CardResource) -> void:
 	if unit_spr.has_meta("_air_lift"):
 		base = -float(unit_spr.get_meta("_air_lift"))
 	# v23.5: 空中单位浮动加大加快（悬空呼吸感）；基线 y 已含悬空抬升
-	var amp: float = 4.0 if kind == GC.CombatKind.AIR else 1.2
+	# v6.56（记录1#20，用户主诉"分不清卡图还是帧动画"）：地面单位 ±1.2→±2.5px，
+	# 浮动加大到可辨但仍明显弱于攻击动画的位移量
+	var amp: float = 4.0 if kind == GC.CombatKind.AIR else 2.5
 	var half: float = 0.85 if kind == GC.CombatKind.AIR else (1.8 if kind == GC.CombatKind.ARMOR else 1.3)
 	half += randf() * 0.4  # 相位错开
 	unit_spr.set_meta("_idle_params", {

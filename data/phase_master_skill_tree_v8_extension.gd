@@ -130,7 +130,7 @@ const EXTENSION_NODES: Dictionary = {
 		 "unlocks": [{"type": "card_skill", "id": "cps_time_rewind"}],
 		 "effects": {}, "capstone": true},
 		# tier 12：天罗地网（高级战法）
-		{"id": "pms_cmd_12", "name": "天罗地网", "desc": "解锁高级战法「天罗地网」：钢铁+雷霆组合时全体敌方攻速-30%、移速-30%",
+		{"id": "pms_cmd_12", "name": "天罗地网", "desc": "解锁高级战法「天罗地网」：1钢铁系+1雷霆系卡片技能同时激活时，全体敌方攻击间隔+43%（攻速-30%）、行进速度-30%",
 		 "branch": BRANCH_COMMAND, "tier": 12, "cost": 3, "requires": ["pms_cmd_11"],
 		 "unlocks": [{"type": "tactic", "id": "tactic_sky_net"}],
 		 "effects": {}},
@@ -156,7 +156,7 @@ const EXTENSION_NODES: Dictionary = {
 		 "unlocks": [{"type": "card_skill", "id": "cps_steel_storm"}],
 		 "effects": {}},
 		# ═══ v36 精神同调链终点（指挥系）：可用战力上限 ═══
-		{"id": "pms_cmd_sync3", "name": "精神同调·无垠", "desc": "与暗能同频共振，心境如渊——可运用战力上限提升至 2400（最强战斗卡全解锁）",
+		{"id": "pms_cmd_sync3", "name": "精神同调·无垠", "desc": "与暗能同频共振，心境如渊——战力不再是门槛——任何战力的战斗卡都可驾驭（全部战斗卡解锁）",
 		 "branch": BRANCH_COMMAND, "tier": 7, "cost": 4, "requires": ["pms_cmd_sync2"],
 		 "unlocks": [{"type": "power_cap", "value": 2400}],
 		 "effects": {}},
@@ -264,7 +264,7 @@ const EXTENSION_NODES: Dictionary = {
 		 "unlocks": [{"type": "card_skill", "id": "cps_combustion"}],
 		 "effects": {}, "capstone": true},
 		# ═══ v36 精神同调链终点（火力系）：可用战力上限 ═══
-		{"id": "pms_fp_sync3", "name": "精神同调·无垠", "desc": "与暗能同频共振，心境如渊——可运用战力上限提升至 2400（最强战斗卡全解锁）",
+		{"id": "pms_fp_sync3", "name": "精神同调·无垠", "desc": "与暗能同频共振，心境如渊——战力不再是门槛——任何战力的战斗卡都可驾驭（全部战斗卡解锁）",
 		 "branch": BRANCH_FIREPOWER, "tier": 7, "cost": 4, "requires": ["pms_fp_sync2"],
 		 "unlocks": [{"type": "power_cap", "value": 2400}],
 		 "effects": {}},
@@ -354,7 +354,7 @@ const EXTENSION_NODES: Dictionary = {
 		 "unlocks": [{"type": "card_skill", "id": "cps_solar_flare"}],
 		 "effects": {}, "capstone": true},
 		# ═══ v36 精神同调链终点（智能化系）：可用战力上限 ═══
-		{"id": "pms_int_sync3", "name": "精神同调·无垠", "desc": "与暗能同频共振，心境如渊——可运用战力上限提升至 2400（最强战斗卡全解锁）",
+		{"id": "pms_int_sync3", "name": "精神同调·无垠", "desc": "与暗能同频共振，心境如渊——战力不再是门槛——任何战力的战斗卡都可驾驭（全部战斗卡解锁）",
 		 "branch": BRANCH_INTELLIGENCE, "tier": 7, "cost": 4, "requires": ["pms_int_sync2"],
 		 "unlocks": [{"type": "power_cap", "value": 2400}],
 		 "effects": {}},

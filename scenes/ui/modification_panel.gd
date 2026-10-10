@@ -789,11 +789,20 @@ func _refresh_mod_list() -> void:
 	## v7.x 修复（对齐设计稿）：按当前选中卡的兵种预过滤，只显示适用的改造。
 	## 原版所有已解锁改造全列出，不适用的灰显写"⊘不适用"——视觉噪音巨大且不符合设计稿
 	## "改造库只显示该单位能用的改造"的预期。复用 _is_mod_applicable_to_card 做数据层过滤。
+	## v6.54 记录6#13：时代带过期的（前时代、不可安装）同样不进列表——已装的仍在上栏
+	## 带着黄色"已归档·仍生效"标注可见，不在此处复活（is_mod_era_compatible 只拦上限，
+	## 未来模块可装给旧卡，不受影响）。
 	var applicable_mod_ids: Array = []
 	var total_owned: int = unlocked_mod_ids.size()
+	var era_filtered: int = 0
+	var card_era: int = int(selected_card.era) if selected_card != null and "era" in selected_card else -1
 	for mod_id in unlocked_mod_ids:
-		if _is_mod_applicable_to_card(String(mod_id)):
-			applicable_mod_ids.append(mod_id)
+		if not _is_mod_applicable_to_card(String(mod_id)):
+			continue
+		if card_era >= 0 and not ModificationRegistry.is_mod_era_compatible(ModificationRegistry.get_data(String(mod_id)), card_era):
+			era_filtered += 1
+			continue
+		applicable_mod_ids.append(mod_id)
 
 	# v27.15（改造审查报告 5.6）：搜索过滤——名称/描述/原型/mod_id 不区分大小写包含匹配
 	if not _mod_search_text.is_empty():
@@ -811,7 +820,15 @@ func _refresh_mod_list() -> void:
 			empty_label.text = "无匹配改造\n（换个关键词，或点 ✕ 清空搜索）"
 		elif total_owned > 0:
 			# 2026-09-19 缓解"图纸明明掉过却看不到"误判：明示其余件数与去向
-			empty_label.text = "当前这张卡不适用任何已解锁改造\n（已有 %d 件其他兵种的图纸——换对应兵种的卡即可安装）" % total_owned
+			# v6.54 记录6#13：时代过期件数单列（已被时代过滤藏起，需在此交代去向）
+			if era_filtered > 0:
+				var unit_type_count: int = total_owned - era_filtered
+				if unit_type_count > 0:
+					empty_label.text = "当前这张卡不适用任何已解锁改造\n（%d 件其他兵种的图纸 + %d 件时代已归档——换对应兵种/时代带内的卡即可安装）" % [unit_type_count, era_filtered]
+				else:
+					empty_label.text = "当前这张卡不适用任何已解锁改造\n（%d 件图纸时代已归档——这张卡已超出其时代带，换早期时代的卡即可安装）" % era_filtered
+			else:
+				empty_label.text = "当前这张卡不适用任何已解锁改造\n（已有 %d 件其他兵种的图纸——换对应兵种的卡即可安装）" % total_owned
 		else:
 			empty_label.text = "暂无可用改造\n（尚未获得任何改造图纸——战斗掉落/制造舱补给）"
 		empty_label.add_theme_font_size_override("font_size", 13)

@@ -576,7 +576,19 @@ func _describe_faction_extra_item(item_id: String, is_card: bool, rep_cost: int)
 	if is_card:
 		return "功勋特购卡 · 获得独立养成实例"
 	if item_id.begins_with("mod_blueprint_pack_"):
-		return "组织特供改造图纸包 · 按该组织专长随机获得一张图纸（对应当前时代）"
+		# v6.56 记录1#11：补专长池说明——盲包随机范围=该组织偏好池（70% 概率走偏好）
+		var bias: Array = CompanyDefs.FACTION_MOD_BIAS.get(item_id.trim_prefix("mod_blueprint_pack_"), [])
+		if bias.is_empty():
+			return "组织改造图纸盲包 · 随机获得一张图纸（对应当前时代，无类型偏好）"
+		var type_labels := {
+			"armor": "装甲", "fort": "堡垒", "infantry": "步兵", "anti_air": "防空",
+			"air": "空军", "recon": "侦察", "artillery": "炮兵", "engineer": "工兵",
+			"universal": "通用",
+		}
+		var names: Array[String] = []
+		for b in bias:
+			names.append(String(type_labels.get(String(b), String(b))))
+		return "组织改造图纸盲包 · 随机获得一张图纸（对应当前时代）\n偏好类型：%s（70%% 概率命中该池）" % "、".join(names)
 	match item_id:
 		"nano_materials":
 			return "纳米材料 ×%d" % maxi(1, rep_cost)
@@ -629,7 +641,13 @@ func _on_buy_faction_extra(it, row_node: Control) -> void:
 		return
 	_flash_row(row_node, Color(DT.COLOR_GREEN_BRIGHT.r, DT.COLOR_GREEN_BRIGHT.g, DT.COLOR_GREEN_BRIGHT.b, 0.3))
 	if SignalBus != null and SignalBus.has_signal("show_toast"):
-		SignalBus.show_toast.emit("已购买：%s" % String(it.display_name))
+		var bought_msg := "已购买：%s" % String(it.display_name)
+		# v6.56 记录1#11：图纸盲包报实抽图纸名+稀有度（发放链回填 FactionShop 静态变量）——
+		# 原只报商品名，制造界面见的图纸名对不上（实机主诉"买的名和造的不一致"）
+		if String(it.item_id).begins_with("mod_blueprint_pack_") \
+				and not FactionShop.last_blueprint_drop_name.is_empty():
+			bought_msg += " → 获得图纸「%s」(%s)" % [FactionShop.last_blueprint_drop_name, FactionShop.last_blueprint_drop_rarity]
+		SignalBus.show_toast.emit(bought_msg)
 	# 记录3#7：全量行重建（40+ 行 + 逐行图标）延后一帧——点击反馈/提示先出，购买帧不再
 	# 冻住；旧行 queue_free 帧末生效，延后重建同时消掉记录1#9 的"同帧新旧行并存"闪烁。
 	_refresh_items.call_deferred()

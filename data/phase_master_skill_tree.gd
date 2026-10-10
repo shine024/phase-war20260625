@@ -273,13 +273,13 @@ static func _ensure_lookup_index() -> void:
 			_branch_index[sid] = branch
 
 ## 获取技能定义
-## v9 perf: O(1) 索引查询（原主表全扫 + 扩展表全扫）；返回深拷贝防调用方污染静态表
+## v9 perf: O(1) 索引查询（原主表全扫 + 扩展表全扫）。
+## v6.56 记录1#13：去深拷贝——棋盘渲染每行经 get_skill 查多次（can_unlock/前置链），
+## duplicate(true) 逐节点深拷是纯税；全部消费方（manager/panel/unlock_labels/测试）
+## 均为只读。改返静态表原引用——只读契约：调用方不得改写返回值，需改动自行 duplicate。
 static func get_skill(skill_id: String) -> Dictionary:
 	_ensure_lookup_index()
-	var node: Variant = _id_index.get(skill_id)
-	if node != null:
-		return (node as Dictionary).duplicate(true)
-	return {}
+	return _id_index.get(skill_id, {})
 
 ## 获取技能所属分支
 ## v9 perf: O(1) 索引查询（原主表全扫 + 扩展表全扫）

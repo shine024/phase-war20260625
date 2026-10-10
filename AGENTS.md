@@ -24,6 +24,19 @@
 6. **客观缺陷与审美取舍先分类**：对齐/一致性/覆盖类有客观正确答案的直接修；只有真正无对错的参数才交用户拍板，且必须附推荐值与对比图。
 7. **每类系统留常驻回归锁**：锁内断言覆盖上述全部维度，修复后回归自动拦截（范例：`tests/unit/combat/test_shield_foot_anchor.gd` 九形态+尺寸断言）。
 
+## v6.56 build/记录1.txt 三轮 20 条批：教程 close-wait 链 + 三卡顿根治 + 渗透红点区域化 + 武器音效真枪换血（2026-10-10，详见 CHANGELOG 与 docs/实机验收_记录1三轮_进度.md）
+
+**改教程面板点播链/技能树预热/渗透生成锚/武器音效槽前必读本节。**
+
+- **教程 close-wait（浏览式步）**：TPM `CLOSE_WAIT_SURFACE_FOR_ACTION`（步 action→surface_key，现 `open_enhancement→growth`）——点播开面板后**关面板才弹下一步**（toast 参数化「◀ 浏览完毕后关闭%s」）；出口漏斗唯一=`PhaseMasterSkillHost.close()`，入口漏斗=`_open()` 头部 `notify_surface_opened`（main 按钮/教程动作/selector/truck_base 工位四路全走）——**新开面板入口必须走 `_open()`，绕过=close-wait 永不结算**。`seen_surfaces` 集合随档持久化（key=seen_surfaces）。
+- **跳步环与实操门的优先级**：`complete_current_step` 尾部跳步环条件=`SURFACE_FOR_STEP 有键 ∧ seen_surfaces 已记 ∧ not _step_gate_blocked`——**装配/符文/加点等 `_assembly_touched` 类实操门步永不跳**（提前开过面板只免「纯认知」步，免不了「必须动手」步）。
+- **指路标防叠守卫第三口**：main `_is_any_overlay_open()`（七 overlay）∨ `PhaseMasterSkillHost.is_open()`（静态查 /root/PhaseMasterSkillHost/PhaseMasterSkillCanvas.visible——面板挂 /root 画布，七 overlay 清单看不到它）；truck_base 侧 `_has_open_embed_panel() ∨` 同款。新 overlay 若挂独立 CanvasLayer，防叠守卫必须同步认领。
+- **技能树三卡顿根治三件套（勿拆）**：①`SkillTree.get_skill` 返回**共享只读字典**（去 deep-copy，消费方全量只读已核——谁往里写谁破坏全体调用方）；②`phase_master_skill_panel._refresh(force:=false)`：不可见时置 `_dirty` 早退，`force=true` 无条件刷；`PhaseMasterSkillHost._prewarm_instance` 末尾统一 force 刷新（幂等重入安全）；③SaveManager 读档成功收尾（分批排空 else 分支+flush 尾两处）0.5s 后 `_post_load_skill_prewarm`（战斗态跳过）。**核爆预热=13 张全包**（`PREWARM_NUKE_PACK_TEXTURES`，旧预热只盖 1/13=开场核爆冷读主诉本体）。
+- **渗透生成锚=行军中取目的地**：`EndlessBlackgateManager._incursion_anchor_level()`（is_traveling→travel_dest else parked，clamp 1..LEVEL_COUNT）与 world_map `_truck_anchor_level()` 同口径——**勿改回 parked 直取**（行军中红点落身后=「行军到 90 关不见红点」主诉本体）；near 判定半径 `INCURSION_NEAR_RADIUS=10`=MAP_WINDOW_RADIUS 对齐；身后 `INCURSION_STALE_BEHIND=15` 提前过期；锚附近满 INCURSION_MAX 不再补点。bunker_manager 行军遭遇掷中渗透即 toast 指路。
+- **武器音效槽=CC0 真录音**：gun 九槽+shoot 源=The Free Firearm Sound Library（bart，CC0）单发剪裁；missile_hum=Kenney Sci-Fi thrusterFire_002。**换槽必走 RMS 匹配**（v6.54/v6.56 同配方 `tools/_tmp_sfx_swap_v656.py`）——直接丢文件进池=响度失衡；`*.ogg` 不入 git，换前备份 `_art_backup/`；CREDITS.md 登记+原包 SHA256。技能树加点分音=`_pick_unlock_sfx`（capstone→achievement/tier≥4→quest_complete/普通→blueprint_unlock），新分支节点想换音改这一处。
+- **结算 BGM 三分支**：`_on_battle_ended_bgm` 0.5s 延迟后黑门 `run_active`→boss / L100 胜→title / 其余→hub——勿在别处再挂 play_music 抢结算后 0.5s 窗口。
+- **卡图去雾判别式**（vis_player_070 冒烟案）：烟与机体连通域单域桥接时，连通域法失效→改「区域 ∧ alpha 带」判别：确认目标区**零实色像素**才可全区杀；实体抗锯齿边=只杀「2px 内无实色核」的半透明残根（`ndi.maximum_filter` 实色膨胀对照）。改完 _thumb384/_thumb256 同步重出+--import（PNG 直写不导入=显旧图）。
+
 ## v6.53 build/记录1.txt 二轮 16 条批：教程实操化 + 挂账棘轮 + 双入口大地图统一（2026-10-08，详见 CHANGELOG 与 docs/实机验收_记录1二轮_进度.md）
 
 **改教程装配门/行军棘轮/大地图容器/HoverTip 尺寸链前必读本节。** 台账 14/16 修（#5b L39 卡死、#16 星冥族待实机）。
@@ -50,6 +63,17 @@
 - **truck_base 背包预热**：`_ready` 尾 1.0s timer → `_warmup_embedded_backpack()`（幂等建隐藏 wrapper）——教程第 2 步首开卡仓不再同帧背 3136 行脚本编译；勿删（基地场景无 main 的 preload 链）。
 - **探针铁律追加**：懒加载管理器 ensure_loaded 后其 load_state 会**晚到覆盖**探针早设字段——先 `SaveManager.flush_deferred_manager_loads`+等帧，再重新 get 节点直写字段（视觉探针 `tests/_tmp_v651_wm_visual.tscn`，截图落 .godot/v651_shots/；英文审计探针 `tests/_tmp_v651_mod_label_audit.gd` 可重跑双清零）。
 - **存量过期红锁又两把（v6.42 文案双档没跟上锁）**：test_world_map_ready_builds_canvas 黑门弹窗、test_settlement_endless_report 横幅——已更新为双档各锁。全量套件余 7 失败均为存量（enemy_loadouts ×2、era filter ×2、attack_f0 ×2、card_info_toast_avoid 顺序敏感 flaky 单跑复绿），与本批无交集，另案处理。
+
+## v6.55 战场单位尺寸链 v2：身高锚定 + 动画主体适配（2026-10-10）
+
+**改单位呈现缩放/帧动画尺寸/卡图 bbox 消费前必读本节。** 旧链只做「帧画布 256↔卡图 512」画布 ×2 补偿，主体占比从未进公式——步兵 sheet 主体占画布高 0.93、坦克 0.25~0.42，×2 直接上屏=步兵比坦克高大（实测 mimic 168px vs T-90 24.7px，倒挂 6.8 倍）。
+
+- **尺寸单一真理源=「目标内容矩形」**：`CardFootAnchors.TARGET_CONTENT_H`（kind×era→目标屏高 px）+ `MAX_CONTENT_W`（兵种宽封顶）+ `MIN_CONTENT_W=34`（细高主体托底，**可越过目标高**——拟时者 91px 即托底产物）+ `HARD_CONTENT_W_CAP=168`（威压乘区后硬帽）。个别卡微调进 `RECT_OVERRIDE`（Vector2(宽,高)）。调档位只动这两张表；回归锁锁的是「步兵<装甲<堡垒」次序与适配数学，不锁具体数值。
+- **消费口两条，同吃一个矩形**：静态卡图=呈现层按卡图 CONTENT_BBOX 适配（`apply_battle_unit_presentation`）；帧动画=驱动器 `_compensate_size` v2 按 idle f0 **实扫**适配（`UnitFrameAnim._idle_content_frac`，PackedByteArray 快扫+按 key 缓存，**经 `_visual_rect` sprite meta 传递矩形**）。呈现层已把 attach 提前到头顶 UI 同步之前——血条/角标首刷即锚真实实体顶（`_anim_entity_top_frac` meta，`entity_top_y_for_sprite` 优先消费）。**无 `_visual_rect` 的 attach 调用方走旧画布 ×2 回退**——新直挂点想接新模型就先 set meta。
+- **脚线契约**：动画单位 offset.y 现由 sheet foot_frac 直算（内容底缘=节点原点）；护盾公式 offset+f_tex 两项同源自消=脚线落地面（此前 icon_ff≠sheet_ff 时坦克履带沉底 ~10-20px）。枪口 ff 唯一口=`MuzzleAnchors._foot_frac_for_unit`（**sheet ff 优先**，卡图标定兜底）。
+- **资产纪律**：`tools/anim_subject_normalize.py`（抠未键控底+attack 裁剪中位归一+写 anim.json `subject` 块，幂等）；**再生成 sheet 后必须重跑**，部署门=「无 subject 块=资产过期」（锁 test_anim_subject_fit）。改前外部备份（本批 `D:/godotplay/_art_backup/unit_anims_pre_subject_20261010/`）。本批成果：抠底 10 目录（开火黑方块上屏抢救）、attack 归一 152 目录、subject 全覆盖；校验 230/271——41 目录残差=attack 主体烟尘/火光污染 bbox 法不可达，其中 36 目录残差 ≤12%（难察觉）记美术债、5 目录 ≥15% 待 §十 重生成（m1a2sep/m1a2/t34_76/105mm/challenger2）；**ww1_105mm idle 与 attack 是两套美术**（开火换车+换朝向）另案；未抠底误报两例（pillbox/steel_fortress 边界透明=大体量美术，判据须「整帧高不透明 **且** 边界大部分不透明」）。
+- **探针**：`tests/_tmp_v655_subject_probe.tscn`（旧链复现行 vs 新链真跑行同屏，截图 .godot/subject_audit/probe_compare.png）。⚠️ `--script` 模式主循环未启动时子节点 `_ready` 推迟到首帧——探针在 `_initialize` 里量驱动器补偿后状态量到的是补偿前值，量驱动器行为必须跑窗口化场景或 gdunit。
+
 
 ## v6.41 教程框 z 序 × 符文步针对已开窗口批（2026-10-04，详见 CHANGELOG）
 

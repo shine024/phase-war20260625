@@ -1147,6 +1147,11 @@ func _warmup_backpack_aux_sections() -> void:
 				and child._presenter.has_method("warmup_aux_sections"):
 			child._presenter.warmup_aux_sections()
 			return
+	# v6.54 记录6#7：技能树预热——host 常驻 /root 与 truck_base 共用实例，此处先到
+	# 先建（成长页/相位仪点播首开零尖峰）；1.0s 错峰在揭幕峰后。
+	get_tree().create_timer(1.0).timeout.connect(func() -> void:
+		if is_inside_tree():
+			PhaseMasterSkillHost.prewarm(get_tree()))
 
 ## v27：教程首战部署提醒 Timer（重复 15s；部署成功/战斗结束自动停）
 var _tutorial_deploy_nudge_timer: Timer = null
@@ -2240,8 +2245,9 @@ func _maybe_spawn_tutorial_pointer() -> void:
 	if not is_inside_tree():
 		return
 	# v6.52（记录1#18）：任一 overlay 开着不亮指路标——暗幕+金环叠在面板上是实机
-	# 主诉"下一步提示悬浮在改造面板上"；面板关闭时 notify_surface_closed 会重亮
-	if _is_any_overlay_open():
+	# 主诉"下一步提示悬浮在改造面板上"；面板关闭时 notify_surface_closed 会重亮。
+	# v6.56（记录1#14）：补识 /root 级技能树画布（host 在两个场景共用，原守卫看不到）
+	if _is_any_overlay_open() or PhaseMasterSkillHost.is_open():
 		return
 	var tpm := get_node_or_null("/root/TutorialProgressionManager")
 	if tpm == null or not tpm.has_method("get_pending_surface"):

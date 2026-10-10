@@ -9865,3 +9865,47 @@ v6.48 挂账的其余批次品红边晕（attack 26 家 + idle 4 家，分属 ro
 - **#15 黑门波次暴露**：`get_enemy_wave_total()` endless 分支恒 0→HUD 永不显总波数。修=查 EBM `get_run_wave_limit()`（>0 显 limit+「✦第N波本体」后缀；=0 无限档显「本体第N波」），读 EBM 常量合 C3。
 - **待实机**：#5b L39 卡死（中置信=唯一纯空中题面关+部署空转，不盲修，等 trace.log）；#16 星冥族视觉（系统全链在库默认开，复测表现）。
 - **验证**：gdparse 全过；main.tscn headless 冒烟干净；定向回归锁 25/25 全绿（6 文件）。锁抓到 2 个自身 bug：HoverTip 兜底 reset_size 误调 CanvasLayer（非 Control 运行时炸，改落 _panel）；combo 锁③断言口径随 tooltip 迁 HoverTip 同步更新。
+
+## v6.54（2026-10-09）记录6三轮 SFX 换血批——Kenney CC0 真录音 14 槽替换自合成音
+
+实机主诉「音效不好/有合成感」批量换血（记录6三轮 #4/#5/#6/#8 先期）。源=Kenney 四包（Interface Sounds / Impact Sounds / Music Jingles / Sci-Fi Sounds，全 CC0 无署名义务）：button/button_hover→Interface click/tick 真录音；blueprint_unlock→confirmation_002（上扬双音）；**story_page 为新槽**（scratch 纸感划擦，comic_intro 翻页 v6.55 接线）；hit/impact_light/impact_heavy→Impact 三档金属；win→Music Jingles HIT01 管乐 stinger（v6.42 numpy 合成版用户仍不满意，本轮真录音破局）；laser_fire/rail_cannon/omega_cannon/rocket_launch/explosion/explosion_big→Sci-Fi 激光/低频爆（rocket_launch 源 5s 循环剪 0.95s+尾 0.25s 渐隐）。响度=RMS 匹配被换旧文件（astats 实测），混合配比不变；统一 OGG q6/44.1kHz。证据链=`_steam_assets/licenses/kenney_20261010/`（原包+License+SHA256）；换下前备份 `D:/godotplay/_art_backup/sfx_pre_v654_20261010/`。脚本 `tools/_tmp_sfx_swap_v654.py`。
+
+## v6.55（2026-10-10）记录6三轮 收口批 14 项 + 战场单位尺寸链 v2
+
+台账=`docs/实机验收_记录6三轮_进度.md`（24 条全落/定性）：
+
+- **#11 部署死锁看门狗（P0）**：我方全灭+部署次数池耗尽=战斗永久挂起（精神不是部署资源，普通战无该系统）。BattleManager 0.25s 节流探测死锁→播报+10s 判负倒计时→判负；战况条新增琥珀提示行（死锁倒计时>「我方无单位」>「下一波 N 秒」——波次计时首次有 UI 消费）。相位师战/黑门保留原终局语义。
+- **#16 渗透解锁降门**：实时心跳/行军遭遇两链被 is_blackgate_unlocked（通关 100）拦死=40+ 关零接触。新 `incursions_unlocked()`（通关第 25 关）三链统一换门；渗透编队强度锚宿主关自动缩放。
+- **#7/#12 技能树/卡仓预热**：PhaseMasterSkillHost 幂等 prewarm（main 0.6s 链尾+truck_base 空闲期双挂）；truck_base 空闲期 load_threaded 预热 main.tscn（#10 出击换场景命中缓存）。
+- **#3 开战错峰预热**：战斗开打后预热 spell/projectile/nuke 贴图，首击不再冷读+shader 首编译。
+- **#1 剧情曲**：comic_intro 挂 Man Down（hub_ww1 悲怆大提琴）贴牺牲叙事；#2 翻页音接 story_page（v6.54 新槽）。
+- **#13 前时代改造**：模块库预过滤加时代带（只拦上限=前时代，未来件可装不受影响）+空列表文案交代归档去向。
+- **#15 纪念墙文案**：「击败驻守相位师带回遗物」语义拧巴→「残核归返=安魂」框架四处改写，机制零改动。
+- **#17/#18/#19/#22**：GateLabel 测宽居中；波次点>12 紧凑态（HUD 不再被 30 字符撑宽）；HUD 关卡/状态条/结算四处接 is_endless_battle()→「黑门·第N波」；结算 toast 2s→6s。
+- **#9 精神同调文案去数字**（部署门=表内战力 max2400 与展示战力两口径交代）；#20 星冥独特弹道定性=系统在库、降门后自然出场；#21 机动舱旧动画定性=guardian_future_omega 未随 BIP6 重做（工单另批）；#23 缴获战力 dead data P0 修复。
+- **战场单位尺寸链 v2**（同日落地，铁律详见 AGENTS.md 对应节）：旧链只有画布 ×2 补偿、主体占比从未进公式→步兵比坦克高大（倒挂 6.8 倍）。新链=「目标内容矩形」单一真理源（CardFootAnchors.TARGET_CONTENT_H/MIN_CONTENT_W/HARD_CONTENT_W_CAP+RECT_OVERRIDE），静态卡图按 CONTENT_BBOX 适配、帧动画按 idle f0 实扫适配（`_visual_rect` meta 传递）；脚线=sheet foot_frac 直算；`tools/anim_subject_normalize.py` 抠底+attack 归一+subject 块（部署门=无 subject 块=资产过期）；回归锁锁「步兵<装甲<堡垒」次序。41 目录 bbox 法残差记美术债（36 难察觉/5 待重生成）。
+
+## v6.56（2026-10-10）build/记录1.txt 三轮 20 条批——教程 close-wait 链 + 三卡顿根治 + 渗透红点区域化 + 武器音效真枪换血
+
+台账=`docs/实机验收_记录1三轮_进度.md`（17 修+2 答复/挂账+1 待实机）。四项拍板：#7/#8 全量审计能落全落；#2 复用现有曲；#20 idle 浮动微调；#21 提前触达面板到步跳步。
+
+- **A 战法生效与文案（#7/#8）**：sky_net 三处文案统一（「1钢铁系+1雷霆系卡片技能同时激活：全体敌方攻击间隔+43%（攻速-30%）、行进速度-30%（条件消失后恢复）」——触发条件一句话讲全）；全量审计战法键消费链，**burn DOT tick 现吃 flame_damage_bonus 乘区**（module_effect_handler，此前点燃战术部分白点）；无消费路径键 7 个挂账（atk_armor_vs_threat/atk_armor_vs_new_enemy/def_center_bonus/atk_backline_bonus/sniper_never_miss/phoenix_revive_20/deploy_speed）。
+- **B 卡顿三连（#9/#12/#13）**：①技能树 `get_skill` 去 deep-copy（共享只读字典，消费方全量只读已核）+`_refresh(force)` 绕 visible 门+SaveManager 读档收尾 0.5s `_post_load_skill_prewarm`（读档改状态→首开重建不再留给点击帧）；②开场核爆卡顿真因=计时器种子=interval 第 1 帧即施放+13 张核爆贴图冷读且旧预热只盖 1/13→`prewarm_cast_assets_step` 三段平铺预热 nuke 全包；③教程步与手点走同一 host 预热。
+- **C 教程链（#4/#14/#21）**：①CARD_COLLECTION 步纯认知化（与装配实操步共用 open_backpack 不再各走一遍开/关循环）；②TPM 新增 CLOSE_WAIT_SURFACE_FOR_ACTION（open_enhancement→growth）+CLOSE_WAIT_SURFACE_NAMES——开面板→浏览→**关面板才弹下一步**，出口漏斗全汇入 `PhaseMasterSkillHost.close()`（`_open()` 四入口头部 notify_surface_opened/close 尾部 notify_surface_closed，`seen_surfaces` 随档持久化）；③**提前触达面板到步自动完成跳步**（跳步环带 `_step_gate_blocked` 保护——装配/符文/加点实操门步不跳）；指路标防叠守卫补 `PhaseMasterSkillHost.is_open()`（识 /root 画布）。
+- **D 渗透红点区域化（#18）**：三重根因=生成锚 parked−15..+5 后偏+显示窗半径吃掉+上限 3 被身后点占满。`_incursion_anchor_level()` 与 world_map 视野窗同口径（行军中=目的地）±INCURSION_NEAR_RADIUS=10；锚附近满 3 不再往身后补；身后 15 关外提前过期；行军遭遇掷中即 toast 指路。
+- **E 图纸盲包前后一致（#11）**：7 势力商品改名（钢壁防务/新星兵工/… ·改造图纸盲包）+`last_blueprint_drop_name/rarity` 静态回填——购买 toast 显真实掉落名与品质；商品描述列偏好池类型（70% 命中该池）。
+- **F 音频（#2/#3/#6/#5）**：①结算 BGM 三分支（黑门 run→bgm_boss / L100 胜→bgm_title / 其余→hub，0.5s 延迟错结算屏）；②TabBar.tab_changed 全局钩子→button 音（TabBar 非 BaseButton 吃不到 pressed 钩子，卡仓/改造/背包全部 tab 生效）；③技能树加点分音 `_pick_unlock_sfx`（奇点→achievement/深层→quest_complete/普通→blueprint_unlock）；④**武器音效 9 槽真枪换血**：The Free Firearm Sound Library（bart，OGA，CC0）+Kenney Sci-Fi 变体——gun_pistol=1911/gun_smg=M45/gun_rifle=AK-47/gun_mg=PPSh 点射/gun_shotgun=Mossberg/gun_sniper=Mosin/flak_fire=PPSh 连发段/shoot=AR-15/missile_hum=thrusterFire_002。多连发长录音瞬态检测剪单发+RMS 匹配（`tools/_tmp_sfx_swap_v656.py`）；CREDITS.md 登记+SHA256；备份 `_art_backup/sfx_pre_v656_20261010/`。
+- **G 美术（#10）**：全装型机动舱卡图 vis_player_070 枪口冒烟 PIL 去除——连通域证明烟与机体单域桥接后改区域+alpha 判别（烟区零实色像素、枪口邻接带只杀 2px 内无实色核残根）；_thumb384/256 重出+双备份+--import。
+- **H 呈现（#20）**：地面单位 idle 浮动 ±1.2→±2.5px（AIR ±4/FORT 不动）——微调提可辨性，若实机仍混淆下批考虑呼吸缩放/选中环。
+- **验证**：gdparse 改动文件全过（单行 lambda 内联 if 既知假阳性 ：830/:466 与 git HEAD 逐字节一致）；nuke 预热/教程链/渗透锚/音效换血逐项静态走查；#1/#20/武器音效待实机复听复看；不主动提交 git。
+
+
+## v6.57（2026-10-10）Flow 品红管线单位整卷重出批——omega BIP6/BIP6R + 022 侦察无人机 + 034 艾布拉姆斯Mk.II + 023 M1A2 SEP
+
+四单位（卡图+idle+attack）经 Flow(Nano Banana) 品红格网管线整卷重出，实录铁律落 docs/FLOW_精灵帧生成工作流.md：§9 全身机甲（3×2 逐排 ~9% 跳变逐帧机身归一、绿污染继承替代无差别 edge_unmix、RECOIL 后坐微动、bob idle 与攻击 rest 帧同位零跳变、cut_*/package_* 双脚本打包模式）、§10 飞行单位全程品红底（紫晕两段杀、sx/sy 分轴归一、洪泛去白+闭合白袋全局杀）、§10.4 验收页与缓存核验（steps 总位移=N×窗宽×显示倍率——022 批「半帧错位」实问根因；ctex 新鲜度以 .import path= 哈希 stat 为准）。
+
+- **023 mod_arm_m1a2sep**：v6.55 subject 残差 ≥15% 待重生成清单（5 目录之一）清偿案。门禁：品红 0 残留（despill 后二次键控+帧域杀 LANCZOS 晕）/rx 全 1.000/无贴边/地线齐/引擎实载 4-4 PASS；格3 保留 42.7px 下坐。锚点三处同步：敌 fireX 0.1875 / 我 fireX 0.8125 / fireY 21.28 / ff 0.0684（工具实测）。
+- **034 mod_arm_abrams_mk2**：锚点敌 fireX 0.1797 / 我 0.8203 / fireY 23.44 / ff 0.0527（工具实测）；格序 1待机→2蓄力橙星→3大焰+下坐 15.6px→4衰减→5硝烟左上飘→6闭合。
+- **022 mod_inf_scout_drone**：§10 首案；foot_frac 0.40 级（飞行悬空），质心 y 极差 2.7px。
+- **omega fut_arm_omega**：BIP6/BIP6R 双侧收口；锚点三处同步（我 fireX=1−敌 fireX；卡头脚 JSON compact 单行定点替换，禁 indent 重排全文件）。
+- **通用**：卡图换血后 generate_card_foot_anchors.py 必重扫，ff 全走 tools/_tmp_anim_foot_frac.py；验收页（.gitignore 不入库）两病修：flex-shrink 半帧错位→绝对定位、等比 2x 显示（帧窗 512²，位移 3072/2048）；重出前旧卷备份 .godot/unit_review/flow_*/backup/。

@@ -4,7 +4,8 @@ class_name TacticDetector
 ##  v8.x 战法检测系统
 ##
 ##  每 1s 检测场上友军兵种组合，匹配 tactics.gd 中 18 个战法的激活条件。
-##  满足条件即激活全局 stat_bonus，应用到全体友军。
+##  满足条件即激活全局 stat_bonus，经静态镜像（_s_merged_bonus/_s_specials）生效到
+##  全体友军/敌方（v6.56 修复：原实现写入私有缓存后零消费，全部战法空转）。
 ##
 ##  接入点：battle_manager._process(delta) 中调用 update(delta)
 ##  依赖：
@@ -12,7 +13,7 @@ class_name TacticDetector
 ##    - PhaseMasterSkillManager（查询已解锁的 tactic 节点）
 ##    - CardPeriodicSkillEngine（查询已激活的卡片技能 family，用于战法条件）
 ##
-##  差异更新：每次检测后比较新旧激活集，只对变化的单位应用/移除 buff
+##  差异更新：每次检测后比较新旧激活集，变化时重建静态镜像（消费方轮询，见 _s_* 声明）
 ## ═══════════════════════════════════════════════════════════
 
 const GC = preload("res://resources/game_constants.gd")
@@ -26,13 +27,29 @@ var _skill_manager: Node = null  # PhaseMasterSkillManager autoload
 var _card_skill_engine: RefCounted = null  # CardPeriodicSkillEngine（RefCounted，非 Node）
 ## 当前已激活的战法 ID 集合（用于差异更新）
 var _active_tactics: Dictionary = {}  # tactic_id → true
-## 已应用的 stat_bonus 缓存（用于差异移除）
-var _applied_bonus: Dictionary = {}  # tactic_id → stat_bonus dict
+
+## ── v6.56 静态镜像（战法效果全局查询口）──────────────────────
+## v6.56（记录1三轮 #7/#8）修复：原实现把 stat_bonus 写进私有 _applied_bonus 后
+## 全项目零消费——17 个战法全部「检测到但不应用」。现改为实例检测、静态查询：
+##   construct_unit   → 0.5s 轮询 get_merged_bonuses() 应用/回退运行时加成
+##   enemy_unit       → get_enemy_move_mult()/get_enemy_aspd_delta_mult() 攻速移速压制
+##                      + take_damage 对 Boss 倍增（atk_vs_boss_mult）
+##   module_effect_handler → has_special("immune_burn") 免燃 / 火焰 DOT 加成
+## 静态读、实例写；setup()（每场战斗）与 reset()（战斗结束）双向清空，防跨场泄漏。
+static var _s_active_ids: Dictionary = {}   # tactic_id → true
+static var _s_merged_bonus: Dictionary = {} # stat_bonus 键 → 累加值（激活战法求和）
+static var _s_specials: Dictionary = {}     # special 标记 → true
+var _enemy_units_node: Node = null  # v6.56: 敌方容器（enemy_hp_drain_1pct 用）
 
 func setup(deps: Dictionary) -> void:
 	_player_units_node = deps.get("player_units_node", null)
 	_skill_manager = deps.get("skill_manager", null)
 	_card_skill_engine = deps.get("card_skill_engine", null)
+	_enemy_units_node = deps.get("enemy_units_node", null)
+	# 新一场战斗：清空上一场的静态镜像（battle_manager 开战时会带 enemy_units_node 重setup）
+	_s_active_ids = {}
+	_s_merged_bonus = {}
+	_s_specials = {}
 
 ## 每帧调用（由 battle_manager._process 调用）
 func update(delta: float) -> void:
@@ -46,11 +63,36 @@ func update(delta: float) -> void:
 func reset() -> void:
 	_timer = 0.0
 	_active_tactics.clear()
-	_applied_bonus.clear()
+	_s_active_ids = {}
+	_s_merged_bonus = {}
+	_s_specials = {}
 
 ## 获取当前已激活的战法列表（供 UI/调试）
 func get_active_tactics() -> Array:
 	return _active_tactics.keys()
+
+# ─────────────────────────────────────────────
+#  v6.56 静态查询口（消费方见 _s_* 声明处注释）
+# ─────────────────────────────────────────────
+
+## 激活战法的合并 stat_bonus（键求和）。空 Dictionary = 无战法生效。
+static func get_merged_bonuses() -> Dictionary:
+	return _s_merged_bonus
+
+## 特殊机制标记查询（immune_burn / enemy_hp_drain_1pct / decapitation_active 等）
+static func has_special(id: String) -> bool:
+	return _s_specials.has(id)
+
+## 敌方移速乘区（enemy_move_speed_penalty 0.30 = 行进速度 -30%）
+static func get_enemy_move_mult() -> float:
+	var p: float = float(_s_merged_bonus.get("enemy_move_speed_penalty", 0.0))
+	return clampf(1.0 - p, 0.05, 1.0)
+
+## 敌方攻速 delta 乘区（并入 _process_attack_timing 的 _atk_delta_mult 链）。
+## 攻速 -30% = 开火节奏 ×0.70（与 ECM/减速光环同语义，见 ConstructUnitAI.get_attack_delta_scale）。
+static func get_enemy_aspd_delta_mult() -> float:
+	var p: float = float(_s_merged_bonus.get("enemy_attack_speed_penalty", 0.0))
+	return clampf(1.0 - p, 0.05, 1.0)
 
 # ─────────────────────────────────────────────
 #  内部：检测与 Buff 应用
@@ -88,6 +130,18 @@ func _detect_and_apply() -> void:
 
 	# 差异更新：移除失效的，添加新激活的
 	_apply_diff(new_active)
+
+	# v6.56: 特殊机制 tick——「全面战争」敌方每秒 -1% 最大 HP（战法激活期间持续）
+	if _s_specials.has("enemy_hp_drain_1pct") and _enemy_units_node != null:
+		for e in _enemy_units_node.get_children():
+			if e == null or not is_instance_valid(e) or not e.has_method("take_damage"):
+				continue
+			if not ("hp" in e) or float(e.hp) <= 0.0:
+				continue
+			var es = e.get("stats") if "stats" in e else null
+			var mh: float = float(es.max_hp) if es != null else 0.0
+			if mh > 0.0:
+				e.take_damage(mh * 0.01, null)
 
 ## 收集场上所有友军单位
 func _collect_player_units() -> Array:
@@ -202,19 +256,35 @@ func _apply_diff(new_active: Dictionary) -> void:
 			_apply_tactic_buff(new_id)
 			_active_tactics[new_id] = true
 
-## 应用单个战法的 Buff 到全体友军
+## 应用单个战法的 Buff（v6.56: 重建静态镜像，消费方轮询生效）
 func _apply_tactic_buff(tactic_id: String) -> void:
-	var def: Dictionary = TacticsDef.get_tactic(tactic_id)
-	var stat_bonus: Dictionary = def.get("effects", {}).get("stat_bonus", {})
-	if stat_bonus.is_empty():
-		return
-	_applied_bonus[tactic_id] = stat_bonus.duplicate(true)
+	_rebuild_static_mirror()
 
-## 移除单个战法的 Buff
+## 移除单个战法的 Buff（v6.56: 同上）
 func _remove_tactic_buff(tactic_id: String) -> void:
-	_applied_bonus.erase(tactic_id)
+	_rebuild_static_mirror()
 
-## 清除所有战法（战斗结束）
+## 重建静态镜像：激活战法的 stat_bonus 求和 + special 收集。
+## 消费方（construct_unit/enemy_unit/module_effect_handler）读静态即可，
+## 无需逐单位推送；战中新生单位天然继承当前战法状态。
+func _rebuild_static_mirror() -> void:
+	_s_active_ids = _active_tactics.duplicate()
+	var merged: Dictionary = {}
+	var specials: Dictionary = {}
+	for tid in _active_tactics:
+		var def: Dictionary = TacticsDef.get_tactic(tid)
+		var fx: Dictionary = def.get("effects", {})
+		var sb: Dictionary = fx.get("stat_bonus", {})
+		for k in sb:
+			merged[k] = float(merged.get(k, 0.0)) + float(sb[k])
+		for sp in fx.get("special", []):
+			specials[sp] = true
+	_s_merged_bonus = merged
+	_s_specials = specials
+
+## 清除所有战法（战斗结束/我方全灭）
 func _clear_all_tactics() -> void:
 	_active_tactics.clear()
-	_applied_bonus.clear()
+	_s_active_ids = {}
+	_s_merged_bonus = {}
+	_s_specials = {}

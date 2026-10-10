@@ -695,6 +695,10 @@ func _refresh_info_sections(card: CardResource) -> void:
 			elif card.has_method("get_current_power"):
 				power = card.get_current_power()
 			power_value_label.text = str(maxi(power, 0))
+			# v6.54 记录6#23：缴获星冥卡口径注——缴获=基础体，战场个体受暗能潮汐
+			# （波次乘区）强化，战斗徽标数字更高是设定口径（实机"差异很大"的解惑位）
+			if card.is_dropped_card and int(card.era) == 5:
+				power_value_label.tooltip_text = "缴获为基础体评级。战场遭遇的星冥个体受暗能潮汐强化（波次越深越强），战斗中徽标战力更高属正常口径。"
 		var cost_txt := "%d⚡" % int(card.energy_cost)
 		_refresh_bottom_row(_cached_display_stats, card.era, cost_txt)
 	else:

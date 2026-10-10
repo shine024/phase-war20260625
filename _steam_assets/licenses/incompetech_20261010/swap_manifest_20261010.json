@@ -1,0 +1,16 @@
+{
+  "_comment": "Phase War BGM 增补清单 2026-10-10（v6.54 记录6三轮 #1：剧情开场 BGM）。源=incompetech（Kevin MacLeod）CC BY 4.0。mp3 为项目外原始下载归档 D:/godotplay/_art_backup/incompetech_sources_20261010/。许可证据沿用 incompetech_20260926/（含 legalcode 全文与 FAQ 快照），本目录只存增量哈希。",
+  "manifest": [
+    {
+      "slot": "bgm_intro",
+      "mp3": "D:/godotplay/_art_backup/incompetech_sources_20261010/bgm_intro__Long Note One.mp3",
+      "want_sec": 440,
+      "title": "Long Note One",
+      "artist": "Kevin MacLeod (incompetech.com)",
+      "isrc": "USUAN1100418",
+      "src_url": "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Long%20Note%20One.mp3",
+      "license": "Licensed under Creative Commons: By Attribution 4.0 https://creativecommons.org/licenses/by/4.0/",
+      "note": "剧情漫画开场（comic_intro）专用：低沉氛围钢琴，取代标题曲带入的错配 (#1)"
+    }
+  ]
+}

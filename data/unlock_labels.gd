@@ -131,7 +131,7 @@ const TACTIC_LABELS: Dictionary = {
 	"tactic_depth_operation": {"name": "纵深作战", "desc": "≥3不同兵种：全体全属性+10%", "icon": "🌐", "tier": 1},
 	# 高级战法（5）
 	"tactic_blitz": {"name": "闪电穿插", "desc": "≥3快攻：快攻+40%攻速、+30%伤害", "icon": "⚡", "tier": 2},
-	"tactic_sky_net": {"name": "天罗地网", "desc": "钢铁+雷霆：全体敌方-30%攻速/移速", "icon": "🕸", "tier": 2},
+	"tactic_sky_net": {"name": "天罗地网", "desc": "1钢铁系+1雷霆系卡片技能同时激活：全体敌方攻击间隔+43%（攻速-30%）、行进速度-30%", "icon": "🕸", "tier": 2},
 	"tactic_inferno_counter": {"name": "纵火反击", "desc": "≥2火焰：全体+20%HP，死亡20%复活", "icon": "🔥", "tier": 2},
 	"tactic_4d_strike": {"name": "四维打击", "desc": "4家族各1技能：全体+25%全属性", "icon": "✨", "tier": 2},
 	"tactic_total_war": {"name": "全面战争", "desc": "4终极技能：全体+40%全属性，敌方每秒-1%HP", "icon": "☢️", "tier": 2},

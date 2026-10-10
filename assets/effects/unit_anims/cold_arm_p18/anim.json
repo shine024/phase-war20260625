@@ -1,1 +1,1 @@
-{"fps": 8, "frame_size": 256, "counts": {"idle": 8, "attack": 8}, "outline": {"baked": true, "width_px": 4, "color": [13, 18, 28, 217], "frame_basis": 256}, "foot_frac": 0.0684}
+{"fps": 8, "frame_size": 256, "counts": {"idle": 8, "attack": 8}, "outline": {"baked": true, "width_px": 4, "color": [13, 18, 28, 217], "frame_basis": 256}, "foot_frac": 0.0684, "subject": {"idle_w": 1.0, "idle_h": 0.6055, "attack_w": 0.9444, "attack_h": 0.5312, "tool": "anim_subject_normalize.py"}}

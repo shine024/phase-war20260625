@@ -365,6 +365,11 @@ static func compute_source_tags_for_stats(stats) -> Array:
 		tags.append("armored")
 	if int(stats.combat_kind) == GC.CombatKind.AIR:
 		tags.append("aircraft")
+	# v6.56（记录1三轮 #7/#8）：fast 标签派生——词表此前从未产出 "fast"，钳形攻势/
+	# 两翼包抄/诱敌深入/声东击西/闪电穿插 5 个战法的 min_count_by_tag{"fast":N}
+	# 条件永不满足。口径：轻装/空中主类 = 高机动单位，计入 fast。
+	if int(stats.combat_kind) == GC.CombatKind.LIGHT or int(stats.combat_kind) == GC.CombatKind.AIR:
+		tags.append("fast")
 	if bool(stats.get_meta("is_engineer", false)):
 		tags.append("engineer")
 	if bool(stats.get_meta("is_ecm", false)):

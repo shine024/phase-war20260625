@@ -46,6 +46,12 @@ var _dot_rects: Array[ColorRect] = []  # v27.12: 进度点缓存复用（原每�
 
 func _ready() -> void:
 	DesignTokens.ensure_cjk_fallback()
+	# v6.54 记录6#1：序章 BGM 换 Man Down（8 把大提琴哀伤弦乐，现役 hub_ww1 同曲）——
+	# 原标题曲「At Launch」轻快向，与深航计划牺牲叙事不匹配（实机主诉）。序章全程
+	# （含梦境战回归续播）挂此曲；进梦境战由 dream_battle 切 battle_future，回归时本场景
+	# 重新 _ready 自会切回。
+	if AudioManager != null and AudioManager.has_method("play_music"):
+		AudioManager.play_music("hub_ww1")
 	mouse_filter = Control.MOUSE_FILTER_IGNORE   # 点击落进 _unhandled_input 做翻格
 	var backdrop := ColorRect.new()
 	backdrop.color = Color(0, 0, 0)
@@ -290,7 +296,9 @@ func _show_panel(i: int) -> void:
 	_fx = create_tween()
 	_fx.tween_property(_narr_label, "visible_ratio", 1.0,
 		clampf(str(p["text"]).length() * 0.022, 0.5, 1.6))
-	_play_sfx("panel_open")
+	# v6.54 记录6#2：翻格提示音换 story_page（纸感划擦，Kenney CC0）——panel_open 的
+	# UI 气密声与纸质漫画翻页语境不搭（实机主诉"按钮提示音和剧情不匹配"）
+	_play_sfx("story_page")
 
 func _refresh_dots(cur: int) -> void:
 	# v27.12: 进度 ColorRect 首建后缓存复用——翻格只改颜色透明度，不再 free+new 重建 11 个节点

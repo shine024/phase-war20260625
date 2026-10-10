@@ -3,6 +3,9 @@ class_name MuzzleAnchors
 
 const EnemyUnitManifest = preload("res://data/enemy_unit_manifest.gd")
 const CardFootAnchors = preload("res://data/card_foot_anchors.gd")
+## v6.55: 帧动画单位的 sheet foot_frac 优先（枪口 ff 与开火帧同源；无循环依赖——
+## unit_frame_anim 不回引本文件）
+const UnitFrameAnim = preload("res://scripts/battle/unit_frame_anim.gd")
 
 ## 弹道/枪口锚点数据（独立于 ff/hf，由 docs/enemy_fire_spawn.html 标注）
 ## fireX: 0~1 (0=纹理左, 0.5=中, 1=右)，相对纹理宽度
@@ -86,7 +89,7 @@ const MUZZLE: Dictionary = {
 	"platform_modern_medium": {"fireX": 0.1177, "fireY_pct": 44.93},
 	"platform_modern_guard_heavy": {"fireX": 0.08, "fireY_pct": 45},
 	"mod_arm_abrams_e": {"fireX": 0.0967, "fireY_pct": 44.24},
-	"mod_arm_abrams_mk2": {"fireX": 0.124, "fireY_pct": 54},
+	"mod_arm_abrams_mk2": {"fireX": 0.1797, "fireY_pct": 23.44},
 	"platform_modern_radar": {"fireX": 0.1, "fireY_pct": 44},
 	"mod_arty_mlrs_e": {"fireX": 0.4229, "fireY_pct": 41.31},
 	"mod_inf_patriot": {"fireX": 0.2119, "fireY_pct": 45.21},
@@ -125,7 +128,7 @@ const MUZZLE: Dictionary = {
 	"fut_air_drone": {"fireX": 0.0654, "fireY_pct": 42.09},
 	"fut_air_regen_frame": {"fireX": 0.1924, "fireY_pct": 46},
 	"fut_air_heavy_carrier": {"fireX": 0.1006, "fireY_pct": 44.63},
-	"fut_arm_omega": {"fireX": 0.1033, "fireY_pct": 44},
+	"fut_arm_omega": {"fireX": 0.2656, "fireY_pct": 46.7},
 	"fut_fort_ion": {"fireX": 0.1299, "fireY_pct": 43.07},
 	"fut_fort_shield": {"fireX": 0.4893, "fireY_pct": 37.01},
 	# ── v26.12 派生近似（v27 补）：八飞机敌我标注表均未标，coverage 冒烟红。
@@ -151,6 +154,7 @@ const MUZZLE: Dictionary = {
 	"foe_ww2_inf_bazooka": {"fireX": 0.0742, "fireY_pct": 63.28},
 	"foe_cold_inf_btr60": {"fireX": 0.3672, "fireY_pct": 51.56},
 	"foe_mod_arm_m1a1": {"fireX": 0.1006, "fireY_pct": 45.02},
+	"foe_mod_inf_scout_drone": {"fireX": 0.1406, "fireY_pct": 56.05},
 	"foe_mod_arty_m270": {"fireX": 0.1768, "fireY_pct": 48.93},
 	"foe_fut_inf_scout_mech": {"fireX": 0.2998, "fireY_pct": 35.45},
 	"foe_fut_arm_nexus": {"fireX": 0.1494, "fireY_pct": 48.54},
@@ -179,7 +183,7 @@ const MUZZLE: Dictionary = {
 	"foe_cold_inf_bmp1": {"fireX": 0.13, "fireY_pct": 48.7},
 	"foe_cold_sup_m113": {"fireX": 0.245, "fireY_pct": 43.9},
 	"foe_cold_sup_zsu23": {"fireX": 0.3828, "fireY_pct": 17.97},
-	"foe_mod_arm_m1a2sep": {"fireX": 0.085, "fireY_pct": 45.0},
+	"foe_mod_arm_m1a2sep": {"fireX": 0.1875, "fireY_pct": 21.28},
 	"foe_fut_arm_hovertank": {"fireX": 0.0469, "fireY_pct": 80.08},	"foe_ww1_arm_rolls": {"fireX": 0.0156, "fireY_pct": 50.39},
 	"foe_ww1_arm_ft17": {"fireX": 0.0273, "fireY_pct": 68.36},
 	"foe_ww1_inf_cavalry": {"fireX": 0.0312, "fireY_pct": 33.59},
@@ -244,13 +248,18 @@ static func get_fire_offset(unit_id: String, sprite) -> Vector2:
 
 
 ## archetype_id → icon 基名（vis_enemy_NNN 或同名卡图）→ 扫描脚部锚点。
-## 键解析与 get_anchor 同起点（剥 foe_ 前缀），帧动画单位同样适用
-## （ff 是每卡数据，帧内容占比已与卡图 bbox 归一）。
+## 键解析与 get_anchor 同起点（剥 foe_ 前缀），帧动画单位同样适用。
+## v6.55: 帧动画单位优先取 sheet 自身 foot_frac（anim.json，部署工具实测）——
+## 开火时枪口在 attack 帧上显示，ff 用卡图标定值会偏 (icon_ff-sheet_ff)×画布×scale
+## （实测 mark4 卡图 0.34 vs sheet 0.053）。查无 sheet 回退卡图标定。
 ## A/B 段平台敌（如 ww2_arm_tiger）图标经 platform 映射目标反查（与 get_anchor 步骤③同源）。
 static func _foot_frac_for_unit(unit_id: String) -> float:
 	var key := String(unit_id).strip_edges()
 	if key.begins_with("foe_"):
 		key = key.substr(4)
+	var sheet_ff: float = UnitFrameAnim.get_sheet_foot_frac(key)
+	if sheet_ff >= 0.0:
+		return sheet_ff
 	var icon: String = EnemyUnitManifest.visual_id_for_archetype(key)
 	if icon.is_empty() or icon == key:
 		var mapped: String = EnemyUnitManifest.platform_visual_id_for(key)

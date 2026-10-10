@@ -83,6 +83,14 @@ var _pm_stalemate_sec: float = 0.0
 var _time_limit_left: float = 0.0
 var _time_limit_warned_30: bool = false
 var _time_limit_warned_10: bool = false
+# v6.55 记录6#11：普通战卡死看门狗——我方清零 + 部署次数耗尽 = 结构性死锁
+# （原版无提示无兜底，第18关"不前进"主诉）。激活后 10s 判负倒计时；
+# get_stall_hint() 供战况条每秒轮询显示（含下一波倒计时）。
+const STALL_LOSE_COUNTDOWN_SEC: float = 10.0
+var _stall_lose_left: float = -1.0  # <0 未激活
+var _stall_probe_cd: float = 0.0  # 场上重数/次数池探测节流（0.25s，避免每帧遍历）
+var _stall_probe_alive: bool = true
+var _stall_probe_deployable: bool = true
 ## P2-8：PM 战全场零有效伤害的判负阈值。挂机（world_map 自动部署）打进 PM 僵持
 ## 时胜负仅由基地销毁驱动，无此超时会永卡一场战斗。
 const PM_STALEMATE_TIMEOUT_SEC: float = 180.0
@@ -287,6 +295,9 @@ func _process(delta: float) -> void:
 	if not _card_grid_combat_started:
 		return
 
+	# v6.55 记录6#11：普通战卡死看门狗（死锁判负倒计时；提示数据源见 get_stall_hint）
+	_update_stall_watchdog(delta)
+
 	if _spawn_system.should_spawn_wave():
 		var do_consume: bool = true
 		if _spawn_system.can_spawn_more_waves():
@@ -378,6 +389,11 @@ func start_battle(battle_scene: Node) -> void:
 	_time_limit_warned_30 = false
 	_time_limit_warned_10 = false
 	_pm_stalemate_sec = 0.0
+	# v6.55 记录6#11：卡死看门狗状态复位
+	_stall_lose_left = -1.0
+	_stall_probe_cd = 0.0
+	_stall_probe_alive = true
+	_stall_probe_deployable = true
 
 	# 性能优化：初始化空间分区系统
 	_setup_spatial_grid()
@@ -385,6 +401,7 @@ func start_battle(battle_scene: Node) -> void:
 	_setup_player_projectile_batch()
 	_setup_player_indirect_batch()
 	_setup_enemy_indirect_batch()
+	_run_cast_asset_prewarm()   # v6.54 记录6#3：施法贴图错峰预热（首技能卡顿）
 
 	# 读取波次参数
 	var enemy_wave_interval: float = 12.0
@@ -468,6 +485,7 @@ func start_battle(battle_scene: Node) -> void:
 	if _tactic_detector != null:
 		_tactic_detector.setup({
 			"player_units_node": player_units_node,
+			"enemy_units_node": enemy_units_node,  # v6.56: enemy_hp_drain_1pct / 敌方 debuff 依赖
 			"skill_manager": get_node_or_null("/root/PhaseMasterSkillManager"),
 			"card_skill_engine": _card_skill_engine,
 		})
@@ -1008,6 +1026,55 @@ func _on_unit_damaged_stalemate_reset(_unit: Node, _is_player: bool, amount: flo
 func _on_driver_hp_changed_stalemate_reset(_cur: float, _mx: float) -> void:
 	_pm_stalemate_sec = 0.0
 
+## v6.55 记录6#11：普通战卡死看门狗——仅普通格子战生效（PM 战/黑门各有终局语义）。
+## 死锁定义：我方场上 0 单位 且 所有绿槽卡部署次数耗尽（无任何自救手段）。
+## 此状态玩家无从行动也等不来胜负 → 播报 + 10s 倒计时判负（与限时歼灭同语义）。
+func _update_stall_watchdog(delta: float) -> void:
+	if not battle_active or battlefield == null or _spawn_system == null:
+		return
+	if _is_phase_master_battle:
+		return
+	if GameManager != null and GameManager.has_method("is_endless_battle") and GameManager.is_endless_battle():
+		return  # 黑门：撑到死模式，全军覆没本就是终局，无需倒计时
+	# 探测节流 0.25s：场上重数要遍历单位容器，次数池要扫绿槽，均不值每帧
+	_stall_probe_cd -= delta
+	if _stall_probe_cd <= 0.0:
+		_stall_probe_cd = 0.25
+		_stall_probe_alive = recount_player_units_on_field() > 0
+		_stall_probe_deployable = _spawn_system.has_any_deploy_uses()
+	if _stall_probe_alive or _stall_probe_deployable:
+		_stall_lose_left = -1.0  # 有自救手段即解除（含维修车返还次数的场景）
+		return
+	if _stall_lose_left < 0.0:
+		_stall_lose_left = STALL_LOSE_COUNTDOWN_SEC
+		if SignalBus != null and SignalBus.has_signal("show_toast"):
+			SignalBus.show_toast.emit("我方全灭且部署次数耗尽：%d 秒后判定战败" % int(STALL_LOSE_COUNTDOWN_SEC))
+	_stall_lose_left -= delta
+	if _stall_lose_left <= 0.0:
+		_stall_lose_left = -1.0
+		if SignalBus != null and SignalBus.has_signal("show_toast"):
+			SignalBus.show_toast.emit("全军覆没，判定战败")
+		end_battle(false)
+
+## v6.55 记录6#11：战况条（battle_status_strip）每秒轮询的卡死提示；空串=无提示。
+## 优先级：死锁倒计时 > 我方无单位可部署提醒 > 敌方清场后的下一波倒计时。
+func get_stall_hint() -> String:
+	if _stall_lose_left >= 0.0:
+		return "部署耗尽 %.0f 秒后判负" % maxf(0.0, _stall_lose_left)
+	if not battle_active or battlefield == null or _spawn_system == null:
+		return ""
+	if _is_phase_master_battle or not _card_grid_combat_started:
+		return ""
+	if GameManager != null and GameManager.has_method("is_endless_battle") and GameManager.is_endless_battle():
+		return ""
+	if _stall_probe_alive:
+		return ""
+	if _stall_probe_deployable:
+		return "我方无单位——点击我方格子部署"
+	if not _spawn_system.all_enemy_waves_spawned():
+		return "下一波 %d 秒后来袭" % ceili(_spawn_system.get_enemy_wave_time_remaining())
+	return ""  # 死锁分支由 _stall_lose_left 顶部兜住
+
 
 func _on_enemy_phase_driver_destroyed() -> void:
 	if not battle_active:
@@ -1474,6 +1541,23 @@ func _setup_enemy_indirect_batch() -> void:
 	n.is_player_side = false
 	battlefield.add_child(n)
 	enemy_indirect_batch = n
+
+
+## v6.54 记录6#3：施法贴图错峰预热——开打 0.5s 后每帧步进 3 张进 PhaseInstrumentAbilities
+## 静态缓存，读完自停。首技能的卡顿=首击冷读贴图+shader 首编译同帧叠加；预热把冷读
+## 移到开局空闲期。快速重开战斗时重跑无害（缓存命中即返回）。
+var _cast_prewarm_next: int = -1
+
+func _run_cast_asset_prewarm() -> void:
+	_cast_prewarm_next = 0
+	get_tree().create_timer(0.5).timeout.connect(_cast_prewarm_step)
+
+func _cast_prewarm_step() -> void:
+	if _cast_prewarm_next < 0:
+		return
+	_cast_prewarm_next = PhaseInstrumentAbilities.prewarm_cast_assets_step(_cast_prewarm_next)
+	if _cast_prewarm_next >= 0 and is_inside_tree():
+		get_tree().create_timer(0.016).timeout.connect(_cast_prewarm_step)
 
 
 func _cleanup_enemy_indirect_batch() -> void:

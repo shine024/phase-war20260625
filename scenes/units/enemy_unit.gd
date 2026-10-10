@@ -21,6 +21,7 @@ const CombatTargeting = preload("res://scripts/combat_targeting.gd")
 const RankRules = preload("res://data/rank_rules.gd")
 const DefaultCards = preload("res://data/default_cards.gd")
 const TargetSelection = preload("res://scripts/battle/target_selection.gd")
+const TacticDetectorScript = preload("res://scripts/battle/tactic_detector.gd")  # v6.56: 战法静态镜像（敌方攻速/移速压制、对 Boss 倍增）
 const WeaponProjectileVfx = preload("res://scripts/weapon_projectile_vfx.gd")  # v20.19: 机枪换弹周期判定/补偿
 const DamageAttenuation = preload("res://scripts/battle/damage_attenuation.gd")
 const AttackCalculator = preload("res://scripts/battle/attack_calculator.gd")
@@ -1068,9 +1069,10 @@ func _physics_process(delta: float) -> void:
 			if d <= _enemy_fire_range_for_motion():
 				velocity = Vector2.ZERO
 			else:
-				velocity = Vector2(-move_speed, 0.0)
+				# v6.56: 战法移速压制（天罗地网 enemy_move_speed_penalty）
+				velocity = Vector2(-move_speed * TacticDetectorScript.get_enemy_move_mult(), 0.0)
 		else:
-			velocity = Vector2(-move_speed, 0.0)
+			velocity = Vector2(-move_speed * TacticDetectorScript.get_enemy_move_mult(), 0.0)
 	if _hit_stun_left <= 0.0:
 		_process_attack_timing(delta)
 	move_and_slide()
@@ -1382,6 +1384,10 @@ func _process_attack_timing(delta: float) -> void:
 	# v26.13(B2): boss 半血狂暴（interval ×0.8 = delta 积累 ×1.25）
 	if has_meta("_enrage_active"):
 		_atk_delta_mult = maxf(_atk_delta_mult, 1.0) * 1.25
+	# v6.56: 战法攻速压制（天罗地网 enemy_attack_speed_penalty，与 ECM/减速光环同语义）
+	var _tactic_aspd: float = TacticDetectorScript.get_enemy_aspd_delta_mult()
+	if _tactic_aspd < 1.0:
+		_atk_delta_mult = maxf(_atk_delta_mult, 1.0) * _tactic_aspd
 	if _atk_delta_mult != 1.0:
 		delta = delta * _atk_delta_mult
 	# 获取攻速参数：优先使用缓存（仅目标变化时重算）
@@ -1642,6 +1648,14 @@ func _update_card_grid_buff_strip(force: bool = false) -> void:
 	UnitSharedHelpers.update_card_grid_buff_strip(self, force, false, "Sprite2D")  # 敌方无 preview 虚影，守卫恒 false
 
 func take_damage(amount: float, attacker: Variant = null) -> void:
+	# v6.56（记录1三轮 #7/#8）: 战法「斩首行动」——我方格子单位对 Boss 伤害倍增
+	# （attacker 带 card_grid_slot meta = 我方格子战术单位；敌方单位无该 meta）
+	if amount > 0.0 and attacker != null and is_instance_valid(attacker) \
+			and attacker.has_meta("card_grid_slot") \
+			and (has_meta("_is_boss_unit") or String(get_meta("target_priority_tag", "")) == "boss"):
+		var _vs_boss: float = float(TacticDetectorScript.get_merged_bonuses().get("atk_vs_boss_mult", 0.0))
+		if _vs_boss > 0.0:
+			amount *= (1.0 + _vs_boss)
 	# v32.0 B1-3: 每单位战斗记录挂账（输出/承伤）
 	BattleUnitRecord.record_damage(attacker, self, amount)
 	# v26.13(B2): boss 半血狂暴——首次跌破 50% 置旗标（攻速通道在 _process_attack_timing）

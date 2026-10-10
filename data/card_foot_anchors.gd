@@ -26,6 +26,7 @@ const FOOT_FRAC: Dictionary = {
 	"cold_arty_brem1": 0.312,
 	"cold_inf_metis": 0.248,
 	"cold_sup_bmp1_x": 0.312,
+	"drop_mega_particle_cannon": 0.047,
 	"drop_phase_lance": 0.059,
 	"drop_railgun": 0.090,
 	"drop_smg_mk2": 0.094,
@@ -90,8 +91,8 @@ const FOOT_FRAC: Dictionary = {
 	"vis_enemy_019": 0.248,
 	"vis_enemy_020": 0.223,
 	"vis_enemy_021": 0.262,
-	"vis_enemy_022": 0.238,
-	"vis_enemy_023": 0.258,
+	"vis_enemy_022": 0.398,
+	"vis_enemy_023": 0.338,
 	"vis_enemy_024": 0.160,
 	"vis_enemy_025": 0.336,
 	"vis_enemy_026": 0.348,
@@ -103,7 +104,7 @@ const FOOT_FRAC: Dictionary = {
 	"vis_enemy_032": 0.127,
 	"vis_enemy_033": 0.180,
 	"vis_enemy_034": 0.268,
-	"vis_enemy_035": 0.240,
+	"vis_enemy_035": 0.326,
 	"vis_enemy_036": 0.059,
 	"vis_enemy_037": 0.143,
 	"vis_enemy_038": 0.182,
@@ -127,7 +128,7 @@ const FOOT_FRAC: Dictionary = {
 	"vis_enemy_056": 0.404,
 	"vis_enemy_057": 0.174,
 	"vis_enemy_058": 0.193,
-	"vis_enemy_059": 0.223,
+	"vis_enemy_059": 0.258,
 	"vis_enemy_060": 0.021,
 	"vis_enemy_061": 0.021,
 	"vis_enemy_062": 0.064,
@@ -138,7 +139,9 @@ const FOOT_FRAC: Dictionary = {
 	"vis_enemy_067": 0.145,
 	"vis_enemy_068": 0.299,
 	"vis_enemy_069": 0.109,
-	"vis_enemy_070": 0.168,
+	"vis_enemy_070": 0.082,
+	"vis_enemy_070.bak_20261009": 0.168,
+	"vis_enemy_070.bak_20261009_v2": 0.080,
 	"vis_enemy_071": 0.059,
 	"vis_enemy_072": 0.115,
 	"vis_enemy_073": 0.240,
@@ -189,8 +192,8 @@ const FOOT_FRAC: Dictionary = {
 	"vis_player_019": 0.248,
 	"vis_player_020": 0.223,
 	"vis_player_021": 0.262,
-	"vis_player_022": 0.238,
-	"vis_player_023": 0.258,
+	"vis_player_022": 0.398,
+	"vis_player_023": 0.338,
 	"vis_player_024": 0.160,
 	"vis_player_025": 0.336,
 	"vis_player_026": 0.348,
@@ -202,7 +205,7 @@ const FOOT_FRAC: Dictionary = {
 	"vis_player_032": 0.127,
 	"vis_player_033": 0.180,
 	"vis_player_034": 0.268,
-	"vis_player_035": 0.240,
+	"vis_player_035": 0.326,
 	"vis_player_036": 0.059,
 	"vis_player_037": 0.143,
 	"vis_player_038": 0.182,
@@ -226,7 +229,7 @@ const FOOT_FRAC: Dictionary = {
 	"vis_player_056": 0.404,
 	"vis_player_057": 0.174,
 	"vis_player_058": 0.193,
-	"vis_player_059": 0.223,
+	"vis_player_059": 0.258,
 	"vis_player_060": 0.217,
 	"vis_player_061": 0.059,
 	"vis_player_062": 0.064,
@@ -237,7 +240,10 @@ const FOOT_FRAC: Dictionary = {
 	"vis_player_067": 0.145,
 	"vis_player_068": 0.299,
 	"vis_player_069": 0.109,
-	"vis_player_070": 0.168,
+	"vis_player_070": 0.082,
+	"vis_player_070.bak_20261009": 0.168,
+	"vis_player_070.bak_20261009_v2": 0.080,
+	"vis_player_070.bak_20261010": 0.082,
 	"vis_player_071": 0.059,
 	"vis_player_072": 0.115,
 	"vis_player_073": 0.240,
@@ -293,7 +299,7 @@ const FOOT_FRAC: Dictionary = {
 	"ww1_inf_enfield": 0.059,
 	"ww1_inf_mp18_x": 0.059,
 	"ww1_lanchest": 0.244,
-	"ww1_mark4": 0.340,
+	"ww1_mark4": 0.336,
 	"ww1_sup_ford_ambulance": 0.234,
 	"ww1_sup_vickers": 0.139,
 	"ww2_air_bomber": 0.273,
@@ -305,7 +311,7 @@ const FOOT_FRAC: Dictionary = {
 	"ww2_arty_pak40": 0.307,
 	"ww2_inf_bazooka": 0.059,
 	"ww2_inf_kar98k": 0.062,
-	"ww2_sup_gmc_truck": 0.229,
+	"ww2_sup_gmc_truck": 0.301,
 }
 
 const HEAD_FRAC: Dictionary = {
@@ -316,6 +322,7 @@ const HEAD_FRAC: Dictionary = {
 	"cold_arty_brem1": 0.314,
 	"cold_inf_metis": 0.250,
 	"cold_sup_bmp1_x": 0.312,
+	"drop_mega_particle_cannon": 0.000,
 	"drop_phase_lance": 0.080,
 	"drop_railgun": 0.090,
 	"drop_smg_mk2": 0.094,
@@ -380,8 +387,8 @@ const HEAD_FRAC: Dictionary = {
 	"vis_enemy_019": 0.246,
 	"vis_enemy_020": 0.225,
 	"vis_enemy_021": 0.262,
-	"vis_enemy_022": 0.240,
-	"vis_enemy_023": 0.258,
+	"vis_enemy_022": 0.402,
+	"vis_enemy_023": 0.338,
 	"vis_enemy_024": 0.205,
 	"vis_enemy_025": 0.336,
 	"vis_enemy_026": 0.348,
@@ -393,7 +400,7 @@ const HEAD_FRAC: Dictionary = {
 	"vis_enemy_032": 0.129,
 	"vis_enemy_033": 0.182,
 	"vis_enemy_034": 0.270,
-	"vis_enemy_035": 0.242,
+	"vis_enemy_035": 0.328,
 	"vis_enemy_036": 0.061,
 	"vis_enemy_037": 0.127,
 	"vis_enemy_038": 0.182,
@@ -417,7 +424,7 @@ const HEAD_FRAC: Dictionary = {
 	"vis_enemy_056": 0.404,
 	"vis_enemy_057": 0.223,
 	"vis_enemy_058": 0.193,
-	"vis_enemy_059": 0.225,
+	"vis_enemy_059": 0.258,
 	"vis_enemy_060": 0.463,
 	"vis_enemy_061": 0.059,
 	"vis_enemy_062": 0.527,
@@ -428,7 +435,9 @@ const HEAD_FRAC: Dictionary = {
 	"vis_enemy_067": 0.178,
 	"vis_enemy_068": 0.203,
 	"vis_enemy_069": 0.111,
-	"vis_enemy_070": 0.191,
+	"vis_enemy_070": 0.080,
+	"vis_enemy_070.bak_20261009": 0.191,
+	"vis_enemy_070.bak_20261009_v2": 0.082,
 	"vis_enemy_071": 0.061,
 	"vis_enemy_072": 0.115,
 	"vis_enemy_073": 0.242,
@@ -479,8 +488,8 @@ const HEAD_FRAC: Dictionary = {
 	"vis_player_019": 0.246,
 	"vis_player_020": 0.225,
 	"vis_player_021": 0.262,
-	"vis_player_022": 0.240,
-	"vis_player_023": 0.258,
+	"vis_player_022": 0.402,
+	"vis_player_023": 0.338,
 	"vis_player_024": 0.205,
 	"vis_player_025": 0.336,
 	"vis_player_026": 0.348,
@@ -492,7 +501,7 @@ const HEAD_FRAC: Dictionary = {
 	"vis_player_032": 0.129,
 	"vis_player_033": 0.182,
 	"vis_player_034": 0.270,
-	"vis_player_035": 0.242,
+	"vis_player_035": 0.328,
 	"vis_player_036": 0.061,
 	"vis_player_037": 0.127,
 	"vis_player_038": 0.182,
@@ -516,7 +525,7 @@ const HEAD_FRAC: Dictionary = {
 	"vis_player_056": 0.404,
 	"vis_player_057": 0.223,
 	"vis_player_058": 0.193,
-	"vis_player_059": 0.225,
+	"vis_player_059": 0.258,
 	"vis_player_060": 0.287,
 	"vis_player_061": 0.061,
 	"vis_player_062": 0.527,
@@ -527,7 +536,10 @@ const HEAD_FRAC: Dictionary = {
 	"vis_player_067": 0.178,
 	"vis_player_068": 0.203,
 	"vis_player_069": 0.111,
-	"vis_player_070": 0.191,
+	"vis_player_070": 0.080,
+	"vis_player_070.bak_20261009": 0.191,
+	"vis_player_070.bak_20261009_v2": 0.082,
+	"vis_player_070.bak_20261010": 0.080,
 	"vis_player_071": 0.061,
 	"vis_player_072": 0.115,
 	"vis_player_073": 0.242,
@@ -595,7 +607,7 @@ const HEAD_FRAC: Dictionary = {
 	"ww2_arty_pak40": 0.303,
 	"ww2_inf_bazooka": 0.061,
 	"ww2_inf_kar98k": 0.064,
-	"ww2_sup_gmc_truck": 0.230,
+	"ww2_sup_gmc_truck": 0.301,
 }
 
 const CONTENT_BBOX: Dictionary = {
@@ -606,6 +618,7 @@ const CONTENT_BBOX: Dictionary = {
 	"cold_arty_brem1": [0.879, 0.371],
 	"cold_inf_metis": [0.879, 0.500],
 	"cold_sup_bmp1_x": [0.879, 0.373],
+	"drop_mega_particle_cannon": [0.801, 0.949],
 	"drop_phase_lance": [0.898, 0.859],
 	"drop_railgun": [0.695, 0.818],
 	"drop_smg_mk2": [0.717, 0.811],
@@ -617,12 +630,12 @@ const CONTENT_BBOX: Dictionary = {
 	"fe_helix_orbital_strike": [0.865, 0.508],
 	"fe_helix_phantom": [0.643, 0.879],
 	"fe_iron_wall_bastion": [0.879, 0.775],
-	"fe_iron_wall_juggernaut": [0.592, 0.879],
+	"fe_iron_wall_juggernaut": [0.770, 0.879],
 	"fe_nova_devastator": [0.857, 0.589],
 	"fe_nova_ghost_sniper": [0.803, 0.879],
 	"fe_quantum_mobile_base": [0.875, 0.688],
 	"fe_quantum_repair_drone": [0.734, 0.445],
-	"fe_void_dimensional_soldier": [0.469, 0.879],
+	"fe_void_dimensional_soldier": [0.594, 0.879],
 	"fe_void_phase_cannon": [0.879, 0.545],
 	"fut_air_drone": [0.879, 0.408],
 	"fut_air_stealth_bomber": [0.879, 0.402],
@@ -670,8 +683,8 @@ const CONTENT_BBOX: Dictionary = {
 	"vis_enemy_019": [0.855, 0.504],
 	"vis_enemy_020": [0.879, 0.551],
 	"vis_enemy_021": [0.879, 0.475],
-	"vis_enemy_022": [0.879, 0.520],
-	"vis_enemy_023": [0.879, 0.482],
+	"vis_enemy_022": [0.818, 0.197],
+	"vis_enemy_023": [0.879, 0.322],
 	"vis_enemy_024": [0.488, 0.633],
 	"vis_enemy_025": [0.879, 0.326],
 	"vis_enemy_026": [0.879, 0.303],
@@ -683,7 +696,7 @@ const CONTENT_BBOX: Dictionary = {
 	"vis_enemy_032": [0.879, 0.742],
 	"vis_enemy_033": [0.879, 0.637],
 	"vis_enemy_034": [0.848, 0.461],
-	"vis_enemy_035": [0.879, 0.516],
+	"vis_enemy_035": [0.879, 0.344],
 	"vis_enemy_036": [0.613, 0.879],
 	"vis_enemy_037": [0.854, 0.729],
 	"vis_enemy_038": [0.879, 0.635],
@@ -707,7 +720,7 @@ const CONTENT_BBOX: Dictionary = {
 	"vis_enemy_056": [0.811, 0.189],
 	"vis_enemy_057": [0.434, 0.602],
 	"vis_enemy_058": [0.879, 0.611],
-	"vis_enemy_059": [0.879, 0.551],
+	"vis_enemy_059": [0.879, 0.482],
 	"vis_enemy_060": [0.918, 0.514],
 	"vis_enemy_061": [0.654, 0.918],
 	"vis_enemy_062": [0.984, 0.406],
@@ -718,7 +731,9 @@ const CONTENT_BBOX: Dictionary = {
 	"vis_enemy_067": [0.613, 0.676],
 	"vis_enemy_068": [0.857, 0.496],
 	"vis_enemy_069": [0.600, 0.777],
-	"vis_enemy_070": [0.668, 0.639],
+	"vis_enemy_070": [0.818, 0.836],
+	"vis_enemy_070.bak_20261009": [0.668, 0.639],
+	"vis_enemy_070.bak_20261009_v2": [0.797, 0.836],
 	"vis_enemy_071": [0.725, 0.879],
 	"vis_enemy_072": [0.875, 0.768],
 	"vis_enemy_073": [0.879, 0.516],
@@ -769,8 +784,8 @@ const CONTENT_BBOX: Dictionary = {
 	"vis_player_019": [0.855, 0.504],
 	"vis_player_020": [0.879, 0.551],
 	"vis_player_021": [0.879, 0.475],
-	"vis_player_022": [0.879, 0.520],
-	"vis_player_023": [0.879, 0.482],
+	"vis_player_022": [0.818, 0.197],
+	"vis_player_023": [0.879, 0.322],
 	"vis_player_024": [0.488, 0.633],
 	"vis_player_025": [0.879, 0.326],
 	"vis_player_026": [0.879, 0.303],
@@ -782,7 +797,7 @@ const CONTENT_BBOX: Dictionary = {
 	"vis_player_032": [0.879, 0.742],
 	"vis_player_033": [0.879, 0.637],
 	"vis_player_034": [0.848, 0.461],
-	"vis_player_035": [0.879, 0.516],
+	"vis_player_035": [0.879, 0.344],
 	"vis_player_036": [0.613, 0.879],
 	"vis_player_037": [0.854, 0.729],
 	"vis_player_038": [0.879, 0.635],
@@ -806,7 +821,7 @@ const CONTENT_BBOX: Dictionary = {
 	"vis_player_056": [0.811, 0.189],
 	"vis_player_057": [0.434, 0.602],
 	"vis_player_058": [0.879, 0.611],
-	"vis_player_059": [0.879, 0.551],
+	"vis_player_059": [0.879, 0.482],
 	"vis_player_060": [0.807, 0.494],
 	"vis_player_061": [0.562, 0.879],
 	"vis_player_062": [0.984, 0.406],
@@ -817,7 +832,10 @@ const CONTENT_BBOX: Dictionary = {
 	"vis_player_067": [0.613, 0.676],
 	"vis_player_068": [0.857, 0.496],
 	"vis_player_069": [0.600, 0.777],
-	"vis_player_070": [0.668, 0.639],
+	"vis_player_070": [0.818, 0.836],
+	"vis_player_070.bak_20261009": [0.668, 0.639],
+	"vis_player_070.bak_20261009_v2": [0.797, 0.836],
+	"vis_player_070.bak_20261010": [0.818, 0.836],
 	"vis_player_071": [0.725, 0.879],
 	"vis_player_072": [0.875, 0.768],
 	"vis_player_073": [0.879, 0.516],
@@ -873,19 +891,19 @@ const CONTENT_BBOX: Dictionary = {
 	"ww1_inf_enfield": [0.836, 0.879],
 	"ww1_inf_mp18_x": [0.500, 0.879],
 	"ww1_lanchest": [0.879, 0.508],
-	"ww1_mark4": [0.879, 0.318],
+	"ww1_mark4": [0.859, 0.322],
 	"ww1_sup_ford_ambulance": [0.879, 0.529],
 	"ww1_sup_vickers": [0.879, 0.719],
 	"ww2_air_bomber": [0.822, 0.328],
 	"ww2_air_dive_bomber": [0.879, 0.383],
 	"ww2_air_me262": [0.879, 0.275],
 	"ww2_air_meteor_e": [0.873, 0.301],
-	"ww2_arm_garand_para": [0.619, 0.879],
+	"ww2_arm_garand_para": [0.648, 0.879],
 	"ww2_arty_hummel": [0.879, 0.398],
 	"ww2_arty_pak40": [0.879, 0.389],
 	"ww2_inf_bazooka": [0.807, 0.879],
 	"ww2_inf_kar98k": [0.879, 0.871],
-	"ww2_sup_gmc_truck": [0.859, 0.539],
+	"ww2_sup_gmc_truck": [0.879, 0.396],
 }
 
 static func get_foot_frac(file_name: String) -> float:
@@ -909,6 +927,12 @@ static func entity_top_y_for_sprite(unit_spr: Sprite2D) -> float:
 	if unit_spr.texture == null:
 		return -50.0 + unit_spr.position.y
 	var tex_h: float = maxf(float(unit_spr.texture.get_height()), 1.0)
+	# v6.55: 帧动画单位——驱动器按 sheet 实扫写入的真实实体顶占比（脚线已锚原点），
+	# 优先消费；AtlasTexture 文件名不在标定表，旧代码落 foot/head=0 兜底=头顶 UI
+	# 整体偏高 ~0.5 画幅（动画单位血条/角标悬空的存量根因）。
+	if unit_spr.has_meta("_anim_entity_top_frac"):
+		var ext: float = maxf(float(unit_spr.get_meta("_anim_entity_top_frac")), 0.05)
+		return -ext * tex_h * absf(unit_spr.scale.y) + unit_spr.position.y
 	var fn := _file_name_of(unit_spr.texture)
 	var foot_frac: float = get_foot_frac(fn)
 	var head_frac: float = get_head_frac(fn)
@@ -997,12 +1021,130 @@ const VISUAL_SCALE_OVERRIDE: Dictionary = {}
 
 const DEFAULT_VISUAL_SCALE: float = 1.0
 
+# ─────────────────────────────────────────────────────────────────────────────
+#  战场视觉尺寸模型 v2：身高锚定 + 宽度封顶（内容矩形制，v6.55）
+#  旧 KIND_ERA_SCALE 是「内容宽归一 × 宽度档位」——只管占多宽，不管有多高：
+#  扁宽的坦克按宽归一后屏高只有步兵一半（实测 mod_t90 24.7px vs xeno_mimic 168px，
+#  步兵>装甲全面倒挂）。v2 直接锚「主体屏高」（视觉预期主轴：步兵最矮、坦克高大、
+#  堡垒巨物），宽度按美术自身长宽比展开并按兵种封顶（防长身管坦克挤爆列宽 171px）。
+#  消费口（静态/动画同吃一个矩形）：
+#    静态卡图  card_grid_unit_visuals.apply_battle_unit_presentation
+#    帧动画    unit_frame_anim.FrameDriver._compensate_size v2（经 _visual_rect meta）
+#  数值口径：设计分辨率 720p 下的主体内容像素（烘焙描边含入，与 CONTENT_BBOX 同源）。
+#  个别卡微调：RECT_OVERRIDE（id → Vector2(宽, 高)，乘数语义见 get_target_rect）。
+# ─────────────────────────────────────────────────────────────────────────────
+
+## 主体目标屏高（kind → era → px）。步兵人体尺寸跨时代恒定；装甲 FT-17 小 → 未来
+## 机甲大；堡垒保持旧观感量级（旧中位 ~84px）。支援/空中居中。
+const TARGET_CONTENT_H: Dictionary = {
+	0: {0: 42, 1: 42, 2: 43, 3: 44, 4: 46},   # 步兵
+	1: {0: 54, 1: 60, 2: 66, 3: 70, 4: 76},   # 装甲
+	2: {0: 46, 1: 50, 2: 54, 3: 58, 4: 62},   # 支援炮兵
+	3: {0: 42, 1: 46, 2: 50, 3: 54, 4: 58},   # 空中
+	4: {0: 84, 1: 92, 2: 100, 3: 110, 4: 120},  # 堡垒
+}
+
+## 内容宽封顶（kind → px）。列宽 171px；封顶 ≈0.78~0.9 列宽，长身管坦克/机翼展开
+## 到顶后由高度锚定让位（scale=min(w_fit, h_fit)）。
+const MAX_CONTENT_W: Dictionary = {
+	0: 72, 1: 132, 2: 120, 3: 142, 4: 154,
+}
+
+## 窄主体最小屏宽（px）——细高单位（术士/触手/信号旗类）按高锚定会缩成一细条，
+## 宽度不足此值时改由宽度托底（等比放大）。
+const MIN_CONTENT_W: float = 34.0
+
+## 精英/首领威压乘区后的硬封顶（含 boss）。列宽 171px 的 98%。
+const HARD_CONTENT_W_CAP: float = 168.0
+
+## 个别卡微调（id → Vector2(宽, 高) 目标内容矩形，剥 captured_/foe_ 前缀双查）。
+## 空 = 纯模型；实机目检后把需要偏离档位默认的卡加进来。
+const RECT_OVERRIDE: Dictionary = {}
+
+
+## 兵种×时代 → 目标内容矩形（Vector2 宽, 高）。
+static func target_rect_for(kind: int, era: int) -> Vector2:
+	var h_row: Variant = TARGET_CONTENT_H.get(clampi(kind, 0, 4))
+	var w: float = float(MAX_CONTENT_W.get(clampi(kind, 0, 4), 120.0))
+	if h_row is Dictionary:
+		return Vector2(w, float((h_row as Dictionary).get(clampi(era, 0, 4), 50.0)))
+	return Vector2(w, 50.0)
+
+
+## 卡对象路径的目标矩形（kind/era 解析口径与 get_visual_scale 完全同源：
+## card 字段优先 → manifest 兜底 → 前缀推断；override 优先）。
+static func get_target_rect(card) -> Vector2:
+	if card == null:
+		return Vector2(120.0, 50.0)
+	var card_id: String = String(card.get("card_id"))
+	var bare := card_id
+	if bare.begins_with("captured_"):
+		bare = bare.substr(9)
+	if bare.begins_with("foe_"):
+		bare = bare.substr(4)
+	if not card_id.is_empty():
+		var ov_id := String(card_id).strip_edges()
+		if RECT_OVERRIDE.has(ov_id):
+			return RECT_OVERRIDE[ov_id]
+		if RECT_OVERRIDE.has(bare):
+			return RECT_OVERRIDE[bare]
+	var kind := int(card.get("combat_kind"))
+	if kind < 0 or kind > 4:
+		kind = int(card.get("platform_type"))
+	if kind < 0 or kind > 4:
+		kind = EnemyUnitManifest.combat_kind_for(bare)
+	if kind < 0 or kind > 4:
+		return Vector2(120.0, 50.0)
+	var era := int(card.get("era"))
+	if era < 0 or era > 4:
+		era = EnemyUnitManifest.era_for(bare)
+	if era < 0 or era > 4:
+		era = _era_from_id(card_id)
+	return target_rect_for(kind, era)
+
+
+## by-id 路径（无 card 对象：敌方原型/产兵等）。era_hint 同 get_visual_scale_by_id。
+static func get_target_rect_by_id(id: String, era_hint: int = -1) -> Vector2:
+	var id_key: String = String(id).strip_edges()
+	if id_key.begins_with("captured_"):
+		id_key = id_key.substr(9)
+	var bare := id_key.substr(4) if id_key.begins_with("foe_") else id_key
+	if RECT_OVERRIDE.has(id_key):
+		return RECT_OVERRIDE[id_key]
+	if RECT_OVERRIDE.has(bare):
+		return RECT_OVERRIDE[bare]
+	var kind := EnemyUnitManifest.combat_kind_for(bare)
+	if kind < 0:
+		return Vector2(120.0, 50.0)
+	var era := era_hint if (era_hint >= 0 and era_hint <= 4) else EnemyUnitManifest.era_for(bare)
+	if era < 0 or era > 4:
+		era = _era_from_id(bare)
+	return target_rect_for(kind, era)
+
+
+## 内容实际像素 (w, h) 适配目标矩形：scale = min(宽适配, 高适配)，窄主体由
+## MIN_CONTENT_W 托底。整体语义「矩形内最大等比显示」。
+static func scale_for_content_rect(content_w_px: float, content_h_px: float, rect: Vector2) -> float:
+	if content_w_px <= 1.0 or content_h_px <= 1.0:
+		return 0.1
+	var s: float = minf(rect.x / content_w_px, rect.y / content_h_px)
+	s = maxf(s, MIN_CONTENT_W / content_w_px)
+	return s
+
 ## 内容宽占画布比例（几何层归一用；无扫描数据回退 1.0 = 旧画布口径）。
 ## 数组布局 [w_frac, h_frac]（generate_card_foot_anchors.py 生成）。
 static func get_content_w_frac(file_name: String) -> float:
 	var v: Variant = CONTENT_BBOX.get(String(file_name).strip_edges())
 	if v is Array and (v as Array).size() >= 1:
 		return maxf(float((v as Array)[0]), 0.0)
+	return 1.0
+
+
+## 内容高占画布比例（v6.55 身高锚定模型消费；无扫描数据回退 1.0）。
+static func get_content_h_frac(file_name: String) -> float:
+	var v: Variant = CONTENT_BBOX.get(String(file_name).strip_edges())
+	if v is Array and (v as Array).size() >= 2:
+		return maxf(float((v as Array)[1]), 0.0)
 	return 1.0
 
 ## 从纹理路径提文件名（去目录去扩展名）。_file_name_of 公开版（几何缩放层消费）。

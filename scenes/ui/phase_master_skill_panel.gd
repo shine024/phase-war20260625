@@ -478,13 +478,24 @@ func _on_unlock_pressed(node_id: String) -> void:
 			else:
 				_show_temp_msg("需先解锁：%s" % missing_str)
 	else:
-		# v6.52（记录1#5，用户主诉"技能学习的音效也不好"）：enhance 是卡牌强化音
-		# （金属锉磨短促），学习技能的仪式感换蓝图解锁音（上扬双音）
+		# v6.52（记录1#5）：enhance 是金属锉磨短促音，换蓝图解锁音（上扬双音）；
+		# v6.56（记录1#6）：按节点分量分音——普通节点上扬双音、深层节点任务完成音、
+		# 奇点节点成就音，音效随技能树越挖越深而升级
 		if SignalBus and SignalBus.has_signal("play_sound"):
-			SignalBus.play_sound.emit("blueprint_unlock")
+			SignalBus.play_sound.emit(_pick_unlock_sfx(node_id))
 		_emit_unlock_toast(node_id)
 		_board.play_unlock_effect(node_id)
 	_request_refresh()
+
+
+## v6.56（记录1#6）：按节点分量选解锁音——全部复用既有音池键，无需新资产
+func _pick_unlock_sfx(node_id: String) -> String:
+	var node: Dictionary = SkillTree.get_skill(node_id)
+	if bool(node.get("capstone", false)):
+		return "achievement"  # 奇点节点：成就音（最隆重）
+	if int(node.get("tier", 0)) >= 4:
+		return "quest_complete"  # 深层节点：任务完成音（中档）
+	return "blueprint_unlock"  # 普通节点：上扬双音（基底）
 
 
 ## 解锁成功后发射 Toast 通知
@@ -759,9 +770,11 @@ func _update_points_label() -> void:
 		_points_label.text = "  可用技能点：%d（已用 %d）" % [avail, spent]
 
 
-func _refresh() -> void:
+## v6.56 记录1#9：force=true 供预热期（隐藏态）强制建棋盘+回填渲染签名——
+## 原实现隐藏时只置 _dirty，首开帧仍全量重建（实机主诉"读档后技能树卡"）。
+func _refresh(force: bool = false) -> void:
 	_refresh_queued = false
-	if not visible:
+	if not visible and not force:
 		_dirty = true
 		return
 	_dirty = false

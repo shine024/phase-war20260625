@@ -30,6 +30,8 @@ const EnemyUnitManifest := preload("res://data/enemy_unit_manifest.gd")
 ## v26.9: 描边 uniform 刷新——换帧（AtlasTexture 区域）/尺寸补偿后必须同步，
 ## 否则描边取样越帧出鬼影、scale×2 后描边宽度翻倍（契约见 unit_outline.gd 头注）
 const UnitOutline := preload("res://scripts/battle/unit_outline.gd")
+## v6.55: 目标内容矩形适配（身高锚定模型）——_compensate_size v2 消费 scale_for_content_rect
+const CardFootAnchors := preload("res://data/card_foot_anchors.gd")
 
 ## v27.12: anim.json 解析结果跨单位静态缓存——同 path 只读盘+解析一次（资产只读，会话内恒定）
 static var _json_cache: Dictionary = {}
@@ -38,6 +40,10 @@ static var _key_cache: Dictionary = {}
 ## v27.12: 帧序列跨单位静态缓存（key/anim → AtlasTexture 数组）——同单位类型多次出生
 ## 不再每 attach 重建 N 个 AtlasTexture；数组只读共享（驱动器只按下标取，不改内容）
 static var _seq_cache: Dictionary = {}
+## v6.55: idle f0 主体占比实扫缓存（key → {w,h} 画布占比，含烘焙描边）——
+## 尺寸链 v2「内容适配」的数据源。运行期实测而非读 anim.json subject 块
+## （subject 是部署门对账数据；贴图才是显示真值，两源不一致由校验门抓）。
+static var _content_frac_cache: Dictionary = {}
 
 
 static func _resolve_key(anim_id: String) -> String:
@@ -152,6 +158,17 @@ static func is_outline_baked(anim_id: String) -> bool:
 	return false
 
 
+## v6.55: 单位的 sheet foot_frac 查询口（muzzle_anchors 枪口 ff 优先源）。
+## 返回 -1 = 该单位无帧动画 sheet（调用方回退卡图标定表）。
+static func get_sheet_foot_frac(anim_id: String) -> float:
+	if anim_id.is_empty():
+		return -1.0
+	var key := _resolve_key(anim_id)
+	if key.is_empty():
+		return -1.0
+	return float(_load_json(ANIM_ROOT + key + "/anim.json").get("foot_frac", -1.0))
+
+
 ## 给单位挂 idle ping-pong + attack 单次驱动（敌我双方通用, v24.2）。
 ## 敌方(sheet 原图朝左) face_right=false; 我方传 true → 驱动给 unit_spr.flip_h=true 镜像成朝右。
 ## 成功返回 true（失败时不动 flip_h, 静态卡图朝向不受影响）。
@@ -181,6 +198,9 @@ static func attach(unit_spr: Sprite2D, anim_id: String, face_right: bool = false
 	# v6.32.3：anim.json foot_frac（sheet 实测内容底缘余量占比）——护盾罩脚线锚定
 	# ① 级数据源（fort_shield_aura.sync_foot_anchor 消费）。旧资产缺字段=-1（落标定表/0 兜底）。
 	driver.sheet_foot_frac = float(meta_d.get("foot_frac", -1.0))
+	# v6.55：idle f0 主体占比实测——尺寸链 v2「内容适配」数据源（_compensate_size 消费）
+	var cf := _idle_content_frac(key, fs)
+	driver.idle_content = Vector2(float(cf.get("w", 0.0)), float(cf.get("h", 0.0)))
 	# 我方镜像: sheet 全部朝左(敌方原图), flip_h 翻成朝右。
 	# offset.x 恒为 0(apply_uniform_card_sprite), flip 无需补偿; 失败路径不会走到这里。
 	unit_spr.flip_h = face_right
@@ -188,8 +208,52 @@ static func attach(unit_spr: Sprite2D, anim_id: String, face_right: bool = false
 	return true
 
 
-static func _load_seq(key: String, anim: String, n: int, fs: int) -> Array:
-	## v27.12: 序列级缓存——AtlasTexture 只读资源共享给全部同型单位（含空结果负缓存）
+## v6.55: idle f0 主体像素实测（α>0.05 逐像素，含烘焙描边与羽化边）。
+## 返回 {w, h}（占画布比例）；无资产/全透明返回空字典。PackedByteArray 直查
+## （get_pixel 逐点调用在 GDScript 里慢一个量级）；结果按 key 会话级缓存。
+static func _idle_content_frac(key: String, fs: int) -> Dictionary:
+	if _content_frac_cache.has(key):
+		return _content_frac_cache[key]
+	var out: Dictionary = {}
+	var sheet_path := ANIM_ROOT + key + "/sheet_idle.png"
+	if ResourceLoader.exists(sheet_path):
+		var sheet: Texture2D = load(sheet_path)
+		var img: Image = sheet.get_image() if sheet != null else null
+		if img != null:
+			if img.is_compressed():
+				img.decompress()
+			# ⚠️ sheet 是横条（fs×N 宽）——必须先裁出 f0 再扫，行步长=帧宽而非整图宽
+			if img.get_width() >= fs and img.get_height() >= fs:
+				img = img.get_region(Rect2i(0, 0, fs, fs))
+				var data := img.get_data()
+				var W := fs
+				var H := fs
+				var min_x := W
+				var min_y := H
+				var max_x := -1
+				var max_y := -1
+				for y in range(H):
+					var row := y * W * 4
+					for x in range(W):
+						if data[row + x * 4 + 3] > 12:
+							if x < min_x:
+								min_x = x
+							if x > max_x:
+								max_x = x
+							if y < min_y:
+								min_y = y
+							if y > max_y:
+								max_y = y
+				if max_x >= 0 and max_y > min_y and max_x > min_x:
+					out = {
+						"w": float(max_x - min_x + 1) / float(W),
+						"h": float(max_y - min_y + 1) / float(H),
+					}
+	_content_frac_cache[key] = out
+	return out
+
+
+static func _load_seq(key: String, anim: String, n: int, fs: int) -> Array:	## v27.12: 序列级缓存——AtlasTexture 只读资源共享给全部同型单位（含空结果负缓存）
 	var ck := "%s/%s" % [key, anim]
 	if _seq_cache.has(ck):
 		return _seq_cache[ck]
@@ -233,6 +297,9 @@ class FrameDriver extends Node:
 	## v6.32.3：anim.json foot_frac（sheet 内容底缘余量占比，内容贴底=0）——
 	## 护盾罩脚线锚定 ① 级数据源；-1=资产未回填（同步链落 ②卡图标定表 ③0 兜底）。
 	var sheet_foot_frac: float = -1.0
+	## v6.55：idle f0 主体占画布比例 (w, h)——attach 时实扫（UnitFrameAnim._idle_content_frac）。
+	## (0,0)=实扫失败（走旧画布口径回退）。
+	var idle_content: Vector2 = Vector2.ZERO
 	var _t: float = 0.0
 	var _idx: int = 0
 	var _dir: int = 1  ## idle ping-pong 方向(1=正放,-1=倒放); attack 恒正向
@@ -248,16 +315,36 @@ class FrameDriver extends Node:
 		_spr.texture = idle_frames[0]
 		UnitOutline.refresh(_spr)  # v26.9: 首帧换 AtlasTexture + scale 补偿后刷描边 uniform
 
-	## 静态卡图(512²)与帧(fs²)分辨率不同时, 补偿 scale/offset 保持视觉一致:
-	## scale ×(base_w/frame_w); offset.y ×(frame_h/base_h)（offset 在纹理空间随 scale 缩放）
+	## 尺寸补偿 v2（v6.55 身高锚定，两条路径）：
+	## ① 宿主呈现层已写 _visual_rect（apply_battle_unit_presentation 的目标内容矩形，
+	##    兵种×时代档位+威压乘区）——按 idle f0 主体实扫占比把「主体内容」适配进矩形，
+	##    脚线经 sheet foot_frac 对到节点原点（护盾公式 offset+f_tex 两项同源自消）。
+	##    主体占比此前从未进公式（旧版只做 256↔512 画布 ×2），步兵 sheet 画得满/
+	##    坦克 sheet 画得扁 ×2 后直接上屏=「步兵比坦克高大」根因。
+	## ② 无 _visual_rect 的调用方——回退旧画布口径（scale ×base_w/frame_w）。
 	func _compensate_size() -> void:
 		if _compensated or _spr == null or _spr.texture == null:
 			return
-		var base_w: float = float(_spr.texture.get_width())
-		var base_h: float = float(_spr.texture.get_height())
 		var frame_w: float = float(idle_frames[0].get_width())
 		var frame_h: float = float(idle_frames[0].get_height())
-		if base_w <= 0.0 or base_h <= 0.0 or frame_w <= 0.0 or frame_h <= 0.0:
+		if frame_w <= 0.0 or frame_h <= 0.0:
+			return
+		if _spr.has_meta("_visual_rect") and idle_content.x > 0.0 and idle_content.y > 0.0:
+			var rect: Vector2 = _spr.get_meta("_visual_rect")
+			var s: float = CardFootAnchors.scale_for_content_rect(
+					idle_content.x * frame_w, idle_content.y * frame_h, rect)
+			_spr.scale = Vector2(s, s)
+			if sheet_foot_frac >= 0.0:
+				_spr.offset = Vector2(_spr.offset.x, -(0.5 - sheet_foot_frac) * frame_h)
+			# 头顶 UI extent（entity_top_y_for_sprite 消费）：脚线在原点后，
+			# 实体顶 = -(foot_frac + 主体高) × 帧高 × scale。
+			_spr.set_meta("_anim_entity_top_frac", sheet_foot_frac + idle_content.y)
+			_compensated = true
+			return
+		# 旧画布口径回退：静态卡图(512²)与帧(fs²)分辨率不同时补偿 scale/offset。
+		var base_w: float = float(_spr.texture.get_width())
+		var base_h: float = float(_spr.texture.get_height())
+		if base_w <= 0.0 or base_h <= 0.0:
 			return
 		_spr.scale = _spr.scale * (base_w / frame_w)
 		_spr.offset = Vector2(_spr.offset.x, _spr.offset.y * (frame_h / base_h))

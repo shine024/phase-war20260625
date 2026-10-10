@@ -770,7 +770,9 @@ func _build_blackgate_entry(canvas: Control) -> void:
 		else Color(0.62, 0.85, 1.0, 0.4))
 	gate_lbl.add_theme_color_override("font_outline_color", DesignTokens.COLOR_BACKDROP_DEEP)
 	gate_lbl.add_theme_constant_override("outline_size", 3)
-	gate_lbl.position = gate_p + Vector2(-34, 64)
+	# v6.54 记录6#17：文字测宽居中（原硬编码 -34 对「黑门·试炼/黑门（通关第 100 关开启）」
+	# 长短文案都不居中，实机主诉"黑门提示不居中"）——对齐关卡图标 btn.position = p - size*0.5 口径
+	gate_lbl.position = gate_p + Vector2(-gate_lbl.get_minimum_size().x * 0.5, 64)
 	gate_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	canvas.add_child(gate_lbl)
 

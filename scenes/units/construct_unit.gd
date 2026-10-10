@@ -174,6 +174,11 @@ var _card_skill_bonus_acc: float = 0.0
 const CARD_SKILL_BONUS_CHECK_INTERVAL: float = 0.5
 # 运行时累积的卡片技能 stat_bonus（attack_speed/crit_chance/dodge_chance/damage_reduction）
 var _card_skill_runtime_bonus: Dictionary = {}
+# v6.56（记录1三轮 #7/#8）: 战法运行时加成——TacticDetector 静态镜像 0.5s 轮询差分
+var _tactic_bonus_acc: float = 0.0
+var _tactic_runtime_bonus: Dictionary = {}  # 已应用到本单位的战法加成（回退依据）
+var _tactic_applied_sig: String = ""        # 应用时的合并加成签名（变化才重算）
+const TacticDetectorScript = preload("res://scripts/battle/tactic_detector.gd")
 # 卡片定时技能 source_tag 缓存：供 CardPeriodicSkillEngine._try_trigger 匹配（修复玩家侧技能不触发）。
 # 在 setup() 内 _init_unit_mechanisms 之后由 _cache_behavior_tags 填充；也供 bullet.gd TAG_COUNTER_RULES 读取。
 var _behavior_tags_cached: Array = []
@@ -1253,6 +1258,149 @@ func _revert_card_skill_runtime_bonus() -> void:
 	_card_skill_runtime_bonus.clear()
 
 
+## ═══ v6.56（记录1三轮 #7/#8）: 战法运行时加成 ═══
+## TacticDetector 每 1s 检测阵容并广播静态镜像；本单位 0.5s 轮询差分：
+## 合并加成签名变化 → 回退旧 → 按本单位标签（_behavior_tags_cached）过滤应用新。
+## 键语义与 battle_spawn_system._apply_active_faction_stat_bonus 同源（乘区/加法、帽值一致），
+## 全部可逆。标签特化键：atk_fast_bonus / attack_speed_fast / attack_range_sniper /
+## attack_range_artillery / sniper_damage_bonus / atk_artillery_bonus / crit_fast_bonus /
+## damage_reduction_fast / damage_reduction_fort / damage_reduction_ecm。
+## 未落键（挂账台账）：atk_armor_vs_threat / atk_armor_vs_new_enemy / def_center_bonus /
+## atk_backline_bonus / deploy_speed / special 系（见 docs/实机验收_记录1三轮_进度.md）。
+func _update_tactic_bonus(delta: float) -> void:
+	_tactic_bonus_acc += delta
+	if _tactic_bonus_acc < CARD_SKILL_BONUS_CHECK_INTERVAL:
+		return
+	_tactic_bonus_acc = 0.0
+	var merged: Dictionary = TacticDetectorScript.get_merged_bonuses()
+	var sig: String = str(merged)
+	if sig == _tactic_applied_sig:
+		return
+	if not _tactic_runtime_bonus.is_empty():
+		_revert_tactic_runtime_bonus()
+	_tactic_applied_sig = sig
+	if merged.is_empty():
+		return
+	_apply_tactic_runtime_bonus(merged)
+
+
+func _apply_tactic_runtime_bonus(merged: Dictionary) -> void:
+	var has_tag: Dictionary = {}
+	for t in _behavior_tags_cached:
+		has_tag[t] = true
+	# 三维攻击（含标签特化）
+	var atk_mult: float = 1.0
+	for k in ["atk_light", "atk_armor", "atk_air"]:
+		if merged.has(k):
+			atk_mult *= (1.0 + float(merged[k]))
+	if has_tag.has("fast") and merged.has("atk_fast_bonus"):
+		atk_mult *= (1.0 + float(merged["atk_fast_bonus"]))
+	if has_tag.has("sniper") and merged.has("sniper_damage_bonus"):
+		atk_mult *= (1.0 + float(merged["sniper_damage_bonus"]))
+	if has_tag.has("artillery") and merged.has("atk_artillery_bonus"):
+		atk_mult *= (1.0 + float(merged["atk_artillery_bonus"]))
+	if atk_mult != 1.0:
+		_tactic_runtime_bonus["atk_mult"] = atk_mult
+		stats.attack_light *= atk_mult
+		stats.attack_armor *= atk_mult
+		stats.attack_air *= atk_mult
+		for i in range(stats.weapon_slots.size()):
+			var ws = stats.weapon_slots[i]
+			if ws != null and "damage" in ws:
+				ws.damage = maxf(0.1, float(ws.damage) * atk_mult)
+	# 三维防御
+	var def_mult: float = 1.0
+	for k in ["def_light", "def_armor", "def_air"]:
+		if merged.has(k):
+			def_mult *= (1.0 + float(merged[k]))
+	if def_mult != 1.0:
+		_tactic_runtime_bonus["def_mult"] = def_mult
+		stats.defense_light *= def_mult
+		stats.defense_armor *= def_mult
+		stats.defense_air *= def_mult
+	# 最大 HP（战法键 max_hp；兼容 spawn 侧 hp 键）
+	var hp_mult: float = 1.0
+	if merged.has("hp"):
+		hp_mult *= (1.0 + float(merged["hp"]))
+	if merged.has("max_hp"):
+		hp_mult *= (1.0 + float(merged["max_hp"]))
+	if hp_mult != 1.0:
+		_tactic_runtime_bonus["hp_mult"] = hp_mult
+		stats.max_hp *= hp_mult
+	# 攻速
+	var aspd: float = 0.0
+	if merged.has("attack_speed"):
+		aspd += float(merged["attack_speed"])
+	if has_tag.has("fast") and merged.has("attack_speed_fast"):
+		aspd += float(merged["attack_speed_fast"])
+	if aspd != 0.0:
+		_tactic_runtime_bonus["aspd"] = aspd
+		AttackCalculator.scale_attack_speeds(stats, 1.0 + aspd)
+	# 射程
+	var rng_mult: float = 1.0
+	if merged.has("attack_range"):
+		rng_mult *= (1.0 + float(merged["attack_range"]))
+	if has_tag.has("sniper") and merged.has("attack_range_sniper"):
+		rng_mult *= (1.0 + float(merged["attack_range_sniper"]))
+	if has_tag.has("artillery") and merged.has("attack_range_artillery"):
+		rng_mult *= (1.0 + float(merged["attack_range_artillery"]))
+	if rng_mult != 1.0:
+		_tactic_runtime_bonus["range_mult"] = rng_mult
+		stats.attack_range = maxf(1.0, stats.attack_range * rng_mult)
+	# 暴击
+	var crit_add: float = 0.0
+	if merged.has("crit_chance"):
+		crit_add += float(merged["crit_chance"])
+	if has_tag.has("fast") and merged.has("crit_fast_bonus"):
+		crit_add += float(merged["crit_fast_bonus"])
+	if crit_add != 0.0:
+		_tactic_runtime_bonus["crit_add"] = crit_add
+		stats.crit_chance = clampf(stats.crit_chance + crit_add, 0.0, 0.75)
+	# 减伤
+	var dr_add: float = 0.0
+	if merged.has("damage_reduction"):
+		dr_add += float(merged["damage_reduction"])
+	if has_tag.has("fast") and merged.has("damage_reduction_fast"):
+		dr_add += float(merged["damage_reduction_fast"])
+	if has_tag.has("fort") and merged.has("damage_reduction_fort"):
+		dr_add += float(merged["damage_reduction_fort"])
+	if has_tag.has("ecm") and merged.has("damage_reduction_ecm"):
+		dr_add += float(merged["damage_reduction_ecm"])
+	if dr_add != 0.0:
+		_tactic_runtime_bonus["dr_add"] = dr_add
+		# 减伤帽 0.60（与卡片技能通道同口径，记录7#14）
+		stats.damage_reduction = clampf(stats.damage_reduction + dr_add, 0.0, 0.6)
+
+
+func _revert_tactic_runtime_bonus() -> void:
+	if _tactic_runtime_bonus.has("atk_mult"):
+		var m: float = 1.0 / float(_tactic_runtime_bonus["atk_mult"])
+		stats.attack_light *= m
+		stats.attack_armor *= m
+		stats.attack_air *= m
+		for i in range(stats.weapon_slots.size()):
+			var ws = stats.weapon_slots[i]
+			if ws != null and "damage" in ws:
+				ws.damage = maxf(0.1, float(ws.damage) * m)
+	if _tactic_runtime_bonus.has("def_mult"):
+		var m2: float = 1.0 / float(_tactic_runtime_bonus["def_mult"])
+		stats.defense_light *= m2
+		stats.defense_armor *= m2
+		stats.defense_air *= m2
+	if _tactic_runtime_bonus.has("hp_mult"):
+		stats.max_hp *= 1.0 / float(_tactic_runtime_bonus["hp_mult"])
+	if _tactic_runtime_bonus.has("aspd"):
+		AttackCalculator.scale_attack_speeds(stats, 1.0 / (1.0 + float(_tactic_runtime_bonus["aspd"])))
+	if _tactic_runtime_bonus.has("range_mult"):
+		stats.attack_range = maxf(1.0, stats.attack_range / float(_tactic_runtime_bonus["range_mult"]))
+	if _tactic_runtime_bonus.has("crit_add"):
+		stats.crit_chance = clampf(stats.crit_chance - float(_tactic_runtime_bonus["crit_add"]), 0.0, 0.75)
+	if _tactic_runtime_bonus.has("dr_add"):
+		stats.damage_reduction = clampf(stats.damage_reduction - float(_tactic_runtime_bonus["dr_add"]), 0.0, 0.95)
+	_tactic_runtime_bonus.clear()
+	_tactic_applied_sig = ""
+
+
 ## v8: 侦察潜入开局计时器递减（_process 调用）
 func _update_recon_grace(delta: float) -> void:
 	if not _is_recon_unit or _recon_grace_timer <= 0.0:
@@ -1660,6 +1808,7 @@ func _physics_process(delta: float) -> void:
 	# v8.x: STALKER 潜行计时器递减 + 卡片技能 stat_bonus 消费
 	_update_stalker_grace(delta)
 	_update_card_skill_bonus(delta)
+	_update_tactic_bonus(delta)
 	# v7.4: 受击闪白/抖动手写动画推进（原 create_tween 改手写计时）
 	_update_hit_animations(delta)
 	# v9.x（3d）：待机浮动手写推进（原常驻循环 Tween 改 meta 参数，搭受击动画便车）

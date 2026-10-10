@@ -196,7 +196,7 @@ const PANEL_INTROS := {
 	"collection": ["收藏图鉴", "按时代检阅收藏过的卡种；缴获与制造都会录入。"],
 	"leaderboard": ["战功榜", "三大战绩档案：公司势力排名、相位师排名、敌方相位师图鉴。"],
 	"affix": ["词条工坊", "词条=卡牌升到 Lv5/10/15… 里程碑时自动获得的附加能力（此处也是批量重随/锁定它们的工位——普通卡耗纳米+晶体，星冥卡耗星髓）。"],
-	"hero_archive": ["同伴档案", "30 位牺牲相位师的生平与遗言——击败驻守相位师带回遗物解锁。"],
+	"hero_archive": ["同伴档案", "30 位牺牲相位师的生平与遗言——击败驻守相位师，残核归返纪念墙长明。"],
 	"memorial": ["纪念墙", "30 盏灯对应 30 位牺牲相位师；灯亮可点击读名。"],
 }
 const ERA_NAMES := ["I 一战", "II 二战", "III 冷战", "IV 现代", "V 近未来"]
@@ -402,6 +402,19 @@ func _ready() -> void:
 	# PanelAnim + 数据刷新。1.0s 让苏醒演出首帧先落稳。
 	# v6.52（记录1#6）：0.35s——教程快步玩家几秒内就点卡仓，1.0s 窗口没盖住首开。
 	get_tree().create_timer(0.35).timeout.connect(_warmup_embedded_backpack)
+	# v6.54 记录6#7/#12：技能树预热（host 常驻 /root，基地与主场景共用同一实例；
+	# 通讯架与教程 ENHANCEMENT 步首开此前同帧 load+棋盘全量构建）。2.0s 错峰在
+	# aux 预热之后——教程点技能树远晚于苏醒演出，预热窗口充裕。
+	get_tree().create_timer(2.0).timeout.connect(func() -> void:
+		if is_inside_tree():
+			PhaseMasterSkillHost.prewarm(get_tree()))
+	# v6.54 记录6#10：出击转场预热——出击键 change_scene_to_file(main.tscn) 是同步
+	# 换场景，主场景全依赖树在点击帧一次性编译+装载=黑幕后"卡一会才见屏幕刷新"。
+	# 空闲期后台线程预载，点击时 ResourceLoader 缓存命中，换场景只剩实例化。
+	# 幂等（重复请求同路径 Godot 静默忽略）；失败不影响出击（load 照常走同步路径）。
+	get_tree().create_timer(3.0).timeout.connect(func() -> void:
+		if is_inside_tree():
+			ResourceLoader.load_threaded_request(SCENE_MAIN))
 
 ## v6.51 批：卡仓嵌入面板空闲期预热——_ensure_panel_wrapper 幂等（建好后 wrapper 隐藏
 ## 常驻，不拦输入不抢焦点），首次 _open_panel("backpack") 只剩显示+刷新。
@@ -549,7 +562,7 @@ func _build_topbar() -> void:
 	archive_btn.focus_mode = Control.FOCUS_NONE
 	archive_btn.add_theme_font_size_override("font_size", 13)
 	archive_btn.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-	archive_btn.tooltip_text = "30 位牺牲相位师的档案：击败驻守相位师带回遗物解锁"
+	archive_btn.tooltip_text = "30 位牺牲相位师的档案：击败驻守相位师，残核归返即点亮"
 	_style_btn(archive_btn, Color(0.6, 0.56, 0.48))
 	archive_btn.pressed.connect(func() -> void: _open_panel("hero_archive"))
 	_topbar.add_child(archive_btn)
@@ -2858,8 +2871,9 @@ func _maybe_spawn_tutorial_pointer() -> void:
 	if not is_inside_tree():
 		return
 	# v6.52（记录1#18）：任一嵌入面板开着不亮指路标——聚光暗幕叠在面板上是实机主诉
-	# "下一步提示悬浮在改造面板上"；面板关闭时 notify_surface_closed 会重亮
-	if _has_open_embed_panel():
+	# "下一步提示悬浮在改造面板上"；面板关闭时 notify_surface_closed 会重亮。
+	# v6.56（记录1#14）：补识 /root 级技能树画布（工位「通讯架」直进 host，原守卫看不到）
+	if _has_open_embed_panel() or PhaseMasterSkillHost.is_open():
 		return
 	var tpm := get_node_or_null("/root/TutorialProgressionManager")
 	if tpm == null or not tpm.has_method("get_pending_surface"):

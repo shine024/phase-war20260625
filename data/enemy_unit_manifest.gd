@@ -600,6 +600,9 @@ static func _make_xeno_row(xeno_id: String) -> Dictionary:
 		"tags": x.get("tags", ["frontline"]),
 		"swarm_unit": false,
 		"visual_scale": float(x.get("visual_scale", 1.0)),
+		# v6.54 记录6#23：设计 power 档透传（140-2400，原字段在 manifest 边界被丢弃=
+		# 死数据；缴获卡 fallback 公式对本体卡算出 ~6391 超无垠上限→通关勋章永久拒部署）
+		"power": float(x.get("power", 0.0)),
 		"drops": [{"card_id": captured_card_id_for(xeno_id), "chance": chance}],
 	}
 	# v27 星冥机制扩展键透传（缺省不带，enemy_unit 侧 get 兜底）

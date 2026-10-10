@@ -1656,6 +1656,7 @@ func _process_deferred_manager_loads() -> void:
 		if _load_game_perf_pending:
 			_load_game_perf_pending = false
 			_perf_phase_end("load_game")
+			_post_load_skill_prewarm()
 
 ## v24.5：同步排空延迟管理器加载队列（不分批、不等 call_deferred）。
 ## 供读档后需"立即"读延迟段状态的调用方使用——典型：标题屏进基地前查
@@ -1677,3 +1678,19 @@ func flush_deferred_manager_loads() -> void:
 	if _load_game_perf_pending:
 		_load_game_perf_pending = false
 		_perf_phase_end("load_game")
+		_post_load_skill_prewarm()
+
+
+## v6.56 记录1#9：读档收尾——技能树面板预热重入。读档改变技能点/已学节点后，
+## 预热面板的渲染签名失配，首开帧会全量重建棋盘（实机主诉"读档后技能树卡"）。
+## 读档完成 0.5s 后强制刷新一次（签名命中=近零成本，失配=重建移到空闲帧）。
+## prewarm 幂等（host 常驻 /root，面板已建则只做强制刷新）；战斗中跳过不抢帧。
+func _post_load_skill_prewarm() -> void:
+	if _is_battle_active_now():
+		return
+	var t := get_tree()
+	if t == null:
+		return
+	t.create_timer(0.5).timeout.connect(func() -> void:
+		if is_inside_tree() and not _is_battle_active_now():
+			PhaseMasterSkillHost.prewarm(get_tree()))

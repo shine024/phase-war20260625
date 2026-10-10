@@ -988,6 +988,43 @@ static func _load_projectile_texture(name_id: String) -> Texture2D:
 	_projectile_texture_cache[name_id] = tex
 	return tex
 
+## v6.54 记录6#3：开战后错峰预热施法贴图——首释放技能的卡顿=冷读贴图（磁盘+解码）
+## +粒子材质首绘 shader 编译同帧叠加。开打 0.5s 后每帧读 3 张小图分摊，玩家首次
+## 手动施法（通常开打十几秒后）时缓存已热。新技能贴图落库后在此登记一行即可。
+const PREWARM_SPELL_TEXTURES: Array[String] = [
+	"player_barrage", "player_shield", "player_rage", "player_fortress",
+	"summon_portal", "chain_lightning", "debuff_dark",
+]
+const PREWARM_PROJECTILE_TEXTURES: Array[String] = [
+	"ult_nuke_player", "ult_meteor", "ult_orbital", "ult_inferno_bomb", "ult_divine_spear",
+]
+# v6.56 记录1#12：核爆贴图包 13 张全集（_load_nuke_texture_pack：单帧 4 + 蘑菇云
+# 9 帧序列）。开场核子轰炸首爆 = 13 张冷读 + 爆效首建同帧叠加（实机主诉卡顿），
+# 进预热表错峰消化——此处裸 load 预热 Godot 资源缓存，正式路径二次 load 近零成本。
+const PREWARM_NUKE_PACK_TEXTURES: Array[String] = [
+	"nuke_fireball", "nuke_shockwave", "nuke_burn", "nuke_mushroom",
+	"nuke_mushroom_f0", "nuke_mushroom_f1", "nuke_mushroom_f2",
+	"nuke_mushroom_f3", "nuke_mushroom_f4", "nuke_mushroom_f5",
+	"nuke_mushroom_f6", "nuke_mushroom_f7", "nuke_mushroom_f8",
+]
+
+static func prewarm_cast_assets_step(begin: int) -> int:
+	## 分步预热（每步 3 张），返回下一步起点；完成返回 -1。begin 按平铺序：
+	## [0, spell) = spell 表，[spell, spell+proj) = 弹体表，末段 = 核爆包表。
+	var nuke_base := PREWARM_SPELL_TEXTURES.size() + PREWARM_PROJECTILE_TEXTURES.size()
+	var total := nuke_base + PREWARM_NUKE_PACK_TEXTURES.size()
+	var end_i: int = mini(begin + 3, total)
+	for i in range(begin, end_i):
+		if i < PREWARM_SPELL_TEXTURES.size():
+			_load_spell_texture(PREWARM_SPELL_TEXTURES[i])
+		elif i < nuke_base:
+			_load_projectile_texture(PREWARM_PROJECTILE_TEXTURES[i - PREWARM_SPELL_TEXTURES.size()])
+		else:
+			var nuke_path := "res://assets/effects/nuclear/" + PREWARM_NUKE_PACK_TEXTURES[i - nuke_base] + ".png"
+			if ResourceLoader.exists(nuke_path):
+				load(nuke_path)
+	return end_i if end_i < total else -1
+
 ## v20.15: 真实战斗存活查询（延迟链守卫用，快照式判定）。
 ## 展示/工具场无战斗（battle_active 恒 false）——守卫判定必须
 ## "触发时在战斗中 && 回调时已结束"才拦截，工具场永不被拦。

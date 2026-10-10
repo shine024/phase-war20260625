@@ -38,29 +38,88 @@ static func open(tree: SceneTree, full_bleed: bool = true) -> Node:
 	host._open(full_bleed)
 	return host
 
+## v6.54 记录6#7/#12：空闲期预热——「打开技能树卡了好一会」根因=点击帧同步
+## load(PANEL_SCENE)+instantiate+棋盘全量构建（16 层×3 轨 chip/走线一次建完），
+## 教程步同样命中。幂等；预热出的面板整层隐藏（open_layer 负责恢复可见+淡入）。
+static func prewarm(tree: SceneTree) -> void:
+	if tree == null or tree.root == null:
+		return
+	var host: Node = tree.root.get_node_or_null("PhaseMasterSkillHost")
+	if host == null:
+		host = load("res://scripts/ui/phase_master_skill_host.gd").new()
+		host.name = "PhaseMasterSkillHost"
+		tree.root.add_child(host)
+	host._prewarm_instance()
+
+func _prewarm_instance() -> void:
+	var panel: Node = get_node_or_null("PhaseMasterSkillCanvas/PhaseMasterSkillPanel")
+	if panel == null:
+		var canvas: CanvasLayer = _ensure_canvas()
+		var scene: PackedScene = load(PANEL_SCENE)
+		if scene == null:
+			return
+		panel = scene.instantiate()
+		if panel == null:
+			return
+		canvas.visible = false   # 预热态整层隐藏（backdrop 同隐，零点击拦截）
+		panel.visible = false
+		canvas.add_child(panel)
+		if panel.has_signal("closed") and not panel.closed.is_connected(_on_panel_closed):
+			panel.closed.connect(_on_panel_closed)
+	# v6.56 记录1#9：预热期强制建棋盘+回填渲染签名——原预热只 instantiate，棋盘
+	# 构建被 _refresh 的 visible 门推到首开帧；且读档改变技能状态后签名失配，
+	# 首开又全量重建。幂等重入（读档收尾再调）时签名命中=近零成本，失配=重建
+	# 发生在读档后的空闲帧而非点击帧。
+	if panel.has_method("_refresh"):
+		panel.call("_refresh", true)
+
+## v6.56（记录1#14）：技能树面板是否在屏——指路标防叠守卫消费。host 画布挂 /root，
+## main/truck_base 两个场景的守卫原先都看不到它，聚光暗幕叠在技能树上（实机主诉
+## "下一步提示悬浮在面板上"同律）。
+static func is_open() -> bool:
+	var tree := Engine.get_main_loop() as SceneTree
+	if tree == null or tree.root == null:
+		return false
+	var host: Node = tree.root.get_node_or_null("PhaseMasterSkillHost")
+	if host == null:
+		return false
+	var canvas: CanvasLayer = host.get_node_or_null("PhaseMasterSkillCanvas")
+	return canvas != null and canvas.visible
+
+## canvas+backdrop 构建（_open 与预热共用；v6.53 层号契约 40<100<105教程<104<130<200）
+func _ensure_canvas() -> CanvasLayer:
+	var canvas: CanvasLayer = get_node_or_null("PhaseMasterSkillCanvas")
+	if canvas != null:
+		return canvas
+	canvas = CanvasLayer.new()
+	canvas.name = "PhaseMasterSkillCanvas"
+	# v6.53（记录1二轮#6）：110 → 104。原 110 与教程 TutorialLayer(105) 倒挂：技能树步
+	# 教程框被全屏 Backdrop(STOP) 压住，关闭技能树才显形（实机主诉）。104=仍高于
+	# PopupLayer(100) 保住覆盖与 ESC 收层语义，低于教程层 → 框浮于技能树之上。
+	canvas.layer = 104
+	add_child(canvas)
+	# 自带全屏 backdrop：拦截外部点击（点击空白处关闭），把面板与下层面板隔离
+	var backdrop := ColorRect.new()
+	backdrop.name = "Backdrop"
+	backdrop.color = DT.COLOR_BACKDROP
+	backdrop.anchors_preset = Control.PRESET_FULL_RECT
+	backdrop.mouse_filter = Control.MOUSE_FILTER_STOP
+	backdrop.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	backdrop.gui_input.connect(_on_backdrop_gui_input)
+	canvas.add_child(backdrop)
+	return canvas
+
 func _open(full_bleed: bool) -> void:
+	# v6.56（记录1#14/#21）：host 是技能树唯一入口漏斗（main 按钮/教程动作/selector
+	# 钻取/基地工位都汇到 _open）——在此统一发 surface 触达通知：点播段匹配
+	# ENHANCEMENT 步则拉起 overlay，同时入触达史（提前打开过→到步自动跳步）。
+	# main._on_progression_pressed 在 host.open 之后的同名通知经 chain_paused 门幂等。
+	var _tpm: Node = get_node_or_null("/root/TutorialProgressionManager")
+	if _tpm != null and _tpm.has_method("notify_surface_opened"):
+		_tpm.notify_surface_opened("growth")
 	FeatureUnlockPopup.show_once("skill_tree", "相位师技能树",
 		"消耗技能点学习全局被动强化（指挥/智能化/火力/概念武器）。技能点随相位场等级获得。")
-	var canvas: CanvasLayer = get_node_or_null("PhaseMasterSkillCanvas")
-	if canvas == null:
-		canvas = CanvasLayer.new()
-		canvas.name = "PhaseMasterSkillCanvas"
-		# v6.53（记录1二轮#6）：110 → 104。层号契约 40<100<105教程<110<130<200——
-		# 原 110 与教程 TutorialLayer(105) 倒挂：技能树步（ENHANCEMENT 点播）教程框
-		# 在 notify_surface_opened 时弹出、随后 host.open 才开技能树，框被全屏
-		# Backdrop(STOP) 压住，关闭技能树才显形（实机主诉）。104=仍高于 PopupLayer(100)
-		# 保住覆盖与 ESC 收层语义，低于教程层 → 框浮于技能树之上。
-		canvas.layer = 104
-		add_child(canvas)
-		# 自带全屏 backdrop：拦截外部点击（点击空白处关闭），把面板与下层面板隔离
-		var backdrop := ColorRect.new()
-		backdrop.name = "Backdrop"
-		backdrop.color = DT.COLOR_BACKDROP
-		backdrop.anchors_preset = Control.PRESET_FULL_RECT
-		backdrop.mouse_filter = Control.MOUSE_FILTER_STOP
-		backdrop.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-		backdrop.gui_input.connect(_on_backdrop_gui_input)
-		canvas.add_child(backdrop)
+	var canvas: CanvasLayer = _ensure_canvas()
 	var panel: Node = canvas.get_node_or_null("PhaseMasterSkillPanel")
 	if panel == null:
 		var scene: PackedScene = load(PANEL_SCENE)
@@ -106,6 +165,7 @@ func close() -> void:
 	var canvas: CanvasLayer = get_node_or_null("PhaseMasterSkillCanvas")
 	if canvas == null:
 		return
+	var was_visible: bool = canvas.visible
 	var p: Node = canvas.get_node_or_null("PhaseMasterSkillPanel")
 	if p != null and "full_bleed" in p:
 		p.set("full_bleed", false)
@@ -113,6 +173,14 @@ func close() -> void:
 		PanelAnim.close_layer(canvas, p, canvas.get_node_or_null("Backdrop"))
 	else:
 		canvas.visible = false
+	# v6.56（记录1#14）：关闭通知补链——原 close 从不通知 TPM，ENHANCEMENT 步
+	# close-wait（打开浏览→关闭继续）永远等不到放行；非 close-wait 段靠它重亮
+	# 指路标。关闭出口三处（面板按钮/点空白/ESC）全漏斗到本函数，守卫
+	# was_visible：重复 close（已隐藏态）不重发。
+	if was_visible:
+		var tpm: Node = get_node_or_null("/root/TutorialProgressionManager")
+		if tpm != null and tpm.has_method("notify_surface_closed"):
+			tpm.notify_surface_closed("growth")
 	if SignalBus and SignalBus.has_signal("play_sound"):
 		SignalBus.play_sound.emit("panel_close")
 

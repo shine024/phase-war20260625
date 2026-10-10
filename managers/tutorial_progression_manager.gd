@@ -70,6 +70,11 @@ func notify_assembly_touched() -> void:
 ## 动作打开面板后非空；玩家关闭该面板（main._close_overlay 通知）才弹下一步。
 var pending_close_surface: String = ""
 
+## v6.56（记录1#21）：surface 触达史——玩家提前打开过的面板（键=SURFACE_FOR_STEP
+## 同款 surface 键，任意来源的 notify_surface_opened 都入史），到步时自动完成跳步，
+## 不再当新手重讲。入档（字符串数组）；实操门优先于跳步（装配/符文/加点不跳）。
+var seen_surfaces: Dictionary = {}
+
 signal tutorial_step_changed(new_step: TutorialStep)
 ## tutorial_completed 已迁移至 SignalBus: SignalBus.tutorial_completed(tutorial_id)
 ## 批次③ Task 5：按需点播请求——链暂停期间玩家首次触达对应面板时，主场景据此拉起 overlay
@@ -131,6 +136,9 @@ func _step_gate_blocked(step: TutorialStep) -> bool:
 
 ## 按需点播：面板打开时由 main/truck_base 调用。链暂停中且面板与当前步匹配才放行一次。
 func notify_surface_opened(surface_key: String) -> void:
+	# v6.56（记录1#21）：触达史先于点播门记录——教程早期（链未暂停段）打开的面板
+	# 也要入史，到步时才能判「已浏览过」自动跳步。
+	seen_surfaces[surface_key] = true
 	if not chain_paused or not should_show_tutorial():
 		return
 	# v6.39：点播等待中打开任何面板 → 先收指路标（面板即将占屏，聚光叠在面板上是误导）；
@@ -147,6 +155,16 @@ func notify_surface_opened(surface_key: String) -> void:
 ## 看清面板就被推着走。命中动作后挂起等待，main._close_overlay 关面板时放行。
 const CLOSE_WAIT_SURFACE_FOR_ACTION: Dictionary = {
 	"open_backpack": "backpack",
+	# v6.56（记录1#14）：技能树同律——打开浏览、关面板才弹下一步。原白名单只有
+	# open_backpack：ENHANCEMENT 步点「打开技能树」瞬间弹下一步框，浮在刚打开的
+	# 技能树上（实机主诉"技能树页内弹下一步框"）。
+	"open_enhancement": "growth",
+}
+
+## close-wait 挂起 toast 的面板显示名（begin_close_wait_for_action 消费）
+const CLOSE_WAIT_SURFACE_NAMES: Dictionary = {
+	"backpack": "背包",
+	"growth": "技能树",
 }
 
 
@@ -157,9 +175,10 @@ func begin_close_wait_for_action(action_target: String) -> bool:
 		return false
 	pending_close_surface = surface
 	# v6.23b: 主诉①"打开背包后没有后续指示"——挂起期间教程框自毁、屏幕零提示，
-	# 玩家不知道要关背包才继续。补一条明确指示（toast 常规时长，不遮挡面板）。
+	# 玩家不知道要关面板才继续。补一条明确指示（toast 常规时长，不遮挡面板）。
+	# v6.56（记录1#14）：面板名参数化（白名单新增技能树后不再硬编码"背包"）。
 	if SignalBus and SignalBus.has_signal("show_toast"):
-		SignalBus.show_toast.emit("◀ 浏览完毕后关闭背包，继续新手引导")
+		SignalBus.show_toast.emit("◀ 浏览完毕后关闭%s，继续新手引导" % String(CLOSE_WAIT_SURFACE_NAMES.get(surface, "面板")))
 	return true
 
 
@@ -195,18 +214,15 @@ func _initialize_tutorial_data() -> void:
 			"highlight_elements": []
 		},
 		TutorialStep.CARD_COLLECTION: {
-			# 记录5#3：原"清点卡仓"步骤没说清"这步要干嘛"——明确动作=进去看一眼就关，
-			# 实际装配是下一步的事
+			# v6.56（记录1#4）：改纯认知连讲步——原「打开卡仓→看一眼→关闭」与下一步
+			# 装配实操各自走一遍开/关 close-wait 循环（实机主诉"教程开背包两次"）。
+			# 本步只讲不练：背包留到第 3 步装配实操时开一次。
 			"title": "认识卡仓",
-			"description": "这一步只需要认识入口：点击发光的「卡仓」工位打开背包，看一眼再关掉即可继续。卡仓里是你拥有的所有[color=#fbbf24]战斗卡[/color]（部署作战用），符文与资源在对应标签页；移动基地的「卡牌展示墙」工位也通向这里。",
-			"highlights": ["本步动作：打开卡仓→看一眼→关闭继续", "战斗卡：部署到战场作战", "同名战斗卡各自独立养成"],
-			"action_text": "打开卡仓",
-			"action_target": "open_backpack",
-			"highlight_elements": ["backpack_button"],
-			# v6.20 教程指向可视化：聚光圈住真实入口按钮（点真按钮=等效点本步动作键）
-			"spotlight_key": "backpack",
-			"spotlight_tip": "发光的工位就是卡仓——点它进去看一眼",
-			"spotlight_press_advances": true,
+			"description": "发光的「卡仓」工位通向你的背包：里面是你拥有的所有[color=#fbbf24]战斗卡[/color]（部署作战用），符文与资源在对应标签页；下一步装配时会打开它。同名战斗卡各自独立养成，移动基地的「卡牌展示墙」工位也通向这里。",
+			"highlights": ["卡仓 = 背包入口（下一步装配时打开）", "战斗卡：部署到战场作战", "同名战斗卡各自独立养成"],
+			"action_text": "知道了",
+			"action_target": "next",
+			"highlight_elements": [],
 		},
 		TutorialStep.PHASE_INSTRUMENT: {
 			# v6.53（记录1二轮#2）：改实操步——原"确认预装"步玩家全程不动手，拖拽装配
@@ -226,7 +242,7 @@ func _initialize_tutorial_data() -> void:
 			# v37（用户拍板）：成长入口直进技能树——本步从"打开整备舱"改为技能树导览；
 			# 战斗卡自动升级的说明保留（战后结算与卡仓行内都有成长呈现，无需专开面板）。
 			"title": "相位师技能树",
-			"description": "刚才的战斗中，上阵的战斗卡已经获得了经验——战斗卡靠经验自动升级（Lv1-30），Lv5/10/15/20/25/30 各解锁一个词条，无需手动操作。\n相位师自己的成长在技能树：用技能点解锁全局强化，构建你的指挥风格。",
+			"description": "刚才的战斗中，上阵的战斗卡已经获得了经验——战斗卡靠经验自动升级（Lv1-30），Lv5/10/15/20/25/30 各解锁一个词条，无需手动操作。\n相位师自己的成长在技能树：用技能点解锁全局强化，构建你的指挥风格。浏览完毕关掉它，我们继续。",
 			"highlights": ["战斗经验→等级 Lv1-30（自动）", "关键等级解锁词条节点", "技能树：技能点换全局强化"],
 			"action_text": "打开技能树",
 			"action_target": "open_enhancement",
@@ -372,6 +388,18 @@ func complete_current_step() -> void:
 			hint = "按住一张战斗卡，拖进（或拖出）底部绿色装配槽试一次，再继续"
 		SignalBus.show_toast.emit(hint)
 		return
+	_finish_step_and_advance()
+	# v6.56（记录1#21）：提前触达过的面板导览步自动完成跳步（用户拍板语义）——
+	# 教程早期已打开过的面板，到步不再当新手重讲；连跳直至未触达步或实操门步
+	# （_step_gate_blocked 优先于跳步：装配/符文/加点必须动手，不跳）。
+	while SURFACE_FOR_STEP.has(current_step) \
+			and seen_surfaces.has(String(SURFACE_FOR_STEP.get(current_step, ""))) \
+			and not _step_gate_blocked(current_step):
+		_finish_step_and_advance()
+
+## 沿 STEP_ORDER 推进一步并处理段间语义（点播暂停/指路标/完成广播——原
+## complete_current_step 主体抽出，供跳步环复用）。
+func _finish_step_and_advance() -> void:
 	if not completed_steps.has(current_step):
 		completed_steps.append(current_step)
 
@@ -411,6 +439,7 @@ func reset_tutorial() -> void:
 	completed_steps.clear()
 	chain_paused = false
 	pending_close_surface = ""
+	seen_surfaces.clear()
 	tutorial_pointer_requested.emit(false)
 
 ## 获取教程进度
@@ -506,6 +535,8 @@ func save_state() -> Dictionary:
 		"chain_paused": chain_paused,
 		# v38.3: 面板体验步挂起态（玩家关着卡仓退出游戏，读档后仍在等待关闭放行）
 		"pending_close_surface": pending_close_surface,
+		# v6.56（记录1#21）：surface 触达史（字符串数组，JSON 往返无类型陷阱）
+		"seen_surfaces": seen_surfaces.keys(),
 	}
 
 ## 加载状态（给SaveManager用）
@@ -521,6 +552,7 @@ func load_state(data: Dictionary) -> void:
 	# v6.14: 空段（存档缺段）时 chain_paused 复位默认——读侧不变式"先重置再覆盖"
 	if data.is_empty():
 		chain_paused = false
+		seen_surfaces.clear()
 		return
 	var version: int = int(data.get("version", 1))
 	var saved_step: int = int(data.get("current_step", TutorialStep.NONE))
@@ -548,6 +580,11 @@ func load_state(data: Dictionary) -> void:
 	chain_paused = bool(data.get("chain_paused", false))
 	# v38.3: 面板体验步挂起态（旧档无此键 → 空串 = 无挂起，行为不变）
 	pending_close_surface = String(data.get("pending_close_surface", ""))
+	# v6.56（记录1#21）：触达史重建（字符串键逐个规范化；旧档无此段=空史，全部照讲）
+	seen_surfaces.clear()
+	var raw_seen: Array = data.get("seen_surfaces", [])
+	for k in raw_seen:
+		seen_surfaces[String(k)] = true
 
 ## 获取高亮元素列表
 func get_highlight_elements() -> Array:

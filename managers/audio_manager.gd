@@ -36,6 +36,7 @@ const SFX_NAMES: Array[String] = [
 	"base_alarm",       # 基地低血量告警
 	"unit_death",       # v26.6: 单位阵亡（合成爆炸短音，sound_generator 已生成；接 unit_died 信号）
 	"return_base",      # v6.38 记录5#5: 回基地转场音（世界地图→移动基地）
+	"story_page",       # v6.54 记录6#2: 剧情漫画翻页/按钮提示音（纸感划擦，Kenney CC0）
 ]
 const BUS_NAME: String = "Master"
 const MUSIC_BUS: String = "Music"
@@ -477,7 +478,16 @@ func set_music_volume(volume: float) -> void:
 func _on_battle_ended_bgm(player_won: bool) -> void:
 	# 延迟一小段时间再切 BGM，让 win/lose SFX 先播放
 	await get_tree().create_timer(0.5).timeout
-	play_music("hub")
+	# v6.56 记录1#2（用户拍板"复用现有曲"）：黑门无限 run 的战斗结束切 boss 曲驻留
+	# （原硬编码回 hub——黑门域没有 hub 概念，口型不符）；L100 胜利后结局独白段切
+	# title 曲（原独白零配乐）。其余战原著回 hub。
+	var ebm: Node = get_node_or_null("/root/EndlessBlackgateManager")
+	if ebm != null and bool(ebm.get("run_active")):
+		play_music("boss")
+	elif player_won and GameManager != null and int(GameManager.get("current_level")) >= 100:
+		play_music("title")
+	else:
+		play_music("hub")
 	# v32.0 演出层：战场环境音收（延迟同 BGM，让胜负音先出）
 	stop_ambient(1.5)
 
@@ -642,6 +652,15 @@ func _on_node_added_ui_sfx(node: Node) -> void:
 			node.pressed.connect(_on_button_clicked_sfx)
 		# 批次2：按压微动效（视觉反馈也走这唯一全局钩子，PanelAnim 承担行为）
 		PanelAnim.attach_press_feedback(node)
+		return
+	# v6.56 记录1#3：TabBar 切标签音——TabBar 不是 BaseButton，吃不到 pressed 钩子
+	# （背包/情报等切标签界面此前静默）；一处生效全项目所有切标签界面。
+	if node is TabBar:
+		if not node.tab_changed.is_connected(_on_tabbar_tab_changed):
+			node.tab_changed.connect(_on_tabbar_tab_changed)
+
+func _on_tabbar_tab_changed(_tab: int) -> void:
+	play_sfx("button")
 
 func _on_button_clicked_sfx() -> void:
 	play_sfx("button")

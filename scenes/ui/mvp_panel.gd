@@ -1373,6 +1373,11 @@ func _compute_next_level() -> int:
 func _compute_replay_level() -> int:
 	if _is_afk:
 		return 0
+	# v6.54 记录6#19：黑门态 current_level 恒钉 100——"再战本关（第 100 关）"在黑门
+	# 结算是误导（且会绕过黑门入口开普通 100 关）。黑门档收口走「继 续」/返回与
+	# 本体击碎后的 继续深入/携带奖励 窗，不给重打直通键。
+	if _is_endless():
+		return 0
 	var root: Node = Engine.get_main_loop().root if Engine.get_main_loop() != null else null
 	if root == null:
 		return 0

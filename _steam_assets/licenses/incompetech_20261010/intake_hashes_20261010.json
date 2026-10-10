@@ -1,0 +1,14 @@
+{
+  "_comment": "2026-10-10 增补 intake 哈希。SHA256 前 16 位口径与 20260926/20261008 一致。",
+  "intake": [
+    {
+      "file": "bgm_intro__Long Note One.mp3",
+      "sha256_16": "2b935a1283f72100",
+      "bytes": 2679749,
+      "duration_sec": 63.003656,
+      "full_decode_ok": false,
+      "download_note": "首次下载截断（目录声明 7:20=440s，实际仅 63s，Xing 时长不可信；curl exit=28 为真超时）→ 走 -C - 续传至全长后重录哈希",
+      "src_url": "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Long%20Note%20One.mp3"
+    }
+  ]
+}

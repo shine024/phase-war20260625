@@ -56,9 +56,18 @@ const SUPPLY_ENERGY: int = 200
 ## 异族渗透(大地图小战斗,收益很小口径)
 const INCURSION_MAX: int = 3
 const INCURSION_EXPIRE_DAYS: int = 3
+## v6.55 记录6#16：渗透提前露脸——原实时心跳/行军遭遇双门槛=黑门解锁（通关 L100），
+## 唯一无门槛入口是睡眠日刷；不常睡觉的玩家 40+ 关零星冥接触（实机主诉"没见异族关卡"）。
+## 渗透编队强度锚定宿主关（make_default_context），低关宿主自动缩放，提前安全。
+const INCURSION_UNLOCK_CLEARED_LEVEL: int = 25
 const INCURSION_NANO: int = 800
 const INCURSION_ENERGY: int = 120
 const INCURSION_CAPTURE_CHANCE: float = 0.30
+# v6.56 记录1#18：区域化生成口径——近锚计数半径对齐 world_map.MAP_WINDOW_RADIUS
+# （±10 视野窗，窗外红点本就不可见）；锚点远后方 15 关外的陈旧点提前过期
+# （玩家追不上它们，却占着 INCURSION_MAX 名额挤掉新区域红点）。
+const INCURSION_NEAR_RADIUS: int = 10
+const INCURSION_STALE_BEHIND: int = 15
 
 ## 渗度里程碑 → 星髓（设计 §7：按里程碑发放；每 run 累计可达里程碑之和）
 const MARROW_MILESTONES: Array = [
@@ -130,16 +139,29 @@ func _ready() -> void:
 
 
 ## v6.42: 渗透实时心跳（5 分钟/拍）——过期清理 + 未满则 50% 概率补 1 个（上限/停刷同日刷口径）
+## v6.56 记录1#18：上限判据加近锚口径——可见窗内已满就不刷，身后陈旧点不再挤占预算。
 func _realtime_refresh_tick() -> void:
 	_expire_incursions()
-	if gate_cleared_once or not is_blackgate_unlocked():
+	if gate_cleared_once or not incursions_unlocked():
 		return
-	if incursions.size() >= INCURSION_MAX:
+	if incursions.size() >= INCURSION_MAX or _count_incursions_near_anchor() >= INCURSION_MAX:
 		return
 	if randf() < 0.5:
 		return
 	_spawn_incursion()
 	incursions_changed.emit()
+
+
+## v6.55 记录6#16：渗透是否解锁——通关 INCURSION_UNLOCK_CLEARED_LEVEL（星级 > 0；
+## LPM 未加载时按 GameManager 进度兜底，口径同 is_blackgate_unlocked）。
+func incursions_unlocked() -> bool:
+	var lpm: Node = get_node_or_null("/root/LevelProgressManager")
+	if lpm != null and lpm.has_method("get_level_stars"):
+		return int(lpm.get_level_stars(INCURSION_UNLOCK_CLEARED_LEVEL)) > 0
+	var gm: Node = get_node_or_null("/root/GameManager")
+	if gm != null:
+		return int(gm.get("current_level")) > INCURSION_UNLOCK_CLEARED_LEVEL
+	return false
 
 
 ## 黑门是否解锁：第 100 关已通关（星级 > 0；LPM 未加载时按 GameManager 进度兜底）
@@ -272,10 +294,11 @@ func grant_supply_node(wave_index: int) -> Dictionary:
 ## v6.35: 异族渗透——每游戏日刷新/过期(bunker_day_ended)。通关后停刷。
 func _on_day_ended(_day: int = -1) -> void:
 	_expire_incursions()
-	if gate_cleared_once:
-		return
+	if gate_cleared_once or not incursions_unlocked():
+		return  # v6.55 记录6#16：与实时心跳/行军遭遇同门槛（原日刷无门槛属口径漂移）
 	var spawned: int = 0
-	while incursions.size() < INCURSION_MAX and spawned < 2:
+	while incursions.size() < INCURSION_MAX and _count_incursions_near_anchor() < INCURSION_MAX \
+			and spawned < 2:
 		if randf() < 0.5:
 			break  # 每日 0-2 个(50% 概率提前收手)
 		_spawn_incursion()
@@ -284,13 +307,44 @@ func _on_day_ended(_day: int = -1) -> void:
 		incursions_changed.emit()
 
 
-## v6.42: 追加一个渗透节点（宿主关=停靠关 -15~+5 已通关范围；日刷/实时心跳共用）
-func _spawn_incursion() -> void:
+## v6.56 记录1#18：渗透生成锚——行军中锚定目的地。地图视野窗本就锚目的地
+## （world_map._truck_anchor_level），生成却锚停靠关且后偏（parked−15..+5）：
+## 长途行军后红点全留在身后（实机主诉"90 关不见异族红点"）。口径与地图窗对齐。
+func _incursion_anchor_level() -> int:
 	var bm: Node = get_node_or_null("/root/BunkerManager")
-	var parked: int = int(bm.get_parked_level()) if bm != null and bm.has_method("get_parked_level") else 1
-	# 宿主候选:停靠关附近已通关范围(打得到的敌人才有意义)
-	var lo: int = maxi(1, parked - 15)
-	var hi: int = mini(LevelEras.LEVEL_COUNT, parked + 5)
+	if bm != null:
+		if bm.has_method("is_traveling") and bool(bm.call("is_traveling")) \
+				and bm.has_method("get_travel_dest"):
+			return clampi(int(bm.call("get_travel_dest")), 1, LevelEras.LEVEL_COUNT)
+		if bm.has_method("get_parked_level"):
+			return clampi(int(bm.call("get_parked_level")), 1, LevelEras.LEVEL_COUNT)
+	return 1
+
+
+## 锚点 ±INCURSION_NEAR_RADIUS（可见窗）内的据点数——刷新预算按可见口径计。
+func _count_incursions_near_anchor() -> int:
+	var anchor := _incursion_anchor_level()
+	var n := 0
+	for inc in incursions:
+		if absi(int(inc.get("host_level", 0)) - anchor) <= INCURSION_NEAR_RADIUS:
+			n += 1
+	return n
+
+
+## 指定关卡 ±INCURSION_NEAR_RADIUS 内是否已有据点（长途到站保底判据）。
+func has_incursion_near(level: int) -> bool:
+	for inc in incursions:
+		if absi(int(inc.get("host_level", 0)) - level) <= INCURSION_NEAR_RADIUS:
+			return true
+	return false
+
+
+## v6.42: 追加一个渗透节点（宿主关=生成锚前偏窗 −5~+15；日刷/实时心跳共用）
+func _spawn_incursion() -> void:
+	# 宿主候选:锚点（行军中=目的地）前偏窗——新区域先有红点等玩家到达
+	var anchor := _incursion_anchor_level()
+	var lo: int = maxi(1, anchor - 5)
+	var hi: int = mini(LevelEras.LEVEL_COUNT, anchor + 15)
 	if hi < lo:
 		return
 	incursions.append({
@@ -308,7 +362,7 @@ func get_incursion_days_left(inc: Dictionary) -> int:
 ## v6.42: 行军遭遇——在指定关追加一个渗透节点（宿主=到站关；BunkerManager 到站掷点消费）。
 ## 条件不满足（已通关/未解锁/已达上限/非法关卡）返回 false，调用方静默跳过。
 func spawn_incursion_at(host_level: int) -> bool:
-	if gate_cleared_once or not is_blackgate_unlocked():
+	if gate_cleared_once or not incursions_unlocked():
 		return false
 	if incursions.size() >= INCURSION_MAX:
 		return false
@@ -332,11 +386,19 @@ func _current_day() -> int:
 
 func _expire_incursions() -> void:
 	var today: int = _current_day()
+	var anchor := _incursion_anchor_level()
 	var kept: Array = []
+	var changed: bool = false
 	for inc in incursions:
-		if today - int(inc.get("spawned_day", 0)) < INCURSION_EXPIRE_DAYS:
+		var day_ok: bool = today - int(inc.get("spawned_day", 0)) < INCURSION_EXPIRE_DAYS
+		# v6.56 记录1#18：锚点远后方（>INCURSION_STALE_BEHIND）的陈旧点提前过期——
+		# 已在视野窗外且玩家只向前推进，留着只占名额
+		var far_behind: bool = int(inc.get("host_level", 0)) < anchor - INCURSION_STALE_BEHIND
+		if day_ok and not far_behind:
 			kept.append(inc)
-	if kept.size() != incursions.size():
+		else:
+			changed = true
+	if changed:
 		incursions = kept
 		incursions_changed.emit()
 

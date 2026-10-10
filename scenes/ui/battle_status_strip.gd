@@ -12,6 +12,8 @@ var _kill_label: Label = null
 var _dmg_label: Label = null
 ## v6.23b: 挂机标注行（主诉⑥"挂机自动推关/循环战斗界面上没有标注"）
 var _afk_label: Label = null
+## v6.55 记录6#11: 卡死/倒计时提示行（BattleManager.get_stall_hint 数据源，1s 轮询）
+var _stall_label: Label = null
 # v9.x: 单位数走信号即时刷新；时间/击杀/伤害保留低频轮询（放宽到 1s）
 var _refresh_accum: float = 0.0
 var _bid_cache: Node = null  ## v9.x（3c）：BattleInfoDisplay 引用缓存
@@ -53,6 +55,17 @@ func _ready() -> void:
 	_afk_label.visible = false
 	vbox.add_child(_afk_label)
 	_refresh_afk()
+	# v6.55 记录6#11: 卡死/倒计时提示行（琥珀色，默认隐藏）
+	_stall_label = Label.new()
+	_stall_label.add_theme_font_size_override("font_size", DesignTokens.FONT_SIZE_SMALL)
+	_stall_label.add_theme_color_override("font_color", Color(0.95, 0.75, 0.35))
+	_stall_label.add_theme_color_override("font_outline_color", DesignTokens.COLOR_BACKDROP_DEEP)
+	_stall_label.add_theme_constant_override("outline_size", 1)
+	_stall_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_stall_label.visible = false
+	_stall_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_stall_label.custom_minimum_size = Vector2(136, 0)
+	vbox.add_child(_stall_label)
 	# 4 行数据
 	_time_label = _make_row_label()
 	_unit_label = _make_row_label()
@@ -138,6 +151,12 @@ func _refresh() -> void:
 		_kill_label.text = "击杀  我%d / 敌%d" % [int(stats.get("player_kills", 0)), int(stats.get("enemy_kills", 0))]
 	if _dmg_label:
 		_dmg_label.text = "伤害  我%s / 敌%s" % [_fmt(int(stats.get("damage_dealt", 0))), _fmt(int(stats.get("damage_taken", 0)))]
+	# v6.55 记录6#11: 卡死/倒计时提示（BattleManager 空串=无提示即隐藏）
+	if _stall_label:
+		var bm := get_node_or_null("/root/BattleManager")
+		var hint: String = String(bm.get_stall_hint()) if bm != null and bm.has_method("get_stall_hint") else ""
+		_stall_label.text = hint
+		_stall_label.visible = not hint.is_empty()
 
 
 func _get_battle_stats() -> Dictionary:

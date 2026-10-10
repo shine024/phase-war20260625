@@ -59,7 +59,7 @@ static func get_faction_store_items(faction_id: String) -> Array[StoreItem]:
 			items.append(create_store_item("weapon_cold_lmg", StoreItemType.CARD, "M60通用机枪", 250))
 			items.append(create_store_item("weapon_modern_minigun", StoreItemType.CARD, "M134加特林", 300))
 			items.append(create_store_item("alloy", StoreItemType.MATERIAL, "合金x80", 80))
-			items.append(create_store_item("mod_blueprint_pack_iron_wall_corp", StoreItemType.MATERIAL, "特供图纸包·装甲堡垒", 350))
+			items.append(create_store_item("mod_blueprint_pack_iron_wall_corp", StoreItemType.MATERIAL, "钢壁防务·改造图纸盲包", 350))
 
 		"nova_arms":
 			items.append(create_store_item("weapon_ww2_at", StoreItemType.CARD, "巴祖卡火箭筒", 250))
@@ -70,7 +70,7 @@ static func get_faction_store_items(faction_id: String) -> Array[StoreItem]:
 			items.append(create_store_item("weapon_future_plasma", StoreItemType.CARD, "等离子枪", 450))
 			items.append(create_store_item("platform_ww2_medium", StoreItemType.CARD, "谢尔曼坦克", 300))
 			items.append(create_store_item("platform_future_medium", StoreItemType.CARD, "悬浮坦克", 400))
-			items.append(create_store_item("mod_blueprint_pack_nova_arms", StoreItemType.MATERIAL, "特供图纸包·火力支援", 300))
+			items.append(create_store_item("mod_blueprint_pack_nova_arms", StoreItemType.MATERIAL, "新星兵工·改造图纸盲包", 300))
 			items.append(create_store_item("nano_materials", StoreItemType.MATERIAL, "纳米材料x100", 100))
 
 		"aether_dynamics":
@@ -82,7 +82,7 @@ static func get_faction_store_items(faction_id: String) -> Array[StoreItem]:
 			items.append(create_store_item("weapon_modern_dmr", StoreItemType.CARD, "MK14射手步枪", 300))
 			items.append(create_store_item("weapon_future_pulse", StoreItemType.CARD, "脉冲步枪", 350))
 			items.append(create_store_item("bp_ww1_012", StoreItemType.CARD, "缴获卡", 250))
-			items.append(create_store_item("mod_blueprint_pack_aether_dynamics", StoreItemType.MATERIAL, "特供图纸包·机动协同", 320))
+			items.append(create_store_item("mod_blueprint_pack_aether_dynamics", StoreItemType.MATERIAL, "以太动力·改造图纸盲包", 320))
 
 		"quantum_logistics":
 			items.append(create_store_item("platform_cold_ifv", StoreItemType.CARD, "布雷德利步战车", 300))
@@ -95,7 +95,7 @@ static func get_faction_store_items(faction_id: String) -> Array[StoreItem]:
 			items.append(create_store_item("alloy", StoreItemType.MATERIAL, "合金x160", 160))
 			items.append(create_store_item("bp_ww2_016", StoreItemType.CARD, "缴获卡·精选", 300))
 			items.append(create_store_item("stat_boost_hp", StoreItemType.MATERIAL, "生命强化", 400))
-			items.append(create_store_item("mod_blueprint_pack_quantum_logistics", StoreItemType.MATERIAL, "特供图纸包·工程后勤", 280))
+			items.append(create_store_item("mod_blueprint_pack_quantum_logistics", StoreItemType.MATERIAL, "量子后勤·改造图纸盲包", 280))
 
 		"helix_recon":
 			items.append(create_store_item("platform_ww1_light", StoreItemType.CARD, "威克斯侦察车", 180))
@@ -110,7 +110,7 @@ static func get_faction_store_items(faction_id: String) -> Array[StoreItem]:
 			items.append(create_store_item("lore_page", StoreItemType.MATERIAL, "情报资料包x1", 200))
 			items.append(create_store_item("lore_page", StoreItemType.MATERIAL, "情报资料包x3", 500))
 			items.append(create_store_item("bp_ww1_018", StoreItemType.CARD, "缴获卡", 220))
-			items.append(create_store_item("mod_blueprint_pack_helix_recon", StoreItemType.MATERIAL, "特供图纸包·侦察情报", 300))
+			items.append(create_store_item("mod_blueprint_pack_helix_recon", StoreItemType.MATERIAL, "螺旋侦察·改造图纸盲包", 300))
 
 		"void_research":
 			items.append(create_store_item("platform_future_heavy", StoreItemType.CARD, "机甲步行者", 550))
@@ -120,7 +120,7 @@ static func get_faction_store_items(faction_id: String) -> Array[StoreItem]:
 			items.append(create_store_item("omega_cannon", StoreItemType.CARD, "米加粒子炮", 900))
 			items.append(create_store_item("stat_boost_hp", StoreItemType.MATERIAL, "生命强化", 450))
 			items.append(create_store_item("stat_boost_atk", StoreItemType.MATERIAL, "攻击强化", 450))
-			items.append(create_store_item("mod_blueprint_pack_void_research", StoreItemType.MATERIAL, "特供图纸包·相位通用", 450))
+			items.append(create_store_item("mod_blueprint_pack_void_research", StoreItemType.MATERIAL, "虚空相位·改造图纸盲包", 450))
 
 		"frontier_union":
 			items.append(create_store_item("platform_ww2_light", StoreItemType.CARD, "M8灰狗装甲车", 200))
@@ -135,7 +135,7 @@ static func get_faction_store_items(faction_id: String) -> Array[StoreItem]:
 			items.append(create_store_item("nano_materials", StoreItemType.MATERIAL, "纳米材料x100", 100))
 			items.append(create_store_item("alloy", StoreItemType.MATERIAL, "合金x80", 80))
 			items.append(create_store_item("bp_ww2_009", StoreItemType.CARD, "缴获卡", 210))
-			items.append(create_store_item("mod_blueprint_pack_frontier_union", StoreItemType.MATERIAL, "特供图纸包·护路维稳", 260))
+			items.append(create_store_item("mod_blueprint_pack_frontier_union", StoreItemType.MATERIAL, "边境联合·改造图纸盲包", 260))
 
 	# v6.2: 未知势力警告（防御性检查）
 	const _VALID_FACTION_IDS: Array[String] = [
@@ -347,11 +347,19 @@ static func deliver_item(item: StoreItem) -> bool:
 			return false
 	return false
 
+## v6.56 记录1#11：最近一次图纸盲包实抽结果（store_panel 购买 toast 消费）。原发放链
+## 丢弃 roll 出的 name/rarity，toast 只能报商品名——「装甲堡垒」这类主题修辞被当成
+## 图纸名，制造界面见的却是对口池随机一张（实机主诉"买的名和造的不一致"）。
+static var last_blueprint_drop_name: String = ""
+static var last_blueprint_drop_rarity: String = ""
+
 ## v6.22 批3: 组织特供图纸包发放——roll 一张对口改造图纸入 IntelItemBag
 static func _deliver_mod_blueprint_pack(item: StoreItem) -> bool:
 	const IntelManualItemsRef = preload("res://data/intel_manual_items.gd")
 	const CompanyDefsRef = preload("res://data/company_definitions.gd")
 	const LevelErasRef = preload("res://data/level_eras.gd")
+	last_blueprint_drop_name = ""
+	last_blueprint_drop_rarity = ""
 	var bag := _get_autoload("/root/IntelItemBag")
 	if bag == null or not bag.has_method("add_item"):
 		return false
@@ -368,6 +376,9 @@ static func _deliver_mod_blueprint_pack(item: StoreItem) -> bool:
 	var drop: Dictionary = IntelManualItemsRef.roll_random_mod_blueprint(enemy_type, "elite", 3, bias, max_era)
 	if drop.is_empty():
 		return false
+	# v6.56 记录1#11：实抽图纸名+稀有度回填（购买 toast 报「获得图纸「名」(稀有度)」）
+	last_blueprint_drop_name = String(drop.get("name", ""))
+	last_blueprint_drop_rarity = String(drop.get("rarity", ""))
 	bag.add_item(String(drop.get("item_type", "")), 1)
 	return true
 

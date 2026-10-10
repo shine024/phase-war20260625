@@ -18,6 +18,7 @@ const ComboFieldState = preload("res://scripts/battle/combo_field_state.gd")
 const CombatFeedback = preload("res://scripts/combat_feedback.gd")
 const DotVfxManager = preload("res://scripts/battle/dot_vfx_manager.gd")
 const PairSynergyEngineRef = preload("res://scripts/battle/pair_synergy_engine.gd")  # v21 P2: 搭档协同（侦察标记/溅射乘数）
+const TacticDetectorScript = preload("res://scripts/battle/tactic_detector.gd")  # v6.56: 战法静态镜像（immune_burn / 火焰 DOT 加成）
 
 # ─────────────────────────────────────────────
 #  弹道命中处理
@@ -1246,6 +1247,11 @@ static func _apply_burn_on_hit(target: Node, stats: UnitStats, attacker: Node) -
 		return
 	if target == null or not is_instance_valid(target):
 		return
+	# v6.56（记录1三轮 #7/#8）: 战法「焦土防线」immune_burn——我方全体免疫燃烧
+	# （target 带 card_grid_slot meta = 我方格子单位；挂账期无此战法时短路成本一次静态读）
+	if target.has_meta("card_grid_slot") \
+			and TacticDetectorScript.has_special("immune_burn"):
+		return
 	var now: float = Time.get_ticks_msec() / 1000.0
 	# v9.1 助燃剂层数（套路1 incendiary flag）——读 attacker 的 _special，命中时挂助燃剂 stacks
 	var _sp: Dictionary = _get_attacker_special_flags(attacker)
@@ -1526,6 +1532,12 @@ static func _tick_dot_damage(unit: Node, delta: float) -> void:
 			var burn_base: float = float(unit.get_meta("_burn_base_dps", 0.0))
 			var burn_stacks: int = int(unit.get_meta("_burn_stacks", 0))
 			var d2: float = burn_base * burn_stacks * tick_dt
+			# v6.56: 战法「焦土防线」flame_damage_bonus——燃烧 DOT 属火焰伤害，敌方身上的
+			# 我方燃烧按加成放大（我方单位身上的燃烧不放大）
+			if not unit.has_meta("card_grid_slot"):
+				var _flame_b: float = float(TacticDetectorScript.get_merged_bonuses().get("flame_damage_bonus", 0.0))
+				if _flame_b > 0.0:
+					d2 *= (1.0 + _flame_b)
 			total_dmg += d2
 			burn_dmg_done += d2
 		else:

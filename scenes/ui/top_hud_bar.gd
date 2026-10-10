@@ -291,14 +291,19 @@ func _refresh_wave() -> void:
 	if bm.has_method("get_enemy_wave_total"):
 		wave_total = int(bm.get_enemy_wave_total())
 	if wave_total > 0:
+		# v6.54 记录6#18：波次点只适合小总数——黑门首场试炼 30 波时 30 个字符把
+		# HUD 中段撑变形（实机主诉）。>12 波改紧凑态：不拼点串，数字+进度条+本体
+		# 尾缀已够读（BU-3 波次进度条同帧在场）。
 		var dots := ""
-		for i in range(wave_total):
-			if i < wave_idx - 1:
-				dots += "●"
-			elif i == wave_idx - 1:
-				dots += "◉"
-			else:
-				dots += "○"
+		if wave_total <= 12:
+			for i in range(wave_total):
+				if i < wave_idx - 1:
+					dots += "●"
+				elif i == wave_idx - 1:
+					dots += "◉"
+				else:
+					dots += "○"
+			dots += " "
 		# v6.53（记录1二轮#15）：黑门首场试炼追加本体波指引尾缀（读 EBM 常量，勿硬编码
 		# 30——宪法 C3）。通关后无限档 run_active 但 gate_core_wave 滚动在远方波次，
 		# 同样显示"还差 N 波到本体"的锚点。
@@ -350,8 +355,17 @@ func _ensure_wave_progress_style() -> void:
 func _refresh_level() -> void:
 	if _level_label == null:
 		return
-	var level := 1
 	var gm := get_node_or_null("/root/GameManager")
+	# v6.54 记录6#19：黑门态 current_level 恒钉 100（进门口径），显示"第 100 关"
+	# 是误导（实机主诉"都进入黑门了为什么还显示100关"）——改按黑门档位显示
+	if gm != null and gm.has_method("is_endless_battle") and bool(gm.is_endless_battle()):
+		var gate_lbl := "黑门·试炼"
+		var ebm: Node = get_node_or_null("/root/EndlessBlackgateManager")
+		if ebm != null and bool(ebm.get("gate_cleared_once")):
+			gate_lbl = "黑门·无限"
+		_level_label.text = gate_lbl
+		return
+	var level := 1
 	if gm and "current_level" in gm:
 		level = int(gm.current_level)
 	_level_label.text = "第 %d 关" % level

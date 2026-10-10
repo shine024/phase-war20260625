@@ -1038,8 +1038,15 @@ func _settle_endless_battle() -> void:
 		if marrow > 0:
 			var cap_note: String = "（本周封顶）" if bool(summary.get("marrow_capped", false)) else ""
 			toast_lines.append("星髓 +%d%s" % [marrow, cap_note])
-	if SignalBus != null and SignalBus.has_signal("show_toast"):
-		SignalBus.show_toast.emit(" · ".join(toast_lines))
+	# v6.54 记录6#22：结算长串走直达通道带时长——SignalBus 通道恒 2s（信号无时长参），
+	# 「黑门征程暂停·第N/M波·分数·星髓」一长串 2 秒即逝=实机主诉"一闪就过去了"
+	ManagerLazyLoader.ensure_loaded("toast")   # 懒加载管理器（priority 9），先 ensure 再直达
+	var _tm := get_node_or_null("/root/ToastManager")
+	var settle_msg: String = " · ".join(toast_lines)
+	if _tm != null and _tm.has_method("show_toast"):
+		_tm.show_toast(settle_msg, 6.0)
+	elif SignalBus != null and SignalBus.has_signal("show_toast"):
+		SignalBus.show_toast.emit(settle_msg)
 
 	if _is_afk_running():
 		return_to_prep()

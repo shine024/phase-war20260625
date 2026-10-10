@@ -1,1 +1,1 @@
-{"fps": 8, "frame_size": 256, "counts": {"idle": 8, "attack": 12}, "outline": {"baked": true, "width_px": 4, "color": [13, 18, 28, 217], "frame_basis": 256}, "foot_frac": 0.1895}
+{"fps": 8, "frame_size": 256, "counts": {"idle": 4, "attack": 6}, "outline": {"baked": true, "width_px": 2, "color": [13, 18, 28, 217], "frame_basis": 256, "note": "flow_magenta_pipeline_v1: 生成图自带细描边(约2px), 非脚本烘焙"}, "foot_frac": 0.4043, "subject": {"idle_w": 0.8203, "idle_h": 0.1953, "attack_w": 0.9609, "attack_h": 0.207, "tool": "flow_magenta_pipeline_v1", "note": "attack_w 含格3炮口焰延伸(全帧并集口径)"}}

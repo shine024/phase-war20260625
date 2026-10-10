@@ -2011,6 +2011,21 @@ func _has_deploy_uses(key: String) -> bool:
 		_seed_deploy_use_key(key)
 	return int(_deploy_uses_remaining.get(key, 0)) > 0
 
+
+## v6.55 记录6#11：任一绿槽卡是否仍有部署次数（BattleManager 卡死看门狗用）。
+## 与 _has_deploy_uses 同语义（缺键懒建自愈）；无法判定（无相位仪）按"可以"处理防误判死锁。
+func has_any_deploy_uses() -> bool:
+	if _phase_instrument == null or not _phase_instrument.has_method("get_loadouts"):
+		return true
+	for lo in _phase_instrument.get_loadouts():
+		var card: CardResource = lo.get("platform", null)
+		if card == null:
+			continue
+		var key: String = card.instance_id if not card.instance_id.is_empty() else card.card_id
+		if _has_deploy_uses(key):
+			return true
+	return false
+
 ## 按部署身份键在绿槽里找对应卡并补建次数；找不到不建（保持缺键拒绝语义）。
 func _seed_deploy_use_key(key: String) -> void:
 	if _phase_instrument == null or not _phase_instrument.has_method("get_loadouts"):

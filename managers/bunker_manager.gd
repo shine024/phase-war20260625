@@ -233,16 +233,24 @@ func _check_travel_arrival() -> void:
 ## v6.42（记录6，用户拍板"机率遇到黑门后的敌人"）：行军遭遇——≥3 关的长途行军到站
 ## 时 30% 概率被星冥游猎队拦截，在到站关生成渗透据点（复用渗透战链：地图红色脉点
 ## 点击迎战；上限/停刷口径全在 EBM.spawn_incursion_at）。短途不掷点防打扰。
+## v6.56 记录1#18：长途（≥10 关）到站保底 1 个据点——生成锚区域化的目的地侧兜底，
+## 保证到达新区域总有红点可打（30% 掷点仍先行，掷中走遭遇文案；近旁已有据点不重复）。
 func _maybe_roll_travel_encounter(dest: int, from_level: int) -> void:
-	if absi(dest - from_level) < 3:
-		return
-	if randf() > 0.30:
+	var dist := absi(dest - from_level)
+	if dist < 3:
 		return
 	var mll := get_node_or_null("/root/ManagerLazyLoader")
 	if mll != null and mll.has_method("ensure_loaded"):
 		mll.ensure_loaded("endless")
 	var ebm := get_node_or_null("/root/EndlessBlackgateManager")
 	if ebm == null or not ebm.has_method("spawn_incursion_at"):
+		return
+	if dist >= 10 and not bool(ebm.call("has_incursion_near", dest)) \
+			and bool(ebm.call("spawn_incursion_at", dest)):
+		if SignalBus and SignalBus.has_signal("show_toast"):
+			SignalBus.show_toast.emit("⚠ 侦察到星冥渗透据点——第%d关附近出现红点，点击迎战" % dest)
+		return
+	if randf() > 0.30:
 		return
 	if bool(ebm.call("spawn_incursion_at", dest)) and SignalBus and SignalBus.has_signal("show_toast"):
 		SignalBus.show_toast.emit("⚠ 行军途中遭遇星冥游猎队——第%d关附近出现渗透据点，点击红点迎战" % dest)

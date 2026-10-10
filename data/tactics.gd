@@ -128,7 +128,7 @@ const ADVANCED_TACTICS: Dictionary = {
 	},
 	"tactic_sky_net": {
 		"id": "tactic_sky_net", "name": "天罗地网", "tier": 2,
-		"desc": "STEEL+THUNDER 技能：全体敌方攻速-30%、移速-30%",
+		"desc": "场上同时激活 1 个钢铁系+1 个雷霆系卡片技能时自动生效：全体敌方攻击间隔 +43%（攻速 -30%）、行进速度 -30%，条件消失后恢复",
 		"require_unlock": true,
 		"conditions": {
 			"min_card_skill_family": {"steel": 1, "thunder": 1}

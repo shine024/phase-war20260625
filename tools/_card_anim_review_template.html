@@ -178,7 +178,11 @@ function drawP(p){
   if(p.spec.mode==='sheet'){
     if(!p.img||!p.img.complete||!p.img.naturalWidth) return;
     const fs=p.spec.fs; src=p.img; sw=sh=fs; sx=p.idx*fs;
-    if(sx+fs>src.naturalWidth) return;
+    if(sx+fs>src.naturalWidth){
+      ctx.fillStyle='rgba(232,80,80,.9)'; ctx.font='12px sans-serif';
+      ctx.fillText('缺帧 '+(p.idx+1)+'/'+p.spec.n+'（sheet 比 counts 短，重建审查页可愈）',8,16);
+      return;
+    }
   }else{
     src=p.frames[p.idx]; if(!src||!src.complete||!src.naturalWidth) return;
     sw=src.naturalWidth; sh=src.naturalHeight;
@@ -283,6 +287,9 @@ const SUS_TIP={face:'自动检测：我方卡图与动画朝向（镜像后）�
   bg:'自动检测：检出近白/品红残留像素（疑似背景没抠干净）；点击此签即标记需重做',
   clip:'自动检测：攻击帧内容贴到画框边，而 idle 同侧有富余 → 疑似开火截断；点击此签即标记需重做'};
 function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+/* 人工复核修复记录：命中 anim_key/id 的行屏蔽指定 sus 签并显示「✓已修复」绿签 */
+const FIXES={'fut_arm_omega':{date:'2026-10-09',clear_sus:['clip'],
+  text:'BIP6R 全链重制已部署（2026-10-09 深夜）：用户满意原图六格重切＋后坐力微动（attack 6帧 1536×256，RECOIL=[0,6,8,5,2,0]），待机换 4 帧 bob 微动（1024×256，与攻击 rest 同位零跳变），敌我卡图双侧重出（enemy 朝左/player 翻转朝右），炮口锚点三处重标（敌 0.2656/我 0.7344，和=1）。V3 十帧表与历史修复（格线/烟渣/白晕）随备份归档。'}};
 const LSKEY='card_anim_review_marks_v3', LSOLD='card_anim_review_marks_v2', LSV1='card_anim_review_marks_v1';
 let marks={},lsOK=true,MIG_N=0,MIG_DROP=0;
 try{marks=JSON.parse(localStorage.getItem(LSKEY)||'{}')||{};}catch(e){marks={};}

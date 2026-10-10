@@ -80,6 +80,14 @@ COLD_WAR 战斗曲）当时被 9-20 审计漏登记**，同族处置。
   Licensed under Creative Commons: By Attribution 4.0
   （https://creativecommons.org/licenses/by/4.0/）——游戏内 credits 页
   「音乐与音效」段已同步（scripts/ui/credits_panel.gd）。
+- **音效（2026-10-10 增补，v6.56）**：武器音效九槽（gun_pistol/smg/rifle/mg/shotgun/
+  sniper/flak_fire/shoot）源自 **The Free Firearm Sound Library** by bart
+  （opengameart.org/content/the-free-firearm-sound-library，**CC0**，无署名义务）；
+  missile_hum 源自 **Kenney Sci-Fi Sounds**（kenney.nl，**CC0**）。两者均为公有领域
+  等效授权，加工=瞬态剪单发/定长剪+RMS 匹配+OGG q6 转码。原包存档：
+  firearm 7z=`D:/godotplay/sfxdl/oga_gun_20261010/firearm_lib.7z`
+  （SHA256 前 16 位 `cc1ab5a99a0a3651`）；Kenney 沿用
+  `_steam_assets/licenses/kenney_20261010/sci-fi-sounds.zip`。
 - **字体**：Rajdhani（Indian Type Foundry · SIL OFL 1.1，`assets/fonts/Rajdhani-OFL.txt`）、
   Noto Sans SC（Adobe/Google 联合 · SIL OFL 1.1，`assets/fonts/NotoSansSC-OFL.txt`，
   与 google/fonts 上游逐字节一致）。⚠️ 2026-09-26 勘误：旧 `OFL.txt` 是已删除的

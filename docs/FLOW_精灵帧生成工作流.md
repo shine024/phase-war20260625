@@ -201,3 +201,65 @@ Flow 网页版**拿不到真透明底**，两条路均实测否决：
 - 交付物全是 JPEG（FF D8），物理无 alpha 通道；设置面板（智能体设置）只有确认模式/比例/分辨率倍率/默认模型，**无输出格式、无透明开关**。
 - 页面内 canvas 验 alpha 技法（无需下载）：同源 `flow.google.com/asb` 图 `drawImage`→`getImageData` 读四角/中心 alpha——JPEG 无 alpha 则全 255，PNG 真 alpha 会保留；跨域 flow-content 图会污染画布不可读。
 - 真透明底唯一未测候选=Gemini API 出图；项目内治本方案仍是**品红/纯色底出图 + chroma_key**（`tools/img25_anchor_gen.py:14`、`tools/img25_attack_gen.py` `chroma_key(im,bg,tol=85)`），棋盘格假透明比白底更糟（多一层格纹要抠），不可用。
+
+## 9. 全身单位 3×2 品红格网 + 打包链（fut_arm_omega BIP6/BIP6R 实录，2026-10-09）
+
+与 §7 炮类（105mm）同源流程的**全身机甲变体**，差异点与打包扩展：
+
+### 9.1 3×2 逐排大小跳变 → 逐帧机身归一（区别于炮类全局单缩放）
+
+- Flow 对 3×2 网格**逐排大小不一致实测 ~9% 线性（下排面积 +15~19%）**。炮类 §7.2 靠锚点探针全一致才敢直切；全身单位特效贴身、无独立尾杆探针，必须**逐帧量「右半幅机身高」**（x≥格宽/2，避开朝左特效区）逐帧缩放到 idle 基准（容纳不变量：attack 机身=idle 机身，ω 例 192px）。
+- **头顶测量用持续密度门**：连续 7 行密度≥40 才算头顶（30 档烟柱也会过门；40 档实测烟灭头过，误差≤1.2%）。脚线=右半幅 α≥128 最下行。
+- 品红管线**禁用无差别 edge_unmix**：对贴透明邻域全量反解品红底会把中性灰描边 (128,128,128) 算成 (74,183,74) 荧光绿（每帧 1300-1800px）。替代=「绿污染继承」：贴透明 3px 内 g>max(r,b)+12 的像素 BFS 继承最近正常邻居色。JPEG 品红场残留另配 despill（min(r,b)−g>6 压回）。
+- 黑格线（col/row 各 ~6px 带）切格前**填品红交给键控**，不要直接写 alpha=0（RGB 图上写 4 元组会产生黑边假象）。格线位置用行/列暗度游程实测，勿按均分猜。
+
+### 9.2 全身单位后坐力微动（§7.5 策略 C 的全身版）
+
+- 朝左 → 后坐=+x 右移；`RECOIL=[0,6,8,5,2,0]`（静→踢→峰→缓→残→归），**右缘基准从满格让出峰值余量**（ω：254→246，预留 8px），`ox=右缘基准−宽+1+RECOIL[i]`。零裁剪自检同 §7.5。
+- 全身机甲的后坐读感来自整体位移+姿态（模型原格已带压低/前倾），位移 6-8px 足够，勿加大。
+
+### 9.3 微动待机（bob idle）与攻击 rest 帧同位 → 零跳变
+
+- 从攻击表**净身 rest 帧**（去悬空烟缕：非主体连通域整体低于「脚线上方 90px」线者删；与主体连通的去不掉属贴身特效，目验定性）生成 4 帧 bob `dy=[0,-2,0,2]`@8fps，替代多帧静态 idle（file 更小、循环更顺）。
+- **同位铁律**：idle rest 帧与攻击 rest 帧同右缘、同脚线（ω：右缘 246、脚线 231）→ idle→attack 切换零跳变。
+- idle 帧数变更后必跑 `tools/_tmp_anim_foot_frac.py`（foot_frac 随内容底自动重测，ω 0.0645→0.0918），anim.json counts 同步改。
+
+### 9.4 同源卡图链 + 锚点三处同步
+
+- 卡图从**同一净身 rest 帧**缩放出（构图对齐旧卡内容 bbox：内容高/脚线 y 对齐）→ 旧 ff/hf 锚点（头顶/脚高占比）不失效；enemy=原生朝左、player=水平翻转（xeno 契约），部署 vis_*_NNN + _thumb256/_thumb384 双侧。
+- **构图变了必须重标炮口锚点**，三处同步缺一不可：`docs/敌我双方卡头脚和开火位置.json`（compact 单行格式，定点字符串替换，勿 json.dump indent 重排全文件）+ `data/muzzle_anchors.gd`（敌）+ `data/player_muzzle_anchors.gd`（我，且我 fireX=1−敌 fireX）。实测法：炮管逐帧描迹取 muzzle 像素坐标→换算占比。
+- 打包脚本模式：`cut_*.py`（清洗链）与 `*_package_v1.py`（打包：攻击表+idle+卡图+预览条）分文件，后者 import 前者复用清洗链（`python -I` 下需 `sys.path.insert` 脚本目录）。
+
+## 10. 飞行单位品红底变体 + agent-browser 新版实录（mod_inf_scout_drone 022，2026-10-10）
+
+§9 流程的**小型飞行单位变体**，核心变化=全程品红底（用户拍板：白底不好抠，提示词让加品红底+非背景机体细描线，后期好抠）：
+
+### 10.1 品红底模板与键控
+
+- 模板 bg=#FF00FF、格线=#C800C8（同色相→键控时格线随底一起掉，不留残线）。机身素材贴底前必须**洪泛去白+全局杀近白(≥232)闭合口袋**（纯 bbox 粘贴会带白矩形；桅杆间闭合白袋洪泛够不到）。
+- 键控判据 `r>140 & b>140 & g<0.75·min(r,b)−10`：橙火/白焰芯/灰烟/灰绿机体/黄条全安全。羽化=tint 邻接半透明 110。
+- **紫晕两段杀**：半透明烟雾与 AA 边会吃品红染（边缘去染照顾不到），全域 `r−g>10 & b−g>10 → 压回均值灰` 两遍（第二遍阈值 10 抓暗部轮廓残留）；灰绿涂装无合法紫红像素，安全。
+- 预览渲染的"绿边"伪影别当病：细亮线在品红底上缩放显绿是色差，先查像素（g>r+8 即 0 命中）再定病。
+
+### 10.2 飞行单位归一与打包
+
+- 行间漂移非等比（本例宽 +7.8% / 高 +2.6% / 下移 6px）：§9.1 的单缩放扩成 **sx/sy 分轴**归一，机体暗色掩码（max rgb<150）做锚。飞行单位质心 y 极差门 ≤12px（本批 2.7px）。
+- bob idle 直接取攻击表 rest 帧（cell1 天然无烟可净身），dy=[0,-2,0,2]@8fps 整帧平移；foot_frac=内容底缘（飞行单位悬空，0.40 级），改帧数后照跑 `_tmp_anim_foot_frac.py`。
+- 卡图：rest 帧 2x→512 内容居中，enemy=原生朝左、player=水平翻转（与 §9.4 xeno 契约一致）；出膛点=焰像素逐行右缘中位数（贴鼻侧），fireY 同源换算。
+
+### 10.3 agent-browser 新版坑（Chrome 155 + Flow 2026-10 版）
+
+- **eval `b.click()` 对 Angular 按钮（开始生成）静默无效**（事件到位但 handler 不触发）；必须 agent-browser 原生 `click 'button[aria-label="开始生成"]'`（CDP 受信任事件，带引号中文属性值可用）。发送判据=composer 清空+停止按钮出现。
+- screenshot 绝对路径 10060 超时、相对路径落进程 cwd（项目根）；媒体库上传：`上传媒体内容` 按钮点了才注入 input[type=file]；**upload 可能静默挂错资产**——发送前必须验 chip（签名 URL curl 下载测品红占比，签名 URL 可匿名下载，无参 CDN 路径 403）。
+- 品红模板上传后 Flow 侧出过一次错挂（chip 指向白图 21a1cf7b），重走 composer 上传入口后恢复正常（bccf1dd2）；asin/asb 结果图与页面同源，canvas toDataURL + 30KB 分块 eval 抽取可用，重组时正则必须用裸 base64 模式（带引号模式会漏 data: 前缀块）。
+
+- **模板上传正道=剪贴板粘贴，OS 原生文件对话框是陷阱**（034 批实录）：`添加媒体`→`上传` 会弹 Chrome 原生「打开」对话框——**阻塞整个浏览器进程**（后续 CDP 全部 10060 超时），且 PowerShell `SendKeys` 的路径+回车打的是 OS 前台窗口（终端），不是对话框；`AppActivate('打开')` 返回 False；UIA AutomationElement 枚举子窗口 marshal 失败。正道：`powershell -STA` 执行 `[System.Windows.Forms.Clipboard]::SetImage([System.Drawing.Bitmap]::FromFile(路径))` → CDP 点 composer → agent-browser `press Control+v`，一次成功。
+- **CDP `press Escape` 打的是页面**（收起媒体选择面板用它）；PowerShell SendKeys 的 ESC 打 OS 前台——两者别混。另：CDP `press` 组合键写法 `press Control+v`。
+- **chip 图验不了 canvas 就走页内 fetch**：flow-content.google 域的 chip `<img>` 会污染 canvas（getImageData SecurityError，无 CORS）；改页内 `eval` 里 `fetch(src)` → `blob` → `URL.createObjectURL` → 新 `Image` → 干净 canvas → toDataURL。验品红占比照旧。
+- **结果轮询去重别信 8-hex 图片 id**：asb 签名 URL 每次渲染重切 token，旧图看起来像新图；按**提示卡文案匹配**或已知前缀过滤才稳。
+
+### 10.4 验收页与缓存核验（022 批收口实录，2026-10-10）
+
+- **验收页 CSS 半帧步进病**：strip 窗口 W px、雪碧图按 k 倍显示时，`steps(N)` 的总位移必须是 **N × W·k**（每步正好一整帧显示宽），照抄源图宽度（N×帧宽）就每次走 1/k 帧——窗口里恒显"上一帧右半 + 下一帧左半"，看起来像同一机体有两个版本（022 批用户实问，根因=位移 -1536 应为 -3072）。判据：播放时窗口内机体被竖切缝一分为二即是此病。
+- **ctex 新鲜度核验唯一正姿势**：读本单位 `.import` 的 `path=` 行拿哈希，再 stat 那个 ctex。禁止 `ls .godot/imported | grep 关键词`——`sheet_attack.png` 是全项目通用文件名，且哈希子串会撞关键词（本批 grep "022" 命中哈希恰含 022 的**别单位** ctex，mtime 全部对不上，虚惊一场）。终审仍以引擎实载维度为准（headless --script 加载 4 图 + JSON.parse_string，`var j: Variant =` 防 Variant 推断报错）。
+- **循环闭合差量化**（首尾同为 rest 姿势的序列，如 六格焰 1待机/6闭合）：对帧1 vs 帧6 做 alpha 交集像素差（>60 占比）+ 拉普拉斯锐度对比。锐度一致→只是模型重绘细节出入（桨角/面板线），循环 6→1 轻跳；嫌跳就**帧6 直接换帧1 内容**（语义等价，格6 本就是回待机）。本批 36% 像素差/锐度 35.7 vs 37.2，未动。
