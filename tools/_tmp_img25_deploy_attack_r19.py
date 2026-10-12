@@ -22,20 +22,27 @@ STAGING = os.path.normpath(os.path.join(os.path.dirname(__file__), '..', '.godot
 BACKUP = r'F:\godot fair duet\_art_backup\unit_anims_attack_regen_20261012'
 
 KEYS = [
-    'cold_inf_btr60',
-    'ww2_arm_garand_para',
-    'ww2_fort_bunker',
-    'drop_mega_particle_cannon',
-    'mod_arm_himars',
-    'ww2_fort_flak',
+    # (key, staging 源 sheet, 回文序)
+    ('cold_inf_btr60', 'cold_inf_btr60_attack_sheet_832.png', None),
+    ('ww2_arm_garand_para', 'ww2_arm_garand_para_attack_sheet_832.png', None),
+    ('ww2_fort_bunker', 'ww2_fort_bunker_attack_sheet_832.png', None),
+    ('drop_mega_particle_cannon', 'drop_mega_particle_cannon_attack_sheet_832.png', None),
+    ('mod_arm_himars', 'mod_arm_himars_attack_sheet_832.png', None),
+    ('ww2_fort_flak', 'ww2_fort_flak_attack_sheet_832.png', None),
+    # 批3（P1-B 两套美术 3 目录）
+    ('fe_iron_wall_juggernaut', 'fe_iron_wall_juggernaut_R1_attack_sheet_832.png', None),
+    ('ww2_air_bomber', 'ww2_air_bomber_R4_attack_sheet_832_norm.png', None),
+    ('mod_abrams', 'mod_abrams_R2_attack_sheet_832.png',
+     [0, 1, 2, 3, 4, 5, 5, 4, 3, 2, 1, 0]),  # counts.attack=12：全回文 12 帧
 ]
 
-PALINDROME = [0, 1, 2, 3, 4, 5, 4, 3, 2, 1]  # 六格回文拼 10 = counts.attack 现役值
+PALINDROME = [0, 1, 2, 3, 4, 5, 4, 3, 2, 1]  # 六格回文拼 10 = counts.attack 现役默认
 FS = 256
 
 
-def deploy(key: str) -> None:
-    src = os.path.join(STAGING, f'{key}_attack_sheet_832.png')
+def deploy(key: str, src_name: str, pal) -> None:
+    src = os.path.join(STAGING, src_name)
+    seq = pal or PALINDROME
     dst_dir = os.path.join(ROOT, key)
     dst = os.path.join(dst_dir, 'sheet_attack.png')
     meta_path = os.path.join(dst_dir, 'anim.json')
@@ -47,8 +54,8 @@ def deploy(key: str) -> None:
              for r in range(2) for c in range(3)]
     small = [c.resize((FS, FS), Image.LANCZOS) for c in cells]
 
-    sheet = Image.new('RGBA', (FS * len(PALINDROME), FS), (0, 0, 0, 0))
-    for i, idx in enumerate(PALINDROME):
+    sheet = Image.new('RGBA', (FS * len(seq), FS), (0, 0, 0, 0))
+    for i, idx in enumerate(seq):
         sheet.alpha_composite(small[idx], (i * FS, 0))
 
     # 备份（幂等：只备布置前原状）
@@ -59,17 +66,21 @@ def deploy(key: str) -> None:
             shutil.copy2(os.path.join(dst_dir, f), os.path.join(bdir, f))
 
     sheet.save(dst)
-    # counts 校验：回文 10 必须匹配现役 attack 帧数
+    # counts 校验：回文帧数必须匹配现役 attack 帧数
     meta = json.load(open(meta_path, encoding='utf-8'))
     n = int(meta.get('counts', {}).get('attack', 0))
-    if n != len(PALINDROME):
-        print(f'  [warn] {key}: counts.attack={n} != 回文 {len(PALINDROME)}（回文前缀 0..n-1 直排可兜）')
-    print(f'{key}: 布置完成 sheet={sheet.size} backup={bdir}')
+    if n != len(seq):
+        print(f'  [warn] {key}: counts.attack={n} != 回文 {len(seq)}（回文前缀 0..n-1 直排可兜）')
+    print(f'{key}: 布置完成 sheet={sheet.size} src={src_name} backup={bdir}')
 
 
 def main() -> None:
-    for k in KEYS:
-        deploy(k)
+    import sys
+    only = set(sys.argv[1:]) or None
+    for k, s, p in KEYS:
+        if only and k not in only:
+            continue
+        deploy(k, s, p)
 
 
 if __name__ == '__main__':
