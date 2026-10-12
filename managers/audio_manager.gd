@@ -362,7 +362,12 @@ func _init_music_player() -> void:
 func _on_battle_started_bgm() -> void:
 	if not GameManager:
 		return
-	var lvl: int = GameManager.current_level
+	play_music(_battle_bgm_key_for_level(int(GameManager.current_level)))
+	# v32.0 演出层：战场环境音起
+	play_ambient("battle_wind")
+
+## v6.65 记录6#2：关卡→战斗 BGM 键（原 match 内联提出——播放侧与预热侧同源，改一处两边跟随）
+func _battle_bgm_key_for_level(lvl: int) -> String:
 	var era: int = GameConstants.get_era_for_level(lvl)
 	var bgm_key: String = "battle_future"
 	match era:
@@ -371,9 +376,21 @@ func _on_battle_started_bgm() -> void:
 		GameConstants.Era.COLD_WAR: bgm_key = "battle_cold"
 		GameConstants.Era.MODERN: bgm_key = "battle_modern"
 		GameConstants.Era.NEAR_FUTURE: bgm_key = "battle_future"
-	play_music(bgm_key)
-	# v32.0 演出层：战场环境音起
-	play_ambient("battle_wind")
+	return bgm_key
+
+## v6.65 记录6#2：战斗音频预热路径（当前关卡时代的战斗 BGM + battle_wind 环境音）。
+## battle_entry_prewarm 在点击出击时后台线程加载，开战帧 play_music/play_ambient
+## 的 load() 命中缓存。文件不落地返回不含该路径（播放侧本就有 exists 兜底）。
+func battle_audio_prewarm_paths() -> Array:
+	var out: Array = []
+	var bgm_file: String = String(BGM_MAP.get(_battle_bgm_key_for_level(
+		int(GameManager.current_level) if GameManager else 1), ""))
+	if not bgm_file.is_empty():
+		out.append("res://assets/sfx/%s.ogg" % bgm_file)
+	var amb_file: String = String(AMBIENT_MAP.get("battle_wind", ""))
+	if not amb_file.is_empty():
+		out.append("res://assets/sfx/%s.wav" % amb_file)
+	return out
 
 ## v6.52.2（记录1#7 工单案A）：按当前战线时代取 hub 音乐键——大地图/移动基地
 ## 不再全时代共用一首。时代曲文件未落地（资产分批换）时回退 "hub" 单曲，

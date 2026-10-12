@@ -58,7 +58,11 @@ func test_boss_frame_baked_and_shader_skipped() -> void:
 	assert_array(unbaked).override_failure_message(
 		"boss 逐帧未烘焙/缺标记：%s（重跑 python tools/deploy_unit_anims.py --bake-boss-frames）" % str(unbaked)).is_empty()
 
-func test_captured_boss_still_uses_shader() -> void:
-	# 缴获 boss 卡走 vis_player 卡图回退（无帧资产，静态卡图未烘焙）——
-	# is_outline_baked 必须 false，否则静态卡图丢描边
-	assert_bool(FrameAnim.is_outline_baked("captured_cold_boss_mig")).is_false()
+func test_captured_boss_follows_base_card_baked_flag() -> void:
+	# v6.57 记录3#7 起缴获单位继承本体卡帧资产（修"缴获经典单位战场永静画"）——
+	# 旧断言"缴获 boss 无帧资产走静态卡图+shader"过时：本体资产已烘焙（v6.6x 美术批，
+	# 与上一用例"boss 逐帧必须全量烘焙"同源），captured_* 的 baked 旗标跟随本体卡
+	# anim.json=true → 呈现层跳 shader（防双重描边），"静态卡图丢描边"前提不再成立。
+	assert_bool(FrameAnim.is_outline_baked("captured_cold_boss_mig")).is_true()
+	# 真无帧资产的 id（缴获目录与剥前缀本体都不存在）→ false，静态卡图继续走 shader
+	assert_bool(FrameAnim.is_outline_baked("captured___no_such_unit__")).is_false()

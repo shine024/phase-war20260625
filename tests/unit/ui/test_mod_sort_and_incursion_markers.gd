@@ -17,6 +17,10 @@ func after_test() -> void:
 	var ebm := get_node_or_null("/root/EndlessBlackgateManager")
 	if ebm != null:
 		ebm.set("incursions", [])
+	var bmc := get_node_or_null("/root/BunkerManager")
+	if bmc != null:
+		bmc.set("_travel_dest", 0)        # 行军 stub 复位（记录6#5 用例注入）
+		bmc.set("_travel_ends_unix", 0.0)
 	WorldMapScript._cached_level_map_template = null
 	WorldMapScript._built_window_anchor = -1
 
@@ -170,3 +174,46 @@ func test_truck_level_changed_rebuilds_current_highlight() -> void:
 	assert_str(new_canvas.name).is_equal("MapCanvas")
 	if GameManager:
 		GameManager.current_level = saved_cur
+
+
+# ═══ v6.65 记录6#5：行军中渗透红点跟随目的地锚（主诉"行军到 100 途中看不到异族据点"） ═══
+
+## EBM 生成锚已=行军目的地（v6.56），渲染过滤锚旧 parked 口径把 dest 侧新点全滤
+## （从低关行军去 100 时 |dest-parked|>16 恒真）→ 行军途中零红点、到站才现身。
+## 修复=过滤锚走 _truck_anchor_level（与生成锚/节点窗同口径）。
+func test_incursion_markers_follow_travel_dest_anchor() -> void:
+	var bm := _ensure_bunker_parked(40)
+	bm.set("_travel_dest", 100)  # 行军 stub：dest>0 且 ends_unix 未到 = is_traveling()
+	bm.set("_travel_ends_unix", Time.get_unix_time_from_system() + 3600.0)
+	_stub_incursions([97, 100, 42])
+	var canvas: Control = await _build_map()
+	assert_object(canvas).is_not_null()
+	var holder: Control = canvas.get_node_or_null("IncursionMarkers")
+	assert_object(holder).is_not_null()
+	# dest 侧（97/100）必须渲染——旧 parked 锚 |97-40|=57>16 全滤（主诉本体）
+	assert_object(holder.get_node_or_null("Incursion_97_1000")).is_not_null()
+	assert_object(holder.get_node_or_null("Incursion_100_1001")).is_not_null()
+	# 出发侧远点（|42-100|=58>16）仍被过滤（口径不放宽成全程渲染）
+	assert_object(holder.get_node_or_null("Incursion_42_1002")).is_null()
+
+
+## 启程即重铺：已打开的地图不等下一次 incursions_changed（行军状态变化回调同帧重铺）
+func test_travel_changed_reapplies_incursion_markers() -> void:
+	_ensure_bunker_parked(40)
+	_stub_incursions([97])
+	var canvas: Control = await _build_map()
+	assert_object(canvas).is_not_null()
+	var holder: Control = canvas.get_node_or_null("IncursionMarkers")
+	assert_object(holder).is_not_null()
+	# 未行军：97 距 parked 40 为 57>16，parked 锚下不渲染
+	assert_object(holder.get_node_or_null("Incursion_97_1000")).is_null()
+	var bm := get_node_or_null("/root/BunkerManager")
+	bm.set("_travel_dest", 100)
+	bm.set("_travel_ends_unix", Time.get_unix_time_from_system() + 3600.0)
+	_wm.call("_on_truck_travel_changed")
+	await get_tree().process_frame
+	# 重铺=旧 holder 被 remove_child+queue_free、同名新 holder 上位——必须重新取名
+	# （持旧引用即踩"previously freed instance"；断言对象要取重建后的活引用）
+	var holder2: Control = canvas.get_node_or_null("IncursionMarkers")
+	assert_object(holder2).is_not_null()
+	assert_object(holder2.get_node_or_null("Incursion_97_1000")).is_not_null()

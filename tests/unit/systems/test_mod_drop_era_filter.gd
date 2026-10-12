@@ -52,16 +52,29 @@ func test_era0_common_drops_stay_current_era() -> void:
 
 
 func test_negative_era_keeps_legacy_behavior() -> void:
-	# max_era=-1（旧行为）不过滤：步兵全池含 era0 装不上的条目，多次 roll 必然出现
+	# max_era=-1（旧行为）不过滤。
+	# v6.65 对齐：era 兼容自"只拦上限"模型后（is_mod_era_compatible 只查 band[1]），
+	# 旧断言"步兵池含 era0 装不上的条目"前提已死（era0 基线全池兼容，恒绿不了）——
+	# 改锁在仍有过滤外条目的装甲池×era4 基线（arm_17/arm_18 uncommon、arm_01 rare，
+	# 600 次加权 roll 命中近必然）。前提池检确定化：era_band 数据再变时在此报明，
+	# 而非概率性假红。
+	var pool: Array = ModRegistry.get_for_unit_type(1)  # ARMOR（_enemy_type_to_unit_type 同表）
+	var incompatible: Array = []
+	for mid in pool:
+		if not _drop_ok_for_era(String(mid), 4):
+			incompatible.append(String(mid))
+	assert_array(incompatible).override_failure_message(
+		"装甲池已无 era4 过滤外条目——本锁前提失效（era_band 数据变更后需重选兵种×时代基线）").is_not_empty()
 	var seen_incompatible := false
-	for i in 400:
-		var drop: Dictionary = IntelManualItems.roll_random_mod_blueprint("infantry", "boss", 4, [], -1)
+	for i in 600:
+		var drop: Dictionary = IntelManualItems.roll_random_mod_blueprint("armor", "boss", 4, [], -1)
 		if drop.is_empty():
 			continue
-		if not _drop_ok_for_era(String(drop["mod_id"]), 0):
+		if not _drop_ok_for_era(String(drop["mod_id"]), 4):
 			seen_incompatible = true
 			break
-	assert_bool(seen_incompatible).is_true()
+	assert_bool(seen_incompatible).override_failure_message(
+		"600 次装甲 roll 未出现 era4 过滤外条目——max_era=-1 疑似被过滤（查 roll_random_mod_blueprint 的 max_era>=0 守卫）").is_true()
 
 
 func test_era0_pool_still_supplies_common() -> void:

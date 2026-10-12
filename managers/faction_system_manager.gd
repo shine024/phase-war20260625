@@ -500,6 +500,7 @@ func load_state(data: Dictionary) -> void:
 	if data.is_empty():
 		_init_faction_data()
 		_reset_merit_buckets()  # 记录4#3：新档起步值均分入各势力账
+		_init_faction_skill_states()  # 记录6#1：新档漏初始化技能状态=can_unlock 恒 faction_not_found→按钮全灰不接 pressed；clear 语义顺带清二周目残留
 		active_faction = ""
 		exclusive_cards_granted.clear()
 		return

@@ -365,7 +365,9 @@ func _event_choice_button_text(choice_key: String, rw: Dictionary, evt: Dictiona
 	if rw.has("reputation"):
 		parts.append("贡献+%d" % int(rw["reputation"]))
 	if rw.has("skill_points"):
-		parts.append("技能点+%d" % int(rw["skill_points"]))
+		# 记录6#1：该奖励实际入账相位师技能树（faction_event_manager→PMSM.add_bonus_points），
+		# 写「技能点」会诱导玩家来势力面板找势力技能点——两货币必须显式区分。
+		parts.append("相位师技能点+%d" % int(rw["skill_points"]))
 	var nano: int = int(rw.get("nano", rw.get("nanomaterial", 0)))
 	if nano > 0:
 		parts.append("纳米+%d" % nano)

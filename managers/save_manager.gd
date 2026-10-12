@@ -78,7 +78,7 @@ const DEFERRED_MANAGER_LOADS: Array = [
 	# v26: 制造系统（pity 暗保底计数；配方解锁实时读情报不落档）
 	["/root/ManufactureManager", SK_MANUFACTURE],
 	# v27: 黑门无限模式（最佳纪录/星髓周封顶计数）
-	["/root/EndlessBlackgateManager", "endless_blackgate"],
+	["/root/EndlessBlackgateManager", SaveConstants.SK_ENDLESS_BLACKGATE],
 ]
 const CRITICAL_RESETTABLE_MANAGERS: Array[String] = [
 	"BlueprintManager",
@@ -97,6 +97,8 @@ const CRITICAL_RESETTABLE_MANAGERS: Array[String] = [
 	"BunkerManager",
 	# v26: 制造系统（新游戏清空暗保底计数）
 	"ManufactureManager",
+	# v6.65 记录6#3: 黑门/渗透（新游戏清 gate_cleared_once/incursions/周封顶；reset_state 全清）
+	"EndlessBlackgateManager",
 ]
 const DEFERRED_RESET_BATCH_SIZE := 4
 
@@ -671,6 +673,10 @@ func _reset_manager_by_name(manager_name: String) -> void:
 		mgr.reset_to_defaults()
 	elif mgr.has_method("reset_progress"):
 		mgr.reset_progress()
+	elif mgr.has_method("reset_state"):
+		# 记录6#3：EndlessBlackgateManager 唯一消费者——其 load_state({}) 对空档早退
+		# （保内存态），reset 语义只在本方法，必须排在 load_state 兜底之前。
+		mgr.reset_state()
 	elif mgr.has_method("load_state"):
 		mgr.load_state({})
 
@@ -700,6 +706,13 @@ func _process_deferred_manager_resets() -> void:
 ## 保存当前存档位。
 ## 返回值语义（v26.6 明确）：true = 已写盘，或已合法排队稍后写（战斗中→战斗结束冲刷；
 ## 延迟加载窗口/最小间隔窗口→定时器冲刷）；false = 真实失败。调用方勿把 true 当"已落盘"。
+## 记录6#3：自动存档失败此前多分支仅 push_error（release 下玩家不可见）——统一走
+## _notify_save_failure 补提示；退出阶段(_is_exiting)不弹（UI 宿主已拆）。
+func _notify_save_failure() -> void:
+	var toast_mgr := get_node_or_null("/root/ToastManager")
+	if not _is_exiting and toast_mgr != null and toast_mgr.has_method("show_error"):
+		toast_mgr.show_error("存档保存失败！")
+
 func save_game() -> bool:
 	_ensure_battle_end_save_hook()
 	if not _is_exiting and _is_battle_active_now():
@@ -756,6 +769,10 @@ func save_game() -> bool:
 	# v26: 制造系统（懒加载；ensure 后收集 pity 计数）
 	ManagerLazyLoader.ensure_loaded("manufacture")
 	_collect_manager_state(data, "/root/ManufactureManager", SK_MANUFACTURE)
+	# v6.65 记录6#3：黑门/渗透段——v27 起读档侧在册但写侧从未收集（best/周封顶/入场次数/
+	# gate_cleared_once/incursions/cp_* 全部重启丢失）。ensure 后收集，与读侧同键。
+	ManagerLazyLoader.ensure_loaded("endless")
+	_collect_manager_state(data, "/root/EndlessBlackgateManager", SaveConstants.SK_ENDLESS_BLACKGATE)
 	_collect_noncritical_save_data(data, now_ms)
 	var gmgr: Node = get_node_or_null("/root/GameManager")
 	# 保存前同步 current_level：确保与 LevelProgressManager.max_unlocked_level 一致
@@ -796,12 +813,14 @@ func save_game() -> bool:
 	var json_str: String = JSON.stringify(data)
 	if json_str.is_empty():
 		push_error("[SaveManager] JSON序列化失败，存档数据异常")
+		_notify_save_failure()
 		_is_saving = false
 		return false
 
 	var dir_swap := DirAccess.open("user://")
 	if dir_swap == null:
 		push_error("[SaveManager] 无法打开 user://，存档失败")
+		_notify_save_failure()
 		_is_saving = false
 		return false
 	var temp_name := "save_slot_%d.json.tmp" % current_slot
@@ -838,6 +857,7 @@ func save_game() -> bool:
 		var prior_err: Error = dir_swap.rename(main_name, prior_name)
 		if prior_err != OK:
 			push_error("[SaveManager] 无法重命名旧存档为 prior: %s" % prior_err)
+			_notify_save_failure()
 			_is_saving = false
 			return false
 	var ren_err: Error = dir_swap.rename(tmp_name, main_name)
@@ -1102,6 +1122,11 @@ func _grant_debug_test_stock() -> void:
 			var cur: int = int(brm.get_total(rid))
 			if cur < TEST_RESOURCE_FLOOR:
 				brm.add_resource(rid, TEST_RESOURCE_FLOOR - cur)
+	# ⑥ 技能树自动全加点（v6.41 试玩档"已经自动加点了"）：所有节点直接解锁，
+	# unlocks 派发随 unlock_node 正常触发；幂等（已解锁节点 unlock_node 返回 false）。
+	var psm_all: Node = get_node_or_null("/root/PhaseMasterSkillManager")
+	if psm_all != null and psm_all.has_method("debug_unlock_all_nodes"):
+		psm_all.debug_unlock_all_nodes()
 
 ## 辅助函数：为单个进化路径生成蓝图
 func _process_evolution_blueprint_path(path_data: Dictionary) -> void:

@@ -420,7 +420,7 @@ func _refresh_hover_card(pc: PanelContainer, card: CardResource) -> void:
 		# 5 档迷你条
 		var current_tier: int = PowerTiers.get_tier_by_power(power) if PowerTiers != null else 0
 		vbox.add_child(_build_tier_progress(current_tier))
-	# 已装 N/9
+	# 已装 N / M（动态槽位，勿写死 9）
 	var mod_count: int = card.mods.size() if "mods" in card else 0
 	var mod_lbl := Label.new()
 	mod_lbl.text = "已装改造  %d / %d" % [mod_count, ModManager.get_max_mod_slots_for_card(card)]
@@ -580,7 +580,8 @@ func _refresh_card_list() -> void:
 
 
 ## v7.x 新增：chip 筛选判定
-## FILTER_ALL = 全部 / FILTER_MOD = 可改造(mod<9) / FILTER_MAX = 满槽(mod>=9)
+## FILTER_ALL = 全部 / FILTER_MOD = 可改造(装载数<动态槽位) / FILTER_MAX = 满槽
+## （槽位=ModManager.get_max_mod_slots_for_card：品质 5~10 + 兵种加成，勿写死 9）
 func _passes_filter(card: CardResource) -> bool:
 	if card == null:
 		return true
@@ -719,9 +720,10 @@ func _create_card_item(card: CardResource, instance_card: CardResource = null) -
 			name_row.add_child(seq_label)
 	info.add_child(name_row)
 
-	# 第二行：Lv.N · Mx/9（单行内联）
+	# 第二行：Lv.N · 改N/M（记录6#4：旧"M2/9"缩写玩家认不出是改造数——对齐背包
+	# "改N/M"汉字前缀惯例；M=动态槽位（品质基础槽+兵种加成，神话堡垒可到 12，勿写死 9））
 	var meta_label := Label.new()
-	meta_label.text = "Lv.%d  ·  M%d/%d" % [display_level, display_mods.size(), ModManager.get_max_mod_slots_for_card(card)]
+	meta_label.text = "Lv.%d · 改%d/%d" % [display_level, display_mods.size(), ModManager.get_max_mod_slots_for_card(card)]
 	meta_label.add_theme_font_override("font", DT.get_body_font())
 	meta_label.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
 	meta_label.add_theme_color_override("font_color", DT.COLOR_SLATE_DIM_A85)

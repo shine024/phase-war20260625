@@ -9,7 +9,8 @@ extends Node
 ##   - 星髓每周封顶（呼应 game-pillars「NOT Infinite Grind」：评分挑战，非无限刷）
 ##
 ## 实例化：ManagerLazyLoader.ensure_loaded("endless")（懒加载，非战斗实时）
-## 存档：SaveManager DEFERRED_MANAGER_LOADS ["/root/EndlessBlackgateManager", "endless_blackgate"]
+## 存档：SaveManager SK_ENDLESS_BLACKGATE（v6.65 记录6#3 补齐写侧收集；此前只读侧在册
+## 写侧从未收集，进度重启全丢）+ CRITICAL_RESETTABLE_MANAGERS（新档 reset_state 全清）
 ##
 ## 战斗内行为不在本文件：
 ##   - 无尽波次推进/构成 → battle_spawn_system（_endless 分支）
@@ -361,13 +362,27 @@ func get_incursion_days_left(inc: Dictionary) -> int:
 
 ## v6.42: 行军遭遇——在指定关追加一个渗透节点（宿主=到站关；BunkerManager 到站掷点消费）。
 ## 条件不满足（已通关/未解锁/已达上限/非法关卡）返回 false，调用方静默跳过。
+## 记录3#6：入口先跑过期清理——实机"直接行军到 90 关不见红点"根因：旧锚区陈旧点
+## 占满 INCURSION_MAX 名额，而 far_behind 清理只挂在 5 分钟心跳/日刷上，行军到站早于
+## 心跳时保底被静默阻断。清后仍满则让位：移除到站关近窗之外最靠后的一个陈旧点
+## （视野窗内点不误删），保住"长途到站总有红点可打"的承诺。
 func spawn_incursion_at(host_level: int) -> bool:
 	if gate_cleared_once or not incursions_unlocked():
 		return false
-	if incursions.size() >= INCURSION_MAX:
-		return false
 	if host_level < 1 or host_level > LevelEras.LEVEL_COUNT:
 		return false
+	_expire_incursions()
+	if incursions.size() >= INCURSION_MAX:
+		var farthest_idx := -1
+		var farthest_lv := host_level - INCURSION_NEAR_RADIUS  # 只考虑近窗之外的更后方点
+		for i in incursions.size():
+			var lv := int(incursions[i].get("host_level", 0))
+			if lv < farthest_lv:
+				farthest_lv = lv
+				farthest_idx = i
+		if farthest_idx < 0:
+			return false
+		incursions.remove_at(farthest_idx)
 	incursions.append({
 		"host_level": host_level,
 		"seed": randi(),

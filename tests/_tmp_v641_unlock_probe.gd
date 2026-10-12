@@ -10,6 +10,7 @@ const GameCfg = preload("res://resources/game_config.gd")
 const BlueprintDefinitions = preload("res://data/blueprint_definitions.gd")
 const ShopResIds = preload("res://data/basic_resources.gd")
 const PowerTiers = preload("res://data/power_tiers.gd")
+const SkillTreeRef = preload("res://data/phase_master_skill_tree.gd")
 
 const WEAK_CARD_ID := "ww1_mp18"            # era0 弱卡（测试既有用例同款）
 const MYTHIC_MOD_ID := "gen_21_vanguard_repair"  # v27 mythic 通用件（min tier=OVERLORD）
@@ -100,6 +101,24 @@ func _run() -> void:
 		_fail("flag on unlock_node 应成功")
 	elif not psm.is_unlocked(DEEP_NODE_ID):
 		_fail("解锁后 is_unlocked 应为 true")
+	# flag on：真实补库链端到端——save_manager._grant_debug_test_stock ⑥步应自动全加点
+	psm._unlocked_nodes = []
+	psm._spent_points = 0
+	var save: Node = get_node("/root/SaveManager")
+	if save == null or not save.has_method("_grant_debug_test_stock"):
+		_fail("SaveManager 缺失或无 _grant_debug_test_stock")
+	else:
+		var grant_flag_prev: bool = bool(cfg.debug_grant_all_blueprints)
+		cfg.debug_grant_all_blueprints = true
+		save._grant_debug_test_stock()
+		cfg.debug_grant_all_blueprints = grant_flag_prev
+		for nid in SkillTreeRef.get_all_node_ids():
+			if not psm.is_unlocked(String(nid)):
+				_fail("补库链跑完后 %s 仍未解锁（⑥钩子未生效？）" % nid)
+				break
+	# flag on：直调幂等——全解锁状态下再调应零新解锁
+	if psm.debug_unlock_all_nodes() != 0:
+		_fail("自动加点幂等失败：全解锁后再调仍有新解锁")
 	cfg.debug_skill_tree_free = false
 	# 还原技能树真档状态
 	psm.load_state(psm_snapshot)

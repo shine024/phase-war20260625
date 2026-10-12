@@ -9909,3 +9909,29 @@ v6.48 挂账的其余批次品红边晕（attack 26 家 + idle 4 家，分属 ro
 - **022 mod_inf_scout_drone**：§10 首案；foot_frac 0.40 级（飞行悬空），质心 y 极差 2.7px。
 - **omega fut_arm_omega**：BIP6/BIP6R 双侧收口；锚点三处同步（我 fireX=1−敌 fireX；卡头脚 JSON compact 单行定点替换，禁 indent 重排全文件）。
 - **通用**：卡图换血后 generate_card_foot_anchors.py 必重扫，ff 全走 tools/_tmp_anim_foot_frac.py；验收页（.gitignore 不入库）两病修：flex-shrink 半帧错位→绝对定位、等比 2x 显示（帧窗 512²，位移 3072/2048）；重出前旧卷备份 .godot/unit_review/flow_*/backup/。
+
+## v6.65（2026-10-12）build/记录6.txt 四轮 5 条批——势力技能新档修复 + 入场预热 + 黑门存档段补齐 + 改造数中文口径 + 行军渗透锚同口径
+
+用户报告 5 条全处理，进度台账与全量套件核对见 docs/实机验收_记录6四轮_进度.md。
+
+- **#1 势力技能点（新档恒不可加）**：`FactionSystemManager.load_state({})` 空档分支提前 return 跳过 `_init_faction_skill_states` → `faction_skill_states` 恒空 → 解锁按钮全灰不接 pressed（读档自愈=玄学复现）。空档分支补初始化+clear（顺带修二周目残留）；势力事件「技能点+N」实发相位师技能树，按钮/toast 两处改「相位师技能点+N」消歧。锁 `test_faction_skill_new_game.gd`。
+- **#2 战斗入场卡顿**：开战帧同帧冷读首波敌人卡图/双 sheet/anim.json + battle_started 同步 load 3~4MB BGM + 1.3MB 环境音。新增 `scripts/battle/battle_entry_prewarm.gd`：点击出击经 `load_threaded_request` 后台预热本关敌方池（basic 在前）+战斗音频（`AudioManager.battle_audio_prewarm_paths`/`_battle_bgm_key_for_level` 播放预热同源；`UnitFrameAnim.resolve_key_readonly` 只读解析，**后台预热链禁写任何 GDScript 侧缓存字典**）。锁 `test_battle_entry_prewarm.gd`。
+- **#3 无法存档（三处）**：①EBM 自 v27 只登记读侧、save_game 写侧从未收集（黑门最佳/周封顶/入场次数/gate_cleared_once/incursions/cp_* 重启全丢）——落键 `SK_ENDLESS_BLACKGATE`+写侧收集+CRITICAL_RESETTABLE+`_reset_manager_by_name` 兜底链插入 `reset_state` 分支（**必须排在 load_state 兜底前**，EBM 空档 load_state 早退保内存态）；②战斗中存档=标脏假成功，main 手动存档改「战斗中：战斗结束后自动保存」真话提示；③save_game 三处静默失败（JSON/user:// prior rename）补 `_notify_save_failure` toast。锁 `test_save_endless_blackgate_section.gd`。
+- **#4 改造舱口径**：卡行 meta `M2/9` 缩写改 `Lv.N · 改N/M`（对齐背包汉字惯例，M=`get_max_mod_slots_for_card` 动态——品质 5~10+兵种加成，mythic 堡垒 12，**勿写死 9**）；过时「最多 9 格」四处清零（truck_base 工位标牌/growth_panel 两 tooltip/modification_panel 筛选注释；help_panel 相位仪出战槽是另一系统不动）。
+- **#5 行军中渗透红点不可见**：EBM 生成锚已=行军目的地（v6.56），world_map 渲染过滤锚仍 v6.52 parked 旧口径——`|dest−parked|>16` 恒真，dest 侧新点生成了也被滤+far_behind 清掉出发侧旧点=整段行军零红点。`_apply_incursion_markers` 过滤锚改 `_truck_anchor_level()` 同口径；`_on_truck_travel_changed` 尾补 `_on_incursions_changed()`（启程/到站同帧重铺，已开地图不等 incursions_changed）。锁 test_mod_sort_and_incursion_markers 追加 2 用例；真窗口探针 `tests/_tmp_v665_travel_probe.tscn` 目检截图 `.godot/v665_probe/`。
+- **验证**：定向 4 套件 24/24 绿；全量 637 用例 12 失败逐一归因全为存量/在途/美术批漂移（零新增）；gdparse 级 loadcheck 18 文件全过。
+- **四轮补遗（同日续）：历史存量/在途测试失败 12→0 清零**：①test_ultimate_cast ×3 对齐"记录3#2"首充能=满 interval 新语义（`no_tcharget` 系 gdunit 字符 diff 渲染产物，真身=no_charge）；②test_power_cap `is_lower`→`is_less`（gdunit 无前 API）；③test_anim_outline_baked 缴获 boss 断言对齐 v6.57 缴获继承链（baked 跟随本体卡=true 防双重描边，更名 test_captured_boss_follows_base_card_baked_flag）；④配装表锁 139→140（v6.35 本体入册漏跟）+ xeno_gate_core 双 phase_core 冲突真数据 bug 修复（gen_12_phase_shielding→enh_crit_dmg，同组冲突违反全表契约）；⑤test_mod_drop_era_filter 死前提重写（"只拦上限"模型后 era0 全池兼容不可达，改装甲池×era4 基线+前提池检确定化）；⑥attack_f0 资产修复：mod_inf_delta_e 朝向翻正+归一（备份 .godot/art_backup_facing_v665/，normalize_attack_f0.py 重跑+重导入）。⑦test_installable_mods_era_filter 过时语义锁对齐（v6.54 记录6#13 起"只拦上限"为既定设计，旧断言编码 v22 双界语义；重写为现契约+上限反例+边界含等号）；⑧test_no_left_room_falls_below 期望补屏底钳制项 min(tr.end.y+8, 屏高-面板高-8)（旧断言裸写堆叠区底，前置套件遗留真实 toast 垫高栈即假红；污染源二分定位=test_blackgate_reenter_auto_start，非状态泄漏）。全量 637 用例 0 失败。
+
+## v6.66（批体 2026-10-11 / 收口 2026-10-13）build/记录3.txt 三轮 7 条批——story_page 音效重制 + 核武开局30秒 + 战力上限无垠档 + L2卡死排查 + 内嵌地图BGM + 行军渗透保底 + 动画布置审计全绿
+
+用户报告 7 条全处理（6 修 + 1 未复现已实证），进度台账与探针证据见 docs/实机验收_记录3三轮_进度.md。
+
+- **#1 story_page 提示音重制**：序章漫画逐格推进音（开始剧情/黑门登场两处同源）由 v6.54 Kenney CC0 划擦声重制为项目内程序合成（`tools/_tmp_gen_sfx_v657.py` seed=20261011，RMS 匹配旧档），旧档备份 `D:/godotplay/_art_backup/sfx_pre_v657_20261011/`，CREDITS.md 登记缺口补记。
+- **#2 核武轰炸首充能=开局30秒**：`_tick_nuclear_bombardment` 的 `_periodic_timers` 缺省 interval→0——旧缺省使首充能开局≈0s 即就绪（实机 trace battle_start 后 1s nuke_begin=用户主诉本体）。**火炮连发「首次跳过等待」语义保留不动**（本条只点名核武）。锁 test_ultimate_cast 按新语义更新。
+- **#3 战力上限无垠档=无限**：三系 sync3 `power_cap` value 2400→**-1 哨兵**；`get_power_cap` 遇负值返回 `UNLIMITED_POWER_CAP`（部署门永不触发）；文案唯一口 `get_power_cap_display()`（面板状态行/unlock_labels 总览双档「无限」）。锁 test_power_cap 追加 manager 语义用例。
+- **#4 第2关卡死=未复现**：双真窗口探针（基地直进 + L1结算→出击下一关自然链）用玩家真实存档（pi_flame_05 自带核武+缴获卡出战）均正常打完（54s/50s+72s，0 SCRIPT ERROR）；最可能根因=#2 开局 0 秒充能链已修。探针留库 `tests/_tmp_v657_l2_probe|l2chain_probe.*`，复发收 trace.log。
+- **#5 内嵌大地图 BGM**：`world_map_panel._play_map_music()`（visible/refresh 双挂点）播 `music_key_for_current_era()`——独立场景入口 world_map._ready 播放是既有链，main 内嵌链此前零播放；同曲幂等早退。
+- **#6 行军到站渗透红点保底**：`EBM.spawn_incursion_at` 入口先 `_expire_incursions()`+满额时让位（移除到站近窗外最靠后的陈旧点）——旧链陈旧点占满 INCURSION_MAX 且 far_behind 清理只挂心跳，行军到站早于心跳时保底被静默阻断（「直接行军到90关不见红点」本体）。
+- **#7 动画布置审计 v4 全绿 + 缴获卡静画修复**：审计直调运行时 `_resolve_key` 同链——281/281 战场 id 全动画、0 纯静态、0 json 过期；唯一真实缺口=缴获卡（captured_* 经 visual_id 错位命中→永静画，本档 14 个），`_resolve_key` 尾部补剥前缀回退。复跑确认 0 缺口（`.godot/v657_anim_audit.txt`）。
+- **试玩全解锁档 ⑥钩子**：`PMSM.debug_unlock_all_nodes()`（逐节点 unlock_node，幂等）挂进 `save_manager._grant_debug_test_stock` 尾部——pw_playtest 档「已经自动加点了」落地；`SkillTree.get_all_node_ids()`（主表+v8 扩展合并遍历口）新增。锁 `_tmp_v641_unlock_probe` 扩展端到端断言。
+- **验证**：双探针真窗口实测 + 动画审计复跑全绿；定向套件与全量核对见提交说明。

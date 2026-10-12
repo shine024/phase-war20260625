@@ -47,6 +47,15 @@ func _auto_open() -> void:
 func _on_visibility_changed_lazy() -> void:
 	if visible:
 		_ensure_content()
+		_play_map_music()
+
+
+## 记录3#5：内嵌大地图打开也要有 BGM——独立场景入口在 world_map._ready 播（R1-7），
+## main 内嵌链此前零播放（main 全场景无 play_music，标题曲/静音原样带进地图）。
+## 同曲重复调用 play_music 幂等早退；战斗开始的切歌链不受影响（地图从不自动开在结算窗）。
+func _play_map_music() -> void:
+	if AudioManager != null and AudioManager.has_method("play_music"):
+		AudioManager.play_music(AudioManager.music_key_for_current_era())
 
 func _ensure_content() -> void:
 	if world_map_content != null and is_instance_valid(world_map_content):
@@ -76,6 +85,7 @@ func _on_back_to_main() -> void:
 
 func refresh() -> void:
 	_ensure_content()
+	_play_map_music()
 	# 打开地图时仅做轻量刷新，避免每次重建100关按钮
 	if world_map_content == null:
 		return

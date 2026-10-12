@@ -472,7 +472,10 @@ static func _tick_nuclear_bombardment(owner: Owner, params: Dictionary, delta: f
 	# v24.1 大招双轨：玩家手动模式改充能制（攒满 1 interval 得 1 充能，上限 2 满后停涨不浪费）；
 	# 自动模式/敌方侧攒到 1 立即放，总吞吐与旧"interval 即触发"一致，手动唯一收益是攒爆发时机。
 	var hold_for_manual: bool = owner == Owner.PLAYER and player_manual_hold
-	var elapsed: float = float(_periodic_timers.get(pkey, interval))
+	# 记录3#2：首发生效改「开局 30 秒」——原默认 elapsed=interval 使第一充能开局≈0s 即就绪
+	# （实机 lvl=100 战斗 trace：battle_start 后 1s nuke_begin）。0=从战斗开始计时，满 interval
+	# 才出首充能；火炮连发保持"首次跳过等待"不动（记录3 只点名核子轰炸）。
+	var elapsed: float = float(_periodic_timers.get(pkey, 0.0))
 	elapsed += delta
 	var charges: int = int(_ability_charges.get(pkey, 0))
 	while elapsed >= interval:

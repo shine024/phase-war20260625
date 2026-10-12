@@ -24,6 +24,28 @@
 6. **客观缺陷与审美取舍先分类**：对齐/一致性/覆盖类有客观正确答案的直接修；只有真正无对错的参数才交用户拍板，且必须附推荐值与对比图。
 7. **每类系统留常驻回归锁**：锁内断言覆盖上述全部维度，修复后回归自动拦截（范例：`tests/unit/combat/test_shield_foot_anchor.gd` 九形态+尺寸断言）。
 
+## v6.65 build/记录6.txt 四轮 5 条批：势力技能新档修复 + 入场预热 + 黑门存档段补齐 + 行军渗透锚同口径（2026-10-12，详见 CHANGELOG 与 docs/实机验收_记录6四轮_进度.md）
+
+**改势力技能初始化/SaveManager 收集链/大地图渗透锚/战斗入场预热前必读本节。**
+
+- **势力技能点新档恒不可加（记录6#1）**：`FactionSystemManager.load_state({})` 空档分支**必须**调 `_init_faction_skill_states()`（原提前 return 跳过 → `faction_skill_states` 恒空 → 解锁按钮全灰不接 pressed，读档自愈=玄学复现）；clear 语义兼防二周目残留。势力事件「技能点+N」实发**相位师**技能树（faction_event_manager→PMSM.add_bonus_points）——文案必须写「相位师技能点+N」，两货币勿混称。
+- **黑门/渗透存档段（记录6#3）**：EBM 存档唯一键=`SaveConstants.SK_ENDLESS_BLACKGATE`（读侧 DEFERRED_MANAGER_LOADS 与写侧 save_game 收集共用）；EBM 在 CRITICAL_RESETTABLE_MANAGERS；`_reset_manager_by_name` 兜底链 **`reset_state` 分支必须排在 `load_state` 之前**——EBM `load_state({})` 对空档早退保内存态，不可作重置口。战斗中 save_game=只标脏返回 true（战后冲刷），**UI 侧勿报"已保存"**（main 手动存档已改真话提示）；save_game 静默失败分支统一走 `_notify_save_failure()`。
+- **大地图渗透锚同口径（记录6#5）**：`world_map._apply_incursion_markers` 过滤锚=`_truck_anchor_level()`（行军中=dest）——与 EBM 生成锚 `_incursion_anchor_level`/节点窗三口同径，**勿改回 parked 直取**（v6.52 旧注释已删；行军去 100 时 parked 锚把 dest 侧新点全滤=「行军途中零红点、到站才现身」主诉本体）；`_on_truck_travel_changed` 尾部必须 `_on_incursions_changed()` 重铺（启程/到站锚跳变时已开地图同帧刷新，不等 incursions_changed）。测试持 holder 引用断言重铺结果时**必须重建后重新取名**（旧 holder 被 remove_child+queue_free，同名新 holder 上位）。
+- **战斗入场预热（记录6#2）**：唯一挂点=`MainBattleSetup.run_start_battle_sequence` 头部调 `BattleEntryPrewarm.prewarm_for_level(level)`——对本关敌方池（basic 在前，elite/boss 靠后）+战斗 BGM/环境音发 `load_threaded_request`（`main._preload_common_panels` 同款先例），开战帧 load() 命中缓存。**线程安全铁律：预热链只做只读路径解析+threaded 请求，禁写任何 GDScript 侧缓存字典**（UnitFrameAnim `_key_cache/_seq_cache/_content_frac_cache` 归主线程 attach 链独占；只读解析走 `UnitFrameAnim.resolve_key_readonly`）；BGM 键位唯一源=`AudioManager._battle_bgm_key_for_level`（播放/预热同源，改时代曲键两处跟随）。无尽/渗透战敌方池不在 classic 池——预热跳过属预期（音频照常）。
+- **改造槽数口径（记录6#4）**：唯一真身=`ModManager.get_max_mod_slots_for_card`（品质 common5→mythic10 + 兵种加成堡垒+2/其余+1，mythic 堡垒 12）——**玩家可见文案禁写死 9**（truck_base/growth_panel/modification_panel 过时文案已清；help_panel「最多 9 格」是相位仪出战槽=另一系统，勿顺手改）；卡行简易信息用「改N/M」汉字前缀（对齐背包惯例，勿用 M 缩写）。
+
+## v6.66 build/记录3.txt 三轮 7 条批：核武开局30秒 + 战力上限无垠档 + 行军渗透保底 + 缴获卡动画回退（批体 2026-10-11/收口 10-13，详见 CHANGELOG 与 docs/实机验收_记录3三轮_进度.md）
+
+**改核武/战力上限/渗透生成/缴获卡呈现/试玩全解锁档前必读本节。**
+
+- **战力上限无垠档哨兵（记录3#3）**：三系 sync3 `power_cap` value=**-1 哨兵**（不是大数）——`PMSM.get_power_cap` 遇负值返回 `UNLIMITED_POWER_CAP`（999999999，部署门比较永不触发）；**玩家可见文案唯一口=`get_power_cap_display()`**（面板状态行/unlock_labels 总览按「无限」显示，哨兵大数禁止上屏）。加新 power_cap 档位勿写死 2400 封顶思路。
+- **核武轰炸首充能（记录3#2）**：`_tick_nuclear_bombardment` 的 `_periodic_timers` 缺省=**0**（开局从 0 计时，满 interval 才出首充能）；**火炮连发保持缺省=interval「首次跳过等待」**——同一函数族两套缺省语义并存，改 `_periodic_timers` 初始化时勿顺手统一。
+- **行军到站渗透保底（记录3#6）**：`EBM.spawn_incursion_at` 入口先 `_expire_incursions()`，清后仍满则**让位**——只移除到站关近窗（INCURSION_NEAR_RADIUS 之外）最靠后的陈旧点，视野窗内点不误删；勿改回「满即 return false」（长途到站总有红点可打=本条承诺）。
+- **缴获卡动画回退（记录3#7）**：`UnitFrameAnim._resolve_key` 尾部对 `captured_*` 剥前缀按本体卡重走全链（visual_id 是卡图 id 非动画目录，缴获经典单位此前永静画）——新加前缀回退逻辑放它之前并保持递归终点非 captured_。动画布置缺口排查直接跑 `tests/_tmp_v657_anim_audit.gd`（--script，281 id 全量，输出 `.godot/v657_anim_audit.txt`）。
+- **内嵌大地图 BGM（记录3#5）**：`world_map_panel._play_map_music()` 挂 visible/refresh 双口，播 `AudioManager.music_key_for_current_era()`（同曲幂等早退）——内嵌链此前零播放，勿在 main 侧另挂抢放。
+- **试玩全解锁档 ⑥钩子**：`PMSM.debug_unlock_all_nodes()`（幂等）挂 `save_manager._grant_debug_test_stock` 尾部，随该函数 debug 门控早退（正式构建零影响）；技能树全量遍历唯一口=`SkillTree.get_all_node_ids()`（主表+v8 扩展合并，`_ensure_lookup_index` 后取 `_id_index.keys()`），勿再手拼两表。
+- **第2关卡死（记录3#4）=未复现**：双真窗口探针（`tests/_tmp_v657_l2_probe`（基地直进）/`_tmp_v657_l2chain_probe`（L1结算→出击下一关自然链））用玩家真实档均正常打完——复发先收 trace.log 尾部再动代码，勿盲修。
+
 ## v6.56 build/记录1.txt 三轮 20 条批：教程 close-wait 链 + 三卡顿根治 + 渗透红点区域化 + 武器音效真枪换血（2026-10-10，详见 CHANGELOG 与 docs/实机验收_记录1三轮_进度.md）
 
 **改教程面板点播链/技能树预热/渗透生成锚/武器音效槽前必读本节。**

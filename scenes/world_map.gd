@@ -2257,10 +2257,10 @@ func _apply_incursion_markers(canvas: Control) -> void:
 	var list: Array = ebm.get("incursions")
 	if list.is_empty():
 		return
-	# 锚点=停靠关（不用在途目的地锚——行军中出发侧渗透不该消失）
-	var bm := _truck_mgr()
-	var anchor: int = clampi(int(bm.get_parked_level()), 1, LEVEL_COUNT) if bm != null \
-		else (_built_window_anchor if _built_window_anchor > 0 else _truck_anchor_level())
+	# 锚点=行军中取目的地（v6.65 记录6#5：与 EBM 生成锚 `_incursion_anchor_level`/地图节点窗
+	# `_truck_anchor_level` 同口径——旧 parked 锚滤掉全部 dest 侧新点，行军途中整段零红点。
+	# 出发侧旧点由 EBM far_behind(dest-15) 过期机制负责清退，不存在"消失不渲染"的窗口差）
+	var anchor: int = clampi(_truck_anchor_level(), 1, LEVEL_COUNT)
 	var holder := Control.new()
 	holder.name = "IncursionMarkers"
 	holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -2489,6 +2489,9 @@ func _on_truck_travel_changed() -> void:
 	_refresh_fuel_chip()
 	_refresh_travel_route()
 	_refresh_enter_btn_label()
+	# 记录6#5：启程/到站=渗透红点过滤锚在 parked↔dest 间跳变，同帧重铺一次
+	# （幂等重建；_map_built=false 时内部早退）。已打开的地图不等下次 incursions_changed。
+	_on_incursions_changed()
 	var bm := _truck_mgr()
 	if bm == null:
 		return

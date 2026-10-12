@@ -71,9 +71,13 @@ func test_no_left_room_falls_below() -> void:
 	# 模拟窄面板占满 toast 左侧空间：面板 x 使其左缘已贴近屏幕左（左移放不下）
 	# 直接用超大面板宽触发左移失败分支
 	var pos := Vector2(tr.position.x + 50.0, tr.position.y + 20.0)
-	var huge_w: float = tr.position.x  # 左移需要 x - huge_w - 8 < 8 → 必然失败
+	var huge_w: float = tr.position.x  # 左移 = tr.x - huge_w - 8 = -8 < 8 → 必然失败
 	var out: Vector2 = _panel._avoid_toast_zone(pos, huge_w, 400.0, 720.0)
-	assert_vector(out).is_equal(Vector2(pos.x, tr.end.y + 8.0))
+	# v6.65 对齐：期望必须含屏底钳制项 below_y=min(tr.end.y+8, 屏高-面板高-8)——
+	# 旧断言裸写 tr.end.y+8 只在"toast 栈矮"时碰巧成立（组合跑时前置套件遗留的
+	# 真实 toast 把栈垫过 720-400-8=312 钳制线 → 假红；与产物合同不符）
+	var below_expected: float = minf(tr.end.y + 8.0, maxf(8.0, 720.0 - 400.0 - 8.0))
+	assert_vector(out).is_equal(Vector2(pos.x, below_expected))
 
 
 func test_disjoint_passthrough() -> void:

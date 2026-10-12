@@ -763,9 +763,12 @@ const LOADOUTS: Dictionary = {
 		cuts = {1: 5, 2: 7, 3: 8, 4: 9},
 	},
 	# v6.35 黑门 2.0: 本体(ultimate 档=最深配装切片,首通勋章战)
+	# v6.65 记录6四轮补遗：gen_12→enh_crit_dmg——原配装同时带 gen_11+gen_12（同
+	# conflict_group "phase_core"，违反全表"conflict 无同组"契约，测试锁红自入库起）。
+	# 换同 whiteslist 的 enh_crit_dmg（组独立/9 条满编不变/时代带兼容）。
 	"xeno_gate_core": {
 		identity = "【本体】黑门本体·门渊意志——湮灭光炮压场，共感网络中枢",
-		mods = ["gen_11_phase_resonance", "gen_12_phase_shielding", "enh_hp_up", "enh_def_up", "enh_regen", "enh_dmg_up", "enh_crit", "air_06_bvr_missile", "air_25_dual_mode_seeker"],
+		mods = ["gen_11_phase_resonance", "enh_hp_up", "enh_def_up", "enh_regen", "enh_dmg_up", "enh_crit", "enh_crit_dmg", "air_06_bvr_missile", "air_25_dual_mode_seeker"],
 		cuts = {1: 5, 2: 7, 3: 9, 4: 9},
 	},
 }

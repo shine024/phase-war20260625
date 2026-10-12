@@ -293,8 +293,12 @@ static func max_skill_points_at_phase_field_level(phase_field_level: int) -> int
 	return POINTS_BY_PHASE_FIELD_LEVEL[idx]
 
 ## 获取所有分支 ID
-static func get_all_branches() -> Array:
-	return SKILL_TREE.keys()
+static func get_all_branches() -> Array:	return SKILL_TREE.keys()
+
+## v6.41 试玩全解锁档：全节点 ID 列表（主表 + v8 扩展表，自动加点遍历用）
+static func get_all_node_ids() -> Array:
+	_ensure_lookup_index()
+	return _id_index.keys()
 
 ## 分支中文名
 static func get_branch_display_name(branch: String) -> String:

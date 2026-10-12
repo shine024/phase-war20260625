@@ -70,8 +70,12 @@ func test_manual_mode_holds_charges_with_cap_two() -> void:
 	UltimateCastControllerScript.set_manual_mode(true)
 	var params := {"interval": 10.0}
 	var P := PhaseInstrumentAbilitiesScript.Owner.PLAYER
-	# 开局种子间隔（首次跳过等待）+ 一帧 → 首个充能
+	# 记录3#2：首充能=满 interval——开局从 0 计时，不再"首次跳过等待"（开局≈0s 即就绪
+	# 是用户主诉本体）；首帧不满 interval → 0 充能
 	PhaseInstrumentAbilitiesScript._tick_nuclear_bombardment(P, params, 0.016)
+	assert_int(_charge()).is_equal(0)
+	# 攒满 interval → 首充能
+	PhaseInstrumentAbilitiesScript._tick_nuclear_bombardment(P, params, 10.0)
 	assert_int(_charge()).is_equal(1)
 	# 再攒满一个 interval → 满仓 2
 	PhaseInstrumentAbilitiesScript._tick_nuclear_bombardment(P, params, 10.0)
@@ -85,7 +89,11 @@ func test_auto_mode_consumes_charge_immediately() -> void:
 	# 默认自动模式：攒到即放（充能立即被消耗；无战场时 fire 内部早退，不影响记账断言）
 	var params := {"interval": 10.0}
 	var P := PhaseInstrumentAbilitiesScript.Owner.PLAYER
+	# 记录3#2：首帧不满 interval → 0 充能
 	PhaseInstrumentAbilitiesScript._tick_nuclear_bombardment(P, params, 0.016)
+	assert_int(_charge()).is_equal(0)
+	# 攒满 interval：自动侧即时放（记账层也不滞留）
+	PhaseInstrumentAbilitiesScript._tick_nuclear_bombardment(P, params, 10.0)
 	assert_int(_charge()).is_equal(0)
 
 
@@ -93,9 +101,13 @@ func test_manual_release_paths() -> void:
 	UltimateCastControllerScript.set_manual_mode(true)
 	# 无充能
 	assert_str(PhaseInstrumentAbilitiesScript.manual_release_nuclear_bombardment()).is_equal("no_charge")
-	# 攒 1 充能后无目标（headless 无战场）→ 不消耗
 	var params := {"interval": 10.0}
+	# 记录3#2：首帧不满 interval → 仍 0 充能，释放路径同 no_charge
 	PhaseInstrumentAbilitiesScript._tick_nuclear_bombardment(PhaseInstrumentAbilitiesScript.Owner.PLAYER, params, 0.016)
+	assert_int(_charge()).is_equal(0)
+	assert_str(PhaseInstrumentAbilitiesScript.manual_release_nuclear_bombardment()).is_equal("no_charge")
+	# 攒满 interval → 1 充能；无目标（headless 无战场）→ 不消耗
+	PhaseInstrumentAbilitiesScript._tick_nuclear_bombardment(PhaseInstrumentAbilitiesScript.Owner.PLAYER, params, 10.0)
 	assert_int(_charge()).is_equal(1)
 	assert_str(PhaseInstrumentAbilitiesScript.manual_release_nuclear_bombardment()).is_equal("no_target")
 	assert_int(_charge()).is_equal(1)
@@ -112,7 +124,8 @@ func test_enemy_side_never_holds() -> void:
 
 func test_reset_state_clears_charges() -> void:
 	UltimateCastControllerScript.set_manual_mode(true)
-	PhaseInstrumentAbilitiesScript._tick_nuclear_bombardment(PhaseInstrumentAbilitiesScript.Owner.PLAYER, {"interval": 10.0}, 0.016)
+	# 记录3#2：满 interval 才出首充能
+	PhaseInstrumentAbilitiesScript._tick_nuclear_bombardment(PhaseInstrumentAbilitiesScript.Owner.PLAYER, {"interval": 10.0}, 10.0)
 	assert_int(_charge()).is_equal(1)
 	PhaseInstrumentAbilitiesScript.reset_battle_state()
 	assert_int(_charge()).is_equal(0)

@@ -96,7 +96,10 @@ func is_evolution_era_unlocked(era: int) -> bool:
 ## 消费方：battle_spawn_system.request_player_deploy（超限拒绝部署）+ 技能面板状态行。
 ## max 语义：取已解锁 power_cap 节点的最大 value；基础值覆盖时代 0-1 基础卡
 ## （实测分布：era0 p50=28 / era1 p50=204 / 全表 max=2200）。
+## 记录3#3：value<0（无垠档三系 sync3 均为 -1）=无上限哨兵——返回 UNLIMITED_POWER_CAP，
+## 部署门比较永不触发；文案层（unlock_labels/技能面板）按"无限"显示。
 const BASE_POWER_CAP := 200
+const UNLIMITED_POWER_CAP := 999999999
 
 func get_power_cap() -> int:
 	var cap: int = BASE_POWER_CAP
@@ -105,8 +108,18 @@ func get_power_cap() -> int:
 		var unlocks: Array = node.get("unlocks", [])
 		for u in unlocks:
 			if u is Dictionary and str(u.get("type", "")) == "power_cap":
-				cap = maxi(cap, int(u.get("value", 0)))
+				var v := int(u.get("value", 0))
+				if v < 0:
+					return UNLIMITED_POWER_CAP
+				cap = maxi(cap, v)
 	return cap
+
+
+## 战力上限的玩家可见文案（技能面板状态行等消费）——无垠档显示"无限"而非哨兵大数。
+func get_power_cap_display() -> String:
+	if get_power_cap() >= UNLIMITED_POWER_CAP:
+		return "无限"
+	return str(get_power_cap())
 
 
 ## 可用技能点
@@ -140,6 +153,18 @@ func can_unlock_node(node_id: String) -> Dictionary:
 	if _spent_points + cost > SkillTree.max_skill_points_at_phase_field_level(_phase_field_level) + _bonus_points:
 		return {"ok": false, "reason": "not_enough_points"}
 	return {"ok": true, "cost": cost}
+
+
+## v6.41 试玩全解锁档：技能树自动全加点（save_manager._grant_debug_test_stock 补库链调用）。
+## 逐节点 unlock_node——免前置免点数语义由 GameConfig.debug_skill_tree_free 承担，
+## 已解锁节点 unlock_node 返回 false，天然幂等；unlocks 派发（进化时代/词缀池/unit 机制等）
+## 随 unlock_node 的 call_deferred(_apply_unlocks) 正常触发。返回本次新解锁数。
+func debug_unlock_all_nodes() -> int:
+	var newly: int = 0
+	for nid in SkillTree.get_all_node_ids():
+		if unlock_node(String(nid)):
+			newly += 1
+	return newly
 
 
 ## 解锁节点（返回是否成功）

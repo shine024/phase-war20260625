@@ -120,10 +120,19 @@ func test_era_band_compat() -> void:
 		assert_bool(ModificationRegistry.is_mod_era_compatible(no_band, era)).is_true()
 
 func test_installable_mods_era_filter() -> void:
-	# 一战坦克（era0）：倾斜装甲 [0,2] 可装，复合装甲 [2,4] 不可装
+	# v6.65 对齐：v6.54 记录6#13 起安装门"只拦上限"（is_mod_era_compatible 只查
+	# band[1]，未来模块可装给旧卡——modification_panel.gd 时代过滤注释明示设计；
+	# era_band[0] 是数值基准时代非安装门槛）。旧断言"era0 不可装 [2,4]"编码的是
+	# v22 双界语义，随 v6.54 语义切换过时（本锁自那时起确定性红）。
+	# 一战坦克（era0）：[0,2] 可装；[2,4] 上限 4 ≥ 0 → 同样可装（数值按基准时代缩放）
 	var ids: Array = ModificationRegistry.get_installable_mods_for_card("ww1_arm_ft17", 0)
 	assert_bool(ids.has("arm_01_sloped_armor")).is_true()
-	assert_bool(ids.has("arm_02_composite_armor")).is_false()
+	assert_bool(ids.has("arm_02_composite_armor")).is_true()
+	# 上限仍拦：era2 装甲卡装不了 [0,1] 间隙装甲（前时代过期件不进列表）；
+	# [0,2] 倾斜装甲 band[1]=2 边界含等号 → 仍可装
+	var late: Array = ModificationRegistry.get_installable_mods_for_card("cold_arm_t55", 2)
+	assert_bool(late.has("arm_17_spacer_armor")).is_false()
+	assert_bool(late.has("arm_01_sloped_armor")).is_true()
 	# 未过滤全集仍含两者（enemy_card_mod_map 等跨时代消费方依赖）
 	var all: Array = ModificationRegistry.get_mods_for_card("ww1_arm_ft17")
 	assert_bool(all.has("arm_01_sloped_armor")).is_true()

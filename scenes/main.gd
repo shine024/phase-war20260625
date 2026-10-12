@@ -1289,8 +1289,13 @@ func _on_manual_save_pressed() -> void:
 		return
 	var ok: bool = SaveManager.save_game()
 	if ok:
-		_play_sfx("card_place")
-		_show_save_result_toast("游戏已保存", false)
+		# 记录6#3：战斗中保存=只标脏、战后冲刷（save_game 返回 true 但一个字节没写）——
+		# 提示必须说真话，勿报"游戏已保存"；节流/懒加载窗口的排队 1.2s 内落盘，不特判。
+		if BattleManager != null and BattleManager.get("battle_active") == true:
+			_show_save_result_toast("战斗中：战斗结束后自动保存", false)
+		else:
+			_play_sfx("card_place")
+			_show_save_result_toast("游戏已保存", false)
 	else:
 		_play_sfx("error")
 		_show_save_result_toast("存档失败，请重试", true)

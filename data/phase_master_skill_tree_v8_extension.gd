@@ -158,7 +158,7 @@ const EXTENSION_NODES: Dictionary = {
 		# ═══ v36 精神同调链终点（指挥系）：可用战力上限 ═══
 		{"id": "pms_cmd_sync3", "name": "精神同调·无垠", "desc": "与暗能同频共振，心境如渊——战力不再是门槛——任何战力的战斗卡都可驾驭（全部战斗卡解锁）",
 		 "branch": BRANCH_COMMAND, "tier": 7, "cost": 4, "requires": ["pms_cmd_sync2"],
-		 "unlocks": [{"type": "power_cap", "value": 2400}],
+		 "unlocks": [{"type": "power_cap", "value": -1}],  # 记录3#3：-1=无垠档无上限哨兵（get_power_cap 消费），desc「战力不再是门槛」落到实现
 		 "effects": {}},
 	],
 
@@ -266,7 +266,7 @@ const EXTENSION_NODES: Dictionary = {
 		# ═══ v36 精神同调链终点（火力系）：可用战力上限 ═══
 		{"id": "pms_fp_sync3", "name": "精神同调·无垠", "desc": "与暗能同频共振，心境如渊——战力不再是门槛——任何战力的战斗卡都可驾驭（全部战斗卡解锁）",
 		 "branch": BRANCH_FIREPOWER, "tier": 7, "cost": 4, "requires": ["pms_fp_sync2"],
-		 "unlocks": [{"type": "power_cap", "value": 2400}],
+		 "unlocks": [{"type": "power_cap", "value": -1}],  # 记录3#3：-1=无垠档无上限哨兵（get_power_cap 消费），desc「战力不再是门槛」落到实现
 		 "effects": {}},
 	],
 
@@ -356,7 +356,7 @@ const EXTENSION_NODES: Dictionary = {
 		# ═══ v36 精神同调链终点（智能化系）：可用战力上限 ═══
 		{"id": "pms_int_sync3", "name": "精神同调·无垠", "desc": "与暗能同频共振，心境如渊——战力不再是门槛——任何战力的战斗卡都可驾驭（全部战斗卡解锁）",
 		 "branch": BRANCH_INTELLIGENCE, "tier": 7, "cost": 4, "requires": ["pms_int_sync2"],
-		 "unlocks": [{"type": "power_cap", "value": 2400}],
+		 "unlocks": [{"type": "power_cap", "value": -1}],  # 记录3#3：-1=无垠档无上限哨兵（get_power_cap 消费），desc「战力不再是门槛」落到实现
 		 "effects": {}},
 	],
 }

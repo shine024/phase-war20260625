@@ -124,7 +124,7 @@ func _instantiate_event(template: Dictionary) -> void:
 	if _rewards.has("reputation"):
 		_parts.append("贡献+%d" % int(_rewards["reputation"]))
 	if _rewards.has("skill_points"):
-		_parts.append("技能点+%d" % int(_rewards["skill_points"]))
+		_parts.append("相位师技能点+%d" % int(_rewards["skill_points"]))  # 记录6#1：实发相位师技能树，与势力技能点区分
 	if _rewards.has("nano") or _rewards.has("nanomaterial"):
 		_parts.append("纳米+%d" % int(_rewards.get("nano", _rewards.get("nanomaterial", 0))))
 	if _rewards.has("exclusive_card"):

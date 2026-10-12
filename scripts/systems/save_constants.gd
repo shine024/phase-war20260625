@@ -54,4 +54,7 @@ const SK_AFK: String = "afk"
 const SK_BUNKER: String = "bunker_state"
 # v26: 制造系统存档键（pity 暗保底计数；配方解锁实时读情报不落档）
 const SK_MANUFACTURE: String = "manufacture_state"
+# v6.65 记录6#3: 黑门/渗透存档键（best_score/周星髓/入场次数/gate_cleared_once/incursions/cp_* 分段）
+# v27 起读档侧在册但写侧从未收集——进度重启全丢，本键补齐写侧。
+const SK_ENDLESS_BLACKGATE: String = "endless_blackgate"
 # v25.3: SK_MOD_UNLOCK_STATE 已随账号解锁集退役删除（旧档 mod_unlock_state key 静默跳过）

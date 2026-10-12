@@ -141,7 +141,7 @@ func _bind_nodes() -> void:
 	if chip_max:
 		chip_max.tooltip_text = "只显示已满级（Lv30）的卡牌"
 	if mod_btn:
-		mod_btn.tooltip_text = "打开改造面板：为选中的这张卡安装/调整改造模块（最多 9 格，只影响本实例）"
+		mod_btn.tooltip_text = "打开改造面板：为选中的这张卡安装/调整改造模块（槽位随品质与兵种加成提升，只影响本实例）"
 	if evo_btn:
 		evo_btn.tooltip_text = "打开制造舱：消耗情报与资源直接生产全新卡牌（品质随情报档提升）"
 	if prog_card_amber:
@@ -149,7 +149,7 @@ func _bind_nodes() -> void:
 	if prog_card_gold:
 		prog_card_gold.tooltip_text = "等级进度：Lv5/10/15/20/25/30 各解锁一个词条节点；每 3 级折合 1★ 光环/能力等级"
 	if prog_card_cyan:
-		prog_card_cyan.tooltip_text = "改造系统：安装模块定向强化属性，最多 9 格，只影响当前这张卡"
+		prog_card_cyan.tooltip_text = "改造系统：安装模块定向强化属性，槽位随品质与兵种加成提升，只影响当前这张卡"
 	if prog_card_violet:
 		prog_card_violet.tooltip_text = "制造系统：情报达标后可直接生产该卡（品质随情报提升；等级/经验/改造不重置）"
 	if hero_power_label:

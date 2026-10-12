@@ -55,6 +55,12 @@ static func _resolve_key(anim_id: String) -> String:
 	return key
 
 
+## v6.65 记录6#2：只读解析（零缓存写入）——供后台线程预热链（battle_entry_prewarm）
+## 复用同一解析口径；_resolve_key_impl 本身纯只读，缓存归主线程 attach 链独占。
+static func resolve_key_readonly(anim_id: String) -> String:
+	return _resolve_key_impl(anim_id)
+
+
 static func _resolve_key_impl(anim_id: String) -> String:
 	## id → 资产目录名（剥 foe_ 前缀）; 有 sheet_idle 且带 anim.json 才算命中
 	for cand in [anim_id, anim_id.trim_prefix("foe_")]:
@@ -88,6 +94,14 @@ static func _resolve_key_impl(anim_id: String) -> String:
 			and ResourceLoader.exists(ANIM_ROOT + alias + "/sheet_idle.png") \
 			and ResourceLoader.exists(ANIM_ROOT + alias + "/anim.json"):
 		return alias
+	## v6.57 记录3#7：缴获卡镜像（captured_*）最终回退=剥前缀按本体卡重走全链。
+	## 此前缴获星冥卡经 visual_id 分支命中 vis_xeno_* 动画，而缴获经典单位本体卡
+	## 走 ANIM_ALIAS/错位目录——visual_id（vis_player_0XX）是卡图 id 非动画目录，
+	## 缴获经典单位战场永静画（审计 v4 实证 14/281 全部是 captured_ww1/ww2_*）。
+	if String(anim_id).begins_with("captured_"):
+		var base_key := _resolve_key(String(anim_id).trim_prefix("captured_"))
+		if not base_key.is_empty():
+			return base_key
 	return ""
 
 

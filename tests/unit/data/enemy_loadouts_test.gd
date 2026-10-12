@@ -20,8 +20,10 @@ func test_all_enemy_ids_have_loadout() -> void:
 		"未配装敌方 id：%s（跑 tools/gen_enemy_loadout_draft.gd 重生成）" % str(missing.slice(0, 10))).is_empty()
 
 func test_loadout_table_size() -> void:
+	# v6.35 本体入册 139→140（星冥 20→21 含黑门本体）——v6.35 变更说明写明"配装
+	# 137→140 已同步"，本锁实际没跟上，自那时起红（v6.65 记录6四轮补遗对齐）
 	assert_int(Loadouts.LOADOUTS.size()).override_failure_message(
-		"配装表应 139 条（109 经典 + 8 新飞机 + 2 二战尾部试验机[v30.5 R5] + 20 星冥）").is_equal(139)
+		"配装表应 140 条（109 经典 + 8 新飞机 + 2 二战尾部试验机[v30.5 R5] + 21 星冥[含黑门本体]）").is_equal(140)
 
 func _entries() -> Array:
 	return Loadouts.LOADOUTS.keys()

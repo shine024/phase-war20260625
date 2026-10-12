@@ -2,6 +2,9 @@ class_name MainBattleSetup
 extends RefCounted
 ## 战前准备/战斗启动逻辑（从 scenes/main.gd 提取）
 
+## v6.65 记录6#2：入场资产后台预热（preload 纪律——class_name 全局引用有缓存坑先例）
+const BattleEntryPrewarm = preload("res://scripts/battle/battle_entry_prewarm.gd")
+
 ## 主场景引用，由 main.gd 在 _ready 中赋值
 var main: Control = null
 
@@ -66,6 +69,10 @@ func _sortie_report_lines() -> Array[String]:
 ## 执行战斗开始序列
 func run_start_battle_sequence() -> void:
 	main._play_sfx("button")
+	# v6.65 记录6#2：入场资产后台预热——首波敌人卡图/动画 sheet/战斗 BGM 的磁盘冷读
+	# 经 load_threaded 搬到过场窗口（战报 1.5s / 揭幕 dip 0.1s）加载，开战 deferred 帧
+	# 的 load() 命中资源缓存，消除"入场卡一下"。幂等（has_cached 跳过），零时序影响。
+	BattleEntryPrewarm.prewarm_for_level(int(GameManager.current_level) if GameManager != null else 1)
 	# 批次③ Task 2：清掉上一场可能未消费的撤退标记（防串场——撤退 meta 只该
 	# 影响它自己那场的结算面板）
 	Engine.remove_meta("battle_retreated")
