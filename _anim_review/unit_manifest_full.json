@@ -134,10 +134,10 @@
           "sheet_idle": "res://assets/effects/unit_anims/ww1_arty_mortar/sheet_idle.png"
         },
         {
-          "attack": 10,
+          "attack": 6,
           "fps": 8.0,
           "fs": 256,
-          "idle": 8,
+          "idle": 4,
           "key": "ww1_arty_m81",
           "sheet_attack": "res://assets/effects/unit_anims/ww1_arty_m81/sheet_attack.png",
           "sheet_idle": "res://assets/effects/unit_anims/ww1_arty_m81/sheet_idle.png"
@@ -160,7 +160,7 @@
         "attack": 6,
         "fps": 8.0,
         "fs": 256,
-        "idle": 7,
+        "idle": 4,
         "sheet_attack": "res://assets/effects/unit_anims/ww1_storm/sheet_attack.png",
         "sheet_idle": "res://assets/effects/unit_anims/ww1_storm/sheet_idle.png"
       },
@@ -169,7 +169,7 @@
           "attack": 6,
           "fps": 8.0,
           "fs": 256,
-          "idle": 7,
+          "idle": 4,
           "key": "ww1_storm",
           "sheet_attack": "res://assets/effects/unit_anims/ww1_storm/sheet_attack.png",
           "sheet_idle": "res://assets/effects/unit_anims/ww1_storm/sheet_idle.png"
@@ -426,7 +426,7 @@
     },
     {
       "anim": {
-        "attack": 10,
+        "attack": 6,
         "fps": 8.0,
         "fs": 256,
         "idle": 4,
@@ -435,7 +435,7 @@
       },
       "anim_cands": [
         {
-          "attack": 10,
+          "attack": 6,
           "fps": 8.0,
           "fs": 256,
           "idle": 4,
@@ -534,7 +534,7 @@
         "attack": 6,
         "fps": 8.0,
         "fs": 256,
-        "idle": 8,
+        "idle": 4,
         "sheet_attack": "res://assets/effects/unit_anims/ww2_sup_mg42/sheet_attack.png",
         "sheet_idle": "res://assets/effects/unit_anims/ww2_sup_mg42/sheet_idle.png"
       },
@@ -543,7 +543,7 @@
           "attack": 6,
           "fps": 8.0,
           "fs": 256,
-          "idle": 8,
+          "idle": 4,
           "key": "ww2_sup_mg42",
           "sheet_attack": "res://assets/effects/unit_anims/ww2_sup_mg42/sheet_attack.png",
           "sheet_idle": "res://assets/effects/unit_anims/ww2_sup_mg42/sheet_idle.png"
@@ -572,19 +572,19 @@
     },
     {
       "anim": {
-        "attack": 12,
+        "attack": 6,
         "fps": 8.0,
         "fs": 256,
-        "idle": 8,
+        "idle": 4,
         "sheet_attack": "res://assets/effects/unit_anims/ww2_pschreck/sheet_attack.png",
         "sheet_idle": "res://assets/effects/unit_anims/ww2_pschreck/sheet_idle.png"
       },
       "anim_cands": [
         {
-          "attack": 12,
+          "attack": 6,
           "fps": 8.0,
           "fs": 256,
-          "idle": 8,
+          "idle": 4,
           "key": "ww2_pschreck",
           "sheet_attack": "res://assets/effects/unit_anims/ww2_pschreck/sheet_attack.png",
           "sheet_idle": "res://assets/effects/unit_anims/ww2_pschreck/sheet_idle.png"
@@ -709,7 +709,7 @@
     },
     {
       "anim": {
-        "attack": 10,
+        "attack": 6,
         "fps": 8.0,
         "fs": 256,
         "idle": 4,
@@ -718,7 +718,7 @@
       },
       "anim_cands": [
         {
-          "attack": 10,
+          "attack": 6,
           "fps": 8.0,
           "fs": 256,
           "idle": 4,
@@ -768,10 +768,10 @@
           "sheet_idle": "res://assets/effects/unit_anims/ww2_arty_hummel/sheet_idle.png"
         },
         {
-          "attack": 10,
+          "attack": 6,
           "fps": 8.0,
           "fs": 256,
-          "idle": 8,
+          "idle": 4,
           "key": "ww2_arty_m81",
           "sheet_attack": "res://assets/effects/unit_anims/ww2_arty_m81/sheet_attack.png",
           "sheet_idle": "res://assets/effects/unit_anims/ww2_arty_m81/sheet_idle.png"
@@ -809,10 +809,10 @@
           "sheet_idle": "res://assets/effects/unit_anims/ww2_arty_pak40/sheet_idle.png"
         },
         {
-          "attack": 12,
+          "attack": 6,
           "fps": 8.0,
           "fs": 256,
-          "idle": 8,
+          "idle": 4,
           "key": "ww2_inf_panzerschrek",
           "sheet_attack": "res://assets/effects/unit_anims/ww2_inf_panzerschrek/sheet_attack.png",
           "sheet_idle": "res://assets/effects/unit_anims/ww2_inf_panzerschrek/sheet_idle.png"
@@ -1215,19 +1215,19 @@
     },
     {
       "anim": {
-        "attack": 10,
+        "attack": 6,
         "fps": 8.0,
         "fs": 256,
-        "idle": 8,
+        "idle": 4,
         "sheet_attack": "res://assets/effects/unit_anims/cold_spetsnaz/sheet_attack.png",
         "sheet_idle": "res://assets/effects/unit_anims/cold_spetsnaz/sheet_idle.png"
       },
       "anim_cands": [
         {
-          "attack": 10,
+          "attack": 6,
           "fps": 8.0,
           "fs": 256,
-          "idle": 8,
+          "idle": 4,
           "key": "cold_spetsnaz",
           "sheet_attack": "res://assets/effects/unit_anims/cold_spetsnaz/sheet_attack.png",
           "sheet_idle": "res://assets/effects/unit_anims/cold_spetsnaz/sheet_idle.png"
@@ -1279,19 +1279,19 @@
     },
     {
       "anim": {
-        "attack": 10,
+        "attack": 6,
         "fps": 8.0,
         "fs": 256,
-        "idle": 8,
+        "idle": 4,
         "sheet_attack": "res://assets/effects/unit_anims/cold_mig21/sheet_attack.png",
         "sheet_idle": "res://assets/effects/unit_anims/cold_mig21/sheet_idle.png"
       },
       "anim_cands": [
         {
-          "attack": 10,
+          "attack": 6,
           "fps": 8.0,
           "fs": 256,
-          "idle": 8,
+          "idle": 4,
           "key": "cold_mig21",
           "sheet_attack": "res://assets/effects/unit_anims/cold_mig21/sheet_attack.png",
           "sheet_idle": "res://assets/effects/unit_anims/cold_mig21/sheet_idle.png"
@@ -1452,10 +1452,10 @@
           "sheet_idle": "res://assets/effects/unit_anims/cold_arm_p18/sheet_idle.png"
         },
         {
-          "attack": 10,
+          "attack": 6,
           "fps": 8.0,
           "fs": 256,
-          "idle": 8,
+          "idle": 4,
           "key": "cold_mig21",
           "sheet_attack": "res://assets/effects/unit_anims/cold_mig21/sheet_attack.png",
           "sheet_idle": "res://assets/effects/unit_anims/cold_mig21/sheet_idle.png"
@@ -1580,19 +1580,19 @@
     },
     {
       "anim": {
-        "attack": 12,
+        "attack": 6,
         "fps": 8.0,
         "fs": 256,
-        "idle": 8,
+        "idle": 4,
         "sheet_attack": "res://assets/effects/unit_anims/mod_inf_marine/sheet_attack.png",
         "sheet_idle": "res://assets/effects/unit_anims/mod_inf_marine/sheet_idle.png"
       },
       "anim_cands": [
         {
-          "attack": 12,
+          "attack": 6,
           "fps": 8.0,
           "fs": 256,
-          "idle": 8,
+          "idle": 4,
           "key": "mod_inf_marine",
           "sheet_attack": "res://assets/effects/unit_anims/mod_inf_marine/sheet_attack.png",
           "sheet_idle": "res://assets/effects/unit_anims/mod_inf_marine/sheet_idle.png"
@@ -1662,19 +1662,19 @@
     },
     {
       "anim": {
-        "attack": 10,
+        "attack": 6,
         "fps": 8.0,
         "fs": 256,
-        "idle": 8,
+        "idle": 4,
         "sheet_attack": "res://assets/effects/unit_anims/mod_stryker/sheet_attack.png",
         "sheet_idle": "res://assets/effects/unit_anims/mod_stryker/sheet_idle.png"
       },
       "anim_cands": [
         {
-          "attack": 10,
+          "attack": 6,
           "fps": 8.0,
           "fs": 256,
-          "idle": 8,
+          "idle": 4,
           "key": "mod_stryker",
           "sheet_attack": "res://assets/effects/unit_anims/mod_stryker/sheet_attack.png",
           "sheet_idle": "res://assets/effects/unit_anims/mod_stryker/sheet_idle.png"
@@ -1881,19 +1881,19 @@
     },
     {
       "anim": {
-        "attack": 10,
+        "attack": 6,
         "fps": 8.0,
         "fs": 256,
-        "idle": 8,
+        "idle": 4,
         "sheet_attack": "res://assets/effects/unit_anims/mod_sup_m4_carbine/sheet_attack.png",
         "sheet_idle": "res://assets/effects/unit_anims/mod_sup_m4_carbine/sheet_idle.png"
       },
       "anim_cands": [
         {
-          "attack": 10,
+          "attack": 6,
           "fps": 8.0,
           "fs": 256,
-          "idle": 8,
+          "idle": 4,
           "key": "mod_sup_m4_carbine",
           "sheet_attack": "res://assets/effects/unit_anims/mod_sup_m4_carbine/sheet_attack.png",
           "sheet_idle": "res://assets/effects/unit_anims/mod_sup_m4_carbine/sheet_idle.png"
@@ -2068,19 +2068,19 @@
     },
     {
       "anim": {
-        "attack": 11,
+        "attack": 6,
         "fps": 8.0,
         "fs": 256,
-        "idle": 8,
+        "idle": 4,
         "sheet_attack": "res://assets/effects/unit_anims/mod_arm_abrams_mk2/sheet_attack.png",
         "sheet_idle": "res://assets/effects/unit_anims/mod_arm_abrams_mk2/sheet_idle.png"
       },
       "anim_cands": [
         {
-          "attack": 11,
+          "attack": 6,
           "fps": 8.0,
           "fs": 256,
-          "idle": 8,
+          "idle": 4,
           "key": "mod_arm_abrams_mk2",
           "sheet_attack": "res://assets/effects/unit_anims/mod_arm_abrams_mk2/sheet_attack.png",
           "sheet_idle": "res://assets/effects/unit_anims/mod_arm_abrams_mk2/sheet_idle.png"
@@ -2205,19 +2205,19 @@
     },
     {
       "anim": {
-        "attack": 10,
+        "attack": 6,
         "fps": 8.0,
         "fs": 256,
-        "idle": 8,
+        "idle": 4,
         "sheet_attack": "res://assets/effects/unit_anims/fut_air_drone/sheet_attack.png",
         "sheet_idle": "res://assets/effects/unit_anims/fut_air_drone/sheet_idle.png"
       },
       "anim_cands": [
         {
-          "attack": 10,
+          "attack": 6,
           "fps": 8.0,
           "fs": 256,
-          "idle": 8,
+          "idle": 4,
           "key": "fut_air_drone",
           "sheet_attack": "res://assets/effects/unit_anims/fut_air_drone/sheet_attack.png",
           "sheet_idle": "res://assets/effects/unit_anims/fut_air_drone/sheet_idle.png"
@@ -2255,19 +2255,19 @@
     },
     {
       "anim": {
-        "attack": 10,
+        "attack": 6,
         "fps": 8.0,
         "fs": 256,
-        "idle": 8,
+        "idle": 4,
         "sheet_attack": "res://assets/effects/unit_anims/fut_arm_mech_e/sheet_attack.png",
         "sheet_idle": "res://assets/effects/unit_anims/fut_arm_mech_e/sheet_idle.png"
       },
       "anim_cands": [
         {
-          "attack": 10,
+          "attack": 6,
           "fps": 8.0,
           "fs": 256,
-          "idle": 8,
+          "idle": 4,
           "key": "fut_arm_mech_e",
           "sheet_attack": "res://assets/effects/unit_anims/fut_arm_mech_e/sheet_attack.png",
           "sheet_idle": "res://assets/effects/unit_anims/fut_arm_mech_e/sheet_idle.png"
@@ -2337,19 +2337,19 @@
     },
     {
       "anim": {
-        "attack": 12,
+        "attack": 6,
         "fps": 8.0,
         "fs": 256,
-        "idle": 8,
+        "idle": 4,
         "sheet_attack": "res://assets/effects/unit_anims/fut_spectre/sheet_attack.png",
         "sheet_idle": "res://assets/effects/unit_anims/fut_spectre/sheet_idle.png"
       },
       "anim_cands": [
         {
-          "attack": 12,
+          "attack": 6,
           "fps": 8.0,
           "fs": 256,
-          "idle": 8,
+          "idle": 4,
           "key": "fut_spectre",
           "sheet_attack": "res://assets/effects/unit_anims/fut_spectre/sheet_attack.png",
           "sheet_idle": "res://assets/effects/unit_anims/fut_spectre/sheet_idle.png"
@@ -2524,10 +2524,10 @@
           "sheet_idle": "res://assets/effects/unit_anims/fut_inf_storm_rider/sheet_idle.png"
         },
         {
-          "attack": 12,
+          "attack": 6,
           "fps": 8.0,
           "fs": 256,
-          "idle": 8,
+          "idle": 4,
           "key": "fut_spectre",
           "sheet_attack": "res://assets/effects/unit_anims/fut_spectre/sheet_attack.png",
           "sheet_idle": "res://assets/effects/unit_anims/fut_spectre/sheet_idle.png"
@@ -2547,19 +2547,19 @@
     },
     {
       "anim": {
-        "attack": 12,
+        "attack": 6,
         "fps": 8.0,
         "fs": 256,
-        "idle": 8,
+        "idle": 4,
         "sheet_attack": "res://assets/effects/unit_anims/fut_air_heavy_carrier/sheet_attack.png",
         "sheet_idle": "res://assets/effects/unit_anims/fut_air_heavy_carrier/sheet_idle.png"
       },
       "anim_cands": [
         {
-          "attack": 12,
+          "attack": 6,
           "fps": 8.0,
           "fs": 256,
-          "idle": 8,
+          "idle": 4,
           "key": "fut_air_heavy_carrier",
           "sheet_attack": "res://assets/effects/unit_anims/fut_air_heavy_carrier/sheet_attack.png",
           "sheet_idle": "res://assets/effects/unit_anims/fut_air_heavy_carrier/sheet_idle.png"
@@ -2802,10 +2802,10 @@
           "sheet_idle": "res://assets/effects/unit_anims/fut_inf_x9/sheet_idle.png"
         },
         {
-          "attack": 12,
+          "attack": 6,
           "fps": 8.0,
           "fs": 256,
-          "idle": 8,
+          "idle": 4,
           "key": "fut_spectre",
           "sheet_attack": "res://assets/effects/unit_anims/fut_spectre/sheet_attack.png",
           "sheet_idle": "res://assets/effects/unit_anims/fut_spectre/sheet_idle.png"
@@ -3391,19 +3391,19 @@
     },
     {
       "anim": {
-        "attack": 10,
+        "attack": 6,
         "fps": 8.0,
         "fs": 256,
-        "idle": 8,
+        "idle": 4,
         "sheet_attack": "res://assets/effects/unit_anims/ww2_arty_m81/sheet_attack.png",
         "sheet_idle": "res://assets/effects/unit_anims/ww2_arty_m81/sheet_idle.png"
       },
       "anim_cands": [
         {
-          "attack": 10,
+          "attack": 6,
           "fps": 8.0,
           "fs": 256,
-          "idle": 8,
+          "idle": 4,
           "key": "ww2_arty_m81",
           "sheet_attack": "res://assets/effects/unit_anims/ww2_arty_m81/sheet_attack.png",
           "sheet_idle": "res://assets/effects/unit_anims/ww2_arty_m81/sheet_idle.png"
@@ -3628,10 +3628,10 @@
           "sheet_idle": "res://assets/effects/unit_anims/platform_cold_radar/sheet_idle.png"
         },
         {
-          "attack": 10,
+          "attack": 6,
           "fps": 8.0,
           "fs": 256,
-          "idle": 8,
+          "idle": 4,
           "key": "cold_mig21",
           "sheet_attack": "res://assets/effects/unit_anims/cold_mig21/sheet_attack.png",
           "sheet_idle": "res://assets/effects/unit_anims/cold_mig21/sheet_idle.png"
@@ -3669,10 +3669,10 @@
           "sheet_idle": "res://assets/effects/unit_anims/platform_cold_carrier/sheet_idle.png"
         },
         {
-          "attack": 10,
+          "attack": 6,
           "fps": 8.0,
           "fs": 256,
-          "idle": 8,
+          "idle": 4,
           "key": "cold_mig21",
           "sheet_attack": "res://assets/effects/unit_anims/cold_mig21/sheet_attack.png",
           "sheet_idle": "res://assets/effects/unit_anims/cold_mig21/sheet_idle.png"
@@ -4386,19 +4386,19 @@
     },
     {
       "anim": {
-        "attack": 12,
+        "attack": 6,
         "fps": 8.0,
         "fs": 256,
-        "idle": 8,
+        "idle": 4,
         "sheet_attack": "res://assets/effects/unit_anims/ww1_arty_77mm/sheet_attack.png",
         "sheet_idle": "res://assets/effects/unit_anims/ww1_arty_77mm/sheet_idle.png"
       },
       "anim_cands": [
         {
-          "attack": 12,
+          "attack": 6,
           "fps": 8.0,
           "fs": 256,
-          "idle": 8,
+          "idle": 4,
           "key": "ww1_arty_77mm",
           "sheet_attack": "res://assets/effects/unit_anims/ww1_arty_77mm/sheet_attack.png",
           "sheet_idle": "res://assets/effects/unit_anims/ww1_arty_77mm/sheet_idle.png"
@@ -4614,7 +4614,7 @@
     },
     {
       "anim": {
-        "attack": 10,
+        "attack": 4,
         "fps": 8.0,
         "fs": 256,
         "idle": 4,
@@ -4623,7 +4623,7 @@
       },
       "anim_cands": [
         {
-          "attack": 10,
+          "attack": 4,
           "fps": 8.0,
           "fs": 256,
           "idle": 4,
@@ -4652,19 +4652,19 @@
     },
     {
       "anim": {
-        "attack": 12,
+        "attack": 6,
         "fps": 8.0,
         "fs": 256,
-        "idle": 8,
+        "idle": 4,
         "sheet_attack": "res://assets/effects/unit_anims/ww2_inf_panzerschrek/sheet_attack.png",
         "sheet_idle": "res://assets/effects/unit_anims/ww2_inf_panzerschrek/sheet_idle.png"
       },
       "anim_cands": [
         {
-          "attack": 12,
+          "attack": 6,
           "fps": 8.0,
           "fs": 256,
-          "idle": 8,
+          "idle": 4,
           "key": "ww2_inf_panzerschrek",
           "sheet_attack": "res://assets/effects/unit_anims/ww2_inf_panzerschrek/sheet_attack.png",
           "sheet_idle": "res://assets/effects/unit_anims/ww2_inf_panzerschrek/sheet_idle.png"
@@ -4690,19 +4690,19 @@
     },
     {
       "anim": {
-        "attack": 10,
+        "attack": 6,
         "fps": 8.0,
         "fs": 256,
-        "idle": 8,
+        "idle": 4,
         "sheet_attack": "res://assets/effects/unit_anims/ww2_arty_m81/sheet_attack.png",
         "sheet_idle": "res://assets/effects/unit_anims/ww2_arty_m81/sheet_idle.png"
       },
       "anim_cands": [
         {
-          "attack": 10,
+          "attack": 6,
           "fps": 8.0,
           "fs": 256,
-          "idle": 8,
+          "idle": 4,
           "key": "ww2_arty_m81",
           "sheet_attack": "res://assets/effects/unit_anims/ww2_arty_m81/sheet_attack.png",
           "sheet_idle": "res://assets/effects/unit_anims/ww2_arty_m81/sheet_idle.png"
@@ -4728,19 +4728,19 @@
     },
     {
       "anim": {
-        "attack": 10,
+        "attack": 6,
         "fps": 8.0,
         "fs": 256,
-        "idle": 8,
+        "idle": 4,
         "sheet_attack": "res://assets/effects/unit_anims/ww1_arty_m81/sheet_attack.png",
         "sheet_idle": "res://assets/effects/unit_anims/ww1_arty_m81/sheet_idle.png"
       },
       "anim_cands": [
         {
-          "attack": 10,
+          "attack": 6,
           "fps": 8.0,
           "fs": 256,
-          "idle": 8,
+          "idle": 4,
           "key": "ww1_arty_m81",
           "sheet_attack": "res://assets/effects/unit_anims/ww1_arty_m81/sheet_attack.png",
           "sheet_idle": "res://assets/effects/unit_anims/ww1_arty_m81/sheet_idle.png"
@@ -5108,19 +5108,19 @@
     },
     {
       "anim": {
-        "attack": 12,
+        "attack": 6,
         "fps": 8.0,
         "fs": 256,
-        "idle": 8,
+        "idle": 4,
         "sheet_attack": "res://assets/effects/unit_anims/mod_inf_scout_drone/sheet_attack.png",
         "sheet_idle": "res://assets/effects/unit_anims/mod_inf_scout_drone/sheet_idle.png"
       },
       "anim_cands": [
         {
-          "attack": 12,
+          "attack": 6,
           "fps": 8.0,
           "fs": 256,
-          "idle": 8,
+          "idle": 4,
           "key": "mod_inf_scout_drone",
           "sheet_attack": "res://assets/effects/unit_anims/mod_inf_scout_drone/sheet_attack.png",
           "sheet_idle": "res://assets/effects/unit_anims/mod_inf_scout_drone/sheet_idle.png"
@@ -5146,19 +5146,19 @@
     },
     {
       "anim": {
-        "attack": 12,
+        "attack": 6,
         "fps": 8.0,
         "fs": 256,
-        "idle": 8,
+        "idle": 4,
         "sheet_attack": "res://assets/effects/unit_anims/mod_arm_m1a2sep/sheet_attack.png",
         "sheet_idle": "res://assets/effects/unit_anims/mod_arm_m1a2sep/sheet_idle.png"
       },
       "anim_cands": [
         {
-          "attack": 12,
+          "attack": 6,
           "fps": 8.0,
           "fs": 256,
-          "idle": 8,
+          "idle": 4,
           "key": "mod_arm_m1a2sep",
           "sheet_attack": "res://assets/effects/unit_anims/mod_arm_m1a2sep/sheet_attack.png",
           "sheet_idle": "res://assets/effects/unit_anims/mod_arm_m1a2sep/sheet_idle.png"
@@ -5477,10 +5477,10 @@
           "sheet_idle": "res://assets/effects/unit_anims/fut_inf_storm_rider/sheet_idle.png"
         },
         {
-          "attack": 12,
+          "attack": 6,
           "fps": 8.0,
           "fs": 256,
-          "idle": 8,
+          "idle": 4,
           "key": "fut_spectre",
           "sheet_attack": "res://assets/effects/unit_anims/fut_spectre/sheet_attack.png",
           "sheet_idle": "res://assets/effects/unit_anims/fut_spectre/sheet_idle.png"
@@ -5506,19 +5506,19 @@
     },
     {
       "anim": {
-        "attack": 12,
+        "attack": 6,
         "fps": 8.0,
         "fs": 256,
-        "idle": 8,
+        "idle": 4,
         "sheet_attack": "res://assets/effects/unit_anims/fut_air_heavy_carrier/sheet_attack.png",
         "sheet_idle": "res://assets/effects/unit_anims/fut_air_heavy_carrier/sheet_idle.png"
       },
       "anim_cands": [
         {
-          "attack": 12,
+          "attack": 6,
           "fps": 8.0,
           "fs": 256,
-          "idle": 8,
+          "idle": 4,
           "key": "fut_air_heavy_carrier",
           "sheet_attack": "res://assets/effects/unit_anims/fut_air_heavy_carrier/sheet_attack.png",
           "sheet_idle": "res://assets/effects/unit_anims/fut_air_heavy_carrier/sheet_idle.png"
@@ -5600,19 +5600,19 @@
     },
     {
       "anim": {
-        "attack": 11,
+        "attack": 6,
         "fps": 8.0,
         "fs": 256,
-        "idle": 8,
+        "idle": 4,
         "sheet_attack": "res://assets/effects/unit_anims/mod_arm_abrams_mk2/sheet_attack.png",
         "sheet_idle": "res://assets/effects/unit_anims/mod_arm_abrams_mk2/sheet_idle.png"
       },
       "anim_cands": [
         {
-          "attack": 11,
+          "attack": 6,
           "fps": 8.0,
           "fs": 256,
-          "idle": 8,
+          "idle": 4,
           "key": "mod_arm_abrams_mk2",
           "sheet_attack": "res://assets/effects/unit_anims/mod_arm_abrams_mk2/sheet_attack.png",
           "sheet_idle": "res://assets/effects/unit_anims/mod_arm_abrams_mk2/sheet_idle.png"
@@ -5797,10 +5797,10 @@
           "sheet_idle": "res://assets/effects/unit_anims/ww1_arty_mortar/sheet_idle.png"
         },
         {
-          "attack": 10,
+          "attack": 6,
           "fps": 8.0,
           "fs": 256,
-          "idle": 8,
+          "idle": 4,
           "key": "ww1_arty_m81",
           "sheet_attack": "res://assets/effects/unit_anims/ww1_arty_m81/sheet_attack.png",
           "sheet_idle": "res://assets/effects/unit_anims/ww1_arty_m81/sheet_idle.png"
@@ -5829,7 +5829,7 @@
         "attack": 6,
         "fps": 8.0,
         "fs": 256,
-        "idle": 7,
+        "idle": 4,
         "sheet_attack": "res://assets/effects/unit_anims/ww1_storm/sheet_attack.png",
         "sheet_idle": "res://assets/effects/unit_anims/ww1_storm/sheet_idle.png"
       },
@@ -5838,7 +5838,7 @@
           "attack": 6,
           "fps": 8.0,
           "fs": 256,
-          "idle": 7,
+          "idle": 4,
           "key": "ww1_storm",
           "sheet_attack": "res://assets/effects/unit_anims/ww1_storm/sheet_attack.png",
           "sheet_idle": "res://assets/effects/unit_anims/ww1_storm/sheet_idle.png"
@@ -6034,7 +6034,7 @@
         "attack": 6,
         "fps": 8.0,
         "fs": 256,
-        "idle": 8,
+        "idle": 4,
         "sheet_attack": "res://assets/effects/unit_anims/ww2_sup_mg42/sheet_attack.png",
         "sheet_idle": "res://assets/effects/unit_anims/ww2_sup_mg42/sheet_idle.png"
       },
@@ -6043,7 +6043,7 @@
           "attack": 6,
           "fps": 8.0,
           "fs": 256,
-          "idle": 8,
+          "idle": 4,
           "key": "ww2_sup_mg42",
           "sheet_attack": "res://assets/effects/unit_anims/ww2_sup_mg42/sheet_attack.png",
           "sheet_idle": "res://assets/effects/unit_anims/ww2_sup_mg42/sheet_idle.png"
@@ -6078,19 +6078,19 @@
     },
     {
       "anim": {
-        "attack": 12,
+        "attack": 6,
         "fps": 8.0,
         "fs": 256,
-        "idle": 8,
+        "idle": 4,
         "sheet_attack": "res://assets/effects/unit_anims/ww2_pschreck/sheet_attack.png",
         "sheet_idle": "res://assets/effects/unit_anims/ww2_pschreck/sheet_idle.png"
       },
       "anim_cands": [
         {
-          "attack": 12,
+          "attack": 6,
           "fps": 8.0,
           "fs": 256,
-          "idle": 8,
+          "idle": 4,
           "key": "ww2_pschreck",
           "sheet_attack": "res://assets/effects/unit_anims/ww2_pschreck/sheet_attack.png",
           "sheet_idle": "res://assets/effects/unit_anims/ww2_pschreck/sheet_idle.png"
@@ -6445,19 +6445,19 @@
     },
     {
       "anim": {
-        "attack": 10,
+        "attack": 6,
         "fps": 8.0,
         "fs": 256,
-        "idle": 8,
+        "idle": 4,
         "sheet_attack": "res://assets/effects/unit_anims/cold_spetsnaz/sheet_attack.png",
         "sheet_idle": "res://assets/effects/unit_anims/cold_spetsnaz/sheet_idle.png"
       },
       "anim_cands": [
         {
-          "attack": 10,
+          "attack": 6,
           "fps": 8.0,
           "fs": 256,
-          "idle": 8,
+          "idle": 4,
           "key": "cold_spetsnaz",
           "sheet_attack": "res://assets/effects/unit_anims/cold_spetsnaz/sheet_attack.png",
           "sheet_idle": "res://assets/effects/unit_anims/cold_spetsnaz/sheet_idle.png"
@@ -6527,19 +6527,19 @@
     },
     {
       "anim": {
-        "attack": 10,
+        "attack": 6,
         "fps": 8.0,
         "fs": 256,
-        "idle": 8,
+        "idle": 4,
         "sheet_attack": "res://assets/effects/unit_anims/cold_mig21/sheet_attack.png",
         "sheet_idle": "res://assets/effects/unit_anims/cold_mig21/sheet_idle.png"
       },
       "anim_cands": [
         {
-          "attack": 10,
+          "attack": 6,
           "fps": 8.0,
           "fs": 256,
-          "idle": 8,
+          "idle": 4,
           "key": "cold_mig21",
           "sheet_attack": "res://assets/effects/unit_anims/cold_mig21/sheet_attack.png",
           "sheet_idle": "res://assets/effects/unit_anims/cold_mig21/sheet_idle.png"
@@ -6568,19 +6568,19 @@
     },
     {
       "anim": {
-        "attack": 12,
+        "attack": 6,
         "fps": 8.0,
         "fs": 256,
-        "idle": 8,
+        "idle": 4,
         "sheet_attack": "res://assets/effects/unit_anims/mod_inf_marine/sheet_attack.png",
         "sheet_idle": "res://assets/effects/unit_anims/mod_inf_marine/sheet_idle.png"
       },
       "anim_cands": [
         {
-          "attack": 12,
+          "attack": 6,
           "fps": 8.0,
           "fs": 256,
-          "idle": 8,
+          "idle": 4,
           "key": "mod_inf_marine",
           "sheet_attack": "res://assets/effects/unit_anims/mod_inf_marine/sheet_attack.png",
           "sheet_idle": "res://assets/effects/unit_anims/mod_inf_marine/sheet_idle.png"
@@ -6662,19 +6662,19 @@
     },
     {
       "anim": {
-        "attack": 10,
+        "attack": 6,
         "fps": 8.0,
         "fs": 256,
-        "idle": 8,
+        "idle": 4,
         "sheet_attack": "res://assets/effects/unit_anims/mod_stryker/sheet_attack.png",
         "sheet_idle": "res://assets/effects/unit_anims/mod_stryker/sheet_idle.png"
       },
       "anim_cands": [
         {
-          "attack": 10,
+          "attack": 6,
           "fps": 8.0,
           "fs": 256,
-          "idle": 8,
+          "idle": 4,
           "key": "mod_stryker",
           "sheet_attack": "res://assets/effects/unit_anims/mod_stryker/sheet_attack.png",
           "sheet_idle": "res://assets/effects/unit_anims/mod_stryker/sheet_idle.png"
@@ -6929,19 +6929,19 @@
     },
     {
       "anim": {
-        "attack": 10,
+        "attack": 6,
         "fps": 8.0,
         "fs": 256,
-        "idle": 8,
+        "idle": 4,
         "sheet_attack": "res://assets/effects/unit_anims/fut_air_drone/sheet_attack.png",
         "sheet_idle": "res://assets/effects/unit_anims/fut_air_drone/sheet_idle.png"
       },
       "anim_cands": [
         {
-          "attack": 10,
+          "attack": 6,
           "fps": 8.0,
           "fs": 256,
-          "idle": 8,
+          "idle": 4,
           "key": "fut_air_drone",
           "sheet_attack": "res://assets/effects/unit_anims/fut_air_drone/sheet_attack.png",
           "sheet_idle": "res://assets/effects/unit_anims/fut_air_drone/sheet_idle.png"
@@ -7023,19 +7023,19 @@
     },
     {
       "anim": {
-        "attack": 10,
+        "attack": 6,
         "fps": 8.0,
         "fs": 256,
-        "idle": 8,
+        "idle": 4,
         "sheet_attack": "res://assets/effects/unit_anims/fut_arm_mech_e/sheet_attack.png",
         "sheet_idle": "res://assets/effects/unit_anims/fut_arm_mech_e/sheet_idle.png"
       },
       "anim_cands": [
         {
-          "attack": 10,
+          "attack": 6,
           "fps": 8.0,
           "fs": 256,
-          "idle": 8,
+          "idle": 4,
           "key": "fut_arm_mech_e",
           "sheet_attack": "res://assets/effects/unit_anims/fut_arm_mech_e/sheet_attack.png",
           "sheet_idle": "res://assets/effects/unit_anims/fut_arm_mech_e/sheet_idle.png"
@@ -7117,19 +7117,19 @@
     },
     {
       "anim": {
-        "attack": 12,
+        "attack": 6,
         "fps": 8.0,
         "fs": 256,
-        "idle": 8,
+        "idle": 4,
         "sheet_attack": "res://assets/effects/unit_anims/fut_spectre/sheet_attack.png",
         "sheet_idle": "res://assets/effects/unit_anims/fut_spectre/sheet_idle.png"
       },
       "anim_cands": [
         {
-          "attack": 12,
+          "attack": 6,
           "fps": 8.0,
           "fs": 256,
-          "idle": 8,
+          "idle": 4,
           "key": "fut_spectre",
           "sheet_attack": "res://assets/effects/unit_anims/fut_spectre/sheet_attack.png",
           "sheet_idle": "res://assets/effects/unit_anims/fut_spectre/sheet_idle.png"
@@ -7428,7 +7428,7 @@
     },
     {
       "anim": {
-        "attack": 10,
+        "attack": 6,
         "fps": 8.0,
         "fs": 256,
         "idle": 4,
@@ -7437,7 +7437,7 @@
       },
       "anim_cands": [
         {
-          "attack": 10,
+          "attack": 6,
           "fps": 8.0,
           "fs": 256,
           "idle": 4,
@@ -7475,7 +7475,7 @@
     },
     {
       "anim": {
-        "attack": 10,
+        "attack": 6,
         "fps": 8.0,
         "fs": 256,
         "idle": 4,
@@ -7484,7 +7484,7 @@
       },
       "anim_cands": [
         {
-          "attack": 10,
+          "attack": 6,
           "fps": 8.0,
           "fs": 256,
           "idle": 4,
@@ -7540,10 +7540,10 @@
           "sheet_idle": "res://assets/effects/unit_anims/ww2_arty_hummel/sheet_idle.png"
         },
         {
-          "attack": 10,
+          "attack": 6,
           "fps": 8.0,
           "fs": 256,
-          "idle": 8,
+          "idle": 4,
           "key": "ww2_arty_m81",
           "sheet_attack": "res://assets/effects/unit_anims/ww2_arty_m81/sheet_attack.png",
           "sheet_idle": "res://assets/effects/unit_anims/ww2_arty_m81/sheet_idle.png"
@@ -7587,10 +7587,10 @@
           "sheet_idle": "res://assets/effects/unit_anims/ww2_arty_pak40/sheet_idle.png"
         },
         {
-          "attack": 12,
+          "attack": 6,
           "fps": 8.0,
           "fs": 256,
-          "idle": 8,
+          "idle": 4,
           "key": "ww2_inf_panzerschrek",
           "sheet_attack": "res://assets/effects/unit_anims/ww2_inf_panzerschrek/sheet_attack.png",
           "sheet_idle": "res://assets/effects/unit_anims/ww2_inf_panzerschrek/sheet_idle.png"
@@ -7869,10 +7869,10 @@
           "sheet_idle": "res://assets/effects/unit_anims/cold_arm_p18/sheet_idle.png"
         },
         {
-          "attack": 10,
+          "attack": 6,
           "fps": 8.0,
           "fs": 256,
-          "idle": 8,
+          "idle": 4,
           "key": "cold_mig21",
           "sheet_attack": "res://assets/effects/unit_anims/cold_mig21/sheet_attack.png",
           "sheet_idle": "res://assets/effects/unit_anims/cold_mig21/sheet_idle.png"
@@ -7945,19 +7945,19 @@
     },
     {
       "anim": {
-        "attack": 10,
+        "attack": 6,
         "fps": 8.0,
         "fs": 256,
-        "idle": 8,
+        "idle": 4,
         "sheet_attack": "res://assets/effects/unit_anims/mod_sup_m4_carbine/sheet_attack.png",
         "sheet_idle": "res://assets/effects/unit_anims/mod_sup_m4_carbine/sheet_idle.png"
       },
       "anim_cands": [
         {
-          "attack": 10,
+          "attack": 6,
           "fps": 8.0,
           "fs": 256,
-          "idle": 8,
+          "idle": 4,
           "key": "mod_sup_m4_carbine",
           "sheet_attack": "res://assets/effects/unit_anims/mod_sup_m4_carbine/sheet_attack.png",
           "sheet_idle": "res://assets/effects/unit_anims/mod_sup_m4_carbine/sheet_idle.png"
@@ -8359,10 +8359,10 @@
           "sheet_idle": "res://assets/effects/unit_anims/fut_inf_x9/sheet_idle.png"
         },
         {
-          "attack": 12,
+          "attack": 6,
           "fps": 8.0,
           "fs": 256,
-          "idle": 8,
+          "idle": 4,
           "key": "fut_spectre",
           "sheet_attack": "res://assets/effects/unit_anims/fut_spectre/sheet_attack.png",
           "sheet_idle": "res://assets/effects/unit_anims/fut_spectre/sheet_idle.png"
@@ -10124,7 +10124,7 @@
       "visual_id": "vis_xeno_mothership"
     }
   ],
-  "generated": "2026-10-09 22:23:27",
+  "generated": "2026-10-14 08:36:18",
   "platforms": [
     {
       "anim": {
@@ -10365,7 +10365,7 @@
           "attack": 6,
           "fps": 8.0,
           "fs": 256,
-          "idle": 7,
+          "idle": 4,
           "key": "ww1_storm",
           "sheet_attack": "res://assets/effects/unit_anims/ww1_storm/sheet_attack.png",
           "sheet_idle": "res://assets/effects/unit_anims/ww1_storm/sheet_idle.png"
@@ -10404,10 +10404,10 @@
           "sheet_idle": "res://assets/effects/unit_anims/flame_siege_basic/sheet_idle.png"
         },
         {
-          "attack": 12,
+          "attack": 6,
           "fps": 8.0,
           "fs": 256,
-          "idle": 8,
+          "idle": 4,
           "key": "ww1_arty_77mm",
           "sheet_attack": "res://assets/effects/unit_anims/ww1_arty_77mm/sheet_attack.png",
           "sheet_idle": "res://assets/effects/unit_anims/ww1_arty_77mm/sheet_idle.png"
@@ -10515,7 +10515,7 @@
           "attack": 6,
           "fps": 8.0,
           "fs": 256,
-          "idle": 7,
+          "idle": 4,
           "key": "ww1_storm",
           "sheet_attack": "res://assets/effects/unit_anims/ww1_storm/sheet_attack.png",
           "sheet_idle": "res://assets/effects/unit_anims/ww1_storm/sheet_idle.png"
@@ -11154,19 +11154,19 @@
     },
     {
       "anim": {
-        "attack": 10,
+        "attack": 6,
         "fps": 8.0,
         "fs": 256,
-        "idle": 8,
+        "idle": 4,
         "sheet_attack": "res://assets/effects/unit_anims/ww1_arty_m81/sheet_attack.png",
         "sheet_idle": "res://assets/effects/unit_anims/ww1_arty_m81/sheet_idle.png"
       },
       "anim_cands": [
         {
-          "attack": 10,
+          "attack": 6,
           "fps": 8.0,
           "fs": 256,
-          "idle": 8,
+          "idle": 4,
           "key": "ww1_arty_m81",
           "sheet_attack": "res://assets/effects/unit_anims/ww1_arty_m81/sheet_attack.png",
           "sheet_idle": "res://assets/effects/unit_anims/ww1_arty_m81/sheet_idle.png"
@@ -11221,7 +11221,7 @@
         "attack": 6,
         "fps": 8.0,
         "fs": 256,
-        "idle": 7,
+        "idle": 4,
         "sheet_attack": "res://assets/effects/unit_anims/ww1_storm/sheet_attack.png",
         "sheet_idle": "res://assets/effects/unit_anims/ww1_storm/sheet_idle.png"
       },
@@ -11230,7 +11230,7 @@
           "attack": 6,
           "fps": 8.0,
           "fs": 256,
-          "idle": 7,
+          "idle": 4,
           "key": "ww1_storm",
           "sheet_attack": "res://assets/effects/unit_anims/ww1_storm/sheet_attack.png",
           "sheet_idle": "res://assets/effects/unit_anims/ww1_storm/sheet_idle.png"
@@ -11442,19 +11442,19 @@
     },
     {
       "anim": {
-        "attack": 12,
+        "attack": 6,
         "fps": 8.0,
         "fs": 256,
-        "idle": 8,
+        "idle": 4,
         "sheet_attack": "res://assets/effects/unit_anims/ww1_arty_77mm/sheet_attack.png",
         "sheet_idle": "res://assets/effects/unit_anims/ww1_arty_77mm/sheet_idle.png"
       },
       "anim_cands": [
         {
-          "attack": 12,
+          "attack": 6,
           "fps": 8.0,
           "fs": 256,
-          "idle": 8,
+          "idle": 4,
           "key": "ww1_arty_77mm",
           "sheet_attack": "res://assets/effects/unit_anims/ww1_arty_77mm/sheet_attack.png",
           "sheet_idle": "res://assets/effects/unit_anims/ww1_arty_77mm/sheet_idle.png"
@@ -11890,19 +11890,19 @@
     },
     {
       "anim": {
-        "attack": 12,
+        "attack": 6,
         "fps": 8.0,
         "fs": 256,
-        "idle": 8,
+        "idle": 4,
         "sheet_attack": "res://assets/effects/unit_anims/ww2_inf_panzerschrek/sheet_attack.png",
         "sheet_idle": "res://assets/effects/unit_anims/ww2_inf_panzerschrek/sheet_idle.png"
       },
       "anim_cands": [
         {
-          "attack": 12,
+          "attack": 6,
           "fps": 8.0,
           "fs": 256,
-          "idle": 8,
+          "idle": 4,
           "key": "ww2_inf_panzerschrek",
           "sheet_attack": "res://assets/effects/unit_anims/ww2_inf_panzerschrek/sheet_attack.png",
           "sheet_idle": "res://assets/effects/unit_anims/ww2_inf_panzerschrek/sheet_idle.png"
@@ -11922,7 +11922,7 @@
     },
     {
       "anim": {
-        "attack": 10,
+        "attack": 4,
         "fps": 8.0,
         "fs": 256,
         "idle": 4,
@@ -11931,7 +11931,7 @@
       },
       "anim_cands": [
         {
-          "attack": 10,
+          "attack": 4,
           "fps": 8.0,
           "fs": 256,
           "idle": 4,
@@ -11954,19 +11954,19 @@
     },
     {
       "anim": {
-        "attack": 10,
+        "attack": 6,
         "fps": 8.0,
         "fs": 256,
-        "idle": 8,
+        "idle": 4,
         "sheet_attack": "res://assets/effects/unit_anims/ww2_arty_m81/sheet_attack.png",
         "sheet_idle": "res://assets/effects/unit_anims/ww2_arty_m81/sheet_idle.png"
       },
       "anim_cands": [
         {
-          "attack": 10,
+          "attack": 6,
           "fps": 8.0,
           "fs": 256,
-          "idle": 8,
+          "idle": 4,
           "key": "ww2_arty_m81",
           "sheet_attack": "res://assets/effects/unit_anims/ww2_arty_m81/sheet_attack.png",
           "sheet_idle": "res://assets/effects/unit_anims/ww2_arty_m81/sheet_idle.png"
@@ -12978,19 +12978,19 @@
     },
     {
       "anim": {
-        "attack": 10,
+        "attack": 6,
         "fps": 8.0,
         "fs": 256,
-        "idle": 8,
+        "idle": 4,
         "sheet_attack": "res://assets/effects/unit_anims/cold_mig21/sheet_attack.png",
         "sheet_idle": "res://assets/effects/unit_anims/cold_mig21/sheet_idle.png"
       },
       "anim_cands": [
         {
-          "attack": 10,
+          "attack": 6,
           "fps": 8.0,
           "fs": 256,
-          "idle": 8,
+          "idle": 4,
           "key": "cold_mig21",
           "sheet_attack": "res://assets/effects/unit_anims/cold_mig21/sheet_attack.png",
           "sheet_idle": "res://assets/effects/unit_anims/cold_mig21/sheet_idle.png"
@@ -13042,19 +13042,19 @@
     },
     {
       "anim": {
-        "attack": 10,
+        "attack": 6,
         "fps": 8.0,
         "fs": 256,
-        "idle": 8,
+        "idle": 4,
         "sheet_attack": "res://assets/effects/unit_anims/cold_spetsnaz/sheet_attack.png",
         "sheet_idle": "res://assets/effects/unit_anims/cold_spetsnaz/sheet_idle.png"
       },
       "anim_cands": [
         {
-          "attack": 10,
+          "attack": 6,
           "fps": 8.0,
           "fs": 256,
-          "idle": 8,
+          "idle": 4,
           "key": "cold_spetsnaz",
           "sheet_attack": "res://assets/effects/unit_anims/cold_spetsnaz/sheet_attack.png",
           "sheet_idle": "res://assets/effects/unit_anims/cold_spetsnaz/sheet_idle.png"
@@ -13490,19 +13490,19 @@
     },
     {
       "anim": {
-        "attack": 12,
+        "attack": 6,
         "fps": 8.0,
         "fs": 256,
-        "idle": 8,
+        "idle": 4,
         "sheet_attack": "res://assets/effects/unit_anims/mod_arm_m1a2sep/sheet_attack.png",
         "sheet_idle": "res://assets/effects/unit_anims/mod_arm_m1a2sep/sheet_idle.png"
       },
       "anim_cands": [
         {
-          "attack": 12,
+          "attack": 6,
           "fps": 8.0,
           "fs": 256,
-          "idle": 8,
+          "idle": 4,
           "key": "mod_arm_m1a2sep",
           "sheet_attack": "res://assets/effects/unit_anims/mod_arm_m1a2sep/sheet_attack.png",
           "sheet_idle": "res://assets/effects/unit_anims/mod_arm_m1a2sep/sheet_idle.png"
@@ -13778,19 +13778,19 @@
     },
     {
       "anim": {
-        "attack": 12,
+        "attack": 6,
         "fps": 8.0,
         "fs": 256,
-        "idle": 8,
+        "idle": 4,
         "sheet_attack": "res://assets/effects/unit_anims/mod_inf_scout_drone/sheet_attack.png",
         "sheet_idle": "res://assets/effects/unit_anims/mod_inf_scout_drone/sheet_idle.png"
       },
       "anim_cands": [
         {
-          "attack": 12,
+          "attack": 6,
           "fps": 8.0,
           "fs": 256,
-          "idle": 8,
+          "idle": 4,
           "key": "mod_inf_scout_drone",
           "sheet_attack": "res://assets/effects/unit_anims/mod_inf_scout_drone/sheet_attack.png",
           "sheet_idle": "res://assets/effects/unit_anims/mod_inf_scout_drone/sheet_idle.png"
@@ -14290,19 +14290,19 @@
     },
     {
       "anim": {
-        "attack": 12,
+        "attack": 6,
         "fps": 8.0,
         "fs": 256,
-        "idle": 8,
+        "idle": 4,
         "sheet_attack": "res://assets/effects/unit_anims/fut_spectre/sheet_attack.png",
         "sheet_idle": "res://assets/effects/unit_anims/fut_spectre/sheet_idle.png"
       },
       "anim_cands": [
         {
-          "attack": 12,
+          "attack": 6,
           "fps": 8.0,
           "fs": 256,
-          "idle": 8,
+          "idle": 4,
           "key": "fut_spectre",
           "sheet_attack": "res://assets/effects/unit_anims/fut_spectre/sheet_attack.png",
           "sheet_idle": "res://assets/effects/unit_anims/fut_spectre/sheet_idle.png"
