@@ -20,23 +20,21 @@ signal tutorial_action_executed(action_target: String)
 
 ## 批次③ Task 5：导航框按步骤锚定——面板介绍步靠左（不盖住被介绍面板主体，玩家可
 ## 直接操作右侧面板），欢迎/首战/移动基地居中。键 = TutorialStep 枚举值（存档兼容恒定）。
+## v5 教程整合批：退役步（2 卡仓/5 改造/9 势力/10 商店）条目随步骤移除。
 const BOX_POS_BY_STEP := {
-	2: "left",   # CARD_COLLECTION 卡仓
 	3: "left",   # PHASE_INSTRUMENT 装配
-	4: "left",   # ENHANCEMENT 等级
-	5: "left",   # MODIFICATION 改造
+	4: "left",   # ENHANCEMENT 技能树
 	6: "left",   # RUNES 符文
 	8: "left",   # EVOLUTION 制造
-	9: "left",   # FACTION_REP 势力
-	10: "left",  # SHOP 商店
 	11: "left",  # WORLD_MAP 地图
 	12: "left",  # PHASE_FIELD_POINTS 加点
 }
 
 ## v36 实机验收：欢迎步剧情化后文案变长——居中框半高 150→210（500×420），
 ## 其余居中步维持原 300 高（键 = TutorialStep 枚举值）。
+## v5：欢迎步文字墙瘦身后半高收敛 210→170（500×340）。
 const BOX_HALF_H_BY_STEP := {
-	1: 210,      # INTRO_WELCOME 欢迎登车
+	1: 170,      # INTRO_WELCOME 欢迎登车
 }
 
 @onready var _title_label: Label = $TutorialBox/Margin/VBox/TitleLabel

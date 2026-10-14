@@ -116,12 +116,8 @@ signal toggle_backpack()
 signal toggle_phase_instrument()
 # v7.x 教程引导：强化/改造面板切换（main.gd _on_*_from_tutorial 监听）
 signal toggle_enhancement()
-signal toggle_modification()
-# v9.x（P2-4 批次6）：教程中后期引导步骤的面板入口
-signal toggle_evolution()
-signal toggle_faction()
-signal toggle_store()
-signal toggle_world_map()
+# v6.68 例行死信号清理：toggle_modification/evolution/faction/store/world_map 五信号
+# 随 v6.67 教程动作分支退役后零发射方（两侧接收端同批拆除），勿再引用。
 signal open_phase_field_points()
 
 # 教程

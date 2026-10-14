@@ -397,7 +397,7 @@ func _position_at(at_position: Vector2) -> void:
 		clampf(at_position.x, 8.0, maxf(8.0, screen_w - panel_w - 8.0)),
 		clampf(at_position.y, 8.0, maxf(8.0, screen_h - panel_h - 8.0))
 	)
-	# v6.23: 避让右上角 toast 堆叠区（ToastManager layer=200 恒在信息框 layer=90 之上，
+	# v6.23: 避让右上角 toast 堆叠区（ToastManager layer=200 恒在信息框 InfoPanelLayer 之上，
 	# 部署失败等 toast 会直接盖住单位信息框内容——用户实机批"信息框压在敌方信息框上面"）
 	pos = _avoid_toast_zone(pos, panel_w, panel_h, screen_h)
 	position = pos

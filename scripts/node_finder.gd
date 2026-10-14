@@ -38,7 +38,7 @@ static func get_backpack_panel() -> Node:
 	return null
 
 
-## 获取全局情报面板（挂在 InfoPanelLayer layer=90，不被 HUD 遮挡）
+## 获取全局情报面板（挂在 InfoPanelLayer（v6.68 两场景统一 110），不被 HUD 遮挡）
 static func get_card_info_panel() -> Node:
 	var paths := [
 		"/root/Main/InfoPanelLayer/CardInfoPanel",

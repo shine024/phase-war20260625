@@ -92,7 +92,10 @@ func _resource_tooltip(res_id: String) -> String:
 func _create_resource_item(parent: Container, icon: Texture2D, tooltip: String, color: Color) -> Label:
 	var vbox = VBoxContainer.new()
 	vbox.add_theme_constant_override("separation", 2)
-	vbox.tooltip_text = tooltip
+	# v6.68：内建 tooltip 收口 HoverTip——本栏的资源增减浮字 z_index=50 会盖住
+	# layer 0 的内建提示（PopupLayer 内 z≥30 子元素盖提示同病），走 130 顶层提示层。
+	HoverTip.bind_control(vbox)
+	HoverTip.set_tip(vbox, tooltip)
 	parent.add_child(vbox)
 
 	# v25 UI：真贴图图标替代 emoji（图标色彩由美术自带，不再 modulate 染色）

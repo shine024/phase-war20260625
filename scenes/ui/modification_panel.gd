@@ -146,12 +146,17 @@ func _ready() -> void:
 		deck_sim_button.pressed.connect(_sim_drawer_ctl.toggle)
 
 	# 批次三 B2d（2026-08-24）：tooltip 攻坚——chip/折叠/模拟/资源栏就地解释
+	# v6.68：本面板在 PopupLayer(100) 内且带 z≥30 子元素（折叠态悬浮迷你卡 z=100），
+	# 内建 tooltip 画在 layer 0 会被盖住——整面板收口 HoverTip 顶层提示层（130）。
 	if chip_all:
-		chip_all.tooltip_text = "显示全部拥有的卡牌"
+		HoverTip.bind_control(chip_all)
+		HoverTip.set_tip(chip_all, "显示全部拥有的卡牌")
 	if chip_mod:
-		chip_mod.tooltip_text = "只显示还有空改造槽的卡牌（槽位数=品质基础槽+兵种专属槽）"
+		HoverTip.bind_control(chip_mod)
+		HoverTip.set_tip(chip_mod, "只显示还有空改造槽的卡牌（槽位数=品质基础槽+兵种专属槽）")
 	if chip_max:
-		chip_max.tooltip_text = "只显示改造槽已满的卡牌"
+		HoverTip.bind_control(chip_max)
+		HoverTip.set_tip(chip_max, "只显示改造槽已满的卡牌")
 	# v27.15（改造审查报告 5.6）：改造库搜索框——挂进 ModListHeadHBox（与计数 Label 同行）
 	if mod_list_head_count and mod_list_head_count.get_parent() is HBoxContainer:
 		var search_edit := LineEdit.new()
@@ -160,15 +165,21 @@ func _ready() -> void:
 		search_edit.custom_minimum_size = Vector2(110, 0)
 		search_edit.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		search_edit.add_theme_font_size_override("font_size", 12)
-		search_edit.tooltip_text = "在当前单位适用的改造里按关键词过滤"
+		HoverTip.bind_control(search_edit)
+		HoverTip.set_tip(search_edit, "在当前单位适用的改造里按关键词过滤")
 		search_edit.text_changed.connect(_on_mod_search_changed)
 		mod_list_head_count.get_parent().add_child(search_edit)
 	if fold_button:
-		fold_button.tooltip_text = "折叠/展开右侧详情栏（三档：完整 → 紧凑 → 收起；收起时悬停名册行可看迷你浮卡）"
+		HoverTip.bind_control(fold_button)
+		HoverTip.set_tip(fold_button, "折叠/展开右侧详情栏（三档：完整 → 紧凑 → 收起；收起时悬停名册行可看迷你浮卡）")
 	if deck_sim_button:
-		deck_sim_button.tooltip_text = "打开效果模拟抽屉：预览安装模块前后的属性变化"
+		HoverTip.bind_control(deck_sim_button)
+		HoverTip.set_tip(deck_sim_button, "打开效果模拟抽屉：预览安装模块前后的属性变化")
 	if research_label:
-		research_label.tooltip_text = "改造消耗：纳米材料 + 改造指南（按模块稀有度），安装只影响当前选中的这张卡"
+		HoverTip.bind_control(research_label)
+		HoverTip.set_tip(research_label, "改造消耗：纳米材料 + 改造指南（按模块稀有度），安装只影响当前选中的这张卡")
+	if deck_install_button:
+		HoverTip.bind_control(deck_install_button)
 
 	# v7.x UI 重设计：给主要 Label 加载 Rajdhani 字体（战术感）
 	_apply_title_fonts()
@@ -732,7 +743,8 @@ func _create_card_item(card: CardResource, instance_card: CardResource = null) -
 	hbox.add_child(info)
 
 	btn.add_child(hbox)
-	btn.tooltip_text = "改造：%d/%d\n双击查看卡牌情报" % [display_mods.size(), ModManager.get_max_mod_slots_for_card(card)]
+	HoverTip.bind_control(btn)
+	HoverTip.set_tip(btn, "改造：%d/%d\n双击查看卡牌情报" % [display_mods.size(), ModManager.get_max_mod_slots_for_card(card)])
 	# v7.3: 选中绑定用实例对象（含养成）。实例取不到时传 null，
 	# _on_card_selected 会拒绝选中（避免改造写到无养成的模板污染单例）。
 	# display_card 仅用于列表项显示（含回退模板的展示），不参与养成写入。
@@ -917,8 +929,9 @@ func _create_mod_item(mod_id: String, mod_data: Dictionary) -> Control:
 	# v37.1 图标座：稀有度发光底座 + 真图标（原裸贴暗色贴图，稀有度在列表里不可见）
 	# tooltip 挂行按钮（tile 全 IGNORE 不接收鼠标——挂 tile 上永不触发）
 	var icon_tile := ModIconTileRef.make(mod_data, 26)
-	if btn.tooltip_text.is_empty():
-		btn.tooltip_text = mod_data.get("name", mod_id)
+	HoverTip.bind_control(btn)
+	if not btn.has_meta("hover_tip_text"):
+		HoverTip.set_tip(btn, String(mod_data.get("name", mod_id)))
 	hbox.add_child(icon_tile)
 
 	# 信息列（名 + 效果摘要）
@@ -1036,8 +1049,8 @@ func _create_mod_item(mod_id: String, mod_data: Dictionary) -> Control:
 	if row_blocked:
 		btn.modulate = Color(1, 1, 1, 0.55)
 	# v22: tooltip 附时代带（谱系改造如"光学瞄准镜 限一战~现代"，玩家可预判能否装）
-	btn.tooltip_text = "%s\n稀有度：%s\n时代带：%s" % [
-		String(mod_data.get("description", "")), rarity_cn, ModEraBands.format_band(mod_data)]
+	HoverTip.set_tip(btn, "%s\n稀有度：%s\n时代带：%s" % [
+		String(mod_data.get("description", "")), rarity_cn, ModEraBands.format_band(mod_data)])
 	btn.pressed.connect(func():
 		if row_blocked:
 			_show_mod_blocked_feedback(status_text, _cached_card_power)
@@ -1591,9 +1604,11 @@ func _refresh_installed_list(installed_list: Control) -> void:
 			var up_alloy: int = int(up_cost.get("alloy", 0))
 			var up_crystal: int = int(up_cost.get("crystal", 0))
 			if up_bp > 0:
-				up_btn.tooltip_text = "升级到 Lv%d：消耗图纸×%d + 纳米×%d + 合金×%d + 晶体×%d" % [int(up_cost.get("to_level", 2)), up_bp, up_nano, up_alloy, up_crystal]
+				HoverTip.bind_control(up_btn)
+				HoverTip.set_tip(up_btn, "升级到 Lv%d：消耗图纸×%d + 纳米×%d + 合金×%d + 晶体×%d" % [int(up_cost.get("to_level", 2)), up_bp, up_nano, up_alloy, up_crystal])
 			else:
-				up_btn.tooltip_text = "升级到 Lv%d：消耗纳米×%d" % [int(up_cost.get("to_level", 2)), up_nano]
+				HoverTip.bind_control(up_btn)
+				HoverTip.set_tip(up_btn, "升级到 Lv%d：消耗纳米×%d" % [int(up_cost.get("to_level", 2)), up_nano])
 			up_btn.pressed.connect(func():
 				_on_upgrade_pressed(mod_index)
 			)
@@ -1616,7 +1631,8 @@ func _refresh_installed_list(installed_list: Control) -> void:
 		uninstall_btn.text = "卸下"
 		uninstall_btn.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
 		uninstall_btn.custom_minimum_size = Vector2(44, 0)
-		uninstall_btn.tooltip_text = "卸下该模块：图纸回库存（可转装其他卡），纳米返还实付的 50%。"
+		HoverTip.bind_control(uninstall_btn)
+		HoverTip.set_tip(uninstall_btn, "卸下该模块：图纸回库存（可转装其他卡），纳米返还实付的 50%。")
 		uninstall_btn.add_theme_color_override("font_color", DT.COLOR_SLATE_A70)
 		uninstall_btn.add_theme_color_override("font_hover_color", DT.COLOR_RED_DOWN)
 		uninstall_btn.pressed.connect(func():
@@ -1970,9 +1986,9 @@ func _show_mod_details(mod_data: Dictionary) -> void:
 			deck_install_button.disabled = false
 			deck_install_button.text = "升级 →Lv%d" % int(up_cost.get("to_level", 2))
 			if up_bp > 0:
-				deck_install_button.tooltip_text = "升级当前已装实例：消耗图纸×%d + 纳米×%d + 合金×%d + 晶体×%d（只影响该实例）" % [up_bp, up_nano, up_alloy, up_crystal]
+				HoverTip.set_tip(deck_install_button, "升级当前已装实例：消耗图纸×%d + 纳米×%d + 合金×%d + 晶体×%d（只影响该实例）" % [up_bp, up_nano, up_alloy, up_crystal])
 			else:
-				deck_install_button.tooltip_text = "升级当前已装实例：消耗纳米×%d（只影响该实例）" % up_nano
+				HoverTip.set_tip(deck_install_button, "升级当前已装实例：消耗纳米×%d（只影响该实例）" % up_nano)
 		elif is_installed:
 			deck_install_button.text = "已安装" if int(up_info.get("level", 0)) < 3 else "已满级"
 			deck_install_button.disabled = true
@@ -1980,27 +1996,27 @@ func _show_mod_details(mod_data: Dictionary) -> void:
 			# 原文案"升级入口在右侧已装列表"是假指引（右侧也没有升级按钮）
 			var _no_up_reason: String = String(up_info.get("reason", ""))
 			if _no_up_reason.find("无升级档位") >= 0:
-				deck_install_button.tooltip_text = "该模块已安装在当前这张卡上（此模块无升级档位——只有带 level_effects 的模块可升）"
+				HoverTip.set_tip(deck_install_button, "该模块已安装在当前这张卡上（此模块无升级档位——只有带 level_effects 的模块可升）")
 			elif _no_up_reason.find("已满级") >= 0:
-				deck_install_button.tooltip_text = "该模块已安装在当前这张卡上，且已升至满级 Lv3"
+				HoverTip.set_tip(deck_install_button, "该模块已安装在当前这张卡上，且已升至满级 Lv3")
 			else:
-				deck_install_button.tooltip_text = "该模块已安装在当前这张卡上（升级入口在右侧已装列表）"
+				HoverTip.set_tip(deck_install_button, "该模块已安装在当前这张卡上（升级入口在右侧已装列表）")
 		elif not has_blueprint2:
 			deck_install_button.text = "缺图纸"
 			deck_install_button.disabled = true
 			# 批次三 B2d：禁用按钮就地说明缺什么、去哪拿（v26.x 消耗品化后补制造站补给出口）
-			deck_install_button.tooltip_text = "缺少【%s】（库存 0 张）——战斗掉落可获得，或到制造舱补给" % BlueprintDefinitions.get_mod_blueprint_name(selected_mod_id)
+			HoverTip.set_tip(deck_install_button, "缺少【%s】（库存 0 张）——战斗掉落可获得，或到制造舱补给" % BlueprintDefinitions.get_mod_blueprint_name(selected_mod_id))
 		elif not has_nano:
 			deck_install_button.text = "纳米不足"
 			deck_install_button.disabled = true
-			deck_install_button.tooltip_text = "需要 %d 纳米材料（当前 %d）" % [nano_cost2, nano_amount]
+			HoverTip.set_tip(deck_install_button, "需要 %d 纳米材料（当前 %d）" % [nano_cost2, nano_amount])
 		else:
 			deck_install_button.text = "安装"
 			deck_install_button.disabled = false
 			if need_blueprint2:
-				deck_install_button.tooltip_text = "消耗 1 张图纸（库存 %d）+ %d 纳米材料安装到当前选中的这张卡（只影响该实例）" % [stock_count2, nano_cost2]
+				HoverTip.set_tip(deck_install_button, "消耗 1 张图纸（库存 %d）+ %d 纳米材料安装到当前选中的这张卡（只影响该实例）" % [stock_count2, nano_cost2])
 			else:
-				deck_install_button.tooltip_text = "消耗 %d 纳米材料安装到当前选中的这张卡（只影响该实例）" % nano_cost2
+				HoverTip.set_tip(deck_install_button, "消耗 %d 纳米材料安装到当前选中的这张卡（只影响该实例）" % nano_cost2)
 
 		# v5.0: 信号重连（先断开所有旧 callable，再绑定新的）
 		var connections: Array = deck_install_button.pressed.get_connections()

@@ -18,7 +18,7 @@ const RewardBubbleScript = preload("res://scenes/bunker/bunker_reward_bubble.gd"
 const EnemyPhaseMasters = preload("res://data/enemy_phase_masters.gd")  # v27.17 碎片解锁 toast 聚合取名
 const OfflineIdleManagerScript = preload("res://scripts/systems/offline_idle_manager.gd")  # v32.3 A5
 const OfflineRewardDialogScript = preload("res://scenes/ui/offline_reward_dialog.gd")      # v32.3 A5
-const TutorialSpotlight = preload("res://scripts/ui/tutorial_spotlight.gd")  # v6.39 点播段指路标
+const TutorialHost = preload("res://scripts/ui/tutorial_host.gd")  # v5 教程整合批：宿主统一门面
 
 const COLOR_CYAN := Color(0.0, 0.9, 1.0)
 const COLOR_AMBER := Color(1.0, 0.71, 0.37)
@@ -374,16 +374,8 @@ func _ready() -> void:
 		SignalBus.toggle_phase_instrument.connect(_on_tutorial_open_runes)
 	if SignalBus.has_signal("toggle_enhancement") and not SignalBus.toggle_enhancement.is_connected(_on_tutorial_open_panel):
 		SignalBus.toggle_enhancement.connect(_on_tutorial_open_panel.bind("growth"))
-	if SignalBus.has_signal("toggle_modification") and not SignalBus.toggle_modification.is_connected(_on_tutorial_open_panel):
-		SignalBus.toggle_modification.connect(_on_tutorial_open_panel.bind("modification"))
-	if SignalBus.has_signal("toggle_evolution") and not SignalBus.toggle_evolution.is_connected(_on_tutorial_open_panel):
-		SignalBus.toggle_evolution.connect(_on_tutorial_open_panel.bind("evolution"))
-	if SignalBus.has_signal("toggle_faction") and not SignalBus.toggle_faction.is_connected(_on_tutorial_open_panel):
-		SignalBus.toggle_faction.connect(_on_tutorial_open_panel.bind("faction"))
-	if SignalBus.has_signal("toggle_store") and not SignalBus.toggle_store.is_connected(_on_tutorial_open_panel):
-		SignalBus.toggle_store.connect(_on_tutorial_open_panel.bind("store"))
-	if SignalBus.has_signal("toggle_world_map") and not SignalBus.toggle_world_map.is_connected(_on_tutorial_open_panel):
-		SignalBus.toggle_world_map.connect(_on_tutorial_open_panel.bind("world_map"))
+	# v6.68 死信号清理：modification/evolution/faction/store/world_map 五条教程动作
+	# 接线随信号退役拆除（v6.67 后零发射方）；嵌入面板正常入口=工位热区，不走信号。
 	# v34 渐进解锁：跨级解锁 → 热区重建 + 新工位金色脉冲；时代解锁 → chips 门控刷新。
 	# 战斗中跨级时本场景不在树上收不到信号，仪式经 LPM 待播队列在回基地时补播。
 	if not SignalBus.feature_unlocked.is_connected(_on_feature_unlocked):
@@ -678,9 +670,10 @@ func _maybe_show_truck_intro() -> void:
 	if _wakeup_active or Engine.has_meta(META_WAKEUP):
 		return
 	# v32.3 B1：教学进行中不弹指南气泡——第一步「欢迎」即开场教学，两窗叠加互相遮挡；
-	# 教学完成后的下次回基地按 show_once 原样补弹
-	var _tm_intro := get_node_or_null("/root/TutorialProgressionManager")
-	if _tm_intro != null and _tm_intro.has_method("should_show_tutorial") and _tm_intro.should_show_tutorial():
+	# 教学完成后的下次回基地按 show_once 原样补弹。
+	# v5 通道整合：判定口统一 TutorialHost.is_tutorial_active（与 PANEL_INTROS/
+	# backpack_guide/skill_tree 气泡防护同一真身，勿再散写内联查询）
+	if TutorialHost.is_tutorial_active():
 		return
 	FeatureUnlockPopup.show_once("truck_base_intro", "移动基地 · 指南",
 		"外景看驻地，剖面干活——车厢里每个发光框都挂着常显工位牌，一眼直达。行军规则：顶栏「战区地图」点任意节点出车（耗燃料×地形，回程半价），出发后实时行军（1 天≈12 秒，离线也计时）；燃料自动回复（离线也涨），睡觉快充、或在发电机工位用能量块 1:1 充能；停哪才能打哪，行驶中无法出击。")
@@ -1653,10 +1646,9 @@ func _launch_battle() -> void:
 ## v26.18：打开战区地图选关（自由缩放/拖拽 + 点击关卡就地操作）。
 ## 从卡车进图的标记让地图的 ESC/返回键回本基地，而不是 main 战斗场景。
 func _open_world_map() -> void:
-	# 批次③ Task 5：教程按需点播触达面（战区地图步）
-	var _tpm := get_node_or_null("/root/TutorialProgressionManager")
-	if _tpm != null and _tpm.has_method("notify_surface_opened"):
-		_tpm.notify_surface_opened("world_map")
+	# v5 教程整合批：WORLD_MAP 点播触达通知挪出——原在场景切换前 notify，教程框
+	# 弹进即将被 SceneTransition 释放的本场景（框随场景死亡，本步教学实机不可见）；
+	# 现由 world_map._ready 在落地场景里 notify（那里已接 TutorialHost 宿主）。
 	_play_sfx("button")
 	if SaveManager and SaveManager.has_method("save_game"):
 		SaveManager.save_game()
@@ -1952,8 +1944,10 @@ func _open_panel(panel_id: String) -> void:
 	if SignalBus and SignalBus.has_signal("play_sound"):
 		SignalBus.play_sound.emit("panel_open")
 	# v30 R3：零引导面板首开一次性气泡（show_once 按 key 去重，不打扰二次进入）
+	# v5 通道整合：教程进行中抑制（PANEL_INTROS 现不含教程面=今日零行为差异，防护
+	# 未来新增面与教程步同刻双窗）；教程完成后下次打开原样补弹。
 	var _intro: Array = PANEL_INTROS.get(panel_id, [])
-	if not _intro.is_empty():
+	if not _intro.is_empty() and not TutorialHost.is_tutorial_active():
 		FeatureUnlockPopup.show_once("panel_intro_" + panel_id, String(_intro[0]), String(_intro[1]))
 	var p: Control = _embed_wrappers[panel_id]["panel"]
 	# 与 main.gd _open_overlay 同约定：on_overlay_opened → refresh 顺序尝试
@@ -2085,7 +2079,9 @@ func _on_embed_bar_min_size_changed(bar: Control, wrapper: Control) -> void:
 
 ## 记录7#7: 独立场景没有 /root/Main/InfoPanelLayer/CardInfoPanel，NodeFinder 路径查询
 ## 恒 null → 点相位仪中的卡出不来情报面板（背包卡走内嵌 CardDetailPopup 不受影响）。
-## 基地自挂同层（layer=90）实例并进 "card_info_panel" 分组；随基地场景退出自动释放。
+## 基地自挂实例并进 "card_info_panel" 分组；随基地场景退出自动释放。
+## v6.68 层号对齐：90→110 与 main 同口径（InfoPanel 恒在教程层 105 之上——两场景
+## 「教程框+点卡情报同开」的层间关系一致；原 90 会让教程框压住情报面板）。
 func _ensure_base_card_info_panel() -> void:
 	if has_node("InfoPanelLayer/CardInfoPanel"):
 		return
@@ -2095,7 +2091,7 @@ func _ensure_base_card_info_panel() -> void:
 		return
 	var layer := CanvasLayer.new()
 	layer.name = "InfoPanelLayer"
-	layer.layer = 90
+	layer.layer = 110
 	add_child(layer)
 	var panel: Control = packed.instantiate()
 	panel.name = "CardInfoPanel"
@@ -2819,30 +2815,13 @@ func _bootstrap_tutorial_if_needed() -> void:
 	_show_tutorial_overlay_local()
 
 
-## 教学覆盖层基地本地挂载（镜像 main.gd _show_tutorial_overlay；防重复挂）
-## v6.53（记录1二轮#6）：宿主从场景根（layer 0 裸 Control）改专用 TutorialLayer(105)——
-## 本场景教程框此前画在 layer 0，任何弹层 Backdrop（PopupLayer 100+，如技能树
-## canvas）都能整只盖住它。层号契约 40<100<105教程<110<130<200。
+## 教学覆盖层基地本地挂载（v5 教程整合批：挂载/防重复/105 层收口 TutorialHost——
+## 原 main/truck_base 双镜像实现退役；层号契约 40<100<105教程<110<130<200 由
+## TutorialHost.ensure_layer 唯一持有，test_tutorial_overlay_z_order 锁）
 func _show_tutorial_overlay_local() -> void:
-	if get_node_or_null("TutorialLayer/TutorialOverlay") != null:
-		return
-	var scene := load("res://scenes/ui/tutorial_overlay.tscn") as PackedScene
-	if scene == null:
-		return
-	var overlay := scene.instantiate()
-	overlay.name = "TutorialOverlay"
-	_tutorial_layer_local().add_child(overlay)
-
-
-## v6.53：基地场景教程宿主层（镜像 main.gd _tutorial_layer；懒建 105 层）
-func _tutorial_layer_local() -> CanvasLayer:
-	var layer := get_node_or_null("TutorialLayer") as CanvasLayer
-	if layer == null:
-		layer = CanvasLayer.new()
-		layer.name = "TutorialLayer"
-		layer.layer = 105
-		add_child(layer)
-	return layer
+	TutorialHost.show_overlay(self)
+	# v6.41 同律：点播步在面板已开时弹框（符文步×背包）——deferred 对齐符文页
+	call_deferred("_align_runes_step_with_open_backpack")
 
 
 ## ── v6.39 朝露式指路（点播段挂起等待的「下一步去哪」）──────────────
@@ -2853,8 +2832,7 @@ func _on_tutorial_pointer_requested(show_ptr: bool) -> void:
 	if show_ptr:
 		_maybe_spawn_tutorial_pointer()
 	else:
-		# v6.53：与 spawn 同宿主（TutorialLayer 105）
-		TutorialSpotlight.dismiss_step_pointer(_tutorial_layer_local())
+		TutorialHost.dismiss_pointer(self)
 
 
 ## v6.52（记录1#18）：任一嵌入面板在屏判据（指路标防叠守卫消费）
@@ -2870,26 +2848,10 @@ func _maybe_spawn_tutorial_pointer() -> void:
 	# 拆场守卫（记录5#16 同律）：deferred 回调可能落在已出树的场景上
 	if not is_inside_tree():
 		return
-	# v6.52（记录1#18）：任一嵌入面板开着不亮指路标——聚光暗幕叠在面板上是实机主诉
-	# "下一步提示悬浮在改造面板上"；面板关闭时 notify_surface_closed 会重亮。
-	# v6.56（记录1#14）：补识 /root 级技能树画布（工位「通讯架」直进 host，原守卫看不到）
-	if _has_open_embed_panel() or PhaseMasterSkillHost.is_open():
-		return
-	var tpm := get_node_or_null("/root/TutorialProgressionManager")
-	if tpm == null or not tpm.has_method("get_pending_surface"):
-		return
-	var surface := String(tpm.get_pending_surface())
-	if surface.is_empty():
-		return
-	var target: Control = TutorialSpotlight.resolve_target(self, surface)
-	if target == null or not target.is_visible_in_tree():
-		return   # 无对应工位（如 phase_instrument）：纯文字节奏兜底，不亮标
-	if bool(target.get_meta("gate_locked", false)):
-		return   # 锁定工位点了只会弹解锁 toast，指它=误导
-	# v6.53（记录1二轮#6）：指路标宿主与教程框同层（TutorialLayer 105，镜像 main.gd
-	# _tutorial_pointer_host）——tutorial_overlay 收指路标用 dismiss(get_parent())，
-	# overlay 挪进 TutorialLayer 后只有同宿主才收得掉
-	TutorialSpotlight.show_step_pointer(_tutorial_layer_local(), target, String(tpm.get_pointer_tip()))
+	# v5 教程整合批：解析/守卫/挂载收口 TutorialHost；本场景注入 busy 谓词
+	#（v6.52 记录1#18 任一嵌入面板开着不亮标；v6.56 记录1#14 补识 /root 级技能树画布）
+	TutorialHost.refresh_pointer(self, func() -> bool:
+		return _has_open_embed_panel() or PhaseMasterSkillHost.is_open())
 
 
 ## 教学首战步的基地出击（镜像 main.gd _on_start_level_from_tutorial + 顶栏出击同链）：

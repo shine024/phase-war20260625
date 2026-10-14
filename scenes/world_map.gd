@@ -81,6 +81,7 @@ const PhaseMasterGarrison = preload("res://data/phase_master_garrison.gd")  # v7
 const EndlessBlackgateRef = preload("res://managers/endless_blackgate_manager.gd")  # v6.19 P1-T1.2: 黑门规则文案读常量
 const TacticalThemes = preload("res://data/level_tactical_themes.gd")  # v10: 关卡战术主题（敌情简报）
 const BattleEnvEffectsRef = preload("res://data/battle_env_effects.gd")  # v26.2: 环境效果摘要（战前）
+const TutorialHost = preload("res://scripts/ui/tutorial_host.gd")  # v5 教程整合批：地图场景教程宿主
 # v32.0 B2-2: 战前构筑建议（特殊规则+环境乘区→克制提示）
 const BuildAdvisor = preload("res://data/build_advisor.gd")
 const LevelBattleLayoutsRef = preload("res://data/level_battle_layouts.gd")  # v26.2: 本场布阵题面
@@ -285,9 +286,23 @@ func _exit_tree() -> void:
 	if Engine.has_meta("world_map_from_truck"):
 		Engine.remove_meta("world_map_from_truck")
 
+## v5 教程整合批：WORLD_MAP 点播步教程框宿主（_ready 接线；场景退树连接自断）
+func _on_tutorial_overlay_requested_local() -> void:
+	TutorialHost.show_overlay(self)
+
 func _ready() -> void:
-	# 批次③ Task 5：教程按需点播触达面（战区地图步，覆盖行军到站/菜单进图）
+	# v5 教程整合批：地图场景自接教程宿主——WORLD_MAP 点播步的触达通知在 _ready 发出，
+	# 教程框必须弹在本场景（原实现 notify 在基地出击前发出，框弹进即将被释放的基地
+	# 场景=框随场景死亡，本步教学实机从不可见）。接线必须在 notify 之前（同步信号，
+	# 晚连吃不到本次 overlay_requested）。仅独立场景自接：main 内嵌实例（embedded_mode
+	# 由 world_map_panel._ensure_content 先置再挂树）由 main 侧监听弹框，两侧都接会双框。
+	# map 场景无工位热区，指路标不接（回到 base/main 场景自然接续）。
 	var _tpm := get_node_or_null("/root/TutorialProgressionManager")
+	if not (has_meta("embedded_mode") and bool(get_meta("embedded_mode"))):
+		if _tpm != null and _tpm.has_signal("overlay_requested") \
+				and not _tpm.overlay_requested.is_connected(_on_tutorial_overlay_requested_local):
+			_tpm.overlay_requested.connect(_on_tutorial_overlay_requested_local)
+	# 批次③ Task 5：教程按需点播触达面（战区地图步，覆盖行军到站/菜单进图）
 	if _tpm != null and _tpm.has_method("notify_surface_opened"):
 		_tpm.notify_surface_opened("world_map")
 	# R1-7（设计审查 F-17，2026-09-13）：地图 BGM——不显式切歌会沿用上一场景曲目
@@ -2142,10 +2157,15 @@ func _enter_blackgate(popup: Window) -> void:
 	_enter_blackgate_confirmed(popup)
 
 ## 2026-10-09 分段推进:放弃进度二次确认（透明语义——已入袋星髓不追回,未结算差价作废）
+## v6.68 修两处：①缺 popup_centered()——确认框建了从未显示（实机"放弃进度点了没反应"）；
+## ②弹出前先收起源弹窗——两个 AcceptDialog 同时声明独占会被引擎拒第二个
+## （exclusive child 冲突，测试日志实证），模态语义不完整。
 func _confirm_abandon_checkpoint(popup: Window) -> void:
 	var gate_ebm := _blackgate_mgr()
 	if gate_ebm == null or not gate_ebm.has_method("abandon_checkpoint"):
 		return
+	if popup != null and is_instance_valid(popup):
+		popup.hide()
 	var confirm := ConfirmationDialog.new()
 	confirm.title = "放弃黑门进度"
 	confirm.dialog_text = "放弃当前进度（第 %d 波，本体在第 %d 波）？\n\n下次进入将重新从第 1 波开始（重摇本体深度与裂隙环境，消耗入场次数）。\n已入袋的星髓不受影响；本次征程未结算的里程碑差价将作废。" % [
@@ -2162,6 +2182,7 @@ func _confirm_abandon_checkpoint(popup: Window) -> void:
 			popup.hide()
 	)
 	confirm.canceled.connect(func() -> void: confirm.queue_free())
+	confirm.popup_centered()
 
 
 ## 黑门管理器懒取（ensure_loaded + /root 查找，进入链与规则弹窗共用）
@@ -2175,7 +2196,10 @@ func _blackgate_mgr() -> Node:
 	return ebm
 
 ## 购次二次确认（核验清单#5：透明扣费——确认后才花能量块）
+## v6.68：弹出前先收起源弹窗，避免双独占窗口冲突（同 _confirm_abandon_checkpoint）。
 func _confirm_blackgate_purchase(popup: Window) -> void:
+	if popup != null and is_instance_valid(popup):
+		popup.hide()
 	var confirm := ConfirmationDialog.new()
 	confirm.title = "购买入场次数"
 	confirm.dialog_text = "今日免费次数已用完。\n本次进入将花费 %d 能量块购买入场 1 次（购买次数永久有效直到使用）。" \

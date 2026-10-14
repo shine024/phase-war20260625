@@ -22,7 +22,7 @@ const PanelStyles = preload("res://scripts/ui/panel_styles.gd")
 # v8.x: CardEnhancementPanelScene 已移除（强化②停用），养成改为自动经验升星 + 技能树
 const AFKModeManagerScript = preload("res://scripts/systems/afk_mode_manager.gd")
 const OfflineIdleManagerScript = preload("res://scripts/systems/offline_idle_manager.gd")
-const TutorialSpotlight = preload("res://scripts/ui/tutorial_spotlight.gd")  # v6.39 点播段指路标收编
+const TutorialHost = preload("res://scripts/ui/tutorial_host.gd")  # v5 教程整合批：宿主统一门面
 const DEBUG_MAIN_LOG := false
 
 var _blueprints_unlocked_this_battle: Array = []
@@ -146,20 +146,11 @@ func _ready() -> void:
 			SignalBus.toggle_backpack.connect(_on_backpack_pressed)
 		if SignalBus.has_signal("toggle_phase_instrument") and not SignalBus.toggle_phase_instrument.is_connected(_on_toggle_phase_instrument_from_tutorial):
 			SignalBus.toggle_phase_instrument.connect(_on_toggle_phase_instrument_from_tutorial)
-		# v7.x 教程引导：强化/改造面板切换入口
+		# v7.x 教程引导：强化面板切换入口
 		if SignalBus.has_signal("toggle_enhancement") and not SignalBus.toggle_enhancement.is_connected(_on_toggle_enhancement_from_tutorial):
 			SignalBus.toggle_enhancement.connect(_on_toggle_enhancement_from_tutorial)
-		if SignalBus.has_signal("toggle_modification") and not SignalBus.toggle_modification.is_connected(_on_toggle_modification_from_tutorial):
-			SignalBus.toggle_modification.connect(_on_toggle_modification_from_tutorial)
-		# v9.x（P2-4 批次6）：教程 8-12 步引导面板
-		if SignalBus.has_signal("toggle_evolution") and not SignalBus.toggle_evolution.is_connected(_on_toggle_evolution_from_tutorial):
-			SignalBus.toggle_evolution.connect(_on_toggle_evolution_from_tutorial)
-		if SignalBus.has_signal("toggle_faction") and not SignalBus.toggle_faction.is_connected(_on_toggle_faction_from_tutorial):
-			SignalBus.toggle_faction.connect(_on_toggle_faction_from_tutorial)
-		if SignalBus.has_signal("toggle_store") and not SignalBus.toggle_store.is_connected(_on_toggle_store_from_tutorial):
-			SignalBus.toggle_store.connect(_on_toggle_store_from_tutorial)
-		if SignalBus.has_signal("toggle_world_map") and not SignalBus.toggle_world_map.is_connected(_on_toggle_world_map_from_tutorial):
-			SignalBus.toggle_world_map.connect(_on_toggle_world_map_from_tutorial)
+		# v6.68 死信号清理：toggle_modification/evolution/faction/store/world_map 五信号
+		# 随 v6.67 教程动作分支退役零发射方，信号与接线同批拆除（SignalBus 侧已注明）。
 		# 批次③ Task 5：按需点播——链暂停中玩家首次触达对应面板时拉起教程覆盖层
 		var _tpm := get_node_or_null("/root/TutorialProgressionManager")
 		if _tpm != null and _tpm.has_signal("overlay_requested") \
@@ -557,6 +548,11 @@ func _open_overlay(overlay: Control, panel_key: String = "") -> void:
 	# 仅保留行为特殊的面板特判（map 刷新 / backpack 性能打点 / growth 日志 / afk 显式 _open）。
 	match panel_key:
 		"map":
+			# v5 教程整合批：main 侧地图触达面=world_map（面板键 "map" 与教程 SURFACE_FOR_STEP
+			# 键不同名——此前玩家从 main 开地图永不命中 WORLD_MAP 点播步，只能等基地链）。
+			var _tpm_map := get_node_or_null("/root/TutorialProgressionManager")
+			if _tpm_map != null and _tpm_map.has_method("notify_surface_opened"):
+				_tpm_map.notify_surface_opened("world_map")
 			# v6.53（记录1二轮#13）：WorldMapPanel 从 CenterContainer 挪出全屏化
 			# （与基地 SceneTransition 入口同观感），路径同步
 			var world_map_panel: Node = overlay.get_node_or_null("WorldMapPanel")
@@ -1025,22 +1021,12 @@ func _on_toggle_modification_from_tutorial() -> void:
 	_play_sfx("button")
 	_toggle_overlay(modification_overlay, "modification")
 
-## v9.x（P2-4 批次6）：教程中后期步骤引导（进化/势力/商店/世界地图/相位场加点）
+## v9.x（P2-4 批次6）：教程中后期步骤引导（进化/相位场加点）
+## v6.68：faction/store/world_map 三 handler 随死信号接线拆除（底栏按钮直连
+## _on_faction_pressed 等原函数，不经过本层包装）。
 func _on_toggle_evolution_from_tutorial() -> void:
 	_play_sfx("button")
 	_toggle_overlay(evolution_overlay, "evolution")
-
-func _on_toggle_faction_from_tutorial() -> void:
-	_play_sfx("button")
-	_on_faction_pressed()
-
-func _on_toggle_store_from_tutorial() -> void:
-	_play_sfx("button")
-	_on_store_pressed()
-
-func _on_toggle_world_map_from_tutorial() -> void:
-	_play_sfx("button")
-	_on_map_pressed()
 
 func _on_open_phase_field_from_tutorial() -> void:
 	_play_sfx("button")
@@ -2183,27 +2169,11 @@ func _start_tutorial_if_needed() -> void:
 ## 按钮点击（实机主诉截图复现：符文步提示框被卡仓面板吞掉）。105=面板之上、
 ## InfoPanelLayer(110) 点卡详情之下、Toast(200) 之下。
 func _show_tutorial_overlay() -> void:
-	if get_node_or_null("TutorialLayer/TutorialOverlay") != null:
-		return
-	var TutorialOverlayScene := load("res://scenes/ui/tutorial_overlay.tscn") as PackedScene
-	if TutorialOverlayScene == null:
-		return
-	var overlay := TutorialOverlayScene.instantiate()
-	_tutorial_layer().add_child(overlay)
+	# v5 教程整合批：挂载/防重复/105 层收口 TutorialHost（原镜像实现退役）
+	TutorialHost.show_overlay(self)
 	# v6.41：点播步在面板已开时弹框（如符文步由玩家先开卡仓触发）——deferred 等面板
 	# visible 落位后对齐：触达面=背包（唯一=符文步）就把已开的背包切到符文页
 	call_deferred("_align_runes_step_with_open_backpack")
-
-
-## v6.41：教程覆盖层专用宿主层（懒建）。层号契约见 test_tutorial_overlay_z_order。
-func _tutorial_layer() -> CanvasLayer:
-	var layer := get_node_or_null("TutorialLayer") as CanvasLayer
-	if layer == null:
-		layer = CanvasLayer.new()
-		layer.name = "TutorialLayer"
-		layer.layer = 105
-		add_child(layer)
-	return layer
 
 
 ## v6.41：符文步 × 背包已开 → 切符文页（"提示针对眼前窗口"）。非符文步/背包关着零开销。
@@ -2231,41 +2201,22 @@ func _get_backpack_panel() -> Node:
 
 
 ## ── v6.39 朝露式指路（点播段挂起等待的「下一步去哪」）──────────────
-## 与 truck_base._maybe_spawn_tutorial_pointer 同律：解析不到可见目标就不亮。
-## 指路标宿主=教程 overlay 的宿主（HudLayer，兜底场景根），收编口径一致。
+## v5 教程整合批：解析/守卫/挂载收口 TutorialHost（与 truck_base/world_map 同一门面），
+## 本场景只注入 busy 谓词（任一 overlay 开着不亮标——v6.52 记录1#18 实机主诉
+## "下一步提示悬浮在改造面板上"；v6.56 记录1#14 补识 /root 级技能树画布）。
 func _on_tutorial_pointer_requested(show_ptr: bool) -> void:
 	if show_ptr:
 		_maybe_spawn_tutorial_pointer()
 	else:
-		TutorialSpotlight.dismiss_step_pointer(_tutorial_pointer_host())
-
-
-func _tutorial_pointer_host() -> Node:
-	# v6.41：与教程框同宿主（TutorialLayer 105）——指路标也恒在弹层面板之上
-	return _tutorial_layer()
+		TutorialHost.dismiss_pointer(self)
 
 
 func _maybe_spawn_tutorial_pointer() -> void:
 	# 拆场守卫（记录5#16 同律）：deferred 回调可能落在已出树的场景上
 	if not is_inside_tree():
 		return
-	# v6.52（记录1#18）：任一 overlay 开着不亮指路标——暗幕+金环叠在面板上是实机
-	# 主诉"下一步提示悬浮在改造面板上"；面板关闭时 notify_surface_closed 会重亮。
-	# v6.56（记录1#14）：补识 /root 级技能树画布（host 在两个场景共用，原守卫看不到）
-	if _is_any_overlay_open() or PhaseMasterSkillHost.is_open():
-		return
-	var tpm := get_node_or_null("/root/TutorialProgressionManager")
-	if tpm == null or not tpm.has_method("get_pending_surface"):
-		return
-	var surface := String(tpm.get_pending_surface())
-	if surface.is_empty():
-		return
-	var target: Control = TutorialSpotlight.resolve_target(self, surface)
-	if target == null or not target.is_visible_in_tree():
-		return
-	if bool(target.get_meta("gate_locked", false)):
-		return
-	TutorialSpotlight.show_step_pointer(_tutorial_pointer_host(), target, String(tpm.get_pointer_tip()))
+	TutorialHost.refresh_pointer(self, func() -> bool:
+		return _is_any_overlay_open() or PhaseMasterSkillHost.is_open())
 
 ## v21.x（FTUE 审计 S2，2026-08-27）：战斗结束续播教程。
 ## 第7步（FIRST_BATTLE）点"开始首战"后 overlay 收起（见 tutorial_overlay.gd），
@@ -2286,8 +2237,9 @@ func _on_battle_ended_resume_tutorial(_player_won: bool) -> void:
 	# 批次③ Task 5：按需点播段（链暂停）不再战后整段续播——等面板首触
 	if tm.get("chain_paused"):
 		return
-	elif not ("current_step" in tm) or int(tm.current_step) < 8:
-		return
+	# v5 教程整合批：删除旧枚举序残留的 `current_step < 8` 拦截——新序 ENHANCEMENT(4)/
+	# RUNES(6) 是合法战后步，点播框已弹时玩家带框出击（场景销毁框）后教程休眠无恢复口；
+	# is_past_first_battle + chain_paused 两守卫已足够，战后恢复统一重弹框。
 	# 战斗结束瞬间结算面板/场景切换仍在进行，延迟到界面稳定后再弹出
 	await get_tree().create_timer(0.8).timeout
 	if _is_in_battle():

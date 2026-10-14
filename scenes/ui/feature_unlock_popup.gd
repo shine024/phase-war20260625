@@ -20,6 +20,17 @@ static func show_once(feature_key: String, title: String, description: String) -
 	_mark_seen(feature_key)
 	return _spawn_modal(title, description)
 
+
+## v5 通道整合：教程让位口——教程框正在教同一面板时，气泡**静默让位**（标 seen、
+## 不弹模态也不推 feed 摘要、教程完成后不再补弹——教程已全量教过，补弹=重复教学）。
+## 与调用点"裸抑制不标记"（truck_base_intro/PANEL_INTROS：教程没教该面，战后补弹）
+## 是一对互补语义：**教程教过的面用 consume_once，教程没教的面裸抑制**。
+## 跳过教程的玩家不受影响（is_tutorial_active=false 时调用点走 show_once 原样弹）。
+static func consume_once(feature_key: String) -> void:
+	if feature_key.is_empty() or _already_seen(feature_key):
+		return
+	_mark_seen(feature_key)
+
 ## 无视持久化，每次都弹（用于战斗中每次改造解锁即时反馈）。
 ## v38.3: 返回弹窗实例（结算弹窗链需要 tree_exited 串行挂钩；调用方忽略返回值无影响）。
 static func show_now(title: String, description: String) -> Node:

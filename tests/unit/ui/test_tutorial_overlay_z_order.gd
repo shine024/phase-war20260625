@@ -19,6 +19,7 @@ extends GdUnitTestSuite
 const MainScript = preload("res://scenes/main.gd")
 const TruckBaseScript = preload("res://scenes/bunker/truck_base.gd")
 const MainScene = preload("res://scenes/main.tscn")
+const TutorialHost = preload("res://scripts/ui/tutorial_host.gd")  # v5 教程整合批：宿主门面唯一真身
 
 var _tpm: Node = null
 var _orig_step: int = -1
@@ -47,7 +48,8 @@ func after_test() -> void:
 ## 教程框宿主层 > PopupLayer：任何弹层面板打开时框不得被压住（主诉根因）。
 func test_main_tutorial_layer_above_popup_layer() -> void:
 	var main_inst: Node = MainScript.new()
-	var layer: CanvasLayer = main_inst._tutorial_layer()
+	# v5 教程整合批：层唯一真身挪 TutorialHost.ensure_layer（原 main._tutorial_layer 退役）
+	var layer: CanvasLayer = TutorialHost.ensure_layer(main_inst)
 	assert_object(layer).is_not_null()
 	var scene_inst: Node = MainScene.instantiate()
 	var popup_layer: CanvasLayer = scene_inst.get_node("PopupLayer")

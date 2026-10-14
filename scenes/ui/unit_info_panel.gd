@@ -19,7 +19,7 @@ func _on_unit_selected(unit: Node, is_player: bool, at_position: Vector2 = Vecto
 	_dismiss_global_card_info_panel()
 	# 隐藏背包的 CardDetailPopup（防止与全局面板同时显示）
 	_dismiss_backpack_card_detail()
-	# 获取全局 CardInfoPanel（挂在 InfoPanelLayer layer=90，不被 HUD 遮挡）
+	# 获取全局 CardInfoPanel（挂在 InfoPanelLayer（main=110/基地=110，v6.68 对齐），不被 HUD 遮挡）
 	var info_panel: Control = NodeFinder.get_card_info_panel()
 	if info_panel == null:
 		return

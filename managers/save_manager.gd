@@ -703,16 +703,16 @@ func _process_deferred_manager_resets() -> void:
 		_start_new_game_perf_pending = false
 		_perf_phase_end("start_new_game")
 
-## 保存当前存档位。
-## 返回值语义（v26.6 明确）：true = 已写盘，或已合法排队稍后写（战斗中→战斗结束冲刷；
-## 延迟加载窗口/最小间隔窗口→定时器冲刷）；false = 真实失败。调用方勿把 true 当"已落盘"。
-## 记录6#3：自动存档失败此前多分支仅 push_error（release 下玩家不可见）——统一走
-## _notify_save_failure 补提示；退出阶段(_is_exiting)不弹（UI 宿主已拆）。
+## 记录6#3：自动存档失败统一提示口——save_game 各失败分支此前仅 push_error
+## （release 下玩家不可见）；退出阶段(_is_exiting)不弹（UI 宿主已拆）。
 func _notify_save_failure() -> void:
 	var toast_mgr := get_node_or_null("/root/ToastManager")
 	if not _is_exiting and toast_mgr != null and toast_mgr.has_method("show_error"):
 		toast_mgr.show_error("存档保存失败！")
 
+## 保存当前存档位。
+## 返回值语义（v26.6 明确）：true = 已写盘，或已合法排队稍后写（战斗中→战斗结束冲刷；
+## 延迟加载窗口/最小间隔窗口→定时器冲刷）；false = 真实失败。调用方勿把 true 当"已落盘"。
 func save_game() -> bool:
 	_ensure_battle_end_save_hook()
 	if not _is_exiting and _is_battle_active_now():

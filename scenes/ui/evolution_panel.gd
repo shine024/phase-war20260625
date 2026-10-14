@@ -1,7 +1,7 @@
 extends Control
 class_name EvolutionPanel
 ## 制造中心（v26：进化退役后接管本面板；文件名/场景/挂载点保留以兼容
-## UILazyLoader "evolution" / card_info_panel TabEvolve 嵌入 / toggle_evolution 信号链）
+## UILazyLoader "evolution" / card_info_panel TabEvolve 嵌入；v6.68 死信号清理后无信号链入口）
 ##
 ## 三栏布局语义重映射（.tscn 节点不动）：
 ##   左栏 名册   → 配方目录（38 个可制造卡种：名称 + 时代 + 情报%）

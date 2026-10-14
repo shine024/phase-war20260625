@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3 uid="uid://v5tutprobe1"]
+
+[ext_resource type="Script" path="res://tests/_tmp_v5_tutorial_probe.gd" id="1"]
+
+[node name="V5TutorialProbe" type="Node"]
+script = ExtResource("1")

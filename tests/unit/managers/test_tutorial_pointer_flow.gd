@@ -131,11 +131,12 @@ func test_skip_and_reset_dismiss_pointer() -> void:
 
 
 func test_step_play_position_follows_play_order() -> void:
-	# 播放序 ≠ 枚举序：TRUCK_BASE 在第 5 位（首战后插入），总步数 14
+	# 播放序 ≠ 枚举序：TRUCK_BASE 在第 4 位（首战后插入），总步数 10（v5 整合批 14→10：
+	# 卡仓步并入装配、改造/势力/商店步随门控教学移交解锁仪式退役）
 	_tpm.current_step = TpmScript.TutorialStep.TRUCK_BASE
 	var pos: Dictionary = _tpm.get_step_play_position()
-	assert_int(int(pos.get("index", 0))).is_equal(5)
-	assert_int(int(pos.get("total", 0))).is_equal(14)
+	assert_int(int(pos.get("index", 0))).is_equal(4)
+	assert_int(int(pos.get("total", 0))).is_equal(10)
 	_tpm.current_step = TpmScript.TutorialStep.INTRO_WELCOME
 	assert_int(int(_tpm.get_step_play_position().get("index", 0))).is_equal(1)
 
@@ -166,13 +167,14 @@ func test_march_hotspots_carry_world_map_key() -> void:
 
 
 func test_every_waiting_step_has_pointer_tip_or_resolvable_surface() -> void:
-	# 点播段 9 步全部有挂起面；除 phase_instrument（基地无工位，纯文字兜底）与
-	# truck_base（进基地即放行）外都应配 pointer_tip 指到具体工位（防再回到盲找）
+	# 点播段 6 步全部有挂起面（v5 整合批 9→6：modification/faction/store 随步骤退役）；
+	# 除 phase_instrument（基地无工位，纯文字兜底）与 truck_base（进基地即放行）外
+	# 都应配 pointer_tip 指到具体工位（防再回到盲找）
 	var waiting_steps: Array = TpmScript.SURFACE_FOR_STEP.keys()
-	assert_int(waiting_steps.size()).is_equal(9)
+	assert_int(waiting_steps.size()).is_equal(6)
 	for step in waiting_steps:
 		var surface := String(TpmScript.SURFACE_FOR_STEP.get(step, ""))
 		assert_str(surface).is_not_empty()
-		if surface in ["growth", "modification", "backpack", "evolution", "faction", "store", "world_map"]:
+		if surface in ["growth", "backpack", "evolution", "world_map"]:
 			var tip := String(_tpm.tutorial_data.get(step, {}).get("pointer_tip", ""))
 			assert_str(tip).is_not_empty()

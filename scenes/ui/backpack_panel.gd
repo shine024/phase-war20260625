@@ -36,6 +36,7 @@ const GC = preload("res://resources/game_constants.gd")
 const BackpackDataScript = preload("res://scenes/ui/backpack/backpack_data.gd")
 const BackpackPresenterScript = preload("res://scenes/ui/backpack/backpack_presenter.gd")
 const NodeFinder = preload("res://scripts/node_finder.gd")
+const TutorialHost = preload("res://scripts/ui/tutorial_host.gd")  # v5：一次性气泡防重影判定
 const CardInfoPanel = preload("res://scenes/ui/card_info_panel.gd")
 const IntelManualItemsRef = preload("res://data/intel_manual_items.gd")
 const BlueprintDefinitionsRef = preload("res://data/blueprint_definitions.gd")
@@ -2697,6 +2698,12 @@ func on_overlay_opened() -> void:
 		_presenter.on_overlay_opened()
 	# v38（用户反馈"进卡仓各标签页没指导"）：首开一次性指南——讲清三件事：
 	# 相位仪是什么 / 战斗卡怎么装 / 符文怎么装（教程步之外的常驻知识点，show_once 随档持久化）
+	# v5 通道整合：装配/符文步教程框正在教同一内容（拖卡进绿槽/紫槽装符文）——
+	# backpack_guide 气泡静默让位（consume_once 标 seen：不推 feed 摘要、教程完成后
+	# 也不补弹=教程已全量教过）。跳过教程的玩家：is_tutorial_active=false，气泡原样弹。
+	if TutorialHost.is_tutorial_active():
+		FeatureUnlockPopup.consume_once("backpack_guide")
+		return
 	var FUP = load("res://scenes/ui/feature_unlock_popup.gd")
 	if FUP != null:
 		FUP.show_once("backpack_guide",

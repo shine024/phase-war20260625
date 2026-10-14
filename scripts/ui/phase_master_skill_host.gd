@@ -24,6 +24,7 @@ signal closed()
 
 const DT = preload("res://resources/design_tokens.gd")
 const PANEL_SCENE := "res://scenes/ui/phase_master_skill_panel.tscn"
+const TutorialHost = preload("res://scripts/ui/tutorial_host.gd")  # v5：一次性气泡防重影判定
 
 ## 打开（或复用）技能树面板。full_bleed=true 时铺满视口（growth 全出血惯例），
 ## false 时标准 960×640 居中（selector 之上的 drill-down 观感）。
@@ -117,8 +118,15 @@ func _open(full_bleed: bool) -> void:
 	var _tpm: Node = get_node_or_null("/root/TutorialProgressionManager")
 	if _tpm != null and _tpm.has_method("notify_surface_opened"):
 		_tpm.notify_surface_opened("growth")
-	FeatureUnlockPopup.show_once("skill_tree", "相位师技能树",
-		"消耗技能点学习全局被动强化（指挥/智能化/火力/概念武器）。技能点随相位场等级获得。")
+	# v5 通道整合：ENHANCEMENT 步教程框正在教技能树（本帧随 notify 弹出）——
+	# skill_tree 气泡静默让位（consume_once 标 seen：不推 feed 摘要、教程完成后也
+	# 不补弹=教程已全量教过；v6.52 的 _spawn_modal 教程降级是最后防线，此处前移
+	# 免掉重复摘要噪音）。跳过教程的玩家：is_tutorial_active=false，气泡原样弹。
+	if TutorialHost.is_tutorial_active():
+		FeatureUnlockPopup.consume_once("skill_tree")
+	else:
+		FeatureUnlockPopup.show_once("skill_tree", "相位师技能树",
+			"消耗技能点学习全局被动强化（指挥/智能化/火力/概念武器）。技能点随相位场等级获得。")
 	var canvas: CanvasLayer = _ensure_canvas()
 	var panel: Node = canvas.get_node_or_null("PhaseMasterSkillPanel")
 	if panel == null:
