@@ -24,6 +24,38 @@
 6. **客观缺陷与审美取舍先分类**：对齐/一致性/覆盖类有客观正确答案的直接修；只有真正无对错的参数才交用户拍板，且必须附推荐值与对比图。
 7. **每类系统留常驻回归锁**：锁内断言覆盖上述全部维度，修复后回归自动拦截（范例：`tests/unit/combat/test_shield_foot_anchor.gd` 九形态+尺寸断言）。
 
+## v6.69 音频资产审核批：28 槽换装 + base_alarm 新增 + 全量免署名凭据链（资产 2026-10-20 换机审核拍板 / 10-14 入库，详见 CHANGELOG v6.69）
+
+**动 `assets/sfx/` 音频换装/授权凭据/credits 面板/音效台账前必读本节。** 背景=10-13 生成的审听套件被换机带走逐条试听，用户 28+12 项不满意清单经五轮换装定稿后 10-14 整理入库。
+
+- **台账终态（60 音源）**：13 BGM（**12 Kevin MacLeod CC BY 4.0 + 1 Juhani Junkala OGA CC0**——`bgm_battle_ww1` 10-20 由 Devastation and Revenge 换「Epic Boss Battle」无缝循环，授权构成 CC BY→CC0）+ 45 SFX（**19 自合成 + 26 第三方免署名**：Kenney CC0×6 / OGA CC0·PD×7 / Wikimedia PD×1 / Mixkit Free×12）+ 2 环境音（OGA CC0）。**本批零 CC BY 新增署名义务**——商店 AI 披露/署名表单口径据此。
+- **证据链唯一口=`_steam_assets/licenses/sfx_swap_20261020/`**（swap_manifest round1~5 块逐项 来源/直链/切片/增益 + LICENSE_EVIDENCE + intake_hashes + 调研报告）；回滚锚点=`D:/godotplay/_art_backup/sfx_pre_swap_20261020/`（动手前全量）——round2~5 中间版备份已随收尾清理删除，勿回建。
+- **base_alarm 新增槽零代码变更**：AudioManager 按名加载（ogg 优先）命中即实生效，sound_generator 合成兜底保留休眠——**以后新增 SFX 槽同样只需落 `assets/sfx/<name>.ogg` + SFX_NAMES 登记**。
+- **ffmpeg 静音雷（四轮实证铁律）**：裁段 `-ss` 必须放 `-i` 前（输入 seeking）；后置=afade 滤镜走全源时间线，裁剪段被淡出窗全灭成 -91dB 纯数字静音。mp3 硬切转 OGG 尾页粒度用 `apad` 收尾；响度按 volumedetect 实测归一 max -2~-5dB；**交付前必须 volumedetect/试听实测——「文件已生成」不等于有声**。
+- **台账/页面再生成**：`tools/build_audio_review_kit.py` 幂等可重跑（音源+凭据+管线脚本+审核页+manifest 一次打包）；动音源后重跑保持项目根 `audio_review_kit/` 同步。冒烟探针 `tests/_tmp_v669_audio_swap_probe.gd`（60 音源全量 load + 按名命中 + 时长抽查）。
+
+## v6.67 教程系统全面检查与整合批：14→10 步 + TutorialHost 统一宿主 + WORLD_MAP 弹框断链根修（2026-10-13，详见 CHANGELOG v6.67）
+
+**改教程步骤/教程宿主/TPM 存档段/FeatureUnlockSchedule 文案前必读本节。** 用户口径："教程设置的不好，闪光提示（聚光指路标）还可以"——指路标机制全量保留，其余收口。
+
+- **步骤流唯一真身=TPM STEP_ORDER（10 步制）**：欢迎→装配→首战→回基地→技能树→符文→制造→世界地图→加点→自由。**退役四步枚举值保留**（CARD_COLLECTION=2/MODIFICATION=5/FACTION_REP=9/SHOP=10）——load_state 对 version<5 停在退役步的旧档**枚举自增前跳**到下一个存活步；新加教程步先过 `test_tutorial_step_integration.gd`（步骤流/迁移/fail-open 门/宿主门面四维锁）。**新点播步的触达面必须 ≤L2 可用**（SURFACE_FOR_STEP 面 unlock_level_for ≤2——门控面会把教程链拖长数小时后随机弹框，本批主诉本体）；改造/势力/商店的教学在 FeatureUnlockSchedule 解锁仪式 desc（just-in-time），勿往教程里塞门控步。
+- **教程宿主唯一门面=`scripts/ui/tutorial_host.gd`（TutorialHost 静态类）**：ensure_layer(105)/show_overlay(防重复，离树实例也可挂——z_order 测试依赖)/refresh_pointer(scene, busy 谓词)/dismiss_pointer。**新场景要弹教程框就接 `overlay_requested → TutorialHost.show_overlay(self)`**（勿再复制 105 层/挂载逻辑——main/truck_base 镜像实现已因此分叉三次）。指路标防叠 busy 谓词按场景注入（main=七 overlay+技能树画布；truck_base=嵌入面板+技能树画布）。
+- **触达通知=落地场景发，不发在即将切走的场景**：WORLD_MAP 步断链教训——通知在基地出击前发、框弹进即将被 SceneTransition 释放的基地=框随场景死亡；现 world_map._ready 自接宿主发通知（**接线必须在 notify 之前**，同步信号晚连吃不到；embedded_mode 守卫防与 main 双框）。main 开地图的面板键是 "map"，教程触达键是 "world_map"——`_open_overlay` 的 "map" 分支已补双键通知，勿删。
+- **实操门纪律**：装配（_assembly_touched 旗标，UI 层置位）/符文（紫槽≥1）/加点（分过≥1点）三处门**fail-open 语义**——加点门在 unspent=0 且从未分过时放行（无可分之点还拦=教程永不结课）；门的拒绝文案必须人话（三处已各配）。
+- **文案纪律**：教程描述 ≤4 行/要点 ≤4 条；点播步按钮文案不得与眼前已开窗口自相矛盾（ENHANCEMENT"开始浏览"先例）；highlight_elements 键与 get_highlight_elements 已随死代码退役，勿复活。
+- **休眠信号已拆除（v6.68）**：SignalBus toggle_modification/evolution/faction/store/world_map 五信号随教程动作分支退役零发射方——信号声明与 main/truck_base 两侧接线、main 侧三个仅剩引用的 handler 已同批删除，勿再引用（signal 总数回落 79，与下表一致）。
+- **教程 × 一次性气泡（FUP）一套驱动纪律（v6.67 补批）**：统一判定口=`TutorialHost.is_tutorial_active()`（勿再散写内联 should_show_tutorial 查询）。**教程教过的面**（技能树 skill_tree / 卡仓指南 backpack_guide）教程期调 `FeatureUnlockPopup.consume_once(key)` 静默让位：标 seen、不推 feed 摘要、战后不补弹（教程已全量教过，补弹=重复教学）；**教程没教的面**（truck_base_intro / PANEL_INTROS——现不含教程面）教程期裸抑制不标记，战后下次触发原样补弹（跳过教程玩家的兜底）。`FUP._spawn_modal` 的教程降级（模态→左下 feed 摘要）仍是 show_now/漏网 show_once 的最后防线，勿拆。新加首开气泡先想清楚归哪类。
+- 探针：`tests/_tmp_v5_tutorial_probe.tscn`（窗口化五拍：欢迎框/装配聚光/指路标/技能树步无气泡实证/world_map 弹框断链修复实证；出图 `.godot/v5_shots/`）。
+
+## v6.68 全面体检修复批：HoverTip 收口批1 + 层号对齐 + 黑门双确认框 + 死信号清理（2026-10-13，详见 CHANGELOG v6.68）
+
+**改 tooltip 接入/信息框层号/黑门确认弹窗前必读本节。** 背景=四维全面体检（世界观/剧情/衔接/交互/资源，测试 644/644 全绿基线上）发现的轻中量级修复。
+
+- **HoverTip 收口纪律（分批推进）**：弹层面板带 z≥30 子元素时内建 tooltip 必被盖（z 值确证）——本批已收口 `modification_panel.gd`（折叠态悬浮迷你卡 z=100）与 `resource_bar.gd`（资源增减浮字 z=50）全部 tooltip（约 30 处，`HoverTip.bind_control + set_tip` 两步，meta 幂等）；**后续批目标=evolution/faction/growth 等其余弹层面板**，勿在新弹层面板再用 `tooltip_text=`。mouse_filter=IGNORE 的控件（改造行 class_tag/ks_tag）内建与 HoverTip 都不触发，其提示由所在行按钮的 tooltip 覆盖——勿给 IGNORE 控件挂提示。
+- **层号契约补记（v6.68）**：①`FeatureUnlockLayer=250` 是**有意例外**——解锁仪式需压过结算(200)/结算确认(210) 且低于转场(500)，仪式期间 Toast 被压属预期（`feature_unlock_popup.gd` process_mode ALWAYS 同理）；②truck_base 本地信息框层 90→110 对齐 main（InfoPanel 恒在教程层 105 之上，两场景「教程框+点卡情报同开」层间关系一致）。
+- **黑门双确认框修两处（world_map.gd）**：①`_confirm_abandon_checkpoint` 原建了 ConfirmationDialog 却**从未 popup_centered()**=「放弃进度」点了没反应（真 bug）；②两个黑门确认框（购次/放弃进度）弹出前必须先 `popup.hide()` 收起源关卡弹窗——两个 AcceptDialog 同时声明独占会被引擎拒第二个（exclusive child 冲突，测试日志实证）。
+- **经济/资源体检结论（无修复项，备忘）**：五货币（纳米/合金/晶体/能量块/星髓）产消双向闭环；卡图 145 卡走六级链零占位零悬空（探针 `tests/_tmp_audit_card_icons.gd` 可重跑）；音频 57 文件全被消费；2067 图片导入无缺失；387 处资产引用零悬空。
+
 ## v6.65 build/记录6.txt 四轮 5 条批：势力技能新档修复 + 入场预热 + 黑门存档段补齐 + 行军渗透锚同口径（2026-10-12，详见 CHANGELOG 与 docs/实机验收_记录6四轮_进度.md）
 
 **改势力技能初始化/SaveManager 收集链/大地图渗透锚/战斗入场预热前必读本节。**
@@ -430,7 +462,7 @@ func _redirect_stdout_to_file() -> void:
 
 ## Architecture
 
-### Autoload Singletons（project.godot 实际 32 个，2026-09-26 核对——v6.28 冻住诊断 +TraceLog 31→32；此前 PhaseLawManager 已随 P2-7 法则退役删除；EvolutionPathRegistry 已随 v26.6 结构收敛删除，autoload 31→30；v28 质感轮 +ColorGrade 30→31，见停用清单）
+### Autoload Singletons（project.godot 实际 33 个，2026-10-14 核对——下表 32 个 + godot_ai 插件启用时自动加挂的 `_mcp_game_helper`（禁用插件时自动移除，勿手工删）；v6.28 冻住诊断 +TraceLog 31→32；此前 PhaseLawManager 已随 P2-7 法则退役删除；EvolutionPathRegistry 已随 v26.6 结构收敛删除，autoload 31→30；v28 质感轮 +ColorGrade 30→31，见停用清单）
 
 > 双层设计说明：部分 manager **同时**存在于 project.godot [autoload] 与 ManagerLazyLoader 配置——
 > 后者仅作 `ensure_loaded("<id>")` 的统一访问入口，命中 `/root/NodeName` 即复用，不会重复实例化。

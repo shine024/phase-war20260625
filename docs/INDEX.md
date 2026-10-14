@@ -53,6 +53,8 @@
 | [敌方相位师技能归类_当前数据.md](敌方相位师技能归类_当前数据.md) | 30 位相位师技能归类 |
 | [无限模式_异族设定（草案）.md](无限模式_异族设定（草案）.md) | 黑门无限背景设定 |
 | [暗能卡牌世界观.md](暗能卡牌世界观.md) / [开场文本.md](开场文本.md) / [开场剧情_10方案.md](开场剧情_10方案.md) | 世界观与序章素材 |
+| [游戏背景.txt](游戏背景.txt) | 早期主角/背景设定底稿（陈末人设完善版；v6.68 补登记——新文档须入索引的漏网项） |
+| [相位战争：战斗卡牌完整设定与养成系统.txt](相位战争：战斗卡牌完整设定与养成系统.txt) | 2026-05 系统 3.0 设定底稿（已被代码与统一表取代，留档；v6.68 补登记） |
 | [afk_mode_design.md](design/afk_mode_design.md) / [offline_idle_design.md](design/offline_idle_design.md) / [deploy_uses_limit_design.md](design/deploy_uses_limit_design.md) | 挂机/离线/部署次数设计 |
 | [COMBAT_SYSTEM_EXPANSION_DESIGN_v8.md](design/COMBAT_SYSTEM_EXPANSION_DESIGN_v8.md) / [COMBAT_SYSTEM_V8_GRID_COMPATIBLE.md](design/COMBAT_SYSTEM_V8_GRID_COMPATIBLE.md) | v8 格子战斗设计（历史基线） |
 
