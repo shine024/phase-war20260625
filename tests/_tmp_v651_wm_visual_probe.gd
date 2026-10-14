@@ -1,7 +1,7 @@
 extends Node
 ## v6.51 临时视觉探针：真实渲染大地图，目检三件——
 ## ① 渗透红点（跨窗宿主可见+脉动+层级）；② 燃料 chip 的"第N天"前缀；③ 图例红点行。
-## 跑法：godot --path . res://tests/_tmp_v643_wm_visual.tscn（窗口化，非 headless）
+## 跑法：godot --path . res://tests/_tmp_v651_wm_visual.tscn（窗口化，非 headless）
 ## 截图落 res://.godot/v651_shots/。宿主 17（窗外 13 关）应显示=半径放宽生效；
 ## 宿主 45（>16）应不显示=过滤仍生效。
 
