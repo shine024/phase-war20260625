@@ -3,7 +3,8 @@ class_name CreditsPanel
 ## 制作人员/许可页（S17 授权链缺口修复，2026-09-20）：引擎/字体/音频授权的玩家可见声明。
 ## 入口 = title_screen「制作人员」按钮 → CreditsPanel.open(get_tree())。
 ## 数据 const 内联——assets/sfx/CREDITS.md 是内部凭据存档（*.md 不进发行包），
-## MUSIC 行与该文件同步维护（2026-09-26 换曲批已对齐）。
+## MUSIC 行与该文件同步维护（2026-09-26 换曲批已对齐；2026-10-20 批同步：
+## BGM 12 首 CC BY + 1 首 OGA CC0，SFX 混合自合成与免署名第三方素材）。
 ## 开合走 PanelAnim 统一规格；ESC/手柄 Ⓑ 与 ✕ 同关；接手柄时焦点落关闭键。
 
 const DT = preload("res://resources/design_tokens.gd")
@@ -25,12 +26,16 @@ const SECTIONS := [
 		"OFL 许可全文随游戏文件附带（assets/fonts/）",
 	]},
 	{"title": "音乐与音效", "lines": [
-		"音效：本项目原创合成（波形生成管线）",
-		"背景音乐：Kevin MacLeod (incompetech.com)",
+		"音效：部分为本项目原创合成（波形生成管线），其余为 Kenney /",
+		"OpenGameArt / Mixkit / Wikimedia 免费许可素材（CC0 / 公有领域 /",
+		"免费商用，均无署名义务）",
+		"背景音乐：12 首 Kevin MacLeod (incompetech.com)",
+		"+ 1 首 Juhani Junkala (OpenGameArt, CC0)",
 		"CC BY 4.0 · creativecommons.org/licenses/by/4.0/",
-		"曲目：At Launch / Peaceful Desolation / Devastation and Revenge /",
-		"Five Armies / Crypto / Rock Hybrid / Space Fighter Loop /",
-		"Final Battle of the Dark Wizards（经转码与响度归一处理）",
+		"曲目：At Launch / Peaceful Desolation / Man Down / Take the Lead /",
+		"Spy Glass / Bass Walker / Space Fighter Loop / Five Armies / Crypto /",
+		"Rock Hybrid / Hiding Your Reality / Final Battle of the Dark Wizards /",
+		"Epic Boss Battle（均经转码与响度归一处理）",
 	]},
 	{"title": "美术", "lines": [
 		"部分美术资产由 AI 生成，并经人工审核与修改；",

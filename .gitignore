@@ -144,6 +144,9 @@ reports/
 tests/*.gd.uid
 .font_src/
 
+# ── 审听套件生成物（tools/build_audio_review_kit.py 幂等可再生，不入库；含 60 音源拷贝）──
+audio_review_kit/
+
 # Steam 预告片等大体积视频不入库（美术二进制纪律同 png）
 *.mp4
 # 视频大文件不入库（Steam 素材另存）

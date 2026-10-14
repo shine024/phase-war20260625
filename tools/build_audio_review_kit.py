@@ -42,6 +42,9 @@ LICENSE_SRC = [
     "_steam_assets/licenses/incompetech_20261010/swap_manifest_20261010.json",
     "_steam_assets/licenses/incompetech_20261010/intake_hashes_20261010.json",
     "_steam_assets/licenses/kenney_20261010/sci-fi-sounds.zip",  # missile_hum 源包（CC0，含 sci-fi thruster）
+    "_steam_assets/licenses/sfx_swap_20261020/LICENSE_EVIDENCE_20261020.md",
+    "_steam_assets/licenses/sfx_swap_20261020/swap_manifest_20261020.json",
+    "_steam_assets/licenses/sfx_swap_20261020/intake_hashes_20261020.json",
 ]
 
 # 生成/换曲管线脚本（重新生成音频所需的真身代码）
@@ -120,10 +123,10 @@ ASSETS = [
                "另 comic_intro.gd:54 序章直调 'hub_ww1'",
          trigger="当前关卡时代=NEAR_FUTURE 时大地图/基地 BGM",
          src="Kevin MacLeod · CC BY 4.0 · ISRC USUAN1100672（v6.52.2 自 battle_future 挪档，授权同曲沿用）"),
-    dict(file="bgm_battle_ww1.ogg", cat="bgm", comp="Devastation and Revenge",
+    dict(file="bgm_battle_ww1.ogg", cat="bgm", comp="Epic Boss Battle（10-20 换曲，原 Devastation and Revenge）",
          where="一战战斗 BGM：AudioManager._on_battle_started_bgm era=WW1（audio_manager.gd:369）",
          trigger="进战斗且关卡时代=WW1（battle_started 信号）",
-         src="Kevin MacLeod · CC BY 4.0 · ISRC USUAN1100694"),
+         src="Juhani Junkala · OGA · CC0 · Epic Boss Battle [Seamlessly Looping] 123.4s（10-20 换曲，原 Kevin MacLeod Devastation and Revenge USUAN1100694；旧版备份 D:/godotplay/_art_backup/sfx_pre_swap_20261020/）"),
     dict(file="bgm_battle_ww2.ogg", cat="bgm", comp="Five Armies",
          where="二战战斗 BGM：AudioManager._on_battle_started_bgm era=WW2（audio_manager.gd:370）",
          trigger="进战斗且关卡时代=WW2",
@@ -152,12 +155,12 @@ ASSETS = [
          where="AudioManager._on_battle_started_bgm 尾部 play_ambient('battle_wind')（audio_manager.gd:376）；"
                "battle_ended 时 stop_ambient(1.5)（audio_manager.gd:492）；AMBIENT_MAP audio_manager.gd:499",
          trigger="进战斗起风声底噪循环（独立于 BGM 层）；战斗结束淡出；极速推演期间不停",
-         src="项目内程序合成（tools/_tmp_gen_sfx_v642.py 可重跑），无外部授权义务"),
+         src="OGA CC0：IgnasD Wind 循环底 × V-visions War on Water 远炮点缀，30s 立体声（原自合成 tools/_tmp_gen_sfx_v642.py 版退役）"),
     dict(file="ambient_wakeup_wind.wav", cat="ambient", comp="苏醒演出专用柔化雪原风声",
          where="truck_base.gd:2617 play_ambient('wakeup_wind', 0.45)；演出收场 truck_base.gd:2792 stop_ambient(1.5)；"
                "AMBIENT_MAP audio_manager.gd:501",
          trigger="开场苏醒演出起风声（与战斗 battle_wind 分离，v6.42 专用键）",
-         src="项目内程序合成（tools/_tmp_gen_sfx_v642.py 可重跑），无外部授权义务"),
+         src="OGA CC0：IgnasD Wind+Wind2 交叉淡化拼 12s（原自合成 tools/_tmp_gen_sfx_v642.py 版退役）"),
 
     # ── SFX UI / 系统（8）──
     dict(file="button.ogg", cat="ui", comp="按钮点击音",
@@ -165,7 +168,7 @@ ASSETS = [
                "TabBar 切标签 _on_tabbar_tab_changed（audio_manager.gd:662）；title_screen.gd:5 / main.gd:7 / "
                "truck_base.gd:1907 / bottom_function_bar.gd 手写 _play_sfx('button')（共约 65 处）",
          trigger="任意按钮按下；极速推演白名单（_FF_SFX_ALLOWLIST）；50ms 去重窗口",
-         src="项目内程序合成（方波脉冲）"),
+         src="Kenney Interface click_001 · CC0（10-20 换上；旧版自合成）"),
     dict(file="button_hover.ogg", cat="ui", comp="按钮悬停音",
          where="全局钩子 AudioManager._on_button_hovered（node_added→BaseButton.mouse_entered，audio_manager.gd:668）",
          trigger="鼠标悬停到按钮（60ms 节流，音量 0.35）",
@@ -177,11 +180,11 @@ ASSETS = [
     dict(file="panel_close.ogg", cat="ui", comp="面板关闭音",
          where="title_screen.gd 面板关（PanelAnim.close）",
          trigger="关闭 overlay 面板；极速推演白名单",
-         src="项目内程序合成"),
+         src="Mixkit 2568 Software interface back · Free License 免署名（10-20 二轮换上）"),
     dict(file="card_pickup.ogg", cat="ui", comp="卡牌拾取音",
          where="ground_loot_layer.gd（拾取战场遗落卡）；dream_battle.gd 序章拾卡",
          trigger="拾取到卡牌实例",
-         src="项目内程序合成"),
+         src="Kenney Casino card-slide-1 · CC0（10-20 换上，真实卡牌滑动声）"),
     dict(file="card_place.ogg", cat="ui", comp="卡牌放置 / 部署音",
          where="battle_spawn_system.gd:1071（部署单位 play_sound）；main.gd:1292；backpack_card_item_drag.gd:384"
                "（拖入槽位）；backpack_panel.gd:2545（符文放置 _play_rune_sound）；evolution_panel.gd:1271",
@@ -191,37 +194,37 @@ ASSETS = [
          where="AudioManager._on_player_deploy_failed（audio_manager.gd:624）· _on_energy_insufficient（:627）；"
                "main.gd / truck_base.gd / bottom_function_bar.gd 多处 _play_sfx('error')",
          trigger="部署失败 / 能量不足 / 操作错误；极速推演白名单",
-         src="项目内程序合成"),
+         src="Kenney Interface error_001 · CC0（10-20 换上）"),
     dict(file="cancel.ogg", cat="ui", comp="取消 / 回退音",
          where="battle_click_overlay.gd:343（SignalBus.play_sound.emit('cancel')）；"
                "AudioManager._on_enhancement_completed 强化失败分支（audio_manager.gd:588）",
          trigger="取消操作 / 强化合成失败",
-         src="项目内程序合成"),
+         src="Kenney Interface back_001 · CC0（10-20 换上）"),
     dict(file="story_page.ogg", cat="ui", comp="剧情漫画翻格音",
          where="comic_intro.gd:54（剧情逐格推进翻页音）；黑门在 intro_comic_panels 第 3 格登场",
          trigger="序章漫画/黑门剧情逐格推进",
-         src="项目内程序合成（tools/_tmp_gen_sfx_v657.py 可重跑，seed=20261011）；旧档为 Kenney CC0 划擦声",
+         src="Mixkit 1104 Page Turn Single · Free License 免署名，真实翻页声（10-20 换上；v6.57 自合成版 tools/_tmp_gen_sfx_v657.py 退役）",
          note="v6.57 记录3#1 重制：扫频带通噪声挥扫 + 36Hz 纸颤 + 高频碎纸粒"),
 
     # ── SFX 战斗通用（10）──
     dict(file="hit.ogg", cat="combat", comp="单位受击（中档）",
          where="AudioManager._on_unit_damaged 伤害 60~150 档（audio_manager.gd:559）；batch 主力命中默认音",
          trigger="单位受击且单发伤害 ∈ [60,150)",
-         src="项目内程序合成"),
+         src="Kenney Impact impactPlate_medium · CC0（10-20 换上，四档命中梯度中档）"),
     dict(file="impact_light.ogg", cat="combat", comp="命中（轻档）",
          where="bullet.gd._play_impact_sfx tier0/1（scenes/units/bullet.gd:1180）；"
                "AudioManager._on_unit_damaged 伤害 <60 档（audio_manager.gd:563）",
          trigger="轻动能命中（手枪弹等直射轻武器）",
-         src="项目内程序合成（v6.52 力度分级三档之一）"),
+         src="Kenney Impact impactPlate_light · CC0（10-20 换上，轻档）"),
     dict(file="impact_generic.ogg", cat="combat", comp="命中（中档 tier2）",
          where="bullet.gd._play_impact_sfx tier2（scenes/units/bullet.gd:1177）",
          trigger="中等动能命中（直射中档火力）",
-         src="项目内程序合成"),
+         src="Mixkit 498 Wood hard hit · Free License 免署名，实录木板重击（10-20 三轮换上）"),
     dict(file="impact_heavy.ogg", cat="combat", comp="命中（重档 tier3）",
          where="bullet.gd._play_impact_sfx tier3（scenes/units/bullet.gd:1176）；"
                "AudioManager._on_unit_damaged 伤害 ≥150 档（audio_manager.gd:559）",
          trigger="重炮/爆炸级命中（单发伤害 ≥150）",
-         src="项目内程序合成"),
+         src="OGA BMacZero Metal Impact Sounds bong1 · CC0（10-20 五轮换上，真金属深击+自然余振）"),
     dict(file="shoot.ogg", cat="combat", comp="通用射击音",
          where="sound_generator.gd:47 合成兜底（_gen_gunfire 900Hz）；缺文件时运行期合成",
          trigger="通用开火兜底（无武器专属音时用）",
@@ -233,19 +236,19 @@ ASSETS = [
     dict(file="explosion_big.ogg", cat="combat", comp="大爆炸 / 核爆级",
          where="simple_indirect_projectile_batch.gd（大半径爆炸/终极武器核爆级）",
          trigger="大半径 AOE / 核爆齐射（同名 3 池轮转防截断）",
-         src="项目内程序合成（v6.42）"),
+         src="OGA OwlishMedia Chunky Explosion · CC0（10-20 换上，5.62s→3.2s 裁+淡出）"),
     dict(file="cast.ogg", cat="combat", comp="施法 / 相位法则",
          where="dream_battle.gd（序章梦战施法特效）",
          trigger="施放相位法则/技能",
-         src="项目内程序合成（正弦扫频）"),
+         src="OGA Bell dings/chimes bell_ding2 · Public Domain（10-20 三轮换上，真薄铃击 shimmer；四轮重切片）"),
     dict(file="hurt.ogg", cat="combat", comp="玩家受伤提示音",
          where="sound_generator.gd:44 合成兜底（_gen_beep_tone 200Hz）",
          trigger="玩家单位受伤兜底",
-         src="项目内程序合成"),
+         src="OGA Grunts: male death and pain 真人痛哼段 · CC0（10-20 三轮换上；四轮输入 seeking 修复+增益）"),
     dict(file="unit_death.ogg", cat="combat", comp="单位阵亡音",
          where="AudioManager._on_unit_died（SignalBus.unit_died，audio_manager.gd:571）",
          trigger="任意单位阵亡（120ms 节流防团灭糊音）",
-         src="项目内程序合成（v26.6 接线，此前零消费）"),
+         src="OGA gorilla-sounds gorilla_roar 真大猩猩吼叫实录 · CC0（10-20 五轮换上；旧自合成版备份 D:/godotplay/_art_backup/sfx_pre_swap_20261020/）"),
 
     # ── SFX 武器类型（12 + 1 火炮开火）：weapon_type 0~11 ──
     dict(file="gun_smg.ogg", cat="weapon", comp="冲锋枪（weapon_type 0）",
@@ -264,7 +267,7 @@ ASSETS = [
     dict(file="rocket_launch.ogg", cat="weapon", comp="火箭弹（weapon_type 3）",
          where="bullet.gd._play_attack_sfx wt3（bullet.gd:1144）；simple_indirect_projectile_batch.gd",
          trigger="火箭弹发射（爆炸最响 vol×1.0）",
-         src="项目内程序合成（低频扫降）"),
+         src="OGA Juhani Junkala 512 Sound Effects rocket_01 · CC0（10-20 换上，2.05s→1.4s 裁剪）"),
     dict(file="gun_pistol.ogg", cat="weapon", comp="手枪（weapon_type 4）",
          where="bullet.gd._play_attack_sfx wt4（bullet.gd:1145）；batch wt4 专属",
          trigger="手枪单位开火（音高 +1.1 清脆）",
@@ -306,32 +309,32 @@ ASSETS = [
     dict(file="wave_start.ogg", cat="event", comp="新波次开始",
          where="AudioManager._on_wave_spawned（SignalBus.wave_spawned，audio_manager.gd:614）",
          trigger="每一波敌兵刷新时",
-         src="项目内程序合成"),
+         src="OGA William Hector Horde war drums loop 实录战鼓 · CC0（10-20 三轮换上）"),
     dict(file="boss_warn.ogg", cat="event", comp="Boss / 本体波警报",
          where="AudioManager._on_boss_wave_started（非 elite 才响，audio_manager.gd:616）；dream_battle.gd",
          trigger="首领/本体波刷新（精英波不吹警笛，防 5 波一响过频）",
-         src="项目内程序合成"),
+         src="Wikimedia Techtonic Civil-defense-siren-waver 真民防警报实录 · Public Domain（10-20 三轮换上；四轮最响窗+增益）"),
     dict(file="master_appear.ogg", cat="event", comp="相位师登场",
          where="AudioManager._on_phase_master_appeared（SignalBus.phase_master_appeared，audio_manager.gd:621）",
          trigger="相位师（PM）单位登场",
-         src="项目内程序合成"),
+         src="Mixkit 901 Apocalyptic stomp impact · Free License 免署名（10-20 二轮换上）"),
     dict(file="base_destroy.ogg", cat="event", comp="基地（相位场驱动器）被摧毁",
          where="AudioManager._on_phase_driver_destroyed（SignalBus.phase_driver_destroyed，audio_manager.gd:622）",
          trigger="我方相位场驱动器被击毁",
-         src="项目内程序合成"),
+         src="Mixkit 1687 Dramatic metal explosion · Free License 免署名（10-20 换上）"),
     dict(file="base_alarm.ogg", cat="event", comp="基地低血量告警",
          where="AudioManager._on_phase_driver_hp_changed_alarm（≤30% 触发，10s 重提醒，audio_manager.gd:683）",
          trigger="相位场驱动器完整度 ≤30%（10s 重提醒，战斗开始复位）",
-         src="项目内程序合成（sound_generator 兜底；无 .ogg 文件，纯运行期合成）",
-         note="无对应 .ogg 资源，SFX_NAMES 在册但走合成兜底——如需独立文件需另生成"),
+         src="Mixkit 269 Achievement bell · Free License 免署名，实录铃击作警铃（10-20 新增文件；sound_generator 合成兜底保留休眠）",
+         note="10-20 新增文件槽：AudioManager 按名加载（ogg 优先）自动命中实生效；sound_generator 合成兜底保留休眠"),
     dict(file="ultimate_ready.ogg", cat="event", comp="大招就绪提示音",
          where="ultimate_cast_bar.gd:233 AudioManager.play_sfx('ultimate_ready', 0.5)",
          trigger="手动模式大招按钮亮起时轻提示（音量 0.5）",
-         src="项目内程序合成（明亮短升调）"),
+         src="Mixkit 900 Bell notification · Free License 免署名，0.7s 铃音（10-20 二轮换上）"),
     dict(file="return_base.ogg", cat="event", comp="回基地转场音",
          where="world_map.gd:1795 / :1814 SignalBus.play_sound.emit('return_base')",
          trigger="世界地图 → 移动基地 转场",
-         src="项目内程序合成（v6.38 记录5#5）"),
+         src="Mixkit 1492 Cinematic whoosh · Free License 免署名（10-20 换上）"),
 
     # ── SFX 养成 / 结算（6）──
     dict(file="blueprint_unlock.ogg", cat="progression", comp="蓝图 / 符文 / 技能树解锁音",
@@ -343,7 +346,7 @@ ASSETS = [
          where="AudioManager._on_enhancement_completed 成功分支（audio_manager.gd:588）；"
                "_on_phase_field_level_up（:634）；dream_battle.gd",
          trigger="卡牌强化/升级成功；相位场升级",
-         src="项目内程序合成"),
+         src="Mixkit 2870 Correct answer tone · Free License 免署名，上扬正反馈（10-20 换上）"),
     dict(file="achievement.ogg", cat="progression", comp="成就解锁 / 势力升级音",
          where="AudioManager._on_achievement_unlocked（audio_manager.gd:600）；"
                "_on_faction_level_up（:632）；truck_base.gd；dream_battle.gd",
@@ -353,15 +356,15 @@ ASSETS = [
          where="AudioManager._on_quest_completed（audio_manager.gd:604）；"
                "_on_task_completed（:610，复用同一音色）",
          trigger="委托任务 / 日常任务完成",
-         src="项目内程序合成"),
+         src="Mixkit 253 Unlock game notification · Free License 免署名（10-20 换上）"),
     dict(file="win.ogg", cat="progression", comp="胜利音",
          where="AudioManager._on_battle_ended player_won=true（audio_manager.gd:579）",
          trigger="战斗胜利（BGM 切换延迟 0.5s 让胜负音先出）",
-         src="项目内程序合成（v6.42）"),
+         src="Mixkit 767 Medieval show fanfare · Free License 免署名，中世纪号角凯旋（10-20 换上）"),
     dict(file="lose.ogg", cat="progression", comp="失败音",
          where="AudioManager._on_battle_ended player_won=false（audio_manager.gd:579）",
          trigger="战斗失败",
-         src="项目内程序合成"),
+         src="Mixkit 2032 Crowd disappointment long boo 真人群倒彩 · Free License 免署名（10-20 五轮换上）"),
 ]
 
 
@@ -427,7 +430,7 @@ def _render(copied_files):
             e["has_file"] = a["file"] in present
             e["note"] = a.get("note", "")
             entries.append(e)
-    missing = [e["file"] for e in entries if not e["has_file"] and e["file"] != "base_alarm.ogg"]
+    missing = [e["file"] for e in entries if not e["has_file"]]
     if missing:
         print("[warn] 台账中有但目录缺失的文件：", missing)
     manifest = dict(
@@ -449,7 +452,7 @@ def _render(copied_files):
         src_html = _esc(e["src"])
         filebadge = "有资源文件" if e["has_file"] else "无文件（纯合成兜底）"
         audio = ('<audio controls preload="none" src="assets/sfx/%s"></audio>' % e["file"]
-                 if e["has_file"] and not e["file"].endswith("base_alarm.ogg") else "")
+                 if e["has_file"] else "")
         note = ('<div class="note">⚠️ %s</div>' % _esc(e["note"])) if e["note"] else ""
         body_rows.append(
             '<div class="row" data-cat="%s" data-file="%s" style="border-left:4px solid %s">'
@@ -507,15 +510,14 @@ def _readme(man):
     lines.append("- `licenses/` — 授权证据（incompetech CC BY 4.0 / kenney CC0 的 LICENSE_EVIDENCE 与 manifest）")
     lines.append("- `source_scripts/` — 生成/换曲管线脚本（重新生成音源的真身代码）\n")
     lines.append("## 资产统计\n")
-    lines.append("- BGM %d 首（Kevin MacLeod / incompetech · CC BY 4.0，逐曲 ISRC 见 licenses/）"
-                 % sum(1 for e in man["entries"] if e["cat"] == "bgm"))
-    lines.append("- 环境音 %d 个（自合成）" % sum(1 for e in man["entries"] if e["cat"] == "ambient"))
-    lines.append("- SFX %d 个（自合成 + 部分 CC0 真枪/导弹剪裁）"
+    lines.append("- BGM 13 首（12 Kevin MacLeod CC BY 4.0 + 1 Juhani Junkala OGA CC0；逐曲 ISRC 见 licenses/）")
+    lines.append("- 环境音 %d 个（OGA CC0 风声，10-20 换上）" % sum(1 for e in man["entries"] if e["cat"] == "ambient"))
+    lines.append("- SFX %d 个（19 自合成 + 26 第三方免署名：Kenney CC0 / OGA CC0·PD / Wikimedia PD / Mixkit Free，10-20 换装批）"
                  % sum(1 for e in man["entries"] if e["cat"] in ("ui", "combat", "weapon", "event", "progression")))
     lines.append("\n## 换机审核步骤\n")
     lines.append("1. 把整个 `audio_review_kit/` 拷到新机器（音源 + 网页 + 凭据 + 脚本一次搬走，不依赖项目 .git）。")
     lines.append("2. 双击 `index.html`：浏览器离线打开即可逐条试听、看使用位置与授权。")
-    lines.append("3. 核对授权：BGM 13 首逐曲 ISRC/SHA256 见 `licenses/incompetech_*/`；SFX 多为自合成（无外部义务），")
+    lines.append("3. 核对授权：BGM 13 首逐曲 ISRC/SHA256 见 `licenses/incompetech_*/`；SFX 45 项 = 19 自合成 + 26 第三方免署名（Kenney CC0 / OGA CC0·PD / Wikimedia PD / Mixkit Free，10-20 换装批），")
     lines.append("   武器九槽 + missile_hum 为 CC0（The Free Firearm Sound Library / Kenney，无署名义务）；")
     lines.append("   Kenney 源包 `licenses/sci-fi-sounds.zip`（missile_hum 出处）已随附。")
     lines.append("\n## 重新生成音源步骤（在新机器，需 Python）\n")
@@ -596,9 +598,9 @@ HTML_TEMPLATE = """<!DOCTYPE html>
       <div class="stat"><div class="n">__SFX__</div><div class="l">SFX（自合成/CC0）</div></div>
       <div class="stat"><div class="n">__AMB__</div><div class="l">环境音</div></div>
     </div>
-    <div class="legend">📄 许可：<b>BGM</b>=Kevin MacLeod / incompetech · CC BY 4.0（逐曲 ISRC 见 licenses/）；
-      <b>武器九槽 + missile_hum</b>=CC0（Free Firearm Sound Library / Kenney）；
-      <b>其余 SFX + 环境音</b>=项目内自合成（无外部授权义务）。</div>
+    <div class="legend">📄 许可：BGM 13 首 = 12 Kevin MacLeod CC BY 4.0 + 1 Juhani Junkala OGA CC0；
+      SFX 45 项 = 19 自合成 + 26 第三方免署名（Kenney CC0 / OGA CC0·PD / Wikimedia PD / Mixkit Free License）；
+      环境音 2 项 = OGA CC0。10-20 换装批逐项哈希/切片见 licenses/ 与 assets/sfx/CREDITS.md。</div>
   </header>
 
   <div class="controls">
