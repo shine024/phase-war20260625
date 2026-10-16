@@ -264,7 +264,7 @@ func _seed_revealed_from_progress() -> void:
 func _refresh_window_hint() -> void:
 	if _window_hint_label == null or not is_instance_valid(_window_hint_label):
 		return
-	if MAP_SCHEME != 11:
+	if MAP_SCHEME != 12:
 		_window_hint_label.visible = false
 		return
 	_window_hint_label.visible = true
@@ -444,11 +444,11 @@ func _style_title() -> void:
 	if title_l:
 		title_l.add_theme_font_size_override("font_size", 24)
 		title_l.add_theme_color_override("font_color", Color(0, 0.94, 1, 1))
-		# 标题随 MAP_SCHEME 切换（6=百灯群岛 / 8=沙漏双界 / 11=黑日战线）
+		# 标题随 MAP_SCHEME 切换（6=百灯群岛 / 8=沙漏双界 / 12=黑日战线）
 		match MAP_SCHEME:
 			8:
 				title_l.text = "— 沙漏双界 · 100 道防线 —"
-			11:
+			12:
 				title_l.text = "— 黑日战线 · 100 关 —"
 			_:
 				title_l.text = "— 百灯群岛 · 100 道防线 —"
@@ -550,7 +550,7 @@ func _build_level_map() -> void:
 	canvas.name = "MapCanvas"
 	# v23.1：方案 11 单屏——custom_minimum_size 必须为 0（DISABLED 滚动模式会把子节点
 	# 最小尺寸算进容器，导致 ScrollContainer 撑到 2560×1440 溢出窗口）
-	canvas.custom_minimum_size = MAP_CANVAS_SIZE if MAP_SCHEME != 11 else Vector2.ZERO
+	canvas.custom_minimum_size = MAP_CANVAS_SIZE if MAP_SCHEME != 12 else Vector2.ZERO
 	canvas.size = MAP_CANVAS_SIZE
 	canvas.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	scroll.add_child(canvas)
@@ -558,14 +558,14 @@ func _build_level_map() -> void:
 	# 1) 黑海底图
 	var bg := TextureRect.new()
 	bg.name = "VoidBase"
-	bg.texture = _tex(MAP_VOID_PATH if MAP_SCHEME != 11 else MAP_DIR + "dawn_dusk_continent.png")
+	bg.texture = _tex(MAP_VOID_PATH if MAP_SCHEME != 12 else MAP_DIR + "dawn_dusk_continent.png")
 	bg.size = MAP_CANVAS_SIZE
 	bg.stretch_mode = TextureRect.STRETCH_SCALE
 	bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	canvas.add_child(bg)
 
 	# 2) 漂浮残骸装饰：仅方案 6/8（太空残骸）；方案 11 定稿手绘图自带细节，不再叠加
-	if MAP_SCHEME != 11:
+	if MAP_SCHEME != 12:
 		_scatter_debris(canvas)
 
 	# v23：方案 11 天光标签随晨昏设定移除（定稿图无此概念）
@@ -895,7 +895,7 @@ static func _ensure_layout() -> void:
 	match MAP_SCHEME:
 		8:
 			_layout_scheme8()
-		11:
+		12:
 			_layout_scheme12()
 		_:
 			_layout_scheme6()
@@ -1405,7 +1405,7 @@ func _process(_delta: float) -> void:
 	# v23.2 单屏自校验：每帧比对 ScrollContainer 实际尺寸与当前缩放，
 	# 偏差超阈值立即重适配——构建期一次性的 fit 若量错/尺寸后来变化，一帧内自愈
 	# v28：目标缩放 = 适配基准 × 用户缩放（滚轮缩放/拖拽平移后不再强拉回整图居中）
-	if MAP_SCHEME != 11 or not _map_built:
+	if MAP_SCHEME != 12 or not _map_built:
 		return
 	# v27.12: 节点引用缓存替代每帧字符串查找——失效（重建换实例/被释放）才重查一次
 	if not is_instance_valid(_proc_scroll):
