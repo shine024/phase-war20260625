@@ -1,7 +1,7 @@
 extends RefCounted
 class_name EnemyPhaseMastersWW1
 
-## 敌方相位师资料 - 一战时代 (enemy_master_001 ~ enemy_master_006)
+## 相位师资料 - 一战时代 (enemy_master_001 ~ enemy_master_006)
 ## 由 enemy_phase_masters.gd 拆分，按时代组织
 ## 所有装备引用均来自 EnemyPhaseEquipment 的有效ID
 

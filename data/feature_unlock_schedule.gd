@@ -85,7 +85,7 @@ const SCHEDULE := {
 	"leaderboard": {
 		"level": 4,
 		"title": "战功榜",
-		"desc": "三大战绩档案：公司势力排名、相位师排名、敌方相位师图鉴。",
+		"desc": "三大战绩档案：公司势力排名、相位师排名、相位师图鉴。",
 	},
 	"hero_archive": {
 		"level": 4,

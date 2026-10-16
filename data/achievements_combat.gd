@@ -214,7 +214,7 @@ const DATA: Dictionary = {
 	"battle_kill_master_all": {
 		"id": "battle_kill_master_all",
 		"name": "相位师终结者",
-		"description": "击败所有30位敌方相位师",
+		"description": "击败所有30位相位师",
 		"category": "challenge",
 		"rarity": "LEGENDARY",
 		"requirements": {"type": "defeat_all_masters", "count": 30},

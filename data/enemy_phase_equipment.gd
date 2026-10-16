@@ -58,7 +58,7 @@ static func _load_json_dict(path: String, fallback: Dictionary) -> Dictionary:
 	var data = parsed.get("data", fallback)
 	return data if typeof(data) == TYPE_DICTIONARY else fallback
 
-## 敌方相位师装备数据：相位仪、平台、武器、能量卡
+## 相位师装备数据：相位仪、平台、武器、能量卡
 
 const GC = preload("res://resources/game_constants.gd")
 
@@ -106,7 +106,7 @@ const _WAR_WEAPON_TYPE_MAP: Dictionary = {
 	"gravity": 9,
 }
 
-## 将敌方相位师装备 ID 转为蓝图库/解析 UI 用的 CardResource（仅展示）
+## 将相位师装备 ID 转为蓝图库/解析 UI 用的 CardResource（仅展示）
 static func get_equipment_blueprint(equipment_id: String) -> CardResource:
 	if equipment_id.is_empty():
 		return null
@@ -138,11 +138,11 @@ static func _card_resource_from_war_platform(d: Dictionary, equipment_id: String
 	var platform_type_val: int = int(_WAR_PLATFORM_TYPE_MAP.get(ptype, 2))
 	c.combat_kind = int(_PLATFORM_TO_COMBAT_KIND.get(platform_type_val, 1))
 	c.energy_cost = 5.0 + float(d.get("level", 5)) * 0.3
-	c.type_line = "平台 — %s／敌方相位师" % String(d.get("faction", ""))
+	c.type_line = "平台 — %s／相位师" % String(d.get("faction", ""))
 	var stats: Dictionary = d.get("stats", {}) as Dictionary
 	c.summary_line = "耐久 %d｜攻击 %d｜移速 %d" % [
 		int(stats.get("hp", 0)), int(stats.get("attack", 0)), int(stats.get("move_speed", 0))]
-	c.description = "由敌方相位师装备数据生成的平台图纸（展示用）。"
+	c.description = "由相位师装备数据生成的平台图纸（展示用）。"
 	c.flavor_text = ""
 	#c.max_weapons = 2
 	#c.weight_capacity = 0
@@ -166,7 +166,7 @@ static func _card_resource_from_war_weapon(d: Dictionary, equipment_id: String) 
 	c.card_type = GC.CardType.COMBAT_UNIT
 	c.weapon_label = wtype
 	c.energy_cost = 4.0 + float(d.get("level", 5)) * 0.25
-	c.type_line = "武器 — %s／敌方相位师" % String(d.get("faction", ""))
+	c.type_line = "武器 — %s／相位师" % String(d.get("faction", ""))
 	# v9.x 修复：武器表 attack_speed 字段实为攻击间隔（秒/次），非攻速。原样展示导致
 	# 语义颠倒（机枪 0.15 显得比火炮 1.5 慢 10 倍）。现换算为真正的攻速（次/秒）= 1/间隔，
 	# 与 CardResource.attack_speed 全项目口径一致（见 enemy_phase_field_driver 1.0/interval 同款）。
@@ -174,7 +174,7 @@ static func _card_resource_from_war_weapon(d: Dictionary, equipment_id: String) 
 	var _atk_rate: float = 1.0 / maxf(0.001, _fire_interval) if _fire_interval > 0.0 else 1.0
 	c.summary_line = "伤害 %d｜攻速 %.2f次/秒｜射程 %d" % [
 		int(d.get("damage", 0)), _atk_rate, int(d.get("range", 0))]
-	c.description = "由敌方相位师装备数据生成的武器图纸（展示用）。"
+	c.description = "由相位师装备数据生成的武器图纸（展示用）。"
 	#c.weight = 1
 	c.era = 0
 	c.combat_kind = 0
@@ -196,10 +196,10 @@ static func _card_resource_from_energy_card(d: Dictionary, equipment_id: String)
 	c.card_type = GC.CardType.ENERGY
 	c.energy_cost = 0.0
 	c.energy_grant = float(d.get("energy_amount", 15))
-	c.type_line = "能量 — %s／敌方相位师" % String(d.get("faction", ""))
+	c.type_line = "能量 — %s／相位师" % String(d.get("faction", ""))
 	c.summary_line = "能量 +%d｜回充 +%.1f" % [
 		int(float(d.get("energy_amount", 0.0))), float(d.get("energy_regen_boost", 0.0))]
-	c.description = "由敌方相位师装备数据生成的充能槽图纸（展示用）。"
+	c.description = "由相位师装备数据生成的充能槽图纸（展示用）。"
 	return c
 
 static func _card_resource_from_phase_instrument(d: Dictionary, equipment_id: String) -> CardResource:

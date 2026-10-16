@@ -13,7 +13,7 @@ var wave_index: int = 0
 ## v8.2: 档位（EnemyLoadoutTiers 四档常量），决定档位系数（1.20/1.30/1.46/1.66）。
 ## 由 make_default_context 按 level 算时代内进度 → get_tier_for_level_progress 填充。
 var tier: int = 1
-## [兼容保留，不再参与 resolve 链] 敌方相位师 stats 字典。产兵侧 apply_phase_master_to_unit_stats 仍可读。
+## [兼容保留，不再参与 resolve 链] 相位师 stats 字典。产兵侧 apply_phase_master_to_unit_stats 仍可读。
 var master_stats: Dictionary = {}
 ## [废弃·恒空] 预留的"我方养成反向影响敌难度"乘区，从未接通，恒返回空字典 → 乘子恒1.0。
 var player_pressure: Dictionary = {}

@@ -1524,7 +1524,7 @@ func _refresh_pause_intel() -> void:
 	# 相位师战状态
 	if BattleManager != null and bool(BattleManager.get("_is_phase_master_battle")):
 		var cfg: Dictionary = BattleManager.get("_phase_master_config")
-		var mname: String = String(cfg.get("name", "敌方相位师"))
+		var mname: String = String(cfg.get("name", "相位师"))
 		var drv: Node = BattleManager.get("_enemy_phase_driver")
 		if drv != null and is_instance_valid(drv) and "hp" in drv and "max_hp" in drv:
 			var mx: float = float(drv.get("max_hp"))

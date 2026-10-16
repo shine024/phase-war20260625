@@ -1037,7 +1037,7 @@ func get_unit_at_position(viewport_pos: Vector2) -> Dictionary:
 			if d < hit_radius and d < best_d:
 				best_d = d
 				best = {"unit": child, "is_player": _resolve_pick_is_player(child)}
-	# 敌方相位师基地挂在战场根节点，不在 EnemyUnits 内
+	# 相位师基地挂在战场根节点，不在 EnemyUnits 内
 	var enemy_driver := get_node_or_null("EnemyPhaseFieldDriver") as Node2D
 	if enemy_driver != null and is_instance_valid(enemy_driver):
 		var dd := viewport_pos.distance_to(enemy_driver.global_position)

@@ -1,6 +1,6 @@
 extends RefCounted
 class_name EnemyMasterSkillTree
-## v18 四源重构·批次3 —— 敌方相位师技能树（派生式 typed 节点）
+## v18 四源重构·批次3 —— 相位师技能树（派生式 typed 节点）
 ##
 ## 来源：原 5 个 enemy_phase_masters_*.gd 的 traits / passive_spells 字段按语义归类迁入
 ## （生成器 tools/gen_enemy_skill_tree.py ← docs/migration_baseline.json，分类规则与

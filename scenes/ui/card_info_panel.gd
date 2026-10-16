@@ -2305,7 +2305,7 @@ func _enemy_master_era_int(cfg: Dictionary) -> int:
 		_:
 			return clampi(floori(float(maxi(int(cfg.get("level", 15)), 5) - 5) / 5.0), 0, 4)
 
-## v6.14: 格式化敌方相位师符文列表为可读字符串（"符文名×稀有度"）
+## v6.14: 格式化相位师符文列表为可读字符串（"符文名×稀有度"）
 func _format_enemy_runes(rune_ids: Array) -> String:
 	if rune_ids.is_empty():
 		return ""
@@ -2331,7 +2331,7 @@ func _format_enemy_runes(rune_ids: Array) -> String:
 				parts.append(rn)
 	return "、".join(parts)
 
-## v7.x: 敌方相位师符文完整显示（与我方 _show_player_phase_driver 对齐）。
+## v7.x: 相位师符文完整显示（与我方 _show_player_phase_driver 对齐）。
 ## 敌方相位仪无 rune_slot_count 硬数据，沿用 _derive_runes 的派生上限 clampi(2+level/10,2,4) 作槽位分母，
 ## 反映"派生时即按此上限选符文"的语义。符文之语用 RunewordMatcher 查激活词。
 ## [return] "N/槽位上限（符文之语：名/名）符文列表"；无符文返回空串
@@ -2374,7 +2374,7 @@ func _enemy_instrument_rarity_zh(rarity: String) -> String:
 		"": return ""
 		_: return rarity
 
-## v7.x: 敌方相位师主动能力+相位仪特殊效果完整显示（用户选"两者都显示"）。
+## v7.x: 相位师主动能力+相位仪特殊效果完整显示（用户选"两者都显示"）。
 ## master.active_spells（带 name/description/cooldown）+ 相位仪 special_effects（字符串ID数组，复用
 ## LeaderboardPresenter._translate_special_tag 56 条翻译表）。两路径共用。
 ## [return] 格式化文本块（多行）；无内容返回空串
@@ -2417,7 +2417,7 @@ func _format_enemy_active_abilities(pm_id: String, inst_id: String) -> String:
 
 func _show_enemy_phase_driver(unit: Node) -> void:
 	var mname: String = str(unit.get("master_name")) if "master_name" in unit else "相位师"
-	if name_label: name_label.text = "敌方相位师基地"
+	if name_label: name_label.text = "相位师基地"
 	if type_label: type_label.text = "【%s】· 相位场驱动器" % mname
 	var cur_hp: float = float(unit.get("hp")) if "hp" in unit else 0.0
 	var mx_hp: float = float(unit.get("max_hp")) if "max_hp" in unit else 1.0
@@ -2630,7 +2630,7 @@ func _show_player_phase_driver(unit: Node) -> void:
 			if cur_master is Dictionary:
 				var mn: String = str((cur_master as Dictionary).get("name", ""))
 				if not mn.is_empty():
-					lines.append("本战敌方相位师：%s" % mn)
+					lines.append("本战相位师：%s" % mn)
 	if desc_label: desc_label.text = _apply_desc_highlight("\n".join(lines))
 	if flavor_label: flavor_label.text = "“守护这片相位场，即是守护军团存续。”"
 	_clear_non_summary_info_sections()
@@ -2714,7 +2714,7 @@ func _show_enemy_construct_unit(unit: Node) -> void:
 	# v6.14.8：战术格填充（敌方产兵构装单位，精确口径与旧 summary 行一致）
 	_fill_combat_cells(stats, cur_hp, 2)
 	_refresh_bottom_row(stats, stats.era, "")
-	var base_desc := _build_unit_description(stats, false, "由敌方相位师基地生产的构装单位，自动推进并攻击我方。")
+	var base_desc := _build_unit_description(stats, false, "由相位师基地生产的构装单位，自动推进并攻击我方。")
 	# v19: 词缀行置顶——产兵词缀挂在 meta elite_affixes（enemy_phase_field_driver 词缀产兵写入）
 	var _sp_affix_tags: Array = []
 	if unit.has_meta("elite_affixes"):
@@ -2919,7 +2919,7 @@ func _show_enemy_phase_master_unit(unit: Node, master_name: String) -> void:
 						else:
 							trait_lines.append("◆ %s" % tn)
 	if name_label:
-		name_label.text = master_disp_name if not master_disp_name.is_empty() else "敌方相位师"
+		name_label.text = master_disp_name if not master_disp_name.is_empty() else "相位师"
 	var type_parts: Array[String] = []
 	if not master_title.is_empty(): type_parts.append(master_title)
 	var faction_names := {"steel": "钢铁", "thunder": "雷霆", "frost": "霜寒", "void": "虚空", "shadow": "暗影", "inferno": "炼狱"}
@@ -2954,7 +2954,7 @@ func _show_enemy_phase_master_unit(unit: Node, master_name: String) -> void:
 	var _pm_vis: int = _enemy_stat_visibility_level(unit)
 	_fill_combat_cells(stats, float(scombat[0]) if scombat.size() > 0 else -1.0, _pm_vis)
 	_refresh_bottom_row(stats, stats.era if stats != null else -1, "")
-	var base_desc := "敌方相位师单位，拥有强大的战斗力。"
+	var base_desc := "相位师单位，拥有强大的战斗力。"
 	if not master_power_text.is_empty():
 		base_desc += "\n" + master_power_text
 	if not trait_lines.is_empty():
@@ -2988,7 +2988,7 @@ func _show_enemy_phase_master_unit(unit: Node, master_name: String) -> void:
 		var abilities_m: String = _format_enemy_active_abilities(pm_id_m, inst_id_m)
 		if not abilities_m.is_empty():
 			base_desc += "\n\n【主动能力】\n" + abilities_m
-	# 敌方相位师的本体属性/装备/符文已在 base_desc 里展示。
+	# 相位师的本体属性/装备/符文已在 base_desc 里展示。
 	if desc_label:
 		desc_label.text = _apply_desc_highlight(base_desc)
 	if flavor_label:

@@ -561,7 +561,7 @@ static func _build_all() -> Array[Dictionary]:
 	out.append(_make_def("pi_special_aegis", "神盾·壁垒之心", "aether_dynamics", false, 6, "phase_master_drop", ["绝对壁垒：防御+22%，受到伤害-12%"], ability_mega_shield(6)))
 	out.append(_make_def("pi_special_nova", "终焉核芯", "nova_arms", false, 7, "phase_master_drop", ["终焉之力：卡牌伤害+22%，攻速+15%"], ability_nuclear_bombardment(7)))
 
-	# v7.x 敌方相位师相位仪迁入（26 款，原 enemy_phase_instruments.json）
+	# v7.x 相位师相位仪迁入（26 款，原 enemy_phase_instruments.json）
 	# is_generic=true：不绑公司布局；faction_id="generic"；acquire_rule="phase_master_drop"
 	# level 字段后补（出现等级，与 star 解耦）
 	# 钢铁系（防御）5 款

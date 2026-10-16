@@ -12,7 +12,7 @@ class_name CardGrowthConfig
 ## 数值锚点：各时代卡池中位基数（实测 2026-08-20），满级累计 ≈ 基数 +45~70%
 ## 校准：tests/player_progression_audit.gd 等级层实测，超带调 ERA_BASE。
 ##
-## 敌方相位师（Lv5-30）等级加成也走本表（v18 的 % 曲线替换，ratio 重校见批次C）。
+## 相位师（Lv5-30）等级加成也走本表（v18 的 % 曲线替换，ratio 重校见批次C）。
 
 ## 等级上限（兵种卡 = 相位师 = 30，全项目统一数字）
 const MAX_CARD_LEVEL: int = 30

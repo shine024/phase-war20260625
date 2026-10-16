@@ -1,5 +1,5 @@
 extends PanelContainer
-## 敌方相位师排行行模板
+## 相位师排行行模板
 ## 节点结构: PanelContainer > MarginContainer > Button > InnerHBox
 ##   InnerHBox > RankLabel, NameLabel, LevelLabel, FactionLabel, DiffLabel, WinrateLabel
 ##

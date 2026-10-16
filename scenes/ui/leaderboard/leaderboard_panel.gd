@@ -37,12 +37,12 @@ var _current_tab: int = 0
 var _faction_data: Array = []  # 公司势力数据（从 FactionSystemManager 读取）
 var _player_data: Array = []   # 相位师排名数据
 
-# 敌方相位师排行榜相关
+# 相位师排行榜相关
 const EnemyPhaseLeaderboard = preload("res://data/enemy_phase_leaderboard.gd")
 const LeaderboardEntry = preload("res://data/leaderboard_entry.gd")
 const EnemyPhaseEquipment = preload("res://data/enemy_phase_equipment.gd")
 var _enemy_leaderboard: EnemyPhaseLeaderboard
-var _current_enemy_tab: int = 0  # 敌方相位师当前子标签
+var _current_enemy_tab: int = 0  # 相位师当前子标签
 var _selected_master_id: String = ""  # 当前选中的相位师ID
 
 # NPC相位师战斗配置 —— 单一真理源在 data/npc_phase_masters.gd（此处仅委托）
@@ -71,10 +71,10 @@ func _ready() -> void:
 		_tab_bar.tab_changed.connect(_on_tab_changed)
 		_tab_bar.add_tab("公司势力排名")
 		_tab_bar.add_tab("相位师排名")
-		_tab_bar.add_tab("敌方相位师")
+		_tab_bar.add_tab("相位师")
 		_tab_bar.current_tab = 0
 
-	# 初始化敌方相位师排行榜
+	# 初始化相位师排行榜
 	_enemy_leaderboard = EnemyPhaseLeaderboard.new()
 
 	# 初始化数据
@@ -284,7 +284,7 @@ func _refresh_player_list() -> void:
 		_list_container.add_child(row)
 		row.setup(player_info)
 
-## 刷新敌方相位师排行榜（场景化：使用 EnemyRowScene 模板）
+## 刷新相位师排行榜（场景化：使用 EnemyRowScene 模板）
 func _refresh_enemy_master_list() -> void:
 	if _list_container == null:
 		return
@@ -294,11 +294,11 @@ func _refresh_enemy_master_list() -> void:
 	# 分割线
 	_list_container.add_child(_make_separator())
 
-	# 获取前15名敌方相位师
+	# 获取前15名相位师
 	var top_entries = _enemy_leaderboard.get_top_entries(15)
 
 	if top_entries.is_empty():
-		_list_container.add_child(_make_empty_hint("暂无敌方相位师数据"))
+		_list_container.add_child(_make_empty_hint("暂无相位师数据"))
 		return
 
 	for entry in top_entries:
@@ -408,7 +408,7 @@ static func _make_stat_label(text: String, font_size: int, color: Color) -> Labe
 # D2: 实现已收口 LeaderboardDetailBuilders（改一处不再两处漂移）
 
 # ══════════════════════════════════════════════════════════════
-# 敌方相位师详情弹窗（低频创建，保留部分 .new() 但使用 _get_skill_panel_style()）
+# 相位师详情弹窗（低频创建，保留部分 .new() 但使用 _get_skill_panel_style()）
 # ══════════════════════════════════════════════════════════════
 
 ## 显示相位师详细信息弹窗

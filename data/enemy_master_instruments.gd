@@ -1,6 +1,6 @@
 extends RefCounted
 class_name EnemyMasterInstruments
-## v18 四源重构·批次2 —— 敌方相位师大招的物理归宿（30 专属相位仪变体）
+## v18 四源重构·批次2 —— 相位师大招的物理归宿（30 专属相位仪变体）
 ##
 ## 来源：原 5 个 enemy_phase_masters_*.gd 每个 master 的 active_spells 字段**原样迁入**，
 ## 本文件是大招数据的唯一真身（master 数据文件中该字段已删除，由本文件生成：

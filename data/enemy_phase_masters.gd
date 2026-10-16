@@ -1,7 +1,7 @@
 extends RefCounted
 class_name EnemyPhaseMasters
-## 统一敌方相位师数据 -- 聚合文件
-## 30位敌方相位师数据按时代拆分到 5 个子文件:
+## 统一相位师数据 -- 聚合文件
+## 30位相位师数据按时代拆分到 5 个子文件:
 ##   enemy_phase_masters_ww1.gd    一战 (master 001-006, Lv5-8)
 ##   enemy_phase_masters_ww2.gd    二战 (master 007-012, Lv10-14)
 ##   enemy_phase_masters_cold.gd   冷战 (master 013-018, Lv16-20)
@@ -9,7 +9,7 @@ class_name EnemyPhaseMasters
 ##   enemy_phase_masters_future.gd 近未来 (master 025-030, Lv26-30)
 ##
 ## 外部 API 完全兼容：
-##   EnemyPhaseMasters.ENEMY_MASTERS        -- 所有敌方相位师数组
+##   EnemyPhaseMasters.ENEMY_MASTERS        -- 所有相位师数组
 ##   EnemyPhaseMasters.get_master_by_id(...)  -- 按 ID 查找
 ##   EnemyPhaseMasters.get_masters_by_level(...) -- 按等级范围查找
 ##   等
@@ -74,7 +74,7 @@ static func _load_json_data(path: String, fallback):
 	var data = parsed.get("data", fallback)
 	return data if typeof(data) == TYPE_ARRAY else fallback
 
-## 按时代获取敌方相位师
+## 按时代获取相位师
 static func get_era_masters(era: int) -> Array:
 	match era:
 		0: return _WW1.ERA_MASTERS    ## WW1
@@ -137,7 +137,7 @@ static func get_era_masters(era: int) -> Array:
 ## - enemy_defense_reduction: float 敌方防御降低百分比
 ## - armor_reflect: int             护甲反射伤害值
 
-## 获取指定等级的敌方相位师
+## 获取指定等级的相位师
 static func get_masters_by_level(min_level: int, max_level: int) -> Array:
 	var result = []
 	for master in ENEMY_MASTERS:
@@ -146,7 +146,7 @@ static func get_masters_by_level(min_level: int, max_level: int) -> Array:
 			result.append(master)
 	return result
 
-## 获取指定势力的敌方相位师
+## 获取指定势力的相位师
 static func get_masters_by_faction(faction: String) -> Array:
 	var result = []
 	for master in ENEMY_MASTERS:
@@ -154,7 +154,7 @@ static func get_masters_by_faction(faction: String) -> Array:
 			result.append(master)
 	return result
 
-## 获取指定难度的敌方相位师
+## 获取指定难度的相位师
 static func get_masters_by_difficulty(difficulty: String) -> Array:
 	var result = []
 	for master in ENEMY_MASTERS:
@@ -162,14 +162,14 @@ static func get_masters_by_difficulty(difficulty: String) -> Array:
 			result.append(master)
 	return result
 
-## 根据ID获取敌方相位师
+## 根据ID获取相位师
 static func get_master_by_id(master_id: String) -> Dictionary:
 	for master in ENEMY_MASTERS:
 		if master.get("id", "") == master_id:
 			return master
 	return {}
 
-## 获取敌方相位师的特性
+## 获取相位师的特性
 ## v18 四源重构·批次3: traits 已物理迁入技能树——字段空时回退技能树数值节点（展示形态兼容）
 static func get_master_traits(master_id: String) -> Array:
 	var master = get_master_by_id(master_id)
@@ -180,7 +180,7 @@ static func get_master_traits(master_id: String) -> Array:
 	var entry: Dictionary = EnemyMasterSkillTree.MASTER_NODES.get(master_id, {})
 	return entry.get("num", []) as Array
 
-## 获取敌方相位师的主动技能
+## 获取相位师的主动技能
 ## v18 四源重构·批次2: active_spells 已物理迁入专属相位仪变体——字段空时回退新真身
 static func get_master_active_spells(master_id: String) -> Array:
 	var master = get_master_by_id(master_id)
@@ -190,7 +190,7 @@ static func get_master_active_spells(master_id: String) -> Array:
 			return sp
 	return EnemyMasterInstruments.get_master_ultimate_spells(master_id)
 
-## 获取敌方相位师的被动技能
+## 获取相位师的被动技能
 ## v18 四源重构·批次3: passive_spells 已物理迁入技能树机制节点——字段空时回退新真身
 static func get_master_passive_spells(master_id: String) -> Array:
 	var master = get_master_by_id(master_id)
@@ -200,7 +200,7 @@ static func get_master_passive_spells(master_id: String) -> Array:
 			return ps
 	return EnemyMasterSkillTree.get_delivered_mech_nodes(master_id)
 
-## 获取敌方相位师的装备配置
+## 获取相位师的装备配置
 static func get_master_equipment(master_id: String) -> Dictionary:
 	var master = get_master_by_id(master_id)
 	if not master.is_empty():
@@ -341,7 +341,7 @@ static func _derive_spawn_sequence(platforms: Array, level: int) -> Array:
 	return seq
 
 
-## 获取敌方相位师的属性
+## 获取相位师的属性
 static func get_master_stats(master_id: String) -> Dictionary:
 	var master = get_master_by_id(master_id)
 	if not master.is_empty():
@@ -382,7 +382,7 @@ static func get_display_level_by_id(master_id: String) -> int:
 		return 15   # 兜底中位
 	return compute_display_level(master)
 
-## 创建敌方相位师实例
+## 创建相位师实例
 static func create_master_instance(master_id: String) -> Dictionary:
 	var master = get_master_by_id(master_id)
 	if master.is_empty():

@@ -1,5 +1,5 @@
 extends Node2D
-## v17f 敌方相位师大招演出真实性审计工具
+## v17f 相位师大招演出真实性审计工具
 ##
 ## 现有 48 格武器族矩阵不覆盖 boss 大招（飞行弹体→落地爆炸的动态多阶段演出）。
 ## 本工具 mock 一个 boss driver + 3 个假玩家单位，直接调 EnemyMasterSkillEngine
@@ -83,7 +83,7 @@ func _build_stage() -> void:
 	bg.size = Vector2(1280, 720)
 	add_child(bg)
 	# boss 参考框（橙红 96px——相位师基地比普通单位大）
-	_make_ref_box(BOSS_POS + Vector2(-48, -96), Color(1.0, 0.45, 0.25, 0.9), "敌方相位师基地(96px)")
+	_make_ref_box(BOSS_POS + Vector2(-48, -96), Color(1.0, 0.45, 0.25, 0.9), "相位师基地(96px)")
 	# 玩家目标参考框（青蓝 64px）×3
 	for i in range(PLAYER_POS.size()):
 		_make_ref_box(PLAYER_POS[i] + Vector2(-32, -64), Color(0.35, 0.85, 1.0, 0.9), "我方单位%d(64px)" % (i + 1))

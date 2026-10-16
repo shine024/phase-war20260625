@@ -102,7 +102,7 @@ static func get_skill_panel_style() -> StyleBox:
 	return load("res://scenes/ui/leaderboard/skill_panel_style.tres") as StyleBox
 
 
-## 翻译敌方相位师装备的 raw 英文 special tag 为中文（4 势力家族 + 梯度后缀）
+## 翻译相位师装备的 raw 英文 special tag 为中文（4 势力家族 + 梯度后缀）
 static func translate_special_tag(tag: String) -> String:
 	# 已知完整翻译表（覆盖 enemy_equipment_specials.gd 全部 56 个 tag）
 	const TAG_ZH: Dictionary = {

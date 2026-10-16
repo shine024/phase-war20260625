@@ -1,6 +1,6 @@
 extends RefCounted
 class_name PhaseMasterGarrison
-## 敌方相位师固定驻守关卡映射表（v7.x）
+## 相位师固定驻守关卡映射表（v7.x）
 ##
 ## 把"15%随机遭遇"改为"20个关卡100%遭遇固定相位师"。
 ## 每个驻守相位师带重新设计的机配卡(platforms)+相位仪(phase_instrument)。

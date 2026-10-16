@@ -23,7 +23,7 @@ var _injected_log: Array = []
 var _toggle_states: Dictionary = {}  # "type:id:side" -> Button，跟踪 toggle 激活状态
 var _phase_btn_player: BaseButton = null  # 当前激活的玩家侧相位仪 toggle 按钮（生产系统每侧只能一个）
 var _phase_btn_enemy: BaseButton = null   # 当前激活的敌方侧相位仪 toggle 按钮
-# 敌方相位师大招区：施放引擎 + 相位师选择器 + 大招行容器
+# 相位师大招区：施放引擎 + 相位师选择器 + 大招行容器
 var _enemy_spell_engine: RefCounted = null
 var _enemy_master_opt: OptionButton = null
 var _enemy_spell_vbox: VBoxContainer = null
@@ -183,7 +183,7 @@ func _populate_effects() -> void:
 		else:
 			_add_phase_toggle_row(title, desc, ab)
 
-	_add_section_title("◆ 敌方相位师大招（51种·按相位师）— 选相位师后点[触发]，对场上我方单位施放")
+	_add_section_title("◆ 相位师大招（51种·按相位师）— 选相位师后点[触发]，对场上我方单位施放")
 	_build_enemy_ultimate_selector()
 
 	_add_section_title("◆ 卡牌周期技能（20种）— 点[触发]立即施放")
@@ -684,7 +684,7 @@ func _collect_phase_defs() -> Array:
 
 
 # ============================================================
-# 敌方相位师大招（v18 批次2 物理迁入 EnemyMasterInstruments 的 51 个专属仪器大招）
+# 相位师大招（v18 批次2 物理迁入 EnemyMasterInstruments 的 51 个专属仪器大招）
 # ============================================================
 
 ## 构建相位师选择器 + 大招行容器（选相位师 → 重建该相位师的大招行）

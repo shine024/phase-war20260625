@@ -58,11 +58,11 @@ func get_faction_data() -> Array:
 func get_npc_data() -> Array:
 	return _data.get_npc_leaderboard()
 
-## 获取敌方相位师排行榜前N名
+## 获取相位师排行榜前N名
 func get_enemy_top_entries(count: int = 15) -> Array:
 	return _enemy_leaderboard.get_top_entries(count)
 
-## 获取敌方相位师详细信息
+## 获取相位师详细信息
 func get_enemy_master_details(master_id: String) -> Dictionary:
 	return _enemy_leaderboard.get_master_details(master_id)
 
@@ -119,9 +119,9 @@ func build_player_row(data: Dictionary) -> Control:
 	row.setup(data)
 	return row
 
-# ── 敌方相位师行构建 ────────────────────────────────────────
+# ── 相位师行构建 ────────────────────────────────────────
 
-## 构建敌方相位师表头行
+## 构建相位师表头行
 func build_enemy_header() -> Control:
 	var container = HBoxContainer.new()
 	container.add_theme_constant_override("separation", 8)
@@ -139,7 +139,7 @@ func build_enemy_header() -> Control:
 
 	return container
 
-## 构建单个敌方相位师行（使用 enemy_row.tscn 模板）
+## 构建单个相位师行（使用 enemy_row.tscn 模板）
 func build_enemy_row(entry: LeaderboardEntry, callback: Callable) -> Control:
 	var row = EnemyRowScene.instantiate()
 	row.setup(entry)
@@ -444,7 +444,7 @@ static func _platform_type_display(type_str: String) -> String:
 		"mage": return "[护卫]"
 		_: return "[%s]" % type_str
 
-## 翻译敌方相位师装备的 raw 英文 special tag 为中文（4 势力家族 + 梯度后缀）
+## 翻译相位师装备的 raw 英文 special tag 为中文（4 势力家族 + 梯度后缀）
 static func _translate_special_tag(tag: String) -> String:
 	return LeaderboardDetailBuilders.translate_special_tag(tag)
 

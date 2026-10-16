@@ -1,7 +1,7 @@
 extends RefCounted
 class_name EnemyPhaseMastersMODERN
 
-## 敌方相位师资料 - 现代时代 (enemy_master_019 ~ enemy_master_024)
+## 相位师资料 - 现代时代 (enemy_master_019 ~ enemy_master_024)
 ## 由 enemy_phase_masters.gd 拆分，按时代组织
 ## 所有装备引用均来自 EnemyPhaseEquipment 的有效ID
 

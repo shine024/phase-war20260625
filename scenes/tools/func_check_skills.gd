@@ -5,7 +5,7 @@ extends Node
 ## B 玩家改造：安装 → 属性通道（防御 flat+pct / 攻速武器槽同步）
 ## C 势力技能：解锁 → 激活效果 → 注入函数数值
 ## D 敌方配装（敌侧改造）：全表数据有效性 + 通道数值
-## E 敌方相位师：30 位战力计算 + 套路识别 + 效果键全被演出引擎识别
+## E 相位师：30 位战力计算 + 套路识别 + 效果键全被演出引擎识别
 ## 运行：godot --headless --rendering-driver opengl3 --path . res://scenes/tools/func_check_skills.tscn
 
 const UST := preload("res://resources/unit_stats_table.gd")
@@ -170,7 +170,7 @@ func _run() -> void:
 	var st_post: UnitStats = UST.build_stats_from_card(inf_card, 0)
 	check("G2 轻装暴击 +0.10", fp1b_ok and _approx(float(st_post.crit_chance), minf(0.75, float(st_pre.crit_chance) + 0.10), 0.001),
 		"%.3f → %.3f (ok=%s)" % [float(st_pre.crit_chance), float(st_post.crit_chance), fp1b_ok])
-	# G3 敌方相位师 trait 数值落地（master_001 max_hp 2900 → ×1.435 clamp 前）
+	# G3 相位师 trait 数值落地（master_001 max_hp 2900 → ×1.435 clamp 前）
 	var ESR := preload("res://data/enemy_stat_resolver.gd")
 	var m1: Dictionary = EPM.get_master_by_id("enemy_master_001")
 	var g3s: UnitStats = UST.build_stats_from_card(card_g, 2)
@@ -230,7 +230,7 @@ func _run() -> void:
 	check("D4 敌方通道 level2 flat25+pct12 → 140", _approx(float(applied.get("defense_armor", 0)), 140.0, 1.5),
 		"100 → %.1f" % float(applied.get("defense_armor", 0)))
 
-	# ═══ E 敌方相位师 ═══
+	# ═══ E 相位师 ═══
 	var masters: Array = EPM.ENEMY_MASTERS
 	check("E1 相位师 30 位", masters.size() == 30, str(masters.size()))
 	var engine: RefCounted = EMSE.new()

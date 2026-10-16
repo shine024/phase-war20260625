@@ -15,7 +15,7 @@ const RunewordMatcher = preload("res://managers/runeword_matcher.gd")
 const BattleSlotGrid = preload("res://scenes/battlefield/battle_slot_grid.gd")
 const _LayoutRef = preload("res://scripts/card_grid_battle_layout.gd")  # v26.2: 每关布局激活态
 const EnemyAffixes = preload("res://data/enemy_affixes.gd")
-# v9.0: 敌方相位师固定套路系统（补兵规则按套路走）
+# v9.0: 相位师固定套路系统（补兵规则按套路走）
 const MasterPatterns = preload("res://data/enemy_phase_master_patterns.gd")
 # v18 四源重构·批次2: boss 大招真身（原 master_config.active_spells 已物理迁入）
 const EnemyMasterInstruments = preload("res://data/enemy_master_instruments.gd")
@@ -1241,9 +1241,9 @@ func _on_fatigue_tier_changed(tier: int) -> void:
 		return
 	var msg: String = ""
 	match tier:
-		1: msg = "敌方相位师兵力告急，出兵减缓！"
-		2: msg = "敌方相位师兵力枯竭，出兵大幅减缓！"
-		3: msg = "敌方相位师弹尽粮绝，停止出兵！集中火力攻击！"
+		1: msg = "相位师兵力告急，出兵减缓！"
+		2: msg = "相位师兵力枯竭，出兵大幅减缓！"
+		3: msg = "相位师弹尽粮绝，停止出兵！集中火力攻击！"
 		_: return
 	if not msg.is_empty():
 		SignalBus.show_toast.emit(msg)

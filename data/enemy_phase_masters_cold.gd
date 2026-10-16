@@ -1,7 +1,7 @@
 extends RefCounted
 class_name EnemyPhaseMastersCOLDWAR
 
-## 敌方相位师资料 - 冷战时代 (enemy_master_013 ~ enemy_master_018)
+## 相位师资料 - 冷战时代 (enemy_master_013 ~ enemy_master_018)
 ## 由 enemy_phase_masters.gd 拆分，按时代组织
 ## 所有装备引用均来自 EnemyPhaseEquipment 的有效ID
 
