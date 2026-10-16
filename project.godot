@@ -46,6 +46,7 @@ CardEnhancementManager="*res://managers/card_enhancement_manager.gd"
 InstanceRegistry="*res://managers/instance_registry.gd"
 PhaseMasterSkillManager="*res://managers/phase_master_skill_manager.gd"
 TutorialProgressionManager="*res://managers/tutorial_progression_manager.gd"
+SupplyNetworkManager="*res://managers/supply_network_manager.gd"
 BattleSpectacle="*res://managers/battle/battle_spectacle.gd"
 ColorGrade="*res://managers/color_grade.gd"
 TraceLog="*res://scripts/systems/trace_log.gd"
@@ -63,6 +64,7 @@ window/size/viewport_width=1280
 window/size/viewport_height=720
 window/stretch/mode="canvas_items"
 window/stretch/aspect="expand"
+window/dpi/allow_hidpi=true
 
 [editor_plugins]
 
@@ -71,6 +73,12 @@ enabled=PackedStringArray("res://addons/agent_tools/plugin.cfg", "res://addons/g
 [gui]
 
 theme/custom="res://resources/default_theme.tres"
+
+[importer_defaults]
+
+texture={
+"detect_3d/compress_to": 0
+}
 
 [rendering]
 

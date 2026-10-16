@@ -240,6 +240,11 @@ signal bunker_room_state_changed(room_id: String, new_state: int)
 signal bunker_day_ended(day: int)
 # v26.19 卡车行军状态变化（启程/到站/回充/引擎升级）——地图燃料 chip/卡车标记徽标/基地 caption 刷新
 signal truck_travel_changed()
+# v6.71 动态补给网三信号：补给网状态变化（陷落/降级/回溯/兑换结果）/
+# 区域威胁变化（日结增速/战斗降压）/ 评分记录（考评覆盖式记最近一次）
+signal supply_state_changed(level: int)
+signal threat_changed(region: int)
+signal grade_recorded(level: int, grade: String)
 # 英雄档案解锁（P3：击败相位师掉碎片集齐后发）——纪念墙点灯
 signal hero_archive_unlocked(master_id: String)
 # v34 渐进解锁：关卡进度跨过节奏表阈值（LevelProgressManager 发）——

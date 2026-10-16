@@ -57,6 +57,8 @@ const CRITICAL_MANAGER_LOADS: Array = [
 	["/root/IntelManual", "intel_manual"],
 	# v8.x: 相位师技能树（get_active_effects 被战斗实时查询，需 critical）
 	["/root/PhaseMasterSkillManager", "phase_master_skill"],
+	# v6.71: 动态补给网（day_ended 时基依赖其在树；威胁/陷落/评分/兑换/游猎）
+	["/root/SupplyNetworkManager", SaveConstants.SK_SUPPLY_NETWORK],
 	# v25.3: ModificationRegistry 解锁集存档段已删（整链退役，旧档 mod_unlock_state key 静默跳过）
 ]
 const DEFERRED_MANAGER_LOADS: Array = [
@@ -99,6 +101,8 @@ const CRITICAL_RESETTABLE_MANAGERS: Array[String] = [
 	"ManufactureManager",
 	# v6.65 记录6#3: 黑门/渗透（新游戏清 gate_cleared_once/incursions/周封顶；reset_state 全清）
 	"EndlessBlackgateManager",
+	# v6.71: 动态补给网（新游戏全清威胁/陷落/评分/兑换/游猎；reset_state 分支已排在 load_state 之前——v6.65 教训）
+	"SupplyNetworkManager",
 ]
 const DEFERRED_RESET_BATCH_SIZE := 4
 
@@ -773,6 +777,8 @@ func save_game() -> bool:
 	# gate_cleared_once/incursions/cp_* 全部重启丢失）。ensure 后收集，与读侧同键。
 	ManagerLazyLoader.ensure_loaded("endless")
 	_collect_manager_state(data, "/root/EndlessBlackgateManager", SaveConstants.SK_ENDLESS_BLACKGATE)
+	# v6.71: 动态补给网（autoload 非懒加载，节点常在；威胁/陷落/评分/兑换/游猎）
+	_collect_manager_state(data, "/root/SupplyNetworkManager", SaveConstants.SK_SUPPLY_NETWORK)
 	_collect_noncritical_save_data(data, now_ms)
 	var gmgr: Node = get_node_or_null("/root/GameManager")
 	# 保存前同步 current_level：确保与 LevelProgressManager.max_unlocked_level 一致

@@ -2,7 +2,7 @@ class_name SaveMigration
 extends RefCounted
 ## 存档迁移、校验、清洗工具（从 save_manager.gd 提取）
 
-const SAVE_SCHEMA_VERSION := 9
+const SAVE_SCHEMA_VERSION := 10
 const DEBUG_LOG := false
 
 const SaveMigrationV4 = preload("res://scripts/systems/save_migration_v4.gd")
@@ -11,6 +11,7 @@ const SaveMigrationV6 = preload("res://scripts/systems/save_migration_v6.gd")
 const SaveMigrationV7 = preload("res://scripts/systems/save_migration_v7.gd")
 const SaveMigrationV8 = preload("res://scripts/systems/save_migration_v8.gd")
 const SaveMigrationV9 = preload("res://scripts/systems/save_migration_v9.gd")
+const SaveMigrationV10 = preload("res://scripts/systems/save_migration_v10.gd")
 
 ## 存档数据迁移（链式执行：逐步从 from_version 升级到 SAVE_SCHEMA_VERSION）
 static func migrate_save_data(data: Dictionary, from_version: int, debug_log: bool = false) -> void:
@@ -52,6 +53,10 @@ static func migrate_save_data(data: Dictionary, from_version: int, debug_log: bo
 				SaveMigrationV9.migrate_v8_to_v9(data, debug_log)
 				ver = 9
 				data[SaveConstants.SK_SCHEMA_VERSION] = 9
+			9:  # v9 → v10: 动态补给网（supply_network 段默认值 + level_stars 折算初始评分）
+				SaveMigrationV10.migrate_v9_to_v10(data, debug_log)
+				ver = 10
+				data[SaveConstants.SK_SCHEMA_VERSION] = 10
 			_:  # 未知版本，停止迁移
 				push_warning("Unknown save schema version: %d" % ver)
 				break

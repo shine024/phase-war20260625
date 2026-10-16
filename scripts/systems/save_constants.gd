@@ -57,4 +57,6 @@ const SK_MANUFACTURE: String = "manufacture_state"
 # v6.65 记录6#3: 黑门/渗透存档键（best_score/周星髓/入场次数/gate_cleared_once/incursions/cp_* 分段）
 # v27 起读档侧在册但写侧从未收集——进度重启全丢，本键补齐写侧。
 const SK_ENDLESS_BLACKGATE: String = "endless_blackgate"
+# v6.71 动态补给网存档键（十区域威胁/陷落降级回溯态/逐关最近评分/兑换 pity/迷失池/游猎状态）
+const SK_SUPPLY_NETWORK: String = "supply_network"
 # v25.3: SK_MOD_UNLOCK_STATE 已随账号解锁集退役删除（旧档 mod_unlock_state key 静默跳过）
