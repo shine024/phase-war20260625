@@ -68,6 +68,7 @@ const HOTSPOTS := {
 		{"r": [0.470, 0.180, 0.174, 0.090], "name": "资料柜", "hint": "图鉴·收藏档案", "kind": "panel", "key": "collection"},
 		{"r": [0.398, 0.180, 0.067, 0.100], "name": "电台", "hint": "势力联络", "kind": "panel", "key": "faction"},
 		{"r": [0.792, 0.250, 0.130, 0.070], "name": "战功板", "hint": "战功记录", "kind": "panel", "key": "leaderboard"},
+		{"r": [0.792, 0.160, 0.130, 0.080], "name": "补给中枢", "hint": "补给网·遗物·名册", "kind": "panel", "key": "supply_network"},
 		{"r": [0.852, 0.327, 0.080, 0.080], "name": "告示板", "hint": "车长手册", "kind": "panel", "key": "help"},
 	],
 	"era2": [
@@ -87,6 +88,7 @@ const HOTSPOTS := {
 		{"r": [0.465, 0.150, 0.275, 0.085], "name": "资料柜", "hint": "图鉴·收藏档案", "kind": "panel", "key": "collection"},
 		{"r": [0.394, 0.150, 0.066, 0.100], "name": "电台", "hint": "势力联络", "kind": "panel", "key": "faction"},
 		{"r": [0.780, 0.150, 0.130, 0.060], "name": "战功板", "hint": "战功记录", "kind": "panel", "key": "leaderboard"},
+		{"r": [0.780, 0.218, 0.130, 0.078], "name": "补给中枢", "hint": "补给网·遗物·名册", "kind": "panel", "key": "supply_network"},
 		{"r": [0.830, 0.300, 0.085, 0.090], "name": "告示板", "hint": "车长手册", "kind": "panel", "key": "help"},
 	],
 	"era3": [
@@ -106,6 +108,7 @@ const HOTSPOTS := {
 		{"r": [0.584, 0.290, 0.097, 0.095], "name": "档案屏", "hint": "图鉴·收藏档案", "kind": "panel", "key": "collection"},
 		{"r": [0.431, 0.280, 0.044, 0.100], "name": "通讯阵列", "hint": "势力联络", "kind": "panel", "key": "faction"},
 		{"r": [0.751, 0.290, 0.085, 0.090], "name": "战功屏", "hint": "战功记录", "kind": "panel", "key": "leaderboard"},
+		{"r": [0.751, 0.175, 0.085, 0.090], "name": "补给中枢", "hint": "补给网·遗物·名册", "kind": "panel", "key": "supply_network"},
 		{"r": [0.838, 0.670, 0.075, 0.080], "name": "电子告示牌", "hint": "车长手册", "kind": "panel", "key": "help"},
 	],
 	"era4": [
@@ -125,6 +128,7 @@ const HOTSPOTS := {
 		{"r": [0.412, 0.330, 0.079, 0.080], "name": "全息档案柜", "hint": "图鉴·收藏档案", "kind": "panel", "key": "collection"},
 		{"r": [0.254, 0.300, 0.088, 0.080], "name": "外交全息台", "hint": "势力联络", "kind": "panel", "key": "faction"},
 		{"r": [0.565, 0.300, 0.127, 0.080], "name": "战功光墙", "hint": "战功记录", "kind": "panel", "key": "leaderboard"},
+		{"r": [0.700, 0.290, 0.096, 0.080], "name": "补给中枢", "hint": "补给网·遗物·名册", "kind": "panel", "key": "supply_network"},
 		{"r": [0.806, 0.290, 0.070, 0.080], "name": "全息手册架", "hint": "车长手册", "kind": "panel", "key": "help"},
 	],
 	"era5": [
@@ -144,6 +148,7 @@ const HOTSPOTS := {
 		{"r": [0.444, 0.320, 0.112, 0.085], "name": "相位档案柜", "hint": "图鉴·收藏档案", "kind": "panel", "key": "collection"},
 		{"r": [0.392, 0.300, 0.047, 0.100], "name": "相位外交台", "hint": "势力联络", "kind": "panel", "key": "faction"},
 		{"r": [0.565, 0.260, 0.187, 0.080], "name": "战功光廊", "hint": "战功记录", "kind": "panel", "key": "leaderboard"},
+		{"r": [0.760, 0.240, 0.120, 0.080], "name": "补给中枢", "hint": "补给网·遗物·名册", "kind": "panel", "key": "supply_network"},
 		{"r": [0.895, 0.320, 0.080, 0.080], "name": "相位手册架", "hint": "车长手册", "kind": "panel", "key": "help"},
 	],
 }
@@ -180,6 +185,8 @@ const PANEL_SCENES := {
 	## 碎片数据链（BunkerManager.record_hero_fragment）与基地场景无关，玩家碎片一直在累积只是无处看。
 	"hero_archive": "res://scenes/bunker/ui/hero_archive_panel.gd",
 	"memorial": "res://scenes/bunker/ui/memorial_wall.gd",
+	# v6.71 动态补给网（M3.3）：补给中枢——补给网总览/遗物架/迷失名册（纯 .gd 面板）。
+	"supply_network": "res://scenes/ui/supply_network_panel.gd",
 }
 
 const RES_LABELS := [
@@ -198,6 +205,7 @@ const PANEL_INTROS := {
 	"affix": ["词条工坊", "词条=卡牌升到 Lv5/10/15… 里程碑时自动获得的附加能力（此处也是批量重随/锁定它们的工位——普通卡耗纳米+晶体，星冥卡耗星髓）。"],
 	"hero_archive": ["同伴档案", "30 位牺牲相位师的生平与遗言——击败驻守相位师，残核归返纪念墙长明。"],
 	"memorial": ["纪念墙", "30 盏灯对应 30 位牺牲相位师；灯亮可点击读名。"],
+	"supply_network": ["补给中枢", "动态补给网态势：十区域威胁、陷落与收复、遗物收集，以及迷失在黑门里的战友名册。"],
 }
 const ERA_NAMES := ["I 一战", "II 二战", "III 冷战", "IV 现代", "V 近未来"]
 

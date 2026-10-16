@@ -26,6 +26,8 @@ func test_schedule_levels_mild_curve() -> void:
 	assert_int(FUS.unlock_level_for("affix")).is_equal(12)
 	for key in _SIDE_SIX:
 		assert_int(FUS.unlock_level_for(key)).is_equal(4)
+	# v6.71 补给中枢 L25
+	assert_int(FUS.unlock_level_for("supply_network")).is_equal(25)
 	# 未知键 = 常开不设防
 	assert_int(FUS.unlock_level_for("backpack")).is_equal(0)
 	assert_bool(FUS.has_key("backpack")).is_false()
@@ -49,8 +51,13 @@ func test_open_set_by_max_level() -> void:
 	assert_int(at5.size()).is_equal(9)
 	assert_bool(at5.has("modification")).is_false()
 	assert_bool(at5.has("afk")).is_true()
-	# L15：全部 13 键开放
-	assert_int(FUS.unlocked_keys_at_max_level(15).size()).is_equal(FUS.SCHEDULE.size())
+	# L15：全表开放除 supply_network（v6.71 补给中枢 L25）
+	var late_keys: int = FUS.keys_unlocked_at(25).size()
+	assert_int(FUS.unlocked_keys_at_max_level(15).size()).is_equal(FUS.SCHEDULE.size() - late_keys)
+	assert_bool(FUS.unlocked_keys_at_max_level(15).has("supply_network")).is_false()
+	# L25：补给中枢入列 → 全表开放
+	assert_int(FUS.unlocked_keys_at_max_level(25).size()).is_equal(FUS.SCHEDULE.size())
+	assert_bool(FUS.unlocked_keys_at_max_level(25).has("supply_network")).is_true()
 	# keys_unlocked_at：L2 恰好新开 evolution+intelligence；L4 恰好新开旁路六件；L6 恰好新开 modification
 	var fresh2: Array = FUS.keys_unlocked_at(2)
 	assert_int(fresh2.size()).is_equal(2)
