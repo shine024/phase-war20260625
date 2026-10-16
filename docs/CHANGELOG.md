@@ -10027,3 +10027,46 @@ v6.48 挂账的其余批次品红边晕（attack 26 家 + idle 4 家，分属 ro
 PASS + base_alarm 按名命中 + manifest 时长抽查；kit 侧 60/60 哈希与项目 sfx 逐一比对一致。
 `tools/build_audio_review_kit.py` 台账同步 29 槽来源后重生成项目侧 `audio_review_kit/`
 （60 行全带播放器，base_alarm 特例清理）。
+
+## v6.70（2026-10-15）贴图导入无损修复批——背景/特效 169 张画质回滚 + detect_3d 复发锁 + hidpi
+
+背景：用户实机主诉「各关卡原是高清背景，现在看着质量很差」。排查三层根因：
+
+① `assets/backgrounds` **103/108 张 .import 被改为 VRAM 有损压缩**（compress/mode=2+
+   mipmaps，疑编辑器 Import 面板误批量套预设；同目录 5 张漏网幸存者=mode=0 无损，
+   为原状铁证；台账零记录）。10-12 换机全量重导入把有损 .ctex 烘焙出来后才显形
+   （全部 .import/.ctex 时间戳 10-12 00:09~01:02，与主诉时间线吻合）。
+② `assets/effects` 7 目录 **66 张同病**（explosion_frames/nuclear/spell_burst/dot/
+   ultimate_projectiles/omega_platform 全目录 + weapons_realistic 19/143，同目录
+   其余 124 张无损=基准反证）；其中 **6 张最高频命中特效另被 process/size_limit=128
+   降采样**（炮击命中/枪口焰、爆炸/霰弹/轻武器/狙击命中）——1024² 源图砍到 128²=8 倍模糊。
+③ **复发机制实锤**：弹道/弹壳/蜂群单位走 QuadMesh（3D 图元）渲染，Godot detect_3d
+   会在编辑器跑游戏时把被 3D 图元画过的贴图自动重导入 VRAM 压缩——特效目录当初即此机制损坏。
+
+**修复**：
+- 103 背景 + 66 特效恢复无损基准（compress/mode=0 + mipmaps 关 + size_limit=0），
+  重导入烘焙；改前备份 `.godot/bg_import_settings_backup_20261015/`（103 份）与
+  `.godot/fx_import_settings_backup_20261015/`（66 份，可随缓存清理——正确态由回归锁锁定）。
+- **复发锁**：全项目 2978 张贴图 `detect_3d/compress_to` 1→0（改前 tar 快照
+  `.godot/import_backup_pre_detect3d_20261015.tar`）+ project.godot 新增
+  `[importer_defaults] texture={"detect_3d/compress_to": 0}`（未来新资产默认不压）。
+- `display/window/dpi/allow_hidpi=true`：高缩放显示器原生分辨率渲染（100% 缩放零变化；
+  125%/150% 全屏显著更锐；回滚一行）。
+
+**验证**（解码+真渲染双链）：
+- 解码实测：被压背景 PSNR 仅 47~50dB（无损对照 99dB），放大目检雾气压平/火光压暗；
+  修复后 108 张背景**逐像素一致**（99dB / maxDiff=0）；artillery_impact 恢复 1024² 全尺寸。
+- 全量 sweep 298 张：背景零差异；特效仅 alpha<32 边缘 fix_alpha_border 防黑边预处理
+  差异，alpha 加权可见误差 ≤0.066/255（不足一个灰级的二十分之一）且从未动过的
+  124 张原生无损文件行为完全相同=引擎默认不可见行为，保留勿「修」。
+- 真渲染目检：GPU 管线截图（山脊/废墟/铁丝网/草地全清晰）；战斗全链实拍
+  `tests/_tmp_ui_battle_shot.tscn`（hidpi 开：载档→L20→胜利结算，布局零叠错+零脚本
+  错误；hidpi 关对照组 Lambda 报错 93>59，证明报错为探针时序噪音与设置无关）；
+  标题屏冒烟零脚本错误。
+- **回归锁 `tests/unit/systems/test_texture_import_policy.gd`** 4 用例全绿：背景无损/
+  特效无损/全库无 VRAM+size_limit+detect3d/project.godot 两设置。
+
+**判别教训**：①`assets/sfx` 两处 compress/mode=2 是 WAV 的 QOA 音频压缩选项，与纹理
+无关，勿顺手改；②`.import` 不入 git——跨机器/重导入后资产设置漂移无 git 历史可查，
+只能靠幸存者对照+回归锁兜底；③无损 ctex 的解码差异先按 alpha 通道分层看：alpha 通道
+逐像素一致且差异全在近透明边缘=防黑边预处理（不可见），alpha 本身有差异=真压缩损伤。

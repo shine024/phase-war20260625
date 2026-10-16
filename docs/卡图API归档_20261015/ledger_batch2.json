@@ -1,0 +1,262 @@
+[
+ {
+  "no": "041",
+  "uid": "ww1_boss_av7",
+  "name": "圣沙蒙坦克",
+  "rebuilt": true,
+  "prompt": "STRICTLY a pure 2D side profile silhouette view, absolutely NO front view, NO three-quarter view, flat orthographic game sprite, single subject only centered, fully colored military illustration in riveted grey-blue steel with mud-splattered tracks and rust streaks: a World War I French Saint-Chamond heavy tank facing left, one long overhanging hull with a sloped front glacis, a short 75mm gun in the front plate pointing left, a small top cupola, exposed coil springs and tracks matte painting style, detailed weathering and surface texture, complex dramatic lighting with rim light from top-left, solid flat magenta #FF00FF background ONLY, the background is one perfectly uniform flat color with no gradients and no lighting falloff, centered composition, full body fitting in frame with generous empty margin, NO text, NO watermark, NO ground, NO shadow, NO scene background",
+  "raw": "docs/卡图API重生成_20261014/raw/041·圣沙蒙坦克.png",
+  "cut": "docs/卡图API重生成_20261014/cut/041·圣沙蒙坦克.png",
+  "content_frac": 0.84
+ },
+ {
+  "no": "053",
+  "uid": "cold_inf_spetsnaz_e",
+  "name": "特种部队",
+  "rebuilt": true,
+  "prompt": "STRICTLY a pure 2D side profile silhouette view, absolutely NO front view, NO three-quarter view, flat orthographic game sprite, single subject only centered, fully colored military illustration in dark digital-camo fatigues with black tactical webbing, cloth folds and gear straps clearly painted: a modern special forces operator aiming an AK-105 carbine with both hands, the muzzle level and pointing toward the left edge matte painting style, detailed weathering and surface texture, complex dramatic lighting with rim light from top-left, solid flat magenta #FF00FF background ONLY, the background is one perfectly uniform flat color with no gradients and no lighting falloff, centered composition, full body fitting in frame with generous empty margin, NO text, NO watermark, NO ground, NO shadow, NO scene background",
+  "raw": "docs/卡图API重生成_20261014/raw/053·特种部队.png",
+  "cut": "docs/卡图API重生成_20261014/cut/053·特种部队.png",
+  "content_frac": 0.605
+ },
+ {
+  "no": "056",
+  "uid": "mod_inf_marine",
+  "name": "海军陆战队",
+  "rebuilt": true,
+  "prompt": "STRICTLY a pure 2D side profile silhouette view, absolutely NO front view, NO three-quarter view, flat orthographic game sprite, single subject only centered, fully colored military illustration in woodland MARPAT digital camo with tan tactical gear, cloth folds and pouch details clearly painted: a modern marine in a combat helmet holding an M16A4 rifle at the ready, the muzzle level and pointing toward the left edge matte painting style, detailed weathering and surface texture, complex dramatic lighting with rim light from top-left, solid flat magenta #FF00FF background ONLY, the background is one perfectly uniform flat color with no gradients and no lighting falloff, centered composition, full body fitting in frame with generous empty margin, NO text, NO watermark, NO ground, NO shadow, NO scene background",
+  "raw": "docs/卡图API重生成_20261014/raw/056·海军陆战队.png",
+  "cut": "docs/卡图API重生成_20261014/cut/056·海军陆战队.png",
+  "content_frac": 0.576
+ },
+ {
+  "no": "057",
+  "uid": "mod_air_technical_e",
+  "name": "皮卡武装",
+  "rebuilt": true,
+  "prompt": "STRICTLY a pure 2D side profile silhouette view, absolutely NO front view, NO three-quarter view, flat orthographic game sprite, single subject only centered, fully colored military illustration in olive-green truck paint with dusty tan weathering and worn bed rails: an armed technical pickup truck facing left, one heavy machine gun ring-mounted in the open cargo bed pointing left, spare tyres standing in the bed matte painting style, detailed weathering and surface texture, complex dramatic lighting with rim light from top-left, solid flat magenta #FF00FF background ONLY, the background is one perfectly uniform flat color with no gradients and no lighting falloff, centered composition, full body fitting in frame with generous empty margin, NO text, NO watermark, NO ground, NO shadow, NO scene background",
+  "raw": "docs/卡图API重生成_20261014/raw/057·皮卡武装.png",
+  "cut": "docs/卡图API重生成_20261014/cut/057·皮卡武装.png",
+  "content_frac": 0.84
+ },
+ {
+  "no": "059",
+  "uid": "mod_arty_mlrs_e",
+  "name": "火箭炮车",
+  "rebuilt": true,
+  "prompt": "STRICTLY a pure 2D side profile silhouette view, absolutely NO front view, NO three-quarter view, flat orthographic game sprite, single subject only centered, fully colored military illustration in olive-green and gunmetal with worn paint edges: a tracked self-propelled multiple rocket launcher facing left, one raised pod cluster of rocket tubes on the rear bed angled up-left, boxy armored cab at the front matte painting style, detailed weathering and surface texture, complex dramatic lighting with rim light from top-left, solid flat magenta #FF00FF background ONLY, the background is one perfectly uniform flat color with no gradients and no lighting falloff, centered composition, full body fitting in frame with generous empty margin, NO text, NO watermark, NO ground, NO shadow, NO scene background",
+  "raw": "docs/卡图API重生成_20261014/raw/059·火箭炮车.png",
+  "cut": "docs/卡图API重生成_20261014/cut/059·火箭炮车.png",
+  "content_frac": 0.84
+ },
+ {
+  "no": "060",
+  "uid": "mod_inf_delta_e",
+  "name": "三角洲部队",
+  "rebuilt": true,
+  "prompt": "STRICTLY a pure 2D side profile silhouette view, absolutely NO front view, NO three-quarter view, flat orthographic game sprite, single subject only centered, fully colored military illustration in tan combat gear with black balaclava and pouches, cloth folds and strap buckles clearly painted: a Delta Force operator aiming an M4 carbine fitted with an optic, the muzzle level and pointing toward the left edge matte painting style, detailed weathering and surface texture, complex dramatic lighting with rim light from top-left, solid flat magenta #FF00FF background ONLY, the background is one perfectly uniform flat color with no gradients and no lighting falloff, centered composition, full body fitting in frame with generous empty margin, NO text, NO watermark, NO ground, NO shadow, NO scene background",
+  "raw": "docs/卡图API重生成_20261014/raw/060·三角洲部队.png",
+  "cut": "docs/卡图API重生成_20261014/cut/060·三角洲部队.png",
+  "content_frac": 0.658
+ },
+ {
+  "no": "064",
+  "uid": "fut_air_drone",
+  "name": "无人机群",
+  "rebuilt": true,
+  "prompt": "STRICTLY a pure 2D side profile silhouette view, absolutely NO front view, NO three-quarter view, flat orthographic game sprite, single subject only centered, fully colored military illustration in dark-grey composite with glowing cyan sensor strips: a swarm of four small futuristic combat drones flying in a loose staggered formation heading left, sleek delta stealth shapes with glowing cyan sensor eyes, each drone complete matte painting style, detailed weathering and surface texture, complex dramatic lighting with rim light from top-left, solid flat magenta #FF00FF background ONLY, the background is one perfectly uniform flat color with no gradients and no lighting falloff, centered composition, full body fitting in frame with generous empty margin, NO text, NO watermark, NO ground, NO shadow, NO scene background",
+  "raw": "docs/卡图API重生成_20261014/raw/064·无人机群.png",
+  "cut": "docs/卡图API重生成_20261014/cut/064·无人机群.png",
+  "content_frac": 0.84
+ },
+ {
+  "no": "066",
+  "uid": "fut_arm_mech_e",
+  "name": "机甲步兵",
+  "rebuilt": true,
+  "prompt": "STRICTLY a pure 2D side profile silhouette view, absolutely NO front view, NO three-quarter view, flat orthographic game sprite, single subject only centered, fully colored military illustration in pale blue-white armor plates with dark servo joints and cyan accent lights: a future mech infantry trooper inside a light powered exoskeleton walking left, carrying one bullpup rifle at the ready, exposed hydraulic pistons on the limbs matte painting style, detailed weathering and surface texture, complex dramatic lighting with rim light from top-left, solid flat magenta #FF00FF background ONLY, the background is one perfectly uniform flat color with no gradients and no lighting falloff, centered composition, full body fitting in frame with generous empty margin, NO text, NO watermark, NO ground, NO shadow, NO scene background",
+  "raw": "docs/卡图API重生成_20261014/raw/066·机甲步兵.png",
+  "cut": "docs/卡图API重生成_20261014/cut/066·机甲步兵.png",
+  "content_frac": 0.535
+ },
+ {
+  "no": "068",
+  "uid": "fut_inf_spectre_e",
+  "name": "幽灵特工",
+  "rebuilt": true,
+  "prompt": "STRICTLY a pure 2D side profile silhouette view, absolutely NO front view, NO three-quarter view, flat orthographic game sprite, single subject only centered, fully colored military illustration in dark teal nano-weave suit with glowing seam lines and a half-face visor: a futuristic stealth operative holding a compact energy submachine gun level and pointing toward the left edge, cloak edges shimmering faintly matte painting style, detailed weathering and surface texture, complex dramatic lighting with rim light from top-left, solid flat magenta #FF00FF background ONLY, the background is one perfectly uniform flat color with no gradients and no lighting falloff, centered composition, full body fitting in frame with generous empty margin, NO text, NO watermark, NO ground, NO shadow, NO scene background",
+  "raw": "docs/卡图API重生成_20261014/raw/068·幽灵特工.png",
+  "cut": "docs/卡图API重生成_20261014/cut/068·幽灵特工.png",
+  "content_frac": 0.393
+ },
+ {
+  "no": "069",
+  "uid": "fut_arm_colossus_e",
+  "name": "巨神机甲",
+  "rebuilt": true,
+  "prompt": "STRICTLY a pure 2D side profile silhouette view, absolutely NO front view, NO three-quarter view, flat orthographic game sprite, single subject only centered, fully colored military illustration in heavy pale-green slab armor with dark gunmetal joints and a glowing cyan power core embedded in the chest: a colossal bipedal siege war mech facing left with exactly ONE weapon, its right arm ending in a single massive rotary gatling cannon pointed left, the left arm a simple armored manipulator fist with no weapon, no shoulder cannon, thick armored greaves and layered slab pauldrons, exposed hydraulic pistons at the knees matte painting style, detailed weathering and surface texture, complex dramatic lighting with rim light from top-left, solid flat magenta #FF00FF background ONLY, the background is one perfectly uniform flat color with no gradients and no lighting falloff, centered composition, full body fitting in frame with generous empty margin, NO text, NO watermark, NO ground, NO shadow, NO scene background",
+  "raw": "docs/卡图API重生成_20261014/raw/069·巨神机甲.png",
+  "cut": "docs/卡图API重生成_20261014/cut/069·巨神机甲.png",
+  "content_frac": 0.732
+ },
+ {
+  "no": "070",
+  "uid": "fut_boss_nexus",
+  "name": "风暴核心",
+  "rebuilt": true,
+  "prompt": "STRICTLY a pure 2D side profile silhouette view, absolutely NO front view, NO three-quarter view, flat orthographic game sprite, single subject only centered, fully colored military illustration in obsidian-black and gunmetal with blue-white energy veins, a BOSS-scale tracked mobile fortress filling the frame: a very wide super-heavy multi-track chassis along the bottom like a rolling land fortress with layered angled armor plates and small gun turrets, and on top of the chassis ONE ENORMOUS faceted storm crystal towering high, the giant crystal is the dominant part of the machine at twice the height of the fortress body, blazing with lightning arcs, blue-white energy conduits running from the crystal down into the hull, amber trim lines matte painting style, detailed weathering and surface texture, complex dramatic lighting with rim light from top-left, solid flat magenta #FF00FF background ONLY, the background is one perfectly uniform flat color with no gradients and no lighting falloff, centered composition, full body fitting in frame with generous empty margin, NO text, NO watermark, NO ground, NO shadow, NO scene background",
+  "raw": "docs/卡图API重生成_20261014/raw/070·风暴核心.png",
+  "cut": "docs/卡图API重生成_20261014/cut/070·风暴核心.png",
+  "content_frac": 0.822
+ },
+ {
+  "no": "149",
+  "uid": "ww2_mg42",
+  "name": "MG42机枪组",
+  "rebuilt": true,
+  "prompt": "STRICTLY a pure 2D side profile silhouette view, absolutely NO front view, NO three-quarter view, flat orthographic game sprite, single subject only centered, fully colored military illustration in blued gun steel and dark olive-green metal with brass ammunition, rivets and worn paint clearly painted: an unmanned automatic machine gun emplacement facing left, one belt-fed general-purpose machine gun with a long ventilated barrel sleeve on a reinforced tripod, a clockwork auto-traverse mechanism and a large ammunition drum box beside it, its barrel pointing toward the left edge, absolutely no people matte painting style, detailed weathering and surface texture, complex dramatic lighting with rim light from top-left, solid flat magenta #FF00FF background ONLY, the background is one perfectly uniform flat color with no gradients and no lighting falloff, centered composition, full body fitting in frame with generous empty margin, NO text, NO watermark, NO ground, NO shadow, NO scene background",
+  "raw": "docs/卡图API重生成_20261014/raw/149·MG42机枪组.png",
+  "cut": "docs/卡图API重生成_20261014/cut/149·MG42机枪组.png",
+  "content_frac": 0.707
+ },
+ {
+  "no": "073",
+  "uid": "ww1_sup_vickers",
+  "name": "维克斯 .303 机枪阵地",
+  "rebuilt": true,
+  "prompt": "STRICTLY a pure 2D side profile silhouette view, absolutely NO front view, NO three-quarter view, flat orthographic game sprite, single subject only centered, fully colored military illustration in sun-bleached sandbag tan and olive-green gun metal, burlap weave and blued steel clearly painted: a World War I Vickers machine gun emplacement facing left, one water-cooled Vickers gun on a tripod behind a low curved sandbag screen, its barrel pointing toward the left edge, ammunition boxes beside matte painting style, detailed weathering and surface texture, complex dramatic lighting with rim light from top-left, solid flat magenta #FF00FF background ONLY, the background is one perfectly uniform flat color with no gradients and no lighting falloff, centered composition, full body fitting in frame with generous empty margin, NO text, NO watermark, NO ground, NO shadow, NO scene background",
+  "raw": "docs/卡图API重生成_20261014/raw/073·维克斯 .303 机枪阵地.png",
+  "cut": "docs/卡图API重生成_20261014/cut/073·维克斯 .303 机枪阵地.png",
+  "content_frac": 0.84
+ },
+ {
+  "no": "074",
+  "uid": "ww1_sup_ford_ambulance",
+  "name": "福特 T 型战地救护车",
+  "rebuilt": true,
+  "prompt": "STRICTLY a pure 2D side profile silhouette view, absolutely NO front view, NO three-quarter view, flat orthographic game sprite, single subject only centered, fully colored military illustration in olive-drab truck paint with white red-cross markings and canvas texture: a World War I Ford Model T field ambulance facing left, canvas-topped light truck with a thin radiator grille at the front, spoked wheels matte painting style, detailed weathering and surface texture, complex dramatic lighting with rim light from top-left, solid flat magenta #FF00FF background ONLY, the background is one perfectly uniform flat color with no gradients and no lighting falloff, centered composition, full body fitting in frame with generous empty margin, NO text, NO watermark, NO ground, NO shadow, NO scene background",
+  "raw": "docs/卡图API重生成_20261014/raw/074·福特 T 型战地救护车.png",
+  "cut": "docs/卡图API重生成_20261014/cut/074·福特 T 型战地救护车.png",
+  "content_frac": 0.768
+ },
+ {
+  "no": "075",
+  "uid": "ww1_inf_mp18_x",
+  "name": "MP18 突击队",
+  "rebuilt": true,
+  "prompt": "STRICTLY a pure 2D side profile silhouette view, absolutely NO front view, NO three-quarter view, flat orthographic game sprite, single subject only centered, fully colored military illustration in field-grey uniform cloth with brown leather gear, cloth folds and steel helmet sheen clearly painted: a World War I German stormtrooper charging toward the left edge with an MP18 submachine gun raised at the hip, stahlhelm helmet, gas mask canister on the belt matte painting style, detailed weathering and surface texture, complex dramatic lighting with rim light from top-left, solid flat magenta #FF00FF background ONLY, the background is one perfectly uniform flat color with no gradients and no lighting falloff, centered composition, full body fitting in frame with generous empty margin, NO text, NO watermark, NO ground, NO shadow, NO scene background",
+  "raw": "docs/卡图API重生成_20261014/raw/075·MP18 突击队.png",
+  "cut": "docs/卡图API重生成_20261014/cut/075·MP18 突击队.png",
+  "content_frac": 0.633
+ },
+ {
+  "no": "078",
+  "uid": "ww2_arty_pak40",
+  "name": "PaK 40 反坦克炮组",
+  "rebuilt": true,
+  "prompt": "STRICTLY a pure 2D side profile silhouette view, absolutely NO front view, NO three-quarter view, flat orthographic game sprite, single subject only centered, fully colored military illustration in dark-yellow dunkelgelb paint with worn edges and rivets: a World War II German PaK 40 anti-tank gun facing left, one long-barreled gun on a two-wheel split-trail carriage, the barrel pointing toward the left edge, gun shield plate and trail legs spread matte painting style, detailed weathering and surface texture, complex dramatic lighting with rim light from top-left, solid flat magenta #FF00FF background ONLY, the background is one perfectly uniform flat color with no gradients and no lighting falloff, centered composition, full body fitting in frame with generous empty margin, NO text, NO watermark, NO ground, NO shadow, NO scene background",
+  "raw": "docs/卡图API重生成_20261014/raw/078·PaK 40 反坦克炮组.png",
+  "cut": "docs/卡图API重生成_20261014/cut/078·PaK 40 反坦克炮组.png",
+  "content_frac": 0.84
+ },
+ {
+  "no": "086",
+  "uid": "mod_sup_m4_carbine",
+  "name": "M4 卡宾特遣班",
+  "rebuilt": true,
+  "prompt": "STRICTLY a pure 2D side profile silhouette view, absolutely NO front view, NO three-quarter view, flat orthographic game sprite, single subject only centered, fully colored military illustration in tan multicam gear with a fast helmet and knee pads, cloth folds and pouch buckles clearly painted: a modern task-force rifleman aiming an M4 carbine fitted with an optic and foregrip, the muzzle level and pointing toward the left edge matte painting style, detailed weathering and surface texture, complex dramatic lighting with rim light from top-left, solid flat magenta #FF00FF background ONLY, the background is one perfectly uniform flat color with no gradients and no lighting falloff, centered composition, full body fitting in frame with generous empty margin, NO text, NO watermark, NO ground, NO shadow, NO scene background",
+  "raw": "docs/卡图API重生成_20261014/raw/086·M4 卡宾特遣班.png",
+  "cut": "docs/卡图API重生成_20261014/cut/086·M4 卡宾特遣班.png",
+  "content_frac": 0.623
+ },
+ {
+  "no": "087",
+  "uid": "mod_inf_patriot",
+  "name": "爱国者 PAC-3 发射车",
+  "rebuilt": true,
+  "prompt": "STRICTLY a pure 2D side profile silhouette view, absolutely NO front view, NO three-quarter view, flat orthographic game sprite, single subject only centered, fully colored military illustration in tan missile-tube paint with black stencil marks and trailer frame steel: a Patriot PAC-3 surface-to-air launcher facing left, one rectangular trailer-mounted launcher with four missile tubes angled up-left, a support mast folded at the rear matte painting style, detailed weathering and surface texture, complex dramatic lighting with rim light from top-left, solid flat magenta #FF00FF background ONLY, the background is one perfectly uniform flat color with no gradients and no lighting falloff, centered composition, full body fitting in frame with generous empty margin, NO text, NO watermark, NO ground, NO shadow, NO scene background",
+  "raw": "docs/卡图API重生成_20261014/raw/087·爱国者 PAC-3 发射车.png",
+  "cut": "docs/卡图API重生成_20261014/cut/087·爱国者 PAC-3 发射车.png",
+  "content_frac": 0.84
+ },
+ {
+  "no": "093",
+  "uid": "fut_arty_hel30",
+  "name": "HEL-30 激光炮阵列",
+  "rebuilt": true,
+  "prompt": "STRICTLY a pure 2D side profile silhouette view, absolutely NO front view, NO three-quarter view, flat orthographic game sprite, single subject only centered, fully colored military illustration in dark gunmetal with amber warning stripes and a glowing blue lens core: a futuristic HEL-30 laser cannon array facing left, one large multi-lens emitter cannon on an autonomous tracked carriage, the emitter pointing toward the left edge, cooling fins along the barrel matte painting style, detailed weathering and surface texture, complex dramatic lighting with rim light from top-left, solid flat magenta #FF00FF background ONLY, the background is one perfectly uniform flat color with no gradients and no lighting falloff, centered composition, full body fitting in frame with generous empty margin, NO text, NO watermark, NO ground, NO shadow, NO scene background",
+  "raw": "docs/卡图API重生成_20261014/raw/093·HEL-30 激光炮阵列.png",
+  "cut": "docs/卡图API重生成_20261014/cut/093·HEL-30 激光炮阵列.png",
+  "content_frac": 0.84
+ },
+ {
+  "no": "094",
+  "uid": "fut_sup_nrepair",
+  "name": "N-Repair 纳米工程车",
+  "rebuilt": true,
+  "prompt": "STRICTLY a pure 2D side profile silhouette view, absolutely NO front view, NO three-quarter view, flat orthographic game sprite, single subject only centered, fully colored military illustration in blue-grey truck armor with glowing cyan nano-fluid lines: a futuristic nano-repair engineering vehicle facing left, one six-wheel chassis with a multi-joint robotic service arm folded at the rear and one glowing translucent nano-fluid tank matte painting style, detailed weathering and surface texture, complex dramatic lighting with rim light from top-left, solid flat magenta #FF00FF background ONLY, the background is one perfectly uniform flat color with no gradients and no lighting falloff, centered composition, full body fitting in frame with generous empty margin, NO text, NO watermark, NO ground, NO shadow, NO scene background",
+  "raw": "docs/卡图API重生成_20261014/raw/094·N-Repair 纳米工程车.png",
+  "cut": "docs/卡图API重生成_20261014/cut/094·N-Repair 纳米工程车.png",
+  "content_frac": 0.84
+ },
+ {
+  "no": "095",
+  "uid": "fut_inf_x9",
+  "name": "X-9 猎杀者渗透组",
+  "rebuilt": true,
+  "prompt": "STRICTLY a pure 2D side profile silhouette view, absolutely NO front view, NO three-quarter view, flat orthographic game sprite, single subject only centered, fully colored military illustration in matte-black stealth exosuit plating with violet seam glows and a full-face visor: a futuristic X-9 infiltration hunter facing left, carrying one compact rail carbine at the ready, armored cloak panels over the shoulders matte painting style, detailed weathering and surface texture, complex dramatic lighting with rim light from top-left, solid flat magenta #FF00FF background ONLY, the background is one perfectly uniform flat color with no gradients and no lighting falloff, centered composition, full body fitting in frame with generous empty margin, NO text, NO watermark, NO ground, NO shadow, NO scene background",
+  "raw": "docs/卡图API重生成_20261014/raw/095·X-9 猎杀者渗透组.png",
+  "cut": "docs/卡图API重生成_20261014/cut/095·X-9 猎杀者渗透组.png",
+  "content_frac": 0.314
+ },
+ {
+  "no": "110",
+  "uid": "ww1_fort_pillbox",
+  "name": "混凝土机枪碉堡",
+  "rebuilt": true,
+  "prompt": "STRICTLY a pure 2D side profile silhouette view, absolutely NO front view, NO three-quarter view, flat orthographic game sprite, single subject only centered, fully colored military illustration in weathered grey concrete with rain stains and moss patches: a low hexagonal machine-gun pillbox bunker, one dark embrasure slit facing the left edge, sandbags piled at the base, a dented shallow dome roof matte painting style, detailed weathering and surface texture, complex dramatic lighting with rim light from top-left, solid flat magenta #FF00FF background ONLY, the background is one perfectly uniform flat color with no gradients and no lighting falloff, centered composition, full body fitting in frame with generous empty margin, NO text, NO watermark, NO ground, NO shadow, NO scene background",
+  "raw": "docs/卡图API重生成_20261014/raw/110·混凝土机枪碉堡.png",
+  "cut": "docs/卡图API重生成_20261014/cut/110·混凝土机枪碉堡.png",
+  "content_frac": 0.84
+ },
+ {
+  "no": "113",
+  "uid": "ww2_fort_flak",
+  "name": "88mm防空塔",
+  "rebuilt": true,
+  "prompt": "STRICTLY a pure 2D side profile silhouette view, absolutely NO front view, NO three-quarter view, flat orthographic game sprite, single subject only centered, fully colored military illustration in dark-grey flak steel with red-white turret rings and worn paint: a World War II 88mm anti-aircraft gun emplacement, one long-barreled 88 on a cross-shaped platform mount, the barrel elevated toward the upper left, splinter shield around the breech matte painting style, detailed weathering and surface texture, complex dramatic lighting with rim light from top-left, solid flat magenta #FF00FF background ONLY, the background is one perfectly uniform flat color with no gradients and no lighting falloff, centered composition, full body fitting in frame with generous empty margin, NO text, NO watermark, NO ground, NO shadow, NO scene background",
+  "raw": "docs/卡图API重生成_20261014/raw/113·88mm防空塔.png",
+  "cut": "docs/卡图API重生成_20261014/cut/113·88mm防空塔.png",
+  "content_frac": 0.84
+ },
+ {
+  "no": "116",
+  "uid": "mod_fort_citadel",
+  "name": "要塞核心",
+  "rebuilt": true,
+  "prompt": "STRICTLY a pure 2D side profile silhouette view, absolutely NO front view, NO three-quarter view, flat orthographic game sprite, single subject only centered, fully colored military illustration in gunmetal bastion plates with glowing cyan energy seams: a futuristic fortress core, one squat armored dome with layered angled armor plates and one glowing hexagonal energy gate on the front face pointing left, sensor masts on top matte painting style, detailed weathering and surface texture, complex dramatic lighting with rim light from top-left, solid flat magenta #FF00FF background ONLY, the background is one perfectly uniform flat color with no gradients and no lighting falloff, centered composition, full body fitting in frame with generous empty margin, NO text, NO watermark, NO ground, NO shadow, NO scene background",
+  "raw": "docs/卡图API重生成_20261014/raw/116·要塞核心.png",
+  "cut": "docs/卡图API重生成_20261014/cut/116·要塞核心.png",
+  "content_frac": 0.807
+ },
+ {
+  "no": "128",
+  "uid": "xeno_tripod",
+  "name": "三足行者",
+  "rebuilt": true,
+  "prompt": "STRICTLY a pure 2D side profile silhouette view, absolutely NO front view, NO three-quarter view, flat orthographic game sprite, single subject only centered, fully colored military illustration in green-black alien carapace with bioluminescent green glow veins: an alien war tripod facing left, three tall articulated insect legs, one bulbous hood-shaped body with hanging tentacle cables and a single glowing heat-ray emitter eye pointing toward the left edge matte painting style, detailed weathering and surface texture, complex dramatic lighting with rim light from top-left, solid flat magenta #FF00FF background ONLY, the background is one perfectly uniform flat color with no gradients and no lighting falloff, centered composition, full body fitting in frame with generous empty margin, NO text, NO watermark, NO ground, NO shadow, NO scene background",
+  "raw": "docs/卡图API重生成_20261014/raw/128·三足行者.png",
+  "cut": "docs/卡图API重生成_20261014/cut/128·三足行者.png",
+  "content_frac": 0.664
+ },
+ {
+  "no": "146",
+  "uid": "ww1_saint",
+  "name": "圣沙蒙坦克",
+  "rebuilt": true,
+  "prompt": "STRICTLY a pure 2D side profile silhouette view, absolutely NO front view, NO three-quarter view, flat orthographic game sprite, single subject only centered, fully colored military illustration in riveted grey steel with mud-caked tracks and paint chipping: a World War I French Saint-Chamond tank facing left, one long overhanging hull with a sloped front glacis, a 75mm gun in the front plate pointing left, exposed suspension and a low driver cupola matte painting style, detailed weathering and surface texture, complex dramatic lighting with rim light from top-left, solid flat magenta #FF00FF background ONLY, the background is one perfectly uniform flat color with no gradients and no lighting falloff, centered composition, full body fitting in frame with generous empty margin, NO text, NO watermark, NO ground, NO shadow, NO scene background",
+  "raw": "docs/卡图API重生成_20261014/raw/146·圣沙蒙坦克.png",
+  "cut": "docs/卡图API重生成_20261014/cut/146·圣沙蒙坦克.png",
+  "content_frac": 0.84
+ }
+]

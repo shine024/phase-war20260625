@@ -109,7 +109,7 @@ const RANK_STAR_COEFFICIENTS: Dictionary = {
 
 # ═══════════════════════════════════════════════════════════
 # v7.2: 相位师镜像对称系数
-# 敌方产兵加成镜像我方公式。这两个系数把敌方相位师的 attack_power/defense
+# 敌方产兵加成镜像我方公式。这两个系数把相位师的 attack_power/defense
 # 换算成等量于我方"相位场属性点"的加成比例。校准依据：我方满相位场（约16点
 # 分配到 atk/hp/def）在 PHASE_FIELD_GROWTH_RULES 下约贡献 atk+10%/hp+10%。
 # 敌方满级相位师 attack_power~1000/defense~200，取系数使其贡献量级相当。
@@ -452,7 +452,7 @@ func _apply_enemy_bonus_legacy_scalar(stats: UnitStats, enemy_stars: int) -> voi
 	# 记录7#14: 减伤帽统一 0.60（=实战结算帽，旧 0.8 虚标）
 	stats.damage_reduction = clampf(stats.damage_reduction + base_mult, 0.0, 0.6)
 
-## v7.2: 从 BattleManager 取当前敌方相位师配置
+## v7.2: 从 BattleManager 取当前相位师配置
 func _get_current_enemy_master_config() -> Dictionary:
 	var tree = Engine.get_main_loop() as SceneTree
 	if tree == null or tree.root == null:

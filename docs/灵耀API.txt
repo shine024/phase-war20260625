@@ -1,0 +1,30 @@
+https://api.lingyaoai.com/docs/
+Anthropic Base URL
+Anthropic
+适用于 Claude Code 及走 Anthropic 协议的客户端。部分场景主机根路径即可。
+
+https://api.lingyaoai.com
+复制
+常见客户端 BASE_URL
+软件	BASE_URL
+Cherry Studio / Claude Code / NextChat	https://api.lingyaoai.com
+Codex / Cline / Cursor / Dify	https://api.lingyaoai.com/v1
+沉浸式翻译 / ChatBox	https://api.lingyaoai.com/v1/chat/completions
+
+选择模型
+请准确复制模型 ID，不要填写展示名称，也不要添加空格。可从 模型定价 / 模型广场 复制当前已启用的 ID。
+
+用途	Model ID	协议
+Claude 旗舰 / 专业编程	claude-opus-5	Anthropic / OpenAI
+Claude 创意 / 智能体	claude-fable-5	Anthropic / OpenAI
+通用编程 / 深度推理	deepseek-v4-pro	OpenAI
+低成本高速编程	deepseek-v4-flash	OpenAI
+智谱旗舰 / 长上下文	glm-5.2	OpenAI
+多模态智能体	kimi-k2.6	OpenAI
+多模态编程	minimax-m3	OpenAI
+高速多模态	step-3.7-flash	OpenAI
+开源对话 / 推理	gemma-4-31b-it	OpenAI
+通用写作 / 推理	mistral_medium-3.5-128b	OpenAI
+图像生成	qwen-image	OpenAI / Image
+
+sk-pMAcVaOGkhoAhu7CoEZ69QbpQAInG1qPb3xFOVUjaHGApMtt

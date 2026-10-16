@@ -1,0 +1,10 @@
+{
+ "fps": 8,
+ "frame_size": 256,
+ "counts": {
+  "attack": 4
+ },
+ "outline": {
+  "baked": false
+ }
+}

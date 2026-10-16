@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<title>卡图+攻击图 总审查（批1+批2 · 36 单位）</title>
+<style>
+:root{--bg:#101418;--panel:#1a2027;--panel2:#232b34;--txt:#dbe4ee;--dim:#8b98a8;
+  --line:#2d3742;--ok:#3fb96f;--bad:#e05c5c;--accent:#4aa8ff;--zoom:190px}
+body.light{--bg:#eef1f5;--panel:#fff;--panel2:#f2f5f9;--txt:#1d2733;--dim:#5d6b7c;--line:#d5dce5}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--txt);font:13px/1.5 "Microsoft YaHei",system-ui,sans-serif}
+header{position:sticky;top:0;z-index:20;background:var(--panel);border-bottom:1px solid var(--line);padding:10px 16px}
+h1{font-size:17px;margin:0 0 6px}
+.bar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-top:4px}
+.bar label{color:var(--dim)}
+select{background:var(--panel2);color:var(--txt);border:1px solid var(--line);border-radius:6px;padding:4px 8px;font-size:12px}
+main{padding:12px 16px 80px}
+.row{display:flex;gap:12px;align-items:stretch;background:var(--panel);border:1px solid var(--line);
+  border-radius:10px;padding:12px;margin-bottom:10px}
+.row .meta{flex:0 0 210px}
+.nm{font-weight:bold;font-size:14px}
+.iid{color:var(--dim);font-size:11px;font-family:Consolas,monospace;word-break:break-all;margin-top:2px}
+.tag{display:inline-block;font-size:11px;border-radius:4px;padding:0 6px;background:var(--panel2);
+  border:1px solid var(--line);color:var(--dim);margin:4px 4px 0 0}
+.tag.ok{color:var(--ok);border-color:color-mix(in srgb,var(--ok) 45%,transparent)}
+.tag.err{color:var(--bad);border-color:var(--bad)}
+.cols{flex:1;display:flex;gap:10px;flex-wrap:wrap;align-items:flex-start}
+.cell{display:flex;flex-direction:column;gap:4px}
+.cell .cap{font-size:11px;color:var(--dim)}
+.imgbox{width:var(--zoom);height:var(--zoom);border-radius:8px;overflow:hidden;border:1px solid var(--line)}
+.imgbox img{width:100%;height:100%;object-fit:contain}
+.imgbox.raw{background:#3c0f3c}
+body.light .imgbox.raw{background:#c9a0c9}
+.imgbox.chk{background:repeating-conic-gradient(var(--panel2) 0 25%, transparent 0 50%) 0 0/22px 22px}
+.imgbox.fire{background:#3c0f3c;width:auto;height:var(--zoom);flex:0 0 var(--zoom)}
+.imgbox.none{display:flex;align-items:center;justify-content:center;color:var(--bad);font-size:11px;
+  background:var(--panel2)}
+footer{position:fixed;bottom:0;left:0;right:0;background:var(--panel);border-top:1px solid var(--line);
+  padding:6px 16px;font-size:12px;color:var(--dim);z-index:20}
+</style>
+</head>
+<body>
+<header>
+  <h1>卡图 + 攻击图 总审查 <small id="gen"></small></h1>
+  <div class="bar">
+    <label>尺寸 <select id="selZoom"><option>150</option><option value="190" selected>190</option>
+      <option>260</option><option>360</option></select></label>
+    <label>主题 <select id="selTheme"><option value="dark" selected>深色</option>
+      <option value="light">浅色</option></select></label>
+    <label>只看 <select id="selFilter"><option value="">全部</option>
+      <option value="nofire">缺攻击图</option><option value="hasfire">有攻击图</option></select></label>
+    <span style="color:var(--dim)">列：现役卡图 · 新raw(品红) · 键控cut · 开火4格</span>
+  </div>
+</header>
+<main id="app"></main>
+<footer>删除即弃选：raw/ cut/ poses/ 同名文件。全部暂存，选定后才部署 assets/。</footer>
+<script>
+const DATA = {"generated": "2026-10-15 09:20:10", "rows": [{"no": "011", "name": "81mm迫击炮", "uid": "ww2_arty_m81", "era": "二战", "icon": "../../assets/card_icons/enemy/vis_enemy_011.png", "raw": "raw/011·81mm迫击炮.png", "cut": "cut/011·81mm迫击炮.png", "fire": null}, {"no": "012", "name": "81mm迫击炮组", "uid": "ww1_arty_m81", "era": "一战", "icon": "../../assets/card_icons/enemy/vis_enemy_012.png", "raw": "raw/012·81mm迫击炮组.png", "cut": "cut/012·81mm迫击炮组.png", "fire": null}, {"no": "017", "name": "ZSU-23-4自行高炮", "uid": "cold_sup_zsu23", "era": "冷战", "icon": "../../assets/card_icons/enemy/vis_enemy_017.png", "raw": "raw/017·ZSU-23-4自行高炮.png", "cut": "cut/017·ZSU-23-4自行高炮.png", "fire": "raw/017·ZSU-23-4自行高炮_开火4格.png"}, {"no": "019", "name": "M1A1主战坦克", "uid": "mod_arm_m1a1", "era": "现代", "icon": "../../assets/card_icons/enemy/vis_enemy_019.png", "raw": "raw/019·M1A1主战坦克.png", "cut": "cut/019·M1A1主战坦克.png", "fire": "raw/019·M1A1主战坦克_开火4格.png"}, {"no": "026", "name": "光棱坦克", "uid": "fut_arm_prism", "era": "未来", "icon": "../../assets/card_icons/enemy/vis_enemy_026.png", "raw": "raw/026·光棱坦克.png", "cut": "cut/026·光棱坦克.png", "fire": "raw/026·光棱坦克_开火4格.png"}, {"no": "030", "name": "泰坦Mk.II", "uid": "fut_arm_titan_mk2", "era": "未来", "icon": "../../assets/card_icons/enemy/vis_enemy_031.png", "raw": "raw/030·泰坦Mk.II.png", "cut": "cut/030·泰坦Mk.II.png", "fire": null}, {"no": "032", "name": "重装母舰", "uid": "fut_air_heavy_carrier", "era": "未来", "icon": "../../assets/card_icons/enemy/vis_enemy_033.png", "raw": "raw/032·重装母舰.png", "cut": "cut/032·重装母舰.png", "fire": "raw/032·重装母舰_开火4格.png"}, {"no": "037", "name": "机枪巢", "uid": "ww1_sup_mg_nest", "era": "一战", "icon": "../../assets/card_icons/enemy/vis_enemy_038.png", "raw": "raw/037·机枪巢.png", "cut": "cut/037·机枪巢.png", "fire": "raw/037·机枪巢_开火4格.png"}, {"no": "038", "name": "迫击炮组", "uid": "ww1_arty_mortar", "era": "一战", "icon": "../../assets/card_icons/enemy/vis_enemy_039.png", "raw": "raw/038·迫击炮组.png", "cut": "cut/038·迫击炮组.png", "fire": "raw/038·迫击炮组_开火4格.png"}, {"no": "039", "name": "暴风突击队", "uid": "ww1_inf_storm_e", "era": "架空", "icon": "../../assets/card_icons/enemy/vis_enemy_040.png", "raw": "raw/039·暴风突击队.png", "cut": "cut/039·暴风突击队.png", "fire": "raw/039·暴风突击队_开火4格.png"}, {"no": "041", "name": "圣沙蒙坦克", "uid": "ww1_boss_av7", "era": "", "icon": null, "raw": "raw/041·圣沙蒙坦克.png", "cut": "cut/041·圣沙蒙坦克.png", "fire": null}, {"no": "053", "name": "特种部队", "uid": "cold_inf_spetsnaz_e", "era": "", "icon": null, "raw": "raw/053·特种部队.png", "cut": "cut/053·特种部队.png", "fire": null}, {"no": "056", "name": "海军陆战队", "uid": "mod_inf_marine", "era": "", "icon": null, "raw": "raw/056·海军陆战队.png", "cut": "cut/056·海军陆战队.png", "fire": null}, {"no": "057", "name": "皮卡武装", "uid": "mod_air_technical_e", "era": "", "icon": null, "raw": "raw/057·皮卡武装.png", "cut": "cut/057·皮卡武装.png", "fire": "raw/057·皮卡武装_开火4格.png"}, {"no": "059", "name": "火箭炮车", "uid": "mod_arty_mlrs_e", "era": "", "icon": null, "raw": "raw/059·火箭炮车.png", "cut": "cut/059·火箭炮车.png", "fire": null}, {"no": "060", "name": "三角洲部队", "uid": "mod_inf_delta_e", "era": "", "icon": null, "raw": "raw/060·三角洲部队.png", "cut": "cut/060·三角洲部队.png", "fire": "raw/060·三角洲部队_开火4格.png"}, {"no": "064", "name": "无人机群", "uid": "fut_air_drone", "era": "", "icon": null, "raw": "raw/064·无人机群.png", "cut": "cut/064·无人机群.png", "fire": null}, {"no": "066", "name": "机甲步兵", "uid": "fut_arm_mech_e", "era": "", "icon": null, "raw": "raw/066·机甲步兵.png", "cut": "cut/066·机甲步兵.png", "fire": "raw/066·机甲步兵_开火4格.png"}, {"no": "068", "name": "幽灵特工", "uid": "fut_inf_spectre_e", "era": "", "icon": null, "raw": "raw/068·幽灵特工.png", "cut": "cut/068·幽灵特工.png", "fire": "raw/068·幽灵特工_开火4格.png"}, {"no": "069", "name": "巨神机甲", "uid": "fut_arm_colossus_e", "era": "", "icon": null, "raw": "raw/069·巨神机甲.png", "cut": "cut/069·巨神机甲.png", "fire": "raw/069·巨神机甲_开火4格.png"}, {"no": "070", "name": "风暴核心", "uid": "fut_boss_nexus", "era": "", "icon": null, "raw": "raw/070·风暴核心.png", "cut": "cut/070·风暴核心.png", "fire": null}, {"no": "073", "name": "维克斯 .303 机枪阵地", "uid": "ww1_sup_vickers", "era": "", "icon": null, "raw": "raw/073·维克斯 .303 机枪阵地.png", "cut": "cut/073·维克斯 .303 机枪阵地.png", "fire": "raw/073·维克斯 .303 机枪阵地_开火4格.png"}, {"no": "074", "name": "福特 T 型战地救护车", "uid": "ww1_sup_ford_ambulance", "era": "", "icon": null, "raw": "raw/074·福特 T 型战地救护车.png", "cut": "cut/074·福特 T 型战地救护车.png", "fire": "raw/074·福特 T 型战地救护车_开火4格.png"}, {"no": "075", "name": "MP18 突击队", "uid": "ww1_inf_mp18_x", "era": "", "icon": null, "raw": "raw/075·MP18 突击队.png", "cut": "cut/075·MP18 突击队.png", "fire": "raw/075·MP18 突击队_开火4格.png"}, {"no": "078", "name": "PaK 40 反坦克炮组", "uid": "ww2_arty_pak40", "era": "", "icon": null, "raw": "raw/078·PaK 40 反坦克炮组.png", "cut": "cut/078·PaK 40 反坦克炮组.png", "fire": "raw/078·PaK 40 反坦克炮组_开火4格.png"}, {"no": "086", "name": "M4 卡宾特遣班", "uid": "mod_sup_m4_carbine", "era": "", "icon": null, "raw": "raw/086·M4 卡宾特遣班.png", "cut": "cut/086·M4 卡宾特遣班.png", "fire": "raw/086·M4 卡宾特遣班_开火4格.png"}, {"no": "087", "name": "爱国者 PAC-3 发射车", "uid": "mod_inf_patriot", "era": "", "icon": null, "raw": "raw/087·爱国者 PAC-3 发射车.png", "cut": "cut/087·爱国者 PAC-3 发射车.png", "fire": "raw/087·爱国者 PAC-3 发射车_开火4格.png"}, {"no": "093", "name": "HEL-30 激光炮阵列", "uid": "fut_arty_hel30", "era": "", "icon": null, "raw": "raw/093·HEL-30 激光炮阵列.png", "cut": "cut/093·HEL-30 激光炮阵列.png", "fire": "raw/093·HEL-30 激光炮阵列_开火4格.png"}, {"no": "094", "name": "N-Repair 纳米工程车", "uid": "fut_sup_nrepair", "era": "", "icon": null, "raw": "raw/094·N-Repair 纳米工程车.png", "cut": "cut/094·N-Repair 纳米工程车.png", "fire": "raw/094·N-Repair 纳米工程车_开火4格.png"}, {"no": "095", "name": "X-9 猎杀者渗透组", "uid": "fut_inf_x9", "era": "", "icon": null, "raw": "raw/095·X-9 猎杀者渗透组.png", "cut": "cut/095·X-9 猎杀者渗透组.png", "fire": null}, {"no": "110", "name": "混凝土机枪碉堡", "uid": "ww1_fort_pillbox", "era": "", "icon": null, "raw": "raw/110·混凝土机枪碉堡.png", "cut": "cut/110·混凝土机枪碉堡.png", "fire": "raw/110·混凝土机枪碉堡_开火4格.png"}, {"no": "113", "name": "88mm防空塔", "uid": "ww2_fort_flak", "era": "", "icon": null, "raw": "raw/113·88mm防空塔.png", "cut": "cut/113·88mm防空塔.png", "fire": null}, {"no": "116", "name": "要塞核心", "uid": "mod_fort_citadel", "era": "", "icon": null, "raw": "raw/116·要塞核心.png", "cut": "cut/116·要塞核心.png", "fire": null}, {"no": "128", "name": "三足行者", "uid": "xeno_tripod", "era": "", "icon": null, "raw": "raw/128·三足行者.png", "cut": "cut/128·三足行者.png", "fire": null}, {"no": "146", "name": "圣沙蒙坦克", "uid": "ww1_saint", "era": "", "icon": null, "raw": "raw/146·圣沙蒙坦克.png", "cut": "cut/146·圣沙蒙坦克.png", "fire": null}, {"no": "149", "name": "MG42机枪组", "uid": "ww2_mg42", "era": "", "icon": null, "raw": "raw/149·MG42机枪组.png", "cut": "cut/149·MG42机枪组.png", "fire": "raw/149·MG42机枪组_开火4格.png"}]};
+const app = document.getElementById('app');
+function esc(s){return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;')}
+function render(){
+  app.innerHTML='';
+  const filt = document.getElementById('selFilter').value;
+  for (const r of DATA.rows) {
+    if (filt==='nofire' && r.fire) continue;
+    if (filt==='hasfire' && !r.fire) continue;
+    const row=document.createElement('div'); row.className='row';
+    row.innerHTML = `
+      <div class="meta">
+        <div class="nm">${esc(r.no+'·'+r.name)}</div>
+        <div class="iid">${esc(r.uid)}</div>
+        <span class="tag">${esc(r.era||'')}</span>
+        ${r.raw?'<span class="tag ok">raw</span>':'<span class="tag err">无raw</span>'}
+        ${r.cut?'<span class="tag ok">cut</span>':''}
+        ${r.fire?'<span class="tag ok">开火4格</span>':'<span class="tag err">攻击图未落地</span>'}
+      </div>
+      <div class="cols">
+        <div class="cell"><div class="cap">现役卡图</div>
+          <div class="imgbox chk"><img src="${r.icon||''}" loading="lazy"
+            onerror="this.parentElement.className='imgbox none';this.remove()"></div></div>
+        <div class="cell"><div class="cap">新 raw</div>
+          ${r.raw?`<div class="imgbox raw"><img src="${r.raw}" loading="lazy"></div>`
+                 :'<div class="imgbox none">-</div>'}</div>
+        <div class="cell"><div class="cap">键控 cut</div>
+          ${r.cut?`<div class="imgbox chk"><img src="${r.cut}" loading="lazy"></div>`
+                 :'<div class="imgbox none">-</div>'}</div>
+        <div class="cell"><div class="cap">开火4格（左上→右上→左下→右下）</div>
+          ${r.fire?`<div class="imgbox fire"><img src="${r.fire}" loading="lazy"></div>`
+                  :'<div class="imgbox none">生成中…</div>'}</div>
+      </div>`;
+    app.appendChild(row);
+  }
+}
+document.getElementById('gen').textContent = DATA.generated;
+document.getElementById('selZoom').onchange = e =>
+  document.documentElement.style.setProperty('--zoom', e.target.value+'px');
+document.getElementById('selTheme').onchange = e =>
+  document.body.classList.toggle('light', e.target.value==='light');
+document.getElementById('selFilter').onchange = render;
+render();
+</script>
+</body>
+</html>

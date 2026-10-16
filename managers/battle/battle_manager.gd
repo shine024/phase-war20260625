@@ -35,7 +35,7 @@ var _damage_system: RefCounted = null  ## BattleDamageSystem
 # v8.x: 战法检测器 + 卡片定时技能引擎
 var _tactic_detector: RefCounted = null  ## TacticDetector
 var _card_skill_engine: RefCounted = null  ## CardPeriodicSkillEngine
-# v8.5: 敌方相位师主动技能引擎（boss active_spells 定时触发）
+# v8.5: 相位师主动技能引擎（boss active_spells 定时触发）
 var _enemy_master_skill_engine: RefCounted = null  ## EnemyMasterSkillEngine
 # v9.1: 我方组合技套路引擎 + 战场状态管理器
 var _combo_engine: RefCounted = null  ## ComboEngine
@@ -253,7 +253,7 @@ func _process(delta: float) -> void:
 	# v8.x: 驱动卡片定时技能引擎 + 战法检测器（同样在短路前调用，确保两套战斗都生效）
 	if _card_skill_engine != null:
 		_card_skill_engine.update(delta)
-	# v8.5: 敌方相位师主动技能（boss active_spells 定时触发）
+	# v8.5: 相位师主动技能（boss active_spells 定时触发）
 	if _enemy_master_skill_engine != null:
 		_enemy_master_skill_engine.update(delta)
 	if _tactic_detector != null:
@@ -542,7 +542,7 @@ func start_battle(battle_scene: Node) -> void:
 	# v6.6: 触发相位仪主动特殊能力（酸雨/能量罩等开局能力）
 	# v8.x 修复：on_battle_start(PLAYER) 只覆盖玩家侧能力字典，不清敌方 static var。
 	# 若上一场相位师战未正常走完 end_battle()（如战斗中回标题页 change_scene 直接跳走），
-	# _enemy_active 会残留到本场普通关，导致"无敌方相位师却持续被红橙色炮击"。
+	# _enemy_active 会残留到本场普通关，导致"无相位师却持续被红橙色炮击"。
 	# 在注入玩家能力前先 reset_battle_state() 兜底清理上一场残留，确保新战斗从干净状态开始。
 	PhaseInstrumentAbilities.reset_battle_state()
 	# v24.1: 大招手动释放控制器——战斗开始复位为自动模式（仅当次战斗生效）
@@ -1223,10 +1223,10 @@ func _spawn_enemy_phase_master_base() -> void:
 	if not battlefield.has_method("ensure_enemy_phase_driver"):
 		return
 	_enemy_phase_driver = battlefield.ensure_enemy_phase_driver(_phase_master_config)
-	# v7.x: 敌方相位师基地建立后，触发敌方相位仪主动能力（开局一次性能力 + 周期能力初始化）
+	# v7.x: 相位师基地建立后，触发敌方相位仪主动能力（开局一次性能力 + 周期能力初始化）
 	if _enemy_phase_driver != null and is_instance_valid(_enemy_phase_driver):
 		PhaseInstrumentAbilities.on_battle_start(_enemy_phase_driver, battlefield, PhaseInstrumentAbilities.Owner.ENEMY)
-		# v8.5: 初始化敌方相位师主动技能引擎（boss active_spells 定时触发）
+		# v8.5: 初始化相位师主动技能引擎（boss active_spells 定时触发）
 		if _enemy_master_skill_engine != null:
 			_enemy_master_skill_engine.setup(_enemy_phase_driver, battlefield)
 			# 注入引擎引用给 driver（用于死亡时触发被动）

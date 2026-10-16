@@ -1,6 +1,6 @@
 class_name EnemyMasterSkillEngine
 extends RefCounted
-## v8.5: 敌方相位师（boss）主动技能执行引擎
+## v8.5: 相位师（boss）主动技能执行引擎
 ##
 ## 背景：30 个 boss 的 active_spells/passive_spells 数据完整（约 120 个 effect 名），
 ## 但战斗侧零消费（仅 UI 展示）。本引擎让 boss 在战斗中真实触发主动技能。
@@ -21,7 +21,7 @@ const VfxImpactFactory = preload("res://scripts/battle/vfx_impact_factory.gd")
 const CombatFeedback = preload("res://scripts/combat_feedback.gd")
 const DT = preload("res://resources/design_tokens.gd")
 
-## v9.3: 敌方相位师大招差异化演出
+## v9.3: 相位师大招差异化演出
 ## 背景：原 6 个 _exec_* 全部走通用程序化 VFX（同质化冲击波环），玩家无法区分
 ## void_apocalypse / hell_inferno / tesla_chain 等不同大招。
 ## v9.3c: 每类大招接入 AI 生成的专属贴图（spawn_spell_burst），对齐核子轰炸表现力。

@@ -1,20 +1,35 @@
-
-Agnes 免费API 可生图 Agnes
-
-agnes-image-2.1-flash
-
+Agnes 免费API 可生图 agnes-image-2.1-flash
 POST /v1/images/generations
 
-POST https://apihub.agnes-ai.com/v1/images/generations
+═══════════════════════════════════════════════
+★ key 与域名绑定，不跨站通用（2026-10-15 全量实测）
+   拿 key 测试前先对准分组，打错域名必 401/403，
+   勿误判 key 失效（sk-2mxC 曾因此被误记 401 清除）。
+═══════════════════════════════════════════════
 
+【A组 · apihub】3 把，走 apihub.agnes-ai.com ✅ 全活
+  https://apihub.agnes-ai.com/v1          ← 老管线主路（生图+视频）
+  sk-thpXTkWon9RiLMdnsZgqlQUH7XI6SdlhLYsx7eQToj7GtIPv
+  sk-2mxCpSC8Nf0nm2TAf9fYHuRxNj7aeoIttPuuu9ivodbU3zXN
+  sk-Pzu3QigNdQlVhFC7cVDVsTDwfvt3T6nIDq23HeJgaKMnRo6K
 
-https://apihub.agnes-ai.cn/v1 
+  ⚠ apihub.agnes-ai.cn（.cn 镜像）账号被风控 403
+    "unusual activity, temporarily restricted"
+    同 key 换 .com 正常，只是 .cn 镜像被封。
 
-sk-thpXTkWon9RiLMdnsZgqlQUH7XI6SdlhLYsx7eQToj7GtIPv
+【B组 · api】3 把，走 api.agnes-ai.cn ✅ 全活（生图实测 3/3 出图）
+  https://api.agnes-ai.cn/v1
+  sk-E6ayvrmsxJ49DHqkMfhe7d8T8Ze0aN4Uw1tLW71SzDYW5NiR
+  sk-LhCskZbAvDmDLwRJI97ngbxxKD4BFCvwygrKxR7yD0KSW4D3
+  sk-ltQwjD1SVEHvhGgr7gzqDuIaFcZm5XWyXWDX25tfk1Q75lYQ
 
-sk-2mxCpSC8Nf0nm2TAf9fYHuRxNj7aeoIttPuuu9ivodbU3zXN
+  注：视频管线 key 轮换池 tools/_api_key.txt 装的就是这 3 把。
 
-sk-Pzu3QigNdQlVhFC7cVDVsTDwfvt3T6nIDq23HeJgaKMnRo6K
+新站模型列表（api.agnes-ai.cn）：
+  agnes-2.5-flash / agnes-2.5-pro / agnes-2.5-pro-alpha / agnes-2.5-pro-beta
+  agnes-3.0-flash / agnes-3.0-pro / agnes-image-2.1-flash ...
+
+───────────────────────────────────────────────
 
 Agnes Image 2.1 Flash 可根据文本提示词生成图像，也可基于输入图像进行转换、重绘和风格化编辑。它支持以图像 URL 或 Base64 数据形式返回结果。
 

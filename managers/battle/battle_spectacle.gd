@@ -317,7 +317,7 @@ func _on_ability_triggered(ability_id: String, stage: String, params: Dictionary
 		"enemy_rage_buff":
 			if stage == "start":
 				_play_enemy_warning_flash(Color(1.0, 0.15, 0.1, 0.4), "🔥 敌方狂暴激活")
-		# v9.3: 敌方相位师 active_spells 差异化大招演出（6 类，按 effect 语义分）
+		# v9.3: 相位师 active_spells 差异化大招演出（6 类，按 effect 语义分）
 		# 由 EnemyMasterSkillEngine._play_spell_cinematic emit 触发
 		"enemy_spell_apocalypse":
 			if stage == "warning":

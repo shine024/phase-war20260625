@@ -973,7 +973,7 @@ func _on_battle_ended(player_won: bool) -> void:
 			# v6.19.1 核验清单#1/#6：走错峰助手（L10 驻守关首遇引导同帧双弹）+ 说明保护期计入递增计数。
 			if current_level == PHASE_MASTER_GRACE_LEVELS:
 				_show_notice_when_popup_free("grace_end_notice", "新手保护期结束",
-					"下一关起，野外关卡可能遭遇敌方相位师。\n• 基础遭遇率 %d%%；新手保护期也计入连续未遭遇计数——初期实际概率会高于基础值，情报舱「相位师情报」可查当前确切概率。\n• 出击前看世界地图战前建议，按情报预配克制阵容。" % int(GC.PHASE_MASTER_ENCOUNTER_CHANCE * 100.0))
+					"下一关起，野外关卡可能遭遇相位师。\n• 基础遭遇率 %d%%；新手保护期也计入连续未遭遇计数——初期实际概率会高于基础值，情报舱「相位师情报」可查当前确切概率。\n• 出击前看世界地图战前建议，按情报预配克制阵容。" % int(GC.PHASE_MASTER_ENCOUNTER_CHANCE * 100.0))
 			if DEBUG_GAME_LOG:
 				pass  # LOG: 关卡进度已更新
 			# v7.x 修复 B3：记录关卡进度成就统计（progress 类成就，如 max_level/perfect_levels）

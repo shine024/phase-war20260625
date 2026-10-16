@@ -24,6 +24,17 @@
 6. **客观缺陷与审美取舍先分类**：对齐/一致性/覆盖类有客观正确答案的直接修；只有真正无对错的参数才交用户拍板，且必须附推荐值与对比图。
 7. **每类系统留常驻回归锁**：锁内断言覆盖上述全部维度，修复后回归自动拦截（范例：`tests/unit/combat/test_shield_foot_anchor.gd` 九形态+尺寸断言）。
 
+## v6.70 贴图导入无损批：背景/特效 169 张画质回滚 + detect_3d 复发锁 + hidpi（2026-10-15，详见 CHANGELOG v6.70）
+
+**动任何贴图 `.import`、新增图片资产、project.godot 显示设置前必读本节。** 用户主诉「各关卡原是高清背景，现在看着质量很差」根修。
+
+- **全项目纹理无损政策（回归锁锁定）**：`assets/` 下所有纹理 `compress/mode=0`（无损）+ `size_limit=0` + 无多余 mipmaps + `detect_3d/compress_to=0`。历史误设已清：背景 103 张（VRAM 压缩，5 张漏网幸存者 bg_level_09/title_bg 等为原状铁证）+ 特效 66 张（其中 6 张高频命中特效另被 size_limit=128 降采样 8 倍）。
+- **detect_3d 复发铁律（本批实锤机制）**：弹道/弹壳/蜂群单位走 QuadMesh（3D 图元）渲染——编辑器里跑游戏时 detect_3d 会把被 3D 图元画过的贴图**自动重导入 VRAM 压缩**，跑一局战斗就能静默毁掉特效贴图画质。已全项目 2978 张禁用 + project.godot `[importer_defaults]` 锁新资产默认。**换机/重导入后纹理再糊，先查 .import 三参数（compress/mode、size_limit、detect_3d）再动代码。**
+- **回归锁 `tests/unit/systems/test_texture_import_policy.gd`（4 用例）**：背景无损/特效无损/全库三参数扫描/project.godot 两设置（allow_hidpi=true + importer_defaults detect_3d=0）——红了先读本节，勿顺手放行。
+- **判别式**：解码 ctex 与源图比对时先看 alpha 通道——alpha 逐像素一致且差异全在 alpha<32 近透明边缘 = `fix_alpha_border` 防黑边预处理（alpha 加权可见误差 ≤0.07/255，不可见，**不是损伤勿修**，关闭会在缩小绘制时出黑晕）；alpha 本身有差异或同尺寸可见区大面积差异 = 真压缩/降采样损伤。`assets/sfx` 的 compress/mode=2 是 WAV QOA 音频压缩，与纹理无关。
+- **hidpi**：`allow_hidpi=true`（用户拍板）——>100% 缩放显示器原生渲染显著更锐，100% 缩放零变化；帧率吃不消回滚该行即可。
+- **探针**：`tests/_tmp_bg_quality_probe.gd`（解码导入纹理 vs 源图 PSNR）、`tests/_tmp_fx_quality_probe.gd`、`tests/_tmp_bg_render_probe.gd`（真实 GPU 渲染截图）。备份：`.godot/import_backup_pre_detect3d_20261015.tar`（2978 张 .import 改前快照）+ bg/fx 两个设置备份目录。
+
 ## v6.69 音频资产审核批：28 槽换装 + base_alarm 新增 + 全量免署名凭据链（资产 2026-10-20 换机审核拍板 / 10-14 入库，详见 CHANGELOG v6.69）
 
 **动 `assets/sfx/` 音频换装/授权凭据/credits 面板/音效台账前必读本节。** 背景=10-13 生成的审听套件被换机带走逐条试听，用户 28+12 项不满意清单经五轮换装定稿后 10-14 整理入库。
