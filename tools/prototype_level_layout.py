@@ -14,9 +14,17 @@ import numpy as np
 from PIL import Image
 from scipy.ndimage import label, binary_closing
 
+import argparse
+_ap = argparse.ArgumentParser(description="关卡布局原型（默认 = 方案11 原样重放）")
+_ap.add_argument("--spread", type=float, default=1.0,
+                 help="簇间距系数：锚点散布半径倍率（1.0=方案11；v6.71 s12 用 1.28）")
+_ap.add_argument("--scheme", default="11", help="导出方案号（写进 gd 注释与 class_name）")
+_ap.add_argument("--out", default="world_map_layout_s11.gd", help="导出 gd 文件名（data/ 下）")
+_args = _ap.parse_args()
+
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SRC = os.path.join(ROOT, "docs", "地图重设计", "generated", "大地图2_2560.png")
-OUT_HTML = os.path.join(ROOT, "docs", "地图重设计", "prototype_level_layout.html")
+OUT_HTML = os.path.join(ROOT, "docs", "地图重设计", "prototype_level_layout_s%s.html" % _args.scheme)
 MASK_PNG = os.path.join(ROOT, "docs", "地图重设计", "generated", "大地图_mask.png")
 
 W, H = 2560, 1440          # 定稿：大地图2_2560（标准 16:9，原生清晰度最优）
@@ -144,7 +152,8 @@ slots[0] = (slots[0][0], slots[0][1] + (100 - sum(k for _, k in slots)))
 pts = []
 for a, k in slots:
     # 半径按节点面积需求：每点 ≈ (55px)² → r ≈ 31√k；下限保底小簇
-    base_r = max(48 + 9 * k ** 0.5, 34.0 * k ** 0.5)
+    # --spread：v6.71 s12 簇间距 +28%（簇更松，一区一团更分明；链拓扑与弹簧参数不动）
+    base_r = max(48 + 9 * k ** 0.5, 34.0 * k ** 0.5) * _args.spread
     for j in range(k):
         for _ in range(6):
             ang = rng.uniform(0, 6.283)
@@ -499,12 +508,13 @@ html = html.replace("__FEATS__", feat_js)
 open(OUT_HTML, "w", encoding="utf-8").write(html)
 print("HTML →", OUT_HTML)
 
-# ── 导出 GDScript 常量（world_map.gd 方案11 布局唯一数据源，勿手改）──
+# ── 导出 GDScript 常量（world_map.gd 布局唯一数据源，勿手改）──
 lines = [
     "# 自动生成：tools/prototype_level_layout.py（布局调参请改原型脚本后重跑导出）",
-    "# 方案11 主地图布点：内容锚定簇布局，坐标 = 2560×1440 画布像素",
+    "# 方案%s 主地图布点：内容锚定簇布局，坐标 = 2560×1440 画布像素" % _args.scheme,
     "# 途经内容锚点见原型脚本 ANCHORS 表（废墟城邦/晶体巨构/冰穹，黑门自动实测）",
-    'class_name WorldMapLayoutS11',
+    "# v6.71 s12：--spread 1.28（簇间距 +28%，链拓扑不变）" if _args.scheme == "12" else "",
+    'class_name WorldMapLayoutS%s' % _args.scheme,
     "",
     "const HOME := Vector2(%d, %d)" % (home["x"], home["y"]),
     "const GATE := Vector2(%d, %d)" % (PORTAL[0], PORTAL[1]),
@@ -512,6 +522,6 @@ lines = [
 ]
 lines += ["\tVector2(%d, %d)," % (p["x"], p["y"]) for p in pts]
 lines += ["]"]
-gd_path = os.path.join(ROOT, "data", "world_map_layout_s11.gd")
+gd_path = os.path.join(ROOT, "data", _args.out)
 open(gd_path, "w", encoding="utf-8").write("\n".join(lines) + "\n")
 print("GD →", gd_path)

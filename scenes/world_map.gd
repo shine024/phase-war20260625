@@ -16,7 +16,7 @@ func _input(event: InputEvent) -> void:
 	# v6.51 批：可见守卫从 _runtime_active 改为直接查 is_visible_in_tree()——
 	# _runtime_active 只由 visibility_changed 驱动，嵌入模式存在时序缺口（回调未触发/
 	# 首建期间为假），面板明明可见滚轮却整体失效（主诉"有时不让缩放"根因之一）。
-	if MAP_SCHEME == 11 and is_visible_in_tree() and _map_built and not event.is_echo():
+	if MAP_SCHEME == 12 and is_visible_in_tree() and _map_built and not event.is_echo():
 		if _handle_map_view_input(event):
 			return
 	# ESC键返回主场景
@@ -93,7 +93,7 @@ const EnemyLoadoutTiers = preload("res://data/enemy_loadout_tiers.gd")  # 2026-0
 const SupplyThreatRef = preload("res://data/supply_threat.gd")  # v6.71 威胁分区常量
 const SupplyExchangeRef = preload("res://data/supply_exchange.gd")  # v6.71 兑换文案单一源
 const SupplyPointDialogues = preload("res://data/supply_point_dialogues.gd")  # v6.71 副句池
-const LayoutS11 := preload("res://data/world_map_layout_s11.gd")  # v23: 方案11 内容锚定布点（原型管线导出，勿手改）
+const LayoutS12 := preload("res://data/world_map_layout_s12.gd")  # v6.71: 方案12 内容锚定布点（s11 簇质心外扩 1.28 导出，勿手改）
 const TruckTravel = preload("res://data/truck_travel.gd")  # v26.19: 行军数值真身（燃料/天数/引擎）
 
 # v6.10: 关卡按钮占领色标——势力色统一从 CompanyDefinitions.get_faction_color() 读取（Palette B）
@@ -156,22 +156,22 @@ const MAP_CANVAS_SIZE: Vector2 = Vector2(2560, 1440)  # v23：定稿底图 大�
 const MAP_LIGHTHOUSE_POS: Vector2 = Vector2(1280, 780)
 const MAP_GATE_POS: Vector2 = Vector2(2260, 250)
 ## v22.4 布局方案切换：6=百灯群岛星座 / 8=沙漏双界 / 11=黑日战线（定稿）
-const MAP_SCHEME: int = 11
+const MAP_SCHEME: int = 12
 const SEAM_Y_S8: float = 720.0  # 相位缝：上界(现实界)1-50 / 下界(相位界)51-100 的腰部
 const GATE_POS_S8: Vector2 = Vector2(1280, 1335)  # 方案8：下界底极横卧宽门
 const HOME_POS_S8: Vector2 = Vector2(330, 140)  # 方案8：上界左上漂浮岛掩体
-# 方案11 家/门坐标由 LayoutS11 常量提供（data/world_map_layout_s11.gd）；v23.1 起不叠任何贴图
+# 方案12 家/门坐标由 LayoutS12 常量提供（data/world_map_layout_s12.gd）；v23.1 起不叠任何贴图
 
 static func _gate_pos() -> Vector2:
-	if MAP_SCHEME == 11:
-		return LayoutS11.GATE
+	if MAP_SCHEME == 12:
+		return LayoutS12.GATE
 	if MAP_SCHEME == 8:
 		return GATE_POS_S8
 	return MAP_GATE_POS
 
 static func _home_pos() -> Vector2:
-	if MAP_SCHEME == 11:
-		return LayoutS11.HOME
+	if MAP_SCHEME == 12:
+		return LayoutS12.HOME
 	if MAP_SCHEME == 8:
 		return HOME_POS_S8
 	return MAP_LIGHTHOUSE_POS
@@ -378,7 +378,7 @@ func _ready() -> void:
 	_style_title()
 
 	# v23.1：方案 11 单屏——上下横条撤掉，标题/势力按钮/返回键浮在地图角上
-	if MAP_SCHEME == 11:
+	if MAP_SCHEME == 12:
 		_apply_floating_chrome()
 		# v28：图例 + “回到当前关”按钮（屏幕空间，不随地图画布缩放）
 		_build_map_screen_chrome()
@@ -435,7 +435,7 @@ func _apply_floating_chrome() -> void:
 func _on_visibility_changed() -> void:
 	_runtime_active = is_visible_in_tree()
 	# v23.2：方案 11 单屏需要逐帧自校验缩放（防"打开后尺寸变化没人重算→放大"）
-	set_process(_runtime_active and MAP_SCHEME == 11)
+	set_process(_runtime_active and MAP_SCHEME == 12)
 	if _runtime_active:
 		queue_redraw()
 
@@ -501,13 +501,13 @@ func _build_level_map() -> void:
 	# 用存档星标回填：有星=到过=恒建（桥线/占领环消费同一集合，自动跟随）。
 	_seed_revealed_from_progress()
 	# v36 窗口锚点（在途=目的地，否则停靠关）：锚点变了禁用跨实例模板复用，强制全量重建
-	var window_anchor: int = _truck_anchor_level() if MAP_SCHEME == 11 else current_level
-	if MAP_SCHEME == 11 and _built_window_anchor != window_anchor:
+	var window_anchor: int = _truck_anchor_level() if MAP_SCHEME == 12 else current_level
+	if MAP_SCHEME == 12 and _built_window_anchor != window_anchor:
 		_cached_level_map_template = null
 	_built_window_anchor = window_anchor
 
 	# v23.1 单屏模式：方案 11 整图等比缩放进可视区，无滚动/拖拽
-	if MAP_SCHEME == 11:
+	if MAP_SCHEME == 12:
 		scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 		scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 
@@ -531,11 +531,11 @@ func _build_level_map() -> void:
 			# v6.52（记录1#13/#30）：家/黑门入口同款摘旧重建——duplicate 丢连接+解锁态
 			# 陈旧，复用路径的黑门此前恒显示锁死文案且点击无响应
 			_build_home_marker(reused)
-			if MAP_SCHEME == 11:
+			if MAP_SCHEME == 12:
 				_build_blackgate_entry(reused)
 			_apply_gate_state(reused)
 			_apply_incursion_markers(reused)
-			if MAP_SCHEME == 11:
+			if MAP_SCHEME == 12:
 				# v6.51 批：模板复用路径同样消费 keep 旗标——此前只有全量重建路径保留
 				# 用户缩放，复用路径每次把 zoom 拍回 1.0（与 v6.42 keep_zoom 拍板相悖）
 				var keep_reuse := _zoom_keep_pending
@@ -603,7 +603,7 @@ func _build_level_map() -> void:
 	# 不带信号连接，复用副本的家/黑门点击全死、解锁态/文案陈旧（"通关 100 黑门还锁着"
 	# "点我方基地没反应"同根），复用路径摘旧重建。
 	_build_home_marker(canvas)
-	if MAP_SCHEME == 11:
+	if MAP_SCHEME == 12:
 		_build_blackgate_entry(canvas)
 
 	# 5) overlay 层：微光桥 / 占领环 / 当前关光圈（draw 信号驱动）
@@ -629,7 +629,7 @@ func _build_level_map() -> void:
 		var era_info: Dictionary = ERA_COLORS[era_idx]
 		var era_start: int = era_idx * ERA_SIZE + 1
 		# 方案 11（v23）：时代信息随节点颜色表达，不再放行标签
-		if MAP_SCHEME == 11:
+		if MAP_SCHEME == 12:
 			continue
 		var zone_lbl := Label.new()
 		zone_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -669,17 +669,17 @@ func _build_level_map() -> void:
 	_s_prev_revealed_snapshot = _s_revealed_levels.duplicate()
 
 	for lv_s8 in range(1, LEVEL_COUNT + 1):
-		if MAP_SCHEME == 8 or MAP_SCHEME == 11:
+		if MAP_SCHEME == 8 or MAP_SCHEME == 12:
 			# v36 窗口：窗外关卡不建节点（底图手绘仍在，桥线由 overlay 同口径过滤）
 			# 记录7#18: 窗口 ∪ 已揭示集——显示过的关恒建，不随行军回缩
-			if MAP_SCHEME == 11 and not _in_map_window(lv_s8, window_anchor) \
+			if MAP_SCHEME == 12 and not _in_map_window(lv_s8, window_anchor) \
 					and not _s_revealed_levels.has(lv_s8):
 				continue
 			var era_idx_s8: int = floori((lv_s8 - 1) / 20.0)
 			var node_s8: Button = _make_level_node(lv_s8, era_idx_s8,
 				_s_level_points.get(lv_s8, Vector2.ZERO), current_level)
 			canvas.add_child(node_s8)
-			if MAP_SCHEME == 11:
+			if MAP_SCHEME == 12:
 				_s_revealed_levels[lv_s8] = true
 			# v6.71：新揭示关信标降落（跳过首建与 motion_reduce）
 			if newly_revealed.has(lv_s8) and not _first_build and not DesignTokens.is_motion_reduce():
@@ -695,16 +695,16 @@ func _build_level_map() -> void:
 
 	# 4c) v26.12c：移动基地卡车标记——v26.28 放到节点层之后创建（压在节点盘/关卡名
 	# 之上，到站不被节点盖上）；路线层随之同层（线端画进节点盘，衔接可读）
-	if MAP_SCHEME == 11:
+	if MAP_SCHEME == 12:
 		_add_truck_marker(canvas)
 
 	# v6.51 批：渗透热区在节点层与卡车标记都就位后重建（层级插在卡车标记之下）
-	if MAP_SCHEME == 11:
+	if MAP_SCHEME == 12:
 		_apply_incursion_markers(canvas)
 
 	# 标记地图已构建（静态模板供跨场景复用）
 	_cached_level_map_template = canvas.duplicate(Node.DUPLICATE_USE_INSTANTIATION) as Control
-	if MAP_SCHEME == 11:
+	if MAP_SCHEME == 12:
 		var keep_zoom := _zoom_keep_pending
 		_zoom_keep_pending = false
 		_fit_canvas_to_viewport.call_deferred(canvas, scroll, keep_zoom)
@@ -715,7 +715,7 @@ func _build_level_map() -> void:
 ## v6.52（记录1#13/#30）抽函数：跨实例模板复用路径摘旧重建（duplicate 不带信号连接，
 ## 复用副本点击全死）；标签固定命名供复用路径按名清理。
 func _build_home_marker(canvas: Control) -> void:
-	if MAP_SCHEME == 11:
+	if MAP_SCHEME == 12:
 		var marker := Panel.new()
 		marker.name = "Lighthouse"
 		var msb := StyleBoxFlat.new()
@@ -849,7 +849,7 @@ func _fit_canvas_to_viewport(canvas: Control, scroll: ScrollContainer, keep_zoom
 func _on_fit_scroll_resized() -> void:
 	var scroll := get_node_or_null("Margin/VBox/ScrollContainer") as ScrollContainer
 	var canvas := scroll.get_node_or_null("MapCanvas") if scroll else null
-	if scroll and canvas and _map_built and MAP_SCHEME == 11:
+	if scroll and canvas and _map_built and MAP_SCHEME == 12:
 		# v6.42: 尺寸变化重算 fit 基准但保留用户缩放（v28 强拉回整图在"放大看行军"场景
 		# 与 _process 自校验互踩——正放大瞬间被弹回 1.0 的体感根因之一）
 		_fit_canvas_to_viewport.call_deferred(canvas, scroll, true)
@@ -896,7 +896,7 @@ static func _ensure_layout() -> void:
 		8:
 			_layout_scheme8()
 		11:
-			_layout_scheme11()
+			_layout_scheme12()
 		_:
 			_layout_scheme6()
 
@@ -920,9 +920,8 @@ static func _layout_scheme8() -> void:
 			"era": floori((lv - 1) / 20.0)})
 	_s_bridges.append({"a": _s_level_points[LEVEL_COUNT], "b": _gate_pos(), "era": 4})
 
-## 方案 11 黑日战线（v23 定稿）：布点来自原型管线导出（data/world_map_layout_s11.gd）——
-## 内容锚定簇布局，100 关压在图内废墟城邦/晶体/冰穹等醒目内容上，大致从左到右。
-## 布局调参走 tools/prototype_level_layout.py（改锚点/参数后重跑导出）。
+## 方案 12 黑日战线（v6.71）：布点=s11 点集按簇质心外扩 1.28（data/world_map_layout_s12.gd，
+## 由 tools/_tmp_gen_layout_s12_20261016.py 导出——底图已失、原管线断供，数学后处理路线）。
 ## v28 用户定稿微调（管线重导出后本表仍生效；原型脚本若修正锚点可删）：
 ## - 30 关原点 (1074,1352) 吊在南部海面孤点 → 挪到 29(1065,1103) 西侧 70px
 ## - 末段 95-100 聚拢成黑门前最后一段路：98→97 左下、99→97 右下、100 压到岩岬下缘
@@ -931,19 +930,21 @@ static func _layout_scheme8() -> void:
 ## 实为压在冰穹冰川/冰晶构造/岩柱等内容锚点上，布点无需修；真正待裁决的是美术可读性：
 ## 冰穹纯白无墨线描边，玩家会读成"海面"（自动海色掩膜同样误判）。改图需用户批准
 ## （手绘定稿），备选：a) 冰穹加淡墨线描边/冷色晕 b) 外海加蓝饱和对比。
-const S11_POINT_OVERRIDES: Dictionary = {
-	30: Vector2(1010, 1060),
-	98: Vector2(2096, 997),
+## v6.71 s12 外扩后重算（30 与 29(1016,1090) 距离 66px；98/99/100 相对 97(2154,1024)
+## 与黑门(2272,774)的收拢关系沿用 s11 微调值）：
+const S12_POINT_OVERRIDES: Dictionary = {
+	30: Vector2(1030, 1155),
+	98: Vector2(2090, 1000),
 	99: Vector2(2226, 995),
 	100: Vector2(2150, 1055),
 }
 
-static func _layout_scheme11() -> void:
-	var points: Array = LayoutS11.POINTS
+static func _layout_scheme12() -> void:
+	var points: Array = LayoutS12.POINTS
 	for i in range(points.size()):
 		_s_level_points[i + 1] = points[i]
-	for lv in S11_POINT_OVERRIDES:
-		_s_level_points[lv] = S11_POINT_OVERRIDES[lv]
+	for lv in S12_POINT_OVERRIDES:
+		_s_level_points[lv] = S12_POINT_OVERRIDES[lv]
 	_s_bridges.append({"a": _home_pos(), "b": _s_level_points[1], "era": 0})
 	for lv in range(1, LEVEL_COUNT):
 		_s_bridges.append({"a": _s_level_points[lv], "b": _s_level_points[lv + 1],
@@ -999,7 +1000,7 @@ func _apply_gate_state(canvas: Control) -> void:
 		gate_entry.tooltip_text = ("黑门——已平息，异族不再渗出；深处仍可再战（无限模式）" if cleared_once 			else "黑门——星冥族的裂隙（首场试炼：第 %d 波决胜；通关后开放无限模式）" % EndlessBlackgateRef.FIRST_GATE_CORE_WAVE) if unlocked 			else "黑门（通关第 100 关后开启）"
 	if gate == null:
 		return
-	if MAP_SCHEME == 11:
+	if MAP_SCHEME == 12:
 		# v23.1：不叠任何贴图——画门即门（定稿图已画好黑门与光环）
 		gate.visible = false
 		return
@@ -1026,7 +1027,7 @@ func _scatter_debris(canvas: Control) -> void:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 20260827
 	for i in range(12):
-		var tex := _tex(MAP_DIR + ("wreck_%d.png" if MAP_SCHEME == 11 else "debris_%d.png") % ((i % 8) + 1))
+		var tex := _tex(MAP_DIR + ("wreck_%d.png" if MAP_SCHEME >= 11 else "debris_%d.png") % ((i % 8) + 1))
 		if tex == null:
 			continue
 		var d := TextureRect.new()
@@ -1053,7 +1054,7 @@ func _draw_map_overlay() -> void:
 		return
 	# v36 窗口：只画窗内可见点集合（桥线两端都可见才画，防悬空线）
 	var visible_pts: Dictionary = {}
-	if MAP_SCHEME == 11 and _built_window_anchor > 0:
+	if MAP_SCHEME == 12 and _built_window_anchor > 0:
 		for lv in range(maxi(1, _built_window_anchor - MAP_WINDOW_RADIUS),
 				mini(LEVEL_COUNT, _built_window_anchor + MAP_WINDOW_RADIUS) + 1):
 			var vp: Vector2 = _s_level_points.get(lv, Vector2.ZERO)
@@ -1069,9 +1070,9 @@ func _draw_map_overlay() -> void:
 			continue
 		var col: Color = ERA_COLORS[br["era"]]["border"]
 		col.a = 0.32
-		var lw: float = 3.0 if MAP_SCHEME == 11 else 1.5   # 单屏缩放显示，线宽加倍
-		var dash: float = 16.0 if MAP_SCHEME == 11 else 10.0
-		var gap: float = 10.0 if MAP_SCHEME == 11 else 6.0
+		var lw: float = 3.0 if MAP_SCHEME == 12 else 1.5   # 单屏缩放显示，线宽加倍
+		var dash: float = 16.0 if MAP_SCHEME == 12 else 10.0
+		var gap: float = 10.0 if MAP_SCHEME == 12 else 6.0
 		_draw_dashed(layer, br["a"], br["b"], col, lw, dash, gap)
 	# v23.1：方案 11 黑日兜底绘制移除——画门即门，不叠任何东西
 	if MAP_SCHEME == 8:
@@ -1089,12 +1090,12 @@ func _draw_map_overlay() -> void:
 				continue
 		var p: Vector2 = _s_level_points.get(lv, Vector2.ZERO)
 		if p != Vector2.ZERO:
-			layer.draw_arc(p, 30.0 if MAP_SCHEME == 11 else 46.0, 0.0, TAU, 40,
-				_s_occ_colors[lv], 3.0 if MAP_SCHEME == 11 else 2.5)
+			layer.draw_arc(p, 30.0 if MAP_SCHEME == 12 else 46.0, 0.0, TAU, 40,
+				_s_occ_colors[lv], 3.0 if MAP_SCHEME == 12 else 2.5)
 	var cur: int = GameManager.current_level if GameManager else 1
 	var cp: Vector2 = _s_level_points.get(cur, Vector2.ZERO)
 	if cp != Vector2.ZERO:
-		if MAP_SCHEME == 11:
+		if MAP_SCHEME == 12:
 			layer.draw_arc(cp, 36.0, 0.0, TAU, 48, Color(0.0, 0.9, 1.0, 0.9), 3.0)
 			layer.draw_arc(cp, 42.0, 0.0, TAU, 48, Color(0.0, 0.9, 1.0, 0.35), 2.0)
 		else:
@@ -1126,7 +1127,7 @@ func _rebind_overlay(root: Node) -> void:
 
 ## 构建完成后把视口居中到当前关（等一帧让 ScrollContainer 尺寸就绪）
 func _center_on_current_level() -> void:
-	if MAP_SCHEME == 11:
+	if MAP_SCHEME == 12:
 		return   # v23.1 单屏模式：整图已适配可视区，无需滚动定位
 	await get_tree().process_frame
 	var scroll := get_node_or_null("Margin/VBox/ScrollContainer") as ScrollContainer
@@ -1147,7 +1148,7 @@ func _center_on_current_level() -> void:
 		# 新档定场镜头：方案6 看灯塔与巨环；方案8 看上界战线+相位缝（含家）
 		if MAP_SCHEME == 8:
 			p = Vector2(800, 420)
-		elif MAP_SCHEME == 11:
+		elif MAP_SCHEME == 12:
 			p = Vector2(700, 880)  # 新档定场：家(西南绿低地) + 首批关卡 + 通往东部黑门的走向
 		else:
 			p = MAP_LIGHTHOUSE_POS.lerp(MAP_GATE_POS, 0.45)
@@ -1789,7 +1790,7 @@ func _follow_travel_dot() -> void:
 
 ## 拖拽平移：左键拖空白处滚动视口（方案 11 单屏模式走 v28 局部缩放/平移分支）
 func _on_map_gui_input(ev: InputEvent) -> void:
-	if MAP_SCHEME == 11:
+	if MAP_SCHEME == 12:
 		_on_map_gui_input_s11(ev)
 		return
 	if ev is InputEventMouseButton and (ev as InputEventMouseButton).button_index == MOUSE_BUTTON_LEFT:
@@ -1966,7 +1967,7 @@ func _on_truck_level_changed(_level: int) -> void:
 	# 同窗到站（近距行军锚点不变）：青色当前关双环/▼引导标/CurDot 全部残留出发关
 	# （主诉"已经移动了，标示还在原关卡"）。refresh_levels 会丢弃模板快照（旧高亮
 	# 烤死在快照里的问题一并修）并按可见态保留缩放（v6.42 keep_zoom）。
-	if MAP_SCHEME == 11 and _map_built:
+	if MAP_SCHEME == 12 and _map_built:
 		refresh_levels()
 
 
@@ -3508,7 +3509,7 @@ func refresh_for_open() -> void:
 	# 重建自然回 zoom=1.0；内嵌链 _map_built 缓存复用跳过 fit → 上一局缩放残留，
 	# 与基地入口观感分叉（"两个大地图不一样"的另一半）。v28 拍板语义本就
 	# "重开面板回整图"，只是此路径从未触发过 fit。
-	if _map_built and MAP_SCHEME == 11:
+	if _map_built and MAP_SCHEME == 12:
 		var scroll: ScrollContainer = get_node_or_null("Margin/VBox/ScrollContainer") as ScrollContainer
 		var canvas := scroll.get_node_or_null("MapCanvas") if scroll != null else null
 		if scroll != null and canvas != null:
