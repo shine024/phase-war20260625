@@ -82,13 +82,16 @@ static func regen_minutes_until(cur: float, needed: int, engine_level: int) -> i
 	return maxi(1, ceili(deficit / regen_per_minute(engine_level)))
 
 ## 单段行军燃料消耗（回程走熟路半价）
-static func fuel_cost(from_level: int, to_level: int) -> int:
+## v6.71：discount_pct=遗物 fuel_efficiency 聚合值（燃料消耗降百分比，0=原价）。
+## 纯函数不知道遗物——执行侧（bunker_manager）读 SupplyNetworkManager 传入。
+static func fuel_cost(from_level: int, to_level: int, discount_pct: int = 0) -> int:
 	var base := int(ceil(dist_between(from_level, to_level) / 48.0))
 	base = clampi(base, 4, 60)
 	var mult: float = float(terrain_of(to_level).get("mult", 1.0))
 	if to_level < from_level:
 		mult *= 0.5
-	return int(ceil(float(base) * mult))
+	var eff_mult: float = 1.0 - clampf(float(discount_pct) / 100.0, 0.0, 0.5)
+	return int(ceil(float(base) * mult * eff_mult))
 
 ## 行程天数（引擎等级提速），至少 1 天
 static func travel_days(from_level: int, to_level: int, engine_level: int) -> int:

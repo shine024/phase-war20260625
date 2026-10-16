@@ -255,6 +255,14 @@ func _maybe_roll_travel_encounter(dest: int, from_level: int) -> void:
 	if bool(ebm.call("spawn_incursion_at", dest)) and SignalBus and SignalBus.has_signal("show_toast"):
 		SignalBus.show_toast.emit("⚠ 行军途中遭遇星冥游猎队——第%d关附近出现渗透据点，点击红点迎战" % dest)
 
+## v6.71 遗物 fuel_efficiency 聚合（燃料消耗降百分比；SNM 缺席回 0——离线可玩 C2）
+func _relic_fuel_discount_pct() -> int:
+	var snm: Node = get_node_or_null("/root/SupplyNetworkManager")
+	if snm == null or not snm.has_method("get_relic_effect_sum"):
+		return 0
+	return int(snm.call("get_relic_effect_sum", "fuel_efficiency"))
+
+
 ## 行军可行性预检（UI 规划弹窗与 start_travel 共用；不改任何状态）
 func plan_travel(dest: int) -> Dictionary:
 	if is_traveling():
@@ -263,7 +271,7 @@ func plan_travel(dest: int) -> Dictionary:
 	dest = clampi(dest, 1, 100)
 	if dest == from:
 		return {"ok": false, "reason": "卡车已停靠该节点"}
-	var cost := TruckTravel.fuel_cost(from, dest)
+	var cost := TruckTravel.fuel_cost(from, dest, _relic_fuel_discount_pct())
 	if get_fuel() < float(cost) or float(cost) > get_fuel() - float(TruckTravel.RESERVE_FLOOR):
 		var eta := TruckTravel.regen_minutes_until(get_fuel(), cost + TruckTravel.RESERVE_FLOOR, _engine_level)
 		return {"ok": false, "reason": "燃料不够出车（本次需 %d，现有 %d）——自动回复 +%.0f/分钟，约 %d 分钟后够用；也可用能量块 1:1 充能（基地发电机工位）" % [
@@ -1293,7 +1301,7 @@ func load_state(data: Dictionary) -> void:
 		_travel_ends_unix = _travel_started_unix + float(legacy_days_left) * TruckTravel.SECONDS_PER_DAY
 	# v6.42: 在途档补估已扣燃料（启程时未存该值；取消行军时按路线估价返还）
 	if _travel_dest > 0:
-		_travel_fuel_spent = int(TruckTravel.fuel_cost(maxi(1, _parked_level), _travel_dest))
+		_travel_fuel_spent = int(TruckTravel.fuel_cost(maxi(1, _parked_level), _travel_dest, _relic_fuel_discount_pct()))
 	_hero_fragments = []
 	for f in data.get("hero_fragments", []):
 		_hero_fragments.append(str(f))

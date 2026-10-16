@@ -75,6 +75,7 @@ var _cached_nodes_by_group: Dictionary = {}
 # ---- 相位师战斗配置 ----
 var _phase_master_config: Dictionary = {}
 var _is_phase_master_battle: bool = false
+var _is_sparring_battle: bool = false  # v6.71 游猎模拟战（轻结算旁路）
 var _enemy_phase_driver: Node2D = null
 # P2-8：PM 战僵持计时（秒）——_process 累计（暂停期间不跑天然不计时），
 # 任意有效伤害活动（unit_damaged amount>0 / 双方基地 hp_changed）清零。
@@ -410,6 +411,9 @@ func start_battle(battle_scene: Node) -> void:
 	# 检查是否是相位师对战
 	if GameManager.has_method("is_phase_master_battle"):
 		_is_phase_master_battle = GameManager.is_phase_master_battle()
+	# v6.71 游猎模拟战：相位师战实体全走，仅跳过 boss 词条池解锁（结算轻量化）
+	if GameManager.has_method("is_sparring_battle"):
+		_is_sparring_battle = GameManager.is_sparring_battle()
 		if _is_phase_master_battle and GameManager.has_method("get_current_phase_master"):
 			_phase_master_config = GameManager.get_current_phase_master()
 			# v7.x 战场视觉反馈：相位师登场广播（Announcer/Spectacle 播报 + 登场特效）
@@ -682,8 +686,8 @@ func _deferred_end_battle_finalize(player_won: bool, gen: int = -1) -> void:
 	TraceLog.mark("end_battle_B", "drops")
 	# v26.11(A1.1): 击败相位师 → 渐进解锁 Boss 词条池（boss_1/2/3，第 1/2/3 胜各解锁一档）。
 	# _is_phase_master_battle 此处仍在（C 阶段才清零），可安全读取；unlock_boss 幂等。
-	if player_won and _is_phase_master_battle:
-		_unlock_next_boss_affix_pool()
+	if player_won and _is_phase_master_battle and not _is_sparring_battle:
+		_unlock_next_boss_affix_pool()  # v6.71 模拟战不解锁（战友切磋非真相位师击杀）
 	# ①掉落表生成（中等负载：DropManager 掉落表 + 相位仪掉落）
 	if player_won:
 		_battle_result = _damage_system.generate_battle_drops_only(

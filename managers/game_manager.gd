@@ -257,6 +257,11 @@ func get_current_phase_master() -> Dictionary:
 func is_phase_master_battle() -> bool:
 	return _is_phase_master_battle
 
+## v6.71：游猎模拟战（战友切磋）——战斗实体走相位师战全套（driver 产兵），
+## 但结算侧走轻量：battle_manager 据此跳过 boss 词条池解锁（:685）。
+func is_sparring_battle() -> bool:
+	return _is_sparring_battle
+
 ## 将排行榜的简单相位师配置与 EnemyPhaseMasters 的完整装备数据合并
 ## 排行榜提供 {name, faction, era}，EnemyPhaseMasters 提供 {equipment, stats, traits, active_spells, ...}
 # v9.x（P2-7范围B）：_ensure_plm/_plm 已随 PhaseLawManager 退役移除
@@ -565,12 +570,23 @@ func _settle_incursion_battle(player_won: bool) -> void:
 	if ebm != null and ebm.has_method("erase_incursion"):
 		ebm.erase_incursion(inc)
 	if player_won:
+		# v6.71 遗物加成（M3）：xeno_bonus=异族战资源 +%，salvage_rate=缴获概率 +pp
+		var snm_x: Node = get_node_or_null("/root/SupplyNetworkManager")
+		var xeno_pct: int = 0
+		var salvage_pp: int = 0
+		if snm_x != null and snm_x.has_method("get_relic_effect_sum"):
+			xeno_pct = int(snm_x.call("get_relic_effect_sum", "xeno_bonus"))
+			salvage_pp = int(snm_x.call("get_relic_effect_sum", "salvage_rate"))
+		var nano_gain: int = int(round(float(EndlessBlackgateRef.INCURSION_NANO) * (1.0 + float(xeno_pct) / 100.0)))
+		var energy_gain: int = int(round(float(EndlessBlackgateRef.INCURSION_ENERGY) * (1.0 + float(xeno_pct) / 100.0)))
 		if BasicResourceManager != null:
-			BasicResourceManager.add_resource("basic_nano", EndlessBlackgateRef.INCURSION_NANO)
-			BasicResourceManager.add_resource("energy_block", EndlessBlackgateRef.INCURSION_ENERGY)
+			BasicResourceManager.add_resource("basic_nano", nano_gain)
+			BasicResourceManager.add_resource("energy_block", energy_gain)
 		# 低概率缴获:从编队随机一只掉 captured_xeno_*(直接入包;收集器不消费,渗透战不弹面板)
+		# v6.71：遗物 salvage_rate 提升缴获概率（pp 直加；软上限 60% 防概率失控）
 		var captured_note: String = ""
-		if randf() < EndlessBlackgateRef.INCURSION_CAPTURE_CHANCE:
+		var capture_chance: float = minf(EndlessBlackgateRef.INCURSION_CAPTURE_CHANCE + float(salvage_pp) / 100.0, 0.6)
+		if randf() < capture_chance:
 			var ebm2: Node = get_node_or_null("/root/EndlessBlackgateManager")
 			var ids: Array = ebm2.call("get_incursion_loadout", inc).get("ids", []) if ebm2 != null else []
 			if not ids.is_empty():
