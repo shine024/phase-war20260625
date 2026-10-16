@@ -37,6 +37,8 @@ signal result_confirmed(player_won: bool)
 ## ── 批次③ Task 2：结算战报体文案池（军语克制体，零数值虚构、零运营腔）──
 ## 胜利 4 句 / 失败 3 句 / 撤退 3 句，按结果态取池随机轮换。
 const ComboTacticsRef = preload("res://data/combo_tactics.gd")   # v30 R3: 本局协同小结
+const BattleEvaluationRef = preload("res://data/battle_evaluation.gd")   # v6.71 考评文案
+const SupplyExchangeRef = preload("res://data/supply_exchange.gd")   # v6.71 货架文案
 
 ## v30 R3：本局协同小结的检阅顺序（12 组合/套装 + 5 搭档，与 combo_status_strip 同源口径）
 const _SYNERGY_COMBO_ORDER: Array[String] = [
@@ -185,6 +187,8 @@ func _build() -> void:
 			_render_endless_report(vbox)
 		else:
 			_render_battle_stats(vbox)
+			# v6.71 考评区：评级变动+分项+3选1货架（M3.2，普通关胜负都显——败仗也有 C 级参考）
+			_render_evaluation_section(vbox)
 			# v30 R3（设计审查 F-07）：本局协同小结——组合/套装/搭档的战斗内贡献在结算收口
 			_render_synergy_summary(vbox)
 			# v30.2 R4（设计审查 F-08）：驻守关战胜后的迷失者遗言——叙事收口
@@ -542,6 +546,119 @@ func _render_field_report() -> String:
 	if hero_name.is_empty():
 		return ""
 	return "记下这个名字：%s。" % hero_name
+
+
+## ═══ v6.71 考评结算区（M2.2/M3.2）═══
+## 评级变动行（覆盖式文案单一源）+ 分项明细 + 3选1货架（能量支付/可放弃）。
+## 货架 roll 在面板打开时进行一次（_evaluation_shelf 缓存），买后置 sold 防重复。
+var _evaluation_shelf: Array = []
+var _evaluation_shelf_rolled: bool = false
+
+func _render_evaluation_section(vbox: VBoxContainer) -> void:
+	var summary: Dictionary = GameManager.last_battle_reward_summary if GameManager != null else {}
+	var snm: Node = get_node_or_null("/root/SupplyNetworkManager")
+	if snm == null:
+		return
+	# ▸ 评级变动（黑门/挂机不考评——summary 无 grade 键即静默跳过）
+	if not summary.has("grade_change"):
+		return
+	vbox.add_child(_make_separator())
+	var title := Label.new()
+	title.text = "战力考评"
+	title.add_theme_font_size_override("font_size", DT.FONT_SIZE_MEDIUM + 2)
+	title.add_theme_color_override("font_color", Color(0.65, 0.85, 0.95))
+	vbox.add_child(title)
+	var change := Label.new()
+	change.text = String(summary.get("grade_change", ""))
+	change.add_theme_font_size_override("font_size", DT.FONT_SIZE_MEDIUM)
+	change.add_theme_color_override("font_color", DT.COLOR_TEXT_BRIGHT)
+	vbox.add_child(change)
+	var breakdown := Label.new()
+	breakdown.text = String(summary.get("grade_breakdown", ""))
+	breakdown.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
+	breakdown.add_theme_color_override("font_color", DT.COLOR_TEXT_DIM)
+	vbox.add_child(breakdown)
+
+	# ▸ 3选1货架（考评兑换：评级达标开档；能量支付/可放弃）
+	var level: int = int(GameManager.current_level) if GameManager != null else 1
+	var grade: String = String(snm.call("get_grade", level))
+	if grade.is_empty():
+		return
+	if not _evaluation_shelf_rolled:
+		_evaluation_shelf = SupplyExchangeRef.roll_shelf(grade)
+		_evaluation_shelf_rolled = true
+	if _evaluation_shelf.is_empty():
+		return
+	var shelf_title := Label.new()
+	shelf_title.text = "考评兑换（3选1 · 可放弃）"
+	shelf_title.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL + 1)
+	shelf_title.add_theme_color_override("font_color", Color(0.95, 0.8, 0.45))
+	vbox.add_child(shelf_title)
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 8)
+	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	vbox.add_child(row)
+	var brm: Node = get_node_or_null("/root/BasicResourceManager")
+	for i in range(_evaluation_shelf.size()):
+		var item: Dictionary = _evaluation_shelf[i]
+		if bool(item.get("sold", false)):
+			continue
+		var b := Button.new()
+		b.text = "%s
+%d⚡" % [String(item.get("label", "")), int(item.get("cost", 0))]
+		b.custom_minimum_size = Vector2(0, 48)
+		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		b.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
+		var afford: bool = brm != null and bool(brm.can_afford("energy_block", int(item.get("cost", 0))))
+		b.disabled = not afford
+		b.tooltip_text = "能量块不足" if not afford else _shelf_item_desc(String(item.get("key", "")))
+		b.pressed.connect(_on_shelf_buy.bind(i, b))
+		row.add_child(b)
+	var skip := Label.new()
+	skip.text = "（放弃不扣费——货架随本次结算关闭）"
+	skip.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL - 1)
+	skip.add_theme_color_override("font_color", DT.COLOR_TEXT_DIM)
+	vbox.add_child(skip)
+
+
+## v6.71：货架条目描述（C3 文案单一源侧栏：资源包量按时代）
+func _shelf_item_desc(key: String) -> String:
+	match key:
+		"relic_box":
+			return "遗物箱：开启获得一件未拥有的战役遗物（经济侧增益）"
+		"mod_blueprint":
+			return "改造图纸：改造系统随机图纸一份"
+		"captured_card":
+			return "缴获风格卡：随机风格卡直入背包"
+		"discount_coupon":
+			return "制造折扣券：改造制造费用折扣"
+		"res_nano", "res_crystal":
+			return "%s大包：数量按当前时代缩放" % ("纳米材料" if key == "res_nano" else "晶体")
+	return ""
+
+
+## v6.71：货架购买——SNM 侧发放（_grant_exchange_reward 同口），买后格 sold 置灰。
+func _on_shelf_buy(idx: int, btn: Button) -> void:
+	if idx < 0 or idx >= _evaluation_shelf.size():
+		return
+	var item: Dictionary = _evaluation_shelf[idx]
+	if bool(item.get("sold", false)):
+		return
+	var snm: Node = get_node_or_null("/root/SupplyNetworkManager")
+	if snm == null:
+		return
+	# 扣费+发放+退款全在 SNM.buy_shelf_item（货架定向购买不走 pity）
+	var level: int = int(GameManager.current_level) if GameManager != null else 1
+	var result: Dictionary = snm.call("buy_shelf_item", level, String(item.get("key", "")), int(item.get("cost", 0)))
+	if not bool(result.get("ok", false)):
+		if SignalBus != null and SignalBus.has_signal("show_toast"):
+			SignalBus.show_toast.emit(String(result.get("reason_zh", "兑换失败")))
+		return
+	_evaluation_shelf[idx]["sold"] = true
+	btn.disabled = true
+	btn.text = "已购入"
+	if SignalBus != null and SignalBus.has_signal("show_toast"):
+		SignalBus.show_toast.emit("已兑换：%s" % String(item.get("label", "")))
 
 
 func _render_battle_stats(vbox: VBoxContainer) -> void:

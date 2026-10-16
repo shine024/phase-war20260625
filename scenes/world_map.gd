@@ -90,6 +90,9 @@ const EnemyPhaseMasters = preload("res://data/enemy_phase_masters.gd")  # v7.x: 
 const EnemyPhaseMasterPatterns = preload("res://data/enemy_phase_master_patterns.gd")
 const BattleEnvironments = preload("res://data/battle_environments.gd")  # 2026-08-16: 环境单一真源（与 phase_law_manager/battle_damage_system 同源）
 const EnemyLoadoutTiers = preload("res://data/enemy_loadout_tiers.gd")  # 2026-08-16: 难度显示单一真源（战斗链真实档位乘区）
+const SupplyThreatRef = preload("res://data/supply_threat.gd")  # v6.71 威胁分区常量
+const SupplyExchangeRef = preload("res://data/supply_exchange.gd")  # v6.71 兑换文案单一源
+const SupplyPointDialogues = preload("res://data/supply_point_dialogues.gd")  # v6.71 副句池
 const LayoutS11 := preload("res://data/world_map_layout_s11.gd")  # v23: 方案11 内容锚定布点（原型管线导出，勿手改）
 const TruckTravel = preload("res://data/truck_travel.gd")  # v26.19: 行军数值真身（燃料/天数/引擎）
 
@@ -194,6 +197,7 @@ static var _built_window_anchor: int = -1   # 本次画布构建时的窗口锚�
 # 记录7#18: 已揭示关卡集合（进程内 static，跨面板/场景重建存活；游戏重启重新收拢）——
 # 用户原则"只要显示出来过，后面就应该一直能看到"：行军后窗口收拢，已揭示节点不回缩。
 static var _s_revealed_levels: Dictionary = {}  # level(int) -> true
+static var _s_prev_revealed_snapshot: Dictionary = {}  # v6.71 上次构建的揭示集快照（降落演出 diff 用）
 var _window_hint_label: Label = null        # 屏幕空间窗口提示（chrome 层）
 var _enter_btn: Button = null               # 记录7#21: 出击键成员引用（停靠关变化刷新文案）
 
@@ -654,6 +658,16 @@ func _build_level_map() -> void:
 			for j in range(ERA_SIZE):
 				var level_index_s6: int = era_start + j
 				canvas.add_child(_make_level_node(level_index_s6, era_idx, pts[j], current_level))
+	# v6.71 降落演出：本帧揭示集 diff 出的「新揭示关」走 0.8s 信标入场（下落+淡入，
+	# 尊重 motion_reduce 直接跳过）；首次构建全量视作旧（开场不齐落）
+	var newly_revealed: Dictionary = {}
+	for lv_r in _s_revealed_levels:
+		if not _s_prev_revealed_snapshot.has(lv_r):
+			newly_revealed[lv_r] = true
+	# 首建判定须在快照覆盖前读旧快照（空快照/全量新增=首次构建，不播降落）
+	var _first_build: bool = _s_prev_revealed_snapshot.is_empty() 		or newly_revealed.size() == _s_revealed_levels.size()
+	_s_prev_revealed_snapshot = _s_revealed_levels.duplicate()
+
 	for lv_s8 in range(1, LEVEL_COUNT + 1):
 		if MAP_SCHEME == 8 or MAP_SCHEME == 11:
 			# v36 窗口：窗外关卡不建节点（底图手绘仍在，桥线由 overlay 同口径过滤）
@@ -662,10 +676,20 @@ func _build_level_map() -> void:
 					and not _s_revealed_levels.has(lv_s8):
 				continue
 			var era_idx_s8: int = floori((lv_s8 - 1) / 20.0)
-			canvas.add_child(_make_level_node(lv_s8, era_idx_s8,
-				_s_level_points.get(lv_s8, Vector2.ZERO), current_level))
+			var node_s8: Button = _make_level_node(lv_s8, era_idx_s8,
+				_s_level_points.get(lv_s8, Vector2.ZERO), current_level)
+			canvas.add_child(node_s8)
 			if MAP_SCHEME == 11:
 				_s_revealed_levels[lv_s8] = true
+			# v6.71：新揭示关信标降落（跳过首建与 motion_reduce）
+			if newly_revealed.has(lv_s8) and not _first_build and not DesignTokens.is_motion_reduce():
+				node_s8.modulate.a = 0.0
+				var drop_from: float = node_s8.position.y - 24.0
+				node_s8.position.y = drop_from
+				var tw := node_s8.create_tween()
+				tw.set_parallel(true)
+				tw.tween_property(node_s8, "modulate:a", 1.0, 0.8).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+				tw.tween_property(node_s8, "position:y", node_s8.position.y + 24.0, 0.8).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 	_overlay_layer.queue_redraw()
 	_refresh_window_hint()
 
@@ -1197,9 +1221,21 @@ func _make_level_node(level_index: int, era_idx: int, point: Vector2, _current_l
 	# 6-10% 掺量不动数字对比度），徽记在盘角（见下方 draw 绑定）
 	disc = disc.lerp(Color(era_col.r, era_col.g, era_col.b),
 		0.10 if (cleared or is_cur) else 0.055)
-	if is_boss:
+	# v6.71 动态补给网：补给网状态环色——优先级 当前关 > 陷落紫 > boss金 > 降级灰 >
+	# 时代色。陷落是最高危险信号（压过 boss 身份金）；当前关保持时代彩环（「在这」
+	# 的识别不丢，陷落信息靠弹窗表达）；降级灰表达功能残缺感。
+	var snm_map: Node = get_node_or_null("/root/SupplyNetworkManager")
+	var lv_state: String = ""
+	if snm_map != null and snm_map.has_method("get_level_state"):
+		lv_state = String(snm_map.call("get_level_state", level_index))
+	if not is_cur and lv_state == "fallen":
+		ring_col = Color(0.62, 0.35, 0.85)  # 陷落紫
+		bw = maxi(bw, 4)
+	elif is_boss:
 		ring_col = BOSS_RING_COLOR
 		bw = 4
+	elif lv_state == "recovered_degraded":
+		ring_col = Color(0.55, 0.55, 0.55)  # 降级灰
 	if is_cur:
 		bw = 5
 	sb.bg_color = disc
@@ -2769,6 +2805,17 @@ func _show_level_info_popup(level_index: int) -> void:
 	var level_echo := CampaignNarrative.get_level_echo(level_index)
 	if not level_echo.is_empty():
 		body.add_child(_make_detail_desc(level_echo, Color(1.0, 0.72, 0.32, 0.92)))
+	# v6.71 M5 对话三层②：补给点驻守者闲语（时代 5 池×6 条，day+level 决定性轮换；
+	# 副句槽=时代锚色淡染）。主线 echo 非空时已占用副句槽，不再叠池句。
+	if level_echo.is_empty():
+		var _bunker_dlg: Node = get_node_or_null("/root/BunkerManager")
+		var day_i: int = _bunker_dlg.get_day() if _bunker_dlg != null and _bunker_dlg.has_method("get_day") else 0
+		var dlg: String = SupplyPointDialogues.pick_line(era_id, day_i, level_index)
+		if not dlg.is_empty():
+			body.add_child(_make_detail_desc(dlg, era_color.lerp(Color.WHITE, 0.35)))
+
+	# ══ v6.71 补给网四分区（M1/M3：威胁/收复/回溯/兑换）══
+	_append_supply_section(body, popup, level_index)
 
 	# ── ActionRow：进入该关 + 自动部署 ──
 	var action_row := HBoxContainer.new()
@@ -2791,6 +2838,132 @@ func _show_level_info_popup(level_index: int) -> void:
 	action_row.add_child(auto_btn)
 
 	popup.popup_centered(Vector2i(540, 520))
+
+
+## ═══ v6.71 动态补给网：关卡弹窗补给网四分区（M1/M3）═══
+## 威胁行（区域威胁值+告急色）/ 评分行（最近一次评级）/ 状态分支
+## （陷落=收复战入口、降级=时空回溯入口）/ 兑换区（三档箱+pity 文案）。
+## 数值全读常量与 SNM API（C3：文案数值禁硬编码）；兑换/回溯成功后重开弹窗刷新。
+func _append_supply_section(body: VBoxContainer, popup: AcceptDialog, level_index: int) -> void:
+	var snm: Node = get_node_or_null("/root/SupplyNetworkManager")
+	if snm == null:
+		return
+	var region: int = SupplyThreatRef.region_for_level(level_index)
+	var threat: int = int(snm.call("get_region_threat", region))
+	var lv_state: String = String(snm.call("get_level_state", level_index))
+
+	# ▸ 威胁行
+	body.add_child(_make_detail_section_title("补给网"))
+	var range_v: Vector2i = SupplyThreatRef.level_range_for_region(region)
+	var threat_col: Color = Color(0.45, 0.85, 0.5)  # 低威胁绿
+	if threat >= SupplyThreatRef.FALL_THRESHOLD - 20:
+		threat_col = Color(0.95, 0.4, 0.35)  # 临界红
+	elif threat >= 40:
+		threat_col = Color(0.95, 0.75, 0.3)  # 中段黄
+	body.add_child(_make_detail_desc(
+		"区域 %d（第 %d-%d 关）威胁 %d/%d%s" % [
+			region, range_v.x, range_v.y, threat, SupplyThreatRef.FALL_THRESHOLD,
+			" · ⚠ 区域告急，补给点可能陷落" if threat >= SupplyThreatRef.FALL_THRESHOLD - 20 else "",
+		], threat_col))
+
+	# ▸ 评分行（最近一次，覆盖式口径）
+	var grade: String = String(snm.call("get_grade", level_index))
+	if grade.is_empty():
+		body.add_child(_make_detail_desc("本关评级：未考评（通关后按表现评分）", Color(0.7, 0.7, 0.7)))
+	else:
+		body.add_child(_make_detail_desc("本关评级：%s（记最近一次评分，可凭评级随时兑换）" % grade,
+			Color(0.65, 0.85, 0.95)))
+
+	# ▸ 状态分支：陷落=收复战入口 / 降级=时空回溯入口
+	if lv_state == "fallen":
+		body.add_child(_make_detail_desc("⛔ 补给点陷落——异族占领中（兑换与考评停摆）",
+			Color(0.75, 0.45, 0.95)))
+		var rc_btn := Button.new()
+		rc_btn.text = "⚔  发起收复战（重夺补给点）"
+		rc_btn.custom_minimum_size = Vector2(0, 34)
+		rc_btn.add_theme_font_size_override("font_size", 13)
+		rc_btn.pressed.connect(_on_reconquest_pressed.bind(level_index, popup))
+		body.add_child(rc_btn)
+		return  # 陷落态不给兑换区
+	elif lv_state == "recovered_degraded":
+		body.add_child(_make_detail_desc("◷ 补给点降级——仅开放普通箱；时空回溯可恢复完整运作",
+			Color(0.75, 0.75, 0.75)))
+		var cost: Dictionary = snm.call("rewind_cost", level_index)
+		var rw_btn := Button.new()
+		rw_btn.text = "↺  时空回溯（纳米 %d · 合金 %d）" % [
+			int(cost.get("nano_materials", 0)), int(cost.get("alloy", 0))]
+		rw_btn.custom_minimum_size = Vector2(0, 34)
+		rw_btn.add_theme_font_size_override("font_size", 13)
+		rw_btn.pressed.connect(_on_rewind_pressed.bind(level_index, popup))
+		body.add_child(rw_btn)
+
+	# ▸ 兑换区（三档箱）
+	body.add_child(_make_detail_section_title("关卡兑换（能量块支付，不限次数）"))
+	var era: int = LevelEras.get_era(level_index)
+	var box_row := HBoxContainer.new()
+	box_row.add_theme_constant_override("separation", 8)
+	box_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	for tier in [SupplyExchangeRef.TIER_NORMAL, SupplyExchangeRef.TIER_ADVANCED, SupplyExchangeRef.TIER_PREMIUM]:
+		var cond: Dictionary = snm.call("get_exchange_conditions", level_index, tier)
+		var price: int = snm.call("_exchange_cost_with_discount", tier, era)
+		var b := Button.new()
+		b.text = "%s
+%d⚡" % [SupplyExchangeRef.describe_tier(tier), price]
+		b.custom_minimum_size = Vector2(0, 52)
+		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		b.add_theme_font_size_override("font_size", 12)
+		b.disabled = not bool(cond.get("ok", false))
+		if not bool(cond.get("ok", false)):
+			b.tooltip_text = String(cond.get("reason_zh", "条件不足"))
+		else:
+			b.tooltip_text = "%s · 概率详表见补给中枢" % SupplyExchangeRef.describe_gate(tier)
+		b.pressed.connect(_on_exchange_pressed.bind(level_index, tier, popup))
+		box_row.add_child(b)
+	body.add_child(box_row)
+	var pity: int = int(snm.get("exchange_pity"))
+	body.add_child(_make_detail_desc(SupplyExchangeRef.describe_box_pity(pity), Color(0.7, 0.7, 0.7)))
+
+
+## v6.71：兑换按钮回调——执行侧 SNM.exchange_box（扣费/退款/发放全在 SNM 内），
+## 结果走 feed 播报；重开弹窗刷新禁用态与 pity 行。
+func _on_exchange_pressed(level_index: int, tier: String, popup: AcceptDialog) -> void:
+	var snm: Node = get_node_or_null("/root/SupplyNetworkManager")
+	if snm == null:
+		return
+	var result: Dictionary = snm.call("exchange_box", level_index, tier)
+	if SignalBus.has_signal("show_toast"):
+		SignalBus.show_toast.emit(String(result.get("reason_zh", "")))
+	_close_popup_safe(popup)
+	_show_level_info_popup(level_index)
+
+
+## v6.71：回溯按钮回调——先扣资源（rewind_cost）再激活；资源不足 toast 提示。
+func _on_rewind_pressed(level_index: int, popup: AcceptDialog) -> void:
+	var snm: Node = get_node_or_null("/root/SupplyNetworkManager")
+	if snm == null:
+		return
+	var cost: Dictionary = snm.call("rewind_cost", level_index)
+	var brm: Node = get_node_or_null("/root/BasicResourceManager")
+	if brm == null:
+		return
+	var nano_need: int = int(cost.get("nano_materials", 0))
+	var alloy_need: int = int(cost.get("alloy", 0))
+	if not (bool(brm.can_afford("nano_materials", nano_need)) and bool(brm.can_afford("alloy", alloy_need))):
+		if SignalBus.has_signal("show_toast"):
+			SignalBus.show_toast.emit("资源不足——回溯需纳米 %d · 合金 %d" % [nano_need, alloy_need])
+		return
+	brm.consume("nano_materials", nano_need)
+	brm.consume("alloy", alloy_need)
+	snm.call("activate_time_rewind", level_index)
+	_close_popup_safe(popup)
+	_show_level_info_popup(level_index)
+
+
+## v6.71：收复战按钮回调——关弹窗走 GameManager 收复管线（meta 备态→标准开战）。
+func _on_reconquest_pressed(level_index: int, popup: AcceptDialog) -> void:
+	_close_popup_safe(popup)
+	if GameManager.has_method("start_reconquest_battle"):
+		GameManager.start_reconquest_battle(level_index)
 
 
 ## 黑门区块（v6.38 恢复 v6.35.2 丢失的弹窗嵌入）：黑门口径置顶 + 踏入按钮。
