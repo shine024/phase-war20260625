@@ -372,3 +372,59 @@ func test_start_incursion_battle_preps_only() -> void:
 	gm.set("_pending_incursion", {})
 	gm.set_current_level(bak_level)
 	_ebm_restore(bak)
+
+
+# ═════════════════════════════════════════════════════════════
+#  v6.71 动态补给网：渗透宿主区域威胁加权 + 迷失相位师波数据侧
+# ═════════════════════════════════════════════════════════════
+
+func _snm() -> Node:
+	return get_node_or_null("/root/SupplyNetworkManager")
+
+
+## v6.71 M1.1：_spawn_incursion 宿主抽关改按区域威胁加权——高威胁区显著更密。
+## 统计断言（2000 次抽样）：region1 威胁 100 vs region2 威胁 0 时，
+## region1 命中数占比 > 80%（基线 20/20+120+20 → 理论 ~75%+，留容差）。
+func test_spawn_incursion_host_threat_weighted() -> void:
+	var e := _ebm()
+	var snm := _snm()
+	assert_bool(snm != null).is_true()
+	var threat_bak: Dictionary = snm.region_threat.duplicate()
+	snm.region_threat = {1: 100, 2: 0}
+	var r1_hits: int = 0
+	var n: int = 2000
+	for _i in range(n):
+		var lv: int = e.call("_pick_threat_weighted_level", 1, 20)
+		if lv <= 10:
+			r1_hits += 1
+	snm.region_threat = threat_bak
+	# 加权后 region1（威胁100）应压倒 region2（威胁0）
+	assert_int(r1_hits).is_greater(int(n * 0.8))
+
+## 全零威胁退化均匀：两区命中量级相当（±15% 容差，防写死权重后忘退化分支）
+func test_spawn_incursion_zero_threat_uniform_fallback() -> void:
+	var e := _ebm()
+	var snm := _snm()
+	var threat_bak: Dictionary = snm.region_threat.duplicate()
+	snm.region_threat = {}
+	var r1_hits: int = 0
+	var n: int = 2000
+	for _i in range(n):
+		if e.call("_pick_threat_weighted_level", 1, 20) <= 10:
+			r1_hits += 1
+	snm.region_threat = threat_bak
+	assert_int(r1_hits).is_greater(int(n * 0.35))
+	assert_int(r1_hits).is_less(int(n * 0.65))
+
+
+## v6.71 M4：迷失变体波常量与池联动（spawn 侧波次逻辑需战场，此处锁数据侧契约）
+func test_lost_master_pool_feeds_blackgate_variant() -> void:
+	var snm := _snm()
+	assert_bool(snm != null).is_true()
+	var lost_bak: Array = snm.lost_masters.duplicate(true)
+	var garrison_bak: Dictionary = snm.garrison_lost.duplicate()
+	snm.lost_masters = [{"master_id": "量子幽灵", "origin": "roam", "lost_day": 3}]
+	var pool: Array = snm.blackgate_variant_pool()
+	assert_array(pool).contains("量子幽灵")
+	snm.lost_masters = lost_bak
+	snm.garrison_lost = garrison_bak

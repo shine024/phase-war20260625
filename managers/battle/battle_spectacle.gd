@@ -249,6 +249,10 @@ func _on_boss_wave_started(wave_kind: String, boss_archetype_ids: Array) -> void
 		"boss":
 			_play_boss_appear("⚔ %s" % _boss_wave_title(boss_archetype_ids))
 			_play_elite_wave_beat()  # v34 C1：短定格节拍（L1-9 无相位师期的唯一强度高潮）
+		"master":
+			# v6.71 迷失相位师波：全套演出，横幅泛称（带名播报走 spawn 侧 toast）
+			_play_boss_appear("☠ 迷失的战友在黑门深处显现")
+			_play_elite_wave_beat()
 		"elite":
 			_play_elite_wave_beat()
 

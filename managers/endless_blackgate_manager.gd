@@ -21,6 +21,7 @@ const LevelEras = preload("res://data/level_eras.gd")
 const XenoUnits = preload("res://data/xeno_units.gd")
 const BasicResourcesData = preload("res://data/basic_resources.gd")
 const LevelBattleLayoutsRef = preload("res://data/level_battle_layouts.gd")
+const SupplyThreatRef = preload("res://data/supply_threat.gd")  # v6.71 区域威胁加权
 
 signal run_ended(summary: Dictionary)
 
@@ -348,11 +349,37 @@ func _spawn_incursion() -> void:
 	var hi: int = mini(LevelEras.LEVEL_COUNT, anchor + 15)
 	if hi < lo:
 		return
+	# v6.71 动态补给网 M1.1：宿主关按区域威胁加权随机——威胁高的区域更容易出现
+	# 渗透节点（对 EBM 的唯一改动点，计划 M1.1 口径）。区域内仍均匀抽关。
+	var host_level: int = _pick_threat_weighted_level(lo, hi)
 	incursions.append({
-		"host_level": randi_range(lo, hi),
+		"host_level": host_level,
 		"seed": randi(),
 		"spawned_day": _current_day(),
 	})
+
+
+## v6.71：[lo,hi] 内按所在区域威胁值加权抽一个关卡（权重=威胁+基线 20，
+## 全零威胁时退化为均匀；SupplyNetworkManager 缺席/休眠时均匀——离线可玩 C2）。
+func _pick_threat_weighted_level(lo: int, hi: int) -> int:
+	var snm: Node = get_node_or_null("/root/SupplyNetworkManager")
+	if snm == null or not snm.has_method("get_region_threat"):
+		return randi_range(lo, hi)
+	var weights: Array = []
+	var total: float = 0.0
+	for lv in range(lo, hi + 1):
+		var w: float = float(snm.call("get_region_threat", SupplyThreatRef.region_for_level(lv))) + 20.0
+		weights.append(w)
+		total += w
+	if total <= 0.0:
+		return randi_range(lo, hi)
+	var roll: float = randf() * total
+	var acc: float = 0.0
+	for i in weights.size():
+		acc += float(weights[i])
+		if roll <= acc:
+			return lo + i
+	return hi
 
 
 ## v6.42: 渗透剩余过期天数（大地图 tooltip 消费；宪法 C3 口径随 INCURSION_EXPIRE_DAYS 常量走）

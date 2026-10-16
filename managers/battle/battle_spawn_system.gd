@@ -585,6 +585,9 @@ func spawn_card_grid_enemy_wave(current_level: int) -> bool:
 ## - 其余常规波：2-4 基础（A 段，渗度只提密度/档位概率，不破 9 格）
 ## 数值成长不在此处——enemy_stat_resolver 的波数乘区（hp/dmg 斜率 0.08/0.06）+ 100 关
 ## 满档档位天然构成渗度曲线（设计 §5.3 公式的引擎内等价实现）。
+## v6.71: 迷失相位师波间隔(黑门 run 内每 40 波,lost_masters 非空才启用)
+const LOST_MASTER_WAVE_INTERVAL: int = 40
+
 func _spawn_endless_xeno_wave(current_level: int) -> bool:
 	sync_enemy_unit_count_from_field()
 	if enemy_unit_count >= _enemy_field_unit_cap():
@@ -614,6 +617,22 @@ func _spawn_endless_xeno_wave(current_level: int) -> bool:
 	# v6.35 黑门 2.0: 本体波——到达随机深度且未通关时,本波替换为本体+护卫
 	var is_core_wave: bool = ebm != null and not bool(ebm.get("gate_cleared")) \
 		and int(ebm.get("gate_core_wave")) > 0 and next_wave == int(ebm.get("gate_core_wave"))
+	# v6.71 动态补给网 M4：迷失相位师波——迷失池非空时每 40 波插一波"怪物化的战友"。
+	# 实现偏差记录（回写计划 §M4）：计划原文用 battlefield.ensure_enemy_phase_driver，
+	# 但 enemy_phase_driver_destroyed → battle_manager._on_enemy_phase_driver_destroyed
+	# → end_battle(true)（:1080），黑门 run 内插第二 driver 会让打死它直接判胜、绕过本体，
+	# 故改为 enemy_unit 变体：xeno boss 位 + apply_gate_core_scaling 迷失档缩放 + 身份 meta。
+	var lost_master_name: String = ""
+	var is_master_wave: bool = false
+	if next_wave % LOST_MASTER_WAVE_INTERVAL == 0 and not is_core_wave:
+		var snm: Node = _get_autoload_node("SupplyNetworkManager")
+		var lost: Array = []
+		if snm != null and snm.has_method("get_lost_masters"):
+			lost = snm.call("get_lost_masters")
+		if not lost.is_empty():
+			# 决定性轮换（重放稳定，同威胁模型不用 RNG）：按波次序取迷失者
+			lost_master_name = String((lost[int(next_wave / float(LOST_MASTER_WAVE_INTERVAL)) % lost.size()] as Dictionary).get("master_id", ""))
+			is_master_wave = not lost_master_name.is_empty()
 
 	# 出兵量：2 起步，每 8 波 +1，封顶 4（boss 波 1 首领 + 伴随；本体波 1 本体 + 2 护卫）
 	var to_spawn: int = 2 + mini(2, int((next_wave - 1) / 8.0))
@@ -621,6 +640,8 @@ func _spawn_endless_xeno_wave(current_level: int) -> bool:
 		to_spawn = mini(to_spawn, 3)
 	if is_core_wave:
 		to_spawn = 3
+	if is_master_wave:
+		to_spawn = mini(to_spawn, 3)
 	to_spawn = mini(to_spawn, free_n)
 
 	var basic_ids: Array = XenoUnits.get_ids_for_role("basic")
@@ -628,6 +649,7 @@ func _spawn_endless_xeno_wave(current_level: int) -> bool:
 	var boss_ids: Array = XenoUnits.get_ids_for_role("boss")
 	var core_id: String = "xeno_gate_core"
 	var core_spawned: bool = false
+	var master_spawned: bool = false
 
 	for _i in range(to_spawn):
 		if enemy_unit_count >= _enemy_field_unit_cap():
@@ -639,13 +661,22 @@ func _spawn_endless_xeno_wave(current_level: int) -> bool:
 			# core_spawned 在放置成功后才置位(见下)——放置失败重臂下一波
 			archetype_id = core_id
 			type_pick = "core"
+		elif is_master_wave and not master_spawned:
+			# v6.71 迷失相位师:本波唯一,吃迷失档倍率(HP×6/攻×1.5,残缺怪物态,
+			# 弱于本体);身份只做播报与 meta,不做专属掉落(C3 简洁口径)
+			if not boss_ids.is_empty():
+				archetype_id = boss_ids[int(next_wave / float(LOST_MASTER_WAVE_INTERVAL)) % boss_ids.size()]
+				type_pick = "master"
 		elif is_core_wave:
 			archetype_id = String(elite_ids[randi() % elite_ids.size()]) if not elite_ids.is_empty() \
 				else String(basic_ids[randi() % basic_ids.size()])
 			type_pick = "elite"
-		elif is_boss_wave:
+		elif is_boss_wave or is_master_wave:
 			# 首波伴随走基础池；首领唯一性命中时降级精英
-			if _i == 0 and not boss_ids.is_empty():
+			if is_master_wave:
+				archetype_id = String(elite_ids[randi() % elite_ids.size()]) if not elite_ids.is_empty() else String(basic_ids[randi() % basic_ids.size()])
+				type_pick = "elite"
+			elif _i == 0 and not boss_ids.is_empty():
 				var cand: String = boss_ids[(int(next_wave / 10.0) - 1) % boss_ids.size()]
 				if _count_alive_enemy_by_archetype(cand) < 1:
 					archetype_id = cand
@@ -679,6 +710,12 @@ func _spawn_endless_xeno_wave(current_level: int) -> bool:
 				unit.apply_elite_affixes(type_pick)
 				if type_pick == "boss":
 					unit.set_meta("_is_boss_unit", true)
+		if type_pick == "master":
+			unit.set_meta("_is_boss_unit", true)
+			unit.set_meta("_is_lost_master", true)
+			unit.set_meta("lost_master_name", lost_master_name)
+			if unit.has_method("apply_gate_core_scaling"):
+				unit.apply_gate_core_scaling(6.0, 1.5)  # 迷失档:残缺怪物态,弱于本体
 		if type_pick == "core":
 			unit.set_meta("_is_boss_unit", true)
 			unit.set_meta("_is_gate_core", true)
@@ -691,6 +728,8 @@ func _spawn_endless_xeno_wave(current_level: int) -> bool:
 			continue
 		if type_pick == "core":
 			core_spawned = true  # v6.35 复查修复:放置成功才算本体已出(失败重臂下一波)
+		if type_pick == "master":
+			master_spawned = true
 
 	# v6.35 复查修复:本体波本体未落地(创建/放置失败)→ 重臂到下一波,防 run 永久无本体
 	if is_core_wave and not core_spawned and ebm != null:
@@ -698,9 +737,17 @@ func _spawn_endless_xeno_wave(current_level: int) -> bool:
 
 	# v6.35: 信号带 wave_kind——"core"本体波/"boss"首领波全套演出,"elite"精英波轻档
 	if _signal_bus and not _wave_boss_spawns.is_empty():
-		_signal_bus.boss_wave_started.emit("core" if is_core_wave else "boss", _wave_boss_spawns.duplicate())
+		var wave_kind: String = "boss"
+		if is_core_wave:
+			wave_kind = "core"
+		elif is_master_wave:
+			wave_kind = "master"  # v6.71:迷失相位师波分段(battle_announcer 认领)
+		_signal_bus.boss_wave_started.emit(wave_kind, _wave_boss_spawns.duplicate())
 	elif _signal_bus and is_elite_wave:
 		_signal_bus.boss_wave_started.emit("elite", [])
+	# v6.71: 迷失相位师波播报(哀而不祥)
+	if is_master_wave and master_spawned and _signal_bus != null and _signal_bus.has_signal("show_toast"):
+		_signal_bus.show_toast.emit("☠ %s 在黑门深处显现——它曾是与我们同行的战友" % lost_master_name)
 	# v6.35: 中途补给节点(每 25 波自动入账,不打断战斗;Toast 即时反馈)
 	if ebm != null and ebm.has_method("grant_supply_node"):
 		var supply: Dictionary = ebm.call("grant_supply_node", next_wave)

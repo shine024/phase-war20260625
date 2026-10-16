@@ -376,6 +376,13 @@ func generate_battle_drops_only(player_won: bool, elapsed_time: float, wave_tota
 		"era": era,
 		"player_won": player_won,
 		"phase_instrument_drop": {},
+		# v6.71 评分输入原样带出（data/battle_evaluation.gd 的契约字段）——
+		# game_manager.complete_level 挂考评时直接读，免二次传参
+		"max_deployed": max_deployed,
+		"units_lost": units_lost,
+		"elapsed_time": elapsed_time,
+		"wave_total": wave_total,
+		"wave_interval": wave_interval,
 	}
 
 	var drops: Array = dm.generate_battle_drops(era, level, player_won, victory_stars)

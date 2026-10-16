@@ -4,6 +4,7 @@ const DEBUG_GAME_LOG := false
 const PhaseMasterGarrison := preload("res://data/phase_master_garrison.gd")  # v7.x 相位师驻守映射
 const NpcPhaseMasters := preload("res://data/npc_phase_masters.gd")  # NPC 相位师单一真理源
 const EndlessBlackgateRef := preload("res://managers/endless_blackgate_manager.gd")  # v6.35 渗透/本体常量
+const SupplyNetworkManagerRef := preload("res://managers/supply_network_manager.gd")  # v6.71 补给网常量/口径
 
 enum GamePhase {
 	PRE_BATTLE,
@@ -73,13 +74,33 @@ func check_phase_master_encounter() -> Dictionary:
 	# v7.x 驻守相位师：20个关卡100%遭遇固定相位师（绕过随机机制）
 	var garrison_master_id: String = PhaseMasterGarrison.get_garrison_master_id(current_level)
 	if not garrison_master_id.is_empty():
-		var garrison_config: Dictionary = _build_garrison_config(garrison_master_id)
-		if not garrison_config.is_empty():
-			_current_phase_master = garrison_config
-			_is_phase_master_battle = true
-			_phase_master_drought_count = 0
-			_record_phase_master_encounter_milestone()
-			return _current_phase_master
+		# v6.71：已迷失的驻守相位师不再遭遇（garrison_lost 过滤——收复过的相位师关只剩卡）
+		var snm_g: Node = get_node_or_null("/root/SupplyNetworkManager")
+		var garrison_lost: bool = snm_g != null and snm_g.has_method("is_garrison_encounter_available") \
+			and not bool(snm_g.call("is_garrison_encounter_available", current_level))
+		if not garrison_lost:
+			var garrison_config: Dictionary = _build_garrison_config(garrison_master_id)
+			if not garrison_config.is_empty():
+				_current_phase_master = garrison_config
+				_is_phase_master_battle = true
+				_phase_master_drought_count = 0
+				_record_phase_master_encounter_milestone()
+				return _current_phase_master
+	# v6.71 游猎相位师：停靠/到站同关必遭遇（模拟战）——优先级链插在驻守后、概率门前
+	var snm_r: Node = get_node_or_null("/root/SupplyNetworkManager")
+	if snm_r != null and snm_r.has_method("get_roaming_master_at"):
+		var roam: Dictionary = snm_r.call("get_roaming_master_at", current_level)
+		if not roam.is_empty():
+			var wanted_name: String = String(roam.get("master_id", ""))
+			var roam_cfg: Dictionary = NpcPhaseMasters.get_by_name(wanted_name)
+			if not roam_cfg.is_empty():
+				var enriched: Dictionary = _enrich_master_config(roam_cfg)
+				if not enriched.is_empty():
+					_current_phase_master = enriched
+					_is_phase_master_battle = true
+					_is_sparring_battle = true
+					_phase_master_drought_count = 0
+					return _current_phase_master
 	# 非驻守关走概率门（第49关已并入驻守表，不再需要硬编码 force 分支）
 	# v7.1 新手保护期：前 N 关不触发随机遭遇
 	if current_level <= PHASE_MASTER_GRACE_LEVELS:
@@ -498,6 +519,18 @@ var pending_incursion_loadout: Array = []
 var _is_incursion_battle: bool = false
 var _pending_incursion: Dictionary = {}
 
+## ── v6.71 动态补给网：收复战 + 游猎模拟战 ──────────────────────────
+## 收复战（fallen 关入场）：镜像渗透战管线，elite+1 手动实战；
+## 模拟战（游猎相位师同关）：战友切磋，胜得战利品败无后果（不降威胁）。
+var _is_reconquest_battle: bool = false
+var _is_sparring_battle: bool = false
+
+## 模拟战战利品（常量 C3：胜→资源包+低概率缴获+小概率遗物箱；败→无后果）
+const SPARRING_NANO: int = 600
+const SPARRING_ENERGY: int = 90
+const SPARRING_CAPTURE_CHANCE: float = 0.40
+const SPARRING_RELIC_BOX_PCT: float = 12.0
+
 func is_incursion_battle() -> bool:
 	return _is_incursion_battle
 
@@ -555,6 +588,90 @@ func _settle_incursion_battle(player_won: bool) -> void:
 			SignalBus.show_toast.emit("渗透的异族散兵转移了……")
 	return_to_prep()
 
+## ── v6.71 收复战（fallen 关入场；计划 M1.2）──────────────────────────
+## 编队走 EBM.get_incursion_loadout 但 elite+1，手动实战；meta 键
+## pending_reconquest_level（main._consume_incursion_meta 备态后走标准开战管线）。
+func start_reconquest_battle(level: int) -> void:
+	var ebm: Node = get_node_or_null("/root/EndlessBlackgateManager")
+	if ebm == null or not ebm.has_method("get_incursion_loadout"):
+		return
+	var loadout: Dictionary = ebm.call("get_incursion_loadout", {"host_level": level, "seed": randi()})
+	var ids: Array = loadout.get("ids", [])
+	if ids.is_empty():
+		return
+	# elite+1：追加一只精英/王牌（镜像渗透编队 3-5 基础+1 精英的加强口径）
+	var elite_pool: Array = ebm.call("get_role_pool", "elite")
+	if not elite_pool.is_empty():
+		ids.append(elite_pool[randi() % elite_pool.size()])
+	pending_incursion_loadout = ids.duplicate()
+	_is_reconquest_battle = true
+	set_current_level(level)
+	# 走 main 标准开战管线（同渗透战纪律：不直接 go_to_battle——整备态时序）
+
+## 收复战轻结算：胜→+资源（渗透×1.5，异族战是资源主力）+区域威胁−20+遗物箱掷点；
+## 败→维持陷落。均不推关卡进度/星级。
+func _settle_reconquest_battle(player_won: bool) -> void:
+	_is_reconquest_battle = false
+	pending_incursion_loadout = []
+	var level: int = current_level
+	var snm: Node = get_node_or_null("/root/SupplyNetworkManager")
+	if not player_won:
+		SignalBus.feed_message.emit("收复战受挫——第%d关仍在异族手中，重整再战。" % level)
+		return_to_prep()
+		return
+	var is_first: bool = true
+	if snm != null and snm.has_method("is_first_capture"):
+		is_first = bool(snm.call("is_first_capture", level))
+	# 资源奖励 = 渗透轻结算量级 ×1.5（常量口径 SupplyNetworkManager.RECONQUEST_REWARD_SCALE）
+	var nano: int = int(round(float(EndlessBlackgateRef.INCURSION_NANO) * SupplyNetworkManagerRef.RECONQUEST_REWARD_SCALE))
+	var energy: int = int(round(float(EndlessBlackgateRef.INCURSION_ENERGY) * SupplyNetworkManagerRef.RECONQUEST_REWARD_SCALE))
+	BasicResourceManager.add_resource("nano_materials", nano)
+	BasicResourceManager.add_resource("energy_block", energy)
+	var relic_note: String = ""
+	if snm != null and snm.has_method("settle_reconquest_victory"):
+		var result: Dictionary = snm.call("settle_reconquest_victory", level, is_first)
+		var relic: Dictionary = result.get("relic", {}) as Dictionary
+		if not relic.is_empty():
+			relic_note = " · 缴获遗物箱：%s" % String(relic.get("label", ""))
+			if snm.has_method("open_relic_box") and String(relic.get("key", "")) != "relic_box" and String(relic.get("key", "")) != "relic_box_full":
+				pass  # 遗物箱已开（settle 内部 open），此处仅文案
+	SignalBus.feed_message.emit("第%d关收复成功 · 纳米 +%d 能量 +%d · 区域威胁 −%d%s" % [
+		level, nano, energy, SupplyThreat.RECONQUEST_RELIEF, relic_note])
+	return_to_prep()
+
+## ── v6.71 游猎模拟战轻结算（战友切磋；计划 M4）──────────────────────
+## 胜→战利品（资源包/低概率缴获/小概率遗物箱，常量明示）+feed；败→无后果
+## （不降区域威胁——战友不是异族）。均不推关卡进度/星级/评分。
+func _settle_sparring_battle(player_won: bool) -> void:
+	_is_sparring_battle = false
+	var name_i: String = String(_current_phase_master.get("name", "战友"))
+	_current_phase_master = {}
+	_is_phase_master_battle = false
+	if not player_won:
+		SignalBus.feed_message.emit("与 %s 的模拟战结束——切磋点到为止，%s 收刀入鞘。" % [name_i, name_i])
+		return_to_prep()
+		return
+	BasicResourceManager.add_resource("nano_materials", SPARRING_NANO)
+	BasicResourceManager.add_resource("energy_block", SPARRING_ENERGY)
+	var notes: String = ""
+	# 低概率缴获：captured_xeno_* 直入包（镜像渗透缴获口径）
+	if randf() < SPARRING_CAPTURE_CHANCE:
+		var dm: Node = get_node_or_null("/root/DropManager")
+		var bp: Node = get_node_or_null("/root/SaveManager")
+		if dm != null and bp != null and bp.has_method("enqueue_backpack_card_id"):
+			var card_id: String = dm.call("pick_capture_card_id", LevelEras.get_era(current_level), 0)
+			if not String(card_id).is_empty():
+				bp.call("enqueue_backpack_card_id", card_id)
+				notes += " · 缴获风格卡"
+	# 小概率遗物箱（概率常量明示）
+	var snm: Node = get_node_or_null("/root/SupplyNetworkManager")
+	if snm != null and randf() * 100.0 < SPARRING_RELIC_BOX_PCT and snm.has_method("open_relic_box"):
+		var relic: Dictionary = snm.call("open_relic_box")
+		if not relic.is_empty():
+			notes += " · 遗物箱：%s" % String(relic.get("label", ""))
+	SignalBus.feed_message.emit("与 %s 的模拟战结束——战利品已入账 · 纳米 +%d 能量 +%d%s" % [name_i, SPARRING_NANO, SPARRING_ENERGY, notes])
+	return_to_prep()
+
 func go_to_battle() -> void:
 	if DEBUG_GAME_LOG:
 		pass  # LOG: go_to_battle 被调用
@@ -572,7 +689,7 @@ func go_to_battle() -> void:
 	clear_battle_reward_collector()  # v7.x 胜利面板漏显修复：战斗开始时清空本局收集器
 	_snapshot_battle_reward_baselines()
 	# 检查是否遭遇相位师（v27 黑门无尽 run 不遭遇相位师；v6.35 渗透战同样排除）
-	if not _is_endless_battle and not _is_incursion_battle:
+	if not _is_endless_battle and not _is_incursion_battle and not _is_reconquest_battle:
 		check_phase_master_encounter()
 	if battle_scene == null:
 		push_error("battle_scene 为空，请检查 Main 是否调用了 GameManager.set_battle_scene")
@@ -707,6 +824,16 @@ func _on_battle_ended(player_won: bool) -> void:
 		_settle_incursion_battle(player_won)
 		return
 
+	# v6.71 收复战:专用轻结算(资源+降压+遗物箱掷点;不推进度/评分)
+	if _is_reconquest_battle:
+		_settle_reconquest_battle(player_won)
+		return
+
+	# v6.71 游猎模拟战:战友切磋轻结算(胜得战利品败无后果;不推进度/评分/威胁)
+	if _is_sparring_battle:
+		_settle_sparring_battle(player_won)
+		return
+
 	# v6.19 P2-T2.1: 首次相位师遭遇后的情报引导（胜败皆弹——败给相位师正是最需要情报的时刻；
 	# 弹窗挂 CanvasLayer 250 高于结算面板，时序安全；show_once 随档只弹一次）。
 	# v6.19.1：文案升级为"遭遇→打开情报→使用对策"三步链（核验清单#1），数值读常量（宪法 C3）。
@@ -809,6 +936,18 @@ func _on_battle_ended(player_won: bool) -> void:
 		var level_progress: Node = get_node_or_null("/root/LevelProgressManager")
 		if level_progress and level_progress.has_method("complete_level"):
 			level_progress.complete_level(current_level, victory_stars)
+			# v6.71 考评评分：覆盖式记最近一次（BattleEvaluation 分项输入来自 battle_result
+			# 的 max_deployed/units_lost/elapsed_time/wave_total/wave_interval 五字段）。
+			# 渗透/收复/模拟战已在上方早退，走到这里的都计入考评。
+			var snm: Node = get_node_or_null("/root/SupplyNetworkManager")
+			if snm != null and snm.has_method("record_grade"):
+				var eval_result: Dictionary = BattleManager.get_battle_result() if BattleManager.has_method("get_battle_result") else {}
+				var ev: Dictionary = BattleEvaluation.calculate_evaluation_grade(eval_result)
+				var old_grade: String = String(snm.get_grade(current_level))
+				var new_grade: String = String(ev.get("grade", "C"))
+				snm.record_grade(current_level, new_grade)
+				last_battle_reward_summary["grade_change"] = BattleEvaluation.describe_grade_change(old_grade, new_grade)
+				last_battle_reward_summary["grade_breakdown"] = BattleEvaluation.describe_grade_breakdown(ev)
 			# v6.19 P2-T2.2 流派成型埋点：首次通关相位师驻守关
 			if PhaseMasterGarrison.is_garrison_level(current_level):
 				var _pm_gar: Node = get_node_or_null("/root/PerformanceMetricsManager")
@@ -1550,6 +1689,12 @@ const CardDropGrants = preload("res://scripts/card_drop_grants.gd")
 const PhaseInstrumentsData = preload("res://data/phase_instruments.gd")
 
 func _grant_basic_resources_for_current_level() -> void:
+	# v6.71 经济重构（计划 M2.3）：首通照发，重打（考评）基础资源清零——
+	# 首通守卫与 _grant_first_clear_if_eligible 同口径（stars==0 且未重复结算）；
+	# 缴获卡链（DropManager 侧）不受影响。
+	var lpm_guard := get_node_or_null("/root/LevelProgressManager")
+	if lpm_guard != null and int(lpm_guard.get_level_stars(current_level)) != 0:
+		return
 	var drops: Dictionary = BasicResources.get_drops_for_level(current_level)
 	# v6.2: 符文之语资源产出加成
 	var yield_mult: float = 1.0 + _get_rune_special_bonus("on_resource_yield")
